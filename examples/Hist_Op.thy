@@ -242,22 +242,6 @@ lemma hist_logic_eq_incr_hist_op:
     apply (rule refl)
     apply auto
     done
-  subgoal for WM buf1 buf2
-    apply (auto simp add: sync_batches_linorder produce_map_op_correctness comp_def)
-    subgoal for t d
-      apply (subgoal_tac "\<not> (\<exists> t' d. (t', d) \<in> set buf2 \<and> t' > t)")
-      defer
-      subgoal
-        apply auto
-        by (metis dual_order.trans fst_eqD imageI less_le_not_le)
-      apply auto
-      subgoal premises prems
-        using prems(5) apply -
-        apply (induct buf2)
-        apply auto
-        done
-      done
-    done
   subgoal for wm buf1 buf2 t 
     apply (rule exI)+
     apply (rule conjI[rotated])
@@ -296,22 +280,6 @@ lemma hist_logic_eq_incr_hist_op:
         done
       done
     done
-  subgoal for WM buf1 buf2
-    apply (auto simp add: sync_batches_linorder produce_map_op_correctness comp_def)
-    subgoal for t d
-      apply (subgoal_tac "\<not> (\<exists> t' d. (t', d) \<in> set buf2 \<and> t' > t)")
-      defer
-      subgoal
-        apply auto
-        by (metis dual_order.trans fst_eqD imageI less_le_not_le)
-      apply auto
-      subgoal premises prems
-        using prems(6,7) apply -
-        apply (induct buf2)
-        apply auto
-        done
-      done
-    done
   subgoal for wm buf1 buf2 t 
     apply (rule exI)+
     apply (rule conjI[rotated])
@@ -329,7 +297,7 @@ lemma hist_logic_eq_incr_hist_op:
         by (metis dual_order.trans fst_eqD imageI less_le_not_le)
       apply auto
       subgoal premises prems
-        using prems(6) apply -
+        using prems(5) apply -
         apply (induct buf2)
         apply auto
         done
