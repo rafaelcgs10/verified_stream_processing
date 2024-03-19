@@ -441,9 +441,9 @@ lemma multi_incr_coll_list_linorder[simp]:
 lemma hist_logic_eq_multi_incr_hist_op:
   "\<forall> t \<in> fst ` set buf2 . \<exists> wm \<in> WM . t \<le> wm \<Longrightarrow>
    \<forall> t \<in> fst ` set buf1 . \<forall> wm \<in> WM . t > wm \<Longrightarrow>
-   wm_eq WM (hist_logic (mset (map snd buf2)) buf1) (multi_incr_hist_op buf1 buf2)"
+   eq_op WM (hist_logic (mset (map snd buf2)) buf1) (multi_incr_hist_op buf1 buf2)"
   unfolding multi_incr_hist_op_def incr_batch_op_def
-  apply (coinduction arbitrary: WM buf1 buf2 rule: wm_eq_coinduct)
+  apply (coinduction arbitrary: WM buf1 buf2 rule: eq_op.coinduct)
   apply (auto simp: comp_def rel_fun_def finite_produce_append not_le rev_map split: list.splits event.splits)
   subgoal for wm  buf2 t d
     apply (rule exI)+
@@ -451,22 +451,6 @@ lemma hist_logic_eq_multi_incr_hist_op:
     apply (rule conjI)
     apply (rule refl)
     apply auto
-    done
-  subgoal for WM buf1 buf2
-    apply (auto simp add: sync_batches_linorder produce_map_op_correctness comp_def)
-    subgoal for t d
-      apply (subgoal_tac "\<not> (\<exists> t' d. (t', d) \<in> set buf2 \<and> t' > t)")
-      defer
-      subgoal
-        apply auto
-        by (metis dual_order.trans fst_eqD imageI less_le_not_le)
-      apply auto
-      subgoal premises prems
-        using prems(5) apply -
-        apply (induct buf2)
-        apply auto
-        done
-      done
     done
   subgoal for wm buf1 buf2 t 
     apply (rule exI)+
@@ -506,22 +490,6 @@ lemma hist_logic_eq_multi_incr_hist_op:
         done
       done
     done
-  subgoal for WM buf1 buf2
-    apply (auto simp add: sync_batches_linorder produce_map_op_correctness comp_def)
-    subgoal for t d
-      apply (subgoal_tac "\<not> (\<exists> t' d. (t', d) \<in> set buf2 \<and> t' > t)")
-      defer
-      subgoal
-        apply auto
-        by (metis dual_order.trans fst_eqD imageI less_le_not_le)
-      apply auto
-      subgoal premises prems
-        using prems(6,7) apply -
-        apply (induct buf2)
-        apply auto
-        done
-      done
-    done
   subgoal for wm buf1 buf2 t 
     apply (rule exI)+
     apply (rule conjI[rotated])
@@ -539,7 +507,7 @@ lemma hist_logic_eq_multi_incr_hist_op:
         by (metis dual_order.trans fst_eqD imageI less_le_not_le)
       apply auto
       subgoal premises prems
-        using prems(6) apply -
+        using prems(5) apply -
         apply (induct buf2)
         apply auto
         done
