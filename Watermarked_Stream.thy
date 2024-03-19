@@ -442,25 +442,6 @@ lemma productive'_productive: "productive' ws \<Longrightarrow> productive ws"
         done
       done
     done
- (*  apply (coinduction arbitrary: ws S) 
-  subgoal for ws
-    apply (cases ws)
-     apply simp
-    subgoal for x xs
-      apply (cases x)
-      subgoal for u d
-        apply (hypsubst_thin)
-        apply (erule productive'.cases)
-          apply (auto simp:  alwll_evll_wholdsll_alt)
-        done
-      subgoal for u
-        apply hypsubst_thin
-        apply (erule productive'.cases)
-          apply (auto simp:  lfinite_evll_wholdsll alwll_evll_wholdsll_alt lset_induct)
-        apply (metis event.disc(1) evll.step in_lset_conv_lnth lnth_imp_evll_wholdsll)
-        done
-      done
-    done *)
   done
 
 lemma productive_alt: "productive = productive'"
@@ -478,9 +459,7 @@ lemma productive_drop_head: "productive (LCons a xs) \<Longrightarrow> productiv
     apply (metis (mono_tags) alwll.simps alwll_LConsD)
     done
   done
-(*   apply (coinduction rule: alwll.coinduct)
-  by (metis (mono_tags, lifting) alwll.cases alwll_LConsD)
- *)
+
 lemma productive_lappendD[rotated]: "lfinite xs \<Longrightarrow> productive (lappend xs ys) \<Longrightarrow> productive ys"
   by (induct xs rule: lfinite_induct)
     (auto simp add: lnull_def neq_LNil_conv dest!: productive_drop_head)
@@ -529,7 +508,6 @@ proof (erule productive'.coinduct[OF productive_prepend_cong1_base])
     done
 qed
 
-
 lemmas productive_coinduct_prepend_cong1[coinduct pred] = productive'_coinduct_prepend_cong1[folded productive_alt]
 
 lemma productive'_coinduct_prepend_cong1_shift:
@@ -562,87 +540,6 @@ lemma productive'_coinduct_prepend_cong1_shift:
     apply auto
     done
   done
-
-
-lemma productive'_coinduct_prepend_cong1_shift_gen:
-  assumes H1: "X lxs" 
-    and H2:  "(\<And>x1.
-    X x1 \<Longrightarrow>
-    (\<exists>lxs. x1 = lxs \<and> lfinite lxs) \<or>
-    (\<exists>lxs ys wm. x1 = ys @@- lxs \<and> \<not> List.null ys \<and> (\<exists> t d . Data t d \<in> lset x1) \<and>
-    (\<forall> n < length ys . (\<forall> t d . ys ! n = Data t d \<longrightarrow> (\<exists> wm .Watermark wm \<in> lset (drop (Suc n) ys @@- lxs) \<and> t \<le> wm ))) \<and>
-     \<not> lfinite lxs \<and> productive_prepend_cong1 X lxs) \<or>
-    (\<exists>lxs wm. x1 = LCons (Watermark wm) lxs \<and> \<not> lfinite lxs \<and> (productive_prepend_cong1 X lxs \<or> productive' lxs)))" (is "\<And>x1 . X x1 \<Longrightarrow> ?bisim x1")
-  shows "productive' lxs"
-  using assms apply -
-  apply (erule productive'_coinduct_prepend_cong1)
-  subgoal for lxs
-    apply (drule meta_spec)
-    apply (drule meta_mp)
-     apply assumption
-    apply (elim exE conjE disjE)
-     apply simp
-    subgoal for lxs' ys wm
-      apply hypsubst_thin
-      apply (rule disjI2)
-      apply (cases ys)
-      using null_rec(2) apply blast
-      subgoal for y ys'
-        apply (cases y)
-        subgoal
-          apply auto
-               apply fastforce
-              apply (rule productive_prepend_cong1_prepend_1)
-               apply assumption
-              apply force
-             apply fastforce
-            apply (rule productive_prepend_cong1_prepend_1)
-             apply assumption
-            apply force
-           apply fastforce
-          apply (rule productive_prepend_cong1_prepend_1)
-           apply assumption
-          apply force
-          done
-        apply auto
-         apply (rule productive_prepend_cong1_prepend_1)
-          apply assumption
-         apply force
-        apply (rule productive_prepend_cong1_prepend_1)
-         apply assumption
-        apply force
-        done
-      done
-     apply auto
-    done
-  done
-
-lemma productive_coinduct_prepend_cong1_shift:
-  assumes H1: "X lxs" 
-    and H2:  "(\<And>x1.
-    X x1 \<Longrightarrow>
-    (\<exists>xs. x1 = xs \<and> lfinite xs) \<or>
-    (\<exists>xs t d wm. x1 = [Data t d, Watermark wm] @@- xs \<and> t \<le> wm \<and> \<not> lfinite xs \<and> productive_prepend_cong1 X xs) \<or>
-    (\<exists>lxs wm. x1 = LCons (Watermark wm) lxs \<and> \<not> lfinite lxs \<and> (productive_prepend_cong1 X lxs \<or> productive' lxs)))" (is "\<And>x1 . X x1 \<Longrightarrow> ?bisim x1")
-  shows "productive lxs"
-  using assms apply (simp add: productive_alt)
-  apply (rule productive'_coinduct_prepend_cong1_shift)
-   apply assumption
-  using H2 by meson
-
-lemma productive_coinduct_prepend_cong1_shift_gen:
-  assumes H1: "X lxs" 
-    and H2:  "(\<And>x1.
-    X x1 \<Longrightarrow>
-    (\<exists>lxs. x1 = lxs \<and> lfinite lxs) \<or>
-    (\<exists>lxs xs. x1 = xs @@- lxs \<and> \<not> List.null xs \<and> (\<exists> t d . Data t d \<in> lset x1) \<and> (\<forall> n < length xs . (\<forall> t d . xs ! n = Data t d \<longrightarrow> (\<exists> wm .Watermark wm \<in> lset (drop (Suc n) xs @@- lxs) \<and> t \<le> wm ))) \<and>
-     \<not> lfinite lxs \<and> productive_prepend_cong1 X lxs) \<or>
-    (\<exists>lxs wm. x1 = LCons (Watermark wm) lxs \<and> \<not> lfinite lxs \<and> (productive_prepend_cong1 X lxs \<or> productive' lxs)))" (is "\<And>x1 . X x1 \<Longrightarrow> ?bisim x1")
-  shows "productive lxs"
-  using assms apply (simp add: productive_alt)
-  apply (rule productive'_coinduct_prepend_cong1_shift_gen)
-   apply assumption
-  using H2 by presburger
 
 lemma productivity_good_example: "productive good_example"
   unfolding productive_def
