@@ -231,9 +231,9 @@ lemma multi_incr_coll_list_linorder[simp]:
 lemma hist_logic_eq_incr_hist_op:
   "\<forall> t \<in> fst ` set buf2 . \<exists> wm \<in> WM . t \<le> wm \<Longrightarrow>
    \<forall> t \<in> fst ` set buf1 . \<forall> wm \<in> WM . t > wm \<Longrightarrow>
-   wm_eq WM (hist_logic (mset (map snd buf2)) buf1) (incr_hist_op buf1 buf2)"
+   eq_op WM (hist_logic (mset (map snd buf2)) buf1) (incr_hist_op buf1 buf2)"
   unfolding incr_hist_op_def incr_batch_op_def
-  apply (coinduction arbitrary: WM buf1 buf2 rule: wm_eq_coinduct)
+  apply (coinduction arbitrary: WM buf1 buf2 rule: eq_op.coinduct)
   apply (auto simp: comp_def rel_fun_def finite_produce_append not_le rev_map split: list.splits event.splits)
   subgoal for wm  buf2 t d
     apply (rule exI)+
