@@ -27,10 +27,10 @@ lemma produce_inner_LNil_None[simp]:
   apply simp
   done
 
-lemma produce_inner_alt:
+lemma produce_inner_alt[consumes 1, case_names no_production produces terminates]:
   assumes "produce_inner op_lxs = Some y"
-    and "\<And>op h lxs lgc' lxs' zs ys . apply op h = (lgc', []) \<Longrightarrow> Q (lgc', lxs) zs \<Longrightarrow> Q (op, LCons h lxs) zs"
-    and "\<And> op h x xs lxs lxs' lgc' . produce_inner (op, LCons h lxs) = Some (Inl (lgc', x, xs, lxs')) \<Longrightarrow>
+    and "\<And>op h lxs lgc' zs . apply op h = (lgc', []) \<Longrightarrow> Q (lgc', lxs) zs \<Longrightarrow> Q (op, LCons h lxs) zs"
+    and "\<And>op h x xs lxs lxs' lgc' . produce_inner (op, LCons h lxs) = Some (Inl (lgc', x, xs, lxs')) \<Longrightarrow>
                                     apply op h = (lgc', x # xs) \<Longrightarrow> Q (op, LCons h lxs) (Inl (lgc', x, xs, lxs'))"
     and  "\<And>op. Q (op, LNil) (Inr op)"
   shows "Q op_lxs y"
@@ -506,7 +506,7 @@ lemma produce_inner_skip_n_productions_op_Suc_Some_None_False:
    produce_inner (skip_n_productions_op op n, lxs) = None \<Longrightarrow>
    False"
   apply (induct "(skip_n_productions_op op (Suc n), lxs)" r arbitrary: n op lxs rule: produce_inner_alt[consumes 1])
-  subgoal for h lxs' lgc' n op lxs'' x xs
+  subgoal
     apply (subst (asm) (2) produce_inner.simps)
     apply (auto split: prod.splits if_splits list.splits)
      apply (metis Suc_diff_le less_or_eq_imp_le)
@@ -1053,7 +1053,7 @@ lemma produce_inner_Some_Inl_compose_op:
    r = Inl (lgc', x, xs, lxs') \<Longrightarrow>
    finite_produce lgc2 (x # xs) = (lgc'', y # ys) \<Longrightarrow> produce_inner (compose_op lgc1 lgc2, lxs) = Some (Inl (compose_op lgc' lgc'', y, ys, lxs'))"
   apply (induct "(lgc1, lxs)" r arbitrary: lgc1 lgc2 lxs rule: produce_inner_alt[consumes 1])
-  subgoal for op h lxs lgc'a lxs'a zs ysa lgc2
+  subgoal
     apply (subst produce_inner.simps)
     apply auto
     done
@@ -1156,7 +1156,7 @@ lemma produce_inner_prefix_Some_production:
    finite_produce op xs = (lgc'', y'#ys') \<Longrightarrow>
    y = y' \<and> ys = take (length ys) ys'"
   apply (induct "(op, xs @@- lxs)" r arbitrary: op xs lxs lgc'  rule: produce_inner_alt[consumes 1])
-  subgoal for op h lxs lgc' lxs'a zs ysa xs lxsa lgc'a
+  subgoal for op h lxs lgc' zs xs lxsa lgc'a
     apply (cases xs)
      apply simp
     subgoal for x xs'
@@ -1377,7 +1377,7 @@ lemma produce_inner_compose_op_Inl_skip_n_productions_op:
    finite_produce lgc2 zs = (lgc2'', []) \<Longrightarrow>
    False"
   apply (induct "(compose_op (skip_n_productions_op lgc1 n) lgc2'', lxs)" r arbitrary: n zs lgc1 lgc2 lgc2'' lxs ys y lzs lys  rule: produce_inner_alt[consumes 1])
-  subgoal premises prems for h lxs lgc'a lxs' zs ys n lgc1 lgc2'' zsa lgc2 ysa y lzs lys
+  subgoal premises prems for h lxs lgc'a zs n lgc1 lgc2'' zsa lgc2 ys y lzs lys
     using prems apply -
     apply (subst (asm) (2) produce.code)
     apply (subst (asm) (2) produce_inner_compose_op)
@@ -1516,7 +1516,7 @@ lemma produce_inner_compose_op_Inr_skip_n_productions_op:
    finite_produce lgc2 zs = (lgc2'', []) \<Longrightarrow>
    False"
   apply (induct "(compose_op (skip_n_productions_op lgc1 n) lgc2'', lxs)" r arbitrary: n zs lgc1 lgc2 lgc2'' lxs lzs lys  rule: produce_inner_alt[consumes 1])
-  subgoal premises prems for h lxs lgc' lxs' zs ys n lgc1 lgc2'' zsa lgc2 lzs lys
+  subgoal premises prems for h lxs lgc' zs n lgc1 lgc2'' zsa lgc2 lzs lys
     using prems apply -
     apply (subst (asm) (2) produce.code)
     apply (subst (asm) (2) produce_inner_compose_op)
@@ -1764,7 +1764,7 @@ lemma produce_inner_produce_Inr_compose_op_None:
    produce_inner (compose_op lgc1 lgc2, lxs) = None \<Longrightarrow>
    False"
   apply (induct "(lgc2, produce lgc1 lxs)" r1 arbitrary: lgc1 lgc2 lxs lgc' lgc'' rule: produce_inner_alt[consumes 1])
-  subgoal for op h lxs lgc' lxs' zs ys lgc1 lxsa lgc'a lgc''
+  subgoal for op h lxs lgc' zs lgc1 lxsa lgc'a lgc''
     apply (drule meta_spec[of _ "skip_first_production_op lgc1"])
     apply (drule meta_spec[of _ lxsa])
     apply hypsubst_thin
@@ -1792,7 +1792,7 @@ lemma produce_inner_produce_Inr_lfinite:
    \<forall> n . produce_inner (skip_n_productions_op lgc1 n, lxs) \<noteq> None \<Longrightarrow>
    lfinite lxs"
   apply (induct "(lgc2, produce lgc1 lxs)" r arbitrary: lgc1 lgc2 lxs lgc' rule: produce_inner_alt[consumes 1])
-  subgoal for op h lxs lgc' lxs' zs ys lgc1 lxsa lgc''
+  subgoal for op h lxs lgc' zs lgc1 lxsa lgc''
     apply (drule meta_spec[of _ "skip_n_productions_op lgc1 (Suc 0)"])
     apply (drule meta_spec[of _ "lxsa"])
     apply (drule meta_spec[of _ "lgc''"])
@@ -2199,7 +2199,7 @@ lemma produce_inner_skip_n_productions_op_Some_prefix_production_EQ_ex:
    r = Inl (lgc', x, xs, lxs') \<Longrightarrow>
    \<exists>n. prefix_production_LE op lxs (Suc m) (Suc n) \<and> lnth (produce op (ltake (Suc n) lxs)) m = x \<and> Suc n \<le> llength lxs"
   apply (induct "(skip_n_productions_op op m, lxs)" r arbitrary: op lxs lgc' lxs' m rule: produce_inner_alt[consumes 1])
-  subgoal for h lxs lgc' lxs' zs ys op m lgc'' lxs''
+  subgoal for h lxs lgc' zs op m lgc'a lxs'
     apply (auto split: if_splits)
     subgoal
       apply (drule meta_spec)+

@@ -2,6 +2,7 @@ theory Eq_Op
   imports
     Llists_Processors
     Watermarked_Stream
+    "HOL-ex.Sketch_and_Explore"
 begin
 
 
@@ -20,28 +21,30 @@ coinductive eq_op where "(\<forall>ev. eq_op_lifted ev eq_op W op_1 op_2) \<Long
 
 lemma eq_op_sym:
   "eq_op WM op1 op2 \<Longrightarrow> eq_op WM op2 op1"
-  apply (coinduction arbitrary: WM op1 op2 rule: eq_op.coinduct) 
-  apply (auto simp add: rel_prod_sel split: event.splits elim!: eq_op.cases)
-    apply metis+
-  done
+proof (coinduction arbitrary: WM op1 op2 rule: eq_op.coinduct)
+  case eq_op
+  then show ?case
+    by (auto simp add: rel_prod_sel split: event.splits elim !: eq_op.cases; metis)
+qed
 
 lemma eq_op_refl[simp]:
   "eq_op WM op op"
-  apply (coinduction arbitrary: WM op rule: eq_op.coinduct) 
-  apply (auto simp add: rel_prod_sel split: event.splits)
-  done
+proof (coinduction arbitrary: WM op rule: eq_op.coinduct)
+  case eq_op
+  then show ?case by (auto simp add: rel_prod_sel split: event.splits)
+qed
 
 lemma not_eq_op_not_eq:
   "\<not> eq_op WM op1 op2 \<Longrightarrow>
    op1 \<noteq> op2"
   using eq_op_refl by blast
 
-
 lemma produce_inner_eq_op_Inl:
-  "produce_inner (op2, lxs) = Some r \<Longrightarrow> r = Inl (op', x, xs, lxs') \<Longrightarrow> eq_op WM op1 op2 \<Longrightarrow>
-   monotone lxs WM \<Longrightarrow> produce_inner (op1, lxs) = None \<Longrightarrow> False"
-  apply (induct "(op2, lxs)" r arbitrary: lxs x xs lxs' op1 op2 WM rule: produce_inner_alt[consumes 1])
-  subgoal for op h lxs lgc' lxs' zs ys x xs lxs'a op1 WM
+  assumes  "produce_inner (op2, lxs) = Some r"
+  and "r = Inl (op', x, xs, lxs')" and "eq_op WM op1 op2"
+  and "monotone lxs WM" and "produce_inner (op1, lxs) = None" shows "False"
+using assms apply (induct "(op2, lxs)" r arbitrary: lxs x xs lxs' op1 op2 WM rule: produce_inner_alt)
+  subgoal for op h lxs lgc' zs x xs lxs' op1 WM
    apply (subst (asm) (2) produce_inner.simps)
     apply (erule eq_op.cases)
     apply (drule spec[of _ h])
@@ -60,7 +63,7 @@ lemma produce_inner_eq_op_Inr:
   "produce_inner (op2, lxs) = Some r \<Longrightarrow> r = Inr op2' \<Longrightarrow> eq_op WM op1 op2 \<Longrightarrow>
    monotone lxs WM \<Longrightarrow> produce_inner (op1, lxs) = None \<Longrightarrow> False"
   apply (induct "(op2, lxs)" r arbitrary: lxs op2' op1 op2 WM rule: produce_inner_alt[consumes 1])
-  subgoal for op h lxs lgc' lxs' zs ys op2' op1 WM
+  subgoal for op h lxs lgc' zs op2' op1 WM
    apply (subst (asm) (2) produce_inner.simps)
     apply (erule eq_op.cases)
     apply (drule spec[of _ h])
@@ -79,7 +82,7 @@ lemma produce_inner_eq_op_Inr_Inl:
   "produce_inner (op2, lxs) = Some r \<Longrightarrow> r = Inr op2' \<Longrightarrow> eq_op WM op1 op2 \<Longrightarrow>
    monotone lxs WM \<Longrightarrow> produce_inner (op1, lxs) = Some (Inl x) \<Longrightarrow> False"
  apply (induct "(op2, lxs)" r arbitrary: lxs op2' op1 op2 WM rule: produce_inner_alt[consumes 1])
-  subgoal for op h lxs lgc' lxs' zs ys op2' op1 WM
+  subgoal for op h lxs lgc' zs op2' op1 WM
    apply (subst (asm) (2) produce_inner.simps)
     apply (erule eq_op.cases)
     apply (drule spec[of _ h])
@@ -98,7 +101,7 @@ lemma produce_inner_eq_op_Inr_Inr:
   "produce_inner (op2, lxs) = Some r \<Longrightarrow> r = Inr op2' \<Longrightarrow> eq_op WM op1 op2 \<Longrightarrow>
    monotone lxs WM \<Longrightarrow> produce_inner (op1, lxs) = Some (Inr op1') \<Longrightarrow> exit op1' = exit op2'"
  apply (induct "(op2, lxs)" r arbitrary: lxs op2' op1 op2 WM rule: produce_inner_alt[consumes 1])
-  subgoal for op h lxs lgc' lxs' zs ys op2' op1 WM
+  subgoal for op h lxs lgc' zs op2' op1 WM
    apply (subst (asm) (2) produce_inner.simps)
     apply (erule eq_op.cases)
     apply (drule spec[of _ h])
@@ -146,7 +149,7 @@ lemma produce_inner_Some_eq_op_ldropn:
    produce_inner (op2, lxs) = Some (Inl (op2', x, xs, lxs')) \<Longrightarrow>
    \<exists> n . eq_op (wms (list_of (ltake n lxs)) \<union> WM) op1' op2' \<and> ldropn n lxs = lxs' \<and> n > 0 \<and> monotone lxs' (wms (list_of (ltake n lxs)) \<union> WM)"
   apply (induct "(op1, lxs)" r arbitrary: lxs x xs  op1 op2 op1' op2' lxs' WM rule: produce_inner_alt[consumes 1])
-  subgoal for op h lxs lgc' lxs' zs ys x xs op2 op1' op2' lxs'a WM
+  subgoal for op h lxs lgc' zs x xs op2 op1' op2' lxs'a WM
     apply (subst (asm) (2) produce_inner.simps)
     apply (erule eq_op.cases)
     apply (drule spec[of _ h])

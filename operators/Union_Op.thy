@@ -372,7 +372,7 @@ lemma produce_inner_union_monotone_Inl_Data:
        apply blast+
       done
     done
-  subgoal for op h lxs lgc' lxs' zs ys WM buf1 buf2 lxsa x xs lxs'a opa
+  subgoal for op h lxs lgc' zs WM buf1 buf2 lxsa x xs lxs' opa
     apply (simp add: filter_empty_conv split: if_splits event.splits; (elim conjE)?; hypsubst_thin) 
     subgoal for wm
       apply (drule meta_spec[of _ "insert wm WM"])
@@ -541,7 +541,7 @@ lemma produce_inner_union_monotone_Inl_Watermark:
         done
       done
     done
-  subgoal for op h lxs lgc' lxs' zs ys WM buf1 buf2 lxsa x xs lxs'a opa
+  subgoal for op h lxs lgc' zs WM buf1 buf2 lxsa x xs lxs' opa
     apply (simp add: filter_empty_conv split: if_splits event.splits; (elim conjE)?; hypsubst_thin) 
     subgoal for wm'
       apply (drule meta_spec[of _ "insert wm' WM"])
@@ -1607,7 +1607,7 @@ lemma produce_inner_union_monotone_Inl_Data_2:
         done
       done
     done
-  subgoal for op h lxs lgc' lxs' zs ys buf1 buf2 lxsa x xs lxs'a opa
+  subgoal for op h lxs lgc' zs buf1 buf2 lxsa x xs lxs' opa
     apply (simp add: filter_empty_conv split: if_splits event.splits; (elim conjE)?; hypsubst_thin) 
     subgoal for wm
       apply (drule meta_spec)+
@@ -1672,7 +1672,7 @@ lemma produce_inner_union_monotone_Inl_Watermark_2:
       apply (auto split: event.splits if_splits sum.splits)
       done
     done
-  subgoal for op h lxs lgc' lxs' zs ys buf1 buf2 lxsa x xs lxs'a opa
+  subgoal for op h lxs lgc' zs buf1 buf2 lxsa x xs lxs' opa
     apply (simp add: filter_empty_conv split: if_splits event.splits; (elim conjE)?; hypsubst_thin) 
     subgoal for wm'
       apply (drule meta_spec)+

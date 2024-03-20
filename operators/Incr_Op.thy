@@ -109,7 +109,7 @@ lemma produce_inner_skip_n_productions_op_incr_op_Inl:
    \<exists> n. data_coll = buf @ concat (map snd (ltaken_Data n lxs)) \<and>
    t \<in> fst ` set (concat (map snd (ltaken_Data n lxs)))"
   apply (induct "(skip_n_productions_op (incr_op buf) m, lxs)" r arbitrary: buf lxs lgc' lxs' m x rule: produce_inner_alt[consumes 1])
-  subgoal for h lxs lgc' lxs' zs ys buf m lgc'a lxs'' x
+  subgoal for h lxs lgc' zs buf m lgc'a lxs'' x
     apply (auto split: if_splits event.splits)
     subgoal for t' d
       apply (drule meta_spec)+
@@ -201,7 +201,7 @@ lemma produce_inner_skip_n_productions_op_incr_op_Inl_Watermark:
    r = Inl (op, Watermark wm, xs, lxs') \<Longrightarrow>
    Watermark wm \<in> lset lxs \<and> xs = []"
   apply (induct "(skip_n_productions_op (incr_op buf) n, lxs)" r arbitrary: n buf lxs op lxs' rule: produce_inner_alt[consumes 1])
-  subgoal for h lxs lgc' lxs' zs ys n buf op lxs'a
+  subgoal 
     apply (auto split: if_splits event.splits)
     apply (metis skip_n_productions_op_0)+
     done
@@ -533,7 +533,7 @@ lemma produce_inner_incr_op_monotone_Inl_1:
    (\<exists> buf. op = incr_op buf) \<and>
    monotone (llist_of xs) WM"
   apply (induct "(incr_op buf, stream_in)" r arbitrary: WM buf op lxs stream_in t d xs rule: produce_inner_alt[consumes 1])
-  subgoal for h lxs lgc' lxs' zs ys buf WM op lxs'' t d xs
+  subgoal for h lxs lgc' zs buf WM op lxsa t d xs
     apply (simp split: event.splits llist.splits sum.splits if_splits)
     subgoal for wm' 
       apply hypsubst_thin
@@ -588,7 +588,7 @@ lemma produce_inner_incr_op_monotone_Inl_2:
    (\<exists> buf. op = incr_op buf) \<and>
    xs = []"
   apply (induct "(incr_op buf, stream_in)" r arbitrary: WM buf op lxs stream_in wm xs rule: produce_inner_alt[consumes 1])
-  subgoal for h lxs lgc' lxs' zs ys buf WM op lxsa t xs
+  subgoal for h lxs lgc' zs buf WM op lxsa wm xs
     apply (auto split: event.splits llist.splits sum.splits if_splits; hypsubst_thin)
       apply blast
     apply (smt (verit) eSuc_enat event.disc(1) event.sel(3) ileI1 llist.inject llist.set_cases lnth_Suc_LCons ltake_enat_Suc strict_monotone_drop_head)
