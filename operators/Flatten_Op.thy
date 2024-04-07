@@ -308,7 +308,7 @@ lemma produce_inner_skip_n_productions_op_flatten_op_Inr:
    lfinite lxs \<and> exit op = LNil \<and>
    llength (lconcat (lmap (\<lambda>z. case z of Data t x \<Rightarrow> map (Data t) x | Watermark wm \<Rightarrow> [Watermark wm]) lxs)) \<le> enat n"
   apply (induct oo r arbitrary: n lxs op rule: produce_inner_alt[consumes 1])
-  subgoal for opa h lxs lgc' lxs' zs ys n lxs'' op'
+  subgoal 
     apply (simp split: if_splits event.splits; hypsubst_thin)
     subgoal for t d
       apply (drule meta_spec)+
@@ -557,7 +557,7 @@ lemma produce_inner_flatten_op_productive_Data:
    op = flatten_op \<and>
    (\<exists> n. lxs' = ldropn n lxs \<and> (\<exists> wm. t \<le> wm \<and> Watermark wm \<in> lset (produce flatten_op lxs')) \<and> (\<forall> x \<in> set xs. (\<exists> wm \<ge> tmp x. Watermark wm \<in> lset (produce flatten_op lxs'))))"
   apply (induct oo r arbitrary: lxs xs lxs' op rule: produce_inner_alt[consumes 1])
-  subgoal for op h lxs lgc' lxs' zs ys lxsa xs lxs'' op'
+  subgoal
     apply (auto split: event.splits; hypsubst_thin)
     using productive_drop_head apply blast
     subgoal
@@ -606,7 +606,7 @@ lemma produce_inner_flatten_op_productive_Watermark:
    op = flatten_op \<and>
    (\<exists> n. lxs' = ldropn (Suc n) lxs \<and> (\<forall> x \<in> lset (ltake n lxs). is_Data x) \<and> (\<forall> x \<in> lset (ltake n lxs). data x = []))"
   apply (induct oo r arbitrary: lxs xs lxs' op rule: produce_inner_alt[consumes 1])
-  subgoal for op h lxs lgc' lxs' zs ys lxsa xs lxs'' op'
+  subgoal 
     apply (auto split: event.splits; hypsubst_thin)
     subgoal for x n
       apply (rule exI[of _ "Suc n"])

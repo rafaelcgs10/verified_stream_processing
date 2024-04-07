@@ -114,8 +114,10 @@ declare alwll.cases[elim]
 
 lemma evll_induct_strong[consumes 1, case_names base step]:
   "evll \<phi> x \<Longrightarrow> (\<And>xs. \<phi> xs \<Longrightarrow> P xs) \<Longrightarrow> (\<And>xs. evll \<phi> (ltl xs) \<Longrightarrow> \<not> \<phi> xs \<Longrightarrow> P (ltl xs) \<Longrightarrow> P xs) \<Longrightarrow> P x"
-  apply (induct rule: evll.induct) apply auto
-  by (metis ltl_simps(2))
+  apply (induct rule: evll.induct) 
+   apply simp
+  apply (metis ltl_simps(2))
+  done
 
 lemma alwll_coinduct[consumes 1, case_names alwll ltl]:
   "X x \<Longrightarrow> (\<And>x. X x \<Longrightarrow> \<phi> x) \<Longrightarrow> (\<And>x. X x \<Longrightarrow> \<not> alwll \<phi> (ltl x) \<Longrightarrow> X (ltl x)) \<Longrightarrow> alwll \<phi> x"
@@ -135,11 +137,11 @@ lemma alwll_mono:
 lemma alwll_aand: "alwll (\<phi> aand \<psi>) = alwll \<phi> aand alwll \<psi>"
 proof-
   {fix xs assume "alwll (\<phi> aand \<psi>) xs" hence "(alwll \<phi> aand alwll \<psi>) xs"
-   by (auto elim: alwll_mono)
+      by (auto elim: alwll_mono)
   }
   moreover
   {fix xs assume "(alwll \<phi> aand alwll \<psi>) xs" hence "alwll (\<phi> aand \<psi>) xs"
-   by coinduct auto
+      by coinduct auto
   }
   ultimately show ?thesis by blast
 qed
@@ -250,7 +252,7 @@ lemma shfit_same_prefix:
 lemma  shift_LCons_Cons:
   "(x1 # xs) @@- lxs = LCons x2 lxs' \<Longrightarrow> x1 = x2 \<and> (xs @@- lxs) = lxs'"
   by simp
- 
+
 lemma lnull_shift[simp]:
   "lnull (xs @@- lxs) = (List.null xs \<and> lnull lxs)"
   by (metis LNil_eq_shift_iff llist.disc(1) llist.expand null_def)
@@ -276,7 +278,7 @@ lemma shift_eq_shift_ldropn_length:
   subgoal for a xs lxs lys ys
     apply (cases ys)
      apply auto[1]
-    apply (metis length_greater_0_conv list.size(3) lshift_simps(1))
+     apply (metis length_greater_0_conv list.size(3) lshift_simps(1))
     apply simp
     done
   done
@@ -285,7 +287,7 @@ lemma shift_eq_shift_ldropn_length_2:
   "length xs < length ys \<Longrightarrow>
    xs @@- lxs = ys @@- lys \<Longrightarrow> lys = ldropn ((length ys - length xs)) lxs"
   apply (induct xs arbitrary: lxs lys ys)
-  apply (simp add: ldropn_shift)
+   apply (simp add: ldropn_shift)
   subgoal for a xs lxs lys ys
     apply (cases ys)
      apply auto[1]
@@ -296,7 +298,7 @@ lemma shift_eq_shift_ldropn_length_2:
 lemma shift_same_prefix:
   "length xs = length ys \<Longrightarrow> xs @@- lxs = ys @@- lys \<Longrightarrow> xs = ys \<and> lxs = lys"
   apply (induct xs arbitrary: lxs lys ys)
-  apply (simp add: ldropn_shift)
+   apply (simp add: ldropn_shift)
   subgoal for a xs lxs lys ys
     apply (cases ys)
      apply auto[1]
@@ -314,7 +316,7 @@ lemma llength_shift:
   "llength (xs @@- lxs) = length xs + llength lxs"
   apply (induct xs arbitrary: lxs)
   using zero_enat_def apply auto[1]
-  apply auto
+  apply simp
   apply (metis eSuc_enat eSuc_plus)
   done
 
@@ -322,18 +324,18 @@ lemma lnth_shift:
   "n < length xs \<Longrightarrow>
    lnth (xs @@- lxs) n = xs ! n"
   apply (induct xs arbitrary: n lxs)
-  apply auto[1]
-  apply auto
+   apply auto[1]
+  apply simp
   using less_Suc_eq_0_disj apply fastforce
   done
 
 lemma alwll_shift:
-assumes "alwll \<phi> (xl @@- xs)"
-shows "alwll \<phi> xs"
-using assms by (induct xl) auto
+  assumes "alwll \<phi> (xl @@- xs)"
+  shows "alwll \<phi> xs"
+  using assms by (induct xl) auto
 
 lemma shift_shift:
-   "xs @@- (ys @@- zs) = (xs @ ys) @@- zs"
+  "xs @@- (ys @@- zs) = (xs @ ys) @@- zs"
   by (induct xs) auto
 
 lemma LCons_shift:
@@ -354,21 +356,21 @@ lemma nxt_ldropn: "(nxt ^^ n) \<phi> xs \<longleftrightarrow> \<phi> (ldropn n x
 
 
 lemma evll_shift:
-assumes "evll \<phi> xs"
-shows "evll \<phi> (xl @@- xs)"
-using assms by (induct xl) auto
+  assumes "evll \<phi> xs"
+  shows "evll \<phi> (xl @@- xs)"
+  using assms by (induct xl) auto
 
 lemma evll_imp_shift:
-assumes "evll \<phi> xs"  shows "\<exists> xl xs2. xs = xl @@- xs2 \<and> \<phi> xs2"
-using assms by induct (metis lshift_simps(1), metis lshift_simps(2))+
+  assumes "evll \<phi> xs"  shows "\<exists> xl xs2. xs = xl @@- xs2 \<and> \<phi> xs2"
+  using assms by induct (metis lshift_simps(1), metis lshift_simps(2))+
 
 lemma alwll_evll_shift: "xs1 \<noteq> LNil \<Longrightarrow> alwll \<phi> xs1 \<Longrightarrow> evll (alwll \<phi>) (xl @@- xs1)"
   by (simp add: base evll_shift)
 
 lemma evll_ex_nxt:
-assumes "evll \<phi> xs" 
-shows "\<exists> n. (nxt ^^ n) \<phi> xs"
-using assms proof induct
+  assumes "evll \<phi> xs" 
+  shows "\<exists> n. (nxt ^^ n) \<phi> xs"
+  using assms proof induct
   case (base xs) thus ?case by (intro exI[of _ 0]) auto
 next
   case (step xs)
@@ -381,7 +383,7 @@ definition "wait \<phi> xs \<equiv> LEAST n. (nxt ^^ n) \<phi> xs"
 lemma nxt_wait:
   assumes "evll \<phi> xs"  shows "(nxt ^^ (wait \<phi> xs)) \<phi> xs"
   unfolding wait_def using evll_ex_nxt[OF assms] by(rule LeastI_ex)
- 
+
 lemma nxt_wait_least:
   assumes evll: "evll \<phi> xs" and nxt: "(nxt ^^ n) \<phi> xs"  shows "wait \<phi> xs \<le> n"
   unfolding wait_def 
@@ -394,8 +396,8 @@ lemma ldrop_wait:
 
 lemma sdrop_wait_least:
   assumes evll: "evll \<phi> xs" and nxt: "\<phi> (ldrop n xs)"  shows "wait \<phi> xs \<le> n"
-   using assms nxt_wait_least 
-   by (metis ldrop_enat nxt_ldropn)
+  using assms nxt_wait_least 
+  by (metis ldrop_enat nxt_ldropn)
 
 lemma ev_or: "evll (\<phi> or \<psi>) = evll \<phi> or evll \<psi>"
 proof-
@@ -461,24 +463,22 @@ lemma alwll_False: "\<omega> \<noteq> LNil \<Longrightarrow> alwll (\<lambda>x. 
   by auto
 
 lemma evll_then_sdropn: "evll P \<omega> \<Longrightarrow> (\<exists>m. P (ldropn m \<omega>))"
-    apply (induct rule: evll_induct_strong)
-     apply (auto intro: exI[of _ 0] exI[of _ "Suc n" for n])
-    by (metis ldropn_ltl)
+  apply (induct rule: evll_induct_strong)
+   apply (auto simp add: ldropn_ltl intro: exI[of _ 0] exI[of _ "Suc n" for n])
+  done
 
 lemma alwll_imp_ldropn: "(\<forall>m. P (ldropn m \<omega>)) \<Longrightarrow> alwll P \<omega>"
   apply (coinduction arbitrary: \<omega>) 
-  apply (auto elim: allE[of _ 0] allE[of _ "Suc n" for n])
-  apply (simp add: ldropn_ltl)
+  apply (auto simp add: ldropn_ltl elim: allE[of _ 0] allE[of _ "Suc n" for n])
   done
 
 lemma alwll_imp_ldrop: "(\<forall>m. P (ldrop m \<omega>)) \<Longrightarrow> alwll P \<omega>"
   apply (coinduction arbitrary: \<omega>) 
-  apply (auto elim: allE[of _ 0] allE[of _ "Suc n" for n])
-  apply (simp add: ldrop_ltl)
+  apply (auto simp add: ldrop_ltl elim: allE[of _ 0] allE[of _ "Suc n" for n])
   done
 
 lemma ldrop_not_finite_alwll_ex: "alwll P \<omega> \<Longrightarrow> \<not> lfinite \<omega> \<Longrightarrow> (\<exists> m. P (ldrop m \<omega>))"
-    by (metis alwll_nxt ldrop_0 lfinite.simps)
+  by (metis alwll_nxt ldrop_0 lfinite.simps)
 
 lemma aand_eq: 
   assumes eq: "\<And>\<omega>. P \<omega> \<Longrightarrow> Q1 \<omega> \<longleftrightarrow> Q2 \<omega>"
@@ -490,7 +490,7 @@ lemma aand_left[simp]: "L xs \<Longrightarrow> (L aand R) xs = R xs"
 
 lemma aand_right[simp]: "R xs \<Longrightarrow> (L aand R) xs = L xs"
   by blast
-   
+
 lemma alwllD: "x \<noteq> LNil \<Longrightarrow> alwll P x \<Longrightarrow> P x"
   by blast
 
@@ -504,19 +504,12 @@ lemma wholdsll_LCons: "wholdsll P (LCons x s) \<longleftrightarrow> P x"
   by simp
 
 lemma holdll_eq1[simp]: "holdsll ((=) x) = HLDLL {x}"
-  apply rule 
-  apply(auto simp: HLDLL_iff)
-  using holdsll.elims(1) apply force
-  apply (simp add: HLDLL_def holds_mono)
-  done
+  by (auto simp add: HLDLL_def holds_mono)
 
 lemma holdll_eq2[simp]: "holdsll (\<lambda>y. y = x) = HLDLL {x}"
-  apply rule
-  apply  (auto simp: HLDLL_iff)
-  using holdsll.elims(2) apply fastforce
-  apply (metis (full_types) holdll_eq1 holds_mono)
-  done
-
+  unfolding HLDLL_def
+  by auto
+  
 lemma alw_holds: "alwll (holdsll P) (LCons h t) = (P h \<and> alwll (holdsll P) t)"
   using  alwll.simps holdsll_LCons
   by (metis llist.distinct(1) ltl_simps(2))
@@ -550,119 +543,6 @@ qed
 lemma lappend_llist_of: "lappend (llist_of xs) ys = xs @@- ys"
   by (induct xs) auto
 
-lemma finite_alwll_evll_wholdsll_lfinite: "finite {i. z \<le> i \<and> i < llength xs + z \<and> P (lnth xs (i - z))} \<Longrightarrow>
-    alwll (evll (wholdsll P)) xs \<Longrightarrow> lfinite xs"
-  apply (induct "{i. z \<le> i \<and> i < llength xs + z \<and> P (lnth xs (i - z))}" arbitrary: xs z rule: finite_linorder_min_induct)
-  subgoal for xs z
-    apply (drule alwll_ldropn[of _ _ z])
-    apply (cases "ldropn z xs")
-     apply simp
-     apply (metis lfinite_LNil lfinite_ldropn)
-    apply simp
-    apply (drule alwll_headD)
-    apply (drule evll_wholdsll_lfinite)
-     apply (metis add.commute add_diff_cancel_left' enat_less_enat_plusI2 in_lset_conv_lnth in_lset_ldropnD le_add1)
-    apply (metis lfinite_ldropn)
-    done
-  subgoal for i A xs z
-    apply (drule meta_spec[of _ "ldropn (Suc (i - z)) xs"])
-    apply (drule meta_spec[of _ "Suc i"])
-    apply (drule meta_mp)
-    subgoal
-      apply (auto simp: set_eq_iff ldropn_Suc_conv_ldropn[symmetric])
-      subgoal for x
-        apply (frule spec[of _ x], drule iffD1, erule disjI2)
-        apply (drule spec[of _ i], drule iffD1, rule disjI1, rule refl)
-        apply (cases "llength xs")
-        apply auto
-        done
-      subgoal for x
-        apply (frule spec[of _ x], drule iffD1, erule disjI2)
-        apply (drule spec[of _ i], drule iffD1, rule disjI1, rule refl)
-        apply (cases "llength xs")
-         apply auto
-        apply (smt (verit) Nat.add_diff_assoc2 Suc_diff_le Suc_le_eq add.commute enat_ord_simps(2) le_add_diff_inverse less_diff_conv2 lnth_ldropn nat_le_linear not_less_eq_eq)
-        using Suc_diff_Suc by force
-      subgoal for x
-        apply (subst (asm) lnth_ldropn)
-        apply (cases "llength xs"; auto)
-        apply (frule spec[of _ i], drule iffD1, rule disjI1, rule refl)
-        apply (cases "i = x")
-         apply auto
-        apply (drule spec[of _ x], drule iffD2)
-         apply simp_all
-        apply (cases "llength xs"; auto)
-         apply (metis Suc_diff_Suc Suc_leD order_le_imp_less_or_eq order_less_le_trans)
-        using Suc_diff_Suc by force
-        done
-    apply (drule meta_mp)
-     apply (erule alwll_ldropn)
-    apply simp
-    done
-  done
-
-lemma alwll_evll_wholdsll_alt:
-  "alwll(evll (wholdsll P)) xs \<longleftrightarrow> lfinite xs \<or> infinite {i. enat i < llength xs \<and> P (lnth xs i)}"
-  apply (rule iffI[rotated], erule disjE)
-  subgoal
-    by (induct xs rule: lfinite_induct)
-      (auto simp: lnull_def lfinite_evll_wholdsll elim!: alwll.alwll[rotated])
-  subgoal
-    apply (coinduction arbitrary: xs)
-    subgoal for xs
-      apply (cases xs)
-       apply simp
-      apply (rule disjI2 exI conjI)+
-       apply assumption
-      apply (rule conjI)
-      subgoal premises prems for z zs
-        using prems(1) unfolding prems(2)[symmetric]
-        apply -
-        apply (drule infinite_imp_nonempty)
-        apply simp
-        apply (erule exE conjE)+
-        subgoal for i
-          apply (subst lappend_ltake_ldrop[symmetric, of _ "i"])
-          apply (subgoal_tac "lfinite (ltake i xs)")
-           apply (unfold lfinite_eq_range_llist_of) []
-           apply safe
-           apply (simp_all add: lappend_llist_of ldrop_enat ldropn_Suc_conv_ldropn[symmetric])
-          apply (rule evll_shift)
-          apply (rule evll.base)
-          apply simp
-          done
-        done
-      apply simp
-      apply safe
-      apply (erule notE)
-      apply (drule finite_imageI[of _ Suc])
-      apply (drule finite_insert[THEN iffD2, of _ 0])
-      apply (erule finite_subset[rotated])
-      apply (auto simp: image_iff lnth_LCons' gr0_conv_Suc Suc_ile_eq)
-      apply blast
-      apply (metis Suc_ile_eq Suc_pred gr0I)
-      done
-    done
-  subgoal
-    apply (rule disjCI)
-    apply (unfold not_not)
-    using finite_alwll_evll_wholdsll_lfinite[of 0, folded zero_enat_def, simplified]
-    by blast
-  done
-
-
-lemma evll_wholdsll_Inl_in_set: 
-  "evll (wholdsll sum.isl) xs \<Longrightarrow> (\<exists> x \<in> lset xs. sum.isl x) \<or> lfinite xs"
-  apply (induct pred: evll)
-  subgoal for xs
-    apply (cases xs)
-     apply simp_all
-    done
-  subgoal for xs x
-    apply simp
-    done
-  done
-
 lemma evll_wholdsll_finds_n: 
   "evll (wholdsll P) xs \<Longrightarrow> (\<exists> n. P (lnth xs n)) \<or> lfinite xs"
   apply (induct pred: evll)
@@ -681,7 +561,7 @@ lemma evll_wholdsll_finds_n_alt:
 
 lemma llength_eSuc_ltl:
   "\<not> lnull xs \<Longrightarrow> llength xs = eSuc (llength (ltl xs))"
-   by (simp add: enat_unfold llength_def)
+  by (simp add: enat_unfold llength_def)
 
 lemma lnth_imp_evll_wholdsll:
   "P (lnth lxs n) \<Longrightarrow> n < llength lxs \<Longrightarrow> evll (wholdsll P) lxs"
@@ -699,7 +579,7 @@ lemma lnth_imp_evll_wholdsll:
 lemma ldropn_lfinite_lfinter:
   "n < llength lxs \<Longrightarrow> \<forall> x \<in> lset (ldropn n lxs) . \<not> P x \<Longrightarrow> lfinite (lfilter P lxs)"
   apply (induct n arbitrary: lxs)
-  apply simp
+   apply simp
   subgoal for n lxs
     apply (cases lxs)
      apply simp
@@ -719,7 +599,7 @@ lemma ltakeWhile_lshift:
   (if \<exists>x\<in>set xs. \<not> P x then llist_of (takeWhile P xs)
    else xs @@- (ltakeWhile P lxs))"
   apply (induct xs)
-  apply auto
+   apply auto
   done
 
 lemma ltakeWhile_llist_of[simp]:

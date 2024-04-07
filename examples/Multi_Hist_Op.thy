@@ -403,6 +403,7 @@ lemma paths_from_list_singleton:
   apply (smt (verit, best) Collect_cong distinct_filter filter_cong set_filter)
   done
 
+(* FIXME: duplicated *)
 lemma multi_incr_coll_list_linorder[simp]:
   "multi_incr_coll_list (t::_::linorder) xs = mset (map snd (filter (\<lambda> (t', _) . t' \<le> t) xs))"
   unfolding multi_incr_coll_list_def

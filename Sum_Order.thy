@@ -46,7 +46,7 @@ instance sum :: (order, order) order
   done
 
 
-lemma [simp,code]:
+lemma sum_simps[simp,code]:
   "Inl l1 < Inl l2 \<longleftrightarrow> (l1::_::order) < l2"
   "Inr r1 < Inr r2 \<longleftrightarrow> (r1::_::order) < r2"
   "Inr a < Inl b \<longleftrightarrow> False"
@@ -59,40 +59,9 @@ lemma [simp,code]:
   "Inr r1 \<le> Inr r2 \<longleftrightarrow> (r1::_::order) \<le> r2"
   "Inr a \<le> Inl b \<longleftrightarrow> False"
   "Inl a \<le> Inr b \<longleftrightarrow> False"
-  apply auto
-  apply (metis Inl_Inr_False Inl_leq less_eq_sum.cases less_le_not_le less_sum_def sum.sel(1))
-  apply (smt (verit, best) Inl_Inr_False Inl_leq dual_order.strict_implies_order leD less_eq_sum.cases less_sum_def sum.sel(1))
-  apply (metis Inl_Inr_False Inr_inject less_eq_sum.cases less_sum_def nless_le)
-  subgoal
-    by (smt (verit) Inr_leq dual_order.strict_iff_order less_eq_sum.cases less_sum_def old.sum.inject(2) sum.simps(4))
-  subgoal
-    by (metis Inl_Inr_False less_eq_sum.cases less_sum_def)
-  subgoal
-    by (metis Inl_Inr_False less_eq_sum.cases less_sum_def)
-  subgoal
-    using less_eq_sum.cases by fastforce
-  subgoal
-    using Inl_leq by blast
-  subgoal
-    using less_eq_sum.cases by blast
-  subgoal
-    by (simp add: Inr_leq)
-  subgoal
-    using less_eq_sum.simps by blast
-  subgoal
-    using less_eq_sum.cases by fastforce
-  done
-
-
-lemma [simp]:
   "Inl a \<le> Inr a \<longleftrightarrow> False"
   "Inr b \<le> Inl b \<longleftrightarrow> False"
-  using less_eq_sum.cases by fastforce+
-
-lemma [simp]:
   "\<not> wm \<le> (case (wm::_::order) of Inl x \<Rightarrow> Inr x | Inr x \<Rightarrow> Inl x) \<longleftrightarrow> True"
-  apply (cases wm)
-  apply auto
-  done
+  by (simp_all add: dual_order.strict_iff_not less_eq_sum.simps less_sum_def)
 
 end

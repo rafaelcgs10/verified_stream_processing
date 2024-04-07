@@ -29,13 +29,13 @@ lemma produce_inner_LNil_None[simp]:
 
 lemma produce_inner_alt[consumes 1, case_names no_production produces terminates]:
   assumes "produce_inner op_lxs = Some y"
-    and "\<And>op h lxs lgc' zs . apply op h = (lgc', []) \<Longrightarrow> Q (lgc', lxs) zs \<Longrightarrow> Q (op, LCons h lxs) zs"
-    and "\<And>op h x xs lxs lxs' lgc' . produce_inner (op, LCons h lxs) = Some (Inl (lgc', x, xs, lxs')) \<Longrightarrow>
-                                    apply op h = (lgc', x # xs) \<Longrightarrow> Q (op, LCons h lxs) (Inl (lgc', x, xs, lxs'))"
+    and "\<And>op h lxs op' zs . apply op h = (op', []) \<Longrightarrow> Q (op', lxs) zs \<Longrightarrow> Q (op, LCons h lxs) zs"
+    and "\<And>op h x xs lxs lxs' op' . produce_inner (op, LCons h lxs) = Some (Inl (op', x, xs, lxs')) \<Longrightarrow>
+                                    apply op h = (op', x # xs) \<Longrightarrow> Q (op, LCons h lxs) (Inl (op', x, xs, lxs'))"
     and  "\<And>op. Q (op, LNil) (Inr op)"
   shows "Q op_lxs y"
   apply (rule produce_inner.raw_induct[OF _ assms(1)])
-  apply (auto split: llist.splits prod.splits list.splits)[1]
+  apply (simp split: llist.splits prod.splits list.splits)[1]
   using assms(4) apply blast  
   using assms(2) apply blast
   apply (metis (mono_tags, lifting) assms(3) list.simps(5) llist.case(2) prod.simps(2) produce_inner.simps)
@@ -45,10 +45,8 @@ corec produce where
   "produce op lxs = 
     (case produce_inner (op, lxs) of
        None \<Rightarrow> LNil
-    | Some (Inr lgc') \<Rightarrow> exit lgc'
-    | Some (Inl (lgc', x, xs, lxs')) \<Rightarrow> LCons x (xs @@- produce lgc' lxs'))"
-
-
+    | Some (Inr op') \<Rightarrow> exit op'
+    | Some (Inl (op', x, xs, lxs')) \<Rightarrow> LCons x (xs @@- produce op' lxs'))"
 
 lemma produce_LNil_exit[simp]:
   "produce op LNil = exit op"

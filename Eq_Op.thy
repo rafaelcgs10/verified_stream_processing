@@ -2,7 +2,6 @@ theory Eq_Op
   imports
     Llists_Processors
     Watermarked_Stream
-    "HOL-ex.Sketch_and_Explore"
 begin
 
 
@@ -24,8 +23,13 @@ lemma eq_op_sym:
 proof (coinduction arbitrary: WM op1 op2 rule: eq_op.coinduct)
   case eq_op
   then show ?case
-    by (auto simp add: rel_prod_sel split: event.splits elim !: eq_op.cases; metis)
+    apply -
+    apply (erule eq_op.cases)
+    apply (simp add: rel_prod_sel split: event.splits)
+    apply metis
+    done
 qed
+
 
 lemma eq_op_refl[simp]:
   "eq_op WM op op"
@@ -35,228 +39,343 @@ proof (coinduction arbitrary: WM op rule: eq_op.coinduct)
 qed
 
 lemma not_eq_op_not_eq:
-  "\<not> eq_op WM op1 op2 \<Longrightarrow>
-   op1 \<noteq> op2"
+  "\<not> eq_op WM op1 op2 \<Longrightarrow> op1 \<noteq> op2"
   using eq_op_refl by blast
 
 lemma produce_inner_eq_op_Inl:
   assumes  "produce_inner (op2, lxs) = Some r"
-  and "r = Inl (op', x, xs, lxs')" and "eq_op WM op1 op2"
-  and "monotone lxs WM" and "produce_inner (op1, lxs) = None" shows "False"
-using assms apply (induct "(op2, lxs)" r arbitrary: lxs x xs lxs' op1 op2 WM rule: produce_inner_alt)
-  subgoal for op h lxs lgc' zs x xs lxs' op1 WM
-   apply (subst (asm) (2) produce_inner.simps)
-    apply (erule eq_op.cases)
-    apply (drule spec[of _ h])
-    apply (auto split: if_splits event.splits list.splits prod.splits elim: LConsData LConsWatermark)
-    done
-  subgoal for op h x xs lxs' op1 WM
-    apply (subst (asm) (1 2) produce_inner.simps)
-   apply (erule eq_op.cases)
-    apply (drule spec[of _ h])
-    apply (auto split: if_splits event.splits list.splits prod.splits elim: LConsData LConsWatermark)
-    done
-  apply auto
-  done
+    and "r = Inl (op', x, xs, lxs')" and "eq_op WM op1 op2"
+    and "monotone lxs WM" and "produce_inner (op1, lxs) = None" 
+  shows "False"
+  using assms proof (induct "(op2, lxs)" r arbitrary: lxs x xs lxs' op1 op2 WM rule: produce_inner_alt)
+  case (no_production op h lxs lgc' zs)
+  from no_production(6) obtain op1' where H1:"apply op1 h = (op1', [])" and H2: "produce_inner (op1', lxs) = None"
+    by (subst (asm) produce_inner.simps; auto split: prod.splits list.splits)
+  then show ?case
+  proof (cases rule: eq_op.cases[OF no_production(4)])
+    case (1 W op_1 op_2)
+    then show ?thesis 
+      using no_production(1,2,3,5) H1 H2 apply hypsubst_thin
+      by (simp split: event.splits; metis LConsData event.exhaust fst_conv rel_prod_sel strict_monotone_LCons_Watermark_insert)
+  qed
+next
+  case (produces op h x xs lxs lxs' lgc')
+  from produces(6) obtain op1' where H1:"apply op1 h = (op1', [])" and H2: "produce_inner (op1', lxs) = None"
+    by (subst (asm) produce_inner.simps; auto split: prod.splits list.splits)
+  then show ?case 
+  proof (cases rule: eq_op.cases[OF produces(4)])
+    case (1 W op_1 op_2)
+    then show ?thesis 
+      using produces(1,2,3,5) H1 H2 apply hypsubst_thin
+      by (simp split: event.splits; smt (verit, best) LConsData event.exhaust list.discI rel_prod_sel snd_conv)
+  qed
+next
+  case (terminates op)
+  then show ?case by auto
+qed
+
 
 lemma produce_inner_eq_op_Inr:
-  "produce_inner (op2, lxs) = Some r \<Longrightarrow> r = Inr op2' \<Longrightarrow> eq_op WM op1 op2 \<Longrightarrow>
-   monotone lxs WM \<Longrightarrow> produce_inner (op1, lxs) = None \<Longrightarrow> False"
-  apply (induct "(op2, lxs)" r arbitrary: lxs op2' op1 op2 WM rule: produce_inner_alt[consumes 1])
-  subgoal for op h lxs lgc' zs op2' op1 WM
-   apply (subst (asm) (2) produce_inner.simps)
-    apply (erule eq_op.cases)
-    apply (drule spec[of _ h])
-    apply (auto split: if_splits event.splits list.splits prod.splits elim: LConsData LConsWatermark)
-    done
-  subgoal for op h x xs lxs' op1 WM
-    apply (subst (asm) (1 2) produce_inner.simps)
-   apply (erule eq_op.cases)
-    apply (drule spec[of _ h])
-    apply (auto split: if_splits event.splits list.splits prod.splits elim: LConsData LConsWatermark)
-    done
-  apply auto
+  assumes "produce_inner (op2, lxs) = Some r" and "r = Inr op2'" and "eq_op WM op1 op2" 
+    and "monotone lxs WM" and "produce_inner (op1, lxs) = None" shows "False"
+  using assms proof (induct "(op2, lxs)" r arbitrary: lxs x xs lxs' op1 op2 WM rule: produce_inner_alt)
+  case (no_production op h lxs lgc' zs)
+  from no_production(6) obtain op1' where H1:"apply op1 h = (op1', [])" and H2: "produce_inner (op1', lxs) = None"
+    by (subst (asm) produce_inner.simps; auto split: prod.splits list.splits)
+  then show ?case
+  proof (cases rule: eq_op.cases[OF no_production(4)])
+    case (1 W op_1 op_2)
+    then show ?thesis 
+      using no_production(1,2,3,5) H1 H2 apply hypsubst_thin
+      by (simp split: event.splits; metis LConsData event.exhaust fst_conv rel_prod_sel strict_monotone_LCons_Watermark_insert)
+  qed
+next
+  case (produces op h x xs lxs lxs' lgc')
+  from produces(6) obtain op1' where H1:"apply op1 h = (op1', [])" and H2: "produce_inner (op1', lxs) = None"
+    by (subst (asm) produce_inner.simps; auto split: prod.splits list.splits)
+  then show ?case 
+  proof (cases rule: eq_op.cases[OF produces(4)])
+    case (1 W op_1 op_2)
+    then show ?thesis 
+      using produces(1,2,3,5) H1 H2 apply hypsubst_thin
+      by (simp split: event.splits; smt (verit, best) LConsData event.exhaust list.discI rel_prod_sel snd_conv)
+  qed
+next
+  case (terminates op)
+  then show ?case by auto
+qed
+
+lemma eq_op_same_output_head:
+  "eq_op WM op1 op2 \<Longrightarrow>
+   monotone (LCons h lxs) WM \<Longrightarrow>
+   snd (apply op1 h) = snd (apply op2 h)"
+  apply (erule eq_op.cases)
+  apply (drule spec[of _ h])
+  apply (auto simp add: rel_prod_sel split: event.splits list.splits prod.splits elim: LConsData LConsWatermark)
   done
+
+lemma eq_op_next:
+  "eq_op WM op1 op2 \<Longrightarrow>
+   monotone (LCons h lxs) WM \<Longrightarrow>
+   eq_op (case_event (\<lambda> _ _. WM) (\<lambda> wm. insert wm WM) h) (fst (apply op1 h)) (fst (apply op2 h))"
+  apply (erule eq_op.cases)
+  apply (drule spec[of _ h])
+  apply (auto simp add: rel_prod_sel split: event.splits list.splits prod.splits elim: LConsData LConsWatermark)
+  done
+
+lemma eq_op_next_output:
+  assumes "eq_op WM op1 op2"
+    and "apply op1 h = (op1', out)"
+    and "monotone (LCons h lxs) WM"
+  shows "apply op2 h = (fst (apply op2 h), out)"
+  using assms apply -
+  apply (erule eq_op.cases)
+  apply hypsubst_thin
+  apply (drule spec[of _ h])
+  apply (auto simp add: rel_prod_sel split: if_splits event.splits list.splits prod.splits elim: LConsData LConsWatermark)
+  done
+
 
 lemma produce_inner_eq_op_Inr_Inl:
-  "produce_inner (op2, lxs) = Some r \<Longrightarrow> r = Inr op2' \<Longrightarrow> eq_op WM op1 op2 \<Longrightarrow>
-   monotone lxs WM \<Longrightarrow> produce_inner (op1, lxs) = Some (Inl x) \<Longrightarrow> False"
- apply (induct "(op2, lxs)" r arbitrary: lxs op2' op1 op2 WM rule: produce_inner_alt[consumes 1])
-  subgoal for op h lxs lgc' zs op2' op1 WM
-   apply (subst (asm) (2) produce_inner.simps)
-    apply (erule eq_op.cases)
-    apply (drule spec[of _ h])
-    apply (auto split: if_splits event.splits list.splits prod.splits elim: LConsData LConsWatermark)
+  assumes "produce_inner (op2, lxs) = Some r" 
+    and "r = Inr op2'" and "eq_op WM op1 op2" and "monotone lxs WM" and "produce_inner (op1, lxs) = Some (Inl x)" 
+  shows "False"
+  using assms proof (induct "(op2, lxs)" r arbitrary: lxs op1 op2 WM rule: produce_inner_alt)
+  case (no_production op2 h lxs op' zs)
+  from no_production(1,6,4,5) obtain op1' where H1:"apply op1 h = (op1', [])" and H2: "produce_inner (op1', lxs) = Some (Inl x)"
+    apply -
+    apply (subst (asm) (2) produce_inner.simps; simp split: prod.splits list.splits)
+    using eq_op_same_output_head by fastforce
+  from no_production(5) have "monotone lxs WM"
+    by blast
+  from this no_production H1 H2 show ?case 
+    apply hypsubst_thin
+    apply (drule eq_op_next)
+     apply assumption
+    apply (auto split: event.splits)
     done
-  subgoal for op h x xs lxs' op1 WM
-    apply (subst (asm) (1 2) produce_inner.simps)
-   apply (erule eq_op.cases)
-    apply (drule spec[of _ h])
-    apply (auto split: if_splits event.splits list.splits prod.splits elim: LConsData LConsWatermark)
-    done
-  apply auto
-  done
+next
+  case (produces op h x xs lxs lxs' op')
+  then show ?case 
+    by blast
+next
+  case (terminates op)
+  then show ?case by auto
+qed
 
 lemma produce_inner_eq_op_Inr_Inr:
-  "produce_inner (op2, lxs) = Some r \<Longrightarrow> r = Inr op2' \<Longrightarrow> eq_op WM op1 op2 \<Longrightarrow>
-   monotone lxs WM \<Longrightarrow> produce_inner (op1, lxs) = Some (Inr op1') \<Longrightarrow> exit op1' = exit op2'"
- apply (induct "(op2, lxs)" r arbitrary: lxs op2' op1 op2 WM rule: produce_inner_alt[consumes 1])
-  subgoal for op h lxs lgc' zs op2' op1 WM
-   apply (subst (asm) (2) produce_inner.simps)
-    apply (erule eq_op.cases)
-    apply (drule spec[of _ h])
-    apply (auto split: if_splits event.splits list.splits prod.splits elim: LConsData LConsWatermark)
+  assumes "produce_inner (op2, lxs) = Some r" and "r = Inr op2'" and "eq_op WM op1 op2"
+    and "monotone lxs WM" and "produce_inner (op1, lxs) = Some (Inr op1')"
+  shows "exit op1' = exit op2'"
+  using assms proof(induct "(op2, lxs)" r arbitrary: lxs op2' op1 op2 WM rule: produce_inner_alt)
+  case (no_production op2 h lxs op' zs)
+  from no_production(1,6,4,5) obtain op1'' where H1:"apply op1 h = (op1'', [])" and H2: "produce_inner (op1'', lxs) = Some (Inr op1')"
+    apply -
+    by (subst (asm) (2) produce_inner.simps; simp split: prod.splits list.splits)
+  from no_production(5) have "monotone lxs WM"
+    by blast
+  from this no_production H1 H2 show ?case 
+    apply hypsubst_thin
+    apply (drule eq_op_next)
+     apply assumption
+    apply (auto split: event.splits)
     done
-  subgoal for op h x xs lxs' op1 WM
-    apply (subst (asm) (1 2) produce_inner.simps)
-   apply (erule eq_op.cases)
-    apply (drule spec[of _ h])
-    apply (auto split: if_splits event.splits list.splits prod.splits elim: LConsData LConsWatermark)
-    done
-  apply auto
-  apply (erule eq_op.cases)
-  apply auto
-  done
+next
+  case (produces op h x xs lxs lxs' op')
+  then show ?case 
+    by force
+next
+  case (terminates op)
+  then show ?case 
+    by (simp add: eq_op.simps)
+qed
 
 lemma produce_inner_eq_op_Some_Some:
-  "produce_inner (op1, lxs) = Some r \<Longrightarrow>
-   r = Inl (op1', x, xs, lxs') \<Longrightarrow>
-   eq_op WM op1 op2 \<Longrightarrow>
-   monotone lxs WM \<Longrightarrow>
-   produce_inner (op2, lxs) = Some (Inl (op2', y, ys, lys')) \<Longrightarrow>
-   lxs' = lys' \<and> x = y \<and> xs = ys"
-  apply (induct "(op1, lxs)" r arbitrary: lxs x xs lxs' op1 op2 op1' op2' y ys lys' WM rule: produce_inner_alt[consumes 1])
-  subgoal for op h lxs' lgc' x xs lxs'a op1' op2 op2' y ys lys' WM'
+  assumes "produce_inner (op1, lxs) = Some r"
+    and "r = Inl (op1', x, xs, lxs')"
+    and "eq_op WM op1 op2"
+    and "monotone lxs WM"
+    and "produce_inner (op2, lxs) = Some (Inl (op2', y, ys, lys'))"
+  shows "lxs' = lys' \<and> x = y \<and> xs = ys"
+  using assms proof (induct "(op1, lxs)" r arbitrary: lxs x xs lxs' op1 op2 op1' op2' y ys lys' WM rule: produce_inner_alt)
+  case (no_production op h lxs op' zs)
+  then show ?case 
+    apply - 
     apply (subst (asm) (2) produce_inner.simps)
     apply (erule eq_op.cases)
     apply (drule spec[of _ h])
     apply (auto split: if_splits event.splits list.splits prod.splits elim: LConsData LConsWatermark)
     done
-  subgoal for op h x xs lxs' lgc' op2 op2' y ys lys' WM
+next
+  case (produces op h x xs lxs lxs' op')
+  then show ?case 
+    apply - 
     apply (subst (asm) (1 2) produce_inner.simps)
     apply (erule eq_op.cases)
     apply (drule spec[of _ h])
     apply (auto split: if_splits event.splits list.splits prod.splits elim: LConsData LConsWatermark)
     done
-  apply auto
+next
+  case (terminates op)
+  then show ?case by auto
+qed
+
+lemma eq_op_produce_inner_next:
+  assumes "eq_op WM op1 op2"
+    and "apply op1 h = (op1', [])"
+    and "monotone (LCons h lxs) WM"
+  shows "produce_inner (op2, LCons h lxs) = produce_inner (fst (apply op2 h), lxs) \<and> apply op2 h = (fst (apply op2 h), []) \<and> 
+         eq_op (case_event (\<lambda> _ _. WM) (\<lambda> wm. insert wm WM) h) (fst (apply op1 h)) (fst (apply op2 h))"
+  using assms apply -
+  apply (erule eq_op.cases)
+  apply hypsubst_thin
+  apply (drule spec[of _ h])
+  apply (subst produce_inner.simps)
+  apply (auto simp add: rel_prod_sel split: if_splits event.splits list.splits prod.splits elim: LConsData LConsWatermark)
   done
+
 
 lemma produce_inner_Some_eq_op_ldropn:
-  "produce_inner (op1, lxs) = Some r \<Longrightarrow>
-   r = Inl (op1', x, xs, lxs') \<Longrightarrow>
-   eq_op WM op1 op2 \<Longrightarrow>
-   monotone lxs WM \<Longrightarrow>
-   produce_inner (op2, lxs) = Some (Inl (op2', x, xs, lxs')) \<Longrightarrow>
-   \<exists> n . eq_op (wms (list_of (ltake n lxs)) \<union> WM) op1' op2' \<and> ldropn n lxs = lxs' \<and> n > 0 \<and> monotone lxs' (wms (list_of (ltake n lxs)) \<union> WM)"
-  apply (induct "(op1, lxs)" r arbitrary: lxs x xs  op1 op2 op1' op2' lxs' WM rule: produce_inner_alt[consumes 1])
-  subgoal for op h lxs lgc' zs x xs op2 op1' op2' lxs'a WM
-    apply (subst (asm) (2) produce_inner.simps)
-    apply (erule eq_op.cases)
-    apply (drule spec[of _ h])
-    apply (auto split: if_splits event.splits list.splits prod.splits elim: LConsData LConsWatermark)
-    subgoal for t d op'
-      apply (drule meta_spec)
-      apply (drule meta_spec[of _ op'])
-      apply (drule meta_spec[of _ op2'])
-      apply (drule meta_spec[of _ WM])
-      apply (drule meta_mp)
-       apply (rule refl)
-      apply (drule meta_mp)
-       apply assumption
-      apply (drule meta_mp)
-      using strict_monotone_drop_head apply blast
-      apply (drule meta_mp)
-       apply assumption
-      apply auto
-      apply hypsubst_thin
-      subgoal for n
-        apply (rule exI[of _ "Suc n"])
-        apply simp
-        done
-      done
-    subgoal for wm op'
-      apply (drule meta_spec)
-    apply (drule meta_spec[of _ op'])
-      apply (drule meta_spec[of _ op2'])
-      apply (drule meta_spec[of _ "insert wm WM"])
-      apply (drule meta_mp)
-       apply (rule refl)
-      apply (drule meta_mp)
-       apply assumption
-      apply (drule meta_mp)
-      using strict_monotone_LCons_Watermark_insert apply blast
-      apply (drule meta_mp)
-       apply assumption
-      apply auto
-      apply hypsubst_thin
-      subgoal for n
-        apply (rule exI[of _ "Suc n"])
-        apply simp
-        done
-      done
-    done
-  subgoal for op h x xs lxs' lgc' op2 op2' WM
+  assumes "produce_inner (op1, lxs) = Some r"
+    and "r = Inl (op1', x, xs, lxs')"
+    and "eq_op WM op1 op2"
+    and "monotone lxs WM"
+    and "produce_inner (op2, lxs) = Some (Inl (op2', x, xs, lxs'))"
+  shows "\<exists> n . eq_op (wms (list_of (ltake n lxs)) \<union> WM) op1' op2' \<and> ldropn n lxs = lxs' \<and> n > 0 \<and> monotone lxs' (wms (list_of (ltake n lxs)) \<union> WM)"
+  using assms proof (induct "(op1, lxs)" r arbitrary: lxs x xs  op1 op2 op1' op2' lxs' WM rule: produce_inner_alt)
+  case (no_production op h lxs op' zs)
+  then show ?case
+  proof (cases h)
+    case (Data t d)
+    from this no_production(2,3,4,5,6,1) have H: "\<exists> n. eq_op (wms (list_of (ltake (enat n) lxs)) \<union> WM) op1' op2' \<and>
+      ldropn n lxs = lxs' \<and> 0 < n \<and> Watermarked_Stream.monotone lxs' (wms (list_of (ltake (enat n) lxs)) \<union> WM)"
+      using eq_op_produce_inner_next 
+      by fastforce
+    from this and Data show ?thesis 
+      by (metis eSuc_enat enat_ord_code(4) eq_LConsD ldropn_ltl lfinite_ltake list_of_LCons ltake_eSuc_LCons wms.simps(3) zero_less_Suc)
+  next
+    case (Watermark wm)
+    from this no_production(2,3,4,5,6,1) have H: "\<exists> n. eq_op (wms (list_of (ltake (enat n) lxs)) \<union> insert wm WM) op1' op2' \<and>
+      ldropn n lxs = lxs' \<and> 0 < n \<and> Watermarked_Stream.monotone lxs' (wms (list_of (ltake (enat n) lxs)) \<union> insert wm WM)"
+      using eq_op_produce_inner_next by fastforce
+    from this Watermark show ?thesis 
+      by (metis (no_types, opaque_lifting) Un_insert_left eSuc_enat enat_ord_code(4) eq_LConsD ldropn_ltl lfinite_ltake list_of_LCons ltake_eSuc_LCons sup_commute wms.simps(2) zero_less_Suc)
+  qed
+next
+  case (produces op h x xs lxs lxs' op')
+  then show ?case 
+    apply -
     apply (subst (asm) (1 2) produce_inner.simps)
     apply (erule eq_op.cases)
     apply (drule spec[of _ h])
-    apply (auto split: if_splits event.splits list.splits prod.splits elim: LConsData LConsWatermark)
-    using ldropn_0 ldropn_Suc_LCons list_of_llist_of ltake_eSuc_LCons ltake_eq_LNil_iff shift_LNil singleton_lshift sup_bot.right_neutral sup_commute wms.simps(1) wms.simps(3) zero_enat_def
-    apply (metis eSuc_enat strict_monotone_drop_head zero_less_Suc)
-    using  One_nat_def Suc_ile_eq Un_insert_left enat_ord_code(4) iless_Suc_eq
-    ldropn_0 ldropn_Suc_conv_ldropn lfinite_ltake linorder_not_le list_of_LCons list_of_LNil llength_LCons
-   llist.inject ltake.ctr(1) ltake_eSuc_LCons nless_le not_eSuc_ilei0 one_eSuc one_enat_def sup_bot.right_neutral sup_commute wms.simps(1) wms.simps(2)
-    apply (smt (z3) One_nat_def Un_insert_left enat_ord_code(4) eq_LConsD ldropn_0 ldropn_Suc_conv_ldropn less_Suc_eq lfinite_ltake linorder_not_le list_of_LCons list_of_LNil llength_LCons ltake_eSuc_LCons ltake_eq_LNil_iff not_eSuc_ilei0 one_eSuc one_enat_def strict_monotone_LCons_Watermark_insert sup_bot.right_neutral sup_commute wms.simps(1) wms.simps(2) zero_enat_def)
+    apply simp
+    apply (intro exI[of _ 1] conjI)
+       apply (simp_all split: prod.splits list.splits event.splits)
+         apply (meson LConsData)
+        apply (metis LConsData enat_0 list_of_LNil ltake_0 sup_bot.right_neutral sup_commute wms.simps(1))
+       apply (metis enat_0 list_of_LNil ltake_0 sup_bot.right_neutral sup_commute wms.simps(1))
+      apply (metis LConsData enat_0 list_of_LNil ltake_0 sup_bot.right_neutral sup_commute wms.simps(1))
+     apply (metis LConsData enat_0 list_of_LNil ltake_0 sup_bot.right_neutral sup_commute wms.simps(1))
+    apply (metis enat_0 list_of_LNil ltake_0 sup_bot.right_neutral sup_commute wms.simps(1))
     done
-  apply auto
-  done
+next
+  case (terminates op)
+  then show ?case by blast
+qed
 
 lemma eq_op_soundness:
-  "eq_op WM op1 op2 \<Longrightarrow>
-   monotone lxs WM \<Longrightarrow>
-   produce op1 lxs = produce op2 lxs"
-  apply (coinduction arbitrary: op1 op2 lxs WM rule: llist.coinduct_upto)
-  apply (intro allI impI conjI)
-  subgoal for op1 op2 lxs WM
-    apply (subst (1 2) produce.code)
-    apply (auto 2 1 dest: produce_inner_eq_op_Inr_Inl produce_inner_eq_op_Inr_Inl[OF _ _ eq_op_sym] produce_inner_eq_op_Inr produce_inner_eq_op_Inr[OF _ _ eq_op_sym] produce_inner_eq_op_Inl produce_inner_eq_op_Inl[OF _ _ eq_op_sym] split: option.splits sum.splits)
-      apply (meson not_Some_eq produce_inner_eq_op_Inl eq_op_sym)
-    using produce_inner_eq_op_Inr_Inr eq_op_sym
-    apply metis+
-    done
-  subgoal for op1 op2 lxs WM
-    apply (subst (1 2) produce.code)
-    apply (auto 2 1 dest:  produce_inner_eq_op_Inr_Inl produce_inner_eq_op_Inr_Inl[OF _ _ eq_op_sym] produce_inner_eq_op_Some_Some produce_inner_eq_op_Inl produce_inner_eq_op_Inl[OF _ _ eq_op_sym] split: option.splits sum.splits)
-    using produce_inner_eq_op_Inr apply blast
-   apply (simp_all add: produce_inner_None_produce_LNil produce_inner_eq_op_Inr_Inr)
-    done
-  subgoal for op1 op2 lxs WM
-    apply (subst (3 4) produce.code)
-    apply (auto 2 1 dest: produce_inner_eq_op_Inr_Inl produce_inner_eq_op_Inr_Inl[OF _ _ eq_op_sym] produce_inner_eq_op_Inr produce_inner_eq_op_Inr[OF _ _ eq_op_sym] produce_inner_eq_op_Inl produce_inner_eq_op_Inl[OF _ _ eq_op_sym] split: option.splits sum.splits)
-    using lshift.cong_refl apply blast
-      apply (rule llist.cong_lshift)
-    subgoal 
-      by (meson produce_inner_eq_op_Some_Some)
-    subgoal for op1' x xs lxs' op2' y ys lys
-    apply (rule llist.cong_base)
-      apply (frule produce_inner_eq_op_Some_Some)
-      apply (rule refl)
-          apply assumption+
-       apply (elim conjE)
-       apply hypsubst_thin      
-      apply (frule produce_inner_Some_eq_op_ldropn)
-      apply (rule refl)
-       apply assumption+
-       apply (elim conjE exE)
-      subgoal for n
-        apply (rule exI conjI refl)+
-        defer
-         apply assumption
-        apply hypsubst_thin
-        apply simp
-        done
+  assumes "eq_op WM op1 op2"
+    and "monotone lxs WM"
+  shows "produce op1 lxs = produce op2 lxs"
+  using assms proof (coinduction arbitrary: op1 op2 lxs WM rule: llist.coinduct_upto)
+  case Eq_llist
+  then show ?case 
+  proof -
+    have "lnull (produce op1 lxs) = lnull (produce op2 lxs)"
+      if "eq_op WM op1 op2"
+        and "monotone lxs WM"
+      using that 
+      apply -
+      apply (subst (1 2) produce.code)
+      apply (simp split: option.splits sum.splits)
+      apply (intro conjI impI allI; hypsubst_thin)
+      subgoal
+        by (meson produce_inner_eq_op_Inl)
+      subgoal
+        using produce_inner_eq_op_Inr by blast
+      subgoal
+        by (meson eq_op_sym not_Some_eq produce_inner_eq_op_Inl)
+      subgoal
+        using produce_inner_eq_op_Inr_Inl by blast
+      subgoal
+        using produce_inner_None_not_lfinite_aux produce_inner_Some_Inr_lfinite by blast
+      subgoal
+        using eq_op_sym produce_inner_eq_op_Inr_Inl by blast
+      subgoal
+        by (simp add: produce_inner_eq_op_Inr_Inr)
       done
-    apply (simp add: lshift.cong_refl produce_inner_eq_op_Inr_Inr)
-    done
-  done
+    moreover have "lhd (produce op1 lxs) = lhd (produce op2 lxs)"
+      if "eq_op WM op1 op2"
+        and "Watermarked_Stream.monotone lxs WM"
+        and "\<not> lnull (produce op1 lxs)"
+        and "\<not> lnull (produce op2 lxs)"
+      using that 
+      apply -
+      apply (subst (1 2) produce.code)
+      apply (simp split: option.splits sum.splits)
+      apply (intro conjI impI allI; hypsubst_thin)
+      subgoal
+        by (meson produce_inner_eq_op_Inl)
+      subgoal
+        using produce_inner_eq_op_Inr by blast
+      subgoal
+        by (simp add: produce_inner_None_produce_LNil)
+      subgoal
+        by (meson produce_inner_eq_op_Some_Some)
+      subgoal
+        using produce_inner_eq_op_Inr_Inl by blast
+      subgoal
+        by (simp add: produce_inner_None_produce_LNil)
+      subgoal
+        using eq_op_sym produce_inner_eq_op_Inr_Inl by blast
+      subgoal
+        by (simp add: produce_inner_eq_op_Inr_Inr)
+      done
+    moreover have "llist.v1.congclp (\<lambda>llist llist'. \<exists>op1 op2 lxs WM. llist = produce op1 (lxs::('a, 'b) event llist) \<and> llist' = produce op2 lxs \<and> eq_op WM op1 op2 \<and> Watermarked_Stream.monotone lxs WM) (ltl (produce op1 lxs)) (ltl (produce op2 lxs))"
+      if "eq_op WM op1 op2"
+        and "Watermarked_Stream.monotone lxs WM"
+        and "\<not> lnull (produce op1 lxs)"
+        and "\<not> lnull (produce op2 lxs)"
+      using that 
+      apply -
+      apply (subst (3 4) produce.code)
+      apply (simp split: option.splits sum.splits)
+      apply (intro llist.cong_lshift conjI impI allI)
+      subgoal
+        using lshift.cong_refl by blast
+      subgoal
+        by (meson produce_inner_eq_op_Inl)
+      subgoal
+        using produce_inner_eq_op_Inr by blast
+      subgoal
+        by (simp add: produce_inner_None_produce_LNil)
+      subgoal
+        by (meson produce_inner_eq_op_Some_Some)
+      subgoal
+        apply (intro lshift.cong_base)
+        by (smt (verit, ccfv_SIG) produce_inner_Some_eq_op_ldropn produce_inner_eq_op_Some_Some)
+      subgoal
+        using produce_inner_eq_op_Inr_Inl by blast
+      subgoal
+        by (simp add: produce_inner_None_produce_LNil)
+      subgoal
+        using eq_op_sym produce_inner_eq_op_Inr_Inl by blast
+      subgoal
+        by (simp add: lshift.cong_refl produce_inner_eq_op_Inr_Inr)
+      done
+    ultimately show ?thesis
+      using Eq_llist(1) Eq_llist(2) by blast
+  qed
+qed
 
 end

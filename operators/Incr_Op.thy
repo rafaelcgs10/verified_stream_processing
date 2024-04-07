@@ -721,7 +721,7 @@ lemma produce_inner_incr_op_Inl_1:
    (\<exists> m > n. m < llength stream_in \<and> lnth stream_in m = Watermark wm) \<and> (\<forall> t'\<in> fst ` set batch . t' \<le> wm) \<and> batch \<noteq> []) \<Longrightarrow>
    (\<exists> wm. Watermark wm \<in> lset lxs \<and> t \<le> wm \<and> (\<forall> x \<in> set xs. is_Data x \<and> (\<exists> wm. Watermark wm \<in> lset lxs \<and> tmp x \<le> wm)))"
   apply (induct "(incr_op buf, stream_in)" r arbitrary: buf op lxs stream_in t d xs rule: produce_inner_alt[consumes 1])
-  subgoal for h lxs lgc' lxs' zs ys buf op lxsa t d xs
+  subgoal
     apply (simp split: event.splits)
     subgoal for wm
       apply hypsubst_thin

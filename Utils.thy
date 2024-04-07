@@ -203,7 +203,7 @@ lemma in_lset_finds_tail: "x \<in> lset xs \<Longrightarrow> \<exists> n xs'. ld
 lemma mset_concat:
   "mset (concat xs) = sum_list (map mset xs)"
   apply (induct xs)
-  apply auto
+   apply auto
   done
 
 lemma sum_list_sum:
@@ -211,7 +211,7 @@ lemma sum_list_sum:
    set xs = A \<Longrightarrow>
    sum_list (map f xs) = sum f A"
   apply (induct xs arbitrary: A)
-  apply auto
+   apply auto
   done
 
 lemma Sum_sum_sum_sum:
@@ -269,7 +269,7 @@ lemma distinct_List_subseqs:
   "distinct xs \<Longrightarrow>
    distinct (List.subseqs xs)"
   apply (induct xs)
-   apply auto
+   apply simp_all
   unfolding Let_def 
   apply simp
   apply safe
@@ -291,16 +291,24 @@ lemma filter_Pow:
   "distinct xs \<Longrightarrow>
    filter (\<lambda>l. \<forall>l'\<in>Pow (set xs). \<not> set l \<subset> l') (subseqs xs) = [xs]"
   apply (rule filter_singleton)
-     apply (auto 0 0 simp add: distinct_List_subseqs)
-  apply (metis Pow_top filter_id_conv filter_in_nths filter_is_subset order_le_imp_less_or_eq subseq_conv_nths)
+     apply (simp_all add: distinct_List_subseqs)
+   apply force
+  apply (intro ballI)
+  subgoal for y
+    apply (rule bexI[of _  "set xs"])
+     apply (rule psubsetI)
+      apply simp_all
+    subgoal
+      by (metis set_nths_subset subseq_conv_nths)
+    subgoal
+      by (metis distinct_card in_set_subseqs subseq_same_length subseqs_distinctD)
+    done
   done
-
 
 lemma filter_subseqs_Pow[simp]:
   "filter (\<lambda>l. \<forall>l'\<in>set (subseqs xs). \<not> set l \<subset> set l') (subseqs xs) = filter (\<lambda>l. \<forall>l'\<in>Pow (set xs). \<not> set l \<subset> l')  (subseqs xs)"
   by (metis (no_types, lifting) PowD imageI psubset_subset_trans subseqs_powset subseqs_refl)
 
-(* FIXME: move me*)
 lemma mset_concat_sum:
   "mset (concat (map (\<lambda>t. (filter ((=) t) xs)) (remdups xs))) = sum ((\<lambda>t. mset (filter ((=) t) xs))) (set xs)"
   apply (simp add: mset_concat)
@@ -310,7 +318,7 @@ lemma mset_concat_sum:
 lemma mset_concat_fst_sum:
   "mset (concat (map (\<lambda>t. (filter ((=) t \<circ> fst) xs)) (remdups (map fst xs)))) = sum ((\<lambda>t. mset (filter ((=) t \<circ> fst) xs))) (set (map fst xs))"
   apply (simp add: mset_concat)
-  by (metis (mono_tags, lifting) case_prod_unfold comp_apply filter_cong list.set_map mset_filter sum.cong sum_code)
+  by (metis (mono_tags, lifting) comp_apply filter_cong list.set_map mset_filter sum.cong sum_code)
 
 lemma mset_concat_sum_filter:
   "mset (concat (map (\<lambda>t. (filter ((=) t) xs)) (filter P (remdups xs)))) = sum ((\<lambda>t. mset (filter ((=) t) xs))) (set (filter P xs))"
@@ -320,12 +328,12 @@ lemma mset_concat_sum_filter:
 
 lemma mset_concat_sum_filter_fst:
   "mset (concat (map (\<lambda>t. (filter ((=) t \<circ> fst) xs)) (filter P (remdups (map fst xs))))) = sum ((\<lambda>t. mset (filter ((=) t \<circ> fst) xs))) (set (filter P (map fst xs)))"
-    apply (simp add: mset_concat)
+  apply (simp add: mset_concat)
   by (smt (z3) Collect_cong case_prod_unfold comp_apply filter_cong list.set_map map_eq_conv mset_filter remdups_filter set_filter sum_code)
 
 lemma mset_concat_sum_filter_fst_snd:
   "mset (concat (map (\<lambda>t. map snd (filter ((=) t \<circ> fst) xs)) (filter P (remdups (map fst xs))))) = sum ((\<lambda>t. mset (map snd (filter ((=) t \<circ> fst) xs)))) (set (filter P (map fst xs)))"
-    apply (simp add: mset_concat)
+  apply (simp add: mset_concat)
   by (smt (z3) Collect_cong case_prod_unfold comp_apply filter_cong list.set_map map_eq_conv mset_filter mset_map remdups_filter set_filter sum_code)
 
 
@@ -342,7 +350,7 @@ lemma mset_concat_map_filter[simp]:
   apply (induct xs rule: rev_induct)
    apply auto[1]
   apply (drule sym)
-  apply (auto simp del: filter.simps filter_append simp add: mset_concat_sum)
+  apply (simp del: filter.simps filter_append add: mset_concat_sum)
   subgoal premises prems for x xs
     apply (smt (verit, ccfv_SIG) Diff_insert_absorb List.finite_set Set.set_insert add.commute add_mset_add_single empty_filter_conv insert_absorb mset.simps(1) mset_filter prems sum.cong sum.insert sum.insert_remove union_mset_add_mset_left)
     done
@@ -355,19 +363,22 @@ lemma mset_concat_map_fst_filter[simp]:
   apply (drule sym)
   apply (subst (asm) mset_concat_fst_sum)
   apply (subst  mset_concat_fst_sum)
-  apply (auto simp del: filter.simps filter_append simp add: mset_concat_fst_sum)
+  apply (simp del: filter.simps filter_append add: mset_concat_fst_sum)
   using Diff_insert_absorb List.finite_set Set.set_insert add.commute add_mset_add_single empty_filter_conv insert_absorb mset.simps(1) mset_filter sum.cong sum.insert sum.insert_remove union_mset_add_mset_left
-  by (smt (verit, best) case_prod_unfold finite_imageI image_iff)
+  apply (smt (verit, best) case_prod_unfold finite_imageI image_iff)
+  done
 
 lemma Sum_if_true:
   "finite A \<Longrightarrow>
    a \<in> A \<Longrightarrow> 
    (\<Sum>t\<in>A. if t = a then G t else F t) = G a + (\<Sum>t\<in>A - {a}. F t)"
   apply (induct A arbitrary: a  rule: finite_induct)
-   apply auto
-   apply (smt (verit, ccfv_SIG) add.commute sum.cong)
-  apply (simp add: ab_semigroup_add_class.add_ac(1) insert_Diff_if)
-  using add.left_commute apply blast
+   apply simp_all
+  apply (intro conjI impI)
+  subgoal
+    by (simp add: sum.delta_remove)
+  subgoal
+    by (simp add: add.left_commute insert_Diff_if)
   done
 
 lemma Sum_if_false:
@@ -381,7 +392,7 @@ lemma Sum_if_false:
 lemma Sum_mset_filter_mset:
   "finite A \<Longrightarrow>
    (\<Sum>t\<in>A. {#x \<in># M. t = x#}) = {#t' \<in># M. t' \<in> A#}"
-    apply (induct M arbitrary: A rule: multiset_induct)
+  apply (induct M arbitrary: A rule: multiset_induct)
    apply simp_all
   apply safe
   subgoal for a N A
@@ -408,19 +419,12 @@ lemma Sum_image_set_snd:
   apply (subst image_mset_Sum)
    apply simp
   apply (induct xs)
-   apply (auto simp add: split_beta split: if_splits)
-  by (smt (verit) Diff_insert_absorb List.finite_set Set.set_insert add.commute add_mset_add_single case_prod_unfold empty_filter_conv finite_imageI image_iff image_mset_add_mset image_mset_is_empty_iff insertCI insert_Diff1 mset.simps(1) mset_filter sum.cong sum.insert_remove union_mset_add_mset_left)
-
-
-lemma Sum_filter_mset_add:
-  "finite A \<Longrightarrow>
-   a \<in> fst ` A \<Longrightarrow>
-   (\<Sum>t\<in>fst ` A. image_mset snd (filter_mset ((=) t \<circ> fst) (add_mset (a, b) M))) =
-   add_mset b (\<Sum>t\<in>fst ` A. image_mset snd (filter_mset ((=) t \<circ> fst) M))"
-  apply (induct A arbitrary: a b rule: finite_induct)
-   apply auto
-    apply (smt (verit, best) Diff_insert_absorb Set.set_insert finite_imageI image_mset_add_mset insertCI insert_Diff1 snd_conv sum.cong sum.insert_remove union_mset_add_mset_left)
-  apply (smt (z3) Diff_iff Diff_insert_absorb Set.set_insert finite_imageI finite_insert fst_conv image_insert image_mset_add_mset snd_conv sum.cong sum.insert_remove union_mset_add_mset_left)
+   apply simp
+  subgoal for x xs
+    apply (cases x)
+    apply (simp add: split_beta sum.insert_remove split: if_splits prod.splits)
+    apply (smt (z3) Diff_empty Diff_insert0 List.finite_set add_cancel_right_left empty_filter_conv filter_mset_cong finite_imageI image_insert image_mset_is_empty_iff insertCI insert_Diff mset_filter mset_zero_iff_right sum.remove)
+    done
   done
 
 lemma image_mset_minus:
@@ -431,7 +435,7 @@ lemma image_mset_minus:
   done
 
 lemma Sum_set_image_mset[simp]:
- "(\<Sum>t\<in>fst ` {x \<in> set xs. fst x < t}. image_mset snd (filter_mset ((=) t \<circ> fst) (mset xs))) =
+  "(\<Sum>t\<in>fst ` {x \<in> set xs. fst x < t}. image_mset snd (filter_mset ((=) t \<circ> fst) (mset xs))) =
   image_mset snd (\<Sum>t\<in>fst ` {x \<in> set xs. fst x < t}. (filter_mset ((=) t \<circ> fst) (mset xs)))"
   by (simp add: image_mset_Sum)
 
@@ -439,17 +443,6 @@ lemma Sum_set_image_mset[simp]:
 lemma Collect_mset_filter_mset[simp]:
   "{#t' \<in># mset xs. t' \<in>  {x \<in> set xs. P (fst x)}#} = filter_mset (P \<circ> fst) (mset xs)"
   by (metis (mono_tags, lifting) comp_apply count_mset_0_iff filter_mset_cong mem_Collect_eq not_in_iff)
-
-lemma Sum_filter_mset_add_alt:
-  "finite A \<Longrightarrow>
-   a \<in> fst ` A \<Longrightarrow>
-   (\<Sum>t\<in>fst ` A. (filter_mset ((=) t \<circ> fst) (add_mset (a, b) M))) =
-   add_mset (a, b) (\<Sum>t\<in>fst ` A. (filter_mset ((=) t \<circ> fst) M))"
-  apply (induct A arbitrary: a b rule: finite_induct)
-   apply auto
-  apply (smt (verit, best) Diff_insert_absorb finite_imageI finite_insert fst_conv insertCI insert_absorb sum.cong sum.insert_remove union_mset_add_mset_left)
-  apply (smt (z3) Diff_iff Diff_insert_absorb Set.set_insert finite_imageI finite_insert fst_conv image_eqI insert_absorb multi_self_add_other_not_self sum.cong sum.insert_remove union_mset_add_mset_left)
-  done
 
 lemma Collect_add_mset:
   "{#x \<in># add_mset (a, b) M. P (fst x)#} = {#x \<in># M. P (fst x)#} + {#x \<in># {#(a, b)#}. P (fst x)#}"

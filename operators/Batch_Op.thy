@@ -2582,7 +2582,7 @@ lemma produce_inner_skip_n_productions_op_batch_op_batch_op_soundness_LCons_stro
         apply (drule meta_mp)
         using maximal_antichain_correct apply blast
         apply (auto simp add: split_beta split: prod.splits)
-        apply (smt (verit) antisym_conv2 case_prod_beta filter_set in_maximal_antichain' list.set_intros(1) map_eq_set_D maximal_antichain_distinct maximal_antichain_subset member_filter prod.collapse set_drop_subset set_takeWhileD subset_iff)
+        apply (smt (verit) antisym_conv2 case_prod_beta filter_set maximal_antichain_covers_all list.set_intros(1) map_eq_set_D maximal_antichain_distinct maximal_antichain_subset member_filter prod.collapse set_drop_subset set_takeWhileD subset_iff)
         done
       subgoal for wm' batch'
         apply (auto simp add: ldrop_llist_of llist_of_eq_LCons_conv)
@@ -3380,7 +3380,7 @@ lemma produce_inner_skip_n_productions_op_batch_op_smaller_Inr:
     apply hypsubst_thin
     apply (subgoal_tac "\<exists> wm \<in> set (maximal_antichain_list (map fst buf)). t \<le> wm")
     defer
-    apply (metis Domain.DomainI Domain_fst in_maximal_antichain')
+    apply (metis Domain.DomainI Domain_fst maximal_antichain_covers_all)
     apply auto
     subgoal for b wm'
       using sync_batches_before_n[where A="maximal_antichain_list (map fst buf)" and wm=wm and batch=batch and buf=buf and n=n and t=t and wm'=wm'] apply simp
@@ -4811,7 +4811,7 @@ lemma lfinite_batch_op_produces:
     apply (subst produce.code)
     apply (subst produce_inner.simps)
     apply (auto simp del: produce_LCons produce_lshift simp add: lset_lnull split: llist.splits event.splits option.splits sum.splits)
-    using in_sync_batches[where A="maximal_antichain_list (map fst buf)" and buf=buf and t=t and d=d] in_maximal_antichain'[where t=t and buf=buf]
+    using in_sync_batches[where A="maximal_antichain_list (map fst buf)" and buf=buf and t=t and d=d] maximal_antichain_covers_all[where t=t and buf=buf]
     apply (metis Domain.DomainI fst_eq_Domain maximal_antichain_correct)
     done
   apply auto
@@ -4875,7 +4875,7 @@ lemma produce_inner_batch_op_Inr_always_produce:
   apply (induct "(batch_op buf, lxs)" r arbitrary: buf lxs op rule: produce_inner_alt[consumes 1])
   apply (auto split: if_splits event.splits)
   using in_sync_batches[where A="maximal_antichain_list (map fst buf)" and buf=buf and t=t and d=d] in_maximal_antichain[where t=t]
-  by (smt (z3) Domain.DomainI fst_eq_Domain in_maximal_antichain in_maximal_antichain' in_sync_batches)
+  by (smt (z3) Domain.DomainI fst_eq_Domain in_maximal_antichain maximal_antichain_covers_all in_sync_batches)
 
 lemma sync_completeness_gen_aux:
   "(\<exists> i d. enat i < llength lxs \<and> lnth lxs i = Data t d \<and> j = Suc i) \<or> j = 0 \<and> (\<exists> d. (t, d) \<in> set buf) \<Longrightarrow>
