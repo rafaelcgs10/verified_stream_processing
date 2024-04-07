@@ -5,6 +5,7 @@ theory Llists_Processors
     "HOL-Library.BNF_Corec"
     "HOL-Library.Code_Lazy"
     "HOL-Library.Numeral_Type"
+    "HOL-ex.Sketch_and_Explore"
 begin
 
 code_lazy_type llist
@@ -82,31 +83,54 @@ lemma produce_inner_None_produce_LNil:
   apply auto
   done
 
-lemma skip_first_production_op_eq_skip_n_productions_op:
-  "(skip_first_production_op ^^ n) op = skip_n_productions_op op n"
-  apply (induct n arbitrary: op)
-   apply (simp add: op.expand)
-  apply simp
-  subgoal premises prems for n op
-    apply (coinduction arbitrary: op n)
-    using Suc_diff_le apply (auto simp: fun_eq_iff rel_fun_def not_less Suc_le_eq split: list.splits)
-       apply (intro exI conjI[rotated])
-        apply (rule refl)
-       apply (rule op.expand)
-       apply (simp add: fun_eq_iff split: list.splits)
-    subgoal for op n x x21 x22
-      apply (rule exI[of _ "Logic (\<lambda> ev . let (lgc', out) = apply (fst (apply op x)) ev in (lgc', replicate n undefined @ x21# out)) (replicate (Suc n) undefined @@- (exit (fst (apply op x))))"])
-      apply (rule exI[of _ "n"])
+lemma skip_first_production_op_eq_skip_n_productions_op_aux:
+  "skip_first_production_op (skip_n_productions_op op n) = skip_n_productions_op op (Suc n)"
+proof (coinduction arbitrary: op n)
+  case (Eq_op op' n')
+  then show ?case
+  proof -
+    have "\<exists>op n. skip_first_production_op (skip_n_productions_op (fst (apply op' x)) (n' - length (snd (apply op' x)))) = skip_first_production_op (skip_n_productions_op op n) \<and> skip_n_productions_op (fst (apply op' x)) (Suc (n' - length (snd (apply op' x)))) = skip_n_productions_op op (Suc n)"
+      if "length (snd (apply op' x)) < n'"
+      for x :: 'a
+      using that by blast
+    moreover have "\<exists>op n. skip_first_production_op (fst (apply op' x)) = skip_first_production_op (skip_n_productions_op op n) \<and> skip_n_productions_op (fst (apply op' x)) (Suc 0) = skip_n_productions_op op (Suc n)"
+      if "n' = length (snd (apply op' x))"
+      for x :: 'a
+      using that by force
+    moreover have "\<exists>op n. fst (apply op' x) = skip_first_production_op (skip_n_productions_op op n) \<and> fst (apply op' x) = skip_n_productions_op op (Suc n)"
+      if "drop n' (snd (apply op' x)) = y # ys"
+        and "n' < length (snd (apply op' x))"
+      for x :: 'a
+        and y :: 'b
+        and ys :: "'b list"
+      using that 
+      apply -
+      apply (rule exI[of _ "Logic (\<lambda> ev . let (lgc', out) = apply (fst (apply op' x)) ev in (lgc', replicate n' undefined @ y# out)) (replicate (Suc n') undefined @@- (exit (fst (apply op' x))))"])
+      apply (rule exI[of _ "n'"])
       apply (safe intro!:op.expand)
-         defer
-         apply (subst skip_n_productions_op.code)
-         apply (auto simp add: tl_drop Let_def fun_eq_iff split: prod.splits)
+         apply (simp_all add: tl_drop Let_def fun_eq_iff split: prod.splits)
        apply (metis ldrop_enat length_replicate ltl_ldrop ltl_simps(2) shift_eq_shift_ldropn_length)
       apply (metis ldrop_enat ldropn_Suc_LCons length_replicate shift_eq_shift_ldropn_length)
       done
-     apply (metis Cons_nth_drop_Suc list.sel(3))
-    apply (simp add: ldrop_eSuc_ltl ldrop_enat ltl_ldropn)
-    done
+    moreover have "ys = drop (Suc n') (snd (apply op' x))"
+      if "drop n' (snd (apply op' x)) = y # ys"
+        and "n' < length (snd (apply op' x))"
+      for x :: 'a
+        and y :: 'b
+        and ys :: "'b list"
+      using that 
+      by (metis drop_Suc list.sel(3) tl_drop)
+    moreover have "ltl (ldrop (enat n') (exit op')) = ldrop (enat (Suc n')) (exit op')"
+      by (simp add: ldrop_eSuc_ltl ldrop_enat ltl_ldropn)
+    ultimately show ?thesis
+      by (simp add: Suc_diff_le fun_eq_iff rel_fun_def not_less Suc_le_eq split: list.splits ; intro conjI allI impI ; simp ?)
+  qed
+qed
+
+lemma skip_first_production_op_eq_skip_n_productions_op:
+  "(skip_first_production_op ^^ n) op = skip_n_productions_op op n"
+  apply (induct n)
+  apply (simp_all add: skip_first_production_op_eq_skip_n_productions_op_aux)
   done
 
 lemma skip_n_productions_op_sum[simp]:
