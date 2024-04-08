@@ -289,24 +289,10 @@ lemma produce_inner_skip_n_productions_op_None_Inr_None:
    produce_inner (skip_n_productions_op op n, lxs) = None \<Longrightarrow>
    False"
   apply (induction "(skip_n_productions_op op (Suc n), lxs)" r arbitrary: lxs n op rule: produce_inner_alt[consumes 1])
-    apply (simp_all split: if_splits)
+    apply (simp_all split: if_splits; hypsubst_thin?)
    apply (smt (verit, del_insts) Suc_diff_Suc cancel_comm_monoid_add_class.diff_cancel diff_Suc_Suc drop_eq_Nil2 less_Suc_eq less_or_eq_imp_le list.simps(4) llist.case(2) prod.simps(2) produce_inner.simps skip_n_productions_op.simps(1) skip_n_productions_op_0)
   apply (subst (asm) (2) produce_inner.simps)
   apply (auto split: list.splits)
-  done
-
-
-lemma produce_skip_n_productions_op_n_LNil_skip_n_productions_op_Suc_n_LNil:
-  "produce (skip_n_productions_op op n) lxs = LNil \<Longrightarrow> produce (skip_n_productions_op op (Suc n)) lxs = LNil"
-  apply (subst (asm) produce.code)
-  apply (subst produce.code)
-  apply (simp split: option.splits prod.splits)
-   apply (auto split: sum.splits)
-  using produce_inner_skip_n_productions_op_Suc_None_Inr_None apply blast
-  using produce_inner_skip_n_productions_op_None_Inr_None apply blast
-  using produce_inner_skip_n_productions_op_Some_None_Suc_None apply blast
-  apply (simp add: produce_inner_skip_n_productions_op_Some_None_Suc)
-  apply force
   done
 
 lemma produce_inner_Some_produce[simp]:

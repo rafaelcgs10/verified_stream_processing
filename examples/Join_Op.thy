@@ -7,6 +7,9 @@ theory Join_Op
     "HOL-Library.Code_Lazy"
 begin
 
+unused_thms  Llists_Processors - Flatten_Op Incr_Batch_Op Union_Op Map_Op
+
+
 definition join_list where
   "join_list join st xs = 
   (let t = (case st of Inr t \<Rightarrow> t | Inl t \<Rightarrow> t) in
