@@ -1,17 +1,8 @@
 theory Cycles
 
-imports Logic_on_Llists
+imports "../Llists_Processors"
 
 begin
-
-
-datatype ('t, 'd) event = Data (tmp: 't) (data: 'd) | Watermark (tmp: "'t::order")
-
-primcorec map_op where
-  "map_op f = Logic (\<lambda> ev. case ev of
-                                Watermark wm \<Rightarrow> (map_op f, [Watermark wm])
-                              | Data t d \<Rightarrow> (map_op f, [Data t (f t d)])) LNil"
-
 
 coinductive le_op where
    "lprefix (buf1 @@- exit op1) (buf2 @@- exit op2) \<Longrightarrow>
@@ -104,8 +95,6 @@ lemma unproduce_op_correct_1[simp]:
 lemma  unproduce_op_correct_2[simp]:
   "unproduce_op (produce op) = op"
   sorry
-
-term llist.fixp_fun
 
 primcorec incr_Inl where
   "incr_Inl = Logic (\<lambda> ev. 
@@ -201,9 +190,6 @@ lemma produce_loop_op_if:
       done
     done
   apply simp
-    apply (subst (1) produce.code)
-    apply (subst (1) produce_inner.simps)
-  apply (auto 1 1 split: sum.splits llist.splits list.splits option.splits prod.splits)
   done
 (*
   subgoal
@@ -228,11 +214,6 @@ lemma [simp]:
 thm llist.mono_body_fixp
 
 find_consts name: le name: "fun"
-
-
-
-
-
 
 
 thm le_fun_def
@@ -272,17 +253,9 @@ lemma "produce (unproduce_op (llist.fixp_fun ex1)) (LCons (Inl 0) (LCons (Inl 0)
  apply (subst llist.mono_body_fixp)
     subgoal sorry
  apply (subst produce_compose_op_correctness)
-    subgoal sorry
-    apply (auto simp add: produce_incr_Inl_if produce_loop_op_if split: list.splits)
- apply (subst llist.mono_body_fixp)
-    subgoal sorry
- apply (subst produce_compose_op_correctness)
-    subgoal sorry
-    apply (auto simp add: produce_incr_Inl_if produce_loop_op_if split: list.splits)
-    done
-  sorry
+    oops
 
-
+(* 
 primcorec rec_op where
   "rec_op b op = Logic (\<lambda> ev. 
      let (op', out) = apply op ev in
@@ -291,6 +264,6 @@ primcorec rec_op where
      let (op'', out'') = finite_produce (rec_op b op') cycle [] in
      (rec_op b op'',  out' @ out'')) LNil"
 
-
+ *)
 
 end

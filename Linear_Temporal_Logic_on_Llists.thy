@@ -509,7 +509,7 @@ lemma holdll_eq1[simp]: "holdsll ((=) x) = HLDLL {x}"
 lemma holdll_eq2[simp]: "holdsll (\<lambda>y. y = x) = HLDLL {x}"
   unfolding HLDLL_def
   by auto
-  
+
 lemma alw_holds: "alwll (holdsll P) (LCons h t) = (P h \<and> alwll (holdsll P) t)"
   using  alwll.simps holdsll_LCons
   by (metis llist.distinct(1) ltl_simps(2))
@@ -587,7 +587,6 @@ lemma ldropn_lfinite_lfinter:
     using Suc_ile_eq apply blast
     done
   done
-
 
 lemma list_of_lshift:
   "lfinite lxs \<Longrightarrow>

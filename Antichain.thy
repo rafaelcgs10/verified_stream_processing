@@ -1,7 +1,6 @@
 theory Antichain
   imports
     "Utils"
-    "HOL-ex.Sketch_and_Explore"
 begin
 
 fun maximal_antichain_list where
