@@ -71,19 +71,6 @@ lemma count_list_1_take:
     done
   done
 
-(* FIXME: move me to utils *)
-lemma count_list_filter:
-  "P x \<Longrightarrow>
-   count_list (filter P xs) x = count_list xs x"
-  apply (induct xs)
-   apply auto
-  done
-lemma count_list_map_the_case_event:
-  "(\<forall> x \<in> set xs. is_Data x) \<Longrightarrow>
-   count_list (map (the \<circ> case_event (\<lambda>t d. Some (t, d)) Map.empty) xs) (wm, batch) = count_list xs (Data wm batch)"
-  apply (induct xs)
-   apply (auto simp add: event.case_eq_if event.expand)
-  done
     (* FIXME: move me *)
 lemma mset_Collect_fst[simp]:
   "{#x \<in># M. P (fst x) #} = {#(t', d) \<in># M. P t'#}"
@@ -582,23 +569,6 @@ lemma produce_inner_skip_n_productions_op_batch_op_Some_batch:
   apply auto
   done
 
-(*FIXME: move me*)
-lemma lnth_Suc_concat_map_Data_Watermark:
-  "concat (map (\<lambda>wm. [Data wm (P wm), Watermark wm]) xs) ! n = Data wm d \<Longrightarrow>
-   n < length (concat (map (\<lambda>wm. [Data wm (P wm), Watermark wm]) xs)) \<Longrightarrow>
-   concat (map (\<lambda>wm. [Data wm (P wm), Watermark wm]) xs) ! Suc n = Watermark wm"
-  apply (induct xs arbitrary: P n wm d)
-   apply auto
-  subgoal for a xs out n wm d
-    apply (cases n)
-     apply auto
-    subgoal for n'
-      apply (cases n')
-       apply auto
-      done
-    done
-  done
-
 lemma produce_skip_n_productions_op_batch_op_n_Data_Suc_n_Watermark:
   "enat n < llength (produce (skip_n_productions_op (batch_op buf) i) lxs) \<Longrightarrow>
    lnth (produce (skip_n_productions_op (batch_op buf) i) lxs) n = Data wm batch \<Longrightarrow>
@@ -686,16 +656,6 @@ lemma produce_inner_skip_n_productions_op_Some_Data_Watermark_in:
     apply (metis drop_Cons' drop_Nil event.distinct(1) list.distinct(1) nth_Cons_0)
     done
   apply auto
-  done
-
-lemma produce_inner_batch_op_Watermark_in:
-  "produce_inner (batch_op buf, lxs) = Some r \<Longrightarrow>
-   r = Inl (op, x, xs, lxs') \<Longrightarrow>
-   x = Data wm batch \<Longrightarrow>
-   xs = [Watermark wm] \<Longrightarrow>
-   Watermark wm \<in> lset lxs"
-  apply (induct "(batch_op buf, lxs)" r arbitrary: lxs lxs' op buf wm batch x xs rule: produce_inner_alt[consumes 1])
-    apply (auto split: event.splits if_splits)
   done
 
 lemma in_buf_produce_Watermark:
@@ -1904,19 +1864,6 @@ lemma filter_map_filter[simp]:
    apply (auto simp add: map_filter_simps split: option.splits)
   done
 
-lemma antichain_from_stream_remove_1:
-  "Watermark wm \<in> lset lxs \<and> t \<le> wm \<Longrightarrow> 
-   lfinite lxs \<Longrightarrow>
-   antichain_from_stream lxs = antichain_from_stream (lfilter (\<lambda> ev. case ev of Data t' _ \<Rightarrow> \<not> t' \<le> t | Watermark _ \<Rightarrow> True) lxs)"
-  unfolding antichain_from_stream_def Let_def
-  apply (auto simp add: list_of_lfilter_lfinite Let_def split: event.splits)
-  apply (rule arg_cong[where f=maximal_antichain_list])
-  apply (rule map_cong)
-   apply simp_all
-  apply (rule filter_cong)
-   apply (auto split: event.splits) 
-  done
-
 lemma antichain_from_stream_Cons_Data:
   "lfinite lxs \<Longrightarrow>
    antichain_from_stream (LCons (Data t d) lxs) = (
@@ -2024,14 +1971,6 @@ lemma bach_ts_lshift_3:
   unfolding bach_ts_def
   apply (auto simp add: split_beta split: if_splits prod.splits)
    apply (meson Data_set_strict_monotone_not_GE insertI1)+
-  done
-
-lemma in_ws_dt'':
-  "t \<in> ws_dt'' lxs wm \<Longrightarrow>
-   t \<noteq> wm \<and> (\<exists> d. Data t d \<in> lset lxs)"
-  unfolding ws_dt''_def
-  apply (auto split: event.splits)
-  using lset_ltakeWhileD apply fastforce+
   done
 
 lemma antichain_from_stream_filter:
@@ -2800,18 +2739,6 @@ lemma lnth_Data_produce_inner_Some_skip_n_productions_op_batch_op_LCons_batch_no
     done
   apply auto
   done
-
-(* FIXME: move me *)
-lemma map_remdups_inj:
-  "inj f \<Longrightarrow>
-   (drop i (map f (remdups ys))) =
-   x # xs \<Longrightarrow>
-   x \<in> set xs \<Longrightarrow> False"
-  apply (induct ys arbitrary: x i xs)
-  apply (auto split: if_splits)
-  apply (metis drop_Cons' image_set inj_image_mem_iff insert_absorb list.sel(3) list.set_intros(1) list.simps(15) set_remdups)
-  done
-
 
 lemma lnth_Data_produce_inner_Some_skip_n_productions_op_batch_op_Inr_LCons_batch_not_ge:
   "produce_inner (skip_n_productions_op (batch_op buf) i, lxs) = Some r \<Longrightarrow>
@@ -3906,29 +3833,6 @@ lemma coll_list_concat_eq:
   done
 
 (* FIXME: move me*)
-lemma in_ltaken_Data:
-  "Data t d \<in> lset (ltake n lxs) \<Longrightarrow>
-   (t, d) \<in> set (ltaken_Data n lxs)"
-  apply (induct n arbitrary: lxs)
-  using zero_enat_def apply auto[1]
-  subgoal for n lxs
-    apply (cases lxs)
-    apply simp_all
-    subgoal for x lxs'
-      apply auto
-      apply (cases x)
-      apply auto
-      done
-    done
-  done
-
-(* FIXME: move me*)
-lemma drop_in_Suc_take:
-  "drop n xs = y#ys \<Longrightarrow>
-   y \<in> set (take (Suc n) xs)"
-  by (metis drop_all in_set_conv_decomp leI list.discI nth_via_drop take_Suc_conv_app_nth)
-
-(* FIXME: move me*)
 lemma ltaken_Data_llist_of:
   "ltaken_Data n (llist_of xs) = List.map_filter (\<lambda> ev. case ev of Data t d \<Rightarrow> Some (t, d) | _ \<Rightarrow> None) (take n xs)"
   apply (induct xs arbitrary: n)
@@ -3939,75 +3843,12 @@ lemma ltaken_Data_llist_of:
     done
   done
 
-(* FIXME: move me*)
-lemma in_on_case_event:
-  "\<forall> x \<in> A. is_Data x \<Longrightarrow>
-   inj_on (case_event (\<lambda>t d. Some (t, d)) Map.empty) A"
-  apply (smt (verit, best) event.case_eq_if event.expand inj_onI option.inject prod.inject)
-  done
-
-(* FIXME: move me*)
-lemma in_on_the:
-  "\<forall> x \<in> A. \<not> Option.is_none x \<Longrightarrow>
-   inj_on the A"
-  by (metis inj_onI is_none_simps(1) option.expand)
-
-(* FIXME: move me*)
-lemma inj_on_snd_set:
-  "distinct (map snd xs) \<Longrightarrow>
-   inj_on snd (set xs)"
-  by (simp add: distinct_map)
-
-(* FIXME: move me*)
-lemma in_on_the_case_event:
-  "\<forall> x \<in> A. is_Data x \<Longrightarrow>
-   inj_on (\<lambda>x. the (case x of Data t d \<Rightarrow> Some (t, d) | Watermark x \<Rightarrow> Map.empty x)) A"
-  by (smt (verit) event.case_eq_if event.expand inj_onI option.sel prod.inject)
-
-
-lemma inj_on_snd_case_event:
-  "\<forall> x \<in> A. is_Data x \<Longrightarrow>
-   \<forall> x \<in> A. \<forall> y \<in> A. data y = data y \<longrightarrow>  x = y \<Longrightarrow>
-   inj_on (snd \<circ> (the \<circ> case_event (\<lambda>t d. Some (t, d)) Map.empty)) A"
-  by (simp add: inj_onI)
-
-
-(* FIXME: move me*)
-lemma inj_on_snd_map_filter_take:
-  "inj_on f (set (List.map_filter g xs)) \<Longrightarrow>
-   inj_on f (set (List.map_filter g (take n xs)))"
-  unfolding List.map_filter_def
-  apply (induct xs arbitrary: xs)
-  apply auto
-  apply (smt (verit) Collect_mono_iff image_mono in_set_takeD inj_on_subset)
-  done
-
-(* FIXME: move me to utils *)
-lemma nth_take_Suc:
-  "n' \<le> n \<Longrightarrow>
-   n' < length xs \<Longrightarrow>
-   xs ! n' = x \<Longrightarrow>
-   x \<in> set (take (Suc n) xs)"
-  by (metis in_set_conv_nth le_imp_less_Suc length_take min_less_iff_conj nth_take)
-
 (* FIXME: move me to Watermarked_stream *)
 lemma map_snd_case_event_map_data:
   "\<forall> x \<in> set xs. is_Data x \<Longrightarrow>
    map (\<lambda>x. snd (the (case x of Data t d \<Rightarrow> Some (t, d) | Watermark x \<Rightarrow> Map.empty x))) xs = map data xs"
   apply (induct xs)
   apply (auto split: event.splits)
-  done
-
-(* FIXME: move me to batches lemmas *)
-lemma map_snd_ltaken_Data_llist_of_batches:
-  "map snd (ltaken_Data n (llist_of (fst (batches wss xs)))) = map data (take n (fst (batches wss xs)))"
-  apply (induct wss arbitrary: n xs)
-   apply (auto split: prod.splits)
-  subgoal for a wss n
-    apply (cases n)
-     apply simp_all
-    apply (metis fst_conv)
-    done
   done
 
 (* FIXME: move me to ltaken_Data *)
@@ -4275,21 +4116,6 @@ lemma produce_skip_n_productions_op_batch_op_coll_list_batch:
     apply hypsubst_thin
     using produce_inner_skip_n_productions_op_batch_op_Inr_coll_list apply blast
     done
-  done
-
-lemma not_timestmap_out_of_the_blue_ltaken_Data:
-  "t' \<notin> ts lxs wm \<Longrightarrow> t' \<notin> fst ` set buf \<Longrightarrow>
-   monotone lxs WM \<Longrightarrow>
-   t \<le> wm \<Longrightarrow>
-   (wm, batch) \<in> set (ltaken_Data (Suc n) (produce (batch_op buf) lxs)) \<Longrightarrow>
-   t' \<le> t \<Longrightarrow>
-   set (coll_list (concat (map snd (ltaken_Data (Suc n) (produce (batch_op buf) lxs)))) t') = {}"
-  unfolding coll_list_def
-  apply (simp del: produce_LCons produce_lshift)
-  apply (drule produce_skip_n_productions_op_batch_op_ltaken_Data_LE_EX)
-  apply (elim conjE exE)
-  subgoal for b wm' 
-    by (smt (verit, ccfv_SIG) Domain.DomainI fst_eq_Domain order_trans prod.collapse produce_no_timestamps_out_of_the_blue_aux produce_skip_n_productions_op_batch_op_ltaken_Data_LE_EX)
   done
 
 (* FIXME: move me *)
@@ -4793,14 +4619,6 @@ lemma produce_inner_None_finite_aux:
     done
   done
 
-lemma produce_inner_None_finite:
-  "produce_inner (batch_op buf, lxs) = None \<Longrightarrow>
-   productive lxs \<Longrightarrow>
-   monotone lxs WM \<Longrightarrow>
-   lfinite lxs"
-  using produce_inner_None_finite_aux by blast  
-
-
 lemma lfinite_batch_op_produces:
   "lfinite lxs \<Longrightarrow>
    Data t d \<in> lset lxs \<or> (t, d) \<in> set buf \<Longrightarrow>
@@ -5111,19 +4929,6 @@ lemma batch_op_completeness:
     apply (elim conjE)
     apply auto
     done
-  done
-
-lemma produce_inner_batch_op_None_no_Watermarks:
-  "Watermark wm \<in> lset lxs \<Longrightarrow> 
-   produce_inner (batch_op buf, lxs) = None \<Longrightarrow>
-   False"
-  apply (induct lxs arbitrary: buf rule: lset_induct)
-  subgoal
-    apply (subst (asm) produce_inner.simps)
-    apply (auto split: if_splits)
-    done
-  apply (subst (asm) (2) produce_inner.simps)
-  apply (auto split: if_splits event.splits)
   done
 
 lemma produce_batch_op_Watermark_complete:

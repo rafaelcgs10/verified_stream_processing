@@ -7,7 +7,7 @@ theory Join_Op
     "HOL-Library.Code_Lazy"
 begin
 
-unused_thms  Llists_Processors - Flatten_Op Incr_Batch_Op Union_Op Map_Op
+unused_thms  Llists_Processors Antichain - Batch_Op Flatten_Op Incr_Batch_Op Union_Op Map_Op Antichain
 
 
 definition join_list where

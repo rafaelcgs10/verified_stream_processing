@@ -661,24 +661,6 @@ lemma ts_LCons_Watermark[simp]:
   apply simp
   done
 
-lemma ts_strict_monotone_eq_empty:   
-  "monotone (LCons (Watermark wm) lxs) WM \<Longrightarrow>
-   ts (LCons (Watermark wm) lxs) wm = {}"
-  unfolding ts_def
-  apply simp
-  apply (meson Data_tail_ahead_of_t)
-  apply (simp add: Data_set_strict_monotone_not_GE)
-  done
-
-lemma ts_strict_monotone_eq_empty_ltl:   
-  "monotone (LCons (Watermark wm) lxs) WM \<Longrightarrow>
-   ts lxs wm = {}"
-  unfolding ts_def
-  apply simp
-  apply (meson Data_tail_ahead_of_t)
-  apply (simp add: Data_set_strict_monotone_not_GE)
-  done
-
 definition "ts' lxs t = tmp ` set (list_of (lfilter (\<lambda> x . case x of Data t' d \<Rightarrow> t' \<le> t | Watermark wm \<Rightarrow> False) lxs))"
 
 lemma ts_eq_ts':
@@ -891,14 +873,6 @@ lemma ts_le:
   apply auto
   done
 
-lemma ts_le_2:
-  "t' \<in> ts lxs t \<Longrightarrow>
-   t \<le> wm \<Longrightarrow>
-   t' \<in> ts lxs wm"
-  unfolding ts_def
-  apply auto
-  done
-
 lemma ldropn_LCons_ltaken_Data:
   "\<exists>n'\<le>n. ldropn n' lxs = LCons (Data wm batch) lxs' \<Longrightarrow> 
   (wm, batch) \<in> set (ltaken_Data (Suc n) lxs)"
@@ -930,15 +904,6 @@ lemma timestamp_in_taken_Data_inversion_aux:
         apply (metis fst_conv imageI)+
       done
     done
-  done
-
-lemma ts_change_t:
-  "t' \<le> t \<Longrightarrow>
-   t' \<le> wm \<Longrightarrow>
-   t' \<in> ts lxs t \<Longrightarrow>
-   t' \<in> ts lxs wm"
-  unfolding ts_def
-  apply auto
   done
 
 lemma ts_LCons:

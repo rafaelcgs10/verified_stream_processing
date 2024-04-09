@@ -5,6 +5,8 @@ theory Llists_Processors
     "HOL-Library.BNF_Corec"
     "HOL-Library.Code_Lazy"
     "HOL-Library.Numeral_Type"
+    "HOL-Library.Simps_Case_Conv"
+    "HOL-ex.Sketch_and_Explore"
 begin
 
 code_lazy_type llist
@@ -19,12 +21,11 @@ partial_function (option) produce_inner where
      | LCons h lxs' \<Rightarrow> (case apply op h of 
                          (lgc', []) \<Rightarrow> produce_inner (lgc', lxs')
                        | (lgc', x#xs) \<Rightarrow> Some (Inl (lgc', x, xs, lxs')))))"
-
+simps_of_case produce_inner_simps[simp]: produce_inner.simps
 declare produce_inner.simps[code]
 
 lemma produce_inner_LNil_None[simp]:
   "produce_inner (op, LNil) = Some (Inr op)"
-  apply (subst produce_inner.simps)
   apply simp
   done
 
@@ -55,6 +56,14 @@ lemma produce_LNil_exit[simp]:
   apply auto
   done
 
+
+lemma produce_LCons[simp]:
+  "produce op (LCons h lxs) = snd (apply op h) @@- produce (fst (apply op h)) lxs"
+  apply (subst produce.code)
+  apply (simp split: option.splits sum.splits prod.splits list.splits)
+  apply (simp add: produce.code)
+  done
+
 primcorec skip_first_production_op :: "(_, 'i) op \<Rightarrow> (_, 'i) op" where
   "skip_first_production_op op = Logic (\<lambda> ev.
                                      let (lgc', out::_ list) = apply op ev in
@@ -76,7 +85,7 @@ lemma skip_n_productions_op_0[simp,intro]:
   using zero_enat_def apply auto
   done
 
-lemma produce_inner_None_produce_LNil:
+lemma produce_inner_None_produce_LNil[simp]:
   "produce_inner (op, lxs) = None \<Longrightarrow>
    produce op lxs = LNil"
   apply (subst produce.code)
@@ -151,7 +160,6 @@ lemma produce_inner_skip_n_productions_op_Suc_LCons:
   case (no_production h lxs op')
   then show ?case 
     apply -
-    apply (subst (asm) (2) produce_inner.simps)
     apply (simp split: option.splits prod.splits if_splits)
     subgoal
       apply hypsubst_thin
@@ -169,15 +177,12 @@ next
   then show ?case 
     apply -
     apply (subst (2) produce.corec.code)
-    apply (subst (asm) (1 2) produce_inner.simps)
     apply (simp split: option.splits prod.splits if_splits list.splits)
      apply hypsubst_thin
      apply (metis drop_Suc drop_all dual_order.refl list.sel(3) lshift_simps(1) tl_drop)
     apply hypsubst_thin
     apply safe
     subgoal
-      apply (subst produce.code)
-      apply (simp split: option.splits prod.splits if_splits list.splits)
       apply (simp add: drop_Suc drop_tl)
       done
     subgoal
@@ -193,7 +198,6 @@ lemma produce_inner_skip_n_productions_op_Some_None_Suc:
   shows "produce_inner (skip_n_productions_op op (Suc n), lxs) = Some (Inr (skip_first_production_op lgc'))"
   using assms apply (induction "?P" "?R"  arbitrary: n op lxs rule: produce_inner_alt)
   subgoal
-    apply (subst produce_inner.simps)
     apply (simp split: prod.splits llist.splits if_splits list.splits)
     apply (metis (mono_tags, lifting) Suc_diff_le less_or_eq_imp_le)
     done
@@ -214,7 +218,6 @@ next
   case (produces h lxs)
   then show ?case 
     apply -
-    apply (subst (asm) (1 2) produce_inner.simps)
     apply (simp split: prod.splits llist.splits if_splits list.splits)
     apply (subst produce.code)
     apply (simp split: option.splits prod.splits if_splits)
@@ -232,29 +235,39 @@ lemma produce_inner_skip_n_productions_op_Suc_skip_n_productions_op_n:
     apply -
     apply (simp split: if_splits)
     subgoal
-      apply (subst (asm) (2) produce_inner.simps)
-      apply (simp split: if_splits)
+      apply (cases lxs)
+      apply (simp_all split: if_splits list.splits)
       subgoal
         apply hypsubst_thin
         apply (subst (asm) Suc_diff_le)
-         apply simp
+         apply (simp split: llist.splits if_splits)
         apply fastforce
         done
-      subgoal
+        subgoal
         apply hypsubst_thin
-        apply (metis One_nat_def add_diff_cancel_right' less_SucE plus_1_eq_Suc skip_n_productions_op_0)
+        apply (subst (asm) Suc_diff_le)
+         apply (simp split: llist.splits if_splits)
+        apply fastforce
         done
       done
     subgoal
-      apply (subst (asm) (2) produce_inner.simps)
-      apply (simp split: if_splits list.splits)
+      apply (cases lxs)
+       apply (simp_all split: if_splits list.splits)
+      subgoal
+        apply hypsubst_thin
+        apply (subst (asm) Suc_diff_le)
+         apply (simp split: llist.splits if_splits)
+        apply fastforce+
+        done
+      done
+    subgoal
+       apply (simp_all split: if_splits list.splits)
       done
     done
 next
   case (produces h lxs)
   then show ?case 
     apply -
-    apply (subst (asm) (1 2) produce_inner.simps)
     apply (simp split: if_splits list.splits)
     done
 qed
@@ -266,7 +279,7 @@ lemma produce_inner_skip_n_productions_op_Some_None_Suc_None:
   using assms apply (induction ?P ?R arbitrary: lxs n op rule: produce_inner_alt)
    apply (simp_all split: if_splits)
    apply (smt (verit) Suc_diff_le less_le_not_le list.simps(4) llist.case(2) not_less_eq prod.simps(2) produce_inner.simps skip_n_productions_op.simps(1))
-  apply (metis (mono_tags, lifting) One_nat_def add_diff_cancel_right' less_le_not_le list.simps(4) llist.simps(5) not_less_eq plus_1_eq_Suc prod.simps(2) produce_inner.simps skip_n_productions_op.simps(1) skip_n_productions_op_0)
+  apply fastforce
   done
 
 lemma produce_inner_skip_n_productions_op_Suc_None_Inr_None:
@@ -274,25 +287,12 @@ lemma produce_inner_skip_n_productions_op_Suc_None_Inr_None:
     and "produce_inner (skip_n_productions_op op n, lxs) = None"
   shows False
   using assms apply (induction ?P ?R arbitrary: lxs n op rule: produce_inner_alt)
-    apply (simp_all split: if_splits; hypsubst_thin?)
-     apply (smt (verit, del_insts) Suc_diff_Suc cancel_comm_monoid_add_class.diff_cancel diff_Suc_Suc drop_eq_Nil2 less_Suc_eq less_or_eq_imp_le list.simps(4) llist.case(2) prod.simps(2) produce_inner.simps skip_n_productions_op.simps(1) skip_n_productions_op_0)
+   apply (simp_all  add: list.case_eq_if split: if_splits; hypsubst_thin?)
+    apply (smt (verit, del_insts) Suc_diff_Suc cancel_comm_monoid_add_class.diff_cancel diff_Suc_Suc drop_eq_Nil2 less_Suc_eq less_or_eq_imp_le list.simps(4) llist.case(2) prod.simps(2) produce_inner.simps skip_n_productions_op.simps(1) skip_n_productions_op_0)
   subgoal
-    apply (subst (asm) (2) produce_inner.simps)
-    apply (auto split: list.splits)
-    done
-   apply (meson produce_inner_skip_n_productions_op_Suc_skip_n_productions_op_n)
-  done
-
-lemma produce_inner_skip_n_productions_op_None_Inr_None:
-  "produce_inner (skip_n_productions_op op (Suc n), lxs) = Some r \<Longrightarrow>
-   r = Inr lys \<Longrightarrow>
-   produce_inner (skip_n_productions_op op n, lxs) = None \<Longrightarrow>
-   False"
-  apply (induction "(skip_n_productions_op op (Suc n), lxs)" r arbitrary: lxs n op rule: produce_inner_alt[consumes 1])
-    apply (simp_all split: if_splits; hypsubst_thin?)
-   apply (smt (verit, del_insts) Suc_diff_Suc cancel_comm_monoid_add_class.diff_cancel diff_Suc_Suc drop_eq_Nil2 less_Suc_eq less_or_eq_imp_le list.simps(4) llist.case(2) prod.simps(2) produce_inner.simps skip_n_productions_op.simps(1) skip_n_productions_op_0)
-  apply (subst (asm) (2) produce_inner.simps)
-  apply (auto split: list.splits)
+    using less_Suc_eq by fastforce
+  subgoal
+    by (meson produce_inner_skip_n_productions_op_Suc_skip_n_productions_op_n)
   done
 
 lemma produce_inner_Some_produce[simp]:
@@ -303,191 +303,65 @@ lemma produce_inner_Some_produce[simp]:
   done
 
 lemma produce_inner_Some_None_None_False:
-  "produce_inner (skip_n_productions_op op n, lxs) = Some r \<Longrightarrow>
-   r = Inr lys \<Longrightarrow>
-   produce_inner (op, lxs) = None \<Longrightarrow>
-   False"
-  apply (induct "(skip_n_productions_op op n, lxs)" "r" arbitrary: n op lxs  rule: produce_inner_alt[consumes 1])
-    apply (auto split: if_splits)
-  subgoal
-    apply (subst (asm) (2) produce_inner.simps)
-    apply (auto split: prod.splits list.splits)
-    done
-  subgoal
-    apply (subst (asm) (2) produce_inner.simps)
-    apply (auto split: prod.splits list.splits)
-    apply (metis skip_n_productions_op_0)
-    done
+  assumes "produce_inner (skip_n_productions_op op n, lxs) = Some (Inr lys)" (is "produce_inner ?P = Some ?R")
+    and "produce_inner (op, lxs) = None"
+  shows False
+  using assms apply (induct ?P ?R arbitrary: n op lxs rule: produce_inner_alt[consumes 1])
+   apply (simp_all split: prod.splits list.splits if_splits)
+  apply auto[1]
+  apply (metis skip_n_productions_op_0)
   done
 
 lemma produce_inner_None_Some_None_False:
-  "produce_inner (op, lxs) = Some r \<Longrightarrow>
-   r = Inr lys \<Longrightarrow>
-   produce_inner (skip_n_productions_op op n, lxs) = None \<Longrightarrow>
-   False"
-  apply (induct "(op, lxs)" "r" arbitrary: n op lxs  rule: produce_inner_alt[consumes 1])
-    apply (auto split: if_splits)
-  subgoal
-    apply (subst (asm) (2) produce_inner.simps)
-    apply (auto split: prod.splits list.splits if_splits)
-    apply (metis skip_n_productions_op_0)
-    done
+  assumes "produce_inner (op, lxs) = Some (Inr lys)" (is "produce_inner ?P = Some ?R")
+    and "produce_inner (skip_n_productions_op op n, lxs) = None"
+  shows False
+  using assms apply (induct ?P ?R arbitrary: n op lxs  rule: produce_inner_alt)
+    apply (simp_all split: if_splits)
+  apply auto[1]
+  apply (metis skip_n_productions_op_0)
   done
 
 lemma produce_inner_skip_n_productions_op_Some_llength_le:
-  "produce_inner (skip_n_productions_op op n, lxs) = Some r \<Longrightarrow>
-   r = Inl (lgc'', y, ys, lxs'') \<Longrightarrow>
-   llength (produce op lxs) \<le> enat n \<Longrightarrow> False"
-  apply (induct "(skip_n_productions_op op n, lxs)" r arbitrary: n y ys lxs'' op lxs lgc'' rule: produce_inner_alt[consumes 1])
-  subgoal for h lxs' lgc' n y ys lxs'' op lgc''
-    apply (subst (asm) (2) produce.code)
-    apply (auto split:option.splits if_splits)
-    subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto split: prod.splits list.splits llist.splits if_splits)
-      apply (metis i0_lb llength_LNil produce_inner_None_produce_LNil)
-      done
-    subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto split: prod.splits list.splits llist.splits if_splits)
-      apply (metis llength_LNil produce_inner_None_produce_LNil skip_n_productions_op_0 zero_le)
-      done
-    subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto split: prod.splits list.splits llist.splits if_splits sum.splits)
-        apply fastforce
-       apply (metis enat_ord_simps(1) llength_llist_of option.case(2) produce.code sum.case(2))
-      apply (smt (verit, del_insts) add_Suc_right add_Suc_shift add_diff_cancel_left' co.enat.sel(2) eSuc_le_iff enat_less_enat_plusI2 epred_enat leD leI less_imp_Suc_add llength_shift plus_1_eq_Suc)
-      done
-    subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto split: prod.splits list.splits llist.splits if_splits sum.splits)
-      using zero_enat_def apply auto[1]
-       apply hypsubst_thin
-       apply (metis dual_order.eq_iff enat_0 llength_LNil llist_of.simps(1) old.sum.simps(6) option.simps(5) produce.code skip_n_productions_op_0)
-      apply (metis add_diff_cancel_left' co.enat.sel(2) dual_order.eq_iff eSuc_le_iff epred_enat ldropn_eq_LNil length_Cons lessI llength_LNil plus_1_eq_Suc shift_eq_shift_ldropn_length skip_n_productions_op_0 zero_enat_def)
-      done
-    done
-  subgoal
-    apply (subst (asm) produce_inner.simps)
-    apply (auto split: prod.splits list.splits llist.splits if_splits)
-    apply (subst (asm) produce.code)
-    apply (auto split: prod.splits list.splits llist.splits if_splits option.splits sum.splits)
-      apply (subst (asm) produce_inner.simps)
-      apply (auto split: prod.splits list.splits llist.splits if_splits)
-     apply (subst (asm) produce_inner.simps)
-     apply (auto split: prod.splits list.splits llist.splits if_splits)
-     apply (metis drop_eq_Nil2 eSuc_enat eSuc_plus enat_less_enat_plusI leD le_eq_less_or_eq length_Cons list.simps(3) llength_shift not_less_iff_gr_or_eq)
-    apply (subst (asm) produce_inner.simps)
-    apply (auto split: prod.splits list.splits llist.splits if_splits)
-    done
-  subgoal
-    apply (auto split: prod.splits list.splits llist.splits if_splits)
-    done
+  assumes "produce_inner (skip_n_productions_op op n, lxs) = Some (Inl (lgc'', y, ys, lxs''))" (is "produce_inner ?P = Some ?R")
+    and "llength (produce op lxs) \<le> enat n"
+  shows False
+  using assms  apply (induct ?P ?R arbitrary: n y ys lxs'' op lxs lgc'' rule: produce_inner_alt)
+   apply (simp_all split: prod.splits list.splits llist.splits sum.splits option.splits if_splits)
+    apply (metis LNil_eq_shift_iff ldropn_eq_LNil ldropn_shift)
+   apply (metis add.right_neutral enat_less_enat_plusI2 leD linorder_le_less_linear llength_shift skip_n_productions_op_0)
+  apply (metis ldropn_eq_LNil ldropn_shift llist.simps(3) lshift_simps(2))
   done
 
 lemma produce_inner_skip_n_productions_op_Some_produce_inner_None:
-  "produce_inner (skip_n_productions_op op n, lxs) = Some r \<Longrightarrow>
-   r = Inl (lgc', x, xs, lxs') \<Longrightarrow>
-   produce_inner (op, lxs) = None \<Longrightarrow> False"
-  apply (induct "(skip_n_productions_op op n, lxs)" r arbitrary: n xs op lxs x  lxs' lgc' rule: produce_inner_alt[consumes 1])
-  subgoal
-    apply (subst (asm) (2) produce_inner.simps)
-    apply (auto split: if_splits prod.splits list.splits)
-    apply (metis skip_n_productions_op_0)
-    done
-  subgoal for h x xs lxs' lgc' n op
-    apply (subst (asm) produce_inner.simps)
-    apply (auto split: if_splits prod.splits list.splits)
-    apply (subst (asm) produce_inner.simps)
-    apply (auto split: if_splits prod.splits list.splits)
-    done
-  apply auto
+  assumes "produce_inner (skip_n_productions_op op n, lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
+    and "produce_inner (op, lxs) = None" shows False
+  using assms apply (induct ?P ?R arbitrary: n xs op lxs x  lxs' lgc' rule: produce_inner_alt)
+   apply (simp_all split: if_splits prod.splits list.splits)
+   apply auto[1]
+  apply (metis skip_n_productions_op_0)
   done
 
 lemma produce_inner_skip_n_productions_op_Some_produce_inner_Some_None:
-  "produce_inner (skip_n_productions_op op n, lxs) = Some r \<Longrightarrow>
-   r = Inl (lgc', x, xs, lxs') \<Longrightarrow>
-   produce_inner (op, lxs) = Some (Inr lys) \<Longrightarrow> False"
-  apply (induct "(skip_n_productions_op op n, lxs)" r arbitrary: n xs op lxs x  lxs' lgc' rule: produce_inner_alt[consumes 1])
-  subgoal
-    apply (subst (asm) (2) produce_inner.simps)
-    apply (auto split: if_splits prod.splits list.splits)
-    apply (metis skip_n_productions_op_0)
-    done
-  subgoal for h x xs lxs' lgc' n op
-    apply (subst (asm) produce_inner.simps)
-    apply (auto split: if_splits prod.splits list.splits)
-    apply (subst (asm) produce_inner.simps)
-    apply (auto split: if_splits prod.splits list.splits)
-    done
-  apply auto
+  assumes "produce_inner (skip_n_productions_op op n, lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
+    and "produce_inner (op, lxs) = Some (Inr lys)"
+  shows False
+  using assms apply (induct ?P ?R arbitrary: n xs op lxs x  lxs' lgc' rule: produce_inner_alt)
+   apply (simp_all split: if_splits prod.splits list.splits)
+   apply fast
+  apply (metis skip_n_productions_op_0)
   done
 
 lemma produce_inner_Some_produce_inner_skip_n_productions_op_Suc_n_None:
-  "produce_inner (skip_n_productions_op op n, lxs) = Some r \<Longrightarrow>
-   r = Inl (lgc', x, xs, lxs') \<Longrightarrow>
-   produce_inner (skip_n_productions_op op (Suc n), lxs) = None \<Longrightarrow>
-   llength (produce op lxs) = enat (Suc n)"
-  apply (induct "(skip_n_productions_op op n, lxs)" r arbitrary: n op lxs lxs' x xs rule: produce_inner_alt[consumes 1])
-  subgoal for h lxs' lgc' n op lxs'' x xs
-    apply (subst (asm) (2) produce_inner.simps)
-    apply (auto split: prod.splits if_splits list.splits)
-    subgoal
-      apply hypsubst_thin
-      apply (drule meta_spec)+ 
-      apply (drule meta_mp)
-       apply (rule refl)
-      apply (drule meta_mp)
-       apply (simp add: Suc_diff_le)
-      apply (subst produce.code)
-      apply (auto split: option.splits)  
-       apply (subst (asm) (2) produce_inner.simps)
-       apply (auto split: prod.splits if_splits list.splits sum.splits)
-        apply (simp add: produce.code)  
-       apply (subst (asm) (2) produce_inner.simps)
-       apply (auto split: prod.splits if_splits list.splits sum.splits)
-       apply (metis (no_types, lifting) Suc_diff_Suc Suc_lessD eSuc_enat_iff le_add_diff_inverse less_or_eq_imp_le llength_shift plus_enat_simps(1))
-      apply (subst (asm) (2) produce_inner.simps)
-      apply (auto split: prod.splits if_splits list.splits sum.splits)
-      using produce_inner_None_Some_None_False apply blast
-      done
-    subgoal
-      apply hypsubst_thin
-      apply (subst produce.code)
-      apply (auto split: option.splits) 
-       apply (subst (asm) (3) produce_inner.simps)
-       apply (auto split: prod.splits if_splits list.splits sum.splits)
-        apply (metis llength_LNil produce_inner_None_produce_LNil skip_n_productions_op_0)
-      subgoal
-        apply (subst (asm) (3) produce_inner.simps)
-        apply (auto split: prod.splits if_splits list.splits sum.splits)
-         apply (metis llength_LCons produce_inner_Some_produce skip_n_productions_op_0)
-        apply (metis One_nat_def eSuc_enat llength_shift one_enat_def plus_1_eSuc(2) skip_n_productions_op_0)
-        done
-      subgoal
-        apply (subst (asm) (3) produce_inner.simps)
-        apply (auto split: prod.splits if_splits list.splits sum.splits)
-        using produce_inner_None_Some_None_False apply blast
-        done
-      done
-    done
-   apply (auto split: if_splits)
-  apply (subst produce.code)
-  apply (auto split: prod.splits if_splits list.splits sum.splits llist.splits option.splits)
+  assumes "produce_inner (skip_n_productions_op op n, lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
+    and "produce_inner (skip_n_productions_op op (Suc n), lxs) = None"
+  shows "llength (produce op lxs) = enat (Suc n)"
+  using assms apply (induct ?P ?R arbitrary: n op lxs lxs' x xs rule: produce_inner_alt)
+   apply (simp_all split: if_splits prod.splits list.splits)
   subgoal
-    apply (subst (asm) (1 2 3) produce_inner.simps)
-    apply (auto split: prod.splits if_splits list.splits sum.splits llist.splits option.splits)
-    done
+    by (metis Suc_diff_le add_diff_inverse_nat less_imp_le_nat llength_shift not_less_eq_eq plus_enat_simps(1))
   subgoal
-    apply (subst (asm) (1 2 3) produce_inner.simps)
-    apply (auto split: prod.splits if_splits list.splits sum.splits llist.splits option.splits)
-    apply (simp add: eSuc_enat produce_inner_None_produce_LNil)
-    done
-  subgoal
-    apply (subst (asm) (1 2 3) produce_inner.simps)
-    apply (auto split: prod.splits if_splits list.splits sum.splits llist.splits option.splits)
-    done
+    by (metis One_nat_def Suc_eq_plus1 llength_shift plus_enat_simps(1) skip_n_productions_op_0)
   done
 
 lemma produce_inner_skip_n_productions_op_Some_None_aux:
@@ -495,7 +369,7 @@ lemma produce_inner_skip_n_productions_op_Some_None_aux:
    produce_inner (op, lxs) = None \<Longrightarrow> False"
   by (metis obj_sumE prod_cases4 produce_inner_Some_None_None_False produce_inner_skip_n_productions_op_Some_produce_inner_None)
 
-lemma produce_inner_skip_n_productions_op_Some_None:
+lemma produce_inner_skip_n_productions_op_Some_None[simp]:
   "produce_inner (op, lxs) = None \<Longrightarrow>
    produce_inner (skip_n_productions_op op n, lxs) = None"
   using produce_inner_skip_n_productions_op_Some_None_aux by fastforce
@@ -504,15 +378,12 @@ lemma produce_inner_skip_n_productions_op_Suc_Some_None_False:
   "produce_inner (skip_n_productions_op op (Suc n), lxs) = Some r \<Longrightarrow>
    produce_inner (skip_n_productions_op op n, lxs) = None \<Longrightarrow>
    False"
-  apply (induct "(skip_n_productions_op op (Suc n), lxs)" r arbitrary: n op lxs rule: produce_inner_alt[consumes 1])
+  apply (induct "(skip_n_productions_op op (Suc n), lxs)" r arbitrary: n op lxs rule: produce_inner_alt)
   subgoal
-    apply (subst (asm) (2) produce_inner.simps)
-    apply (auto split: prod.splits if_splits list.splits)
+    apply (simp split: prod.splits if_splits list.splits)
      apply (metis Suc_diff_le less_or_eq_imp_le)
     apply (metis One_nat_def add_diff_cancel_right' less_SucE plus_1_eq_Suc skip_n_productions_op_0)
     done
-   apply (auto split: if_splits)
-  apply (subst (asm) (1 2) produce_inner.simps)
   apply (auto split: prod.splits if_splits list.splits)
   done
 
@@ -531,410 +402,239 @@ lemma produce_inner_skip_n_productions_op_None_gt:
   done
 
 lemma produce_inner_Some_produce_inner_skip_n_productions_op_le_False:
-  "produce_inner (op, lxs) = Some r \<Longrightarrow>
-   r = Inl (lgc', x, xs, lxs') \<Longrightarrow>
-   produce_inner (skip_n_productions_op op n, lxs) = Some (Inl l) \<Longrightarrow>
-   eSuc (llength (xs @@- produce lgc' lxs')) \<le> enat n \<Longrightarrow>
-   False"
-  apply (induct "(op, lxs)" r arbitrary: n op lxs lxs' x xs lgc'  rule: produce_inner_alt[consumes 1])
-  subgoal
-    apply (subst (asm) (2) produce.code)
-    apply (subst (asm) (2) produce_inner.simps)
-    apply (auto split: prod.splits if_splits list.splits sum.splits option.splits)
-        apply (metis llength_llist_of produce_inner_None_produce_LNil shift_LNil)
-       apply (metis option.case(2) produce.code sum.case(2))
-      apply (metis not_eSuc_ilei0 zero_enat_def)
-     apply (metis not_eSuc_ilei0 zero_enat_def)
-    apply (metis not_eSuc_ilei0 zero_enat_def)
+  assumes "produce_inner (op, lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
+    and "produce_inner (skip_n_productions_op op n, lxs) = Some (Inl l)"
+    and "eSuc (llength (xs @@- produce lgc' lxs')) \<le> enat n"
+  shows False
+  using assms proof (induct ?P ?R arbitrary: n op lxs lxs' x xs lgc' rule: produce_inner_alt)
+  case (no_production op h lxs op')
+  then show ?case 
+    apply (simp split: prod.splits if_splits list.splits sum.splits option.splits)
+     apply force+
     done
-   apply simp_all
-  apply (metis llength_LCons prod_cases4 produce_inner_Some_produce produce_inner_skip_n_productions_op_Some_llength_le)
-  done
+next
+  case (produces op h x xs lxs lxs' op')
+  then show ?case 
+    apply (simp split: prod.splits if_splits list.splits sum.splits option.splits)
+    subgoal
+      by (metis llength_LCons prod_cases4 produce_inner_Some_produce produce_inner_skip_n_productions_op_Some_llength_le produces.hyps(1) produces.prems(1))
+    subgoal
+      by (metis llength_LCons prod_cases4 produce_inner_Some_produce produce_inner_skip_n_productions_op_Some_llength_le produces.hyps(1) produces.prems(1))
+    subgoal
+      by (metis drop_eq_Nil2 dual_order.trans enat_le_plus_same(1) iless_Suc_eq leD le_add_diff_inverse length_Cons list.distinct(1) llength_shift not_less_eq_eq plus_enat_simps(1))
+    done
+qed
 
 lemma produce_inner_skip_n_productions_op_None_le:
   "produce_inner (skip_n_productions_op op n, lxs) = None \<Longrightarrow> llength (produce op lxs) \<le> enat n"
-  apply (induct n arbitrary: lxs op)
-   apply (simp add: produce_inner_None_produce_LNil)
-  subgoal for n lxs op
-    apply (subst produce.code)
-    apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-    subgoal for lgc' x xs lxs'
-      apply (cases "produce_inner (skip_n_productions_op op n, lxs)")
-      subgoal
-        by (metis ldrop_eSuc_ltl ldropn_LNil ldropn_eq_LNil llength_LCons ltl_ldropn produce_inner_Some_produce)
-      subgoal for r
-        apply (cases r)
-         apply (metis dual_order.eq_iff llength_LCons produce_inner_Some_produce produce_inner_Some_produce_inner_skip_n_productions_op_Suc_n_None surj_pair)
-        subgoal for lys
-          apply simp
-          apply (simp add: produce_inner_skip_n_productions_op_Some_None_Suc)
-          done
-        done
-      done
-    subgoal for lys
-      using produce_inner_None_Some_None_False by blast
-    done
-  done
+proof (induct n arbitrary: lxs op)
+  case 0
+  then show ?case by simp
+next
+  case (Suc n lxs op)
+  then show ?case 
+  proof (cases "produce_inner (skip_n_productions_op op n, lxs)")
+    case None
+    then show ?thesis 
+      by (metis Suc.hyps order.trans eSuc_enat ile_eSuc)
+  next
+    case (Some r)
+    then show ?thesis 
+    proof (cases r)
+      case (Inl a)
+      then show ?thesis 
+        by (metis Some Suc.prems nle_le prod_cases4 produce_inner_Some_produce_inner_skip_n_productions_op_Suc_n_None)
+    next
+      case (Inr b)
+      then show ?thesis 
+        using Some Suc.prems produce_inner_skip_n_productions_op_Some_None_Suc produce_inner_skip_n_productions_op_Suc_Some_None_False by blast
+    qed
+  qed
+qed
 
 lemma produce_inner_skip_n_productions_op_Some_Inr_le:
-  "produce_inner (skip_n_productions_op op n, lxs) = Some r \<Longrightarrow> 
-   r = Inr lys \<Longrightarrow>
-   lnull (exit lys) \<Longrightarrow> llength (produce op lxs) \<le> enat n"
-  apply (induct "(skip_n_productions_op op n, lxs)" r arbitrary: n op lxs  rule: produce_inner_alt[consumes 1])
-  subgoal
-    apply (subst produce.code)
-    apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
+  assumes "produce_inner (skip_n_productions_op op n, lxs) = Some (Inr lys)" (is "produce_inner ?P = Some ?R")
+    and "lnull (exit lys)"
+  shows "llength (produce op lxs) \<le> enat n"
+  using assms proof (induct ?P ?R arbitrary: n op lxs rule: produce_inner_alt)
+  case (no_production h lxs op')
+  then show ?case 
+    apply (simp split: if_splits)
     subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-       apply (metis llength_LCons produce_inner_Some_produce)
-      apply (metis (no_types, lifting) LNil_eq_shift_iff drop_eq_Nil2 eSuc_enat eSuc_plus ldropn_eq_LNil ldropn_shift length_Cons less_or_eq_imp_le llength_shift)
-      done
+      by (metis (no_types, lifting) LNil_eq_shift_iff drop_eq_Nil2 ldropn_eq_LNil ldropn_shift less_or_eq_imp_le)
     subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-      apply (metis enat_ord_simps(1) llength_llist_of option.case(2) produce.code sum.case(2))
-      done
-    subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-       apply (metis produce_inner_skip_n_productions_op_Some_llength_le skip_n_productions_op_0)
-      apply (metis eSuc_enat_iff ile0_eq llength_LNil llength_llist_of llength_shift nle_le shift_LNil skip_n_productions_op_0 zero_enat_def)
-      done
-    subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-      apply (metis enat_0_iff(1) le_zero_eq length_0_conv llength_llist_of option.case(2) produce.code skip_n_productions_op_0 sum.case(2))
-      done
+      by (metis add.right_neutral enat_0 linorder_le_less_linear llength_shift nle_le not_less_zero skip_n_productions_op_0)
     done
-   apply blast
-  apply force
-  done
+next
+  case terminates
+  then show ?case by force
+qed
 
 lemma produce_inner_skip_n_productions_op_Some_Inr_le_lnull:
-  "produce_inner (skip_n_productions_op op n, lxs) = Some r \<Longrightarrow> 
-   r = Inr lys \<Longrightarrow> llength (produce op lxs) \<le> enat n \<Longrightarrow>
-   lnull (exit lys)"
-  apply (induct "(skip_n_productions_op op n, lxs)" r arbitrary: n op lxs  rule: produce_inner_alt[consumes 1])
-  subgoal
-    apply (subst (asm) (2) produce.code)
-    apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
+  assumes "produce_inner (skip_n_productions_op op n, lxs) = Some (Inr lys)" (is "produce_inner ?P = Some ?R")
+    and "llength (produce op lxs) \<le> enat n"
+  shows  "lnull (exit lys)"
+  using assms proof (induct ?P ?R arbitrary: n op lxs rule: produce_inner_alt)
+  case (no_production h lxs op')
+  then show ?case 
+    apply (simp split: if_splits)
     subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-      done
+      by (metis (no_types, lifting) LNil_eq_shift_iff ldropn_eq_LNil ldropn_shift)
     subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-      apply (drule meta_spec)+
-      apply (drule meta_mp)
-       apply (rule refl)
-      apply (drule meta_mp)
-      subgoal
-        apply (subst produce.code)
-        apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-         apply (metis drop_eq_Nil2 ldropn_eq_LNil ldropn_shift length_Cons less_or_eq_imp_le llength_LCons lshift_simps(1) lshift_simps(2))
-        apply (subst (asm) produce.code)
-        apply simp
-        apply (smt (verit, best) add_Suc_shift add_diff_cancel_left' co.enat.sel(2) diff_Suc_eq_diff_pred eSuc_le_iff enat_less_enat_plusI2 enat_ord_simps(1) epred_enat leD leI less_imp_Suc_add llength_llist_of llength_shift plus_1_eq_Suc)
-        done
-      subgoal
-        apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-        done
-      done
-    subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-      apply (simp add: produce.code)
-      done
-    subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-      apply (metis produce_inner_skip_n_productions_op_None_le skip_n_productions_op_0)
-      done
-    subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-       apply (metis not_eSuc_ilei0 zero_enat_def)
-      apply (metis LNil_eq_shift_iff cancel_comm_monoid_add_class.diff_cancel co.enat.sel(2) diff_Suc_1 eSuc_le_iff epred_enat ldropn_eq_LNil ldropn_shift skip_n_productions_op_0)
-      done
-    subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-      apply (metis enat_0 ile0_eq llength_eq_0 produce_inner_skip_n_productions_op_Some_Inr_le skip_n_productions_op_0)
-      done
+      by (metis diff_self_eq_0 ldrop_eq_LNil ldrop_shift lshift_LNil_split skip_n_productions_op_0)
     done
-   apply auto
-  done
+next
+  case terminates
+  then show ?case by force
+qed
 
 lemma produce_inner_skip_n_productions_op_Inl_lnth:
-  "produce_inner (skip_n_productions_op op n, lxs) = Some r \<Longrightarrow>
-   r = Inl (lgc', y, ys, lys) \<Longrightarrow>
-   n < llength (produce op lxs) \<Longrightarrow>
-   y = lnth (produce op lxs) n"
-  apply (induct "(skip_n_productions_op op n, lxs)" r arbitrary: n op lxs  rule: produce_inner_alt[consumes 1])
-  subgoal
-    apply (subst (asm) (3) produce.code)
-    apply (subst produce.code)
-    apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
+  assumes  "produce_inner (skip_n_productions_op op n, lxs) = Some (Inl (lgc', y, ys, lys))" (is "produce_inner ?P = Some ?R")
+    and "n < llength (produce op lxs)"
+  shows "y = lnth (produce op lxs) n"
+  using assms proof (induct ?P ?R arbitrary: n op lxs rule: produce_inner_alt)
+  case (no_production h lxs op')
+  then show ?case 
+    apply (simp split: if_splits)
     subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
+      apply hypsubst_thin
       apply (drule meta_spec)+
       apply (drule meta_mp)
        apply (rule refl)
       apply (drule meta_mp)
-      subgoal
-        apply (subst produce.code)
-        apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-          apply (metis Suc_lessD enat_ord_simps(1) leD llength_llist_of not_Some_eq produce_inner_None_produce_LNil shift_LNil)
-         apply (metis (no_types, lifting) LNil_eq_shift_iff drop_eq_Nil2 eSuc_enat eSuc_plus iless_Suc_eq ldropn_eq_LNil ldropn_shift leI length_Cons less_le_not_le llength_LCons llength_shift)
-        apply (smt (verit, ccfv_SIG) LNil_eq_shift_iff add_diff_cancel_left' diff_Suc_eq_diff_pred drop_eq_Nil2 eSuc_enat eSuc_le_iff enat_ord_simps(1) iless_Suc_eq ldropn_eq_LNil ldropn_shift leD leI less_imp_Suc_add less_or_eq_imp_le llength_llist_of option.case(2) plus_1_eq_Suc produce.code sum.case(2))
-        done
-      apply (metis diff_Suc_eq_diff_pred lappend_llist_of lnth_LCons' lnth_lappend_llist_of nat_diff_split not_less_zero zero_less_diff)
+       apply (metis drop_eq_Nil2 ldropn_eq_LNil ldropn_shift leD less_or_eq_imp_le linorder_le_less_linear lshift_simps(1))
+      apply simp
+      apply (metis lappend_llist_of llength_llist_of lnth_lappend2 nless_le)
       done
     subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-      apply (simp add: produce.code)
-      done
-    subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-       apply (metis co.enat.distinct(1) enat_0 llength_LCons lnth_0 not_gr_zero produce_inner_Some_produce skip_n_productions_op_0)
-      apply (metis Suc_ile_eq add_diff_cancel_right' enat_llength_ldropn ldropn_Suc_conv_ldropn length_Cons lessI lnth_0 not_eSuc_ilei0 not_gr_zero one_eSuc one_enat_def plus_1_eq_Suc shift_eq_shift_ldropn_length skip_n_productions_op_0 zero_enat_def)
-      done
-    subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-      apply (metis enat_ord_simps(2) length_greater_0_conv llength_llist_of lnth_llist_of option.case(2) produce.code skip_n_productions_op_0 sum.case(2))
+      apply (drule meta_spec)
+      apply (drule meta_spec[of _ 0])
+      apply (drule meta_mp)
+       apply simp
+      apply (drule meta_mp)
+       apply (simp_all add: enat_0 llength_shift)
+      apply (metis diff_is_0_eq lappend_llist_of less_or_eq_imp_le llength_llist_of lnth_lappend2)
       done
     done
-   apply (auto split: if_splits)
-  apply (subst (asm) produce.code)
-  apply (subst produce.code)
-  apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-   apply (subst (asm) produce_inner.simps)
-   apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-   apply (subst (asm) produce_inner.simps)
-   apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-   apply (metis drop_Cons' drop_all lappend_llist_of leI list.simps(3) lnth_LCons' lnth_lappend_llist_of nth_via_drop)
-  apply (meson produce_inner_skip_n_productions_op_Some_produce_inner_Some_None)
-  done
+next
+  case (produces h lxs)
+  then show ?case 
+    apply (simp split: if_splits)
+    apply (metis drop_all less_or_eq_imp_le list.simps(3) lnth_shift not_less_iff_gr_or_eq nth_via_drop)
+    done
+qed
 
 lemma produce_inner_skip_n_productions_Inr_op_ldropn:
-  "produce_inner (skip_n_productions_op op n, lxs) = Some r \<Longrightarrow>
-   r = Inr y \<Longrightarrow>
-   exit y = ldropn n (produce op lxs)"
-  apply (induct "(skip_n_productions_op op n, lxs)" r arbitrary: n op lxs  rule: produce_inner_alt[consumes 1])
-  subgoal
-    apply (subst produce.code)
-    apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
+  assumes "produce_inner (skip_n_productions_op op n, lxs) = Some (Inr y)" (is "produce_inner ?P = Some ?R")
+  shows "exit y = ldropn n (produce op lxs)"
+  using assms proof (induct ?P ?R arbitrary: n op lxs rule: produce_inner_alt)
+  case (no_production h lxs op')
+  then show ?case 
+    apply (simp add: ldropn_shift split: if_splits)
     subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-      done
-    subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-      apply (metis drop_eq_Nil2 ldropn_shift length_Cons less_or_eq_imp_le lshift_simps(1) lshift_simps(2))
-      done
-    subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-      apply (simp add: produce.code)
-      done
-    subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-      apply (metis ldropn_0 produce_inner_None_produce_LNil skip_n_productions_op_0)
-      done
-    subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-       apply (metis ldropn_0 produce_inner_Some_produce skip_n_productions_op_0)
-      apply (metis Ex_list_of_length ldropn_0 lessI shift_eq_shift_ldropn_length skip_n_productions_op_0)
-      done
-    subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits)
-      apply (metis (no_types, lifting) ldropn_0 llist_of_inject option.case(2) produce.code skip_n_productions_op_0 sum.case(2))
-      done
+      by (metis ldropn_0 skip_n_productions_op_0)
     done
-   apply auto
-  apply (simp add: ldrop_enat)
-  done
-
-lemma produce_inner_Some_None_llenght:
-  "produce_inner (op, lxs) = Some r \<Longrightarrow>
-   r = Inl (lgc', x, xs, lxs') \<Longrightarrow>
-   n = length (x#xs) \<Longrightarrow>
-   produce_inner (lgc', lxs') = None \<Longrightarrow> llength (produce op lxs) = enat n"
-  apply (induct "(op, lxs)" r arbitrary: n op lxs  rule: produce_inner_alt[consumes 1])
-  subgoal
-    apply auto
-    apply (subst produce.code)
-    apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-      apply (subst (asm) (2) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-     apply (subst (asm) (2) produce_inner.simps)
-     apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-    apply (subst (asm) (2) produce_inner.simps)
-    apply (auto simp add: produce.code produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-    done
-   apply auto
-  apply (subst produce.code)
-  apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-  using eSuc_enat apply blast
-  done
+next
+  case terminates
+  then show ?case 
+    by (auto simp add: ldrop_enat)
+qed
 
 lemma produce_inner_skip_n_productions_op_llength_LNil:
-  "produce_inner (skip_n_productions_op op n, lxs) = Some r \<Longrightarrow>
-  r = Inl (lgc', x, xs, lxs') \<Longrightarrow>
-  \<not> llength (produce op lxs) \<le> enat n \<Longrightarrow>
-  produce_inner (skip_n_productions_op op (Suc n), lxs) = None \<Longrightarrow> xs @@- produce lgc' lxs' = LNil" 
-  apply (induct "(skip_n_productions_op op n, lxs)" r arbitrary: op lxs x xs lxs' n  rule: produce_inner_alt[consumes 1])
-  subgoal for op h lxs' lgc'a x xs lxs'a n lgc''
-    apply (subst (asm) (2) produce_inner.simps)
-    apply (subst (asm) (2) produce.code)
-    apply (subst produce.code)
-    apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
+  assumes  "produce_inner (skip_n_productions_op op n, lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
+    and "\<not> llength (produce op lxs) \<le> enat n"
+    and "produce_inner (skip_n_productions_op op (Suc n), lxs) = None"
+  shows "xs @@- produce lgc' lxs' = LNil" 
+  using assms proof (induct ?P ?R arbitrary: op lxs x xs lxs' n rule: produce_inner_alt)
+  case (no_production h lxs op')
+  then show ?case 
+    apply (simp split: if_splits)
     subgoal
-      apply (subst (asm) (2) produce.code)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-       apply (subst (asm) (4) produce_inner.simps)
-       apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-       apply (metis (no_types, lifting) Suc_diff_Suc Suc_lessD add_diff_cancel_right' enat_llength_ldropn ileI1 ldropn_eq_LNil leI length_Cons lessI llength_LNil not_eSuc_ilei0 one_eSuc one_enat_def plus_1_eq_Suc shift_eq_shift_ldropn_length)
-      apply (subst (asm) (4) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-      using produce_inner_None_Some_None_False apply blast
-      done
+      by (metis Suc_diff_le drop_eq_Nil dual_order.strict_iff_not ldropn_eq_LNil ldropn_shift lshift_LNil_split)
     subgoal
-      apply (subst (asm) (3) produce.code)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-       apply (subst (asm) (4) produce_inner.simps)
-       apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-       apply (metis (no_types, lifting) Suc_diff_Suc Suc_lessD add_diff_cancel_right' enat_llength_ldropn ileI1 ldropn_eq_LNil leI length_Cons lessI llength_LNil not_eSuc_ilei0 one_eSuc one_enat_def plus_1_eq_Suc shift_eq_shift_ldropn_length)
-      apply (subst (asm) (4) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-      using produce_inner_None_Some_None_False apply blast
-      done
-    subgoal
-      apply (subst (asm) (2) produce.code)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-       apply (subst (asm) (4) produce_inner.simps)
-       apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-       apply (metis (no_types, lifting) Suc_diff_Suc Suc_lessD add_diff_cancel_right' enat_llength_ldropn ileI1 ldropn_eq_LNil leI length_Cons lessI llength_LNil not_eSuc_ilei0 one_eSuc one_enat_def plus_1_eq_Suc shift_eq_shift_ldropn_length)
-      apply (subst (asm) (4) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-      using produce_inner_None_Some_None_False apply blast
-      done
-    subgoal
-      apply (subst (asm) (2) produce.code)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-       apply (subst (asm) (4) produce_inner.simps)
-       apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-        apply (metis produce_inner_skip_n_productions_op_Some_llength_le skip_n_productions_op_0)
-       apply (metis Suc_ile_eq ileI1 le_zero_eq linorder_le_less_linear llength_eq_0 llength_llist_of llist.collapse(1) order_less_irrefl shift_LNil skip_n_productions_op_0 zero_enat_def)
-      apply (subst (asm) (4) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-      using produce_inner_None_Some_None_False apply blast
-      done
-    subgoal
-      apply (subst (asm) (3) produce.code)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-      subgoal
-        apply (subst (asm) (4) produce_inner.simps)
-        apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-        apply (metis produce_inner_skip_n_productions_op_Some_llength_le skip_n_productions_op_0)
-        apply (metis eSuc_enat enat_0 ile0_eq linorder_le_cases llength_LNil llength_llist_of llength_shift shift_LNil skip_n_productions_op_0)
-        done
-      subgoal
-        apply (subst (asm) (4) produce_inner.simps)
-        apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-        using produce_inner_None_Some_None_False apply blast
-        done
-      done
-    subgoal
-      apply (subst (asm) (2) produce.code)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-      apply (subst (asm) (4) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-      apply (metis produce_inner_skip_n_productions_op_Some_llength_le skip_n_productions_op_0)
-      apply (metis Suc_ile_eq ileI1 le_zero_eq linorder_le_less_linear llength_eq_0 llength_llist_of llist.collapse(1) order_less_irrefl shift_LNil skip_n_productions_op_0 zero_enat_def)
-      apply (subst (asm) (4) produce_inner.simps)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-      apply (meson produce_inner_None_Some_None_False)
-      done
+      by (metis add_left_mono enat_0 llength_LNil llength_llist_of llength_shift shift_LNil skip_n_productions_op_0)
     done
-  apply (auto split: if_splits)
-  apply (subst (asm) (1 2) produce_inner.simps)
-  apply (subst produce.code)
-  apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits if_splits list.splits sum.splits option.splits llist.splits)
-  apply (metis One_nat_def add_left_cancel diff_add_inverse2 length_0_conv length_Cons length_drop llist_of_eq_LNil_conv plus_1_eq_Suc)
-  done
+next
+  case (produces h x xs lxs lxs')
+  then show ?case 
+    apply (simp split: if_splits list.splits)
+    apply (metis add_implies_diff add_is_1 length_0_conv length_drop list.size(4) llist_of_eq_LNil_conv plus_1_eq_Suc)
+    done
+qed
 
-lemma produce_skip_n_productions_op_correctness:
+theorem produce_skip_n_productions_op_correctness:
   "produce (skip_n_productions_op op n) lxs = ldropn n (produce op lxs)"
-  apply (coinduction arbitrary: op lxs n rule: llist.coinduct_upto)
-  apply (intro conjI impI)
-  subgoal for op lxs n
-    apply (subst (1 2) produce.code)
-    apply (auto split: prod.splits list.splits option.splits sum.splits)
-    apply (meson produce_inner_skip_n_productions_op_Some_produce_inner_None)
-    using produce_inner_Some_None_None_False apply blast
-    subgoal for lgc' x xs lxs' 
-      using produce_inner_skip_n_productions_op_None_le 
-      by (metis llength_LCons produce_inner_Some_produce)
-    apply (metis llength_LCons produce_inner_Some_produce produce_inner_skip_n_productions_op_Some_llength_le)
-    subgoal for lgc' x xs lxs' lys
-      by (metis llength_LCons null_rec(2) produce_inner_Some_produce produce_inner_skip_n_productions_op_Some_Inr_le)
-    subgoal
-      by (simp add: eq_Nil_null produce_inner_skip_n_productions_op_Some_Inr_le_lnull)
-    subgoal
-      using produce_inner_None_Some_None_False by blast
-    subgoal
-      by (meson produce_inner_skip_n_productions_op_Some_produce_inner_Some_None)
-    subgoal
-      by (metis enat_ord_simps(1) ldropn_0 llength_llist_of null_rec(2) produce_inner_skip_n_productions_Inr_op_ldropn produce_inner_skip_n_productions_op_Some_Inr_le skip_n_productions_op_0)
-    subgoal
-      by (simp add: eq_Nil_null produce.code produce_inner_skip_n_productions_op_Some_Inr_le_lnull)
-    done
-  subgoal for op lxs n
-    apply (subst (1 2) produce.code)
-    apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits list.splits option.splits sum.splits)
-    subgoal for lgc' x xs lxs' lgc'' y ys lysa
-      by (metis leI lhd_ldropn llength_LCons produce_inner_Some_produce produce_inner_skip_n_productions_op_Inl_lnth)
-    subgoal for lgc' x xs lxs' y
-      apply (metis lhd_llist_of produce_inner_Some_produce produce_inner_skip_n_productions_Inr_op_ldropn)
-      done
-    apply (meson produce_inner_skip_n_productions_op_Some_produce_inner_Some_None)
-    apply (metis ldropn_llist_of list_of_llist_of option.case(2) produce.code produce_inner_skip_n_productions_Inr_op_ldropn sum.case(2))
-    done
-  subgoal for op lxs n
-    apply (rule lshift.cong_base)
-    apply (rule exI[of _ op])
-    apply (rule exI[of _ lxs])
-    apply (rule exI[of _ "Suc n"])
-    apply safe
-    subgoal 
+proof (coinduction arbitrary: op lxs n rule: llist.coinduct_upto)
+  case (Eq_llist op' lxs' n')
+  then show ?case 
+  proof -
+    have "lnull (produce (skip_n_productions_op op' n') lxs') = lnull (ldropn n' (produce op' lxs'))"
       apply (subst (1 2) produce.code)
-      apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits list.splits option.splits sum.splits)
-      subgoal for lgc' x xs lxs'
-        by (meson produce_inner_skip_n_productions_op_llength_LNil)
+      apply (simp split: prod.splits list.splits option.splits sum.splits)
+      apply (intro impI allI conjI)
       subgoal
-        by (metis produce_inner_skip_n_productions_op_Suc_LCons)
+        by (metis llength_LCons produce_inner_Some_produce produce_inner_skip_n_productions_op_None_le)
       subgoal
-        by (metis produce_inner_skip_n_productions_op_Some_Some_Some_None lshift_simps(1))
+        by (meson produce_inner_Some_produce_inner_skip_n_productions_op_le_False)
       subgoal
-        by (simp add: produce_inner_skip_n_productions_op_Some_None_Suc)
+        by (metis llength_LCons produce_inner_Some_produce produce_inner_skip_n_productions_op_Some_Inr_le produce_inner_skip_n_productions_op_Some_Inr_le_lnull)
       subgoal
-        using produce_inner_skip_n_productions_op_Some_None_Suc_None by blast
+        using produce_inner_None_Some_None_False by blast
       subgoal
-        using produce_inner_skip_n_productions_op_Some_None_Suc by fastforce
+        by (meson produce_inner_skip_n_productions_op_Some_produce_inner_Some_None)
+      subgoal
+        by (simp add: produce.code produce_inner_skip_n_productions_Inr_op_ldropn)
       done
-    by (simp add: ldrop_eSuc_ltl ltl_ldropn)
-  done
+    moreover have "lhd (produce (skip_n_productions_op op' n') lxs') = lhd (ldropn n' (produce op' lxs'))"
+      if "\<not> lnull (produce (skip_n_productions_op op' n') lxs')"
+        and "\<not> lnull (ldropn n' (produce op' lxs'))"
+      using that 
+      apply (subst (1 2) produce.code)
+      apply (simp add: split: prod.splits list.splits option.splits sum.splits)
+      apply (intro impI allI conjI)
+           apply simp_all
+      subgoal
+        by (metis leI lhd_ldropn llength_LCons produce_inner_Some_produce produce_inner_skip_n_productions_op_Inl_lnth)
+      subgoal
+        by (simp add: produce_inner_skip_n_productions_Inr_op_ldropn)
+      subgoal
+        by (meson produce_inner_skip_n_productions_op_Some_produce_inner_Some_None)
+      subgoal
+        by (simp add: produce.code produce_inner_skip_n_productions_Inr_op_ldropn)
+      done
+    moreover have "llist.v1.congclp (\<lambda>llist llist'. \<exists>op lxs n. llist = produce (skip_n_productions_op op n) (lxs::'b llist) \<and> llist' = ldropn n (produce op lxs)) (ltl (produce (skip_n_productions_op op' n') lxs')) (ltl (ldropn n' (produce op' lxs')))"
+      if "\<not> lnull (produce (skip_n_productions_op op' n') lxs')"
+        and "\<not> lnull (ldropn n' (produce op' lxs'))"
+      using that 
+      apply -
+      apply (rule lshift.cong_base)
+      apply (rule exI[of _ op'])
+      apply (rule exI[of _ lxs'])
+      apply (rule exI[of _ "Suc n'"])
+      apply (intro conjI)
+      subgoal 
+        apply (subst (1 2) produce.code)
+        apply (simp add: split: prod.splits list.splits option.splits sum.splits)
+        apply (intro impI allI conjI)
+               apply simp_all
+        subgoal for lgc' x xs lxs'
+          by (meson produce_inner_skip_n_productions_op_llength_LNil)
+        subgoal
+          by (metis produce_inner_skip_n_productions_op_Suc_LCons)
+        subgoal
+          by (metis produce_inner_skip_n_productions_op_Some_Some_Some_None lshift_simps(1))
+        subgoal
+          by (simp add: produce_inner_skip_n_productions_op_Some_None_Suc)
+        subgoal
+          using produce_inner_skip_n_productions_op_Some_None_Suc_None by blast
+        subgoal
+          using produce_inner_skip_n_productions_op_Some_None_Suc by fastforce
+        done
+      by (simp add: ldrop_eSuc_ltl ltl_ldropn)
+    ultimately show ?thesis
+      by (intro conjI impI)
+  qed
+qed
 
 definition "finite_produce op xs = fold (\<lambda> ev (op, out) . let (lgc', out') = apply op ev in (lgc', out@out')) xs (op, [])"
 
@@ -958,10 +658,9 @@ lemma finite_produce_simps:
                                    (fst (finite_produce lgc' xs), out @ snd (finite_produce lgc' xs))))"
   unfolding finite_produce_def
   apply (induct xs arbitrary: op)
-  apply simp
+   apply simp
   subgoal for h xs op
-    apply (auto split: list.splits prod.splits)
-    apply hypsubst_thin
+    apply (simp split: list.splits prod.splits)
     apply (metis (mono_tags, lifting) append.assoc fold_apply_old)
     done
   done
@@ -984,28 +683,7 @@ lemma produce_inner_compose_op_Some_produce_inner_None:
   "produce_inner (compose_op lgc1 lgc2, lxs) = Some r \<Longrightarrow>
    produce_inner (lgc1, lxs) = None \<Longrightarrow> False"
   apply (induct "(compose_op lgc1 lgc2, lxs)" r arbitrary: lgc1 lgc2 lxs rule: produce_inner_alt[consumes 1])
-  subgoal for h lxs' lgc' lgc1 lgc2
-    apply simp
-    apply (elim conjE)
-    apply hypsubst_thin
-    apply (drule meta_spec)+
-    apply (drule meta_mp)
-    apply (rule refl)
-    apply (drule meta_mp)
-    apply (subst (asm) produce_inner.simps)
-    apply (simp split: prod.splits list.splits)
-    apply simp
-    done
-  subgoal for h lgc1 lgc2
-    apply simp
-    apply (elim conjE)
-    apply hypsubst_thin
-    apply (subst (asm) produce_inner.simps)
-    apply (simp add: finite_produce_def split: prod.splits list.splits)
-    apply (subst (asm) produce_inner.simps)
-    apply (simp add: finite_produce_def split: prod.splits list.splits)
-    done
-  apply auto
+    apply (auto split: prod.splits list.splits llist.splits)
   done
 
 lemma produce_inner_None_produce_inner_compose_op_None[simp]:
@@ -1022,22 +700,11 @@ lemma produce_inner_compose_op_Some_production:
   done
 
 lemma produce_inner_compose_op_finite_produce_no_production[simp]:
-  "produce_inner (lgc1, lxs) = Some r \<Longrightarrow> 
-   r = Inl (lgc1', x, xs, lxs') \<Longrightarrow>
-   finite_produce lgc2 (x#xs) = (lgc2', []) \<Longrightarrow>
-   produce_inner (compose_op lgc1 lgc2, lxs) = produce_inner (compose_op lgc1' lgc2', lxs')"
-  apply (induct "(lgc1, lxs)" r arbitrary: lgc1 lgc2 lxs rule: produce_inner_alt[consumes 1])
-  subgoal
-    apply (subst produce_inner.simps)
-    apply (auto split: option.splits list.splits llist.splits prod.splits)
-    done
-  subgoal
-    apply (subst produce_inner.simps)
-    apply (auto split: option.splits list.splits llist.splits prod.splits)
-    apply (subst (asm) produce_inner.simps)
-    apply (auto split: option.splits list.splits llist.splits prod.splits)
-    done
-  apply auto
+  assumes "produce_inner (lgc1, lxs) = Some (Inl (lgc1', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
+    and "finite_produce lgc2 (x#xs) = (lgc2', [])"
+  shows "produce_inner (compose_op lgc1 lgc2, lxs) = produce_inner (compose_op lgc1' lgc2', lxs')"
+  using assms apply (induct ?P ?R arbitrary: lgc1 lgc2 lxs rule: produce_inner_alt)
+   apply (auto split: option.splits list.splits llist.splits prod.splits)
   done
 
 lemma produce_inner_LCons_Some_cases:
@@ -1048,26 +715,18 @@ lemma produce_inner_LCons_Some_cases:
   done
 
 lemma produce_inner_Some_Inl_compose_op:
-  "produce_inner (lgc1, lxs) = Some r \<Longrightarrow>
-   r = Inl (lgc', x, xs, lxs') \<Longrightarrow>
-   finite_produce lgc2 (x # xs) = (lgc'', y # ys) \<Longrightarrow> produce_inner (compose_op lgc1 lgc2, lxs) = Some (Inl (compose_op lgc' lgc'', y, ys, lxs'))"
-  apply (induct "(lgc1, lxs)" r arbitrary: lgc1 lgc2 lxs rule: produce_inner_alt[consumes 1])
-  subgoal
-    apply (subst produce_inner.simps)
-    apply auto
-    done
-  apply auto
-  apply (subst produce_inner.simps)
-  apply (subst (asm) produce_inner.simps)
-  apply auto
+  assumes "produce_inner (lgc1, lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
+  and "finite_produce lgc2 (x # xs) = (lgc'', y # ys)"
+shows "produce_inner (compose_op lgc1 lgc2, lxs) = Some (Inl (compose_op lgc' lgc'', y, ys, lxs'))"
+  using assms apply (induct ?P ?R arbitrary: lgc1 lgc2 lxs rule: produce_inner_alt)
+   apply auto
   done
 
 lemma produce_inner_Some_Inr_compose_op:
-  "produce_inner (lgc1, lxs) = Some r \<Longrightarrow>
-   r = Inr lgc' \<Longrightarrow> produce_inner (compose_op lgc1 lgc2, lxs) = Some (Inr (compose_op lgc' lgc2))"
-  apply (induct "(lgc1, lxs)" r arbitrary: lgc1 lgc2 lxs rule: produce_inner_alt[consumes 1])
-  apply (subst produce_inner.simps)
-  apply auto
+  assumes "produce_inner (lgc1, lxs) = Some (Inr lgc')" (is "produce_inner ?P = Some ?R")
+  shows "produce_inner (compose_op lgc1 lgc2, lxs) = Some (Inr (compose_op lgc' lgc2))"
+  using assms apply (induct ?P ?R arbitrary: lgc1 lgc2 lxs rule: produce_inner_alt)
+   apply auto
   done
 
 lemma produce_inner_compose_op:
@@ -2408,24 +2067,6 @@ proof -
     done
 qed
 
-lemma produce_LCons[simp]:
-  "produce op (LCons h lxs) = (let (op', out) = apply op h in out @@- produce op' lxs)"
-  apply (subst produce.code)
-  apply (auto split: option.splits sum.splits prod.splits)
-  apply (subst (asm) produce_inner.simps)
-  apply (auto split: list.splits)
-  apply (simp add: produce_inner_None_produce_LNil)
-  apply (subst (asm) produce_inner.simps)
-  apply (auto split: list.splits)
-  apply (subst (asm) produce_inner.simps)
-  apply (auto split: list.splits)
-  apply (drule produce_inner_alt[where Q="\<lambda>(op, lxs) z. case z of Inl _ \<Rightarrow> True | Inr op' \<Rightarrow> exit op' = produce op lxs"])
-  apply (auto split: sum.splits)
-  apply (subst (2) produce.code)
-  apply (subst produce_inner.simps)
-  apply (auto split: option.splits sum.splits)
-  using produce_inner_None_produce_LNil apply blast
-  by (simp add: produce.code)
 
 lemma produce_lshift[simp]: 
   "produce op (xs @@- lxs) = (let (op', out) = finite_produce op xs in out @@- produce op' lxs)"
