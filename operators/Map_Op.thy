@@ -36,20 +36,16 @@ lemma produce_map_op_correctness:
     subgoal 
       apply (subst (1) produce.code)
       apply (auto split: option.splits event.splits)
-         apply (simp add: produce_inner_None_produce_LNil)
         apply (subst (asm) (1) produce_inner.simps)
         apply (auto split: llist.splits event.splits)
        apply (subst (asm) (1) produce_inner.simps)
        apply (auto split: llist.splits event.splits)
-      apply (subst (asm) (1) produce_inner.simps)
-      apply (auto split: llist.splits event.splits)
       done
     subgoal for lxs
       apply (rule exI[of _ "ltl lxs"])
       apply auto
       apply (subst (1 2) produce.code)
       apply (auto split: option.splits)
-        apply (simp add: produce_inner_None_produce_LNil)
        apply (subst (asm) (1 2) produce_inner.simps)
        apply (auto split: llist.splits event.splits)
       apply (subst produce.code)
@@ -102,15 +98,12 @@ lemma snd_finite_produce_map_op[simp]:
   "snd (finite_produce (map_op f) xs) = map (\<lambda> ev . case ev of Watermark wm \<Rightarrow> Watermark wm | Data t d \<Rightarrow> Data t (f t d)) xs"
   apply (induct xs arbitrary: )
    apply (auto split: event.splits)
-   apply (metis (mono_tags, lifting) append_Cons append_Nil case_prod_unfold event.simps(5) finite_produce_simps fst_conv list.simps(5) map_op.simps(1) snd_conv)
-  apply (metis (mono_tags, lifting) append_Cons append_Nil case_prod_unfold event.simps(6) finite_produce_simps fst_conv list.simps(5) map_op.simps(1) snd_conv)
   done
 
 lemma finite_produce_map_op_exit_LNil:
   "finite_produce (map_op f) xs = (op', out) \<Longrightarrow> exit op' = LNil"
   apply (induct xs arbitrary: op' out)
    apply auto
-  apply (subst (asm) (2) finite_produce_simps)
   apply (auto split: event.splits sum.splits if_splits list.splits prod.splits)
   done
 

@@ -236,14 +236,14 @@ lemma produce_inner_skip_n_productions_op_Suc_skip_n_productions_op_n:
     apply (simp split: if_splits)
     subgoal
       apply (cases lxs)
-      apply (simp_all split: if_splits list.splits)
+       apply (simp_all split: if_splits list.splits)
       subgoal
         apply hypsubst_thin
         apply (subst (asm) Suc_diff_le)
          apply (simp split: llist.splits if_splits)
         apply fastforce
         done
-        subgoal
+      subgoal
         apply hypsubst_thin
         apply (subst (asm) Suc_diff_le)
          apply (simp split: llist.splits if_splits)
@@ -261,7 +261,7 @@ lemma produce_inner_skip_n_productions_op_Suc_skip_n_productions_op_n:
         done
       done
     subgoal
-       apply (simp_all split: if_splits list.splits)
+      apply (simp_all split: if_splits list.splits)
       done
     done
 next
@@ -308,7 +308,7 @@ lemma produce_inner_Some_None_None_False:
   shows False
   using assms apply (induct ?P ?R arbitrary: n op lxs rule: produce_inner_alt[consumes 1])
    apply (simp_all split: prod.splits list.splits if_splits)
-  apply auto[1]
+   apply auto[1]
   apply (metis skip_n_productions_op_0)
   done
 
@@ -317,8 +317,8 @@ lemma produce_inner_None_Some_None_False:
     and "produce_inner (skip_n_productions_op op n, lxs) = None"
   shows False
   using assms apply (induct ?P ?R arbitrary: n op lxs  rule: produce_inner_alt)
-    apply (simp_all split: if_splits)
-  apply auto[1]
+   apply (simp_all split: if_splits)
+   apply auto[1]
   apply (metis skip_n_productions_op_0)
   done
 
@@ -384,7 +384,7 @@ lemma produce_inner_skip_n_productions_op_Suc_Some_None_False:
      apply (metis Suc_diff_le less_or_eq_imp_le)
     apply (metis One_nat_def add_diff_cancel_right' less_SucE plus_1_eq_Suc skip_n_productions_op_0)
     done
-  apply (auto split: prod.splits if_splits list.splits)
+   apply (auto split: prod.splits if_splits list.splits)
   done
 
 lemma produce_inner_skip_n_productions_op_None_Suc:
@@ -643,7 +643,7 @@ lemma fold_apply_old[simp]:
    (fst (fold (\<lambda> ev (op, out) . let (lgc', out') = apply op ev in (lgc', out@out')) xs (op, [])), 
     old @ snd (fold (\<lambda> ev (op, out) . let (lgc', out') = apply op ev in (lgc', out@out')) xs (op, [])))"
   apply (induct xs arbitrary: op old)
-  apply simp
+   apply simp
   subgoal for h xs op old
     apply simp
     apply (metis (no_types, lifting) append.assoc case_prod_conv prod.collapse)
@@ -671,82 +671,93 @@ lemma finite_produce_Nil[simp]:
   apply simp
   done
 
+lemma finite_produce_Cons[simp]:
+  "finite_produce op (x # xs) = (fst (finite_produce (fst (apply op x)) xs), snd (apply op x) @ snd (finite_produce (fst (apply op x)) xs))"
+  apply (subst finite_produce_simps)
+  apply (auto split: prod.splits)
+  done
+
+lemma finite_produce_Cons_alt:
+  "finite_produce op (x#xs) = (let (lgc', out) = apply op x in (\<lambda> (op', out'). (op', out@out')) (finite_produce lgc' xs))"
+  apply (subst finite_produce_simps)
+  apply (simp split: prod.splits)
+  done
+
 primcorec compose_op where
-  "compose_op lgc1 lgc2 = Logic (\<lambda> ev.
-       let (lgc1', out) = apply lgc1 ev in
-       let (lgc2', out') = finite_produce lgc2 out in
-       (compose_op lgc1' lgc2', out'))
-   (produce lgc2 (exit lgc1))
+  "compose_op op1 op2 = Logic (\<lambda> ev.
+       let (op1', out) = apply op1 ev in
+       let (op2', out') = finite_produce op2 out in
+       (compose_op op1' op2', out'))
+   (produce op2 (exit op1))
   "
 
 lemma produce_inner_compose_op_Some_produce_inner_None:
-  "produce_inner (compose_op lgc1 lgc2, lxs) = Some r \<Longrightarrow>
-   produce_inner (lgc1, lxs) = None \<Longrightarrow> False"
-  apply (induct "(compose_op lgc1 lgc2, lxs)" r arbitrary: lgc1 lgc2 lxs rule: produce_inner_alt[consumes 1])
+  "produce_inner (compose_op op1 op2, lxs) = Some r \<Longrightarrow>
+   produce_inner (op1, lxs) = None \<Longrightarrow> False"
+  apply (induct "(compose_op op1 op2, lxs)" r arbitrary: op1 op2 lxs rule: produce_inner_alt[consumes 1])
     apply (auto split: prod.splits list.splits llist.splits)
   done
 
 lemma produce_inner_None_produce_inner_compose_op_None[simp]:
-  "produce_inner (lgc1, lxs) = None \<Longrightarrow> produce_inner (compose_op lgc1 lgc2, lxs) = None"
+  "produce_inner (op1, lxs) = None \<Longrightarrow> produce_inner (compose_op op1 op2, lxs) = None"
   using produce_inner_compose_op_Some_produce_inner_None by fastforce
 
 
 lemma produce_inner_compose_op_Some_production:
-  "apply lgc1 h = (lgc1', x#xs) \<Longrightarrow>
-   finite_produce lgc2 (x#xs) = (lgc2', y#ys) \<Longrightarrow>
-   produce_inner (compose_op lgc1 lgc2, LCons h lxs) = Some (Inl (compose_op lgc1' lgc2', y, ys, lxs))"
+  "apply op1 h = (op1', x#xs) \<Longrightarrow>
+   finite_produce op2 (x#xs) = (op2', y#ys) \<Longrightarrow>
+   produce_inner (compose_op op1 op2, LCons h lxs) = Some (Inl (compose_op op1' op2', y, ys, lxs))"
   apply (subst produce_inner.simps)
   apply (auto split: option.splits list.splits)
   done
 
 lemma produce_inner_compose_op_finite_produce_no_production[simp]:
-  assumes "produce_inner (lgc1, lxs) = Some (Inl (lgc1', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
-    and "finite_produce lgc2 (x#xs) = (lgc2', [])"
-  shows "produce_inner (compose_op lgc1 lgc2, lxs) = produce_inner (compose_op lgc1' lgc2', lxs')"
-  using assms apply (induct ?P ?R arbitrary: lgc1 lgc2 lxs rule: produce_inner_alt)
+  assumes "produce_inner (op1, lxs) = Some (Inl (op1', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
+    and "finite_produce op2 (x#xs) = (op2', [])"
+  shows "produce_inner (compose_op op1 op2, lxs) = produce_inner (compose_op op1' op2', lxs')"
+  using assms apply (induct ?P ?R arbitrary: op1 op2 lxs rule: produce_inner_alt)
    apply (auto split: option.splits list.splits llist.splits prod.splits)
   done
 
 lemma produce_inner_LCons_Some_cases:
-  "produce_inner (lgc1, LCons h hs) = Some (Inl (op, x, xs, lxs')) \<Longrightarrow>
-   (apply lgc1 h = (op, x#xs) \<and> lxs' = hs) \<or> produce_inner (fst (apply lgc1 h), hs) = Some (Inl (op, x, xs, lxs'))"
+  "produce_inner (op1, LCons h hs) = Some (Inl (op, x, xs, lxs')) \<Longrightarrow>
+   (apply op1 h = (op, x#xs) \<and> lxs' = hs) \<or> produce_inner (fst (apply op1 h), hs) = Some (Inl (op, x, xs, lxs'))"
   apply (subst (asm) produce_inner.simps)
   apply (auto split: prod.splits list.splits)
   done
 
 lemma produce_inner_Some_Inl_compose_op:
-  assumes "produce_inner (lgc1, lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
-  and "finite_produce lgc2 (x # xs) = (lgc'', y # ys)"
-shows "produce_inner (compose_op lgc1 lgc2, lxs) = Some (Inl (compose_op lgc' lgc'', y, ys, lxs'))"
-  using assms apply (induct ?P ?R arbitrary: lgc1 lgc2 lxs rule: produce_inner_alt)
+  assumes "produce_inner (op1, lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
+    and "finite_produce op2 (x # xs) = (lgc'', y # ys)"
+  shows "produce_inner (compose_op op1 op2, lxs) = Some (Inl (compose_op lgc' lgc'', y, ys, lxs'))"
+  using assms apply (induct ?P ?R arbitrary: op1 op2 lxs rule: produce_inner_alt)
    apply auto
   done
 
 lemma produce_inner_Some_Inr_compose_op:
-  assumes "produce_inner (lgc1, lxs) = Some (Inr lgc')" (is "produce_inner ?P = Some ?R")
-  shows "produce_inner (compose_op lgc1 lgc2, lxs) = Some (Inr (compose_op lgc' lgc2))"
-  using assms apply (induct ?P ?R arbitrary: lgc1 lgc2 lxs rule: produce_inner_alt)
+  assumes "produce_inner (op1, lxs) = Some (Inr lgc')" (is "produce_inner ?P = Some ?R")
+  shows "produce_inner (compose_op op1 op2, lxs) = Some (Inr (compose_op lgc' op2))"
+  using assms apply (induct ?P ?R arbitrary: op1 op2 lxs rule: produce_inner_alt)
    apply auto
   done
 
 lemma produce_inner_compose_op:
-  "produce_inner (compose_op lgc1 lgc2, lxs) =
-   (case (produce_inner (lgc1, lxs)) of
+  "produce_inner (compose_op op1 op2, lxs) =
+   (case (produce_inner (op1, lxs)) of
       None \<Rightarrow> None
-    | Some (Inr lgc') \<Rightarrow> Some (Inr (compose_op lgc' lgc2))
+    | Some (Inr lgc') \<Rightarrow> Some (Inr (compose_op lgc' op2))
     | Some (Inl (op, x, xs, lxs')) \<Rightarrow> (
-      let (lgc', out) = finite_produce lgc2 (x#xs) in
+      let (lgc', out) = finite_produce op2 (x#xs) in
       (case out of 
          [] \<Rightarrow> produce_inner (compose_op op lgc', lxs') 
        | y#ys \<Rightarrow> Some (Inl (compose_op op lgc', y, ys, lxs')))))"
-  apply (cases "produce_inner (lgc1, lxs)")
-  apply simp
+  apply (cases "produce_inner (op1, lxs)")
+   apply simp
   subgoal for p
     apply (cases p)
-    apply simp
-    apply hypsubst_thin
-    apply (auto split: prod.splits list.splits)
-    apply (simp add: produce_inner_Some_Inl_compose_op)
+     apply simp
+     apply hypsubst_thin
+     apply (simp_all add: produce_inner_Some_Inl_compose_op split:  prod.splits list.splits)
     subgoal for lgc'
       using produce_inner_Some_Inr_compose_op by blast
     done
@@ -764,32 +775,18 @@ lemma produce_inner_prefix_no_production:
    finite_produce op xs = (lgc'', []) \<Longrightarrow>
    produce_inner (lgc'', lxs) = Some (Inl (lgc', y, ys, lxs'))"
   apply (induct xs arbitrary: op)
-  apply simp
-  apply simp
-  apply (subst (asm) (3) produce_inner.simps)
-  apply (auto split: option.splits llist.splits list.splits prod.splits)
+   apply (simp_all split: option.splits llist.splits list.splits prod.splits)
   subgoal
-    apply (drule meta_spec)+
-    apply (drule meta_mp)
-    apply assumption
-    apply (drule meta_mp)
-    using finite_produce_LCons_Nil apply fastforce
-    apply simp
-    done
-  subgoal for a xs op
-    apply hypsubst_thin
-    apply (subst (asm) finite_produce_simps)
-    apply simp
-    done
+    by (metis prod.collapse)
   done
 
 lemma apply_compose_op_Cons:
-  "apply (compose_op lgc1 lgc2) h = (lgc', x # xs) \<Longrightarrow>
-   \<exists> y ys lgc1' lgc2' .apply lgc1 h = (lgc1', y#ys) \<and> finite_produce lgc2 (y#ys) = (lgc2', x#xs) \<and> lgc' = compose_op lgc1' lgc2'"
-  apply (cases "apply lgc1 h")
+  "apply (compose_op op1 op2) h = (lgc', x # xs) \<Longrightarrow>
+   \<exists> y ys op1' op2' .apply op1 h = (op1', y#ys) \<and> finite_produce op2 (y#ys) = (op2', x#xs) \<and> lgc' = compose_op op1' op2'"
+  apply (cases "apply op1 h")
   subgoal for op out
     apply (cases out)
-    apply simp
+     apply simp
     subgoal for y ys
       apply (rule exI[of _ y])
       apply (rule exI[of _ ys])
@@ -800,14 +797,492 @@ lemma apply_compose_op_Cons:
   done
 
 lemma finite_produce_move_old_out:
-  "finite_produce op xs = (lgc', ys) \<Longrightarrow> ys =  snd (finite_produce op xs)"
+  "finite_produce op xs = (lgc', ys) \<Longrightarrow> ys = snd (finite_produce op xs)"
   apply (induct xs arbitrary: op ys lgc')
-  apply simp
+   apply simp
   apply (subst (asm) (3) finite_produce_simps)
   apply (subst finite_produce_simps)
   apply (simp split: prod.splits)
   done
 
+
+lemma produce_coinduction:
+  assumes rel: "P op ilxs olxs"
+    and nonterm: "\<And>op ilxs olxs. P op ilxs olxs \<Longrightarrow> produce_inner (op, ilxs) = None \<Longrightarrow> olxs = LNil"
+    and exit: "\<And>op olxs. P op LNil olxs \<Longrightarrow> olxs = exit op"
+    and step: "\<And>op h ilxs olxs op' out.
+    P op (LCons h ilxs) olxs \<Longrightarrow> apply op h = (op', out) \<Longrightarrow> \<exists>olxs'. olxs = out @@- olxs' \<and> P op' ilxs olxs'"
+  shows "produce op ilxs = olxs"
+proof -
+  have coind: "\<And>op ilxs olxs. P op ilxs olxs \<Longrightarrow>
+    (case produce_inner (op, ilxs) of None \<Rightarrow> olxs = LNil
+       | Some (Inl (op', x, xs, ilxs')) \<Rightarrow> \<exists>olxs'. olxs = LCons x (xs @@- olxs') \<and> P op' ilxs' olxs'
+       | Some (Inr op') \<Rightarrow> olxs = exit op')"
+    apply (auto split: option.splits sum.splits)
+    subgoal
+      by (rule nonterm)
+    subgoal for op ilxs olxs op' x xs ilxs'
+      apply (drule produce_inner_alt[where Q="\<lambda>(op, ilxs) zs. 
+      case zs of Inl (op', x, xs, ilxs') \<Rightarrow> \<forall>olxs. P op ilxs olxs \<longrightarrow> (\<exists>olxs'. olxs = LCons x (xs @@- olxs') \<and> P op' ilxs' olxs') | Inr op' \<Rightarrow> True"])
+         apply (auto dest!: step split: option.splits sum.splits)
+      done
+    subgoal for op ilxs olxs op'
+      apply (drule produce_inner_alt[where Q="\<lambda>(op, ilxs) zs. 
+      case zs of Inl (op', x, xs, ilxs') \<Rightarrow> True | Inr op' \<Rightarrow> \<forall>olxs. P op ilxs olxs \<longrightarrow> (\<exists>ilxs'. P op' LNil olxs)"])
+         apply (auto dest!: step dest: exit split: option.splits sum.splits)
+      done
+    done
+  from rel show ?thesis
+    apply (coinduction arbitrary: op ilxs olxs rule: llist.coinduct_upto)
+    apply (intro conjI impI)
+      apply (drule coind)
+      apply (subst produce.code)
+      apply (auto split: option.splits sum.splits) []
+     apply (drule coind)
+     apply (subst produce.code)
+     apply (auto split: option.splits sum.splits) []
+    apply (frule coind)
+    apply (subst (2) produce.code)
+    apply (auto simp: produce_inner_None_produce_LNil
+        intro!: llist.cong_lshift intro: llist.cong_refl split: option.splits sum.splits) []
+    apply (rule  llist.cong_base exI conjI refl)+
+    subgoal for op ilxs olxs op' x xs ilxs'
+      apply (drule produce_inner_alt[where op_lxs = "(op, ilxs)" and Q = "\<lambda>(op, ilxs) zs. 
+      case zs of Inl (op', x, xs, ilxs') \<Rightarrow> \<forall>olxs. P op ilxs olxs \<longrightarrow> (\<exists>olxs'. olxs = LCons x (xs @@- olxs') \<and> P op' ilxs' olxs') | Inr op' \<Rightarrow> True"])
+         apply (auto dest!: step split: sum.splits)
+      done
+    done
+qed
+
+
+lemma finite_produce_to_shift_produce:
+  "finite_produce op xs = (lgc', zs) \<Longrightarrow>
+   produce op (xs @@- lxs) = zs @@- produce lgc' lxs"
+  apply (induct xs arbitrary: op lxs zs)
+   apply simp
+  subgoal for a xs op lxs zs
+    apply (simp split: prod.splits list.splits option.splits)
+    apply (metis lshift_append prod.collapse)
+    done
+  done
+
+lemma produce_lshift[simp]: 
+  "produce op (xs @@- lxs) = (let (op', out) = finite_produce op xs in out @@- produce op' lxs)"
+  apply (induct xs arbitrary: op)
+   apply (auto simp: split: prod.splits list.splits)
+  done
+
+
+lemma produce_inner_compose_op_apply_Nil:
+  "produce_inner (compose_op op1 op2, lxs) = None \<Longrightarrow>
+   produce op1 lxs = LCons y lys \<Longrightarrow>
+   \<exists> op2' . apply op2 y = (op2', [])"
+  apply (subst (asm) produce.code)
+  apply (auto split: option.splits prod.splits list.splits)
+  apply (subst (asm) produce_inner_compose_op)
+  apply (simp split: prod.splits list.splits)
+  apply (subst (asm) finite_produce_simps)
+  apply (simp split: prod.splits sum.splits list.splits)
+  done
+
+
+lemma produce_inner_to_finite_produce:
+  "produce_inner (op, lxs) = Some r \<Longrightarrow>
+   r = Inl (lgc', x, xs, lxs') \<Longrightarrow>
+   \<exists> zs. lxs = zs @@- lxs' \<and> finite_produce op zs = (lgc', x#xs)"
+  apply (induct "(op, lxs)" r arbitrary: op lxs lgc' x xs lxs'  rule: produce_inner_alt[consumes 1])
+  subgoal for op h lxs' lgc' lgc'a x xs lxs''
+    apply (simp split: option.splits prod.splits list.splits)
+    apply (metis finite_produce_Cons finite_produce_def fold_apply_old fst_eqD lshift_simps(2) snd_eqD)
+    done
+   apply simp_all
+  apply (metis append.right_neutral finite_produce_Cons finite_produce_Nil fst_conv lshift_simps(1) lshift_simps(2) snd_conv)
+  done
+
+
+lemma finite_produce_finite_produce_drop:
+  "finite_produce op xs = (lgc', []) \<Longrightarrow>
+   length xs < length zs \<Longrightarrow>
+   xs @@- lxs = zs @@- lys \<Longrightarrow>
+   finite_produce op zs = (lgc'', []) \<Longrightarrow>
+   finite_produce lgc' (drop (length xs) zs) = (lgc'', [])"
+  apply (induct xs arbitrary: zs op lgc' lxs lys lgc'')
+   apply simp
+  apply (subst (asm) (4) finite_produce_simps)
+  apply (auto split: prod.splits)
+  subgoal for a xs zs op lgc' lxs lys lgc'' 
+    apply (cases zs)
+     apply simp
+    apply auto
+    apply (smt (verit, ccfv_SIG) finite_produce_LCons_Nil finite_produce_move_old_out prod.collapse)
+    done
+  done
+
+
+lemma produce_inner_compose_op_Inl_skip_n_productions_op:
+  assumes  "produce_inner (compose_op (skip_n_productions_op op1 n) lgc2'', lxs) = Some (Inl (lgc', y, ys, lys))" (is "produce_inner ?P = Some ?R")
+    and "produce_inner (compose_op op1 op2, lxs) = None"
+    and "n = length zs"
+    and "produce op1 lxs = zs @@- lzs"
+    and "finite_produce op2 zs = (lgc2'', [])"
+  shows  False
+  using assms
+  apply (induct ?P ?R arbitrary: n zs op1 op2 lgc2'' lxs ys y lys lzs rule: produce_inner_alt)
+  subgoal for h lxs op' n op1 lgc2'' ys y lys zs op2 lzs
+    apply (subst (asm) (2) produce_inner_compose_op)
+    apply (auto simp add: less_Suc_eq not_less_eq  LNil_eq_shift_iff split: list.splits option.splits if_splits prod.splits sum.splits)
+    subgoal
+      by (metis finite_produce_Nil list.size(3) lshift_simps(1) produce_inner_None_produce_inner_compose_op_None skip_n_productions_op_0)
+    subgoal
+      by (metis (no_types, lifting) finite_produce_Cons finite_produce_def fold_apply_old prod.collapse produce_inner_Some_produce produce_inner_compose_op_finite_produce_no_production)
+    subgoal for x xs op1'
+      apply hypsubst_thin
+      apply (subst (asm) length_drop[symmetric])
+      apply (drule meta_spec)
+      apply (drule meta_spec)
+      apply (drule meta_spec)
+      apply (drule meta_spec)
+      apply (drule meta_spec)
+      apply (drule meta_spec[of _ lzs])
+      apply (drule meta_mp)
+       apply (rule refl)
+      apply (drule meta_mp)
+       apply assumption
+      apply (drule meta_mp)
+       apply (rule refl)
+      apply (drule meta_mp)
+       defer
+       apply (drule meta_mp)
+      subgoal
+        by (metis (no_types, lifting) append_self_conv2 finite_produce_Cons finite_produce_finite_produce_drop length_Cons lshift_simps(2))
+       apply simp
+      apply (metis length_Cons lshift_simps(2) shift_eq_shift_drop_length)
+      done
+    subgoal
+      by (metis append_self_conv2 finite_produce_Cons finite_produce_Nil list.size(3) lshift_simps(1) produce_inner_compose_op_finite_produce_no_production skip_n_productions_op_0)
+    subgoal for x xs op''
+      apply (drule meta_spec[of _ 0])
+      apply (drule meta_spec)
+      apply (drule meta_spec)
+      apply (drule meta_spec[of _ "[]"])
+      apply (drule meta_spec)
+      apply (drule meta_spec)
+      apply (drule meta_mp)
+       apply simp
+      apply (drule meta_mp)
+       apply assumption
+      apply (drule meta_mp)
+       apply simp
+      apply (drule meta_mp)
+       defer
+       apply (drule meta_mp)
+      subgoal
+        apply (simp split: prod.splits)
+        apply (cases zs)
+         apply simp_all
+        apply (metis (no_types, lifting) Suc_lessD finite_produce_finite_produce_drop prod.collapse)
+        done
+       apply simp_all
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (drule meta_spec[of _ 0])
+      apply (drule meta_spec)
+      apply (drule meta_spec)
+      apply (drule meta_spec[of _ "[]"])
+      apply (drule meta_spec)
+      apply (drule meta_spec)
+      apply (drule meta_mp)
+       apply simp
+      apply (drule meta_mp)
+       apply assumption
+      apply (drule meta_mp)
+       apply simp
+      apply (drule meta_mp)
+       defer
+       apply (drule meta_mp)
+      subgoal
+        apply (simp split: prod.splits)
+        apply (cases zs)
+         apply simp_all
+        apply (metis (no_types, lifting) drop_Suc_Cons finite_produce_finite_produce_drop lessI prod.collapse)
+        done
+       apply simp_all
+      done
+    subgoal
+      by (metis (no_types, lifting) append_self_conv2 finite_produce_Cons finite_produce_Nil length_Cons list.size(3) lshift_simps(1) lshift_simps(2) shift_same_prefix skip_n_productions_op_0)
+    done
+  subgoal
+    apply (simp split: if_splits list.splits)
+    apply (metis (no_types, lifting) drop_all finite_produce_Nil finite_produce_finite_produce_drop less_or_eq_imp_le list.distinct(1) not_less_iff_gr_or_eq prod.exhaust_sel sndI)
+    done
+  done
+
+lemma produce_inner_compose_op_Inr_skip_n_productions_op:
+  assumes "produce_inner (compose_op (skip_n_productions_op op1 n) lgc2'', lxs) = Some (Inr lys)" (is "produce_inner ?P = Some ?R")
+    and "produce_inner (compose_op op1 op2, lxs) = None"
+    and "n = length zs"
+    and "produce op1 lxs = zs @@- lzs"
+    and "finite_produce op2 zs = (lgc2'', [])"
+  shows False
+  using assms apply (induct ?P ?R arbitrary: n zs op1 op2 lgc2'' lxs lzs lys  rule: produce_inner_alt)
+  subgoal for h lxs op' n op1 lgc2'' lys zs op2 lzs
+    apply (subst (asm) (2) produce_inner_compose_op)
+    apply (auto simp add: less_Suc_eq not_less_eq  LNil_eq_shift_iff split: list.splits option.splits if_splits prod.splits sum.splits)
+    subgoal
+      by (metis finite_produce_Nil length_0_conv lshift_LNil_split produce_inner_None_produce_LNil produce_inner_None_produce_inner_compose_op_None skip_n_productions_op_0)
+    subgoal
+      by (metis (mono_tags, lifting) finite_produce_Cons finite_produce_def fold_apply_old prod.collapse produce_inner_Some_produce produce_inner_compose_op_finite_produce_no_production)
+    subgoal
+      apply hypsubst_thin
+      apply (subst (asm) length_drop[symmetric])
+      apply (drule meta_spec)
+      apply (drule meta_spec)
+      apply (drule meta_spec)
+      apply (drule meta_spec)
+      apply (drule meta_spec)
+      apply (drule meta_spec[of _ lzs])
+      apply (drule meta_mp)
+       apply (rule refl)
+      apply (drule meta_mp)
+       apply assumption
+      apply (drule meta_mp)
+       apply (rule refl)
+      apply (drule meta_mp)
+       defer
+       apply (drule meta_mp)
+      subgoal
+        by (metis (no_types, lifting) append_self_conv2 finite_produce_Cons finite_produce_finite_produce_drop length_Cons lshift_simps(2))
+       apply simp
+      apply (metis length_Cons lshift_simps(2) shift_eq_shift_drop_length)
+      done
+    subgoal
+      by (metis append_self_conv2 finite_produce_Cons finite_produce_Nil length_0_conv lshift_simps(1) produce_inner_compose_op_finite_produce_no_production skip_n_productions_op_0)
+    subgoal
+      apply (drule meta_spec[of _ 0])
+      apply (drule meta_spec)
+      apply (drule meta_spec)
+      apply (drule meta_spec[of _ "[]"])
+      apply (drule meta_spec)
+      apply (drule meta_spec)
+      apply (drule meta_mp)
+       apply simp
+      apply (drule meta_mp)
+       apply assumption
+      apply (drule meta_mp)
+       apply simp
+      apply (drule meta_mp)
+       defer
+       apply (drule meta_mp)
+      subgoal
+        apply (simp split: prod.splits)
+        apply (cases zs)
+         apply simp_all
+        apply (metis (no_types, lifting) Suc_lessD finite_produce_finite_produce_drop prod.collapse)
+        done
+       apply simp_all
+      done
+    subgoal
+      apply (drule meta_spec[of _ 0])
+      apply (drule meta_spec)
+      apply (drule meta_spec)
+      apply (drule meta_spec[of _ "[]"])
+      apply (drule meta_spec)
+      apply (drule meta_spec)
+      apply (drule meta_mp)
+       apply simp
+      apply (drule meta_mp)
+       apply assumption
+      apply (drule meta_mp)
+       apply simp
+      apply (drule meta_mp)
+       defer
+       apply (drule meta_mp)
+      subgoal
+        apply (simp split: prod.splits)
+        apply (cases zs)
+         apply simp_all
+        apply (metis (no_types, lifting) drop_Suc_Cons finite_produce_finite_produce_drop lessI prod.collapse)
+        done
+       apply simp_all
+      done
+    subgoal
+      by (metis (no_types, lifting) Suc_length_conv finite_produce_Cons finite_produce_Nil fst_conv list.size(3) lshift_simps(1) shift_LCons_Cons shift_same_prefix skip_n_productions_op_0)
+    done
+  subgoal
+    by simp
+  done
+
+lemma produce_inner_compose_op_None_produce_shift_finite_produce: 
+  "produce_inner (compose_op op1 op2, lxs) = None \<Longrightarrow>
+   produce op1 lxs = ys @@- lys \<Longrightarrow>
+   snd (finite_produce op2 ys) = []"
+  apply (induct ys arbitrary: op1 op2 lys lxs)
+   apply auto[1]
+  subgoal premises prems for a ys op1 op2 lys lxs
+    using prems(2-) apply -
+    apply simp
+    apply (frule produce_inner_compose_op_apply_Nil)
+     apply assumption
+    apply (elim exE)
+    subgoal for lgc2''
+      apply (cases "produce_inner (compose_op (skip_n_productions_op op1 (Suc 0)) lgc2'', lxs)")
+      subgoal
+        by (simp add: prems(1) produce_skip_n_productions_op_correctness)
+      subgoal for r
+        apply simp
+        apply (cases r)
+        subgoal for p
+          apply (cases p)
+          using produce_inner_compose_op_Inl_skip_n_productions_op[where n=1 and zs="[a]", of op1 lgc2'' lxs  _ _ _ _ op2, where lzs="ys @@- lys"] apply simp
+          done
+        subgoal for t
+          using produce_inner_compose_op_Inr_skip_n_productions_op[where n=1 and zs="[a]", of op1 lgc2'' lxs  _ op2, where lzs="ys @@- lys"] apply simp
+          done
+        done
+      done
+    done
+  done
+
+lemma produce_inner_produce_Some:
+  "produce_inner (op2, produce op1 lxs) = Some (Inl (op2', x, xs, lxs')) \<Longrightarrow>
+   produce_inner (compose_op op1 op2, lxs) = None \<Longrightarrow> False"
+  by (metis neq_Nil_conv produce_inner_compose_op_None_produce_shift_finite_produce produce_inner_to_finite_produce snd_conv)
+
+lemma produce_inner_Inr_finite_produce:
+  "produce_inner (op, lxs) = Some r \<Longrightarrow>
+   r = Inr op' \<Longrightarrow>
+   lfinite lxs \<Longrightarrow>
+   op' = fst (finite_produce op (list_of lxs))"
+  apply (induct "(op, lxs)" r arbitrary: op lxs op' rule: produce_inner_alt[consumes 1])
+    apply (auto simp add: finite_produce_simps split: option.splits sum.splits prod.splits list.splits)
+  done
+
+
+lemma produce_inner_Some_Inr_lfinite:
+  "produce_inner (op, lxs) = Some r \<Longrightarrow>
+   r = Inr lgc' \<Longrightarrow>
+   lfinite lxs"
+  apply (induct "(op, lxs)" r arbitrary: op lxs rule: produce_inner_alt[consumes 1])
+    apply auto
+  done
+
+lemma finite_produce_append:
+  "finite_produce op (xs @ ys) = (fst (finite_produce (fst (finite_produce op xs)) ys), snd (finite_produce op xs) @ snd (finite_produce (fst (finite_produce op xs)) ys))"
+  apply (induct xs arbitrary: ys op)
+   apply simp
+  apply (subst (1 2 4) finite_produce_simps)
+  apply (auto split: prod.splits)
+  done
+
+lemma produce_compose_op_correctness_alt:
+  assumes "\<forall> xs op' old out. finite_produce op2 xs = (op', out) \<longrightarrow> exit op' = LNil" 
+  shows "produce (compose_op op1 op2) lxs = produce op2 (produce op1 lxs)"
+  using assms
+  apply (coinduction arbitrary: op1 op2 lxs rule: produce_coinduction)
+  subgoal for op1 op2 lxs
+    apply (subst (1 2) produce.code)
+    apply (auto split: option.splits sum.splits prod.splits list.splits)
+         apply (simp_all add: produce_inner_skip_n_productions_op_Some_None
+        produce_inner_Some_Inr_compose_op)
+    using finite_produce_Nil apply blast
+    subgoal
+      by (smt (verit) append_self_conv2 finite_produce_Cons finite_produce_to_shift_produce fst_conv prod.collapse produce_inner_compose_op_None_produce_shift_finite_produce produce_inner_compose_op_finite_produce_no_production produce_inner_prefix_no_production produce_inner_produce_Some produce_inner_to_finite_produce snd_conv)
+    subgoal
+      using produce_inner_Inr_finite_produce produce_inner_Some_Inr_lfinite surjective_pairing  
+      by (metis finite_produce_Cons fst_conv)
+    subgoal
+      by (metis list.simps(3) prod.inject produce_inner_Some_produce produce_inner_compose_op_apply_Nil)
+    done
+   apply fastforce
+  subgoal for h ilxs op' out op1 op2 lxs
+    apply clarsimp
+    apply (rule exI[of _ "produce (fst (finite_produce op2 (snd (apply op1 h)))) (produce (fst (apply op1 h)) ilxs)"] conjI)+
+     apply (auto split: prod.splits)
+    apply (rule exI conjI refl)+
+    apply safe
+    apply hypsubst_thin
+    apply (metis finite_produce_append fst_eqD surjective_pairing)
+    done
+  done
+
+
+lemma produce_inner_None_not_lfinite_aux:
+  "lfinite lxs \<Longrightarrow>
+   produce_inner (op, lxs) = None \<Longrightarrow>
+   False"
+  apply (induct lxs arbitrary: op rule: lfinite_induct)
+  using llist.collapse(1) apply fastforce
+  subgoal for lxs op
+    apply (subst (asm) (2) produce_inner.simps)
+    apply (auto split: llist.splits prod.splits list.splits)
+    done
+  done
+
+
+lemma produce_inner_None_not_lfinite:
+  "produce_inner (op, lxs) = None \<Longrightarrow>
+   \<not> lfinite lxs"
+  using produce_inner_None_not_lfinite_aux by blast
+
+lemma produce_inner_produce_Inr_lfinite:
+  "produce_inner (op2, produce op1 lxs) = Some r \<Longrightarrow>
+   r = Inr lgc' \<Longrightarrow>
+   \<forall> n . produce_inner (skip_n_productions_op op1 n, lxs) \<noteq> None \<Longrightarrow>
+   lfinite lxs"
+  apply (induct "(op2, produce op1 lxs)" r arbitrary: op1 op2 lxs lgc' rule: produce_inner_alt[consumes 1])
+  subgoal for op h lxs lgc' zs op1 lxsa lgc''
+    apply (drule meta_spec[of _ "skip_n_productions_op op1 (Suc 0)"])
+    apply (drule meta_spec[of _ "lxsa"])
+    apply (drule meta_spec[of _ "lgc''"])
+    apply (drule meta_mp)
+     apply (metis One_nat_def ldrop_eSuc_ltl ldropn_0 ltl_simps(2) produce_skip_n_productions_op_correctness skip_first_production_op_eq_skip_n_productions_op_1)
+    apply (drule meta_mp)
+     apply simp
+    apply (drule meta_mp)
+     apply simp
+    apply simp
+    done
+   apply (auto split: option.splits llist.splits prod.splits list.splits sum.splits if_splits)
+  apply (subst (asm) produce.code)
+  apply (auto split: option.splits llist.splits prod.splits list.splits sum.splits if_splits)
+  using produce_inner_None_not_lfinite produce_inner_Some_Inr_lfinite apply blast
+  done
+
+lemma produce_compose_op_correctness:
+  assumes "\<forall> n . produce_inner (skip_n_productions_op op1 n, lxs) \<noteq> None"
+  shows "produce (compose_op op1 op2) lxs = produce op2 (produce op1 lxs)"
+  using assms
+  apply (coinduction arbitrary: op1 op2 lxs rule: produce_coinduction)
+  subgoal for op1 op2 lxs
+    apply (subst (1 2) produce.code)
+    apply (auto split: option.splits sum.splits)
+       apply (simp_all add: produce_inner_skip_n_productions_op_Some_None
+        produce_inner_Some_Inr_compose_op)
+    using produce_inner_Some_produce produce_inner_produce_Some
+      option.simps(3) produce_inner_None_not_lfinite_aux
+      produce_inner_Some_produce produce_inner_produce_Inr_lfinite
+     apply (metis (no_types, lifting) case_prod_conv list.simps(4) produce_inner_compose_op_apply_Nil produce_inner_simps(2))
+    using produce_inner_Some_produce produce_inner_produce_Some
+      option.simps(3) produce_inner_None_not_lfinite_aux
+      produce_inner_Some_produce produce_inner_produce_Inr_lfinite
+    by (metis (no_types, lifting) list.simps(4) old.prod.case produce_inner_compose_op_apply_Nil produce_inner_simps(2))
+  subgoal for op1 op2 lxs
+    by auto
+  subgoal for h ilxs op' out op1 op2 lxs
+    apply clarsimp
+    apply (rule exI[of _ "produce (fst (finite_produce op2 (snd (apply op1 h)))) (produce (fst (apply op1 h)) ilxs)"] conjI)+
+     apply (auto split: prod.splits)
+    apply (rule exI conjI refl)+
+    apply safe
+    subgoal for n
+      apply (drule spec[of _ "n + length (snd (apply op1 h))"])
+      apply auto
+      apply (auto split: if_splits list.splits)
+      done
+    done
+  done
+    (* 
 lemma produce_inner_prefix_Some_production:
   "produce_inner (op, xs @@- lxs) = Some r \<Longrightarrow>
    r = Inl (lgc', y, ys, lxs') \<Longrightarrow>
@@ -841,15 +1316,15 @@ lemma produce_inner_prefix_Some_production:
     done
   apply fastforce
   done
-
-
+ *)
+    (* 
 lemma produce_inner_compose_op_produce_inner_produce:
-  "produce_inner (compose_op lgc1 lgc2, lxs) = Some r \<Longrightarrow>
+  "produce_inner (compose_op op1 op2, lxs) = Some r \<Longrightarrow>
    r = Inl (lgc', x, xs, lxs') \<Longrightarrow>
-   produce_inner (lgc2, produce lgc1 lxs) = Some (Inl (lgc'', y, ys, lys')) \<Longrightarrow>
+   produce_inner (op2, produce op1 lxs) = Some (Inl (lgc'', y, ys, lys')) \<Longrightarrow>
    x = y \<and> (ys = take (length ys) xs)"
-  apply (induct "(compose_op lgc1 lgc2, lxs)" r arbitrary: lgc1 lgc2 lxs lgc' x xs lxs' lgc'' y ys lys' rule: produce_inner_alt[consumes 1])
-  subgoal for h lxs' lgc' lgc1 lgc2 lgc'a x xs lxs'' lgc'' y ys lys'
+  apply (induct "(compose_op op1 op2, lxs)" r arbitrary: op1 op2 lxs lgc' x xs lxs' lgc'' y ys lys' rule: produce_inner_alt[consumes 1])
+  subgoal for h lxs' lgc' op1 op2 lgc'a x xs lxs'' lgc'' y ys lys'
     apply (subst (asm) (2) produce.code)
     apply (subst (asm) (3) produce_inner.simps)
     apply (auto split: option.splits prod.splits list.splits sum.splits)
@@ -858,10 +1333,10 @@ lemma produce_inner_compose_op_produce_inner_produce:
     apply (metis prod.collapse produce_inner_prefix_no_production lshift_simps(2))
     apply (metis produce_inner_prefix_no_production lshift_simps(2) surjective_pairing)
     done
-  subgoal for h x xs lxs lxs' lgc' lgc1 lgc2 lgc'a xa xsa lxs'a lgc'' y ys lys'
+  subgoal for h x xs lxs lxs' lgc' op1 op2 lgc'a xa xsa lxs'a lgc'' y ys lys'
     apply (frule apply_compose_op_Cons)
     apply (elim conjE exE)
-    subgoal for y' ys' lgc1' lgc2'
+    subgoal for y' ys' op1' op2'
       apply (subst (asm) (1) produce.code)
       apply (subst (asm) (1) produce_inner.simps)
       apply (simp split: option.splits prod.splits list.splits sum.splits)
@@ -887,10 +1362,10 @@ lemma produce_inner_compose_op_produce_inner_produce:
       done
     done
   apply auto
-  done
+  done *)
 
 (* lemma finite_produce_extend_old:
-  "finite_produce x xs = (lgc1', ys') \<Longrightarrow> finite_produce x xs (zs @ ys) = (lgc1', zs @ ys')"
+  "finite_produce x xs = (op1', ys') \<Longrightarrow> finite_produce x xs (zs @ ys) = (op1', zs @ ys')"
   apply (induct xs arbitrary: x ys zs)
    apply simp
   apply (subst (asm) (3) finite_produce_simps)
@@ -898,92 +1373,17 @@ lemma produce_inner_compose_op_produce_inner_produce:
   apply (auto split: prod.splits)
   done *)
 
-lemma finite_produce_append:
-  "finite_produce op (xs @ ys) = (fst (finite_produce (fst (finite_produce op xs)) ys), snd (finite_produce op xs) @ snd (finite_produce (fst (finite_produce op xs)) ys))"
-  apply (induct xs arbitrary: ys op)
-  apply simp
-  apply (subst (1 2 4) finite_produce_simps)
-  apply (auto split: prod.splits)
-  apply (simp add: finite_produce_simps)
-  done
-
-lemma produce_inner_to_finite_produce:
-  "produce_inner (op, lxs) = Some r \<Longrightarrow>
-   r = Inl (lgc', x, xs, lxs') \<Longrightarrow>
-   \<exists> zs. lxs = zs @@- lxs' \<and> finite_produce op zs = (lgc', x#xs)"
-  apply (induct "(op, lxs)" r arbitrary: op lxs lgc' x xs lxs'  rule: produce_inner_alt[consumes 1])
-  subgoal for op h lxs' lgc' lgc'a x xs lxs''
-    apply (auto split: option.splits prod.splits list.splits)
-    subgoal for zs
-      apply (rule exI[of _ "h#zs"])
-      apply simp
-      apply (subst finite_produce_simps)
-      apply (auto split: prod.splits)
-      done
-    done
-  subgoal for op h x xs lxs' lgc'
-    apply (rule exI[of _ "[h]"])
-    apply simp
-    apply (subst finite_produce_simps)
-    apply (auto split: prod.splits)
-    apply (subst (asm) produce_inner.simps)
-    apply (auto split: prod.splits)
-    done
-  apply auto
-  done
-
-lemma finite_produce_to_shift_produce:
-  "finite_produce op xs = (lgc', zs) \<Longrightarrow>
-   produce op (xs @@- lxs) = zs @@- produce lgc' lxs"
-  apply (induct xs arbitrary: op lxs zs)
-  apply simp
-  subgoal for a xs op lxs zs
-    apply simp
-    apply (subst produce.code)
-    apply (subst produce_inner.simps)
-    apply (subst (asm) (2) finite_produce_simps)
-    apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits list.splits option.splits)
-    apply (metis prod.collapse produce_inner_None_produce_LNil)
-    subgoal for lgc' x xs'
-      apply (drule meta_spec[of _ lgc'])
-      apply (drule meta_spec[of _ lxs])
-      apply (drule meta_spec[of _ "drop (length (x # xs')) zs"])
-      apply (drule meta_mp)
-      apply simp
-      apply auto
-      apply (simp add: produce_inner_None_produce_LNil)
-      done
-    subgoal for x1 aa 
-      apply (smt (verit, del_insts) option.case(2) produce.code surjective_pairing)
-      done
-    subgoal for lgc' x xs' lxs'
-      apply (metis prod.exhaust_sel)
-      done
-    done
-  done
 
 lemma finite_produce_output_not_empty_cases:
   "finite_produce op xs = (lgc', zs) \<Longrightarrow>
    zs \<noteq> [] \<Longrightarrow>
    ys \<noteq> [] \<or> xs \<noteq> []"
   apply (cases ys)
-  apply (subst (asm) finite_produce_simps)
-  apply (auto split: prod.splits)
+   apply (subst (asm) finite_produce_simps)
+   apply (auto split: prod.splits)
   done
 
-lemma produce_inner_shift_none_finite_produce:
-  "produce_inner (op, xs @@-lxs) = None \<Longrightarrow>
-   snd (finite_produce op xs) = [] \<and> produce_inner (fst (finite_produce op xs), lxs) = None"
-  apply (rule conjI)
-  apply (metis LNil_eq_shift_iff finite_produce_to_shift_produce prod.collapse produce_inner_None_produce_LNil)
-  apply (induct xs arbitrary: op lxs)
-  apply simp
-  apply simp
-  apply (subst (asm) (3) produce_inner.simps)
-  apply (subst finite_produce_simps)
-  apply (simp split: prod.splits list.splits)
-  done
-
+(* 
 lemma finite_produce_prefix_no_production_produce_inner:
   "finite_produce op ys = (lgc', []) \<Longrightarrow>
    produce_inner (op, ys @@- lys) = produce_inner (lgc', lys)"
@@ -994,306 +1394,11 @@ lemma finite_produce_prefix_no_production_produce_inner:
   apply (subst (asm) (2) finite_produce_simps)
   apply (auto split: prod.splits list.splits)
   apply (metis prod.collapse)
-  done
+  done *)
 
-lemma produce_inner_compose_op_apply_Nil:
-  "produce_inner (compose_op lgc1 lgc2, lxs) = None \<Longrightarrow>
-   produce lgc1 lxs = LCons y lys \<Longrightarrow>
-   \<exists> lgc2' . apply lgc2 y = (lgc2', [])"
-  apply (subst (asm) produce.code)
-  apply (auto split: option.splits prod.splits list.splits)
-  apply (subst (asm) produce_inner_compose_op)
-  apply (simp split: prod.splits list.splits)
-  apply (subst (asm) finite_produce_simps)
-  apply (simp split: prod.splits sum.splits list.splits)
-  done
 
-lemma finite_produce_finite_produce_drop:
-  "finite_produce op xs = (lgc', []) \<Longrightarrow>
-   length xs < length zs \<Longrightarrow>
-   xs @@- lxs = zs @@- lys \<Longrightarrow>
-   finite_produce op zs = (lgc'', []) \<Longrightarrow>
-   finite_produce lgc' (drop (length xs) zs) = (lgc'', [])"
-  apply (induct xs arbitrary: zs op lgc' lxs lys lgc'')
-  apply simp
-  apply (subst (asm) (4) finite_produce_simps)
-  apply (auto split: prod.splits)
-  subgoal for a xs zs op lgc' lxs lys lgc'' 
-    apply (cases zs)
-    apply simp
-    apply auto
-    apply (smt (verit, ccfv_SIG) finite_produce_LCons_Nil finite_produce_move_old_out prod.collapse)
-    done
-  done
 
-lemma produce_inner_compose_op_Inl_skip_n_productions_op:
-  "produce_inner (compose_op (skip_n_productions_op lgc1 n) lgc2'', lxs) = Some r \<Longrightarrow>
-   r = Inl (lgc', y, ys, lys) \<Longrightarrow>
-   produce_inner (compose_op lgc1 lgc2, lxs) = None \<Longrightarrow>
-   n = length zs \<Longrightarrow>
-   produce lgc1 lxs = zs @@- lzs \<Longrightarrow>
-   finite_produce lgc2 zs = (lgc2'', []) \<Longrightarrow>
-   False"
-  apply (induct "(compose_op (skip_n_productions_op lgc1 n) lgc2'', lxs)" r arbitrary: n zs lgc1 lgc2 lgc2'' lxs ys y lzs lys  rule: produce_inner_alt[consumes 1])
-  subgoal premises prems for h lxs lgc'a zs n lgc1 lgc2'' zsa lgc2 ys y lzs lys
-    using prems apply -
-    apply (subst (asm) (2) produce.code)
-    apply (subst (asm) (2) produce_inner_compose_op)
-    apply (subst (asm) (3 4 ) produce_inner.simps)
-    apply (auto simp add: less_Suc_eq not_less_eq produce_inner_None_produce_LNil LNil_eq_shift_iff split: list.splits option.splits if_splits prod.splits sum.splits)
-    subgoal
-      by (metis finite_produce_Nil length_0_conv produce_inner_None_produce_inner_compose_op_None lshift_simps(1) skip_n_productions_op_0)
-    subgoal
-      by (metis produce_inner_Some_produce produce_inner_compose_op_finite_produce_no_production)
-    subgoal for x xs lgc1' lgc2'
-      apply hypsubst_thin
-      apply (subst (asm) (1) length_drop[symmetric])
-      apply (drule meta_spec[of _ "lgc1'"])
-      apply (drule meta_spec)
-      apply (drule meta_spec[of _ lgc2''])
-      apply (drule meta_spec)
-      apply (drule meta_spec[of _ lgc2'])
-      apply (drule meta_spec[of _ "drop (Suc (length xs)) zsa"])
-      apply (drule meta_spec[of _ lzs])
-      apply (drule meta_mp)
-      apply simp
-      apply (drule meta_mp)
-      apply simp
-      apply (drule meta_mp)
-      apply assumption
-      apply (drule meta_mp)
-      apply (rule refl)
-      apply (drule meta_mp)
-      apply (metis length_Cons lshift_simps(2) shift_eq_shift_drop_length)
-      apply (drule meta_mp)
-      using finite_produce_finite_produce_drop apply fastforce
-      apply simp
-      done
-    subgoal
-      by (metis finite_produce_Nil list.size(3) produce_inner_compose_op_finite_produce_no_production lshift_simps(1) skip_n_productions_op_0)
-    subgoal for x xs lgc1' lgc2'
-      apply hypsubst_thin
-      apply (cases zsa)
-      apply auto[1]
-      apply (metis finite_produce_Nil list.size(3) lshift_simps(1) skip_n_productions_op_0)
-      subgoal for z zs'
-        apply auto
-        apply hypsubst_thin
-        apply (drule meta_spec[of _ "lgc1'"])
-        apply (drule meta_spec[of _ 0])
-        apply (drule meta_spec[of _ "fst (finite_produce lgc2'' (drop (length zs') xs))"])
-        apply (drule meta_spec)
-        apply (drule meta_spec[of _ lgc2'])
-        apply (drule meta_spec[of _ "[]"])
-        apply (drule meta_spec)
-        apply (drule meta_mp)
-        apply simp
-        apply (drule meta_mp)
-        apply (rule refl)
-        apply (drule meta_mp)
-        apply simp
-        apply (drule meta_mp)
-        apply simp
-        apply (drule meta_mp)
-        apply simp
-        apply simp
-        apply (drule meta_mp)
-        subgoal
-          apply (subst (asm) (1 3) finite_produce_simps)
-          apply (auto split: prod.splits)
-          apply (metis Suc_lessD finite_produce_finite_produce_drop prod.collapse)
-          done
-        apply force
-        done
-      done
-    subgoal
-      by (smt (verit, ccfv_SIG) finite_produce_Nil finite_produce_finite_produce_drop fst_conv length_Cons lessI list.size(3) lshift_simps(1) lshift_simps(2) skip_n_productions_op_0)
-    subgoal for x xs lgc1' lgc2'
-      apply hypsubst_thin
-      apply (cases zsa)
-      apply auto[1]
-      subgoal for z zs'
-        apply auto
-        apply hypsubst_thin
-        apply (drule meta_spec[of _ "lgc1'"])
-        apply (drule meta_spec[of _ 0])
-        apply (drule meta_spec[of _ "fst (finite_produce lgc2'' (drop (length zs') xs))"])
-        apply (drule meta_spec)
-        apply (drule meta_spec[of _ lgc2'])
-        apply (drule meta_spec[of _ "[]"])
-        apply (drule meta_spec)
-        apply (drule meta_mp)
-        apply simp
-        apply (drule meta_mp)
-        apply (rule refl)
-        apply (drule meta_mp)
-        apply simp
-        apply (drule meta_mp)
-        apply simp
-        apply (drule meta_mp)
-        apply simp
-        apply simp
-        apply (drule meta_mp)
-        subgoal
-          apply (subst (asm) (1 2) finite_produce_simps)
-          apply (auto split: prod.splits)
-          apply (metis fst_conv shift_same_prefix)
-          done
-        subgoal
-          by (smt (verit, ccfv_SIG) finite_produce_Nil finite_produce_finite_produce_drop fst_conv length_Cons lessI list.size(3) lshift_simps(1) lshift_simps(2) skip_n_productions_op_0)
-        done
-      done
-    done
-  subgoal for h x xs lxs lxs' lgc'a n lgc1 lgc2'' zs lgc2 ys y lzs lys
-    apply (subst (asm) produce.code)
-    apply (auto simp add: LNil_eq_shift_iff split: if_splits option.splits sum.splits)
-    subgoal
-      apply (subst (asm) (1 2) produce_inner.simps)
-      apply (auto simp add: LNil_eq_shift_iff split: if_splits option.splits prod.splits list.splits)
-      apply (subst (asm) (1) produce_inner.simps)
-      apply (auto simp add: LNil_eq_shift_iff split: if_splits option.splits prod.splits list.splits)
-      apply hypsubst_thin
-      apply (smt (verit, ccfv_threshold) drop_eq_Nil2 finite_produce_finite_produce_drop finite_produce_output_not_empty_cases less_or_eq_imp_le linorder_neqE_nat list.discI prod.collapse lshift_simps(2))
-      done
-    subgoal
-      apply (subst (asm) (1 2) produce_inner.simps)
-      apply (auto simp add: LNil_eq_shift_iff split: if_splits option.splits prod.splits list.splits)
-      apply (subst (asm) (1) produce_inner.simps)
-      apply (auto simp add: LNil_eq_shift_iff split: if_splits option.splits prod.splits list.splits)
-      done
-    done
-  apply auto
-  done
-
-lemma produce_inner_compose_op_Inr_skip_n_productions_op:
-  "produce_inner (compose_op (skip_n_productions_op lgc1 n) lgc2'', lxs) = Some r \<Longrightarrow>
-   r = Inr lys \<Longrightarrow>
-   produce_inner (compose_op lgc1 lgc2, lxs) = None \<Longrightarrow>
-   n = length zs \<Longrightarrow>
-   produce lgc1 lxs = zs @@- lzs \<Longrightarrow>
-   finite_produce lgc2 zs = (lgc2'', []) \<Longrightarrow>
-   False"
-  apply (induct "(compose_op (skip_n_productions_op lgc1 n) lgc2'', lxs)" r arbitrary: n zs lgc1 lgc2 lgc2'' lxs lzs lys  rule: produce_inner_alt[consumes 1])
-  subgoal premises prems for h lxs lgc' zs n lgc1 lgc2'' zsa lgc2 lzs lys
-    using prems apply -
-    apply (subst (asm) (2) produce.code)
-    apply (subst (asm) (2) produce_inner_compose_op)
-    apply (subst (asm) (3 4) produce_inner.simps)
-    apply (auto simp add: less_Suc_eq not_less_eq produce_inner_None_produce_LNil LNil_eq_shift_iff split: list.splits option.splits if_splits prod.splits sum.splits)
-    subgoal
-      by (metis LNil_eq_shift_iff prems(5) prems(7) produce_inner_None_produce_LNil produce_inner_None_produce_inner_compose_op_None skip_n_productions_op_0)
-    subgoal
-      by (metis produce_inner_Some_produce produce_inner_compose_op_finite_produce_no_production)
-    subgoal for x21 x22 x1b x1c
-      apply (cases zsa)
-      apply auto[1]
-      apply simp
-      subgoal for zs'
-        apply (subst (asm) (1) length_drop[symmetric])
-        apply (drule meta_spec[of _ x1b])
-        apply (drule meta_spec[of _ "length (drop (length x22) zs')"])
-        apply (drule meta_spec[of _ lgc2''])
-        apply (drule meta_spec[of _ lys])
-        apply (drule meta_spec[of _ x1c])
-        apply (drule meta_spec[of _ "drop (length x22) zs'"])
-        apply (drule meta_spec[of _ lzs])
-        apply (drule meta_mp)
-        apply (rule refl)
-        apply (drule meta_mp)
-        apply (rule refl)
-        apply (drule meta_mp)
-        apply simp
-        apply (drule meta_mp)
-        apply (rule refl)
-        apply (drule meta_mp)
-        using shift_eq_shift_drop_length apply blast
-        apply (drule meta_mp)
-        subgoal
-          apply (subst (asm) (1 2) finite_produce_simps)
-          apply (auto split: list.splits prod.splits)
-          apply (metis finite_produce_finite_produce_drop prod.collapse)
-          done
-        apply simp
-        done
-      done
-    subgoal
-      by (metis finite_produce_Nil list.size(3) produce_inner_compose_op_finite_produce_no_production lshift_simps(1) skip_n_productions_op_0)
-    subgoal
-      by (smt (verit) Suc_lessD Suc_less_eq finite_produce_Nil finite_produce_finite_produce_drop fst_conv length_Cons list.size(3) lshift_simps(1) lshift_simps(2) skip_n_productions_op_0)
-    subgoal
-      by (smt (verit, ccfv_SIG) finite_produce_Nil finite_produce_finite_produce_drop fst_conv length_Cons lessI list.size(3) lshift_simps(1) lshift_simps(2) skip_n_productions_op_0)
-    subgoal
-      by (smt (verit, del_insts) Suc_length_conv drop_eq_Nil2 finite_produce_Nil ldropn_shift lessI less_or_eq_imp_le list.size(3) lshift_simps(2) shift_eq_shift_ldropn_length shift_same_prefix skip_n_productions_op_0)
-    done
-  apply auto
-  done
-
-lemma op_eqI:
-  "exit op1 = exit op2 \<Longrightarrow> (\<forall> ev. apply op1 ev = apply op2 ev) \<Longrightarrow> op1 = op2"
-  by (metis (full_types) op.expand rel_funI rel_fun_eq)
-
-lemma produce_inner_compose_op_None_produce_shift_finite_produce: 
-  "produce_inner (compose_op lgc1 lgc2, lxs) = None \<Longrightarrow>
-   produce lgc1 lxs = ys @@- lys \<Longrightarrow>
-   snd (finite_produce lgc2 ys) = []"
-  apply (induct ys arbitrary: lgc1 lgc2 lys lxs)
-  apply auto[1]
-  subgoal premises prems for a ys lgc1 lgc2 lys lxs
-    using prems(2-) apply -
-    apply simp
-    apply (frule produce_inner_compose_op_apply_Nil)
-    apply assumption
-    apply (subst finite_produce_simps)
-    apply (auto split: prod.splits list.splits)
-    apply (rule prems(1)[of "skip_n_productions_op lgc1 1" _ lxs lys])
-    subgoal for lgc2''
-      apply (cases "produce_inner (compose_op (skip_n_productions_op lgc1 (Suc 0)) lgc2'', lxs)")
-      apply simp
-      subgoal for r
-        apply (cases r)
-        subgoal for p
-          apply (cases p)
-          using produce_inner_compose_op_Inl_skip_n_productions_op[where n=1 and zs="[a]", of lgc1 lgc2'' lxs _ _ _ _ _ lgc2, where lzs="ys @@- lys"] apply simp
-          apply (drule meta_mp)
-          apply (subst finite_produce_simps)
-          apply auto
-          done
-        subgoal for t
-          using produce_inner_compose_op_Inr_skip_n_productions_op[where n=1 and zs="[a]", of lgc1 lgc2'' lxs _ _ lgc2, where lzs="ys @@- lys"] apply simp
-          apply (drule meta_mp)
-          apply (subst finite_produce_simps)
-          apply auto
-          done
-        done
-      done
-    subgoal
-      apply (simp add: produce_skip_n_productions_op_correctness)
-      done
-    done 
-  done
-
-lemma produce_inner_produce_Some:
-  "produce_inner (lgc2, produce lgc1 lxs) = Some (Inl (lgc2', x, xs, lxs')) \<Longrightarrow>
-   produce_inner (compose_op lgc1 lgc2, lxs) = None \<Longrightarrow> False"
-  by (metis neq_Nil_conv produce_inner_compose_op_None_produce_shift_finite_produce produce_inner_to_finite_produce snd_conv)
-
-lemma apply_compose_op:
-  "apply (compose_op lgc1 lgc2) h = (lgc', x#xs) \<Longrightarrow>
-   \<exists> lgc1' y ys lgc2' .apply lgc1 h = (lgc1', y#ys) \<and> finite_produce lgc2 (y#ys) = (lgc2', x#xs) \<and> lgc' = compose_op lgc1' lgc2'"
-  apply (cases "apply lgc1 h")
-  subgoal for lgc1' out'
-    apply (cases out')
-    subgoal
-      apply (auto split: prod.splits list.splits)
-      done
-    subgoal for o out''
-      apply (auto split: prod.splits list.splits)
-      apply hypsubst_thin
-      apply (metis prod.collapse)
-      done
-    done
-  done
-
+(* 
 lemma finite_produce_produce_inner_Some:
   "finite_produce op zs = (lgc', x#xs) \<Longrightarrow>
    zs \<noteq> [] \<Longrightarrow>
@@ -1310,13 +1415,14 @@ lemma finite_produce_produce_inner_Some:
       done
     done
   done
-
+ *)
+(* 
 lemma produce_inner_compose_op_Some_Inl:
-  "produce_inner (compose_op lgc1 lgc2, lxs) = Some r \<Longrightarrow>
-   r = Inl (lgc1', x, xs, lxs') \<Longrightarrow>
-   \<exists>a aa ab b. produce_inner (lgc2, produce lgc1 lxs) = Some (Inl (a, aa, ab, b))"
-  apply (induct "(compose_op lgc1 lgc2, lxs)" r arbitrary: lgc1 lgc2 lxs x xs lxs' lgc1' rule: produce_inner_alt[consumes 1])
-  subgoal for h lxs' lgc' lgc1 lgc2 x xs lxs'' lgc1'
+  "produce_inner (compose_op op1 op2, lxs) = Some r \<Longrightarrow>
+   r = Inl (op1', x, xs, lxs') \<Longrightarrow>
+   \<exists>a aa ab b. produce_inner (op2, produce op1 lxs) = Some (Inl (a, aa, ab, b))"
+  apply (induct "(compose_op op1 op2, lxs)" r arbitrary: op1 op2 lxs x xs lxs' op1' rule: produce_inner_alt[consumes 1])
+  subgoal for h lxs' lgc' op1 op2 x xs lxs'' op1'
     apply (subst produce.code)
     apply (auto split: option.splits)
     subgoal
@@ -1373,127 +1479,8 @@ lemma produce_inner_compose_op_Some_Inl:
   apply (subst produce_inner.simps)
   apply (auto split: option.splits prod.splits list.splits)
   done
-
-lemma produce_inner_Some_Inr_lfinite:
-  "produce_inner (op, lxs) = Some r \<Longrightarrow>
-   r = Inr lgc' \<Longrightarrow>
-   lfinite lxs"
-  apply (induct "(op, lxs)" r arbitrary: op lxs rule: produce_inner_alt[consumes 1])
-  apply auto
-  done
-
-lemma produce_inner_None_not_lfinite_aux:
-  "lfinite lxs \<Longrightarrow>
-   produce_inner (op, lxs) = None \<Longrightarrow>
-   False"
-  apply (induct lxs arbitrary: op rule: lfinite_induct)
-  using llist.collapse(1) apply fastforce
-  subgoal for lxs op
-    apply (subst (asm) (2) produce_inner.simps)
-    apply (auto split: llist.splits prod.splits list.splits)
-    done
-  done
-
-lemma produce_inner_None_not_lfinite:
-  "produce_inner (op, lxs) = None \<Longrightarrow>
-   \<not> lfinite lxs"
-  using produce_inner_None_not_lfinite_aux by blast
-
-lemma produce_inner_Some_Inr:
-  "lfinite lxs \<Longrightarrow>
-   produce_inner (op, lxs) = Some (Inr lgc') \<Longrightarrow>
-   \<exists> lgc'' . finite_produce op (list_of lxs) = (lgc'', [])"
-  apply (induct lxs arbitrary: op lgc' rule: lfinite_induct)
-  apply (metis finite_produce_Nil list_of_LNil lnull_def)
-  subgoal for xs op lgc'
-    apply (cases xs)
-    apply simp
-    apply simp
-    apply (subst (asm) (2) produce_inner.simps)
-    apply (auto split: option.splits sum.splits llist.splits prod.splits list.splits)
-    apply (simp add: finite_produce_simps)
-    done
-  done
-
-lemma produce_inner_produce_Inr_compose_op_None:
-  "produce_inner (lgc2, produce lgc1 lxs) = Some r1 \<Longrightarrow>
-   r1 = Inr lgc' \<Longrightarrow>
-   produce_inner (lgc1, lxs) = Some (Inr lgc'') \<Longrightarrow>
-   produce_inner (compose_op lgc1 lgc2, lxs) = None \<Longrightarrow>
-   False"
-  apply (induct "(lgc2, produce lgc1 lxs)" r1 arbitrary: lgc1 lgc2 lxs lgc' lgc'' rule: produce_inner_alt[consumes 1])
-  subgoal for op h lxs lgc' zs lgc1 lxsa lgc'a lgc''
-    apply (drule meta_spec[of _ "skip_first_production_op lgc1"])
-    apply (drule meta_spec[of _ lxsa])
-    apply hypsubst_thin
-    apply (drule meta_spec)
-    apply (drule meta_spec[of _ "skip_first_production_op lgc''"])
-    apply (drule meta_mp)
-    apply (metis One_nat_def ldrop_eSuc_ltl ltl_ldropn ltl_simps(2) produce_skip_n_productions_op_correctness skip_first_production_op_eq_skip_n_productions_op_1 skip_n_productions_op_0)
-    apply (drule meta_mp)
-    apply (rule refl)
-    apply (drule meta_mp)
-    using produce_inner_None_not_lfinite produce_inner_Some_Inr_lfinite apply blast
-    apply (drule meta_mp)
-    using produce_inner_None_not_lfinite produce_inner_Some_Inr_lfinite apply blast
-    apply simp
-    done
-  apply (auto split: option.splits llist.splits prod.splits list.splits sum.splits if_splits)
-  apply (subst (asm) produce.code)
-  apply (auto split: option.splits llist.splits prod.splits list.splits sum.splits if_splits)
-  using produce_inner_None_not_lfinite produce_inner_Some_Inr_lfinite apply blast
-  done
-
-lemma produce_inner_produce_Inr_lfinite:
-  "produce_inner (lgc2, produce lgc1 lxs) = Some r \<Longrightarrow>
-   r = Inr lgc' \<Longrightarrow>
-   \<forall> n . produce_inner (skip_n_productions_op lgc1 n, lxs) \<noteq> None \<Longrightarrow>
-   lfinite lxs"
-  apply (induct "(lgc2, produce lgc1 lxs)" r arbitrary: lgc1 lgc2 lxs lgc' rule: produce_inner_alt[consumes 1])
-  subgoal for op h lxs lgc' zs lgc1 lxsa lgc''
-    apply (drule meta_spec[of _ "skip_n_productions_op lgc1 (Suc 0)"])
-    apply (drule meta_spec[of _ "lxsa"])
-    apply (drule meta_spec[of _ "lgc''"])
-    apply (drule meta_mp)
-    apply (metis One_nat_def ldrop_eSuc_ltl ldropn_0 ltl_simps(2) produce_skip_n_productions_op_correctness skip_first_production_op_eq_skip_n_productions_op_1)
-    apply (drule meta_mp)
-    apply simp
-    apply (drule meta_mp)
-    apply simp
-    apply simp
-    done
-  apply (auto split: option.splits llist.splits prod.splits list.splits sum.splits if_splits)
-  apply (subst (asm) produce.code)
-  apply (auto split: option.splits llist.splits prod.splits list.splits sum.splits if_splits)
-  apply (simp add: produce_inner_skip_n_productions_op_Some_None)
-  using produce_inner_None_not_lfinite produce_inner_Some_Inr_lfinite apply blast
-  done
-
-lemma produce_inner_skip_n_productions_op_not_lfinite:
-  "\<forall>n. \<exists>y. produce_inner (skip_n_productions_op op n, lxs) = Some (Inl y) \<Longrightarrow> \<not> lfinite (produce op lxs)"
-  by (metis dual_order.refl lfinite_conv_llength_enat prod_cases4 produce_inner_skip_n_productions_op_Some_llength_le)
-
-lemma not_lfinite_all_dropn:
-  "\<not> lfinite (produce op lxs) \<Longrightarrow> \<forall>n. (produce (skip_n_productions_op op n) lxs \<noteq> LNil)"
-  by (metis lfinite_code(1) lfinite_ldropn produce_skip_n_productions_op_correctness)
-
-lemma produce_inner_Inr_finite_produce:
-  "produce_inner (op, lxs) = Some r \<Longrightarrow>
-   r = Inr op' \<Longrightarrow>
-   lfinite lxs \<Longrightarrow>
-   op' = fst (finite_produce op (list_of lxs))"
-  apply (induct "(op, lxs)" r arbitrary: op lxs op' rule: produce_inner_alt[consumes 1])
-  apply (auto simp add: finite_produce_simps split: option.splits sum.splits prod.splits list.splits)
-  done
-
-lemma produce_inner_compose_op_compose_op_EX:
-  "produce_inner (compose_op (op1::('b, 'c) op) (op2::('c, 'a) op), lxs) = Some r \<Longrightarrow> 
-   r = Inr op' \<Longrightarrow>
-   \<exists> (op1'::('b, 'c) op) (op2'::('c, 'a) op) . op' = compose_op op1' op2'"
-  apply (induct "(compose_op op1 op2, lxs)" r arbitrary: lxs op' op1 op2 rule: produce_inner_alt[consumes 1])
-  apply auto
-  done
-
+ *)
+(* 
 lemma produce_inner_compose_op_Inr:
   "produce_inner (compose_op op1 op2, lxs) = Some r \<Longrightarrow> 
    r = Inr op' \<Longrightarrow>
@@ -1524,47 +1511,8 @@ lemma produce_inner_compose_op_Inr:
       apply (simp add: produce.code)
       done
     done
-  done
-
-lemma produce_inner_produce_Inr:
-  "produce_inner (op2, produce op1 lxs) = Some r \<Longrightarrow> 
-   r = Inr op' \<Longrightarrow>
-   \<exists> ys . produce op1 lxs = llist_of ys \<and> fst (finite_produce op2 ys) = op'"
-  by (metis llist_of_list_of produce_inner_Inr_finite_produce produce_inner_Some_Inr_lfinite)
-
-lemma produce_inner_skip_n_productions_op_Some_Inr_more_skips:
-  "produce_inner (skip_n_productions_op op1 n, lxs) = Some r \<Longrightarrow>
-   r = Inr op' \<Longrightarrow>
-  produce_inner (skip_n_productions_op op1 (n + m), lxs) = Some (Inr (skip_n_productions_op op' m))"
-  apply (induct "(skip_n_productions_op op1 n, lxs)" r arbitrary: op1  n m op' lxs rule: produce_inner_alt[consumes 1])
-  apply (auto split: option.splits sum.splits prod.splits list.splits if_splits)
-  subgoal for h lxs op1 n m op'
-    apply (subst produce_inner.simps)
-    apply auto
-    apply (metis Nat.add_diff_assoc2 less_or_eq_imp_le)
-    done
-  subgoal for h lxs op1 m op
-    apply (subst produce_inner.simps)
-    apply (auto split: prod.splits list.splits)
-    subgoal
-      apply (drule meta_spec[of _ "fst (apply op1 h)"])
-      apply (drule meta_spec[of _ "0"])
-      apply (drule meta_spec[of _ "m"])
-      apply (drule meta_spec[of _ "op"])
-      apply simp
-      done
-    subgoal
-      apply (drule meta_spec[of _ "fst (apply op1 h)"])
-      apply (drule meta_spec[of _ "0"])
-      apply (drule meta_spec[of _ "m"])
-      apply (drule meta_spec[of _ "op"])
-      apply simp
-      done
-    done
-  apply (simp add: add.commute)
-  done
-
-
+  done *)
+(* 
 lemma produce_inner_produce_Inl_compose_op_Inr:
   "produce_inner (compose_op op1 op2, lxs) = Some r \<Longrightarrow>
    r = Inr op' \<Longrightarrow>
@@ -1586,7 +1534,8 @@ lemma produce_inner_produce_Inl_compose_op_Inr:
       done
     done
   done
-
+ *)
+(* 
 lemma produce_inner_produce_Inr_compose_op_Inr:
   "produce_inner (compose_op op1 op2, lxs) = Some r \<Longrightarrow>
    r = Inr op \<Longrightarrow>
@@ -1615,40 +1564,27 @@ lemma produce_inner_produce_Inr_compose_op_Inr:
     apply (simp add: produce.code)
     done
   done
+ *)
 
 lemma fst_finite_produce_skip_n_productions_op:
   "fst (finite_produce (skip_n_productions_op op n) xs) =
    skip_n_productions_op (fst (finite_produce op xs)) (n - length (snd (finite_produce op xs)))"
   apply (induct xs arbitrary: op n)
-  apply auto
-  subgoal for a xs op n
-    apply (subst (1 2 3) finite_produce_simps)
-    apply (auto split: prod.splits)
-    done
+   apply auto
   done
 
 lemma length_snd_finite_produce_skip_n_productions_op_le_n:
   "length (snd (finite_produce op xs)) < n \<Longrightarrow>
    snd (finite_produce (skip_n_productions_op op n) xs) = []"
   apply (induct xs arbitrary: op n)
-  apply auto
-  subgoal for a xs op n     
-    apply (subst (asm) (3) finite_produce_simps)
-    apply (subst finite_produce_simps)
-    apply (auto split: prod.splits)
-    done
+   apply auto
   done
 
 lemma snd_finite_produce_skip_n_productions_op:
   "n \<le> length (snd (finite_produce op xs)) \<Longrightarrow>
    snd (finite_produce (skip_n_productions_op op n) xs) = drop n (snd (finite_produce op xs))"
   apply (induct xs arbitrary: op n)
-  apply auto
-  subgoal for a xs op n
-    apply (subst (asm) (4) finite_produce_simps)
-    apply (subst (1 2) finite_produce_simps)
-    apply (auto split: prod.splits)
-    done
+   apply auto
   done
 
 
@@ -1664,19 +1600,7 @@ lemma compose_op_skip_n_productions_op:
     done
   apply (metis ldrop_enat produce_skip_n_productions_op_correctness)
   done
-
-lemma produce_inner_finite_produce_hd:
-  "produce_inner (op, llist_of xs) = Some (Inl (op', x, ys, lxs')) \<Longrightarrow>
-   hd (snd (finite_produce op xs)) = x"
-  apply (induct xs arbitrary: op x op' lxs' ys)
-  apply auto
-  subgoal for a xs op x op'
-    apply (subst (asm) (2) produce_inner.simps)
-    apply (subst finite_produce_simps)
-    apply (auto split: prod.splits list.splits)
-    done
-  done
-
+    (* 
 lemma produce_inner_compose_op_Inr_Inl_hd:
   "produce_inner (compose_op op1 op2, lxs) = Some r \<Longrightarrow>
    r = Inr op \<Longrightarrow>
@@ -1727,107 +1651,14 @@ lemma produce_inner_compose_op_Inr_Inl_hd:
       apply (simp add: produce.code)
       done
     done
-  done
+  done *)
 
-lemma produce_compose_op_correctness:
-  "\<forall> n . produce_inner (skip_n_productions_op lgc1 n, lxs) \<noteq> None \<Longrightarrow>
-   produce (compose_op lgc1 lgc2) lxs = produce lgc2 (produce lgc1 lxs)"
-  apply (coinduction arbitrary: lgc1 lgc2 lxs rule: llist.coinduct_upto)
-  apply (intro conjI impI)
-  subgoal for lgc1 lgc2 lxs
-    apply (subst (1 2) produce.code)
-    apply (auto simp add: split: prod.splits list.splits option.splits sum.splits)
-    subgoal 
-      by (meson produce_inner_produce_Some)
-    subgoal for lgc'
-      using produce_inner_produce_Inr_lfinite 
-      by (metis option.distinct(1) produce_inner_None_not_lfinite)
-    subgoal
-      by (meson produce_inner_compose_op_Some_Inl)
-    subgoal
-      using produce_inner_compose_op_Some_Inl by fastforce
-    subgoal for lgc'
-      apply (metis llist.disc(1) produce_inner_None_produce_LNil produce_inner_compose_op_Inr)
-      done
-    subgoal for op' op x xs lxs'
-      using produce_inner_produce_Inl_compose_op_Inr 
-      apply (metis lnull_def)
-      done
-    subgoal for op op'
-      using produce_inner_produce_Inr_compose_op_Inr apply fastforce
-      done
-    subgoal for op op'
-      using produce_inner_produce_Inr_compose_op_Inr apply fastforce
-      done
-    done
-  subgoal for lgc1 lgc2 lxs
-    apply (subst (1 2) produce.code)
-    apply (auto simp add: produce_inner_None_produce_LNil  split: prod.splits list.splits option.splits sum.splits)
-    subgoal
-      by (meson produce_inner_compose_op_produce_inner_produce)
-    subgoal
-      using produce_inner_compose_op_Some_Inl by fastforce
-    subgoal for op op' x xs lxs'
-      using produce_inner_compose_op_Inr_Inl_hd apply fast
-      done
-    subgoal
-      by (metis produce_inner_produce_Inr_compose_op_Inr)
-    done
-  subgoal for lgc1 lgc2 lxs
-    apply (subst (4 5) produce.code)
-    apply (auto simp add: produce_inner_None_produce_LNil  split: prod.splits list.splits option.splits sum.splits)
-    subgoal
-      apply (rule lshift.cong_base)
-      apply (rule exI[of _ lgc1])
-      apply (rule exI[of _ "skip_n_productions_op lgc2 1"])
-      apply (rule exI[of _ lxs])
-      apply auto
-      subgoal
-        apply (subst (2) produce.code)
-        apply (auto simp add: compose_op_skip_n_productions_op split: option.splits sum.splits)
-        apply (metis One_nat_def not_one_le_zero one_enat_def produce_inner_Some_produce_inner_skip_n_productions_op_Suc_n_None produce_inner_skip_n_productions_op_llength_LNil skip_n_productions_op_0 zero_enat_def)
-        apply (metis produce_inner_skip_n_productions_op_Suc_LCons skip_n_productions_op_0)
-        apply (metis lshift_simps(1) produce_inner_skip_n_productions_op_Some_Some_Some_None skip_n_productions_op_0)
-        done
-      subgoal
-        apply (subst (2) produce.code)
-        apply (auto simp add: compose_op_skip_n_productions_op split: option.splits sum.splits)
-        apply (metis One_nat_def not_one_le_zero one_enat_def produce_inner_Some_produce_inner_skip_n_productions_op_Suc_n_None produce_inner_skip_n_productions_op_llength_LNil skip_n_productions_op_0 zero_enat_def)
-        apply (metis produce_inner_skip_n_productions_op_Suc_LCons skip_n_productions_op_0)
-        apply (metis lshift_simps(1) produce_inner_skip_n_productions_op_Some_Some_Some_None skip_n_productions_op_0)
-        done
-      done
-    subgoal
-      using produce_inner_compose_op_Some_Inl by fastforce
-    subgoal
-      apply (rule lshift.cong_base)
-      apply (rule exI[of _ lgc1])
-      apply (rule exI[of _ "skip_n_productions_op lgc2 1"])
-      apply (rule exI[of _ lxs])
-      apply auto
-      subgoal
-        apply (auto simp add: compose_op_skip_n_productions_op split: option.splits sum.splits)
-        apply (metis produce_inner_skip_n_productions_Inr_op_ldropn produce_inner_skip_n_productions_op_Some_None_Suc produce_skip_n_productions_op_correctness skip_first_production_op.simps(2) skip_n_productions_op_0)
-        done
-      subgoal
-        apply (subst (2) produce.code)
-        apply (auto simp add: compose_op_skip_n_productions_op split: option.splits sum.splits)
-        apply (metis One_nat_def not_one_le_zero one_enat_def produce_inner_Some_produce_inner_skip_n_productions_op_Suc_n_None produce_inner_skip_n_productions_op_llength_LNil skip_n_productions_op_0 zero_enat_def)
-        apply (metis produce_inner_skip_n_productions_op_Suc_LCons skip_n_productions_op_0)
-        apply (metis lshift_simps(1) produce_inner_skip_n_productions_op_Some_Some_Some_None skip_n_productions_op_0)
-        done
-      done
-    subgoal
-      apply (simp add: lshift.cong_refl produce_inner_produce_Inr_compose_op_Inr)
-      done
-    done
-  done
 
 lemma produce_skip_n_productions_op_compose_op[simp]:
-  "\<forall> n . produce_inner (skip_n_productions_op lgc1 n, lxs) \<noteq> None \<Longrightarrow>
-   produce (skip_n_productions_op (compose_op lgc1 lgc2) n) lxs = produce (compose_op lgc1 (skip_n_productions_op lgc2 n)) lxs"
+  "\<forall> n . produce_inner (skip_n_productions_op op1 n, lxs) \<noteq> None \<Longrightarrow>
+   produce (skip_n_productions_op (compose_op op1 op2) n) lxs = produce (compose_op op1 (skip_n_productions_op op2 n)) lxs"
   apply (subst produce_compose_op_correctness)
-  apply assumption
+   apply assumption
   apply (simp add: produce_compose_op_correctness produce_skip_n_productions_op_correctness)
   done
 
@@ -1846,93 +1677,10 @@ inductive prefix_production_LE where
 lemma ltake_enat_Suc[simp]:
   "ltake (enat (Suc n)) (LCons x lxs) = LCons x (ltake n lxs)"
   apply (cases n)
-  apply simp
-  apply (metis One_nat_def enat_0 ltake_eSuc_LCons one_eSuc one_enat_def)
+   apply simp
+   apply (metis One_nat_def enat_0 ltake_eSuc_LCons one_eSuc one_enat_def)
   apply simp
   apply (metis eSuc_enat ltake_eSuc_LCons)
-  done
-
-lemma produce_inner_skip_n_productions_op_Some_prefix_production_EQ_ex:
-  "produce_inner (skip_n_productions_op op m, lxs) = Some r \<Longrightarrow>
-   r = Inl (lgc', x, xs, lxs') \<Longrightarrow>
-   \<exists>n. prefix_production_LE op lxs (Suc m) (Suc n) \<and> lnth (produce op (ltake (Suc n) lxs)) m = x \<and> Suc n \<le> llength lxs"
-  apply (induct "(skip_n_productions_op op m, lxs)" r arbitrary: op lxs lgc' lxs' m rule: produce_inner_alt[consumes 1])
-  subgoal for h lxs lgc' zs op m lgc'a lxs'
-    apply (auto split: if_splits)
-    subgoal
-      apply (drule meta_spec)+
-      apply (drule meta_mp)
-      apply (rule refl)
-      apply (drule meta_mp)
-      apply simp
-      apply (elim exE conjE)
-      subgoal for n
-        apply (rule exI[of _ "Suc n"])
-        apply safe
-        apply (metis (no_types, lifting) Suc_diff_le le_imp_less_Suc less_or_eq_imp_le pf_LE_step prod.collapse)
-        apply (subst produce.code)
-        apply (auto split: option.splits)
-        apply (subst (asm) produce_inner.simps)
-        apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits list.splits)
-        apply (subst (asm) produce_inner.simps)
-        apply (auto simp add:  Suc_ile_eq   enat_0_iff(1) ltake_eq_LNil_iff produce_inner_None_produce_LNil split: sum.splits prod.splits list.splits option.splits llist.splits)
-        apply (simp add: produce.code)
-        apply (metis diff_Suc_eq_diff_pred diff_is_0_eq lappend_llist_of leD less_or_eq_imp_le lnth_LCons' lnth_lappend_llist_of not_less_zero)
-        done
-      done
-    subgoal 
-      apply (drule meta_spec[of _ "fst (apply op h)"])
-      apply (drule meta_spec[of _ 0])
-      apply (drule meta_spec)
-      apply (drule meta_mp)
-      apply simp
-      apply (drule meta_mp)
-      apply (rule refl)
-      apply safe
-      subgoal for n'
-        apply (rule exI[of _ "Suc n'"])
-        apply safe
-        apply (metis One_nat_def add_diff_cancel_right' lessI pf_LE_step plus_1_eq_Suc prod.collapse)
-        apply (subst produce.code)
-        apply (auto split: option.splits)
-        apply (subst (asm) produce_inner.simps)
-        apply (auto simp add: produce_inner_None_produce_LNil split: sum.splits prod.splits list.splits)
-        apply (subst (asm) produce_inner.simps)
-        apply (auto simp add: produce_inner_None_produce_LNil split: sum.splits prod.splits list.splits)
-        apply (metis cancel_comm_monoid_add_class.diff_cancel lappend_llist_of less_not_refl lnth_lappend_llist_of)
-        apply (subst (asm) produce_inner.simps)
-        apply (auto simp add: produce_inner_None_produce_LNil split: sum.splits prod.splits list.splits)
-        apply (simp add: produce.code)
-        apply (metis eSuc_enat eSuc_ile_mono)
-        done
-      done
-    done
-  subgoal for h lxs' lgc' op m
-    apply (rule exI[of _ 0])
-    apply (auto split: if_splits)
-    apply (drule linorder_class.leI)
-    apply (auto simp add: Nat.le_eq_less_or_eq)
-    apply (metis Suc_leI old.prod.exhaust pf_LE_stop snd_conv)
-    apply (subst produce.code)
-    apply (auto split: option.splits)
-    apply (subst (asm) produce_inner.simps)
-    apply (auto simp add: produce_inner_None_produce_LNil split: prod.splits list.splits)
-    apply (subst (asm) produce_inner.simps)
-    apply (auto simp add: produce_inner_None_produce_LNil split: sum.splits prod.splits list.splits)
-    apply (subst (asm) produce_inner.simps)
-    apply (auto simp add: produce_inner_None_produce_LNil split: sum.splits prod.splits list.splits)
-    apply (subst (asm) produce_inner.simps)
-    apply (auto simp add: produce_inner_None_produce_LNil split: sum.splits prod.splits list.splits)
-    apply (metis drop_eq_Nil2 linorder_le_less_linear list.distinct(1) lnth_shift lshift_simps(2) nth_via_drop)
-    apply (subst (asm) produce_inner.simps)
-    apply (auto simp add: produce_inner_None_produce_LNil split: sum.splits prod.splits list.splits)
-    apply (subst (asm) produce_inner.simps)
-    apply (auto simp add: produce_inner_None_produce_LNil split: sum.splits prod.splits list.splits)
-    apply (subst (asm) produce_inner.simps)
-    apply (auto simp add: produce_inner_None_produce_LNil split: sum.splits prod.splits list.splits)
-    apply (metis eSuc_enat iless_eSuc0 linorder_not_less zero_enat_def zero_ne_eSuc)
-    done
-  apply simp
   done
 
 lemma produce_inner_skip_n_productions_op_Suc_Nil_LNil:
@@ -1948,9 +1696,9 @@ lemma produce_inner_skip_n_productions_op_Suc_Nil_LNil:
       apply hypsubst_thin
       apply (drule meta_spec)+
       apply (drule meta_mp)
-      apply (rule refl)
+       apply (rule refl)
       apply (drule meta_mp)
-      apply (simp add: Suc_diff_le)
+       apply (simp add: Suc_diff_le)
       apply assumption
       done
     apply (metis skip_n_productions_op_0)
@@ -1960,8 +1708,6 @@ lemma produce_inner_skip_n_productions_op_Suc_Nil_LNil:
     apply (simp split: option.splits prod.splits if_splits list.splits)
     apply safe
     apply (metis append_eq_conv_conj length_Suc_conv_rev list.inject)
-    apply (subst produce.corec.code)
-    apply (simp split: option.splits prod.splits if_splits list.splits)
     done
   apply auto
   done
@@ -1971,18 +1717,18 @@ lemma produce_skip_n_productions_op_LCons:
   apply (subst (asm) produce.code)
   apply (subst produce.code)
   apply (simp split: option.splits prod.splits sum.splits)
-  apply hypsubst_thin
-  apply safe
-  apply simp
+   apply hypsubst_thin
+   apply safe
+       apply simp
   subgoal for lgc' xs lxs'
     apply (subst LNil_eq_shift_iff)
     apply (auto simp add: produce_inner_skip_n_productions_op_Suc_Nil_LNil)
     done
-  apply simp
+      apply simp
   subgoal for lgc' xs lxs' lgc'' h' xs' lxs''
     apply (auto simp add: produce_inner_skip_n_productions_op_Suc_LCons)
     done
-  apply auto
+     apply auto
   using produce_inner_skip_n_productions_op_Some_Some_Some_None apply fastforce
   using produce_inner_None_not_lfinite_aux produce_inner_Some_Inr_lfinite apply blast
   using produce_inner_skip_n_productions_op_Some_None_Suc_None apply blast
@@ -1995,169 +1741,19 @@ lemma produce_inner_skip_n_productions_op_Suc_Inr:
    produce_inner (skip_n_productions_op op (Suc i), lxs) = Some (Inr (skip_n_productions_op op' 1))"
   by (metis produce_inner_skip_n_productions_op_Some_None_Suc skip_first_production_op_eq_skip_n_productions_op_1)
 
-
-lemma produce_skip_n_productions_op_LCons_prefix_production_EQ_Ex:
-  "produce (skip_n_productions_op op m) lxs = LCons x lxs' \<Longrightarrow>
-   \<exists> n. prefix_production_LE op lxs (Suc m) (Suc n) \<and> lnth (produce op (ltake (Suc n) lxs)) m = x \<and> Suc n \<le> llength lxs \<or>
-   n \<ge> llength lxs"
-  apply (subst (asm) produce.code)
-  apply (simp split: option.splits sum.splits prod.splits)
-  using produce_inner_skip_n_productions_op_Some_prefix_production_EQ_ex 
-  apply fastforce
-  apply (metis eSuc_enat ile_eSuc lfinite_conv_llength_enat produce_inner_Some_Inr_lfinite)
-  done
-
-lemma lnth_produce_prefix_production_EQ_Ex:
-  "lnth (produce op lxs) m = x \<Longrightarrow>
-   m < llength (produce op lxs) \<Longrightarrow>
-   \<exists> n . prefix_production_LE op lxs (Suc m) (Suc n) \<and> lnth (produce op (ltake (Suc n) lxs)) m = x \<and> Suc n \<le> llength lxs \<or>
-   n \<ge> llength lxs"
-  apply (metis ldropn_Suc_conv_ldropn produce_skip_n_productions_op_LCons_prefix_production_EQ_Ex produce_skip_n_productions_op_correctness)
-  done 
-
-lemma produce_coinduction:
-  assumes rel: "P op ilxs olxs"
-    and nonterm: "\<And>op ilxs olxs. P op ilxs olxs \<Longrightarrow> produce_inner (op, ilxs) = None \<Longrightarrow> olxs = LNil"
-    and exit: "\<And>op olxs. P op LNil olxs \<Longrightarrow> olxs = exit op"
-    and step: "\<And>op h ilxs olxs op' out.
-    P op (LCons h ilxs) olxs \<Longrightarrow> apply op h = (op', out) \<Longrightarrow> \<exists>olxs'. olxs = out @@- olxs' \<and> P op' ilxs olxs'"
-  shows "produce op ilxs = olxs"
-proof -
-  have coind: "\<And>op ilxs olxs. P op ilxs olxs \<Longrightarrow>
-    (case produce_inner (op, ilxs) of None \<Rightarrow> olxs = LNil
-       | Some (Inl (op', x, xs, ilxs')) \<Rightarrow> \<exists>olxs'. olxs = LCons x (xs @@- olxs') \<and> P op' ilxs' olxs'
-       | Some (Inr op') \<Rightarrow> olxs = exit op')"
-    apply (auto split: option.splits sum.splits)
-    subgoal
-      by (rule nonterm)
-    subgoal for op ilxs olxs op' x xs ilxs'
-      apply (drule produce_inner_alt[where Q="\<lambda>(op, ilxs) zs. 
-      case zs of Inl (op', x, xs, ilxs') \<Rightarrow> \<forall>olxs. P op ilxs olxs \<longrightarrow> (\<exists>olxs'. olxs = LCons x (xs @@- olxs') \<and> P op' ilxs' olxs') | Inr op' \<Rightarrow> True"])
-      apply (auto dest!: step split: option.splits sum.splits)
-      apply (subst (asm) produce_inner.simps)
-      apply (auto dest!: step split: option.splits sum.splits)
-      done
-    subgoal for op ilxs olxs op'
-      apply (drule produce_inner_alt[where Q="\<lambda>(op, ilxs) zs. 
-      case zs of Inl (op', x, xs, ilxs') \<Rightarrow> True | Inr op' \<Rightarrow> \<forall>olxs. P op ilxs olxs \<longrightarrow> (\<exists>ilxs'. P op' LNil olxs)"])
-      apply (auto dest!: step dest: exit split: option.splits sum.splits)
-      done
-    done
-  from rel show ?thesis
-    apply (coinduction arbitrary: op ilxs olxs rule: llist.coinduct_upto)
-    apply (intro conjI impI)
-    apply (drule coind)
-    apply (subst produce.code)
-    apply (auto split: option.splits sum.splits) []
-    apply (drule coind)
-    apply (subst produce.code)
-    apply (auto split: option.splits sum.splits) []
-    apply (frule coind)
-    apply (subst (2) produce.code)
-    apply (auto simp: produce_inner_None_produce_LNil
-        intro!: llist.cong_lshift intro: llist.cong_refl split: option.splits sum.splits) []
-    apply (rule  llist.cong_base exI conjI refl)+
-    subgoal for op ilxs olxs op' x xs ilxs'
-      apply (drule produce_inner_alt[where op_lxs = "(op, ilxs)" and Q = "\<lambda>(op, ilxs) zs. 
-      case zs of Inl (op', x, xs, ilxs') \<Rightarrow> \<forall>olxs. P op ilxs olxs \<longrightarrow> (\<exists>olxs'. olxs = LCons x (xs @@- olxs') \<and> P op' ilxs' olxs') | Inr op' \<Rightarrow> True"])
-      apply (auto dest!: step split: sum.splits)
-      apply (subst (asm) produce_inner.simps)
-      apply (auto dest!: step split: option.splits sum.splits)
-      done
-    done
-qed
-
-
-lemma produce_lshift[simp]: 
-  "produce op (xs @@- lxs) = (let (op', out) = finite_produce op xs in out @@- produce op' lxs)"
-  apply (induct xs arbitrary: op)
-  apply (auto simp: split: prod.splits list.splits)
-  by (metis (mono_tags, lifting) finite_produce_to_shift_produce lshift_simps(2) old.prod.case produce_LCons)
-
-lemma produce_compose_op_correctness':
-  assumes "\<forall> n . produce_inner (skip_n_productions_op op1 n, lxs) \<noteq> None"
-  shows "produce (compose_op op1 op2) lxs = produce op2 (produce op1 lxs)"
-  using assms
-  apply (coinduction arbitrary: op1 op2 lxs rule: produce_coinduction)
-  subgoal for op1 op2 lxs
-    apply (subst (1 2) produce.code)
-    apply (auto split: option.splits sum.splits)
-    apply (simp_all add: produce_inner_skip_n_productions_op_Some_None
-        produce_inner_Some_Inr_compose_op)
-    apply (metis produce_inner_Some_produce produce_inner_produce_Some)
-    apply (metis option.simps(3) produce_inner_None_not_lfinite_aux
-        produce_inner_Some_produce produce_inner_produce_Inr_lfinite)
-    done
-  subgoal for op1 op2 lxs
-    by auto
-  subgoal for h ilxs op' out op1 op2 lxs
-    apply clarsimp
-    apply (rule exI[of _ "produce (fst (finite_produce op2 (snd (apply op1 h)))) (produce (fst (apply op1 h)) ilxs)"] conjI)+
-    apply (auto split: prod.splits)
-    apply (rule exI conjI refl)+
-    apply safe
-    subgoal for n
-      apply (drule spec[of _ "n + length (snd (apply op1 h))"])
-      apply auto
-      apply (subst (asm) produce_inner.simps)
-      apply (auto split: if_splits list.splits)
-      done
-    done
-  done
-
-lemma produce_compose_op_correctness_alt:
-  assumes "\<forall> xs op' old out. finite_produce op2 xs = (op', out) \<longrightarrow> exit op' = LNil" 
-  shows "produce (compose_op op1 op2) lxs = produce op2 (produce op1 lxs)"
-  using assms
-  apply (coinduction arbitrary: op1 op2 lxs rule: produce_coinduction)
-  subgoal for op1 op2 lxs
-    apply (subst (1 2) produce.code)
-    apply (auto split: option.splits sum.splits)
-    apply (simp_all add: produce_inner_skip_n_productions_op_Some_None
-        produce_inner_Some_Inr_compose_op)
-    using finite_produce_Nil apply blast
-    apply (metis produce_inner_Some_produce produce_inner_produce_Some)
-    using produce_inner_Inr_finite_produce produce_inner_Some_Inr_lfinite surjective_pairing apply blast
-    done
-  apply fastforce
-  subgoal for h ilxs op' out op1 op2 lxs
-    apply clarsimp
-    apply (rule exI[of _ "produce (fst (finite_produce op2 (snd (apply op1 h)))) (produce (fst (apply op1 h)) ilxs)"] conjI)+
-    apply (auto split: prod.splits)
-    apply (rule exI conjI refl)+
-    apply safe
-    apply hypsubst_thin
-    apply (metis finite_produce_append fst_eqD surjective_pairing)
-    done
-  done
-
 lemma fst_finite_produce_compose_op:
   "fst (finite_produce (compose_op op1 op2) xs) =
   compose_op (fst (finite_produce op1 xs)) (fst (finite_produce op2 (snd (finite_produce op1 xs))))"
   apply (induct xs arbitrary: op1 op2 )
-  apply simp
+   apply simp
   subgoal for x xs op1 op2
-    apply (subst (1 2 3) finite_produce_simps)
-    apply (auto split: prod.splits list.splits)
-    apply (simp add: finite_produce_simps)
-    apply (subst (asm) (5) finite_produce_simps)
-    apply auto
-    subgoal for x xs op' out op'' y
-      apply (cases y)
-      apply auto
-      apply (subst (2) finite_produce_simps)
-      apply auto
-      apply (subst (2) finite_produce_simps)
-      apply auto
-      apply (simp add: finite_produce_append)
-      done
-    done
+    by (auto simp add: finite_produce_append split: prod.splits list.splits)
   done
 
 lemma snd_finite_produce_compose_op:
   "snd (finite_produce (compose_op op1 op2) xs) = snd (finite_produce op2 (snd (finite_produce op1 xs)))"
   apply (induct xs arbitrary: op1 op2)
-  apply simp
+   apply simp
   subgoal for x xs op1 op2
     apply (subst (1 3) finite_produce_simps)
     apply (auto split: prod.splits list.splits)
@@ -2169,16 +1765,16 @@ lemma finite_produce_compose_op:
   "finite_produce (compose_op op1 op2) xs = (compose_op (fst (finite_produce op1 xs)) (fst (finite_produce op2 (snd (finite_produce op1 xs)))), snd (finite_produce op2 (snd (finite_produce op1 xs))))"
   by (metis fst_finite_produce_compose_op prod.collapse snd_finite_produce_compose_op)
 
-lemma compose_op_assoc:     
+lemma compose_op_assoc_alt:     
   "(\<forall>n lys. produce_inner (skip_n_productions_op op2 n, lys) \<noteq> None) \<Longrightarrow>
    compose_op (compose_op op1 op2) op3 = compose_op op1 (compose_op op2 op3)"
   apply (coinduction arbitrary: op1 op2 op3)
   apply (auto simp add:  rel_fun_def)
   subgoal for op1 op2 op3 x
     apply (intro exI conjI)
-    apply (rule refl)+
-    apply auto
-    apply (simp add: fst_finite_produce_compose_op)
+      apply (rule refl)+
+     apply auto
+     apply (simp add: fst_finite_produce_compose_op)
     subgoal for n lys
       apply (drule spec[of _ "n + length (snd (apply op1 x))"])
       apply (drule spec[of _ "snd (apply op1 x) @@- lys"])
@@ -2186,7 +1782,7 @@ lemma compose_op_assoc:
       subgoal for y
         apply (rule exI[of _ y])
         apply (cases n)
-        apply auto
+         apply auto
         oops
 
 lemma compose_op_assoc:
@@ -2194,9 +1790,9 @@ lemma compose_op_assoc:
    compose_op (compose_op op1 op2) op3 = compose_op op1 (compose_op op2 op3)"
   apply (coinduction arbitrary: op1 op2 op3)
   apply (auto simp add: finite_produce_compose_op rel_fun_def)
-  apply (metis finite_produce_append fst_conv)
+   apply (metis finite_produce_append fst_conv)
   apply (subst produce_compose_op_correctness_alt)
-  apply auto
+   apply auto
   done
 
 corecursive lconcat where
@@ -2234,12 +1830,14 @@ lemma lconcat_code:
   apply (auto simp: lconcat_all_Nil split: llist.splits list.splits)
   done
 
+simps_of_case lconcat_simps[simp]: lconcat_code
+
 lemma in_lset_lconcat_LNil_Nil:
   "xs \<in> lset xss \<Longrightarrow> lconcat xss = LNil \<Longrightarrow> xs = []"
   apply (induct xss arbitrary: rule: lset_induct)
-  apply (subst (asm) lconcat_code)
-  apply auto
-  apply (subst (asm) lconcat_code)
+   apply (subst (asm) lconcat_code)
+   apply auto
+   apply (subst (asm) lconcat_code)
   using lshift_LNil_split apply blast
   apply (metis LNil_eq_shift_iff lconcat_code llist.simps(5))
   done
@@ -2261,13 +1859,12 @@ lemma lconcat_LCons_ex:
   apply (induct lxs rule: lconcat.corec.inner_induct)
   subgoal for xss
     apply (cases xss)
-    apply (simp add: lconcat.code)
+     apply (simp add: lconcat.code)
     subgoal for x xss'
       apply hypsubst_thin
       apply simp
-      apply (subst (asm) (2) lconcat_code)
       apply (auto split: llist.splits)
-      apply (metis lconcat_all_Nil llist.distinct(1) lshift_simps(1) shift_in_list)
+      apply (metis Llists_Processors.lconcat_eq_LNil llist.distinct(1) lshift_simps(1) shift_in_list)
       done
     done
   done
@@ -2278,13 +1875,12 @@ lemma lconcat_remove_head:
   apply (induct lxs arbitrary: x rule: lconcat.corec.inner_induct)
   subgoal for xss
     apply (cases xss)
-    apply (simp add: lconcat.code)
+     apply (simp add: lconcat.code)
     subgoal for x xss'
       apply hypsubst_thin
       apply simp
-      apply (subst (asm) (3) lconcat_code)
       apply (auto split: llist.splits)
-      apply (metis lconcat_all_Nil llist.distinct(1))
+       apply (metis lconcat_all_Nil llist.distinct(1))
       apply (metis lconcat_code list.collapse llist.case(2) shift_LCons_Cons)
       done
     done
@@ -2306,7 +1902,7 @@ lemma lconcat_inclusion:
 lemma inclusion_lconcat:
   "xs \<in> lset lxs \<Longrightarrow> x \<in> set xs \<Longrightarrow> x \<in> lset (lconcat lxs)"
   apply (induct lxs arbitrary: rule: lset_induct)
-  apply (auto simp add: lconcat_code)
+   apply (auto simp add: lconcat_code)
   done
 
 lemma lset_lconcat:
@@ -2314,7 +1910,7 @@ lemma lset_lconcat:
   apply safe
   subgoal for x
     apply (induct "(lconcat xss)" arbitrary: rule: lset_induct)
-    apply (metis UN_I lconcat_LCons_ex)
+     apply (metis UN_I lconcat_LCons_ex)
     using lconcat_inclusion 
     apply (metis UN_iff in_lset_ltlD ltl_simps(2))
     done
@@ -2328,7 +1924,7 @@ lemma lfinite_lconcat:
   "lfinite lxs \<Longrightarrow>
    lfinite (lconcat lxs)"
   apply (induct lxs rule: lfinite.induct)
-  apply (simp add: lconcat_all_Nil)
+   apply (simp add: lconcat_all_Nil)
   apply (subst lconcat.code)
   apply (auto split: list.splits)
   done
@@ -2344,7 +1940,7 @@ lemma lconcat_correct:
   "lconcat lxs = Coinductive_List.lconcat (lmap llist_of lxs)"
   apply (rule lconcat_unique[THEN sym, THEN fun_cong])
   apply (auto simp add:  eq_Nil_null split: list.splits llist.splits)
-  apply (simp add: lconcat_lmap_LNil null_def)
+      apply (simp add: lconcat_lmap_LNil null_def)
   subgoal
     by (simp add: null_def)
   subgoal
@@ -2353,12 +1949,6 @@ lemma lconcat_correct:
     using lappend_llist_of by blast
   subgoal
     using lappend_llist_of by blast
-  done
-
-lemma finite_produce_Cons[simp]:
-  "finite_produce op (x#xs) = (let (lgc', out) = apply op x in (\<lambda> (op', out'). (op', out@out')) (finite_produce lgc' xs))"
-  apply (subst finite_produce_simps)
-  apply (simp split: prod.splits)
   done
 
 end
