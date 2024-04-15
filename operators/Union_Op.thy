@@ -42,7 +42,7 @@ lemma producible_unionE:
   apply auto
   done
 
-lemma [simp]:
+lemma unproduced_watermarks_unproduced_watermarks_simp[simp]:
   "unproduced_watermarks (unproduced_watermarks WM) = unproduced_watermarks WM"
   unfolding unproduced_watermarks_def producible_def
   by auto
@@ -79,20 +79,20 @@ lemma in_unproduce_watermarks_2:
   apply auto
   done
 
-lemma [simp]:
+lemma unproduced_watermarks_not_producible[simp]:
   "\<forall>wm\<in>unproduced_watermarks WM. \<not> producible wm WM"
   unfolding unproduced_watermarks_def producible_def
   apply auto
   done
-
 
 lemma in_unproduced_watermarks_3:
   "maximal_complete WM \<Longrightarrow>
    \<not> producible wm (maximal_antichain_set WM) \<Longrightarrow>
    wm \<in> unproduced_watermarks (insert wm WM)"
   unfolding unproduced_watermarks_def producible_def maximal_antichain_set_def maximal_complete_def
-  apply auto
-  by (smt (verit) Inl_leq Inr_leq dual_order.trans less_eq_sum.cases old.sum.simps(5) old.sum.simps(6))
+  apply simp
+  apply (smt (verit) Inl_leq Inr_leq dual_order.trans less_eq_sum.cases old.sum.simps(5) old.sum.simps(6))
+  done
 
 lemma in_unproduced_watermarks_union:
   "wm' \<in> unproduced_watermarks (WM' \<union> WM) \<Longrightarrow>
@@ -100,25 +100,6 @@ lemma in_unproduced_watermarks_union:
   unfolding unproduced_watermarks_def producible_def
   apply auto
   done
-
-lemma unproduced_watermarks_union:
-  "\<forall>wma\<in>unproduced_watermarks B. \<not> producible wma A \<Longrightarrow>
-   \<forall>wma\<in>unproduced_watermarks A. \<not> producible wma B \<Longrightarrow>
-   unproduced_watermarks (A \<union> B) = unproduced_watermarks A \<union> unproduced_watermarks B"
-  unfolding unproduced_watermarks_def
-  apply auto
-       apply (meson Un_iff producible_def)+
-  done
-
-
-lemma in_unproduced_watermarks_4:
-  "t \<in> maximal_antichain_set WM \<Longrightarrow>
-   wm \<le> t \<Longrightarrow>
-   t' \<in> unproduced_watermarks WM \<Longrightarrow>
-   t' \<in> unproduced_watermarks (insert wm WM)"
-  unfolding unproduced_watermarks_def producible_def maximal_antichain_set_def maximal_complete_def
-  apply auto
-  by (smt (verit, del_insts) Inl_leq Inr_leq less_eq_sum.cases old.sum.simps(5) old.sum.simps(6) order.trans)
 
 lemma in_not_in_unproduced_watermarks_insert:
   "t' \<in> unproduced_watermarks (insert wm WM) \<Longrightarrow>
@@ -131,28 +112,21 @@ lemma in_not_in_unproduced_watermarks_insert:
 lemma producible_insert_same[simp]:
   "producible wm (insert wm WM) \<longleftrightarrow> producible wm WM"
   unfolding producible_def
-  apply auto
-  using less_eq_sum.cases by fastforce
+  apply (intro iffI)
+  apply (simp_all split: sum.splits)
+  done
 
 lemma producible_not_in_unproduced_watermarks:
   "producible wm WM \<Longrightarrow>
   wm \<notin> unproduced_watermarks WM"
   by force
 
-lemma unproduced_watermarks_insert_1:
-  "producible wm WM \<Longrightarrow>
-   unproduced_watermarks (insert wm WM) = unproduced_watermarks {wm' \<in> WM. \<not> wm' \<le> (case_sum Inr Inl wm) \<and> \<not> wm' \<le> wm}"
-  unfolding unproduced_watermarks_def producible_def
-  apply auto
-  by (smt (verit) Inl_Inr_False Inl_leq Inr_leq dual_order.trans less_eq_sum.simps sum.case_eq_if sum.collapse(1) sum.collapse(2) sum.disc(2) sum.sel(1) sum.sel(2))
-
 lemma unproduced_watermarks_insert_2:
   "\<not> producible wm WM \<Longrightarrow>
    unproduced_watermarks (insert wm WM) = insert wm (unproduced_watermarks {wma \<in> WM. \<not> producible wma (insert wm WM)})"
-  unfolding unproduced_watermarks_def 
   unfolding unproduced_watermarks_def producible_def
-  apply auto
-  by (metis insertI1 producible_def producible_insert_same)
+   apply (auto split: sum.splits)
+  done
 
 lemma producible_union[simp]:
   "producible wm (A \<union> B) = producible wm A \<or> producible wm B"
@@ -181,55 +155,46 @@ lemma producible_subset:
   done
 
 lemma producible_maximal_antichain_set:
-  "maximal_complete WM \<Longrightarrow>
-   producible wm (maximal_antichain_set WM) \<longleftrightarrow> producible wm WM"
-  unfolding producible_def maximal_antichain_set_def maximal_complete_def
-  apply auto
-  by (smt (verit) Inl_leq Inr_leq dual_order.trans less_eq_sum.cases old.sum.simps(5) old.sum.simps(6))
+  assumes "maximal_complete WM"
+  shows "producible wm (maximal_antichain_set WM) \<longleftrightarrow> producible wm WM"
+proof -
+  have "producible wm WM"
+    if "producible wm (maximal_antichain_set WM)"
+    using that assms
+    unfolding producible_def maximal_antichain_set_def maximal_complete_def
+    apply (simp split: sum.splits)
+    using  sum.exhaust apply metis
+    done
+  moreover have "producible wm (maximal_antichain_set WM)"
+    if "producible wm WM"
+    using that assms
+    unfolding producible_def maximal_antichain_set_def maximal_complete_def
+    apply (simp split: sum.splits)
+    apply (elim bexE)
+    subgoal for wm'
+      apply (drule bspec[of _ _ wm'])
+       apply simp
+      apply (elim bexE)
+      subgoal for wm''
+        apply (rule exI[of _ wm''])
+        apply (smt (verit, ccfv_threshold) Inl_Inr_False less_eq_sum.cases order.trans sum_simps(10) sum_simps(9))
+        done
+      done
+    done
+  ultimately show ?thesis
+    by (intro iffI conjI)
+qed
 
 lemma not_producible_maximal_antichain_set[simp]:
   "maximal_complete WM \<Longrightarrow>
    (\<not> producible wm (maximal_antichain_set WM)) \<longleftrightarrow> \<not> producible wm WM"
-  unfolding producible_def maximal_antichain_set_def maximal_complete_def
-  apply auto
-  by (smt (verit) Inl_leq Inr_leq dual_order.trans less_eq_sum.cases old.sum.simps(5) old.sum.simps(6))
+  using producible_maximal_antichain_set by blast
 
 lemma unproduced_watermarks_conj_elim[simp]:
   "unproduced_watermarks {x \<in> WM. \<not> producible x WM \<and> P x} =
    {x \<in> unproduced_watermarks WM. P x}"
   unfolding unproduced_watermarks_def producible_def
   apply (auto split: sum.splits)
-  done
-
-lemma producible_filter_useless:
-  "producible wm A \<longleftrightarrow> producible wm {wma \<in> A. \<not> wma < wm}"
-  unfolding producible_def
-  apply auto
-  by (metis Inl_Inr_False dual_order.strict_implies_order isl_def less_eq_sum.cases sum.case_eq_if)
-
-lemma producible_forall:
-  "producible wm A \<Longrightarrow>
-   (\<forall> wm' \<le> wm. producible wm' A)"
-  apply (cases wm)
-  unfolding producible_def
-   apply auto
-  using dual_order.trans apply blast+
-  done
-
-lemma not_producible_le_not_producible:
-  "\<not> producible wm A \<Longrightarrow>
-   wm \<le> wm' \<Longrightarrow>
-   \<not> producible wm' A"
-  apply (cases wm; cases wm')
-  unfolding producible_def
-     apply (auto split: sum.splits)
-  done
-
-lemma producible_union_extend:
-  "producible wm A \<Longrightarrow>
-   producible wm (A \<union> B)"
-  unfolding producible_def
-  apply auto
   done
 
 lemma in_unproduced_watermarks_5:
@@ -240,44 +205,14 @@ lemma in_unproduced_watermarks_5:
   apply (auto split: sum.splits)
   done
 
-lemma unproduced_watermarks_insert_not_producible:
-  "\<not> producible wm A \<Longrightarrow>
-   unproduced_watermarks (insert wm A) = insert wm (unproduced_watermarks A) - {wm' \<in> A. wm' \<le> (case_sum Inr Inl wm)}"
-  unfolding unproduced_watermarks_def 
-  apply auto
-  using producible_insert_same producible_insert_simp by blast
-
-lemma unproduced_watermarks_insert:
-  "unproduced_watermarks (insert (wm::_::order) WM) =
-   ((if \<exists> wm' \<in> WM. wm \<le> (case_sum Inr Inl wm')  
-      then {wm' \<in> unproduced_watermarks WM. \<not> (case_sum Inr Inl wm') \<le> wm} else 
-       (if \<exists> wm' \<in> WM. (case_sum Inr Inl wm') < wm 
-        then insert wm ({wm' \<in> unproduced_watermarks WM. \<not> (case_sum Inr Inl wm') < wm})
-        else insert wm (unproduced_watermarks WM))))"
-  unfolding unproduced_watermarks_def producible_def
-  apply (cases "\<exists> wm' \<in> WM. wm \<le> (case_sum Inr Inl wm')")
-  subgoal
-    apply simp
-    apply auto
-     apply (smt (verit, best) less_eq_sum.simps sum.case_eq_if sum.disc(1) sum.disc(2) sum.exhaust_sel sum.sel(1) sum.sel(2))
-    apply (smt (verit, ccfv_threshold) Inl_Inr_False Inl_leq Inr_leq less_eq_sum.cases old.sum.simps(5) sum.case_eq_if sum.disc(2) sum.sel(1) sum.sel(2))
-    done
-  subgoal
-    apply simp
-    apply (cases "\<exists> wm' \<in> WM. (case_sum Inr Inl wm') < wm")
-    subgoal
-      apply simp
-      apply auto
-        apply (smt (verit, del_insts) Inl_Inr_False Inl_leq Inr_leq dual_order.strict_implies_order isl_def less_eq_sum.cases sum.case_eq_if sum.sel(1) sum.sel(2) sum.split_sel_asm)
-       apply (metis less_eq_sum.simps sum.case_eq_if sum.discI(1) sum.discI(2))
-      apply (smt (verit, best) Inl_Inr_False Inl_leq Inr_leq less_eq_sum.cases less_sum_def sum.case_eq_if sum.collapse(2) sum.disc(2) sum.sel(1) sum.sel(2))
-      done
-    subgoal
-      apply auto
-      using less_eq_sum.cases apply fastforce
-      apply (smt (verit, ccfv_SIG) Inl_inject Inl_leq Inr_leq less_eq_sum.cases less_sum_def sum.case_eq_if sum.disc(1) sum.disc(2) sum.sel(2) sum.split_sel_asm)
-      done
-    done
+lemma unproduced_watermarks_insert_insert:
+  "maximal_complete WM \<Longrightarrow>
+   \<not> producible wm (maximal_antichain_set (insert wm WM)) \<Longrightarrow>
+   \<forall>x\<in>unproduced_watermarks WM. \<not> producible x (maximal_antichain_set (insert wm WM)) \<Longrightarrow>
+   insert wm (unproduced_watermarks WM) = unproduced_watermarks (insert wm WM)"
+  unfolding unproduced_watermarks_def
+  apply simp
+  using producible_insert_same producible_insert_simp apply blast
   done
 
 primcorec union_op  where
@@ -292,21 +227,10 @@ primcorec union_op  where
         (union_op ([wm \<leftarrow> buf1'. wm \<notin> dW]) buf2',
          map (case_sum Watermark Watermark) [wm \<leftarrow> buf1'. wm \<in> dW])) LNil"
 
-
-lemma [simp]:
+lemma set_aux_simp[simp]:
   "{x. x = y \<or> P x} = insert y {x. P x}"
   apply auto
-  done
-
-lemma unproduced_watermarks_insert_insert:
-  "maximal_complete WM \<Longrightarrow>
-   \<not> producible wm (maximal_antichain_set (insert wm WM)) \<Longrightarrow>
-   \<forall>x\<in>unproduced_watermarks WM. \<not> producible x (maximal_antichain_set (insert wm WM)) \<Longrightarrow>
-   insert wm (unproduced_watermarks WM) = unproduced_watermarks (insert wm WM)"
-  unfolding unproduced_watermarks_def
-  apply auto
-  using producible_insert_same producible_insert_simp apply blast
-  done
+  oops
 
 lemma produce_inner_union_monotone_Inl_Data:
   "produce_inner oo = Some r \<Longrightarrow> 
@@ -484,7 +408,7 @@ lemma produce_inner_union_monotone_Inl_Watermark:
           apply (auto simp add: maximal_antichain_set_single producible_maximal_antichain_set map_filter_simps split: sum.splits; hypsubst_thin)
           done
         subgoal
-          using producible_filter_useless producible_maximal_antichain_set by blast
+          using  producible_maximal_antichain_set by blast
         done
       subgoal for wm'
         apply (auto 2 0 simp add: map_filter_simps)

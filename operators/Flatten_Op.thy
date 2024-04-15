@@ -364,8 +364,6 @@ lemma produce_inner_flatten_op_Inr:
   apply (auto split: event.splits)
   done
 
-
-
 subsection \<open>Strict monotone\<close> 
 lemma produce_flatten_op_strict_monotone:
   "monotone stream_in WM \<Longrightarrow>

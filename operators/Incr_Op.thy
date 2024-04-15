@@ -62,9 +62,6 @@ lemma apply_incr_op_out_preserves:
 
 subsection \<open>Soundness\<close> 
 
-(*   prefix_production_LE (incr_op buf) lxs (Suc m) n \<Longrightarrow>
- *)
-
 lemma prefix_ltaken_Data:
   "n1 < n2 \<Longrightarrow>
    prefix (ltaken_Data n1 lxs) (ltaken_Data n2 lxs)"
