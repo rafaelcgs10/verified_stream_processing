@@ -77,7 +77,7 @@ inductive_cases LNilE: "monotone LNil WM"
 inductive_cases LConsWatermark: "monotone (LCons (Watermark wm) xs) WM"
 inductive_cases LConsData: "monotone (LCons (Data t d) xs) WM"
 
-lemma strict_monotone_coinduct_strict_monotone_prepend_cong1:
+lemma strict_monotone_coinduct_strict_monotone_prepend_cong1[case_names MONO]:
   assumes H1: "X lxs WM" 
     and H2:  "(\<And>x1 WM.
     X x1 WM \<Longrightarrow>
