@@ -24,7 +24,7 @@ lemma wms_empty[simp]:
     done
   done
 
-lemma wms_correct:
+lemma wms_correct[simp]:
   "wm \<in> wms xs \<longleftrightarrow> wm \<in> Watermark -` set xs"
   apply (induct xs)
   apply auto
@@ -48,6 +48,13 @@ lemma tmps_tmps:
     apply (metis (no_types, opaque_lifting) event.sel(1) insertE insert_not_empty list.inject neq_Nil_conv tmps.simps(3) wms.elims)
    apply (metis event.sel(1) insert_iff insert_not_empty list.distinct(1) list.inject tmps.simps(3) wms.elims)
   apply (smt (verit, best) imageI insert_iff insert_not_empty list.inject neq_Nil_conv tmps.simps(3) wms.elims)
+  done
+
+
+lemma set_map_filter_case_event_Watermark[simp]:
+  "set (List.map_filter (case_event (\<lambda>_. Map.empty) Some) xs) = Watermark -` (set xs)"
+  apply (induct xs)
+   apply (auto simp add: map_filter_simps split: event.splits)
   done
 
 coinductive monotone :: "('t::order, 'd) event llist \<Rightarrow> 't set \<Rightarrow> bool" where

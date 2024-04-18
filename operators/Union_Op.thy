@@ -28,7 +28,7 @@ lemma producible_empty[simp]:
   apply auto
   done
 
-lemma producible_unionI:
+lemma producible_unionI[intro]:
   "producible wm A \<or> producible wm B \<Longrightarrow>
    producible wm (A \<union> B)"
   unfolding producible_def
@@ -154,7 +154,7 @@ lemma producible_subset:
   apply auto
   done
 
-lemma producible_maximal_antichain_set:
+lemma producible_maximal_antichain_set[simp]:
   assumes "maximal_complete WM"
   shows "producible wm (maximal_antichain_set WM) \<longleftrightarrow> producible wm WM"
 proof -
@@ -205,6 +205,20 @@ lemma in_unproduced_watermarks_5:
   apply (auto split: sum.splits)
   done
 
+
+lemma in_unproduced_watermarks_eq_not_prodible:
+  "wm \<in> unproduced_watermarks WM \<longleftrightarrow> (\<not> producible wm WM \<and> wm \<in> WM)"
+  unfolding unproduced_watermarks_def
+  apply auto
+  done
+
+lemma unproduced_watermarks_insert_3[simp]:
+  "{x. x = wm \<and> \<not> producible x (insert wm WM)} \<union> {x \<in> unproduced_watermarks WM. \<not> producible x (insert wm WM)} =
+   unproduced_watermarks (insert wm WM)"
+  unfolding unproduced_watermarks_def
+  apply (auto 2 1)
+  done
+
 lemma unproduced_watermarks_insert_insert:
   "maximal_complete WM \<Longrightarrow>
    \<not> producible wm (maximal_antichain_set (insert wm WM)) \<Longrightarrow>
@@ -233,16 +247,13 @@ lemma set_aux_simp[simp]:
   oops
 
 lemma produce_inner_union_monotone_Inl_Data:
-  "produce_inner oo = Some r \<Longrightarrow> 
-   r = Inl (op, x, xs, lxs') \<Longrightarrow>
-   x = Data t d \<Longrightarrow>
-   oo = (union_op buf1 buf2, lxs) \<Longrightarrow>
-   monotone lxs WM \<Longrightarrow>
-   buf2 = maximal_antichain_set WM \<Longrightarrow>
-   set buf1 = unproduced_watermarks WM \<Longrightarrow>
-   maximal_complete WM \<Longrightarrow>
-   wms xs = {} \<and>
-   monotone (llist_of (x#xs)) (Inl -` (WM - set buf1) \<union> Inr -` (WM - set buf1)) \<and>
+  assumes "produce_inner (union_op buf1 buf2, lxs) = Some (Inl (op, Data t d, xs, lxs'))" (is "produce_inner ?P = Some ?R")
+    and "monotone lxs WM"
+    and "buf2 = maximal_antichain_set WM"
+    and "set buf1 = unproduced_watermarks WM"
+    and "maximal_complete WM"
+  shows "wms xs = {} \<and>
+   monotone (llist_of (Data t d#xs)) (Inl -` (WM - set buf1) \<union> Inr -` (WM - set buf1)) \<and>
    (\<forall> wm \<in> set buf1. \<not> producible wm (set buf1)) \<and>
    (\<exists> n buf1' buf2'. lxs' = ldropn n lxs \<and> 0 < n \<and>
      monotone lxs' ((Watermark -` lset (ltake n lxs)) \<union> WM) \<and>
@@ -253,54 +264,55 @@ lemma produce_inner_union_monotone_Inl_Data:
      op = (union_op buf1' buf2') \<and>
     (\<forall> wm \<in> Watermark -` lset (ltake n lxs). \<not> producible wm (Watermark -` lset (ltake n lxs) \<union> WM)) \<and> 
     (\<forall> wm \<in> set buf1. \<not> producible wm (Watermark -` lset (ltake n lxs) \<union> WM)))"
-  apply (induct oo r arbitrary: WM buf1 buf2 lxs x xs lxs' op  rule: produce_inner_alt[consumes 1])
-    prefer 2
-  subgoal for op h x xs lxs lxs' lgc' WM buf1 buf2 lxs'' xa xsa lxs'a opa
-    apply (subst (asm) produce_inner.simps)
-    apply simp
-    apply (cases lxs'')
-     apply simp_all
-    apply (intro conjI)
+  using assms proof (induct ?P ?R arbitrary: WM buf1 buf2 lxs xs lxs' op t d  rule: produce_inner_alt[consumes 1])
+  case (produces h xs lxs lxs' op' buf1 buf2 WM)
+  then show ?case apply -
+    apply (simp split: sum.splits event.splits)
     subgoal
-      apply (auto 2 1 split: sum.splits event.splits)
-      done
-    subgoal
-      apply (auto 2 1 split: sum.splits event.splits)
+      apply (intro conjI)
       subgoal
-        apply hypsubst_thin
+        apply (erule LConsData)
+        apply clarsimp
         apply (rule LConsL)
-         apply (auto 2 1)
-        subgoal
-          by (meson Inl_leq LConsData)
-        subgoal
-          by (smt (verit, ccfv_threshold) Data_set_strict_monotone_not_GE Inl_Inr_False Inl_leq Inr_inject Inr_leq in_unproduce_watermarks_2 less_eq_sum.cases lset_intros(1) sum.case_eq_if sum.collapse(1))
-        apply (meson monotone.LNil)
+         apply (intro ballI)
+         apply simp
+         apply (smt (verit, del_insts) Inl_leq dual_order.trans not_in_unproduced_watermarks producible_def sum.case_eq_if sum.collapse(1) sum_simps(10) sum_simps(11))
+        using monotone.LNil apply blast
         done
       subgoal
+        apply (rule exI[of _ 1])
+        apply (elim conjE)
         apply hypsubst_thin
-        apply (rule LConsL)
-         apply (auto 2 1)
-        subgoal
-          by (smt (verit, ccfv_threshold) Inl_Inr_False Inl_inject Inl_leq Inr_leq LConsData in_unproduce_watermarks_2 less_eq_sum.cases sum.case_eq_if sum.collapse(2))
-        subgoal
-          by (meson Inr_leq LConsData)
-        subgoal
-          using monotone.LNil by blast
+        apply (auto simp add: ltake_enat_0 append_eq_Cons_conv map_filter_simps split: sum.splits event.splits if_splits)
         done
       done
     subgoal
-      apply (rule exI[of _ 1])
-      apply (elim conjE)
-      apply hypsubst_thin
-      apply (simp add: ltake_enat_0 append_eq_Cons_conv map_filter_simps split: sum.splits event.splits if_splits; elim conjE; hypsubst_thin)
-       apply blast+
+      apply (erule LConsData)
+      apply clarsimp
+      apply (intro conjI)
+      subgoal
+        apply (rule LConsL)
+         apply (intro ballI)
+         apply simp
+         apply (smt (verit) Inl_Inr_False Inl_inject Inl_leq Inr_leq in_unproduce_watermarks_2 less_eq_sum.cases sum.case_eq_if sum.collapse(2))
+        using monotone.LNil apply blast
+        done
+      subgoal
+        apply (rule exI[of _ 1])
+        apply hypsubst_thin
+        apply (auto simp add: ltake_enat_0 append_eq_Cons_conv map_filter_simps split: sum.splits event.splits if_splits)
+        done
       done
     done
-  subgoal for op h lxs lgc' zs WM buf1 buf2 lxsa x xs lxs' opa
+next
+  case (no_production h lxs op' buf1 buf2 xs lxs' op t d WM)
+  then show ?case 
+    apply -
     apply (simp add: filter_empty_conv split: if_splits event.splits; (elim conjE)?; hypsubst_thin) 
     subgoal for wm
+      apply (drule meta_spec)
+      apply (drule meta_spec)
       apply (drule meta_spec[of _ "insert wm WM"])
-      apply (drule meta_spec)+
       apply (drule meta_mp)
        apply (rule arg_cong2[where f=union_op])
         apply simp
@@ -324,8 +336,8 @@ lemma produce_inner_union_monotone_Inl_Data:
           using prems(7) apply -
           apply (rule monotone_subset)
            apply assumption
-          apply (auto 2 0)
-             apply (metis in_not_in_unproduced_watermarks_insert insert_absorb)+
+          apply (intro conjI Set.subsetI)
+          apply (metis Diff_iff Un_iff insert_iff not_in_unproduced_watermarks producible_insert_simp unproduced_watermarks_not_producible vimage_eq)
           done
         subgoal 
           apply (rule exI[of _ "Suc n"])
@@ -356,27 +368,17 @@ lemma produce_inner_union_monotone_Inl_Data:
         done
       done
     done
-  apply auto
-  done
-
-lemma in_unproduced_watermarks_eq_not_prodible:
-  "wm \<in> unproduced_watermarks WM \<longleftrightarrow> (\<not> producible wm WM \<and> wm \<in> WM)"
-  unfolding unproduced_watermarks_def
-  apply auto
-  done
+qed
 
 lemma produce_inner_union_monotone_Inl_Watermark:
-  "produce_inner oo = Some r \<Longrightarrow> 
-   r = Inl (op, x, xs, lxs') \<Longrightarrow>
-   x = Watermark wm \<Longrightarrow>
-   oo = (union_op buf1 buf2, lxs) \<Longrightarrow>
-   monotone lxs WM \<Longrightarrow>
-   buf2 = maximal_antichain_set WM \<Longrightarrow>
-   set buf1 = unproduced_watermarks WM \<Longrightarrow>
-   maximal_complete WM \<Longrightarrow>
-   monotone (llist_of (x#xs)) (Inl -` (WM - set buf1) \<union> Inr -` (WM - set buf1)) \<and>
+  assumes "produce_inner (union_op buf1 buf2, lxs) = Some (Inl (op, Watermark wm, xs, lxs'))" (is "produce_inner ?P = Some ?R")
+    and "monotone lxs WM"
+    and "buf2 = maximal_antichain_set WM"
+    and "set buf1 = unproduced_watermarks WM"
+    and "maximal_complete WM"
+  shows "monotone (llist_of (Watermark wm#xs)) (Inl -` (WM - set buf1) \<union> Inr -` (WM - set buf1)) \<and>
    (\<forall> wm \<in> set buf1. \<not> producible wm (set buf1)) \<and>
-   (\<exists> n buf1' buf2' wm. lxs' = ldropn n lxs \<and> 0 < n \<and>
+   (\<exists> n buf1' buf2'. lxs' = ldropn n lxs \<and> 0 < n \<and>
      monotone lxs' ((Watermark -` lset (ltake n lxs)) \<union> WM) \<and>
      buf2' = maximal_antichain_set ((Watermark -` lset (ltake n lxs)) \<union> buf2) \<and>
      buf1' = filter (\<lambda> wm. \<not> producible wm buf2') ((rev (List.map_filter (case_event (\<lambda> _ _. None)
@@ -385,90 +387,13 @@ lemma produce_inner_union_monotone_Inl_Watermark:
      op = (union_op buf1' buf2') \<and>
     (\<forall> wm \<in> Watermark -` lset (ltake (n-1) lxs). \<not> producible wm (Watermark -` lset (ltake (n-1) lxs) \<union> WM)) \<and> 
     (\<forall> wm \<in> set buf1. \<not> producible wm (Watermark -` lset (ltake (n-1) lxs) \<union> WM)) \<and>
-    wms (x#xs) = Inl -` {wm \<in> Watermark -` lset (ltake n lxs) \<union> set buf1. producible wm buf2'} \<union> Inr -` {wm \<in> Watermark -` lset (ltake n lxs) \<union> set buf1. producible wm buf2'})"
-  apply (induct oo r arbitrary: WM buf1 buf2 lxs x xs lxs' op  rule: produce_inner_alt[consumes 1])
-    prefer 2
-  subgoal for op h x xs lxs lxs' lgc' WM buf1 buf2 lxs'' xa xsa lxs'a opa
-    apply (subst (asm) produce_inner.simps)
-    apply simp
-    apply (cases lxs'')
-     apply simp_all
-    apply (elim conjE; hypsubst_thin)
-    apply (intro conjI)
-    subgoal
-      apply (auto 2 1 simp add:  monotone_all_Watermarks split: sum.splits event.splits if_splits)
-      done
-    subgoal
-      apply (rule exI[of _ 1])
-      apply (simp add: ltake_enat_0 split: event.splits if_splits; elim conjE; hypsubst_thin)
-        apply (intro conjI)
-      subgoal for wm'
-        apply (rule arg_cong2[where f=union_op])
-        subgoal
-          apply (auto simp add: maximal_antichain_set_single producible_maximal_antichain_set map_filter_simps split: sum.splits; hypsubst_thin)
-          done
-        subgoal
-          using  producible_maximal_antichain_set by blast
-        done
-      subgoal for wm'
-        apply (auto 2 0 simp add: map_filter_simps)
-        subgoal
-          using maximal_complete_insert producible_insert_same producible_maximal_antichain_set by blast
-        subgoal
-          by (meson in_unproduced_watermarks_eq_not_prodible maximal_complete_insert not_producible_maximal_antichain_set producible_insert_same)
-        using maximal_complete_insert producible_insert_same producible_maximal_antichain_set apply blast+
-        done
-      subgoal for wm'
-        apply (auto 2 0 simp add:  wms_correct map_filter_simps)
-        subgoal
-          by (smt (verit, best) filter_cong)
-           apply (metis event.inject(2) sum.case_eq_if sum.collapse(1) sum.collapse(2))
-          apply (metis event.inject(2) sum.case_eq_if sum.collapse(1) sum.collapse(2))
-         apply (metis event.inject(2) sum.case_eq_if sum.collapse(1) sum.collapse(2))
-        apply (metis event.inject(2) sum.case_eq_if sum.collapse(1) sum.collapse(2))
-        done
-      subgoal for wm'
-        apply (auto 2 0 simp add: ltake_enat_0 wms_correct map_filter_simps)
-        subgoal
-          by (smt (verit, best) filter_cong)
-                       apply (metis (no_types, lifting) event.inject(2) filter_is_subset list.set_intros(1) subset_code(1) sum.case_eq_if sum.collapse(1) sum.collapse(2))
-        subgoal
-          by (metis (no_types, lifting) event.inject(2) list.set_intros(1) mem_Collect_eq set_filter sum.case_eq_if sum.collapse(1) sum.collapse(2))
-        subgoal
-          by (metis (no_types, lifting) event.inject(2) filter_set in_unproduced_watermarks_5 list.set_intros(1) maximal_complete_insert member_filter not_producible_maximal_antichain_set producible_not_in_unproduced_watermarks sum.case_eq_if sum.collapse(1) sum.collapse(2))
-        subgoal
-          by (smt (verit, del_insts) event.inject(2) filter_set isl_def list.set_intros(1) maximal_complete_insert member_filter not_producible_maximal_antichain_set old.sum.simps(5) old.sum.simps(6) producible_insert_simp sum.collapse(2))
-        subgoal
-          by (metis (no_types, lifting) event.sel(3) filter_is_subset in_mono set_subset_Cons sum.case_eq_if sum.collapse(1) sum.collapse(2))
-        subgoal
-          by (metis (no_types, lifting) event.sel(3) mem_Collect_eq set_filter set_subset_Cons subset_code(1) sum.case_eq_if sum.collapse(1) sum.collapse(2))
-        subgoal
-          by (smt (verit, ccfv_threshold) event.sel(3) insert_iff list.simps(15) maximal_antichain_set_subset mem_Collect_eq producible_insert_simp producible_subset set_filter sum.case_eq_if sum.collapse(1) sum.collapse(2))
-        subgoal
-          by (smt (z3) dual_order.eq_iff event.sel(3) filter_is_subset in_mono in_unproduced_watermarks_eq_not_prodible insert_iff maximal_complete_insert old.sum.simps(5) old.sum.simps(6) producible_def producible_maximal_antichain_set set_subset_Cons sum.collapse(1) sum.collapse(2))
-        subgoal
-          by (metis (no_types, lifting) filter_is_subset in_mono set_subset_Cons) 
-        subgoal
-          by (smt (verit, ccfv_threshold) insert_compr list.simps(15) maximal_complete_insert mem_Collect_eq not_producible_maximal_antichain_set producible_insert_simp set_filter) 
-        subgoal
-          by (metis (no_types, lifting) filter_set list.set_intros(2) member_filter) 
-        subgoal
-          by (metis (no_types, lifting) dual_order.refl filter_is_subset in_mono in_unproduced_watermarks_eq_not_prodible insert_absorb maximal_complete_insert not_producible_maximal_antichain_set old.sum.simps(6) producible_insert_simp set_subset_Cons) 
-        subgoal
-          using maximal_complete_insert not_producible_maximal_antichain_set producible_insert_same by blast 
-        subgoal
-          by (metis (mono_tags, lifting) event.inject(2) filter_set insert_iff list.simps(15) member_filter old.sum.simps(5))
-        subgoal
-          using maximal_complete_insert not_producible_maximal_antichain_set producible_insert_same by blast 
-        subgoal
-          by (metis (no_types, lifting) event.inject(2) filter_set member_filter set_ConsD sum.case_eq_if sum.disc(2) sum.sel(2)) 
-        done
-      done
-    done
-  subgoal for op h lxs lgc' zs WM buf1 buf2 lxsa x xs lxs' opa
+    wms (Watermark wm#xs) = Inl -` {wm \<in> Watermark -` lset (ltake n lxs) \<union> set buf1. producible wm buf2'} \<union> Inr -` {wm \<in> Watermark -` lset (ltake n lxs) \<union> set buf1. producible wm buf2'})"
+  using assms proof (induct ?P ?R arbitrary: WM buf1 buf2 lxs wm xs lxs' op  rule: produce_inner_alt)
+  case (no_production h lxs op')
+  then show ?case 
+    apply -
     apply (simp add: filter_empty_conv split: if_splits event.splits; (elim conjE)?; hypsubst_thin) 
     subgoal for wm'
-      apply (drule meta_spec[of _ "insert wm' WM"])
       apply (drule meta_spec)+
       apply (drule meta_mp)
        apply (rule arg_cong2[where f=union_op])
@@ -490,8 +415,8 @@ lemma produce_inner_union_monotone_Inl_Watermark:
           apply (rule monotone_subset)
           using prems(6) apply -
            apply assumption
-          apply (auto 2 0)
-             apply (metis in_not_in_unproduced_watermarks_insert insert_absorb)+
+          apply simp
+          apply (smt (verit, del_insts) Diff_iff UnCI in_not_in_unproduced_watermarks_insert insertCI not_in_unproduced_watermarks prems(4) subsetI vimageE vimageI)
           done
         subgoal 
           using prems(7) apply simp
@@ -509,71 +434,109 @@ lemma produce_inner_union_monotone_Inl_Watermark:
           subgoal
             using prems(8,11) apply simp
             apply (cases n)
-             apply auto
+             apply simp_all
             using in_unproduced_watermarks_3 prems(12) prems(3) prems(4) by fastforce
           subgoal
             using prems(8,12) apply simp
             apply (cases n)
-             apply auto
+             apply simp_all
             subgoal
               using in_unproduced_watermarks_5 prems(5) by blast
-            subgoal
-              using prems(5) by blast
             done
           subgoal
             using prems(8,13,4) 
-            apply (auto 2 1 simp add: map_filter_simps)
-                       apply (metis (mono_tags, lifting) in_not_in_unproduced_watermarks_insert)
-                      apply (metis (mono_tags, lifting) in_not_in_unproduced_watermarks_insert)
-            using in_not_in_unproduced_watermarks_insert apply blast
-            using in_not_in_unproduced_watermarks_insert apply blast
-                   apply (meson insertI1 is_producible producible_insert_same)
-                  apply (meson insertI1 is_producible producible_insert_same)
-            using in_unproduced_watermarks_5 prems(5) apply blast
-            using in_unproduced_watermarks_5 prems(5) apply blast
-               apply (meson insertI1 is_producible producible_insert_same)
-              apply (meson insertI1 is_producible producible_insert_same)
-            using in_unproduced_watermarks_5 prems(5) apply blast
-            using in_unproduced_watermarks_5 prems(5) apply blast
+            apply (simp add: map_filter_simps)
+            apply (intro conjI Set.equalityI Set.subsetI)
+             apply simp_all
+            subgoal
+              using in_not_in_unproduced_watermarks_insert by blast
+            subgoal
+              by (meson in_unproduced_watermarks_eq_not_prodible insert_iff prems(5) producible_insert_simp sum_simps(15))
             done
           done
         done
       done
     done
-  apply auto
-  done
+next
+  case (produces h xs lxs lxs' op' buf1 buf2 wm WM)
+  then show ?case 
+    apply -
+    apply hypsubst_thin
+    apply (simp split: event.splits)
+    apply (elim conjE; hypsubst_thin)
+    apply (intro conjI)
+    subgoal
+      apply (auto 2 1 simp add:  monotone_all_Watermarks split: sum.splits event.splits if_splits)
+      done
+    subgoal
+      apply (rule exI[of _ 1])
+      apply (simp add: ltake_enat_0 split: event.splits if_splits sum.splits)
+         apply (intro conjI impI allI )
+      subgoal 
+        apply (rule arg_cong2[where f=union_op])
+        subgoal
+          by (smt (verit, ccfv_SIG) filter_cong)
+        subgoal
+          using  producible_maximal_antichain_set by blast
+        done
+      subgoal
+        apply hypsubst_thin
+        apply simp
+        using maximal_complete_insert producible_insert_same producible_maximal_antichain_set 
+        apply fastforce
+        done
+      subgoal
+        apply hypsubst_thin
+        apply (intro conjI)
+         apply simp_all
+         apply (smt (verit, ccfv_SIG) filter_cong)
+        apply fastforce
+        done
+      subgoal
+        apply hypsubst_thin
+        apply (intro conjI)
+         apply (simp_all add: map_filter_simps map_eq_Cons_conv filter_eq_Cons_iff)
+         apply (smt (verit, del_insts) filter_cong)
+        apply (elim exE conjE disjE)
+           apply simp_all
+        apply hypsubst_thin
+        apply (simp split: sum.splits)
+        apply hypsubst_thin
+        apply (intro conjI impI allI Set.equalityI Set.subsetI)
+         apply simp_all
+        subgoal  
+          by fastforce
+        subgoal
+          by (metis Inl_Inr_False Un_iff insertE sum.simps(2) sum_simps(10))
+        done
+      subgoal
+        apply hypsubst_thin
+        apply (intro conjI)
+         apply (simp_all add: map_filter_simps map_eq_Cons_conv filter_eq_Cons_iff)
+         apply (smt (verit, del_insts) filter_cong)
+        apply (elim exE conjE disjE)
+           apply simp_all
+        apply hypsubst_thin
+        apply (simp split: sum.splits)
+        apply hypsubst_thin
+        apply (intro conjI impI allI Set.equalityI Set.subsetI)
+         apply simp_all
+        subgoal  
+          by fastforce
+        subgoal
+          using Inl_leq by auto
+        done
+      done
+    done
+qed
 
 lemma unproduced_simp:
   "{wm \<in> WM''. \<forall>wm'\<in>WM''. (\<forall>x1. wm' = Inl x1 \<longrightarrow> \<not> wm \<le> Inr x1) \<and> (\<forall>x2. wm' = Inr x2 \<longrightarrow> \<not> wm \<le> Inl x2)} =
    {wm \<in> WM''. \<forall>wm'\<in>WM''. \<not> wm \<le> (case wm' of Inl x \<Rightarrow> Inr x | Inr x \<Rightarrow> Inl x)}"
-  by (metis (mono_tags, opaque_lifting) old.sum.simps(5) old.sum.simps(6) sum.exhaust_sel sum.split_sel_asm)
+  oops
+(*   by (metis (mono_tags, opaque_lifting) old.sum.simps(5) old.sum.simps(6) sum.exhaust_sel sum.split_sel_asm)
+ *)
 
-lemma set_map_filter_case_event_Watermark[simp]:
-  "set (List.map_filter (case_event (\<lambda>_. Map.empty) Some) xs) = Watermark -` (set xs)"
-  apply (induct xs)
-   apply (auto simp add: map_filter_simps event.splits)
-   apply (metis (no_types, lifting) event.case_eq_if event.collapse(2) option.case_eq_if option.sel set_ConsD vimageE)
-  apply (simp add: option.case_eq_if)
-  done
-
-lemma unproduced_watermarks_union_add_unproduced_watermarks:
-  "\<forall> wm \<in> A. \<not> producible wm B \<Longrightarrow>
-   unproduced_watermarks (A \<union> B) = 
-   unproduced_watermarks (A \<union> unproduced_watermarks B)"
-  unfolding unproduced_watermarks_def
-  apply auto
-      apply (metis (mono_tags, lifting) Un_iff mem_Collect_eq producible_def)
-     apply (meson Un_upper2 producible_subset)
-    apply (metis (mono_tags, lifting) Un_iff mem_Collect_eq producible_def)
-   apply (meson inf_sup_ord(4) producible_subset producible_union)
-  by (meson producible_subset producible_union sup.cobounded1)
-
-lemma unproduced_watermarks_insert_3[simp]:
-  "{x. x = wm \<and> \<not> producible x (insert wm WM)} \<union> {x \<in> unproduced_watermarks WM. \<not> producible x (insert wm WM)} =
-   unproduced_watermarks (insert wm WM)"
-  unfolding unproduced_watermarks_def
-  apply (auto 2 1)
-  done
 
 lemma unproduced_watermarks_simp_aux[simp]:
   "maximal_complete (Watermark -` A \<union> WM) \<Longrightarrow>
@@ -581,25 +544,24 @@ lemma unproduced_watermarks_simp_aux[simp]:
    {x \<in> unproduced_watermarks WM. \<not> producible x (maximal_antichain_set (insert wm (Watermark -` A \<union> WM)))} =
    unproduced_watermarks (insert wm (Watermark -` A \<union> WM))"
   apply (subst (1 2) not_producible_maximal_antichain_set)
-  subgoal 
-    using maximal_complete_insert by blast
-  apply simp
   unfolding unproduced_watermarks_def
+   apply (simp_all split: sum.splits)
   apply auto
-  using not_producible_union by blast
-
+  done
 
 (* FIXME: move me to soundness *)
 lemma produce_inner_skip_n_productions_op_union_op_Inr:
-  "produce_inner op_lxs = Some r \<Longrightarrow>
-   r = Inr op \<Longrightarrow>
-   op_lxs = (skip_n_productions_op (union_op buf1 bu2) n, lxs) \<Longrightarrow>
-   exit op = LNil"
-  apply (induct op_lxs r arbitrary: buf1 bu2 lxs n  rule: produce_inner_alt[consumes 1])
-    apply (auto split: if_splits event.splits sum.splits)
-    apply (metis skip_n_productions_op_0)
-   apply (smt (verit, best) skip_n_productions_op_0)
-  apply (smt (verit, del_insts) skip_n_productions_op_0)
+  assumes "produce_inner (skip_n_productions_op (union_op buf1 bu2) n, lxs) = Some (Inr op)" (is "produce_inner ?P = Some ?R")
+  shows "exit op = LNil"
+  using assms apply (induct ?P ?R arbitrary: buf1 bu2 lxs n  rule: produce_inner_alt)
+   apply (simp_all split: if_splits event.splits sum.splits)
+        apply auto[1]
+       apply fast
+      apply fast
+     apply (metis skip_n_productions_op_0)
+    apply (smt (verit, best) skip_n_productions_op_0)
+   apply (smt (verit, del_insts) skip_n_productions_op_0)
+  apply auto
   done
 
 lemma produce_union_op_monotone:
@@ -614,263 +576,249 @@ lemma produce_union_op_monotone:
     apply simp
   subgoal for WM' stream_in buf1 stream_out buf2 lxs wm WM''
     apply hypsubst
-    apply (subst (asm) produce.code)
-    apply (simp del: produce_LCons split: prod.splits option.splits sum.splits)
-    subgoal
-      apply (subst (asm) produce_inner.simps)
-      apply (simp add: produce_inner_None_produce_LNil del: produce_LCons split: if_splits list.splits)
-      subgoal
-        apply hypsubst_thin
-        apply (rule disjI1)
-        apply (simp add: lnull_def)
-        apply (subst produce.code)
-        apply (auto 2 0 split: option.splits sum.splits)
-        done
-      done
-    subgoal for x2 x1 op x2a x x2b xs' lxs'
-      apply hypsubst_thin
-      apply (cases x)
-      subgoal for t d
-        apply hypsubst_thin
-        apply simp
-        apply (drule produce_inner_union_monotone_Inl_Data[where WM="WM''"])
-               apply (rule refl)+
-            apply (simp_all add: unproduced_simp)
-        apply (elim conjE exE)
-        subgoal for n
-          apply (intro conjI impI ballI)
-          subgoal for wm'
-            apply auto
-             apply (meson DiffI LConsData subset_eq sup.cobounded1 vimageI2)
-            apply (meson DiffI LConsData in_mono inf_sup_ord(4) vimageI)
-            done
-          subgoal 
-            apply hypsubst_thin
-            apply (rule disjI1)
-            apply (rule monotone_prepend_cong_prepend)
-            subgoal
-              apply (cases n)
-               apply blast
-              subgoal for n'
-                apply (rule monotone_prepend_cong_base)
-                apply simp
-                apply (rule exI[of _ "insert wm (Watermark -` lset (ltake (enat n') lxs) \<union> WM'')"])
-                apply (rule exI)
-                apply (rule exI[of _ "rev (List.map_filter (case_event (\<lambda>_. Map.empty) Some) (list_of (ltake (enat n') lxs))) @ wm #buf1"])
-                apply (intro conjI)
-                    prefer 5
-                    apply (rule arg_cong2[where f=produce])
-                     apply (rule arg_cong2[where f=union_op])
-                subgoal
-                  apply (auto simp add: map_filter_simps)
-                  done
-                     defer
-                     apply (rule refl)
-                    defer
-                subgoal 
-                  by blast
-                subgoal
-                  apply simp
-                  apply (subst unproduced_watermarks_insert_2)
-                   apply fastforce
-                  apply (rule arg_cong2[where f=insert])
-                   apply simp
-                  unfolding unproduced_watermarks_def
-                  apply (auto 2 1)
-                    apply (smt (z3) Un_iff mem_Collect_eq producible_def vimageI)+
-                  done
-                subgoal
-                  apply (rule maximal_complete_insert)
-                  apply (subst Un_commute)
-                  apply (rule maximal_complete_union_finite)
-                  subgoal 
-                    apply (rule finite_vimageI)
-                     apply (rule lfinite_imp_finite_lset)
-                     apply (meson enat_ord_code(4) lfinite_ltake)
-                    apply (meson event.inject(2) inj_onI)
-                    done
-                  apply assumption
-                  done   
-                subgoal
-                  unfolding maximal_antichain_set_def
-                  apply (auto 2 1)
-                  done
-                subgoal
-                  apply simp
-                  apply (rule arg_cong2[where f=union])
-                  subgoal
-                    apply (rule arg_cong2[where f=vimage])
-                     apply simp
-                    apply (auto 2 1)
-                     apply (metis Un_upper1 is_producible producible_subset sup_commute)
-                    apply (meson Un_upper2 is_producible producible_subset vimageI)
-                    done
-                  subgoal
-                    apply (rule arg_cong2[where f=vimage])
-                     apply simp
-                    apply (auto 2 1)
-                     apply (metis Un_upper1 is_producible producible_subset sup_commute)
-                    apply (meson Un_upper2 is_producible producible_subset vimageI)
-                    done
-                  done
-                done
-              done
-            by (metis (no_types, lifting) LConsData unproduced_watermarks_def)
-          done
-        done
-      subgoal for wm'
-        apply hypsubst_thin
-        apply simp
-        apply (drule produce_inner_union_monotone_Inl_Watermark[where WM="WM''"])
-               apply (rule refl)+                 
-            apply (simp_all add: unproduced_simp)
-        apply (elim conjE exE)
-        subgoal premises prems for n 
-          apply (rule disjI1)
-          apply (rule monotone_prepend_cong_prepend)
-          subgoal
-            apply (cases n)
-            using prems(6)
-             apply blast
-            subgoal for n'
-              apply (rule monotone_prepend_cong_base)
-              apply simp
-              apply (rule exI)+
-              apply (intro conjI)
-                  prefer 5
-                  apply (rule arg_cong2[where f=produce])
-              using prems(8) apply hypsubst
-                   apply (rule arg_cong2[where f=union_op])
-                    apply (rule refl)
-                   defer
-                   apply (rule refl)
-                  defer
-              using prems(7)
-                  apply assumption
-              subgoal
-                apply simp
-                using prems(1,2) apply -
-                apply simp
-                apply (subst unproduced_watermarks_simp_aux)
-                 apply (subst Un_commute)
-                 apply (rule maximal_complete_union_finite)
-                  apply (metis List.finite_set enat_ord_code(4) lfinite_ltake set_list_of set_map_filter_case_event_Watermark)
-                 apply auto
-                done
-              subgoal
-                apply (subst Un_commute)
-                apply (rule maximal_complete_union_finite)
-                 apply (metis List.finite_set enat_ord_code(4) lfinite_ltake set_list_of set_map_filter_case_event_Watermark)
-                using prems(2) apply simp
-                done
-              subgoal
-                apply simp
-                done
-              subgoal
-                using prems(5,2) apply -
-                apply (simp flip: Un_insert_left)
-                apply (subst prems(11))
-                apply simp
-                apply (subgoal_tac "{y. (Inl y = wm \<or> Watermark (Inl y) \<in> lset (ltake (enat n') lxs) \<or> Inl y \<in> unproduced_watermarks WM'') \<and>
-        producible (Inl y) (maximal_antichain_set (insert wm (Watermark -` lset (ltake (enat n') lxs) \<union> WM'')))} \<union>
-    {y. (Inr y = wm \<or> Watermark (Inr y) \<in> lset (ltake (enat n') lxs) \<or> Inr y \<in> unproduced_watermarks WM'') \<and>
-        producible (Inr y) (maximal_antichain_set (insert wm (Watermark -` lset (ltake (enat n') lxs) \<union> WM'')))} \<union>
-    (Inl -` (WM'' - unproduced_watermarks WM'') \<union> Inr -` (WM'' - unproduced_watermarks WM'')) = 
-    ({y. (Inl y = wm \<or> Watermark (Inl y) \<in> lset (ltake (enat n') lxs) \<or> Inl y \<in> unproduced_watermarks WM'') \<and>
-        producible (Inl y) (maximal_antichain_set (insert wm (Watermark -` lset (ltake (enat n') lxs) \<union> WM'')))} \<union> Inl -` (WM'' - unproduced_watermarks WM'')) \<union>
-    ({y. (Inr y = wm \<or> Watermark (Inr y) \<in> lset (ltake (enat n') lxs) \<or> Inr y \<in> unproduced_watermarks WM'') \<and>
-        producible (Inr y) (maximal_antichain_set (insert wm (Watermark -` lset (ltake (enat n') lxs) \<union> WM'')))} \<union>
-    Inr -` (WM'' - unproduced_watermarks WM''))")
-                 defer
-                 apply fast
-                apply (subgoal_tac "Inl -`
-    (insert wm (Watermark -` lset (ltake (enat n') lxs) \<union> WM'') -
-     ({x. (x = wm \<or> Watermark x \<in> lset (ltake (enat n') lxs)) \<and>
-          \<not> producible x (maximal_antichain_set (insert wm (Watermark -` lset (ltake (enat n') lxs) \<union> WM'')))} \<union>
-      {x \<in> set buf1. \<not> producible x (maximal_antichain_set (insert wm (Watermark -` lset (ltake (enat n') lxs) \<union> WM'')))})) \<union>
-    Inr -`
-    (insert wm (Watermark -` lset (ltake (enat n') lxs) \<union> WM'') -
-     ({x. (x = wm \<or> Watermark x \<in> lset (ltake (enat n') lxs)) \<and>
-          \<not> producible x (maximal_antichain_set (insert wm (Watermark -` lset (ltake (enat n') lxs) \<union> WM'')))} \<union>
-      {x \<in> set buf1. \<not> producible x (maximal_antichain_set (insert wm (Watermark -` lset (ltake (enat n') lxs) \<union> WM'')))})) = 
-    (Inl -`
-    (insert wm (Watermark -` lset (ltake (enat n') lxs) \<union> WM'') -
-     ({x. (x = wm \<or> Watermark x \<in> lset (ltake (enat n') lxs)) \<and>
-          \<not> producible x (maximal_antichain_set (insert wm (Watermark -` lset (ltake (enat n') lxs) \<union> WM'')))} \<union>
-      {x \<in> set buf1. \<not> producible x (maximal_antichain_set (insert wm (Watermark -` lset (ltake (enat n') lxs) \<union> WM'')))}))) \<union>
-    (Inr -`
-    (insert wm (Watermark -` lset (ltake (enat n') lxs) \<union> WM'') -
-     ({x. (x = wm \<or> Watermark x \<in> lset (ltake (enat n') lxs)) \<and>
-          \<not> producible x (maximal_antichain_set (insert wm (Watermark -` lset (ltake (enat n') lxs) \<union> WM'')))} \<union>
-      {x \<in> set buf1. \<not> producible x (maximal_antichain_set (insert wm (Watermark -` lset (ltake (enat n') lxs) \<union> WM'')))})))")
-                 defer
-                 apply fast
-                subgoal premises prems2
-                  apply (subst prems2(4))
-                  apply (subst prems2(5))
-                  apply (rule arg_cong2[where f=union])
-                  subgoal
-                    apply auto
-                    using prems(3) is_producible not_producible_union in_unproduced_watermarks_eq_not_prodible apply blast
-                       apply (metis (no_types, lifting) List.finite_set Un_insert_right enat_ord_code(4) is_producible lfinite_ltake maximal_complete_union_finite not_producible_union prems2(3) producible_maximal_antichain_set remove_insert_eq set_list_of set_map_filter_case_event_Watermark sup_commute)
-                      apply (metis (no_types, lifting) List.finite_set Un_insert_left Un_upper2 enat_ord_code(4) is_producible lfinite_ltake maximal_complete_insert maximal_complete_union_finite prems2(3) producible_maximal_antichain_set producible_subset set_list_of set_map_filter_case_event_Watermark sup_commute)
-                     apply (metis (no_types, lifting) List.finite_set Un_insert_left Un_upper2 enat_ord_code(4) is_producible lfinite_ltake maximal_complete_insert maximal_complete_union_finite prems2(3) producible_maximal_antichain_set producible_subset set_list_of set_map_filter_case_event_Watermark sup_commute)
-                    using prems(1) apply blast
-                    done
-                  subgoal
-                    apply auto
-                    using prems(3) is_producible not_producible_union in_unproduced_watermarks_eq_not_prodible apply blast
-                       apply (metis (no_types, lifting) List.finite_set Un_insert_right enat_ord_code(4) is_producible lfinite_ltake maximal_complete_union_finite not_producible_union prems2(3) producible_maximal_antichain_set remove_insert_eq set_list_of set_map_filter_case_event_Watermark sup_commute)
-                      apply (metis (no_types, lifting) List.finite_set Un_insert_left Un_upper2 enat_ord_code(4) is_producible lfinite_ltake maximal_complete_insert maximal_complete_union_finite prems2(3) producible_maximal_antichain_set producible_subset set_list_of set_map_filter_case_event_Watermark sup_commute)
-                     apply (metis (no_types, lifting) List.finite_set Un_insert_left Un_upper2 enat_ord_code(4) is_producible lfinite_ltake maximal_complete_insert maximal_complete_union_finite prems2(3) producible_maximal_antichain_set producible_subset set_list_of set_map_filter_case_event_Watermark sup_commute)
-                    using prems(1) apply blast
-                    done
-                  done
-                done
-              done
-            done
-          using prems(4)
-          apply -
-          by (metis (no_types, lifting) unproduced_watermarks_def)
-        done
-      done
+    apply (cases "produce_inner ((union_op buf1 (maximal_antichain_set WM'')), (LCons (Watermark wm) lxs))")
     subgoal
       apply (rule disjI1)
+      apply (simp split: if_splits list.splits sum.splits)
+      subgoal
+        by (meson maximal_antichain_set_subset null_rec(2) producible_insert_same producible_subset)
+      subgoal
+        using maximal_complete_insert null_rec(2) producible_insert_same producible_maximal_antichain_set by blast
+      done
+    subgoal for r
+      apply (cases r)
+      subgoal for p
+        apply (cases p)
+        subgoal for op' x xs lxs'
+          apply (cases x)
+          subgoal for t d
+            apply (rule disjI2)
+            apply (rule disjI2)
+            apply hypsubst_thin
+            apply (frule produce_inner_union_monotone_Inl_Data[where WM="WM''"])
+                apply simp
+               apply (rule refl)
+              apply assumption+
+            apply (elim conjE exE)
+            apply hypsubst_thin
+            apply (subst produce.code)
+            apply (simp del: produce_LCons produce_inner_simps)
+            subgoal for n
+              apply (intro conjI)
+              subgoal
+                by (meson LConsData)
+              subgoal
+                apply (rule disjI1)
+                apply (rule monotone_prepend_cong_prepend)
+                subgoal
+                  apply (cases n)
+                   apply blast
+                  subgoal for n'
+                    apply (rule monotone_prepend_cong_base)
+                    apply (simp del: produce_LCons produce_inner_simps)
+                    apply (rule exI[of _ "insert wm (Watermark -` lset (ltake (enat n') lxs) \<union> WM'')"])
+                    apply (rule exI)
+                    apply (rule exI[of _ "rev (List.map_filter (case_event (\<lambda>_. Map.empty) Some) (list_of (ltake (enat n') lxs))) @ wm #buf1"])
+                    apply (intro conjI)
+                        prefer 5
+                        apply (rule arg_cong2[where f=produce])
+                         apply (rule arg_cong2[where f=union_op])
+                    subgoal
+                      apply (auto simp add: map_filter_simps)
+                      done
+                         defer
+                         apply (rule refl)
+                        defer
+                    subgoal 
+                      by blast
+                    subgoal
+                      apply (simp del: produce_LCons produce_inner_simps)
+                      apply (subst unproduced_watermarks_insert_2)
+                       apply fastforce
+                      apply (rule arg_cong2[where f=insert])
+                       apply (simp del: produce_LCons produce_inner_simps)
+                      unfolding unproduced_watermarks_def
+                      apply (simp del: produce_LCons produce_inner_simps)
+                      apply (intro conjI Set.equalityI Set.subsetI)
+                       apply (simp_all del: produce_LCons produce_inner_simps)
+                       apply (smt (z3) Un_iff mem_Collect_eq producible_def vimageI)+
+                      done
+                    subgoal
+                      apply (rule maximal_complete_insert)
+                      apply (subst Un_commute)
+                      apply (rule maximal_complete_union_finite)
+                      subgoal 
+                        apply (rule finite_vimageI)
+                         apply (rule lfinite_imp_finite_lset)
+                         apply (meson enat_ord_code(4) lfinite_ltake)
+                        apply (meson event.inject(2) inj_onI)
+                        done
+                      apply assumption
+                      done   
+                    subgoal
+                      unfolding maximal_antichain_set_def
+                      apply (auto 2 1)
+                      done
+                    subgoal
+                      apply (simp del: produce_LCons produce_inner_simps)
+                      apply (rule arg_cong2[where f=union])
+                      subgoal
+                        apply (rule arg_cong2[where f=vimage])
+                         apply (simp del: produce_LCons produce_inner_simps)
+                        apply (intro conjI Set.equalityI Set.subsetI)
+                         apply (simp_all del: produce_LCons produce_inner_simps)
+                        subgoal
+                          by (metis not_in_unproduced_watermarks not_producible_union vimageI2)
+                        subgoal
+                          by fast
+                        done
+                      subgoal
+                        apply (rule arg_cong2[where f=vimage])
+                         apply (simp del: produce_LCons produce_inner_simps)
+                        apply (intro conjI Set.equalityI Set.subsetI)
+                         apply (simp_all del: produce_LCons produce_inner_simps)
+                        subgoal
+                          by (metis not_in_unproduced_watermarks not_producible_union vimageI2)
+                        subgoal
+                          by fast
+                        done
+                      done
+                    done
+                  done
+                by (metis (no_types, lifting) LConsData unproduced_watermarks_def)
+              done
+            done
+          subgoal for wm'
+            apply (rule disjI2)
+            apply (rule disjI1)
+            apply hypsubst_thin
+            apply (frule produce_inner_union_monotone_Inl_Watermark[where WM="WM''"])
+                apply simp
+               apply (rule refl)
+              apply simp
+             apply force
+            apply (elim conjE exE)
+            apply (subst produce.code)
+            apply (simp del: produce_LCons produce_inner_simps)
+            subgoal for n 
+              apply (rule disjI1)
+              apply (rule monotone_prepend_cong_prepend)
+              subgoal
+                  apply (rule monotone_prepend_cong_base)
+                  apply (simp del: produce_LCons produce_inner_simps)
+                  apply (rule exI)+
+                  apply (intro conjI)
+                      prefer 5
+                  apply (rule refl)
+                  subgoal
+                    apply hypsubst_thin
+                    apply (simp del: produce_LCons produce_inner_simps flip: Un_insert_left)
+                      apply (subst (1 2 3 4 5 6) producible_maximal_antichain_set)
+                      subgoal
+                        apply (subst Un_commute)
+                        apply (rule maximal_complete_union_finite)
+                         apply simp
+                         apply (rule finite_vimageI)
+                          apply (simp_all add: inj_def lfinite_imp_finite_lset)
+                        done
+                      subgoal
+                        apply (subst Un_commute)
+                        apply (rule maximal_complete_union_finite)
+                         apply simp
+                         apply (rule finite_vimageI)
+                          apply (simp_all add: inj_def lfinite_imp_finite_lset)
+                        done
+                    subgoal premises prems
+                       apply (intro conjI impI allI Set.equalityI Set.subsetI)
+                       apply simp_all
+                      using in_unproduced_watermarks_eq_not_prodible apply blast
+                      using in_unproduced_watermarks_eq_not_prodible apply blast
+                      done
+                    done
+                  subgoal
+                    by simp
+                  subgoal
+                    apply hypsubst_thin
+                    subgoal premises prems
+                      using prems(1,2,7,8) apply (simp add: prems(9) del: produce_LCons produce_inner_simps flip: Un_insert_left)
+                      apply (subst (1 2) producible_maximal_antichain_set)
+                      subgoal
+                        apply (subst Un_commute)
+                        apply (rule maximal_complete_union_finite)
+                         apply (rule finite_vimageI)
+                          apply (simp_all add: inj_def lfinite_imp_finite_lset)
+                        done
+                      subgoal
+                        apply (intro Set.equalityI Set.subsetI)
+                        subgoal
+                          apply (simp del: produce_LCons produce_inner_simps)
+                          apply (metis Un_iff in_unproduced_watermarks_eq_not_prodible vimage_eq)
+                          done
+                        subgoal
+                          apply (simp del: produce_LCons produce_inner_simps)
+                          apply (meson in_unproduced_watermarks_eq_not_prodible in_unproduced_watermarks_union vimageE)
+                          done
+                        done
+                      done
+                    done
+                  subgoal
+                    apply hypsubst_thin
+                    subgoal premises prems
+                      using prems(1,2,7,8) apply -
+                      subgoal
+                        apply (subst Un_commute)
+                        apply (rule maximal_complete_union_finite)
+                         apply (rule finite_vimageI)
+                          apply (simp_all add: inj_def lfinite_imp_finite_lset)
+                        done
+                      done
+                    done
+                  done
+                subgoal
+                  by simp
+                done
+              done
+            done
+          done
+      subgoal for wm
+        apply (rule disjI1)
+        apply hypsubst_thin
       apply (frule produce_inner_skip_n_productions_op_union_op_Inr[where n=0, simplified])
-        apply (rule refl)+
-      apply (subst produce.code)
-      apply simp      
+        apply (subst produce.code)
+        apply simp 
+        done
       done
     done
   subgoal for WM' stream_in buf1 stream_out buf2 WM'' t lxs' d
     apply hypsubst
-    apply (subst (asm) produce.code)
-    apply (simp del: produce_LCons split: prod.splits option.splits sum.splits)
-    subgoal 
-      using lnull_def produce_inner_None_produce_LNil by blast
-    subgoal for x2 x1 op x2a x x2b xs' lxs
-      apply (cases x)
-      subgoal
-        apply hypsubst_thin
-        apply (rule disjI2)
-        apply (frule produce_inner_union_monotone_Inl_Data[where WM=WM''])
+    apply (simp del: produce_LCons produce_inner_simps)
+    apply (cases "produce_inner ((union_op buf1 (maximal_antichain_set WM'')), (LCons (Data t d) lxs'))")
+    subgoal
+      by force
+    subgoal for r
+      apply (cases r)
+      subgoal for p
+        apply (cases p)
+        subgoal for op' x xs lxs''
+          apply hypsubst_thin
+          apply (cases x)
+          subgoal for t' d'
+            apply hypsubst_thin
+            apply (rule disjI2)+
+            apply (frule produce_inner_union_monotone_Inl_Data[where WM=WM''])
+                apply (meson LConsL)
                apply (rule refl)+
-            defer
-            apply (rule refl)+
-           apply blast
-          apply blast
-         defer
-         apply (subst (asm) produce_inner.simps)
-         apply auto
-           apply hypsubst_thin
-           apply (simp add: LConsL)
-          apply (metis DiffI LConsData Un_iff vimage_eq)
-         apply (metis Diff_iff LConsData Un_iff vimage_eq)
-        apply hypsubst_thin
-        subgoal for n 
-          apply (cases n)
-           apply blast
-          subgoal for n'
+              apply simp
+             apply fast
+            apply (elim conjE exE)
+            subgoal for n buf1' buf2'
+              apply hypsubst_thin
+              apply (simp del: produce_LCons produce_inner_simps)
+              apply (intro conjI)
+              subgoal
+                by (meson LConsData)
+              subgoal
+                apply (rule disjI1)
             apply (rule monotone_prepend_cong_prepend)
             subgoal
               apply (rule monotone_prepend_cong_base)
@@ -878,10 +826,31 @@ lemma produce_union_op_monotone:
               apply (rule exI)+
               apply (intro conjI)
                   prefer 5
-                  apply (rule arg_cong2[where f=produce])
-                   apply (rule arg_cong2[where f=union_op])
-                    apply (rule refl)+
-              subgoal premises prems2
+                  apply (rule refl)
+              subgoal
+                apply (intro Set.equalityI Set.subsetI)
+                        subgoal
+                          apply (simp del: produce_LCons produce_inner_simps)
+                          apply (metis is_producible producible_unionI vimageI2)
+                          done
+                        subgoal
+                          apply (simp del: produce_LCons produce_inner_simps)
+                          apply (meson in_unproduced_watermarks_eq_not_prodible in_unproduced_watermarks_union vimageE)
+                          done
+                        done
+                      subgoal
+                        by blast
+                      subgoal
+                  apply (intro Set.equalityI Set.subsetI)
+                        subgoal
+                          apply (simp del: produce_LCons produce_inner_simps)
+                          apply (metis Un_iff in_unproduced_watermarks_eq_not_prodible vimage_eq)
+                          done
+                        subgoal
+                          apply (simp del: produce_LCons produce_inner_simps)
+                          sledgehammer
+
+                oops
                 using prems2(1,11,12,9) apply -
                 apply auto
                 using is_producible not_producible_union apply blast+
