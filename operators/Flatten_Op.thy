@@ -32,34 +32,34 @@ lemma produce_flatten_op_correctness_aux:
   done
 
 lemma produce_inner_flatten_op_None_Data_False:
-  "Data t d \<in> lset lxs \<Longrightarrow> d \<noteq> [] \<Longrightarrow> produce_inner (flatten_op, lxs) = None \<Longrightarrow> False"
+  "Data t d \<in> lset lxs \<Longrightarrow> d \<noteq> [] \<Longrightarrow> produce_inner_induct (flatten_op, lxs) = None \<Longrightarrow> False"
   apply (induct lxs rule: lset_induct)
-  apply (subst (asm) produce_inner.simps)
+  apply (subst (asm) produce_inner_induct.simps)
   apply (auto split: event.splits list.splits)
   done
 
 lemma produce_inner_flatten_op_None_False:
-  "Watermark wm \<in> lset lxs \<Longrightarrow> produce_inner (flatten_op, lxs) = None \<Longrightarrow> False"
+  "Watermark wm \<in> lset lxs \<Longrightarrow> produce_inner_induct (flatten_op, lxs) = None \<Longrightarrow> False"
   apply (induct lxs rule: lset_induct)
-  apply (subst (asm) produce_inner.simps)
+  apply (subst (asm) produce_inner_induct.simps)
   apply (auto split: event.splits list.splits)
   done
 
 lemma produce_inner_flatten_op_None_f_empty_aux:
-  "Data t d \<in> lset lxs \<Longrightarrow> produce_inner (flatten_op, lxs) = None \<Longrightarrow> d = []"
+  "Data t d \<in> lset lxs \<Longrightarrow> produce_inner_induct (flatten_op, lxs) = None \<Longrightarrow> d = []"
   apply (induct lxs rule: lset_induct)
   apply (simp_all split: prod.splits list.splits event.splits)
   done
 
 lemma produce_inner_flatten_op_None_f_empty:
-  "produce_inner (flatten_op, lxs) = None \<Longrightarrow>
+  "produce_inner_induct (flatten_op, lxs) = None \<Longrightarrow>
    \<forall> t d . Data t d \<in> lset lxs \<longrightarrow> d = []"
   apply safe
   using produce_inner_flatten_op_None_Data_False by blast
 
 
 lemma produce_inner_flatten_op_None_no_Watermark:
-  "produce_inner (flatten_op, lxs) = None \<Longrightarrow>
+  "produce_inner_induct (flatten_op, lxs) = None \<Longrightarrow>
    \<not> (\<exists> wm . Watermark wm \<in> lset lxs)"
   unfolding not_def
   apply safe
@@ -67,8 +67,8 @@ lemma produce_inner_flatten_op_None_no_Watermark:
   done
 
 lemma produce_inner_flatten_op_None_le_Suc_n:
-  assumes  "produce_inner (skip_n_productions_op flatten_op n, lxs) = Some (Inl (op', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
-  and "produce_inner (skip_n_productions_op flatten_op (Suc n), lxs) = None"
+  assumes  "produce_inner_induct (skip_n_productions_op flatten_op n, lxs) = Some (Inl (op', x, xs, lxs'))" (is "produce_inner_induct ?P = Some ?R")
+  and "produce_inner_induct (skip_n_productions_op flatten_op (Suc n), lxs) = None"
 shows "llength (lconcat (lmap (\<lambda>z. case z of Data t d \<Rightarrow> (map (Data t) d) | Watermark wm \<Rightarrow> [Watermark wm]) lxs)) \<le> enat (Suc n)"
   using assms apply (induct ?P ?R arbitrary: n lxs x xs lxs' op' rule: produce_inner_alt)
   subgoal 
@@ -96,7 +96,7 @@ shows "llength (lconcat (lmap (\<lambda>z. case z of Data t d \<Rightarrow> (map
   done
 
 lemma produce_inner_skip_n_productions_op_None_le_n:
-  "produce_inner (skip_n_productions_op flatten_op n, lxs) = None \<Longrightarrow>
+  "produce_inner_induct (skip_n_productions_op flatten_op n, lxs) = None \<Longrightarrow>
    llength (lconcat (lmap (\<lambda>z. case z of Data t d \<Rightarrow> map (Data t) d | Watermark wm \<Rightarrow> [Watermark wm]) lxs)) \<le> n"
   apply (induct n arbitrary: lxs)
   subgoal 
@@ -104,7 +104,7 @@ lemma produce_inner_skip_n_productions_op_None_le_n:
     apply (simp add: lconcat_lmap_LNil' produce_inner_flatten_op_None_f_empty produce_inner_flatten_op_None_no_Watermark)
     done
   subgoal for n lxs
-    apply (cases "produce_inner (skip_n_productions_op flatten_op n, lxs)")
+    apply (cases "produce_inner_induct (skip_n_productions_op flatten_op n, lxs)")
     subgoal
       using Suc_ile_eq order.order_iff_strict 
       apply (metis (no_types, lifting) verit_comp_simplify1(3))
@@ -120,7 +120,7 @@ lemma produce_inner_skip_n_productions_op_None_le_n:
   done
 
 lemma produce_inner_flatten_op_Some_le:
-  assumes  "produce_inner (skip_n_productions_op flatten_op n, lxs) = Some (Inl (op', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
+  assumes  "produce_inner_induct (skip_n_productions_op flatten_op n, lxs) = Some (Inl (op', x, xs, lxs'))" (is "produce_inner_induct ?P = Some ?R")
   shows "llength (lconcat (lmap (\<lambda>z. case z of Data t d \<Rightarrow> map (Data t) d | Watermark wm \<Rightarrow> [Watermark wm]) lxs)) > enat n"
   using assms proof (induct ?P ?R arbitrary: n lxs op' rule: produce_inner_alt)
   case (no_production h lxs op' n op'')
@@ -193,7 +193,7 @@ next
 qed
 
 lemma produce_inner_skip_n_productions_op_Some_lhd:
-  assumes "produce_inner (skip_n_productions_op flatten_op n, lxs) = Some (Inl (op', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
+  assumes "produce_inner_induct (skip_n_productions_op flatten_op n, lxs) = Some (Inl (op', x, xs, lxs'))" (is "produce_inner_induct ?P = Some ?R")
   shows "x = lhd (ldropn n (lconcat (lmap (\<lambda>z. case z of Data t d \<Rightarrow> map (Data t) d | Watermark wm \<Rightarrow> [Watermark wm]) lxs)))"
   using assms apply (induct ?P ?R arbitrary: n lxs op' rule: produce_inner_alt)
   subgoal
@@ -207,7 +207,7 @@ lemma produce_inner_skip_n_productions_op_Some_lhd:
   done
 
 lemma produce_inner_skip_n_productions_op_flatten_op_Inr:  
-  assumes  "produce_inner (skip_n_productions_op flatten_op n, lxs) = Some (Inr op)" (is "produce_inner ?P = Some ?R")
+  assumes  "produce_inner_induct (skip_n_productions_op flatten_op n, lxs) = Some (Inr op)" (is "produce_inner_induct ?P = Some ?R")
   shows "lfinite lxs \<and> exit op = LNil \<and>
    llength (lconcat (lmap (\<lambda>z. case z of Data t x \<Rightarrow> map (Data t) x | Watermark wm \<Rightarrow> [Watermark wm]) lxs)) \<le> enat n"
   using assms proof (induct ?P ?R arbitrary: n lxs rule: produce_inner_alt)
@@ -299,7 +299,7 @@ lemma monotone_map:
   done
 
 lemma produce_inner_flatten_op_monotone:
-  "produce_inner oo = Some r \<Longrightarrow>
+  "produce_inner_induct oo = Some r \<Longrightarrow>
    r = Inl (op, x, xs, lxs') \<Longrightarrow>
    oo = (flatten_op, lxs) \<Longrightarrow>
    monotone lxs WM \<Longrightarrow>
@@ -317,20 +317,8 @@ lemma produce_inner_flatten_op_monotone:
     by force
   done
 
-lemma tmps_monotone_llist_of_not_ge:
-  "wm \<in> tmps xs \<Longrightarrow> wm' \<in> WM \<Longrightarrow> monotone (llist_of xs) WM \<Longrightarrow> \<not> wm \<le> wm'"
-  apply (induct xs arbitrary: wm wm' WM)
-  apply simp
-  subgoal for a xs wm wm' WM
-    apply (cases a)
-     apply simp_all
-     apply (smt (verit, best) LConsData)
-    apply auto
-    done
-  done
-
 lemma produce_inner_flatten_constant:
-  "produce_inner oo = Some r \<Longrightarrow> 
+  "produce_inner_induct oo = Some r \<Longrightarrow> 
    r = Inl (op, x, xs, lxs') \<Longrightarrow>
    oo = (flatten_op, lxs) \<Longrightarrow>
    op = flatten_op"
@@ -339,7 +327,7 @@ lemma produce_inner_flatten_constant:
   done
 
 lemma produce_inner_flatten_monotone:
-  "produce_inner oo = Some r \<Longrightarrow> 
+  "produce_inner_induct oo = Some r \<Longrightarrow> 
    r = Inl (op, x, xs, lxs') \<Longrightarrow>
    oo = (flatten_op, lxs) \<Longrightarrow>
    monotone lxs WM \<Longrightarrow>
@@ -349,14 +337,14 @@ lemma produce_inner_flatten_monotone:
     apply (auto split: event.splits)
     done
   subgoal for op h x xs lxs' lgc' lxs WM
-    apply (subst (asm) produce_inner.simps)
+    apply (subst (asm) produce_inner_induct.simps)
     apply (auto split: event.splits)
     done
   apply auto
   done
 
 lemma produce_inner_flatten_op_Inr:
-  "produce_inner oo = Some r \<Longrightarrow>
+  "produce_inner_induct oo = Some r \<Longrightarrow>
    r = Inr op \<Longrightarrow>
    oo = (flatten_op, lxs) \<Longrightarrow>
    exit op = LNil"
@@ -444,7 +432,7 @@ lemma produce_flatten_op_strict_monotone:
   done
 
 lemma produce_inner_flatten_op_productive_Data:
-  assumes "produce_inner (flatten_op, lxs) = Some (Inl (op, Data t d, xs, lxs'))" (is "produce_inner ?P = Some ?R")
+  assumes "produce_inner_induct (flatten_op, lxs) = Some (Inl (op, Data t d, xs, lxs'))" (is "produce_inner_induct ?P = Some ?R")
   and "productive lxs"
   and "\<not> lfinite lxs"
 shows "(\<forall> x \<in> set xs. is_Data x) \<and> op = flatten_op \<and>
@@ -484,7 +472,7 @@ shows "(\<forall> x \<in> set xs. is_Data x) \<and> op = flatten_op \<and>
   done
 
 lemma produce_inner_flatten_op_productive_Watermark:
-  assumes "produce_inner (flatten_op, lxs) = Some (Inl (op, Watermark wm, xs, lxs'))" (is "produce_inner ?P = Some ?R")
+  assumes "produce_inner_induct (flatten_op, lxs) = Some (Inl (op, Watermark wm, xs, lxs'))" (is "produce_inner_induct ?P = Some ?R")
     and "\<not> lfinite lxs"
   shows "op = flatten_op \<and>
    (\<exists> n. lxs' = ldropn (Suc n) lxs \<and> (\<forall> x \<in> lset (ltake n lxs). is_Data x) \<and> (\<forall> x \<in> lset (ltake n lxs). data x = [])) \<and> xs = []"
@@ -523,7 +511,7 @@ lemma produce_flatten_op_productive:
       apply (simp add: lfinite_lconcat)
       done
     subgoal for lxs t d
-      apply (cases "produce_inner (flatten_op, stream_in)")
+      apply (cases "produce_inner_induct (flatten_op, stream_in)")
       subgoal
         apply (rule disjI1)
         by (metis lfinite_LNil produce_inner_None_produce_LNil)

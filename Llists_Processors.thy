@@ -14,38 +14,38 @@ code_lazy_type llist
 codatatype ('i, 'o) op = Logic ("apply": "('i \<Rightarrow> ('i, 'o) op \<times> 'o list)") ("exit": "'o llist")
 
 (* FIXME: uncurry this *)
-partial_function (option) produce_inner where
-  "produce_inner op_lxs = (case op_lxs of (op, lxs) \<Rightarrow>
+partial_function (option) produce_inner_induct where
+  "produce_inner_induct op_lxs = (case op_lxs of (op, lxs) \<Rightarrow>
     (case lxs of 
         LNil \<Rightarrow> Some (Inr op)
      | LCons h lxs' \<Rightarrow> (case apply op h of 
-                         (lgc', []) \<Rightarrow> produce_inner (lgc', lxs')
+                         (lgc', []) \<Rightarrow> produce_inner_induct (lgc', lxs')
                        | (lgc', x#xs) \<Rightarrow> Some (Inl (lgc', x, xs, lxs')))))"
-simps_of_case produce_inner_simps[simp]: produce_inner.simps
-declare produce_inner.simps[code]
+simps_of_case produce_inner_simps[simp]: produce_inner_induct.simps
+declare produce_inner_induct.simps[code]
 
 lemma produce_inner_LNil_None[simp]:
-  "produce_inner (op, LNil) = Some (Inr op)"
+  "produce_inner_induct (op, LNil) = Some (Inr op)"
   apply simp
   done
 
 lemma produce_inner_alt[consumes 1, case_names no_production produces terminates]:
-  assumes "produce_inner op_lxs = Some y"
+  assumes "produce_inner_induct op_lxs = Some y"
     and "\<And>op h lxs op' zs . apply op h = (op', []) \<Longrightarrow> Q (op', lxs) zs \<Longrightarrow> Q (op, LCons h lxs) zs"
-    and "\<And>op h x xs lxs lxs' op' . produce_inner (op, LCons h lxs) = Some (Inl (op', x, xs, lxs')) \<Longrightarrow>
+    and "\<And>op h x xs lxs lxs' op' . produce_inner_induct (op, LCons h lxs) = Some (Inl (op', x, xs, lxs')) \<Longrightarrow>
                                     apply op h = (op', x # xs) \<Longrightarrow> Q (op, LCons h lxs) (Inl (op', x, xs, lxs'))"
     and  "\<And>op. Q (op, LNil) (Inr op)"
   shows "Q op_lxs y"
-  apply (rule produce_inner.raw_induct[OF _ assms(1)])
+  apply (rule produce_inner_induct.raw_induct[OF _ assms(1)])
   apply (simp split: llist.splits prod.splits list.splits)[1]
   using assms(4) apply blast  
   using assms(2) apply blast
-  apply (metis (mono_tags, lifting) assms(3) list.simps(5) llist.case(2) prod.simps(2) produce_inner.simps)
+  apply (metis (mono_tags, lifting) assms(3) list.simps(5) llist.case(2) prod.simps(2) produce_inner_induct.simps)
   done
 
 corec produce where
   "produce op lxs = 
-    (case produce_inner (op, lxs) of
+    (case produce_inner_induct (op, lxs) of
        None \<Rightarrow> LNil
     | Some (Inr op') \<Rightarrow> exit op'
     | Some (Inl (op', x, xs, lxs')) \<Rightarrow> LCons x (xs @@- produce op' lxs'))"
@@ -62,6 +62,13 @@ lemma produce_LCons[simp]:
   apply (subst produce.code)
   apply (simp split: option.splits sum.splits prod.splits list.splits)
   apply (simp add: produce.code)
+  done
+
+
+lemma produce_code[code]:
+ "produce op lxs = (case lxs of LNil \<Rightarrow> exit op| LCons x lxs' \<Rightarrow> let (op', out) = apply op x in out @@- produce op' lxs')"
+  apply (cases lxs)
+  apply (simp_all split: prod.splits)
   done
 
 primcorec skip_first_production_op :: "(_, 'i) op \<Rightarrow> (_, 'i) op" where
@@ -86,7 +93,7 @@ lemma skip_n_productions_op_0[simp,intro]:
   done
 
 lemma produce_inner_None_produce_LNil[simp]:
-  "produce_inner (op, lxs) = None \<Longrightarrow>
+  "produce_inner_induct (op, lxs) = None \<Longrightarrow>
    produce op lxs = LNil"
   apply (subst produce.code)
   apply auto
@@ -153,8 +160,8 @@ lemma skip_first_production_op_eq_skip_n_productions_op_1:
   using skip_first_production_op_eq_skip_n_productions_op[where n=1 and op=op] by simp
 
 lemma produce_inner_skip_n_productions_op_Suc_LCons:
-  assumes "produce_inner (skip_n_productions_op op n, input_stream) = Some (Inl (lgc', h, xs, lxs'))" (is "produce_inner ?P = Some ?R")
-    and "produce_inner (skip_n_productions_op op (Suc n), input_stream) = Some (Inl (lgc'', h', xs', lxs''))"
+  assumes "produce_inner_induct (skip_n_productions_op op n, input_stream) = Some (Inl (lgc', h, xs, lxs'))" (is "produce_inner_induct ?P = Some ?R")
+    and "produce_inner_induct (skip_n_productions_op op (Suc n), input_stream) = Some (Inl (lgc'', h', xs', lxs''))"
   shows "LCons h' (xs' @@- produce lgc'' lxs'') = xs @@- produce lgc' lxs'"
   using assms proof (induction "?P" "?R" arbitrary: input_stream n op rule: produce_inner_alt)
   case (no_production h lxs op')
@@ -194,8 +201,8 @@ next
 qed
 
 lemma produce_inner_skip_n_productions_op_Some_None_Suc:
-  assumes "produce_inner (skip_n_productions_op op n, lxs) = Some (Inr lgc')" (is "produce_inner ?P = Some ?R")
-  shows "produce_inner (skip_n_productions_op op (Suc n), lxs) = Some (Inr (skip_first_production_op lgc'))"
+  assumes "produce_inner_induct (skip_n_productions_op op n, lxs) = Some (Inr lgc')" (is "produce_inner_induct ?P = Some ?R")
+  shows "produce_inner_induct (skip_n_productions_op op (Suc n), lxs) = Some (Inr (skip_first_production_op lgc'))"
   using assms apply (induction "?P" "?R"  arbitrary: n op lxs rule: produce_inner_alt)
   subgoal
     apply (simp split: prod.splits llist.splits if_splits list.splits)
@@ -207,13 +214,13 @@ lemma produce_inner_skip_n_productions_op_Some_None_Suc:
   done
 
 lemma produce_inner_skip_n_productions_op_Some_Some_Some_None:
-  assumes "produce_inner (skip_n_productions_op op n, lxs) = Some (Inl (lgc', h, xs, lxs'))" (is "produce_inner ?P = Some ?R")
-    and "produce_inner (skip_n_productions_op op (Suc n), lxs) = Some (Inr lgc'')"
+  assumes "produce_inner_induct (skip_n_productions_op op n, lxs) = Some (Inl (lgc', h, xs, lxs'))" (is "produce_inner_induct ?P = Some ?R")
+    and "produce_inner_induct (skip_n_productions_op op (Suc n), lxs) = Some (Inr lgc'')"
   shows "produce lgc' lxs' = exit lgc'' \<and> xs = []"
   using assms proof (induction "?P" "?R"  arbitrary: n op lxs rule: produce_inner_alt)
   case (no_production h lxs op')
   then show ?case 
-    by (smt (verit) Pair_inject Suc_diff_le cancel_comm_monoid_add_class.diff_cancel drop_eq_Nil2 le_imp_less_Suc less_Suc_eq less_le_not_le list.simps(4) llist.case(2) prod.simps(2) produce_inner.simps skip_n_productions_op.simps(1) skip_n_productions_op_0)
+    by (smt (verit) Pair_inject Suc_diff_le cancel_comm_monoid_add_class.diff_cancel drop_eq_Nil2 le_imp_less_Suc less_Suc_eq less_le_not_le list.simps(4) llist.case(2) prod.simps(2) produce_inner_induct.simps skip_n_productions_op.simps(1) skip_n_productions_op_0)
 next
   case (produces h lxs)
   then show ?case 
@@ -226,8 +233,8 @@ next
 qed
 
 lemma produce_inner_skip_n_productions_op_Suc_skip_n_productions_op_n:
-  assumes  "produce_inner (skip_n_productions_op op (Suc n), lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
-    and "produce_inner (skip_n_productions_op op n, lxs) = None"
+  assumes  "produce_inner_induct (skip_n_productions_op op (Suc n), lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner_induct ?P = Some ?R")
+    and "produce_inner_induct (skip_n_productions_op op n, lxs) = None"
   shows "False"
   using assms proof (induct "?P" "?R" arbitrary: n op lxs rule: produce_inner_alt)
   case (no_production h lxs op')
@@ -273,22 +280,22 @@ next
 qed
 
 lemma produce_inner_skip_n_productions_op_Some_None_Suc_None:
-  assumes "produce_inner (skip_n_productions_op op n, lxs) = Some (Inr lys)" (is "produce_inner ?P = Some ?R")
-    and "produce_inner (skip_n_productions_op op (Suc n), lxs) = Some (Inl l)"
+  assumes "produce_inner_induct (skip_n_productions_op op n, lxs) = Some (Inr lys)" (is "produce_inner_induct ?P = Some ?R")
+    and "produce_inner_induct (skip_n_productions_op op (Suc n), lxs) = Some (Inl l)"
   shows " False"
   using assms apply (induction ?P ?R arbitrary: lxs n op rule: produce_inner_alt)
    apply (simp_all split: if_splits)
-   apply (smt (verit) Suc_diff_le less_le_not_le list.simps(4) llist.case(2) not_less_eq prod.simps(2) produce_inner.simps skip_n_productions_op.simps(1))
+   apply (smt (verit) Suc_diff_le less_le_not_le list.simps(4) llist.case(2) not_less_eq prod.simps(2) produce_inner_induct.simps skip_n_productions_op.simps(1))
   apply fastforce
   done
 
 lemma produce_inner_skip_n_productions_op_Suc_None_Inr_None:
-  assumes  "produce_inner (skip_n_productions_op op (Suc n), lxs) = Some (Inl l)" (is "produce_inner ?P = Some ?R")
-    and "produce_inner (skip_n_productions_op op n, lxs) = None"
+  assumes  "produce_inner_induct (skip_n_productions_op op (Suc n), lxs) = Some (Inl l)" (is "produce_inner_induct ?P = Some ?R")
+    and "produce_inner_induct (skip_n_productions_op op n, lxs) = None"
   shows False
   using assms apply (induction ?P ?R arbitrary: lxs n op rule: produce_inner_alt)
    apply (simp_all  add: list.case_eq_if split: if_splits; hypsubst_thin?)
-    apply (smt (verit, del_insts) Suc_diff_Suc cancel_comm_monoid_add_class.diff_cancel diff_Suc_Suc drop_eq_Nil2 less_Suc_eq less_or_eq_imp_le list.simps(4) llist.case(2) prod.simps(2) produce_inner.simps skip_n_productions_op.simps(1) skip_n_productions_op_0)
+    apply (smt (verit, del_insts) Suc_diff_Suc cancel_comm_monoid_add_class.diff_cancel diff_Suc_Suc drop_eq_Nil2 less_Suc_eq less_or_eq_imp_le list.simps(4) llist.case(2) prod.simps(2) produce_inner_induct.simps skip_n_productions_op.simps(1) skip_n_productions_op_0)
   subgoal
     using less_Suc_eq by fastforce
   subgoal
@@ -296,15 +303,15 @@ lemma produce_inner_skip_n_productions_op_Suc_None_Inr_None:
   done
 
 lemma produce_inner_Some_produce[simp]:
-  "produce_inner (op, lxs) = Some (Inl (lgc', x, xs, lxs')) \<Longrightarrow>
+  "produce_inner_induct (op, lxs) = Some (Inl (lgc', x, xs, lxs')) \<Longrightarrow>
    produce op lxs = LCons x (xs @@- produce lgc' lxs')"
   apply (subst produce.code)
   apply simp
   done
 
 lemma produce_inner_Some_None_None_False:
-  assumes "produce_inner (skip_n_productions_op op n, lxs) = Some (Inr lys)" (is "produce_inner ?P = Some ?R")
-    and "produce_inner (op, lxs) = None"
+  assumes "produce_inner_induct (skip_n_productions_op op n, lxs) = Some (Inr lys)" (is "produce_inner_induct ?P = Some ?R")
+    and "produce_inner_induct (op, lxs) = None"
   shows False
   using assms apply (induct ?P ?R arbitrary: n op lxs rule: produce_inner_alt[consumes 1])
    apply (simp_all split: prod.splits list.splits if_splits)
@@ -313,8 +320,8 @@ lemma produce_inner_Some_None_None_False:
   done
 
 lemma produce_inner_None_Some_None_False:
-  assumes "produce_inner (op, lxs) = Some (Inr lys)" (is "produce_inner ?P = Some ?R")
-    and "produce_inner (skip_n_productions_op op n, lxs) = None"
+  assumes "produce_inner_induct (op, lxs) = Some (Inr lys)" (is "produce_inner_induct ?P = Some ?R")
+    and "produce_inner_induct (skip_n_productions_op op n, lxs) = None"
   shows False
   using assms apply (induct ?P ?R arbitrary: n op lxs  rule: produce_inner_alt)
    apply (simp_all split: if_splits)
@@ -323,7 +330,7 @@ lemma produce_inner_None_Some_None_False:
   done
 
 lemma produce_inner_skip_n_productions_op_Some_llength_le:
-  assumes "produce_inner (skip_n_productions_op op n, lxs) = Some (Inl (lgc'', y, ys, lxs''))" (is "produce_inner ?P = Some ?R")
+  assumes "produce_inner_induct (skip_n_productions_op op n, lxs) = Some (Inl (lgc'', y, ys, lxs''))" (is "produce_inner_induct ?P = Some ?R")
     and "llength (produce op lxs) \<le> enat n"
   shows False
   using assms  apply (induct ?P ?R arbitrary: n y ys lxs'' op lxs lgc'' rule: produce_inner_alt)
@@ -334,8 +341,8 @@ lemma produce_inner_skip_n_productions_op_Some_llength_le:
   done
 
 lemma produce_inner_skip_n_productions_op_Some_produce_inner_None:
-  assumes "produce_inner (skip_n_productions_op op n, lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
-    and "produce_inner (op, lxs) = None" shows False
+  assumes "produce_inner_induct (skip_n_productions_op op n, lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner_induct ?P = Some ?R")
+    and "produce_inner_induct (op, lxs) = None" shows False
   using assms apply (induct ?P ?R arbitrary: n xs op lxs x  lxs' lgc' rule: produce_inner_alt)
    apply (simp_all split: if_splits prod.splits list.splits)
    apply auto[1]
@@ -343,8 +350,8 @@ lemma produce_inner_skip_n_productions_op_Some_produce_inner_None:
   done
 
 lemma produce_inner_skip_n_productions_op_Some_produce_inner_Some_None:
-  assumes "produce_inner (skip_n_productions_op op n, lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
-    and "produce_inner (op, lxs) = Some (Inr lys)"
+  assumes "produce_inner_induct (skip_n_productions_op op n, lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner_induct ?P = Some ?R")
+    and "produce_inner_induct (op, lxs) = Some (Inr lys)"
   shows False
   using assms apply (induct ?P ?R arbitrary: n xs op lxs x  lxs' lgc' rule: produce_inner_alt)
    apply (simp_all split: if_splits prod.splits list.splits)
@@ -353,8 +360,8 @@ lemma produce_inner_skip_n_productions_op_Some_produce_inner_Some_None:
   done
 
 lemma produce_inner_Some_produce_inner_skip_n_productions_op_Suc_n_None:
-  assumes "produce_inner (skip_n_productions_op op n, lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
-    and "produce_inner (skip_n_productions_op op (Suc n), lxs) = None"
+  assumes "produce_inner_induct (skip_n_productions_op op n, lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner_induct ?P = Some ?R")
+    and "produce_inner_induct (skip_n_productions_op op (Suc n), lxs) = None"
   shows "llength (produce op lxs) = enat (Suc n)"
   using assms apply (induct ?P ?R arbitrary: n op lxs lxs' x xs rule: produce_inner_alt)
    apply (simp_all split: if_splits prod.splits list.splits)
@@ -365,18 +372,18 @@ lemma produce_inner_Some_produce_inner_skip_n_productions_op_Suc_n_None:
   done
 
 lemma produce_inner_skip_n_productions_op_Some_None_aux:
-  "produce_inner (skip_n_productions_op op n, lxs) = Some r \<Longrightarrow>
-   produce_inner (op, lxs) = None \<Longrightarrow> False"
+  "produce_inner_induct (skip_n_productions_op op n, lxs) = Some r \<Longrightarrow>
+   produce_inner_induct (op, lxs) = None \<Longrightarrow> False"
   by (metis obj_sumE prod_cases4 produce_inner_Some_None_None_False produce_inner_skip_n_productions_op_Some_produce_inner_None)
 
 lemma produce_inner_skip_n_productions_op_Some_None[simp]:
-  "produce_inner (op, lxs) = None \<Longrightarrow>
-   produce_inner (skip_n_productions_op op n, lxs) = None"
+  "produce_inner_induct (op, lxs) = None \<Longrightarrow>
+   produce_inner_induct (skip_n_productions_op op n, lxs) = None"
   using produce_inner_skip_n_productions_op_Some_None_aux by fastforce
 
 lemma produce_inner_skip_n_productions_op_Suc_Some_None_False:
-  "produce_inner (skip_n_productions_op op (Suc n), lxs) = Some r \<Longrightarrow>
-   produce_inner (skip_n_productions_op op n, lxs) = None \<Longrightarrow>
+  "produce_inner_induct (skip_n_productions_op op (Suc n), lxs) = Some r \<Longrightarrow>
+   produce_inner_induct (skip_n_productions_op op n, lxs) = None \<Longrightarrow>
    False"
   apply (induct "(skip_n_productions_op op (Suc n), lxs)" r arbitrary: n op lxs rule: produce_inner_alt)
   subgoal
@@ -388,22 +395,22 @@ lemma produce_inner_skip_n_productions_op_Suc_Some_None_False:
   done
 
 lemma produce_inner_skip_n_productions_op_None_Suc:
-  "produce_inner (skip_n_productions_op op n, lxs) = None \<Longrightarrow>
-   produce_inner (skip_n_productions_op op (Suc n), lxs) = None"
+  "produce_inner_induct (skip_n_productions_op op n, lxs) = None \<Longrightarrow>
+   produce_inner_induct (skip_n_productions_op op (Suc n), lxs) = None"
   using produce_inner_skip_n_productions_op_Suc_Some_None_False by fastforce
 
 lemma produce_inner_skip_n_productions_op_None_gt: 
-  "produce_inner (skip_n_productions_op op n, lxs) = None \<Longrightarrow>
+  "produce_inner_induct (skip_n_productions_op op n, lxs) = None \<Longrightarrow>
    m > n \<Longrightarrow>
-   produce_inner (skip_n_productions_op op m, lxs) = None"
+   produce_inner_induct (skip_n_productions_op op m, lxs) = None"
   apply (induct m arbitrary: n op lxs)
    apply simp
   apply (metis less_Suc_eq produce_inner_skip_n_productions_op_None_Suc)
   done
 
 lemma produce_inner_Some_produce_inner_skip_n_productions_op_le_False:
-  assumes "produce_inner (op, lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
-    and "produce_inner (skip_n_productions_op op n, lxs) = Some (Inl l)"
+  assumes "produce_inner_induct (op, lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner_induct ?P = Some ?R")
+    and "produce_inner_induct (skip_n_productions_op op n, lxs) = Some (Inl l)"
     and "eSuc (llength (xs @@- produce lgc' lxs')) \<le> enat n"
   shows False
   using assms proof (induct ?P ?R arbitrary: n op lxs lxs' x xs lgc' rule: produce_inner_alt)
@@ -426,14 +433,14 @@ next
 qed
 
 lemma produce_inner_skip_n_productions_op_None_le:
-  "produce_inner (skip_n_productions_op op n, lxs) = None \<Longrightarrow> llength (produce op lxs) \<le> enat n"
+  "produce_inner_induct (skip_n_productions_op op n, lxs) = None \<Longrightarrow> llength (produce op lxs) \<le> enat n"
 proof (induct n arbitrary: lxs op)
   case 0
   then show ?case by simp
 next
   case (Suc n lxs op)
   then show ?case 
-  proof (cases "produce_inner (skip_n_productions_op op n, lxs)")
+  proof (cases "produce_inner_induct (skip_n_productions_op op n, lxs)")
     case None
     then show ?thesis 
       by (metis Suc.hyps order.trans eSuc_enat ile_eSuc)
@@ -453,7 +460,7 @@ next
 qed
 
 lemma produce_inner_skip_n_productions_op_Some_Inr_le:
-  assumes "produce_inner (skip_n_productions_op op n, lxs) = Some (Inr lys)" (is "produce_inner ?P = Some ?R")
+  assumes "produce_inner_induct (skip_n_productions_op op n, lxs) = Some (Inr lys)" (is "produce_inner_induct ?P = Some ?R")
     and "lnull (exit lys)"
   shows "llength (produce op lxs) \<le> enat n"
   using assms proof (induct ?P ?R arbitrary: n op lxs rule: produce_inner_alt)
@@ -471,7 +478,7 @@ next
 qed
 
 lemma produce_inner_skip_n_productions_op_Some_Inr_le_lnull:
-  assumes "produce_inner (skip_n_productions_op op n, lxs) = Some (Inr lys)" (is "produce_inner ?P = Some ?R")
+  assumes "produce_inner_induct (skip_n_productions_op op n, lxs) = Some (Inr lys)" (is "produce_inner_induct ?P = Some ?R")
     and "llength (produce op lxs) \<le> enat n"
   shows  "lnull (exit lys)"
   using assms proof (induct ?P ?R arbitrary: n op lxs rule: produce_inner_alt)
@@ -489,7 +496,7 @@ next
 qed
 
 lemma produce_inner_skip_n_productions_op_Inl_lnth:
-  assumes  "produce_inner (skip_n_productions_op op n, lxs) = Some (Inl (lgc', y, ys, lys))" (is "produce_inner ?P = Some ?R")
+  assumes  "produce_inner_induct (skip_n_productions_op op n, lxs) = Some (Inl (lgc', y, ys, lys))" (is "produce_inner_induct ?P = Some ?R")
     and "n < llength (produce op lxs)"
   shows "y = lnth (produce op lxs) n"
   using assms proof (induct ?P ?R arbitrary: n op lxs rule: produce_inner_alt)
@@ -525,7 +532,7 @@ next
 qed
 
 lemma produce_inner_skip_n_productions_Inr_op_ldropn:
-  assumes "produce_inner (skip_n_productions_op op n, lxs) = Some (Inr y)" (is "produce_inner ?P = Some ?R")
+  assumes "produce_inner_induct (skip_n_productions_op op n, lxs) = Some (Inr y)" (is "produce_inner_induct ?P = Some ?R")
   shows "exit y = ldropn n (produce op lxs)"
   using assms proof (induct ?P ?R arbitrary: n op lxs rule: produce_inner_alt)
   case (no_production h lxs op')
@@ -541,9 +548,9 @@ next
 qed
 
 lemma produce_inner_skip_n_productions_op_llength_LNil:
-  assumes  "produce_inner (skip_n_productions_op op n, lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
+  assumes  "produce_inner_induct (skip_n_productions_op op n, lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner_induct ?P = Some ?R")
     and "\<not> llength (produce op lxs) \<le> enat n"
-    and "produce_inner (skip_n_productions_op op (Suc n), lxs) = None"
+    and "produce_inner_induct (skip_n_productions_op op (Suc n), lxs) = None"
   shows "xs @@- produce lgc' lxs' = LNil" 
   using assms proof (induct ?P ?R arbitrary: op lxs x xs lxs' n rule: produce_inner_alt)
   case (no_production h lxs op')
@@ -692,66 +699,66 @@ primcorec compose_op where
   "
 
 lemma produce_inner_compose_op_Some_produce_inner_None:
-  "produce_inner (compose_op op1 op2, lxs) = Some r \<Longrightarrow>
-   produce_inner (op1, lxs) = None \<Longrightarrow> False"
+  "produce_inner_induct (compose_op op1 op2, lxs) = Some r \<Longrightarrow>
+   produce_inner_induct (op1, lxs) = None \<Longrightarrow> False"
   apply (induct "(compose_op op1 op2, lxs)" r arbitrary: op1 op2 lxs rule: produce_inner_alt[consumes 1])
     apply (auto split: prod.splits list.splits llist.splits)
   done
 
 lemma produce_inner_None_produce_inner_compose_op_None[simp]:
-  "produce_inner (op1, lxs) = None \<Longrightarrow> produce_inner (compose_op op1 op2, lxs) = None"
+  "produce_inner_induct (op1, lxs) = None \<Longrightarrow> produce_inner_induct (compose_op op1 op2, lxs) = None"
   using produce_inner_compose_op_Some_produce_inner_None by fastforce
 
 
 lemma produce_inner_compose_op_Some_production:
   "apply op1 h = (op1', x#xs) \<Longrightarrow>
    finite_produce op2 (x#xs) = (op2', y#ys) \<Longrightarrow>
-   produce_inner (compose_op op1 op2, LCons h lxs) = Some (Inl (compose_op op1' op2', y, ys, lxs))"
-  apply (subst produce_inner.simps)
+   produce_inner_induct (compose_op op1 op2, LCons h lxs) = Some (Inl (compose_op op1' op2', y, ys, lxs))"
+  apply (subst produce_inner_induct.simps)
   apply (auto split: option.splits list.splits)
   done
 
 lemma produce_inner_compose_op_finite_produce_no_production[simp]:
-  assumes "produce_inner (op1, lxs) = Some (Inl (op1', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
+  assumes "produce_inner_induct (op1, lxs) = Some (Inl (op1', x, xs, lxs'))" (is "produce_inner_induct ?P = Some ?R")
     and "finite_produce op2 (x#xs) = (op2', [])"
-  shows "produce_inner (compose_op op1 op2, lxs) = produce_inner (compose_op op1' op2', lxs')"
+  shows "produce_inner_induct (compose_op op1 op2, lxs) = produce_inner_induct (compose_op op1' op2', lxs')"
   using assms apply (induct ?P ?R arbitrary: op1 op2 lxs rule: produce_inner_alt)
    apply (auto split: option.splits list.splits llist.splits prod.splits)
   done
 
 lemma produce_inner_LCons_Some_cases:
-  "produce_inner (op1, LCons h hs) = Some (Inl (op, x, xs, lxs')) \<Longrightarrow>
-   (apply op1 h = (op, x#xs) \<and> lxs' = hs) \<or> produce_inner (fst (apply op1 h), hs) = Some (Inl (op, x, xs, lxs'))"
-  apply (subst (asm) produce_inner.simps)
+  "produce_inner_induct (op1, LCons h hs) = Some (Inl (op, x, xs, lxs')) \<Longrightarrow>
+   (apply op1 h = (op, x#xs) \<and> lxs' = hs) \<or> produce_inner_induct (fst (apply op1 h), hs) = Some (Inl (op, x, xs, lxs'))"
+  apply (subst (asm) produce_inner_induct.simps)
   apply (auto split: prod.splits list.splits)
   done
 
 lemma produce_inner_Some_Inl_compose_op:
-  assumes "produce_inner (op1, lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
+  assumes "produce_inner_induct (op1, lxs) = Some (Inl (lgc', x, xs, lxs'))" (is "produce_inner_induct ?P = Some ?R")
     and "finite_produce op2 (x # xs) = (lgc'', y # ys)"
-  shows "produce_inner (compose_op op1 op2, lxs) = Some (Inl (compose_op lgc' lgc'', y, ys, lxs'))"
+  shows "produce_inner_induct (compose_op op1 op2, lxs) = Some (Inl (compose_op lgc' lgc'', y, ys, lxs'))"
   using assms apply (induct ?P ?R arbitrary: op1 op2 lxs rule: produce_inner_alt)
    apply auto
   done
 
 lemma produce_inner_Some_Inr_compose_op:
-  assumes "produce_inner (op1, lxs) = Some (Inr lgc')" (is "produce_inner ?P = Some ?R")
-  shows "produce_inner (compose_op op1 op2, lxs) = Some (Inr (compose_op lgc' op2))"
+  assumes "produce_inner_induct (op1, lxs) = Some (Inr lgc')" (is "produce_inner_induct ?P = Some ?R")
+  shows "produce_inner_induct (compose_op op1 op2, lxs) = Some (Inr (compose_op lgc' op2))"
   using assms apply (induct ?P ?R arbitrary: op1 op2 lxs rule: produce_inner_alt)
    apply auto
   done
 
 lemma produce_inner_compose_op:
-  "produce_inner (compose_op op1 op2, lxs) =
-   (case (produce_inner (op1, lxs)) of
+  "produce_inner_induct (compose_op op1 op2, lxs) =
+   (case (produce_inner_induct (op1, lxs)) of
       None \<Rightarrow> None
     | Some (Inr lgc') \<Rightarrow> Some (Inr (compose_op lgc' op2))
     | Some (Inl (op, x, xs, lxs')) \<Rightarrow> (
       let (lgc', out) = finite_produce op2 (x#xs) in
       (case out of 
-         [] \<Rightarrow> produce_inner (compose_op op lgc', lxs') 
+         [] \<Rightarrow> produce_inner_induct (compose_op op lgc', lxs') 
        | y#ys \<Rightarrow> Some (Inl (compose_op op lgc', y, ys, lxs')))))"
-  apply (cases "produce_inner (op1, lxs)")
+  apply (cases "produce_inner_induct (op1, lxs)")
    apply simp
   subgoal for p
     apply (cases p)
@@ -771,9 +778,9 @@ lemma finite_produce_LCons_Nil:
   done
 
 lemma produce_inner_prefix_no_production:
-  "produce_inner (op, xs @@- lxs) = Some (Inl (lgc', y, ys, lxs')) \<Longrightarrow>
+  "produce_inner_induct (op, xs @@- lxs) = Some (Inl (lgc', y, ys, lxs')) \<Longrightarrow>
    finite_produce op xs = (lgc'', []) \<Longrightarrow>
-   produce_inner (lgc'', lxs) = Some (Inl (lgc', y, ys, lxs'))"
+   produce_inner_induct (lgc'', lxs) = Some (Inl (lgc', y, ys, lxs'))"
   apply (induct xs arbitrary: op)
    apply (simp_all split: option.splits llist.splits list.splits prod.splits)
   subgoal
@@ -808,14 +815,14 @@ lemma finite_produce_move_old_out:
 
 lemma produce_coinduction:
   assumes rel: "P op ilxs olxs"
-    and nonterm: "\<And>op ilxs olxs. P op ilxs olxs \<Longrightarrow> produce_inner (op, ilxs) = None \<Longrightarrow> olxs = LNil"
+    and nonterm: "\<And>op ilxs olxs. P op ilxs olxs \<Longrightarrow> produce_inner_induct (op, ilxs) = None \<Longrightarrow> olxs = LNil"
     and exit: "\<And>op olxs. P op LNil olxs \<Longrightarrow> olxs = exit op"
     and step: "\<And>op h ilxs olxs op' out.
     P op (LCons h ilxs) olxs \<Longrightarrow> apply op h = (op', out) \<Longrightarrow> \<exists>olxs'. olxs = out @@- olxs' \<and> P op' ilxs olxs'"
   shows "produce op ilxs = olxs"
 proof -
   have coind: "\<And>op ilxs olxs. P op ilxs olxs \<Longrightarrow>
-    (case produce_inner (op, ilxs) of None \<Rightarrow> olxs = LNil
+    (case produce_inner_induct (op, ilxs) of None \<Rightarrow> olxs = LNil
        | Some (Inl (op', x, xs, ilxs')) \<Rightarrow> \<exists>olxs'. olxs = LCons x (xs @@- olxs') \<and> P op' ilxs' olxs'
        | Some (Inr op') \<Rightarrow> olxs = exit op')"
     apply (simp split: option.splits sum.splits)
@@ -876,7 +883,7 @@ lemma produce_lshift[simp]:
 
 
 lemma produce_inner_compose_op_apply_Nil:
-  "produce_inner (compose_op op1 op2, lxs) = None \<Longrightarrow>
+  "produce_inner_induct (compose_op op1 op2, lxs) = None \<Longrightarrow>
    produce op1 lxs = LCons y lys \<Longrightarrow>
    \<exists> op2' . apply op2 y = (op2', [])"
   apply (subst (asm) produce.code)
@@ -889,7 +896,7 @@ lemma produce_inner_compose_op_apply_Nil:
 
 
 lemma produce_inner_to_finite_produce:
-  "produce_inner (op, lxs) = Some r \<Longrightarrow>
+  "produce_inner_induct (op, lxs) = Some r \<Longrightarrow>
    r = Inl (lgc', x, xs, lxs') \<Longrightarrow>
    \<exists> zs. lxs = zs @@- lxs' \<and> finite_produce op zs = (lgc', x#xs)"
   apply (induct "(op, lxs)" r arbitrary: op lxs lgc' x xs lxs'  rule: produce_inner_alt[consumes 1])
@@ -921,8 +928,8 @@ lemma finite_produce_finite_produce_drop:
 
 
 lemma produce_inner_compose_op_Inl_skip_n_productions_op:
-  assumes  "produce_inner (compose_op (skip_n_productions_op op1 n) lgc2'', lxs) = Some (Inl (lgc', y, ys, lys))" (is "produce_inner ?P = Some ?R")
-    and "produce_inner (compose_op op1 op2, lxs) = None"
+  assumes  "produce_inner_induct (compose_op (skip_n_productions_op op1 n) lgc2'', lxs) = Some (Inl (lgc', y, ys, lys))" (is "produce_inner_induct ?P = Some ?R")
+    and "produce_inner_induct (compose_op op1 op2, lxs) = None"
     and "n = length zs"
     and "produce op1 lxs = zs @@- lzs"
     and "finite_produce op2 zs = (lgc2'', [])"
@@ -997,8 +1004,8 @@ lemma produce_inner_compose_op_Inl_skip_n_productions_op:
   done
 
 lemma produce_inner_compose_op_Inr_skip_n_productions_op:
-  assumes "produce_inner (compose_op (skip_n_productions_op op1 n) lgc2'', lxs) = Some (Inr lys)" (is "produce_inner ?P = Some ?R")
-    and "produce_inner (compose_op op1 op2, lxs) = None"
+  assumes "produce_inner_induct (compose_op (skip_n_productions_op op1 n) lgc2'', lxs) = Some (Inr lys)" (is "produce_inner_induct ?P = Some ?R")
+    and "produce_inner_induct (compose_op op1 op2, lxs) = None"
     and "n = length zs"
     and "produce op1 lxs = zs @@- lzs"
     and "finite_produce op2 zs = (lgc2'', [])"
@@ -1018,7 +1025,7 @@ lemma produce_inner_compose_op_Inr_skip_n_productions_op:
   done
 
 lemma produce_inner_compose_op_None_produce_shift_finite_produce: 
-  "produce_inner (compose_op op1 op2, lxs) = None \<Longrightarrow>
+  "produce_inner_induct (compose_op op1 op2, lxs) = None \<Longrightarrow>
    produce op1 lxs = ys @@- lys \<Longrightarrow>
    snd (finite_produce op2 ys) = []"
   apply (induct ys arbitrary: op1 op2 lys lxs)
@@ -1030,7 +1037,7 @@ lemma produce_inner_compose_op_None_produce_shift_finite_produce:
      apply assumption
     apply (elim exE)
     subgoal for lgc2''
-      apply (cases "produce_inner (compose_op (skip_n_productions_op op1 (Suc 0)) lgc2'', lxs)")
+      apply (cases "produce_inner_induct (compose_op (skip_n_productions_op op1 (Suc 0)) lgc2'', lxs)")
       subgoal
         by (simp add: prems(1) produce_skip_n_productions_op_correctness)
       subgoal for r
@@ -1049,12 +1056,12 @@ lemma produce_inner_compose_op_None_produce_shift_finite_produce:
   done
 
 lemma produce_inner_produce_Some:
-  "produce_inner (op2, produce op1 lxs) = Some (Inl (op2', x, xs, lxs')) \<Longrightarrow>
-   produce_inner (compose_op op1 op2, lxs) = None \<Longrightarrow> False"
+  "produce_inner_induct (op2, produce op1 lxs) = Some (Inl (op2', x, xs, lxs')) \<Longrightarrow>
+   produce_inner_induct (compose_op op1 op2, lxs) = None \<Longrightarrow> False"
   by (metis neq_Nil_conv produce_inner_compose_op_None_produce_shift_finite_produce produce_inner_to_finite_produce snd_conv)
 
 lemma produce_inner_Inr_finite_produce:
-  "produce_inner (op, lxs) = Some r \<Longrightarrow>
+  "produce_inner_induct (op, lxs) = Some r \<Longrightarrow>
    r = Inr op' \<Longrightarrow>
    lfinite lxs \<Longrightarrow>
    op' = fst (finite_produce op (list_of lxs))"
@@ -1064,7 +1071,7 @@ lemma produce_inner_Inr_finite_produce:
 
 
 lemma produce_inner_Some_Inr_lfinite:
-  "produce_inner (op, lxs) = Some r \<Longrightarrow>
+  "produce_inner_induct (op, lxs) = Some r \<Longrightarrow>
    r = Inr lgc' \<Longrightarrow>
    lfinite lxs"
   apply (induct "(op, lxs)" r arbitrary: op lxs rule: produce_inner_alt[consumes 1])
@@ -1116,26 +1123,26 @@ lemma produce_compose_op_correctness_alt:
 
 lemma produce_inner_None_not_lfinite_aux:
   "lfinite lxs \<Longrightarrow>
-   produce_inner (op, lxs) = None \<Longrightarrow>
+   produce_inner_induct (op, lxs) = None \<Longrightarrow>
    False"
   apply (induct lxs arbitrary: op rule: lfinite_induct)
   using llist.collapse(1) apply fastforce
   subgoal for lxs op
-    apply (subst (asm) (2) produce_inner.simps)
+    apply (subst (asm) (2) produce_inner_induct.simps)
     apply (auto split: llist.splits prod.splits list.splits)
     done
   done
 
 
 lemma produce_inner_None_not_lfinite:
-  "produce_inner (op, lxs) = None \<Longrightarrow>
+  "produce_inner_induct (op, lxs) = None \<Longrightarrow>
    \<not> lfinite lxs"
   using produce_inner_None_not_lfinite_aux by blast
 
 lemma produce_inner_produce_Inr_lfinite:
-  "produce_inner (op2, produce op1 lxs) = Some r \<Longrightarrow>
+  "produce_inner_induct (op2, produce op1 lxs) = Some r \<Longrightarrow>
    r = Inr lgc' \<Longrightarrow>
-   \<forall> n . produce_inner (skip_n_productions_op op1 n, lxs) \<noteq> None \<Longrightarrow>
+   \<forall> n . produce_inner_induct (skip_n_productions_op op1 n, lxs) \<noteq> None \<Longrightarrow>
    lfinite lxs"
   apply (induct "(op2, produce op1 lxs)" r arbitrary: op1 op2 lxs lgc' rule: produce_inner_alt[consumes 1])
   subgoal for op h lxs lgc' zs op1 lxsa lgc''
@@ -1157,7 +1164,7 @@ lemma produce_inner_produce_Inr_lfinite:
   done
 
 lemma produce_compose_op_correctness:
-  assumes "\<forall> n . produce_inner (skip_n_productions_op op1 n, lxs) \<noteq> None"
+  assumes "\<forall> n . produce_inner_induct (skip_n_productions_op op1 n, lxs) \<noteq> None"
   shows "produce (compose_op op1 op2) lxs = produce op2 (produce op1 lxs)"
   using assms
   apply (coinduction arbitrary: op1 op2 lxs rule: produce_coinduction)
@@ -1216,7 +1223,7 @@ lemma snd_finite_produce_skip_n_productions_op:
   done
 
 lemma produce_skip_n_productions_op_compose_op[simp]:
-  "\<forall> n . produce_inner (skip_n_productions_op op1 n, lxs) \<noteq> None \<Longrightarrow>
+  "\<forall> n . produce_inner_induct (skip_n_productions_op op1 n, lxs) \<noteq> None \<Longrightarrow>
    produce (skip_n_productions_op (compose_op op1 op2) n) lxs = produce (compose_op op1 (skip_n_productions_op op2 n)) lxs"
   apply (subst produce_compose_op_correctness)
    apply assumption
@@ -1224,7 +1231,7 @@ lemma produce_skip_n_productions_op_compose_op[simp]:
   done
 
 lemma produce_inner_Some_lfinite_produce_lfinite:
-  "produce_inner (op, lxs) = Some (Inl (lgc', x, xs, lxs')) \<Longrightarrow> lfinite (produce op lxs) \<Longrightarrow> lfinite lxs \<Longrightarrow> lfinite (produce lgc' lxs')"
+  "produce_inner_induct (op, lxs) = Some (Inl (lgc', x, xs, lxs')) \<Longrightarrow> lfinite (produce op lxs) \<Longrightarrow> lfinite lxs \<Longrightarrow> lfinite (produce lgc' lxs')"
   by simp
 
 lemma ltake_enat_Suc[simp]:
@@ -1237,13 +1244,13 @@ lemma ltake_enat_Suc[simp]:
   done
 
 lemma produce_inner_skip_n_productions_op_Suc_Nil_LNil:
-  "produce_inner (skip_n_productions_op op n, input_stream) = Some r \<Longrightarrow>
+  "produce_inner_induct (skip_n_productions_op op n, input_stream) = Some r \<Longrightarrow>
    r = Inl (lgc', h, xs, lxs') \<Longrightarrow>
-   produce_inner (skip_n_productions_op op (Suc n), input_stream) = None \<Longrightarrow>
+   produce_inner_induct (skip_n_productions_op op (Suc n), input_stream) = None \<Longrightarrow>
    xs = [] \<and> produce lgc' lxs' = LNil"
   apply (induction "(skip_n_productions_op op n, input_stream)" r arbitrary: input_stream n op rule: produce_inner_alt[consumes 1])
   subgoal for h lxs' lgc' n opc
-    apply (subst (asm) (2) produce_inner.simps)
+    apply (subst (asm) (2) produce_inner_induct.simps)
     apply (simp split: option.splits prod.splits if_splits)
     subgoal
       apply hypsubst_thin
@@ -1257,7 +1264,7 @@ lemma produce_inner_skip_n_productions_op_Suc_Nil_LNil:
     apply (metis skip_n_productions_op_0)
     done
   subgoal for ha n op
-    apply (subst (asm) (1 2) produce_inner.simps)
+    apply (subst (asm) (1 2) produce_inner_induct.simps)
     apply (simp split: option.splits prod.splits if_splits list.splits)
     apply safe
     apply (metis append_eq_conv_conj length_Suc_conv_rev list.inject)
@@ -1289,9 +1296,9 @@ lemma produce_skip_n_productions_op_LCons:
   done
 
 lemma produce_inner_skip_n_productions_op_Suc_Inr:
-  "produce_inner (skip_n_productions_op op i, lxs) = Some r \<Longrightarrow>
+  "produce_inner_induct (skip_n_productions_op op i, lxs) = Some r \<Longrightarrow>
    r = Inr op' \<Longrightarrow>
-   produce_inner (skip_n_productions_op op (Suc i), lxs) = Some (Inr (skip_n_productions_op op' 1))"
+   produce_inner_induct (skip_n_productions_op op (Suc i), lxs) = Some (Inr (skip_n_productions_op op' 1))"
   by (metis produce_inner_skip_n_productions_op_Some_None_Suc skip_first_production_op_eq_skip_n_productions_op_1)
 
 lemma fst_finite_produce_compose_op:

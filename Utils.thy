@@ -500,4 +500,28 @@ lemma prefix_concat:
   "prefix xs ys \<Longrightarrow> prefix (concat xs) (concat ys)"
   by (metis concat_append prefix_def)
 
+lemma count_list_1_take:
+  "n' < length xs \<Longrightarrow>
+   n' \<le> n \<Longrightarrow>
+   xs ! n' = x  \<Longrightarrow>
+   count_list xs x = 1 \<Longrightarrow>
+   count_list (take (Suc n) xs) x = 1"
+  apply (induct xs arbitrary: n' n)
+   apply simp_all
+  subgoal for a xs n' n
+    apply (cases n')
+     apply (simp_all add: count_list_0_iff split: if_splits)
+    subgoal
+      by (meson in_set_takeD)
+    subgoal
+      by auto
+    subgoal
+      by (metis Suc_le_D Suc_le_mono)
+    done
+  done
+
+lemma mset_Collect_fst[simp]:
+  "{#x \<in># M. P (fst x) #} = {#(t', d) \<in># M. P t'#}"
+  by (simp add: case_prod_beta')
+
 end

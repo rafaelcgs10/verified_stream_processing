@@ -27,29 +27,9 @@ lemma wms_empty[simp]:
 lemma wms_correct[simp]:
   "wm \<in> wms xs \<longleftrightarrow> wm \<in> Watermark -` set xs"
   apply (induct xs)
-  apply auto
+   apply simp_all
   using insert_iff list.distinct(1) list.sel(3) wms.elims apply auto[1]
-  subgoal for a xs
-    apply (cases a)
-    apply auto
-    done
   done
-
-fun tmps where
-  "tmps [] = {}"
-| "tmps (Watermark wm#xs) = tmps xs"
-| "tmps (Data t d#xs) =  insert t (tmps xs)"
-
-lemma tmps_tmps:
-  "wms xs = {} \<Longrightarrow> tmps xs = tmp ` set xs"
-  apply (induct xs)
-   apply simp
-  apply auto
-    apply (metis (no_types, opaque_lifting) event.sel(1) insertE insert_not_empty list.inject neq_Nil_conv tmps.simps(3) wms.elims)
-   apply (metis event.sel(1) insert_iff insert_not_empty list.distinct(1) list.inject tmps.simps(3) wms.elims)
-  apply (smt (verit, best) imageI insert_iff insert_not_empty list.inject neq_Nil_conv tmps.simps(3) wms.elims)
-  done
-
 
 lemma set_map_filter_case_event_Watermark[simp]:
   "set (List.map_filter (case_event (\<lambda>_. Map.empty) Some) xs) = Watermark -` (set xs)"
@@ -145,7 +125,7 @@ lemma strict_monotone_with_smaller_initial_watermark_Watermark:
   "monotone xs (insert wm WM) \<Longrightarrow> \<forall> wm' \<in> WM . \<not> wm' \<ge> wm \<Longrightarrow> 
    monotone (LCons (Watermark wm) xs) WM"
   apply (rule LConsR)
-   apply simp_all
+  apply simp_all
   done
 
 lemma strict_monotone_remove_wm[intro]:
@@ -194,20 +174,6 @@ lemma strict_monotone_LCons_Watermark_insert:
   "monotone (LCons (Watermark wm) lxs) WM \<Longrightarrow> monotone lxs (insert wm WM)"
   apply (erule monotone.cases)
     apply simp_all
-  done
-
-lemma monotone_increases_set:
-  " \<forall>wm\<in>WM. (\<forall>t\<in>tmps xs. \<not> t \<le> wm) \<Longrightarrow>
-   monotone (llist_of xs) A \<Longrightarrow>
-   monotone (llist_of xs) (A \<union> WM)"
-  apply (induct xs arbitrary: WM A)
-  using monotone.LNil apply auto[1]
-  subgoal for a xs WM
-    apply (cases a)
-     apply simp_all
-    apply (metis (no_types, lifting) Un_iff eq_LConsD event.distinct(1) event.sel(1) monotone.simps)
-    apply (metis Un_insert_left)    
-    done
   done
 
 lemma strict_monotone_lfinite_lfilter_le_t_alt:
@@ -315,10 +281,10 @@ lemma Watermark_in_lxs_in_sub:
         using strict_monotone_drop_head apply blast
         apply (drule meta_mp)
         subgoal
-          apply auto
+          apply simp_all
           apply (cases n)
            apply (metis atLeastLessThan_iff eSuc_enat eSuc_inject linorder_not_le lnth_Suc_LCons not_less_eq_eq the_enat.simps zero_less_Suc)
-          apply auto
+          apply simp_all
           apply (metis atLeastLessThan_iff eSuc_enat eSuc_inject less_Suc_eq_le linorder_not_le lnth_Suc_LCons the_enat.simps)
           done
         apply simp
@@ -363,9 +329,9 @@ lemma strict_monotone_lfinite_lfilter_le_t:
          defer
         using stop_gathering_location_finds_wm apply blast
         apply (cases x)
-         apply auto
+         apply simp_all
         apply (metis enat_ord_code(4) ldrop_enat ldropn_Suc_conv_ldropn not_lfinite_llength order_trans stop_gathering_location_def strict_monotone_LCons_Watermark_Data_not_ge strict_monotone_ldrop)
-       done                 
+        done                 
       subgoal for wm'
         by simp
       done
@@ -425,7 +391,7 @@ lemma productive'_productive: "productive' ws \<Longrightarrow> productive ws"
         subgoal for u d
           apply (hypsubst_thin)
           apply (erule productive'.cases)
-            apply (auto simp: lfinite_evll_wholdsll lset_induct)
+            apply (simp add: lfinite_evll_wholdsll lset_induct)
           subgoal
             apply (induct xs rule: lfinite_induct)
              apply (auto simp: lnull_def) []
@@ -435,16 +401,16 @@ lemma productive'_productive: "productive' ws \<Longrightarrow> productive ws"
               done
             done
           subgoal for wm
-            apply (hypsubst_thin)
             apply (erule productive'.cases)
-              apply (auto simp: base evll.step lfinite_evll_wholdsll lset_induct)
+              apply (auto simp add: productive'.intros(3) productive'.intros(2) vimageI2 base evll.step lfinite_evll_wholdsll lset_induct)
             done
+          subgoal
+            by blast
           done
         subgoal for wm
           apply (hypsubst_thin)
           apply (erule productive'.cases)
-            apply (auto simp: base evll.step lfinite_evll_wholdsll lset_induct)
-          using productive'.intros(1) apply blast
+            apply (auto simp add: productive'.intros(1) base evll.step lfinite_evll_wholdsll lset_induct)
           done
         done
       done
@@ -479,8 +445,7 @@ lemma productive'_coinduct_prepend_cong1:
     (\<exists>xs t d. x1 = LCons (Data t d) xs \<and> \<not> lfinite xs \<and> Bex (Watermark -` lset xs) ((\<le>) t) \<and> (productive_prepend_cong1 X xs \<or> productive' xs)) \<or>
     (\<exists>xs wm. x1 = LCons (Watermark wm) xs \<and> \<not> lfinite xs \<and> (productive_prepend_cong1 X xs \<or> productive' xs)))" (is "\<And>x1 . X x1 \<Longrightarrow> ?bisim x1")
   shows "productive' lxs"
-  using H1 apply -
-proof (erule productive'.coinduct[OF productive_prepend_cong1_base])
+  using H1 proof (rule productive'.coinduct[OF productive_prepend_cong1_base])
   fix lxs
   assume  "productive_prepend_cong1 X lxs"
   then show "?bisim lxs"
@@ -491,24 +456,24 @@ proof (erule productive'.coinduct[OF productive_prepend_cong1_base])
       done
     subgoal for ys xs
       apply (cases xs)
-       apply simp
+      apply simp
       subgoal for a list
         apply (cases a)
-         apply hypsubst_thin
+        apply hypsubst_thin
         subgoal for t' d'
           apply (elim exE disjE conjE)
-              apply (rule disjI1)
-              apply (metis lappend_llist_of lfinite_lappend lfinite_llist_of)
-             apply (rule disjI2)
-             apply (fastforce simp add: productive_prepend_cong1_prepend_1)+
+          apply (rule disjI1)
+          apply (metis lappend_llist_of lfinite_lappend lfinite_llist_of)
+          apply (rule disjI2)
+          apply (fastforce simp add: productive_prepend_cong1_prepend_1)+
           done
         apply hypsubst_thin
         subgoal for wm
           apply (elim exE disjE conjE)
-              apply (rule disjI1)
-              apply auto[1]
-             apply (rule disjI2)+
-             apply (fastforce simp add: productive_prepend_cong1_prepend_1)+
+          apply (rule disjI1)
+          apply auto[1]
+          apply (rule disjI2)+
+          apply (fastforce simp add: productive_prepend_cong1_prepend_1)+
           done
         done
       done
@@ -517,63 +482,32 @@ qed
 
 lemmas productive_coinduct_prepend_cong1[coinduct pred] = productive'_coinduct_prepend_cong1[folded productive_alt]
 
-lemma productive'_coinduct_prepend_cong1_shift:
-  assumes H1: "X lxs" 
-    and H2:  "(\<And>x1.
-    X x1 \<Longrightarrow>
-    (\<exists>lxs. x1 = lxs \<and> lfinite lxs) \<or>
-    (\<exists>lxs t d wm. x1 = [Data t d, Watermark wm] @@- lxs \<and> t \<le> wm \<and> \<not> lfinite lxs \<and> productive_prepend_cong1 X lxs) \<or>
-    (\<exists>lxs wm. x1 = LCons (Watermark wm) lxs \<and> \<not> lfinite lxs \<and> (productive_prepend_cong1 X lxs \<or> productive' lxs)))" (is "\<And>x1 . X x1 \<Longrightarrow> ?bisim x1") 
-  shows "productive' lxs"
-  using assms apply -
-  apply (erule productive'_coinduct_prepend_cong1)
-  subgoal for lxs
-    apply (drule meta_spec)
-    apply (drule meta_mp)
-     apply assumption
-    apply (elim exE conjE disjE)
-     apply simp
-    apply hypsubst_thin
-    apply (rule disjI2)
-    apply (rule disjI1)
-    apply simp
-    apply (rule conjI)
-     apply blast
-    apply (rule disjI1)
-    subgoal for lxs t d wm
-      using productive_prepend_cong1_prepend_1[where xs="[Watermark wm]"] apply simp
-      apply assumption
-      done
-    apply auto
-    done
-  done
-
 lemma productivity_good_example: "productive good_example"
   unfolding productive_def
   apply safe
   subgoal for t
     apply (rule alwll)
-     apply simp
-     apply safe
-     apply (rule evll.step)
-     apply (rule evll.base)
-     apply simp_all
+    apply simp
+    apply safe
+    apply (rule evll.step)
+    apply (rule evll.base)
+    apply simp_all
     apply (rule alwll)
-     apply simp_all
+    apply simp_all
     apply (rule alwll)
-     apply simp_all
-     apply safe
-     apply (rule evll.step)
-     apply (rule evll.base)
-     apply simp_all
+    apply simp_all
+    apply safe
+    apply (rule evll.step)
+    apply (rule evll.base)
+    apply simp_all
     apply (rule alwll)
-     apply simp_all
+    apply simp_all
     done
   done
 
 lemma productive_ldrop: "productive xs \<Longrightarrow> productive (ldrop (enat n) xs)"
   apply (induct n)
-   apply simp_all
+  apply simp_all
   using zero_enat_def apply fastforce
   apply (metis ldrop_eSuc_ltl ldrop_enat ltl_ldropn ltl_simps(1) ltl_simps(2) neq_LNil_conv productive_drop_head)
   done
@@ -584,21 +518,21 @@ lemma productive_finds_data:
    \<not> lfinite lxs \<Longrightarrow>
    \<exists> m > n . \<exists> wm \<ge> t . lnth lxs m = Watermark wm"
   apply (subgoal_tac "evll (wholdsll (\<lambda>x. \<exists>u\<ge>t. x = Watermark u)) (ldrop (enat n) lxs)")
-   apply (drule evll_wholdsll_finds_n_alt)
-    apply simp
-   apply safe
+  apply (drule evll_wholdsll_finds_n_alt)
+  apply simp
+  apply safe
   subgoal for n' u
     apply (rule exI[of _ "n' + n"])
     apply simp
     apply safe
-     apply (metis enat_ord_code(4) event.simps(4) ldrop_enat ldropn_Suc_conv_ldropn llength_eq_infty_conv_lfinite lnth_0 zero_less_iff_neq_zero)
+    apply (metis enat_ord_code(4) event.simps(4) ldrop_enat ldropn_Suc_conv_ldropn llength_eq_infty_conv_lfinite lnth_0 zero_less_iff_neq_zero)
     by (simp add: not_lfinite_llength)
   apply (drule productive_ldrop[where n=n])
   unfolding productive_def
   apply (drule spec[where x=t])
   apply (simp add: ldrop_enat)
   apply (subst ldropn_Suc_conv_ldropn[symmetric])
-   apply (simp add: not_lfinite_llength)
+  apply (simp add: not_lfinite_llength)
   apply (simp add: not_lfinite_llength)
   apply (metis (mono_tags, lifting) alwll_headD enat_ord_code(4) holdsll.simps(2) ldropn_Suc_conv_ldropn llength_eq_infty_conv_lfinite)
   done
@@ -615,7 +549,7 @@ lemma strict_monotone_productive_lfinite_lfilter_eq_t:
     apply (elim conjE exE)
     subgoal for d n
       apply (frule productive_finds_data[where t=t and d=d and n= n])
-        apply assumption+
+      apply assumption+
       apply (elim conjE exE bexE)
       subgoal for m wm
         apply (simp add: not_lfinite_llength)
@@ -633,7 +567,7 @@ lemma strict_monotone_productive_lfinite_lfilter_eq_t:
         done
       done
     apply (rule ldropn_lfinite_lfinter[where n="0"])
-     apply (simp add: not_lfinite_llength)
+    apply (simp add: not_lfinite_llength)
     apply simp
     apply (smt (verit, best) event.split_sel_asm inf_bool_def)
     done
@@ -657,7 +591,7 @@ lemma set_inv_llist_of_eq_lset:
   "lfinite lxs \<Longrightarrow>
    set (inv llist_of lxs) = lset lxs"
   apply (induct lxs rule: lfinite_rev_induct)
-   apply (simp add: inv_f_eq)
+  apply (simp add: inv_f_eq)
   apply simp
   apply (smt (verit, best) Un_insert_right f_inv_into_f lappend_LNil2 lfinite_LConsI lfinite_eq_range_llist_of lfinite_lappend lset_LCons lset_lappend_conv lset_llist_of)
   done
@@ -676,33 +610,36 @@ lemma ts_eq_ts':
    ts lxs t = ts' lxs t"
   unfolding ts_def ts'_def list_of_def
   apply (subgoal_tac "lfinite (lfilter (case_event (\<lambda> t' d. t' \<le> t) (\<lambda>wm. False)) lxs)")
-   defer
+  defer
   using strict_monotone_lfinite_lfilter_le_t apply blast
   apply (simp only: if_True)
   apply (subst set_inv_llist_of_eq_lset)
   using strict_monotone_lfinite_lfilter_le_t apply blast
-  apply auto
-    apply (metis (no_types, lifting) event.sel(1) event.simps(5) imageI mem_Collect_eq)
-   apply (metis event.case_eq_if event.collapse(1))
-  apply (metis event.case_eq_if)
-  done
+  apply simp_all
+  apply (intro conjI Set.equalityI Set.subsetI)
+  apply simp_all
+  subgoal
+    by (metis (no_types, lifting) event.sel(1) event.simps(5) imageI mem_Collect_eq)
+  subgoal
+    by (smt (verit, del_insts) event.case_eq_if event.collapse(1) image_iff mem_Collect_eq)
+  oops
 
 lemma finite_ts[simp]:
   "monotone lxs WM \<Longrightarrow>
    \<exists> wm\<ge>t . Watermark wm \<in> lset lxs \<Longrightarrow>
    finite (ts lxs t)"
-  apply (subst ts_eq_ts')
+  (*   apply (subst ts_eq_ts')
     apply assumption+
   unfolding ts'_def
-  apply blast
-  done
+  apply blast *)
+  oops
 
 lemma ts_Data_in[simp]:
   "ts (LCons (Data t' d) lxs) t = (if t' \<le> t then insert t' (ts lxs t) else ts lxs t)"
   unfolding ts_def
   apply (cases "t' \<le> t")
-   apply (simp only: if_True lset_LCons)
-   apply blast
+  apply (simp only: if_True lset_LCons)
+  apply blast
   apply auto
   done
 
@@ -730,8 +667,8 @@ lemma ws_Data_map_shift[simp]:
   "ws (((map (\<lambda> (t, d). Data t d) xs)) @@- lxs) wm = ws lxs wm"
   apply (induct xs)
   subgoal
-  apply auto
-  done
+    apply auto
+    done
   subgoal for x xs'
     apply (cases x)
     subgoal for t d
@@ -745,35 +682,38 @@ lemma map_filter_empty:
   by (smt (verit) emptyE empty_filter_conv empty_set imageI last_in_set list.map(1) list.set_map map_filter_def)
 
 
-
-
 lemma coll_Data_eq_coll_ltl[simp]:
   "coll WM (LCons (Data t' d) lxs) t = (
    if (monotone (LCons (Data t' d) lxs) WM \<and> (\<exists> wm . Watermark wm \<in> lset lxs \<and> t \<le> wm)) \<or> lfinite lxs  
    then (if t' = t then add_mset d (coll WM lxs t) else coll WM lxs t)
    else {#})"
-  apply (auto simp add: map_filter_simps coll_def split: if_splits event.splits)
-  apply (subst list_of_LCons)
+  apply (simp add: map_filter_simps coll_def split: if_splits event.splits)
+  apply (intro impI conjI; elim conjE exE)
+  apply simp_all
   subgoal for wm
-    using strict_monotone_lfinite_lfilter_eq_t_alt[where wm=wm and WM=WM and lxs=lxs and t=t] apply simp
-    by (smt (verit, best) event.case_eq_if event.collapse(1) event.distinct(1) event.sel(1) event.split_sel le_boolD lfilter_cong linorder_le_cases)
-  apply (subst map_filter_simps)
-  apply simp
+    apply (subst list_of_LCons)
+    subgoal
+      using strict_monotone_lfinite_lfilter_eq_t_alt[where wm=wm and WM=WM and lxs=lxs and t=t] apply simp
+      apply (smt (verit, ccfv_threshold) event.exhaust event.simps(5) event.simps(6) lfilter_cong)
+      done
+    subgoal
+      by (simp add: map_filter_simps)
+    done
+  apply auto
   done
-
 
 lemma coll_eq_coll_ltl_Watermark[simp]:
   "coll WM (LCons (Watermark wm) lxs) t = coll (insert wm WM) lxs t"
-  apply (auto simp add: coll_def)
-  by (smt (verit, best) Data_set_strict_monotone_not_GE event.split_sel insertI1 le_boolE lfilter_empty_conv list_of_LNil map_filter_simps(2) min_def)
-
+  apply (clarsimp simp add: coll_def)
+  apply (smt (z3) Data_set_strict_monotone_not_GE event.split_sel insertI1 le_boolD lfilter_empty_conv list_of_LNil map_filter_simps(2) min_def)
+  done
 
 lemma ts_all_not_le:
   "monotone (LCons (Watermark wm) lxs) WM \<Longrightarrow>
    \<exists>wm\<ge>t. Watermark wm \<in> lset lxs \<Longrightarrow>
    (\<forall>x\<in>ts lxs t. \<not> x \<le> wm)"
   apply (erule monotone.cases)
-    apply simp_all
+  apply simp_all
   unfolding ts_def
   apply safe
   apply (meson Data_set_strict_monotone_not_GE insertI1)
@@ -787,15 +727,24 @@ fun ltaken_Data :: "nat \<Rightarrow> _ llist \<Rightarrow> _ list" where
 lemma ltaken_Data_0[simp]:
   "ltaken_Data 0 lxs = []"
   apply (cases lxs)
-   apply simp_all
+  apply simp_all
   done
 
 lemma ltaken_Data_LCons_Watermark:
   "ltaken_Data n (LCons (Watermark wm) lxs) = ltaken_Data (n - 1) lxs"
   apply (induct n arbitrary: lxs wm)
-   apply simp_all
+  apply simp_all
   done
 
+lemma ltaken_Data_lshift[simp]:
+  "ltaken_Data n (xs @@- lxs) = ltaken_Data n (llist_of xs) @  ltaken_Data (n - length xs) lxs"
+  apply (induct xs arbitrary: n lxs)
+   apply simp_all
+  subgoal for x xs n lxs
+    apply (cases x; cases n)
+       apply auto
+    done
+  done
 
 definition coll_list :: "('t::order \<times> 'd) list \<Rightarrow> 't \<Rightarrow> _ list" where
   "coll_list xs t = map snd (filter (((=) t) \<circ> fst) xs)"
@@ -817,7 +766,7 @@ lemma t_in_ts[simp]:
   unfolding ts_def
   apply auto
   done
-  
+
 abbreviation
   "EV_LE_WM wm ev \<equiv> (case ev of Watermark wm' \<Rightarrow> False | Data t d \<Rightarrow> t \<le> wm)"
 
@@ -836,16 +785,19 @@ lemma ltaken_Data_in_Suc:
    n \<le> m \<Longrightarrow>
    x \<in> set (ltaken_Data m lxs)"
   apply (induct n arbitrary: m lxs)
-   apply auto
+  apply simp_all
   subgoal for n m lxs
     apply (cases lxs)
-     apply auto
+    apply simp_all
     subgoal for x lxs'
       apply (cases x)
-       apply auto
-      using Suc_le_D apply fastforce
-       apply (cases m)
+      apply simp_all
+      subgoal
+        by (metis Suc_le_D list.set_intros(1) list.set_intros(2) ltaken_Data.simps(2) not_less_eq_eq)
+      subgoal
+        apply (cases m)
         apply (auto simp add: ltaken_Data_LCons_Watermark)
+        done
       done
     done
   done
@@ -884,63 +836,47 @@ lemma ldropn_LCons_ltaken_Data:
   "\<exists>n'\<le>n. ldropn n' lxs = LCons (Data wm batch) lxs' \<Longrightarrow> 
   (wm, batch) \<in> set (ltaken_Data (Suc n) lxs)"
   apply (induct "Suc n" lxs arbitrary: n rule: ltaken_Data.induct)
-    apply auto
-    apply (metis (no_types, lifting) diff_is_0_eq' diff_le_self event.distinct(1) gr0_conv_Suc ldropn_0 ldropn_Suc_LCons llist.inject not_less_eq_eq order.order_iff_strict)
-   apply (metis (no_types, lifting) diff_is_0_eq' diff_le_self event.inject(1) gr0_conv_Suc ldropn_0 ldropn_Suc_LCons llist.inject not_less_eq_eq order.order_iff_strict)+
+  apply simp_all
+  apply (metis (no_types, lifting) diff_is_0_eq' diff_le_self event.distinct(1) gr0_conv_Suc ldropn_0 ldropn_Suc_LCons llist.inject not_less_eq_eq order.order_iff_strict)
+  apply (metis (no_types, lifting) diff_is_0_eq' diff_le_self event.inject(1) gr0_conv_Suc ldropn_0 ldropn_Suc_LCons llist.inject not_less_eq_eq order.order_iff_strict)+
   done
 
 lemma in_ltaken_Data_ldropn_LCons:
   "(wm, batch) \<in> set (ltaken_Data (Suc n) lxs) \<Longrightarrow> \<exists>n'\<le>n. \<exists>lxs'. ldropn n' lxs = LCons (Data wm batch) lxs'"
   apply (induct "Suc n" lxs arbitrary: n rule: ltaken_Data.induct)
-    apply auto
-   apply (metis (no_types, opaque_lifting) Suc_less_eq dual_order.strict_trans2 empty_iff empty_set gr0_conv_Suc ldropn_Suc_LCons lessI ltaken_Data_0 ltaken_Data_in_Suc not_less_eq_eq)
-  apply (metis empty_iff empty_set ldropn_Suc_LCons ltaken_Data_0 not0_implies_Suc not_less_eq_eq)
+  apply simp_all
+  apply (metis (no_types, opaque_lifting) Suc_less_eq dual_order.strict_trans2 empty_iff empty_set gr0_conv_Suc ldropn_Suc_LCons lessI ltaken_Data_0 ltaken_Data_in_Suc not_less_eq_eq)
+  apply (smt (verit) empty_iff empty_set gr0_conv_Suc ldropn_0 ldropn_Suc_LCons le_Suc_eq linorder_linear ltaken_Data_0 not_less_eq order.order_iff_strict zero_less_Suc)
   done
 
 lemma timestamp_in_taken_Data_inversion_aux:
   "t \<in> fst ` (\<Union>a\<in>set (ltaken_Data n lxs). set (snd a)) \<Longrightarrow>
    \<exists> wm batch . (wm, batch) \<in> set (ltaken_Data n lxs) \<and> t \<in> fst ` set batch"
   apply (induct n arbitrary: lxs)
-   apply auto
-  subgoal for n lxs b aa ba
+  apply simp_all
+  subgoal for n lxs
     apply (cases lxs)
-     apply auto
+    apply simp_all
     subgoal for x lxs'
       apply (cases x)
-       apply auto
-        apply (metis fst_conv imageI)+
+      apply simp_all
+      apply (metis Un_iff image_Un)
       done
     done
-  done
-
-lemma ts_LCons:
-  "t \<in> ts lxs wm \<Longrightarrow>
-   t \<in> ts (LCons (Data t' d) lxs) wm"
-  unfolding ts_def
-  apply auto
-  done
-
-lemma in_ts_LCons_LE:
-  "t \<le> wm \<Longrightarrow>
-   monotone lxs WM \<Longrightarrow>
-   \<exists> wm' \<ge> wm . Watermark wm' \<in> lset lxs \<Longrightarrow>
-   t \<in> ts (LCons (Data t d) lxs) wm"
-  unfolding ts_def
-  apply auto
   done
 
 lemma coll_list_concat_ltaken_Data_Nil:
   "\<not> (\<exists> wm d . Data wm d \<in> lset lxs \<and> t \<in> fst ` set d) \<Longrightarrow>
    coll_list (concat (map snd (ltaken_Data n lxs))) t = []"
   apply (induct n arbitrary: lxs)
-   apply simp
+  apply simp_all
   subgoal for n lxs
     apply (cases lxs)
-     apply auto
+    apply simp_all
     subgoal for x lxs'
       apply (cases x)
       unfolding coll_list_def
-       apply auto
+      apply simp_all
       apply (smt (z3) comp_apply filter_False image_iff)
       done
     done
@@ -952,7 +888,6 @@ lemma coll_empty:
   unfolding coll_def
   apply (smt (verit) dual_order.refl event.split_sel le_boolD lfilter_empty_conv list_of_LNil map_filter_simps(2) mset_zero_iff nless_le)
   done
-
 
 lemma img_tmp_Lambda_Data:
   "finite A \<Longrightarrow> tmp ` (\<lambda>x. Data x (f x)) ` A = A"
@@ -976,8 +911,8 @@ lemma productive_find_bigger_watermark:
   apply (induct m arbitrary: lxs)
   subgoal for lxs
     apply (erule productive_cases)
-    apply auto
-    apply (metis Suc_ile_eq in_lset_conv_lnth lnth_Suc_LCons zero_less_Suc)
+    apply simp_all
+    apply (metis enat_ord_code(4) in_lset_conv_lnth llength_eq_infty_conv_lfinite lnth_Suc_LCons order_less_imp_le vimage_eq zero_less_Suc)
     done
   subgoal for m lxs
     apply (cases lxs)
@@ -987,7 +922,7 @@ lemma productive_find_bigger_watermark:
     done
   done
 
-lemma [simp]:
+lemma Watermark_insert_simp[simp]:
   "Watermark -` insert (Watermark wm) A = insert wm (Watermark -` A)"
   "Watermark -` insert (Data t d) A = Watermark -`A"
   unfolding vimage_def
@@ -1002,8 +937,23 @@ lemma monotone_all_Watermarks:
   "\<forall> x \<in> lset lxs. \<not> is_Data x \<Longrightarrow>
    monotone lxs WM"
   apply (coinduction arbitrary: lxs WM rule: monotone.coinduct)
-  apply auto
-  by (metis event.disc(1) event.exhaust llist.exhaust llist.set_intros(2) lset_intros(1))
+  apply simp_all
+  apply (metis event.disc(1) event.exhaust llist.exhaust llist.set_intros(2) lset_intros(1))
+  done
+
+lemma monotone_llist_of:
+  "(\<forall> x \<in> set xs. is_Data x \<and> (\<forall> wm \<in> WM. \<not> tmp x \<le> wm)) \<Longrightarrow>
+   monotone (llist_of xs) WM"
+  apply (induct xs arbitrary: WM)
+   apply (simp_all add: monotone.LNil)
+  subgoal for x xs WM
+    apply (cases x)
+     apply simp_all
+    apply (rule LConsL)
+     apply blast
+    apply simp
+    done
+  done
 
 lemma Inl_in_Inr_img[simp]:
   "Inl wm \<in> Inr ` WM \<Longrightarrow> False"

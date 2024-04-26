@@ -499,7 +499,7 @@ lemma hist_logic_eq_multi_incr_hist_op:
     apply (auto simp: le_max_iff_disj)
     done
   subgoal for WM buf1 buf2
-    apply (auto simp add: sync_batches_linorder produce_map_op_correctness comp_def)
+    apply (auto simp add: batches_linorder produce_map_op_correctness comp_def)
     subgoal for t d
       apply (subgoal_tac "\<not> (\<exists> t' d. (t', d) \<in> set buf2 \<and> t' > t)")
       defer

@@ -107,7 +107,7 @@ primcorec loop_op where
 
 definition "ex1 (F::(nat + nat) llist \<Rightarrow> (nat + nat) llist) lxs = produce (compose_op incr_Inl (loop_op isl (unproduce_op F))) lxs"
 
-declare produce_inner.simps[code]
+declare produce_inner_induct.simps[code]
 declare llist.mono_body_fixp[code]
 (* declare lSup.code[code del]
  *)
@@ -123,14 +123,14 @@ value "lhd' (produce incr_Inl (LCons (Inl 2) LNil))"
 lemma produce_incr_Inl_if:
   "produce incr_Inl (LCons (Inl n) lxs) = (if n \<ge> 1 then LCons (Inr n) (produce incr_Inl lxs) else LCons (Inl (n+1)) (produce incr_Inl lxs))"
   apply (subst produce.code)
-  apply (subst produce_inner.simps)
+  apply (subst produce_inner_induct.simps)
   apply (auto split: option.splits sum.splits)
   done
 
 lemma produce_incr_Inr[simp]:
   "produce incr_Inl (LCons (Inr n) lxs) = LCons (Inr n) (produce incr_Inl lxs)"
   apply (subst produce.code)
-  apply (subst produce_inner.simps)
+  apply (subst produce_inner_induct.simps)
   apply (auto split: option.splits sum.splits)
   done
 
@@ -178,7 +178,7 @@ lemma produce_loop_op_if:
   apply (cases "b x")
   subgoal
     apply (subst (1) produce.code)
-    apply (subst (1) produce_inner.simps)
+    apply (subst (1) produce_inner_induct.simps)
     apply (auto 1 1 split: sum.splits llist.splits list.splits option.splits prod.splits)
     subgoal
       apply (subst (1) produce.code)

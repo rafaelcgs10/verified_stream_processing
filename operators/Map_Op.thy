@@ -19,43 +19,23 @@ lemma produce_map_op_correctness:
   subgoal for lxs
     apply (coinduction arbitrary: lxs rule: llist.coinduct)
     apply safe
-    subgoal 
-      apply (subst (asm) produce.code)
-      apply (auto split: option.splits event.splits sum.splits)
-       apply (subst (asm) (1) produce_inner.simps)
-       apply (auto split: llist.splits event.splits)
-      apply (subst (asm) (1) produce_inner.simps)
-      apply (auto split: llist.splits event.splits)
+    subgoal for lxs
+      apply (cases lxs; hypsubst_thin)
+      apply (simp_all add: lnull_def split: event.splits)
       done
-    subgoal 
-      apply (subst (1) produce.code)
-      apply (auto split: option.splits event.splits)
-      apply (subst (asm) (1) produce_inner.simps)
-      apply (auto split: llist.splits event.splits)
+    subgoal for lxs
+      apply (cases lxs)
+       apply simp_all
       done
-    subgoal 
-      apply (subst (1) produce.code)
-      apply (auto split: option.splits event.splits)
-        apply (subst (asm) (1) produce_inner.simps)
-        apply (auto split: llist.splits event.splits)
-       apply (subst (asm) (1) produce_inner.simps)
-       apply (auto split: llist.splits event.splits)
+    subgoal for lxs
+      apply (cases lxs)
+       apply (auto split: event.splits)
       done
     subgoal for lxs
       apply (rule exI[of _ "ltl lxs"])
-      apply auto
-      apply (subst (1 2) produce.code)
-      apply (auto split: option.splits)
-       apply (subst (asm) (1 2) produce_inner.simps)
-       apply (auto split: llist.splits event.splits)
-      apply (subst produce.code)
-      apply (subst produce_inner.simps)
-      apply (auto split: llist.splits event.splits)
-      apply (subst produce.code)
-      apply (subst produce_inner.simps)
-      apply (auto split: llist.splits event.splits)
-      apply (subst (asm) (1 2) produce_inner.simps)
-      apply (auto split: llist.splits event.splits)
+      apply simp_all
+      apply (cases lxs)
+       apply (auto split: event.splits)
       done
     done
   done
@@ -90,7 +70,7 @@ lemma fst_finite_produce_map_op[simp]:
   "fst (finite_produce (map_op f) xs) = map_op f"
   unfolding finite_produce_def
   apply (induct xs arbitrary: )
-   apply (auto split: event.splits)
+   apply (simp_all split: event.splits)
    apply (metis fold_apply_old fst_eqD)+
   done
 
@@ -103,7 +83,6 @@ lemma snd_finite_produce_map_op[simp]:
 lemma finite_produce_map_op_exit_LNil:
   "finite_produce (map_op f) xs = (op', out) \<Longrightarrow> exit op' = LNil"
   apply (induct xs arbitrary: op' out)
-   apply auto
   apply (auto split: event.splits sum.splits if_splits list.splits prod.splits)
   done
 

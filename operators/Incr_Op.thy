@@ -19,18 +19,18 @@ primcorec incr_op where
 
 subsection \<open>Auxialiry\<close>
 lemma produce_inner_incr_op_inversion:
-  "produce_inner (incr_op buf, lxs) = Some r \<Longrightarrow>
+  "produce_inner_induct (incr_op buf, lxs) = Some r \<Longrightarrow>
    r = Inl (lgc', x, xs', lxs') \<Longrightarrow>
    \<exists> buf' n . lgc' = incr_op buf' \<and> lxs' = ldropn n lxs \<and> n > 0"
   apply (induct "(incr_op buf, lxs)" r arbitrary: buf lxs rule: produce_inner_alt[consumes 1])
   subgoal for h lxs'a lgc'a buf 
-    apply (auto split: event.splits)
+    apply (simp_all split: event.splits)
     apply (metis ldropn_Suc_LCons zero_less_Suc)
     done
   subgoal for h buf
-    apply (subst (asm) produce_inner.simps)
-    apply (auto split: event.splits)
-    apply (metis ldropn_0 ldropn_Suc_LCons lessI)+
+    apply (subst (asm) produce_inner_induct.simps)
+    apply (simp_all split: event.splits)
+     apply (metis ldropn_0 ldropn_Suc_LCons lessI)+
     done
   apply auto
   done
@@ -40,24 +40,16 @@ lemma apply_incr_op_inversion:
   "apply (incr_op buf) h = (incr_op buf', x # xs) \<Longrightarrow>
   (\<exists> wm batch . h = Data wm batch \<and> (tmp ` set (x#xs) = fst ` set batch)) \<or> ( \<exists> wm . h = Watermark wm)"
   apply (simp split: event.splits)
-  apply (elim conjE)
+   apply (elim conjE)
   subgoal premises p for t d
     using p(3,2,1) apply -
     apply (drule arg_cong[where f="\<lambda> x. tmp ` set x"])
     apply simp
     apply (subst (asm) img_tmp_Lambda_Data)
-    apply blast
+     apply blast
     apply simp
     done
   apply fast
-  done
-
-lemma apply_incr_op_out_preserves:
-  "apply (incr_op buf) h = (op, x#xs) \<Longrightarrow>
-   \<exists> wm batch. (h = Data wm batch \<and> op = (incr_op (buf @ batch)) \<and> (\<forall> e \<in> set (x#xs) . (\<exists> t d . e = Data t d \<and> t \<in> fst ` set batch))) \<or> (h = Watermark wm \<and> op = (incr_op buf) \<and> (xs = []))"
-  apply (auto split: event.splits prod.splits list.splits if_splits)
-  apply (metis list.set_intros(1) list.set_map rev.simps(2) set_remdups set_rev)
-  apply (metis (no_types, lifting) UnI1 image_set set_append set_remdups set_rev)
   done
 
 subsection \<open>Soundness\<close> 
@@ -66,76 +58,53 @@ lemma prefix_ltaken_Data:
   "n1 < n2 \<Longrightarrow>
    prefix (ltaken_Data n1 lxs) (ltaken_Data n2 lxs)"
   apply (induct n1 arbitrary: n2 lxs)
-  apply auto
+   apply simp_all
   subgoal for n1 n2 lxs
     apply (cases lxs)
-    apply auto
+     apply simp_all
     subgoal for x lxs'
       apply (cases x)
-      apply auto
       using Suc_less_eq2 apply auto
       done
     done
   done
 
-
-(* FIXME: move me *)
-lemma ltaken_Data_lshift[simp]:
-  "ltaken_Data n (xs @@- lxs) = ltaken_Data n (llist_of xs) @  ltaken_Data (n - length xs) lxs"
-  apply (induct xs arbitrary: n lxs)
-  apply auto
-  subgoal for x xs n lxs
-    apply (cases x; cases n)
-    apply auto
-    done
-  done
-
-lemma in_concat_map_ltaken_Data:
-  "(\<exists> batch wm. t \<in> fst ` set batch \<and> (wm, batch) \<in> set (ltaken_Data n lxs)) \<longleftrightarrow> t \<in> fst ` (\<Union>a\<in>set (ltaken_Data n lxs). set (snd a))"
-  apply (induct n arbitrary: lxs)
-  apply auto
-  apply (metis UN_iff fst_conv image_eqI snd_conv)
-  apply (metis Domain.DomainI fst_eq_Domain)
-  done
-
-
 lemma produce_inner_skip_n_productions_op_incr_op_Inl:
-  "produce_inner (skip_n_productions_op (incr_op buf) m, lxs) = Some r \<Longrightarrow>
+  "produce_inner_induct (skip_n_productions_op (incr_op buf) m, lxs) = Some r \<Longrightarrow>
    r = Inl (lgc', x, xs, lxs') \<Longrightarrow>
    x = Data t data_coll \<Longrightarrow>
    \<exists> n. data_coll = buf @ concat (map snd (ltaken_Data n lxs)) \<and>
    t \<in> fst ` set (concat (map snd (ltaken_Data n lxs)))"
   apply (induct "(skip_n_productions_op (incr_op buf) m, lxs)" r arbitrary: buf lxs lgc' lxs' m x rule: produce_inner_alt[consumes 1])
   subgoal for h lxs lgc' zs buf m lgc'a lxs'' x
-    apply (auto split: if_splits event.splits)
+    apply (simp split: if_splits event.splits; (elim conjE)?; hypsubst_thin)
     subgoal for t' d
       apply (drule meta_spec)+
       apply (drule meta_mp)
-      apply (rule refl)
+       apply (rule refl)
       apply (drule meta_mp)
-      apply (rule refl)
+       apply (rule refl)
       apply (drule meta_mp)
-      apply (rule refl)
-      apply auto
-      subgoal for n b aa batch
+       apply (rule refl)
+      apply simp
+      apply (elim exE conjE)
+      subgoal for n
         apply (rule exI[of _ "Suc n"])
         apply auto
-        apply (metis (no_types, lifting) Domain.DomainI UN_iff Un_iff fst_eq_Domain snd_conv)
         done
       done
     subgoal for wm
       apply (drule meta_spec)+
       apply (drule meta_mp)
-      apply (rule refl)
+       apply (rule refl)
       apply (drule meta_mp)
-      apply (rule refl)
+       apply (rule refl)
       apply (drule meta_mp)
-      apply (rule refl)
-      apply auto
+       apply (rule refl)
+      apply (elim exE conjE)
       subgoal for n
         apply (rule exI[of _ "Suc n"])
         apply auto
-        apply (metis UN_iff fst_conv imageI snd_conv)
         done
       done
     subgoal for t' d
@@ -143,16 +112,15 @@ lemma produce_inner_skip_n_productions_op_incr_op_Inl:
       apply (drule meta_spec[of _ 0])
       apply (drule meta_spec)+
       apply (drule meta_mp)
-      apply simp
+       apply simp
       apply (drule meta_mp)
-      apply (rule refl)
+       apply (rule refl)
       apply (drule meta_mp)
-      apply (rule refl)
-      apply auto
+       apply (rule refl)
+      apply (elim exE conjE)
       subgoal for n
         apply (rule exI[of _ "Suc n"])
         apply auto
-        apply (metis UN_iff UnCI fst_conv imageI snd_conv)
         done
       done
     subgoal for wm
@@ -160,27 +128,24 @@ lemma produce_inner_skip_n_productions_op_incr_op_Inl:
       apply (drule meta_spec[of _ 0])
       apply (drule meta_spec)+
       apply (drule meta_mp)
-      apply simp
+       apply simp
       apply (drule meta_mp)
-      apply (rule refl)
+       apply (rule refl)
       apply (drule meta_mp)
-      apply (rule refl)
-      apply auto
+       apply (rule refl)
+      apply (elim exE conjE)
       subgoal for n
         apply (rule exI[of _ "Suc n"])
         apply auto
-        apply (metis UN_iff fst_conv imageI snd_conv)
         done
       done
     done
   subgoal for h x xsa lxs lxs' lgc' buf m lgc'' lxs'' x'
-    apply (subst (asm) produce_inner.simps)
-    apply (auto split: if_splits event.splits)
+    apply (simp split: if_splits event.splits)
     subgoal for t d
       apply hypsubst_thin
       apply (rule exI[of _ 1])
-      apply auto
-      apply (metis (mono_tags, lifting) drop_map event.inject(1) list.set_intros(1) map_eq_set_D)
+      apply simp_all
       apply (metis (mono_tags, lifting) event.inject(1) in_set_dropD list.set_intros(1) list.set_map map_eq_set_D set_remdups set_rev)
       done
     subgoal for wm
@@ -194,39 +159,50 @@ lemma produce_inner_skip_n_productions_op_incr_op_Inl:
   done
 
 lemma produce_inner_skip_n_productions_op_incr_op_Inl_Watermark:
-  "produce_inner (skip_n_productions_op (incr_op buf) n, lxs) = Some r \<Longrightarrow>
+  "produce_inner_induct (skip_n_productions_op (incr_op buf) n, lxs) = Some r \<Longrightarrow>
    r = Inl (op, Watermark wm, xs, lxs') \<Longrightarrow>
    Watermark wm \<in> lset lxs \<and> xs = []"
   apply (induct "(skip_n_productions_op (incr_op buf) n, lxs)" r arbitrary: n buf lxs op lxs' rule: produce_inner_alt[consumes 1])
   subgoal 
-    apply (auto split: if_splits event.splits)
-    apply (metis skip_n_productions_op_0)+
+    apply (simp split: if_splits event.splits)
+    subgoal
+      by blast
+    subgoal
+      by blast
+    subgoal
+      by (metis skip_n_productions_op_0)
+    subgoal
+      by (metis skip_n_productions_op_0)
     done
   subgoal
-    apply (subst (asm) produce_inner.simps)
-    apply (auto simp add: drop_map map_eq_Cons_conv split: if_splits event.splits)
+    apply (simp add: drop_map map_eq_Cons_conv split: if_splits event.splits)
     apply (metis Suc_lessI drop0 drop_Suc_Cons event.inject(2) list.inject neq_Nil_conv zero_less_iff_neq_zero)
-    apply (metis drop_Nil list.sel(3) tl_drop)
     done
   apply auto
   done
 
-
 lemma produce_inner_skip_n_productions_op_incr_op_Inr:
-  "produce_inner (skip_n_productions_op (incr_op buf) m, lxs) = Some r \<Longrightarrow>
+  "produce_inner_induct (skip_n_productions_op (incr_op buf) m, lxs) = Some r \<Longrightarrow>
    r = Inr op \<Longrightarrow>
    exit op = LNil"
   apply (induct "(skip_n_productions_op (incr_op buf) m, lxs)" r arbitrary: buf lxs op m rule: produce_inner_alt[consumes 1])
-  apply (auto split: if_splits event.splits)
-  apply (metis skip_n_productions_op_0)+
+    apply (simp_all split: if_splits event.splits)
+  subgoal
+    by blast
+  subgoal
+    by blast
+  subgoal
+    by (metis skip_n_productions_op_0)
+  subgoal
+    by (metis skip_n_productions_op_0)
   done
 
 lemma produce_inner_op_incr_op_Inr:
-  "produce_inner (incr_op buf, lxs) = Some r \<Longrightarrow>
+  "produce_inner_induct (incr_op buf, lxs) = Some r \<Longrightarrow>
    r = Inr op \<Longrightarrow>
    exit op = LNil \<and> (\<forall> x \<in> lset lxs. is_Data x \<and> data x = [])"
   apply (induct "(incr_op buf, lxs)" r arbitrary: buf op lxs rule: produce_inner_alt[consumes 1])
-  apply (auto split: if_splits event.splits)
+    apply (auto split: if_splits event.splits)
   done
 
 lemma produce_skip_n_productions_op_incr_op_soundness:
@@ -238,7 +214,7 @@ lemma produce_skip_n_productions_op_incr_op_soundness:
   subgoal
     apply hypsubst_thin
     apply (drule produce_inner_skip_n_productions_op_incr_op_Inl)
-    apply (rule refl)+
+      apply (rule refl)+
     apply auto
     done
   subgoal
@@ -271,26 +247,25 @@ lemma produce_incr_op_completeness_Data:
   subgoal for buf
     apply (subst (asm) produce.code)
     apply (simp split: prod.splits option.splits sum.splits)
-    apply (subst (asm) produce_inner.simps)
-    apply (simp split: prod.splits llist.splits list.splits sum.splits)
-    apply hypsubst_thin
+      apply (subst (asm) produce_inner_induct.simps)
+      apply (simp split: prod.splits llist.splits list.splits sum.splits)
+     apply hypsubst_thin
     subgoal for x2 op x2a x x2b xs lxs'
-      apply (subst (asm) produce_inner.simps)
+      apply (subst (asm) produce_inner_induct.simps)
       apply (simp split: prod.splits llist.splits list.splits)
       apply (metis (mono_tags, lifting) image_iff list.set_map set_ConsD set_remdups set_rev)
       done
     subgoal
       apply (frule produce_inner_op_incr_op_Inr)
-      apply (rule refl)
+       apply (rule refl)
       apply simp
       apply hypsubst_thin
-      apply auto
-      apply (metis empty_iff event.sel(3) in_lset_conv_lnth list.set(1))
+      apply (metis empty_iff event.sel(3) in_lset_conv_lnth list.set(1) list.set_map map_eq_set_D)
       done
     done
   subgoal for n stream_in buf stream_out ext
     apply (cases stream_in)
-    apply auto[1]
+     apply auto[1]
     subgoal for h stream_in'
       apply (cases h)
       subgoal for t d
@@ -298,28 +273,26 @@ lemma produce_incr_op_completeness_Data:
         apply (drule meta_spec[of _ "buf@d"])
         apply (drule meta_spec)+
         apply (drule meta_mp)
-        apply simp
+         apply simp
         apply (drule meta_mp)
-        apply (metis Extended_Nat.eSuc_mono eSuc_enat llength_LCons)
+         apply (metis Extended_Nat.eSuc_mono eSuc_enat llength_LCons)
         apply (drule meta_mp)
-        apply (rule refl)
+         apply (rule refl)
         apply (drule meta_mp)
-        apply assumption
+         apply assumption
         apply (drule meta_mp)
-        apply simp
+         apply simp
         apply simp
         apply hypsubst_thin
         apply (subst produce.code)
         apply (simp split: prod.splits option.splits)
         apply (rule conjI)
-        apply (subst produce_inner.simps)
-        apply (auto split: prod.splits llist.splits event.splits list.splits)[1]
-        apply (metis empty_iff lset_LNil produce_inner_None_produce_LNil)
+         apply (subst produce_inner_induct.simps)
+         apply (auto split: prod.splits llist.splits event.splits list.splits)[1]
         apply (rule allI impI)+
         apply (auto split: prod.splits llist.splits event.splits list.splits sum.splits)[1]
         apply (frule produce_inner_op_incr_op_Inr)
-        apply (rule refl)
-        apply auto
+         apply (rule refl)
         apply (simp add: produce.code)
         done
       subgoal for wm
@@ -327,31 +300,30 @@ lemma produce_incr_op_completeness_Data:
         apply (drule meta_spec[of _ "buf"])
         apply (drule meta_spec)+
         apply (drule meta_mp)
-        apply simp
+         apply simp
         apply (drule meta_mp)
-        apply (metis Extended_Nat.eSuc_mono eSuc_enat llength_LCons)
+         apply (metis Extended_Nat.eSuc_mono eSuc_enat llength_LCons)
         apply (drule meta_mp)
-        apply (rule refl)
+         apply (rule refl)
         apply (drule meta_mp)
-        apply assumption
+         apply assumption
         apply (drule meta_mp)
-        apply simp
+         apply simp
         apply simp
         apply hypsubst_thin
         apply (subst produce.code)
         apply (simp split: prod.splits option.splits)
         apply (rule conjI)
-        apply (auto split: prod.splits llist.splits event.splits list.splits sum.splits)[1]
-        apply (metis llist.set_cases llist.simps(3) option.exhaust produce_inner_None_produce_LNil)
+         apply (auto split: prod.splits llist.splits event.splits list.splits sum.splits)[1]
+         apply (metis llist.set_cases llist.simps(3) option.exhaust produce_inner_None_produce_LNil)
         apply (rule allI impI)+
         subgoal for s
           apply (cases s)
-           apply auto
-        apply (simp add: produce.code)
+           apply (simp_all add: produce.code)
+          done
         done
       done
     done
-  done
   done
 
 lemma produce_incr_op_completeness_Watermark:
@@ -412,16 +384,15 @@ lemma produce_incr_op_completeness:
   apply (elim exE conjE)
   subgoal for wm batch
     apply (subst (asm) lset_conv_lnth)
-    apply auto
-    subgoal for b n
+    apply simp
+    apply (elim exE conjE)
+    subgoal for n
       using produce_incr_op_completeness_Data[where n=n and stream_in=lxs and t=wm and t'=t and batch=batch and buf=buf] apply simp
       apply (drule meta_spec)+
       apply (drule meta_mp)
-      apply (rule refl)
+       apply (rule refl)
       apply (drule meta_mp)
-      apply force
-      apply (drule meta_mp)
-      apply (rule refl)
+       apply force
       apply fast
       done
     done
@@ -471,7 +442,7 @@ lemma produce_incr_op_completeness_alt:
    \<exists>batch. Data t batch \<in> lset (produce (incr_op buf) lxs)"
   apply (elim conjE)
   apply (drule produce_incr_op_completeness_Data_alt[where buf=buf])
-  apply simp_all
+     apply simp_all
   done
 
 
@@ -481,42 +452,17 @@ lemma all_Data_strict_monotone_aux:
   apply (coinduction arbitrary: y lxs rule: monotone.coinduct)
   subgoal for y lxs
     apply (cases lxs)
-    apply simp
+     apply simp
     subgoal for x lxs'
       apply (cases x)
-      apply simp_all
+       apply simp_all
       apply (metis lset_intros(1) neq_LNil_conv monotone.LNil)
       done
     done
   done
 
-lemma all_Data_strict_monotone:
-  "\<forall> x \<in> lset lxs . is_Data x \<and> (\<forall> wm \<in> WM . \<not> wm \<ge> tmp x) \<Longrightarrow> monotone lxs WM"
-  apply (cases lxs)
-  using monotone.LNil apply blast
-  apply (metis all_Data_strict_monotone_aux lset_intros(1))
-  done
-
-
-(* FIXME: move me *)
-lemma monotone_llist_of:
-  "(\<forall> x \<in> set xs. is_Data x \<and> (\<forall> wm \<in> WM. \<not> tmp x \<le> wm)) \<Longrightarrow>
-   monotone (llist_of xs) WM"
-  apply (induct xs arbitrary: WM)
-  apply (auto 2 1 simp add: monotone.LNil)
-  subgoal for x xs WM
-    apply (cases x)
-    apply auto
-    apply (rule LConsL)
-    apply blast
-    apply simp
-    done
-  done
-
-
-
 lemma produce_inner_incr_op_monotone_Inl_1:
-  "produce_inner (incr_op buf, stream_in) = Some r \<Longrightarrow>
+  "produce_inner_induct (incr_op buf, stream_in) = Some r \<Longrightarrow>
    r = Inl (op, Data t d, xs, lxs) \<Longrightarrow>
    \<forall>n. enat n < llength stream_in \<longrightarrow>
         (\<forall>wm batch.
@@ -538,46 +484,52 @@ lemma produce_inner_incr_op_monotone_Inl_1:
       apply (drule meta_spec[of _ WM])
       apply (drule meta_spec)+
       apply (drule meta_mp)
-      apply (rule refl)
+       apply (rule refl)
       apply (drule meta_mp)
-      apply (rule refl)
+       apply (rule refl)
       apply (drule meta_mp)
       subgoal
-        apply auto
-        apply (metis Domain.DomainI eSuc_enat fst_eq_Domain ileI1 lnth_Suc_LCons)
-        apply (metis Domain.DomainI Un_iff eSuc_enat fst_eq_Domain ileI1 lnth_Suc_LCons)
+        apply (intro impI allI conjI)
+         apply (metis eSuc_enat fst_eq_Domain ileI1 lnth_Suc_LCons)
         subgoal for n
           apply (drule spec[of _ "Suc n"])
-          apply auto
+          apply simp
           using Suc_ile_eq apply blast
           done
         done
       apply (drule meta_mp)
-      apply fast
+       apply fast
       apply auto
       done
     done
   subgoal
-    apply (subst (asm) produce_inner.simps)
-    apply (auto split: event.splits llist.splits sum.splits if_splits)
-    apply (metis (no_types, opaque_lifting) Un_iff list.set_intros(1) list.set_map lnth_0 rev.simps(2) set_remdups set_rev zero_enat_def zero_le)
+    apply (simp split: event.splits llist.splits sum.splits if_splits)
+    apply (intro conjI allI ballI)
+    subgoal
+      by (smt (verit, ccfv_threshold) Un_iff event.sel(1) iless_Suc_eq in_lset_conv_lnth list.set_intros(1) list.set_map llength_LCons lset_intros(1) map_eq_Cons_conv set_remdups set_rev)
+    subgoal
+      by fastforce
+    subgoal
+      by blast
     subgoal
       by (metis ldropn_0)
-    subgoal for t' d' xs
+    subgoal
+      by blast
+    subgoal for t' d'
       apply hypsubst_thin
       apply (drule spec[of _ 0])
-      using zero_enat_def apply auto
+      using zero_enat_def apply simp
       apply (rule monotone_llist_of)
-      apply auto
-      apply (metis UnI1 image_set set_append set_remdups set_rev)
+      apply (intro ballI conjI)
+       apply fastforce
+      apply (smt (verit, best) event.sel(1) list.set_intros(2) list.set_map map_eq_set_D set_remdups set_rev)
       done
     done
   apply auto
   done
 
-
 lemma produce_inner_incr_op_monotone_Inl_2:
-  "produce_inner (incr_op buf, stream_in) = Some r \<Longrightarrow>
+  "produce_inner_induct (incr_op buf, stream_in) = Some r \<Longrightarrow>
    r = Inl (op, Watermark wm, xs, lxs) \<Longrightarrow>
    monotone stream_in WM \<Longrightarrow>
    monotone lxs (insert wm WM) \<and>
@@ -586,15 +538,15 @@ lemma produce_inner_incr_op_monotone_Inl_2:
    xs = []"
   apply (induct "(incr_op buf, stream_in)" r arbitrary: WM buf op lxs stream_in wm xs rule: produce_inner_alt[consumes 1])
   subgoal for h lxs lgc' zs buf WM op lxsa wm xs
-    apply (auto split: event.splits llist.splits sum.splits if_splits; hypsubst_thin)
-      apply blast
+    apply (simp split: event.splits llist.splits sum.splits if_splits; hypsubst_thin)
     apply (smt (verit) eSuc_enat event.disc(1) event.sel(3) ileI1 llist.inject llist.set_cases lnth_Suc_LCons ltake_enat_Suc strict_monotone_drop_head)
-    apply fastforce
     done
   subgoal
-    apply (subst (asm) produce_inner.simps)
-    apply (auto split: event.splits llist.splits sum.splits if_splits; hypsubst_thin)
-    apply (metis empty_iff enat_0 i0_lb ldropn_0 lnth_0 lset_LNil ltake_0)
+    apply (simp split: event.splits llist.splits sum.splits if_splits; hypsubst_thin)
+    subgoal
+      by force
+    subgoal
+      by (metis empty_iff ldropn_0 ldropn_eq_LNil linorder_le_cases llength_LNil lnth_0 lset_LNil ltake_eq_LNil_iff zero_enat_def)
     done
   apply auto
   done
@@ -609,56 +561,64 @@ lemma produce_incr_op_strict_monotone:
   subgoal for stream_in WM stream_out buf
     apply (subst (asm) produce.corec.code)
     apply (simp split: option.splits prod.splits sum.splits)
-    apply hypsubst_thin
+     apply hypsubst_thin
     subgoal for x2 x1 op x2a x x2b xs lxs
       apply (cases x)
       subgoal for t d
         apply hypsubst_thin
         apply simp
         apply (drule produce_inner_incr_op_monotone_Inl_1)
-        apply (rule refl)
-        apply assumption+
+           apply (rule refl)
+          apply assumption+
         apply simp
         apply (rule disjI1)
         apply (rule monotone_prepend_cong_prepend)
-        apply (rule monotone_prepend_cong_base)
-        apply (rule exI[of _ lxs])
-        apply (intro conjI)
-        apply auto[1]
-        apply auto[1]
+         apply (rule monotone_prepend_cong_base)
+         apply (rule exI[of _ lxs])
+         apply (intro conjI)
+           apply auto[1]
+          apply auto[1]
         subgoal
           apply (elim conjE)
-          apply auto
-          apply (metis fst_conv imageI in_lset_conv_lnth in_lset_ldropnD llength_ldropn)
+          apply simp
+          apply (intro conjI impI allI ballI)
           subgoal
-            by (metis (no_types, opaque_lifting) Domain.DomainI Un_iff fst_eq_Domain in_lset_conv_lnth in_lset_ldropnD llength_ldropn)
-          subgoal for n buf n' wm batch a b wm'
-            apply hypsubst_thin
-            apply (cases stream_in)
-            apply auto
-            apply (subst (asm) lnth_ldropn)
-            apply (metis add.commute ldropn_Suc_LCons ldropn_eq_LNil ldropn_ldropn leD leI llength_LCons llength_ldropn)
-            apply (drule spec[of _ "n + n' + 1"])
-            apply auto
-            apply (metis add.commute eSuc_enat eSuc_minus_eSuc eq_LConsD ileI1 ldropn_Suc_conv_ldropn ldropn_eq_LNil ldropn_ldropn leI llength_ldropn)
-            apply (smt (verit, del_insts) Un_iff add.commute fst_conv imageI in_lset_ldropnD insertCI ltake_ldropn plus_enat_simps(1) vimage_eq)
+            by (metis in_lset_conv_lnth in_lset_ldropnD)
+          subgoal for n wm batch t' wm'
+            apply (elim conjE exE disjE)
+            apply simp_all
+            apply (elim disjE)
+            subgoal
+              by (metis (no_types, opaque_lifting) UnCI in_lset_conv_lnth llength_ldropn ltake_ldropn_merge_lset)
+            subgoal for n'
+              apply hypsubst_thin
+              apply (cases stream_in)
+               apply simp_all
+              apply (subst (asm) lnth_ldropn)
+               apply (metis add.commute ldropn_Suc_LCons ldropn_eq_LNil ldropn_ldropn leD leI llength_LCons llength_ldropn)
+              apply (drule spec[of _ "n + n' + 1"])
+              apply simp_all
+              apply (drule mp)
+               apply (metis Suc_ile_eq ldropn_Suc_LCons ldropn_eq_LNil ldropn_ldropn leD leI llength_LCons llength_ldropn)
+              apply (metis UnI2 in_lset_ldropnD ltake_ldropn plus_enat_simps(1) vimageI vimage_insert)
+              done
             done
           done
         subgoal
-          using Suc_ile_eq by fastforce
+          by blast
         done
       subgoal for wm
         apply hypsubst_thin
         apply simp
         apply (drule produce_inner_incr_op_monotone_Inl_2)
-        apply (rule refl)
-        apply assumption+
+          apply (rule refl)
+         apply assumption+
         apply (elim conjE exE)
         apply (rule disjI1)
         apply (rule monotone_prepend_cong_prepend)
-        apply (rule monotone_prepend_cong_base)
-        apply (rule exI[of _ lxs])
-        apply (intro conjI)
+         apply (rule monotone_prepend_cong_base)
+         apply (rule exI[of _ lxs])
+         apply (intro conjI)
         subgoal 
           by fastforce
         subgoal 
@@ -667,37 +627,37 @@ lemma produce_incr_op_strict_monotone:
           apply (intro allI impI)
           apply hypsubst_thin
           apply (subst (asm) lnth_ldropn)
-          apply (metis add.commute ldropn_eq_LNil ldropn_ldropn linorder_not_le)
+           apply (metis add.commute ldropn_eq_LNil ldropn_ldropn linorder_not_le)
           apply (subst (asm) llength_ldropn)
           subgoal for n' wm' batch t'
             apply (drule spec[of _ "n + n' + 1"])
             apply (drule mp)
-            apply (metis add.commute ldropn_eq_LNil ldropn_ldropn leD leI llength_ldropn plus_1_eq_Suc)
+             apply (metis add.commute ldropn_eq_LNil ldropn_ldropn leD leI llength_ldropn plus_1_eq_Suc)
             apply simp
             apply (drule spec[of _ wm'])
             apply (drule spec[of _ batch])
             apply (drule mp)
-            apply (simp add: add.commute)
+             apply (simp add: add.commute)
             apply (drule spec[of _ t'])
             apply simp
             apply (rule conjI)
-            defer
-            apply (smt (verit, ccfv_threshold) Un_iff add.commute add_Suc_right in_lset_ldropnD ltake_ldropn plus_enat_simps(1) vimage_eq)
+             defer
+             apply (smt (verit, ccfv_threshold) Un_iff add.commute add_Suc_right in_lset_ldropnD ltake_ldropn plus_enat_simps(1) vimage_eq)
             apply (elim conjE)
             apply (drule bspec[of _ _ wm])
             subgoal
-              apply auto
+              apply simp
               by (metis (no_types, lifting) enat_ord_simps(2) in_lset_conv_lnth less_add_Suc1 llength_ltake lnth_ltake min_def)
             apply simp
             done
           done
-        apply auto
+        apply simp
         apply (meson monotone.LNil)
         done
       done
     subgoal for op op' 
       apply (drule produce_inner_op_incr_op_Inr)
-      apply (rule refl)
+       apply (rule refl)
       apply auto
       done
     done
@@ -706,13 +666,13 @@ lemma produce_incr_op_strict_monotone:
 subsection \<open>Productive\<close> 
 lemma produce_inner_incr_op_lnull:
   "(\<forall> t batch . Data t batch \<in> lset lxs \<longrightarrow> batch \<noteq> []) \<Longrightarrow>
-   lnull lxs \<Longrightarrow> produce_inner (incr_op buf, lxs) \<noteq> None"
-  apply (subst produce_inner.simps)
+   lnull lxs \<Longrightarrow> produce_inner_induct (incr_op buf, lxs) \<noteq> None"
+  apply (subst produce_inner_induct.simps)
   apply (auto split: prod.splits if_splits list.splits llist.splits event.splits)
   done
 
 lemma produce_inner_incr_op_Inl_1:
-  "produce_inner (incr_op buf, stream_in) = Some r \<Longrightarrow>
+  "produce_inner_induct (incr_op buf, stream_in) = Some r \<Longrightarrow>
    r = Inl (op, Data t d, xs, lxs) \<Longrightarrow>
    (\<forall> n wm batch. n < llength stream_in \<longrightarrow> lnth stream_in n = Data wm batch \<longrightarrow>
    (\<exists> m > n. m < llength stream_in \<and> lnth stream_in m = Watermark wm) \<and> (\<forall> t'\<in> fst ` set batch . t' \<le> wm) \<and> batch \<noteq> []) \<Longrightarrow>
@@ -724,44 +684,49 @@ lemma produce_inner_incr_op_Inl_1:
       apply hypsubst_thin
       apply (drule meta_spec)+
       apply (drule meta_mp)
-      apply (rule refl)
+       apply (rule refl)
       apply (drule meta_mp)
-      apply (rule refl)
+       apply (rule refl)
       apply (drule meta_mp)
-      apply (metis lnth_0 zero_enat_def zero_le)
+       apply (metis lnth_0 zero_enat_def zero_le)
       apply auto
       done
     done
   subgoal for h x xs lxs lxs' lgc' buf op lxs'' t d xs'
-    apply (subst (asm) produce_inner.simps)
     apply (simp split: event.splits)
     apply (elim conjE exE)
     apply hypsubst_thin
     subgoal for x xs''
       apply (drule spec[of _ 0])
       apply (drule mp)
-      apply (simp add: enat_0)
-      apply auto
-      subgoal for zs m
+       apply (simp add: enat_0)
+      apply simp
+      apply (elim exE conjE)
+      subgoal for m
         apply (rule exI[of _ x])
-        apply auto
-        subgoal 
-          by (metis One_nat_def Suc_ile_eq Suc_pred in_lset_conv_lnth lnth_LCons' not_gr_zero)
-        apply (metis (no_types, lifting) list.set_intros(1) map_eq_set_D rev.simps(2) set_remdups set_rev)
-        by (metis (no_types, lifting) \<open>\<lbrakk>remdups (map fst (rev xs'')) = rev zs @ [t]; \<forall>t'\<in>set xs''. fst t' \<le> x; xs'' \<noteq> []; 0 < m; xs' = map (\<lambda>t. Data t (buf @ xs'')) zs; enat m \<le> llength lxs''; lnth (LCons (Data x xs'') lxs'') m = Watermark x; d = buf @ xs''\<rbrakk> \<Longrightarrow> Watermark x \<in> lset lxs''\<close> list.set_intros(2) map_eq_set_D rev.simps(2) set_remdups set_rev)
+        apply (intro conjI ballI)
+        subgoal
+          by (metis event.simps(4) iless_Suc_eq in_lset_conv_lnth insertE llength_LCons lset_LCons)
+        subgoal
+          by (metis (mono_tags, lifting) event.sel(1) list.set_intros(1) map_eq_set_D set_remdups set_rev)
+        subgoal
+          by fastforce
+        subgoal
+          by (smt (verit, ccfv_threshold) \<open>\<lbrakk>map (\<lambda>t. Data t (buf @ xs'')) (rev (remdups (map fst (rev xs'')))) = Data t d # xs'; \<forall>t'\<in>set xs''. fst t' \<le> x; xs'' \<noteq> []; 0 < m; enat m \<le> llength lxs''; lnth (LCons (Data x xs'') lxs'') m = Watermark x\<rbrakk> \<Longrightarrow> Watermark x \<in> lset lxs''\<close> event.sel(1) in_mono map_eq_set_D set_remdups set_rev set_subset_Cons)
+        done
       done
     done
-  apply auto
+  subgoal
+    by auto
   done
 
 lemma produce_inner_incr_op_Inl_2:
-  "produce_inner (incr_op buf, stream_in) = Some r \<Longrightarrow>
+  "produce_inner_induct (incr_op buf, stream_in) = Some r \<Longrightarrow>
    r = Inl (op, Watermark wm, xs, lxs) \<Longrightarrow>
    xs = []"
   apply (induct "(incr_op buf, stream_in)" r arbitrary: buf op lxs stream_in t d xs rule: produce_inner_alt[consumes 1])
-  apply (auto split: event.splits)
+    apply (auto split: event.splits)
   done
-
 
 lemma produce_incr_op_productive:
   "productive stream_in \<Longrightarrow>
@@ -772,7 +737,7 @@ lemma produce_incr_op_productive:
   apply (coinduction arbitrary: stream_in stream_out buf rule: productive_coinduct_prepend_cong1)
   subgoal for stream_in stream_out buf
     apply (cases "lfinite stream_out")
-    apply simp
+     apply simp
     apply hypsubst_thin
     apply (subst (asm) produce.code)
     apply (simp split: option.splits prod.splits sum.splits)
@@ -782,12 +747,12 @@ lemma produce_incr_op_productive:
       subgoal for t d
         apply simp
         apply (frule produce_inner_incr_op_inversion)
-        apply (rule refl)
+         apply (rule refl)
         apply(elim exE conjE)
         apply hypsubst_thin
         apply (frule produce_inner_incr_op_Inl_1)
-        apply (rule refl)
-        apply simp
+          apply (rule refl)
+         apply simp
         apply(elim exE conjE)
         apply (rule conjI)
         subgoal
@@ -796,58 +761,58 @@ lemma produce_incr_op_productive:
         subgoal for buf' n wm
           apply (rule disjI1)
           apply (rule productive_prepend_cong1_prepend_1)
-          apply (rule productive_prepend_cong1_base)
+           apply (rule productive_prepend_cong1_base)
+           apply simp_all
           subgoal 
             apply (rule exI[of _ "ldropn n stream_in"])
             apply (intro conjI)
-            apply (metis ldrop_enat productive_ldrop)
-            apply (rule exI[of _ "buf'"])
-            apply simp
+              apply (metis ldrop_enat productive_ldrop)
+             apply (rule exI[of _ "buf'"])
+             apply simp
             apply (intro impI allI)
             apply (subst (asm) lnth_ldropn)
-            apply (metis add.commute ldropn_eq_LNil ldropn_ldropn leD leI)
+             apply (metis add.commute ldropn_eq_LNil ldropn_ldropn leD leI)
             subgoal for n'
               apply (drule spec[of _ "n' + n"])
               apply (drule mp)
-              apply (metis ldropn_eq_LNil ldropn_ldropn leD leI)
+               apply (metis ldropn_eq_LNil ldropn_ldropn leD leI)
               apply simp
               apply (elim conjE exE)
               subgoal for m
                 apply (rule exI[of _ "m - n"])
-                apply auto
+                apply simp
                 apply (smt (verit) antisym_conv2 ldropn_eq_LNil ldropn_ldropn leD leI le_add_diff_inverse2 less_diff_conv llength_ldropn not_add_less2 order_less_imp_le)
                 done
               done
             done
           subgoal
-            apply auto
             by (metis event.sel(1) nth_mem produce_incr_op_completeness_Watermark)
           done
         done
       subgoal for wm
         apply simp
         apply (frule produce_inner_incr_op_inversion)
-        apply (rule refl)
+         apply (rule refl)
         apply(elim exE conjE)
         apply hypsubst_thin
         apply (frule produce_inner_incr_op_Inl_2)
-        apply (rule refl)
+         apply (rule refl)
         apply (rule disjI1)
         apply (rule productive_prepend_cong1_prepend_1)
-        apply (rule productive_prepend_cong1_base)
+         apply (rule productive_prepend_cong1_base)
         subgoal for buf n'
           apply (rule exI[of _ " (ldropn n' stream_in)"])
           apply (intro conjI)
-          apply (metis ldrop_enat productive_ldrop)
-          apply (rule exI[of _ buf])
-          apply simp
+            apply (metis ldrop_enat productive_ldrop)
+           apply (rule exI[of _ buf])
+           apply simp
           apply (intro impI allI)
           apply (subst (asm) lnth_ldropn)
-          apply (metis add.commute ldropn_eq_LNil ldropn_ldropn leD leI)
+           apply (metis add.commute ldropn_eq_LNil ldropn_ldropn leD leI)
           subgoal for n''
             apply (drule spec[of _ "n'' + n'"])
             apply (drule mp)
-            apply (metis ldropn_eq_LNil ldropn_ldropn verit_comp_simplify1(3))
+             apply (metis ldropn_eq_LNil ldropn_ldropn verit_comp_simplify1(3))
             apply simp
             apply (smt (verit) add.commute diff_is_0_eq' ldropn_eq_LNil ldropn_ldropn leD leI le_add_diff_inverse less_diff_conv llength_ldropn lnth_ldropn order_less_imp_le)
             done
@@ -865,9 +830,9 @@ lemma produce_incr_op_productive:
 lemma finite_produce_incr_op_exit_LNil:
   "finite_produce (incr_op buf) xs = (op', out) \<Longrightarrow> exit op' = LNil"
   apply (induct xs arbitrary: buf op' out)
-  apply (auto split: list.splits event.splits prod.splits)
+   apply (simp_all split: list.splits event.splits prod.splits)
+   apply (meson eq_fst_iff)+
   done
-
 
 lemma skip_n_productions_op_incr_op_Watermark_soundness:
   "Watermark wm \<in> lset lys \<Longrightarrow>
@@ -876,8 +841,8 @@ lemma skip_n_productions_op_incr_op_Watermark_soundness:
   apply (induct lys arbitrary: n buf rule: lset_induct)
   subgoal for lxs buf
     apply (subst (asm) produce.code)
-    apply (auto split: option.splits sum.splits)
-    subgoal for op xs lxs'
+    apply (simp split: option.splits sum.splits prod.splits)
+    subgoal
       apply hypsubst_thin
       using produce_inner_skip_n_productions_op_incr_op_Inl_Watermark
       by blast
@@ -890,7 +855,7 @@ lemma skip_n_productions_op_incr_op_Watermark_soundness:
 
 lemma produce_incr_op_Watermark_lset:
   "Watermark -` lset (produce (incr_op buf) lxs) = Watermark -` lset lxs"
-  apply auto
+  apply (intro conjI Set.equalityI Set.subsetI)
   subgoal for wm
     using skip_n_productions_op_incr_op_Watermark_soundness[where n=0, simplified]
     apply auto
@@ -906,25 +871,15 @@ lemma incr_op_prefix_cases:
   apply (simp add: in_lset_conv_lnth)
   apply (elim exE conjE)
   subgoal for n1 n2
-        using produce_incr_op_soundness[of buf lxs n1 t1 batch1] apply simp
-        using produce_incr_op_soundness[of buf lxs n2 t2 batch2] apply simp
-        apply (elim exE conjE)
-        subgoal for m1 m2
-          apply hypsubst_thin
-          apply auto
-        apply (rule prefix_concat)
-          apply (rule map_mono_prefix)
-          apply (cases "m1 < m2")
-          apply (meson prefix_ltaken_Data)
-          apply (cases "m1 = m2")
-          apply fastforce
-          apply (subgoal_tac "m2 < m1")
-          defer
-           apply simp
-          using map_mono_prefix prefix_concat prefix_ltaken_Data apply blast
-          done
-        done
+    using produce_incr_op_soundness[of buf lxs n1 t1 batch1] apply simp
+    using produce_incr_op_soundness[of buf lxs n2 t2 batch2] apply simp
+    apply (elim exE conjE)
+    subgoal for m1 m2
+      apply hypsubst_thin
+      apply simp
+      apply (metis linorder_less_linear map_mono_prefix prefix_concat prefix_ltaken_Data prefix_order.eq_iff)
       done
-
+    done
+  done
 
 end
