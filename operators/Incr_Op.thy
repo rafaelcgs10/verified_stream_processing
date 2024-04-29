@@ -19,16 +19,16 @@ primcorec incr_op where
 
 subsection \<open>Auxialiry\<close>
 lemma produce_inner_incr_op_inversion:
-  "produce_inner_induct (incr_op buf, lxs) = Some r \<Longrightarrow>
+  "produce_inner (incr_op buf, lxs) = Some r \<Longrightarrow>
    r = Inl (lgc', x, xs', lxs') \<Longrightarrow>
    \<exists> buf' n . lgc' = incr_op buf' \<and> lxs' = ldropn n lxs \<and> n > 0"
-  apply (induct "(incr_op buf, lxs)" r arbitrary: buf lxs rule: produce_inner_alt[consumes 1])
+  apply (induct "(incr_op buf, lxs)" r arbitrary: buf lxs rule: produce_inner_induct)
   subgoal for h lxs'a lgc'a buf 
     apply (simp_all split: event.splits)
     apply (metis ldropn_Suc_LCons zero_less_Suc)
     done
   subgoal for h buf
-    apply (subst (asm) produce_inner_induct.simps)
+    apply (subst (asm) produce_inner.simps)
     apply (simp_all split: event.splits)
      apply (metis ldropn_0 ldropn_Suc_LCons lessI)+
     done
@@ -70,12 +70,12 @@ lemma prefix_ltaken_Data:
   done
 
 lemma produce_inner_skip_n_productions_op_incr_op_Inl:
-  "produce_inner_induct (skip_n_productions_op (incr_op buf) m, lxs) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (incr_op buf) m, lxs) = Some r \<Longrightarrow>
    r = Inl (lgc', x, xs, lxs') \<Longrightarrow>
    x = Data t data_coll \<Longrightarrow>
    \<exists> n. data_coll = buf @ concat (map snd (ltaken_Data n lxs)) \<and>
    t \<in> fst ` set (concat (map snd (ltaken_Data n lxs)))"
-  apply (induct "(skip_n_productions_op (incr_op buf) m, lxs)" r arbitrary: buf lxs lgc' lxs' m x rule: produce_inner_alt[consumes 1])
+  apply (induct "(skip_n_productions_op (incr_op buf) m, lxs)" r arbitrary: buf lxs lgc' lxs' m x rule: produce_inner_induct)
   subgoal for h lxs lgc' zs buf m lgc'a lxs'' x
     apply (simp split: if_splits event.splits; (elim conjE)?; hypsubst_thin)
     subgoal for t' d
@@ -159,10 +159,10 @@ lemma produce_inner_skip_n_productions_op_incr_op_Inl:
   done
 
 lemma produce_inner_skip_n_productions_op_incr_op_Inl_Watermark:
-  "produce_inner_induct (skip_n_productions_op (incr_op buf) n, lxs) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (incr_op buf) n, lxs) = Some r \<Longrightarrow>
    r = Inl (op, Watermark wm, xs, lxs') \<Longrightarrow>
    Watermark wm \<in> lset lxs \<and> xs = []"
-  apply (induct "(skip_n_productions_op (incr_op buf) n, lxs)" r arbitrary: n buf lxs op lxs' rule: produce_inner_alt[consumes 1])
+  apply (induct "(skip_n_productions_op (incr_op buf) n, lxs)" r arbitrary: n buf lxs op lxs' rule: produce_inner_induct)
   subgoal 
     apply (simp split: if_splits event.splits)
     subgoal
@@ -182,10 +182,10 @@ lemma produce_inner_skip_n_productions_op_incr_op_Inl_Watermark:
   done
 
 lemma produce_inner_skip_n_productions_op_incr_op_Inr:
-  "produce_inner_induct (skip_n_productions_op (incr_op buf) m, lxs) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (incr_op buf) m, lxs) = Some r \<Longrightarrow>
    r = Inr op \<Longrightarrow>
    exit op = LNil"
-  apply (induct "(skip_n_productions_op (incr_op buf) m, lxs)" r arbitrary: buf lxs op m rule: produce_inner_alt[consumes 1])
+  apply (induct "(skip_n_productions_op (incr_op buf) m, lxs)" r arbitrary: buf lxs op m rule: produce_inner_induct)
     apply (simp_all split: if_splits event.splits)
   subgoal
     by blast
@@ -198,10 +198,10 @@ lemma produce_inner_skip_n_productions_op_incr_op_Inr:
   done
 
 lemma produce_inner_op_incr_op_Inr:
-  "produce_inner_induct (incr_op buf, lxs) = Some r \<Longrightarrow>
+  "produce_inner (incr_op buf, lxs) = Some r \<Longrightarrow>
    r = Inr op \<Longrightarrow>
    exit op = LNil \<and> (\<forall> x \<in> lset lxs. is_Data x \<and> data x = [])"
-  apply (induct "(incr_op buf, lxs)" r arbitrary: buf op lxs rule: produce_inner_alt[consumes 1])
+  apply (induct "(incr_op buf, lxs)" r arbitrary: buf op lxs rule: produce_inner_induct)
     apply (auto split: if_splits event.splits)
   done
 
@@ -247,11 +247,11 @@ lemma produce_incr_op_completeness_Data:
   subgoal for buf
     apply (subst (asm) produce.code)
     apply (simp split: prod.splits option.splits sum.splits)
-      apply (subst (asm) produce_inner_induct.simps)
+      apply (subst (asm) produce_inner.simps)
       apply (simp split: prod.splits llist.splits list.splits sum.splits)
      apply hypsubst_thin
     subgoal for x2 op x2a x x2b xs lxs'
-      apply (subst (asm) produce_inner_induct.simps)
+      apply (subst (asm) produce_inner.simps)
       apply (simp split: prod.splits llist.splits list.splits)
       apply (metis (mono_tags, lifting) image_iff list.set_map set_ConsD set_remdups set_rev)
       done
@@ -287,7 +287,7 @@ lemma produce_incr_op_completeness_Data:
         apply (subst produce.code)
         apply (simp split: prod.splits option.splits)
         apply (rule conjI)
-         apply (subst produce_inner_induct.simps)
+         apply (subst produce_inner.simps)
          apply (auto split: prod.splits llist.splits event.splits list.splits)[1]
         apply (rule allI impI)+
         apply (auto split: prod.splits llist.splits event.splits list.splits sum.splits)[1]
@@ -462,7 +462,7 @@ lemma all_Data_strict_monotone_aux:
   done
 
 lemma produce_inner_incr_op_monotone_Inl_1:
-  "produce_inner_induct (incr_op buf, stream_in) = Some r \<Longrightarrow>
+  "produce_inner (incr_op buf, stream_in) = Some r \<Longrightarrow>
    r = Inl (op, Data t d, xs, lxs) \<Longrightarrow>
    \<forall>n. enat n < llength stream_in \<longrightarrow>
         (\<forall>wm batch.
@@ -475,7 +475,7 @@ lemma produce_inner_incr_op_monotone_Inl_1:
    (\<exists> n. lxs = ldropn (Suc n) stream_in) \<and>
    (\<exists> buf. op = incr_op buf) \<and>
    monotone (llist_of xs) WM"
-  apply (induct "(incr_op buf, stream_in)" r arbitrary: WM buf op lxs stream_in t d xs rule: produce_inner_alt[consumes 1])
+  apply (induct "(incr_op buf, stream_in)" r arbitrary: WM buf op lxs stream_in t d xs rule: produce_inner_induct)
   subgoal for h lxs lgc' zs buf WM op lxsa t d xs
     apply (simp split: event.splits llist.splits sum.splits if_splits)
     subgoal for wm' 
@@ -529,14 +529,14 @@ lemma produce_inner_incr_op_monotone_Inl_1:
   done
 
 lemma produce_inner_incr_op_monotone_Inl_2:
-  "produce_inner_induct (incr_op buf, stream_in) = Some r \<Longrightarrow>
+  "produce_inner (incr_op buf, stream_in) = Some r \<Longrightarrow>
    r = Inl (op, Watermark wm, xs, lxs) \<Longrightarrow>
    monotone stream_in WM \<Longrightarrow>
    monotone lxs (insert wm WM) \<and>
    (\<exists> n. lxs = ldropn (Suc n) stream_in \<and> (\<forall> x \<in> lset (ltake n stream_in). is_Data x \<and> data x = []) \<and> n < llength stream_in \<and> lnth stream_in n = Watermark wm) \<and>
    (\<exists> buf. op = incr_op buf) \<and>
    xs = []"
-  apply (induct "(incr_op buf, stream_in)" r arbitrary: WM buf op lxs stream_in wm xs rule: produce_inner_alt[consumes 1])
+  apply (induct "(incr_op buf, stream_in)" r arbitrary: WM buf op lxs stream_in wm xs rule: produce_inner_induct)
   subgoal for h lxs lgc' zs buf WM op lxsa wm xs
     apply (simp split: event.splits llist.splits sum.splits if_splits; hypsubst_thin)
     apply (smt (verit) eSuc_enat event.disc(1) event.sel(3) ileI1 llist.inject llist.set_cases lnth_Suc_LCons ltake_enat_Suc strict_monotone_drop_head)
@@ -666,18 +666,18 @@ lemma produce_incr_op_strict_monotone:
 subsection \<open>Productive\<close> 
 lemma produce_inner_incr_op_lnull:
   "(\<forall> t batch . Data t batch \<in> lset lxs \<longrightarrow> batch \<noteq> []) \<Longrightarrow>
-   lnull lxs \<Longrightarrow> produce_inner_induct (incr_op buf, lxs) \<noteq> None"
-  apply (subst produce_inner_induct.simps)
+   lnull lxs \<Longrightarrow> produce_inner (incr_op buf, lxs) \<noteq> None"
+  apply (subst produce_inner.simps)
   apply (auto split: prod.splits if_splits list.splits llist.splits event.splits)
   done
 
 lemma produce_inner_incr_op_Inl_1:
-  "produce_inner_induct (incr_op buf, stream_in) = Some r \<Longrightarrow>
+  "produce_inner (incr_op buf, stream_in) = Some r \<Longrightarrow>
    r = Inl (op, Data t d, xs, lxs) \<Longrightarrow>
    (\<forall> n wm batch. n < llength stream_in \<longrightarrow> lnth stream_in n = Data wm batch \<longrightarrow>
    (\<exists> m > n. m < llength stream_in \<and> lnth stream_in m = Watermark wm) \<and> (\<forall> t'\<in> fst ` set batch . t' \<le> wm) \<and> batch \<noteq> []) \<Longrightarrow>
    (\<exists> wm. Watermark wm \<in> lset lxs \<and> t \<le> wm \<and> (\<forall> x \<in> set xs. is_Data x \<and> (\<exists> wm. Watermark wm \<in> lset lxs \<and> tmp x \<le> wm)))"
-  apply (induct "(incr_op buf, stream_in)" r arbitrary: buf op lxs stream_in t d xs rule: produce_inner_alt[consumes 1])
+  apply (induct "(incr_op buf, stream_in)" r arbitrary: buf op lxs stream_in t d xs rule: produce_inner_induct)
   subgoal
     apply (simp split: event.splits)
     subgoal for wm
@@ -721,10 +721,10 @@ lemma produce_inner_incr_op_Inl_1:
   done
 
 lemma produce_inner_incr_op_Inl_2:
-  "produce_inner_induct (incr_op buf, stream_in) = Some r \<Longrightarrow>
+  "produce_inner (incr_op buf, stream_in) = Some r \<Longrightarrow>
    r = Inl (op, Watermark wm, xs, lxs) \<Longrightarrow>
    xs = []"
-  apply (induct "(incr_op buf, stream_in)" r arbitrary: buf op lxs stream_in t d xs rule: produce_inner_alt[consumes 1])
+  apply (induct "(incr_op buf, stream_in)" r arbitrary: buf op lxs stream_in t d xs rule: produce_inner_induct)
     apply (auto split: event.splits)
   done
 

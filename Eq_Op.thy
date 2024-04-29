@@ -43,14 +43,14 @@ lemma not_eq_op_not_eq:
   using eq_op_refl by blast
 
 lemma produce_inner_eq_op_Inl:
-  assumes  "produce_inner_induct (op2, lxs) = Some r"
+  assumes  "produce_inner (op2, lxs) = Some r"
     and "r = Inl (op', x, xs, lxs')" and "eq_op WM op1 op2"
-    and "monotone lxs WM" and "produce_inner_induct (op1, lxs) = None" 
+    and "monotone lxs WM" and "produce_inner (op1, lxs) = None" 
   shows "False"
-  using assms proof (induct "(op2, lxs)" r arbitrary: lxs x xs lxs' op1 op2 WM rule: produce_inner_alt)
+  using assms proof (induct "(op2, lxs)" r arbitrary: lxs x xs lxs' op1 op2 WM rule: produce_inner_induct)
   case (no_production op h lxs lgc' zs)
-  from no_production(6) obtain op1' where H1:"apply op1 h = (op1', [])" and H2: "produce_inner_induct (op1', lxs) = None"
-    by (subst (asm) produce_inner_induct.simps; auto split: prod.splits list.splits)
+  from no_production(6) obtain op1' where H1:"apply op1 h = (op1', [])" and H2: "produce_inner (op1', lxs) = None"
+    by (subst (asm) produce_inner.simps; auto split: prod.splits list.splits)
   then show ?case
   proof (cases rule: eq_op.cases[OF no_production(4)])
     case (1 W op_1 op_2)
@@ -60,8 +60,8 @@ lemma produce_inner_eq_op_Inl:
   qed
 next
   case (produces op h x xs lxs lxs' lgc')
-  from produces(6) obtain op1' where H1:"apply op1 h = (op1', [])" and H2: "produce_inner_induct (op1', lxs) = None"
-    by (subst (asm) produce_inner_induct.simps; auto split: prod.splits list.splits)
+  from produces(6) obtain op1' where H1:"apply op1 h = (op1', [])" and H2: "produce_inner (op1', lxs) = None"
+    by (subst (asm) produce_inner.simps; auto split: prod.splits list.splits)
   then show ?case 
   proof (cases rule: eq_op.cases[OF produces(4)])
     case (1 W op_1 op_2)
@@ -76,12 +76,12 @@ qed
 
 
 lemma produce_inner_eq_op_Inr:
-  assumes "produce_inner_induct (op2, lxs) = Some r" and "r = Inr op2'" and "eq_op WM op1 op2" 
-    and "monotone lxs WM" and "produce_inner_induct (op1, lxs) = None" shows "False"
-  using assms proof (induct "(op2, lxs)" r arbitrary: lxs x xs lxs' op1 op2 WM rule: produce_inner_alt)
+  assumes "produce_inner (op2, lxs) = Some r" and "r = Inr op2'" and "eq_op WM op1 op2" 
+    and "monotone lxs WM" and "produce_inner (op1, lxs) = None" shows "False"
+  using assms proof (induct "(op2, lxs)" r arbitrary: lxs x xs lxs' op1 op2 WM rule: produce_inner_induct)
   case (no_production op h lxs lgc' zs)
-  from no_production(6) obtain op1' where H1:"apply op1 h = (op1', [])" and H2: "produce_inner_induct (op1', lxs) = None"
-    by (subst (asm) produce_inner_induct.simps; auto split: prod.splits list.splits)
+  from no_production(6) obtain op1' where H1:"apply op1 h = (op1', [])" and H2: "produce_inner (op1', lxs) = None"
+    by (subst (asm) produce_inner.simps; auto split: prod.splits list.splits)
   then show ?case
   proof (cases rule: eq_op.cases[OF no_production(4)])
     case (1 W op_1 op_2)
@@ -91,8 +91,8 @@ lemma produce_inner_eq_op_Inr:
   qed
 next
   case (produces op h x xs lxs lxs' lgc')
-  from produces(6) obtain op1' where H1:"apply op1 h = (op1', [])" and H2: "produce_inner_induct (op1', lxs) = None"
-    by (subst (asm) produce_inner_induct.simps; auto split: prod.splits list.splits)
+  from produces(6) obtain op1' where H1:"apply op1 h = (op1', [])" and H2: "produce_inner (op1', lxs) = None"
+    by (subst (asm) produce_inner.simps; auto split: prod.splits list.splits)
   then show ?case 
   proof (cases rule: eq_op.cases[OF produces(4)])
     case (1 W op_1 op_2)
@@ -137,14 +137,14 @@ lemma eq_op_next_output:
 
 
 lemma produce_inner_eq_op_Inr_Inl:
-  assumes "produce_inner_induct (op2, lxs) = Some r" 
-    and "r = Inr op2'" and "eq_op WM op1 op2" and "monotone lxs WM" and "produce_inner_induct (op1, lxs) = Some (Inl x)" 
+  assumes "produce_inner (op2, lxs) = Some r" 
+    and "r = Inr op2'" and "eq_op WM op1 op2" and "monotone lxs WM" and "produce_inner (op1, lxs) = Some (Inl x)" 
   shows "False"
-  using assms proof (induct "(op2, lxs)" r arbitrary: lxs op1 op2 WM rule: produce_inner_alt)
+  using assms proof (induct "(op2, lxs)" r arbitrary: lxs op1 op2 WM rule: produce_inner_induct)
   case (no_production op2 h lxs op' zs)
-  from no_production(1,6,4,5) obtain op1' where H1:"apply op1 h = (op1', [])" and H2: "produce_inner_induct (op1', lxs) = Some (Inl x)"
+  from no_production(1,6,4,5) obtain op1' where H1:"apply op1 h = (op1', [])" and H2: "produce_inner (op1', lxs) = Some (Inl x)"
     apply -
-    apply (subst (asm) (2) produce_inner_induct.simps; simp split: prod.splits list.splits)
+    apply (subst (asm) (2) produce_inner.simps; simp split: prod.splits list.splits)
     using eq_op_same_output_head by fastforce
   from no_production(5) have "monotone lxs WM"
     by blast
@@ -164,14 +164,14 @@ next
 qed
 
 lemma produce_inner_eq_op_Inr_Inr:
-  assumes "produce_inner_induct (op2, lxs) = Some r" and "r = Inr op2'" and "eq_op WM op1 op2"
-    and "monotone lxs WM" and "produce_inner_induct (op1, lxs) = Some (Inr op1')"
+  assumes "produce_inner (op2, lxs) = Some r" and "r = Inr op2'" and "eq_op WM op1 op2"
+    and "monotone lxs WM" and "produce_inner (op1, lxs) = Some (Inr op1')"
   shows "exit op1' = exit op2'"
-  using assms proof(induct "(op2, lxs)" r arbitrary: lxs op2' op1 op2 WM rule: produce_inner_alt)
+  using assms proof(induct "(op2, lxs)" r arbitrary: lxs op2' op1 op2 WM rule: produce_inner_induct)
   case (no_production op2 h lxs op' zs)
-  from no_production(1,6,4,5) obtain op1'' where H1:"apply op1 h = (op1'', [])" and H2: "produce_inner_induct (op1'', lxs) = Some (Inr op1')"
+  from no_production(1,6,4,5) obtain op1'' where H1:"apply op1 h = (op1'', [])" and H2: "produce_inner (op1'', lxs) = Some (Inr op1')"
     apply -
-    by (subst (asm) (2) produce_inner_induct.simps; simp split: prod.splits list.splits)
+    by (subst (asm) (2) produce_inner.simps; simp split: prod.splits list.splits)
   from no_production(5) have "monotone lxs WM"
     by blast
   from this no_production H1 H2 show ?case 
@@ -191,17 +191,17 @@ next
 qed
 
 lemma produce_inner_eq_op_Some_Some:
-  assumes "produce_inner_induct (op1, lxs) = Some r"
+  assumes "produce_inner (op1, lxs) = Some r"
     and "r = Inl (op1', x, xs, lxs')"
     and "eq_op WM op1 op2"
     and "monotone lxs WM"
-    and "produce_inner_induct (op2, lxs) = Some (Inl (op2', y, ys, lys'))"
+    and "produce_inner (op2, lxs) = Some (Inl (op2', y, ys, lys'))"
   shows "lxs' = lys' \<and> x = y \<and> xs = ys"
-  using assms proof (induct "(op1, lxs)" r arbitrary: lxs x xs lxs' op1 op2 op1' op2' y ys lys' WM rule: produce_inner_alt)
+  using assms proof (induct "(op1, lxs)" r arbitrary: lxs x xs lxs' op1 op2 op1' op2' y ys lys' WM rule: produce_inner_induct)
   case (no_production op h lxs op' zs)
   then show ?case 
     apply - 
-    apply (subst (asm) (2) produce_inner_induct.simps)
+    apply (subst (asm) (2) produce_inner.simps)
     apply (erule eq_op.cases)
     apply (drule spec[of _ h])
     apply (auto split: if_splits event.splits list.splits prod.splits elim: LConsData LConsWatermark)
@@ -210,7 +210,7 @@ next
   case (produces op h x xs lxs lxs' op')
   then show ?case 
     apply - 
-    apply (subst (asm) (1 2) produce_inner_induct.simps)
+    apply (subst (asm) (1 2) produce_inner.simps)
     apply (erule eq_op.cases)
     apply (drule spec[of _ h])
     apply (auto split: if_splits event.splits list.splits prod.splits elim: LConsData LConsWatermark)
@@ -224,25 +224,25 @@ lemma eq_op_produce_inner_next:
   assumes "eq_op WM op1 op2"
     and "apply op1 h = (op1', [])"
     and "monotone (LCons h lxs) WM"
-  shows "produce_inner_induct (op2, LCons h lxs) = produce_inner_induct (fst (apply op2 h), lxs) \<and> apply op2 h = (fst (apply op2 h), []) \<and> 
+  shows "produce_inner (op2, LCons h lxs) = produce_inner (fst (apply op2 h), lxs) \<and> apply op2 h = (fst (apply op2 h), []) \<and> 
          eq_op (case_event (\<lambda> _ _. WM) (\<lambda> wm. insert wm WM) h) (fst (apply op1 h)) (fst (apply op2 h))"
   using assms apply -
   apply (erule eq_op.cases)
   apply hypsubst_thin
   apply (drule spec[of _ h])
-  apply (subst produce_inner_induct.simps)
+  apply (subst produce_inner.simps)
   apply (auto simp add: rel_prod_sel split: if_splits event.splits list.splits prod.splits elim: LConsData LConsWatermark)
   done
 
 
 lemma produce_inner_Some_eq_op_ldropn:
-  assumes "produce_inner_induct (op1, lxs) = Some r"
+  assumes "produce_inner (op1, lxs) = Some r"
     and "r = Inl (op1', x, xs, lxs')"
     and "eq_op WM op1 op2"
     and "monotone lxs WM"
-    and "produce_inner_induct (op2, lxs) = Some (Inl (op2', x, xs, lxs'))"
+    and "produce_inner (op2, lxs) = Some (Inl (op2', x, xs, lxs'))"
   shows "\<exists> n . eq_op (wms (list_of (ltake n lxs)) \<union> WM) op1' op2' \<and> ldropn n lxs = lxs' \<and> n > 0 \<and> monotone lxs' (wms (list_of (ltake n lxs)) \<union> WM)"
-  using assms proof (induct "(op1, lxs)" r arbitrary: lxs x xs  op1 op2 op1' op2' lxs' WM rule: produce_inner_alt)
+  using assms proof (induct "(op1, lxs)" r arbitrary: lxs x xs  op1 op2 op1' op2' lxs' WM rule: produce_inner_induct)
   case (no_production op h lxs op' zs)
   then show ?case
   proof (cases h)
@@ -265,7 +265,7 @@ next
   case (produces op h x xs lxs lxs' op')
   then show ?case 
     apply -
-    apply (subst (asm) (1 2) produce_inner_induct.simps)
+    apply (subst (asm) (1 2) produce_inner.simps)
     apply (erule eq_op.cases)
     apply (drule spec[of _ h])
     apply simp

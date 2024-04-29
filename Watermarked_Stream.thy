@@ -37,6 +37,13 @@ lemma set_map_filter_case_event_Watermark[simp]:
    apply (auto simp add: map_filter_simps split: event.splits)
   done
 
+lemma map_Data_filter:
+  "map (\<lambda>(x, y). Data x y) (filter (\<lambda>(t, d). \<not> t \<le> wm) buf) =
+  filter (\<lambda>ev. case ev of Data t _ \<Rightarrow> \<not> t \<le> wm) (map (\<lambda>(x, y). Data x y) buf)"
+  apply (induct buf)
+   apply auto
+  done
+
 coinductive monotone :: "('t::order, 'd) event llist \<Rightarrow> 't set \<Rightarrow> bool" where
   LNil: "monotone LNil WM"
 | LConsR: "\<lbrakk> monotone xs (insert wm WM)\<rbrakk> \<Longrightarrow> monotone (LCons (Watermark wm) xs) WM"

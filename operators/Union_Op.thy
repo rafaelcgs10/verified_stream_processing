@@ -247,7 +247,7 @@ lemma set_aux_simp[simp]:
   oops
 
 lemma produce_inner_union_monotone_Inl_Data:
-  assumes "produce_inner_induct (union_op buf1 buf2, lxs) = Some (Inl (op, Data t d, xs, lxs'))" (is "produce_inner_induct ?P = Some ?R")
+  assumes "produce_inner (union_op buf1 buf2, lxs) = Some (Inl (op, Data t d, xs, lxs'))" (is "produce_inner ?P = Some ?R")
     and "monotone lxs WM"
     and "buf2 = maximal_antichain_set WM"
     and "set buf1 = unproduced_watermarks WM"
@@ -264,7 +264,7 @@ lemma produce_inner_union_monotone_Inl_Data:
      op = (union_op buf1' buf2') \<and>
     (\<forall> wm \<in> Watermark -` lset (ltake n lxs). \<not> producible wm (Watermark -` lset (ltake n lxs) \<union> WM)) \<and> 
     (\<forall> wm \<in> set buf1. \<not> producible wm (Watermark -` lset (ltake n lxs) \<union> WM)))"
-  using assms proof (induct ?P ?R arbitrary: WM buf1 buf2 lxs xs lxs' op t d  rule: produce_inner_alt[consumes 1])
+  using assms proof (induct ?P ?R arbitrary: WM buf1 buf2 lxs xs lxs' op t d  rule: produce_inner_induct)
   case (produces h xs lxs lxs' op' buf1 buf2 WM)
   then show ?case apply -
     apply (simp split: sum.splits event.splits)
@@ -371,7 +371,7 @@ next
 qed
 
 lemma produce_inner_union_monotone_Inl_Watermark:
-  assumes "produce_inner_induct (union_op buf1 buf2, lxs) = Some (Inl (op, Watermark wm, xs, lxs'))" (is "produce_inner_induct ?P = Some ?R")
+  assumes "produce_inner (union_op buf1 buf2, lxs) = Some (Inl (op, Watermark wm, xs, lxs'))" (is "produce_inner ?P = Some ?R")
     and "monotone lxs WM"
     and "buf2 = maximal_antichain_set WM"
     and "set buf1 = unproduced_watermarks WM"
@@ -388,7 +388,7 @@ lemma produce_inner_union_monotone_Inl_Watermark:
     (\<forall> wm \<in> Watermark -` lset (ltake (n-1) lxs). \<not> producible wm (Watermark -` lset (ltake (n-1) lxs) \<union> WM)) \<and> 
     (\<forall> wm \<in> set buf1. \<not> producible wm (Watermark -` lset (ltake (n-1) lxs) \<union> WM)) \<and>
     wms (Watermark wm#xs) = Inl -` {wm \<in> Watermark -` lset (ltake n lxs) \<union> set buf1. producible wm buf2'} \<union> Inr -` {wm \<in> Watermark -` lset (ltake n lxs) \<union> set buf1. producible wm buf2'})"
-  using assms proof (induct ?P ?R arbitrary: WM buf1 buf2 lxs wm xs lxs' op  rule: produce_inner_alt)
+  using assms proof (induct ?P ?R arbitrary: WM buf1 buf2 lxs wm xs lxs' op  rule: produce_inner_induct)
   case (no_production h lxs op')
   then show ?case 
     apply -
@@ -551,9 +551,9 @@ lemma unproduced_watermarks_simp_aux[simp]:
 
 (* FIXME: move me to soundness *)
 lemma produce_inner_skip_n_productions_op_union_op_Inr:
-  assumes "produce_inner_induct (skip_n_productions_op (union_op buf1 bu2) n, lxs) = Some (Inr op)" (is "produce_inner_induct ?P = Some ?R")
+  assumes "produce_inner (skip_n_productions_op (union_op buf1 bu2) n, lxs) = Some (Inr op)" (is "produce_inner ?P = Some ?R")
   shows "exit op = LNil"
-  using assms apply (induct ?P ?R arbitrary: buf1 bu2 lxs n  rule: produce_inner_alt)
+  using assms apply (induct ?P ?R arbitrary: buf1 bu2 lxs n  rule: produce_inner_induct)
    apply (simp_all split: if_splits event.splits sum.splits)
         apply auto[1]
        apply fast
@@ -580,7 +580,7 @@ lemma produce_union_op_monotone:
   next
     case (2 lxs wm WM'')
     from MONO this show ?thesis 
-    proof (cases "produce_inner_induct ((union_op buf1 (maximal_antichain_set WM'')), (LCons (Watermark wm) lxs))")
+    proof (cases "produce_inner ((union_op buf1 (maximal_antichain_set WM'')), (LCons (Watermark wm) lxs))")
       case None
       from this MONO 2 show ?thesis 
         by (simp split: if_splits list.splits)
@@ -773,7 +773,7 @@ lemma produce_union_op_monotone:
   next
     case (3 WM'' t lxs' d)
     then show ?thesis 
-    proof (cases "produce_inner_induct ((union_op buf1 (maximal_antichain_set WM'')), (LCons (Data t d) lxs'))")
+    proof (cases "produce_inner ((union_op buf1 (maximal_antichain_set WM'')), (LCons (Data t d) lxs'))")
       case None
       from MONO this show ?thesis by force
     next
@@ -864,16 +864,16 @@ qed
 
 subsection \<open>Soundness\<close> 
 lemma produce_inner_union_op_Data:
-  assumes  "produce_inner_induct (union_op buf1 buf2, lxs) = Some (Inl (lgc', Data t d, xs, lzs))" (is "produce_inner_induct ?P = Some ?R")
+  assumes  "produce_inner (union_op buf1 buf2, lxs) = Some (Inl (lgc', Data t d, xs, lzs))" (is "produce_inner ?P = Some ?R")
   shows "Data (Inl t) d \<in> lset lxs \<or> Data (Inr t) d \<in> lset lxs"
-  using assms apply (induct ?P ?R arbitrary: buf1 buf2 lxs lgc' rule: produce_inner_alt[consumes 1])
+  using assms apply (induct ?P ?R arbitrary: buf1 buf2 lxs lgc' rule: produce_inner_induct)
    apply (auto split: event.splits if_splits sum.splits)
   done
 
 lemma produce_inner_skip_n_productions_op_union_op_Data:
-  assumes "produce_inner_induct (skip_n_productions_op (union_op buf1 buf2) n, lxs) = Some (Inl (op', Data t d, xs, lzs))" (is "produce_inner_induct ?P = Some ?R")
+  assumes "produce_inner (skip_n_productions_op (union_op buf1 buf2) n, lxs) = Some (Inl (op', Data t d, xs, lzs))" (is "produce_inner ?P = Some ?R")
   shows "Data (Inl t) d \<in> lset lxs \<or> Data (Inr t) d \<in> lset lxs"
-  using assms apply (induct ?P ?R arbitrary: n buf1 buf2 lxs op' t d lzs xs rule: produce_inner_alt[consumes 1])
+  using assms apply (induct ?P ?R arbitrary: n buf1 buf2 lxs op' t d lzs xs rule: produce_inner_induct)
    apply (simp split: event.splits if_splits sum.splits prod.splits)
   subgoal
     by blast
@@ -907,9 +907,9 @@ lemma produce_inner_skip_n_productions_op_union_op_Data:
   done
 
 lemma produce_inner_union_op_Inr:
-  assumes "produce_inner_induct (union_op buf1 buf2, lxs) = Some (Inr op)" (is "produce_inner_induct ?P = Some ?R")
+  assumes "produce_inner (union_op buf1 buf2, lxs) = Some (Inr op)" (is "produce_inner ?P = Some ?R")
   shows "exit op = LNil \<and> (\<forall> x \<in> lset lxs. \<not> is_Data x)"
-  using assms apply (induct ?P ?R arbitrary: buf1 buf2 lxs op rule: produce_inner_alt)
+  using assms apply (induct ?P ?R arbitrary: buf1 buf2 lxs op rule: produce_inner_induct)
    apply (auto split: if_splits event.splits sum.splits)
   done 
 
@@ -999,15 +999,15 @@ lemma producible_buf_produce_inner_union_op_None_False:
   "Watermark wm \<in> lset lxs \<Longrightarrow>
    producible wm buf2 \<Longrightarrow>
    maximal_complete buf2 \<Longrightarrow>
-   produce_inner_induct (union_op buf1 buf2, lxs) = None \<Longrightarrow>
+   produce_inner (union_op buf1 buf2, lxs) = None \<Longrightarrow>
    False"
   apply (induct lxs arbitrary: buf1 buf2  rule: lset_induct)
   subgoal for xs buf1 buf2 
-    apply (subst (asm) produce_inner_induct.simps)
+    apply (subst (asm) produce_inner.simps)
     apply (auto split: list.splits if_splits)
     done
   subgoal
-    apply (subst (asm) (2) produce_inner_induct.simps)
+    apply (subst (asm) (2) produce_inner.simps)
     apply (simp split: list.splits if_splits event.splits)
     apply (drule meta_spec)+
     apply (drule meta_mp)
@@ -1024,18 +1024,18 @@ lemma producible_buf_produce_inner_union_op_None_False:
 
 lemma produce_inner_union_None_not_producible_buffers:
   "maximal_complete buf2 \<Longrightarrow>
-   produce_inner_induct (union_op buf1 buf2, stream_in) = None \<Longrightarrow> \<forall>wm\<in>set buf1. \<not> producible wm buf2"
+   produce_inner (union_op buf1 buf2, stream_in) = None \<Longrightarrow> \<forall>wm\<in>set buf1. \<not> producible wm buf2"
   apply (rule ccontr)
   apply simp
-  apply (subst (asm) produce_inner_induct.simps)
+  apply (subst (asm) produce_inner.simps)
   apply (auto simp add: filter_empty_conv split: llist.splits event.splits if_splits list.splits)
   done
 
 lemma produce_inner_union_op_invar_None:
-  "produce_inner_induct (union_op buf1 buf2, stream_in) = None \<Longrightarrow>
+  "produce_inner (union_op buf1 buf2, stream_in) = None \<Longrightarrow>
    maximal_complete buf2 \<Longrightarrow>
-   produce_inner_induct (union_op buf1 (maximal_antichain_set buf2), stream_in) =
-   produce_inner_induct (union_op
+   produce_inner (union_op buf1 (maximal_antichain_set buf2), stream_in) =
+   produce_inner (union_op
      (rev (List.map_filter (case_event (\<lambda> _ _. None) Some) (list_of (ltake (enat n) stream_in))) @ buf1)
      (maximal_antichain_set (Watermark -` lset (ltake (enat n) stream_in) \<union> buf2)),
     ldropn n stream_in)"
@@ -1044,7 +1044,7 @@ lemma produce_inner_union_op_invar_None:
     apply (auto simp add: produce_inner_union_None_not_producible_buffers enat_0 map_filter_simps(2))
     done
   subgoal for n buf1 buf2 stream_in
-    apply (subst (asm) (4) produce_inner_induct.simps)
+    apply (subst (asm) (4) produce_inner.simps)
     apply (simp del: produce_inner_simps add: filter_empty_conv map_filter_simps split: llist.splits event.splits list.splits if_splits)
     apply hypsubst_thin
     apply (drule meta_spec)+
@@ -1113,7 +1113,7 @@ lemma union_op_maximal_complete:
 
 lemma producible_stream_produce_inner_union_op_None_False:
   "Watermark wm \<in> lset stream_in \<Longrightarrow>
-   produce_inner_induct (union_op buf1 buf2, stream_in) = None \<Longrightarrow>
+   produce_inner (union_op buf1 buf2, stream_in) = None \<Longrightarrow>
    producible wm (Watermark -` lset stream_in) \<Longrightarrow>
    maximal_complete buf2 \<Longrightarrow>
    False"
@@ -1200,7 +1200,7 @@ lemma produce_union_op_completeness_with_stream:
   done
 
 lemma produce_inner_union_op_producible_produces_Inl:
-  "produce_inner_induct (union_op buf1 buf2, stream_in) = r \<Longrightarrow>
+  "produce_inner (union_op buf1 buf2, stream_in) = r \<Longrightarrow>
    \<not> lfinite stream_in \<Longrightarrow>
    maximal_complete buf2 \<Longrightarrow>
    \<forall>wm. Watermark wm \<in> lset stream_in \<longrightarrow> producible wm (buf2 \<union> Watermark -` lset stream_in) \<Longrightarrow>
@@ -1211,7 +1211,7 @@ lemma produce_inner_union_op_producible_produces_Inl:
     apply (cases stream_in)
      apply simp_all
     subgoal for x xs
-      apply (subst (asm) (1) produce_inner_induct.simps)
+      apply (subst (asm) (1) produce_inner.simps)
       apply (simp add: filter_empty_conv split: if_splits prod.splits list.splits event.splits llist.splits)
       apply (smt (z3) maximal_complete_insert producible_buf_produce_inner_union_op_None_False producible_def producible_insert_simp producible_stream_produce_inner_union_op_None_False producible_union union_op_maximal_complete vimage_eq)
       done
@@ -1227,7 +1227,7 @@ lemma produce_inner_union_op_producible_produces_Inl:
   done
 
 lemma produce_inner_union_monotone_Inl_Data_2:
-  assumes "produce_inner_induct (union_op buf1 buf2, lxs) = Some (Inl (op, Data t d, xs, lxs'))" (is "produce_inner_induct ?P = Some ?R")
+  assumes "produce_inner (union_op buf1 buf2, lxs) = Some (Inl (op, Data t d, xs, lxs'))" (is "produce_inner ?P = Some ?R")
     and "maximal_complete buf2"
   shows "xs = [] \<and>
    (\<exists> n buf1' buf2'. lxs' = ldropn n lxs \<and> 0 < n \<and>
@@ -1236,7 +1236,7 @@ lemma produce_inner_union_monotone_Inl_Data_2:
                (\<lambda> wm . Some wm)) 
                ((list_of (ltake n lxs))))) @ buf1) \<and>
      op = (union_op buf1' buf2'))"
-  using assms apply (induct ?P ?R arbitrary: buf1 buf2 lxs t d xs lxs' op rule: produce_inner_alt)
+  using assms apply (induct ?P ?R arbitrary: buf1 buf2 lxs t d xs lxs' op rule: produce_inner_induct)
    prefer 2
   subgoal for h xs lxs lxs' op' buf1 buf2 t d
     apply simp
@@ -1281,7 +1281,7 @@ lemma produce_inner_union_monotone_Inl_Data_2:
   done
 
 lemma produce_inner_union_monotone_Inl_Watermark_2:
-  "produce_inner_induct oo = Some r \<Longrightarrow> 
+  "produce_inner oo = Some r \<Longrightarrow> 
    r = Inl (op, x, xs, lxs') \<Longrightarrow>
    x = Watermark wm \<Longrightarrow>
    oo = (union_op buf1 buf2, lxs) \<Longrightarrow>
@@ -1293,10 +1293,10 @@ lemma produce_inner_union_monotone_Inl_Watermark_2:
                ((list_of (ltake n lxs))))) @ buf1) \<and>
      op = (union_op buf1' buf2')) \<and>
    (\<forall> x \<in> set xs. \<not> is_Data x)"
-  apply (induct oo r arbitrary: buf1 buf2 lxs x xs lxs' op  rule: produce_inner_alt[consumes 1])
+  apply (induct oo r arbitrary: buf1 buf2 lxs x xs lxs' op  rule: produce_inner_induct)
     prefer 2
   subgoal for op h x xs lxs lxs' lgc' buf1 buf2 lxs'' xa xsa lxs'a opa
-    apply (subst (asm) produce_inner_induct.simps)
+    apply (subst (asm) produce_inner.simps)
     apply simp
     apply (cases lxs'')
      apply simp_all
@@ -1490,7 +1490,7 @@ lemma productive_not_lfinite_produce_union_op_aux:
 lemma productive_produce_inner_union_op_produces_some:
   "\<forall>wm. Watermark wm \<in> lset stream_in \<longrightarrow> producible wm (buf2 \<union> Watermark -` lset stream_in) \<Longrightarrow>
    maximal_complete buf2 \<Longrightarrow>
-   \<exists>y. produce_inner_induct (union_op buf1 buf2, stream_in) = Some y"
+   \<exists>y. produce_inner (union_op buf1 buf2, stream_in) = Some y"
   by (meson not_Some_eq produce_inner_None_not_lfinite_aux produce_inner_union_op_producible_produces_Inl)
 
 lemma produce_union_op_not_lfinite:
@@ -1564,7 +1564,7 @@ lemma produce_union_productive:
         apply (erule productive'.cases)
           apply simp
         subgoal
-          apply (subst (asm) produce_inner_induct.simps)
+          apply (subst (asm) produce_inner.simps)
           apply auto
           done
         subgoal for lxs r

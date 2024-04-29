@@ -4,6 +4,7 @@ theory Batch_Op
     "../Llists_Processors"
     "../Sum_Order"
     "../Antichain"
+    "../Watermarked_Stream_Antichain"
     "HOL-Library.Code_Lazy"
 begin
 
@@ -261,17 +262,17 @@ lemma produce_lhd_data:
   "lhd' lxs = Some (Data t d) \<Longrightarrow>
    produce (batch_op (buf @ [(t, d)])) (ltl lxs) = produce (batch_op buf) lxs"
   (*   apply (subst (2) produce.code)
-  apply (subst produce_inner_induct.simps)
+  apply (subst produce_inner.simps)
   apply (simp_all split: sum.splits llist.splits event.splits option.splits)
    apply (subst produce.code)
    apply simp *)
   oops
 
 lemma produce_inner_Some_inversion:
-  assumes "produce_inner_induct (batch_op buf, lxs) = Some (Inl (op, x, xs', lxs'))" (is "produce_inner_induct ?P = Some ?R")
+  assumes "produce_inner (batch_op buf, lxs) = Some (Inl (op, x, xs', lxs'))" (is "produce_inner ?P = Some ?R")
   shows "(\<exists> n wm t d. wm \<ge> t \<and> lnth lxs n = Watermark wm \<and> n < llength lxs \<and> ((t, d) \<in> set buf \<or> Data t d \<in> lset (ltake (enat n) lxs))) \<or>
    (\<exists> wm . x = Watermark wm \<and> xs' = [])"
-  using assms proof (induct ?P ?R arbitrary: buf lxs rule: produce_inner_alt)
+  using assms proof (induct ?P ?R arbitrary: buf lxs rule: produce_inner_induct)
   case (no_production h lxs op')
   then show ?case 
     apply -
@@ -335,7 +336,6 @@ next
     done
 qed
 
-(* FIXME: move to completeness *)
 lemma produce_inner_conditions_to_produce_aux:
   "x \<in> lset lxs \<Longrightarrow>
    x = Watermark wm \<Longrightarrow>
@@ -343,96 +343,73 @@ lemma produce_inner_conditions_to_produce_aux:
    n < llength lxs \<Longrightarrow>
    lnth lxs n = Watermark wm \<Longrightarrow>
    ((t, d) \<in> set buf \<or> (lnth lxs m = Data t d \<and> m < n)) \<Longrightarrow>
-   \<exists> buf' wm' batch lxs' . (produce_inner_induct (batch_op buf, lxs) =
+   \<exists> buf' wm' batch lxs' . (produce_inner (batch_op buf, lxs) =
    Some (Inl (batch_op buf', Data wm' batch, [Watermark wm'], lxs')) \<and> (n = 0 \<longrightarrow> (t, d) \<in> set buf \<longrightarrow> (t, d) \<in> set batch)) \<or>
-   (produce_inner_induct (batch_op buf, lxs) = Some (Inl (batch_op buf', Watermark wm', [], lxs')))"
+   (produce_inner (batch_op buf, lxs) = Some (Inl (batch_op buf', Watermark wm', [], lxs')))"
   apply (induct lxs arbitrary: buf n m t d wm rule: lset_induct)
   subgoal for xs buf
     apply hypsubst_thin
     apply (elim disjE)
     subgoal
-      apply (subst (1 2) produce_inner_induct.simps)
-      apply (auto simp del: batch_op_sel1 batch_op.simps split: prod.splits list.splits llist.splits event.splits option.splits)
-       apply (smt (verit, best) case_prodI event.simps(6) list.simps(3) prod.simps(1) batch_op_sel1 batch_op.sel(2))
-      apply (frule batch_op_buf_some_out_lgc_preserves)
-      apply (elim exE conjE disjE)
-      subgoal for x1 x21 x22 wm' d'
-        apply simp
-        apply safe
-         apply hypsubst_thin
-         apply (smt (verit, ccfv_threshold) Pair_inject case_prodI event.inject(1) event.simps(6) list.inject mem_Collect_eq set_filter batch_op.simps)
-        apply simp
-        done
+      apply (simp del: batch_op_sel1 split: prod.splits list.splits llist.splits event.splits option.splits)
+      apply (intro allI impI conjI)
       subgoal
-        apply blast
+        using batch_op_buf_order_empty_lgc_preserves event.distinct(1) by blast
+      subgoal
+        apply (frule batch_op_buf_some_out_lgc_preserves)
+        apply (elim exE conjE disjE)
+        subgoal
+          by auto
+        subgoal
+          by auto
         done
       done
     subgoal
-      apply (subst (1 2) produce_inner_induct.simps)
-      apply (auto split: option.splits)
-      done
+      by (auto split: option.splits)
     done
   subgoal for x' xs buf n m t d wm
     apply hypsubst_thin
     apply (subgoal_tac "n \<noteq> 0")
      defer
      apply (metis lnth_0)
-    apply (subst (1 2) produce_inner_induct.simps)
-    apply (auto split: event.splits prod.splits list.splits llist.splits option.splits)
+    apply (simp split: event.splits prod.splits list.splits llist.splits option.splits)
+    apply (intro allI impI conjI)
     subgoal premises p for t' d'
-      using p(1,3-) apply -
-      using p(2)[where t=t and n="n - 1" and d=d and buf="buf @ [(t', d')]"] apply -
-      apply (drule meta_spec)+
-      apply (drule meta_mp)
-       apply fast
-      apply (drule meta_mp)
-       apply (metis Suc_diff_1 Suc_ile_eq)
-      apply (drule meta_mp)
-       apply (simp add: lnth_LCons')
-      apply (drule meta_mp)
-       apply (rule disjI1)
-       apply auto
-      done
-    subgoal for t' d'
-      apply (cases n)
-       apply auto
-      subgoal for n'
-        apply (cases m)
-         apply auto
-         apply (metis Suc_ile_eq Un_iff list.set_intros(1) set_append strict_monotone_drop_head)
-        subgoal for m'
-          apply hypsubst_thin
-          apply (drule meta_spec)
-          apply (drule meta_spec[of _ n'])
-          apply (drule meta_spec[of _ m'])
-          apply (drule meta_spec)+
-          apply (drule meta_mp)
-           apply assumption
-          apply (drule meta_mp)
-          using Suc_ile_eq apply blast
-          apply (drule meta_mp)
-           apply blast
-          apply (simp add: lnth_LCons')
-          apply (drule meta_mp)
-           apply (rule disjI2)
-           apply simp
-          apply auto
-          done
+      using p(1,2,4-) apply -
+      using p(3)[where t=t and n="n - 1" and d=d and buf="buf @ [(t', d')]"] apply -
+      apply (elim disjE)
+      subgoal
+        apply (drule meta_spec)+
+        apply (drule meta_mp)
+         apply fast
+        apply (drule meta_mp)
+         apply (metis Suc_diff_1 Suc_ile_eq)
+        apply (drule meta_mp)
+         apply (simp add: lnth_LCons')
+        apply (drule meta_mp)
+         apply (rule disjI1)
+         apply simp
+        apply force
         done
+      subgoal
+        by (metis Suc_eq_plus1_left Suc_ile_eq Suc_pred' diff_add_0 diff_is_0_eq diff_less_mono event.inject(1) in_set_conv_decomp lnth_LCons' old.nat.exhaust)
       done
+    subgoal
+      by blast
+    subgoal
+      by blast
     done
   done
 
-(* FIXME: move to completeness *)
 lemma produce_inner_conditions_to_produce:
   "monotone lxs WM \<Longrightarrow>
    wm \<ge> t \<Longrightarrow>
    n < llength lxs \<Longrightarrow>
    lnth lxs n = Watermark wm \<Longrightarrow>
    ((t, d) \<in> set buf \<or> (lnth lxs m = Data t d \<and> m < n)) \<Longrightarrow>
-   \<exists> buf' wm' batch lxs' . (produce_inner_induct (batch_op buf, lxs) = Some (Inl (batch_op buf', Data wm' batch, [Watermark wm'], lxs')) \<and>
+   \<exists> buf' wm' batch lxs' . (produce_inner (batch_op buf, lxs) = Some (Inl (batch_op buf', Data wm' batch, [Watermark wm'], lxs')) \<and>
    (n = 0 \<longrightarrow> (t, d) \<in> set buf \<longrightarrow> (t, d) \<in> set batch)) \<or>
-   (produce_inner_induct (batch_op buf, lxs) = Some (Inl (batch_op buf', Watermark wm', [], lxs')))"
+   (produce_inner (batch_op buf, lxs) = Some (Inl (batch_op buf', Watermark wm', [], lxs')))"
   apply (rule produce_inner_conditions_to_produce_aux)
        defer
        apply assumption+
@@ -440,21 +417,20 @@ lemma produce_inner_conditions_to_produce:
   done
 
 lemma produce_inner_batch_op_op_watermark_inversion:
-  "produce_inner_induct (batch_op buf, lxs) = Some r \<Longrightarrow>
+  "produce_inner (batch_op buf, lxs) = Some r \<Longrightarrow>
    r = Inl (op, x, xs, lxs') \<Longrightarrow>
    x = Watermark wm \<Longrightarrow>
    xs = [] \<Longrightarrow>
    \<exists> buf' . op = batch_op buf'"
-  apply (induct "(batch_op buf, lxs)" r arbitrary: buf lxs wm op rule: produce_inner_alt)
+  apply (induct "(batch_op buf, lxs)" r arbitrary: buf lxs wm op rule: produce_inner_induct)
     apply (auto split: if_splits event.splits)
   done
 
-
 lemma produce_inner_batch_op_specify_Some:
-  "produce_inner_induct (batch_op buf, lxs) = Some (Inl (op, x, xs, lxs')) \<Longrightarrow>
+  "produce_inner (batch_op buf, lxs) = Some (Inl (op, x, xs, lxs')) \<Longrightarrow>
    monotone lxs WM \<Longrightarrow>
-   \<exists> buf' wm d lxs'. produce_inner_induct (batch_op buf, lxs) = Some (Inl (batch_op buf', Data wm d, [Watermark wm], lxs')) \<or> 
-   produce_inner_induct (batch_op buf, lxs) = Some (Inl (batch_op buf', Watermark wm, [], lxs'))"
+   \<exists> buf' wm d lxs'. produce_inner (batch_op buf, lxs) = Some (Inl (batch_op buf', Data wm d, [Watermark wm], lxs')) \<or> 
+   produce_inner (batch_op buf, lxs) = Some (Inl (batch_op buf', Watermark wm, [], lxs'))"
   apply (frule produce_inner_Some_inversion)
   apply safe
   subgoal
@@ -465,7 +441,7 @@ lemma produce_inner_batch_op_specify_Some:
     apply auto
     done
   subgoal for n wm t d
-    apply (auto simp add: in_lset_conv_lnth)
+    apply (clarsimp simp add: in_lset_conv_lnth)
     subgoal for m
       apply (drule produce_inner_conditions_to_produce[where buf=buf and n=n and m=m and d=d])
           apply simp_all
@@ -487,20 +463,20 @@ lemma not_in_buf_produce_Watermark:
 lemma produce_Data:
   "produce (batch_op buf) (LCons (Data t d) lxs) = produce (batch_op (buf@[(t, d)])) lxs"
   apply (subst (1 2) produce.code)
-  apply (subst (1) produce_inner_induct.simps)
+  apply (subst (1) produce_inner.simps)
   apply (auto split: llist.splits event.splits prod.splits list.splits option.splits)
   done
 
 lemma produce_inner_batch_op_inversion:
-  "produce_inner_induct (batch_op buf, lxs) = Some r \<Longrightarrow>
+  "produce_inner (batch_op buf, lxs) = Some r \<Longrightarrow>
    r = Inl (lgc', x, xs', lxs') \<Longrightarrow>
    \<exists> buf' n . lgc' = batch_op buf' \<and> lxs' = ldropn n lxs \<and> n > 0"
   subgoal premises prems
     using prems apply -
-    apply (induct "(batch_op buf, lxs)" r arbitrary: buf lxs rule: produce_inner_alt)
+    apply (induct "(batch_op buf, lxs)" r arbitrary: buf lxs rule: produce_inner_induct)
     using prems apply simp
     subgoal for h lxs lgc'a zs buf
-      apply (subst (asm) (1) produce_inner_induct.simps)
+      apply (subst (asm) (1) produce_inner.simps)
       apply (simp split: llist.splits event.splits)
       subgoal for  t d
         apply hypsubst_thin
@@ -514,7 +490,7 @@ lemma produce_inner_batch_op_inversion:
         apply (drule meta_spec)+
         apply (drule meta_mp)
          apply (rule refl)
-        apply (auto split: if_splits prod.splits)
+        apply (simp split: if_splits prod.splits)
          apply (metis ldropn_Suc_LCons zero_less_Suc)+
         done
       subgoal 
@@ -523,7 +499,7 @@ lemma produce_inner_batch_op_inversion:
         by (meson Pair_inject list.discI)
       done
     subgoal for h buf
-      apply (subst (asm) produce_inner_induct.simps)
+      apply (subst (asm) produce_inner.simps)
       apply (simp split: llist.splits event.splits if_splits)
        apply (metis ldropn_0 ldropn_Suc_LCons zero_less_Suc)
       apply (metis ldropn_0 ldropn_Suc_LCons zero_less_Suc)
@@ -533,25 +509,99 @@ lemma produce_inner_batch_op_inversion:
   done
 
 lemma produce_inner_batch_op_inversion_2:
-  "produce_inner_induct (batch_op buf, lxs) = Some (Inl (lgc', x, xs', lxs')) \<Longrightarrow> \<exists> buf' . lgc' = batch_op buf'"
+  "produce_inner (batch_op buf, lxs) = Some (Inl (lgc', x, xs', lxs')) \<Longrightarrow> \<exists> buf' . lgc' = batch_op buf'"
   using produce_inner_batch_op_inversion by blast
 
 lemma produce_inner_skip_n_productions_op_batch_op_Some_batch:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
-   r = Inl (op, x, xs, lxs') \<Longrightarrow>
-   \<exists> wm batch. x = Data wm batch \<and> xs = [Watermark wm] \<or> x = Watermark wm \<and> xs = []"
-  apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: op buf lxs n rule: produce_inner_alt)
-  subgoal
-    apply (auto split: event.splits if_splits)
-      apply (metis skip_n_productions_op_0)+
-    done
-  subgoal
-    apply (auto split: event.splits if_splits)
-     apply (metis drop_Cons' drop_Nil list.discI list.inject)
-    apply (metis drop_Cons' drop_Nil list.distinct(1) list.inject)
-    done
-  apply auto
-  done
+  assumes "produce_inner (skip_n_productions_op (batch_op buf) n, lxs) = Some (Inl (op, x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
+  shows "\<exists> wm batch. x = Data wm batch \<and> xs = [Watermark wm] \<or> x = Watermark wm \<and> xs = []"
+  using assms proof (induct ?P ?R arbitrary: op buf lxs n rule: produce_inner_induct)
+  case (no_production h lxs op')
+  then show ?case
+  proof (cases h)
+    case (Data t d)
+    from this no_production(1,2) show ?thesis 
+    proof -
+      have H1: "\<exists>wm. (\<exists>batch. x = Data wm batch) \<and> xs = [Watermark wm] \<or> x = Watermark wm \<and> xs = []"
+        if "\<And>buf n. op' = skip_n_productions_op (batch_op buf) n \<Longrightarrow> \<exists>wm. (\<exists>batch. x = Data wm batch) \<and> xs = [Watermark wm] \<or> x = Watermark wm \<and> xs = []"
+          and "h = Data t d"
+          and "0 < n"
+          and "skip_n_productions_op (batch_op (buf @ [(t, d)])) n = op'"
+        using that     by blast
+      moreover have H2: "\<exists>wm. (\<exists>batch. x = Data wm batch) \<and> xs = [Watermark wm] \<or> x = Watermark wm \<and> xs = []"
+        if "\<And>buf n. op' = skip_n_productions_op (batch_op buf) n \<Longrightarrow> \<exists>wm. (\<exists>batch. x = Data wm batch) \<and> xs = [Watermark wm] \<or> x = Watermark wm \<and> xs = []"
+          and "h = Data t d"
+          and "n = 0"
+          and "batch_op (buf @ [(t, d)]) = op'"
+        using that 
+        by (metis skip_n_productions_op_0)
+      from H1 H2 Data no_production show ?thesis
+        by (simp split: event.splits if_splits)
+    qed
+  next
+    case (Watermark wm)
+    from this no_production(1) show ?thesis 
+    proof -
+      have H1: "\<exists>wm. (\<exists>batch. x = Data wm batch) \<and> xs = [Watermark wm] \<or> x = Watermark wm \<and> xs = []"
+        if "skip_n_productions_op (batch_op (filter (\<lambda>(t', d). \<not> t' \<le> wm) buf)) (n - Suc (Suc 0)) = op'"
+          and "\<exists>x\<in>set buf. case x of (t, d) \<Rightarrow> t \<le> wm"
+          and "Suc (Suc 0) < n"
+        using that no_production(2) by blast
+      moreover have H2: "\<exists>wm. (\<exists>batch. x = Data wm batch) \<and> xs = [Watermark wm] \<or> x = Watermark wm \<and> xs = []"
+        if "skip_n_productions_op (batch_op buf) (n - Suc 0) = op'"
+          and "\<And>buf n. op' = skip_n_productions_op (batch_op buf) n \<Longrightarrow> \<exists>wm. (\<exists>batch. x = Data wm batch) \<and> xs = [Watermark wm] \<or> x = Watermark wm \<and> xs = []"
+          and "h = Watermark wm"
+          and "\<forall>x\<in>set buf. \<not> (case x of (t, d) \<Rightarrow> t \<le> wm)"
+          and "Suc 0 < n"
+        using that no_production(2) by blast
+      moreover have H3: "\<exists>wm. (\<exists>batch. x = Data wm batch) \<and> xs = [Watermark wm] \<or> x = Watermark wm \<and> xs = []"
+        if "\<And>buf n. op' = skip_n_productions_op (batch_op buf) n \<Longrightarrow> \<exists>wm. (\<exists>batch. x = Data wm batch) \<and> xs = [Watermark wm] \<or> x = Watermark wm \<and> xs = []"
+          and "h = Watermark wm"
+          and "\<exists>x\<in>set buf. case x of (t, d) \<Rightarrow> t \<le> wm"
+          and "batch_op (filter (\<lambda>(t', d). \<not> t' \<le> wm) buf) = op'"
+          and "Suc (Suc 0) = n"
+        using that no_production(2) by (metis skip_n_productions_op_0)
+      moreover have H4: "\<exists>wm. (\<exists>batch. x = Data wm batch) \<and> xs = [Watermark wm] \<or> x = Watermark wm \<and> xs = []"
+        if "\<And>buf n. op' = skip_n_productions_op (batch_op buf) n \<Longrightarrow> \<exists>wm. (\<exists>batch. x = Data wm batch) \<and> xs = [Watermark wm] \<or> x = Watermark wm \<and> xs = []"
+          and "h = Watermark wm"
+          and "\<forall>x\<in>set buf. \<not> (case x of (t, d) \<Rightarrow> t \<le> wm)"
+          and "batch_op buf = op'"
+          and "Suc 0 = n"
+        using that no_production(2) by (metis skip_n_productions_op_0)
+      from H1 H2 H3 H4 no_production Watermark show ?thesis
+        by (simp split: event.splits if_splits)
+    qed
+  qed
+next
+  case (produces h lxs op')
+  then show ?case 
+  proof (cases h)
+    case (Data t d)
+    from this produces show ?thesis by (clarsimp split: event.splits if_splits)
+  next
+    case (Watermark wm)
+    show ?thesis
+    proof -
+      have "\<exists>wm. (\<exists>batch. x = Data wm batch) \<and> xs = [Watermark wm] \<or> x = Watermark wm \<and> xs = []"
+        if "drop n [Data wm (filter (\<lambda>(t', d). t' \<le> wm) buf), Watermark wm] = x # xs"
+          and "\<not> Suc (Suc 0) < n"
+          and "(t, d) \<in> set buf"
+          and "t \<le> wm"
+        for t :: 'a
+          and d :: 'b
+        using that 
+        by (smt (verit) diff_Suc_1 drop0 drop_Cons' drop_eq_Nil2 leI length_Cons less_2_cases list.size(3) not_less_iff_gr_or_eq nth_via_drop numeral_2_eq_2)
+      moreover have "\<exists>wm. (\<exists>batch. x = Data wm batch) \<and> xs = [Watermark wm] \<or> x = Watermark wm \<and> xs = []"
+        if "\<forall>x\<in>set buf. \<not> (case x of (t, d) \<Rightarrow> t \<le> wm)"
+          and "drop n [Watermark wm] = x # xs"
+          and "\<not> Suc 0 < n"
+        using that 
+        by (metis drop_Cons' drop_Nil list.discI list.sel(3) nth_Cons_0)
+      ultimately show ?thesis
+        using Watermark produces by (clarsimp split: if_splits)
+    qed
+  qed
+qed
 
 lemma produce_skip_n_productions_op_batch_op_n_Data_Suc_n_Watermark:
   "enat n < llength (produce (skip_n_productions_op (batch_op buf) i) lxs) \<Longrightarrow>
@@ -628,331 +678,219 @@ lemma produce_skip_n_productions_op_batch_op_n_Data_Suc_n_Watermark:
     done
   done
 
-lemma produce_inner_skip_n_productions_op_Some_Data_Watermark_in:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
-   r = Inl (lgc', x, xs, lxs') \<Longrightarrow>
-   x = Data wm batch \<Longrightarrow>
-   Watermark wm \<in> lset lxs"
-  apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: n buf lxs lxs' xs batch wm lgc' rule: produce_inner_alt)
-  subgoal for h lxs' lgc' n buf lxs'a xs lgc'a batch wm
-    apply (auto split: if_splits event.splits)
-      apply (metis skip_n_productions_op_0)+
-    done
-  subgoal for h xa xs lxs lxs' lgc' n buf lxs'a xsa batch wm lgc'a
-    apply hypsubst_thin
-    apply (auto split: if_splits event.splits)
-     apply (subgoal_tac "n = 1 \<or> n = 0")
-      defer
-      apply (metis (mono_tags, lifting) One_nat_def Suc_lessI add.commute bot_nat_0.not_eq_extremum drop_eq_Nil2 leI list.discI list.size(3) list.size(4) plus_1_eq_Suc)
-     apply (auto split: if_splits event.splits)
-    apply (metis drop_Cons' drop_Nil event.distinct(1) list.distinct(1) nth_Cons_0)
-    done
-  apply auto
-  done
-
 lemma in_buf_produce_Watermark:
   "\<exists> (t, d) \<in> set buf . t \<le> wm \<Longrightarrow>
    produce (batch_op buf) (LCons (Watermark wm) lxs) = LCons (Data wm (filter (\<lambda> (t, d) . t \<le> wm) buf)) (LCons (Watermark wm) ((produce (batch_op (filter (\<lambda>(t, _). \<not> t \<le> wm) buf)) lxs)))"
-  apply (subst produce.code)
-  apply (subst produce_inner_induct.simps)
-  apply (simp split: prod.splits list.splits option.splits)
-  done
+  by (simp split: prod.splits list.splits option.splits)
 
 lemma produce_inner_skip_n_productions_op_batch_op_xs:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
-   r = Inl (op, x, xs, lxs') \<Longrightarrow>
-   x = Data wm batch \<Longrightarrow>
-   xs = [Watermark wm]"
-  apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: lxs lxs' op buf x xs n rule: produce_inner_alt)
-  subgoal for h lxs' lgc' lxs'a op buf x xs n
-    apply (auto simp add:  in_buf_produce_Watermark split: event.splits if_splits)
-      apply (metis skip_n_productions_op_0)+
-    done
-  subgoal for h x xs lxs' lgc' buf n
-    apply (auto simp add: in_buf_produce_Watermark split: event.splits if_splits)
-     apply (smt (verit, ccfv_threshold) drop_Cons' drop_eq_Nil2 event.distinct(1) event.inject(1) leI length_Cons less_Suc0 list.inject list.size(3))
-    apply (metis drop_Cons' drop_Nil event.distinct(1) list.distinct(1) nth_Cons_0)
-    done
-  apply auto
-  done
+  assumes "produce_inner (skip_n_productions_op (batch_op buf) n, lxs) = Some (Inl (op, x, xs, lxs'))" (is "produce_inner ?P = Some ?R")
+    and "x = Data wm batch"
+  shows "xs = [Watermark wm]"
+  using assms proof (induct ?P ?R arbitrary: lxs lxs' op buf x xs n rule: produce_inner_induct)
+  case (no_production h lxs op' lxs' op buf x xs n)
+  then show ?case 
+  proof (cases h)
+    case (Data t d)
+    show ?thesis 
+    proof -
+      have "xs = [Watermark wm]"
+        if "0 < n"
+          and "op' = skip_n_productions_op (batch_op (buf @ [(t, d)])) n"
+        using that no_production(3,2) by blast
+      moreover have "xs = [Watermark wm]"
+        if "n = 0"
+          and "op' = batch_op (buf @ [(t, d)])"
+        using that no_production by (metis skip_n_productions_op_0)
+      ultimately show ?thesis
+        using no_production(1,3) Data by (clarsimp simp add: split: event.splits if_splits)
+    qed
+  next
+    case (Watermark wm')
+    show ?thesis 
+    proof -
+      have "xs = [Watermark wm]"
+        if "op' = batch_op (filter (\<lambda>(t', d). \<not> t' \<le> wm') buf)"
+          and "n = Suc (Suc 0)"
+          and "(t, d) \<in> set buf"
+          and "t \<le> wm'"
+          and "apply (skip_n_productions_op (batch_op buf) (Suc (Suc 0))) h = (batch_op (filter (\<lambda>(t', d). \<not> t' \<le> wm') buf), [])"
+          and "x = Data wm batch"
+        for t :: 'a
+          and d :: 'b
+        using that no_production(2) by (metis skip_n_productions_op_0)
+      moreover have "xs = [Watermark wm]"
+        if "\<forall>x\<in>set buf. \<not> (case x of (t, d) \<Rightarrow> t \<le> wm')"
+          and "op' = batch_op buf"
+          and "n = Suc 0"
+          and "apply (skip_n_productions_op (batch_op buf) (Suc 0)) h = (batch_op buf, [])"
+          and "x = Data wm batch"
+        using that no_production(2) by (metis skip_n_productions_op_0)
+      ultimately show ?thesis
+        using no_production(1,3) by (clarsimp simp add: no_production (2) Watermark split: event.splits if_splits)
+    qed
+  qed
+next
+  case (produces h x xs lxs lxs' op' buf n)
+  then show ?case 
+  proof (cases h)
+    case (Data t d)
+    then show ?thesis 
+      using produces by (clarsimp split: if_splits)
+  next
+    case (Watermark wm')
+    show ?thesis 
+    proof -
+      have "xs = [Watermark wm]"
+        if "drop n [Data wm' (filter (\<lambda>(t', d). t' \<le> wm') buf), Watermark wm'] = Data wm batch # xs"
+          and "\<not> Suc (Suc 0) < n"
+          and "(t, d) \<in> set buf"
+          and "t \<le> wm'"
+        for t :: 'a
+          and d :: 'b
+        using produces
+        by (metis event.distinct(1) event.sel(1) produce_inner_skip_n_productions_op_batch_op_Some_batch)
+      moreover have "xs = [Watermark wm]"
+        if "\<forall>x\<in>set buf. \<not> fst x \<le> wm'"
+          and "drop n [Watermark wm'] = Data wm batch # xs"
+          and "\<not> Suc 0 < n"
+        using that produces
+        by (metis drop_Cons' drop_Nil event.simps(4) list.inject list.sel(3) not_Cons_self tl_drop)
+      ultimately show ?thesis
+        using produces apply -
+        by (auto simp add: Watermark split_beta split: if_splits prod.splits)
+    qed
+  qed
+qed
 
-lemma produce_inner_skip_n_productions_op_in_ts_or_buf_Inr:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
-   r = Inr op \<Longrightarrow>
-   Data wm batch \<in> lset (exit op) \<Longrightarrow>
-   t' \<le> wm \<Longrightarrow>
-   t' \<in> fst ` set batch \<Longrightarrow>
-   monotone lxs WM \<Longrightarrow>
-   t' \<in> ts lxs wm \<or> t' \<in> fst ` set buf"
-  subgoal premises prems
-    using prems apply -
-    apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: lxs op buf n wm batch rule: produce_inner_alt)
-    using prems apply simp
-      apply (auto 0 0 split: if_splits sum.splits event.splits)
-    subgoal
-      apply (drule meta_spec)+
-      apply (drule meta_mp)
-       apply simp
-      apply (drule meta_mp)
-       apply (subst (asm) produce_inner_induct.simps)
-       apply (auto split: if_splits)[1]
-      apply (drule meta_mp)
-       apply simp
-      apply (drule meta_mp)
-       apply assumption
-      apply (drule meta_mp)
-       apply (simp add: rev_image_eqI)
-      apply (drule meta_mp)
-      using strict_monotone_remove_wm apply blast
-      apply simp
-      apply blast
-      done
-    subgoal
-      apply (drule meta_spec)+
-      apply (drule meta_mp)
-       apply simp
-      apply (drule meta_mp)
-       apply (subst (asm) produce_inner_induct.simps)
-       apply (auto split: if_splits)[1]
-      apply (drule meta_mp)
-       apply simp
-      apply (drule meta_mp)
-       apply assumption
-      apply (drule meta_mp)
-       apply (simp add: rev_image_eqI)
-      apply (drule meta_mp)
-      using strict_monotone_remove_wm apply blast
-      apply auto
-      done
-    subgoal
-      apply (drule meta_spec)+
-      apply (drule meta_mp)
-       apply simp
-      apply (drule meta_mp)
-       apply (subst (asm) produce_inner_induct.simps)
-       apply (auto split: if_splits)[1]
-      apply (drule meta_mp)
-       apply simp
-      apply (drule meta_mp)
-       apply assumption
-      apply (drule meta_mp)
-       apply (simp add: rev_image_eqI)
-      apply (drule meta_mp)
-      using strict_monotone_remove_wm apply blast
-      apply auto
-      done
-    subgoal
-      apply (drule meta_spec)
-      apply (drule meta_spec[of _ 0])
-      apply (drule meta_spec)+
-      apply (drule meta_mp)
-       apply simp
-      apply (drule meta_mp)
-       apply (subst (asm) produce_inner_induct.simps)
-       apply auto[1]
-      apply (drule meta_mp)
-       apply assumption
-      apply (drule meta_mp)
-       apply assumption
-      apply (drule meta_mp)
-       apply (subst (asm) produce_inner_induct.simps)
-       apply auto[1]
-       apply (metis fst_conv image_iff)
-      apply (drule meta_mp)
-      using strict_monotone_remove_wm apply blast
-      apply auto
-      done
-    subgoal
-      apply (drule meta_spec)
-      apply (drule meta_spec[of _ 0])
-      apply (drule meta_spec)+
-      apply (drule meta_mp)
-       apply simp
-      apply (drule meta_mp)
-       apply (subst (asm) produce_inner_induct.simps)
-       apply (auto split: if_splits)[1]
-      apply (drule meta_mp)
-       apply assumption
-      apply (drule meta_mp)
-       apply assumption
-      apply (drule meta_mp)
-       apply (subst (asm) produce_inner_induct.simps)
-       apply (auto split: if_splits)[1]
-       apply (metis fst_conv image_iff)
-      apply (drule meta_mp)
-      using strict_monotone_remove_wm apply blast
-      apply auto
-      done
-    subgoal
-      apply (drule meta_spec)
-      apply (drule meta_spec[of _ 0])
-      apply (drule meta_spec)+
-      apply (drule meta_mp)
-       apply simp
-      apply (drule meta_mp)
-       apply (subst (asm) produce_inner_induct.simps)
-       apply (auto split: if_splits)[1]
-      apply (drule meta_mp)
-       apply assumption
-      apply (drule meta_mp)
-       apply assumption
-      apply (drule meta_mp)
-       apply force
-      apply (drule meta_mp)
-      using strict_monotone_remove_wm apply blast
-      apply auto
-      done
-    subgoal for buf n wm batch b
-      apply (simp add: ldrop_llist_of)
-      using batches_from_buf apply (metis fst_conv imageI in_set_dropD)
-      done
-    done
-  done
-
-lemma produce_inner_inner_skip_n_productions_batch_op_batch_le:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
-   r = Inl (op, x, xs, lxs') \<Longrightarrow>
-   x = Data wm batch \<Longrightarrow>
-   xs = [Watermark wm] \<Longrightarrow>
-  t \<in> fst ` set batch \<Longrightarrow>
-   t \<le> wm"
-  apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: lxs lxs' op buf x xs n rule: produce_inner_alt)
-  subgoal
-    apply (auto split: if_splits event.splits)
-      apply (metis skip_n_productions_op_0)+
-    done
-  subgoal
-    apply (auto split: if_splits event.splits)
-     apply (metis (mono_tags, lifting) case_prod_unfold drop0 drop_Suc_Cons event.inject(1) fst_conv less_2_cases list.discI list.inject mem_Collect_eq not_less_iff_gr_or_eq numeral_2_eq_2 set_filter)
-    apply (metis list.sel(2) list.sel(3) not_Cons_self tl_drop)
-    done
-  apply auto
-  done
-
-(*FIXME: move these lemmas*)
-lemma produce_inner_skip_n_productions_op_batch_op_Inr_not_out_of_the_blue:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
-   r = Inr op \<Longrightarrow>
-   monotone lxs WM \<Longrightarrow>
-   \<not> (\<exists> d. Data t d \<in> lset lxs) \<Longrightarrow>
-   t \<notin> fst ` set buf \<Longrightarrow>
-   Data wm batch \<in> lset (exit op) \<Longrightarrow> (t, d) \<in> set batch \<Longrightarrow> False"
-  apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: n lxs op buf wm batch rule: produce_inner_alt)
-  subgoal for h lxs lgc' zs n buf op wm batch
-    apply (auto split: if_splits event.splits)
-    subgoal for t' d
-      apply (drule meta_spec[of _ n])
-      apply (drule meta_spec[of _ "buf @ [(t', d)]"])
-      apply (drule meta_spec)+
-      apply (drule meta_mp)
-       apply simp
-      apply (drule meta_mp)
-       apply (rule refl)
-      apply (drule meta_mp)
-      using strict_monotone_remove_wm apply blast
-      apply (drule meta_mp)
-       apply auto[1]
-      apply (drule meta_mp)
-       apply force
-      apply (drule meta_mp)
-       apply assumption
-      apply blast
-      done
-    subgoal for wm t' d
-      apply hypsubst_thin
-      apply (drule meta_spec[of _ "n - Suc (Suc 0)"])
-      apply (drule meta_spec[of _ "filter (\<lambda>(t, _). \<not> t \<le> wm) buf"])
-      apply (drule meta_spec)+
-      apply (drule meta_mp)
-       apply simp
-      apply (drule meta_mp)
-       apply (rule refl)
-      apply (drule meta_mp)
-      using strict_monotone_remove_wm apply blast
-      apply (drule meta_mp)
-       apply auto[1]
-      apply assumption
-      done
-    subgoal for wm
-      apply hypsubst_thin
-      apply (drule meta_spec[of _ "n - Suc 0"])
-      apply (drule meta_spec[of _ "buf"])
-      apply (drule meta_spec)+
-      apply (drule meta_mp)
-       apply simp
-      apply (drule meta_mp)
-       apply (rule refl)
-      apply (drule meta_mp)
-      using strict_monotone_remove_wm apply blast
-      apply (drule meta_mp)
-       apply auto[1]
-      apply assumption
-      done
-    subgoal for t' d
-      apply hypsubst_thin
-      apply (drule meta_spec[of _ "0"])
-      apply (drule meta_spec[of _ "buf @ [(t', d)]"])
-      apply (drule meta_spec)+
-      apply (drule meta_mp)
-       apply simp
-      apply (drule meta_mp)
-       apply (rule refl)
-      apply (drule meta_mp)
-      using strict_monotone_remove_wm apply blast
-      apply (drule meta_mp)
-       apply auto[1]
-      apply assumption
-      done
-    subgoal for wm t' d
-      apply hypsubst_thin
-      apply (drule meta_spec[of _ "0"])
-      apply (drule meta_spec[of _ "filter (\<lambda>(t, _). \<not> t \<le> wm) buf"])
-      apply (drule meta_spec)+
-      apply (drule meta_mp)
-       apply simp
-      apply (drule meta_mp)
-       apply (rule refl)
-      apply (drule meta_mp)
-      using strict_monotone_remove_wm apply blast
-      apply (drule meta_mp)
-       apply auto[1]
-      apply assumption
-      done
-    subgoal for wm
-      apply hypsubst_thin
-      apply (drule meta_spec[of _ "0"])
-      apply (drule meta_spec[of _ "buf"])
-      apply (drule meta_spec)+
-      apply (drule meta_mp)
-       apply simp
-      apply (drule meta_mp)
-       apply (rule refl)
-      apply (drule meta_mp)
-      using strict_monotone_remove_wm apply blast
-      apply (drule meta_mp)
-       apply auto[1]
-      apply assumption
-      done
-    done
-   apply (auto split: if_splits event.splits)
-  apply (metis fst_eqD in_lset_ldropD lset_llist_of rev_image_eqI batches_from_buf)
-  done
-
+(*FIXME: move these lemmas? *)
 lemma produce_inner_skip_n_productions_op_batch_op_Inr_in_batch_from_buf_or_lxs:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
-   r = Inr op \<Longrightarrow>
-   Data wm batch \<in> lset (exit op) \<Longrightarrow>  (t, d) \<in> set batch \<Longrightarrow> t \<le> wm \<and> ((t, d) \<in> set buf \<or> Data t d \<in> lset lxs)"
-  apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: n lxs op buf wm batch rule: produce_inner_alt)
-  subgoal for h lxs lgc' zs n buf op wm batch
+  assumes  "produce_inner (skip_n_productions_op (batch_op buf) n, lxs) = Some (Inr op)" (is "produce_inner ?P = Some ?R")
+    and "Data wm batch \<in> lset (exit op)"
+    and "(t, d) \<in> set batch"
+  shows "t \<le> wm \<and> ((t, d) \<in> set buf \<or> Data t d \<in> lset lxs)"
+  using assms proof (induct ?P ?R arbitrary: n lxs op buf wm batch rule: produce_inner_induct)
+  case (no_production h lxs op' n op buf wm batch)
+  then show ?case 
+  proof (cases h)
+    case (Data t' d')
+    then show ?thesis 
+    proof -
+      have "t \<le> wm \<and> ((t, d) \<in> set buf \<or> t = t' \<and> d = d' \<or> Data t d \<in> lset lxs)"
+        if "Data wm batch \<in> lset (exit op)"
+          and "(t, d) \<in> set batch"
+          and "0 < n"
+        using Data that no_production by (fastforce split: if_splits event.splits)
+      moreover have "t \<le> wm \<and> ((t, d) \<in> set buf \<or> t = t' \<and> d = d' \<or> Data t d \<in> lset lxs)"
+        if "Data wm batch \<in> lset (exit op)"
+          and "(t, d) \<in> set batch"
+        using Data that no_production by (fastforce split: if_splits event.splits)
+      ultimately show ?thesis
+        using Data no_production(1,3-) apply -
+        by (clarsimp split: if_splits event.splits)
+    qed
+  next
+    case (Watermark wm')
+    then show ?thesis 
+  proof -
+  have "(t, d) \<in> set buf"
+    if "Data wm batch \<in> lset (exit op)"
+      and "(t, d) \<in> set batch"
+      and "Suc (Suc 0) < n"
+      and "(a, b) \<in> set buf"
+      and "a \<le> wm'"
+      and "Data t d \<notin> lset lxs"
+    for a :: 'a
+      and b :: 'b
+    using that Watermark no_production
+    by (fastforce simp add: split_beta split: if_splits event.splits prod.splits)
+  moreover have "t \<le> wm \<and> ((t, d) \<in> set buf \<or> Data t d \<in> lset lxs)"
+    if "Data wm batch \<in> lset (exit op)"
+      and "(t, d) \<in> set batch"
+      and "(a, b) \<in> set buf"
+      and "a \<le> wm'"
+    for a :: 'a
+      and b :: 'b
+    using calculation that Watermark no_production apply -
+    apply (clarsimp simp add: split_beta split: if_splits event.splits prod.splits)
+
+    thm skip_n_productions_op_0
+
+end
+  moreover have "t \<le> wm \<and> ((t, d) \<in> set buf \<or> Data t d \<in> lset lxs)"
+    if "Data wm batch \<in> lset (exit op)"
+      and "(t, d) \<in> set batch"
+      and "\<forall>x\<in>set buf. \<not> fst x \<le> wm'"
+    using that sorry
+  ultimately show ?thesis
+  using Watermark no_production(1,3-) apply -
+    by (clarsimp simp add: no_production (2) split_beta split: if_splits event.splits prod.splits)
+qed
+
+      oops
+        proof -
+  have "t \<le> wm \<and> ((t, d) \<in> set buf \<or> Data t d \<in> lset lxs)"
+    if "Data wm batch \<in> lset (exit op)"
+      and "(t, d) \<in> set batch"
+      and "Suc (Suc 0) < n"
+      and "(t', d') \<in> set buf"
+      and "t' \<le> wm'"
+    for t' :: 'a
+      and d' :: 'b
+    using Watermark that no_production by (fastforce split: if_splits event.splits)
+  moreover have "t \<le> wm \<and> ((t, d) \<in> set buf \<or> Data t d \<in> lset lxs)"
+    if "Data wm batch \<in> lset (exit op)"
+      and "(t, d) \<in> set batch"
+      and "\<forall>x\<in>set buf. \<not> fst x \<le> wm'"
+      and "Suc 0 < n"
+    using Watermark that no_production by (fastforce split: if_splits event.splits)
+  moreover have "t \<le> wm \<and> ((t, d) \<in> set buf \<or> Data t d \<in> lset lxs)"
+    if "Data wm batch \<in> lset (exit op)"
+      and "(t, d) \<in> set batch"
+      and "(t', d') \<in> set buf"
+      and "t' \<le> wm'"
+    for t' :: 'a
+      and d' :: 'b
+    using Watermark that no_production(1,3-) apply -
+    apply (clarsimp simp add: split_beta split: if_splits event.splits prod.splits; hypsubst_thin?)
+    subgoal
+    using calculation(1) by blast
+  subgoal
+    by fastforce
+  subgoal
+    using no_production Watermark
+    
+    oops
+    by (metis filter_set member_filter skip_n_productions_op_0)
+    subgoal
+    by fastforce
+  oops
+end
+  moreover have "t \<le> wm \<and> ((t, d) \<in> set buf \<or> Data t d \<in> lset lxs)"
+    if "Data wm batch \<in> lset (exit op)"
+      and "(t, d) \<in> set batch"
+      and "\<forall>x\<in>set buf. \<not> fst x \<le> wm'"
+    using that sorry
+  ultimately show ?thesis
+    using Watermark no_production(1,3-) by (clarsimp simp add: split_beta split: if_splits event.splits prod.splits)
+qed
+  qed
+
+
+
+    oops
+end
+next
+  case terminates
+  then show ?case sorry
+qed
+  subgoal for h lxs op' n op buf wm batch
     apply (simp split: if_splits event.splits)
          apply fastforce
     subgoal for wm
       apply hypsubst_thin
       apply (drule meta_spec[of _ "n - Suc (Suc 0)"])
-      apply (drule meta_spec[of _ "filter (\<lambda>(t, _). \<not> t \<le> wm) buf"])
       apply (drule meta_spec)+
-      apply (drule meta_mp)
-       apply simp
       apply (drule meta_mp)
        apply (rule refl)
       apply (drule meta_mp)
@@ -1006,14 +944,14 @@ lemma produce_inner_skip_n_productions_op_batch_op_Inr_in_batch_from_buf_or_lxs:
   done
 
 lemma produce_inner_no_timestamps_out_of_the_blue:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
    r = Inl (op, x, xs, lxs') \<Longrightarrow>
    x = Data wm batch \<Longrightarrow>
    xs = [Watermark wm] \<Longrightarrow>
    t \<notin> fst ` set buf \<Longrightarrow>
    \<not> (\<exists> d . Data t d \<in> lset lxs) \<Longrightarrow>
    t \<notin> fst ` set batch"
-  apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: lxs lxs' op buf x xs n   rule: produce_inner_alt)
+  apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: lxs lxs' op buf x xs n   rule: produce_inner_induct)
   subgoal for h lxs' lgc' lxs'a op buf x xs n
     apply (auto split: if_splits event.splits)
     using image_iff apply fastforce 
@@ -1059,20 +997,19 @@ lemma produce_no_timestamps_out_of_the_blue:
   apply (metis produce_skip_n_productions_op_LCons)
   done
 
-
 lemma produce_inner_skip_n_productions_op_timestamp_not_produced_again_later_aux:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
    r = Inl (op, x, xs, lxs') \<Longrightarrow>
    x = Data wm batch \<Longrightarrow>
    xs = [Watermark wm] \<Longrightarrow>
    monotone lxs WM \<Longrightarrow>
    t \<in> fst ` set batch \<Longrightarrow>
    m > n \<Longrightarrow>
-   produce_inner_induct (skip_n_productions_op (batch_op buf) m, lxs) = Some (Inl (lgc', x', xs', lxs'')) \<Longrightarrow>
+   produce_inner (skip_n_productions_op (batch_op buf) m, lxs) = Some (Inl (lgc', x', xs', lxs'')) \<Longrightarrow>
    x' = Data wm' batch' \<Longrightarrow>
    xs' = [Watermark wm'] \<Longrightarrow>
    t \<notin> fst ` set batch'"
-  apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: lxs lxs' op buf x xs n m rule: produce_inner_alt)
+  apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: lxs lxs' op buf x xs n m rule: produce_inner_induct)
   subgoal for h lxs lgc'a zs buf n lxs'' op x xs m
     apply (simp split: event.splits if_splits option.splits)
     subgoal for t d
@@ -1258,26 +1195,26 @@ lemma produce_inner_skip_n_productions_op_timestamp_not_produced_again_later_aux
   done
 
 lemma produce_inner_skip_n_productions_op_timestamp_not_produced_again_later:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, lxs) = Some (Inl (op, x, xs, lxs')) \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (batch_op buf) n, lxs) = Some (Inl (op, x, xs, lxs')) \<Longrightarrow>
    x = Data wm batch \<Longrightarrow>
    xs = [Watermark wm] \<Longrightarrow>
    t \<in> fst ` set batch \<Longrightarrow>
    monotone lxs WM \<Longrightarrow>
    n' < n \<Longrightarrow>
-   produce_inner_induct (skip_n_productions_op (batch_op buf) n', lxs) = Some (Inl (lgc', x', xs', lxs'')) \<Longrightarrow>
+   produce_inner (skip_n_productions_op (batch_op buf) n', lxs) = Some (Inl (lgc', x', xs', lxs'')) \<Longrightarrow>
    x' = Data wm' batch' \<Longrightarrow>
    t \<notin> fst ` set batch'"
   apply (metis produce_inner_skip_n_productions_op_batch_op_xs produce_inner_skip_n_productions_op_timestamp_not_produced_again_later_aux)
   done 
 
 lemma produce_inner_batch_op_batch_le:
-  "produce_inner_induct (batch_op buf, lxs) = Some r \<Longrightarrow>
+  "produce_inner (batch_op buf, lxs) = Some r \<Longrightarrow>
    r = Inl (op, x, xs, lxs') \<Longrightarrow>
    x = Data wm batch \<Longrightarrow>
    xs = [Watermark wm] \<Longrightarrow>
   (t, b) \<in> set batch \<Longrightarrow>
    t \<le> wm"
-  apply (induct "(batch_op buf, lxs)" r arbitrary: lxs lxs' op buf x xs rule: produce_inner_alt)
+  apply (induct "(batch_op buf, lxs)" r arbitrary: lxs lxs' op buf x xs rule: produce_inner_induct)
   subgoal 
     apply (auto split: event.splits if_splits)
     done
@@ -1287,50 +1224,15 @@ lemma produce_inner_batch_op_batch_le:
   apply auto
   done
 
-lemma produce_inner_skip_n_productions_op_batch_op_coll_list_filter_Nil:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, LCons (Watermark wm) lxs) = Some (Inl (op, x, xs, lxs')) \<Longrightarrow>
-   x = Data wm' batch \<Longrightarrow>
-   xs = [Watermark wm'] \<Longrightarrow>
-   t \<in> fst ` set batch \<Longrightarrow>
-   monotone (LCons (Watermark wm) lxs) WM \<Longrightarrow>
-   \<exists>x\<in>set buf. (case x of (t, d) \<Rightarrow> t \<le> wm) \<Longrightarrow>
-   Suc (Suc 0) \<le> n \<Longrightarrow>
-   coll_list (filter (\<lambda>(t, d). t \<le> wm) buf) t = []"
-  using produce_inner_skip_n_productions_op_timestamp_not_produced_again_later[where n'=0 and n=n and lxs="LCons (Watermark wm) lxs" and t=t] apply -
-  apply (drule meta_spec)+
-  apply (drule meta_mp)
-   apply assumption
-  apply (drule meta_mp)
-   apply assumption
-  apply (drule meta_mp)
-   apply assumption
-  apply (drule meta_mp)
-   apply force
-  apply (drule meta_mp)
-   apply assumption
-  apply (drule meta_mp)
-   apply simp
-  apply (drule meta_mp)
-   apply (subst (asm) produce_inner_induct.simps)
-   apply (subst produce_inner_induct.simps)
-   apply (auto split:)
-  apply (drule meta_mp)
-   apply (intro conjI)
-    apply (rule refl)+
-  unfolding coll_list_def
-  apply auto
-  apply (smt (verit, ccfv_threshold) filter_False imageI mem_Collect_eq)
-  done 
-
 subsection \<open>Soundness proofs\<close> 
 lemma produce_inner_skip_n_productions_op_batch_op_Inl_soundness:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, input_stream) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (batch_op buf) n, input_stream) = Some r \<Longrightarrow>
    r = Inl (lgc', Data wm batch, xs, lxs') \<Longrightarrow>
    Watermarked_Stream.monotone input_stream WM \<Longrightarrow>
    Watermark wm \<in> lset input_stream \<and>
    (\<forall>t\<in>set batch. fst t \<le> wm \<and> ((\<forall>t\<in>set buf. \<forall>wm\<in>WM. \<not> fst t \<le> wm) \<longrightarrow> (\<forall>wm\<in>WM. \<not> fst t \<le> wm))) \<and>
    batch \<noteq> [] \<and> (\<forall>x\<in>set batch. \<forall>x1 x2. x = (x1, x2) \<longrightarrow> Data x1 x2 \<in> lset input_stream \<or> (x1, x2) \<in> set buf)"
-  apply (induction "(skip_n_productions_op (batch_op buf) n, input_stream)" r arbitrary: input_stream batch wm n buf rule: produce_inner_alt)
+  apply (induction "(skip_n_productions_op (batch_op buf) n, input_stream)" r arbitrary: input_stream batch wm n buf rule: produce_inner_induct)
   subgoal for h lxs'a lgc'a n buf batch wm
     apply (simp split: llist.splits event.splits if_splits)
     subgoal
@@ -1420,16 +1322,15 @@ lemma produce_inner_skip_n_productions_op_batch_op_Inl_soundness:
   apply auto
   done
 
-
 lemma produce_inner_skip_n_productions_op_batch_op_Inl_soundness_no_monotone:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, input_stream) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (batch_op buf) n, input_stream) = Some r \<Longrightarrow>
    r = Inl (lgc', Data wm batch, xs, lxs') \<Longrightarrow>
    Watermark wm \<in> lset input_stream \<and>
    (\<forall>t\<in>set batch. fst t \<le> wm) \<and>
    batch \<noteq> [] \<and> (\<forall>x\<in>set batch. \<forall>x1 x2. x = (x1, x2) \<longrightarrow> Data x1 x2 \<in> lset input_stream \<or> (x1, x2) \<in> set buf) \<and>
    Watermark wm \<in> lset input_stream \<and>
    xs = [Watermark wm]"
-  apply (induction "(skip_n_productions_op (batch_op buf) n, input_stream)" r arbitrary: input_stream batch wm n buf rule: produce_inner_alt)
+  apply (induction "(skip_n_productions_op (batch_op buf) n, input_stream)" r arbitrary: input_stream batch wm n buf rule: produce_inner_induct)
   subgoal for h lxs'a lgc'a n buf batch wm
     apply (simp split: llist.splits event.splits if_splits)
     subgoal
@@ -1506,11 +1407,11 @@ lemma produce_inner_skip_n_productions_op_batch_op_Inl_soundness_no_monotone:
 
 
 lemma produce_inner_skip_n_productions_op_batch_op_Inl_soundness_no_monotone_2:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, input_stream) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (batch_op buf) n, input_stream) = Some r \<Longrightarrow>
    r = Inl (lgc', Watermark wm, xs, lxs') \<Longrightarrow>
    Watermark wm \<in> lset input_stream \<and>
    xs = []"
-  apply (induction "(skip_n_productions_op (batch_op buf) n, input_stream)" r arbitrary: input_stream batch wm n buf rule: produce_inner_alt)
+  apply (induction "(skip_n_productions_op (batch_op buf) n, input_stream)" r arbitrary: input_stream batch wm n buf rule: produce_inner_induct)
   subgoal for h lxs'a lgc'a n buf batch wm
     apply (simp split: llist.splits event.splits if_splits)
     subgoal
@@ -1591,12 +1492,12 @@ lemma produce_inner_skip_n_productions_op_batch_op_Inl_soundness_no_monotone_2:
 
 
 lemma produce_inner_skip_n_productions_op_batch_op_Inr_soundness_no_monotone:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, input_stream) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (batch_op buf) n, input_stream) = Some r \<Longrightarrow>
    r = Inr op' \<Longrightarrow>
    exit op' = LCons (Data wm batch) output_stream \<Longrightarrow>
    (\<forall>t\<in>set batch. fst t \<le> wm) \<and>
    batch \<noteq> [] \<and> (\<forall>x\<in>set batch. \<forall>x1 x2. x = (x1, x2) \<longrightarrow> Data x1 x2 \<in> lset input_stream \<or> (x1, x2) \<in> set buf)"
-  apply (induction "(skip_n_productions_op (batch_op buf) n, input_stream)" r arbitrary: input_stream batch wm n buf rule: produce_inner_alt)
+  apply (induction "(skip_n_productions_op (batch_op buf) n, input_stream)" r arbitrary: input_stream batch wm n buf rule: produce_inner_induct)
   subgoal for h lxs'a lgc'a n buf batch wm
     apply (simp split: llist.splits event.splits if_splits)
     subgoal
@@ -1683,13 +1584,13 @@ lemma produce_inner_skip_n_productions_op_batch_op_Inr_soundness_no_monotone:
   done 
 
 lemma produce_inner_skip_n_productions_op_batch_op_Inr_soundness:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, input_stream) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (batch_op buf) n, input_stream) = Some r \<Longrightarrow>
    r = Inr op' \<Longrightarrow>
    Watermarked_Stream.monotone input_stream WM \<Longrightarrow>
    exit op' = LCons (Data wm batch) output_stream \<Longrightarrow>
    (\<forall>t\<in>set batch. fst t \<le> wm \<and> ((\<forall>t\<in>set buf. \<forall>wm\<in>WM. \<not> fst t \<le> wm) \<longrightarrow> (\<forall>wm\<in>WM. \<not> fst t \<le> wm))) \<and>
    batch \<noteq> [] \<and> (\<forall>x\<in>set batch. \<forall>x1 x2. x = (x1, x2) \<longrightarrow> Data x1 x2 \<in> lset input_stream \<or> (x1, x2) \<in> set buf)"
-  apply (induction "(skip_n_productions_op (batch_op buf) n, input_stream)" r arbitrary: input_stream batch wm n buf rule: produce_inner_alt)
+  apply (induction "(skip_n_productions_op (batch_op buf) n, input_stream)" r arbitrary: input_stream batch wm n buf rule: produce_inner_induct)
   subgoal for h lxs'a lgc'a n buf batch wm
     apply (simp split: llist.splits event.splits if_splits)
     subgoal
@@ -1801,114 +1702,7 @@ lemma produce_skip_n_productions_op_batch_op_batch_op_soundness_LCons:
     done
   done 
 
-
-abbreviation "DT xs \<equiv> List.map_filter 
-     (\<lambda> ev. case ev of Watermark _ \<Rightarrow> None | Data t d \<Rightarrow> Some t) xs"
-
-
-definition "ws_dt'' xs t = {t'. \<not> t \<le> t' \<and> \<not> t' < t \<and> (\<exists> d. Data t' d \<in> lset (ltakeWhile (\<lambda> ev. case ev of Watermark _ \<Rightarrow> True | Data t'' _ \<Rightarrow> t \<noteq> t'') xs))}"
-
-definition "antichain_from_stream lxs =
-  (let xs = filter (\<lambda> ev. case ev of Data t d \<Rightarrow> \<not> (\<exists> wm. Watermark wm \<in> lset lxs \<and> t \<le> wm) | Watermark _ \<Rightarrow> False) (list_of lxs) in
-   let tss = map tmp xs in
-   maximal_antichain_list tss)"
-
-lemma list_of_lfilter_lfinite:
-  "lfinite lxs \<Longrightarrow>
-   list_of (lfilter P lxs) = filter P (list_of lxs)"
-  by (metis lfilter_llist_of list_of_llist_of llist_of_list_of)
-
-(* FIXME: move me *)
-lemma fun_to_case_event[simp]:
-  "(\<lambda>x. (\<forall>x11. (\<exists>x12. x = Data x11 x12) \<longrightarrow> P x11 \<and> (\<forall>wm. Watermark wm \<in> lset lxs \<longrightarrow> \<not> x11 \<le> wm)) \<and> (\<forall>x2. x \<noteq> Watermark x2)) = 
-   case_event (\<lambda>t' d. P t' \<and> (\<forall>wm. Watermark wm \<in> lset lxs \<longrightarrow> \<not> t' \<le> wm)) (\<lambda>x. False)"
-  apply (rule ext)
-  apply (auto split: event.splits)
-  done
-
-(* FIXME: move me *)
-lemma filter_map_filter[simp]:
-  "filter P (List.map_filter Q xs) = List.map_filter (\<lambda> x. case Q x of Some y \<Rightarrow> (if P y then Some y else None) | None \<Rightarrow> None) xs"
-  apply (induct xs)
-   apply (auto simp add: map_filter_simps split: option.splits)
-  done
-
-lemma antichain_from_stream_Cons_Data:
-  "lfinite lxs \<Longrightarrow>
-   antichain_from_stream (LCons (Data t d) lxs) = (
-   if \<not> (\<exists> wm. Watermark wm \<in> lset lxs \<and> t \<le> wm) \<and> \<not> (\<exists> t' d. Data t' d \<in> lset lxs \<and> t' > t) 
-   then t # antichain_from_stream (lfilter (\<lambda> ev. case ev of Data t' _ \<Rightarrow> \<not> t' \<le> t | Watermark _ \<Rightarrow> True) lxs)
-   else antichain_from_stream lxs)"
-  apply (auto split: if_splits)
-  subgoal
-    unfolding antichain_from_stream_def Let_def
-    apply (auto 0 0 simp add: list_of_lfilter_lfinite Let_def split: event.splits)
-     apply (meson dual_order.strict_iff_not event.exhaust)
-    apply (simp flip: maximal_antichain_filter)
-    apply (rule arg_cong[where f="maximal_antichain_list"])
-    apply (simp add: map_filter_map_filter flip: )
-    unfolding  List.map_filter_def
-    apply auto
-    apply (rule map_cong)
-     apply (rule filter_cong)
-      apply simp
-     apply (auto split: event.splits)
-    done
-  subgoal
-    unfolding antichain_from_stream_def Let_def
-    apply (auto simp add:  split: event.splits)
-    done
-  subgoal for t' d
-    apply (cases "\<exists> wm. Watermark wm \<in> lset lxs \<and> t \<le> wm")
-    subgoal
-      apply (elim exE conjE)
-      unfolding antichain_from_stream_def Let_def
-      apply (auto simp add:  split: event.splits)
-      done
-    subgoal
-      unfolding antichain_from_stream_def Let_def
-      apply (subst (1 2) maximal_antichain_remove[where t=t' and t'=t])
-      subgoal
-        apply auto
-        apply (smt (verit, best) dual_order.order_iff_strict dual_order.trans event.sel(1) event.simps(5) imageI mem_Collect_eq)
-        done
-      subgoal
-        apply auto
-        apply (smt (verit, best) dual_order.order_iff_strict dual_order.trans event.sel(1) event.simps(5) imageI mem_Collect_eq)
-        done
-      subgoal
-        apply (auto simp add: list_of_lfilter_lfinite split: event.splits simp flip: maximal_antichain_filter)
-        done
-      done
-    done
-  done
-
-definition "ws_2 lxs wm = {wm'. wm' \<in> set (takeWhile ((\<noteq>) wm) (antichain_from_stream lxs))}"
-
-lemma ws_2_LCons_Data[simp]:
-  "lfinite lxs \<Longrightarrow>
-   ws_2 (LCons (Data t d) lxs) wm = (
-   if (\<nexists>wm. Watermark wm \<in> lset lxs \<and> t \<le> wm) \<and> (\<nexists>t' d. Data t' d \<in> lset lxs \<and> t < t')
-   then (if t = wm then {} else insert t (ws_2 (lfilter (\<lambda>x. case x of Data t' x \<Rightarrow> \<not> t' \<le> t | Watermark x \<Rightarrow> True) lxs) wm))
-   else ws_2 lxs wm)"
-  unfolding ws_2_def
-  apply (auto simp add: antichain_from_stream_Cons_Data split: if_splits)
-  done
-
-
-lemma antichain_from_stream_llist_of_map[simp]:
-  "antichain_from_stream (llist_of (map (\<lambda>(x, y). Data x y) buf)) = maximal_antichain_list (map fst buf)"
-  unfolding antichain_from_stream_def Let_def
-  apply (auto simp add: split_beta split: event.splits  prod.splits)
-  apply (rule arg_cong[where f=maximal_antichain_list])
-  apply (induct buf)
-   apply simp
-  subgoal for a buf'
-    apply (cases a)
-    apply auto
-    done
-  done
-
+subsubsection \<open>Batch timestamps\<close> 
 definition "bach_ts lxs t = (
   if Watermark t \<in> lset lxs 
   then {t' \<in> ts lxs t. \<not> (\<exists> wm \<in> ws lxs t . t' \<le> wm)}
@@ -1933,7 +1727,6 @@ lemma bach_ts_lshift_2:
   apply (auto simp add: split_beta split: if_splits prod.splits)
   by (simp add: Data_set_strict_monotone_not_GE)
 
-
 lemma bach_ts_lshift_3:
   "monotone (LCons (Watermark wm) lxs) WM \<Longrightarrow>
    bach_ts (map (\<lambda>(x, y). Data x y) (filter (\<lambda>(t, _). \<not> t \<le> wm) buf) @@- lxs) wm = {}"
@@ -1949,13 +1742,6 @@ lemma antichain_from_stream_filter:
   unfolding antichain_from_stream_def Let_def
   apply (auto 2 1 simp add: list_of_lshift antichain_from_stream_Cons_Data split_beta split: prod.splits event.splits)
   apply (smt (verit, best) dual_order.refl event.exhaust_sel event.sel(1) event.simps(4) event.split_sel le_boolD lfilter_cong list_of_lfilter_lfinite)
-  done
-
-lemma map_Data_filter:
-  "map (\<lambda>(x, y). Data x y) (filter (\<lambda>(t, d). \<not> t \<le> wm) buf) =
-  filter (\<lambda>ev. case ev of Data t _ \<Rightarrow> \<not> t \<le> wm) (map (\<lambda>(x, y). Data x y) buf)"
-  apply (induct buf)
-   apply auto
   done
 
 lemma antichain_from_stream_shift_filter:
@@ -1979,7 +1765,6 @@ lemma antichain_from_stream_shift_filter:
   apply auto
   apply (meson Data_set_strict_monotone_not_GE insertI1)
   done
-
 
 lemma bach_ts_lshift_4:
   "Watermark wm \<notin> lset lxs \<Longrightarrow>
@@ -2019,8 +1804,9 @@ lemma bach_ts_lshift_4:
   apply auto
   done
 
+subsubsection \<open>Main soundness proofs\<close> 
 lemma produce_inner_skip_n_productions_op_batch_op_batch_op_soundness_LCons_stronger_Inl:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, input_stream) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (batch_op buf) n, input_stream) = Some r \<Longrightarrow>
    r = Inl (lgc', Data wm batch, xs, lxs') \<Longrightarrow>
    monotone input_stream WM \<Longrightarrow>
    (\<forall>t\<in>set batch. image_mset snd {#(t', d) \<in># mset batch. t' = fst t#} = coll WM input_stream (fst t) + image_mset snd {#(t', d) \<in># mset buf. t' = fst t#}) \<and>
@@ -2032,7 +1818,7 @@ lemma produce_inner_skip_n_productions_op_batch_op_batch_op_soundness_LCons_stro
    (\<exists> buf' m. lgc' = skip_n_productions_op (batch_op buf') m \<and> m \<le> n \<and> \<not> (\<exists> t' d'. (t', d') \<in> set buf' \<and> t' \<le> wm)) \<and>
    xs = [Watermark wm] \<and>
    (\<forall> t' d. Data t' d \<in> lset lxs' \<longrightarrow> \<not> t' \<le> wm)"
-  apply (induction "(skip_n_productions_op (batch_op buf) n, input_stream)" r arbitrary: n WM input_stream batch wm buf rule: produce_inner_alt)
+  apply (induction "(skip_n_productions_op (batch_op buf) n, input_stream)" r arbitrary: n WM input_stream batch wm buf rule: produce_inner_induct)
   subgoal for h lxs lgc'a zs n buf WM batch wm
     apply (simp add: split: llist.splits event.splits if_splits; hypsubst_thin)
     subgoal for t d
@@ -2165,7 +1951,7 @@ lemma produce_inner_skip_n_productions_op_batch_op_batch_op_soundness_LCons_stro
       done
     done
   subgoal for h x xsa lxs lxs'a lgc'a n buf WM batch wm
-    apply (subst (asm) produce_inner_induct.simps)
+    apply (subst (asm) produce_inner.simps)
     apply (simp split: if_splits event.splits)
     subgoal for wm
       apply (subgoal_tac "n= 0 \<or> n = 1")
@@ -2206,7 +1992,7 @@ lemma produce_inner_skip_n_productions_op_batch_op_batch_op_soundness_LCons_stro
   done
 
 lemma produce_inner_skip_n_productions_op_batch_op_batch_op_soundness_LCons_stronger_Inr:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, input_stream) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (batch_op buf) n, input_stream) = Some r \<Longrightarrow>
    r = Inr op \<Longrightarrow>
    lfinite input_stream \<Longrightarrow>
    monotone input_stream WM \<Longrightarrow>
@@ -2218,7 +2004,7 @@ lemma produce_inner_skip_n_productions_op_batch_op_batch_op_soundness_LCons_stro
     Watermark wm \<notin> lset input_stream \<and>
    \<not> (\<exists> t' d'. Data t' d' \<in> lset output_stream \<and> t' \<le> wm) \<and>
    (\<forall>(t, d)\<in>set batch. t \<le> wm \<and> ((t, d) \<in> set buf \<or> Data t d \<in> lset input_stream))"
-  apply (induction "(skip_n_productions_op (batch_op buf) n, input_stream)" r arbitrary: n WM input_stream batch wm buf rule: produce_inner_alt)
+  apply (induction "(skip_n_productions_op (batch_op buf) n, input_stream)" r arbitrary: n WM input_stream batch wm buf rule: produce_inner_induct)
   subgoal for h lxs lgc' zs n buf WM batch wm
     apply (simp add: split: llist.splits event.splits if_splits; hypsubst_thin)
     subgoal for t d
@@ -2582,12 +2368,12 @@ lemma produce_lnth_ldropn:
   by (metis ldropn_Suc_conv_ldropn lhd_LCons)
 
 lemma produce_inner_skip_n_productions_op_Inl_not_ge_WM:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
    r = Inl (op, Data t batch, xs, lxs') \<Longrightarrow>
    monotone lxs WM \<Longrightarrow>
    (\<forall> (t, d) \<in> set buf. \<forall> wm \<in> WM. \<not> t \<le> wm) \<Longrightarrow>
   (t, ba) \<in> set batch \<Longrightarrow> wm \<in> WM \<Longrightarrow> t \<le> wm \<Longrightarrow> False"
-  apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: n buf lxs lxs' xs t batch wm op rule: produce_inner_alt)
+  apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: n buf lxs lxs' xs t batch wm op rule: produce_inner_induct)
   subgoal for h lxs lgc' zs n buf lxs'a xs t batch wm op
     apply (auto split: if_splits event.splits)
          apply (smt (verit, best) LConsData case_prodI2 fst_conv rotate1.simps(2) set_ConsD set_rotate1)
@@ -2632,14 +2418,14 @@ lemma produce_skip_n_productions_op_not_get_WM:
   done
 
 lemma lnth_Data_produce_inner_Some_skip_n_productions_op_batch_op_LCons_batch_not_ge:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) i, lxs) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (batch_op buf) i, lxs) = Some r \<Longrightarrow>
    r = Inl (op', Watermark wm, xs, lxs') \<Longrightarrow>
    monotone lxs WM \<Longrightarrow>
    (\<forall>t\<in>fst ` set buf. \<forall>wm\<in>WM. \<not> t \<le> wm) \<Longrightarrow>
    lnth (xs @@- produce op' lxs') n = Data t batch \<Longrightarrow>
    enat (Suc n) \<le> llength (xs @@- produce op' lxs') \<Longrightarrow>
    (t', bc) \<in> set batch \<Longrightarrow> \<not> t' \<le> wm"
-  apply (induct "(skip_n_productions_op (batch_op buf) i, lxs)" r arbitrary: n buf lxs lxs' xs t batch wm op' i rule: produce_inner_alt)
+  apply (induct "(skip_n_productions_op (batch_op buf) i, lxs)" r arbitrary: n buf lxs lxs' xs t batch wm op' i rule: produce_inner_induct)
   subgoal for h lxs lgc' lxs' zs ys buf n lxs'a xs t batch wm
     apply hypsubst_thin
     apply (auto 2 0 split: if_splits event.splits)
@@ -2701,10 +2487,10 @@ lemma lnth_Data_produce_inner_Some_skip_n_productions_op_batch_op_LCons_batch_no
   done
 
 lemma lnth_Data_produce_inner_Some_skip_n_productions_op_batch_op_Inr_LCons_batch_not_ge:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) i, lxs) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (batch_op buf) i, lxs) = Some r \<Longrightarrow>
    r = Inr op' \<Longrightarrow>
    Watermark wm \<in> lset (exit op') \<Longrightarrow> False"
-  apply (induct "(skip_n_productions_op (batch_op buf) i, lxs)" r arbitrary: buf lxs wm op' i rule: produce_inner_alt)
+  apply (induct "(skip_n_productions_op (batch_op buf) i, lxs)" r arbitrary: buf lxs wm op' i rule: produce_inner_induct)
   subgoal for h lxs lgc' zs buf i wm op'
     apply hypsubst_thin
     apply (auto split: if_splits event.splits)
@@ -2809,7 +2595,7 @@ lemma produce_skip_n_productions_op_Suc_Suc_EX:
 
 (*FIXME: is this completeness? *)
 lemma produce_inner_skip_n_productions_op_batch_op_smaller:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
    r = Inl (op, x, xs, lxs') \<Longrightarrow>
    x = Data wm batch \<Longrightarrow>
    xs = [Watermark wm] \<Longrightarrow>
@@ -2818,7 +2604,7 @@ lemma produce_inner_skip_n_productions_op_batch_op_smaller:
    monotone lxs WM \<Longrightarrow>
    \<exists>n'\<le>n. \<exists>wm' batch'. 
     (\<exists>lxs'. produce (skip_n_productions_op (batch_op buf) n') lxs = LCons (Data wm' batch') lxs') \<and> t \<in> fst ` set batch'"
-  apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: lxs lxs' op buf x xs n  rule: produce_inner_alt)
+  apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: lxs lxs' op buf x xs n  rule: produce_inner_induct)
   subgoal for h lxs lgc' zs buf n lxs'a op x xs 
     apply (auto 2 0 simp add: in_buf_produce_Watermark simp del: produce_LCons produce_lshift split: event.splits if_splits)
     subgoal
@@ -3088,13 +2874,13 @@ lemma produce_inner_skip_n_productions_op_batch_op_smaller:
 
 (*FIXME: this is completeness *)
 lemma produce_inner_skip_n_productions_op_batch_op_smaller_Inr:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
    r = Inr op \<Longrightarrow>
    (\<exists> d . Data t d \<in> lset lxs) \<or> t \<in> fst ` set buf \<Longrightarrow>
    t \<le> wm \<Longrightarrow>
     exit op = LCons (Data wm batch) lxs' \<Longrightarrow>
    \<exists>n'\<le>n. \<exists>wm' batch'. (\<exists>lxs'. produce (skip_n_productions_op (batch_op buf) n') lxs = LCons (Data wm' batch') lxs') \<and> t \<in> fst ` set batch'"
-  apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: n buf lxs op rule: produce_inner_alt)
+  apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: n buf lxs op rule: produce_inner_induct)
   subgoal for h lxs lgc' zs n buf op
     apply (auto 2 0 simp add: in_buf_produce_Watermark simp del: produce_LCons produce_lshift split: event.splits if_splits)
     subgoal
@@ -3130,7 +2916,7 @@ lemma produce_inner_skip_n_productions_op_batch_op_smaller_Inr:
         subgoal
           apply (subst (asm) produce.code)
           apply (subst produce.code)
-          apply (auto split: option.splits sum.splits; (subst produce_inner_induct.simps)?; auto?)
+          apply (auto split: option.splits sum.splits; (subst produce_inner.simps)?; auto?)
           done
         apply (metis fst_conv image_iff)
         done
@@ -3142,7 +2928,7 @@ lemma produce_inner_skip_n_productions_op_batch_op_smaller_Inr:
         apply (rule exI[of _ 0])
         apply (auto simp add:  simp del: produce_LCons produce_lshift)
         apply (subst produce.code)
-        apply (subst produce_inner_induct.simps)
+        apply (subst produce_inner.simps)
         apply auto
         apply (metis (no_types, lifting) case_prodI fst_conv image_iff mem_Collect_eq)
         done
@@ -3304,7 +3090,6 @@ lemma produce_skip_n_productions_op_batch_op_LE_EX:
   subgoal for x2 
     apply (frule produce_inner_skip_n_productions_op_batch_op_xs)
       apply simp
-     apply (rule refl)
     apply hypsubst_thin
     apply (frule produce_inner_skip_n_productions_op_batch_op_smaller)
           apply simp_all
@@ -3504,7 +3289,7 @@ lemma produce_batch_op_ts_le:
   done
 
 lemma produce_inner_skip_n_productions_op_batch_op_coll_list_batch:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n', lxs) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (batch_op buf) n', lxs) = Some r \<Longrightarrow>
    r = Inl (op, x, xs, lxs') \<Longrightarrow>
    x = Data wm batch \<Longrightarrow>
    monotone lxs WM \<Longrightarrow>
@@ -3514,7 +3299,7 @@ lemma produce_inner_skip_n_productions_op_batch_op_coll_list_batch:
    Watermark wm \<in> lset lxs \<and>
    t \<le> wm \<and>
    (\<exists> d. Data t d \<in> lset lxs \<or> (t, d) \<in> set buf)"
-  apply (induct "(skip_n_productions_op (batch_op buf) n', lxs)" r arbitrary: lxs lxs' op buf x xs n n' WM rule: produce_inner_alt)
+  apply (induct "(skip_n_productions_op (batch_op buf) n', lxs)" r arbitrary: lxs lxs' op buf x xs n n' WM rule: produce_inner_induct)
   subgoal for h lxs lgc' zs buf' n' lxs' op x xs n WM'
     apply (simp del: produce_LCons produce_lshift split: event.splits if_splits option.splits)
     subgoal for t' d
@@ -3669,7 +3454,7 @@ lemma produce_inner_skip_n_productions_op_batch_op_coll_list_batch:
     apply (subgoal_tac "n' = 0")
      defer
     subgoal
-      apply (subst (asm) produce_inner_induct.simps)
+      apply (subst (asm) produce_inner.simps)
       apply (auto split: event.splits if_splits option.splits)
        apply hypsubst_thin
        apply (metis drop0 drop_Suc_Cons event.distinct(1) less_2_cases list.distinct(1) list.sel(1) not_less_iff_gr_or_eq numeral_2_eq_2)
@@ -3754,7 +3539,7 @@ lemma ltaken_Data_completeness:
   done
 
 lemma produce_inner_skip_n_productions_op_batch_op_Inr_coll_list:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n', lxs) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (batch_op buf) n', lxs) = Some r \<Longrightarrow>
    r = Inr op \<Longrightarrow>
    t \<in> fst ` set batch \<Longrightarrow>
    n' \<le> n \<Longrightarrow>
@@ -3763,7 +3548,7 @@ lemma produce_inner_skip_n_productions_op_batch_op_Inr_coll_list:
    coll_list (concat (map snd (ltaken_Data (Suc n) (produce (batch_op buf) lxs)))) t =
    coll_list batch t \<and> t \<le> wm \<and> \<not> (\<exists> wm' \<ge> wm. Watermark wm' \<in> lset lxs) \<and> 
    (\<exists> d. Data t d \<in> lset lxs \<or> (t, d) \<in> set buf)"
-  apply (induct "(skip_n_productions_op (batch_op buf) n', lxs)" r arbitrary:  n n' lxs op buf rule: produce_inner_alt)
+  apply (induct "(skip_n_productions_op (batch_op buf) n', lxs)" r arbitrary:  n n' lxs op buf rule: produce_inner_induct)
   subgoal for h lxs lgc' zs n' buf n op
     apply hypsubst_thin
     apply (cases h)
@@ -4055,12 +3840,12 @@ lemma ltaken_Data_produce_soundness:
 
 
 lemma produce_inner_skip_n_productions_op_Some_Data_in:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
    r = Inl (lgc', x, xs, lxs') \<Longrightarrow>
    x = Data wm batch \<Longrightarrow>
    (t, d) \<in> set batch \<Longrightarrow>
    Data t d \<in> lset lxs \<or> (t, d) \<in> set buf"
-  apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: n buf lxs lxs' xs batch wm lgc' rule: produce_inner_alt)
+  apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: n buf lxs lxs' xs batch wm lgc' rule: produce_inner_induct)
   subgoal for h lxs' lgc' n buf lxs'a xs lgc'a batch wm
     apply (auto split: if_splits event.splits)
           apply fastforce+
@@ -4082,12 +3867,12 @@ lemma produce_inner_skip_n_productions_op_Some_Data_in:
   done 
 
 lemma produce_inner_skip_n_productions_op_Some_Data_Inr_in:
-  "produce_inner_induct (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
+  "produce_inner (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
    r = Inr op \<Longrightarrow>
    Data wm batch \<in> lset (exit op) \<Longrightarrow>
    (t, d) \<in> set batch \<Longrightarrow>
    Data t d \<in> lset lxs \<or> (t, d) \<in> set buf"
-  apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: n buf lxs batch wm rule: produce_inner_alt)
+  apply (induct "(skip_n_productions_op (batch_op buf) n, lxs)" r arbitrary: n buf lxs batch wm rule: produce_inner_induct)
   subgoal
     apply (auto split: if_splits event.splits)
           apply fastforce+
@@ -4139,7 +3924,7 @@ subsection \<open>Strict monotone proofs\<close>
 
 
 lemma produce_inner_batch_op_Inl_monotone_1:
-  "produce_inner_induct (batch_op buf, input_stream) = Some r \<Longrightarrow>
+  "produce_inner (batch_op buf, input_stream) = Some r \<Longrightarrow>
    r = Inl (lgc', Data wm batch, xs, lxs') \<Longrightarrow>
    monotone input_stream WM \<Longrightarrow>
    \<forall> (t, d) \<in> set buf. \<forall> wm \<in> WM. \<not> t \<le> wm \<Longrightarrow>
@@ -4150,7 +3935,7 @@ lemma produce_inner_batch_op_Inl_monotone_1:
    \<not> (\<exists> t' d'. Data t' d' \<in> lset lxs' \<and> t' \<le> wm) \<and> 
    (\<forall>wm'\<in>WM. \<not> wm \<le> wm') \<and> 
    (\<exists> buf'. lgc' = batch_op buf' \<and> (\<forall> wm' \<in> (insert wm WM). (\<forall> t \<in> fst ` set buf'. \<not> t \<le> wm')))"
-  apply (induction "(batch_op buf, input_stream)" r arbitrary: WM input_stream batch wm buf rule: produce_inner_alt)
+  apply (induction "(batch_op buf, input_stream)" r arbitrary: WM input_stream batch wm buf rule: produce_inner_induct)
   subgoal 
     apply (auto simp add: split_beta split: llist.splits event.splits if_splits prod.splits; hypsubst_thin)
           apply (metis LConsData fst_conv rotate1.simps(2) set_ConsD set_rotate1)
@@ -4170,7 +3955,7 @@ lemma produce_inner_batch_op_Inl_monotone_1:
 
 
 lemma produce_inner_batch_op_Inl_monotone_2:
-  "produce_inner_induct (batch_op buf, input_stream) = Some r \<Longrightarrow>
+  "produce_inner (batch_op buf, input_stream) = Some r \<Longrightarrow>
    r = Inl (lgc', Watermark wm, xs, lxs') \<Longrightarrow>
    monotone input_stream WM \<Longrightarrow>
    \<forall> (t, d) \<in> set buf. \<forall> wm \<in> WM. \<not> t \<le> wm \<Longrightarrow>
@@ -4179,7 +3964,7 @@ lemma produce_inner_batch_op_Inl_monotone_2:
    monotone lxs' (insert wm WM) \<and> 
    \<not> (\<exists> t' d'. Data t' d' \<in> lset lxs' \<and> t' \<le> wm) \<and> 
    (\<exists> buf'. lgc' = batch_op buf' \<and> \<not> (\<exists> t d. (t, d) \<in> set buf' \<and> t \<le> wm) \<and> (\<forall> wm' \<in> (insert wm WM). (\<forall> t \<in> fst ` set buf'. \<not> t \<le> wm')))"
-  apply (induction "(batch_op buf, input_stream)" r arbitrary: WM input_stream wm buf rule: produce_inner_alt)
+  apply (induction "(batch_op buf, input_stream)" r arbitrary: WM input_stream wm buf rule: produce_inner_induct)
   subgoal
     apply (auto simp add: split_beta split: llist.splits event.splits if_splits prod.splits; hypsubst_thin)
         apply (metis LConsData fst_conv rotate1.simps(2) set_ConsD set_rotate1)
@@ -4189,7 +3974,7 @@ lemma produce_inner_batch_op_Inl_monotone_2:
     apply (smt (verit, best) Data_set_strict_monotone_not_GE fst_conv lset_intros(1) rotate1.simps(2) set_ConsD set_rotate1 strict_monotone_drop_head)
     done
   subgoal for h x xsa lxs lxs'a lgc'a buf WM wm
-    apply (subst (asm) produce_inner_induct.simps)
+    apply (subst (asm) produce_inner.simps)
     apply (auto simp add: Data_set_strict_monotone_not_GE  split_beta split: llist.splits event.splits if_splits prod.splits; hypsubst_thin)
     apply fastforce
     done
@@ -4198,13 +3983,13 @@ lemma produce_inner_batch_op_Inl_monotone_2:
 
 
 lemma produce_inner_batch_op_Inr_monotone:
-  "produce_inner_induct (batch_op buf, input_stream) = Some r \<Longrightarrow>
+  "produce_inner (batch_op buf, input_stream) = Some r \<Longrightarrow>
    r = Inr op \<Longrightarrow>
    monotone input_stream WM \<Longrightarrow>
    \<forall> (t, d) \<in> set buf. \<forall> wm \<in> WM. \<not> t \<le> wm \<Longrightarrow>
    monotone (exit op) WM \<and> 
    (\<forall> x \<in> lset (exit op). is_Data x \<and> (\<forall> wm \<in> WM. \<not> wm \<ge> tmp x))"
-  apply (induction "(batch_op buf, input_stream)" r arbitrary: WM input_stream buf op rule: produce_inner_alt)
+  apply (induction "(batch_op buf, input_stream)" r arbitrary: WM input_stream buf op rule: produce_inner_induct)
   subgoal
     apply (auto simp add: split_beta split: llist.splits event.splits if_splits prod.splits; hypsubst_thin)
       apply (metis LConsData fst_conv rotate1.simps(2) set_ConsD set_rotate1)+
@@ -4305,43 +4090,43 @@ subsection \<open>Productive proofs\<close>
 
 
 lemma produce_inner_batch_op_Inl_productive_1:
-  "produce_inner_induct (batch_op buf, input_stream) = Some r \<Longrightarrow>
+  "produce_inner (batch_op buf, input_stream) = Some r \<Longrightarrow>
    productive input_stream \<Longrightarrow>
    r = Inl (lgc', Data wm batch, xs, lxs') \<Longrightarrow>
    xs = [Watermark wm] \<and> productive lxs'"
-  apply (induction "(batch_op buf, input_stream)" r arbitrary: input_stream buf rule: produce_inner_alt)
+  apply (induction "(batch_op buf, input_stream)" r arbitrary: input_stream buf rule: produce_inner_induct)
   subgoal 
     apply (auto simp add: split_beta split: llist.splits event.splits if_splits prod.splits; hypsubst_thin)
     using productive_drop_head apply blast+
     done
-   apply (subst (asm) produce_inner_induct.simps)
+   apply (subst (asm) produce_inner.simps)
    apply (auto simp add: split_beta split: llist.splits event.splits if_splits prod.splits; hypsubst_thin)
   using productive_drop_head apply blast+
   done
 
 
 lemma produce_inner_batch_op_Inl_productive_2:
-  "produce_inner_induct (batch_op buf, input_stream) = Some r \<Longrightarrow>
+  "produce_inner (batch_op buf, input_stream) = Some r \<Longrightarrow>
    productive input_stream \<Longrightarrow>
    r = Inl (lgc', Watermark wm, xs, lxs') \<Longrightarrow>
    xs = [] \<and> productive lxs'"
-  apply (induction "(batch_op buf, input_stream)" r arbitrary: input_stream buf rule: produce_inner_alt)
+  apply (induction "(batch_op buf, input_stream)" r arbitrary: input_stream buf rule: produce_inner_induct)
   subgoal
     apply (auto simp add: split_beta split: llist.splits event.splits if_splits prod.splits; hypsubst_thin)
     using productive_drop_head apply blast+
     done
-   apply (subst (asm) produce_inner_induct.simps)
+   apply (subst (asm) produce_inner.simps)
    apply (auto simp add: split_beta split: llist.splits event.splits if_splits prod.splits; hypsubst_thin)
   using productive_drop_head apply blast+
   done
 
 lemma produce_inner_batch_op_Inr_lfinite:
-  "produce_inner_induct (batch_op buf, stream_in) = Some r \<Longrightarrow>
+  "produce_inner (batch_op buf, stream_in) = Some r \<Longrightarrow>
    r = Inr op \<Longrightarrow>
    lfinite (exit op)"
-  apply (induction "(batch_op buf, stream_in)" r arbitrary: stream_in buf rule: produce_inner_alt)
+  apply (induction "(batch_op buf, stream_in)" r arbitrary: stream_in buf rule: produce_inner_induct)
     apply (auto simp add: split_beta split: llist.splits event.splits if_splits prod.splits; hypsubst_thin)
-   apply (subst (asm) produce_inner_induct.simps)
+   apply (subst (asm) produce_inner.simps)
    apply (auto  simp add: split_beta split: llist.splits event.splits if_splits prod.splits; hypsubst_thin)
   apply (drule Inr_inject)
   apply hypsubst_thin
@@ -4408,7 +4193,7 @@ lemma produce_batch_op_from_buf:
   apply (induct lxs arbitrary: buf rule: lset_induct)
   subgoal for xs buf
     apply (subst produce.code)
-    apply (subst produce_inner_induct.simps)
+    apply (subst produce_inner.simps)
     apply (auto split: llist.splits event.splits option.splits)
     apply (metis (no_types, lifting) case_prodI2 fst_conv image_iff mem_Collect_eq set_filter)
     done
@@ -4466,7 +4251,7 @@ lemma produce_batch_op_from_buf:
 
 
 lemma produce_inner_None_finite_aux:
-  "produce_inner_induct (batch_op buf, lxs) = None \<Longrightarrow>
+  "produce_inner (batch_op buf, lxs) = None \<Longrightarrow>
    productive lxs \<Longrightarrow>
    monotone lxs WM \<Longrightarrow>
    \<not> lfinite lxs \<Longrightarrow>
@@ -4503,7 +4288,7 @@ lemma lfinite_batch_op_produces:
   apply (induct lxs arbitrary: buf rule: lfinite_induct)
   subgoal for xs buf
     apply (subst produce.code)
-    apply (subst produce_inner_induct.simps)
+    apply (subst produce_inner.simps)
     apply (auto simp del: produce_LCons produce_lshift simp add: lset_lnull split: llist.splits event.splits option.splits sum.splits)
     using in_batches[where A="maximal_antichain_list (map fst buf)" and buf=buf and t=t and d=d] maximal_antichain_covers_all[where t=t and buf=buf]
     apply (metis Domain.DomainI fst_eq_Domain maximal_antichain_correct)
@@ -4514,7 +4299,7 @@ lemma lfinite_batch_op_produces:
      apply (simp_all del: produce_LCons produce_lshift)
     apply hypsubst_thin
     apply (subst produce.code)
-    apply (subst produce_inner_induct.simps)
+    apply (subst produce_inner.simps)
     apply (auto 0 0 simp del: produce_LCons produce_lshift simp add: lset_lnull split: llist.splits event.splits option.splits sum.splits)
           apply (meson produce_inner_None_not_lfinite_aux)
     subgoal
@@ -4562,11 +4347,11 @@ lemma lfinite_batch_op_produces:
 
 (* FIXME: move me*)
 lemma produce_inner_batch_op_Inr_always_produce:
-  "produce_inner_induct (batch_op buf, lxs) = Some r \<Longrightarrow>
+  "produce_inner (batch_op buf, lxs) = Some r \<Longrightarrow>
    r = Inr op \<Longrightarrow>
    Data t d \<in> lset lxs \<or> (t, d) \<in> set buf \<Longrightarrow>
    \<exists>wm out. Data wm out \<in> lset (exit op) \<and> t \<in> fst ` set out"
-  apply (induct "(batch_op buf, lxs)" r arbitrary: buf lxs op rule: produce_inner_alt)
+  apply (induct "(batch_op buf, lxs)" r arbitrary: buf lxs op rule: produce_inner_induct)
     apply (auto split: if_splits event.splits)
   using in_batches[where A="maximal_antichain_list (map fst buf)" and buf=buf and t=t and d=d] in_maximal_antichain[where t=t]
   by (smt (z3) Domain.DomainI fst_eq_Domain in_maximal_antichain maximal_antichain_covers_all in_batches)
@@ -4668,7 +4453,7 @@ lemma sync_completeness_gen_aux:
               apply (elim conjE exE)
               using prems(3-) apply -
               subgoal for op x xs' lxs' d'
-                apply (subst (asm) produce_inner_induct.simps)
+                apply (subst (asm) produce_inner.simps)
                 apply (simp del: batch_op.simps batch_op_sel1 split: llist.splits prod.splits list.splits option.splits)
                 subgoal for x21 x22 x1 x2
                   apply hypsubst_thin

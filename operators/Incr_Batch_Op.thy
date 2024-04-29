@@ -13,7 +13,7 @@ lemma produce_inner_batch_op_produces_some:
    enat n < llength lxs \<Longrightarrow>
    lnth lxs n = Watermark wm \<Longrightarrow>
    t \<le> wm \<Longrightarrow>
-   \<exists>y. produce_inner_induct (batch_op buf, lxs) = Some y"
+   \<exists>y. produce_inner (batch_op buf, lxs) = Some y"
   apply (induct n arbitrary: m buf lxs)
   subgoal for m buf lxs
     apply (cases lxs)
@@ -24,7 +24,7 @@ lemma produce_inner_batch_op_produces_some:
     subgoal
       apply (cases lxs)
       apply auto[1]
-      apply (subst produce_inner_induct.simps)
+      apply (subst produce_inner.simps)
       apply (auto split: event.splits llist.splits)
       subgoal
         apply (drule meta_spec[of _ "n - 1"])
@@ -43,7 +43,7 @@ lemma produce_inner_batch_op_produces_some:
     subgoal for n'
       apply (cases lxs)
       apply auto[1]
-      apply (subst produce_inner_induct.simps)
+      apply (subst produce_inner.simps)
       apply (auto split: event.splits llist.splits)
       using Suc_ile_eq apply auto
       done
@@ -51,7 +51,7 @@ lemma produce_inner_batch_op_produces_some:
   done
 
 lemma productive_produce_inner_produces_some:
-  "productive stream_in \<Longrightarrow> \<exists>y. produce_inner_induct (batch_op buf, stream_in) = Some y"
+  "productive stream_in \<Longrightarrow> \<exists>y. produce_inner (batch_op buf, stream_in) = Some y"
   apply (subst (asm) productive_alt)
   apply (erule productive'.cases)
   subgoal
@@ -76,7 +76,7 @@ lemma productive_produce_inner_produces_some:
       done
     done
   subgoal
-    apply (subst produce_inner_induct.simps)
+    apply (subst produce_inner.simps)
     apply auto
     done
   done
@@ -159,14 +159,14 @@ lemma productive_not_lfinite_produce_batch_op:
 
 lemma produce_skip_n_productions_op_batch_op_produce_inner:
   "\<exists> x lxs. produce (skip_n_productions_op (batch_op buf) n) stream_in = LCons x lxs \<Longrightarrow>
-   \<exists>y. produce_inner_induct (skip_n_productions_op (batch_op buf) n, stream_in) = Some y"
+   \<exists>y. produce_inner (skip_n_productions_op (batch_op buf) n, stream_in) = Some y"
   apply (subst (asm) produce.code)
   apply (auto split: option.splits sum.splits)
   done
 
 lemma batch_op_always_productive:
   "productive stream_in \<Longrightarrow>
-   \<forall>n. produce_inner_induct (skip_n_productions_op (batch_op buf) n, stream_in) \<noteq> None"
+   \<forall>n. produce_inner (skip_n_productions_op (batch_op buf) n, stream_in) \<noteq> None"
   apply safe
   subgoal for n
     apply (subst (asm) productive_alt)
@@ -267,7 +267,7 @@ lemma incr_op_preservers_finiteness:
 
 (* FIXME: move me *)
 lemma produce_inner_batch_op_batch:
-  "produce_inner_induct (batch_op buf1, stream_in) = Some (Inl (op, x, xs, lxs')) \<Longrightarrow>
+  "produce_inner (batch_op buf1, stream_in) = Some (Inl (op, x, xs, lxs')) \<Longrightarrow>
    Data wm batch = x  \<Longrightarrow>
    batch \<noteq> [] \<and> (\<forall>t'\<in>set batch. fst t' \<le> wm) \<and> xs = [Watermark wm] \<and> Watermark wm \<in> lset stream_in"
   by (metis produce_inner_skip_n_productions_op_batch_op_Inl_soundness_no_monotone produce_inner_skip_n_productions_op_batch_op_xs skip_n_productions_op_0)
