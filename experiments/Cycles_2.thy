@@ -79,3 +79,39 @@ value "list_of (produce_cycle prioritize_loop collatz (llist_of [1 ..< 100]))"
 value "list_of (produce_cycle alternate collatz (llist_of [1 ..< 100]))"
 value "set (list_of (produce_cycle prioritize_loop collatz (llist_of [1 ..< 100]))) =
        set (list_of (produce_cycle alternate collatz (llist_of [1 ..< 100])))"
+
+
+datatype 'u scope =
+    Op "('u, 'u) op" 
+    | Par "'u llist \<Rightarrow> 'u llist \<Rightarrow> 'u llist" "'u scope" "'u scope" 
+    | Loop "'u list \<Rightarrow> 'u llist \<Rightarrow> 'u llist" "'u \<Rightarrow> bool" "'u scope"
+
+definition partition where
+  "partition P xs = (filter P xs, filter (Not o P) xs)"
+
+partial_function (option) produce_inner_scope where
+  "produce_inner_scope schedule P op_lxs = (case op_lxs of (op, lxs) \<Rightarrow>
+    (case lxs of
+        LNil \<Rightarrow> Some (Inr op)
+     | LCons h lxs' \<Rightarrow> (let (op', out) = apply op h in
+                        let (loop, out') = partition P out in
+                        case out' of
+                         [] \<Rightarrow> produce_inner_scope schedule P (op', schedule loop lxs')
+                       | x#xs \<Rightarrow> Some (Inl (op', x, xs, schedule loop lxs')))))"
+
+corec produce_scope_cycle_aux where
+  "produce_scope_cycle_aux schedule op lxs =
+    (case produce_inner_cycle schedule (op, lxs) of
+      None \<Rightarrow> LNil
+    | Some (Inr op') \<Rightarrow> snd (lpartition_sum (exit op')) \<comment> \<open>need to think about what to do with the Inl in the exit\<close>
+    | Some (Inl (op', x, xs, lxs')) \<Rightarrow> LCons x (xs @@- produce_scope_cycle_aux schedule op' lxs'))"
+definition "produce_cycle schedule op = produce_cycle_aux schedule op o lmap Inr"
+
+term produce_inner_scope
+
+fun produce_scope where
+  "produce_scope (Op op) lxs = produce op lxs"
+| "produce_scope (Par merge sp1 sp2) lxs = merge (produce_scope sp1 lxs) (produce_scope sp2 lxs)"
+| "produce_scope (Loop schedule P sp) lxs = produce_scope sp lxs"
+
+end
