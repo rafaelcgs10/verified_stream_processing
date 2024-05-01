@@ -101,7 +101,6 @@ lemma llength_produce_batch_op_productive_lfinite:
       apply (rule refl)
       subgoal for t d
         apply (frule produce_inner_skip_n_productions_op_batch_op_xs[where n=0, simplified])
-        apply (rule refl)
         apply simp
         apply (elim exE conjE)
         apply hypsubst_thin
@@ -279,7 +278,7 @@ lemma produce_skip_n_productions_op_batch_op_soundness_no_monotone:
    lys = produce (skip_n_productions_op (batch_op buf1) n) stream_in \<Longrightarrow>
    batch \<noteq> [] \<and> (\<forall>t'\<in>fst ` set batch. t' \<le> wm)"
   apply (induct lys arbitrary: n rule: lset_induct)
-  subgoal
+  subgoal for xs n
     apply (subst (asm) produce.code)
     apply (simp split: prod.splits option.splits sum.splits)
     apply hypsubst_thin
@@ -289,8 +288,12 @@ lemma produce_skip_n_productions_op_batch_op_soundness_no_monotone:
       done
     subgoal for xs' op
       apply hypsubst_thin
-      using produce_inner_skip_n_productions_op_batch_op_Inr_soundness_no_monotone 
-      by metis
+      using produce_inner_skip_n_productions_op_batch_op_Inr_in_batch_from_buf_or_lxs[where wm=wm and batch=batch and n=n and lxs=stream_in and op=op and buf=buf1]
+      apply auto
+      
+
+
+      oops
     done
   subgoal for x xs
     apply hypsubst_thin

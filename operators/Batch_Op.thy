@@ -763,12 +763,52 @@ next
   qed
 qed
 
+(* FIXME: move me? *)
+lemma batch_op_skip_n_productions_op_must_be_0[]:
+  "batch_op buf = skip_n_productions_op (batch_op buf) n \<Longrightarrow>
+   n = 0"
+  apply (rule ccontr)
+  apply (cases n)
+   apply simp_all
+  apply hypsubst_thin
+  subgoal for n
+    apply (drule arg_cong[where f="apply"])
+    apply (drule fun_cong[where x="Watermark undefined"])
+    apply (simp add: split_beta split: prod.splits)
+    apply (cases "\<exists>x\<in>set buf. fst x \<le> undefined")
+     apply (simp_all add: split_beta split: prod.splits)
+    subgoal
+      apply (cases "Suc 0 < n")
+       apply (simp_all add: split_beta split: prod.splits)
+      subgoal
+        apply (cases "0 < n")
+         apply (simp_all add: split_beta split: prod.splits)
+        done
+      done
+    subgoal
+      apply (cases "0 < n")
+       apply (simp_all add: split_beta split: prod.splits)
+      done
+    done
+  done
+
 (*FIXME: move these lemmas? *)
+(* Soundness_Inr_batch_op *)
+
+(*
+  "produce_inner (skip_n_productions_op (batch_op buf) n, input_stream) = Some r \<Longrightarrow>
+   r = Inr op' \<Longrightarrow>
+   exit op' = LCons (Data wm batch) output_stream \<Longrightarrow>
+   (\<forall>t\<in>set batch. fst t \<le> wm) \<and>
+   batch \<noteq> [] \<and> (\<forall>x\<in>set batch. \<forall>x1 x2. x = (x1, x2) \<longrightarrow> Data x1 x2 \<in> lset input_stream \<or> (x1, x2) \<in> set buf)"
+
+*)
+
 lemma produce_inner_skip_n_productions_op_batch_op_Inr_in_batch_from_buf_or_lxs:
   assumes  "produce_inner (skip_n_productions_op (batch_op buf) n, lxs) = Some (Inr op)" (is "produce_inner ?P = Some ?R")
     and "Data wm batch \<in> lset (exit op)"
     and "(t, d) \<in> set batch"
-  shows "t \<le> wm \<and> ((t, d) \<in> set buf \<or> Data t d \<in> lset lxs)"
+  shows "t \<le> wm \<and> ((t, d) \<in> set buf \<or> Data t d \<in> lset lxs) \<and> batch \<noteq> []"
   using assms proof (induct ?P ?R arbitrary: n lxs op buf wm batch rule: produce_inner_induct)
   case (no_production h lxs op' n op buf wm batch)
   then show ?case 
@@ -813,135 +853,31 @@ lemma produce_inner_skip_n_productions_op_batch_op_Inr_in_batch_from_buf_or_lxs:
       and b :: 'b
     using calculation that Watermark no_production apply -
     apply (clarsimp simp add: split_beta split: if_splits event.splits prod.splits)
-
-    thm skip_n_productions_op_0
-
-end
+    subgoal
+      by (metis filter_set member_filter skip_n_productions_op_0)
+    subgoal
+      by auto
+    done
   moreover have "t \<le> wm \<and> ((t, d) \<in> set buf \<or> Data t d \<in> lset lxs)"
     if "Data wm batch \<in> lset (exit op)"
       and "(t, d) \<in> set batch"
       and "\<forall>x\<in>set buf. \<not> fst x \<le> wm'"
-    using that sorry
+    using that Watermark no_production apply -
+    apply (clarsimp simp add: split_beta split: if_splits event.splits prod.splits)
+    apply (metis skip_n_productions_op_0)
+    done
   ultimately show ?thesis
   using Watermark no_production(1,3-) apply -
     by (clarsimp simp add: no_production (2) split_beta split: if_splits event.splits prod.splits)
 qed
-
-      oops
-        proof -
-  have "t \<le> wm \<and> ((t, d) \<in> set buf \<or> Data t d \<in> lset lxs)"
-    if "Data wm batch \<in> lset (exit op)"
-      and "(t, d) \<in> set batch"
-      and "Suc (Suc 0) < n"
-      and "(t', d') \<in> set buf"
-      and "t' \<le> wm'"
-    for t' :: 'a
-      and d' :: 'b
-    using Watermark that no_production by (fastforce split: if_splits event.splits)
-  moreover have "t \<le> wm \<and> ((t, d) \<in> set buf \<or> Data t d \<in> lset lxs)"
-    if "Data wm batch \<in> lset (exit op)"
-      and "(t, d) \<in> set batch"
-      and "\<forall>x\<in>set buf. \<not> fst x \<le> wm'"
-      and "Suc 0 < n"
-    using Watermark that no_production by (fastforce split: if_splits event.splits)
-  moreover have "t \<le> wm \<and> ((t, d) \<in> set buf \<or> Data t d \<in> lset lxs)"
-    if "Data wm batch \<in> lset (exit op)"
-      and "(t, d) \<in> set batch"
-      and "(t', d') \<in> set buf"
-      and "t' \<le> wm'"
-    for t' :: 'a
-      and d' :: 'b
-    using Watermark that no_production(1,3-) apply -
-    apply (clarsimp simp add: split_beta split: if_splits event.splits prod.splits; hypsubst_thin?)
-    subgoal
-    using calculation(1) by blast
-  subgoal
-    by fastforce
-  subgoal
-    using no_production Watermark
-    
-    oops
-    by (metis filter_set member_filter skip_n_productions_op_0)
-    subgoal
-    by fastforce
-  oops
-end
-  moreover have "t \<le> wm \<and> ((t, d) \<in> set buf \<or> Data t d \<in> lset lxs)"
-    if "Data wm batch \<in> lset (exit op)"
-      and "(t, d) \<in> set batch"
-      and "\<forall>x\<in>set buf. \<not> fst x \<le> wm'"
-    using that sorry
-  ultimately show ?thesis
-    using Watermark no_production(1,3-) by (clarsimp simp add: split_beta split: if_splits event.splits prod.splits)
 qed
-  qed
-
-
-
-    oops
-end
 next
   case terminates
-  then show ?case sorry
-qed
-  subgoal for h lxs op' n op buf wm batch
-    apply (simp split: if_splits event.splits)
-         apply fastforce
-    subgoal for wm
-      apply hypsubst_thin
-      apply (drule meta_spec[of _ "n - Suc (Suc 0)"])
-      apply (drule meta_spec)+
-      apply (drule meta_mp)
-       apply (rule refl)
-      apply (drule meta_mp)
-       apply assumption
-      apply auto
-      done
-       apply fast
-    subgoal for t' d
-      apply hypsubst_thin
-      apply (drule meta_spec[of _ "0"])
-      apply (drule meta_spec[of _ "buf @ [(t', d)]"])
-      apply (drule meta_spec)+
-      apply (drule meta_mp)
-       apply simp
-      apply (drule meta_mp)
-       apply (rule refl)
-      apply (drule meta_mp)
-       apply assumption
-      apply auto
-      done
-    subgoal for wm
-      apply hypsubst_thin
-      apply (drule meta_spec[of _ "0"])
-      apply (drule meta_spec[of _ "filter (\<lambda>(t, _). \<not> t \<le> wm) buf"])
-      apply (drule meta_spec)+
-      apply (drule meta_mp)
-       apply simp
-      apply (drule meta_mp)
-       apply (rule refl)
-      apply (drule meta_mp)
-       apply assumption
-      apply auto
-      done
-    subgoal for wm
-      apply hypsubst_thin
-      apply (drule meta_spec[of _ "0"])
-      apply (drule meta_spec[of _ "buf"])
-      apply (drule meta_spec)+
-      apply (drule meta_mp)
-       apply simp
-      apply (drule meta_mp)
-       apply (rule refl)
-      apply (drule meta_mp)
-       apply assumption
-      apply auto
-      done
+  then show ?case 
+    apply (clarsimp simp add: split_beta split: if_splits event.splits prod.splits)
+    apply (metis Domain.intros Domain_fst batches_from_buf batches_le_wm in_lset_ldropD in_set_conv_nth less_nat_zero_code list.size(3) lset_llist_of)
     done
-   apply (auto simp add: ldrop_llist_of split: if_splits event.splits)
-   apply (metis Domain.DomainI fst_eq_Domain in_set_dropD batches_le_wm)
-  apply (meson in_set_dropD batches_from_buf)
-  done
+qed
 
 lemma produce_inner_no_timestamps_out_of_the_blue:
   "produce_inner (skip_n_productions_op (batch_op buf) n, lxs) = Some r \<Longrightarrow>
@@ -1490,13 +1426,15 @@ lemma produce_inner_skip_n_productions_op_batch_op_Inl_soundness_no_monotone_2:
     by (simp split: event.splits prod.splits)
   done
 
-
+(* Soundness_Inr_batch_op *)
 lemma produce_inner_skip_n_productions_op_batch_op_Inr_soundness_no_monotone:
   "produce_inner (skip_n_productions_op (batch_op buf) n, input_stream) = Some r \<Longrightarrow>
    r = Inr op' \<Longrightarrow>
    exit op' = LCons (Data wm batch) output_stream \<Longrightarrow>
    (\<forall>t\<in>set batch. fst t \<le> wm) \<and>
    batch \<noteq> [] \<and> (\<forall>x\<in>set batch. \<forall>x1 x2. x = (x1, x2) \<longrightarrow> Data x1 x2 \<in> lset input_stream \<or> (x1, x2) \<in> set buf)"
+  oops
+(*
   apply (induction "(skip_n_productions_op (batch_op buf) n, input_stream)" r arbitrary: input_stream batch wm n buf rule: produce_inner_induct)
   subgoal for h lxs'a lgc'a n buf batch wm
     apply (simp split: llist.splits event.splits if_splits)
@@ -1582,7 +1520,11 @@ lemma produce_inner_skip_n_productions_op_batch_op_Inr_soundness_no_monotone:
       done
     done
   done 
+*)
 
+find_theorems Inr skip_n_productions_op batch_op produce_inner
+
+(* Soundness_Inr_batch_op *)
 lemma produce_inner_skip_n_productions_op_batch_op_Inr_soundness:
   "produce_inner (skip_n_productions_op (batch_op buf) n, input_stream) = Some r \<Longrightarrow>
    r = Inr op' \<Longrightarrow>
@@ -1991,6 +1933,7 @@ lemma produce_inner_skip_n_productions_op_batch_op_batch_op_soundness_LCons_stro
   apply auto
   done
 
+(* Soundness_Inr_batch_op *)
 lemma produce_inner_skip_n_productions_op_batch_op_batch_op_soundness_LCons_stronger_Inr:
   "produce_inner (skip_n_productions_op (batch_op buf) n, input_stream) = Some r \<Longrightarrow>
    r = Inr op \<Longrightarrow>
@@ -4621,5 +4564,7 @@ lemma produce_batch_op_Watermark_lset:
     using produce_inner_skip_n_productions_op_batch_op_Watermark_soundness_no_monotone_2[where n=0, simplified] apply force
     done
   done
+
+find_theorems Inr skip_n_productions_op batch_op produce_inner
 
 end
