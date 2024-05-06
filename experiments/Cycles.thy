@@ -5,7 +5,7 @@ imports "../Llists_Processors"
 begin
 
 coinductive le_op where
-   "lprefix (buf1 @@- exit op1) (buf2 @@- exit op2) \<Longrightarrow> prefix buf1 buf2 \<Longrightarrow>
+  "lprefix (buf1 @@- exit op1) (buf2 @@- exit op2) \<Longrightarrow> prefix buf1 buf2 \<Longrightarrow>
     (\<And> ev op1' op2' out1 out2.
       apply op1 ev = (op1', out1) \<Longrightarrow> apply op2 ev = (op2', out2) \<Longrightarrow> le_op op1' (buf1@out1) op2' (buf2@out2)) \<Longrightarrow>
      le_op op1 buf1 op2 buf2"
@@ -34,10 +34,10 @@ lemma le_op_trans:
    le_op op1 buf1 op3 buf3"
   apply (coinduction arbitrary: buf1 buf2 buf3 op1 op2 op3 rule: le_op.coinduct)
   apply auto
-   apply (meson le_op.cases llist.leq_trans)
-  apply (erule le_op.cases)
-  apply (erule le_op.cases)
-  apply auto
+    apply (meson le_op.cases llist.leq_trans)
+   apply (erule le_op.cases)
+   apply (erule le_op.cases)
+   apply auto
   apply (meson eq_snd_iff le_op.cases)
   done
 
@@ -59,8 +59,8 @@ lemma lprefix_lshift[simp]:
    lprefix lxs lys"
   apply (intro iffI)
   subgoal
-  apply (induct xs arbitrary: lxs lys rule: rev_induct)
-   apply clarsimp+
+    apply (induct xs arbitrary: lxs lys rule: rev_induct)
+     apply clarsimp+
     apply (meson LCons_lprefix_LCons)
     done
   subgoal
@@ -92,7 +92,7 @@ lemma le_op_antisym:
   apply (erule le_op.cases)
   apply (auto simp add: rel_fun_def rel_prod.simps)
   subgoal for buf1a op1a buf2a op2a x
-  apply (drule llist.leq_antisym)
+    apply (drule llist.leq_antisym)
      apply assumption
     apply auto
     apply (drule meta_spec[of _ x])+
@@ -102,7 +102,7 @@ lemma le_op_antisym:
     apply (meson le_op.cases prefix_order.dual_order.eq_iff)
     done
   subgoal for buf1a op1a buf2a op2a x
- apply (drule llist.leq_antisym)
+    apply (drule llist.leq_antisym)
      apply assumption
     apply auto
     apply (drule meta_spec[of _ x])+
@@ -112,20 +112,20 @@ lemma le_op_antisym:
     subgoal for op1' out1' op2' out2'    
       apply (rule exI[of _ op1'])
       apply (rule exI[of _ "[]"])
-    apply (intro conjI)
+      apply (intro conjI)
        apply simp
       apply (rule exI[of _ op2'])
       apply (rule exI[of _ "[]"])
       apply simp
       apply (drule meta_spec)+
       apply (drule meta_mp)
-      apply (rule refl)
+       apply (rule refl)
       apply (drule meta_mp)
        apply (rule refl)      
       apply (drule meta_mp)
        apply (rule refl)      
       apply (drule meta_mp)
-      apply (rule refl)
+       apply (rule refl)
       apply (subgoal_tac "out1' = out2'")
       subgoal
         apply hypsubst_thin
@@ -146,16 +146,23 @@ lemma le_op_refl:
   apply auto
   done
 
+lemma le_op_antisym':
+  "le_op op1 [] op2 [] \<Longrightarrow>
+   le_op op2 [] op1 [] \<Longrightarrow>
+   op1 = op2"
+  apply (drule le_op_antisym)
+   apply assumption
+  apply simp
+  done
 
-(* FIXME: move me *)
 lemma le_op_op_same_prefix_simp[simp]:
   "le_op op1 (buf @ buf1) op2 (buf @ buf2) \<longleftrightarrow> le_op op1 buf1 op2 buf2"
   apply (rule iffI)
   subgoal
     using le_op_same_prefix by blast
   subgoal
-  apply (coinduction arbitrary: op1 buf buf1 buf2 op2 rule: le_op.coinduct)
-  apply (erule le_op.cases)
+    apply (coinduction arbitrary: op1 buf buf1 buf2 op2 rule: le_op.coinduct)
+    apply (erule le_op.cases)
     apply auto
     by metis
   done
@@ -231,7 +238,7 @@ lemma skip_n_productions_op_one_op:
     apply (simp add: ldrop_enat)
     done
   subgoal
-  apply (rule exI[of _ 0])
+    apply (rule exI[of _ 0])
     apply (subst skip_n_productions_op.ctr)
     apply (subst nil_op.ctr)
     apply (simp add: ldrop_enat)
@@ -241,24 +248,8 @@ lemma skip_n_productions_op_one_op:
   done    
 
 lemma skip_n_productions_op_1_one_op[simp]:
-   "skip_n_productions_op one_op (Suc 0) = nil_op"
+  "skip_n_productions_op one_op (Suc 0) = nil_op"
   by (simp add: skip_n_productions_op_one_op)
-
-
-
-lemma monotone_lprefix_test:
-  "monotone lprefix lprefix f \<Longrightarrow>
-   \<not> lfinite (f (LCons x LNil)) \<Longrightarrow>
-   lfinite (f (LCons x lxs)) \<Longrightarrow>
-   False"
-  unfolding monotone_on_def
-  apply simp
-  apply (drule spec[of _ "LCons x LNil"])
-  apply (drule spec[of _ "LCons x lxs"])
-  apply (drule mp)
-   apply simp
-  using lprefix_lfiniteD apply blast
-  done
 
 lemma LCons_1_lSup[simp]:
   "lSup {LNil, LCons 1 LNil} = LCons 1 LNil"
@@ -268,25 +259,8 @@ lemma LCons_1_lub_fun[simp]:
   "llist.lub_fun {\<lambda>_. LNil, \<lambda>_. LCons 1 LNil} = (\<lambda>_. LCons 1 LNil)"
   by (metis (mono_tags, lifting) LCons_1_lSup fun_lub_apply image_empty image_insert)
 
-lemma aux2:
-  "llist.lub_fun {\<lambda>_. LNil, \<lambda>_. LCons 1 LNil} = (\<lambda>_. LCons 1 LNil)"
-  by (metis fun_lub_apply image_empty image_insert lSup_insert_LNil lSup_singleton)
-
-lemma lappend_compute:
-  "monotone lprefix lprefix f \<Longrightarrow>
-   lappend (f lxs) (ldrop (llength (f lxs)) ((\<lambda> lzs. f (lappend lxs lzs)) lys)) = f (lappend lxs lys)"
-  by (metis lappend_ltake_ldrop linorder_linear lprefix_conv_lappend ltake_all ltake_lappend1 monotoneD)
-
-lemma lshift_compute:
-  "monotone lprefix lprefix f \<Longrightarrow>
-   lfinite (f (LCons x LNil)) \<Longrightarrow>
-   lshift (list_of (f (LCons x LNil))) (ldrop (llength (f (LCons x LNil))) ((\<lambda> lzs. f (lappend (LCons x LNil) lzs)) lys)) = f (LCons x lys)"
-  by (metis (full_types) lappend_code(1) lappend_code(2) lappend_compute lappend_llist_of llist_of_list_of)
-
-
-
 primcorec opSup :: "('i, 'o) op set \<Rightarrow> ('i, 'o) op" where
- "opSup A = (if \<forall>op\<in>A. op = nil_op then nil_op  
+  "opSup A = (if \<forall>op\<in>A. op = nil_op then nil_op  
    else Logic (\<lambda> ev.
          let ops_outs = (\<lambda> op. apply op ev) ` A in
          let out = list_of (lSup (llist_of ` snd ` ops_outs)) in
@@ -317,8 +291,8 @@ lemma opSup_test_3:
   subgoal
     apply (clarsimp simp add: rel_fun_def)
     apply auto
-      apply (smt (verit, del_insts) fst_conv image_def mem_Collect_eq opSup.code)
      apply (smt (verit, del_insts) fst_conv image_def mem_Collect_eq opSup.code)
+    apply (smt (verit, del_insts) fst_conv image_def mem_Collect_eq opSup.code)
     done
   subgoal
     apply auto
@@ -350,11 +324,11 @@ lemma opSup_test_4:
   subgoal
     apply (clarsimp simp add: rel_fun_def)
     apply (intro conjI impI)
-      apply (metis lazy_ones_op.simps(1) list.distinct(1) ones_op.simps(1) prod.inject)
+     apply (metis lazy_ones_op.simps(1) list.distinct(1) ones_op.simps(1) prod.inject)
     subgoal
       apply (rule disjI2)
       apply (subgoal_tac "fst ` {op_out. (op_out = (ones_op, [1]) \<or> op_out = (lazy_ones_op, [])) \<and> snd op_out = [1]} = {ones_op}")
-      defer
+       defer
       subgoal
         apply (auto simp add: image_iff)
         done
@@ -402,14 +376,14 @@ lemma opSup_test_5:
 lemma
   "opSup {one_op, lazy_ones_op} = lazy_ones_op"
   oops
-
 lemma
   "opSup {one_op, ones_op} = ones_op"
   oops
 
 
 lemma le_op_applyI:
-  "le_op op1 buf1 op2 buf2 \<Longrightarrow> le_op (fst (apply op1 ev)) (buf1@snd (apply op1 ev)) (fst (apply op2 ev)) (buf2@snd (apply op2 ev))"
+  "le_op op1 buf1 op2 buf2 \<Longrightarrow>
+   le_op (fst (apply op1 ev)) (buf1@snd (apply op1 ev)) (fst (apply op2 ev)) (buf2@snd (apply op2 ev))"
   apply (coinduction arbitrary: op1 op2 ev buf1 buf2)
   apply (erule le_op.cases)
   apply auto
@@ -426,108 +400,167 @@ lemma le_op_applyI:
   done
 
 lemma chain_applyI:
-  assumes chain: "Complete_Partial_Order.chain le_op' A"
-  and "ops_outs = (\<lambda> op. apply op ev) ` A"
-  and "out = list_of (lSup (llist_of ` snd ` ops_outs))"
-  and "A' = fst ` {op_out \<in> ops_outs. snd op_out = out}"
-shows "Complete_Partial_Order.chain le_op' A'"
+  assumes chain: "Complete_Partial_Order.chain (\<lambda> op1 op2. le_op op1 buf1 op2 buf2) A"
+    and "ops_outs = (\<lambda> op. apply op ev) ` A"
+    and "out = list_of (lSup (llist_of ` snd ` ops_outs))"
+    and "A' = fst ` {op_out \<in> ops_outs. snd op_out = out}"
+    and "prefix buf1 buf2"
+  shows "Complete_Partial_Order.chain (\<lambda> op1 op2. le_op op1 buf1 op2 buf2) A'"
   using assms(2-) apply (auto intro!: chainI dest: chainD[OF chain])
-  by (metis (no_types, lifting) chain chain_def le_op_applyI le_op_clean_buffers)
+  apply hypsubst_thin
+  sorry
+
 
 lemma chain_apply_prefix:
-  assumes chain: "Complete_Partial_Order.chain (<) A"
-  and "op \<in> A"
-  and "apply op ev = (op', out)"
-shows "prefix out (list_of (lSup (llist_of ` snd ` (\<lambda>op. apply op ev) ` A)))"
-  sorry
-(*   using assms(2,3) apply -
+  assumes chain: "Complete_Partial_Order.chain (\<lambda>op1 op2. le_op op1 buf1 op2 buf2) A"
+    and "op \<in> A"
+    and "apply op ev = (op', out)"
+  shows "prefix out (list_of (lSup (llist_of ` snd ` (\<lambda>op. apply op ev) ` A)))"
+  oops
+    (*   using assms(2,3) apply -
   using  chainD[OF chain assms(2)]
  *)
 
 
-find_theorems "\<not> ((_::_::order) < _) \<Longrightarrow> _"
+lemma chain_exit_lprefix:
+  "Complete_Partial_Order.chain (\<lambda>op1 op2. le_op op1 buf op2 buf) A \<Longrightarrow>
+   op \<in> A \<Longrightarrow>
+   lprefix (exit op) (lSup (exit ` A))"
+  by (metis (no_types, lifting) chain_imageI image_eqI le_op.simps llist.lub_upper lprefix_lshift)
 
+lemma
+  "\<And> lxs. lprefix (buf1 @@- produce op1 lxs) (buf2 @@- produce op2 lxs) \<Longrightarrow>
+   le_op op1 buf1 op2 buf2"
+  oops
 
 lemma chain_le_op_Sup_l:
-  "Complete_Partial_Order.chain le_op' A \<Longrightarrow>
+  "Complete_Partial_Order.chain (\<lambda> op1 op2. le_op op1 buf1 op2 buf2) A \<Longrightarrow>
    op \<in> A \<Longrightarrow>
-   le_op' op (opSup A)"
-  apply(coinduction arbitrary: op A)
-  subgoal  for op A
-  apply auto
-  subgoal for op A ev
-    using le_op_refl by force
-  subgoal for op
-    by (metis (no_types, lifting) chain_imageI image_eqI le_op.simps llist.lub_upper lprefix_lshift)
-  subgoal
+   prefix buf1 buf2 \<Longrightarrow>
+   (\<lambda> op1 op2. le_op op1 buf1 op2 buf2) op (opSup A)"
+  sorry
+    (*   apply(coinduction arbitrary: op A buf1 buf2 rule: le_op.coinduct)
+  subgoal  for op A buf
+    apply auto
+      prefer 3
   subgoal  for op'' ev op' out
     apply (rule exI)
     apply (intro conjI)
-    apply (rule refl)
+       apply (rule refl)
+    prefer 3
     subgoal
-      find_theorems "\<not> (lprefix _ _)"
-
-      oops
-      sorry
-    subgoal
-      sorry
-    subgoal
-      
-
-   apply (rule ccontr)
-
-
-   oops
-    apply (rule mp)
-     apply (rule prems(6)[unfolded not_def])
-    using prems(1,2,3,4,5) apply -
-    oops
-
-    thm mp
-
-    thm "mp[OF  prems(6)[unfolded not_def]]"
-
-    apply (drule)
-
-    thm impI
-
-    find_theorems lprefix lshift
-
-  oops
-proof(coinduction arbitrary: op A buf1 buf2)
-  case (le_op op A buf1 buf2)
-  note chain = \<open>Complete_Partial_Order.chain (le_op' buf1 buf2) A\<close>
-  from \<open>op \<in> A\<close> show ?case
-    apply auto
-    subgoal
-
-    thm chain_lprefix_ltl
-
-
-    oops
-    apply (auto 4 4 dest: lprefix_lnullD lprefix_lhdD intro: lprefix_ltlI rev_image_eqI intro!: the_equality)
-
-
-  then show ?case sorry
-qed
-  apply (auto dest!: chainD[OF chain])
-  subgoal for A buf1 buf2
-
-
+      oops *)
 
 lemma chain_le_op_Sup_r:
-  "Complete_Partial_Order.chain (le_op' buf1 buf2) A \<Longrightarrow> (\<And>y. y \<in> A \<Longrightarrow> (le_op' buf1 buf2) y x) \<Longrightarrow> (le_op' buf1 buf2) (opSup A) x"
-  oops
+  "Complete_Partial_Order.chain (\<lambda> op1 op2. le_op op1 buf1 op2 buf2) A \<Longrightarrow>
+   (\<And>y. y \<in> A \<Longrightarrow> (\<lambda> op1 op2. le_op op1 buf1 op2 buf2) y x) \<Longrightarrow>
+   (\<lambda> op1 op2. le_op op1 buf1 op2 buf2) (opSup A) x"
+  sorry
 
 
-lemma res_ccpo: "class.ccpo opSup (le_op' buf1 buf2) (mk_lt res_ord)"
-  apply intro_locales
-(*     apply (rule preorder_mk_ltI)
-      apply unfold_locales
-      apply (auto intro: res_ord_trans res_ord_antisym chain_res_ord_res_Sup_l chain_res_ord_res_Sup_r)
+definition "mk_lt l a b \<equiv> l a b \<and> a\<noteq>b"
+
+lemma preorder_mk_ltI:
+  assumes 
+    "\<And>x. le x x"
+    "\<And>x y z. \<lbrakk>le x y; le y z\<rbrakk> \<Longrightarrow> le x z"
+    "\<And>x y. \<lbrakk>le x y; le y x\<rbrakk> \<Longrightarrow> x = y"
+  shows "class.preorder le (mk_lt le)"
+  apply unfold_locales
+    apply (auto intro: assms simp: mk_lt_def)
   done
-   *)
-  oops
+
+lemma op_ccpo: "class.ccpo opSup le_op' (mk_lt le_op')"
+  apply intro_locales
+    apply (rule preorder_mk_ltI)
+      apply unfold_locales
+      apply (auto intro: le_op_trans le_op_antisym' chain_le_op_Sup_l chain_le_op_Sup_r le_op_refl)
+  done
+
+subsection \<open>recursion setup\<close>
+
+abbreviation "mono_op \<equiv> monotone (fun_ord le_op') le_op'" 
+
+lemma op_pfd: "partial_function_definitions le_op' opSup"
+  unfolding partial_function_definitions_def
+  apply (auto intro: le_op_trans le_op_antisym' chain_le_op_Sup_l chain_le_op_Sup_r le_op_refl)
+  done
+
+interpretation op:
+  partial_function_definitions le_op' "opSup"
+  using op_pfd by auto
+
+declaration \<open>Partial_Function.init "op" \<^term>\<open>op.fixp_fun\<close>
+    \<^term>\<open>op.mono_body\<close> @{thm op.fixp_rule_uc} @{thm op.fixp_induct_uc}
+    (NONE)\<close>
+
+lemma body_rec_mono[partial_function_mono]:
+  "mono_op
+   (\<lambda>rec_op. Logic (\<lambda>ev. let (op', out) = apply b ev; cycle = filter (\<lambda>x. \<not> a x) out; out' = filter a out; (op'', out'') = finite_produce (rec_op (a, op')) cycle in (rec_op (a, op''), out' @ out'')) LNil)"
+  sorry
+
+partial_function (op) rec_op where
+  "rec_op b op = Logic (\<lambda> ev. let (op', out) = apply op ev in
+     let cycle = filter (\<lambda> x. \<not> b x) out in
+     let out' = filter b out in
+     let (op'', out'') = finite_produce (rec_op b op') cycle in
+     (rec_op b op'',  out' @ out'')) LNil"
+declare rec_op.simps[code]
+
+primcorec incr_Inl where
+  "incr_Inl = Logic (\<lambda> ev. 
+     case ev of 
+       Inl (n::nat) \<Rightarrow> (if n \<ge> 1 then (incr_Inl, [Inr n]) else (incr_Inl, [Inl (n + 1)]))
+     | Inr n \<Rightarrow> (incr_Inl, [Inr n])) LNil"
+
+value "list_of (produce (rec_op (\<lambda> x. \<not> isl x) incr_Inl) (LCons (Inl 0) (LCons (Inl 0) LNil)))"
+
+primcorec collatz_op where
+  "collatz_op = Logic (\<lambda> ev. 
+     case ev of 
+       Inl (a, Suc 0, i) \<Rightarrow> (collatz_op, [Inr (a, i)])
+     | Inl (a, n, i) \<Rightarrow> (if n mod 2 = 0 then (collatz_op, [Inl (a,n div 2, i+1)]) else (collatz_op, [Inl (a, 3 * n + 1, Suc i)]))
+     | Inr p \<Rightarrow> (collatz_op, [Inr p])) LNil"
+
+primcorec collatz_init_op  where
+  "collatz_init_op = Logic (\<lambda>a. (collatz_init_op, [Inl (a, a, 0)])) LNil"
+
+
+value "list_of (produce (compose_op collatz_init_op (rec_op (\<lambda> x. \<not> isl x) collatz_op)) (llist_of [1 ..< 10]))"
+
+lemma body_rec'_mono[partial_function_mono]:
+  "mono_op (\<lambda>rec_op'.
+              Logic (\<lambda>ev. let (ev', buf') = bb ba ev; (op', out) = apply b ev'; buf'' = buf' @ filter (\<lambda>x. \<not> ab x) out in Let (filter ab out) (Pair (rec_op' (((ab, bb), buf''), op'))))
+               (if ba = [] then LNil else produce (rec_op' (((ab, bb), []), b)) (llist_of ba)))"
+  sorry
+
+partial_function (op) rec_op' where
+  "rec_op' b scheduler buf op = Logic (\<lambda> ev. 
+     let (ev', buf') = scheduler buf ev in
+     let (op', out) = apply op ev' in
+     let buf'' = buf' @ filter (\<lambda> x. \<not> b x) out in
+     let out' = filter b out in
+     (rec_op' b scheduler buf'' op',  out')) (if buf = [] then LNil else produce (rec_op' b scheduler [] op) (llist_of buf))"
+declare rec_op'.simps[code]
+
+abbreviation "prioritize_loop \<equiv> (\<lambda> buf ev. let buf' = buf @ [ev] in (hd buf', tl buf'))"
+
+term "rec_op' (\<lambda> x. \<not> isl x) (\<lambda> buf ev. let buf' = buf @ [ev] in (hd buf', tl buf'))"
+
+
+value "list_of (produce (compose_op collatz_init_op (rec_op' (\<lambda> x. \<not> isl x) prioritize_loop [] collatz_op)) (llist_of [1 ..< 10]))"
+
+
+end
+
+
+
+
+
+
+
+
+
 
 
 
@@ -542,20 +575,12 @@ lemma  unproduce_op_correct_2[simp]:
 
 
 
-primcorec incr_Inl where
-  "incr_Inl = Logic (\<lambda> ev. 
-     case ev of 
-       Inl (n::nat) \<Rightarrow> (if n \<ge> 1 then (incr_Inl, [Inr n]) else (incr_Inl, [Inl (n + 1)]))
-     | Inr n \<Rightarrow> (incr_Inl, [Inr n])) LNil"
-
-primcorec loop_op where
-  "loop_op b op  = Logic (\<lambda> ev. let (op', out) = apply op ev in if b ev then (loop_op b op', out) else (op, [ev])) LNil"
 
 definition "ex1 (F::(nat + nat) llist \<Rightarrow> (nat + nat) llist) lxs = produce (compose_op incr_Inl (loop_op isl (unproduce_op F))) lxs"
 
 declare produce_inner.simps[code]
 declare llist.mono_body_fixp[code]
-(* declare lSup.code[code del]
+  (* declare lSup.code[code del]
  *)
 
 thm llist.mono_body_fixp
@@ -637,7 +662,7 @@ lemma produce_loop_op_if:
     done
   apply simp
   done
-(*
+    (*
   subgoal
       apply (subst (1) produce.code)
       apply (auto split: option.splits)
@@ -675,30 +700,30 @@ lemma "produce (unproduce_op (llist.fixp_fun ex1)) (LCons (Inl 0) (LCons (Inl 0)
   subgoal sorry
   apply (auto simp add: produce_incr_Inl_if produce_loop_op_if split: list.splits)
   subgoal
-  apply (subst llist.mono_body_fixp)
+    apply (subst llist.mono_body_fixp)
     subgoal sorry
-  apply (subst produce_compose_op_correctness)
-  subgoal sorry
-  apply (auto simp add: produce_incr_Inl_if produce_loop_op_if split: list.splits)
-  apply (subst llist.mono_body_fixp)
-    subgoal sorry
-  apply (auto simp add: produce_incr_Inl_if produce_loop_op_if split: list.splits)
-  apply (subst llist.mono_body_fixp)
-    subgoal sorry
-  apply (subst produce_compose_op_correctness)
-    subgoal sorry
-  apply (auto simp add: produce_incr_Inl_if produce_loop_op_if split: list.splits)
-  apply (subst llist.mono_body_fixp)
-    subgoal sorry
-  apply (auto simp add: produce_incr_Inl_if produce_loop_op_if split: list.splits)
- apply (subst llist.mono_body_fixp)
-    subgoal sorry
-  apply (subst produce_compose_op_correctness)
+    apply (subst produce_compose_op_correctness)
     subgoal sorry
     apply (auto simp add: produce_incr_Inl_if produce_loop_op_if split: list.splits)
- apply (subst llist.mono_body_fixp)
+    apply (subst llist.mono_body_fixp)
     subgoal sorry
- apply (subst produce_compose_op_correctness)
+    apply (auto simp add: produce_incr_Inl_if produce_loop_op_if split: list.splits)
+    apply (subst llist.mono_body_fixp)
+    subgoal sorry
+    apply (subst produce_compose_op_correctness)
+    subgoal sorry
+    apply (auto simp add: produce_incr_Inl_if produce_loop_op_if split: list.splits)
+    apply (subst llist.mono_body_fixp)
+    subgoal sorry
+    apply (auto simp add: produce_incr_Inl_if produce_loop_op_if split: list.splits)
+    apply (subst llist.mono_body_fixp)
+    subgoal sorry
+    apply (subst produce_compose_op_correctness)
+    subgoal sorry
+    apply (auto simp add: produce_incr_Inl_if produce_loop_op_if split: list.splits)
+    apply (subst llist.mono_body_fixp)
+    subgoal sorry
+    apply (subst produce_compose_op_correctness)
     oops
 
 (* 
