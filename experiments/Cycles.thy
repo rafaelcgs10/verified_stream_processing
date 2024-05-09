@@ -5,7 +5,7 @@ imports "../Llists_Processors"
 begin
 
 coinductive le_op where
-  "lprefix (buf1 @@- exit op1) (buf2 @@- exit op2) \<Longrightarrow> prefix buf1 buf2 \<Longrightarrow>
+  "lprefix (buf1 @@- exit op1) (buf2 @@- exit op2) \<Longrightarrow> prefix buf2 buf1 \<Longrightarrow>
     (\<And> ev op1' op2' out1 out2.
       apply op1 ev = (op1', out1) \<Longrightarrow> apply op2 ev = (op2', out2) \<Longrightarrow> le_op op1' (buf1@out1) op2' (buf2@out2)) \<Longrightarrow>
      le_op op1 buf1 op2 buf2"
@@ -20,13 +20,13 @@ lemma
   "le_op (lazy_cp_op buf) buf' cp_op (buf'@buf)"
   apply (coinduction arbitrary: buf buf' rule: le_op.coinduct)
   apply auto
-  by (metis lappend_llist_of lappend_llist_of_llist_of llist.leq_refl)
+  oops
 
 lemma
   "le_op cp_op (buf'@buf) (lazy_cp_op buf) buf'"
   apply (coinduction arbitrary: buf buf' rule: le_op.coinduct)
   apply simp
-  oops
+  by (metis lappend_llist_of lappend_llist_of_llist_of llist.leq_refl)
 
 lemma le_op_trans:
   "le_op op1 buf1 op2 buf2 \<Longrightarrow>
@@ -82,6 +82,11 @@ lemma le_op_clean_buffers:
   using le_op_same_prefix
   by (metis append_Nil2)
 
+(* FIXME: move me *)
+lemma lshift_lfinite:
+  "lfinite lxs \<Longrightarrow>
+   xs @@- lxs = llist_of (xs @ list_of lxs)"
+  by (metis lappend_llist_of lappend_llist_of_llist_of llist_of_list_of)
 
 lemma le_op_antisym:
   "le_op op1 buf1 op2 buf2 \<Longrightarrow>
@@ -259,13 +264,20 @@ lemma LCons_1_lub_fun[simp]:
   "llist.lub_fun {\<lambda>_. LNil, \<lambda>_. LCons 1 LNil} = (\<lambda>_. LCons 1 LNil)"
   by (metis (mono_tags, lifting) LCons_1_lSup fun_lub_apply image_empty image_insert)
 
+primcorec const_op :: "'o llist \<Rightarrow> ('i, 'o) op" where
+  "const_op lxs = 
+   (if lxs = LNil 
+    then nil_op
+   else Logic (\<lambda> _. (const_op (ltl lxs), [lhd lxs])) lxs)"
+
 primcorec opSup :: "('i, 'o) op set \<Rightarrow> ('i, 'o) op" where
   "opSup A = (if \<forall>op\<in>A. op = nil_op then nil_op  
    else Logic (\<lambda> ev.
          let ops_outs = (\<lambda> op. apply op ev) ` A in
-         let out = list_of (lSup (llist_of ` snd ` ops_outs)) in
-         let A' = fst ` {op_out \<in> ops_outs. snd op_out = out} in
-         (opSup A', out)) (lSup (exit ` A)))"
+         let out = lSup (llist_of ` snd ` ops_outs) in
+         if lfinite out
+         then let A' = (\<lambda> (op', out'). prepend_op out' op') ` ops_outs in (opSup A', [])
+         else (const_op out, [])) (lSup (exit ` A)))"
 
 lemma opSup_test_1[simp]:
   "opSup {} = nil_op"
@@ -526,7 +538,7 @@ primcorec collatz_init_op  where
   "collatz_init_op = Logic (\<lambda>a. (collatz_init_op, [Inl (a, a, 0)])) LNil"
 
 
-value "list_of (produce (compose_op collatz_init_op (rec_op (\<lambda> x. \<not> isl x) collatz_op)) (llist_of [1 ..< 10]))"
+value "list_of (produce (compose_op collatz_init_op (rec_op (\<lambda> x. \<not> isl x) collatz_op)) (llist_of [1 ..< 20]))"
 
 lemma body_rec'_mono[partial_function_mono]:
   "mono_op (\<lambda>rec_op'.
@@ -543,12 +555,12 @@ partial_function (op) rec_op' where
      (rec_op' b scheduler buf'' op',  out')) (if buf = [] then LNil else produce (rec_op' b scheduler [] op) (llist_of buf))"
 declare rec_op'.simps[code]
 
-abbreviation "prioritize_loop \<equiv> (\<lambda> buf ev. let buf' = buf @ [ev] in (hd buf', tl buf'))"
+abbreviation "prioritize_events \<equiv> (\<lambda> buf ev. let buf' = ev # buf in (hd buf', tl buf'))"
 
 term "rec_op' (\<lambda> x. \<not> isl x) (\<lambda> buf ev. let buf' = buf @ [ev] in (hd buf', tl buf'))"
 
 
-value "list_of (produce (compose_op collatz_init_op (rec_op' (\<lambda> x. \<not> isl x) prioritize_loop [] collatz_op)) (llist_of [1 ..< 10]))"
+value "list_of (produce (compose_op collatz_init_op (rec_op' (\<lambda> x. \<not> isl x) prioritize_events [] collatz_op)) (llist_of [1 ..< 15]))"
 
 
 end
