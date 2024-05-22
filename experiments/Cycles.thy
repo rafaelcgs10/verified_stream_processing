@@ -4,6 +4,9 @@ imports "../Llists_Processors"
 
 begin
 
+
+
+
 coinductive le_op where
   "lprefix (buf1 @@- exit op1) (buf2 @@- exit op2) \<Longrightarrow> prefix buf2 buf1 \<Longrightarrow>
     (\<And> ev op1' op2' out1 out2.
