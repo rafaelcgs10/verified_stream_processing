@@ -9,67 +9,193 @@ begin
 
 code_lazy_type llist
 
-codatatype ('i, 'o) op = Logic ("apply": "('i option \<Rightarrow> ('i, 'o) op \<times> 'o list \<times> bool)")
+codatatype ('i, 'o) op = Logic ("apply": "('i option \<Rightarrow> ('i, 'o) op option \<times> 'o list)")
 
 code_lazy_type op
 
-
 partial_function (option) produce_inner where
   "produce_inner op lxs = 
-    (case apply op (lhd' lxs) of 
-       (lgc', [], b) \<Rightarrow> if b then produce_inner lgc' (ltl lxs) else None
-     | (lgc', x#xs, _) \<Rightarrow> Some ((lgc', x, xs, ltl lxs)))"
+    (let (op_otion, out) = apply op (lhd' lxs) in
+     case op_otion of
+       None \<Rightarrow> None
+     | Some op' \<Rightarrow> (case out of
+                     [] \<Rightarrow> produce_inner op' (ltl lxs)
+                   | x#xs \<Rightarrow> Some ((op', x, xs, ltl lxs))))"
 (* simps_of_case produce_inner_simps[simp]: produce_inner.simps
  *)
 declare produce_inner.simps[code]
 
+thm produce_inner.raw_induct[unfolded Let_def, simplified]
+
+lemma produce_inner_induct[consumes 1, case_names no_production produces terminates]:
+  assumes "produce_inner op lxs = Some y"
+    and "\<And>op lxs op' zs . apply op (lhd' lxs) = (Some op', []) \<Longrightarrow> Q op' (ltl lxs) zs \<Longrightarrow> Q op lxs zs"
+    and "\<And>op x xs lxs lxs' op'. produce_inner op lxs = Some (op', x, xs, lxs') \<Longrightarrow>
+                                apply op (lhd' lxs) = (Some op', x # xs) \<Longrightarrow> Q op lxs ((op', x, xs, lxs'))"
+  shows "Q op lxs y"
+  apply (rule produce_inner.raw_induct[OF _ assms(1), unfolded Let_def, simplified])
+  using assms(2-) apply (simp split: llist.splits prod.splits list.splits option.splits)
+  apply (metis (mono_tags, lifting) list.simps(5) option.case(2) produce_inner.simps split_conv)
+  done
+
 corec rec_op where
   "rec_op scheduler buf op = Logic (\<lambda> ev. 
-     let (ev', buf') = case ev of None \<Rightarrow> (ev, buf) | Some e \<Rightarrow> map_prod Some id (scheduler buf e) in
-     let (op', out, b) = apply op ev' in
-     let buf'' = buf' @ map projl (filter (\<lambda> x. isl x) out) in
+     let (ev', buf') = scheduler buf ev in
+     let (op_option, out) = apply op ev' in
+     let buf'' = buf' @ map projl (filter (\<lambda> x. isl x) out) in      
      let out' = map projr (filter (\<lambda> x. \<not> isl x) out) in
-     (rec_op scheduler buf'' op',  out', b \<or> buf \<noteq> []))"
+     case op_option of
+       None \<Rightarrow> (None, out')
+     | Some op' \<Rightarrow> (Some (rec_op scheduler buf'' op'), out'))"
 
-abbreviation "loop_op \<equiv> rec_op (\<lambda> buf ev. (case buf of [] \<Rightarrow> (ev, []) | x#xs \<Rightarrow> (x, xs@[ev]))) []"
+abbreviation "default_scheduler buf ev \<equiv> (case ev of None \<Rightarrow> (case buf of [] \<Rightarrow> (None, []) | x#xs \<Rightarrow> (Some x, xs)) | Some e \<Rightarrow> (case buf of [] \<Rightarrow> (Some e, []) | x#xs \<Rightarrow> (Some x, xs@[e])))"
+abbreviation "loop_op \<equiv> rec_op default_scheduler []"
 
 corec produce where
   "produce op lxs = 
     (case produce_inner op lxs of
        None \<Rightarrow> LNil
     | Some (op', x, xs, lxs') \<Rightarrow> LCons x (xs @@- produce op' lxs'))"
-find_theorems produce
+
+
+lemma produce_coinduction:
+  assumes rel: "P op ilxs olxs"
+    and nonterm: "\<And>op ilxs olxs. P op ilxs olxs \<Longrightarrow> produce_inner op ilxs = None \<Longrightarrow> olxs = LNil"
+    and step: "\<And>op ilxs olxs op' out.
+    P op ilxs olxs \<Longrightarrow> apply op (lhd' ilxs) = (Some op', out) \<Longrightarrow> \<exists>olxs'. olxs = out @@- olxs' \<and> P op' (ltl ilxs) olxs'"
+  shows "produce op ilxs = olxs"
+proof -
+  have coind: "\<And>op ilxs olxs. P op ilxs olxs \<Longrightarrow>
+    (case produce_inner op ilxs of None \<Rightarrow> olxs = LNil
+       | Some ( (op', x, xs, ilxs')) \<Rightarrow> \<exists>olxs'. olxs = LCons x (xs @@- olxs') \<and> P op' ilxs' olxs')"
+    apply (simp split: option.splits sum.splits)
+    apply (intro conjI allI impI)
+    subgoal
+      by (rule nonterm)
+    subgoal for op ilxs olxs op' x xs ilxs'
+      apply (drule produce_inner_induct[where Q="\<lambda> op ilxs zs. 
+      case zs of (op', x, xs, ilxs') \<Rightarrow> \<forall>olxs. P op ilxs olxs \<longrightarrow> (\<exists>olxs'. olxs = LCons x (xs @@- olxs') \<and> P op' ilxs' olxs')"])
+        apply (simp split: option.splits prod.splits)
+      subgoal
+        using local.step lshift_simps(1) by blast
+      subgoal for op' x xs ilxs' olxs' op''
+        apply clarsimp
+        by (smt (verit) Pair_inject list.simps(5) local.step lshift_simps(2) option.case(2) option.inject produce_inner.simps split_conv)
+      subgoal
+        by clarsimp
+      done
+    done
+  from rel show ?thesis
+    apply (coinduction arbitrary: op ilxs olxs rule: llist.coinduct_upto)
+    apply (intro conjI impI)
+      apply (drule coind)
+      apply (subst produce.code)
+      apply (simp_all split: prod.splits option.splits sum.splits)
+      apply (intro conjI impI)
+      apply auto[1]
+     apply (drule coind)
+     apply (subst produce.code)
+     apply (simp_all split: prod.splits option.splits sum.splits)
+     apply (intro conjI impI allI)
+     apply auto[1]
+    apply (frule coind)
+    apply (subst (2) produce.code)
+    apply (simp split: option.splits sum.splits)
+    apply (intro conjI impI allI)
+    apply auto[1]
+    apply (metis (mono_tags, lifting) lshift.cong_base lshift.cong_lshift)
+    done
+qed
 
 primcorec collatz_op where
   "collatz_op = Logic (\<lambda> ev.  
      case ev of 
-       None \<Rightarrow> (collatz_op, [], False)
-     | Some ( (a, Suc 0, i)) \<Rightarrow> (collatz_op, [Inr (a, i)], False)
-     | Some ((a, n, i)) \<Rightarrow> (if n mod 2 = 0 then (collatz_op, [Inl (a,n div 2, i+1)], True) else (collatz_op, [Inl (a, 3 * n + 1, Suc i)], True)))"
+       None \<Rightarrow> (None, [])
+     | Some ( (a, Suc 0, i)) \<Rightarrow> (Some collatz_op, [Inr (a, i)])
+     | Some ((a, n, i)) \<Rightarrow> (if n mod 2 = 0 then (Some collatz_op, [Inl (a,n div 2, i+1)]) else (Some collatz_op, [Inl (a, 3 * n + 1, Suc i)])))"
 
 primcorec collatz_init_op  where
-  "collatz_init_op = Logic (\<lambda>ev. case ev of None \<Rightarrow> (collatz_init_op, [], False) | Some a \<Rightarrow> (collatz_init_op, [ (a::nat, a::nat, 0::nat)], True))"
+  "collatz_init_op = Logic (\<lambda>ev. case ev of None \<Rightarrow> (None, []) | Some a \<Rightarrow> (Some collatz_init_op, [ (a::nat, a::nat, 0::nat)]))"
 
-definition "finite_produce op xs = fold (\<lambda> ev (op, out, b) . let (lgc', out', b') = apply op (Some ev) in (lgc', out@out', b')) xs (op, [], True)"
+definition "finite_produce op xs = (
+  case xs of
+    [] \<Rightarrow> apply op None 
+  | _ \<Rightarrow> fold (\<lambda> ev (op_option, out) . (case op_option of None \<Rightarrow> (None, out) | Some op \<Rightarrow> let (op', out') = apply op (Some ev) in (op', out@out'))) xs (Some op, []))"
+
+definition "input = produce collatz_init_op (llist_of [1..<20])"
+value "list_of input"
+value "list_of (produce ((loop_op collatz_op)) input)"
 
 
 primcorec compose_op where
   "compose_op op1 op2 = Logic (\<lambda> ev.
-       let (op1', out, b) = apply op1 ev in
-       let (op2', out', b') = finite_produce op2 out in
-       (compose_op op1' op2', out', b \<longrightarrow> b'))"
+       let (op1_option, out) = apply op1 ev in
+       let (op2_option, out') = finite_produce op2 out in
+       case op1_option of
+         None \<Rightarrow> (case op2_option of
+                        None \<Rightarrow> (None, out')
+                      | Some op2' \<Rightarrow> (Some (compose_op (Logic (\<lambda> _. (None, []))) op2'), out'))
+       | Some op1' \<Rightarrow>
+                      (case op2_option of
+                        None \<Rightarrow> (None, out')
+                      | Some op2' \<Rightarrow> (Some (compose_op op1' op2'), out')))"
 
-term "(compose_op collatz_init_op (loop_op collatz_op))"
+lemma produce_None_op[simp]:
+  "produce (Logic (\<lambda>_. (None, []))) lxs = LNil"
+  sorry
 
 fun ltaken where
   "ltaken _ 0 = []"
 | "ltaken LNil _ = []"
 | "ltaken (LCons x xs) (Suc n) = x # ltaken xs n"
 
-definition "test = ltaken (produce (compose_op collatz_init_op (loop_op collatz_op)) (llist_of [1..<4])) 10"
 
-end
-value "ltaken (produce (compose_op collatz_init_op (loop_op collatz_op)) (llist_of [1..<5])) 10"
+value "list_of (produce (compose_op collatz_init_op (loop_op collatz_op)) (llist_of [1..<20]))"
+
+
+primcorec skip_n :: "(_, 'i) op \<Rightarrow> nat \<Rightarrow> (_, 'i) op" where
+  "skip_n op n = Logic (\<lambda> ev.
+                 let (op_option, out) = apply op ev in
+                 if length out < n 
+                 then (case op_option of None \<Rightarrow> (None, []) | Some op' \<Rightarrow> (Some (skip_n op' (n - length out)), []))
+                 else (op_option, drop n out))"
+
+lemma
+  "produce (compose_op op1 op2) lxs = produce op2 (produce op1 lxs)"
+  apply (coinduction arbitrary: op1 op2 lxs rule: produce_coinduction)
+  subgoal for op1 op2 lxs
+    apply (subst (1 2) produce.code)
+    apply (clarsimp simp add: split: split: option.splits prod.splits list.splits)
+    sorry
+  subgoal for op' out op1 op2 lxs
+    apply (rule exI[of _ "produce (skip_n op2 (length out)) (produce op1 lxs)"])
+    apply (simp split: option.splits)   
+    apply (elim conjE)
+      apply (drule sym[of _ op'])
+     apply clarsimp
+    subgoal for op2'
+      apply (intro conjI)
+      subgoal
+        sorry
+      subgoal
+        apply (subst (2) produce.code)
+        apply (clarsimp split: option.splits)
+        apply (intro conjI allI impI)
+        subgoal
+        apply (rule exI[of _ "Logic (\<lambda>_. (None, []))"])
+        apply (rule exI[of _ "skip_n op2 (length (snd (finite_produce op2 (snd (apply op1 (lhd' lxs))))))"])
+          apply (intro conjI)
+
+
+         apply (rule refl)
+
+
+      subgoal
+        sorry
+      subgoal
+        apply hypsubst_thin
+        apply (subst (2) produce.code)
+        apply (auto split: option.splits)
 
 end
 lemma produce_inner_LNil_None[simp]:
@@ -77,19 +203,6 @@ lemma produce_inner_LNil_None[simp]:
   apply simp
   done
 
-lemma produce_inner_induct[consumes 1, case_names no_production produces terminates]:
-  assumes "produce_inner op_lxs = Some y"
-    and "\<And>op h lxs op' zs . apply op h = (op', []) \<Longrightarrow> Q (op', lxs) zs \<Longrightarrow> Q (op, LCons h lxs) zs"
-    and "\<And>op h x xs lxs lxs' op' . produce_inner (op, LCons h lxs) = Some (Inl (op', x, xs, lxs')) \<Longrightarrow>
-                                    apply op h = (op', x # xs) \<Longrightarrow> Q (op, LCons h lxs) (Inl (op', x, xs, lxs'))"
-    and  "\<And>op. Q (op, LNil) (Inr op)"
-  shows "Q op_lxs y"
-  apply (rule produce_inner.raw_induct[OF _ assms(1)])
-  apply (simp split: llist.splits prod.splits list.splits)[1]
-  using assms(4) apply blast  
-  using assms(2) apply blast
-  apply (metis (mono_tags, lifting) assms(3) list.simps(5) llist.case(2) prod.simps(2) produce_inner.simps)
-  done
 
 corec produce where
   "produce op lxs = 
