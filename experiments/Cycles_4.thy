@@ -15,28 +15,31 @@ code_lazy_type op
 
 partial_function (option) produce_inner where
   "produce_inner op lxs = 
-    (let (op_otion, out) = apply op (lhd' lxs) in
-     case op_otion of
-       None \<Rightarrow> None
-     | Some op' \<Rightarrow> (case out of
-                     [] \<Rightarrow> produce_inner op' (ltl lxs)
-                   | x#xs \<Rightarrow> Some ((op', x, xs, ltl lxs))))"
-(* simps_of_case produce_inner_simps[simp]: produce_inner.simps
- *)
+    (case apply op (lhd' lxs) of
+       (None, out) \<Rightarrow> Some (Inr out)
+     | (Some op', []) \<Rightarrow> produce_inner op' (ltl lxs)
+     | (Some op', x#xs) \<Rightarrow> Some (Inl (op', x, xs, ltl lxs)))"
+
+thm Let_def
+
 declare produce_inner.simps[code]
+
 
 thm produce_inner.raw_induct[unfolded Let_def, simplified]
 
 lemma produce_inner_induct[consumes 1, case_names no_production produces terminates]:
-  assumes "produce_inner op lxs = Some y"
-    and "\<And>op lxs op' zs . apply op (lhd' lxs) = (Some op', []) \<Longrightarrow> Q op' (ltl lxs) zs \<Longrightarrow> Q op lxs zs"
-    and "\<And>op x xs lxs lxs' op'. produce_inner op lxs = Some (op', x, xs, lxs') \<Longrightarrow>
-                                apply op (lhd' lxs) = (Some op', x # xs) \<Longrightarrow> Q op lxs ((op', x, xs, lxs'))"
-  shows "Q op lxs y"
+ assumes "produce_inner op lxs = Some y"
+   and "\<And>op lxs op' zs . apply op (lhd' lxs) = (Some op', []) \<Longrightarrow> Q op' (ltl lxs) zs \<Longrightarrow> Q op lxs zs"
+   and "\<And>op x xs lxs lxs' op'. produce_inner op lxs = Some (Inl (op', x, xs, lxs')) \<Longrightarrow>
+                               apply op (lhd' lxs) = (Some op', x # xs) \<Longrightarrow> Q op lxs (Inl (op', x, xs, lxs'))"
+   and "\<And>op xs lxs. produce_inner op lxs = Some (Inr xs) \<Longrightarrow>
+                     apply op (lhd' lxs) = (None, xs) \<Longrightarrow> Q op lxs (Inr xs)"
+ shows "Q op lxs y"
   apply (rule produce_inner.raw_induct[OF _ assms(1), unfolded Let_def, simplified])
   using assms(2-) apply (simp split: llist.splits prod.splits list.splits option.splits)
+  apply (metis (mono_tags, lifting) option.case(1) produce_inner.simps split_conv)
   apply (metis (mono_tags, lifting) list.simps(5) option.case(2) produce_inner.simps split_conv)
-  done
+  done 
 
 corec rec_op where
   "rec_op scheduler buf op = Logic (\<lambda> ev. 
@@ -55,7 +58,8 @@ corec produce where
   "produce op lxs = 
     (case produce_inner op lxs of
        None \<Rightarrow> LNil
-    | Some (op', x, xs, lxs') \<Rightarrow> LCons x (xs @@- produce op' lxs'))"
+    | Some (Inr xs) \<Rightarrow> llist_of xs
+    | Some (Inl (op', x, xs, lxs')) \<Rightarrow> LCons x (xs @@- produce op' lxs'))"
 
 
 lemma produce_coinduction:
@@ -63,139 +67,957 @@ lemma produce_coinduction:
     and nonterm: "\<And>op ilxs olxs. P op ilxs olxs \<Longrightarrow> produce_inner op ilxs = None \<Longrightarrow> olxs = LNil"
     and step: "\<And>op ilxs olxs op' out.
     P op ilxs olxs \<Longrightarrow> apply op (lhd' ilxs) = (Some op', out) \<Longrightarrow> \<exists>olxs'. olxs = out @@- olxs' \<and> P op' (ltl ilxs) olxs'"
+    and terminate: "\<And>op olxs ilxs op' out.
+    P op ilxs olxs \<Longrightarrow> apply op (lhd' ilxs) = (None, out) \<Longrightarrow> olxs = llist_of out"
   shows "produce op ilxs = olxs"
 proof -
   have coind: "\<And>op ilxs olxs. P op ilxs olxs \<Longrightarrow>
     (case produce_inner op ilxs of None \<Rightarrow> olxs = LNil
-       | Some ( (op', x, xs, ilxs')) \<Rightarrow> \<exists>olxs'. olxs = LCons x (xs @@- olxs') \<and> P op' ilxs' olxs')"
+       | Some (Inl (op', x, xs, ilxs')) \<Rightarrow> \<exists>olxs'. olxs = LCons x (xs @@- olxs') \<and> P op' ilxs' olxs' | Some (Inr xs) \<Rightarrow> llist_of xs = olxs)"
     apply (simp split: option.splits sum.splits)
     apply (intro conjI allI impI)
     subgoal
       by (rule nonterm)
     subgoal for op ilxs olxs op' x xs ilxs'
       apply (drule produce_inner_induct[where Q="\<lambda> op ilxs zs. 
-      case zs of (op', x, xs, ilxs') \<Rightarrow> \<forall>olxs. P op ilxs olxs \<longrightarrow> (\<exists>olxs'. olxs = LCons x (xs @@- olxs') \<and> P op' ilxs' olxs')"])
-        apply (simp split: option.splits prod.splits)
+      case zs of Inl (op', x, xs, ilxs') \<Rightarrow> \<forall>olxs. P op ilxs olxs \<longrightarrow> (\<exists>olxs'. olxs = LCons x (xs @@- olxs') \<and> P op' ilxs' olxs') | Inr xs \<Rightarrow> True"])
+        apply (simp_all split: option.splits prod.splits sum.splits)
       subgoal
-        using local.step lshift_simps(1) by blast
-      subgoal for op' x xs ilxs' olxs' op''
-        apply clarsimp
-        by (smt (verit) Pair_inject list.simps(5) local.step lshift_simps(2) option.case(2) option.inject produce_inner.simps split_conv)
+        by (metis local.step lshift_simps(1))
       subgoal
-        by clarsimp
+        by (smt (verit) Pair_inject list.simps(5) local.step lshift_simps(2) option.case(2) option.inject produce_inner.simps split_conv sum.inject(1))
+      done
+    subgoal for op ilxs olxs
+         apply (drule produce_inner_induct[where Q="\<lambda> op ilxs zs. 
+      case zs of Inl (op', x, xs, ilxs') \<Rightarrow> True | Inr xs \<Rightarrow> \<forall>olxs. P op ilxs olxs \<longrightarrow> llist_of xs = olxs"])   
+         apply (simp_all split: sum.splits prod.splits; hypsubst_thin)
+      using local.step apply fastforce+
+      using terminate apply auto
       done
     done
   from rel show ?thesis
     apply (coinduction arbitrary: op ilxs olxs rule: llist.coinduct_upto)
     apply (intro conjI impI)
+    subgoal
       apply (drule coind)
       apply (subst produce.code)
       apply (simp_all split: prod.splits option.splits sum.splits)
       apply (intro conjI impI)
-      apply auto[1]
+       apply auto
+    done
+  subgoal    
      apply (drule coind)
      apply (subst produce.code)
      apply (simp_all split: prod.splits option.splits sum.splits)
      apply (intro conjI impI allI)
-     apply auto[1]
+     apply auto
+    done
+  subgoal
     apply (frule coind)
     apply (subst (2) produce.code)
     apply (simp split: option.splits sum.splits)
     apply (intro conjI impI allI)
     apply auto[1]
-    apply (metis (mono_tags, lifting) lshift.cong_base lshift.cong_lshift)
+     apply (metis (mono_tags, lifting) lshift.cong_base lshift.cong_lshift)
+    using lshift.cong_refl apply fastforce
     done
+  done
 qed
 
 primcorec collatz_op where
   "collatz_op = Logic (\<lambda> ev.  
      case ev of 
        None \<Rightarrow> (None, [])
-     | Some ( (a, Suc 0, i)) \<Rightarrow> (Some collatz_op, [Inr (a, i)])
-     | Some ((a, n, i)) \<Rightarrow> (if n mod 2 = 0 then (Some collatz_op, [Inl (a,n div 2, i+1)]) else (Some collatz_op, [Inl (a, 3 * n + 1, Suc i)])))"
+     | Some (a, Suc 0, i) \<Rightarrow> (Some collatz_op, [Inr (a, i)])
+     | Some (a, n, i) \<Rightarrow> (if n mod 2 = 0 then (Some collatz_op, [Inl (a,n div 2, i+1)]) else (Some collatz_op, [Inl (a, 3 * n + 1, Suc i)])))"
 
 primcorec collatz_init_op  where
   "collatz_init_op = Logic (\<lambda>ev. case ev of None \<Rightarrow> (None, []) | Some a \<Rightarrow> (Some collatz_init_op, [ (a::nat, a::nat, 0::nat)]))"
 
-definition "finite_produce op xs = (
-  case xs of
-    [] \<Rightarrow> apply op None 
-  | _ \<Rightarrow> fold (\<lambda> ev (op_option, out) . (case op_option of None \<Rightarrow> (None, out) | Some op \<Rightarrow> let (op', out') = apply op (Some ev) in (op', out@out'))) xs (Some op, []))"
-
 definition "input = produce collatz_init_op (llist_of [1..<20])"
-value "list_of input"
 value "list_of (produce ((loop_op collatz_op)) input)"
 
 
-primcorec compose_op where
-  "compose_op op1 op2 = Logic (\<lambda> ev.
-       let (op1_option, out) = apply op1 ev in
-       let (op2_option, out') = finite_produce op2 out in
-       case op1_option of
-         None \<Rightarrow> (case op2_option of
-                        None \<Rightarrow> (None, out')
-                      | Some op2' \<Rightarrow> (Some (compose_op (Logic (\<lambda> _. (None, []))) op2'), out'))
-       | Some op1' \<Rightarrow>
-                      (case op2_option of
-                        None \<Rightarrow> (None, out')
-                      | Some op2' \<Rightarrow> (Some (compose_op op1' op2'), out')))"
+primcorec nil_op where
+  "nil_op = Logic (\<lambda> ev.  (Some nil_op, []))"
 
-lemma produce_None_op[simp]:
-  "produce (Logic (\<lambda>_. (None, []))) lxs = LNil"
-  sorry
+primcorec apply_None_op where
+  "apply_None_op op = Logic (\<lambda> _. case apply op None of (None, out) \<Rightarrow> (None, out) | (Some op', out) \<Rightarrow> (Some (apply_None_op op'), out))"
+
+lemma produce_inner_apply_None_op_Some_None_False:
+  assumes "produce_inner (apply_None_op op) lxs = Some r" (is "produce_inner ?O ?L = Some ?R")
+    and "produce_inner (apply_None_op op) lys = None"
+  shows False
+  using assms proof (induct ?O ?L ?R arbitrary: op lys rule: produce_inner_induct)
+  case (no_production lxs op' op1 op2)
+  then show ?case 
+    apply -
+    apply (simp split: option.splits prod.splits list.splits if_splits)
+    apply (subst (asm) (2) produce_inner.simps)
+    apply (auto split: option.splits prod.splits)
+    done
+next
+  case (produces lxs)
+  then show ?case 
+    apply -
+    apply (subst (asm) (1 2) produce_inner.simps)
+    apply (simp split: if_splits option.splits prod.splits list.splits)
+    done
+next
+  case (terminates xs)
+  then show ?case
+    apply -
+    apply (subst (asm) (1 2) produce_inner.simps)
+    apply (simp split: if_splits option.splits prod.splits list.splits)
+    done
+qed
+
+
+fun finite_produce where
+  "finite_produce op [] = (Some op, [])"
+| "finite_produce op (x#xs) = (
+   case apply op (Some x) of 
+     (None, out) \<Rightarrow> (None, out)
+   | (Some op', out) \<Rightarrow> let (op'', out') = finite_produce op' xs in (op'', out@out'))"
+
+primcorec compose_op where
+  "compose_op (op1::('a, 'b) op) (op2::('b, 'c) op) = Logic (\<lambda> ev.
+       let (op1_option, out1) = apply op1 ev in
+       let (op2_option, out2) = (if op1_option = None \<and> out1 = [] then apply op2 None else finite_produce op2 out1) in
+       (case op2_option of
+          None \<Rightarrow> (None, out2)
+       | Some op2' \<Rightarrow> (case op1_option of None \<Rightarrow> (Some (compose_op (Logic (\<lambda>_. (None, []))) op2'), out2) | Some op1' \<Rightarrow> (Some (compose_op op1' op2'), out2))))"
 
 fun ltaken where
   "ltaken _ 0 = []"
 | "ltaken LNil _ = []"
 | "ltaken (LCons x xs) (Suc n) = x # ltaken xs n"
 
-
 value "list_of (produce (compose_op collatz_init_op (loop_op collatz_op)) (llist_of [1..<20]))"
 
+lemma produce_inner_compose_op_Some_None:
+  assumes "produce_inner (compose_op op1 op2) lxs = Some r" (is "produce_inner ?O ?L = Some ?R")
+    and "produce_inner op1 lxs = None"
+  shows False
+ using assms proof (induct ?O ?L ?R arbitrary: op1 op2 rule: produce_inner_induct)
+  case (no_production lxs op' op1 op2)
+  then show ?case 
+    apply -
+    apply (simp split: option.splits prod.splits list.splits if_splits)
+    subgoal for op2'
+      apply (subst (asm) (2) produce_inner.simps)
+      apply (simp split: option.splits prod.splits)
+      done
+    subgoal for op2'
+      apply (subst (asm) (2) produce_inner.simps)
+      apply (simp split: option.splits prod.splits)
+      done
+    subgoal for op2' op1'
+      apply (elim conjE)
+      apply hypsubst_thin
+      apply (subst (asm) (2) produce_inner.simps)
+      apply (auto split: option.splits prod.splits list.splits)
+      done
+    done
+next
+  case (produces lxs)
+  then show ?case 
+    apply -
+    apply (subst (asm) (1 2) produce_inner.simps)
+    apply (simp split: if_splits option.splits prod.splits list.splits)
+    done
+next
+  case (terminates xs lxs)
+  then show ?case
+    apply -
+    apply (subst (asm) (1 2) produce_inner.simps)
+    apply (simp split: if_splits option.splits prod.splits list.splits)
+    done
+qed
 
-primcorec skip_n :: "(_, 'i) op \<Rightarrow> nat \<Rightarrow> (_, 'i) op" where
-  "skip_n op n = Logic (\<lambda> ev.
-                 let (op_option, out) = apply op ev in
-                 if length out < n 
-                 then (case op_option of None \<Rightarrow> (None, []) | Some op' \<Rightarrow> (Some (skip_n op' (n - length out)), []))
-                 else (op_option, drop n out))"
+lemma produce_inner_compose_op_Inl_finite_produce_None:
+  assumes "produce_inner op1 lxs = Some (Inl (op', x, xs, lxs'))" (is "produce_inner ?O ?L = Some ?R")
+    and "finite_produce op2 (x # xs) = (None, out)" 
+  shows "produce_inner (compose_op op1 op2) lxs = Some (Inr out)"
+  using assms proof (induct ?O ?L ?R arbitrary:  rule: produce_inner_induct)
+  case (no_production op lxs op')
+  then show ?case 
+    apply -
+    apply (simp split: option.splits prod.splits)
+    subgoal
+      apply hypsubst_thin
+      apply (subst produce_inner.simps)
+      apply (auto split: if_splits option.splits)
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (subst produce_inner.simps)
+      apply (auto split: if_splits option.splits)
+      done
+    done
+next
+  case (produces op lxs )
+  then show ?case 
+    apply -
+    apply simp
+    apply (subst (asm) produce_inner.simps)
+    apply (subst produce_inner.simps)
+    apply (auto split: option.splits prod.splits sum.splits)
+    done
+qed
+
+lemma produce_inner_compose_op_Inr_finite_produce_None:
+  assumes "produce_inner op1 lxs = Some (Inr xs)" (is "produce_inner ?O ?L = Some ?R")
+    and "finite_produce op2 xs = (None, out)" 
+  shows "produce_inner (compose_op op1 op2) lxs = Some (Inr out)"
+  using assms proof (induct ?O ?L ?R arbitrary:  rule: produce_inner_induct)
+  case (no_production op lxs op')
+  then show ?case 
+    apply -
+    apply (simp split: option.splits prod.splits)
+    apply (subst produce_inner.simps)
+    apply (auto split: if_splits option.splits)
+    done
+next
+  case (terminates op lxs)
+  then show ?case 
+    apply -
+    apply (subst (asm) produce_inner.simps)
+    apply (subst produce_inner.simps)
+    apply (auto split: option.splits prod.splits sum.splits)
+    done
+qed
+
+lemma produce_inner_compose_op_Inl_finite_produce_Some_Nil:
+  assumes "produce_inner op1 lxs = Some (Inl (op1', x, xs, lxs'))" (is "produce_inner ?O ?L = Some ?R")
+    and "finite_produce op2 (x # xs) = (Some op2', [])" 
+  shows "produce_inner (compose_op op1 op2) lxs = produce_inner (compose_op op1' op2') lxs'"
+  using assms proof (induct ?O ?L ?R arbitrary:  rule: produce_inner_induct)
+  case (no_production op lxs op')
+  then show ?case 
+    apply -
+    apply (simp split: option.splits prod.splits)
+    apply hypsubst_thin
+    apply (subst produce_inner.simps)
+    apply (auto split: if_splits option.splits)
+    done
+next
+  case (produces op lxs )
+  then show ?case 
+    apply -
+    apply simp
+    apply (subst (asm) produce_inner.simps)
+    apply (subst produce_inner.simps)
+    apply (auto split: option.splits prod.splits sum.splits)
+    done
+qed
+
+lemma produce_inner_compose_op_Inl_finite_produce_Some_Cons:
+  assumes "produce_inner op1 lxs = Some (Inl (op1', x, xs, lxs'))" (is "produce_inner ?O ?L = Some ?R")
+    and "finite_produce op2 (x#xs) = (Some op2', y#ys)" 
+  shows "produce_inner (compose_op op1 op2) lxs = Some (Inl (compose_op op1' op2', y, ys, lxs'))"
+  using assms proof (induct ?O ?L ?R arbitrary:  rule: produce_inner_induct)
+  case (no_production op lxs op')
+  then show ?case 
+    apply -
+    apply (simp split: option.splits prod.splits)
+    apply (subst produce_inner.simps)
+    apply (auto split: if_splits option.splits)
+    done
+next
+  case (produces op lxs)
+  then show ?case 
+    apply -
+    apply (subst (asm) produce_inner.simps)
+    apply (subst produce_inner.simps)
+    apply (auto split: option.splits prod.splits sum.splits)
+    done
+qed 
+
+
+lemma produce_inner_compose_op_Inr_finite_produce_Some_Nil:
+  assumes "produce_inner op1 lxs = Some (Inr (x#xs))" (is "produce_inner ?O ?L = Some ?R")
+    and "finite_produce op2 (x#xs) = (Some op2', [])" 
+  shows "produce_inner (compose_op op1 op2) lxs = produce_inner (compose_op (Logic (\<lambda>_. (None, []))) op2') lxs'"
+  using assms proof (induct ?O ?L ?R arbitrary:  rule: produce_inner_induct)
+  case (no_production op lxs op')
+  then show ?case 
+    apply -
+    apply (simp split: option.splits prod.splits)
+    apply (subst produce_inner.simps)
+    apply (auto split: if_splits option.splits)
+    done
+next
+  case (terminates op lxs)
+  then show ?case 
+    apply -
+    apply (subst (asm) produce_inner.simps)
+    apply (clarsimp split: option.splits prod.splits sum.splits list.splits)
+    apply (subst (1 2) produce_inner.simps)
+    apply (clarsimp split: option.splits sum.splits prod.splits list.splits)
+    apply (intro allI conjI impI)
+    subgoal
+      oops
+
+lemma produce_inner_LNil_Inl_compose_op_None_op:
+  assumes "produce_inner op LNil = Some (Inl (op', x, xs, lys))" (is "produce_inner ?O ?L = Some ?R")
+  shows "\<exists> lxs'. produce_inner (compose_op (Logic (\<lambda>_. (None, []))) op) lxs = Some (Inl (compose_op (Logic (\<lambda>_. (None, []))) op', x, xs, lxs'))"
+  using assms proof (induct ?O ?L ?R arbitrary: lxs op'  rule: produce_inner_induct)
+  case (no_production op op')
+  then show ?case 
+    apply -
+    apply (simp split: option.splits prod.splits)
+    apply (subst produce_inner.simps)
+    apply (auto split: option.splits)
+    done
+next
+  case (produces op)
+  then show ?case 
+    apply -
+    apply (subst (asm) produce_inner.simps)
+    apply (subst produce_inner.simps)
+    apply (auto split: option.splits)
+    done
+qed
+
+lemma produce_inner_LNil_Inr_compose_op_None_op:
+  assumes "produce_inner op LNil = Some (Inr xs)" (is "produce_inner ?O ?L = Some ?R")
+  shows "produce_inner (compose_op (Logic (\<lambda>_. (None, []))) op) lxs = Some (Inr xs)"
+  using assms proof (induct ?O ?L ?R arbitrary: lxs  rule: produce_inner_induct)
+  case (no_production op op')
+  then show ?case 
+    apply -
+    apply (simp split: option.splits prod.splits)
+    apply (subst produce_inner.simps)
+    apply (auto split: option.splits)
+    done
+next
+  case (terminates op)
+  then show ?case 
+    apply -
+    apply (subst (asm) produce_inner.simps)
+    apply (subst produce_inner.simps)
+    apply (auto split: option.splits)
+    done
+qed
+
+lemma produce_inner_compose_op_None_op_produce_inner_LNil:
+  assumes "produce_inner (compose_op (Logic (\<lambda>_. (None, []))) op) lxs = Some (Inl r)" (is "produce_inner ?O ?L = Some ?R")
+  shows "\<exists> r. produce_inner op LNil = Some (Inl r)"
+  using assms proof (induct ?O ?L ?R arbitrary: op  rule: produce_inner_induct)
+  case (no_production op op')
+  then show ?case 
+    apply -
+    apply (simp split: option.splits prod.splits)
+    apply (subst produce_inner.simps)
+    apply (auto split: option.splits sum.splits prod.splits)
+    done
+next
+  case (produces op)
+  then show ?case 
+    apply -
+    apply (subst (asm) produce_inner.simps)
+    apply (subst produce_inner.simps)
+    apply (auto split: option.splits sum.splits prod.splits)
+    done
+qed
+
+
+lemma produce_inner_compose_op_Inr_finite_produce_Some_LCons:
+  assumes "produce_inner op1 lxs = Some (Inr xs)" (is "produce_inner ?O ?L = Some ?R")
+    and "finite_produce op2 xs = (Some op2', y#ys)" 
+  shows "produce_inner (compose_op op1 op2) lxs = Some (Inl (compose_op (Logic (\<lambda>_. (None, []))) op2', y, ys, lxs'))"
+  using assms proof (induct ?O ?L ?R arbitrary:  rule: produce_inner_induct)
+  case (no_production op lxs op')
+  then show ?case 
+    apply -
+    apply (simp split: option.splits prod.splits)
+    apply (subst produce_inner.simps)
+    apply (auto split: if_splits option.splits)
+    done
+next
+  case (terminates op lxs)
+  then show ?case 
+    apply -
+    apply (subst (asm) produce_inner.simps)
+    apply (clarsimp split: option.splits prod.splits sum.splits list.splits)
+    apply (subst (1) produce_inner.simps)
+    apply (auto split: option.splits sum.splits prod.splits)
+    oops
+
+lemma produce_inner_compose_op:
+  "produce_inner (compose_op (op1::('a, 'b) op) (op2::('b, 'c) op)) lxs =
+   (case produce_inner op1 lxs of
+      None \<Rightarrow> None
+    | Some (Inl (op1', x, xs, lxs')) \<Rightarrow> 
+        (case finite_produce op2 (x#xs) of
+           (None, out) \<Rightarrow> Some (Inr out)
+        | (Some op2', []) \<Rightarrow> produce_inner (compose_op op1' op2') lxs'
+        | (Some op2', y#ys) \<Rightarrow> Some (Inl (compose_op op1' op2', y, ys, lxs')))
+    | Some (Inr xs) \<Rightarrow> (case finite_produce op2 xs of
+           (None, out) \<Rightarrow> Some (Inr out)
+        | (Some op2', []) \<Rightarrow> produce_inner (compose_op (Logic (\<lambda>_. (None, []))) op2') lxs'
+        | (Some op2', y#ys) \<Rightarrow> Some (Inl (compose_op (Logic (\<lambda>_. (None, []))) op2', y, ys, lxs'))))"
+  apply (cases "produce_inner op1 lxs")
+   apply simp
+  subgoal 
+    using produce_inner_compose_op_Some_None by fastforce
+  subgoal for r
+    apply simp
+    apply (cases r)
+    subgoal for p
+      apply (cases p)
+      apply hypsubst_thin
+      apply (simp add: produce_inner_compose_op_Inl_finite_produce_Some_Nil produce_inner_compose_op_Inl_finite_produce_Some_Cons produce_inner_compose_op_Inr_finite_produce_None produce_inner_compose_op_Inl_finite_produce_None split: option.splits prod.splits list.splits)
+      done
+    subgoal for xs
+      apply simp
+      apply hypsubst_thin
+      apply (simp split: sum.splits option.splits prod.splits)
+      oops
+
+primcorec skip_n_op :: "(_, 'i) op \<Rightarrow> nat \<Rightarrow> (_, 'i) op" where
+  "skip_n_op op n = Logic (\<lambda> ev.
+                 case apply op ev of
+                   (None, out) \<Rightarrow> (None, drop n out)
+                 | (Some op', out) \<Rightarrow>
+                   if length out < n 
+                   then (Some (skip_n_op op' (n - length out)), [])
+                   else (Some op', drop n out))"
+
+lemma skip_n_0[simp,intro]:
+  "skip_n_op op 0 = op"
+  apply (coinduction arbitrary: op rule: op.coinduct_strong)
+  apply (auto simp add: rel_fun_def split: prod.splits option.splits)
+  done
+
+lemma snd_finite_produce_skip_n_op[simp]:
+  "snd (finite_produce (skip_n_op op n) xs) = drop n (snd (finite_produce op xs))"
+  apply (induct xs arbitrary: op n)
+   apply simp
+  subgoal for x xs op n
+    apply (simp split: option.splits if_splits prod.splits)
+    done
+  done
+
+lemma fst_finite_produce_None_skip_n_op_None:
+  "fst (finite_produce op xs) = None \<Longrightarrow> fst (finite_produce (skip_n_op op n) xs) = None"
+  apply (induct xs arbitrary: op n)
+   apply simp
+  subgoal for x xs op n
+    apply (auto split: option.splits if_splits prod.splits)
+    done
+  done
+
+lemma fst_finite_produce_Some_skip_n_op_Some:
+  "fst (finite_produce op xs) = Some op' \<Longrightarrow> fst (finite_produce (skip_n_op op n) xs) = Some (skip_n_op op' (n - (length ((snd (finite_produce op xs))))))"
+  apply (induct xs arbitrary: op n)
+   apply simp
+  subgoal for x xs op n
+    apply (auto split: option.splits if_splits prod.splits)
+    done
+  done
+
+lemma produce_skip_n_op_correctness:
+  "produce (skip_n_op op n) lxs = ldropn n (produce op lxs)"
+  sorry
+
+lemma produce_None_op[simp]:
+  "produce (Logic (\<lambda>_. (None, []))) lxs = LNil"
+  sorry
+
+
+lemma produce_one_step:
+  "produce op lxs = (let (op_option, out) = apply op (lhd' lxs) in (case op_option of None \<Rightarrow> llist_of out | Some op' \<Rightarrow> out @@- produce op' (ltl lxs)))"
+  apply (subst produce.code)
+  apply (subst produce_inner.simps)
+  apply (simp split: option.splits prod.splits sum.splits list.splits)
+  apply (intro impI allI conjI)
+  apply (subst produce.code)
+    apply simp
+  apply (subst (2) produce.code)
+   apply simp
+  apply (subst produce.code)
+  apply simp
+  done
+
+lemma produce_apply_lhd_Some:
+  "apply op (lhd' lxs) = (Some op', out) \<Longrightarrow>
+   produce op lxs = out @@- produce op' (ltl lxs)"
+  apply (subst produce_one_step)
+  apply simp
+  done
+
+lemma produce_apply_lhd_None:
+  "apply op (lhd' lxs) = (None, out) \<Longrightarrow>
+   produce op lxs = llist_of out"
+  apply (subst produce_one_step)
+  apply simp
+  done
+
+lemma produce_finite_step:
+  "produce op (llist_of xs) = (let (op_option, out) = finite_produce op xs in (case op_option of None \<Rightarrow> llist_of out | Some op' \<Rightarrow> out @@- produce op' LNil))"
+  apply (induct xs arbitrary: op)
+   apply simp
+  apply simp
+  apply (subst produce_one_step)
+  apply (simp add: shift_shift split: option.splits prod.splits)
+  apply (metis lappend_llist_of lappend_llist_of_llist_of)
+  done
+
+
+lemma produce_lshift:
+  "produce op (xs @@- lxs) = (let (op_option, out) = finite_produce op xs in (case op_option of None \<Rightarrow> llist_of out | Some op' \<Rightarrow> out @@- produce op' lxs))"
+  apply (induct xs arbitrary: op lxs)
+  apply simp
+  apply simp
+  apply (subst produce_one_step)
+  apply (simp add: shift_shift split: option.splits prod.splits)
+  apply (metis lappend_llist_of lappend_llist_of_llist_of)
+  done
+
+
+
+lemma compose_op_skip_n_op[simp]:
+  "compose_op op1 (skip_n_op op2 n) = skip_n_op (compose_op op1 op2) n"
+  apply (coinduction arbitrary: op1 op2 n rule: op.coinduct_strong)
+  unfolding rel_fun_def
+  apply (auto simp add: fst_finite_produce_None_skip_n_op_None fst_finite_produce_Some_skip_n_op_Some split: prod.splits option.splits)
+  done
+
+lemma produce_inner_skip_n_op_Some_None_False:
+  assumes "produce_inner (skip_n_op op n) lxs = Some r" (is "produce_inner ?O ?L = Some ?R")
+    and "produce_inner op lxs = None"
+  shows False
+  using assms proof (induct ?O ?L ?R arbitrary: op n rule: produce_inner_induct)
+  case (no_production lxs op' zs op n)
+  then show ?case 
+    apply -
+    apply (subst (asm) (2) produce_inner.simps)
+    apply (simp split: list.splits option.splits prod.splits if_splits; hypsubst_thin)
+     apply blast
+    apply (metis skip_n_0)
+    done
+next
+  case (produces x xs lxs lxs' op')
+  then show ?case 
+    apply -
+    apply (subst (asm) (2) produce_inner.simps)
+    apply (simp split: list.splits option.splits prod.splits if_splits; hypsubst_thin)
+    done
+next
+  case (terminates xs lxs lxs')
+  then show ?case 
+    apply -
+    apply (subst (asm) (2) produce_inner.simps)
+    apply (simp split: list.splits option.splits prod.splits if_splits; hypsubst_thin)
+    done
+qed    
+
+lemma produce_inner_compose_op_None_compose_op_skip_n_op_None[simp]:
+  "produce_inner (compose_op op1 op2) lxs = None \<Longrightarrow>
+   produce_inner (compose_op op1 (skip_n_op op2 n)) lxs = None"
+  using produce_inner_skip_n_op_Some_None_False by fastforce
+
+lemma produce_inner_compose_op_Some_Inl_None:
+  assumes "produce_inner op1 lxs = Some (Inl (op1', x, xs, lxs'))" (is "produce_inner ?O ?L = Some ?R")
+  and "produce_inner (compose_op op1 op2) lxs = None"
+shows "\<exists> op2' . apply op2 (Some x) = (Some op2', [])"
+ using assms proof (induct ?O ?L ?R arbitrary: op2  rule: produce_inner_induct)
+  case (no_production op lxs op' op2')
+  then show ?case 
+    apply -
+  apply (subst (asm) (2) produce_inner.simps)
+    apply (simp split: option.splits)
+    done
+next
+  case (produces op lxs)
+  then show ?case 
+    apply -
+  apply (subst (asm) (1 2) produce_inner.simps)
+    apply (simp split: prod.splits list.splits option.splits)
+    done
+qed
+
+lemma produce_inner_compose_op_Some_Inr_None:
+  assumes "produce_inner op1 lxs = Some (Inr (x#xs))" (is "produce_inner ?O ?L = Some ?R")
+  and "produce_inner (compose_op op1 op2) lxs = None"
+shows "\<exists> op2' . apply op2 (Some x) = (Some op2', [])"
+ using assms proof (induct ?O ?L ?R arbitrary: op2  rule: produce_inner_induct)
+  case (no_production op lxs op' op2')
+  then show ?case 
+    apply -
+  apply (subst (asm) (2) produce_inner.simps)
+    apply (simp split: option.splits)
+    done
+next
+  case (terminates op lxs)
+  then show ?case 
+    apply -
+  apply (subst (asm) (1 2) produce_inner.simps)
+    apply (simp split: prod.splits list.splits option.splits)
+    done
+qed
+
+
+lemma produce_inner_compose_op_apply_Nil:
+  "produce_inner (compose_op op1 op2) lxs = None \<Longrightarrow>
+   produce op1 lxs = LCons y lys \<Longrightarrow>
+   \<exists> op2' . apply op2 (Some y) = (Some op2', [])"
+  apply (subst (asm) produce.code)
+  apply (simp add:  produce_inner_compose_op_Some_Inl_None split: sum.splits option.splits prod.splits list.splits; hypsubst_thin)
+  apply (metis (no_types, lifting) llist_of_eq_LCons_conv produce_inner_compose_op_Some_Inr_None)
+done
+
+
+lemma produce_inner_compose_op_None_produce_shift_finite_produce:
+  "produce_inner (compose_op op1 op2) lxs = None \<Longrightarrow>
+   produce op1 lxs = ys @@- lys \<Longrightarrow>
+   snd (finite_produce op2 ys) = []"
+  apply (induct ys arbitrary: op1 op2)
+   apply auto[1]
+  subgoal premises prems for a ys op1 op2
+    using prems(2-) apply -
+    apply (frule produce_inner_compose_op_apply_Nil)
+     apply simp
+  apply (elim exE)
+    subgoal for lgc2''
+      apply (cases "produce_inner (compose_op (skip_n_op op1 (Suc 0)) lgc2'') lxs")
+      subgoal
+        by (simp add: prems(1) produce_skip_n_op_correctness)
+      subgoal for r
+        apply simp
+        apply (cases r)
+        subgoal for p
+          apply (cases p)
+          apply hypsubst_thin
+          sorry
+        subgoal
+          sorry
+        done
+      done
+    done
+  done
+
+lemma produce_inner_Some_Inl_to_finite_produce:
+  assumes  "produce_inner op lxs = Some (Inl (op', x, xs, lxs'))" (is "produce_inner ?O ?L = Some ?R")
+  shows "\<exists> zs. lxs = zs @@- lxs' \<and> finite_produce op zs = (Some op', x#xs)"
+ using assms proof (induct ?O ?L ?R arbitrary:   rule: produce_inner_induct)
+  case (no_production op lxs op'')
+  then show ?case 
+    apply -
+    apply (cases lxs)
+    subgoal
+      apply simp
+
+
+    subgoal for y lys
+      apply hypsubst_thin
+    apply (simp split: option.splits prod.splits list.splits)
+      apply (drule meta_spec[of _ op'])
+      apply (elim exE conjE)
+      subgoal for zs
+      apply (rule exI[of _ "y#zs"])
+        apply (auto split: option.splits prod.splits)
+        
+
+
+next
+  case (produces op lxs)
+  then show ?case sorry
+qed
+
+
+(*   apply (induct "(op, lxs)" r arbitrary: op lxs op' x xs lxs'  rule: produce_inner_induct)
+  subgoal for op h lxs' lgc' lgc'a x xs lxs''
+    apply (simp split: option.splits prod.splits list.splits)
+    apply (metis finite_produce_Cons finite_produce_def fold_apply_old fst_eqD lshift_simps(2) snd_eqD)
+    done
+   apply simp_all
+  apply (metis append.right_neutral finite_produce_Cons finite_produce_Nil fst_conv lshift_simps(1) lshift_simps(2) snd_conv)
+  done *)
+
+lemma produce_inner_Some_Inr_to_finite_produce:
+  assumes "produce_inner op lxs = Some (Inr xs)" (is "produce_inner ?O ?L = Some ?R")
+  shows "\<exists> zs lxs'. lxs = zs @@- lxs' \<and> (finite_produce op zs = (None, xs) \<or> (\<exists> op'. finite_produce op zs = (Some op', []) \<and> apply op' None = (None, xs)))"
+ using assms proof (induct ?O ?L ?R arbitrary: rule: produce_inner_induct)
+  case (no_production op lxs op')
+  then show ?case 
+    apply -
+    apply (cases lxs)
+     apply simp_all
+
+
+    oops
+
+
+
+lemma produce_inner_produce_Some_Inl:
+  "produce_inner op2 (produce op1 lxs) = Some (Inl (op2', x, xs, lxs')) \<Longrightarrow>
+   produce_inner (compose_op op1 op2) lxs = None \<Longrightarrow>
+   False"
+  apply (drule produce_inner_Some_Inl_to_finite_produce)
+  apply (elim exE conjE)
+  apply (drule produce_inner_compose_op_None_produce_shift_finite_produce)
+  apply assumption
+
+  using produce_inner_compose_op_None_produce_shift_finite_produce produce_inner_Some_Inl_to_finite_produce by (metis neq_Nil_conv prod.sel(2))
+
+lemma produce_inner_produce_Some_Inr:
+  "produce_inner op2 (produce op1 lxs) = Some (Inr xs) \<Longrightarrow>
+   produce_inner (compose_op op1 op2) lxs = None \<Longrightarrow>
+   False"
+  sorry
+
 
 lemma
-  "produce (compose_op op1 op2) lxs = produce op2 (produce op1 lxs)"
+  shows "produce (compose_op op1 op2) lxs = produce op2 (produce op1 lxs)"
   apply (coinduction arbitrary: op1 op2 lxs rule: produce_coinduction)
   subgoal for op1 op2 lxs
-    apply (subst (1 2) produce.code)
-    apply (clarsimp simp add: split: split: option.splits prod.splits list.splits)
-    sorry
+    apply (subst produce.code)
+    apply (simp split: option.splits sum.splits)
+    unfolding not_def
+    apply (intro allI impI conjI; hypsubst_thin)
+    subgoal for r op1' x xs lxs'
+      apply (frule produce_inner_produce_Some_Inl)
+       apply assumption
+      apply simp
+      done
+    subgoal 
+
+      sorry
+    done
   subgoal for op' out op1 op2 lxs
-    apply (rule exI[of _ "produce (skip_n op2 (length out)) (produce op1 lxs)"])
-    apply (simp split: option.splits)   
-    apply (elim conjE)
+    apply (simp add: split: if_splits option.splits)
+    subgoal for op2'
+      apply (elim conjE)
       apply (drule sym[of _ op'])
-     apply clarsimp
+      apply simp
+      apply (subst (2) produce_apply_lhd_None[where out=Nil])
+       apply (metis prod.collapse)
+      apply simp
+      apply (subst produce_apply_lhd_Some[where out=out and op'=op2'])
+       apply (metis lhd'_simps(1) prod.exhaust_sel)
+      apply simp
+      apply (rule exI[of _ "produce op2' LNil"])
+      apply simp
+      apply (rule exI conjI refl)+
+       apply simp
+     (*  apply (intro allI)
+      subgoal for n
+        apply (drule spec[of _ "n + length (snd (apply op1 (lhd' lxs)))"])
+        apply simp
+        apply (subst (asm) produce_inner.simps)
+        apply (subst produce_inner.simps)
+        apply (simp split: option.splits if_splits prod.splits)
+        done *)
+      done
+    subgoal for op2'
+      apply (elim conjE)
+      apply (drule sym[of _ op'])
+      apply simp
+      apply (subst (1) produce_apply_lhd_None[where out="snd (apply op1 (lhd' lxs))"])
+       apply (metis prod.collapse)
+      apply (subst produce_finite_step)
+      apply simp
+      apply (cases "finite_produce op2 (snd (apply op1 (lhd' lxs)))")
+      apply simp
+      apply hypsubst_thin
+      apply (rule exI[of _ "produce op2' LNil"])
+      apply simp
+      apply (rule exI conjI refl)+
+       apply simp
+     (*  apply (intro allI)
+      subgoal for n
+        apply (drule spec[of _ "n + length (snd (apply op1 (lhd' lxs)))"])
+        apply (subst (asm) produce_inner.simps)
+        apply (subst produce_inner.simps)
+        apply (simp split: option.splits if_splits prod.splits)
+        done *)
+      done 
+    subgoal for op2' op1'
+      apply (elim conjE)
+      apply (drule sym[of _ op'])
+      apply simp
+      apply hypsubst_thin
+      apply (subst (1) produce_apply_lhd_Some[where op'=op1' and out="snd (apply op1 (lhd' lxs))"])
+       apply (simp add: prod.expand)
+      apply (cases "finite_produce op2 (snd (apply op1 (lhd' lxs)))")
+      apply (subst produce_lshift)
+      apply simp
+      apply (rule exI[of _ "produce op2' (produce op1' (ltl lxs))"])
+      apply simp_all
+      subgoal 
+        apply (rule exI conjI refl)+
+    (*     apply (intro allI)
+        subgoal for n
+        apply (drule spec[of _ "n + length (snd (apply op1 (lhd' lxs)))"])
+          apply (subst (asm) produce_inner.simps)
+        apply (simp split: option.splits if_splits prod.splits)
+        done *)
+      done 
+      done
+    done
+  subgoal for out op1 op2 lxs
+
+
+end
+
+      apply (subst (1) produce_apply_lhd_Some)
+
+
+      apply (simp split: option.splits prod.splits)
+
+
+      apply (simp add: )
+
+
+    apply (rule exI[of _ "produce (skip_n_op (compose_op op1 op2) (length out)) lxs"])
+    apply (subst (3) produce_apply_lhd)
+
+      apply (subst (3) produce.code)
+      apply (auto split: if_splits option.splits sum.splits)
+
+
+end
+
+      apply hypsubst_thin
+      apply (rule exI conjI refl)+
+
+       apply (intro allI impI conjI)
+         apply (smt (verit, ccfv_SIG) old.prod.case option.simps(3) option.simps(4) prod.collapse produce_inner.simps)
+      subgoal
+            apply (subst (asm) produce_inner.simps)
+        apply (simp split: option.splits sum.splits prod.splits)
+        done
+      subgoal
+        apply (subst (asm) produce_inner.simps)
+        apply (simp add: produce_skip_n_op_correctness split: option.splits sum.splits prod.splits)
+        apply (elim conjE)
+        apply hypsubst_thin
+        apply (subst (1 2) produce.code)
+      apply (clarsimp split: option.splits sum.splits)
+        apply (subst (1 2 3) produce_inner.simps)
+        apply (simp split: list.splits option.splits sum.splits prod.splits)
+        apply (metis impossible_Cons linorder_le_less_linear shift_eq_shift_ldropn_length)
+        done
+      subgoal
+      apply (rule exI conjI refl)+
+        apply (simp add: produce_skip_n_op_correctness split: option.splits sum.splits prod.splits)
+        apply (subst (1) produce.code)
+        apply (auto split: option.splits sum.splits)
+        subgoal
+          apply (subst (asm) produce_inner.simps)
+          apply (subst produce.code)
+        apply (simp split: list.splits option.splits sum.splits prod.splits)
+          done
+        subgoal
+          apply (subst (asm) produce_inner.simps)
+        apply (simp split: list.splits option.splits sum.splits prod.splits)
+          
+
+        
+
+
+      subgoal for x2 op2'' x xs lxs'
+        apply hypsubst_thin
+
+end
     subgoal for op2'
       apply (intro conjI)
       subgoal
-        sorry
+        apply (simp add: produce_skip_n_op_correctness)
+        apply (cases out)
+        subgoal
+          by simp
+        subgoal
+          apply (simp add: produce_lhd'_Some produce_lhd'_None)
+          by (metis length_Cons lessI shift_eq_shift_ldropn_length)
+        done
       subgoal
         apply (subst (2) produce.code)
         apply (clarsimp split: option.splits)
         apply (intro conjI allI impI)
         subgoal
-        apply (rule exI[of _ "Logic (\<lambda>_. (None, []))"])
-        apply (rule exI[of _ "skip_n op2 (length (snd (finite_produce op2 (snd (apply op1 (lhd' lxs))))))"])
+        apply (rule exI[of _ "Logic (\<lambda>_. None)"])
+        apply (rule exI[of _ "op2'"])
           apply (intro conjI)
-
-
-         apply (rule refl)
-
-
+           apply simp_all
+        apply (subst produce.code)
+        apply (clarsimp split: option.splits)
+        apply (intro conjI allI impI)
+          subgoal
+            apply (subst (asm) (2) produce_inner.simps)
+            apply simp
+            apply (subst produce.code)
+            apply simp
+            done
+          subgoal
+            apply (subst (asm) (2) produce_inner.simps)
+            apply simp
+            apply (subst (2) produce.code)
+            apply simp
+            done
+          done
+        subgoal
+          apply hypsubst_thin
+        apply (rule exI[of _ "Logic (\<lambda>_. None)"])
+        apply (rule exI[of _ "op2'"])
+          apply (intro conjI)
+           apply simp_all
+            apply (subst (asm) produce_inner.simps)
+            apply simp
+          done
+        done
+      done
+    subgoal for r op1' out1' r2 op2'
+      apply hypsubst_thin
+      apply (intro conjI)
       subgoal
-        sorry
+        apply (simp add: produce_skip_n_op_correctness)
+        apply (cases out)
+        subgoal
+          by simp
+        subgoal for x xs
+          apply (simp add: produce_lhd'_Some produce_lhd'_None)
+          apply hypsubst_thin
+          apply (cases out1')
+          subgoal
+            by simp
+          subgoal
+          apply (simp add: produce_lhd'_Some produce_lhd'_None ldropn_shift finite_produce_correctness  flip: lshift_simps(2))
+            done
+          done
+        done
       subgoal
-        apply hypsubst_thin
-        apply (subst (2) produce.code)
-        apply (auto split: option.splits)
+        apply (rule exI conjI refl)+
+        apply (simp add: produce_skip_n_op_correctness)
+            apply (subst (2) produce.code)
+        apply (simp add: split: option.splits)
+        apply (intro conjI allI impI)
+        subgoal
+            apply (subst (asm) produce_inner.simps)
+          apply (simp split: list.splits prod.splits)
+            apply (subst (3) produce.code)
+          apply simp
+          done
+        subgoal
+          apply (subst (asm) produce_inner.simps)
+          apply (simp split: list.splits prod.splits option.splits)
+          subgoal
+            apply (subst (4) produce.code)
+            apply simp
+            done
+          subgoal
+            apply (elim conjE)
+            apply hypsubst_thin
+            apply (simp add: ldropn_shift finite_produce_correctness flip: lshift_simps(2))
+            done
+          done
+        done
+      done
+    done
+  done
 
 end
 lemma produce_inner_LNil_None[simp]:

@@ -847,16 +847,21 @@ proof -
   from rel show ?thesis
     apply (coinduction arbitrary: op ilxs olxs rule: llist.coinduct_upto)
     apply (intro conjI impI)
+    subgoal
       apply (drule coind)
       apply (subst produce.code)
       apply (simp_all split: prod.splits option.splits sum.splits)
       apply (intro conjI impI)
-    apply auto[1]
+      apply auto[1]
+      done
+    subgoal
      apply (drule coind)
      apply (subst produce.code)
      apply (simp_all split: prod.splits option.splits sum.splits)
       apply (intro conjI impI allI)
-    apply auto[1]
+      apply auto[1]
+      done
+    subgoal
      apply (frule coind)
     apply (subst (2) produce.code)
     apply (simp split: option.splits sum.splits)
@@ -865,6 +870,7 @@ proof -
     apply (metis (mono_tags, lifting) lshift.cong_base lshift.cong_lshift)
     using lshift.cong_refl apply blast
     done
+  done
 qed
 
 
