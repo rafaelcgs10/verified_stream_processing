@@ -264,6 +264,7 @@ fun maximal_antichain_list where
 locale op11 =
   fixes input_type :: "'a itself"
     and output_type :: "'b itself"
+    and domain_type :: "'d itself"
     and encode_input :: "'a \<Rightarrow> 'd"
     and decode_input :: "'d \<Rightarrow> 'a"
     and encode_output :: "'b \<Rightarrow> 'd"
@@ -282,7 +283,31 @@ abbreviation bulk_write where "bulk_write ys op \<equiv> Cycles_7.bulk_write (ma
 
 end
 
-locale batch = op11 "TYPE(('t::order, 'dd) event)" "TYPE(('t, ('t \<times> 'dd) list) event)"
+locale top11 = t?: op11
+  where input_type = "input_type :: 'a itself"
+    and output_type = "output_type :: 'b itself"
+    and domain_type = "domain_type :: 'd itself"
+  for input_type output_type domain_type +
+  fixes time_type :: "'t :: order itself"
+begin
+
+abbreviation read :: "(('t, 'a) event input \<Rightarrow> ('t, 'd) event op11) \<Rightarrow> ('t, 'd) event op11" where
+ "read f \<equiv> Read finite_1.a\<^sub>1 (f o map_input (map_event id decode_input))"
+
+abbreviation "write" :: "('t, 'd) event op11 \<Rightarrow> ('t, 'b) event \<Rightarrow> ('t, 'd) event op11" where
+  "write op \<equiv> Write op finite_1.a\<^sub>1 o map_event id encode_output"
+
+abbreviation bulk_write where "bulk_write ys op \<equiv> Cycles_7.bulk_write (map (map_event id encode_output) ys) finite_1.a\<^sub>1 op"
+
+end
+
+locale batch = top11
+  where input_type = "TYPE('dd)"
+    and output_type = "TYPE(('t :: order \<times> 'dd) list)"
+    and domain_type = "TYPE('d)"
+    and time_type = "TYPE('t)" +
+  fixes
+    dummy :: "'dd itself"
 begin
 
 corec batch_op where
@@ -295,9 +320,9 @@ corec batch_op where
              bulk_write bts End
     | NoInput \<Rightarrow> batch_op buf)"
 
-abbreviation "batch_input_test_1 xs \<equiv> llist_of (map encode_input xs)"
+abbreviation "batch_input_test_1 xs \<equiv> llist_of (map (map_event id encode_input) xs)"
 
-definition "batch_op_test_1 xs = map decode_output (list_of (produce (batch_op []) (\<lambda> _. batch_input_test_1 xs) finite_1.a\<^sub>1))"
+definition "batch_op_test_1 xs = map (map_event id decode_output) (list_of (produce (batch_op []) (\<lambda> _. batch_input_test_1 xs) finite_1.a\<^sub>1))"
 
 end
 
@@ -309,8 +334,16 @@ global_interpretation b: batch Inl projl Inr projr
 abbreviation "bbatch_op_test_1_r \<equiv> bbatch_op_test_1  [Data (0::nat) ''dog'', Data 2 ''cat'', Watermark 1, Watermark 2]"
 value bbatch_op_test_1_r
 
-locale incr = op11 "TYPE(('t::order, ('t \<times> 'dd) list) event)" "TYPE(('t, ('t \<times> 'dd) list) event)" encode decode encode decode for encode decode
-  begin
+locale incr =
+top11
+  where input_type = "TYPE(('t :: order \<times> 'dd) list)"
+    and output_type = "TYPE(('t :: order \<times> 'dd) list)"
+    and domain_type = "TYPE('d)"
+    and time_type = "TYPE('t)" +
+  fixes
+    dummy :: "'dd itself"
+begin
+
 
 corec incr_op where
   "incr_op buf = read (\<lambda> x. case x of
@@ -322,41 +355,41 @@ corec incr_op where
     | EOS \<Rightarrow> End
     | NoInput \<Rightarrow> incr_op buf)"
 
-abbreviation "incr_input_test_1 xs \<equiv> llist_of (map encode xs)"
-definition "incr_op_test_1 xs = map decode (list_of (produce (incr_op []) (\<lambda> _. incr_input_test_1 xs) finite_1.a\<^sub>1))"
+abbreviation "incr_input_test_1 xs \<equiv> llist_of (map (map_event id encode_input) xs)"
+definition "incr_op_test_1 xs = map (map_event id decode_output) (list_of (produce (incr_op []) (\<lambda> _. incr_input_test_1 xs) finite_1.a\<^sub>1))"
 
 end
 
-global_interpretation i: incr id id
+global_interpretation i: incr id id id id
   defines iincr_op = "incr.incr_op id id"
-    and iincr_op_test_1 = "incr.incr_op_test_1 id id"
+    and iincr_op_test_1 = "incr.incr_op_test_1 id id id id"
   by standard auto
 
 value "iincr_op_test_1 bbatch_op_test_1_r"
 
-locale incr_batch = b?:batch + i?:incr encode_output decode_output
+locale incr_batch =
+  b?:batch where dummy = "TYPE('dd)" and encode_input=encode_input and decode_input=decode_input and encode_output=encode_output and decode_output=decode_output
+  +
+  i?:incr where dummy = "TYPE('dd)" and encode_input=encode_output and decode_input=decode_output and encode_output=encode_output and decode_output=decode_output
+  for encode_input decode_input encode_output decode_output
 begin
 
-definition "batch_incr_op buf1 buf2 = scomp_op (batch_op buf1) (incr_op buf2)"
+definition "incr_batch_op buf1 buf2 = scomp_op (batch_op buf1) (incr_op buf2)"
 
-abbreviation "incr_batch_input_test_1 xs \<equiv> llist_of (map encode_input xs)"
+abbreviation "incr_batch_input_test_1 xs \<equiv> llist_of (map (map_event id encode_input) xs)"
 (* write abbreviation for produce with finite_1 *)
-definition "incr_batch_op_test_1 xs = map decode_output (list_of (produce (batch_incr_op [] []) (\<lambda> _. incr_batch_input_test_1 xs) finite_1.a\<^sub>1))"
+definition "incr_batch_op_test_1 xs = map (map_event id decode_output) (list_of (produce (incr_batch_op [] []) (\<lambda> _. incr_batch_input_test_1 xs) finite_1.a\<^sub>1))"
 
 end
 
-global_interpretation ib: incr_batch Inl projl Inr projr
-  defines ibincr_op = "incr.incr_op (Inr:: ('a, ('a \<times> 'b) list) event
-   \<Rightarrow> ('a, 'b) event + ('a, ('a \<times> 'b) list) event) projr"
-  and ibbatch_incr_op = "incr_batch.batch_incr_op projl Inr projr"
-  and ibincr_batch_op_test_1 = "incr_batch.incr_batch_op_test_1 Inl projl Inr projr"
+term incr_batch
+
+global_interpretation ib: incr_batch Inl projl "(Inr:: ('t::order \<times> 'a) list \<Rightarrow> 'a + ('t \<times> 'a) list)" projr 
+  defines ibincr_op = "incr.incr_op projr (Inr :: ('t::order \<times> 'a) list \<Rightarrow> 'a + ('t \<times> 'a) list)"
+   and  ibatch_op = "batch.batch_op projl (Inr :: ('t::order \<times> 'a) list \<Rightarrow> 'a + ('t \<times> 'a) list)"
+   and ibbatch_incr_op = "incr_batch.incr_batch_op projl (Inr :: ('t::order \<times> 'a) list \<Rightarrow> 'a + ('t \<times> 'a) list) projr" 
+  and ibincr_batch_op_test_1 = "incr_batch.incr_batch_op_test_1 Inl projl Inr projr"  
   by standard auto
-
-term ibbatch_incr_op
-
-find_theorems bbatch_op
-find_theorems ibincr_op
-find_theorems ibbatch_incr_op
 
 value "ibincr_batch_op_test_1 [Data (0::nat) ''dog'', Data 2 ''cat'', Watermark 1, Watermark 2]"
 
