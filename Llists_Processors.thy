@@ -24,6 +24,8 @@ partial_function (option) produce_inner where
 simps_of_case produce_inner_simps[simp]: produce_inner.simps
 declare produce_inner.simps[code]
 
+thm produce_inner_simps
+
 lemma produce_inner_LNil_None[simp]:
   "produce_inner (op, LNil) = Some (Inr op)"
   apply simp
