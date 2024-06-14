@@ -6,7 +6,6 @@ theory Llists_Processors
     "HOL-Library.Code_Lazy"
     "HOL-Library.Numeral_Type"
     "HOL-Library.Simps_Case_Conv"
-    "HOL-ex.Sketch_and_Explore"
 begin
 
 code_lazy_type llist

@@ -86,14 +86,9 @@ lemma t_in_concat_coll_list_eq:
    mset (coll_list buf t) = mset (coll_list batch t)"
   unfolding coll_list_def
   apply (induct A buf arbitrary: buf rule: batches.induct)
-   apply (simp_all split: prod.splits if_splits)
-  apply (elim conjE disjE)
-  subgoal
-    apply (simp add: split_beta split: prod.splits)
-    apply (metis (mono_tags, lifting) case_prod_beta)
-    done
-  subgoal
-    sorry
+  apply (auto split: prod.splits if_splits)
+  apply (metis (mono_tags, lifting) Pair_inject case_prod_unfold prod.collapse)
+  apply (smt (verit, best) case_prod_unfold empty_filter_conv filter_mset_cong fst_conv image_mset_is_empty_iff mset_filter mset_mfilter_simp_cong mset_zero_iff_right)
   done
 
 lemma batches_linorder:
@@ -110,14 +105,10 @@ lemma batches_no_empty_batch:
    Data wm batch \<in> set (fst (batches A buf)) \<Longrightarrow>
    wm \<in> fst ` set batch"
   apply (induct A arbitrary: buf)
-   apply (simp_all split: if_splits prod.splits)
-  apply (elim conjE disjE)
-  subgoal 
-    by auto
-  subgoal
-    sorry
+   apply (auto split: if_splits prod.splits)
+  subgoal for t A buf x1 x2 aa b
+    by (smt (verit) case_prod_unfold dual_order.order_iff_strict fst_conv image_iff mem_Collect_eq set_filter subset_iff)
   done
-
 
 lemma takeWhile_maximal_antichain_batches:
   "maximal_antichain_spec A \<Longrightarrow>
