@@ -87,39 +87,47 @@ fun benq where
 | "benq x BEnded = BCons x BEnded"
 | "benq x (BCons y ys) = BCons y (benq x ys)"
 
-consts comp_op :: "('op1 \<rightharpoonup> 'ip1 + 'ip2) \<Rightarrow> ('ip1 + 'ip2 \<Rightarrow> 'd buf) \<Rightarrow>
+consts loop_op :: "('op1 \<rightharpoonup> 'ip1) \<Rightarrow> ('ip1 \<Rightarrow> 'd buf) \<Rightarrow>
+  ('ip1, 'op1, 'd) op \<Rightarrow> ('ip1, 'op1, 'd) op"
+consts comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op"
+
+(*TODO end of stream on a port? *)
+lemma loop_op_code[code]:
+  "loop_op wire buf op = (case op of
+     End \<Rightarrow> End
+   | Read p f \<Rightarrow> if p \<in> ran wire
+       then loop_op wire (buf(p := btl (buf p))) (f (bhd' (buf p)))
+       else Read p (\<lambda>x. loop_op wire buf (f x))
+   | Write op p x \<Rightarrow> (case wire p of
+         None \<Rightarrow> Write (loop_op wire buf op) p x
+       | Some p' \<Rightarrow> loop_op wire (buf(p' := benq x (buf p'))) op))"
+  sorry
+simps_of_case loop_op_simps[simp]: loop_op_code[unfolded prod.case]
 
 lemma comp_op_code[code]:
   "comp_op wire buf op1 op2 = (case (op1, op2) of
      (End, End) \<Rightarrow> End
-   | (Read p1 f1, End) \<Rightarrow> if Inl p1 \<in> ran wire
-       then comp_op wire (buf(Inl p1 := btl (buf (Inl p1)))) (f1 (bhd' (buf (Inl p1)))) End
-       else Read (Inl p1) (\<lambda>y1. comp_op wire buf (f1 y1) End)
+   | (Read p1 f1, End) \<Rightarrow> Read (Inl p1) (\<lambda>y1. comp_op wire buf (f1 y1) End)
    | (Write op1' p1 x1, End) \<Rightarrow> (case wire p1 of
        None \<Rightarrow> Write (comp_op wire buf op1' End) (Inl p1) x1
-     | Some (Inl p) \<Rightarrow> comp_op wire (buf(Inl p := benq x1 (buf (Inl p)))) op1' End
-     | Some (Inr p) \<Rightarrow> End)
+     | Some p \<Rightarrow> End)
    | (End, Write op2' p2 x2) \<Rightarrow> Write (comp_op wire (bend o buf) End op2') (Inr p2) x2
-   | (Read p1 f1, Write op2' p2 x2) \<Rightarrow>  if Inl p1 \<in> ran wire
-       then Write (comp_op wire (buf(Inl p1 := btl (buf (Inl p1)))) (f1 (bhd' (buf (Inl p1)))) op2') (Inr p2) x2
-       else Read (Inl p1) (\<lambda>y1. Write (comp_op wire buf (f1 y1) op2') (Inr p2) x2)
+   | (Read p1 f1, Write op2' p2 x2) \<Rightarrow> Read (Inl p1) (\<lambda>y1. Write (comp_op wire buf (f1 y1) op2') (Inr p2) x2)
    | (Write op1' p1 x1, Write op2' p2 x2) \<Rightarrow> (case wire p1 of
        None \<Rightarrow> Write (Write (comp_op wire buf op1' op2') (Inr p2) x2) (Inl p1) x1
      | Some p \<Rightarrow> Write (comp_op wire (buf(p := benq x1 (buf p))) op1' op2') (Inr p2) x2)
-   | (End, Read p2 f2) \<Rightarrow> let buf = bend o buf in if Inr p2 \<in> ran wire
-     then comp_op wire (buf(Inr p2 := btl (buf (Inr p2)))) End (f2 (bhd' (buf (Inr p2))))
+   | (End, Read p2 f2) \<Rightarrow> let buf = bend o buf in if p2 \<in> ran wire
+     then comp_op wire (buf(p2 := btl (buf p2))) End (f2 (bhd' (buf p2)))
      else Read (Inr p2) (\<lambda>y2. comp_op wire buf End (f2 y2))
-   | (Read p1 f1, Read p2 f2) \<Rightarrow> if Inl p1 \<in> ran wire \<and> Inr p2 \<in> ran wire
-     then comp_op wire (buf(Inl p1 := btl (buf (Inl p1)), Inr p2 := btl (buf (Inr p2)))) (f1 (bhd' (buf (Inl p1)))) (f2 (bhd' (buf (Inr p2))))
-     else if Inl p1 \<in> ran wire then Read (Inr p2) (\<lambda>y2. comp_op wire (buf(Inl p1 := btl (buf (Inl p1)))) (f1 (bhd' (buf (Inl p1)))) (f2 y2))
-     else if Inr p2 \<in> ran wire then Read (Inl p1) (\<lambda>y1. comp_op wire (buf(Inr p2 := btl (buf (Inr p2)))) (f1 y1) (f2 (bhd' (buf (Inr p2)))))
+   | (Read p1 f1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
+     then Read (Inl p1) (\<lambda>y1. comp_op wire (buf(p2 := btl (buf p2))) (f1 y1) (f2 (bhd' (buf p2))))
      else Read (Inl p1) (\<lambda>y1. Read (Inr p2) (\<lambda>y2. comp_op wire buf (f1 y1) (f2 y2)))
-   | (Write op1' p1 x1, Read p2 f2) \<Rightarrow> if Inr p2 \<in> ran wire
+   | (Write op1' p1 x1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
      then (case wire p1 of
-       None \<Rightarrow> Write (comp_op wire (buf(Inr p2 := btl (buf (Inr p2)))) op1' (f2 (bhd' (buf (Inr p2))))) (Inl p1) x1
-     | Some p \<Rightarrow> if p = Inr p2 then comp_op wire (buf(Inr p2 := btl (benq x1 (buf (Inr p2))))) op1' (f2 (bhd' (benq x1 (buf (Inr p2)))))
-         else comp_op wire (buf(p := benq x1 (buf p), Inr p2 := btl (buf (Inr p2)))) op1' (f2 (bhd' (buf (Inr p2)))))
+       None \<Rightarrow> Write (comp_op wire (buf(p2 := btl (buf p2))) op1' (f2 (bhd' (buf p2)))) (Inl p1) x1
+     | Some p \<Rightarrow> if p = p2 then comp_op wire (buf(p2 := btl (benq x1 (buf p2)))) op1' (f2 (bhd' (benq x1 (buf p2))))
+         else comp_op wire (buf(p := benq x1 (buf p), p2 := btl (buf p2))) op1' (f2 (bhd' (buf p2))))
      else (case wire p1 of
        None \<Rightarrow> Write (Read (Inr p2) (\<lambda>y2. comp_op wire buf op1' (f2 y2))) (Inl p1) x1
      | Some p \<Rightarrow> Read (Inr p2) (\<lambda>y2. comp_op wire (buf(p := benq x1 (buf p))) op1' (f2 y2))))"
@@ -127,8 +135,46 @@ lemma comp_op_code[code]:
 
 simps_of_case comp_op_simps[simp]: comp_op_code[unfolded prod.case]
 
+(*
+lemma "producing p op lxs i \<Longrightarrow> \<forall>p. lprefix (lxs p) (lxs' p) \<Longrightarrow> producing p op lxs' i"
+proof (induct p op lxs i arbitrary: lxs' rule: producing.induct)
+  case (3 p f lxs p' i)
+  then show ?case
+    apply (intro producing.intros)
+    
+    sorry
+qed (auto intro: producing.intros)
+
+
+lemma "\<forall>p. lprefix (lxs p) (lxs' p) \<Longrightarrow> lprefix (produce op lxs p) (produce op lxs' p)"
+  apply (coinduction arbitrary: op lxs lxs' p)
+  subgoal for op lxs lxs' p
+    apply safe
+    subgoal sorry
+    subgoal
+      apply (subst (1 2) produce.code)
+      apply (auto split: op.splits if_splits)
+      sorry
+    subgoal sorry
+    done
+    apply (subst (asm) (1) produce.code)
+      apply (auto split: op.splits if_splits)
+*)
+
+(*
+fun produce_loop where
+  "produce_loop (0 :: nat) wire op lxs p = produce op (\<lambda>p'. if p' \<in> ran wire then LNil else lxs p') p"
+| "produce_loop (Suc n) wire op lxs p = produce op (\<lambda>p'. if p' \<in> ran wire then produce_loop n wire op lxs p else lxs p') p"
+
+lemma "produce (comp_op wire buf op1 op2) lxs p = (case p of
+    Inl p1 \<Rightarrow> (if p1 \<in> dom wire then LNil else
+      produce op1 (\<lambda>p1'. if Inl p1' \<in> ran wire then undefined else lxs (Inl p1')) p1)
+  | Inr p2 \<Rightarrow> produce op2 (\<lambda>p2'. if Inr p2' \<in> ran wire then undefined else lxs (Inr p2')) p2)"
+  oops
+*)
+
 lemma inputs_comp_op[simp]:
-  "inputs (comp_op wire buf op1 op2) = (Inl ` inputs op1 \<union> Inr ` inputs op2) - ran wire"
+  "inputs (comp_op wire buf op1 op2) = Inl ` inputs op1 \<union> Inr ` (inputs op2 - ran wire)"
   sorry (* Rafael *)
 
 lemma outputs_comp_op[simp]:
@@ -150,7 +196,7 @@ lemma produce_pcomp_op:
     (case p of Inl p \<Rightarrow> produce op1 (lxs o Inl) p | Inr p \<Rightarrow> produce op2 (lxs o Inr) p)"
   sorry
 
-definition "scomp_op op1 op2 = map_op projl projr (comp_op (Some o Inr) (\<lambda>_. BEmpty) op1 op2)"
+definition "scomp_op op1 op2 = map_op projl projr (comp_op Some (\<lambda>_. BEmpty) op1 op2)"
 
 lemma inputs_scomp_op[simp]:
   "inputs (scomp_op op1 op2) = inputs op1"
@@ -187,10 +233,9 @@ lemma "welltyped A A cp_op"
 (*needs coinduction up-to for welltyped (or a custom bisimulation)*)
   sorry
 
-definition loop_op :: "'d op22 \<Rightarrow> 'd op11" where
-  "loop_op op = map_op (\<lambda>x. finite_1.a\<^sub>1) projr (comp_op
-    (\<lambda>x. Some (if x = finite_2.a\<^sub>1 then Inl finite_2.a\<^sub>1 else Inr finite_1.a\<^sub>1)) (\<lambda>_. BEmpty)
-      op cp_op)"
+definition loop22_op :: "'d op22 \<Rightarrow> 'd op11" where
+  "loop22_op op = map_op (\<lambda>x. finite_1.a\<^sub>1) (\<lambda>x. finite_1.a\<^sub>1) (loop_op
+    (\<lambda>x. if x = finite_2.a\<^sub>1 then Some finite_2.a\<^sub>1 else None) (\<lambda>_. BEmpty) op)"
 
 locale collatz =
   fixes encode_nat3 :: "nat \<times> nat \<times> nat \<Rightarrow> 'd"
@@ -220,7 +265,7 @@ abbreviation collatz_loop_input :: "(bool \<Rightarrow> 'd op22) \<Rightarrow> b
 corec collatz_step :: "bool \<Rightarrow> 'd op22" where
   "collatz_step b = collatz_input (collatz_loop_input collatz_step) b"
 definition collatz_op :: "'d op11" where
-  "collatz_op = loop_op (collatz_step True)"
+  "collatz_op = loop22_op (collatz_step True)"
 
 definition collatz :: "nat \<Rightarrow> (nat \<times> nat) list" where
   "collatz n \<equiv> map decode_nat2
