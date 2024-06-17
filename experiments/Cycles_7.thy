@@ -57,14 +57,9 @@ lemma produce_code[code]:
   apply (simp split: op.splits)
   apply safe
   subgoal for p' f
-    apply (subst produce.code)
-    apply (cases "lxs p'")
-     apply (auto 0 4 split: op.splits intro: producing.intros)
-    done
+    by (subst produce.code) (auto 0 4 split: op.splits intro: producing.intros)
   subgoal for op p x
-    apply (subst produce.code)
-    apply (auto 0 4 split: op.splits intro: producing.intros)
-    done
+    by (subst produce.code) (auto 0 4 split: op.splits intro: producing.intros)
   done
 
 simps_of_case produce_simps[simp]: produce_code
@@ -134,38 +129,104 @@ lemma loop_op_code[code]:
   apply (simp split: op.splits option.splits)
   apply safe
   subgoal for p f
-    apply (subst loop_op.code)
-     apply (auto 0 4 split: op.splits option.splits intro: loop_producing.intros)
-    done
+    by (subst loop_op.code) (auto 0 4 split: op.splits option.splits intro: loop_producing.intros)
   subgoal for op' p' x
-    apply (subst loop_op.code)
-    apply (auto 0 4 split: op.splits option.splits intro: loop_producing.intros)
-    done
+    by (subst loop_op.code) (auto 0 4 split: op.splits option.splits intro: loop_producing.intros)
   done
 simps_of_case loop_op_simps[simp]: loop_op_code
 
+inductive comp_producing :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow> ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> nat \<Rightarrow> bool" where
+  "comp_producing wire buf End End 0"
+| "comp_producing wire buf (Read p1 f1) End 0"
+| "comp_producing wire buf (Write op1' p1 x1) End 0"
+| "comp_producing wire buf End (Write op2' p2 x2) 0"
+| "comp_producing wire buf (Read p1 f1) (Write op2' p2 x2) 0"
+| "comp_producing wire buf (Write op1' p1 x1) (Write op2' p2 x2) 0"
+| "p2 \<notin> ran wire \<Longrightarrow> comp_producing wire buf End (Read p2 f2) 0"
+| "p2 \<in> ran wire \<Longrightarrow> comp_producing wire ((bend o buf)(p2 := btl ((bend o buf) p2))) End (f2 (bhd' ((bend o buf) p2))) n \<Longrightarrow> comp_producing wire buf End (Read p2 f2) (Suc n)"
+| "comp_producing wire buf (Read p1 f1) (Read p2 f2) 0"
+| "p2 \<notin> ran wire \<or> wire p1 = None \<Longrightarrow> comp_producing wire buf (Write op1' p1 x1) (Read p2 f2) 0"
+| "p2 \<in> ran wire \<Longrightarrow> wire p1 = Some p2 \<Longrightarrow>
+    comp_producing wire (buf(p2 := btl (benq x1 (buf p2)))) op1' (f2 (bhd' (benq x1 (buf p2)))) n \<Longrightarrow>
+    comp_producing wire buf (Write op1' p1 x1) (Read p2 f2) (Suc n)"
+| "p2 \<in> ran wire \<Longrightarrow> wire p1 = Some p \<Longrightarrow> p \<noteq> p2 \<Longrightarrow>
+    comp_producing wire (buf(p := benq x1 (buf p), p2 := btl (buf p2))) op1' (f2 (bhd' (buf p2))) n \<Longrightarrow>
+    comp_producing wire buf (Write op1' p1 x1) (Read p2 f2) (Suc n)"
 
-consts comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
-  ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op"
+lemma comp_producing_inject: "comp_producing wire buf op1 op2 i \<Longrightarrow> comp_producing wire buf op1 op2 j \<Longrightarrow> i = j"
+proof (induct wire buf op1 op2 i arbitrary: j rule: comp_producing.induct)
+  case (8 p2 wire buf f2 n)
+  from 8(4,1-2) 8(3)[of "j - 1"] show ?case
+    by (elim comp_producing.cases[of _ _ _ "Read p2 f2"]) (auto simp del: fun_upd_apply)
+next
+  case (11 p2 wire p1 buf x1 op1' f2 n)
+  from 11(5,1-3) 11(4)[of "j - 1"] show ?case
+    by (elim comp_producing.cases[of _ _ _ "Read p2 f2"]) (auto simp del: fun_upd_apply)
+next
+  case (12 p2 wire p1 p buf x1 op1' f2 n)
+  from 12(6,1-4) 12(5)[of "j - 1"] show ?case
+    by (elim comp_producing.cases[of _ _ _ "Read p2 f2"]) (auto simp del: fun_upd_apply)
+qed (auto elim: comp_producing.cases)
+
+lemma The_comp_producing: "comp_producing wire buf op1 op2 i \<Longrightarrow> The (comp_producing wire buf op1 op2) = i"
+  using comp_producing_inject by fast
+
+(*workaround about termination issue in corecursive*)
+lemma case_prod_cong4[fundef_cong]:
+  fixes prod prod' f g
+  shows "prod = prod' \<Longrightarrow>
+    (\<And>x1 x2 y1 y2. prod' = ((x1, x2), (y1, y2)) \<Longrightarrow> f x1 x2 y1 y2 = g x1 x2 y1 y2) \<Longrightarrow>
+    ((\<lambda>((x1, x2), (y1, y2)). f x1 x2 y1 y2) prod) = ((\<lambda>((x1, x2), (y1, y2)). g x1 x2 y1 y2) prod')"
+  by (auto split: prod.splits)
+
+corecursive comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
+  ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
+  "comp_op wire buf op1 op2 = (case (op1, op2) of
+     (End, End) \<Rightarrow> End
+   | (End, Write op2' p2 x2) \<Rightarrow> Write (comp_op wire (bend o buf) End op2') (Inr p2) x2
+   | (End, Read p2 f2) \<Rightarrow> let buf' = bend o buf in if p2 \<in> ran wire
+     then if \<exists>n. comp_producing wire buf op1 op2 n then comp_op wire (buf'(p2 := btl (buf' p2))) End (f2 (bhd' (buf' p2))) else End
+     else Read (Inr p2) (\<lambda>y2. comp_op wire buf' End (f2 y2))
+   | (Read p1 f1, End) \<Rightarrow> Read (Inl p1) (\<lambda>y1. comp_op wire buf (f1 y1) End)
+   | (Read p1 f1, Write op2' p2 x2) \<Rightarrow> Read (Inl p1) (\<lambda>y1. Write (comp_op wire buf (f1 y1) op2') (Inr p2) x2)
+   | (Read p1 f1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
+     then Read (Inl p1) (\<lambda>y1. comp_op wire (buf(p2 := btl (buf p2))) (f1 y1) (f2 (bhd' (buf p2))))
+     else Read (Inl p1) (\<lambda>y1. Read (Inr p2) (\<lambda>y2. comp_op wire buf (f1 y1) (f2 y2)))
+   | (Write op1' p1 x1, End) \<Rightarrow> (case wire p1 of
+       None \<Rightarrow> Write (comp_op wire buf op1' End) (Inl p1) x1
+     | Some p \<Rightarrow> End)
+   | (Write op1' p1 x1, Write op2' p2 x2) \<Rightarrow> (case wire p1 of
+       None \<Rightarrow> Write (Write (comp_op wire buf op1' op2') (Inr p2) x2) (Inl p1) x1
+     | Some p \<Rightarrow> Write (comp_op wire (buf(p := benq x1 (buf p))) op1' op2') (Inr p2) x2)
+   | (Write op1' p1 x1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
+     then (case wire p1 of
+       None \<Rightarrow> Write (comp_op wire (buf(p2 := btl (buf p2))) op1' (f2 (bhd' (buf p2)))) (Inl p1) x1
+     | Some p \<Rightarrow> if \<exists>n. comp_producing wire buf op1 op2 n then if p = p2 then comp_op wire (buf(p2 := btl (benq x1 (buf p2)))) op1' (f2 (bhd' (benq x1 (buf p2))))
+         else comp_op wire (buf(p := benq x1 (buf p), p2 := btl (buf p2))) op1' (f2 (bhd' (buf p2))) else End)
+     else (case wire p1 of
+       None \<Rightarrow> Write (Read (Inr p2) (\<lambda>y2. comp_op wire buf op1' (f2 y2))) (Inl p1) x1
+     | Some p \<Rightarrow> Read (Inr p2) (\<lambda>y2. comp_op wire (buf(p := benq x1 (buf p))) op1' (f2 y2))))"
+  by (relation "measure (\<lambda>((wire, buf), op1, op2). THE i. comp_producing wire buf op1 op2 i)")
+    (auto 0 3 simp: The_comp_producing elim: comp_producing.cases)
 
 lemma comp_op_code[code]:
   "comp_op wire buf op1 op2 = (case (op1, op2) of
      (End, End) \<Rightarrow> End
-   | (Read p1 f1, End) \<Rightarrow> Read (Inl p1) (\<lambda>y1. comp_op wire buf (f1 y1) End)
-   | (Write op1' p1 x1, End) \<Rightarrow> (case wire p1 of
-       None \<Rightarrow> Write (comp_op wire buf op1' End) (Inl p1) x1
-     | Some p \<Rightarrow> End)
    | (End, Write op2' p2 x2) \<Rightarrow> Write (comp_op wire (bend o buf) End op2') (Inr p2) x2
-   | (Read p1 f1, Write op2' p2 x2) \<Rightarrow> Read (Inl p1) (\<lambda>y1. Write (comp_op wire buf (f1 y1) op2') (Inr p2) x2)
-   | (Write op1' p1 x1, Write op2' p2 x2) \<Rightarrow> (case wire p1 of
-       None \<Rightarrow> Write (Write (comp_op wire buf op1' op2') (Inr p2) x2) (Inl p1) x1
-     | Some p \<Rightarrow> Write (comp_op wire (buf(p := benq x1 (buf p))) op1' op2') (Inr p2) x2)
    | (End, Read p2 f2) \<Rightarrow> let buf = bend o buf in if p2 \<in> ran wire
      then comp_op wire (buf(p2 := btl (buf p2))) End (f2 (bhd' (buf p2)))
      else Read (Inr p2) (\<lambda>y2. comp_op wire buf End (f2 y2))
+   | (Read p1 f1, End) \<Rightarrow> Read (Inl p1) (\<lambda>y1. comp_op wire buf (f1 y1) End)
+   | (Read p1 f1, Write op2' p2 x2) \<Rightarrow> Read (Inl p1) (\<lambda>y1. Write (comp_op wire buf (f1 y1) op2') (Inr p2) x2)
    | (Read p1 f1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
      then Read (Inl p1) (\<lambda>y1. comp_op wire (buf(p2 := btl (buf p2))) (f1 y1) (f2 (bhd' (buf p2))))
      else Read (Inl p1) (\<lambda>y1. Read (Inr p2) (\<lambda>y2. comp_op wire buf (f1 y1) (f2 y2)))
+   | (Write op1' p1 x1, End) \<Rightarrow> (case wire p1 of
+       None \<Rightarrow> Write (comp_op wire buf op1' End) (Inl p1) x1
+     | Some p \<Rightarrow> End)
+   | (Write op1' p1 x1, Write op2' p2 x2) \<Rightarrow> (case wire p1 of
+       None \<Rightarrow> Write (Write (comp_op wire buf op1' op2') (Inr p2) x2) (Inl p1) x1
+     | Some p \<Rightarrow> Write (comp_op wire (buf(p := benq x1 (buf p))) op1' op2') (Inr p2) x2)
    | (Write op1' p1 x1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
      then (case wire p1 of
        None \<Rightarrow> Write (comp_op wire (buf(p2 := btl (buf p2))) op1' (f2 (bhd' (buf p2)))) (Inl p1) x1
@@ -174,8 +235,24 @@ lemma comp_op_code[code]:
      else (case wire p1 of
        None \<Rightarrow> Write (Read (Inr p2) (\<lambda>y2. comp_op wire buf op1' (f2 y2))) (Inl p1) x1
      | Some p \<Rightarrow> Read (Inr p2) (\<lambda>y2. comp_op wire (buf(p := benq x1 (buf p))) op1' (f2 y2))))"
-  sorry (* Dmitriy *)
-
+  apply (subst comp_op.code)
+  apply (simp split: op.splits option.splits add: Let_def)
+  apply safe
+  subgoal for p1 f1 op2' p2 x2
+    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros)
+  subgoal for p2 f2 op1' p1 x1
+    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
+  subgoal for p2 f2 op1' p1 x1
+    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
+  subgoal for p2 f2 op1' p1 x1
+    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros)
+  subgoal for p2 f2 op1' p1 x1
+    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
+  subgoal for p2 f2 op1' p1 x1 p
+    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
+  subgoal for p2 f2
+    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
+  done
 simps_of_case comp_op_simps[simp]: comp_op_code[unfolded prod.case]
 
 consts read_op :: "'ip set \<Rightarrow> ('ip \<Rightarrow> 'd buf) \<Rightarrow> ('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op"
