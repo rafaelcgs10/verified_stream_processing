@@ -20,20 +20,20 @@ fun lhd' where
 | "lhd' (LCons x lxs) = Input x"
 
 inductive producing where
-  "producing p End lxs 0"
-| "producing p (Write _ p _) lxs 0"
-| "producing p (f (lhd' (lxs p'))) (lxs(p' := ltl (lxs p'))) i \<Longrightarrow> producing p (Read p' f) lxs (Suc i)"
-| "p \<noteq> p' \<Longrightarrow> producing p op lxs i \<Longrightarrow> producing p (Write op p' x) lxs (Suc i)"
+  "producing End lxs p 0"
+| "producing (Write _ p _) lxs p 0"
+| "producing (f (lhd' (lxs p'))) (lxs(p' := ltl (lxs p'))) p i \<Longrightarrow> producing (Read p' f) lxs p (Suc i)"
+| "p \<noteq> p' \<Longrightarrow> producing op lxs p i \<Longrightarrow> producing (Write op p' x) lxs p (Suc i)"
 
-lemma producing_inject: "producing p op lxs i \<Longrightarrow> producing p op lxs j \<Longrightarrow> i = j"
-proof (induct p op lxs i arbitrary: j rule: producing.induct)
-  case (3 p f lxs p' i)
+lemma producing_inject: "producing op lxs p i \<Longrightarrow> producing op lxs p j \<Longrightarrow> i = j"
+proof (induct op lxs p i arbitrary: j rule: producing.induct)
+  case (3 f lxs p' p i)
   from 3(3,1) 3(2)[of "j - 1"] show ?case
-    by (elim producing.cases[of _ "Read p' f"]) (auto simp del: fun_upd_apply)
+    by (elim producing.cases[of "Read p' f"]) (auto simp del: fun_upd_apply)
 next
   case (4 p p' op lxs i x)
   from 4(4,1,2) 4(3)[of "j - 1"] show ?case
-    by (elim producing.cases[of _ "Write op p' x"]) auto
+    by (elim producing.cases[of "Write op p' x"]) auto
 qed (auto elim: producing.cases)
 
 lemma The_producing: "producing p op lxs i \<Longrightarrow> The (producing p op lxs) = i"
@@ -41,11 +41,11 @@ lemma The_producing: "producing p op lxs i \<Longrightarrow> The (producing p op
 
 corecursive produce where
   "produce op lxs p = (case op of
-    Read p' f \<Rightarrow> (if \<exists>i. producing p op lxs i then produce (f (lhd' (lxs p'))) (lxs(p' := ltl (lxs p'))) p else LNil)
+    Read p' f \<Rightarrow> (if \<exists>i. producing op lxs p i then produce (f (lhd' (lxs p'))) (lxs(p' := ltl (lxs p'))) p else LNil)
   | Write op' p' x \<Rightarrow> (if p = p' then LCons x (produce op' lxs p) else
-     if \<exists>i. producing p op lxs i then produce op' lxs p else LNil)
+     if \<exists>i. producing op lxs p i then produce op' lxs p else LNil)
   | End \<Rightarrow> LNil)"
-  by (relation "measure (\<lambda>(op, lxs, p). THE i. producing p op lxs i)")
+  by (relation "measure (\<lambda>(op, lxs, p). THE i. producing op lxs p i)")
     (auto 0 3 simp: The_producing elim: producing.cases)
 
 lemma produce_code[code]:
@@ -87,10 +87,39 @@ fun benq where
 | "benq x BEnded = BCons x BEnded"
 | "benq x (BCons y ys) = BCons y (benq x ys)"
 
-consts loop_op :: "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightarrow> 'd buf) \<Rightarrow>
-  ('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op"
-consts comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
-  ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op"
+inductive loop_producing :: "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightarrow> 'd buf) \<Rightarrow> ('ip, 'op, 'd) op \<Rightarrow> nat \<Rightarrow> bool" where
+  "loop_producing wire buf End 0"
+| "p \<notin> ran wire \<Longrightarrow> loop_producing wire buf (Read p f) 0"
+| "wire p' = None \<Longrightarrow> loop_producing wire buf (Write op p' x) 0"
+| "p \<in> ran wire \<Longrightarrow> loop_producing wire (buf(p := btl (buf p))) (f (bhd' (buf p))) n \<Longrightarrow> loop_producing wire buf (Read p f) (Suc n)"
+| "wire p' = Some p \<Longrightarrow> loop_producing wire (buf(p := benq x (buf p))) op n \<Longrightarrow> loop_producing wire buf (Write op p' x) (Suc n)"
+
+lemma loop_producing_inject: "loop_producing wire buf op i \<Longrightarrow> loop_producing wire buf op j \<Longrightarrow> i = j"
+proof (induct wire buf op i arbitrary: j rule: loop_producing.induct)
+  case (4 p wire buf f n)
+  from 4(4,1,2) 4(3)[of "j - 1"] show ?case
+    by (elim loop_producing.cases[of _ _ "Read p f"]) (auto simp del: fun_upd_apply)
+next
+  case (5 wire p' p buf x op n)
+  from 5(4,1,2) 5(3)[of "j - 1"] show ?case
+    by (elim loop_producing.cases[of _ _ "Write op p' x"]) (auto simp del: fun_upd_apply)
+qed (auto elim: loop_producing.cases)
+
+lemma The_loop_producing: "loop_producing wire buf op i \<Longrightarrow> The (loop_producing wire buf op) = i"
+  using loop_producing_inject by fast
+
+corecursive loop_op :: "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightarrow> 'd buf) \<Rightarrow>
+  ('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op" where
+  "loop_op wire buf op = (case op of
+     End \<Rightarrow> End
+   | Read p f \<Rightarrow> if p \<in> ran wire
+       then (if \<exists>n. loop_producing wire buf op n then loop_op wire (buf(p := btl (buf p))) (f (bhd' (buf p))) else End)
+       else Read p (\<lambda>x. loop_op wire buf (f x))
+   | Write op' p' x \<Rightarrow> (case wire p' of
+         None \<Rightarrow> Write (loop_op wire buf op') p' x
+       | Some p \<Rightarrow> (if \<exists>n. loop_producing wire buf op n then loop_op wire (buf(p := benq x (buf p))) op' else End)))"
+  by (relation "measure (\<lambda>(wire, buf, op). THE i. loop_producing wire buf op i)")
+    (auto 0 3 simp: The_loop_producing elim: loop_producing.cases)
 
 lemma loop_op_code[code]:
   "loop_op wire buf op = (case op of
@@ -98,11 +127,26 @@ lemma loop_op_code[code]:
    | Read p f \<Rightarrow> if p \<in> ran wire
        then loop_op wire (buf(p := btl (buf p))) (f (bhd' (buf p)))
        else Read p (\<lambda>x. loop_op wire buf (f x))
-   | Write op p x \<Rightarrow> (case wire p of
-         None \<Rightarrow> Write (loop_op wire buf op) p x
-       | Some p' \<Rightarrow> loop_op wire (buf(p' := benq x (buf p'))) op))"
-  sorry
-simps_of_case loop_op_simps[simp]: loop_op_code[unfolded prod.case]
+   | Write op' p' x \<Rightarrow> (case wire p' of
+         None \<Rightarrow> Write (loop_op wire buf op') p' x
+       | Some p \<Rightarrow> loop_op wire (buf(p := benq x (buf p))) op'))"
+  apply (subst loop_op.code)
+  apply (simp split: op.splits option.splits)
+  apply safe
+  subgoal for p f
+    apply (subst loop_op.code)
+     apply (auto 0 4 split: op.splits option.splits intro: loop_producing.intros)
+    done
+  subgoal for op' p' x
+    apply (subst loop_op.code)
+    apply (auto 0 4 split: op.splits option.splits intro: loop_producing.intros)
+    done
+  done
+simps_of_case loop_op_simps[simp]: loop_op_code
+
+
+consts comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
+  ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op"
 
 lemma comp_op_code[code]:
   "comp_op wire buf op1 op2 = (case (op1, op2) of
@@ -143,13 +187,17 @@ lemma read_op_code[code]:
        else Read p (\<lambda>x. read_op A buf (f x))
    | Write op p x \<Rightarrow> Write (read_op A buf op) p x)"
   sorry
-simps_of_case read_op_simps[simp]: read_op_code[unfolded prod.case]
+simps_of_case read_op_simps[simp]: read_op_code
 
-find_consts name: iterates
+term loop_op
+lemma "produce (loop_op wire buf op) lxs =
+  (THE lzs. \<forall>p. lzs p = produce (map_op id (case_option undefined id o wire) op)
+     (\<lambda>p. if p \<in> ran wire then lapp (buf p1) (lzs p2) else lxs p3) p)"
+  oops
 
 lemma loop_op_unfold:
   "loop_op wire buf op = map_op (case_sum id id) projr (comp_op wire (\<lambda> x. BEmpty) (read_op (ran wire) buf op) (loop_op wire buf op))"
-  sorry
+  oops
 (*   apply (coinduction arbitrary: buf op rule: op.coinduct_strong)
   subgoal for buf op
     apply (cases op)
@@ -237,7 +285,11 @@ lemma outputs_scomp_op[simp]:
 
 lemma produce_map_op:
   "\<forall> x. h (g x) = x \<Longrightarrow> produce (map_op f h op) lxs p = produce op (lxs o f) (g p)"
-  sorry
+  apply (coinduction arbitrary: op)
+  subgoal for op
+    apply(induction arg\<equiv>"(map_op f h op, lxs, p)" arbitrary: op lxs rule: produce.inner_induct)
+    sorry
+  done
 
 
 lemma produce_scomp_op:
