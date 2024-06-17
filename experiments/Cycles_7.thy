@@ -87,12 +87,11 @@ fun benq where
 | "benq x BEnded = BCons x BEnded"
 | "benq x (BCons y ys) = BCons y (benq x ys)"
 
-consts loop_op :: "('op1 \<rightharpoonup> 'ip1) \<Rightarrow> ('ip1 \<Rightarrow> 'd buf) \<Rightarrow>
-  ('ip1, 'op1, 'd) op \<Rightarrow> ('ip1, 'op1, 'd) op"
+consts loop_op :: "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightarrow> 'd buf) \<Rightarrow>
+  ('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op"
 consts comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op"
 
-(*TODO end of stream on a port? *)
 lemma loop_op_code[code]:
   "loop_op wire buf op = (case op of
      End \<Rightarrow> End
@@ -134,6 +133,35 @@ lemma comp_op_code[code]:
   sorry (* Dmitriy *)
 
 simps_of_case comp_op_simps[simp]: comp_op_code[unfolded prod.case]
+
+consts read_op :: "'ip set \<Rightarrow> ('ip \<Rightarrow> 'd buf) \<Rightarrow> ('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op"
+lemma read_op_code[code]:
+  "read_op A buf op = (case op of
+     End \<Rightarrow> End
+   | Read p f \<Rightarrow> if p \<in> A
+       then read_op A (buf(p := btl (buf p))) (f (bhd' (buf p)))
+       else Read p (\<lambda>x. read_op A buf (f x))
+   | Write op p x \<Rightarrow> Write (read_op A buf op) p x)"
+  sorry
+simps_of_case read_op_simps[simp]: read_op_code[unfolded prod.case]
+
+find_consts name: iterates
+
+lemma loop_op_unfold:
+  "loop_op wire buf op = map_op (case_sum id id) projr (comp_op wire (\<lambda> x. BEmpty) (read_op (ran wire) buf op) (loop_op wire buf op))"
+  sorry
+(*   apply (coinduction arbitrary: buf op rule: op.coinduct_strong)
+  subgoal for buf op
+    apply (cases op)
+    subgoal for ip f
+      apply auto *)
+
+lemma produce_comp_op:
+   "produce (comp_op wire buf op1 op2) lxs p = (case p of
+    Inl p1 \<Rightarrow> (if p1 \<in> dom wire then LNil else
+      produce op1 (lxs o Inl) p1)
+  | Inr p2 \<Rightarrow> produce op2 (\<lambda> p'. if p' \<in> ran wire then produce (map_op id (case_option undefined id o wire) op1) (lxs o Inl) p' else lxs (Inr p')) p2)"
+  sorry
 
 (*
 lemma "producing p op lxs i \<Longrightarrow> \<forall>p. lprefix (lxs p) (lxs' p) \<Longrightarrow> producing p op lxs' i"
@@ -194,7 +222,8 @@ lemma outputs_pcomp_op[simp]:
 lemma produce_pcomp_op:
   "produce (pcomp_op op1 op2) lxs p =
     (case p of Inl p \<Rightarrow> produce op1 (lxs o Inl) p | Inr p \<Rightarrow> produce op2 (lxs o Inr) p)"
-  sorry
+  unfolding produce_comp_op pcomp_op_def
+  by (auto split: sum.splits simp add: o_def)
 
 definition "scomp_op op1 op2 = map_op projl projr (comp_op Some (\<lambda>_. BEmpty) op1 op2)"
 
@@ -206,10 +235,15 @@ lemma outputs_scomp_op[simp]:
   "outputs (scomp_op op1 op2) = outputs op2"
   unfolding scomp_op_def by (force simp: op.set_map ran_def)
 
-lemma produce_scomp_op:
-  "produce (scomp_op op1 op2) lxs = (produce op2 (produce op1 lxs))"
+lemma produce_map_op:
+  "\<forall> x. h (g x) = x \<Longrightarrow> produce (map_op f h op) lxs p = produce op (lxs o f) (g p)"
   sorry
 
+
+lemma produce_scomp_op:
+  "produce (scomp_op op1 op2) lxs = (produce op2 (produce op1 lxs))"
+    unfolding produce_comp_op scomp_op_def produce_map_op[where g=Inr and h=projr, simplified]
+    by (auto split: sum.splits simp add: ranI o_def id_def op.map_ident)
 
 type_synonym 'd op22 = "(Enum.finite_2, Enum.finite_2, 'd) op"
 type_synonym 'd op11 = "(Enum.finite_1, Enum.finite_1, 'd) op"
@@ -229,6 +263,9 @@ corec cp_op :: "'d op11" where
 corec inc_op :: "nat op11" where
   "inc_op = Read finite_1.a\<^sub>1 (case_input (\<lambda>x. Write inc_op finite_1.a\<^sub>1 (x + 1)) inc_op End)"
 
+corec cinc_op :: "nat op22" where
+  "cinc_op = Read finite_2.a\<^sub>1 (case_input (\<lambda>x. Write (Write cinc_op finite_2.a\<^sub>2 x) finite_2.a\<^sub>1 (x + 1)) cinc_op End)"
+
 lemma "welltyped A A cp_op"
 (*needs coinduction up-to for welltyped (or a custom bisimulation)*)
   sorry
@@ -236,6 +273,14 @@ lemma "welltyped A A cp_op"
 definition loop22_op :: "'d op22 \<Rightarrow> 'd op11" where
   "loop22_op op = map_op (\<lambda>x. finite_1.a\<^sub>1) (\<lambda>x. finite_1.a\<^sub>1) (loop_op
     (\<lambda>x. if x = finite_2.a\<^sub>1 then Some finite_2.a\<^sub>1 else None) (\<lambda>_. BEmpty) op)"
+
+
+fun ltaken where
+  "ltaken _ 0 = []"
+| "ltaken LNil _ = []"
+| "ltaken (LCons x xs) (Suc n) = x # ltaken xs n"
+
+value "ltaken (produce (loop22_op (Write cinc_op finite_2.a\<^sub>1 1)) (\<lambda> _. undefined) finite_1.a\<^sub>1) 5"
 
 locale collatz =
   fixes encode_nat3 :: "nat \<times> nat \<times> nat \<Rightarrow> 'd"
