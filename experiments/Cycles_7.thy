@@ -64,6 +64,30 @@ lemma produce_code[code]:
 
 simps_of_case produce_simps[simp]: produce_code
 
+coinductive silent where
+  "silent End lxs p"
+| "p \<noteq> p' \<Longrightarrow> silent op' lxs p \<Longrightarrow> silent (Write op' p' x) lxs p"
+| "silent (f (lhd' (lxs p'))) (lxs(p' := ltl (lxs p'))) p \<Longrightarrow> silent (Read p' f) lxs p"
+
+lemma lnull_produce_silent: "lnull (produce op lxs p) \<Longrightarrow> silent op lxs p"
+  apply (coinduction arbitrary: op lxs)
+  apply (subst produce_code)
+  subgoal for op lxs
+    apply (cases op)
+      apply (auto split: if_splits op.splits)
+    done
+  done
+
+lemma producing_silent_LNil: "producing op lxs p n \<Longrightarrow> silent op lxs p \<Longrightarrow> produce op lxs p = LNil"
+  by (induct op lxs p n rule: producing.induct) (auto elim: silent.cases)
+
+lemma silent_produce_LNil: "silent op lxs p \<Longrightarrow> produce op lxs p = LNil"
+  by (subst produce.code)
+    (auto split: op.splits elim: silent.cases dest: producing_silent_LNil)
+
+lemma lnull_produce_iff_silent: "lnull (produce op lxs p) \<longleftrightarrow> silent op lxs p"
+  using lnull_produce_silent silent_produce_LNil by fastforce
+
 datatype 'd buf = BEmpty | BEnded | BCons 'd (btl: "'d buf")
   where "btl BEmpty = BEmpty" | "btl BEnded = BEnded"
 
@@ -266,9 +290,33 @@ lemma read_op_code[code]:
   sorry
 simps_of_case read_op_simps[simp]: read_op_code
 
+fun iter_op where
+  "iter_op 0 wire buf op = read_op (ran wire) buf op"
+| "iter_op (Suc n) wire buf op = map_op (case_sum id id) projr (comp_op wire buf (iter_op n wire buf op) op)"
+
+lemma produce_map_op:
+  "\<forall> x. h (g x) = x \<Longrightarrow> produce (map_op f h op) lxs p = produce op (lxs o f) (g p)"
+  apply (coinduction arbitrary: op)
+  subgoal for op
+    apply(induction arg\<equiv>"(map_op f h op, lxs, p)" arbitrary: op lxs rule: produce.inner_induct)
+    sorry
+  done
+
+lemma produce_comp_op:
+   "produce (comp_op wire buf op1 op2) lxs p = (case p of
+    Inl p1 \<Rightarrow> (if p1 \<in> dom wire then LNil else
+      produce op1 (lxs o Inl) p1)
+  | Inr p2 \<Rightarrow> produce op2 (\<lambda> p'. if p' \<in> ran wire then produce (map_op id (case_option undefined id o wire) op1) (lxs o Inl) p' else lxs (Inr p')) p2)"
+  sorry
+
+lemma "lprefix (produce (iter_op n wire buf op) lxs p) (produce (iter_op (Suc n) wire buf op) lxs p)"
+  apply (coinduction arbitrary: op buf lxs p)
+  apply (auto simp: produce_map_op[where g = Inr] produce_comp_op)
+  sorry
+
 term loop_op
 lemma "produce (loop_op wire buf op) lxs =
-  (THE lzs. \<forall>p. lzs p = produce (map_op id (case_option undefined id o wire) op)
+  (THE lzs. \<forall>p. lzs p = produce (map_op id (todo) op)
      (\<lambda>p. if p \<in> ran wire then lapp (buf p1) (lzs p2) else lxs p3) p)"
   oops
 
@@ -280,13 +328,6 @@ lemma loop_op_unfold:
     apply (cases op)
     subgoal for ip f
       apply auto *)
-
-lemma produce_comp_op:
-   "produce (comp_op wire buf op1 op2) lxs p = (case p of
-    Inl p1 \<Rightarrow> (if p1 \<in> dom wire then LNil else
-      produce op1 (lxs o Inl) p1)
-  | Inr p2 \<Rightarrow> produce op2 (\<lambda> p'. if p' \<in> ran wire then produce (map_op id (case_option undefined id o wire) op1) (lxs o Inl) p' else lxs (Inr p')) p2)"
-  sorry
 
 (*
 lemma "producing p op lxs i \<Longrightarrow> \<forall>p. lprefix (lxs p) (lxs' p) \<Longrightarrow> producing p op lxs' i"
@@ -359,14 +400,6 @@ lemma inputs_scomp_op[simp]:
 lemma outputs_scomp_op[simp]:
   "outputs (scomp_op op1 op2) = outputs op2"
   unfolding scomp_op_def by (force simp: op.set_map ran_def)
-
-lemma produce_map_op:
-  "\<forall> x. h (g x) = x \<Longrightarrow> produce (map_op f h op) lxs p = produce op (lxs o f) (g p)"
-  apply (coinduction arbitrary: op)
-  subgoal for op
-    apply(induction arg\<equiv>"(map_op f h op, lxs, p)" arbitrary: op lxs rule: produce.inner_induct)
-    sorry
-  done
 
 
 lemma produce_scomp_op:
