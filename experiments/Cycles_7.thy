@@ -3,6 +3,7 @@ theory Cycles_7
     "HOL-Library.BNF_Corec"
     "HOL-Library.Code_Lazy"
     "HOL-Library.Simps_Case_Conv"
+    Coinductive.Coinductive_Nat
 begin
 
 code_lazy_type llist
@@ -314,7 +315,6 @@ lemma "lprefix (produce (iter_op n wire buf op) lxs p) (produce (iter_op (Suc n)
   apply (auto simp: produce_map_op[where g = Inr] produce_comp_op)
   sorry
 
-term loop_op
 lemma "produce (loop_op wire buf op) lxs =
   (THE lzs. \<forall>p. lzs p = produce (map_op id (todo) op)
      (\<lambda>p. if p \<in> ran wire then lapp (buf p1) (lzs p2) else lxs p3) p)"
@@ -323,6 +323,20 @@ lemma "produce (loop_op wire buf op) lxs =
 lemma loop_op_unfold:
   "loop_op wire buf op = map_op (case_sum id id) projr (comp_op wire (\<lambda> x. BEmpty) (read_op (ran wire) buf op) (loop_op wire buf op))"
   oops
+
+  term "loop_op wire buf"
+
+  term "Nat.funpow n (\<lambda> op. map_op (case_sum id id) projr (comp_op wire buf op op))"
+
+  typ enat
+
+
+  term "(comp_op wire2 buf2 ^^ n) op op"
+  term "(map_op (case_sum id id) projr (comp_op wire2 buf2 op op) ^^ n)"
+  term enat_unfold
+
+
+
 (*   apply (coinduction arbitrary: buf op rule: op.coinduct_strong)
   subgoal for buf op
     apply (cases op)
@@ -436,13 +450,24 @@ definition loop22_op :: "'d op22 \<Rightarrow> 'd op11" where
   "loop22_op op = map_op (\<lambda>x. finite_1.a\<^sub>1) (\<lambda>x. finite_1.a\<^sub>1) (loop_op
     (\<lambda>x. if x = finite_2.a\<^sub>1 then Some finite_2.a\<^sub>1 else None) (\<lambda>_. BEmpty) op)"
 
-
 fun ltaken where
   "ltaken _ 0 = []"
 | "ltaken LNil _ = []"
 | "ltaken (LCons x xs) (Suc n) = x # ltaken xs n"
 
-value "ltaken (produce (loop22_op (Write cinc_op finite_2.a\<^sub>1 1)) (\<lambda> _. undefined) finite_1.a\<^sub>1) 5"
+value "ltaken (produce (loop22_op (Write cinc_op finite_2.a\<^sub>1 1)) (\<lambda> _. undefined) finite_1.a\<^sub>1) 10"
+
+lemma loop_op_lSup:
+  "produce (loop_op wire buf op) lxs p =
+   lSup {xs | xs n. xs = produce (Nat.funpow n (\<lambda> op'. map_op (case_sum id id) projr (comp_op wire buf op' op')) op) lxs p}"
+  oops
+
+definition "my_pow n f = Nat.funpow n (\<lambda> x. f x x)"
+ 
+definition loop22_op_alt where
+  "loop22_op_alt op = my_pow 5 (\<lambda> op1 op2. map_op projl (case_sum id id) (comp_op (\<lambda>x. if x = finite_2.a\<^sub>1 then Some finite_2.a\<^sub>1 else None) (\<lambda>_. BEmpty) op1 op2)) op"
+
+value "ltaken (produce (loop22_op_alt (Write cinc_op finite_2.a\<^sub>1 1)) (\<lambda> _. LNil) finite_2.a\<^sub>1) 50"
 
 locale collatz =
   fixes encode_nat3 :: "nat \<times> nat \<times> nat \<Rightarrow> 'd"
