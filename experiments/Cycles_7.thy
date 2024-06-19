@@ -465,9 +465,9 @@ lemma loop_op_lSup:
 definition "my_pow n f = Nat.funpow n (\<lambda> x. f x x)"
  
 definition loop22_with_comp_op where
-  "loop22_with_comp_op op = my_pow 9 (\<lambda> op1 op2. map_op projl (case_sum id id) (comp_op (\<lambda>x. if x = finite_2.a\<^sub>1 then Some finite_2.a\<^sub>1 else None) (\<lambda>_. BEmpty) op1 op2)) op"
+  "loop22_with_comp_op op n = my_pow n (\<lambda> op1 op2. map_op projl (case_sum id id) (comp_op (\<lambda>x. if x = finite_2.a\<^sub>1 then Some finite_2.a\<^sub>1 else None) (\<lambda>_. BEmpty) op1 op2)) op"
 
-value "ltaken (produce (loop22_with_comp_op (Write cinc_op finite_2.a\<^sub>1 1)) (\<lambda> _. LNil) finite_2.a\<^sub>1) 50"
+value "ltaken (produce (loop22_with_comp_op (Write cinc_op finite_2.a\<^sub>1 1) 4) (\<lambda> _. LNil) finite_2.a\<^sub>1) 50"
 
 corec (friend) bulk_write where
   "bulk_write ys i op =
@@ -477,7 +477,13 @@ corec foo_op :: "nat list \<Rightarrow> (Enum.finite_2, Enum.finite_2, nat) op" 
   "foo_op buf = Read finite_2.a\<^sub>1 (case_input (\<lambda>x. foo_op (buf@[x])) (bulk_write (map ((+)1) buf) finite_2.a\<^sub>1 (bulk_write buf finite_2.a\<^sub>2 (foo_op []))) End)"
 
 value "ltaken (produce (loop22_op (bulk_write [1,2,3] finite_2.a\<^sub>1 (foo_op []))) (\<lambda> _. undefined) finite_1.a\<^sub>1) 100"
-value "ltaken (produce (loop22_with_comp_op (bulk_write [1,2,3] finite_2.a\<^sub>1 (foo_op []))) (\<lambda> _. LNil) finite_2.a\<^sub>1) 100"
+value "ltaken (produce (loop22_with_comp_op (bulk_write [1,2,3] finite_2.a\<^sub>1 (foo_op [])) 9) (\<lambda> _. LNil) finite_2.a\<^sub>1) 100"
+
+lemma
+  "lprefix
+   (produce (loop22_with_comp_op (bulk_write [1,2,3] finite_2.a\<^sub>1 (foo_op [])) n) (\<lambda> _. LNil) finite_2.a\<^sub>1)
+   (produce (loop22_op (bulk_write [1,2,3] finite_2.a\<^sub>1 (foo_op []))) (\<lambda> _. undefined) finite_1.a\<^sub>1)"
+  oops
 
 
 locale collatz =
