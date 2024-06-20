@@ -446,8 +446,8 @@ lemma "welltyped A A cp_op"
 (*needs coinduction up-to for welltyped (or a custom bisimulation)*)
   sorry
 
-definition loop22_op :: "'d op22 \<Rightarrow> 'd op11" where
-  "loop22_op op = map_op (\<lambda>x. finite_1.a\<^sub>1) (\<lambda>x. finite_1.a\<^sub>1) (loop_op
+definition loop22_op where
+  "loop22_op op = (loop_op
     (\<lambda>x. if x = finite_2.a\<^sub>1 then Some finite_2.a\<^sub>1 else None) (\<lambda>_. BEmpty) op)"
 
 fun ltaken where
@@ -455,7 +455,6 @@ fun ltaken where
 | "ltaken LNil _ = []"
 | "ltaken (LCons x xs) (Suc n) = x # ltaken xs n"
 
-value "ltaken (produce (loop22_op (Write cinc_op finite_2.a\<^sub>1 1)) (\<lambda> _. undefined) finite_1.a\<^sub>1) 10"
 
 lemma loop_op_lSup:
   "produce (loop_op wire buf op) lxs p =
@@ -463,11 +462,11 @@ lemma loop_op_lSup:
   oops
 
 definition "my_pow n f = Nat.funpow n (\<lambda> x. f x x)"
- 
-definition loop22_with_comp_op where
-  "loop22_with_comp_op op n = my_pow n (\<lambda> op1 op2. map_op projl (case_sum id id) (comp_op (\<lambda>x. if x = finite_2.a\<^sub>1 then Some finite_2.a\<^sub>1 else None) (\<lambda>_. BEmpty) op1 op2)) op"
 
-value "ltaken (produce (loop22_with_comp_op (Write cinc_op finite_2.a\<^sub>1 1) 4) (\<lambda> _. LNil) finite_2.a\<^sub>1) 50"
+definition loop22_with_comp_op :: "(Enum.finite_2, Enum.finite_2, 'a) op \<Rightarrow> nat \<Rightarrow> (Enum.finite_2, Enum.finite_2, 'a) op" where
+  "loop22_with_comp_op op n = my_pow n 
+    (\<lambda> op1 op2. map_op (case_sum (\<lambda> _. finite_2.a\<^sub>1) (\<lambda> _. finite_2.a\<^sub>2)) 
+      (case_sum (\<lambda> _. finite_2.a\<^sub>1) id) (comp_op (\<lambda>x. if x = finite_2.a\<^sub>1 then Some finite_2.a\<^sub>1 else None) (\<lambda>_. BEmpty) op1 op2)) op"
 
 corec (friend) bulk_write where
   "bulk_write ys i op =
@@ -476,8 +475,17 @@ corec (friend) bulk_write where
 corec foo_op :: "nat list \<Rightarrow> (Enum.finite_2, Enum.finite_2, nat) op" where
   "foo_op buf = Read finite_2.a\<^sub>1 (case_input (\<lambda>x. foo_op (buf@[x])) (bulk_write (map ((+)1) buf) finite_2.a\<^sub>1 (bulk_write buf finite_2.a\<^sub>2 (foo_op []))) End)"
 
-value "ltaken (produce (loop22_op (bulk_write [1,2,3] finite_2.a\<^sub>1 (foo_op []))) (\<lambda> _. undefined) finite_1.a\<^sub>1) 100"
-value "ltaken (produce (loop22_with_comp_op (bulk_write [1,2,3] finite_2.a\<^sub>1 (foo_op [])) 9) (\<lambda> _. LNil) finite_2.a\<^sub>1) 100"
+value "ltaken (produce (loop22_op (bulk_write [1,2,3] finite_2.a\<^sub>1 (foo_op []))) (\<lambda> _. undefined) finite_2.a\<^sub>2) 30"
+value "ltaken (produce (loop22_with_comp_op (bulk_write [1,2,3] finite_2.a\<^sub>1 (foo_op [])) 4) (\<lambda> _. LNil) finite_2.a\<^sub>2) 25"
+
+corec foo2_op :: "nat list \<Rightarrow> (Enum.finite_2, Enum.finite_2, nat) op" where
+  "foo2_op buf = Read finite_2.a\<^sub>1 (case_input (\<lambda>x. bulk_write (map ((+)1) buf) finite_2.a\<^sub>1 (foo2_op (buf@[x]))) ((bulk_write buf finite_2.a\<^sub>2 (foo2_op []))) End)"
+
+value "ltaken (produce (loop22_op (bulk_write [1,2,3] finite_2.a\<^sub>1 (foo2_op []))) (\<lambda> _. undefined) finite_2.a\<^sub>2) 30"
+value "ltaken (produce (loop22_with_comp_op (bulk_write [1,2,3] finite_2.a\<^sub>1 (foo2_op [])) 3) (\<lambda> _. LNil) finite_2.a\<^sub>2) 25"
+
+value "ltaken (produce (loop22_op (Write cinc_op finite_2.a\<^sub>1 1)) (\<lambda> _. LNil) finite_2.a\<^sub>2) 50"
+value "ltaken (produce (loop22_with_comp_op (Write cinc_op finite_2.a\<^sub>1 1) 4) (\<lambda> _. LNil) finite_2.a\<^sub>2) 50"
 
 lemma
   "lprefix
@@ -485,6 +493,9 @@ lemma
    (produce (loop22_op (bulk_write [1,2,3] finite_2.a\<^sub>1 (foo_op []))) (\<lambda> _. undefined) finite_1.a\<^sub>1)"
   oops
 
+  thm ltake_enat_eq_imp_eq
+
+  find_theorems ltake "_ \<Longrightarrow> _ = _"
 
 locale collatz =
   fixes encode_nat3 :: "nat \<times> nat \<times> nat \<Rightarrow> 'd"
