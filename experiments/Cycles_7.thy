@@ -51,7 +51,7 @@ corecursive produce where
     (auto 0 3 simp: The_producing elim: producing.cases)
 
 lemma produce_code[code]:
-  "produce op lxs p = (case op of
+  "produce op lxs p = (case op of                    
     Read p' f \<Rightarrow> produce (f (lhd' (lxs p'))) (lxs(p' := ltl (lxs p'))) p
   | Write op' p' x \<Rightarrow> (if p = p' then LCons x (produce op' lxs p) else produce op' lxs p)
   | End \<Rightarrow> LNil)"
@@ -209,12 +209,12 @@ corecursive comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Righ
   ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
   "comp_op wire buf op1 op2 = (case (op1, op2) of
      (End, End) \<Rightarrow> End
-   | (End, Write op2' p2 x2) \<Rightarrow> Write (comp_op wire (bend o buf) End op2') (Inr p2) x2
+   | (End, Write op2' p2 x2) \<Rightarrow> Write (comp_op wire (bend o buf) End op2') (Inr p2) (Debug.tracing (String.implode ''hi4'') x2)
    | (End, Read p2 f2) \<Rightarrow> let buf' = bend o buf in if p2 \<in> ran wire
      then if \<exists>n. comp_producing wire buf op1 op2 n then comp_op wire (buf'(p2 := btl (buf' p2))) End (f2 (bhd' (buf' p2))) else End
      else Read (Inr p2) (\<lambda>y2. comp_op wire buf' End (f2 y2))
    | (Read p1 f1, End) \<Rightarrow> Read (Inl p1) (\<lambda>y1. comp_op wire buf (f1 y1) End)
-   | (Read p1 f1, Write op2' p2 x2) \<Rightarrow> Read (Inl p1) (\<lambda>y1. Write (comp_op wire buf (f1 y1) op2') (Inr p2) x2)
+   | (Read p1 f1, Write op2' p2 x2) \<Rightarrow> Read (Inl p1) (\<lambda>y1. Write (comp_op wire buf (f1 y1) op2') (Inr p2) (Debug.tracing (String.implode ''hi3'') x2))
    | (Read p1 f1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
      then Read (Inl p1) (\<lambda>y1. comp_op wire (buf(p2 := btl (buf p2))) (f1 y1) (f2 (bhd' (buf p2))))
      else Read (Inl p1) (\<lambda>y1. Read (Inr p2) (\<lambda>y2. comp_op wire buf (f1 y1) (f2 y2)))
@@ -466,11 +466,13 @@ definition debug_write_nat_at_port where
 
 
 corec cinc_op :: "nat op22" where
-  "cinc_op = Read finite_2.a\<^sub>1 (case_input (\<lambda>x. Write (Write cinc_op finite_2.a\<^sub>2 (debug_write_nat_at_port x finite_2.a\<^sub>2 x)) finite_2.a\<^sub>1 (debug_write_nat_at_port (x+1) finite_2.a\<^sub>1 (x+1))) cinc_op End)"
+  "cinc_op = Read finite_2.a\<^sub>1 (case_input (\<lambda>x. Write (Write cinc_op finite_2.a\<^sub>2 x) finite_2.a\<^sub>1 (x+1)) cinc_op End)"
 
 lemma "welltyped A A cp_op"
 (*needs coinduction up-to for welltyped (or a custom bisimulation)*)
   sorry
+
+term rel_op
 
 definition loop22_op where
   "loop22_op op = (loop_op
@@ -495,7 +497,7 @@ definition "my_pow n f = Nat.funpow n (\<lambda> x. f x x)"
 
 definition loop22_with_comp_op :: "(Enum.finite_2, Enum.finite_2, 'a) op \<Rightarrow> nat \<Rightarrow> (Enum.finite_2, Enum.finite_2, 'a) op" where
   "loop22_with_comp_op op n = my_pow n 
-    (\<lambda> op1 op2. map_op (case_sum id (\<lambda> _. undefined)) (case_sum (\<lambda> e.  finite_2.a\<^sub>1) (debug_port ''output 2 ''))
+    (\<lambda> op1 op2. map_op (case_sum id id) (case_sum id id)
       (comp_op (\<lambda>x. if x = finite_2.a\<^sub>1 then Some finite_2.a\<^sub>1 else None) (\<lambda>_. BEmpty) op1 op2)) op"
 
 corec foo_op :: "nat list \<Rightarrow> (Enum.finite_2, Enum.finite_2, nat) op" where
@@ -508,11 +510,58 @@ value "ltaken (produce (loop22_with_comp_op (bulk_write [1,2] finite_2.a\<^sub>1
 corec foo2_op :: "nat list \<Rightarrow> (Enum.finite_2, Enum.finite_2, nat) op" where
   "foo2_op buf = Read finite_2.a\<^sub>1 (case_input (\<lambda>x. bulk_write (map ((+)1) buf) finite_2.a\<^sub>1 (foo2_op (buf@[x]))) ((bulk_write buf finite_2.a\<^sub>2 (foo2_op []))) End)"
 
-value "ltaken (produce (loop22_op (bulk_write [1,2,3] finite_2.a\<^sub>1 (foo2_op []))) (\<lambda> _. undefined) finite_2.a\<^sub>2) 30"
-value "ltaken (produce (loop22_with_comp_op (bulk_write [1,2,3] finite_2.a\<^sub>1 (foo2_op [])) 3) (\<lambda> _. LNil) finite_2.a\<^sub>2) 25"
+value "ltaken (produce (loop22_op (bulk_write [1,2,3] finite_2.a\<^sub>1 (foo_op []))) (\<lambda> _. undefined) finite_2.a\<^sub>2) 30"
+value "ltaken (produce (loop22_with_comp_op (foo_op []) 3) (\<lambda> _. LCons 1 (LCons 2 (LCons 3 LNil))) finite_2.a\<^sub>2) 25"
 
 value "ltaken (produce (loop22_op (Write cinc_op finite_2.a\<^sub>1 1)) (\<lambda> _. LNil) finite_2.a\<^sub>2) 4"
-value "ltaken (produce (loop22_with_comp_op (Write cinc_op finite_2.a\<^sub>1 1) 3) (\<lambda> _. LNil) finite_2.a\<^sub>2) 50"
+value "ltaken (produce (loop22_with_comp_op cinc_op 4) (\<lambda> _. LCons 1 LNil) finite_2.a\<^sub>2) 50"
+
+value "ltaken (produce (comp_op (\<lambda>x. if x = finite_2.a\<^sub>1 then Some finite_2.a\<^sub>1 else None) (\<lambda>_. BEmpty) cinc_op cinc_op)  (\<lambda> _. LCons 1 LNil) (Inl finite_2.a\<^sub>1)) 100"
+value "ltaken (produce (comp_op (\<lambda>x. if x = finite_2.a\<^sub>1 then Some finite_2.a\<^sub>1 else None) (\<lambda>_. BEmpty) cinc_op cinc_op)  (\<lambda> _. LCons 1 LNil) (Inr finite_2.a\<^sub>1)) 100"
+value "ltaken (produce (map_op (case_sum id id) (case_sum id id) (comp_op (\<lambda>x. if x = finite_2.a\<^sub>1 then Some finite_2.a\<^sub>1 else None) (\<lambda>_. BEmpty) cinc_op cinc_op))  (\<lambda> _. LCons 1 LNil) (finite_2.a\<^sub>2)) 100"
+value "ltaken (produce (comp_op (\<lambda>x. if x = finite_2.a\<^sub>1 then Some finite_2.a\<^sub>1 else None) (\<lambda>_. BEmpty) cinc_op cinc_op)  (\<lambda> _. LCons 1 LNil) (Inr finite_2.a\<^sub>2)) 100"
+
+
+abbreviation "comp_2 op \<equiv> map_op (case_sum id id) (case_sum id id) (comp_op (\<lambda>x. if x = finite_2.a\<^sub>1 then Some finite_2.a\<^sub>1 else None) (\<lambda>_. BEmpty) op op)"
+abbreviation "comp_4 op \<equiv> comp_2 (comp_2 op)"
+abbreviation "comp_16 op \<equiv> comp_4 (comp_4 op)"
+
+(*
+Read finite_2.a\<^sub>1 (
+    case_input 
+     (\<lambda>x. if even x then Write (foo3_op n) finite_2.a\<^sub>1 x else Write (foo3_op (n+1)) finite_2.a\<^sub>1 (x-1)) 
+     (Write (foo3_op n) finite_2.a\<^sub>1 666)
+     End
+    )
+*)
+
+corec foo3_op :: "nat \<Rightarrow> (Enum.finite_2, Enum.finite_2, nat) op" where
+  "foo3_op n = Read finite_2.a\<^sub>2 (case_input 
+     (\<lambda>x. if even x
+          then Write ((Read finite_2.a\<^sub>1 (case_input 
+               (\<lambda>x. if even x then Write (foo3_op n) finite_2.a\<^sub>2 x else Write (foo3_op (n+1)) finite_2.a\<^sub>1 (x div 2)) 
+               (Write (foo3_op n) finite_2.a\<^sub>2 666)
+               End
+               ))) finite_2.a\<^sub>2 x
+          else Write (foo3_op (n+1)) finite_2.a\<^sub>1 (x div 2)) 
+     (Write (Read finite_2.a\<^sub>1 (case_input 
+               (\<lambda>x. if even x then Write (foo3_op n) finite_2.a\<^sub>2 x else Write (foo3_op (n+1)) finite_2.a\<^sub>1 (x div 2)) 
+               (Write (foo3_op n) finite_2.a\<^sub>2 444)
+               End
+               )) finite_2.a\<^sub>2 333)
+     (Read finite_2.a\<^sub>1 (case_input 
+               (\<lambda>x. if even x then Write (foo3_op n) finite_2.a\<^sub>2 x else Write (foo3_op (n+1)) finite_2.a\<^sub>1 (x div 2)) 
+               (Write (foo3_op n) finite_2.a\<^sub>2 777)
+               (Write End finite_2.a\<^sub>2 (10000 + n))
+               ))
+    )"
+
+find_consts  name: fun_upd
+
+value "ltaken (produce (loop22_op (foo3_op 0)) (\<lambda> e. if e = finite_2.a\<^sub>2 then LCons 2 (LCons 1 LNil) else LNil) finite_2.a\<^sub>2) 99"
+value "ltaken (produce (san_op (foo3_op 0)) (\<lambda> e. if e = finite_2.a\<^sub>2 then LCons 2 (LCons 1 LNil) else LNil) (finite_2.a\<^sub>2)) 99"
+
+
 
 lemma
   "lprefix
