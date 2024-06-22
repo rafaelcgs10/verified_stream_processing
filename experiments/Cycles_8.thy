@@ -55,20 +55,21 @@ corec lgroup where
      LNil \<Rightarrow> LNil
    | _ \<Rightarrow> LCons (lmap out (ltakeWhile (\<lambda>x. x \<noteq> output.EOB) lxs)) (lgroup (ltl (ldropWhile (\<lambda>x. x \<noteq> output.EOB) lxs))))"
 
+definition lmap_lhd where
+  "lmap_lhd g f lxs = (case lxs of
+    LNil \<Rightarrow> g
+  | LCons y lys \<Rightarrow> LCons (f y) lys)"
 
-definition lcons_fst where
-  "lcons_fst x lxs = (case lxs of
-    LNil \<Rightarrow> LCons (LCons x LNil) LNil
-  | LCons lys lxss \<Rightarrow> LCons (LCons x lys) lxss)"
+definition lsingle where "lsingle x = LCons x LNil"
 
 lemma lgroup_simps[simp]:
   "lgroup LNil = LNil"
   "lgroup (LCons output.EOB lxs) = LCons LNil (lgroup lxs)"
-  "lgroup (LCons (Output x) lxs) = lcons_fst x (lgroup lxs)"
+  "lgroup (LCons (Output x) lxs) = lmap_lhd (lsingle (lsingle x)) (LCons x) (lgroup lxs)"
   apply (subst lgroup.code; simp)
   apply (subst lgroup.code; simp)
-  apply (subst lgroup.code; simp)
-  by (smt (verit) lcons_fst_def ldropWhile.simps lgroup.code lhd_LCons llist.case_eq_if llist.distinct(1) llist.simps(12) ltakeWhile.ctr(1) ltl_simps(1) ltl_simps(2) not_lnull_conv)
+  apply (subst lgroup.code; simp add: lmap_lhd_def lsingle_def)
+  by (smt (verit) ldropWhile.simps lgroup.code lhd_LCons llist.case_eq_if llist.distinct(1) llist.simps(12) ltakeWhile.ctr(1) ltl_simps(1) ltl_simps(2) not_lnull_conv)
 
 corecursive produce_aux where
   "produce_aux op lxs p = (case op of
@@ -98,7 +99,7 @@ definition "produce op lxs p = lgroup (produce_aux op lxs p)"
 lemma produce_code[code]:
   "produce op lxs p = (case op of
     Read p' f \<Rightarrow> produce (f (llhd (lxs p'))) (lxs(p' := lltl (lxs p'))) p
-  | Write op' p' (Output x) \<Rightarrow> (if p = p' then lcons_fst x (produce op' lxs p) else produce op' lxs p)
+  | Write op' p' (Output x) \<Rightarrow> (if p = p' then lmap_lhd (lsingle (lsingle x)) (LCons x) (produce op' lxs p) else produce op' lxs p)
   | Write op' p' EOB \<Rightarrow> (if p = p' then LCons LNil (produce op' lxs p) else produce op' lxs p)
   | End \<Rightarrow> LNil)"
   unfolding produce_def o_def
@@ -125,7 +126,7 @@ lemma lnull_produce_silent: "lnull (produce op lxs p) \<Longrightarrow> silent o
   apply (subst produce_code)
   subgoal for op lxs
     apply (cases op)
-      apply (auto simp: lcons_fst_def split: if_splits op.splits output.splits llist.splits)
+      apply (auto simp: lmap_lhd_def lsingle_def split: if_splits op.splits output.splits llist.splits)
     done
   done
 
@@ -588,7 +589,7 @@ corec foo2_op :: "nat list \<Rightarrow> (2, 2, nat) op" where
 value "ltaken2 5 30 (produce (loop22_op (scomp_op (bulk_write [1,2,3] 1 cp22_1_op) (foo2_op []))) (\<lambda> _. LNil) 1)"
 value "ltaken2 5 30 (produce (loop22_with_comp_op (scomp_op (bulk_write [1,2,3] 1 cp22_1_op) (foo2_op [])) 3) (\<lambda> _. LNil) 2)"
 
-(* TODO does not terminate: has to do with produce code equation using lcons_fst which seems to break productivity
+(* TODO does not terminate: has to do with produce code equation using lmap_lhd which seems to break productivity
 value "ltaken2 1 30 (produce (loop22_op (scomp_op (write cp22_1_op 1 1) cinc_op)) (\<lambda> _. LNil) 1)"
 value "ltaken2 5 30 (produce (loop22_with_comp_op (scomp_op (write cp22_1_op 1 1) cinc_op) 3) (\<lambda> _. LNil) 2)"
 *)
