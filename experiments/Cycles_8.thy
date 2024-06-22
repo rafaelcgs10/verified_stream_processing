@@ -2,6 +2,8 @@ theory Cycles_8
   imports Coinductive.Coinductive_List
     "HOL-Library.BNF_Corec"
     "HOL-Library.Code_Lazy"
+    "HOL-Library.Numeral_Type"
+    "HOL-Library.Code_Cardinality"
     "HOL-Library.Simps_Case_Conv"
     Coinductive.Coinductive_Nat
     "HOL-Library.Debug"
@@ -57,7 +59,7 @@ corec lgroup where
 definition lcons_fst where
   "lcons_fst x lxs = (case lxs of
     LNil \<Rightarrow> LCons (LCons x LNil) LNil
-  | LCons lxs lxss \<Rightarrow> LCons (LCons x lxs) lxss)"
+  | LCons lys lxss \<Rightarrow> LCons (LCons x lys) lxss)"
 
 lemma lgroup_simps[simp]:
   "lgroup LNil = LNil"
@@ -76,6 +78,20 @@ corecursive produce_aux where
   | End \<Rightarrow> LNil)"
   by (relation "measure (\<lambda>(op, lxs, p). THE i. producing op lxs p i)")
     (auto 0 3 simp: The_producing elim: producing.cases)
+
+lemma produce_aux_code[code]:
+  "produce_aux op lxs p = (case op of
+    Read p' f \<Rightarrow> produce_aux (f (llhd (lxs p'))) (lxs(p' := lltl (lxs p'))) p
+  | Write op' p' x \<Rightarrow> (if p = p' then LCons x (produce_aux op' lxs p) else produce_aux op' lxs p)
+  | End \<Rightarrow> LNil)"
+  apply (subst produce_aux.code)
+  apply (simp split: op.splits if_splits output.splits)
+  apply safe
+  subgoal for p' f
+    by (subst produce_aux.code) (auto 0 4 split: op.splits intro: producing.intros)
+  subgoal for op p x
+    by (subst produce_aux.code) (auto 0 4 split: op.splits intro: producing.intros)
+  done
 
 definition "produce op lxs p = lgroup (produce_aux op lxs p)"
 
@@ -150,8 +166,6 @@ fun benq where
 | "benq output.EOB BEnded = BCons [] BEnded"
 | "benq (Output x) (BCons xs BEmpty) = BCons (xs @ [x]) BEmpty"
 | "benq (Output x) (BCons xs BEnded) = BCons (xs @ [x]) BEnded"
-| "benq output.EOB (BCons xs BEmpty) = BCons xs (BCons [] BEmpty)"
-| "benq output.EOB (BCons xs BEnded) = BCons xs (BCons [] BEnded)"
 | "benq x (BCons ys yss) = BCons ys (benq x yss)"
 
 inductive loop_producing :: "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightarrow> 'd buf) \<Rightarrow> ('ip, 'op, 'd) op \<Rightarrow> nat \<Rightarrow> bool" where
@@ -468,8 +482,8 @@ lemma produce_scomp_op:
     unfolding produce_comp_op scomp_op_def produce_map_op[where g=Inr and h=projr, simplified]
     by (auto split: sum.splits simp add: ranI o_def id_def op.map_ident)
 
-type_synonym 'd op22 = "(Enum.finite_2, Enum.finite_2, 'd) op"
-type_synonym 'd op11 = "(Enum.finite_1, Enum.finite_1, 'd) op"
+type_synonym 'd op22 = "(2, 2, 'd) op"
+type_synonym 'd op11 = "(1, 1, 'd) op"
 
 coinductive welltyped where
   "welltyped A B (f input.EOB) \<Longrightarrow> \<forall>x \<in> A p. welltyped A B (f (Input x)) \<Longrightarrow> welltyped A B (Read p f)"
@@ -487,21 +501,22 @@ abbreviation "eob op p \<equiv> Write op p output.EOB"
 
 corec cp22_op :: "'d op22" where
   "cp22_op = 
-     (let read1 = (\<lambda>op. Read finite_2.a\<^sub>1 (case_input (write op finite_2.a\<^sub>1) (eob op finite_2.a\<^sub>1) End));
-          read2 = (\<lambda>op. Read finite_2.a\<^sub>2 (case_input (write op finite_2.a\<^sub>2) (eob op finite_2.a\<^sub>1) End))
+     (let read1 = (\<lambda>op. Read 1 (case_input (write op 1) (eob op 1) End));
+          read2 = (\<lambda>op. Read 2 (case_input (write op 2) (eob op 2) End))
       in read1 (read2 cp22_op))"
-corec cp22_1_op :: "'d op22" where
-  "cp22_1_op = Read finite_2.a\<^sub>1 (case_input (write cp22_1_op finite_2.a\<^sub>1) (eob cp22_1_op finite_2.a\<^sub>1) End)"
 lemmas cp22_op_code[code] = cp22_op.code[unfolded Let_def]
 
+corec cp22_1_op :: "'d op22" where
+  "cp22_1_op = Read 1 (case_input (write cp22_1_op 1) (eob cp22_1_op 1) End)"
+
 corec cp_op :: "'d op11" where
-  "cp_op = Read finite_1.a\<^sub>1 (case_input (write cp_op finite_1.a\<^sub>1) (eob cp_op finite_1.a\<^sub>1) End)"
+  "cp_op = Read 1 (case_input (write cp_op 1) (eob cp_op 1) End)"
 
 corec inc_op :: "nat op11" where
-  "inc_op = Read finite_1.a\<^sub>1 (case_input (\<lambda>x. write inc_op finite_1.a\<^sub>1 (x + 1)) inc_op End)"
+  "inc_op = Read 1 (case_input (\<lambda>x. write inc_op 1 (x + 1)) inc_op End)"
 
 definition print_port where
-  "print_port a = (if a = Enum.finite_2.a\<^sub>1 then ''port 1'' else ''port 2'')"
+  "print_port a = (if a = 1 then ''port 1'' else ''port 2'')"
 
 definition debug_port where
   "debug_port m a = Debug.tracing (String.implode (m @ print_port a)) a"
@@ -522,20 +537,19 @@ fun print_nat where
 definition debug_nat where
   "debug_nat m x = Debug.tracing (String.implode (m @ print_nat x))"
 
-definition debug_write_nat_at_port where
-  "debug_write_nat_at_port x p = Debug.tracing (String.implode (''Writing '' @ print_nat x @ '' at '' @ print_port p))"
-
+corec (friend) debug_write_nat where
+  "debug_write_nat op p x = write op p (Debug.tracing (String.implode (''Writing '' @ print_nat x @ '' at '' @ print_port p)) x)"
 
 corec cinc_op :: "nat op22" where
-  "cinc_op = Read finite_2.a\<^sub>1 (case_input (\<lambda>x. write (write cinc_op finite_2.a\<^sub>2 (debug_write_nat_at_port x finite_2.a\<^sub>2 x)) finite_2.a\<^sub>1 (debug_write_nat_at_port (x+1) finite_2.a\<^sub>1 (x+1))) cinc_op End)"
+  "cinc_op = Read 1 (case_input (\<lambda>x. debug_write_nat (debug_write_nat cinc_op 2 x) 1 (x+1)) cinc_op End)"
 
 lemma "welltyped A A cp_op"
 (*needs coinduction up-to for welltyped (or a custom bisimulation)*)
   sorry
 
-definition loop22_op where
-  "loop22_op op = map_op (\<lambda>_. finite_1.a\<^sub>1) (\<lambda>_. finite_1.a\<^sub>1) (loop_op
-    (\<lambda>x. if x = finite_2.a\<^sub>1 then Some finite_2.a\<^sub>1 else None) (\<lambda>_. BEmpty) op)"
+definition loop22_op :: "'d op22 \<Rightarrow> 'd op11" where
+  "loop22_op op = map_op (\<lambda>_. 1) (\<lambda>_. 1) (loop_op
+    (\<lambda>x. if x = 1 then Some 1 else None) (\<lambda>_. BEmpty) op)"
 
 fun ltaken where
   "ltaken 0 _ = []"
@@ -544,7 +558,6 @@ fun ltaken where
 
 definition ltaken2 where
   "ltaken2 m n = map (ltaken n) o ltaken m"
-
 
 lemma loop_op_lSup:
   "produce (loop_op wire buf op) lxs p =
@@ -557,33 +570,35 @@ corec (friend) bulk_write where
 
 definition "my_pow n f = Nat.funpow n (\<lambda> x. f x x)"
 
-definition loop22_with_comp_op :: "(Enum.finite_2, Enum.finite_2, 'a) op \<Rightarrow> nat \<Rightarrow> (Enum.finite_2, Enum.finite_2, 'a) op" where
+definition loop22_with_comp_op :: "(2, 2, 'a) op \<Rightarrow> nat \<Rightarrow> (2, 2, 'a) op" where
   "loop22_with_comp_op op n = my_pow n 
-    (\<lambda> op1 op2. map_op (case_sum id (\<lambda> _. undefined)) (case_sum (\<lambda> e.  finite_2.a\<^sub>1) (debug_port ''output 2 ''))
-      (comp_op (\<lambda>x. if x = finite_2.a\<^sub>1 then Some finite_2.a\<^sub>1 else None) (\<lambda>_. BEmpty) op1 op2)) op"
+    (\<lambda> op1 op2. map_op (case_sum id (\<lambda> _. undefined)) (case_sum (\<lambda> e.  1) (debug_port ''output 2 ''))
+      (comp_op (\<lambda>x. if x = 1 then Some 1 else None) (\<lambda>_. BEmpty) op1 op2)) op"
 
-corec foo_op :: "nat list \<Rightarrow> (Enum.finite_2, Enum.finite_2, nat) op" where
-  "foo_op buf = Read finite_2.a\<^sub>1 (case_input (\<lambda>x. foo_op (buf@[x])) (bulk_write (map ((+)1) buf) finite_2.a\<^sub>1 (bulk_write buf finite_2.a\<^sub>2 (foo_op []))) End)"
+corec foo_op :: "nat list \<Rightarrow> (2, 2, nat) op" where
+  "foo_op buf = Read 1 (case_input (\<lambda>x. foo_op (buf@[x])) (bulk_write (map ((+)1) buf) 1 (bulk_write buf 2 (foo_op []))) End)"
 
-value "scomp_op (bulk_write [1,2,3] finite_2.a\<^sub>1 cp22_op) (foo_op [])"
-value "ltaken2 5 30 (produce (loop22_op (scomp_op (bulk_write [1,2,3] finite_2.a\<^sub>1 cp22_1_op) (foo_op []))) (\<lambda> _. repeat LNil) finite_1.a\<^sub>1)"
-value "ltaken2 5 30 (produce (loop22_with_comp_op (scomp_op (bulk_write [1,2,3] finite_2.a\<^sub>1 cp22_1_op) (foo_op [])) 3) (\<lambda> _. repeat LNil) finite_2.a\<^sub>2)"
+value "scomp_op (bulk_write [1,2,3] 1 cp22_1_op) (foo_op [])"
+value "ltaken2 5 30 (produce (loop22_op (scomp_op (bulk_write [1,2,3] 1 cp22_1_op) (foo_op [1,2,3]))) (\<lambda> _. undefined) 1)"
+value "ltaken2 5 30 (produce (loop22_with_comp_op (scomp_op (bulk_write [1,2,3] 1 cp22_1_op) (foo_op [])) 3) (\<lambda> _. repeat LNil) 2)"
 
-corec foo2_op :: "nat list \<Rightarrow> (Enum.finite_2, Enum.finite_2, nat) op" where
-  "foo2_op buf = Read finite_2.a\<^sub>1 (case_input (\<lambda>x. bulk_write (map ((+)1) buf) finite_2.a\<^sub>1 (foo2_op (buf@[x]))) ((bulk_write buf finite_2.a\<^sub>2 (foo2_op []))) End)"
+corec foo2_op :: "nat list \<Rightarrow> (2, 2, nat) op" where
+  "foo2_op buf = Read 1 (case_input (\<lambda>x. bulk_write (map ((+)1) buf) 1 (foo2_op (buf@[x]))) ((bulk_write buf 2 (foo2_op []))) End)"
 
-value "ltaken2 5 30 (produce (loop22_op (scomp_op (bulk_write [1,2,3] finite_2.a\<^sub>1 cp22_1_op) (foo2_op []))) (\<lambda> _. repeat LNil) finite_1.a\<^sub>1)"
-value "ltaken2 5 30 (produce (loop22_with_comp_op (scomp_op (bulk_write [1,2,3] finite_2.a\<^sub>1 cp22_1_op) (foo2_op [])) 3) (\<lambda> _. repeat LNil) finite_2.a\<^sub>2)"
+value "ltaken2 5 30 (produce (loop22_op (scomp_op (bulk_write [1,2,3] 1 cp22_1_op) (foo2_op []))) (\<lambda> _. LNil) 1)"
+value "ltaken2 5 30 (produce (loop22_with_comp_op (scomp_op (bulk_write [1,2,3] 1 cp22_1_op) (foo2_op [])) 3) (\<lambda> _. LNil) 2)"
 
-(* TODO does not terminate
-value "ltaken2 5 30 (produce (loop22_op (scomp_op (write cp22_1_op finite_2.a\<^sub>1 1) cinc_op)) (\<lambda> _. repeat LNil) finite_1.a\<^sub>1)"
-value "ltaken2 5 30 (produce (loop22_with_comp_op (scomp_op (write cp22_1_op finite_2.a\<^sub>1 1) cinc_op) 3) (\<lambda> _. repeat LNil) finite_2.a\<^sub>2)"
+(* TODO does not terminate: has to do with produce code equation using lcons_fst which seems to break productivity
+value "ltaken2 1 30 (produce (loop22_op (scomp_op (write cp22_1_op 1 1) cinc_op)) (\<lambda> _. LNil) 1)"
+value "ltaken2 5 30 (produce (loop22_with_comp_op (scomp_op (write cp22_1_op 1 1) cinc_op) 3) (\<lambda> _. LNil) 2)"
 *)
+(*produce_aux works fine*)
+value "ltaken 30 (produce_aux (loop22_op (scomp_op (write cp22_1_op 1 1) cinc_op)) (\<lambda> _. LNil) 1)"
 
 lemma
   "lprefix
-   (produce (loop22_with_comp_op (bulk_write [1,2,3] finite_2.a\<^sub>1 (foo_op [])) n) (\<lambda> _. LNil) finite_2.a\<^sub>1)
-   (produce (loop22_op (bulk_write [1,2,3] finite_2.a\<^sub>1 (foo_op []))) (\<lambda> _. undefined) finite_1.a\<^sub>1)"
+   (produce (loop22_with_comp_op (bulk_write [1,2,3] 1 (foo_op [])) n) (\<lambda> _. LNil) 1)
+   (produce (loop22_op (bulk_write [1,2,3] 1 (foo_op []))) (\<lambda> _. undefined) 1)"
   oops
 
   thm ltake_enat_eq_imp_eq
@@ -604,16 +619,16 @@ begin
 
 (*boolean signals if there is more input*)
 abbreviation collatz_input :: "(bool \<Rightarrow> 'd op22) \<Rightarrow> bool \<Rightarrow> 'd op22" where
-  "collatz_input op b \<equiv> (if b then Read finite_2.a\<^sub>2 (\<lambda>x. case x of
-     Input x \<Rightarrow> let n = decode_nat1 x in write (op True) finite_2.a\<^sub>1 (encode_nat3 (n, n, 0))
+  "collatz_input op b \<equiv> (if b then Read 2 (\<lambda>x. case x of
+     Input x \<Rightarrow> let n = decode_nat1 x in write (op True) 1 (encode_nat3 (n, n, 0))
    | input.EOB \<Rightarrow> op True
    | EOS \<Rightarrow> op False)
    else op False)"
 abbreviation collatz_loop_input :: "(bool \<Rightarrow> 'd op22) \<Rightarrow> bool \<Rightarrow> 'd op22" where
-  "collatz_loop_input op b \<equiv> Read finite_2.a\<^sub>1 (\<lambda>x. case x of
+  "collatz_loop_input op b \<equiv> Read 1 (\<lambda>x. case x of
      Input x \<Rightarrow> let (n, ni, i) = decode_nat3 x in
-       if ni = 1 then write (op b) finite_2.a\<^sub>2 (encode_nat2 (n, i)) else
-         write (op b) finite_2.a\<^sub>1 (encode_nat3 (n, if ni mod 2 = 0 then ni div 2 else 3 * ni + 1, i + 1))
+       if ni = 1 then write (op b) 2 (encode_nat2 (n, i)) else
+         write (op b) 1 (encode_nat3 (n, if ni mod 2 = 0 then ni div 2 else 3 * ni + 1, i + 1))
    | _ \<Rightarrow> if b then op True else End)"
 corec collatz_step :: "bool \<Rightarrow> 'd op22" where
   "collatz_step b = collatz_input (collatz_loop_input collatz_step) b"
@@ -622,7 +637,7 @@ definition collatz_op :: "'d op11" where
 
 definition collatz :: "nat \<Rightarrow> (nat \<times> nat) list" where
   "collatz n \<equiv> map decode_nat2
-     (concat (map list_of (list_of (produce collatz_op (\<lambda>_. LCons (llist_of (map encode_nat1 [1 ..< Suc n])) LNil) finite_1.a\<^sub>1))))"
+     (concat (map list_of (list_of (produce collatz_op (\<lambda>_. LCons (llist_of (map encode_nat1 [1 ..< Suc n])) LNil) 1))))"
 
 lemma collatz_op_welltyped: "welltyped (\<lambda>_. range encode_nat1) (\<lambda>_. range encode_nat2) collatz_op"
   sorry
@@ -670,12 +685,12 @@ locale op11 =
 begin
 
 abbreviation read :: "('a input \<Rightarrow> 'd op11) \<Rightarrow> 'd op11" where
- "read f \<equiv> Read finite_1.a\<^sub>1 (f o map_input decode_input)"
+ "read f \<equiv> Read 1 (f o map_input decode_input)"
 
 abbreviation "write" :: "'d op11 \<Rightarrow> 'b \<Rightarrow> 'd op11" where
-  "write op \<equiv> Cycles_8.write op finite_1.a\<^sub>1 o encode_output"
+  "write op \<equiv> Cycles_8.write op 1 o encode_output"
 
-abbreviation bulk_write where "bulk_write ys op \<equiv> Cycles_8.bulk_write (map encode_output ys) finite_1.a\<^sub>1 op"
+abbreviation bulk_write where "bulk_write ys op \<equiv> Cycles_8.bulk_write (map encode_output ys) 1 op"
 
 end
 
@@ -688,12 +703,12 @@ locale top11 = t?: op11
 begin
 
 abbreviation read :: "(('t, 'a) event input \<Rightarrow> ('t, 'd) event op11) \<Rightarrow> ('t, 'd) event op11" where
- "read f \<equiv> Read finite_1.a\<^sub>1 (f o map_input (map_event id decode_input))"
+ "read f \<equiv> Read 1 (f o map_input (map_event id decode_input))"
 
 abbreviation "write" :: "('t, 'd) event op11 \<Rightarrow> ('t, 'b) event \<Rightarrow> ('t, 'd) event op11" where
-  "write op \<equiv> Cycles_8.write op finite_1.a\<^sub>1 o map_event id encode_output"
+  "write op \<equiv> Cycles_8.write op 1 o map_event id encode_output"
 
-abbreviation bulk_write where "bulk_write ys op \<equiv> Cycles_8.bulk_write (map (map_event id encode_output) ys) finite_1.a\<^sub>1 op"
+abbreviation bulk_write where "bulk_write ys op \<equiv> Cycles_8.bulk_write (map (map_event id encode_output) ys) 1 op"
 
 end
 
@@ -718,7 +733,7 @@ corec batch_op where
 
 abbreviation "batch_input_test_1 xs \<equiv> LCons (llist_of (map (map_event id encode_input) xs)) LNil"
 
-definition "batch_op_test_1 xs = map (map_event id decode_output) (concat (map list_of (list_of (produce (batch_op []) (\<lambda> _. batch_input_test_1 xs) finite_1.a\<^sub>1))))"
+definition "batch_op_test_1 xs = map (map_event id decode_output) (concat (map list_of (list_of (produce (batch_op []) (\<lambda> _. batch_input_test_1 xs) 1))))"
 
 end
 
@@ -752,7 +767,7 @@ corec incr_op where
     | input.EOB \<Rightarrow> incr_op buf)"
 
 abbreviation "incr_input_test_1 xs \<equiv> LCons (llist_of (map (map_event id encode_input) xs)) LNil"
-definition "incr_op_test_1 xs = map (map_event id decode_output) (concat (map list_of (list_of (produce (incr_op []) (\<lambda> _. incr_input_test_1 xs) finite_1.a\<^sub>1))))"
+definition "incr_op_test_1 xs = map (map_event id decode_output) (concat (map list_of (list_of (produce (incr_op []) (\<lambda> _. incr_input_test_1 xs) 1))))"
 
 end
 
@@ -774,7 +789,7 @@ definition "incr_batch_op buf1 buf2 = scomp_op (batch_op buf1) (incr_op buf2)"
 
 abbreviation "incr_batch_input_test_1 xs \<equiv> LCons (llist_of (map (map_event id encode_input) xs)) LNil"
 (* write abbreviation for produce with finite_1 *)
-definition "incr_batch_op_test_1 xs = map (map_event id decode_output) (concat (map list_of (list_of (produce (incr_batch_op [] []) (\<lambda> _. incr_batch_input_test_1 xs) finite_1.a\<^sub>1))))"
+definition "incr_batch_op_test_1 xs = map (map_event id decode_output) (concat (map list_of (list_of (produce (incr_batch_op [] []) (\<lambda> _. incr_batch_input_test_1 xs) 1))))"
 
 end
 
