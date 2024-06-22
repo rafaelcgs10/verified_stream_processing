@@ -559,6 +559,8 @@ corec foo3_op :: "nat \<Rightarrow> (Enum.finite_2, Enum.finite_2, nat) op" wher
 find_consts  name: fun_upd
 
 value "ltaken (produce (loop22_op (foo3_op 0)) (\<lambda> e. if e = finite_2.a\<^sub>2 then LCons 2 (LCons 1 LNil) else LNil) finite_2.a\<^sub>2) 99"
+
+end
 value "ltaken (produce (san_op (foo3_op 0)) (\<lambda> e. if e = finite_2.a\<^sub>2 then LCons 2 (LCons 1 LNil) else LNil) (finite_2.a\<^sub>2)) 99"
 
 
