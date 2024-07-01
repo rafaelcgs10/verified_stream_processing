@@ -157,6 +157,91 @@ lemma silent_produce_LNil: "silent op lxs p \<Longrightarrow> produce op lxs p =
 lemma lnull_produce_iff_silent: "produce op lxs p = TNil LNil \<longleftrightarrow> silent op lxs p"
   using lnull_produce_silent silent_produce_LNil by fastforce
 
+coinductive tnil_producing where
+  "(\<forall>n. \<not> producing op lxs p n) \<Longrightarrow> tnil_producing op lxs p LNil"
+| "tnil_producing End lxs p LNil"
+| "\<exists>n. producing (Write op' p' x) lxs p n \<Longrightarrow> p \<noteq> p' \<Longrightarrow> tnil_producing op' lxs p lys \<Longrightarrow> tnil_producing (Write op' p' x) lxs p lys"
+| "tnil_producing op' lxs p lys \<Longrightarrow> tnil_producing (Write op' p (Output x)) lxs p (LCons x lys)"
+| "\<exists>n. producing (Read p' f) lxs p n \<Longrightarrow> tnil_producing (f (chd (lxs p'))) (lxs(p' := ctl (lxs p'))) p lys \<Longrightarrow> tnil_producing (Read p' f) lxs p lys"
+
+
+inductive_cases tnil_producing_EndE[elim!]: "tnil_producing End lxs p lys"
+inductive_cases tnil_producing_ReadE[elim!]: "tnil_producing (Read p' f) lxs p lys"
+inductive_cases tnil_producing_WriteE[elim!]: "tnil_producing (Write op p' x) lxs p lys"
+
+lemma not_producing_TNil_LNil: "(\<forall>n. \<not> producing op lxs p n) \<Longrightarrow> produce op lxs p = TNil LNil"
+  unfolding produce_def
+  apply (subst produce_aux.code)
+  apply (auto split: op.splits)
+  subgoal for op' x
+    apply (cases x)
+     apply (auto simp: cadd_def intro: producing.intros split: tllist.splits llist.splits)
+    done
+  done
+
+lemma not_producing_tnil_producing_LNil: "(\<forall>n. \<not> producing op lxs p n) \<Longrightarrow> tnil_producing op lxs p lys \<Longrightarrow> lys = LNil"
+  by (erule tnil_producing.cases) (auto intro: producing.intros)
+
+lemma lnull_produce_tnil_producing: "produce op lxs p = TNil lys \<Longrightarrow> tnil_producing op lxs p lys"
+  apply (coinduction arbitrary: op lxs lys)
+  apply (subst produce_code)
+  subgoal for op lxs lys
+    apply (cases op)
+      apply (auto simp: cadd_def lsingle_def dest!: not_producing_TNil_LNil split: if_splits op.splits output.splits llist.splits tllist.splits)
+    done
+  done
+
+lemma tnil_producing_inject: "tnil_producing op lxs p lys \<Longrightarrow> tnil_producing op lxs p lys' \<Longrightarrow> lys = lys'"
+  apply (coinduction arbitrary: op lxs lys lys')
+  apply (safe del: iffI)
+  subgoal for op lxs lys lys'
+    apply (cases "\<exists>n. producing op lxs p n")
+     apply (erule exE)
+    subgoal for n
+      apply (rotate_tac -1)
+      apply (induct op lxs p n arbitrary: lys lys' rule: producing.induct)
+         apply (auto intro: producing.intros)
+      done
+    subgoal by (auto dest: not_producing_tnil_producing_LNil)
+    done
+  subgoal for op lxs lys lys'
+    apply (cases "\<exists>n. producing op lxs p n")
+     apply (erule exE)
+    subgoal for n
+      apply (rotate_tac -1)
+      apply (induct op lxs p n arbitrary: lys lys' rule: producing.induct)
+         apply (auto intro: producing.intros)
+      done
+    subgoal by (auto dest: not_producing_tnil_producing_LNil)
+    done
+  subgoal for op lxs lys lys'
+    apply (cases "\<exists>n. producing op lxs p n")
+     apply (erule exE)
+    subgoal for n
+      apply (rotate_tac -1)
+      apply (induct op lxs p n arbitrary: lys lys' rule: producing.induct)
+         apply (auto 0 4 intro: producing.intros)
+      done
+    subgoal by (auto dest: not_producing_tnil_producing_LNil)
+    done
+  done
+
+(*producing only affect the first LCons of lys*)
+lemma producing_tnil_producing_LNil: "producing op lxs p n \<Longrightarrow> tnil_producing op lxs p lys \<Longrightarrow> produce op lxs p = TNil lys"
+  apply (induct op lxs p n arbitrary: lys rule: producing.induct)
+     apply (auto simp: cadd_def lsingle_def dest: tnil_producing_inject
+       intro: producing.intros dest!: lnull_produce_tnil_producing
+       split: tllist.splits llist.splits output.splits)
+  oops 
+
+lemma tnil_producing_produce_LNil: "tnil_producing op lxs p \<Longrightarrow> produce op lxs p = TNil LNil"
+  unfolding produce_def
+  by (subst produce_aux.code)
+    (auto split: op.splits output.splits elim: tnil_producing.cases dest: producing_tnil_producing_LNil simp flip: produce_def)
+
+lemma lnull_produce_iff_tnil_producing: "produce op lxs p = TNil LNil \<longleftrightarrow> tnil_producing op lxs p"
+  using lnull_produce_tnil_producing tnil_producing_produce_LNil by fastforce
+
 datatype 'd buf = BEmpty | BEnded | BCons "'d list" "'d buf"
 
 fun bhd where
@@ -376,6 +461,7 @@ fun iter_op where
 lemma produce_map_op:
   "\<forall> x. h (g x) = x \<Longrightarrow> produce (map_op f h op) lxs p = produce op (lxs o f) (g p)"
   apply (coinduction arbitrary: op)
+  apply (safe del: iffI)
   subgoal for op
     apply(induction arg\<equiv>"(map_op f h op, lxs, p)" arbitrary: op lxs rule: produce_aux.inner_induct)
     sorry
