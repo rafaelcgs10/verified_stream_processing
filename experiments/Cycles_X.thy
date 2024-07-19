@@ -13,8 +13,8 @@ begin
 code_lazy_type llist
 print_theorems 
 
-datatype (discs_sels) 'd observation = Observed 'd | EOB | EOS
-datatype (discs_sels) (the_value: 'd) "channel_value" = Value 'd | No_Value
+datatype (discs_sels) 'd observation = Observed (obs: 'd) | EOB | EOS
+datatype (discs_sels) (the_value: 'd) "channel_value" = Value (val: 'd) | No_Value
 codatatype (inputs: 'ip, outputs: 'op, dead 'd) op =
     Read 'ip "'d observation \<Rightarrow> ('ip, 'op, 'd) op"
   | Write "('ip, 'op, 'd) op" 'op "'d observation"
@@ -31,26 +31,18 @@ fun chd where
 
 abbreviation ctl :: "'d channel \<Rightarrow> 'd channel" where "ctl \<equiv> ltl"
 
-inductive producing where
-  "producing End lxs p 0"
-| "producing (Write _ p _) lxs p 0"
-| "producing (f (chd (lxs p'))) (lxs(p' := ctl (lxs p'))) p i \<Longrightarrow> producing (Read p' f) lxs p (Suc i)"
-| "p \<noteq> p' \<Longrightarrow> producing op lxs p i \<Longrightarrow> producing (Write op p' x) lxs p (Suc i)"
+inductive producing for p where
+  "producing p End lxs 0"
+| "producing p (Write _ p _) lxs 0"
+| "producing p (f (chd (lxs p'))) (lxs(p' := ctl (lxs p'))) i \<Longrightarrow> producing p (Read p' f) lxs (Suc i)"
+| "p \<noteq> p' \<Longrightarrow> producing p op lxs i \<Longrightarrow> producing p (Write op p' x) lxs (Suc i)"
 
-inductive_cases producing_EndE[elim!]: "producing End lxs p n"
-inductive_cases producing_WriteE[elim!]: "producing (Write op p' x) lxs p n"
-inductive_cases producing_ReadE[elim!]: "producing (Read p' f) lxs p n"
+inductive_cases producing_EndE[elim!]: "producing p End lxs n"
+inductive_cases producing_WriteE[elim!]: "producing p (Write op p' x) lxs n"
+inductive_cases producing_ReadE[elim!]: "producing p (Read p' f) lxs n"
 
-lemma producing_inject: "producing op lxs p i \<Longrightarrow> producing op lxs p j \<Longrightarrow> i = j"
-proof (induct op lxs p i arbitrary: j rule: producing.induct)
-  case (3 f lxs p' p i)
-  from 3(3,1) 3(2)[of "j - 1"] show ?case
-    by (elim producing.cases[of "Read p' f"]) (auto simp del: fun_upd_apply)
-next
-  case (4 p p' op lxs i x)
-  from 4(4,1,2) 4(3)[of "j - 1"] show ?case
-    by (elim producing.cases[of "Write op p' x"]) auto
-qed (auto elim: producing.cases)
+lemma producing_inject: "producing p op lxs i \<Longrightarrow> producing p op lxs j \<Longrightarrow> i = j"
+  by (induct op lxs i arbitrary: j rule: producing.induct) fastforce+
 
 lemma The_producing: "producing p op lxs i \<Longrightarrow> The (producing p op lxs) = i"
   using producing_inject by fast
@@ -61,18 +53,18 @@ fun value_of where
 | "value_of EOS = undefined"
 
 corecursive produce where
-  "produce op lxs p = (case op of
-    Read p' f \<Rightarrow> (if \<exists>i. producing op lxs p i then produce (f (chd (lxs p'))) (lxs(p' := ctl (lxs p'))) p else LNil)
-  | Write op' p' x \<Rightarrow> (if p = p' then (if x = EOS then LNil else LCons (value_of x) (produce op' lxs p)) else
-     if \<exists>i. producing op lxs p i then produce op' lxs p else LNil)
+  "produce p op lxs = (case op of
+    Read p' f \<Rightarrow> (if \<exists>i. producing p op lxs i then produce p (f (chd (lxs p'))) (lxs(p' := ctl (lxs p'))) else LNil)
+  | Write op' p' x \<Rightarrow> (if p = p' then (if x = EOS then LNil else LCons (value_of x) (produce p op' lxs)) else
+     if \<exists>i. producing p op lxs i then produce p op' lxs else LNil)
   | End \<Rightarrow> LNil)"
-  by (relation "measure (\<lambda>(op, lxs, p). THE i. producing op lxs p i)")
+  by (relation "measure (\<lambda>(p, op, lxs). THE i. producing p op lxs i)")
     (auto 0 3 simp: The_producing del: producing_ReadE producing_WriteE elim: producing.cases)
 
 lemma produce_code[code]:
-  "produce op lxs p = (case op of
-    Read p' f \<Rightarrow> produce (f (chd (lxs p'))) (lxs(p' := ctl (lxs p'))) p
-  | Write op' p' x \<Rightarrow> (if p = p' then (if x = EOS then LNil else LCons (value_of x) (produce op' lxs p)) else produce op' lxs p)
+  "produce p op lxs = (case op of
+    Read p' f \<Rightarrow> produce p (f (chd (lxs p'))) (lxs(p' := ctl (lxs p')))
+  | Write op' p' x \<Rightarrow> (if p = p' then (if x = EOS then LNil else LCons (value_of x) (produce p op' lxs)) else produce p op' lxs)
   | End \<Rightarrow> LNil)"
   apply (subst produce.code)
   apply (simp split: op.splits if_splits channel_value.splits)
@@ -85,38 +77,38 @@ lemma produce_code[code]:
 
 simps_of_case produce_simps[simp]: produce_code
 
-inductive vocal where
-  "x \<noteq> EOS \<Longrightarrow> vocal (Write op p x) lxs p"
-| "p \<noteq> p' \<Longrightarrow> vocal op' lxs p \<Longrightarrow> vocal (Write op' p' x) lxs p"
-| "vocal (f (chd (lxs p'))) (lxs(p' := ctl (lxs p'))) p \<Longrightarrow> vocal (Read p' f) lxs p"
+inductive vocal for p where
+  "x \<noteq> EOS \<Longrightarrow> vocal p (Write op p x) lxs"
+| "p \<noteq> p' \<Longrightarrow> vocal p op' lxs \<Longrightarrow> vocal p (Write op' p' x) lxs"
+| "vocal p (f (chd (lxs p'))) (lxs(p' := ctl (lxs p'))) \<Longrightarrow> vocal p (Read p' f) lxs"
 
-inductive_cases vocal_EndE[elim!]: "vocal End lxs p"
-inductive_cases vocal_WriteE[elim!]: "vocal (Write op p' x) lxs p"
-inductive_cases vocal_ReadE[elim!]: "vocal (Read p' f) lxs p"
+inductive_cases vocal_EndE[elim!]: "vocal p End lxs"
+inductive_cases vocal_WriteE[elim!]: "vocal p (Write op p' x) lxs"
+inductive_cases vocal_ReadE[elim!]: "vocal p (Read p' f) lxs"
 
-coinductive silent where
-  "silent End lxs p"
-| "silent (Write op p EOS) lxs p"
-| "p \<noteq> p' \<Longrightarrow> silent op' lxs p \<Longrightarrow> silent (Write op' p' x) lxs p"
-| "silent (f (chd (lxs p'))) (lxs(p' := ctl (lxs p'))) p \<Longrightarrow> silent (Read p' f) lxs p"
+coinductive silent for p where
+  "silent p End lxs"
+| "silent p (Write op p EOS) lxs"
+| "p \<noteq> p' \<Longrightarrow> silent p op' lxs \<Longrightarrow> silent p (Write op' p' x) lxs"
+| "silent p (f (chd (lxs p'))) (lxs(p' := ctl (lxs p'))) \<Longrightarrow> silent p (Read p' f) lxs"
 
-inductive_cases silent_EndE[elim!]: "silent End lxs p"
-inductive_cases silent_WriteE[elim!]: "silent (Write op p' x) lxs p"
-inductive_cases silent_ReadE[elim!]: "silent (Read p' f) lxs p"
+inductive_cases silent_EndE[elim!]: "silent p End lxs"
+inductive_cases silent_WriteE[elim!]: "silent p (Write op p' x) lxs"
+inductive_cases silent_ReadE[elim!]: "silent p (Read p' f) lxs"
 
-lemma vocal_not_silent: "vocal op lxs p \<Longrightarrow> \<not> silent op lxs p"
-  by (induct op lxs p pred: vocal) (auto simp: fun_upd_def)
+lemma vocal_not_silent: "vocal p op lxs \<Longrightarrow> \<not> silent p op lxs"
+  by (induct op lxs pred: vocal) (auto simp: fun_upd_def)
 
-lemma not_vocal_silent: "\<not> vocal op lxs p \<Longrightarrow> silent op lxs p"
+lemma not_vocal_silent: "\<not> vocal p op lxs \<Longrightarrow> silent p op lxs"
   apply (coinduction arbitrary: op lxs)
   subgoal for op lxs
     by (cases op) (auto simp: fun_upd_def intro: vocal.intros)
   done
 
-lemma not_silent_iff_vocal: "\<not> silent op lxs p \<longleftrightarrow> vocal op lxs p"
+lemma not_silent_iff_vocal: "\<not> silent p op lxs \<longleftrightarrow> vocal p op lxs"
   by (metis not_vocal_silent vocal_not_silent)
 
-lemma lnull_produce_silent: "produce op lxs p = LNil \<Longrightarrow> silent op lxs p"
+lemma lnull_produce_silent: "produce p op lxs = LNil \<Longrightarrow> silent p op lxs"
   apply (coinduction arbitrary: op lxs)
   apply (subst produce_code)
   subgoal for op lxs
@@ -125,17 +117,17 @@ lemma lnull_produce_silent: "produce op lxs p = LNil \<Longrightarrow> silent op
     done
   done
 
-lemma producing_silent_LNil: "producing op lxs p n \<Longrightarrow> silent op lxs p \<Longrightarrow> produce op lxs p = LNil"
-  by (induct op lxs p n rule: producing.induct) (auto elim: silent.cases split: channel_value.splits)
+lemma producing_silent_LNil: "producing p op lxs n \<Longrightarrow> silent p op lxs \<Longrightarrow> produce p op lxs = LNil"
+  by (induct op lxs n rule: producing.induct) (auto elim: silent.cases split: channel_value.splits)
 
-lemma silent_produce_LNil: "silent op lxs p \<Longrightarrow> produce op lxs p = LNil"
+lemma silent_produce_LNil: "silent p op lxs \<Longrightarrow> produce p op lxs = LNil"
   by (subst produce.code)
     (auto split: op.splits channel_value.splits dest: producing_silent_LNil simp flip: produce_def)
 
-lemma lnull_produce_iff_silent: "produce op lxs p = LNil \<longleftrightarrow> silent op lxs p"
+lemma lnull_produce_iff_silent: "produce p op lxs = LNil \<longleftrightarrow> silent p op lxs"
   using lnull_produce_silent silent_produce_LNil by fastforce
 
-lemma not_producing_LNil: "(\<forall>n. \<not> producing op lxs p n) \<Longrightarrow> produce op lxs p = LNil"
+lemma not_producing_LNil: "(\<forall>n. \<not> producing p op lxs n) \<Longrightarrow> produce p op lxs = LNil"
   by (subst produce.code) (auto split: op.splits intro: producing.intros)
 
 datatype 'd buf = BEmpty | BEnded | BCons "'d list" "'d buf"
@@ -357,10 +349,10 @@ fun iter_op where
 | "iter_op (Suc n) wire buf op = map_op (case_sum id id) projr (comp_op wire buf (iter_op n wire buf op) op)"
 *)
 
-lemma vocal_in_outputs: "vocal op lxs p \<Longrightarrow> p \<in> outputs op"
-  by (induct op lxs p pred: vocal) auto
+lemma vocal_in_outputs: "vocal p op lxs \<Longrightarrow> p \<in> outputs op"
+  by (induct op lxs pred: vocal) auto
 
-lemma silent_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longrightarrow> lxs q = lxs' q) \<Longrightarrow> silent op lxs p = silent op lxs' q"
+lemma silent_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longrightarrow> lxs q = lxs' q) \<Longrightarrow> silent p op lxs = silent q op lxs'"
   apply hypsubst_thin
   apply (rule iffI)
   subgoal premises prems
@@ -385,13 +377,13 @@ lemma silent_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longri
     done
   done
 
-lemma vocal_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longrightarrow> lxs q = lxs' q) \<Longrightarrow> vocal op lxs p = vocal op lxs' q"
+lemma vocal_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longrightarrow> lxs q = lxs' q) \<Longrightarrow> vocal p op lxs = vocal q op lxs'"
   apply hypsubst_thin
   apply (rule iffI)
   subgoal premises prems
     using prems(2,1)
-  proof (induct op lxs q arbitrary: lxs' pred: vocal)
-    case (3 f lxs p' p)
+  proof (induct op lxs arbitrary: lxs' pred: vocal)
+    case (3 f lxs p')
     then have *: "lxs p' = lxs' p'"
       by simp
     show ?case
@@ -399,8 +391,8 @@ lemma vocal_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longrig
   qed (auto intro: vocal.intros)
   subgoal premises prems
     using prems(2,1)
-  proof (induct op lxs' q arbitrary: lxs pred: vocal)
-    case (3 f lxs' p' p)
+  proof (induct op lxs' arbitrary: lxs pred: vocal)
+    case (3 f lxs' p')
     then have *: "lxs p' = lxs' p'"
       by simp
     show ?case
@@ -408,7 +400,7 @@ lemma vocal_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longrig
   qed (auto intro: vocal.intros)
   done
 
-lemma produce_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longrightarrow> lxs q = lxs' q) \<Longrightarrow> produce op lxs p = produce op lxs' q"
+lemma produce_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longrightarrow> lxs q = lxs' q) \<Longrightarrow> produce p op lxs = produce q op lxs'"
   apply hypsubst_thin
   apply (coinduction arbitrary: op lxs lxs')
     unfolding lnull_def lnull_produce_iff_silent not_silent_iff_vocal
@@ -436,17 +428,19 @@ lemma produce_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longr
     done
   subgoal premises prems for op lxs lxs'
     using prems(2,1,3)
-    apply (induct op lxs q arbitrary: lxs' pred: vocal)
+    apply (induct op lxs arbitrary: lxs' pred: vocal)
       apply (clarsimp simp del: fun_upd_apply)+
+     apply blast
+    apply (clarsimp simp del: fun_upd_apply)
     apply (metis fun_upd_other fun_upd_same)
     done
   subgoal premises prems for op lxs lxs'
     using prems(2,1,3)
-    apply (induct op lxs q arbitrary: lxs' pred: vocal)
+    apply (induct op lxs arbitrary: lxs' pred: vocal)
       apply (clarsimp simp del: fun_upd_apply)+
       apply metis
      apply auto[1]
-    subgoal for f lxs p' p lxs'
+    subgoal for f lxs p' lxs'
       apply (drule meta_spec[of _ "lxs'(p' := ctl (lxs' p'))"])
       apply (clarsimp simp del: fun_upd_apply)
       apply (smt (verit) fun_upd_def)
@@ -454,7 +448,7 @@ lemma produce_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longr
     done
   done
 
-lemma produce_not_in_outputs: "p \<notin> outputs op \<Longrightarrow> produce op lxs p = LNil"
+lemma produce_not_in_outputs: "p \<notin> outputs op \<Longrightarrow> produce p op lxs = LNil"
   unfolding lnull_produce_iff_silent
   apply (coinduction arbitrary: op lxs)
   subgoal for op lxs
@@ -465,13 +459,13 @@ lemma produce_map_op:
   "inj_on g (inputs op) \<Longrightarrow>
    (\<And>x. x \<in> outputs op \<Longrightarrow> h' (h x) = x) \<Longrightarrow>
    (\<And>x. h (h' x) = x) \<Longrightarrow>
-   produce (map_op g h op) lxs p = produce op (lxs o g) (h' p)"
+   produce p (map_op g h op) lxs = produce (h' p) op (lxs o g)"
   apply (coinduction arbitrary: op lxs)
   unfolding lnull_def lnull_produce_iff_silent not_silent_iff_vocal
   apply safe
   subgoal premises prems for op lxs
   proof -
-    have "silent op lxs' (h' p)" if "\<forall>x \<in> inputs op. lxs' x = lxs (g x)" for lxs'
+    have "silent (h' p) op lxs'" if "\<forall>x \<in> inputs op. lxs' x = lxs (g x)" for lxs'
       using that prems
       apply (coinduction arbitrary: op lxs lxs')
       subgoal for op lxs lxs'
@@ -512,18 +506,18 @@ lemma produce_map_op:
     done
   subgoal premises prems for op lxs
     using prems(4,1,2,3,5)
-  proof (induct "map_op g h op" lxs p arbitrary: op pred: vocal)
-    case (1 x op' p lxs)
+  proof (induct "map_op g h op" lxs arbitrary: op pred: vocal)
+    case (1 x op' lxs)
     then show ?case
       by (cases op) auto
   next
-    case (2 p p' op' lxs x)
+    case (2 p' op' lxs x)
     then show ?case
       apply (cases op)
         apply (auto 0 0)
       done
   next
-    case (3 f lxs p' p)
+    case (3 f lxs p')
     then show ?case
       apply (cases op)
         apply auto
@@ -548,18 +542,18 @@ lemma produce_map_op:
   qed
   subgoal premises prems for op lxs
     using prems(4,1,2,3,5)
-  proof (induct "map_op g h op" lxs p arbitrary: op pred: vocal)
-    case (1 x op' p lxs)
+  proof (induct "map_op g h op" lxs arbitrary: op pred: vocal)
+    case (1 x op' lxs)
     then show ?case
       by (cases op) auto
   next
-    case (2 p p' op' lxs x)
+    case (2 p' op' lxs x)
     then show ?case
       apply (cases op)
         apply (auto 0 0)
       done
   next
-    case (3 f lxs p' p)
+    case (3 f lxs p')
     then show ?case
       apply (cases op)
       apply auto
@@ -589,15 +583,35 @@ lemma produce_map_op:
   done
 
 lemma produce_comp_op:
-   "produce (comp_op wire buf op1 op2) lxs p = (case p of
+   "produce p (comp_op wire buf op1 op2) lxs = (case p of
     Inl p1 \<Rightarrow> (if p1 \<in> dom wire then LNil else
-      produce op1 (lxs o Inl) p1)
-  | Inr p2 \<Rightarrow> produce op2 (\<lambda> p'. if p' \<in> ran wire then produce (map_op id (case_option undefined id o wire) op1) (lxs o Inl) p' else lxs (Inr p')) p2)"
+      produce p1 op1 (lxs o Inl))
+  | Inr p2 \<Rightarrow> produce p2 op2 (\<lambda> p'. if p' \<in> ran wire then produce p' (map_op id (case_option undefined id o wire) op1) (lxs o Inl) else lxs (Inr p')))"
+(*  apply (coinduction arbitrary: wire buf op1 op2 lxs rule: llist.coinduct_upto)
+  apply (split sum.splits if_splits)+
+  unfolding lnull_def lnull_produce_iff_silent not_silent_iff_vocal
+  apply safe
+  subgoal for wire buf op1 op2 lxs p q
+    apply (coinduction arbitrary: wire buf op1 op2 lxs)
+    subgoal for wire buf op1 op2 lxs
+      apply (cases op1; cases op2)
+              apply auto
+      subgoal for p1 f1 p2 f2
+      apply (rule exI[of _ wire]; simp)
+      apply (rule exI[of _ buf])
+      apply (rule exI[of _ "f1 (chd (lxs (Inl p1)))"])
+            apply (rule exI[of _ op2])
+            apply simp
+      unfolding comp_op_simps
+      apply (simp only:)
+      unfolding if_False
+      apply (intro exI conjI[rotated] | assumption)+
+*)
   sorry
 
-lemma "produce (loop_op wire buf op) lxs =
-  (THE lzs. \<forall>p. lzs p = produce (map_op id (todo) op)
-     (\<lambda>p. if p \<in> ran wire then lapp (buf p1) (lzs p2) else lxs p3) p)"
+lemma "produce p (loop_op wire buf op) lxs =
+  (THE lzs. \<forall>p. lzs p = produce p (map_op id (todo) op)
+     (\<lambda>p. if p \<in> ran wire then lapp (buf p1) (lzs p2) else lxs p3)) p"
   oops
 
 lemma loop_op_unfold:
@@ -634,7 +648,7 @@ proof (induct p op lxs i arbitrary: lxs' rule: producing.induct)
 qed (auto intro: producing.intros)
 
 
-lemma "\<forall>p. lprefix (lxs p) (lxs' p) \<Longrightarrow> lprefix (produce op lxs p) (produce op lxs' p)"
+lemma "\<forall>p. lprefix (lxs p) (lxs' p) \<Longrightarrow> lprefix (produce p op lxs) (produce op lxs' p)"
   apply (coinduction arbitrary: op lxs lxs' p)
   subgoal for op lxs lxs' p
     apply safe
@@ -680,8 +694,8 @@ lemma outputs_pcomp_op[simp]:
   unfolding pcomp_op_def by auto
 
 lemma produce_pcomp_op:
-  "produce (pcomp_op op1 op2) lxs p =
-    (case p of Inl p \<Rightarrow> produce op1 (lxs o Inl) p | Inr p \<Rightarrow> produce op2 (lxs o Inr) p)"
+  "produce p (pcomp_op op1 op2) lxs =
+    (case p of Inl p1 \<Rightarrow> produce p1 op1 (lxs o Inl) | Inr p2 \<Rightarrow> produce p2 op2 (lxs o Inr))"
   unfolding produce_comp_op pcomp_op_def
   by (auto split: sum.splits simp add: o_def)
 
@@ -696,7 +710,7 @@ lemma outputs_scomp_op[simp]:
   unfolding scomp_op_def by (force simp: op.set_map ran_def)
 
 lemma produce_scomp_op:
-  "produce (scomp_op op1 op2) lxs = (produce op2 (produce op1 lxs))"
+  "produce p (scomp_op op1 op2) lxs = produce p op2 (\<lambda>p. produce p op1 lxs)"
   unfolding scomp_op_def fun_eq_iff
   by (subst produce_map_op[where g=projl and h'=Inr and h=projr, simplified])
     (auto split: sum.splits simp add: ranI o_def id_def op.map_ident inj_on_def produce_comp_op)
@@ -712,7 +726,7 @@ coinductive welltyped where
 | "welltyped A B End"
 
 (*characteristic property of welltyped*)
-lemma "welltyped A B op \<Longrightarrow> (\<forall>p. (\<Union> (the_value ` lset (lxs p))) \<subseteq> A p) \<Longrightarrow> (\<Union> (the_value ` lset (produce op lxs p))) \<subseteq> B p"
+lemma "welltyped A B op \<Longrightarrow> (\<forall>p. (\<Union> (the_value ` lset (lxs p))) \<subseteq> A p) \<Longrightarrow> (\<Union> (the_value ` lset (produce p op lxs))) \<subseteq> B p"
   sorry
 
 abbreviation "write op p x \<equiv> Write op p (Observed x)"
@@ -823,25 +837,19 @@ corec foo_op :: "nat list \<Rightarrow> (2, 2, nat) op" where
   "foo_op buf = Read 1 (case_observation (\<lambda>x. foo_op (buf@[x])) (bulk_write (map ((+)1) buf) 1 (bulk_write buf 2 (foo_op []))) End)"
 
 value "scomp_op (bulk_write [1,2,3] 1 cp22_1_op) (foo_op [])"
-value "ltaken 30 (produce (loop22_op (scomp_op (bulk_write [1,2,3] 1 cp22_1_op) (foo_op [1,2,3]))) (\<lambda> _. undefined) 1)"
-value "ltaken 30 (produce (loop22_with_comp_op (scomp_op (bulk_write [1,2,3] 1 cp22_1_op) (foo_op [])) 3) (\<lambda> _. LNil) 2)"
+value "ltaken 30 (produce 1 (loop22_op (scomp_op (bulk_write [1,2,3] 1 cp22_1_op) (foo_op [1,2,3]))) (\<lambda> _. undefined))"
+value "ltaken 30 (produce 2 (loop22_with_comp_op (scomp_op (bulk_write [1,2,3] 1 cp22_1_op) (foo_op [])) 3) (\<lambda> _. LNil))"
 
 corec foo2_op :: "nat list \<Rightarrow> (2, 2, nat) op" where
   "foo2_op buf = Read 1 (case_observation (\<lambda>x. bulk_write (map ((+)1) buf) 1 (foo2_op (buf@[x]))) ((bulk_write buf 2 (foo2_op []))) End)"
 
-value "ltaken 5 (produce (loop22_op (scomp_op (bulk_write [1,2,3] 1 cp22_1_op) (foo2_op []))) (\<lambda> _. LNil) 1)"
-value "ltaken 5 (produce (loop22_with_comp_op (scomp_op (bulk_write [1,2,3] 1 cp22_1_op) (foo2_op [])) 3) (\<lambda> _. LNil) 2)"
+value "ltaken 5 (produce 1 (loop22_op (scomp_op (bulk_write [1,2,3] 1 cp22_1_op) (foo2_op []))) (\<lambda> _. LNil))"
+value "ltaken 5 (produce 2 (loop22_with_comp_op (scomp_op (bulk_write [1,2,3] 1 cp22_1_op) (foo2_op [])) 3) (\<lambda> _. LNil))"
 
 
-value "ltaken 30 (produce (loop22_op (scomp_op (write cp22_1_op 1 1) cinc_op)) (\<lambda> _. LNil) 1)"
-value "ltaken 30 (produce (loop22_with_comp_op (scomp_op (write cp22_1_op 1 1) cinc_op) 3) (\<lambda> _. LNil) 2)"
+value "ltaken 30 (produce 1 (loop22_op (scomp_op (write cp22_1_op 1 1) cinc_op)) (\<lambda> _. LNil))"
+value "ltaken 30 (produce 2 (loop22_with_comp_op (scomp_op (write cp22_1_op 1 1) cinc_op) 3) (\<lambda> _. LNil))"
 
-term example2
-
-code_thms lgroup
-
-
-term tllist_of_llist
 
 code_thms produce
 
@@ -850,7 +858,7 @@ value "ctaken 1 30 (produce (loop22_op (scomp_op (write cp22_1_op 1 1) cinc_op))
 value "ctaken 5 30 (produce (loop22_with_comp_op (scomp_op (write cp22_1_op 1 1) cinc_op) 3) (\<lambda> _. TNil LNil) 2)"
 *)
 (*produce works fine*)
-value "ltaken 30 (produce (loop22_op (scomp_op (write cp22_1_op 1 1) cinc_op)) (\<lambda> _. TNil LNil) 1)"
+value "ltaken 30 (produce 1 (loop22_op (scomp_op (write cp22_1_op 1 1) cinc_op)) (\<lambda> _. LNil))"
 
 (*
 lemma
@@ -894,8 +902,8 @@ definition collatz_op :: "'d op11" where
   "collatz_op = loop22_op (collatz_step True)"
 
 definition collatz :: "nat \<Rightarrow> (nat \<times> nat) list" where
-  "collatz n \<equiv> map decode_nat2
-     (list_of (terminal (produce collatz_op (\<lambda>_. TNil (llist_of (map encode_nat1 [1 ..< Suc n]))) 1)))"
+  "collatz n \<equiv> map (decode_nat2 o val)
+     (list_of (produce 1 collatz_op (\<lambda>_. llist_of (map (Value o encode_nat1) [1 ..< Suc n]))))"
 
 lemma collatz_op_welltyped: "welltyped (\<lambda>_. range encode_nat1) (\<lambda>_. range encode_nat2) collatz_op"
   sorry
@@ -942,13 +950,13 @@ locale op11 =
   assumes type_definition_batch_event: "type_definition encode_output decode_output (range encode_output)"
 begin
 
-abbreviation read :: "('a input \<Rightarrow> 'd op11) \<Rightarrow> 'd op11" where
- "read f \<equiv> Read 1 (f o map_input decode_input)"
+abbreviation read :: "('a observation \<Rightarrow> 'd op11) \<Rightarrow> 'd op11" where
+ "read f \<equiv> Read 1 (f o map_observation decode_input)"
 
 abbreviation "write" :: "'d op11 \<Rightarrow> 'b \<Rightarrow> 'd op11" where
-  "write op \<equiv> Cycles_8.write op 1 o encode_output"
+  "write op \<equiv> Cycles_X.write op 1 o encode_output"
 
-abbreviation bulk_write where "bulk_write ys op \<equiv> Cycles_8.bulk_write (map encode_output ys) 1 op"
+abbreviation bulk_write where "bulk_write ys op \<equiv> Cycles_X.bulk_write (map encode_output ys) 1 op"
 
 end
 
@@ -960,13 +968,13 @@ locale top11 = t?: op11
   fixes time_type :: "'t :: order itself"
 begin
 
-abbreviation read :: "(('t, 'a) event input \<Rightarrow> ('t, 'd) event op11) \<Rightarrow> ('t, 'd) event op11" where
- "read f \<equiv> Read 1 (f o map_input (map_event id decode_input))"
+abbreviation read :: "(('t, 'a) event observation \<Rightarrow> ('t, 'd) event op11) \<Rightarrow> ('t, 'd) event op11" where
+ "read f \<equiv> Read 1 (f o map_observation (map_event id decode_input))"
 
 abbreviation "write" :: "('t, 'd) event op11 \<Rightarrow> ('t, 'b) event \<Rightarrow> ('t, 'd) event op11" where
-  "write op \<equiv> Cycles_8.write op 1 o map_event id encode_output"
+  "write op \<equiv> Cycles_X.write op 1 o map_event id encode_output"
 
-abbreviation bulk_write where "bulk_write ys op \<equiv> Cycles_8.bulk_write (map (map_event id encode_output) ys) 1 op"
+abbreviation bulk_write where "bulk_write ys op \<equiv> Cycles_X.bulk_write (map (map_event id encode_output) ys) 1 op"
 
 end
 
@@ -989,9 +997,9 @@ corec batch_op where
              bulk_write bts End
     | EOB \<Rightarrow> batch_op buf)"
 
-abbreviation "batch_input_test_1 xs \<equiv> TNil (llist_of (map (map_event id encode_input) xs))"
+abbreviation "batch_input_test_1 xs \<equiv> llist_of (map (Value o map_event id encode_input) xs)"
 
-definition "batch_op_test_1 xs = map (map_event id decode_output) (list_of (terminal (produce (batch_op []) (\<lambda> _. batch_input_test_1 xs) 1)))"
+definition "batch_op_test_1 xs = map (map_event id decode_output o val) (list_of (produce 1 (batch_op []) (\<lambda> _. batch_input_test_1 xs)))"
 
 end
 
@@ -1024,8 +1032,8 @@ corec incr_op where
     | EOS \<Rightarrow> End
     | EOB \<Rightarrow> incr_op buf)"
 
-abbreviation "incr_input_test_1 xs \<equiv> TNil (llist_of (map (map_event id encode_input) xs))"
-definition "incr_op_test_1 xs = map (map_event id decode_output) (list_of (terminal (produce (incr_op []) (\<lambda> _. incr_input_test_1 xs) 1)))"
+abbreviation "incr_input_test_1 xs \<equiv> llist_of (map (Value o map_event id encode_input) xs)"
+definition "incr_op_test_1 xs = map (map_event id decode_output o val) (list_of (produce 1 (incr_op []) (\<lambda> _. incr_input_test_1 xs)))"
 
 end
 
@@ -1045,9 +1053,9 @@ begin
 
 definition "incr_batch_op buf1 buf2 = scomp_op (batch_op buf1) (incr_op buf2)"
 
-abbreviation "incr_batch_input_test_1 xs \<equiv> TNil (llist_of (map (map_event id encode_input) xs))"
+abbreviation "incr_batch_input_test_1 xs \<equiv> llist_of (map (Value o map_event id encode_input) xs)"
 (* write abbreviation for produce with finite_1 *)
-definition "incr_batch_op_test_1 xs = map (map_event id decode_output) (list_of (terminal (produce (incr_batch_op [] []) (\<lambda> _. incr_batch_input_test_1 xs) 1)))"
+definition "incr_batch_op_test_1 xs = map (map_event id decode_output o val) (list_of (produce 1 (incr_batch_op [] []) (\<lambda> _. incr_batch_input_test_1 xs)))"
 
 end
 
