@@ -645,12 +645,12 @@ lemma silent_coinduct_upto:
     done
   done
 
-lemma inputs_comp_op[simp]:
-  "inputs (comp_op wire buf op1 op2) = Inl ` inputs op1 \<union> Inr ` (inputs op2 - ran wire)"
-  sorry (* Rafael *)
+lemma inputs_comp_op:
+  "inputs (comp_op wire buf op1 op2) \<subseteq> Inl ` inputs op1 \<union> Inr ` (inputs op2 - ran wire)"
+  sorry (* Asta *)
 
-lemma outputs_comp_op[simp]:
-  "outputs (comp_op wire buf op1 op2) = Inl ` (outputs op1 - dom wire) \<union> Inr ` outputs op2"
+lemma outputs_comp_op:
+  "outputs (comp_op wire buf op1 op2) \<subseteq> Inl ` (outputs op1 - dom wire) \<union> Inr ` outputs op2"
   sorry (* Rafael *)
 
 lemma comp_producing_silentD: "comp_producing wire buf op1 op2 n \<Longrightarrow>
@@ -719,11 +719,35 @@ lemma silent_on_non_output: "p \<notin> outputs op \<Longrightarrow> silent p op
     by (cases op) auto
   done
 
+corec (friend) lshift :: "'a list \<Rightarrow> 'a llist \<Rightarrow> 'a llist" (infixr \<open>@@-\<close> 65) where
+  "lshift xs ys = (case xs of [] \<Rightarrow> (case ys of LNil \<Rightarrow> LNil | LCons y' ys' \<Rightarrow> LCons y' ys') | x#xs \<Rightarrow> LCons x (lshift xs ys))"
+
+lemma lshift_simps[simp]:
+  "lshift [] lxs = lxs"
+  "lshift (x#xs) lxs = LCons x (lshift xs lxs)"
+  by (subst lshift.code; auto split: llist.splits)+
+
+lemma snoc_shift[simp]: "(xs @ [x]) @@- ws = xs @@- LCons x ws"
+  by (induct xs) auto
+
+coinductive cembed where
+  "cembed LNil (llist_of (replicate n No_Value))"
+| "cembed xs ys \<Longrightarrow> cembed (LCons x xs) (replicate n No_Value @@- LCons x ys)"
+
+fun ch_of_buf where
+  "ch_of_buf BEmpty = [No_Value]"
+| "ch_of_buf BEnded = []"
+| "ch_of_buf (BCons xs buf) = map Value xs @ No_Value # ch_of_buf buf"
+
 lemma produce_comp_op:
-   "produce p (comp_op wire buf op1 op2) lxs = (case p of
+   "\<exists>lzs. (\<forall>p'. cembed (produce p' (map_op id (case_option undefined id o wire) op1) (lxs o Inl)) (lzs p')) \<and>
+    produce p (comp_op wire buf op1 op2) lxs = (case p of
     Inl p1 \<Rightarrow> (if p1 \<in> dom wire then LNil else
       produce p1 op1 (lxs o Inl))
-  | Inr p2 \<Rightarrow> produce p2 op2 (\<lambda> p'. if p' \<in> ran wire then produce p' (map_op id (case_option undefined id o wire) op1) (lxs o Inl) else lxs (Inr p')))"
+  | Inr p2 \<Rightarrow> produce p2 op2
+      (\<lambda> p'. if p' \<in> ran wire then ch_of_buf (buf p') @@- lzs p' else lxs (Inr p')))"
+(*TODO*)
+  oops
   apply (coinduction arbitrary: buf op1 op2 lxs rule: llist.coinduct_upto)
   apply (split sum.splits if_splits)+
   unfolding lnull_def lnull_produce_iff_silent not_silent_iff_vocal
