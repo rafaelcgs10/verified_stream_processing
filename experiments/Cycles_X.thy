@@ -52,11 +52,12 @@ fun value_of where
 | "value_of EOB = No_Value"
 | "value_of EOS = undefined"
 
+abbreviation "VCons x \<equiv> LCons (value_of x)"
+
 corecursive produce where
-  "produce p op lxs = (let produce' = (\<lambda>op' lxs'. if \<exists>i. producing p op lxs i then produce p op' lxs' else LNil)
-    in case op of
+  "produce p op lxs = (let produce' = (\<lambda>op' lxs'. if \<exists>i. producing p op lxs i then produce p op' lxs' else LNil) in case op of
     Read p' f \<Rightarrow> (produce' (f (chd (lxs p'))) (lxs(p' := ctl (lxs p'))))
-  | Write op' p' x \<Rightarrow> (if p = p' then (if x = EOS then LNil else LCons (value_of x) (produce p op' lxs)) else produce' op' lxs)
+  | Write op' p' x \<Rightarrow> (if p = p' then (if x = EOS then LNil else VCons x (produce p op' lxs)) else produce' op' lxs)
   | End \<Rightarrow> LNil)"
   by (relation "measure (\<lambda>(p, op, lxs). THE i. producing p op lxs i)")
     (auto 0 3 simp: The_producing del: producing_ReadE producing_WriteE elim: producing.cases)
@@ -64,7 +65,7 @@ corecursive produce where
 lemma produce_code[code]:
   "produce p op lxs = (case op of
     Read p' f \<Rightarrow> produce p (f (chd (lxs p'))) (lxs(p' := ctl (lxs p')))
-  | Write op' p' x \<Rightarrow> (if p = p' then (if x = EOS then LNil else LCons (value_of x) (produce p op' lxs)) else produce p op' lxs)
+  | Write op' p' x \<Rightarrow> (if p = p' then (if x = EOS then LNil else VCons x (produce p op' lxs)) else produce p op' lxs)
   | End \<Rightarrow> LNil)"
   apply (subst produce.code)
   apply (simp split: op.splits if_splits channel_value.splits)
@@ -364,7 +365,7 @@ lemma comp_op_code[code]:
   done
 simps_of_case comp_op_simps': comp_op_code[unfolded prod.case]
 
-simps_of_case comp_op_simps[simp]: comp_op.code[unfolded prod.case]
+simps_of_case comp_op_simps[simp]: comp_op.code[unfolded prod.case Let_def]
 
 (*
 consts read_op :: "'ip set \<Rightarrow> ('ip \<Rightarrow> 'd buf) \<Rightarrow> ('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op"
@@ -664,8 +665,8 @@ lemma comp_producing_silentD: "comp_producing wire buf op1 op2 n \<Longrightarro
     silent_cong (Inl p) (\<lambda>op lxs. \<exists>buf op1. (\<exists>op2. op = comp_op wire buf op1 op2) \<and> silent p op1 (lxs \<circ> Inl)) op' lxs)"
   apply (induct buf op1 op2 n arbitrary: lxs pred: comp_producing)
               apply (auto 4 0 simp: Let_def elim!: contrapos_np[of "silent_cong _ _ _ _"]
-                elim!: silent_cong[THEN iffD1, rotated -1] split: option.splits
-                intro!: silent_cong.write silent_cong.read intro: silent_cong.base)
+      elim!: silent_cong[THEN iffD1, rotated -1] split: option.splits
+      intro!: silent_cong.write silent_cong.read intro: silent_cong.base)
           apply (rule silent_cong.base)
           apply (rule exI conjI refl)+
           apply (auto elim: silent_cong[THEN iffD1, rotated -1])
@@ -744,19 +745,18 @@ consts produce_compL_producing :: "'ip2 \<Rightarrow> ('op1 \<rightharpoonup> 'i
 
 corecursive produce_compL :: "'ip2 \<Rightarrow> ('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2 \<Rightarrow> 'd channel) \<Rightarrow> 'd channel" where
-  "produce_compL p wire buf op1 op2 lxs = (case (op1, op2) of
+  "produce_compL p wire buf op1 op2 lxs = (let produce_compL' = (\<lambda>buf' op1' op2' lxs'.
+     if \<exists>n. produce_compL_producing p wire buf op1 op2 lxs n then produce_compL p wire buf' op1' op2' lxs' else LNil)
+   in case (op1, op2) of
      (End, End) \<Rightarrow> LNil
-   | (End, Write op2' p2 x2) \<Rightarrow> if \<exists>n. produce_compL_producing p wire buf op1 op2 lxs n then produce_compL p wire (bend o buf) End op2' lxs else LNil
+   | (End, Write op2' p2 x2) \<Rightarrow> produce_compL' (bend o buf) End op2' lxs
    | (End, Read p2 f2) \<Rightarrow> let buf' = bend o buf in if p2 \<in> ran wire
-     then if \<exists>n. comp_producing wire buf op1 op2 n then
-     if p = p2 then LCons (bhd (buf' p2)) (produce_compL wire (buf'(p2 := btl (buf' p2))) End (f2 (bhd (buf' p2)))) else
-          produce_compL wire (buf'(p2 := btl (buf' p2))) End (f2 (bhd (buf' p2))) else LNil
-     else produce_compL wire buf' End (f2 (chd (lxs (Inl p1)))))
-"
+     then if p = p2 then LCons (value_of (bhd (buf' p2))) (produce_compL p wire (buf'(p2 := btl (buf' p2))) End (f2 (bhd (buf' p2))) lxs)
+       else produce_compL' (buf'(p2 := btl (buf' p2))) End (f2 (bhd (buf' p2))) lxs
+     else produce_compL p wire buf' End (f2 (chd (lxs (Inr p2)))) (lxs(Inr p2 := ltl (lxs (Inr p2))))
+)"
+  oops
 (*
-   | (End, Read p2 f2) \<Rightarrow> let buf' = bend o buf in if p2 \<in> ran wire
-     then if \<exists>n. comp_producing wire buf op1 op2 n then LCons (bhd (buf' p2)) (produce_compL wire (buf'(p2 := btl (buf' p2))) End (f2 (bhd (buf' p2)))) else LNil
-     else produce_compL wire buf' End (f2 (chd (lxs (Inl p1))))
    | (Read p1 f1, End) \<Rightarrow> Read (Inl p1) (\<lambda>y1. comp_op wire buf (f1 y1) End)
    | (Read p1 f1, Write op2' p2 x2) \<Rightarrow> Read (Inl p1) (\<lambda>y1. Write (comp_op wire buf (f1 y1) op2') (Inr p2) x2)
    | (Read p1 f1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
@@ -764,15 +764,15 @@ corecursive produce_compL :: "'ip2 \<Rightarrow> ('op1 \<rightharpoonup> 'ip2) \
      else Read (Inl p1) (\<lambda>y1. Read (Inr p2) (\<lambda>y2. comp_op wire buf (f1 y1) (f2 y2)))
    | (Write op1' p1 x1, End) \<Rightarrow> (case wire p1 of
        None \<Rightarrow> Write (comp_op wire buf op1' End) (Inl p1) x1
-     | Some p \<Rightarrow> if \<exists>n. comp_producing wire buf op1 op2 n then comp_op wire buf op1' End else End)
+     | Some p \<Rightarrow> comp_op' buf op1' End)
    | (Write op1' p1 x1, Write op2' p2 x2) \<Rightarrow> (case wire p1 of
        None \<Rightarrow> Write (Write (comp_op wire buf op1' op2') (Inr p2) x2) (Inl p1) x1
      | Some p \<Rightarrow> Write (comp_op wire (buf(p := benq x1 (buf p))) op1' op2') (Inr p2) x2)
    | (Write op1' p1 x1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
      then (case wire p1 of
        None \<Rightarrow> Write (comp_op wire (buf(p2 := btl (buf p2))) op1' (f2 (bhd (buf p2)))) (Inl p1) x1
-     | Some p \<Rightarrow> if \<exists>n. comp_producing wire buf op1 op2 n then if p = p2 then comp_op wire (buf(p2 := btl (benq x1 (buf p2)))) op1' (f2 (bhd (benq x1 (buf p2))))
-         else comp_op wire (buf(p := benq x1 (buf p), p2 := btl (buf p2))) op1' (f2 (bhd (buf p2))) else End)
+     | Some p \<Rightarrow> if p = p2 then comp_op' (buf(p2 := btl (benq x1 (buf p2)))) op1' (f2 (bhd (benq x1 (buf p2))))
+         else comp_op' (buf(p := benq x1 (buf p), p2 := btl (buf p2))) op1' (f2 (bhd (buf p2))))
      else (case wire p1 of
        None \<Rightarrow> Write (Read (Inr p2) (\<lambda>y2. comp_op wire buf op1' (f2 y2))) (Inl p1) x1
      | Some p \<Rightarrow> Read (Inr p2) (\<lambda>y2. comp_op wire (buf(p := benq x1 (buf p))) op1' (f2 y2))))"
