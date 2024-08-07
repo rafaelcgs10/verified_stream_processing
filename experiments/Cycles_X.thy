@@ -31,10 +31,13 @@ fun chd where
 
 abbreviation ctl :: "'d channel \<Rightarrow> 'd channel" where "ctl \<equiv> ltl"
 
+abbreviation CHD :: "'a \<Rightarrow> ('a \<Rightarrow> 'd channel) \<Rightarrow> 'd observation" where "CHD p lxs \<equiv> chd (lxs p)"
+abbreviation CTL :: "'a \<Rightarrow> ('a \<Rightarrow> 'd channel) \<Rightarrow> ('a \<Rightarrow> 'd channel)" where "CTL p lxs \<equiv> lxs(p := ctl (lxs p))"
+
 inductive producing for p where
   "producing p End lxs 0"
 | "producing p (Write _ p _) lxs 0"
-| "producing p (f (chd (lxs p'))) (lxs(p' := ctl (lxs p'))) i \<Longrightarrow> producing p (Read p' f) lxs (Suc i)"
+| "producing p (f (CHD p' lxs)) (CTL p' lxs) i \<Longrightarrow> producing p (Read p' f) lxs (Suc i)"
 | "p \<noteq> p' \<Longrightarrow> producing p op lxs i \<Longrightarrow> producing p (Write op p' x) lxs (Suc i)"
 
 inductive_cases producing_EndE[elim!]: "producing p End lxs n"
@@ -56,7 +59,7 @@ abbreviation "VCons x \<equiv> LCons (value_of x)"
 
 corecursive produce where
   "produce p op lxs = (let produce' = (\<lambda>op' lxs'. if \<exists>i. producing p op lxs i then produce p op' lxs' else LNil) in case op of
-    Read p' f \<Rightarrow> (produce' (f (chd (lxs p'))) (lxs(p' := ctl (lxs p'))))
+    Read p' f \<Rightarrow> (produce' (f (CHD p' lxs)) (CTL p' lxs))
   | Write op' p' x \<Rightarrow> (if p = p' then (if x = EOS then LNil else VCons x (produce p op' lxs)) else produce' op' lxs)
   | End \<Rightarrow> LNil)"
   by (relation "measure (\<lambda>(p, op, lxs). THE i. producing p op lxs i)")
@@ -64,7 +67,7 @@ corecursive produce where
 
 lemma produce_code[code]:
   "produce p op lxs = (case op of
-    Read p' f \<Rightarrow> produce p (f (chd (lxs p'))) (lxs(p' := ctl (lxs p')))
+    Read p' f \<Rightarrow> produce p (f (CHD p' lxs)) (CTL p' lxs)
   | Write op' p' x \<Rightarrow> (if p = p' then (if x = EOS then LNil else VCons x (produce p op' lxs)) else produce p op' lxs)
   | End \<Rightarrow> LNil)"
   apply (subst produce.code)
@@ -81,7 +84,7 @@ simps_of_case produce_simps[simp]: produce_code
 inductive vocal for p where
   Write_same: "x \<noteq> EOS \<Longrightarrow> vocal p (Write op p x) lxs"
 | Write_other: "p \<noteq> p' \<Longrightarrow> vocal p op' lxs \<Longrightarrow> vocal p (Write op' p' x) lxs"
-| Read: "vocal p (f (chd (lxs p'))) (lxs(p' := ctl (lxs p'))) \<Longrightarrow> vocal p (Read p' f) lxs"
+| Read: "vocal p (f (CHD p' lxs)) (CTL p' lxs) \<Longrightarrow> vocal p (Read p' f) lxs"
 
 inductive_cases vocal_EndE[elim!]: "vocal p End lxs"
 inductive_cases vocal_WriteE[elim!]: "vocal p (Write op p' x) lxs"
@@ -91,7 +94,7 @@ coinductive silent for p where
   End[simp, intro!]: "silent p End lxs"
 | WriteEOS[simp, intro!]: "silent p (Write op p EOS) lxs"
 | Write: "p \<noteq> p' \<Longrightarrow> silent p op' lxs \<Longrightarrow> silent p (Write op' p' x) lxs"
-| Read: "silent p (f (chd (lxs p'))) (lxs(p' := ctl (lxs p'))) \<Longrightarrow> silent p (Read p' f) lxs"
+| Read: "silent p (f (CHD p' lxs)) (CTL p' lxs) \<Longrightarrow> silent p (Read p' f) lxs"
 
 inductive_cases silent_EndE[elim!]: "silent p End lxs"
 inductive_cases silent_WriteE[elim!]: "silent p (Write op p' x) lxs"
@@ -160,6 +163,13 @@ fun benq where
 | "benq (Observed x) (BCons xs BEnded) = BCons (xs @ [x]) BEnded"
 | "benq x (BCons ys yss) = BCons ys (benq x yss)"
 
+
+abbreviation BHD :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> 'd observation" where "BHD p buf \<equiv> bhd (buf p)"
+abbreviation (input) BUPD where "BUPD f p buf \<equiv> buf(p := f (buf p))"
+abbreviation BTL :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BTL \<equiv> BUPD btl"
+abbreviation BENQ :: "'a \<Rightarrow> 'd observation \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BENQ p x buf \<equiv> BUPD (benq x) p buf"
+abbreviation BENQ_TL :: "'a \<Rightarrow> 'd observation \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BENQ_TL p x buf \<equiv> BUPD (btl o benq x) p buf"
+
 inductive loop_producing :: "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightarrow> 'd buf) \<Rightarrow> ('ip, 'op, 'd) op \<Rightarrow> nat \<Rightarrow> bool" where
   "loop_producing wire buf End 0"
 | "p \<notin> ran wire \<Longrightarrow> loop_producing wire buf (Read p f) 0"
@@ -188,11 +198,11 @@ corecursive loop_op :: "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightar
      in case op of
      End \<Rightarrow> End
    | Read p f \<Rightarrow> if p \<in> ran wire
-       then loop_op' (buf(p := btl (buf p))) (f (bhd (buf p)))
+       then loop_op' (BTL p buf) (f (BHD p buf))
        else Read p (\<lambda>x. loop_op wire buf (f x))
    | Write op' p' x \<Rightarrow> (case wire p' of
          None \<Rightarrow> Write (loop_op wire buf op') p' x
-       | Some p \<Rightarrow> loop_op' (buf(p := benq x (buf p))) op'))"
+       | Some p \<Rightarrow> loop_op' (BENQ p x buf) op'))"
   by (relation "measure (\<lambda>(wire, buf, op). THE i. loop_producing wire buf op i)")
     (auto 0 3 simp: The_loop_producing elim: loop_producing.cases)
 
@@ -200,11 +210,11 @@ lemma loop_op_code[code]:
   "loop_op wire buf op = (case op of
      End \<Rightarrow> End
    | Read p f \<Rightarrow> if p \<in> ran wire
-       then loop_op wire (buf(p := btl (buf p))) (f (bhd (buf p)))
+       then loop_op wire (BTL p buf) (f (BHD p buf))
        else Read p (\<lambda>x. loop_op wire buf (f x))
    | Write op' p' x \<Rightarrow> (case wire p' of
          None \<Rightarrow> Write (loop_op wire buf op') p' x
-       | Some p \<Rightarrow> loop_op wire (buf(p := benq x (buf p))) op'))"
+       | Some p \<Rightarrow> loop_op wire (BENQ p x buf) op'))"
   apply (subst loop_op.code)
   apply (simp split: op.splits option.splits)
   apply safe
@@ -224,14 +234,11 @@ inductive comp_producing :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \
 | "comp_producing wire buf (Read p1 f1) (Write op2' p2 x2) 0"
 | "comp_producing wire buf (Write op1' p1 x1) (Write op2' p2 x2) 0"
 | "p2 \<notin> ran wire \<Longrightarrow> comp_producing wire buf End (Read p2 f2) 0"
-| "p2 \<in> ran wire \<Longrightarrow> comp_producing wire ((bend o buf)(p2 := btl ((bend o buf) p2))) End (f2 (bhd ((bend o buf) p2))) n \<Longrightarrow> comp_producing wire buf End (Read p2 f2) (Suc n)"
+| "p2 \<in> ran wire \<Longrightarrow> comp_producing wire (BTL p2 (bend o buf)) End (f2 (BHD p2 (bend o buf))) n \<Longrightarrow> comp_producing wire buf End (Read p2 f2) (Suc n)"
 | "comp_producing wire buf (Read p1 f1) (Read p2 f2) 0"
 | "p2 \<notin> ran wire \<or> wire p1 = None \<Longrightarrow> comp_producing wire buf (Write op1' p1 x1) (Read p2 f2) 0"
-| "p2 \<in> ran wire \<Longrightarrow> wire p1 = Some p2 \<Longrightarrow>
-    comp_producing wire (buf(p2 := btl (benq x1 (buf p2)))) op1' (f2 (bhd (benq x1 (buf p2)))) n \<Longrightarrow>
-    comp_producing wire buf (Write op1' p1 x1) (Read p2 f2) (Suc n)"
-| "p2 \<in> ran wire \<Longrightarrow> wire p1 = Some p \<Longrightarrow> p \<noteq> p2 \<Longrightarrow>
-    comp_producing wire (buf(p := benq x1 (buf p), p2 := btl (buf p2))) op1' (f2 (bhd (buf p2))) n \<Longrightarrow>
+| "p2 \<in> ran wire \<Longrightarrow> wire p1 = Some p \<Longrightarrow>
+    comp_producing wire (BTL p2 (BENQ p x1 buf)) op1' (f2 (BHD p2 (BENQ p x1 buf))) n \<Longrightarrow>
     comp_producing wire buf (Write op1' p1 x1) (Read p2 f2) (Suc n)"
 
 lemma comp_producing_inject: "comp_producing wire buf op1 op2 i \<Longrightarrow> comp_producing wire buf op1 op2 j \<Longrightarrow> i = j"
@@ -244,12 +251,8 @@ next
   from 9(4,1-2) 9(3)[of "j - 1"] show ?case
     by (elim comp_producing.cases[of _ _ _ "Read p2 f2"]) (auto simp del: fun_upd_apply)
 next
-  case (12 p2 p1 buf x1 op1' f2 n)
+  case (12 p2 p1 p buf x1 op1' f2 n)
   from 12(5,1-3) 12(4)[of "j - 1"] show ?case
-    by (elim comp_producing.cases[of _ _ _ "Read p2 f2"]) (auto simp del: fun_upd_apply)
-next
-  case (13 p2 p1 p buf x1 op1' f2 n)
-  from 13(6,1-4) 13(5)[of "j - 1"] show ?case
     by (elim comp_producing.cases[of _ _ _ "Read p2 f2"]) (auto simp del: fun_upd_apply)
 qed (auto elim: comp_producing.cases)
 
@@ -272,27 +275,26 @@ corecursive comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Righ
      (End, End) \<Rightarrow> End
    | (End, Write op2' p2 x2) \<Rightarrow> Write (comp_op wire (bend o buf) End op2') (Inr p2) x2
    | (End, Read p2 f2) \<Rightarrow> let buf' = bend o buf in if p2 \<in> ran wire
-     then comp_op' (buf'(p2 := btl (buf' p2))) End (f2 (bhd (buf' p2)))
+     then comp_op' (BTL p2 buf') End (f2 (BHD p2 buf'))
      else Read (Inr p2) (\<lambda>y2. comp_op wire buf' End (f2 y2))
    | (Read p1 f1, End) \<Rightarrow> Read (Inl p1) (\<lambda>y1. comp_op wire buf (f1 y1) End)
    | (Read p1 f1, Write op2' p2 x2) \<Rightarrow> Read (Inl p1) (\<lambda>y1. Write (comp_op wire buf (f1 y1) op2') (Inr p2) x2)
    | (Read p1 f1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
-     then Read (Inl p1) (\<lambda>y1. comp_op wire (buf(p2 := btl (buf p2))) (f1 y1) (f2 (bhd (buf p2))))
+     then Read (Inl p1) (\<lambda>y1. comp_op wire (BTL p2 buf) (f1 y1) (f2 (BHD p2 buf)))
      else Read (Inl p1) (\<lambda>y1. Read (Inr p2) (\<lambda>y2. comp_op wire buf (f1 y1) (f2 y2)))
    | (Write op1' p1 x1, End) \<Rightarrow> (case wire p1 of
        None \<Rightarrow> Write (comp_op wire buf op1' End) (Inl p1) x1
      | Some p \<Rightarrow> comp_op' buf op1' End)
    | (Write op1' p1 x1, Write op2' p2 x2) \<Rightarrow> (case wire p1 of
        None \<Rightarrow> Write (Write (comp_op wire buf op1' op2') (Inr p2) x2) (Inl p1) x1
-     | Some p \<Rightarrow> Write (comp_op wire (buf(p := benq x1 (buf p))) op1' op2') (Inr p2) x2)
+     | Some p \<Rightarrow> Write (comp_op wire (BENQ p x1 buf) op1' op2') (Inr p2) x2)
    | (Write op1' p1 x1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
      then (case wire p1 of
-       None \<Rightarrow> Write (comp_op wire (buf(p2 := btl (buf p2))) op1' (f2 (bhd (buf p2)))) (Inl p1) x1
-     | Some p \<Rightarrow> if p = p2 then comp_op' (buf(p2 := btl (benq x1 (buf p2)))) op1' (f2 (bhd (benq x1 (buf p2))))
-         else comp_op' (buf(p := benq x1 (buf p), p2 := btl (buf p2))) op1' (f2 (bhd (buf p2))))
+       None \<Rightarrow> Write (comp_op wire (BTL p2 buf) op1' (f2 (BHD p2 buf))) (Inl p1) x1
+     | Some p \<Rightarrow> comp_op' (BTL p2 (BENQ p x1 buf)) op1' (f2 (BHD p2 (BENQ p x1 buf))))
      else (case wire p1 of
        None \<Rightarrow> Write (Read (Inr p2) (\<lambda>y2. comp_op wire buf op1' (f2 y2))) (Inl p1) x1
-     | Some p \<Rightarrow> Read (Inr p2) (\<lambda>y2. comp_op wire (buf(p := benq x1 (buf p))) op1' (f2 y2))))"
+     | Some p \<Rightarrow> Read (Inr p2) (\<lambda>y2. comp_op wire (BENQ p x1 buf) op1' (f2 y2))))"
   by (relation "measure (\<lambda>((wire, buf), op1, op2). THE i. comp_producing wire buf op1 op2 i)")
     (auto 0 3 simp: The_comp_producing elim: comp_producing.cases)
 
@@ -314,27 +316,26 @@ lemma comp_op_code[code]:
      (End, End) \<Rightarrow> End
    | (End, Write op2' p2 x2) \<Rightarrow> Write (comp_op wire (bend o buf) End op2') (Inr p2) x2
    | (End, Read p2 f2) \<Rightarrow> let buf = bend o buf in if p2 \<in> ran wire
-     then comp_op wire (buf(p2 := btl (buf p2))) End (f2 (bhd (buf p2)))
+     then comp_op wire (BTL p2 buf) End (f2 (BHD p2 buf))
      else Read (Inr p2) (\<lambda>y2. comp_op wire buf End (f2 y2))
    | (Read p1 f1, End) \<Rightarrow> Read (Inl p1) (\<lambda>y1. comp_op wire buf (f1 y1) End)
    | (Read p1 f1, Write op2' p2 x2) \<Rightarrow> Read (Inl p1) (\<lambda>y1. Write (comp_op wire buf (f1 y1) op2') (Inr p2) x2)
    | (Read p1 f1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
-     then Read (Inl p1) (\<lambda>y1. comp_op wire (buf(p2 := btl (buf p2))) (f1 y1) (f2 (bhd (buf p2))))
+     then Read (Inl p1) (\<lambda>y1. comp_op wire (BTL p2 buf) (f1 y1) (f2 (BHD p2 buf)))
      else Read (Inl p1) (\<lambda>y1. Read (Inr p2) (\<lambda>y2. comp_op wire buf (f1 y1) (f2 y2)))
    | (Write op1' p1 x1, End) \<Rightarrow> (case wire p1 of
        None \<Rightarrow> Write (comp_op wire buf op1' End) (Inl p1) x1
      | Some p \<Rightarrow> comp_op wire buf op1' End)
    | (Write op1' p1 x1, Write op2' p2 x2) \<Rightarrow> (case wire p1 of
        None \<Rightarrow> Write (Write (comp_op wire buf op1' op2') (Inr p2) x2) (Inl p1) x1
-     | Some p \<Rightarrow> Write (comp_op wire (buf(p := benq x1 (buf p))) op1' op2') (Inr p2) x2)
+     | Some p \<Rightarrow> Write (comp_op wire (BENQ p x1 buf) op1' op2') (Inr p2) x2)
    | (Write op1' p1 x1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
      then (case wire p1 of
-       None \<Rightarrow> Write (comp_op wire (buf(p2 := btl (buf p2))) op1' (f2 (bhd (buf p2)))) (Inl p1) x1
-     | Some p \<Rightarrow> if p = p2 then comp_op wire (buf(p2 := btl (benq x1 (buf p2)))) op1' (f2 (bhd (benq x1 (buf p2))))
-         else comp_op wire (buf(p := benq x1 (buf p), p2 := btl (buf p2))) op1' (f2 (bhd (buf p2))))
+       None \<Rightarrow> Write (comp_op wire (BTL p2 buf) op1' (f2 (BHD p2 buf))) (Inl p1) x1
+     | Some p \<Rightarrow> comp_op wire (BTL p2 (BENQ p x1 buf)) op1' (f2 (BHD p2 (BENQ p x1 buf))))
      else (case wire p1 of
        None \<Rightarrow> Write (Read (Inr p2) (\<lambda>y2. comp_op wire buf op1' (f2 y2))) (Inl p1) x1
-     | Some p \<Rightarrow> Read (Inr p2) (\<lambda>y2. comp_op wire (buf(p := benq x1 (buf p))) op1' (f2 y2))))"
+     | Some p \<Rightarrow> Read (Inr p2) (\<lambda>y2. comp_op wire (BENQ p x1 buf) op1' (f2 y2))))"
   apply (subst comp_op.code)
   apply (simp split: op.splits option.splits add: Let_def)
   apply safe
@@ -345,16 +346,12 @@ lemma comp_op_code[code]:
   subgoal for p2 f2 op1' p1 x1
     by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
   subgoal for p2 f2 op1' p1 x1
-    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros)
+    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
   subgoal for p2 f2 op1' p1 x1
     by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
   subgoal for p2 f2 op1' p1 x1 p
     by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
   subgoal for p2 f2
-    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
-  subgoal
-    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
-  subgoal
     by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
   subgoal
     by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
@@ -418,7 +415,7 @@ lemma vocal_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longrig
   subgoal premises prems
     using prems(2,1)
   proof (induct op lxs arbitrary: lxs' pred: vocal)
-    case (Read f lxs p')
+    case (Read f p' lxs)
     then have *: "lxs p' = lxs' p'"
       by simp
     show ?case
@@ -427,7 +424,7 @@ lemma vocal_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longrig
   subgoal premises prems
     using prems(2,1)
   proof (induct op lxs' arbitrary: lxs pred: vocal)
-    case (Read f lxs' p')
+    case (Read f p' lxs')
     then have *: "lxs p' = lxs' p'"
       by simp
     show ?case
@@ -475,7 +472,7 @@ lemma produce_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longr
       apply (clarsimp simp del: fun_upd_apply)+
       apply metis
      apply auto[1]
-    subgoal for f lxs p' lxs'
+    subgoal for f p' lxs lxs'
       apply (drule meta_spec[of _ "lxs'(p' := ctl (lxs' p'))"])
       apply (clarsimp simp del: fun_upd_apply)
       apply (metis fun_upd_other fun_upd_same)
@@ -552,7 +549,7 @@ lemma produce_map_op:
         apply (auto 0 0)
       done
   next
-    case (Read f lxs p')
+    case (Read f p' lxs)
     then show ?case
       apply (cases op)
         apply auto
@@ -588,7 +585,7 @@ lemma produce_map_op:
         apply (auto 0 0)
       done
   next
-    case (Read f lxs p')
+    case (Read f p' lxs)
     then show ?case
       apply (cases op)
       apply auto
@@ -621,7 +618,7 @@ inductive silent_cong for p R where
   silent: "silent p op lxs \<Longrightarrow> silent_cong p R op lxs"
 | base: "R op lxs \<Longrightarrow> silent_cong p R op lxs"
 | "write": "p \<noteq> p' \<Longrightarrow> silent_cong p R op' lxs \<Longrightarrow> silent_cong p R (Write op' p' x) lxs"
-| read: "silent_cong p R (f (chd (lxs p'))) (lxs(p' := ctl (lxs p'))) \<Longrightarrow> silent_cong p R (Read p' f) lxs"
+| read: "silent_cong p R (f (CHD p' lxs)) (CTL p' lxs) \<Longrightarrow> silent_cong p R (Read p' f) lxs"
 
 lemma silent_coinduct_upto:
   assumes "R op lxs"
@@ -629,7 +626,7 @@ lemma silent_coinduct_upto:
     R op lxs \<Longrightarrow>
     (op = End) \<or> (\<exists>op'. op = Write op' p EOS) \<or>
     (\<exists>p' op' x. op = Write op' p' x \<and> p \<noteq> p' \<and> silent_cong p R op' lxs) \<or>
-    (\<exists>f p'. op = Read p' f \<and> silent_cong p R (f (chd (lxs p'))) (lxs(p' := ctl (lxs p')))))"
+    (\<exists>f p'. op = Read p' f \<and> silent_cong p R (f (CHD p' lxs)) (CTL p' lxs)))"
   shows "silent p op lxs"
   apply (rule silent.coinduct[where X = "silent_cong p R"])
    apply (rule silent_cong.intros, rule assms(1))
@@ -660,40 +657,44 @@ lemma comp_producing_silentD: "comp_producing wire buf op1 op2 n \<Longrightarro
   comp_op wire buf op1 op2 = End \<or>
   (\<exists>op'. comp_op wire buf op1 op2 = Write op' (Inl p) EOS) \<or>
   (\<exists>f p'. comp_op wire buf op1 op2 = Read p' f \<and>
-    silent_cong (Inl p) (\<lambda>op lxs. \<exists>buf op1. (\<exists>op2. op = comp_op wire buf op1 op2) \<and> silent p op1 (lxs \<circ> Inl)) (f (chd (lxs p'))) (lxs(p' := ctl (lxs p')))) \<or>
+    silent_cong (Inl p) (\<lambda>op lxs. \<exists>buf op1. (\<exists>op2. op = comp_op wire buf op1 op2) \<and> silent p op1 (lxs \<circ> Inl)) (f (CHD p' lxs)) (CTL p' lxs)) \<or>
   (\<exists>p' op'. (\<exists>x. comp_op wire buf op1 op2 = Write op' p' x) \<and> Inl p \<noteq> p' \<and>
     silent_cong (Inl p) (\<lambda>op lxs. \<exists>buf op1. (\<exists>op2. op = comp_op wire buf op1 op2) \<and> silent p op1 (lxs \<circ> Inl)) op' lxs)"
   apply (induct buf op1 op2 n arbitrary: lxs pred: comp_producing)
-              apply (auto 4 0 simp: Let_def elim!: contrapos_np[of "silent_cong _ _ _ _"]
+             apply (auto 4 0 simp: Let_def elim!: contrapos_np[of "silent_cong _ _ _ _"]
       elim!: silent_cong[THEN iffD1, rotated -1] split: option.splits
       intro!: silent_cong.write silent_cong.read intro: silent_cong.base)
+            apply (rule silent_cong.base)
+            apply (rule exI conjI refl)+
+            apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
+           apply (rule silent_cong.base)
+           apply (rule exI conjI refl)+
+           apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
           apply (rule silent_cong.base)
           apply (rule exI conjI refl)+
-          apply (auto elim: silent_cong[THEN iffD1, rotated -1])
+          apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
          apply (rule silent_cong.base)
          apply (rule exI conjI refl)+
-         apply (auto elim: silent_cong[THEN iffD1, rotated -1])
+         apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
         apply (rule silent_cong.base)
         apply (rule exI conjI refl)+
-        apply (auto elim: silent_cong[THEN iffD1, rotated -1])
+        apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
        apply (rule silent_cong.base)
        apply (rule exI conjI refl)+
-       apply (auto elim: silent_cong[THEN iffD1, rotated -1])
+       apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
       apply (rule silent_cong.base)
       apply (rule exI conjI refl)+
-      apply (auto elim: silent_cong[THEN iffD1, rotated -1])
+      apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
      apply (rule silent_cong.base)
      apply (rule exI conjI refl)+
-     apply (auto elim: silent_cong[THEN iffD1, rotated -1])
+     apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
     apply (rule silent_cong.base)
     apply (rule exI conjI refl)+
-    apply (auto elim: silent_cong[THEN iffD1, rotated -1])
-   apply (rule silent_cong.base)
-   apply (rule exI conjI refl)+
-   apply (auto elim: silent_cong[THEN iffD1, rotated -1])
-  apply (rule silent_cong.base)
-  apply (rule exI conjI refl)+
-  apply (auto elim: silent_cong[THEN iffD1, rotated -1])
+    apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
+   apply (drule meta_spec, drule meta_mp, assumption)
+   apply auto []
+  apply (drule meta_spec, drule meta_mp, assumption)
+  apply auto []
   done
 (*
 comp_producing wire (buf(q' := btl (benq x (buf q')))) op' (f (bhd (benq x (buf q')))) m \<Longrightarrow>
@@ -745,38 +746,161 @@ consts produce_compL_producing :: "'ip2 \<Rightarrow> ('op1 \<rightharpoonup> 'i
 
 corecursive produce_compL :: "'ip2 \<Rightarrow> ('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2 \<Rightarrow> 'd channel) \<Rightarrow> 'd channel" where
-  "produce_compL p wire buf op1 op2 lxs = (let produce_compL' = (\<lambda>buf' op1' op2' lxs'.
-     if \<exists>n. produce_compL_producing p wire buf op1 op2 lxs n then produce_compL p wire buf' op1' op2' lxs' else LNil)
+  "produce_compL p wire buf op1 op2 lxs = (let
+     produce_compL' = (\<lambda>buf' op1' op2' lxs'.
+     if \<exists>n. produce_compL_producing p wire buf op1 op2 lxs n then produce_compL p wire buf' op1' op2' lxs' else LNil);
+     produce_compL'' = (\<lambda>p2 x buf' op1' op2' lxs'. if p = p2 then VCons x (produce_compL p wire buf' op1' op2' lxs')
+       else produce_compL' buf' op1' op2' lxs')
    in case (op1, op2) of
      (End, End) \<Rightarrow> LNil
    | (End, Write op2' p2 x2) \<Rightarrow> produce_compL' (bend o buf) End op2' lxs
    | (End, Read p2 f2) \<Rightarrow> let buf' = bend o buf in if p2 \<in> ran wire
-     then if p = p2 then LCons (value_of (bhd (buf' p2))) (produce_compL p wire (buf'(p2 := btl (buf' p2))) End (f2 (bhd (buf' p2))) lxs)
-       else produce_compL' (buf'(p2 := btl (buf' p2))) End (f2 (bhd (buf' p2))) lxs
-     else produce_compL p wire buf' End (f2 (chd (lxs (Inr p2)))) (lxs(Inr p2 := ltl (lxs (Inr p2))))
-)"
-  oops
-(*
-   | (Read p1 f1, End) \<Rightarrow> Read (Inl p1) (\<lambda>y1. comp_op wire buf (f1 y1) End)
-   | (Read p1 f1, Write op2' p2 x2) \<Rightarrow> Read (Inl p1) (\<lambda>y1. Write (comp_op wire buf (f1 y1) op2') (Inr p2) x2)
+     then produce_compL'' p2 (BHD p2 buf') (BTL p2 buf') End (f2 (BHD p2 buf')) lxs
+     else produce_compL' buf' End (f2 (CHD (Inr p2) lxs)) (CTL (Inr p2) lxs)
+   | (Read p1 f1, End) \<Rightarrow> produce_compL' buf (f1 (CHD (Inl p1) lxs)) End (CTL (Inl p1) lxs)
+   | (Read p1 f1, Write op2' p2 x2) \<Rightarrow> produce_compL' buf (f1 (CHD (Inl p1) lxs)) op2' (CTL (Inl p1) lxs)
    | (Read p1 f1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
-     then Read (Inl p1) (\<lambda>y1. comp_op wire (buf(p2 := btl (buf p2))) (f1 y1) (f2 (bhd (buf p2))))
-     else Read (Inl p1) (\<lambda>y1. Read (Inr p2) (\<lambda>y2. comp_op wire buf (f1 y1) (f2 y2)))
-   | (Write op1' p1 x1, End) \<Rightarrow> (case wire p1 of
-       None \<Rightarrow> Write (comp_op wire buf op1' End) (Inl p1) x1
-     | Some p \<Rightarrow> comp_op' buf op1' End)
+     then produce_compL'' p2 (BHD p2 buf) (BTL p2 buf) (f1 (CHD (Inl p1) lxs)) (f2 (BHD p2 buf)) (CTL (Inl p1) lxs)
+     else produce_compL' buf (f1 (CHD (Inl p1) lxs)) (f2 (CHD (Inr p2) lxs)) (CTL (Inr p2) (CTL (Inl p1) lxs))
+   | (Write op1' p1 x1, End) \<Rightarrow> produce_compL' buf op1' End lxs
    | (Write op1' p1 x1, Write op2' p2 x2) \<Rightarrow> (case wire p1 of
-       None \<Rightarrow> Write (Write (comp_op wire buf op1' op2') (Inr p2) x2) (Inl p1) x1
-     | Some p \<Rightarrow> Write (comp_op wire (buf(p := benq x1 (buf p))) op1' op2') (Inr p2) x2)
+       None \<Rightarrow> produce_compL' buf op1' op2' lxs
+     | Some p \<Rightarrow> produce_compL' (BENQ p x1 buf) op1' op2' lxs)
    | (Write op1' p1 x1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
      then (case wire p1 of
-       None \<Rightarrow> Write (comp_op wire (buf(p2 := btl (buf p2))) op1' (f2 (bhd (buf p2)))) (Inl p1) x1
-     | Some p \<Rightarrow> if p = p2 then comp_op' (buf(p2 := btl (benq x1 (buf p2)))) op1' (f2 (bhd (benq x1 (buf p2))))
-         else comp_op' (buf(p := benq x1 (buf p), p2 := btl (buf p2))) op1' (f2 (bhd (buf p2))))
+       None \<Rightarrow> produce_compL'' p (BHD p2 buf) (BTL p2 buf) op1' (f2 (BHD p2 buf)) lxs
+     | Some p \<Rightarrow> produce_compL'' p (BHD p2 (BENQ p2 x1 buf)) (BTL p2 (BENQ p x1 buf)) op1' (f2 (BHD p2 (BENQ p x1 buf))) lxs)
      else (case wire p1 of
-       None \<Rightarrow> Write (Read (Inr p2) (\<lambda>y2. comp_op wire buf op1' (f2 y2))) (Inl p1) x1
-     | Some p \<Rightarrow> Read (Inr p2) (\<lambda>y2. comp_op wire (buf(p := benq x1 (buf p))) op1' (f2 y2))))"
-*)
+       None \<Rightarrow> produce_compL' buf op1' (f2 (CHD (Inr p2) lxs)) (CTL (Inr p2) lxs)
+     | Some p \<Rightarrow> produce_compL' (BENQ p x1 buf) op1' (f2 (CHD (Inr p2) lxs)) (CTL (Inr p2) lxs))
+)"
+  sorry
+
+lemma produce_comp_op:
+   "produce p (comp_op wire buf op1 op2) lxs = (case p of
+    Inl p1 \<Rightarrow> (if p1 \<in> dom wire then LNil else
+      produce p1 op1 (lxs o Inl))
+  | Inr p2 \<Rightarrow> produce p2 op2
+      (\<lambda> p'. if p' \<in> ran wire then produce_compL p' wire buf op1 op2 lxs else lxs (Inr p')))"
+  apply (coinduction arbitrary: buf op1 op2 lxs rule: llist.coinduct_upto)
+  apply (split sum.splits if_splits)+
+  unfolding lnull_def lnull_produce_iff_silent not_silent_iff_vocal
+  apply safe
+  subgoal for buf op1 op2 lxs p q
+    apply (rule silent_on_non_output)
+    apply (auto dest: set_mp[OF outputs_comp_op])
+    done
+  subgoal for buf op1 op2 lxs p
+    apply (coinduction arbitrary: buf op1 op2 lxs rule: silent_coinduct_upto)
+    subgoal for buf op1 op2 lxs
+      apply (cases op1; cases op2)
+              apply (auto split: option.splits if_splits simp: Let_def
+          elim!: contrapos_np[of "silent_cong _ _ _ _"] intro!: silent_cong.write silent_cong.read intro: silent_cong.base)
+                 apply (rule silent_cong.base)
+                 apply (rule exI conjI[rotated] | assumption)+
+                 apply auto []
+                apply (rule silent_cong.base)
+                apply (rule exI conjI[rotated] | assumption)+
+                apply auto []
+               apply (rule silent_cong.base)
+               apply (rule exI conjI[rotated] | assumption)+
+               apply auto []
+              apply (rule silent_cong.base)
+              apply (rule exI conjI[rotated] | assumption)+
+              apply auto []
+             apply (rule silent_cong.base)
+             apply (rule exI conjI[rotated] | assumption)+
+             apply auto []
+            apply (rule silent_cong.base)
+            apply (rule exI conjI[rotated] | assumption)+
+            apply auto []
+           apply (auto dest!: not_comp_producing_eq_End simp del: comp_op_simps simp add: comp_op_simps' split: if_splits) [2]
+             apply (rule silent_cong.base)
+             apply (rule exI conjI refl | erule ssubst)+
+             apply (rule silent.intros)
+            apply (rule silent_cong.base)
+            apply (rule exI conjI refl | erule ssubst)+
+            apply (rule silent.intros)
+           apply (rule silent_cong.base)
+           apply (rule exI conjI refl | erule ssubst)+
+           apply (rule silent.intros)
+          apply (rule silent_cong.base)
+          apply (rule exI conjI refl | erule ssubst)+
+          apply (rule silent.intros)
+         apply (rule silent_cong.base)
+         apply (rule exI conjI[rotated] | assumption)+
+         apply auto []
+        apply (rule silent_cong.base)
+        apply (rule exI conjI[rotated] | assumption)+
+        apply auto []
+       apply (auto dest!: not_comp_producing_eq_End simp del: comp_op_simps simp add: comp_op_simps' split: if_splits) [2]
+       apply (rule silent_cong.base)
+       apply (rule exI conjI refl | erule ssubst)+
+       apply (rule silent.intros)
+      apply (rule silent_cong.base)
+      apply (rule exI conjI refl | erule ssubst)+
+      apply (rule silent.intros)
+      done
+    done
+  subgoal for buf op1 op2 lxs p
+    apply (coinduction arbitrary: buf op1 op2 lxs rule: silent_coinduct_upto)
+    subgoal for buf op1 op2 lxs
+      apply (cases op1; cases op2)
+              apply (auto split: option.splits if_splits simp: Let_def
+          elim!: contrapos_np[of "silent_cong _ _ _ _"] intro!: silent_cong.write silent_cong.read intro: silent_cong.base)
+                   apply (rule silent_cong.base)
+                   apply (rule exI conjI refl)+
+                   apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
+                  apply (rule silent_cong.base)
+                  apply (rule exI conjI refl)+
+                  apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
+                 apply (rule silent_cong.base)
+                 apply (rule exI conjI refl)+
+                 apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
+                apply (rule silent_cong.base)
+                apply (rule exI conjI refl)+
+                apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
+               apply (rule silent_cong.base)
+               apply (rule exI conjI refl)+
+               apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
+              apply (rule silent_cong.base)
+              apply (rule exI conjI refl)+
+              apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
+             apply (erule comp_producing.cases; simp)
+             apply (blast dest: comp_producing_silentD)
+            apply (rule silent_cong.base)
+            apply (rule exI conjI refl)+
+            apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
+           apply (rule silent_cong.base)
+           apply (rule exI conjI refl)+
+           apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
+          apply (erule comp_producing.cases; simp)
+          apply (blast dest: comp_producing_silentD)
+         apply (rule silent_cong.base)
+         apply (rule exI conjI refl)+
+         apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
+        apply (rule silent_cong.base)
+        apply (rule exI conjI refl)+
+        apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
+       apply (erule comp_producing.cases; simp)
+       apply (blast dest: comp_producing_silentD)
+      apply (erule comp_producing.cases; simp)
+      apply (blast dest: comp_producing_silentD)
+      done
+    done
+  subgoal for buf op1 op2 lxs p
+    sorry
+  subgoal for buf op1 op2 lxs p
+    sorry
+  subgoal for buf op1 op2 lxs p
+    sorry
+  subgoal for buf op1 op2 lxs p
+    sorry
+  subgoal for buf op1 op2 lxs p
+    sorry
+  subgoal for buf op1 op2 lxs p
+    sorry
+  done
 
 lemma produce_comp_op:
    "\<exists>lzs. (\<forall>p'. cembed (produce p' (map_op id (case_option undefined id o wire) op1) (lxs o Inl)) (lzs p')) \<and>
