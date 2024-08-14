@@ -38,6 +38,54 @@ coinductive produced where
 | "produced op lxs lys \<Longrightarrow> produced (Write op p x) lxs (lys(p := LCons x (lys p)))"
 | "produced End lxs (\<lambda>_. LNil)"
 
+inductive producing for p where
+  "producing p End lxs 0"
+| "producing p (Write _ p _) lxs 0"
+| "producing p (f (CHD p' lxs)) (CTL p' lxs) i \<Longrightarrow> producing p (Read p' f) lxs (Suc i)"
+| "p \<noteq> p' \<Longrightarrow> producing p op lxs i \<Longrightarrow> producing p (Write op p' x) lxs (Suc i)"
+
+inductive_cases producing_EndE[elim!]: "producing p End lxs n"
+inductive_cases producing_WriteE[elim!]: "producing p (Write op p' x) lxs n"
+inductive_cases producing_ReadE[elim!]: "producing p (Read p' f) lxs n"
+
+lemma producing_inject: "producing p op lxs i \<Longrightarrow> producing p op lxs j \<Longrightarrow> i = j"
+  by (induct op lxs i arbitrary: j rule: producing.induct) fastforce+
+
+lemma The_producing: "producing p op lxs i \<Longrightarrow> The (producing p op lxs) = i"
+  using producing_inject by fast
+
+corecursive produce where
+  "produce op lxs p = (let produce' = (\<lambda>op' lxs'. if \<exists>i. producing p op lxs i then produce op' lxs' p else LNil) in case op of
+    Read p' f \<Rightarrow> (produce' (f (CHD p' lxs)) (CTL p' lxs))
+  | Write op' p' x \<Rightarrow> (if p = p' then LCons x (produce op' lxs p) else produce' op' lxs)
+  | End \<Rightarrow> LNil)"
+  by (relation "measure (\<lambda>(op, lxs, p). THE i. producing p op lxs i)")
+    (auto 0 3 simp: The_producing del: producing_ReadE producing_WriteE elim: producing.cases)
+
+lemma produce_code[code]:
+  "produce op lxs p = (case op of
+    Read p' f \<Rightarrow> produce (f (CHD p' lxs)) (CTL p' lxs) p
+  | Write op' p' x \<Rightarrow> (if p = p' then LCons x (produce op' lxs p) else produce op' lxs p)
+  | End \<Rightarrow> LNil)"
+  apply (subst produce.code)
+  apply (simp split: op.splits if_splits)
+  apply safe
+  subgoal for p' f
+    by (subst produce.code) (auto 0 5 split: op.splits intro: producing.intros)
+  subgoal for op p x
+    by (subst produce.code) (auto 0 4 split: op.splits intro: producing.intros)
+  done
+
+simps_of_case produce_simps[simp]: produce_code
+
+lemma produced_produce: "produced op lxs (produce op lxs)"
+  apply (coinduction arbitrary: op lxs)
+  subgoal for op lxs
+    apply (cases op)
+      apply force+
+    done
+  done
+
 inductive vocal for p where
   Write_same: "x \<noteq> EOS \<Longrightarrow> vocal p (Write op p x) lxs"
 | Write_other: "p \<noteq> p' \<Longrightarrow> vocal p op' lxs \<Longrightarrow> vocal p (Write op' p' x) lxs"
@@ -342,11 +390,24 @@ lemma vocal_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longrig
   qed (auto intro: vocal.intros)
   done
 
-definition "extend buf R lxs lys = (\<exists>lzs. )"
+fun bapp where
+  "bapp BEmpty lxs = lxs"
+| "bapp BEnded lxs = LNil"
+| "bapp (BCons x xs) lxs = LCons x (bapp xs lxs)"
 
-lemma "produced (comp_op wire buf op1 op2) =
+definition "extend buf R lxs lys = (\<exists>lzs. R lxs lzs \<and> (\<forall>p. lys (Inr p) = bapp (buf p) (lzs (Inr p))))"
+
+definition "compose R S lxs lys = (\<exists>lzs. R (lxs o Inl) (case_sum (lys o Inl) lzs) \<and> S lzs (lys o Inr))"
+
+lemma "produced (comp_op wire buf op1 op2) \<le>
   compose (extend (\<lambda>p. if p \<in> ran wire then buf p else BEmpty) (produced (map_op id (\<lambda>p. case wire p of Some q \<Rightarrow> Inr q | _ \<Rightarrow> Inl p) op1)))
           (produced op2)"
+  unfolding compose_def extend_def
+  apply (rule predicate2I)
+  apply (rule exI conjI)+
+  apply (rule produced_produce)
+   apply auto
+  oops
 
 (*
 lemma produce_map_op:
