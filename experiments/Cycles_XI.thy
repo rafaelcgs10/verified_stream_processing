@@ -494,9 +494,6 @@ lemma produced_map_op:
         
 
         
-
-        sorry
-
 (*
 lemma produce_map_op:
   "inj_on g (inputs op) \<Longrightarrow>
