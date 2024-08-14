@@ -38,6 +38,25 @@ coinductive produced where
 | "produced op lxs lys \<Longrightarrow> produced (Write op p x) lxs (lys(p := LCons x (lys p)))"
 | "produced End lxs (\<lambda>_. LNil)"
 
+inductive_cases produced_EndE[elim!]: "produced End lxs lys"
+inductive_cases produced_WriteE[elim!]: "produced (Write op p' x) lxs lys"
+inductive_cases produced_ReadE[elim!]: "produced (Read p' f) lxs lys"
+
+lemma produced_restrict_outputs: "produced op lxs lys \<Longrightarrow> outputs op \<subseteq> A \<Longrightarrow> produced op lxs (\<lambda>p. if p \<in> A then lys p else LNil)"
+  apply (coinduction arbitrary: op lxs lys)
+  subgoal for op lxs lys
+    apply (cases op)
+      apply (auto)
+      apply (drule spec)
+      apply (drule mp)
+       apply (auto simp: fun_eq_iff) [2]
+    apply (rule exI conjI[rotated] disjI1)+
+      apply assumption
+    apply (rule refl)
+    apply (auto simp: fun_eq_iff) []
+    done
+  done
+    
 inductive producing for p where
   "producing p End lxs 0"
 | "producing p (Write _ p _) lxs 0"
@@ -397,17 +416,86 @@ fun bapp where
 
 definition "extend buf R lxs lys = (\<exists>lzs. R lxs lzs \<and> (\<forall>p. lys (Inr p) = bapp (buf p) (lzs (Inr p))))"
 
-definition "compose R S lxs lys = (\<exists>lzs. R (lxs o Inl) (case_sum (lys o Inl) lzs) \<and> S lzs (lys o Inr))"
+definition "compose A R S lxs lys = (\<exists>lzs. R (lxs o Inl) (case_sum (lys o Inl) lzs) \<and> S (\<lambda>p. if p \<in> A then lzs p else lxs (Inr p)) (lys o Inr))"
 
-lemma "produced (comp_op wire buf op1 op2) \<le>
-  compose (extend (\<lambda>p. if p \<in> ran wire then buf p else BEmpty) (produced (map_op id (\<lambda>p. case wire p of Some q \<Rightarrow> Inr q | _ \<Rightarrow> Inl p) op1)))
+lemma produced_comp_op:
+ "produced (comp_op wire buf op1 op2) \<le>
+  compose (ran wire) (extend (\<lambda>p. if p \<in> ran wire then buf p else BEmpty) (produced (map_op id (\<lambda>p. case wire p of Some q \<Rightarrow> Inr q | _ \<Rightarrow> Inl p) op1)))
           (produced op2)"
   unfolding compose_def extend_def
   apply (rule predicate2I)
   apply (rule exI conjI)+
   apply (rule produced_produce)
    apply auto
-  oops
+  sorry
+
+(*
+   inj_on g (inputs op) \<Longrightarrow>
+   (\<And>x. x \<in> outputs op \<Longrightarrow> h' (h x) = x) \<Longrightarrow>
+   (\<And>x. h (h' x) = x) \<Longrightarrow>
+*)
+
+lemma produced_cong:
+  "produced op lxs lys \<Longrightarrow>
+   \<forall> p \<in> inputs op. lxs p = lxs' p \<Longrightarrow>
+   produced op lxs' lys"
+  sorry
+
+lemma produced_map_op:
+  "inj_on g (inputs op) \<Longrightarrow>
+   (\<And>x. x \<in> outputs op \<Longrightarrow> h' (h x) = x) \<Longrightarrow>
+   (\<And>x. h (h' x) = x) \<Longrightarrow>
+   produced (map_op g h op) \<le>  BNF_Def.vimage2p (\<lambda> lxs. lxs o g) (\<lambda> lys. lys o h) (produced op)"
+  unfolding vimage2p_def
+  apply (rule predicate2I)
+  subgoal for lxs lys
+    apply (subgoal_tac "\<And> lxs' lys'.
+                        (\<forall>p \<in> inputs op. lxs (g p) = lxs' p) \<Longrightarrow> produced op lxs' (lys \<circ> h)")
+     apply (simp add: o_def)
+    subgoal for lxs'
+    apply (coinduction arbitrary: op lxs lys lxs' rule: produced.coinduct)
+    subgoal for op lxs lys lxs'
+      apply (cases op)
+      subgoal for p f
+        apply (auto 0 0)
+         apply (drule spec2)
+         apply (drule mp)
+        apply assumption
+         apply (drule mp)
+        apply (simp add: inj_on_def)
+         apply (drule mp)
+          apply simp
+         apply (erule exE disjE conjE)+
+        apply force
+         apply (metis DiffI UN_iff fun_upd_apply imageI iso_tuple_UNIV_I singletonD)
+        apply (rule exI conjI refl)+
+         apply (simp add: inj_on_def)
+        apply (rule conjI)
+        apply blast
+        apply (rule conjI)
+         apply simp
+        apply blast
+        done
+      subgoal for op' p x
+        apply (auto 0 0)
+        subgoal premises prems for lys'
+          apply (rule exI[where x="lys' o h"] conjI)+
+           apply (auto simp add: o_def fun_eq_iff) []
+          sledgehammer
+          sorry
+        done
+      subgoal
+        apply (auto simp: fun_eq_iff)
+        done
+      done
+    done
+  done
+  done
+        
+
+        
+
+        sorry
 
 (*
 lemma produce_map_op:
@@ -1364,18 +1452,23 @@ lemma "produce (comp_op wire buf op1 op2) lxs p = (case p of
 definition "pcomp_op = comp_op (\<lambda>_. None) (\<lambda>_. BEnded)"
 
 lemma inputs_pcomp_op[simp]:
-  "inputs (pcomp_op op1 op2) = Inl ` inputs op1 \<union> Inr ` inputs op2"
-  unfolding pcomp_op_def by auto
+  "inputs (pcomp_op op1 op2) \<subseteq> Inl ` inputs op1 \<union> Inr ` inputs op2"
+  unfolding pcomp_op_def by (auto dest: inputs_comp_op)
 
 lemma outputs_pcomp_op[simp]:
   "outputs (pcomp_op op1 op2) = Inl ` outputs op1 \<union> Inr ` outputs op2"
   unfolding pcomp_op_def by auto
+term BNF_Def.vimage2p
 
-lemma produce_pcomp_op:
-  "produce p (pcomp_op op1 op2) lxs =
-    (case p of Inl p1 \<Rightarrow> produce p1 op1 (lxs o Inl) | Inr p2 \<Rightarrow> produce p2 op2 (lxs o Inr))"
-  unfolding produce_comp_op pcomp_op_def
-  by (auto split: sum.splits simp add: o_def)
+definition conv where
+  "conv f = (f o Inl, f o Inr)"
+
+lemma produced_pcomp_op:
+  "produced (pcomp_op op1 op2) \<le> BNF_Def.vimage2p conv conv (rel_prod (produced op1) (produced op2))"
+  unfolding pcomp_op_def
+  apply (rule order_trans[OF produced_comp_op])
+  apply (auto simp: vimage2p_def conv_def compose_def extend_def o_def)
+  sorry
 
 definition "scomp_op op1 op2 = map_op projl projr (comp_op Some (\<lambda>_. BEmpty) op1 op2)"
 
@@ -1387,8 +1480,8 @@ lemma outputs_scomp_op[simp]:
   "outputs (scomp_op op1 op2) = outputs op2"
   unfolding scomp_op_def by (force simp: op.set_map ran_def)
 
-lemma produce_scomp_op:
-  "produce p (scomp_op op1 op2) lxs = produce p op2 (\<lambda>p. produce p op1 lxs)"
+lemma produced_scomp_op:
+  "produced (scomp_op op1 op2) \<le> produced op1 OO produced op2"
   unfolding scomp_op_def fun_eq_iff
   by (subst produce_map_op[where g=projl and h'=Inr and h=projr, simplified])
     (auto split: sum.splits simp add: ranI o_def id_def op.map_ident inj_on_def produce_comp_op)
