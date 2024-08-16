@@ -96,6 +96,8 @@ coinductive silent for p where
 | Write: "p \<noteq> p' \<Longrightarrow> silent p op' lxs \<Longrightarrow> silent p (Write op' p' x) lxs"
 | Read: "silent p (f (CHD p' lxs)) (CTL p' lxs) \<Longrightarrow> silent p (Read p' f) lxs"
 
+term silent
+
 inductive_cases silent_EndE[elim!]: "silent p End lxs"
 inductive_cases silent_WriteE[elim!]: "silent p (Write op p' x) lxs"
 inductive_cases silent_ReadE[elim!]: "silent p (Read p' f) lxs"
@@ -681,54 +683,22 @@ lemma input_depth_Read_diff:
   apply (smt (verit, del_insts) LeastI Least_le arg_min_nat_le comp_eq_dest_lhs input_at_mono)
   done
 
-lemma aux:
-  "input_depth p (Read (Inl p1) (\<lambda>y1. comp_op wire buf (f y1) op2)) = Suc n \<Longrightarrow>
-   p \<noteq> Inl p1 \<Longrightarrow>
-   p \<in> inputs (comp_op wire buf op1 op2) \<Longrightarrow>
-   op1 \<in> range f \<Longrightarrow>
-   \<exists> op1 \<in> range f. input_depth p (comp_op wire buf op1 op2) \<le> n \<and> p \<in> inputs (comp_op wire buf op1 op2)"
-  apply (subst (asm) input_depth_Read_diff)
-    apply auto
-  by (meson arg_min_natI order_refl)
-
-find_theorems input_depth
-
-lemma input_depth_Read_simp:
-  "input_depth p (Read p' f) =
-  (if p = p' then 0 else (if \<exists>x. p \<in> inputs (f x) then Suc (input_depth p (f (ARG_MIN (input_depth p \<circ> f) x. p \<in> inputs (f x)))) else undefined))"
-  apply (auto simp add: input_depth_Read input_depth_Read_diff split: if_splits)
-  oops
-
-
 lemma input_depth_arg_min_le[simp]:
   "p \<in> inputs (f x) \<Longrightarrow>
    input_depth p (f (ARG_MIN (input_depth p o f) x. p \<in> inputs (f x))) \<le> input_depth p (f x)"
   by (metis arg_min_nat_le comp_apply)
 
-lemma input_depth_com_op_arg_min_le_1[]:
-  "p \<in> inputs (comp_op wire buf (f1 x) op2) \<Longrightarrow>
-  input_depth p (comp_op wire buf (f1 (ARG_MIN (input_depth p \<circ> (\<lambda>x. comp_op wire buf (f1 x) op2)) x. p \<in> inputs (comp_op wire buf (f1 x) op2))) op2)
-  \<le> input_depth p (comp_op wire buf (f1 x) op2)"
-  by (metis (mono_tags, lifting) arg_min_nat_le comp_apply)
-
-lemma input_depth_com_op_arg_min_le_2[]:
-  "p \<in> inputs (comp_op wire buf op1 (f2 x)) \<Longrightarrow>
-   input_depth p (comp_op wire buf op1 
-   (f2 (ARG_MIN (input_depth p \<circ> (\<lambda>y. comp_op wire buf op1 (f2 y))) xa. p \<in> inputs (comp_op wire buf op1 (f2 xa)))))
-   \<le> input_depth p (comp_op wire buf op1 (f2 x))"
-  by (metis (mono_tags, lifting) arg_min_nat_le comp_apply)
-
-lemma aux2[simp]:
+lemma inputs_comp_op_arg_min_1[simp]:
   "p \<in> inputs (comp_op wire buf (f1 x) op) \<Longrightarrow>
    p \<in> inputs (comp_op wire buf (f1 (ARG_MIN (m :: _ \<Rightarrow> nat) x. p \<in> inputs (comp_op wire buf (f1 x) op))) op)"
   by (rule arg_min_natI)
 
-lemma aux3[simp]:
+lemma inputs_comp_op_arg_min_2[simp]:
   "p \<in> inputs (comp_op wire buf op (f2 y)) \<Longrightarrow>
    p \<in> inputs (comp_op wire buf op (f2 (ARG_MIN (m :: _ \<Rightarrow> nat) y. p \<in> inputs (comp_op wire buf op (f2 y)))))"
   by (rule arg_min_natI)
 
-lemma aux4[simp]:
+lemma inputs_comp_op_arg_min_3[simp]:
   "p \<in> inputs (comp_op wire buf (f1 x) (f2 y)) \<Longrightarrow>
    p \<in> inputs
          (comp_op wire buf
@@ -741,21 +711,6 @@ lemma input_depth_Read_diff'[simp]:
   "p \<noteq> p' \<Longrightarrow> p \<in> inputs (f x) \<Longrightarrow>
    input_depth p (Read p' f) = Suc (input_depth p (f (arg_min (input_depth p o f) (\<lambda>x. p \<in> inputs (f x)))))"
   by (metis input_depth_Read_diff)
-
-lemma input_depth_com_op_arg_min_le_3[simp]:
-  "p \<in> inputs (comp_op wire buf (f1 x) (f2 y)) \<Longrightarrow>
-  input_depth p (comp_op wire buf 
-  (f1 (ARG_MIN (input_depth p \<circ> (\<lambda>x. comp_op wire buf (f1 x) (f2 y))) x. p \<in> inputs (comp_op wire buf (f1 x) (f2 y))))
-  (f2 (ARG_MIN (input_depth p \<circ> (\<lambda>y. comp_op wire buf (f1 x) (f2 y))) xa. p \<in> inputs (comp_op wire buf (f1 x) (f2 xa)))))
-  \<le> input_depth p (comp_op wire buf (f1 x) (f2 y))"
-  oops
-(* 
-lemma input_depth_Read_diff'[simp]: 
-  "p \<noteq> p' \<Longrightarrow> p \<in> inputs (f x) \<Longrightarrow>
-   input_depth p (Read p' f) = Suc (input_depth p (f (arg_min (input_depth p o f) (\<lambda>x. p \<in> inputs (f x)))))"
-  by (metis input_depth_Read_diff) *)
-
-  find_theorems inputs name: indu
 
 lemma inputs_comp_producing:
   "p \<in> inputs (comp_op wire buf op1 op2) \<Longrightarrow> 
@@ -800,7 +755,7 @@ lemma comp_op_Read_simps:
   "comp_op wire buf (Read p f) (Write op' p' y) = Read (Inl p) (\<lambda> x. Write (comp_op wire buf (f x) op') (Inr p') y)"
   "comp_op wire buf (Read p f) (Read p' f') =
    Read (Inl p) (if p' \<in> ran wire then \<lambda>y1. comp_op wire (buf(p' := btl (buf p'))) (f y1) (f' (BHD p' buf)) else (\<lambda>y1. Read (Inr p') (\<lambda>y2. comp_op wire buf (f y1) (f' y2))))"
-  apply auto
+    apply auto
   done
 
 lemma comp_op_Read_simps_case:
@@ -816,7 +771,6 @@ lemma comp_op_Read_simps_case:
 lemma input_depth_Read_0[simp]:
   "input_depth p (Read p f) = 0"
   by (simp add: input_depth_Read)
-
 
 lemma input_depth_Suc_diff[simp]:
   "input_depth p (comp_op wire buf op1 op2) = Suc n \<Longrightarrow>
@@ -838,28 +792,6 @@ lemma input_depth_Read_Write[simp]:
   apply auto
   done
 
-lemma input_depth_Read_Read[simp]:
-  "p \<in> inputs (comp_op wire buf (f1 y) (f1' z)) \<Longrightarrow>
-   p \<noteq> Inl p1 \<Longrightarrow>
-   p \<notin> Inr ` (insert p1' (\<Union>a. inputs (f1' a)) - ran wire) \<Longrightarrow>
-   p1' \<notin> ran wire \<Longrightarrow>
-   input_depth p (comp_op wire buf (Read p1 f1) (Read p1' f1')) >
-    input_depth p (comp_op wire buf (f1 (ARG_MIN (input_depth p \<circ> (\<lambda>y1. Read (Inr p1') (\<lambda>y2. comp_op wire buf (f1 y1) (f1' y2)))) x. p \<in> inputs (Read (Inr p1') (\<lambda>y2. comp_op wire buf (f1 x) (f1' y2)))))
-    (f1' (ARG_MIN (input_depth p \<circ> (\<lambda>y2. comp_op wire buf
-                                             (f1 (ARG_MIN (input_depth p \<circ> (\<lambda>y1. Read (Inr p1') (\<lambda>y2. comp_op wire buf (f1 y1) (f1' y2)))) x. p \<in> inputs (Read (Inr p1') (\<lambda>y2. comp_op wire buf (f1 x) (f1' y2)))))
-                                             (f1' y2))) x. p \<in> inputs (comp_op wire buf
-                                        (f1 (ARG_MIN (input_depth p \<circ> (\<lambda>y1. Read (Inr p1') (\<lambda>y2. comp_op wire buf (f1 y1) (f1' y2)))) x. p \<in> inputs (Read (Inr p1') (\<lambda>y2. comp_op wire buf (f1 x) (f1' y2)))))
-                                        (f1' x)))))"
-  apply simp
-  apply (subst input_depth_Read_diff)
-    apply fast
-   apply auto
-  apply (subst input_depth_Read_diff)
-    apply blast
-  apply (smt (verit, ccfv_threshold) Diff_iff arg_min_natI image_iff insertI1)
-  apply auto
-  done  
-
 lemma comp_producing_inputs_comp_op:
   fixes op1 :: "('ip1, 'op1, 'd) op" and op2 :: "('ip2, 'op2, 'd) op"
   shows "comp_producing wire buf op1 op2 i \<Longrightarrow>
@@ -872,20 +804,20 @@ lemma comp_producing_inputs_comp_op:
     p \<in> Inl ` inputs op1 \<union> Inr ` (inputs op2 - ran wire)"
   apply (induct buf op1 op2 i rule: comp_producing.induct)
              apply (auto 7 7 intro: le_SucI split: if_splits option.splits)
-  apply (fastforce intro!: le_SucI)+
+          apply (fastforce intro!: le_SucI)+
   subgoal
     apply (rule ccontr)
     apply (subst (asm) input_depth_Read_diff)
-     apply fastforce+
+      apply fastforce+
     done
   subgoal
-     apply fastforce+
+    apply fastforce+
     done
   subgoal for buf p1 f1 p2 f2 x y
     apply (subst (asm) input_depth_Read_diff)
       apply auto
-     apply (subst (asm) (1 2) input_depth_Read_diff)
-      apply auto
+    apply (subst (asm) (1 2) input_depth_Read_diff)
+        apply auto
       apply (smt (verit, del_insts) DiffI arg_min_natI image_iff insert_iff)
      apply (smt (verit, del_insts) DiffI arg_min_natI image_iff insert_iff)
     apply hypsubst_thin
@@ -894,14 +826,14 @@ lemma comp_producing_inputs_comp_op:
      apply (rule le_SucI)
      apply (rule order_refl)
     apply (drule meta_mp)
-    apply (smt (verit, del_insts) Diff_iff arg_min_natI image_iff insertI1)
+     apply (smt (verit, del_insts) Diff_iff arg_min_natI image_iff insertI1)
     apply auto
     done
   subgoal
-      apply (force intro!: le_SucI)+
+    apply (force intro!: le_SucI)
     done
   subgoal
-      apply (force intro!: le_SucI)+
+    apply (force intro!: le_SucI)
     done
   done
 
@@ -939,11 +871,19 @@ lemma inputs_comp_op: "p \<in> inputs (comp_op wire buf op1 op2) \<Longrightarro
             using prems(1) apply -
             apply hypsubst_thin
             apply (rule ccontr)
-            apply (frule input_depth_Read_Read)
-               apply blast+
+            apply simp
+            apply (subst (asm) input_depth_Read_diff)
+              apply fast
+             apply auto
+            apply (subst (asm) input_depth_Read_diff)
+              apply blast
+             apply (smt (verit, ccfv_threshold) Diff_iff arg_min_natI image_iff insertI1)
+            apply auto
             apply (drule meta_spec)+
             apply (drule meta_mp)
-             apply assumption
+             apply (subst less_Suc_eq_le)
+             apply (rule le_SucI)
+             apply (rule order_refl)
             apply (drule meta_mp)
              apply force+
             done
@@ -1011,7 +951,7 @@ lemma inputs_comp_op: "p \<in> inputs (comp_op wire buf op1 op2) \<Longrightarro
             done
           subgoal
             apply (subst (asm) (1) input_depth_Read_diff)
-                apply blast+
+              apply blast+
             apply (drule meta_spec)+
             apply (drule meta_mp)
              apply (subst less_Suc_eq_le)
@@ -1042,7 +982,85 @@ lemma inputs_comp_op_le:
   "inputs (comp_op wire buf op1 op2) \<subseteq> Inl ` inputs op1 \<union> Inr ` (inputs op2 - ran wire)"
   using inputs_comp_op by blast
 
-lemma outputs_comp_op:
+inductive output_at where
+  "output_at p (Write op' p x) n"
+| "p \<noteq> p' \<Longrightarrow> output_at p op' n \<Longrightarrow> output_at p (Write op' p' x) (Suc n)"
+| "output_at p op' n \<Longrightarrow> op' \<in> range f \<Longrightarrow> output_at p (Read p' f) (Suc n)"
+
+lemma outputs_output_at: "p \<in> outputs op \<Longrightarrow> \<exists>n. output_at p op n"
+  by (induct p op rule: op.set_induct(2)) (auto intro: output_at.intros)
+
+lemma output_at_outputs: "output_at p op n \<Longrightarrow> p \<in> outputs op"
+  by (induct p op n rule: output_at.induct) auto
+
+lemma outputs_alt: "p \<in> outputs op \<longleftrightarrow> (\<exists>n. output_at p op n)"
+  by (metis output_at_outputs outputs_output_at)
+
+definition "output_depth p op = (LEAST n. output_at p op n)"
+
+lemma output_depth_Write_simp_eq[simp]:
+  "output_depth p (Write op p x) = 0"
+  by (simp add: output_depth_def output_at.intros(1))
+
+lemma output_at_mono: "output_at p op n \<Longrightarrow> n \<le> m \<Longrightarrow> output_at p op m"
+  by (induct p op n arbitrary: m rule: output_at.induct)
+    (auto intro: output_at.intros simp: less_eq_nat.simps split: nat.splits)
+
+lemma output_depth_Write_simp_diff[simp]:
+  "output_depth p (Write op p' x) = 0"
+  oops
+
+lemma output_depth_Read[simp]:
+  "\<exists>x. p \<in> outputs (f x) \<Longrightarrow>
+   output_depth p (Read p' f) = Suc (output_depth p (f (arg_min (output_depth p o f) (\<lambda>x. p \<in> outputs (f x)))))"
+  unfolding output_depth_def outputs_alt
+  apply (erule exE)
+  subgoal for  d
+    apply (frule arg_min_natI[of "\<lambda>x. \<exists>n. output_at p (f x) n" _ "output_depth p o f"])
+    unfolding output_depth_def
+    apply (erule exE)+
+    apply (rule Least_Suc2)
+       apply (erule output_at.intros)
+       apply simp_all
+     apply (meson Zero_neq_Suc op.distinct(1) output_at.cases)
+    apply (auto elim: output_at.cases intro: output_at.intros)
+    apply (erule output_at.cases[of _ "Read p' f"])
+      apply auto
+    using output_at_mono 
+    apply (smt (verit, ccfv_SIG) LeastI Least_le arg_min_nat_le comp_eq_dest_lhs)
+    done
+  done
+
+
+thm inputs_comp_op
+
+lemma outputs_comp_op: 
+  "p \<in> outputs (comp_op wire buf op1 op2) \<Longrightarrow>
+   p \<in> Inl ` (outputs op1 - dom wire) \<union> Inr ` outputs op2"
+  apply (induct "output_depth p (comp_op wire buf op1 op2)" arbitrary: buf op1 op2 rule: less_induct)
+  subgoal for buf op1 op2
+    apply (cases "output_depth p (comp_op wire buf op1 op2)")
+    subgoal
+(*       apply simp
+      apply (simp add: input_depth_Read)
+      apply auto
+      apply (cases "\<exists>n. comp_producing wire buf op1 op2 n"; (simp add: not_comp_producing_eq_End)?)
+      apply (erule exE)+
+      subgoal premises prems for f n
+        using prems(3,1-2)
+        apply (induct buf op1 op2 n arbitrary: p f rule: comp_producing.induct)
+                   apply (auto split: if_splits option.splits)
+        done
+      done
+    subgoal premises prems for n
+      unfolding less_Suc_eq_le apply -
+      using prems(2-) apply -
+      apply (cases op1)
+      apply (auto split: if_splits option.splits simp: input_depth_Read_diff) *)
+      oops
+
+
+lemma outputs_comp_op_le:
   "outputs (comp_op wire buf op1 op2) \<subseteq> Inl ` (outputs op1 - dom wire) \<union> Inr ` outputs op2"
   sorry (* Rafael *)
 
