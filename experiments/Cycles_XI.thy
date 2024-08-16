@@ -94,6 +94,18 @@ corec fairmerge :: "bool \<Rightarrow> bool \<Rightarrow> (2, 1, nat) op" where
     | (False, False) \<Rightarrow>
       Read 0 (case_observation (Write (Read 1 (case_observation (Write (fairmerge e1 e2) 0) (fairmerge e1 e2) (fairmerge e1 True))) 0)
      (Read 1 (case_observation (Write (fairmerge e1 e2) 0) (fairmerge e1 e2) (fairmerge e1 True))) (fairmerge True e2)))"
+
+coinductive merged where
+  "merged LNil lxs lxs"
+| "merged lxs LNil lxs"
+| "xs \<noteq> [] \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> merged lxs lys lzs \<Longrightarrow>
+   merged (lappend (llist_of xs) lxs) (lappend (llist_of ys) lys) (lappend (llist_of (xs @ ys)) lzs)"
+| "xs \<noteq> [] \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> merged lxs lys lzs \<Longrightarrow>
+   merged (lappend (llist_of xs) lxs) (lappend (llist_of ys) lys) (lappend (llist_of (ys @ xs)) lzs)"
+
+lemma "merged (lxs 0) (lxs 1) (lzs 0) \<Longrightarrow> \<lbrakk>fairmerge False False\<rbrakk> lxs lzs"
+  sorry
+
 (*
 lemma "\<lbrakk>fairmerge False False\<rbrakk> (\<lambda>x. if x = 0 then llist_of [1, 2, 3] else llist_of [4, 5]) (\<lambda>_. llist_of [4,1,2,3,5])"
   unfolding semantics_def
