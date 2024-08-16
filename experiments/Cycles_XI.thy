@@ -103,7 +103,7 @@ coinductive merged where
 | "xs \<noteq> [] \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> merged lxs lys lzs \<Longrightarrow>
    merged (lappend (llist_of xs) lxs) (lappend (llist_of ys) lys) (lappend (llist_of (ys @ xs)) lzs)"
 
-lemma "merged (lxs 0) (lxs 1) (lzs 0) \<Longrightarrow> \<lbrakk>fairmerge False False\<rbrakk> lxs lzs"
+lemma "merged (lxs 0) (lxs 1) lzs \<Longrightarrow> \<lbrakk>fairmerge e1 e2\<rbrakk> lxs (\<lambda>_. if e1 then lxs 1 else if e2 then lxs 0 else lzs)"
   sorry
 
 (*
