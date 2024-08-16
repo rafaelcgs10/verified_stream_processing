@@ -613,6 +613,32 @@ lemma semantics_loop_op:
      (lift (ran wire) lzs lxs) (case_sum lys lzs)"
   sorry
 
+lemma semantics_loop_op_BEmpty:
+ "semantics (loop_op wire (\<lambda>p. BEmpty) op) lxs lys \<Longrightarrow>
+  \<exists>lzs. semantics (map_op id (\<lambda>p. case wire p of Some q \<Rightarrow> Inr q | _ \<Rightarrow> Inl p) op)
+     (lift (ran wire) lzs lxs) (case_sum lys lzs)"
+  apply (drule semantics_loop_op)
+  apply (auto simp: extend_def o_def simp flip: fun_eq_iff cong: if_cong)
+  done
+
+lemma loop_producing_Some: "loop_producing wire buf op n \<Longrightarrow> wire = Some \<Longrightarrow> loop_op wire buf op = End"
+  apply (induct buf op n rule: loop_producing.induct)
+      apply (auto simp: ran_def)
+  done
+
+lemma loop_op_Some: "loop_op Some buf op = End"
+  apply (coinduction arbitrary: buf op)
+  apply auto
+  subgoal for buf op
+    apply (subst (asm) loop_op.code)
+    apply (auto simp: ran_def dest: loop_producing_Some split: op.splits if_splits)
+    done
+  subgoal for buf op
+    apply (subst (asm) loop_op.code)
+    apply (auto simp: ran_def dest: loop_producing_Some split: op.splits if_splits)
+    done
+  done
+
 lemma semantics_comp_op:
  "semantics (comp_op wire buf op1 op2) \<le>
   compose (ran wire) (extend (ran wire) buf (semantics (map_op id (\<lambda>p. case wire p of Some q \<Rightarrow> Inr q | _ \<Rightarrow> Inl p) op1)))
