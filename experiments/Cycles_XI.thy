@@ -606,6 +606,13 @@ lemma semantics_map_op_inj:
   apply (smt (verit, best) comp_apply silent_map_opI the_inv_f_f)
   done
 
+definition "lift A lxs lys p = (if p \<in> A then lxs p else lys p)"
+lemma semantics_loop_op:
+ "semantics (loop_op wire buf op) lxs lys \<Longrightarrow>
+  \<exists>lzs. extend (ran wire) buf (semantics (map_op id (\<lambda>p. case wire p of Some q \<Rightarrow> Inr q | _ \<Rightarrow> Inl p) op))
+     (lift (ran wire) lzs lxs) (case_sum lys lzs)"
+  sorry
+
 lemma semantics_comp_op:
  "semantics (comp_op wire buf op1 op2) \<le>
   compose (ran wire) (extend (ran wire) buf (semantics (map_op id (\<lambda>p. case wire p of Some q \<Rightarrow> Inr q | _ \<Rightarrow> Inl p) op1)))
