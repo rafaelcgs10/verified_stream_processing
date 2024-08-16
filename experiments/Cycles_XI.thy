@@ -69,18 +69,107 @@ abbreviation silenced where
   "silenced op lxs lys \<equiv> (\<forall>p. silent p op lxs \<longrightarrow> lys p = LNil)"
 
 coinductive produced where
-  "produced (f (CHD p lxs)) (CTL p lxs) lys \<Longrightarrow> produced (Read p f) lxs lys"
-| "produced (f EOB) lxs lys \<Longrightarrow> produced (Read p f) lxs lys"
-| "produced op lxs lys \<Longrightarrow> produced (Write op p x) lxs (lys(p := LCons x (lys p)))"
-| "produced End lxs lys"
+  "produced (fuel(p := n)) (f (CHD p lxs)) (CTL p lxs) lys \<Longrightarrow> produced fuel (Read p f) lxs lys"
+| "fuel p = Suc n \<Longrightarrow> produced (fuel(p := n)) (f EOB) lxs lys \<Longrightarrow> produced fuel (Read p f) lxs lys"
+| "produced fuel op lxs lys \<Longrightarrow> produced fuel (Write op p x) lxs (lys(p := LCons x (lys p)))"
+| "produced fuel End lxs lys"
 
 definition semantics ("\<lbrakk>_\<rbrakk>") where
-  "\<lbrakk>op\<rbrakk> = (\<lambda>lxs lys. produced op lxs lys \<and> silenced op lxs lys)"
+  "\<lbrakk>op\<rbrakk> = (\<lambda>lxs lys. \<exists>m. produced m op lxs lys \<and> silenced op lxs lys)"
 
 lemma produced_Write: 
-  "produced op lxs lys \<Longrightarrow> lzs = lys(p := LCons x (lys p)) \<Longrightarrow> produced (Write op p x) lxs lzs"
+  "produced m op lxs lys \<Longrightarrow> lzs = lys(p := LCons x (lys p)) \<Longrightarrow> produced m (Write op p x) lxs lzs"
   by (simp add: produced.intros(3))
 
+(*
+corec merge :: "(2, 1, nat) op" where
+  "merge = Read 0 (case_observation (Write merge 0) (Read 1 (case_observation (Write merge 0) merge End)) End)"
+*)
+
+corec fairmerge :: "bool \<Rightarrow> bool \<Rightarrow> (2, 1, nat) op" where
+  "fairmerge e1 e2 = (case (e1, e2) of
+      (True, True) \<Rightarrow> End
+    | (True, False) \<Rightarrow> Read 1 (case_observation (Write (fairmerge e1 e2) 0) (fairmerge e1 e2) End)
+    | (False, True) \<Rightarrow> Read 0 (case_observation (Write (fairmerge e1 e2) 0) (fairmerge e1 e2) End)
+    | (False, False) \<Rightarrow>
+      Read 0 (case_observation (Write (Read 1 (case_observation (Write (fairmerge e1 e2) 0) (fairmerge e1 e2) (fairmerge e1 True))) 0)
+     (Read 1 (case_observation (Write (fairmerge e1 e2) 0) (fairmerge e1 e2) (fairmerge e1 True))) (fairmerge True e2)))"
+(*
+lemma "\<lbrakk>fairmerge False False\<rbrakk> (\<lambda>x. if x = 0 then llist_of [1, 2, 3] else llist_of [4, 5]) (\<lambda>_. llist_of [4,1,2,3,5])"
+  unfolding semantics_def
+  apply (rule exI[of _ "\<lambda>x. if x = 0 then 1 else 0"])
+  apply (rule conjI[rotated])
+  apply (subst fairmerge.code)
+  apply (auto elim!: chd.elims split: observation.splits) []
+   apply (metis num1_eq1)
+  apply (rule produced.coinduct[where X =
+    "\<lambda>m op l r. m = (\<lambda>x. if x = 0 then 1 else 0) \<and> op = fairmerge False False \<and> l = (\<lambda>x. if x = 0 then llist_of [1, 2, 3] else llist_of [4, 5]) \<and> r = (\<lambda>_. llist_of [4,1,2,3,5]) \<or>
+      m = (\<lambda>_. 0) \<and> op = Read 1 (case_observation (Write (fairmerge False False) 0) (fairmerge False False) (fairmerge False True)) \<and>  l = (\<lambda>x. if x = 0 then llist_of [1, 2, 3] else llist_of [4, 5]) \<and> r = (\<lambda>_. llist_of [4,1,2,3,5]) \<or> 
+      m = (\<lambda>x. if x = 0 then 0 else 3) \<and> op = Write (fairmerge False False) 0 4 \<and> l = (\<lambda>x. if x = 0 then llist_of [1, 2, 3] else llist_of [5]) \<and> r = (\<lambda>_. llist_of [4,1,2,3,5])
+      X" for X])
+   apply blast
+  apply (elim disjE conjE)
+   apply (subst (asm) fairmerge.code)
+   apply (unfold prod.case bool.case)
+   apply hypsubst_thin
+  apply (rule disjI2)
+   apply (rule disjI1)
+   apply (rule exI conjI refl)+
+     apply (simp_all add: fun_eq_iff) [2]
+  apply blast
+   apply hypsubst_thin
+   apply (rule disjI1)
+   apply (rule exI conjI refl)+
+     apply (simp_all add: fun_eq_iff) [2]
+  apply blast
+*)
+(*
+  oops
+   apply (rule produced.coinduct[where X =
+     "\<lambda>op l r. (\<exists>lxs lys. op = merge \<and> l = (\<lambda>x. if x = 0 then lxs else lys) \<and> r = (\<lambda>_. lxs)) \<or>
+               (\<exists>lxs lys x. op = Write merge 0 x \<and> l = (\<lambda>x. if x = 0 then lxs else lys) \<and> r = (\<lambda>_. LCons x lxs)) \<or>
+               (\<exists>lxs lys. op = Read 1 (case_observation (Write merge 0) merge End) \<and> l = (\<lambda>x. if x = 0 then lxs else lys) \<and> r = (\<lambda>_. lxs))"])
+    apply blast
+   apply (elim disjE exE conjE)
+  apply (subst (asm) merge.code)
+    apply hypsubst
+    apply (rule disjI1)
+    apply (force elim!: chd.elims intro: produced.intros split: observation.splits)
+    apply (rule disjI2)
+    apply (rule disjI2)
+    apply (rule disjI1)
+  subgoal for op l r lxs lys x
+    apply (auto simp: fun_eq_iff intro!: exI[of _ "\<lambda>x::2. if x = 0 then lxs else lys"] exI[of _ "\<lambda>_ :: 1. lxs"])
+    done
+    apply (rule disjI2)
+   apply (rule disjI1)
+   apply (auto elim!: chd.elims intro: produced.intros split: observation.splits) []
+  apply (subst merge.code)
+  apply (auto elim!: chd.elims split: observation.splits)
+  apply (metis num1_eq1)
+  apply (metis num1_eq1)
+  done
+
+lemma "\<lbrakk>merge\<rbrakk> (\<lambda>x. if x = 0 then lxs else lys) (\<lambda>_. LNil)"
+  unfolding semantics_def
+  apply (rule conjI)
+   apply (rule produced.coinduct[where X =
+     "\<lambda>op l r. (\<exists>lxs lys. op = merge \<and> l = (\<lambda>x. if x = 0 then lxs else lys) \<and> r = (\<lambda>_. LNil)) \<or>
+               (\<exists>lxs lys. op = Read 1 (case_observation (Write merge 0) merge End) \<and> l = (\<lambda>x. if x = 0 then lxs else lys) \<and> r = (\<lambda>_. LNil))"])
+    apply blast
+   apply (elim disjE exE conjE)
+  apply (subst (asm) merge.code)
+    apply hypsubst
+    apply (rule disjI2)
+    apply (rule disjI1)
+    apply (force elim!: chd.elims intro: produced.intros split: observation.splits)
+    apply (rule disjI2)
+   apply (rule disjI1)
+   apply (auto elim!: chd.elims intro: produced.intros split: observation.splits) []
+  apply (subst merge.code)
+  apply (auto elim!: chd.elims split: observation.splits)
+  done 
+*)
 inductive_cases produced_EndE[elim!]: "produced End lxs lys"
 inductive_cases produced_WriteE[elim!]: "produced (Write op p' x) lxs lys"
 inductive_cases produced_ReadE[elim!]: "produced (Read p' f) lxs lys"
