@@ -69,21 +69,339 @@ abbreviation silenced where
   "silenced op lxs lys \<equiv> (\<forall>p. silent p op lxs \<longrightarrow> lys p = LNil)"
 
 coinductive produced where
-  "produced (f (CHD p lxs)) (CTL p lxs) lys \<Longrightarrow> produced (Read p f) lxs lys"
-| "produced (f EOB) lxs lys \<Longrightarrow> produced (Read p f) lxs lys"
-| "produced op lxs lys \<Longrightarrow> produced (Write op p x) lxs (lys(p := LCons x (lys p)))"
-| "produced End lxs lys"
+  Read: "silenced (f (CHD p lxs)) (CTL p lxs) lys \<Longrightarrow> produced (fuel(p := n)) (f (CHD p lxs)) (CTL p lxs) lys \<Longrightarrow> produced fuel (Read p f) lxs lys"
+| ReadEOB: "silenced (f EOB) lxs lys \<Longrightarrow> fuel p = Suc n \<Longrightarrow> produced (fuel(p := n)) (f EOB) lxs lys \<Longrightarrow> produced fuel (Read p f) lxs lys"
+| Write: "silenced op lxs lys \<Longrightarrow> produced fuel op lxs lys \<Longrightarrow> produced fuel (Write op p x) lxs (lys(p := LCons x (lys p)))"
+| End: "produced fuel End lxs (\<lambda>_. LNil)"
 
 definition semantics ("\<lbrakk>_\<rbrakk>") where
-  "\<lbrakk>op\<rbrakk> = (\<lambda>lxs lys. produced op lxs lys \<and> silenced op lxs lys)"
+  "semantics op lxs lys = (\<exists>m. produced m op lxs lys)"
 
-lemma produced_Write: 
-  "produced op lxs lys \<Longrightarrow> lzs = lys(p := LCons x (lys p)) \<Longrightarrow> produced (Write op p x) lxs lzs"
+inductive_cases produced_EndE[elim!]: "produced m End lxs lys"
+inductive_cases produced_WriteE[elim!]: "produced m (Write op p' x) lxs lys"
+inductive_cases produced_ReadE[elim!]: "produced m (Read p' f) lxs lys"
+
+lemma produced_Write[intro]:
+  "silenced op lxs lys \<Longrightarrow> produced m op lxs lys \<Longrightarrow> lzs = lys(p := LCons x (lys p)) \<Longrightarrow> produced m (Write op p x) lxs lzs"
   by (simp add: produced.intros(3))
 
-inductive_cases produced_EndE[elim!]: "produced End lxs lys"
-inductive_cases produced_WriteE[elim!]: "produced (Write op p' x) lxs lys"
-inductive_cases produced_ReadE[elim!]: "produced (Read p' f) lxs lys"
+lemma produced_End[intro!]:
+  assumes "(\<And>p. lzs p = LNil)"
+  shows "produced m End lxs lzs"
+proof -
+  from assms have "(\<lambda>a. LNil) = lzs"
+    by (simp add: fun_eq_iff)
+  then show ?thesis
+    using produced.intros(4) by blast
+qed
+
+inductive produced_cong for R where
+  produced: "produced fuel op lxs lys \<Longrightarrow> produced_cong R fuel op lxs lys"
+| base: "R fuel op lxs lys \<Longrightarrow> produced_cong R fuel op lxs lys"
+| "write": "produced_cong R fuel op' lxs lys' \<Longrightarrow> lys = lys'(p := LCons x (lys' p)) \<Longrightarrow> produced_cong R fuel (Write op' p x) lxs lys"
+| read: "(\<And>n. fuel p = Suc n \<Longrightarrow> produced_cong R (fuel(p := n)) (f EOB) lxs lys) \<Longrightarrow>
+    produced_cong R (fuel(p := n)) (f (CHD p lxs)) (CTL p lxs) lys \<Longrightarrow>
+    produced_cong R fuel (Read p f) lxs lys"
+
+lemma produced_coinduct_upto:
+  assumes R: "R fuel op lxs lys"
+    and CIH: "\<And>fuel op lxs lys.
+    R fuel op lxs lys \<Longrightarrow>
+    (\<exists>p n f.
+        op = Read p f \<and>
+        silenced (f (CHD p lxs)) (CTL p lxs) lys \<and>
+        produced_cong R (fuel(p := n)) (f (CHD p lxs)) (CTL p lxs) lys) \<or>
+    (\<exists>p n f.
+        op = Read p f \<and>
+        fuel p = Suc n \<and>
+        silenced (f EOB) lxs lys \<and>
+        produced_cong R (fuel(p := n)) (f EOB) lxs lys) \<or>
+    (\<exists>op' lys' p x.
+        op = Write op' p x \<and>
+        silenced op' lxs lys' \<and>
+        lys = lys'(p := LCons x (lys' p)) \<and>
+        produced_cong R fuel op' lxs lys') \<or>
+    op = End \<and> lys = (\<lambda>_. LNil)"
+  shows "produced fuel op lxs lys"
+  apply (rule produced.coinduct[of "produced_cong R"])
+   apply (rule base, rule R)
+  subgoal for fuel op lxs lys
+    supply [[unify_search_bound = 100]]
+    apply (induct fuel op lxs lys rule: produced_cong.induct)
+    subgoal for fuel op lxs lys
+      by (erule produced.cases) (auto simp del: fun_upd_apply)
+    subgoal for fuel op lxs lys
+      by (drule CIH) (fastforce simp del: fun_upd_apply simp add: fun_upd_other)+
+    subgoal for fuel op' lxs lys' lys p x
+      by (auto simp del: fun_upd_apply simp add: fun_upd_other)
+    subgoal for fuel p f lxs lys n
+      by (auto simp del: fun_upd_apply simp add: fun_upd_other)
+    done
+  done
+
+inductive silent_cong for p R where
+  silent: "silent p op lxs \<Longrightarrow> silent_cong p R op lxs"
+| base: "R op lxs \<Longrightarrow> silent_cong p R op lxs"
+| "write": "p \<noteq> p' \<Longrightarrow> silent_cong p R op' lxs \<Longrightarrow> silent_cong p R (Write op' p' x) lxs"
+| read: "silent_cong p R (f EOB) lxs \<Longrightarrow> silent_cong p R (f (CHD p' lxs)) (CTL p' lxs) \<Longrightarrow> silent_cong p R (Read p' f) lxs"
+
+lemma silent_coinduct_upto:
+  assumes "R op lxs"
+  and "(\<And>op lxs.
+    R op lxs \<Longrightarrow>
+    (op = End) \<or>
+    (\<exists>p' op' x. op = Write op' p' x \<and> p \<noteq> p' \<and> silent_cong p R op' lxs) \<or>
+    (\<exists>f p'. op = Read p' f \<and> silent_cong p R (f (CHD p' lxs)) (CTL p' lxs) \<and> silent_cong p R (f EOB) lxs))"
+  shows "silent p op lxs"
+  apply (rule silent.coinduct[where X = "silent_cong p R"])
+   apply (rule silent_cong.intros, rule assms(1))
+  subgoal for op lxs
+    apply (induct op lxs pred: silent_cong)
+    subgoal
+      by (erule silent.cases) (auto simp del: fun_upd_apply)
+    subgoal for op lxs
+      by (drule assms) (auto simp del: fun_upd_apply)
+    subgoal for p' op' lxs x
+      by blast
+    subgoal for f lxs p'
+      by blast
+    done
+  done
+
+corec fairmerge :: "bool \<Rightarrow> bool \<Rightarrow> (2, 1, nat) op" where
+  "fairmerge e1 e2 = (case (e1, e2) of
+      (True, True) \<Rightarrow> End
+    | (True, False) \<Rightarrow> Read 2 (case_observation (Write (fairmerge e1 e2) 1) (fairmerge e1 e2) End)
+    | (False, True) \<Rightarrow> Read 1 (case_observation (Write (fairmerge e1 e2) 1) (fairmerge e1 e2) End)
+    | (False, False) \<Rightarrow>
+      Read 1 (case_observation (Write (Read 2 (case_observation (Write (fairmerge e1 e2) 1) (fairmerge e1 e2) (fairmerge e1 True))) 1)
+     (Read 2 (case_observation (Write (fairmerge e1 e2) 1) (fairmerge e1 e2) (fairmerge e1 True))) (fairmerge True e2)))"
+
+coinductive merged where
+  "merged LNil lxs lxs"
+| "merged lxs LNil lxs"
+| "xs \<noteq> [] \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> merged lxs lys lzs \<Longrightarrow>
+   merged (lappend (llist_of xs) lxs) (lappend (llist_of ys) lys) (lappend (llist_of (xs @ ys)) lzs)"
+| "xs \<noteq> [] \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> merged lxs lys lzs \<Longrightarrow>
+   merged (lappend (llist_of xs) lxs) (lappend (llist_of ys) lys) (lappend (llist_of (ys @ xs)) lzs)"
+
+lemma fairmerge_True_True: "\<lbrakk>fairmerge True True\<rbrakk> lxs lzs \<longleftrightarrow> lzs = (\<lambda>_. LNil)"
+  unfolding semantics_def
+  by (fastforce simp: fun_eq_iff fairmerge.code intro!: exI[of _ "\<lambda>_. 0"])
+
+lemma silent_fairmerge_True_False[simp]: "silent 1 (fairmerge True False) lxs \<longleftrightarrow> lxs 2 = LNil"
+  apply (rule iffI)
+  subgoal
+    apply (subst (asm) fairmerge.code)
+    apply (auto split: observation.splits  elim!: chd.elims)
+    done
+  subgoal
+    apply (coinduction arbitrary: lxs rule: silent_coinduct_upto)
+    apply (intro disjI2)
+    apply (subst fairmerge.code)
+    apply (auto intro: silent_cong.intros)
+    done
+  done
+
+lemma silent_fairmerge_False_True[simp]: "silent 1 (fairmerge False True) lxs \<longleftrightarrow> lxs 1 = LNil"
+  apply (rule iffI)
+  subgoal
+    apply (subst (asm) fairmerge.code)
+    apply (auto split: observation.splits  elim!: chd.elims)
+    done
+  subgoal
+    apply (coinduction arbitrary: lxs rule: silent_coinduct_upto)
+    apply (intro disjI2)
+    apply (subst fairmerge.code)
+    apply (auto intro: silent_cong.intros)
+    done
+  done
+
+lemma silent_fairmerge_False_False[simp]: "silent 1 (fairmerge False False) lxs \<longleftrightarrow> lxs 1 = LNil \<and> lxs 2 = LNil"
+  apply (rule iffI)
+  subgoal
+    apply (subst (asm) fairmerge.code)
+    apply (auto split: observation.splits  elim!: chd.elims)
+    done
+  subgoal
+    apply (coinduction arbitrary: lxs rule: silent_coinduct_upto)
+    apply (intro disjI2)
+    apply (subst fairmerge.code)
+    apply (auto intro!: silent_cong.read intro: silent_cong.base silent_cong.silent)
+    done
+  done
+
+lemma produced_silenced: "produced m op lxs lys \<Longrightarrow> silenced op lxs lys"
+  by (erule produced.cases) auto
+
+lemma fairmerge_True_False: "\<lbrakk>fairmerge True False\<rbrakk> lxs lzs \<longleftrightarrow> lzs = (\<lambda>_. lxs 2)"
+  unfolding fun_eq_iff semantics_def
+  apply safe
+   apply (subst num1_eq1)
+  subgoal for m
+    apply (coinduction arbitrary: m lzs lxs)
+    apply safe
+    subgoal for m lzs lxs
+    proof (induct "m 2" arbitrary: m lxs)
+      case 0
+      then show ?case 
+        by (subst (asm) fairmerge.code)
+          (auto split: observation.splits elim!: chd.elims)
+    next
+      case (Suc n)
+      from Suc(2-) Suc(1)[of "m(2 := n)"] show ?case
+        by (subst (asm) fairmerge.code)
+          (auto split: observation.splits elim!: chd.elims)
+    qed
+    subgoal for m lzs lxs
+      by (auto dest!: produced_silenced)
+    subgoal for m lzs lxs
+    proof (induct "m 2" arbitrary: m lxs)
+      case 0
+      then show ?case 
+        by (subst (asm) fairmerge.code)
+          (auto split: observation.splits elim!: chd.elims)
+    next
+      case (Suc n)
+      from Suc(2-) Suc(1)[of "m(2 := n)"] show ?case
+        by (subst (asm) fairmerge.code)
+          (auto split: observation.splits elim!: chd.elims)
+    qed
+    subgoal for m lzs lxs
+    proof (induct "m 2" arbitrary: m lxs)
+      case 0
+      then show ?case 
+        apply (subst (asm) fairmerge.code)
+        apply (auto split: observation.splits elim!: chd.elims)
+        apply (metis fun_upd_same)
+        apply (metis fun_upd_same)
+        done
+    next
+      case (Suc n)
+      from Suc(2-) Suc(1)[of "m(2 := n)"] show ?case
+        apply (subst (asm) fairmerge.code)
+        apply (auto split: observation.splits elim!: chd.elims)
+        apply (metis fun_upd_same)
+        apply (metis fun_upd_same)
+        done
+    qed
+    done
+  apply (rule exI[of _ "\<lambda>_. 0"])
+  apply (coinduction arbitrary: lxs lzs rule: produced_coinduct_upto)
+  apply (rule disjI1)
+  apply (subst fairmerge.code)
+  apply (auto simp: fun_upd_def[where 'b=nat] split: observation.splits elim!: chd.elims
+    intro!: exI[of _ 0])
+   apply (rule produced_cong.write) 
+    apply (rule produced_cong.base)
+    apply (rule conjI refl)+
+   apply (simp add: fun_eq_iff)
+  apply (rule produced_cong.produced)
+  apply (rule produced_End)
+  apply (metis (full_types) num1_eq1)
+  done
+
+lemma fairmerge_False_True: "\<lbrakk>fairmerge False True\<rbrakk> lxs lzs \<longleftrightarrow> lzs = (\<lambda>_. lxs 1)"
+  unfolding fun_eq_iff semantics_def
+  apply safe
+   apply (subst num1_eq1)
+  subgoal for m
+    apply (coinduction arbitrary: m lzs lxs)
+    apply safe
+    subgoal for m lzs lxs
+    proof (induct "m 1" arbitrary: m lxs)
+      case 0
+      then show ?case 
+        by (subst (asm) fairmerge.code)
+          (auto split: observation.splits elim!: chd.elims)
+    next
+      case (Suc n)
+      from Suc(2-) Suc(1)[of "m(1 := n)"] show ?case
+        by (subst (asm) fairmerge.code)
+          (auto split: observation.splits elim!: chd.elims)
+    qed
+    subgoal for m lzs lxs
+      by (auto dest!: produced_silenced)
+    subgoal for m lzs lxs
+    proof (induct "m 1" arbitrary: m lxs)
+      case 0
+      then show ?case 
+        by (subst (asm) fairmerge.code)
+          (auto split: observation.splits elim!: chd.elims)
+    next
+      case (Suc n)
+      from Suc(2-) Suc(1)[of "m(1 := n)"] show ?case
+        by (subst (asm) fairmerge.code)
+          (auto split: observation.splits elim!: chd.elims)
+    qed
+    subgoal for m lzs lxs
+    proof (induct "m 1" arbitrary: m lxs)
+      case 0
+      then show ?case 
+        apply (subst (asm) fairmerge.code)
+        apply (auto split: observation.splits elim!: chd.elims)
+        apply (metis fun_upd_same)
+        apply (metis fun_upd_same)
+        done
+    next
+      case (Suc n)
+      from Suc(2-) Suc(1)[of "m(1 := n)"] show ?case
+        apply (subst (asm) fairmerge.code)
+        apply (auto split: observation.splits elim!: chd.elims)
+        apply (metis fun_upd_same)
+        apply (metis fun_upd_same)
+        done
+    qed
+    done
+  apply (rule exI[of _ "\<lambda>_. 0"])
+  apply (coinduction arbitrary: lxs lzs rule: produced_coinduct_upto)
+  apply (rule disjI1)
+  apply (subst fairmerge.code)
+  apply (auto simp: fun_upd_def[where 'b=nat] split: observation.splits elim!: chd.elims
+    intro!: exI[of _ 0])
+   apply (rule produced_cong.write) 
+    apply (rule produced_cong.base)
+    apply (rule conjI refl)+
+   apply (simp add: fun_eq_iff)
+  apply (rule produced_cong.produced)
+  apply (rule produced_End)
+  apply (metis (full_types) num1_eq1)
+  done
+
+lemma "\<lbrakk>fairmerge False False\<rbrakk> (\<lambda>x. if x = 1 then llist_of [1, 2, 3] else llist_of [4, 5]) (\<lambda>_. llist_of [4,1,2,3,5])"
+  unfolding semantics_def
+  apply (rule exI[of _ "\<lambda>x. 3"])
+  apply (subst fairmerge.code; simp)
+  apply (rule produced.ReadEOB; auto 0 0)
+  apply (rule produced.Read[where n=3]; auto 0 0)
+  apply (rule produced_Write; auto?)
+  apply (subst fairmerge.code; simp)
+  apply (rule produced.Read[where n=3]; auto 0 0)
+  apply (rule produced_Write; auto?)
+  apply (rule produced.ReadEOB; auto 0 0)
+  apply (subst fairmerge.code; simp)
+  apply (rule produced.Read[where n=3]; auto 0 0)
+  apply (rule produced_Write; auto?)
+  apply (rule produced.ReadEOB; auto 0 0)
+  apply (subst fairmerge.code; simp)
+  apply (rule produced.Read[where n=3]; auto 0 0)
+  apply (rule produced_Write; auto?)
+  apply (rule produced.ReadEOB; auto 0 0)
+  apply (subst fairmerge.code; simp)
+  apply (rule produced.ReadEOB; auto 0 0)
+  apply (rule produced.Read[where n=3]; auto 0 0)
+  apply (rule produced_Write; auto?)
+  apply (subst fairmerge.code; simp)
+  apply (rule produced.Read[where n=3]; auto 0 0)
+  apply (subst fairmerge.code; simp)
+  apply (rule produced.Read[where n=3]; auto 0 0)
+  done
+
+(*
+lemma "merged (lxs 0) (lxs 1) lzs \<Longrightarrow> e1 \<longleftrightarrow> lxs 0 = LNil \<Longrightarrow> e2 \<longleftrightarrow> lxs 1 = LNil \<Longrightarrow> \<lbrakk>fairmerge e1 e2\<rbrakk> lxs (\<lambda>_. lzs)"
+  unfolding semantics_def
+  apply (coinduction arbitrary: lxs lzs e1 e2 rule: produced_coinduct_upto)
+*)
     
 inductive producing for p where
   "producing p End lxs 0"
@@ -139,16 +457,15 @@ lemma silenced_produce: "silenced op lxs (produce op lxs)"
   using silent_produce_LNil[of _ op lxs]
   by blast
 
-lemma produced_produce: "produced op lxs (produce op lxs)"
-  apply (coinduction arbitrary: op lxs)
-  subgoal for op lxs
-    apply (cases op)
-      apply force+
-    done
+lemma produced_produce: "produced m op lxs (produce op lxs)"
+  apply (coinduction arbitrary: m op lxs)
+  subgoal for m op lxs
+    by (cases op) (force simp: silenced_produce)+
   done
 
 lemma semantics_produce: "\<lbrakk>op\<rbrakk> lxs (produce op lxs)"
-  by (simp add: produced_produce semantics_def silenced_produce)
+  unfolding semantics_def
+  by (simp add: produced_produce)
 
 datatype 'd buf = BEmpty | BEnded | BCons 'd "'d buf"
 
@@ -440,32 +757,44 @@ lemma extend_empty: "extend {} buf R = R"
 
 definition "compose A R S lxs lys = (\<exists>lzs. R (lxs o Inl) (case_sum (lys o Inl) lzs) \<and> S (\<lambda>p. if p \<in> A then lzs p else lxs (Inr p)) (lys o Inr))"
 
-lemma produced_cong: "produced op lxs lys \<Longrightarrow>
-   (\<forall>p \<in> inputs op. lxs p = lxs' p) \<Longrightarrow> (\<forall>p. silent p op lxs \<or> lys p = lys' p) \<Longrightarrow> produced op lxs' lys'"
-  apply (coinduction arbitrary: op lxs lys lxs' lys')
-  subgoal for op lxs lys lxs' lys'
-    apply (cases op)
-      apply (auto 2 0 simp: fun_upd_def split: if_splits)
-    apply (smt (verit) fun_upd_apply silent_ReadE silent_cong)
-    apply (smt (verit) fun_upd_apply silent_ReadE silent_cong)
-    subgoal for op' p' x lzs
-      apply (rule exI[of _ "\<lambda>q. if \<not> silent q op' lxs \<or> q = p' then lzs q else lys' q"])
-      apply (auto simp: fun_eq_iff) []
-      apply (metis silent_WriteE)
-      apply (metis silent_WriteE)
-      done
-    done
-  done
-
 lemma silenced_cong: "silenced op lxs lys \<Longrightarrow>
    (\<forall>p \<in> inputs op. lxs p = lxs' p) \<Longrightarrow> (\<And>p. lys p = LNil \<Longrightarrow> lys' p = LNil) \<Longrightarrow> silenced op lxs' lys'"
   by (auto cong: silent_cong)
+
+lemma produced_cong: "produced m op lxs lys \<Longrightarrow>
+   (\<forall>p \<in> inputs op. lxs p = lxs' p) \<Longrightarrow>
+   (\<forall>p. silent p op lxs \<or> lys p = lys' p) \<Longrightarrow>
+   (\<And>p. lys p = LNil \<Longrightarrow> lys' p = LNil) \<Longrightarrow> produced m op lxs' lys'"
+  apply (coinduction arbitrary: m op lxs lys lxs' lys')
+  subgoal for m op lxs lys lxs' lys'
+    apply (cases op)
+      apply (auto 2 0 simp del: fun_upd_apply split: if_splits)
+            apply (smt (verit) fun_upd_apply silent_ReadE silent_cong)
+           apply (smt (verit) fun_upd_apply silent_ReadE silent_cong)
+          apply (smt (verit) fun_upd_apply silent_ReadE silent_cong)
+         apply (smt (verit) fun_upd_apply silent_ReadE silent_cong)
+        apply (smt (verit) fun_upd_apply silent_ReadE silent_cong)
+       apply (smt (verit) fun_upd_apply silent_ReadE silent_cong)
+      apply (smt (verit) fun_upd_apply silent_ReadE silent_cong)
+     apply (smt (verit) fun_upd_apply silent_ReadE silent_cong)
+    subgoal for op' p' x lzs
+      apply (rule exI[of _ "\<lambda>q. if \<not> silent q op' lxs \<or> q = p' then lzs q else lys' q"])
+      apply (auto 2 0 simp: fun_eq_iff) []
+          apply (metis silent_WriteE)
+         apply (metis silent_WriteE)
+        apply (metis silent_WriteE)
+       apply (metis silent_cong)
+      apply (metis silent_cong)
+      done
+    done
+  done
 
 lemma semantics_cong: "\<lbrakk>op\<rbrakk> lxs lys \<Longrightarrow>
    (\<forall>p \<in> inputs op. lxs p = lxs' p) \<Longrightarrow>
    (\<forall>p. silent p op lxs \<or> lys p = lys' p) \<Longrightarrow>
    (\<And>p. lys p = LNil \<Longrightarrow> lys' p = LNil) \<Longrightarrow> \<lbrakk>op\<rbrakk> lxs' lys'"
-  by (metis (no_types, lifting) produced_cong semantics_def silent_cong)
+  unfolding semantics_def
+  by (metis (no_types) produced_cong)
 
 lemma silent_map_op': "inj_on g (inputs op) \<Longrightarrow>
   silent (h p) (map_op g h op) lxs \<Longrightarrow> (\<forall>p \<in> inputs op. lxs (g p) = lxs' p) \<Longrightarrow> silent p op lxs'"
@@ -494,87 +823,174 @@ lemma silent_map_opI: "silent (h' p) op lxs' \<Longrightarrow>
       apply (smt (verit))
     done
   done
-(*
-thm silent_cong
 
-lemma "surj h \<Longrightarrow> silenced (map_op g h op) lxs lys"
-*)
+lemma silent_map_op_inj: "inj_on g (inputs op) \<Longrightarrow> inj h \<Longrightarrow> silenced (map_op g h op) lxs lys \<Longrightarrow> silenced op (lxs o g) (lys o h)"
+  apply safe
+  subgoal for p
+    using silent_map_opI[of "inv h" "h p" op "lxs o g" g h lxs]
+    by (auto dest!: spec[of _ "h p"])
+  done
 
-(*
-lemma silent_map_op'': "inj_on g (inputs op) \<Longrightarrow> silent p op lxs' \<Longrightarrow> (\<forall>p \<in> inputs op. lxs (g p) = lxs' p) \<Longrightarrow> silent (h p) (map_op g h op) lxs"
-  apply (coinduction arbitrary: op lxs lxs')
-  subgoal for op lxs lxs'
-    apply (cases op)
-      apply (auto 2 0)
-      apply (rule exI)
-      apply (rule conjI)
-       apply (rule refl)
-      apply (rule conjI)
-     apply (simp add: inj_on_def)
-      apply (rule exI)
-     apply (rule conjI)
-      apply assumption
-    apply (auto 2 0) [2]
-     apply (metis DiffI UNIV_I UN_iff empty_iff imageI insert_iff)
-    sledgehammer
-*)
-
-lemma produced_map_op:
-  "inj_on g (inputs op) \<Longrightarrow>
-   inj_on h (outputs op) \<Longrightarrow>
-   produced (map_op g h op) \<le> BNF_Def.vimage2p (\<lambda> lxs. lxs o g) (\<lambda>lys. lys o h) (produced op)"
-  unfolding vimage2p_def
-  apply (rule predicate2I)
-  subgoal for lxs lys
-    apply (subgoal_tac "\<And>lxs' lys'. (\<forall>p \<in> inputs op. lxs (g p) = lxs' p) \<Longrightarrow> (\<forall>p \<in> outputs op. lys (h p) = lys' p) \<Longrightarrow>
-       produced op lxs' lys'")
-     apply (simp add: o_def)
-    subgoal for lxs' lys'
-      apply (coinduction arbitrary: op lxs lys lxs' lys' rule: produced.coinduct)
-      subgoal for op lxs lys lxs' lys'
-        apply (cases op)
-        subgoal for p f
-          apply simp_all
-          apply (erule produced_ReadE)
-          subgoal
-            apply (rule disjI1)
-            apply (simp add: inj_on_def)
-            apply (rule exI)+
-            apply (rule conjI[rotated])
-             apply (rule conjI[rotated])
-              apply (auto 0 0 simp: fun_eq_iff inj_on_def) [3]
+lemma produced_map_op: "inj_on g (inputs op) \<Longrightarrow> inj_on h (outputs op) \<Longrightarrow>
+  produced m (map_op g h op) lxs lys \<Longrightarrow>
+  produced (m o g) op (lxs o g) (\<lambda>q. if silent q op (lxs o g) then LNil else lys (h q))"
+  apply (subgoal_tac "\<And>lxs' m'. (\<forall>p \<in> inputs op. lxs (g p) = lxs' p \<and> m (g p) = m' p) \<Longrightarrow>
+       produced m' op lxs' (\<lambda>q. if silent q op lxs' then LNil else lys (h q))")
+   apply (simp add: o_def)
+  subgoal for lxs' m'
+    apply (coinduction arbitrary: m op lxs lys lxs' m' rule: produced.coinduct)
+    subgoal for m op lxs lys lxs' m'
+      apply (cases op)
+      subgoal for p f
+        apply simp_all
+        apply (erule produced_ReadE)
+        subgoal for n
+          apply (rule disjI1)
+          apply (simp add: inj_on_def)
+          apply (rule conjI allI impI)+
+          subgoal for q
+            apply (cases "q \<in> outputs op")
+             apply (drule spec[of _ "h q"])
+             apply (erule mp)
+             apply (rule silent_map_opI[of "the_inv_into (outputs op) h"])
+                apply (subst the_inv_into_f_f)
+                  apply (simp add: inj_on_def)
+                 apply assumption
+                apply assumption
+               apply (simp add: inj_on_def)
+              apply (rule the_inv_into_f_f)
+               apply (simp add: inj_on_def)
+              apply auto []
+             apply (metis (no_types, lifting) DiffI UNIV_I UnionI empty_iff fun_upd_other fun_upd_same imageI insert_iff)
+            apply (meson not_vocal_silent vocal_in_outputs)
+            done
+          apply (rule exI[of _ n])
+          apply (rule disjI1)
+          apply (rule exI[of _ "m(g p := n)"])
+          apply (rule exI disjI1)+
+          apply (rule conjI[rotated])
+           apply (rule conjI[rotated])
+            apply (auto 0 0 simp: fun_eq_iff inj_on_def) [3]
+              apply (metis UNIV_I UN_iff imageI insert_Diff_single insert_iff)
+             apply (metis UNIV_I UN_iff imageI insert_Diff_single insert_iff)
+            apply (metis)
+           apply (metis)
+          subgoal for q
+            apply (cases "q \<in> outputs op")
+             apply (drule spec[of _ "h q"])
+             apply (erule mp)
+             apply (rule silent_map_opI[of "the_inv_into (outputs op) h"])
+                apply (subst the_inv_into_f_f)
+                  apply (simp add: inj_on_def)
+                 apply assumption
+                apply assumption
+               apply (simp add: inj_on_def)
+              apply (rule the_inv_into_f_f)
+               apply (simp add: inj_on_def)
+              apply auto []
+             apply (metis (no_types, lifting) DiffI UNIV_I UnionI empty_iff fun_upd_other fun_upd_same imageI insert_iff)
+            apply (meson not_vocal_silent vocal_in_outputs)
+            done
+          done
+        subgoal for n
+          unfolding o_apply
+          apply (rule disjI2)
+          apply (rule conjI allI impI)+
+          subgoal for q
+            apply (cases "q \<in> outputs op")
+             apply (drule spec[of _ "h q"])
+             apply (erule mp)
+             apply (rule silent_map_opI[of "the_inv_into (outputs op) h"])
+                apply (subst the_inv_into_f_f)
+                  apply (simp add: inj_on_def)
+                 apply assumption
+                apply assumption
+               apply (simp add: inj_on_def)
+              apply (rule the_inv_into_f_f)
+               apply (simp add: inj_on_def)
+              apply auto []
+             apply (metis)
+            apply (meson not_vocal_silent vocal_in_outputs)
+            done
+          apply (rule exI[of _ n])
+          apply (simp add: inj_on_def)
+          apply (rule disjI1)
+          apply (rule exI)+
+          apply (rule conjI[rotated])
+           apply (rule conjI[rotated])
+            apply (auto 0 0 simp: fun_eq_iff inj_on_def) [3]
               apply (metis)
              apply (metis UNIV_I UN_iff imageI insert_Diff_single insert_iff)
             apply (metis)
-            done
-          subgoal
-            apply (rule disjI2)
-            apply (rule disjI2)
-            apply (rule disjI1)
-            apply (simp add: inj_on_def)
-            apply (rule exI)+
-            apply (rule conjI[rotated])
-             apply (rule conjI[rotated])
-               apply (auto 0 0 simp: fun_eq_iff inj_on_def) [3]
-              apply (metis)
+           apply (metis)
+          subgoal for q
+            apply (cases "q \<in> outputs op")
+             apply (drule spec[of _ "h q"])
+             apply (erule mp)
+             apply (rule silent_map_opI[of "the_inv_into (outputs op) h"])
+                apply (subst the_inv_into_f_f)
+                  apply (simp add: inj_on_def)
+                 apply assumption
+                apply assumption
+               apply (simp add: inj_on_def)
+              apply (rule the_inv_into_f_f)
+               apply (simp add: inj_on_def)
+              apply auto []
              apply (metis)
+            apply (meson not_vocal_silent vocal_in_outputs)
             done
           done
-        subgoal for op' p x
-          apply (auto 0 0)
-          subgoal premises prems for lzs
-            using prems
-            apply -
-            apply (rule exI[where x="\<lambda>q. if q \<in> outputs op' \<or> q = p then lzs (h q) else lys' q"] conjI[rotated] exI disjI1)+
-               prefer 3
-            apply assumption
-              apply (auto 2 0 simp: fun_eq_iff inj_on_def)
-            apply (metis Diff_empty Diff_insert0 image_eqI)
+        done
+      subgoal for op' p x
+        apply (auto 0 0)
+        subgoal premises prems for lzs
+          using prems
+          apply -
+          apply (rule exI[where x="\<lambda>q. if silent q op lxs' then LNil else lzs (h q)"] conjI[rotated] exI disjI1)+
+              prefer 2
+              apply assumption
+             apply (auto 2 0 simp: fun_eq_iff inj_on_def)
+          subgoal for q
+            apply (cases "q \<in> outputs op")
+             apply (drule spec[of _ "h q"])
+             apply (erule mp)
+             apply (rule silent_map_opI[of "the_inv_into (outputs op) h"])
+                apply (subst the_inv_into_f_f)
+                  apply (simp add: inj_on_def)
+                  apply (metis Diff_empty Diff_insert0 image_iff)
+                 apply assumption
+                apply assumption
+               apply (simp add: inj_on_def)
+              apply (rule the_inv_into_f_f)
+               apply (simp add: inj_on_def)
+               apply (metis Diff_empty Diff_insert0 image_iff)
+              apply auto []
+             apply (metis)
+            apply (meson not_vocal_silent vocal_in_outputs)
             done
+          subgoal for q
+            apply (cases "q \<in> outputs op")
+             apply (drule spec[of _ "h q"])
+             apply (erule mp)
+             apply (rule silent_map_opI[of "the_inv_into (outputs op) h"])
+                apply (subst the_inv_into_f_f)
+                  apply (simp add: inj_on_def)
+                  apply (metis Diff_empty Diff_insert0 image_iff)
+                 apply assumption
+                apply assumption
+               apply (simp add: inj_on_def)
+              apply (rule the_inv_into_f_f)
+               apply (simp add: inj_on_def)
+               apply (metis Diff_empty Diff_insert0 image_iff)
+              apply auto []
+             apply (metis)
+            apply (meson not_vocal_silent vocal_in_outputs)
+            done
+          apply (metis Diff_empty Diff_insert0 image_iff not_vocal_silent silent.Write vocal_in_outputs)
           done
-        subgoal
-          apply auto
-          done
+        done
+      subgoal
+        apply auto
         done
       done
     done
@@ -585,25 +1001,129 @@ lemma semantics_map_op:
    inj_on h (outputs op) \<Longrightarrow>
    semantics (map_op g h op) lxs lys \<Longrightarrow> semantics op (lxs o g) (\<lambda>q. if silent q op (lxs o g) then LNil else lys (h q))"
   unfolding semantics_def
-  apply (erule conjE)
-  apply (rule conjI)
-   apply (drule produced_map_op[THEN predicate2D, rotated 2, unfolded vimage2p_def])
-  apply assumption
-    apply assumption
-   apply (erule produced_cong)
-  apply auto [3]
+  apply (erule exE)
+  apply (rule exI)
+  apply (erule (2) produced_map_op[rotated 2])
   done
 
 lemma semantics_map_op_inj:
   "inj_on g (inputs op) \<Longrightarrow>
    inj h \<Longrightarrow>
    semantics (map_op g h op) \<le> BNF_Def.vimage2p (\<lambda> lxs. lxs o g) (\<lambda>lys. lys o h) (semantics op)"
-  unfolding semantics_def vimage2p_def
+  unfolding vimage2p_def semantics_def
   apply (rule predicate2I)
-  apply (erule conjE)
-  apply (rule conjI)
-   apply (erule predicate2D[OF produced_map_op, unfolded vimage2p_def]; simp add: inj_on_def)
-  apply (smt (verit, best) comp_apply silent_map_opI the_inv_f_f)
+  apply (erule exE)
+  subgoal for lxs lys m
+    apply (rule exI[of _ "m o g"])
+    apply (subgoal_tac "\<And>lxs' m'. (\<forall>p \<in> inputs op. lxs (g p) = lxs' p \<and> m (g p) = m' p) \<Longrightarrow> produced m' op lxs' (lys o h)")
+     apply (simp add: o_def)
+    subgoal for lxs' m'
+      apply (coinduction arbitrary: m op lxs lys lxs' m' rule: produced.coinduct)
+      subgoal for m op lxs lys lxs' m'
+        apply (cases op)
+        subgoal for p f
+          apply simp_all
+          apply (erule produced_ReadE)
+          subgoal for n
+            unfolding o_apply
+            apply (rule disjI1)
+            apply (rule conjI)
+             apply (drule silent_map_op_inj[rotated 2])
+               apply (simp add: inj_on_def)
+              apply assumption
+             apply simp
+             apply (erule silenced_cong)
+              apply (metis UNIV_I UN_iff comp_apply fun_upd_other fun_upd_same image_iff member_remove remove_def)
+             apply assumption
+            apply (rule exI[of _ n])
+            apply (rule disjI1)
+            apply (rule exI[of _ "m(g p := n)"])
+            apply (rule exI disjI1)+
+            apply (rule conjI[rotated])
+             apply (rule conjI[rotated])
+              apply (auto 0 0 simp: fun_eq_iff inj_on_def) [3]
+               apply (metis UNIV_I UN_iff imageI insert_Diff_single insert_iff)
+              apply (metis UNIV_I UN_iff imageI insert_Diff_single insert_iff)
+             apply (metis)
+            apply (metis)
+            done
+          subgoal for n
+            unfolding o_apply
+            apply (rule disjI2)
+            apply (rule conjI)
+             apply (drule silent_map_op_inj[rotated 2])
+               apply (simp add: inj_on_def)
+              apply assumption
+             apply simp
+             apply (erule silenced_cong)
+              apply (metis UNIV_I UN_iff comp_apply fun_upd_other fun_upd_same image_iff member_remove remove_def)
+             apply assumption
+            apply (rule exI[of _ n])
+            apply (simp add: inj_on_def)
+            apply (rule disjI1)
+            apply (rule exI)+
+            apply (rule conjI[rotated])
+             apply (rule conjI[rotated])
+              apply (auto 0 0 simp: fun_eq_iff inj_on_def) [3]
+               apply (metis)
+              apply (metis UNIV_I UN_iff imageI insert_Diff_single insert_iff)
+             apply (metis)
+            apply (metis)
+            done
+          done
+        subgoal for op' p x
+          apply simp
+          apply (erule produced_WriteE)
+          apply simp
+          subgoal premises prems for lzs
+            using prems
+            apply -
+            apply (rule exI[where x="lzs o h"] conjI[rotated] exI disjI1)+
+                prefer 2
+                apply assumption
+               apply (auto simp: fun_eq_iff inj_on_def dest!: silent_map_op_inj[rotated 2]
+                cong: silent_cong)
+            done
+          done
+        subgoal
+          apply auto
+          done
+        done
+      done
+    done
+  done
+
+definition "lift A lxs lys p = (if p \<in> A then lxs p else lys p)"
+lemma semantics_loop_op:
+ "semantics (loop_op wire buf op) lxs lys \<Longrightarrow>
+  \<exists>lzs. extend (ran wire) buf (semantics (map_op id (\<lambda>p. case wire p of Some q \<Rightarrow> Inr q | _ \<Rightarrow> Inl p) op))
+     (lift (ran wire) lzs lxs) (case_sum lys lzs)"
+  sorry
+
+lemma semantics_loop_op_BEmpty:
+ "semantics (loop_op wire (\<lambda>p. BEmpty) op) lxs lys \<Longrightarrow>
+  \<exists>lzs. semantics (map_op id (\<lambda>p. case wire p of Some q \<Rightarrow> Inr q | _ \<Rightarrow> Inl p) op)
+     (lift (ran wire) lzs lxs) (case_sum lys lzs)"
+  apply (drule semantics_loop_op)
+  apply (auto simp: extend_def o_def simp flip: fun_eq_iff cong: if_cong)
+  done
+
+lemma loop_producing_Some: "loop_producing wire buf op n \<Longrightarrow> wire = Some \<Longrightarrow> loop_op wire buf op = End"
+  apply (induct buf op n rule: loop_producing.induct)
+      apply (auto simp: ran_def)
+  done
+
+lemma loop_op_Some: "loop_op Some buf op = End"
+  apply (coinduction arbitrary: buf op)
+  apply auto
+  subgoal for buf op
+    apply (subst (asm) loop_op.code)
+    apply (auto simp: ran_def dest: loop_producing_Some split: op.splits if_splits)
+    done
+  subgoal for buf op
+    apply (subst (asm) loop_op.code)
+    apply (auto simp: ran_def dest: loop_producing_Some split: op.splits if_splits)
+    done
   done
 
 lemma semantics_comp_op:
@@ -614,166 +1134,6 @@ lemma semantics_comp_op:
   apply (rule predicate2I)
    apply auto
   sorry
-        
-
-        
-(*
-lemma produce_map_op:
-  "inj_on g (inputs op) \<Longrightarrow>
-   (\<And>x. x \<in> outputs op \<Longrightarrow> h' (h x) = x) \<Longrightarrow>
-   (\<And>x. h (h' x) = x) \<Longrightarrow>
-   produce p (map_op g h op) lxs = produce (h' p) op (lxs o g)"
-  apply (coinduction arbitrary: op lxs)
-  unfolding lnull_def lnull_produce_iff_silent not_silent_iff_vocal
-  apply safe
-  subgoal premises prems for op lxs
-  proof -
-    have "silent (h' p) op lxs'" if "\<forall>x \<in> inputs op. lxs' x = lxs (g x)" for lxs'
-      using that prems
-      apply (coinduction arbitrary: op lxs lxs')
-      subgoal for op lxs lxs'
-        apply (cases op)
-          apply (auto 0 1)
-        subgoal for q ff
-          apply (rule exI conjI[rotated] | assumption)+
-            apply blast
-           apply (simp add: inj_on_def)
-          apply (metis (no_types, lifting) Diff_empty Diff_insert0 UNIV_I UN_iff fun_upd_def image_iff the_inv_into_f_eq)
-          done
-        done
-      done
-    then show ?thesis
-      by auto
-  qed
-  subgoal for op lxs
-    apply (coinduction arbitrary: op lxs)
-    subgoal for op lxs
-      apply (cases op)
-        apply (auto 0 1)
-      subgoal for q ff
-        apply (rule exI conjI refl allI impI | assumption)+          
-         apply (auto simp: inj_on_def)
-        apply (erule silent_cong[OF refl, THEN iffD2, rotated -1])
-        apply auto
-        apply (metis UNIV_I UN_iff image_iff insertCI insertE insert_Diff_single)
-        done
-      subgoal for op' q x
-        apply (drule spec[of _ op'])
-        apply auto
-        done
-      subgoal for op' q x
-        apply (drule spec[of _ op'])
-        apply auto
-        done
-      done
-    done
-  subgoal premises prems for op lxs
-    using prems(4,1,2,3,5)
-  proof (induct "map_op g h op" lxs arbitrary: op pred: vocal)
-    case (Write_same x op' lxs)
-    then show ?case
-      by (cases op) auto
-  next
-    case (Write_other p' op' lxs x)
-    then show ?case
-      apply (cases op)
-        apply (auto 0 0)
-      done
-  next
-    case (Read f p' lxs)
-    then show ?case
-      apply (cases op)
-        apply auto
-      subgoal for q ff
-        apply (cases "p \<notin> outputs (map_op g h (ff (chd (lxs (g q)))))")
-         apply (meson lnull_produce_iff_silent produce_not_in_outputs vocal_not_silent)
-        apply (drule meta_spec, drule meta_mp, rule refl)
-        apply (drule meta_mp; (auto elim!: inj_on_subset)?)
-        apply (drule meta_mp, blast)
-        apply (drule meta_mp)
-        subgoal
-          apply (erule iffD1[OF vocal_cong, rotated -1])
-           apply (metis UNIV_I UN_iff imageE inj_onI op.set_map(2) the_inv_into_f_f)
-          apply (metis Diff_iff UNIV_I UN_iff comp_def fun_upd_other fun_upd_same image_iff singletonD)
-          done
-        apply (erule trans)
-        apply (rule arg_cong[where f= lhd])
-        apply (rule produce_cong[OF refl])
-        apply (metis DiffI UNIV_I UN_iff comp_apply fun_upd_other fun_upd_same imageI singletonD)
-        done
-      done
-  qed
-  subgoal premises prems for op lxs
-    using prems(4,1,2,3,5)
-  proof (induct "map_op g h op" lxs arbitrary: op pred: vocal)
-    case (Write_same x op' lxs)
-    then show ?case
-      by (cases op) auto
-  next
-    case (Write_other p' op' lxs x)
-    then show ?case
-      apply (cases op)
-        apply (auto 0 0)
-      done
-  next
-    case (Read f p' lxs)
-    then show ?case
-      apply (cases op)
-      apply auto
-      subgoal for q ff
-        apply (cases "p \<notin> outputs (map_op g h (ff (chd (lxs (g q)))))")
-        apply (meson lnull_produce_iff_silent produce_not_in_outputs vocal_not_silent)
-        apply (drule meta_spec, drule meta_mp, rule refl)
-        apply (drule meta_mp; (auto elim!: inj_on_subset)?)
-        apply (drule meta_mp, blast)
-        apply (drule meta_mp)
-        subgoal
-          apply (erule iffD1[OF vocal_cong, rotated -1])
-          apply (metis UNIV_I UN_iff imageE inj_onI op.set_map(2) the_inv_into_f_f)
-          apply (metis Diff_iff UNIV_I UN_iff comp_def fun_upd_other fun_upd_same image_iff singletonD)
-          done
-        apply (erule exE conjE)+
-        apply simp
-        apply (rule exI conjI refl)+
-        apply (erule trans[rotated])
-        apply (rule arg_cong[where f= ctl])
-        apply (rule produce_cong[OF refl])
-        apply (metis DiffI UNIV_I UN_iff comp_apply fun_upd_other fun_upd_same imageI singletonD)
-        apply simp
-        done
-      done
-  qed
-  done
-*)
-
-inductive silent_cong for p R where
-  silent: "silent p op lxs \<Longrightarrow> silent_cong p R op lxs"
-| base: "R op lxs \<Longrightarrow> silent_cong p R op lxs"
-| "write": "p \<noteq> p' \<Longrightarrow> silent_cong p R op' lxs \<Longrightarrow> silent_cong p R (Write op' p' x) lxs"
-| read: "silent_cong p R (f EOB) lxs \<Longrightarrow> silent_cong p R (f (CHD p' lxs)) (CTL p' lxs) \<Longrightarrow> silent_cong p R (Read p' f) lxs"
-
-lemma silent_coinduct_upto:
-  assumes "R op lxs"
-  and "(\<And>op lxs.
-    R op lxs \<Longrightarrow>
-    (op = End) \<or>
-    (\<exists>p' op' x. op = Write op' p' x \<and> p \<noteq> p' \<and> silent_cong p R op' lxs) \<or>
-    (\<exists>f p'. op = Read p' f \<and> silent_cong p R (f (CHD p' lxs)) (CTL p' lxs) \<and> silent_cong p R (f EOB) lxs))"
-  shows "silent p op lxs"
-  apply (rule silent.coinduct[where X = "silent_cong p R"])
-   apply (rule silent_cong.intros, rule assms(1))
-  subgoal for op lxs
-    apply (induct op lxs pred: silent_cong)
-    subgoal
-      by (erule silent.cases) (auto simp del: fun_upd_apply)
-    subgoal for op lxs
-      by (drule assms) (auto simp del: fun_upd_apply)
-    subgoal for p' op' lxs x
-      by blast
-    subgoal for f lxs p'
-      by blast
-    done
-  done
 
 inductive input_at where
   "input_at p (Read p f) n"
@@ -806,7 +1166,6 @@ lemma input_depth_Write: "p \<in> inputs op' \<Longrightarrow> input_depth p (Wr
   apply (rule Least_Suc2)
      apply (auto elim: input_at.cases intro: input_at.intros)
   done
-
 
 lemma input_at_mono: "input_at p op n \<Longrightarrow> n \<le> m \<Longrightarrow> input_at p op m"
   by (induct p op n arbitrary: m rule: input_at.induct)
@@ -1133,7 +1492,8 @@ lemma comp_producing_silentD: "comp_producing wire buf op1 op2 n \<Longrightarro
   comp_op wire buf op1 op2 = End \<or>
   (\<exists>op'. comp_op wire buf op1 op2 = Write op' (Inl p) EOS) \<or>
   (\<exists>f p'. comp_op wire buf op1 op2 = Read p' f \<and>
-    silent_cong (Inl p) (\<lambda>op lxs. \<exists>buf op1. (\<exists>op2. op = comp_op wire buf op1 op2) \<and> silent p op1 (lxs \<circ> Inl)) (f (CHD p' lxs)) (CTL p' lxs)) \<or>
+    silent_cong (Inl p) (\<lambda>op lxs. \<exists>buf op1. (\<exists>op2. op = comp_op wire buf op1 op2) \<and> silent p op1 (lxs \<circ> Inl)) (f (CHD p' lxs)) (CTL p' lxs) \<and>
+    silent_cong (Inl p) (\<lambda>op lxs. \<exists>buf op1. (\<exists>op2. op = comp_op wire buf op1 op2) \<and> silent p op1 (lxs \<circ> Inl)) (f EOB) lxs) \<or>
   (\<exists>p' op'. (\<exists>x. comp_op wire buf op1 op2 = Write op' p' x) \<and> Inl p \<noteq> p' \<and>
     silent_cong (Inl p) (\<lambda>op lxs. \<exists>buf op1. (\<exists>op2. op = comp_op wire buf op1 op2) \<and> silent p op1 (lxs \<circ> Inl)) op' lxs)"
   apply (induct buf op1 op2 n arbitrary: lxs pred: comp_producing)
@@ -1167,412 +1527,21 @@ lemma comp_producing_silentD: "comp_producing wire buf op1 op2 n \<Longrightarro
     apply (rule silent_cong.base)
     apply (rule exI conjI refl)+
      apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-  subgoal sorry
+  subgoal for p2 p1 buf op1' f2 lxs
+    by (smt (verit, del_insts) Inl_Inr_False base comp_apply fun_upd_other silent_cong)
+  subgoal for p2 p1 buf op1' x1 f2 lxs
+    by (smt (verit, del_insts) Inl_Inr_False base comp_apply fun_upd_other silent_cong)
    apply (drule meta_spec, drule meta_mp, assumption)
    apply auto []
   apply (drule meta_spec, drule meta_mp, assumption)
   apply auto []
   done
-(*
-comp_producing wire (buf(q' := btl (benq x (buf q')))) op' (f (bhd (benq x (buf q')))) m \<Longrightarrow>
-    wire p = Some q \<Longrightarrow>
-    comp_op wire (buf(q' := btl (benq x (buf q')))) op' (f (bhd (benq x (buf q')))) \<noteq> End \<Longrightarrow>
-    \<forall>op'a.
-       comp_op wire (buf(q' := btl (benq x (buf q')))) op' (f (bhd (benq x (buf q')))) \<noteq>
-       Write op'a (Inl p) EOS \<Longrightarrow>
-    \<forall>fa p'.
-       comp_op wire (buf(q' := btl (benq x (buf q')))) op' (f (bhd (benq x (buf q')))) = Read p' fa \<longrightarrow>
-       \<not> silent_cong (Inl p) (\<lambda>op__ _. \<exists>buf op1 op2. op__ = comp_op wire buf op1 op2) (fa (chd (lxs p')))
-           (lxs(p' := ctl (lxs p'))) \<Longrightarrow>
-    q' \<in> ran wire \<Longrightarrow>
-    wire p' = Some q' \<Longrightarrow>
-    \<exists>p' op'a.
-       (\<exists>xa. comp_op wire (buf(q' := btl (benq x (buf q')))) op' (f (bhd (benq x (buf q')))) =
-             Write op'a p' xa) \<and>
-       Inl p \<noteq> p' \<and> silent_cong (Inl p) (\<lambda>op__ _. \<exists>buf op1 op2. op__ = comp_op wire buf op1 op2) op'a lxs
-*)
 
 lemma silent_on_non_output: "p \<notin> outputs op \<Longrightarrow> silent p op lxs"
   apply (coinduction arbitrary: op lxs)
   subgoal for op lxs
     by (cases op) auto
   done
-
-corec (friend) lshift :: "'a list \<Rightarrow> 'a llist \<Rightarrow> 'a llist" (infixr \<open>@@-\<close> 65) where
-  "lshift xs ys = (case xs of [] \<Rightarrow> (case ys of LNil \<Rightarrow> LNil | LCons y' ys' \<Rightarrow> LCons y' ys') | x#xs \<Rightarrow> LCons x (lshift xs ys))"
-
-lemma lshift_simps[simp]:
-  "lshift [] lxs = lxs"
-  "lshift (x#xs) lxs = LCons x (lshift xs lxs)"
-  by (subst lshift.code; auto split: llist.splits)+
-
-lemma snoc_shift[simp]: "(xs @ [x]) @@- ws = xs @@- LCons x ws"
-  by (induct xs) auto
-
-coinductive cembed where
-  "cembed LNil (llist_of (replicate n No_Value))"
-| "cembed xs ys \<Longrightarrow> cembed (LCons x xs) (replicate n No_Value @@- LCons x ys)"
-
-fun ch_of_buf where
-  "ch_of_buf BEmpty = []"
-| "ch_of_buf BEnded = []"
-| "ch_of_buf (BCons xs buf) = map Value xs @ No_Value # ch_of_buf buf"
-
-consts produce_compL_producing :: "'ip2 \<Rightarrow> ('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
-  ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2 \<Rightarrow> 'd channel) \<Rightarrow> nat \<Rightarrow> bool"
-
-corecursive produce_compL :: "'ip2 \<Rightarrow> ('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
-  ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2 \<Rightarrow> 'd channel) \<Rightarrow> 'd channel" where
-  "produce_compL p wire buf op1 op2 lxs = (let
-     produce_compL' = (\<lambda>buf' op1' op2' lxs'.
-     if \<exists>n. produce_compL_producing p wire buf op1 op2 lxs n then produce_compL p wire buf' op1' op2' lxs' else LNil);
-     produce_compL'' = (\<lambda>p2 x buf' op1' op2' lxs'. if p = p2 then VCons x (produce_compL p wire buf' op1' op2' lxs')
-       else produce_compL' buf' op1' op2' lxs')
-   in case (op1, op2) of
-     (End, End) \<Rightarrow> LNil
-   | (End, Write op2' p2 x2) \<Rightarrow> produce_compL' (bend o buf) End op2' lxs
-   | (End, Read p2 f2) \<Rightarrow> let buf' = bend o buf in if p2 \<in> ran wire
-     then produce_compL'' p2 (BHD p2 buf') (BTL p2 buf') End (f2 (BHD p2 buf')) lxs
-     else produce_compL' buf' End (f2 (CHD (Inr p2) lxs)) (CTL (Inr p2) lxs)
-   | (Read p1 f1, End) \<Rightarrow> produce_compL' buf (f1 (CHD (Inl p1) lxs)) End (CTL (Inl p1) lxs)
-   | (Read p1 f1, Write op2' p2 x2) \<Rightarrow> produce_compL' buf (f1 (CHD (Inl p1) lxs)) op2' (CTL (Inl p1) lxs)
-   | (Read p1 f1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
-     then produce_compL'' p2 (BHD p2 buf) (BTL p2 buf) (f1 (CHD (Inl p1) lxs)) (f2 (BHD p2 buf)) (CTL (Inl p1) lxs)
-     else produce_compL' buf (f1 (CHD (Inl p1) lxs)) (f2 (CHD (Inr p2) lxs)) (CTL (Inr p2) (CTL (Inl p1) lxs))
-   | (Write op1' p1 x1, End) \<Rightarrow> produce_compL' buf op1' End lxs
-   | (Write op1' p1 x1, Write op2' p2 x2) \<Rightarrow> (case wire p1 of
-       None \<Rightarrow> produce_compL' buf op1' op2' lxs
-     | Some p \<Rightarrow> produce_compL' (BENQ p x1 buf) op1' op2' lxs)
-   | (Write op1' p1 x1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
-     then (case wire p1 of
-       None \<Rightarrow> produce_compL'' p (BHD p2 buf) (BTL p2 buf) op1' (f2 (BHD p2 buf)) lxs
-     | Some p \<Rightarrow> produce_compL'' p (BHD p2 (BENQ p2 x1 buf)) (BTL p2 (BENQ p x1 buf)) op1' (f2 (BHD p2 (BENQ p x1 buf))) lxs)
-     else (case wire p1 of
-       None \<Rightarrow> produce_compL' buf op1' (f2 (CHD (Inr p2) lxs)) (CTL (Inr p2) lxs)
-     | Some p \<Rightarrow> produce_compL' (BENQ p x1 buf) op1' (f2 (CHD (Inr p2) lxs)) (CTL (Inr p2) lxs))
-)"
-  sorry
-
-lemma produce_comp_op:
-   "produce p (comp_op wire buf op1 op2) lxs = (case p of
-    Inl p1 \<Rightarrow> (if p1 \<in> dom wire then LNil else
-      produce p1 op1 (lxs o Inl))
-  | Inr p2 \<Rightarrow> produce p2 op2
-      (\<lambda> p'. if p' \<in> ran wire then produce_compL p' wire buf op1 op2 lxs else lxs (Inr p')))"
-  apply (coinduction arbitrary: buf op1 op2 lxs rule: llist.coinduct_upto)
-  apply (split sum.splits if_splits)+
-  unfolding lnull_def lnull_produce_iff_silent not_silent_iff_vocal
-  apply safe
-  subgoal for buf op1 op2 lxs p q
-    apply (rule silent_on_non_output)
-    apply (auto dest: set_mp[OF outputs_comp_op])
-    done
-  subgoal for buf op1 op2 lxs p
-    apply (coinduction arbitrary: buf op1 op2 lxs rule: silent_coinduct_upto)
-    subgoal for buf op1 op2 lxs
-      apply (cases op1; cases op2)
-              apply (auto split: option.splits if_splits simp: Let_def
-          elim!: contrapos_np[of "silent_cong _ _ _ _"] intro!: silent_cong.write silent_cong.read intro: silent_cong.base)
-                 apply (rule silent_cong.base)
-                 apply (rule exI conjI[rotated] | assumption)+
-                 apply auto []
-                apply (rule silent_cong.base)
-                apply (rule exI conjI[rotated] | assumption)+
-                apply auto []
-               apply (rule silent_cong.base)
-               apply (rule exI conjI[rotated] | assumption)+
-               apply auto []
-              apply (rule silent_cong.base)
-              apply (rule exI conjI[rotated] | assumption)+
-              apply auto []
-             apply (rule silent_cong.base)
-             apply (rule exI conjI[rotated] | assumption)+
-             apply auto []
-            apply (rule silent_cong.base)
-            apply (rule exI conjI[rotated] | assumption)+
-            apply auto []
-           apply (auto dest!: not_comp_producing_eq_End simp del: comp_op_simps simp add: comp_op_simps' split: if_splits) [2]
-             apply (rule silent_cong.base)
-             apply (rule exI conjI refl | erule ssubst)+
-             apply (rule silent.intros)
-            apply (rule silent_cong.base)
-            apply (rule exI conjI refl | erule ssubst)+
-            apply (rule silent.intros)
-           apply (rule silent_cong.base)
-           apply (rule exI conjI refl | erule ssubst)+
-           apply (rule silent.intros)
-          apply (rule silent_cong.base)
-          apply (rule exI conjI refl | erule ssubst)+
-          apply (rule silent.intros)
-         apply (rule silent_cong.base)
-         apply (rule exI conjI[rotated] | assumption)+
-         apply auto []
-        apply (rule silent_cong.base)
-        apply (rule exI conjI[rotated] | assumption)+
-        apply auto []
-       apply (auto dest!: not_comp_producing_eq_End simp del: comp_op_simps simp add: comp_op_simps' split: if_splits) [2]
-       apply (rule silent_cong.base)
-       apply (rule exI conjI refl | erule ssubst)+
-       apply (rule silent.intros)
-      apply (rule silent_cong.base)
-      apply (rule exI conjI refl | erule ssubst)+
-      apply (rule silent.intros)
-      done
-    done
-  subgoal for buf op1 op2 lxs p
-    apply (coinduction arbitrary: buf op1 op2 lxs rule: silent_coinduct_upto)
-    subgoal for buf op1 op2 lxs
-      apply (cases op1; cases op2)
-              apply (auto split: option.splits if_splits simp: Let_def
-          elim!: contrapos_np[of "silent_cong _ _ _ _"] intro!: silent_cong.write silent_cong.read intro: silent_cong.base)
-                   apply (rule silent_cong.base)
-                   apply (rule exI conjI refl)+
-                   apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-                  apply (rule silent_cong.base)
-                  apply (rule exI conjI refl)+
-                  apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-                 apply (rule silent_cong.base)
-                 apply (rule exI conjI refl)+
-                 apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-                apply (rule silent_cong.base)
-                apply (rule exI conjI refl)+
-                apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-               apply (rule silent_cong.base)
-               apply (rule exI conjI refl)+
-               apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-              apply (rule silent_cong.base)
-              apply (rule exI conjI refl)+
-              apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-             apply (erule comp_producing.cases; simp)
-             apply (blast dest: comp_producing_silentD)
-            apply (rule silent_cong.base)
-            apply (rule exI conjI refl)+
-            apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-           apply (rule silent_cong.base)
-           apply (rule exI conjI refl)+
-           apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-          apply (erule comp_producing.cases; simp)
-          apply (blast dest: comp_producing_silentD)
-         apply (rule silent_cong.base)
-         apply (rule exI conjI refl)+
-         apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-        apply (rule silent_cong.base)
-        apply (rule exI conjI refl)+
-        apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-       apply (erule comp_producing.cases; simp)
-       apply (blast dest: comp_producing_silentD)
-      apply (erule comp_producing.cases; simp)
-      apply (blast dest: comp_producing_silentD)
-      done
-    done
-  subgoal for buf op1 op2 lxs p
-    sorry
-  subgoal for buf op1 op2 lxs p
-    sorry
-  subgoal for buf op1 op2 lxs p
-    sorry
-  subgoal for buf op1 op2 lxs p
-    sorry
-  subgoal for buf op1 op2 lxs p
-    sorry
-  subgoal for buf op1 op2 lxs p
-    sorry
-  done
-
-lemma produce_comp_op:
-   "\<exists>lzs. (\<forall>p'. cembed (produce p' (map_op id (case_option undefined id o wire) op1) (lxs o Inl)) (lzs p')) \<and>
-    produce p (comp_op wire buf op1 op2) lxs = (case p of
-    Inl p1 \<Rightarrow> (if p1 \<in> dom wire then LNil else
-      produce p1 op1 (lxs o Inl))
-  | Inr p2 \<Rightarrow> produce p2 op2
-      (\<lambda> p'. if p' \<in> ran wire then ch_of_buf (buf p') @@- lzs p' else lxs (Inr p')))"
-(*TODO*)
-  oops
-  apply (coinduction arbitrary: buf op1 op2 lxs rule: llist.coinduct_upto)
-  apply (split sum.splits if_splits)+
-  unfolding lnull_def lnull_produce_iff_silent not_silent_iff_vocal
-  apply safe
-  subgoal for buf op1 op2 lxs p q
-    apply (rule silent_on_non_output)
-    apply auto
-    done
-  subgoal for buf op1 op2 lxs p
-    apply (coinduction arbitrary: buf op1 op2 lxs rule: silent_coinduct_upto)
-    subgoal for buf op1 op2 lxs
-      apply (cases op1; cases op2)
-              apply (auto split: option.splits if_splits simp: Let_def
-          elim!: contrapos_np[of "silent_cong _ _ _ _"] intro!: silent_cong.write silent_cong.read intro: silent_cong.base)
-                 apply (rule silent_cong.base)
-                 apply (rule exI conjI[rotated] | assumption)+
-                 apply auto []
-                apply (rule silent_cong.base)
-                apply (rule exI conjI[rotated] | assumption)+
-                apply auto []
-               apply (rule silent_cong.base)
-               apply (rule exI conjI[rotated] | assumption)+
-               apply auto []
-              apply (rule silent_cong.base)
-              apply (rule exI conjI[rotated] | assumption)+
-              apply auto []
-             apply (rule silent_cong.base)
-             apply (rule exI conjI[rotated] | assumption)+
-             apply auto []
-            apply (rule silent_cong.base)
-            apply (rule exI conjI[rotated] | assumption)+
-            apply auto []
-           apply (auto dest!: not_comp_producing_eq_End simp del: comp_op_simps simp add: comp_op_simps' split: if_splits) [2]
-             apply (rule silent_cong.base)
-             apply (rule exI conjI refl | erule ssubst)+
-             apply (rule silent.intros)
-            apply (rule silent_cong.base)
-            apply (rule exI conjI refl | erule ssubst)+
-            apply (rule silent.intros)
-           apply (rule silent_cong.base)
-           apply (rule exI conjI refl | erule ssubst)+
-           apply (rule silent.intros)
-          apply (rule silent_cong.base)
-          apply (rule exI conjI refl | erule ssubst)+
-          apply (rule silent.intros)
-         apply (rule silent_cong.base)
-         apply (rule exI conjI[rotated] | assumption)+
-         apply auto []
-        apply (rule silent_cong.base)
-        apply (rule exI conjI[rotated] | assumption)+
-        apply auto []
-       apply (auto dest!: not_comp_producing_eq_End simp del: comp_op_simps simp add: comp_op_simps' split: if_splits) [2]
-       apply (rule silent_cong.base)
-       apply (rule exI conjI refl | erule ssubst)+
-       apply (rule silent.intros)
-      apply (rule silent_cong.base)
-      apply (rule exI conjI refl | erule ssubst)+
-      apply (rule silent.intros)
-      done
-    done
-  subgoal for buf op1 op2 lxs p
-    apply (coinduction arbitrary: buf op1 op2 lxs rule: silent_coinduct_upto)
-    subgoal for buf op1 op2 lxs
-      apply (cases op1; cases op2)
-              apply (auto split: option.splits if_splits simp: Let_def
-          elim!: contrapos_np[of "silent_cong _ _ _ _"] intro!: silent_cong.write silent_cong.read intro: silent_cong.base)
-                   apply (rule silent_cong.base)
-                   apply (rule exI conjI refl)+
-                   apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-                  apply (rule silent_cong.base)
-                  apply (rule exI conjI refl)+
-                  apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-                 apply (rule silent_cong.base)
-                 apply (rule exI conjI refl)+
-                 apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-                apply (rule silent_cong.base)
-                apply (rule exI conjI refl)+
-                apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-               apply (rule silent_cong.base)
-               apply (rule exI conjI refl)+
-               apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-              apply (rule silent_cong.base)
-              apply (rule exI conjI refl)+
-              apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-             apply (erule comp_producing.cases; simp)
-             apply (blast dest: comp_producing_silentD)
-            apply (rule silent_cong.base)
-            apply (rule exI conjI refl)+
-            apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-           apply (rule silent_cong.base)
-           apply (rule exI conjI refl)+
-           apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-          apply (erule comp_producing.cases; simp)
-          apply (blast dest: comp_producing_silentD)
-         apply (rule silent_cong.base)
-         apply (rule exI conjI refl)+
-         apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-        apply (rule silent_cong.base)
-        apply (rule exI conjI refl)+
-        apply (auto elim: silent_cong[THEN iffD1, rotated -1]) []
-       apply (erule comp_producing.cases; simp)
-       apply (blast dest: comp_producing_silentD)
-      apply (erule comp_producing.cases; simp)
-      apply (blast dest: comp_producing_silentD)
-      done
-    done
-  subgoal for buf op1 op2 lxs p
-    sorry
-  subgoal for buf op1 op2 lxs p
-    sorry
-  subgoal for buf op1 op2 lxs p
-    sorry
-  subgoal for buf op1 op2 lxs p
-    sorry
-  subgoal for buf op1 op2 lxs p
-    sorry
-  subgoal for buf op1 op2 lxs p
-    sorry
-  done
-
-lemma "produce p (loop_op wire buf op) lxs =
-  (THE lzs. \<forall>p. lzs p = produce p (map_op id (todo) op)
-     (\<lambda>p. if p \<in> ran wire then lapp (buf p1) (lzs p2) else lxs p3)) p"
-  oops
-
-lemma loop_op_unfold:
-  "loop_op wire buf op = map_op (case_sum id id) projr (comp_op wire (\<lambda> x. BEmpty) (read_op (ran wire) buf op) (loop_op wire buf op))"
-  oops
-
-  term "loop_op wire buf"
-
-  term "Nat.funpow n (\<lambda> op. map_op (case_sum id id) projr (comp_op wire buf op op))"
-
-  typ enat
-
-
-  term "(comp_op wire2 buf2 ^^ n) op op"
-  term "(map_op (case_sum id id) projr (comp_op wire2 buf2 op op) ^^ n)"
-  term enat_unfold
-
-
-
-(*   apply (coinduction arbitrary: buf op rule: op.coinduct_strong)
-  subgoal for buf op
-    apply (cases op)
-    subgoal for ip f
-      apply auto *)
-
-(*
-lemma "producing p op lxs i \<Longrightarrow> \<forall>p. lprefix (lxs p) (lxs' p) \<Longrightarrow> producing p op lxs' i"
-proof (induct p op lxs i arbitrary: lxs' rule: producing.induct)
-  case (3 p f lxs p' i)
-  then show ?case
-    apply (intro producing.intros)
-    
-    sorry
-qed (auto intro: producing.intros)
-
-
-lemma "\<forall>p. lprefix (lxs p) (lxs' p) \<Longrightarrow> lprefix (produce p op lxs) (produce op lxs' p)"
-  apply (coinduction arbitrary: op lxs lxs' p)
-  subgoal for op lxs lxs' p
-    apply safe
-    subgoal sorry
-    subgoal
-      apply (subst (1 2) produce.code)
-      apply (auto split: op.splits if_splits)
-      sorry
-    subgoal sorry
-    done
-    apply (subst (asm) (1) produce.code)
-      apply (auto split: op.splits if_splits)
-*)
-
-(*
-fun produce_loop where
-  "produce_loop (0 :: nat) wire op lxs p = produce op (\<lambda>p'. if p' \<in> ran wire then LNil else lxs p') p"
-| "produce_loop (Suc n) wire op lxs p = produce op (\<lambda>p'. if p' \<in> ran wire then produce_loop n wire op lxs p else lxs p') p"
-
-lemma "produce (comp_op wire buf op1 op2) lxs p = (case p of
-    Inl p1 \<Rightarrow> (if p1 \<in> dom wire then LNil else
-      produce op1 (\<lambda>p1'. if Inl p1' \<in> ran wire then undefined else lxs (Inl p1')) p1)
-  | Inr p2 \<Rightarrow> produce op2 (\<lambda>p2'. if Inr p2' \<in> ran wire then undefined else lxs (Inr p2')) p2)"
-  oops
-*)
 
 definition "pcomp_op = comp_op (\<lambda>_. None) (\<lambda>_. BEnded)"
 
@@ -1604,19 +1573,9 @@ lemma inputs_scomp_op[simp]:
 lemma outputs_scomp_op[simp]:
   "outputs (scomp_op op1 op2) \<subseteq> outputs op2"
   unfolding scomp_op_def by (auto simp: op.set_map ran_def dest: outputs_comp_op)
-(*
-lemma produced_map_op':
-  "inj_on g (inputs op) \<Longrightarrow> inj_on h (outputs op) \<Longrightarrow> NIL op (lys o h) \<Longrightarrow>
-  produced (map_op g h op) lxs lys \<Longrightarrow>
-  produced op (lxs o g) (lys o h)"
-  apply (drule (2) predicate2D[OF produced_map_op])
-  apply (auto simp: vimage2p_def fun_eq_iff
-    elim!: arg_cong[of _ _ "produced op (_ \<circ> g)", THEN iffD1, rotated 1])
-  done
-*)
 
 lemma semantics_silenced: "semantics op lxs lys \<Longrightarrow> silenced op lxs lys"
-  by (simp add: semantics_def)
+  by (auto simp add: semantics_def produced_silenced)
 
 lemma semantics_scomp_op:
   "\<lbrakk>scomp_op op1 op2\<rbrakk> \<le> \<lbrakk>op1\<rbrakk> OO \<lbrakk>op2\<rbrakk>"
@@ -1648,32 +1607,17 @@ lemma semantics_scomp_op:
       done
     done
   done
-(*
-    subgoal for lzs lzs' p
-      apply (drule spec[of _ p], drule mp)
-      apply simp_all
-       apply (rule *[where h' = Inr])
-           apply (auto simp: inj_on_def ran_def dest!: outputs_comp_op inputs_comp_op)
-      sledgehammer
-      done
-*)
-      apply (auto dest!: inputs_comp_op)
-    apply (drule spec, drule mp)
-    apply (erule arg_cong[where f="produced op2 _", THEN iffD1, rotated])
-    oops
 
 type_synonym 'd op22 = "(2, 2, 'd) op"
 type_synonym 'd op11 = "(1, 1, 'd) op"
 
 coinductive welltyped where
   "welltyped A B (f EOB) \<Longrightarrow> welltyped A B (f EOS) \<Longrightarrow> \<forall>x \<in> A p. welltyped A B (f (Observed x)) \<Longrightarrow> welltyped A B (Read p f)"
-| "x \<in> B p \<Longrightarrow> welltyped A B op \<Longrightarrow> welltyped A B (Write op p (Observed x))"
-| "welltyped A B op \<Longrightarrow> welltyped A B (Write op p EOS)"
-| "welltyped A B op \<Longrightarrow> welltyped A B (Write op p EOB)"
+| "x \<in> B p \<Longrightarrow> welltyped A B op \<Longrightarrow> welltyped A B (Write op p x)"
 | "welltyped A B End"
 
 (*characteristic property of welltyped*)
-lemma "welltyped A B op \<Longrightarrow> (\<forall>p. (\<Union> (the_value ` lset (lxs p))) \<subseteq> A p) \<Longrightarrow> (\<Union> (the_value ` lset (produce p op lxs))) \<subseteq> B p"
+lemma "welltyped A B op \<Longrightarrow> \<lbrakk>op\<rbrakk> lxs lys \<Longrightarrow> (\<forall>p. lset (lxs p) \<subseteq> A p) \<Longrightarrow> (\<forall>p. lset (lys p) \<subseteq> B p)"
   sorry
 
 abbreviation "write op p x \<equiv> Write op p (Observed x)"
