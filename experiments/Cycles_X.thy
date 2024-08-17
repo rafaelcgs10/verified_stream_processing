@@ -750,14 +750,6 @@ lemma input_depth_Read_diff_le[simp]:
    (input_depth p (f (arg_min (input_depth p o f) (\<lambda>x. p \<in> inputs (f x))))) \<le> input_depth p (Read p' f)"
   by force
 
-lemma comp_op_Read_simps:
-  "comp_op wire buf (Read p f) End = Read (Inl p) (\<lambda> x. comp_op wire buf (f x) End)"
-  "comp_op wire buf (Read p f) (Write op' p' y) = Read (Inl p) (\<lambda> x. Write (comp_op wire buf (f x) op') (Inr p') y)"
-  "comp_op wire buf (Read p f) (Read p' f') =
-   Read (Inl p) (if p' \<in> ran wire then \<lambda>y1. comp_op wire (buf(p' := btl (buf p'))) (f y1) (f' (BHD p' buf)) else (\<lambda>y1. Read (Inr p') (\<lambda>y2. comp_op wire buf (f y1) (f' y2))))"
-    apply auto
-  done
-
 lemma comp_op_Read_simps_case:
   "comp_op wire buf (Read p f) op2 =
    Read (Inl p) (\<lambda> x. case op2 of
@@ -1030,9 +1022,6 @@ lemma output_depth_Read[simp]:
     apply (smt (verit, ccfv_SIG) LeastI Least_le arg_min_nat_le comp_eq_dest_lhs)
     done
   done
-
-
-thm inputs_comp_op
 
 lemma outputs_comp_op: 
   "p \<in> outputs (comp_op wire buf op1 op2) \<Longrightarrow>
