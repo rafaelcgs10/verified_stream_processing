@@ -758,65 +758,6 @@ lemma inputs_fairmerge_False_False[simp]: "inputs (fairmerge False False) = {1, 
   apply (auto dest: inputs_fairmerge_False_FalseD)
   apply (subst fairmerge.code; auto split: observation.splits elim!: chd.elims)+
   done
-(*
-lemma "merged_fueled mn m n (lxs 1) (lxs 2) (lzs 1) \<Longrightarrow> 0 < mn \<Longrightarrow> 0 < m \<and> n = 0 \<or> m = 0 \<and> 0 < n \<Longrightarrow>
-   produced ((\<lambda>_. (if m = 0 then mn else m))(1 := (if n = 0 then mn else n))) (fairmerge False False) lxs lzs"
-  apply (induct mn m n "lxs 1" "lxs 2" "lzs 1" arbitrary: lxs lzs rule: merged_fueled.induct)
-      apply simp
-     apply simp
-    apply simp
-  subgoal for m mn lxs lzs x lxs' lzs'
-    apply (drule sym)
-    apply (drule sym)
-    apply (drule meta_spec[of _ "CTL 1 lxs'"])
-    apply (drule meta_spec[of _ "CTL 1 lzs'"])
-    apply (simp split: if_splits)
-    subgoal
-    apply (subst fairmerge.code; simp)
-    apply (rule produced.Read[where n = mn]; auto 0 0)
-    apply (rule produced_Write[where lys="\<lambda>_. lzs", rotated]; simp?)
-      apply (rule produced.ReadEOB[rotated 2]; simp)
-         apply hypsubst_thin
-      subgoal premises prems
-        using prems(4,1)
-        apply (induct "0 :: nat" "0 :: nat" mn lxs "lxs' 2" lzs arbitrary: lxs' rule: merged_fueled.induct)
-           apply simp
-          apply simp
-         apply simp
-        subgoal for n lxs lys lzs y lxs'
-          apply (cases n)
-          apply simp
-          apply (drule meta_spec[of _ "CTL 2 lxs'"])
-          apply simp
-        sorry
-         apply (auto simp: fun_eq_iff elim: merged_fueled.cases)
-      
-      sorry
-    apply (subst fairmerge.code; simp)
-    apply (rule produced.Read[where n = mn]; auto 0 0)
-    apply (rule produced_Write[where lys="\<lambda>_. lzs", rotated]; simp?)
-      apply (rule produced.ReadEOB[rotated 2]; simp)
-       apply (erule produced_cong; auto)
-      apply (auto simp: fun_eq_iff elim: merged_fueled.cases)
-    done
-*)
-
-lemma exhaust_2: "(p = 1 \<Longrightarrow> P) \<Longrightarrow> ((p :: 2) = 2 \<Longrightarrow> P) \<Longrightarrow> P"
-  apply (cases p)
-  apply (auto)
-  subgoal for z
-    apply (cases z)
-     apply auto
-    subgoal for n
-      apply (cases n)
-       apply auto
-      subgoal for n
-      apply (cases n)
-         apply auto
-        done
-      done
-    done
-  done
 
 lemma merged_fueled_fairmerge: "merged_fueled lns (lxs i) (lxs j) (lzs 1) \<Longrightarrow> i = 1 \<and> j = 2 \<or> i = 2 \<and> j = 1 \<Longrightarrow>
   produced (\<lambda>p. if p = j \<and> lns \<noteq> LNil then lhd lns else 0) (fairmerge False False) lxs lzs"
@@ -2561,6 +2502,7 @@ lemma "traced m (scomp_op op1 op2) ios \<longleftrightarrow> (\<exists>ios1 ios2
        traced m1 op1 ios1 \<and> agree (rel_sum (=) \<bottom>) ios ios1 \<and>
        agree (\<lambda>l r. case (l, r) of (Inr x, Inl y) \<Rightarrow> x = y | _ \<Rightarrow> False) ios1 ios2 \<and>
        traced m2 op2 ios2 \<and> agree (rel_sum \<bottom> (=)) ios ios2)"
+  oops
 
 lemma semantics_scomp_op:
   "\<lbrakk>scomp_op op1 op2\<rbrakk> \<le> \<lbrakk>op1\<rbrakk> OO \<lbrakk>op2\<rbrakk>"
