@@ -65,6 +65,42 @@ lemma not_vocal_silent: "\<not> vocal p op lxs \<Longrightarrow> silent p op lxs
 lemma not_silent_iff_vocal: "\<not> silent p op lxs \<longleftrightarrow> vocal p op lxs"
   by (metis not_vocal_silent vocal_not_silent)
 
+inductive wary for p where
+  Read_same: "wary p (Read p f) lxs"
+| Write: "wary p op' lxs \<Longrightarrow> wary p (Write op' p' x) lxs"
+| Read_other: "p \<noteq> p' \<Longrightarrow> wary p (f (CHD p' lxs)) (CTL p' lxs) \<Longrightarrow> wary p (Read p' f) lxs"
+| ReadEOB: "wary p (f EOB) lxs \<Longrightarrow> wary p (Read p' f) lxs"
+
+inductive_cases wary_EndE[elim!]: "wary p End lxs"
+inductive_cases wary_WriteE[elim!]: "wary p (Write op p' x) lxs"
+inductive_cases wary_ReadE[elim!]: "wary p (Read p' f) lxs"
+
+coinductive deaf for p where
+  End[simp, intro!]: "deaf p End lxs"
+| Write: "deaf p op' lxs \<Longrightarrow> deaf p (Write op' p' x) lxs"
+| Read: "p \<noteq> p' \<Longrightarrow> deaf p (f EOB) lxs \<Longrightarrow> deaf p (f (CHD p' lxs)) (CTL p' lxs) \<Longrightarrow> deaf p (Read p' f) lxs"
+
+inductive_cases deaf_EndE[elim!]: "deaf p End lxs"
+inductive_cases deaf_WriteE[elim!]: "deaf p (Write op p' x) lxs"
+inductive_cases deaf_ReadE[elim!]: "deaf p (Read p' f) lxs"
+
+lemma wary_not_deaf: "wary p op lxs \<Longrightarrow> \<not> deaf p op lxs"
+  by (induct op lxs pred: wary) (auto simp: fun_upd_def)
+
+lemma not_wary_deaf: "\<not> wary p op lxs \<Longrightarrow> deaf p op lxs"
+  apply (coinduction arbitrary: op lxs)
+  subgoal for op lxs
+    apply (cases op)
+      apply (auto intro: wary.intros)
+    done
+  done
+
+lemma not_deaf_iff_wary: "\<not> deaf p op lxs \<longleftrightarrow> wary p op lxs"
+  by (metis not_wary_deaf wary_not_deaf)
+
+abbreviation deafened where
+  "deafened op lxs \<equiv> (\<forall>p. deaf p op lxs \<longrightarrow> lxs p = LNil)"
+
 abbreviation silenced where
   "silenced op lxs lys \<equiv> (\<forall>p. silent p op lxs \<longrightarrow> lys p = LNil)"
 
@@ -81,14 +117,6 @@ coinductive traced where
 | ReadEOB: "fuel p = Suc n \<Longrightarrow> traced (fuel(p := n)) (f EOB) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inl p, EOB) lxs)"
 | Write: "traced fuel op lxs \<Longrightarrow> traced fuel (Write op p x) (LCons (Inr p, Observed x) lxs)"
 | End: "traced fuel End LNil"
-
-(* 
-coinductive traced where
-  Read: "x \<noteq> EOB \<Longrightarrow> traced (fuel(p := n)) (f x) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inl p, x) lxs)"
-| ReadEOB: "fuel p = Suc n \<Longrightarrow> traced (fuel(p := n)) (f EOB) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inl p, EOB) lxs)"
-| Write: "traced fuel op lxs \<Longrightarrow> traced fuel (Write op p x) (LCons (Inr p, Observed x) lxs)"
-| End: "traced fuel End LNil"
- *)
 
 inductive_cases traced_EndE[elim!]: "traced m End lxs"
 inductive_cases traced_WriteE[elim!]: "traced m (Write op p' x) lxs"
@@ -924,35 +952,34 @@ lemma merged_fairmerge_False_False:
   using mergedL1_fueled_fairmerge[of _ lxs 1 2 lzs] mergedL1_fueled_fairmerge[of _ lxs 2 1 lzs]
   by blast
 
+definition "lproject f ios = (\<lambda>p. lmap (obs o snd) (lfilter (\<lambda>qx. case qx of (q, Observed x) \<Rightarrow> f p = q | _ \<Rightarrow> False) ios))"
 
-lemma "\<lbrakk>fairmerge False False\<rbrakk> lxs lzs \<Longrightarrow> merged (lxs 1) (lxs 2) (lzs 1)"
+lemma traced_merged:
+  "traced m (fairmerge False False) ios \<Longrightarrow> lxs = lproject Inl ios \<Longrightarrow> lzs = lproject Inr ios \<Longrightarrow> merged (lxs 1) (lxs 2) (lzs 1)"
+  apply (coinduction arbitrary: m ios lxs lzs)
+  apply (subst (asm) fairmerge.code; simp)
+  apply (erule traced_ReadE; auto 0 0 split: observation.splits simp: lproject_def elim!: chd.elims)
+  subgoal
+    by (smt (verit, del_insts) llist.simps(3) lshift_simps(1) lshift_simps(2))
+                      apply (simp_all add: image_iff split_beta split: observation.splits)
+  
+  sorry
+
+lemma produced_traced:
+  "produced m op lxs lys \<Longrightarrow> \<exists>ios. traced m op ios \<and> (\<forall>p. lprefix (lproject Inl ios p) (lxs p)) \<and> lys = lproject Inr ios"
+  sorry
+
+lemma fairmerge_semantics: "\<lbrakk>fairmerge False False\<rbrakk> lxs lzs \<Longrightarrow> merged (lxs 1) (lxs 2) (lzs 1)"
   unfolding semantics_def
   apply (erule exE)
-  subgoal for m
-    apply (coinduction arbitrary: m lxs lzs rule: merged.coinduct)
-    subgoal for m lxs lzs
-      apply (induct "m 1 + m 2" arbitrary: m)
-      apply (subst (asm) fairmerge.code; simp)
-      apply (erule produced_ReadE; simp)
-      apply (split observation.splits)+
-      apply (erule produced_WriteE; simp)
-      apply (erule produced_ReadE; simp)
-      apply (split observation.splits)+
-                apply (erule produced_WriteE; simp)
-      apply (rule disjI2)
-      apply (rule disjI2)
-               apply (rule disjI1)
-               apply (rule exI conjI[rotated] disjI1)+
-                       apply assumption
-      apply (rule refl)
-      apply (rule refl)
-                    apply (rule refl)
-      apply (rule not_Cons_self2)
-                  apply (rule not_Cons_self2)
-                 apply simp
-                apply simp
-      oops
-    
+  apply (drule produced_traced)
+  apply (erule exE conjE)+
+  apply (drule traced_merged)
+    apply (rule refl)
+   apply assumption
+  apply assumption
+  done
+
 inductive producing for p where
   "producing p End lxs 0"
 | "producing p (Write _ p _) lxs 0"
