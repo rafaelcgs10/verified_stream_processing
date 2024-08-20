@@ -1316,7 +1316,7 @@ lemma Inr_in_traced_vocal:
     done
   done
 
-lemma 
+lemma traced_produced:
   "traced m op ios \<Longrightarrow> 
    produced m op (\<lambda>p. lmap (obs o snd) (lfilter (\<lambda>(q, x). Inl p = q \<and> is_Observed x) ios)) (\<lambda>p. lmap (obs o snd) (lfilter (\<lambda>(q, x). Inr p = q \<and> is_Observed x) ios))"
   apply (coinduction arbitrary: m op ios)
@@ -1332,7 +1332,7 @@ lemma
         apply (drule vocal_not_silent)
         unfolding not_def
         apply (drule mp)
-        apply (subst silent_cong)
+         apply (subst silent_cong)
            apply (rule refl)
           defer
           apply assumption
@@ -1356,7 +1356,7 @@ lemma
         apply (drule vocal_not_silent)
         unfolding not_def
         apply (drule mp[where P="silent p' (f EOS) (\<lambda>p. lmap (obs \<circ> snd) (lfilter (\<lambda>(q, x). Inl p = q \<and> is_Observed x) lxs))"])  
-        apply (subst silent_cong)
+         apply (subst silent_cong)
            apply (rule refl)
           defer
           apply (subst (asm) lfilter_False)
@@ -1365,7 +1365,7 @@ lemma
          apply (auto simp add: case_prod_unfold image_iff)
         done
       subgoal
-         apply (rule exI[of _ "n"])
+        apply (rule exI[of _ "n"])
         apply (rule disjI1)
         apply (rule exI[of _ lxs])
         apply (auto simp add: case_prod_unfold image_iff)
@@ -1375,14 +1375,14 @@ lemma
       apply (rule disjI2)
       apply (rule disjI1)
       apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil)
-            subgoal for p' y
+      subgoal for p' y
         apply (frule Inr_in_traced_vocal[rotated 2])
           apply assumption
          apply (rule refl)
         apply (drule vocal_not_silent)
         unfolding not_def
         apply (drule mp)
-        apply (subst silent_cong)
+         apply (subst silent_cong)
            apply (rule refl)
           defer
           apply assumption
@@ -1394,11 +1394,35 @@ lemma
       apply (rule disjI2)
       apply (rule disjI2)
       apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil)
-      apply (rule exI conjI)+
-      defer
-      apply (rule exI conjI)+
-      defer
-      oops
+      apply (rule exI[of _ "(\<lambda>pa. lmap (\<lambda>z. obs (snd z)) (lfilter (\<lambda>(q, x). Inr pa = q \<and> is_Observed x) lxs))"])
+      apply (intro conjI)
+        apply simp
+      subgoal
+        by (auto simp add: lmap_eq_LNil lfilter_eq_LNil)
+      subgoal
+        apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil)
+        apply (frule Inr_in_traced_vocal[rotated 2])
+          apply assumption
+         apply (rule refl)
+        apply (drule vocal_not_silent)
+        unfolding not_def
+        apply (drule mp)
+         apply (subst silent_cong)
+           apply (rule refl)
+          defer
+          apply assumption
+         apply simp
+        apply auto
+        done
+      subgoal
+        apply (rule disjI1)
+        apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil)
+        done
+      done
+    subgoal
+      by auto
+    done
+  done
 
 fun bapp where
   "bapp BEmpty lxs = lxs"
