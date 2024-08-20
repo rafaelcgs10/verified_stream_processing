@@ -74,19 +74,28 @@ coinductive produced where
 | Write: "silenced op lxs lys \<Longrightarrow> produced fuel op lxs lys \<Longrightarrow> produced fuel (Write op p x) lxs (lys(p := LCons x (lys p)))"
 | End: "produced fuel End lxs (\<lambda>_. LNil)"
 
+
+coinductive traced where
+  Read: "is_Observed x \<Longrightarrow> traced (fuel(p := n)) (f x) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inl p, x) lxs)"
+| ReadEOS: "Inl p \<notin> fst ` lset lxs \<Longrightarrow> traced (fuel(p := n)) (f EOS) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inl p, EOS) lxs)"
+| ReadEOB: "fuel p = Suc n \<Longrightarrow> traced (fuel(p := n)) (f EOB) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inl p, EOB) lxs)"
+| Write: "traced fuel op lxs \<Longrightarrow> traced fuel (Write op p x) (LCons (Inr p, Observed x) lxs)"
+| End: "traced fuel End LNil"
+
+(* 
 coinductive traced where
   Read: "x \<noteq> EOB \<Longrightarrow> traced (fuel(p := n)) (f x) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inl p, x) lxs)"
 | ReadEOB: "fuel p = Suc n \<Longrightarrow> traced (fuel(p := n)) (f EOB) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inl p, EOB) lxs)"
 | Write: "traced fuel op lxs \<Longrightarrow> traced fuel (Write op p x) (LCons (Inr p, Observed x) lxs)"
 | End: "traced fuel End LNil"
+ *)
+
+inductive_cases traced_EndE[elim!]: "traced m End lxs"
+inductive_cases traced_WriteE[elim!]: "traced m (Write op p' x) lxs"
+inductive_cases traced_ReadE[elim!]: "traced m (Read p' f) lxs"
 
 definition agree :: "('l \<Rightarrow> 'l' \<Rightarrow> bool) \<Rightarrow> ('l \<times> 'c) llist \<Rightarrow> ('l' \<times> 'c) llist \<Rightarrow> bool" where
   "agree R lxs lys = llist_all2 (rel_prod R (=)) (lfilter (Domainp R o fst) lxs) (lfilter (Rangep R o fst) lys)"
-
-lemma "traced m op ios \<Longrightarrow> produced m op
-  (\<lambda>p. lmap (obs o snd) (lfilter (\<lambda>(q, x). Inl p = q \<and> is_Observed x) ios))
-  (\<lambda>p. lmap (obs o snd) (lfilter (\<lambda>(q, x). Inr p = q \<and> is_Observed x) ios))"
-  sorry (*Rafael*)
 
 definition semantics ("\<lbrakk>_\<rbrakk>") where
   "semantics op lxs lys = (\<exists>m. produced m op lxs lys)"
@@ -720,7 +729,7 @@ lemma exhaust_2: "(p = 1 \<Longrightarrow> P) \<Longrightarrow> ((p :: 2) = 2 \<
       done
     done
   done
-
+(* 
 lemma "merged (lxs 1) (lxs 2) (lzs 1) \<Longrightarrow> \<lbrakk>fairmerge False False\<rbrakk> lxs lzs"
   apply (frule merged_merged_fueled)
   apply (elim disjE exE conjE)
@@ -789,7 +798,7 @@ lemma "merged (lxs 1) (lxs 2) (lzs 1) \<Longrightarrow> \<lbrakk>fairmerge False
             apply (rule exI)
             apply (rule produced_cong.produced)
             apply (rule produced_Write)
-          oops
+          oops *)
 (*
 apply (rule produced)
 
@@ -1261,6 +1270,141 @@ lemma vocal_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longrig
       by (force intro!: vocal.intros(3) Read(2)[folded *] Read(3))
   qed (auto intro: vocal.intros)
   done
+
+lemma Inr_in_traced_vocal:
+  "r \<in> lset ios \<Longrightarrow>
+   r = (Inr p, x) \<Longrightarrow>
+   traced fuel op ios \<Longrightarrow>
+   vocal p op (\<lambda>p. lmap (obs o snd) (lfilter (\<lambda>(q, x). Inl p = q \<and> is_Observed x) ios))"
+  apply (induct ios arbitrary: op fuel rule: lset_induct'[where x=r])
+  subgoal for xs op
+    apply (auto intro: vocal.intros elim: traced.cases)
+    done
+  subgoal for x xs op fuel
+    apply (cases op)
+      apply hypsubst
+      apply (auto intro: vocal.intros)
+    subgoal for p' f' x n
+      apply (cases x)
+        apply simp_all
+      subgoal for y      
+        apply hypsubst_thin
+        apply (drule meta_spec)+
+        apply (drule meta_mp)
+         apply simp
+        apply (rule vocal.Read)
+        apply auto
+        apply (subst vocal_cong)
+          apply (rule refl)
+         defer
+         apply assumption
+        apply auto
+        done
+      done
+    subgoal for p' f'
+        apply hypsubst_thin
+        apply (drule meta_spec)+
+        apply (drule meta_mp)
+         apply simp
+        apply (rule vocal.Read)
+        apply auto
+        apply (subst vocal_cong)
+          apply (rule refl)
+       defer
+       apply simp
+       apply (subst lfilter_False)
+      apply (metis (mono_tags, lifting) image_eqI split_beta)
+       apply simp
+      apply (auto simp add: case_prod_unfold image_iff)
+      done
+    subgoal
+      by (meson not_silent_iff_vocal silent_WriteE)
+    done
+  done
+
+lemma 
+  "traced m op ios \<Longrightarrow> 
+   produced m op (\<lambda>p. lmap (obs o snd) (lfilter (\<lambda>(q, x). Inl p = q \<and> is_Observed x) ios)) (\<lambda>p. lmap (obs o snd) (lfilter (\<lambda>(q, x). Inr p = q \<and> is_Observed x) ios))"
+  apply (coinduction arbitrary: m op ios)
+  subgoal for m op ios
+    apply (erule traced.cases)
+    subgoal for x fuel p n f lxs'
+      apply (rule disjI1)
+      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil)
+      subgoal for p' y
+        apply (frule Inr_in_traced_vocal[rotated 2])
+          apply assumption
+         apply (rule refl)
+        apply (drule vocal_not_silent)
+        unfolding not_def
+        apply (drule mp)
+        apply (subst silent_cong)
+           apply (rule refl)
+          defer
+          apply assumption
+         apply simp
+        apply auto
+        done
+      subgoal
+        apply (rule exI[of _ "n"])
+        apply (rule disjI1)
+        apply (rule exI[of _ lxs'])
+        apply (auto simp add: fun_eq_iff)
+        done
+      done
+    subgoal for p lxs fuel n f
+      apply (rule disjI1)
+      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil)
+      subgoal for p' y
+        apply (frule Inr_in_traced_vocal[rotated 2])
+          apply assumption
+         apply (rule refl)
+        apply (drule vocal_not_silent)
+        unfolding not_def
+        apply (drule mp[where P="silent p' (f EOS) (\<lambda>p. lmap (obs \<circ> snd) (lfilter (\<lambda>(q, x). Inl p = q \<and> is_Observed x) lxs))"])  
+        apply (subst silent_cong)
+           apply (rule refl)
+          defer
+          apply (subst (asm) lfilter_False)
+           apply force
+          apply simp
+         apply (auto simp add: case_prod_unfold image_iff)
+        done
+      subgoal
+         apply (rule exI[of _ "n"])
+        apply (rule disjI1)
+        apply (rule exI[of _ lxs])
+        apply (auto simp add: case_prod_unfold image_iff)
+        done
+      done
+    subgoal for fuel p n f lxs
+      apply (rule disjI2)
+      apply (rule disjI1)
+      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil)
+            subgoal for p' y
+        apply (frule Inr_in_traced_vocal[rotated 2])
+          apply assumption
+         apply (rule refl)
+        apply (drule vocal_not_silent)
+        unfolding not_def
+        apply (drule mp)
+        apply (subst silent_cong)
+           apply (rule refl)
+          defer
+          apply assumption
+         apply simp
+        apply auto
+        done
+      done
+    subgoal for fuel op lxs p x
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil)
+      apply (rule exI conjI)+
+      defer
+      apply (rule exI conjI)+
+      defer
+      oops
 
 fun bapp where
   "bapp BEmpty lxs = lxs"
