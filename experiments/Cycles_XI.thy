@@ -1424,6 +1424,141 @@ lemma traced_produced:
     done
   done
 
+corec trace_op where
+  "trace_op fuel op lxs lys = (case op of
+     End \<Rightarrow> LNil
+   | Write op' p x \<Rightarrow> LCons (Inr p, Observed x) (trace_op fuel op' lxs (CTL p lys))
+   | Read p f \<Rightarrow> (if fuel p > 0 \<and> produced (fuel(p := (fuel p - 1))) (f EOB) lxs lys
+           then
+             LCons (Inl p, EOB) (trace_op (fuel(p := (fuel p - 1))) (f EOB) lxs lys)
+           else
+            let n = SOME n. produced (fuel(p := n)) (f (CHD p lxs)) (CTL p lxs) lys in
+            LCons (Inl p, CHD p lxs) (trace_op (fuel(p := n)) (f (CHD p lxs)) (CTL p lxs) lys)))"
+
+
+lemma Inl_in_trace_op_not_Observed:
+  "r \<in> lset (trace_op fuel op lxs lys) \<Longrightarrow>
+   r = (Inl p, c) \<Longrightarrow>
+   lxs p = LNil \<Longrightarrow>
+   \<not> is_Observed c"
+  apply (induct "trace_op fuel op lxs lys" arbitrary: fuel op lxs lys rule: lset_induct)
+  subgoal for lxs
+    apply (subst (asm) trace_op.code)
+    apply (auto split: op.splits if_splits elim: produced.cases; hypsubst_thin?)
+    done
+  subgoal for x xs fuel op lxs lys
+    apply (subst (asm) (2) trace_op.code)
+    apply (auto split: op.splits if_splits elim: produced.cases; hypsubst_thin?)
+       apply fastforce
+      apply (metis fun_upd_apply ltl_simps(1))
+    subgoal
+      by (metis fun_upd_other)
+    subgoal
+      by (metis fun_upd_other fun_upd_same ltl_simps(1))
+    done
+  done
+
+lemma *:
+  "r \<in> lset (trace_op fuel op lxs lys) \<Longrightarrow>
+   produced fuel op lxs lys \<Longrightarrow>
+   \<exists>x. r = (Inl p', Observed x) \<Longrightarrow>
+   lxs p' \<noteq> LNil \<Longrightarrow> obs (snd (lhd (ldropWhile (\<lambda>x. \<not> (case x of (q, Observed x) \<Rightarrow> Inl p' = q | _ \<Rightarrow> False)) (trace_op fuel op lxs lys)))) = lhd (lxs p')"
+  apply (induct "trace_op fuel op lxs lys" arbitrary: fuel op lxs lys rule: lset_induct)
+  subgoal for xs fuel op lxs lys
+    apply (subst (asm) trace_op.code)
+    apply (subst trace_op.code)
+    apply (auto dest: sym split: op.splits if_splits observation.splits elim: produced.cases chd.elims; hypsubst_thin?)
+    done
+  subgoal premises prems
+    using prems(1,2,4-)
+    apply (subst (asm) trace_op.code)
+    apply (subst trace_op.code)
+    apply (auto 4 0 split: op.splits if_splits observation.splits dest: prems(3))
+    apply (drule prems(3); simp)
+    apply (drule prems(3); simp)
+    apply (drule prems(3); simp)
+    apply (drule prems(3); simp)
+    apply (drule prems(3); simp)
+    apply (drule prems(3); simp)
+    apply (drule prems(3); simp)
+    apply (drule prems(3); simp)
+                        apply (drule prems(3); auto elim: someI)
+                        apply (drule prems(3); auto elim: someI)
+                        apply (drule prems(3); auto elim: someI)
+                        apply (drule prems(3); auto elim: someI)
+                        apply (drule prems(3); auto elim: someI)
+                        apply (drule prems(3); auto elim: someI)
+                        apply (drule prems(3); auto elim: someI)
+                        apply (drule prems(3); auto elim: someI)
+                        apply (drule prems(3); auto simp: Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims)
+    using Inl_in_trace_op_not_Observed apply fastforce
+                        apply (drule prems(3); auto simp: Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims)
+    using Inl_in_trace_op_not_Observed apply fastforce
+                        apply (drule prems(3); auto simp: Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims)
+                        apply (drule prems(3); auto simp: Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims)
+                        apply (drule prems(3); auto simp: Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims)
+                        apply (drule prems(3); auto simp: Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims)
+                        apply (drule prems(3); auto simp: Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims)
+                        apply (drule prems(3); auto simp: Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims)
+                        apply (drule prems(3); auto simp: Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims)
+                        apply (drule prems(3); auto simp: Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims)
+                        apply (drule prems(3); auto simp: Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims)
+                        apply (drule prems(3); auto simp: Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims)
+                        apply (drule prems(3); auto simp: Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims)
+                        apply (drule prems(3); auto simp: Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims)
+                        apply (drule prems(3); auto simp: Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims)
+    using Inl_in_trace_op_not_Observed apply fastforce
+                        apply (drule prems(3); auto simp: Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims)
+    using Inl_in_trace_op_not_Observed apply fastforce
+                        apply (drule prems(3); auto simp: Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims)
+                        apply (drule prems(3); auto simp: Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims)
+                        apply (drule prems(3); auto simp: Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims)
+                        apply (drule prems(3); auto simp: Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims)
+    apply (drule prems(3); simp?)
+    done
+  done
+
+term vocal
+
+lemma traced_produced:
+  "produced m op lxs lys \<Longrightarrow>
+   \<exists> ios. traced m op ios \<and> (\<forall>p. lprefix (lmap (obs o snd) (lfilter (\<lambda>x. case x of (q, Observed x) \<Rightarrow> Inl p = q | _ \<Rightarrow> False) ios)) (lxs p)) \<and> lys = (\<lambda>p. lmap (obs o snd) (lfilter (\<lambda>x. case x of (q, Observed x) \<Rightarrow> Inl p = q | _ \<Rightarrow> False) ios))"
+  apply (rule exI[of _ "trace_op m op lxs lys"])
+  apply (intro conjI)
+  prefer 2
+  subgoal
+    apply (rule allI)
+    apply (coinduction arbitrary: m op lxs lys)
+    subgoal for m op lxs lys p'
+        apply (intro conjI impI)
+      subgoal
+      apply (erule produced.cases)
+      subgoal for f p lxs' lys' fuel n
+        apply hypsubst_thin
+        apply (cases "lxs' p'")
+        subgoal
+          apply clarsimp
+          using Inl_in_trace_op_not_Observed apply (fastforce split: observation.splits simp: is_Observed_def)
+          done
+        subgoal for x lxs''
+          apply clarsimp
+          done
+        done
+      subgoal
+        using Inl_in_trace_op_not_Observed by (fastforce split: observation.splits simp: is_Observed_def)
+      subgoal
+        using Inl_in_trace_op_not_Observed by (fastforce split: observation.splits simp: is_Observed_def)
+      subgoal
+        using Inl_in_trace_op_not_Observed by (fastforce split: observation.splits simp: is_Observed_def)
+      done
+    subgoal
+      apply (auto split: observation.splits dest: *)
+      done
+    subgoal
+      apply (rule disjI1)
+      apply (auto split: observation.splits)
+      oops
+
 fun bapp where
   "bapp BEmpty lxs = lxs"
 | "bapp BEnded lxs = LNil"
