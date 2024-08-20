@@ -2739,7 +2739,7 @@ lemma semantics_scomp_op:
     apply (rule relcomppI)
      apply assumption
     apply (erule semantics_cong)
-      apply simp_all
+      apply (simp_all add: silenced_def)
     apply safe
     subgoal for lzs lzs' p
       apply (drule spec[of _ p], drule mp)
