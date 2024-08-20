@@ -101,8 +101,15 @@ lemma not_deaf_iff_wary: "\<not> deaf p op lxs \<longleftrightarrow> wary p op l
 abbreviation deafened where
   "deafened op lxs \<equiv> (\<forall>p. deaf p op lxs \<longrightarrow> lxs p = LNil)"
 
-abbreviation silenced where
+definition silenced where
   "silenced op lxs lys \<equiv> (\<forall>p. silent p op lxs \<longrightarrow> lys p = LNil)"
+
+lemma
+  silenced_ReadEOB[simp,intro]: "silenced (f EOB) lxs lys \<Longrightarrow> silenced (Read p f) lxs lys" and
+  silenced_Read[simp,intro]: "silenced (f (CHD p lxs)) (CTL p lxs) lys \<Longrightarrow> silenced (Read p f) lxs lys" and
+  silenced_Write[simp,intro]: "silenced op lxs (CTL p' lys) \<Longrightarrow> silenced (Write op p' x) lxs lys" and
+  silenced_End[iff]: "silenced End lxs lys \<longleftrightarrow> (\<forall>p. lys p = LNil)"
+  by (auto simp: silenced_def)
 
 coinductive produced where
   Read: "silenced (f (CHD p lxs)) (CTL p lxs) lys \<Longrightarrow> produced (fuel(p := n)) (f (CHD p lxs)) (CTL p lxs) lys \<Longrightarrow> produced fuel (Read p f) lxs lys"
@@ -161,7 +168,7 @@ lemma silent_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longri
 
 lemma silenced_cong: "silenced op lxs lys \<Longrightarrow>
    (\<forall>p \<in> inputs op. lxs p = lxs' p) \<Longrightarrow> (\<And>p. lys p = LNil \<Longrightarrow> lys' p = LNil) \<Longrightarrow> silenced op lxs' lys'"
-  by (auto cong: silent_cong)
+  by (auto cong: silent_cong simp: silenced_def)
 
 lemma produced_cong: "produced m op lxs lys \<Longrightarrow>
    (\<forall>p \<in> inputs op. m p = m' p) \<Longrightarrow>
@@ -171,7 +178,7 @@ lemma produced_cong: "produced m op lxs lys \<Longrightarrow>
   apply (coinduction arbitrary: m op lxs lys m' lxs' lys')
   subgoal for m op lxs lys m' lxs' lys'
     apply (cases op)
-      apply (auto 3 0 simp del: fun_upd_apply split: if_splits)
+      apply (auto 3 0 simp del: fun_upd_apply simp: silenced_def split: if_splits)
             apply (smt (verit) fun_upd_apply silent_ReadE silent_cong)
     subgoal for p f n q
       apply (rule exI[of _ n])
@@ -274,9 +281,9 @@ lemma produced_coinduct_upto:
     subgoal for fuel op lxs lys
       by (drule CIH) (fastforce simp del: fun_upd_apply simp add: fun_upd_other)+
     subgoal for fuel op' lxs lys' lys p x
-      by (auto simp del: fun_upd_apply simp add: fun_upd_other)
+      by (auto simp del: fun_upd_apply simp add: fun_upd_other fun_upd_same)
     subgoal for fuel p f lxs lys n
-      apply (cases "fuel p"; auto simp del: fun_upd_apply simp add: fun_upd_other)
+      apply (cases "fuel p"; auto simp del: fun_upd_apply simp add: fun_upd_other fun_upd_same)
       done
     done
   done
@@ -601,7 +608,7 @@ lemma produced_fairmerge_True_False: "produced m (fairmerge True False) lxs lzs 
         (auto split: observation.splits elim!: chd.elims)
   qed
   subgoal for m lzs lxs
-    by (auto dest!: produced_silenced)
+    by (auto dest!: produced_silenced simp: silenced_def)
   subgoal for m lzs lxs
   proof (induct "m 2" arbitrary: m lxs)
     case 0
@@ -621,7 +628,6 @@ lemma produced_fairmerge_True_False: "produced m (fairmerge True False) lxs lzs 
       apply (subst (asm) fairmerge.code)
       apply (auto split: observation.splits elim!: chd.elims)
        apply (metis fun_upd_same)
-      apply (metis fun_upd_same)
       done
   next
     case (Suc n)
@@ -629,13 +635,12 @@ lemma produced_fairmerge_True_False: "produced m (fairmerge True False) lxs lzs 
       apply (subst (asm) fairmerge.code)
       apply (auto split: observation.splits elim!: chd.elims)
        apply (metis fun_upd_same)
-      apply (metis fun_upd_same)
       done
   qed
   apply (coinduction arbitrary: m lxs lzs rule: produced_coinduct_upto)
   apply (rule disjI1)
   apply (subst fairmerge.code)
-  apply (auto simp: fun_upd_def[where 'b=nat] split: observation.splits elim!: chd.elims
+  apply (auto simp: fun_upd_def[where 'b=nat] silenced_def split: observation.splits elim!: chd.elims
       intro!: exI[of _ 0])
    apply (rule produced_cong.write) 
     apply (rule produced_cong.base)
@@ -668,7 +673,7 @@ lemma produced_fairmerge_False_True: "produced m (fairmerge False True) lxs lzs 
         (auto split: observation.splits elim!: chd.elims)
   qed
   subgoal for m lzs lxs
-    by (auto dest!: produced_silenced)
+    by (auto dest!: produced_silenced simp: silenced_def)
   subgoal for m lzs lxs
   proof (induct "m 1" arbitrary: m lxs)
     case 0
@@ -688,7 +693,6 @@ lemma produced_fairmerge_False_True: "produced m (fairmerge False True) lxs lzs 
       apply (subst (asm) fairmerge.code)
       apply (auto split: observation.splits elim!: chd.elims)
        apply (metis fun_upd_same)
-      apply (metis fun_upd_same)
       done
   next
     case (Suc n)
@@ -696,13 +700,12 @@ lemma produced_fairmerge_False_True: "produced m (fairmerge False True) lxs lzs 
       apply (subst (asm) fairmerge.code)
       apply (auto split: observation.splits elim!: chd.elims)
        apply (metis fun_upd_same)
-      apply (metis fun_upd_same)
       done
   qed
   apply (coinduction arbitrary: m lxs lzs rule: produced_coinduct_upto)
   apply (rule disjI1)
   apply (subst fairmerge.code)
-  apply (auto simp: fun_upd_def[where 'b=nat] split: observation.splits elim!: chd.elims
+  apply (auto simp: fun_upd_def[where 'b=nat] silenced_def split: observation.splits elim!: chd.elims
       intro!: exI[of _ 0])
    apply (rule produced_cong.write) 
     apply (rule produced_cong.base)
@@ -720,27 +723,27 @@ lemma "\<lbrakk>fairmerge False False\<rbrakk> (\<lambda>x. if x = 1 then llist_
   unfolding semantics_def
   apply (rule exI[of _ "\<lambda>x. 3"])
   apply (subst fairmerge.code; simp)
-  apply (rule produced.ReadEOB; auto 0 0)
-  apply (rule produced.Read[where n=3]; auto 0 0)
-  apply (rule produced_Write; auto?)
+  apply (rule produced.ReadEOB; auto 0 0 simp: silenced_def)
+  apply (rule produced.Read[where n=3]; auto 0 0 simp: silenced_def)
+  apply (rule produced_Write; (auto simp: silenced_def)?)
   apply (subst fairmerge.code; simp)
-  apply (rule produced.Read[where n=3]; auto 0 0)
-  apply (rule produced_Write; auto?)
-  apply (rule produced.ReadEOB; auto 0 0)
+  apply (rule produced.Read[where n=3]; auto 0 0  simp: silenced_def)
+  apply (rule produced_Write; (auto simp: silenced_def)?)
+  apply (rule produced.ReadEOB; auto 0 0 simp: silenced_def)
   apply (subst fairmerge.code; simp)
-  apply (rule produced.Read[where n=3]; auto 0 0)
-  apply (rule produced_Write; auto?)
-  apply (rule produced.ReadEOB; auto 0 0)
+  apply (rule produced.Read[where n=3]; auto 0 0 simp: silenced_def)
+  apply (rule produced_Write; (auto simp: silenced_def)?)
+  apply (rule produced.ReadEOB; auto 0 0 simp: silenced_def)
   apply (subst fairmerge.code; simp)
-  apply (rule produced.Read[where n=3]; auto 0 0)
-  apply (rule produced_Write; auto?)
-  apply (rule produced.ReadEOB; auto 0 0)
+  apply (rule produced.Read[where n=3]; auto 0 0 simp: silenced_def)
+  apply (rule produced_Write; (auto simp: silenced_def)?)
+  apply (rule produced.ReadEOB; auto 0 0 simp: silenced_def)
   apply (subst fairmerge.code; simp)
-  apply (rule produced.ReadEOB; auto 0 0)
-  apply (rule produced.Read[where n=3]; auto 0 0)
-  apply (rule produced_Write; auto?)
+  apply (rule produced.ReadEOB; auto 0 0 simp: silenced_def)
+  apply (rule produced.Read[where n=3]; auto 0 0 simp: silenced_def)
+  apply (rule produced_Write; (auto simp: silenced_def)?)
   apply (subst fairmerge.code; simp)
-  apply (rule produced.Read[where n=3]; auto 0 0)
+  apply (rule produced.Read[where n=3]; auto 0 0 simp: silenced_def)
   apply (subst fairmerge.code; simp)
   apply (rule produced.Read[where n=3]; auto 0 0)
   done
@@ -804,17 +807,17 @@ lemma mergedL1_fueled_fairmerge: "mergedL1_fueled lns (lxs i) (lxs j) (lzs 1) \<
     subgoal for lxs'
       apply (elim disjE conjE)
        apply (rule disjI1)
-       apply (subst fairmerge.code; simp)
+       apply (subst fairmerge.code; simp add: silenced_def)
        apply (rule exI[of _ 0])
        apply (rule produced_cong.produced; auto simp add: produced_fairmerge_True_False fun_eq_iff)
       apply (rule disjI1)
-      apply (subst fairmerge.code; auto split: observation.split elim!: chd.elims)
+      apply (subst fairmerge.code; auto simp: silenced_def split: observation.split elim!: chd.elims)
        apply (rule exI[of _ 0])
        apply (rule produced_cong.produced)
        apply (rule produced_Write[rotated])
          apply (rule produced.Read[rotated])
           apply (simp add: produced_fairmerge_False_True)
-         apply (auto simp: fun_eq_iff) [3]
+         apply (auto simp: fun_eq_iff silenced_def) [3]
       apply (rule exI[of _ 0])
       apply (rule produced_cong.produced)
       apply (simp add: produced_fairmerge_True_False)
@@ -823,20 +826,20 @@ lemma mergedL1_fueled_fairmerge: "mergedL1_fueled lns (lxs i) (lxs j) (lzs 1) \<
     subgoal for lxs'
       apply (elim disjE conjE)
        apply (rule disjI1)
-       apply (subst fairmerge.code; auto split: observation.split elim!: chd.elims)
+       apply (subst fairmerge.code; auto simp: silenced_def split: observation.split elim!: chd.elims)
         apply (rule exI[of _ 0])
         apply (rule produced_cong.produced)
         apply (rule produced_Write[rotated])
           apply (rule produced.Read[rotated])
            apply (simp add: produced_fairmerge_False_True)
-          apply (auto simp: fun_eq_iff) [3]
+          apply (auto simp: fun_eq_iff silenced_def) [3]
        apply (subst fairmerge.code; simp)
        apply (rule exI[of _ 0])
        apply (rule produced_cong.produced)
        apply (simp add: produced_fairmerge_True_False)
        apply (auto simp: fun_eq_iff) []
       apply (rule disjI1)
-      apply (subst fairmerge.code; simp)
+      apply (subst fairmerge.code; simp add: silenced_def)
       apply (rule exI[of _ 0])
       apply (rule produced_cong.produced)
       apply (simp add: produced_fairmerge_True_False)
@@ -850,30 +853,30 @@ lemma mergedL1_fueled_fairmerge: "mergedL1_fueled lns (lxs i) (lxs j) (lzs 1) \<
       subgoal
         apply (rule disjI1)
         apply (erule mergedL1_fueled.cases; simp)
-         apply (subst fairmerge.code; auto split: observation.split elim!: chd.elims)
+         apply (subst fairmerge.code; auto simp: silenced_def split: observation.split elim!: chd.elims)
          apply (rule exI[of _ 0])
          apply (rule produced_cong.produced)
          apply (rule produced_Write[rotated])
            apply (rule produced.Read[rotated])
             apply (simp add: produced_fairmerge_False_True)
-           apply (auto simp: fun_eq_iff) [3]
-        apply (subst fairmerge.code; auto split: observation.split elim!: chd.elims)
+           apply (auto simp: fun_eq_iff silenced_def) [3]
+        apply (subst fairmerge.code; auto simp: silenced_def split: observation.split elim!: chd.elims)
         apply (rule exI[of _ 0])
         apply (rule produced_cong.produced)
         apply (rule produced_Write[rotated])
           apply (rule produced.Read[rotated])
-           apply (auto 0 0 simp add: produced_fairmerge_False_True fun_eq_iff
+           apply (auto 0 0 simp add: silenced_def produced_fairmerge_False_True fun_eq_iff
             split: observation.split elim!: chd.elims)
         apply (rule produced_Write[rotated])
           apply (auto simp: fun_eq_iff) [3]
         apply (subst fairmerge.code; auto split: observation.split elim!: chd.elims)
         apply (rule produced.Read[rotated])
-         apply (auto 0 0 simp add: produced_fairmerge_True_False fun_eq_iff
+         apply (auto 0 0 simp add: silenced_def produced_fairmerge_True_False fun_eq_iff
             split: observation.split elim!: chd.elims)
         done
       subgoal
         apply (rule disjI1)
-        apply (subst fairmerge.code; auto split: observation.split elim!: chd.elims)
+        apply (subst fairmerge.code; auto simp: silenced_def split: observation.split elim!: chd.elims)
         apply (rule exI[of _ "lhd lns'"])
         apply (rule produced_cong.write[where lys' = "CTL 1 lzs"]; auto simp: fun_eq_iff)
         apply (rule produced_cong.read; auto simp: fun_eq_iff)
@@ -883,7 +886,7 @@ lemma mergedL1_fueled_fairmerge: "mergedL1_fueled lns (lxs i) (lxs j) (lzs 1) \<
         apply hypsubst_thin
       subgoal
         apply (rule disjI1)
-        apply (subst fairmerge.code; auto split: observation.split elim!: chd.elims)
+        apply (subst fairmerge.code; auto simp: silenced_def split: observation.split elim!: chd.elims)
         apply (rule exI[of _ 0])
         apply (rule produced_cong.write[where lys' = "CTL 1 lzs"]; auto simp: fun_eq_iff)
         apply (rule produced_cong.read; auto simp: fun_eq_iff)
@@ -901,7 +904,7 @@ lemma mergedL1_fueled_fairmerge: "mergedL1_fueled lns (lxs i) (lxs j) (lzs 1) \<
       subgoal
         apply (rule disjI2)
         apply (rule disjI1)
-        apply (subst fairmerge.code; auto split: observation.split elim!: chd.elims)
+        apply (subst fairmerge.code; auto simp: silenced_def split: observation.split elim!: chd.elims)
         apply (rule produced_cong.produced)
           apply (rule produced.Read[rotated]; auto 0 0 split: observation.split elim!: chd.elims)
         apply (rule produced_Write[where lys = "CTL 1 lzs", rotated])
@@ -911,12 +914,12 @@ lemma mergedL1_fueled_fairmerge: "mergedL1_fueled lns (lxs i) (lxs j) (lzs 1) \<
         apply (rule produced_Write[where lys = "CTL 1 (CTL 1 lzs)", rotated])
         apply (rule produced.Read[rotated]; auto 0 0 split: observation.split elim!: chd.elims)
         apply (rule produced_Write[where lys = "CTL 1 (CTL 1 lzs)", rotated])
-        apply (auto simp: fun_eq_iff produced_fairmerge_False_True produced_fairmerge_True_False elim: mergedL1_fueled.cases)
+        apply (auto simp: silenced_def fun_eq_iff produced_fairmerge_False_True produced_fairmerge_True_False elim: mergedL1_fueled.cases)
         done
       subgoal
         apply (rule disjI2)
         apply (rule disjI1)
-        apply (subst fairmerge.code; auto split: observation.split elim!: chd.elims)
+        apply (subst fairmerge.code; auto simp: silenced_def split: observation.split elim!: chd.elims)
         apply (rule produced_cong.read; auto simp: fun_eq_iff)
         apply (rule produced_cong.write[where lys' = "CTL 1 lzs"]; auto simp: fun_eq_iff)
         apply (rule produced_cong.base)
@@ -931,7 +934,7 @@ lemma mergedL1_fueled_fairmerge: "mergedL1_fueled lns (lxs i) (lxs j) (lzs 1) \<
       apply hypsubst_thin
       apply (rule disjI2)
       apply (rule disjI1)
-      apply (subst fairmerge.code; auto split: observation.split elim!: chd.elims)
+      apply (subst fairmerge.code; auto simp: silenced_def split: observation.split elim!: chd.elims)
       apply (rule produced_cong.read; auto simp: fun_eq_iff)
       apply (rule produced_cong.write[where lys' = "CTL 1 lzs"]; auto simp: fun_eq_iff)
       apply (rule produced_cong.base)
@@ -954,6 +957,7 @@ lemma merged_fairmerge_False_False:
 
 definition "lproject f ios = (\<lambda>p. lmap (obs o snd) (lfilter (\<lambda>qx. case qx of (q, Observed x) \<Rightarrow> f p = q | _ \<Rightarrow> False) ios))"
 
+(*
 lemma traced_merged:
   "traced m (fairmerge False False) ios \<Longrightarrow> lxs = lproject Inl ios \<Longrightarrow> lzs = lproject Inr ios \<Longrightarrow> merged (lxs 1) (lxs 2) (lzs 1)"
   apply (coinduction arbitrary: m ios lxs lzs)
@@ -979,6 +983,7 @@ lemma fairmerge_semantics: "\<lbrakk>fairmerge False False\<rbrakk> lxs lzs \<Lo
    apply assumption
   apply assumption
   done
+*)
 
 inductive producing for p where
   "producing p End lxs 0"
@@ -1031,13 +1036,13 @@ lemma not_producing_LNil: "(\<forall>n. \<not> producing p op lxs n) \<Longright
   by (subst produce.code) (auto split: op.splits intro: producing.intros)
 
 lemma silenced_produce: "silenced op lxs (produce op lxs)"
-  using silent_produce_LNil[of _ op lxs]
+  using silent_produce_LNil[of _ op lxs] unfolding silenced_def
   by blast
 
 lemma produced_produce: "produced m op lxs (produce op lxs)"
   apply (coinduction arbitrary: m op lxs)
   subgoal for m op lxs
-    by (cases op) (force simp: silenced_produce)+
+    by (cases op) (force simp: silenced_def silenced_produce[unfolded silenced_def])+
   done
 
 lemma semantics_produce: "\<lbrakk>op\<rbrakk> lxs (produce op lxs)"
@@ -1351,7 +1356,7 @@ lemma traced_produced:
     apply (erule traced.cases)
     subgoal for x fuel p n f lxs'
       apply (rule disjI1)
-      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil)
+      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil silenced_def)
       subgoal for p' y
         apply (frule Inr_in_traced_vocal[rotated 2])
           apply assumption
@@ -1375,7 +1380,7 @@ lemma traced_produced:
       done
     subgoal for p lxs fuel n f
       apply (rule disjI1)
-      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil)
+      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil silenced_def)
       subgoal for p' y
         apply (frule Inr_in_traced_vocal[rotated 2])
           apply assumption
@@ -1401,7 +1406,7 @@ lemma traced_produced:
     subgoal for fuel p n f lxs
       apply (rule disjI2)
       apply (rule disjI1)
-      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil)
+      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil silenced_def)
       subgoal for p' y
         apply (frule Inr_in_traced_vocal[rotated 2])
           apply assumption
@@ -1427,7 +1432,7 @@ lemma traced_produced:
       subgoal
         by (auto simp add: lmap_eq_LNil lfilter_eq_LNil)
       subgoal
-        apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil)
+        apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil silenced_def)
         apply (frule Inr_in_traced_vocal[rotated 2])
           apply assumption
          apply (rule refl)
@@ -1502,6 +1507,7 @@ lemma silent_map_opI: "silent (h' p) op lxs' \<Longrightarrow>
   done
 
 lemma silent_map_op_inj: "inj_on g (inputs op) \<Longrightarrow> inj h \<Longrightarrow> silenced (map_op g h op) lxs lys \<Longrightarrow> silenced op (lxs o g) (lys o h)"
+  unfolding silenced_def
   apply safe
   subgoal for p
     using silent_map_opI[of "inv h" "h p" op "lxs o g" g h lxs]
@@ -1523,7 +1529,7 @@ lemma produced_map_op: "inj_on g (inputs op) \<Longrightarrow> inj_on h (outputs
         apply (erule produced_ReadE)
         subgoal for n
           apply (rule disjI1)
-          apply (simp add: inj_on_def)
+          apply (simp add: inj_on_def silenced_def)
           apply (rule conjI allI impI)+
           subgoal for q
             apply (cases "q \<in> outputs op")
@@ -1570,6 +1576,7 @@ lemma produced_map_op: "inj_on g (inputs op) \<Longrightarrow> inj_on h (outputs
             done
           done
         subgoal for n
+          apply (simp add: silenced_def)
           unfolding o_apply
           apply (rule disjI2)
           apply (rule conjI allI impI)+
@@ -1619,7 +1626,7 @@ lemma produced_map_op: "inj_on g (inputs op) \<Longrightarrow> inj_on h (outputs
           done
         done
       subgoal for op' p x
-        apply (auto 0 0)
+        apply (auto 0 0 simp: silenced_def)
         subgoal premises prems for lzs
           using prems
           apply -
@@ -1711,7 +1718,7 @@ lemma semantics_map_op_inj:
              apply simp
              apply (erule silenced_cong)
               apply (metis UNIV_I UN_iff comp_apply fun_upd_other fun_upd_same image_iff member_remove remove_def)
-             apply assumption
+            apply simp
             apply (rule exI[of _ n])
             apply (rule disjI1)
             apply (rule exI[of _ "m(g p := n)"])
@@ -1733,8 +1740,8 @@ lemma semantics_map_op_inj:
               apply assumption
              apply simp
              apply (erule silenced_cong)
-              apply (metis UNIV_I UN_iff comp_apply fun_upd_other fun_upd_same image_iff member_remove remove_def)
-             apply assumption
+              apply (metis comp_apply)
+             apply simp
             apply (rule exI[of _ n])
             apply (simp add: inj_on_def)
             apply (rule disjI1)
@@ -1759,7 +1766,7 @@ lemma semantics_map_op_inj:
                 prefer 2
                 apply assumption
                apply (auto simp: fun_eq_iff inj_on_def dest!: silent_map_op_inj[rotated 2]
-                cong: silent_cong)
+                elim: silenced_cong)
             done
           done
         subgoal
