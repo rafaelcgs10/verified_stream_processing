@@ -120,7 +120,7 @@ coinductive produced where
 
 coinductive traced where
   Read: "traced (fuel(p := n)) (f (Observed x)) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inl p, Observed x) lxs)"
-| ReadEOS: "Inl p \<notin> fst ` lset lxs \<Longrightarrow> traced (fuel(p := n)) (f EOS) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inl p, EOS) lxs)"
+| ReadEOS: "\<forall> x. (Inl p, Observed x) \<notin> lset lxs \<Longrightarrow> traced (fuel(p := n)) (f EOS) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inl p, EOS) lxs)"
 | ReadEOB: "fuel p = Suc n \<Longrightarrow> traced (fuel(p := n)) (f EOB) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inl p, EOB) lxs)"
 | Write: "traced fuel op lxs \<Longrightarrow> traced fuel (Write op p x) (LCons (Inr p, Observed x) lxs)"
 | End: "traced fuel End LNil"
@@ -1352,8 +1352,8 @@ lemma Inr_in_traced_loud:
        apply simp
       apply (rule loud.Read)
       apply (erule loud_cong[OF refl, THEN iffD1, rotated 2])
-      using lproject_False_weak[of xs "(\<lambda>p q. Inl p = q)" p']
-       apply (auto simp: image_iff)
+      using lproject_False[of xs "(\<lambda>p q. Inl p = q)" p']
+       apply (force simp: image_iff)+
       done
     subgoal
       apply (auto intro: loud.intros)
@@ -1385,9 +1385,9 @@ lemma traced_produced:
           apply assumption
          apply (rule refl)
         apply (drule loud_not_mute)
-        using lproject_False_weak[of lxs "(\<lambda>p q. Inl p = q)" p]
-        apply (auto simp: image_iff elim!: notE[of "mute _ _ _"]
-          elim: mute_cong[OF refl refl, THEN iffD1, rotated 1])
+        using lproject_False[of lxs "(\<lambda>p q. Inl p = q)" p]
+        apply (force simp: image_iff elim!: notE[of "mute _ _ _"]
+          elim!: mute_cong[OF refl, THEN iffD1, rotated 2])
         done
       subgoal
         apply (rule exI[of _ "n"])
@@ -1508,8 +1508,6 @@ lemma *:
     done
   done
 
-term loud
-
 lemma traced_produced:
   "produced m op lxs lys \<Longrightarrow>
    \<exists> ios. traced m op ios \<and> (\<forall>p. lprefix (lmap (obs o snd) (lfilter (\<lambda>x. case x of (q, Observed x) \<Rightarrow> Inl p = q | _ \<Rightarrow> False) ios)) (lxs p)) \<and> lys = (\<lambda>p. lmap (obs o snd) (lfilter (\<lambda>x. case x of (q, Observed x) \<Rightarrow> Inl p = q | _ \<Rightarrow> False) ios))"
@@ -1544,9 +1542,45 @@ lemma traced_produced:
     subgoal
       apply (auto split: observation.splits dest: *)
       done
-    subgoal
+ subgoal
       apply (rule disjI1)
       apply (auto split: observation.splits)
+      subgoal premises prems for x
+        using prems(3,2,1) apply -
+        apply (induct "trace_op m op lxs lys" arbitrary: m op lxs lys rule: lset_induct)
+        subgoal for xs fuel op lxs lys
+          apply (erule produced.cases)
+          subgoal for f p lxs lys fuel' n
+    apply (subst (asm) trace_op.code)
+    apply (subst trace_op.code)
+    apply (auto 0 0 split: op.splits if_splits observation.splits elim: chd.elims; hypsubst_thin?)
+            subgoal
+              apply (drule someI[of "\<lambda> n.  produced (fuel'(p := n)) (f (Observed x)) (CTL p lxs) lys "])
+      apply (rule exI)
+      apply (rule exI)
+      apply (rule exI[of _ "(CTL p lxs)"])
+      apply (rule exI)
+      apply (rule exI[of _ p])
+      apply (intro conjI)
+        prefer 2
+        apply simp
+      prefer 2
+        apply assumption
+              apply (auto intro!: llist.map_cong lfilter_cong split: sum.splits observation.splits)
+              done
+            subgoal sorry
+            subgoal sorry
+            subgoal sorry
+            done
+            subgoal sorry
+            subgoal sorry
+            subgoal sorry
+            done
+            subgoal sorry
+            done
+          done
+        done
+      done
       oops
 
 fun bapp where
