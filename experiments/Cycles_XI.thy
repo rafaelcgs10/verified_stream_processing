@@ -139,12 +139,12 @@ inductive_cases produced_EndE[elim!]: "produced m End lxs lys"
 inductive_cases produced_WriteE[elim!]: "produced m (Write op p' x) lxs lys"
 inductive_cases produced_ReadE[elim!]: "produced m (Read p' f) lxs lys"
 
-lemma mute_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longrightarrow> lxs q = lxs' q) \<Longrightarrow> mute p op lxs = mute q op lxs'"
+lemma mute_cong[cong]: "p = q \<Longrightarrow> op = op' \<Longrightarrow> (\<And>q. q \<in> inputs op' \<Longrightarrow> lxs q = lxs' q) \<Longrightarrow> mute p op lxs = mute q op' lxs'"
   apply hypsubst_thin
   apply (rule iffI)
   subgoal premises prems
     using prems(2,1)
-    apply (coinduction arbitrary: op lxs lxs')
+    apply (coinduction arbitrary: op' lxs lxs')
     subgoal for op lxs lxs'
       apply (erule mute.cases)
          apply (auto 0 0)
@@ -155,7 +155,7 @@ lemma mute_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longrigh
     done
   subgoal premises prems
     using prems(2,1)
-    apply (coinduction arbitrary: op lxs lxs')
+    apply (coinduction arbitrary: op' lxs lxs')
     subgoal for op lxs lxs'
       apply (erule mute.cases)
          apply (auto 0 0)
@@ -195,11 +195,10 @@ lemma produced_cong: "produced m op lxs lys \<Longrightarrow>
     subgoal for op' p' x lzs
       apply (rule exI[of _ "\<lambda>q. if \<not> mute q op' lxs \<or> q = p' then lzs q else lys' q"])
       apply (auto 3 0 simp: fun_eq_iff) []
-          apply (metis mute_WriteE)
          apply (metis mute_WriteE)
-        apply (metis mute_WriteE)
-       apply (metis mute_cong)
-      apply (metis mute_cong)
+        apply (metis mute_WriteE mute_cong)
+       apply (metis mute_WriteE)
+      apply blast
       done
     done
   done
@@ -1271,12 +1270,12 @@ simps_of_case comp_op_simps[simp]: comp_op.code[unfolded prod.case Let_def]
 lemma loud_in_outputs: "loud p op lxs \<Longrightarrow> p \<in> outputs op"
   by (induct op lxs pred: loud) auto
 
-lemma loud_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longrightarrow> lxs q = lxs' q) \<Longrightarrow> loud p op lxs = loud q op lxs'"
+lemma loud_cong[cong]: "p = q \<Longrightarrow> op = op' \<Longrightarrow> (\<And>q. q \<in> inputs op' \<Longrightarrow> lxs q = lxs' q) \<Longrightarrow> loud p op lxs = loud q op' lxs'"
   apply hypsubst_thin
   apply (rule iffI)
   subgoal premises prems
     using prems(2,1)
-  proof (induct op lxs arbitrary: lxs' pred: loud)
+  proof (induct op' lxs arbitrary: lxs' pred: loud)
     case (Read f p' lxs)
     then have *: "lxs p' = lxs' p'"
       by simp
@@ -1285,7 +1284,7 @@ lemma loud_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longrigh
   qed (auto intro: loud.intros)
   subgoal premises prems
     using prems(2,1)
-  proof (induct op lxs' arbitrary: lxs pred: loud)
+  proof (induct op' lxs' arbitrary: lxs pred: loud)
     case (Read f p' lxs')
     then have *: "lxs p' = lxs' p'"
       by simp
@@ -1295,6 +1294,29 @@ lemma loud_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longrigh
   done
 
 definition "lproject R ios = (\<lambda>p. lmap (obs o snd) (lfilter (\<lambda>qx. case qx of (q, Observed x) \<Rightarrow> R p q | _ \<Rightarrow> False) ios))"
+
+lemma lproject_LNil[simp]: "lproject R LNil = (\<lambda>p. LNil)"
+  by (simp add: lproject_def)
+
+lemma lproject_LCons[simp]: "lproject R (LCons (q, Observed x) lxs) =
+  (\<lambda>p. if R p q then LCons x (lproject R lxs p) else lproject R lxs p)"
+  "lproject R (LCons (q, EOS) lxs) = lproject R lxs"
+  "lproject R (LCons (q, EOB) lxs) = lproject R lxs"
+  by (auto simp add: lproject_def)
+
+lemma lproject_empty_conv:
+  "lproject R lxs p = LNil \<longleftrightarrow> (\<forall>q x. (q, Observed x) \<in> lset lxs \<longrightarrow> \<not> R p q)"
+  "LNil = lproject R lxs p \<longleftrightarrow> (\<forall>q x. (q, Observed x) \<in> lset lxs \<longrightarrow> \<not> R p q)"
+  by (force simp: lproject_def lmap_eq_LNil LNil_eq_lmap lfilter_empty_conv
+    split: observation.splits)+
+
+lemma lproject_False: 
+  "(\<And>q x. (q, Observed x) \<in> lset lxs \<Longrightarrow> \<not> R p q) \<Longrightarrow> lproject R lxs p = LNil"
+  by (simp add: lproject_empty_conv)
+
+lemma lproject_False_weak: 
+  "(\<And>qx. qx \<in> lset lxs \<Longrightarrow> \<not> R p (fst qx)) \<Longrightarrow> lproject R lxs p = LNil"
+  by (force simp add: lproject_empty_conv)
 
 lemma Inr_in_traced_loud:
   "r \<in> lset ios \<Longrightarrow>
@@ -1308,11 +1330,11 @@ lemma Inr_in_traced_loud:
   subgoal for x xs op fuel
     apply (cases op)
       apply hypsubst
-      apply (auto simp: lproject_def intro: loud.intros)
+      apply (auto intro: loud.intros)
     subgoal for p' f' x n
       apply (cases x)
       subgoal
-        apply (rule loud.Read; force elim!: loud_cong[THEN iffD1, rotated 2])
+        apply (force intro: loud.intros elim: loud_cong[OF refl refl, THEN iffD1, rotated 1])
         done
       subgoal for y
         apply hypsubst_thin
@@ -1320,34 +1342,27 @@ lemma Inr_in_traced_loud:
         apply (drule meta_mp)
          apply simp
         apply (rule loud.Read)
-        apply auto
-        apply (subst loud_cong)
-          apply (rule refl)
-         defer
-         apply assumption
-        apply auto
+        apply (auto elim: loud_cong[OF refl refl, THEN iffD1, rotated 1])
         done
       done
     subgoal for p' f'
         apply hypsubst_thin
         apply (drule meta_spec)+
         apply (drule meta_mp)
-         apply simp
-        apply (rule loud.Read)
-        apply auto
-        apply (subst loud_cong)
-          apply (rule refl)
-       defer
        apply simp
-       apply (subst lfilter_False)
-      apply (smt (verit, best) case_prod_beta' image_eqI observation.case_eq_if)
-       apply simp
-      apply (auto simp add: case_prod_unfold image_iff split: observation.splits)
+      apply (rule loud.Read)
+      apply (erule loud_cong[OF refl, THEN iffD1, rotated 2])
+      using lproject_False_weak[of xs "(\<lambda>p q. Inl p = q)" p']
+       apply (auto simp: image_iff)
       done
     subgoal
-      by (meson not_mute_iff_loud mute_WriteE)
+      apply (auto intro: loud.intros)
+      done
     done
   done
+
+lemma If_eq_triv[simp]: "(if x = y then f y else f x) = f x"
+  by auto
 
 lemma traced_produced:
   "traced m op ios \<Longrightarrow> 
@@ -1355,105 +1370,47 @@ lemma traced_produced:
   apply (coinduction arbitrary: m op ios)
   subgoal for m op ios
     apply (erule traced.cases)
-    subgoal for x fuel p n f lxs'
+    subgoal for fuel p n f x lxs'
       apply (rule disjI1)
-      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil muted_def lproject_def
-        split: observation.splits)
-      subgoal for p' y
-        apply (frule Inr_in_traced_loud[rotated 2])
-          apply assumption
-         apply (rule refl)
-        apply (drule loud_not_mute)
-        unfolding not_def
-        apply (drule mp)
-         apply (subst mute_cong)
-           apply (rule refl)
-          defer
-          apply assumption
-         apply simp
-        apply (auto simp: lproject_def)
-        done
+      apply (auto simp add: muted_def lproject_empty_conv dest: Inr_in_traced_loud loud_not_mute cong: if_cong)
       subgoal
         apply (auto simp add: fun_eq_iff)
         done
       done
     subgoal for p lxs fuel n f
       apply (rule disjI1)
-      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil muted_def lproject_def
-          split: observation.splits)
+      apply (auto simp add: muted_def lproject_empty_conv)
       subgoal for p' y
         apply (frule Inr_in_traced_loud[rotated 2])
           apply assumption
          apply (rule refl)
         apply (drule loud_not_mute)
-        unfolding not_def
-        apply (drule mp[where P="mute p' (f EOS) _"])  
-         apply (subst mute_cong)
-           apply (rule refl)
-          defer
-          apply (subst (asm) lfilter_False)
-           apply (force split: observation.splits)
-          apply simp
-         apply (auto simp add: case_prod_unfold image_iff lproject_def
-            split: observation.splits)
+        using lproject_False_weak[of lxs "(\<lambda>p q. Inl p = q)" p]
+        apply (auto simp: image_iff elim!: notE[of "mute _ _ _"]
+          elim: mute_cong[OF refl refl, THEN iffD1, rotated 1])
         done
       subgoal
         apply (rule exI[of _ "n"])
         apply (rule disjI1)
         apply (rule exI[of _ lxs])
-        apply (auto simp add: case_prod_unfold image_iff fun_eq_iff split: observation.splits)
+        using lproject_False[of lxs "(\<lambda>p q. Inl p = q)" p]
+        apply (force simp add: image_iff)
         done
       done
     subgoal for fuel p n f lxs
       apply (rule disjI2)
       apply (rule disjI1)
-      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil muted_def lproject_def split: observation.splits)
-      subgoal for p' y
-        apply (frule Inr_in_traced_loud[rotated 2])
-          apply assumption
-         apply (rule refl)
-        apply (drule loud_not_mute)
-        unfolding not_def
-        apply (drule mp)
-         apply (subst mute_cong)
-           apply (rule refl)
-          defer
-          apply assumption
-         apply simp
-        apply (auto simp: lproject_def)
-        done
+      apply (auto simp add: muted_def lproject_empty_conv dest: Inr_in_traced_loud loud_not_mute)
       done
     subgoal for fuel op lxs p x
       apply (rule disjI2)
       apply (rule disjI2)
-      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil lproject_def)
+      apply (auto simp add: lproject_empty_conv)
       apply (rule exI[of _ "lproject (\<lambda>p q. Inr p = q) lxs"])
-      apply (intro conjI)
-        apply (simp add: lproject_def)
-      subgoal
-        by (auto simp add: lmap_eq_LNil lfilter_eq_LNil)
-      subgoal
-        apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil muted_def lproject_def split: observation.splits)
-        apply (frule Inr_in_traced_loud[rotated 2])
-          apply assumption
-         apply (rule refl)
-        apply (drule loud_not_mute)
-        unfolding not_def
-        apply (drule mp)
-         apply (subst mute_cong)
-           apply (rule refl)
-          defer
-          apply assumption
-         apply simp
-        apply (auto simp: lproject_def)
-        done
-      subgoal
-        apply (rule disjI1)
-        apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil lproject_def)
-        done
+        apply (auto simp add: muted_def lproject_empty_conv dest: loud_not_mute Inr_in_traced_loud)
       done
     subgoal
-      by (auto simp: lproject_def)
+      by auto
     done
   done
 
