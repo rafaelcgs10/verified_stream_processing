@@ -119,7 +119,7 @@ coinductive produced where
 
 
 coinductive traced where
-  Read: "is_Observed x \<Longrightarrow> traced (fuel(p := n)) (f x) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inl p, x) lxs)"
+  Read: "traced (fuel(p := n)) (f (Observed x)) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inl p, Observed x) lxs)"
 | ReadEOS: "Inl p \<notin> fst ` lset lxs \<Longrightarrow> traced (fuel(p := n)) (f EOS) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inl p, EOS) lxs)"
 | ReadEOB: "fuel p = Suc n \<Longrightarrow> traced (fuel(p := n)) (f EOB) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inl p, EOB) lxs)"
 | Write: "traced fuel op lxs \<Longrightarrow> traced fuel (Write op p x) (LCons (Inr p, Observed x) lxs)"
@@ -954,9 +954,6 @@ lemma merged_fairmerge_False_False:
   unfolding merged_alt mergedL_alt mergedL_fueled_alt semantics_def
   using mergedL1_fueled_fairmerge[of _ lxs 1 2 lzs] mergedL1_fueled_fairmerge[of _ lxs 2 1 lzs]
   by blast
-
-definition "lproject f ios = (\<lambda>p. lmap (obs o snd) (lfilter (\<lambda>qx. case qx of (q, Observed x) \<Rightarrow> f p = q | _ \<Rightarrow> False) ios))"
-
 (*
 lemma traced_merged:
   "traced m (fairmerge False False) ios \<Longrightarrow> lxs = lproject Inl ios \<Longrightarrow> lzs = lproject Inr ios \<Longrightarrow> merged (lxs 1) (lxs 2) (lzs 1)"
@@ -1297,11 +1294,13 @@ lemma loud_cong: "p = q \<Longrightarrow> (\<And>q. q \<in> inputs op \<Longrigh
   qed (auto intro: loud.intros)
   done
 
+definition "lproject R ios = (\<lambda>p. lmap (obs o snd) (lfilter (\<lambda>qx. case qx of (q, Observed x) \<Rightarrow> R p q | _ \<Rightarrow> False) ios))"
+
 lemma Inr_in_traced_loud:
   "r \<in> lset ios \<Longrightarrow>
    r = (Inr p, x) \<Longrightarrow>
    traced fuel op ios \<Longrightarrow>
-   loud p op (\<lambda>p. lmap (obs o snd) (lfilter (\<lambda>(q, x). Inl p = q \<and> is_Observed x) ios))"
+   loud p op (lproject (\<lambda>p q. Inl p = q) ios)"
   apply (induct ios arbitrary: op fuel rule: lset_induct'[where x=r])
   subgoal for xs op
     apply (auto intro: loud.intros elim: traced.cases)
@@ -1309,11 +1308,13 @@ lemma Inr_in_traced_loud:
   subgoal for x xs op fuel
     apply (cases op)
       apply hypsubst
-      apply (auto intro: loud.intros)
+      apply (auto simp: lproject_def intro: loud.intros)
     subgoal for p' f' x n
       apply (cases x)
-        apply simp_all
-      subgoal for y      
+      subgoal
+        apply (rule loud.Read; force elim!: loud_cong[THEN iffD1, rotated 2])
+        done
+      subgoal for y
         apply hypsubst_thin
         apply (drule meta_spec)+
         apply (drule meta_mp)
@@ -1339,9 +1340,9 @@ lemma Inr_in_traced_loud:
        defer
        apply simp
        apply (subst lfilter_False)
-      apply (metis (mono_tags, lifting) image_eqI split_beta)
+      apply (smt (verit, best) case_prod_beta' image_eqI observation.case_eq_if)
        apply simp
-      apply (auto simp add: case_prod_unfold image_iff)
+      apply (auto simp add: case_prod_unfold image_iff split: observation.splits)
       done
     subgoal
       by (meson not_mute_iff_loud mute_WriteE)
@@ -1350,13 +1351,14 @@ lemma Inr_in_traced_loud:
 
 lemma traced_produced:
   "traced m op ios \<Longrightarrow> 
-   produced m op (\<lambda>p. lmap (obs o snd) (lfilter (\<lambda>(q, x). Inl p = q \<and> is_Observed x) ios)) (\<lambda>p. lmap (obs o snd) (lfilter (\<lambda>(q, x). Inr p = q \<and> is_Observed x) ios))"
+   produced m op (lproject (\<lambda>p q. Inl p = q) ios) (lproject (\<lambda>p q. Inr p = q) ios)"
   apply (coinduction arbitrary: m op ios)
   subgoal for m op ios
     apply (erule traced.cases)
     subgoal for x fuel p n f lxs'
       apply (rule disjI1)
-      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil muted_def)
+      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil muted_def lproject_def
+        split: observation.splits)
       subgoal for p' y
         apply (frule Inr_in_traced_loud[rotated 2])
           apply assumption
@@ -1369,44 +1371,43 @@ lemma traced_produced:
           defer
           apply assumption
          apply simp
-        apply auto
+        apply (auto simp: lproject_def)
         done
       subgoal
-        apply (rule exI[of _ "n"])
-        apply (rule disjI1)
-        apply (rule exI[of _ lxs'])
         apply (auto simp add: fun_eq_iff)
         done
       done
     subgoal for p lxs fuel n f
       apply (rule disjI1)
-      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil muted_def)
+      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil muted_def lproject_def
+          split: observation.splits)
       subgoal for p' y
         apply (frule Inr_in_traced_loud[rotated 2])
           apply assumption
          apply (rule refl)
         apply (drule loud_not_mute)
         unfolding not_def
-        apply (drule mp[where P="mute p' (f EOS) (\<lambda>p. lmap (obs \<circ> snd) (lfilter (\<lambda>(q, x). Inl p = q \<and> is_Observed x) lxs))"])  
+        apply (drule mp[where P="mute p' (f EOS) _"])  
          apply (subst mute_cong)
            apply (rule refl)
           defer
           apply (subst (asm) lfilter_False)
-           apply force
+           apply (force split: observation.splits)
           apply simp
-         apply (auto simp add: case_prod_unfold image_iff)
+         apply (auto simp add: case_prod_unfold image_iff lproject_def
+            split: observation.splits)
         done
       subgoal
         apply (rule exI[of _ "n"])
         apply (rule disjI1)
         apply (rule exI[of _ lxs])
-        apply (auto simp add: case_prod_unfold image_iff)
+        apply (auto simp add: case_prod_unfold image_iff fun_eq_iff split: observation.splits)
         done
       done
     subgoal for fuel p n f lxs
       apply (rule disjI2)
       apply (rule disjI1)
-      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil muted_def)
+      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil muted_def lproject_def split: observation.splits)
       subgoal for p' y
         apply (frule Inr_in_traced_loud[rotated 2])
           apply assumption
@@ -1419,20 +1420,20 @@ lemma traced_produced:
           defer
           apply assumption
          apply simp
-        apply auto
+        apply (auto simp: lproject_def)
         done
       done
     subgoal for fuel op lxs p x
       apply (rule disjI2)
       apply (rule disjI2)
-      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil)
-      apply (rule exI[of _ "(\<lambda>pa. lmap (\<lambda>z. obs (snd z)) (lfilter (\<lambda>(q, x). Inr pa = q \<and> is_Observed x) lxs))"])
+      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil lproject_def)
+      apply (rule exI[of _ "lproject (\<lambda>p q. Inr p = q) lxs"])
       apply (intro conjI)
-        apply simp
+        apply (simp add: lproject_def)
       subgoal
         by (auto simp add: lmap_eq_LNil lfilter_eq_LNil)
       subgoal
-        apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil muted_def)
+        apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil muted_def lproject_def split: observation.splits)
         apply (frule Inr_in_traced_loud[rotated 2])
           apply assumption
          apply (rule refl)
@@ -1444,15 +1445,15 @@ lemma traced_produced:
           defer
           apply assumption
          apply simp
-        apply auto
+        apply (auto simp: lproject_def)
         done
       subgoal
         apply (rule disjI1)
-        apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil)
+        apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil lproject_def)
         done
       done
     subgoal
-      by auto
+      by (auto simp: lproject_def)
     done
   done
 
@@ -1953,6 +1954,9 @@ lemma semantics_comp_op:
   apply (rule predicate2I)
    apply auto
   sorry
+
+lemma "traced (comp_op wire buf op1 op2) ios =
+  R (traced op1) (traced op2)"
 
 inductive input_at where
   "input_at p (Read p f) n"
