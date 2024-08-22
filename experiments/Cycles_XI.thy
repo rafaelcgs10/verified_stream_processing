@@ -1414,39 +1414,161 @@ lemma traced_produced:
     done
   done
 
-corec trace_op where
-  "trace_op fuel op lxs lys = (case op of
+corec trace_from where
+  "trace_from fuel op lxs lys = (case op of
      End \<Rightarrow> LNil
-   | Write op' p x \<Rightarrow> LCons (Inr p, Observed x) (trace_op fuel op' lxs (CTL p lys))
+   | Write op' p x \<Rightarrow> LCons (Inr p, Observed x) (trace_from fuel op' lxs (CTL p lys))
    | Read p f \<Rightarrow> (if fuel p > 0 \<and> produced (fuel(p := (fuel p - 1))) (f EOB) lxs lys
            then
-             LCons (Inl p, EOB) (trace_op (fuel(p := (fuel p - 1))) (f EOB) lxs lys)
+             LCons (Inl p, EOB) (trace_from (fuel(p := (fuel p - 1))) (f EOB) lxs lys)
            else
             let n = SOME n. produced (fuel(p := n)) (f (CHD p lxs)) (CTL p lxs) lys in
-            LCons (Inl p, CHD p lxs) (trace_op (fuel(p := n)) (f (CHD p lxs)) (CTL p lxs) lys)))"
+            LCons (Inl p, CHD p lxs) (trace_from (fuel(p := n)) (f (CHD p lxs)) (CTL p lxs) lys)))"
 
-
-lemma Inl_in_trace_op_not_Observed:
-  "r \<in> lset (trace_op fuel op lxs lys) \<Longrightarrow>
+lemma Inl_in_trace_from_not_Observed:
+  "r \<in> lset (trace_from fuel op lxs lys) \<Longrightarrow>
    r = (Inl p, c) \<Longrightarrow>
    lxs p = LNil \<Longrightarrow>
    \<not> is_Observed c"
-  apply (induct "trace_op fuel op lxs lys" arbitrary: fuel op lxs lys rule: lset_induct)
+  apply (induct "trace_from fuel op lxs lys" arbitrary: fuel op lxs lys rule: lset_induct)
   subgoal for lxs
-    apply (subst (asm) trace_op.code)
+    apply (subst (asm) trace_from.code)
     apply (auto split: op.splits if_splits elim: produced.cases; hypsubst_thin?)
     done
   subgoal for x xs fuel op lxs lys
-    apply (subst (asm) (2) trace_op.code)
+    apply (subst (asm) (2) trace_from.code)
     apply (auto split: op.splits if_splits elim: produced.cases; hypsubst_thin?)
-       apply fastforce
-      apply (metis fun_upd_apply ltl_simps(1))
+         apply fastforce
+        apply (metis fun_upd_apply ltl_simps(1))
     subgoal
       by (metis fun_upd_other)
     subgoal
       by (metis fun_upd_other fun_upd_same ltl_simps(1))
     done
   done
+
+lemma Inr_in_trace_from_not_LNil:
+  "r \<in> lset (trace_from fuel op lxs lys) \<Longrightarrow>
+   r = (Inr p, Observed y) \<Longrightarrow>
+   produced fuel op lxs lys \<Longrightarrow>
+   lys p \<noteq> LNil"
+  apply (induct "trace_from fuel op lxs lys" arbitrary: fuel op lxs lys rule: lset_induct)
+  subgoal for lxs
+    apply (subst (asm) trace_from.code)
+    apply (auto split: op.splits if_splits elim: produced.cases)
+    done
+  subgoal for x xs fuel op lxs lys
+    apply (subst (asm) (2) trace_from.code)
+    apply (auto split: op.splits if_splits elim: produced.cases; hypsubst_thin?)
+    subgoal
+      by (metis someI)
+    subgoal
+      by (metis some_eq_imp)
+    done
+  done      
+
+lemma in_output_produced_loud:
+  "x \<in> lset (lys p) \<Longrightarrow>
+   produced fuel op lxs lys \<Longrightarrow> 
+   loud p op lxs"
+  apply (induct "lys p" rule: lset_induct)
+  subgoal
+    apply (erule produced.cases)
+       apply simp_all
+    subgoal
+      by (metis eq_LConsD muted_Read muted_def not_loud_mute)
+    subgoal
+      by (metis eq_LConsD loud.ReadEOB muted_def not_loud_mute)
+    subgoal
+      by (metis Write_other Write_same eq_LConsD fun_upd_apply muted_def not_loud_mute)
+    done
+  subgoal
+    apply (erule produced.cases)
+       apply (simp_all add: Write_same split: if_splits)
+    subgoal
+      by (metis llist.simps(3) muted_Read muted_def not_mute_iff_loud)
+    subgoal
+      by (metis eq_LConsD loud.ReadEOB muted_def not_loud_mute)
+    subgoal
+      by (metis Write_other eq_LConsD muted_def not_loud_mute)
+    done
+  done
+
+inductive loud' for p x where
+  Write_same: "loud' p x m (Write op p x) lxs lys"
+| Write_other: "p \<noteq> p' \<or> x \<noteq> x' \<Longrightarrow> loud' p x m op' lxs lys \<Longrightarrow> loud' p x m (Write op' p' x') lxs (lys(p' := LCons x' (lys p')))"
+| Read: "(m p' = 0 \<or> \<not> produced (m(p' := m p' - 1)) (f EOB) lxs lys \<Longrightarrow> loud' p x (m(p' := SOME n. produced (m(p' := n)) (f (CHD p' lxs)) (CTL p' lxs) lys)) (f (CHD p' lxs)) (CTL p' lxs) lys) \<Longrightarrow>
+     (m p' > 0 \<Longrightarrow> produced (m(p' := m p' - 1)) (f EOB) lxs lys \<Longrightarrow> loud' p x (m(p' := m p' - 1)) (f EOB) lxs lys) \<Longrightarrow> loud' p x m (Read p' f) lxs lys"
+
+lemma in_output_produced_loud:
+  "loud p op lxs \<Longrightarrow>
+   lys p = LCons x lys' \<Longrightarrow>
+   produced fuel op lxs lys \<Longrightarrow> 
+   loud' p x fuel op lxs lys"
+  apply (induct op lxs arbitrary: fuel lys rule: loud.induct)
+     apply (auto simp: muted_def not_mute_iff_loud fun_upd_same fun_upd_other dest!: spec[of _ p] simp del: fun_upd_apply intro: loud'.Write_same loud'.Write_other
+       intro!: loud'.Read split: if_splits)
+  subgoal for f p' lxs fuel lys n
+    apply (drule someI[where P = "\<lambda>n.  produced (fuel(p' := n)) (f (CHD p' lxs)) (CTL p' lxs) lys"])
+    apply blast
+    done
+  subgoal for f p' lxs fuel lys n
+    apply (drule someI[where P = "\<lambda>n.  produced (fuel(p' := n)) (f (CHD p' lxs)) (CTL p' lxs) lys"])
+    apply blast
+    done
+  oops
+
+lemma in_output_produced_loud:
+  "x \<in> lset (lys p) \<Longrightarrow>
+   produced fuel op lxs lys \<Longrightarrow> 
+   loud' p x fuel op lxs lys"
+  apply (induct "lys p" arbitrary: fuel op lxs lys rule: lset_induct)
+  subgoal for lys' lys fuel op lxs
+    apply (erule produced.cases)
+  apply (auto simp: muted_def not_mute_iff_loud dest!: spec[of _ p] simp del: fun_upd_apply intro!: loud'.intros split: if_splits)
+    oops
+
+lemma
+  "loud' p x fuel op lxs lys \<Longrightarrow>
+   produced fuel op lxs lys \<Longrightarrow>
+   (Inr p, Observed x) \<in> lset (trace_from fuel op lxs lys)"
+  apply (induct fuel op lxs lys arbitrary: rule: loud'.induct)
+  subgoal for op x lxs 
+    apply (subst trace_from.code)
+    apply (auto split: op.splits if_splits; hypsubst_thin)
+    done
+  subgoal for p' m op' lxs lys x'
+    apply (subst trace_from.code)
+    apply (auto simp: fun_eq_iff split: op.splits if_splits; hypsubst_thin?)
+    apply (metis ext)+
+    done
+  subgoal for m p' f lxs lys
+    apply (subst trace_from.code)
+    apply (auto split: op.splits if_splits; hypsubst_thin?)
+     apply (frule someI[where P="\<lambda>n. produced (m(p' := n)) (f (CHD p' lxs)) (CTL p' lxs) lys"])
+    apply blast
+     apply (frule someI[where P="\<lambda>n. produced (m(p' := n)) (f (CHD p' lxs)) (CTL p' lxs) lys"])
+    apply blast
+    done
+  done
+    
+
+lemma *:
+  "\<not> lnull (lys p) \<Longrightarrow> x = lhd (lys p) \<Longrightarrow>
+   produced fuel op lxs lys \<Longrightarrow>
+   (Inr p, Observed x) \<in> lset (trace_from fuel op lxs lys)"
+  oops 
+
+lemma *:
+  "x \<in> lset (lys p) \<Longrightarrow>
+   produced fuel op lxs lys \<Longrightarrow>
+   (Inr p, Observed x) \<in> lset (trace_from fuel op lxs lys)"
+   apply (induct "lys p" arbitrary: op rule: lset_induct)
+  subgoal for xs
+    apply (subst trace_from.code)
+     apply (auto split: op.splits if_splits; hypsubst_thin)
+    subgoal for p f n
+      oops
 
 lemma lhd_project_simp[simp]:
   "\<exists> q x. (q, Observed x) \<in> lset ios \<and> P p q \<Longrightarrow>
@@ -1456,46 +1578,46 @@ lemma lhd_project_simp[simp]:
    apply force+
   done
 
-lemma lhd_trace_op:
-  "r \<in> lset (trace_op fuel op lxs lys) \<Longrightarrow>
+lemma lhd_trace_from:
+  "r \<in> lset (trace_from fuel op lxs lys) \<Longrightarrow>
    produced fuel op lxs lys \<Longrightarrow>
    \<exists>x. r = (Inl p', Observed x) \<Longrightarrow>
    lxs p' \<noteq> LNil \<Longrightarrow>
-   lhd (lproject (\<lambda>p. (=) (Inl p)) (trace_op fuel op lxs lys) p') = lhd (lxs p')"
-  apply (induct "trace_op fuel op lxs lys" arbitrary: fuel op lxs lys rule: lset_induct)
+   lhd (lproject (\<lambda>p. (=) (Inl p)) (trace_from fuel op lxs lys) p') = lhd (lxs p')"
+  apply (induct "trace_from fuel op lxs lys" arbitrary: fuel op lxs lys rule: lset_induct)
   subgoal for xs fuel op lxs lys
-    apply (subst (asm) trace_op.code)
-    apply (subst trace_op.code)
+    apply (subst (asm) trace_from.code)
+    apply (subst trace_from.code)
     apply (auto dest: sym split: op.splits if_splits observation.splits elim: produced.cases elim!: chd.elims; hypsubst_thin?)
     done
   subgoal premises prems for x' xs fuel op lxs lys
     using prems(1,2,4-) apply -
-    apply (subst (asm) trace_op.code)
-    apply (subst trace_op.code)
+    apply (subst (asm) trace_from.code)
+    apply (subst trace_from.code)
     apply (auto 4 3 split: op.splits if_splits observation.splits dest: prems(3) elim!: chd.elims; hypsubst?)
     subgoal for x p' _ n
       by (cases "CHD p' lxs"; simp; drule prems(3); (auto simp: elim: someI))
     subgoal for x p' _ n
       by (cases "CHD p' lxs"; simp; drule prems(3); (auto simp: elim: someI))
     subgoal for x p' _ n
-      apply (cases "CHD p' lxs"; simp; drule prems(3); (auto simp: fun_upd_same Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims))
-      apply (meson Inl_in_trace_op_not_Observed fun_upd_same observation.disc(1))
+      apply (cases "CHD p' lxs"; simp; drule prems(3); (auto simp: fun_upd_same Inl_in_trace_from_not_Observed elim: someI elim!: chd.elims))
+      apply (meson Inl_in_trace_from_not_Observed fun_upd_same observation.disc(1))
       done
     subgoal for x p' _ n
-      apply (cases "CHD p' lxs"; simp; drule prems(3); (auto simp: fun_upd_same Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims))
-      apply (meson Inl_in_trace_op_not_Observed fun_upd_same observation.disc(1))
+      apply (cases "CHD p' lxs"; simp; drule prems(3); (auto simp: fun_upd_same Inl_in_trace_from_not_Observed elim: someI elim!: chd.elims))
+      apply (meson Inl_in_trace_from_not_Observed fun_upd_same observation.disc(1))
       done
     subgoal for x p' _ n
       by (cases "CHD p' lxs"; simp; drule prems(3); (auto simp: elim: someI))
     subgoal for x p' _ n
       by (cases "CHD p' lxs"; simp; drule prems(3); (auto simp: elim: someI))
     subgoal for x p' _ n
-      apply (cases "CHD p' lxs"; simp; drule prems(3); (auto simp: fun_upd_same Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims))
-      apply (meson Inl_in_trace_op_not_Observed fun_upd_same observation.disc(1))
+      apply (cases "CHD p' lxs"; simp; drule prems(3); (auto simp: fun_upd_same Inl_in_trace_from_not_Observed elim: someI elim!: chd.elims))
+      apply (meson Inl_in_trace_from_not_Observed fun_upd_same observation.disc(1))
       done
     subgoal for x p' _ n
-      apply (cases "CHD p' lxs"; simp; drule prems(3); (auto simp: fun_upd_same Inl_in_trace_op_not_Observed elim: someI elim!: chd.elims))
-      apply (meson Inl_in_trace_op_not_Observed fun_upd_same observation.disc(1))
+      apply (cases "CHD p' lxs"; simp; drule prems(3); (auto simp: fun_upd_same Inl_in_trace_from_not_Observed elim: someI elim!: chd.elims))
+      apply (meson Inl_in_trace_from_not_Observed fun_upd_same observation.disc(1))
       done
     done
   done
@@ -1504,10 +1626,56 @@ lemma traced_produced:
   "produced m op lxs lys \<Longrightarrow>
    \<exists> ios. traced m op ios \<and>
    (\<forall>p. lprefix ((lproject (\<lambda>p q. Inl p = q) ios) p) (lxs p)) \<and>
-   lys = (\<lambda>p. lmap (obs o snd) (lfilter (\<lambda>x. case x of (q, Observed x) \<Rightarrow> Inl p = q | _ \<Rightarrow> False) ios))"
-  apply (rule exI[of _ "trace_op m op lxs lys"])
+   lys = lproject (\<lambda>p q. Inr p = q) ios"
+  apply (rule exI[of _ "trace_from m op lxs lys"])
   apply (intro conjI)
-    prefer 2
+  subgoal
+    apply (coinduction arbitrary: m op lxs lys)
+    subgoal for m op lxs lys
+      apply (erule produced.cases)
+      subgoal for f p lxs lys fuel n
+        apply hypsubst_thin
+        apply (cases "CHD p lxs")
+        subgoal for y
+          apply (subst (1 3 5) trace_from.code)
+          apply auto
+            apply force
+           apply (metis someI_ex)+
+          done
+        subgoal
+          apply (subst (1 3 5) trace_from.code)
+          apply (auto elim: chd.elims)
+          done
+        subgoal
+          apply (subst (1 3 5) trace_from.code)
+          apply (auto elim: chd.elims)
+          subgoal by force
+          subgoal by (metis (no_types, lifting) Inl_in_trace_from_not_Observed chd.elims fun_upd_same ltl_simps(1) observation.discI observation.distinct(3))
+          subgoal
+            by (metis someI_ex)
+          subgoal
+            by (metis (no_types, lifting) Inl_in_trace_from_not_Observed chd.elims fun_upd_same ltl_simps(1) observation.discI observation.distinct(3))
+          subgoal
+            by (metis someI_ex)
+          done
+        done
+      subgoal for f lxs lys fuel p n
+        apply simp
+        apply (subst (1 3 5) trace_from.code)
+        apply (auto elim: chd.elims)
+        done
+      subgoal for f lxs lys fuel p n
+        apply simp
+        apply (subst (1) trace_from.code)
+        apply (auto elim: chd.elims)
+        done
+      subgoal for fuel lxs
+        apply simp
+        apply (subst (1) trace_from.code)
+        apply (auto elim: chd.elims)
+        done
+      done
+    done
   subgoal
     apply (rule allI)
     apply (coinduction arbitrary: m op lxs lys)
@@ -1521,7 +1689,7 @@ lemma traced_produced:
           subgoal
             apply clarsimp
             apply (subst lproject_False)
-            using Inl_in_trace_op_not_Observed apply (fastforce split: observation.splits simp: is_Observed_def)
+            using Inl_in_trace_from_not_Observed apply (fastforce split: observation.splits simp: is_Observed_def)
             apply simp
             done
           subgoal for x lxs''
@@ -1530,22 +1698,22 @@ lemma traced_produced:
           done
         subgoal
           apply (subst lproject_False)
-          using Inl_in_trace_op_not_Observed apply (fastforce split: observation.splits simp: is_Observed_def)
+          using Inl_in_trace_from_not_Observed apply (fastforce split: observation.splits simp: is_Observed_def)
           apply simp
           done
         subgoal
           apply (subst lproject_False)
-          using Inl_in_trace_op_not_Observed apply (fastforce split: observation.splits simp: is_Observed_def)
+          using Inl_in_trace_from_not_Observed apply (fastforce split: observation.splits simp: is_Observed_def)
           apply simp
           done
         subgoal
           apply (subst lproject_False)
-          using Inl_in_trace_op_not_Observed apply (fastforce split: observation.splits simp: is_Observed_def)
+          using Inl_in_trace_from_not_Observed apply (fastforce split: observation.splits simp: is_Observed_def)
           apply simp
           done
         done
       subgoal
-        apply (auto simp add: lnull_def split: observation.splits dest!: lhd_trace_op intro:  lhd_trace_op lproject_False)
+        apply (auto simp add: lnull_def split: observation.splits dest!: lhd_trace_from intro:  lhd_trace_from lproject_False)
         done
       subgoal
         apply (rule disjI1)
@@ -1553,30 +1721,30 @@ lemma traced_produced:
         apply (auto split: observation.splits)
         subgoal premises prems for x
           using prems(3,2,1) apply -
-          apply (induct "trace_op m op lxs lys" arbitrary: m op lxs lys rule: lset_induct)
+          apply (induct "trace_from m op lxs lys" arbitrary: m op lxs lys rule: lset_induct)
           subgoal for xs fuel op lxs lys
             apply (erule produced.cases)
             subgoal for f p lxs lys fuel' n
               apply (drule someI[of "\<lambda> n.  produced (fuel'(p := n)) (f (CHD p lxs)) (CTL p lxs) lys"])
-              apply (subst (asm) trace_op.code)
-              apply (subst trace_op.code)
+              apply (subst (asm) trace_from.code)
+              apply (subst trace_from.code)
               apply (auto 0 0 split: op.splits if_splits observation.splits elim: chd.elims; hypsubst_thin?; (drule sym); fastforce)
               done
             subgoal for f lxs lys fuel' p n
               apply hypsubst_thin
-              apply (subst (asm) trace_op.code)
-              apply (subst trace_op.code)
+              apply (subst (asm) trace_from.code)
+              apply (subst trace_from.code)
               apply (auto 0 0 split: op.splits if_splits observation.splits elim: chd.elims; hypsubst_thin?; (drule sym); simp)
               done
             subgoal for op lxs lys fuel' p x'
               apply hypsubst_thin
-              apply (subst (asm) trace_op.code)
-              apply (subst trace_op.code)
+              apply (subst (asm) trace_from.code)
+              apply (subst trace_from.code)
               apply (auto 0 0 split: op.splits if_splits observation.splits elim: chd.elims; hypsubst_thin?; (drule sym); simp)
               done       
             apply hypsubst_thin
-            apply (subst (asm) trace_op.code)
-            apply (subst trace_op.code)
+            apply (subst (asm) trace_from.code)
+            apply (subst trace_from.code)
             apply (auto 0 0 split: op.splits if_splits observation.splits elim: chd.elims; hypsubst_thin?; (drule sym); simp)
             done
           subgoal for x' xs m op lxs lys
@@ -1584,8 +1752,8 @@ lemma traced_produced:
             subgoal for f p lxs lys fuel n
               apply hypsubst_thin
               apply (frule someI[of "\<lambda> n.  produced (fuel(p := n)) (f (CHD p lxs)) (CTL p lxs) lys"])
-              apply (subst (asm) (4) trace_op.code)
-              apply (subst trace_op.code)
+              apply (subst (asm) (4) trace_from.code)
+              apply (subst trace_from.code)
               apply (cases "CHD p lxs")
               subgoal
                 by (auto split: op.splits if_splits observation.splits elim: chd.elims; hypsubst_thin?; fastforce?)
@@ -1598,20 +1766,20 @@ lemma traced_produced:
               done
             subgoal for f p lxs lys fuel n
               apply hypsubst_thin
-              apply (subst (asm) (4) trace_op.code)
-              apply (subst trace_op.code)
+              apply (subst (asm) (4) trace_from.code)
+              apply (subst trace_from.code)
               apply auto
               done
             subgoal
               apply hypsubst_thin
-              apply (subst (asm) (4) trace_op.code)
-              apply (subst trace_op.code)
+              apply (subst (asm) (4) trace_from.code)
+              apply (subst trace_from.code)
               apply auto
               done
             subgoal 
               apply hypsubst_thin
-              apply (subst (asm) (4) trace_op.code)
-              apply (subst trace_op.code)
+              apply (subst (asm) (4) trace_from.code)
+              apply (subst trace_from.code)
               apply auto
               done
             done
@@ -1619,7 +1787,24 @@ lemma traced_produced:
         done
       done
     done
-  oops
+  subgoal
+    apply (rule ext)
+    subgoal for p
+    apply (coinduction arbitrary: m op lxs lys)
+    subgoal for m op lxs lys
+      apply (intro conjI impI)
+      subgoal
+        apply (erule produced.cases)
+        subgoal for f p' lxs' lys' fuel n
+          apply hypsubst
+            apply (subst trace_from.code)
+            apply (auto simp add: lproject_empty_conv Inr_in_trace_from_not_LNil lnull_def split: observation.splits intro: lproject_False)
+          subgoal 
+            apply hypsubst_thin
+            apply (rule ccontr)
+            oops
+
+
 
 fun bapp where
   "bapp BEmpty lxs = lxs"
