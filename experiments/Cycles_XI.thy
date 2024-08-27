@@ -120,7 +120,7 @@ coinductive produced where
 
 coinductive traced where
   Read: "traced (fuel(p := n)) (f (Observed x)) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inl p, Observed x) lxs)"
-| ReadEOS: "Inl p \<notin> fst ` lset lxs \<Longrightarrow> traced (fuel(p := n)) (f EOS) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inl p, EOS) lxs)"
+| ReadEOS: "traced (fuel(p := n)) (f EOS) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inl p, EOS) lxs)"
 | ReadEOB: "fuel p = Suc n \<Longrightarrow> traced (fuel(p := n)) (f EOB) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inl p, EOB) lxs)"
 | Write: "traced fuel op lxs \<Longrightarrow> traced fuel (Write op p x) (LCons (Inr p, Observed x) lxs)"
 | End: "traced fuel End LNil"
@@ -128,6 +128,171 @@ coinductive traced where
 inductive_cases traced_EndE[elim!]: "traced m End lxs"
 inductive_cases traced_WriteE[elim!]: "traced m (Write op p' x) lxs"
 inductive_cases traced_ReadE[elim!]: "traced m (Read p' f) lxs"
+
+definition "traces m op = {lxs. traced m op lxs}"
+
+lemma traces_Read[simp]:
+  "traces m (Read p f) = (\<Union>x. LCons (Inl p, Observed x) ` (\<Union>n. traces (m(p := n)) (f (Observed x)))) \<union>
+                       LCons (Inl p, EOB) ` (case m p of Suc n \<Rightarrow> traces (m(p := n)) (f EOB) | _ \<Rightarrow> {}) \<union>
+                       LCons (Inl p, EOS) ` (\<Union>n. traces (m(p := n)) (f EOS))"
+  by (auto simp: traces_def image_iff intro: traced.intros split: nat.splits)
+
+lemma traces_Write[simp]:
+  "traces m (Write op p x) = LCons (Inr p, Observed x) ` traces m op"
+  by (auto simp: traces_def intro: traced.intros)
+
+lemma traces_End[simp]:
+  "traces m End = {LNil}"
+  by (auto simp: traces_def intro: traced.intros)
+
+corec traced_wit where
+  "traced_wit op = (case op of
+    Read p f \<Rightarrow> LCons (Inl p, EOS) (traced_wit (f EOS))
+  | Write op' p' x \<Rightarrow> LCons (Inr p', Observed x) (traced_wit op')
+  | End \<Rightarrow> LNil)"
+
+lemma lset_traced_wit: "t \<in> lset (traced_wit op) \<Longrightarrow> (\<exists>p \<in> inputs op. t = (Inl p, EOS)) \<or> (\<exists>q \<in> outputs op. \<exists>x. t = (Inr q, Observed x))"
+  apply (induction t "traced_wit op" arbitrary: op rule: llist.set_induct)
+  apply (subst (asm) traced_wit.code)
+  apply (auto split: op.splits) []
+  apply (subst (asm) (2) traced_wit.code)
+  apply (fastforce split: op.splits) []
+  done
+
+coinductive cleaned where
+  cleaned_Read[intro]: "p \<notin> inputs (f EOS) \<Longrightarrow> (\<And>x. cleaned (f x)) \<Longrightarrow>  cleaned (Read p f)"
+| cleaned_Write[intro]: "cleaned op \<Longrightarrow> cleaned (Write op q x)"
+| cleaned_End[iff]: "cleaned End"
+
+inductive_cases cleaned_ReadE[elim!]: "cleaned (Read p f)"
+inductive_cases cleaned_WriteE[elim!]: "cleaned (Write op q x)"
+inductive_cases cleaned_EndE[elim!]: "cleaned End"
+
+inductive cleaned_cong for R where
+  cc_base: "R op \<Longrightarrow> cleaned_cong R op"
+| cc_cleaned: "cleaned op \<Longrightarrow> cleaned_cong R op"
+| cc_read: "p \<notin> inputs (f EOS) \<Longrightarrow> (\<And>x. cleaned_cong R (f x)) \<Longrightarrow> cleaned_cong R (Read p f)"
+| cc_write: "cleaned_cong R op \<Longrightarrow> cleaned_cong R (Write op q x)"
+
+lemma cleaned_coinduct_upto: "X op \<Longrightarrow>
+  (\<And>op. X op \<Longrightarrow> (\<exists>p f. op = Read p f \<and> p \<notin> inputs (f EOS) \<and> (\<forall>x. cleaned_cong X (f x))) \<or> (\<exists>op' q x. op = Write op' q x \<and> (cleaned_cong X op')) \<or> op = End) \<Longrightarrow>
+  cleaned op"
+  apply (rule cleaned.coinduct[where X="cleaned_cong X"])
+   apply (erule cleaned_cong.intros)
+  apply (erule thin_rl)
+  subgoal premises prems for op
+    using prems(2)
+    apply (induct op rule: cleaned_cong.induct)
+    subgoal for op
+      by (auto dest: prems(1))
+    subgoal for op
+      by (cases op) auto
+    subgoal for f p
+      by auto
+    subgoal for f p
+      by auto
+    done
+  done
+
+lemma traced_traced_wit: "traced m op (traced_wit op)"
+  apply (coinduction arbitrary: op m)
+  apply (subst (1 3 5 7) traced_wit.code)
+  apply (auto split: op.splits dest: lset_traced_wit simp: traced_wit.code[where op=End])
+  done
+
+lemma traces_nonempty: "traces m op \<noteq> {}"
+  by (auto simp: traces_def intro!: traced_traced_wit)
+
+lemma non_input_traces: "t \<in> lset lxs \<Longrightarrow> t = (Inl p, y) \<Longrightarrow> p \<notin> inputs op \<Longrightarrow> lxs \<in> traces m op \<Longrightarrow> False"
+  apply (induct t lxs arbitrary: m op rule: llist.set_induct)
+  subgoal for t lxs m op
+    apply (cases op; auto)
+    done
+  subgoal for t lxs x m op
+    apply (cases op; auto split: nat.splits)
+    done
+  done
+
+lemma traces_op_eqI: "(\<Union>m. traces m op) = (\<Union>m. traces m op') \<Longrightarrow> op = op'"
+  apply (coinduction arbitrary: op op')
+  subgoal for op op'
+    apply (cases op; cases op')
+            apply (simp_all add: rel_fun_def set_eq_iff split: nat.splits)
+    subgoal for p f p' f'
+      apply (rule context_conjI)
+      subgoal
+        apply (drule spec[of _ "LCons (Inl p, EOS) (traced_wit (f EOS))"])
+        apply simp
+        apply (drule iffD1)
+         apply (rule exI[of _ "\<lambda>_. 0"])
+         apply simp
+        apply (rule disjI2)
+         apply (rule imageI)
+         apply (auto dest: lset_traced_wit simp: traces_def traced_traced_wit) []
+        apply (erule exE disjE conjE)+
+         apply (simp_all add: gr0_conv_Suc image_iff)
+        done
+      subgoal
+        apply safe
+        subgoal for x lxs m
+          apply (drule spec[of _ "LCons (Inl p, x) lxs"])
+          apply (drule iffD1)
+          apply (rule exI[of _ "m(p := Suc (m p))"])
+           apply (cases x; auto simp: image_iff dest: non_input_traces intro: exI[of _ "m p"]) []
+          apply (erule exE conjE disjE)+
+           apply (auto simp add: gr0_conv_Suc image_iff)
+          done
+        subgoal for x lxs m
+          apply (drule spec[of _ "LCons (Inl p', x) lxs"])
+          apply (drule iffD2)
+          apply (rule exI[of _ "m(p' := Suc (m p'))"])
+           apply (cases x; auto simp: image_iff dest: non_input_traces intro: exI[of _ "m p'"]) []
+          apply (erule exE conjE disjE)+
+           apply (auto simp add: gr0_conv_Suc image_iff)
+          done
+        done
+      done
+    subgoal
+      apply (auto simp: set_eq_iff image_iff)
+      apply (metis llist.inject mem_Collect_eq old.sum.distinct(2) prod.inject traced_traced_wit traces_def)
+      done
+    subgoal
+      apply (auto dest!: spec[of _ LNil] simp: gr0_conv_Suc)
+      done
+    subgoal
+      apply (auto simp: set_eq_iff image_iff)
+      apply (metis llist.inject mem_Collect_eq old.sum.distinct(2) prod.inject traced_traced_wit traces_def)
+      done
+    subgoal for op1 p1 x1 op2 p2 x2
+      apply auto
+      subgoal for lxs m
+        apply (drule spec[of _ "LCons (Inr p1, Observed x1) lxs"])
+        apply auto
+        done
+      subgoal for lxs m
+        apply (drule spec[of _ "LCons (Inr p2, Observed x2) lxs"])
+        apply auto
+        done
+      subgoal
+        apply (drule spec[of _ "LCons (Inr p1, Observed x1) (traced_wit op1)"])
+        apply (auto simp: traced_traced_wit traces_def)
+        done
+      subgoal
+        apply (drule spec[of _ "LCons (Inr p1, Observed x1) (traced_wit op1)"])
+        apply (auto simp: traced_traced_wit traces_def)
+        done
+      done
+    subgoal
+      apply (auto simp: set_eq_iff image_iff)
+      done
+    subgoal
+      apply (auto dest!: spec[of _ LNil] simp: gr0_conv_Suc)
+      done
+    subgoal
+      apply (auto simp: set_eq_iff image_iff)
+      done
+    done
+  done
 
 definition agree :: "('l \<Rightarrow> 'l' \<Rightarrow> bool) \<Rightarrow> ('l \<times> 'c) llist \<Rightarrow> ('l' \<times> 'c) llist \<Rightarrow> bool" where
   "agree R lxs lys = llist_all2 (rel_prod R (=)) (lfilter (Domainp R o fst) lxs) (lfilter (Rangep R o fst) lys)"
@@ -798,6 +963,16 @@ lemma inputs_fairmerge_False_False[simp]: "inputs (fairmerge False False) = {1, 
   apply (subst fairmerge.code; auto split: observation.splits elim!: chd.elims)+
   done
 
+
+lemma cleaned_fairmerge: "cleaned (fairmerge e1 e2)"
+  apply (coinduction arbitrary: e1 e2 rule: cleaned_coinduct_upto)
+  subgoal for e1 e2
+    apply (subst (1 3 5) fairmerge.code)
+    apply (auto 3 4 split: bool.splits split: observation.splits
+      intro: cc_base intro!: cc_write cc_read cc_cleaned[of End])
+    done
+  done
+
 lemma mergedL1_fueled_fairmerge: "mergedL1_fueled lns (lxs i) (lxs j) (lzs 1) \<Longrightarrow> i = 1 \<and> j = 2 \<or> i = 2 \<and> j = 1 \<Longrightarrow>
   produced (\<lambda>p. if p = j \<and> lns \<noteq> LNil then lhd lns else 0) (fairmerge False False) lxs lzs"
   apply (coinduction arbitrary: i j lns lxs lzs rule: produced_coinduct_upto)
@@ -1322,6 +1497,7 @@ lemma Inr_in_traced_loud:
   "r \<in> lset ios \<Longrightarrow>
    r = (Inr p, x) \<Longrightarrow>
    traced fuel op ios \<Longrightarrow>
+   cleaned op \<Longrightarrow>
    loud p op (lproject (\<lambda>p q. Inl p = q) ios)"
   apply (induct ios arbitrary: op fuel rule: lset_induct'[where x=r])
   subgoal for xs op
@@ -1350,10 +1526,14 @@ lemma Inr_in_traced_loud:
         apply (drule meta_spec)+
         apply (drule meta_mp)
        apply simp
+        apply (drule meta_mp)
+       apply simp
       apply (rule loud.Read)
       apply (erule loud_cong[OF refl, THEN iffD1, rotated 2])
       using lproject_False_weak[of xs "(\<lambda>p q. Inl p = q)" p']
        apply (auto simp: image_iff)
+      apply (metis chd.simps(1) mem_Collect_eq non_input_traces traces_def)
+      apply (metis chd.simps(1) mem_Collect_eq non_input_traces traces_def)
       done
     subgoal
       apply (auto intro: loud.intros)
@@ -1365,7 +1545,7 @@ lemma If_eq_triv[simp]: "(if x = y then f y else f x) = f x"
   by auto
 
 lemma traced_produced:
-  "traced m op ios \<Longrightarrow> 
+  "traced m op ios \<Longrightarrow> cleaned op \<Longrightarrow>
    produced m op (lproject (\<lambda>p q. Inl p = q) ios) (lproject (\<lambda>p q. Inr p = q) ios)"
   apply (coinduction arbitrary: m op ios)
   subgoal for m op ios
@@ -1377,24 +1557,28 @@ lemma traced_produced:
         apply (auto simp add: fun_eq_iff)
         done
       done
-    subgoal for p lxs fuel n f
+    subgoal for fuel p n f lxs
       apply (rule disjI1)
       apply (auto simp add: muted_def lproject_empty_conv)
       subgoal for p' y
         apply (frule Inr_in_traced_loud[rotated 2])
+        apply simp
           apply assumption
          apply (rule refl)
         apply (drule loud_not_mute)
         using lproject_False_weak[of lxs "(\<lambda>p q. Inl p = q)" p]
         apply (auto simp: image_iff elim!: notE[of "mute _ _ _"]
           elim: mute_cong[OF refl refl, THEN iffD1, rotated 1])
+        apply (smt (verit, ccfv_SIG) chd.simps(1) mem_Collect_eq mute_cong non_input_traces traces_def)
         done
       subgoal
         apply (rule exI[of _ "n"])
         apply (rule disjI1)
         apply (rule exI[of _ lxs])
         using lproject_False[of lxs "(\<lambda>p q. Inl p = q)" p]
-        apply (force simp add: image_iff)
+        apply (auto simp add: image_iff)
+        using non_input_traces traces_def apply fastforce
+        using non_input_traces traces_def apply fastforce
         done
       done
     subgoal for fuel p n f lxs
@@ -1577,8 +1761,8 @@ lemma mute_map_op': "inj_on g (inputs op) \<Longrightarrow>
   subgoal for op lxs lxs'
     apply (cases op)
       apply (auto 0 0 simp: inj_on_def)
-    apply blast
-    apply (metis fun_upd_apply)
+      apply blast
+    apply (smt (verit))
     apply blast
     done
   done
@@ -1637,7 +1821,7 @@ lemma produced_map_op: "inj_on g (inputs op) \<Longrightarrow> inj_on h (outputs
               apply (rule the_inv_into_f_f)
                apply (simp add: inj_on_def)
               apply auto []
-             apply (metis (no_types, lifting) DiffI UNIV_I UnionI empty_iff fun_upd_other fun_upd_same imageI insert_iff)
+             apply (metis (no_types, lifting) DiffI UNIV_I UnionI empty_iff imageI insert_iff)
             apply (meson not_loud_mute loud_in_outputs)
             done
           apply (rule exI[of _ n])
@@ -1664,7 +1848,7 @@ lemma produced_map_op: "inj_on g (inputs op) \<Longrightarrow> inj_on h (outputs
               apply (rule the_inv_into_f_f)
                apply (simp add: inj_on_def)
               apply auto []
-             apply (metis (no_types, lifting) DiffI UNIV_I UnionI empty_iff fun_upd_other fun_upd_same imageI insert_iff)
+             apply (metis (no_types, lifting) DiffI UNIV_I UnionI empty_iff imageI insert_iff)
             apply (meson not_loud_mute loud_in_outputs)
             done
           done
@@ -1911,9 +2095,6 @@ lemma semantics_comp_op:
   apply (rule predicate2I)
    apply auto
   sorry
-
-lemma "traced (comp_op wire buf op1 op2) ios =
-  R (traced op1) (traced op2)"
 
 inductive input_at where
   "input_at p (Read p f) n"
@@ -2257,6 +2438,51 @@ lemma inputs_comp_op: "p \<in> inputs (comp_op wire buf op1 op2) \<Longrightarro
       subgoal
         using prems(1) by (metis UnE comp_producing_inputs_comp_op equals0D image_empty inputs_comp_producing less_Suc_eq_le op.simps(37))
       done
+    done
+  done
+
+lemma comp_producing_cleanedD: "comp_producing wire buf op1 op2 n \<Longrightarrow>
+  cleaned op1 \<Longrightarrow>
+  cleaned op2 \<Longrightarrow>
+  comp_op wire buf op1 op2 = End \<or>
+  (\<exists>op' q x. comp_op wire buf op1 op2 = Write op' q x \<and> 
+    cleaned_cong (\<lambda>op. \<exists>buf op1 op2. op = comp_op wire buf op1 op2 \<and> cleaned op1 \<and> cleaned op2) op') \<or>
+  (\<exists>f p. comp_op wire buf op1 op2 = Read p f \<and> p \<notin> inputs (f EOS) \<and>
+   (\<forall>x. cleaned_cong (\<lambda>op. \<exists>buf op1 op2. op = comp_op wire buf op1 op2 \<and> cleaned op1 \<and> cleaned op2) (f x)))"
+  by (induct buf op1 op2 n pred: comp_producing)
+    (auto 6 0 split: option.splits intro: cc_base intro!: cc_write cc_read dest!: inputs_comp_op)+
+    
+
+lemma cleaned_comp_op: "cleaned op1 \<Longrightarrow> cleaned op2 \<Longrightarrow> cleaned (comp_op wire buf op1 op2)"
+  apply (coinduction arbitrary: buf op1 op2 rule: cleaned_coinduct_upto)
+  subgoal for buf op1 op2
+    apply (cases op1; cases op2)
+            apply (auto dest!: inputs_comp_op split: option.splits)
+                        apply (rule cc_base, (rule exI conjI refl)+; simp)
+                       apply (rule cc_read, blast dest!: inputs_comp_op, rule cc_base, (rule exI conjI refl)+; simp)
+                      apply (rule cc_write, rule cc_base, (rule exI conjI refl)+; simp)
+                     apply (rule cc_base, (rule exI conjI refl)+; simp)
+                    apply (rule cc_base, (rule exI conjI refl)+; simp)
+                   apply (rule cc_read, blast dest!: inputs_comp_op, rule cc_base, (rule exI conjI refl)+; simp)
+    subgoal for op' q x f p n
+      by (frule comp_producing_cleanedD) (auto intro: cleaned.intros(1,2) split: if_splits)
+                 apply (rule cc_base, (rule exI conjI refl)+; simp)
+                apply (rule cc_base, (rule exI conjI refl)+; simp)
+    subgoal for op' q x p f p' n 
+      by (frule comp_producing_cleanedD) (auto intro: cleaned.intros(1,2) split: if_splits)
+              apply (rule cc_base, (rule exI conjI refl)+; simp)
+             apply (rule cc_base, (rule exI conjI refl)+; simp)
+            apply (rule cc_write, rule cc_base, (rule exI conjI refl)+; simp)
+           apply (rule cc_base, (rule exI conjI refl)+; simp)
+          apply (rule cc_base, (rule exI conjI refl)+; simp)
+         apply (rule cc_base, (rule exI conjI refl)+; simp)
+    subgoal for op' q x p' n 
+      by (frule comp_producing_cleanedD) (auto intro: cleaned.intros(1,2) split: if_splits)
+    subgoal for p f n 
+      by (frule comp_producing_cleanedD) (auto intro: cleaned.intros(1,2) split: if_splits)
+      apply (rule cc_base, (rule exI conjI refl)+; simp)
+     apply (rule cc_base, (rule exI conjI refl)+; simp)
+    apply (rule cc_base, (rule exI conjI refl)+; simp)
     done
   done
 
