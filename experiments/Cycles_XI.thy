@@ -1986,11 +1986,18 @@ lemma traced_produced:
             oops
 
 
-
 fun bapp where
   "bapp BEmpty lxs = lxs"
 | "bapp BEnded lxs = LNil"
 | "bapp (BCons x xs) lxs = LCons x (bapp xs lxs)"
+
+definition "extend A buf R lxs lys =
+  (\<exists>lzs. R lxs (case_sum (lys o Inl) lzs) \<and> (\<forall>p. lys (Inr p) = (if p \<in> A then bapp (buf p) (lzs p) else lzs p)))"
+
+lemma extend_empty: "extend {} buf R = R"
+  using arg_cong2[of x x "case_sum (f o Inl) (f o Inr)" f R for x f, unfolded o_def, OF refl surjective_sum]
+  by (auto simp: extend_def o_def fun_eq_iff[of "extend _ _ _"] fun_eq_iff[of "extend _ _ _ _"]
+    simp flip: fun_eq_iff split: sum.splits)
 
 definition "compose A R S lxs lys = (\<exists>lzs. R (lxs o Inl) (case_sum (lys o Inl) lzs) \<and> S (\<lambda>p. if p \<in> A then lzs p else lxs (Inr p)) (lys o Inr))"
 
@@ -3264,6 +3271,8 @@ lemma outputs_pcomp_op[simp]:
 
 definition conv where
   "conv f = (f o Inl, f o Inr)"
+
+
 
 lemma produced_pcomp_op:
   "semantics (pcomp_op op1 op2) \<le> BNF_Def.vimage2p conv conv (rel_prod (semantics op1) (semantics op2))"
