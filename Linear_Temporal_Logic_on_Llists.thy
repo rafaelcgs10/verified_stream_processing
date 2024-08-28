@@ -71,7 +71,7 @@ inductive_cases evt_baseE: "evt \<phi> ps xs"
 inductive_cases evt_stepE: "evt \<phi> ps (LCons x xs)"
 
 coinductive alw for \<phi> where
-  LNil_all[simp]: "alw \<phi> ps LNil"
+  LNil_all[simp]: "\<phi> ps LNil \<Longrightarrow> alw \<phi> ps LNil"
 | alw_step: "\<lbrakk>\<phi> ps (LCons x xs); alw \<phi> (x#ps) xs\<rbrakk> \<Longrightarrow> alw \<phi> ps (LCons x xs)"
 
 inductive_cases LNil_allE: "alw \<phi> ps LNil"
@@ -134,6 +134,27 @@ declare evt.intros[intro]
 declare onc.intros[intro]
 declare alw.cases[elim]
 
+lemma
+  "(\<not> evt P ps xs) = alw (not P) ps xs"
+  apply (rule iffI)
+  subgoal
+    apply (coinduction arbitrary: ps xs rule: alw.coinduct)
+    subgoal for ps xs
+      apply (cases xs)
+       apply simp_all
+      apply blast+
+      done
+    done
+  subgoal
+    unfolding not_def
+    apply (intro impI)
+    apply rotate_tac
+    apply (induct ps xs rule: evt.induct)
+     apply auto
+    done
+  done
+
+
 lemma alw_coinduct[consumes 1, case_names alw ltl]:
   "P ps xs \<Longrightarrow> (\<And>x ps. P ps x \<Longrightarrow> \<phi> ps x) \<Longrightarrow> (\<And>xs ps x. P ps (LCons x xs) \<Longrightarrow> \<not> alw \<phi> (x#ps) xs \<Longrightarrow> P (x#ps) xs) \<Longrightarrow> alw \<phi> ps xs"
   using alw.coinduct[of P ps xs \<phi>] 
@@ -178,8 +199,9 @@ lemma evt_nxt: "evt \<phi> ps xs = (\<phi> dsj nxt (evt \<phi>)) ps xs"
 lemma onc_prv: "onc \<phi> ps xs = (\<phi> dsj prv (onc \<phi>)) ps xs"
   by (metis onc.simps prv.elims(2) prv.simps(2))
 
-lemma alw_nxt: "xs \<noteq> LNil \<Longrightarrow> alw \<phi> ps xs = (\<phi> cnj nxt (alw \<phi>)) ps xs"
-  by (metis (mono_tags, lifting) alw_LCons_iff nxt.elims)
+lemma alw_nxt: "alw \<phi> ps xs = (\<phi> cnj nxt (alw \<phi>)) ps xs"
+  by (smt (verit, best) alw.simps nxt.elims nxt.simps(1) nxt.simps(2))
+
 
 lemma hst_prv: "ps \<noteq> Nil \<Longrightarrow> hst \<phi> ps xs = (\<phi> cnj prv (hst \<phi>)) ps xs"
   by (metis hst.simps prv.elims(1) prv.simps(2))
@@ -453,7 +475,7 @@ lemma evt_imp_shift:
    apply (metis append_Nil lshift_simps(1) rev.simps(1))
   by (metis append.assoc append_Nil lshift_simps(2) rev.simps(2) rev_append rev_is_rev_conv)
 
-lemma alw_evt_shift: "xs1 \<noteq> LNil \<Longrightarrow> alw \<phi> (rev xl @ ps) xs1 \<Longrightarrow> evt (alw \<phi>) ps (xl @@- xs1)"
+lemma alw_evt_shift: "alw \<phi> (rev xl @ ps) xs1 \<Longrightarrow> evt (alw \<phi>) ps (xl @@- xs1)"
   by (simp add: evt_base evt_shift)
 
 lemma evt_ex_nxt:
@@ -643,7 +665,7 @@ proof
     by induct auto
 qed auto
 
-lemma alw_False[simp]: "xs \<noteq> LNil \<Longrightarrow> alw (\<lambda>_ x. False) ps xs \<longleftrightarrow> False"
+lemma alw_False[simp]: "alw (\<lambda>_ x. False) ps xs \<longleftrightarrow> False"
   by auto
 
 lemma hst_False[simp]: "ps \<noteq> [] \<Longrightarrow> hst (\<lambda>_ x. False) ps xs \<longleftrightarrow> False"
@@ -697,7 +719,7 @@ lemma cnj_left: "L ps xs \<Longrightarrow> (L cnj R) ps xs = R ps xs"
 lemma cnj_right: "R ps xs \<Longrightarrow> (L cnj R) ps xs = L ps xs"
   by blast
 
-lemma alwD: "xs \<noteq> LNil \<Longrightarrow> alw P ps xs \<Longrightarrow> P ps xs"
+lemma alwD: "alw P ps xs \<Longrightarrow> P ps xs"
   by blast
 
 lemma alw_alwD: "alw P ps xs \<Longrightarrow> alw (alw P) ps xs"
@@ -841,5 +863,17 @@ lemma all_nxt_alw:
   "(\<And>n. (nxt ^^ n) P ps xs) \<Longrightarrow>
    alw P ps xs"
   by (simp add: alw_imp_ldropn nxt_ldropn)
+
+lemma all_prv_hst:
+  "(\<And>n. (prv ^^ n) P ps xs) \<Longrightarrow>
+   hst P ps xs"
+  by (simp add: hst_imp_ldropn prv_implies_ldropn)
+
+lemma evt_alw_not:
+  "evt P ps xs \<Longrightarrow> alw (\<lambda>ps xs. \<not> P ps xs) ps xs \<Longrightarrow>
+   \<not> P ps xs \<or> xs = LNil"
+    apply (induct ps xs rule: evt.induct)
+  apply (auto elim: alwE evt_baseE)
+  done
 
 end
