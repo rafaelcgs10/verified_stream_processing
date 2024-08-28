@@ -1834,11 +1834,8 @@ lemma traced_produced:
           apply (subst (1 3 5) trace_from.code)
           apply (auto elim: chd.elims)
           subgoal by force
-          subgoal by (metis (no_types, lifting) Inl_in_trace_from_not_Observed chd.elims fun_upd_same ltl_simps(1) observation.discI observation.distinct(3))
           subgoal
             by (metis someI_ex)
-          subgoal
-            by (metis (no_types, lifting) Inl_in_trace_from_not_Observed chd.elims fun_upd_same ltl_simps(1) observation.discI observation.distinct(3))
           subgoal
             by (metis someI_ex)
           done
