@@ -539,9 +539,18 @@ coinductive welltyped where
 | "x \<in> B p \<Longrightarrow> welltyped A B op \<Longrightarrow> welltyped A B (Write op p x)"
 | "welltyped A B End"
 
+inductive_cases welltyped_ReadE[elim!]: "welltyped A B (Read p f)"
+inductive_cases welltyped_WriteE[elim!]: "welltyped A B (Write op q x)"
+inductive_cases welltyped_EndE[elim!]: "welltyped A B End"
+(*
 (*characteristic property of welltyped*)
-(* lemma "welltyped A B op \<Longrightarrow> \<lbrakk>op\<rbrakk> lxs lys \<Longrightarrow> (\<forall>p. lset (lxs p) \<subseteq> A p) \<Longrightarrow> (\<forall>p. lset (lys p) \<subseteq> B p)"
-  sorry *)
+lemma "x \<in> lset (lproject (=) lxs (Out q)) \<Longrightarrow> traced m op lxs \<Longrightarrow> welltyped A B op \<Longrightarrow> \<forall>p. lset (lproject (=) lxs (Inp p)) \<subseteq> A p \<Longrightarrow> x \<in> B q"
+  apply (induct x "lproject (=) lxs (Out q)" arbitrary: m op lxs rule: llist.set_induct)
+   apply (erule traced.cases; auto split: if_splits)
+  sorry
+*)
+
+
 
 section\<open>Convenient types\<close>
 
