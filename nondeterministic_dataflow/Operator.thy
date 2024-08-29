@@ -3,7 +3,7 @@ section \<open>Operators, trace model, history model, cleaned predicate, and wel
 theory Operator
 
 imports
-  Coinductive.Coinductive_List
+  Linear_Temporal_Logic_on_Llists
   "HOL-Library.BNF_Corec"
   "HOL-Library.Code_Lazy"
   "HOL-Library.Numeral_Type"
@@ -107,7 +107,7 @@ lemma lproject_False_weak:
   "(\<And>qx. qx \<in> lset lxs \<Longrightarrow> \<not> R p (fst qx)) \<Longrightarrow> lproject R lxs p = LNil"
   by (force simp add: lproject_empty_conv)
 
-section\<open>Full abstraction\<close>
+section\<open>Cleaned operators\<close>
 
 coinductive cleaned where
   cleaned_Read[intro]: "p \<notin> inputs (f EOS) \<Longrightarrow> (\<And>x. cleaned (f x)) \<Longrightarrow>  cleaned (Read p f)"
@@ -144,14 +144,8 @@ lemma cleaned_coinduct_upto: "X op \<Longrightarrow>
     done
   done
 
-lemma traced_traced_wit: "traced m op (traced_wit op)"
-  apply (coinduction arbitrary: op m)
-  apply (subst (1 3 5 7) traced_wit.code)
-  apply (auto split: op.splits dest: lset_traced_wit simp: traced_wit.code[where op=End])
-  done
-
-lemma traces_nonempty: "traces m op \<noteq> {}"
-  by (auto simp: traces_def intro!: traced_traced_wit)
+lemma ldropn_LConsD: "ldropn n xs = LCons x ys \<Longrightarrow> x \<in> lset xs"
+  by (metis in_lset_ldropnD lset_intros(1))
 
 lemma non_input_traces: "t \<in> lset lxs \<Longrightarrow> t = (Inp p, y) \<Longrightarrow> p \<notin> inputs op \<Longrightarrow> lxs \<in> traces m op \<Longrightarrow> False"
   apply (induct t lxs arbitrary: m op rule: llist.set_induct)
@@ -162,6 +156,41 @@ lemma non_input_traces: "t \<in> lset lxs \<Longrightarrow> t = (Inp p, y) \<Lon
     apply (cases op; auto split: nat.splits)
     done
   done
+
+lemma cleaned_traced_gen:
+  "cleaned op \<Longrightarrow> traced m op (rev ps @@- lxs) \<Longrightarrow> alw (wow ((=) (Inp p, EOS)) imp nxt (alw (wow (\<lambda>t. fst t \<noteq> Inp p)))) ps lxs"
+  apply (coinduction arbitrary: m op ps lxs)
+  subgoal for m op ps lxs
+    apply (cases lxs)
+     apply simp_all
+    subgoal for x lxs'
+      apply (intro conjI impI disjI1; blast?)
+      apply (induct ps arbitrary: op m rule: rev_induct)
+       apply simp
+      apply (erule traced.cases; simp)
+       apply (erule cleaned.cases; simp)
+       apply (auto simp: alw_iff_ldropn wow_alt dest!: ldropn_LConsD dest: non_input_traces[unfolded traces_def] split: llist.splits) []
+      apply simp
+      apply (erule traced.cases; simp)
+         apply (erule cleaned.cases; auto simp add: alw_iff_ldropn wow_alt)+
+      done
+    done
+  done
+
+lemma cleaned_traced:
+  "cleaned op \<Longrightarrow> traced m op lxs \<Longrightarrow> alw (wow ((=) (Inp p, EOS)) imp nxt (alw (wow (\<lambda>t. fst t \<noteq> Inp p)))) [] lxs"
+  using cleaned_traced_gen[where ps = "[]"] by simp
+
+section\<open>Full abstraction\<close>
+
+lemma traced_traced_wit: "traced m op (traced_wit op)"
+  apply (coinduction arbitrary: op m)
+  apply (subst (1 3 5 7) traced_wit.code)
+  apply (auto split: op.splits dest: lset_traced_wit simp: traced_wit.code[where op=End])
+  done
+
+lemma traces_nonempty: "traces m op \<noteq> {}"
+  by (auto simp: traces_def intro!: traced_traced_wit)
 
 lemma traces_op_eqI: "(\<Union>m. traces m op) = (\<Union>m. traces m op') \<Longrightarrow> op = op'"
   apply (coinduction arbitrary: op op')

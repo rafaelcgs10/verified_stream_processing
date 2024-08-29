@@ -85,7 +85,7 @@ inductive_cases onc_baseE: "onc \<phi> ps xs"
 inductive_cases onc_stepE: "onc \<phi> (x#ps) xs"
 
 inductive hst for \<phi> where
-  Nil_all[simp]: "hst \<phi> [] xs"
+  Nil_all[simp]: "\<phi> [] xs \<Longrightarrow> hst \<phi> [] xs"
 | hst_step: "\<lbrakk>\<phi> (x#ps) xs; hst \<phi> ps (LCons x xs)\<rbrakk> \<Longrightarrow> hst \<phi> (x#ps) xs"
 
 inductive_cases Nil_allE: "hst \<phi> [] xs"
@@ -128,7 +128,8 @@ lemma HLD_LCons[simp]: "HLD X ps (LCons x \<omega>) \<longleftrightarrow> x \<in
 lemma nxt_mono:
   assumes nxt: "nxt \<phi> ps xs" and 0: "\<And> xs ps. \<phi> ps xs \<Longrightarrow> \<psi> ps xs"
   shows "nxt \<psi> ps xs"
-  using assms by (metis nxt.elims nxt.simps(2))
+  using assms
+  by (cases xs) auto
 
 declare evt.intros[intro]
 declare onc.intros[intro]
@@ -625,7 +626,8 @@ lemma hst_now_in_set:
 lemma in_set_hst_now:
   "\<forall> x \<in> set ps. P x \<Longrightarrow> \<not> lnull xs \<Longrightarrow> P (lhd xs) \<Longrightarrow> hst (now P) ps xs" 
   apply (induct ps arbitrary: xs)
-   apply fastforce
+  subgoal for xs
+    by (metis Nil_all llist.collapse(2) now.simps(2))
   subgoal for x ps xs
     by (metis hst_step lhd_LCons_ltl list.set_intros(1) list.set_intros(2) llist.disc(2) now.simps(2))
   done
@@ -672,20 +674,47 @@ lemma alw_False[simp]: "alw (\<lambda>_ x. False) ps xs \<longleftrightarrow> Fa
 lemma hst_False[simp]: "ps \<noteq> [] \<Longrightarrow> hst (\<lambda>_ x. False) ps xs \<longleftrightarrow> False"
   using hst.cases by auto
 
-lemma evt_then_ldropn: "evt P ps xs \<Longrightarrow> (\<exists>m. P (rev (list_of (ltake m xs)) @ ps) (ldropn m xs))"
+lemma evt_iff_ldropn: "evt P ps xs \<longleftrightarrow> (\<exists>m. P (rev (list_of (ltake m xs)) @ ps) (ldropn m xs))"
+  apply (rule iffI; (erule exE)?)+
   apply (induct rule: evt.induct)
    apply (metis append_Nil ldropn_0 list_of_LNil ltake_0 rev.simps(1) zero_enat_def)
-  apply (metis evt.evt_step evt_ex_nxt nxt_ldropn)
+   apply (metis evt.evt_step evt_ex_nxt nxt_ldropn)
+  subgoal for m
+    apply (induct m arbitrary: ps xs)
+     apply (auto simp: enat_0) []
+    subgoal for m ps xs
+      apply (drule meta_spec[of _ "lhd xs # ps"])
+      apply (drule meta_spec[of _ "ltl xs"])
+      apply (cases xs)
+      apply (auto simp: eSuc_enat[symmetric])
+      done
+    done
   done
 
-lemma onc_then_ldropn: "onc P ps xs \<Longrightarrow> (\<exists>m. P (drop m ps) ((rev (take m ps)) @@- xs))"
+lemma onc_iff_ldropn: "onc P ps xs \<longleftrightarrow> (\<exists>m. P (drop m ps) ((rev (take m ps)) @@- xs))"
+  apply (rule iffI; (erule exE)?)+
   apply (induct rule: onc.induct)
    apply auto
    apply (metis drop0 lshift_simps(1) rev.simps(1) take0)
   apply (metis drop_Suc_Cons rev_eq_Cons_iff rev_rev_ident lshift_snoc take_Suc_Cons)
+  subgoal for m
+    apply (induct m arbitrary: ps xs)
+     apply (auto simp: enat_0) []
+    subgoal for m ps xs
+      apply (drule meta_spec[of _ "tl ps"])
+      apply (drule meta_spec[of _ "LCons (hd ps) xs"])
+      apply (cases ps)
+      apply (auto simp: eSuc_enat[symmetric])
+      done
+    done
   done
 
-lemma alw_imp_ldropn: "(\<forall>m. P (rev (list_of (ltake m xs)) @ ps) (ldropn m xs)) \<Longrightarrow> alw P ps xs"
+lemma alw_iff_ldropn: "alw P ps xs \<longleftrightarrow> (\<forall>m. P (rev (list_of (ltake m xs)) @ ps) (ldropn m xs))"
+  apply (rule iffI allI)+
+  subgoal for m
+    apply (induct m arbitrary: ps xs)
+    apply (auto simp: enat_0 eSuc_enat[symmetric])
+    done
   apply (coinduction arbitrary: ps xs) 
   subgoal for ps xs
     apply (cases xs)
@@ -698,8 +727,15 @@ lemma alw_imp_ldropn: "(\<forall>m. P (rev (list_of (ltake m xs)) @ ps) (ldropn 
     done
   done  
 
-lemma hst_imp_ldropn: "(\<forall>m. P (drop m ps) ((rev (take m ps)) @@- xs)) \<Longrightarrow> hst P ps xs"
-  apply (induct ps arbitrary: xs) 
+lemma hst_iff_ldropn: "hst P ps xs \<longleftrightarrow> (\<forall>m. P (drop m ps) ((rev (take m ps)) @@- xs))"
+  apply (rule iffI allI)+
+  subgoal for m
+    apply (induct m arbitrary: ps xs)
+     apply (auto simp: enat_0 eSuc_enat[symmetric])
+    apply (metis hst.simps)
+    apply (metis drop_Suc hst.cases list.sel(1) list.sel(2) list.sel(3) lshift_snoc rev.simps(2) take_Nil take_Suc)
+    done
+  apply (induct ps arbitrary: xs)
   subgoal for xs
     by auto
   subgoal for x ps xs
@@ -707,7 +743,7 @@ lemma hst_imp_ldropn: "(\<forall>m. P (drop m ps) ((rev (take m ps)) @@- xs)) \<
   done
 
 lemma ldrop_not_finite_alw_ex: "alw P ps xs \<Longrightarrow> \<not> lfinite xs \<Longrightarrow> (\<exists> m. P (rev (list_of (ltake m xs)) @ ps) (ldrop m xs))"
-  by (metis alw_nxt evt_base ldrop_wait lfinite_LNil)
+  by (metis alw_nxt evt_base ldrop_wait)
 
 lemma cnj_eq: 
   assumes eq: "\<And>xs ps. P ps xs \<Longrightarrow> Q1 ps xs \<longleftrightarrow> Q2 ps xs"
@@ -863,12 +899,12 @@ lemma nxt_ldropn_simp[simp]:
 lemma all_nxt_alw:
   "(\<And>n. (nxt ^^ n) P ps xs) \<Longrightarrow>
    alw P ps xs"
-  by (simp add: alw_imp_ldropn nxt_ldropn)
+  by (simp add: alw_iff_ldropn nxt_ldropn)
 
 lemma all_prv_hst:
   "(\<And>n. (prv ^^ n) P ps xs) \<Longrightarrow>
    hst P ps xs"
-  by (simp add: hst_imp_ldropn prv_implies_ldropn)
+  by (simp add: hst_iff_ldropn prv_implies_ldropn)
 
 lemma evt_alw_not:
   "evt P ps xs \<Longrightarrow> alw (\<lambda>ps xs. \<not> P ps xs) ps xs \<Longrightarrow>
