@@ -42,9 +42,15 @@ fun now where
   "now P ps LNil = False"
 | "now P ps (LCons x xs) = P x"
 
+lemma now_alt: "now P ps xs = (case xs of LNil \<Rightarrow> False | LCons x xs \<Rightarrow> P x)"
+  by (auto split: llist.splits)
+
 fun wow where
   "wow P ps LNil = True"
 | "wow P ps (LCons x xs) = P x"
+
+lemma wow_alt: "wow P ps xs = (case xs of LNil \<Rightarrow> True | LCons x xs \<Rightarrow> P x)"
+  by (auto split: llist.splits)
 
 fun nxt where
   "nxt \<phi> ps LNil = \<phi> ps LNil"
