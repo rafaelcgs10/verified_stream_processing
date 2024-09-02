@@ -16,6 +16,128 @@ corec fairmerge :: "bool \<Rightarrow> bool \<Rightarrow> (2, 1, nat) op" where
       Read 1 (case_observation (Write (Read 2 (case_observation (Write (fairmerge e1 e2) 1) (fairmerge e1 e2) (fairmerge e1 True))) 1)
      (Read 2 (case_observation (Write (fairmerge e1 e2) 1) (fairmerge e1 e2) (fairmerge e1 True))) (fairmerge True e2)))"
 
+lemma fairmerge_False_False_Read:
+  "fairmerge False False = Read p f \<longleftrightarrow> p = 1 \<and> f = (case_observation (Write (Read 2 (case_observation (Write (fairmerge False False) 1) (fairmerge False False) (fairmerge False True))) 1)
+     (Read 2 (case_observation (Write (fairmerge False False) 1) (fairmerge False False) (fairmerge False True))) (fairmerge True False))"
+  by (subst fairmerge.code; auto)+
+
+lemma fairmerge_False_False_NoRead:
+  "fairmerge False False = Write op' p' x = False"
+  "fairmerge False False = End = False"
+  by (subst fairmerge.code; auto)+
+
+lemma inputs_fairmerge_False_TrueD: "p \<in> inputs op \<Longrightarrow> op = fairmerge False True \<or> (\<exists>x. op = Write (fairmerge False True) 1 x) \<Longrightarrow> p = 1"
+  apply (induct p op rule: op.set_induct(1))
+  apply (subst (asm) fairmerge.code; auto split: observation.splits elim!: chd.elims)
+  apply (subst (asm) fairmerge.code; auto split: observation.splits elim!: chd.elims)
+  apply (subst (asm) fairmerge.code; auto split: observation.splits elim!: chd.elims)
+  done
+
+lemma inputs_fairmerge_False_True[simp]: "inputs (fairmerge False True) = {1}"
+  apply (auto dest: inputs_fairmerge_False_TrueD)
+  apply (subst fairmerge.code; auto split: observation.splits elim!: chd.elims)
+  done
+
+lemma inputs_fairmerge_True_FalseD: "p \<in> inputs op \<Longrightarrow> op = fairmerge True False \<or> (\<exists>x. op = Write (fairmerge True False) 1 x) \<Longrightarrow> p = 2"
+  apply (induct p op rule: op.set_induct(1))
+  apply (subst (asm) fairmerge.code; auto split: observation.splits elim!: chd.elims)
+  apply (subst (asm) fairmerge.code; auto split: observation.splits elim!: chd.elims)
+  apply (subst (asm) fairmerge.code; auto split: observation.splits elim!: chd.elims)
+  done
+
+lemma inputs_fairmerge_True_False[simp]: "inputs (fairmerge True False) = {2}"
+  apply (auto dest: inputs_fairmerge_True_FalseD)
+  apply (subst fairmerge.code; auto split: observation.splits elim!: chd.elims)
+  done
+
+lemma inputs_fairmerge_False_FalseD: "p \<in> inputs op \<Longrightarrow>
+  op = fairmerge False False \<or>
+  op = Read 2 (case_observation (Write (fairmerge False False) 1) (fairmerge False False) (fairmerge False True)) \<or>
+  (\<exists>x. op = Write (Read 2 (case_observation (Write (fairmerge False False) 1) (fairmerge False False) (fairmerge False True))) 1 x) \<or>
+  (\<exists>x. op = Write (fairmerge False False) 1 x) \<Longrightarrow> p = 1 \<or> p = 2"
+  apply (induct p op rule: op.set_induct(1))
+  apply (subst (asm) fairmerge.code; auto split: observation.splits elim!: chd.elims)
+  apply (subst (asm) fairmerge.code; auto split: observation.splits elim!: chd.elims)
+  apply (subst (asm) fairmerge.code; auto split: observation.splits elim!: chd.elims)
+  done
+
+
+lemma inputs_fairmerge_False_False[simp]: "inputs (fairmerge False False) = {1, 2}"
+  apply (auto dest: inputs_fairmerge_False_FalseD)
+  apply (subst fairmerge.code; auto split: observation.splits elim!: chd.elims)+
+  done
+
+section \<open>Cleaned\<close>
+
+lemma cleaned_fairmerge: "cleaned (fairmerge e1 e2)"
+  apply (coinduction arbitrary: e1 e2 rule: cleaned_coinduct_upto)
+  subgoal for e1 e2
+    apply (subst (1 3 5) fairmerge.code)
+    apply (auto 3 4 split: bool.splits split: observation.splits
+      intro: cc_base intro!: cc_write cc_read cc_cleaned[of End])
+    done
+  done
+
+section \<open>Correctness\<close>
+
+lemma traced_fairmerge_True_True: "traced m (fairmerge True True) lxs \<longleftrightarrow> lxs = LNil"
+  by (subst fairmerge.code) (auto intro: traced.intros)
+
+inductive alw_cong for R \<phi> where
+  ac_base: "R ps xs \<Longrightarrow> alw_cong R \<phi> ps xs"
+| ac_alw: "alw \<phi> ps xs \<Longrightarrow> alw_cong R \<phi> ps xs"
+| ac_LCons: "\<phi> ps (LCons y ys) \<Longrightarrow> alw_cong R \<phi> (y # ps) ys \<Longrightarrow> alw_cong R \<phi> ps (LCons y ys)"
+
+lemma alw_coinduct_upto:
+  assumes "X ps xs"
+    "(\<And>ps xs. X ps xs \<Longrightarrow> (xs = LNil \<and> \<phi> ps LNil) \<or>
+       (\<exists>y ys. xs = LCons y ys \<and> \<phi> ps (LCons y ys) \<and> (alw_cong X \<phi> (y # ps) ys)))"
+  shows "alw \<phi> ps xs"
+  apply (rule alw.coinduct[OF alw_cong.intros(1)[where R = X and \<phi> = \<phi>]], rule assms(1))
+  subgoal for ps xs
+    apply (induct ps xs rule: alw_cong.induct)
+      apply (auto dest: assms(2))
+    done
+  done
+
+lemma traced_fairmerge_True_False_aux1: "traced m (fairmerge True False) lxs \<Longrightarrow>
+  alw (now ((=) (Inp 2, Observed x)) imp nxt (now ((=) (Out 1, Observed x)))) ps lxs"
+  apply (coinduction arbitrary: ps lxs m rule: alw_coinduct_upto)
+  subgoal for ps lxs m
+    apply (subst (asm) fairmerge.code)
+    apply simp
+    apply (erule traced_ReadE; simp)
+      apply (rule conjI impI)+
+       apply hypsubst_thin
+       apply auto []
+      apply (erule traced_WriteE; simp)
+      apply (rule ac_LCons)
+       apply auto []
+      apply (rule ac_base)
+      apply auto []
+     apply (auto simp flip: now_eq1 intro!: ac_alw alw.intros) []
+    apply (rule ac_base)
+    apply auto []
+    done
+  done
+
+lemma traced_fairmerge_True_False_aux2: "traced m (fairmerge True False) lxs \<Longrightarrow>
+  alw (now ((=) (Out 1, Observed x)) imp prv (now ((=) (Inp 2, Observed x)))) ps lxs"
+  apply (coinduction arbitrary: ps lxs m rule: alw_coinduct_upto)
+  subgoal for ps lxs m
+    apply (subst (asm) fairmerge.code)
+    apply simp
+    apply (erule traced_ReadE; simp)
+      apply (erule traced_WriteE; simp)
+      apply (rule ac_LCons)
+       apply auto []
+      apply (rule ac_base)
+      apply auto []
+     apply (auto simp flip: now_eq1 intro!: ac_alw alw.intros) []
+    apply (rule ac_base)
+    apply auto []
+    done
+  done
 
 section\<open>Correctness using the history model\<close>
 
@@ -380,57 +502,6 @@ lemma "\<lbrakk>fairmerge False False\<rbrakk> (\<lambda>x. if x = 1 then llist_
   apply (rule produced.Read[where n=3]; auto 0 0)
   done *)
 
-lemma fairmerge_False_False_Read:
-  "fairmerge False False = Read p f \<longleftrightarrow> p = 1 \<and> f = (case_observation (Write (Read 2 (case_observation (Write (fairmerge False False) 1) (fairmerge False False) (fairmerge False True))) 1)
-     (Read 2 (case_observation (Write (fairmerge False False) 1) (fairmerge False False) (fairmerge False True))) (fairmerge True False))"
-  by (subst fairmerge.code; auto)+
-
-lemma fairmerge_False_False_NoRead:
-  "fairmerge False False = Write op' p' x = False"
-  "fairmerge False False = End = False"
-  by (subst fairmerge.code; auto)+
-
-lemma inputs_fairmerge_False_TrueD: "p \<in> inputs op \<Longrightarrow> op = fairmerge False True \<or> (\<exists>x. op = Write (fairmerge False True) 1 x) \<Longrightarrow> p = 1"
-  apply (induct p op rule: op.set_induct(1))
-  apply (subst (asm) fairmerge.code; auto split: observation.splits elim!: chd.elims)
-  apply (subst (asm) fairmerge.code; auto split: observation.splits elim!: chd.elims)
-  apply (subst (asm) fairmerge.code; auto split: observation.splits elim!: chd.elims)
-  done
-
-lemma inputs_fairmerge_False_True[simp]: "inputs (fairmerge False True) = {1}"
-  apply (auto dest: inputs_fairmerge_False_TrueD)
-  apply (subst fairmerge.code; auto split: observation.splits elim!: chd.elims)
-  done
-
-lemma inputs_fairmerge_True_FalseD: "p \<in> inputs op \<Longrightarrow> op = fairmerge True False \<or> (\<exists>x. op = Write (fairmerge True False) 1 x) \<Longrightarrow> p = 2"
-  apply (induct p op rule: op.set_induct(1))
-  apply (subst (asm) fairmerge.code; auto split: observation.splits elim!: chd.elims)
-  apply (subst (asm) fairmerge.code; auto split: observation.splits elim!: chd.elims)
-  apply (subst (asm) fairmerge.code; auto split: observation.splits elim!: chd.elims)
-  done
-
-lemma inputs_fairmerge_True_False[simp]: "inputs (fairmerge True False) = {2}"
-  apply (auto dest: inputs_fairmerge_True_FalseD)
-  apply (subst fairmerge.code; auto split: observation.splits elim!: chd.elims)
-  done
-
-lemma inputs_fairmerge_False_FalseD: "p \<in> inputs op \<Longrightarrow>
-  op = fairmerge False False \<or>
-  op = Read 2 (case_observation (Write (fairmerge False False) 1) (fairmerge False False) (fairmerge False True)) \<or>
-  (\<exists>x. op = Write (Read 2 (case_observation (Write (fairmerge False False) 1) (fairmerge False False) (fairmerge False True))) 1 x) \<or>
-  (\<exists>x. op = Write (fairmerge False False) 1 x) \<Longrightarrow> p = 1 \<or> p = 2"
-  apply (induct p op rule: op.set_induct(1))
-  apply (subst (asm) fairmerge.code; auto split: observation.splits elim!: chd.elims)
-  apply (subst (asm) fairmerge.code; auto split: observation.splits elim!: chd.elims)
-  apply (subst (asm) fairmerge.code; auto split: observation.splits elim!: chd.elims)
-  done
-
-
-lemma inputs_fairmerge_False_False[simp]: "inputs (fairmerge False False) = {1, 2}"
-  apply (auto dest: inputs_fairmerge_False_FalseD)
-  apply (subst fairmerge.code; auto split: observation.splits elim!: chd.elims)+
-  done
-
 lemma mergedL1_fueled_fairmerge: "mergedL1_fueled lns (lxs i) (lxs j) (lzs 1) \<Longrightarrow> i = 1 \<and> j = 2 \<or> i = 2 \<and> j = 1 \<Longrightarrow>
   produced (\<lambda>p. if p = j \<and> lns \<noteq> LNil then lhd lns else 0) (fairmerge False False) lxs lzs"
   (* apply (coinduction arbitrary: i j lns lxs lzs rule: produced_coinduct_upto)
@@ -587,16 +658,5 @@ lemma mergedL1_fueled_fairmerge: "mergedL1_fueled lns (lxs i) (lxs j) (lzs 1) \<
   unfolding merged_alt mergedL_alt mergedL_fueled_alt semantics_def
   using mergedL1_fueled_fairmerge[of _ lxs 1 2 lzs] mergedL1_fueled_fairmerge[of _ lxs 2 1 lzs]
   by blast *)
-
-section \<open>Cleaned\<close>
-
-lemma cleaned_fairmerge: "cleaned (fairmerge e1 e2)"
-  apply (coinduction arbitrary: e1 e2 rule: cleaned_coinduct_upto)
-  subgoal for e1 e2
-    apply (subst (1 3 5) fairmerge.code)
-    apply (auto 3 4 split: bool.splits split: observation.splits
-      intro: cc_base intro!: cc_write cc_read cc_cleaned[of End])
-    done
-  done
 
 end
