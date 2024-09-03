@@ -491,6 +491,23 @@ lemma produce_code[code]:
 
 simps_of_case produce_simps[simp]: produce_code
 
+lemma produce_inner_induct:
+  "(\<And>op lxs p.
+    (\<And>p' f. Read p' f = op \<Longrightarrow> Ex (producing p op lxs) \<Longrightarrow> P (f (CHD p' lxs)) (CTL p' lxs) p) \<Longrightarrow>
+    (\<And>op' p' x. Write op' p' x = op \<Longrightarrow> p \<noteq> p' \<Longrightarrow> Ex (producing p op lxs) \<Longrightarrow> P op' lxs p) \<Longrightarrow> P op lxs p) \<Longrightarrow>
+   P op lxs p"
+  subgoal premises prems
+    using produce.inner_induct[of "\<lambda> (op, lxs, p). P op lxs p" "(op, lxs, p)"] apply -
+    apply (drule meta_mp)
+    subgoal
+      apply simp
+      apply (rule prems)
+       apply auto
+      done
+    apply simp
+    done
+  done
+
 (* lemma produced_produce: "produced m op lxs (produce op lxs)"
   apply (coinduction arbitrary: m op lxs)
   subgoal for m op lxs
@@ -587,6 +604,111 @@ lemma input_along_evidence:
     done
   done
 
+lemma in_Out_produce_trace_in_produce:
+  "(Out p, Observed x) \<in> lset (produce_trace op lxs) \<Longrightarrow>
+   x \<in> lset (produce op lxs p)"
+  apply (induct "produce_trace op lxs" arbitrary: op lxs rule: lset_induct)
+  subgoal for xs op lxs
+    apply (cases op)
+      apply auto
+    done
+  subgoal for x' xs op lxs
+    apply (cases op)
+      apply auto
+    done
+  done
+
+inductive output_along where
+  "output_along p (Write op p x) lxs x"
+| "output_along p (f (CHD p' lxs)) (CTL p' lxs) x \<Longrightarrow> output_along p (Read p' f) lxs x"
+| "output_along p op' lxs x \<Longrightarrow> x \<noteq> y \<Longrightarrow> output_along p (Write op' p y) lxs x"
+| "output_along p op' lxs x \<Longrightarrow> p \<noteq> p' \<Longrightarrow> output_along p (Write op' p' y) lxs x"
+
+lemma output_along_produce_trace:
+  "output_along p op lxs x \<Longrightarrow>
+   (Out p, Observed x) \<in> lset (produce_trace op lxs)"
+  apply (induct p op lxs x rule: output_along.induct)
+    apply (auto simp flip: fun_upd_apply split: if_splits)
+  done
+
+lemma producing_in_produce_in_produce_trace_Out:
+  "producing p op lxs n \<Longrightarrow>
+   produce op lxs p = LCons x lys \<Longrightarrow>
+   (Out p, Observed x) \<in> lset (produce_trace op lxs)"
+  apply (induct op lxs n rule: producing.induct)
+     apply auto
+  done
+
+lemma in_produce_trace_output_along:
+  "(Out p, Observed x) \<in> lset (produce_trace op lxs) \<Longrightarrow>
+   output_along p op lxs x"
+  apply (induct "produce_trace op lxs" arbitrary: op lxs rule: lset_induct)
+  subgoal for xs op lxs
+    apply (cases op)
+      apply (auto intro: output_along.intros)
+    done
+  subgoal for x' xs op lxs
+    apply (cases op)
+      apply (auto intro: output_along.intros)
+    done
+  done
+
+lemma
+  "produce op lxs p = LCons x' xs \<Longrightarrow>
+   x \<in> lset xs \<Longrightarrow>
+   x \<noteq> x' \<Longrightarrow>
+   output_along p op lxs x"
+  apply (induct arbitrary:  rule: produce_inner_induct[where p=p and op=op and lxs=lxs])
+  subgoal for op lxs p
+    apply (cases op)
+      apply (auto simp del: split: if_splits op.splits intro: output_along.intros)
+    oops
+
+lemma in_produce_output_along:
+  "produce op lxs p = LCons x lys \<Longrightarrow>
+   output_along p op lxs x"
+  apply (induct  rule: produce_inner_induct[where p=p and op=op and lxs=lxs])
+  subgoal for op lxs p
+    apply (subst (asm) (3) produce.code)
+    apply (auto simp del: produce_simps split: if_splits op.splits intro: producing.intros output_along.intros)
+    done
+  done
+
+lemma in_produce_output_along:
+  "x \<in> lset (produce op lxs p) \<Longrightarrow>
+   output_along p op lxs x"
+  apply (induct "produce op lxs p" arbitrary: op lxs rule: lset_induct)
+  subgoal for xs op lxs
+    apply (rule in_produce_output_along)
+    apply (erule sym)
+    done
+  subgoal
+    apply (subst (asm) (2) produce.code)
+   apply (auto  simp del: produce_simps split: if_splits op.splits intro: producing.intros output_along.intros)
+   subgoal
+     oops
+
+lemma in_produce_in_produce_trace_Out:
+  "x \<in> lset (produce op lxs p) \<Longrightarrow>
+   (Out p, Observed x) \<in> lset (produce_trace op lxs)"
+  apply (induct "produce op lxs p" arbitrary: op lxs rule: lset_induct)
+  subgoal for xs op lxs
+    apply (subst (asm) produce.code)
+      apply (auto simp del: produce_simps split: if_splits op.splits)
+    subgoal
+      using producing_in_produce_in_produce_trace_Out by metis
+    subgoal
+      using producing_in_produce_in_produce_trace_Out by metis
+    done
+  subgoal for x' xs op lxs
+    apply (subst (asm) (2) produce.code)
+      apply (auto simp del: produce_simps split: if_splits op.splits)
+    subgoal for p' f n
+      oops
+      
+
+
+
 lemma
   "history op lxs (produce op lxs)"
   unfolding history_def
@@ -616,8 +738,19 @@ lemma
       done
     done
   subgoal
-    oops
-
+    apply (rule ext)
+    subgoal for p
+      apply (coinduction arbitrary: op lxs)
+      subgoal for op lxs
+        apply (intro impI conjI iffI)
+        subgoal
+          using in_Out_produce_trace_in_produce 
+          by (metis (mono_tags, lifting) empty_iff llist.collapse(1) lproject_empty_conv(1) lset_LNil)
+        subgoal
+          by (metis (mono_tags, lifting) in_produce_output_along lhd_LCons_ltl llist.collapse(1) lproject_empty_conv(1) output_along_produce_trace)
+        subgoal
+          sorry
+        oops
 
     section\<open>Buffer infrastrcuture\<close>
 

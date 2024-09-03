@@ -843,15 +843,31 @@ lemma cleaned_comp_op: "cleaned op1 \<Longrightarrow> cleaned op2 \<Longrightarr
     done
   done
 
-subsection\<open>Trace model correctness\<close>
+section\<open>Trace model correctness\<close>
 definition "lfocus f A ios = lmap (map_prod f id) (lfilter (\<lambda>qx. fst qx \<in> A) ios)"
 
+coinductive alt where
+    "\<forall>(io, x) \<in> lset ios. pred_IO isl isl io \<Longrightarrow> alt ios"
+  | "\<forall>(io, x) \<in> lset ios. pred_IO (Not o isl) (Not o isl) io \<Longrightarrow> alt ios"
+  | "alt ios \<Longrightarrow> pred_IO isl isl io1 \<Longrightarrow> pred_IO (Not o isl) (Not o isl) io2 \<Longrightarrow> alt (LCons (io1, x) (LCons (io2, y) ios))"
+
 lemma "traced m (comp_op wire buf op1 op2) ios =
-  (\<exists>ios1 ios2. traced (m o Inl) op1 ios1 \<and> traced (m o Inr) op2 ios2 \<and>
+  (\<exists>ios1 ios2 m'. traced (m o Inl) op1 ios1 \<and> traced m' op2 ios2 \<and> (\<forall> p \<in> (- ran wire). m' p = (m o Inr) p) \<and> alt ios \<and>
     lfocus id (range Inp \<union> Out ` (- dom wire)) ios1 = lfocus (map_IO projl projl) (range (Inp o Inl) \<union> (Out o Inl) ` (- dom wire)) ios \<and>
     lfocus id (Inp ` (- ran wire) \<union> range Out) ios2 = lfocus (map_IO projr projr) ((Inp o Inr) ` (- ran wire) \<union> range (Out o Inr)) ios \<and>
     (\<forall>p \<in> ran wire. bapp (buf p) (lproject (=) (lfocus (the o wire o projo) (Out ` dom wire) ios1) p) = lproject (=) (lfocus proji (Inp ` ran wire) ios2) p))"
-  oops
+  apply (rule iffI)
+  subgoal sorry
+  subgoal
+    apply (elim exE conjE)
+    subgoal for ios1 ios2 m'
+      apply (coinduction arbitrary: ios ios1 ios2 m m' op1 op2 buf)
+      subgoal for ios ios1 ios2 m m' op1 op2 buf
+        apply (cases op1; cases op2)
+        apply simp_all
+        apply (intro impI conjI)
+
+
 
 section\<open>Parallel composition\<close>
 
