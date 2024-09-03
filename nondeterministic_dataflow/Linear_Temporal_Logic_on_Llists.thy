@@ -60,10 +60,10 @@ fun prv where
   "prv \<phi> [] xs = False"
 | "prv \<phi> (x#ps) xs = \<phi> ps (LCons x xs)"
 
-definition "HLD s = now (\<lambda>x. x \<in> s)"
+definition "NOW s = now (\<lambda>x. x \<in> s)"
 
-abbreviation HLD_nxt (infixr "\<cdot>" 65) where
-  "s \<cdot> P \<equiv> HLD s cnj nxt P"
+abbreviation NOW_nxt (infixr "\<cdot>" 65) where
+  "s \<cdot> P \<equiv> NOW s cnj nxt P"
 
 context
   notes [[inductive_internals]]
@@ -125,11 +125,11 @@ lemma wow_mono:
   shows "wow Q ps xs"
   using assms by (metis wow.simps(1) wow.simps(2) llist.exhaust)
 
-lemma HLD_iff: "\<omega> \<noteq> LNil \<Longrightarrow> HLD s ps \<omega> \<longleftrightarrow> lhd \<omega> \<in> s"
-  using HLD_def by (metis now.simps(2) llist.exhaust_sel)
+lemma NOW_iff: "\<omega> \<noteq> LNil \<Longrightarrow> NOW s ps \<omega> \<longleftrightarrow> lhd \<omega> \<in> s"
+  using NOW_def by (metis now.simps(2) llist.exhaust_sel)
 
-lemma HLD_LCons[simp]: "HLD X ps (LCons x \<omega>) \<longleftrightarrow> x \<in> X"
-  by (simp add: HLD_iff)
+lemma NOW_LCons[simp]: "NOW X ps (LCons x \<omega>) \<longleftrightarrow> x \<in> X"
+  by (simp add: NOW_iff)
 
 lemma nxt_mono:
   assumes nxt: "nxt \<phi> ps xs" and 0: "\<And> xs ps. \<phi> ps xs \<Longrightarrow> \<psi> ps xs"
@@ -774,13 +774,13 @@ lemma now_LCons: "now P ps (LCons x xs) \<longleftrightarrow> P x"
 lemma wow_LCons: "wow P ps (LCons x xs) \<longleftrightarrow> P x"
   by simp
 
-lemma now_eq1[simp]: "now ((=) x) = HLD {x}"
-  apply (auto simp add: HLD_def now_mono)
+lemma now_eq1[simp]: "now ((=) x) = NOW {x}"
+  apply (auto simp add: NOW_def now_mono)
   apply metis
   done
 
-lemma now_eq2[simp]: "now (\<lambda>y. y = x) = HLD {x}"
-  unfolding HLD_def
+lemma now_eq2[simp]: "now (\<lambda>y. y = x) = NOW {x}"
+  unfolding NOW_def
   by auto
 
 lemma alw_now[simp]: 
