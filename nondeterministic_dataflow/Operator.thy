@@ -736,9 +736,8 @@ lemma
           apply (smt (verit, best) chd.elims fun_upd_same lnull_def lproject_LCons(1) ltl_simps(2))
           done
         subgoal
-          using input_along_evidence lnull_def lproject_empty_conv(1) sledgehammer
-
-end
+          using input_along_evidence lnull_def lproject_empty_conv(1)
+          by (metis (mono_tags, lifting) bot2E)
         done
       done
     done
@@ -750,12 +749,12 @@ end
         apply (intro impI context_conjI iffI)
         subgoal
           using in_Out_produce_trace_in_produce 
-          by (metis (mono_tags, lifting) empty_iff llist.collapse(1) lproject_empty_conv(1) lset_LNil)
+          by (metis (mono_tags, lifting) empty_iff llist.collapse(1) lproject_empty_conv(1) lset_LNil bot2E)
         subgoal
           by (metis (mono_tags, lifting) in_produce_output_along lhd_LCons_ltl llist.collapse(1) lproject_empty_conv(1) output_along_produce_trace)
         subgoal
           using lset_produce_trace_lhd_output
-          by (metis (mono_tags, lifting) lnull_def lproject_False)
+          by (metis (mono_tags, lifting) lnull_def lproject_False bot2E)
         subgoal
           apply (subgoal_tac "output_along p op lxs (lhd (produce op lxs p))")
           subgoal

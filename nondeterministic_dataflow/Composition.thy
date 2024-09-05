@@ -846,16 +846,51 @@ lemma cleaned_comp_op: "cleaned op1 \<Longrightarrow> cleaned op2 \<Longrightarr
 section\<open>Trace model correctness\<close>
 definition "lfocus f A ios = lmap (map_prod f id) (lfilter (\<lambda>qx. fst qx \<in> A) ios)"
 
-coinductive alt where
-    "\<forall>(io, x) \<in> lset ios. pred_IO isl isl io \<Longrightarrow> alt ios"
-  | "\<forall>(io, x) \<in> lset ios. pred_IO (Not o isl) (Not o isl) io \<Longrightarrow> alt ios"
-  | "alt ios \<Longrightarrow> pred_IO isl isl io1 \<Longrightarrow> pred_IO (Not o isl) (Not o isl) io2 \<Longrightarrow> alt (LCons (io1, x) (LCons (io2, y) ios))"
+corec lalternate where
+  "lalternate ios1 ios2 = (case (ios1, ios2) of
+     (LCons io1 ios1', LCons io2 ios2') \<Rightarrow> LCons io1 (LCons io2 (lalternate ios1' ios2'))
+   | (_, LNil) \<Rightarrow> ios1
+   | (LNil, _) \<Rightarrow> ios2)"
 
-lemma "traced m (comp_op wire buf op1 op2) ios =
-  (\<exists>ios1 ios2 m'. traced (m o Inl) op1 ios1 \<and> traced m' op2 ios2 \<and> (\<forall> p \<in> (- ran wire). m' p = (m o Inr) p) \<and> alt ios \<and>
-    lfocus id (range Inp \<union> Out ` (- dom wire)) ios1 = lfocus (map_IO projl projl) (range (Inp o Inl) \<union> (Out o Inl) ` (- dom wire)) ios \<and>
-    lfocus id (Inp ` (- ran wire) \<union> range Out) ios2 = lfocus (map_IO projr projr) ((Inp o Inr) ` (- ran wire) \<union> range (Out o Inr)) ios \<and>
-    (\<forall>p \<in> ran wire. bapp (buf p) (lproject (=) (lfocus (the o wire o projo) (Out ` dom wire) ios1) p) = lproject (=) (lfocus proji (Inp ` ran wire) ios2) p))"
+simps_of_case lalternate_simps[simp]: lalternate.code
+
+term case_IO
+
+abbreviation visible_IO where "visible_IO wire io \<equiv> case_IO (\<lambda>p _. case_sum (\<lambda> _. True) (\<lambda> q. q \<notin> ran wire) p) (\<lambda> p _. case_sum (\<lambda> q. q \<notin> dom wire) (\<lambda> _. True) p) io" 
+
+coinductive causal for wire where
+  "causal wire (BTL p buf) ios1 ios2 \<Longrightarrow> y = BHD p buf \<Longrightarrow> p \<in> ran wire \<Longrightarrow> causal wire buf (LCons (Inp q x) ios1) (LCons (Inp p y) ios2)"
+| "causal wire buf ios1 ios2 \<Longrightarrow> p \<notin> ran wire \<Longrightarrow> causal wire buf (LCons (Inp q x) ios1) (LCons (Inp p y) ios2)"
+| "causal wire buf ios1 ios2 \<Longrightarrow> causal wire buf (LCons (Inp q x) ios1) (LCons (Out p y) ios2)"
+| "causal wire (BTL p (BENQ p' x buf)) ios1 ios2 \<Longrightarrow> y = BHD p (BENQ p' x buf) \<Longrightarrow> wire q = Some p' \<Longrightarrow> p \<in> ran wire \<Longrightarrow> causal wire buf (LCons (Out q x) ios1) (LCons (Inp p y) ios2)"
+| "causal wire (BENQ p' x buf) ios1 ios2 \<Longrightarrow> wire q = Some p' \<Longrightarrow> p \<notin> ran wire \<Longrightarrow> causal wire buf (LCons (Out q x) ios1) (LCons (Inp p y) ios2)"
+| "causal wire buf ios1 ios2 \<Longrightarrow> wire q = None \<Longrightarrow> p \<notin> ran wire \<Longrightarrow> causal wire buf (LCons (Out q x) ios1) (LCons (Inp p y) ios2)"
+| "causal wire (BTL p buf) ios1 ios2 \<Longrightarrow> wire q = None \<Longrightarrow> y = BHD p buf \<Longrightarrow> p \<in> ran wire \<Longrightarrow> causal wire buf (LCons (Out q x) ios1) (LCons (Inp p y) ios2)"
+| "causal wire buf ios1 ios2 \<Longrightarrow> wire q = None \<Longrightarrow> causal wire buf (LCons (Out q x) ios1) (LCons (Out p y) ios2)"
+| "causal wire (BENQ p' x buf) ios1 ios2 \<Longrightarrow> wire q = Some p' \<Longrightarrow> causal wire buf (LCons (Out q x) ios1) (LCons (Out p y) ios2)"
+| "causal wire buf ios1 LNil"
+| "causal wire (BTL p (bend o buf)) ios1 ios2 \<Longrightarrow> y = BHD p buf \<Longrightarrow> p \<in> ran wire \<Longrightarrow> causal wire buf LNil (LCons (Inp p y) ios2)"
+| "causal wire (bend o buf) ios1 ios2 \<Longrightarrow> p \<notin> ran wire \<Longrightarrow> causal wire buf LNil (LCons (Inp p y) ios2)"
+| "causal wire (bend o buf) ios1 ios2 \<Longrightarrow> causal wire buf LNil (LCons (Out p y) ios2)"
+
+inductive_cases causal_InpInpE[elim!]: "causal wire buf (LCons (Inp q x) ios1) (LCons (Inp p y) ios2)"
+inductive_cases causal_InpOutE[elim!]: "causal wire buf (LCons (Inp q x) ios1) (LCons (Out p y) ios2)"
+inductive_cases causal_OutOutE[elim!]: "causal wire buf (LCons (Out q x) ios1) (LCons (Out p y) ios2)"
+inductive_cases causal_OutInpE[elim!]: "causal wire buf (LCons (Out q x) ios1) (LCons (Inp p y) ios2)"
+inductive_cases causal_LNilInpE[elim!]: "causal wire buf LNil (LCons (Inp p y) ios2)"
+inductive_cases causal_LNilOutE[elim!]: "causal wire buf LNil (LCons (Out p y) ios2)"
+inductive_cases causal_LNil[elim!]: "causal wire buf ios1 LNil"
+
+lemma fun_upd_Inl[simp]:
+  "(m \<circ> Inl)(p := n) = m(Inl p := n) \<circ> Inl"
+  "m(Inr p' := n) \<circ> Inl = m \<circ> Inl"
+  by auto
+
+lemma traced_comp_op:
+  "traced m (comp_op wire buf op1 op2) ios =
+  (\<exists>ios1 ios2 m'. traced (m o Inl) op1 ios1 \<and> traced m' op2 ios2 \<and> (\<forall> p \<in> (- ran wire). m' p = (m o Inr) p) \<and>
+    ios = lfilter (visible_IO wire) (lalternate (lmap (map_IO Inl Inl id) ios1) (lmap (map_IO Inr Inr id) ios2)) \<and>
+    causal wire buf ios1 ios2)"
   apply (rule iffI)
   subgoal sorry
   subgoal
@@ -864,12 +899,188 @@ lemma "traced m (comp_op wire buf op1 op2) ios =
       apply (coinduction arbitrary: ios ios1 ios2 m m' op1 op2 buf)
       subgoal for ios ios1 ios2 m m' op1 op2 buf
         apply (cases op1; cases op2)
-        apply simp_all
-        apply (intro impI conjI)
+                apply simp_all
+                apply (intro conjI impI)
+        subgoal for p f p' f'
+          apply (elim traced_ReadE)
+                  apply (simp_all split: if_splits)
+          subgoal
+            apply (rule disjI1 exI conjI; (rule refl | assumption)?)+
+             apply auto
+            done
+          subgoal
+            apply (rule disjI1 exI conjI; (rule refl | assumption)?)+
+             apply auto
+            done
+          subgoal
+            apply (rule disjI1 exI conjI; (rule refl | assumption)?)+
+             apply auto
+            done
+          subgoal
+            apply (rule disjI1 exI conjI; (rule refl | assumption)?)+
+             apply auto
+            done
+          subgoal
+            apply (rule disjI1 exI conjI; (rule refl | assumption)?)+
+             apply auto
+            done
+          subgoal
+            apply (rule disjI1 exI conjI; (rule refl | assumption)?)+
+             apply auto
+            done
+          subgoal
+            apply (rule disjI1 exI conjI; (rule refl | assumption)?)+
+             apply auto
+            done
+          subgoal
+            apply (rule disjI1 exI conjI; (rule refl | assumption)?)+
+             apply auto
+            done
+          subgoal
+            apply (rule disjI1 exI conjI; (rule refl | assumption)?)+
+             apply auto
+            done
+          done
+        subgoal for p f p' f'
+          sorry
+        subgoal
+          sorry
+        subgoal
+          apply (elim traced_EndE)
+          apply (elim traced_ReadE)
+            apply (simp_all split: if_splits)
+          subgoal
+            apply (intro exI conjI disjI1 refl)
+                 apply (rule refl)
+                apply assumption+
+               apply (rule End)
+              defer
+              defer
+            using causal.intros(10) apply blast
+             apply (auto split: llist.splits)
+            done
+          subgoal
+            apply (intro exI conjI disjI1 refl)
+                 apply (rule refl)
+                apply assumption+
+               apply (rule End)
+              defer
+              defer
+            using causal.intros(10) apply blast
+             apply (auto split: llist.splits)
+            done
+          subgoal
+            apply (intro exI conjI disjI1 refl)
+                 apply (rule refl)
+                apply assumption+
+               apply (rule End)
+              defer
+              defer
+            using causal.intros(10) apply blast
+             apply (auto split: llist.splits)
+            done
+          done
+        subgoal for op' p x p' f
+          apply (elim traced_WriteE)
+          apply (elim traced_ReadE)
+          subgoal for ios1' n x' iso2'
+            apply hypsubst_thin
+            apply (elim causal_OutInpE)
+               apply (simp_all split: if_splits)
+            subgoal for p''
+              apply hypsubst_thin
+              apply (subgoal_tac "p \<in> dom wire")
+               defer
+               apply fastforce
+              apply simp
+              sorry
+            subgoal sorry
+            subgoal
+              apply auto
+              apply (intro exI conjI disjI1 refl)
+                   apply (rule refl)
+                  defer
+                  apply assumption+
+                 apply simp
+                defer
+                apply assumption+
+              apply auto
+              done
+            subgoal
+              sorry
+            subgoal
+              apply auto
+              apply (intro exI conjI disjI1 refl)
+                   apply (rule refl)
+                  defer
+                  apply assumption+
+                 apply simp
+                defer
+                apply assumption+
+              apply auto
+              done
+            done
+          subgoal for ios1' n x' 
+            apply hypsubst_thin
+            apply (elim causal_OutInpE)
+               apply (simp_all split: if_splits)
+            subgoal for p''
+              apply hypsubst_thin
+              apply (subgoal_tac "p \<in> dom wire")
+               defer
+               apply fastforce
+              apply simp
+              sorry
+            subgoal sorry
+            subgoal
+              apply auto
+              apply (intro exI conjI disjI1 refl)
+                   apply (rule refl)
+                  defer
+                  apply assumption+
+                 apply simp
+                defer
+                apply assumption+
+              apply auto
+              done
+            subgoal
+              sorry
+            subgoal
+              apply auto
+              apply (intro exI conjI disjI1 refl)
+                   apply (rule refl)
+                  defer
+                  apply assumption+
+                 apply simp
+                defer
+                apply assumption+
+              apply auto
+              done
+            done
+
+
+end
+
+  apply (auto simp add:  Inl_Inr_False comp_apply  fun_upd_other)
 
 
 
-section\<open>Parallel composition\<close>
+
+lemma
+  "traced m (comp_op wire buf op1 op2) ios \<Longrightarrow>
+   \<exists> ios1 ios2. lfocus id (range Inp \<union> Out ` (- dom wire)) ios1 = lfocus (map_IO projl projl) (range (Inp o Inl) \<union> (Out o Inl) ` (- dom wire)) ios \<and>
+   lfocus id (Inp ` (- ran wire) \<union> range Out) ios2 = lfocus (map_IO projr projr) ((Inp o Inr) ` (- ran wire) \<union> range (Out o Inr)) ios"
+  apply (subst (asm) traced_comp_op)
+  apply (elim exE conjE)
+  subgoal for ios1 ios2 m'
+    apply (rule exI[of _ ios1])
+    apply (rule exI[of _ ios2])
+    apply (intro conjI)
+    apply (clarsimp simp add:  split: sum.splits)
+
+
+
+    section\<open>Parallel composition\<close>
 
 definition "pcomp_op = comp_op (\<lambda>_. None) (\<lambda>_. BEnded)"
 
