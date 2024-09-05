@@ -346,7 +346,7 @@ lemma strict_monotone_lfinite_lfilter_le_t:
   done
 
 definition productive where
-  "productive s \<equiv> (\<forall> t . alwll ((holdsll (\<lambda> x . (\<exists> d . x = Data t d))) impll (evll (wholdsll (\<lambda> x . (\<exists> u \<ge> t . x = Watermark u))))) s)"
+  "productive s \<equiv> (\<forall> t . alw ((holdsll (\<lambda> x . (\<exists> d . x = Data t d))) impll (evll (wholdsll (\<lambda> x . (\<exists> u \<ge> t . x = Watermark u))))) s)"
 
 inductive productive_prepend_cong1 for X where
   productive_prepend_cong1_base: "X xs \<Longrightarrow> productive_prepend_cong1 X xs"
@@ -370,14 +370,14 @@ lemma productive_productive': "productive ws \<Longrightarrow> productive' ws"
       subgoal for t d
         apply simp
         apply hypsubst_thin
-        apply (simp only: productive_def alwll_LCons_iff  holdsll_LCons wholdsll_LCons
+        apply (simp only: productive_def alw_LCons_iff  holdsll_LCons wholdsll_LCons
             productive_def[symmetric] sum.simps prod.simps simp_thms)
         apply (drule spec[of _ t])
         using evll_wholdsll_lfinite apply fastforce
         done 
       subgoal for wm
         apply simp
-        apply (simp only: productive_def alwll_LCons_iff holdsll_LCons wholdsll_LCons
+        apply (simp only: productive_def alw_LCons_iff holdsll_LCons wholdsll_LCons
             productive_def[symmetric] sum.simps prod.simps simp_thms)
         done
       done
@@ -404,7 +404,7 @@ lemma productive'_productive: "productive' ws \<Longrightarrow> productive ws"
              apply (auto simp: lnull_def) []
             subgoal for xs
               apply (cases xs)
-               apply (auto simp: alwll_LCons_iff lfinite_evll_wholdsll productive'.intros)
+               apply (auto simp: alw_LCons_iff lfinite_evll_wholdsll productive'.intros)
               done
             done
           subgoal for wm
@@ -435,8 +435,8 @@ lemma productive_drop_head: "productive (LCons a xs) \<Longrightarrow> productiv
   unfolding productive_def
   apply safe
   subgoal for t
-    apply (coinduction rule: alwll.coinduct)
-    apply (metis (mono_tags) alwll.simps alwll_LConsD)
+    apply (coinduction rule: alw.coinduct)
+    apply (metis (mono_tags) alw.simps alw_LConsD)
     done
   done
 
@@ -493,21 +493,21 @@ lemma productivity_good_example: "productive good_example"
   unfolding productive_def
   apply safe
   subgoal for t
-    apply (rule alwll)
+    apply (rule alw)
     apply simp
     apply safe
     apply (rule evll.step)
     apply (rule evll.base)
     apply simp_all
-    apply (rule alwll)
+    apply (rule alw)
     apply simp_all
-    apply (rule alwll)
+    apply (rule alw)
     apply simp_all
     apply safe
     apply (rule evll.step)
     apply (rule evll.base)
     apply simp_all
-    apply (rule alwll)
+    apply (rule alw)
     apply simp_all
     done
   done
@@ -541,7 +541,7 @@ lemma productive_finds_data:
   apply (subst ldropn_Suc_conv_ldropn[symmetric])
   apply (simp add: not_lfinite_llength)
   apply (simp add: not_lfinite_llength)
-  apply (metis (mono_tags, lifting) alwll_headD enat_ord_code(4) holdsll.simps(2) ldropn_Suc_conv_ldropn llength_eq_infty_conv_lfinite)
+  apply (metis (mono_tags, lifting) alw_headD enat_ord_code(4) holdsll.simps(2) ldropn_Suc_conv_ldropn llength_eq_infty_conv_lfinite)
   done
 
 lemma strict_monotone_productive_lfinite_lfilter_eq_t:
