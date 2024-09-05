@@ -218,6 +218,46 @@ inductive_cases traced_EndE[elim!]: "traced m End lxs"
 inductive_cases traced_WriteE[elim!]: "traced m (Write op p' x) lxs"
 inductive_cases traced_ReadE[elim!]: "traced m (Read p' f) lxs"
 
+inductive traced_cong for R where
+  tc_base: "R m op lxs \<Longrightarrow> traced_cong R m op lxs"
+| tc_traced: "traced m op lxs \<Longrightarrow> traced_cong R m op lxs"
+| tc_read: "traced_cong R (m(p := n)) (f (Observed x)) lxs \<Longrightarrow> traced_cong R m (Read p f) (LCons (Inp p (Observed x)) lxs)"
+| tc_readEOS: "traced_cong R (m(p := n)) (f EOS) lxs \<Longrightarrow> traced_cong R m (Read p f) (LCons (Inp p EOS) lxs)"
+| tc_readEOB: "(\<exists>n. m p = Suc n \<and> traced_cong R (m(p := n)) (f EOB) lxs) \<Longrightarrow> traced_cong R m (Read p f) (LCons (Inp p EOB) lxs)"
+| tc_write: "traced_cong R m op lxs \<Longrightarrow> traced_cong R m (Write op q x) (LCons (Out q x) lxs)"
+
+lemma traced_coinduct_upto:
+  assumes "X m op lxs"
+    "\<And>m op lxs.
+    X m op lxs \<Longrightarrow>
+    (\<exists>p n f. op = Read p f \<and> (\<exists>x lxs'. lxs = LCons (Inp p (Observed x)) lxs' \<and>
+       traced_cong X (m(p := n)) (f (Observed x)) lxs')) \<or>
+    (\<exists>p n f. op = Read p f \<and> (\<exists>lxs'. lxs = LCons (Inp p EOS) lxs' \<and>
+       traced_cong X (m(p := n)) (f EOS) lxs')) \<or>
+    (\<exists>p n f. op = Read p f \<and> (\<exists>lxs'. lxs = LCons (Inp p EOB) lxs' \<and>
+       m p = Suc n \<and> traced_cong X (m(p := n)) (f EOB) lxs')) \<or>
+    (\<exists>op' q x. op = Write op' q x \<and> (\<exists>lxs'. lxs = LCons (Out q x) lxs' \<and> traced_cong X m op' lxs')) \<or>
+    op = End \<and> lxs = LNil"
+  shows "traced m op lxs"
+  apply (rule traced.coinduct[where X = "traced_cong X"])
+   apply (rule tc_base, rule assms(1))
+  subgoal for m op lxs
+    apply (induct m op lxs rule: traced_cong.induct)
+    subgoal for m op lxs
+      by (drule assms(2)) (auto simp del: fun_upd_apply)
+    subgoal for m op lxs
+      by (erule traced.cases) (auto simp del: fun_upd_apply)
+    subgoal for m p n f x lxs
+      by (auto simp del: fun_upd_apply)
+    subgoal for m p n f lxs
+      by (auto simp del: fun_upd_apply)
+    subgoal for m p f lxs
+      by (auto simp del: fun_upd_apply)
+    subgoal for m op' q x lxs'
+      by (auto simp del: fun_upd_apply)
+    done
+  done
+
 definition "traces m op = {lxs. traced m op lxs}"
 
 lemma traces_Read[simp]:
