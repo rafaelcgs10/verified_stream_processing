@@ -345,7 +345,7 @@ lemma non_input_traces: "t \<in> lset lxs \<Longrightarrow> t = Inp p y \<Longri
   done
 
 lemma cleaned_traced_gen:
-  "cleaned op \<Longrightarrow> traced m op (rev ps @@- lxs) \<Longrightarrow> alw (wow ((=) (Inp p EOS)) imp nxt (alw (wow (\<lambda>t. \<forall>x. t \<noteq> Inp p x)))) ps lxs"
+  "cleaned op \<Longrightarrow> traced m op (rev ps @@- lxs) \<Longrightarrow> alw (now ((=) (Inp p EOS)) imp nxt (alw (wow (\<lambda>t. \<forall>x. t \<noteq> Inp p x)))) ps lxs"
   apply (coinduction arbitrary: m op ps lxs)
   subgoal for m op ps lxs
     apply (cases lxs)
@@ -357,7 +357,7 @@ lemma cleaned_traced_gen:
        apply (erule traced.cases; simp)
        apply (erule cleaned.cases; simp)
        apply (auto simp: alw_iff_ldropn wow_alt dest!: ldropn_LConsD dest: non_input_traces[unfolded traces_def] split: llist.splits) []
-      apply simp
+       apply simp
       apply (erule traced.cases; simp)
          apply (erule cleaned.cases; auto simp add: alw_iff_ldropn wow_alt)+
       done
@@ -365,7 +365,7 @@ lemma cleaned_traced_gen:
   done
 
 lemma cleaned_traced:
-  "cleaned op \<Longrightarrow> traced m op lxs \<Longrightarrow> alw (wow ((=) (Inp p EOS)) imp nxt (alw (wow (\<lambda>t. \<forall>x. t \<noteq> Inp p x)))) [] lxs"
+  "cleaned op \<Longrightarrow> traced m op lxs \<Longrightarrow> alw (now ((=) (Inp p EOS)) imp nxt (alw (wow (\<lambda>t. \<forall>x. t \<noteq> Inp p x)))) [] lxs"
   using cleaned_traced_gen[where ps = "[]"] by simp
 
 section\<open>Trace model full abstraction\<close>
@@ -774,7 +774,7 @@ lemma
 
 
 
-    section\<open>Buffer infrastrcuture\<close>
+section\<open>Buffer infrastrcuture\<close>
 
 datatype 'd buf = BEmpty | BEnded | BCons 'd "'d buf"
 
