@@ -139,6 +139,50 @@ lemma traced_fairmerge_True_False_aux2: "traced m (fairmerge True False) lxs \<L
     done
   done
 
+lemma traced_fairmerge_True_False_aux3:
+  "traced m (fairmerge True False) lxs \<Longrightarrow>
+   \<exists>x. evt (now ((=) (Inp 2, x))) ps lxs \<and> x \<noteq> EOB"
+  apply (induct "m 2" arbitrary: m ps lxs)
+   apply (subst (asm) fairmerge.code)
+   apply simp
+   apply (erule traced_ReadE; simp)
+    apply ((rule exI conjI; auto)+) [2]
+   apply (subst (asm) (2) fairmerge.code)
+   apply simp
+  apply (erule traced_ReadE; simp)
+    apply ((rule exI conjI; auto)+) [2]
+  apply (metis evt.intros(2) fun_upd_def)
+  done
+
+lemma traced_fairmerge_True_False_aux4: "traced m (fairmerge True False) lxs \<Longrightarrow>
+  alw (now ((=) (Inp 2, EOS)) imp not (nxt (now (\<lambda>_. True)))) ps lxs"
+  apply (coinduction arbitrary: ps lxs m rule: alw_coinduct_upto)
+  subgoal for ps lxs m
+    apply (subst (asm) fairmerge.code)
+    apply simp
+    apply (erule traced_ReadE; simp)
+      apply (erule traced_WriteE; simp)
+       apply hypsubst_thin
+      apply (rule ac_LCons)
+       apply auto []
+      apply (rule ac_base)
+      apply auto []
+     apply (auto simp flip: now_eq1 intro!: ac_alw alw.intros) []
+    apply (rule ac_base)
+    apply auto []
+    done
+  done
+
+lemma traced_fairmerge_True_FalseI: "
+  \<exists>x. evt (now ((=) (Inp 2, x))) [] lxs \<and> x \<noteq> EOB \<Longrightarrow>
+  Inp 1 \<notin> fst ` lset lxs \<Longrightarrow>
+  alw (now ((=) (Inp 2, EOS)) imp not (nxt (now (\<lambda>_. True)))) [] lxs \<Longrightarrow>
+  alw (now ((=) (Inp 2, Observed x)) imp nxt (now ((=) (Out 1, Observed x)))) [] lxs \<Longrightarrow>
+  alw (now ((=) (Out 1, Observed x)) imp prv (now ((=) (Inp 2, Observed x)))) [] lxs \<Longrightarrow>
+  traced m (fairmerge True False) lxs"
+
+find_theorems cleaned alw
+
 section\<open>Correctness using the history model\<close>
 
 coinductive merged where
