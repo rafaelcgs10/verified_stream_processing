@@ -101,7 +101,7 @@ lemma alw_coinduct_upto:
   done
 
 lemma traced_fairmerge_True_False_aux1: "traced m (fairmerge True False) lxs \<Longrightarrow>
-  alw (now ((=) (Inp 2, Observed x)) imp nxt (now ((=) (Out 1, Observed x)))) ps lxs"
+  alw (now ((=) (Inp 2 (Observed x))) imp nxt (now ((=) (Out 1 x)))) ps lxs"
   apply (coinduction arbitrary: ps lxs m rule: alw_coinduct_upto)
   subgoal for ps lxs m
     apply (subst (asm) fairmerge.code)
@@ -122,7 +122,7 @@ lemma traced_fairmerge_True_False_aux1: "traced m (fairmerge True False) lxs \<L
   done
 
 lemma traced_fairmerge_True_False_aux2: "traced m (fairmerge True False) lxs \<Longrightarrow>
-  alw (now ((=) (Out 1, Observed x)) imp prv (now ((=) (Inp 2, Observed x)))) ps lxs"
+  alw (now ((=) (Out 1 x)) imp prv (now ((=) (Inp 2 (Observed x))))) ps lxs"
   apply (coinduction arbitrary: ps lxs m rule: alw_coinduct_upto)
   subgoal for ps lxs m
     apply (subst (asm) fairmerge.code)
@@ -141,7 +141,7 @@ lemma traced_fairmerge_True_False_aux2: "traced m (fairmerge True False) lxs \<L
 
 lemma traced_fairmerge_True_False_aux3:
   "traced m (fairmerge True False) lxs \<Longrightarrow>
-   \<exists>x. evt (now ((=) (Inp 2, x))) ps lxs \<and> x \<noteq> EOB"
+   \<exists>x. evt (now ((=) (Inp 2 x))) ps lxs \<and> x \<noteq> EOB"
   apply (induct "m 2" arbitrary: m ps lxs)
    apply (subst (asm) fairmerge.code)
    apply simp
@@ -155,7 +155,7 @@ lemma traced_fairmerge_True_False_aux3:
   done
 
 lemma traced_fairmerge_True_False_aux4: "traced m (fairmerge True False) lxs \<Longrightarrow>
-  alw (now ((=) (Inp 2, EOS)) imp not (nxt (now (\<lambda>_. True)))) ps lxs"
+  alw (now ((=) (Inp 2 EOS)) imp not (nxt (now \<top>))) ps lxs"
   apply (coinduction arbitrary: ps lxs m rule: alw_coinduct_upto)
   subgoal for ps lxs m
     apply (subst (asm) fairmerge.code)
@@ -174,12 +174,13 @@ lemma traced_fairmerge_True_False_aux4: "traced m (fairmerge True False) lxs \<L
   done
 
 lemma traced_fairmerge_True_FalseI: "
-  \<exists>x. evt (now ((=) (Inp 2, x))) [] lxs \<and> x \<noteq> EOB \<Longrightarrow>
-  Inp 1 \<notin> fst ` lset lxs \<Longrightarrow>
-  alw (now ((=) (Inp 2, EOS)) imp not (nxt (now (\<lambda>_. True)))) [] lxs \<Longrightarrow>
-  alw (now ((=) (Inp 2, Observed x)) imp nxt (now ((=) (Out 1, Observed x)))) [] lxs \<Longrightarrow>
-  alw (now ((=) (Out 1, Observed x)) imp prv (now ((=) (Inp 2, Observed x)))) [] lxs \<Longrightarrow>
+  \<exists>x. evt (now ((=) (Inp 2 x))) [] lxs \<and> x \<noteq> EOB \<Longrightarrow>
+  \<forall>x. Inp 1 x \<notin> lset lxs \<Longrightarrow>
+  alw (now ((=) (Inp 2 EOS)) imp not (nxt (now \<top>))) [] lxs \<Longrightarrow>
+  alw (now ((=) (Inp 2 (Observed x))) imp nxt (now ((=) (Out 1 x)))) [] lxs \<Longrightarrow>
+  alw (now ((=) (Out 1 x)) imp prv (now ((=) (Inp 2 (Observed x))))) [] lxs \<Longrightarrow>
   traced m (fairmerge True False) lxs"
+  oops
 
 find_theorems cleaned alw
 
