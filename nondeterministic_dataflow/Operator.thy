@@ -208,8 +208,7 @@ datatype ('a, 'b, 'd) IO = Inp (proji: 'a) "'d observation" | Out (projo: 'b) (d
   where "data (Inp p x) = obs x"
 
 coinductive traced where
-  Read: "traced (fuel(p := n)) (f (Observed x)) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inp p (Observed x)) lxs)"
-| ReadEOS: "traced (fuel(p := n)) (f EOS) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inp p EOS) lxs)"
+  Read: "x \<noteq> EOB \<Longrightarrow> traced (fuel(p := n)) (f x) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inp p x) lxs)"
 | ReadEOB: "fuel p = Suc n \<Longrightarrow> traced (fuel(p := n)) (f EOB) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inp p EOB) lxs)"
 | Write: "traced fuel op lxs \<Longrightarrow> traced fuel (Write op p x) (LCons (Out p x) lxs)"
 | End: "traced fuel End LNil"
@@ -221,8 +220,7 @@ inductive_cases traced_ReadE[elim!]: "traced m (Read p' f) lxs"
 inductive traced_cong for R where
   tc_base: "R m op lxs \<Longrightarrow> traced_cong R m op lxs"
 | tc_traced: "traced m op lxs \<Longrightarrow> traced_cong R m op lxs"
-| tc_read: "traced_cong R (m(p := n)) (f (Observed x)) lxs \<Longrightarrow> traced_cong R m (Read p f) (LCons (Inp p (Observed x)) lxs)"
-| tc_readEOS: "traced_cong R (m(p := n)) (f EOS) lxs \<Longrightarrow> traced_cong R m (Read p f) (LCons (Inp p EOS) lxs)"
+| tc_read: "x \<noteq> EOB \<Longrightarrow> traced_cong R (m(p := n)) (f x) lxs \<Longrightarrow> traced_cong R m (Read p f) (LCons (Inp p x) lxs)"
 | tc_readEOB: "(\<exists>n. m p = Suc n \<and> traced_cong R (m(p := n)) (f EOB) lxs) \<Longrightarrow> traced_cong R m (Read p f) (LCons (Inp p EOB) lxs)"
 | tc_write: "traced_cong R m op lxs \<Longrightarrow> traced_cong R m (Write op q x) (LCons (Out q x) lxs)"
 
@@ -230,10 +228,8 @@ lemma traced_coinduct_upto:
   assumes "X m op lxs"
     "\<And>m op lxs.
     X m op lxs \<Longrightarrow>
-    (\<exists>p n f. op = Read p f \<and> (\<exists>x lxs'. lxs = LCons (Inp p (Observed x)) lxs' \<and>
-       traced_cong X (m(p := n)) (f (Observed x)) lxs')) \<or>
-    (\<exists>p n f. op = Read p f \<and> (\<exists>lxs'. lxs = LCons (Inp p EOS) lxs' \<and>
-       traced_cong X (m(p := n)) (f EOS) lxs')) \<or>
+    (\<exists>p n f. op = Read p f \<and> (\<exists>x lxs'. lxs = LCons (Inp p x) lxs' \<and>
+       x \<noteq> EOB \<and> traced_cong X (m(p := n)) (f x) lxs')) \<or>
     (\<exists>p n f. op = Read p f \<and> (\<exists>lxs'. lxs = LCons (Inp p EOB) lxs' \<and>
        m p = Suc n \<and> traced_cong X (m(p := n)) (f EOB) lxs')) \<or>
     (\<exists>op' q x. op = Write op' q x \<and> (\<exists>lxs'. lxs = LCons (Out q x) lxs' \<and> traced_cong X m op' lxs')) \<or>
@@ -249,11 +245,9 @@ lemma traced_coinduct_upto:
       by (erule traced.cases) (auto simp del: fun_upd_apply)
     subgoal for m p n f x lxs
       by (auto simp del: fun_upd_apply)
-    subgoal for m p n f lxs
+    subgoal for m p n f 
       by (auto simp del: fun_upd_apply)
     subgoal for m p f lxs
-      by (auto simp del: fun_upd_apply)
-    subgoal for m op' q x lxs'
       by (auto simp del: fun_upd_apply)
     done
   done
@@ -264,7 +258,9 @@ lemma traces_Read[simp]:
   "traces m (Read p f) = (\<Union>x. LCons (Inp p (Observed x)) ` (\<Union>n. traces (m(p := n)) (f (Observed x)))) \<union>
                        LCons (Inp p EOB) ` (case m p of Suc n \<Rightarrow> traces (m(p := n)) (f EOB) | _ \<Rightarrow> {}) \<union>
                        LCons (Inp p EOS) ` (\<Union>n. traces (m(p := n)) (f EOS))"
-  by (auto simp: traces_def image_iff intro: traced.intros split: nat.splits)
+  apply (auto simp: traces_def image_iff intro: traced.intros split: nat.splits)
+     apply (metis observation.exhaust)+
+  done
 
 lemma traces_Write[simp]:
   "traces m (Write op p x) = LCons (Out p x) ` traces m op"

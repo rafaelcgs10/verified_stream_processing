@@ -896,7 +896,7 @@ lemma traced_comp_op:
   subgoal
     apply (elim exE conjE)
     subgoal for ios1 ios2 m'
-      apply (coinduction arbitrary: ios ios1 ios2 m m' op1 op2 buf)
+      apply (coinduction arbitrary: ios ios1 ios2 m m' op1 op2 buf rule: traced_coinduct_upto)
       subgoal for ios ios1 ios2 m m' op1 op2 buf
         apply (cases op1; cases op2)
                 apply simp_all
@@ -905,39 +905,39 @@ lemma traced_comp_op:
           apply (elim traced_ReadE)
                   apply (simp_all split: if_splits)
           subgoal
-            apply (rule disjI1 exI conjI; (rule refl | assumption)?)+
+            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
              apply auto
             done
           subgoal
-            apply (rule disjI1 exI conjI; (rule refl | assumption)?)+
+            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
              apply auto
             done
           subgoal
-            apply (rule disjI1 exI conjI; (rule refl | assumption)?)+
+            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
              apply auto
             done
           subgoal
-            apply (rule disjI1 exI conjI; (rule refl | assumption)?)+
+            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
              apply auto
             done
           subgoal
-            apply (rule disjI1 exI conjI; (rule refl | assumption)?)+
+            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
              apply auto
             done
           subgoal
-            apply (rule disjI1 exI conjI; (rule refl | assumption)?)+
+            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
              apply auto
             done
           subgoal
-            apply (rule disjI1 exI conjI; (rule refl | assumption)?)+
+            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
              apply auto
             done
           subgoal
-            apply (rule disjI1 exI conjI; (rule refl | assumption)?)+
+            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
              apply auto
             done
           subgoal
-            apply (rule disjI1 exI conjI; (rule refl | assumption)?)+
+            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
              apply auto
             done
           done
