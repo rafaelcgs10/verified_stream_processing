@@ -83,6 +83,76 @@ section \<open>Correctness\<close>
 lemma traced_fairmerge_True_True: "traced m (fairmerge True True) lxs \<longleftrightarrow> lxs = LNil"
   by (subst fairmerge.code) (auto intro: traced.intros)
 
+coinductive trace_fmTF where
+    "trace_fmTF (replicate n (Inp 2 EOB) @@- LCons (Inp 2 EOS) LNil)"
+  | "trace_fmTF lxs \<Longrightarrow> trace_fmTF (replicate n (Inp 2 EOB) @@- LCons (Inp 2 (Observed x)) (LCons (Out 1 x) lxs))"
+
+lemma trace_fmTF_I: "traced m (fairmerge True False) lxs \<Longrightarrow> trace_fmTF lxs"
+  apply (coinduction arbitrary: m lxs)
+  subgoal for m lxs
+    apply (induct "m 2" arbitrary: m lxs)
+    apply (subst (asm) fairmerge.code)
+    apply simp
+    apply (erule traced_ReadE; simp split: observation.splits)
+      apply (erule traced_WriteE; simp)
+      apply (metis lshift_simps(1) replicate.simps(1))
+     apply (metis lshift_simps(1) replicate.simps(1) traced_EndE)
+    apply (subst (asm) (3) fairmerge.code)
+    apply simp
+    apply (erule traced_ReadE; simp split: observation.splits)
+      apply (erule traced_WriteE; simp)
+      apply (metis lshift_simps(1) replicate.simps(1))
+     apply (metis lshift_simps(1) replicate.simps(1) traced_EndE)
+    subgoal for x m lxs n lxs'
+      apply (drule meta_spec[of _ "m(2 := n)"])
+      apply (drule meta_spec[of _ "lxs'"])
+      apply (drule meta_mp, simp)
+      apply (drule meta_mp, assumption)
+      apply (erule disjE)
+       apply (metis lshift_simps(2) replicate.simps(2))
+      apply (metis lshift_simps(2) replicate.simps(2))
+      done
+    done
+  done
+
+lemma trace_fmTF_llength: "trace_fmTF lxs \<Longrightarrow> \<exists>n. llength (ltakeWhile ((=) (Inp 2 EOB)) lxs) = enat n"
+  by (erule trace_fmTF.cases) (auto simp: ltakeWhile_lshift)
+
+lemma trace_fmTF_D: "trace_fmTF lxs \<Longrightarrow> m 2 \<ge> llength (ltakeWhile ((=) (Inp 2 EOB)) lxs) \<Longrightarrow> traced m (fairmerge True False) lxs"
+  apply (coinduction arbitrary: m lxs rule: traced_coinduct_upto)
+  subgoal for m lxs
+    apply (erule trace_fmTF.cases)
+     apply (simp_all add: ltakeWhile_lshift)
+    subgoal for n
+      apply (cases n)
+       apply (rule disjI1)
+       apply (subst fairmerge.code)
+      apply (auto intro!: tc_traced traced.End) []
+       apply (rule disjI2)
+       apply (rule disjI1)
+      apply (subst fairmerge.code)
+      apply (cases "m 2")
+       apply (auto intro!: tc_base trace_fmTF.intros simp: ltakeWhile_lshift) [2]
+      done
+    subgoal for lxs' n x
+      apply (cases n)
+       apply (rule disjI1)
+       apply (subst fairmerge.code)
+       apply (auto intro!: tc_write tc_base[where op = "fairmerge _ _"] exI[of _ "the_enat (llength (ltakeWhile ((=) (Inp 2 EOB)) lxs'))"]
+         dest: trace_fmTF_llength) []
+       apply (rule disjI2)
+       apply (rule disjI1)
+      apply (subst fairmerge.code)
+      apply (cases "m 2")
+       apply (auto intro!: tc_base trace_fmTF.intros simp: ltakeWhile_lshift) [2]
+      done
+    done
+  done
+
+lemma TRACES_fairmerge_True_False: "lxs \<in> TRACES (fairmerge True False) \<longleftrightarrow> trace_fmTF lxs"
+  using trace_fmTF_llength[of lxs] trace_fmTF_D[of lxs]
+  by (force intro: trace_fmTF_I simp: TRACES_def traces_def)
+
 inductive alw_cong for R \<phi> where
   ac_base: "R ps xs \<Longrightarrow> alw_cong R \<phi> ps xs"
 | ac_alw: "alw \<phi> ps xs \<Longrightarrow> alw_cong R \<phi> ps xs"
@@ -106,7 +176,7 @@ lemma traced_fairmerge_True_False_aux1: "traced m (fairmerge True False) lxs \<L
   subgoal for ps lxs m
     apply (subst (asm) fairmerge.code)
     apply simp
-    apply (erule traced_ReadE; simp)
+    apply (erule traced_ReadE; simp split: observation.splits)
       apply (rule conjI impI)+
        apply hypsubst_thin
        apply auto []
@@ -127,7 +197,7 @@ lemma traced_fairmerge_True_False_aux2: "traced m (fairmerge True False) lxs \<L
   subgoal for ps lxs m
     apply (subst (asm) fairmerge.code)
     apply simp
-    apply (erule traced_ReadE; simp)
+    apply (erule traced_ReadE; simp split: observation.splits)
       apply (erule traced_WriteE; simp)
       apply (rule ac_LCons)
        apply auto []
@@ -145,11 +215,11 @@ lemma traced_fairmerge_True_False_aux3:
   apply (induct "m 2" arbitrary: m ps lxs)
    apply (subst (asm) fairmerge.code)
    apply simp
-   apply (erule traced_ReadE; simp)
+   apply (erule traced_ReadE; simp split: observation.splits)
     apply ((rule exI conjI; auto)+) [2]
    apply (subst (asm) (2) fairmerge.code)
    apply simp
-  apply (erule traced_ReadE; simp)
+  apply (erule traced_ReadE; simp split: observation.splits)
     apply ((rule exI conjI; auto)+) [2]
   apply (metis evt.intros(2) fun_upd_def)
   done
@@ -160,7 +230,7 @@ lemma traced_fairmerge_True_False_aux4: "traced m (fairmerge True False) lxs \<L
   subgoal for ps lxs m
     apply (subst (asm) fairmerge.code)
     apply simp
-    apply (erule traced_ReadE; simp)
+    apply (erule traced_ReadE; simp split: observation.splits)
       apply (erule traced_WriteE; simp)
        apply hypsubst_thin
       apply (rule ac_LCons)
@@ -181,8 +251,6 @@ lemma traced_fairmerge_True_FalseI: "
   alw (now ((=) (Out 1 x)) imp prv (now ((=) (Inp 2 (Observed x))))) [] lxs \<Longrightarrow>
   traced m (fairmerge True False) lxs"
   oops
-
-find_theorems cleaned alw
 
 section\<open>Correctness using the history model\<close>
 
