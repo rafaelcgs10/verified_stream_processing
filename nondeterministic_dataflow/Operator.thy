@@ -331,6 +331,48 @@ lemma lproject_False_weak:
   "(\<And>qx. qx \<in> lset lxs \<Longrightarrow> case_IO (\<lambda> q _. \<not> R p q) (\<lambda> q _. \<not> S p q) qx) \<Longrightarrow> lproject R S lxs p = LNil"
   by (force simp add: lproject_empty_conv)
 
+definition "TRACES op = (\<Union>m. traces m op)"
+
+(*
+lemma traced_not_forever_EOB:
+  "traced m op lxs \<Longrightarrow> ldropn i (lfilter (\<lambda>x. is_Inp x \<and> proji x = p) lxs) \<noteq> repeat (Inp p EOB)"
+  apply (induct "m p" arbitrary: op lxs)
+  sorry
+
+lemma TRACES_not_forever_EOB:
+  "lxs \<in> TRACES op \<Longrightarrow> ldropn i (lfilter (\<lambda>x. is_Inp x \<and> proji x = p) lxs) \<noteq> repeat (Inp p EOB)"
+  unfolding TRACES_def traces_def
+  by (auto dest: traced_not_forever_EOB)
+*)
+
+lemma TRACES_Read[simp]: "TRACES (Read p f) =
+  (\<Union>x. LCons (Inp p (Observed x)) ` TRACES (f (Observed x))) \<union>
+  LCons (Inp p EOB) ` TRACES (f EOB) \<union>
+  LCons (Inp p EOS) ` TRACES (f EOS)"
+  unfolding TRACES_def traces_Read Un_Union_image
+  apply (intro arg_cong2[where f="(\<union>)"])
+  subgoal
+    apply (auto simp: image_iff) []
+    apply (metis fun_upd_triv)
+    done
+  subgoal
+    apply (auto simp: image_iff traces_def split: nat.splits) []
+    apply (metis (no_types, opaque_lifting) fun_upd_idem_iff fun_upd_upd nat.inject zero_less_Suc)
+    done
+  subgoal
+    apply (auto simp: image_iff) []
+    apply (metis fun_upd_triv)
+    done
+  done
+
+lemma TRACES_Write[simp]:
+  "TRACES (Write op p x) = LCons (Out p x) ` TRACES op"
+  by (auto simp: TRACES_def)
+
+lemma TRACES_End[simp]:
+  "TRACES End = {LNil}"
+  by (auto simp: TRACES_def)
+
 section\<open>Cleaned predicate\<close>
 
 coinductive cleaned where
@@ -413,10 +455,13 @@ lemma traced_traced_wit: "traced m op (traced_wit op)"
   apply (auto split: op.splits dest: lset_traced_wit simp: traced_wit.code[where op=End])
   done
 
+lemma traced_wit_TRACES: "traced_wit op \<in> TRACES op"
+  by (auto simp add: traced_traced_wit TRACES_def traces_def)
+
 lemma traces_nonempty: "traces m op \<noteq> {}"
   by (auto simp: traces_def intro!: traced_traced_wit)
 
-lemma traces_op_eqI: "(\<Union>m. traces m op) = (\<Union>m. traces m op') \<Longrightarrow> op = op'"
+lemma traces_op_eqI: "TRACES op = TRACES op' \<Longrightarrow> op = op'"
   apply (coinduction arbitrary: op op')
   subgoal for op op'
     apply (cases op; cases op')
@@ -427,63 +472,43 @@ lemma traces_op_eqI: "(\<Union>m. traces m op) = (\<Union>m. traces m op') \<Lon
         apply (drule spec[of _ "LCons (Inp p EOS) (traced_wit (f EOS))"])
         apply simp
         apply (drule iffD1)
-         apply (rule exI[of _ "\<lambda>_. 0"])
-         apply simp
          apply (rule disjI2)
-         apply (rule imageI)
-         apply (auto dest: lset_traced_wit simp: traces_def traced_traced_wit) []
+         apply (auto dest: lset_traced_wit simp: traces_def traced_wit_TRACES image_iff) []
         apply (erule exE disjE conjE)+
          apply (simp_all add: gr0_conv_Suc image_iff)
         done
       subgoal
         apply safe
-        subgoal for x lxs m
+        subgoal for x lxs
           apply (drule spec[of _ "LCons (Inp p x) lxs"])
           apply (drule iffD1)
-           apply (rule exI[of _ "m(p := Suc (m p))"])
-           apply (cases x; auto simp: image_iff dest: non_input_traces intro: exI[of _ "m p"]) []
+           apply (cases x; auto simp: image_iff dest: non_input_traces) []
           apply (erule exE conjE disjE)+
            apply (auto simp add: gr0_conv_Suc image_iff)
           done
-        subgoal for x lxs m
+        subgoal for x lxs
           apply (drule spec[of _ "LCons (Inp p' x) lxs"])
           apply (drule iffD2)
-           apply (rule exI[of _ "m(p' := Suc (m p'))"])
-           apply (cases x; auto simp: image_iff dest: non_input_traces intro: exI[of _ "m p'"]) []
-          apply (erule exE conjE disjE)+
+           apply (cases x; auto simp: image_iff dest: non_input_traces) []
            apply (auto simp add: gr0_conv_Suc image_iff)
           done
         done
       done
     subgoal
       apply (auto simp: set_eq_iff image_iff)
-      apply (metis (no_types, lifting) IO.distinct(1) llist.inject mem_Collect_eq prod.inject traced_traced_wit traces_def)
+      apply (metis IO.distinct(1) llist.inject traced_wit_TRACES)
       done
     subgoal
       apply (auto dest!: spec[of _ LNil] simp: gr0_conv_Suc)
       done
     subgoal
       apply (auto simp: set_eq_iff image_iff)
-      apply (metis (no_types, lifting) IO.distinct(1) llist.inject mem_Collect_eq prod.inject traced_traced_wit traces_def)
+      apply (metis IO.distinct(1) llist.inject traced_wit_TRACES)
       done
     subgoal for op1 p1 x1 op2 p2 x2
-      apply auto
-      subgoal for lxs m
-        apply (drule spec[of _ "LCons (Out p1 x1) lxs"])
-        apply auto
-        done
-      subgoal for lxs m
-        apply (drule spec[of _ "LCons (Out p2 x2) lxs"])
-        apply auto
-        done
-      subgoal
-        apply (drule spec[of _ "LCons (Out p1 x1) (traced_wit op1)"])
-        apply (auto simp: traced_traced_wit traces_def)
-        done
-      subgoal
-        apply (drule spec[of _ "LCons (Out p1 x1) (traced_wit op1)"])
-        apply (auto simp: traced_traced_wit traces_def)
-        done
+      apply (auto simp: set_eq_iff image_iff)
+      apply (metis IO.inject(2) llist.inject traced_wit_TRACES)
+      apply (metis IO.inject(2) llist.inject traced_wit_TRACES)
       done
     subgoal
       apply (auto simp: set_eq_iff image_iff)
