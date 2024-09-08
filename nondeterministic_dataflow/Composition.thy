@@ -852,7 +852,7 @@ corec lalternate where
    | (_, LNil) \<Rightarrow> ios1
    | (LNil, _) \<Rightarrow> ios2)"
 
-simps_of_case lalternate_simps[simp]: lalternate.code
+simps_of_case lalternate_simps[simp]: lalternate.code[unfolded prod.case]
 
 term case_IO
 
@@ -869,9 +869,9 @@ coinductive causal for wire where
 | "causal wire buf ios1 ios2 \<Longrightarrow> wire q = None \<Longrightarrow> causal wire buf (LCons (Out q x) ios1) (LCons (Out p y) ios2)"
 | "causal wire (BENQ p' x buf) ios1 ios2 \<Longrightarrow> wire q = Some p' \<Longrightarrow> causal wire buf (LCons (Out q x) ios1) (LCons (Out p y) ios2)"
 | "causal wire buf ios1 LNil"
-| "causal wire (BTL p (bend o buf)) ios1 ios2 \<Longrightarrow> y = BHD p buf \<Longrightarrow> p \<in> ran wire \<Longrightarrow> causal wire buf LNil (LCons (Inp p y) ios2)"
-| "causal wire (bend o buf) ios1 ios2 \<Longrightarrow> p \<notin> ran wire \<Longrightarrow> causal wire buf LNil (LCons (Inp p y) ios2)"
-| "causal wire (bend o buf) ios1 ios2 \<Longrightarrow> causal wire buf LNil (LCons (Out p y) ios2)"
+| "causal wire (BTL p (bend o buf)) LNil ios2 \<Longrightarrow> y = BHD p (bend o buf) \<Longrightarrow> p \<in> ran wire \<Longrightarrow> causal wire buf LNil (LCons (Inp p y) ios2)"
+| "causal wire (bend o buf) LNil ios2 \<Longrightarrow> p \<notin> ran wire \<Longrightarrow> causal wire buf LNil (LCons (Inp p y) ios2)"
+| "causal wire (bend o buf) LNil ios2 \<Longrightarrow> causal wire buf LNil (LCons (Out p y) ios2)"
 
 inductive_cases causal_InpInpE[elim!]: "causal wire buf (LCons (Inp q x) ios1) (LCons (Inp p y) ios2)"
 inductive_cases causal_InpOutE[elim!]: "causal wire buf (LCons (Inp q x) ios1) (LCons (Out p y) ios2)"
@@ -881,10 +881,221 @@ inductive_cases causal_LNilInpE[elim!]: "causal wire buf LNil (LCons (Inp p y) i
 inductive_cases causal_LNilOutE[elim!]: "causal wire buf LNil (LCons (Out p y) ios2)"
 inductive_cases causal_LNil[elim!]: "causal wire buf ios1 LNil"
 
+lemma causal_buf_cong:
+  "causal wire buf' ios1 ios2 \<Longrightarrow> (\<forall> p \<in> ran wire. buf' p = buf p) \<Longrightarrow> causal wire buf ios1 ios2"
+  apply (coinduction arbitrary: buf buf' ios1 ios2)
+  subgoal for buf buf' ios1 ios2
+    apply (erule causal.cases)
+                apply auto
+    done
+  done
+
 lemma fun_upd_Inl[simp]:
   "(m \<circ> Inl)(p := n) = m(Inl p := n) \<circ> Inl"
   "m(Inr p' := n) \<circ> Inl = m \<circ> Inl"
   by auto
+
+lemma not_EOB[simp]:
+  "(x \<noteq> EOB) = (x = EOS \<or> (\<exists> ob. x = Observed ob))"
+  apply (cases x)
+    apply auto
+  done 
+
+lemma lalternate_LNil[simp]:
+  "lalternate LNil ios = ios"
+  "lalternate ios LNil = ios"
+   apply (cases ios; auto)+
+  done
+
+lemma lalternate_LCons1:
+  "lalternate (LCons io ios1) ios2 = LCons io (lalternate ios2 ios1)"
+  apply (coinduction arbitrary: io ios1 ios2 rule: llist.coinduct_upto)
+  subgoal for io ios1 ios2
+    apply (intro impI context_conjI)
+      apply (cases ios2)
+       apply auto[2]
+     apply (cases ios2)
+      apply auto[2]
+    apply (cases ios1; cases ios2)
+       apply (auto intro: llist.cong_intros)
+    apply (metis (mono_tags, lifting) llist.cong_LCons llist.cong_base)
+    done
+  done
+
+lemma lset_lalternate1:
+  "x \<in> lset (lalternate ios1 ios2) \<Longrightarrow>
+   x \<in> lset ios1 \<union> lset ios2"
+  apply (induct "lalternate ios1 ios2" arbitrary: ios1 ios2 rule: lset_induct)
+  subgoal for xs ios1 ios2 
+    apply (cases ios1; cases ios2)
+       apply auto
+    done
+  subgoal for x' xs ios1 ios2
+    apply (cases ios1; cases ios2)
+       apply (simp split: llist.splits)
+      apply auto
+    apply hypsubst_thin
+    using lalternate_LCons1 
+    by (metis insert_iff llist.set(2))
+  done
+
+lemma lset_lalternate2:
+  "x \<in> lset ios1 \<Longrightarrow>
+   x \<in> lset (lalternate ios1 ios2)"
+  apply (induct "ios1" arbitrary: ios2 rule: lset_induct)
+   apply (auto simp add: lalternate_LCons1)
+  subgoal for x' xs ios2
+    apply (cases ios2)
+     apply (auto simp add: lalternate_LCons1 split: llist.splits)
+    done
+  done
+
+lemma lset_lalternate3:
+  "x \<in> lset ios2 \<Longrightarrow>
+   x \<in> lset (lalternate ios1 ios2)"
+  apply (induct "ios2" arbitrary: ios1 rule: lset_induct)
+  subgoal for xs ios1
+    apply (cases ios1)
+     apply auto
+    done
+  subgoal for x' xs ios1
+    apply (cases ios1)
+     apply (auto simp add: lalternate_LCons1 split: llist.splits)
+    done
+  done
+
+lemma lset_lalternate:
+  "lset (lalternate ios1 ios2) = lset ios1 \<union> lset ios2"
+  by (auto dest: lset_lalternate1 lset_lalternate2 lset_lalternate3)
+
+lemma lset_ios1_comp_op_End_not_visible:
+  "x \<in> lset ios1 \<Longrightarrow>
+   comp_op wire buf op1 op2 = End \<Longrightarrow>
+   traced (fuel \<circ> Inl) op1 ios1 \<Longrightarrow>
+   traced fuel' op2 ios2 \<Longrightarrow>
+   causal wire buf ios1 ios2 \<Longrightarrow>
+   \<not> visible_IO wire (map_IO Inl Inl id x)"
+  apply (induct ios1 arbitrary: ios2 buf op1 op2 fuel fuel' rule: lset_induct)
+  subgoal for xs ios2 buf op1 op2 fuel fuel'
+    apply (cases op1; cases op2)
+            apply (auto split: if_splits option.splits)+
+    done
+  subgoal for x' xs ios2 buf op1 op2 fuel fuel'
+    apply (cases op1; cases op2)
+            apply (auto split: if_splits option.splits)
+    subgoal by blast
+    subgoal by blast
+    subgoal by blast
+    subgoal by blast
+    subgoal by blast
+    subgoal by blast
+    subgoal by (smt (z3) comp_producing.intros(12) fun_upd_apply fun_upd_upd not_comp_producing_eq_End)
+    subgoal by (smt (z3) comp_producing.intros(12) fun_upd_apply fun_upd_upd not_comp_producing_eq_End)
+    subgoal by (smt (z3) comp_producing.intros(12) fun_upd_apply fun_upd_upd not_comp_producing_eq_End)
+    subgoal by (smt (z3) comp_producing.intros(12) fun_upd_apply fun_upd_upd not_comp_producing_eq_End)
+    subgoal by (smt (z3) comp_producing.intros(12) fun_upd_apply fun_upd_upd not_comp_producing_eq_End)
+    subgoal by (smt (z3) comp_producing.intros(12) fun_upd_apply fun_upd_upd not_comp_producing_eq_End)
+    subgoal using End causal.intros(10) by blast
+    subgoal by (meson End causal.intros(10) comp_producing.intros(4) not_comp_producing_eq_End)
+    done
+  done
+
+lemma lset_ios2_comp_op_End_not_visible:
+  "x \<in> lset ios2 \<Longrightarrow>
+   causal wire buf ios1 ios2 \<Longrightarrow>
+   comp_op wire buf op1 op2 = End \<Longrightarrow>
+   traced (fuel \<circ> Inl) op1 ios1 \<Longrightarrow>
+   traced fuel' op2 ios2 \<Longrightarrow>
+   \<not> visible_IO wire ((map_IO Inr Inr id) x)"
+  apply (induct ios2 arbitrary: ios1 buf op1 op2 fuel fuel' rule: lset_induct)
+  subgoal for xs ios1 buf op1 op2 fuel fuel'
+    apply (cases op1; cases op2)
+            apply (auto split: if_splits option.splits dest: not_comp_producing_eq_End)+
+    done
+  subgoal for x' xs ios1 buf op1 op2 fuel fuel'
+    apply (cases op1; cases op2)
+            apply (auto split: if_splits option.splits dest: not_comp_producing_eq_End intro: comp_producing.intros traced.intros)
+    subgoal
+      by (smt (verit, best) comp_producing.intros(12) fun_upd_apply fun_upd_upd)
+    subgoal
+      by (smt (verit, best) comp_producing.intros(12) fun_upd_apply fun_upd_upd)
+    subgoal
+      by (smt (verit, best) comp_producing.intros(12) fun_upd_apply fun_upd_upd)
+    subgoal
+      by (smt (verit, best) comp_producing.intros(12) fun_upd_apply fun_upd_upd)
+    subgoal
+      by (smt (verit, best) comp_producing.intros(12) fun_upd_apply fun_upd_upd)
+    subgoal
+      by (smt (verit, best) comp_producing.intros(12) fun_upd_apply fun_upd_upd)
+    subgoal
+      by (smt (verit, ccfv_SIG) comp_producing.intros(12) fun_upd_apply fun_upd_upd not_comp_producing_eq_End)
+    subgoal
+      by (smt (verit, ccfv_SIG) comp_producing.intros(12) fun_upd_apply fun_upd_upd not_comp_producing_eq_End)
+    subgoal
+      by (smt (verit, ccfv_SIG) comp_producing.intros(12) fun_upd_apply fun_upd_upd not_comp_producing_eq_End)
+    subgoal
+      by (smt (verit, ccfv_SIG) comp_producing.intros(12) fun_upd_apply fun_upd_upd not_comp_producing_eq_End)
+    subgoal
+      by (smt (verit, ccfv_SIG) comp_producing.intros(12) fun_upd_apply fun_upd_upd not_comp_producing_eq_End)
+    subgoal
+      by (smt (verit, ccfv_SIG) comp_producing.intros(12) fun_upd_apply fun_upd_upd not_comp_producing_eq_End)
+    subgoal for x11 x12 xa n
+      using End by blast
+    subgoal for x11 x12 n ob
+      using End by blast
+    subgoal for x11 x12 n
+      using End by blast
+    subgoal
+      by (metis (mono_tags, opaque_lifting) End comp_eq_dest_lhs comp_producing.intros(9) not_comp_producing_eq_End)
+    subgoal   
+      by (metis (mono_tags, opaque_lifting) End comp_eq_dest_lhs comp_producing.intros(9) not_comp_producing_eq_End)
+    subgoal
+      by (metis bend.simps(1) bend_bend bhd.elims bhd.simps(2) comp_apply observation.distinct(1) observation.distinct(5)) 
+    done
+  done
+
+
+lemma comp_producing_traced_cong_causalD:
+  "comp_producing wire buf op1 op2 n \<Longrightarrow>
+   traced (fuel \<circ> Inl) op1 ios1 \<Longrightarrow>
+   traced fuel' op2 ios2 \<Longrightarrow>
+   causal wire buf ios1 ios2 \<Longrightarrow>
+   comp_op wire buf op1 op2 = End \<and> lfilter (visible_IO wire) (lalternate (lmap (map_IO Inl Inl id) ios1) (lmap (map_IO Inr Inr id) ios2)) = LNil \<or>
+   (\<exists>op' q x lxs. comp_op wire buf op1 op2 = Write op' q x \<and>
+      lfilter (visible_IO wire) (lalternate (lmap (map_IO Inl Inl id) ios1) (lmap (map_IO Inr Inr id) ios2)) = LCons (Out q x) lxs \<and>
+      traced_cong (\<lambda>ma op lxs.
+         \<exists>ios1 ios2 m' op1 op2 buf.
+            op = comp_op wire buf op1 op2 \<and>
+            traced (ma \<circ> Inl) op1 ios1 \<and>
+            traced m' op2 ios2 \<and>
+            (\<forall>p. p \<notin> ran wire \<longrightarrow> m' p = ma (Inr p)) \<and>
+            lxs = lfilter (visible_IO wire) (lalternate (lmap (map_IO Inl Inl id) ios1) (lmap (map_IO Inr Inr id) ios2)) \<and>
+            causal wire buf ios1 ios2) fuel op' lxs) \<or>
+   (\<exists>f p x lxs n. comp_op wire buf op1 op2 = Read p f \<and> (x = EOB \<longrightarrow> fuel p = Suc n) \<and>
+      lfilter (visible_IO wire) (lalternate (lmap (map_IO Inl Inl id) ios1) (lmap (map_IO Inr Inr id) ios2)) = LCons (Inp p x) lxs \<and>
+            traced_cong (\<lambda>ma op lxs.
+            \<exists>ios1 ios2 m' op1 op2 buf.
+            op = comp_op wire buf op1 op2 \<and>
+            traced (ma \<circ> Inl) op1 ios1 \<and>
+            traced m' op2 ios2 \<and>
+            (\<forall>p. p \<notin> ran wire \<longrightarrow> m' p = ma (Inr p)) \<and>
+            lxs = lfilter (visible_IO wire) (lalternate (lmap (map_IO Inl Inl id) ios1) (lmap (map_IO Inr Inr id) ios2)) \<and>
+            causal wire buf ios1 ios2) (fuel(p := n)) (f x) lxs)"
+  apply (induct buf op1 op2 n arbitrary: fuel fuel' ios1 ios2 pred: comp_producing)
+  subgoal by auto
+  subgoal sorry
+  subgoal sorry
+  subgoal sorry
+  subgoal sorry
+  subgoal sorry
+  subgoal sorry
+  subgoal sorry
+  subgoal sorry
+  subgoal sorry
+  subgoal sorry
+  subgoal sorry
+  done
+
 
 lemma traced_comp_op:
   "traced m (comp_op wire buf op1 op2) ios =
@@ -899,164 +1110,348 @@ lemma traced_comp_op:
       apply (coinduction arbitrary: ios ios1 ios2 m m' op1 op2 buf rule: traced_coinduct_upto)
       subgoal for ios ios1 ios2 m m' op1 op2 buf
         apply (cases op1; cases op2)
-                apply simp_all
-                apply (intro conjI impI)
+        apply simp_all
+        apply (intro conjI impI)
         subgoal for p f p' f'
           apply (elim traced_ReadE)
-                  apply (simp_all split: if_splits)
-          subgoal
-            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-             apply auto
+          subgoal for x n lxs x' na lxsa
+            apply (simp_all split: if_splits observation.splits)
+            apply (elim disjE conjE exE)
+            apply (simp_all split: if_splits observation.splits)
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+              apply auto
+              done
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+              apply auto
+              done
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+              apply auto
+              done
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+              apply auto
+              done
             done
-          subgoal
-            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-             apply auto
+          subgoal for x n lxs x' na 
+            apply (simp_all split: if_splits observation.splits)
+            apply (elim disjE conjE exE)
+            apply (simp_all split: if_splits observation.splits)
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+              apply auto
+              done
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+              apply auto
+              done
             done
-          subgoal
-            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-             apply auto
+          subgoal for x n lxs x' na 
+            apply (simp_all split: if_splits observation.splits)
+            apply (elim disjE conjE exE)
+            apply (simp_all split: if_splits observation.splits)
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+              apply auto
+              done
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+              apply auto
+              done
             done
-          subgoal
-            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-             apply auto
-            done
-          subgoal
-            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-             apply auto
-            done
-          subgoal
-            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-             apply auto
-            done
-          subgoal
-            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-             apply auto
-            done
-          subgoal
-            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-             apply auto
-            done
-          subgoal
-            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-             apply auto
+          subgoal 
+            apply (simp_all split: if_splits observation.splits)
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+              apply auto
+              done
             done
           done
         subgoal for p f p' f'
-          sorry
-        subgoal
-          sorry
-        subgoal
-          apply (elim traced_EndE)
           apply (elim traced_ReadE)
-            apply (simp_all split: if_splits)
+          apply (simp_all split: if_splits)
+          apply (elim disjE conjE exE)
+          apply (simp_all split: if_splits)
           subgoal
-            apply (intro exI conjI disjI1 refl)
-                 apply (rule refl)
-                apply assumption+
-               apply (rule End)
-              defer
-              defer
-            using causal.intros(10) apply blast
-             apply (auto split: llist.splits)
+            apply (rule exI)
+            apply (rule tc_read)
+            apply simp_all
+            apply (rule tc_read tc_base exI conjI; (rule refl | assumption)?)+
+            apply auto
             done
           subgoal
-            apply (intro exI conjI disjI1 refl)
-                 apply (rule refl)
-                apply assumption+
-               apply (rule End)
-              defer
-              defer
-            using causal.intros(10) apply blast
-             apply (auto split: llist.splits)
+            apply (rule exI)
+            apply (rule tc_read)
+            apply simp_all
+            apply (rule tc_read tc_base exI conjI; (rule refl | assumption)?)+
+            apply auto
             done
           subgoal
-            apply (intro exI conjI disjI1 refl)
-                 apply (rule refl)
-                apply assumption+
-               apply (rule End)
-              defer
-              defer
+            apply (rule exI)
+            apply (rule tc_read)
+            apply simp_all
+            apply (rule tc_read tc_base exI conjI; (rule refl | assumption)?)+
+            apply auto
+            done
+          subgoal
+            apply (rule exI)
+            apply (rule tc_read)
+            apply simp_all
+            apply (rule tc_read tc_base exI conjI; (rule refl | assumption)?)+
+            apply auto
+            done
+          subgoal
+            apply hypsubst_thin
+            apply (elim disjE conjE exE)
+            apply simp_all
+            subgoal
+              apply (rule exI)
+              apply (rule tc_readEOB)
+              apply simp_all
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+              apply auto
+              done
+            subgoal
+              apply (rule exI)
+              apply (rule tc_readEOB)
+              apply simp_all
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+              apply auto
+              done
+            done
+          subgoal
+            apply hypsubst_thin
+            apply (elim disjE conjE exE)
+            apply simp_all
+            subgoal
+              apply (rule tc_read)
+              apply simp_all
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+              apply auto
+              done
+            subgoal
+              apply (rule tc_read)
+              apply simp_all
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+              apply auto
+              done
+            done
+          subgoal
+            apply hypsubst_thin
+            subgoal
+              apply (rule tc_readEOB)
+              apply simp_all
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+              apply auto
+              done
+            done
+          done
+        subgoal for p f p' f'
+          apply (elim traced_ReadE traced_WriteE)
+          apply (simp_all split: if_splits)
+          apply (elim disjE conjE exE)
+          apply (simp_all split: if_splits)
+          subgoal
+            apply (rule exI)
+            apply (rule tc_write)
+            apply simp_all
+            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+            apply auto
+            done
+          subgoal
+            apply (rule exI)
+            apply (rule tc_write)
+            apply simp_all
+            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+            apply auto
+            done
+          subgoal
+            apply (rule tc_write)
+            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+            apply auto
+            done
+          done
+        subgoal
+          apply (elim traced_EndE traced_ReadE)
+          apply (simp_all split: if_splits)
+          apply (elim disjE conjE exE)
+          apply (simp_all split: if_splits)
+          subgoal
+            apply (intro exI conjI tc_base refl)
+            apply (rule refl)
+            apply blast+
+            apply (rule End)
+            defer
+            defer
             using causal.intros(10) apply blast
-             apply (auto split: llist.splits)
+            apply (auto split: llist.splits)
+            done
+          subgoal
+            apply (intro exI conjI tc_base refl)
+            apply (rule refl)
+            apply blast+
+            apply (rule End)
+            defer
+            defer
+            using causal.intros(10) apply blast
+            apply (auto split: llist.splits)
+            done
+          subgoal
+            apply (intro exI conjI tc_base refl)
+            apply (rule refl)
+            apply blast+
+            apply (rule End)
+            defer
+            defer
+            using causal.intros(10) apply blast
+            apply (auto split: llist.splits)
             done
           done
         subgoal for op' p x p' f
-          apply (elim traced_WriteE)
-          apply (elim traced_ReadE)
-          subgoal for ios1' n x' iso2'
+          apply (elim traced_WriteE traced_ReadE)
+          apply (simp_all split: if_splits)
+          apply (elim disjE conjE exE)
+          apply (simp_all split: if_splits option.splits)
+          subgoal
             apply hypsubst_thin
             apply (elim causal_OutInpE)
-               apply (simp_all split: if_splits)
-            subgoal for p''
-              apply hypsubst_thin
-              apply (subgoal_tac "p \<in> dom wire")
-               defer
-               apply fastforce
-              apply simp
-              sorry
-            subgoal sorry
-            subgoal
-              apply auto
-              apply (intro exI conjI disjI1 refl)
-                   apply (rule refl)
-                  defer
-                  apply assumption+
-                 apply simp
-                defer
-                apply assumption+
-              apply auto
-              done
-            subgoal
-              sorry
-            subgoal
-              apply auto
-              apply (intro exI conjI disjI1 refl)
-                   apply (rule refl)
-                  defer
-                  apply assumption+
-                 apply simp
-                defer
-                apply assumption+
-              apply auto
-              done
+            apply (simp_all split: if_splits)
+            apply blast
+            apply (rule tc_read)
+            apply simp
+            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+            apply auto
             done
-          subgoal for ios1' n x' 
+          subgoal
             apply hypsubst_thin
             apply (elim causal_OutInpE)
-               apply (simp_all split: if_splits)
-            subgoal for p''
-              apply hypsubst_thin
-              apply (subgoal_tac "p \<in> dom wire")
-               defer
-               apply fastforce
-              apply simp
-              sorry
-            subgoal sorry
-            subgoal
-              apply auto
-              apply (intro exI conjI disjI1 refl)
-                   apply (rule refl)
-                  defer
-                  apply assumption+
-                 apply simp
-                defer
-                apply assumption+
-              apply auto
-              done
-            subgoal
-              sorry
-            subgoal
-              apply auto
-              apply (intro exI conjI disjI1 refl)
-                   apply (rule refl)
-                  defer
-                  apply assumption+
-                 apply simp
-                defer
-                apply assumption+
-              apply auto
-              done
+            apply (simp_all split: if_splits)
+            apply blast
+            apply (rule tc_read)
+            apply simp
+            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+            apply auto
             done
+          subgoal
+            apply hypsubst_thin
+            apply (elim causal_OutInpE)
+            apply (simp_all split: if_splits)
+            apply blast+
+            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+            apply auto
+            done
+          subgoal
+            apply hypsubst_thin
+            apply (elim causal_OutInpE)
+            apply (simp_all split: if_splits)
+            apply (elim exE disjE)
+            apply simp_all
+            subgoal
+              apply (rule exI)
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+              apply auto
+              done
+            subgoal
+              apply (rule exI)
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+              apply auto
+              done
+            subgoal
+              by force
+            done
+          subgoal for ios1 xa n ios2
+            apply (elim causal_OutInpE disjE exE)
+            apply (simp_all split: if_splits)
+            apply (cases "Ex (comp_producing wire buf (Write op' p x) (Read p' f))")
+            subgoal for p''
+              apply simp
+              apply (elim exE)
+              apply (drule comp_producing_traced_cong_causalD)
+              apply (rule Write)
+              apply assumption
+              apply (rule Read)
+              apply simp
+              apply blast
+              apply simp
+              apply (metis causal.intros(4) fun_upd_same fun_upd_upd)
+              apply (elim exE disjE conjE)
+              apply (simp_all add: lfilter_eq_LNil split: if_splits)
+              subgoal
+                apply auto
+                by (smt (verit, best) comp_producing.intros(12) fun_upd_apply fun_upd_upd not_comp_producing_eq_End)
+              subgoal
+                by blast
+              subgoal
+                apply auto
+                using not_EOB by blast
+              done
+            subgoal for p'
+              apply (auto simp add: lfilter_eq_LNil lset_lalternate)
+              subgoal
+                apply hypsubst_thin
+                apply (drule lset_ios1_comp_op_End_not_visible)
+                apply (rule not_comp_producing_eq_End)
+                prefer 4
+                apply assumption
+                defer
+                apply assumption+
+                apply blast
+                defer
+                apply (metis comp_producing.intros(12) fun_upd_same fun_upd_upd)
+                done
+              subgoal
+                apply hypsubst_thin
+                apply (drule lset_ios2_comp_op_End_not_visible)
+                apply assumption
+                apply (rule not_comp_producing_eq_End)
+                   prefer 4
+                   apply blast
+                  defer
+                  apply assumption+
+                apply (metis comp_producing.intros(12) fun_upd_same fun_upd_upd)
+                done
+              done
+
+end
+  subgoal for ios1 n ios2
+    apply hypsubst_thin
+    apply (elim causal_OutInpE disjE exE)
+    apply (simp_all split: if_splits)
+    apply blast
+    apply (rule tc_readEOB)
+    apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+    apply auto
+    done
+  subgoal for ios1 n ios2
+    apply hypsubst_thin
+    apply (elim causal_OutInpE disjE exE)
+    apply (simp_all split: if_splits)
+    apply blast+
+    apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+    apply auto
+    done
+  subgoal for ios1 n ios2
+    apply hypsubst_thin
+    apply (elim causal_OutInpE disjE exE)
+    apply (simp_all split: if_splits)
+    apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+    apply auto
+    done
+  subgoal for ios1 n ios2
+    apply hypsubst_thin
+    apply (elim causal_OutInpE disjE exE)
+    apply (simp_all split: if_splits)
+    apply hypsubst_thin
+    sorry
+  done
+  subgoal sorry
+  subgoal sorry
+  subgoal sorry
+  subgoal sorry
+
+
 
 
 end

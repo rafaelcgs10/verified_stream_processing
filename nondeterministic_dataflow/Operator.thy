@@ -214,6 +214,7 @@ coinductive traced where
 | End: "traced fuel End LNil"
 
 inductive_cases traced_EndE[elim!]: "traced m End lxs"
+inductive_cases traced_LNilE[elim!]: "traced m End LNil"
 inductive_cases traced_WriteE[elim!]: "traced m (Write op p' x) lxs"
 inductive_cases traced_ReadE[elim!]: "traced m (Read p' f) lxs"
 
@@ -829,6 +830,27 @@ fun bend where
 | "bend BEnded = BEnded"
 | "bend (BCons xs xss) = BCons xs (bend xss)"
 
+lemma bend_assoc[simp]:
+  "bend \<circ> (bend \<circ> buf) = (bend \<circ> bend) \<circ> buf"
+  using fun.map_comp by blast
+
+lemma bend_bend[simp]:
+  "(bend \<circ> bend) = bend"
+  apply (rule ext)
+  subgoal for buf
+    apply (induct buf)
+      apply auto
+    done
+  done
+
+lemma bend_fun_upd[simp]:
+  "(bend \<circ> buf)(p := bend xs) = bend \<circ> buf(p := xs)"
+  by (simp add: fun_upd_comp)
+
+lemma btl_bend:
+  "btl (bend buf) = bend (btl buf)"
+  by (metis bend.elims btl.simps(1) btl.simps(2) btl.simps(3))
+
 fun benq where
   "benq x BEmpty = BCons x BEmpty"
 | "benq x BEnded = BCons x BEnded"
@@ -839,6 +861,22 @@ abbreviation (input) BUPD where "BUPD f p buf \<equiv> buf(p := f (buf p))"
 abbreviation BTL :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BTL \<equiv> BUPD btl"
 abbreviation BENQ :: "'a \<Rightarrow> 'd \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BENQ p x buf \<equiv> BUPD (benq x) p buf"
 abbreviation BENQ_TL :: "'a \<Rightarrow> 'd \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BENQ_TL p x buf \<equiv> BUPD (btl o benq x) p buf"
+
+lemma BHD_not_Observed_bend:
+  "\<not> (is_Observed (BHD p buf)) \<Longrightarrow> BHD (buf p) bend = EOS"
+  apply (induct "buf p")
+    apply auto[1]
+   apply simp
+  apply (metis bhd.simps(3) observation.disc(1))
+  done
+
+lemma BHD_neq_EOB_bend:
+  "BHD p buf \<noteq> EOB \<Longrightarrow> BHD (buf p) bend = BHD p buf"
+  apply (induct "buf p")
+    apply auto[1]
+   apply simp
+  apply (metis bend.simps(3) bhd.simps(3))
+  done
 
 fun bapp where
   "bapp BEmpty lxs = lxs"
