@@ -1060,6 +1060,7 @@ lemma comp_producing_traced_cong_causalD:
    traced (fuel \<circ> Inl) op1 ios1 \<Longrightarrow>
    traced fuel' op2 ios2 \<Longrightarrow>
    causal wire buf ios1 ios2 \<Longrightarrow>
+   \<forall>p\<in>- ran wire. fuel' p = (fuel \<circ> Inr) p \<Longrightarrow>
    comp_op wire buf op1 op2 = End \<and> lfilter (visible_IO wire) (lalternate (lmap (map_IO Inl Inl id) ios1) (lmap (map_IO Inr Inr id) ios2)) = LNil \<or>
    (\<exists>op' q x lxs. comp_op wire buf op1 op2 = Write op' q x \<and>
       lfilter (visible_IO wire) (lalternate (lmap (map_IO Inl Inl id) ios1) (lmap (map_IO Inr Inr id) ios2)) = LCons (Out q x) lxs \<and>
@@ -1083,19 +1084,347 @@ lemma comp_producing_traced_cong_causalD:
             causal wire buf ios1 ios2) (fuel(p := n)) (f x) lxs)"
   apply (induct buf op1 op2 n arbitrary: fuel fuel' ios1 ios2 pred: comp_producing)
   subgoal by auto
-  subgoal sorry
-  subgoal sorry
-  subgoal sorry
-  subgoal sorry
-  subgoal sorry
-  subgoal sorry
-  subgoal sorry
-  subgoal sorry
-  subgoal sorry
-  subgoal sorry
-  subgoal sorry
+  subgoal for buf p1 f1 fuel fuel' ios1 ios2
+    apply (erule causal.cases)
+                apply auto
+    subgoal for n lxs
+      by (auto 10 10 intro!: exI[of _ n] tc_base End causal.intros(10))
+    subgoal for n lxs
+      by (auto 10 10 intro!: exI[of _ n] tc_base End causal.intros(10))
+    subgoal for n lxs
+      by (auto 10 10 intro!: exI[of _ n] tc_base End causal.intros(10))
+    done
+  subgoal for buf p1 f1 fuel fuel' ios1 ios2
+    apply (erule causal.cases)
+                apply (auto 10 10 intro!: tc_base End causal.intros(10))
+    done
+  subgoal
+    apply (erule causal.cases)
+                apply (auto simp add: lmap_eq_LNil split: if_splits intro: End causal.intros(10) comp_producing.intros(4))
+    subgoal for lxs x
+      by (smt (verit) End causal.intros(10) lalternate_LNil(2) lmap_eq_LNil)
+    subgoal for lxs x
+      by (smt (verit) End causal.intros(10) lalternate_LNil(2) lmap_eq_LNil)
+    done
+  subgoal
+    by (auto 10 10 intro!: tc_base End)
+  subgoal
+    apply (erule causal.cases)
+                apply auto
+    subgoal for lxs n lxsa
+      by (force intro!: tc_base tc_write exI[of _ n])
+    subgoal for lxs n lxsa
+      by (force intro!: tc_base tc_write exI[of _ n])
+    subgoal for lxs n lxsa
+      by (force intro!: tc_base tc_write exI[of _ n])
+    done
+  subgoal
+    apply (erule causal.cases)
+                apply auto
+    subgoal
+      by (smt (z3) Compl_iff tc_base tc_write)
+    subgoal
+      by (smt (z3) Compl_iff tc_base tc_write)
+    done
+  subgoal
+    apply (erule causal.cases)
+                apply auto
+    subgoal for n lxs
+      by (auto 10 10 intro!: End tc_base exI[of _ n])
+    subgoal for n lxs
+      by (auto 10 10 intro!: End tc_base exI[of _ n])
+    subgoal for n lxs
+      by (auto 10 10 intro!: End tc_base exI[of _ n])
+    done
+  subgoal for p2 buf f2 n fuel fuel' ios1 ios2
+    apply (erule causal.cases; hypsubst_thin)
+                apply simp_all
+                apply auto[10]
+    subgoal for p ios2
+      apply (erule traced_ReadE)
+       apply simp_all
+       apply (elim disjE)
+      subgoal
+        apply (drule meta_spec)+
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply blast
+        apply (drule meta_mp)
+         apply fastforce
+        apply auto
+           apply (metis (mono_tags, opaque_lifting) comp_eq_dest_lhs comp_producing.intros(9))+
+        done
+      subgoal
+        apply (drule meta_spec)+
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply blast
+        apply (drule meta_mp)
+         apply fastforce
+        apply auto
+           apply (metis (mono_tags, opaque_lifting) comp_eq_dest_lhs comp_producing.intros(9))+
+        done
+      subgoal
+        apply (drule meta_spec)+
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         defer
+         apply (drule meta_mp)
+          apply (rule causal.intros(10))
+         apply (drule meta_mp)
+          apply fast
+         apply auto
+          apply (metis bend.simps(1) bend_bend bhd.elims bhd.simps(2) comp_apply observation.distinct(5) observation.simps(3))+
+        done
+      done
+    subgoal for ios2 p y
+      apply (erule traced_ReadE)
+       apply simp_all
+      done
+    subgoal for ios2 p y
+      apply (erule traced_ReadE)
+       apply simp_all
+      done
+    done
+  subgoal for buf p1 f1 p2 f2 fuel fuel' ios1 ios2
+    apply (erule causal.cases)
+                apply auto
+    subgoal for n
+      by (auto 10 10 intro!: tc_base exI[of _ n])
+    subgoal for n
+      by (auto 10 10 intro!: tc_base exI[of _ n])
+    subgoal for n
+      by (auto 10 10 intro!: tc_base exI[of _ n])
+    subgoal for n
+      by (auto 10 10 intro!: tc_base exI[of _ n])
+    subgoal for n
+      by (auto 10 10 intro!: tc_base exI[of _ n])
+    subgoal for n
+      by (auto 10 10 intro!: tc_base exI[of _ n])
+    subgoal for n
+      by (auto 10 10 intro!: tc_base exI[of _ n])
+    subgoal for n
+      by (auto 10 10 intro!: tc_base exI[of _ n])
+    subgoal for n
+      by (auto 10 10 intro!: tc_base exI[of _ n])
+    subgoal for n
+      apply (rule exI[of _ n])
+      apply (rule tc_read)
+       apply simp
+      apply (auto 10 10 intro!: tc_base)
+      done
+    subgoal for n
+      apply (rule exI[of _ n])
+      apply (rule tc_read)
+       apply simp
+      apply (auto 10 10 intro!: tc_base)
+      done
+    subgoal for n
+      apply (rule exI[of _ n])
+      apply (rule tc_read)
+       apply simp
+      apply (auto 10 10 intro!: tc_base)
+      done
+    subgoal for n
+      apply (rule exI[of _ n])
+      apply (rule tc_read)
+       apply simp
+      apply (auto 10 10 intro!: tc_base)
+      done
+    subgoal for n
+      apply (rule exI[of _ n])
+      apply (rule tc_readEOB)
+      apply simp
+      apply (auto 10 10 intro!: tc_base)
+      done
+    subgoal for n
+      apply (rule exI[of _ n])
+      apply (rule tc_readEOB)
+      apply simp
+      apply (auto 10 10 intro!: tc_base)
+      done
+    subgoal for n
+      apply (rule tc_read)
+       apply simp
+      apply (auto 10 10 intro!: tc_base)
+      done
+    subgoal for n
+      apply (rule tc_read)
+       apply simp
+      apply (auto 10 10 intro!: tc_base)
+      done
+    subgoal for n
+      apply (rule tc_readEOB)
+      apply simp
+      apply (auto 10 10 intro!: tc_base)
+      done
+    done
+  subgoal for buf p1 f1 p2 f2 fuel fuel' ios1 ios2
+    apply (erule causal.cases)
+                apply auto
+    subgoal for n
+      by (auto 10 10 intro!: tc_base exI[of _ n])
+    subgoal for n
+      by (auto 10 10 intro!: tc_base exI[of _ n])
+    subgoal for n
+      by (auto 10 10 intro!: tc_base exI[of _ n])
+    subgoal for n
+      unfolding not_def
+      apply (rotate_tac 8)
+      apply (drule mp)
+       apply (rule tc_read)
+        apply simp
+       apply (rule tc_base)
+       apply (intro exI conjI)
+            apply auto
+      done
+    subgoal for n
+      unfolding not_def
+      apply (rotate_tac 8)
+      apply (drule mp)
+       apply (rule tc_read)
+        apply simp
+       apply (rule tc_base)
+       apply (intro exI conjI)
+            apply auto
+      done
+    subgoal for n
+      unfolding not_def
+      apply (rotate_tac 8)
+      apply (drule mp)
+       apply (rule tc_read)
+        apply simp
+       apply (rule tc_base)
+       apply (intro exI conjI)
+            apply auto
+      done
+    subgoal for n
+      unfolding not_def
+      apply (rotate_tac 8)
+      apply (drule mp)
+       apply (rule tc_read)
+        apply simp
+       apply (rule tc_base)
+       apply (intro exI conjI)
+            apply auto
+      done
+    subgoal for n
+      unfolding not_def
+      apply (rotate_tac 9)
+      apply (drule mp)
+       apply (rule tc_readEOB)
+       apply simp
+       apply (rule tc_base)
+       apply (intro exI conjI)
+            apply auto
+      done
+    subgoal for n
+      unfolding not_def
+      apply (rotate_tac 9)
+      apply (drule mp)
+       apply (rule tc_readEOB)
+       apply simp
+       apply (rule tc_base)
+       apply (intro exI conjI)
+            apply auto
+      done
+    subgoal for n
+      by (auto 10 10 intro!: tc_base)
+    subgoal for n
+      by (auto 10 10 intro!: tc_base)
+    subgoal for n
+      by (auto 10 10 intro!: tc_base)
+    done
+  subgoal for p2 p1 p x1 buf op1' f2 n fuel fuel' ios1 ios2
+    apply (erule causal.cases)
+                apply simp_all
+    subgoal for n
+      by (auto 10 10 intro!: tc_base)
+    subgoal for n
+      by (auto 10 10 intro!: tc_base)
+    subgoal for n
+      by (auto 10 10 intro!: tc_base)
+    subgoal for n
+      apply hypsubst_thin
+      apply (elim traced_ReadE traced_WriteE)
+       apply (simp_all split: if_splits)
+         apply (elim disjE)
+      subgoal
+        apply (drule meta_spec)+
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply simp
+        apply auto
+           apply (smt (verit) comp_producing.intros(12) fun_upd_apply fun_upd_upd)+
+        done
+      subgoal
+        apply (drule meta_spec)+
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply simp
+        apply auto
+           apply (smt (verit) comp_producing.intros(12) fun_upd_apply fun_upd_upd)+
+        done
+      subgoal
+        apply (drule meta_spec)+
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply simp
+        apply auto
+               apply (smt (verit) comp_producing.intros(12) fun_upd_apply fun_upd_upd)+
+        done
+      subgoal
+        apply (drule meta_spec)+
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply simp
+        apply auto
+           apply (smt (verit) comp_producing.intros(12) fun_upd_apply fun_upd_upd)+
+        done
+      subgoal
+        apply (drule meta_spec)+
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply simp
+        apply auto
+           apply (smt (verit) comp_producing.intros(12) fun_upd_apply fun_upd_upd)+
+        done
+      done
+            apply auto
+    done
   done
-
 
 lemma traced_comp_op:
   "traced m (comp_op wire buf op1 op2) ios =
@@ -1110,132 +1439,132 @@ lemma traced_comp_op:
       apply (coinduction arbitrary: ios ios1 ios2 m m' op1 op2 buf rule: traced_coinduct_upto)
       subgoal for ios ios1 ios2 m m' op1 op2 buf
         apply (cases op1; cases op2)
-        apply simp_all
-        apply (intro conjI impI)
+                apply simp_all
+                apply (intro conjI impI)
         subgoal for p f p' f'
           apply (elim traced_ReadE)
           subgoal for x n lxs x' na lxsa
             apply (simp_all split: if_splits observation.splits)
             apply (elim disjE conjE exE)
-            apply (simp_all split: if_splits observation.splits)
+               apply (simp_all split: if_splits observation.splits)
             subgoal
               apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-              apply auto
+               apply auto
               done
             subgoal
               apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-              apply auto
+               apply auto
               done
             subgoal
               apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-              apply auto
+               apply auto
               done
             subgoal
               apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-              apply auto
-              done
-            done
-          subgoal for x n lxs x' na 
-            apply (simp_all split: if_splits observation.splits)
-            apply (elim disjE conjE exE)
-            apply (simp_all split: if_splits observation.splits)
-            subgoal
-              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-              apply auto
-              done
-            subgoal
-              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-              apply auto
+               apply auto
               done
             done
           subgoal for x n lxs x' na 
             apply (simp_all split: if_splits observation.splits)
             apply (elim disjE conjE exE)
-            apply (simp_all split: if_splits observation.splits)
+             apply (simp_all split: if_splits observation.splits)
             subgoal
               apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-              apply auto
+               apply auto
               done
             subgoal
               apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-              apply auto
+               apply auto
+              done
+            done
+          subgoal for x n lxs x' na 
+            apply (simp_all split: if_splits observation.splits)
+            apply (elim disjE conjE exE)
+             apply (simp_all split: if_splits observation.splits)
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+               apply auto
+              done
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+               apply auto
               done
             done
           subgoal 
             apply (simp_all split: if_splits observation.splits)
             subgoal
               apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-              apply auto
+               apply auto
               done
             done
           done
         subgoal for p f p' f'
           apply (elim traced_ReadE)
-          apply (simp_all split: if_splits)
-          apply (elim disjE conjE exE)
-          apply (simp_all split: if_splits)
+             apply (simp_all split: if_splits)
+             apply (elim disjE conjE exE)
+                apply (simp_all split: if_splits)
           subgoal
             apply (rule exI)
             apply (rule tc_read)
-            apply simp_all
+             apply simp_all
             apply (rule tc_read tc_base exI conjI; (rule refl | assumption)?)+
-            apply auto
+             apply auto
             done
           subgoal
             apply (rule exI)
             apply (rule tc_read)
-            apply simp_all
+             apply simp_all
             apply (rule tc_read tc_base exI conjI; (rule refl | assumption)?)+
-            apply auto
+             apply auto
             done
           subgoal
             apply (rule exI)
             apply (rule tc_read)
-            apply simp_all
+             apply simp_all
             apply (rule tc_read tc_base exI conjI; (rule refl | assumption)?)+
-            apply auto
+             apply auto
             done
           subgoal
             apply (rule exI)
             apply (rule tc_read)
-            apply simp_all
+             apply simp_all
             apply (rule tc_read tc_base exI conjI; (rule refl | assumption)?)+
-            apply auto
+             apply auto
             done
           subgoal
             apply hypsubst_thin
             apply (elim disjE conjE exE)
-            apply simp_all
+             apply simp_all
             subgoal
               apply (rule exI)
               apply (rule tc_readEOB)
               apply simp_all
               apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-              apply auto
+               apply auto
               done
             subgoal
               apply (rule exI)
               apply (rule tc_readEOB)
               apply simp_all
               apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-              apply auto
+               apply auto
               done
             done
           subgoal
             apply hypsubst_thin
             apply (elim disjE conjE exE)
-            apply simp_all
+             apply simp_all
             subgoal
               apply (rule tc_read)
-              apply simp_all
+               apply simp_all
               apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-              apply auto
+               apply auto
               done
             subgoal
               apply (rule tc_read)
-              apply simp_all
+               apply simp_all
               apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-              apply auto
+               apply auto
               done
             done
           subgoal
@@ -1244,224 +1573,711 @@ lemma traced_comp_op:
               apply (rule tc_readEOB)
               apply simp_all
               apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-              apply auto
+               apply auto
               done
             done
           done
         subgoal for p f p' f'
           apply (elim traced_ReadE traced_WriteE)
-          apply (simp_all split: if_splits)
-          apply (elim disjE conjE exE)
-          apply (simp_all split: if_splits)
+           apply (simp_all split: if_splits)
+           apply (elim disjE conjE exE)
+            apply (simp_all split: if_splits)
           subgoal
             apply (rule exI)
             apply (rule tc_write)
             apply simp_all
             apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-            apply auto
+             apply auto
             done
           subgoal
             apply (rule exI)
             apply (rule tc_write)
             apply simp_all
             apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-            apply auto
+             apply auto
             done
           subgoal
             apply (rule tc_write)
             apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-            apply auto
+             apply auto
             done
           done
         subgoal
           apply (elim traced_EndE traced_ReadE)
-          apply (simp_all split: if_splits)
-          apply (elim disjE conjE exE)
-          apply (simp_all split: if_splits)
+           apply (simp_all split: if_splits)
+           apply (elim disjE conjE exE)
+            apply (simp_all split: if_splits)
           subgoal
             apply (intro exI conjI tc_base refl)
-            apply (rule refl)
-            apply blast+
-            apply (rule End)
-            defer
-            defer
+                 apply (rule refl)
+                apply blast+
+               apply (rule End)
+              defer
+              defer
             using causal.intros(10) apply blast
-            apply (auto split: llist.splits)
+             apply (auto split: llist.splits)
             done
           subgoal
             apply (intro exI conjI tc_base refl)
-            apply (rule refl)
-            apply blast+
-            apply (rule End)
-            defer
-            defer
+                 apply (rule refl)
+                apply blast+
+               apply (rule End)
+              defer
+              defer
             using causal.intros(10) apply blast
-            apply (auto split: llist.splits)
+             apply (auto split: llist.splits)
             done
           subgoal
             apply (intro exI conjI tc_base refl)
-            apply (rule refl)
-            apply blast+
-            apply (rule End)
-            defer
-            defer
+                 apply (rule refl)
+                apply blast+
+               apply (rule End)
+              defer
+              defer
             using causal.intros(10) apply blast
-            apply (auto split: llist.splits)
+             apply (auto split: llist.splits)
             done
           done
         subgoal for op' p x p' f
           apply (elim traced_WriteE traced_ReadE)
-          apply (simp_all split: if_splits)
-          apply (elim disjE conjE exE)
-          apply (simp_all split: if_splits option.splits)
+           apply (simp_all split: if_splits)
+                 apply (elim disjE conjE exE)
+                  apply (simp_all split: if_splits option.splits)
           subgoal
             apply hypsubst_thin
             apply (elim causal_OutInpE)
-            apply (simp_all split: if_splits)
-            apply blast
+               apply (simp_all split: if_splits)
+             apply blast
             apply (rule tc_read)
-            apply simp
+             apply simp
             apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-            apply auto
+             apply auto
             done
           subgoal
             apply hypsubst_thin
             apply (elim causal_OutInpE)
-            apply (simp_all split: if_splits)
-            apply blast
+               apply (simp_all split: if_splits)
+             apply blast
             apply (rule tc_read)
-            apply simp
+             apply simp
             apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-            apply auto
+             apply auto
             done
           subgoal
             apply hypsubst_thin
             apply (elim causal_OutInpE)
-            apply (simp_all split: if_splits)
-            apply blast+
+               apply (simp_all split: if_splits)
+              apply blast+
             apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-            apply auto
+             apply auto
             done
           subgoal
             apply hypsubst_thin
             apply (elim causal_OutInpE)
-            apply (simp_all split: if_splits)
-            apply (elim exE disjE)
-            apply simp_all
+               apply (simp_all split: if_splits)
+             apply (elim exE disjE)
+              apply simp_all
             subgoal
               apply (rule exI)
               apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-              apply auto
+               apply auto
               done
             subgoal
               apply (rule exI)
               apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-              apply auto
+               apply auto
               done
             subgoal
               by force
             done
           subgoal for ios1 xa n ios2
             apply (elim causal_OutInpE disjE exE)
-            apply (simp_all split: if_splits)
-            apply (cases "Ex (comp_producing wire buf (Write op' p x) (Read p' f))")
+                   apply (simp_all split: if_splits)
             subgoal for p''
-              apply simp
-              apply (elim exE)
-              apply (drule comp_producing_traced_cong_causalD)
-              apply (rule Write)
-              apply assumption
-              apply (rule Read)
-              apply simp
-              apply blast
-              apply simp
-              apply (metis causal.intros(4) fun_upd_same fun_upd_upd)
-              apply (elim exE disjE conjE)
-              apply (simp_all add: lfilter_eq_LNil split: if_splits)
+              apply (cases "Ex (comp_producing wire buf (Write op' p x) (Read p' f))")
               subgoal
-                apply auto
-                by (smt (verit, best) comp_producing.intros(12) fun_upd_apply fun_upd_upd not_comp_producing_eq_End)
-              subgoal
-                by blast
-              subgoal
-                apply auto
-                using not_EOB by blast
-              done
-            subgoal for p'
-              apply (auto simp add: lfilter_eq_LNil lset_lalternate)
-              subgoal
-                apply hypsubst_thin
-                apply (drule lset_ios1_comp_op_End_not_visible)
-                apply (rule not_comp_producing_eq_End)
-                prefer 4
-                apply assumption
-                defer
-                apply assumption+
-                apply blast
-                defer
-                apply (metis comp_producing.intros(12) fun_upd_same fun_upd_upd)
+                apply simp
+                apply (elim exE)
+                apply (drule comp_producing_traced_cong_causalD)
+                    apply (rule Write)
+                    apply assumption
+                   apply (rule Read)
+                    apply simp
+                    apply blast
+                   apply simp
+                  apply (metis causal.intros(4) fun_upd_same fun_upd_upd)
+                 apply simp
+                apply (elim exE disjE conjE)
+                  apply (simp_all add: lfilter_eq_LNil split: if_splits)
+                subgoal
+                  apply auto
+                  by (smt (verit, best) comp_producing.intros(12) fun_upd_apply fun_upd_upd not_comp_producing_eq_End)
+                subgoal
+                  by blast
+                subgoal
+                  apply auto
+                  using not_EOB by blast
                 done
-              subgoal
-                apply hypsubst_thin
-                apply (drule lset_ios2_comp_op_End_not_visible)
-                apply assumption
-                apply (rule not_comp_producing_eq_End)
-                   prefer 4
+              subgoal 
+                apply (auto simp add: lfilter_eq_LNil lset_lalternate)
+                subgoal
+                  apply hypsubst_thin
+                  apply (drule lset_ios1_comp_op_End_not_visible)
+                      apply (rule not_comp_producing_eq_End)
+                      prefer 4
+                      apply assumption
+                     defer
+                     apply assumption+
                    apply blast
                   defer
-                  apply assumption+
-                apply (metis comp_producing.intros(12) fun_upd_same fun_upd_upd)
+                  apply (metis comp_producing.intros(12) fun_upd_same fun_upd_upd)
+                  done
+                subgoal
+                  apply hypsubst_thin
+                  apply (drule lset_ios2_comp_op_End_not_visible)
+                      apply assumption
+                     apply (rule not_comp_producing_eq_End)
+                     prefer 4
+                     apply blast
+                    defer
+                    apply assumption+
+                  apply (metis comp_producing.intros(12) fun_upd_same fun_upd_upd)
+                  done
                 done
               done
+            subgoal for p''
+              apply (intro allI impI)
+              subgoal for p'''
+                apply (cases "p' = p'''")
+                 apply simp_all
+                apply (cases "p'' = p'''")
+                 apply simp_all
+                apply (cases "Ex (comp_producing wire buf (Write op' p x) (Read p' f))")
+                subgoal
+                  apply simp
+                  apply (elim exE)
+                  apply (drule comp_producing_traced_cong_causalD)
+                      apply (rule Write)
+                      apply assumption
+                     apply (rule Read)
+                      apply simp
+                      apply blast
+                     apply simp
+                    apply (smt (verit, best) causal.intros(4) fun_upd_other)
+                   apply simp
+                  apply (elim exE disjE conjE)
+                    apply (simp_all add: lfilter_eq_LNil split: if_splits)
+                  subgoal
+                    apply auto
+                    by (smt (verit, best) comp_producing.intros(12) fun_upd_apply fun_upd_upd not_comp_producing_eq_End)
+                  subgoal
+                    by blast
+                  subgoal
+                    apply auto
+                    using not_EOB by blast
+                  done
+                subgoal 
+                  apply (auto simp add: lfilter_eq_LNil lset_lalternate)
+                  subgoal
+                    apply hypsubst_thin
+                    apply (drule lset_ios1_comp_op_End_not_visible)
+                        apply (rule not_comp_producing_eq_End)
+                        prefer 4
+                        apply assumption
+                       defer
+                       apply assumption+
+                     apply blast
+                    apply (smt (verit, best) comp_producing.intros(12) fun_upd_other)
+                    done
+                  subgoal
+                    apply hypsubst_thin
+                    apply (drule lset_ios2_comp_op_End_not_visible)
+                        apply assumption
+                       apply (rule not_comp_producing_eq_End)
+                       prefer 4
+                       apply blast
+                      defer
+                      apply assumption+
+                    apply (smt (verit, best) comp_producing.intros(12) fun_upd_other)
+                    done
+                  done
+                done
+              done
+            subgoal for p''
+              apply (cases "Ex (comp_producing wire buf (Write op' p x) (Read p' f))")
+              subgoal
+                apply simp
+                apply (elim exE)
+                apply (drule comp_producing_traced_cong_causalD)
+                    apply (rule Write)
+                    apply assumption
+                   apply (rule Read)
+                    defer
+                    apply simp
+                   apply (metis causal.intros(4) fun_upd_same fun_upd_upd)
+                  apply force
+                 defer
+                 apply force
+                apply (elim exE disjE conjE)
+                  apply (simp_all add: lfilter_eq_LNil split: if_splits)
+                subgoal
+                  apply auto
+                  by (smt (verit, best) comp_producing.intros(12) fun_upd_apply fun_upd_upd not_comp_producing_eq_End)
+                subgoal
+                  by blast
+                subgoal
+                  apply auto
+                  using not_EOB by blast
+                done
+              subgoal 
+                apply (auto simp add: lfilter_eq_LNil lset_lalternate)
+                subgoal
+                  apply hypsubst_thin
+                  apply (drule lset_ios1_comp_op_End_not_visible)
+                      apply (rule not_comp_producing_eq_End)
+                      prefer 4
+                      apply assumption
+                     defer
+                     apply assumption+
+                   apply blast
+                  apply (metis comp_producing.intros(12) fun_upd_same fun_upd_upd)
+                  done
+                subgoal
+                  apply hypsubst_thin
+                  apply (drule lset_ios2_comp_op_End_not_visible)
+                      apply assumption
+                     apply (rule not_comp_producing_eq_End)
+                     prefer 4
+                     apply blast
+                    defer
+                    apply assumption+
+                  apply (metis comp_producing.intros(12) fun_upd_same fun_upd_upd)
+                  done
+                done
+              done
+            subgoal for p''
+              apply (intro allI impI)
+              subgoal for p'''
+                apply (cases "p' = p'''")
+                 apply simp_all
+                apply (cases "p'' = p'''")
+                 apply simp_all
+                apply (cases "Ex (comp_producing wire buf (Write op' p x) (Read p' f))")
+                subgoal
+                  apply simp
+                  apply (elim exE)
+                  apply (drule comp_producing_traced_cong_causalD)
+                      apply (rule Write)
+                      apply assumption
+                     apply (rule Read)
+                      defer
+                      apply simp
+                     apply (smt (verit, best) causal.intros(4) fun_upd_other)
+                    apply simp
+                   defer
+                   apply force
+                  apply (elim exE disjE conjE)
+                    apply (simp_all add: lfilter_eq_LNil split: if_splits)
+                  subgoal
+                    apply auto
+                    by (smt (verit, best) comp_producing.intros(12) fun_upd_apply fun_upd_upd not_comp_producing_eq_End)
+                  subgoal
+                    by blast
+                  subgoal
+                    apply auto
+                    using not_EOB by blast
+                  done
+                subgoal 
+                  apply (auto simp add: lfilter_eq_LNil lset_lalternate)
+                  subgoal
+                    apply hypsubst_thin
+                    apply (drule lset_ios1_comp_op_End_not_visible)
+                        apply (rule not_comp_producing_eq_End)
+                        prefer 4
+                        apply assumption
+                       defer
+                       apply assumption+
+                     apply blast
+                    apply (smt (verit, best) comp_producing.intros(12) fun_upd_other)
+                    done
+                  subgoal
+                    apply hypsubst_thin
+                    apply (drule lset_ios2_comp_op_End_not_visible)
+                        apply assumption
+                       apply (rule not_comp_producing_eq_End)
+                       prefer 4
+                       apply blast
+                      defer
+                      apply assumption+
+                    apply (smt (verit, best) comp_producing.intros(12) fun_upd_other)
+                    done
+                  done
+                done
+              done
+             apply auto
+            done
+          subgoal for lxs n lxs'
+            apply hypsubst_thin
+            apply (elim causal_OutInpE)
+               apply (simp_all split: if_splits)
+             apply auto[1]
+            apply (rule tc_readEOB)
+            apply (rule exI[of _ n])
+            apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+             apply auto
+            done
+          subgoal for lxs n lxs'
+            apply hypsubst_thin
+            apply (elim causal_OutInpE)
+               apply (simp_all split: if_splits)
+              apply (auto 10 10 intro!: tc_base)
+            done
+          subgoal for lxs n lxs'
+            apply hypsubst_thin
+            apply (elim causal_OutInpE)
+               apply (simp_all split: if_splits)
+             apply (auto 10 10 intro!: tc_base)
+            done
+          subgoal for lxs n lxs'
+            apply hypsubst_thin
+            apply (elim causal_OutInpE)
+               apply (simp_all split: if_splits)
+            subgoal for p''
+              apply (cases "Ex (comp_producing wire buf (Write op' p x) (Read p' f))")
+              subgoal
+                apply simp
+                apply (elim exE)
+                apply (drule comp_producing_traced_cong_causalD)
+                    apply (rule Write)
+                    apply assumption
+                   apply (rule ReadEOB)
+                    defer
+                    apply simp
+                   apply (metis causal.intros(4) fun_upd_same fun_upd_upd)
+                  apply simp
+                 defer
+                 apply blast
+                apply (elim exE disjE conjE)
+                  apply (simp_all add: lfilter_eq_LNil split: if_splits)
+                subgoal
+                  apply auto
+                  by (smt (verit, best) comp_producing.intros(12) fun_upd_apply fun_upd_upd not_comp_producing_eq_End)
+                subgoal
+                  by blast
+                subgoal
+                  apply auto
+                  using not_EOB by blast
+                done
+              subgoal 
+                apply (auto simp add: lfilter_eq_LNil lset_lalternate)
+                subgoal
+                  apply hypsubst_thin
+                  apply (drule lset_ios1_comp_op_End_not_visible)
+                      apply (rule not_comp_producing_eq_End)
+                      prefer 4
+                      apply assumption
+                     defer
+                     apply assumption+
+                   apply blast
+                  defer
+                  apply (metis comp_producing.intros(12) fun_upd_same fun_upd_upd)
+                  done
+                subgoal
+                  apply hypsubst_thin
+                  apply (drule lset_ios2_comp_op_End_not_visible)
+                      apply assumption
+                     apply (rule not_comp_producing_eq_End)
+                     prefer 4
+                     apply blast
+                    defer
+                    apply assumption+
+                  apply (metis comp_producing.intros(12) fun_upd_same fun_upd_upd)
+                  done
+                done
+              done
+            subgoal for p''
+              apply (intro allI impI)
+              subgoal for p'''
+                apply (cases "p' = p'''")
+                 apply simp_all
+                apply (cases "p'' = p'''")
+                 apply simp_all
+                apply (cases "Ex (comp_producing wire buf (Write op' p x) (Read p' f))")
+                subgoal
+                  apply simp
+                  apply (elim exE)
+                  apply (drule comp_producing_traced_cong_causalD)
+                      apply (rule Write)
+                      apply assumption
+                     apply (rule ReadEOB)
+                      defer
+                      apply simp
+                     apply (smt (verit, best) causal.intros(4) fun_upd_other)
+                    apply simp
+                   defer
+                   apply blast
+                  apply (elim exE disjE conjE)
+                    apply (simp_all add: lfilter_eq_LNil split: if_splits)
+                  subgoal
+                    apply auto
+                    by (smt (verit, best) comp_producing.intros(12) fun_upd_apply fun_upd_upd not_comp_producing_eq_End)
+                  subgoal
+                    by blast
+                  subgoal
+                    apply auto
+                    using not_EOB by blast
+                  done
+                subgoal 
+                  apply (auto simp add: lfilter_eq_LNil lset_lalternate)
+                  subgoal
+                    apply hypsubst_thin
+                    apply (drule lset_ios1_comp_op_End_not_visible)
+                        apply (rule not_comp_producing_eq_End)
+                        prefer 4
+                        apply assumption
+                       defer
+                       apply assumption+
+                     apply blast
+                    apply (smt (verit, best) comp_producing.intros(12) fun_upd_other)
+                    done
+                  subgoal
+                    apply hypsubst_thin
+                    apply (drule lset_ios2_comp_op_End_not_visible)
+                        apply assumption
+                       apply (rule not_comp_producing_eq_End)
+                       prefer 4
+                       apply blast
+                      defer
+                      apply assumption+
+                    apply (smt (verit, best) comp_producing.intros(12) fun_upd_other)
+                    done
+                  done
+                done
+              done
+            apply auto
+            done
+          done
+        subgoal for op p x op' p' x'
+          apply (elim traced_WriteE)
+          subgoal for lxs lxs'
+            apply (auto split: option.splits if_splits observation.splits)
+            subgoal
+              apply (rule tc_write)
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+              done
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+              done
+            done
+          done
+        subgoal for op p x
+          apply (elim traced_WriteE traced_EndE)
+          subgoal for lxs
+            apply (auto split: option.splits if_splits observation.splits)
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+               apply (auto intro!: End causal.intros(10))
+              done
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+               apply (auto intro!: End causal.intros(10))
+              done
+            subgoal
+              apply (drule comp_producing_traced_cong_causalD)
+                  apply (rule Write)
+                  apply assumption+
+                 apply (rule End)
+                apply (meson causal.intros(10))
+               apply fast
+              apply (auto split: if_splits)
+              using not_EOB apply blast
+              apply (meson comp_producing.intros(4) not_comp_producing_eq_End)
+              done
+            subgoal
+              apply (drule comp_producing_traced_cong_causalD)
+                  apply (rule Write)
+                  apply assumption+
+                 apply (rule End)
+                apply (meson causal.intros(10))
+               apply fast
+              apply (auto split: if_splits)
+              using not_EOB apply blast
+              done
+            subgoal for y
+              apply hypsubst_thin
+              apply (auto simp add: lfilter_eq_LNil lset_lalternate)
+              apply (frule not_comp_producing_eq_End)
+              apply (frule lset_ios1_comp_op_End_not_visible[rotated 1]) 
+                  apply (rule Write)
+                  apply assumption
+                 apply (rule End)
+              using causal.intros(10) apply blast
+               apply (auto split: if_splits)
+              apply (metis End causal.intros(10) comp_producing.intros(4) lset_ios1_comp_op_End_not_visible not_comp_producing_eq_End)
+              done
+            done
+          done
+        subgoal for p f
+          apply (elim traced_ReadE traced_EndE)
+          subgoal for x n lxs
+            apply (auto 2 0 split: option.splits if_splits observation.splits)
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+               apply (auto intro!: End causal.intros(10))
+              done
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+               apply (auto intro!: End causal.intros(10))
+              done
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+               apply (auto intro!: End causal.intros(10))
+              done
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+               apply (auto intro!: End causal.intros(10))
+              done
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+               apply (auto intro!: End causal.intros(10))
+              done
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+               apply (auto intro!: End causal.intros(10))
+              done
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+               apply (auto intro!: End causal.intros(10))
+              done
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+               apply (auto intro!: End causal.intros(10))
+              done
+            subgoal
+              apply (frule comp_producing_traced_cong_causalD)
+                  apply (rule End)
+                 apply (rule Read)
+                  defer
+                  apply assumption+
+                 apply (simp add: causal.intros(11))
+                apply (auto split: if_splits)
+              using not_EOB apply blast
+              done
+            subgoal
+              apply (frule comp_producing_traced_cong_causalD)
+                  apply (rule End)
+                 apply (rule Read)
+                  defer
+                  apply assumption+
+                 apply (simp add: causal.intros(11))
+                apply (auto split: if_splits)
+              using not_EOB apply blast
+              done
+            subgoal
+              apply (auto simp add: lfilter_eq_LNil lset_lalternate)
+              apply (frule not_comp_producing_eq_End)
+              apply (frule lset_ios2_comp_op_End_not_visible[rotated 2]) 
+                  apply (rule End)
+                 apply (rule Read)
+                  defer
+                  apply assumption+
+                 defer
+                 apply (metis causal.intros(11) comp_apply)
+                apply auto
+              done
+            subgoal
+              apply (frule comp_producing_traced_cong_causalD)
+                  apply (rule End)
+                 apply (rule Read)
+                  defer
+                  apply assumption+
+                 apply (simp add: causal.intros(11))
+                apply (auto split: if_splits)
+              using not_EOB apply blast
+              done
+            subgoal
+              apply (frule comp_producing_traced_cong_causalD)
+                  apply (rule End)
+                 apply (rule Read)
+                  defer
+                  apply assumption+
+                 apply (simp add: causal.intros(11))
+                apply (auto split: if_splits)
+              using not_EOB apply blast
+              done
+            subgoal
+              apply (auto simp add: lfilter_eq_LNil lset_lalternate)
+              apply (frule not_comp_producing_eq_End)
+              apply (frule lset_ios2_comp_op_End_not_visible[rotated 2]) 
+                  apply (rule End)
+                 apply (rule Read)
+                  defer
+                  apply assumption+
+                 defer
+                 apply (metis causal.intros(11) comp_apply)
+                apply auto
+              done
+            done
+          subgoal for n lxs
+            apply (auto 2 0 split: option.splits if_splits observation.splits)
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+               apply (auto intro!: End causal.intros(10))
+              done
+            subgoal
+              apply (rule tc_base exI conjI; (rule refl | assumption)?)+
+               apply (auto intro!: End causal.intros(10))
+              done
+            subgoal
+              apply (frule comp_producing_traced_cong_causalD)
+                  apply (rule End)
+                 apply (rule Read)
+                  defer
+                  apply assumption+
+                 apply (simp add: causal.intros(11))
+                apply (auto split: if_splits)
+              using not_EOB apply blast
+              apply (metis bend.simps(1) bend_bend bhd.elims bhd.simps(2) comp_apply observation.distinct(5) observation.simps(3))
+              done              
+            subgoal
+              apply (frule comp_producing_traced_cong_causalD)
+                  apply (rule End)
+                 apply (rule Read)
+                  defer
+                  apply assumption+
+                 apply (simp add: causal.intros(11))
+                apply (auto split: if_splits)
+              using not_EOB apply blast
+              apply (metis bend.simps(1) bend_bend bhd.elims bhd.simps(2) comp_apply observation.distinct(5) observation.simps(3))
+              done   
 
-end
-  subgoal for ios1 n ios2
-    apply hypsubst_thin
-    apply (elim causal_OutInpE disjE exE)
-    apply (simp_all split: if_splits)
-    apply blast
-    apply (rule tc_readEOB)
-    apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-    apply auto
+            subgoal
+              apply (auto simp add: lfilter_eq_LNil lset_lalternate)
+              apply (frule not_comp_producing_eq_End)
+              apply (frule lset_ios2_comp_op_End_not_visible[rotated 2]) 
+                  apply (rule End)
+                 apply (rule Read)
+                  defer
+                  apply assumption+
+                 defer
+                 apply (metis causal.intros(11) comp_apply)
+                apply (auto split: if_splits)
+              apply (metis bend.simps(1) bend_bend bhd.elims bhd.simps(2) comp_apply observation.distinct(5) observation.simps(3))
+              done
+            done
+          done
+        subgoal
+          apply (elim traced_ReadE traced_EndE)
+          apply (auto 10 10 simp add: lfilter_eq_LNil lset_lalternate split: option.splits if_splits observation.splits intro!: causal.intros(10) End tc_base)
+          done
+        subgoal
+          by auto
+        done
+      done
     done
-  subgoal for ios1 n ios2
-    apply hypsubst_thin
-    apply (elim causal_OutInpE disjE exE)
-    apply (simp_all split: if_splits)
-    apply blast+
-    apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-    apply auto
-    done
-  subgoal for ios1 n ios2
-    apply hypsubst_thin
-    apply (elim causal_OutInpE disjE exE)
-    apply (simp_all split: if_splits)
-    apply (rule tc_base exI conjI; (rule refl | assumption)?)+
-    apply auto
-    done
-  subgoal for ios1 n ios2
-    apply hypsubst_thin
-    apply (elim causal_OutInpE disjE exE)
-    apply (simp_all split: if_splits)
-    apply hypsubst_thin
-    sorry
   done
-  subgoal sorry
-  subgoal sorry
-  subgoal sorry
-  subgoal sorry
 
-
-
-
-end
-
-  apply (auto simp add:  Inl_Inr_False comp_apply  fun_upd_other)
-
-
-
-
-lemma
+(* lemma
   "traced m (comp_op wire buf op1 op2) ios \<Longrightarrow>
    \<exists> ios1 ios2. lfocus id (range Inp \<union> Out ` (- dom wire)) ios1 = lfocus (map_IO projl projl) (range (Inp o Inl) \<union> (Out o Inl) ` (- dom wire)) ios \<and>
    lfocus id (Inp ` (- ran wire) \<union> range Out) ios2 = lfocus (map_IO projr projr) ((Inp o Inr) ` (- ran wire) \<union> range (Out o Inr)) ios"
@@ -1472,10 +2288,10 @@ lemma
     apply (rule exI[of _ ios2])
     apply (intro conjI)
     apply (clarsimp simp add:  split: sum.splits)
+ *)
 
 
-
-    section\<open>Parallel composition\<close>
+section\<open>Parallel composition\<close>
 
 definition "pcomp_op = comp_op (\<lambda>_. None) (\<lambda>_. BEnded)"
 
