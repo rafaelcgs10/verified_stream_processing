@@ -1426,6 +1426,189 @@ lemma comp_producing_traced_cong_causalD:
     done
   done
 
+declare [[unify_search_bound = 100]]
+
+corec retrace_comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow> ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> 'd observation llist \<Rightarrow> 'd observation llist \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) IO llist" where
+  "retrace_comp_op wire buf op1 op2 inps1 inps2 = (
+     case (op1, op2) of
+     (End, End) \<Rightarrow> LNil
+   | (End, Write op2' p2 x2) \<Rightarrow> LCons (Out (Inr p2) x2) (retrace_comp_op wire (bend o buf) End op2' inps1 inps2)
+   | (End, Read p2 f2) \<Rightarrow> let buf' = bend o buf in if p2 \<in> ran wire
+     then LCons (Inp (Inr p2) (BHD p2 buf')) (retrace_comp_op wire (BTL p2 buf') End (f2 (BHD p2 buf')) inps1 inps2)
+     else LCons (Inp (Inr p2) (lhd inps2)) (retrace_comp_op wire buf' End (f2 (lhd inps2)) inps1 (ltl inps2))
+   | (Read p1 f1, End) \<Rightarrow> LCons (Inp (Inl p1) (lhd inps1)) (retrace_comp_op wire buf (f1 (lhd inps1)) End (ltl inps1) inps2)
+   | (Read p1 f1, Write op2' p2 x2) \<Rightarrow> LCons (Inp (Inl p1) (lhd inps1)) (LCons (Out (Inr p2) x2) (retrace_comp_op wire buf (f1 (lhd inps1)) op2' (ltl inps1) inps2))
+   | (Read p1 f1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
+     then LCons (Inp (Inl p1) (lhd inps1)) (LCons (Inp (Inr p2) (BHD p2 buf)) (retrace_comp_op wire (BTL p2 buf) (f1 (lhd inps1)) (f2 (BHD p2 buf)) (ltl inps1) inps2))
+     else LCons (Inp (Inl p1) (lhd inps1)) (LCons (Inp (Inr p2) (lhd inps2)) (retrace_comp_op wire buf (f1 (lhd inps1)) (f2 (lhd inps2)) (ltl inps1) (ltl inps2)))
+   | (Write op1' p1 x1, End) \<Rightarrow> LCons (Out (Inl p1) x1) (retrace_comp_op wire buf op1' End inps1 inps2)
+   | (Write op1' p1 x1, Write op2' p2 x2) \<Rightarrow> (case wire p1 of
+       None \<Rightarrow> LCons (Out (Inl p1) x1) (LCons (Out (Inr p2) x2) (retrace_comp_op wire buf op1' op2' inps1 inps2))
+     | Some p \<Rightarrow> LCons (Out (Inl p1) x1) (LCons (Out (Inr p2) x2) (retrace_comp_op wire (BENQ p x1 buf) op1' op2' inps1 inps2)))
+   | (Write op1' p1 x1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
+     then (case wire p1 of
+       None \<Rightarrow> LCons (Out (Inl p1) x1) (LCons (Inp (Inr p2) (BHD p2 buf)) (retrace_comp_op wire (BTL p2 buf) op1' (f2 (BHD p2 buf)) inps1 inps2))
+     | Some p \<Rightarrow> LCons (Out (Inl p1) x1) (LCons (Inp (Inr p2) (BHD p2 (BENQ p x1 buf))) (retrace_comp_op wire (BTL p2 (BENQ p x1 buf)) op1' (f2 (BHD p2 (BENQ p x1 buf))) inps1 inps2)))
+     else (case wire p1 of
+       None \<Rightarrow> LCons (Out (Inl p1) x1) (LCons (Inp (Inr p2) (lhd inps2)) (retrace_comp_op wire buf op1' (f2 (lhd inps2)) inps1 (ltl inps2)))
+     | Some p \<Rightarrow> LCons (Out (Inl p1) x1) (LCons (Inp (Inr p2) (lhd inps2)) (retrace_comp_op wire (BENQ p x1 buf) op1' (f2 (lhd inps2)) inps1 (ltl inps2)))))"
+
+simps_of_case retrace_comp_op_simps[simp]: retrace_comp_op.code[unfolded prod.case]
+
+term case_observation
+
+abbreviation "Inp_Inl_llist (ios:: ('a + 'b, 'c + 'd, 'e) IO llist) \<equiv>
+  lmap (case_IO (case_sum (\<lambda> _ ob. ob) undefined) undefined) (lfilter (case_IO (case_sum \<top> \<bottom>) \<bottom>) ios)"
+abbreviation "Inp_Inr_llist ios \<equiv> lmap (case_IO (case_sum undefined (\<lambda> _ ob. ob)) undefined) (lfilter (case_IO (case_sum \<bottom> \<top>) \<bottom>) ios)"
+
+abbreviation "retrace_comp_op_ios wire buf op1 op2 (ios::('a + 'b, 'c + 'd, 'e) IO llist) \<equiv> 
+  retrace_comp_op wire buf op1 op2 (Inp_Inl_llist ios) (Inp_Inr_llist ios)"
+
+abbreviation "Inl_llist ios \<equiv>
+  lmap (case_IO (case_sum (\<lambda> p ob. Inp p ob) undefined) (case_sum (\<lambda> p ob. Out p ob) undefined)) (lfilter (case_IO (case_sum \<top> \<bottom>) (case_sum \<top> \<bottom>)) ios)"
+
+abbreviation "Inr_llist ios \<equiv>
+  lmap (case_IO (case_sum undefined (\<lambda> p ob. Inp p ob)) (case_sum undefined (\<lambda> p ob. Out p ob))) (lfilter (case_IO (case_sum \<bottom> \<top>) (case_sum \<bottom> \<top>)) ios)"
+
+lemma in_retrace_comp_op_End_not_Inl:
+  "x \<in> lset lxs \<Longrightarrow>
+   lxs = retrace_comp_op wire buf End op2 ios1 ios2 \<Longrightarrow>
+   case_IO (case_sum \<bottom> \<top>) (case_sum \<bottom> \<top>) x"
+  apply (induct lxs arbitrary: buf op2 ios1 ios2 rule: lset_induct)
+  subgoal for xs buf op2 ios1
+    apply (cases op2)
+    apply (auto simp add: Let_def split: if_splits IO.splits sum.splits)
+    done
+  subgoal for x' xs buf op2 ios1 ios2
+          apply (cases op2; hypsubst)
+      apply (simp_all add: Let_def split: if_splits)
+    done
+  done
+
+lemma traced_comp_op_traced_1:
+  "traced m (comp_op wire buf op1 op2) ios \<Longrightarrow>
+  \<exists>ios1. traced (m o Inl) op1 ios1"
+  apply (rule exI[of _ "Inl_llist (retrace_comp_op_ios wire buf op1 op2 ios)"])
+  apply (coinduction arbitrary: op1 op2 buf ios m)
+  subgoal for op1 op2 buf ios m
+    apply (cases op1; cases op2)
+    subgoal
+      by (force split: sum.splits if_splits if_splits observation.splits)
+    subgoal for p f op p' x
+      by (force split: sum.splits if_splits if_splits observation.splits)
+    subgoal for p f
+      by (auto 10 10 split: sum.splits if_splits if_splits observation.splits)
+    subgoal for op p x p' f
+      apply hypsubst_thin
+      apply (simp split: if_splits option.splits)
+      subgoal
+        by force
+      subgoal
+        by force
+      subgoal
+        by force
+      subgoal
+        apply (intro impI allI conjI disjI1 exI; hypsubst_thin)
+             apply simp
+            apply (rule refl)
+           apply (metis comp_producing.intros(12) fun_upd_same fun_upd_upd not_comp_producing_eq_End)
+          apply simp
+         apply (rule refl)
+        apply (smt (verit, ccfv_threshold) comp_producing.intros(12) fun_upd_other not_comp_producing_eq_End)
+        done
+      subgoal
+        apply auto
+        subgoal
+          apply (intro conjI exI disjI1)
+            apply auto
+          done
+        subgoal
+          apply (intro conjI exI disjI1)
+            apply auto
+          done
+        subgoal
+          apply (intro conjI exI disjI1)
+            apply auto
+          done
+        done
+      subgoal
+        apply auto
+        subgoal
+          apply (intro conjI exI disjI1)
+            apply auto
+          done
+        subgoal
+          apply (intro conjI exI disjI1)
+            apply auto
+          done
+        subgoal
+          apply (intro conjI exI disjI1)
+            apply auto
+          done
+        done
+      done
+    subgoal
+      by (auto 10 10 split: option.splits sum.splits if_splits if_splits observation.splits)
+    subgoal
+      apply hypsubst_thin
+      apply (simp split: option.splits if_splits)
+      subgoal
+        by force
+      subgoal
+        by force
+      subgoal
+       apply (intro impI allI conjI disjI1 exI)
+             apply simp
+         apply (rule refl)
+        apply (metis comp_producing.intros(4) not_comp_producing_eq_End)
+        done
+      done
+    subgoal for p f
+      apply hypsubst_thin
+      apply (intro disjI2)
+      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil split: if_splits IO.splits sum.splits dest: in_retrace_comp_op_End_not_Inl)
+      done
+    subgoal 
+      apply hypsubst_thin
+      apply (intro disjI2)
+      apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil split: if_splits IO.splits sum.splits dest: in_retrace_comp_op_End_not_Inl)
+      done
+    subgoal
+      apply simp
+      done
+    done
+  done
+
+lemma traced_comp_op_traced_1:
+  "traced m (comp_op wire buf op1 op2) ios \<Longrightarrow>
+  \<exists>ios2 m'. traced m' op2 ios2 \<and> (\<forall> p \<in> (- ran wire). m' p = (m o Inr) p)"
+  apply (rule exI[of _ "Inr_llist (retrace_comp_op_ios wire buf op1 op2 ios)"])
+  apply (rule exI[of _ "\<lambda> p. if p\<in>- ran wire then m (Inr p) else (if BHD p buf = EOB then 1 else 0)"])
+  apply simp
+  apply (coinduction arbitrary: op1 op2 buf ios m)
+  subgoal for op1 op2 buf ios m
+    apply (cases op1; cases op2)
+    subgoal for p f p' f'
+      apply hypsubst_thin
+      apply (clarsimp split: sum.splits if_splits if_splits observation.splits elim!: chd.elims)
+      subgoal
+        apply (cases "BHD p' buf")
+          apply simp_all
+        subgoal sorry
+        subgoal
+          apply (elim traced_ReadE)
+          subgoal
+          apply (intro conjI exI disjI1)
+            defer
+            defer
+          apply assumption
+             apply auto
+            subgoal
+              apply (rule ext)
+              apply (auto )
+              oops
+
+
 lemma traced_comp_op:
   "traced m (comp_op wire buf op1 op2) ios =
   (\<exists>ios1 ios2 m'. traced (m o Inl) op1 ios1 \<and> traced m' op2 ios2 \<and> (\<forall> p \<in> (- ran wire). m' p = (m o Inr) p) \<and>
