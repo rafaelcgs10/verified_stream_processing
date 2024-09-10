@@ -208,67 +208,67 @@ datatype ('a, 'b, 'd) IO = Inp (proji: 'a) "'d observation" | Out (projo: 'b) (d
   where "data (Inp p x) = obs x"
 
 coinductive traced where
-  Read: "x \<noteq> EOB \<Longrightarrow> traced (fuel(p := n)) (f x) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inp p x) lxs)"
-| ReadEOB: "fuel p = Suc n \<Longrightarrow> traced (fuel(p := n)) (f EOB) lxs \<Longrightarrow> traced fuel (Read p f) (LCons (Inp p EOB) lxs)"
-| Write: "traced fuel op lxs \<Longrightarrow> traced fuel (Write op p x) (LCons (Out p x) lxs)"
-| End: "traced fuel End LNil"
+  Read: "x \<noteq> EOB \<Longrightarrow> traced (f x) lxs \<Longrightarrow> traced (Read p f) (LCons (Inp p x) lxs)"
+| ReadEOB: "traced (f EOB) lxs \<Longrightarrow> traced (Read p f) (LCons (Inp p EOB) lxs)"
+| Write: "traced op lxs \<Longrightarrow> traced (Write op p x) (LCons (Out p x) lxs)"
+| End: "traced End LNil"
 
-inductive_cases traced_EndE[elim!]: "traced m End lxs"
-inductive_cases traced_LNilE[elim!]: "traced m End LNil"
-inductive_cases traced_WriteE[elim!]: "traced m (Write op p' x) lxs"
-inductive_cases traced_ReadE[elim!]: "traced m (Read p' f) lxs"
+inductive_cases traced_EndE[elim!]: "traced End lxs"
+inductive_cases traced_LNilE[elim!]: "traced End LNil"
+inductive_cases traced_WriteE[elim!]: "traced (Write op p' x) lxs"
+inductive_cases traced_ReadE[elim!]: "traced (Read p' f) lxs"
 
 inductive traced_cong for R where
-  tc_base: "R m op lxs \<Longrightarrow> traced_cong R m op lxs"
-| tc_traced: "traced m op lxs \<Longrightarrow> traced_cong R m op lxs"
-| tc_read: "x \<noteq> EOB \<Longrightarrow> traced_cong R (m(p := n)) (f x) lxs \<Longrightarrow> traced_cong R m (Read p f) (LCons (Inp p x) lxs)"
-| tc_readEOB: "(\<exists>n. m p = Suc n \<and> traced_cong R (m(p := n)) (f EOB) lxs) \<Longrightarrow> traced_cong R m (Read p f) (LCons (Inp p EOB) lxs)"
-| tc_write: "traced_cong R m op lxs \<Longrightarrow> traced_cong R m (Write op q x) (LCons (Out q x) lxs)"
+  tc_base: "R op lxs \<Longrightarrow> traced_cong R op lxs"
+| tc_traced: "traced op lxs \<Longrightarrow> traced_cong R op lxs"
+| tc_read: "x \<noteq> EOB \<Longrightarrow> traced_cong R (f x) lxs \<Longrightarrow> traced_cong R (Read p f) (LCons (Inp p x) lxs)"
+| tc_readEOB: "traced_cong R (f EOB) lxs \<Longrightarrow> traced_cong R (Read p f) (LCons (Inp p EOB) lxs)"
+| tc_write: "traced_cong R op lxs \<Longrightarrow> traced_cong R (Write op q x) (LCons (Out q x) lxs)"
 
 lemma traced_coinduct_upto:
-  assumes "X m op lxs"
-    "\<And>m op lxs.
-    X m op lxs \<Longrightarrow>
-    (\<exists>p n f. op = Read p f \<and> (\<exists>x lxs'. lxs = LCons (Inp p x) lxs' \<and>
-       x \<noteq> EOB \<and> traced_cong X (m(p := n)) (f x) lxs')) \<or>
-    (\<exists>p n f. op = Read p f \<and> (\<exists>lxs'. lxs = LCons (Inp p EOB) lxs' \<and>
-       m p = Suc n \<and> traced_cong X (m(p := n)) (f EOB) lxs')) \<or>
-    (\<exists>op' q x. op = Write op' q x \<and> (\<exists>lxs'. lxs = LCons (Out q x) lxs' \<and> traced_cong X m op' lxs')) \<or>
+  assumes "X op lxs"
+    "\<And>op lxs.
+    X op lxs \<Longrightarrow>
+    (\<exists>p f. op = Read p f \<and> (\<exists>x lxs'. lxs = LCons (Inp p x) lxs' \<and>
+       x \<noteq> EOB \<and> traced_cong X (f x) lxs')) \<or>
+    (\<exists>p f. op = Read p f \<and> (\<exists>lxs'. lxs = LCons (Inp p EOB) lxs' \<and>
+       traced_cong X (f EOB) lxs')) \<or>
+    (\<exists>op' q x. op = Write op' q x \<and> (\<exists>lxs'. lxs = LCons (Out q x) lxs' \<and> traced_cong X op' lxs')) \<or>
     op = End \<and> lxs = LNil"
-  shows "traced m op lxs"
+  shows "traced op lxs"
   apply (rule traced.coinduct[where X = "traced_cong X"])
    apply (rule tc_base, rule assms(1))
-  subgoal for m op lxs
-    apply (induct m op lxs rule: traced_cong.induct)
-    subgoal for m op lxs
+  subgoal for op lxs
+    apply (induct op lxs rule: traced_cong.induct)
+    subgoal for op lxs
       by (drule assms(2)) (auto simp del: fun_upd_apply)
-    subgoal for m op lxs
+    subgoal for op lxs
       by (erule traced.cases) (auto simp del: fun_upd_apply)
-    subgoal for m p n f x lxs
+    subgoal for p f x lxs
       by (auto simp del: fun_upd_apply)
-    subgoal for m p n f 
+    subgoal for p n f 
       by (auto simp del: fun_upd_apply)
     subgoal for m p f lxs
       by (auto simp del: fun_upd_apply)
     done
   done
 
-definition "traces m op = {lxs. traced m op lxs}"
+definition "traces op = {lxs. traced op lxs}"
 
 lemma traces_Read[simp]:
-  "traces m (Read p f) = (\<Union>x. LCons (Inp p (Observed x)) ` (\<Union>n. traces (m(p := n)) (f (Observed x)))) \<union>
-                       LCons (Inp p EOB) ` (case m p of Suc n \<Rightarrow> traces (m(p := n)) (f EOB) | _ \<Rightarrow> {}) \<union>
-                       LCons (Inp p EOS) ` (\<Union>n. traces (m(p := n)) (f EOS))"
+  "traces (Read p f) = (\<Union>x. LCons (Inp p (Observed x)) ` traces (f (Observed x))) \<union>
+                       LCons (Inp p EOB) ` traces (f EOB) \<union>
+                       LCons (Inp p EOS) ` traces (f EOS)"
   apply (auto simp: traces_def image_iff intro: traced.intros split: nat.splits)
      apply (metis observation.exhaust)+
   done
 
 lemma traces_Write[simp]:
-  "traces m (Write op p x) = LCons (Out p x) ` traces m op"
+  "traces (Write op p x) = LCons (Out p x) ` traces op"
   by (auto simp: traces_def intro: traced.intros)
 
 lemma traces_End[simp]:
-  "traces m End = {LNil}"
+  "traces End = {LNil}"
   by (auto simp: traces_def intro: traced.intros)
 
 corec traced_wit where
@@ -331,8 +331,6 @@ lemma lproject_False_weak:
   "(\<And>qx. qx \<in> lset lxs \<Longrightarrow> case_IO (\<lambda> q _. \<not> R p q) (\<lambda> q _. \<not> S p q) qx) \<Longrightarrow> lproject R S lxs p = LNil"
   by (force simp add: lproject_empty_conv)
 
-definition "TRACES op = (\<Union>m. traces m op)"
-
 (*
 lemma traced_not_forever_EOB:
   "traced m op lxs \<Longrightarrow> ldropn i (lfilter (\<lambda>x. is_Inp x \<and> proji x = p) lxs) \<noteq> repeat (Inp p EOB)"
@@ -344,34 +342,6 @@ lemma TRACES_not_forever_EOB:
   unfolding TRACES_def traces_def
   by (auto dest: traced_not_forever_EOB)
 *)
-
-lemma TRACES_Read[simp]: "TRACES (Read p f) =
-  (\<Union>x. LCons (Inp p (Observed x)) ` TRACES (f (Observed x))) \<union>
-  LCons (Inp p EOB) ` TRACES (f EOB) \<union>
-  LCons (Inp p EOS) ` TRACES (f EOS)"
-  unfolding TRACES_def traces_Read Un_Union_image
-  apply (intro arg_cong2[where f="(\<union>)"])
-  subgoal
-    apply (auto simp: image_iff) []
-    apply (metis fun_upd_triv)
-    done
-  subgoal
-    apply (auto simp: image_iff traces_def split: nat.splits) []
-    apply (metis (no_types, opaque_lifting) fun_upd_idem_iff fun_upd_upd nat.inject zero_less_Suc)
-    done
-  subgoal
-    apply (auto simp: image_iff) []
-    apply (metis fun_upd_triv)
-    done
-  done
-
-lemma TRACES_Write[simp]:
-  "TRACES (Write op p x) = LCons (Out p x) ` TRACES op"
-  by (auto simp: TRACES_def)
-
-lemma TRACES_End[simp]:
-  "TRACES End = {LNil}"
-  by (auto simp: TRACES_def)
 
 section\<open>Cleaned predicate\<close>
 
@@ -413,25 +383,25 @@ lemma cleaned_coinduct_upto: "X op \<Longrightarrow>
 lemma ldropn_LConsD: "ldropn n xs = LCons x ys \<Longrightarrow> x \<in> lset xs"
   by (metis in_lset_ldropnD lset_intros(1))
 
-lemma non_input_traces: "t \<in> lset lxs \<Longrightarrow> t = Inp p y \<Longrightarrow> p \<notin> inputs op \<Longrightarrow> lxs \<in> traces m op \<Longrightarrow> False"
-  apply (induct t lxs arbitrary: m op rule: llist.set_induct)
-  subgoal for t lxs m op
+lemma non_input_traces: "t \<in> lset lxs \<Longrightarrow> t = Inp p y \<Longrightarrow> p \<notin> inputs op \<Longrightarrow> lxs \<in> traces op \<Longrightarrow> False"
+  apply (induct t lxs arbitrary: op rule: llist.set_induct)
+  subgoal for t lxs op
     apply (cases op; auto)
     done
-  subgoal for t lxs x m op
+  subgoal for t lxs x op
     apply (cases op; auto split: nat.splits)
     done
   done
 
 lemma cleaned_traced_gen:
-  "cleaned op \<Longrightarrow> traced m op (rev ps @@- lxs) \<Longrightarrow> alw (now ((=) (Inp p EOS)) imp nxt (alw (wow (\<lambda>t. \<forall>x. t \<noteq> Inp p x)))) ps lxs"
-  apply (coinduction arbitrary: m op ps lxs)
-  subgoal for m op ps lxs
+  "cleaned op \<Longrightarrow> traced op (rev ps @@- lxs) \<Longrightarrow> alw (now ((=) (Inp p EOS)) imp nxt (alw (wow (\<lambda>t. \<forall>x. t \<noteq> Inp p x)))) ps lxs"
+  apply (coinduction arbitrary: op ps lxs)
+  subgoal for op ps lxs
     apply (cases lxs)
      apply simp_all
     subgoal for x lxs'
       apply (intro conjI impI disjI1; blast?)
-      apply (induct ps arbitrary: op m rule: rev_induct)
+      apply (induct ps arbitrary: op rule: rev_induct)
        apply simp
        apply (erule traced.cases; simp)
        apply (erule cleaned.cases; simp)
@@ -444,24 +414,24 @@ lemma cleaned_traced_gen:
   done
 
 lemma cleaned_traced:
-  "cleaned op \<Longrightarrow> traced m op lxs \<Longrightarrow> alw (now ((=) (Inp p EOS)) imp nxt (alw (wow (\<lambda>t. \<forall>x. t \<noteq> Inp p x)))) [] lxs"
+  "cleaned op \<Longrightarrow> traced op lxs \<Longrightarrow> alw (now ((=) (Inp p EOS)) imp nxt (alw (wow (\<lambda>t. \<forall>x. t \<noteq> Inp p x)))) [] lxs"
   using cleaned_traced_gen[where ps = "[]"] by simp
 
 section\<open>Trace model full abstraction\<close>
 
-lemma traced_traced_wit: "traced m op (traced_wit op)"
-  apply (coinduction arbitrary: op m)
+lemma traced_traced_wit: "traced op (traced_wit op)"
+  apply (coinduction arbitrary: op)
   apply (subst (1 3 5 7) traced_wit.code)
   apply (auto split: op.splits dest: lset_traced_wit simp: traced_wit.code[where op=End])
   done
 
-lemma traced_wit_TRACES: "traced_wit op \<in> TRACES op"
-  by (auto simp add: traced_traced_wit TRACES_def traces_def)
+lemma traced_wit_traces: "traced_wit op \<in> traces op"
+  by (auto simp add: traced_traced_wit traces_def)
 
-lemma traces_nonempty: "traces m op \<noteq> {}"
+lemma traces_nonempty: "traces op \<noteq> {}"
   by (auto simp: traces_def intro!: traced_traced_wit)
 
-lemma traces_op_eqI: "TRACES op = TRACES op' \<Longrightarrow> op = op'"
+lemma traces_op_eqI: "traces op = traces op' \<Longrightarrow> op = op'"
   apply (coinduction arbitrary: op op')
   subgoal for op op'
     apply (cases op; cases op')
@@ -473,7 +443,7 @@ lemma traces_op_eqI: "TRACES op = TRACES op' \<Longrightarrow> op = op'"
         apply simp
         apply (drule iffD1)
          apply (rule disjI2)
-         apply (auto dest: lset_traced_wit simp: traces_def traced_wit_TRACES image_iff) []
+         apply (auto dest: lset_traced_wit simp: traces_def traced_traced_wit image_iff) []
         apply (erule exE disjE conjE)+
          apply (simp_all add: gr0_conv_Suc image_iff)
         done
@@ -496,19 +466,19 @@ lemma traces_op_eqI: "TRACES op = TRACES op' \<Longrightarrow> op = op'"
       done
     subgoal
       apply (auto simp: set_eq_iff image_iff)
-      apply (metis IO.distinct(1) llist.inject traced_wit_TRACES)
+      apply (metis IO.distinct(1) llist.inject traced_wit_traces)
       done
     subgoal
       apply (auto dest!: spec[of _ LNil] simp: gr0_conv_Suc)
       done
     subgoal
       apply (auto simp: set_eq_iff image_iff)
-      apply (metis IO.distinct(1) llist.inject traced_wit_TRACES)
+      apply (metis IO.distinct(1) llist.inject traced_wit_traces)
       done
     subgoal for op1 p1 x1 op2 p2 x2
       apply (auto simp: set_eq_iff image_iff)
-      apply (metis IO.inject(2) llist.inject traced_wit_TRACES)
-      apply (metis IO.inject(2) llist.inject traced_wit_TRACES)
+      apply (metis IO.inject(2) llist.inject traced_wit_traces)
+      apply (metis IO.inject(2) llist.inject traced_wit_traces)
       done
     subgoal
       apply (auto simp: set_eq_iff image_iff)
@@ -591,7 +561,7 @@ lemma produce_inner_induct:
 section\<open>History model\<close>
 
 definition "history op lxs lys =
-  (\<exists> ios m. traced m op ios \<and>
+  (\<exists> ios. traced op ios \<and>
   (\<forall> p. lprefix (lproject (=) \<bottom> ios p) (lxs p)) \<and> lys = lproject \<bottom> (=) ios)"
 
 corec produce_trace where
@@ -765,7 +735,6 @@ lemma
   "history op lxs (produce op lxs)"
   unfolding history_def
   apply (rule exI[of _ "produce_trace op lxs"])
-  apply (rule exI[of _ "\<lambda> _ . 0"])
   apply (intro impI conjI allI)
   subgoal 
     apply (coinduction arbitrary: op lxs)
