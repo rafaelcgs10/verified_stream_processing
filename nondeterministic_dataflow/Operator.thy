@@ -214,7 +214,7 @@ coinductive traced where
 | End: "traced End LNil"
 
 inductive_cases traced_EndE[elim!]: "traced End lxs"
-inductive_cases traced_LNilE[elim!]: "traced End LNil"
+inductive_cases traced_LNilE[elim!]: "traced op LNil"
 inductive_cases traced_WriteE[elim!]: "traced (Write op p' x) lxs"
 inductive_cases traced_ReadE[elim!]: "traced (Read p' f) lxs"
 
