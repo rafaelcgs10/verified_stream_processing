@@ -276,10 +276,22 @@ lemma trace_fmTF_lproject1: "trace_fmTF (ios :: (2, 1, 'd) IO llist) \<Longright
   by (erule trace_fmTF.cases)
     (auto simp: lproject_empty_conv Inp_1_lset_trace_fmTF)
 
+lemma trace_fmTF_lproject2: "trace_fmTF (ios :: (2, 1, 'd) IO llist) \<Longrightarrow> lproject (=) \<bottom> ios 2 = lproject \<bottom> (=) ios 1"
+  apply (coinduction arbitrary: ios)
+  apply (auto simp: lproject_empty_conv lnull_def)
+     prefer 3
+     apply (erule trace_fmTF.cases; auto simp: lproject_def)
+     apply (subst (1 2) llist.map_sel)
+       apply (auto split: observation.splits IO.splits)
+  sorry
+
 lemma history_fairmerge_True_False: "history (fairmerge True False) lxs lzs \<longleftrightarrow>
   lprefix (lzs 1) (lxs 2)"
   unfolding history_def traced_fairmerge_True_False
-  apply (auto simp: fun_eq_iff)
+  apply (auto simp: fun_eq_iff trace_fmTF_lproject2[symmetric])
+  apply (rule exI[of _ "produce_trace (fairmerge True False) lxs"])
+  apply (intro conjI)
+  sledgehammer
   apply (subst trace_fmTF_lproject1)
 
 coinductive merged where
