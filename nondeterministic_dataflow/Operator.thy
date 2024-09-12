@@ -34,6 +34,54 @@ abbreviation ctl :: "'d channel \<Rightarrow> 'd channel" where "ctl \<equiv> lt
 abbreviation CHD :: "'a \<Rightarrow> ('a \<Rightarrow> 'd channel) \<Rightarrow> 'd observation" where "CHD p lxs \<equiv> chd (lxs p)"
 abbreviation CTL :: "'a \<Rightarrow> ('a \<Rightarrow> 'd channel) \<Rightarrow> ('a \<Rightarrow> 'd channel)" where "CTL p lxs \<equiv> lxs(p := ctl (lxs p))"
 
+section \<open>Sub operators\<close>
+
+inductive sub_op :: \<open>('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op \<Rightarrow> nat \<Rightarrow> bool\<close> for op where
+  sub_op_Refl: \<open>sub_op op op 0\<close>
+| sub_op_Read: \<open>sub_op op (f x) n \<Longrightarrow> sub_op op (Read p f) (Suc n)\<close>
+| sub_op_Write: \<open>sub_op op op' n \<Longrightarrow> sub_op op (Write op' p x) (Suc n)\<close>
+
+inductive_cases sub_op_ReflE [elim!]: \<open>sub_op op op n\<close>
+inductive_cases sub_op_ReadE [elim!]: \<open>sub_op op (Read p f) n\<close>
+inductive_cases sub_op_WriteE [elim!]: \<open>sub_op op (Write op' p x) n\<close>   
+
+lemma inputs_sub_op_Read: \<open>p \<in> inputs op \<Longrightarrow> \<exists>f n. sub_op (Read p f) op n\<close>
+  by (induct op pred: inputs) (auto intro: sub_op.intros)
+
+lemma sub_op_Read_inputs: \<open>sub_op (Read p f) op n \<Longrightarrow> p \<in> inputs op\<close>
+  by (induct op n pred: sub_op) auto
+
+lemma outputs_sub_op_Write: \<open>p \<in> outputs op \<Longrightarrow> \<exists>op' x n. sub_op (Write op' p x) op n\<close>
+  by (induct op pred: outputs) (auto intro: sub_op.intros)
+
+lemma sub_op_Write_outputs: \<open>sub_op (Write op' p x) op n \<Longrightarrow> p \<in> outputs op\<close>
+  by (induct op n pred: sub_op) auto
+
+lemma sub_op_Read_induct [consumes 1, case_names Read1 Read2 Write]:
+  assumes \<open>sub_op (Read p g) op d\<close>
+    and read1: \<open>\<And>f p. P p (Read p f)\<close>
+    and read2: \<open>\<And>p p' f x n. sub_op (Read p g) (f x) n \<Longrightarrow> (\<And>y op. y \<le> n \<Longrightarrow> sub_op (Read p g) op y \<Longrightarrow> P p op) \<Longrightarrow> P p (Read p' f)\<close>
+    and writ: \<open>\<And>p p' op' x n. sub_op (Read p g) op' n \<Longrightarrow> (\<And>y op. y \<le> n \<Longrightarrow> sub_op (Read p g) op y \<Longrightarrow> P p op) \<Longrightarrow> P p (Write op' p' x)\<close>
+  shows \<open>P p op\<close>
+  using assms(1)
+proof (induct d arbitrary: op p rule: less_induct)
+  case (less m)
+  from this(2,1) show ?case
+  proof (induct op m pred: sub_op)
+    case sub_op_Refl
+    then show ?case
+      using read1 by simp
+  next
+    case (sub_op_Read f x n p)
+    then show ?case
+      using read2 by (meson le_imp_less_Suc)
+  next
+    case (sub_op_Write op' n p x)
+    then show ?case
+      using writ by (meson le_imp_less_Suc)
+  qed
+qed
+
 section\<open>Inputs measure\<close>
 
 inductive input_at where
