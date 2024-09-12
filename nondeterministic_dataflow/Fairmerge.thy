@@ -7,7 +7,7 @@ imports
   Linear_Temporal_Logic_on_Llists
 begin
 
-corec fairmerge :: "bool \<Rightarrow> bool \<Rightarrow> (2, 1, nat) op" where
+corec fairmerge :: "bool \<Rightarrow> bool \<Rightarrow> (2, 1, 'd) op" where
   "fairmerge e1 e2 = (case (e1, e2) of
       (True, True) \<Rightarrow> End
     | (True, False) \<Rightarrow> Read 2 (case_observation (Write (fairmerge e1 e2) 1) (fairmerge e1 e2) End)
@@ -190,25 +190,25 @@ lemma trace_fmFF_I: "traced (fairmerge False False) lxs \<Longrightarrow> trace_
         apply (rule disjI2)
         apply (rule exI conjI[rotated] disjI1 trace_fmFF_A1_I2 trace_fmFF_A2_I2 | assumption)+
         apply simp
-       apply (rule disjI1)
-       apply (rule exI conjI[rotated] disjI1 trace_fmFF_A1_I2 trace_fmFT_I | assumption)+
+       apply (rule disjI2)
+       apply (rule exI conjI[rotated] disjI1 trace_fmFF_A1_I2 trace_fmFF_A2_I1 | assumption)+
+       apply simp
+      apply (rule disjI1)
+      apply (rule exI conjI[rotated] disjI1 trace_fmFF_A1_I2 trace_fmFT_I | assumption)+
+      apply simp
+     apply (erule traced_ReadE; simp split: observation.splits)
+       apply (erule traced_WriteE; simp)
+       apply (rule disjI2)
+       apply (rule exI conjI[rotated] disjI1 trace_fmFF_A1_I1 trace_fmFF_A2_I2 | assumption)+
        apply simp
       apply (rule disjI2)
-      apply (rule exI conjI[rotated] disjI1 trace_fmFF_A1_I2 trace_fmFF_A2_I1 | assumption)+
-      apply simp
-     apply (rule disjI1)
-     apply (rule trace_fmTF_I | assumption)+
-    apply (erule traced_ReadE; simp split: observation.splits)
-      apply (erule traced_WriteE; simp)
-      apply (rule disjI2)
-      apply (rule exI conjI[rotated] disjI1 trace_fmFF_A1_I1 trace_fmFF_A2_I2 | assumption)+
+      apply (rule exI conjI[rotated] disjI1 trace_fmFF_A1_I1 trace_fmFF_A2_I1 | assumption)+
       apply simp
      apply (rule disjI1)
      apply (rule exI conjI[rotated] disjI1 trace_fmFF_A1_I1 trace_fmFT_I | assumption)+
      apply simp
-    apply (rule disjI2)
-    apply (rule exI conjI[rotated] disjI1 trace_fmFF_A1_I1 trace_fmFF_A2_I1 | assumption)+
-    apply simp
+    apply (rule disjI1)
+    apply (erule trace_fmTF_I)
     done
   done
 
@@ -257,9 +257,42 @@ section\<open>Correctness using the history model\<close>
 lemma history_fairmerge_True_True: "history (fairmerge True True) lxs lzs \<longleftrightarrow> lzs = (\<lambda>_. LNil)"
   unfolding history_def traced_fairmerge_True_True by auto
 
-lemma history_fairmerge_True_False: "history (fairmerge True False) lxs lzs \<longleftrightarrow> lzs = (\<lambda>_. lxs 2)"
+lemma Inp_1_lset_trace_fmTF: "Inp (1 :: 2) x \<in> lset ios \<Longrightarrow> \<not> trace_fmTF ios"
+  unfolding lset_conv_lnth mem_Collect_eq
+  apply safe
+  subgoal for n
+    apply (induct n arbitrary: ios rule: less_induct)
+    subgoal for n ios
+      apply (cases n)
+      apply (erule trace_fmTF.cases; auto)
+      apply (erule trace_fmTF.cases; auto simp: enat_0[symmetric]
+        simp: lnth_LCons' gr0_conv_Suc Suc_ile_eq split: if_splits)
+      apply (metis less_add_Suc2 plus_1_eq_Suc)
+      done
+    done
+  done
+
+lemma trace_fmTF_lproject1: "trace_fmTF (ios :: (2, 1, 'd) IO llist) \<Longrightarrow> lproject (=) \<bottom> ios (1 :: 2) = LNil"
+  by (erule trace_fmTF.cases)
+    (auto simp: lproject_empty_conv Inp_1_lset_trace_fmTF)
+
+lemma trace_fmTF_lproject2: "trace_fmTF (ios :: (2, 1, 'd) IO llist) \<Longrightarrow> lproject (=) \<bottom> ios 2 = lproject \<bottom> (=) ios 1"
+  apply (coinduction arbitrary: ios)
+  apply (auto simp: lproject_empty_conv lnull_def)
+     prefer 3
+     apply (erule trace_fmTF.cases; auto simp: lproject_def)
+     apply (subst (1 2) llist.map_sel)
+       apply (auto split: observation.splits IO.splits)
+  sorry
+
+lemma history_fairmerge_True_False: "history (fairmerge True False) lxs lzs \<longleftrightarrow>
+  lprefix (lzs 1) (lxs 2)"
   unfolding history_def traced_fairmerge_True_False
-  apply (auto simp: fun_eq_iff)
+  apply (auto simp: fun_eq_iff trace_fmTF_lproject2[symmetric])
+  apply (rule exI[of _ "produce_trace (fairmerge True False) lxs"])
+  apply (intro conjI)
+  sledgehammer
+  apply (subst trace_fmTF_lproject1)
 
 coinductive merged where
   "merged LNil lxs lxs"
