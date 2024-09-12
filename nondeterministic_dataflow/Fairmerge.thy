@@ -80,495 +80,186 @@ lemma cleaned_fairmerge: "cleaned (fairmerge e1 e2)"
 
 section \<open>Correctness\<close>
 
-lemma traced_fairmerge_True_True: "traced m (fairmerge True True) lxs \<longleftrightarrow> lxs = LNil"
+lemma traced_fairmerge_True_True: "traced (fairmerge True True) lxs \<longleftrightarrow> lxs = LNil"
   by (subst fairmerge.code) (auto intro: traced.intros)
 
 coinductive trace_fmTF where
-    "trace_fmTF (replicate n (Inp 2 EOB) @@- LCons (Inp 2 EOS) LNil)"
-  | "trace_fmTF lxs \<Longrightarrow> trace_fmTF (replicate n (Inp 2 EOB) @@- LCons (Inp 2 (Observed x)) (LCons (Out 1 x) lxs))"
+    "trace_fmTF (LCons (Inp 2 EOS) LNil)"
+  | "trace_fmTF lxs \<Longrightarrow> trace_fmTF (LCons (Inp 2 EOB) lxs)"
+  | "trace_fmTF lxs \<Longrightarrow> trace_fmTF (LCons (Inp 2 (Observed x)) (LCons (Out 1 x) lxs))"
 
-lemma trace_fmTF_I: "traced m (fairmerge True False) lxs \<Longrightarrow> trace_fmTF lxs"
-  apply (coinduction arbitrary: m lxs)
-  subgoal for m lxs
-    apply (induct "m 2" arbitrary: m lxs)
+lemma trace_fmTF_I: "traced (fairmerge True False) lxs \<Longrightarrow> trace_fmTF lxs"
+  apply (coinduction arbitrary: lxs)
+  subgoal for lxs
     apply (subst (asm) fairmerge.code)
     apply simp
     apply (erule traced_ReadE; simp split: observation.splits)
-      apply (erule traced_WriteE; simp)
-      apply (metis lshift_simps(1) replicate.simps(1))
-     apply (metis lshift_simps(1) replicate.simps(1) traced_EndE)
-    apply (subst (asm) (3) fairmerge.code)
-    apply simp
-    apply (erule traced_ReadE; simp split: observation.splits)
-      apply (erule traced_WriteE; simp)
-      apply (metis lshift_simps(1) replicate.simps(1))
-     apply (metis lshift_simps(1) replicate.simps(1) traced_EndE)
-    subgoal for x m lxs n lxs'
-      apply (drule meta_spec[of _ "m(2 := n)"])
-      apply (drule meta_spec[of _ "lxs'"])
-      apply (drule meta_mp, simp)
-      apply (drule meta_mp, assumption)
-      apply (erule disjE)
-       apply (metis lshift_simps(2) replicate.simps(2))
-      apply (metis lshift_simps(2) replicate.simps(2))
-      done
+     apply (erule traced_WriteE; simp)
+    apply (erule traced_EndE; simp)
     done
   done
 
-lemma trace_fmTF_llength: "trace_fmTF lxs \<Longrightarrow> \<exists>n. llength (ltakeWhile ((=) (Inp 2 EOB)) lxs) = enat n"
-  by (erule trace_fmTF.cases) (auto simp: ltakeWhile_lshift)
-
-lemma trace_fmTF_D: "trace_fmTF lxs \<Longrightarrow> m 2 \<ge> llength (ltakeWhile ((=) (Inp 2 EOB)) lxs) \<Longrightarrow> traced m (fairmerge True False) lxs"
-  apply (coinduction arbitrary: m lxs rule: traced_coinduct_upto)
-  subgoal for m lxs
+lemma trace_fmTF_D: "trace_fmTF lxs \<Longrightarrow> traced (fairmerge True False) lxs"
+  apply (coinduction arbitrary: lxs rule: traced_coinduct_upto)
+  subgoal for lxs
     apply (erule trace_fmTF.cases)
-     apply (simp_all add: ltakeWhile_lshift)
-    subgoal for n
-      apply (cases n)
-       apply (rule disjI1)
-       apply (subst fairmerge.code)
+      apply simp_all
+    subgoal
+      apply (subst fairmerge.code)
       apply (auto intro!: tc_traced traced.End) []
-       apply (rule disjI2)
-       apply (rule disjI1)
-      apply (subst fairmerge.code)
-      apply (cases "m 2")
-       apply (auto intro!: tc_base trace_fmTF.intros simp: ltakeWhile_lshift) [2]
       done
-    subgoal for lxs' n x
-      apply (cases n)
-       apply (rule disjI1)
-       apply (subst fairmerge.code)
-       apply (auto intro!: tc_write tc_base[where op = "fairmerge _ _"] exI[of _ "the_enat (llength (ltakeWhile ((=) (Inp 2 EOB)) lxs'))"]
-         dest: trace_fmTF_llength) []
-       apply (rule disjI2)
-       apply (rule disjI1)
+    subgoal
       apply (subst fairmerge.code)
-      apply (cases "m 2")
-       apply (auto intro!: tc_base trace_fmTF.intros simp: ltakeWhile_lshift) [2]
+      apply (auto intro!: trace_fmTF.intros intro: tc_base) []
+      done
+    subgoal
+      apply (subst fairmerge.code)
+      apply (auto intro!: tc_write trace_fmTF.intros intro: tc_base) []
       done
     done
   done
 
-lemma TRACES_fairmerge_True_False: "lxs \<in> TRACES (fairmerge True False) \<longleftrightarrow> trace_fmTF lxs"
-  using trace_fmTF_llength[of lxs] trace_fmTF_D[of lxs]
-  by (force intro: trace_fmTF_I simp: TRACES_def traces_def)
+lemma traced_fairmerge_True_False: "traced (fairmerge True False) lxs \<longleftrightarrow> trace_fmTF lxs"
+  using trace_fmTF_I trace_fmTF_D by blast
 
 coinductive trace_fmFT where
-    "trace_fmFT (replicate n (Inp 1 EOB) @@- LCons (Inp 1 EOS) LNil)"
-  | "trace_fmFT lxs \<Longrightarrow> trace_fmFT (replicate n (Inp 1 EOB) @@- LCons (Inp 1 (Observed x)) (LCons (Out 1 x) lxs))"
+    "trace_fmFT (LCons (Inp 1 EOS) LNil)"
+  | "trace_fmFT lxs \<Longrightarrow> trace_fmFT (LCons (Inp 1 EOB) lxs)"
+  | "trace_fmFT lxs \<Longrightarrow> trace_fmFT (LCons (Inp 1 (Observed x)) (LCons (Out 1 x) lxs))"
 
-lemma trace_fmFT_I: "traced m (fairmerge False True) lxs \<Longrightarrow> trace_fmFT lxs"
-  apply (coinduction arbitrary: m lxs)
-  subgoal for m lxs
-    apply (induct "m 1" arbitrary: m lxs)
+lemma trace_fmFT_I: "traced (fairmerge False True) lxs \<Longrightarrow> trace_fmFT lxs"
+  apply (coinduction arbitrary: lxs)
+  subgoal for lxs
     apply (subst (asm) fairmerge.code)
     apply simp
     apply (erule traced_ReadE; simp split: observation.splits)
-      apply (erule traced_WriteE; simp)
-      apply (metis lshift_simps(1) replicate.simps(1))
-     apply (metis lshift_simps(1) replicate.simps(1) traced_EndE)
-    apply (subst (asm) (3) fairmerge.code)
-    apply simp
-    apply (erule traced_ReadE; simp split: observation.splits)
-      apply (erule traced_WriteE; simp)
-      apply (metis lshift_simps(1) replicate.simps(1))
-     apply (metis lshift_simps(1) replicate.simps(1) traced_EndE)
-    subgoal for x m lxs n lxs'
-      apply (drule meta_spec[of _ "m(1 := n)"])
-      apply (drule meta_spec[of _ "lxs'"])
-      apply (drule meta_mp, simp)
-      apply (drule meta_mp, assumption)
-      apply (erule disjE)
-       apply (metis lshift_simps(2) replicate.simps(2))
-      apply (metis lshift_simps(2) replicate.simps(2))
-      done
+     apply (erule traced_WriteE; simp)
+    apply (erule traced_EndE; simp)
     done
   done
 
-lemma trace_fmFT_llength: "trace_fmFT lxs \<Longrightarrow> \<exists>n. llength (ltakeWhile ((=) (Inp 1 EOB)) lxs) = enat n"
-  by (erule trace_fmFT.cases) (auto simp: ltakeWhile_lshift)
-
-lemma trace_fmFT_D: "trace_fmFT lxs \<Longrightarrow> m 1 \<ge> llength (ltakeWhile ((=) (Inp 1 EOB)) lxs) \<Longrightarrow> traced m (fairmerge False True) lxs"
-  apply (coinduction arbitrary: m lxs rule: traced_coinduct_upto)
-  subgoal for m lxs
+lemma trace_fmFT_D: "trace_fmFT lxs \<Longrightarrow> traced (fairmerge False True) lxs"
+  apply (coinduction arbitrary: lxs rule: traced_coinduct_upto)
+  subgoal for lxs
     apply (erule trace_fmFT.cases)
-     apply (simp_all add: ltakeWhile_lshift)
-    subgoal for n
-      apply (cases n)
-       apply (rule disjI1)
-       apply (subst fairmerge.code)
+      apply simp_all
+    subgoal
+      apply (subst fairmerge.code)
       apply (auto intro!: tc_traced traced.End) []
-       apply (rule disjI2)
-       apply (rule disjI1)
-      apply (subst fairmerge.code)
-      apply (cases "m 1")
-       apply (auto intro!: tc_base trace_fmFT.intros simp: ltakeWhile_lshift) [2]
       done
-    subgoal for lxs' n x
-      apply (cases n)
-       apply (rule disjI1)
-       apply (subst fairmerge.code)
-       apply (auto intro!: tc_write tc_base[where op = "fairmerge _ _"] exI[of _ "the_enat (llength (ltakeWhile ((=) (Inp 1 EOB)) lxs'))"]
-         dest: trace_fmFT_llength) []
-       apply (rule disjI2)
-       apply (rule disjI1)
+    subgoal
       apply (subst fairmerge.code)
-      apply (cases "m 1")
-       apply (auto intro!: tc_base trace_fmFT.intros simp: ltakeWhile_lshift) [2]
+      apply (auto intro!: trace_fmFT.intros intro: tc_base) []
+      done
+    subgoal
+      apply (subst fairmerge.code)
+      apply (auto intro!: tc_write trace_fmFT.intros intro: tc_base) []
       done
     done
   done
 
-lemma TRACES_fairmerge_False_True: "lxs \<in> TRACES (fairmerge False True) \<longleftrightarrow> trace_fmFT lxs"
-  using trace_fmFT_llength[of lxs] trace_fmFT_D[of lxs]
-  by (force intro: trace_fmFT_I simp: TRACES_def traces_def)
+lemma traced_fairmerge_False_True: "traced (fairmerge False True) lxs \<longleftrightarrow> trace_fmFT lxs"
+  using trace_fmFT_I trace_fmFT_D by blast
 
-fun cycle where
-  "cycle 0 xs = []"
-| "cycle (Suc n) xs = xs @ cycle n xs"
+definition "trace_fmFF_A1 \<equiv> {[Inp 1 EOB]} \<union> range (\<lambda>x. [Inp 1 (Observed x), Out 1 x])"
+definition "trace_fmFF_A2 \<equiv> {[Inp 2 EOB]} \<union> range (\<lambda>x. [Inp 2 (Observed x), Out 1 x])"
 
 coinductive trace_fmFF where
-    "trace_fmTF lxs \<Longrightarrow> trace_fmFF (cycle n [Inp 1 EOB, Inp 2 EOB] @@- LCons (Inp 1 EOS) lxs)"
-  | "trace_fmFT lxs \<Longrightarrow> trace_fmFF (cycle n [Inp 1 EOB, Inp 2 EOB] @@- LCons (Inp 2 EOS) lxs)"
-  | "trace_fmFF lxs \<Longrightarrow> trace_fmFF (cycle n [Inp 1 EOB, Inp 2 EOB] @@- LCons (Inp 1 (Observed x)) (LCons (Out 1 x) lxs))"
-  | "trace_fmFF lxs \<Longrightarrow> trace_fmFF (cycle n [Inp 1 EOB, Inp 2 EOB] @@- LCons (Inp 2 (Observed x)) (LCons (Out 1 x) lxs))"
+    "trace_fmTF lxs \<Longrightarrow> trace_fmFF (LCons (Inp 1 EOS) lxs)"
+  | "trace_fmFT lxs \<Longrightarrow> a1 \<in> trace_fmFF_A1 \<Longrightarrow> trace_fmFF (a1 @@- LCons (Inp 2 EOS) lxs)"
+  | "trace_fmFF lxs \<Longrightarrow> a1 \<in> trace_fmFF_A1 \<Longrightarrow> a2 \<in> trace_fmFF_A2 \<Longrightarrow> trace_fmFF (a1 @@- a2 @@- lxs)"
 
-inductive trace_fmFF_cong for R where
-  tFFc_base: "R lxs \<Longrightarrow> trace_fmFF_cong R lxs"
-| tFFc_trace_fmFF: "trace_fmFF lxs \<Longrightarrow> trace_fmFF_cong R lxs"
-(*
-| tFFc_EOB1: "trace_fmFF_cong R lxs \<Longrightarrow> trace_fmFF_cong R (LCons (Inp 1 EOB) lxs)"
-| tFFc_EOB2: "trace_fmFF_cong R lxs \<Longrightarrow> trace_fmFF_cong R (LCons (Inp 2 EOB) lxs)"
-*)
-| tFFc_IO1: "trace_fmFF_cong R lxs \<Longrightarrow> trace_fmFF_cong R (LCons (Inp 1 (Observed x)) (LCons (Out 1 x) lxs))"
-| tFFc_IO2: "trace_fmFF_cong R lxs \<Longrightarrow> trace_fmFF_cong R (LCons (Inp 2 (Observed x)) (LCons (Out 1 x) lxs))"
-thm trace_fmFF.coinduct
-lemma trace_fmFF_coinduct_upto:
-  assumes X: "X lxs"
-  and CIH: "(\<And>lys. X lys \<Longrightarrow>
-      (\<exists>lxs n. lys = cycle n [Inp 1 EOB, Inp 2 EOB] @@- LCons (Inp 1 EOS) lxs \<and> trace_fmTF lxs) \<or>
-      (\<exists>lxs n. lys = (Inp 1 EOB # cycle n [Inp 2 EOB, Inp 1 EOB]) @@- LCons (Inp 2 EOS) lxs \<and> trace_fmFT lxs) \<or>
-      (\<exists>lxs n x.
-          lys = cycle n [Inp 1 EOB, Inp 2 EOB] @@- LCons (Inp 1 (Observed x)) (LCons (Out 1 x) lxs) \<and>
-          trace_fmFF_cong X lxs) \<or>
-      (\<exists>lxs n x.
-          lys = (Inp 1 EOB # cycle n [Inp 2 EOB, Inp 1 EOB]) @@- LCons (Inp 2 (Observed x)) (LCons (Out 1 x) lxs) \<and>
-          trace_fmFF_cong X lxs))"
-  shows" trace_fmFF lxs"
-  apply (rule trace_fmFF.coinduct[of "trace_fmFF_cong X"])
-   apply (rule tFFc_base, rule X)
+lemma trace_fmFF_A1_I1: "[Inp 1 EOB] \<in> trace_fmFF_A1"
+  by (auto simp: trace_fmFF_A1_def)
+lemma trace_fmFF_A1_I2: "[Inp 1 (Observed x), Out 1 x] \<in> trace_fmFF_A1"
+  by (auto simp: trace_fmFF_A1_def)
+lemma trace_fmFF_A2_I1: "[Inp 2 EOB] \<in> trace_fmFF_A2"
+  by (auto simp: trace_fmFF_A2_def)
+lemma trace_fmFF_A2_I2: "[Inp 2 (Observed x), Out 1 x] \<in> trace_fmFF_A2"
+  by (auto simp: trace_fmFF_A2_def)
+
+lemma trace_fmFF_I: "traced (fairmerge False False) lxs \<Longrightarrow> trace_fmFF lxs"
+  apply (coinduction arbitrary: lxs)
   subgoal for lxs
-    apply (induct lxs pred: trace_fmFF_cong)
-    subgoal for lxs
-      by (drule CIH) (auto 3 4 intro: tFFc_base)
-    subgoal for lxs
-      by (erule trace_fmFF.cases) (auto 3 4 intro: tFFc_trace_fmFF)
-(*
-    subgoal for lxs
-      apply (elim disjE exE conjE; hypsubst_thin)
-           apply (metis insert_iff insert_subset list.set(2) lshift_simps(2))+
-      done
-    subgoal for lxs
-      apply (elim disjE exE conjE; hypsubst_thin)
-           apply (metis insert_iff insert_subset list.set(2) lshift_simps(2))+
-      done
-*)
-    subgoal for lxs x
-      apply (rule disjI2)
-      apply (rule disjI2)
-      apply (rule disjI1)
-      apply (elim disjE exE conjE; hypsubst_thin)
-           apply (rule exI, rule exI[of _ "0"], rule exI, rule conjI, simp, simp)+
-      done
-    subgoal for lxs x
-      apply (rule disjI2)
-      apply (rule disjI2)
-      apply (rule disjI2)
-      apply (elim disjE exE conjE; hypsubst_thin)
-           apply (rule exI, rule exI[of _ "0"], rule exI, rule conjI, simp, simp)+
-      done
-    done
-  done
-
-lemma trace_fmFF_I: "traced m (fairmerge False False) lxs \<Longrightarrow> trace_fmFF lxs"
-  apply (coinduction arbitrary: m lxs rule: trace_fmFF_coinduct_upto)
-  subgoal for m lxs
-    apply (induct "m 1 + m 2" arbitrary: m lxs rule: less_induct)
-    subgoal premises prems for m lxs
-      using prems(2)
-       apply (subst (asm) fairmerge.code)
-       apply simp
-       apply (elim traced_ReadE traced_WriteE; simp split: observation.splits)
-        apply (erule traced_WriteE; simp)
-        apply (erule traced_ReadE; simp split: observation.splits)
-         apply (erule traced_WriteE; simp)
-      subgoal
-        apply (rule disjI2)
-        apply (rule disjI2)
-        apply (rule disjI1)
-        apply (rule exI, rule exI[of _ "[]"], rule conjI, simp, simp)
-        apply (rule tFFc_IO2)
-        apply (rule tFFc_base)
-        apply blast
-        done
-      subgoal
-        apply (rule disjI2)
-        apply (rule disjI2)
-        apply (rule disjI1)
-        apply (rule exI, rule exI[of _ "[]"], rule conjI, simp, simp)
-        apply (rule tFFc_trace_fmFF)
-        apply (rule trace_fmFF.intros(2)[of _ "[]", simplified])
-        apply (erule trace_fmFT_I)
-        done
-      subgoal
-        apply (rule disjI2)
-        apply (rule disjI2)
-        apply (rule disjI1)
-        apply (rule exI, rule exI[of _ "[]"], rule conjI, simp, simp)
-        apply (rule tFFc_EOB2)
-        apply (rule tFFc_base)
-        apply blast
-        done
-      subgoal
-        apply (rule disjI1)
-        apply (rule exI, rule exI[of _ "[]"], rule conjI, simp, simp)
-        apply (erule trace_fmTF_I)
-        done
+    apply (subst (asm) fairmerge.code)
+    apply simp
+    apply (elim traced_ReadE traced_WriteE; simp split: observation.splits)
+      apply (erule traced_WriteE; simp)
       apply (erule traced_ReadE; simp split: observation.splits)
         apply (erule traced_WriteE; simp)
-      subgoal
         apply (rule disjI2)
-        apply (rule disjI2)
-        apply (rule disjI2)
-        apply (rule exI, rule exI[of _ "[_]"], rule conjI, simp, simp)
-        apply (rule tFFc_base)
-        apply blast
-        done
-      subgoal
-        apply (rule disjI2)
-        apply (rule disjI1)
-        apply (rule exI, rule exI[of _ "[_]"], rule conjI, simp, simp)
-        apply (erule trace_fmFT_I)
-        done
-      subgoal for n1 lxs' n2 lxs''
-        apply hypsubst_thin
-        using prems(1)[of "m(1 := n1, 2 := n2)" lxs'']
+        apply (rule exI conjI[rotated] disjI1 trace_fmFF_A1_I2 trace_fmFF_A2_I2 | assumption)+
         apply simp
-        apply (elim disj_mono[rule_format, rotated 2] exE conjE; hypsubst_thin)
-           apply (rule exI, rule exI[of _ "Inp 1 EOB # Inp 2 EOB # _"], rule conjI, (rule exI)?, simp, simp)+
-        done
-      done
+       apply (rule disjI1)
+       apply (rule exI conjI[rotated] disjI1 trace_fmFF_A1_I2 trace_fmFT_I | assumption)+
+       apply simp
+      apply (rule disjI2)
+      apply (rule exI conjI[rotated] disjI1 trace_fmFF_A1_I2 trace_fmFF_A2_I1 | assumption)+
+      apply simp
+     apply (rule disjI1)
+     apply (rule trace_fmTF_I | assumption)+
+    apply (erule traced_ReadE; simp split: observation.splits)
+      apply (erule traced_WriteE; simp)
+      apply (rule disjI2)
+      apply (rule exI conjI[rotated] disjI1 trace_fmFF_A1_I1 trace_fmFF_A2_I2 | assumption)+
+      apply simp
+     apply (rule disjI1)
+     apply (rule exI conjI[rotated] disjI1 trace_fmFF_A1_I1 trace_fmFT_I | assumption)+
+     apply simp
+    apply (rule disjI2)
+    apply (rule exI conjI[rotated] disjI1 trace_fmFF_A1_I1 trace_fmFF_A2_I1 | assumption)+
+    apply simp
     done
   done
 
-lemma trace_fmFF_llength: "trace_fmFF lxs \<Longrightarrow> \<exists>n. llength (ltakeWhile ((=) (Inp 1 EOB) \<squnion> (=) (Inp 2 EOB)) lxs) = enat n"
-  by (erule trace_fmFF.cases) (auto simp: ltakeWhile_lshift)
-
-lemma lshift_eq_LCons:
-  "xs @@- lxs = LCons x lxs' \<longleftrightarrow> xs = [] \<and> lxs = LCons x lxs' \<or> (\<exists>xs'. xs = x # xs' \<and> lxs' = xs' @@- lxs)"
-  "LCons x lxs' = xs @@- lxs \<longleftrightarrow> xs = [] \<and> lxs = LCons x lxs' \<or> (\<exists>xs'. xs = x # xs' \<and> lxs' = xs' @@- lxs)"
-  by (cases xs; auto)+
-
-lemma replicate_eq_Cons:
-  "replicate n y = x # xs \<longleftrightarrow> y = x \<and> (\<exists>m. n = Suc m \<and> xs = replicate m x)"
-  "x # xs = replicate n y \<longleftrightarrow> y = x \<and> (\<exists>m. n = Suc m \<and> xs = replicate m x)"
-  by (cases n; auto)+
-
-lemma lnth_lshift:
-  "lnth (xs @@- lxs) i = (if i < length xs then xs ! i else lnth lxs (i - length xs))"
-  by (induct xs arbitrary: i) (auto simp: lnth_LCons' gr0_conv_Suc split: if_splits)
-
-lemma trace_fmTF_lnth_not_1: "trace_fmTF lxs \<Longrightarrow> x = lnth lxs i \<Longrightarrow> i < llength lxs \<Longrightarrow> x \<noteq> Inp (1 :: 2) y"
-  apply (induct i arbitrary: lxs rule: less_induct)
-  subgoal premises prems for i lxs
-    using prems(2-)
-    apply (cases i)
-     apply (erule trace_fmTF.cases; auto simp: lnth_lshift)
-    subgoal for m
-    apply (erule trace_fmTF.cases; auto simp: llength_shift 
-      lnth_lshift lnth_LCons' not_less le_Suc_eq less_Suc_eq_le iadd_Suc_right
-       simp flip: eSuc_enat)
-      subgoal for lxs' n n'
-        apply (cases "llength lxs'")
-         apply (drule prems(1)[rotated, of _ "m - Suc n"]; (auto elim: sym)?)+
-        done
-      done
-    done
-  done
-
-lemma trace_fmTF_lset_not_1: "trace_fmTF lxs \<Longrightarrow> x \<in> lset lxs \<Longrightarrow> x \<noteq> Inp (1 :: 2) y"
-  by (meson in_lset_conv_lnth trace_fmTF_lnth_not_1)
-
-lemma trace_fmTF_ltakeWhile_eq: "trace_fmTF lxs \<Longrightarrow> 
-  ltakeWhile (\<lambda>x. Inp (1 :: 2) EOB = x \<or> Inp 2 EOB = x \<or> Inp 1 EOS = x) lxs =
-  ltakeWhile ((=) (Inp 2 EOB)) lxs"
-  by (rule ltakeWhile_cong) (auto dest: trace_fmTF_lset_not_1)
-
-lemma trace_fmFF_llength': "trace_fmFF lxs \<Longrightarrow> \<exists>n. llength (ltakeWhile ((=) (Inp (1 :: 2) EOB) \<squnion> (=) (Inp 2 EOB) \<squnion> (=) (Inp 1 EOS)) lxs) = enat n"
-  by (erule trace_fmFF.cases)
-    (auto simp: ltakeWhile_lshift trace_fmTF_ltakeWhile_eq llength_shift eSuc_enat
-       dest!: trace_fmTF_llength trace_fmFT_llength)
-
-lemma trace_fmFF_D: "trace_fmFF lxs \<Longrightarrow>
-   m 1 \<ge> llength (ltakeWhile ((=) (Inp 1 EOB) \<squnion> (=) (Inp 2 EOB)) lxs) \<Longrightarrow>
-   m 2 \<ge> llength (ltakeWhile ((=) (Inp 1 EOB) \<squnion> (=) (Inp 2 EOB) \<squnion> (=) (Inp 1 EOS)) lxs) \<Longrightarrow>
-   traced m (fairmerge False False) lxs"
-  apply (coinduction arbitrary: m lxs rule: traced_coinduct_upto)
-  subgoal for m lxs
+lemma trace_fmFF_D: "trace_fmFF lxs \<Longrightarrow> traced (fairmerge False False) lxs"
+  apply (coinduction arbitrary: lxs rule: traced_coinduct_upto)
+  subgoal for lxs
     apply (erule trace_fmFF.cases)
-    subgoal for lxs' xs
-      apply (simp_all add: ltakeWhile_lshift subset_eq split: if_splits)
-      subgoal by fast
-      subgoal
-        apply (cases xs)
-         apply (rule disjI1)
-         apply (subst fairmerge.code)
-         apply (auto intro!: tc_traced trace_fmTF_D exI[of _ "the_enat (llength (ltakeWhile ((=) (Inp 1 EOB)) lxs'))"]) []
-        apply (rule disjI2)
-        apply (rule disjI1)
-        apply (subst fairmerge.code)
-        apply (cases "m 1")
-         apply (auto intro!: tc_base trace_fmFT.intros simp: ltakeWhile_lshift) [2]
-        done
-      subgoal by fast
-      subgoal
-        apply (induct xs)
-         apply (rule disjI1)
-         apply (subst fairmerge.code)
-         apply (auto intro!: tc_traced trace_fmTF_D exI[of _ "the_enat (llength (ltakeWhile ((=) (Inp 1 EOB)) lxs'))"]
-            elim!: order_trans[rotated] simp: trace_fmTF_ltakeWhile_eq) []
-        subgoal for y ys
-           apply (rule disjI2)
-           apply (rule disjI1)
-           apply (subst fairmerge.code)
-           apply (cases "m 1")
-            apply simp_all [2]
-          apply (rule tc_readEOB)
-
-end
-      done
-    subgoal for lxs' n x
-      apply (cases n)
-       apply (rule disjI1)
-       apply (subst fairmerge.code)
-       apply (auto intro!: tc_write tc_base[where op = "fairmerge _ _"] exI[of _ "the_enat (llength (ltakeWhile ((=) (Inp 1 EOB)) lxs'))"]
-         dest: trace_fmFT_llength) []
-       apply (rule disjI2)
-       apply (rule disjI1)
+    supply disjCI[rule del]
+      apply (auto simp add: trace_fmFF_A1_def trace_fmFF_A2_def)
+    subgoal
       apply (subst fairmerge.code)
-      apply (cases "m 1")
-       apply (auto intro!: tc_base trace_fmFT.intros simp: ltakeWhile_lshift) [2]
+      apply (auto intro!: tc_traced traced.End trace_fmTF_D) []
+      done
+    subgoal
+      apply (subst fairmerge.code)
+      apply (force intro: tc_read tc_traced[of "fairmerge False True"] trace_fmFT_D) []
+      done
+    subgoal
+      apply (subst fairmerge.code)
+      apply (force intro: tc_read tc_write tc_traced[of "fairmerge False True"] trace_fmFT_D) []
+      done
+    subgoal
+      apply (subst fairmerge.code)
+      apply (force intro: tc_read tc_write tc_base) []
+      done
+    subgoal
+      apply (subst fairmerge.code)
+      apply (force intro: tc_read tc_write tc_base) []
+      done
+    subgoal
+      apply (subst fairmerge.code)
+      apply (force intro: tc_read tc_write tc_base) []
+      done
+    subgoal
+      apply (subst fairmerge.code)
+      apply (force intro: tc_read tc_write tc_base) []
       done
     done
   done
-*)
 
-lemma TRACES_fairmerge_False_False: "lxs \<in> TRACES (fairmerge False False) \<longleftrightarrow> trace_fmFF lxs"
-  using trace_fmFF_llength[of lxs] trace_fmFF_llength'[of lxs] trace_fmFF_D[of lxs]
-  apply (auto intro: trace_fmFF_I simp: TRACES_def traces_def)
-  apply (meson linorder_linear)
-  done
-
-inductive alw_cong for R \<phi> where
-  ac_base: "R ps xs \<Longrightarrow> alw_cong R \<phi> ps xs"
-| ac_alw: "alw \<phi> ps xs \<Longrightarrow> alw_cong R \<phi> ps xs"
-| ac_LCons: "\<phi> ps (LCons y ys) \<Longrightarrow> alw_cong R \<phi> (y # ps) ys \<Longrightarrow> alw_cong R \<phi> ps (LCons y ys)"
-
-lemma alw_coinduct_upto:
-  assumes "X ps xs"
-    "(\<And>ps xs. X ps xs \<Longrightarrow> (xs = LNil \<and> \<phi> ps LNil) \<or>
-       (\<exists>y ys. xs = LCons y ys \<and> \<phi> ps (LCons y ys) \<and> (alw_cong X \<phi> (y # ps) ys)))"
-  shows "alw \<phi> ps xs"
-  apply (rule alw.coinduct[OF alw_cong.intros(1)[where R = X and \<phi> = \<phi>]], rule assms(1))
-  subgoal for ps xs
-    apply (induct ps xs rule: alw_cong.induct)
-      apply (auto dest: assms(2))
-    done
-  done
-
-lemma traced_fairmerge_True_False_aux1: "traced m (fairmerge True False) lxs \<Longrightarrow>
-  alw (now ((=) (Inp 2 (Observed x))) imp nxt (now ((=) (Out 1 x)))) ps lxs"
-  apply (coinduction arbitrary: ps lxs m rule: alw_coinduct_upto)
-  subgoal for ps lxs m
-    apply (subst (asm) fairmerge.code)
-    apply simp
-    apply (erule traced_ReadE; simp split: observation.splits)
-      apply (rule conjI impI)+
-       apply hypsubst_thin
-       apply auto []
-      apply (erule traced_WriteE; simp)
-      apply (rule ac_LCons)
-       apply auto []
-      apply (rule ac_base)
-      apply auto []
-     apply (auto simp flip: now_eq1 intro!: ac_alw alw.intros) []
-    apply (rule ac_base)
-    apply auto []
-    done
-  done
-
-lemma traced_fairmerge_True_False_aux2: "traced m (fairmerge True False) lxs \<Longrightarrow>
-  alw (now ((=) (Out 1 x)) imp prv (now ((=) (Inp 2 (Observed x))))) ps lxs"
-  apply (coinduction arbitrary: ps lxs m rule: alw_coinduct_upto)
-  subgoal for ps lxs m
-    apply (subst (asm) fairmerge.code)
-    apply simp
-    apply (erule traced_ReadE; simp split: observation.splits)
-      apply (erule traced_WriteE; simp)
-      apply (rule ac_LCons)
-       apply auto []
-      apply (rule ac_base)
-      apply auto []
-     apply (auto simp flip: now_eq1 intro!: ac_alw alw.intros) []
-    apply (rule ac_base)
-    apply auto []
-    done
-  done
-
-lemma traced_fairmerge_True_False_aux3:
-  "traced m (fairmerge True False) lxs \<Longrightarrow>
-   \<exists>x. evt (now ((=) (Inp 2 x))) ps lxs \<and> x \<noteq> EOB"
-  apply (induct "m 2" arbitrary: m ps lxs)
-   apply (subst (asm) fairmerge.code)
-   apply simp
-   apply (erule traced_ReadE; simp split: observation.splits)
-    apply ((rule exI conjI; auto)+) [2]
-   apply (subst (asm) (2) fairmerge.code)
-   apply simp
-  apply (erule traced_ReadE; simp split: observation.splits)
-    apply ((rule exI conjI; auto)+) [2]
-  apply (metis evt.intros(2) fun_upd_def)
-  done
-
-lemma traced_fairmerge_True_False_aux4: "traced m (fairmerge True False) lxs \<Longrightarrow>
-  alw (now ((=) (Inp 2 EOS)) imp not (nxt (now \<top>))) ps lxs"
-  apply (coinduction arbitrary: ps lxs m rule: alw_coinduct_upto)
-  subgoal for ps lxs m
-    apply (subst (asm) fairmerge.code)
-    apply simp
-    apply (erule traced_ReadE; simp split: observation.splits)
-      apply (erule traced_WriteE; simp)
-       apply hypsubst_thin
-      apply (rule ac_LCons)
-       apply auto []
-      apply (rule ac_base)
-      apply auto []
-     apply (auto simp flip: now_eq1 intro!: ac_alw alw.intros) []
-    apply (rule ac_base)
-    apply auto []
-    done
-  done
-
-lemma traced_fairmerge_True_FalseI: "
-  \<exists>x. evt (now ((=) (Inp 2 x))) [] lxs \<and> x \<noteq> EOB \<Longrightarrow>
-  \<forall>x. Inp 1 x \<notin> lset lxs \<Longrightarrow>
-  alw (now ((=) (Inp 2 EOS)) imp not (nxt (now \<top>))) [] lxs \<Longrightarrow>
-  alw (now ((=) (Inp 2 (Observed x))) imp nxt (now ((=) (Out 1 x)))) [] lxs \<Longrightarrow>
-  alw (now ((=) (Out 1 x)) imp prv (now ((=) (Inp 2 (Observed x))))) [] lxs \<Longrightarrow>
-  traced m (fairmerge True False) lxs"
-  oops
+lemma traced_fairmerge_False_False: "traced (fairmerge False False) lxs \<longleftrightarrow> trace_fmFF lxs"
+  using trace_fmFF_I trace_fmFF_D by blast
 
 section\<open>Correctness using the history model\<close>
+
+lemma history_fairmerge_True_True: "history (fairmerge True True) lxs lzs \<longleftrightarrow> lzs = (\<lambda>_. LNil)"
+  unfolding history_def traced_fairmerge_True_True by auto
+
+lemma history_fairmerge_True_False: "history (fairmerge True False) lxs lzs \<longleftrightarrow> lzs = (\<lambda>_. lxs 2)"
+  unfolding history_def traced_fairmerge_True_False
+  apply (auto simp: fun_eq_iff)
 
 coinductive merged where
   "merged LNil lxs lxs"

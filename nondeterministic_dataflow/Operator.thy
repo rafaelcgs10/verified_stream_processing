@@ -221,18 +221,14 @@ inductive_cases traced_ReadE[elim!]: "traced (Read p' f) lxs"
 inductive traced_cong for R where
   tc_base: "R op lxs \<Longrightarrow> traced_cong R op lxs"
 | tc_traced: "traced op lxs \<Longrightarrow> traced_cong R op lxs"
-| tc_read: "x \<noteq> EOB \<Longrightarrow> traced_cong R (f x) lxs \<Longrightarrow> traced_cong R (Read p f) (LCons (Inp p x) lxs)"
-| tc_readEOB: "traced_cong R (f EOB) lxs \<Longrightarrow> traced_cong R (Read p f) (LCons (Inp p EOB) lxs)"
+| tc_read: "traced_cong R (f x) lxs \<Longrightarrow> traced_cong R (Read p f) (LCons (Inp p x) lxs)"
 | tc_write: "traced_cong R op lxs \<Longrightarrow> traced_cong R (Write op q x) (LCons (Out q x) lxs)"
 
 lemma traced_coinduct_upto:
   assumes "X op lxs"
     "\<And>op lxs.
     X op lxs \<Longrightarrow>
-    (\<exists>p f. op = Read p f \<and> (\<exists>x lxs'. lxs = LCons (Inp p x) lxs' \<and>
-       x \<noteq> EOB \<and> traced_cong X (f x) lxs')) \<or>
-    (\<exists>p f. op = Read p f \<and> (\<exists>lxs'. lxs = LCons (Inp p EOB) lxs' \<and>
-       traced_cong X (f EOB) lxs')) \<or>
+    (\<exists>p f. op = Read p f \<and> (\<exists>x lxs'. lxs = LCons (Inp p x) lxs' \<and> traced_cong X (f x) lxs')) \<or>
     (\<exists>op' q x. op = Write op' q x \<and> (\<exists>lxs'. lxs = LCons (Out q x) lxs' \<and> traced_cong X op' lxs')) \<or>
     op = End \<and> lxs = LNil"
   shows "traced op lxs"
@@ -247,8 +243,6 @@ lemma traced_coinduct_upto:
     subgoal for p f x lxs
       by (auto simp del: fun_upd_apply)
     subgoal for p n f 
-      by (auto simp del: fun_upd_apply)
-    subgoal for m p f lxs
       by (auto simp del: fun_upd_apply)
     done
   done
