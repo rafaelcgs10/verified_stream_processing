@@ -96,34 +96,10 @@ lemma input_depth_arg_min_le[simp]:
    input_depth p (f (ARG_MIN (input_depth p o f) x. p \<in> inputs (f x))) \<le> input_depth p (f x)"
   by (metis arg_min_nat_le comp_apply)
 
-lemma inputs_comp_op_arg_min_1[simp]:
-  "p \<in> inputs (comp_op wire buf (f1 x) op) \<Longrightarrow>
-   p \<in> inputs (comp_op wire buf (f1 (ARG_MIN (m :: _ \<Rightarrow> nat) x. p \<in> inputs (comp_op wire buf (f1 x) op))) op)"
-  by (rule arg_min_natI)
-
-lemma inputs_comp_op_arg_min_2[simp]:
-  "p \<in> inputs (comp_op wire buf op (f2 y)) \<Longrightarrow>
-   p \<in> inputs (comp_op wire buf op (f2 (ARG_MIN (m :: _ \<Rightarrow> nat) y. p \<in> inputs (comp_op wire buf op (f2 y)))))"
-  by (rule arg_min_natI)
-
-lemma inputs_comp_op_arg_min_3[simp]:
-  "p \<in> inputs (comp_op wire buf (f1 x) (f2 y)) \<Longrightarrow>
-   p \<in> inputs
-         (comp_op wire buf
-            (f1 (ARG_MIN (m1 :: _ \<Rightarrow> nat) x. (\<exists>xa. p \<in> inputs (comp_op wire buf (f1 x) (f2 xa)))))
-            (f2 (ARG_MIN (m2 :: _ \<Rightarrow> nat) x. p \<in> inputs (comp_op wire buf
-                            (f1 (ARG_MIN (m1 :: _ \<Rightarrow> nat) x. (\<exists>xa. p \<in> inputs (comp_op wire buf (f1 x) (f2 xa))))) (f2 x)))))"
-  by (smt (verit, best) arg_min_natI)
-
 lemma input_depth_Read_diff'[simp]: 
   "p \<noteq> p' \<Longrightarrow> p \<in> inputs (f x) \<Longrightarrow>
    input_depth p (Read p' f) = Suc (input_depth p (f (arg_min (input_depth p o f) (\<lambda>x. p \<in> inputs (f x)))))"
   by (metis input_depth_Read_diff)
-
-lemma
-  "p \<in> inputs op2 - ran wire \<Longrightarrow>
-   Inr p \<in> inputs (comp_op wire buf op1 op2)"
-  oops
 
 lemma input_depth_Read_diff_le[simp]: 
   "p \<noteq> p' \<Longrightarrow> \<exists>x. p \<in> inputs (f x) \<Longrightarrow>
@@ -208,8 +184,7 @@ datatype ('a, 'b, 'd) IO = Inp (proji: 'a) "'d observation" | Out (projo: 'b) (d
   where "data (Inp p x) = obs x"
 
 coinductive traced where
-  Read: "x \<noteq> EOB \<Longrightarrow> traced (f x) lxs \<Longrightarrow> traced (Read p f) (LCons (Inp p x) lxs)"
-| ReadEOB: "traced (f EOB) lxs \<Longrightarrow> traced (Read p f) (LCons (Inp p EOB) lxs)"
+  Read: "traced (f x) lxs \<Longrightarrow> traced (Read p f) (LCons (Inp p x) lxs)"
 | Write: "traced op lxs \<Longrightarrow> traced (Write op p x) (LCons (Out p x) lxs)"
 | End: "traced End LNil"
 
@@ -415,7 +390,7 @@ section\<open>Trace model full abstraction\<close>
 
 lemma traced_traced_wit: "traced op (traced_wit op)"
   apply (coinduction arbitrary: op)
-  apply (subst (1 3 5 7) traced_wit.code)
+  apply (subst (1 3 5) traced_wit.code)
   apply (auto split: op.splits dest: lset_traced_wit simp: traced_wit.code[where op=End])
   done
 
@@ -896,8 +871,6 @@ lemma "x \<in> lset (lproject (=) lxs (Out q)) \<Longrightarrow> traced m op lxs
    apply (erule traced.cases; auto split: if_splits)
   sorry
 *)
-
-
 
 section\<open>Convenient types\<close>
 
