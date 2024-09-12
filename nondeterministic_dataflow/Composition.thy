@@ -154,6 +154,62 @@ simps_of_case comp_op_simps[simp]: comp_op.code[unfolded prod.case Let_def]
 
 section\<open>Inputs of comp_op\<close>
 
+lemma inputs_comp_op2: "sub_op (Read p g) (comp_op wire buf op1 op2) d \<Longrightarrow> p \<in> Inl ` inputs op1 \<union> Inr ` (inputs op2 - ran wire)"
+proof (induct p \<open>comp_op wire buf op1 op2\<close> arbitrary: buf op1 op2 rule: sub_op_Read_induct)
+  case (Read1 f p)
+  then obtain n where \<open>comp_producing wire buf op1 op2 n\<close>
+    by (fastforce simp: not_comp_producing_eq_End)
+  then show ?case
+    using Read1
+    by (induct n rule: comp_producing.induct) (fastforce split: if_splits option.splits)+
+next
+  case (Read2 p p' f n)
+  then obtain m where \<open>comp_producing wire buf op1 op2 m\<close>
+    by (fastforce simp: not_comp_producing_eq_End)
+  then show ?case
+    using Read2
+  proof (induct m rule: comp_producing.induct)
+    case (6 buf p1 f1 op2' p2 x2)
+    then show ?case
+      apply (auto split: if_splits option.splits simp: le_Suc_eq image_iff)
+      apply blast
+      done
+  next
+    case (10 buf p1 f1 p2 f2)
+    then show ?case
+      apply (auto split: if_splits option.splits simp: le_Suc_eq image_iff)
+       apply blast
+      apply blast
+      done
+  qed (fastforce split: if_splits option.splits simp: le_Suc_eq image_iff)+
+next
+  case (Write p p' op' x n)
+  then obtain m where \<open>comp_producing wire buf op1 op2 m\<close>
+    by (fastforce simp: not_comp_producing_eq_End)
+  then show ?case
+    using Write
+  proof (induct m rule: comp_producing.induct)
+    case (7 buf op1' p1 x1 op2' p2 x2)
+    then show ?case
+      apply (auto split: if_splits option.splits simp: le_Suc_eq image_iff)
+      apply blast
+      apply blast
+      done
+  next
+    case (11 p2 p1 buf op1' x1 f2)
+    then show ?case
+      apply (auto split: if_splits option.splits simp: le_Suc_eq image_iff)
+       apply blast
+      apply blast
+      done
+  qed (fastforce split: if_splits option.splits simp: le_Suc_eq image_iff)+
+qed
+
+lemma inputs_comp_op_le2:
+  "inputs (comp_op wire buf op1 op2) \<subseteq> Inl ` inputs op1 \<union> Inr ` (inputs op2 - ran wire)"
+  using inputs_comp_op2 by (metis inputs_sub_op_Read subsetI)
+
+
 lemma inputs_comp_producing:
   "p \<in> inputs (comp_op wire buf op1 op2) \<Longrightarrow> 
    \<exists> n. comp_producing wire buf op1 op2 n"
@@ -221,7 +277,6 @@ lemma input_depth_Read_Write[simp]:
    apply force
   apply auto
   done
-
 
 lemma comp_producing_inputs_comp_op:
   fixes op1 :: "('ip1, 'op1, 'd) op" and op2 :: "('ip2, 'op2, 'd) op"
