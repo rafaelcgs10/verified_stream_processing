@@ -1106,50 +1106,42 @@ lemma comp_producing_traced_cases:
   "comp_producing wire buf op1 op2 n \<Longrightarrow>
    traced (comp_op wire buf op1 op2) ios \<Longrightarrow>
    comp_op wire buf op1 op2 = End \<and> ios = LNil \<or>
-   (\<exists> op1' op2' buf' p x. comp_op wire buf op1 op2 = Write (comp_op wire buf' op1' op2') (Inl p) x \<and> wire p = None \<and> lhd ios = Out (Inl p) x) \<or>
-   (\<exists> op1' op2' buf' p x. comp_op wire buf op1 op2 = Write (comp_op wire buf' op1' op2') (Inr p) x \<and> lhd ios = Out (Inr p) x) \<or>
-   (\<exists> p f y op1' op2' buf'. comp_op wire buf op1 op2 = Read (Inr p) (\<lambda>y. comp_op wire buf' op1' (f y)) \<and> p \<notin> ran wire \<and> lhd ios = Inp (Inr p) y) \<or>
-   (\<exists> p f y op1' op2' buf'. comp_op wire buf op1 op2 = Read (Inl p) (\<lambda>y. comp_op wire buf' (f y) op2') \<and> lhd ios = Inp (Inl p) y) \<or>
-   (\<exists> p f y op1' op2' buf' p' x. comp_op wire buf op1 op2 = Read (Inl p) (\<lambda> z. Write (comp_op wire buf' (f z) op2') (Inr p') x) \<and> lhd ios = Inp (Inl p) y \<and> lhd (ltl ios) = Out (Inr p') x) \<or>
-   (\<exists> op1' op2' buf' p x p' y. comp_op wire buf op1 op2 = Write (Write (comp_op wire buf' op1' op2') (Inr p') y) (Inl p) x \<and> wire p = None \<and> lhd ios = Out (Inl p) x \<and> lhd (ltl ios) = Out (Inr p') y) \<or>
-   (\<exists> p f y op1' op2' buf' p' x f'. comp_op wire buf op1 op2 = Read (Inl p) (\<lambda>y1. Read (Inr p') (\<lambda>y2. comp_op wire buf' (f y1) (f' y2))) \<and> p' \<notin> ran wire \<and> lhd ios = Inp (Inl p) y \<and> lhd (ltl ios) = Inp (Inr p') x) \<or>
-   (\<exists> p f y op1' op2' buf' p' x f'. comp_op wire buf op1 op2 = Write (Read (Inr p') (\<lambda>y. comp_op wire buf' op1' (f y))) (Inl p) x \<and> p' \<notin> ran wire \<and> wire p = None \<and>  lhd ios = Out (Inl p) x \<and> lhd (ltl ios) = Inp (Inr p') y)"
+   (\<exists> op1' op2' buf' p x. comp_op wire buf op1 op2 = Write (comp_op wire buf' op1' op2') (Inl p) x \<and> wire p = None \<and> lhd ios = Out (Inl p) x \<and> traced (Write (comp_op wire buf' op1' op2') (Inl p) x) ios) \<or>
+   (\<exists> op1' op2' buf' p x. comp_op wire buf op1 op2 = Write (comp_op wire buf' op1' op2') (Inr p) x \<and> lhd ios = Out (Inr p) x \<and> traced (Write (comp_op wire buf' op1' op2') (Inr p) x) ios) \<or>
+   (\<exists> p f y op1' op2' buf'. comp_op wire buf op1 op2 = Read (Inr p) (\<lambda>y. comp_op wire buf' op1' (f y)) \<and> p \<notin> ran wire \<and> lhd ios = Inp (Inr p) y \<and> traced (Read (Inr p) (\<lambda>y. comp_op wire buf' op1' (f y))) ios) \<or>
+   (\<exists> p f y op1' op2' buf'. comp_op wire buf op1 op2 = Read (Inl p) (\<lambda>y. comp_op wire buf' (f y) op2') \<and> lhd ios = Inp (Inl p) y \<and> traced (Read (Inl p) (\<lambda>y. comp_op wire buf' (f y) op2')) ios) \<or>
+   (\<exists> p f y op1' op2' buf' p' x. comp_op wire buf op1 op2 = Read (Inl p) (\<lambda> z. Write (comp_op wire buf' (f z) op2') (Inr p') x) \<and> lhd ios = Inp (Inl p) y \<and> lhd (ltl ios) = Out (Inr p') x \<and> traced (Read (Inl p) (\<lambda> z. Write (comp_op wire buf' (f z) op2') (Inr p') x)) ios) \<or>
+   (\<exists> op1' op2' buf' p x p' y. comp_op wire buf op1 op2 = Write (Write (comp_op wire buf' op1' op2') (Inr p') y) (Inl p) x \<and> wire p = None \<and> lhd ios = Out (Inl p) x \<and> lhd (ltl ios) = Out (Inr p') y \<and> traced (Write (Write (comp_op wire buf' op1' op2') (Inr p') y) (Inl p) x) ios) \<or>
+   (\<exists> p f y op1' op2' buf' p' x f'. comp_op wire buf op1 op2 = Read (Inl p) (\<lambda>y1. Read (Inr p') (\<lambda>y2. comp_op wire buf' (f y1) (f' y2))) \<and> p' \<notin> ran wire \<and> lhd ios = Inp (Inl p) y \<and> lhd (ltl ios) = Inp (Inr p') x \<and> traced (Read (Inl p) (\<lambda>y1. Read (Inr p') (\<lambda>y2. comp_op wire buf' (f y1) (f' y2)))) ios) \<or>
+   (\<exists> p f y op1' op2' buf' p' x f'. comp_op wire buf op1 op2 = Write (Read (Inr p') (\<lambda>y. comp_op wire buf' op1' (f y))) (Inl p) x \<and> p' \<notin> ran wire \<and> wire p = None \<and>  lhd ios = Out (Inl p) x \<and> lhd (ltl ios) = Inp (Inr p') y \<and> traced (Write (Read (Inr p') (\<lambda>y. comp_op wire buf' op1' (f y))) (Inl p) x) ios)"
   apply (induct buf op1 op2 n arbitrary: ios rule: comp_producing.induct)
   subgoal
     by auto
   subgoal
-    by (force simp add: btl_bend split: option.splits if_splits)
+    by (auto 10 10 simp add: btl_bend split: option.splits if_splits intro: traced.intros)
   subgoal for p1 buf op1' x1
-    by auto
+    by (auto 10 10 intro: traced.intros)
   subgoal
     by (auto split: if_splits)
   subgoal
-    by (auto split: if_splits)
+    by (auto 10 10 split: if_splits intro: traced.intros)
   subgoal for buf p1 f1 op2' p2 x2 ios
-    apply (auto split: if_splits)
-    apply fast+
+    apply (auto 10 10 split: if_splits  intro: traced.intros)
     done
   subgoal for buf op1' p1 x1 op2' p2 x2 ios
-    apply (auto split: if_splits option.splits)
-    apply fast+
-    done
+    by (auto 10 10 split: if_splits option.splits intro: traced.intros)
   subgoal
-    apply (auto split: if_splits option.splits)
-    done
+    by (auto 10 10 split: if_splits option.splits intro: traced.intros)
   subgoal for p2 buf f2 n ios
-    by (auto split: if_splits option.splits)
+    by (auto 10 10 split: if_splits option.splits intro: traced.intros)
   subgoal
-    apply (auto split: if_splits option.splits)
-     apply blast+
+    apply (auto 10 10 split: if_splits option.splits intro: traced.intros)
     done
   subgoal
-    apply (auto split: if_splits option.splits)
-    apply blast+
-    done
+    by (auto 10 10 split: if_splits option.splits intro: traced.intros)
   subgoal 
     by (auto split: if_splits option.splits)
   done
-
 
 lemma comp_producing_traced_cong_causalD:
   "comp_producing wire buf op1 op2 n \<Longrightarrow>
@@ -1955,25 +1947,365 @@ lemma traced_lfilter_visible_IO_alternate:
     done
   done
 
+find_theorems name: coinduct name: upto
 
-lemma
+thm traced_coinduct_upto  traced.coinduct
+
+
+inductive causal_cong for R wire where
+  cc_base:  "R wire buf ios1 ios2 \<Longrightarrow> causal_cong R wire buf ios1 ios2"
+| cc_causal: "causal wire buf ios1 ios2 \<Longrightarrow> causal_cong R wire buf ios1 ios2"
+| "causal_cong R wire (BTL p buf) ios1 ios2 \<Longrightarrow> y = BHD p buf \<Longrightarrow> p \<in> ran wire \<Longrightarrow> causal_cong R wire buf (LCons (Inp q x) ios1) (LCons (Inp p y) ios2)"
+| "causal_cong R wire buf ios1 ios2 \<Longrightarrow> p \<notin> ran wire \<Longrightarrow> causal_cong R wire buf (LCons (Inp q x) ios1) (LCons (Inp p y) ios2)"
+| "causal_cong R wire buf ios1 ios2 \<Longrightarrow> causal_cong R wire buf (LCons (Inp q x) ios1) (LCons (Out p y) ios2)"
+| "causal_cong R wire (BTL p (BENQ p' x buf)) ios1 ios2 \<Longrightarrow> y = BHD p (BENQ p' x buf) \<Longrightarrow> wire q = Some p' \<Longrightarrow> p \<in> ran wire \<Longrightarrow> causal_cong R wire buf (LCons (Out q x) ios1) (LCons (Inp p y) ios2)"
+| "causal_cong R wire (BENQ p' x buf) ios1 ios2 \<Longrightarrow> wire q = Some p' \<Longrightarrow> p \<notin> ran wire \<Longrightarrow> causal_cong R wire buf (LCons (Out q x) ios1) (LCons (Inp p y) ios2)"
+| "causal_cong R wire buf ios1 ios2 \<Longrightarrow> wire q = None \<Longrightarrow> p \<notin> ran wire \<Longrightarrow> causal_cong R wire buf (LCons (Out q x) ios1) (LCons (Inp p y) ios2)"
+| "causal_cong R wire (BTL p buf) ios1 ios2 \<Longrightarrow> wire q = None \<Longrightarrow> y = BHD p buf \<Longrightarrow> p \<in> ran wire \<Longrightarrow> causal_cong R wire buf (LCons (Out q x) ios1) (LCons (Inp p y) ios2)"
+| "causal_cong R wire buf ios1 ios2 \<Longrightarrow> wire q = None \<Longrightarrow> causal_cong R wire buf (LCons (Out q x) ios1) (LCons (Out p y) ios2)"
+| "causal_cong R wire (BENQ p' x buf) ios1 ios2 \<Longrightarrow> wire q = Some p' \<Longrightarrow> causal_cong R wire buf (LCons (Out q x) ios1) (LCons (Out p y) ios2)"
+| "causal_cong R wire (BTL p (bend o buf)) LNil ios2 \<Longrightarrow> y = BHD p (bend o buf) \<Longrightarrow> p \<in> ran wire \<Longrightarrow> causal_cong R wire buf LNil (LCons (Inp p y) ios2)"
+| "causal_cong R wire (bend o buf) LNil ios2 \<Longrightarrow> p \<notin> ran wire \<Longrightarrow> causal_cong R wire buf LNil (LCons (Inp p y) ios2)"
+| "causal_cong R wire (bend o buf) LNil ios2 \<Longrightarrow> causal_cong R wire buf LNil (LCons (Out p y) ios2)"
+
+lemma causal_cong_disj_causal[simp]:
+  "(causal_cong R wire buf ios1 ios2 \<or> causal wire buf ios1 ios2) = causal_cong R wire buf ios1 ios2"
+  apply (rule iffI)
+  subgoal
+    by (auto intro: cc_causal)
+  subgoal
+    apply (induct buf ios1 ios2 rule: causal_cong.induct)
+    apply (auto intro: causal_cong.intros split: if_splits)
+    subgoal
+      using causal_cong.intros(6) by force
+    subgoal
+      by (force intro: causal_cong.intros split: if_splits)
+    done
+  done
+
+
+thm causal.coinduct[where X="causal_cong R wire", where wire=wire, of buf ios1 ios2 ]
+
+lemma bend_upd_btl[simp]:
+  "(\<lambda>x. bend (if x = p then btl (buf p) else buf x)) = (\<lambda>a. if a = p then btl (bend (buf p)) else bend (buf a))"
+  "(\<lambda>x. if x = p then bend (btl (buf p)) else bend (buf x)) = (\<lambda>a. if a = p then btl (bend (buf p)) else bend (buf a))"
+  "(\<lambda>a. if a = p' then btl (benq x (buf p')) else if a = p' then benq x (buf p') else buf a) = (\<lambda>xa. if xa = p' then btl (benq x (buf p')) else buf xa)"
+  apply auto
+  apply (metis (mono_tags, opaque_lifting) btl_bend)+
+  done
+
+lemma causal_coinduct_upto:
+  "R wire buf ios1 ios2 \<Longrightarrow>
+  (\<And>x1 x2 x3.
+    R wire x1 x2 x3 \<Longrightarrow>
+    (\<exists>p ios1. (\<exists>q x. x2 = LCons (Inp q x) ios1) \<and> (\<exists>ios2 y. x3 = LCons (Inp p y) ios2 \<and> causal_cong R wire (x1(p := btl (x1 p))) ios1 ios2 \<and> y = BHD p x1 \<and> p \<in> ran wire)) \<or>
+    (\<exists>ios1. (\<exists>q x. x2 = LCons (Inp q x) ios1) \<and> (\<exists>ios2 p. (\<exists>y. x3 = LCons (Inp p y) ios2) \<and> causal_cong R wire x1 ios1 ios2 \<and> p \<notin> ran wire)) \<or>
+    (\<exists>ios1. (\<exists>q x. x2 = LCons (Inp q x) ios1) \<and> (\<exists>ios2. (\<exists>p y. x3 = LCons (Out p y) ios2) \<and> causal_cong R wire x1 ios1 ios2)) \<or>
+    (\<exists>p p' x ios1 ios2 y q.
+        x2 = LCons (Out q x) ios1 \<and>
+        x3 = LCons (Inp p y) ios2 \<and> causal_cong R wire (x1(p' := benq x (x1 p'), p := btl (if p = p' then benq x (x1 p') else x1 p))) ios1 ios2 \<and> y = BHD (x1 p) (If (p = p') (benq x (x1 p'))) \<and> wire q = Some p' \<and> p \<in> ran wire) \<or>
+    (\<exists>p' x ios1 ios2 q. x2 = LCons (Out q x) ios1 \<and> (\<exists>p. (\<exists>y. x3 = LCons (Inp p y) ios2) \<and> causal_cong R wire (x1(p' := benq x (x1 p'))) ios1 ios2 \<and> wire q = Some p' \<and> p \<notin> ran wire)) \<or>
+    (\<exists>ios1 ios2 q. (\<exists>x. x2 = LCons (Out q x) ios1) \<and> (\<exists>p. (\<exists>y. x3 = LCons (Inp p y) ios2) \<and> causal_cong R wire x1 ios1 ios2 \<and> wire q = None \<and> p \<notin> ran wire)) \<or>
+    (\<exists>p ios1 ios2 q. (\<exists>x. x2 = LCons (Out q x) ios1) \<and> (\<exists>y. x3 = LCons (Inp p y) ios2 \<and> causal_cong R wire (x1(p := btl (x1 p))) ios1 ios2 \<and> wire q = None \<and> y = BHD p x1 \<and> p \<in> ran wire)) \<or>
+    (\<exists>ios1 ios2 q. (\<exists>x. x2 = LCons (Out q x) ios1) \<and> (\<exists>p y. x3 = LCons (Out p y) ios2) \<and> causal_cong R wire x1 ios1 ios2 \<and> wire q = None) \<or>
+    (\<exists>p' x ios1 ios2 q. x2 = LCons (Out q x) ios1 \<and> (\<exists>p y. x3 = LCons (Out p y) ios2) \<and> causal_cong R wire (x1(p' := benq x (x1 p'))) ios1 ios2 \<and> wire q = Some p') \<or>
+    x3 = LNil \<or>
+    x2 = LNil \<and> (\<exists>p ios2 y. x3 = LCons (Inp p y) ios2 \<and> causal_cong R wire ((bend \<circ> x1)(p := btl (bend (x1 p)))) LNil ios2 \<and> y = BHD (x1 p) bend \<and> p \<in> ran wire) \<or>
+    x2 = LNil \<and> (\<exists>ios2 p. (\<exists>y. x3 = LCons (Inp p y) ios2) \<and> causal_cong R wire (bend \<circ> x1) LNil ios2 \<and> p \<notin> ran wire) \<or> x2 = LNil \<and> (\<exists>ios2. (\<exists>p y. x3 = LCons (Out p y) ios2) \<and> causal_cong R wire (bend \<circ> x1) LNil ios2)) \<Longrightarrow>
+   causal wire buf ios1 ios2"
+  apply (rule causal.coinduct[where X = "causal_cong R wire", of buf ios1 ios2])
+   apply (rule cc_base)
+   apply assumption
+  subgoal premises prems for buf' ios1' ios2'
+    using prems(3) apply -
+    apply (induct buf' ios1' ios2' rule: causal_cong.induct)
+    apply simp_all
+    subgoal for buf ios1 ios2
+      using prems(2)[of buf ios1 ios2] apply simp
+      apply (elim disjE conjE exE)
+                  apply (simp_all add: btl_bend  flip: fun_upd_apply split: if_splits)
+         apply (auto simp add: fun_upd_def comp_def btl_bend intro: causal_cong.intros split: if_splits)
+      done
+    subgoal for buf ios1 ios2
+      apply (erule causal.cases)
+                  apply (simp_all add: btl_bend  flip: fun_upd_apply split: if_splits)
+      apply (auto simp add: btl_bend causal_buf_cong cc_causal fun_upd_def comp_def intro: causal_cong.intros split: if_splits)
+      done
+    subgoal
+      apply (simp_all add: btl_bend  flip: fun_upd_apply split: if_splits)
+    done
+  subgoal
+      using prems(2) apply simp
+      apply (elim disjE conjE exE)
+         apply (auto simp add: fun_upd_def comp_def btl_bend intro: causal_cong.intros split: if_splits)
+      done
+    subgoal
+      using prems(2) apply simp
+      apply (elim disjE conjE exE)
+         apply (auto simp add: fun_upd_def comp_def btl_bend intro: causal_cong.intros split: if_splits)
+      done
+    subgoal
+      using prems(2) apply simp
+      apply (elim disjE conjE exE)
+         apply (auto simp add: fun_upd_def comp_def btl_bend intro: causal_cong.intros split: if_splits)
+      done
+    subgoal
+      using prems(2) apply simp
+      apply (elim disjE conjE exE)
+         apply (auto simp add: fun_upd_def comp_def btl_bend intro: causal_cong.intros split: if_splits)
+      done
+    subgoal
+      using prems(2) apply simp
+      apply (elim disjE conjE exE)
+         apply (auto simp add: fun_upd_def comp_def btl_bend intro: causal_cong.intros split: if_splits)
+      done
+    subgoal
+      using prems(2) apply simp
+      apply (elim disjE conjE exE)
+         apply (auto simp add: fun_upd_def comp_def btl_bend intro: causal_cong.intros split: if_splits)
+      done
+    subgoal
+      using prems(2) apply simp
+      apply (elim disjE conjE exE)
+         apply (auto simp add: fun_upd_def comp_def btl_bend intro: causal_cong.intros split: if_splits)
+      done
+    done
+  done
+
+lemma traced_comp_op_causal:
   "traced (comp_op wire buf op1 op2) ios \<Longrightarrow>
    causal wire buf (Inl_llist (retrace_comp_op_ios wire buf op1 op2 ios)) (Inr_llist (retrace_comp_op_ios wire buf op1 op2 ios))"
   apply (coinduction arbitrary: buf op1 op2 ios)
   subgoal for buf op1 op2 ios
     apply (cases op1; cases op2)
     subgoal
-      find_theorems lfilter name: simps
-      apply (intro disjI1)
-      apply (simp del: llist.simps(12) llist.simps(13) lfilter.simps split: if_splits)
+      apply hypsubst_thin
+      apply (simp only: comp_op_simps split: if_splits)
       subgoal
+        apply (elim traced_ReadE)
+        apply (intro disjI1)
+        apply (simp del: llist.simps(12) llist.simps(13) lfilter.simps split: if_splits)
+        apply (auto intro: cc_base)
+        done
+      subgoal
+        apply (elim traced_ReadE)
+        apply (rule disjI2)
+        apply (rule disjI1)
+        apply (auto intro: cc_base)
+        done
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (simp only: comp_op_simps split: if_splits)
+      subgoal
+        apply (elim traced_ReadE traced_WriteE)
+        apply (rule disjI2)
+        apply (rule disjI2)
+        apply (intro disjI1)
+        apply (simp del: llist.simps(12) llist.simps(13) lfilter.simps split: if_splits)
+        apply (auto intro: cc_base)
+        done
+      done
+    subgoal for p f
+      apply hypsubst_thin
+      apply (simp only: comp_op_simps split: if_splits)
+      apply (elim traced_ReadE traced_EndE)
+      apply simp
+      subgoal for x lxs
+        apply safe
+        apply (auto 0 0 simp add: neq_LNil_conv)
+        subgoal for p d
+          apply (cases p)
+          apply simp_all
+          apply (smt (z3) IO.simps(5) IO.simps(6) LNil_eq_lmap bot2E diverge_lfilter_LNil is_op1.elims(2) llist.distinct(1) old.sum.simps(5) retrace_comp_op_End1_is_op1)
+          done
+        subgoal for p d
+          apply (cases p)
+          apply simp_all
+          apply (smt (z3) IO.simps(5) IO.simps(6) LNil_eq_lmap bot2E diverge_lfilter_LNil is_op1.elims(2) llist.distinct(1) old.sum.simps(5) retrace_comp_op_End1_is_op1)+
+          done
+        done
+      done
+    subgoal for op p x p' f
+      apply hypsubst_thin
+      apply (simp only: comp_op_simps split: option.splits if_splits; blast?)
+      subgoal
+        apply (elim traced_ReadE traced_WriteE)
+        apply hypsubst_thin
+        apply (rule disjI2)
+        apply (rule disjI2)
+        apply (rule disjI2)
+        apply (rule disjI2)
+        apply (rule disjI2)
+        apply (rule disjI2)
+        apply (intro disjI1)
+        apply (auto intro: cc_base)
+        done
+      subgoal
+        apply (elim traced_ReadE traced_WriteE)
+        apply hypsubst_thin
+        apply (rule disjI2)
+        apply (rule disjI2)
+        apply (rule disjI2)
+        apply (rule disjI2)
+        apply (rule disjI2)
+        apply (intro disjI1)
+        apply (auto intro: cc_base)
+        done
+      subgoal
+        apply (simp split: if_splits)
+        apply auto
+        done
+      subgoal
+        apply simp
+        apply auto
+        subgoal
+          by (smt (verit, ccfv_SIG) End comp_producing.intros(12) fun_upd_same fun_upd_upd lfilter_LNil lmap_eq_LNil not_comp_producing_eq_End)
+        subgoal
+          using End comp_producing.intros(12) fun_upd_same fun_upd_upd lfilter_LNil lmap_eq_LNil not_comp_producing_eq_End
+          by (smt (verit, ccfv_SIG) fun_upd_other)
+        done
+      subgoal
+        apply (simp split: if_splits)
         apply (elim traced_ReadE)
         apply auto
         done
-   subgoal
-        apply (elim traced_ReadE)
+      done
+    subgoal for op p x op' p' y
+      apply hypsubst_thin
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (simp only: comp_op_simps split: if_splits option.splits)
+      apply (elim traced_WriteE)
+      apply fastforce+
+      done
+    subgoal for op p x 
+      apply hypsubst_thin
+      apply (simp only: comp_op_simps split: if_splits option.splits)
+      apply (elim traced_WriteE)
+      subgoal
+        apply (auto 0 0 simp add: neq_LNil_conv)
+        subgoal
+          by (smt (z3) IO.simps(5) IO.simps(6) bot2E diverge_lfilter_LNil is_op1.elims(2) llist.distinct(1) lmap_eq_LNil old.sum.simps(5) retrace_comp_op_End1_is_op1)
+        subgoal
+          by (smt (z3) IO.simps(5) IO.simps(6) bot2E diverge_lfilter_LNil is_op1.elims(2) llist.distinct(1) lmap_eq_LNil old.sum.simps(5) retrace_comp_op_End1_is_op1)
+        done
+      subgoal
+        apply (auto 0 0 simp add: neq_LNil_conv)
+        subgoal
+          by (smt (z3) IO.simps(5) IO.simps(6) bot2E diverge_lfilter_LNil is_op1.elims(2) llist.distinct(1) lmap_eq_LNil old.sum.simps(5) retrace_comp_op_End1_is_op1)
+        subgoal
+          by (smt (z3) IO.simps(5) IO.simps(6) bot2E diverge_lfilter_LNil is_op1.elims(2) llist.distinct(1) lmap_eq_LNil old.sum.simps(5) retrace_comp_op_End1_is_op1)
+        done
+      subgoal
+        apply (auto 0 0 simp add: neq_LNil_conv)
+        subgoal
+          by (smt (z3) IO.simps(5) IO.simps(6) bot2E diverge_lfilter_LNil is_op1.elims(2) llist.distinct(1) lmap_eq_LNil old.sum.simps(5) retrace_comp_op_End1_is_op1)
+        subgoal
+          by (smt (z3) IO.simps(5) IO.simps(6) bot2E diverge_lfilter_LNil is_op1.elims(2) llist.distinct(1) lmap_eq_LNil old.sum.simps(5) retrace_comp_op_End1_is_op1)
+        done
+      subgoal
+        apply (auto 0 0 simp add: neq_LNil_conv)
+        subgoal
+          by (smt (z3) IO.simps(5) IO.simps(6) bot2E diverge_lfilter_LNil is_op1.elims(2) llist.distinct(1) lmap_eq_LNil old.sum.simps(5) retrace_comp_op_End1_is_op1)
+        subgoal
+          by (smt (z3) IO.simps(5) IO.simps(6) bot2E diverge_lfilter_LNil is_op1.elims(2) llist.distinct(1) lmap_eq_LNil old.sum.simps(5) retrace_comp_op_End1_is_op1)
+        done
+      done
+    subgoal for p f
+      apply hypsubst_thin
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (simp only: comp_op_simps split: if_splits option.splits)
+      subgoal
         apply auto
-     oops
+        using Inl_llist_LNil retrace_comp_op_End2_is_op2 apply blast
+        apply (intro exI conjI)
+        defer
+        apply (rule refl)
+        apply auto
+        apply (rule sym)
+        using Inl_llist_LNil retrace_comp_op_End2_is_op2 apply blast
+        done
+      subgoal
+        apply auto
+        subgoal using Inl_llist_LNil retrace_comp_op_End2_is_op2 by blast
+        subgoal
+          apply (rule exI[of _ End])
+          apply (rule exI[of _ "f (BHD (buf p) bend)"])
+          apply (rule exI[of _ LNil])
+          apply (intro conjI)
+          apply (rule sym)
+          subgoal using Inl_llist_LNil retrace_comp_op_End2_is_op2 by blast
+          subgoal
+            by force
+          subgoal
+            apply (subst not_comp_producing_eq_End)
+            apply safe
+            subgoal for n
+              unfolding not_def
+              apply (drule spec[of _ "Suc n"])
+              apply (rotate_tac 4)
+              apply (drule mp)
+              apply (rule comp_producing.intros)
+              apply auto
+              done
+            apply (intro End)
+            done
+          done
+        done
+      subgoal
+        apply auto
+        using Inl_llist_LNil retrace_comp_op_End2_is_op2 apply blast
+        apply (intro exI conjI)
+        defer
+        apply (rule refl)
+        apply auto
+        apply (rule sym)
+        using Inl_llist_LNil retrace_comp_op_End2_is_op2 apply blast
+        done
+      done
+    subgoal for op p x
+      apply hypsubst_thin
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (simp only: comp_op_simps split: if_splits option.splits)
+      apply auto
+      using Inl_llist_LNil retrace_comp_op_End2_is_op2 apply blast
+      apply (intro exI conjI)
+      defer
+      apply (rule refl)
+      apply auto
+      apply (rule sym)
+      using Inl_llist_LNil retrace_comp_op_End2_is_op2 apply blast
+      done
+    subgoal
+      apply auto
+      done
+    done
+  done
 
 
 lemma traced_comp_op:
@@ -1986,11 +2318,8 @@ lemma traced_comp_op:
     apply (rule exI[of _ "Inl_llist (retrace_comp_op_ios wire buf op1 op2 ios)"])
     apply (rule exI[of _ "Inr_llist (retrace_comp_op_ios wire buf op1 op2 ios)"])
     apply (intro conjI)
-    apply (auto dest: traced_comp_op_traced_1 traced_comp_op_traced_2 traced_lfilter_visible_IO_alternate)
-
-    find_theorems Inl_llist traced
-
-    sorry
+    apply (auto dest: traced_comp_op_traced_1 traced_comp_op_traced_2 traced_lfilter_visible_IO_alternate traced_comp_op_causal)
+    done
   subgoal
     apply (elim exE conjE)
     subgoal for ios1 ios2
