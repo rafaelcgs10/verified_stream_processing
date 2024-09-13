@@ -1638,47 +1638,244 @@ lemma traced_visible:
       done
     done
 
+lemma comp_producing_traced_in_retrace_comp_op_ios:
+  "comp_producing wire buf op1 op2 n \<Longrightarrow>
+   x \<in> lset ios \<Longrightarrow>
+   traced (comp_op wire buf op1 op2) ios \<Longrightarrow>
+   \<exists> x. x \<in> lset (retrace_comp_op_ios wire buf op1 op2 ios) \<and> visible_IO wire x"
+  apply (induct buf op1 op2 n arbitrary: ios rule: comp_producing.induct)
+             apply (fastforce split: if_splits option.splits)+
+  done      
+
 lemma traced_in_retrace_comp_op_ios:
   "x \<in> lset ios \<Longrightarrow>
    traced (comp_op wire buf op1 op2) ios \<Longrightarrow>
-   visible_IO wire x \<Longrightarrow>
-   x \<in> lset (retrace_comp_op_ios wire buf op1 op2 ios)"
- apply (subst (asm) lset_conv_lnth)
-  apply safe
-  subgoal for n
-    apply (induct n arbitrary: buf op1 op2 ios rule: less_induct)
-    subgoal for n buf op1 op2 ios
-      apply (cases n)
-      subgoal
-        apply simp
-        apply (cases "\<exists> n. comp_producing wire buf op1 op2 n")
-        subgoal
-            apply (elim exE)
-            apply (frule comp_producing_traced_cases)
-           apply assumption
-          apply (cases op1; cases op2)
-          subgoal
-            by auto
-           subgoal
-            by auto
-          subgoal
-            by auto
-          subgoal
-            apply (auto split: if_splits option.splits)
-            sledgehammer
+   \<exists> x. x \<in> lset (retrace_comp_op_ios wire buf op1 op2 ios) \<and> visible_IO wire x"
+  apply (cases "\<exists> n. comp_producing wire buf op1 op2 n")
+  subgoal
+    using comp_producing_traced_in_retrace_comp_op_ios
+    by blast
+  subgoal
+    apply simp
+    apply (drule not_comp_producing_eq_End)
+    apply auto
+    done
+  done
 
-          done
-        subgoal
+lemma lhd_lalternate:
+  "x \<in> lset ios1 \<Longrightarrow>
+   lhd (lalternate ios1 ios2) = lhd ios1"
+  apply (induct ios1 arbitrary: ios2 rule: lset_induct)
+   apply (auto simp add: lalternate_LCons1)
+  done
 
-    
+lemma Inr_llist_retrace_comp_op_ios_End:
+  "Inr_llist (retrace_comp_op_ios wire buf op1 End ios) = LNil"
+  apply (coinduction arbitrary: buf op1 ios)
+  apply (intro impI conjI iffI)
+  apply (auto split: IO.splits sum.splits)
+  using in_retrace_comp_op_End_not_Inr apply fastforce+
+  done
 
-lemma
+lemma Inl_llist_retrace_comp_op_ios_End:
+  "Inl_llist (retrace_comp_op_ios wire buf End op2 ios) = LNil"
+  apply (coinduction arbitrary: buf op2 ios)
+  apply (intro impI conjI iffI)
+  apply (auto split: IO.splits sum.splits)
+  using in_retrace_comp_op_End_not_Inl apply fastforce+
+  done
+
+fun is_op1 where
+  "is_op1 (Inp (Inl _) _) = True"
+| "is_op1 (Out (Inl _) _) = True"
+| "is_op1 _ = False"
+
+fun is_op2 where
+  "is_op2 (Inp (Inr _) _) = True"
+| "is_op2 (Out (Inr _) _) = True"
+| "is_op2 _ = False"
+
+coinductive comp_op_alternate where
+  "comp_op_alternate LNil"
+| "(\<forall> x \<in> lset lxs. is_op1 x) \<Longrightarrow> comp_op_alternate lxs"
+| "(\<forall> x \<in> lset lxs. is_op2 x) \<Longrightarrow> comp_op_alternate lxs"
+| "comp_op_alternate lxs \<Longrightarrow> is_op1 x \<Longrightarrow> is_op2 y \<Longrightarrow> comp_op_alternate (LCons x (LCons y lxs))"
+
+lemma retrace_comp_op_End1_is_op1:
+  "x \<in> lset lxs \<Longrightarrow>
+   lxs = retrace_comp_op wire buf op1 End ios1 ios2 \<Longrightarrow>
+   is_op1 x"
+  apply (induct lxs arbitrary: buf op1 ios1 ios2 rule: lset_induct)
+  subgoal for xs buf op1 ios1 ios2
+    apply (cases op1)
+    apply auto
+    done
+  subgoal for x' xs buf op1 ios1 ios2
+    apply (cases op1)
+    apply auto
+    done
+  done
+
+lemma retrace_comp_op_End2_is_op2:
+  "x \<in> lset lxs \<Longrightarrow>
+   lxs = retrace_comp_op wire buf End op2 ios1 ios2 \<Longrightarrow>
+   is_op2 x"
+  apply (induct lxs arbitrary: buf op2 ios1 ios2 rule: lset_induct)
+  subgoal for xs buf op2 ios1 ios2
+    apply (cases op2)
+    apply (auto split: if_splits)
+    done
+  subgoal for x' xs buf op2 ios1 ios2
+    apply (cases op2)
+    apply (auto split: if_splits)
+    done
+  done
+
+lemma comp_op_alternate_retrace_comp_op[simp]:
+  "comp_op_alternate (retrace_comp_op wire buf op1 op2 ios1 ios2)"
+  apply (coinduction arbitrary: buf op1 op2 ios1 ios2)
+  subgoal for buf op1 op2 ios1 ios2
+    apply (cases op1; cases op2)
+    apply (auto 10 10 simp add: retrace_comp_op_End1_is_op1 retrace_comp_op_End2_is_op2 split: option.splits)
+    done
+  done
+
+lemma Inr_llist_LNil[simp]:
+  "\<forall>x\<in>lset ios. is_op1 x \<Longrightarrow>
+   Inr_llist ios = LNil"
+  apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil split: IO.splits sum.splits)
+  done
+
+lemma Inr_llist_same[simp]:
+  "\<forall>x\<in>lset ios. is_op2 x \<Longrightarrow>
+   Inr_llist ios = lmap (case_IO (case_sum undefined (\<lambda> p ob. Inp p ob)) (case_sum undefined (\<lambda> p ob. Out p ob))) ios"
+  apply (simp add: split: IO.splits sum.splits)
+  apply (smt (verit, best) is_op2.simps(3) is_op2.simps(4) lfilter_id_conv)
+  done
+
+lemma Inl_llist_LNil[simp]:
+  "\<forall>x\<in>lset ios. is_op2 x \<Longrightarrow>
+   Inl_llist ios = LNil"
+  apply (auto simp add: lmap_eq_LNil lfilter_eq_LNil split: IO.splits sum.splits)
+  done
+
+lemma Inl_llist_same[simp]:
+  "\<forall>x\<in>lset ios. is_op1 x \<Longrightarrow>
+   Inl_llist ios = lmap (case_IO (case_sum (\<lambda> p ob. Inp p ob) undefined) (case_sum (\<lambda> p ob. Out p ob) undefined)) ios"
+  apply (simp add: split: IO.splits sum.splits)
+  apply (smt (verit, best) is_op1.simps(3) is_op1.simps(4) lfilter_id_conv)
+  done
+
+
+lemma comp_op_alternate_lalternate:
+  "comp_op_alternate lxs \<Longrightarrow>
+   lalternate (lmap (map_IO Inl Inl id) (Inl_llist lxs)) (lmap (map_IO Inr Inr id) (Inr_llist lxs)) =
+   lxs"
+  apply (coinduction arbitrary: lxs rule: llist.coinduct_upto)
+  apply (intro impI conjI iffI)
+  subgoal
+    unfolding lnull_def
+    apply (erule comp_op_alternate.cases)
+       apply (clarsimp split: if_splits)
+    subgoal by (smt (verit, ccfv_threshold) IO.simps(5) IO.simps(6) is_op1.elims(1) lalternate_LNil(2) lalternate_simps(4) lfilter_id_conv llist.distinct(1) llist.exhaust_sel lmap_eq_LNil old.sum.simps(5) top2I)
+    subgoal
+      by (smt (z3) IO.simps(5) IO.simps(6) LNil_eq_lmap is_op2.elims(1) lalternate_LNil(1) lfilter_LNil lfilter_empty_conv lfilter_id_conv lset_lalternate2 old.sum.simps(6) top2I)
+    subgoal
+      by (smt (verit, del_insts) IO.simps(5) IO.simps(6) is_op1.elims(1) lalternate_LCons1 lfilter_LCons llist.distinct(1) llist.simps(13) old.sum.simps(5) top2I)
+    done
+  subgoal for lxs
+    by (simp add: lnull_def)
+  subgoal
+    unfolding lnull_def
+    apply (erule comp_op_alternate.cases)
+       apply simp_all
+    subgoal
+      by (auto 0 0 simp add: neq_LNil_conv observation.map_id split: if_splits IO.splits sum.splits)
+    subgoal
+      by (auto 0 0 simp add: neq_LNil_conv observation.map_id split: if_splits IO.splits sum.splits)
+    subgoal for lxs x y
+      apply (cases x; cases y)
+         apply (simp_all add: neq_LNil_conv observation.map_id split: if_splits sum.splits)
+      done
+    done
+  subgoal for lxs
+    apply (erule comp_op_alternate.cases)
+       apply simp
+    subgoal 
+      apply (rule llist.cong_base)
+      apply (auto simp add: comp_op_alternate.intros(2) llist.set_sel(2))
+      done
+    subgoal 
+      apply (rule llist.cong_base)
+      apply (auto simp add: comp_op_alternate.intros(3) llist.set_sel(2))
+      done
+    subgoal for lxs x y
+      apply hypsubst_thin
+      apply (cases x; cases y)
+      subgoal for p d p' d'
+        apply (cases p; cases p')
+           apply (simp_all split: if_splits)
+        apply (rule llist.cong_LCons)
+         apply (simp add:  observation.map_id)
+        apply (rule llist.cong_base)
+        apply auto
+        done
+      subgoal for p d p' d'
+        apply (cases p; cases p')
+           apply (simp_all split: if_splits)
+        apply (rule llist.cong_LCons)
+         apply (simp add:  observation.map_id)
+        apply (rule llist.cong_base)
+        apply auto
+        done
+      subgoal for p d p' d'
+        apply (cases p; cases p')
+           apply (simp_all split: if_splits)
+        apply (rule llist.cong_LCons)
+         apply (simp add:  observation.map_id)
+        apply (rule llist.cong_base)
+        apply auto
+        done
+      subgoal for p d p' d'
+        apply (cases p; cases p')
+           apply (simp_all split: if_splits)
+        apply (rule llist.cong_LCons)
+         apply (simp add:  observation.map_id)
+        apply (rule llist.cong_base)
+        apply auto
+        done
+      done
+    done
+  done
+
+lemma comp_producing_lhd_traced:
+  "comp_producing wire buf op1 op2 n \<Longrightarrow>
+   traced (comp_op wire buf op1 op2) (LCons io ios) \<Longrightarrow> io = lhd (ldropWhile (\<lambda>x. \<not> visible_IO wire x) (retrace_comp_op_ios wire buf op1 op2 (LCons io ios)))"
+  apply (induct buf op1 op2 n arbitrary: ios rule: comp_producing.induct)
+             apply (fastforce simp add: lalternate_LCons1 observation.map_id split: if_splits option.splits)+
+  done
+
+lemma comp_producing_retrace_comp_op_ios_lfilter_cong:
+  "comp_producing wire buf op1 op2 n \<Longrightarrow>
+   traced (comp_op wire buf op1 op2) ios \<Longrightarrow>
+   ios \<noteq> LNil \<Longrightarrow>
+   llist.v1.congclp
+    (\<lambda>llist llist'.
+       \<exists>buf op1 op2 ios. llist = ios \<and> llist' = lfilter (visible_IO wire) (retrace_comp_op_ios wire buf op1 op2 ios) \<and> traced (comp_op wire buf op1 op2) ios)
+      (ctl ios) (ctl (lfilter (visible_IO wire) (retrace_comp_op_ios wire buf op1 op2 ios)))"
+  apply (induct buf op1 op2 n arbitrary: ios rule: comp_producing.induct)
+  apply (force simp add:  observation.map_id split: if_splits option.splits intro!: llist.cong_LCons intro: llist.cong_base)+
+  done
+
+lemma traced_lfilter_visible_IO_alternate:
   "traced (comp_op wire buf op1 op2) ios \<Longrightarrow>
    ios = lfilter (visible_IO wire)
            (lalternate 
               (lmap (map_IO Inl Inl id) (Inl_llist (retrace_comp_op_ios wire buf op1 op2 ios)))
               (lmap (map_IO Inr Inr id) (Inr_llist (retrace_comp_op_ios wire buf op1 op2 ios))))"
-  apply (coinduction arbitrary: buf op1 op2 ios)
+  apply (subst comp_op_alternate_lalternate)
+  using comp_op_alternate_retrace_comp_op apply blast
+  apply (coinduction arbitrary: buf op1 op2 ios rule: llist.coinduct_upto)
   subgoal for buf op1 op2 ios
     apply (intro conjI impI iffI)
     subgoal
@@ -1689,65 +1886,94 @@ lemma
         apply (drule in_retrace_comp_op_eq_End)
          apply (auto split: IO.splits sum.splits)
         done
-      subgoal
-        apply (drule in_retrace_comp_op_eq_End)
-         apply (auto split: IO.splits sum.splits)
-        done
       done
     subgoal
       unfolding lnull_def
       apply (cases ios)
        apply simp
-      subgoal for io ios'
+      subgoal for io' ios'
         apply hypsubst_thin
         apply (simp only: lfilter_eq_LNil lmap_eq_LNil lset_lalternate lset_lfilter lset_lmap)
-        apply (frule traced_visible[rotated 1, where x=io])
-        apply simp
-        apply (frule traced_in_retrace_comp_op_ios[rotated 1, where x=io])
-          apply assumption
+        apply (frule traced_in_retrace_comp_op_ios[rotated 1, where x=io'])
          apply simp
-        apply (drule bspec[of _ _ io])
-        subgoal
-          apply (cases io)
-          subgoal for p d
-            apply (cases p)
-            subgoal for l
-              apply (rule UnI1)
-              apply (rule rev_image_eqI[where x="Inp l d"])
-              apply (rule rev_image_eqI[where x=io])
-              apply (simp_all add: observation.map_id)
+        apply (elim exE)
+        subgoal for io
+          apply simp
+          apply (drule bspec[of _ _ io])
+          subgoal
+            apply (cases io)
+            subgoal for p d
+              apply (cases p)
+              subgoal for l
+                  apply (simp_all add: observation.map_id)
+                done
+              subgoal for r
+                  apply (simp_all add: observation.map_id)
+                done
               done
-            subgoal for r
-              apply (rule UnI2)
-              apply (rule rev_image_eqI[where x="Inp r d"])
-              apply (rule rev_image_eqI[where x=io])
-              apply (simp_all add: observation.map_id)
-              done
-            done
-          subgoal for p d
-            apply (cases p)
-            subgoal for l
-              apply (rule UnI1)
-              apply (rule rev_image_eqI[where x="Out l d"])
-              apply (rule rev_image_eqI[where x=io])
-              apply (simp_all add: observation.map_id)
-              done
-            subgoal for r
-              apply (rule UnI2)
-              apply (rule rev_image_eqI[where x="Out r d"])
-              apply (rule rev_image_eqI[where x=io])
-              apply (simp_all add: observation.map_id)
+            subgoal for p d
+              apply (cases p)
+              subgoal for l
+                  apply (simp_all add: observation.map_id)
+                done
+              subgoal for r
+                  apply (simp_all add: observation.map_id)
+                done
               done
             done
+          apply auto
           done
+        done
+      done
+    subgoal
+      apply (cases "\<exists> n. comp_producing wire buf op1 op2 n")
+      subgoal
+        apply (cases ios)
+        apply simp
+        apply (elim exE)
+        apply (drule comp_producing_lhd_traced)
+         apply simp
+        apply simp
+        done
+      subgoal
+        by (metis lnull_def not_comp_producing_eq_End traced_EndE)
+      done
+    subgoal
+      apply (cases "\<exists> n. comp_producing wire buf op1 op2 n")
+      subgoal
+        unfolding lnull_def
+        apply (elim exE)
+        apply (drule comp_producing_retrace_comp_op_ios_lfilter_cong)
+        apply simp
+         apply simp_all
+        done
+      subgoal
+        apply simp
+        apply (metis lnull_def not_comp_producing_eq_End traced_EndE)
+        done
+      done
+    done
+  done
+
+
+lemma
+  "traced (comp_op wire buf op1 op2) ios \<Longrightarrow>
+   causal wire buf (Inl_llist (retrace_comp_op_ios wire buf op1 op2 ios)) (Inr_llist (retrace_comp_op_ios wire buf op1 op2 ios))"
+  apply (coinduction arbitrary: buf op1 op2 ios)
+  subgoal for buf op1 op2 ios
+    apply (cases op1; cases op2)
+    subgoal
+      find_theorems lfilter name: simps
+      apply (intro disjI1)
+      apply (simp del: llist.simps(12) llist.simps(13) lfilter.simps split: if_splits)
+      subgoal
+        apply (elim traced_ReadE)
         apply auto
         done
-
-          find_theorems "_ \<Longrightarrow> _ \<in> _ \<union> _"
-
-
-
-        oops
+   subgoal
+        apply (elim traced_ReadE)
+        apply auto
+     oops
 
 
 lemma traced_comp_op:
@@ -1757,6 +1983,13 @@ lemma traced_comp_op:
     causal wire buf ios1 ios2)"
   apply (rule iffI)
   subgoal
+    apply (rule exI[of _ "Inl_llist (retrace_comp_op_ios wire buf op1 op2 ios)"])
+    apply (rule exI[of _ "Inr_llist (retrace_comp_op_ios wire buf op1 op2 ios)"])
+    apply (intro conjI)
+    apply (auto dest: traced_comp_op_traced_1 traced_comp_op_traced_2 traced_lfilter_visible_IO_alternate)
+
+    find_theorems Inl_llist traced
+
     sorry
   subgoal
     apply (elim exE conjE)
