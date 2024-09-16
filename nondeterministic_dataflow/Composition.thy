@@ -924,7 +924,6 @@ lemma cleaned_comp_op: "cleaned op1 \<Longrightarrow> cleaned op2 \<Longrightarr
   done
 
 section\<open>Trace model correctness\<close>
-definition "lfocus f A ios = lmap (map_prod f id) (lfilter (\<lambda>qx. fst qx \<in> A) ios)"
 
 corec lalternate where
   "lalternate ios1 ios2 = (case (ios1, ios2) of
@@ -2380,7 +2379,40 @@ lemma outputs_pcomp_op[simp]:
   "outputs (pcomp_op op1 op2) \<subseteq> Inl ` outputs op1 \<union> Inr ` outputs op2"
   unfolding pcomp_op_def by (auto dest: outputs_comp_op)
 
+definition "lfocus f A g B ios =
+  lmap (\<lambda>io. case io of Inp p x \<Rightarrow> Inp (f p) x | Out p x \<Rightarrow> Out (g p) x)
+     (lfilter (\<lambda>io. case io of Inp p x \<Rightarrow> p \<in> A | Out p x \<Rightarrow> p \<in> B) ios)"
+
+lemma "traced (pcomp_op op1 op2) lxs \<longleftrightarrow>
+  traced op1 (lfocus projl (range Inl) projl (range Inl) lxs) \<and>
+  traced op2 (lfocus projr (range Inr) projr (range Inr) lxs)"
+  unfolding pcomp_op_def traced_comp_op
+  apply (auto simp: lfocus_def lfilter_lfilter)
+  oops
+
 section\<open>Sequential composition\<close>
+
+lemma "inj_on f (inputs op) \<Longrightarrow> inj_on g (outputs op) \<Longrightarrow>
+  traced (map_op f g op) lxs \<longleftrightarrow> (\<exists>lys. traced op lys \<and> lxs = lmap (map_IO f g id) lys)"
+  apply safe
+  subgoal
+    apply (rule exI[of _ "lmap (\<lambda>io. map_IO (the_inv_into (inputs op) f) (the_inv_into (outputs op) g) id io) lxs"] conjI)+
+    apply (coinduction arbitrary: op lxs)
+    subgoal for op lys
+      apply (cases op)
+        apply (auto simp: observation.map_id the_inv_into_f_f image_iff)
+      sorry
+    apply (auto simp: llist.map_comp IO.map_comp o_def)
+    sorry
+  subgoal for lys
+    apply hypsubst_thin
+    apply (erule thin_rl)
+    apply (erule thin_rl)
+    apply (coinduction arbitrary: op lys)
+    subgoal for op lys
+      by (cases op) (auto 0 3 simp: observation.map_id)
+    done
+  done
 
 definition "scomp_op op1 op2 = map_op projl projr (comp_op Some (\<lambda>_. BEmpty) op1 op2)"
 
