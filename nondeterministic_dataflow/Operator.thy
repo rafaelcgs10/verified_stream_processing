@@ -748,7 +748,7 @@ lemma lset_produce_trace_lhd_output:
     done
   done
 
-lemma
+lemma history_produce:
   "history op lxs (produce op lxs)"
   unfolding history_def
   apply (rule exI[of _ "produce_trace op lxs"])

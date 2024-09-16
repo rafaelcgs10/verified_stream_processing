@@ -421,6 +421,8 @@ corec Suc_op where
             (case_observation 
               (Write (Read 1 (case_observation (\<lambda> x. Write (Write Suc_op 1 (Suc x)) (2::2) (Suc x)) Suc_op Suc_op)) 1) Suc_op Suc_op)"
 
+
+
 abbreviation "loop_Suc_op buf \<equiv> loop_op
     (\<lambda>x. if x = 1 then Some 1 else None) buf Suc_op"
 
