@@ -7,6 +7,19 @@ imports
   Linear_Temporal_Logic_on_Llists
 begin
 
+lemma neq_1_conv_2[simp]: "p \<noteq> 1 \<longleftrightarrow> (p :: 2) = 2"
+  apply (cases p)
+  subgoal for z
+    apply (cases z; simp)
+    subgoal for n
+      apply (cases n; simp)
+      subgoal for n
+        apply (cases n; simp)
+        done
+      done
+    done
+  done
+
 corec fairmerge :: "bool \<Rightarrow> bool \<Rightarrow> (2, 1, 'd) op" where
   "fairmerge e1 e2 = (case (e1, e2) of
       (True, True) \<Rightarrow> End
@@ -274,7 +287,7 @@ lemma Inp_1_lset_trace_fmTF: "Inp (1 :: 2) x \<in> lset ios \<Longrightarrow> \<
 
 lemma trace_fmTF_lproject1: "trace_fmTF (ios :: (2, 1, 'd) IO llist) \<Longrightarrow> lproject (=) \<bottom> ios (1 :: 2) = LNil"
   by (erule trace_fmTF.cases)
-    (auto simp: lproject_empty_conv Inp_1_lset_trace_fmTF)
+    (auto simp: lproject_empty_conv Inp_1_lset_trace_fmTF simp del: neq_1_conv_2)
 
 lemma eq_repeat_iff: "lxs = repeat x \<longleftrightarrow> lset lxs = {x} \<and> \<not> lfinite lxs"
   apply (safe; simp?)
@@ -333,21 +346,85 @@ lemma history_fairmerge_True_False: "history (fairmerge True False) lxs lzs \<lo
       apply (auto simp: lproject_def lfilter_lconcat_lfinite lmap_lconcat llist.map_comp
         lconcat_lmap lappend_inf lfilter_lmap
       cong: llist.map_cong if_cong split: if_splits)
-    apply (subgoal_tac "p = 2")
-     prefer 2
-     apply (cases p; simp)
-    subgoal for z
-      apply (cases z)
-      subgoal for n
-        apply (cases n; simp)
-      subgoal for n
-        apply (cases n; simp)
-        done
+    apply (cases "lfinite (lzs 1)")
+      apply (auto simp: lproject_def lfilter_lconcat_lfinite lmap_lconcat llist.map_comp
+        lconcat_lmap lappend_inf lfilter_lmap
+      cong: llist.map_cong if_cong split: if_splits)
+    done
+  subgoal premises prems
+    apply (cases "lfinite (lzs 1)")
+      apply (auto simp: lproject_def lfilter_lconcat_lfinite lmap_lconcat llist.map_comp
+        lconcat_lmap lappend_inf lfilter_lmap
+      cong: llist.map_cong if_cong split: if_splits)
+    done
+  done
+
+lemma Inp_2_lset_trace_fmFT: "Inp (2 :: 2) x \<in> lset ios \<Longrightarrow> \<not> trace_fmFT ios"
+  unfolding lset_conv_lnth mem_Collect_eq
+  apply safe
+  subgoal for n
+    apply (induct n arbitrary: ios rule: less_induct)
+    subgoal for n ios
+      apply (cases n)
+      apply (erule trace_fmFT.cases; auto)
+      apply (erule trace_fmFT.cases; auto simp: enat_0[symmetric]
+        simp: lnth_LCons' gr0_conv_Suc Suc_ile_eq split: if_splits)
+      apply (metis less_add_Suc2 plus_1_eq_Suc)
       done
-      subgoal for n
-        apply (cases n; simp)
-        done
+    done
+  done
+
+lemma trace_fmFT_lproject2: "trace_fmFT (ios :: (2, 1, 'd) IO llist) \<Longrightarrow> lproject (=) \<bottom> ios (2 :: 2) = LNil"
+  by (erule trace_fmFT.cases)
+    (auto simp: lproject_empty_conv Inp_2_lset_trace_fmFT)
+
+lemma trace_fmFT_lproject1: "trace_fmFT (ios :: (2, 1, 'd) IO llist) \<Longrightarrow> lproject (=) \<bottom> ios 1 = lproject \<bottom> (=) ios 1"
+  apply (coinduction arbitrary: ios)
+  subgoal for ios
+    apply (cases "ios = repeat (Inp 1 EOB)")
+    subgoal
+      apply (auto simp: lproject_def)
       done
+    subgoal
+      apply (subgoal_tac "\<exists>n. llength (ltakeWhile ((=) (Inp 1 EOB)) ios) = enat n")
+       apply (erule exE)
+      subgoal for n
+        apply (induct n arbitrary: ios)
+        subgoal for ios
+          apply (erule trace_fmFT.cases; auto simp: enat_0)
+          done
+        subgoal for x ios
+          apply (erule trace_fmFT.cases; auto simp add: eq_repeat_iff simp flip: enat_0 eSuc_enat)
+          done
+        done
+      using llength_ltakeWhile_eq_infinity'[of "((=) (Inp 1 EOB))" ios]
+      apply (cases ios)
+       apply (auto simp: eq_repeat_iff simp flip: enat_0)
+      done
+    done
+  done
+
+lemma history_fairmerge_False_True: "history (fairmerge False True) lxs lzs \<longleftrightarrow>
+  lprefix (lzs 1) (lxs 1)"
+  unfolding history_def traced_fairmerge_False_True
+  apply (auto simp: fun_eq_iff trace_fmFT_lproject1[symmetric])
+  apply (rule exI[of _ "lappend (lconcat (lmap (\<lambda>x. LCons (Inp 1 (Observed x)) (LCons (Out 1 x) LNil)) (lzs 1))) (repeat (Inp 1 EOB))"])
+  apply (intro conjI)
+  subgoal premises prems
+    apply (coinduction arbitrary: lzs)
+    subgoal for lzs
+      apply (cases "lzs 1")
+       apply auto
+      apply (smt (verit) iterates_lmap lappend_code(1) lconcat_LNil llist.simps(12) lmap_iterates)
+      done
+    done
+  apply safe
+  subgoal for p
+    apply (cases "p = 1"; simp?)
+  apply (cases "lfinite (lzs 1)")
+      apply (auto simp: lproject_def lfilter_lconcat_lfinite lmap_lconcat llist.map_comp
+        lconcat_lmap lappend_inf lfilter_lmap
+      cong: llist.map_cong if_cong split: if_splits)
     apply (cases "lfinite (lzs 1)")
       apply (auto simp: lproject_def lfilter_lconcat_lfinite lmap_lconcat llist.map_comp
         lconcat_lmap lappend_inf lfilter_lmap
@@ -362,12 +439,118 @@ lemma history_fairmerge_True_False: "history (fairmerge True False) lxs lzs \<lo
   done
 
 coinductive merged where
-  "merged LNil lxs lxs"
-| "merged lxs LNil lxs"
-| "xs \<noteq> [] \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> merged lxs lys lzs \<Longrightarrow>
-   merged (xs @@- lxs) (ys @@- lys) (xs @@- ys @@- lzs)"
-| "xs \<noteq> [] \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> merged lxs lys lzs \<Longrightarrow>
-   merged (xs @@- lxs) (ys @@- lys) (ys @@- xs @@- lzs)"
+  stop: "merged lxs lys LNil"
+| left: "merged lxs lys lzs \<Longrightarrow> merged (LCons x lxs) lys (LCons x lzs)"
+| right: "merged lxs lys lzs \<Longrightarrow> merged lxs (LCons y lys) (LCons y lzs)"
+
+inductive merged_cong for R where
+  mc_base: "R lxs lys lzs \<Longrightarrow> merged_cong R lxs lys lzs"
+| mc_merged: "merged lxs lys lzs \<Longrightarrow> merged_cong R lxs lys lzs"
+| mc_left: "merged_cong R lxs lys lzs \<Longrightarrow> merged_cong R (LCons x lxs) lys (LCons x lzs)"
+| mc_right: "merged_cong R lxs lys lzs \<Longrightarrow> merged_cong R lxs (LCons y lys) (LCons y lzs)"
+
+lemma merged_coinduct_upto:
+  assumes X: "X lxs lys lzs"
+      and CIH: "\<And>lxs lys lzs. X lxs lys lzs \<Longrightarrow> lzs = LNil \<or>
+    (\<exists>lxs' lzs' x. lxs = LCons x lxs' \<and> lzs = LCons x lzs' \<and> merged_cong X lxs' lys lzs') \<or>
+    (\<exists>lys' lzs' y. lys = LCons y lys' \<and> lzs = LCons y lzs' \<and> merged_cong X lxs lys' lzs')"
+    shows "merged lxs lys lzs"
+  apply (rule merged.coinduct[of "merged_cong X"])
+   apply (rule mc_base, rule X)
+  subgoal for lxs lys lzs
+    apply (induct lxs lys lzs rule: merged_cong.induct)
+    subgoal for lxs lys lzs
+      by (drule CIH) auto
+    subgoal for lxs lys lzs
+      by (erule merged.cases) auto
+    subgoal for lxs lys lzs x
+      by auto
+    subgoal for lxs lys lzs x
+      by auto
+    done
+  done
+
+lemma lprefix_merged1: "lprefix lzs lxs \<Longrightarrow> merged lxs lys lzs"
+  by (coinduction arbitrary: lxs lzs) (erule lprefix.cases; auto)
+
+lemma lprefix_merged2: "lprefix lzs lys \<Longrightarrow> merged lxs lys lzs"
+  by (coinduction arbitrary: lys lzs) (erule lprefix.cases; auto)
+
+lemma history_fairmerge_False_False: "history (fairmerge False False) lxs lzs \<longleftrightarrow> merged (lxs 1) (lxs 2) (lzs 1)"
+  unfolding history_def traced_fairmerge_False_False
+  apply safe
+  subgoal for ios
+    apply hypsubst_thin
+    apply (coinduction arbitrary: lxs ios rule: merged_coinduct_upto)
+    subgoal premises prems for lxs ios
+    proof (cases "\<exists>n. llength (ltakeWhile ((=) (Inp 1 EOB) \<squnion> (=) (Inp 2 EOB)) ios) = enat n")
+      case True
+      then show ?thesis
+        using prems
+        apply (elim exE)
+        subgoal for n
+          apply (induct n arbitrary: ios)
+          subgoal for ios
+            apply (erule trace_fmFF.cases)
+              apply (simp_all add: enat_0)
+            subgoal for lxs'
+              apply (cases "lproject \<bottom> (=) lxs' 1"; simp)
+              apply (rule disjI2)
+              apply (smt (verit, best) LCons_lprefix_conv lprefix_merged2 mc_merged trace_fmTF_lproject2)
+              done
+            unfolding trace_fmFF_A1_def trace_fmFF_A2_def
+             apply (elim UnE insertE emptyE imageE; hypsubst_thin; simp)
+            subgoal for lxs' x
+              apply (smt (verit, ccfv_SIG) LCons_lprefix_conv bot2E lprefix_merged1 lproject_LCons(2) lproject_LCons(3) mc_merged trace_fmFT_lproject1)
+              done
+            apply (elim UnE insertE emptyE imageE; hypsubst_thin; simp add: null_def)
+             apply (frule spec[of _ 1]; frule spec[of _ 2]; simp)
+             apply (rule disjI1)
+             apply (simp add: LCons_lprefix_conv)
+             apply (erule exE conjE)+
+            subgoal for lxs' x ys'
+              apply (rule exI conjI | assumption)+
+              apply (rule mc_base)
+              apply (rule exI[of _ "lxs(1 := ys')"])
+              apply simp
+              apply (rule exI conjI refl)+
+               apply assumption
+              apply auto
+              done
+            apply (frule spec[of _ 1]; frule spec[of _ 2]; simp)
+            apply (simp add: LCons_lprefix_conv)
+            apply (erule exE conjE)+
+            apply simp
+            apply (rule disjI1)
+            apply (rule mc_right)
+            apply (rule mc_base)
+            subgoal for lxs' x y lxs'' lys''
+              apply (rule exI[of _ "\<lambda>p. if p = 1 then lxs'' else lys''"])
+              apply simp
+              apply (rule exI conjI refl)+
+               apply assumption
+              apply simp
+              done
+            done
+          subgoal for n ios
+            apply (erule trace_fmFF.cases)
+              apply (simp add: enat_0[symmetric])
+            sorry
+          done
+        done
+    next
+      case False
+      then show ?thesis
+        by (auto simp: llength_ltakeWhile_eq_infinity' lproject_empty_conv)
+    qed
+    done
+  subgoal sorry
+  done
+
+end
+
+
+
 
 coinductive mergedL where
   "mergedL LNil lxs lxs"
