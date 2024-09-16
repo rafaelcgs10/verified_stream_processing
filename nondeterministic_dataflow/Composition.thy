@@ -160,49 +160,22 @@ proof (induct p \<open>comp_op wire buf op1 op2\<close> arbitrary: buf op1 op2 r
   then obtain n where \<open>comp_producing wire buf op1 op2 n\<close>
     by (fastforce simp: not_comp_producing_eq_End)
   then show ?case
-    using Read1
-    by (induct n rule: comp_producing.induct) (fastforce split: if_splits option.splits)+
+    using Read1 by (induct n rule: comp_producing.induct)
+      (fastforce split: if_splits option.splits simp: less_Suc_eq image_iff)+
 next
-  case (Read2 p p' f n)
-  then obtain m where \<open>comp_producing wire buf op1 op2 m\<close>
+  case (Read2 p p' f x d g)
+  then obtain n where \<open>comp_producing wire buf op1 op2 n\<close>
     by (fastforce simp: not_comp_producing_eq_End)
   then show ?case
-    using Read2
-  proof (induct m rule: comp_producing.induct)
-    case (6 buf p1 f1 op2' p2 x2)
-    then show ?case
-      apply (auto split: if_splits option.splits simp: le_Suc_eq image_iff)
-      apply blast
-      done
-  next
-    case (10 buf p1 f1 p2 f2)
-    then show ?case
-      apply (auto split: if_splits option.splits simp: le_Suc_eq image_iff)
-       apply blast
-      apply blast
-      done
-  qed (fastforce split: if_splits option.splits simp: le_Suc_eq image_iff)+
+    using Read2 by (induct n rule: comp_producing.induct)
+      (fastforce split: if_splits option.splits simp: less_Suc_eq image_iff)+
 next
-  case (Write p p' op' x n)
-  then obtain m where \<open>comp_producing wire buf op1 op2 m\<close>
+  case (Write p p' op' x d g)
+  then obtain n where \<open>comp_producing wire buf op1 op2 n\<close>
     by (fastforce simp: not_comp_producing_eq_End)
   then show ?case
-    using Write
-  proof (induct m rule: comp_producing.induct)
-    case (7 buf op1' p1 x1 op2' p2 x2)
-    then show ?case
-      apply (auto split: if_splits option.splits simp: le_Suc_eq image_iff)
-      apply blast
-      apply blast
-      done
-  next
-    case (11 p2 p1 buf op1' x1 f2)
-    then show ?case
-      apply (auto split: if_splits option.splits simp: le_Suc_eq image_iff)
-       apply blast
-      apply blast
-      done
-  qed (fastforce split: if_splits option.splits simp: le_Suc_eq image_iff)+
+    using Write by (induct n rule: comp_producing.induct)
+      (fastforce split: if_splits option.splits simp: less_Suc_eq image_iff)+
 qed
 
 lemma inputs_comp_op_le2:
@@ -486,6 +459,33 @@ lemma inputs_comp_op_le:
 
 section\<open>Outputs of comp_op\<close>
 
+lemma outputs_comp_op2: "sub_op (Write op' p y) (comp_op wire buf op1 op2) d \<Longrightarrow> p \<in> Inl ` (outputs op1 - dom wire) \<union> Inr ` outputs op2"
+proof (induct p \<open>comp_op wire buf op1 op2\<close> arbitrary: buf op1 op2 rule: sub_op_Write_induct)
+  case (Read p p' f x op' y d)
+  then obtain n where \<open>comp_producing wire buf op1 op2 n\<close>
+    by (fastforce simp: not_comp_producing_eq_End)
+  then show ?case
+    using Read by (induct n rule: comp_producing.induct)
+      (fastforce split: if_splits option.splits simp: less_Suc_eq image_iff)+
+next
+  case (Write1 p p' op' x op2 y d)
+  then obtain n where \<open>comp_producing wire buf op1 op2 n\<close>
+    by (fastforce simp: not_comp_producing_eq_End)
+  then show ?case
+    using Write1 by (induct n rule: comp_producing.induct)
+      (fastforce split: if_splits option.splits simp: less_Suc_eq image_iff)+
+next
+  case (Write2 p op' x)
+  then obtain n where \<open>comp_producing wire buf op1 op2 n\<close>
+    by (fastforce simp: not_comp_producing_eq_End)
+  then show ?case
+    using Write2 by (induct n rule: comp_producing.induct)
+      (fastforce split: if_splits option.splits simp: less_Suc_eq image_iff)+
+qed
+
+lemma outputs_comp_op_le2:
+  "outputs (comp_op wire buf op1 op2) \<subseteq> Inl ` (outputs op1 - dom wire) \<union> Inr ` outputs op2"
+  using outputs_comp_op2 by (metis outputs_sub_op_Write subsetI)
 
 lemma outputs_comp_op_arg_min_1[simp]:
   "p \<in> outputs (comp_op wire buf (f1 x) op) \<Longrightarrow>
