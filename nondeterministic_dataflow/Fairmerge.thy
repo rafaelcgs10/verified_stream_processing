@@ -20,6 +20,19 @@ lemma neq_1_conv_2[simp]: "p \<noteq> 1 \<longleftrightarrow> (p :: 2) = 2"
     done
   done
 
+lemma neq_2_conv_1[simp]: "p \<noteq> 2 \<longleftrightarrow> (p :: 2) = 1"
+  apply (cases p)
+  subgoal for z
+    apply (cases z; simp)
+    subgoal for n
+      apply (cases n; simp)
+      subgoal for n
+        apply (cases n; simp)
+        done
+      done
+    done
+  done
+
 corec fairmerge :: "bool \<Rightarrow> bool \<Rightarrow> (2, 1, 'd) op" where
   "fairmerge e1 e2 = (case (e1, e2) of
       (True, True) \<Rightarrow> End
@@ -376,7 +389,7 @@ lemma Inp_2_lset_trace_fmFT: "Inp (2 :: 2) x \<in> lset ios \<Longrightarrow> \<
 
 lemma trace_fmFT_lproject2: "trace_fmFT (ios :: (2, 1, 'd) IO llist) \<Longrightarrow> lproject (=) \<bottom> ios (2 :: 2) = LNil"
   by (erule trace_fmFT.cases)
-    (auto simp: lproject_empty_conv Inp_2_lset_trace_fmFT)
+    (auto simp: lproject_empty_conv Inp_2_lset_trace_fmFT simp del: neq_2_conv_1)
 
 lemma trace_fmFT_lproject1: "trace_fmFT (ios :: (2, 1, 'd) IO llist) \<Longrightarrow> lproject (=) \<bottom> ios 1 = lproject \<bottom> (=) ios 1"
   apply (coinduction arbitrary: ios)
@@ -489,8 +502,10 @@ lemma history_fairmerge_False_False: "history (fairmerge False False) lxs lzs \<
         using prems
         apply (elim exE)
         subgoal for n
-          apply (induct n arbitrary: ios)
-          subgoal for ios
+          apply (induct n arbitrary: ios rule: less_induct)
+          subgoal premises prems for n ios
+            using prems(2-)
+            apply (cases n)
             apply (erule trace_fmFF.cases)
               apply (simp_all add: enat_0)
             subgoal for lxs'
@@ -531,11 +546,27 @@ lemma history_fairmerge_False_False: "history (fairmerge False False) lxs lzs \<
                apply assumption
               apply simp
               done
+            subgoal for m
+              apply (erule trace_fmFF.cases)
+                apply (simp_all add: enat_0[symmetric] trace_fmFF_A1_def trace_fmFF_A2_def)
+               apply (elim disjE imageE; hypsubst_thin; simp add: null_def enat_0[symmetric] eSuc_enat)
+               apply (metis (no_types, lifting) lprefix.cases lprefix_merged1 mc_merged trace_fmFT_lproject1)
+              apply (elim disjE imageE; hypsubst; simp add: null_def enat_0[symmetric] eSuc_enat eSuc_enat_iff)
+              using prems(1)
+               apply (elim exE conjE; hypsubst_thin; simp)
+              using less_Suc_eq apply blast
+              apply (rule disjI2)
+              apply (frule spec[of _ 1]; frule spec[of _ 2]; simp)
+              apply (simp add: LCons_lprefix_conv)
+              apply (elim exE conjE)
+              apply (rule exI conjI | assumption)+
+              apply (rule mc_base)
+              subgoal for lxs' y lys'
+                apply (rule exI[of _ "lxs(2 := lys')"]; simp)
+                apply auto
+                done
+              done
             done
-          subgoal for n ios
-            apply (erule trace_fmFF.cases)
-              apply (simp add: enat_0[symmetric])
-            sorry
           done
         done
     next
