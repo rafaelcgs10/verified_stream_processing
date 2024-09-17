@@ -416,28 +416,269 @@ definition loop22_op :: "'d op22 \<Rightarrow> 'd op11" where
   "loop22_op op = map_op (\<lambda>_. 1) (\<lambda>_. 1) (loop_op
     (\<lambda>x. if x = 1 then Some 1 else None) (\<lambda>_. BEmpty) op)"
 
+lemma iterates_Out_not_Inp:
+  "x \<in> lset lxs \<Longrightarrow>
+   lxs = iterates (case_IO undefined (\<lambda>p n. Out p (f n))) (Out p' n) \<Longrightarrow>
+   \<not> is_Inp x"
+  apply (induct lxs arbitrary: f p' n rule: lset_induct)
+  subgoal
+    apply (subst (asm) iterates.code)
+    apply auto
+    done
+  subgoal
+    apply (subst (asm) (2) iterates.code)
+    apply auto
+    done
+  done
+
 corec Suc_op where
-  "Suc_op = Read (2::2) 
-            (case_observation 
-              (Write (Read 1 (case_observation (\<lambda> x. Write (Write Suc_op 1 (Suc x)) (2::2) (Suc x)) Suc_op Suc_op)) 1) Suc_op Suc_op)"
+  "Suc_op b = (
+  if b
+  then
+   Read (2::2) 
+    (case_observation 
+    (Write (Read 1 (case_observation (\<lambda> x. Write (Write (Suc_op b) 1 (Suc x)) (2::2) x) (Suc_op b) End)) 1)
+    (Read 1 (case_observation (\<lambda> x. Write (Write (Suc_op b) 1 (Suc x)) (2::2) x) (Suc_op b) End))
+    (Suc_op False))
+   else
+    Read 1 (case_observation (\<lambda> x. Write (Write (Suc_op b) 1 (Suc x)) (2::2) x) (Suc_op b) End))"
 
 
+abbreviation "loop_Suc_op \<equiv> loop_op
+    (\<lambda>x. if x = 1 then Some 1 else None) (\<lambda> _. BEmpty) (Suc_op True)"
 
-abbreviation "loop_Suc_op buf \<equiv> loop_op
-    (\<lambda>x. if x = 1 then Some 1 else None) buf Suc_op"
+value "lhd (produce (Suc_op True) (\<lambda> x. if x = 1 then LCons 0 LNil else LNil) 1)"
+                
+coinductive Suc_op_False_spec where
+  "Suc_op_False_spec (LCons (Inp 1 EOS) LNil)"
+| "Suc_op_False_spec ios \<Longrightarrow> Suc_op_False_spec (LCons (Inp 1 (Observed n)) (LCons (Out 2 n) (LCons (Out 1 (Suc n)) ios)))"
+| "Suc_op_False_spec ios \<Longrightarrow> Suc_op_False_spec (LCons (Inp 1 EOB) ios)"
 
+coinductive Suc_op_True_spec where
+  "Suc_op_True_spec ios \<Longrightarrow> Suc_op_True_spec (LCons (Inp 2 (Observed m)) (LCons (Out 1 m) (LCons (Inp 1 (Observed n)) (LCons (Out 2 n) (LCons (Out 1 (Suc n)) ios)))))"
+| "Suc_op_True_spec ios \<Longrightarrow> Suc_op_True_spec (LCons (Inp 2 (Observed m)) (LCons (Out 1 m) (LCons (Inp 1 EOB) ios)))"
+| "Suc_op_True_spec (LCons (Inp 2 (Observed m)) (LCons (Out 1 m) (LCons (Inp 1 EOS) LNil)))"
+| "Suc_op_True_spec ios \<Longrightarrow> Suc_op_True_spec (LCons (Inp 2 EOB) (LCons (Inp 1 (Observed n)) (LCons (Out 2 n) (LCons (Out 1 (Suc n)) ios))))"
+| "Suc_op_True_spec ios \<Longrightarrow> Suc_op_True_spec (LCons (Inp 2 EOB) (LCons (Inp 1 EOB) ios))"
+| "Suc_op_True_spec (LCons (Inp 2 EOB) (LCons (Inp 1 EOS) LNil))"
+| "Suc_op_False_spec ios \<Longrightarrow> Suc_op_True_spec (LCons (Inp 2 EOS) ios)"
+
+lemma traced_Suc_op_False_spec:
+  "traced (Suc_op False) ios \<Longrightarrow>
+   Suc_op_False_spec ios"
+  apply (coinduction arbitrary: ios)
+  subgoal for ios
+    apply (subst (asm) Suc_op.code)
+    apply simp
+    apply (elim traced_ReadE)
+    apply (simp split: observation.splits)
+    subgoal
+      apply (elim traced_WriteE traced_ReadE)
+      apply (auto split: observation.splits)
+      done
+    subgoal
+      by fastforce
+    done
+  done
+
+lemma Suc_op_False_spec_traced:
+  "Suc_op_False_spec ios \<Longrightarrow>
+   traced (Suc_op False) ios"
+  apply (coinduction arbitrary: ios rule: traced_coinduct_upto)
+  subgoal for ios
+    apply (erule Suc_op_False_spec.cases)
+      apply simp_all
+    subgoal
+      apply (subst Suc_op.code)
+      apply (auto intro: End traced_cong.intros)
+      done
+    subgoal
+      apply (subst (1 2) Suc_op.code)
+      apply simp
+      apply (intro tc_write)
+      apply (subst (3) Suc_op.code)
+      apply simp
+      apply (rule tc_base)
+      apply auto
+      done
+    subgoal
+      apply (subst (1) Suc_op.code)
+      apply (auto intro: traced_cong.intros)
+      done
+    done
+  done
+
+lemma traced_Suc_op_True_spec:
+  "traced (Suc_op True) ios \<Longrightarrow>
+   Suc_op_True_spec ios"
+  apply (coinduction arbitrary: ios)
+  subgoal for ios
+    apply (subst (asm) Suc_op.code)
+    apply simp
+    apply (elim traced_ReadE)
+    apply (simp split: observation.splits)
+    subgoal
+      apply (elim traced_WriteE traced_ReadE)
+      apply (simp split: observation.splits)
+       apply (auto split: observation.splits)
+      done
+    subgoal
+      apply (elim traced_WriteE traced_ReadE)
+      apply (simp split: observation.splits)
+       apply (auto split: observation.splits)
+      done
+    subgoal
+      using traced_Suc_op_False_spec by presburger
+    done
+  done
+
+lemma Suc_op_True_spec_traced:
+  "Suc_op_True_spec ios \<Longrightarrow>
+   traced (Suc_op True) ios"
+  apply (coinduction arbitrary: ios rule: traced_coinduct_upto)
+  subgoal for ios
+      apply (subst Suc_op.code)
+    apply (erule Suc_op_True_spec.cases)
+      apply (auto simp add: End Read Write tc_base tc_traced tc_read tc_write intro: Suc_op_False_spec_traced tc_traced)
+    done
+  done
+
+lemma Suc_op_traced_correctness:
+  "traced (Suc_op True) ios = Suc_op_True_spec ios"
+  using Suc_op_True_spec_traced traced_Suc_op_True_spec by blast
+
+
+lemma traced_map_op_lmap_case_IO:
+  "traced op ios \<Longrightarrow>
+   traced (map_op f g op) (lmap (case_IO (\<lambda> p ob. Inp (f p) ob) (\<lambda> p x. Out (g p) x)) ios)"
+  apply (coinduction arbitrary: op ios)
+  subgoal for op ios
+    apply (cases op)
+      apply force+
+    done
+  done
+
+coinductive loop22_op_Suc_op_spec where
+  "loop22_op_Suc_op_spec BEnded LNil LNil"
+| "loop22_op_Suc_op_spec (benq (Suc n) xs) lxs lys \<Longrightarrow> loop22_op_Suc_op_spec (BCons n xs) lxs (LCons n lys)"
+| "loop22_op_Suc_op_spec (benq (Suc n) xs) lxs lys \<Longrightarrow> xs \<noteq> BEnded \<Longrightarrow> loop22_op_Suc_op_spec xs (LCons n lxs) (LCons n lys)"
 
 lemma
-  "history (loop_Suc_op (\<lambda> _. BCons 0 BEmpty)) (\<lambda> x. LNil) (\<lambda> x. if x = 2 then iterates Suc 0 else LNil)"
-  unfolding history_def
-  apply (simp add: traced_loop_op)
-  apply (rule exI[of _ "iterates (case_IO undefined (\<lambda> p n. Out p (Suc n))) (Out 2 0)"])
-  apply (intro conjI)
+  "history (loop22_op (Suc_op True)) (\<lambda>x. if x = 2 then lxs else LNil) (\<lambda>x. if x = 2 then lys else LNil) \<longleftrightarrow> (loop22_op_Suc_op_spec BEmpty lxs lys)"
+  apply (rule iffI)
+  defer
   subgoal
-    apply (rule exI[of _ "retrace_loop_op (\<lambda>x. if x = 1 then Some 1 else None) (\<lambda>_. BCons 0 BEmpty) Suc_op LNil"])
+  unfolding history_def
+  apply (auto simp add: loop22_op_def)
+  subgoal sorry
+  subgoal
+    apply (intro exI conjI)
+    apply (rule traced_map_op_lmap_case_IO)
+      apply (auto simp add: traced_loop_op)
+      apply (intro exI conjI)
+        apply (rule Suc_op_True_spec_traced)
+    defer
+    apply (rule refl)
+
+
+
+  apply (rule exI[of _ "LCons (Inp 2 (Observed n)) (iterates (case_IO undefined (\<lambda> p n. Out p (Suc n))) (Out 2 n))"])
+  apply (intro conjI)
+    apply (simp_all add: ran_def split: if_splits)
+  subgoal
+  apply (rule exI[of _ "LCons (Inp 2 (Observed n)) (iterates (case_IO undefined (\<lambda> p n. Out p (Suc n))) (Out 2 n))"])
     apply (intro conjI)
-      apply (auto simp add: ran_def split: if_splits)
+    prefer 2
     subgoal
+    apply (coinduction arbitrary: n rule: llist.coinduct_upto)
+    subgoal for n
+    unfolding lnull_def
+    apply (intro conjI impI iffI)
+    subgoal
+      by simp
+    subgoal
+      apply (auto simp add: lfilter_eq_LNil ran_def split: if_splits)
+      done
+    subgoal
+      apply (auto simp add: lfilter_eq_LNil ran_def split: if_splits)
+      done
+    subgoal
+      apply (auto simp add: ran_def split: if_splits)
+      apply (subst (3 4) iterates.code)
+      apply (clarsimp simp add: ran_def split: if_splits)
+      apply (intro allI impI conjI)
+      subgoal
+        apply (rule llist.cong_LCons)
+       apply simp
+      apply (rule llist.cong_base)
+
+
+   apply (subst (2) Suc_op.code)
+      apply (subst (2) iterates.code)
+      apply (auto simp add: ran_def split: if_splits)
+
+      find_theorems name : llist.cong_
+
+
+      apply (rule llist.cong_base)
+
+
+end
+
+
+      apply auto
+      subgoal
+
+
+
+end
+      apply (subst Suc_op.code)
+      apply simp
+      apply (subst (4) Suc_op.code)
+      apply simp
+
+
+
+
+      apply (rule sym)
+
+    find_theorems "lfilter _ _ = LCons _ _"
+
+
+    find_theorems causal retrace_loop_op
+
+        apply (simp_all add: ran_def split: if_splits)
+    apply (intro conjI)
+  
+  
+  subgoal
+    by (auto simp add: lnull_def dest!: iterates_Out_not_Inp split: IO.splits intro!: lproject_False_weak)
+
+
+
+  subgoal
+  apply (rule exI[of _ "LCons (Inp 2 (Observed 0)) (iterates (case_IO undefined (\<lambda> p n. Out p (Suc n))) (Out 2 0))"])
+    apply (intro conjI)
+    subgoal 
+      apply (coinduction )
+      apply (subst Suc_op.code)
+      apply simp
+      apply (subst (4) Suc_op.code)
+      apply simp
+
+
+end
+    subgoal
+      apply (auto simp add: ran_def split: if_splits)
+      apply (rule sym)
+      apply (subst lfilter_id_conv)
+      apply auto
+
+
+
+
+      find_theorems "lfilter _ ?xs = ?xs"
+
     apply (coinduction )
     apply (intro conjI impI iffI)
     subgoal
@@ -448,7 +689,6 @@ lemma
       done
     subgoal
       unfolding lnull_def
-      apply (subst iterates.code)
       apply simp
       apply (subst Suc_op.code)
       apply (simp add: ran_def)
