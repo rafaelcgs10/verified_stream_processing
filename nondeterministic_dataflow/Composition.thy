@@ -2497,6 +2497,23 @@ qed
 lemma lfilter_visible_IO_None: \<open>lfilter (visible_IO (\<lambda>_. None)) lxs = lxs\<close>
   unfolding visible_IO_None_True by simp
 
+lemma traced_causal_None_BEnded: \<open>traced op1 lxs \<Longrightarrow> traced op2 lys \<Longrightarrow> causal (\<lambda>_. None) (\<lambda>_. BEnded) lxs lys\<close>
+proof (coinduction arbitrary: lxs lys op1 op2)
+  case (causal lxs lys op1 op2)
+  then show ?case
+    apply (cases lxs; cases lys; simp add: comp_def)
+    by (smt (verit, del_insts) llist.distinct(1) llist.inject traced.cases)+
+qed
+
+abbreviation \<open>lfocusl \<equiv> lfocus projl (range Inl) projl (range Inl)\<close>
+abbreviation \<open>lfocusr \<equiv> lfocus projr (range Inr) projr (range Inr)\<close>
+
+lemma traced_pcomp_op': "traced (pcomp_op op1 op2) lxs \<longleftrightarrow>
+  traced op1 (lfocusl lxs) \<and> traced op2 (lfocusr lxs) \<and>
+  lxs = lalternate (lmap (map_IO Inl Inl id) (lfocusl lxs)) (lmap (map_IO Inr Inr id) (lfocusr lxs))"
+  unfolding pcomp_op_def traced_comp_op lfilter_visible_IO_None
+  by (auto simp: lfilter_lfilter lfocus_Inl_lmap lfocus_Inr_lmap intro: traced_causal_None_BEnded)
+
 lemma traced_pcomp_op: "traced (pcomp_op op1 op2) lxs \<longleftrightarrow>
   traced op1 (lfocus projl (range Inl) projl (range Inl) lxs) \<and>
   traced op2 (lfocus projr (range Inr) projr (range Inr) lxs)"
