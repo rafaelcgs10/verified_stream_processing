@@ -2392,18 +2392,58 @@ lemma "traced (pcomp_op op1 op2) lxs \<longleftrightarrow>
 
 section\<open>Sequential composition\<close>
 
-lemma "inj_on f (inputs op) \<Longrightarrow> inj_on g (outputs op) \<Longrightarrow>
+lemma traced_inputs: "x \<in> lset lxs \<Longrightarrow> p \<in> set1_IO x \<Longrightarrow> traced op lxs \<Longrightarrow> p \<in> inputs op"
+  apply (induct x lxs arbitrary: op rule: llist.set_induct)
+  apply (erule traced.cases; auto)
+  apply (erule traced.cases; auto)
+  done
+
+lemma traced_outputs: "x \<in> lset lxs \<Longrightarrow> p \<in> set2_IO x \<Longrightarrow> traced op lxs \<Longrightarrow> p \<in> outputs op"
+  apply (induct x lxs arbitrary: op rule: llist.set_induct)
+  apply (erule traced.cases; auto)
+  apply (erule traced.cases; auto)
+  done
+
+
+lemma traced_map_op: "inj_on f (inputs op) \<Longrightarrow> inj_on g (outputs op) \<Longrightarrow>
   traced (map_op f g op) lxs \<longleftrightarrow> (\<exists>lys. traced op lys \<and> lxs = lmap (map_IO f g id) lys)"
   apply safe
   subgoal
     apply (rule exI[of _ "lmap (\<lambda>io. map_IO (the_inv_into (inputs op) f) (the_inv_into (outputs op) g) id io) lxs"] conjI)+
-    apply (coinduction arbitrary: op lxs)
+     apply (coinduction arbitrary: op lxs)
     subgoal for op lys
       apply (cases op)
-        apply (auto simp: observation.map_id the_inv_into_f_f image_iff)
-      sorry
-    apply (auto simp: llist.map_comp IO.map_comp o_def)
-    sorry
+        apply (auto simp: observation.map_ident the_inv_into_f_f image_iff traced_inputs traced_outputs
+          inj_on_def cong: llist.map_cong IO.map_cong)
+       apply (intro exI conjI)
+        apply (rule llist.map_cong[OF refl])
+        apply (rule IO.map_cong[OF refl])
+          apply (rule the_inv_into_f_eq; (auto simp: inj_on_def intro!: f_the_inv_into_f)?)
+           apply (metis (no_types, lifting) op.set_map(1) traced_inputs)
+          apply (drule spec, erule notE, rule the_inv_into_into; auto simp: inj_on_def)
+          apply (metis (no_types, lifting) op.set_map(1) traced_inputs)
+         apply (rule the_inv_into_f_eq; (auto simp: inj_on_def intro!: f_the_inv_into_f)?)
+          apply (metis (no_types, lifting) op.set_map(2) traced_outputs)
+         apply (rule exI, rule the_inv_into_into; auto simp: inj_on_def)
+         apply (metis (no_types, lifting) op.set_map(2) traced_outputs)
+        apply (rule refl)
+       apply assumption
+      apply (intro exI conjI)
+       apply (rule llist.map_cong[OF refl])
+       apply (rule IO.map_cong[OF refl])
+         apply (rule refl)
+        apply (rule the_inv_into_f_eq; (auto simp: inj_on_def intro!: f_the_inv_into_f)?)
+         apply (metis (no_types, lifting) op.set_map(2) traced_outputs)
+        apply (erule notE, rule the_inv_into_into; auto simp: inj_on_def)
+        apply (metis (no_types, lifting) op.set_map(2) traced_outputs)
+       apply (rule refl)
+      apply assumption
+      done
+    apply (auto simp: llist.map_comp IO.map_comp o_def op.set_map f_the_inv_into_f
+      intro!: trans[OF llist.map_cong llist.map_ident, symmetric]
+        trans[OF IO.map_cong IO.map_ident]
+      dest: traced_inputs traced_outputs)
+    done
   subgoal for lys
     apply hypsubst_thin
     apply (erule thin_rl)
