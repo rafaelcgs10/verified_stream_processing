@@ -60,26 +60,27 @@ lemma sub_op_Write_outputs: \<open>sub_op (Write op' p x) op n \<Longrightarrow>
 lemma sub_op_Read_induct [consumes 1, case_names Read1 Read2 Write]:
   assumes \<open>sub_op (Read p g) op d\<close>
     and read1: \<open>\<And>f p. P p (Read p f)\<close>
-    and read2: \<open>\<And>p p' f x n. sub_op (Read p g) (f x) n \<Longrightarrow> (\<And>y op. y \<le> n \<Longrightarrow> sub_op (Read p g) op y \<Longrightarrow> P p op) \<Longrightarrow> P p (Read p' f)\<close>
-    and writ: \<open>\<And>p p' op' x n. sub_op (Read p g) op' n \<Longrightarrow> (\<And>y op. y \<le> n \<Longrightarrow> sub_op (Read p g) op y \<Longrightarrow> P p op) \<Longrightarrow> P p (Write op' p' x)\<close>
+    and read2: \<open>\<And>p p' f x d g. sub_op (Read p g) (f x) d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Read p' f)\<close>
+    and writ: \<open>\<And>p p' op' x d g. sub_op (Read p g) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Write op' p' x)\<close>
   shows \<open>P p op\<close>
   using assms(1)
 proof (induct d arbitrary: op p rule: less_induct)
   case (less m)
   from this(2,1) show ?case
-  proof (induct op m pred: sub_op)
-    case sub_op_Refl
-    then show ?case
-      using read1 by simp
-  next
-    case (sub_op_Read f x n p)
-    then show ?case
-      using read2 by (meson le_imp_less_Suc)
-  next
-    case (sub_op_Write op' n p x)
-    then show ?case
-      using writ by (meson le_imp_less_Suc)
-  qed
+    by (induct op m pred: sub_op) (meson assms(2-) le_imp_less_Suc)+
+qed
+
+lemma sub_op_Write_induct [consumes 1, case_names Read Write1 Write2]:
+  assumes \<open>sub_op (Write op2 p y) op d\<close>
+    and read: \<open>\<And>p p' f x op2 y d. sub_op (Write op2 p y) (f x) d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Read p' f)\<close>
+    and write1: \<open>\<And>p p' op' x op2 y d. sub_op (Write op2 p y) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Write op' p' x)\<close>
+    and write2: \<open>\<And>p op' x. P p (Write op' p x)\<close>
+  shows \<open>P p op\<close>
+  using assms(1)
+proof (induct d arbitrary: op p rule: less_induct)
+  case (less m)
+  from this(2,1) show ?case
+    by (induct op m pred: sub_op) (meson assms(2-) le_imp_less_Suc)+
 qed
 
 section\<open>Inputs measure\<close>

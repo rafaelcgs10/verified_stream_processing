@@ -160,49 +160,22 @@ proof (induct p \<open>comp_op wire buf op1 op2\<close> arbitrary: buf op1 op2 r
   then obtain n where \<open>comp_producing wire buf op1 op2 n\<close>
     by (fastforce simp: not_comp_producing_eq_End)
   then show ?case
-    using Read1
-    by (induct n rule: comp_producing.induct) (fastforce split: if_splits option.splits)+
+    using Read1 by (induct n rule: comp_producing.induct)
+      (fastforce split: if_splits option.splits simp: less_Suc_eq image_iff)+
 next
-  case (Read2 p p' f n)
-  then obtain m where \<open>comp_producing wire buf op1 op2 m\<close>
+  case (Read2 p p' f x d g)
+  then obtain n where \<open>comp_producing wire buf op1 op2 n\<close>
     by (fastforce simp: not_comp_producing_eq_End)
   then show ?case
-    using Read2
-  proof (induct m rule: comp_producing.induct)
-    case (6 buf p1 f1 op2' p2 x2)
-    then show ?case
-      apply (auto split: if_splits option.splits simp: le_Suc_eq image_iff)
-      apply blast
-      done
-  next
-    case (10 buf p1 f1 p2 f2)
-    then show ?case
-      apply (auto split: if_splits option.splits simp: le_Suc_eq image_iff)
-       apply blast
-      apply blast
-      done
-  qed (fastforce split: if_splits option.splits simp: le_Suc_eq image_iff)+
+    using Read2 by (induct n rule: comp_producing.induct)
+      (fastforce split: if_splits option.splits simp: less_Suc_eq image_iff)+
 next
-  case (Write p p' op' x n)
-  then obtain m where \<open>comp_producing wire buf op1 op2 m\<close>
+  case (Write p p' op' x d g)
+  then obtain n where \<open>comp_producing wire buf op1 op2 n\<close>
     by (fastforce simp: not_comp_producing_eq_End)
   then show ?case
-    using Write
-  proof (induct m rule: comp_producing.induct)
-    case (7 buf op1' p1 x1 op2' p2 x2)
-    then show ?case
-      apply (auto split: if_splits option.splits simp: le_Suc_eq image_iff)
-      apply blast
-      apply blast
-      done
-  next
-    case (11 p2 p1 buf op1' x1 f2)
-    then show ?case
-      apply (auto split: if_splits option.splits simp: le_Suc_eq image_iff)
-       apply blast
-      apply blast
-      done
-  qed (fastforce split: if_splits option.splits simp: le_Suc_eq image_iff)+
+    using Write by (induct n rule: comp_producing.induct)
+      (fastforce split: if_splits option.splits simp: less_Suc_eq image_iff)+
 qed
 
 lemma inputs_comp_op_le2:
@@ -486,6 +459,33 @@ lemma inputs_comp_op_le:
 
 section\<open>Outputs of comp_op\<close>
 
+lemma outputs_comp_op2: "sub_op (Write op' p y) (comp_op wire buf op1 op2) d \<Longrightarrow> p \<in> Inl ` (outputs op1 - dom wire) \<union> Inr ` outputs op2"
+proof (induct p \<open>comp_op wire buf op1 op2\<close> arbitrary: buf op1 op2 rule: sub_op_Write_induct)
+  case (Read p p' f x op' y d)
+  then obtain n where \<open>comp_producing wire buf op1 op2 n\<close>
+    by (fastforce simp: not_comp_producing_eq_End)
+  then show ?case
+    using Read by (induct n rule: comp_producing.induct)
+      (fastforce split: if_splits option.splits simp: less_Suc_eq image_iff)+
+next
+  case (Write1 p p' op' x op2 y d)
+  then obtain n where \<open>comp_producing wire buf op1 op2 n\<close>
+    by (fastforce simp: not_comp_producing_eq_End)
+  then show ?case
+    using Write1 by (induct n rule: comp_producing.induct)
+      (fastforce split: if_splits option.splits simp: less_Suc_eq image_iff)+
+next
+  case (Write2 p op' x)
+  then obtain n where \<open>comp_producing wire buf op1 op2 n\<close>
+    by (fastforce simp: not_comp_producing_eq_End)
+  then show ?case
+    using Write2 by (induct n rule: comp_producing.induct)
+      (fastforce split: if_splits option.splits simp: less_Suc_eq image_iff)+
+qed
+
+lemma outputs_comp_op_le2:
+  "outputs (comp_op wire buf op1 op2) \<subseteq> Inl ` (outputs op1 - dom wire) \<union> Inr ` outputs op2"
+  using outputs_comp_op2 by (metis outputs_sub_op_Write subsetI)
 
 lemma outputs_comp_op_arg_min_1[simp]:
   "p \<in> outputs (comp_op wire buf (f1 x) op) \<Longrightarrow>
@@ -924,7 +924,6 @@ lemma cleaned_comp_op: "cleaned op1 \<Longrightarrow> cleaned op2 \<Longrightarr
   done
 
 section\<open>Trace model correctness\<close>
-definition "lfocus f A ios = lmap (map_prod f id) (lfilter (\<lambda>qx. fst qx \<in> A) ios)"
 
 corec lalternate where
   "lalternate ios1 ios2 = (case (ios1, ios2) of
@@ -2380,7 +2379,80 @@ lemma outputs_pcomp_op[simp]:
   "outputs (pcomp_op op1 op2) \<subseteq> Inl ` outputs op1 \<union> Inr ` outputs op2"
   unfolding pcomp_op_def by (auto dest: outputs_comp_op)
 
+definition "lfocus f A g B ios =
+  lmap (\<lambda>io. case io of Inp p x \<Rightarrow> Inp (f p) x | Out p x \<Rightarrow> Out (g p) x)
+     (lfilter (\<lambda>io. case io of Inp p x \<Rightarrow> p \<in> A | Out p x \<Rightarrow> p \<in> B) ios)"
+
+lemma "traced (pcomp_op op1 op2) lxs \<longleftrightarrow>
+  traced op1 (lfocus projl (range Inl) projl (range Inl) lxs) \<and>
+  traced op2 (lfocus projr (range Inr) projr (range Inr) lxs)"
+  unfolding pcomp_op_def traced_comp_op
+  apply (auto simp: lfocus_def lfilter_lfilter)
+  oops
+
 section\<open>Sequential composition\<close>
+
+lemma traced_inputs: "x \<in> lset lxs \<Longrightarrow> p \<in> set1_IO x \<Longrightarrow> traced op lxs \<Longrightarrow> p \<in> inputs op"
+  apply (induct x lxs arbitrary: op rule: llist.set_induct)
+  apply (erule traced.cases; auto)
+  apply (erule traced.cases; auto)
+  done
+
+lemma traced_outputs: "x \<in> lset lxs \<Longrightarrow> p \<in> set2_IO x \<Longrightarrow> traced op lxs \<Longrightarrow> p \<in> outputs op"
+  apply (induct x lxs arbitrary: op rule: llist.set_induct)
+  apply (erule traced.cases; auto)
+  apply (erule traced.cases; auto)
+  done
+
+
+lemma traced_map_op: "inj_on f (inputs op) \<Longrightarrow> inj_on g (outputs op) \<Longrightarrow>
+  traced (map_op f g op) lxs \<longleftrightarrow> (\<exists>lys. traced op lys \<and> lxs = lmap (map_IO f g id) lys)"
+  apply safe
+  subgoal
+    apply (rule exI[of _ "lmap (\<lambda>io. map_IO (the_inv_into (inputs op) f) (the_inv_into (outputs op) g) id io) lxs"] conjI)+
+     apply (coinduction arbitrary: op lxs)
+    subgoal for op lys
+      apply (cases op)
+        apply (auto simp: observation.map_ident the_inv_into_f_f image_iff traced_inputs traced_outputs
+          inj_on_def cong: llist.map_cong IO.map_cong)
+       apply (intro exI conjI)
+        apply (rule llist.map_cong[OF refl])
+        apply (rule IO.map_cong[OF refl])
+          apply (rule the_inv_into_f_eq; (auto simp: inj_on_def intro!: f_the_inv_into_f)?)
+           apply (metis (no_types, lifting) op.set_map(1) traced_inputs)
+          apply (drule spec, erule notE, rule the_inv_into_into; auto simp: inj_on_def)
+          apply (metis (no_types, lifting) op.set_map(1) traced_inputs)
+         apply (rule the_inv_into_f_eq; (auto simp: inj_on_def intro!: f_the_inv_into_f)?)
+          apply (metis (no_types, lifting) op.set_map(2) traced_outputs)
+         apply (rule exI, rule the_inv_into_into; auto simp: inj_on_def)
+         apply (metis (no_types, lifting) op.set_map(2) traced_outputs)
+        apply (rule refl)
+       apply assumption
+      apply (intro exI conjI)
+       apply (rule llist.map_cong[OF refl])
+       apply (rule IO.map_cong[OF refl])
+         apply (rule refl)
+        apply (rule the_inv_into_f_eq; (auto simp: inj_on_def intro!: f_the_inv_into_f)?)
+         apply (metis (no_types, lifting) op.set_map(2) traced_outputs)
+        apply (erule notE, rule the_inv_into_into; auto simp: inj_on_def)
+        apply (metis (no_types, lifting) op.set_map(2) traced_outputs)
+       apply (rule refl)
+      apply assumption
+      done
+    apply (auto simp: llist.map_comp IO.map_comp o_def op.set_map f_the_inv_into_f
+      intro!: trans[OF llist.map_cong llist.map_ident, symmetric]
+        trans[OF IO.map_cong IO.map_ident]
+      dest: traced_inputs traced_outputs)
+    done
+  subgoal for lys
+    apply hypsubst_thin
+    apply (erule thin_rl)
+    apply (erule thin_rl)
+    apply (coinduction arbitrary: op lys)
+    subgoal for op lys
+      by (cases op) (auto 0 3 simp: observation.map_id)
+    done
+  done
 
 definition "scomp_op op1 op2 = map_op projl projr (comp_op Some (\<lambda>_. BEmpty) op1 op2)"
 

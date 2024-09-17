@@ -7,6 +7,32 @@ imports
   Linear_Temporal_Logic_on_Llists
 begin
 
+lemma neq_1_conv_2[simp]: "p \<noteq> 1 \<longleftrightarrow> (p :: 2) = 2"
+  apply (cases p)
+  subgoal for z
+    apply (cases z; simp)
+    subgoal for n
+      apply (cases n; simp)
+      subgoal for n
+        apply (cases n; simp)
+        done
+      done
+    done
+  done
+
+lemma neq_2_conv_1[simp]: "p \<noteq> 2 \<longleftrightarrow> (p :: 2) = 1"
+  apply (cases p)
+  subgoal for z
+    apply (cases z; simp)
+    subgoal for n
+      apply (cases n; simp)
+      subgoal for n
+        apply (cases n; simp)
+        done
+      done
+    done
+  done
+
 corec fairmerge :: "bool \<Rightarrow> bool \<Rightarrow> (2, 1, 'd) op" where
   "fairmerge e1 e2 = (case (e1, e2) of
       (True, True) \<Rightarrow> End
@@ -274,7 +300,7 @@ lemma Inp_1_lset_trace_fmTF: "Inp (1 :: 2) x \<in> lset ios \<Longrightarrow> \<
 
 lemma trace_fmTF_lproject1: "trace_fmTF (ios :: (2, 1, 'd) IO llist) \<Longrightarrow> lproject (=) \<bottom> ios (1 :: 2) = LNil"
   by (erule trace_fmTF.cases)
-    (auto simp: lproject_empty_conv Inp_1_lset_trace_fmTF)
+    (auto simp: lproject_empty_conv Inp_1_lset_trace_fmTF simp del: neq_1_conv_2)
 
 lemma eq_repeat_iff: "lxs = repeat x \<longleftrightarrow> lset lxs = {x} \<and> \<not> lfinite lxs"
   apply (safe; simp?)
@@ -312,11 +338,13 @@ lemma trace_fmTF_lproject2: "trace_fmTF (ios :: (2, 1, 'd) IO llist) \<Longright
 lemma lconcat_lmap: "lconcat (lmap (\<lambda>z. LNil) lxs) = LNil"
   by (coinduction arbitrary: lxs) auto
 
+abbreviation "cp_trace p lzs \<equiv> lappend (lconcat (lmap (\<lambda>x. LCons (Inp p (Observed x)) (LCons (Out 1 x) LNil)) lzs)) (repeat (Inp p EOB))"
+
 lemma history_fairmerge_True_False: "history (fairmerge True False) lxs lzs \<longleftrightarrow>
   lprefix (lzs 1) (lxs 2)"
   unfolding history_def traced_fairmerge_True_False
   apply (auto simp: fun_eq_iff trace_fmTF_lproject2[symmetric])
-  apply (rule exI[of _ "lappend (lconcat (lmap (\<lambda>x. LCons (Inp 2 (Observed x)) (LCons (Out 1 x) LNil)) (lzs 1))) (repeat (Inp 2 EOB))"])
+  apply (rule exI[of _ "cp_trace 2 (lzs 1)"])
   apply (intro conjI)
   subgoal premises prems
     apply (coinduction arbitrary: lzs)
@@ -333,21 +361,85 @@ lemma history_fairmerge_True_False: "history (fairmerge True False) lxs lzs \<lo
       apply (auto simp: lproject_def lfilter_lconcat_lfinite lmap_lconcat llist.map_comp
         lconcat_lmap lappend_inf lfilter_lmap
       cong: llist.map_cong if_cong split: if_splits)
-    apply (subgoal_tac "p = 2")
-     prefer 2
-     apply (cases p; simp)
-    subgoal for z
-      apply (cases z)
-      subgoal for n
-        apply (cases n; simp)
-      subgoal for n
-        apply (cases n; simp)
-        done
+    apply (cases "lfinite (lzs 1)")
+      apply (auto simp: lproject_def lfilter_lconcat_lfinite lmap_lconcat llist.map_comp
+        lconcat_lmap lappend_inf lfilter_lmap
+      cong: llist.map_cong if_cong split: if_splits)
+    done
+  subgoal premises prems
+    apply (cases "lfinite (lzs 1)")
+      apply (auto simp: lproject_def lfilter_lconcat_lfinite lmap_lconcat llist.map_comp
+        lconcat_lmap lappend_inf lfilter_lmap
+      cong: llist.map_cong if_cong split: if_splits)
+    done
+  done
+
+lemma Inp_2_lset_trace_fmFT: "Inp (2 :: 2) x \<in> lset ios \<Longrightarrow> \<not> trace_fmFT ios"
+  unfolding lset_conv_lnth mem_Collect_eq
+  apply safe
+  subgoal for n
+    apply (induct n arbitrary: ios rule: less_induct)
+    subgoal for n ios
+      apply (cases n)
+      apply (erule trace_fmFT.cases; auto)
+      apply (erule trace_fmFT.cases; auto simp: enat_0[symmetric]
+        simp: lnth_LCons' gr0_conv_Suc Suc_ile_eq split: if_splits)
+      apply (metis less_add_Suc2 plus_1_eq_Suc)
       done
-      subgoal for n
-        apply (cases n; simp)
-        done
+    done
+  done
+
+lemma trace_fmFT_lproject2: "trace_fmFT (ios :: (2, 1, 'd) IO llist) \<Longrightarrow> lproject (=) \<bottom> ios (2 :: 2) = LNil"
+  by (erule trace_fmFT.cases)
+    (auto simp: lproject_empty_conv Inp_2_lset_trace_fmFT simp del: neq_2_conv_1)
+
+lemma trace_fmFT_lproject1: "trace_fmFT (ios :: (2, 1, 'd) IO llist) \<Longrightarrow> lproject (=) \<bottom> ios 1 = lproject \<bottom> (=) ios 1"
+  apply (coinduction arbitrary: ios)
+  subgoal for ios
+    apply (cases "ios = repeat (Inp 1 EOB)")
+    subgoal
+      apply (auto simp: lproject_def)
       done
+    subgoal
+      apply (subgoal_tac "\<exists>n. llength (ltakeWhile ((=) (Inp 1 EOB)) ios) = enat n")
+       apply (erule exE)
+      subgoal for n
+        apply (induct n arbitrary: ios)
+        subgoal for ios
+          apply (erule trace_fmFT.cases; auto simp: enat_0)
+          done
+        subgoal for x ios
+          apply (erule trace_fmFT.cases; auto simp add: eq_repeat_iff simp flip: enat_0 eSuc_enat)
+          done
+        done
+      using llength_ltakeWhile_eq_infinity'[of "((=) (Inp 1 EOB))" ios]
+      apply (cases ios)
+       apply (auto simp: eq_repeat_iff simp flip: enat_0)
+      done
+    done
+  done
+
+lemma history_fairmerge_False_True: "history (fairmerge False True) lxs lzs \<longleftrightarrow>
+  lprefix (lzs 1) (lxs 1)"
+  unfolding history_def traced_fairmerge_False_True
+  apply (auto simp: fun_eq_iff trace_fmFT_lproject1[symmetric])
+  apply (rule exI[of _ "cp_trace 1 (lzs 1)"])
+  apply (intro conjI)
+  subgoal premises prems
+    apply (coinduction arbitrary: lzs)
+    subgoal for lzs
+      apply (cases "lzs 1")
+       apply auto
+      apply (smt (verit) iterates_lmap lappend_code(1) lconcat_LNil llist.simps(12) lmap_iterates)
+      done
+    done
+  apply safe
+  subgoal for p
+    apply (cases "p = 1"; simp?)
+  apply (cases "lfinite (lzs 1)")
+      apply (auto simp: lproject_def lfilter_lconcat_lfinite lmap_lconcat llist.map_comp
+        lconcat_lmap lappend_inf lfilter_lmap
+      cong: llist.map_cong if_cong split: if_splits)
     apply (cases "lfinite (lzs 1)")
       apply (auto simp: lproject_def lfilter_lconcat_lfinite lmap_lconcat llist.map_comp
         lconcat_lmap lappend_inf lfilter_lmap
@@ -362,521 +454,330 @@ lemma history_fairmerge_True_False: "history (fairmerge True False) lxs lzs \<lo
   done
 
 coinductive merged where
-  "merged LNil lxs lxs"
-| "merged lxs LNil lxs"
-| "xs \<noteq> [] \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> merged lxs lys lzs \<Longrightarrow>
-   merged (xs @@- lxs) (ys @@- lys) (xs @@- ys @@- lzs)"
-| "xs \<noteq> [] \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> merged lxs lys lzs \<Longrightarrow>
-   merged (xs @@- lxs) (ys @@- lys) (ys @@- xs @@- lzs)"
+  stop: "merged lxs lys LNil"
+| left: "merged lxs lys lzs \<Longrightarrow> merged (LCons x lxs) lys (LCons x lzs)"
+| right: "merged lxs lys lzs \<Longrightarrow> merged lxs (LCons y lys) (LCons y lzs)"
 
-coinductive mergedL where
-  "mergedL LNil lxs lxs"
-| "mergedL lxs LNil lxs"
-| "xs \<noteq> [] \<Longrightarrow> mergedL lys lxs lzs \<Longrightarrow> mergedL (xs @@- lxs) lys (xs @@- lzs)"
+inductive_cases merged_LNilE[elim!]: "merged lxs lys LNil"
+inductive_cases merged_LConsE[elim!]: "merged lxs lys (LCons z lzs)"
 
-inductive_cases mergedL_LNil1E[elim!]: "mergedL LNil lys lzs"
-inductive_cases mergedL_LNil2E[elim!]: "mergedL lxs LNil lzs"
+inductive merged_cong for R where
+  mc_base: "R lxs lys lzs \<Longrightarrow> merged_cong R lxs lys lzs"
+| mc_merged: "merged lxs lys lzs \<Longrightarrow> merged_cong R lxs lys lzs"
+| mc_left: "merged_cong R lxs lys lzs \<Longrightarrow> merged_cong R (LCons x lxs) lys (LCons x lzs)"
+| mc_right: "merged_cong R lxs lys lzs \<Longrightarrow> merged_cong R lxs (LCons y lys) (LCons y lzs)"
 
-lemma mergedL_merged: "mergedL lxs lys lzs \<Longrightarrow> merged lxs lys lzs"
-  apply (coinduction arbitrary: lxs lys lzs)
+lemma merged_coinduct_upto:
+  assumes X: "X lxs lys lzs"
+      and CIH: "\<And>lxs lys lzs. X lxs lys lzs \<Longrightarrow> lzs = LNil \<or>
+    (\<exists>lxs' lzs' x. lxs = LCons x lxs' \<and> lzs = LCons x lzs' \<and> merged_cong X lxs' lys lzs') \<or>
+    (\<exists>lys' lzs' y. lys = LCons y lys' \<and> lzs = LCons y lzs' \<and> merged_cong X lxs lys' lzs')"
+    shows "merged lxs lys lzs"
+  apply (rule merged.coinduct[of "merged_cong X"])
+   apply (rule mc_base, rule X)
   subgoal for lxs lys lzs
-    apply (erule mergedL.cases)
-      apply simp
-    apply simp
-    apply (erule mergedL.cases)
-      apply simp
-     apply simp
-    apply (metis llist.collapse(1) llist.simps(3) lshift_simps(1) lshift_snoc merged.intros(1) not_lnull_conv shift_LNil)
-    apply metis
+    apply (induct lxs lys lzs rule: merged_cong.induct)
+    subgoal for lxs lys lzs
+      by (drule CIH) auto
+    subgoal for lxs lys lzs
+      by (erule merged.cases) auto
+    subgoal for lxs lys lzs x
+      by auto
+    subgoal for lxs lys lzs x
+      by auto
     done
   done
 
-lemma mergedRL_merged: "mergedL lys lxs lzs \<Longrightarrow> merged lxs lys lzs"
+lemma lprefix_merged1: "lprefix lzs lxs \<Longrightarrow> merged lxs lys lzs"
+  by (coinduction arbitrary: lxs lzs) (erule lprefix.cases; auto)
+
+lemma lprefix_merged2: "lprefix lzs lys \<Longrightarrow> merged lxs lys lzs"
+  by (coinduction arbitrary: lys lzs) (erule lprefix.cases; auto)
+
+corec merged_trace :: "'a llist \<Rightarrow> 'a llist \<Rightarrow> 'a llist \<Rightarrow> (2, 1, 'a) IO llist" where
+  "merged_trace lxs lys lzs = (case lzs of
+       LNil \<Rightarrow> LCons (Inp 1 EOB) (LCons (Inp 2 EOB) (merged_trace lxs lys lzs))
+     | LCons z lzs' \<Rightarrow>
+       if \<not> lnull lxs \<and> lhd lxs = z \<and> merged (ltl lxs) lys lzs' then LCons (Inp 1 (Observed z)) (LCons (Out 1 z) (LCons (Inp 2 EOB) (merged_trace (ltl lxs) lys lzs')))
+       else LCons (Inp 1 EOB) (LCons (Inp 2 (Observed z)) (LCons (Out 1 z) (merged_trace lxs (ltl lys) lzs'))))"
+
+lemma trace_fmFF_merged_trace: "merged lxs lys lzs \<Longrightarrow> trace_fmFF (merged_trace lxs lys lzs)"
   apply (coinduction arbitrary: lxs lys lzs)
   subgoal for lxs lys lzs
-    apply (erule mergedL.cases)
-      apply simp
-    apply simp
-    apply (erule mergedL.cases)
-      apply simp
-     apply simp
-    apply (metis llist.collapse(1) llist.disc(1) lshift_simps(1) lshift_simps(2) mergedL.intros(1) not_lnull_conv shift_LNil)
-    apply metis
+    apply (subst (1 2 3) merged_trace.code; auto simp: trace_fmFF_A1_def trace_fmFF_A2_def lnull_def split: llist.splits)
+        apply (force intro: merged.intros)
+    apply (metis (no_types, lifting) lshift_simps(2) range_eqI singleton_lshift)+
     done
   done
 
-lemma merged_lappend1: "merged lxs lys lzs \<Longrightarrow> merged (xs @@- lxs) lys (xs @@- lzs)"
-  apply (coinduction arbitrary: xs lxs lys lzs)
-  apply (erule merged.cases)
-     apply (metis llist.exhaust list.simps(3) lshift_simps(1) lshift_simps(2) merged.intros(1))
-    apply metis
-   apply (smt (verit) append_is_Nil_conv lshift_append)
-  apply (metis lshift_simps(1))
+lemma in_lset_merged_trace_LNil[OF _ disjI1, OF _ refl]:
+  "r \<in> lset lzs \<Longrightarrow> lzs = merged_trace lxs lys LNil \<or> lzs = LCons (Inp 2 EOB) (merged_trace lxs lys LNil) \<Longrightarrow> r = Inp 1 EOB \<or> r = Inp 2 EOB"
+  apply (induct r lzs arbitrary: lxs lys rule: llist.set_induct)
+   apply (subst (asm) merged_trace.code; auto)
+  apply (subst (asm) (3) merged_trace.code; auto)
   done
 
-lemma merged_lappend2: "merged lxs lys lzs \<Longrightarrow> merged lxs (ys @@- lys) (ys @@- lzs)"
-  apply (coinduction arbitrary: ys lxs lys lzs)
-  apply (erule merged.cases)
-     apply metis
-    apply (metis llist.exhaust list.simps(3) lshift_simps(1) lshift_simps(2) merged.intros(2))
-   apply (metis lshift_simps(1))
-  apply (smt (verit) append_is_Nil_conv lshift_append)
-  done
-
-lemma merged_LCons1: "merged lxs lys lzs \<Longrightarrow> merged (LCons x lxs) lys (LCons x lzs)"
-  by (metis lshift_simps(1) lshift_simps(2) merged_lappend1)
-
-lemma merged_LCons2: "merged lxs lys lzs \<Longrightarrow> merged lxs (LCons y lys) (LCons y lzs)"
-  by (metis lshift_simps(1) lshift_simps(2) merged_lappend2)
-
-lemma merged_commute: "merged lxs lys lzs \<Longrightarrow> merged lys lxs lzs"
-  apply (coinduction arbitrary: lxs lys lzs)
-  subgoal for lxs lys lzs
-    apply (erule merged.cases)
-       apply (fastforce intro: merged.intros)+
+lemma lnth_merged_trace:
+  "lnth (merged_trace lxs lys lzs) n = r \<Longrightarrow> merged lxs lys lzs \<Longrightarrow>
+   r \<in> {Inp 1 EOB, Inp (2 :: 2) EOB} \<union> Inp 1 ` Observed `  lset lxs \<union> Inp 2 ` Observed ` lset lys \<union> Out 1 ` lset lzs"
+  apply (induct n arbitrary: lxs lys lzs rule: less_induct)
+  subgoal for n lxs lys lzs
+    apply (cases n)
+     apply (subst (asm) (2) merged_trace.code; auto split: llist.splits if_splits)
+    apply (subst (asm) (2) merged_trace.code; auto split: llist.splits)
+         apply (auto simp add: lnth_LCons' lnull_def neq_LNil_conv image_iff not_le Suc_less_eq2 gr0_conv_Suc split: if_splits)
+         apply (metis empty_iff less_add_Suc2 llist.set(1) plus_1_eq_Suc merged.stop)
+        apply (metis less_Suc_eq)
+       apply (metis eq_LConsD less_Suc_eq llist.set_cases)
+      apply (metis less_Suc_eq)
+     apply (metis eq_LConsD less_Suc_eq llist.set_cases)
+    apply (metis less_Suc_eq)
     done
   done
 
-lemma merged_mergedL: "merged lxs lys lzs \<Longrightarrow> mergedL lxs lys lzs \<or> mergedL lys lxs lzs"
-  apply (erule merged.cases)
-     apply (metis mergedL.intros(1))
-    apply (metis mergedL.intros(1))
-   apply (rule disjI1)
-   apply hypsubst_thin
-  subgoal for xs ys lxs lys lzs
-    apply (coinduction arbitrary: xs ys lxs lys lzs)
-    subgoal for xs ys lxs lys lzs
-      apply (erule merged.cases)
-         apply (metis mergedL.intros(2))
-        apply (metis mergedL.intros(2) mergedL.intros(3))
-       apply (metis merged_commute merged_lappend1)
-      apply (metis (full_types) append_is_Nil_conv lshift_append merged_commute)
+lemma in_lset_merged_traceD:
+  "r \<in> lset (merged_trace lxs lys lzs) \<Longrightarrow> merged lxs lys lzs \<Longrightarrow>
+  r \<in> {Inp 1 EOB, Inp 2 EOB} \<union> Inp 1 ` Observed `  lset lxs \<union> Inp 2 ` Observed ` lset lys \<union> Out 1 ` lset lzs"
+  unfolding in_lset_conv_lnth using lnth_merged_trace[of lxs lys lzs _ r]
+  by auto
+
+lemma lproject_merged_trace: "merged lxs lys lzs \<Longrightarrow> lproject \<bottom> (=) (merged_trace lxs lys lzs) (1 :: 1) = lzs"
+  apply (coinduction arbitrary: lxs lys lzs rule: llist.coinduct_upto)
+  subgoal for lxs lys lzs
+    apply (subst (1 2 3 5) merged_trace.code; auto split: llist.splits)
+         apply (auto simp add: lnull_def lproject_empty_conv intro: llist.cong_base dest!: in_lset_merged_traceD[OF _ merged.stop, simplified])
+    done
+  done
+
+lemma lhd_merged_trace_1': "merged (LCons x lxs) lys lzs \<Longrightarrow>
+  lnth (merged_trace (LCons x lxs) lys lzs) n = Inp 1 (Observed y) \<Longrightarrow>
+  lhd (lproject (=) \<bottom> (merged_trace (LCons x lxs) lys lzs) 1) = x"
+  apply (induct n arbitrary: lys lzs rule: less_induct)
+  subgoal for n lys lzs
+    apply (cases n)
+    subgoal
+      apply (subst merged_trace.code)
+      apply (subst (asm) (3) merged_trace.code)
+      apply (auto split: llist.splits)
+      done
+    subgoal for m
+      subgoal
+        apply (subst merged_trace.code)
+        apply (subst (asm) (3) merged_trace.code)
+        apply (auto simp: lnth_LCons' gr0_conv_Suc split: llist.splits if_splits)
+          apply (meson less_Suc_eq merged.stop)
+         apply (meson less_Suc_eq)
+        apply (meson less_Suc_eq)
+        done
       done
     done
-   apply (rule disjI2)
-   apply hypsubst_thin
-  subgoal for xs ys lxs lys lzs
-    apply (coinduction arbitrary: xs ys lxs lys lzs)
-    subgoal for xs ys lxs lys lzs
-      apply (erule merged.cases)
-         apply (metis mergedL.intros(2) mergedL.intros(3))
-        apply (metis mergedL.intros(2))
-       apply (metis (full_types) append_is_Nil_conv lshift_append merged_commute)
-      apply (metis merged_commute merged_lappend1)
+  done
+
+lemma ltl_merged_trace_1': "merged (LCons x lxs) lys lzs \<Longrightarrow>
+  lnth (merged_trace (LCons x lxs) lys lzs) n = Inp 1 (Observed y) \<Longrightarrow>
+  \<exists>lys' lzs'. ltl (lproject (=) \<bottom> (merged_trace (LCons x lxs) lys lzs) 1) = lproject (=) \<bottom> (merged_trace lxs lys' lzs') 1 \<and> merged lxs lys' lzs'"
+  apply (induct n arbitrary: lys lzs rule: less_induct)
+  subgoal for n lys lzs
+    apply (cases n)
+    subgoal
+      apply (subst merged_trace.code)
+      apply (subst (asm) (4) merged_trace.code)
+      apply (auto split: llist.splits)
+      done
+    subgoal for m
+      subgoal
+        apply (subst merged_trace.code)
+        apply (subst (asm) (4) merged_trace.code)
+        apply (auto simp: lnth_LCons' gr0_conv_Suc split: llist.splits if_splits)
+            apply (meson less_Suc_eq merged.stop)
+           apply (meson less_Suc_eq)
+          apply (meson less_Suc_eq)
+         apply (meson less_Suc_eq)
+        apply (meson less_Suc_eq)
+        done
       done
     done
   done
 
-lemma merged_alt: "merged lxs lys lzs \<longleftrightarrow> mergedL lxs lys lzs \<or> mergedL lys lxs lzs"
-  using mergedL_merged mergedRL_merged merged_mergedL by blast
+lemma lhd_merged_trace_1: "merged (LCons x lxs) lys lzs \<Longrightarrow>
+  Inp 1 (Observed y) \<in> lset (merged_trace (LCons x lxs) lys lzs) \<Longrightarrow>
+  lhd (lproject (=) \<bottom> (merged_trace (LCons x lxs) lys lzs) 1) = x"
+  unfolding in_lset_conv_lnth by (auto dest: lhd_merged_trace_1')
 
-coinductive mergedL_fueled where
-  "mergedL_fueled LNil LNil lxs lxs"
-| "mergedL_fueled LNil lxs LNil lxs"
-| "length xs = n \<Longrightarrow> n > 0 \<Longrightarrow> mergedL_fueled lns lys lxs lzs \<Longrightarrow> mergedL_fueled (LCons n lns) (xs @@- lxs) lys (xs @@- lzs)"
+lemma ltl_merged_trace_1: "merged (LCons x lxs) lys lzs \<Longrightarrow>
+  Inp 1 (Observed y) \<in> lset (merged_trace (LCons x lxs) lys lzs) \<Longrightarrow>
+  \<exists>lys' lzs'. ltl (lproject (=) \<bottom> (merged_trace (LCons x lxs) lys lzs) 1) = lproject (=) \<bottom> (merged_trace lxs lys' lzs') 1 \<and> merged lxs lys' lzs'"
+  unfolding in_lset_conv_lnth by (auto dest: ltl_merged_trace_1')
 
-corec fuel_of_mergedL where
-  "fuel_of_mergedL lxs lys lzs = (if lxs = LNil \<or> lys = LNil then LNil else
-     (let (xs, lxs', lzs') = (SOME (xs, lxs', lzs'). xs \<noteq> [] \<and> mergedL lys lxs' lzs' \<and> lxs = xs @@- lxs' \<and> lzs = xs @@- lzs')
-     in LCons (length xs) (fuel_of_mergedL lys lxs' lzs')))"
-
-lemma mergedL_mergedL_fueled: 
-  "mergedL lxs lys lzs \<Longrightarrow> mergedL_fueled (fuel_of_mergedL lxs lys lzs) lxs lys lzs"
-  apply (coinduction arbitrary: lxs lys lzs)
+lemma merged_lprefix_1: "merged lxs lys lzs \<Longrightarrow> lprefix (lproject (=) \<bottom> (merged_trace lxs lys lzs) 1) lxs"
+  apply (coinduction arbitrary: lxs lys lzs rule: lprefix_coinduct)
   subgoal for lxs lys lzs
-    apply (erule mergedL.cases)
-    apply (simp add: fuel_of_mergedL.code)
-     apply (simp add: fuel_of_mergedL.code)
-    apply (cases "lys = LNil")
-     apply (auto simp add: fuel_of_mergedL.code lshift_LNil_iff elim: mergedL.cases) []
-    apply (rule disjI2)+
+    apply (subst (1 2 3 4) merged_trace.code; auto 0 3 simp add: lnull_def lproject_empty_conv neq_LNil_conv merged.stop lhd_merged_trace_1
+        dest: in_lset_merged_trace_LNil in_lset_merged_traceD ltl_merged_trace_1 split: llist.splits)
+    done
+  done
+
+lemma lhd_merged_trace_2': "merged lxs (LCons y lys) lzs \<Longrightarrow>
+  lnth (merged_trace lxs (LCons y lys) lzs) n = Inp 2 (Observed x) \<Longrightarrow>
+  lhd (lproject (=) \<bottom> (merged_trace lxs (LCons y lys) lzs) 2) = y"
+  apply (induct n arbitrary: lxs lzs rule: less_induct)
+  subgoal for n lxs lzs
+    apply (cases n)
+    subgoal
+      apply (subst merged_trace.code)
+      apply (subst (asm) (3) merged_trace.code)
+      apply (auto split: llist.splits)
+      done
+    subgoal for m
+      subgoal
+        apply (subst merged_trace.code)
+        apply (subst (asm) (3) merged_trace.code)
+        apply (auto simp: lnth_LCons' gr0_conv_Suc split: llist.splits if_splits)
+          apply (meson less_Suc_eq merged.stop)
+         apply (meson less_Suc_eq)
+        apply (meson less_Suc_eq)
+        done
+      done
+    done
+  done
+
+lemma ltl_merged_trace_2': "merged lxs (LCons y lys) lzs \<Longrightarrow>
+  lnth (merged_trace lxs (LCons y lys) lzs) n = Inp 2 (Observed x) \<Longrightarrow>
+  \<exists>lxs' lzs'. ltl (lproject (=) \<bottom> (merged_trace lxs (LCons y lys) lzs) 2) = lproject (=) \<bottom> (merged_trace lxs' lys lzs') 2 \<and> merged lxs' lys lzs'"
+  apply (induct n arbitrary: lxs lzs rule: less_induct)
+  subgoal for n lys lzs
+    apply (cases n)
+    subgoal
+      apply (subst merged_trace.code)
+      apply (subst (asm) (4) merged_trace.code)
+      apply (auto split: llist.splits)
+      done
+    subgoal for m
+      subgoal
+        apply (subst merged_trace.code)
+        apply (subst (asm) (4) merged_trace.code)
+        apply (auto simp: lnth_LCons' gr0_conv_Suc split: llist.splits if_splits)
+            apply (meson less_Suc_eq merged.stop)
+           apply (meson less_Suc_eq)
+          apply (meson less_Suc_eq)
+        done
+      done
+    done
+  done
+
+lemma lhd_merged_trace_2: "merged lxs (LCons y lys) lzs \<Longrightarrow>
+  Inp 2 (Observed x) \<in> lset (merged_trace lxs (LCons y lys) lzs) \<Longrightarrow>
+  lhd (lproject (=) \<bottom> (merged_trace  lxs (LCons y lys) lzs) 2) = y"
+  unfolding in_lset_conv_lnth by (auto dest: lhd_merged_trace_2')
+
+lemma ltl_merged_trace_2: "merged lxs (LCons y lys) lzs \<Longrightarrow>
+  Inp 2 (Observed x) \<in> lset (merged_trace lxs (LCons y lys) lzs) \<Longrightarrow>
+  \<exists>lxs' lzs'. ltl (lproject (=) \<bottom> (merged_trace lxs (LCons y lys) lzs) 2) = lproject (=) \<bottom> (merged_trace lxs' lys lzs') 2 \<and> merged lxs' lys lzs'"
+  unfolding in_lset_conv_lnth by (auto dest: ltl_merged_trace_2')
+
+lemma merged_lprefix_2: "merged lxs lys lzs \<Longrightarrow> lprefix (lproject (=) \<bottom> (merged_trace lxs lys lzs) 2) lys"
+  apply (coinduction arbitrary: lxs lys lzs rule: lprefix_coinduct)
+  subgoal for lxs lys lzs
+    apply (subst (1 2 3 4) merged_trace.code; auto 0 3 simp add: lnull_def lproject_empty_conv neq_LNil_conv merged.stop lhd_merged_trace_2
+        dest: in_lset_merged_trace_LNil in_lset_merged_traceD ltl_merged_trace_2 split: llist.splits)
+    done
+  done
+
+lemma history_fairmerge_False_False: "history (fairmerge False False) lxs lzs \<longleftrightarrow> merged (lxs 1) (lxs 2) (lzs 1)"
+  unfolding history_def traced_fairmerge_False_False
+  apply safe
+  subgoal for ios
     apply hypsubst_thin
-    apply (subst fuel_of_mergedL.code)
-    apply (rule someI2)
-    apply (rule case_prodI conjI refl | assumption)+
-    apply (force simp: lshift_LNil_iff)
+    apply (coinduction arbitrary: lxs ios rule: merged_coinduct_upto)
+    subgoal premises prems for lxs ios
+    proof (cases "\<exists>n. llength (ltakeWhile ((=) (Inp 1 EOB) \<squnion> (=) (Inp 2 EOB)) ios) = enat n")
+      case True
+      then show ?thesis
+        using prems
+        apply (elim exE)
+        subgoal for n
+          apply (induct n arbitrary: ios rule: less_induct)
+          subgoal premises prems for n ios
+            using prems(2-)
+            apply (cases n)
+            apply (erule trace_fmFF.cases)
+              apply (simp_all add: enat_0)
+            subgoal for lxs'
+              apply (cases "lproject \<bottom> (=) lxs' 1"; simp)
+              apply (rule disjI2)
+              apply (smt (verit, best) LCons_lprefix_conv lprefix_merged2 mc_merged trace_fmTF_lproject2)
+              done
+            unfolding trace_fmFF_A1_def trace_fmFF_A2_def
+             apply (elim UnE insertE emptyE imageE; hypsubst_thin; simp)
+            subgoal for lxs' x
+              apply (smt (verit, ccfv_SIG) LCons_lprefix_conv bot2E lprefix_merged1 lproject_LCons(2) lproject_LCons(3) mc_merged trace_fmFT_lproject1)
+              done
+            apply (elim UnE insertE emptyE imageE; hypsubst_thin; simp add: null_def)
+             apply (frule spec[of _ 1]; frule spec[of _ 2]; simp)
+             apply (rule disjI1)
+             apply (simp add: LCons_lprefix_conv)
+             apply (erule exE conjE)+
+            subgoal for lxs' x ys'
+              apply (rule exI conjI | assumption)+
+              apply (rule mc_base)
+              apply (rule exI[of _ "lxs(1 := ys')"])
+              apply simp
+              apply (rule exI conjI refl)+
+               apply assumption
+              apply auto
+              done
+            apply (frule spec[of _ 1]; frule spec[of _ 2]; simp)
+            apply (simp add: LCons_lprefix_conv)
+            apply (erule exE conjE)+
+            apply simp
+            apply (rule disjI1)
+            apply (rule mc_right)
+            apply (rule mc_base)
+            subgoal for lxs' x y lxs'' lys''
+              apply (rule exI[of _ "\<lambda>p. if p = 1 then lxs'' else lys''"])
+              apply simp
+              apply (rule exI conjI refl)+
+               apply assumption
+              apply simp
+              done
+            subgoal for m
+              apply (erule trace_fmFF.cases)
+                apply (simp_all add: enat_0[symmetric] trace_fmFF_A1_def trace_fmFF_A2_def)
+               apply (elim disjE imageE; hypsubst_thin; simp add: null_def enat_0[symmetric] eSuc_enat)
+               apply (metis (no_types, lifting) lprefix.cases lprefix_merged1 mc_merged trace_fmFT_lproject1)
+              apply (elim disjE imageE; hypsubst; simp add: null_def enat_0[symmetric] eSuc_enat eSuc_enat_iff)
+              using prems(1)
+               apply (elim exE conjE; hypsubst_thin; simp)
+              using less_Suc_eq apply blast
+              apply (rule disjI2)
+              apply (frule spec[of _ 1]; frule spec[of _ 2]; simp)
+              apply (simp add: LCons_lprefix_conv)
+              apply (elim exE conjE)
+              apply (rule exI conjI | assumption)+
+              apply (rule mc_base)
+              subgoal for lxs' y lys'
+                apply (rule exI[of _ "lxs(2 := lys')"]; simp)
+                apply auto
+                done
+              done
+            done
+          done
+        done
+    next
+      case False
+      then show ?thesis
+        by (auto simp: llength_ltakeWhile_eq_infinity' lproject_empty_conv)
+    qed
+    done
+  subgoal
+    unfolding fun_eq_iff
+    apply (rule exI[of _ "merged_trace (lxs 1) (lxs 2) (lzs 1)"] conjI trace_fmFF_merged_trace allI | assumption)+
+    subgoal for p
+      apply (cases "p = 1")
+       apply (auto simp: merged_lprefix_1 merged_lprefix_2)
+      done
+    apply (auto simp: lproject_merged_trace)
     done
   done
-
-lemma mergedL_fueled_mergedL: 
-  "mergedL_fueled lns lxs lys lzs \<Longrightarrow> mergedL lxs lys lzs"
-  apply (coinduction arbitrary: lns lxs lys lzs)
-  apply (erule mergedL_fueled.cases)
-    apply force+
-  done
-
-lemma mergedL_alt: "mergedL lxs lys lzs \<longleftrightarrow> (\<exists>lns. mergedL_fueled lns lxs lys lzs)"
-  using mergedL_fueled_mergedL mergedL_mergedL_fueled by blast
-
-coinductive mergedL1_fueled where
-  "mergedL1_fueled LNil LNil lxs lxs"
-| "mergedL1_fueled LNil lxs LNil lxs"
-| "mergedL1_fueled (if n = 0 then lns else LCons n lns) (if n = 0 then lys else lxs) (if n = 0 then lxs else lys) lzs \<Longrightarrow>
-   mergedL1_fueled (LCons (Suc n) lns) (LCons x lxs) lys (LCons x lzs)"
-
-lemma mergedL_fueled_mergedL1_fueled: "mergedL_fueled lns lxs lys lzs \<Longrightarrow> mergedL1_fueled lns lxs lys lzs"
-  apply (coinduction arbitrary: lns lxs lys lzs)
-  apply (erule mergedL_fueled.cases)
-  apply simp
-   apply simp
-  apply hypsubst_thin
-  apply simp
-  subgoal for xs lns lxs lys lzs
-    apply (induct xs arbitrary: lxs lzs)
-     apply simp
-    subgoal for x xs lxs lzs
-      apply (cases xs)
-       apply(auto intro: mergedL_fueled.intros)
-      apply (metis length_Cons lshift_simps(2) mergedL_fueled.intros(3) zero_less_Suc)
-      done
-    done
-  done
-
-lemma mergedL1_fueled_mergedL_fueled: "mergedL1_fueled lns lxs lys lzs \<Longrightarrow> mergedL_fueled lns lxs lys lzs"
-  apply (coinduction arbitrary: lns lxs lys lzs)
-  subgoal for lns lxs lys lzs
-    apply (cases lns)
-     apply (auto elim: mergedL1_fueled.cases) []
-    subgoal for n lns'
-      apply hypsubst_thin
-      apply (rule disjI2)+
-      apply simp
-    apply (induct n arbitrary: lns lxs lzs)
-       apply (auto elim: mergedL1_fueled.cases) []
-      apply (erule mergedL1_fueled.cases)
-        apply (auto split: if_splits)
-       apply (metis length_Cons list.size(3) lshift_simps(1) lshift_simps(2))
-      apply (metis length_Cons lshift_simps(2))
-      done
-    done
-  done
-
-lemma mergedL_fueled_alt: "mergedL_fueled lns lxs lys lzs \<longleftrightarrow> mergedL1_fueled lns lxs lys lzs"
-  using mergedL_fueled_mergedL1_fueled mergedL1_fueled_mergedL_fueled by blast
-
-lemma produced_fairmerge_True_True: "produced m (fairmerge True True) lxs lzs \<longleftrightarrow> lzs = (\<lambda>_. LNil)"
-  oops
-(*   by (fastforce simp: fun_eq_iff fairmerge.code intro!: exI[of _ "\<lambda>_. 0"]) *)
-
-(* lemma fairmerge_True_True: "\<lbrakk>fairmerge True True\<rbrakk> lxs lzs \<longleftrightarrow> lzs = (\<lambda>_. LNil)"
-  unfolding semantics_def produced_fairmerge_True_True by simp *)
-
-lemma produced_fairmerge_True_False: "produced m (fairmerge True False) lxs lzs \<longleftrightarrow> lzs = (\<lambda>_. lxs 2)"
- (*  unfolding fun_eq_iff semantics_def
-  apply safe
-   apply (subst num1_eq1)
-   apply (coinduction arbitrary: m lzs lxs)
-   apply safe
-  subgoal for m lzs lxs
-  proof (induct "m 2" arbitrary: m lxs)
-    case 0
-    then show ?case 
-      by (subst (asm) fairmerge.code)
-        (auto split: observation.splits elim!: chd.elims)
-  next
-    case (Suc n)
-    from Suc(2-) Suc(1)[of "m(2 := n)"] show ?case
-      by (subst (asm) fairmerge.code)
-        (auto split: observation.splits elim!: chd.elims)
-  qed
-  subgoal for m lzs lxs
-    by (auto dest!: produced_muted simp: muted_def)
-  subgoal for m lzs lxs
-  proof (induct "m 2" arbitrary: m lxs)
-    case 0
-    then show ?case 
-      by (subst (asm) fairmerge.code)
-        (auto split: observation.splits elim!: chd.elims)
-  next
-    case (Suc n)
-    from Suc(2-) Suc(1)[of "m(2 := n)"] show ?case
-      by (subst (asm) fairmerge.code)
-        (auto split: observation.splits elim!: chd.elims)
-  qed
-  subgoal for m lzs lxs
-  proof (induct "m 2" arbitrary: m lxs)
-    case 0
-    then show ?case 
-      apply (subst (asm) fairmerge.code)
-      apply (auto split: observation.splits elim!: chd.elims)
-       apply (metis fun_upd_same)
-      done
-  next
-    case (Suc n)
-    from Suc(2-) Suc(1)[of "m(2 := n)"] show ?case
-      apply (subst (asm) fairmerge.code)
-      apply (auto split: observation.splits elim!: chd.elims)
-       apply (metis fun_upd_same)
-      done
-  qed
-  apply (coinduction arbitrary: m lxs lzs rule: produced_coinduct_upto)
-  apply (rule disjI1)
-  apply (subst fairmerge.code)
-  apply (auto simp: fun_upd_def[where 'b=nat] muted_def split: observation.splits elim!: chd.elims
-      intro!: exI[of _ 0])
-   apply (rule produced_cong.write) 
-    apply (rule produced_cong.base)
-    apply (rule conjI refl)+
-   apply (simp add: fun_eq_iff)
-  apply (rule produced_cong.produced)
-  apply (rule produced_End)
-  apply (metis (full_types) num1_eq1)
-  done *)
-  oops
-
-(* lemma fairmerge_True_False: "\<lbrakk>fairmerge True False\<rbrakk> lxs lzs \<longleftrightarrow> lzs = (\<lambda>_. lxs 2)"
-  unfolding semantics_def produced_fairmerge_True_False by simp *)
-
-lemma produced_fairmerge_False_True: "produced m (fairmerge False True) lxs lzs \<longleftrightarrow> lzs = (\<lambda>_. lxs 1)"
-  (* unfolding fun_eq_iff semantics_def
-  apply safe
-   apply (subst num1_eq1)
-   apply (coinduction arbitrary: m lzs lxs)
-   apply safe
-  subgoal for m lzs lxs
-  proof (induct "m 1" arbitrary: m lxs)
-    case 0
-    then show ?case 
-      by (subst (asm) fairmerge.code)
-        (auto split: observation.splits elim!: chd.elims)
-  next
-    case (Suc n)
-    from Suc(2-) Suc(1)[of "m(1 := n)"] show ?case
-      by (subst (asm) fairmerge.code)
-        (auto split: observation.splits elim!: chd.elims)
-  qed
-  subgoal for m lzs lxs
-    by (auto dest!: produced_muted simp: muted_def)
-  subgoal for m lzs lxs
-  proof (induct "m 1" arbitrary: m lxs)
-    case 0
-    then show ?case 
-      by (subst (asm) fairmerge.code)
-        (auto split: observation.splits elim!: chd.elims)
-  next
-    case (Suc n)
-    from Suc(2-) Suc(1)[of "m(1 := n)"] show ?case
-      by (subst (asm) fairmerge.code)
-        (auto split: observation.splits elim!: chd.elims)
-  qed
-  subgoal for m lzs lxs
-  proof (induct "m 1" arbitrary: m lxs)
-    case 0
-    then show ?case 
-      apply (subst (asm) fairmerge.code)
-      apply (auto split: observation.splits elim!: chd.elims)
-       apply (metis fun_upd_same)
-      done
-  next
-    case (Suc n)
-    from Suc(2-) Suc(1)[of "m(1 := n)"] show ?case
-      apply (subst (asm) fairmerge.code)
-      apply (auto split: observation.splits elim!: chd.elims)
-       apply (metis fun_upd_same)
-      done
-  qed
-  apply (coinduction arbitrary: m lxs lzs rule: produced_coinduct_upto)
-  apply (rule disjI1)
-  apply (subst fairmerge.code)
-  apply (auto simp: fun_upd_def[where 'b=nat] muted_def split: observation.splits elim!: chd.elims
-      intro!: exI[of _ 0])
-   apply (rule produced_cong.write) 
-    apply (rule produced_cong.base)
-    apply (rule conjI refl)+
-   apply (simp add: fun_eq_iff)
-  apply (rule produced_cong.produced)
-  apply (rule produced_End)
-  apply (metis (full_types) num1_eq1)
-  done *)
-  oops
-
-(* lemma fairmerge_False_True: "\<lbrakk>fairmerge False True\<rbrakk> lxs lzs \<longleftrightarrow> lzs = (\<lambda>_. lxs 1)"
-  unfolding semantics_def produced_fairmerge_False_True by simp *)
-(* 
-lemma "\<lbrakk>fairmerge False False\<rbrakk> (\<lambda>x. if x = 1 then llist_of [1, 2, 3] else llist_of [4, 5]) (\<lambda>_. llist_of [4,1,2,3,5])"
-  unfolding semantics_def
-  apply (rule exI[of _ "\<lambda>x. 3"])
-  apply (subst fairmerge.code; simp)
-  apply (rule produced.ReadEOB; auto 0 0 simp: muted_def)
-  apply (rule produced.Read[where n=3]; auto 0 0 simp: muted_def)
-  apply (rule produced_Write; (auto simp: muted_def)?)
-  apply (subst fairmerge.code; simp)
-  apply (rule produced.Read[where n=3]; auto 0 0  simp: muted_def)
-  apply (rule produced_Write; (auto simp: muted_def)?)
-  apply (rule produced.ReadEOB; auto 0 0 simp: muted_def)
-  apply (subst fairmerge.code; simp)
-  apply (rule produced.Read[where n=3]; auto 0 0 simp: muted_def)
-  apply (rule produced_Write; (auto simp: muted_def)?)
-  apply (rule produced.ReadEOB; auto 0 0 simp: muted_def)
-  apply (subst fairmerge.code; simp)
-  apply (rule produced.Read[where n=3]; auto 0 0 simp: muted_def)
-  apply (rule produced_Write; (auto simp: muted_def)?)
-  apply (rule produced.ReadEOB; auto 0 0 simp: muted_def)
-  apply (subst fairmerge.code; simp)
-  apply (rule produced.ReadEOB; auto 0 0 simp: muted_def)
-  apply (rule produced.Read[where n=3]; auto 0 0 simp: muted_def)
-  apply (rule produced_Write; (auto simp: muted_def)?)
-  apply (subst fairmerge.code; simp)
-  apply (rule produced.Read[where n=3]; auto 0 0 simp: muted_def)
-  apply (subst fairmerge.code; simp)
-  apply (rule produced.Read[where n=3]; auto 0 0)
-  done *)
-
-lemma mergedL1_fueled_fairmerge: "mergedL1_fueled lns (lxs i) (lxs j) (lzs 1) \<Longrightarrow> i = 1 \<and> j = 2 \<or> i = 2 \<and> j = 1 \<Longrightarrow>
-  produced (\<lambda>p. if p = j \<and> lns \<noteq> LNil then lhd lns else 0) (fairmerge False False) lxs lzs"
-  (* apply (coinduction arbitrary: i j lns lxs lzs rule: produced_coinduct_upto)
-  subgoal for i j lns lxs lzs
-    apply (erule mergedL1_fueled.cases)
-    subgoal for lxs'
-      apply (elim disjE conjE)
-       apply (rule disjI1)
-       apply (subst fairmerge.code; simp add: muted_def)
-       apply (rule exI[of _ 0])
-       apply (rule produced_cong.produced; auto simp add: produced_fairmerge_True_False fun_eq_iff)
-      apply (rule disjI1)
-      apply (subst fairmerge.code; auto simp: muted_def split: observation.split elim!: chd.elims)
-       apply (rule exI[of _ 0])
-       apply (rule produced_cong.produced)
-       apply (rule produced_Write[rotated])
-         apply (rule produced.Read[rotated])
-          apply (simp add: produced_fairmerge_False_True)
-         apply (auto simp: fun_eq_iff muted_def) [3]
-      apply (rule exI[of _ 0])
-      apply (rule produced_cong.produced)
-      apply (simp add: produced_fairmerge_True_False)
-      apply (auto simp: fun_eq_iff) []
-      done
-    subgoal for lxs'
-      apply (elim disjE conjE)
-       apply (rule disjI1)
-       apply (subst fairmerge.code; auto simp: muted_def split: observation.split elim!: chd.elims)
-        apply (rule exI[of _ 0])
-        apply (rule produced_cong.produced)
-        apply (rule produced_Write[rotated])
-          apply (rule produced.Read[rotated])
-           apply (simp add: produced_fairmerge_False_True)
-          apply (auto simp: fun_eq_iff muted_def) [3]
-       apply (subst fairmerge.code; simp)
-       apply (rule exI[of _ 0])
-       apply (rule produced_cong.produced)
-       apply (simp add: produced_fairmerge_True_False)
-       apply (auto simp: fun_eq_iff) []
-      apply (rule disjI1)
-      apply (subst fairmerge.code; simp add: muted_def)
-      apply (rule exI[of _ 0])
-      apply (rule produced_cong.produced)
-      apply (simp add: produced_fairmerge_True_False)
-      apply (auto simp: fun_eq_iff) []
-      done
-    subgoal for n lns' lys lxs' lzs' x
-      apply (elim disjE conjE)
-       apply (simp_all split: if_splits)
-         apply hypsubst_thin
-         apply (cases "lns' = LNil")
-      subgoal
-        apply (rule disjI1)
-        apply (erule mergedL1_fueled.cases; simp)
-         apply (subst fairmerge.code; auto simp: muted_def split: observation.split elim!: chd.elims)
-         apply (rule exI[of _ 0])
-         apply (rule produced_cong.produced)
-         apply (rule produced_Write[rotated])
-           apply (rule produced.Read[rotated])
-            apply (simp add: produced_fairmerge_False_True)
-           apply (auto simp: fun_eq_iff muted_def) [3]
-        apply (subst fairmerge.code; auto simp: muted_def split: observation.split elim!: chd.elims)
-        apply (rule exI[of _ 0])
-        apply (rule produced_cong.produced)
-        apply (rule produced_Write[rotated])
-          apply (rule produced.Read[rotated])
-           apply (auto 0 0 simp add: muted_def produced_fairmerge_False_True fun_eq_iff
-            split: observation.split elim!: chd.elims)
-        apply (rule produced_Write[rotated])
-          apply (auto simp: fun_eq_iff) [3]
-        apply (subst fairmerge.code; auto split: observation.split elim!: chd.elims)
-        apply (rule produced.Read[rotated])
-         apply (auto 0 0 simp add: muted_def produced_fairmerge_True_False fun_eq_iff
-            split: observation.split elim!: chd.elims)
-        done
-      subgoal
-        apply (rule disjI1)
-        apply (subst fairmerge.code; auto simp: muted_def split: observation.split elim!: chd.elims)
-        apply (rule exI[of _ "lhd lns'"])
-        apply (rule produced_cong.write[where lys' = "CTL 1 lzs"]; auto simp: fun_eq_iff)
-        apply (rule produced_cong.read; auto simp: fun_eq_iff)
-        apply (rule produced_cong.base)
-        apply (auto intro: exI[of _ 2])
-        done
-        apply hypsubst_thin
-      subgoal
-        apply (rule disjI1)
-        apply (subst fairmerge.code; auto simp: muted_def split: observation.split elim!: chd.elims)
-        apply (rule exI[of _ 0])
-        apply (rule produced_cong.write[where lys' = "CTL 1 lzs"]; auto simp: fun_eq_iff)
-        apply (rule produced_cong.read; auto simp: fun_eq_iff)
-        apply (rule produced_cong.base)
-        apply (rule exI[of _ 1])
-        apply (rule exI[of _ 2])
-        apply (rule exI[of _ "LCons n lns'"])
-        apply (rule conjI[rotated])
-         apply (rule conjI[OF refl])
-         apply (rule conjI)
-          apply (auto intro: exI[of _ 1]) 
-        done
-       apply hypsubst_thin
-       apply (cases "lns' = LNil")
-      subgoal
-        apply (rule disjI2)
-        apply (rule disjI1)
-        apply (subst fairmerge.code; auto simp: muted_def split: observation.split elim!: chd.elims)
-        apply (rule produced_cong.produced)
-          apply (rule produced.Read[rotated]; auto 0 0 split: observation.split elim!: chd.elims)
-        apply (rule produced_Write[where lys = "CTL 1 lzs", rotated])
-        apply (auto simp: fun_eq_iff elim: mergedL1_fueled.cases) [3]
-        apply (subst fairmerge.code; auto split: observation.split elim!: chd.elims)
-        apply (rule produced.Read[rotated]; auto 0 0 split: observation.split elim!: chd.elims)
-        apply (rule produced_Write[where lys = "CTL 1 (CTL 1 lzs)", rotated])
-        apply (rule produced.Read[rotated]; auto 0 0 split: observation.split elim!: chd.elims)
-        apply (rule produced_Write[where lys = "CTL 1 (CTL 1 lzs)", rotated])
-        apply (auto simp: muted_def fun_eq_iff produced_fairmerge_False_True produced_fairmerge_True_False elim: mergedL1_fueled.cases)
-        done
-      subgoal
-        apply (rule disjI2)
-        apply (rule disjI1)
-        apply (subst fairmerge.code; auto simp: muted_def split: observation.split elim!: chd.elims)
-        apply (rule produced_cong.read; auto simp: fun_eq_iff)
-        apply (rule produced_cong.write[where lys' = "CTL 1 lzs"]; auto simp: fun_eq_iff)
-        apply (rule produced_cong.base)
-        apply (rule exI[of _ 1])
-        apply (rule exI[of _ 2])
-        apply (rule exI[of _ "lns'"])
-        apply (rule conjI[rotated])
-         apply (rule conjI[OF refl])
-         apply (rule conjI)
-          apply (auto intro: exI[of _ 2]) 
-        done
-      apply hypsubst_thin
-      apply (rule disjI2)
-      apply (rule disjI1)
-      apply (subst fairmerge.code; auto simp: muted_def split: observation.split elim!: chd.elims)
-      apply (rule produced_cong.read; auto simp: fun_eq_iff)
-      apply (rule produced_cong.write[where lys' = "CTL 1 lzs"]; auto simp: fun_eq_iff)
-      apply (rule produced_cong.base)
-      apply (rule exI[of _ 2])
-      apply (rule exI[of _ 1])
-      apply (rule exI[of _ "LCons n lns'"])
-      apply (rule conjI[rotated])
-       apply (rule conjI[OF refl])
-       apply (rule conjI)
-        apply (auto intro: exI[of _ 2]) 
-      done
-    done
-  done *)
-  oops
-
-(* lemma merged_fairmerge_False_False:
-  "merged (lxs 1) (lxs 2) (lzs 1) \<Longrightarrow> \<lbrakk>fairmerge False False\<rbrakk> lxs lzs"
-  unfolding merged_alt mergedL_alt mergedL_fueled_alt semantics_def
-  using mergedL1_fueled_fairmerge[of _ lxs 1 2 lzs] mergedL1_fueled_fairmerge[of _ lxs 2 1 lzs]
-  by blast *)
 
 end
