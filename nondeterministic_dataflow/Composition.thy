@@ -2381,13 +2381,127 @@ lemma outputs_pcomp_op[simp]:
 
 definition "lfocus f A g B ios =
   lmap (\<lambda>io. case io of Inp p x \<Rightarrow> Inp (f p) x | Out p x \<Rightarrow> Out (g p) x)
-     (lfilter (\<lambda>io. case io of Inp p x \<Rightarrow> p \<in> A | Out p x \<Rightarrow> p \<in> B) ios)"
+     (lfilter (case_IO (\<lambda>p _. p \<in> A) (\<lambda>p _. p \<in> B)) ios)"
 
-lemma "traced (pcomp_op op1 op2) lxs \<longleftrightarrow>
+lemma lfocus_Inl_lmap: \<open>lfocus projl (range Inl) projl (range Inl) (lalternate (lmap (map_IO Inl Inl id) ios1) (lmap (map_IO Inr Inr id) ios2)) = ios1\<close>
+proof (coinduction arbitrary: ios1 ios2)
+  case (Eq_llist ios1 ios2)
+  then show ?case
+    apply (cases ios1; cases ios2)
+       apply (auto simp: lfocus_def lfilter_lfilter)
+    subgoal for a
+      apply (cases a)
+      by auto
+    subgoal for a b c
+      apply (cases c)
+      by auto
+    subgoal for a b
+      apply (cases a)
+      by (auto simp: observation.map_id)
+    subgoal for a b
+      by (metis lalternate_LNil(2) llist.simps(12))
+    subgoal for a b
+      apply (cases a)
+      by auto
+    subgoal for a b
+      apply (cases a)
+      by auto
+    subgoal for a b
+      apply (cases a)
+      by auto
+    subgoal for a b
+      apply (cases a)
+      by (auto simp: observation.map_id)
+    subgoal for a b c d
+      apply (cases c)
+      by (auto simp: observation.map_id)
+    subgoal for a b
+      apply (cases a)
+      by (auto simp: observation.map_id)
+    subgoal for a b
+      apply (cases a)
+      by (auto simp: observation.map_id)
+    subgoal for a b
+      apply (cases a)
+      by (auto simp: observation.map_id)
+    subgoal for a b
+      apply (cases a)
+      by (auto simp: observation.map_id)
+    subgoal for a b
+      apply (cases a)
+      by (auto simp: observation.map_id)
+    done
+qed
+
+lemma lfocus_Inr_lmap: \<open>lfocus projr (range Inr) projr (range Inr) (lalternate (lmap (map_IO Inl Inl id) ios1) (lmap (map_IO Inr Inr id) ios2)) = ios2\<close>
+proof (coinduction arbitrary: ios1 ios2)
+  case (Eq_llist ios1 ios2)
+  then show ?case
+    apply (cases ios1; cases ios2)
+       apply (auto simp: lfocus_def lfilter_lfilter)
+    subgoal for a
+      apply (cases a)
+      by (auto simp: observation.map_id)
+    subgoal for a b
+      by (metis lalternate_LNil(1) llist.simps(12))
+    subgoal for a b
+      apply (cases a)
+      by (auto simp: observation.map_id)
+    subgoal for a b
+      apply (cases a)
+      by (auto simp: observation.map_id)
+    subgoal for a b
+      apply (cases a)
+      by auto
+    subgoal for a b
+      apply (cases a)
+      by auto
+    subgoal for a b c
+      apply (cases c)
+      by (auto simp: observation.map_id)
+    subgoal for a b
+      apply (cases a)
+      by (auto simp: observation.map_id)
+    subgoal for a b c d
+      apply (cases a)
+      by (auto simp: observation.map_id)
+    subgoal for a b c
+      apply (cases c)
+      by (auto simp: observation.map_id)
+    subgoal for a b
+      apply (cases a)
+      by (auto simp: observation.map_id)
+    subgoal for a b c
+      apply (cases c)
+      by (auto simp: observation.map_id)
+    subgoal for a b c
+      apply (cases c)
+      by (auto simp: observation.map_id)
+    subgoal for a b c
+      apply (cases c)
+      by (auto simp: observation.map_id)
+    done
+qed
+
+lemma visible_IO_None_True: \<open>visible_IO (\<lambda>_. None) io = True\<close>
+proof (cases io)
+  case (Inp p x)
+  then show ?thesis
+    by (cases p) auto
+next
+  case (Out p x)
+  then show ?thesis
+    by (cases p) auto
+qed
+
+lemma lfilter_visible_IO_None: \<open>lfilter (visible_IO (\<lambda>_. None)) lxs = lxs\<close>
+  unfolding visible_IO_None_True by simp
+
+lemma traced_pcomp_op: "traced (pcomp_op op1 op2) lxs \<longleftrightarrow>
   traced op1 (lfocus projl (range Inl) projl (range Inl) lxs) \<and>
   traced op2 (lfocus projr (range Inr) projr (range Inr) lxs)"
-  unfolding pcomp_op_def traced_comp_op
-  apply (auto simp: lfocus_def lfilter_lfilter)
+  unfolding pcomp_op_def traced_comp_op lfilter_visible_IO_None
+  apply (auto simp: lfilter_lfilter lfocus_Inl_lmap lfocus_Inr_lmap)
   oops
 
 section\<open>Sequential composition\<close>
