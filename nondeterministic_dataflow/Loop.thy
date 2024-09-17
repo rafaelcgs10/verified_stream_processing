@@ -412,9 +412,9 @@ lemma traced_loop_op:
     done
   done
 
-definition loop22_op :: "'d op22 \<Rightarrow> 'd op11" where
-  "loop22_op op = map_op (\<lambda>_. 1) (\<lambda>_. 1) (loop_op
-    (\<lambda>x. if x = 1 then Some 1 else None) (\<lambda>_. BEmpty) op)"
+definition loop22_op :: "_ \<Rightarrow> 'd op22 \<Rightarrow> 'd op11" where
+  "loop22_op buf op  = map_op (\<lambda>_. 1) (\<lambda>_. 1) (loop_op
+    (\<lambda>x. if x = 1 then Some 1 else None) buf op)"
 
 lemma iterates_Out_not_Inp:
   "x \<in> lset lxs \<Longrightarrow>
@@ -558,140 +558,48 @@ lemma traced_map_op_lmap_case_IO:
     done
   done
 
-coinductive loop22_op_Suc_op_spec where
-  "loop22_op_Suc_op_spec BEnded LNil LNil"
-| "loop22_op_Suc_op_spec (benq (Suc n) xs) lxs lys \<Longrightarrow> loop22_op_Suc_op_spec (BCons n xs) lxs (LCons n lys)"
-| "loop22_op_Suc_op_spec (benq (Suc n) xs) lxs lys \<Longrightarrow> xs \<noteq> BEnded \<Longrightarrow> loop22_op_Suc_op_spec xs (LCons n lxs) (LCons n lys)"
+coinductive Suc_spec where
+  "Suc_spec BEnded LNil LNil"
+| "Suc_spec (benq (Suc n) xs) lxs lys \<Longrightarrow> Suc_spec (BCons n xs) lxs (LCons n lys)"
+| "Suc_spec (benq (Suc m) (btl (benq n xs))) lxs lys \<Longrightarrow> m = obs (bhd (benq n xs)) \<Longrightarrow> Suc_spec xs (LCons n lxs) (LCons m lys)"
+
+term retrace_loop_op
+
+corec Suc_trace where
+  "Suc_trace buf lxs lys = (case lys of
+       LNil \<Rightarrow> (if buf = BEnded then LNil else (if buf = BEmpty then LCons (Inp 2 EOB) (Suc_trace buf lxs lys) else LCons (Out 2 (obs (bhd buf))) (Suc_trace (btl buf) lxs lys)))
+     | LCons n lys' \<Rightarrow>
+       if Suc_spec (benq (Suc n) (btl buf)) lxs lys' \<and> obs (bhd buf) = n 
+       then (if lnull lxs then LCons (Out 2 n) (Suc_trace (benq (Suc n) (btl buf)) lxs lys') else LCons (Inp 2 EOB) (LCons (Out (2::2) n) (Suc_trace (benq (Suc n) (btl buf)) lxs lys')))
+       else (if lnull lxs \<and> Suc_spec (benq (lhd lxs) (btl buf)) (ltl lxs) lys' \<and> obs (bhd buf) = n then LCons (Inp (2::2) (Observed (lhd lxs))) (LCons (Out (2::2) n) (Suc_trace (benq (lhd lxs) (btl buf)) (ltl lxs) lys')) else LNil))"
+
 
 lemma
-  "history (loop22_op (Suc_op True)) (\<lambda>x. if x = 2 then lxs else LNil) (\<lambda>x. if x = 2 then lys else LNil) \<longleftrightarrow> (loop22_op_Suc_op_spec BEmpty lxs lys)"
+  "Suc_op_True_spec (Suc_trace (buf 1) lxs lys)"
+  apply (coinduction arbitrary: buf lxs lys)
+  subgoal for buf lxs lys
+    apply simp
+    apply (cases lys)
+    subgoal
+    apply (subst (1 3  5 6 8) Suc_trace.code)
+      apply (auto )
+      oops
+
+lemma
+  "history (loop22_op buf (Suc_op True)) (\<lambda>x. lxs) (\<lambda>x. lys) \<longleftrightarrow> (Suc_spec (buf 1) lxs lys)"
   apply (rule iffI)
-  defer
+   defer
   subgoal
-  unfolding history_def
-  apply (auto simp add: loop22_op_def)
-  subgoal sorry
-  subgoal
-    apply (intro exI conjI)
-    apply (rule traced_map_op_lmap_case_IO)
-      apply (auto simp add: traced_loop_op)
-      apply (intro exI conjI)
-        apply (rule Suc_op_True_spec_traced)
-    defer
-    apply (rule refl)
-
-
-
-  apply (rule exI[of _ "LCons (Inp 2 (Observed n)) (iterates (case_IO undefined (\<lambda> p n. Out p (Suc n))) (Out 2 n))"])
-  apply (intro conjI)
-    apply (simp_all add: ran_def split: if_splits)
-  subgoal
-  apply (rule exI[of _ "LCons (Inp 2 (Observed n)) (iterates (case_IO undefined (\<lambda> p n. Out p (Suc n))) (Out 2 n))"])
-    apply (intro conjI)
-    prefer 2
-    subgoal
-    apply (coinduction arbitrary: n rule: llist.coinduct_upto)
-    subgoal for n
-    unfolding lnull_def
-    apply (intro conjI impI iffI)
-    subgoal
-      by simp
-    subgoal
-      apply (auto simp add: lfilter_eq_LNil ran_def split: if_splits)
-      done
-    subgoal
-      apply (auto simp add: lfilter_eq_LNil ran_def split: if_splits)
-      done
-    subgoal
-      apply (auto simp add: ran_def split: if_splits)
-      apply (subst (3 4) iterates.code)
-      apply (clarsimp simp add: ran_def split: if_splits)
-      apply (intro allI impI conjI)
-      subgoal
-        apply (rule llist.cong_LCons)
-       apply simp
-      apply (rule llist.cong_base)
-
-
-   apply (subst (2) Suc_op.code)
-      apply (subst (2) iterates.code)
-      apply (auto simp add: ran_def split: if_splits)
-
-      find_theorems name : llist.cong_
-
-
-      apply (rule llist.cong_base)
-
-
-end
-
-
-      apply auto
-      subgoal
-
-
-
-end
-      apply (subst Suc_op.code)
-      apply simp
-      apply (subst (4) Suc_op.code)
-      apply simp
-
-
-
-
-      apply (rule sym)
-
-    find_theorems "lfilter _ _ = LCons _ _"
-
-
-    find_theorems causal retrace_loop_op
-
-        apply (simp_all add: ran_def split: if_splits)
-    apply (intro conjI)
-  
-  
-  subgoal
-    by (auto simp add: lnull_def dest!: iterates_Out_not_Inp split: IO.splits intro!: lproject_False_weak)
-
-
-
-  subgoal
-  apply (rule exI[of _ "LCons (Inp 2 (Observed 0)) (iterates (case_IO undefined (\<lambda> p n. Out p (Suc n))) (Out 2 0))"])
-    apply (intro conjI)
+    unfolding history_def loop22_op_def
     subgoal 
-      apply (coinduction )
-      apply (subst Suc_op.code)
-      apply simp
-      apply (subst (4) Suc_op.code)
-      apply simp
+      apply (rule exI[of _ "lmap (case_IO (\<lambda> p ob. Inp (1::1) ob) (\<lambda> p n. Out (1::1) n)) (Suc_trace (buf 1) lxs lys)"])
+      apply (intro conjI)
+      subgoal
+        apply (rule traced_map_op_lmap_case_IO)
+        unfolding traced_loop_op Suc_op_traced_correctness
+        apply (rule exI[of _ "Suc_trace (buf 1) lxs lys"])
+        sorry
+      subgoal
 
-
-end
-    subgoal
-      apply (auto simp add: ran_def split: if_splits)
-      apply (rule sym)
-      apply (subst lfilter_id_conv)
-      apply auto
-
-
-
-
-      find_theorems "lfilter _ ?xs = ?xs"
-
-    apply (coinduction )
-    apply (intro conjI impI iffI)
-    subgoal
-      by auto
-    subgoal
-      apply (subst (asm) Suc_op.code)
-      apply (auto simp add: ran_def split: if_splits)
-      done
-    subgoal
-      unfolding lnull_def
-      apply simp
-      apply (subst Suc_op.code)
-      apply (simp add: ran_def)
-     oops
 
 end
