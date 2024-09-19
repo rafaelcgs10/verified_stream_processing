@@ -2383,7 +2383,10 @@ definition "lfocus f A g B ios =
   lmap (\<lambda>io. case io of Inp p x \<Rightarrow> Inp (f p) x | Out p x \<Rightarrow> Out (g p) x)
      (lfilter (case_IO (\<lambda>p _. p \<in> A) (\<lambda>p _. p \<in> B)) ios)"
 
-lemma lfocus_Inl_lmap: \<open>lfocus projl (range Inl) projl (range Inl) (lalternate (lmap (map_IO Inl Inl id) ios1) (lmap (map_IO Inr Inr id) ios2)) = ios1\<close>
+abbreviation \<open>lfocusl \<equiv> lfocus projl (range Inl) projl (range Inl)\<close>
+abbreviation \<open>lfocusr \<equiv> lfocus projr (range Inr) projr (range Inr)\<close>
+
+lemma lfocus_Inl_lmap: \<open>lfocusl (lalternate (lmap (map_IO Inl Inl id) ios1) (lmap (map_IO Inr Inr id) ios2)) = ios1\<close>
 proof (coinduction arbitrary: ios1 ios2)
   case (Eq_llist ios1 ios2)
   then show ?case
@@ -2433,7 +2436,7 @@ proof (coinduction arbitrary: ios1 ios2)
     done
 qed
 
-lemma lfocus_Inr_lmap: \<open>lfocus projr (range Inr) projr (range Inr) (lalternate (lmap (map_IO Inl Inl id) ios1) (lmap (map_IO Inr Inr id) ios2)) = ios2\<close>
+lemma lfocus_Inr_lmap: \<open>lfocusr (lalternate (lmap (map_IO Inl Inl id) ios1) (lmap (map_IO Inr Inr id) ios2)) = ios2\<close>
 proof (coinduction arbitrary: ios1 ios2)
   case (Eq_llist ios1 ios2)
   then show ?case
@@ -2496,6 +2499,20 @@ qed
 
 lemma lfilter_visible_IO_None: \<open>lfilter (visible_IO (\<lambda>_. None)) lxs = lxs\<close>
   unfolding visible_IO_None_True by simp
+
+lemma traced_causal_None: \<open>traced op1 lxs \<Longrightarrow> traced op2 lys \<Longrightarrow> causal (\<lambda>_. None) buf lxs lys\<close>
+proof (coinduction arbitrary: lxs lys op1 op2 buf)
+  case (causal lxs lys op1 op2 buf)
+  then show ?case
+    apply (cases lxs; cases lys; simp add: comp_def)
+    by (smt (verit, del_insts) llist.distinct(1) llist.inject traced.cases)+
+qed
+
+lemma traced_pcomp_op': "traced (pcomp_op op1 op2) lxs \<longleftrightarrow>
+  traced op1 (lfocusl lxs) \<and> traced op2 (lfocusr lxs) \<and>
+  lxs = lalternate (lmap (map_IO Inl Inl id) (lfocusl lxs)) (lmap (map_IO Inr Inr id) (lfocusr lxs))"
+  unfolding pcomp_op_def traced_comp_op lfilter_visible_IO_None
+  by (auto simp: lfilter_lfilter lfocus_Inl_lmap lfocus_Inr_lmap intro: traced_causal_None)
 
 lemma traced_pcomp_op: "traced (pcomp_op op1 op2) lxs \<longleftrightarrow>
   traced op1 (lfocus projl (range Inl) projl (range Inl) lxs) \<and>

@@ -31,4 +31,15 @@ corec bna_transpose :: "('m :: enum + 'n :: enum, 'n + 'm, 'd) op" where
 abbreviation "bna_parcomp \<equiv> pcomp_op"
 abbreviation "bna_seqcomp \<equiv> scomp_op"
 
+
+abbreviation sum_assoc :: \<open>('a + 'b) + 'c \<Rightarrow> 'a + ('b + 'c)\<close> where
+  \<open>sum_assoc \<equiv> case_sum (case_sum Inl (Inr o Inl)) (Inr o Inr)\<close>
+
+lemma
+  assumes \<open>history (bna_parcomp a (bna_parcomp b c)) lin lout\<close> \<open>history (bna_parcomp (bna_parcomp a b) c) (lin o sum_assoc) rout\<close>
+  shows \<open>lout (sum_assoc p) = rout p\<close>
+  using assms unfolding history_def traced_pcomp_op'
+  apply auto
+  oops
+ 
 end
