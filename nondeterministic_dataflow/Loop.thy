@@ -1171,10 +1171,9 @@ lemma while_True_retrace_size2_at_0[simp]:
 term "fuel_calc (\<lambda> x.  \<exists> n. P ((f ^^ n) x)) (\<lambda> x. LEAST i. (P ((f ^^ (i::nat)) x)))"
 
 function while_True_retrace where
-  "while_True_retrace P f (buf:: 'a list) = (if \<not> (\<exists> x \<in> set buf. (\<exists> n. P ((f ^^ n) x)))
-   then []
-   else
-   (case buf of [] \<Rightarrow> [] | x # xs \<Rightarrow> (if P x then x # (while_True_retrace P f xs) else while_True_retrace P f (xs @ [f x]))))"
+  "while_True_retrace P f xs = (if \<exists> x \<in> set xs. (\<exists> n. P ((f ^^ n) x))
+   then (case xs of [] \<Rightarrow> [] | x # xs \<Rightarrow> (if P x then x # (while_True_retrace P f xs) else while_True_retrace P f (xs @ [f x])))
+   else [])"
    apply auto
   done
 termination
