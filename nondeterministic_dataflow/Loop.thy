@@ -78,7 +78,7 @@ definition "lift A lxs lys p = (if p \<in> A then lxs p else lys p)"
  "semantics (loop_op wire buf op) lxs lys \<Longrightarrow>
   \<exists>lzs. extend (ran wire) buf (semantics (map_op id (\<lambda>p. case wire p of Some q \<Rightarrow> Inr q | _ \<Rightarrow> Inl p) op))
      (lift (ran wire) lzs lxs) (case_sum lys lzs)"
-  sorry
+  oops
 
 lemma semantics_loop_op_BEmpty:
  "semantics (loop_op wire (\<lambda>p. BEmpty) op) lxs lys \<Longrightarrow>
@@ -132,6 +132,60 @@ coinductive causal for wire where
 inductive_cases causal_Inp[elim!]: "causal wire buf (LCons (Inp p y) ios)"
 inductive_cases causal_Out[elim!]: "causal wire buf (LCons (Out p y) ios)"
 inductive_cases causal_LNil[elim!]: "causal wire buf LNil"
+
+inductive causal_cong for R wire where
+  cc_causal:  "causal wire buf ios \<Longrightarrow> causal_cong R wire buf ios"
+| cc_base:  "R wire buf ios \<Longrightarrow> causal_cong R wire buf ios"
+| "causal_cong R wire (BTL p buf) ios \<Longrightarrow> y = BHD p buf \<Longrightarrow> p \<in> ran wire \<Longrightarrow> causal_cong R wire buf (LCons (Inp p y) ios)"
+| "causal_cong R wire buf ios \<Longrightarrow> p \<notin> ran wire \<Longrightarrow> causal_cong R wire buf (LCons (Inp p y) ios)"
+| "causal_cong R wire (BENQ p' y buf) ios \<Longrightarrow> wire p = Some p' \<Longrightarrow> causal_cong R wire buf (LCons (Out p y) ios)"
+| "causal_cong R wire buf ios \<Longrightarrow> wire p = None \<Longrightarrow> causal_cong R wire buf (LCons (Out p y) ios)"
+
+lemma causal_cong_disj[simp]:
+  "(causal_cong R wire buf ios \<or> causal wire buf ios) = causal_cong R wire buf ios"
+  by (auto intro: causal_cong.intros)
+
+lemma causal_coinduct_upto:
+  "R wire buf ios \<Longrightarrow>
+   (\<And>x1 x2.
+     R wire x1 x2 \<Longrightarrow>
+     (\<exists>p ios y. x2 = LCons (Inp p y) ios \<and> causal_cong R wire (x1(p := btl (x1 p))) ios \<and> y = BHD p x1 \<and> p \<in> ran wire) \<or>
+     (\<exists>ios p. (\<exists>y. x2 = LCons (Inp p y) ios) \<and> causal_cong R wire x1 ios \<and> p \<notin> ran wire) \<or>
+     (\<exists>p' y ios p. x2 = LCons (Out p y) ios \<and> causal_cong R wire (x1(p' := benq y (x1 p'))) ios \<and> wire p = Some p') \<or>
+     (\<exists>ios p. (\<exists>y. x2 = LCons (Out p y) ios) \<and> causal_cong R wire x1 ios \<and> wire p = None) \<or> x2 = LNil) \<Longrightarrow>
+   causal wire buf ios"
+  apply (rule causal.coinduct[where X="causal_cong R wire", of buf ios wire, simplified])
+   apply (auto intro: cc_base)[1]
+  subgoal premises prems for buf ios
+    using prems(3,2,1) apply -
+    apply (induct buf ios rule: causal_cong.induct)
+    subgoal for buf ios
+      subgoal
+        apply (erule causal.cases)
+            apply auto
+        subgoal
+          using causal_cong_disj by blast
+        subgoal
+          using causal_cong_disj by blast
+        subgoal
+          using causal_cong_disj by blast
+        subgoal
+          using cc_causal by blast
+        done
+      done
+    subgoal for buf ios
+      by auto
+    subgoal
+      by auto
+    subgoal
+      by auto
+    subgoal
+      by auto
+    subgoal
+      apply auto
+      done
+    done
+  done
 
 abbreviation visible_IO where "visible_IO wire io \<equiv> case_IO (\<lambda>p _. p \<notin> ran wire) (\<lambda> p _. p \<notin> dom wire) io" 
 
@@ -366,7 +420,7 @@ lemma traced_ios_lfilter_visible:
       apply (rule ccontr)
       apply (clarsimp simp add: neq_LNil_conv)
       apply (frule traced_in_retrace_loop_op[rotated 1]) 
-       apply auto
+      apply auto
       done
     subgoal
       unfolding lnull_def
@@ -393,7 +447,7 @@ lemma traced_loop_op:
   subgoal 
     apply (rule exI[of _ "retrace_loop_op wire buf op (Inp_llist ios)"])
     apply (intro conjI)
-      apply (auto dest: traced_ios_lfilter_visible)
+    apply (auto dest: traced_ios_lfilter_visible)
     done
   subgoal
     apply (elim exE conjE)
@@ -402,10 +456,10 @@ lemma traced_loop_op:
       subgoal for ios ios' op buf
         apply hypsubst_thin
         apply (cases "\<exists> n. loop_producing wire buf op n")
-         apply (elim exE)
+        apply (elim exE)
         subgoal for n
           apply (drule loop_producing_traced_causal_cong)
-            apply auto
+          apply auto
           done
         subgoal
           apply simp
@@ -447,25 +501,6 @@ corec while_body_op where
      Read 2 (case_observation (\<lambda> x. if P x then Write read_1 2 x else Write read_1 1 (f x)) read_1 (while_body_op P f True))
    )"
 
-declare [[unify_search_bound = 100]]
-
-corec while_body_retrace where
-  "while_body_retrace P f b buf inps = (
-      let read_1 = LCons (Inp (1::2) (BHD 1 buf)) (case_observation
-         (\<lambda> x. if P x then LCons (Out (2::2) x) (while_body_retrace P f b (BTL 1 buf) (ltl inps)) else LCons (Out (1::2) (f x)) (while_body_retrace P f b (BENQ 1 (f x) (BTL 1 buf)) (ltl inps)))
-         (while_body_retrace P f b buf inps)
-         LNil
-         (BHD 1 buf)) in
-     if b
-     then
-       read_1
-     else
-     LCons (Inp (2::2) (BHD 1 buf)) (case_observation
-         (\<lambda> x. if P x then LCons (Out (2::2) x) (while_body_retrace P f b (BTL 1 buf) (ltl inps)) else LCons (Out (1::2) (f x)) read_1)
-         read_1
-         (while_body_retrace P f True buf (ltl inps))
-         (BHD 1 buf))
-)"
 
 abbreviation "while_op buf P f \<equiv> loop_op
   (\<lambda>x. if x = 1 then Some 1 else None) buf (while_body_op P f False)"
@@ -526,7 +561,7 @@ lemma traced_trace_while_body_False:
     apply (simp split: observation.splits if_splits)
     apply (elim traced_ReadE)
     apply (simp split: observation.splits if_splits)
-       apply (auto split: observation.splits if_splits dest: traced_trace_while_body_True)
+    apply (auto split: observation.splits if_splits dest: traced_trace_while_body_True)
     done
   done
 
@@ -536,7 +571,7 @@ lemma trace_while_body_True_traced:
   apply (coinduction arbitrary: ios rule: traced_coinduct_upto)
   subgoal for ios
     apply (erule trace_while_body_True.cases)
-       apply simp_all
+    apply simp_all
     subgoal
       apply (subst while_body_op.code)
       apply (auto intro: End traced_cong.intros)
@@ -569,7 +604,7 @@ lemma trace_while_body_False_traced:
     apply (subst while_body_op.code)
     unfolding Let_def
     apply (erule trace_while_body_False.cases)
-                 apply (auto simp add: tc_base tc_read tc_write End Read Write tc_traced dest: trace_while_body_True_traced)
+    apply (auto simp add: tc_base tc_read tc_write End Read Write tc_traced dest: trace_while_body_True_traced)
     done
   done
 
@@ -587,7 +622,7 @@ lemma traced_map_op_lmap_case_IO:
   apply (coinduction arbitrary: op ios)
   subgoal for op ios
     apply (cases op)
-      apply force+
+    apply force+
     done
   done
 
@@ -601,12 +636,12 @@ coinductive trace_while_True_op for P f where
 
 *)
 
-
 (* FIXME: move me *)
 fun buf_to_list where
   "buf_to_list BEmpty = []"
 | "buf_to_list BEnded = []"
 | "buf_to_list (BCons x xs) = x # buf_to_list xs"
+
 
 fun list_to_buf where
   "list_to_buf [] = BEmpty"
@@ -648,9 +683,7 @@ inductive trace_while_True_op_alt for P f where
 | "trace_while_True_op_alt P f (BTL 1 buf) ios \<Longrightarrow> BHD 1 buf = Observed x \<Longrightarrow> P x \<Longrightarrow> trace_while_True_op_alt P f buf (LCons (Out 2 x) ios)"
 
 coinductive trace_while_op for P f where
-  "trace_while_True_op P f buf LNil \<Longrightarrow> BHD 1 buf = EOS \<Longrightarrow> trace_while_op P f buf (LCons (Inp 2 EOS) LNil)"
-| "BHD 1 buf = EOS \<Longrightarrow> P x \<Longrightarrow> trace_while_op P f buf (LCons (Inp 2 (Observed x)) (LCons (Out 2 x) LNil))"
-| "trace_while_True_op P f buf LNil \<Longrightarrow> BHD 1 buf = EOS \<Longrightarrow> \<not> P x \<Longrightarrow> trace_while_op P f buf (LCons (Inp 2 (Observed x)) LNil)"
+  "BHD 1 buf = EOS \<Longrightarrow> P x \<Longrightarrow> trace_while_op P f buf (LCons (Inp 2 (Observed x)) (LCons (Out 2 x) LNil))"
 | "BHD 1 buf = EOS \<Longrightarrow> trace_while_op P f buf (LCons (Inp 2 EOB) LNil)"
 
 | "trace_while_op P f buf ios \<Longrightarrow> P x \<Longrightarrow> BHD 1 buf = EOB \<Longrightarrow> trace_while_op P f buf (LCons (Inp 2 (Observed x)) (LCons (Out 2 x) ios))"
@@ -672,7 +705,7 @@ lemma ran_dom_Some1[simp]:
   "1 \<in> ran (\<lambda>x. if x = 1 then Some 1 else None)"
   "1 \<in> dom (\<lambda>x. if x = 1 then Some 1 else None)"
   unfolding ran_def dom_def
-     apply auto
+  apply auto
   done
 
 (* FIXME: move me *)
@@ -680,7 +713,7 @@ lemma BHD_benqD:
   "ob = BHD (buf 1) (benq x) \<Longrightarrow>
    ob \<noteq> EOS \<and> ob \<noteq> EOB"
   apply (induct "buf 1" arbitrary: buf)
-    apply auto[1]
+  apply auto[1]
   subgoal
     by force
   subgoal
@@ -711,12 +744,12 @@ lemma trace_while_True_op_soundess:
    \<exists> n. P ((f ^^ n) x) \<Longrightarrow>
    Out 2 ((f ^^ n) x) \<in> lset ios"
   apply (induct buf ios arbitrary: x n rule: trace_while_True_op.induct)
-    apply simp_all
+  apply simp_all
   subgoal
     by (simp add: set_buf_to_list_set_buf)
   subgoal for x buf y ios x' n
     apply (cases "buf 1")
-      apply simp_all
+    apply simp_all
     subgoal
       apply (elim disjE)
       subgoal
@@ -734,10 +767,10 @@ lemma trace_while_True_op_soundess:
             apply (drule meta_mp)
             using set_buf_to_list_set_buf apply fastforce
             apply (drule meta_mp)
-             apply (rule refl)
+            apply (rule refl)
             apply hypsubst_thin
             apply (drule meta_mp)
-             apply blast
+            apply blast
             using f_Least apply (metis pow_f_f_Suc)
             done
           subgoal
@@ -750,11 +783,11 @@ lemma trace_while_True_op_soundess:
         apply (drule meta_spec[of _ "x'"])
         apply (drule meta_spec)
         apply (drule meta_mp)
-         apply (metis Un_insert_right buf_to_list_benq insert_iff list.set(1) list.set(2) set_append set_buf_to_list_set_buf sup_bot.right_neutral)
+        apply (metis Un_insert_right buf_to_list_benq insert_iff list.set(1) list.set(2) set_append set_buf_to_list_set_buf sup_bot.right_neutral)
         apply (drule meta_mp)
-         apply (rule refl)
+        apply (rule refl)
         apply (drule meta_mp)
-         apply blast
+        apply blast
         apply auto
         done
       done
@@ -762,7 +795,7 @@ lemma trace_while_True_op_soundess:
   subgoal for buf ios x x' n
     apply hypsubst_thin
     apply (cases "buf 1")
-      apply simp_all
+    apply simp_all
     subgoal for x'' buf'
       apply (elim disjE)
       subgoal
@@ -817,11 +850,11 @@ lemma trace_while_True_op_BHD_False:
         by (metis funpow.simps(2) funpow_swap1 o_apply)
       subgoal for x'' n
         apply (rule trace_while_True_op.intros(2))
-            defer
-            apply assumption
-           apply (metis funpow_0)
-          apply (metis funpow_0)
-         apply (metis bhd.simps(1) bhd.simps(2) btl.simps(3) buf_to_list.elims buf_to_list_btl insert_iff list.set(2) observation.distinct(1) observation.distinct(3))
+        defer
+        apply assumption
+        apply (metis funpow_0)
+        apply (metis funpow_0)
+        apply (metis bhd.simps(1) bhd.simps(2) btl.simps(3) buf_to_list.elims buf_to_list_btl insert_iff list.set(2) observation.distinct(1) observation.distinct(3))
         apply (cases "\<forall>n. \<not> P ((f ^^ n) x')")
         subgoal
           apply hypsubst_thin
@@ -840,11 +873,11 @@ lemma trace_while_True_op_BHD_False:
         by (smt (verit, del_insts) bhd.elims buf_to_list.simps(3) fun_upd_same fun_upd_upd insertI1 list.set(2) observation.distinct(3) observation.inject observation.simps(3) pow_f_f_Suc trace_while_True_op.intros(2))
       subgoal
         apply (rule trace_while_True_op.intros(2))
-            defer
-            apply assumption
-           apply (metis funpow_0)
-          apply (metis funpow_0)
-         apply (metis bhd.simps(1) bhd.simps(2) btl.simps(3) buf_to_list.elims buf_to_list_btl insert_iff list.set(2) observation.distinct(1) observation.distinct(3))
+        defer
+        apply assumption
+        apply (metis funpow_0)
+        apply (metis funpow_0)
+        apply (metis bhd.simps(1) bhd.simps(2) btl.simps(3) buf_to_list.elims buf_to_list_btl insert_iff list.set(2) observation.distinct(1) observation.distinct(3))
         apply (cases "\<forall>n. \<not> P ((f ^^ n) x')")
         subgoal
           apply hypsubst_thin
@@ -859,11 +892,11 @@ lemma trace_while_True_op_BHD_False:
   subgoal for ios x buf x'
     apply simp
     apply (cases "buf 1")
-      apply simp_all
+    apply simp_all
     subgoal for x'' buf'
       apply hypsubst_thin
       apply (cases "buf'")
-        apply simp_all
+      apply simp_all
       subgoal
         by (smt (verit, del_insts) benq.simps(1) bhd.simps(3) btl.simps(3) buf_to_list.simps(3) fun_upd_same fun_upd_upd funpow_0 insert_iff list.set(2) pow_f_f_Suc trace_while_True_op.intros(2) trace_while_True_op.intros(3))
       subgoal
@@ -871,10 +904,10 @@ lemma trace_while_True_op_BHD_False:
       subgoal
         apply hypsubst_thin
         apply (rule trace_while_True_op.intros(2))
-            defer
-            apply simp_all
-          apply force
-         apply (meson funpow_0)   
+        defer
+        apply simp_all
+        apply force
+        apply (meson funpow_0)   
         apply (simp add: trace_while_True_op.intros(3))
         done
       done
@@ -888,13 +921,13 @@ lemma trace_while_True_op_inj:
   apply (induct buf ios arbitrary: ios' rule: trace_while_True_op.induct)
   subgoal
     apply (erule trace_while_True_op.cases)
-      apply (auto intro: trace_while_True_op.intros)
+    apply (auto intro: trace_while_True_op.intros)
     apply (metis bhd.elims buf_to_list.simps(3) funpow_0 insert_iff list.set(2) observation.distinct(3) observation.inject observation.simps(3))
     done
   subgoal premises prems for x buf y ios ios'
     using prems(7,1,3,4,5,6) apply -
     apply (erule trace_while_True_op.cases)
-      apply auto
+    apply auto
     subgoal
       using prems(2) by auto
     subgoal
@@ -903,28 +936,28 @@ lemma trace_while_True_op_inj:
   subgoal premises prems for buf ios x ios'
     using prems(3,1,4-) apply -
     apply (erule trace_while_True_op.cases)
-      apply auto
+    apply auto
     subgoal
       apply (cases "buf 1")
-        apply auto
+      apply auto
       apply (erule trace_while_True_op.cases)
-        apply auto
-       apply (metis funpow_0)
+      apply auto
+      apply (metis funpow_0)
       using prems(2)
       apply auto
       done
     subgoal
       apply (cases "buf 1")
-        apply auto
+      apply auto
       apply (erule trace_while_True_op.cases)
-        apply (auto simp add: prems(2))
+      apply (auto simp add: prems(2))
       done
     subgoal
       apply (cases "buf 1")
-        apply auto
+      apply auto
       apply (erule trace_while_True_op.cases)
-        apply auto
-       apply (metis funpow_0)
+      apply auto
+      apply (metis funpow_0)
       apply (auto simp add: prems(2))
       done
     done
@@ -940,22 +973,22 @@ lemma loop_producing_while_body_op_True_gt_0:
     apply (subst (asm) while_body_op.code)
     apply auto
     done
- subgoal
+  subgoal
     apply (subst (asm) while_body_op.code)
     apply auto
-   done
- subgoal
+    done
+  subgoal
     apply (subst (asm) while_body_op.code)
     apply auto
-   done
- subgoal
+    done
+  subgoal
     apply (subst (asm) (2) while_body_op.code)
     apply auto
-   done
- subgoal
+    done
+  subgoal
     apply (subst (asm) (2) while_body_op.code)
     apply auto
-   done
+    done
   done
 
 lemma loop_producing_while_body_op_True_cases_aux:
@@ -984,7 +1017,7 @@ lemma loop_producing_while_body_op_True_cases_aux:
         apply (subst while_body_op.code)
         unfolding Let_def
         apply (elim loop_producing_SucE)
-         apply (auto split: if_splits)
+        apply (auto split: if_splits)
         subgoal
           by (smt (z3) observation.simps(8) op.distinct(1) op.inject(1) while_body_op.code)
         subgoal
@@ -997,7 +1030,7 @@ lemma loop_producing_while_body_op_True_cases_aux:
           by (smt (z3) One_nat_def diff_Suc_1' eq_numeral_iff_iszero(5) eval_nat_numeral(2) not_iszero_1 numeral_2_eq_2 numeral_One observation.simps(8) one_eq_numeral_iff op.inject(1) op.inject(2) sub_num_simps(4) while_body_op.code)
         subgoal
           apply (cases n')
-           apply auto
+          apply auto
           subgoal
             by (smt (z3) less_numeral_extra(3) loop_producing_ReadE observation.simps(8) op.inject(1) op.inject(2) ranI ran_dom_Some1(1) while_body_op.code zero_less_Suc)
           subgoal
@@ -1024,21 +1057,21 @@ lemma loop_producing_while_body_op_True_cases_aux:
         apply (subst while_body_op.code)
         unfolding Let_def
         apply (elim loop_producing_SucE)
-         apply (auto split: if_splits)
+        apply (auto split: if_splits)
+        subgoal
+          by (smt (z3) bhd.elims btl.simps(1) loop_producing.intros(4) observation.distinct(5) observation.simps(3) observation.simps(9) op.inject(1) while_body_op.code)
+        subgoal
+          by (smt (z3) observation.simps(9) op.inject(1) while_body_op.code)
+        subgoal
+          by (smt (z3) observation.simps(9) op.disc(4) op.disc(5) op.inject(1) while_body_op.code)
+        subgoal
+          by (smt (z3) op.inject(1) while_body_op.code)
+        done
       subgoal
-        by (smt (z3) bhd.elims btl.simps(1) loop_producing.intros(4) observation.distinct(5) observation.simps(3) observation.simps(9) op.inject(1) while_body_op.code)
-      subgoal
-        by (smt (z3) observation.simps(9) op.inject(1) while_body_op.code)
-      subgoal
-        by (smt (z3) observation.simps(9) op.disc(4) op.disc(5) op.inject(1) while_body_op.code)
-      subgoal
-        by (smt (z3) op.inject(1) while_body_op.code)
+        apply simp
+        by (smt (z3) less_numeral_extra(3) loop_producing.intros(1) loop_producing_inject observation.simps(10) op.inject(1) while_body_op.code zero_less_Suc)
       done
-    subgoal
-      apply simp
-      by (smt (z3) less_numeral_extra(3) loop_producing.intros(1) loop_producing_inject observation.simps(10) op.inject(1) while_body_op.code zero_less_Suc)
     done
-  done
   subgoal
     apply (subst (asm) (4) while_body_op.code)
     apply auto
@@ -1079,57 +1112,57 @@ lemma trace_while_True_op_loop_producing:
     subgoal for xa n x' n'
       apply hypsubst_thin
       apply (subst while_body_op.code)
-    unfolding Let_def
-    apply auto
-    apply (cases "\<exists>n. P ((f ^^ n) (f x))")
-    subgoal
-      apply simp
-       apply auto
-      subgoal for m
-     apply (rule exI[of _ "Suc (Suc m)"])
-    apply (rule loop_producing.intros(4))
-       apply simp_all
-    apply (rule loop_producing.intros(5))
-       apply auto
-        done
-      done
-    subgoal 
-      apply simp
-      apply (frule in_buf_to_list_in_tl_buf_to_list[where P=P and f=f and x'=x'])
-         defer
-         apply assumption
+      unfolding Let_def
+      apply auto
+      apply (cases "\<exists>n. P ((f ^^ n) (f x))")
       subgoal
+        apply simp
         apply auto
-        subgoal for k
-          apply (cases k)
-           apply auto
-          apply (metis funpow_swap1)
+        subgoal for m
+          apply (rule exI[of _ "Suc (Suc m)"])
+          apply (rule loop_producing.intros(4))
+          apply simp_all
+          apply (rule loop_producing.intros(5))
+          apply auto
           done
         done
-      subgoal
-        apply (drule meta_mp)
-        apply (rule bexI[of _ x'])
-        apply (rule exI[of _ n'])
-        apply auto
-       subgoal for m
-     apply (rule exI[of _ "Suc (Suc m)"])
-    apply (rule loop_producing.intros(4))
-       apply simp_all
-    apply (rule loop_producing.intros(5))
+      subgoal 
+        apply simp
+        apply (frule in_buf_to_list_in_tl_buf_to_list[where P=P and f=f and x'=x'])
+        defer
+        apply assumption
+        subgoal
           apply auto
-         done
-       done
-     apply auto
-     done
-   done
-  done
+          subgoal for k
+            apply (cases k)
+            apply auto
+            apply (metis funpow_swap1)
+            done
+          done
+        subgoal
+          apply (drule meta_mp)
+          apply (rule bexI[of _ x'])
+          apply (rule exI[of _ n'])
+          apply auto
+          subgoal for m
+            apply (rule exI[of _ "Suc (Suc m)"])
+            apply (rule loop_producing.intros(4))
+            apply simp_all
+            apply (rule loop_producing.intros(5))
+            apply auto
+            done
+          done
+        apply auto
+        done
+      done
+    done
   subgoal
-      apply (subst while_body_op.code)
+    apply (subst while_body_op.code)
     unfolding Let_def
     apply auto
-   apply (rule exI)
+    apply (rule exI)
     apply (rule loop_producing.intros(4))
-     apply simp_all
+    apply simp_all
     apply (rule loop_producing.intros(3))
     apply auto
     done
@@ -1168,17 +1201,15 @@ lemma while_True_retrace_size2_at_0[simp]:
   apply auto
   done
 
-term "fuel_calc (\<lambda> x.  \<exists> n. P ((f ^^ n) x)) (\<lambda> x. LEAST i. (P ((f ^^ (i::nat)) x)))"
-
 function while_True_retrace where
   "while_True_retrace P f xs = (if \<exists> x \<in> set xs. (\<exists> n. P ((f ^^ n) x))
    then (case xs of [] \<Rightarrow> [] | x # xs \<Rightarrow> (if P x then x # (while_True_retrace P f xs) else while_True_retrace P f (xs @ [f x])))
    else [])"
-   apply auto
+  apply auto
   done
 termination
   apply (relation "measures [\<lambda>(P, f, buf). length buf, (\<lambda>(P, f, buf). sum_list (map (while_True_retrace_size1 P f) buf)), \<lambda>(P, f, buf). while_True_retrace_size2 P f buf]")
-    apply simp
+  apply simp
   subgoal
     apply auto
     done
@@ -1186,36 +1217,35 @@ termination
     apply (auto simp add: Least_less_pow takeWhile_eq_Nil_iff)
     defer
     defer
-      subgoal
-        by (metis (no_types, opaque_lifting) pow_f_f_Suc)
     subgoal
-        by (metis (no_types, opaque_lifting) pow_f_f_Suc)
+      by (metis (no_types, opaque_lifting) pow_f_f_Suc)
     subgoal
-        by (metis (no_types, opaque_lifting) pow_f_f_Suc)
-  subgoal
-    by (metis (no_types, opaque_lifting) funpow_0 old.nat.exhaust pow_f_f_Suc)
-      subgoal
-        by (metis (mono_tags, lifting) less_Suc_eq takeWhile_append1)
-      subgoal
-        by (metis Least_less_pow less_zeroE zero_less_iff_neq_zero)
-      subgoal
-        by (metis Least_less_pow less_zeroE zero_less_iff_neq_zero)
-      subgoal
-        by (metis Least_less_pow bot_nat_0.extremum_strict zero_less_iff_neq_zero)
-      done
+      by (metis (no_types, opaque_lifting) pow_f_f_Suc)
+    subgoal
+      by (metis (no_types, opaque_lifting) pow_f_f_Suc)
+    subgoal
+      by (metis (no_types, opaque_lifting) funpow_0 old.nat.exhaust pow_f_f_Suc)
+    subgoal
+      by (metis (mono_tags, lifting) less_Suc_eq takeWhile_append1)
+    subgoal
+      by (metis Least_less_pow less_zeroE zero_less_iff_neq_zero)
+    subgoal
+      by (metis Least_less_pow less_zeroE zero_less_iff_neq_zero)
+    subgoal
+      by (metis Least_less_pow bot_nat_0.extremum_strict zero_less_iff_neq_zero)
     done
+  done
 
 lemma while_True_retrace_simp[simp]:
   "while_True_retrace P f [] = []"
   "while_True_retrace P f (x # xs) = (if P x then x # (while_True_retrace P f xs) else while_True_retrace P f (xs @ [f x]))"
-   apply auto
-  apply (metis funpow_0)
+  apply auto
   apply (metis funpow_0)
   apply (metis pow_f_f_Suc)
+  apply (metis funpow_0)
   done
 
 declare while_True_retrace.simps[simp del]
-
 
 lemma while_True_retrace_eq_Nil:
   "(while_True_retrace P f buf = []) \<longleftrightarrow> (\<not> (\<exists> x \<in> set buf. \<exists> n. P ((f ^^ n) x)))"
@@ -1227,23 +1257,23 @@ lemma while_True_retrace_eq_Nil:
       apply (simp split: if_splits)
       subgoal for P f buf x n
         apply (cases buf)
-         apply (simp_all split: if_splits)
+        apply (simp_all split: if_splits)
         subgoal for x' buf'
           apply (elim disjE)
           subgoal premises prems
             using prems(1,2,4,5-) apply -
             apply hypsubst_thin
             apply (cases n)
-             apply simp
+            apply simp
             subgoal for n'
               apply (drule meta_spec[of _ "x'"])
               apply (drule meta_spec[of _ "f x'"])  
               apply (drule meta_spec[of _ n'])
               apply (drule meta_mp)
-               apply blast
+              apply blast
               apply simp
               apply (drule meta_mp)
-               apply (simp add: funpow_swap1)
+              apply (simp add: funpow_swap1)
               apply simp
               done
             done
@@ -1254,7 +1284,7 @@ lemma while_True_retrace_eq_Nil:
             apply (drule meta_spec[of _ "f x'"])  
             apply (drule meta_spec[of _ n])
             apply (drule meta_mp)
-             apply blast
+            apply blast
             apply simp
             apply (drule meta_mp)
             using prems(4) apply blast
@@ -1280,7 +1310,7 @@ lemma trace_while_True_op_evidence:
       by (auto simp add: while_True_retrace.simps intro: trace_while_True_op.intros)
     subgoal
       apply (cases "buf 1")
-        apply (auto intro: trace_while_True_op.intros)[2]
+      apply (auto intro: trace_while_True_op.intros)[2]
       subgoal premises prems for x buf'
         using prems(3-) apply -
         apply (cases "P x")
@@ -1299,17 +1329,17 @@ lemma trace_while_True_op_evidence:
         subgoal
           apply simp
           apply (rule trace_while_True_op_BHD_False[where x=x])
-            apply simp_all
+          apply simp_all
           using prems(2) apply -
           apply simp
           apply (drule meta_spec)
           apply (drule meta_spec[of _ "BENQ 1 (f x) (BTL 1 buf)"])
           apply (drule meta_mp)
-           apply (rule refl)
+          apply (rule refl)
           apply (drule meta_mp)
-           apply simp
+          apply simp
           apply (drule meta_mp)
-           apply simp
+          apply simp
           apply simp
           done
         done
@@ -1324,13 +1354,13 @@ lemma P_in_buf_while_body_op_producing:
   subgoal
     apply (elim exE)
     apply (drule trace_while_True_op_loop_producing)
-     apply auto
+    apply auto
     done
   subgoal
     apply auto
     subgoal for x n
       oops
-(*       using trace_while_True_op_evidence apply blast
+        (*       using trace_while_True_op_evidence apply blast
       done
     done
   done *)
@@ -1353,11 +1383,11 @@ lemma loop_producing_while_body_op_buf_all_False_aux:
       apply simp
       apply hypsubst_thin
       apply (frule loop_producing_while_body_op_True_cases_aux)
-        apply (rule refl)+
+      apply (rule refl)+
       apply auto
       subgoal
         apply (cases "buf 1")
-          apply auto
+        apply auto
         apply (metis funpow_0)
         done
       subgoal
@@ -1368,14 +1398,14 @@ lemma loop_producing_while_body_op_buf_all_False_aux:
         apply (drule meta_mp)
         apply simp
         apply (drule meta_mp)
-          apply assumption
+        apply assumption
         apply (drule meta_mp)
-         apply simp
+        apply simp
         apply (metis BHD_benqD bhd.simps(2) fun_upd_same)
         apply (drule meta_mp)
-         apply simp_all
-           apply (cases "buf 1")
-          apply auto
+        apply simp_all
+        apply (cases "buf 1")
+        apply auto
         apply (metis funpow.simps(2) funpow_swap1 o_apply)
         done
       done
@@ -1387,7 +1417,7 @@ lemma loop_producing_while_body_op_buf_all_False:
   "\<not> (\<exists> x \<in> set (buf_to_list (buf 1)). \<exists> n. P ((f ^^ n) x)) \<Longrightarrow>
    buf 1 \<noteq> BEnded \<Longrightarrow>
    \<not> (\<exists> n. loop_producing (\<lambda>x. if x = (1::2) then Some (1::2) else None) buf (while_body_op P f True) n)"
-    using loop_producing_while_body_op_buf_all_False_aux by blast
+  using loop_producing_while_body_op_buf_all_False_aux by blast
 
 lemma trace_while_True_op_traced:
   "trace_while_True_op P f buf ios \<Longrightarrow>
@@ -1423,14 +1453,14 @@ lemma trace_while_True_op_traced:
       subgoal
         apply (rule exI)
         apply (rule loop_producing.intros(4))
-         apply simp
+        apply simp
         apply simp
         apply (smt (verit, ccfv_threshold) fun_upd_same fun_upd_upd loop_producing.intros(5) not_loop_producing_eq_End op.distinct(5))
         done
       subgoal
         apply (rule exI)
         apply (rule loop_producing.intros(4))
-         apply simp
+        apply simp
         apply simp
         done
       subgoal
@@ -1438,7 +1468,7 @@ lemma trace_while_True_op_traced:
       subgoal
         apply (rule exI)
         apply (rule loop_producing.intros(4))
-         apply simp
+        apply simp
         apply simp
         apply (smt (verit, ccfv_threshold) fun_upd_same fun_upd_upd loop_producing.intros(5) not_loop_producing_eq_End op.distinct(5))
         done
@@ -1455,7 +1485,7 @@ lemma trace_while_True_op_traced:
       subgoal
         apply (rule exI)
         apply (rule loop_producing.intros(4))
-         apply simp
+        apply simp
         apply simp
         apply (rule loop_producing.intros(3))
         apply simp
@@ -1463,7 +1493,7 @@ lemma trace_while_True_op_traced:
       subgoal
         apply (rule exI)
         apply (rule loop_producing.intros(4))
-         apply simp
+        apply simp
         apply simp
         apply (rule loop_producing.intros(3))
         apply simp
@@ -1471,7 +1501,7 @@ lemma trace_while_True_op_traced:
       subgoal
         apply (rule exI)
         apply (rule loop_producing.intros(4))
-         apply simp
+        apply simp
         apply simp
         apply (rule loop_producing.intros(3))
         apply simp
@@ -1505,7 +1535,7 @@ lemma trace_while_body_True_not_loop_producing_not_visible:
       subgoal
         apply simp
         apply (erule trace_while_body_True.cases)
-           apply auto
+        apply auto
         done
       subgoal for n'
         apply (erule trace_while_body_True.cases)
@@ -1519,18 +1549,18 @@ lemma trace_while_body_True_not_loop_producing_not_visible:
           unfolding not_def
           apply (drule spec[of _ "Suc 0"])
           apply (drule mp)
-           apply (subst while_body_op.code)
+          apply (subst while_body_op.code)
           unfolding Let_def
-           apply auto
+          apply auto
           apply (rule loop_producing.intros(4))
-           apply (auto split: observation.splits)
+          apply (auto split: observation.splits)
           apply (rule loop_producing.intros(3))
           apply auto
           done
         subgoal for ios' x'
           apply simp
           apply (erule causal.cases)
-              apply auto
+          apply auto
           apply hypsubst_thin
           apply (cases n')
           subgoal
@@ -1541,10 +1571,10 @@ lemma trace_while_body_True_not_loop_producing_not_visible:
             apply simp
             apply (drule meta_spec)+
             apply (drule meta_mp)
-             defer
-             apply (drule meta_mp)
-              apply assumption
-             apply (drule meta_mp)
+            defer
+            apply (drule meta_mp)
+            apply assumption
+            apply (drule meta_mp)
             subgoal
               apply auto
               subgoal premises prems for i
@@ -1553,35 +1583,35 @@ lemma trace_while_body_True_not_loop_producing_not_visible:
                 unfolding not_def
                 using prems(5) apply -
                 apply (drule mp)
-                 apply (subst while_body_op.code)
+                apply (subst while_body_op.code)
                 unfolding Let_def
-                 apply auto
+                apply auto
                 apply (intro loop_producing.intros(4))
-                 apply (auto split: observation.splits)
+                apply (auto split: observation.splits)
                 apply (intro loop_producing.intros(5))
-                 apply auto
+                apply auto
                 done
               done
-             apply (drule meta_mp)
-              apply (auto simp add: Suc_ile_eq)
+            apply (drule meta_mp)
+            apply (auto simp add: Suc_ile_eq)
             done
           done
         subgoal for ios'
           apply (erule causal.cases)
-              apply auto
+          apply auto
           apply hypsubst_thin
           apply (drule meta_spec[of _ n'])
           apply simp
           apply (drule meta_spec)+
           apply (drule meta_mp)
-           defer
-           apply (drule meta_mp)
-            apply assumption
-           apply (drule meta_mp)
-            apply (metis (no_types, lifting) bhd.elims btl.simps(1) fun_upd_triv observation.distinct(5) observation.simps(3))
-           apply (drule meta_mp)
+          defer
+          apply (drule meta_mp)
+          apply assumption
+          apply (drule meta_mp)
+          apply (metis (no_types, lifting) bhd.elims btl.simps(1) fun_upd_triv observation.distinct(5) observation.simps(3))
+          apply (drule meta_mp)
           using Suc_ile_eq apply blast
-           apply simp_all
+          apply simp_all
           done
         done
       done
@@ -1603,45 +1633,30 @@ lemma in_ios_buf_EOB_not_visible:
   apply (induct ios arbitrary: buf rule: lset_induct)
   subgoal
     apply (erule trace_while_body_True.cases)
-       apply auto
+    apply auto
     done
   subgoal for x' xs buf
     apply (erule causal.cases)
-        apply auto
+    apply auto
     subgoal
       apply (erule trace_while_body_True.cases)
-         apply auto
+      apply auto
       apply (metis bhd.elims btl.simps(1) fun_upd_same observation.distinct(5) observation.simps(3))
       done
     subgoal
       apply (erule trace_while_body_True.cases)
-         apply auto
+      apply auto
       done
     subgoal
       apply (erule trace_while_body_True.cases)
-         apply auto
+      apply auto
       done
     subgoal
       apply (erule trace_while_body_True.cases)
-         apply auto
+      apply auto
       done
     done
   done
-
-lemma
-  "trace_while_body_True P f ios \<Longrightarrow>
-   BHD 1 buf \<noteq> EOS \<Longrightarrow>
-   BHD 1 buf \<noteq> EOB \<Longrightarrow>
-   causal (\<lambda>x. if x = 1 then Some 1 else None) buf ios \<Longrightarrow>
-   \<forall>x\<in>lset ios. \<not> visible_IO (\<lambda>x. if x = 1 then Some 1 else None) x \<Longrightarrow>
-   x \<in> set (buf_to_list (buf 1)) \<Longrightarrow>
-   \<forall>n. \<not> P ((f ^^ n) x)"
-  apply (induct "buf 1" arbitrary: buf)
-    apply simp_all
-  oops
-
-  find_theorems set name: "_induct"
-
 
 lemma while_True_retrace_eq_lfilter_visible:
   "trace_while_body_True P f ios \<Longrightarrow>
@@ -1650,18 +1665,18 @@ lemma while_True_retrace_eq_lfilter_visible:
   apply (induct P f "buf_to_list (buf 1)" arbitrary: buf ios rule: while_True_retrace.induct)
   subgoal for P f buf ios
     apply (cases "buf 1")
-      apply (auto 0 0 simp add: lfilter_eq_LNil)
+    apply (auto 0 0 simp add: lfilter_eq_LNil)
     subgoal
       by (metis bhd.simps(1) in_ios_buf_EOB_not_visible)
     subgoal
       apply (erule trace_while_body_True.cases)
-         apply auto
+      apply auto
       done
     subgoal premises prems for x buf'
       using prems(1,3-) apply -
       subgoal
         apply (erule trace_while_body_True.cases)
-           apply auto
+        apply auto
         apply (metis fun_upd_same funpow_0)
         done
       done
@@ -1670,38 +1685,39 @@ lemma while_True_retrace_eq_lfilter_visible:
       apply simp
       apply (cases "\<exists>n. P ((f ^^ n) x)")
       subgoal
-      subgoal
-        apply (erule trace_while_body_True.cases)
-           apply auto
-        apply hypsubst_thin
-        apply (metis buf_to_list_benq fun_upd_same)
-        done
-      done
-    subgoal
-      apply simp
-      apply (cases "\<exists>x\<in>set (buf_to_list buf'). \<exists>n. P ((f ^^ n) x)")
-      subgoal
-        apply simp
-      apply (erule trace_while_body_True.cases)
-           apply auto
-        apply hypsubst_thin
-        apply (metis buf_to_list_benq fun_upd_same)
-        done
-      subgoal
-        apply simp
-        apply (subgoal_tac "while_True_retrace P f (buf_to_list buf' @ [f x]) = []")
-         defer
         subgoal
-        apply (simp add: while_True_retrace_eq_Nil)
-          apply (metis pow_f_f_Suc)
+          apply (erule trace_while_body_True.cases)
+          apply auto
+          apply hypsubst_thin
+          apply (metis buf_to_list_benq fun_upd_same)
           done
-        apply (simp add: lfilter_eq_LNil)
-        apply (smt (verit, del_insts) \<open>\<And>x. \<lbrakk>trace_while_body_True P f ios; causal (\<lambda>x. if x = 1 then Some 1 else None) buf ios; buf 1 = BEnded; x \<in> lset ios; visible_IO (\<lambda>x. if x = 1 then Some 1 else None) x\<rbrakk> \<Longrightarrow> False\<close> buf_to_list.simps(3) loop_producing_while_body_op_buf_all_False set_ConsD trace_while_body_True_not_loop_producing_not_visible)
+        done
+      subgoal
+        apply simp
+        apply (cases "\<exists>x\<in>set (buf_to_list buf'). \<exists>n. P ((f ^^ n) x)")
+        subgoal
+          apply simp
+          apply (erule trace_while_body_True.cases)
+          apply auto
+          apply hypsubst_thin
+          apply (metis buf_to_list_benq fun_upd_same)
+          done
+        subgoal
+          apply simp
+          apply (subgoal_tac "while_True_retrace P f (buf_to_list buf' @ [f x]) = []")
+          defer
+          subgoal
+            apply (simp add: while_True_retrace_eq_Nil)
+            apply (metis pow_f_f_Suc)
+            done
+          apply (simp add: lfilter_eq_LNil)
+          apply (smt (verit, del_insts) \<open>\<And>x. \<lbrakk>trace_while_body_True P f ios; causal (\<lambda>x. if x = 1 then Some 1 else None) buf ios; buf 1 = BEnded; x \<in> lset ios; visible_IO (\<lambda>x. if x = 1 then Some 1 else None) x\<rbrakk> \<Longrightarrow> False\<close> buf_to_list.simps(3) loop_producing_while_body_op_buf_all_False set_ConsD trace_while_body_True_not_loop_producing_not_visible)
+          done
         done
       done
     done
   done
-  done
+
 
 lemma traced_while_op:
   "traced (while_op buf P f) ios \<Longrightarrow>
@@ -1713,7 +1729,7 @@ lemma traced_while_op:
     apply (coinduction arbitrary: buf ios)
     subgoal for buf ios
       apply (erule trace_while_body_False.cases)
-                   apply (simp_all add: )
+      apply (simp_all add: )
       subgoal
         by auto
       subgoal
@@ -1725,13 +1741,15 @@ lemma traced_while_op:
         apply force
         done
       subgoal
-        apply (rule disjI2)
         apply fastforce
         done
       subgoal
-        apply (rule disjI2)
-        apply auto
-        by (metis (no_types, lifting) bhd.elims btl.simps(1) fun_upd_triv observation.distinct(5) observation.simps(3))
+        apply (auto 0 0)
+        subgoal
+          by (metis (no_types, lifting) bhd.elims btl.simps(1) fun_upd_triv observation.distinct(5) observation.simps(3))
+        subgoal
+          by (metis (no_types, lifting) bhd.elims btl.simps(1) fun_upd_triv observation.distinct(5) observation.simps(3))
+        done
       subgoal
         by auto
       subgoal
@@ -1760,120 +1778,519 @@ lemma traced_while_op:
       done
     done
   done
-  
-lemma traced_while_op:
-  "loop_producing wire buf op n \<Longrightarrow>
-   wire = (\<lambda>x. if x = 1 then Some 1 else None) \<Longrightarrow>
-   op = while_op buf P f \<Longrightarrow>
-   trace_while_op P f buf ios \<Longrightarrow>
-   traced (while_op buf P f) ios"
-  unfolding traced_loop_op
-  apply (induct buf op n arbitrary: ios rule: loop_producing.induct)
-  subgoal for wire buf
-    apply auto
-    by (smt (verit) loop_op_simps(1) op.simps(6) ran_dom_Some1(1) while_body_op.code)
-     prefer 2
-  subgoal
-    apply (subst (asm) while_body_op.code)
-    unfolding Let_def
-    apply auto
-    done
-  subgoal for p wire buf fa ios
-    apply (drule sym[of "Read p fa"])
-    apply simp
-    apply (subgoal_tac "p = 2")
-     defer 
-    subgoal
-      by (smt (verit, best) loop_op_simps'(1) op.inject(1) ran_dom_Some1(1) while_body_op.code)
-    unfolding Let_def   
-    supply disjCI[rule del]
-    apply (erule trace_while_op.cases)
-                 apply auto
-    subgoal
-      apply (rule exI[of _ ios])
-      apply auto
-            subgoal
-              apply (subst while_body_op.code)
-              unfolding Let_def
-              apply auto
-              apply (rule Read)
-              apply simp
+
+declare [[unify_search_bound = 100]]
 
 
-end
+corec while_body_True_retrace where
+  "while_body_True_retrace P f buf = (case BHD 1 buf of
+       Observed x \<Rightarrow> LCons (Inp 1 (Observed x)) (if P x then LCons (Out 2 x) (while_body_True_retrace P f (BTL 1 buf)) else LCons (Out 1 (f x)) (while_body_True_retrace P f (BENQ 1 (f x) (BTL 1 buf))))
+     | EOS \<Rightarrow> LCons (Inp 1 EOS) LNil
+     | EOB \<Rightarrow> LCons (Inp 1 EOB) (while_body_True_retrace P f buf))
+"
 
-        
+simps_of_case while_body_True_retrace[simp]: while_body_True_retrace.code[unfolded observation.case]
+
+corec while_body_retrace where
+  "while_body_retrace P f buf inps = (case inps of
+      LNil \<Rightarrow> (case BHD 1 buf of Observed x \<Rightarrow> LCons (Inp 1 (Observed x)) (if P x then LCons (Out 2 x) (while_body_retrace P f (BTL 1 buf) inps) else LCons (Out 1 (f x)) (while_body_retrace P f (BENQ 1 (f x) (BTL 1 buf)) inps)) | EOB \<Rightarrow> LCons (Inp 1 EOB) (while_body_retrace P f buf LNil) | EOS \<Rightarrow> LCons (Inp 1 EOS) LNil)
+   | LCons EOS inps' \<Rightarrow> LCons (Inp 2 EOS) (while_body_True_retrace P f buf)
+   | LCons EOB inps' \<Rightarrow> LCons (Inp 2 EOB) (case BHD 1 buf of Observed x \<Rightarrow> LCons (Inp 1 (Observed x)) (if P x then LCons (Out 2 x) (while_body_retrace P f (BTL 1 buf) inps') else LCons (Out 1 (f x)) (while_body_retrace P f (BENQ 1 (f x) (BTL 1 buf)) inps')) | EOB \<Rightarrow> LCons (Inp 1 EOB) (while_body_retrace P f buf inps') | EOS \<Rightarrow> LCons (Inp 1 EOS) LNil)
+   | LCons (Observed x) inps' \<Rightarrow> LCons (Inp 2 (Observed x)) (if P x
+     then LCons (Out 2 x) (case BHD 1 buf of
+         Observed x \<Rightarrow> LCons (Inp 1 (Observed x)) (if P x then LCons (Out 2 x) (while_body_retrace P f (BTL 1 buf) inps') else LCons (Out 1 (f x)) (while_body_retrace P f (BENQ 1 (f x) (BTL 1 buf)) inps'))
+       | EOS \<Rightarrow> LCons (Inp 1 EOS) LNil
+       | EOB \<Rightarrow> LCons (Inp 1 EOB) (while_body_retrace P f buf inps'))
+     else LCons (Out 1 (f x)) (case BHD 1 (BENQ 1 (f x) buf) of
+         Observed y \<Rightarrow> LCons (Inp 1 (Observed y)) (if P y then LCons (Out 2 y) (while_body_retrace P f (BTL 1 (BENQ 1 (f x) buf)) inps') else LCons (Out 1 (f y)) (while_body_retrace P f (BENQ 1 (f y) (BTL 1 (BENQ 1 (f x) buf))) inps'))))
+)
+"
+
+simps_of_case while_body_retrace_simps[simp]: while_body_retrace.code[unfolded observation.case]
+
+lemma trace_while_True_op_trace_while_body_True_while_body_retrace:
+  "trace_while_True_op P f buf ios \<Longrightarrow> trace_while_body_True P f (while_body_True_retrace P f buf)"
+  apply (coinduction arbitrary: buf ios)
+  subgoal for buf ios
+    apply (erule trace_while_True_op.cases)
+    subgoal for buf'
+      apply (cases "BHD 1 buf")
+      subgoal for x
+        apply (subgoal_tac "\<not> P x")
+        defer
+        subgoal
+          by (metis bhd.elims buf.set_intros(1) funpow_0 observation.distinct(3) observation.sel observation.simps(3) set_buf_to_list_set_buf)
+        apply hypsubst_thin
+        apply (rule disjI2)
+        apply (rule disjI2)
+        apply (rule disjI1)
+        apply (rule exI[of _ "while_body_True_retrace P f (BENQ 1 (f x) (BTL 1 buf'))"])
+        apply (rule exI[of _ x])
+        apply (intro conjI)
+        subgoal
+          by simp
+        subgoal
+          apply (rule disjI1)
+          apply (rule exI)
+          apply (rule exI[of _ LNil])
+          apply (intro conjI exI)
+          apply (simp del: while_body_True_retrace)
+          apply (rule trace_while_True_op.intros(1))
+          apply auto
+          apply (metis bhd.elims buf.set_intros(1) observation.distinct(3) observation.sel observation.simps(3) pow_f_f_Suc set_buf_to_list_set_buf)
+          apply (metis list.sel(2) list.set_sel(2))
+          done
+        apply simp
+        done
       subgoal
-        by (simp add: causal.intros(2) causal.intros(5))
-
-
-end
-
-
-    subgoal
-      apply (rule Read)
-      apply (subst (asm) while_body_op.code)
-      unfolding Let_def
-      apply auto
-       apply (simp add: End Write)+
+        apply hypsubst_thin
+        apply (rule disjI2)
+        apply (rule disjI2)
+        apply (rule disjI2)
+        apply (rule exI[of _ "while_body_True_retrace P f buf'"])
+        apply (intro conjI)
+        subgoal
+          apply (subst while_body_True_retrace.code)
+          apply (simp del: while_body_True_retrace)
+          done
+        subgoal
+          apply (rule disjI1)
+          apply (rule exI[of _ buf'])
+          apply (intro conjI exI)
+          apply (rule refl)
+          apply (rule trace_while_True_op.intros(1))
+          apply auto
+          done
+        done
+      subgoal
+        apply simp
+        done
       done
+    subgoal for x buf' y ios'
+      apply hypsubst_thin
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule disjI1)
+      apply (rule exI[of _ "while_body_True_retrace P f (BENQ 1 (f x) (BTL 1 buf'))"])
+      apply (rule exI[of _ x])
+      apply (intro conjI)
+      subgoal
+        by simp
+      subgoal
+        apply (rule disjI1)
+        apply (rule exI)
+        apply (rule exI[of _])
+        apply (intro conjI)
+        apply (rule refl)
+        apply (simp del: while_body_True_retrace)
+        done
+      subgoal
+        by auto
+      done
+    subgoal for buf' ios x
+      apply hypsubst_thin
+      apply (rule disjI2)
+      apply (rule disjI1)
+      apply (rule exI[of _ "while_body_True_retrace P f (BTL 1 buf')"])
+      apply (rule exI[of _ x])
+      apply (intro conjI)
+      subgoal
+        by simp
+      subgoal
+        apply (rule disjI1)
+        apply (rule exI)
+        apply (rule exI[of _])
+        apply (intro conjI)
+        apply (rule refl)
+        apply assumption
+        done
+      apply simp
+      done
+    done
+  done
+
+lemma trace_while_True_op_Inp_llist_LNil:
+  "trace_while_True_op P f buf ios \<Longrightarrow>
+   (Inp_llist ios) = LNil"
+  apply (induct buf ios rule: trace_while_True_op.induct)
+  apply auto
+  done
+
+lemma while_body_True_retrace_while_body_retrace_LNil:
+  "while_body_True_retrace P f buf = while_body_retrace P f buf LNil"
+  apply (coinduction arbitrary: buf rule: llist.coinduct_upto)
+  subgoal for buf
+    apply (intro conjI impI iffI)
+    unfolding lnull_def
+    subgoal
+      apply (subst (asm) while_body_True_retrace.code)
+      apply (subst while_body_retrace.code)
+      apply (cases "BHD 1 buf")
+      apply (simp_all del: while_body_True_retrace while_body_retrace_simps)
+      done
+    subgoal
+      apply (subst while_body_True_retrace.code)
+      apply (subst (asm) while_body_retrace.code)
+      apply (cases "BHD 1 buf")
+      apply (simp_all del: while_body_True_retrace while_body_retrace_simps)
+      done
+    subgoal
+      apply (subst while_body_True_retrace.code)
+      apply (subst while_body_retrace.code)
+      apply (cases "BHD 1 buf")
+      apply (simp_all del: while_body_True_retrace while_body_retrace_simps)
+      done
+    subgoal
+      apply (cases "BHD 1 buf")
+      subgoal for x
+        apply (subst (2) while_body_True_retrace.code)
+        apply (subst (2) while_body_retrace.code)
+        apply (auto simp del: while_body_True_retrace while_body_retrace_simps intro: llist.cong_base intro!:  llist.cong_LCons)
+        done
+      subgoal
+        apply (subst (2) while_body_True_retrace.code)
+        apply (subst (2) while_body_retrace.code)
+        apply (auto simp del: while_body_True_retrace while_body_retrace_simps intro: llist.cong_base intro!:  llist.cong_LCons)
+        done
+      subgoal
+        apply (subst (2) while_body_True_retrace.code)
+        apply (subst (2) while_body_retrace.code)
+        apply (auto simp del: while_body_True_retrace while_body_retrace_simps intro: llist.cong_refl intro!:  llist.cong_LCons)
+        done
+      done
+    done
+  done
+
+lemma while_body_True_retrace_visible:
+  "x \<in> lset (while_body_True_retrace P f buf) \<Longrightarrow> 
+   \<forall>x\<in>set (buf_to_list (buf 1)). \<forall>n. \<not> P ((f ^^ n) x) \<Longrightarrow>
+   visible_IO (\<lambda>x. if x = (1::2) then Some (1::2) else None) x \<Longrightarrow>
+   False"
+  apply (auto simp add: in_lset_conv_lnth simp del: while_body_True_retrace)
+  subgoal for n
+    apply (induct n arbitrary: buf rule: less_induct)
+    subgoal for n buf
+      apply (cases n)
+      subgoal
+        apply (subst (asm) (4) while_body_True_retrace.code)
+        apply (cases "BHD 1 buf")
+        apply (auto simp del: while_body_True_retrace)
+        done
+      subgoal for n'
+        apply (subst (asm) (4 5 6) while_body_True_retrace.code)
+        apply (cases "BHD 1 buf")
+        apply (auto simp del: while_body_True_retrace while_body_retrace_simps split: if_splits)
+        subgoal by (metis bhd.elims buf_to_list.simps(3) funpow_0 insert_iff list.set(2) observation.distinct(3) observation.sel observation.simps(3))
+        subgoal for x
+          apply hypsubst_thin
+          apply (cases n')
+          apply simp
+          subgoal for n''
+            apply hypsubst_thin
+            subgoal
+              apply (drule meta_spec[of _ n''])
+              apply (drule meta_spec[of _ "buf(1 := benq (f x) (btl (buf 1)))"])
+              apply (auto simp del: while_body_True_retrace)
+              apply (drule meta_mp)
+              apply (metis (no_types, lifting) bhd.elims btl.simps(3) buf_to_list.simps(3) buf_to_list_btl insert_iff list.set(2) observation.distinct(3) observation.sel observation.simps(3) pow_f_f_Suc)
+              apply (drule meta_mp)
+              apply (auto simp add: Suc_ile_eq)
+              done
+            done
+          done    
+        subgoal
+          using Suc_ile_eq by blast
+        subgoal
+          by (metis eSuc_enat zero_ne_eSuc)
+        done
+      done
+    done
+  done
+
+
+lemma trace_while_True_op_while_body_True_retrace_lfilter:
+  "trace_while_True_op P f buf ios \<Longrightarrow>
+   lfilter (visible_IO (\<lambda>x. if x = (1::2) then Some (1::2) else None)) (while_body_True_retrace P f buf) = ios"
+  apply (induct buf ios rule: trace_while_True_op.induct)
+  subgoal for buf
+    apply (auto simp del: while_body_True_retrace while_body_retrace_simps simp add: lfilter_eq_LNil)
+    subgoal for x
+      using while_body_True_retrace_visible apply blast
+      done
+    done
   subgoal
-    apply (rule Read)
-      apply (subst (asm) while_body_op.code)
-      unfolding Let_def
-      apply (auto split: observation.splits)
-        
-    
+    apply (drule sym)
+    apply (subst while_body_True_retrace.code)
+    apply (auto simp del: while_body_True_retrace while_body_retrace_simps)
+    apply (rule lfilter_cong)
+    subgoal
+      apply (rule arg_cong2[where f="while_body_True_retrace P"])
+      apply simp
+      apply (metis fun_upd_apply)
+      done
+    apply simp
+    done
+  subgoal
+    apply (drule sym)
+    apply (subst while_body_True_retrace.code)
+    apply (auto simp del: while_body_True_retrace while_body_retrace_simps)
+    apply (rule lfilter_cong)
+    subgoal
+      apply (rule arg_cong2[where f="while_body_True_retrace P"])
+      apply simp
+      apply (metis fun_upd_apply)
+      done
+    apply simp
+    done
+  done
 
+lemma while_body_True_retrace_causal:
+  "causal (\<lambda>x. if x = (1::2) then Some (1::2) else None) buf (while_body_True_retrace P f buf)" 
+  apply (coinduction arbitrary: buf rule: causal_coinduct_upto)
+  subgoal for buf
+    apply (simp del: while_body_True_retrace)
+    apply (cases "BHD 1 buf")
+    subgoal for x
+      apply (cases "P x")
+      subgoal
+        apply (rule disjI1)
+        apply (subst while_body_True_retrace.code)
+        apply (simp del: while_body_True_retrace add: causal_cong.cc_base causal_cong.intros(6))
+        done
+      subgoal
+        apply (rule disjI1)
+        apply (subst while_body_True_retrace.code)
+        apply (simp del: while_body_True_retrace add: causal_cong.cc_base)
+        apply (smt (verit, del_insts) causal_cong.cc_base causal_cong.intros(5) fun_upd_same fun_upd_upd)
+        done
+      done
+    subgoal
+      apply (rule disjI1)
+      apply (subst while_body_True_retrace.code)
+      apply (simp del: while_body_True_retrace add: causal_cong.cc_base)
+      apply (smt (verit, ccfv_threshold) bhd.elims btl.simps(1) causal_cong.cc_base fun_upd_triv observation.distinct(5) observation.simps(3))
+      done
+    subgoal
+      apply (rule disjI1)
+      apply (subst while_body_True_retrace.code)
+      apply (simp del: while_body_True_retrace add: causal_cong.cc_base causal.intros(5) cc_causal)
+      done
+    done
+  done
 
-end
-
-
-
-lemma traced_while_op:
+lemma trace_while_op_traced:
   "trace_while_op P f buf ios \<Longrightarrow>
    traced (while_op buf P f) ios"
-  apply (coinduction arbitrary: buf ios )
-  subgoal for buf ios
-    apply (erule trace_while_op.cases)
-    supply disjCI[rule del]
-                 apply auto
-    subgoal
-      apply (subst while_body_op.code)
-      unfolding Let_def
-      apply simp
-      apply (rule tc_traced)
-      apply (subst while_body_op.code)
-      apply (auto intro: End)
+  unfolding traced_loop_op while_body_op_traced_correctness
+  apply (rule exI[of _ "while_body_retrace P f buf (Inp_llist ios)"])
+  apply (intro conjI)
+  subgoal
+    apply (coinduction arbitrary: buf ios)
+    subgoal for buf ios
+      apply (erule trace_while_op.cases)
+      subgoal
+        by simp
+      subgoal 
+        by simp
+      subgoal
+        by auto
+      subgoal
+        by auto
+      subgoal 
+        by auto
+      subgoal
+        by auto
+      subgoal 
+        by auto
+      subgoal
+        by auto
+      subgoal
+        by auto
+      subgoal
+        by auto
+      subgoal
+        by auto
+      subgoal for buf ios
+        apply hypsubst_thin
+        apply simp
+        using trace_while_True_op_trace_while_body_True_while_body_retrace apply auto
+        done
       done
-    subgoal
-      apply (subst while_body_op.code)
-      unfolding Let_def
-      apply (auto simp add: End tc_traced intro: End intro!: tc_write)
+    done
+  subgoal
+    apply (coinduction arbitrary: buf ios rule: llist.coinduct_upto)
+    subgoal for buf ios
+      apply (intro conjI impI iffI)
+      unfolding lnull_def
+      subgoal
+        apply (erule trace_while_op.cases)
+        apply auto
+        done
+      subgoal
+        apply (simp add: lfilter_eq_LNil)
+        apply (rule ccontr)
+        apply (auto simp add: neq_LNil_conv simp del: while_body_retrace_simps)
+        subgoal for x xs'
+          apply (erule trace_while_op.cases)
+          apply auto
+          done
+        done
+      subgoal
+        apply (erule trace_while_op.cases)
+        apply simp_all
+        done
+      subgoal
+        apply (erule trace_while_op.cases)
+        apply (simp_all del: while_body_retrace_simps)
+        subgoal
+          by (auto intro!:  llist.cong_refl)
+        subgoal
+          by (auto intro!:  llist.cong_refl)
+        subgoal
+          by (auto intro: llist.cong_base intro!:  llist.cong_LCons)
+        subgoal
+          by (auto intro: llist.cong_base intro!:  llist.cong_LCons)
+        subgoal
+          by (auto intro: llist.cong_base intro!:  llist.cong_LCons)
+        subgoal
+          by (auto intro: llist.cong_base intro!:  llist.cong_LCons)
+        subgoal
+          by (auto intro: llist.cong_base intro!:  llist.cong_LCons)
+        subgoal
+          by (auto intro: llist.cong_base intro!:  llist.cong_LCons)
+        subgoal
+          by (auto intro: llist.cong_base intro!:  llist.cong_LCons)
+        subgoal
+          by (auto intro: llist.cong_base intro!:  llist.cong_LCons)
+        subgoal
+          by (auto intro: llist.cong_base intro!:  llist.cong_LCons)
+        subgoal for buf ios
+          apply (frule trace_while_True_op_Inp_llist_LNil)
+          apply (subst (2) while_body_retrace.code)
+          apply (simp_all flip: while_body_True_retrace_while_body_retrace_LNil add: trace_while_True_op_while_body_True_retrace_lfilter del: while_body_True_retrace while_body_retrace_simps)
+          apply (rule llist.cong_refl)
+          apply simp
+          done
+        done
       done
-    subgoal
-      apply (subst while_body_op.code)
-      unfolding Let_def
-      apply (auto simp add: End tc_traced intro: End intro!: split: observation.splits)
+    done
+  subgoal
+    apply (coinduction arbitrary: buf ios rule: causal_coinduct_upto)
+    subgoal for buf ios
+      apply (erule trace_while_op.cases)
       subgoal
-        sledgehammer
-        sorry
+        by (auto simp add: causal.intros(5) causal_cong.intros(3) cc_causal intro!: causal_cong.intros(6))
       subgoal
-        sledgehammer
-        sorry
+        by (auto simp add: causal.intros(5) causal_cong.intros(3) cc_causal intro!: causal_cong.intros(6))
+      subgoal for buf ios'
+        apply simp
+        apply (rule causal_cong.intros(6))
+        apply auto
+        apply (rule causal_cong.intros(3))
+        apply auto
+        apply (rule causal_cong.intros(2))
+        apply auto
+        apply (rule exI[of _ ios'])
+        apply (metis bhd.elims btl.simps(1) fun_upd_triv observation.distinct(5) observation.simps(3))
+        done
+      subgoal for buf ios'
+        apply simp
+        apply (rule causal_cong.intros(6))
+        apply auto
+        apply (rule causal_cong.intros(3))
+        apply auto
+        apply (rule causal_cong.intros(6))
+        apply auto
+        apply (rule causal_cong.intros(2))
+        apply auto
+        done
+      subgoal for y buf ios x
+        apply simp
+        apply (rule causal_cong.intros(6))
+        apply auto
+        apply (rule causal_cong.intros(3))
+        apply auto
+        apply (rule causal_cong.intros(5))
+        apply auto
+        apply (rule causal_cong.intros(2))
+        apply auto
+        done
+      subgoal 
+        apply simp
+        apply (rule causal_cong.intros(6))
+        apply auto
+        apply (rule causal_cong.intros(3))
+        apply auto
+        apply (rule causal_cong.intros(2))
+        apply auto
+        apply (metis bhd.elims btl.simps(1) fun_upd_triv observation.distinct(5) observation.simps(3))
+        done
+      subgoal 
+        apply simp
+        apply (rule causal_cong.intros(5))
+        apply auto
+        apply (rule causal_cong.intros(3))
+        apply auto
+        apply (rule causal_cong.intros(5))
+        apply auto
+        apply (rule causal_cong.intros(2))
+        apply auto
+        done
+      subgoal 
+        apply simp
+        apply (rule causal_cong.intros(5))
+        apply auto
+        apply (rule causal_cong.intros(3))
+        apply auto
+        apply (rule causal_cong.intros(6))
+        apply auto
+        apply (rule causal_cong.intros(2))
+        apply auto
+        done
+      subgoal 
+        apply simp
+        apply (rule causal_cong.intros(3))
+        apply auto
+        apply (rule causal_cong.intros(6))
+        apply auto
+        apply (rule causal_cong.intros(2))
+        apply auto
+        done
+      subgoal 
+        apply simp
+        apply (rule causal_cong.intros(3))
+        apply auto
+        apply (rule causal_cong.intros(5))
+        apply auto
+        apply (rule causal_cong.intros(2))
+        apply auto
+        done
+      subgoal 
+        apply simp
+        apply (rule causal_cong.intros(3))
+        apply auto
+        apply (rule causal_cong.intros(2))
+        apply auto
+        apply (metis bhd.elims btl.simps(1) fun_upd_triv observation.distinct(1) observation.simps(7))
+        done
       subgoal
-        sledgehammer
-        sorry
-      subgoal
-        by (meson BHD_benqD)
+        apply (erule trace_while_True_op.cases)
+        apply (auto simp del: while_body_True_retrace)
+        apply (rule causal_cong.intros(1))
+        using while_body_True_retrace_causal apply blast
+        apply (rule causal_cong.intros(1))
+        using while_body_True_retrace_causal apply blast
+        apply (rule causal_cong.intros(1))
+        using while_body_True_retrace_causal apply blast
+        done
+      done
+    done
+  done
 
-      apply (rule tc_traced)
 
-
-      apply (rule disjI1)
-
-      apply (intro exI conjI)
-      apply (rule refl)
+lemma traced_while_op_correctness:
+  "traced (while_op buf P f) ios \<longleftrightarrow> trace_while_op P f buf ios"
+  using traced_while_op trace_while_op_traced by blast
 
 
 coinductive history_while_op for P f where
@@ -1905,10 +2322,10 @@ lemma is_1_or_2[simp]:
   apply auto
   subgoal for z
     apply (cases z)
-     apply auto
+    apply auto
     subgoal for n
       apply (cases n)
-       apply auto[1]
+      apply auto[1]
       apply simp
       apply (smt (verit, ccfv_SIG) of_int_of_nat_eq of_nat_0 of_nat_0_le_iff)
       done
@@ -1922,7 +2339,7 @@ lemma fun_if_then_else_2_eq[simp]:
   apply (rule iffI)
   subgoal
     apply (rule conjI)
-     apply metis
+    apply metis
     apply (metis (full_types) ran_dom_Some1(1) ran_dom_Some1(3))
     done
   subgoal
@@ -1959,13 +2376,13 @@ lemma
         apply auto
         apply hypsubst_thin
         apply (cases lys)
-         apply (meson neq_LNil_conv)+
+        apply (meson neq_LNil_conv)+
         done
-                  prefer 5
+      prefer 5
       subgoal for buf ios x y
         apply hypsubst_thin
         apply (cases lxs; cases lys)
-           apply simp_all
+        apply simp_all
         subgoal
           apply hypsubst_thin
           apply auto
@@ -1977,7 +2394,7 @@ lemma
           subgoal by (smt (verit) LCons_lprefix_LCons)
           subgoal
             apply (rule history_while_op_cong.intros(4))
-             apply simp_all
+            apply simp_all
             apply (rule history_while_op_cong.intros(1))
             apply simp
             apply (rule exI[of _ ios])
@@ -2000,43 +2417,43 @@ lemma
 
 
 end
-      apply (rule disjI2)
-      apply (rule disjI1)
-      apply auto
-      defer
-      subgoal
-        by (metis (mono_tags, opaque_lifting) llist.inject)
-      subgoal
-        apply (cases lys')
-        subgoal
-          apply simp
-          by (simp add: history_while_op.intros(1) history_while_op_cong.intros(2))
-        subgoal
-          apply simp
-          apply (rule  history_while_op_cong.intros(2))
-
-      
+  apply (rule disjI2)
+  apply (rule disjI1)
+  apply auto
+  defer
+  subgoal
+    by (metis (mono_tags, opaque_lifting) llist.inject)
+  subgoal
+    apply (cases lys')
+    subgoal
+      apply simp
+      by (simp add: history_while_op.intros(1) history_while_op_cong.intros(2))
+    subgoal
+      apply simp
+      apply (rule  history_while_op_cong.intros(2))
 
 
 
-        apply (subgoal_tac "y = "
 
-end
-        apply (cases lxs; cases lys)
-           apply auto
-   
 
+      apply (subgoal_tac "y = "
 
 end
+  apply (cases lxs; cases lys)
+  apply auto
 
 
-      subgoal for x' x22 x21a x22a
-        apply (subgoal_tac "x = x'")
-        apply simp
-        apply (smt (verit, ccfv_SIG) LCons_lprefix_LCons)
-        done
 
-          thm cong
+end
+
+
+  subgoal for x' x22 x21a x22a
+    apply (subgoal_tac "x = x'")
+    apply simp
+    apply (smt (verit, ccfv_SIG) LCons_lprefix_LCons)
+    done
+
+  thm cong
 
 
 end
