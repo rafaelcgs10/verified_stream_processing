@@ -2281,30 +2281,50 @@ lemma traced_while_op_correctness:
  
 *)
 
-
-
+datatype read_state = READ_BUF | READ_INPUT 
 
 coinductive history_while_op for P f where
-  "\<not> (\<exists> x \<in> set (buf_to_list (buf 1)). \<exists> n. P ((f ^^ n) x)) \<Longrightarrow> history_while_op P f buf LNil LNil"
-| "history_while_op P f (BTL 1 buf) LNil lys \<Longrightarrow> P x \<Longrightarrow> BHD 1 buf = Observed x \<Longrightarrow> history_while_op P f buf LNil (LCons x lys)"
-| "history_while_op P f (BENQ 1 (f x) (BTL 1 buf)) LNil lys \<Longrightarrow> \<not> P x \<Longrightarrow> (\<exists> z \<in> set_buf (buf 1). \<exists> n. (f ^^ n) z = y) \<Longrightarrow> P y \<Longrightarrow> BHD 1 buf = Observed x \<Longrightarrow> history_while_op P f buf LNil (LCons y lys)"
+  "\<not> (\<exists> x \<in> set (buf_to_list (buf 1)). \<exists> n. P ((f ^^ n) x)) \<Longrightarrow> history_while_op P f buf lxs LNil any"
+| "BHD 1 buf = EOS \<Longrightarrow> history_while_op P f buf lxs LNil any"
 
-| "history_while_op P f buf lxs lys \<Longrightarrow> P x \<Longrightarrow> P y \<Longrightarrow> BHD 1 buf = Observed y \<Longrightarrow> history_while_op P f buf (LCons x lxs) (LCons x (LCons y lys))"
-| "history_while_op P f (BENQ 1 (f x) (BTL 1 buf)) lxs lys \<Longrightarrow> \<not> P x \<Longrightarrow> P y \<Longrightarrow> BHD 1 buf = Observed y \<Longrightarrow> history_while_op P f buf (LCons x lxs) (LCons y lys)"
-| "history_while_op P f (BENQ 1 (f y) (BTL 1 buf)) lxs lys \<Longrightarrow> P x \<Longrightarrow> \<not> P y \<Longrightarrow> BHD 1 buf = Observed y \<Longrightarrow> history_while_op P f buf (LCons x lxs) (LCons x lys)"
-| "history_while_op P f (BENQ 1 (f y) (BENQ 1 (f x) (BTL 1 buf))) lxs lys \<Longrightarrow> \<not> P x \<Longrightarrow> \<not> P y \<Longrightarrow> BHD 1 buf = Observed y \<Longrightarrow> history_while_op P f buf (LCons x lxs) lys"
+| "history_while_op P f (BTL 1 buf) lxs lys READ_INPUT \<Longrightarrow> P x \<Longrightarrow> BHD 1 buf = Observed x \<Longrightarrow> history_while_op P f buf lxs (LCons x lys) any"
+| "history_while_op P f (BENQ 1 (f x) (BTL 1 buf)) lxs lys READ_INPUT \<Longrightarrow> \<not> P x \<Longrightarrow> BHD 1 buf = Observed x \<Longrightarrow> history_while_op P f buf lxs lys any"
+| "history_while_op P f buf lxs lys READ_INPUT \<Longrightarrow> BHD 1 buf = EOB \<Longrightarrow> history_while_op P f buf lxs lys any"
 
-| "history_while_op P f buf lxs lys \<Longrightarrow> P x \<Longrightarrow> BHD 1 buf = EOB \<Longrightarrow> history_while_op P f buf (LCons x lxs) (LCons x lys)"
-| "history_while_op P f (BENQ 1 (f x) buf) lxs lys \<Longrightarrow> \<not> P x \<Longrightarrow> BHD 1 buf = EOB \<Longrightarrow> history_while_op P f buf (LCons x lxs) lys"
-
-| "history_while_op P f buf lxs lys \<Longrightarrow> P x \<Longrightarrow> BHD 1 buf = EOS \<Longrightarrow> history_while_op P f buf (LCons x lxs) (LCons x lys)"
-| "history_while_op P f (BENQ 1 (f x) buf) lxs lys \<Longrightarrow> \<not> P x \<Longrightarrow> BHD 1 buf = EOS \<Longrightarrow> history_while_op P f buf (LCons x lxs) lys"
+| "history_while_op P f buf lxs lys READ_BUF \<Longrightarrow> P x \<Longrightarrow> history_while_op P f buf (LCons x lxs) (LCons x lys) READ_INPUT"
+| "history_while_op P f (BENQ 1 (f x) buf) lxs lys READ_BUF \<Longrightarrow> \<not> P x \<Longrightarrow> history_while_op P f buf (LCons x lxs) lys READ_INPUT"
 
 
-lemma "history (while_op (\<lambda> _. BEmpty) (((=) 10) o snd) (\<lambda> (x, y). (x, Suc y))) (\<lambda> x. if x = 2 then (llist_of [(0::nat, 0), (1, 7), (2, 0), (3, 6)]) else LNil) (\<lambda> x. if x = 2 then (llist_of [(0::nat, 10), (1, 10), (2, 10), (3, 10)]) else LNil)"
-  unfolding history_def traced_while_op_correctness fun_eq_iff
-  apply simp
-  oops
+inductive history_while_op_cong for R P f where
+ hwc_base:  "R P f buf lxs lys any \<Longrightarrow> history_while_op_cong R P f buf lxs lys any"
+| hwc: "history_while_op P f buf lxs lys any \<Longrightarrow> history_while_op_cong R P f buf lxs lys any"
+
+| "history_while_op_cong R P f (BTL 1 buf) lxs lys READ_INPUT \<Longrightarrow> P x \<Longrightarrow> BHD 1 buf = Observed x \<Longrightarrow> history_while_op_cong R P f buf lxs (LCons x lys) any"
+| "history_while_op_cong R P f (BENQ 1 (f x) (BTL 1 buf)) lxs lys READ_INPUT \<Longrightarrow> \<not> P x \<Longrightarrow> BHD 1 buf = Observed x \<Longrightarrow> history_while_op_cong R P f buf lxs lys any"
+| "history_while_op_cong R P f buf lxs lys READ_INPUT \<Longrightarrow> BHD 1 buf = EOB \<Longrightarrow> history_while_op_cong R P f buf lxs lys any"
+
+| "history_while_op_cong R P f buf lxs lys READ_BUF \<Longrightarrow> P x \<Longrightarrow> history_while_op_cong R P f buf (LCons x lxs) (LCons x lys) READ_INPUT"
+| "history_while_op_cong R P f (BENQ 1 (f x) buf) lxs lys READ_BUF \<Longrightarrow> \<not> P x \<Longrightarrow> history_while_op_cong R P f buf (LCons x lxs) lys READ_INPUT"
+
+lemma history_while_op_cong_disj[simp]:
+  "(history_while_op_cong R P f buf lxs lys any \<or> history_while_op P f buf lxs lys any) = history_while_op_cong R P f buf lxs lys any"
+  by (auto intro: history_while_op_cong.intros)
+
+thm history_while_op.coinduct[where X="history_while_op_cong R P f", simplified, of buf lxs lys r P f, simplified]
+
+
+lemma history_while_op_coinduct_upto:
+  "R P f buf lxs lys r \<Longrightarrow>
+(\<And>x1 x2 x3 x4.
+    R P f x1 x2 x3 x4 \<Longrightarrow>
+    x3 = LNil \<and> (\<forall>x\<in>set (buf_to_list (x1 1)). \<forall>n. \<not> P ((f ^^ n) x)) \<or>
+    (\<exists>lys x. x3 = LCons x lys \<and> history_while_op_cong R P f (x1(1 := btl (x1 1))) x2 lys READ_INPUT \<and> P x \<and> BHD 1 x1 = Observed x) \<or>
+    (\<exists>x. history_while_op_cong R P f (x1(1 := benq (f x) (btl (x1 1)))) x2 x3 READ_INPUT \<and> \<not> P x \<and> BHD 1 x1 = Observed x) \<or>
+    history_while_op_cong R P f x1 x2 x3 READ_INPUT \<and> BHD 1 x1 = EOB \<or>
+    (\<exists>lxs lys x. x2 = LCons x lxs \<and> x3 = LCons x lys \<and> x4 = READ_INPUT \<and> history_while_op_cong R P f x1 lxs lys READ_BUF \<and> P x) \<or>
+    (\<exists>x lxs. x2 = LCons x lxs \<and> x4 = READ_INPUT \<and> history_while_op_cong R P f (x1(1 := benq (f x) (x1 1))) lxs x3 READ_BUF \<and> \<not> P x)) \<Longrightarrow>
+history_while_op P f buf lxs lys r"
+  sorry
 
 corec while_body_rehistory where
   "while_body_rehistory P f buf lxs lys = (case lxs of
@@ -2314,61 +2334,16 @@ corec while_body_rehistory where
      | EOS \<Rightarrow> LCons (Inp 2 EOS) LNil
      )
    | LCons x lxs' \<Rightarrow> (case lys of
-       LCons x' (LCons y lys') \<Rightarrow>
-           (if x' = x \<and> P x \<and> P y \<and> history_while_op P f (BTL 1 buf) lxs' lys' \<and> obs (BHD 1 buf) = y 
-            then LCons (Inp 2 (Observed x)) (LCons (Out 2 x) (LCons (Out 2 y) (while_body_rehistory P f (BTL 1 buf) lxs' lys')))
-            else (if history_while_op P f (BTL 1 buf) lxs (LCons y lys') \<and> P x' \<and> obs (BHD 1 buf) = x' then (LCons (Inp 2 EOB) (LCons (Out 2 x') (while_body_rehistory P f (BTL 1 buf) lxs (LCons y lys')))) else undefined))
-     | LNil \<Rightarrow> undefined)
+       (LCons y lys') \<Rightarrow>
+           (if y = x \<and> P x \<and> history_while_op P f buf lxs' lys' READ_INPUT
+            then LCons (Inp 2 (Observed x)) (LCons (Out 2 x) (while_body_rehistory P f buf lxs' lys'))
+            else (if \<exists> any. history_while_op P f (BTL 1 buf) lxs' lys' any \<and> P y \<and> obs (BHD 1 buf) = y then LCons (Inp 2 EOB) (LCons (Out 2 y) (while_body_rehistory P f (BTL 1 buf) lxs lys')) else undefined))
+     | LNil \<Rightarrow> (if \<exists> any. history_while_op P f (BENQ 1 (f x) buf) lxs' LNil any \<and> \<not> P x
+                then LCons (Inp 2 (Observed x)) (while_body_rehistory P f (BENQ 1 (f x) buf) lxs' LNil) 
+                else (if \<exists> any x. history_while_op P f (BENQ 1 (f x) (BTL 1 buf)) lxs LNil any \<and> BHD 1 buf = Observed x \<and> \<not> P x 
+                then LCons (Inp 2 EOB) (while_body_rehistory P f (BENQ 1 (f (obs (BHD 1 buf))) (BTL 1 buf)) lxs LNil) else undefined)))
    )
 "
-
-inductive trace_while_op_cong for R P f where
- twc_base: "R P f buf ios \<Longrightarrow> trace_while_op_cong R P f buf ios"
-| twc_trace: "trace_while_op P f buf ios \<Longrightarrow> trace_while_op_cong R P f buf ios"
-
-| "trace_while_op_cong R P f buf ios \<Longrightarrow> P x \<Longrightarrow> BHD 1 buf = EOB \<Longrightarrow> trace_while_op_cong R P f buf (LCons (Inp 2 (Observed x)) (LCons (Out 2 x) ios))"
-| "trace_while_op_cong R P f (BTL 1 buf) ios \<Longrightarrow> P x \<Longrightarrow> P y \<Longrightarrow> BHD 1 buf = Observed y \<Longrightarrow> trace_while_op_cong R P f buf (LCons (Inp 2 (Observed x)) (LCons (Out 2 x) (LCons (Out 2 y) ios)))"
-| "trace_while_op_cong R P f (BENQ 1 (f y) (BTL 1 buf)) ios \<Longrightarrow> P x \<Longrightarrow> \<not> P y \<Longrightarrow> BHD 1 buf = Observed y \<Longrightarrow> trace_while_op_cong R P f buf (LCons (Inp 2 (Observed x)) (LCons (Out 2 x) ios))"
-| "trace_while_op_cong R P f buf ios \<Longrightarrow> P x \<Longrightarrow> BHD 1 buf = EOB \<Longrightarrow> trace_while_op_cong R P f buf (LCons (Inp 2 (Observed x)) (LCons (Out 2 x) ios))"
-| "trace_while_op_cong R P f (BENQ 1 (f y) (BTL 1 (BENQ 1 (f x) buf))) ios \<Longrightarrow> \<not> P x \<Longrightarrow> \<not> P y \<Longrightarrow> BHD 1 (BENQ 1 (f x) buf) = Observed y \<Longrightarrow> trace_while_op_cong R P f buf (LCons (Inp 2 (Observed x)) ios)"
-| "trace_while_op_cong R P f (BTL 1 (BENQ 1 (f x) buf)) ios \<Longrightarrow> \<not> P x \<Longrightarrow> P y \<Longrightarrow> BHD 1 (BENQ 1 (f x) buf) = Observed y \<Longrightarrow> trace_while_op_cong R P f buf (LCons (Inp 2 (Observed x)) (LCons (Out 2 y) ios))"
-
-| "trace_while_op_cong R P f (BTL 1 buf) ios \<Longrightarrow> BHD (1::2) buf = Observed x \<Longrightarrow> P x \<Longrightarrow> trace_while_op_cong R P f buf (LCons (Inp 2 EOB) (LCons (Out 2 x) ios))"
-| "trace_while_op_cong R P f (BENQ 1 (f x) (BTL 1 buf)) ios \<Longrightarrow> BHD 1 buf = Observed x \<Longrightarrow> \<not> P x \<Longrightarrow> trace_while_op_cong R P f buf (LCons (Inp 2 EOB) ios)"
-| "trace_while_op_cong R P f buf ios \<Longrightarrow> BHD 1 buf = EOB \<Longrightarrow> trace_while_op_cong R P f buf (LCons (Inp 2 EOB) ios)"
-
-
-lemma trace_while_op_cong_disj[simp]:
-  "(trace_while_op_cong R P f buf ios \<or> trace_while_op P f buf ios) = trace_while_op_cong R P f buf ios"
-  by (auto intro: trace_while_op_cong.intros(2)) 
-
-thm trace_while_op.coinduct[where X="trace_while_op_cong R P f", of buf ios P f, simplified]
-
-lemma trace_while_op_coinduct_upto:
-  "R P f buf ios \<Longrightarrow>
-   (\<And>x1 x2.
-    R P f x1 x2 \<Longrightarrow>
-    (\<exists>x. x2 = LCons (Inp 2 (Observed x)) (LCons (Out 2 x) LNil) \<and> BHD 1 x1 = EOS \<and> P x) \<or>
-    x2 = LCons (Inp 2 EOB) LNil \<and> BHD 1 x1 = EOS \<or>
-    (\<exists>ios x. x2 = LCons (Inp 2 (Observed x)) (LCons (Out 2 x) ios) \<and> trace_while_op_cong R P f x1 ios \<and> P x \<and> BHD 1 x1 = EOB) \<or>
-    (\<exists>ios x y. x2 = LCons (Inp 2 (Observed x)) (LCons (Out 2 x) (LCons (Out 2 y) ios)) \<and> trace_while_op_cong R P f (x1(1 := btl (x1 1))) ios \<and> P x \<and> P y \<and> BHD 1 x1 = Observed y) \<or>
-    (\<exists>y ios x. x2 = LCons (Inp 2 (Observed x)) (LCons (Out 2 x) ios) \<and> trace_while_op_cong R P f (x1(1 := benq (f y) (btl (x1 1)))) ios \<and> P x \<and> \<not> P y \<and> BHD 1 x1 = Observed y) \<or>
-    (\<exists>ios x. x2 = LCons (Inp 2 (Observed x)) (LCons (Out 2 x) ios) \<and> trace_while_op_cong R P f x1 ios \<and> P x \<and> BHD 1 x1 = EOB) \<or>
-    (\<exists>y x ios. x2 = LCons (Inp 2 (Observed x)) ios \<and> trace_while_op_cong R P f (x1(1 := benq (f y) (btl (benq (f x) (x1 1))))) ios \<and> \<not> P x \<and> \<not> P y \<and> BHD (x1 1) (benq (f x)) = Observed y) \<or>
-    (\<exists>x ios y. x2 = LCons (Inp 2 (Observed x)) (LCons (Out 2 y) ios) \<and> trace_while_op_cong R P f (x1(1 := btl (benq (f x) (x1 1)))) ios \<and> \<not> P x \<and> P y \<and> BHD (x1 1) (benq (f x)) = Observed y) \<or>
-    (\<exists>ios x. x2 = LCons (Inp 2 EOB) (LCons (Out 2 x) ios) \<and> trace_while_op_cong R P f (x1(1 := btl (x1 1))) ios \<and> BHD 1 x1 = Observed x \<and> P x) \<or>
-    (\<exists>x ios. x2 = LCons (Inp 2 EOB) ios \<and> trace_while_op_cong R P f (x1(1 := benq (f x) (btl (x1 1)))) ios \<and> BHD 1 x1 = Observed x \<and> \<not> P x) \<or>
-    (\<exists>ios. x2 = LCons (Inp 2 EOB) ios \<and> trace_while_op_cong R P f x1 ios \<and> BHD 1 x1 = EOB) \<or> (\<exists>ios. x2 = LCons (Inp 2 EOS) ios \<and> trace_while_True_op P f x1 ios)) \<Longrightarrow>
-   trace_while_op P f buf ios"
-  oops
-
-lemma
-  "history (while_op (\<lambda> _. BEmpty) P f) (\<lambda> x. if x = 2 then lxs else LNil) (\<lambda> x. if x = 2 then lys else LNil) \<Longrightarrow>
-   x \<in> lset lxs \<Longrightarrow>
-   (\<exists> n. P ((f ^^ n) x)) \<Longrightarrow>
-   (f ^^ (LEAST n. P ((f ^^ n) x))) x \<in> lset lys"
-  unfolding history_def traced_while_op_correctness fun_eq_iff
-  oops
 
 lemma
   "history (while_op (\<lambda> _. BEmpty) P f) (\<lambda> x. if x = 2 then lxs else LNil) (\<lambda> x. if x = 2 then lys else LNil) \<Longrightarrow>
@@ -2406,10 +2381,167 @@ define split (maybe using nondeterministic choice operator)
 
 lemma
   "history (while_op buf P f) (\<lambda> x. if x = 2 then lxs else LNil) (\<lambda> x. if x = 2 then lys else LNil) \<longleftrightarrow>
-   history_while_op P f buf lxs lys"
-  unfolding history_def traced_while_op_correctness
+   history_while_op P f buf lxs lys READ_INPUT"
+  unfolding history_def traced_while_op_correctness fun_eq_iff
   apply safe
-  defer
+  subgoal for ios
+    apply (frule spec[of _ 1])
+    apply (frule spec[of _ 1])
+    apply (drule spec[of _ 2])
+    apply (drule spec[of _ 2])
+    apply simp
+    unfolding lnull_def
+    apply hypsubst_thin
+    apply (coinduction arbitrary: ios lxs buf rule: history_while_op_coinduct_upto)
+    subgoal for ios lxs buf
+      apply (erule trace_while_op.cases)
+      subgoal for buf x
+        apply (cases lxs)
+         apply simp_all
+        subgoal for x lxs'
+          apply hypsubst_thin
+          apply (rule hwc)
+          apply (rule history_while_op.intros(1))
+          apply clarsimp
+          apply (metis bhd.elims buf.simps(27) empty_iff observation.distinct(3) observation.distinct(5) set_buf_to_list_set_buf)
+          done
+        done
+      subgoal for buf
+        apply hypsubst_thin
+        apply simp
+        apply (rule disjI1)
+      apply clarsimp
+          apply (metis bhd.elims buf.simps(27) empty_iff observation.distinct(3) observation.distinct(5) set_buf_to_list_set_buf)
+        done
+      subgoal for buf ios' x
+        apply hypsubst
+        apply simp
+        apply (cases lxs)
+         apply simp_all
+        subgoal for lxs'
+          apply (rule disjI1)
+          apply (rule history_while_op_cong.intros(5))
+           apply (rule hwc_base)
+          apply simp_all
+          apply (rule exI[of _ ios])
+          apply simp
+          apply (auto intro: trace_while_op.intros(3))
+          done
+        done
+      subgoal for buf ios' x y
+        apply hypsubst
+        apply simp
+        apply (cases lxs)
+         apply simp_all
+        apply hypsubst_thin
+        subgoal for lxs'
+          apply (rule disjI2)
+          apply (rule history_while_op_cong.intros(3))
+          apply simp_all
+            apply (rule hwc_base)
+          apply simp
+          apply auto
+          done
+        done
+      subgoal for y buf ios x
+        apply hypsubst_thin
+        apply simp
+        apply (cases lxs)
+         apply simp_all
+        apply hypsubst_thin
+        subgoal for lxs'
+          apply (rule disjI2)
+          apply (rule disjI2)
+          apply (rule history_while_op_cong.intros(4))
+          apply simp_all
+            apply (rule hwc_base)
+          apply auto
+          done
+        done
+      subgoal for buf ios x
+        apply hypsubst_thin
+        apply simp
+        apply (cases lxs)
+         apply simp_all
+        apply hypsubst_thin
+        subgoal for lxs'
+          by (metis (mono_tags, lifting) history_while_op_cong.intros(5) hwc_base)
+        done
+      subgoal for y x buf ios
+        apply hypsubst_thin
+        apply simp
+        apply (cases lxs)
+         apply simp_all
+        apply hypsubst_thin
+        subgoal for lxs'
+          apply (rule disjI2)+
+          apply (rule history_while_op_cong.intros(4))
+            prefer 3
+            apply simp
+           defer
+           apply assumption
+          apply simp
+          apply (rule hwc_base)
+          apply simp
+          apply auto
+          done
+        done
+      subgoal for x buf ios y
+        apply hypsubst_thin
+        apply simp
+   apply (cases lxs)
+         apply simp_all
+        apply hypsubst_thin
+        subgoal for lxs'
+          apply (rule disjI2)+
+          apply (rule history_while_op_cong.intros(3))
+            prefer 3
+            apply simp
+           defer
+           apply assumption
+          apply simp
+          apply (rule hwc_base)
+          apply simp
+          apply auto
+          done
+        done
+    subgoal for buf ios x     
+  apply hypsubst_thin
+        apply simp
+      apply (rule disjI1)
+          apply (rule hwc_base)
+      apply auto
+      done
+    subgoal for x buf ios
+  apply hypsubst_thin
+        apply simp
+      apply (rule disjI2)
+      apply (rule disjI1)
+          apply (rule hwc_base)
+      apply auto
+      done
+    subgoal for buf ios
+  apply hypsubst_thin
+      apply simp
+      apply (metis (mono_tags, lifting) hwc_base) 
+      done
+  subgoal for buf ios
+  apply hypsubst_thin
+    apply simp
+    apply (erule trace_while_True_op.cases)
+      apply simp_all
+    subgoal for x buf y ios
+      apply hypsubst_thin
+          apply (rule disjI1)
+      apply (smt (verit, ccfv_threshold) bot2E hwc_base lproject_LCons(2) lproject_LCons(3) trace_while_op.intros(12))
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (smt (verit, ccfv_threshold) bot2E hwc_base lproject_LCons(2) lproject_LCons(3) trace_while_op.intros(12))
+      done
+    done
+  done
+  done
   subgoal
     apply (rule exI[of _ "while_body_rehistory P f buf lxs lys"])
     apply (intro conjI)
@@ -2417,8 +2549,8 @@ lemma
       apply (coinduction arbitrary: buf lxs lys)
       subgoal for buf lxs lys
         apply (erule history_while_op.cases)
-        subgoal for buf
-          apply hypsubst_thin
+        subgoal for buf lxs any
+          apply hypsubst
           apply (cases "BHD 1 buf")
           subgoal for x
             apply (cases "P x")
@@ -2427,16 +2559,70 @@ lemma
               apply (metis bhd.elims buf.set_intros(1) funpow_0 observation.distinct(3) observation.sel observation.simps(3) set_buf_to_list_set_buf)
               done
             subgoal
+              apply (cases lxs)
+              subgoal
               apply (rule disjI2)
               apply (rule disjI2)
               apply (rule disjI2)
               apply (rule disjI2)
               apply (rule disjI2)
-              apply (rule disjI2)
-              apply (rule disjI2)
-              apply (rule disjI2)
+                apply (rule disjI2)
+                apply (rule disjI2)
+                apply (rule disjI2)
               apply (rule disjI2)
               apply (rule disjI1)
+              apply (subst while_body_rehistory.code)
+                apply simp
+                apply (intro conjI exI disjI1)
+                apply (rule refl)
+                apply (intro history_while_op.intros(1))
+                apply auto
+                subgoal
+                  by (metis bhd.elims buf.set_intros(1) observation.sel observation.simps(3) observation.simps(5) pow_f_f_Suc set_buf_to_list_set_buf)
+                subgoal
+                  by (metis bhd.elims btl.simps(3) buf.set_intros(2) buf_to_list_btl observation.distinct(3) observation.simps(3) set_buf_to_list_set_buf)
+                done
+              subgoal for x' lxs'
+                apply hypsubst_thin
+                apply (cases "P x'")
+                subgoal
+
+end
+                apply (cases "\<exists> any. history_while_op P f (BENQ 1 (f x) buf) lxs' LNil any")
+
+              apply (rule disjI2)
+              apply (rule disjI2)
+              apply (rule disjI2)
+              apply (rule disjI2)
+              apply (rule disjI2)
+                apply (rule disjI2)
+                apply (rule disjI2)
+                apply (rule disjI2)
+              apply (rule disjI2)
+              apply (rule disjI1)
+              apply (subst while_body_rehistory.code)
+                apply simp
+                apply (intro conjI impI)
+                defer
+                subgoal
+                  apply (intro exI conjI disjI1)
+                  apply (rule refl)
+                  apply (smt (verit) history_while_op.simps)
+                  done
+                subgoal
+        apply (intro exI conjI disjI1)
+                  apply (rule refl)
+                  apply (smt (verit) history_while_op.simps)
+                  done
+                   defer
+                   defer
+                defer
+                subgoal
+                  apply auto
+                  
+
+
+end
               apply (subst while_body_rehistory.code)
               apply simp
               apply (rule disjI1)
