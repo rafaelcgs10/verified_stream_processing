@@ -353,7 +353,7 @@ lemma lproject_False_weak:
 lemma traced_not_forever_EOB:
   "traced m op lxs \<Longrightarrow> ldropn i (lfilter (\<lambda>x. is_Inp x \<and> proji x = p) lxs) \<noteq> repeat (Inp p EOB)"
   apply (induct "m p" arbitrary: op lxs)
-  sorry
+  oops
 
 lemma TRACES_not_forever_EOB:
   "lxs \<in> TRACES op \<Longrightarrow> ldropn i (lfilter (\<lambda>x. is_Inp x \<and> proji x = p) lxs) \<noteq> repeat (Inp p EOB)"
@@ -918,7 +918,7 @@ inductive_cases welltyped_EndE[elim!]: "welltyped A B End"
 lemma "x \<in> lset (lproject (=) lxs (Out q)) \<Longrightarrow> traced m op lxs \<Longrightarrow> welltyped A B op \<Longrightarrow> \<forall>p. lset (lproject (=) lxs (Inp p)) \<subseteq> A p \<Longrightarrow> x \<in> B q"
   apply (induct x "lproject (=) lxs (Out q)" arbitrary: m op lxs rule: llist.set_induct)
    apply (erule traced.cases; auto split: if_splits)
-  sorry
+  oops
 *)
 
 section\<open>Convenient types\<close>
