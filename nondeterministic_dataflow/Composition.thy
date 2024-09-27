@@ -2514,13 +2514,6 @@ lemma traced_pcomp_op': "traced (pcomp_op op1 op2) lxs \<longleftrightarrow>
   unfolding pcomp_op_def traced_comp_op lfilter_visible_IO_None
   by (auto simp: lfilter_lfilter lfocus_Inl_lmap lfocus_Inr_lmap intro: traced_causal_None)
 
-lemma traced_pcomp_op: "traced (pcomp_op op1 op2) lxs \<longleftrightarrow>
-  traced op1 (lfocus projl (range Inl) projl (range Inl) lxs) \<and>
-  traced op2 (lfocus projr (range Inr) projr (range Inr) lxs)"
-  unfolding pcomp_op_def traced_comp_op lfilter_visible_IO_None
-  apply (auto simp: lfilter_lfilter lfocus_Inl_lmap lfocus_Inr_lmap)
-  oops
-
 section\<open>Sequential composition\<close>
 
 lemma traced_inputs: "x \<in> lset lxs \<Longrightarrow> p \<in> set1_IO x \<Longrightarrow> traced op lxs \<Longrightarrow> p \<in> inputs op"
@@ -2594,5 +2587,40 @@ lemma inputs_scomp_op[simp]:
 lemma outputs_scomp_op[simp]:
   "outputs (scomp_op op1 op2) \<subseteq> outputs op2"
   unfolding scomp_op_def by (auto simp: op.set_map ran_def dest: outputs_comp_op)
+
+coinductive scausal where
+  "scausal (BTL p buf) ios1 ios2 \<Longrightarrow> y = BHD p buf \<Longrightarrow> scausal buf (LCons (Inp q x) ios1) (LCons (Inp p y) ios2)"
+| "scausal buf ios1 ios2 \<Longrightarrow> scausal buf (LCons (Inp q x) ios1) (LCons (Out p y) ios2)"
+| "scausal (BTL p (BENQ p' x buf)) ios1 ios2 \<Longrightarrow> y = BHD p (BENQ p' x buf) \<Longrightarrow> scausal buf (LCons (Out p' x) ios1) (LCons (Inp p y) ios2)"
+| "scausal (BENQ p' x buf) ios1 ios2 \<Longrightarrow> scausal buf (LCons (Out p' x) ios1) (LCons (Out p y) ios2)"
+| "scausal buf ios1 LNil"
+| "scausal (BTL p (bend o buf)) LNil ios2 \<Longrightarrow> y = BHD p (bend o buf) \<Longrightarrow> scausal buf LNil (LCons (Inp p y) ios2)"
+| "scausal (bend o buf) LNil ios2 \<Longrightarrow> scausal buf LNil (LCons (Out p y) ios2)"
+
+lemma scausal_causal: "scausal buf ios1 ios2 \<Longrightarrow> causal Some buf ios1 ios2"
+  by (coinduction arbitrary: buf ios1 ios2) (erule scausal.cases; auto simp: ran_def)
+
+lemma causal_scausal: "causal Some buf ios1 ios2 \<Longrightarrow> scausal buf ios1 ios2"
+  by (coinduction arbitrary: buf ios1 ios2) (erule causal.cases; auto simp: ran_def)
+
+lemma causal_Some_eq_scausal: "causal Some = scausal"
+  by (auto simp: fun_eq_iff causal_scausal scausal_causal)
+
+lemma visible_IO_Some: "visible_IO Some = case_IO (\<lambda>p _. isl p) (\<lambda>p _. \<not> isl p)"
+  by (auto simp: ran_def fun_eq_iff split: IO.splits sum.splits)
+
+lemma "traced (scomp_op op1 op2) ios \<longleftrightarrow> 
+  (\<exists>ios1 ios2. traced op1 ios1 \<and> traced op2 ios2 \<and> scausal (\<lambda>_. BEmpty) ios1 ios2 \<and>
+    ios = lmap (map_IO projl projr id)
+        (lfilter (case_IO (\<lambda>p _. isl p) (\<lambda>p _. \<not> isl p))
+          (lalternate (lmap (map_IO Inl Inl id) ios1)
+            (lmap (map_IO Inr Inr id) ios2))))"
+  unfolding scomp_op_def
+  apply (subst traced_map_op)
+    apply (auto simp add: inj_on_def op.set_map ran_def dest!: inputs_comp_op outputs_comp_op) [2]
+  apply (subst traced_comp_op)
+  apply (auto simp: causal_Some_eq_scausal visible_IO_Some)
+  done
+  find_theorems "lmap" lfilter
 
 end
