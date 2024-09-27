@@ -2380,8 +2380,7 @@ lemma outputs_pcomp_op[simp]:
   unfolding pcomp_op_def by (auto dest: outputs_comp_op)
 
 definition "lfocus f A g B ios =
-  lmap (\<lambda>io. case io of Inp p x \<Rightarrow> Inp (f p) x | Out p x \<Rightarrow> Out (g p) x)
-     (lfilter (case_IO (\<lambda>p _. p \<in> A) (\<lambda>p _. p \<in> B)) ios)"
+  lmap (map_IO f g id) (lfilter (case_IO (\<lambda>p _. p \<in> A) (\<lambda>p _. p \<in> B)) ios)"
 
 abbreviation \<open>lfocusl \<equiv> lfocus projl (range Inl) projl (range Inl)\<close>
 abbreviation \<open>lfocusr \<equiv> lfocus projr (range Inr) projr (range Inr)\<close>
@@ -2609,7 +2608,7 @@ lemma causal_Some_eq_scausal: "causal Some = scausal"
 lemma visible_IO_Some: "visible_IO Some = case_IO (\<lambda>p _. isl p) (\<lambda>p _. \<not> isl p)"
   by (auto simp: ran_def fun_eq_iff split: IO.splits sum.splits)
 
-lemma "traced (scomp_op op1 op2) ios \<longleftrightarrow> 
+lemma traced_scomp_op: "traced (scomp_op op1 op2) ios \<longleftrightarrow> 
   (\<exists>ios1 ios2. traced op1 ios1 \<and> traced op2 ios2 \<and> scausal (\<lambda>_. BEmpty) ios1 ios2 \<and>
     ios = lmap (map_IO projl projr id)
         (lfilter (case_IO (\<lambda>p _. isl p) (\<lambda>p _. \<not> isl p))
@@ -2621,6 +2620,65 @@ lemma "traced (scomp_op op1 op2) ios \<longleftrightarrow>
   apply (subst traced_comp_op)
   apply (auto simp: causal_Some_eq_scausal visible_IO_Some)
   done
-  find_theorems "lmap" lfilter
+
+lemma map_IO_alt: "map_IO f g id = case_IO (Inp o f) (Out o g)"
+  by (auto simp: fun_eq_iff observation.map_id split: IO.splits)
+
+lemma lproject_lmap: 
+  "lproject R S (lmap (map_IO f g id) lxs) =
+   lproject (\<lambda>x y. R x (f y)) (\<lambda>x y. S x (g y)) lxs"
+  unfolding lproject_def
+  apply (auto simp: fun_eq_iff lfilter_lmap llist.map_comp map_IO_alt)
+  apply (smt (verit) IO.case_eq_if IO.distinct(1) IO.sel(1) IO.sel(2) IO.sel(4) IO.simps(6) IO.split_sel_asm comp_apply data_def le_boolD le_boolI' lfilter_cong llist.map_cong observation.case_eq_if)
+  done
+
+lemma lproject_lfilter: "lproject R S (lfilter (case_IO (\<lambda>p _. P p) (\<lambda>p _. Q p)) lxs) = lproject (\<lambda>x y. R x y \<and> P y) (\<lambda>x y. S x y \<and> Q y) lxs"
+  unfolding lproject_def lfilter_lfilter
+  by (auto simp: fun_eq_iff intro!: llist.map_cong lfilter_cong split: IO.splits observation.splits)
+
+lemma lproject_eq_lfocusl: 
+  "lproject (\<lambda>x y. x = projl y \<and> isl y) (\<lambda>x y. False) lxs = lproject (=) \<bottom> (lfocusl lxs)"
+  unfolding lproject_def lfocus_def
+  apply (auto simp: lfilter_lmap fun_eq_iff llist.map_comp map_IO_alt lfilter_lfilter o_def)
+  apply (smt (verit) IO.case_eq_if IO.distinct(1) IO.sel(1) IO.sel(2) IO.sel(4) IO.sel(5) IO.split_sel_asm data_def image_iff le_boolE le_boolI' lfilter_cong llist.map_cong observation.case_eq_if rangeI sum.collapse(1) sum.disc(1))
+  done
+
+lemma lproject_eq_lfocusr: 
+  "lproject (\<lambda>x y. False) (\<lambda>x y. x = projr y \<and> \<not> isl y) lxs = lproject \<bottom> (=) (lfocusr lxs)"
+  unfolding lproject_def lfocus_def
+  apply (auto simp: lfilter_lmap fun_eq_iff llist.map_comp map_IO_alt lfilter_lfilter o_def)
+  apply (smt (verit) IO.case_eq_if IO.disc_eq_case(1) IO.distinct(1) IO.sel(4) IO.simps(2) IO.split_sel_asm image_iff isl_def le_boolD le_boolI' lfilter_cong llist.map_cong observation.case_eq_if rangeI sum.exhaust_sel sum.simps(4))
+  done
+
+(*likely only one direction holds*)
+(*
+lemma "history (scomp_op op1 op2) lxs lys \<longleftrightarrow>
+  (\<exists>lzs. history op1 lxs lzs \<and> history op2 lzs lys)"
+  unfolding history_def traced_scomp_op
+  apply safe
+  subgoal for ios ios1 ios2
+    apply (rule exI conjI | assumption)+
+    unfolding lproject_lmap lproject_lfilter bot_fun_def bot_bool_def simp_thms
+      lproject_eq_lfocusl lproject_eq_lfocusr lfocus_Inl_lmap lfocus_Inr_lmap
+      apply assumption
+     apply (rule refl)
+    apply (rule exI conjI allI | assumption)+
+    subgoal premises prems for p
+      sorry
+    apply (rule refl)
+    done
+  subgoal for lzs ios1 ios2
+    apply (rule exI conjI | assumption)+
+    subgoal premises prems
+      using prems(4)
+      sorry
+    apply (rule refl conjI)+
+    unfolding lproject_lmap lproject_lfilter bot_fun_def bot_bool_def simp_thms
+      lproject_eq_lfocusl lproject_eq_lfocusr lfocus_Inl_lmap lfocus_Inr_lmap
+     apply assumption
+    apply (rule TrueI)
+    done
+  done
+*)
 
 end
