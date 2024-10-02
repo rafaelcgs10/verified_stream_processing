@@ -69,7 +69,7 @@ lemma to_nop'_Choice_simp[simp]:
   apply simp
   done
 
-lemma to_dop_to_dop'_and_to_nop_to_nop'_aux:
+lemma to_dop_to_dop'_and_to_nop_to_nop':
   fixes dop :: "('i, 'o, 'd) dop" and nop :: "('i, 'o, 'd) nop"
   assumes "\<And>l r. R l r = (\<exists> dop. l = to_dop (to_dop' to_nop' dop) \<and> r = dop)"
       and "\<And>l r. S l r = (\<exists> nop. l = to_nop (to_nop' nop) \<and> r = nop)"
@@ -82,15 +82,6 @@ lemma to_dop_to_dop'_and_to_nop_to_nop'_aux:
     apply (cases nop; cases nop'; (simp add: assms(2)))
     apply (simp add: assms(1) fset.rel_map(1) fset.rel_refl)
     done
-  done
-
-lemma to_dop_to_dop'_and_to_nop_to_nop':
-  fixes dop :: "('i, 'o, 'd) dop" and nop :: "('i, 'o, 'd) nop"
-  shows "to_dop (to_dop' to_nop' dop) = dop \<and> to_nop (to_nop' nop) = nop"
-  using to_dop_to_dop'_and_to_nop_to_nop'_aux
- [where dop=dop and nop=nop and R="\<lambda> l r. (\<exists>dop. l = to_dop (to_dop' to_nop' dop) \<and> r = dop)" and
-  S="\<lambda> l r. (\<exists>nop. l = to_nop (to_nop' nop) \<and> r = nop)"]
-  apply simp
   done
      
 abbreviation "End \<equiv> Choice {||}"
