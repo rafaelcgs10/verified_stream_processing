@@ -39,6 +39,65 @@ definition to_dop' :: "(('i, 'o, 'd) nop \<Rightarrow> 'nop) \<Rightarrow> ('i, 
 primcorec to_nop' where
   "to_nop' nop = (case nop of Choice ops \<Rightarrow> Choice' (fimage (map_dop_nested id id to_nop') (fimage (to_dop' id) ops)))"
 
+
+lemma map_dop_nested_to_nop'[simp]:
+  "map_dop_nested id id to_nop' (to_dop' id x) = to_dop' to_nop' x"
+  unfolding to_dop'_def
+  apply (cases x)
+   apply auto
+  done
+
+lemma map_dop_nested_to_nop'_to_dop'[simp]:
+  "map_dop_nested id id to_nop' \<circ> to_dop' id = to_dop' to_nop'"
+  apply (rule ext)
+  subgoal for x
+    unfolding to_dop'_def
+    apply (cases x)
+     apply auto
+    done
+  done
+
+lemma to_nop'_code:
+  "to_nop' nop = (case nop of Choice ops \<Rightarrow> Choice' (fimage (to_dop' to_nop') ops))"
+  apply (subst to_nop'.code)
+  apply (simp only: map_dop_nested_to_nop'_to_dop' fset.map_comp)
+  done
+
+
+lemma aux:
+  "R1 dop dop' \<Longrightarrow>
+  (\<And>dop dop'.
+    R1 dop dop' \<Longrightarrow>
+    is_Read dop = is_Read dop' \<and>
+    (is_Read dop \<longrightarrow> is_Read dop' \<longrightarrow> un_Read1 dop = un_Read1 dop' \<and> rel_fun (=) (rel_nop (=) (=)) (un_Read2 dop) (un_Read2 dop')) \<and>
+    (\<not> is_Read dop \<longrightarrow> \<not> is_Read dop' \<longrightarrow> rel_nop (=) (=) (un_Write1 dop) (un_Write1 dop') \<and> un_Write2 dop = un_Write2 dop' \<and> un_Write3 dop = un_Write3 dop')) \<Longrightarrow>
+   dop = dop'"
+  apply (rule dop.coinduct[of _ _ _ "rel_nop (=) (=)"])
+    apply assumption
+   apply simp
+  oops
+
+lemma to_nop'_Choice_simp[simp]:
+  "to_nop' (Choice x) = Choice' (fimage (to_dop' to_nop') x)"
+  apply (subst to_nop'.code)
+  apply simp
+  done
+
+lemma to_dop_to_dop'_and_to_nop_to_nop':
+  fixes dop :: "('i, 'o, 'd) dop" and nop :: "('i, 'o, 'd) nop"
+  assumes "\<And>l r. R l r = (\<exists> dop. l = to_dop (to_dop' to_nop' dop) \<and> r = dop)"
+      and "\<And>l r. S l r = (\<exists> nop. l = to_nop (to_nop' nop) \<and> r = nop)"
+  shows  "(R (to_dop (to_dop' to_nop' dop)) dop \<longrightarrow> to_dop (to_dop' to_nop' dop) = dop) \<and> (S (to_nop (to_nop' nop)) nop \<longrightarrow> to_nop (to_nop' nop) = nop)"
+  apply (rule dop_nop.coinduct)
+  subgoal for dop dop'
+    apply (cases dop; cases dop'; (simp add: assms(1) assms(2) rel_funI to_dop'_def))
+    done
+  subgoal for nop nop'
+    apply (cases nop; cases nop'; (simp add: assms(2)))
+    apply (simp add: assms(1) fset.rel_map(1) fset.rel_refl)
+    done
+  done
+     
 abbreviation "End \<equiv> Choice {||}"
 abbreviation "Det op \<equiv> Choice {|op|}"
 abbreviation "ARead i f op \<equiv> Choice {|Read i f, op|}"
