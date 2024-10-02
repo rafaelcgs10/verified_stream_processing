@@ -63,6 +63,20 @@ lemma to_nop'_code:
   apply (simp only: map_dop_nested_to_nop'_to_dop' fset.map_comp)
   done
 
+
+lemma aux:
+  "R1 dop dop' \<Longrightarrow>
+  (\<And>dop dop'.
+    R1 dop dop' \<Longrightarrow>
+    is_Read dop = is_Read dop' \<and>
+    (is_Read dop \<longrightarrow> is_Read dop' \<longrightarrow> un_Read1 dop = un_Read1 dop' \<and> rel_fun (=) (rel_nop (=) (=)) (un_Read2 dop) (un_Read2 dop')) \<and>
+    (\<not> is_Read dop \<longrightarrow> \<not> is_Read dop' \<longrightarrow> rel_nop (=) (=) (un_Write1 dop) (un_Write1 dop') \<and> un_Write2 dop = un_Write2 dop' \<and> un_Write3 dop = un_Write3 dop')) \<Longrightarrow>
+   dop = dop'"
+  apply (rule dop.coinduct[of _ _ _ "rel_nop (=) (=)"])
+    apply assumption
+   apply simp
+  oops
+
 lemma to_nop'_Choice_simp[simp]:
   "to_nop' (Choice x) = Choice' (fimage (to_dop' to_nop') x)"
   apply (subst to_nop'.code)
