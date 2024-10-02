@@ -22,10 +22,10 @@ codatatype (dinputs: 'i, doutputs: 'o, dead 'd) dop =
   | Write "('i, 'o, 'd) nop" 'o 'd
 and (ninputs: 'i, noutputs: 'o, dead 'd) nop = Choice "('i, 'o, 'd) dop fset"
 
-codatatype (dinputs': 'i, doutputs': 'o, dead 'd, 'nop) dop_nested =
+codatatype (dinputs: 'i, doutputs: 'o, dead 'd, 'nop) dop_nested =
     Read' 'i "'d observation \<Rightarrow> 'nop"
     | Write' 'nop 'o 'd
-codatatype (ninputs': 'i, noutputs': 'o, dead 'd) nop' =
+codatatype (dinputs: 'i, doutputs: 'o, dead 'd) nop' =
     Choice' "('i, 'o, 'd, ('i, 'o, 'd) nop') dop_nested fset"
 type_synonym ('i, 'o, 'd) dop' = "('i, 'o, 'd, ('i, 'o, 'd) nop') dop_nested"
 
