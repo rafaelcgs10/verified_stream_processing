@@ -5,7 +5,7 @@ theory Composition
 imports
   Operator
 begin
-(*
+
 inductive comp_producing :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow> ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> nat \<Rightarrow> bool" for wire where
   "comp_producing wire buf End End 0"
 | "comp_producing wire buf (Read p1 f1) End 0"
@@ -54,7 +54,6 @@ lemma case_prod_cong4[fundef_cong]:
     (\<And>x1 x2 y1 y2. prod' = ((x1, x2), (y1, y2)) \<Longrightarrow> f x1 x2 y1 y2 = g x1 x2 y1 y2) \<Longrightarrow>
     ((\<lambda>((x1, x2), (y1, y2)). f x1 x2 y1 y2) prod) = ((\<lambda>((x1, x2), (y1, y2)). g x1 x2 y1 y2) prod')"
   by (auto split: prod.splits)
-*)
 
 corecursive comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
@@ -1946,48 +1945,8 @@ lemma traced_lfilter_visible_IO_alternate:
       done
     done
   done
-thm coinduct3
-context fixes f :: "'a :: complete_lattice \<Rightarrow> 'a" and X :: "'a"
-  assumes mono_f: "mono f"
-begin
 
-definition "congcl = lfp (\<lambda>x. X \<squnion> gfp f \<squnion> f x)"
-
-lemma congcl_base: "X \<le> congcl"
-  unfolding congcl_def using mono_f
-  by (subst lfp_unfold) (auto simp: mono_def le_fun_def sup.coboundedI1 sup.coboundedI2)
-lemma congcl_gfp: "gfp f \<le> congcl"
-  unfolding congcl_def using mono_f
-  by (subst lfp_unfold) (auto simp: mono_def le_fun_def sup.coboundedI1 sup.coboundedI2)
-lemma congcl_step: "f congcl \<le> congcl"
-  unfolding congcl_def using mono_f
-  by (subst (2) lfp_unfold) (auto simp: mono_def le_fun_def sup.coboundedI2)
-
-lemma congcl_sup_gfp: "congcl \<squnion> gfp f = congcl"
-  by (simp add: congcl_gfp sup_absorb1)
-
-lemma coinduct_upto:
-  assumes CIH: "X \<le> f congcl"
-  shows "X \<le> gfp f"
-  apply (rule order_trans[OF congcl_base])
-  apply (rule coinduct[OF mono_f])
-  apply (unfold congcl_sup_gfp)
-  apply (subst (1) congcl_def)
-  apply (rule lfp_induct)
-  subgoal
-    using mono_f by (auto simp: mono_def le_fun_def sup.coboundedI2)
-  unfolding le_fun_def le_sup_iff
-  subgoal
-    by (subst gfp_unfold[OF mono_f])
-      (auto intro!: CIH monoD[OF mono_f] congcl_gfp simp: congcl_def[symmetric])
-  done
-
-end
-
-thm coinduct_upto
-
-thm coinduct_upto
-thm congcl.intros
+find_theorems name: coinduct name: upto
 
 thm traced_coinduct_upto  traced.coinduct
 
@@ -2678,49 +2637,34 @@ lemma lproject_lfilter: "lproject R S (lfilter (case_IO (\<lambda>p _. P p) (\<l
   by (auto simp: fun_eq_iff intro!: llist.map_cong lfilter_cong split: IO.splits observation.splits)
 
 lemma lproject_eq_lfocusl: 
-  "lproject (\<lambda>x y. x = projl y \<and> isl y) \<bottom> lxs = lproject (=) \<bottom> (lfocusl lxs)"
+  "lproject (\<lambda>x y. x = projl y \<and> isl y) (\<lambda>x y. False) lxs = lproject (=) \<bottom> (lfocusl lxs)"
   unfolding lproject_def lfocus_def
-  apply (auto simp: lfilter_lmap fun_eq_iff llist.map_comp map_IO_alt lfilter_lfilter o_def bot_fun_def cong: IO.case_cong lfilter_cong llist.map_cong)
+  apply (auto simp: lfilter_lmap fun_eq_iff llist.map_comp map_IO_alt lfilter_lfilter o_def)
   apply (smt (verit) IO.case_eq_if IO.distinct(1) IO.sel(1) IO.sel(2) IO.sel(4) IO.sel(5) IO.split_sel_asm data_def image_iff le_boolE le_boolI' lfilter_cong llist.map_cong observation.case_eq_if rangeI sum.collapse(1) sum.disc(1))
   done
 
 lemma lproject_eq_lfocusr: 
-  "lproject \<bottom> (\<lambda>x y. x = projr y \<and> \<not> isl y) lxs = lproject \<bottom> (=) (lfocusr lxs)"
+  "lproject (\<lambda>x y. False) (\<lambda>x y. x = projr y \<and> \<not> isl y) lxs = lproject \<bottom> (=) (lfocusr lxs)"
   unfolding lproject_def lfocus_def
-  apply (auto simp: lfilter_lmap fun_eq_iff llist.map_comp map_IO_alt lfilter_lfilter o_def bot_fun_def cong: IO.case_cong observation.case_cong lfilter_cong llist.map_cong)
+  apply (auto simp: lfilter_lmap fun_eq_iff llist.map_comp map_IO_alt lfilter_lfilter o_def)
   apply (smt (verit) IO.case_eq_if IO.disc_eq_case(1) IO.distinct(1) IO.sel(4) IO.simps(2) IO.split_sel_asm image_iff isl_def le_boolD le_boolI' lfilter_cong llist.map_cong observation.case_eq_if rangeI sum.exhaust_sel sum.simps(4))
   done
 
 (*likely only one direction holds*)
-
-lemma scausal_lprefix: "scausal buf ios1 ios2 \<Longrightarrow>
-  lprefix (bapp (buf p) (lproject (=) \<bottom> ios2 p)) (lproject \<bottom> (=) ios1 p)"
-  apply (coinduction arbitrary: buf ios1 ios2)
-  subgoal for buf ios1 ios2
-    apply safe
-    apply (simp add: lnull_def lproject_empty_conv)
-    apply (erule scausal.cases)
-    apply simp_all
-  sorry
-
-lemma bot_is_bot: "(\<lambda>x y. \<bottom> x (f y) \<and> S y) = \<bottom>"
-  by auto
-
-
+(*
 lemma "history (scomp_op op1 op2) lxs lys \<longleftrightarrow>
   (\<exists>lzs. history op1 lxs lzs \<and> history op2 lzs lys)"
   unfolding history_def traced_scomp_op
   apply safe
   subgoal for ios ios1 ios2
     apply (rule exI conjI | assumption)+
-    unfolding lproject_lmap lproject_lfilter bot_is_bot simp_thms
+    unfolding lproject_lmap lproject_lfilter bot_fun_def bot_bool_def simp_thms
       lproject_eq_lfocusl lproject_eq_lfocusr lfocus_Inl_lmap lfocus_Inr_lmap
       apply assumption
      apply (rule refl)
     apply (rule exI conjI allI | assumption)+
     subgoal premises prems for p
-      using scausal_lprefix[OF prems(5), of p]
-      by (simp add: bot_fun_def)
+      sorry
     apply (rule refl)
     done
   subgoal for lzs ios1 ios2
@@ -2729,11 +2673,12 @@ lemma "history (scomp_op op1 op2) lxs lys \<longleftrightarrow>
       using prems(4)
       sorry
     apply (rule refl conjI)+
-    unfolding lproject_lmap lproject_lfilter bot_is_bot simp_thms
+    unfolding lproject_lmap lproject_lfilter bot_fun_def bot_bool_def simp_thms
       lproject_eq_lfocusl lproject_eq_lfocusr lfocus_Inl_lmap lfocus_Inr_lmap
      apply assumption
     apply (rule TrueI)
     done
   done
+*)
 
 end

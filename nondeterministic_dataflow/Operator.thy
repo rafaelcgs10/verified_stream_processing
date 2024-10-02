@@ -17,36 +17,16 @@ section\<open>Channels\<close>
 code_lazy_type llist
 
 datatype (discs_sels) 'd observation = Observed (obs: 'd) | EOS
-codatatype (dinputs: 'i, doutputs: 'o, dead 'd) dop =
-    Read 'i "'d observation \<Rightarrow> ('i, 'o, 'd) nop"
-  | Write "('i, 'o, 'd) nop" 'o 'd
-and (ninputs: 'i, noutputs: 'o, dead 'd) nop = Choice "('i, 'o, 'd) dop fset"
-
-codatatype (dinputs: 'i, doutputs: 'o, dead 'd, 'nop) dop_nested =
-    Read' 'i "'d observation \<Rightarrow> 'nop"
-    | Write' 'nop 'o 'd
-codatatype (dinputs: 'i, doutputs: 'o, dead 'd) nop' =
-    Choice' "('i, 'o, 'd, ('i, 'o, 'd) nop') dop_nested fset"
-type_synonym ('i, 'o, 'd) dop' = "('i, 'o, 'd, ('i, 'o, 'd) nop') dop_nested"
-
-primcorec to_dop :: "('i, 'o, 'd) dop' \<Rightarrow> ('i, 'o, 'd) dop" and to_nop :: "('i, 'o, 'd) nop' \<Rightarrow> ('i, 'o, 'd) nop" where
-  "to_dop dop = (case dop of Read' i f \<Rightarrow> Read i (to_nop \<circ> f) | Write' op i x \<Rightarrow> Write (to_nop op) i x)"
-| "to_nop nop = (case nop of Choice' ops \<Rightarrow> Choice (fimage to_dop ops))"
-
-definition to_dop' :: "(('i, 'o, 'd) nop \<Rightarrow> 'nop) \<Rightarrow> ('i, 'o, 'd) dop \<Rightarrow> ('i, 'o, 'd, 'nop) dop_nested" where
-  "to_dop' to_nop' dop = (case dop of Read i f \<Rightarrow> Read' i (to_nop' \<circ> f) | Write op i x \<Rightarrow> Write' (to_nop' op) i x)"
-
-primcorec to_nop' where
-  "to_nop' nop = (case nop of Choice ops \<Rightarrow> Choice' (fimage (map_dop_nested id id to_nop') (fimage (to_dop' id) ops)))"
+codatatype (inputs: 'ip, outputs: 'op, dead 'd) op =
+  Read 'ip "'d observation \<Rightarrow> ('ip, 'op, 'd) op"
+  | Write "('ip, 'op, 'd) op" 'op 'd
+  | Choice "('ip, 'op, 'd) op fset"
 
 abbreviation "End \<equiv> Choice {||}"
-abbreviation "Det op \<equiv> Choice {|op|}"
-abbreviation "ARead i f op \<equiv> Choice {|Read i f, op|}"
 
 type_synonym 'd channel = "'d llist"
 
-code_lazy_type dop
-code_lazy_type nop
+code_lazy_type op
 
 fun chd where
   "chd LNil = EOS"
@@ -59,62 +39,30 @@ abbreviation CTL :: "'a \<Rightarrow> ('a \<Rightarrow> 'd channel) \<Rightarrow
 
 section \<open>Sub operators\<close>
 
-inductive sub_ddop :: \<open>('ip, 'op, 'd) dop \<Rightarrow> ('ip, 'op, 'd) dop \<Rightarrow> nat \<Rightarrow> bool\<close>
-      and sub_dnop :: \<open>('ip, 'op, 'd) dop \<Rightarrow> ('ip, 'op, 'd) nop \<Rightarrow> nat \<Rightarrow> bool\<close> for op where
-  sub_op_Refl: \<open>sub_ddop op op 0\<close>
-| sub_op_Read: \<open>sub_dnop op (f x) n \<Longrightarrow> sub_ddop op (Read p f) (Suc n)\<close>
-| sub_op_Write: \<open>sub_dnop op op' n \<Longrightarrow> sub_ddop op (Write op' p x) (Suc n)\<close>
-| sub_op_Choice: \<open>op' |\<in>| ops \<Longrightarrow> sub_ddop op op' n \<Longrightarrow> sub_dnop op (Choice ops) (Suc n)\<close>
+inductive sub_op :: \<open>('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op \<Rightarrow> nat \<Rightarrow> bool\<close> for op where
+  sub_op_Refl: \<open>sub_op op op 0\<close>
+| sub_op_Read: \<open>sub_op op (f x) n \<Longrightarrow> sub_op op (Read p f) (Suc n)\<close>
+| sub_op_Write: \<open>sub_op op op' n \<Longrightarrow> sub_op op (Write op' p x) (Suc n)\<close>
+| sub_op_Choice: \<open>\<exists> op' |\<in>| ops. sub_op op op' n \<Longrightarrow> sub_op op (Choice ops) (Suc n)\<close>
 
-inductive_cases sub_ddop_ReflE [elim!]: \<open>sub_ddop op op n\<close>
-inductive_cases sub_ddop_ReadE [elim!]: \<open>sub_ddop op (Read p f) n\<close>
-inductive_cases sub_ddop_WriteE [elim!]: \<open>sub_ddop op (Write op' p x) n\<close>   
-inductive_cases sub_dnop_ChoiceE [elim!]: \<open>sub_dnop op (Choice ops) n\<close>
+inductive_cases sub_op_ReflE [elim!]: \<open>sub_op op op n\<close>
+inductive_cases sub_op_ReadE [elim!]: \<open>sub_op op (Read p f) n\<close>
+inductive_cases sub_op_WriteE [elim!]: \<open>sub_op op (Write op' p x) n\<close>   
+inductive_cases sub_op_ChoiceE [elim!]: \<open>sub_op op (Choice ops) n\<close>   
 
-inductive sub_ndop :: \<open>('ip, 'op, 'd) nop \<Rightarrow> ('ip, 'op, 'd) dop \<Rightarrow> nat \<Rightarrow> bool\<close>
-      and sub_nnop :: \<open>('ip, 'op, 'd) nop \<Rightarrow> ('ip, 'op, 'd) nop \<Rightarrow> nat \<Rightarrow> bool\<close> for op where
-  sub_op_Refl: \<open>sub_nnop op op 0\<close>
-| sub_op_Read: \<open>sub_nnop op (f x) n \<Longrightarrow> sub_ndop op (Read p f) (Suc n)\<close>
-| sub_op_Write: \<open>sub_nnop op op' n \<Longrightarrow> sub_ndop op (Write op' p x) (Suc n)\<close>
-| sub_op_Choice: \<open>op' |\<in>| ops \<Longrightarrow> sub_ndop op op' n \<Longrightarrow> sub_nnop op (Choice ops) (Suc n)\<close>
+lemma inputs_sub_op_Read: \<open>p \<in> inputs op \<Longrightarrow> \<exists>f n. sub_op (Read p f) op n\<close>
+  by (induct op pred: inputs) (auto intro: sub_op.intros)
 
-inductive_cases sub_nnop_ReflE [elim!]: \<open>sub_nnop op op n\<close>
-inductive_cases sub_ndop_ReadE [elim!]: \<open>sub_ndop op (Read p f) n\<close>
-inductive_cases sub_ndop_WriteE [elim!]: \<open>sub_ndop op (Write op' p x) n\<close>   
-inductive_cases sub_nnop_ChoiceE [elim!]: \<open>sub_nnop op (Choice ops) n\<close>
+lemma sub_op_Read_inputs: \<open>sub_op (Read p f) op n \<Longrightarrow> p \<in> inputs op\<close>
+  by (induct op n pred: sub_op) auto
 
-lemmas inputs_set_induct =
-  dop_nop.set_induct(1)[THEN conjunct1, rule_format, rotated -1, consumes 1, case_names Read Write Choice, induct set: dinputs]
-  dop_nop.set_induct(1)[THEN conjunct2, rule_format, rotated -1, consumes 1, case_names Read Write Choice, induct set: ninputs]
-lemmas outputs_set_induct =
-  dop_nop.set_induct(2)[THEN conjunct1, rule_format, rotated -1, consumes 1, case_names Read Write Choice, induct set: doutputs]
-  dop_nop.set_induct(2)[THEN conjunct2, rule_format, rotated -1, consumes 1, case_names Read Write Choice, induct set: noutputs]
+lemma outputs_sub_op_Write: \<open>p \<in> outputs op \<Longrightarrow> \<exists>op' x n. sub_op (Write op' p x) op n\<close>
+  by (induct op pred: outputs) (auto 10 10 intro: sub_op.intros)
 
-lemma inputs_sub_op_Read:
-  fixes dop :: "('i, 'o, 'd) dop" and nop :: "('i, 'o, 'd) nop"
-  shows \<open>p \<in> dinputs dop \<Longrightarrow> \<exists>f n. sub_ddop (Read p f) dop n\<close>
-   \<open>p \<in> ninputs nop \<Longrightarrow> \<exists>f n. sub_dnop (Read p f) nop n\<close>
-  by (induct dop and nop set: dinputs ninputs) (auto intro: sub_ddop_sub_dnop.intros)
 
-lemma sub_op_Read_inputs:
-  fixes dop :: "('i, 'o, 'd) dop" and nop :: "('i, 'o, 'd) nop"
-  shows \<open>sub_ddop (Read p f) dop n \<Longrightarrow> p \<in> dinputs dop\<close>
-  \<open>sub_dnop (Read p f) nop n \<Longrightarrow> p \<in> ninputs nop\<close>
-  by (induct dop n and nop n pred: sub_ddop sub_dnop) auto
+lemma sub_op_Write_outputs: \<open>sub_op (Write op' p x) op n \<Longrightarrow> p \<in> outputs op\<close>
+  by (induct op n pred: sub_op) auto
 
-lemma outputs_sub_op_Write:
-  fixes dop :: "('i, 'o, 'd) dop" and nop :: "('i, 'o, 'd) nop"
-  shows \<open>p \<in> doutputs dop \<Longrightarrow> \<exists>op' x n. sub_ddop (Write op' p x) dop n\<close>
-   \<open>p \<in> noutputs nop \<Longrightarrow> \<exists>op' x n. sub_dnop (Write op' p x) nop n\<close>
-  by (induct dop and nop set: doutputs noutputs) (auto intro: sub_ddop_sub_dnop.intros)
-
-lemma sub_op_Write_outputs:
-  fixes dop :: "('i, 'o, 'd) dop" and nop :: "('i, 'o, 'd) nop"
-  shows \<open>sub_ddop (Write op' p x) dop n \<Longrightarrow> p \<in> doutputs dop\<close>
-  \<open>sub_dnop (Write op' p x) nop n \<Longrightarrow> p \<in> noutputs nop\<close>
-  by (induct dop n and nop n pred: sub_ddop sub_dnop) auto
-
-(*
 lemma sub_op_Read_induct [consumes 1, case_names Read1 Read2 Write]:
   assumes \<open>sub_op (Read p g) op d\<close>
     and read1: \<open>\<And>f p. P p (Read p f)\<close>
@@ -142,8 +90,7 @@ proof (induct d arbitrary: op p rule: less_induct)
   from this(2,1) show ?case
     by (induct op m pred: sub_op) (meson assms(2-) le_imp_less_Suc)+
 qed
-*)
-(*
+
 section\<open>Inputs measure\<close>
 
 inductive input_at where
@@ -293,21 +240,22 @@ lemma output_depth_Write_simp_diff[simp]:
       using output_at.simps by fastforce
     done
   done
-*)
 
 section\<open>Trace model basics\<close>
 datatype ('a, 'b, 'd) IO = Inp (proji: 'a) "'d observation" | Out (projo: 'b) (data: 'd)
   where "data (Inp p x) = obs x"
 
-coinductive dtraced and ntraced where
-  Read: "ntraced (f x) lxs \<Longrightarrow> dtraced (Read p f) (LCons (Inp p x) lxs)"
-| Write: "ntraced op lxs \<Longrightarrow> dtraced (Write op p x) (LCons (Out p x) lxs)"
-| Choice: "op |\<in>| ops \<Longrightarrow> dtraced op lxs \<Longrightarrow>  ntraced (Choice ops) lxs"
+coinductive traced where
+  Read: "traced (f x) lxs \<Longrightarrow> traced (Read p f) (LCons (Inp p x) lxs)"
+| Write: "traced op lxs \<Longrightarrow> traced (Write op p x) (LCons (Out p x) lxs)"
+| Choice: "\<exists> op |\<in>| ops. traced op lxs \<Longrightarrow>  traced (Choice ops) lxs"
+| End: "traced End LNil"
 
-inductive_cases dtraced_WriteE[elim!]: "dtraced (Write op p' x) lxs"
-inductive_cases dtraced_ReadE[elim!]: "dtraced (Read p' f) lxs"
-inductive_cases ntraced_ChoiceE[elim!]: "ntraced (Choice ops) lxs"
-(*
+inductive_cases traced_LNilE[elim!]: "traced op LNil"
+inductive_cases traced_WriteE[elim!]: "traced (Write op p' x) lxs"
+inductive_cases traced_ChoiceE[elim!]: "traced (Choice ops) lxs"
+inductive_cases traced_ReadE[elim!]: "traced (Read p' f) lxs"
+
 inductive traced_cong for R where
   tc_base: "R op lxs \<Longrightarrow> traced_cong R op lxs"
 | tc_traced: "traced op lxs \<Longrightarrow> traced_cong R op lxs"
@@ -435,20 +383,18 @@ lemma TRACES_not_forever_EOB:
   unfolding TRACES_def traces_def
   by (auto dest: traced_not_forever_EOB)
 *)
-*)
 
 section\<open>Cleaned predicate\<close>
 
-coinductive dcleaned and ncleaned where
-  cleaned_Read[intro]: "p \<notin> inputs (f EOS) \<Longrightarrow> (\<And>x. ncleaned (f x)) \<Longrightarrow> dcleaned (Read p f)"
-| cleaned_Write[intro]: "ncleaned op \<Longrightarrow> dcleaned (Write op q x)"
-| cleaned_End[iff]: "(\<forall>op |\<in>| ops. dcleaned op) \<Longrightarrow> ncleaned (Choice ops)"
+coinductive cleaned where
+  cleaned_Read[intro]: "p \<notin> inputs (f EOS) \<Longrightarrow> (\<And>x. cleaned (f x)) \<Longrightarrow>  cleaned (Read p f)"
+| cleaned_Write[intro]: "cleaned op \<Longrightarrow> cleaned (Write op q x)"
+| cleaned_End[iff]: "cleaned End"
 
-inductive_cases dcleaned_ReadE[elim!]: "dcleaned (Read p f)"
-inductive_cases dcleaned_WriteE[elim!]: "dcleaned (Write op q x)"
-inductive_cases ncleaned_ChoiceE[elim!]: "ncleaned (Choice ops)"
+inductive_cases cleaned_ReadE[elim!]: "cleaned (Read p f)"
+inductive_cases cleaned_WriteE[elim!]: "cleaned (Write op q x)"
+inductive_cases cleaned_EndE[elim!]: "cleaned End"
 
-(*
 inductive cleaned_cong for R where
   cc_base: "R op \<Longrightarrow> cleaned_cong R op"
 | cc_cleaned: "cleaned op \<Longrightarrow> cleaned_cong R op"
@@ -898,7 +844,6 @@ lemma history_produce:
     done
   done
  *)
-*)
 
 
 section\<open>Buffer infrastrcuture\<close>
@@ -906,9 +851,8 @@ section\<open>Buffer infrastrcuture\<close>
 datatype 'd buf = BEmpty | BEnded | BCons 'd "'d buf"
 
 fun bhd where
-  "bhd BEmpty = None"
-| "bhd BEnded = Some EOS"
-| "bhd (BCons x xs) = Some (Observed x)"
+  "bhd BEnded = EOS"
+| "bhd (BCons x xs) = Observed x"
 
 fun btl where
   "btl BEmpty = BEmpty"
@@ -946,14 +890,22 @@ fun benq where
 | "benq x BEnded = BCons x BEnded"
 | "benq x (BCons y ys) = BCons y (benq x ys)"
 
-abbreviation BHD :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> 'd observation option" where "BHD p buf \<equiv> bhd (buf p)"
+abbreviation BHD :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> 'd observation" where "BHD p buf \<equiv> bhd (buf p)"
 abbreviation (input) BUPD where "BUPD f p buf \<equiv> buf(p := f (buf p))"
 abbreviation BTL :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BTL \<equiv> BUPD btl"
 abbreviation BENQ :: "'a \<Rightarrow> 'd \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BENQ p x buf \<equiv> BUPD (benq x) p buf"
 abbreviation BENQ_TL :: "'a \<Rightarrow> 'd \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BENQ_TL p x buf \<equiv> BUPD (btl o benq x) p buf"
 
-lemma BHD_neq_None_bend:
-  "BHD p buf \<noteq> None \<Longrightarrow> BHD (buf p) bend = BHD p buf"
+lemma BHD_not_Observed_bend:
+  "\<not> (is_Observed (BHD p buf)) \<Longrightarrow> BHD (buf p) bend = EOS"
+  apply (induct "buf p")
+    apply auto[1]
+   apply simp
+  apply (metis bhd.simps(3) observation.disc(1))
+  done
+
+lemma BHD_neq_EOB_bend:
+  "BHD p buf \<noteq> EOB \<Longrightarrow> BHD (buf p) bend = BHD p buf"
   apply (induct "buf p")
     apply auto[1]
    apply simp
@@ -975,14 +927,14 @@ lemma extend_empty: "extend {} buf R = R"
 
 section\<open>Well-typed\<close>
 
-coinductive dwelltyped and nwelltyped where
-  "nwelltyped A B (f EOS) \<Longrightarrow> \<forall>x \<in> A p. nwelltyped A B (f (Observed x)) \<Longrightarrow> dwelltyped A B (Read p f)"
-| "x \<in> B p \<Longrightarrow> nwelltyped A B op \<Longrightarrow> dwelltyped A B (Write op p x)"
-| "(\<forall>ops |\<in>| ops. dwelltyped A B op) \<Longrightarrow> nwelltyped A B (Choice ops)"
+coinductive welltyped where
+  "welltyped A B (f EOB) \<Longrightarrow> welltyped A B (f EOS) \<Longrightarrow> \<forall>x \<in> A p. welltyped A B (f (Observed x)) \<Longrightarrow> welltyped A B (Read p f)"
+| "x \<in> B p \<Longrightarrow> welltyped A B op \<Longrightarrow> welltyped A B (Write op p x)"
+| "welltyped A B End"
 
-inductive_cases welltyped_ReadE[elim!]: "dwelltyped A B (Read p f)"
-inductive_cases welltyped_WriteE[elim!]: "dwelltyped A B (Write op q x)"
-inductive_cases welltyped_ChoiceE[elim!]: "nwelltyped A B (Choice ops)"
+inductive_cases welltyped_ReadE[elim!]: "welltyped A B (Read p f)"
+inductive_cases welltyped_WriteE[elim!]: "welltyped A B (Write op q x)"
+inductive_cases welltyped_EndE[elim!]: "welltyped A B End"
   (*
 (*characteristic property of welltyped*)
 lemma "x \<in> lset (lproject (=) lxs (Out q)) \<Longrightarrow> traced m op lxs \<Longrightarrow> welltyped A B op \<Longrightarrow> \<forall>p. lset (lproject (=) lxs (Inp p)) \<subseteq> A p \<Longrightarrow> x \<in> B q"
@@ -993,9 +945,7 @@ lemma "x \<in> lset (lproject (=) lxs (Out q)) \<Longrightarrow> traced m op lxs
 
 section\<open>Convenient types\<close>
 
-type_synonym 'd dop22 = "(2, 2, 'd) dop"
-type_synonym 'd dop11 = "(1, 1, 'd) dop"
-type_synonym 'd nop22 = "(2, 2, 'd) nop"
-type_synonym 'd nop11 = "(1, 1, 'd) nop"
+type_synonym 'd op22 = "(2, 2, 'd) op"
+type_synonym 'd op11 = "(1, 1, 'd) op"
 
 end
