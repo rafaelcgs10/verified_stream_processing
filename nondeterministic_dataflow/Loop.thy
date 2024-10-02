@@ -2243,70 +2243,630 @@ lemma trace_while_op_traced:
 lemma traced_while_op_correctness:
   "traced (while_op buf P f) ios \<longleftrightarrow> trace_while_op P f buf ios"
   using traced_while_op trace_while_op_traced by blast
+(* FIXME: move me *)
+lemma set_buf_benq[simp]:
+  "set_buf (benq x xs) = insert x (set_buf xs)"
+  by (metis Un_insert_right buf_to_list_benq list.set(1) list.set(2) set_append set_buf_to_list_set_buf sup_bot.right_neutral)
 
-
-(*
-
- [(a, 10), (b, 3), (c, 14), (d, 4), (e, 0)]
- 
- [(a, 10), (b, 3), (c, 14), (d, 4), (e, 0)]
-
- [(b, 3), (a, 7), (c, 14), (d, 4), (e, 0)]
-
- [(b, 3), (a, 7), (d, 4), (c, 10), (e, 0)]
-
- [(b, 3), (d, 4), (a, 3), (c, 10), (e, 0)]
-
- [(b, 3), (a, 0), (d, 1), (c, 10), (e, 0)]
-
- [(a, 0), (b, 3), (d, 1), (c, 10), (e, 0)]
-
- [(a, 0), (d, 1), (b, 2), (c, 10), (e, 0)]
-
- [(a, 0), (d, 1), (b, 2), (e, 0), (c, 10)]
-
- [(a, 0), (d, 1), (e, 0), (b, 2), (c, 10)]
-
- [(a, 0), (e, 0), (d, 1), (b, 2), (c, 10)]
-
- [(e, 0), (a, 0), (d, 1), (b, 2), (c, 10)]
-
-
- [a, b c d]
- [b, 
- 
-
- [(b, 1), (a, 12), (c, 15)]
- [(b, 1), (a, 12), (c, 15)]
- 
-*)
 
 datatype read_state = READ_BUF | READ_INPUT 
 
+inductive while_op_state_machine for P f where
+  "while_op_state_machine P f (buf, [], READ_INPUT) [] (buf, READ_INPUT)"
+| "while_op_state_machine P f (buf, xs, READ_BUF) ys (buf', any') \<Longrightarrow> P x \<Longrightarrow> while_op_state_machine P f (buf, x#xs, READ_INPUT) (x#ys) (buf', any')"
+| "while_op_state_machine P f (BENQ 1 (f x) buf, xs, READ_BUF) ys (buf', any') \<Longrightarrow> \<not> P x \<Longrightarrow> while_op_state_machine P f (buf, x#xs, READ_INPUT) ys (buf', any')"
+| "while_op_state_machine P f (BTL 1 buf, xs, READ_INPUT) ys (buf', any') \<Longrightarrow> BHD 1 buf = Observed x \<Longrightarrow> P x \<Longrightarrow> while_op_state_machine P f (buf, xs, any) (x#ys) (buf', any')"
+| "while_op_state_machine P f (BENQ 1 (f x) (BTL 1 buf), xs, READ_INPUT) ys (buf', any') \<Longrightarrow> BHD 1 buf = Observed x \<Longrightarrow> \<not> P x \<Longrightarrow> while_op_state_machine P f (buf, xs, any) ys (buf', any')"
+| "while_op_state_machine P f (buf, xs, READ_INPUT) ys (buf', any') \<Longrightarrow> BHD 1 buf = EOB \<Longrightarrow> while_op_state_machine P f (buf, xs, any) ys (buf', any')"
+
 coinductive history_while_op for P f where
   "\<not> (\<exists> x \<in> set (buf_to_list (buf 1)). \<exists> n. P ((f ^^ n) x)) \<Longrightarrow> history_while_op P f buf lxs LNil any"
-| "BHD 1 buf = EOS \<Longrightarrow> history_while_op P f buf lxs LNil any"
+| "history_while_op P f buf' lxs lys read_state' \<Longrightarrow> while_op_state_machine P f (buf, xs, read_state) ys (buf', read_state') \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> history_while_op P f buf (xs @@- lxs) (ys @@- lys) read_state"
 
-| "history_while_op P f (BTL 1 buf) lxs lys READ_INPUT \<Longrightarrow> P x \<Longrightarrow> BHD 1 buf = Observed x \<Longrightarrow> history_while_op P f buf lxs (LCons x lys) any"
-| "history_while_op P f (BENQ 1 (f x) (BTL 1 buf)) lxs lys READ_INPUT \<Longrightarrow> \<not> P x \<Longrightarrow> BHD 1 buf = Observed x \<Longrightarrow> history_while_op P f buf lxs lys any"
-| "history_while_op P f buf lxs lys READ_INPUT \<Longrightarrow> BHD 1 buf = EOB \<Longrightarrow> history_while_op P f buf lxs lys any"
+term while_op
 
-| "history_while_op P f buf lxs lys READ_BUF \<Longrightarrow> P x \<Longrightarrow> history_while_op P f buf (LCons x lxs) (LCons x lys) READ_INPUT"
-| "history_while_op P f (BENQ 1 (f x) buf) lxs lys READ_BUF \<Longrightarrow> \<not> P x \<Longrightarrow> history_while_op P f buf (LCons x lxs) lys READ_INPUT"
+inductive_cases history_while_opLCons: "history_while_op P f buf lxs (LCons y lys) read_state"
 
+thm history_while_opLCons[simplified, no_vars]
+
+lemma while_op_state_machine_trans:
+  "while_op_state_machine P f (buf, xs, read_state) ys (buf2, read_state2) \<Longrightarrow>
+   while_op_state_machine P f (buf2, xs2, read_state2) ys2 (buf3, read_state3) \<Longrightarrow>
+   while_op_state_machine P f (buf, xs @ xs2, read_state) (ys @ ys2) (buf3, read_state3)"
+  apply (induct "(buf, xs, read_state)" ys "(buf2, read_state2)" arbitrary: xs2 ys2 buf3 read_state3 buf xs read_state buf2 read_state2 rule: while_op_state_machine.induct)
+  apply (auto simp add: while_op_state_machine.intros(2) while_op_state_machine.intros(3) while_op_state_machine.intros(4))
+  subgoal
+    using while_op_state_machine.intros(5) by fastforce
+  subgoal
+    using while_op_state_machine.intros(6) by blast
+  done
+
+lemma history_while_op_READ_BUF_READ_INPUT[intro]:
+  "history_while_op P f buf lxs lys READ_BUF \<Longrightarrow>
+   BHD 1 buf = EOB \<Longrightarrow>
+   history_while_op P f buf lxs lys READ_INPUT"
+  apply (erule history_while_op.cases)
+  subgoal
+    by (auto intro: history_while_op.intros)
+  subgoal
+    by (smt (verit) fst_conv history_while_op.intros(2) not_Cons_self2 snd_conv while_op_state_machine.simps)
+  done
+
+
+lemma history_while_op_READ_INPUT_READ_BUF[intro]:
+  "history_while_op P f buf lxs lys READ_INPUT \<Longrightarrow>
+   BHD 1 buf = EOB \<Longrightarrow>
+   history_while_op P f buf lxs lys READ_BUF"
+  apply (erule history_while_op.cases)
+  subgoal
+    by (auto intro: history_while_op.intros)
+  subgoal
+    apply hypsubst_thin
+    by (meson history_while_op.intros(2) not_Cons_self2 while_op_state_machine.intros(6))
+  done
+
+lemma history_while_op_P_x_not_P_y[intro]:
+  "history_while_op P f (BENQ 1 (f y) (BTL 1 buf)) lxs lys READ_INPUT \<Longrightarrow>
+   BHD 1 buf = Observed y \<Longrightarrow>
+   P x \<Longrightarrow>
+   \<not> P y \<Longrightarrow>
+   history_while_op P f buf (LCons x lxs) (LCons x lys) READ_INPUT"
+      apply (subst (1 2) singleton_lshift[symmetric])
+  apply (rule history_while_op.intros(2))
+  defer
+    apply (rule while_op_state_machine.intros(2))
+    apply (rule while_op_state_machine.intros(5))
+    apply (rule while_op_state_machine.intros(1))
+      apply assumption+
+   apply auto
+  done
+
+lemma history_while_op_not_P_y[intro]:
+  "history_while_op P f (BTL 1 buf) lxs lys READ_INPUT \<Longrightarrow>
+   BHD 1 buf = Observed y \<Longrightarrow>
+   P y \<Longrightarrow>
+   history_while_op P f buf lxs (LCons y lys) READ_INPUT"
+  apply (subst lshift_simps(1)[symmetric])
+      apply (subst singleton_lshift[symmetric])
+    apply (rule history_while_op.intros(2))
+   defer
+     apply (rule while_op_state_machine.intros(4))
+     apply (rule while_op_state_machine.intros(1))
+    apply auto
+  done
+
+lemma history_while_op_P_x_EOB[intro]:
+  "history_while_op P f buf lxs lys READ_INPUT \<Longrightarrow>
+   BHD 1 buf = EOB \<Longrightarrow>
+   P x \<Longrightarrow>
+   history_while_op P f buf (LCons x lxs) (LCons x lys) READ_INPUT"
+      apply (subst (1 2) singleton_lshift[symmetric])
+    apply (rule history_while_op.intros(2))
+   defer 
+   apply (rule while_op_state_machine.intros(2))
+    apply (rule while_op_state_machine.intros(6))
+     apply (rule while_op_state_machine.intros(1))
+    apply auto
+  done
+
+lemma history_while_op_P_x_P_y[intro]:
+  "history_while_op P f (BTL 1 buf) lxs lys READ_INPUT \<Longrightarrow>
+   BHD 1 buf = Observed y \<Longrightarrow>
+   P x \<Longrightarrow>
+   P y \<Longrightarrow>
+   history_while_op P f buf (LCons x lxs) (LCons x (LCons y lys)) READ_INPUT"
+  apply (subst singleton_lshift[symmetric])
+  apply (subgoal_tac "LCons x (LCons y lys) = [x, y] @@- lys")
+   apply (simp only:)
+  apply (rule history_while_op.intros(2))
+   defer 
+     apply (rule while_op_state_machine.intros(2))
+    apply (rule while_op_state_machine.intros(4))
+     apply (rule while_op_state_machine.intros(1))
+       apply auto
+  done
+
+term trace_while_op
+
+lemma history_while_op_not_P_x_P_y[intro]:
+  "history_while_op P f (BTL 1 (BENQ 1 (f x) buf)) lxs lys READ_INPUT \<Longrightarrow>
+   BHD 1 (BENQ 1 (f x) buf) = Observed y \<Longrightarrow>
+   \<not> P x \<Longrightarrow>
+   P y \<Longrightarrow>
+   history_while_op P f buf (LCons x lxs) (LCons y lys) READ_INPUT"
+      apply (subst (1 2) singleton_lshift[symmetric])
+  apply (rule history_while_op.intros(2))
+    defer
+    apply (rule while_op_state_machine.intros(3))
+     apply (rule while_op_state_machine.intros(4))
+       apply (rule while_op_state_machine.intros(1))
+      apply auto
+  done
+
+
+lemma history_while_op_not_P_x_not_P_y[intro]:
+  "history_while_op P f (BENQ 1 (f y ) (BTL 1 (BENQ 1 (f x) buf))) lxs lys READ_INPUT \<Longrightarrow>
+   BHD 1 (BENQ 1 (f x) buf) = Observed y \<Longrightarrow>
+   \<not> P x \<Longrightarrow>
+   \<not> P y \<Longrightarrow>
+   history_while_op P f buf (LCons x lxs) lys READ_INPUT"
+  apply (erule history_while_op.cases)
+   apply auto
+  subgoal
+    apply (rule history_while_op.intros(1))
+    apply auto
+    by (smt (verit, del_insts) Un_iff bhd.elims btl.simps(3) buf_to_list.simps(3) buf_to_list_benq buf_to_list_btl funpow.simps(1) id_apply lessI less_Suc_eq_0_disj observation.distinct(3) observation.sel observation.simps(3) pow_f_f_Suc set_ConsD set_append)
+  subgoal for buf' lxs lys read_state' xs ys
+  apply (subgoal_tac "LCons x (xs @@- lxs) = (x#xs) @@- lxs")
+     apply (simp only:)
+  apply (rule history_while_op.intros(2))
+    defer
+    apply (rule while_op_state_machine.intros(3)[where x=x])
+        apply (rule while_op_state_machine.intros(5)[where x=y])
+          defer
+          defer
+          apply assumption+
+       apply simp
+      apply assumption
+     apply simp_all
+    done
+  done
+
+(*
 
 inductive history_while_op_cong for R P f where
   hwc_base:  "R P f buf lxs lys any \<Longrightarrow> history_while_op_cong R P f buf lxs lys any"
 | hwc: "history_while_op P f buf lxs lys any \<Longrightarrow> history_while_op_cong R P f buf lxs lys any"
+| hwc_LCons: "history_while_op_cong R P f buf' lxs lys read_state' \<Longrightarrow> while_op_state_machine P f (buf, xs, read_state) ys (buf', read_state') \<Longrightarrow> history_while_op_cong R P f buf (xs @@- lxs) (ys @@- lys) read_state"
+| "history_while_op_cong R P f buf lxs lys READ_BUF \<Longrightarrow> BHD 1 buf = EOB \<Longrightarrow> history_while_op_cong R P f buf lxs lys READ_INPUT"
+| "history_while_op_cong R P f buf lxs lys READ_INPUT \<Longrightarrow> BHD 1 buf = EOB \<Longrightarrow> history_while_op_cong R P f buf lxs lys READ_BUF"
+| "history_while_op_cong R  P f (BENQ 1 (f y) (BTL 1 buf)) lxs lys READ_INPUT \<Longrightarrow> BHD 1 buf = Observed y \<Longrightarrow> P x \<Longrightarrow> \<not> P y \<Longrightarrow>
+   history_while_op_cong R  P f buf (LCons x lxs) (LCons x lys) READ_INPUT"
 
-| "history_while_op_cong R P f (BTL 1 buf) lxs lys READ_INPUT \<Longrightarrow> P x \<Longrightarrow> BHD 1 buf = Observed x \<Longrightarrow> history_while_op_cong R P f buf lxs (LCons x lys) any"
-| "history_while_op_cong R P f (BENQ 1 (f x) (BTL 1 buf)) lxs lys READ_INPUT \<Longrightarrow> \<not> P x \<Longrightarrow> BHD 1 buf = Observed x \<Longrightarrow> history_while_op_cong R P f buf lxs lys any"
-| "history_while_op_cong R P f buf lxs lys READ_INPUT \<Longrightarrow> BHD 1 buf = EOB \<Longrightarrow> history_while_op_cong R P f buf lxs lys any"
+
+lemma history_while_op_cong_disj[simp]:
+  "(history_while_op_cong R P f buf lxs lys any \<or> history_while_op P f buf lxs lys any) = history_while_op_cong R P f buf lxs lys any"
+  by (auto intro: history_while_op_cong.intros)
+
+thm history_while_op.coinduct[where X="history_while_op_cong R P f", of buf lxs lys any P f, simplified]
+
+lemma history_while_op_coinduct_upto:
+  "R P f buf lxs lys any \<Longrightarrow>
+  (\<And>x1 x2 x3 x4.
+    R P f x1 x2 x3 x4 \<Longrightarrow>
+    x3 = LNil \<and> (\<forall>x\<in>set (buf_to_list (x1 1)). \<forall>n. \<not> P ((f ^^ n) x)) \<or>
+    (\<exists>buf' lxs lys read_state' xs.
+        x2 = xs @@- lxs \<and>
+        (\<exists>read_state y.
+            x3 = LCons y lys \<and>
+            x4 = read_state \<and> history_while_op_cong R P f buf' lxs lys read_state' \<and> while_op_state_machine P f (x1, xs, read_state) [y] (buf', read_state')))) \<Longrightarrow>
+   history_while_op P f buf lxs lys any"
+  apply (rule history_while_op.coinduct[where X="history_while_op_cong R P f", of buf lxs lys any P f, simplified])
+   apply (auto intro: history_while_op_cong.intros)[1]
+  subgoal premises prems for buf lxs lys read_state
+    using prems(3) apply -
+    apply (induct buf lxs lys read_state rule: history_while_op_cong.induct)
+    subgoal
+      using prems(2) by auto
+    subgoal
+      apply (erule history_while_op.cases)
+       apply simp_all
+      using history_while_op_cong_disj apply blast
+      done
+    subgoal
+      using prems(2) by auto
+    subgoal
+      by (smt (verit) list.simps(3) observation.simps(3) prod.inject while_op_state_machine.cases)
+    subgoal
+      using while_op_state_machine.intros(6) by blast
+    subgoal
+      apply auto
+      subgoal
+        apply (intro exI conjI)
+          apply (subst singleton_lshift)
+        apply (rule refl)
+         apply (rule hwc)
+        defer
+         apply (rule while_op_state_machine.intros(2))
+         apply (rule while_op_state_machine.intros(1))
+        apply simp
+        apply (rule history_while_op.intros(1))
+        apply auto
+        apply (smt (verit, del_insts) bhd.simps(1) bhd.simps(2) bhd.simps(3) btl.simps(3) buf_to_list.elims buf_to_list_btl funpow_0 lessI less_Suc_eq_0_disj observation.distinct(3) observation.sel observation.simps(3) pow_f_f_Suc set_ConsD)
+        done
+      subgoal
+        apply hypsubst_thin
+   apply (intro exI conjI)
+          apply (subst singleton_lshift)
+          apply (rule refl)
+        apply assumption
+        apply (rule while_op_state_machine.intros(2))
+         apply simp_all
+
+ *)
+
+
+(* 
+coinductive history_while_op for P f where
+  "\<not> (\<exists> x \<in> set (buf_to_list (buf 1)). \<exists> n. P ((f ^^ n) x)) \<Longrightarrow> history_while_op P f buf lxs LNil any 0"
+| "BHD 1 buf = EOS \<Longrightarrow> history_while_op P f buf lxs LNil any 0"
+
+| "history_while_op P f (BTL 1 buf) lxs lys READ_INPUT n \<Longrightarrow> P x \<Longrightarrow> BHD 1 buf = Observed x \<Longrightarrow> history_while_op P f buf lxs (LCons x lys) any 0"
+| "history_while_op P f (BENQ 1 (f x) (BTL 1 buf)) lxs lys READ_INPUT n \<Longrightarrow> \<not> P x \<Longrightarrow> BHD 1 buf = Observed x \<Longrightarrow> history_while_op P f buf lxs lys any (Suc n)"
+| "history_while_op P f buf lxs lys READ_INPUT n \<Longrightarrow> BHD 1 buf = EOB \<Longrightarrow> history_while_op P f buf lxs lys READ_BUF (Suc n)"
+
+| "history_while_op P f buf lxs lys READ_BUF n \<Longrightarrow> P x \<Longrightarrow> history_while_op P f buf (LCons x lxs) (LCons x lys) READ_INPUT 0"
+| "history_while_op P f (BENQ 1 (f x) buf) lxs lys READ_BUF n \<Longrightarrow> \<not> P x \<Longrightarrow> history_while_op P f buf (LCons x lxs) lys READ_INPUT (Suc n)"
+ *)
+
+(* 
+corecursive history_while_op_ns where
+  "history_while_op_ns P f (buf::2 \<Rightarrow> 'a buf) lxs lys any n = (
+   case n of
+     0 \<Rightarrow> (if \<not> (\<exists> x \<in> set (buf_to_list (buf 1)). \<exists> n. P ((f ^^ n) x)) \<or> BHD 1 buf = EOS
+           then LNil
+           else let (buf', lxs', any', n') = (SOME (buf', lxs', any', n'). history_while_op P f buf' lxs' (ltl lys) any' n') in
+                LCons n' (history_while_op_ns P f buf' lxs' (ltl lys) any' n'))
+   | Suc n' \<Rightarrow> (
+    let (buf', lxs', lys', any') = (SOME (buf', lxs', lys', any').
+          (any = READ_INPUT \<and> lxs \<noteq> LNil \<and> \<not> P (lhd lxs) \<and> history_while_op P f (BENQ 1 (f (lhd lxs)) buf) (ltl lxs) lys READ_BUF n' \<and> buf' = BENQ 1 (f (lhd lxs)) buf \<and> lxs' = ltl lxs \<and> lys' = lys \<and> any' = READ_BUF) \<or>
+          (\<exists> x. (BHD 1 buf = Observed x \<and> \<not> P x \<and> history_while_op P f (buf(1 := benq (f x) (btl (buf 1)))) lxs lys READ_INPUT n') \<and> buf' = buf(1 := benq (f x) (btl (buf 1))) \<and> lxs' = lxs \<and> lys' = lys \<and> any' = READ_INPUT) \<or>
+          (any = READ_BUF \<and> BHD 1 buf = EOB \<and> history_while_op P f buf lxs lys READ_INPUT n' \<and> buf' = buf \<and> lxs' = lxs \<and> lys' = lys \<and> any' = READ_INPUT)) in
+          history_while_op_ns P f buf' lxs' lys' any' n')
+   )"
+  sorry
+
+fun history_while_op_n_at where
+  "history_while_op_n_at P f buf lxs lys any n 0 = n"
+| "history_while_op_n_at P f (buf::2 \<Rightarrow> 'a buf) lxs lys any 0 (Suc i) = (if \<not> (\<exists> x \<in> set (buf_to_list (buf 1)). \<exists> n. P ((f ^^ n) x)) \<or> BHD 1 buf = EOS
+           then 0
+           else let (buf', lxs', any', n') = (SOME (buf', lxs', any', n'). (history_while_op P f (BTL 1 buf) lxs' (ltl lys) READ_INPUT n' \<and> buf' = BTL 1 buf \<and> (\<exists> x. BHD 1 buf = Observed x \<and> P x \<and> any' = READ_INPUT)) \<or>
+                                             (history_while_op P f buf (ltl lxs) (ltl lys) READ_BUF n' \<and> buf' = buf \<and> any' = READ_BUF \<and> lxs' = ltl lxs \<and> lxs \<noteq> LNil \<and> P (lhd lxs))) in
+                (history_while_op_n_at P f buf' lxs' (ltl lys) any' n' i))"
+| "history_while_op_n_at P f (buf::2 \<Rightarrow> 'a buf) lxs lys any (Suc n) i = (
+   let (buf', lxs', lys', any') = (SOME (buf', lxs', lys', any').
+       ( history_while_op P f (BENQ 1 (f (lhd lxs)) buf) (ltl lxs) lys READ_BUF n \<and> buf' = BENQ 1 (f (lhd lxs)) buf \<and> lxs' = ltl lxs \<and> lys' = lys \<and> any' = READ_BUF) \<or>
+       (\<exists> x. (BHD 1 buf = Observed x \<and> \<not> P x \<and> history_while_op P f (buf(1 := benq (f x) (btl (buf 1)))) lxs lys READ_INPUT n) \<and> buf' = buf(1 := benq (f x) (btl (buf 1))) \<and> lxs' = lxs \<and> lys' = lys \<and> any' = READ_INPUT) \<or>
+       (any = READ_BUF \<and> BHD 1 buf = EOB \<and> history_while_op P f buf lxs lys READ_INPUT n \<and> buf' = buf \<and> lxs' = lxs \<and> lys' = lys \<and> any' = READ_INPUT)) in
+        history_while_op_n_at P f buf' lxs' lys' any' n i)"
+ *)
+
+(*   apply (relation "measure (\<lambda>(P, f, lxs, lys, any, n). n)")
+ *)
+
+lemma history_while_op_output_soundness_LCons:
+  "history_while_op P f buf lxs (LCons y lys) any \<Longrightarrow>
+   \<exists> x \<in> set_buf (buf 1) \<union> lset lxs. (\<exists> n. P ((f ^^ n) x)) \<and> y = (f ^^ (LEAST n. P ((f ^^ n) x))) x"
+  apply (erule history_while_op.cases)
+  subgoal
+    by auto
+  subgoal for buf' lxsa lysa read_state' buf xs read_state ys
+    apply auto
+    apply hypsubst_thin
+    apply (rotate_tac 2)
+    apply (induct "(buf, xs, read_state)" ys "(buf', read_state')" arbitrary: buf lxs lys read_state' read_state xs buf' y rule: while_op_state_machine.induct)
+    subgoal for buf
+      apply auto
+      done
+    subgoal for buf xs ys buf' any' x lys
+      apply (rule bexI[of _ x])
+       apply auto
+      apply (metis funpow_0)
+      done
+    subgoal for x buf xs ys buf' any' lys
+      apply (cases ys)
+       apply auto
+      subgoal
+        by (metis pow_f_f_Suc)
+      subgoal
+        by (metis f_Least pow_f_f_Suc)
+      done
+    subgoal for buf xs ys buf' any' x any lys y
+      apply (cases ys)
+       apply (auto)
+      subgoal
+        by (metis Least_eq_0 Un_iff bhd.elims buf.set_intros(1) funpow_0 observation.distinct(3) observation.sel observation.simps(3))
+      subgoal
+        by (metis Least_eq_0 Un_iff bhd.elims buf.set_intros(1) funpow_0 observation.distinct(3) observation.sel observation.simps(3))
+      subgoal
+        by (metis Least_eq_0 Un_iff bhd.elims buf.set_intros(1) funpow_0 observation.distinct(3) observation.sel observation.simps(3))
+      subgoal
+        by (metis Least_eq_0 Un_iff bhd.elims buf.set_intros(1) funpow_0 observation.distinct(3) observation.sel observation.simps(3))
+      done
+    subgoal for x buf xs ys buf' any' any lys y
+      apply (cases ys)
+       apply auto
+      subgoal
+        apply (rule bexI[of _x])
+         apply auto
+        subgoal
+          by (metis pow_f_f_Suc)
+        subgoal
+          apply (subst f_Least)
+            apply auto
+          apply (metis pow_f_f_Suc)
+          done
+        subgoal
+          by (metis bhd.elims buf.set_intros(1) observation.distinct(3) observation.sel observation.simps(3))
+        done
+      subgoal for _ x'
+        apply (rule bexI[of _x'])
+         apply auto
+        apply (metis buf_to_list_btl list.sel(2) list.set_sel(2) set_buf_to_list_set_buf)
+        done
+      done
+    subgoal
+      by auto
+    done
+  done
+
+
+(* FIXME: move me *)
+lemma funpow_add_alt:
+  "(f ^^ (m + m')) x = (f ^^ m) ((f ^^ m') x)"
+  by (simp add: add.commute funpow_add)
+
+fun ltaken where
+  "ltaken 0 lxs = []"
+| "ltaken n LNil = []"
+| "ltaken (Suc n) (LCons x lxs) = x # ltaken n lxs"
+
+lemma while_op_state_machine_soundness:
+  "while_op_state_machine P f (buf, xs, read_state) ys (buf', read_state') \<Longrightarrow>
+   y \<in> set ys \<Longrightarrow>
+   \<exists> x \<in> set_buf (buf 1) \<union> set xs. (\<exists> n. P ((f ^^ n) x)) \<and> y = (f ^^ (LEAST n. P ((f ^^ n) x))) x"
+  apply (induct "(buf, xs, read_state)" ys "(buf', read_state')" arbitrary: buf read_state' read_state xs buf' y rule: while_op_state_machine.induct)
+       apply clarsimp+
+  subgoal for buf xs ys buf' any' x y
+    apply auto
+    apply (metis funpow_0)
+    done
+  subgoal
+    apply auto
+    subgoal
+      by (metis pow_f_f_Suc)
+    subgoal
+      apply (drule meta_spec)+
+      apply (drule meta_mp)
+       apply assumption
+      apply auto
+      apply (metis f_Least pow_f_f_Suc)
+      done
+    done
+  subgoal
+    apply auto
+    subgoal
+      by (metis Least_eq_0 Un_iff bhd.elims buf.set_intros(1) funpow_0 observation.distinct(1) observation.distinct(3) observation.sel)
+    subgoal
+      apply (drule meta_spec)+
+      apply (drule meta_mp)
+       apply assumption
+      apply auto
+      apply (metis Un_iff buf_to_list_btl list.sel(2) list.set_sel(2) set_buf_to_list_set_buf)
+      done
+    done
+  subgoal for x buf xs ys buf' any' any y
+    apply auto
+    apply (drule meta_spec)+
+    apply (drule meta_mp)
+     apply assumption
+    apply auto
+    subgoal
+      apply (rule bexI[of _ x])
+       apply auto
+      subgoal
+        by (metis pow_f_f_Suc)
+      subgoal
+        apply (subst f_Least)
+          apply auto
+        apply (metis pow_f_f_Suc)
+        done
+      subgoal
+        by (metis bhd.elims buf.set_intros(1) observation.distinct(3) observation.sel observation.simps(3))
+      done
+    subgoal for x'
+      apply (rule bexI[of _ x'])
+       apply auto
+      apply (metis buf_to_list_btl list.sel(2) list.set_sel(2) set_buf_to_list_set_buf)
+      done
+    done
+  subgoal
+    apply auto
+    done
+  done
+
+
+
+
+lemma
+  "while_op_state_machine P f (buf, (ltaken n lxs), read_state) (ltaken m lys) (buf', read_state') \<Longrightarrow>
+   history_while_op P f buf lxs lys any"
+  oops
+
+lemma history_while_op_output_soundness:
+  "y \<in> lset lys \<Longrightarrow>
+   history_while_op P f buf lxs lys any \<Longrightarrow>
+   \<exists> x \<in> set_buf (buf 1) \<union> lset lxs. (\<exists> n. P ((f ^^ n) x)) \<and> y = (f ^^ (LEAST n. P ((f ^^ n) x))) x" 
+ apply (auto simp add: in_lset_conv_lnth)
+  subgoal for i
+    apply (induct i arbitrary: buf lxs lys any rule: less_induct)
+    subgoal for i buf lxs lys any
+      apply (cases i)
+      subgoal
+        apply (cases lys)
+        apply auto
+    using history_while_op_output_soundness_LCons apply force
+    done
+  subgoal for i'
+    apply hypsubst_thin
+    apply (cases lys)
+     apply simp
+    subgoal for y' lys'
+      apply simp
+      apply hypsubst_thin
+    apply (erule history_while_op.cases)
+    subgoal
+      by auto
+    subgoal for buf' lxs lys read_state' buf xs read_state ys
+      apply hypsubst_thin
+      apply (cases ys)
+      apply simp_all
+      apply hypsubst_thin
+      subgoal for ys'
+        
+
+
+
+end
+
+end
+  apply (induct lys arbitrary: buf lxs any rule: lset_induct)
+  subgoal
+    using history_while_op_output_soundness_LCons by fast
+  subgoal for x' lys buf lxs any
+    apply (erule history_while_op.cases)
+    subgoal
+      by auto
+    subgoal for buf' lxs lys read_state' buf xs read_state ys
+      apply hypsubst_thin
+      apply (cases ys)
+      apply simp_all
+      apply hypsubst_thin
+      subgoal for ys'
+        apply (elim disjE)
+        subgoal
+          apply (drule while_op_state_machine_soundness[where y=y]) 
+           apply force
+          apply auto
+          done
+        subgoal
+          
+
+end
+   apply (drule history_while_op.intros(2))
+            apply assumption
+          apply simp_all
+
+end
+          subgoal
+            apply clarsimp
+      apply (drule meta_spec)+
+        apply (drule meta_mp)
+             apply assumption
+            apply (erule while_op_state_machine.cases)
+            apply auto
+            subgoal for xs' x
+              apply (rule bexI[of _ x])
+               apply auto
+              
+
+
+end
+
+
+    apply (erule while_op_state_machine.cases)
+               apply clarsimp+
+          subgoal
+          apply (drule history_while_op.intros(2))
+              apply assumption
+            
+
+
+end
+
+        apply (erule while_op_state_machine.cases)
+             apply clarsimp+
+        subgoal
+          apply hypsubst_thin
+          apply (drule history_while_op.intros(2))
+          apply assumption
+
+end
+      apply (drule meta_spec)   
+      apply (drule meta_spec[of _ Nil])   
+
+      apply (drule meta_mp)
+
+end
+       apply assumption
+      apply (rotate_tac 3)
+      apply (induct "(buf, xs, read_state)" "[y']" "(buf', read_state')" arbitrary: buf lxs lys read_state' read_state xs buf' rule: while_op_state_machine.induct)
+      subgoal for buf xs buf' any' lxs lys
+        apply (erule while_op_state_machine.cases)
+        apply auto
+        done
+      subgoal
+        apply (erule while_op_state_machine.cases)
+             apply auto
+        subgoal for x n
+       apply (rule bexI[of _ x])
+           apply auto
+          by (metis buf_to_list_btl list.sel(2) list.set_sel(2) set_buf_to_list_set_buf)
+        done
+      subgoal
+      apply (drule meta_spec)+
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply assumption
+        apply auto
+      subgoal
+        by (metis pow_f_f_Suc)
+      subgoal
+        by (metis LeastI f_Least pow_f_f_Suc)
+      done
+      subgoal for x buf xs buf' any' any lxs lys
+        apply (drule meta_spec)+
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply assumption
+        apply (drule meta_mp)
+         apply assumption
+        apply auto
+        subgoal for x' n n'
+          apply (rule bexI[of _ x])
+           apply auto
+            apply (metis pow_f_f_Suc)
+          subgoal
+            by (metis f_Least pow_f_f_Suc)
+          subgoal
+            by (metis bhd.elims buf.set_intros(1) observation.distinct(3) observation.sel observation.simps(3))
+          done
+        subgoal for x' n x''
+          apply (rule bexI[of _ x''])
+           apply auto      
+          apply (metis buf_to_list_btl list.sel(2) list.set_sel(2) set_buf_to_list_set_buf)
+          done
+        done
+      subgoal
+        by auto
+      done
+    done
+  done
+
+
+(* 
+inductive history_while_op_cong for R P f where
+  hwc_base:  "R P f buf lxs lys any \<Longrightarrow> history_while_op_cong R P f buf lxs lys any"
+| hwc: "history_while_op P f buf lxs lys any \<Longrightarrow> history_while_op_cong R P f buf lxs lys any"
+
+| "history_while_op_cong R P f (BTL 1 buf) lxs lys READ_INPUT \<Longrightarrow> P x \<Longrightarrow> BHD 1 buf = Observed x \<Longrightarrow>
+   \<forall> y \<in> lset lys. \<exists> x \<in> set_buf (btl (buf 1)) \<union> lset lxs. \<exists> n. ((f ^^ n) x) = y \<Longrightarrow> P y \<Longrightarrow>  history_while_op_cong R P f buf lxs (LCons x lys) any"
+| "history_while_op_cong R P f (BENQ 1 (f x) (BTL 1 buf)) lxs lys READ_INPUT \<Longrightarrow> \<not> P x \<Longrightarrow> BHD 1 buf = Observed x \<Longrightarrow>
+   \<forall> y \<in> lset lys. \<exists> x \<in> set_buf (buf 1) \<union> lset lxs. \<exists> n. ((f ^^ n) x) = y \<Longrightarrow> P y \<Longrightarrow> history_while_op_cong R P f buf lxs lys any"
+| "history_while_op_cong R P f buf lxs lys READ_INPUT \<Longrightarrow> BHD 1 buf = EOB \<Longrightarrow> 
+   \<forall> y \<in> lset lys. \<exists> x \<in> lset lxs. \<exists> n. ((f ^^ n) x) = y \<Longrightarrow> P y \<Longrightarrow> history_while_op_cong R P f buf lxs lys any"
 
 | "history_while_op_cong R P f buf lxs lys READ_BUF \<Longrightarrow> P x \<Longrightarrow> history_while_op_cong R P f buf (LCons x lxs) (LCons x lys) READ_INPUT"
-| "history_while_op_cong R P f (BENQ 1 (f x) buf) lxs lys READ_BUF \<Longrightarrow> \<not> P x \<Longrightarrow> history_while_op_cong R P f buf (LCons x lxs) lys READ_INPUT"
-
-thm history_while_op.simps[no_vars, simplified]
+| "history_while_op_cong R P f (BENQ 1 (f x) buf) lxs lys READ_BUF \<Longrightarrow> \<not> P x \<Longrightarrow>
+   \<forall> y \<in> lset lys. \<exists> x \<in> set_buf (buf 1) \<union> lset lxs. \<exists> n. ((f ^^ n) x) = y \<Longrightarrow> P y \<Longrightarrow> history_while_op_cong R P f buf (LCons x lxs) lys READ_INPUT"
 
 lemma history_while_op_cong_disj[simp]:
   "(history_while_op_cong R P f buf lxs lys any \<or> history_while_op P f buf lxs lys any) = history_while_op_cong R P f buf lxs lys any"
@@ -2317,18 +2877,26 @@ thm history_while_op.coinduct[where X="history_while_op_cong R P f", simplified,
 
 lemma history_while_op_coinduct_upto:
   "R P f buf lxs lys r \<Longrightarrow>
-  (\<And>x1 x2 x3 x4.
+(\<And>x1 x2 x3 x4.
     R P f x1 x2 x3 x4 \<Longrightarrow>
     x3 = LNil \<and> (\<forall>x\<in>set (buf_to_list (x1 1)). \<forall>n. \<not> P ((f ^^ n) x)) \<or>
     x3 = LNil \<and> BHD 1 x1 = EOS \<or>
-    (\<exists>lys x. x3 = LCons x lys \<and> history_while_op_cong R P f (x1(1 := btl (x1 1))) x2 lys READ_INPUT \<and> P x \<and> BHD 1 x1 = Observed x) \<or>
-    (\<exists>x. history_while_op_cong R P f (x1(1 := benq (f x) (btl (x1 1)))) x2 x3 READ_INPUT \<and> \<not> P x \<and> BHD 1 x1 = Observed x) \<or>
-    history_while_op_cong R P f x1 x2 x3 READ_INPUT \<and> BHD 1 x1 = EOB \<or>
+    (\<exists>lys x.
+        x3 = LCons x lys \<and>
+        history_while_op_cong R P f (x1(1 := btl (x1 1))) x2 lys READ_INPUT \<and>
+        P x \<and> BHD 1 x1 = Observed x \<and> (\<forall>y\<in>lset lys. \<exists>x\<in>set_buf (btl (x1 1)) \<union> lset x2. \<exists>n. (f ^^ n) x = y) \<and> Ex P) \<or>
+    (\<exists>x. history_while_op_cong R P f (x1(1 := benq (f x) (btl (x1 1)))) x2 x3 READ_INPUT \<and>
+         \<not> P x \<and> BHD 1 x1 = Observed x \<and> (\<forall>y\<in>lset x3. \<exists>x\<in>set_buf (x1 1) \<union> lset x2. \<exists>n. (f ^^ n) x = y) \<and> Ex P) \<or>
+    history_while_op_cong R P f x1 x2 x3 READ_INPUT \<and> BHD 1 x1 = EOB \<and> (\<forall>y\<in>lset x3. \<exists>x\<in>lset x2. \<exists>n. (f ^^ n) x = y) \<and> Ex P \<or>
     (\<exists>lxs lys x. x2 = LCons x lxs \<and> x3 = LCons x lys \<and> x4 = READ_INPUT \<and> history_while_op_cong R P f x1 lxs lys READ_BUF \<and> P x) \<or>
-    (\<exists>x lxs. x2 = LCons x lxs \<and> x4 = READ_INPUT \<and> history_while_op_cong R P f (x1(1 := benq (f x) (x1 1))) lxs x3 READ_BUF \<and> \<not> P x)) \<Longrightarrow>
-  history_while_op P f buf lxs lys r"
+    (\<exists>x lxs.
+        x2 = LCons x lxs \<and>
+        x4 = READ_INPUT \<and>
+        history_while_op_cong R P f (x1(1 := benq (f x) (x1 1))) lxs x3 READ_BUF \<and>
+        \<not> P x \<and> (\<forall>y\<in>lset x3. \<exists>x\<in>set_buf (x1 1) \<union> lset lxs. \<exists>n. (f ^^ n) x = y) \<and> Ex P)) \<Longrightarrow>
+history_while_op P f buf lxs lys r"
   apply (rule history_while_op.coinduct[where X="history_while_op_cong R P f", simplified, of buf lxs lys r P f, simplified])
-   apply (auto intro: history_while_op_cong.intros)[1]
+  apply (auto intro: history_while_op_cong.intros)[1]
   subgoal premises prems for buf lxs lys any
     using prems(3, 2, 1) apply -
     apply (induct buf lxs lys any rule: history_while_op_cong.induct)
@@ -2337,14 +2905,14 @@ lemma history_while_op_coinduct_upto:
     subgoal 
       apply (drule meta_spec)+
       apply (drule meta_mp)
-       apply assumption
+      apply assumption
       apply (erule history_while_op.cases)
-            apply simp_all
-          apply (meson history_while_op_cong_disj)+
+      apply simp_all
+      apply (metis history_while_op_cong_disj)+
       done
-        apply auto
+    apply auto
     done
-  done
+  done *)
 
 lemma
   "history (while_op (\<lambda> _. BEmpty) P f) (\<lambda> x. if x = 2 then lxs else LNil) (\<lambda> x. if x = 2 then lys else LNil) \<Longrightarrow>
@@ -2379,33 +2947,36 @@ BNA operators + axioms: 0.5% (Asta and Dmitriy by ?)
 define split (maybe using nondeterministic choice operator)
 
 *)
-
+(* 
 corec while_body_rehistory where
   "while_body_rehistory P f buf lxs lys = 
-   (if (lys \<noteq> LNil \<and> BHD 1 buf = Observed (lhd lys) \<and> P (lhd lys) \<and> history_while_op P f (BTL 1 buf) lxs (ltl lys) READ_INPUT) \<or>
-              (BHD 1 buf = EOB \<and> history_while_op P f buf lxs lys READ_INPUT) \<or>
-              (BHD 1 buf = EOS \<and> history_while_op P f buf lxs LNil READ_INPUT) \<or>
-              (\<exists> x. BHD 1 buf = Observed x \<and> history_while_op P f (BENQ 1 (f x) (BTL 1 buf)) lxs lys READ_INPUT \<and> \<not> P x)
+   (if \<exists> n. (lys \<noteq> LNil \<and> BHD 1 buf = Observed (lhd lys) \<and> P (lhd lys) \<and> history_while_op P f (BTL 1 buf) lxs (ltl lys) READ_INPUT n) \<or>
+              (BHD 1 buf = EOB \<and> history_while_op P f buf lxs lys READ_INPUT n)  \<or>
+              (BHD 1 buf = EOS \<and> history_while_op P f buf lxs LNil READ_INPUT n) \<or>
+              (\<exists> x. BHD 1 buf = Observed x \<and> history_while_op P f (BENQ 1 (f x) (BTL 1 buf)) lxs lys READ_INPUT n \<and> \<not> P x)
     then LCons (Inp 2 EOB) (case BHD 1 buf of
       EOB \<Rightarrow> while_body_rehistory P f buf lxs lys
     | EOS \<Rightarrow> LNil
-    | Observed x \<Rightarrow> (if P x then LCons (Out (2::2) x) (while_body_rehistory P f (BTL 1 buf) lxs (ltl lys)) else while_body_rehistory P f (BENQ 1 (f x) (BTL 1 buf)) lxs lys))
+    | Observed x \<Rightarrow> (if P x \<and> lys \<noteq> LNil \<and> x = lhd lys then LCons (Out (2::2) x) (while_body_rehistory P f (BTL 1 buf) lxs (ltl lys)) else while_body_rehistory P f (BENQ 1 (f x) (BTL 1 buf)) lxs lys))
     else (case lxs of
       LNil \<Rightarrow> LCons (Inp (2::2) EOB) (case BHD 1 buf of
          EOB \<Rightarrow> LNil
        | EOS \<Rightarrow> LNil
-       | Observed x \<Rightarrow> (if P x then LCons (Out 2 x) (while_body_rehistory P f (BTL 1 buf) lxs (ltl lys)) else while_body_rehistory P f (BENQ 1 (f x) (BTL 1 buf)) lxs lys))
+       | Observed x \<Rightarrow> (if P x \<and> lys \<noteq> LNil \<and> x = lhd lys then LCons (Out 2 x) (while_body_rehistory P f (BTL 1 buf) lxs (ltl lys)) else while_body_rehistory P f (BENQ 1 (f x) (BTL 1 buf)) lxs lys))
     | LCons x lxs \<Rightarrow> LCons (Inp 2 (Observed x)) (
        if P x \<and> lys \<noteq> LNil \<and> x = lhd lys
        then LCons (Out 2 x) (case BHD 1 buf of
           EOB \<Rightarrow> while_body_rehistory P f buf lxs lys
         | EOS \<Rightarrow> LNil
-        | Observed x \<Rightarrow> (if P x then LCons (Out 2 x) (while_body_rehistory P f (BTL 1 buf) lxs (ltl (ltl lys))) else while_body_rehistory P f (BENQ 1 (f x) (BTL 1 buf)) lxs (ltl lys))) 
+        | Observed y \<Rightarrow> (if P y \<and> (ltl lys) \<noteq> LNil \<and> y = lhd (ltl lys)  then LCons (Out 2 y) (while_body_rehistory P f (BTL 1 buf) lys (ltl (ltl lys))) else while_body_rehistory P f (BENQ 1 (f y) (BTL 1 buf)) lys (ltl lys))) 
        else (case BHD (1::2) (BENQ (1::2) (f x) buf) of
           EOB \<Rightarrow> while_body_rehistory P f buf lxs lys
         | EOS \<Rightarrow> LNil
-        | Observed y \<Rightarrow> (if P y then LCons (Out 2 y) (while_body_rehistory P f (BTL 1 (BENQ 1 (f x) buf)) lxs (ltl lys)) else while_body_rehistory P f (BENQ 1 (f y) (BTL 1 (BENQ 1 (f x) buf))) lxs lys)))))"
+        | Observed y \<Rightarrow> (if P y \<and> lys \<noteq> LNil \<and> y = lhd lys then LCons (Out 2 y) (while_body_rehistory P f (BTL 1 (BENQ 1 (f x) buf)) lxs (ltl lys)) else while_body_rehistory P f (BENQ 1 (f y) (BTL 1 (BENQ 1 (f x) buf))) lxs lys)))))"
+ *)
 
+
+(* 
 lemma Observed_not_inwhile_body_rehistory_LNil:
   "Inp q (Observed x) \<in> lset (while_body_rehistory P f buf LNil lys) \<Longrightarrow>
    False"
@@ -2422,12 +2993,12 @@ lemma Observed_not_inwhile_body_rehistory_LNil:
       subgoal for n'
         apply (subst (asm) (3 4) while_body_rehistory.code)
         apply (cases n')
-         apply (auto split: if_splits observation.splits)
+        apply (auto split: if_splits observation.splits)
         using Suc_ile_eq enat_0_iff(1) apply fastforce+
         done
       done
     done
-  done
+  done *)
 
 lemma BHD_True_history_while_op_not_LNil:
   "BHD 1 buf = Observed x \<Longrightarrow>
@@ -2436,14 +3007,8 @@ lemma BHD_True_history_while_op_not_LNil:
   unfolding not_def
   apply (intro impI)
   apply (erule history_while_op.cases)
-        apply auto
-   apply (metis bhd.elims buf.set_intros(1) funpow_0 observation.distinct(3) observation.sel observation.simps(3) set_buf_to_list_set_buf)
-  apply (erule history_while_op.cases)
-        apply (auto simp add: BHD_benqD)
-  subgoal
-    by (metis bhd.elims buf.set_intros(1) funpow_0 observation.distinct(3) observation.sel observation.simps(3) set_buf_to_list_set_buf)
-  subgoal
-    by (metis benq.elims bhd.simps(1) bhd.simps(2) bhd.simps(3) observation.distinct(3) observation.inject observation.simps(3))
+  apply auto
+  apply (metis bhd.elims buf.set_intros(1) funpow_0 observation.distinct(3) observation.sel observation.simps(3) set_buf_to_list_set_buf)
   done
 
 lemma history_while_op_intros_1_BTL:
@@ -2474,7 +3039,7 @@ lemma history_while_op_intros_1_BENQ_BTL:
     by (metis list.sel(2) list.set_sel(2))
   done
 
-
+(* 
 lemma history_while_op_LNil_no_Out2:
   "history_while_op P f buf lxs LNil READ_INPUT \<Longrightarrow>
    Out (2::2) x \<in> lset (while_body_rehistory P f buf lxs LNil) \<Longrightarrow> False"
@@ -2496,12 +3061,12 @@ lemma history_while_op_LNil_no_Out2:
           by (smt (verit) bhd.simps(3) btl.simps(3) fun_upd_same fun_upd_upd history_while_op.simps history_while_op_intros_1_BENQ_BTL llist.simps(3) observation.distinct(3) observation.inject observation.simps(3))
         subgoal
           apply (erule history_while_op.cases)
-                apply auto
+          apply auto
           subgoal
             by (metis bhd.simps(3) btl.simps(3) buf_to_list.simps(3) fun_upd_same fun_upd_upd history_while_op_intros_1_BENQ_BTL insert_iff list.set(2))
           subgoal
             apply (erule history_while_op.cases)
-                  apply auto
+            apply auto
             subgoal
               by (metis bhd.simps(3) btl.simps(3) buf_to_list.simps(3) fun_upd_same fun_upd_upd history_while_op_intros_1_BENQ_BTL insert_iff list.set(2))
             subgoal
@@ -2511,8 +3076,8 @@ lemma history_while_op_LNil_no_Out2:
         done
       done
     done
-  done
-
+  done *)
+(* 
 lemma while_body_rehistory_Out2:
   "Out p x \<in> lset (while_body_rehistory P f buf lxs lys) \<Longrightarrow>
    p = (2::2)"
@@ -2538,30 +3103,33 @@ lemma while_body_rehistory_Out2:
           apply (clarsimp elim!: bhd.elims simp add: plus_1_eq_Suc BHD_benqD Suc_ile_eq one_enat_def split: if_splits observation.splits llist.splits intro: less_add_Suc2 history_while_op.intros(7) history_while_op.intros(1))
           subgoal
             by (metis less_add_Suc2 plus_1_eq_Suc)
-                           apply blast
-                          apply blast
-                         apply (metis less_add_Suc2 plus_1_eq_Suc)
-                        apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
-                       apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
-                      apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
-                     apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
-                    apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
-                   apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
-                  apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
-                 apply (metis eSuc_enat eSuc_ne_0)
-                apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
-               apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
-              apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
-             apply (metis eSuc_enat eSuc_ne_0)
-            apply (metis eSuc_enat eSuc_ne_0)
-           apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
+          apply blast
+          apply blast
+          apply (metis less_add_Suc2 plus_1_eq_Suc)
+          apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
+          apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
+          apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
+          apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
+          apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
+          apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
+          apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
+          apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
+          apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
+          apply (metis eSuc_enat eSuc_ne_0)
+          apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
+          apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
+          apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
+          apply (metis eSuc_enat eSuc_ne_0)
+          apply (metis eSuc_enat eSuc_ne_0)
+          apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
           apply (smt (verit) IO.simps(2) Suc_ile_eq diff_Suc_1 less_Suc_eq less_Suc_eq_0_disj lnth_LCons')
           done
         done
       done
     done
-  done
+  done *)
 
+(* 
 lemma while_body_rehistory_not_Inp1:                      
   "Inp (1::2) ob \<in> lset (while_body_rehistory P f buf lxs lys) \<Longrightarrow>
    False"
@@ -2591,15 +3159,16 @@ lemma while_body_rehistory_not_Inp1:
         done
       done
     done
-  done
+  done *)
 
+(* 
 lemma while_body_rehistoryLCons_lhd:
   "ios = while_body_rehistory P f buf (LCons x lxs) lys \<Longrightarrow>
    lzs = lproject (=) \<bottom> ios (2::2) \<Longrightarrow>
    lzs \<noteq> LNil \<Longrightarrow>
    lhd lzs = x"
   apply (cases "\<exists>n. llength (ltakeWhile (Not o (\<lambda>x. case x of Inp q (Observed xa) \<Rightarrow> (2::2) = q | Inp q _ \<Rightarrow> False | Out q x \<Rightarrow> \<bottom> (2::2) q)) ios) = enat n")
-   defer
+  defer
   subgoal
     apply simp
     unfolding lproject_def neq_LNil_conv lmap_eq_LCons_conv
@@ -2631,8 +3200,8 @@ lemma while_body_rehistoryLCons_lhd:
           using zero_enat_def apply (auto split: if_splits)
           subgoal 
             apply (cases n')
-             apply simp
-             apply (metis (no_types, lifting) eSuc_inject numeral_1_eq_Suc_0 numeral_One one_eSuc one_enat_def zero_ne_eSuc)
+            apply simp
+            apply (metis (no_types, lifting) eSuc_inject numeral_1_eq_Suc_0 numeral_One one_eSuc one_enat_def zero_ne_eSuc)
             apply simp
             apply (metis (no_types, lifting) co.enat.inject eSuc_enat less_add_Suc2 plus_1_eq_Suc)
             done
@@ -2644,52 +3213,7 @@ lemma while_body_rehistoryLCons_lhd:
         done
       done
     done
-  done
-
-
-
-lemma
-  "history_while_op P f buf lxs (LCons y lys) READ_INPUT \<Longrightarrow>
-   ios = while_body_rehistory P f buf lxs (LCons y lys) \<Longrightarrow>
-   lzs = lproject \<bottom> (=) ios (2::2) \<Longrightarrow>
-   lzs \<noteq> LNil \<and> lhd lzs = y"
-  apply (cases "\<exists>n. llength (ltakeWhile (\<lambda>x. case x of Inp q (Observed xa) \<Rightarrow> \<bottom> 2 q | Inp q _ \<Rightarrow> False | Out q x \<Rightarrow> 2 = q) ios) = enat n")
-   defer
-  subgoal
-    apply simp
-    unfolding lproject_def neq_LNil_conv lmap_eq_LCons_conv
-    apply simp
-    apply hypsubst_thin
-
-
-    apply (rule FalseE)
-    apply (drule lfilter_eq_LCons)
-    apply (elim exE conjE)
-    apply hypsubst_thin
-    apply (simp add: ldropWhile_eq_ldrop)
-    done
-
-
-end
-  apply (subst while_body_rehistory.code)
-  apply (erule history_while_op.cases)
-  subgoal
-    by auto
-  subgoal
-    by auto
-  subgoal
-    apply hypsubst_thin
-    apply (auto split: llist.splits if_splits observation.splits)
-    done
-  subgoal
-    apply hypsubst_thin
-    apply (auto split: llist.splits if_splits observation.splits)
-    
-
-
-  find_theorems name: while_body_rehistory
-
-end
+  done *)
 
 (* FIXME: move me *)
 lemma BHD_benq:
@@ -2706,14 +3230,15 @@ lemma exhaust_2_1:
   apply auto
   subgoal for z
     apply (cases z)
-     apply auto
+    apply auto
     subgoal for n 
       apply (cases n)
-       apply auto
+      apply auto
       apply (smt (z3) int_zle_neg of_nat_0)
       done
     done
   done
+
 
 lemma
   "history (while_op buf P f) (\<lambda> x. if x = 2 then lxs else LNil) (\<lambda> x. if x = 2 then lys else LNil) \<longleftrightarrow>
@@ -2733,12 +3258,163 @@ lemma
       apply (erule trace_while_op.cases)
       subgoal for buf x
         apply (cases lxs)
-         apply simp_all
+        apply simp_all
         subgoal for x lxs'
           apply hypsubst_thin
+          apply (rule exI[of _ buf])
+          apply (rule exI[of _ lxs'])
+          apply (rule exI[of _ READ_BUF])
+          apply (rule exI[of _ "[x]"])
+          apply (intro conjI)
+          apply simp
+           apply (rule hwc)
+          apply (metis bhd.elims buf.simps(27) empty_iff history_while_op.intros(1) is_Observed_def observation.disc(3) observation.simps(7) set_buf_to_list_set_buf)
+          apply (simp add: while_op_state_machine.intros(1) while_op_state_machine.intros(2))      
+          done
+        done
+      subgoal for buf
+        by (metis bhd.elims buf_to_list.simps(2) empty_iff empty_set lproject_LCons(4) lproject_LNil observation.distinct(3) observation.distinct(5))
+      subgoal for buf ios x
+        apply (cases lxs)
+         apply simp_all
+        subgoal for lxs'
+          apply hypsubst_thin
+            apply (rule exI[of _ buf])
+            apply (rule exI[of _ lxs'])
+            apply (rule exI[of _ READ_BUF])
+            apply (rule exI[of _ "[x]"])
+            apply (intro conjI)
+              apply simp
+            subgoal
+              apply (rule history_while_op_cong.intros(5))
+               apply simp_all
+              apply (rule hwc_base)
+              apply blast
+              done
+            subgoal
+              by (simp add: while_op_state_machine.intros(1) while_op_state_machine.intros(2))
+            done
+          done
+        subgoal for buf ios x y
+          apply hypsubst_thin
+        apply simp
+        apply (cases lxs)
+        apply simp_all
+        subgoal for lxs'
+          apply hypsubst_thin
+          apply (rule exI)+
+          apply (intro conjI)
+            defer
+            apply (rule hwc_LCons)
+            apply (rule hwc_base)
+             apply blast
+          apply (rule while_op_state_machine.intros(3))
+          apply (rule while_op_state_machine.intros(1))
+          apply simp_all
+          apply (rule while_op_state_machine.intros(2))
+          apply (rule while_op_state_machine.intros(1))
+           apply auto
+          done
+        done
+      subgoal for y buf ios x
+        apply auto
+           apply hypsubst_thin
+        apply (cases lxs)
+        apply simp_all
+         subgoal for lxs'
+          apply hypsubst_thin
+          apply (rule exI)+
+          apply (intro conjI)
+            defer
+             apply (rule hwc)
+           try0
+
+end
+             apply blast
+   apply (rule while_op_state_machine.intros(2)[of _ _ _ Nil])
+             apply simp_all
+           apply (rule while_op_state_machine.intros(5)[of _ _ _ y])
+           apply simp_all
+          apply (rule while_op_state_machine.intros(1))
+            apply simp_all
+           
+
+end
+          apply (rule while_op_state_machine.intros(5)[of _ _ _ y])
+           apply simp_all
+          apply (rule while_op_state_machine.intros(1))
+            apply simp_all
+           
+
+          apply (rule while_op_state_machine.intros(2))
+          apply (rule while_op_state_machine.intros(1))
+    
+   
+
+end
+            apply simp
+          defer
+          apply (rule while_op_state_machine.intros(2))
+          apply (rule while_op_state_machine.intros(1))
+           apply simp
+
+
+      subgoal
+        
+        sorry
+      subgoal
+        by (simp add: while_op_state_machine.intros(1) while_op_state_machine.intros(2))
+
+end
+          apply (meson while_op_state_machine.intros(1))
+          apply (meson while_op_state_machine.intros(2))
+          apply blast
+          done
+        done
+      subgoal for y buf ios x
+        apply hypsubst_thin
+        apply simp
+    apply (cases lxs)
+        apply simp_all
+        subgoal for lxs'
+          apply hypsubst_thin
+     apply (rule exI[of _ buf])
+          apply (rule exI[of _ "[] @@- lxs'"])
+          apply (rule exI[of _ READ_INPUT])
+          apply (rule exI[of _ "[x]"])
+          apply (intro conjI)
+            apply simp
+          subgoal
+           apply (rule hwc_base)
+            apply simp
+
+end
+           apply (rule history_while_op_cong.intros(5))
+            sorry
+          subgoal
+            by (meson while_op_state_machine.intros(2))
+
+
+end
+
+          apply (rule history_while_op.intros(2))
+
+
+end
+          apply (rule exI[of _ "LCons (Inp 2 EOS) LNil"])
+          apply (intro exI conjI)
+               apply auto
+           defer
+
+
+
+end
           apply (rule hwc)
           apply (rule history_while_op.intros(1))
           apply clarsimp
+
+
+end
           apply (metis bhd.elims buf.simps(27) empty_iff observation.distinct(3) observation.distinct(5) set_buf_to_list_set_buf)
           done
         done
@@ -2750,131 +3426,141 @@ lemma
         apply hypsubst
         apply simp
         apply (cases lxs)
-         apply simp_all
+        apply simp_all
         subgoal for lxs'
           apply (rule disjI1)
-          apply (rule history_while_op_cong.intros(5))
-           apply (rule hwc_base)
-           apply simp_all
-          apply (rule exI[of _ ios])
-          apply simp
-          apply (auto intro: trace_while_op.intros(3))
-          done
-        done
-      subgoal for buf ios' x y
-        apply hypsubst
-        apply simp
-        apply (cases lxs)
-         apply simp_all
-        apply hypsubst_thin
-        subgoal for lxs'
-          apply (rule disjI2)
-          apply (rule history_while_op_cong.intros(3))
+          apply (intro conjI)
+          subgoal
+            apply (rule history_while_op_cong.intros(5))
+            apply (rule hwc_base)
             apply simp_all
-          apply (rule hwc_base)
-          apply simp
-          apply auto
-          done
-        done
-      subgoal for y buf ios x
-        apply hypsubst_thin
-        apply simp
-        apply (cases lxs)
-         apply simp_all
-        apply hypsubst_thin
-        subgoal for lxs'
-          apply (rule disjI2)
-          apply (rule disjI2)
-          apply (rule history_while_op_cong.intros(4))
-            apply simp_all
-          apply (rule hwc_base)
-          apply auto
-          done
-        done
-      subgoal for buf ios x
-        apply hypsubst_thin
-        apply simp
-        apply (cases lxs)
-         apply simp_all
-        apply hypsubst_thin
-        subgoal for lxs'
-          by (metis (mono_tags, lifting) history_while_op_cong.intros(5) hwc_base)
-        done
-      subgoal for y x buf ios
-        apply hypsubst_thin
-        apply simp
-        apply (cases lxs)
-         apply simp_all
-        apply hypsubst_thin
-        subgoal for lxs'
-          apply (rule disjI2)+
-          apply (rule history_while_op_cong.intros(4))
-            prefer 3
+            apply (rule exI[of _ ios])
             apply simp
-           defer
-           apply assumption
-          apply simp
-          apply (rule hwc_base)
-          apply simp
-          apply auto
-          done
-        done
-      subgoal for x buf ios y
-        apply hypsubst_thin
-        apply simp
-        apply (cases lxs)
-         apply simp_all
-        apply hypsubst_thin
-        subgoal for lxs'
-          apply (rule disjI2)+
-          apply (rule history_while_op_cong.intros(3))
-            prefer 3
-            apply simp
-           defer
-           apply assumption
-          apply simp
-          apply (rule hwc_base)
-          apply simp
-          apply auto
-          done
-        done
-      subgoal for buf ios x     
-        apply hypsubst_thin
-        apply simp
-        apply (rule disjI1)
-        apply (rule hwc_base)
-        apply auto
-        done
-      subgoal for x buf ios
-        apply hypsubst_thin
-        apply simp
-        apply (rule disjI2)
-        apply (rule disjI1)
-        apply (rule hwc_base)
-        apply auto
-        done
-      subgoal for buf ios
-        apply hypsubst_thin
-        apply simp
-        apply (metis (mono_tags, lifting) hwc_base) 
-        done
-      subgoal for buf ios
-        apply hypsubst_thin
-        apply simp
-        apply (erule trace_while_True_op.cases)
-          apply simp_all
-        subgoal for x buf y ios
-          apply hypsubst_thin
-          apply (rule disjI1)
-          apply (smt (verit, ccfv_threshold) bot2E hwc_base lproject_LCons(2) lproject_LCons(3) trace_while_op.intros(12))
-          done
-        subgoal
-          apply hypsubst_thin
-          apply (smt (verit, ccfv_threshold) bot2E hwc_base lproject_LCons(2) lproject_LCons(3) trace_while_op.intros(12))
-          done
-        done
+            apply (auto intro: trace_while_op.intros(3))
+            apply (meson funpow_0)
+            apply hypsubst_thin
+            using * sledgehammer
+
+end
+  done
+
+
+  done
+  done
+  subgoal for buf ios' x y
+    apply hypsubst
+    apply simp
+    apply (cases lxs)
+    apply simp_all
+    apply hypsubst_thin
+    subgoal for lxs'
+      apply (rule disjI2)
+      apply (rule history_while_op_cong.intros(3))
+      apply simp_all
+      apply (rule hwc_base)
+      apply simp
+      apply auto
       done
     done
+  subgoal for y buf ios x
+    apply hypsubst_thin
+    apply simp
+    apply (cases lxs)
+    apply simp_all
+    apply hypsubst_thin
+    subgoal for lxs'
+      apply (rule disjI2)
+      apply (rule disjI2)
+      apply (rule history_while_op_cong.intros(4))
+      apply simp_all
+      apply (rule hwc_base)
+      apply auto
+      done
+    done
+  subgoal for buf ios x
+    apply hypsubst_thin
+    apply simp
+    apply (cases lxs)
+    apply simp_all
+    apply hypsubst_thin
+    subgoal for lxs'
+      by (metis (mono_tags, lifting) history_while_op_cong.intros(5) hwc_base)
+    done
+  subgoal for y x buf ios
+    apply hypsubst_thin
+    apply simp
+    apply (cases lxs)
+    apply simp_all
+    apply hypsubst_thin
+    subgoal for lxs'
+      apply (rule disjI2)+
+      apply (rule history_while_op_cong.intros(4))
+      prefer 3
+      apply simp
+      defer
+      apply assumption
+      apply simp
+      apply (rule hwc_base)
+      apply simp
+      apply auto
+      done
+    done
+  subgoal for x buf ios y
+    apply hypsubst_thin
+    apply simp
+    apply (cases lxs)
+    apply simp_all
+    apply hypsubst_thin
+    subgoal for lxs'
+      apply (rule disjI2)+
+      apply (rule history_while_op_cong.intros(3))
+      prefer 3
+      apply simp
+      defer
+      apply assumption
+      apply simp
+      apply (rule hwc_base)
+      apply simp
+      apply auto
+      done
+    done
+  subgoal for buf ios x     
+    apply hypsubst_thin
+    apply simp
+    apply (rule disjI1)
+    apply (rule hwc_base)
+    apply auto
+    done
+  subgoal for x buf ios
+    apply hypsubst_thin
+    apply simp
+    apply (rule disjI2)
+    apply (rule disjI1)
+    apply (rule hwc_base)
+    apply auto
+    done
+  subgoal for buf ios
+    apply hypsubst_thin
+    apply simp
+    apply (metis (mono_tags, lifting) hwc_base) 
+    done
+  subgoal for buf ios
+    apply hypsubst_thin
+    apply simp
+    apply (erule trace_while_True_op.cases)
+    apply simp_all
+    subgoal for x buf y ios
+      apply hypsubst_thin
+      apply (rule disjI1)
+      apply (smt (verit, ccfv_threshold) bot2E hwc_base lproject_LCons(2) lproject_LCons(3) trace_while_op.intros(12))
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (smt (verit, ccfv_threshold) bot2E hwc_base lproject_LCons(2) lproject_LCons(3) trace_while_op.intros(12))
+      done
+    done
+  done
+  done
   subgoal
     apply (rule exI[of _ "while_body_rehistory P f buf lxs lys"])
     apply (intro conjI)
@@ -2926,7 +3612,7 @@ lemma
               apply simp
               apply (subst (1 3 5 7 9 11 13) while_body_rehistory.code)
               apply (erule history_while_op.cases)
-                    apply simp_all
+              apply simp_all
               apply(intro conjI impI)
               subgoal
                 by (metis bhd.elims buf.set_intros(1) funpow_0 observation.distinct(3) observation.sel observation.simps(3) set_buf_to_list_set_buf)
@@ -2969,21 +3655,21 @@ lemma
                   apply (rule disjI1)
                   apply (subst (1) while_body_rehistory.code)
                   apply (erule history_while_op.cases)
-                        apply (auto simp add: BHD_benq)
-                     apply (metis BHD_True_history_while_op_not_LNil history_while_op.intros(1))
-                    apply (metis BHD_True_history_while_op_not_LNil history_while_op.intros(1))
+                  apply (auto simp add: BHD_benq)
+                  apply (metis BHD_True_history_while_op_not_LNil history_while_op.intros(1))
+                  apply (metis BHD_True_history_while_op_not_LNil history_while_op.intros(1))
                   subgoal
                     apply (intro conjI exI)
-                     apply (rule refl)
+                    apply (rule refl)
                     apply (erule history_while_op.cases)
-                          apply auto
+                    apply auto
                     using history_while_op_intros_1_BTL apply blast
                     done
                   subgoal
                     apply (intro conjI exI)
-                     apply (rule refl)
+                    apply (rule refl)
                     apply (erule history_while_op.cases)
-                          apply auto
+                    apply auto
                     using history_while_op_intros_1_BTL apply blast
                     done
                   done
@@ -2992,20 +3678,20 @@ lemma
                   apply (rule disjI1)
                   apply (subst (1) while_body_rehistory.code)
                   apply (erule history_while_op.cases)
-                        apply (auto simp add: BHD_benq)
-                    apply (metis fun_upd_same fun_upd_upd history_while_op_intros_1_BENQ_BTL)
+                  apply (auto simp add: BHD_benq)
+                  apply (metis fun_upd_same fun_upd_upd history_while_op_intros_1_BENQ_BTL)
                   subgoal
                     apply (intro conjI exI)
-                     apply (rule refl)
+                    apply (rule refl)
                     apply (erule history_while_op.cases)
-                          apply auto
+                    apply auto
                     apply (metis fun_upd_same fun_upd_upd history_while_op_intros_1_BENQ_BTL)
                     done
                   subgoal
                     apply (intro conjI exI)
-                     apply (rule refl)
+                    apply (rule refl)
                     apply (erule history_while_op.cases)
-                          apply auto
+                    apply auto
                     apply (metis fun_upd_same fun_upd_upd history_while_op_intros_1_BENQ_BTL)
                     done
                   done
@@ -3020,15 +3706,15 @@ lemma
                   apply (subst (1) while_body_rehistory.code)
                   apply simp
                   apply (subgoal_tac "BHD (buf 1) (benq (f x')) = Observed y")
-                   defer
+                  defer
                   subgoal
                     by (metis benq.elims bhd.simps(1) bhd.simps(2) bhd.simps(3) observation.disc(1) observation.disc(2) observation.disc(3))
                   apply simp
                   apply (rule disjI1)
                   apply (intro conjI exI)
-                   apply (rule refl)
+                  apply (rule refl)
                   apply (erule history_while_op.cases)
-                        apply auto
+                  apply auto
                   subgoal
                     apply (rule history_while_op.intros(1))
                     apply auto
@@ -3037,28 +3723,28 @@ lemma
                     done
                   subgoal
                     apply (erule history_while_op.cases)
-                          apply auto
+                    apply auto
                     apply (rule history_while_op.intros(1))
                     apply auto
                     apply (metis bhd.elims buf.set_intros(1) funpow_0 observation.distinct(3) observation.inject observation.simps(3) set_buf_to_list_set_buf)
                     done
                   subgoal
                     apply (erule history_while_op.cases)
-                          apply auto
+                    apply auto
                     apply (rule history_while_op.intros(1))
                     apply auto
                     apply (metis bhd.elims buf.set_intros(1) funpow_0 observation.distinct(3) observation.inject observation.simps(3) set_buf_to_list_set_buf)
                     done
                   subgoal
                     apply (erule history_while_op.cases)
-                          apply auto
+                    apply auto
                     apply (rule history_while_op.intros(1))
                     apply auto
                     apply (metis bhd.elims buf.set_intros(1) funpow_0 observation.distinct(3) observation.inject observation.simps(3) set_buf_to_list_set_buf)
                     done
                   subgoal
                     apply (erule history_while_op.cases)
-                          apply auto
+                    apply auto
                     subgoal
                       apply (rule history_while_op.intros(1))
                       apply auto
@@ -3073,15 +3759,15 @@ lemma
                   apply (subst (1) while_body_rehistory.code)
                   apply simp
                   apply (subgoal_tac "BHD (buf 1) (benq (f x')) = Observed y")
-                   defer
+                  defer
                   subgoal
                     by (metis benq.elims bhd.simps(1) bhd.simps(2) bhd.simps(3) observation.disc(1) observation.disc(2) observation.disc(3))
                   apply simp
                   apply (rule disjI1)
                   apply (intro conjI exI)
-                   apply (rule refl)
+                  apply (rule refl)
                   apply (erule history_while_op.cases)
-                        apply auto
+                  apply auto
                   subgoal
                     apply (rule history_while_op.intros(1))
                     apply auto
@@ -3092,7 +3778,7 @@ lemma
                     done
                   subgoal
                     apply (erule history_while_op.cases)
-                          apply auto
+                    apply auto
                     apply (rule history_while_op.intros(1))
                     apply auto
                     subgoal
@@ -3102,7 +3788,7 @@ lemma
                     done
                   subgoal
                     apply (erule history_while_op.cases)
-                          apply auto
+                    apply auto
                     apply (rule history_while_op.intros(1))
                     apply auto
                     subgoal
@@ -3112,7 +3798,7 @@ lemma
                     done
                   subgoal
                     apply (erule history_while_op.cases)
-                          apply auto
+                    apply auto
                     apply (rule history_while_op.intros(1))
                     apply auto
                     subgoal
@@ -3122,7 +3808,7 @@ lemma
                     done
                   subgoal
                     apply (erule history_while_op.cases)
-                          apply auto
+                    apply auto
                     apply (rule history_while_op.intros(1))
                     apply auto
                     subgoal
@@ -3133,7 +3819,7 @@ lemma
                   done
                 done
               done
-             apply (simp_all add: history_while_op.intros(2))
+            apply (simp_all add: history_while_op.intros(2))
             done
           done
         done
@@ -3151,12 +3837,12 @@ lemma
               apply (intro conjI impI)
               subgoal
                 apply (rule lproject_False)
-                 apply simp_all
+                apply simp_all
                 using Observed_not_inwhile_body_rehistory_LNil apply fast
                 done
               subgoal
                 apply (cases lxs)
-                 apply simp_all
+                apply simp_all
                 subgoal for x lxs'
                   apply hypsubst_thin
                   using while_body_rehistoryLCons_lhd apply fast
@@ -3165,11 +3851,11 @@ lemma
               subgoal
                 apply (rule disjI1)
                 apply (cases lxs)
-                 apply simp_all
+                apply simp_all
                 subgoal for x lxs'
                   apply hypsubst_thin
                   apply (cases "\<exists>n. llength (ltakeWhile (Not o (\<lambda>x. case x of Inp q (Observed xa) \<Rightarrow> (2::2) = q | Inp q _ \<Rightarrow> False | Out (q::2) x \<Rightarrow> \<bottom> (2::2) q)) (while_body_rehistory P f buf (LCons x lxs') lys)) = enat n")
-                   defer
+                  defer
                   subgoal
                     apply simp
                     unfolding lproject_def neq_LNil_conv lmap_eq_LCons_conv
@@ -3205,8 +3891,8 @@ lemma
                             unfolding lproject_def
                             subgoal
                               apply (auto 0 0 simp add: BHD_benqD LNil_eq_lmap lfilter_eq_LNil observation.splits IO.splits intro: history_while_op.intros(2))
-                                apply (metis (no_types, lifting) eSuc_enat eSuc_inject zero_ne_eSuc)
-                               apply (metis (no_types, lifting) eSuc_enat eSuc_inject zero_ne_eSuc)
+                              apply (metis (no_types, lifting) eSuc_enat eSuc_inject zero_ne_eSuc)
+                              apply (metis (no_types, lifting) eSuc_enat eSuc_inject zero_ne_eSuc)
                               apply (metis (no_types, lifting) eSuc_enat eSuc_inject zero_ne_eSuc)
                               done
                             subgoal
@@ -3317,15 +4003,15 @@ lemma
                             using zero_enat_def apply (clarsimp simp add: BHD_benq split: if_splits observation.splits)    
                             subgoal
                               apply (auto 0 0 simp flip: eSuc_enat simp add: BHD_benqD LNil_eq_lmap lfilter_eq_LNil observation.splits IO.splits intro: history_while_op.intros(2)) 
-                                apply (meson less_Suc_eq)+
+                              apply (meson less_Suc_eq)+
                               done
                             subgoal
                               apply (auto 0 0 simp flip: eSuc_enat simp add: BHD_benqD LNil_eq_lmap lfilter_eq_LNil observation.splits IO.splits intro: history_while_op.intros(2)) 
-                                 apply (metis (no_types, lifting) eSuc_enat lessI)+
+                              apply (metis (no_types, lifting) eSuc_enat lessI)+
                               done
                             subgoal
                               apply (auto 0 0 simp flip: eSuc_enat simp add: BHD_benqD LNil_eq_lmap lfilter_eq_LNil observation.splits IO.splits intro: history_while_op.intros(2)) 
-                                 apply (metis (no_types, lifting) eSuc_enat lessI)+
+                              apply (metis (no_types, lifting) eSuc_enat lessI)+
                               done
                             subgoal
                               apply (auto 0 0 simp flip: eSuc_enat simp add: BHD_benqD LNil_eq_lmap lfilter_eq_LNil observation.splits IO.splits intro: history_while_op.intros(2)) 
@@ -3344,9 +4030,9 @@ lemma
           apply simp
           unfolding lnull_def
           apply (rule lproject_False)
-           apply simp_all
+          apply simp_all
           apply (cases "p = 1")
-           apply simp_all
+          apply simp_all
           using while_body_rehistory_not_Inp1 apply blast
           using exhaust_2_1 apply auto
           done
@@ -3366,25 +4052,25 @@ lemma
             subgoal
               apply simp
               apply (rule lproject_False)
-               apply auto
+              apply auto
               using history_while_op_LNil_no_Out2 apply fastforce
               done
             subgoal
               apply (cases lys)
-               apply simp_all
+              apply simp_all
               subgoal for y lys'
                 apply hypsubst_thin
-              apply (auto simp add: lproject_empty_conv(1))
-              
-
-              find_theorems while_body_rehistory lset
+                apply (auto simp add: lproject_empty_conv(1))
 
 
-              using exhaust_2_1 apply auto
+                find_theorems while_body_rehistory lset
 
 
-              find_theorems "_ = (_::2)" "(1::2)" "_ \<or> _"
+                using exhaust_2_1 apply auto
 
 
-              find_theorems lset while_body_rehistory
+                find_theorems "_ = (_::2)" "(1::2)" "_ \<or> _"
+
+
+                find_theorems lset while_body_rehistory
 end
