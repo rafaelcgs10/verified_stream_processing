@@ -860,8 +860,9 @@ section\<open>Buffer infrastrcuture\<close>
 datatype 'd buf = BEmpty | BEnded | BCons 'd "'d buf"
 
 fun bhd where
-  "bhd BEnded = EOS"
-| "bhd (BCons x xs) = Observed x"
+  "bhd BEmpty = None"
+| "bhd BEnded = Some EOS"
+| "bhd (BCons x xs) = Some (Observed x)"
 
 fun btl where
   "btl BEmpty = BEmpty"
@@ -899,12 +900,13 @@ fun benq where
 | "benq x BEnded = BCons x BEnded"
 | "benq x (BCons y ys) = BCons y (benq x ys)"
 
-abbreviation BHD :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> 'd observation" where "BHD p buf \<equiv> bhd (buf p)"
+abbreviation BHD :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> 'd observation option" where "BHD p buf \<equiv> bhd (buf p)"
 abbreviation (input) BUPD where "BUPD f p buf \<equiv> buf(p := f (buf p))"
 abbreviation BTL :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BTL \<equiv> BUPD btl"
 abbreviation BENQ :: "'a \<Rightarrow> 'd \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BENQ p x buf \<equiv> BUPD (benq x) p buf"
 abbreviation BENQ_TL :: "'a \<Rightarrow> 'd \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BENQ_TL p x buf \<equiv> BUPD (btl o benq x) p buf"
 
+(*
 lemma BHD_not_Observed_bend:
   "\<not> (is_Observed (BHD p buf)) \<Longrightarrow> BHD (buf p) bend = EOS"
   apply (induct "buf p")
@@ -920,6 +922,7 @@ lemma BHD_neq_EOB_bend:
    apply simp
   apply (metis bend.simps(3) bhd.simps(3))
   done
+*)
 
 fun bapp where
   "bapp BEmpty lxs = lxs"

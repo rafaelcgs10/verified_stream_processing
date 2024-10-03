@@ -6,32 +6,44 @@ imports
   Operator
 begin
 
+context includes fset.lifting begin
+lift_definition fproduct :: "'a fset \<Rightarrow> 'b fset \<Rightarrow> ('a \<times> 'b) fset" is "(\<times>)" by auto
+end
+
+abbreviation "safe_choice_stop stop f ops \<equiv> (if ops = {||} then stop else Choice (fimage f ops))"
+abbreviation "safe_choice f \<equiv> safe_choice_stop (f End) f"
+abbreviation "safe_choice2 f op1s op2s \<equiv> (if op1s = {||} \<and> op2s = {||} then End
+  else if op1s = {||} then Choice (f End |`| op2s)
+  else if op2s = {||} then Choice ((\<lambda>op1. f op1 End) |`| op1s)
+  else Choice (fimage (case_prod f) (fproduct op1s op2s)))"
+abbreviation "choice2 op1 op2 \<equiv> Choice (fimage (\<lambda>b. if b then op1 else op2) {|True, False|})"
+abbreviation "safe_read f x \<equiv> (case x of None \<Rightarrow> End | Some x \<Rightarrow> f x)"
+
 inductive comp_producing :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow> ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> nat \<Rightarrow> bool" for wire where
-  "comp_producing wire buf End End 0"
-| "comp_producing wire buf (Read p1 f1) End 0"
-| "wire p1 = None \<Longrightarrow> comp_producing wire buf (Write op1' p1 x1) End 0"
-| "wire p1 = Some p \<Longrightarrow> comp_producing wire buf op1' End n \<Longrightarrow> comp_producing wire buf (Write op1' p1 x1) End (Suc n)"
-| "comp_producing wire buf End (Write op2' p2 x2) 0"
+  "comp_producing wire buf (Choice op1s) (Choice op2s) 0"
+| "comp_producing wire buf (Read p1 f1) (Choice op2s) 0"
+| "wire p1 = None \<or> op2s \<noteq> {||} \<Longrightarrow> comp_producing wire buf (Write op1' p1 x1) (Choice op2s) 0"
+| "wire p1 = Some p \<Longrightarrow> comp_producing wire (BENQ p x1 buf) op1' End n \<Longrightarrow> comp_producing wire buf (Write op1' p1 x1) End (Suc n)"
+| "comp_producing wire buf (Choice op1s) (Write op2' p2 x2) 0"
 | "comp_producing wire buf (Read p1 f1) (Write op2' p2 x2) 0"
 | "comp_producing wire buf (Write op1' p1 x1) (Write op2' p2 x2) 0"
-| "p2 \<notin> ran wire \<Longrightarrow> comp_producing wire buf End (Read p2 f2) 0"
-| "p2 \<in> ran wire \<Longrightarrow> comp_producing wire (BTL p2 (bend o buf)) End (f2 (BHD p2 (bend o buf))) n \<Longrightarrow> comp_producing wire buf End (Read p2 f2) (Suc n)"
+| "p2 \<notin> ran wire \<or> op1s \<noteq> {||} \<Longrightarrow> comp_producing wire buf (Choice op1s) (Read p2 f2) 0"
+| "p2 \<in> ran wire \<Longrightarrow> comp_producing wire (BTL p2 (bend o buf)) End (safe_read f2 (BHD p2 (bend o buf))) n \<Longrightarrow> comp_producing wire buf End (Read p2 f2) (Suc n)"
 | "comp_producing wire buf (Read p1 f1) (Read p2 f2) 0"
 | "p2 \<notin> ran wire \<or> wire p1 = None \<Longrightarrow> comp_producing wire buf (Write op1' p1 x1) (Read p2 f2) 0"
 | "p2 \<in> ran wire \<Longrightarrow> wire p1 = Some p \<Longrightarrow>
-    comp_producing wire (BTL p2 (BENQ p x1 buf)) op1' (f2 (BHD p2 (BENQ p x1 buf))) n \<Longrightarrow>
+    comp_producing wire (BTL p2 (BENQ p x1 buf)) op1' (safe_read f2 (BHD p2 (BENQ p x1 buf))) n \<Longrightarrow>
     comp_producing wire buf (Write op1' p1 x1) (Read p2 f2) (Suc n)"
 
-inductive_cases comp_producing_WriteEndE: "comp_producing wire buf (Write op p x) End n"
-inductive_cases comp_producing_ReadEndE: "comp_producing wire buf (Read p f) End n"
+inductive_cases comp_producing_WriteEndE: "comp_producing wire buf (Write op p x) (Choice op2s) n"
+inductive_cases comp_producing_ReadEndE: "comp_producing wire buf (Read p f) (Choice op2s) n"
 inductive_cases comp_producing_ReadWriteE: "comp_producing wire buf (Read p f) (Write op p' x)  n"
-inductive_cases comp_producing_EndEndE: "comp_producing wire buf End End n"
-inductive_cases comp_producing_End2E: "comp_producing wire buf op End n"
-
+inductive_cases comp_producing_EndEndE: "comp_producing wire buf (Choice op1s) (Choice op2s) n"
+inductive_cases comp_producing_End2E: "comp_producing wire buf op (Choice op2s) n"
 
 lemma comp_producing_inject: "comp_producing wire buf op1 op2 i \<Longrightarrow> comp_producing wire buf op1 op2 j \<Longrightarrow> i = j"
 proof (induct buf op1 op2 i arbitrary: j rule: comp_producing.induct)
-  case (4 p1 p buf op1' n x1)
+  case (4 p1 p x1 buf op1' n)
   from 4(4,1-2) 4(3)[of "j - 1"] show ?case
     by (elim comp_producing.cases[of _ _ "Write op1' p1 x1"]) (auto simp del: fun_upd_apply)
 next
@@ -55,34 +67,42 @@ lemma case_prod_cong4[fundef_cong]:
     ((\<lambda>((x1, x2), (y1, y2)). f x1 x2 y1 y2) prod) = ((\<lambda>((x1, x2), (y1, y2)). g x1 x2 y1 y2) prod')"
   by (auto split: prod.splits)
 
+
 corecursive comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
   "comp_op wire buf op1 op2 =
      (let comp_op' = (\<lambda>buf' op1' op2'. if \<exists>n. comp_producing wire buf op1 op2 n then comp_op wire buf' op1' op2' else End) in
      case (op1, op2) of
-     (End, End) \<Rightarrow> End
-   | (End, Write op2' p2 x2) \<Rightarrow> Write (comp_op wire (bend o buf) End op2') (Inr p2) x2
-   | (End, Read p2 f2) \<Rightarrow> let buf' = bend o buf in if p2 \<in> ran wire
-     then comp_op' (BTL p2 buf') End (f2 (BHD p2 buf'))
-     else Read (Inr p2) (\<lambda>y2. comp_op wire buf' End (f2 y2))
-   | (Read p1 f1, End) \<Rightarrow> Read (Inl p1) (\<lambda>y1. comp_op wire buf (f1 y1) End)
-   | (Read p1 f1, Write op2' p2 x2) \<Rightarrow> Read (Inl p1) (\<lambda>y1. Write (comp_op wire buf (f1 y1) op2') (Inr p2) x2)
+     (Choice op1s, Choice op2s) \<Rightarrow> safe_choice2 (comp_op wire buf) op1s op2s
+   | (Choice op1s, Write op2' p2 x2) \<Rightarrow> Write (safe_choice (\<lambda>op1. comp_op wire buf op1 op2') op1s) (Inr p2) x2
+   | (Choice op1s, Read p2 f2) \<Rightarrow> let buf' = if op1s = {||} then bend o buf else buf in if p2 \<in> ran wire
+     then safe_choice_stop (comp_op' (BTL p2 buf') End (safe_read f2 (BHD p2 buf'))) (\<lambda>op1. comp_op wire (BTL p2 buf') op1 (safe_read f2 (BHD p2 buf'))) op1s
+     else Read (Inr p2) (\<lambda>y2. safe_choice (\<lambda>op1. comp_op wire buf' op1 (f2 y2)) op1s)
+   | (Read p1 f1, Choice op2s) \<Rightarrow> Read (Inl p1) (\<lambda>y1. safe_choice (comp_op wire buf (f1 y1)) op2s)
+   | (Read p1 f1, Write op2' p2 x2) \<Rightarrow> choice2
+        (Read (Inl p1) (\<lambda>y1. Write (comp_op wire buf (f1 y1) op2') (Inr p2) x2))
+        (Write (Read (Inl p1) (\<lambda>y1. comp_op wire buf (f1 y1) op2')) (Inr p2) x2)
    | (Read p1 f1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
-     then Read (Inl p1) (\<lambda>y1. comp_op wire (BTL p2 buf) (f1 y1) (f2 (BHD p2 buf)))
-     else Read (Inl p1) (\<lambda>y1. Read (Inr p2) (\<lambda>y2. comp_op wire buf (f1 y1) (f2 y2)))
-   | (Write op1' p1 x1, End) \<Rightarrow> (case wire p1 of
-       None \<Rightarrow> Write (comp_op wire buf op1' End) (Inl p1) x1
-     | Some p \<Rightarrow> comp_op' buf op1' End)
+     then case BHD p2 buf of None \<Rightarrow> Read (Inl p1) (\<lambda>y1. comp_op wire buf (f1 y1) End)
+        | Some y2 \<Rightarrow> Read (Inl p1) (\<lambda>y1. comp_op wire (BTL p2 buf) (f1 y1) (f2 y2))
+     else choice2 (Read (Inl p1) (\<lambda>y1. Read (Inr p2) (\<lambda>y2. comp_op wire buf (f1 y1) (f2 y2))))
+        (Read (Inr p2) (\<lambda>y2. Read (Inl p1) (\<lambda>y1. comp_op wire buf (f1 y1) (f2 y2))))
+   | (Write op1' p1 x1, Choice op2s) \<Rightarrow> (case wire p1 of
+       None \<Rightarrow> Write (safe_choice (comp_op wire buf op1') op2s) (Inl p1) x1
+     | Some p \<Rightarrow> safe_choice_stop (comp_op' (BENQ p x1 buf) op1' End) (comp_op wire (BENQ p x1 buf) op1') op2s)
    | (Write op1' p1 x1, Write op2' p2 x2) \<Rightarrow> (case wire p1 of
-       None \<Rightarrow> Write (Write (comp_op wire buf op1' op2') (Inr p2) x2) (Inl p1) x1
+       None \<Rightarrow> choice2 (Write (Write (comp_op wire buf op1' op2') (Inr p2) x2) (Inl p1) x1)
+          (Write (Write (comp_op wire buf op1' op2') (Inl p1) x1) (Inr p2) x2)
      | Some p \<Rightarrow> Write (comp_op wire (BENQ p x1 buf) op1' op2') (Inr p2) x2)
    | (Write op1' p1 x1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
      then (case wire p1 of
-       None \<Rightarrow> Write (comp_op wire (BTL p2 buf) op1' (f2 (BHD p2 buf))) (Inl p1) x1
-     | Some p \<Rightarrow> comp_op' (BTL p2 (BENQ p x1 buf)) op1' (f2 (BHD p2 (BENQ p x1 buf))))
+       None \<Rightarrow> Write (comp_op wire (BTL p2 buf) op1' (safe_read f2 (BHD p2 buf))) (Inl p1) x1
+     | Some p \<Rightarrow> comp_op' (BTL p2 (BENQ p x1 buf)) op1' (safe_read f2 (BHD p2 (BENQ p x1 buf))))
      else (case wire p1 of
-       None \<Rightarrow> Write (Read (Inr p2) (\<lambda>y2. comp_op wire buf op1' (f2 y2))) (Inl p1) x1
-     | Some p \<Rightarrow> Read (Inr p2) (\<lambda>y2. comp_op wire (BENQ p x1 buf) op1' (f2 y2))))"
+       None \<Rightarrow> choice2 (Write (Read (Inr p2) (\<lambda>y2. comp_op wire buf op1' (f2 y2))) (Inl p1) x1)
+         (Read (Inr p2) (\<lambda>y2. Write (comp_op wire buf op1' (f2 y2)) (Inl p1) x1))
+     | Some p \<Rightarrow> Read (Inr p2) (\<lambda>y2. comp_op wire (BENQ p x1 buf) op1' (f2 y2)))
+)"
   by (relation "measure (\<lambda>((wire, buf), op1, op2). THE i. comp_producing wire buf op1 op2 i)")
     (auto 0 3 simp: The_comp_producing elim: comp_producing.cases)
 
@@ -97,56 +117,45 @@ lemma not_comp_producing_eq_End: "\<forall>n. \<not> comp_producing wire buf op1
     apply (subst (asm) comp_op.code)
     apply (auto split: op.splits if_splits option.splits simp: Let_def intro: comp_producing.intros)
     done
+  subgoal for buf op1 op2
+    apply (subst (2) comp_op.code)
+    apply (auto split: op.splits if_splits option.splits simp: Let_def rel_fset_alt intro: comp_producing.intros)
+    done
   done
 
 lemma comp_op_code[code]:
   "comp_op wire buf op1 op2 = (case (op1, op2) of
-     (End, End) \<Rightarrow> End
-   | (End, Write op2' p2 x2) \<Rightarrow> Write (comp_op wire (bend o buf) End op2') (Inr p2) x2
-   | (End, Read p2 f2) \<Rightarrow> let buf = bend o buf in if p2 \<in> ran wire
-     then comp_op wire (BTL p2 buf) End (f2 (BHD p2 buf))
-     else Read (Inr p2) (\<lambda>y2. comp_op wire buf End (f2 y2))
-   | (Read p1 f1, End) \<Rightarrow> Read (Inl p1) (\<lambda>y1. comp_op wire buf (f1 y1) End)
-   | (Read p1 f1, Write op2' p2 x2) \<Rightarrow> Read (Inl p1) (\<lambda>y1. Write (comp_op wire buf (f1 y1) op2') (Inr p2) x2)
+     (Choice op1s, Choice op2s) \<Rightarrow> safe_choice2 (comp_op wire buf) op1s op2s
+   | (Choice op1s, Write op2' p2 x2) \<Rightarrow> Write (safe_choice (\<lambda>op1. comp_op wire buf op1 op2') op1s) (Inr p2) x2
+   | (Choice op1s, Read p2 f2) \<Rightarrow> let buf' = if op1s = {||} then bend o buf else buf in if p2 \<in> ran wire
+     then safe_choice (\<lambda>op1. comp_op wire (BTL p2 buf') op1 (safe_read f2 (BHD p2 buf'))) op1s
+     else Read (Inr p2) (\<lambda>y2. safe_choice (\<lambda>op1. comp_op wire buf' op1 (f2 y2)) op1s)
+   | (Read p1 f1, Choice op2s) \<Rightarrow> Read (Inl p1) (\<lambda>y1. safe_choice (comp_op wire buf (f1 y1)) op2s)
+   | (Read p1 f1, Write op2' p2 x2) \<Rightarrow> choice2
+        (Read (Inl p1) (\<lambda>y1. Write (comp_op wire buf (f1 y1) op2') (Inr p2) x2))
+        (Write (Read (Inl p1) (\<lambda>y1. comp_op wire buf (f1 y1) op2')) (Inr p2) x2)
    | (Read p1 f1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
-     then Read (Inl p1) (\<lambda>y1. comp_op wire (BTL p2 buf) (f1 y1) (f2 (BHD p2 buf)))
-     else Read (Inl p1) (\<lambda>y1. Read (Inr p2) (\<lambda>y2. comp_op wire buf (f1 y1) (f2 y2)))
-   | (Write op1' p1 x1, End) \<Rightarrow> (case wire p1 of
-       None \<Rightarrow> Write (comp_op wire buf op1' End) (Inl p1) x1
-     | Some p \<Rightarrow> comp_op wire buf op1' End)
+     then case BHD p2 buf of None \<Rightarrow> Read (Inl p1) (\<lambda>y1. comp_op wire buf (f1 y1) End)
+        | Some y2 \<Rightarrow> Read (Inl p1) (\<lambda>y1. comp_op wire (BTL p2 buf) (f1 y1) (f2 y2))
+     else choice2 (Read (Inl p1) (\<lambda>y1. Read (Inr p2) (\<lambda>y2. comp_op wire buf (f1 y1) (f2 y2))))
+        (Read (Inr p2) (\<lambda>y2. Read (Inl p1) (\<lambda>y1. comp_op wire buf (f1 y1) (f2 y2))))
+   | (Write op1' p1 x1, Choice op2s) \<Rightarrow> (case wire p1 of
+       None \<Rightarrow> Write (safe_choice (comp_op wire buf op1') op2s) (Inl p1) x1
+     | Some p \<Rightarrow> safe_choice (comp_op wire (BENQ p x1 buf) op1') op2s)
    | (Write op1' p1 x1, Write op2' p2 x2) \<Rightarrow> (case wire p1 of
-       None \<Rightarrow> Write (Write (comp_op wire buf op1' op2') (Inr p2) x2) (Inl p1) x1
+       None \<Rightarrow> choice2 (Write (Write (comp_op wire buf op1' op2') (Inr p2) x2) (Inl p1) x1)
+          (Write (Write (comp_op wire buf op1' op2') (Inl p1) x1) (Inr p2) x2)
      | Some p \<Rightarrow> Write (comp_op wire (BENQ p x1 buf) op1' op2') (Inr p2) x2)
    | (Write op1' p1 x1, Read p2 f2) \<Rightarrow> if p2 \<in> ran wire
      then (case wire p1 of
-       None \<Rightarrow> Write (comp_op wire (BTL p2 buf) op1' (f2 (BHD p2 buf))) (Inl p1) x1
-     | Some p \<Rightarrow> comp_op wire (BTL p2 (BENQ p x1 buf)) op1' (f2 (BHD p2 (BENQ p x1 buf))))
+       None \<Rightarrow> Write (comp_op wire (BTL p2 buf) op1' (safe_read f2 (BHD p2 buf))) (Inl p1) x1
+     | Some p \<Rightarrow> comp_op wire (BTL p2 (BENQ p x1 buf)) op1' (safe_read f2 (BHD p2 (BENQ p x1 buf))))
      else (case wire p1 of
-       None \<Rightarrow> Write (Read (Inr p2) (\<lambda>y2. comp_op wire buf op1' (f2 y2))) (Inl p1) x1
+       None \<Rightarrow> choice2 (Write (Read (Inr p2) (\<lambda>y2. comp_op wire buf op1' (f2 y2))) (Inl p1) x1)
+         (Read (Inr p2) (\<lambda>y2. Write (comp_op wire buf op1' (f2 y2)) (Inl p1) x1))
      | Some p \<Rightarrow> Read (Inr p2) (\<lambda>y2. comp_op wire (BENQ p x1 buf) op1' (f2 y2))))"
   apply (subst comp_op.code)
-  apply (simp split: op.splits option.splits add: Let_def)
-  apply safe
-  subgoal for p1 f1 op2' p2 x2
-    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros)
-  subgoal for p2 f2 op1' p1 x1
-    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
-  subgoal for p2 f2 op1' p1 x1
-    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
-  subgoal for p2 f2 op1' p1 x1
-    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
-  subgoal for p2 f2 op1' p1 x1
-    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
-  subgoal for p2 f2 op1' p1 x1 p
-    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
-  subgoal for p2 f2
-    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
-  subgoal
-    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
-  subgoal
-    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
-  subgoal
-    by (subst comp_op.code) (auto 0 4 split: op.splits option.splits intro: comp_producing.intros simp: Let_def)
+  apply (auto 0 4 split: op.splits option.splits simp add: Let_def intro: comp_producing.intros not_comp_producing_eq_End not_comp_producing_eq_End[symmetric])
   done
 simps_of_case comp_op_simps': comp_op_code[unfolded prod.case]
 
