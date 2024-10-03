@@ -6,28 +6,28 @@ imports
   Operator
 begin
 
-context includes fset.lifting begin
-lift_definition fproduct :: "'a fset \<Rightarrow> 'b fset \<Rightarrow> ('a \<times> 'b) fset" is "(\<times>)" by auto
+context includes cset.lifting begin
+lift_definition cproduct :: "'a cset \<Rightarrow> 'b cset \<Rightarrow> ('a \<times> 'b) cset" is "(\<times>)" by auto
 end
 
-abbreviation "safe_choice_stop stop f ops \<equiv> (if ops = {||} then stop else Choice (fimage f ops))"
+abbreviation "safe_choice_stop stop f ops \<equiv> (if ops = cempty then stop else Choice (cimage f ops))"
 abbreviation "safe_choice f \<equiv> safe_choice_stop (f End) f"
-abbreviation "safe_choice2 f op1s op2s \<equiv> (if op1s = {||} \<and> op2s = {||} then End
-  else if op1s = {||} then Choice (f End |`| op2s)
-  else if op2s = {||} then Choice ((\<lambda>op1. f op1 End) |`| op1s)
-  else Choice (fimage (case_prod f) (fproduct op1s op2s)))"
-abbreviation "choice2 op1 op2 \<equiv> Choice (fimage (\<lambda>b. if b then op1 else op2) {|True, False|})"
+abbreviation "safe_choice2 f op1s op2s \<equiv> (if op1s = cempty \<and> op2s = cempty then End
+  else if op1s = cempty then Choice (cimage (f End) op2s)
+  else if op2s = cempty then Choice (cimage (\<lambda>op1. f op1 End) op1s)
+  else Choice (cimage (case_prod f) (cproduct op1s op2s)))"
+abbreviation "choice2 op1 op2 \<equiv> Choice (cimage (\<lambda>b. if b then op1 else op2) (cinsert True (csingle False)))"
 abbreviation "safe_read f x \<equiv> (case x of None \<Rightarrow> End | Some x \<Rightarrow> f x)"
 
 inductive comp_producing :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow> ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> nat \<Rightarrow> bool" for wire where
   "comp_producing wire buf (Choice op1s) (Choice op2s) 0"
 | "comp_producing wire buf (Read p1 f1) (Choice op2s) 0"
-| "wire p1 = None \<or> op2s \<noteq> {||} \<Longrightarrow> comp_producing wire buf (Write op1' p1 x1) (Choice op2s) 0"
+| "wire p1 = None \<or> op2s \<noteq> cempty \<Longrightarrow> comp_producing wire buf (Write op1' p1 x1) (Choice op2s) 0"
 | "wire p1 = Some p \<Longrightarrow> comp_producing wire (BENQ p x1 buf) op1' End n \<Longrightarrow> comp_producing wire buf (Write op1' p1 x1) End (Suc n)"
 | "comp_producing wire buf (Choice op1s) (Write op2' p2 x2) 0"
 | "comp_producing wire buf (Read p1 f1) (Write op2' p2 x2) 0"
 | "comp_producing wire buf (Write op1' p1 x1) (Write op2' p2 x2) 0"
-| "p2 \<notin> ran wire \<or> op1s \<noteq> {||} \<Longrightarrow> comp_producing wire buf (Choice op1s) (Read p2 f2) 0"
+| "p2 \<notin> ran wire \<or> op1s \<noteq> cempty \<Longrightarrow> comp_producing wire buf (Choice op1s) (Read p2 f2) 0"
 | "p2 \<in> ran wire \<Longrightarrow> comp_producing wire (BTL p2 (bend o buf)) End (safe_read f2 (BHD p2 (bend o buf))) n \<Longrightarrow> comp_producing wire buf End (Read p2 f2) (Suc n)"
 | "comp_producing wire buf (Read p1 f1) (Read p2 f2) 0"
 | "p2 \<notin> ran wire \<or> wire p1 = None \<Longrightarrow> comp_producing wire buf (Write op1' p1 x1) (Read p2 f2) 0"
@@ -75,7 +75,7 @@ corecursive comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Righ
      case (op1, op2) of
      (Choice op1s, Choice op2s) \<Rightarrow> safe_choice2 (comp_op wire buf) op1s op2s
    | (Choice op1s, Write op2' p2 x2) \<Rightarrow> safe_choice (\<lambda>op1. Write (comp_op wire buf op1 op2') (Inr p2) x2) op1s
-   | (Choice op1s, Read p2 f2) \<Rightarrow> let buf' = if op1s = {||} then bend o buf else buf in if p2 \<in> ran wire
+   | (Choice op1s, Read p2 f2) \<Rightarrow> let buf' = if op1s = cempty then bend o buf else buf in if p2 \<in> ran wire
      then safe_choice_stop (comp_op' (BTL p2 buf') End (safe_read f2 (BHD p2 buf'))) (\<lambda>op1. comp_op wire (BTL p2 buf') op1 (safe_read f2 (BHD p2 buf'))) op1s
      else safe_choice (\<lambda>op1. Read (Inr p2) (\<lambda>y2. comp_op wire buf' op1 (f2 y2))) op1s
    | (Read p1 f1, Choice op2s) \<Rightarrow> safe_choice (\<lambda>op2. Read (Inl p1) (\<lambda>y1. comp_op wire buf (f1 y1) op2)) op2s
@@ -118,7 +118,7 @@ lemma not_comp_producing_eq_End: "\<forall>n. \<not> comp_producing wire buf op1
     done
   subgoal for buf op1 op2
     apply (subst (2) comp_op.code)
-    apply (auto split: op.splits if_splits option.splits simp: Let_def rel_fset_alt intro: comp_producing.intros)
+    apply (auto split: op.splits if_splits option.splits simp: Let_def rel_cset_alt_def bot_cset.rep_eq intro: comp_producing.intros)
     done
   done
 
@@ -126,7 +126,7 @@ lemma comp_op_code[code]:
   "comp_op wire buf op1 op2 = (case (op1, op2) of
      (Choice op1s, Choice op2s) \<Rightarrow> safe_choice2 (comp_op wire buf) op1s op2s
    | (Choice op1s, Write op2' p2 x2) \<Rightarrow> safe_choice (\<lambda>op1. Write (comp_op wire buf op1 op2') (Inr p2) x2) op1s
-   | (Choice op1s, Read p2 f2) \<Rightarrow> let buf' = if op1s = {||} then bend o buf else buf in if p2 \<in> ran wire
+   | (Choice op1s, Read p2 f2) \<Rightarrow> let buf' = if op1s = cempty then bend o buf else buf in if p2 \<in> ran wire
      then safe_choice (\<lambda>op1. comp_op wire (BTL p2 buf') op1 (safe_read f2 (BHD p2 buf'))) op1s
      else safe_choice (\<lambda>op1. Read (Inr p2) (\<lambda>y2. comp_op wire buf' op1 (f2 y2))) op1s
    | (Read p1 f1, Choice op2s) \<Rightarrow> safe_choice (\<lambda>op2. Read (Inl p1) (\<lambda>y1. comp_op wire buf (f1 y1) op2)) op2s

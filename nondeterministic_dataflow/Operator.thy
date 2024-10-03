@@ -9,7 +9,7 @@ imports
   "HOL-Library.Numeral_Type"
   "HOL-Library.Code_Cardinality"
   "HOL-Library.Simps_Case_Conv"
-  "HOL-Library.FSet"
+  "HOL-Library.Countable_Set_Type"
 begin
 
 section\<open>Channels\<close>
@@ -20,14 +20,14 @@ datatype (discs_sels) 'd observation = Observed (obs: 'd) | EOS
 codatatype (inputs: 'ip, outputs: 'op, dead 'd) op =
   Read 'ip "'d observation \<Rightarrow> ('ip, 'op, 'd) op"
   | Write "('ip, 'op, 'd) op" 'op 'd
-  | Choice "('ip, 'op, 'd) op fset"
+  | Choice "('ip, 'op, 'd) op cset"
 
 corec dummy :: "(1, 1, 'd) op" where
-  "dummy = Choice ((\<lambda> _. dummy) |`| {|()|})"
+  "dummy = Choice (cimage (\<lambda> _. dummy) (csingle ()))"
 
-abbreviation "End \<equiv> Choice {||}"
-abbreviation "ARead i f op \<equiv> Choice ((\<lambda> x. if x then op else Read i f) |`| {|True, False|})"
-lemma ARead_simp[simp]: "ARead i f op = Choice {|op, Read i f|}"
+abbreviation "End \<equiv> Choice cempty"
+abbreviation "ARead i f op \<equiv> Choice (cimage (\<lambda> x. if x then op else Read i f) (cinsert True (csingle False)))"
+lemma ARead_simp[simp]: "ARead i f op = Choice (cinsert op (csingle (Read i f)))"
   by simp
 
 corec copy :: "(1, 1, 'd) op" where
@@ -48,11 +48,13 @@ abbreviation CTL :: "'a \<Rightarrow> ('a \<Rightarrow> 'd channel) \<Rightarrow
 
 section \<open>Sub operators\<close>
 
+declare cin.rep_eq[simp]
+
 inductive sub_op :: \<open>('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op \<Rightarrow> nat \<Rightarrow> bool\<close> for op where
   sub_op_Refl: \<open>sub_op op op 0\<close>
 | sub_op_Read: \<open>sub_op op (f x) n \<Longrightarrow> sub_op op (Read p f) (Suc n)\<close>
 | sub_op_Write: \<open>sub_op op op' n \<Longrightarrow> sub_op op (Write op' p x) (Suc n)\<close>
-| sub_op_Choice: \<open>\<exists> op' |\<in>| ops. sub_op op op' n \<Longrightarrow> sub_op op (Choice ops) (Suc n)\<close>
+| sub_op_Choice: \<open>cin op' ops \<Longrightarrow> sub_op op op' n \<Longrightarrow> sub_op op (Choice ops) (Suc n)\<close>
 
 inductive_cases sub_op_ReflE [elim!]: \<open>sub_op op op n\<close>
 inductive_cases sub_op_ReadE [elim!]: \<open>sub_op op (Read p f) n\<close>
@@ -60,44 +62,44 @@ inductive_cases sub_op_WriteE [elim!]: \<open>sub_op op (Write op' p x) n\<close
 inductive_cases sub_op_ChoiceE [elim!]: \<open>sub_op op (Choice ops) n\<close>   
 
 lemma inputs_sub_op_Read: \<open>p \<in> inputs op \<Longrightarrow> \<exists>f n. sub_op (Read p f) op n\<close>
-  by (induct op pred: inputs) (auto intro: sub_op.intros)
+  by (induct op pred: inputs) (force intro: sub_op.intros)+
 
 lemma sub_op_Read_inputs: \<open>sub_op (Read p f) op n \<Longrightarrow> p \<in> inputs op\<close>
   by (induct op n pred: sub_op) auto
 
 lemma outputs_sub_op_Write: \<open>p \<in> outputs op \<Longrightarrow> \<exists>op' x n. sub_op (Write op' p x) op n\<close>
-  by (induct op pred: outputs) (auto 10 10 intro: sub_op.intros)
+  by (induct op pred: outputs) (force intro: sub_op.intros)+
 
 
 lemma sub_op_Write_outputs: \<open>sub_op (Write op' p x) op n \<Longrightarrow> p \<in> outputs op\<close>
   by (induct op n pred: sub_op) auto
 
-lemma sub_op_Read_induct [consumes 1, case_names Read1 Read2 Write]:
+lemma sub_op_Read_induct [consumes 1, case_names Read1 Read2 Write Choice]:
   assumes \<open>sub_op (Read p g) op d\<close>
-    and read1: \<open>\<And>f p. P p (Read p f)\<close>
-    and read2: \<open>\<And>p p' f x d g. sub_op (Read p g) (f x) d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Read p' f)\<close>
-    and writ: \<open>\<And>p p' op' x d g. sub_op (Read p g) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Write op' p' x)\<close>
-    and choic: \<open>\<And>p p' ops x d g. \<exists> op' |\<in>| ops. sub_op (Read p g) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Choice ops)\<close>
+    and \<open>\<And>f p. P p (Read p f)\<close>
+    and \<open>\<And>p p' f x d g. sub_op (Read p g) (f x) d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Read p' f)\<close>
+    and \<open>\<And>p p' op' x d g. sub_op (Read p g) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Write op' p' x)\<close>
+    and \<open>\<And>p p' ops x d g. \<exists>op'. cin op' ops \<and> sub_op (Read p g) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Choice ops)\<close>
   shows \<open>P p op\<close>
   using assms(1)
 proof (induct d arbitrary: op p rule: less_induct)
   case (less m)
   from this(2,1) show ?case
-    by (induct op m pred: sub_op) (meson assms(2-) le_imp_less_Suc)+
+    by (induct op m pred: sub_op) (auto intro!: assms)
 qed
 
-lemma sub_op_Write_induct [consumes 1, case_names Read Write1 Write2]:
+lemma sub_op_Write_induct [consumes 1, case_names Read Write1 Choice Write2]:
   assumes \<open>sub_op (Write op2 p y) op d\<close>
-    and read: \<open>\<And>p p' f x op2 y d. sub_op (Write op2 p y) (f x) d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Read p' f)\<close>
-    and write1: \<open>\<And>p p' op' x op2 y d. sub_op (Write op2 p y) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Write op' p' x)\<close>
-    and write1: \<open>\<And>p op' op2 y d ops.  \<exists> op' |\<in>| ops.  sub_op (Write op2 p y) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Choice ops)\<close>
-    and write2: \<open>\<And>p op' x. P p (Write op' p x)\<close>
+    and \<open>\<And>p p' f x op2 y d. sub_op (Write op2 p y) (f x) d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Read p' f)\<close>
+    and \<open>\<And>p p' op' x op2 y d. sub_op (Write op2 p y) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Write op' p' x)\<close>
+    and \<open>\<And>p op' op2 y d ops.  \<exists>op'. cin op' ops \<and> sub_op (Write op2 p y) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Choice ops)\<close>
+    and \<open>\<And>p op' x. P p (Write op' p x)\<close>
   shows \<open>P p op\<close>
   using assms(1)
 proof (induct d arbitrary: op p rule: less_induct)
   case (less m)
   from this(2,1) show ?case
-    by (induct op m pred: sub_op) (meson assms(2-) le_imp_less_Suc)+
+    by (induct op m pred: sub_op) (auto intro!: assms)
 qed
 
 section\<open>Inputs measure\<close>
@@ -106,11 +108,11 @@ inductive input_at where
   "input_at p (Read p f) n"
 | "p \<noteq> p' \<Longrightarrow> input_at p (f x) n \<Longrightarrow> input_at p (Read p' f) (Suc n)"
 | "input_at p op' n \<Longrightarrow> input_at p (Write op' p' x) (Suc n)"
-| "\<exists> op' |\<in>| ops. input_at p op' n \<Longrightarrow> input_at p (Choice ops) (Suc n)"
+| "cin op' ops \<Longrightarrow> input_at p op' n \<Longrightarrow> input_at p (Choice ops) (Suc n)"
 
 
 lemma inputs_input_at: "p \<in> inputs op \<Longrightarrow> \<exists>n. input_at p op n"
-  by (induct p op rule: op.set_induct(1)) (auto intro: input_at.intros)
+  by (induct p op rule: op.set_induct(1)) (auto 4 4 intro: input_at.intros)
 
 lemma input_at_inputs: "input_at p op n \<Longrightarrow> p \<in> inputs op"
   by (induct p op n rule: input_at.induct) auto
@@ -124,9 +126,9 @@ lemma input_depth_Read: "p \<in> inputs op \<Longrightarrow> input_depth p op = 
   unfolding input_depth_def
   apply (cases op)
     apply (auto intro: input_at.intros Least_eq_0)
-   apply (metis LeastI_ex Zero_not_Suc input_at.simps inputs_input_at op.inject(1))
-   apply (metis input_at.simps inputs_input_at op.simps(4) wellorder_Least_lemma(1) zero_less_Suc)
-  apply (metis LeastI input_at.simps inputs_alt nat.discI op.simps(6) zero_less_iff_neq_zero)
+    apply (metis LeastI_ex Zero_not_Suc input_at.simps inputs_input_at op.inject(1))
+   apply (metis LeastI_ex input_at.cases inputs_input_at op.set_intros(3) op.simps(4) zero_less_Suc)
+  apply (metis LeastI_ex Zero_not_Suc input_at.cases inputs_alt op.set_intros(4) op.simps(7) zero_less_iff_neq_zero)
   done
 
 lemma input_depth_Write[simp]:
@@ -181,10 +183,10 @@ inductive output_at where
   "output_at p (Write op' p x) n"
 | "p \<noteq> p' \<Longrightarrow> output_at p op' n \<Longrightarrow> output_at p (Write op' p' x) (Suc n)"
 | "output_at p op' n \<Longrightarrow> op' \<in> range f \<Longrightarrow> output_at p (Read p' f) (Suc n)"
-| "\<exists> op' |\<in>| ops. output_at p op' n \<Longrightarrow> output_at p (Choice ops) (Suc n)"
+| "cin op' ops \<Longrightarrow> output_at p op' n \<Longrightarrow> output_at p (Choice ops) (Suc n)"
 
 lemma outputs_output_at: "p \<in> outputs op \<Longrightarrow> \<exists>n. output_at p op n"
-  by (induct p op rule: op.set_induct(2)) (auto intro: output_at.intros)
+  by (induct p op rule: op.set_induct(2)) (auto 4 4 intro: output_at.intros)
 
 lemma output_at_outputs: "output_at p op n \<Longrightarrow> p \<in> outputs op"
   by (induct p op n rule: output_at.induct) auto
@@ -257,7 +259,7 @@ datatype ('a, 'b, 'd) IO = Inp (proji: 'a) "'d observation" | Out (projo: 'b) (d
 coinductive traced where
   Read: "traced (f x) lxs \<Longrightarrow> traced (Read p f) (LCons (Inp p x) lxs)"
 | Write: "traced op lxs \<Longrightarrow> traced (Write op p x) (LCons (Out p x) lxs)"
-| Choice: "\<exists> op |\<in>| ops. traced op lxs \<Longrightarrow>  traced (Choice ops) lxs"
+| Choice: "cin op ops \<Longrightarrow> traced op lxs \<Longrightarrow>  traced (Choice ops) lxs"
 | End: "traced End LNil"
 
 inductive_cases traced_LNilE[elim!]: "traced op LNil"
@@ -270,7 +272,7 @@ inductive traced_cong for R where
 | tc_traced: "traced op lxs \<Longrightarrow> traced_cong R op lxs"
 | tc_read: "traced_cong R (f x) lxs \<Longrightarrow> traced_cong R (Read p f) (LCons (Inp p x) lxs)"
 | tc_write: "traced_cong R op lxs \<Longrightarrow> traced_cong R (Write op q x) (LCons (Out q x) lxs)"
-| tc_choice: "\<exists> op |\<in>| ops. traced_cong R op lxs \<Longrightarrow> traced_cong R (Choice ops) lxs"
+| tc_choice: "cin op ops \<Longrightarrow> traced_cong R op lxs \<Longrightarrow> traced_cong R (Choice ops) lxs"
 
 lemma traced_cong_disj[simp]:
   "(traced_cong R op lxs \<or> traced op lxs) = traced_cong R op lxs"
@@ -282,8 +284,8 @@ lemma traced_coinduct_upto:
      X x1 x2 \<Longrightarrow>
     (\<exists>f x lxs p. x1 = Read p f \<and> x2 = LCons (Inp p x) lxs \<and> traced_cong X (f x) lxs) \<or>
     (\<exists>op lxs p x. x1 = Write op p x \<and> x2 = LCons (Out p x) lxs \<and> traced_cong X op lxs) \<or>
-    (\<exists>ops. x1 = Choice ops \<and> (\<exists>op|\<in>|ops. traced_cong X op x2)) \<or>
-     x1 = Choice {||} \<and> x2 = LNil)"
+    (\<exists>ops. x1 = Choice ops \<and> (\<exists>op. cin op ops \<and> traced_cong X op x2)) \<or>
+     x1 = Choice cempty \<and> x2 = LNil)"
   shows "traced op lxs"
   apply (rule traced.coinduct[where X = "traced_cong X"])
    apply (rule tc_base, rule assms(1))
@@ -319,7 +321,7 @@ lemma traces_Write[simp]:
 
 lemma traces_End[simp]:
   "traces End = {LNil}"
-  by (auto simp: traces_def intro: traced.intros)
+  by (auto simp: traces_def bot_cset.rep_eq intro: traced.intros)
 
 corec traced_wit where
   "traced_wit op = (case op of
