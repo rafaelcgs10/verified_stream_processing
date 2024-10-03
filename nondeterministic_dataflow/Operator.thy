@@ -22,7 +22,16 @@ codatatype (inputs: 'ip, outputs: 'op, dead 'd) op =
   | Write "('ip, 'op, 'd) op" 'op 'd
   | Choice "('ip, 'op, 'd) op fset"
 
+corec dummy :: "(1, 1, 'd) op" where
+  "dummy = Choice ((\<lambda> _. dummy) |`| {|()|})"
+
 abbreviation "End \<equiv> Choice {||}"
+abbreviation "ARead i f op \<equiv> Choice ((\<lambda> x. if x then op else Read i f) |`| {|True, False|})"
+lemma ARead_simp[simp]: "ARead i f op = Choice {|op, Read i f|}"
+  by simp
+
+corec copy :: "(1, 1, 'd) op" where
+  "copy = ARead 1 (case_observation (Write copy 2) copy) copy"
 
 type_synonym 'd channel = "'d llist"
 
@@ -613,7 +622,7 @@ corec produce_trace where
 
 simps_of_case produce_trace_simps[simp]: produce_trace.code
 
-lemma lset_produce_trace_not_LNil:
+(* lemma lset_produce_trace_not_LNil:
   "r \<in> lset (produce_trace op lxs) \<Longrightarrow>
    r = (Inp p x) \<Longrightarrow>
    x \<noteq> EOS \<Longrightarrow>
@@ -632,7 +641,7 @@ lemma lset_produce_trace_not_LNil:
     apply (metis fun_upd_other fun_upd_same ltl_simps(1))
     done
   done
-
+ *)
 lemma lset_produce_trace_lhd:
   "(Inp p (Observed x)) \<in> lset (produce_trace op lxs) \<Longrightarrow>
    lhd (lproject (=) \<bottom> (produce_trace op lxs) p) = lhd (lxs p)"
