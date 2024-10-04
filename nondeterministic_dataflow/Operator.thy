@@ -304,7 +304,7 @@ lemma traced_coinduct_upto:
       by (auto simp del: fun_upd_apply)
     done
   done
-
+(*
 definition "traces op = {lxs. traced op lxs}"
 
 (* lemma traces_Read[simp]:
@@ -855,7 +855,7 @@ lemma history_produce:
     done
   done
  *)
-
+*)
 
 section\<open>Buffer infrastrcuture\<close>
 
@@ -956,6 +956,7 @@ lemma "x \<in> lset (lproject (=) lxs (Out q)) \<Longrightarrow> traced m op lxs
    apply (erule traced.cases; auto split: if_splits)
   oops
 *)
+
 
 section\<open>Convenient types\<close>
 
