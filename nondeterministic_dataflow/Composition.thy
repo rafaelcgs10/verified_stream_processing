@@ -102,7 +102,7 @@ corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow
      | Write op p x \<Rightarrow> csingle (Write_aux (buf, op1, op) (Inr p) x)
      | Choice ops \<Rightarrow> cimage (\<lambda>op. Base_aux (buf, op1, op)) ops)))"
 
-lemma comp_op_code: "comp_op wire buf op1 op2 =
+(* lemma comp_op_code: "comp_op wire buf op1 op2 =
      Choice (cUn (case op1 of
        Read p f \<Rightarrow> csingle (Read (Inl p) (\<lambda>y. comp_op wire buf (f y) op2))
      | Write op p x \<Rightarrow> csingle (case wire p of
@@ -116,38 +116,53 @@ lemma comp_op_code: "comp_op wire buf op1 op2 =
      | Choice ops \<Rightarrow> cimage (\<lambda>op. comp_op wire buf op1 op) ops))"
   apply (subst comp_op.code)
   apply (simp add: cset.map_comp o_def cimage_cUn split: comp_op_aux.splits op.splits option.splits)
-  done
+  done *)
+
+lemma comp_op_code: "comp_op wire buf op1 op2 =
+     Choice (cUn (case op1 of
+       Read p f \<Rightarrow> csingle (Read (Inl p) (\<lambda>y. comp_op wire buf (f y) op2))
+     | Write op p x \<Rightarrow> (case wire p of
+         None \<Rightarrow> csingle (Write (comp_op wire buf op op2) (Inl p) x)
+       | Some q \<Rightarrow> un_Choice (comp_op wire (BENQ q x buf) op op2))
+     | Choice ops \<Rightarrow> cUnion (cimage (\<lambda>op. un_Choice (comp_op wire buf op op2)) ops))
+     (case op2 of
+       Read p f \<Rightarrow> (if p \<in> ran wire then un_Choice (comp_op wire (BTL p buf) op1 (safe_read f (BHD p buf)))
+         else csingle (Read (Inr p) (\<lambda>y. comp_op wire buf op1 (f y))))
+     | Write op p x \<Rightarrow> csingle (Write (comp_op wire buf op1 op) (Inr p) x)
+     | Choice ops \<Rightarrow> cUnion (cimage (\<lambda>op. un_Choice (comp_op wire buf op1 op)) ops)))"
+  sorry
 
 lemma comp_op_simps[simp]:
-  "comp_op wire buf (Read p1 f1) (Read p2 f2) =
-    choice2 (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Read p2 f2)))
-     (if p2 \<in> ran wire then comp_op wire (buf(p2 := btl (buf p2))) (Read p1 f1) (safe_read f2 (BHD p2 buf))
-      else Read (Inr p2) (\<lambda>y. comp_op wire buf (Read p1 f1) (f2 y)))"
+  "comp_op wire buf (Read p1 f1) (Read p2 f2) = Choice (
+    cinsert (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Read p2 f2)))
+     (if p2 \<in> ran wire then un_Choice (comp_op wire (buf(p2 := btl (buf p2))) (Read p1 f1) (safe_read f2 (BHD p2 buf)))
+      else csingle (Read (Inr p2) (\<lambda>y. comp_op wire buf (Read p1 f1) (f2 y)))))"
   "comp_op wire buf (Read p1 f1) (Write op2 q2 x2) =
     choice2 (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Write op2 q2 x2))) (Write (comp_op wire buf (Read p1 f1) op2) (Inr q2) x2)"
   "comp_op wire buf (Read p1 f1) (Choice op2s) = 
-    Choice (cinsert (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Choice op2s))) (cimage (comp_op wire buf (Read p1 f1)) op2s))"
-  "comp_op wire buf (Write op1 q1 x1) (Read p2 f2) =
-    choice2 (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Read p2 f2)) (Inl q1) x1
-      | Some q \<Rightarrow> comp_op wire (buf(q := benq x1 (buf q))) op1 (Read p2 f2))
-      (if p2 \<in> ran wire then comp_op wire (buf(p2 := btl (buf p2))) (Write op1 q1 x1) (safe_read f2 (BHD p2 buf))
-        else Read (Inr p2) (\<lambda>y. comp_op wire buf (Write op1 q1 x1) (f2 y)))"
-  "comp_op wire buf (Write op1 q1 x1) (Write op2 q2 x2) =
-    choice2 (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Write op2 q2 x2)) (Inl q1) x1
-      | Some q \<Rightarrow> comp_op wire (buf(q := benq x1 (buf q))) op1 (Write op2 q2 x2))
-      (Write (comp_op wire buf (Write op1 q1 x1) op2) (Inr q2) x2)"
+    Choice (cinsert (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Choice op2s))) (cUnion (cimage (\<lambda>op. un_Choice (comp_op wire buf (Read p1 f1) op)) op2s)))"
+ "comp_op wire buf (Write op1 q1 x1) (Read p2 f2) = Choice (
+    cUn (case wire q1 of None \<Rightarrow> csingle (Write (comp_op wire buf op1 (Read p2 f2)) (Inl q1) x1)
+      | Some q \<Rightarrow> un_Choice (comp_op wire (buf(q := benq x1 (buf q))) op1 (Read p2 f2)))
+      (if p2 \<in> ran wire then un_Choice (comp_op wire (buf(p2 := btl (buf p2))) (Write op1 q1 x1) (safe_read f2 (BHD p2 buf)))
+        else csingle (Read (Inr p2) (\<lambda>y. comp_op wire buf (Write op1 q1 x1) (f2 y)))))"
+  "comp_op wire buf (Write op1 q1 x1) (Write op2 q2 x2) = Choice (
+    cUn (case wire q1 of None \<Rightarrow> csingle (Write (comp_op wire buf op1 (Write op2 q2 x2)) (Inl q1) x1)
+      | Some q \<Rightarrow> un_Choice (comp_op wire (buf(q := benq x1 (buf q))) op1 (Write op2 q2 x2)))
+      (csingle (Write (comp_op wire buf (Write op1 q1 x1) op2) (Inr q2) x2)))"
   "comp_op wire buf (Write op1 q1 x1) (Choice op2s) =
-     Choice (cinsert (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Choice op2s)) (Inl q1) x1
-      | Some q \<Rightarrow> comp_op wire (buf(q := benq x1 (buf q))) op1 (Choice op2s))
-      (cimage (comp_op wire buf (Write op1 q1 x1)) op2s))"
+     Choice (cUn (case wire q1 of None \<Rightarrow> csingle (Write (comp_op wire buf op1 (Choice op2s)) (Inl q1) x1)
+      | Some q \<Rightarrow> un_Choice (comp_op wire (buf(q := benq x1 (buf q))) op1 (Choice op2s)))
+      (cUnion (cimage (\<lambda> op. (un_Choice (comp_op wire buf (Write op1 q1 x1) op))) op2s)))"
   "comp_op wire buf (Choice op1s) (Read p2 f2) =
-    Choice (cinsert (if p2 \<in> ran wire then comp_op wire (buf(p2 := btl (buf p2))) (Choice op1s) (safe_read f2 (BHD p2 buf))
-        else Read (Inr p2) (\<lambda>y. comp_op wire buf (Choice op1s) (f2 y))) (cimage (\<lambda>op. comp_op wire buf op (Read p2 f2)) op1s))"
+    Choice (cUn (cUnion (cimage (\<lambda>op. un_Choice (comp_op wire buf op (Read p2 f2))) op1s))
+        (if p2 \<in> ran wire then un_Choice (comp_op wire (buf(p2 := btl (buf p2))) (Choice op1s) (safe_read f2 (BHD p2 buf)))
+        else csingle (Read (Inr p2) (\<lambda>y. comp_op wire buf (Choice op1s) (f2 y)))))"
   "comp_op wire buf (Choice op1s) (Write op2 q2 x2) =
-    Choice (cinsert (Write (comp_op wire buf (Choice op1s) op2) (Inr q2) x2) (cimage (\<lambda>op. comp_op wire buf op (Write op2 q2 x2)) op1s))"
+    Choice (cinsert (Write (comp_op wire buf (Choice op1s) op2) (Inr q2) x2) (cUnion (cimage (\<lambda>op. un_Choice (comp_op wire buf op (Write op2 q2 x2))) op1s)))"
   "comp_op wire buf (Choice op1s) (Choice op2s) =
-    Choice (cUn (cimage (\<lambda>op. comp_op wire buf op (Choice op2s)) op1s)
-     (cimage (comp_op wire buf (Choice op1s)) op2s))"
+    Choice (cUn (cUnion (cimage (\<lambda>op. un_Choice (comp_op wire buf op (Choice op2s))) op1s))
+     (cUnion (cimage (\<lambda>op. un_Choice (comp_op wire buf (Choice op1s) op)) op2s)))"
   by (subst comp_op_code; simp add: cinsert_commute)+
 
 definition "pcomp_op = comp_op (\<lambda>_. None) (\<lambda>_. BEnded)"
@@ -158,13 +173,78 @@ fun reassoc where
 | "reassoc (Inr x) = Inr (Inr x)"
 thm reassoc.elims
 
+lemma aux:
+  "t \<in> rcset (un_Choice (comp_op (\<lambda>_. None) (\<lambda>_. BEnded) op1 op2)) \<Longrightarrow>
+   (map_op (case_sum Inr Inl) (case_sum Inr Inl) t) \<in> rcset (un_Choice (comp_op (\<lambda>_. None) (\<lambda>_. BEnded) op2 op1))"
+  oops
+
 lemma pcomp_op_commute: "pcomp_op op1 op2 = map_op (case_sum Inr Inl) (case_sum Inr Inl) (pcomp_op op2 op1)"
   apply (coinduction arbitrary: op1 op2 rule: op.coinduct_upto)
   subgoal for op1 op2
     unfolding pcomp_op_def
-    by (cases op1; cases op2)
-      (auto simp add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def intro!: op.cong_Read  op.cong_Write intro: op.cong_base)
-  done
+    apply (cases op1; cases op2)
+            apply  (auto simp add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def
+   intro!: op.cong_Read  op.cong_Write intro: op.cong_base) [2]
+    subgoal for p1 f1 ops
+      apply  (clarsimp simp add: cUnion.rep_eq rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def
+   intro!:  intro: op.cong_base) 
+      apply (intro conjI)
+      subgoal
+        by  (auto simp add: intro!: op.cong_Read intro: op.cong_base)
+      subgoal
+        apply (intro ballI)
+        subgoal for y t
+          apply (rule disjI2)
+          oops
+       (*    apply (frule aux)
+          apply (rule bexI)
+          apply (rule bexI)
+            apply (rule op.cong_base)
+            defer
+          apply assumption+
+            apply hypsubst_thin
+            apply (simp add: op.map_comp o_case_sum case_sum_o_inj(1) case_sum_o_inj(2))
+
+          find_theorems case_sum comp
+
+          find_theorems "map_op _ _ (map_op _ _ _)"
+
+          find_theorems rcset name: induc
+
+        apply (rule exI[of _ op1])
+        apply (rule exI[of _ y])
+           apply (intro conjI)
+             apply simp_all
+            defer *)
+          
+
+         defer
+        apply simp
+
+
+end
+        apply (rule bexI)
+         defer
+         apply assumption
+        using op.cong_base sledgehammer
+        
+
+
+
+         
+         apply (rule op.cong_base)
+      apply  (clarsimp simp add: cUnion.rep_eq rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def)
+        
+
+
+        apply (auto simp add: intro!: op.cong_Read intro: op.cong_base)
+
+      subgoal
+      apply (rule op.cong_base)
+
+
+end
+    done
 
 lemma "pcomp_op op1 (pcomp_op op2 op3) = map_op reassoc reassoc (pcomp_op (pcomp_op op1 op2) op3)"
   apply (coinduction arbitrary: op1 op2 op3 rule: op.coinduct_upto)
