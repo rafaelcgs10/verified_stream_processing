@@ -265,6 +265,9 @@ coinductive bisim where
   "(\<And>l s'. stepped s l s' \<Longrightarrow> (\<exists>t'. stepped t l t' \<and> bisim s' t')) \<Longrightarrow>
    (\<And>l t'. stepped t l t' \<Longrightarrow> (\<exists>s'. stepped s l s' \<and> bisim s' t')) \<Longrightarrow> 
    bisim s t"
+thm op.coinduct_upto
+thm op.cong_intros[no_vars]
+thm bisim.coinduct
 
 lemma bisim_ReadI: "p = q \<Longrightarrow> \<forall>x. bisim (f x) (g x) \<Longrightarrow> bisim (Read p f) (Read q g)"
   by (coinduction) (auto elim!: stepped.cases intro: stepped.intros)
