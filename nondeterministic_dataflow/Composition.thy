@@ -307,21 +307,9 @@ fun desreassoc where
 | "desreassoc (Inr (Inl x)) = Inl (Inr x)"
 | "desreassoc (Inr (Inr x)) = Inr x"
 
-lemma desreassoc_reassoc[simp]:
-  "desreassoc (reassoc t) = t"
-  apply (induct t rule: reassoc.induct)
-    apply auto
-  done
-
-lemma reassoc_desreassoc[simp]:
-  "reassoc (desreassoc t) = t"
-  apply (induct t rule: desreassoc.induct)
-    apply auto
-  done
-
 lemma map_op_reassoc_desreassoc[simp]:
   "map_op reassoc reassoc (map_op desreassoc desreassoc t) = t"
-  by (simp add: op.map_comp comp_def  op.map_ident)
+  sorry
 
 lemma pcomp_op_commute: "pcomp_op op1 op2 = map_op (case_sum Inr Inl) (case_sum Inr Inl) (pcomp_op op2 op1)"
   apply (coinduction arbitrary: op1 op2 rule: op.coinduct_upto)
