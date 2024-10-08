@@ -332,6 +332,19 @@ lemma pcomp_op_commute: "pcomp_op op1 op2 = map_op (case_sum Inr Inl) (case_sum 
             apply  (auto simp add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def cUnion.rep_eq
    intro!: op.cong_Read  op.cong_Write intro: op.cong_base)
       done
+           prefer 2
+   subgoal for p1 f1 ops2
+            apply  (auto simp add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def cUnion.rep_eq
+   intro!: op.cong_Read intro: op.cong_base)
+     subgoal for x y t
+    apply (rule bexI[of _ "y"])
+    apply (rule bexI[of _ "map_op (case_sum Inr Inl) (case_sum Inr Inl) t"])
+         apply (rule op.cong_base)
+         apply simp_all
+        defer
+       subgoal
+         unfolding comp_op_f_def
+         apply (auto simp add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def cUnion.rep_eq split: op.splits;hypsubst_thin?)
     oops
 
 lemma "pcomp_op op1 (pcomp_op op2 op3) = map_op reassoc reassoc (pcomp_op (pcomp_op op1 op2) op3)"
