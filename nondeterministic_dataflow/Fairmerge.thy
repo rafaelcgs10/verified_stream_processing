@@ -33,6 +33,14 @@ lemma neq_2_conv_1[simp]: "p \<noteq> 2 \<longleftrightarrow> (p :: 2) = 1"
     done
   done
 
+
+
+corec fairmerge :: "bool \<Rightarrow> bool \<Rightarrow> (2, 1, 'd) op" where
+  "fairmerge e1 e2 = (case (e1, e2) of
+      (True, True) \<Rightarrow> End
+    | (True, False) \<Rightarrow> ARead 2 (case_observation (Write (fairmerge e1 e2) 2) End) (fairmerge e1 e2))"
+
+(* 
 corec fairmerge :: "bool \<Rightarrow> bool \<Rightarrow> (2, 1, 'd) op" where
   "fairmerge e1 e2 = (case (e1, e2) of
       (True, True) \<Rightarrow> End
@@ -40,8 +48,9 @@ corec fairmerge :: "bool \<Rightarrow> bool \<Rightarrow> (2, 1, 'd) op" where
     | (False, True) \<Rightarrow> Read 1 (case_observation (Write (fairmerge e1 e2) 1) (fairmerge e1 e2) End)
     | (False, False) \<Rightarrow>
       Read 1 (case_observation (Write (Read 2 (case_observation (Write (fairmerge e1 e2) 1) (fairmerge e1 e2) (fairmerge e1 True))) 1)
-     (Read 2 (case_observation (Write (fairmerge e1 e2) 1) (fairmerge e1 e2) (fairmerge e1 True))) (fairmerge True e2)))"
+     (Read 2 (case_observation (Write (fairmerge e1 e2) 1) (fairmerge e1 e2) (fairmerge e1 True))) (fairmerge True e2)))" *)
 
+end
 lemma fairmerge_False_False_Read:
   "fairmerge False False = Read p f \<longleftrightarrow> p = 1 \<and> f = (case_observation (Write (Read 2 (case_observation (Write (fairmerge False False) 1) (fairmerge False False) (fairmerge False True))) 1)
      (Read 2 (case_observation (Write (fairmerge False False) 1) (fairmerge False False) (fairmerge False True))) (fairmerge True False))"
