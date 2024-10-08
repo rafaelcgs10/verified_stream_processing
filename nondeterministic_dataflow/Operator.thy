@@ -256,6 +256,26 @@ section\<open>Trace model basics\<close>
 datatype ('a, 'b, 'd) IO = Inp (proji: 'a) "'d observation" | Out (projo: 'b) (data: 'd)
   where "data (Inp p x) = obs x"
 
+inductive stepped where
+  "stepped (Read p f) (Inp p x) (f x)"
+| "stepped (Write op q x) (Out q x) op"
+| "cin op ops \<Longrightarrow> stepped op l op' \<Longrightarrow> stepped (Choice ops) l op'"
+
+coinductive bisim where
+  "(\<And>l s'. stepped s l s' \<Longrightarrow> (\<exists>t'. stepped t l t' \<and> bisim s' t')) \<Longrightarrow>
+   (\<And>l t'. stepped t l t' \<Longrightarrow> (\<exists>s'. stepped s l s' \<and> bisim s' t')) \<Longrightarrow> 
+   bisim s t"
+
+lemma bisim_ReadI: "p = q \<Longrightarrow> \<forall>x. bisim (f x) (g x) \<Longrightarrow> bisim (Read p f) (Read q g)"
+  by (coinduction) (auto elim!: stepped.cases intro: stepped.intros)
+
+lemma bisim_ReadD: "bisim (Read p f) (Read q g) \<Longrightarrow> p = q \<and> bisim (f x) (g x)"
+  by (erule bisim.cases)
+    (auto dest: meta_spec2[of _ "Inp p x" "f x"] meta_spec2[of _ "Inp q x" "g x"] intro!: stepped.intros elim!: stepped.cases)
+
+lemma bisim_Read_iff: "bisim (Read p f) (Read q g) \<longleftrightarrow> (p = q \<and> (\<forall>x. bisim (f x) (g x)))"
+  by (metis bisim_ReadI bisim_ReadD)
+
 coinductive traced where
   Read: "traced (f x) lxs \<Longrightarrow> traced (Read p f) (LCons (Inp p x) lxs)"
 | Write: "traced op lxs \<Longrightarrow> traced (Write op p x) (LCons (Out p x) lxs)"
