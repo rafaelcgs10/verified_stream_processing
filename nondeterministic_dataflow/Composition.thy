@@ -173,11 +173,6 @@ lemma not_bisim[simp]:
 lemma stepped_End[simp]: "stepped End l t' = False"
   by (auto simp: bot_cset.rep_eq)
 
-inductive sub_ch where
-  "sub_ch (Read p f) (Read p f)"
-| "sub_ch (Write op q x) (Write op q x)"
-| "op' |\<in>| ops \<Longrightarrow> sub_ch op op' \<Longrightarrow> sub_ch op (Choice ops)"
-
 coinductive diverged where
   "(\<forall>op. op |\<in>|ops \<longrightarrow> diverged op) \<Longrightarrow> diverged (Choice ops)"
 
