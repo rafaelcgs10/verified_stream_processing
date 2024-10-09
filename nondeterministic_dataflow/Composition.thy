@@ -156,7 +156,6 @@ fun reassoc where
   "reassoc (Inl (Inl x)) = Inl x"
 | "reassoc (Inl (Inr x)) = Inr (Inl x)"
 | "reassoc (Inr x) = Inr (Inr x)"
-thm reassoc.elims
 
 lemma pcomp_op_commute: "pcomp_op op1 op2 = map_op (case_sum Inr Inl) (case_sum Inr Inl) (pcomp_op op2 op1)"
   apply (coinduction arbitrary: op1 op2 rule: op.coinduct_upto)
@@ -172,11 +171,6 @@ lemma not_bisim[simp]:
   by (auto 10 10 intro: stepped.intros elim: bisim.cases)
 
 
-lemma aux:
-  "stepped op1 io op1' \<Longrightarrow>
-   bisim op1 op2 \<Longrightarrow>
-   \<exists> op2'. stepped op2 io op2' \<and> bisim op1' op2'"
-  sorry
 
 lemma
   "bisim op1 op1' \<Longrightarrow>
@@ -186,7 +180,22 @@ lemma
   subgoal for op1 op1' op2 op2' buf
     apply safe
     subgoal for io op'
-      apply (cases op1; cases op1'; cases op2; cases op2')
+      apply (cases op1; cases op2)
+      subgoal for p1 f1 p2 f2
+        apply (subst (asm) comp_op_code)
+          apply (auto simp add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def split: if_splits)
+        subgoal
+          apply hypsubst_thin
+          apply (intro exI conjI)
+          defer
+          apply (rule bc_base)
+          apply (intro exI conjI)
+          defer
+          apply (rule refl)
+         
+
+
+end
       apply simp_all
       subgoal for p1 f1 p1' f1' p2 f2 p2' f2'
           apply (auto simp add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def split: if_splits)
@@ -196,11 +205,16 @@ lemma
         subgoal
           apply hypsubst_thin
           apply (intro exI conjI)
-           apply (frule aux)
-          apply (rule bisim_refl)
+           apply (rule stepped.intros(3)[of "comp_op wire (buf(p2' := btl (buf p2'))) (Read p1' f1') (safe_read f2' (BHD p2' buf))"])
+            apply force
+           defer
+          apply (rule bc_base)
 
 
-          defer
+end
+            defer
+          apply assumption
+
           apply (rule bc_bisim)
              apply (rule bisim.intros)
               prefer 2
