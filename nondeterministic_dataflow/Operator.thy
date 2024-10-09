@@ -12,6 +12,18 @@ imports
   "HOL-Library.Countable_Set_Type"
 begin
 
+section \<open>cset Syntax\<close>
+syntax
+  "_insert_fset"     :: "args => 'a cset"  ("{|(_)|}")
+
+translations
+  "{|x, xs|}" == "CONST cinsert x {|xs|}"
+  "{|x|}"     == "CONST csingle x"
+  "{|_|}"     == "CONST cempty"
+
+abbreviation cmember :: "'a \<Rightarrow> 'a cset \<Rightarrow> bool" (infix "|\<in>|" 50) where
+  "x |\<in>| X \<equiv> cin x X"
+
 section\<open>Channels\<close>
 
 code_lazy_type llist
@@ -261,6 +273,10 @@ inductive stepped where
 | "stepped (Write op q x) (Out q x) op"
 | "cin op ops \<Longrightarrow> stepped op l op' \<Longrightarrow> stepped (Choice ops) l op'"
 
+inductive_cases steppedReadE [elim!]: "stepped (Read p f) io op"
+inductive_cases steppedWriteE [elim!]: "stepped (Write op q x) io op"
+inductive_cases steppedChoiceE [elim!]: "stepped (Choice ops) io op"
+
 coinductive bisim where
   "(\<And>l s'. stepped s l s' \<Longrightarrow> (\<exists>t'. stepped t l t' \<and> bisim s' t')) \<Longrightarrow>
    (\<And>l t'. stepped t l t' \<Longrightarrow> (\<exists>s'. stepped s l s' \<and> bisim s' t')) \<Longrightarrow> 
@@ -268,6 +284,61 @@ coinductive bisim where
 thm op.coinduct_upto
 thm op.cong_intros[no_vars]
 thm bisim.coinduct
+
+inductive bisim_cong for R where
+  bc_base:  "R x y \<Longrightarrow> bisim_cong R x y"
+| bc_bisim:  "bisim x y \<Longrightarrow> bisim_cong R x y"
+| bc_refl: "x = y \<Longrightarrow> bisim_cong R x y"
+| bc_sym: "bisim_cong R x y \<Longrightarrow> bisim_cong R y x"
+| bc_trans: "bisim_cong R x y \<Longrightarrow> bisim_cong R y z \<Longrightarrow> bisim_cong R x z"
+| bc_Read:"x1 = y1 \<Longrightarrow> rel_fun (=) (bisim_cong R) x2 y2 \<Longrightarrow> bisim_cong R (Read x1 x2) (Read y1 y2)"
+| bc_Write: "bisim_cong R x1 y1 \<Longrightarrow> x2 = y2 \<Longrightarrow> x3 = y3 \<Longrightarrow> bisim_cong R (Write x1 x2 x3) (Write y1 y2 y3)"
+| bc_Choice:"rel_cset (bisim_cong R) x y \<Longrightarrow> bisim_cong R (Choice x) (Choice y)"
+
+lemma bc_bisim_cong:
+  "bisim x x' \<Longrightarrow> bisim y y' \<Longrightarrow> bisim_cong R x' y' \<Longrightarrow> bisim_cong R x y"
+  by (meson bc_bisim bc_sym bc_trans)
+
+lemma bisim_cong_disj:
+  "(bisim_cong R x y \<or> bisim x y) = bisim_cong R x y"
+  by (auto intro: bisim_cong.intros)
+
+lemma bisim_coinduct_upto:
+  "R s t \<Longrightarrow>
+   (\<And>x1 x2. R x1 x2 \<Longrightarrow> (\<forall>x xa. stepped x1 x xa \<longrightarrow> (\<exists>t'. stepped x2 x t' \<and> bisim_cong R xa t')) \<and> (\<forall>x xa. stepped x2 x xa \<longrightarrow> (\<exists>s'. stepped x1 x s' \<and> bisim_cong R s' xa))) \<Longrightarrow>
+   bisim s t"
+  apply (rule bisim.coinduct[where X="bisim_cong R", unfolded bisim_cong_disj, simplified])
+  subgoal
+    by (auto intro: bisim_cong.intros)
+  subgoal premises prems for s' t'
+    using prems(3,2,1) apply -
+    apply (induct s' t' rule: bisim_cong.induct)
+    subgoal
+      by auto
+    subgoal
+      by (auto 10 10 intro: bc_bisim elim: bisim.cases)
+    subgoal
+      by (auto 10 10 intro: bc_refl)
+    subgoal
+      by (fastforce intro: bc_sym)
+    subgoal
+      by (smt (verit) bc_trans)
+    subgoal
+      by (smt (verit, best) rel_fun_def op.distinct(1) op.distinct(3) op.inject(1) stepped.cases stepped.intros(1))
+    subgoal
+      by (smt (verit, ccfv_SIG) op.distinct(1) op.distinct(5) op.sel(3) op.sel(4) op.sel(5) stepped.cases stepped.intros(2))
+    subgoal
+      unfolding rel_cset_def rel_set_def
+      apply safe
+      subgoal
+          apply (fastforce intro: stepped.intros)+
+        done
+      subgoal
+          apply (fastforce intro: stepped.intros)+
+        done
+      done
+    done
+  done
 
 lemma bisim_ReadI: "p = q \<Longrightarrow> \<forall>x. bisim (f x) (g x) \<Longrightarrow> bisim (Read p f) (Read q g)"
   by (coinduction) (auto elim!: stepped.cases intro: stepped.intros)
@@ -278,6 +349,28 @@ lemma bisim_ReadD: "bisim (Read p f) (Read q g) \<Longrightarrow> p = q \<and> b
 
 lemma bisim_Read_iff: "bisim (Read p f) (Read q g) \<longleftrightarrow> (p = q \<and> (\<forall>x. bisim (f x) (g x)))"
   by (metis bisim_ReadI bisim_ReadD)
+
+lemma bisim_refl:
+  "bisim op1 op1"
+  by (coinduction rule: bisim_coinduct_upto) (auto intro: bc_refl)
+
+lemma bisim_sym:
+  "bisim op1 op2 = bisim op2 op1"
+  apply safe
+  subgoal
+    by (coinduction arbitrary: op1 op2 rule: bisim_coinduct_upto) 
+      (smt (verit, del_insts) bc_sym bisim.cases bisim_cong.simps)
+  subgoal
+    by (coinduction arbitrary: op1 op2 rule: bisim_coinduct_upto) 
+      (smt (verit, del_insts) bc_sym bisim.cases bisim_cong.simps)
+  done
+
+lemma bisim_trans:
+  "bisim op1 op2 \<Longrightarrow>
+   bisim op2 op3 \<Longrightarrow>
+   bisim op1 op3"
+  by (coinduction arbitrary: op1 op2 op3 rule: bisim_coinduct_upto) 
+   (smt (verit, del_insts) bc_base bisim.simps)
 
 coinductive traced where
   Read: "traced (f x) lxs \<Longrightarrow> traced (Read p f) (LCons (Inp p x) lxs)"

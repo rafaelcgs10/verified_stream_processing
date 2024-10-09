@@ -166,17 +166,186 @@ lemma pcomp_op_commute: "pcomp_op op1 op2 = map_op (case_sum Inr Inl) (case_sum 
       (auto simp add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def intro!: op.cong_Read  op.cong_Write intro: op.cong_base)
   done
 
-lemma "pcomp_op op1 (pcomp_op op2 op3) = map_op reassoc reassoc (pcomp_op (pcomp_op op1 op2) op3)"
-  apply (coinduction arbitrary: op1 op2 op3 rule: op.coinduct_upto)
+lemma not_bisim[simp]:
+  "\<not> bisim (Read p1 f1) (Write op p2 x)"
+  "\<not> bisim (Write op p1' x) (Read p2' f2)"
+  by (auto 10 10 intro: stepped.intros elim: bisim.cases)
+
+
+lemma aux:
+  "stepped op1 io op1' \<Longrightarrow>
+   bisim op1 op2 \<Longrightarrow>
+   \<exists> op2'. stepped op2 io op2' \<and> bisim op1' op2'"
+  sorry
+
+lemma
+  "bisim op1 op1' \<Longrightarrow>
+   bisim op2 op2' \<Longrightarrow>
+   bisim (comp_op wire buf op1 op2) (comp_op wire buf op1' op2')"
+  apply (coinduction arbitrary: op1 op1' op2 op2' buf rule: bisim_coinduct_upto)
+  subgoal for op1 op1' op2 op2' buf
+    apply safe
+    subgoal for io op'
+      apply (cases op1; cases op1'; cases op2; cases op2')
+      apply simp_all
+      subgoal for p1 f1 p1' f1' p2 f2 p2' f2'
+          apply (auto simp add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def split: if_splits)
+               apply hypsubst_thin
+        subgoal for x
+          by (auto 10 10 simp add: bisim_Read_iff intro!: bc_base intro: stepped.intros bisim_ReadI)
+        subgoal
+          apply hypsubst_thin
+          apply (intro exI conjI)
+           apply (frule aux)
+          apply (rule bisim_refl)
+
+
+          defer
+          apply (rule bc_bisim)
+             apply (rule bisim.intros)
+              prefer 2
+              apply (intro exI conjI)
+             apply assumption
+            prefer 3
+          
+
+
+end
+           apply (rule stepped.intros(3))
+          prefer 2
+          apply assumption
+          apply (auto simp add: bisim_Read_iff rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def intro: stepped.intros bisim_ReadI)
+          unfolding not_def
+           apply (drule mp)
+
+
+          defer
+          apply (intro conjI exI bc_base)
+
+
+
+end
+
+lemma "bisim (pcomp_op op1 (pcomp_op op2 op3)) (map_op reassoc reassoc (pcomp_op (pcomp_op op1 op2) op3))"
+  apply (coinduction arbitrary: op1 op2 op3 rule: bisim_coinduct_upto)
   subgoal for op1 op2 op3
-    unfolding pcomp_op_def
     unfolding pcomp_op_def
     apply (cases op1; cases op2; cases op3)
     subgoal for p1 f1 p2 f2 p3 f3
       apply safe
-    apply (simp_all add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def) [9]
-      apply (hypsubst_thin)
-      apply (erule thin_rl)+
+       apply (simp_all add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def)
+      subgoal for io op
+        apply auto
+        subgoal for op'
+          apply (auto simp add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def)
+          subgoal for x
+            apply (rule exI)
+            apply (intro conjI)
+             apply (rule stepped.intros(3))
+              apply (simp_all add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def)
+              apply (rule disjI2)
+              apply (rule disjI1)
+              apply (rule refl)
+             apply (rule stepped.intros(3))
+              prefer 2
+              apply (rule stepped.intros(1))
+             defer
+             apply (rule bc_base)
+             apply (simp_all add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def)
+            apply force
+            done
+          subgoal for x
+            apply (rule exI)
+            apply (intro conjI)
+             apply (rule stepped.intros(3))
+              apply (simp_all add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def)
+              apply (rule disjI2)
+              apply (rule disjI1)
+              apply (rule refl)
+             apply (rule stepped.intros(3))
+              apply (simp_all add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def)
+              apply (rule disjI1)
+              apply (rule refl)
+             apply (rule stepped.intros(1))
+            defer
+            apply (rule bc_base)
+
+
+end
+              apply (subst (5) comp_op_code)
+            apply simp
+              apply (rule bc_Choice)
+              apply (simp_all add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def)
+              apply (intro conjI)
+                 apply (rule bexI)
+              apply (rule bc_refl)
+                  apply (rule refl)
+                 apply hypsubst_thin
+            defer
+        apply (rule bexI)
+              apply (rule bc_refl)
+                  apply (rule refl)
+
+
+              apply (rule bc_base)
+            apply (rule exI[of _ op1])
+            apply (rule exI[of _ op2])
+            apply (rule exI[of _ op3])
+              apply (intro conjI)
+               defer
+               apply (rule refl)
+              apply blast
+             prefer 2
+             apply simp
+            apply hypsubst_thin
+            apply simp
+
+
+            apply (simp_all add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def)
+           apply (elim disjE)
+              apply (rule stepped.intros(3))
+            apply (auto simp add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def)[1]
+
+
+            subgoal
+            apply (auto simp add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def)
+              apply hypsubst_thin
+              apply (rule stepped.intros(3))
+              defer
+              apply (rule stepped.intros(1))
+            apply (auto simp add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def)
+              
+
+end
+          defer
+          subgoal
+            apply (simp_all add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def)
+            apply (elim disjE)
+            subgoal
+              apply hypsubst_thin
+              apply auto
+            apply (rule bc_bisim)
+              apply (rule bisim.intros)
+              subgoal for x l s'
+                apply (rule exI[of _ s'])
+                apply auto
+                
+
+
+end
+            apply simp
+            done
+
+            apply (rule stepped.intros(3))
+            defer
+             apply assumption
+       apply (simp_all add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def)
+            apply (elim disjE)
+            subgoal
+                apply auto
+              apply hypsubst_thin
+
+end
       apply (subst (1 2) comp_op_simps; simp del: comp_op_simps)
       apply (subst (1) comp_op_simps)
       apply (subst (1) comp_op_simps)
