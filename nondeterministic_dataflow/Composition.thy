@@ -170,7 +170,99 @@ lemma not_bisim[simp]:
   "\<not> bisim (Write op p1' x) (Read p2' f2)"
   by (auto 10 10 intro: stepped.intros elim: bisim.cases)
 
+lemma stepped_End[simp]: "stepped End l t' = False"
+  by (auto simp: bot_cset.rep_eq)
 
+inductive sub_ch where
+  "sub_ch (Read p f) (Read p f)"
+| "sub_ch (Write op q x) (Write op q x)"
+| "op' |\<in>| ops \<Longrightarrow> sub_ch op op' \<Longrightarrow> sub_ch op (Choice ops)"
+
+coinductive diverged where
+  "(\<forall>op. op |\<in>|ops \<longrightarrow> diverged op) \<Longrightarrow> diverged (Choice ops)"
+
+lemma not_stepped_diverged: "\<forall>l op'. \<not> stepped op l op' \<Longrightarrow> diverged op"
+  apply (coinduction arbitrary: op)
+  subgoal for op
+    by (cases op) (force intro: stepped.intros)+
+  done
+
+lemma stepped_not_diverged: "stepped op l op' \<Longrightarrow> \<not> diverged op"
+  by (induct op l op' pred: stepped) (auto elim: diverged.cases)
+
+lemma not_diverged_iff_stepped[simp]: "\<not> diverged op \<longleftrightarrow> (\<exists>l op'. stepped op l op')"
+  by (metis not_stepped_diverged stepped_not_diverged)
+
+lemma stepped_exchange: "stepped op (Inp p x) op' \<Longrightarrow> \<exists>op'. stepped op (Inp p y) op'"
+  apply (induct op "Inp p x :: ('a, 'b, 'c) IO" op' pred: stepped)
+   apply (auto intro!: stepped.intros)
+  done
+
+lemma bisim_Read_not_diverged: "bisim (Read p f) op \<Longrightarrow> diverged op \<Longrightarrow> False"
+  by (meson bisim.cases stepped.intros(1) stepped_not_diverged)
+
+lemma bisim_Read_Choice:
+  "bisim (Read p f) (Choice ops) \<longleftrightarrow> (\<forall>op. op |\<in>| ops \<longrightarrow> bisim (Read p f) op \<or> diverged op) \<and> (\<exists>op. op |\<in>| ops \<and> bisim (Read p f) op)"
+  apply (safe intro!: context_conjI)
+  subgoal for op
+    apply (coinduction arbitrary: op ops rule: bisim_coinduct_upto)
+    apply (auto simp flip: cin.rep_eq)
+    subgoal for op ops l op' x
+      apply (erule bisim.cases)
+      apply (auto simp flip: cin.rep_eq)
+      apply (cases "\<exists>y. l = Inp p y")
+       apply (erule exE conjE)+
+      subgoal for y
+        apply hypsubst_thin
+        apply (drule stepped_exchange[of _ _ _ _ x])
+        apply (erule exE)
+        apply (drule meta_spec2[of _ "Inp p x"], drule meta_mp, erule (1) stepped.intros(3))
+        apply (erule exE conjE)+
+        apply (auto intro: bc_bisim)
+        done
+      apply (drule meta_spec2[of _ l], drule meta_mp, erule (1) stepped.intros(3))
+      apply auto
+      done
+    subgoal for op ops _ _ l op'
+      apply (erule bisim.cases)
+      apply (auto simp flip: cin.rep_eq)
+      apply (drule meta_spec2[of _ "l"], drule meta_mp, erule (1) stepped.intros(3))
+      apply (erule exE conjE)+
+      apply (rule exI conjI bc_bisim| assumption)+
+      done
+    done
+  subgoal
+    apply (cases "diverged (Choice ops)")
+     apply (auto dest: bisim_Read_not_diverged[rotated])
+    using not_diverged_iff_stepped by blast
+  subgoal for op
+    apply (coinduction arbitrary: f ops rule: bisim_coinduct_upto)
+    apply (auto simp flip: cin.rep_eq)
+     apply (drule spec, drule mp, assumption)
+    apply (erule disjE)
+    apply (erule bisim.cases)
+    apply auto
+      apply (meson bc_bisim cin.rep_eq stepped.intros(1) stepped.intros(3))
+    apply (meson bisim.cases stepped.intros(1) stepped_not_diverged)
+    apply (meson bc_bisim bisim.cases stepped_not_diverged)
+    done
+  done
+
+(*
+lemma
+  "stepped (comp_op wire buf op1 op2) io op' \<Longrightarrow>
+   bisim op1 op1' \<Longrightarrow>
+   bisim op2 op2' \<Longrightarrow>
+   \<exists>t'. stepped (comp_op wire buf op1' op2') io t' \<and>
+         bisim_cong (\<lambda>s t. \<exists>op1 op1' op2 op2' buf. s = comp_op wire buf op1 op2 \<and> t = comp_op wire buf op1' op2' \<and> bisim op1 op1' \<and> bisim op2 op2') op' t'"
+  apply (induct "comp_op wire buf op1 op2" io op' arbitrary: buf op1 op2 op1' op2' rule: stepped.induct)
+  apply (subst (asm) comp_op.code; simp)
+   apply (subst (asm) comp_op.code; simp)
+  subgoal premises prems for op ops l op' buf op1 op2 op1' op2'
+    using prems(1,2,4-)
+    apply (cases op1; cases op2; simp add: cinsert.rep_eq split: if_splits)
+    apply safe
+*)
 
 lemma
   "bisim op1 op1' \<Longrightarrow>

@@ -273,9 +273,9 @@ inductive stepped where
 | "stepped (Write op q x) (Out q x) op"
 | "cin op ops \<Longrightarrow> stepped op l op' \<Longrightarrow> stepped (Choice ops) l op'"
 
-inductive_cases steppedReadE [elim!]: "stepped (Read p f) io op"
-inductive_cases steppedWriteE [elim!]: "stepped (Write op q x) io op"
-inductive_cases steppedChoiceE [elim!]: "stepped (Choice ops) io op"
+inductive_cases steppedReadE [elim!]: "stepped (Read p f) io op'"
+inductive_cases steppedWriteE [elim!]: "stepped (Write op q x) io op'"
+inductive_cases steppedChoiceE [elim!]: "stepped (Choice ops) io op'"
 
 coinductive bisim where
   "(\<And>l s'. stepped s l s' \<Longrightarrow> (\<exists>t'. stepped t l t' \<and> bisim s' t')) \<Longrightarrow>
