@@ -196,6 +196,9 @@ lemma stepped_exchange: "stepped op (Inp p x) op' \<Longrightarrow> \<exists>op'
 lemma bisim_Read_not_diverged: "bisim (Read p f) op \<Longrightarrow> diverged op \<Longrightarrow> False"
   by (meson bisim.cases stepped.intros(1) stepped_not_diverged)
 
+lemma bisim_Write_not_diverged: "bisim (Write op' x p) op \<Longrightarrow> diverged op \<Longrightarrow> False"
+  by (meson bisim.cases stepped.intros(2) stepped_not_diverged)
+
 lemma bisim_Read_Choice:
   "bisim (Read p f) (Choice ops) \<longleftrightarrow> (\<forall>op. op |\<in>| ops \<longrightarrow> bisim (Read p f) op \<or> diverged op) \<and> (\<exists>op. op |\<in>| ops \<and> bisim (Read p f) op)"
   apply (safe intro!: context_conjI)
@@ -242,6 +245,96 @@ lemma bisim_Read_Choice:
     apply (meson bc_bisim bisim.cases stepped_not_diverged)
     done
   done
+
+lemma bisim_Choice_Read:
+  "bisim (Choice ops) (Read p f) \<longleftrightarrow> (\<forall>op. op |\<in>| ops \<longrightarrow> bisim op (Read p f)  \<or> diverged op) \<and> (\<exists>op. op |\<in>| ops \<and> bisim op (Read p f))"
+  using  bisim_sym bisim_Read_Choice by meson
+
+lemma bisim_Write_Choice:
+  "bisim (Write op p x) (Choice ops) \<longleftrightarrow> (\<forall>op'. op' |\<in>| ops \<longrightarrow> bisim (Write op p x) op' \<or> diverged op') \<and> (\<exists>op'. op' |\<in>| ops \<and> bisim (Write op p x) op')"
+  apply (safe intro!: context_conjI)
+  subgoal for op
+    apply (coinduction arbitrary: op ops rule: bisim_coinduct_upto)
+    apply (auto simp flip: cin.rep_eq)
+    subgoal for op ops l op'
+      apply (erule bisim.cases)
+      apply (auto simp flip: cin.rep_eq)
+      apply (subgoal_tac "l = Out p x")
+      subgoal
+        apply (drule meta_spec[of _ l])+
+        apply hypsubst_thin
+        subgoal premises prems 
+          using prems(4,1,2) apply -
+          apply (drule meta_spec)
+          apply (drule meta_mp)
+           apply (intro stepped.intros(3))
+            apply assumption+
+          apply (elim exE conjE)
+          subgoal for s'
+            using prems(3) apply -
+            apply (drule meta_spec)
+            apply (drule meta_mp)
+             apply assumption
+            apply (elim exE conjE)
+            subgoal for t'
+              apply (rule exI)
+              apply (intro conjI bc_bisim)
+               apply auto
+              done
+            done
+          done
+        done
+      subgoal
+        by (meson cin.rep_eq stepped.intros(3) steppedWriteE)
+      done
+    subgoal for op ops l op' l' op''
+      apply (erule bisim.cases)
+      apply (auto simp flip: cin.rep_eq)
+      subgoal premises prems 
+        using prems(5,1,2,3) apply -
+        apply (drule meta_spec[of _ l'])
+        apply (drule meta_spec)+
+        apply (drule meta_mp)
+         apply (rule stepped.intros(3))
+          apply assumption+
+        apply (elim exE conjE)
+        using prems(4) apply -
+        apply (drule meta_spec)+
+        apply (drule meta_mp)
+         apply assumption
+        apply (elim exE conjE)
+        subgoal for t'
+          apply (rule exI)
+          apply (intro conjI bc_bisim)
+           apply auto
+          done
+        done
+      done
+    done
+  subgoal 
+    apply (cases "diverged (Choice ops)")
+     apply (auto dest: bisim_Write_not_diverged[rotated])
+    using not_diverged_iff_stepped apply blast
+    done
+  subgoal
+    apply (coinduction arbitrary: op ops rule: bisim_coinduct_upto)
+    apply (auto simp flip: cin.rep_eq)
+     apply (drule spec, drule mp, assumption)
+     apply (erule disjE)
+      apply (erule bisim.cases)
+      apply safe
+    subgoal
+      by (meson bisim_cong.intros(2) cin.rep_eq stepped.simps)
+    subgoal
+      by (meson bisim_Write_not_diverged)
+    subgoal
+      by (meson bc_bisim bisim.cases stepped_not_diverged)
+    done
+  done
+
+lemma bisim_Choice_Write:
+  "bisim (Choice ops) (Write op p x)  \<longleftrightarrow> (\<forall>op'. op' |\<in>| ops \<longrightarrow> bisim op' (Write op p x) \<or> diverged op') \<and> (\<exists>op'. op' |\<in>| ops \<and> bisim op' (Write op p x))"
+  using bisim_Write_Choice bisim_sym by meson
 
 (*
 lemma

@@ -350,6 +350,16 @@ lemma bisim_ReadD: "bisim (Read p f) (Read q g) \<Longrightarrow> p = q \<and> b
 lemma bisim_Read_iff: "bisim (Read p f) (Read q g) \<longleftrightarrow> (p = q \<and> (\<forall>x. bisim (f x) (g x)))"
   by (metis bisim_ReadI bisim_ReadD)
 
+lemma bisim_WriteI: "p = q \<Longrightarrow> x = y \<Longrightarrow> bisim op op' \<Longrightarrow> bisim (Write op p x) (Write op' q y)"
+  by (coinduction) (auto elim!: stepped.cases intro: stepped.intros)
+
+lemma bisim_WriteD: "bisim (Write op p x) (Write op' q y) \<Longrightarrow> p = q \<and> y = x \<and> bisim op op'"
+  by (erule bisim.cases)
+    (auto dest: meta_spec2[of _ "Out p x" "op"] meta_spec2[of _ "Out q y" op'] intro!: stepped.intros elim!: stepped.cases)
+
+lemma bisim_Write_iff: "bisim (Write op p x) (Write op' q y) \<longleftrightarrow> (p = q \<and> y = x \<and> bisim op op')"
+  by (metis bisim_WriteI bisim_WriteD)
+
 lemma bisim_refl:
   "bisim op1 op1"
   by (coinduction rule: bisim_coinduct_upto) (auto intro: bc_refl)
