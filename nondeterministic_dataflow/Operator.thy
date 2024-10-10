@@ -16,10 +16,11 @@ section \<open>cset Syntax\<close>
 syntax
   "_insert_fset"     :: "args => 'a cset"  ("{|(_)|}")
 
+notation cempty ("{||}")
+
 translations
   "{|x, xs|}" == "CONST cinsert x {|xs|}"
   "{|x|}"     == "CONST csingle x"
-  "{|_|}"     == "CONST cempty"
 
 abbreviation cmember :: "'a \<Rightarrow> 'a cset \<Rightarrow> bool" (infix "|\<in>|" 50) where
   "x |\<in>| X \<equiv> cin x X"
@@ -284,8 +285,17 @@ inductive_cases steppedReadE [elim!]: "stepped (Read p f) io op'"
 inductive_cases steppedWriteE [elim!]: "stepped (Write op q x) io op'"
 inductive_cases steppedChoiceE [elim!]: "stepped (Choice ops) io op'"
 
+coinductive may_diverge where
+  "may_diverge End"
+| "op |\<in>|ops \<Longrightarrow> may_diverge op \<Longrightarrow> may_diverge (Choice ops)"
+
+inductive_cases may_diverge_ReadE[elim!]: "may_diverge (Read p f)"
+inductive_cases may_diverge_WriteE[elim!]: "may_diverge (Write op p x)"
+inductive_cases may_diverge_ChoiceE[elim!]: "may_diverge (Choice ops)"
+
 coinductive bisim where
-  "(\<And>l s'. stepped s l s' \<Longrightarrow> (\<exists>t'. stepped t l t' \<and> bisim s' t')) \<Longrightarrow>
+  "may_diverge s \<longleftrightarrow> may_diverge t \<Longrightarrow>
+   (\<And>l s'. stepped s l s' \<Longrightarrow> (\<exists>t'. stepped t l t' \<and> bisim s' t')) \<Longrightarrow>
    (\<And>l t'. stepped t l t' \<Longrightarrow> (\<exists>s'. stepped s l s' \<and> bisim s' t')) \<Longrightarrow> 
    bisim s t"
 
@@ -313,7 +323,7 @@ lemma bisim_cong_disj:
 
 lemma bisim_coinduct_upto:
   "R s t \<Longrightarrow>
-   (\<And>x1 x2. R x1 x2 \<Longrightarrow> (\<forall>x xa. stepped x1 x xa \<longrightarrow> (\<exists>t'. stepped x2 x t' \<and> bisim_cong R xa t')) \<and> (\<forall>x xa. stepped x2 x xa \<longrightarrow> (\<exists>s'. stepped x1 x s' \<and> bisim_cong R s' xa))) \<Longrightarrow>
+   (\<And>x1 x2. R x1 x2 \<Longrightarrow> (may_diverge x1 \<longleftrightarrow> may_diverge x2) \<and> (\<forall>x xa. stepped x1 x xa \<longrightarrow> (\<exists>t'. stepped x2 x t' \<and> bisim_cong R xa t')) \<and> (\<forall>x xa. stepped x2 x xa \<longrightarrow> (\<exists>s'. stepped x1 x s' \<and> bisim_cong R s' xa))) \<Longrightarrow>
    bisim s t"
   apply (rule bisim.coinduct[where X="bisim_cong R", unfolded bisim_cong_disj, simplified])
   subgoal
@@ -324,26 +334,32 @@ lemma bisim_coinduct_upto:
     subgoal
       by auto
     subgoal
-      by (auto 10 10 intro: bc_bisim elim: bisim.cases)
+      by (auto 0 5 intro: bc_bisim elim: bisim.cases)
     subgoal
-      by (auto 10 10 intro: bc_refl)
+      by (auto intro: bc_refl)
     subgoal
       by (fastforce intro: bc_sym)
     subgoal
       by (smt (verit) bc_trans)
     subgoal
-      by (smt (verit, best) rel_fun_def op.distinct(1) op.distinct(3) op.inject(1) stepped.cases stepped.intros(1))
+      by (auto simp: rel_fun_def intro: stepped.intros)
     subgoal
-      by (smt (verit, ccfv_SIG) op.distinct(1) op.distinct(5) op.sel(3) op.sel(4) op.sel(5) stepped.cases stepped.intros(2))
+      by (auto simp: rel_fun_def intro: stepped.intros)
     subgoal
-      unfolding rel_cset_def rel_set_def
+      unfolding rel_cset.rep_eq rel_set_def
       apply safe
       subgoal
-          apply (fastforce intro: stepped.intros)+
-        done
+        by (auto simp: bot_cset.rep_eq bot_cset.abs_eq[symmetric] dest!: arg_cong[of _ _ acset] intro: stepped.intros may_diverge.intros)
       subgoal
-          apply (fastforce intro: stepped.intros)+
-        done
+        by (auto 0 3 simp: bot_cset.rep_eq bot_cset.abs_eq[symmetric] intro: stepped.intros may_diverge.intros)
+      subgoal
+        by (auto simp: bot_cset.rep_eq bot_cset.abs_eq[symmetric] dest!: arg_cong[of _ _ acset] intro: stepped.intros may_diverge.intros)
+      subgoal
+        by (auto 0 3 simp: bot_cset.rep_eq bot_cset.abs_eq[symmetric] intro: stepped.intros may_diverge.intros)
+      subgoal
+        by (fastforce intro: stepped.intros)
+      subgoal
+        by (fastforce intro: stepped.intros)
       done
     done
   done
@@ -367,8 +383,10 @@ lemma bisim_trans:
   "bisim op1 op2 \<Longrightarrow>
    bisim op2 op3 \<Longrightarrow>
    bisim op1 op3"
-  by (coinduction arbitrary: op1 op2 op3 rule: bisim_coinduct_upto) 
-   (smt (verit, del_insts) bc_base bisim.simps)
+  apply (coinduction arbitrary: op1 op2 op3 rule: bisim_coinduct_upto)
+  apply (erule bisim.cases)+
+  apply (metis (no_types, lifting) bc_base)
+  done
 
 lemma bisim_ReadI: "p = q \<Longrightarrow> \<forall>x. bisim (f x) (g x) \<Longrightarrow> bisim (Read p f) (Read q g)"
   by (coinduction) (auto elim!: stepped.cases intro: stepped.intros)
@@ -424,15 +442,32 @@ lemma bisim_Read_not_diverged: "bisim (Read p f) op \<Longrightarrow> diverged o
 lemma bisim_Write_not_diverged: "bisim (Write op' x p) op \<Longrightarrow> diverged op \<Longrightarrow> False"
   by (meson bisim.cases stepped.intros(2) stepped_not_diverged)
 
+lemma not_may_divergeD: "\<not> may_diverge (Choice ops) \<Longrightarrow> (\<forall>op. op |\<in>| ops \<longrightarrow> (\<exists>l op'. stepped op l op'))"
+  apply (erule contrapos_np)
+  apply (coinduction arbitrary: ops)
+  subgoal for ops
+    apply (auto simp flip: cin.rep_eq intro: stepped.intros)
+    apply (metis all_not_cin_conv diverged.cases may_diverge.simps not_diverged_iff_stepped)
+    done
+  done
+
 lemma bisim_Read_Choice[simp]:
-  "bisim (Read p f) (Choice ops) \<longleftrightarrow> (\<forall>op. op |\<in>| ops \<longrightarrow> bisim (Read p f) op \<or> diverged op) \<and> (\<exists>op. op |\<in>| ops \<and> bisim (Read p f) op)"
+  "bisim (Read p f) (Choice ops) \<longleftrightarrow> ((\<forall>op. op |\<in>| ops \<longrightarrow> bisim (Read p f) op) \<and> ops \<noteq> cempty)"
   apply (safe intro!: context_conjI)
   subgoal for op
     apply (coinduction arbitrary: op ops rule: bisim_coinduct_upto)
     apply (auto simp flip: cin.rep_eq)
-    subgoal for op ops l op' x
+    subgoal for op ops
+      apply (erule bisim.cases)
+      apply (auto intro: may_diverge.intros)
+      done
+    subgoal for op ops x
       apply (erule bisim.cases)
       apply (auto simp flip: cin.rep_eq)
+      apply (drule not_may_divergeD)
+      apply (drule spec, drule mp, assumption)
+      apply (auto simp flip: cin.rep_eq)
+      subgoal for l op'
       apply (cases "\<exists>y. l = Inp p y")
        apply (erule exE conjE)+
       subgoal for y
@@ -446,7 +481,8 @@ lemma bisim_Read_Choice[simp]:
       apply (drule meta_spec2[of _ l], drule meta_mp, erule (1) stepped.intros(3))
       apply auto
       done
-    subgoal for op ops _ _ l op'
+    done
+    subgoal for op ops l op'
       apply (erule bisim.cases)
       apply (auto simp flip: cin.rep_eq)
       apply (drule meta_spec2[of _ "l"], drule meta_mp, erule (1) stepped.intros(3))
@@ -455,22 +491,24 @@ lemma bisim_Read_Choice[simp]:
       done
     done
   subgoal
-    apply (cases "diverged (Choice ops)")
-     apply (auto dest: bisim_Read_not_diverged[rotated])
-    using not_diverged_iff_stepped by blast
+    apply (erule bisim.cases; auto intro: may_diverge.intros)
+    done
   subgoal for op
+    apply (erule notE)
     apply (coinduction arbitrary: f ops rule: bisim_coinduct_upto)
     apply (auto simp flip: cin.rep_eq)
+      apply (meson bisim.cases)
      apply (drule spec, drule mp, assumption)
-    apply (erule disjE)
+     apply (erule bisim.cases)
+     apply auto
+     apply (meson bc_bisim cin.rep_eq stepped.intros(1) stepped.intros(3))
+     apply (drule spec, drule mp, assumption) back
     apply (erule bisim.cases)
     apply auto
-      apply (meson bc_bisim cin.rep_eq stepped.intros(1) stepped.intros(3))
-    apply (meson bisim.cases stepped.intros(1) stepped_not_diverged)
-    apply (meson bc_bisim bisim.cases stepped_not_diverged)
+    apply (meson bc_bisim)
     done
   done
-
+(*
 lemma bisim_Choice_Read[simp]:
   "bisim (Choice ops) (Read p f) \<longleftrightarrow> (\<forall>op. op |\<in>| ops \<longrightarrow> bisim op (Read p f)  \<or> diverged op) \<and> (\<exists>op. op |\<in>| ops \<and> bisim op (Read p f))"
   using  bisim_sym bisim_Read_Choice by meson
@@ -596,8 +634,101 @@ lemma bisim_ChoiceI: "rel_cset bisim ops1 ops2 \<Longrightarrow> bisim (Choice o
     done
   done
 
+fun choices_at where
+  "choices_at _ (Read p f) = csingle (Read p f)"
+| "choices_at _ (Write op p x) = csingle (Write op p x)"
+| "choices_at 0 (Choice ops) = cempty"
+| "choices_at (Suc n) (Choice ops) = cUnion (cimage (choices_at n) ops)"
 
-lemma bisim_ChoiceD: "bisim (Choice ops1) (Choice ops2) \<Longrightarrow> rel_cset bisim (cfilter (Not o diverged) ops1) (cfilter (Not o diverged) ops2)"
+definition "choices op = cUnion (cimage (\<lambda>i. choices_at i op) cUNIV)"
+
+lemma choices_Read[simp]: "choices (Read p f) = csingle (Read p f)"
+  unfolding choices_def by (auto simp: cset_eq_iff bot_cset.rep_eq cUNIV.rep_eq)
+
+lemma choices_Write[simp]: "choices (Write op p x) = csingle (Write op p x)"
+  unfolding choices_def by (auto simp: cset_eq_iff bot_cset.rep_eq cUNIV.rep_eq)
+
+lemma choices_Choice[simp]: "choices (Choice ops) = cUnion (cimage choices ops)"
+  apply (auto simp: choices_def cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
+  subgoal for x n
+    apply (induct n "Choice ops" arbitrary: ops rule: choices_at.induct)
+     apply (auto simp: bot_cset.rep_eq cUnion.rep_eq cimage.rep_eq)
+    done
+  subgoal for x op n
+    apply (rule exI[of _ "Suc n"])
+    apply (auto simp: cUnion.rep_eq cimage.rep_eq)
+    done
+  done
+
+lemma no_Choice_in_choices[simplified, simp, dest]: "Choice ops |\<in>| choices op \<Longrightarrow> False"
+  unfolding choices_def
+  apply (auto simp: cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
+  subgoal for n
+    apply (induct n op rule: choices_at.induct)
+       apply (auto simp: cinsert.rep_eq bot_cset.rep_eq cUnion.rep_eq cimage.rep_eq)
+    done
+  done
+*)
+(*
+corec Choices where
+  "Choices = Choice (cimage (\<lambda>_. Choices) (csingle ()))"
+
+corec W where
+  "W = Write W 1 42"
+
+abbreviation "choice2 op1 op2 \<equiv> Choice (cimage (\<lambda>b. if b then op1 else op2) (cinsert True (csingle False)))"
+corec AW where
+  "AW = choice2 AW (Write AW 1 42)"
+
+lemma [simp]: "may_diverge AW"
+  apply (coinduction)
+  apply (subst (2) AW.code)
+  apply (auto simp: cinsert.rep_eq)
+  done
+
+
+lemma [simp]: "\<not> may_diverge W"
+  apply (subst W.code)
+  apply (auto)
+  done
+
+lemma "\<not> bisim W AW"
+  apply (rule notI)
+  apply (erule bisim.cases)
+  apply (auto)
+  done
+
+lemma bisim_End_Choices: "bisim End Choices"
+  apply (coinduction)
+  apply auto
+  subgoal for l op
+    apply (induct "Choices :: ('a, 'b, 'c) op" l op rule: stepped.induct)
+    apply (subst (asm) Choices.code; simp)
+    apply (subst (asm) Choices.code; simp)
+    apply (subst (asm) Choices.code; simp add: cinsert.rep_eq bot_cset.rep_eq)
+    done
+  done
+*)
+(*
+lemma "bisim op1 op2 \<longleftrightarrow> ((may_diverge op1 \<longleftrightarrow> may_diverge op2) \<and> rel_cset bisim (choices op1) (choices op2))"
+  apply safe
+  subgoal
+    apply (coinduction arbitrary: op1 op2)
+    subgoal for op1 op2
+      apply (erule bisim.cases)
+      apply (erule may_diverge.cases)
+       apply hypsubst_thin
+      apply (metis bisim.intros diverged.simps ex_cin_conv may_diverge.simps not_stepped_diverged stepped_not_diverged)
+      apply hypsubst_thin
+      apply (cases op2)
+        apply auto
+        apply (drule meta_spec2, drule meta_mp, rule stepped.intros(1)[where x = undefined])
+      apply auto
+        apply (drule meta_spec2, drule meta_mp, rule stepped.intros(3))
+      apply auto
+  apply auto
+
+lemma bisim_ChoiceD: "bisim (Choice ops1) (Choice ops2) \<Longrightarrow> rel_cset bisim (choices ops1) (cfilter (Not o diverged) ops2)"
   apply (erule bisim.cases)
   apply  (auto simp add: rel_cset.rep_eq cfilter.rep_eq rel_set_def Set.filter_def)
   subgoal premises prems for op1 io op1'
@@ -619,7 +750,7 @@ lemma bisim_ChoiceD: "bisim (Choice ops1) (Choice ops2) \<Longrightarrow> rel_cs
   find_theorems   "rel_set _ _ _ \<Longrightarrow> _ \<Longrightarrow> _"
 
   apply (erule stepped.cases)
-
+*)
 
 
 
