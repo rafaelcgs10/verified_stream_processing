@@ -6,15 +6,6 @@ imports
   Operator
 begin
 
-
-fun choices_at where
-  "choices_at _ (Read p f) = csingle (Read p f)"
-| "choices_at _ (Write op p x) = csingle (Write op p x)"
-| "choices_at 0 (Choice ops) = cempty"
-| "choices_at (Suc n) (Choice ops) = cUnion (cimage (choices_at n) ops)"
-
-definition "choices op = cUnion (cimage (\<lambda>i. choices_at i op) cUNIV)"
-
 abbreviation "safe_choice_stop stop f ops \<equiv> (if ops = cempty then stop else Choice (cimage f ops))"
 abbreviation "safe_choice f \<equiv> safe_choice_stop (f End) f"
 abbreviation "safe_choice2 f op1s op2s \<equiv> (if op1s = cempty \<and> op2s = cempty then End
