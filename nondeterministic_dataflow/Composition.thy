@@ -175,6 +175,11 @@ lemma
   apply (coinduction arbitrary: op1 op1' op2 op2' buf rule: bisim_coinduct_upto)
   subgoal for op1 op1' op2 op2' buf
     apply safe
+    subgoal
+      apply (cases op1; cases op1'; cases op2; cases op2')
+      apply simp_all
+      sorry
+    subgoal sorry
     subgoal for io op'
       apply (cases op1; cases op1'; cases op2; cases op2')
       apply simp_all

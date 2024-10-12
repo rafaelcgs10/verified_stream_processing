@@ -285,13 +285,13 @@ inductive_cases steppedReadE [elim!]: "stepped (Read p f) io op'"
 inductive_cases steppedWriteE [elim!]: "stepped (Write op q x) io op'"
 inductive_cases steppedChoiceE [elim!]: "stepped (Choice ops) io op'"
 
-coinductive can_stop where
-  can_stop_End[intro!]: "can_stop End"
-| can_stop_Choice[intro]: "op |\<in>| ops \<Longrightarrow> can_stop op \<Longrightarrow> can_stop (Choice ops)"
+coinductive has_mute where
+  has_mute_End[intro!]: "has_mute End"
+| has_mute_Choice[intro]: "op |\<in>| ops \<Longrightarrow> has_mute op \<Longrightarrow> has_mute (Choice ops)"
 
-inductive_cases may_diverge_ReadE[elim!]: "can_stop (Read p f)"
-inductive_cases may_diverge_WriteE[elim!]: "can_stop (Write op p x)"
-inductive_cases may_diverge_ChoiceE[elim!]: "can_stop (Choice ops)"
+inductive_cases may_diverge_ReadE[elim!]: "has_mute (Read p f)"
+inductive_cases may_diverge_WriteE[elim!]: "has_mute (Write op p x)"
+inductive_cases may_diverge_ChoiceE[elim!]: "has_mute (Choice ops)"
 
 definition "sim R s t = (\<forall>l s'. stepped s l s' \<longrightarrow> (\<exists>t'. stepped t l t' \<and> R s' t'))"
 
@@ -299,7 +299,7 @@ lemma sim_mono[mono]: "R \<le> S \<Longrightarrow> sim R \<le> sim S"
   by (force simp: sim_def le_fun_def)
 
 coinductive bisim where
-  "can_stop s \<longleftrightarrow> can_stop t \<Longrightarrow> sim bisim s t \<Longrightarrow> sim bisim t s \<Longrightarrow> bisim s t"
+  "has_mute s \<longleftrightarrow> has_mute t \<Longrightarrow> sim bisim s t \<Longrightarrow> sim bisim t s \<Longrightarrow> bisim s t"
 
 inductive bisim_cong for R where
   bc_base:  "R x y \<Longrightarrow> bisim_cong R x y"
@@ -321,7 +321,7 @@ lemma bisim_cong_disj:
 
 lemma bisim_coinduct_upto:
   "R s t \<Longrightarrow>
-   (\<And>s t. R s t \<Longrightarrow> (can_stop s \<longleftrightarrow> can_stop t) \<and> sim (bisim_cong R) s t \<and> sim (bisim_cong R) t s) \<Longrightarrow>
+   (\<And>s t. R s t \<Longrightarrow> (has_mute s \<longleftrightarrow> has_mute t) \<and> sim (bisim_cong R) s t \<and> sim (bisim_cong R) t s) \<Longrightarrow>
    bisim s t"
   apply (rule bisim.coinduct[where X="bisim_cong R", unfolded bisim_cong_disj, simplified])
   subgoal
@@ -431,12 +431,12 @@ lemma bisim_Read_not_diverged: "bisim (Read p f) op \<Longrightarrow> diverged o
 lemma bisim_Write_not_diverged: "bisim (Write op' x p) op \<Longrightarrow> diverged op \<Longrightarrow> False"
   by (metis bisim.cases sim_def stepped.intros(2) stepped_not_diverged)
 
-lemma cannot_stop_ChoiceD: "\<not> can_stop (Choice ops) \<Longrightarrow> (\<forall>op. op |\<in>| ops \<longrightarrow> (\<exists>l op'. stepped op l op'))"
+lemma no_mute_ChoiceD: "\<not> has_mute (Choice ops) \<Longrightarrow> (\<forall>op. op |\<in>| ops \<longrightarrow> (\<exists>l op'. stepped op l op'))"
   apply (erule contrapos_np)
   apply (coinduction arbitrary: ops)
   subgoal for ops
     apply (auto simp flip: cin.rep_eq intro: stepped.intros)
-    apply (metis all_not_cin_conv diverged.cases can_stop.simps not_diverged_iff_stepped)
+    apply (metis all_not_cin_conv diverged.cases has_mute.simps not_diverged_iff_stepped)
     done
   done
 
@@ -473,7 +473,7 @@ lemma bisim_Read_Choice[simp]:
     subgoal for x
       apply (erule bisim.cases)
       apply (auto simp flip: cin.rep_eq)
-      apply (drule cannot_stop_ChoiceD)
+      apply (drule no_mute_ChoiceD)
       apply (drule spec, drule mp[of _ "Ex _"], assumption)
       apply (auto simp flip: cin.rep_eq)
       subgoal for l op'
@@ -529,7 +529,7 @@ lemma bisim_Write_Choice[simp]:
     subgoal
       apply (erule bisim.cases)
       apply (auto simp flip: cin.rep_eq)
-      apply (drule cannot_stop_ChoiceD)
+      apply (drule no_mute_ChoiceD)
       apply (drule spec, drule mp[of _ "Ex _"], assumption)
       apply (force simp: bisim_sym elim!: simE)
       done
