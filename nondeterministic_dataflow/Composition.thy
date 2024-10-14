@@ -168,6 +168,51 @@ lemma
     apply safe
 *)
 
+lemma has_mute_Read[simp]:
+  "\<not> has_mute (Read p f)"
+  by auto
+
+lemma has_mute_Write[simp]:
+  "\<not> has_mute (Write op p x)"
+  by auto
+
+lemma has_mute_Choice[simp]:
+  "has_mute (Choice ops) \<longleftrightarrow> ops = {||} \<or> (\<exists>op. op |\<in>| ops \<and> has_mute op)"
+  by (auto)
+
+lemma
+  "bisim op1 op1' \<Longrightarrow> bisim op2 op2' \<Longrightarrow>
+  has_mute (comp_op wire buf op1 op2) \<Longrightarrow> has_mute (comp_op wire buf op1' op2')"
+  apply (coinduction arbitrary: op1 op1' op2 op2' buf)
+  apply safe
+  apply (erule notE)
+  subgoal for op1 op1' op2 op2' buf
+    apply (cases op1; cases op1'; cases op2; cases op2')
+    apply (simp_all add: cinsert.rep_eq bot_cset.rep_eq conj_disj_distribR ex_disj_distrib cimage.rep_eq cUnion.rep_eq split: if_splits)  
+    subgoal
+      apply (rule disjI2, rule disjI1)
+      apply (rule exI)+
+      apply (rule conjI, rule refl)
+      apply (rule conjI[rotated])+
+        apply assumption
+       apply (simp add: bisim_refl option.case_eq_if)
+      apply (simp add: bisim_refl option.case_eq_if)
+      done
+    subgoal
+      apply (rule disjI2)
+      apply (simp flip: ex_cin_conv)
+      apply (erule exE)
+      apply (drule spec, drule mp, assumption)
+      apply (rule bexI[rotated], assumption)
+      apply (rule disjI1)
+      apply (rule exI)+
+      apply (rule conjI, rule refl)
+      apply (rule conjI[rotated])+
+        apply assumption
+       apply (simp add: bisim_refl option.case_eq_if)
+      apply (simp add: bisim_refl option.case_eq_if)
+      done
+
 lemma
   "bisim op1 op1' \<Longrightarrow>
    bisim op2 op2' \<Longrightarrow>
@@ -176,9 +221,22 @@ lemma
   subgoal for op1 op1' op2 op2' buf
     apply safe
     subgoal
-      apply (cases op1; cases op1'; cases op2; cases op2')
-      apply simp_all
-      sorry
+      apply (coinduction arbitrary: op1 op1' op2 op2' buf)
+      apply safe
+      apply (erule notE)
+      subgoal for op1 op1' op2 op2' buf
+        apply (cases op1; cases op1'; cases op2; cases op2')
+                            apply (simp_all add: cinsert.rep_eq bot_cset.rep_eq conj_disj_distribR ex_disj_distrib split: if_splits)
+                            apply (rule disjI2, rule disjI1)
+                            apply (rule exI)+
+                            apply (rule conjI, rule refl)
+                            apply (rule conjI[rotated])+
+                            apply assumption
+                            apply (simp add: bisim_refl option.case_eq_if)
+                            apply (simp add: bisim_refl option.case_eq_if)
+        sorry
+      done
+end
     subgoal sorry
     subgoal for io op'
       apply (cases op1; cases op1'; cases op2; cases op2')
