@@ -168,18 +168,6 @@ lemma
     apply safe
 *)
 
-lemma has_mute_Read[simp]:
-  "\<not> has_mute (Read p f)"
-  by auto
-
-lemma has_mute_Write[simp]:
-  "\<not> has_mute (Write op p x)"
-  by auto
-
-lemma has_mute_Choice[simp]:
-  "has_mute (Choice ops) \<longleftrightarrow> ops = {||} \<or> (\<exists>op. op |\<in>| ops \<and> has_mute op)"
-  by (auto)
-
 lemma
   "bisim op1 op1' \<Longrightarrow> bisim op2 op2' \<Longrightarrow>
   has_mute (comp_op wire buf op1 op2) \<Longrightarrow> has_mute (comp_op wire buf op1' op2')"

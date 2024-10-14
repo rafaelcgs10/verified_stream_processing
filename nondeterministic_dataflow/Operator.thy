@@ -714,18 +714,42 @@ lemma bisim_ChoiceD: "bisim (Choice ops1) (Choice ops2) \<Longrightarrow> rel_cs
   apply (erule stepped.cases)
 *)
 
+lemma has_mute_Read[simp]:
+  "\<not> has_mute (Read p f)"
+  by auto
 
+lemma has_mute_Write[simp]:
+  "\<not> has_mute (Write op p x)"
+  by auto
+
+lemma has_mute_Choice[simp]:
+  "has_mute (Choice ops) \<longleftrightarrow> ops = {||} \<or> (\<exists>op. op |\<in>| ops \<and> has_mute op)"
+  by (auto)
 
 coinductive traced where
-  Read: "traced (f x) lxs \<Longrightarrow> traced (Read p f) (LCons (Inp p x) lxs)"
-| Write: "traced op lxs \<Longrightarrow> traced (Write op p x) (LCons (Out p x) lxs)"
-| Choice: "cin op ops \<Longrightarrow> traced op lxs \<Longrightarrow>  traced (Choice ops) lxs"
-| End: "traced End LNil"
+    Nil: "has_mute op \<Longrightarrow> traced op LNil"
+  | Step: "stepped op l op' \<Longrightarrow> traced op' lxs \<Longrightarrow> traced op (LCons l lxs)"
 
 inductive_cases traced_LNilE[elim!]: "traced op LNil"
-inductive_cases traced_WriteE[elim!]: "traced (Write op p' x) lxs"
-inductive_cases traced_ChoiceE[elim!]: "traced (Choice ops) lxs"
-inductive_cases traced_ReadE[elim!]: "traced (Read p' f) lxs"
+inductive_cases traced_LConsE[elim!]: "traced op (LCons l lxs)"
+
+lemma traced_Read[simp]: "traced (Read p f) lxs \<longleftrightarrow> (\<exists>x l lxs'. lxs = LCons l lxs' \<and> l = Inp p x \<and> traced (f x) lxs')"
+  by (cases lxs) (auto intro: traced.intros stepped.intros)
+
+lemma traced_LCons_iff: "traced op (LCons l lxs') \<longleftrightarrow> (\<exists>op'. stepped op l op' \<and> traced op' lxs')"
+  by (auto intro: traced.intros)
+
+definition "traces op = {lxs. traced op lxs}"
+
+lemma bisim_traced: "bisim op op' \<Longrightarrow> traced op lxs \<Longrightarrow> traced op' lxs"
+  by (coinduction arbitrary: op op' lxs)
+    (force elim: bisim.cases traced.cases simE)
+
+lemma bisim_traces: "bisim op op' \<Longrightarrow> (traces op = traces op')"
+  unfolding traces_def set_eq_iff mem_Collect_eq
+  apply (intro iffI allI)
+   apply (auto elim: bisim_traced dest: bisim_sym[THEN iffD1]) [2]
+  done
 
 inductive traced_cong for R where
   tc_base: "R op lxs \<Longrightarrow> traced_cong R op lxs"
