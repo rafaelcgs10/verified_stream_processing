@@ -775,7 +775,8 @@ lemma traced_coinduct_upto:
    apply (rule tc_base, rule assms(1))
   subgoal for op lxs
     apply (induct op lxs rule: traced_cong.induct)
-    subgoal for op lxs
+    oops
+(*     subgoal for op lxs
       by (drule assms(2)) (auto simp del: fun_upd_apply)
     subgoal for op lxs
       by (erule traced.cases)
@@ -787,7 +788,7 @@ lemma traced_coinduct_upto:
     subgoal 
       by (auto simp del: fun_upd_apply)
     done
-  done
+  done *)
 (*
 definition "traces op = {lxs. traced op lxs}"
 
