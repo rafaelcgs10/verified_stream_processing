@@ -50,6 +50,15 @@ abbreviation "ARead i f op \<equiv> Choice (cimage (\<lambda> x. if x then op el
 lemma ARead_simp[simp]: "ARead i f op = Choice (cinsert op (csingle (Read i f)))"
   by simp
 
+abbreviation "safe_choice_stop stop f ops \<equiv> (if ops = cempty then stop else Choice (cimage f ops))"
+abbreviation "safe_choice f \<equiv> safe_choice_stop (f End) f"
+abbreviation "safe_choice2 f op1s op2s \<equiv> (if op1s = cempty \<and> op2s = cempty then End
+  else if op1s = cempty then Choice (cimage (f End) op2s)
+  else if op2s = cempty then Choice (cimage (\<lambda>op1. f op1 End) op1s)
+  else Choice (cimage (case_prod f) (cproduct op1s op2s)))"
+abbreviation "choice2 op1 op2 \<equiv> Choice (cimage (\<lambda>b. if b then op1 else op2) (cinsert True (csingle False)))"
+abbreviation "safe_read f x \<equiv> (case x of None \<Rightarrow> End | Some x \<Rightarrow> f x)"
+
 corec copy :: "(1, 1, 'd) op" where
   "copy = ARead 1 (case_observation (Write copy 2) copy) copy"
 
@@ -585,9 +594,137 @@ lemma bisim_Write_Choice[simp]:
     done
   done
 
+
+lemma has_mute_map_op[simp]:
+  "has_mute (map_op f g op) \<longleftrightarrow> has_mute op"
+  apply safe
+  subgoal
+    apply (coinduction arbitrary: op)
+    subgoal for op
+      apply (cases op)
+      using cimageE apply force+
+      done
+    done
+  subgoal
+    apply (coinduction arbitrary: op)
+    subgoal for op
+      apply (cases op)
+      apply auto[2]
+      apply clarsimp
+      apply (metis cimageI cin.rep_eq)
+      done
+    done
+  done
+
+lemma dummy_has_mute[simp]:
+  "has_mute dummy"
+  apply (coinduction)
+  apply auto
+  apply (metis cimage_eqI cin.rep_eq cinsertCI dummy.code)
+  done
+
+lemma copy_has_mute[simp]:
+  "has_mute copy"
+  apply (coinduction)
+  apply auto
+  using cinsert_iff copy.code apply fastforce
+  done
+
+lemma stepped_dummy_no_label:
+  "stepped op l s \<Longrightarrow> op = dummy \<Longrightarrow> False"
+  apply (induct op l s arbitrary: l s rule: stepped.induct)
+  apply (subst (asm) dummy.code)
+  apply simp
+  apply (subst (asm) dummy.code)
+  apply simp
+  apply (clarsimp simp add: sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq intro: sub_choice.intros; hypsubst_thin?)
+  apply (metis cimage.rep_eq dummy.code image_iff op.inject(3))
+  done
+
 lemma bisim_Choice_Write[simp]:
   "bisim (Choice ops) (Write op p x) \<longleftrightarrow> (\<forall>op'. op' |\<in>| ops \<longrightarrow> bisim op' (Write op p x)) \<and> ops \<noteq> {||}"
   using bisim_Write_Choice bisim_sym by meson
+
+lemma choice_assoc:
+  "bisim (Choice {| Choice {| op1, op2 |}, op3 |}) (Choice {| op1, Choice {| op2, op3 |} |})"
+  apply (coinduction arbitrary: op1 op2 op3  rule: bisim_coinduct_upto)
+  subgoal for op1 op2 op3
+    unfolding sim_def
+    apply (auto 0 0 simp add:  sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq intro: sub_choice.intros; hypsubst_thin?)
+               apply blast+
+         apply (meson bc_refl cinsertI1 stepped.intros(3))
+    subgoal
+      by (meson bc_refl cinsertI1 cinsertI2 stepped.intros(3))
+    subgoal
+      by (meson bc_refl cinsertI2 csingleton_iff stepped.intros(3))
+    subgoal
+      by (meson bc_refl cinsertI1 stepped.intros(3))
+    subgoal
+      by (smt (verit, del_insts) bc_refl cdoubleton_eq_iff cinsertI2 csingleton_iff stepped.intros(3))
+    subgoal
+      by (metis (no_types, lifting) bc_refl cinsertI1 cinsert_commute stepped.intros(3))
+    done
+  done
+
+corec W :: "(1, 1, nat) op" where
+  "W = Write W 1 42"
+
+corec AW :: "(1, 1, nat) op" where
+  "AW = choice2 AW (Write AW 1 42)"
+
+lemma [simp]: "has_mute AW"
+  apply (coinduction)
+  apply (subst (2) AW.code)
+  apply (auto simp: cinsert.rep_eq)
+  done
+
+lemma [simp]: "\<not> has_mute W"
+  apply (subst W.code)
+  apply (auto)
+  done
+
+lemma "\<not> bisim W AW"
+  apply (rule notI)
+  apply (erule bisim.cases)
+  apply (auto)
+  done
+
+lemma End_not_dummy:
+  "End \<noteq> dummy"
+  apply safe
+  apply (subst (asm) dummy.code)
+  apply auto
+  done
+
+lemma
+  "\<not> bisim (Choice {| dummy, W |}) W"
+  apply (rule notI)
+  apply (erule bisim.cases)
+  apply auto
+  done
+
+lemma
+  "\<not> bisim (Choice {| End, W |}) W"
+  apply (rule notI)
+  apply (erule bisim.cases)
+  apply auto
+  done
+
+lemma dummy_diverged[simp]:
+  "diverged dummy"
+  apply coinduction
+  apply (subst dummy.code)
+       apply (auto 0 0 simp add:  sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq intro: sub_choice.intros; hypsubst_thin?)
+  done
+
+lemma End_bisim_dummy:
+  "bisim End dummy"
+  apply (coinduction)
+  apply (auto simp add: bot_cset.rep_eq)
+  unfolding sim_def
+  apply (auto dest: stepped_dummy_no_label)
+  done
+
 
 (*
 lemma bisim_ChoiceI: "rel_cset bisim ops1 ops2 \<Longrightarrow> bisim (Choice ops1) (Choice ops2)"
