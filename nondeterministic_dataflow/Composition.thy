@@ -177,6 +177,32 @@ lemma pcomp_op_commute: "pcomp_op op1 op2 = map_op (case_sum Inr Inl) (case_sum 
       (auto simp add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def intro!: op.cong_Read  op.cong_Write intro: op.cong_base)
   done
 
+lemma pcomp_op_simps[simp]:
+  "pcomp_op (Read p1 f1) (Read p2 f2) =
+    choice2 (Read (Inl p1) (\<lambda>y. pcomp_op (f1 y) (Read p2 f2)))
+     (Read (Inr p2) (\<lambda>y. pcomp_op (Read p1 f1) (f2 y)))"
+  "pcomp_op (Read p1 f1) (Write op2 q2 x2) =
+    choice2 (Read (Inl p1) (\<lambda>y. pcomp_op (f1 y) (Write op2 q2 x2))) (Write (pcomp_op (Read p1 f1) op2) (Inr q2) x2)"
+  "pcomp_op (Read p1 f1) (Choice op2s) = 
+    Choice (cinsert (Read (Inl p1) (\<lambda>y. pcomp_op (f1 y) (Choice op2s))) (cimage (pcomp_op (Read p1 f1)) op2s))"
+  "pcomp_op (Write op1 q1 x1) (Read p2 f2) =
+    choice2 (Write (pcomp_op op1 (Read p2 f2)) (Inl q1) x1) (Read (Inr p2) (\<lambda>y. pcomp_op (Write op1 q1 x1) (f2 y)))"
+  "pcomp_op (Write op1 q1 x1) (Write op2 q2 x2) =
+    choice2 (Write (pcomp_op op1 (Write op2 q2 x2)) (Inl q1) x1) (Write (pcomp_op (Write op1 q1 x1) op2) (Inr q2) x2)"
+  "pcomp_op (Write op1 q1 x1) (Choice op2s) =
+     Choice (cinsert (Write (pcomp_op op1 (Choice op2s)) (Inl q1) x1)
+      (cimage (pcomp_op (Write op1 q1 x1)) op2s))"
+  "pcomp_op (Choice op1s) (Read p2 f2) =
+    Choice (cinsert (Read (Inr p2) (\<lambda>y. pcomp_op (Choice op1s) (f2 y))) (cimage (\<lambda>op. pcomp_op op (Read p2 f2)) op1s))"
+  "pcomp_op (Choice op1s) (Write op2 q2 x2) =
+    Choice (cinsert (Write (pcomp_op (Choice op1s) op2) (Inr q2) x2) (cimage (\<lambda>op. pcomp_op op (Write op2 q2 x2)) op1s))"
+  "pcomp_op (Choice op1s) (Choice op2s) =
+    Choice (cUn (cimage (\<lambda>op. pcomp_op op (Choice op2s)) op1s)
+     (cimage (pcomp_op (Choice op1s)) op2s))"
+  unfolding pcomp_op_def
+          apply auto
+  done
+
 (*
 lemma
   "stepped (comp_op wire buf op1 op2) io op' \<Longrightarrow>
@@ -430,33 +456,6 @@ lemma stepped_map_op_assocD:
     done
   done
 
-inductive sub_choice where
-  "sub_choice op op"
-| "sub_choice op op' \<Longrightarrow> op' |\<in>| ops \<Longrightarrow> sub_choice op (Choice ops)"
-
-inductive_cases sub_choiceReadE [elim!]: "sub_choice op (Read p f)"
-inductive_cases sub_choiceWriteE [elim!]: "sub_choice op (Write op p x)"
-inductive_cases sub_choiceChoiceE [elim!]: "sub_choice op (Choice ops)"
-
-lemma sub_choice_stepped:
-  "sub_choice op op'' \<Longrightarrow>
-   stepped op io op' \<Longrightarrow>
-   stepped op'' io op'"
-  by (induct op op'' arbitrary: io op' rule: sub_choice.induct) (auto intro: stepped.intros)
-
-lemma sub_choice_trans:
-  "sub_choice op2 op3 \<Longrightarrow>
-   sub_choice op1 op2 \<Longrightarrow>
-   sub_choice op1 op3"
-  apply (induct op2 op3 arbitrary: op1 rule: sub_choice.induct)
-  apply (auto intro: sub_choice.intros)[1]
-  subgoal for op op' ops op1
-    apply (erule sub_choice.cases)
-      apply (auto intro: sub_choice.intros elim: sub_choice.cases)[1]
-    apply (meson cin.rep_eq sub_choice.simps)
-    done
-  done
-
 lemma stepped_pcomp_op_inv:
   "stepped (pcomp_op op1 op2) io op \<Longrightarrow>
    (\<exists> op1' p x op2'. stepped op1 (Inp p x) op1' \<and> op = (pcomp_op op1' op2') \<and> io = Inp (Inl p) x \<and> sub_choice op2' op2) \<or>
@@ -654,7 +653,7 @@ lemma sub_choice_steppedL:
    stepped (pcomp_op op1 op2) (map_IO Inl Inl id io) (pcomp_op op1' op2')"
   using stepped_pcomp_op_L sub_choice_stepped_pcomp_opR by blast
 
-
+(* FIXME: move me *)
 lemma has_mute_map_op[simp]:
   "has_mute (map_op f g op) \<longleftrightarrow> has_mute op"
   apply safe
@@ -676,6 +675,95 @@ lemma has_mute_map_op[simp]:
     done
   done
 
+lemma sub_choices_has_mute[simp]:
+  "rel_set bisim (sub_choices op1) (sub_choices op2) \<Longrightarrow> has_mute op1 \<longleftrightarrow> has_mute op2"
+  apply safe
+  subgoal
+    apply (coinduction arbitrary: op1 op2)
+    unfolding rel_set_def
+    apply (erule has_mute.cases)
+    subgoal
+      apply clarsimp
+      apply (metis Operator.has_mute_Choice bisim.simps cin.rep_eq equals_cemptyD has_mute.cases sub_choice.simps sub_choiceChoiceE)
+      done
+    subgoal for op1 op2 op ops
+      apply (cases op2)
+      subgoal
+        apply clarsimp
+        apply hypsubst_thin
+        apply (metis bisim.simps cin.rep_eq has_mute_Read sub_choice.simps sub_choiceReadE)
+        done
+      subgoal
+        apply clarsimp
+        apply hypsubst_thin
+        apply (metis bisim.cases cin.rep_eq has_mute_Write op.simps(9) sub_choice.simps)
+        done
+      subgoal
+        apply clarsimp
+        apply hypsubst_thin
+        apply (auto simp add: sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq intro: stepped.intros; hypsubst_thin?)
+        apply (drule spec[of _ op])
+        apply (drule mp)
+         apply (meson cin.rep_eq sub_choice.intros(1) sub_choice.intros(2))
+        apply (elim exE conjE)
+        apply (smt (verit, ccfv_SIG) bisim.cases bot_cset.rep_eq empty_iff has_mute.coinduct has_mute.simps may_diverge_ChoiceE sub_choice.simps)
+        done
+      done
+    done
+  subgoal
+    apply (coinduction arbitrary: op1 op2)
+    unfolding rel_set_def
+    apply (erule has_mute.cases)
+    subgoal
+      apply clarsimp
+      apply (metis Operator.has_mute_Choice bisim.simps cin.rep_eq equals_cemptyD has_mute.cases sub_choice.simps sub_choiceChoiceE)
+      done
+    subgoal for op1 op2 op ops
+      apply (cases op1)
+      subgoal
+        apply clarsimp
+        apply hypsubst_thin
+        apply (metis bisim.simps cin.rep_eq has_mute_Read sub_choice.simps sub_choiceReadE)
+        done
+      subgoal
+        apply clarsimp
+        apply hypsubst_thin
+        apply (metis bisim.cases cin.rep_eq has_mute_Write op.simps(9) sub_choice.simps)
+        done
+      subgoal
+        apply clarsimp
+        apply hypsubst_thin
+        apply (rotate_tac 3)
+        apply (auto simp add: sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq intro: stepped.intros; hypsubst_thin?)
+        apply (drule spec[of _ op])
+        apply (drule mp)
+         apply (meson cin.rep_eq sub_choice.intros(1) sub_choice.intros(2))
+        apply (elim exE conjE)
+        apply (smt (verit, ccfv_SIG) bisim.cases bot_cset.rep_eq empty_iff has_mute.coinduct has_mute.simps may_diverge_ChoiceE sub_choice.simps)
+        done
+      done
+    done
+  done
+
+lemma sub_choices_bisim:
+  "rel_set bisim (sub_choices op1) (sub_choices op2) \<Longrightarrow> bisim op1 op2"
+  apply (coinduction arbitrary: op1 op2 rule: bisim_coinduct_upto)
+  subgoal for op1 op2
+    apply safe
+    apply simp_all
+    subgoal
+      unfolding sim_def rel_set_def
+      apply (cases op1; cases op2)
+              apply auto
+      subgoal
+        by (smt (verit, ccfv_threshold) bc_bisim bisim_ReadD stepped.intros(1) sub_choice.intros(1) sub_choiceReadE)
+      subgoal
+        by (metis not_bisim(1) sub_choice.intros(1) sub_choiceReadE)
+      subgoal
+        oops  
+
+
+(* FIXME: move me *)
 lemma bisim_assoc_reassoc:
   "bisim (map_op assoc assoc op) op' \<Longrightarrow>
    bisim (map_op reassoc reassoc op') op"
@@ -733,43 +821,118 @@ lemma bisim_assoc_reassoc:
     done
   done
 
-lemma
-  "stepped op1 io op1' \<Longrightarrow>
-   sub_choice op23 (pcomp_op op2 op3) \<Longrightarrow>
-   \<exists> op2' op3'. pcomp_op op1' op23 = pcomp_op op1' (pcomp_op op2' op3') \<and> sub_choice op2' op2 \<and> sub_choice op3' op3"
-  apply (induct  op1 io op1' arbitrary: op23 op2 op3 rule: stepped.induct)
-  subgoal for p f x op23 op2 op3
-    unfolding pcomp_op_def
-    apply (erule sub_choice.cases)
-    subgoal
-      by (auto intro: sub_choice.intros(1))
-    subgoal for op op' ops
-      apply auto
-      apply hypsubst_thin
-    apply (cases op2; cases op3)
-        apply (auto simp add: sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq intro: stepped.intros; hypsubst_thin?)
-      oops
+lemma dummy_has_mute[simp]:
+  "has_mute dummy"
+  apply (coinduction)
+  apply auto
+  apply (metis cimage_eqI cin.rep_eq cinsertCI dummy.code)
+  done
 
-lemma stepped_pcomp_op_assoc_inv:
-  "stepped (pcomp_op op1 (pcomp_op op2 op3)) io op \<Longrightarrow>
-   (\<exists> op1' p x op2' op3'. stepped op1 (Inp p x) op1' \<and> op = (pcomp_op op1' (pcomp_op op2' op3')) \<and> io = Inp (Inl p) x \<and> sub_choice op2' op2  \<and> sub_choice op3' op3) \<or>
-   (\<exists> op1' p x op2' op3'. stepped op1 (Out p x) op1' \<and> op = (pcomp_op op1' (pcomp_op op2' op3')) \<and> io = Out (Inl p) x \<and> sub_choice op2' op2  \<and> sub_choice op3' op3) \<or>
-   (\<exists> op1' p x op2' op3'. stepped op2 (Inp p x) op2' \<and> op = (pcomp_op op1' (pcomp_op op2' op3')) \<and> io = Inp (Inr (Inl p)) x \<and> sub_choice op1' op1 \<and> sub_choice op3' op3) \<or>
-   (\<exists> op1' p x op2' op3'. stepped op2 (Out p x) op2' \<and> op = (pcomp_op op1' (pcomp_op op2' op3')) \<and> io = Out (Inr (Inl p)) x \<and> sub_choice op1' op1 \<and> sub_choice op3' op3) \<or>
-   (\<exists> op1' p x op2' op3'. stepped op3 (Inp p x) op3' \<and> op = (pcomp_op op1' (pcomp_op op2' op3')) \<and> io = Inp (Inr (Inr p)) x \<and> sub_choice op1' op1 \<and> sub_choice op2' op2) \<or>
-   (\<exists> op1' p x op2' op3'. stepped op3 (Out p x) op3' \<and> op = (pcomp_op op1' (pcomp_op op2' op3')) \<and> io = Out (Inr (Inr p)) x \<and> sub_choice op1' op1 \<and> sub_choice op2' op2)"
-  apply (drule stepped_pcomp_op_inv)
-  apply (elim exE disjE conjE)
-  apply simp_all
-  subgoal for op1' p x op2'
-    apply hypsubst_thin
-    apply (intro conjI exI)
-         prefer 3
-         apply (rule refl)+
-        prefer 3
-        apply (rule refl)+
-       apply assumption
-    oops
+lemma copy_has_mute[simp]:
+  "has_mute copy"
+  apply (coinduction)
+  apply auto
+  using cinsert_iff copy.code apply fastforce
+  done
+
+lemma stepped_dummy_no_label:
+  "stepped op l s \<Longrightarrow> op = dummy \<Longrightarrow> False"
+  apply (induct op l s arbitrary: l s rule: stepped.induct)
+    apply (subst (asm) dummy.code)
+    apply simp
+   apply (subst (asm) dummy.code)
+   apply simp
+  apply (clarsimp simp add: sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq intro: sub_choice.intros; hypsubst_thin?)
+  apply (metis cimage.rep_eq dummy.code image_iff op.inject(3))
+  done
+
+lemma End_not_dummy:
+  "End \<noteq> dummy"
+  apply safe
+  apply (subst (asm) dummy.code)
+  apply auto
+  done
+
+lemma
+  "bisim (pcomp_op End copy) (map_op Inr Inr copy) \<Longrightarrow>
+   False"
+  apply (erule bisim.cases)
+  unfolding sim_def
+  apply auto
+  apply (subst (asm) (3) copy.code)
+  apply rotate_tac
+  apply (drule spec2)
+  apply (drule mp)
+   apply simp
+  unfolding comp_def
+   apply (intro stepped.intros(3))
+  apply (rule cinsertI2)
+    apply (rule cinsertI1)
+  using stepped.intros(1)[where x=EOS] apply force
+  apply simp
+  apply auto
+  oops
+
+
+lemma pcomp_op_End_42_43_bisim:
+  "bisim (pcomp_op End (Choice {|Write End (1::1) 42, Write End (1::1) (43::nat)|})) (map_op Inr Inr (Choice {|Write End (1::1) 42, Write End (1::1) 43|}))"
+  apply (coinduction)
+  apply (auto 0 0 simp add:  sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq intro: sub_choice.intros; hypsubst_thin?)
+     apply (meson bisim_refl cinsert_iff stepped.intros(2) stepped.intros(3))+
+  done
+
+lemma traced_pcomp_op_dummy_LNil:
+  "traced (pcomp_op dummy (Write End 1 42)) LNil"
+  apply (coinduction )
+  apply simp
+  apply (coinduction )
+  apply auto
+  apply (subst (asm) dummy.code)
+      apply (auto 0 0 simp add:  sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq intro: sub_choice.intros; hypsubst_thin?)
+  apply (subst (asm) dummy.code)
+  apply auto
+  done
+
+lemma not_neutral_element:
+  "bisim (pcomp_op dummy (Write End 1 42)) (map_op Inr Inr (Write End 1 42)) \<Longrightarrow>
+   False"
+  apply (drule bisim_traced[of _ _ LNil])
+  apply (auto simp add: traced_pcomp_op_dummy_LNil)
+  done
+
+lemma traced_pcomp_op_End_LNil:
+  "\<not> traced (pcomp_op End (Write End 1 42)) LNil"
+  by (auto 0 0 simp add:  sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq intro: sub_choice.intros; hypsubst_thin?)
+
+lemma End_bisim_dummy:
+  "bisim End dummy"
+  apply (coinduction)
+  apply (auto simp add: bot_cset.rep_eq)
+  unfolding sim_def
+  apply (auto dest: stepped_dummy_no_label)
+  done
+
+
+lemma
+  "bisim (pcomp_op End op) (map_op Inr Inr op)"
+  apply (coinduction arbitrary: op  rule: bisim_coinduct_upto)
+  subgoal for op
+    unfolding sim_def
+    apply (cases op)
+      apply (auto 0 0 simp add:  sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq intro: sub_choice.intros; hypsubst_thin?)
+    subgoal by (metis (mono_tags, lifting) bc_base comp_apply stepped.intros(1))
+    subgoal
+      by (smt (verit, del_insts) bc_base bc_sym cinsert_iff stepped.intros(1) stepped.intros(3))
+    subgoal
+      apply (auto 0 0 simp add:  sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq intro: sub_choice.intros; hypsubst_thin?)
+       apply (metis (mono_tags, lifting) bc_base stepped.intros(2))
+      apply (metis (mono_tags, lifting) bc_base bc_sym csingleton_iff stepped.intros(2) stepped.intros(3))
+      done
+    subgoal
+      apply (auto 0 0 simp add:  sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq intro: sub_choice.intros; hypsubst_thin?)
+      subgoal for x op
+        apply (cases op)
+        oops
 
 lemma "bisim (pcomp_op op1 (pcomp_op op2 op3)) (map_op reassoc reassoc (pcomp_op (pcomp_op op1 op2) op3))"
   apply (coinduction arbitrary: op1 op2 op3 rule: bisim_coinduct_upto)
@@ -784,16 +947,19 @@ lemma "bisim (pcomp_op op1 (pcomp_op op2 op3)) (map_op reassoc reassoc (pcomp_op
         apply (elim disjE exE conjE)
         subgoal for op1' p x op23
           apply hypsubst_thin
-            (* Here I see two options to instantiation the first which I think is more correct *)
           apply (rule exI[of _ "map_op reassoc reassoc (pcomp_op (pcomp_op op1' op2) op3)"])
           apply (intro conjI)
           subgoal
             by (metis IO.simps(9) IO.simps(9) IO.simps(9) assoc.simps(1) observation.map_id stepped_map_op_reassoc_map_IO_assoc stepped_pcomp_op_L stepped_pcomp_op_L)
           subgoal
-            apply (rule bc_base)
-              (* It fails because pcomp_op op1' op23 is not bisim map_op reassoc reassoc (pcomp_op (pcomp_op op1' op2) op3) because op2 and op3 can make different choices made by op23 *)
-              (* or the following instatiation, but this is even more wrong because the generated stepped in the goal is false *)
-          apply (rule exI[of _ "pcomp_op op1' op23"])
+               apply (rule bc_sub_choices)
+            apply (rule rel_setI)
+                apply safe
+              apply (rule bexI)
+              apply (rule bc_base)
+                 apply safe
+              apply (intro exI conjI)
+            oops
 
 end
 

@@ -178,7 +178,7 @@ lemma input_depth_Read_diff:
     apply assumption
    apply (auto elim: input_at.cases intro: input_at.intros)
   apply (erule input_at.cases[of _ "Read p' f"])
-    apply auto
+     apply auto
   apply (smt (verit, del_insts) LeastI Least_le arg_min_nat_le comp_eq_dest_lhs input_at_mono)
   done
 
@@ -225,7 +225,7 @@ lemma input_depth_Write_0:
    output_depth p op = 0 \<longleftrightarrow> (\<exists>x op'. op = Write op' p x)"
   unfolding output_depth_def
   apply (auto elim: output_at.cases intro: output_at.intros)
-  apply (smt (verit) LeastI_ex Zero_neq_Suc output_at.cases outputs_alt)
+   apply (smt (verit) LeastI_ex Zero_neq_Suc output_at.cases outputs_alt)
   apply (simp add: output_at.intros(1))
   done
 
@@ -246,9 +246,9 @@ lemma output_depth_Read[simp]:
        apply (erule output_at.intros)
        apply simp_all
      apply (meson Zero_neq_Suc op.distinct(1) output_at.cases)
-    apply (auto elim: output_at.cases intro: output_at.intros)
+     apply (auto elim: output_at.cases intro: output_at.intros)
     apply (erule output_at.cases[of _ "Read p' f"])
-      apply auto
+       apply auto
     using output_at_mono 
     apply (smt (verit, ccfv_SIG) LeastI Least_le arg_min_nat_le comp_eq_dest_lhs)
     done
@@ -280,6 +280,35 @@ inductive stepped where
   "stepped (Read p f) (Inp p x) (f x)"
 | "stepped (Write op q x) (Out q x) op"
 | "cin op ops \<Longrightarrow> stepped op l op' \<Longrightarrow> stepped (Choice ops) l op'"
+
+inductive sub_choice where
+  "sub_choice op op"
+| "sub_choice op op' \<Longrightarrow> op' |\<in>| ops \<Longrightarrow> sub_choice op (Choice ops)"
+
+abbreviation "sub_choices op \<equiv> {op'. sub_choice op' op}"
+
+inductive_cases sub_choiceReadE [elim!]: "sub_choice op (Read p f)"
+inductive_cases sub_choiceWriteE [elim!]: "sub_choice op (Write op p x)"
+inductive_cases sub_choiceChoiceE [elim!]: "sub_choice op (Choice ops)"
+
+lemma sub_choice_stepped:
+  "sub_choice op op'' \<Longrightarrow>
+   stepped op io op' \<Longrightarrow>
+   stepped op'' io op'"
+  by (induct op op'' arbitrary: io op' rule: sub_choice.induct) (auto intro: stepped.intros)
+
+lemma sub_choice_trans:
+  "sub_choice op2 op3 \<Longrightarrow>
+   sub_choice op1 op2 \<Longrightarrow>
+   sub_choice op1 op3"
+  apply (induct op2 op3 arbitrary: op1 rule: sub_choice.induct)
+   apply (auto intro: sub_choice.intros)[1]
+  subgoal for op op' ops op1
+    apply (erule sub_choice.cases)
+     apply (auto intro: sub_choice.intros elim: sub_choice.cases)[1]
+    apply (meson cin.rep_eq sub_choice.simps)
+    done
+  done
 
 inductive_cases steppedReadE [elim!]: "stepped (Read p f) io op'"
 inductive_cases steppedWriteE [elim!]: "stepped (Write op q x) io op'"
@@ -347,8 +376,8 @@ lemma bisim_coinduct_upto:
     subgoal
       unfolding rel_cset.rep_eq rel_set_def
       by (fastforce simp: Ball_def Bex_def sim_def bot_cset.rep_eq
-        simp flip: bot_cset.abs_eq cin.rep_eq
-        dest!: arg_cong[where f="acset"] intro: stepped.intros)
+          simp flip: bot_cset.abs_eq cin.rep_eq
+          dest!: arg_cong[where f="acset"] intro: stepped.intros)
     done
   done
 
@@ -521,7 +550,7 @@ lemma bisim_Write_Choice[simp]:
   apply (safe intro!: context_conjI)
   subgoal for op
     apply (rule bisim.intros)
-    apply (auto simp flip: cin.rep_eq)
+      apply (auto simp flip: cin.rep_eq)
     subgoal
       apply (erule bisim.cases)
       apply auto
@@ -544,7 +573,7 @@ lemma bisim_Write_Choice[simp]:
   subgoal for op
     apply (erule notE)
     apply (rule bisim.intros)
-    apply (auto simp flip: cin.rep_eq)
+      apply (auto simp flip: cin.rep_eq)
       apply (meson bisim.cases)
      apply (drule spec, drule mp, assumption)
      apply (erule bisim.cases)
@@ -627,7 +656,7 @@ lemma no_Choice_in_choices[simplified, simp, dest]: "Choice ops |\<in>| choices 
   apply (auto simp: cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
   subgoal for n
     apply (induct n op rule: choices_at.induct)
-       apply (auto simp: cinsert.rep_eq bot_cset.rep_eq cUnion.rep_eq cimage.rep_eq)
+    apply (auto simp: cinsert.rep_eq bot_cset.rep_eq cUnion.rep_eq cimage.rep_eq)
     done
   done
 
@@ -727,8 +756,8 @@ lemma has_mute_Choice[simp]:
   by (auto)
 
 coinductive traced where
-    Nil: "has_mute op \<Longrightarrow> traced op LNil"
-  | Step: "stepped op l op' \<Longrightarrow> traced op' lxs \<Longrightarrow> traced op (LCons l lxs)"
+  Nil: "has_mute op \<Longrightarrow> traced op LNil"
+| Step: "stepped op l op' \<Longrightarrow> traced op' lxs \<Longrightarrow> traced op (LCons l lxs)"
 
 inductive_cases traced_LNilE[elim!]: "traced op LNil"
 inductive_cases traced_LConsE[elim!]: "traced op (LCons l lxs)"
@@ -748,7 +777,7 @@ lemma bisim_traced: "bisim op op' \<Longrightarrow> traced op lxs \<Longrightarr
 lemma bisim_traces: "bisim op op' \<Longrightarrow> (traces op = traces op')"
   unfolding traces_def set_eq_iff mem_Collect_eq
   apply (intro iffI allI)
-   apply (auto elim: bisim_traced dest: bisim_sym[THEN iffD1]) [2]
+  apply (auto elim: bisim_traced dest: bisim_sym[THEN iffD1]) [2]
   done
 
 inductive traced_cong for R where
@@ -772,11 +801,11 @@ lemma traced_coinduct_upto:
      x1 = Choice cempty \<and> x2 = LNil)"
   shows "traced op lxs"
   apply (rule traced.coinduct[where X = "traced_cong X"])
-   apply (rule tc_base, rule assms(1))
+  apply (rule tc_base, rule assms(1))
   subgoal for op lxs
     apply (induct op lxs rule: traced_cong.induct)
     oops
-(*     subgoal for op lxs
+      (*     subgoal for op lxs
       by (drule assms(2)) (auto simp del: fun_upd_apply)
     subgoal for op lxs
       by (erule traced.cases)
@@ -789,7 +818,7 @@ lemma traced_coinduct_upto:
       by (auto simp del: fun_upd_apply)
     done
   done *)
-(*
+      (*
 definition "traces op = {lxs. traced op lxs}"
 
 (* lemma traces_Read[simp]:
@@ -1342,7 +1371,7 @@ lemma history_produce:
  *)
 *)
 
-section\<open>Buffer infrastrcuture\<close>
+    section\<open>Buffer infrastrcuture\<close>
 
 datatype 'd buf = BEmpty | BEnded | BCons 'd "'d buf"
 
@@ -1370,7 +1399,7 @@ lemma bend_bend[simp]:
   apply (rule ext)
   subgoal for buf
     apply (induct buf)
-      apply auto
+    apply auto
     done
   done
 
