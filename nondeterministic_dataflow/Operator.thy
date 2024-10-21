@@ -703,6 +703,52 @@ lemma
   apply auto
   done
 
+
+abbreviation "choicess op \<equiv> (case op of Choice ops \<Rightarrow> ops | _ \<Rightarrow> {| op |})"
+
+corec head :: "('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op" where
+  "head op = (case op of Choice ops \<Rightarrow> Choice (cimage head (cUnion (cimage choicess ops))) | _ \<Rightarrow> op)"
+
+
+lemma head_simps[simp]:
+  "head (Read p f) = Read p f"
+  "head (Write op p x) = Write op p x"
+  "head (Choice ops) = Choice (cimage head (cUnion (cimage choicess ops)))"
+  by (simp add: head.code)+
+
+
+lemma aux:
+  "cimage head (cUnion (cimage choicess ops)) = cUnion (cimage choicess (cimage head ops))"
+    apply (auto simp add: cUnion.rep_eq cUNION_cimage)
+  subgoal for op op'
+    apply (simp flip: cin.rep_eq)
+    apply (rule bexI[of _ "choicess (head (Choice ops))"])
+     apply (simp flip: cin.rep_eq)
+     apply (rule cimageI)
+     apply blast
+    unfolding comp_def
+    apply (auto simp flip: cin.rep_eq  simp add:)
+    oops
+ 
+lemma
+  "stepped op1 io op1' \<Longrightarrow>
+   \<exists> op2. op2 |\<in>| choicess (head op1) \<and> stepped op2 io op1' \<and> sub_choice op2 op1"
+  apply (induct op1 io op1' rule: stepped.induct)
+  subgoal for p f x
+    apply auto
+    apply (meson cin.rep_eq csingleton_iff stepped.intros(1) sub_choice.intros(1))
+    done
+  subgoal for op q x
+    apply clarsimp
+    apply (meson cin.rep_eq csingleton_iff stepped.intros(2) sub_choice.intros(1))
+    done
+  subgoal for op ops l op'
+    apply clarsimp
+    subgoal for op2
+      apply (rule exI[of _ op2])
+      apply (auto simp add: simp flip: cin.rep_eq intro: sub_choice.intros)
+      oops
+
 lemma
   "\<not> bisim (Choice {| End, W |}) W"
   apply (rule notI)

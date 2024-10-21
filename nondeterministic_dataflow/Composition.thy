@@ -65,44 +65,10 @@ abbreviation eval_comp_op_aux where
   | Write_aux (buf, op1, op2) q x \<Rightarrow> Write (c buf op1 op2) q x
   | Base_aux (buf, op1, op2) \<Rightarrow> c buf op1 op2)"
 
-abbreviation "flatten_choice op \<equiv> (case op of Choice ops \<Rightarrow> ops | _ \<Rightarrow> {| op |})"
-
-term cUnion
-
-corec head :: "('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op" where
-  "head op = (case op of Choice ops \<Rightarrow> Choice (cimage head (cUnion (cimage flatten_choice ops))) | _ \<Rightarrow> op)"
-
-lemma
-  "bisim (head (Choice {| op,  dummy |})) op"
-  apply coinduction
-  apply (auto simp add: bot_cset.rep_eq cUN_empty2 cimage_cempty cimage_cinsert empty_iff rel_cset.rep_eq head.code)
-    apply (subst (asm) dummy.code)
-  apply (metis (no_types, lifting) dummy.code op.disc(3) op.simps(12))
-   apply (metis (no_types, lifting) dummy.code op.disc(6) op.simps(12))
-  apply (rule rel_setI)
-  apply (auto simp add: rel_cset.rep_eq head.code)
-  apply (subst (asm) (3 6) dummy.code)
-    apply (auto simp add: rel_cset.rep_eq head.code)
-
-
-end
-  apply (rule rel_setI)
-  apply (metis bot_cset.rep_eq cUN_empty2 cimage_cempty cimage_cinsert empty_iff)
-  apply (simp add: bot_cset.rep_eq)
-  done
-
-
-  thm cimagr.rep_eq
-
-  
-
-  thm rel_cset.rep_eq
-end
-
 corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
   "comp_op wire buf op1 op2 =
-     Choice (cimage (eval_comp_op_aux (comp_op wire)) (cUn (case head op1 of
+     Choice (cimage (eval_comp_op_aux (comp_op wire)) (cUn (case op1 of
        Read p f \<Rightarrow> csingle (Read_aux (Inl p) (\<lambda>y. (buf, f y, op2)))
      | Write op p x \<Rightarrow> csingle (case wire p of
          None \<Rightarrow> Write_aux (buf, op, op2) (Inl p) x
