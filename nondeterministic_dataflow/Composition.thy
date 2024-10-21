@@ -68,6 +68,41 @@ abbreviation eval_comp_op_aux where
 corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
   "comp_op wire buf op1 op2 =
+     Choice (cimage (eval_comp_op_aux (comp_op wire)) (cUn
+       (cimage (\<lambda>op. case op of
+           Read p f \<Rightarrow> Read_aux (Inl p) (\<lambda>x. (buf, f x, op2))
+         | Write op p x \<Rightarrow> (case wire p of
+             None \<Rightarrow> Write_aux (buf, op, op2) (Inl p) x
+           | Some q \<Rightarrow> Base_aux (BENQ q x buf, op, op2))) (choices op1))
+       (cimage (\<lambda>op. case op of
+           Read p f \<Rightarrow> if p \<in> ran wire then Base_aux (BTL p buf, op1, safe_read f (BHD p buf))
+             else Read_aux (Inr p) (\<lambda>x. (buf, op1, f x))
+         | Write op p x \<Rightarrow> Write_aux (buf, op1, op) (Inr p) x) (choices op2))))"
+
+lemma "op' |\<in>| choices op \<Longrightarrow> \<not> is_Choice op'"
+  by (metis cin.rep_eq no_Choice_in_choices op.collapse(3))
+
+lemma comp_op_code: "comp_op wire buf op1 op2 =
+  Choice (cUn
+    (cimage (\<lambda>op. case op of
+        Read p f \<Rightarrow> Read (Inl p) (\<lambda>x. comp_op wire buf (f x) op2)
+      | Write op p x \<Rightarrow> (case wire p of
+          None \<Rightarrow> Write (comp_op wire buf op op2) (Inl p) x
+        | Some q \<Rightarrow> comp_op wire (BENQ q x buf) op op2)) (choices op1))
+    (cimage (\<lambda>op. case op of
+        Read p f \<Rightarrow> if p \<in> ran wire then comp_op wire (BTL p buf) op1 (safe_read f (BHD p buf))
+          else Read (Inr p) (\<lambda>x. comp_op wire buf op1 (f x))
+      | Write op p x \<Rightarrow> Write (comp_op wire buf op1 op) (Inr p) x) (choices op2)))"
+  apply (subst comp_op.code)
+  apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
+    split: comp_op_aux.splits op.splits option.splits)
+  done
+
+end
+
+corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
+  ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
+  "comp_op wire buf op1 op2 =
      Choice (cimage (eval_comp_op_aux (comp_op wire)) (cUn (case op1 of
        Read p f \<Rightarrow> csingle (Read_aux (Inl p) (\<lambda>y. (buf, f y, op2)))
      | Write op p x \<Rightarrow> csingle (case wire p of
