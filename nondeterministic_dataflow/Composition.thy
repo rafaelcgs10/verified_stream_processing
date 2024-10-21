@@ -65,10 +65,44 @@ abbreviation eval_comp_op_aux where
   | Write_aux (buf, op1, op2) q x \<Rightarrow> Write (c buf op1 op2) q x
   | Base_aux (buf, op1, op2) \<Rightarrow> c buf op1 op2)"
 
+abbreviation "flatten_choice op \<equiv> (case op of Choice ops \<Rightarrow> ops | _ \<Rightarrow> {| op |})"
+
+term cUnion
+
+corec head :: "('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op" where
+  "head op = (case op of Choice ops \<Rightarrow> Choice (cimage head (cUnion (cimage flatten_choice ops))) | _ \<Rightarrow> op)"
+
+lemma
+  "bisim (head (Choice {| op,  dummy |})) op"
+  apply coinduction
+  apply (auto simp add: bot_cset.rep_eq cUN_empty2 cimage_cempty cimage_cinsert empty_iff rel_cset.rep_eq head.code)
+    apply (subst (asm) dummy.code)
+  apply (metis (no_types, lifting) dummy.code op.disc(3) op.simps(12))
+   apply (metis (no_types, lifting) dummy.code op.disc(6) op.simps(12))
+  apply (rule rel_setI)
+  apply (auto simp add: rel_cset.rep_eq head.code)
+  apply (subst (asm) (3 6) dummy.code)
+    apply (auto simp add: rel_cset.rep_eq head.code)
+
+
+end
+  apply (rule rel_setI)
+  apply (metis bot_cset.rep_eq cUN_empty2 cimage_cempty cimage_cinsert empty_iff)
+  apply (simp add: bot_cset.rep_eq)
+  done
+
+
+  thm cimagr.rep_eq
+
+  
+
+  thm rel_cset.rep_eq
+end
+
 corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
   "comp_op wire buf op1 op2 =
-     Choice (cimage (eval_comp_op_aux (comp_op wire)) (cUn (case op1 of
+     Choice (cimage (eval_comp_op_aux (comp_op wire)) (cUn (case head op1 of
        Read p f \<Rightarrow> csingle (Read_aux (Inl p) (\<lambda>y. (buf, f y, op2)))
      | Write op p x \<Rightarrow> csingle (case wire p of
          None \<Rightarrow> Write_aux (buf, op, op2) (Inl p) x
@@ -129,6 +163,8 @@ lemma comp_op_simps[simp]:
   by (subst comp_op_code; simp add: cinsert_commute)+
 
 definition "pcomp_op = comp_op (\<lambda>_. None) (\<lambda>_. BEnded)"
+definition "scomp_op op1 op2 = map_op projl projr (comp_op Some (\<lambda>_. BEmpty) op1 op2)"
+
 
 fun reassoc where
   "reassoc (Inl (Inl x)) = Inl x"
@@ -194,22 +230,6 @@ lemma pcomp_op_simps[simp]:
   apply auto
   done
 
-(*
-lemma
-  "stepped (comp_op wire buf op1 op2) io op' \<Longrightarrow>
-   bisim op1 op1' \<Longrightarrow>
-   bisim op2 op2' \<Longrightarrow>
-   \<exists>t'. stepped (comp_op wire buf op1' op2') io t' \<and>
-         bisim_cong (\<lambda>s t. \<exists>op1 op1' op2 op2' buf. s = comp_op wire buf op1 op2 \<and> t = comp_op wire buf op1' op2' \<and> bisim op1 op1' \<and> bisim op2 op2') op' t'"
-  apply (induct "comp_op wire buf op1 op2" io op' arbitrary: buf op1 op2 op1' op2' rule: stepped.induct)
-  apply (subst (asm) comp_op.code; simp)
-   apply (subst (asm) comp_op.code; simp)
-  subgoal premises prems for op ops l op' buf op1 op2 op1' op2'
-    using prems(1,2,4-)
-    apply (cases op1; cases op2; simp add: cinsert.rep_eq split: if_splits)
-    apply safe
-*)
-
 lemma
   "bisim op1 op1' \<Longrightarrow> bisim op2 op2' \<Longrightarrow>
   has_mute (comp_op wire buf op1 op2) \<Longrightarrow> has_mute (comp_op wire buf op1' op2')"
@@ -239,32 +259,6 @@ lemma
       apply (rule conjI, rule refl)
       apply (rule conjI[rotated])+
       oops
-
-
-
-lemma
-  "bisim op1 op1' \<Longrightarrow>
-   bisim op2 op2' \<Longrightarrow>
-   bisim (comp_op wire buf op1 op2) (comp_op wire buf op1' op2')"
-  apply (coinduction arbitrary: op1 op1' op2 op2' buf rule: bisim_coinduct_upto)
-  subgoal for op1 op1' op2 op2' buf
-    apply safe
-    subgoal
-      apply (coinduction arbitrary: op1 op1' op2 op2' buf)
-      apply safe
-      apply (erule notE)
-      subgoal for op1 op1' op2 op2' buf
-        apply (cases op1; cases op1'; cases op2; cases op2')
-        apply (simp_all add: cinsert.rep_eq bot_cset.rep_eq conj_disj_distribR ex_disj_distrib split: if_splits)
-        apply (rule disjI2, rule disjI1)
-        apply (rule exI)+
-        apply (rule conjI, rule refl)
-        apply (rule conjI[rotated])+
-        apply assumption
-        apply (simp add: bisim_refl option.case_eq_if)
-        apply (simp add: bisim_refl option.case_eq_if)
-        oops
-
 
 lemma stepped_pcomp_op_L:
   "stepped op1 io op1' \<Longrightarrow>
@@ -862,18 +856,10 @@ lemma "bisim (pcomp_op op1 (pcomp_op op2 op3)) (map_op reassoc reassoc (pcomp_op
           apply (intro conjI)
           subgoal
             by (metis IO.simps(9) IO.simps(9) IO.simps(9) assoc.simps(1) observation.map_id stepped_map_op_reassoc_map_IO_assoc stepped_pcomp_op_L stepped_pcomp_op_L)
-          subgoal
-            apply (rule bc_sub_choices)
-            apply (rule rel_setI)
-            apply safe
-            apply (rule bexI)
-            apply (rule bc_base)
-            apply safe
-            apply (intro exI conjI)
-            oops
+          oops
 
 end
-
+(* 
   apply (simp_all add: observation.map_id)
   done
 
@@ -3702,4 +3688,4 @@ lemma "history (scomp_op op1 op2) lxs lys \<longleftrightarrow>
   done
 *)
 
-end
+end *)
