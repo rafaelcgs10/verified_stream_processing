@@ -478,6 +478,12 @@ lemma no_mute_ChoiceD: "\<not> has_mute (Choice ops) \<Longrightarrow> (\<forall
     done
   done
 
+lemma diverged_has_mute:
+  "diverged op \<Longrightarrow>
+   has_mute op"
+  by (metis (no_types, opaque_lifting) diverged.simps ex_cin_conv has_mute.coinduct)
+
+
 lemma simE:
   assumes "sim R s t" "stepped s l s'"
   obtains t' where "stepped t l t'" "R s' t'"
@@ -842,6 +848,134 @@ lemma no_Choice_in_choices[simplified, simp, dest]: "Choice ops |\<in>| choices 
     apply (auto simp: cinsert.rep_eq bot_cset.rep_eq cUnion.rep_eq cimage.rep_eq)
     done
   done
+
+
+lemma choices_map_op[simp]:
+  "cimage (map_op f g) (choices op) = choices (map_op f g op)"
+  apply safe
+  unfolding choices_def
+   apply (clarsimp simp add: cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
+  subgoal for x n
+  apply (induct n arbitrary: op)
+    subgoal for op
+      apply (cases op)
+      apply (auto simp add: bot_cset.rep_eq cinsert.rep_eq elim: diverged.cases)
+      done
+    subgoal for n op
+      apply (cases op)
+      apply (auto simp add: bot_cset.rep_eq cinsert.rep_eq cUnion.rep_eq cimage.rep_eq elim: diverged.cases)
+      apply hypsubst_thin
+      apply (metis (no_types, opaque_lifting) cUN_I choices_at.simps(4) cimageI cin.rep_eq)
+      done
+    done
+  subgoal for op'
+   apply (clarsimp simp add: cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
+    subgoal for n
+  apply (induct n arbitrary: op)
+    subgoal for op''
+      apply (cases op'')
+        apply (auto simp add: bot_cset.rep_eq cinsert.rep_eq elim: diverged.cases)
+      done
+    subgoal for n op
+      apply (cases op)
+      apply (auto simp add: bot_cset.rep_eq cinsert.rep_eq cUnion.rep_eq cimage.rep_eq elim: diverged.cases)
+      apply hypsubst_thin
+      apply (drule meta_spec)
+      apply (drule meta_mp)
+       apply assumption
+      apply (auto simp add: bot_cset.rep_eq cinsert.rep_eq cUnion.rep_eq cimage.rep_eq elim: diverged.cases)
+      apply (rule image_eqI)
+       apply (rule refl)
+      apply (auto simp add: bot_cset.rep_eq cinsert.rep_eq cUnion.rep_eq cimage.rep_eq elim: diverged.cases)
+      apply (metis cUN_I choices_at.simps(4) cin.rep_eq)
+      done
+    done
+  done
+  done
+
+lemma diverged_choices_empty:
+  "diverged op \<Longrightarrow>
+   choices op = {||}"
+  apply safe
+  unfolding choices_def
+  apply (clarsimp simp add: cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
+  subgoal for x n
+    apply (induct n arbitrary: op)
+    subgoal for op
+      by (auto simp add: elim: diverged.cases)
+    subgoal for n op
+      apply (cases op)
+      apply (auto simp add: bot_cset.rep_eq elim: diverged.cases)
+      apply (metis cUN_E cin.rep_eq diverged.simps op.inject(3))
+      done
+    done
+  done
+
+lemma choices_empty_diverged:
+  "choices op = {||} \<Longrightarrow>
+   diverged op"
+  apply (coinduction arbitrary: op)
+  subgoal for op
+    apply (cases op)
+      apply auto
+    done
+  done
+
+lemma choices_empty_diverged_iff:
+  "choices op = {||} \<longleftrightarrow>
+   diverged op"
+using choices_empty_diverged diverged_choices_empty by blast
+
+lemma choices_not_has_mute:
+  "op' |\<in>| choices op \<Longrightarrow>
+   \<not> has_mute op'"
+  using has_mute.cases no_Choice_in_choices by auto
+
+lemma in_choices_stepped:
+  "op' |\<in>| choices op \<Longrightarrow>
+   \<exists> io op''. stepped op' io op''"
+  using choices_not_has_mute diverged_has_mute not_diverged_iff_stepped by blast
+
+
+lemma Read_in_choices_stepped:
+  "Read p f |\<in>| choices op \<Longrightarrow> stepped op (Inp p x) (f x)"
+  unfolding choices_def
+  apply safe
+  subgoal for n
+    apply (induct n arbitrary: op)
+    subgoal for op
+      apply (cases op)
+        by (auto simp: bot_cset.rep_eq cinsert.rep_eq stepped.intros(1))
+    subgoal for n op
+      apply (cases op)
+        apply (auto simp: bot_cset.rep_eq cinsert.rep_eq stepped.intros(1))
+      apply (metis UNIV_I cUNIV.rep_eq cUN_E cin.rep_eq stepped.intros(3))
+      done
+    done
+  done
+
+lemma Wirte_in_choices_stepped:
+  "Write op' p x |\<in>| choices op \<Longrightarrow> stepped op (Out p x) op'"
+  unfolding choices_def
+  apply safe
+  subgoal for n
+    apply (induct n arbitrary: op)
+    subgoal for op
+      apply (cases op)
+      by (clarsimp simp: stepped.intros(2) bot_cset.rep_eq cinsert.rep_eq intro: stepped.intros(2))+     
+    subgoal for n op
+      apply (cases op)
+        apply (auto simp: bot_cset.rep_eq cinsert.rep_eq stepped.intros(2))
+      apply (metis UNIV_I cUNIV.rep_eq cUN_E cin.rep_eq stepped.intros(3))
+      done
+    done
+  done
+
+lemma stepped_choicesE:
+  assumes  "stepped op io op'"
+  obtains p f x where "io = Inp p x" "Read p f |\<in>| choices op" "op' = f x" | p x where "io = Out p x" "Write op' p x |\<in>| choices op"
+  apply (atomize_elim)
+  using assms by (induct op io op' rule: stepped.induct) (auto simp add: cinsert.rep_eq cUnion.rep_eq cimage.rep_eq)
 
 (*
 corec Choices where
