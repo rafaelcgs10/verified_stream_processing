@@ -81,9 +81,6 @@ corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow
              else Read_aux (Inr p) (\<lambda>x. (buf, op1, f x))
          | Write op p x \<Rightarrow> Write_aux (buf, op1, op) (Inr p) x) (choices op2))) (if has_mute op1 \<and> has_mute op2 then {|End_aux|} else {||})))"
 
-lemma "op' |\<in>| choices op \<Longrightarrow> \<not> is_Choice op'"
-  by (metis cin.rep_eq no_Choice_in_choices op.collapse(3))
-
 lemma comp_op_code: "comp_op wire buf op1 op2 =
   Choice (cUn (cUn
     (cimage (\<lambda>op. case op of
@@ -151,6 +148,7 @@ lemma comp_op_simps[simp]:
          (\<lambda>op p. Write (comp_op wire buf (Choice op1s) op) (Inr p)) (\<lambda>a. undefined))
        (cUnion (cimage choices op2s)))) (if has_mute (Choice op1s) \<and> has_mute (Choice op2s) then {|End|} else {||}))"
   by (subst comp_op_code; simp add: cinsert_commute)+
+
 
 definition "pcomp_op = comp_op (\<lambda>_. None) (\<lambda>_. BEnded)"
 definition "scomp_op op1 op2 = map_op projl projr (comp_op Some (\<lambda>_. BEmpty) op1 op2)"
@@ -590,87 +588,123 @@ lemma pcomp_op_diverged:
    done
   done
 
-     apply (auto simp add: csingleton_iff choices_empty_diverged_iff rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def)
-
-       find_theorems stepped pcomp_op
-
-       apply (drule stepped_pcomp_op_inv[unfolded pcomp_op_def])
-     apply (auto simp add: csingleton_iff choices_empty_diverged_iff rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def)
-
-
-
-           apply (rule stepped.intros(1))
-
-
-end
-
-
-        apply (metis has_mute_pcomp_op_Inr pcomp_op_def)
-     apply hypsubst_thin
-
-
-end
-
 lemma pcomp_op_commute: "pcomp_op op1 op2 = map_op (case_sum Inr Inl) (case_sum Inr Inl) (pcomp_op op2 op1)"
   apply (coinduction arbitrary: op1 op2 rule: op.coinduct_upto)
+    apply (safe del: iffI)
   subgoal for op1 op2
     unfolding pcomp_op_def
-    apply (cases op1; cases op2)
-    subgoal
-      by  (auto simp add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def intro!: op.cong_Read  op.cong_Write intro: op.cong_base)
-    subgoal
-      by  (auto simp add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def intro!: op.cong_Read  op.cong_Write intro: op.cong_base)
-    subgoal
-      apply hypsubst_thin
-      apply (simp add: comp_def cimage_cimage cimage_cUnion)
-      unfolding rel_cset_def
-      apply simp
-      apply (rule rel_setI)
-      subgoal
-        apply  (clarsimp simp add: rel_cset_alt_def cUnion.rep_eq cimage_cUnion cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def intro!: op.cong_Read  op.cong_Write intro: op.cong_base)
-        apply (elim disjE)
-        subgoal
-          apply hypsubst_thin
-        apply (rule op.cong_Read)
-           apply force
-          apply (rule rel_funI)
-        apply (rule op.cong_base)
-          apply blast
-          done
-        subgoal
-          apply auto
-        apply (drule bspec)
+    by (subst (1 2) comp_op_code; simp)
+  subgoal for op1 op2
+    unfolding pcomp_op_def
+    by (subst (asm) (1 2) comp_op_code; simp)
+  subgoal for op1 op2
+    unfolding pcomp_op_def
+    by (subst (asm) (1 2) comp_op_code; simp)
+  subgoal for op1 op2
+    unfolding pcomp_op_def
+    by (subst (1 2) comp_op_code; simp)
+  subgoal for op1 op2
+    unfolding pcomp_op_def
+    by (subst (asm) (1 2) comp_op_code; simp)
+  subgoal for op1 op2
+    unfolding pcomp_op_def
+    by (subst (asm) (1 2) comp_op_code; simp)
+  subgoal for op1 op2
+    unfolding pcomp_op_def
+    by (subst (asm) (1 2) comp_op_code; simp)
+  subgoal premises prems for op1 op2
+    unfolding pcomp_op_def
+    apply (subst (3 4) comp_op_code)
+    apply (simp only: op.sel op.map cUn_commute cimage_cUn cimage_cimage)
+    apply (rule cUn_parametric[THEN rel_funD, THEN rel_funD])
+     apply (simp add: rel_cset_alt_def cinsert.rep_eq bot_cset.rep_eq op.cong_refl)
+    apply (subst (2) cUn_commute)
+    apply (rule cUn_parametric[THEN rel_funD, THEN rel_funD])
+     apply (rule cimage_parametric[THEN rel_funD, THEN rel_funD, rotated])
+      apply (rule cset.rel_refl_strong[of _ "eq_onp (\<lambda>x. x |\<in>| choices op1)"])
+      apply (simp add: eq_onp_def)
+     apply (rule rel_funI)
+     apply (auto simp add: eq_onp_def rel_fun_def comp_def
+        intro!: op.cong_Read op.cong_Write intro: op.cong_base split: op.splits) []
+    apply (rule cimage_parametric[THEN rel_funD, THEN rel_funD, rotated])
+     apply (rule cset.rel_refl_strong[of _ "eq_onp (\<lambda>x. x |\<in>| choices op2)"])
+     apply (simp add: eq_onp_def)
+    apply (rule rel_funI)
+    apply (auto simp add: eq_onp_def rel_fun_def comp_def
+        intro!: op.cong_Read op.cong_Write intro: op.cong_base split: op.splits) []
+    done
+  done
+
+(*
+lemma in_choices_case_op: "x \<in> rcset (choices op) \<Longrightarrow>
+  case_op RE WR (\<lambda>_. undefined) x \<in> case_op (\<lambda>p f. {RE p f}) (\<lambda>op q x. {WR op q x}) CH x"
+  by (auto split: op.splits)
+
+lemma pcomp_assoc: "pcomp_op op1 (pcomp_op op2 op3) = map_op reassoc reassoc (pcomp_op (pcomp_op op1 op2) op3)"
+  apply (coinduction arbitrary: op1 op2 op3 rule: op.coinduct_upto)
+    apply (safe del: iffI)
+  subgoal for op1 op2 op3
+    unfolding pcomp_op_def
+    by (subst (1 2) comp_op_code; simp)
+  subgoal for op1 op2 op3
+    unfolding pcomp_op_def
+    by (subst (asm) (1 2) comp_op_code; simp)
+  subgoal for op1 op2 op3
+    unfolding pcomp_op_def
+    by (subst (asm) (1 2) comp_op_code; simp)
+  subgoal for op1 op2 op3
+    unfolding pcomp_op_def
+    by (subst (1 2) comp_op_code; simp)
+  subgoal for op1 op2 op3
+    unfolding pcomp_op_def
+    by (subst (asm) (1 2) comp_op_code; simp)
+  subgoal for op1 op2 op3
+    unfolding pcomp_op_def
+    by (subst (asm) (1 2) comp_op_code; simp)
+  subgoal for op1 op2 op3
+    unfolding pcomp_op_def
+    by (subst (asm) (1 2) comp_op_code; simp)
+  subgoal premises prems for op1 op2 op3
+    unfolding pcomp_op_def
+    apply (subst (5 6 7 8) comp_op_code)
+    apply (simp add: op.case_distrib[of choices] op.case_distrib[of "cimage _"]  op.case_distrib[of "map_op _ _"]
+      cUn_ac cimage_cUn cimage_cUnion cimage_cimage o_def
+      cong: cset.map_cong op.case_cong)
+    apply (auto simp add: rel_cset_alt_def sup_cset.rep_eq cimage.rep_eq)
+             apply (rule bexI[rotated])
+              apply (rule UnI2)
+    apply (rule image_eqI[rotated])
+         apply (subst comp_op_code; simp add: sup_cset.rep_eq cUnion.rep_eq cimage.rep_eq cinsert.rep_eq bot_cset.rep_eq
+           op.case_distrib[of choices] op.case_distrib[of rcset]
+      cong: op.case_cong)
+         apply (rule disjI1)
+         apply (rule bexI[rotated])
           apply assumption
-              apply (drule bspec)
-         apply assumption
-          unfolding not_def
-          apply (drule mp)
-        apply (rule op.cong_base)
-           apply (auto split: op.splits)
-          oops
-
-
-
-        find_theorems rcset cUnion
-
+         apply (erule in_choices_case_op)
+    apply (rule refl)
+       apply (auto split: op.splits simp: rel_fun_def intro!: op.cong_Read op.cong_Write intro: op.cong_base) []
+    thm op.cong_Choice
+*)
 
 end
-        apply  (auto simp add: rel_cset_alt_def cimage_cUnion cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def intro!: op.cong_Read  op.cong_Write intro: op.cong_base)
-      subgoal for  t
-      apply (cases t)
-      subgoal
-        apply  (auto simp add: cimage.rep_eq  cUnion.rep_eq rel_cset_alt_def cimage_cUnion cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def intro!: op.cong_Read  op.cong_Write intro: op.cong_base)
-         apply hypsubst_thin
-        apply (drule bspec)
-          apply assumption
-              apply (drule bspec)
-          apply assumption
-        sledgehammer
 
-    find_theorems  rcset name: eq
+    apply (rule cUn_parametric[THEN rel_funD, THEN rel_funD])
+     apply (rule cimage_parametric[THEN rel_funD, THEN rel_funD, rotated])
+      apply (rule cset.rel_refl_strong[of _ "eq_onp (\<lambda>x. x |\<in>| choices op1)"])
+      apply (simp add: eq_onp_def)
+     apply (rule rel_funI)
+     apply (auto simp add: eq_onp_def rel_fun_def comp_def
+        intro!: op.cong_Read op.cong_Write intro: op.cong_base split: op.splits) []
+    apply (rule cimage_parametric[THEN rel_funD, THEN rel_funD, rotated])
+     apply (rule cset.rel_refl_strong[of _ "eq_onp (\<lambda>x. x |\<in>| choices op2)"])
+     apply (simp add: eq_onp_def)
+    apply (rule rel_funI)
+    apply (auto simp add: eq_onp_def rel_fun_def comp_def
+        intro!: op.cong_Read op.cong_Write intro: op.cong_base split: op.splits) []
+    done
+  done
 
-end
-
+(*
 lemma pcomp_op_simps[simp]:
   "pcomp_op (Read p1 f1) (Read p2 f2) =
     choice2 (Read (Inl p1) (\<lambda>y. pcomp_op (f1 y) (Read p2 f2)))
@@ -696,6 +730,7 @@ lemma pcomp_op_simps[simp]:
   unfolding pcomp_op_def
   apply auto
   done
+*)
 
 lemma
   "bisim op1 op1' \<Longrightarrow> bisim op2 op2' \<Longrightarrow>
