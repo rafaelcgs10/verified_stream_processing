@@ -79,9 +79,6 @@ corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow
              else Read_aux (Inr p) (\<lambda>x. (buf, op1, f x))
          | Write op p x \<Rightarrow> Write_aux (buf, op1, op) (Inr p) x) (choices op2))))"
 
-lemma "op' |\<in>| choices op \<Longrightarrow> \<not> is_Choice op'"
-  by (metis cin.rep_eq no_Choice_in_choices op.collapse(3))
-
 lemma comp_op_code: "comp_op wire buf op1 op2 =
   Choice (cUn
     (cimage (\<lambda>op. case op of
@@ -97,71 +94,6 @@ lemma comp_op_code: "comp_op wire buf op1 op2 =
   apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
     split: comp_op_aux.splits op.splits option.splits)
   done
-
-end
-
-corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
-  ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
-  "comp_op wire buf op1 op2 =
-     Choice (cimage (eval_comp_op_aux (comp_op wire)) (cUn (case op1 of
-       Read p f \<Rightarrow> csingle (Read_aux (Inl p) (\<lambda>y. (buf, f y, op2)))
-     | Write op p x \<Rightarrow> csingle (case wire p of
-         None \<Rightarrow> Write_aux (buf, op, op2) (Inl p) x
-       | Some q \<Rightarrow> Base_aux (BENQ q x buf, op, op2))
-     | Choice ops \<Rightarrow> cimage (\<lambda>op. Base_aux (buf, op, op2)) ops)
-     (case op2 of
-       Read p f \<Rightarrow> csingle (if p \<in> ran wire then Base_aux (BTL p buf, op1, safe_read f (BHD p buf))
-         else Read_aux (Inr p) (\<lambda>y. (buf, op1, f y)))
-     | Write op p x \<Rightarrow> csingle (Write_aux (buf, op1, op) (Inr p) x)
-     | Choice ops \<Rightarrow> cimage (\<lambda>op. Base_aux (buf, op1, op)) ops)))"
-
-lemma comp_op_code: "comp_op wire buf op1 op2 =
-     Choice (cUn (case op1 of
-       Read p f \<Rightarrow> csingle (Read (Inl p) (\<lambda>y. comp_op wire buf (f y) op2))
-     | Write op p x \<Rightarrow> csingle (case wire p of
-         None \<Rightarrow> Write (comp_op wire buf op op2) (Inl p) x
-       | Some q \<Rightarrow> comp_op wire (BENQ q x buf) op op2)
-     | Choice ops \<Rightarrow> cimage (\<lambda>op. comp_op wire buf op op2) ops)
-     (case op2 of
-       Read p f \<Rightarrow> csingle (if p \<in> ran wire then comp_op wire (BTL p buf) op1 (safe_read f (BHD p buf))
-         else Read (Inr p) (\<lambda>y. comp_op wire buf op1 (f y)))
-     | Write op p x \<Rightarrow> csingle (Write (comp_op wire buf op1 op) (Inr p) x)
-     | Choice ops \<Rightarrow> cimage (\<lambda>op. comp_op wire buf op1 op) ops))"
-  apply (subst comp_op.code)
-  apply (simp add: cset.map_comp o_def cimage_cUn split: comp_op_aux.splits op.splits option.splits)
-  done
-
-lemma comp_op_simps[simp]:
-  "comp_op wire buf (Read p1 f1) (Read p2 f2) =
-    choice2 (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Read p2 f2)))
-     (if p2 \<in> ran wire then comp_op wire (buf(p2 := btl (buf p2))) (Read p1 f1) (safe_read f2 (BHD p2 buf))
-      else Read (Inr p2) (\<lambda>y. comp_op wire buf (Read p1 f1) (f2 y)))"
-  "comp_op wire buf (Read p1 f1) (Write op2 q2 x2) =
-    choice2 (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Write op2 q2 x2))) (Write (comp_op wire buf (Read p1 f1) op2) (Inr q2) x2)"
-  "comp_op wire buf (Read p1 f1) (Choice op2s) = 
-    Choice (cinsert (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Choice op2s))) (cimage (comp_op wire buf (Read p1 f1)) op2s))"
-  "comp_op wire buf (Write op1 q1 x1) (Read p2 f2) =
-    choice2 (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Read p2 f2)) (Inl q1) x1
-      | Some q \<Rightarrow> comp_op wire (buf(q := benq x1 (buf q))) op1 (Read p2 f2))
-      (if p2 \<in> ran wire then comp_op wire (buf(p2 := btl (buf p2))) (Write op1 q1 x1) (safe_read f2 (BHD p2 buf))
-        else Read (Inr p2) (\<lambda>y. comp_op wire buf (Write op1 q1 x1) (f2 y)))"
-  "comp_op wire buf (Write op1 q1 x1) (Write op2 q2 x2) =
-    choice2 (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Write op2 q2 x2)) (Inl q1) x1
-      | Some q \<Rightarrow> comp_op wire (buf(q := benq x1 (buf q))) op1 (Write op2 q2 x2))
-      (Write (comp_op wire buf (Write op1 q1 x1) op2) (Inr q2) x2)"
-  "comp_op wire buf (Write op1 q1 x1) (Choice op2s) =
-     Choice (cinsert (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Choice op2s)) (Inl q1) x1
-      | Some q \<Rightarrow> comp_op wire (buf(q := benq x1 (buf q))) op1 (Choice op2s))
-      (cimage (comp_op wire buf (Write op1 q1 x1)) op2s))"
-  "comp_op wire buf (Choice op1s) (Read p2 f2) =
-    Choice (cinsert (if p2 \<in> ran wire then comp_op wire (buf(p2 := btl (buf p2))) (Choice op1s) (safe_read f2 (BHD p2 buf))
-        else Read (Inr p2) (\<lambda>y. comp_op wire buf (Choice op1s) (f2 y))) (cimage (\<lambda>op. comp_op wire buf op (Read p2 f2)) op1s))"
-  "comp_op wire buf (Choice op1s) (Write op2 q2 x2) =
-    Choice (cinsert (Write (comp_op wire buf (Choice op1s) op2) (Inr q2) x2) (cimage (\<lambda>op. comp_op wire buf op (Write op2 q2 x2)) op1s))"
-  "comp_op wire buf (Choice op1s) (Choice op2s) =
-    Choice (cUn (cimage (\<lambda>op. comp_op wire buf op (Choice op2s)) op1s)
-     (cimage (comp_op wire buf (Choice op1s)) op2s))"
-  by (subst comp_op_code; simp add: cinsert_commute)+
 
 definition "pcomp_op = comp_op (\<lambda>_. None) (\<lambda>_. BEnded)"
 definition "scomp_op op1 op2 = map_op projl projr (comp_op Some (\<lambda>_. BEmpty) op1 op2)"
@@ -199,12 +131,118 @@ lemma assoc_reassoc[simp]:
 
 lemma pcomp_op_commute: "pcomp_op op1 op2 = map_op (case_sum Inr Inl) (case_sum Inr Inl) (pcomp_op op2 op1)"
   apply (coinduction arbitrary: op1 op2 rule: op.coinduct_upto)
+    apply (safe del: iffI)
   subgoal for op1 op2
     unfolding pcomp_op_def
-    by (cases op1; cases op2)
-      (auto simp add: rel_cset_alt_def cinsert.rep_eq cimage.rep_eq sup_cset.rep_eq bot_cset.rep_eq o_def intro!: op.cong_Read  op.cong_Write intro: op.cong_base)
+    by (subst (1 2) comp_op_code; simp)
+  subgoal for op1 op2
+    unfolding pcomp_op_def
+    by (subst (asm) (1 2) comp_op_code; simp)
+  subgoal for op1 op2
+    unfolding pcomp_op_def
+    by (subst (asm) (1 2) comp_op_code; simp)
+  subgoal for op1 op2
+    unfolding pcomp_op_def
+    by (subst (1 2) comp_op_code; simp)
+  subgoal for op1 op2
+    unfolding pcomp_op_def
+    by (subst (asm) (1 2) comp_op_code; simp)
+  subgoal for op1 op2
+    unfolding pcomp_op_def
+    by (subst (asm) (1 2) comp_op_code; simp)
+  subgoal for op1 op2
+    unfolding pcomp_op_def
+    by (subst (asm) (1 2) comp_op_code; simp)
+  subgoal premises prems for op1 op2
+    unfolding pcomp_op_def
+    apply (subst (3 4) comp_op_code)
+    apply (simp add: cUn_commute cimage_cUn cimage_cimage)
+    apply (rule cUn_parametric[THEN rel_funD, THEN rel_funD])
+     apply (rule cimage_parametric[THEN rel_funD, THEN rel_funD, rotated])
+      apply (rule cset.rel_refl_strong[of _ "eq_onp (\<lambda>x. x |\<in>| choices op1)"])
+      apply (simp add: eq_onp_def)
+     apply (rule rel_funI)
+     apply (auto simp add: eq_onp_def rel_fun_def comp_def
+        intro!: op.cong_Read op.cong_Write intro: op.cong_base split: op.splits) []
+    apply (rule cimage_parametric[THEN rel_funD, THEN rel_funD, rotated])
+     apply (rule cset.rel_refl_strong[of _ "eq_onp (\<lambda>x. x |\<in>| choices op2)"])
+     apply (simp add: eq_onp_def)
+    apply (rule rel_funI)
+    apply (auto simp add: eq_onp_def rel_fun_def comp_def
+        intro!: op.cong_Read op.cong_Write intro: op.cong_base split: op.splits) []
+    done
   done
 
+(*
+lemma in_choices_case_op: "x \<in> rcset (choices op) \<Longrightarrow>
+  case_op RE WR (\<lambda>_. undefined) x \<in> case_op (\<lambda>p f. {RE p f}) (\<lambda>op q x. {WR op q x}) CH x"
+  by (auto split: op.splits)
+
+lemma pcomp_assoc: "pcomp_op op1 (pcomp_op op2 op3) = map_op reassoc reassoc (pcomp_op (pcomp_op op1 op2) op3)"
+  apply (coinduction arbitrary: op1 op2 op3 rule: op.coinduct_upto)
+    apply (safe del: iffI)
+  subgoal for op1 op2 op3
+    unfolding pcomp_op_def
+    by (subst (1 2) comp_op_code; simp)
+  subgoal for op1 op2 op3
+    unfolding pcomp_op_def
+    by (subst (asm) (1 2) comp_op_code; simp)
+  subgoal for op1 op2 op3
+    unfolding pcomp_op_def
+    by (subst (asm) (1 2) comp_op_code; simp)
+  subgoal for op1 op2 op3
+    unfolding pcomp_op_def
+    by (subst (1 2) comp_op_code; simp)
+  subgoal for op1 op2 op3
+    unfolding pcomp_op_def
+    by (subst (asm) (1 2) comp_op_code; simp)
+  subgoal for op1 op2 op3
+    unfolding pcomp_op_def
+    by (subst (asm) (1 2) comp_op_code; simp)
+  subgoal for op1 op2 op3
+    unfolding pcomp_op_def
+    by (subst (asm) (1 2) comp_op_code; simp)
+  subgoal premises prems for op1 op2 op3
+    unfolding pcomp_op_def
+    apply (subst (5 6 7 8) comp_op_code)
+    apply (simp add: op.case_distrib[of choices] op.case_distrib[of "cimage _"]  op.case_distrib[of "map_op _ _"]
+      cUn_ac cimage_cUn cimage_cUnion cimage_cimage o_def
+      cong: cset.map_cong op.case_cong)
+    apply (auto simp add: rel_cset_alt_def sup_cset.rep_eq cimage.rep_eq)
+             apply (rule bexI[rotated])
+              apply (rule UnI2)
+    apply (rule image_eqI[rotated])
+         apply (subst comp_op_code; simp add: sup_cset.rep_eq cUnion.rep_eq cimage.rep_eq cinsert.rep_eq bot_cset.rep_eq
+           op.case_distrib[of choices] op.case_distrib[of rcset]
+      cong: op.case_cong)
+         apply (rule disjI1)
+         apply (rule bexI[rotated])
+          apply assumption
+         apply (erule in_choices_case_op)
+    apply (rule refl)
+       apply (auto split: op.splits simp: rel_fun_def intro!: op.cong_Read op.cong_Write intro: op.cong_base) []
+    thm op.cong_Choice
+*)
+
+end
+
+    apply (rule cUn_parametric[THEN rel_funD, THEN rel_funD])
+     apply (rule cimage_parametric[THEN rel_funD, THEN rel_funD, rotated])
+      apply (rule cset.rel_refl_strong[of _ "eq_onp (\<lambda>x. x |\<in>| choices op1)"])
+      apply (simp add: eq_onp_def)
+     apply (rule rel_funI)
+     apply (auto simp add: eq_onp_def rel_fun_def comp_def
+        intro!: op.cong_Read op.cong_Write intro: op.cong_base split: op.splits) []
+    apply (rule cimage_parametric[THEN rel_funD, THEN rel_funD, rotated])
+     apply (rule cset.rel_refl_strong[of _ "eq_onp (\<lambda>x. x |\<in>| choices op2)"])
+     apply (simp add: eq_onp_def)
+    apply (rule rel_funI)
+    apply (auto simp add: eq_onp_def rel_fun_def comp_def
+        intro!: op.cong_Read op.cong_Write intro: op.cong_base split: op.splits) []
+    done
+  done
+
+(*
 lemma pcomp_op_simps[simp]:
   "pcomp_op (Read p1 f1) (Read p2 f2) =
     choice2 (Read (Inl p1) (\<lambda>y. pcomp_op (f1 y) (Read p2 f2)))
@@ -230,6 +268,7 @@ lemma pcomp_op_simps[simp]:
   unfolding pcomp_op_def
   apply auto
   done
+*)
 
 lemma
   "bisim op1 op1' \<Longrightarrow> bisim op2 op2' \<Longrightarrow>
