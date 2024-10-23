@@ -183,19 +183,6 @@ lemma assoc_reassoc[simp]:
     done
   done
 
-lemma
-  "has_mute op \<Longrightarrow>
-   op \<noteq> End \<Longrightarrow>
-   \<exists> op'. op' |\<in>| choices op \<and> has_mute op'"
-  unfolding choices_def
-  apply (erule has_mute.cases)
-   apply (auto simp: choices_def cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
-  subgoal for op ops
-    apply (rule FalseE)
-    oops
-
-
-
 lemma has_mute_pcomp_op_Inr:
   "has_mute (pcomp_op op1 op2) \<Longrightarrow> has_mute op2"
   apply (coinduction arbitrary: op1 op2)
@@ -285,13 +272,6 @@ lemma has_mute_pcomp_op_aux:
 lemma has_mute_pcomp_op[simp]:
   "has_mute (pcomp_op op1 op2) \<longleftrightarrow> has_mute op1 \<and> has_mute op2"
   using has_mute_pcomp_op_Inl has_mute_pcomp_op_Inr has_mute_pcomp_op_aux by blast 
-
-lemma
-  "bisim (pcomp_op dummy AW) (map_op Inr Inr AW)"
-  apply (coinduction rule: bisim_coinduct_upto)
-  apply (intro conjI iffI)
-     apply simp_all
-  oops
 
 lemma stepped_pcomp_op_inv:
   "stepped (pcomp_op op1 op2) io op \<Longrightarrow>
@@ -850,7 +830,84 @@ lemma bisim_assoc_reassoc:
     done
   done
 
-lemma "bisim (pcomp_op op1 (pcomp_op op2 op3)) (map_op reassoc reassoc (pcomp_op (pcomp_op op1 op2) op3))"
+(* FIXME: move me *)
+lemma bisim_map_op:
+  "bisim op op' \<Longrightarrow>
+   bisim (map_op f g op) (map_op f g op')"
+  apply (coinduction arbitrary: op op' rule: bisim_coinduct_upto)
+  subgoal for op op'
+    apply clarsimp
+    apply (erule bisim.cases)
+    subgoal for s t
+      unfolding sim_def
+      apply auto
+      subgoal for l s'
+        apply hypsubst_thin
+        apply (drule stepped_map_op_inv[where f=f and g=g])
+        apply auto
+        apply (drule spec2)
+        apply (drule mp)
+         apply assumption
+        apply auto
+        apply hypsubst_thin
+        apply (drule stepped_map_op[where f=f and g=g and op=t])
+        apply (intro conjI exI)
+         apply assumption
+        apply (metis (mono_tags, lifting) bc_base bisim_sym)
+        done
+      subgoal for l s'
+        apply hypsubst_thin
+        apply rotate_tac
+        apply (drule stepped_map_op_inv[where f=f and g=g])
+        apply auto
+        apply (drule spec2)
+        apply (drule mp)
+         apply assumption
+        apply auto
+        apply hypsubst_thin
+        apply (drule stepped_map_op[where f=f and g=g and op=s])
+        apply (intro conjI exI)
+         apply assumption
+        apply (metis (mono_tags, lifting) bc_base bisim_sym)
+        done
+      subgoal for l s'
+        apply hypsubst_thin
+        apply (drule stepped_map_op_inv[where f=f and g=g])
+        apply auto
+        apply (drule spec2)
+        apply (drule mp)
+         apply assumption
+        apply auto
+        apply hypsubst_thin
+        apply (drule stepped_map_op[where f=f and g=g and op=t])
+        apply (intro conjI exI)
+         apply assumption
+        apply (metis (mono_tags, lifting) bc_base bisim_sym)
+        done
+      subgoal for l s'
+        apply hypsubst_thin
+        apply rotate_tac
+        apply (drule stepped_map_op_inv[where f=f and g=g])
+        apply auto
+        apply (drule spec2)
+        apply (drule mp)
+         apply assumption
+        apply auto
+        apply hypsubst_thin
+        apply (drule stepped_map_op[where f=f and g=g and op=s])
+        apply (intro conjI exI)
+         apply assumption
+        apply (metis (mono_tags, lifting) bc_base bisim_sym)
+        done
+      done
+    done
+  done
+
+
+
+
+lemma pcomp_op_associativity:
+  "bisim (pcomp_op op1 (pcomp_op op2 op3)) (map_op reassoc reassoc (pcomp_op (pcomp_op op1 op2) op3))"
   apply (coinduction arbitrary: op1 op2 op3 rule: bisim_coinduct_upto)
   subgoal for op1 op2 op3
     apply (intro conjI)
@@ -1183,6 +1240,246 @@ lemma "bisim (pcomp_op op1 (pcomp_op op2 op3)) (map_op reassoc reassoc (pcomp_op
       done
     done
   done
+
+lemma pcomp_op_bisim_rewrite_L:
+  "bisim op1 op1' \<Longrightarrow>
+   bisim (pcomp_op op1 op2) (pcomp_op op1' op2)"
+  apply (coinduction arbitrary: op1 op1' op2 rule: bisim_coinduct_upto)
+  subgoal for op1 op1' op2
+    apply (erule bisim.cases)
+    subgoal for op1 op1'
+      apply hypsubst_thin
+      unfolding sim_def
+      apply auto
+      subgoal for io op'
+        apply (drule stepped_pcomp_op_inv)
+        apply auto
+        subgoal for op1'' p x
+          apply hypsubst_thin
+          apply (drule spec2)
+          apply (drule mp)
+           apply assumption
+          apply safe
+          subgoal for op1'''
+            apply (rule exI[of _ "pcomp_op op1''' op2"])
+            apply safe
+            subgoal
+              using stepped_pcomp_op_L observation.map_id by (metis IO.simps(9))
+            subgoal
+              by (metis (mono_tags, lifting) bc_base)
+            done
+          done
+        subgoal for op1'' p x
+          apply hypsubst_thin
+          apply (drule spec2)
+          apply (drule mp)
+           apply assumption
+          apply safe
+          subgoal for op1'''
+            apply (rule exI[of _ "pcomp_op op1''' op2"])
+            apply safe
+            subgoal
+              using stepped_pcomp_op_L observation.map_id by fastforce
+            subgoal
+              by (metis (mono_tags, lifting) bc_base)
+            done
+          done
+        subgoal for op2' p x
+          apply hypsubst_thin
+          apply (rule exI[of _ "pcomp_op op1' op2'"])
+          apply safe
+          subgoal
+            using observation.map_id by (metis IO.simps(9) stepped_pcomp_op_R)
+          subgoal
+            by (metis (mono_tags, lifting) bc_base bisim.intros sim_def)
+          done
+        subgoal for op2' p x
+          apply hypsubst_thin
+          apply (rule exI[of _ "pcomp_op op1' op2'"])
+          apply safe
+          subgoal
+            using observation.map_id stepped_pcomp_op_R by fastforce
+          subgoal
+            by (metis (mono_tags, lifting) bc_base bisim.intros sim_def)
+          done
+        done
+      subgoal for io op'
+        apply rotate_tac
+        apply (drule stepped_pcomp_op_inv)
+        apply auto
+        subgoal for op1'' p x
+          apply hypsubst_thin
+          apply (drule spec2)
+          apply (drule mp)
+           apply assumption
+          apply safe
+          subgoal for op1'''
+            apply (rule exI[of _ "pcomp_op op1''' op2"])
+            apply safe
+            subgoal
+              using stepped_pcomp_op_L observation.map_id by (metis IO.simps(9))
+            subgoal
+              by (metis (mono_tags, lifting) bc_base)
+            done
+          done
+        subgoal for op1'' p x
+          apply hypsubst_thin
+          apply (drule spec2)
+          apply (drule mp)
+           apply assumption
+          apply safe
+          subgoal for op1'''
+            apply (rule exI[of _ "pcomp_op op1''' op2"])
+            apply safe
+            subgoal
+              using stepped_pcomp_op_L observation.map_id by fastforce
+            subgoal
+              by (metis (mono_tags, lifting) bc_base)
+            done
+          done
+        subgoal for op2' p x
+          apply hypsubst_thin
+          apply (rule exI[of _ "pcomp_op op1 op2'"])
+          apply safe
+          subgoal
+            using observation.map_id by (metis IO.simps(9) stepped_pcomp_op_R)
+          subgoal
+            by (metis (mono_tags, lifting) bc_base bisim.intros sim_def)
+          done
+        subgoal for op2' p x
+          apply hypsubst_thin
+          apply (rule exI[of _ "pcomp_op op1 op2'"])
+          apply safe
+          subgoal
+            using observation.map_id stepped_pcomp_op_R by fastforce
+          subgoal
+            by (metis (mono_tags, lifting) bc_base bisim.intros sim_def)
+          done
+        done
+      subgoal for io op'
+        apply (drule stepped_pcomp_op_inv)
+        apply auto
+        subgoal for op1'' p x
+          apply hypsubst_thin
+          apply (drule spec2)
+          apply (drule mp)
+           apply assumption
+          apply safe
+          subgoal for op1'''
+            apply (rule exI[of _ "pcomp_op op1''' op2"])
+            apply safe
+            subgoal
+              using stepped_pcomp_op_L observation.map_id by (metis IO.simps(9))
+            subgoal
+              by (metis (mono_tags, lifting) bc_base)
+            done
+          done
+        subgoal for op1'' p x
+          apply hypsubst_thin
+          apply (drule spec2)
+          apply (drule mp)
+           apply assumption
+          apply safe
+          subgoal for op1'''
+            apply (rule exI[of _ "pcomp_op op1''' op2"])
+            apply safe
+            subgoal
+              using stepped_pcomp_op_L observation.map_id by fastforce
+            subgoal
+              by (metis (mono_tags, lifting) bc_base)
+            done
+          done
+        subgoal for op2' p x
+          apply hypsubst_thin
+          apply (rule exI[of _ "pcomp_op op1' op2'"])
+          apply safe
+          subgoal
+            using observation.map_id by (metis IO.simps(9) stepped_pcomp_op_R)
+          subgoal
+            by (metis (mono_tags, lifting) bc_base bisim.intros sim_def)
+          done
+        subgoal for op2' p x
+          apply hypsubst_thin
+          apply (rule exI[of _ "pcomp_op op1' op2'"])
+          apply safe
+          subgoal
+            using observation.map_id stepped_pcomp_op_R by fastforce
+          subgoal
+            by (metis (mono_tags, lifting) bc_base bisim.intros sim_def)
+          done
+        done
+      subgoal for io op'
+        apply (drule stepped_pcomp_op_inv)
+        apply auto
+        subgoal for op1'' p x
+          apply hypsubst_thin
+          apply rotate_tac
+          apply (drule spec2)
+          apply (drule mp)
+           apply assumption
+          apply safe
+          subgoal for op1'''
+            apply (rule exI[of _ "pcomp_op op1''' op2"])
+            apply safe
+            subgoal
+              using stepped_pcomp_op_L observation.map_id by (metis IO.simps(9))
+            subgoal
+              by (metis (mono_tags, lifting) bc_base)
+            done
+          done
+        subgoal for op1'' p x
+          apply hypsubst_thin
+          apply rotate_tac
+          apply (drule spec2)
+          apply (drule mp)
+           apply assumption
+          apply safe
+          subgoal for op1'''
+            apply (rule exI[of _ "pcomp_op op1''' op2"])
+            apply safe
+            subgoal
+              using stepped_pcomp_op_L observation.map_id by fastforce
+            subgoal
+              by (metis (mono_tags, lifting) bc_base)
+            done
+          done
+        subgoal for op2' p x
+          apply hypsubst_thin
+          apply (rule exI[of _ "pcomp_op op1 op2'"])
+          apply safe
+          subgoal
+            using observation.map_id by (metis IO.simps(9) stepped_pcomp_op_R)
+          subgoal
+            by (metis (mono_tags, lifting) bc_base bisim.intros sim_def)
+          done
+        subgoal for op2' p x
+          apply hypsubst_thin
+          apply (rule exI[of _ "pcomp_op op1 op2'"])
+          apply safe
+          subgoal
+            using observation.map_id stepped_pcomp_op_R by fastforce
+          subgoal
+            by (metis (mono_tags, lifting) bc_base bisim.intros sim_def)
+          done
+        done
+      done
+    done
+  done
+
+lemma pcomp_op_bisim_rewrite_R:
+  "bisim op2 op2' \<Longrightarrow>
+   bisim (pcomp_op op1 op2) (pcomp_op op1 op2')"
+  apply (subst (1 2) pcomp_op_commute)
+  apply (drule pcomp_op_bisim_rewrite_L[of _ _ op1])
+  using bisim_map_op apply auto
+  done
+
+lemma pcomp_op_bisim_rewrite:
+  "bisim op1 op1' \<Longrightarrow>
+   bisim op2 op2' \<Longrightarrow>
+   bisim (pcomp_op op1 op2) (pcomp_op op1' op2')"
+  using pcomp_op_bisim_rewrite_L pcomp_op_bisim_rewrite_R bisim_trans by blast
+
 
 end
 
