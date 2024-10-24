@@ -1466,6 +1466,9 @@ lemma pcomp_op_bisim_rewrite_L:
     done
   done
 
+find_theorems "_ \<noteq> []" name: conv
+
+
 lemma pcomp_op_bisim_rewrite_R:
   "bisim op2 op2' \<Longrightarrow>
    bisim (pcomp_op op1 op2) (pcomp_op op1 op2')"
