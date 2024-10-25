@@ -44,8 +44,8 @@ codatatype (inputs: 'ip, outputs: 'op, dead 'd) op =
 
 find_consts name: cong
 
-corec dummy :: "(1, 1, 'd) op" where
-  "dummy = Choice (cimage (\<lambda> _. dummy) (csingle ()))"
+corec spin_op :: "(1, 1, 'd) op" where
+  "spin_op = Choice (cimage (\<lambda> _. spin_op) (csingle ()))"
 
 abbreviation "End \<equiv> Choice cempty"
 abbreviation "ARead i f op \<equiv> Choice (cimage (\<lambda> x. if x then op else Read i f) (cinsert True (csingle False)))"
@@ -61,8 +61,11 @@ abbreviation "safe_choice2 f op1s op2s \<equiv> (if op1s = cempty \<and> op2s = 
 abbreviation "choice2 op1 op2 \<equiv> Choice (cimage (\<lambda>b. if b then op1 else op2) (cinsert True (csingle False)))"
 abbreviation "safe_read f x \<equiv> (case x of None \<Rightarrow> End | Some x \<Rightarrow> f x)"
 
-corec copy :: "(1, 1, 'd) op" where
-  "copy = ARead 1 (case_observation (Write copy 2) copy) copy"
+corec AId_op :: "(1, 1, 'd) op" where
+  "AId_op = ARead 1 (case_observation (Write AId_op 1) AId_op) AId_op"
+
+corec Id_op :: "(1, 1, 'd) op" where
+  "Id_op = Read 1 (case_observation (Write Id_op 1) Id_op)"
 
 type_synonym 'd channel = "'d llist"
 
@@ -325,13 +328,13 @@ inductive_cases steppedReadE [elim!]: "stepped (Read p f) io op'"
 inductive_cases steppedWriteE [elim!]: "stepped (Write op q x) io op'"
 inductive_cases steppedChoiceE [elim!]: "stepped (Choice ops) io op'"
 
-coinductive has_mute where
-  has_mute_End[intro!]: "has_mute End"
-| has_mute_Choice[intro]: "op |\<in>| ops \<Longrightarrow> has_mute op \<Longrightarrow> has_mute (Choice ops)"
+coinductive can_end where
+  can_end_End[intro!]: "can_end End"
+| can_end_Choice[intro]: "op |\<in>| ops \<Longrightarrow> can_end op \<Longrightarrow> can_end (Choice ops)"
 
-inductive_cases may_diverge_ReadE[elim!]: "has_mute (Read p f)"
-inductive_cases may_diverge_WriteE[elim!]: "has_mute (Write op p x)"
-inductive_cases may_diverge_ChoiceE[elim!]: "has_mute (Choice ops)"
+inductive_cases can_end_ReadE[elim!]: "can_end (Read p f)"
+inductive_cases may_diverge_WriteE[elim!]: "can_end (Write op p x)"
+inductive_cases may_diverge_ChoiceE[elim!]: "can_end (Choice ops)"
 
 definition "sim R s t = (\<forall>l s'. stepped s l s' \<longrightarrow> (\<exists>t'. stepped t l t' \<and> R s' t'))"
 
@@ -339,7 +342,7 @@ lemma sim_mono[mono]: "R \<le> S \<Longrightarrow> sim R \<le> sim S"
   by (force simp: sim_def le_fun_def)
 
 coinductive bisim where
-  "has_mute s \<longleftrightarrow> has_mute t \<Longrightarrow> sim bisim s t \<Longrightarrow> sim bisim t s \<Longrightarrow> bisim s t"
+  "can_end s \<longleftrightarrow> can_end t \<Longrightarrow> sim bisim s t \<Longrightarrow> sim bisim t s \<Longrightarrow> bisim s t"
 
 inductive bisim_cong for R where
   bc_base:  "R x y \<Longrightarrow> bisim_cong R x y"
@@ -361,7 +364,7 @@ lemma bisim_cong_disj:
 
 lemma bisim_coinduct_upto:
   "R s t \<Longrightarrow>
-   (\<And>s t. R s t \<Longrightarrow> (has_mute s \<longleftrightarrow> has_mute t) \<and> sim (bisim_cong R) s t \<and> sim (bisim_cong R) t s) \<Longrightarrow>
+   (\<And>s t. R s t \<Longrightarrow> (can_end s \<longleftrightarrow> can_end t) \<and> sim (bisim_cong R) s t \<and> sim (bisim_cong R) t s) \<Longrightarrow>
    bisim s t"
   apply (rule bisim.coinduct[where X="bisim_cong R", unfolded bisim_cong_disj, simplified])
   subgoal
@@ -431,10 +434,10 @@ lemma bisim_Choice_cong:
   "rel_cset bisim ops1 ops2 \<Longrightarrow> bisim (Choice ops1) (Choice ops2)"
   apply (coinduction arbitrary: ops1 ops2 rule: bisim_coinduct_upto)
   apply (auto simp add: sim_def rel_cset.rep_eq rel_set_def)
-       apply (metis cin.rep_eq ex_cin_conv has_mute_End)
-      apply (meson bisim.cases cin.rep_eq has_mute_Choice)
-     apply (metis cin.rep_eq ex_cin_conv has_mute_End)
-    apply (meson bisim.cases cin.rep_eq has_mute_Choice)
+       apply (metis cin.rep_eq ex_cin_conv can_end_End)
+      apply (meson bisim.cases cin.rep_eq can_end_Choice)
+     apply (metis cin.rep_eq ex_cin_conv can_end_End)
+    apply (meson bisim.cases cin.rep_eq can_end_Choice)
   subgoal for ops1 ops2 l s' op
     apply (drule bspec)
      apply assumption
@@ -530,19 +533,19 @@ lemma bisim_Read_not_diverged: "bisim (Read p f) op \<Longrightarrow> diverged o
 lemma bisim_Write_not_diverged: "bisim (Write op' x p) op \<Longrightarrow> diverged op \<Longrightarrow> False"
   by (metis bisim.cases sim_def stepped.intros(2) stepped_not_diverged)
 
-lemma no_mute_ChoiceD: "\<not> has_mute (Choice ops) \<Longrightarrow> (\<forall>op. op |\<in>| ops \<longrightarrow> (\<exists>l op'. stepped op l op'))"
+lemma no_mute_ChoiceD: "\<not> can_end (Choice ops) \<Longrightarrow> (\<forall>op. op |\<in>| ops \<longrightarrow> (\<exists>l op'. stepped op l op'))"
   apply (erule contrapos_np)
   apply (coinduction arbitrary: ops)
   subgoal for ops
     apply (auto simp flip: cin.rep_eq intro: stepped.intros)
-    apply (metis all_not_cin_conv diverged.cases has_mute.simps not_diverged_iff_stepped)
+    apply (metis all_not_cin_conv diverged.cases can_end.simps not_diverged_iff_stepped)
     done
   done
 
-lemma diverged_has_mute:
+lemma diverged_can_end:
   "diverged op \<Longrightarrow>
-   has_mute op"
-  by (metis (no_types, opaque_lifting) diverged.simps ex_cin_conv has_mute.coinduct)
+   can_end op"
+  by (metis (no_types, opaque_lifting) diverged.simps ex_cin_conv can_end.coinduct)
 
 
 lemma simE:
@@ -662,8 +665,8 @@ lemma bisim_Write_Choice[simp]:
   done
 
 
-lemma has_mute_map_op[simp]:
-  "has_mute (map_op f g op) \<longleftrightarrow> has_mute op"
+lemma can_end_map_op[simp]:
+  "can_end (map_op f g op) \<longleftrightarrow> can_end op"
   apply safe
   subgoal
     apply (coinduction arbitrary: op)
@@ -683,29 +686,29 @@ lemma has_mute_map_op[simp]:
     done
   done
 
-lemma dummy_has_mute[simp]:
-  "has_mute dummy"
+lemma spin_op_can_end[simp]:
+  "can_end spin_op"
   apply (coinduction)
   apply auto
-  apply (metis cimage_eqI cin.rep_eq cinsertCI dummy.code)
+  apply (metis cimage_eqI cin.rep_eq cinsertCI spin_op.code)
   done
 
-lemma copy_has_mute[simp]:
-  "has_mute copy"
+lemma AId_op_can_end[simp]:
+  "can_end AId_op"
   apply (coinduction)
   apply auto
-  using cinsert_iff copy.code apply fastforce
+  using cinsert_iff AId_op.code apply fastforce
   done
 
-lemma stepped_dummy_no_label:
-  "stepped op l s \<Longrightarrow> op = dummy \<Longrightarrow> False"
+lemma stepped_spin_op_no_label:
+  "stepped op l s \<Longrightarrow> op = spin_op \<Longrightarrow> False"
   apply (induct op l s arbitrary: l s rule: stepped.induct)
-  apply (subst (asm) dummy.code)
+  apply (subst (asm) spin_op.code)
   apply simp
-  apply (subst (asm) dummy.code)
+  apply (subst (asm) spin_op.code)
   apply simp
   apply (clarsimp simp add: sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq intro: sub_choice.intros; hypsubst_thin?)
-  apply (metis cimage.rep_eq dummy.code image_iff op.inject(3))
+  apply (metis cimage.rep_eq spin_op.code image_iff op.inject(3))
   done
 
 lemma bisim_Choice_Write[simp]:
@@ -739,13 +742,13 @@ corec W :: "(1, 1, nat) op" where
 corec AW :: "(1, 1, nat) op" where
   "AW = choice2 AW (Write AW 1 42)"
 
-lemma [simp]: "has_mute AW"
+lemma [simp]: "can_end AW"
   apply (coinduction)
   apply (subst (2) AW.code)
   apply (auto simp: cinsert.rep_eq)
   done
 
-lemma [simp]: "\<not> has_mute W"
+lemma [simp]: "\<not> can_end W"
   apply (subst W.code)
   apply (auto)
   done
@@ -756,15 +759,15 @@ lemma "\<not> bisim W AW"
   apply (auto)
   done
 
-lemma End_not_dummy:
-  "End \<noteq> dummy"
+lemma End_not_spin_op:
+  "End \<noteq> spin_op"
   apply safe
-  apply (subst (asm) dummy.code)
+  apply (subst (asm) spin_op.code)
   apply auto
   done
 
 lemma
-  "\<not> bisim (Choice {| dummy, W |}) W"
+  "\<not> bisim (Choice {| spin_op, W |}) W"
   apply (rule notI)
   apply (erule bisim.cases)
   apply auto
@@ -777,19 +780,19 @@ lemma
   apply auto
   done
 
-lemma dummy_diverged[simp]:
-  "diverged dummy"
+lemma spin_op_diverged[simp]:
+  "diverged spin_op"
   apply coinduction
-  apply (subst dummy.code)
+  apply (subst spin_op.code)
        apply (auto 0 0 simp add:  sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq intro: sub_choice.intros; hypsubst_thin?)
   done
 
-lemma End_bisim_dummy:
-  "bisim End dummy"
+lemma End_bisim_spin_op:
+  "bisim End spin_op"
   apply (coinduction)
   apply (auto simp add: bot_cset.rep_eq)
   unfolding sim_def
-  apply (auto dest: stepped_dummy_no_label)
+  apply (auto dest: stepped_spin_op_no_label)
   done
 
 
@@ -941,15 +944,15 @@ lemma choices_empty_diverged_iff:
    diverged op"
 using choices_empty_diverged diverged_choices_empty by blast
 
-lemma choices_not_has_mute:
+lemma choices_not_can_end:
   "op' |\<in>| choices op \<Longrightarrow>
-   \<not> has_mute op'"
-  using has_mute.cases no_Choice_in_choices by auto
+   \<not> can_end op'"
+  using can_end.cases no_Choice_in_choices by auto
 
 lemma in_choices_stepped:
   "op' |\<in>| choices op \<Longrightarrow>
    \<exists> io op''. stepped op' io op''"
-  using choices_not_has_mute diverged_has_mute not_diverged_iff_stepped by blast
+  using choices_not_can_end diverged_can_end not_diverged_iff_stepped by blast
 
 
 lemma Read_in_choices_stepped:
@@ -969,7 +972,7 @@ lemma Read_in_choices_stepped:
     done
   done
 
-lemma Wirte_in_choices_stepped:
+lemma Write_in_choices_stepped:
   "Write op' p x |\<in>| choices op \<Longrightarrow> stepped op (Out p x) op'"
   unfolding choices_def
   apply safe
@@ -1075,20 +1078,20 @@ lemma bisim_ChoiceD: "bisim (Choice ops1) (Choice ops2) \<Longrightarrow> rel_cs
   apply (erule stepped.cases)
 *)
 
-lemma has_mute_Read[simp]:
-  "\<not> has_mute (Read p f)"
+lemma can_end_Read[simp]:
+  "\<not> can_end (Read p f)"
   by auto
 
-lemma has_mute_Write[simp]:
-  "\<not> has_mute (Write op p x)"
+lemma can_end_Write[simp]:
+  "\<not> can_end (Write op p x)"
   by auto
 
-lemma has_mute_Choice[simp]:
-  "has_mute (Choice ops) \<longleftrightarrow> ops = {||} \<or> (\<exists>op. op |\<in>| ops \<and> has_mute op)"
+lemma can_end_Choice[simp]:
+  "can_end (Choice ops) \<longleftrightarrow> ops = {||} \<or> (\<exists>op. op |\<in>| ops \<and> can_end op)"
   by (auto)
 
 coinductive traced where
-  Nil: "has_mute op \<Longrightarrow> traced op LNil"
+  Nil: "can_end op \<Longrightarrow> traced op LNil"
 | Step: "stepped op l op' \<Longrightarrow> traced op' lxs \<Longrightarrow> traced op (LCons l lxs)"
 
 inductive_cases traced_LNilE[elim!]: "traced op LNil"

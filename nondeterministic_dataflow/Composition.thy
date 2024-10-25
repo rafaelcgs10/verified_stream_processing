@@ -79,7 +79,7 @@ corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow
        (cimage (\<lambda>op. case op of
            Read p f \<Rightarrow> if p \<in> ran wire then Base_aux (BTL p buf, op1, safe_read f (BHD p buf))
              else Read_aux (Inr p) (\<lambda>x. (buf, op1, f x))
-         | Write op p x \<Rightarrow> Write_aux (buf, op1, op) (Inr p) x) (choices op2))) (if has_mute op1 \<and> has_mute op2 then {|End_aux|} else {||})))"
+         | Write op p x \<Rightarrow> Write_aux (buf, op1, op) (Inr p) x) (choices op2))) (if can_end op1 \<and> can_end op2 then {|End_aux|} else {||})))"
 
 lemma comp_op_code: "comp_op wire buf op1 op2 =
   Choice (cUn (cUn
@@ -91,14 +91,13 @@ lemma comp_op_code: "comp_op wire buf op1 op2 =
     (cimage (\<lambda>op. case op of
         Read p f \<Rightarrow> if p \<in> ran wire then comp_op wire (BTL p buf) op1 (safe_read f (BHD p buf))
           else Read (Inr p) (\<lambda>x. comp_op wire buf op1 (f x))
-      | Write op p x \<Rightarrow> Write (comp_op wire buf op1 op) (Inr p) x) (choices op2))) (if has_mute op1 \<and> has_mute op2 then {|End|} else {||}))"
+      | Write op p x \<Rightarrow> Write (comp_op wire buf op1 op) (Inr p) x) (choices op2))) (if can_end op1 \<and> can_end op2 then {|End|} else {||}))"
   apply (subst comp_op.code)
   apply (unfold cimage_cUn op.inject)
   apply (rule arg_cong2[where f = cUn])
    apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
       split: comp_op_aux.splits op.splits option.splits)
   done
-
 
 lemma comp_op_simps[simp]:
   "comp_op wire buf (Read p1 f1) (Read p2 f2) =
@@ -146,7 +145,7 @@ lemma comp_op_simps[simp]:
      (cimage
        (case_op (\<lambda>p f. if p \<in> ran wire then comp_op wire (buf(p := btl (buf p))) (Choice op1s) (safe_read f (BHD p buf)) else Read (Inr p) (\<lambda>x. comp_op wire buf (Choice op1s) (f x)))
          (\<lambda>op p. Write (comp_op wire buf (Choice op1s) op) (Inr p)) (\<lambda>a. undefined))
-       (cUnion (cimage choices op2s)))) (if has_mute (Choice op1s) \<and> has_mute (Choice op2s) then {|End|} else {||}))"
+       (cUnion (cimage choices op2s)))) (if can_end (Choice op1s) \<and> can_end (Choice op2s) then {|End|} else {||}))"
   by (subst comp_op_code; simp add: cinsert_commute)+
 
 
@@ -183,44 +182,44 @@ lemma assoc_reassoc[simp]:
     done
   done
 
-lemma has_mute_pcomp_op_Inr:
-  "has_mute (pcomp_op op1 op2) \<Longrightarrow> has_mute op2"
+lemma can_end_pcomp_op_Inr:
+  "can_end (pcomp_op op1 op2) \<Longrightarrow> can_end op2"
   apply (coinduction arbitrary: op1 op2)
   subgoal for op1 op2
     apply auto
     unfolding pcomp_op_def
     apply (cases op1; cases op2)
             apply (auto simp: bot_cset.rep_eq cinsert.rep_eq cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
-         apply (metis (no_types, lifting) has_mute.simps has_mute_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)
-        apply (metis (no_types, lifting) has_mute.simps has_mute_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)
-       apply (metis (no_types, lifting) has_mute.simps has_mute_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)
-      apply (metis (no_types, lifting) has_mute.simps has_mute_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)
-     apply (smt (verit, ccfv_threshold) cbspec choices_empty_diverged_iff cin.rep_eq diverged.simps ex_cin_conv has_mute.coinduct has_mute_map_op imageI)
+         apply (metis (no_types, lifting) can_end.simps can_end_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)
+        apply (metis (no_types, lifting) can_end.simps can_end_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)
+       apply (metis (no_types, lifting) can_end.simps can_end_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)
+      apply (metis (no_types, lifting) can_end.simps can_end_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)
+     apply (smt (verit, ccfv_threshold) cbspec choices_empty_diverged_iff cin.rep_eq diverged.simps ex_cin_conv can_end.coinduct can_end_map_op imageI)
     subgoal for x3 x3a x op
       apply (subgoal_tac "\<not> is_Choice op")
-       apply (metis has_mute.cases is_Choice_def)
+       apply (metis can_end.cases is_Choice_def)
       apply (auto simp add: bot_cset.rep_eq cset.set_map sup_cset.rep_eq cimage_cUn split: op.splits if_splits)
          apply (metis choices_Choice no_Choice_in_choices)+
       done
     done
   done
 
-lemma has_mute_pcomp_op_Inl:
-  "has_mute (pcomp_op op1 op2) \<Longrightarrow> has_mute op1"
+lemma can_end_pcomp_op_Inl:
+  "can_end (pcomp_op op1 op2) \<Longrightarrow> can_end op1"
   apply (coinduction arbitrary: op1 op2)
   subgoal for op1 op2
     apply auto
     unfolding pcomp_op_def
     apply (cases op1; cases op2)
             apply (auto simp: bot_cset.rep_eq cinsert.rep_eq cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
-         apply (metis (no_types, lifting) has_mute.simps has_mute_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)
-        apply (metis (no_types, lifting) has_mute.simps has_mute_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)
-       apply (metis (no_types, lifting) has_mute.simps has_mute_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)
-      apply (metis (no_types, lifting) has_mute.simps has_mute_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)
-     apply (smt (verit, ccfv_threshold) cbspec choices_empty_diverged_iff cin.rep_eq diverged.simps ex_cin_conv has_mute.coinduct has_mute_map_op imageI)
+         apply (metis (no_types, lifting) can_end.simps can_end_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)
+        apply (metis (no_types, lifting) can_end.simps can_end_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)
+       apply (metis (no_types, lifting) can_end.simps can_end_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)
+      apply (metis (no_types, lifting) can_end.simps can_end_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)
+     apply (smt (verit, ccfv_threshold) cbspec choices_empty_diverged_iff cin.rep_eq diverged.simps ex_cin_conv can_end.coinduct can_end_map_op imageI)
     subgoal for x3 x3a x op
       apply (subgoal_tac "\<not> is_Choice op")
-       apply (metis has_mute.cases is_Choice_def)
+       apply (metis can_end.cases is_Choice_def)
       apply (auto simp add: bot_cset.rep_eq cset.set_map sup_cset.rep_eq cimage_cUn split: op.splits if_splits)
          apply (metis choices_Choice no_Choice_in_choices)+
       done
@@ -250,28 +249,27 @@ lemma choices_AW[simp]:
     done
   done
 
-lemma has_mute_pcomp_op_aux:
-  "has_mute op1 \<Longrightarrow>
-   has_mute op2 \<Longrightarrow>
-   has_mute (pcomp_op op1 op2)"
+lemma can_end_comp_opI:
+  "can_end op1 \<Longrightarrow>
+   can_end op2 \<Longrightarrow>
+   can_end (comp_op wire buf op1 op2)"
   apply (coinduction arbitrary: op1 op2)
   subgoal for op1 op2
-    unfolding pcomp_op_def
-    apply (erule has_mute.cases)
+    apply (erule can_end.cases)
     subgoal
-      apply (erule has_mute.cases)
+      apply (erule can_end.cases)
        apply (auto simp:sup_cset.rep_eq diverged_choices_empty bot_cset.rep_eq cinsert.rep_eq cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
       done
     subgoal
-      apply (erule has_mute.cases)
+      apply (erule can_end.cases)
        apply (auto simp:sup_cset.rep_eq diverged_choices_empty bot_cset.rep_eq cinsert.rep_eq cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
       done
     done
   done
 
-lemma has_mute_pcomp_op[simp]:
-  "has_mute (pcomp_op op1 op2) \<longleftrightarrow> has_mute op1 \<and> has_mute op2"
-  using has_mute_pcomp_op_Inl has_mute_pcomp_op_Inr has_mute_pcomp_op_aux by blast 
+lemma can_end_pcomp_op[simp]:
+  "can_end (pcomp_op op1 op2) \<longleftrightarrow> can_end op1 \<and> can_end op2"
+  using can_end_pcomp_op_Inl can_end_pcomp_op_Inr can_end_comp_opI pcomp_op_def by metis
 
 lemma stepped_pcomp_op_inv:
   "stepped (pcomp_op op1 op2) io op \<Longrightarrow>
@@ -308,7 +306,7 @@ lemma stepped_pcomp_op_inv:
         apply (cases x)
           apply auto
           apply (metis Read_in_choices_stepped choices_Choice cin.rep_eq)
-         apply (metis Wirte_in_choices_stepped choices_Choice cin.rep_eq)
+         apply (metis Write_in_choices_stepped choices_Choice cin.rep_eq)
         apply (metis choices_Choice no_Choice_in_choices)
         done
       done
@@ -324,7 +322,7 @@ lemma stepped_pcomp_op_inv:
         apply (cases x)
           apply auto
           apply (metis Read_in_choices_stepped choices_Choice cin.rep_eq)
-         apply (metis Wirte_in_choices_stepped choices_Choice cin.rep_eq)
+         apply (metis Write_in_choices_stepped choices_Choice cin.rep_eq)
         apply (metis choices_Choice no_Choice_in_choices)
         done
       done
@@ -334,7 +332,7 @@ lemma stepped_pcomp_op_inv:
         apply (cases x)
           apply auto
           apply (metis Read_in_choices_stepped choices_Choice cin.rep_eq)
-         apply (metis Wirte_in_choices_stepped choices_Choice cin.rep_eq)
+         apply (metis Write_in_choices_stepped choices_Choice cin.rep_eq)
         apply (metis choices_Choice no_Choice_in_choices)
         done
       done
@@ -346,7 +344,7 @@ lemma stepped_pcomp_op_inv:
         apply (cases x)
           apply auto
           apply (metis Read_in_choices_stepped choices_Choice cin.rep_eq)
-         apply (metis Wirte_in_choices_stepped choices_Choice cin.rep_eq)
+         apply (metis Write_in_choices_stepped choices_Choice cin.rep_eq)
         apply (metis choices_Choice no_Choice_in_choices)
         done
       done
@@ -356,14 +354,14 @@ lemma stepped_pcomp_op_inv:
         apply (cases x)
           apply auto
           apply (metis Read_in_choices_stepped choices_Choice cin.rep_eq)
-         apply (metis Wirte_in_choices_stepped choices_Choice cin.rep_eq)
+         apply (metis Write_in_choices_stepped choices_Choice cin.rep_eq)
         apply (metis choices_Choice no_Choice_in_choices)
         done
       subgoal for x
         apply (cases x)
           apply auto
           apply (metis Read_in_choices_stepped choices_Choice cin.rep_eq)
-         apply (metis Wirte_in_choices_stepped choices_Choice cin.rep_eq)
+         apply (metis Write_in_choices_stepped choices_Choice cin.rep_eq)
         apply (metis choices_Choice no_Choice_in_choices)
         done
       subgoal 
@@ -519,8 +517,8 @@ lemma pcomp_op_diverged:
       done
     subgoal for ops1 ops2
       apply (intro conjI iffI)
-         apply (metis has_mute_map_op has_mute_pcomp_op_Inr pcomp_op_def)
-        apply (metis diverged_has_mute has_mute_map_op has_mute_pcomp_op_aux pcomp_op_def)
+         apply (metis can_end_map_op can_end_pcomp_op_Inr pcomp_op_def)
+        apply (metis diverged_can_end can_end_map_op can_end_comp_opI pcomp_op_def)
       subgoal 
         unfolding sim_def
         apply (intro conjI impI allI)
@@ -1466,9 +1464,6 @@ lemma pcomp_op_bisim_rewrite_L:
     done
   done
 
-find_theorems "_ \<noteq> []" name: conv
-
-
 lemma pcomp_op_bisim_rewrite_R:
   "bisim op2 op2' \<Longrightarrow>
    bisim (pcomp_op op1 op2) (pcomp_op op1 op2')"
@@ -1482,6 +1477,243 @@ lemma pcomp_op_bisim_rewrite:
    bisim op2 op2' \<Longrightarrow>
    bisim (pcomp_op op1 op2) (pcomp_op op1' op2')"
   using pcomp_op_bisim_rewrite_L pcomp_op_bisim_rewrite_R bisim_trans by blast
+
+inductive can_read_None for wire where
+  "BHD p buf = None \<Longrightarrow> can_read_None wire buf op (Read p f)"
+| "can_read_None wire (BTL p buf) op (f x) \<Longrightarrow> BHD p buf = Some x \<Longrightarrow> can_read_None wire buf op (Read p f)"
+| "can_read_None wire buf op op' \<Longrightarrow> can_read_None wire buf op (Write op' p x)"
+| "can_read_None wire buf op op' \<Longrightarrow> op' |\<in>| ops \<Longrightarrow> can_read_None wire buf op (Choice ops)"
+| "can_read_None wire buf (f x) op \<Longrightarrow> can_read_None wire buf (Read p f) op"
+| "can_read_None wire (BENQ q x buf) op' op \<Longrightarrow> wire p = Some q \<Longrightarrow> can_read_None wire buf (Write op' p x) op"
+| "can_read_None wire buf op' op \<Longrightarrow> wire p = None \<Longrightarrow> can_read_None wire buf (Write op' p x) op"
+| "can_read_None wire buf op' op \<Longrightarrow> op' |\<in>| ops \<Longrightarrow> can_read_None wire buf (Choice ops) op"
+
+inductive_cases can_read_None_ReadE[elim!]: "can_read_None wire buf (Read p1 f1) (Read p2 f2)"
+
+coinductive comp_op_can_end for wire where
+  "can_end op1 \<Longrightarrow> can_end op2 \<Longrightarrow> comp_op_can_end wire buf op1 op2"
+| "comp_op_can_end wire (BENQ q x buf) op1' op2 \<Longrightarrow> wire p = Some q \<Longrightarrow> stepped op1 (Out p x) op1' \<Longrightarrow> comp_op_can_end wire buf op1 op2"
+| "comp_op_can_end wire (BTL p buf) op1 op2' \<Longrightarrow> p \<in> ran wire \<Longrightarrow> BHD p buf = Some x \<Longrightarrow> stepped op2 (Inp p x) op2' \<Longrightarrow> comp_op_can_end wire buf op1 op2"
+| "comp_op_can_end wire (BTL p buf) op1 End \<Longrightarrow> p \<in> ran wire \<Longrightarrow> BHD p buf = None \<Longrightarrow> stepped op2 (Inp p x) op2' \<Longrightarrow> comp_op_can_end wire buf op1 op2"
+
+(* FIXME: move me *)
+declare cinsert.rep_eq[simp] bot_cset.rep_eq[simp] sup_cset.rep_eq[simp] cimage.rep_eq[simp] cUnion.rep_eq[simp] rel_cset.rep_eq[simp]
+
+lemma can_end_comp_op_iff:
+  "can_end (comp_op wire buf op1 op2) \<longleftrightarrow> comp_op_can_end wire buf op1 op2"
+  apply (rule iffI)
+  subgoal
+    apply (coinduction arbitrary: op1 op2 buf)
+    subgoal for op1 op2 buf
+      apply (erule can_end.cases)
+      subgoal
+        apply simp
+        apply (subst (asm) comp_op_code)
+        apply auto
+         apply (metis choices_empty_diverged diverged_can_end)+
+        done
+      subgoal for op ops
+        apply (subst (asm) comp_op_code)
+        apply (simp split: if_splits)
+        apply (rule disjI2)
+        apply (drule sym)
+        using Write_in_choices_stepped Read_in_choices_stepped apply (fastforce split: if_splits op.splits option.splits)
+
+        done
+      done
+    done
+  subgoal
+    apply (coinduction arbitrary: op1 op2 buf)
+    subgoal for op1 op2 buf
+      apply (erule comp_op_can_end.cases)
+      subgoal for op1 op2 buf
+        apply hypsubst_thin
+        apply (rule disjI2)
+        apply (subst comp_op_code)
+        apply auto
+        done
+      subgoal for q x buf op1' op2 p op1
+        apply hypsubst_thin
+        apply (erule stepped_choicesE)
+         apply auto[1]
+        apply (rule disjI2)
+        apply (subst comp_op_code)
+        apply auto
+        subgoal
+          apply (rule exI[of _ "comp_op wire (buf(q := benq x (buf q))) op1' op2"])
+          apply (intro conjI disjI1)
+           apply (rule image_eqI[of _ _ "Write op1' p x"])
+            apply simp
+           apply assumption
+          apply (intro conjI exI)
+           apply (rule refl)
+          apply assumption
+          done
+        subgoal
+          apply (rule exI[of _ "comp_op wire (buf(q := benq x (buf q))) op1' op2"])
+          apply (intro conjI disjI1)
+           apply (rule image_eqI[of _ _ "Write op1' p x"])
+            apply simp
+           apply assumption
+          apply (intro conjI exI)
+           apply (rule refl)
+          apply assumption
+          done
+        done
+      subgoal for p buf op1 op2' x op2
+        apply hypsubst_thin
+        apply (erule stepped_choicesE)
+         defer
+         apply auto[1]
+        apply (rule disjI2)
+        apply (subst comp_op_code)
+        apply auto
+        subgoal for f
+          apply (rule exI[of _ "comp_op wire (buf(p := btl (buf p))) op1 (safe_read f (BHD p buf))"])
+          apply (intro conjI)
+           apply (rule disjI2)
+           apply (rule image_eqI[of _ _ "Read p f"])
+            apply simp
+           apply assumption
+          apply auto
+          done
+        subgoal for f
+          apply (rule exI[of _ "comp_op wire (buf(p := btl (buf p))) op1 (safe_read f (BHD p buf))"])
+          apply (intro conjI)
+           apply (rule disjI2)
+           apply (rule image_eqI[of _ _ "Read p f"])
+            apply simp
+           apply assumption
+          apply auto
+          done
+        done
+      subgoal for p buf op1 op2 x op2'
+        apply hypsubst_thin
+        apply (erule stepped_choicesE)
+         defer
+         apply auto[1]
+        subgoal for p' f' x'
+          apply (rule disjI2)
+          apply (subst comp_op_code)
+          apply auto
+           apply hypsubst_thin
+           apply (rule exI[of _ "comp_op wire (buf(p' := btl (buf p'))) op1 End"])
+           apply (intro conjI)
+            apply (rule disjI2)
+            apply (rule image_eqI[of _ _ "Read p' f'"])
+             apply force+
+          done
+        done
+      done
+    done
+  done
+
+lemma can_end_scomp_op_Id_op_L:
+  "can_end (scomp_op Id_op op) \<Longrightarrow> can_end op"
+ unfolding scomp_op_def can_end_map_op can_end_comp_op_iff
+  subgoal
+    apply (coinduction arbitrary: op)
+    subgoal for op
+      apply (erule comp_op_can_end.cases)
+      subgoal
+        apply hypsubst_thin
+        apply (subst (asm) Id_op.code)
+        apply simp
+        done
+      subgoal for q x buf op1' op2 p op1
+        apply simp
+        apply hypsubst_thin
+        apply (subst (asm) Id_op.code)
+        apply force
+        done
+     subgoal for p buf op1 op2' x op2
+        apply simp
+       apply hypsubst_thin
+       apply (rule disjI2)
+       apply (erule stepped_choicesE)
+        apply auto
+       done
+     subgoal
+               apply simp
+       apply hypsubst_thin
+       apply (rule disjI2)
+       apply (subst (asm) Id_op.code)
+       apply (erule stepped_choicesE)
+        apply auto  
+       apply (smt (verit) IO.distinct(1) comp_op_can_end.simps can_end_ReadE steppedReadE stepped_End)
+       done
+     done
+   done
+  done
+
+lemma not_can_end_Id_op[simp]:
+  "can_end Id_op \<Longrightarrow> False"
+  apply (subst (asm) Id_op.code)
+  apply (erule can_end.cases)
+   apply auto
+  done
+
+lemma can_end_AW[simp]:
+  "can_end AW"
+  apply (coinduction)
+  apply (rule disjI2)
+  apply (subst AW.code)
+  apply auto
+  done
+
+lemma can_end_scomp_op_Id_op_AW:
+  "can_end (scomp_op Id_op AW) \<Longrightarrow> False"
+  unfolding scomp_op_def can_end_map_op can_end_comp_op_iff
+  apply (erule comp_op_can_end.cases)
+  using not_can_end_Id_op apply auto
+  apply (subst (asm) Id_op.code)
+   apply (auto elim: stepped_choicesE)
+  done
+
+lemma
+  "bisim (scomp_op Id_op op) op"
+  apply (coinduction rule: bisim_coinduct_upto)
+  apply (intro conjI iffI)
+  using can_end_scomp_op_Id_op_L apply blast
+  subgoal
+    unfolding scomp_op_def can_end_map_op can_end_comp_op_iff
+    apply (coinduction arbitrary: op)
+    subgoal for op
+      apply simp
+      apply (erule can_end.cases)
+      subgoal
+        apply (simp add: ranI)
+        apply (rule disjI2)
+        oops
+
+
+end
+
+lemma can_end_pcomp_op_Inl:
+  "can_end (comp_op wire buf op1 op2) \<Longrightarrow> \<not> can_read_None wire buf op1 op2 \<Longrightarrow> \<not> can_end op2 \<Longrightarrow> can_end op1"
+   apply (coinduction arbitrary: op1 op2 buf)
+  subgoal for op1 op2 buf
+    apply auto
+    unfolding scomp_op_def
+    apply (cases op1; cases op2)
+            apply (auto simp: bot_cset.rep_eq cinsert.rep_eq cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq split: if_splits option.splits op.splits)
+    
+
+  find_theorems can_end pcomp_op
+
+
+end
+lemma
+  "can_end (scomp_op op1 op2) \<Longrightarrow> can_end op2"
+
+
+
+
+
+
+end
+
+  
 
 
 end
