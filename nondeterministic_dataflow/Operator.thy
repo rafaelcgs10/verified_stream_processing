@@ -32,6 +32,9 @@ lift_definition cproduct :: "'a cset \<Rightarrow> 'b cset \<Rightarrow> ('a \<t
 lift_definition cfilter :: "('a \<Rightarrow> bool) \<Rightarrow> 'a cset \<Rightarrow> 'a cset" is Set.filter by (simp add: Set.filter_def)
 end
 
+declare cBall.rep_eq[simp] cinsert.rep_eq[simp] bot_cset.rep_eq[simp] sup_cset.rep_eq[simp] cimage.rep_eq[simp] cUnion.rep_eq[simp] rel_cset.rep_eq[simp]
+
+
 section\<open>Channels\<close>
 
 code_lazy_type llist
@@ -295,35 +298,6 @@ inductive stepped where
 | "stepped (Write op q x) (Out q x) op"
 | "cin op ops \<Longrightarrow> stepped op l op' \<Longrightarrow> stepped (Choice ops) l op'"
 
-inductive sub_choice where
-  "sub_choice op op"
-| "sub_choice op op' \<Longrightarrow> op' |\<in>| ops \<Longrightarrow> sub_choice op (Choice ops)"
-
-abbreviation "sub_choices op \<equiv> {op'. sub_choice op' op}"
-
-inductive_cases sub_choiceReadE [elim!]: "sub_choice op (Read p f)"
-inductive_cases sub_choiceWriteE [elim!]: "sub_choice op (Write op p x)"
-inductive_cases sub_choiceChoiceE [elim!]: "sub_choice op (Choice ops)"
-
-lemma sub_choice_stepped:
-  "sub_choice op op'' \<Longrightarrow>
-   stepped op io op' \<Longrightarrow>
-   stepped op'' io op'"
-  by (induct op op'' arbitrary: io op' rule: sub_choice.induct) (auto intro: stepped.intros)
-
-lemma sub_choice_trans:
-  "sub_choice op2 op3 \<Longrightarrow>
-   sub_choice op1 op2 \<Longrightarrow>
-   sub_choice op1 op3"
-  apply (induct op2 op3 arbitrary: op1 rule: sub_choice.induct)
-   apply (auto intro: sub_choice.intros)[1]
-  subgoal for op op' ops op1
-    apply (erule sub_choice.cases)
-     apply (auto intro: sub_choice.intros elim: sub_choice.cases)[1]
-    apply (meson cin.rep_eq sub_choice.simps)
-    done
-  done
-
 inductive_cases steppedReadE [elim!]: "stepped (Read p f) io op'"
 inductive_cases steppedWriteE [elim!]: "stepped (Write op q x) io op'"
 inductive_cases steppedChoiceE [elim!]: "stepped (Choice ops) io op'"
@@ -434,27 +408,12 @@ lemma bisim_Choice_cong:
   "rel_cset bisim ops1 ops2 \<Longrightarrow> bisim (Choice ops1) (Choice ops2)"
   apply (coinduction arbitrary: ops1 ops2 rule: bisim_coinduct_upto)
   apply (auto simp add: sim_def rel_cset.rep_eq rel_set_def)
-       apply (metis cin.rep_eq ex_cin_conv can_end_End)
-      apply (meson bisim.cases cin.rep_eq can_end_Choice)
-     apply (metis cin.rep_eq ex_cin_conv can_end_End)
-    apply (meson bisim.cases cin.rep_eq can_end_Choice)
-  subgoal for ops1 ops2 l s' op
-    apply (drule bspec)
-     apply assumption
-    apply auto
-    apply (erule bisim.cases)
-    apply (auto simp add: sim_def rel_cset.rep_eq rel_set_def)
-     apply (meson bc_bisim cin.rep_eq stepped.intros(3))+
-    done
-  subgoal for ops1 ops2 l s' op
-    apply rotate_tac
-    apply (drule bspec)
-     apply assumption
-    apply auto
-    apply (erule bisim.cases)
-    apply (auto simp add: sim_def rel_cset.rep_eq rel_set_def)
-     apply (meson bc_bisim cin.rep_eq stepped.intros(3))+
-    done
+  using can_end.simps apply fastforce
+      apply (meson bisim.cases can_end_Choice cin.rep_eq)
+  using can_end.simps apply fastforce
+ apply (meson bisim.cases can_end_Choice cin.rep_eq)
+  apply (smt (verit, ccfv_SIG) bc_bisim bisim.cases cin.rep_eq sim_def stepped.intros(3))
+  apply (smt (verit, ccfv_SIG) bc_bisim bisim.cases cin.rep_eq sim_def stepped.intros(3))
   done
 
 lemma bisim_Read_cong:
@@ -681,7 +640,6 @@ lemma can_end_map_op[simp]:
       apply (cases op)
       apply auto[2]
       apply clarsimp
-      apply (metis cimageI cin.rep_eq)
       done
     done
   done
@@ -697,7 +655,7 @@ lemma AId_op_can_end[simp]:
   "can_end AId_op"
   apply (coinduction)
   apply auto
-  using cinsert_iff AId_op.code apply fastforce
+  using cinsert_iff AId_op.code apply force
   done
 
 lemma stepped_spin_op_no_label:
@@ -707,7 +665,7 @@ lemma stepped_spin_op_no_label:
   apply simp
   apply (subst (asm) spin_op.code)
   apply simp
-  apply (clarsimp simp add: sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq intro: sub_choice.intros; hypsubst_thin?)
+  apply (clarsimp simp add: sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq intro:; hypsubst_thin?)
   apply (metis cimage.rep_eq spin_op.code image_iff op.inject(3))
   done
 
@@ -720,7 +678,7 @@ lemma choice_assoc:
   apply (coinduction arbitrary: op1 op2 op3  rule: bisim_coinduct_upto)
   subgoal for op1 op2 op3
     unfolding sim_def
-    apply (auto 0 0 simp add:  sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq intro: sub_choice.intros; hypsubst_thin?)
+    apply (auto 0 0 simp add:  sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq intro:; hypsubst_thin?)
                apply blast+
          apply (meson bc_refl cinsertI1 stepped.intros(3))
     subgoal
@@ -784,7 +742,7 @@ lemma spin_op_diverged[simp]:
   "diverged spin_op"
   apply coinduction
   apply (subst spin_op.code)
-       apply (auto 0 0 simp add:  sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq intro: sub_choice.intros; hypsubst_thin?)
+       apply (auto 0 0 simp add:  sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq; hypsubst_thin?)
   done
 
 lemma End_bisim_spin_op:
@@ -911,6 +869,7 @@ lemma choices_map_op[simp]:
   done
   done
 
+
 lemma diverged_choices_empty:
   "diverged op \<Longrightarrow>
    choices op = {||}"
@@ -926,6 +885,25 @@ lemma diverged_choices_empty:
       apply (auto simp add: bot_cset.rep_eq elim: diverged.cases)
       apply (metis cUN_E cin.rep_eq diverged.simps op.inject(3))
       done
+    done
+  done
+
+
+lemma choices_AW[simp]:
+  "choices AW = {|Write AW 1 42|}"
+  unfolding choices_def
+  apply auto
+  subgoal for x n
+    apply (induct n)
+    apply (metis AW.code bot_cset.rep_eq choices_at.simps(3) emptyE)
+    apply (subst (asm) (3) AW.code)
+    apply (auto simp:sup_cset.rep_eq diverged_choices_empty bot_cset.rep_eq cinsert.rep_eq cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq split: op.splits)
+    done
+  subgoal
+    apply (auto simp:sup_cset.rep_eq diverged_choices_empty bot_cset.rep_eq cinsert.rep_eq cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq split: op.splits)
+    apply (subst (2) AW.code)
+    apply auto
+    apply (metis cUN_I choices_at.simps(2) choices_at.simps(4) cin.rep_eq cinsert_iff)
     done
   done
 
