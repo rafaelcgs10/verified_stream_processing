@@ -816,7 +816,7 @@ lemma choices_Choice[simp]: "choices (Choice ops) = cUnion (cimage choices ops)"
     done
   done
 
-lemma no_Choice_in_choices[simplified, simp, dest]: "Choice ops |\<in>| choices op \<Longrightarrow> False"
+lemma no_Choice_in_choices[simplified, simp, dest!]: "Choice ops |\<in>| choices op \<Longrightarrow> False"
   unfolding choices_def
   apply (auto simp: cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
   subgoal for n
@@ -1098,11 +1098,13 @@ inductive traced_cong for R where
 | tc_traced: "traced op lxs \<Longrightarrow> traced_cong R op lxs"
 | tc_read: "traced_cong R (f x) lxs \<Longrightarrow> traced_cong R (Read p f) (LCons (Inp p x) lxs)"
 | tc_write: "traced_cong R op lxs \<Longrightarrow> traced_cong R (Write op q x) (LCons (Out q x) lxs)"
-| tc_choice: "cin op ops \<Longrightarrow> traced_cong R op lxs \<Longrightarrow> traced_cong R (Choice ops) lxs"
+(* | tc_choice: "cin op ops \<Longrightarrow> traced_cong R op lxs \<Longrightarrow> traced_cong R (Choice ops) lxs" *)
 
 lemma traced_cong_disj[simp]:
   "(traced_cong R op lxs \<or> traced op lxs) = traced_cong R op lxs"
   by (auto intro: traced_cong.intros)
+
+thm traced.coinduct[where X = "traced_cong X"]
 
 lemma traced_coinduct_upto:
   assumes "X op lxs"
@@ -1110,27 +1112,26 @@ lemma traced_coinduct_upto:
      X x1 x2 \<Longrightarrow>
     (\<exists>f x lxs p. x1 = Read p f \<and> x2 = LCons (Inp p x) lxs \<and> traced_cong X (f x) lxs) \<or>
     (\<exists>op lxs p x. x1 = Write op p x \<and> x2 = LCons (Out p x) lxs \<and> traced_cong X op lxs) \<or>
-    (\<exists>ops. x1 = Choice ops \<and> (\<exists>op. cin op ops \<and> traced_cong X op x2)) \<or>
-     x1 = Choice cempty \<and> x2 = LNil)"
+     (x2 = LNil \<and> can_end x1))"
   shows "traced op lxs"
   apply (rule traced.coinduct[where X = "traced_cong X"])
   apply (rule tc_base, rule assms(1))
   subgoal for op lxs
     apply (induct op lxs rule: traced_cong.induct)
-    oops
-      (*     subgoal for op lxs
-      by (drule assms(2)) (auto simp del: fun_upd_apply)
+     subgoal for op lxs
+       apply (drule assms(2))
+       apply (auto simp del: fun_upd_apply intro: stepped.intros)
+       done
     subgoal for op lxs
       by (erule traced.cases)
         (auto 10 10 simp add: tc_traced simp del: fun_upd_apply)
     subgoal for p f x lxs
-      by (auto simp del: fun_upd_apply)
+      by (auto simp del: fun_upd_apply intro: stepped.intros)
     subgoal for p n f 
-      by (auto simp del: fun_upd_apply)
-    subgoal 
-      by (auto simp del: fun_upd_apply)
+      by (auto simp del: fun_upd_apply intro: stepped.intros)
     done
-  done *)
+  done
+
       (*
 definition "traces op = {lxs. traced op lxs}"
 
