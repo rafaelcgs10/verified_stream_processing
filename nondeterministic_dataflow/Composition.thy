@@ -115,6 +115,55 @@ lemma can_end_op2_None_can_end_iff:
     by (coinduction arbitrary: op) (auto elim: can_end.cases)
   done
 
+(*
+definition "end_buf wire A buf p = (if p \<in> Option.these (wire ` A) then buf p else bend (buf p))"
+
+corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
+  ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
+  "comp_op wire buf op1 op2 =
+     Choice (cimage (eval_comp_op_aux (comp_op wire)) (cUn (cUn
+       (cimage (\<lambda>op. case op of
+           Read p f \<Rightarrow> Read_aux (Inl p) (\<lambda>x. (end_buf wire (outputs (f x)) buf, f x, op2))
+         | Write op p x \<Rightarrow> (case wire p of
+             None \<Rightarrow> Write_aux (end_buf wire (outputs op) buf, op, op2) (Inl p) x
+           | Some q \<Rightarrow> Base_aux (end_buf wire (outputs op) (BENQ q x buf), op, op2))) (choices op1))
+       (cimage (\<lambda>op. case op of
+           Read p f \<Rightarrow> if p \<in> ran wire then Base_aux (BTL p buf, op1, safe_read f (BHD p buf))
+             else Read_aux (Inr p) (\<lambda>x. (buf, op1, f x))
+         | Write op p x \<Rightarrow> Write_aux (buf, op1, op) (Inr p) x) (choices op2))) (if can_end_op1 wire op1 \<and> can_end_op2 wire op2 then {|End_aux|} else {||})))"
+
+lemma comp_op_code: "comp_op wire buf op1 op2 =
+  Choice (cUn (cUn
+    (cimage (\<lambda>op. case op of
+        Read p f \<Rightarrow> Read (Inl p) (\<lambda>x. comp_op wire (end_buf wire (outputs (f x)) buf) (f x) op2)
+      | Write op p x \<Rightarrow> (case wire p of
+          None \<Rightarrow> Write (comp_op wire (end_buf wire (outputs op) buf) op op2) (Inl p) x
+        | Some q \<Rightarrow> comp_op wire (end_buf wire (outputs op) (BENQ q x buf)) op op2)) (choices op1))
+    (cimage (\<lambda>op. case op of
+        Read p f \<Rightarrow> if p \<in> ran wire then comp_op wire (BTL p buf) op1 (safe_read f (BHD p buf))
+          else Read (Inr p) (\<lambda>x. comp_op wire buf op1 (f x))
+      | Write op p x \<Rightarrow> Write (comp_op wire buf op1 op) (Inr p) x) (choices op2))) (if can_end_op1 wire op1 \<and> can_end_op2 wire op2 then {|End|} else {||}))"
+  apply (subst comp_op.code)
+  apply (unfold cimage_cUn op.inject)
+  apply (rule arg_cong2[where f = cUn])
+   apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
+      split: comp_op_aux.splits op.splits option.splits)
+  done
+
+lemma comp_op_simps[simp]:
+  "comp_op wire buf (Read p1 f1) (Read p2 f2) =
+    choice2 (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Read p2 f2)))
+     (if p2 \<in> ran wire then comp_op wire (buf(p2 := btl (buf p2))) (Read p1 f1) (safe_read f2 (BHD p2 buf))
+      else Read (Inr p2) (\<lambda>y. comp_op wire buf (Read p1 f1) (f2 y)))"
+  "comp_op wire buf (Read p1 f1) (Write op2 q2 x2) =
+    choice2 (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Write op2 q2 x2))) (Write (comp_op wire buf (Read p1 f1) op2) (Inr q2) x2)"
+  "comp_op wire buf (Read p1 f1) (Choice op2s) = 
+    Choice (cinsert (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Choice op2s))) (cimage
+       (case_op (\<lambda>p f. if p \<in> ran wire then comp_op wire (buf(p := btl (buf p))) (Read p1 f1) (safe_read f (BHD p buf)) else Read (Inr p) (\<lambda>x. comp_op wire buf (Read p1 f1) (f x)))
+         (\<lambda>op p. Write (comp_op wire buf (Read p1 f1) op) (Inr p)) (\<lambda>a. undefined))
+       (cUnion (cimage choices op2s))))"
+*)
+
 corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
   "comp_op wire buf op1 op2 =
@@ -2341,27 +2390,29 @@ lemma
    apply auto
    done
 
-inductive uses_input for R p where
-  "(\<forall> op \<in> range f. R op) \<Longrightarrow> uses_input R p (Read p f)"
-| "uses_input R p op \<Longrightarrow> uses_input R p (Write op p' x)"
-| "(\<forall> op \<in> range f. uses_input R p op) \<Longrightarrow> p \<noteq> p' \<Longrightarrow> uses_input R p (Read p' f)"
-| "(\<forall> op. op |\<in>| ops \<and> uses_input R p op) \<Longrightarrow> uses_input R p (Choice ops)"
+inductive can_input for R p where
+  "(\<forall> op \<in> range (f o Observed). R op) \<Longrightarrow> can_input R p (Read p f)"
+| "can_input R p op \<Longrightarrow> can_input R p (Write op p' x)"
+| "(\<forall> op \<in> range f. can_input R p op) \<Longrightarrow> p \<noteq> p' \<Longrightarrow> can_input R p (Read p' f)"
+| "op |\<in>| ops \<Longrightarrow> can_input R p op \<Longrightarrow> can_input R p (Choice ops)"
 
-lemma uses_input_mono[mono]: "R \<le> S \<Longrightarrow> uses_input R \<le> uses_input S"
+lemma uses_input_mono[mono]: "R \<le> S \<Longrightarrow> can_input R \<le> can_input S"
   apply safe
   subgoal for p op
     apply (rotate_tac )
-    apply (induct op rule: uses_input.induct)
-       apply (auto intro: uses_input.intros)
+    apply (induct op rule: can_input.induct)
+       apply (auto 4 4 intro: can_input.intros)
     done
   done
 
-coinductive always_uses_input for p where
- "uses_input (always_uses_input p) p op \<Longrightarrow> always_uses_input p op"
+coinductive sticky_input for p where
+ "can_input (sticky_input p) p op \<Longrightarrow> sticky_input p op"
 
+(*
 lemma uses_input_not_can_end:
-  "uses_input R p op \<Longrightarrow> can_end op \<Longrightarrow> False"
-  by (induct op rule: uses_input.induct) auto
+  "can_input R p op \<Longrightarrow> can_end op \<Longrightarrow> False"
+  by (induct op rule: can_input.induct) auto
+*)
 
 lemma 
   "traced End ios \<Longrightarrow> traced (scomp_op Id_op (Read (1::1) (\<lambda>_. End))) ios \<Longrightarrow> False"
@@ -2370,7 +2421,7 @@ lemma
    apply (erule traced.cases)
    apply (auto split: if_splits)
    done
-  
+ (* 
 lemma
   "always_uses_input p op \<Longrightarrow> eqT (scomp_op Id_op op) op"
   unfolding eqT_def 
@@ -2390,14 +2441,14 @@ lemma
       subgoal for op l op' lxs
         apply hypsubst_thin
         oops
-      
+   *)   
 
 lemma
   "traces op \<noteq> traces op' \<Longrightarrow> \<not> bisim op op'"
   using bisim_traces by blast
 
 lemma
-  "always_uses_input 1 op \<Longrightarrow> bisim (scomp_op Id_op op) op"
+  "sticky_input 1 op \<Longrightarrow> bisim (scomp_op Id_op op) op"
   apply (coinduction arbitrary: op rule: bisim_coinduct_upto)
   apply (intro conjI iffI)
      apply simp_all
@@ -2405,7 +2456,7 @@ lemma
     using can_end_scomp_op_Id_op_False apply blast
     done
   subgoal
- apply (erule always_uses_input.cases)
+ apply (erule sticky_input.cases)
     apply (auto dest: uses_input_not_can_end)
     done
   subgoal for op

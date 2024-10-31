@@ -44,6 +44,7 @@ codatatype (inputs: 'ip, outputs: 'op, dead 'd) op =
   Read 'ip "'d observation \<Rightarrow> ('ip, 'op, 'd) op"
   | Write "('ip, 'op, 'd) op" 'op 'd
   | Choice "('ip, 'op, 'd) op cset"
+  | Fail
 
 find_consts name: cong
 
@@ -283,7 +284,7 @@ lemma output_depth_Write_simp_diff[simp]:
        apply assumption
     using output_at.cases apply force
     subgoal
-      by (smt (verit, del_insts) diff_Suc_1' op.distinct(1) op.inject(2) op.simps(9) output_at.cases output_at.intros(2))
+      by (auto elim: output_at.cases intro: output_at.intros)
     subgoal
       using output_at.simps by fastforce
     done
@@ -298,6 +299,7 @@ inductive stepped where
 | "stepped (Write op q x) (Out q x) op"
 | "cin op ops \<Longrightarrow> stepped op l op' \<Longrightarrow> stepped (Choice ops) l op'"
 
+inductive_cases steppedFailE [elim!]: "stepped Fail io op'"
 inductive_cases steppedReadE [elim!]: "stepped (Read p f) io op'"
 inductive_cases steppedWriteE [elim!]: "stepped (Write op q x) io op'"
 inductive_cases steppedChoiceE [elim!]: "stepped (Choice ops) io op'"
@@ -306,6 +308,7 @@ coinductive can_end where
   can_end_End[intro!]: "can_end End"
 | can_end_Choice[intro]: "op |\<in>| ops \<Longrightarrow> can_end op \<Longrightarrow> can_end (Choice ops)"
 
+inductive_cases can_end_FailE[elim!]: "can_end Fail"
 inductive_cases can_end_ReadE[elim!]: "can_end (Read p f)"
 inductive_cases may_diverge_WriteE[elim!]: "can_end (Write op p x)"
 inductive_cases may_diverge_ChoiceE[elim!]: "can_end (Choice ops)"
@@ -467,7 +470,8 @@ lemma stepped_End[simp]: "stepped End l t' = False"
   by (auto simp: bot_cset.rep_eq)
 
 coinductive diverged where
-  "(\<forall>op. op |\<in>|ops \<longrightarrow> diverged op) \<Longrightarrow> diverged (Choice ops)"
+     "diverged Fail"
+  |  "(\<forall>op. op |\<in>|ops \<longrightarrow> diverged op) \<Longrightarrow> diverged (Choice ops)"
 
 lemma not_stepped_diverged: "\<forall>l op'. \<not> stepped op l op' \<Longrightarrow> diverged op"
   apply (coinduction arbitrary: op)
@@ -492,12 +496,23 @@ lemma bisim_Read_not_diverged: "bisim (Read p f) op \<Longrightarrow> diverged o
 lemma bisim_Write_not_diverged: "bisim (Write op' x p) op \<Longrightarrow> diverged op \<Longrightarrow> False"
   by (metis bisim.cases sim_def stepped.intros(2) stepped_not_diverged)
 
-lemma no_mute_ChoiceD: "\<not> can_end (Choice ops) \<Longrightarrow> (\<forall>op. op |\<in>| ops \<longrightarrow> (\<exists>l op'. stepped op l op'))"
+inductive fails where
+  "fails Fail"
+| "ops \<noteq> {||} \<Longrightarrow> \<forall>op. op |\<in>| ops \<longrightarrow> fails op \<Longrightarrow> fails (Choice ops)"
+
+lemma "fails op \<Longrightarrow> bisim op Fail"
+  apply (induct op rule: fails.induct)
+   apply (auto simp: bisim_refl)
+  oops
+
+lemma no_mute_ChoiceD: "\<not> can_end (Choice ops) \<Longrightarrow> (\<forall>op. op |\<in>| ops \<longrightarrow> fails op \<or> (\<exists>l op'. stepped op l op'))"
   apply (erule contrapos_np)
   apply (coinduction arbitrary: ops)
   subgoal for ops
-    apply (auto simp flip: cin.rep_eq intro: stepped.intros)
+    apply (auto simp flip: cin.rep_eq intro: stepped.intros fails.intros)
+(*
     apply (metis all_not_cin_conv diverged.cases can_end.simps not_diverged_iff_stepped)
+*)
     done
   done
 
