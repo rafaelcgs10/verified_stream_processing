@@ -58,7 +58,7 @@ corec spin_op :: "('a, 'b, 'd) op" where
 
 abbreviation "End \<equiv> Choice cempty"
 abbreviation "ARead i f op \<equiv> Choice (cimage (\<lambda> x. if x then op else Read i f) (cinsert True (csingle False)))"
-lemma ARead_simp[simp]: "ARead i f op = Choice (cinsert op (csingle (Read i f)))"
+lemma ARead_simp[simp]: "ARead i f op = Choice ({| op, Read i f |})"
   by simp
 
 abbreviation "safe_choice_stop stop f ops \<equiv> (if ops = cempty then stop else Choice (cimage f ops))"
@@ -1006,6 +1006,21 @@ lemma choices_W[simp]:
     done
   subgoal
     by (metis W.code cUNIV.rep_eq choices_at.simps(2) cin.rep_eq csingleton_iff iso_tuple_UNIV_I)
+  done
+
+term Id_op
+
+lemma choices_Id_op[simp]:
+  "choices Id_op = {|Read 1 (case_observation (Write Id_op 1) Id_op)|}"
+  unfolding choices_def
+  apply auto
+  subgoal for x n
+    apply (induct n)
+    apply (metis Id_op.code bot_cset.rep_eq choices_at.simps(1) cinsert.rep_eq empty_iff insert_iff)
+    apply (metis Id_op.code UNIV_I cUNIV.rep_eq choices_at.simps(1))
+    done
+  subgoal 
+    by (metis Id_op.code cUNIV.rep_eq choices_at.simps(1) cin.rep_eq csingleton_iff iso_tuple_UNIV_I)
   done
 
 lemma choices_empty_diverged:

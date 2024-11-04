@@ -688,19 +688,28 @@ lemma
     done
   done
 
-
+lemma
+  "can_end (comp_op Some buf W Id_op)"
+  apply (coinduction arbitrary: buf)
+  subgoal for buf
+    apply (rule disjI2)
+    apply (intro conjI exI disjI1)
+  apply (subst comp_op_code)
+      apply auto
+    done
+  done
 
 lemma
-  "bisim (map_op projl projr (comp_op Some (\<lambda>_. BEmpty) op Id_op)) op"
-  apply (coinduction arbitrary: op rule: bisim_coinduct_upto)
-  subgoal for op
+  "bisim (map_op projl projr (comp_op Some (\<lambda>_. BEmpty) W Id_op)) W"
+  apply (coinduction rule: bisim_coinduct_upto)
+  subgoal
     apply safe
          apply simp_all
 
 
 
-end
 
+end
 
 lemma
   "bisim (scomp_op op Id_op) Id_op"
