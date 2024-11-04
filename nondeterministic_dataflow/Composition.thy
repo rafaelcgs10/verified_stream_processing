@@ -117,6 +117,8 @@ lemma can_end_op2_None_can_end_iff:
     by (coinduction arbitrary: op) (auto elim: can_end.cases)
   done
 
+abbreviation "sound_reads wire buf \<equiv> cfilter (\<lambda> op. case op of Read p f \<Rightarrow> if p \<in> ran wire \<and> BHD p buf = None then False else True | _ \<Rightarrow> True)"
+
 corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
   "comp_op wire buf op1 op2 =
@@ -129,7 +131,7 @@ corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow
        (cimage (\<lambda>op. case op of
            Read p f \<Rightarrow> if p \<in> ran wire then Base_aux (BTL p buf, op1, safe_read f (BHD p buf))
              else Read_aux (Inr p) (\<lambda>x. (buf, op1, f x))
-         | Write op p x \<Rightarrow> Write_aux (buf, op1, op) (Inr p) x) (choices op2))) (if diverged op1 \<and> diverged op2 then {|spin_aux|} else if can_end_op1 wire op1 \<and> \<not> diverged op1 \<or> can_end_op2 wire op2 \<and> \<not> diverged op2 then {|End_aux|} else {||})))"
+         | Write op p x \<Rightarrow> Write_aux (buf, op1, op) (Inr p) x) (sound_reads wire buf (choices op2)))) (if diverged op1 \<and> diverged op2 then {|spin_aux|} else if can_end op1 \<and> \<not> diverged op1 \<or> can_end op2 \<and> \<not> diverged op2 then {|End_aux|} else {||})))"
 
 lemma comp_op_code: "comp_op wire buf op1 op2 =
   Choice (cUn (cUn
@@ -141,7 +143,7 @@ lemma comp_op_code: "comp_op wire buf op1 op2 =
     (cimage (\<lambda>op. case op of
         Read p f \<Rightarrow> if p \<in> ran wire then comp_op wire (BTL p buf) op1 (safe_read f (BHD p buf))
           else Read (Inr p) (\<lambda>x. comp_op wire buf op1 (f x))
-      | Write op p x \<Rightarrow> Write (comp_op wire buf op1 op) (Inr p) x) (choices op2))) (if diverged op1 \<and> diverged op2 then {|spin_op|} else if can_end_op1 wire op1 \<and> \<not> diverged op1 \<or> can_end_op2 wire op2 \<and> \<not> diverged op2 then {|End|} else {||}))"
+      | Write op p x \<Rightarrow> Write (comp_op wire buf op1 op) (Inr p) x) (sound_reads wire buf (choices op2)))) (if diverged op1 \<and> diverged op2 then {|spin_op|} else if can_end op1 \<and> \<not> diverged op1 \<or> can_end op2 \<and> \<not> diverged op2 then {|End|} else {||}))"
   apply (subst comp_op.code)
   apply (unfold cimage_cUn op.inject)
   apply (rule arg_cong2[where f = cUn])
@@ -263,10 +265,6 @@ lemma
       using can_end_AW can_end_op2_None_can_end_iff by blast
     subgoal
       using can_end_AW can_end_op2_None_can_end_iff by blast
-    subgoal
-      using can_end_AW can_end_op2_None_can_end_iff by blast
-    subgoal
-      using can_end_AW can_end_op2_None_can_end_iff by blast
     done
   subgoal
         apply (subst (asm) W.code)
@@ -325,37 +323,8 @@ lemma
      apply (rule stepped.intros(2))
     apply (smt (verit, ccfv_threshold) W.code bc_base)
     done
-  subgoal
-    by blast
-  subgoal
-    by blast
-  subgoal
-    by blast
-  subgoal
-    by blast
- subgoal
-      apply (subst AW.code)
-      apply simp
-      apply (rule exI[of _ AW])
-      apply (auto 0 0)
-        apply (rule stepped.intros(3))
-        apply (rule cinsertI2)
-        apply (rule cinsertI1)    
-       apply (rule stepped.intros(2))
-      apply (smt (verit, del_insts) AW.code bc_base cimage_cinsert cimage_is_cempty)
-      done
-  subgoal
-      apply (subst AW.code)
-      apply simp
-      apply (rule exI)
-      apply (auto 0 0)
-        apply (rule stepped.intros(3))
-        apply (rule cinsertI2)
-        apply (rule cinsertI1)    
-        apply (rule stepped.intros(2))
-    using can_end_AW can_end_op2_None_can_end_iff apply blast
-    done
-    done
+           apply auto
+  done
  subgoal
     unfolding sim_def
     apply safe
@@ -366,69 +335,56 @@ lemma
     apply (subst comp_op_code)
     apply (auto 1 1 split: if_splits)
     subgoal
-      apply (rule exI)
+      apply (rule exI[of _ "map_op id (case_sum id id) (comp_op (\<lambda>_. None) (\<lambda>_. BEnded) (Write W 1 42) AW)"])
       apply safe
       apply (rule stepped.intros(3))
         apply (rule cinsertI2)+
-      apply simp
-      apply (rule stepped.intros(2))
+        apply simp
+        apply force
+      apply (simp add: stepped.intros(2))
       apply (metis (mono_tags, lifting) W.code bc_base bc_sym)
       done
-   subgoal
-      apply (rule exI)
+    subgoal
+      apply (rule exI[of _ "map_op id (case_sum id id) (comp_op (\<lambda>_. None) (\<lambda>_. BEnded) (Write W 1 42) AW)"])
       apply safe
       apply (rule stepped.intros(3))
         apply (rule cinsertI2)+
-      apply simp
-      apply (rule stepped.intros(2))
+        apply simp
+        apply force
+      apply (simp add: stepped.intros(2))
       apply (metis (mono_tags, lifting) W.code bc_base bc_sym)
-     done
-   subgoal
-      apply (rule exI)
+      done
+    subgoal
+      apply (rule exI[of _ "map_op id (case_sum id id) (comp_op (\<lambda>_. None) (\<lambda>_. BEnded) (Write W 1 42) AW)"])
       apply safe
       apply (rule stepped.intros(3))
         apply (rule cinsertI2)+
-      apply simp
-      apply (rule stepped.intros(2))
+        apply simp
+        apply force
+      apply (simp add: stepped.intros(2))
       apply (metis (mono_tags, lifting) W.code bc_base bc_sym)
-     done
-   subgoal
-      apply (rule exI)
+      done
+    subgoal
+      apply (rule exI[of _ "map_op id (case_sum id id) (comp_op (\<lambda>_. None) (\<lambda>_. BEnded) (Write W 1 42) AW)"])
       apply safe
       apply (rule stepped.intros(3))
         apply (rule cinsertI2)+
-      apply simp
-      apply (rule stepped.intros(2))
+        apply simp
+        apply force
+      apply (simp add: stepped.intros(2))
       apply (metis (mono_tags, lifting) W.code bc_base bc_sym)
-     done
- subgoal
-      apply (rule exI)
+      done
+    subgoal
+      apply (rule exI[of _ "map_op id (case_sum id id) (comp_op (\<lambda>_. None) (\<lambda>_. BEnded) (Write W 1 42) AW)"])
       apply safe
       apply (rule stepped.intros(3))
         apply (rule cinsertI2)+
-      apply simp
-      apply (rule stepped.intros(2))
+        apply simp
+        apply force
+      apply (simp add: stepped.intros(2))
       apply (metis (mono_tags, lifting) W.code bc_base bc_sym)
-   done
- subgoal
-      apply (rule exI)
-      apply safe
-      apply (rule stepped.intros(3))
-        apply (rule cinsertI2)+
-      apply simp
-      apply (rule stepped.intros(2))
-      apply (metis (mono_tags, lifting) W.code bc_base bc_sym)
-   done
- subgoal
-      apply (rule exI)
-      apply safe
-      apply (rule stepped.intros(3))
-        apply (rule cinsertI2)+
-      apply simp
-      apply (rule stepped.intros(2))
-      apply (metis (mono_tags, lifting) W.code bc_base bc_sym)
-     done
-   done
+      done
+    done
   done
 
 lemma can_end_op1_spin_op[simp]:
@@ -449,14 +405,14 @@ lemma
     apply (subst (asm) spin_op.code)
     apply (subst (asm) W.code)
     apply (subst (asm) comp_op_code)
-    apply (auto simp add: diverged.intros split: if_splits)
+    apply (force simp add: diverged.intros split: if_splits)
     done
   subgoal
     unfolding pcomp_op_def
     apply (subst (asm) spin_op.code)
     apply (subst (asm) W.code)
     apply (subst (asm) comp_op_code)
-    apply (auto simp add: diverged.intros split: if_splits)
+    apply (force simp add: diverged.intros split: if_splits)
     done
   subgoal
     by auto
@@ -493,7 +449,10 @@ lemma
     apply (subst comp_op_code)
     apply (auto simp add: diverged.intros can_end_op2_None_can_end_iff)
       using diverged_can_end not_can_End_W apply blast
-      apply (smt (verit, del_insts) bc_base bc_sym cinsertI1 cinsert_not_cempty csingleton_iff diverged.intros diverged_is_spin_op spin_op_diverged stepped.intros(2) stepped.intros(3))
+      apply (intro conjI exI[of _ "comp_op (\<lambda>_. None) (\<lambda>_. BEnded) (Choice {|spin_op|}) W"] stepped.intros(3))
+        apply force
+       apply (rule stepped.intros(2))
+      apply (metis (mono_tags, lifting) bc_base bc_sym cinsert_not_cempty csingleton_iff diverged.intros diverged_is_spin_op spin_op_diverged)
       done
     done
   done
@@ -547,9 +506,6 @@ lemma
     subgoal
       apply (subst comp_op_code)
       apply auto
-      apply (rule stepped.intros(3))
-        apply (rule cinsertI1)
-       apply (rule stepped.intros(2))
       apply (rule stepped.intros(3))
         apply (rule cinsertI1)
        apply (rule stepped.intros(2))
@@ -608,7 +564,7 @@ lemma
   subgoal
     unfolding pcomp_op_def
     apply (subst (asm) (1 2) comp_op_code)
-    apply (simp add: diverged.intros)
+    apply (simp add: diverged.intros Set.filter_def diverged.intros)
     done
   subgoal
     unfolding pcomp_op_def sim_def
@@ -624,70 +580,132 @@ lemma
     done
   done
 
+lemma W_not_diverged[simp]:
+  "\<not> diverged W"
+  apply safe
+  apply (subst (asm) W.code)
+  apply (erule diverged.cases)
+  apply auto
+  done
 
-lemma
-  "diverged (map_op projl projr (comp_op Some buf W End))"
+lemma sink_op_not_diverged[simp]:
+  "\<not> diverged sink_op"
+  apply safe
+  apply (subst (asm) sink_op.code)
+  apply (erule diverged.cases)
+  apply auto
+  done
+
+lemma W_can_end_op1[simp]:
+  "can_end_op1 Some W"
+  apply coinduction
+  apply (rule disjI2)
+  apply (rule disjI1)
+  apply (subst W.code)
+  apply auto
+  done
+
+
+lemma sink_op_can_end_op2[simp]:
+  "can_end_op2 Some sink_op"
+    apply coinduction
+  apply (rule disjI2)
+  apply (rule disjI1)
+  apply (subst sink_op.code)
+  apply (auto simp add: ranI)
+  done
+
+lemma can_end_W_sink_op[simp]:
+  "can_end (comp_op Some buf W sink_op)"
   apply (coinduction arbitrary: buf)
-  subgoal for buf
-    apply (subst (1) W.code)
+  subgoal 
+    unfolding scomp_op_def
+    apply (rule disjI2)
     apply (subst (1) comp_op_code)
-  apply (auto split: if_splits option.splits)
-  
+    apply (auto 1 1 simp add: ranI split: if_splits option.splits)
+    subgoal
+    apply (intro exI conjI)
+      apply fast+
+      done
+    subgoal
+    apply (intro exI conjI)
+       apply fast+
+      done
+    done
+  done
 
-end
+lemma sink_op_not_can_end[simp]:
+  "\<not> can_end sink_op"
+  apply (subst sink_op.code)
+  apply auto
+  done
+
+lemma diverged_W_sink_op:
+  "diverged (comp_op Some buf W sink_op)"
+  apply (coinduction arbitrary: buf)
+  subgoal 
+    unfolding scomp_op_def
+    apply (subst (1) comp_op_code)
+    apply (auto 1 1 simp add: ranI split: if_splits option.splits)
+    done
+  done
+
+lemma dierged_map_op[simp]:
+  "diverged (map_op f g op) \<longleftrightarrow> diverged op"
+  apply (rule iffI)
+  subgoal
+    apply (coinduction arbitrary: op)
+    subgoal for op
+      apply (erule diverged.cases)
+      apply auto
+      apply (smt (verit, best) bot_cset.rep_eq can_end.simps can_end_map_op cimageE cimageI cin.rep_eq diverged_can_end empty_iff op.map(3) op.simps(3))
+      done
+    done
+  subgoal
+    apply (coinduction arbitrary: op)
+    subgoal for op
+      apply (erule diverged.cases)
+      apply auto
+      done
+    done
+  done
 
 lemma
   "bisim (scomp_op W sink_op) spin_op"
   unfolding scomp_op_def
   apply (coinduction rule: bisim_coinduct_upto)
   apply safe
-       apply simp_all
-  subgoal premises prems
-    using prems(2) apply -
-    apply (subst (asm) (1) W.code)
-    apply (subst (asm) (1) sink_op.code)
-    apply (subst (asm) (1) comp_op_code)
-    apply (auto split: if_splits)
-
-
-
-end
-
-    apply (intro exI conjI)
-      apply (rule stepped.intros(3))
-        apply (rule cinsertI1)+
-             apply (rule stepped.intros(2))
-      apply (simp add: diverged.intros)
-    apply (intro exI conjI)
-      apply (rule stepped.intros(3))
-        apply (rule cinsertI1)+
-             apply (rule stepped.intros(2))
-      using can_end_op2_None_can_end_iff not_can_End_W apply blast
-
-
-    find_theorems choices AW
-
-
-
-    find_theorems choices AW
-
-end
-
-lemma can_end_pcomp_op_Inr:
-  "can_end (pcomp_op op1 op2) \<Longrightarrow> can_end op2"
-  apply (coinduction arbitrary: op1 op2)
-  subgoal for op1 op2
-    apply auto
-    unfolding pcomp_op_def
-    apply (cases op1; cases op2)
-            apply (auto simp: choices_empty_diverged diverged_can_end can_end_op2_None_can_end_iff can_end_op1_None_can_end_iff cUNIV.rep_eq split: if_splits)
-           apply (metis (no_types, lifting) can_end.simps can_end_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)
-          apply (metis (no_types, lifting) can_end.simps can_end_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)
-         apply (metis (no_types, lifting) can_end.simps can_end_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)
-        apply (metis (no_types, lifting) can_end.simps can_end_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)
-       apply (metis (mono_tags, lifting) can_end_ReadE can_end_Write no_Choice_in_choices op.exhaust_sel op.split_sel)+
+  apply (simp_all add: diverged_W_sink_op)
+  subgoal
+    unfolding sim_def
+    apply safe
+    apply (meson dierged_map_op diverged_W_sink_op stepped_not_diverged)
+    done
+  subgoal
+    unfolding sim_def
+    apply safe
+    using stepped_spin_op_no_label apply blast
     done
   done
+
+
+
+lemma
+  "bisim (map_op projl projr (comp_op Some (\<lambda>_. BEmpty) op Id_op)) op"
+  apply (coinduction arbitrary: op rule: bisim_coinduct_upto)
+  subgoal for op
+    apply safe
+         apply simp_all
+
+
+
+end
+
+
+lemma
+  "bisim (scomp_op op Id_op) Id_op"
+  unfolding scomp_op_def
+
 
 lemma can_end_pcomp_op_Inl:
   "can_end (pcomp_op op1 op2) \<Longrightarrow> can_end op1"

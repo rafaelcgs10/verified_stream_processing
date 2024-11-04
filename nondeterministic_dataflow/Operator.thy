@@ -33,6 +33,12 @@ lift_definition cfilter :: "('a \<Rightarrow> bool) \<Rightarrow> 'a cset \<Righ
 end
 
 declare cBall.rep_eq[simp] cinsert.rep_eq[simp] bot_cset.rep_eq[simp] sup_cset.rep_eq[simp] cimage.rep_eq[simp] cUnion.rep_eq[simp] rel_cset.rep_eq[simp]
+ cfilter.rep_eq[simp]
+
+lemma cfilter_eq[simp]:
+  "cfilter P A = B \<longleftrightarrow>
+   Set.filter P (cset.rcset A) = (cset.rcset B)"
+  by (auto simp add: cin.rep_eq)
 
 
 section\<open>Channels\<close>
@@ -1052,6 +1058,24 @@ lemma Read_in_choices_stepped:
 lemma choices_spin_op[simp]:
   "choices spin_op = {||}"
   by (simp add: diverged_choices_empty)
+
+lemma choices_sink_op[simp]:
+  "choices sink_op = {|Read 1 (\<lambda> _. sink_op)|}"
+  unfolding choices_def
+  apply safe
+  subgoal premises prems for x n
+    using prems(2) apply -
+    apply (induct n)
+  apply (subst (asm) sink_op.code)
+     apply simp 
+    apply (subst (asm) (3) sink_op.code)
+    apply simp
+    done
+  subgoal for x
+    apply auto
+    apply (metis UNIV_witness cUNIV.rep_eq choices_at.simps(1) cin.rep_eq cinsertI1 sink_op.code)
+    done
+  done
 
 lemma Write_in_choices_stepped:
   "Write op' p x |\<in>| choices op \<Longrightarrow> stepped op (Out p x) op'"
