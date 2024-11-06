@@ -67,6 +67,7 @@ abbreviation "safe_choice2 f op1s op2s \<equiv> (if op1s = cempty \<and> op2s = 
   else if op1s = cempty then Choice (cimage (f End) op2s)
   else if op2s = cempty then Choice (cimage (\<lambda>op1. f op1 End) op1s)
   else Choice (cimage (case_prod f) (cproduct op1s op2s)))"
+abbreviation "choice1 op \<equiv> Choice (cimage (\<lambda>_. op) {|()|})"
 abbreviation "choice2 op1 op2 \<equiv> Choice (cimage (\<lambda>b. if b then op1 else op2) (cinsert True (csingle False)))"
 abbreviation "safe_read f x \<equiv> (case x of None \<Rightarrow> End | Some x \<Rightarrow> f x)"
 
@@ -321,6 +322,25 @@ lemma stepped_map_op:
   "stepped op io op' \<Longrightarrow>
    stepped (map_op f g op) (map_IO f g id io) (map_op f g op')"
   by (induct op io op' rule: stepped.induct) (force simp add:  observation.map_ident comp_def intro: stepped.intros)+
+
+lemma stepped_map_op_inv:
+  "stepped (map_op f g op) io op' \<Longrightarrow>
+   \<exists> io' op''. stepped op io' op'' \<and> io = map_IO f g id io' \<and> op' = map_op f g op''"
+  apply (induct "map_op f g op" io op' arbitrary: op rule: stepped.induct)
+    apply (auto intro: stepped.intros)
+  subgoal for p fa x op
+    apply (cases op)
+      apply (auto 10 10 simp add: observation.map_ident intro: stepped.intros)
+    done
+  subgoal for _ _ _ op
+    apply (cases op)
+      apply (auto 10 10 simp add: observation.map_ident intro: stepped.intros)
+    done
+  subgoal for op ops l op' opa
+    apply (cases opa)
+      apply (force simp add: cimage.rep_eq observation.map_ident intro: stepped.intros)+
+    done
+  done
 
 coinductive can_end where
   can_end_End[intro!]: "can_end End"
@@ -1070,6 +1090,23 @@ lemma Read_in_choices_stepped:
     done
   done
 
+lemma Read_in_choices_steppedEx:
+  "Read p f |\<in>| choices op \<Longrightarrow> \<exists> x. stepped op (Inp p x) (f x)"
+  unfolding choices_def
+  apply safe
+  subgoal for n
+    apply (induct n arbitrary: op)
+    subgoal for op
+      apply (cases op)
+        by (auto simp: bot_cset.rep_eq cinsert.rep_eq stepped.intros(1))
+    subgoal for n op
+      apply (cases op)
+        apply (auto simp: bot_cset.rep_eq cinsert.rep_eq stepped.intros(1))
+      apply (metis UNIV_I cUNIV.rep_eq cUN_E cin.rep_eq stepped.intros(3))
+      done
+    done
+  done
+
 lemma choices_spin_op[simp]:
   "choices spin_op = {||}"
   by (simp add: diverged_choices_empty)
@@ -1162,7 +1199,23 @@ lemma stepped_W_inv:
   subgoal
     by (subst (asm) W.code, auto intro: stepped.intros)
   done
-  
+
+lemma stepped_Id_op_inv:
+  "stepped op io op' \<Longrightarrow>
+   op = Id_op \<Longrightarrow>
+   (\<exists> x. io = Inp 1 EOS \<and> op' = Id_op) \<or> (\<exists> x. io = Inp 1 (Observed x) \<and> op' = Write Id_op 1 x)"
+  apply (induct op io op' rule: stepped.induct)
+  subgoal for p f x
+    apply (cases x)
+     apply (subst (asm) Id_op.code, auto intro: stepped.intros observation.splits)+
+    done
+  subgoal
+     apply (subst (asm) Id_op.code, auto intro: stepped.intros observation.splits)+
+    done
+  subgoal
+     apply (subst (asm) Id_op.code, auto intro: stepped.intros observation.splits)+
+    done
+  done
 
 (*
 corec Choices where
@@ -1956,6 +2009,31 @@ lemma extend_empty: "extend {} buf R = R"
   using arg_cong2[of x x "case_sum (f o Inl) (f o Inr)" f R for x f, unfolded o_def, OF refl surjective_sum]
   by (auto simp: extend_def o_def fun_eq_iff[of "extend _ _ _"] fun_eq_iff[of "extend _ _ _ _"]
       simp flip: fun_eq_iff split: sum.splits)
+
+datatype (discs_sels) ('m, 'd) id_op_aux =
+    id_Read_aux "'m" "'d observation \<Rightarrow> ('m \<Rightarrow> 'd buf)"
+  | id_Write_aux "('m \<Rightarrow> 'd buf)" "'m" 'd
+
+abbreviation eval_id_op_aux where
+  "eval_id_op_aux c aux \<equiv> (case aux of
+    id_Read_aux p f \<Rightarrow> Read p (\<lambda>y. let buf = f y in c buf)
+  | id_Write_aux buf q x \<Rightarrow> Write (c buf) q x)"
+
+corec id_op :: "_ \<Rightarrow> ('m :: enum, 'm, 'd) op" where
+  "id_op buf = Choice (cimage (eval_id_op_aux id_op) (cUn 
+    (cimage (\<lambda> p. id_Read_aux p (case_observation (\<lambda> x. (BENQ p x buf)) buf)) (acset (UNIV :: 'm set))) 
+    (cimage (\<lambda> p. id_Write_aux (BTL p buf) p ((obs o the) (BHD p buf))) (acset ({p \<in> UNIV :: 'm set. \<exists> x. BHD p buf = Some (Observed x)})))))"
+
+lemma id_op_code:
+  "id_op buf = Choice (cUn 
+    (cimage (\<lambda> p. Read p (case_observation (\<lambda> x. id_op (BENQ p x buf)) (id_op buf))) (acset (UNIV :: ('m::enum) set)))
+    (cimage (\<lambda> p. Write (id_op (BTL p buf)) p ((obs o the) (BHD p buf))) (acset ({p \<in> UNIV :: 'm set. \<exists> x. BHD p buf = Some (Observed x)}))))"
+  apply (subst id_op.code)
+  apply (unfold cimage_cUn op.inject)
+  apply (rule arg_cong2[where f = cUn])
+   apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
+      split: id_op_aux.splits observation.splits op.splits option.splits)
+  done
 
 section\<open>Well-typed\<close>
 

@@ -153,21 +153,21 @@ lemma comp_op_code: "comp_op wire buf op1 op2 =
 
 lemma comp_op_simps[simp]:
   "comp_op wire buf (Read p1 f1) (Read p2 f2) =
-    choice2 (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Read p2 f2)))
-     (if p2 \<in> ran wire then comp_op wire (buf(p2 := btl (buf p2))) (Read p1 f1) (safe_read f2 (BHD p2 buf))
-      else Read (Inr p2) (\<lambda>y. comp_op wire buf (Read p1 f1) (f2 y)))"
+    Choice (cinsert (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Read p2 f2)))
+     (if p2 \<in> ran wire then (if BHD p2 buf = None then cempty else csingle (comp_op wire (buf(p2 := btl (buf p2))) (Read p1 f1) (safe_read f2 (BHD p2 buf))))
+      else csingle (Read (Inr p2) (\<lambda>y. comp_op wire buf (Read p1 f1) (f2 y)))))"
   "comp_op wire buf (Read p1 f1) (Write op2 q2 x2) =
     choice2 (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Write op2 q2 x2))) (Write (comp_op wire buf (Read p1 f1) op2) (Inr q2) x2)"
   "comp_op wire buf (Read p1 f1) (Choice op2s) = 
-    Choice (cinsert (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Choice op2s))) (cimage
+    Choice (cUn (cinsert (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Choice op2s))) (cimage
        (case_op (\<lambda>p f. if p \<in> ran wire then comp_op wire (buf(p := btl (buf p))) (Read p1 f1) (safe_read f (BHD p buf)) else Read (Inr p) (\<lambda>x. comp_op wire buf (Read p1 f1) (f x)))
          (\<lambda>op p. Write (comp_op wire buf (Read p1 f1) op) (Inr p)) (\<lambda>a. undefined))
-       (cUnion (cimage choices op2s))))"
+       (sound_reads wire buf (cUnion (cimage choices op2s))))) (if can_end (Choice op2s) \<and> \<not> diverged (Choice op2s) then {|End|} else {||}))"
   "comp_op wire buf (Write op1 q1 x1) (Read p2 f2) =
-    Choice (cUn {| (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Read p2 f2)) (Inl q1) x1
-      | Some q \<Rightarrow> comp_op wire (buf(q := benq x1 (buf q))) op1 (Read p2 f2)),
-      (if p2 \<in> ran wire then comp_op wire (buf(p2 := btl (buf p2))) (Write op1 q1 x1) (safe_read f2 (BHD p2 buf))
-        else Read (Inr p2) (\<lambda>y. comp_op wire buf (Write op1 q1 x1) (f2 y))) |} (if can_end_op1 wire (Write op1 q1 x1) \<and> can_end_op2 wire (Read p2 f2) then {|End|} else {||}))"
+    Choice (cinsert (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Read p2 f2)) (Inl q1) x1
+      | Some q \<Rightarrow> comp_op wire (buf(q := benq x1 (buf q))) op1 (Read p2 f2))
+      (if p2 \<in> ran wire then (if BHD p2 buf = None then cempty else csingle (comp_op wire (buf(p2 := btl (buf p2))) (Write op1 q1 x1) (safe_read f2 (BHD p2 buf))))
+        else csingle (Read (Inr p2) (\<lambda>y. comp_op wire buf (Write op1 q1 x1) (f2 y)))))"
   "comp_op wire buf (Write op1 q1 x1) (Write op2 q2 x2) =
     choice2 (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Write op2 q2 x2)) (Inl q1) x1
       | Some q \<Rightarrow> comp_op wire (buf(q := benq x1 (buf q))) op1 (Write op2 q2 x2))
@@ -178,18 +178,18 @@ lemma comp_op_simps[simp]:
       (cimage
        (case_op (\<lambda>p f. if p \<in> ran wire then comp_op wire (buf(p := btl (buf p))) (Write op1 q1 x1) (safe_read f (BHD p buf)) else Read (Inr p) (\<lambda>x. comp_op wire buf (Write op1 q1 x1) (f x)))
          (\<lambda>op p. Write (comp_op wire buf (Write op1 q1 x1) op) (Inr p)) (\<lambda>a. undefined))
-       (cUnion (cimage choices op2s)))) (if can_end_op1 wire (Write op1 q1 x1) \<and> can_end_op2 wire (Choice op2s) then {|End|} else {||}))"
+       (sound_reads wire buf (cUnion (cimage choices op2s))))) (if can_end (Choice op2s) \<and> \<not> diverged (Choice op2s) then {|End|} else {||}))"
   "comp_op wire buf (Choice op1s) (Read p2 f2) =
-    Choice (cUn (cinsert (if p2 \<in> ran wire then comp_op wire (buf(p2 := btl (buf p2))) (Choice op1s) (safe_read f2 (BHD p2 buf))
-        else Read (Inr p2) (\<lambda>y. comp_op wire buf (Choice op1s) (f2 y))) (cimage
+    Choice (cUn (cUn (if p2 \<in> ran wire then (if BHD p2 buf = None then cempty else csingle (comp_op wire (buf(p2 := btl (buf p2))) (Choice op1s) (safe_read f2 (BHD p2 buf))))
+        else csingle (Read (Inr p2) (\<lambda>y. comp_op wire buf (Choice op1s) (f2 y)))) (cimage
        (case_op (\<lambda>p f. Read (Inl p) (\<lambda>x. comp_op wire buf (f x) (Read p2 f2)))
          (\<lambda>op p x. case wire p of None \<Rightarrow> Write (comp_op wire buf op (Read p2 f2)) (Inl p) x | Some q \<Rightarrow> comp_op wire (buf(q := benq x (buf q))) op (Read p2 f2)) (\<lambda>a. undefined))
-       (cUnion (cimage choices op1s)))) (if can_end_op1 wire (Choice op1s) \<and> can_end_op2 wire (Read p2 f2) then {|End|} else {||}))"
+       (cUnion (cimage choices op1s)))) (if can_end (Choice op1s) \<and> \<not> diverged (Choice op1s) then {|End|} else {||}))"
   "comp_op wire buf (Choice op1s) (Write op2 q2 x2) =
     Choice (cUn (cinsert (Write (comp_op wire buf (Choice op1s) op2) (Inr q2) x2) (cimage
        (case_op (\<lambda>p f. Read (Inl p) (\<lambda>x. comp_op wire buf (f x) (Write op2 q2 x2)))
          (\<lambda>op p x. case wire p of None \<Rightarrow> Write (comp_op wire buf op (Write op2 q2 x2)) (Inl p) x | Some q \<Rightarrow> comp_op wire (buf(q := benq x (buf q))) op (Write op2 q2 x2)) (\<lambda>a. undefined))
-       (cUnion (cimage choices op1s)))) (if can_end_op1 wire (Choice op1s) \<and> can_end_op2 wire (Write op2 q2 x2) then {|End|} else {||}))"
+       (cUnion (cimage choices op1s)))) (if can_end (Choice op1s) \<and> \<not> diverged (Choice op1s) then {|End|} else {||}))"
   "comp_op wire buf (Choice op1s) (Choice op2s) =
     Choice (cUn (cUn (cimage
              (case_op (\<lambda>p f. Read (Inl p) (\<lambda>x. comp_op wire buf (f x) (Choice op2s)))
@@ -203,8 +203,28 @@ lemma comp_op_simps[simp]:
             (\<lambda>p f. if p \<in> ran wire then comp_op wire (buf(p := btl (buf p))) (Choice op1s) (safe_read f (BHD p buf))
                    else Read (Inr p) (\<lambda>x. comp_op wire buf (Choice op1s) (f x)))
             (\<lambda>op p. Write (comp_op wire buf (Choice op1s) op) (Inr p)) (\<lambda>a. undefined))
-          (cUnion (cimage choices op2s)))) (if can_end_op1 wire (Choice op1s) \<and> can_end_op2 wire (Choice op2s) then {|End|} else {||}))"
-  oops
+          (sound_reads wire buf (cUnion (cimage choices op2s))))) (if diverged (Choice op1s) \<and> diverged (Choice op2s) then csingle spin_op else (if can_end (Choice op1s) \<and> \<not> diverged (Choice op1s) \<or> can_end (Choice op2s) \<and> \<not> diverged (Choice op2s)  then {|End|} else {||})))"
+          apply (subst comp_op_code, clarsimp simp add: image_iff)
+  subgoal
+    by (subst comp_op_code, auto simp add: image_iff)
+  subgoal
+    by (subst comp_op_code, auto simp add: image_iff Set.filter_def split: op.splits if_splits)
+  subgoal
+    by (subst comp_op_code, auto simp add: image_iff)
+  subgoal
+    by (subst comp_op_code, auto simp add: image_iff Set.filter_def split: op.splits if_splits)
+  subgoal
+    by (subst comp_op_code, auto simp add: image_iff)
+  subgoal
+    by (subst comp_op_code, auto simp add: image_iff)
+  subgoal
+    by (subst comp_op_code, auto simp add: image_iff Set.filter_def split: op.splits if_splits)
+  subgoal
+    by (subst comp_op_code, auto simp add: image_iff)
+  subgoal
+    by (subst comp_op_code, auto simp add: image_iff)
+  done
+
 
 definition "pcomp_op = comp_op (\<lambda>_. None) (\<lambda>_. BEnded)"
 definition "scomp_op op1 op2 = map_op projl projr (comp_op Some (\<lambda>_. BEmpty) op1 op2)"
@@ -243,8 +263,8 @@ lemma
   "bisim (map_op id (case_sum id id) (pcomp_op W AW)) AW"
   apply (coinduction rule: bisim_coinduct_upto)
   apply safe
-  apply simp
-  apply (metis can_end_Write can_end_map_op choices_AW choices_Write choices_empty_diverged choices_map_op diverged_can_end diverged_choices_empty)
+       apply simp
+      apply (metis can_end_Write can_end_map_op choices_AW choices_Write choices_empty_diverged choices_map_op diverged_can_end diverged_choices_empty)
   unfolding pcomp_op_def
   subgoal
     apply (subst W.code)
@@ -252,11 +272,11 @@ lemma
     apply (subst comp_op_code)
     apply (auto 0 0)
     subgoal
-    apply (subst (asm) AW.code)
+      apply (subst (asm) AW.code)
       apply auto
       done
     subgoal
-    apply (subst (asm) AW.code)
+      apply (subst (asm) AW.code)
       using can_end_op2_None_can_end_iff apply force
       done
     subgoal
@@ -267,7 +287,7 @@ lemma
       using can_end_AW can_end_op2_None_can_end_iff by blast
     done
   subgoal
-        apply (subst (asm) W.code)
+    apply (subst (asm) W.code)
     apply (subst (asm) (1 2 3) AW.code)
     apply (subst (asm) comp_op_code)
     apply (auto split: if_splits)
@@ -284,52 +304,52 @@ lemma
       apply simp
       apply (rule exI[of _ AW])
       apply auto
-        apply (rule stepped.intros(3))
+       apply (rule stepped.intros(3))
         apply (rule cinsertI2)
         apply (rule cinsertI1)    
        apply (rule stepped.intros(2))
       apply (smt (verit, del_insts) AW.code bc_base cimage_cinsert cimage_is_cempty)
       done
-  subgoal
+    subgoal
       apply (subst AW.code)
       apply simp
       apply (rule exI)
       apply auto
-        apply (rule stepped.intros(3))
+       apply (rule stepped.intros(3))
         apply (rule cinsertI2)
         apply (rule cinsertI1)    
-        apply (rule stepped.intros(2))
-    using W.code bc_base apply fastforce
-    done
- subgoal
+       apply (rule stepped.intros(2))
+      using W.code bc_base apply fastforce
+      done
+    subgoal
       apply (subst AW.code)
       apply simp
       apply (rule exI[of _ AW])
       apply (auto 0 0)
-        apply (rule stepped.intros(3))
+       apply (rule stepped.intros(3))
         apply (rule cinsertI2)
         apply (rule cinsertI1)    
        apply (rule stepped.intros(2))
       apply (smt (verit, del_insts) AW.code bc_base cimage_cinsert cimage_is_cempty)
       done
-  subgoal
+    subgoal
       apply (subst AW.code)
       apply simp
       apply (rule exI)
       apply (auto 0 0)
-        apply (rule stepped.intros(3))
+       apply (rule stepped.intros(3))
         apply (rule cinsertI2)
         apply (rule cinsertI1)    
-     apply (rule stepped.intros(2))
-    apply (smt (verit, ccfv_threshold) W.code bc_base)
+       apply (rule stepped.intros(2))
+      apply (smt (verit, ccfv_threshold) W.code bc_base)
+      done
+             apply auto
     done
-           apply auto
-  done
- subgoal
+  subgoal
     unfolding sim_def
     apply safe
     apply (drule stepped_AW_inv)
-    apply simp
+     apply simp
     apply (subst AW.code)
     apply (subst W.code)
     apply (subst comp_op_code)
@@ -337,51 +357,51 @@ lemma
     subgoal
       apply (rule exI[of _ "map_op id (case_sum id id) (comp_op (\<lambda>_. None) (\<lambda>_. BEnded) (Write W 1 42) AW)"])
       apply safe
-      apply (rule stepped.intros(3))
+       apply (rule stepped.intros(3))
         apply (rule cinsertI2)+
         apply simp
         apply force
-      apply (simp add: stepped.intros(2))
+       apply (simp add: stepped.intros(2))
       apply (metis (mono_tags, lifting) W.code bc_base bc_sym)
       done
     subgoal
       apply (rule exI[of _ "map_op id (case_sum id id) (comp_op (\<lambda>_. None) (\<lambda>_. BEnded) (Write W 1 42) AW)"])
       apply safe
-      apply (rule stepped.intros(3))
+       apply (rule stepped.intros(3))
         apply (rule cinsertI2)+
         apply simp
         apply force
-      apply (simp add: stepped.intros(2))
+       apply (simp add: stepped.intros(2))
       apply (metis (mono_tags, lifting) W.code bc_base bc_sym)
       done
     subgoal
       apply (rule exI[of _ "map_op id (case_sum id id) (comp_op (\<lambda>_. None) (\<lambda>_. BEnded) (Write W 1 42) AW)"])
       apply safe
-      apply (rule stepped.intros(3))
+       apply (rule stepped.intros(3))
         apply (rule cinsertI2)+
         apply simp
         apply force
-      apply (simp add: stepped.intros(2))
+       apply (simp add: stepped.intros(2))
       apply (metis (mono_tags, lifting) W.code bc_base bc_sym)
       done
     subgoal
       apply (rule exI[of _ "map_op id (case_sum id id) (comp_op (\<lambda>_. None) (\<lambda>_. BEnded) (Write W 1 42) AW)"])
       apply safe
-      apply (rule stepped.intros(3))
+       apply (rule stepped.intros(3))
         apply (rule cinsertI2)+
         apply simp
         apply force
-      apply (simp add: stepped.intros(2))
+       apply (simp add: stepped.intros(2))
       apply (metis (mono_tags, lifting) W.code bc_base bc_sym)
       done
     subgoal
       apply (rule exI[of _ "map_op id (case_sum id id) (comp_op (\<lambda>_. None) (\<lambda>_. BEnded) (Write W 1 42) AW)"])
       apply safe
-      apply (rule stepped.intros(3))
+       apply (rule stepped.intros(3))
         apply (rule cinsertI2)+
         apply simp
         apply force
-      apply (simp add: stepped.intros(2))
+       apply (simp add: stepped.intros(2))
       apply (metis (mono_tags, lifting) W.code bc_base bc_sym)
       done
     done
@@ -391,7 +411,7 @@ lemma can_end_op1_spin_op[simp]:
   "can_end_op1 wire spin_op"
   apply (coinduction )
   apply (rule disjI2)+
-    apply (subst spin_op.code)
+  apply (subst spin_op.code)
   apply (auto 2 1 simp add: diverged.intros diverged_can_end_op1 diverged.intros)
   done
 
@@ -399,7 +419,7 @@ lemma
   "bisim (pcomp_op spin_op W) (map_op Inr Inr W)"
   apply (coinduction rule: bisim_coinduct_upto)
   apply safe
-  apply simp
+       apply simp
   subgoal
     unfolding pcomp_op_def
     apply (subst (asm) spin_op.code)
@@ -421,33 +441,33 @@ lemma
   subgoal
     unfolding sim_def
     apply safe
-        unfolding pcomp_op_def
+    unfolding pcomp_op_def
     apply (subst (asm) spin_op.code)
     apply (subst (asm) W.code)
     apply (subst (asm) comp_op_code)
-        apply (auto simp add: diverged.intros split: if_splits)
-        apply (rule exI[of _ "map_op Inr Inr W"])
-        apply (subst W.code)
-        apply (auto intro: stepped.intros)
-        apply (metis (mono_tags, lifting) bc_base cinsert_not_cempty csingleton_iff diverged.intros diverged_is_spin_op spin_op_diverged)
-        done
-      subgoal
+    apply (auto simp add: diverged.intros split: if_splits)
+    apply (rule exI[of _ "map_op Inr Inr W"])
+    apply (subst W.code)
+    apply (auto intro: stepped.intros)
+    apply (metis (mono_tags, lifting) bc_base cinsert_not_cempty csingleton_iff diverged.intros diverged_is_spin_op spin_op_diverged)
+    done
+  subgoal
     unfolding sim_def
     apply safe
     unfolding pcomp_op_def
     subgoal for l s'
       apply (subgoal_tac "l = Out (Inr 1) 42")
-      defer
+       defer
       subgoal
         by (metis (mono_tags, opaque_lifting) W.code op.simps(26) steppedWriteE)
       apply (subgoal_tac "s' = map_op Inr Inr W")
-      defer
+       defer
       subgoal
         by (metis W.code op.simps(26) steppedWriteE)
-    apply auto
-    apply (subst spin_op.code)
-    apply (subst comp_op_code)
-    apply (auto simp add: diverged.intros can_end_op2_None_can_end_iff)
+      apply auto
+      apply (subst spin_op.code)
+      apply (subst comp_op_code)
+      apply (auto simp add: diverged.intros can_end_op2_None_can_end_iff)
       using diverged_can_end not_can_End_W apply blast
       apply (intro conjI exI[of _ "comp_op (\<lambda>_. None) (\<lambda>_. BEnded) (Choice {|spin_op|}) W"] stepped.intros(3))
         apply force
@@ -461,20 +481,20 @@ lemma
   "bisim (map_op id (case_sum id id) (pcomp_op W End)) AW"
   apply (coinduction rule: bisim_coinduct_upto)
   apply safe
-  apply simp
-  apply (metis can_end_Write can_end_map_op choices_AW choices_Write choices_empty_diverged choices_map_op diverged_can_end diverged_choices_empty)
+       apply simp
+      apply (metis can_end_Write can_end_map_op choices_AW choices_Write choices_empty_diverged choices_map_op diverged_can_end diverged_choices_empty)
   unfolding pcomp_op_def
   subgoal
     apply (subst W.code)
     apply (subst comp_op_code)
     apply (auto 0 0)
     subgoal
-    apply (subst (asm) AW.code)
+      apply (subst (asm) AW.code)
       apply auto
       done
     done
   subgoal
-        apply (subst (asm) W.code)
+    apply (subst (asm) W.code)
     apply (subst (asm) comp_op_code)
     apply (auto split: if_splits)
     done
@@ -489,26 +509,26 @@ lemma
       apply simp
       apply (rule exI[of _ AW])
       apply auto
-        apply (rule stepped.intros(3))
+       apply (rule stepped.intros(3))
         apply (rule cinsertI2)
         apply (rule cinsertI1)    
        apply (rule stepped.intros(2))
       apply (smt (verit, del_insts) AW.code bc_base cimage_cinsert cimage_is_cempty)
       done
     done
- subgoal
+  subgoal
     unfolding sim_def
     apply safe
     apply (frule stepped_AW_inv)
-    apply simp
-      apply (rule exI[of _ "map_op id (case_sum id id) (comp_op (\<lambda>_. None) (\<lambda>_. BEnded) W End)"])
+     apply simp
+    apply (rule exI[of _ "map_op id (case_sum id id) (comp_op (\<lambda>_. None) (\<lambda>_. BEnded) W End)"])
     apply safe
     subgoal
       apply (subst comp_op_code)
       apply auto
       apply (rule stepped.intros(3))
-        apply (rule cinsertI1)
-       apply (rule stepped.intros(2))
+       apply (rule cinsertI1)
+      apply (rule stepped.intros(2))
       done
     subgoal
       by (simp add: bc_base bc_sym)
@@ -520,7 +540,7 @@ lemma
   "bisim (pcomp_op spin_op End) (map_op Inr Inr End)"
   apply (coinduction rule: bisim_coinduct_upto)
   apply safe
-  apply simp
+       apply simp
   subgoal
     unfolding pcomp_op_def
     apply (subst (asm) spin_op.code)
@@ -542,12 +562,12 @@ lemma
   subgoal
     unfolding sim_def
     apply safe
-        unfolding pcomp_op_def
+    unfolding pcomp_op_def
     apply (subst (asm) spin_op.code)
     apply (subst (asm) comp_op_code)
-        apply (auto simp add: diverged.intros split: if_splits)
-        done
-      subgoal
+    apply (auto simp add: diverged.intros split: if_splits)
+    done
+  subgoal
     unfolding sim_def
     apply safe
     unfolding pcomp_op_def
@@ -608,7 +628,7 @@ lemma W_can_end_op1[simp]:
 
 lemma sink_op_can_end_op2[simp]:
   "can_end_op2 Some sink_op"
-    apply coinduction
+  apply coinduction
   apply (rule disjI2)
   apply (rule disjI1)
   apply (subst sink_op.code)
@@ -624,11 +644,11 @@ lemma can_end_W_sink_op[simp]:
     apply (subst (1) comp_op_code)
     apply (auto 1 1 simp add: ranI split: if_splits option.splits)
     subgoal
-    apply (intro exI conjI)
-      apply fast+
+      apply (intro exI conjI)
+       apply fast+
       done
     subgoal
-    apply (intro exI conjI)
+      apply (intro exI conjI)
        apply fast+
       done
     done
@@ -675,7 +695,7 @@ lemma
   unfolding scomp_op_def
   apply (coinduction rule: bisim_coinduct_upto)
   apply safe
-  apply (simp_all add: diverged_W_sink_op)
+       apply (simp_all add: diverged_W_sink_op)
   subgoal
     unfolding sim_def
     apply safe
@@ -688,34 +708,563 @@ lemma
     done
   done
 
-lemma
+lemma scomp_op_W_Id_can_end:
   "can_end (comp_op Some buf W Id_op)"
   apply (coinduction arbitrary: buf)
   subgoal for buf
     apply (rule disjI2)
     apply (intro conjI exI disjI1)
-  apply (subst comp_op_code)
+      apply (subst comp_op_code)
       apply auto
     done
   done
 
+lemma diverged_AW_False:
+  "diverged AW \<Longrightarrow> False"
+  apply (subst (asm) AW.code)
+  apply (erule diverged.cases)
+  apply auto
+  done
+
+lemma scomp_op_AW_Id_can_end:
+  "can_end (comp_op Some buf AW Id_op)"
+  apply (coinduction arbitrary: buf)
+  subgoal for buf
+    apply (rule disjI2)
+    apply (intro conjI exI disjI1)
+      apply (subst comp_op_code)
+      apply auto
+    done
+  done
+
+lemma diverged_comp_op_Some_AW_Id_op_False:
+  "diverged (comp_op Some (\<lambda>_. BEmpty) AW Id_op) \<Longrightarrow> False"
+  apply (subst (asm) comp_op_code)
+  apply (erule diverged.cases)
+  apply (auto 1 1 split: if_splits)
+  using diverged_AW_False apply blast+
+  done
+
+
+inductive comp_op_inv for wire io where
+  "stepped op1 (Inp p x) op1' \<Longrightarrow> io = Inp (Inl p) x \<Longrightarrow> comp_op_inv wire io (comp_op wire buf op1' op2) buf op1 op2"
+| "stepped op2 (Out p x) op2' \<Longrightarrow> io = Out (Inr p) x \<Longrightarrow> comp_op_inv wire io (comp_op wire buf op1 op2') buf op1 op2"
+| "stepped op1 (Out p x) op1' \<Longrightarrow> p \<notin> dom wire \<Longrightarrow> io = Out (Inl p) x \<Longrightarrow> comp_op_inv wire io (comp_op wire buf op1' op2) buf op1 op2"
+| "stepped op2 (Inp p x) op2' \<Longrightarrow> p \<notin> ran wire \<Longrightarrow> io = Inp (Inr p) x \<Longrightarrow> comp_op_inv wire io (comp_op wire buf op1 op2') buf op1 op2"
+| "comp_op_inv wire io op (BENQ q x buf) op1' op2 \<Longrightarrow> stepped op1 (Out p x) op1' \<Longrightarrow> wire p = Some q \<Longrightarrow> comp_op_inv wire io op buf op1 op2"
+| "comp_op_inv wire io op (BTL p buf) op1 op2' \<Longrightarrow> BHD p buf = Some x \<Longrightarrow> stepped op2 (Inp p x) op2' \<Longrightarrow> p \<in> ran wire \<Longrightarrow> comp_op_inv wire io op buf op1 op2"
+  (* | "comp_op_inv wire io op (BTL p buf) op1 End \<Longrightarrow> BHD p buf = None \<Longrightarrow> p \<in> ran wire \<Longrightarrow> comp_op_inv wire io op buf op1 op2"
+ *)
+
+lemma stepped_comp_op_inv:
+  "stepped (comp_op wire buf op1 op2) io op \<Longrightarrow>
+   comp_op_inv wire io op buf op1 op2"
+  apply (induct "comp_op wire buf op1 op2" io op arbitrary: op1 op2 buf rule: stepped.induct)
+  subgoal for p f x op1 op2 buf
+    apply (cases op1; cases op2)
+            apply auto
+    done
+  subgoal for op q x op1 op2 buf
+    apply (cases op1; cases op2)
+            apply auto
+    done
+  subgoal for op ops l op' op1 op2 buf
+    apply (cases op1; cases op2)
+    subgoal
+      apply hypsubst_thin
+      apply (auto split: option.splits if_splits intro: comp_op_inv.intros stepped.intros)
+      done
+    subgoal
+      by (auto split: if_splits intro: comp_op_inv.intros stepped.intros)
+    subgoal for p f ops
+      apply hypsubst_thin
+      apply (clarsimp split: op.splits if_splits)
+      subgoal
+        apply (auto 1 1 split: op.splits if_splits; hypsubst_thin)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        done
+      subgoal
+        apply (auto 1 1 split: op.splits if_splits; hypsubst_thin)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        done
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (auto split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+      done 
+    subgoal
+      apply hypsubst_thin
+      apply (auto split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (clarsimp split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+      subgoal
+        apply (auto 1 1 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        done
+      subgoal
+        apply (auto 1 1 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        done
+      subgoal
+        apply (auto 1 1 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        done
+      subgoal
+        apply (auto 1 1 split: option.splits op.splits if_splits)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        done
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (clarsimp split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+      subgoal
+        apply (auto 1 1 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        done
+      subgoal
+        by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+      subgoal
+        apply (auto 1 1 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        done
+      subgoal
+        by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+      subgoal
+        by (auto 1 1 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+      subgoal
+        apply (auto 1 1 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        done
+      subgoal
+        apply (auto 1 1 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        done
+      subgoal
+        apply (auto 1 1 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        done
+      subgoal
+        apply (auto 1 1 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        done
+      subgoal
+        apply (auto 1 1 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        done
+      subgoal
+        apply (auto 1 1 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        done
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (clarsimp split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+      subgoal
+        apply (auto 1 1 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        done
+      subgoal
+        apply (auto 1 1 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        done
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (clarsimp split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+      subgoal
+        apply (auto 0 0 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros; hypsubst_thin)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          by (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)
+        subgoal
+          using stepped_spin_op_no_label by blast
+        done
+      subgoal
+        apply (auto 0 0 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros dest: stepped_spin_op_no_label; hypsubst_thin)
+                            apply (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)+
+        done
+      subgoal
+        apply safe
+        subgoal
+          apply (auto split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros dest: stepped_spin_op_no_label; hypsubst_thin)
+            apply (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)+
+          done
+        subgoal
+          apply (auto 1 1 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros dest: stepped_spin_op_no_label; hypsubst_thin)
+            apply (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)+
+          done
+        subgoal
+          apply (auto 1 1 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros dest: stepped_spin_op_no_label; hypsubst_thin)
+            apply (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)+
+          done
+        subgoal
+          apply (auto 1 1 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros dest: stepped_spin_op_no_label; hypsubst_thin)
+            apply (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)+
+          done
+        subgoal
+          apply (auto 1 1 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros dest: stepped_spin_op_no_label; hypsubst_thin)
+            apply (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)+
+          done
+        subgoal for x
+          apply (cases x)
+          subgoal
+            apply (simp split: if_splits)
+            subgoal
+              by (metis Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(6) option.simps(5) stepped.intros(3))
+            subgoal
+              by (smt (verit) Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(4) stepped.simps steppedReadE)
+            done
+          subgoal
+            apply (simp split: if_splits)
+            by (metis Write_in_choices_stepped cin.rep_eq comp_op_inv.intros(2) stepped.intros(3) steppedWriteE)
+          subgoal
+            apply (auto split: if_splits)
+            done
+          done
+        subgoal
+          apply (auto 1 1 split: option.splits op.splits if_splits intro: comp_op_inv.intros intro!: stepped.intros dest: stepped_spin_op_no_label; hypsubst_thin)
+             apply (metis Write_in_choices_stepped domIff Read_in_choices_stepped cin.rep_eq comp_op_inv.intros stepped.simps)+
+          done
+        subgoal for x
+          apply (cases x)
+          subgoal
+            apply (simp split: if_splits)
+            subgoal
+              by (metis Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(6) option.simps(5) stepped.intros(3))
+            subgoal
+              by (smt (verit) Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(4) stepped.simps steppedReadE)
+            done
+          subgoal
+            apply (simp split: if_splits)
+            by (metis Write_in_choices_stepped cin.rep_eq comp_op_inv.intros(2) stepped.intros(3) steppedWriteE)
+          subgoal
+            apply (auto split: if_splits)
+            done
+          done
+        subgoal for x
+          apply (cases x)
+          subgoal
+            apply (simp split: if_splits)
+            subgoal
+              by (metis Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(6) option.simps(5) stepped.intros(3))
+            subgoal
+              by (smt (verit) Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(4) stepped.simps steppedReadE)
+            done
+          subgoal
+            apply (simp split: if_splits)
+            by (metis Write_in_choices_stepped cin.rep_eq comp_op_inv.intros(2) stepped.intros(3) steppedWriteE)
+          subgoal
+            apply (auto split: if_splits)
+            done
+          done
+        subgoal for x
+          apply (cases x)
+          subgoal
+            apply (simp split: if_splits)
+            subgoal
+              by (metis Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(6) option.simps(5) stepped.intros(3))
+            subgoal
+              by (smt (verit) Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(4) stepped.simps steppedReadE)
+            done
+          subgoal
+            apply (simp split: if_splits)
+            by (metis Write_in_choices_stepped cin.rep_eq comp_op_inv.intros(2) stepped.intros(3) steppedWriteE)
+          subgoal
+            apply (auto split: if_splits)
+            done
+          done
+        done
+      done
+    done
+  done
+
+(* FIXME: move me *)
+lemma set_buf_benq[simp]:
+  "set_buf (benq x xs) = insert x (set_buf xs)"
+  apply (induct x xs rule: benq.induct)
+    apply auto
+  done
+
+lemma comp_op_inv_Sone_AW_Write:
+  "comp_op_inv Some io op buf op1 op2 \<Longrightarrow>
+   op1 = AW \<Longrightarrow>
+   op2 = Write Id_op p x \<Longrightarrow>
+   io = Out (Inr p) x \<and> (\<exists> buf'. op = comp_op Some buf' op1 Id_op)"
+    apply (induct op buf op1 op2 rule: comp_op_inv.induct)
+    subgoal
+      using stepped_AW_inv by blast
+    subgoal
+      by fastforce
+    subgoal
+      by blast
+    subgoal
+      by (simp add: ranI)
+    subgoal
+      apply (auto simp add: ranI split: if_splits)
+      apply (frule stepped_AW_inv)
+        apply auto
+      using stepped_AW_inv apply blast
+      done
+    subgoal
+      apply (auto simp add: ranI split: if_splits)
+      done
+    done
+
+lemma stepped_comp_op_Some_AW_Id_op:
+  "stepped (comp_op Some buf op1 op2) io op \<Longrightarrow>
+   op1 = AW \<Longrightarrow>
+   op2 = Id_op \<or> op2 = Write Id_op 1 42 \<Longrightarrow>
+   (\<forall> x. x \<in> buf.set_buf (buf 1) \<longrightarrow> x = 42) \<Longrightarrow>
+   io = Out (Inr 1) 42 \<and> (\<exists> buf'. op' = comp_op Some buf' op1 Id_op)"
+  apply (drule stepped_comp_op_inv)
+  subgoal 
+    apply (rotate_tac 3)
+    apply (induct op buf op1 op2 rule: comp_op_inv.induct)
+    subgoal
+      using stepped_AW_inv by blast
+    subgoal
+      apply auto
+        apply (metis IO.simps(4) Id_op.code steppedReadE)
+       apply (metis IO.distinct(1) Id_op.code steppedReadE)
+      oops
+(*
+    subgoal
+      by blast
+    subgoal
+      by (simp add: ranI)
+    subgoal
+      apply (auto simp add: ranI split: if_splits)
+      apply (drule stepped_AW_inv)
+       apply auto
+      apply hypsubst_thin
+      apply (drule meta_mp)
+      subgoal
+        apply auto
+        apply (metis (full_types) num1_eq1)
+        done
+       apply auto
+      using stepped_AW_inv apply blast
+      done
+    subgoal for op p buf op1 op2' x op2
+      apply (subgoal_tac "p = 1")
+      apply hypsubst_thin
+      apply (frule stepped_Id_op_inv)
+      apply simp
+       apply auto
+      apply (metis bhd.elims btl.simps(2) num1_eq1 observation.simps(3) option.discI option.inject)
+      apply (drule comp_op_inv_Sone_AW_Write[where p=1])
+        apply auto
+      apply (metis bhd.elims bhd.simps(2) buf.set_intros(1) observation.distinct(1) observation.simps(1) option.inject option.simps(3))
+      done
+    done
+  done
+
 lemma
-  "bisim (map_op projl projr (comp_op Some (\<lambda>_. BEmpty) W Id_op)) W"
+  "bisim (map_op projl projr (comp_op Some (\<lambda>_. BEmpty) AW Id_op)) AW"
   apply (coinduction rule: bisim_coinduct_upto)
   subgoal
-    apply safe
-         apply simp_all
+    apply (auto simp add: diverged_AW_False scomp_op_AW_Id_can_end dest: diverged_AW_False diverged_comp_op_Some_AW_Id_op_False)
+    subgoal
+      unfolding sim_def
+      apply safe
+      oops*)
+(*
+TODO: add definition to can_end and not diverged
+*)
 
+inductive can_input for R p where
+  "(\<forall> op \<in> range (f o Observed). R op) \<Longrightarrow> can_input R p (Read p f)"
+| "can_input R p op \<Longrightarrow> can_input R p (Write op p' x)"
+| "(\<forall> op \<in> range f. can_input R p op) \<Longrightarrow> p \<noteq> p' \<Longrightarrow> can_input R p (Read p' f)"
+| "op |\<in>| ops \<Longrightarrow> can_input R p op \<Longrightarrow> can_input R p (Choice ops)"
 
+lemma uses_input_mono[mono]: "R \<le> S \<Longrightarrow> can_input R \<le> can_input S"
+  apply safe
+  subgoal for p op
+    apply (rotate_tac )
+    apply (induct op rule: can_input.induct)
+       apply (auto 4 4 intro: can_input.intros)
+    done
+  done
 
-
-end
+coinductive sticky_input for p where
+ "can_input (sticky_input p) p op \<Longrightarrow> sticky_input p op"
 
 lemma
-  "bisim (scomp_op op Id_op) Id_op"
+  "bisim (scomp_op Id_op op) op"
   unfolding scomp_op_def
 
 
+end
 lemma can_end_pcomp_op_Inl:
   "can_end (pcomp_op op1 op2) \<Longrightarrow> can_end op1"
   apply (coinduction arbitrary: op1 op2)
@@ -942,25 +1491,6 @@ lemma stepped_pcomp_op_R:
      apply (rule cimage_eqI)
       apply (rule refl)
      apply (auto simp add: cinsert.rep_eq sup_cset.rep_eq cimage.rep_eq cUnion.rep_eq bot_cset.rep_eq image_iff intro: stepped.intros) [2]
-    done
-  done
-
-lemma stepped_map_op_inv:
-  "stepped (map_op f g op) io op' \<Longrightarrow>
-   \<exists> io' op''. stepped op io' op'' \<and> io = map_IO f g id io' \<and> op' = map_op f g op''"
-  apply (induct "map_op f g op" io op' arbitrary: op rule: stepped.induct)
-    apply (auto intro: stepped.intros)
-  subgoal for p fa x op
-    apply (cases op)
-      apply (auto 10 10 simp add: observation.map_ident intro: stepped.intros)
-    done
-  subgoal for _ _ _ op
-    apply (cases op)
-      apply (auto 10 10 simp add: observation.map_ident intro: stepped.intros)
-    done
-  subgoal for op ops l op' opa
-    apply (cases opa)
-      apply (force simp add: cimage.rep_eq observation.map_ident intro: stepped.intros)+
     done
   done
 
@@ -2123,15 +2653,6 @@ lemma can_end_op_1_no_reads:
     done
   done
 
-inductive comp_op_inv for wire io where
-  "stepped op1 (Inp p x) op1' \<Longrightarrow> io = Inp (Inl p) x \<Longrightarrow> comp_op_inv wire io (comp_op wire buf op1' op2) buf op1 op2"
-| "stepped op2 (Out p x) op2' \<Longrightarrow> io = Out (Inr p) x \<Longrightarrow> comp_op_inv wire io (comp_op wire buf op1 op2') buf op1 op2"
-| "stepped op1 (Out p x) op1' \<Longrightarrow> p \<notin> dom wire \<Longrightarrow> io = Out (Inl p) x \<Longrightarrow> comp_op_inv wire io (comp_op wire buf op1' op2) buf op1 op2"
-| "stepped op2 (Inp p x) op2' \<Longrightarrow> p \<notin> ran wire \<Longrightarrow> io = Inp (Inr p) x \<Longrightarrow> comp_op_inv wire io (comp_op wire buf op1 op2') buf op1 op2"
-| "comp_op_inv wire io op (BENQ q x buf) op1' op2 \<Longrightarrow> stepped op1 (Out p x) op1' \<Longrightarrow> wire p = Some q \<Longrightarrow> comp_op_inv wire io op buf op1 op2"
-| "comp_op_inv wire io op (BTL p buf) op1 op2' \<Longrightarrow> BHD p buf = Some x \<Longrightarrow> stepped op2 (Inp p x) op2' \<Longrightarrow> p \<in> ran wire \<Longrightarrow> comp_op_inv wire io op buf op1 op2"
-| "comp_op_inv wire io op (BTL p buf) op1 End \<Longrightarrow> BHD p buf = None \<Longrightarrow> p \<in> ran wire \<Longrightarrow> comp_op_inv wire io op buf op1 op2"
-
 
 lemma stepped_comp_op_L:
   "stepped op1 io op1' \<Longrightarrow>
@@ -2223,395 +2744,6 @@ lemma stepped_comp_op_R:
      apply (rule cimage_eqI)
       apply (rule refl)
      apply (auto simp add: cinsert.rep_eq sup_cset.rep_eq cimage.rep_eq cUnion.rep_eq bot_cset.rep_eq image_iff intro: stepped.intros) [2]
-    done
-  done
-
-lemma stepped_comp_op_inv:
-  "stepped (comp_op wire buf op1 op2) io op \<Longrightarrow>
-   comp_op_inv wire io op buf op1 op2"
-  apply (induct "comp_op wire buf op1 op2" io op arbitrary: op1 op2 buf rule: stepped.induct)
-  subgoal for p f x op1 op2 buf
-    apply (cases op1; cases op2)
-            apply auto
-    done
-  subgoal for op q x op1 op2 buf
-    apply (cases op1; cases op2)
-            apply auto
-    done
-  subgoal for op ops l op' op1 op2 buf
-    apply (cases op1; cases op2)
-    subgoal
-      apply hypsubst_thin
-      apply (auto split: option.splits if_splits intro: comp_op_inv.intros stepped.intros)
-      apply (meson comp_op_inv.intros(1) comp_op_inv.intros(7) stepped.intros(1))
-      done
-    subgoal
-      by (auto split: if_splits intro: comp_op_inv.intros stepped.intros)
-    subgoal for p f ops
-      apply hypsubst_thin
-      apply (auto split: op.splits if_splits intro: comp_op_inv.intros stepped.intros)
-         apply hypsubst_thin
-      subgoal for a p2 f2
-        apply (auto split: option.splits if_splits intro: comp_op_inv.intros stepped.intros)
-      apply (meson comp_op_inv.intros(1) comp_op_inv.intros(7) stepped.intros(1))
-        apply (metis Read_in_choices_stepped cin.rep_eq comp_op_inv.intros option.simps(5) stepped.intros(3))
-        done
-      subgoal
-        by (meson Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(4) stepped.intros(3))
-      subgoal
-        by (meson Write_in_choices_stepped cin.rep_eq comp_op_inv.intros(2) stepped.intros(3))
-      done
-    subgoal for op1' p1 x p2 f
-      apply (cases "wire p1")
-      subgoal
-        apply (auto 1 1 split: option.splits if_splits intro: comp_op_inv.intros stepped.intros)
-                       apply (meson comp_op_inv.intros(3) domIff stepped.intros(2))
-                      apply (meson comp_op_inv.intros(3) domIff stepped.intros(2))
-                     apply (meson comp_op_inv.intros(3) comp_op_inv.intros(7) domIff stepped.intros(2))
-                    apply (meson comp_op_inv.intros(3) comp_op_inv.intros(7) domIff stepped.intros(2))
-                   apply (meson comp_op_inv.intros(3) comp_op_inv.intros(7) domIff stepped.intros(2))
-                  apply (meson comp_op_inv.intros(3) comp_op_inv.intros(7) domIff stepped.intros(2))
-                 apply (meson comp_op_inv.intros(4) stepped.intros(1))
-                apply (meson comp_op_inv.intros(4) stepped.intros(1))
-               apply (meson comp_op_inv.intros(3) comp_op_inv.intros(7) domIff stepped.intros(2))
-              apply (meson comp_op_inv.intros(3) comp_op_inv.intros(7) domIff stepped.intros(2))
-             apply (metis comp_op_inv.intros(6) stepped.intros(1))
-            apply (metis comp_op_inv.intros(6) stepped.intros(1))
-           apply (meson comp_op_inv.intros(3) comp_op_inv.intros(7) domIff stepped.intros(2))
-          apply (meson comp_op_inv.intros(3) comp_op_inv.intros(7) domIff stepped.intros(2))
-         apply (meson comp_op_inv.intros(4) stepped.intros(1))
-        apply (meson comp_op_inv.intros(4) stepped.intros(1))
-        done
-      subgoal
-        apply (auto split: if_splits intro: comp_op_inv.intros stepped.intros)
-        subgoal
-          apply (auto split: option.splits if_splits intro: comp_op_inv.intros stepped.intros)
-          subgoal
-            apply (drule meta_spec[of _ "Write op1' p1 x"])
-            apply (drule meta_spec[of _ End])
-            apply (drule meta_spec[of _ "BTL p2 buf"])
-            apply (drule meta_mp)
-             apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-            done
-          subgoal
-            apply (drule meta_spec[of _ "Write op1' p1 x"])
-            apply (drule meta_spec[of _ End])
-            apply (drule meta_spec[of _ "BTL p2 buf"])
-            apply (drule meta_mp)
-             apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-            done
-          done
-        subgoal
-          apply (auto split: option.splits if_splits intro: comp_op_inv.intros stepped.intros)
-          subgoal
-            apply (drule meta_spec[of _ "Write op1' p1 x"])
-            apply (drule meta_spec[of _ End])
-            apply (drule meta_spec[of _ "BTL p2 buf"])
-            apply (drule meta_mp)
-             apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-            done
-          subgoal
-            apply (drule meta_spec[of _ "Write op1' p1 x"])
-            apply (drule meta_spec[of _ End])
-            apply (drule meta_spec[of _ "BTL p2 buf"])
-            apply (drule meta_mp)
-             apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-            done
-          done
-        subgoal
-          apply (auto split: option.splits if_splits intro: comp_op_inv.intros stepped.intros)
-          subgoal
-            apply (drule meta_spec[of _ "Write op1' p1 x"])
-            apply (drule meta_spec[of _ End])
-            apply (drule meta_spec[of _ "BTL p2 buf"])
-            apply (drule meta_mp)
-             apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-            done
-          subgoal
-            apply (drule meta_spec[of _ "Write op1' p1 x"])
-            apply (drule meta_spec[of _ End])
-            apply (drule meta_spec[of _ "BTL p2 buf"])
-            apply (drule meta_mp)
-             apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-            done
-          subgoal
-            apply (drule meta_spec[of _ "Write op1' p1 x"])
-            apply (drule meta_spec[of _ End])
-            apply (drule meta_spec[of _ "BTL p2 buf"])
-            apply (drule meta_mp)
-             apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-            done
-          subgoal
-            apply (drule meta_spec[of _ "Write op1' p1 x"])
-            apply (drule meta_spec[of _ End])
-            apply (drule meta_spec[of _ "BTL p2 buf"])
-            apply (drule meta_mp)
-             apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-            done
-          done
-        done
-      done
-    subgoal
-      by (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-    subgoal for op1' p1 x ops'
-      apply hypsubst_thin
-      apply (cases "wire p1")
-      subgoal
-        apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-        subgoal for op'
-          apply (cases op')
-            apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-             subgoal for p2
-            apply (drule meta_spec[of _ "Write op1' p1 x"])
-            apply (drule meta_spec[of _ End])
-            apply (drule meta_spec[of _ "BTL p2 buf"])
-            apply (drule meta_mp)
-             apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-               done
-            apply (smt (verit) Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(6) stepped.intros(3))
-           apply (meson Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(4) stepped.intros(3))
-          apply (meson Write_in_choices_stepped cin.rep_eq comp_op_inv.intros(2) stepped.intros(3))
-          done
-        subgoal for op'
-          apply (cases op')
-            apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-        subgoal for p2
-            apply (drule meta_spec[of _ "Write op1' p1 x"])
-            apply (drule meta_spec[of _ End])
-            apply (drule meta_spec[of _ "BTL p2 buf"])
-            apply (drule meta_mp)
-             apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-               done
-            apply (smt (verit) Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(6) stepped.intros(3))
-           apply (meson Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(4) stepped.intros(3))
-          apply (meson Write_in_choices_stepped cin.rep_eq comp_op_inv.intros(2) stepped.intros(3))
-          done
-        done
-      subgoal for p2'
-        apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-        subgoal for _ op'
-          apply (cases op')
-            apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-          subgoal
-            apply hypsubst_thin
-            apply (drule meta_spec[of _ "Write op1' p1 x"])
-            apply (drule meta_spec[of _ End])
-            apply (drule meta_spec)
-            apply (drule meta_mp)
-             apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-            done
-          subgoal
-            apply hypsubst_thin
-            apply (drule meta_spec[of _ "Write op1' p1 x"])
-            apply (drule meta_spec[of _ End])
-            apply (drule meta_spec)
-            apply (drule meta_mp)
-             apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-            done
-          subgoal
-            by (smt (verit) Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(6) stepped.intros(3))
-          subgoal
-            by (meson Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(4) stepped.intros(3))
-          subgoal
-            by (meson Write_in_choices_stepped cin.rep_eq comp_op_inv.intros(2) stepped.intros(3))
-          done
-        subgoal for op'
-          apply (cases op')
-            apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-          subgoal
-            apply hypsubst_thin
-            apply (drule meta_spec[of _ "Write op1' p1 x"])
-            apply (drule meta_spec[of _ End])
-            apply (drule meta_spec)
-            apply (drule meta_mp)
-             apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-            done
-          subgoal
-            apply hypsubst_thin
-            apply (drule meta_spec[of _ "Write op1' p1 x"])
-            apply (drule meta_spec[of _ End])
-            apply (drule meta_spec)
-            apply (drule meta_mp)
-             apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-            done
-          subgoal
-            by (smt (verit) Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(6) stepped.intros(3))
-          subgoal
-            by (meson Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(4) stepped.intros(3))
-          subgoal
-            by (meson Write_in_choices_stepped cin.rep_eq comp_op_inv.intros(2) stepped.intros(3))
-          done
-        subgoal for op'
-          apply (cases op')
-            apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-          subgoal
-            apply hypsubst_thin
-            apply (drule meta_spec[of _ "Write op1' p1 x"])
-            apply (drule meta_spec[of _ End])
-            apply (drule meta_spec)
-            apply (drule meta_mp)
-             apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-            done
-          subgoal
-            apply hypsubst_thin
-            apply (drule meta_spec[of _ "Write op1' p1 x"])
-            apply (drule meta_spec[of _ End])
-            apply (drule meta_spec)
-            apply (drule meta_mp)
-             apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-            done
-          subgoal
-            apply hypsubst_thin
-            apply (drule meta_spec[of _ "Write op1' p1 x"])
-            apply (drule meta_spec[of _ End])
-            apply (drule meta_spec)
-            apply (drule meta_mp)
-             apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-            done
-          subgoal
-            apply hypsubst_thin
-            apply (drule meta_spec)
-            apply (drule meta_spec[of _ End])
-            apply (drule meta_spec)
-            apply (drule meta_mp)
-             apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-            done
-          subgoal
-            by (smt (verit) Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(6) stepped.intros(3))
-          subgoal
-            by (meson Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(4) stepped.intros(3))
-          subgoal
-            by (meson Write_in_choices_stepped cin.rep_eq comp_op_inv.intros(2) stepped.intros(3))
-          done
-        done
-      done
-    subgoal for ops p f
-      apply hypsubst_thin
-      apply (auto split:  intro: comp_op_inv.intros stepped.intros)
-      subgoal 
-        apply (auto split: if_splits intro: comp_op_inv.intros stepped.intros)
-        subgoal
-          apply (drule meta_spec)+
-          apply (drule meta_mp)
-           apply (rule refl)
-          apply (auto split: option.splits if_splits intro: comp_op_inv.intros stepped.intros)
-          done
-        subgoal
-          apply (drule meta_spec)+
-          apply (drule meta_mp)
-           apply (rule refl)
-          apply (auto split: option.splits if_splits intro: comp_op_inv.intros stepped.intros)
-          done
-        subgoal
-          apply (drule meta_spec)+
-          apply (drule meta_mp)
-           apply (rule refl)
-          apply (auto split: option.splits if_splits intro: comp_op_inv.intros stepped.intros)
-          done
-        subgoal
-          apply (drule meta_spec)+
-          apply (drule meta_mp)
-           apply (rule refl)
-          apply (auto split: option.splits if_splits intro: comp_op_inv.intros stepped.intros)
-          done
-        done
-
-      subgoal for op
-        apply (cases op; clarsimp split: if_splits option.splits; blast?)
-                         apply (meson Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(1) stepped.intros(3))
-                        apply (meson Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(1) stepped.intros(3))
-                       apply (meson Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(1) stepped.intros(3))
-                      apply (meson Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(1) stepped.intros(3))
-                     apply (meson Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(1) stepped.intros(3))
-                    apply (meson Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) stepped.intros(3))
-                   apply (meson Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros(3) stepped.intros(3))
-                  apply (meson Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros(5) comp_op_inv.intros(3) stepped.intros(3))
-                 apply (smt (verit, best) Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros(5) comp_op_inv.intros(3) stepped.intros(3))
-                apply (smt (verit, best) cin.rep_eq Write_in_choices_stepped cUN_I Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros stepped.intros(3))
-               apply (metis (no_types, opaque_lifting) cin.rep_eq Write_in_choices_stepped cUN_I Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros stepped.intros(3))
-              apply (metis (no_types, opaque_lifting) cin.rep_eq Write_in_choices_stepped cUN_I Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros stepped.intros(3))
-             apply (metis (no_types, opaque_lifting) cin.rep_eq Write_in_choices_stepped cUN_I Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros stepped.intros(3))
-            apply (metis (no_types, opaque_lifting) cin.rep_eq Write_in_choices_stepped cUN_I Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros stepped.intros(3))
-           apply (metis (no_types, opaque_lifting) cin.rep_eq Write_in_choices_stepped cUN_I Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros stepped.intros(3))
-          apply (metis (no_types, opaque_lifting) cin.rep_eq Write_in_choices_stepped cUN_I Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros stepped.intros(3))
-         apply (metis (no_types, opaque_lifting) cin.rep_eq Write_in_choices_stepped cUN_I Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros stepped.intros(3))
-        apply (metis (no_types, opaque_lifting) cin.rep_eq Write_in_choices_stepped cUN_I Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros stepped.intros(3))
-        done
-      subgoal
-        apply (auto split: if_splits intro: comp_op_inv.intros stepped.intros dest!: meta_spec[of _ "Choice ops"])
-        done
-      done
-    subgoal for ops' op1' p1 x
-      apply hypsubst_thin
-      apply (auto split: intro: comp_op_inv.intros stepped.intros)
-      subgoal for op
-        apply (cases op)
-          apply (auto split: if_splits option.splits  intro: comp_op_inv.intros stepped.intros)
-             apply (smt (verit, best) Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros(5) comp_op_inv.intros(3) stepped.intros(3))
-            apply (smt (verit, best) Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros(5) comp_op_inv.intros(3) stepped.intros(3))
-           apply (metis (no_types, opaque_lifting) cin.rep_eq Write_in_choices_stepped cUN_I Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros stepped.intros(3))
-          apply (metis (no_types, opaque_lifting) cin.rep_eq Write_in_choices_stepped cUN_I Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros stepped.intros(3))
-         apply (smt (verit, best) Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros(5) comp_op_inv.intros(3) stepped.intros(3))
-        apply (smt (verit, best) Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros(5) comp_op_inv.intros(3) stepped.intros(3))
-        done
-      subgoal
-        apply (auto split: if_splits option.splits  intro: comp_op_inv.intros stepped.intros)
-        done
-      done
-    subgoal for ops1 ops2
-      apply (auto split: intro: comp_op_inv.intros stepped.intros)
-      subgoal for op
-        apply (cases op; clarsimp split: if_splits option.splits; blast?)
-             apply (smt (verit, best) Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros(5) comp_op_inv.intros(3) stepped.intros(3))
-            apply (smt (verit, best) Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros(5) comp_op_inv.intros(3) stepped.intros(3))
-           apply (metis (no_types, opaque_lifting) cin.rep_eq Write_in_choices_stepped cUN_I Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros stepped.intros(3))
-          apply (smt (verit, best) Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros(5) comp_op_inv.intros(3) stepped.intros(3))
-         apply (metis (no_types, opaque_lifting) cin.rep_eq Write_in_choices_stepped cUN_I Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros stepped.intros(3))
-        apply (smt (verit, best) Write_in_choices_stepped Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros(5) comp_op_inv.intros(3) stepped.intros(3))
-        done
-      subgoal for op
-        apply (cases op; clarsimp split: if_splits option.splits; blast?)
-        subgoal
-          apply (drule meta_spec[of _ "Choice ops1"])
-          apply (drule meta_spec[of _ End])
-          apply (drule meta_spec)
-          apply (drule meta_mp)
-           apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-          done
-        subgoal
-          apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-           apply (smt (verit) Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(6) stepped.intros(3))+
-          done
-        subgoal
-          apply (drule meta_spec[of _ "Choice ops1"])
-          apply (drule meta_spec[of _ End])
-          apply (drule meta_spec)
-          apply (drule meta_mp)
-           apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-          done
-        subgoal
-          apply (drule meta_spec[of _ "Choice ops1"])
-          apply (drule meta_spec[of _ End])
-          apply (drule meta_spec)
-          apply (drule meta_mp)
-           apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-          done
-        subgoal
-          apply (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-           apply (smt (verit) Read_in_choices_stepped cin.rep_eq comp_op_inv.intros(6) stepped.intros(3))+
-          done
-        subgoal
-          by (metis (no_types, opaque_lifting) cin.rep_eq Write_in_choices_stepped cUN_I Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros stepped.intros(3))
-        subgoal
-          by (metis (no_types, opaque_lifting) cin.rep_eq Write_in_choices_stepped cUN_I Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros stepped.intros(3))
-        subgoal
-          by (metis (no_types, opaque_lifting) cin.rep_eq Write_in_choices_stepped cUN_I Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros stepped.intros(3))
-        subgoal
-          by (metis (no_types, opaque_lifting) cin.rep_eq Write_in_choices_stepped cUN_I Read_in_choices_stepped cin.rep_eq domIff comp_op_inv.intros(1) comp_op_inv.intros stepped.intros(3))
-        done
-      subgoal
-        by (auto split: if_splits option.splits intro: comp_op_inv.intros stepped.intros)
-      done
     done
   done
 
@@ -2745,27 +2877,11 @@ lemma
    apply auto
    done
 
-inductive uses_input for R p where
-  "(\<forall> op \<in> range f. R op) \<Longrightarrow> uses_input R p (Read p f)"
-| "uses_input R p op \<Longrightarrow> uses_input R p (Write op p' x)"
-| "(\<forall> op \<in> range f. uses_input R p op) \<Longrightarrow> p \<noteq> p' \<Longrightarrow> uses_input R p (Read p' f)"
-| "(\<forall> op. op |\<in>| ops \<and> uses_input R p op) \<Longrightarrow> uses_input R p (Choice ops)"
-
-lemma uses_input_mono[mono]: "R \<le> S \<Longrightarrow> uses_input R \<le> uses_input S"
-  apply safe
-  subgoal for p op
-    apply (rotate_tac )
-    apply (induct op rule: uses_input.induct)
-       apply (auto intro: uses_input.intros)
-    done
-  done
-
-coinductive always_uses_input for p where
- "uses_input (always_uses_input p) p op \<Longrightarrow> always_uses_input p op"
-
+(*
 lemma uses_input_not_can_end:
-  "uses_input R p op \<Longrightarrow> can_end op \<Longrightarrow> False"
-  by (induct op rule: uses_input.induct) auto
+  "can_input R p op \<Longrightarrow> can_end op \<Longrightarrow> False"
+  by (induct op rule: can_input.induct) auto
+*)
 
 lemma 
   "traced End ios \<Longrightarrow> traced (scomp_op Id_op (Read (1::1) (\<lambda>_. End))) ios \<Longrightarrow> False"
