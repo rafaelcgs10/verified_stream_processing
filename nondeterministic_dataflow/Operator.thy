@@ -27,9 +27,11 @@ abbreviation cmember :: "'a \<Rightarrow> 'a cset \<Rightarrow> bool" (infix "|\
 
 section \<open>cset lifts\<close>
 context includes cset.lifting begin
-lift_definition cUNIV :: "nat cset" is UNIV by auto
+lift_definition natcUNIV :: "nat cset" is UNIV by auto
 lift_definition cproduct :: "'a cset \<Rightarrow> 'b cset \<Rightarrow> ('a \<times> 'b) cset" is "(\<times>)" by auto
 lift_definition cfilter :: "('a \<Rightarrow> bool) \<Rightarrow> 'a cset \<Rightarrow> 'a cset" is Set.filter by (simp add: Set.filter_def)
+lift_definition cUNIV :: "('m :: countable) cset" is UNIV by auto
+
 end
 
 declare cBall.rep_eq[simp] cinsert.rep_eq[simp] bot_cset.rep_eq[simp] sup_cset.rep_eq[simp] cimage.rep_eq[simp] cUnion.rep_eq[simp] rel_cset.rep_eq[simp]
@@ -906,16 +908,16 @@ fun choices_at where
 | "choices_at 0 (Choice ops) = cempty"
 | "choices_at (Suc n) (Choice ops) = cUnion (cimage (choices_at n) ops)"
 
-definition "choices op = cUnion (cimage (\<lambda>i. choices_at i op) cUNIV)"
+definition "choices op = cUnion (cimage (\<lambda>i. choices_at i op) natcUNIV)"
 
 lemma choices_Read[simp]: "choices (Read p f) = csingle (Read p f)"
-  unfolding choices_def by (auto simp: cset_eq_iff bot_cset.rep_eq cUNIV.rep_eq)
+  unfolding choices_def by (auto simp: cset_eq_iff bot_cset.rep_eq natcUNIV.rep_eq)
 
 lemma choices_Write[simp]: "choices (Write op p x) = csingle (Write op p x)"
-  unfolding choices_def by (auto simp: cset_eq_iff bot_cset.rep_eq cUNIV.rep_eq)
+  unfolding choices_def by (auto simp: cset_eq_iff bot_cset.rep_eq natcUNIV.rep_eq)
 
 lemma choices_Choice[simp]: "choices (Choice ops) = cUnion (cimage choices ops)"
-  apply (auto simp: choices_def cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
+  apply (auto simp: choices_def cUnion.rep_eq cimage.rep_eq natcUNIV.rep_eq)
   subgoal for x n
     apply (induct n "Choice ops" arbitrary: ops rule: choices_at.induct)
      apply (auto simp: bot_cset.rep_eq cUnion.rep_eq cimage.rep_eq)
@@ -928,7 +930,7 @@ lemma choices_Choice[simp]: "choices (Choice ops) = cUnion (cimage choices ops)"
 
 lemma no_Choice_in_choices[simplified, simp, dest!]: "Choice ops |\<in>| choices op \<Longrightarrow> False"
   unfolding choices_def
-  apply (auto simp: cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
+  apply (auto simp: cUnion.rep_eq cimage.rep_eq natcUNIV.rep_eq)
   subgoal for n
     apply (induct n op rule: choices_at.induct)
     apply (auto simp: cinsert.rep_eq bot_cset.rep_eq cUnion.rep_eq cimage.rep_eq)
@@ -940,7 +942,7 @@ lemma choices_map_op[simp]:
   "cimage (map_op f g) (choices op) = choices (map_op f g op)"
   apply safe
   unfolding choices_def
-   apply (clarsimp simp add: cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
+   apply (clarsimp simp add: cUnion.rep_eq cimage.rep_eq natcUNIV.rep_eq)
   subgoal for x n
   apply (induct n arbitrary: op)
     subgoal for op
@@ -955,7 +957,7 @@ lemma choices_map_op[simp]:
       done
     done
   subgoal for op'
-   apply (clarsimp simp add: cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
+   apply (clarsimp simp add: cUnion.rep_eq cimage.rep_eq natcUNIV.rep_eq)
     subgoal for n
   apply (induct n arbitrary: op)
     subgoal for op''
@@ -985,7 +987,7 @@ lemma diverged_choices_empty:
    choices op = {||}"
   apply safe
   unfolding choices_def
-  apply (clarsimp simp add: cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
+  apply (clarsimp simp add: cUnion.rep_eq cimage.rep_eq natcUNIV.rep_eq)
   subgoal for x n
     apply (induct n arbitrary: op)
     subgoal for op
@@ -1005,10 +1007,10 @@ lemma choices_AW[simp]:
     apply (induct n)
     apply (metis AW.code bot_cset.rep_eq choices_at.simps(3) emptyE)
     apply (subst (asm) (3) AW.code)
-    apply (auto simp:sup_cset.rep_eq diverged_choices_empty bot_cset.rep_eq cinsert.rep_eq cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq split: op.splits)
+    apply (auto simp:sup_cset.rep_eq diverged_choices_empty bot_cset.rep_eq cinsert.rep_eq cUnion.rep_eq cimage.rep_eq natcUNIV.rep_eq split: op.splits)
     done
   subgoal
-    apply (auto simp:sup_cset.rep_eq diverged_choices_empty bot_cset.rep_eq cinsert.rep_eq cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq split: op.splits)
+    apply (auto simp:sup_cset.rep_eq diverged_choices_empty bot_cset.rep_eq cinsert.rep_eq cUnion.rep_eq cimage.rep_eq natcUNIV.rep_eq split: op.splits)
     apply (subst (2) AW.code)
     apply auto
     apply (metis cUN_I choices_at.simps(2) choices_at.simps(4) cin.rep_eq cinsert_iff)
@@ -1022,10 +1024,10 @@ lemma choices_W[simp]:
   subgoal for x n
     apply (induct n)
      apply (metis W.code bot_cset.rep_eq choices_at.simps(2) cinsert.rep_eq empty_iff insert_iff)
-    apply (metis UNIV_I W.code cUNIV.rep_eq choices_at.simps(2))
+    apply (metis UNIV_I W.code natcUNIV.rep_eq choices_at.simps(2))
     done
   subgoal
-    by (metis W.code cUNIV.rep_eq choices_at.simps(2) cin.rep_eq csingleton_iff iso_tuple_UNIV_I)
+    by (metis W.code natcUNIV.rep_eq choices_at.simps(2) cin.rep_eq csingleton_iff iso_tuple_UNIV_I)
   done
 
 term Id_op
@@ -1037,10 +1039,10 @@ lemma choices_Id_op[simp]:
   subgoal for x n
     apply (induct n)
     apply (metis Id_op.code bot_cset.rep_eq choices_at.simps(1) cinsert.rep_eq empty_iff insert_iff)
-    apply (metis Id_op.code UNIV_I cUNIV.rep_eq choices_at.simps(1))
+    apply (metis Id_op.code UNIV_I natcUNIV.rep_eq choices_at.simps(1))
     done
   subgoal 
-    by (metis Id_op.code cUNIV.rep_eq choices_at.simps(1) cin.rep_eq csingleton_iff iso_tuple_UNIV_I)
+    by (metis Id_op.code natcUNIV.rep_eq choices_at.simps(1) cin.rep_eq csingleton_iff iso_tuple_UNIV_I)
   done
 
 lemma choices_empty_diverged:
@@ -1085,7 +1087,7 @@ lemma Read_in_choices_stepped:
     subgoal for n op
       apply (cases op)
         apply (auto simp: bot_cset.rep_eq cinsert.rep_eq stepped.intros(1))
-      apply (metis UNIV_I cUNIV.rep_eq cUN_E cin.rep_eq stepped.intros(3))
+      apply (metis UNIV_I natcUNIV.rep_eq cUN_E cin.rep_eq stepped.intros(3))
       done
     done
   done
@@ -1102,7 +1104,7 @@ lemma Read_in_choices_steppedEx:
     subgoal for n op
       apply (cases op)
         apply (auto simp: bot_cset.rep_eq cinsert.rep_eq stepped.intros(1))
-      apply (metis UNIV_I cUNIV.rep_eq cUN_E cin.rep_eq stepped.intros(3))
+      apply (metis UNIV_I natcUNIV.rep_eq cUN_E cin.rep_eq stepped.intros(3))
       done
     done
   done
@@ -1125,7 +1127,7 @@ lemma choices_sink_op[simp]:
     done
   subgoal for x
     apply auto
-    apply (metis UNIV_witness cUNIV.rep_eq choices_at.simps(1) cin.rep_eq cinsertI1 sink_op.code)
+    apply (metis UNIV_witness natcUNIV.rep_eq choices_at.simps(1) cin.rep_eq cinsertI1 sink_op.code)
     done
   done
 
@@ -1141,7 +1143,7 @@ lemma Write_in_choices_stepped:
     subgoal for n op
       apply (cases op)
         apply (auto simp: bot_cset.rep_eq cinsert.rep_eq stepped.intros(2))
-      apply (metis UNIV_I cUNIV.rep_eq cUN_E cin.rep_eq stepped.intros(3))
+      apply (metis UNIV_I natcUNIV.rep_eq cUN_E cin.rep_eq stepped.intros(3))
       done
     done
   done
@@ -1979,6 +1981,28 @@ abbreviation BTL :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('
 abbreviation BENQ :: "'a \<Rightarrow> 'd \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BENQ p x buf \<equiv> BUPD (benq x) p buf"
 abbreviation BENQ_TL :: "'a \<Rightarrow> 'd \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BENQ_TL p x buf \<equiv> BUPD (btl o benq x) p buf"
 
+fun buf_len where
+  "buf_len BEmpty = 0"
+| "buf_len BEnded = 0"
+| "buf_len (BCons x buf) = Suc (buf_len buf)"
+
+lemma buf_len_btl:
+  "0 < buf_len buf \<Longrightarrow>
+   buf_len (btl buf) < buf_len buf"
+  by (induct buf) auto
+
+function BAPPEND :: "('m \<Rightarrow> 'a buf) \<Rightarrow> ('m \<Rightarrow> 'a buf) \<Rightarrow> 'm \<Rightarrow> 'a buf" (infixr ">>" 65) where
+  "BAPPEND buf1 buf2 p = (case BHD p buf1 of
+     None \<Rightarrow> buf2 p
+   | Some EOS \<Rightarrow> buf2 p
+   | Some (Observed x) \<Rightarrow> BAPPEND (BTL p buf1) (BENQ p x buf2) p)" 
+  by auto
+termination
+  apply (relation "measure (\<lambda>(buf1, _ , p). buf_len (buf1 p))")
+   apply (auto split: if_splits)
+  apply (metis bhd.simps(1) bhd.simps(2) buf_len.elims buf_len_btl observation.simps(3) option.distinct(1) option.inject zero_less_Suc)
+  done
+
 (*
 lemma BHD_not_Observed_bend:
   "\<not> (is_Observed (BHD p buf)) \<Longrightarrow> BHD (buf p) bend = EOS"
@@ -2002,6 +2026,7 @@ fun bapp where
 | "bapp BEnded lxs = LNil"
 | "bapp (BCons x xs) lxs = LCons x (bapp xs lxs)"
 
+
 definition "extend A buf R lxs lys =
   (\<exists>lzs. R lxs (case_sum (lys o Inl) lzs) \<and> (\<forall>p. lys (Inr p) = (if p \<in> A then bapp (buf p) (lzs p) else lzs p)))"
 
@@ -2019,15 +2044,15 @@ abbreviation eval_id_op_aux where
     id_Read_aux p f \<Rightarrow> Read p (\<lambda>y. let buf = f y in c buf)
   | id_Write_aux buf q x \<Rightarrow> Write (c buf) q x)"
 
-corec id_op :: "_ \<Rightarrow> ('m :: enum, 'm, 'd) op" where
+corec id_op :: "_ \<Rightarrow> ('m :: countable, 'm, 'd) op" where
   "id_op buf = Choice (cimage (eval_id_op_aux id_op) (cUn 
-    (cimage (\<lambda> p. id_Read_aux p (case_observation (\<lambda> x. (BENQ p x buf)) buf)) (acset (UNIV :: 'm set))) 
-    (cimage (\<lambda> p. id_Write_aux (BTL p buf) p ((obs o the) (BHD p buf))) (acset ({p \<in> UNIV :: 'm set. \<exists> x. BHD p buf = Some (Observed x)})))))"
+    (cimage (\<lambda> p. id_Read_aux p (case_observation (\<lambda> x. (BENQ p x buf)) buf)) (cUNIV :: 'm cset)) 
+    (cimage (\<lambda> p. id_Write_aux (BTL p buf) p ((obs o the) (BHD p buf))) (cfilter (\<lambda> p. \<exists> x. BHD p buf = Some (Observed x)) (cUNIV :: 'm cset)))))"
 
 lemma id_op_code:
   "id_op buf = Choice (cUn 
-    (cimage (\<lambda> p. Read p (case_observation (\<lambda> x. id_op (BENQ p x buf)) (id_op buf))) (acset (UNIV :: ('m::enum) set)))
-    (cimage (\<lambda> p. Write (id_op (BTL p buf)) p ((obs o the) (BHD p buf))) (acset ({p \<in> UNIV :: 'm set. \<exists> x. BHD p buf = Some (Observed x)}))))"
+    (cimage (\<lambda> p. Read p (case_observation (\<lambda> x. id_op (BENQ p x buf)) (id_op buf))) (cUNIV :: ('m :: countable) cset))
+    (cimage (\<lambda> p. Write (id_op (BTL p buf)) p ((obs o the) (BHD p buf))) (cfilter (\<lambda> p. \<exists> x. BHD p buf = Some (Observed x)) (cUNIV :: 'm cset))))"
   apply (subst id_op.code)
   apply (unfold cimage_cUn op.inject)
   apply (rule arg_cong2[where f = cUn])

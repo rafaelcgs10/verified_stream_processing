@@ -1241,6 +1241,106 @@ lemma
 TODO: add definition to can_end and not diverged
 *)
 
+lemma
+  "(map_op projl projr (comp_op Some buf2 (id_op buf1) (id_op buf3))) = (id_op (buf1 >> buf2 >> buf3))"
+  apply (coinduction arbitrary: buf1 buf2 buf3 rule: op.coinduct_upto)
+  subgoal for buf1 buf2 buf3
+    apply (intro conjI impI)
+    subgoal
+      apply (subst (1 2 3) id_op_code)
+      apply simp
+      done
+    subgoal
+     apply (subst (asm) (1 2 3) id_op_code)
+     apply (subst (1 2 3) id_op_code)
+      apply simp
+      done
+  subgoal
+     apply (subst (asm) (1 2 3) id_op_code)
+     apply (subst (1 2 3) id_op_code)
+      apply simp
+    done
+  subgoal
+     apply (subst (1 2 3) id_op_code)
+      apply simp
+      done
+  subgoal
+     apply (subst (asm) (1 2 3) id_op_code)
+     apply (subst (1 2 3) id_op_code)
+      apply simp
+    done
+  subgoal
+     apply (subst (asm) (1 2 3) id_op_code)
+     apply (subst (1 2 3) id_op_code)
+      apply simp
+    done
+  subgoal
+     apply (subst (asm) (1 2 3) id_op_code)
+     apply (subst (1 2 3) id_op_code)
+      apply simp
+    done
+  subgoal premises 
+    unfolding rel_cset_def
+    apply simp
+    apply (rule rel_setI)
+    subgoal for x
+     apply (subst (asm) (1 2) id_op_code)
+      apply (auto simp add: comp_def split: observation.splits; hypsubst_thin?)
+      subgoal for p
+     apply (subst id_op_code)
+      apply (auto simp add: Set.filter_def split: option.splits; hypsubst_thin?)
+        apply (rule bexI[of _ "Read p
+             (case_observation
+               (\<lambda>x. id_op
+                     ((buf1 >> buf2 >> buf3)
+                      (p := benq x
+                             (case BHD p buf1 of None \<Rightarrow> (buf2 >> buf3) p
+                              | Some (Observed xa) \<Rightarrow> (buf1(p := btl (buf1 p)) >> (buf2 >> buf3)(p := benq xa ((buf2 >> buf3) p))) p
+                              | Some EOS \<Rightarrow> (buf2 >> buf3) p))))
+               (id_op (buf1 >> buf2 >> buf3)))"])
+         defer
+         apply simp
+        apply (rule op.cong_Read)
+         apply simp
+        apply (rule rel_funI)
+        apply auto
+        apply (rule op.cong_base)
+        apply (intro conjI exI)
+        oops
+
+lemma id_op_not_diverged[simp]:
+  "\<not> diverged (id_op buf)"
+  sorry
+
+lemma id_op_not_can_end[simp]:
+  "\<not> can_end (id_op buf)"
+  sorry
+
+lemma
+  "can_end (map_op projl projr (comp_op Some buf2 (id_op buf1) (id_op buf3))) \<Longrightarrow> False"
+  apply simp
+  apply (subst (asm) comp_op_code)
+  apply (auto simp add: Set.filter_def split: if_splits op.splits)
+  apply (meson choices_empty_diverged diverged_can_end id_op_not_can_end)
+  subgoal
+    oops
+
+lemma
+  "bisim (map_op projl projr (comp_op Some buf2 (id_op buf1) (id_op buf3))) (id_op (buf1 >> buf2 >> buf3))"
+  apply (coinduction arbitrary: buf1 buf2 buf3 rule: bisim_coinduct_upto)
+  subgoal for buf1 buf2 buf3
+    apply (intro conjI impI)
+    subgoal
+
+      find_theorems can_end diverged
+
+
+
+lemma
+  "bisim (scomp_op (id_op (\<lambda> _. BEmpty)) (id_op (\<lambda> _. BEmpty))) (id_op (\<lambda> _. BEmpty))"
+  unfolding scomp_op_def
+
+
 inductive can_input for R p where
   "(\<forall> op \<in> range (f o Observed). R op) \<Longrightarrow> can_input R p (Read p f)"
 | "can_input R p op \<Longrightarrow> can_input R p (Write op p' x)"
@@ -1272,7 +1372,7 @@ lemma can_end_pcomp_op_Inl:
     apply auto
     unfolding pcomp_op_def
     apply (cases op1; cases op2)
-            apply (auto simp: choices_empty_diverged diverged_can_end can_end_op2_None_can_end_iff can_end_op1_None_can_end_iff cUNIV.rep_eq split: if_splits)
+            apply (auto simp: choices_empty_diverged diverged_can_end can_end_op2_None_can_end_iff can_end_op1_None_can_end_iff natcUNIV.rep_eq split: if_splits)
            apply (metis (no_types, lifting) can_end.simps can_end_Read no_Choice_in_choices op.distinct(5) op.exhaust_sel op.split_sel)+
     done
   done
@@ -1291,12 +1391,12 @@ lemma can_end_comp_opI:
     apply (erule can_end.cases)
     subgoal
       apply (erule can_end.cases)
-       apply (auto simp: can_end_op2_None_can_end_iff can_end_op1_None_can_end_iff diverged_choices_empty cUNIV.rep_eq split: if_splits)
+       apply (auto simp: can_end_op2_None_can_end_iff can_end_op1_None_can_end_iff diverged_choices_empty natcUNIV.rep_eq split: if_splits)
       apply (smt (verit, ccfv_threshold) can_end.simps can_end_op2.coinduct cin.rep_eq)
       done
     subgoal
       apply (erule can_end.cases)
-       apply (auto simp: can_end_op2_None_can_end_iff can_end_op1_None_can_end_iff diverged_choices_empty cUNIV.rep_eq split: if_splits)
+       apply (auto simp: can_end_op2_None_can_end_iff can_end_op1_None_can_end_iff diverged_choices_empty natcUNIV.rep_eq split: if_splits)
           apply (smt (verit, del_insts) can_end.simps can_end_op1.coinduct cin.rep_eq)
          apply (smt (verit, del_insts) can_end.simps can_end_op1.coinduct cin.rep_eq)
         apply (smt (verit, del_insts) can_end.simps can_end_op1.coinduct cin.rep_eq)
@@ -2959,7 +3059,7 @@ lemma can_end_pcomp_op_Inl:
     apply auto
     unfolding scomp_op_def
     apply (cases op1; cases op2)
-    apply (auto simp: bot_cset.rep_eq cinsert.rep_eq cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq split: if_splits option.splits op.splits)
+    apply (auto simp: bot_cset.rep_eq cinsert.rep_eq cUnion.rep_eq cimage.rep_eq natcUNIV.rep_eq split: if_splits option.splits op.splits)
 
 
     find_theorems can_end pcomp_op
