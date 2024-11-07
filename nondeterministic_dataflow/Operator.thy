@@ -1113,6 +1113,19 @@ lemma choices_spin_op[simp]:
   "choices spin_op = {||}"
   by (simp add: diverged_choices_empty)
 
+
+lemma not_diverged_choices_can_end:
+  "\<not> diverged op \<Longrightarrow>
+   choices op = {||} \<Longrightarrow>
+   can_end op"
+  apply (coinduction arbitrary: op)
+  subgoal for op
+    apply (drule choices_empty_diverged)
+    apply auto
+    apply (meson can_end.cases cin.rep_eq)
+    done
+  done
+
 lemma choices_sink_op[simp]:
   "choices sink_op = {|Read 1 (\<lambda> _. sink_op)|}"
   unfolding choices_def
@@ -2003,6 +2016,59 @@ termination
   apply (metis bhd.simps(1) bhd.simps(2) buf_len.elims buf_len_btl observation.simps(3) option.distinct(1) option.inject zero_less_Suc)
   done
 
+lemma BAPPEND_BTL_Some_BENQ:
+  "BHD p buf1 = Some (Observed x) \<Longrightarrow>
+   BTL p buf1 >> BENQ p x buf2 = buf1 >> buf2"
+  apply (rule ext)
+  subgoal for q
+    apply (induct "buf1 q" arbitrary: buf1 buf2)
+    subgoal
+      by (auto)
+    subgoal
+      by auto
+    subgoal
+      by (smt (verit, del_insts) BAPPEND.simps bhd.simps(3) btl.simps(3) fun_upd_other fun_upd_same fun_upd_twist observation.simps(4) option.simps(5))
+    done
+  done
+
+lemma BAPPEND_BTL_Some_BENQ_alt:
+  "BHD q buf1 = Some (Observed x) \<Longrightarrow>
+   buf1 (q := btl (buf1 q)) >> buf2 (q := benq x (buf2 q)) = buf1 >> buf2"
+  using BAPPEND_BTL_Some_BENQ by fast
+
+primrec bappend :: "'a buf \<Rightarrow> 'a buf \<Rightarrow> 'a buf"  where
+  "bappend BEmpty ys = ys" 
+| "bappend BEnded ys = ys"
+| "bappend (BCons x xs) ys = bappend xs (benq x ys)"
+
+lemma benq_bappend[simp]:
+  "benq x (bappend xs ys) = bappend (benq x xs) ys"
+  by (induct xs arbitrary: ys) auto
+
+lemma bappend_assoc:
+  "bappend (bappend xs ys) zs = bappend xs (bappend ys zs)"
+  by (induct xs arbitrary: ys zs)  auto
+
+lemma BAPPEND_bappend[simp]:
+  "(buf1 >> buf2) p = bappend (buf1 p) (buf2 p)"
+  apply (induct "buf1 p" arbitrary: buf1 buf2)
+  apply (auto split: option.splits)
+   apply (metis bhd.simps(3) option.distinct(1))
+  subgoal for x1 x buf1 buf2 ob
+    apply (cases ob)
+  apply (auto split: option.splits)
+    apply (metis bappend.simps(1) bappend.simps(3) bhd.elims bhd.simps(3) btl.simps(3) observation.sel option.sel option.simps(3))
+    apply (metis (no_types, lifting) bappend.simps(3) bhd.simps(3) btl.simps(3) fun_upd_same observation.case_eq_if observation.sel option.sel option.simps(5))
+    apply (metis bhd.simps(3) observation.discI option.sel)
+    done
+  done
+
+lemma BAPPEND_assoc:
+  "(buf1 >> buf2) >> buf3 = buf1 >> buf2 >> buf3"
+  apply (rule ext)
+  apply (metis BAPPEND_bappend bappend_assoc)
+  done
+
 (*
 lemma BHD_not_Observed_bend:
   "\<not> (is_Observed (BHD p buf)) \<Longrightarrow> BHD (buf p) bend = EOS"
@@ -2037,24 +2103,28 @@ lemma extend_empty: "extend {} buf R = R"
 
 datatype (discs_sels) ('m, 'd) id_op_aux =
     id_Read_aux "'m" "'d observation \<Rightarrow> ('m \<Rightarrow> 'd buf)"
-  | id_Write_aux "('m \<Rightarrow> 'd buf)" "'m" 'd
+    | id_Write_aux "('m \<Rightarrow> 'd buf)" "'m" 'd
+    | id_End_aux 
 
 abbreviation eval_id_op_aux where
   "eval_id_op_aux c aux \<equiv> (case aux of
     id_Read_aux p f \<Rightarrow> Read p (\<lambda>y. let buf = f y in c buf)
-  | id_Write_aux buf q x \<Rightarrow> Write (c buf) q x)"
+  | id_Write_aux buf q x \<Rightarrow> Write (c buf) q x
+  | id_End_aux \<Rightarrow> End)"
 
 corec id_op :: "_ \<Rightarrow> ('m :: countable, 'm, 'd) op" where
-  "id_op buf = Choice (cimage (eval_id_op_aux id_op) (cUn 
+  "id_op buf = Choice (cimage (eval_id_op_aux id_op) (cinsert id_End_aux (cUn 
     (cimage (\<lambda> p. id_Read_aux p (case_observation (\<lambda> x. (BENQ p x buf)) buf)) (cUNIV :: 'm cset)) 
-    (cimage (\<lambda> p. id_Write_aux (BTL p buf) p ((obs o the) (BHD p buf))) (cfilter (\<lambda> p. \<exists> x. BHD p buf = Some (Observed x)) (cUNIV :: 'm cset)))))"
+    (cimage (\<lambda> p. id_Write_aux (BTL p buf) p ((obs o the) (BHD p buf))) (cfilter (\<lambda> p. \<exists> x. BHD p buf = Some (Observed x)) (cUNIV :: 'm cset))))))"
 
 lemma id_op_code:
-  "id_op buf = Choice (cUn 
+  "id_op buf = Choice (cinsert End (cUn 
     (cimage (\<lambda> p. Read p (case_observation (\<lambda> x. id_op (BENQ p x buf)) (id_op buf))) (cUNIV :: ('m :: countable) cset))
-    (cimage (\<lambda> p. Write (id_op (BTL p buf)) p ((obs o the) (BHD p buf))) (cfilter (\<lambda> p. \<exists> x. BHD p buf = Some (Observed x)) (cUNIV :: 'm cset))))"
+    (cimage (\<lambda> p. Write (id_op (BTL p buf)) p ((obs o the) (BHD p buf))) (cfilter (\<lambda> p. \<exists> x. BHD p buf = Some (Observed x)) (cUNIV :: 'm cset)))))"
   apply (subst id_op.code)
-  apply (unfold cimage_cUn op.inject)
+  apply (unfold cimage_cUn cimage_cinsert op.inject)
+  apply (rule arg_cong2[where f = cinsert])
+  apply simp
   apply (rule arg_cong2[where f = cUn])
    apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
       split: id_op_aux.splits observation.splits op.splits option.splits)
