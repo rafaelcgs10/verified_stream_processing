@@ -1987,7 +1987,7 @@ fun benq where
   "benq x BEmpty = BCons x BEmpty"
 | "benq x BEnded = BCons x BEnded"
 | "benq x (BCons y ys) = BCons y (benq x ys)"
-
+                                                                                        
 abbreviation BHD :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> 'd observation option" where "BHD p buf \<equiv> bhd (buf p)"
 abbreviation (input) BUPD where "BUPD f p buf \<equiv> buf(p := f (buf p))"
 abbreviation BTL :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BTL \<equiv> BUPD btl"

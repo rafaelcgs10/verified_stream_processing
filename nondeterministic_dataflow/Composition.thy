@@ -1419,9 +1419,6 @@ lemma stepped_comp_op_Some_id_op_id_op:
     done
   done
 
-lemma BAPPEND_upd[simp]:
-  "(buf1 >> buf2)(p := xs) = (\<lambda> q. if p = q then xs else bappend (buf1 q) (buf2 q))"
-  sorry
 
 lemma BHD_BAPPEND[simp]:
   "BHD p (buf1 >> buf2) = bhd (bappend (buf1 p) (buf2 p))"
@@ -1440,7 +1437,96 @@ lemma BHD_Some_BAPPEND:
    BHD p (buf1 >> buf2) = Some (Observed x)"
   using bhd_Some_bappend BHD_BAPPEND by metis
 
-lemma
+lemma BHD_None_bappend:
+  "BHD p buf1 = None \<Longrightarrow>
+   bappend (buf1 p) ys = ys"
+  using bhd.elims by force
+
+lemma BAPPEND_upd[simp]:
+  "(buf1 >> buf2)(p := xs) = (\<lambda> q. if p = q then xs else bappend (buf1 q) (buf2 q))"
+  using BAPPEND_bappend by fastforce
+
+lemma bhd_Some_btl_bappend:
+  "bhd ys = Some (Observed x) \<Longrightarrow>
+   btl (bappend xs ys) = bappend xs (btl ys)"
+  apply (induct xs arbitrary: ys)
+    apply auto
+  apply (metis benq.elims bhd.simps(1) bhd.simps(2) bhd.simps(3) btl.simps(3) observation.distinct(1) option.discI option.sel)
+  done
+
+lemma choices_id_op[simp]:
+  "choices (id_op buf) = (cUn 
+    (cimage (\<lambda> p. Read p (case_observation (\<lambda> x. id_op (BENQ p x buf)) (id_op buf))) (cUNIV :: ('m :: countable) cset))
+    (cimage (\<lambda> p. Write (id_op (BTL p buf)) p ((obs o the) (BHD p buf))) (cfilter (\<lambda> p. \<exists> x. BHD p buf = Some (Observed x)) (cUNIV :: 'm cset))))"
+  unfolding choices_def
+  apply (subst id_op_code)
+  apply (auto simp add: Set.filter_def)
+  subgoal premises prems for _ n
+    using prems(2-) apply -
+    apply (induct n arbitrary: buf)
+     apply auto
+    apply (smt (verit, del_insts) bot_cset.rep_eq cUN_empty choices_at.elims empty_iff op.distinct(3) op.distinct(5) op.inject(3))
+    done
+  subgoal for p
+    apply (rule bexI[of _ 1])
+     apply (auto simp add: natcUNIV.rep_eq)
+    done
+  subgoal for p
+    apply (rule bexI[of _ 1])
+     apply (auto simp add: natcUNIV.rep_eq)
+    done
+  done
+
+fun unbend where
+  "unbend BEmpty = BEmpty"
+| "unbend BEnded = BEmpty"
+| "unbend (BCons xs xss) = BCons xs (unbend xss)"
+
+lemma bhd_Some_EOS_bappend:
+  "bhd ys = Some EOS \<Longrightarrow>
+   bhd (bappend xs ys) = bhd (bend xs)"
+  apply (induct xs arbitrary: ys)
+    apply auto
+  apply (metis benq.simps(2) bhd.elims bhd.simps(3) bhd_Some_bappend observation.simps(3) option.distinct(1) option.inject)
+  done
+
+lemma bhd_None_bappend:
+  "bhd ys = None \<Longrightarrow>
+   bhd (bappend xs ys) = bhd (unbend xs)"
+  apply (induct xs arbitrary: ys)
+    apply auto
+  apply (metis benq.simps(1) bhd.elims bhd.simps(3) bhd_Some_bappend option.discI)
+  done
+
+lemma BHD_Some_EOS_BAPPEND:
+  "BHD p buf2 = Some EOS \<Longrightarrow>
+   BHD p (buf1 >> buf2) = bhd (bend (buf1 p))"
+  by (simp only: bhd_Some_EOS_bappend BAPPEND_bappend)
+
+lemma BHD_None_BAPPEND:
+  "BHD p buf2 = None \<Longrightarrow>
+   BHD p (buf1 >> buf2) = bhd (unbend (buf1 p))"
+  by (metis BAPPEND_bappend bhd_None_bappend)
+
+lemma BHD_BAPPEND_2_cases:
+  "BHD p (buf1 >> buf2 >> buf3) = Some (Observed x) \<Longrightarrow>
+   BHD p buf3 = Some (Observed x) \<or>
+   (BHD p buf3 = Some EOS \<or> BHD p buf3 = None) \<and> BHD p buf2 = Some (Observed x) \<or>
+   (BHD p buf3 = Some EOS \<or> BHD p buf3 = None) \<and> ((BHD p buf2 = Some EOS \<or> BHD p buf2 = None)) \<and> BHD p buf1 = Some (Observed x)"
+  apply (simp add: BHD_Some_EOS_BAPPEND BHD_None_BAPPEND split: option.splits)
+   apply (smt (verit) BHD_Some_BAPPEND benq.elims bhd.elims bhd.simps(3) buf.distinct(5) fun_upd_same observation.case_eq_if observation.sel option.discI option.inject)
+  subgoal for ob
+    apply (cases ob)
+     apply (simp add: BHD_Some_EOS_BAPPEND BHD_None_BAPPEND split: option.splits)
+        apply (metis benq.elims bhd.simps(1) bhd.simps(2) bhd.simps(3) observation.sel option.sel)
+       apply (smt (verit) BHD_Some_BAPPEND benq.elims bhd.elims bhd.simps(2) bhd.simps(3) fun_upd_same is_none_code(2) is_none_simps(1) observation.case_eq_if observation.discI observation.sel option.sel)
+      apply (smt (verit) BHD_Some_BAPPEND benq.elims bhd.elims bhd.simps(2) bhd.simps(3) fun_upd_same is_none_code(2) is_none_simps(1) observation.case_eq_if observation.discI observation.sel option.sel)
+     apply (smt (verit) BHD_Some_BAPPEND benq.elims bhd.elims bhd.simps(1) bhd.simps(2) bhd.simps(3) fun_upd_same observation.case_eq_if observation.discI observation.sel option.discI option.sel)
+    apply (smt (verit, del_insts) BAPPEND.elims BHD_BAPPEND bappend.simps(3) benq.simps(1) benq.simps(2) bhd.elims bhd.simps(3) bhd_Some_bappend observation.simps(5) option.case_eq_if option.sel)
+    done
+  done
+
+lemma id_id_gen:
   "bisim (map_op projl projr (comp_op Some buf2 (id_op buf1) (id_op buf3))) (id_op (buf1 >> buf2 >> buf3))"
   apply (coinduction arbitrary: buf1 buf2 buf3 rule: bisim_coinduct_upto)
   subgoal for buf1 buf2 buf3
@@ -1566,7 +1652,9 @@ lemma
                 subgoal for q
                   apply (cases "p = q")
                   subgoal
-                    sorry
+                    apply (simp only: bhd_Some_btl_bappend BHD_None_bappend if_True refl BAPPEND_bappend)
+                    apply auto
+                    done
                   subgoal
                     by (metis BAPPEND_bappend fun_upd_other)
                   done
@@ -1576,7 +1664,10 @@ lemma
                 subgoal for q
                   apply (cases "p = q")
                   subgoal
-                    sorry
+                    apply (simp only: bhd_Some_btl_bappend BHD_None_bappend if_True refl BAPPEND_bappend)
+                    apply auto
+                    apply (metis (mono_tags, lifting) BAPPEND.elims BAPPEND_bappend BHD_Some_BAPPEND bhd_Some_btl_bappend observation.case_eq_if option.case_eq_if option.discI option.sel)
+                    done
                   subgoal
                     by (metis BAPPEND_bappend fun_upd_other)
                   done
@@ -1586,53 +1677,300 @@ lemma
           done
         done
       done
-
-
-
-end
-
-
-    apply (cases "p = q")
     subgoal
-
-      apply simp
-      sorry
-    subgoal
-      by (metis BAPPEND_bappend fun_upd_other)
+      unfolding sim_def
+      apply safe
+      subgoal for io op
+        apply (cases io)
+        subgoal for p ob
+          apply hypsubst_thin
+          apply (cases ob)
+          subgoal for x
+            apply hypsubst_thin
+            apply (drule stepped_id_op_Inp_Observed)
+             apply simp
+            apply hypsubst_thin
+            apply (rule exI[of _ "map_op projl projr (comp_op Some buf2 (id_op (BENQ p x buf1)) (id_op buf3))"])
+            apply (intro conjI)
+            subgoal
+              apply (rule stepped_map_op[where f=projl and g=projr and io="Inp (Inl p) (Observed x)", simplified])
+              apply (subst comp_op_code)
+              apply simp
+              apply (rule stepped.intros(3))
+               apply (simp add: Set.filter_def)
+               apply (rule disjI2)
+               apply simp
+               apply (rule disjI1)
+               apply (rule image_eqI)
+                apply (rule refl)
+               apply simp
+               apply (rule disjI1)
+               apply (rule image_eqI[of _ _ p])
+                apply (rule refl)
+               apply (simp add: cUNIV.rep_eq)
+              apply simp
+              using stepped.simps apply fastforce
+              done
+            subgoal
+              apply (rule bc_sym)
+              apply (rule bc_base)
+              apply (intro conjI exI)
+               apply (rule refl)
+              apply (rule arg_cong[where f=id_op])
+              apply (rule ext)
+              apply (simp only: BAPPEND_bappend)
+              apply (simp only: BAPPEND_upd)
+              apply auto
+              apply (metis BAPPEND.elims BAPPEND_bappend)
+              done
+            done
+          subgoal
+            apply hypsubst_thin
+            apply (drule stepped_id_op_Inp_EOS)
+             apply simp
+            apply hypsubst_thin
+            apply (rule exI[of _ "map_op projl projr (comp_op Some buf2 (id_op buf1) (id_op buf3))"])
+            apply (intro conjI)
+            subgoal
+              apply (rule stepped_map_op[where f=projl and g=projr and io="Inp (Inl p) EOS", simplified])
+              apply (subst comp_op_code)
+              apply simp
+              apply (rule stepped.intros(3))
+               apply (simp add: Set.filter_def)
+               apply (rule disjI2)
+               apply simp
+               apply (rule disjI1)
+               apply (rule image_eqI)
+                apply (rule refl)
+               apply simp
+               apply (rule disjI1)
+               apply (rule image_eqI[of _ _ p])
+                apply (rule refl)
+               apply (simp add: cUNIV.rep_eq)
+              apply simp
+              using stepped.simps apply fastforce
+              done
+            subgoal
+              apply (rule bc_sym)
+              apply (rule bc_base)
+              apply (intro conjI exI)
+               apply (rule refl)
+              apply (rule arg_cong[where f=id_op])
+              apply (rule ext)
+              apply (simp only: BAPPEND_bappend)
+              done
+            done
+          done
+        subgoal for p x
+          apply hypsubst_thin
+          apply (drule stepped_id_op_Out)
+           apply simp
+          apply (elim conjE)
+          apply hypsubst_thin
+          apply (drule BHD_BAPPEND_2_cases)
+          apply (elim disjE)
+          subgoal
+            apply (rule exI[of _ "map_op projl projr (comp_op Some buf2 (id_op buf1) (id_op (BTL p buf3)))"])
+            apply (intro conjI)
+            subgoal
+              apply (rule stepped_map_op[where f=projl and g=projr and io="Out (Inr p) x", simplified])
+              apply (subst comp_op_code)
+              apply simp
+              apply (rule stepped.intros(3))
+               apply (simp add: Set.filter_def)
+               apply (rule disjI2)+
+               apply (rule image_eqI)
+                apply (rule refl)
+               apply (simp add: cUNIV.rep_eq)
+               apply (intro conjI)
+                apply (rule disjI2)
+                apply (rule image_eqI[of _ _ p])
+                 apply (rule refl)
+                apply blast
+               apply simp
+              apply (auto simp add: stepped.intros(2))
+              done
+            subgoal
+              apply (rule bc_sym)
+              apply (rule bc_base)
+              apply (intro exI conjI) 
+               apply (rule refl)
+              apply (rule arg_cong[where f=id_op])
+              apply (rule ext)
+              apply (auto simp only: BAPPEND_bappend split: if_splits)
+              apply (smt (verit, best) BAPPEND_bappend bappend_assoc bhd_Some_btl_bappend fun_upd_other fun_upd_same)
+              done
+            done
+          subgoal
+            apply (rule exI[of _ "map_op projl projr (comp_op Some (BTL p buf2) (id_op buf1) (id_op buf3))"])
+            apply (intro conjI)
+            subgoal
+              apply (rule stepped_map_op[where f=projl and g=projr and io="Out (Inr p) x", simplified])
+              apply (subst comp_op_code)
+              apply simp
+              apply (rule stepped.intros(3))
+               apply (simp add: Set.filter_def)
+               apply (rule disjI2)+
+               apply (rule image_eqI)
+                apply (rule refl)
+               apply (simp add: cUNIV.rep_eq)
+               apply (intro conjI)
+                apply (rule disjI1)
+                apply (rule image_eqI[of _ _ p])
+                 apply (rule refl)
+                apply simp
+               apply simp
+              apply simp
+              apply (simp add: ranI)
+              apply (subst comp_op_code)
+              apply simp
+              apply (rule stepped.intros(3))
+               apply (simp add: Set.filter_def)
+               apply (rule disjI2)+
+               apply (rule image_eqI)
+                apply (rule refl)
+               apply (simp add: cUNIV.rep_eq)
+               apply (intro conjI)
+                apply (rule disjI2)
+                apply (rule image_eqI[of _ _ p])
+                 apply (rule refl)
+                apply simp
+                apply (metis benq.elims bhd.simps(3))
+               apply simp
+              apply (auto simp add: stepped.intros(2))
+               apply (smt (verit) benq.simps(2) bhd.elims bhd.simps(3) btl.simps(3) fun_upd_idem_iff observation.discI observation.sel option.discI option.sel stepped.intros(2))
+              apply (smt (verit, best) benq.simps(1) bhd.elims bhd.simps(3) btl.simps(3) fun_upd_idem_iff observation.sel option.discI option.sel stepped.intros(2))
+              done
+            subgoal
+              apply (rule bc_sym)
+              apply (rule bc_base)
+              apply (intro exI conjI) 
+               apply (rule refl)
+              apply (rule arg_cong[where f=id_op])
+              apply (rule ext)
+              apply (auto simp only: BAPPEND_bappend split: if_splits)
+               apply (smt (verit, ccfv_threshold) BAPPEND_bappend bappend.simps(3) bend.simps(3) benq.simps(2) bhd.elims bhd.simps(3) bhd_Some_EOS_bappend bhd_Some_btl_bappend btl.simps(3) fun_upd_other fun_upd_same observation.discI option.discI option.inject)
+              apply (smt (verit, ccfv_threshold) BAPPEND_bappend bappend.simps(3) benq.simps(1) bhd.elims bhd.simps(3) bhd_None_bappend bhd_Some_btl_bappend btl.simps(3) fun_upd_other fun_upd_same observation.discI option.discI option.inject unbend.simps(3))
+              done
+            done
+          subgoal
+            subgoal
+              apply (rule exI[of _ "map_op projl projr (comp_op Some buf2 (id_op (BTL p buf1)) (id_op buf3))"])
+              apply (intro conjI)
+              subgoal
+                apply (rule stepped_map_op[where f=projl and g=projr and io="Out (Inr p) x", simplified])
+                apply (subst comp_op_code)
+                apply simp
+                apply (rule stepped.intros(3))
+                 apply (simp add: Set.filter_def)
+                 apply (rule disjI2)
+                 apply (rule disjI1)
+                 apply (rule image_eqI)
+                  apply (rule refl)
+                 apply (simp add: cUNIV.rep_eq)
+                 apply (rule disjI2)
+                 apply (rule image_eqI)
+                  apply (rule refl)
+                 apply simp
+                 apply blast
+                apply simp
+                apply (subst comp_op_code)
+                apply simp
+                apply (rule stepped.intros(3))
+                 apply (simp add: Set.filter_def)
+                 apply (rule disjI2)+
+                 apply (rule image_eqI)
+                  apply (rule refl)
+                 apply (simp add: cUNIV.rep_eq)
+                 apply (intro conjI)
+                  apply (rule disjI1)
+                  apply (rule image_eqI[of _ _ p])
+                   apply (rule refl)
+                  apply simp
+                 apply simp
+                 apply (simp add: ranI)
+                 apply (metis benq.elims bhd.simps(3))
+                apply (simp add: ranI)
+                apply (cases "BHD (buf2 p) (benq x)")
+                 apply (metis benq.simps(1) benq.simps(2) bhd.elims bhd.simps(3) observation.discI option.discI option.inject)
+                apply simp
+                subgoal for ob
+                  apply (cases ob)
+                   defer
+                   apply simp
+                   apply (metis benq.elims bhd.elims buf.simps(7) observation.discI option.discI option.inject)
+                  apply simp
+                  subgoal for y
+                    apply (subgoal_tac "x = y")
+                     defer
+                     apply (metis (full_types) benq.simps(1) benq.simps(2) bhd.elims buf.inject observation.distinct(1) observation.inject option.distinct(1) option.inject) 
+                    apply hypsubst_thin
+                    apply (subgoal_tac "buf2(p := btl (benq y (buf2 p))) = buf2")
+                     defer
+                     apply (metis benq.simps(1) benq.simps(2) bhd.elims btl.simps(3) fun_upd_idem_iff observation.discI option.discI option.inject) 
+                    apply simp
+                    apply (subst comp_op_code)
+                    apply simp
+                    apply (rule stepped.intros(3))
+                     apply (simp add: Set.filter_def)
+                     apply (rule disjI2)
+                     apply (rule disjI2)
+                     apply (simp add: cUNIV.rep_eq)
+                     apply (rule image_eqI)
+                      apply (rule refl)
+                     apply simp
+                     apply (intro conjI)
+                      apply (rule disjI2)
+                      apply (rule image_eqI[of _ _ p])
+                       apply (rule refl)
+                      apply simp
+                      apply (metis benq.elims bhd.elims buf.distinct(3) buf.distinct(5))
+                     apply simp
+                    apply simp
+                    apply (smt (verit, best) benq.simps(1) benq.simps(2) bhd.elims bhd.simps(3) btl.simps(3) fun_upd_idem_iff not_None_eq observation.discI observation.sel option.sel stepped.intros(2))
+                    done
+                  done
+                done
+              subgoal
+                apply (rule bc_sym)
+                apply (rule bc_base)
+                apply (intro exI conjI) 
+                 apply (rule refl)
+                apply (rule arg_cong[where f=id_op])
+                apply (rule ext)
+                subgoal for q
+                  apply (cases "q = p")
+                  subgoal
+                    apply (simp only: BAPPEND_bappend split: )
+                    apply (subst BAPPEND_assoc[symmetric])
+                    apply simp
+                    apply (smt (verit, del_insts) bappend.simps(3) bappend_assoc benq.simps(1) benq.simps(2) bhd.elims bhd.simps(3) bhd_Some_btl_bappend btl.simps(3) observation.discI option.discI option.inject)
+                    done
+                  subgoal
+                    apply (simp only: BAPPEND_bappend split: )
+                    apply (subst BAPPEND_assoc[symmetric])
+                    apply simp
+                    apply (metis BAPPEND.elims BAPPEND_assoc BAPPEND_bappend)
+                    done
+                  done
+                done
+              done
+            done
+          done
+        done
+      done
     done
   done
-  done
-  done
 
-end
+lemma BAPPEND_BEmpty_BEmpty[simp]:
+  "(\<lambda>_. BEmpty) >> (\<lambda>_. BEmpty) = (\<lambda>_. BEmpty)"
+  by fastforce 
 
-  apply (simp only: cin.rep_eq)
-  defer
-  apply (rule stepped.intros(2))
-  defer
-  apply (simp add: Set.filter_def)
-  apply (rule disjI2)+
-  apply (rule image_eqI[of _ _ p])
-
-  apply (rule refl)
-  apply (simp add: cUNIV.rep_eq)
-  apply (rule stepped.intros(1))
-  apply simp
-  apply (rule bc_base)
-
-
-
-  apply (auto split: if_splits)
-
-find_theorems image name: I name: eq
-
-
-end
-
-lemma
+lemma scomp_op_id_id:
   "bisim (scomp_op (id_op (\<lambda> _. BEmpty)) (id_op (\<lambda> _. BEmpty))) (id_op (\<lambda> _. BEmpty))"
   unfolding scomp_op_def
-
+  using id_id_gen[of "\<lambda> _. BEmpty" "\<lambda> _. BEmpty" "\<lambda> _. BEmpty"] apply simp
+  done
 
 inductive can_input for R p where
   "(\<forall> op \<in> range (f o Observed). R op) \<Longrightarrow> can_input R p (Read p f)"
