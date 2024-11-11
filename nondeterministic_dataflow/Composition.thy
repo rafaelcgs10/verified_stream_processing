@@ -232,8 +232,10 @@ lemma comp_op_simps[simp]:
   done
 
 
-definition "pcomp_op = comp_op (\<lambda>_. None) (\<lambda>_. BEnded)"
-definition "scomp_op op1 op2 = map_op projl projr (comp_op Some (\<lambda>_. BEmpty) op1 op2)"
+definition pcomp_op (infixl "\<parallel>" 64) where
+ "pcomp_op = comp_op (\<lambda>_. None) (\<lambda>_. BEnded)"
+definition scomp_op (infixl "\<bullet>" 65) where
+ "scomp_op op1 op2 = map_op projl projr (comp_op Some (\<lambda>_. BEmpty) op1 op2)"
 
 fun reassoc where
   "reassoc (Inl (Inl x)) = Inl x"
@@ -1990,9 +1992,40 @@ lemma uses_input_mono[mono]: "R \<le> S \<Longrightarrow> can_input R \<le> can_
 coinductive sticky_input for p where
   "can_input (sticky_input p) p op \<Longrightarrow> sticky_input p op"
 
+abbreviation "Readd p f \<equiv> scomp_op (id_op (\<lambda> _. BEmpty)) (Read p f)"
+
 lemma
-  "bisim (scomp_op Id_op op) op"
+  "bisim (scomp_op (id_op buf) (Read (1::1) (\<lambda> _. End))) op"
   unfolding scomp_op_def
+  apply (coinduction arbitrary: buf op rule: bisim_coinduct_upto)
+  apply (intro conjI iffI)
+  oops
+
+coinductive buffered_reads where
+  "buffered_reads buf (f x) \<Longrightarrow> BHD p buf = None \<Longrightarrow> buffered_reads buf (Read p f)"
+| "buffered_reads (BTL p buf) (f x) \<Longrightarrow> BHD p buf = Some x \<Longrightarrow> buffered_reads buf (Read p f)"
+| "buffered_reads buf op \<Longrightarrow> buffered_reads buf (Write op p x)"
+| "(\<forall> op. op |\<in>| ops \<longrightarrow> buffered_reads buf op) \<Longrightarrow> buffered_reads buf (Choice ops)"
+| "buffered_reads (BENQ p x buf) op \<Longrightarrow> buffered_reads buf op"
+
+abbreviation id_empty_op ("\<I>") where
+  "\<I> \<equiv> id_op (\<lambda> _. BEmpty)"
+
+abbreviation buffered ("\<stileturn> _ \<turnstile>" [150]151) where
+  "\<stileturn>op\<turnstile> \<equiv> \<I> \<bullet> op \<bullet> \<I>"
+
+lemma
+  "traced hist_op ios \<longleftrightarrow> amazing_trace ios"
+
+lemma
+  "traced (\<stileturn> hist_op \<turnstile> \<bullet> \<stileturn> foo_op \<turnstile>) \<longleftrightarrow> amazing_trace_2 ios"
+
+lemma
+  "bisim (\<I> \<bullet> \<stileturn>op\<turnstile>) \<stileturn>op\<turnstile>"
+  unfolding scomp_op_def
+  apply (coinduction arbitrary: buf op rule: bisim_coinduct_upto)
+  apply (intro conjI iffI)
+  oops
 
 
 end

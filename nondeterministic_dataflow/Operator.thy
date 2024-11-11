@@ -2102,20 +2102,20 @@ lemma extend_empty: "extend {} buf R = R"
       simp flip: fun_eq_iff split: sum.splits)
 
 datatype (discs_sels) ('m, 'd) id_op_aux =
-    id_Read_aux "'m" "'d observation \<Rightarrow> ('m \<Rightarrow> 'd buf)"
-    | id_Write_aux "('m \<Rightarrow> 'd buf)" "'m" 'd
-    | id_End_aux 
+  id_Read_aux "'m" "'d observation \<Rightarrow> 'm cset \<times> ('m \<Rightarrow> 'd buf)"
+| id_Write_aux "'m cset \<times> ('m \<Rightarrow> 'd buf)" "'m" 'd
+| id_End_aux 
 
 abbreviation eval_id_op_aux where
   "eval_id_op_aux c aux \<equiv> (case aux of
-    id_Read_aux p f \<Rightarrow> Read p (\<lambda>y. let buf = f y in c buf)
-  | id_Write_aux buf q x \<Rightarrow> Write (c buf) q x
+    id_Read_aux p f \<Rightarrow> Read p (\<lambda>y. let (S, buf) = f y in c S buf)
+  | id_Write_aux (S, buf) q x \<Rightarrow> Write (c S buf) q x
   | id_End_aux \<Rightarrow> End)"
 
-corec id_op :: "_ \<Rightarrow> ('m :: countable, 'm, 'd) op" where
-  "id_op buf = Choice (cimage (eval_id_op_aux id_op) (cinsert id_End_aux (cUn 
-    (cimage (\<lambda> p. id_Read_aux p (case_observation (\<lambda> x. (BENQ p x buf)) buf)) (cUNIV :: 'm cset)) 
-    (cimage (\<lambda> p. id_Write_aux (BTL p buf) p ((obs o the) (BHD p buf))) (cfilter (\<lambda> p. \<exists> x. BHD p buf = Some (Observed x)) (cUNIV :: 'm cset))))))"
+corec id_op :: "_ \<Rightarrow> _ \<Rightarrow> ('m :: countable, 'm, 'd) op" where
+  "id_op S buf = Choice (cimage (eval_id_op_aux id_op) (cinsert id_End_aux (cUn 
+    (cimage (\<lambda> p. id_Read_aux p (case_observation (\<lambda> x. (S, BENQ p x buf)) (cDiff S {|p|}, buf))) S) 
+    (cimage (\<lambda> p. id_Write_aux (S, BTL p buf) p ((obs o the) (BHD p buf))) (cfilter (\<lambda> p. \<exists> x. BHD p buf = Some (Observed x)) (cUNIV :: 'm cset))))))"
 
 lemma id_op_code:
   "id_op buf = Choice (cinsert End (cUn 
