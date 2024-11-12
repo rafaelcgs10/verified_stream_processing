@@ -27,13 +27,13 @@ corec collatz_input where
   "collatz_input = (Read (2::2) (\<lambda>x. case x of
      Observed x \<Rightarrow> let n = decode_nat1 x in Write collatz_input 2 (encode_nat3 (n, n, 0))
    | EOB \<Rightarrow> collatz_input
-   | EOS \<Rightarrow> End))"
+   | EOS \<Rightarrow> end_op))"
 
 corec collatz_output where
   "collatz_output = (Read 2 (\<lambda>x. case x of
      Observed x \<Rightarrow> let (n, ni, i) = decode_nat3 x in Write collatz_output (2::2) (encode_nat2 (n,i))
    | EOB \<Rightarrow> collatz_output
-   | EOS \<Rightarrow> End))"
+   | EOS \<Rightarrow> end_op))"
 
 abbreviation "collatz_scomp \<equiv> scomp_op collatz_input (scomp_op collatz_op collatz_output)"
 

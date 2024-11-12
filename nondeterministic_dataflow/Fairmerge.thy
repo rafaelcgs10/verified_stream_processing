@@ -35,9 +35,9 @@ lemma neq_2_conv_1[simp]: "p \<noteq> 2 \<longleftrightarrow> (p :: 2) = 1"
 
 corec fairmerge :: "bool \<Rightarrow> bool \<Rightarrow> (2, 1, 'd) op" where
   "fairmerge e1 e2 = (case (e1, e2) of
-      (True, True) \<Rightarrow> End
-    | (True, False) \<Rightarrow> Read 2 (case_observation (Write (fairmerge e1 e2) 1) (fairmerge e1 e2) End)
-    | (False, True) \<Rightarrow> Read 1 (case_observation (Write (fairmerge e1 e2) 1) (fairmerge e1 e2) End)
+      (True, True) \<Rightarrow> end_op
+    | (True, False) \<Rightarrow> Read 2 (case_observation (Write (fairmerge e1 e2) 1) (fairmerge e1 e2) end_op)
+    | (False, True) \<Rightarrow> Read 1 (case_observation (Write (fairmerge e1 e2) 1) (fairmerge e1 e2) end_op)
     | (False, False) \<Rightarrow>
       Read 1 (case_observation (Write (Read 2 (case_observation (Write (fairmerge e1 e2) 1) (fairmerge e1 e2) (fairmerge e1 True))) 1)
      (Read 2 (case_observation (Write (fairmerge e1 e2) 1) (fairmerge e1 e2) (fairmerge e1 True))) (fairmerge True e2)))"
@@ -49,7 +49,7 @@ lemma fairmerge_False_False_Read:
 
 lemma fairmerge_False_False_NoRead:
   "fairmerge False False = Write op' p' x = False"
-  "fairmerge False False = End = False"
+  "fairmerge False False = end_op = False"
   by (subst fairmerge.code; auto)+
 
 lemma inputs_fairmerge_False_TrueD: "p \<in> inputs op \<Longrightarrow> op = fairmerge False True \<or> (\<exists>x. op = Write (fairmerge False True) 1 x) \<Longrightarrow> p = 1"
@@ -100,7 +100,7 @@ lemma cleaned_fairmerge: "cleaned (fairmerge e1 e2)"
   subgoal for e1 e2
     apply (subst (1 3 5) fairmerge.code)
     apply (auto 3 4 split: bool.splits split: observation.splits
-      intro: cc_base intro!: cc_write cc_read cc_cleaned[of End])
+      intro: cc_base intro!: cc_write cc_read cc_cleaned[of end_op])
     done
   done
 
@@ -121,7 +121,7 @@ lemma trace_fmTF_I: "traced (fairmerge True False) lxs \<Longrightarrow> trace_f
     apply simp
     apply (erule traced_ReadE; simp split: observation.splits)
      apply (erule traced_WriteE; simp)
-    apply (erule traced_EndE; simp)
+    apply (erule traced_end_opE; simp)
     done
   done
 
@@ -132,7 +132,7 @@ lemma trace_fmTF_D: "trace_fmTF lxs \<Longrightarrow> traced (fairmerge True Fal
       apply simp_all
     subgoal
       apply (subst fairmerge.code)
-      apply (auto intro!: tc_traced traced.End) []
+      apply (auto intro!: tc_traced traced.end_op) []
       done
     subgoal
       apply (subst fairmerge.code)
@@ -160,7 +160,7 @@ lemma trace_fmFT_I: "traced (fairmerge False True) lxs \<Longrightarrow> trace_f
     apply simp
     apply (erule traced_ReadE; simp split: observation.splits)
      apply (erule traced_WriteE; simp)
-    apply (erule traced_EndE; simp)
+    apply (erule traced_end_opE; simp)
     done
   done
 
@@ -171,7 +171,7 @@ lemma trace_fmFT_D: "trace_fmFT lxs \<Longrightarrow> traced (fairmerge False Tr
       apply simp_all
     subgoal
       apply (subst fairmerge.code)
-      apply (auto intro!: tc_traced traced.End) []
+      apply (auto intro!: tc_traced traced.end_op) []
       done
     subgoal
       apply (subst fairmerge.code)
@@ -246,7 +246,7 @@ lemma trace_fmFF_D: "trace_fmFF lxs \<Longrightarrow> traced (fairmerge False Fa
       apply (auto simp add: trace_fmFF_A1_def trace_fmFF_A2_def)
     subgoal
       apply (subst fairmerge.code)
-      apply (auto intro!: tc_traced traced.End trace_fmTF_D) []
+      apply (auto intro!: tc_traced traced.end_op trace_fmTF_D) []
       done
     subgoal
       apply (subst fairmerge.code)

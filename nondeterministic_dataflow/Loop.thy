@@ -8,7 +8,7 @@ begin
 
 
 inductive loop_producing :: "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightarrow> 'd buf) \<Rightarrow> ('ip, 'op, 'd) op \<Rightarrow> nat \<Rightarrow> bool" where
-  "loop_producing wire buf End 0"
+  "loop_producing wire buf end_op 0"
 | "p \<notin> ran wire \<Longrightarrow> loop_producing wire buf (Read p f) 0"
 | "wire p' = None \<Longrightarrow> loop_producing wire buf (Write op p' x) 0"
 | "p \<in> ran wire \<Longrightarrow> loop_producing wire (buf(p := btl (buf p))) (f (bhd (buf p))) n \<Longrightarrow> loop_producing wire buf (Read p f) (Suc n)"
@@ -37,9 +37,9 @@ lemma The_loop_producing: "loop_producing wire buf op i \<Longrightarrow> The (l
 corecursive loop_op :: "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op" where
   "loop_op wire buf op = (
-     let loop_op' = (\<lambda>buf' op'. if \<exists>n. loop_producing wire buf op n then loop_op wire buf' op' else End)
+     let loop_op' = (\<lambda>buf' op'. if \<exists>n. loop_producing wire buf op n then loop_op wire buf' op' else end_op)
      in case op of
-     End \<Rightarrow> End
+     end_op \<Rightarrow> end_op
    | Read p f \<Rightarrow> if p \<in> ran wire
        then loop_op' (BTL p buf) (f (BHD p buf))
        else Read p (\<lambda>x. loop_op wire buf (f x))
@@ -51,7 +51,7 @@ corecursive loop_op :: "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightar
 
 lemma loop_op_code[code]:
   "loop_op wire buf op = (case op of
-     End \<Rightarrow> End
+     end_op \<Rightarrow> end_op
    | Read p f \<Rightarrow> if p \<in> ran wire
        then loop_op wire (BTL p buf) (f (BHD p buf))
        else Read p (\<lambda>x. loop_op wire buf (f x))
@@ -89,12 +89,12 @@ lemma semantics_loop_op_BEmpty:
   done
  *)
 
-lemma loop_producing_Some: "loop_producing wire buf op n \<Longrightarrow> wire = Some \<Longrightarrow> loop_op wire buf op = End"
+lemma loop_producing_Some: "loop_producing wire buf op n \<Longrightarrow> wire = Some \<Longrightarrow> loop_op wire buf op = end_op"
   apply (induct buf op n rule: loop_producing.induct)
       apply (auto simp: ran_def)
   done
 
-lemma not_loop_producing_eq_End: "\<forall>n. \<not> loop_producing wire buf op n \<Longrightarrow> loop_op wire buf op = End"
+lemma not_loop_producing_eq_end_op: "\<forall>n. \<not> loop_producing wire buf op n \<Longrightarrow> loop_op wire buf op = end_op"
   apply (coinduction arbitrary: buf op)
   apply auto
   subgoal for buf op
@@ -107,18 +107,18 @@ lemma not_loop_producing_eq_End: "\<forall>n. \<not> loop_producing wire buf op 
     done
   done
 
-lemma loop_op_Some: "loop_op Some buf op = End"
+lemma loop_op_Some: "loop_op Some buf op = end_op"
   apply (coinduction arbitrary: buf op)
   apply auto
   subgoal for buf op
     apply (cases op)
       apply (simp_all add: ranI split: if_splits)
-    using loop_producing_Some not_loop_producing_eq_End apply blast+
+    using loop_producing_Some not_loop_producing_eq_end_op apply blast+
     done
   subgoal for buf op
     apply (cases op)
       apply (simp_all add: ranI split: if_splits)
-    using loop_producing_Some not_loop_producing_eq_End apply blast+
+    using loop_producing_Some not_loop_producing_eq_end_op apply blast+
     done
   done
 
@@ -202,7 +202,7 @@ lemma loop_producing_traced_causal_cong:
        (\<exists>lxs'.
            lfilter (visible_IO wire) ios' = LCons (Out q x) lxs' \<and>
            traced_cong (\<lambda>opa lxs. \<exists>ios ios' op buf. opa = loop_op wire buf op \<and> lxs = ios \<and> traced op ios' \<and> ios = lfilter (visible_IO wire) ios' \<and> causal wire buf ios') op' lxs')) \<or>
-    loop_op wire buf op = End \<and> lfilter (visible_IO wire) ios' = LNil"
+    loop_op wire buf op = end_op \<and> lfilter (visible_IO wire) ios' = LNil"
   apply (induct  buf op n arbitrary: ios' rule: loop_producing.induct)
   subgoal
     by auto
@@ -225,11 +225,11 @@ lemma loop_producing_traced_causal_cong:
     done
   done
 
-lemma in_traced_End_not_visible:
+lemma in_traced_end_op_not_visible:
   "x \<in> lset ios \<Longrightarrow> 
    traced op ios \<Longrightarrow>
    causal wire buf ios \<Longrightarrow>
-   loop_op wire buf op = End \<Longrightarrow>
+   loop_op wire buf op = end_op \<Longrightarrow>
    \<not> visible_IO wire x"
   apply (induct ios arbitrary: op buf rule: lset_induct)
   subgoal for xs op buf
@@ -241,13 +241,13 @@ lemma in_traced_End_not_visible:
       apply (auto split: if_splits)
       apply (metis loop_op_simps'(1) loop_op_simps(1))
      apply blast
-    apply (meson loop_producing.intros(5) not_loop_producing_eq_End)
+    apply (meson loop_producing.intros(5) not_loop_producing_eq_end_op)
     done
   done
 
 primcorec retrace_loop_op where
   "retrace_loop_op wire buf op inps = (case op of
-     End \<Rightarrow> LNil
+     end_op \<Rightarrow> LNil
    | Read p f \<Rightarrow> if p \<in> ran wire
        then LCons (Inp p (BHD p buf)) (retrace_loop_op wire (BTL p buf) (f (BHD p buf)) inps)
        else LCons (Inp p (lhd inps)) (retrace_loop_op wire buf (f (lhd inps)) (ltl inps))
@@ -268,11 +268,11 @@ lemma traced_retrace_loop_op:
     apply (cases op)
     subgoal
       apply (clarsimp simp add: lmap_eq_LNil split: if_splits; blast?)
-      apply (metis End lfilter_LNil lmap_eq_LNil loop_op_simps'(1) loop_op_simps(1))
+      apply (metis end_op lfilter_LNil lmap_eq_LNil loop_op_simps'(1) loop_op_simps(1))
       done
     subgoal
       apply (clarsimp simp add: lmap_eq_LNil split: if_splits option.splits; blast?)
-      apply (metis (no_types, lifting) lfilter_LNil lmap_eq_LNil loop_op_simps'(2) not_loop_producing_eq_End option.simps(5) traced.simps)
+      apply (metis (no_types, lifting) lfilter_LNil lmap_eq_LNil loop_op_simps'(2) not_loop_producing_eq_end_op option.simps(5) traced.simps)
       done
     subgoal
       apply (clarsimp simp add: lmap_eq_LNil split: if_splits option.splits; blast?)
@@ -299,9 +299,9 @@ lemma causal_retrace_loop_op[simp]:
     done
   done
 
-lemma retrace_loop_op_End_not_visible:
+lemma retrace_loop_op_end_op_not_visible:
   "x \<in> lset (retrace_loop_op wire buf op inps) \<Longrightarrow>
-   loop_op wire buf op = End \<Longrightarrow>
+   loop_op wire buf op = end_op \<Longrightarrow>
    \<not> visible_IO wire x"
   apply (induct "retrace_loop_op wire buf op inps" arbitrary: buf op inps rule: lset_induct)
   subgoal for xs buf op inps
@@ -314,18 +314,18 @@ lemma retrace_loop_op_End_not_visible:
     subgoal
       by (metis loop_op_simps'(1) loop_op_simps(1))
     subgoal
-      by (metis loop_producing.intros(5) not_loop_producing_eq_End)
+      by (metis loop_producing.intros(5) not_loop_producing_eq_end_op)
     done
   done
 
 lemma in_traced_loop_cases:
   "loop_producing wire buf op n \<Longrightarrow>
    traced (loop_op wire buf op) ios \<Longrightarrow>
-   loop_op wire buf op = End \<and> ios = LNil \<or>
+   loop_op wire buf op = end_op \<and> ios = LNil \<or>
    (\<exists> op' x p buf'. loop_op wire buf op = Write (loop_op wire buf' op') p x \<and> lhd ios = Out p x \<and> wire p = None) \<or>
    (\<exists> f x p buf'. loop_op wire buf op = Read p (\<lambda> x. loop_op wire buf' (f x)) \<and> lhd ios = Inp p x \<and> p \<notin> ran wire)"
   apply (induct buf op n arbitrary: ios rule: loop_producing.induct)
-      apply (auto intro: End split: if_splits)
+      apply (auto intro: end_op split: if_splits)
   done
 
 lemma in_traced_loop_visible:
@@ -341,7 +341,7 @@ lemma in_traced_loop_visible:
        apply auto
       done
     subgoal
-      by (metis llist.distinct(1) not_loop_producing_eq_End traced_EndE)
+      by (metis llist.distinct(1) not_loop_producing_eq_end_op traced_end_opE)
     done
   subgoal for x' xs buf op
     apply (cases "\<exists> n. loop_producing wire buf op n")
@@ -352,7 +352,7 @@ lemma in_traced_loop_visible:
       apply auto
       done
     subgoal
-      by (metis llist.distinct(1) not_loop_producing_eq_End traced_EndE)
+      by (metis llist.distinct(1) not_loop_producing_eq_end_op traced_end_opE)
     done
   done
 
@@ -373,7 +373,7 @@ lemma traced_in_retrace_loop_op:
   subgoal
     by (auto dest: loop_producing_traced_in_retrace_loop_op)
   subgoal
-    by (metis empty_iff lset_LNil not_loop_producing_eq_End traced_EndE)
+    by (metis empty_iff lset_LNil not_loop_producing_eq_end_op traced_end_opE)
   done
 
 lemma loop_producing_traced_lhd_loop_producing:
@@ -391,7 +391,7 @@ lemma traced_lhd_loop_producing:
   subgoal
     by (auto dest: loop_producing_traced_lhd_loop_producing)
   subgoal
-    by (metis llist.simps(3) not_loop_producing_eq_End traced_EndE)
+    by (metis llist.simps(3) not_loop_producing_eq_end_op traced_end_opE)
   done
 
 lemma loop_producing_traced_cong:
@@ -414,7 +414,7 @@ lemma traced_ios_lfilter_visible:
   subgoal for buf op ios
     apply (intro conjI impI iffI)
     subgoal
-      by (auto simp add: lnull_def lmap_eq_LNil lfilter_eq_LNil dest: retrace_loop_op_End_not_visible)
+      by (auto simp add: lnull_def lmap_eq_LNil lfilter_eq_LNil dest: retrace_loop_op_end_op_not_visible)
     subgoal
       apply (simp add: lnull_def lmap_eq_LNil lfilter_eq_LNil)
       apply (rule ccontr)
@@ -435,7 +435,7 @@ lemma traced_ios_lfilter_visible:
       subgoal
         by (auto dest: loop_producing_traced_cong)
       subgoal
-        by (metis lnull_def not_loop_producing_eq_End traced_EndE)
+        by (metis lnull_def not_loop_producing_eq_end_op traced_end_opE)
       done
     done
   done
@@ -463,9 +463,9 @@ lemma traced_loop_op:
           done
         subgoal
           apply simp
-          apply (drule not_loop_producing_eq_End)
+          apply (drule not_loop_producing_eq_end_op)
           apply (auto simp add: lfilter_eq_LNil)
-          using in_traced_End_not_visible apply fast
+          using in_traced_end_op_not_visible apply fast
           done
         done
       done
@@ -495,7 +495,7 @@ corec while_body_op where
   "while_body_op P f b = (
    let read_1 = Read (1::2) (case_observation
        (\<lambda> x. if P x then Write (while_body_op P f b) (2::2) x else Write (while_body_op P f b) (1::2) (f x))
-        (if b then End else while_body_op P f b) End) in
+        (if b then end_op else while_body_op P f b) end_op) in
    if b
    then
      read_1
@@ -575,7 +575,7 @@ lemma trace_while_body_True_traced:
        apply simp_all
     subgoal
       apply (subst while_body_op.code)
-      apply (auto intro: End traced_cong.intros)
+      apply (auto intro: end_op traced_cong.intros)
       done
     subgoal
       apply (subst (1 2) while_body_op.code)
@@ -592,7 +592,7 @@ lemma trace_while_body_True_traced:
       done
     subgoal
       apply (subst (1) while_body_op.code)
-      apply (auto simp add: End tc_traced intro: traced_cong.intros)
+      apply (auto simp add: end_op tc_traced intro: traced_cong.intros)
       done
     done
   done
@@ -605,7 +605,7 @@ lemma trace_while_body_False_traced:
     apply (subst while_body_op.code)
     unfolding Let_def
     apply (erule trace_while_body_False.cases)
-                 apply (auto simp add: tc_base tc_read tc_write End Read Write tc_traced dest: trace_while_body_True_traced)
+                 apply (auto simp add: tc_base tc_read tc_write end_op Read Write tc_traced dest: trace_while_body_True_traced)
     done
   done
 
@@ -640,7 +640,7 @@ coinductive trace_while_True_op for P f where
 (* FIXME: move me *)
 fun buf_to_list where
   "buf_to_list BEmpty = []"
-| "buf_to_list BEnded = []"
+| "buf_to_list Bend_oped = []"
 | "buf_to_list (BCons x xs) = x # buf_to_list xs"
 
 
@@ -1329,7 +1329,7 @@ lemma loop_producing_while_body_op_buf_all_False_aux:
   "loop_producing wire buf op n \<Longrightarrow>
    op = while_body_op P f True \<Longrightarrow>
    wire = (\<lambda>x. if x = 1 then Some 1 else None) \<Longrightarrow>
-   buf 1 \<noteq> BEnded \<Longrightarrow>
+   buf 1 \<noteq> Bend_oped \<Longrightarrow>
    buf 1 \<noteq> BEmpty \<Longrightarrow>
    \<forall>x\<in>set (buf_to_list (buf 1)). \<forall>n. \<not> P ((f ^^ n) x) \<Longrightarrow>
    False"
@@ -1381,7 +1381,7 @@ lemma loop_producing_while_body_op_buf_all_False_aux:
 
 lemma loop_producing_while_body_op_buf_all_False:
   "\<not> (\<exists> x \<in> set (buf_to_list (buf 1)). \<exists> n. P ((f ^^ n) x)) \<Longrightarrow>
-   buf 1 \<noteq> BEnded \<Longrightarrow>
+   buf 1 \<noteq> Bend_oped \<Longrightarrow>
    buf 1 \<noteq> BEmpty \<Longrightarrow>
    \<not> (\<exists> n. loop_producing (\<lambda>x. if x = (1::2) then Some (1::2) else None) buf (while_body_op P f True) n)"
   using loop_producing_while_body_op_buf_all_False_aux by blast
@@ -1429,7 +1429,7 @@ lemma trace_while_True_op_traced:
         apply (rule loop_producing.intros(4))
          apply simp
         apply simp
-        apply (smt (verit, ccfv_threshold) fun_upd_same fun_upd_upd loop_producing.intros(5) not_loop_producing_eq_End op.distinct(5))
+        apply (smt (verit, ccfv_threshold) fun_upd_same fun_upd_upd loop_producing.intros(5) not_loop_producing_eq_end_op op.distinct(5))
         done
       subgoal
         apply (rule exI)
@@ -1444,7 +1444,7 @@ lemma trace_while_True_op_traced:
         apply (rule loop_producing.intros(4))
          apply simp
         apply simp
-        apply (smt (verit, ccfv_threshold) fun_upd_same fun_upd_upd loop_producing.intros(5) not_loop_producing_eq_End op.distinct(5))
+        apply (smt (verit, ccfv_threshold) fun_upd_same fun_upd_upd loop_producing.intros(5) not_loop_producing_eq_end_op op.distinct(5))
         done
       done
     subgoal for buf ios x
@@ -1673,7 +1673,7 @@ lemma while_True_retrace_eq_lfilter_visible:
             apply (metis pow_f_f_Suc)
             done
           apply (simp add: lfilter_eq_LNil)
-          apply (smt (verit, ccfv_SIG) \<open>\<And>x. \<lbrakk>trace_while_body_True P f ios; causal (\<lambda>x. if x = 1 then Some 1 else None) buf ios; buf 1 = BEmpty; x \<in> lset ios; visible_IO (\<lambda>x. if x = 1 then Some 1 else None) x\<rbrakk> \<Longrightarrow> False\<close> \<open>\<And>x. \<lbrakk>trace_while_body_True P f ios; causal (\<lambda>x. if x = 1 then Some 1 else None) buf ios; buf 1 = BEnded; x \<in> lset ios; visible_IO (\<lambda>x. if x = 1 then Some 1 else None) x\<rbrakk> \<Longrightarrow> False\<close> bhd.simps(3) buf_to_list.simps(3) in_buf_to_list_in_tl_buf_to_list list.sel(3) loop_producing_while_body_op_buf_all_False trace_while_body_True_not_loop_producing_not_visible)
+          apply (smt (verit, ccfv_SIG) \<open>\<And>x. \<lbrakk>trace_while_body_True P f ios; causal (\<lambda>x. if x = 1 then Some 1 else None) buf ios; buf 1 = BEmpty; x \<in> lset ios; visible_IO (\<lambda>x. if x = 1 then Some 1 else None) x\<rbrakk> \<Longrightarrow> False\<close> \<open>\<And>x. \<lbrakk>trace_while_body_True P f ios; causal (\<lambda>x. if x = 1 then Some 1 else None) buf ios; buf 1 = Bend_oped; x \<in> lset ios; visible_IO (\<lambda>x. if x = 1 then Some 1 else None) x\<rbrakk> \<Longrightarrow> False\<close> bhd.simps(3) buf_to_list.simps(3) in_buf_to_list_in_tl_buf_to_list list.sel(3) loop_producing_while_body_op_buf_all_False trace_while_body_True_not_loop_producing_not_visible)
           done
         done
       done
