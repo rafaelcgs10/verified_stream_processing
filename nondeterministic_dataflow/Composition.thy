@@ -79,10 +79,10 @@ inductive_cases can_end_op1_WriteE[elim!]: "can_end_op1 wire (Write op p x)"
 inductive_cases can_end_op1_ChoiceE[elim!]: "can_end_op1 wire (Choice ops)"
 lemma can_end_op1_simps[simp]: "p \<notin> dom wire \<Longrightarrow> \<not> can_end_op1 wire (Write op p x)" by auto
 
-lemma diverged_can_end_op1:
+(* lemma diverged_can_end_op1:
   "diverged op \<Longrightarrow>
    can_end_op1 wire op"
-  by (smt (verit, best) can_end.cases can_end_op1.coinduct diverged_can_end)
+  by (smt (verit, best) can_end.cases can_end_op1.coinduct diverged_can_end) *)
 
 coinductive can_end_op2 for wire where
   [intro!]: "can_end_op2 wire End"
@@ -94,10 +94,10 @@ inductive_cases can_end_op2_WriteE[elim!]: "can_end_op2 wire (Write op p x)"
 inductive_cases can_end_op2_ChoiceE[elim!]: "can_end_op2 wire (Choice ops)"
 lemma can_end_op2_simps[simp]: "p \<notin> ran wire \<Longrightarrow> \<not> can_end_op1 wire (Read p f)" by auto
 
-lemma diverged_can_end_op2:
+(* lemma diverged_can_end_op2:
   "diverged op \<Longrightarrow>
    can_end_op2 wire op"
-  by (smt (verit, best) can_end.cases can_end_op2.coinduct diverged_can_end)
+  by (smt (verit, best) can_end.cases can_end_op2.coinduct diverged_can_end) *)
 
 lemma can_end_op1_None_can_end_iff:
   "can_end_op1 (\<lambda>_. None) op \<longleftrightarrow> can_end op"
@@ -118,7 +118,9 @@ lemma can_end_op2_None_can_end_iff:
   done
 
 abbreviation "sound_reads wire buf \<equiv> cfilter (\<lambda> op. case op of Read p f \<Rightarrow> if p \<in> ran wire \<and> BHD p buf = None then False else True | _ \<Rightarrow> True)"
-abbreviation "may_terminate op \<equiv> can_end op \<and> \<not> diverged op"
+
+(* abbreviation "may_terminate op \<equiv> can_end op \<and> \<not> diverged op"
+ *)
 
 
 corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
@@ -135,6 +137,8 @@ corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow
              else Read_aux (Inr p) (\<lambda>x. (buf, op1, f x))
          | Write op p x \<Rightarrow> Write_aux (buf, op1, op) (Inr p) x) (sound_reads wire buf (choices op2)))) 
         (if diverged op1 \<and> diverged op2 then {|spin_aux|} else if may_terminate op1 \<or> may_terminate op2 then {|End_aux|} else {||})))"
+
+end
 
 lemma comp_op_code: "comp_op wire buf op1 op2 =
   Choice (cUn (cUn
