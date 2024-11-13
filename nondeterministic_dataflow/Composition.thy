@@ -825,37 +825,94 @@ fun is_bend where
 | "is_bend BEmpty = False"
 | "is_bend (BCons x xs) = is_bend xs"
 
+lemma is_bend_bend[simp]:
+  "is_bend (bend xs)"
+  by (induct xs) auto
+
+lemma outputs_id_op[simp]:
+  "outputs (id_op S buf) = rcset S \<union> {p. \<exists> x. BHD p buf = Some (Observed x)}"
+  sorry
+
 lemma stepped_comp_op_Some_id_op_id_op:
   "stepped (comp_op Some buf2 op1 op2) io op \<Longrightarrow>
    op1 = id_op S1 buf1 \<Longrightarrow>
    op2 = id_op S2 buf3 \<Longrightarrow>
-   S2 = cUn S1 (acset {p. BHD p buf \<noteq> Some EOS}) \<Longrightarrow>
+   (\<forall> p. \<not> p |\<in>| S1 \<and> \<not> (\<exists> x. BHD p buf1 = Some (Observed x)) \<longrightarrow> is_bend (buf2 p)) \<Longrightarrow>
+   S2 = cUn S1 (acset ({p. BHD p buf2 \<noteq> Some EOS} \<union> {p. \<exists> x. BHD p buf1 = Some (Observed x)})) \<Longrightarrow>
    (\<exists> p x. io = Inp (Inl p) (Observed x) \<and>
      (\<exists> buf1' buf2' buf3' S2'. op = comp_op Some buf2' (id_op S1 (BENQ p x buf1')) (id_op S2' buf3') \<and>
-     (\<forall> p. \<not> p |\<in>| S2' \<longrightarrow> BHD p buf2' = Some EOS) \<and> csubset_eq S2' S2 \<and>
+      S2' = cUn S1 (acset ({p. BHD p buf2' \<noteq> Some EOS} \<union> {p. \<exists> x. BHD p buf1' = Some (Observed x)})) \<and>
       buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3')) \<or>
 
    (\<exists> p x S2'. io = Inp (Inl p) EOS \<and> (\<exists> buf1' buf2' buf3'. op = comp_op Some buf2' (id_op (cDiff S1 {|p|}) buf1') (id_op S2' buf3') \<and>
+     S2' = cUn (cDiff S1 {|p|}) (acset ({p. BHD p buf2' \<noteq> Some EOS} \<union> {p. \<exists> x. BHD p buf1' = Some (Observed x)})) \<and>
      buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3')) \<or>
 
    (\<exists> p x. io = Out (Inr p) x \<and>
-      (\<exists> buf1' buf2' buf3'. op = comp_op Some buf2' (id_op S1 buf1') (id_op S2 (BTL p buf3')) \<and> BHD p buf3' = Some (Observed x) \<and>
+     (\<exists> buf1' buf2' buf3'. op = comp_op Some buf2' (id_op S1 buf1') (id_op S2 (BTL p buf3')) \<and> BHD p buf3' = Some (Observed x) \<and>
+     S2' = cUn S1 (acset {p. BHD p buf2' \<noteq> Some EOS}) \<and>
      buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3'))"
   apply (drule stepped_stepped_comp_op_inv)
   subgoal
-    apply (rotate_tac 3)
+    apply (rotate_tac 4)
     apply (induct op buf2 op1 op2 arbitrary: buf1 buf3 S1 S2 rule: stepped_comp_op_inv.induct)
          apply (simp_all add: ranI BAPPEND_BTL_Some_BENQ_alt)
-    subgoal for op1 p x op1' buf op2
+    subgoal for op1 p x op1' buf op2 buf1 buf3 S1 S2
       apply (cases x)
-      subgoal
+      subgoal for y
         apply (drule stepped_id_op_Inp_Observed)
          apply auto
         apply hypsubst_thin
-        apply (metis (no_types, opaque_lifting) BAPPEND_bend bend.simps(2) bhd.elims bhd.simps(2) end_buf_def observation.discI option.discI option.inject order.refl)
-        done
+        apply(rule exI[of _ buf1])
+        apply (rule exI[of _ "end_buf Some (rcset S1 \<union> {pa. (pa = p \<longrightarrow> (\<exists>x. BHD (buf1 p) (benq y) = Some (Observed x))) \<and> (pa \<noteq> p \<longrightarrow> (\<exists>x. BHD pa buf1 = Some (Observed x)))}) buf"])
+        apply(rule exI[of _ buf3])
+        apply auto
+        apply (rule arg_cong[where f="comp_op Some
+     (end_buf Some (rcset S1 \<union> {pa. (pa = p \<longrightarrow> (\<exists>x. BHD (buf1 p) (benq y) = Some (Observed x))) \<and> (pa \<noteq> p \<longrightarrow> (\<exists>x. BHD pa buf1 = Some (Observed x)))}) buf)
+     (id_op S1 (buf1(p := benq y (buf1 p))))"])
+        apply (rule arg_cong2[where f=id_op])
+         apply auto
+   subgoal
+     by (metis (no_types, lifting) bend.simps(3) bhd.elims bhd.simps(3) end_buf_def is_bend.simps(2))
+
+   subgoal
+     by (metis (no_types, lifting) bend.simps(2) bhd.elims end_buf_def observation.discI option.discI option.sel)
+   done
       subgoal
-        using stepped_id_op_Inp_EOS by fastforce
+     apply (drule stepped_id_op_Inp_EOS)
+         apply auto
+        apply hypsubst_thin
+        apply(rule exI[of _ buf1])
+        apply (rule exI[of _ "end_buf Some (rcset (cDiff S1 {|p|}) \<union> {p. \<exists>x. BHD p buf1 = Some (Observed x)}) buf"])
+        apply(rule exI[of _ buf3])
+        apply auto
+        apply (rule arg_cong[where f="comp_op Some (end_buf Some (rcset (cDiff S1 {|p|}) \<union> {p. \<exists>x. BHD p buf1 = Some (Observed x)}) buf) (id_op (cDiff S1 {|p|}) buf1)"])
+        apply (rule arg_cong2[where f=id_op])
+         apply auto
+        subgoal
+          unfolding end_buf_def
+          apply (auto simp add: minus_cset.rep_eq split: if_splits)
+          
+
+end
+
+     sorry
+
+   subgoal
+     by (metis (no_types, lifting) bend.simps(3) bhd.elims bhd.simps(3) end_buf_def is_bend.simps(2))
+
+
+
+
+
+end
+        apply (metis bend.simps(3) bhd.elims bhd.simps(3) end_buf_def is_bend.simps(2))
+        apply (metis bend.simps(2) bhd.simps(3) end_buf_def is_bend.elims(2) observation.simps(3) option.inject) 
+        done
+
+
+
+end
     done
   subgoal
     using stepped_id_op_Out by fastforce
