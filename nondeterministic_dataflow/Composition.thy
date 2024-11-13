@@ -122,16 +122,53 @@ abbreviation "sound_reads wire buf \<equiv> cfilter (\<lambda> op. case op of Re
 (* abbreviation "may_terminate op \<equiv> can_end op \<and> \<not> diverged op"
  *)
 
+(*
+
+corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
+  ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
+  "comp_op wire buf op1 op2 =
+     Choice (cimage (eval_comp_op_aux (comp_op wire)) (cUn (cUn
+       (cimage (\<lambda>op. case op of
+           Read p f \<Rightarrow> Read_aux (Inl p) (\<lambda>x. (end_buf wire (outputs (f x)) buf, f x, op2))
+         | Write op p x \<Rightarrow> (case wire p of
+             None \<Rightarrow> Write_aux (end_buf wire (outputs op) buf, op, op2) (Inl p) x
+           | Some q \<Rightarrow> Base_aux (end_buf wire (outputs op) (BENQ q x buf), op, op2))) (choices op1))
+       (cimage (\<lambda>op. case op of
+           Read p f \<Rightarrow> if p \<in> ran wire then Base_aux (BTL p buf, op1, safe_read f (BHD p buf))
+             else Read_aux (Inr p) (\<lambda>x. (buf, op1, f x))
+         | Write op p x \<Rightarrow> Write_aux (buf, op1, op) (Inr p) x) (choices op2))) (if can_end_op1 wire op1 \<and> can_end_op2 wire op2 then {|End_aux|} else {||})))"
+
+lemma comp_op_code: "comp_op wire buf op1 op2 =
+  Choice (cUn (cUn
+    (cimage (\<lambda>op. case op of
+        Read p f \<Rightarrow> Read (Inl p) (\<lambda>x. comp_op wire (end_buf wire (outputs (f x)) buf) (f x) op2)
+      | Write op p x \<Rightarrow> (case wire p of
+          None \<Rightarrow> Write (comp_op wire (end_buf wire (outputs op) buf) op op2) (Inl p) x
+        | Some q \<Rightarrow> comp_op wire (end_buf wire (outputs op) (BENQ q x buf)) op op2)) (choices op1))
+    (cimage (\<lambda>op. case op of
+        Read p f \<Rightarrow> if p \<in> ran wire then comp_op wire (BTL p buf) op1 (safe_read f (BHD p buf))
+          else Read (Inr p) (\<lambda>x. comp_op wire buf op1 (f x))
+      | Write op p x \<Rightarrow> Write (comp_op wire buf op1 op) (Inr p) x) (choices op2))) (if can_end_op1 wire op1 \<and> can_end_op2 wire op2 then {|End|} else {||}))"
+  apply (subst comp_op.code)
+  apply (unfold cimage_cUn op.inject)
+  apply (rule arg_cong2[where f = cUn])
+   apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
+      split: comp_op_aux.splits op.splits option.splits)
+  done
+
+*)
+
+definition "end_buf wire A buf p = (if p \<in> Option.these (wire ` A) then buf p else bend (buf p))"
 
 corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
   "comp_op wire buf op1 op2 =
      Choice (cimage (eval_comp_op_aux (comp_op wire)) (cUn
        (cimage (\<lambda>op. case op of
-           Read p f \<Rightarrow> Read_aux (Inl p) (\<lambda>x. (buf, f x, op2))
+           Read p f \<Rightarrow> Read_aux (Inl p) (\<lambda>x. (end_buf wire (outputs (f x)) buf, f x, op2))
          | Write op p x \<Rightarrow> (case wire p of
-             None \<Rightarrow> Write_aux (buf, op, op2) (Inl p) x
-           | Some q \<Rightarrow> Base_aux (BENQ q x buf, op, op2))) (choices op1))
+             None \<Rightarrow> Write_aux (end_buf wire (outputs op) buf, op, op2) (Inl p) x
+           | Some q \<Rightarrow> Base_aux (end_buf wire (outputs op) (BENQ q x buf), op, op2))) (choices op1))
        (cimage (\<lambda>op. case op of
            Read p f \<Rightarrow> if p \<in> ran wire then Base_aux (BTL p buf, op1, safe_read f (BHD p buf))
              else Read_aux (Inr p) (\<lambda>x. (buf, op1, f x))
@@ -140,10 +177,10 @@ corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow
 lemma comp_op_code: "comp_op wire buf op1 op2 =
   Choice (cUn
     (cimage (\<lambda>op. case op of
-        Read p f \<Rightarrow> Read (Inl p) (\<lambda>x. comp_op wire buf (f x) op2)
+        Read p f \<Rightarrow> Read (Inl p) (\<lambda>x. comp_op wire (end_buf wire (outputs (f x)) buf) (f x) op2)
       | Write op p x \<Rightarrow> (case wire p of
-          None \<Rightarrow> Write (comp_op wire buf op op2) (Inl p) x
-        | Some q \<Rightarrow> comp_op wire (BENQ q x buf) op op2)) (choices op1))
+          None \<Rightarrow> Write (comp_op wire (end_buf wire (outputs op) buf) op op2) (Inl p) x
+        | Some q \<Rightarrow> comp_op wire (end_buf wire (outputs op) (BENQ q x buf)) op op2)) (choices op1))
     (cimage (\<lambda>op. case op of
         Read p f \<Rightarrow> if p \<in> ran wire then comp_op wire (BTL p buf) op1 (safe_read f (BHD p buf))
           else Read (Inr p) (\<lambda>x. comp_op wire buf op1 (f x))
@@ -157,28 +194,28 @@ lemma comp_op_code: "comp_op wire buf op1 op2 =
 
 lemma comp_op_simps[simp]:
   "comp_op wire buf (Read p1 f1) (Read p2 f2) =
-    Choice (cinsert (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Read p2 f2)))
+    Choice (cinsert (Read (Inl p1) (\<lambda>y. comp_op wire (end_buf wire (outputs (f1 y)) buf) (f1 y) (Read p2 f2)))
      (if p2 \<in> ran wire then (if BHD p2 buf = None then cempty else csingle (comp_op wire (buf(p2 := btl (buf p2))) (Read p1 f1) (safe_read f2 (BHD p2 buf))))
       else csingle (Read (Inr p2) (\<lambda>y. comp_op wire buf (Read p1 f1) (f2 y)))))"
   "comp_op wire buf (Read p1 f1) (Write op2 q2 x2) =
-    choice2 (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Write op2 q2 x2))) (Write (comp_op wire buf (Read p1 f1) op2) (Inr q2) x2)"
+    choice2 (Read (Inl p1) (\<lambda>y. comp_op wire (end_buf wire (outputs (f1 y)) buf) (f1 y) (Write op2 q2 x2))) (Write (comp_op wire buf (Read p1 f1) op2) (Inr q2) x2)"
   "comp_op wire buf (Read p1 f1) (Choice op2s) = 
-    Choice (cinsert (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Choice op2s))) (cimage
+    Choice (cinsert (Read (Inl p1) (\<lambda>y. comp_op wire (end_buf wire (outputs (f1 y)) buf) (f1 y) (Choice op2s))) (cimage
        (case_op (\<lambda>p f. if p \<in> ran wire then comp_op wire (buf(p := btl (buf p))) (Read p1 f1) (safe_read f (BHD p buf)) else Read (Inr p) (\<lambda>x. comp_op wire buf (Read p1 f1) (f x)))
          (\<lambda>op p. Write (comp_op wire buf (Read p1 f1) op) (Inr p)) (\<lambda>a. undefined))
        (sound_reads wire buf (cUnion (cimage choices op2s)))))"
   "comp_op wire buf (Write op1 q1 x1) (Read p2 f2) =
-    Choice (cinsert (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Read p2 f2)) (Inl q1) x1
-      | Some q \<Rightarrow> comp_op wire (buf(q := benq x1 (buf q))) op1 (Read p2 f2))
+    Choice (cinsert (case wire q1 of None \<Rightarrow> Write (comp_op wire (end_buf wire (outputs op1) buf) op1 (Read p2 f2)) (Inl q1) x1
+      | Some q \<Rightarrow> comp_op wire (end_buf wire (outputs op1) (buf(q := benq x1 (buf q)))) op1 (Read p2 f2))
       (if p2 \<in> ran wire then (if BHD p2 buf = None then cempty else csingle (comp_op wire (buf(p2 := btl (buf p2))) (Write op1 q1 x1) (safe_read f2 (BHD p2 buf))))
         else csingle (Read (Inr p2) (\<lambda>y. comp_op wire buf (Write op1 q1 x1) (f2 y)))))"
   "comp_op wire buf (Write op1 q1 x1) (Write op2 q2 x2) =
-    choice2 (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Write op2 q2 x2)) (Inl q1) x1
-      | Some q \<Rightarrow> comp_op wire (buf(q := benq x1 (buf q))) op1 (Write op2 q2 x2))
+    choice2 (case wire q1 of None \<Rightarrow> Write (comp_op wire (end_buf wire (outputs op1) buf) op1 (Write op2 q2 x2)) (Inl q1) x1
+      | Some q \<Rightarrow> comp_op wire (end_buf wire (outputs op1) (buf(q := benq x1 (buf q)))) op1 (Write op2 q2 x2))
       (Write (comp_op wire buf (Write op1 q1 x1) op2) (Inr q2) x2)"
   "comp_op wire buf (Write op1 q1 x1) (Choice op2s) =
-     Choice (cinsert (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Choice op2s)) (Inl q1) x1
-      | Some q \<Rightarrow> comp_op wire (buf(q := benq x1 (buf q))) op1 (Choice op2s))
+     Choice (cinsert (case wire q1 of None \<Rightarrow> Write (comp_op wire (end_buf wire (outputs op1) buf) op1 (Choice op2s)) (Inl q1) x1
+      | Some q \<Rightarrow> comp_op wire (end_buf wire (outputs op1) (buf(q := benq x1 (buf q)))) op1 (Choice op2s))
       (cimage
        (case_op (\<lambda>p f. if p \<in> ran wire then comp_op wire (buf(p := btl (buf p))) (Write op1 q1 x1) (safe_read f (BHD p buf)) else Read (Inr p) (\<lambda>x. comp_op wire buf (Write op1 q1 x1) (f x)))
          (\<lambda>op p. Write (comp_op wire buf (Write op1 q1 x1) op) (Inr p)) (\<lambda>a. undefined))
@@ -186,20 +223,20 @@ lemma comp_op_simps[simp]:
   "comp_op wire buf (Choice op1s) (Read p2 f2) =
     Choice (cUn (if p2 \<in> ran wire then (if BHD p2 buf = None then cempty else csingle (comp_op wire (buf(p2 := btl (buf p2))) (Choice op1s) (safe_read f2 (BHD p2 buf))))
         else csingle (Read (Inr p2) (\<lambda>y. comp_op wire buf (Choice op1s) (f2 y)))) (cimage
-       (case_op (\<lambda>p f. Read (Inl p) (\<lambda>x. comp_op wire buf (f x) (Read p2 f2)))
-         (\<lambda>op p x. case wire p of None \<Rightarrow> Write (comp_op wire buf op (Read p2 f2)) (Inl p) x | Some q \<Rightarrow> comp_op wire (buf(q := benq x (buf q))) op (Read p2 f2)) (\<lambda>a. undefined))
+       (case_op (\<lambda>p f. Read (Inl p) (\<lambda>x. comp_op wire (end_buf wire (outputs (f x)) buf) (f x) (Read p2 f2)))
+         (\<lambda>op p x. case wire p of None \<Rightarrow> Write (comp_op wire (end_buf wire (outputs op) buf) op (Read p2 f2)) (Inl p) x | Some q \<Rightarrow> comp_op wire (end_buf wire (outputs op) (buf(q := benq x (buf q)))) op (Read p2 f2)) (\<lambda>a. undefined))
        (cUnion (cimage choices op1s))))"
   "comp_op wire buf (Choice op1s) (Write op2 q2 x2) =
     Choice (cinsert (Write (comp_op wire buf (Choice op1s) op2) (Inr q2) x2) (cimage
-       (case_op (\<lambda>p f. Read (Inl p) (\<lambda>x. comp_op wire buf (f x) (Write op2 q2 x2)))
-         (\<lambda>op p x. case wire p of None \<Rightarrow> Write (comp_op wire buf op (Write op2 q2 x2)) (Inl p) x | Some q \<Rightarrow> comp_op wire (buf(q := benq x (buf q))) op (Write op2 q2 x2)) (\<lambda>a. undefined))
+       (case_op (\<lambda>p f. Read (Inl p) (\<lambda>x. comp_op wire (end_buf wire (outputs (f x)) buf) (f x) (Write op2 q2 x2)))
+         (\<lambda>op p x. case wire p of None \<Rightarrow> Write (comp_op wire (end_buf wire (outputs op) buf) op (Write op2 q2 x2)) (Inl p) x | Some q \<Rightarrow> comp_op wire (end_buf wire (outputs op) (buf(q := benq x (buf q)))) op (Write op2 q2 x2)) (\<lambda>a. undefined))
        (cUnion (cimage choices op1s))))"
   "comp_op wire buf (Choice op1s) (Choice op2s) =
     Choice (cUn (cimage
-             (case_op (\<lambda>p f. Read (Inl p) (\<lambda>x. comp_op wire buf (f x) (Choice op2s)))
+             (case_op (\<lambda>p f. Read (Inl p) (\<lambda>x. comp_op wire (end_buf wire (outputs (f x)) buf) (f x) (Choice op2s)))
                (\<lambda>op p x.
-                   case wire p of None \<Rightarrow> Write (comp_op wire buf op (Choice op2s)) (Inl p) x
-                   | Some q \<Rightarrow> comp_op wire (buf(q := benq x (buf q))) op (Choice op2s))
+                   case wire p of None \<Rightarrow> Write (comp_op wire (end_buf wire (outputs op) buf) op (Choice op2s)) (Inl p) x
+                   | Some q \<Rightarrow> comp_op wire (end_buf wire (outputs op) (buf(q := benq x (buf q)))) op (Choice op2s))
                (\<lambda>a. undefined))
              (cUnion (cimage choices op1s)))
         (cimage
@@ -229,8 +266,11 @@ lemma comp_op_simps[simp]:
     by (subst comp_op_code, auto simp add: image_iff)
   done
 
+no_notation Sublist.parallel (infixl "\<parallel>" 50)
+
 definition pcomp_op (infixl "\<parallel>" 64) where
-  "pcomp_op = comp_op (\<lambda>_. None) (\<lambda>_. Bend_oped)"
+  "pcomp_op = comp_op (\<lambda>_. None) (\<lambda>_. BEnded)"
+
 definition scomp_op (infixl "\<bullet>" 65) where
   "scomp_op op1 op2 = map_op projl projr (comp_op Some (\<lambda>_. BEmpty) op1 op2)"
 
@@ -289,14 +329,12 @@ lemma
 
 
 inductive stepped_comp_op_inv for wire io where
-  "stepped op1 (Inp p x) op1' \<Longrightarrow> io = Inp (Inl p) x \<Longrightarrow> stepped_comp_op_inv wire io (comp_op wire buf op1' op2) buf op1 op2"
+  "stepped op1 (Inp p x) op1' \<Longrightarrow> io = Inp (Inl p) x \<Longrightarrow> stepped_comp_op_inv wire io (comp_op wire (end_buf wire (outputs op1') buf) op1' op2) buf op1 op2"
 | "stepped op2 (Out p x) op2' \<Longrightarrow> io = Out (Inr p) x \<Longrightarrow> stepped_comp_op_inv wire io (comp_op wire buf op1 op2') buf op1 op2"
-| "stepped op1 (Out p x) op1' \<Longrightarrow> p \<notin> dom wire \<Longrightarrow> io = Out (Inl p) x \<Longrightarrow> stepped_comp_op_inv wire io (comp_op wire buf op1' op2) buf op1 op2"
+| "stepped op1 (Out p x) op1' \<Longrightarrow> p \<notin> dom wire \<Longrightarrow> io = Out (Inl p) x \<Longrightarrow> stepped_comp_op_inv wire io (comp_op wire (end_buf wire (outputs op1') buf) op1' op2) buf op1 op2"
 | "stepped op2 (Inp p x) op2' \<Longrightarrow> p \<notin> ran wire \<Longrightarrow> io = Inp (Inr p) x \<Longrightarrow> stepped_comp_op_inv wire io (comp_op wire buf op1 op2') buf op1 op2"
-| "stepped_comp_op_inv wire io op (BENQ q x buf) op1' op2 \<Longrightarrow> stepped op1 (Out p x) op1' \<Longrightarrow> wire p = Some q \<Longrightarrow> stepped_comp_op_inv wire io op buf op1 op2"
+| "stepped_comp_op_inv wire io op (end_buf wire (outputs op1') (BENQ q x buf)) op1' op2 \<Longrightarrow> stepped op1 (Out p x) op1' \<Longrightarrow> wire p = Some q \<Longrightarrow> stepped_comp_op_inv wire io op buf op1 op2"
 | "stepped_comp_op_inv wire io op (BTL p buf) op1 op2' \<Longrightarrow> BHD p buf = Some x \<Longrightarrow> stepped op2 (Inp p x) op2' \<Longrightarrow> p \<in> ran wire \<Longrightarrow> stepped_comp_op_inv wire io op buf op1 op2"
-  (* | "stepped_comp_op_inv wire io op (BTL p buf) op1 end_op \<Longrightarrow> BHD p buf = None \<Longrightarrow> p \<in> ran wire \<Longrightarrow> stepped_comp_op_inv wire io op buf op1 op2"
- *)
 
 lemma stepped_stepped_comp_op_inv:
   "stepped (comp_op wire buf op1 op2) io op \<Longrightarrow>
@@ -314,7 +352,7 @@ lemma stepped_stepped_comp_op_inv:
     apply (cases op1; cases op2)
     subgoal
       apply hypsubst_thin
-      apply (auto split: option.splits if_splits intro: stepped_comp_op_inv.intros stepped.intros)
+      apply (auto simp add: split: option.splits if_splits intro: stepped_comp_op_inv.intros stepped.intros)
       done
     subgoal
       by (auto split: if_splits intro: stepped_comp_op_inv.intros stepped.intros)
@@ -719,7 +757,7 @@ lemma choices_id_op[simp]:
 
 fun unbend where
   "unbend BEmpty = BEmpty"
-| "unbend Bend_oped = BEmpty"
+| "unbend BEnded = BEmpty"
 | "unbend (BCons xs xss) = BCons xs (unbend xss)"
 
 lemma bhd_Some_EOS_bappend:
@@ -766,62 +804,82 @@ lemma BHD_BAPPEND_2_cases:
     done
   done
 
+lemma bappend_bend[simp]:
+  "bappend (bend xs) ys = bappend xs ys"
+  by (induct xs arbitrary: ys) auto
+
+lemma BAPPEND_bend[simp]:
+  "(end_buf wire A buf1) >> buf2 = buf1 >> buf2"
+  unfolding end_buf_def
+  apply (rule ext)
+  apply (auto split: if_splits option.splits)
+  apply (metis bend.elims bhd.elims buf.distinct(3) option.discI)
+    apply (metis bend.elims bhd.elims buf.distinct(3) option.discI)
+  using bhd.elims apply force
+  apply (metis (no_types, lifting) BAPPEND_bappend fun_upd_same)
+  apply (smt (verit, del_insts) BAPPEND.elims BAPPEND_bappend bappend_bend observation.case_eq_if option.simps(5))
+  done
+
+fun is_bend where
+  "is_bend BEnded = True"
+| "is_bend BEmpty = False"
+| "is_bend (BCons x xs) = is_bend xs"
+
 lemma stepped_comp_op_Some_id_op_id_op:
   "stepped (comp_op Some buf2 op1 op2) io op \<Longrightarrow>
    op1 = id_op S1 buf1 \<Longrightarrow>
    op2 = id_op S2 buf3 \<Longrightarrow>
+   S2 = cUn S1 (acset {p. BHD p buf \<noteq> Some EOS}) \<Longrightarrow>
    (\<exists> p x. io = Inp (Inl p) (Observed x) \<and>
-      (\<exists> buf1' buf2' buf3'. op = comp_op Some buf2' (id_op S1 (BENQ p x buf1')) (id_op S2 buf3') \<and> buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3')) \<or>
-   (\<exists> p x. io = Inp (Inl p) EOS \<and> (\<exists> buf1' buf2' buf3'. op = comp_op Some buf2' (id_op (cDiff S1 {|p|}) buf1') (id_op S2 buf3') \<and> buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3')) \<or>
+     (\<exists> buf1' buf2' buf3' S2'. op = comp_op Some buf2' (id_op S1 (BENQ p x buf1')) (id_op S2' buf3') \<and>
+     (\<forall> p. \<not> p |\<in>| S2' \<longrightarrow> BHD p buf2' = Some EOS) \<and> csubset_eq S2' S2 \<and>
+      buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3')) \<or>
+
+   (\<exists> p x S2'. io = Inp (Inl p) EOS \<and> (\<exists> buf1' buf2' buf3'. op = comp_op Some buf2' (id_op (cDiff S1 {|p|}) buf1') (id_op S2' buf3') \<and>
+     buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3')) \<or>
+
    (\<exists> p x. io = Out (Inr p) x \<and>
-      (\<exists> buf1' buf2' buf3'. op = comp_op Some buf2' (id_op S1 buf1') (id_op S2 (BTL p buf3')) \<and> BHD p buf3' = Some (Observed x) \<and> buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3')) \<or>
-      (\<exists> p x. io = Out (Inr p) EOS \<and>
-      (\<exists> buf1' buf2' buf3'. op = comp_op Some buf2' (id_op S1 buf1') (id_op (cDiff S2 {|p|}) (BTL p buf3')) \<and> BHD p buf3' = Some EOS \<and> buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3'))"
+      (\<exists> buf1' buf2' buf3'. op = comp_op Some buf2' (id_op S1 buf1') (id_op S2 (BTL p buf3')) \<and> BHD p buf3' = Some (Observed x) \<and>
+     buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3'))"
   apply (drule stepped_stepped_comp_op_inv)
   subgoal
-    apply (rotate_tac 2)
+    apply (rotate_tac 3)
     apply (induct op buf2 op1 op2 arbitrary: buf1 buf3 S1 S2 rule: stepped_comp_op_inv.induct)
          apply (simp_all add: ranI BAPPEND_BTL_Some_BENQ_alt)
     subgoal for op1 p x op1' buf op2
       apply (cases x)
       subgoal
-        apply simp
+        apply (drule stepped_id_op_Inp_Observed)
+         apply auto
         apply hypsubst_thin
-        using stepped_id_op_Inp_Observed apply fast
+        apply (metis (no_types, opaque_lifting) BAPPEND_bend bend.simps(2) bhd.elims bhd.simps(2) end_buf_def observation.discI option.discI option.inject order.refl)
         done
       subgoal
-        apply simp
-        apply hypsubst_thin
-        using stepped_id_op_Inp_EOS apply fast
-        done
-      done
-    subgoal
-      using stepped_id_op_Out by fast
+        using stepped_id_op_Inp_EOS by fastforce
+    done
+  subgoal
+    using stepped_id_op_Out by fastforce
+  subgoal
+    apply clarsimp
+    apply hypsubst_thin
+    apply (drule stepped_id_op_Out)
+     apply simp
+    apply auto
+   apply (drule meta_spec)+
+        apply (drule meta_mp)
+         apply simp
+        apply (drule meta_mp)
+     apply simp
+        apply (drule meta_mp)
     subgoal
       apply auto
-      subgoal
-        apply (drule stepped_id_op_Out)
-         apply simp
-        apply hypsubst_thin
-        apply (drule meta_spec)+
-        apply (drule meta_mp)
-         apply simp
-        apply (drule meta_mp)
-         apply (rule refl)
-        apply auto
-        subgoal
-          by (metis BAPPEND_BTL_Some_BENQ BAPPEND_assoc)
-        subgoal
-          by (metis BAPPEND_BTL_Some_BENQ BAPPEND_assoc)
-        subgoal
-          by (metis BAPPEND_BTL_Some_BENQ BAPPEND_assoc)
-        subgoal
-          by (metis BAPPEND_BTL_Some_BENQ BAPPEND_assoc)
-        subgoal
-          by (metis BAPPEND_BTL_Some_BENQ BAPPEND_assoc)
-        done
-      done
-    subgoal for op p buf op1 op2' x op2 buf1 buf3
+      
+
+    apply (auto simp add: BAPPEND_BTL_Some_BENQ)
+end
+      apply (metis BAPPEND_BTL_Some_BENQ BAPPEND_assoc)+
+    done
+  subgoal for op p buf op1 op2' x op2 buf1 buf3 S1 S2
       apply (cases x)
       subgoal
         apply (drule stepped_id_op_Inp_Observed)
@@ -835,9 +893,9 @@ lemma stepped_comp_op_Some_id_op_id_op:
         apply (simp add: BAPPEND_BTL_Some_BENQ)
         done
       subgoal
+        apply hypsubst_thin
         apply (drule stepped_id_op_Inp_EOS)
          apply simp
-        apply hypsubst_thin
         apply (drule meta_spec)+
         apply (drule meta_mp)
          apply simp
@@ -845,6 +903,16 @@ lemma stepped_comp_op_Some_id_op_id_op:
          apply simp
         apply (auto simp add: BAPPEND_BTL_Some_BENQ)
         
+
+end
+        done
+      done
+    done
+  done
+
+        subgoal
+          apply hypsubst_thin
+          
 
 end
             apply (metis bhd.elims btl.simps(2) fun_upd_triv observation.discI option.inject option.simps(3))+
@@ -1646,7 +1714,7 @@ lemma pcomp_op_diverged:
         apply (elim exE conjE)
         apply hypsubst_thin
         subgoal for l s' io' op''
-          apply (rule exI[of _ "comp_op (\<lambda>_. None) (\<lambda>_. Bend_oped) (Choice ops1) op''"])
+          apply (rule exI[of _ "comp_op (\<lambda>_. None) (\<lambda>_. BEnded) (Choice ops1) op''"])
           apply (intro conjI[rotated])
           apply (rule bc_sym)
           apply (rule bc_base)
@@ -3045,7 +3113,7 @@ simps_of_case comp_op_simps': comp_op_code[unfolded prod.case]
 
 simps_of_case comp_op_simps[simp]: comp_op.code[unfolded prod.case Let_def]
 
-definition "pcomp_op = comp_op (\<lambda>_. None) (\<lambda>_. Bend_oped)"
+definition "pcomp_op = comp_op (\<lambda>_. None) (\<lambda>_. BEnded)"
 
 fun reassoc where
   "reassoc (Inl (Inl x)) = Inl x"
@@ -5282,7 +5350,7 @@ lemma traced_comp_op:
 
 section\<open>Parallel composition\<close>
 
-definition "pcomp_op = comp_op (\<lambda>_. None) (\<lambda>_. Bend_oped)"
+definition "pcomp_op = comp_op (\<lambda>_. None) (\<lambda>_. BEnded)"
 
 lemma inputs_pcomp_op[simp]:
   "inputs (pcomp_op op1 op2) \<subseteq> Inl ` inputs op1 \<union> Inr ` inputs op2"

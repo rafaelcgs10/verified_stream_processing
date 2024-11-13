@@ -51,21 +51,21 @@ datatype (discs_sels) 'd observation = Observed (obs: 'd) | EOS
 
 section\<open>Buffer infrastrcuture\<close>
 
-datatype 'd buf = BEmpty | Bend_oped | BCons 'd "'d buf"
+datatype 'd buf = BEmpty | BEnded | BCons 'd "'d buf"
 
 fun bhd where
   "bhd BEmpty = None"
-| "bhd Bend_oped = Some EOS"
+| "bhd BEnded = Some EOS"
 | "bhd (BCons x xs) = Some (Observed x)"
 
 fun btl where
   "btl BEmpty = BEmpty"
-| "btl Bend_oped = Bend_oped"
+| "btl BEnded = BEnded"
 | "btl (BCons x xs) = xs"
 
 fun bend where
-  "bend BEmpty = Bend_oped"
-| "bend Bend_oped = Bend_oped"
+  "bend BEmpty = BEnded"
+| "bend BEnded = BEnded"
 | "bend (BCons xs xss) = BCons xs (bend xss)"
 
 lemma bend_assoc[simp]:
@@ -91,7 +91,7 @@ lemma btl_bend:
 
 fun benq where
   "benq x BEmpty = BCons x BEmpty"
-| "benq x Bend_oped = BCons x Bend_oped"
+| "benq x BEnded = BCons x BEnded"
 | "benq x (BCons y ys) = BCons y (benq x ys)"
 
 abbreviation BHD :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> 'd observation option" where "BHD p buf \<equiv> bhd (buf p)"
@@ -102,7 +102,7 @@ abbreviation BENQ_TL :: "'a \<Rightarrow> 'd \<Rightarrow> ('a \<Rightarrow> 'd 
 
 fun buf_len where
   "buf_len BEmpty = 0"
-| "buf_len Bend_oped = 0"
+| "buf_len BEnded = 0"
 | "buf_len (BCons x buf) = Suc (buf_len buf)"
 
 lemma buf_len_btl:
@@ -144,7 +144,7 @@ lemma BAPPEND_BTL_Some_BENQ_alt:
 
 primrec bappend :: "'a buf \<Rightarrow> 'a buf \<Rightarrow> 'a buf"  where
   "bappend BEmpty ys = ys" 
-| "bappend Bend_oped ys = ys"
+| "bappend BEnded ys = ys"
 | "bappend (BCons x xs) ys = bappend xs (benq x ys)"
 
 lemma benq_bappend[simp]:
@@ -177,7 +177,7 @@ lemma BAPPEND_assoc:
 
 fun bapp where
   "bapp BEmpty lxs = lxs"
-| "bapp Bend_oped lxs = LNil"
+| "bapp BEnded lxs = LNil"
 | "bapp (BCons x xs) lxs = LCons x (bapp xs lxs)"
 
 definition "extend A buf R lxs lys =
