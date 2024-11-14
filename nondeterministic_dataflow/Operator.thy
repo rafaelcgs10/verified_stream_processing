@@ -47,60 +47,21 @@ section\<open>Channels\<close>
 
 code_lazy_type llist
 
-datatype (discs_sels) 'd observation = Observed (obs: 'd) | EOS
-
 section\<open>Buffer infrastrcuture\<close>
 
-datatype 'd buf = BEmpty | BEnded | BCons 'd "'d buf"
+type_alias buf = list
 
-fun bhd where
-  "bhd BEmpty = None"
-| "bhd BEnded = Some EOS"
-| "bhd (BCons x xs) = Some (Observed x)"
+abbreviation "bhd \<equiv> hd"
+abbreviation "btl \<equiv> tl"
+abbreviation "benq x xs \<equiv> xs @ [x]"
 
-fun btl where
-  "btl BEmpty = BEmpty"
-| "btl BEnded = BEnded"
-| "btl (BCons x xs) = xs"
-
-fun bend where
-  "bend BEmpty = BEnded"
-| "bend BEnded = BEnded"
-| "bend (BCons xs xss) = BCons xs (bend xss)"
-
-lemma bend_assoc[simp]:
-  "bend \<circ> (bend \<circ> buf) = (bend \<circ> bend) \<circ> buf"
-  using fun.map_comp by blast
-
-lemma bend_bend[simp]:
-  "(bend \<circ> bend) = bend"
-  apply (rule ext)
-  subgoal for buf
-    apply (induct buf)
-      apply auto
-    done
-  done
-
-lemma bend_fun_upd[simp]:
-  "(bend \<circ> buf)(p := bend xs) = bend \<circ> buf(p := xs)"
-  by (simp add: fun_upd_comp)
-
-lemma btl_bend:
-  "btl (bend buf) = bend (btl buf)"
-  by (metis bend.elims btl.simps(1) btl.simps(2) btl.simps(3))
-
-fun benq where
-  "benq x BEmpty = BCons x BEmpty"
-| "benq x BEnded = BCons x BEnded"
-| "benq x (BCons y ys) = BCons y (benq x ys)"
-
-abbreviation BHD :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> 'd observation option" where "BHD p buf \<equiv> bhd (buf p)"
+abbreviation BHD :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> 'd" where "BHD p buf \<equiv> bhd (buf p)"
 abbreviation (input) BUPD where "BUPD f p buf \<equiv> buf(p := f (buf p))"
 abbreviation BTL :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BTL \<equiv> BUPD btl"
 abbreviation BENQ :: "'a \<Rightarrow> 'd \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BENQ p x buf \<equiv> BUPD (benq x) p buf"
 abbreviation BENQ_TL :: "'a \<Rightarrow> 'd \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BENQ_TL p x buf \<equiv> BUPD (btl o benq x) p buf"
 
-fun buf_len where
+(* fun buf_len where
   "buf_len BEmpty = 0"
 | "buf_len BEnded = 0"
 | "buf_len (BCons x buf) = Suc (buf_len buf)"
@@ -108,78 +69,21 @@ fun buf_len where
 lemma buf_len_btl:
   "0 < buf_len buf \<Longrightarrow>
    buf_len (btl buf) < buf_len buf"
-  by (induct buf) auto
+  by (induct buf) auto *)
 
-function BAPPEND :: "('m \<Rightarrow> 'a buf) \<Rightarrow> ('m \<Rightarrow> 'a buf) \<Rightarrow> 'm \<Rightarrow> 'a buf" (infixr ">>" 65) where
-  "BAPPEND buf1 buf2 p = (case BHD p buf1 of
-     None \<Rightarrow> buf2 p
-   | Some EOS \<Rightarrow> buf2 p
-   | Some (Observed x) \<Rightarrow> BAPPEND (BTL p buf1) (BENQ p x buf2) p)" 
+abbreviation "bulk_benq xs ys \<equiv> ys @ xs"
+
+abbreviation BULK_BENQ (infixr ">>" 65) where "BULK_BENQ buf1 buf2 \<equiv> (\<lambda> p. bulk_benq (buf1 p) (buf2 p))"
+
+lemma BULK_BENQ_assoc:
+  "buf1 >> (buf2 >> buf3) = (buf1 >> buf2) >> buf3"
   by auto
-termination
-  apply (relation "measure (\<lambda>(buf1, _ , p). buf_len (buf1 p))")
-   apply (auto split: if_splits)
-  apply (metis bhd.simps(1) bhd.simps(2) buf_len.elims buf_len_btl observation.simps(3) option.distinct(1) option.inject zero_less_Suc)
-  done
 
-lemma BAPPEND_BTL_Some_BENQ:
-  "BHD p buf1 = Some (Observed x) \<Longrightarrow>
-   BTL p buf1 >> BENQ p x buf2 = buf1 >> buf2"
-  apply (rule ext)
-  subgoal for q
-    apply (induct "buf1 q" arbitrary: buf1 buf2)
-    subgoal
-      by (auto)
-    subgoal
-      by auto
-    subgoal
-      by (smt (verit, del_insts) BAPPEND.simps bhd.simps(3) btl.simps(3) fun_upd_other fun_upd_same fun_upd_twist observation.simps(4) option.simps(5))
-    done
-  done
+lemma BULK_BENQ_bulk_benq:
+  "(buf1 >> buf2) p = bulk_benq (buf1 p) (buf2 p)"
+  by auto
 
-lemma BAPPEND_BTL_Some_BENQ_alt:
-  "BHD q buf1 = Some (Observed x) \<Longrightarrow>
-   buf1 (q := btl (buf1 q)) >> buf2 (q := benq x (buf2 q)) = buf1 >> buf2"
-  using BAPPEND_BTL_Some_BENQ by fast
-
-primrec bappend :: "'a buf \<Rightarrow> 'a buf \<Rightarrow> 'a buf"  where
-  "bappend BEmpty ys = ys" 
-| "bappend BEnded ys = ys"
-| "bappend (BCons x xs) ys = bappend xs (benq x ys)"
-
-lemma benq_bappend[simp]:
-  "benq x (bappend xs ys) = bappend (benq x xs) ys"
-  by (induct xs arbitrary: ys) auto
-
-lemma bappend_assoc:
-  "bappend (bappend xs ys) zs = bappend xs (bappend ys zs)"
-  by (induct xs arbitrary: ys zs)  auto
-
-lemma BAPPEND_bappend[simp]:
-  "(buf1 >> buf2) p = bappend (buf1 p) (buf2 p)"
-  apply (induct "buf1 p" arbitrary: buf1 buf2)
-    apply (auto split: option.splits)
-   apply (metis bhd.simps(3) option.distinct(1))
-  subgoal for x1 x buf1 buf2 ob
-    apply (cases ob)
-     apply (auto split: option.splits)
-      apply (metis bappend.simps(1) bappend.simps(3) bhd.elims bhd.simps(3) btl.simps(3) observation.sel option.sel option.simps(3))
-     apply (metis (no_types, lifting) bappend.simps(3) bhd.simps(3) btl.simps(3) fun_upd_same observation.case_eq_if observation.sel option.sel option.simps(5))
-    apply (metis bhd.simps(3) observation.discI option.sel)
-    done
-  done
-
-lemma BAPPEND_assoc:
-  "(buf1 >> buf2) >> buf3 = buf1 >> buf2 >> buf3"
-  apply (rule ext)
-  apply (metis BAPPEND_bappend bappend_assoc)
-  done
-
-fun bapp where
-  "bapp BEmpty lxs = lxs"
-| "bapp BEnded lxs = LNil"
-| "bapp (BCons x xs) lxs = LCons x (bapp xs lxs)"
-
+(* 
 definition "extend A buf R lxs lys =
   (\<exists>lzs. R lxs (case_sum (lys o Inl) lzs) \<and> (\<forall>p. lys (Inr p) = (if p \<in> A then bapp (buf p) (lzs p) else lzs p)))"
 
@@ -192,12 +96,12 @@ lemma set_buf_benq[simp]:
   "set_buf (benq x xs) = insert x (set_buf xs)"
   apply (induct x xs rule: benq.induct)
     apply auto
-  done
+  done *)
 
 section\<open>Operator\<close>
 
 codatatype (inputs: 'ip, outputs: 'op, dead 'd) op =
-  Read 'ip "'d observation \<Rightarrow> ('ip, 'op, 'd) op"
+  Read 'ip "'d \<Rightarrow> ('ip, 'op, 'd) op"
   | Write "('ip, 'op, 'd) op" 'op 'd
   | Choice "('ip, 'op, 'd) op cset"
 
@@ -222,33 +126,34 @@ abbreviation "choice2 op1 op2 \<equiv> Choice (cimage (\<lambda>b. if b then op1
 abbreviation "safe_read f x \<equiv> (case x of None \<Rightarrow> end_op | Some x \<Rightarrow> f x)"
 
 datatype (discs_sels) ('m, 'd) id_op_aux =
-  id_Read_aux "'m" "'d observation \<Rightarrow> 'm cset \<times> ('m \<Rightarrow> 'd buf)"
-  | id_Write_aux "'m cset \<times> ('m \<Rightarrow> 'd buf)" "'m" 'd
+  id_Read_aux "'m" "'d \<Rightarrow> ('m \<Rightarrow> 'd buf)"
+  | id_Write_aux "('m \<Rightarrow> 'd buf)" "'m" 'd
 
 abbreviation eval_id_op_aux where
   "eval_id_op_aux c aux \<equiv> (case aux of
-    id_Read_aux p f \<Rightarrow> Read p (\<lambda>y. let (S, buf) = f y in c S buf)
-  | id_Write_aux (S, buf) q x \<Rightarrow> Write (c S buf) q x)"
+    id_Read_aux p f \<Rightarrow> Read p (\<lambda>y. let buf = f y in c buf)
+  | id_Write_aux buf q x \<Rightarrow> Write (c buf) q x)"
 
-corec id_op :: "_ \<Rightarrow> _ \<Rightarrow> ('m :: countable, 'm, 'd) op" where
-  "id_op S buf = Choice (cimage (eval_id_op_aux id_op) (cUn 
-    (cimage (\<lambda> p. id_Read_aux p (case_observation (\<lambda> x. (S, BENQ p x buf)) (cDiff S {|p|}, buf))) S) 
-    (cimage (\<lambda> p. id_Write_aux (S, BTL p buf) p ((obs o the) (BHD p buf))) (cfilter (\<lambda> p. \<exists> x. BHD p buf = Some (Observed x)) (cUNIV :: 'm cset)))))"
+corec id_op :: "_ \<Rightarrow> ('m :: countable, 'm, 'd) op" where
+  "id_op buf = Choice (cimage (eval_id_op_aux id_op) (cUn 
+    (cimage (\<lambda> p. id_Read_aux p (\<lambda> x. BENQ p x buf)) (cUNIV :: 'm cset)) 
+    (cimage (\<lambda> p. id_Write_aux (BTL p buf) p (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUNIV :: 'm cset)))))"
+
 
 lemma id_op_code:
-  "id_op S buf = Choice (cUn 
-    (cimage (\<lambda> p. Read p (case_observation (\<lambda> x. id_op S (BENQ p x buf)) (id_op (cDiff S {|p|}) buf))) S)
-    (cimage (\<lambda> p. Write (id_op S (BTL p buf)) p ((obs o the) (BHD p buf))) (cfilter (\<lambda> p. \<exists> x. BHD p buf = Some (Observed x)) (cUNIV :: ('m :: countable) cset))))"
+  "id_op buf = Choice (cUn 
+    (cimage (\<lambda> p. Read p ((\<lambda> x. id_op (BENQ p x buf)))) (cUNIV :: 'm cset))
+    (cimage (\<lambda> p. Write (id_op (BTL p buf)) p  (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUNIV :: ('m :: countable) cset))))"
   apply (subst id_op.code)
   apply (unfold cimage_cUn cimage_cinsert op.inject)
   apply simp
   apply (rule arg_cong2[where f = cUn])
   apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
-      split: id_op_aux.splits observation.splits op.splits option.splits)
+      split: id_op_aux.splits op.splits option.splits)
   done
 
 corec cp_op :: "(1, 1, 'd) op" where
-  "cp_op = Read 1 (case_observation (Write cp_op 1) cp_op)"
+  "cp_op = Read 1 (Write cp_op 1)"
 
 corec W :: "(1, 1, nat) op" where
   "W = Write W 1 42"
@@ -265,15 +170,6 @@ corec sink_op :: "(1, 'b, 'd) op" where
 type_synonym 'd channel = "'d llist"
 
 code_lazy_type op
-
-fun chd where
-  "chd LNil = EOS"
-| "chd (LCons x lxs) = Observed x"
-
-abbreviation ctl :: "'d channel \<Rightarrow> 'd channel" where "ctl \<equiv> ltl"
-
-abbreviation CHD :: "'a \<Rightarrow> ('a \<Rightarrow> 'd channel) \<Rightarrow> 'd observation" where "CHD p lxs \<equiv> chd (lxs p)"
-abbreviation CTL :: "'a \<Rightarrow> ('a \<Rightarrow> 'd channel) \<Rightarrow> ('a \<Rightarrow> 'd channel)" where "CTL p lxs \<equiv> lxs(p := ctl (lxs p))"
 
 section \<open>Sub operators\<close>
 
@@ -482,8 +378,7 @@ lemma output_depth_Write_simp_diff[simp]:
   done
 
 section\<open>Trace model basics\<close>
-datatype ('a, 'b, 'd) IO = Inp (proji: 'a) "'d observation" | Out (projo: 'b) (data: 'd)
-  where "data (Inp p x) = obs x"
+datatype ('a, 'b, 'd) IO = Inp (proji: 'a) (data: "'d") | Out (projo: 'b) (data: 'd)
 
 inductive stepped where
   "stepped (Read p f) (Inp p x) (f x)"
@@ -497,7 +392,7 @@ inductive_cases steppedChoiceE [elim!]: "stepped (Choice ops) io op'"
 lemma stepped_map_op:
   "stepped op io op' \<Longrightarrow>
    stepped (map_op f g op) (map_IO f g id io) (map_op f g op')"
-  by (induct op io op' rule: stepped.induct) (force simp add:  observation.map_ident comp_def intro: stepped.intros)+
+  by (induct op io op' rule: stepped.induct) (force simp add: comp_def intro: stepped.intros)+
 
 lemma stepped_map_op_inv:
   "stepped (map_op f g op) io op' \<Longrightarrow>
@@ -506,15 +401,15 @@ lemma stepped_map_op_inv:
     apply (auto intro: stepped.intros)
   subgoal for p fa x op
     apply (cases op)
-      apply (auto 10 10 simp add: observation.map_ident intro: stepped.intros)
+      apply (auto 10 10 simp add: intro: stepped.intros)
     done
   subgoal for _ _ _ op
     apply (cases op)
-      apply (auto 10 10 simp add: observation.map_ident intro: stepped.intros)
+      apply (auto 10 10 simp add: intro: stepped.intros)
     done
   subgoal for op ops l op' opa
     apply (cases opa)
-      apply (force simp add: cimage.rep_eq observation.map_ident intro: stepped.intros)+
+      apply (force simp add: cimage.rep_eq intro: stepped.intros)+
     done
   done
 
@@ -1177,7 +1072,7 @@ lemma choices_W[simp]:
 term cp_op
 
 lemma choices_cp_op[simp]:
-  "choices cp_op = {|Read 1 (case_observation (Write cp_op 1) cp_op)|}"
+  "choices cp_op = {|Read 1 (Write cp_op 1)|}"
   unfolding choices_def
   apply auto
   subgoal for x n
@@ -1362,17 +1257,16 @@ lemma stepped_W_inv:
 lemma stepped_cp_op_inv:
   "stepped op io op' \<Longrightarrow>
    op = cp_op \<Longrightarrow>
-   (\<exists> x. io = Inp 1 EOS \<and> op' = cp_op) \<or> (\<exists> x. io = Inp 1 (Observed x) \<and> op' = Write cp_op 1 x)"
+   (\<exists> x. io = Inp 1 x \<and> op' = Write cp_op 1 x)"
   apply (induct op io op' rule: stepped.induct)
   subgoal for p f x
-    apply (cases x)
-     apply (subst (asm) cp_op.code, auto intro: stepped.intros observation.splits)+
+     apply (subst (asm) cp_op.code, auto intro: stepped.intros )+
     done
   subgoal
-    apply (subst (asm) cp_op.code, auto intro: stepped.intros observation.splits)+
+    apply (subst (asm) cp_op.code, auto intro: stepped.intros )+
     done
   subgoal
-    apply (subst (asm) cp_op.code, auto intro: stepped.intros observation.splits)+
+    apply (subst (asm) cp_op.code, auto intro: stepped.intros )+
     done
   done
 
@@ -1627,11 +1521,11 @@ lemma lset_traced_wit: "t \<in> lset (traced_wit op) \<Longrightarrow> (\<exists
 definition agree :: "('l \<Rightarrow> 'l' \<Rightarrow> bool) \<Rightarrow> ('l \<times> 'c) llist \<Rightarrow> ('l' \<times> 'c) llist \<Rightarrow> bool" where
   "agree R lxs lys = llist_all2 (rel_prod R (=)) (lfilter (Domainp R o fst) lxs) (lfilter (Rangep R o fst) lys)"
  *)
+(* 
+definition "lproject R S ios = (\<lambda>p. lmap data (lfilter (\<lambda>qx. case qx of Inp q (Observed x) \<Rightarrow> R p q | Out q x \<Rightarrow> S p q | _ \<Rightarrow> False) ios))" *)
 
-definition "lproject R S ios = (\<lambda>p. lmap data (lfilter (\<lambda>qx. case qx of Inp q (Observed x) \<Rightarrow> R p q | Out q x \<Rightarrow> S p q | _ \<Rightarrow> False) ios))"
-
-lemma lproject_LNil[simp]: "lproject R S LNil = (\<lambda>p. LNil)"
-  by (simp add: lproject_def)
+(* lemma lproject_LNil[simp]: "lproject R S LNil = (\<lambda>p. LNil)"
+  by (simp add: lproject_def) *)
 
 (* lemma lproject_LCons[simp]: "lproject R S (LCons (Inp q (Observed x)) lxs) =
   (\<lambda>p. if R p q then LCons x (lproject R S lxs p) else lproject R S lxs p)"
@@ -1660,7 +1554,7 @@ lemma lproject_empty_conv:
   "lproject R S lxs p = LNil \<longleftrightarrow> (\<forall>q x. Inp q (Observed x) \<in> lset lxs \<longrightarrow> \<not> R p q) \<and> (\<forall>q x. Out q x \<in> lset lxs \<longrightarrow> \<not> S p q)"
   "LNil = lproject R S lxs p \<longleftrightarrow> (\<forall>q x. Inp q (Observed x) \<in> lset lxs \<longrightarrow> \<not> R p q) \<and> (\<forall>q x. Out q x \<in> lset lxs \<longrightarrow> \<not> S p q)"
   by (auto simp: lproject_def lmap_eq_LNil LNil_eq_lmap lfilter_empty_conv
-      split: observation.splits IO.splits)
+      split:  IO.splits)
 
 lemma lproject_False: 
   "(\<And>q x. Inp q (Observed x) \<in> lset lxs \<Longrightarrow> \<not> R p q) \<Longrightarrow> (\<And>q x. Out q x \<in> lset lxs \<Longrightarrow> \<not> S p q) \<Longrightarrow> lproject R S lxs p = LNil"
@@ -1899,9 +1793,9 @@ lemma produce_inner_induct:
 
 section\<open>History model\<close>
 
-definition "history op lxs lys =
+(* definition "history op lxs lys =
   (\<exists> ios. traced op ios \<and>
-  (\<forall> p. lprefix (lproject (=) \<bottom> ios p) (lxs p)) \<and> lys = lproject \<bottom> (=) ios)"
+  (\<forall> p. lprefix (lproject (=) \<bottom> ios p) (lxs p)) \<and> lys = lproject \<bottom> (=) ios)" *)
   (* 
 corec produce_trace where
   "produce_trace op lxs = (case op of
@@ -1957,12 +1851,12 @@ lemma EOB_not_ind_produce_trace[simp]:
   apply (induct "produce_trace op lxs" arbitrary: op lxs rule: lset_induct)
   subgoal for xs op lxs
     apply (cases op)
-      apply (auto simp add: split_beta split: observation.splits prod.splits)
+      apply (auto simp add: split_beta split:  prod.splits)
     apply (metis chd.elims observation.simps(3) observation.simps(7))
     done
   subgoal for x xs op lxs
     apply (cases op)
-      apply (auto simp add: split_beta split: observation.splits prod.splits)
+      apply (auto simp add: split_beta split:  prod.splits)
     done
   done *)
 
