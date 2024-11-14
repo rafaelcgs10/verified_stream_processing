@@ -795,6 +795,182 @@ lemma scomp_op_id_id:
   using id_id_gen[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []"] apply simp
   done
 
+lemma stepped_comp_op_L:
+  "stepped op1 io op1' \<Longrightarrow>
+   (case io of Inp p x \<Rightarrow> True | Out p x \<Rightarrow> p \<notin> dom wire) \<Longrightarrow>
+   stepped (comp_op wire buf op1 op2) (map_IO Inl Inl id io) (comp_op wire buf op1' op2)"
+  apply (induct op1 io op1' arbitrary: op2 buf rule: stepped.induct)
+  unfolding pcomp_op_def
+  subgoal
+    apply (subst (1) comp_op_code)
+    apply (rule stepped.intros(3))
+    apply (rule cUnI1)
+     apply (auto split: IO.splits intro: stepped.intros)
+    done
+  subgoal
+    apply (subst (1) comp_op_code)
+    apply (rule stepped.intros(3))
+    apply (rule cUnI1)
+     apply (auto split: IO.splits option.splits intro: stepped.intros)
+    done
+  subgoal
+    apply (erule stepped_choicesE)
+    apply simp
+    apply (subst (1) comp_op_code)
+    apply (rule stepped.intros(3))
+    apply (rule cUnI1)
+    apply (rule cimage_eqI)
+    apply (rule refl)
+    apply (auto simp add: cinsert.rep_eq sup_cset.rep_eq cimage.rep_eq cUnion.rep_eq bot_cset.rep_eq image_iff intro: stepped.intros) [2]
+    apply (subst (1) comp_op_code)
+    apply (rule stepped.intros(3))
+    apply (rule cUnI1)
+    apply (rule cimage_eqI)
+    apply (rule refl)
+    apply (auto simp add: cinsert.rep_eq sup_cset.rep_eq cimage.rep_eq cUnion.rep_eq bot_cset.rep_eq image_iff intro: stepped.intros) 
+    apply (smt (verit) not_Some_eq option.simps(4) stepped.intros(2))
+    done
+  done
+
+lemma stepped_comp_op_R:
+  "stepped op2 io op2' \<Longrightarrow>
+   (case io of Out p x \<Rightarrow> True | Inp p x \<Rightarrow> p \<notin> ran wire) \<Longrightarrow>
+   stepped (comp_op wire buf op1 op2) (map_IO Inr Inr id io) (comp_op wire buf op1 op2')"
+  apply (induct op2 io op2' arbitrary: op1 buf rule: stepped.induct)
+  unfolding pcomp_op_def
+  subgoal for p f x op1 buf
+    apply (subst (1) comp_op_code)
+    unfolding cfilter_def Set.filter_def
+         apply (clarsimp split: IO.splits option.splits intro: stepped.intros)
+    subgoal
+    apply (rule stepped.intros(3))
+     apply (rule cUnI2)
+       apply simp
+       apply (rule image_eqI[of "Read (Inr p) (\<lambda>x. comp_op wire buf op1 (f x))" _ "Read p f"])
+        apply simp_all
+      subgoal 
+        apply (subst cset.acset_inverse)
+        apply (auto simp add: countableI' inj_on_def)
+        done
+      subgoal
+        by (meson stepped.intros(1))
+      done
+    done
+  subgoal for op q x op1 buf
+  apply (subst (1) comp_op_code)
+    unfolding cfilter_def Set.filter_def
+         apply (clarsimp split: IO.splits option.splits intro: stepped.intros)
+ apply (rule stepped.intros(3))
+     apply (rule cUnI2)
+       apply simp
+       apply (rule image_eqI[of _ _ "Write op q x"])
+      apply simp_all
+     subgoal 
+        apply (subst cset.acset_inverse)
+        apply (auto simp add: countableI' inj_on_def)
+        done
+      subgoal
+        by (meson stepped.intros(2))
+      done
+    subgoal for op ops l op' op1 buf
+    apply (erule stepped_choicesE)
+      subgoal for p f x
+        apply simp
+        apply hypsubst_thin
+        apply (subst (1) comp_op_code)
+    apply (rule stepped.intros(3))
+         apply (rule cUnI2)
+        apply simp
+         apply (rule image_eqI[of "Read (Inr p) (\<lambda>x. comp_op wire buf op1 (f x))" _ "Read p f"])
+          apply simp
+    unfolding cfilter_def Set.filter_def
+     apply auto
+    apply (meson stepped.intros(1))
+    done
+  subgoal for p x
+        apply simp
+        apply hypsubst_thin
+        apply (subst (1) comp_op_code)
+    apply (rule stepped.intros(3))
+         apply (rule cUnI2)
+        apply simp
+       apply (rule image_eqI[of _ _ "Write op' p x"])
+          apply simp
+    unfolding cfilter_def Set.filter_def
+     apply auto
+    apply (meson stepped.intros(2))
+    done
+  done
+  done
+
+lemma
+  "stepped_comp_op_inv Some io op (buf1 :: 'a \<Rightarrow> 'd buf) op1 op23 \<Longrightarrow>
+   op23 = map_op projl projr (comp_op Some buf2 op2 op3) \<Longrightarrow>
+   \<exists>t'. stepped (map_op projl projr (comp_op Some (buf2 :: 'e \<Rightarrow> 'd buf) (map_op projl projr (comp_op Some buf1 op1 op2)) op3)) (map_IO projl projr id io) t' \<and>
+         bisim_cong
+          (\<lambda>s t.
+              \<exists>op1 op2 op3 (buf1 :: 'a \<Rightarrow> 'd buf) (buf2 :: 'e \<Rightarrow> 'd buf).
+                 s = map_op projl projr (comp_op Some buf1 op1 (map_op projl projr (comp_op Some buf2 op2 op3))) \<and> t = map_op projl projr (comp_op Some buf2 (map_op projl projr (comp_op Some buf1 op1 op2)) op3))
+          (map_op projl projr op) t'"
+          apply (induct op buf1 op1 op23 arbitrary: op2 op3 buf2 rule: stepped_comp_op_inv.induct)
+  subgoal for op1 p x op1' buf op2' op2 op3 buf2
+    apply hypsubst_thin
+    apply simp
+    apply (rule exI[of _ "map_op projl projr (comp_op Some buf2 (map_op projl projr (comp_op Some buf op1' op2)) op3)"])
+    apply (intro conjI)
+    subgoal
+      apply (drule stepped_comp_op_L[where wire=Some, of _ _ _ _ op2])
+      apply simp
+      apply (drule stepped_map_op[where f=projl and g=projr])
+      apply simp
+      apply (drule stepped_comp_op_L[where wire=Some, of _ _ _ _ op3])
+      apply simp
+      apply (drule stepped_map_op[where f=projl and g=projr])
+      apply simp
+      done
+    subgoal
+      apply (rule bc_base)
+      apply (intro conjI exI)
+      apply blast+
+      done
+    done
+  prefer 4
+  subgoal for op q x buf op1' op2 op1 p op2a op3 buf2
+    apply simp
+    apply hypsubst_thin
+    apply (drule meta_spec)+
+    apply (drule meta_mp)
+    apply (rule refl)
+    apply auto
+    subgoal for t'
+      apply (erule bisim_cong.cases)
+      subgoal
+        apply auto
+        apply hypsubst_thin
+        oops
+
+lemma
+  "map_op projl projr (comp_op Some buf1 (op1 :: ('a, 'b, 'dd) op) (map_op projl projr (comp_op Some buf2 (op2 :: ('b, 'c, 'dd) op) (op3 :: ('c, 'd, 'dd) op)))) ~ map_op projl projr (comp_op Some buf2 (map_op projl projr (comp_op Some buf1 op1 op2)) op3)"
+  apply (coinduction arbitrary: op1 op2 op3 buf1 buf2 rule: bisim_coinduct_upto)
+  subgoal for op1 op2 op3 buf1 buf2
+    apply (intro conjI)
+    subgoal
+      unfolding sim_def
+      apply safe
+      subgoal for io op
+        apply (drule stepped_map_op_inv)
+        apply safe
+        subgoal for io op
+          apply hypsubst_thin
+          apply (drule stepped_stepped_comp_op_inv)
+          oops
+
+          thm append_assoc
+
+lemma
+  "op1 \<bullet> (op2 \<bullet> op3) ~ op1 \<bullet> op2 \<bullet> op3"
+  unfolding scomp_op_def
+  
 
 end
 
@@ -2124,98 +2300,6 @@ lemma can_end_op_1_no_reads:
   done
 
 
-lemma stepped_comp_op_L:
-  "stepped op1 io op1' \<Longrightarrow>
-   (case io of Inp p x \<Rightarrow> True | Out p x \<Rightarrow> p \<notin> dom wire) \<Longrightarrow>
-   stepped (comp_op wire buf op1 op2) (map_IO Inl Inl id io) (comp_op wire buf op1' op2)"
-  apply (induct op1 io op1' arbitrary: op2 buf rule: stepped.induct)
-  unfolding pcomp_op_def
-  subgoal
-    apply (subst (1) comp_op_code)
-    apply (rule stepped.intros(3))
-    apply (rule cUnI1)
-    apply (simp add: cinsert.rep_eq)
-    apply (rule disjI1)
-    apply (rule refl)
-    apply (auto simp add: observation.map_id)
-    apply (rule stepped.intros(1))
-    done
-  subgoal
-    apply (subst (1) comp_op_code)
-    apply (rule stepped.intros(3))
-    apply (rule cUnI1)
-    apply (simp add: cinsert.rep_eq)
-    apply (rule disjI1)
-    apply (rule refl)
-    apply (auto simp add: observation.map_id)
-    using option.simps(4) stepped.intros(2) apply fastforce
-    done
-  subgoal
-    apply (erule stepped_choicesE)
-    apply (simp_all add: observation.map_id)
-    apply (subst (1) comp_op_code)
-    apply (rule stepped.intros(3))
-    apply (rule cUnI1)
-    apply (rule cUnI1)
-    apply (rule cimage_eqI)
-    apply (rule refl)
-    apply (auto simp add: cinsert.rep_eq sup_cset.rep_eq cimage.rep_eq cUnion.rep_eq bot_cset.rep_eq image_iff intro: stepped.intros) [2]
-    apply (subst (1) comp_op_code)
-    apply (rule stepped.intros(3))
-    apply (rule cUnI1)
-    apply (rule cUnI1)
-    apply (rule cimage_eqI)
-    apply (rule refl)
-    apply (auto simp add: cinsert.rep_eq sup_cset.rep_eq cimage.rep_eq cUnion.rep_eq bot_cset.rep_eq image_iff intro: stepped.intros) 
-    apply (smt (verit) not_Some_eq option.simps(4) stepped.intros(2))
-    done
-  done
-
-lemma stepped_comp_op_R:
-  "stepped op2 io op2' \<Longrightarrow>
-   (case io of Out p x \<Rightarrow> True | Inp p x \<Rightarrow> p \<notin> ran wire) \<Longrightarrow>
-   stepped (comp_op wire buf op1 op2) (map_IO Inr Inr id io) (comp_op wire buf op1 op2')"
-  apply (induct op2 io op2' arbitrary: op1 buf rule: stepped.induct)
-  unfolding pcomp_op_def
-  subgoal
-    apply (subst (1) comp_op_code)
-    apply (rule stepped.intros(3))
-    apply (rule cUnI1)
-    apply (simp add: cinsert.rep_eq)
-    apply (rule disjI1)
-    apply (rule refl)
-    apply (auto simp add: observation.map_id)
-    apply (rule stepped.intros(1))
-    done
-  subgoal
-    apply (subst (1) comp_op_code)
-    apply (rule stepped.intros(3))
-    apply (rule cUnI1)
-    apply (simp add: cinsert.rep_eq)
-    apply (rule disjI1)
-    apply (rule refl)
-    apply (auto simp add: observation.map_id)
-    using option.simps(4) stepped.intros(2) apply fastforce
-    done
-  subgoal
-    apply (erule stepped_choicesE)
-    apply (simp_all add: observation.map_id)
-    apply (subst (1) comp_op_code)
-    apply (rule stepped.intros(3))
-    apply (rule cUnI1)
-    apply (rule cUnI2)
-    apply (rule cimage_eqI)
-    apply (rule refl)
-    apply (auto simp add: cinsert.rep_eq sup_cset.rep_eq cimage.rep_eq cUnion.rep_eq bot_cset.rep_eq image_iff intro: stepped.intros) [2]
-    apply (subst (1) comp_op_code)
-    apply (rule stepped.intros(3))
-    apply (rule cUnI1)
-    apply (rule cUnI2)
-    apply (rule cimage_eqI)
-    apply (rule refl)
-    apply (auto simp add: cinsert.rep_eq sup_cset.rep_eq cimage.rep_eq cUnion.rep_eq bot_cset.rep_eq image_iff intro: stepped.intros) [2]
-    done
-  done
 
 lemma stepped_comp_op_inv_Some_AW:
   "stepped_comp_op_inv Some io op buf op1 op2 \<Longrightarrow> 
