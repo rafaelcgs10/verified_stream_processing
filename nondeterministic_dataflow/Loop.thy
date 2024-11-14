@@ -640,7 +640,7 @@ coinductive trace_while_True_op for P f where
 (* FIXME: move me *)
 fun buf_to_list where
   "buf_to_list BEmpty = []"
-| "buf_to_list Bend_oped = []"
+| "buf_to_list BEnded = []"
 | "buf_to_list (BCons x xs) = x # buf_to_list xs"
 
 
@@ -1329,7 +1329,7 @@ lemma loop_producing_while_body_op_buf_all_False_aux:
   "loop_producing wire buf op n \<Longrightarrow>
    op = while_body_op P f True \<Longrightarrow>
    wire = (\<lambda>x. if x = 1 then Some 1 else None) \<Longrightarrow>
-   buf 1 \<noteq> Bend_oped \<Longrightarrow>
+   buf 1 \<noteq> BEnded \<Longrightarrow>
    buf 1 \<noteq> BEmpty \<Longrightarrow>
    \<forall>x\<in>set (buf_to_list (buf 1)). \<forall>n. \<not> P ((f ^^ n) x) \<Longrightarrow>
    False"
@@ -1381,7 +1381,7 @@ lemma loop_producing_while_body_op_buf_all_False_aux:
 
 lemma loop_producing_while_body_op_buf_all_False:
   "\<not> (\<exists> x \<in> set (buf_to_list (buf 1)). \<exists> n. P ((f ^^ n) x)) \<Longrightarrow>
-   buf 1 \<noteq> Bend_oped \<Longrightarrow>
+   buf 1 \<noteq> BEnded \<Longrightarrow>
    buf 1 \<noteq> BEmpty \<Longrightarrow>
    \<not> (\<exists> n. loop_producing (\<lambda>x. if x = (1::2) then Some (1::2) else None) buf (while_body_op P f True) n)"
   using loop_producing_while_body_op_buf_all_False_aux by blast
@@ -1673,7 +1673,7 @@ lemma while_True_retrace_eq_lfilter_visible:
             apply (metis pow_f_f_Suc)
             done
           apply (simp add: lfilter_eq_LNil)
-          apply (smt (verit, ccfv_SIG) \<open>\<And>x. \<lbrakk>trace_while_body_True P f ios; causal (\<lambda>x. if x = 1 then Some 1 else None) buf ios; buf 1 = BEmpty; x \<in> lset ios; visible_IO (\<lambda>x. if x = 1 then Some 1 else None) x\<rbrakk> \<Longrightarrow> False\<close> \<open>\<And>x. \<lbrakk>trace_while_body_True P f ios; causal (\<lambda>x. if x = 1 then Some 1 else None) buf ios; buf 1 = Bend_oped; x \<in> lset ios; visible_IO (\<lambda>x. if x = 1 then Some 1 else None) x\<rbrakk> \<Longrightarrow> False\<close> bhd.simps(3) buf_to_list.simps(3) in_buf_to_list_in_tl_buf_to_list list.sel(3) loop_producing_while_body_op_buf_all_False trace_while_body_True_not_loop_producing_not_visible)
+          apply (smt (verit, ccfv_SIG) \<open>\<And>x. \<lbrakk>trace_while_body_True P f ios; causal (\<lambda>x. if x = 1 then Some 1 else None) buf ios; buf 1 = BEmpty; x \<in> lset ios; visible_IO (\<lambda>x. if x = 1 then Some 1 else None) x\<rbrakk> \<Longrightarrow> False\<close> \<open>\<And>x. \<lbrakk>trace_while_body_True P f ios; causal (\<lambda>x. if x = 1 then Some 1 else None) buf ios; buf 1 = BEnded; x \<in> lset ios; visible_IO (\<lambda>x. if x = 1 then Some 1 else None) x\<rbrakk> \<Longrightarrow> False\<close> bhd.simps(3) buf_to_list.simps(3) in_buf_to_list_in_tl_buf_to_list list.sel(3) loop_producing_while_body_op_buf_all_False trace_while_body_True_not_loop_producing_not_visible)
           done
         done
       done

@@ -837,20 +837,20 @@ lemma stepped_comp_op_Some_id_op_id_op:
   "stepped (comp_op Some buf2 op1 op2) io op \<Longrightarrow>
    op1 = id_op S1 buf1 \<Longrightarrow>
    op2 = id_op S2 buf3 \<Longrightarrow>
-   (\<forall> p. \<not> p |\<in>| S1 \<and> \<not> (\<exists> x. BHD p buf1 = Some (Observed x)) \<longrightarrow> is_bend (buf2 p)) \<Longrightarrow>
-   S2 = cUn S1 (acset ({p. BHD p buf2 \<noteq> Some EOS} \<union> {p. \<exists> x. BHD p buf1 = Some (Observed x)})) \<Longrightarrow>
+   (\<forall> p. p \<notin> outputs op1 \<longleftrightarrow> is_bend (buf2 p)) \<Longrightarrow>
+   rcset S2 = outputs op1 \<union> {p. \<exists> x. BHD p buf2 = Some (Observed x)} \<Longrightarrow>
    (\<exists> p x. io = Inp (Inl p) (Observed x) \<and>
      (\<exists> buf1' buf2' buf3' S2'. op = comp_op Some buf2' (id_op S1 (BENQ p x buf1')) (id_op S2' buf3') \<and>
-      S2' = cUn S1 (acset ({p. BHD p buf2' \<noteq> Some EOS} \<union> {p. \<exists> x. BHD p buf1' = Some (Observed x)})) \<and>
+      rcset S2' = outputs (id_op S1 (BENQ p x buf1')) \<union> {p. \<exists> x. BHD p buf2' = Some (Observed x)} \<and>
       buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3')) \<or>
 
    (\<exists> p x S2'. io = Inp (Inl p) EOS \<and> (\<exists> buf1' buf2' buf3'. op = comp_op Some buf2' (id_op (cDiff S1 {|p|}) buf1') (id_op S2' buf3') \<and>
-     S2' = cUn (cDiff S1 {|p|}) (acset ({p. BHD p buf2' \<noteq> Some EOS} \<union> {p. \<exists> x. BHD p buf1' = Some (Observed x)})) \<and>
+     rcset S2' = outputs (id_op (cDiff S1 {|p|}) buf1') \<union> {p. \<exists> x. BHD p buf2' = Some (Observed x)} \<and>
      buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3')) \<or>
 
    (\<exists> p x. io = Out (Inr p) x \<and>
-     (\<exists> buf1' buf2' buf3'. op = comp_op Some buf2' (id_op S1 buf1') (id_op S2 (BTL p buf3')) \<and> BHD p buf3' = Some (Observed x) \<and>
-     S2' = cUn S1 (acset {p. BHD p buf2' \<noteq> Some EOS}) \<and>
+     (\<exists> buf1' buf2' buf3' S2'. op = comp_op Some buf2' (id_op S1 buf1') (id_op S2 (BTL p buf3')) \<and> BHD p buf3' = Some (Observed x) \<and>
+     rcset S2' = outputs (id_op S1 buf1') \<union> {p. \<exists> x. BHD p buf2' = Some (Observed x)} \<and>
      buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3'))"
   apply (drule stepped_stepped_comp_op_inv)
   subgoal
@@ -867,25 +867,45 @@ lemma stepped_comp_op_Some_id_op_id_op:
         apply (rule exI[of _ "end_buf Some (rcset S1 \<union> {pa. (pa = p \<longrightarrow> (\<exists>x. BHD (buf1 p) (benq y) = Some (Observed x))) \<and> (pa \<noteq> p \<longrightarrow> (\<exists>x. BHD pa buf1 = Some (Observed x)))}) buf"])
         apply(rule exI[of _ buf3])
         apply auto
+        apply (intro exI conjI)
         apply (rule arg_cong[where f="comp_op Some
      (end_buf Some (rcset S1 \<union> {pa. (pa = p \<longrightarrow> (\<exists>x. BHD (buf1 p) (benq y) = Some (Observed x))) \<and> (pa \<noteq> p \<longrightarrow> (\<exists>x. BHD pa buf1 = Some (Observed x)))}) buf)
      (id_op S1 (buf1(p := benq y (buf1 p))))"])
         apply (rule arg_cong2[where f=id_op])
          apply auto
-   subgoal
-     by (metis (no_types, lifting) bend.simps(3) bhd.elims bhd.simps(3) end_buf_def is_bend.simps(2))
-
-   subgoal
-     by (metis (no_types, lifting) bend.simps(2) bhd.elims end_buf_def observation.discI option.discI option.sel)
+        subgoal
+          by (metis (no_types, lifting) bend.simps(2) bend.simps(3) bhd.simps(3) end_buf_def is_bend.elims(2))
+        subgoal
+          by (metis (no_types, lifting) bend.simps(2) bhd.elims end_buf_def is_bend.simps(2))
    done
       subgoal
      apply (drule stepped_id_op_Inp_EOS)
          apply auto
         apply hypsubst_thin
+        apply (rule exI)
         apply(rule exI[of _ buf1])
         apply (rule exI[of _ "end_buf Some (rcset (cDiff S1 {|p|}) \<union> {p. \<exists>x. BHD p buf1 = Some (Observed x)}) buf"])
         apply(rule exI[of _ buf3])
-        apply auto
+        apply (auto simp add: minus_cset.rep_eq split: if_splits)
+           subgoal
+     by (metis (no_types, lifting) bend.simps(3) bhd.elims bhd.simps(3) end_buf_def observation.discI option.discI option.sel)
+
+   subgoal
+     
+
+          
+
+
+end
+     sledgehammer
+     sorry
+
+   subgoal
+     by (metis (no_types, lifting) bend.simps(2) bhd.elims end_buf_def observation.discI option.discI option.sel)
+
+
+
+end
         apply (rule arg_cong[where f="comp_op Some (end_buf Some (rcset (cDiff S1 {|p|}) \<union> {p. \<exists>x. BHD p buf1 = Some (Observed x)}) buf) (id_op (cDiff S1 {|p|}) buf1)"])
         apply (rule arg_cong2[where f=id_op])
          apply auto
