@@ -1069,7 +1069,48 @@ lemma choices_W[simp]:
     by (metis W.code natcUNIV.rep_eq choices_at.simps(2) cin.rep_eq csingleton_iff iso_tuple_UNIV_I)
   done
 
-term cp_op
+lemma bisim_map_op:
+  "bisim op op' \<Longrightarrow>
+   bisim (map_op f g op) (map_op f g op')"
+  apply (coinduction arbitrary: op op' rule: bisim_coinduct_upto)
+  subgoal for op op'
+    apply clarsimp
+    apply (erule bisim.cases)
+    subgoal for s t
+      unfolding sim_def
+      apply auto
+      subgoal for l s'
+        apply hypsubst_thin
+        apply (drule step_map_op_inv[where f=f and g=g])
+        apply auto
+        apply (drule spec2)
+        apply (drule mp)
+        apply assumption
+        apply auto
+        apply hypsubst_thin
+        apply (drule step_map_op[where f=f and g=g and op=t])
+        apply (intro conjI exI)
+        apply assumption
+        apply (metis (mono_tags, lifting) bc_base bisim_sym)
+        done
+      subgoal for l s'
+        apply hypsubst_thin
+        apply rotate_tac
+        apply (drule step_map_op_inv[where f=f and g=g])
+        apply auto
+        apply (drule spec2)
+        apply (drule mp)
+        apply assumption
+        apply auto
+        apply hypsubst_thin
+        apply (drule step_map_op[where f=f and g=g and op=s])
+        apply (intro conjI exI)
+        apply assumption
+        apply (metis (mono_tags, lifting) bc_base bisim_sym)
+        done
+      done
+    done
+  done
 
 lemma choices_cp_op[simp]:
   "choices cp_op = {|Read 1 (Write cp_op 1)|}"
