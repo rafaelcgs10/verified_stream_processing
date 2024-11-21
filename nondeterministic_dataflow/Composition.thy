@@ -1233,6 +1233,7 @@ inductive silent_steps where
   "silent_steps op op"
 | "op' |\<in>| ops \<Longrightarrow> silent_steps op' op \<Longrightarrow> silent_steps (Choice ops) op"
 | "\<forall> op'. op' |\<in>| ops' \<longrightarrow> (\<exists> op''. op'' |\<in>| ops \<and> silent_steps op'' op') \<Longrightarrow> silent_steps (Choice ops') op \<Longrightarrow> silent_steps (Choice ops) op"
+| "silent_steps op op' \<Longrightarrow> silent_steps (Write op p x) (Write op' p x)"
 
 
 lemma Write_op1_silet_steps:
@@ -1247,14 +1248,14 @@ lemma Write_op1_silet_steps:
   apply simp
   apply (rule silent_steps.intros(1))
   done
-
+(*
 lemma silent_steps_step:
   "silent_steps op1 op2 \<Longrightarrow>
    step op2 io op3 \<Longrightarrow>
    step op1 io op3"
   by (induct op1 op2 arbitrary: rule: silent_steps.induct)
     (auto simp flip: cin.rep_eq intro: step.intros)
-
+*)
 (*
 lemma silent_steps_choices:
   "silent_steps op1 op2 \<Longrightarrow>
@@ -1266,8 +1267,10 @@ lemma silent_steps_trans:
    silent_steps op2 op3 \<Longrightarrow>
    silent_steps op1 op3"
   apply (induct op1 op2 arbitrary: op3 rule: silent_steps.induct)
-    apply (auto  simp flip: cin.rep_eq intro: silent_steps.intros(2,3))
-  apply (meson silent_steps.simps)
+    apply (auto  simp flip: cin.rep_eq intro: silent_steps.intros(2,3,4))
+   apply (meson silent_steps.simps)
+  sledgehammer
+  by (smt (verit) op.distinct(5) op.inject(2) silent_steps.simps)
   done
 
 lemma
@@ -1295,13 +1298,28 @@ lemma
   subgoal for op' ops op op2 buf
     apply (rule silent_steps_trans[rotated])
     apply assumption
-      apply (subst (1 2) comp_op_code)
+      apply (subst (1) comp_op_code)
     apply simp
     apply (rule silent_steps.intros(3)[rotated])
+      apply (subst (1) comp_op_code)
      apply (rule silent_steps.intros(1))
-    apply auto
-     apply blast
+    apply (auto)
+    apply (meson UN_iff image_eqI silent_steps.intros(1))
+    apply (auto simp add: ranI Set.filter_def split: op.splits)
+    subgoal sorry
+    sledgehammer
+
+     apply (rule exI)
+    apply (intro conjI)
+      apply (rule disjI2)
+      apply (rule imageI[of "Read _ _"])
+    apply (rule CollectI)
+      apply (intro conjI allI impI)
+         apply blast
     apply simp
+    apply simp
+      apply simp
+    apply (simp add: ranI)
 
     oops
 
