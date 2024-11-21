@@ -1171,9 +1171,199 @@ lemma step_Choice_csubset_eq:
   apply (metis cin.rep_eq cinsert_absorb cinsert_csubset step.intros(3))
   done
 
-lemma step_comp_op_Choice_csubset_eq:
+lemma csubset_eq_comp_op_benq:
+  "Write op1' p x |\<in>| choices op1 \<Longrightarrow>
+   csubset_eq (choices (comp_op Some (buf(p := bulk_benq [x] (buf p))) op1' op2)) (choices (comp_op Some buf op1 op2))"
+  apply (subst (2) comp_op_code)
+  apply (simp flip: choices_map_op)
+  apply (rule semilattice_sup_class.le_supI1)
+  apply (metis (mono_tags, lifting) cUN_upper cimage.rep_eq cin.rep_eq image_eqI op.simps(11))
+  done
+
+lemma
+  "csubset_eq (choices op1') (choices op1) \<Longrightarrow>
+   csubset_eq (choices (map_op projl projr (comp_op Some buf op1' op2))) (choices (map_op projl projr (comp_op Some buf op1 op2)))"
+  apply (cases "choices op1' = cempty")
+  subgoal
+    apply auto
+  apply (subst (asm) comp_op_code)
+    apply auto
+    subgoal for op op'
+      apply (cases op'; simp add: ranI Set.filter_def)
+      subgoal for p f
+  apply (subst comp_op_code)
+    apply (simp add: ranI Set.filter_def)
+    apply (rule disjI2)
+        apply hypsubst_thin
+        apply (rule exI[of _ "Read p f"])
+        apply (simp add: ranI)
+        oops
+
+lemma
+  "csubset_eq (choices op1') (choices op1) \<Longrightarrow>
+   csubset_eq (un_Choice (map_op projl projr (comp_op Some buf op1' op2))) (un_Choice (map_op projl projr (comp_op Some buf op1 op2)))"
+ apply (cases "choices op1' = cempty")
+  subgoal
+    apply auto
+  apply (subst (asm) comp_op_code)
+    apply auto
+    subgoal for op'
+      apply (cases op'; simp add: ranI Set.filter_def)
+      subgoal for p f
+  apply (subst (1 2) comp_op_code)
+    apply (simp add: ranI Set.filter_def)
+        apply hypsubst_thin
+        oops
+  
+lemma step_comp_op_csubset_eq:
+  "step (comp_op Some buf op1 op2) io op'' \<Longrightarrow>
+   csubset_eq (un_Choice (comp_op Some buf op1 op2)) (un_Choice (comp_op Some buf' op1' op2')) \<Longrightarrow>
+   step (comp_op Some buf' op1' op2') io op''"
+  apply (subst comp_op_code)
+   apply (subst (asm) (1 2 3) comp_op_code)
+  apply (rule step_Choice_csubset_eq)
+   apply simp_all
+  apply blast
+  done
+
+
+term choices_set
+
+inductive silent_steps where
+  "silent_steps op op"
+| "op' |\<in>| ops \<Longrightarrow> silent_steps op' op \<Longrightarrow> silent_steps (Choice ops) op"
+| "\<forall> op'. op' |\<in>| ops' \<longrightarrow> (\<exists> op''. op'' |\<in>| ops \<and> silent_steps op'' op') \<Longrightarrow> silent_steps (Choice ops') op \<Longrightarrow> silent_steps (Choice ops) op"
+
+
+lemma Write_op1_silet_steps:
+  "Write op1' p x |\<in>| choices op1 \<Longrightarrow>
+   silent_steps (comp_op Some buf op1 op2) (comp_op Some (buf(p := bulk_benq [x] (buf p))) op1' op2)"
+  apply (subst comp_op_code)
+  apply simp
+  apply (rule silent_steps.intros(2))
+   apply simp
+   apply (rule disjI1)
+   apply force
+  apply simp
+  apply (rule silent_steps.intros(1))
+  done
+
+lemma silent_steps_step:
+  "silent_steps op1 op2 \<Longrightarrow>
+   step op2 io op3 \<Longrightarrow>
+   step op1 io op3"
+  by (induct op1 op2 arbitrary: rule: silent_steps.induct)
+    (auto simp flip: cin.rep_eq intro: step.intros)
+
+(*
+lemma silent_steps_choices:
+  "silent_steps op1 op2 \<Longrightarrow>
+   csubset_eq (choices op2) (choices op1)"
+  by (induct op1 op2 arbitrary: rule: silent_steps.induct) auto
+*)
+lemma silent_steps_trans:
+  "silent_steps op1 op2 \<Longrightarrow>
+   silent_steps op2 op3 \<Longrightarrow>
+   silent_steps op1 op3"
+  apply (induct op1 op2 arbitrary: op3 rule: silent_steps.induct)
+    apply (auto  simp flip: cin.rep_eq intro: silent_steps.intros(2,3))
+  apply (meson silent_steps.simps)
+  done
+
+lemma
+  "step (comp_op Some buf op1' op2) io op \<Longrightarrow>
+   silent_steps op1 op1' \<Longrightarrow>
+   step (comp_op Some buf op1 op2) io op"
+  oops
+(*
+lemma choices_cempty_silent_steps:
+  "choices op = {||} \<Longrightarrow>
+   silent_steps op op' \<Longrightarrow>
+   choices op' =  {||}"
+  using silent_steps_choices by auto
+*)
+lemma
+  "step op2 io op3 \<Longrightarrow>
+   silent_steps op1 op3"
+  oops
+
+lemma
+  "silent_steps op1 op1' \<Longrightarrow>
+   silent_steps (comp_op Some buf op1 op2) (comp_op Some buf op1' op2)"
+  apply (induct op1 op1' arbitrary: op2 buf rule: silent_steps.induct)
+   apply (auto intro: silent_steps.intros)
+  subgoal for op' ops op op2 buf
+    apply (rule silent_steps_trans[rotated])
+    apply assumption
+      apply (subst (1 2) comp_op_code)
+    apply simp
+    apply (rule silent_steps.intros(3)[rotated])
+     apply (rule silent_steps.intros(1))
+    apply auto
+     apply blast
+    apply simp
+
+    oops
+
+lemma
+  "choices_set op1' op1 \<Longrightarrow>
+   step op2 (Out p x) op2' \<Longrightarrow>
+   step (comp_op Some buf op1 op2) (Out (Inr p) x) (comp_op Some buf op1' op2')"
+  apply (induct op1' op1 arbitrary: op2 op2' buf rule: choices_set.induct)
+  subgoal
+    using step_comp_op_R by fastforce
+  subgoal
+    using step_comp_op_R by fastforce
+  subgoal premises prems for op op' ops op2 op2' buf
+    using prems(1,3-) apply -
+    apply (drule prems(2)[of _ _ buf])
+    apply (subst (asm) comp_op_code)
+    apply (auto simp add:  Set.filter_def ranI image_iff bex_Un)
+    subgoal for op''
+      apply (cases op''; simp)
+      subgoal for p f
+        apply hypsubst_thin
+      apply (subst comp_op_code)
+      apply simp
+      apply (rule step.intros(3)[rotated])
+         apply assumption
+        apply (simp flip:  add:  Set.filter_def ranI image_iff bex_Un)
+        apply (rule disjI1)
+        apply (rule bexI[of _ "Read p f"])
+         apply auto
+        done
+      subgoal for op1' p x
+    apply hypsubst_thin
+      apply (subst comp_op_code)
+      apply simp
+      apply (rule step.intros(3)[rotated])
+        apply assumption
+      apply (simp flip:  add:  Set.filter_def ranI image_iff bex_Un)
+         apply (auto simp flip: choices_to_inductive)
+        apply force
+        done
+      subgoal
+         apply (auto simp flip: choices_to_inductive)
+        done
+      done
+    subgoal for op''
+      apply (cases op''; simp)
+      subgoal for p f
+        apply hypsubst_thin
+      apply (subst comp_op_code)
+      apply simp
+      apply (rule step.intros(3)[rotated])
+         apply assumption
+        apply (simp flip:  add:  Set.filter_def ranI image_iff bex_Un)
+        apply (rule disjI1)
+        apply (rule bexI[of _ op'])
+         apply auto
+        oops
+
+
+lemma 
   "step (map_op projl projr (comp_op Some (buf :: 'd \<Rightarrow> 'c buf) op1' op2)) io (map_op projl projr (comp_op Some (buf' :: 'd \<Rightarrow> 'c buf) op1'' op2')) \<Longrightarrow>
-   csubset_eq (choices op1') (choices op1) \<Longrightarrow>
+   silent_steps op1 op1' \<Longrightarrow>
    \<exists> (buf'' :: 'd \<Rightarrow> 'c buf) op1''' op2''. step (map_op projl projr (comp_op Some buf op1 op2)) io (map_op projl projr (comp_op Some buf'' op1''' op2'')) \<and>
    map_op projl projr (comp_op Some buf'' op1''' op2'') = map_op projl projr (comp_op Some buf' op1'' op2')"
   apply (induct "map_op projl projr (comp_op Some buf op1' op2)" io "map_op projl projr (comp_op Some buf' op1'' op2')" arbitrary: op1' op1 op2 buf buf' op1'' op2' rule: step.induct)
@@ -1203,6 +1393,7 @@ lemma step_comp_op_Choice_csubset_eq:
          apply (rule disjI1)
         apply (rule bexI[of _ "Read p f"])
           apply auto
+        apply (meson less_eq_cset.rep_eq silent_steps_choices subsetD)
         done
       subgoal for op1'' p x
     apply (intro conjI[rotated] exI)
@@ -1215,7 +1406,7 @@ lemma step_comp_op_Choice_csubset_eq:
     apply (rule disjI1)
         apply (rule bexI[of _ "Write op1'' p x"])
           apply simp_all
-         apply force
+        apply (meson in_mono less_eq_cset.rep_eq silent_steps_choices)
         done
       subgoal for ops
         apply hypsubst_thin
@@ -1252,29 +1443,24 @@ lemma step_comp_op_Choice_csubset_eq:
           using prems(1,3-) apply -
    apply (intro conjI[rotated] exI)
            apply (rule refl)
-             apply (subst comp_op_code)
-          apply simp
-          apply (rule step.intros(3)[rotated])
-          apply simp
-            apply (simp flip:  add:  Set.filter_def ranI image_iff bex_Un)
-          apply (rule disjI2)
-          apply (rule exI[of _ "Write op2' p x"])
-          apply simp
-          oops
+          apply auto
+          apply hypsubst_thin 
+          find_theorems comp_op silent_steps
 
-lemma csubset_eq_comp_op_benq:
-  "Write op1' p x |\<in>| choices op1 \<Longrightarrow>
-   csubset_eq (choices (comp_op Some (buf(p := bulk_benq [x] (buf p))) op1' op2)) (choices (comp_op Some buf op1 op2))"
-  apply (subst (2) comp_op_code)
-  apply (simp flip: choices_map_op)
-  apply (rule semilattice_sup_class.le_supI1)
-  apply (metis (mono_tags, lifting) cUN_upper cimage.rep_eq cin.rep_eq image_eqI op.simps(11))
-  done
+          apply (rule step_csubset_eq[of "map_op projl projr (comp_op Some buf op1' op2)"])
+           defer
+          subgoal
+           apply (subst comp_op_code)
+          apply simp
+            oops
+
+
 
 lemma
   "step (map_op projl projr (comp_op Some (buf1 :: 'd \<Rightarrow> 'c buf) op1 (map_op projl projr (comp_op Some (buf2 :: 'e \<Rightarrow> 'c buf) op2 op3)))) io op \<Longrightarrow>
-   \<exists> op1' op2' op3' (buf1' :: 'd \<Rightarrow> 'c buf) (buf2' :: 'e \<Rightarrow> 'c buf). step (map_op projl projr (comp_op Some buf2 (map_op projl projr (comp_op Some buf1 op1 op2)) op3)) io 
-   (map_op projl projr (comp_op Some buf2' (map_op projl projr (comp_op Some buf1' op1' op2')) op3')) \<and>
+   \<exists> op1' op2' op3' (buf1' :: 'd \<Rightarrow> 'c buf) (buf2' :: 'e \<Rightarrow> 'c buf).
+     step (map_op projl projr (comp_op Some buf2 (map_op projl projr (comp_op Some buf1 op1 op2)) op3)) io 
+          (map_op projl projr (comp_op Some buf2' (map_op projl projr (comp_op Some buf1' op1' op2')) op3')) \<and>
     op = (map_op projl projr (comp_op Some buf1' op1' (map_op projl projr (comp_op Some buf2' op2' op3'))))"
   apply (induct "map_op projl projr (comp_op Some buf1 op1 (map_op projl projr (comp_op Some buf2 op2 op3)))" io op arbitrary: buf1 buf2 op1 op2 op3 rule: step.induct)
   subgoal
@@ -1316,9 +1502,13 @@ lemma
         apply simp
         apply hypsubst_thin
         subgoal for op1'' op2' op3' buf1' buf2'
-          apply (drule Write_in_choices_step[simplified])
           apply (intro conjI[rotated] exI)
            apply (rule refl)
+          subgoal premises prems
+            using prems(2,3) apply -
+
+            find_theorems silent_steps comp_op
+
           oops
 
 
