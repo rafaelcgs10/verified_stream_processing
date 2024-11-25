@@ -1226,27 +1226,72 @@ lemma step_comp_op_csubset_eq:
   apply blast
   done
 
+coinductive refines (infix "\<sqsupseteq>" 65) where
+  "is_Choice op \<Longrightarrow> \<forall>op1'. op1' |\<in>| choices op' \<longrightarrow> (\<exists> op1. op1 |\<in>| choices op \<and> refines op1 op1') \<Longrightarrow> refines op op'"
+| "(\<forall>x. refines (f x) (f' x)) \<Longrightarrow> refines (Read p f) (Read p f')"
+| "refines op op' \<Longrightarrow> refines (Write op p x) (Write op' p x)"
 
-term choices_set
+inductive refines_cong for R where
+  rc_base:  "R x y \<Longrightarrow> refines_cong R x y"
+| rc_refines:  "refines x y \<Longrightarrow> refines_cong R x y"
+| rc_refl:  "x = y \<Longrightarrow> refines_cong R x y"
+| rc_Read:"x1 = y1 \<Longrightarrow> rel_fun (=) (refines_cong R) x2 y2 \<Longrightarrow> refines_cong R (Read x1 x2) (Read y1 y2)"
+| rc_Write: "refines_cong R x1 y1 \<Longrightarrow> x2 = y2 \<Longrightarrow> x3 = y3 \<Longrightarrow> refines_cong R (Write x1 x2 x3) (Write y1 y2 y3)"
 
-inductive silent_steps where
-  "silent_steps op op"
-| "op' |\<in>| ops \<Longrightarrow> silent_steps op' op \<Longrightarrow> silent_steps (Choice ops) op"
-| "\<forall> op'. op' |\<in>| ops' \<longrightarrow> (\<exists> op''. op'' |\<in>| ops \<and> silent_steps op'' op') \<Longrightarrow> silent_steps (Choice ops') op \<Longrightarrow> silent_steps (Choice ops) op"
-| "silent_steps op op' \<Longrightarrow> silent_steps (Write op p x) (Write op' p x)"
+lemma refines_cong_disj:
+  "(refines_cong R x y \<or> refines x y) = refines_cong R x y"
+  by (auto intro: refines_cong.intros)
 
+lemma refines_refl: "refines op op"
+  apply (coinduction arbitrary: op)
+  subgoal for op
+    by (cases op) auto
+  done
 
-lemma Write_op1_silet_steps:
+lemma refines_coinduct_upto:
+  assumes "X x1 x2"
+    "(\<And>x1 x2.
+    X x1 x2 \<Longrightarrow>
+    (is_Choice x1 \<and> (\<forall>op'. op' |\<in>| choices x2 \<longrightarrow> (\<exists>op. op |\<in>| choices x1 \<and> refines_cong X op op'))) \<or>
+    (\<exists>f f' p. x1 = Read p f \<and> x2 = Read p f' \<and> (\<forall>x. refines_cong X (f x) (f' x))) \<or>
+    (\<exists>op op' p x. x1 = Write op p x \<and> x2 = Write op' p x \<and> refines_cong X op op'))"
+  shows "refines x1 x2"
+  using assms(1)
+  apply -
+  apply (rule refines.coinduct[where X="refines_cong X", unfolded refines_cong_disj, simplified])
+  subgoal
+    by (rule rc_base)
+  subgoal premises prems for s' t'
+    using prems(2) apply -
+    apply (induct s' t' rule: refines_cong.induct)
+    subgoal
+      by (drule assms(2)) auto
+    subgoal
+      apply (erule refines.cases)
+        apply (auto 0 6 simp: rc_refines)
+      done
+    subgoal for x y
+      by (cases y) (auto simp: rel_fun_def intro: rc_refl)
+    subgoal for x y
+      by (auto simp: rel_fun_def)
+    subgoal
+      by auto
+    done
+  done
+
+lemma csubset_eq_refines: "is_Choice op1 \<Longrightarrow> csubset_eq (choices op2) (choices op1) \<Longrightarrow> refines op1 op2"
+   apply (intro refines.intros(1) allI impI)
+  apply assumption
+  apply (drule (1) csubsetD)
+   apply (rule exI conjI refines_refl | assumption)+
+  done
+
+lemma Write_op1_refines:
   "Write op1' p x |\<in>| choices op1 \<Longrightarrow>
-   silent_steps (comp_op Some buf op1 op2) (comp_op Some (buf(p := bulk_benq [x] (buf p))) op1' op2)"
-  apply (subst comp_op_code)
-  apply simp
-  apply (rule silent_steps.intros(2))
-   apply simp
-   apply (rule disjI1)
-   apply force
-  apply simp
-  apply (rule silent_steps.intros(1))
+   refines (comp_op Some buf op1 op2) (comp_op Some (buf(p := bulk_benq [x] (buf p))) op1' op2)"
+  apply (rule csubset_eq_refines)
+  apply (subst comp_op_code; simp)
+  apply (erule csubset_eq_comp_op_benq)
   done
 (*
 lemma silent_steps_step:
@@ -1263,125 +1308,270 @@ lemma silent_steps_choices:
   by (induct op1 op2 arbitrary: rule: silent_steps.induct) auto
 *)
 lemma silent_steps_trans:
-  "silent_steps op1 op2 \<Longrightarrow>
-   silent_steps op2 op3 \<Longrightarrow>
-   silent_steps op1 op3"
-  apply (induct op1 op2 arbitrary: op3 rule: silent_steps.induct)
-    apply (auto  simp flip: cin.rep_eq intro: silent_steps.intros(2,3,4))
-   apply (meson silent_steps.simps)
-  sledgehammer
-  by (smt (verit) op.distinct(5) op.inject(2) silent_steps.simps)
+  "refines op1 op2 \<Longrightarrow>
+   refines op2 op3 \<Longrightarrow>
+   refines op1 op3"
+  apply (coinduction arbitrary: op1 op2 op3)
+  subgoal for op1 op2 op3
+    apply (erule refines.cases[of op1 op2]; erule refines.cases[of op2 op3])
+            apply (auto 0 4 simp: is_Choice_def intro: refines.intros)
+    done
   done
 
-lemma
-  "step (comp_op Some buf op1' op2) io op \<Longrightarrow>
-   silent_steps op1 op1' \<Longrightarrow>
-   step (comp_op Some buf op1 op2) io op"
-  oops
-(*
-lemma choices_cempty_silent_steps:
-  "choices op = {||} \<Longrightarrow>
-   silent_steps op op' \<Longrightarrow>
-   choices op' =  {||}"
-  using silent_steps_choices by auto
-*)
-lemma
-  "step op2 io op3 \<Longrightarrow>
-   silent_steps op1 op3"
-  oops
+lemma refinesE:
+  assumes "refines op op'" "op1' |\<in>| choices op'"
+  obtains op1 where "op1 |\<in>| choices op" "refines op1 op1'"
+  using assms
+  apply -
+  apply (erule refines.cases)
+    apply (auto intro: refines.intros)
+  done
 
-lemma
-  "silent_steps op1 op1' \<Longrightarrow>
-   silent_steps (comp_op Some buf op1 op2) (comp_op Some buf op1' op2)"
-  apply (induct op1 op1' arbitrary: op2 buf rule: silent_steps.induct)
-   apply (auto intro: silent_steps.intros)
-  subgoal for op' ops op op2 buf
-    apply (rule silent_steps_trans[rotated])
-    apply assumption
-      apply (subst (1) comp_op_code)
-    apply simp
-    apply (rule silent_steps.intros(3)[rotated])
-      apply (subst (1) comp_op_code)
-     apply (rule silent_steps.intros(1))
-    apply (auto)
-    apply (meson UN_iff image_eqI silent_steps.intros(1))
-    apply (auto simp add: ranI Set.filter_def split: op.splits)
-    subgoal sorry
-    sledgehammer
+lemma refines_ReadReadD[elim!]: "refines (Read p f) (Read q f') \<Longrightarrow> (p = q \<Longrightarrow> (\<forall>x. refines (f x) (f' x)) \<Longrightarrow> P) \<Longrightarrow> P"
+  by (erule refines.cases) auto
+lemma refines_WriteWriteD[elim!]: "refines (Write op p x) (Write op' q y) \<Longrightarrow> (p = q \<Longrightarrow> x = y \<Longrightarrow> refines op op' \<Longrightarrow> P) \<Longrightarrow> P"
+  by (erule refines.cases) auto
+lemma refines_WriteReadD[elim!]: "refines (Write op p x) (Read q f') \<Longrightarrow> P"
+  by (erule refines.cases) auto
+lemma refines_ReadWriteD[elim!]: "refines (Read q f') (Write op p x) \<Longrightarrow> P"
+  by (erule refines.cases) auto
 
-     apply (rule exI)
-    apply (intro conjI)
-      apply (rule disjI2)
-      apply (rule imageI[of "Read _ _"])
-    apply (rule CollectI)
-      apply (intro conjI allI impI)
-         apply blast
-    apply simp
-    apply simp
-      apply simp
-    apply (simp add: ranI)
+inductive choices_comp_op for wire where
+  "Read p f |\<in>| choices op1 \<Longrightarrow> choices_comp_op wire (Read (Inl p) (\<lambda>x. comp_op wire buf (f x) op2)) buf op1 op2"
+| "Write op p x |\<in>| choices op2 \<Longrightarrow> choices_comp_op wire (Write (comp_op wire buf op1 op) (Inr p) x) buf op1 op2"
+| "Write op p x |\<in>| choices op1 \<Longrightarrow> p \<notin> dom wire \<Longrightarrow> choices_comp_op wire (Write (comp_op wire buf op op2) (Inl p) x) buf op1 op2"
+| "Read p f |\<in>| choices op2 \<Longrightarrow> p \<notin> ran wire \<Longrightarrow> choices_comp_op wire (Read (Inr p) (\<lambda>x. comp_op wire buf op1 (f x))) buf op1 op2"
+| "Write op' p x |\<in>| choices op1 \<Longrightarrow> wire p = Some q \<Longrightarrow> choices_comp_op wire op (BENQ q x buf) op' op2 \<Longrightarrow> choices_comp_op wire op buf op1 op2"
+| "Read p f |\<in>| choices op2 \<Longrightarrow> p \<in> ran wire \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> choices_comp_op wire op (BTL p buf) op1 (f (BHD p buf)) \<Longrightarrow> choices_comp_op wire op buf op1 op2"
 
-    oops
-
-lemma
-  "choices_set op1' op1 \<Longrightarrow>
-   step op2 (Out p x) op2' \<Longrightarrow>
-   step (comp_op Some buf op1 op2) (Out (Inr p) x) (comp_op Some buf op1' op2')"
-  apply (induct op1' op1 arbitrary: op2 op2' buf rule: choices_set.induct)
+lemma choices_comp_op: "op' |\<in>| choices (comp_op wire buf op1 op2) \<longleftrightarrow> choices_comp_op wire op' buf op1 op2"
+  apply (rule iffI)
   subgoal
-    using step_comp_op_R by fastforce
-  subgoal
-    using step_comp_op_R by fastforce
-  subgoal premises prems for op op' ops op2 op2' buf
-    using prems(1,3-) apply -
-    apply (drule prems(2)[of _ _ buf])
-    apply (subst (asm) comp_op_code)
-    apply (auto simp add:  Set.filter_def ranI image_iff bex_Un)
-    subgoal for op''
-      apply (cases op''; simp)
-      subgoal for p f
-        apply hypsubst_thin
-      apply (subst comp_op_code)
-      apply simp
-      apply (rule step.intros(3)[rotated])
-         apply assumption
-        apply (simp flip:  add:  Set.filter_def ranI image_iff bex_Un)
-        apply (rule disjI1)
-        apply (rule bexI[of _ "Read p f"])
-         apply auto
+    unfolding choices_def
+    apply safe
+    apply (erule thin_rl)
+    subgoal for n
+      apply (induct n arbitrary: buf op1 op2)
+      apply (subst (asm) comp_op_code; simp)
+      apply (subst (asm) (2) comp_op_code; auto)
+      subgoal for n buf op1 op2 x
+        apply (cases x)
+          apply (auto intro: choices_comp_op.intros split: option.splits)
         done
-      subgoal for op1' p x
-    apply hypsubst_thin
-      apply (subst comp_op_code)
-      apply simp
-      apply (rule step.intros(3)[rotated])
-        apply assumption
-      apply (simp flip:  add:  Set.filter_def ranI image_iff bex_Un)
-         apply (auto simp flip: choices_to_inductive)
-        apply force
-        done
-      subgoal
-         apply (auto simp flip: choices_to_inductive)
+      subgoal for n buf op1 op2 x
+        apply (cases x)
+          apply (auto intro: choices_comp_op.intros split: if_splits option.splits)
         done
       done
-    subgoal for op''
-      apply (cases op''; simp)
-      subgoal for p f
-        apply hypsubst_thin
-      apply (subst comp_op_code)
-      apply simp
-      apply (rule step.intros(3)[rotated])
-         apply assumption
-        apply (simp flip:  add:  Set.filter_def ranI image_iff bex_Un)
-        apply (rule disjI1)
-        apply (rule bexI[of _ op'])
-         apply auto
-        oops
+    done
+  apply (induct op' buf op1 op2 pred: choices_comp_op)
+  apply (subst (2) comp_op_code; auto simp: Set.filter_def split: op.splits)
+  apply (subst (2) comp_op_code; auto simp: Set.filter_def split: op.splits)
+     apply (subst (2) comp_op_code; auto simp: Set.filter_def ranI is_Choice_def split: op.splits)
+  using is_Choice_def apply force
+     apply (subst (2) comp_op_code; auto simp: Set.filter_def ranI is_Choice_def split: op.splits)
+   apply (subst comp_op_code; auto simp: Set.filter_def ranI is_Choice_def simp del: fun_upd_apply split: op.splits option.splits)
+  using domIff apply fastforce
+  apply (subst comp_op_code; auto simp: Set.filter_def ranI is_Choice_def simp del: fun_upd_apply split: op.splits option.splits)
+  done
 
+declare cin.rep_eq[simp del] cin.rep_eq[symmetric, simp]
 
+lemma no_Choice_in_choices[simplified, simp, dest!]: "Choice ops |\<in>| choices op \<Longrightarrow> False"
+  unfolding cin.rep_eq by blast
+
+lemma refines_comp_op:
+  "refines op1 op1' \<Longrightarrow> refines op2 op2' \<Longrightarrow>
+   refines (comp_op wire buf op1 op2) (comp_op wire buf op1' op2')"
+  apply (coinduction arbitrary: buf op1 op1' op2 op2' rule: refines_coinduct_upto)
+  apply (simp add: choices_comp_op)
+  subgoal for buf op1 op1' op2 op2'
+    apply (rule disjI1)
+    apply (rule conjI)
+     apply (subst comp_op_code; simp)
+    apply safe
+    subgoal premises prems for op'
+      using prems(3,1,2)
+    proof (induct op' buf op1' op2' arbitrary: op1 op2 pred: choices_comp_op)
+      case (1 p f op1' buf op2')
+      then show ?case
+        apply -
+        apply (erule (1) refinesE)
+        subgoal for op1c
+          apply (cases op1c; auto)
+          apply (intro exI conjI)
+           apply (rule choices_comp_op.intros(1))
+           apply assumption
+          apply (rule rc_Read[OF refl rel_funI]; hypsubst_thin)
+          apply (rule rc_base; blast)
+          done
+        done
+    next
+      case (2 op p x op2' buf op1')
+      then show ?case
+        apply -
+        apply (erule (1) refinesE)
+        subgoal for op2c
+          apply (cases op2c; auto)
+          apply (intro exI conjI)
+           apply (rule choices_comp_op.intros(2))
+           apply assumption
+          apply (rule rc_Write[OF _ refl refl])
+          apply (rule rc_base; blast)
+          done
+        done
+    next
+      case (3 op p x op1' buf op2')
+      then show ?case
+        apply -
+        apply (erule (1) refinesE)
+        apply (simp add: domIff)
+        subgoal for op1c
+          apply (cases op1c; auto)
+          apply (intro exI conjI)
+           apply (rule choices_comp_op.intros(3))
+            apply assumption
+           apply blast
+          apply (rule rc_Write[OF _ refl refl])
+          apply (rule rc_base; blast)
+          done
+        done
+    next
+      case (4 p f op2' buf op1')
+      then show ?case
+        apply -
+        apply (erule (1) refinesE)
+        subgoal for op2c
+          apply (cases op2c; auto)
+          apply (intro exI conjI)
+           apply (rule choices_comp_op.intros(4))
+            apply assumption
+           apply blast
+          apply (rule rc_Read[OF refl rel_funI]; hypsubst_thin)
+          apply (rule rc_base; blast)
+          done
+        done
+    next
+      case (5 op' p x op1' q op buf op2')
+      from 5(1,2,3,5,6) show ?case
+        apply -
+        apply (erule (1) refinesE)
+        subgoal for op1c
+          apply (cases op1c; auto)
+          apply (drule (1) 5(4))
+          apply (erule exE conjE)+
+          apply (intro exI conjI)
+           apply (rule choices_comp_op.intros(5))
+             apply assumption
+            apply assumption
+           apply assumption
+          apply assumption
+          done
+        done
+    next
+      case (6 p f op2' buf op op1')
+      from 6(1,2,3,4,6,7) show ?case
+        apply -
+        apply (erule (1) refinesE)
+        subgoal for op2c
+          apply (cases op2c; auto)
+          apply (drule 6(5))
+           apply (erule spec)
+          apply (erule exE conjE)+
+          apply (intro exI conjI)
+           apply (rule choices_comp_op.intros(6))
+              apply assumption
+             apply assumption
+            apply assumption
+           apply assumption
+          apply assumption
+          done
+        done
+    qed
+    done
+  done
+
+lemma refines_map_op:
+  "refines op op' \<Longrightarrow>
+   refines (map_op f g op) (map_op f g op')"
+  apply (coinduction arbitrary: op op')
+  subgoal for op op'
+    apply (erule refines.cases)
+      apply (auto simp flip: choices_map_op)
+    apply fast
+    done
+  done
+
+lemma sim_refines: "op \<sqsupseteq> op' \<Longrightarrow> sim (\<lambda>op op'. op' \<sqsupseteq> op) op' op"
+  unfolding sim_def
+  apply safe
+  subgoal premises prems for l op''
+    using prems(2,1)
+    apply (elim step_choicesE)
+     apply (erule refinesE, assumption)
+    subgoal for p f x op1
+      apply (cases op1; auto intro: Read_in_choices_step)
+      done
+     apply (erule refinesE, assumption)
+     subgoal for p x op1
+      apply (cases op1; auto intro: Write_in_choices_step)
+       done
+     done
+   done
+
+(*
+abbreviation "op_aCb_c \<equiv> Write (Choice {|Write end_op 1 42, Write end_op 1 43|}) 1 44"
+abbreviation "op_Cab_ac \<equiv> Choice {|Write (Write end_op 1 42) 1 44, Write (Write end_op 1 43) 1 44|}"
+
+coinductive simulates where
+  "sim simulates s t \<Longrightarrow> simulates s t"
+
+lemma "simulates op_aCb_c op_Cab_ac"
+  apply (coinduction)
+  apply auto
+  apply (rule exI conjI)+
+   apply (rule step.intros)
+  apply (rule cinsertI1)
+   apply (rule step.intros)
+  apply (rule simulates.intros)
+  apply (simp add: sim_def)
+  oops
+
+lemma "bisim_cong R s t \<Longrightarrow> bisim_cong (\<lambda>s t. R s t \<and> R t s) s t"
+  apply (induct s t rule: bisim_cong.induct)
+  sledgehammer
+
+lemma "simulates s t \<Longrightarrow> simulates t s \<Longrightarrow> s ~ t"
+  apply (coinduction arbitrary: s t rule: bisim_coinduct_upto)
+  apply auto
+*)
+
+lemma "op \<sqsupseteq> op' \<Longrightarrow> op' \<sqsupseteq> op \<Longrightarrow> op ~ op'"
+  apply (coinduction arbitrary: op op' rule: bisim_coinduct_upto)
+  apply (auto simp: sim_def)
+   apply (elim step_choicesE)
+    apply (erule refinesE, assumption)
+  subgoal for op op' l s' p f x op1
+    apply (cases op1)
+      apply (auto intro: Read_in_choices_step)
+    apply (rule exI conjI Read_in_choices_step)+
+    apply assumption
+  subgoal premises prems for op op' l op''
+    using prems(3,1,2)
+    apply (induct op l op'' arbitrary: op' pred: step)
+    subgoal for p f x op'
+      by (cases op'; auto intro: step.intros elim: refines.cases)
+    subgoal for op q x op'
+      by (cases op'; auto intro: step.intros elim: refines.cases)
+    subgoal for op ops l op' ops'
+      apply (cases ops'; auto intro: step.intros elim: refines.cases)
+      sledgehammer
+  thm sim_mono[THEN predicate2D, rotated]
+
+(*
 lemma 
   "step (map_op projl projr (comp_op Some (buf :: 'd \<Rightarrow> 'c buf) op1' op2)) io (map_op projl projr (comp_op Some (buf' :: 'd \<Rightarrow> 'c buf) op1'' op2')) \<Longrightarrow>
-   silent_steps op1 op1' \<Longrightarrow>
+   refines op1 op1' \<Longrightarrow>
    \<exists> (buf'' :: 'd \<Rightarrow> 'c buf) op1''' op2''. step (map_op projl projr (comp_op Some buf op1 op2)) io (map_op projl projr (comp_op Some buf'' op1''' op2'')) \<and>
    map_op projl projr (comp_op Some buf'' op1''' op2'') = map_op projl projr (comp_op Some buf' op1'' op2')"
   apply (induct "map_op projl projr (comp_op Some buf op1' op2)" io "map_op projl projr (comp_op Some buf' op1'' op2')" arbitrary: op1' op1 op2 buf buf' op1'' op2' rule: step.induct)
@@ -1471,9 +1661,10 @@ lemma
            apply (subst comp_op_code)
           apply simp
             oops
+*)
 
 
-
+(*
 lemma
   "step (map_op projl projr (comp_op Some (buf1 :: 'd \<Rightarrow> 'c buf) op1 (map_op projl projr (comp_op Some (buf2 :: 'e \<Rightarrow> 'c buf) op2 op3)))) io op \<Longrightarrow>
    \<exists> op1' op2' op3' (buf1' :: 'd \<Rightarrow> 'c buf) (buf2' :: 'e \<Rightarrow> 'c buf).
@@ -1528,7 +1719,7 @@ lemma
             find_theorems silent_steps comp_op
 
           oops
-
+*)
 
 lemma scomp_op_assoc:
   "map_op projl projr (comp_op Some buf1 (op1 :: ('a, 'b, 'dd) op) (map_op projl projr (comp_op Some buf2 (op2 :: ('b, 'c, 'dd) op) (op3 :: ('c, 'd, 'dd) op)))) ~
