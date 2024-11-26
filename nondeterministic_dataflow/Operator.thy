@@ -633,18 +633,13 @@ lemma bisim_Write_cong:
    apply (metis (no_types, lifting) bc_bisim bisim.intros sim_def step.intros(2))+
   done
 
-(* lemma bisim_Choice_cong:
+ lemma bisim_Choice_cong:
   "rel_cset bisim ops1 ops2 \<Longrightarrow> bisim (Choice ops1) (Choice ops2)"
   apply (coinduction arbitrary: ops1 ops2 rule: bisim_coinduct_upto)
-  apply (auto simp add: sim_def rel_cset.rep_eq rel_set_def)
-  using can_end.simps apply fastforce
-      apply (meson bisim.cases can_end_Choice cin.rep_eq)
-  using can_end.simps apply fastforce
- apply (meson bisim.cases can_end_Choice cin.rep_eq)
+   apply (auto simp add: sim_def rel_cset.rep_eq rel_set_def)
   apply (smt (verit, ccfv_SIG) bc_bisim bisim.cases cin.rep_eq sim_def step.intros(3))
   apply (smt (verit, ccfv_SIG) bc_bisim bisim.cases cin.rep_eq sim_def step.intros(3))
-  done
- *)
+   done
 
 lemma bisim_Read_cong:
   "rel_fun (=) (~) f1 f2 \<Longrightarrow> Read p f1 ~ Read p f2"
