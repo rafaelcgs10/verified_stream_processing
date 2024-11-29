@@ -711,7 +711,10 @@ lemma sim_refl: "reflp R \<Longrightarrow> sim R s s"
 
 lemma sim_trans: "transp R \<Longrightarrow> sim R s t \<Longrightarrow> sim R t u \<Longrightarrow> sim R s u"
   by (fastforce simp: sim_def transp_def)
-    (* 
+
+
+
+
 lemma bisim_Read_Choice[simp]:
   "bisim (Read p f) (Choice ops) \<longleftrightarrow> ((\<forall>op. op |\<in>| ops \<longrightarrow> bisim (Read p f) op) \<and> ops \<noteq> cempty)"
   apply (safe intro!: context_conjI)
@@ -721,51 +724,7 @@ lemma bisim_Read_Choice[simp]:
     subgoal
       apply (erule bisim.cases)
       apply auto
-      done
-    subgoal for x
-      apply (erule bisim.cases)
-      apply (auto simp flip: cin.rep_eq)
-      subgoal
-        apply (erule contrapos_np)
-        apply (drule no_can_end_ChoiceD)
-        apply (drule spec, drule mp[of _ "Ex _"], assumption)
-        apply (auto simp flip: cin.rep_eq)
-        subgoal for l op'
-          apply (cases "\<exists>y. l = Inp p y")
-           apply (erule exE conjE)+
-          subgoal for y
-            apply hypsubst_thin
-            apply (drule step_exchange[of _ _ _ _ x])
-            apply (erule exE)
-            apply (drule spec, drule mp, assumption)
-            apply (auto simp: bisim_sym elim!: simE)
-            done
-          apply (auto elim!: simE)
-          done
-        done
-      subgoal
-        by (metis all_not_cin_conv finished.intros step_not_finished)
-      done
-    subgoal
-      apply (erule bisim.cases)
-      apply (auto simp flip: cin.rep_eq)
-      done
-    done
-  subgoal
-    apply (erule bisim.cases; auto)
-    done
-  subgoal for op
-    apply (erule notE)
-    apply (rule bisim.intros)
-      apply (auto simp flip: cin.rep_eq)
-    subgoal
-      by (meson bisim.cases bisim_Read_not_finished)
-    subgoal
-      by (metis bisim.cases simE step.intros(1) step.intros(3))
-    subgoal
-      by (meson bisim.cases)
-    done
-  done *)
+      oops
     (* 
 lemma bisim_Choice_Read[simp]:
   "bisim (Choice ops) (Read p f) \<longleftrightarrow> (\<forall>op. op |\<in>| ops \<longrightarrow> bisim op (Read p f)) \<and> ops \<noteq> {||}"

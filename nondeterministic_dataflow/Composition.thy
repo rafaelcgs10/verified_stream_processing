@@ -1787,6 +1787,204 @@ lemma step_comp_op_step_slow_comp_op:
     done
   done
 
+abbreviation "cant_step op io \<equiv> \<not> (\<exists> op'. step op io op')"
+
+inductive not_bisim where
+  "step op1 io op' \<Longrightarrow> cant_step op2 io \<Longrightarrow> not_bisim op1 op2"
+| "step op2 io op' \<Longrightarrow> cant_step op1 io \<Longrightarrow> not_bisim op1 op2"
+| "(\<And>op1' op2' io. step op1 io op1' \<and> step op2 io op2' \<and> not_bisim op1' op2') \<Longrightarrow> not_bisim op1 op2"
+
+
+lemma not_bisimI:
+  "not_bisim op1 op2 \<Longrightarrow> \<not> op1 ~ op2"
+  apply (induct op1 op2 pred: not_bisim)
+    subgoal
+      apply safe
+      apply (erule bisim.cases)
+      unfolding sim_def
+      apply force
+      done
+    subgoal
+      apply safe
+      apply (erule bisim.cases)
+      unfolding sim_def
+      apply force
+      done
+    subgoal for op1 op2
+      apply safe
+      apply (cases "\<exists> io op1'. step op1 io op1'")
+      subgoal
+        apply safe
+      apply (erule bisim.cases)
+      unfolding sim_def
+      apply hypsubst_thin
+      apply fast
+      done
+    subgoal
+      by auto
+    done
+  done
+
+
+
+corec may_end where
+  "may_end = choice2 (Read (1::1) (\<lambda> _. end_op)) (Write end_op (1::1) (1::nat))"
+
+lemma may_end_code:
+  "may_end = Choice {| Read (1::1) (\<lambda> _. end_op), Write end_op (1::1) (1::nat) |}"
+  apply (subst may_end.code)
+  apply simp
+  done
+
+lemma choices_may_end[simp]:
+  "choices may_end = {|Read (1::1) (\<lambda> _. end_op), Write end_op (1::1) (1::nat)|}"
+  apply (subst may_end_code)
+  apply auto
+  done
+
+lemma choices_comp_op_mayend[simp]:
+  "choices (comp_op Some (\<lambda> _. []) may_end may_end) = 
+   cUn {| Read (Inl 1) (\<lambda>x. comp_op Some (\<lambda>_. []) \<oslash> may_end), Write (comp_op Some (\<lambda>_. []) may_end end_op) (Inr 1) (Suc 0)|}
+  (choices (comp_op Some ((\<lambda>_. [])(1 := [Suc 0])) end_op may_end))"
+  apply (subst comp_op_code)
+  apply (force simp add: ranI Set.filter_def)
+  done
+
+lemma
+  "step (map_op projl projr (comp_op Some buf1 (map_op projl projr (comp_op Some buf2 may_end end_op)) may_end)) io op \<Longrightarrow>
+   io = Out 1 1 \<Longrightarrow>
+   op = map_op projl projr (comp_op Some buf1 (map_op projl projr (comp_op Some buf2 may_end end_op)) end_op)"
+  apply (induct "map_op projl projr (comp_op Some buf1 (map_op projl projr (comp_op Some buf2 may_end end_op)) may_end)" io op arbitrary: buf1 buf2 pred: step)
+    apply simp_all
+   apply (subst (asm) (2) comp_op_code, simp)
+  apply (subst (asm) (6) comp_op_code)
+  apply (auto simp flip: choices_map_op split: op.splits)
+  oops
+
+lemma step_bisim:
+  "step op1 io op1' \<Longrightarrow>
+   op1 ~ op2 \<Longrightarrow>
+   \<exists> op2'. step op2 io op2' \<and> op1' ~ op2'"
+  apply (induct op1 io op1' arbitrary: op2 pred: step)
+  subgoal
+    apply (erule bisim.cases)
+    apply auto
+    done
+  subgoal
+    apply (erule bisim.cases)
+    apply auto
+    done
+  subgoal
+    apply (erule bisim.cases)
+    apply (auto 10 10 elim: simE)
+    done
+  done
+
+inductive choice_steps where
+  "\<not> is_Choice op \<Longrightarrow> choice_steps op op"
+| "op' |\<in>| ops \<Longrightarrow> choice_steps op' op \<Longrightarrow> choice_steps (Choice ops) op"
+
+inductive io_step where
+  "io_step (Read p f) (Inp p x) (f x)"
+| "io_step (Write op q x) (Out q x) op"
+
+lemma step_choice_steps_io_step:
+  "step op io op' \<Longrightarrow> \<exists> op''. choice_steps op op'' \<and> io_step op'' io op'"
+  by (induct op io op' pred: step) (auto 10 10 intro: choice_steps.intros io_step.intros)
+
+lemma step_step_choice_steps_io:
+  "choice_steps op op'' \<Longrightarrow> io_step op'' io op' \<Longrightarrow> step op io op'"
+  by (induct op op'' arbitrary: op' pred: choice_steps) (auto 10 10 intro: step.intros io_step.intros elim: io_step.cases)
+
+lemma choice_steps_choices:
+  "choice_steps op op' \<longleftrightarrow>  op' |\<in>| choices op"
+  apply safe
+  subgoal
+  apply (induct op op' pred: choice_steps)
+  apply (metis choices_set.simps choices_to_inductive is_Choice_def op.exhaust)
+  apply auto
+    done
+  subgoal 
+    unfolding choices_def
+    apply safe
+    subgoal premises prems for n
+      using prems(2-) apply -
+      apply (induct n arbitrary: op)
+      subgoal for op
+        apply (cases op)
+      apply (auto intro: choice_steps.intros)
+        done
+      subgoal for n op
+        apply (cases op)
+          apply (auto intro: choice_steps.intros)
+        done
+      done
+    done
+  done
+
+lemma Collect_choice_steps_countable[simp]:
+  "countable {op'. choice_steps op op'}"
+  apply (simp add: choice_steps_choices)
+  done
+
+lemma choices_choice_steps:
+  "choices op = cset.acset {op'. choice_steps op op'}"
+  apply (simp add: choice_steps_choices)
+  done
+
+lemma bisim_choices_bisim:
+  "op1 ~ op2 \<Longrightarrow>
+   rel_cset bisim (choices op1) (choices op2)"
+  unfolding choices_def rel_set_def
+  apply auto
+  apply (rule rel_setI)
+   apply auto
+  subgoal premises prems for op n
+    using prems(1,3) apply -
+    apply (induct n arbitrary: op1 op2)
+    subgoal for op1 op2
+      oops
+
+lemma sorried:
+  "step (comp_op wire buf op1 op2) io op \<Longrightarrow>
+   op1 ~ op1' \<Longrightarrow>
+   \<exists> op'. op ~ op' \<and>
+   step (comp_op wire buf op1' op2) io op'"
+  apply (drule step_step_comp_op_inv)
+  apply (rotate_tac)
+  apply (induct op buf op1 op2 arbitrary: op1' pred: step_comp_op_inv)
+  subgoal for op1 p x op1' buf op2 op1''
+    apply auto
+    apply hypsubst_thin
+    apply (intro conjI[rotated] exI)
+     apply (subst comp_op_code)
+     apply simp
+     apply (rule step.intros(3))
+      apply (simp add: Set.filter_def ranI image_iff bex_Un)
+      apply (rule disjI1)
+      apply (drule step_bisim)
+    apply assumption
+      apply safe
+      apply (erule step_choicesE)
+       apply simp_all
+    apply (rule bexI)
+    defer
+       apply assumption
+      apply (rule step.intros(1))
+    defer
+     apply simp
+    oops
+
+
+lemma bisim_rewrite:
+  "op1 ~ op1' \<Longrightarrow>
+   comp_op wire buf op1 op2 ~ comp_op wire buf op1' op2"
+  apply (coinduction arbitrary: op1 op2 op1' buf rule: bisim_coinduct_upto)
+  subgoal for op1 op2 op1' buf
+    unfolding sim_def
+    apply (intro conjI impI allI)
+    subgoal for io op
+
 
 lemma
   "step (slow_comp_op wire buf op1 op2) io op \<Longrightarrow>
@@ -1796,7 +1994,7 @@ lemma
     apply (subst (asm) slow_comp_op_code, simp)
    apply (subst (asm) slow_comp_op_code, simp)
   subgoal for op ops l op' buf op1 op2
-  apply (subst (asm) (3) slow_comp_op_code)
+    apply (subst (asm) (3) slow_comp_op_code)
     apply simp
     apply (elim disjE)
     subgoal
@@ -1804,7 +2002,7 @@ lemma
       apply (cases op1, simp)
       subgoal for p f
         apply hypsubst_thin
-  apply (erule step_choicesE)
+        apply (erule step_choicesE)
          apply auto
         subgoal for x
           apply hypsubst_thin
@@ -1813,13 +2011,13 @@ lemma
           apply (subst comp_op_code)
           apply simp
           apply (rule step.intros(3)[rotated])
-          apply (rule step.intros(1))
+           apply (rule step.intros(1))
           apply auto
           done
         done
       subgoal for op' p x
         apply hypsubst_thin
-  apply (erule step_choicesE)
+        apply (erule step_choicesE)
          apply (auto split: option.splits)
         subgoal
           apply (drule meta_spec)+
@@ -1845,7 +2043,7 @@ lemma
           apply auto
           done
         subgoal
-      apply (drule meta_spec)+
+          apply (drule meta_spec)+
           apply (drule meta_mp)
            apply (rule refl)
           apply auto
@@ -1862,18 +2060,19 @@ lemma
         apply hypsubst_thin
         apply simp
         apply auto
-      apply (drule meta_spec)+
-          apply (drule meta_mp)
+        apply (drule meta_spec)+
+        apply (drule meta_mp)
          apply (rule refl)
         apply auto
-          apply (intro exI conjI)
+        apply hypsubst_thin
+        apply (intro exI conjI)
          apply (rule refl)
-      apply (subst comp_op_code)
-          apply simp
-          apply (rule step.intros(3)[rotated])
+        apply (subst comp_op_code)
+        apply simp
+        apply (rule step.intros(3)[rotated])
          apply assumption
         apply simp
-        apply hypsubst_thin
+        apply simp
         apply (rule disjI1)
         oops        
 
@@ -1888,7 +2087,44 @@ lemma
         by (metis (mono_tags, lifting) bc_base)
       subgoal for io op
         oops
+lemma  
+  "op |\<in>| ops \<Longrightarrow>
+   Choice ops = map_op projl projr (slow_comp_op Some buf1 op1 (map_op projl projr (slow_comp_op Some buf2 op2 op3))) \<Longrightarrow>
+   op |\<in>| un_Choice (map_op projl projr (slow_comp_op Some buf1 op1 (map_op projl projr (slow_comp_op Some buf2 op2 op3))))"
+  apply (subst (asm) slow_comp_op_code)
+  apply (subst slow_comp_op_code)
+  apply auto
+  done
 
+lemma step_comp_op_end_op_W:
+  "step op' io op \<Longrightarrow>
+   op' = map_op projl projr (comp_op Some buf W W) \<Longrightarrow>
+   io = Out 1 42 \<and> (\<exists> buf'. op = (map_op projl projr (comp_op Some buf' W W)))"
+  apply (induct op' io op arbitrary: buf pred: step)
+  apply (subst (asm) comp_op_code, simp)
+  apply (subst (asm) comp_op_code, simp)
+  subgoal for op ops l op'
+    apply (subst (asm) (3) comp_op_code)
+    apply auto
+    done
+  done
+
+lemma
+  "map_op projl projr (comp_op Some buf W W) ~ W"
+  unfolding scomp_op_def
+  apply (coinduction arbitrary: buf rule: bisim_coinduct_upto)
+  unfolding sim_def
+  apply (intro conjI allI impI)
+  subgoal for io op
+    apply (drule step_comp_op_end_op_W)
+     apply auto
+    apply (intro conjI exI)
+     apply (subst W.code)
+     apply (rule step.intros(2))
+    apply (rule bc_base)
+    apply auto
+    done
+  oops
 
 lemma
   "step (map_op projl projr (slow_comp_op Some (buf1 :: 'd \<Rightarrow> 'c buf) op1 (map_op projl projr (slow_comp_op Some (buf2 :: 'e \<Rightarrow> 'c buf) op2 op3)))) io op \<Longrightarrow>
@@ -1906,81 +2142,28 @@ lemma
     apply simp
     done
   subgoal premises prems for op ops l op' buf1 buf2 op1 op2 op3
-    using prems(1,2,4) apply -
+    using prems(1,2,4,3) apply -
     apply (subst (asm) slow_comp_op_code)
-    apply (subst (asm) (10) slow_comp_op_code)
-    apply (simp add: Set.filter_def ranI image_iff bex_Un)
-    apply (elim disjE conjE bexE)
-    subgoal for op1'
-      apply (cases op1'; simp)
-      subgoal for p f
+    apply auto
+    subgoal for op
+    apply hypsubst_thin
+      apply (cases op1)
+      subgoal
         apply auto
         apply hypsubst_thin
-        apply (cases op1; simp)
-        subgoal
         apply (intro exI conjI[rotated])
-         apply (rule refl)
+           apply (rule refl)
         apply (subst (2) slow_comp_op_code)
-        apply simp
-        apply (rule step.intros(3))
-    apply (simp add: Set.filter_def ranI image_iff bex_Un)
-         apply (rule disjI1)
-        apply (subst (5) slow_comp_op_code)
-    apply (simp add: Set.filter_def ranI image_iff bex_Un)
-           apply (rule disjI1)
-         apply (rule refl)
-        apply (subst (2) slow_comp_op_code)
-          apply simp
-        apply (rule step.intros(3)[rotated])
-           apply (rule step.intros(1))
-          apply auto
-          done
-        subgoal
-          apply (subst (asm) slow_comp_op_code)
-          apply simp
-          done
-        subgoal
-            apply (subst (asm) slow_comp_op_code)
-          apply auto
-          done
-        done
-      subgoal for op p x
-      apply auto
-        apply hypsubst_thin
-        apply (cases op1; simp)
-        subgoal
-    apply (subst (asm) slow_comp_op_code)
-          apply simp
-          done
-        subgoal
-    apply (subst (asm) slow_comp_op_code)
-          apply auto
-          done
-        done
-      subgoal for op
-      apply hypsubst_thin
-        apply (cases op1; simp)
-      subgoal for op p x
-    apply (subst (asm) slow_comp_op_code)
-        apply auto
-        subgoal 
-          apply (cases op)
-            apply simp_all
-          subgoal
-            apply hypsubst_thin
-            apply auto
-              apply (intro exI conjI[rotated])
-         apply (rule refl)
-    apply (subst (2) slow_comp_op_code)
-        apply auto
+        apply (simp add: Set.filter_def ranI image_iff bex_Un)
         apply (rule step.intros(3)[rotated])
         apply (rule step.intros(1))
-            apply (simp flip:  add:  Set.filter_def ranI image_iff bex_Un)
-            apply (rule disjI1)
-            apply (subst (5) slow_comp_op_code)
-            apply simp
-            apply hypsubst_thin
-            oops
+        apply (simp add: Set.filter_def ranI image_iff bex_Un)
+        apply (rule disjI1)
+                apply (subst (5) slow_comp_op_code)
+        apply simp
+        apply (rule disjI2)
+        oops
+    
 
 lemma scomp_op_assoc:
   "map_op projl projr (slow_comp_op Some buf1 (op1 :: ('a, 'b, 'dd) op) (map_op projl projr (slow_comp_op Some buf2 (op2 :: ('b, 'c, 'dd) op) (op3 :: ('c, 'd, 'dd) op)))) ~
@@ -2142,9 +2325,111 @@ lemma sim_refines: "op \<sqsupseteq> op' \<Longrightarrow> sim (\<lambda>op op'.
      done
    done
 
-(*
-abbreviation "op_aCb_c \<equiv> Write (Choice {|Write end_op 1 42, Write end_op 1 43|}) 1 44"
+
+abbreviation "op_aCb_c \<equiv> Write (Choice {|Write end_op 1 (42::nat), Write end_op 1 43|}) 1 44"
 abbreviation "op_Cab_ac \<equiv> Choice {|Write (Write end_op 1 42) 1 44, Write (Write end_op 1 43) 1 44|}"
+
+lemma
+  "op_aCb_c ~ op_Cab_ac \<Longrightarrow> False"
+  apply (erule bisim.cases)
+  unfolding sim_def
+  apply auto
+  apply (drule spec2)
+  apply (drule mp)
+   apply (rule step.intros(2))
+  apply (drule spec2)
+  apply (drule mp)
+   apply (rule step.intros(3))
+    apply (rule cinsertI1)
+   apply (rule step.intros(2))
+  apply auto
+  subgoal
+    apply (erule bisim.cases)
+    unfolding sim_def
+    apply auto
+    apply (drule spec2)
+    apply (drule mp)
+     apply (rule step.intros(3))
+      apply (rule cinsertI2)
+      apply (rule cinsertI1)
+     apply (rule step.intros(2))
+    apply (drule spec2)
+    apply (drule mp)
+     apply (rule step.intros(2))
+    apply auto
+    done
+  subgoal
+    apply (erule bisim.cases)
+    unfolding sim_def
+    apply auto
+    apply (drule spec2)
+    apply (drule mp)
+     apply (rule step.intros(3))
+      apply (rule cinsertI1)
+     apply (rule step.intros(2))
+    apply (drule spec2)
+    apply (drule mp)
+     apply (rule step.intros(2))
+    apply auto
+    done
+  done
+
+lemma step_comp_op_inv_end_op_op_aCb_c:
+  "step_comp_op_inv Some io op buf op1 op2 \<Longrightarrow>
+   op1 = end_op \<Longrightarrow>
+   op2 = op_aCb_c \<Longrightarrow>
+   io = Out (Inr 1) 44 \<and> op = comp_op Some buf \<oslash> (Choice {|Write \<oslash> 1 42, Write \<oslash> 1 43|})"
+  apply (induct buf op1 op2 pred: step_comp_op_inv)
+       apply simp_all
+  subgoal
+    apply (subst comp_op_code)
+    apply auto
+    done
+  subgoal
+    by auto
+  subgoal for op p buf op1 op2' x op2
+    apply auto
+    done
+  done
+
+lemma step_map_op_end_op_op_aCb_c:
+  "step (map_op projl projr (comp_op Some buf \<oslash> op_aCb_c)) io op \<Longrightarrow>
+   io = Out 1 44 \<and> op = map_op projl projr (comp_op Some buf \<oslash> (Choice {|Write \<oslash> 1 42, Write \<oslash> 1 43|}))"
+  apply (drule step_map_op_inv)
+  apply (elim exE conjE)
+  apply (drule step_step_comp_op_inv)
+  apply (drule step_comp_op_inv_end_op_op_aCb_c)
+    apply simp_all
+  done
+
+lemma
+  "map_op projl projr (comp_op Some buf \<oslash> op_aCb_c) ~ map_op projl projr (comp_op Some buf \<oslash> op_Cab_ac)"
+  unfolding scomp_op_def
+  apply (coinduction arbitrary: buf rule: bisim_coinduct_upto)
+  subgoal for buf
+    unfolding sim_def
+    apply (intro allI conjI impI)
+    subgoal for io op
+      apply (drule step_map_op_end_op_op_aCb_c)
+      apply (elim conjE)
+      apply hypsubst_thin
+      apply (intro conjI exI)
+       apply (subst comp_op_code)
+       apply simp
+      apply (rule step.intros(3)[rotated])
+      apply (rule step.intros(2))
+      defer
+       apply (rule bc_base)
+       apply (intro conjI exI)
+      defer
+      apply (rule refl)
+        oops
+
+
+  find_theorems Choice bisim
+
+(*
+
 
 coinductive simulates where
   "sim simulates s t \<Longrightarrow> simulates s t"
@@ -2191,12 +2476,8 @@ lemma "op \<sqsupseteq> op' \<Longrightarrow> op' \<sqsupseteq> op \<Longrightar
       oops
   thm sim_mono[THEN predicate2D, rotated]
 
-(*
+
 lemma 
-  "step (map_op projl projr (comp_op Some (buf :: 'd \<Rightarrow> 'c buf) op1' op2)) io op \<Longrightarrow>
-   csubset_eq (choices op1') (choices op1) \<Longrightarrow>
-   step (map_op projl projr (comp_op Some buf op1 op2)) io op"
-  apply (induct "map_op projl projr (comp_op Some buf op1' op2)" io op arbitrary: op1' op1 op2 buf  rule: step.induct)
   "step (map_op projl projr (comp_op Some (buf :: 'd \<Rightarrow> 'c buf) op1' op2)) io (map_op projl projr (comp_op Some (buf' :: 'd \<Rightarrow> 'c buf) op1'' op2')) \<Longrightarrow>
    refines op1 op1' \<Longrightarrow>
    \<exists> (buf'' :: 'd \<Rightarrow> 'c buf) op1''' op2''. step (map_op projl projr (comp_op Some buf op1 op2)) io (map_op projl projr (comp_op Some buf'' op1''' op2'')) \<and>
@@ -2207,65 +2488,13 @@ lemma
     apply simp
     done
   subgoal
-    apply (subst (asm) comp_op_code)
+    apply (subst (asm) (2) comp_op_code)
     apply simp
     done
   subgoal for op ops l op' op1' op2 buf op1
-    apply (subst (asm) (3) comp_op_code)
-            apply (simp flip:  add:  Set.filter_def ranI image_iff bex_Un)
-    apply (elim conjE exE bexE disjE)
-    subgoal for op'
-      apply hypsubst_thin
-      apply (cases op', simp)
-      subgoal for p f
-        apply (subst comp_op_code)
-        apply simp
-        apply hypsubst_thin
-        apply (rule step.intros(3))
-            apply (simp flip:  add:  Set.filter_def ranI image_iff bex_Un)
-         apply (rule disjI1)
-         apply (rule bexI)
-          apply auto
-        done
-      subgoal
-        apply (subst comp_op_code)
-        apply simp
-        apply hypsubst_thin
-        apply (rule step.intros(3))
-            apply (simp flip:  add:  Set.filter_def ranI image_iff bex_Un)
-         apply (rule disjI1)
-         apply (rule bexI)
-          apply auto
-        done
-      subgoal
-        by blast
-      done
-    subgoal for op
-      apply (cases op)
-      subgoal for p f
-        apply (subst comp_op_code)
-        apply simp
-        apply hypsubst_thin
-        apply (rule step.intros(3))
-            apply (simp flip:  add:  Set.filter_def ranI image_iff bex_Un)
-         apply (rule disjI2)
-         apply (rule exI)
-         apply auto
-        done
-      subgoal for op' p x
-        apply (subst comp_op_code)
-        apply simp
-        apply hypsubst_thin
-        apply (rule step.intros(3))
-            apply (simp flip:  add:  Set.filter_def ranI image_iff bex_Un)
-         apply (rule disjI2)
-       apply (rule exI)
-         apply auto
-        oops
-
-lemma choices_end_op[simp]:
-  "choices end_op = {||}"
-  by force
+    apply (subst (asm) (9) comp_op_code)
+    apply (simp flip:  add:  Set.filter_def ranI image_iff bex_Un)
+    oops
 
 lemma a[simp]:
   "choices (Write end_op 1 1) =  {|Write end_op 1 1 |}"
@@ -2276,12 +2505,6 @@ lemma comp_op_end_op_end_op[simp]:
   apply (coinduction arbitrary: buf)
   apply (auto intro: rel_setI)
   done
-
-lemma bisim_rewrite:
-  "op1 ~ op1' \<Longrightarrow>
-   op2 ~ op2' \<Longrightarrow>
-   comp_op wire buf op1 op2 ~ comp_op wire buf op1' op2'"
-  oops
 
 lemma bisim_rewrite_step:
   "op1 ~ op1' \<Longrightarrow>
@@ -2310,16 +2533,8 @@ lemma
     apply hypsubst_thin
     oops
 
-          apply (rule step_csubset_eq[of "map_op projl projr (comp_op Some buf op1' op2)"])
-           defer
-          subgoal
-           apply (subst comp_op_code)
-          apply simp
-            oops
-*)
 
 
-(*
 lemma
   "step (map_op projl projr (comp_op Some (buf1 :: 'd \<Rightarrow> 'c buf) op1 (map_op projl projr (comp_op Some (buf2 :: 'e \<Rightarrow> 'c buf) op2 op3)))) io op \<Longrightarrow>
    \<exists> op1' op2' op3' (buf1' :: 'd \<Rightarrow> 'c buf) (buf2' :: 'e \<Rightarrow> 'c buf).
@@ -2340,39 +2555,7 @@ lemma
     apply (subst (asm) comp_op_code)
     apply (subst (asm) (10) comp_op_code)
     apply (simp add: Set.filter_def ranI image_iff bex_Un)
-    apply (elim disjE conjE bexE)
-    subgoal for op1'
-      apply (cases op1'; simp)
-      subgoal for p f
-        apply auto
-        apply hypsubst_thin
-        apply (intro exI conjI[rotated])
-         apply (rule refl)
-        apply (subst (2) comp_op_code)
-        apply simp
-        apply (rule step.intros(3))
-    apply (simp add: Set.filter_def ranI image_iff bex_Un)
-         apply (rule disjI1)
-        apply (subst (1) comp_op_code)
-    apply (simp add: Set.filter_def ranI image_iff bex_Un)
-         apply (rule disjI1)
-        apply (erule bexI[rotated])
-         apply (auto simp add: comp_def intro: step.intros)
-        done
-      subgoal for op1' p x
-        apply (drule prems(3))
-        apply hypsubst_thin
-        apply (elim exE conjE)
-        apply simp
-        apply hypsubst_thin
-        subgoal for op1'' op2' op3' buf1' buf2'
-          apply (intro conjI[rotated] exI)
-           apply (rule refl)
-          subgoal premises prems
-            using prems(2,3) apply -
-
-          oops
-*)
+    oops
 
 lemma scomp_op_assoc:
   "map_op projl projr (comp_op Some buf1 (op1 :: ('a, 'b, 'dd) op) (map_op projl projr (comp_op Some buf2 (op2 :: ('b, 'c, 'dd) op) (op3 :: ('c, 'd, 'dd) op)))) ~
