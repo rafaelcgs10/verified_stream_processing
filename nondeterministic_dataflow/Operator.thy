@@ -421,7 +421,12 @@ inductive_cases can_end_ReadE[elim!]: "can_end (Read p f)"
 inductive_cases can_end_WriteE[elim!]: "can_end (Write op p x)"
 inductive_cases can_end_ChoiceE[elim!]: "can_end (Choice ops)"
 
-definition "sim R s t = (\<forall>l s'. step s l s' \<longrightarrow> (\<exists>t'. step t l t' \<and> R s' t'))"
+coinductive refines (infix "\<sqsupseteq>" 65) where
+  "is_Choice op \<Longrightarrow> \<forall>op1'. op1' |\<in>| choices op' \<longrightarrow> (\<exists> op1. op1 |\<in>| choices op \<and> refines op1 op1') \<Longrightarrow> refines op op'"
+| "(\<forall>x. refines (f x) (f' x)) \<Longrightarrow> refines (Read p f) (Read p f')"
+| "refines op op' \<Longrightarrow> refines (Write op p x) (Write op' p x)"
+
+definition "sim R s t = (\<forall>l s'. step s l s' \<longrightarrow> (\<exists>t' t''. step t l t' \<and> t' \<sqsupseteq> t'' \<and> R s' t''))"
 
 lemma sim_mono[mono]: "R \<le> S \<Longrightarrow> sim R \<le> sim S"
   by (force simp: sim_def le_fun_def)
@@ -581,6 +586,7 @@ lemma bisim_coinduct_upto:
       using sim_mono[of bisim "bisim_cong R"]
       by (auto simp: le_fun_def bc_bisim elim: bisim.cases)
     subgoal
+      oops
       by (auto intro: bc_refl simp: sim_def)
     subgoal
       by (fastforce intro: bc_sym)
@@ -620,8 +626,11 @@ lemma bisim_trans:
   apply (coinduction arbitrary: op1 op2 op3 rule: bisim_coinduct_upto)
   apply (erule bisim.cases)+
   apply (unfold sim_def)
+  oops
   apply (metis (no_types, lifting) bc_base)
   done
+
+end
 
 lemma bisim_Write_cong:
   "op1 ~ op2 \<Longrightarrow> Write op1 p x ~ Write op2 p x"
