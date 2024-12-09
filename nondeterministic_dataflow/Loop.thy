@@ -27,8 +27,13 @@ corec loop_op :: "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightarrow> '
 definition feedback_op ( "_ \<up>" [66] 65) where
   "feedback_op op = map_op projr projr (loop_op (case_sum (Some o Inl) (\<lambda> _. None)) (\<lambda> _. []) op)"
 
+fun assoc where
+  "assoc (Inl x) = Inl (Inl x)"
+| "assoc (Inr (Inl x)) = Inl (Inr x)"
+| "assoc (Inr (Inr x)) = Inr x"
+
 lemma
-  ""
+  "(op\<up>)\<up> = (map_op assoc assoc op)\<up>"
 
 inductive loop_producing :: "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightarrow> 'd buf) \<Rightarrow> ('ip, 'op, 'd) op \<Rightarrow> nat \<Rightarrow> bool" where
   "loop_producing wire buf end_op 0"
