@@ -46,8 +46,6 @@ lemma new_comp_op_code:
   | Choice ops \<Rightarrow> cimage (\<lambda> op. new_comp_op wire buf op1 op) ops))"
   sorry
 
-end
-
 corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
   "comp_op wire buf op1 op2 =
