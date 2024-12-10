@@ -1298,68 +1298,6 @@ lemma Write_op1_silet_steps:
    silent_steps (comp_op Some buf op1 op2) (comp_op Some (buf(p := bulk_benq [x] (buf p))) op1' op2)"
   by (rule silent_steps.intros(1)) (erule csubset_eq_comp_op_benq)
 
-inductive refines_cong for R where
-  rc_base:  "R x y \<Longrightarrow> refines_cong R x y"
-| rc_refines:  "refines x y \<Longrightarrow> refines_cong R x y"
-| rc_refl:  "x = y \<Longrightarrow> refines_cong R x y"
-| rc_Read:"x1 = y1 \<Longrightarrow> rel_fun (=) (refines_cong R) x2 y2 \<Longrightarrow> refines_cong R (Read x1 x2) (Read y1 y2)"
-| rc_Write: "refines_cong R x1 y1 \<Longrightarrow> x2 = y2 \<Longrightarrow> x3 = y3 \<Longrightarrow> refines_cong R (Write x1 x2 x3) (Write y1 y2 y3)"
-
-lemma refines_cong_disj:
-  "(refines_cong R x y \<or> refines x y) = refines_cong R x y"
-  by (auto intro: refines_cong.intros)
-
-lemma refines_refl: "refines op op"
-  apply (coinduction arbitrary: op)
-  subgoal for op
-    by (cases op) auto
-  done
-
-lemma refines_coinduct_upto:
-  assumes "X x1 x2"
-    "(\<And>x1 x2.
-    X x1 x2 \<Longrightarrow>
-    (is_Choice x1 \<and> (\<forall>op'. op' |\<in>| choices x2 \<longrightarrow> (\<exists>op. op |\<in>| choices x1 \<and> refines_cong X op op'))) \<or>
-    (\<exists>f f' p. x1 = Read p f \<and> x2 = Read p f' \<and> (\<forall>x. refines_cong X (f x) (f' x))) \<or>
-    (\<exists>op op' p x. x1 = Write op p x \<and> x2 = Write op' p x \<and> refines_cong X op op'))"
-  shows "refines x1 x2"
-  using assms(1)
-  apply -
-  apply (rule refines.coinduct[where X="refines_cong X", unfolded refines_cong_disj, simplified])
-  subgoal
-    by (rule rc_base)
-  subgoal premises prems for s' t'
-    using prems(2) apply -
-    apply (induct s' t' rule: refines_cong.induct)
-    subgoal
-      by (drule assms(2)) auto
-    subgoal
-      apply (erule refines.cases)
-        apply (auto 0 6 simp: rc_refines)
-      done
-    subgoal for x y
-      by (cases y) (auto simp: rel_fun_def intro: rc_refl)
-    subgoal for x y
-      by (auto simp: rel_fun_def)
-    subgoal
-      by auto
-    done
-  done
-
-lemma csubset_eq_refines: "is_Choice op1 \<Longrightarrow> csubset_eq (choices op2) (choices op1) \<Longrightarrow> refines op1 op2"
-   apply (intro refines.intros(1) allI impI)
-  apply assumption
-  apply (drule (1) csubsetD)
-   apply (rule exI conjI refines_refl | assumption)+
-  done
-
-lemma Write_op1_refines:
-  "Write op1' p x |\<in>| choices op1 \<Longrightarrow>
-   refines (comp_op Some buf op1 op2) (comp_op Some (buf(p := bulk_benq [x] (buf p))) op1' op2)"
-  apply (rule csubset_eq_refines)
-  apply (subst comp_op_code; simp)
-  apply (erule csubset_eq_comp_op_benq)
-  done
 (*
 lemma silent_steps_step:
   "silent_steps op1 op2 \<Longrightarrow>
