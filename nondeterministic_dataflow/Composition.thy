@@ -31,6 +31,25 @@ abbreviation eval_comp_op_aux where
 
 abbreviation "sound_reads wire buf \<equiv> cfilter (\<lambda> op. case op of Read p f \<Rightarrow> p \<notin> ran wire \<or> buf p \<noteq> [] | _ \<Rightarrow> True)"
 
+term BHD
+
+corec new_comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
+  ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
+  "new_comp_op wire buf op1 op2 = undefined"
+
+lemma new_comp_op_code:
+  "new_comp_op wire buf op1 op2 = Choice (cUn (case op1 of
+    Read p f \<Rightarrow> {|Read (Inl p) (\<lambda> x. new_comp_op wire buf (f x) op2)|}
+  | Write op1' p x \<Rightarrow> (case wire p of None \<Rightarrow> {|Write (new_comp_op wire buf op1' op2) (Inl p) x|} | Some q \<Rightarrow> {|new_comp_op wire (BENQ q x buf) op1' op2|})
+  | Choice ops \<Rightarrow> cimage (\<lambda> op. new_comp_op wire buf op op2) ops)
+  (case op2 of
+    Read p f \<Rightarrow> (if p \<in> ran wire then if buf p = [] then {||} else {|new_comp_op wire buf op1 (f (BHD p buf))|} else {|Read (Inr p) (\<lambda> x. new_comp_op wire buf op1 (f x))|})
+  | Write op2' p x \<Rightarrow> {|Write (new_comp_op wire buf op1 op2') (Inr p) x|}
+  | Choice ops \<Rightarrow> cimage (\<lambda> op. new_comp_op wire buf op1 op) ops))"
+  sorry
+
+end
+
 corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
   "comp_op wire buf op1 op2 =
@@ -2251,7 +2270,6 @@ lemma cUnion_cempty[simp]:
 lemma cfilter_cempty[simp]:
   "cfilter P {||} = {||}"
   by auto
-
 
 corec cp_once :: "(1, 1, 'd) op" where
   "cp_once = Read 1 (Write end_op 1)"
