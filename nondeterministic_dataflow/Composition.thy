@@ -31,108 +31,40 @@ abbreviation eval_comp_op_aux where
 
 abbreviation "sound_reads wire buf \<equiv> cfilter (\<lambda> op. case op of Read p f \<Rightarrow> p \<notin> ran wire \<or> buf p \<noteq> [] | _ \<Rightarrow> True)"
 
-corec new_comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
-  ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
-  "new_comp_op wire buf op1 op2 = undefined"
-
-lemma new_comp_op_code:
-  "new_comp_op wire buf op1 op2 = Choice (cUn (case op1 of
-    Read p f \<Rightarrow> {|Read (Inl p) (\<lambda> x. new_comp_op wire buf (f x) op2)|}
-  | Write op1' p x \<Rightarrow> (case wire p of None \<Rightarrow> {|Write (new_comp_op wire buf op1' op2) (Inl p) x|} | Some q \<Rightarrow> {|new_comp_op wire (BENQ q x buf) op1' op2|})
-  | Choice ops \<Rightarrow> cimage (\<lambda> op. new_comp_op wire buf op op2) ops)
-  (case op2 of
-    Read p f \<Rightarrow> (if p \<in> ran wire then if buf p = [] then {||} else {|new_comp_op wire buf op1 (f (BHD p buf))|} else {|Read (Inr p) (\<lambda> x. new_comp_op wire buf op1 (f x))|})
-  | Write op2' p x \<Rightarrow> {|Write (new_comp_op wire buf op1 op2') (Inr p) x|}
-  | Choice ops \<Rightarrow> cimage (\<lambda> op. new_comp_op wire buf op1 op) ops))"
-  sorry
-
 corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
-  "comp_op wire buf op1 op2 =
-     Choice (cimage (eval_comp_op_aux (comp_op wire)) (cUn
-       (cimage (\<lambda>op. case op of
-           Read p f \<Rightarrow> Read_aux (Inl p) (\<lambda>x. (buf, f x, op2))
-         | Write op p x \<Rightarrow> (case wire p of
-             None \<Rightarrow> Write_aux (buf, op, op2) (Inl p) x
-           | Some q \<Rightarrow> Base_aux (BENQ q x buf, op, op2))) (choices op1))
-       (cimage (\<lambda>op. case op of
-           Read p f \<Rightarrow> if p \<in> ran wire then Base_aux (BTL p buf, op1, f (BHD p buf))
-             else Read_aux (Inr p) (\<lambda>x. (buf, op1, f x))
-         | Write op p x \<Rightarrow> Write_aux (buf, op1, op) (Inr p) x) (sound_reads wire buf (choices op2)))))"
+  "comp_op wire buf op1 op2 = undefined"
 
-
-lemma comp_op_code: "comp_op wire buf op1 op2 =
-  Choice (cUn
-    (cimage (\<lambda>op. case op of
-        Read p f \<Rightarrow> Read (Inl p) (\<lambda>x. comp_op wire buf (f x) op2)
-      | Write op p x \<Rightarrow> (case wire p of
-          None \<Rightarrow> Write (comp_op wire buf op op2) (Inl p) x
-        | Some q \<Rightarrow> comp_op wire (BENQ q x buf) op op2)) (choices op1))
-    (cimage (\<lambda>op. case op of
-        Read p f \<Rightarrow> if p \<in> ran wire then comp_op wire (BTL p buf) op1 (f (BHD p buf))
-          else Read (Inr p) (\<lambda>x. comp_op wire buf op1 (f x))
-      | Write op p x \<Rightarrow> Write (comp_op wire buf op1 op) (Inr p) x) (sound_reads wire buf (choices op2))))"
-  apply (subst comp_op.code)
+lemma comp_op_code:
+  "comp_op wire buf op1 op2 = Choice (cUn (case op1 of
+    Read p f \<Rightarrow> {|Read (Inl p) (\<lambda> x. comp_op wire buf (f x) op2)|}
+  | Write op1' p x \<Rightarrow> (case wire p of None \<Rightarrow> {|Write (comp_op wire buf op1' op2) (Inl p) x|} | Some q \<Rightarrow> {|comp_op wire (BENQ q x buf) op1' op2|})
+  | Choice ops \<Rightarrow> cimage (\<lambda> op. comp_op wire buf op op2) ops)
+  (case op2 of
+    Read p f \<Rightarrow> (if p \<in> ran wire then if buf p = [] then {||} else {|comp_op wire (BTL p buf) op1 (f (BHD p buf))|} else {|Read (Inr p) (\<lambda> x. comp_op wire buf op1 (f x))|})
+  | Write op2' p x \<Rightarrow> {|Write (comp_op wire buf op1 op2') (Inr p) x|}
+  | Choice ops \<Rightarrow> cimage (\<lambda> op. comp_op wire buf op1 op) ops))"
+  sorry
+(*   apply (subst comp_op.code)
   apply (unfold cimage_cUn op.inject)
   apply (rule arg_cong2[where f = cUn])
    apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
       split: comp_op_aux.splits op.splits option.splits)
-  done
+  done *)
+
 
 lemma comp_op_simps[simp]:
   "comp_op wire buf (Read p1 f1) (Read p2 f2) =
     Choice (cinsert (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Read p2 f2)))
      (if p2 \<in> ran wire then (if buf p2 = [] then cempty else csingle (comp_op wire (buf(p2 := btl (buf p2))) (Read p1 f1) (f2 (BHD p2 buf))))
       else csingle (Read (Inr p2) (\<lambda>y. comp_op wire buf (Read p1 f1) (f2 y)))))"
-  "comp_op wire buf (Read p1 f1) (Write op2 q2 x2) =
-    choice2 (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Write op2 q2 x2))) (Write (comp_op wire buf (Read p1 f1) op2) (Inr q2) x2)"
-  "comp_op wire buf (Read p1 f1) (Choice op2s) = 
-    Choice (cinsert (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Choice op2s))) (cimage
-       (case_op (\<lambda>p f. if p \<in> ran wire then comp_op wire (buf(p := btl (buf p))) (Read p1 f1) (f (BHD p buf)) else Read (Inr p) (\<lambda>x. comp_op wire buf (Read p1 f1) (f x)))
-         (\<lambda>op p. Write (comp_op wire buf (Read p1 f1) op) (Inr p)) (\<lambda>a. undefined))
-       (sound_reads wire buf (cUnion (cimage choices op2s)))))"
-  "comp_op wire buf (Write op1 q1 x1) (Read p2 f2) =
-    Choice (cinsert (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Read p2 f2)) (Inl q1) x1
-      | Some q \<Rightarrow> comp_op wire (buf(q := benq x1 (buf q))) op1 (Read p2 f2))
-      (if p2 \<in> ran wire then (if buf p2 = [] then cempty else csingle (comp_op wire (buf(p2 := btl (buf p2))) (Write op1 q1 x1) (f2 (BHD p2 buf))))
-        else csingle (Read (Inr p2) (\<lambda>y. comp_op wire buf (Write op1 q1 x1) (f2 y)))))"
-  "comp_op wire buf (Write op1 q1 x1) (Write op2 q2 x2) =
-    choice2 (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Write op2 q2 x2)) (Inl q1) x1
-      | Some q \<Rightarrow> comp_op wire (buf(q := benq x1 (buf q))) op1 (Write op2 q2 x2))
-      (Write (comp_op wire buf (Write op1 q1 x1) op2) (Inr q2) x2)"
-  "comp_op wire buf (Write op1 q1 x1) (Choice op2s) =
-     Choice (cinsert (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Choice op2s)) (Inl q1) x1
-      | Some q \<Rightarrow> comp_op wire (buf(q := benq x1 (buf q))) op1 (Choice op2s))
-      (cimage
-       (case_op (\<lambda>p f. if p \<in> ran wire then comp_op wire (buf(p := btl (buf p))) (Write op1 q1 x1) (f (BHD p buf)) else Read (Inr p) (\<lambda>x. comp_op wire buf (Write op1 q1 x1) (f x)))
-         (\<lambda>op p. Write (comp_op wire buf (Write op1 q1 x1) op) (Inr p)) (\<lambda>a. undefined))
-       (sound_reads wire buf (cUnion (cimage choices op2s)))))"
-  "comp_op wire buf (Choice op1s) (Read p2 f2) =
-    Choice (cUn (if p2 \<in> ran wire then (if buf p2 = [] then cempty else csingle (comp_op wire (buf(p2 := btl (buf p2))) (Choice op1s) (f2 (BHD p2 buf))))
-        else csingle (Read (Inr p2) (\<lambda>y. comp_op wire buf (Choice op1s) (f2 y)))) (cimage
-       (case_op (\<lambda>p f. Read (Inl p) (\<lambda>x. comp_op wire buf (f x) (Read p2 f2)))
-         (\<lambda>op p x. case wire p of None \<Rightarrow> Write (comp_op wire buf op (Read p2 f2)) (Inl p) x | Some q \<Rightarrow> comp_op wire (buf(q := benq x (buf q))) op (Read p2 f2)) (\<lambda>a. undefined))
-       (cUnion (cimage choices op1s))))"
-  "comp_op wire buf (Choice op1s) (Write op2 q2 x2) =
-    Choice (cinsert (Write (comp_op wire buf (Choice op1s) op2) (Inr q2) x2) (cimage
-       (case_op (\<lambda>p f. Read (Inl p) (\<lambda>x. comp_op wire buf (f x) (Write op2 q2 x2)))
-         (\<lambda>op p x. case wire p of None \<Rightarrow> Write (comp_op wire buf op (Write op2 q2 x2)) (Inl p) x | Some q \<Rightarrow> comp_op wire (buf(q := benq x (buf q))) op (Write op2 q2 x2)) (\<lambda>a. undefined))
-       (cUnion (cimage choices op1s))))"
-  "comp_op wire buf (Choice op1s) (Choice op2s) =
-    Choice (cUn (cimage
-             (case_op (\<lambda>p f. Read (Inl p) (\<lambda>x. comp_op wire buf (f x) (Choice op2s)))
-               (\<lambda>op p x.
-                   case wire p of None \<Rightarrow> Write (comp_op wire buf op (Choice op2s)) (Inl p) x
-                   | Some q \<Rightarrow> comp_op wire (buf(q := benq x (buf q))) op (Choice op2s))
-               (\<lambda>a. undefined))
-             (cUnion (cimage choices op1s)))
-        (cimage
-          (case_op
-            (\<lambda>p f. if p \<in> ran wire then comp_op wire (buf(p := btl (buf p))) (Choice op1s) (f (BHD p buf))
-                   else Read (Inr p) (\<lambda>x. comp_op wire buf (Choice op1s) (f x)))
-            (\<lambda>op p. Write (comp_op wire buf (Choice op1s) op) (Inr p)) (\<lambda>a. undefined))
-          (sound_reads wire buf (cUnion (cimage choices op2s)))))"
-  by (subst comp_op_code, auto simp add: image_iff split: option.splits)+
+  apply (subst comp_op_code, auto simp add: image_iff split: option.splits op.splits)
+
+
+end
+
+
+(*   by (subst comp_op_code, auto simp add: image_iff split: option.splits)+ *)
 
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
@@ -2330,6 +2262,772 @@ lemma assoc_counter_example:
     apply auto
     done
   done
+
+no_notation scomp_op (infixl "\<bullet>" 65)
+
+definition new_scomp_op (infixl "\<bullet>" 65) where
+  "new_scomp_op op1 op2 = map_op projl projr (new_comp_op Some (\<lambda>_. []) op1 op2)"
+
+
+lemma assoc_example:
+  "read_or_write \<bullet> ((end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1)) ~ read_or_write \<bullet> (end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1) \<Longrightarrow> False"
+  apply (erule bisim.cases)
+  apply simp
+  apply hypsubst_thin
+  unfolding sim_def new_scomp_op_def
+  apply (drule spec2)
+  apply (drule mp)
+   apply (rule step_map_op)
+   apply (subst new_comp_op_code)
+   apply (rule step.intros(3))
+    apply (rule cUnI1)
+    apply simp
+    apply (rule disjI2)
+    apply (rule refl)
+   apply (subst new_comp_op_code)
+   apply simp
+   apply (rule step.intros(3))
+    apply simp
+    apply (rule disjI1)
+    apply (rule refl)
+   apply (subst new_comp_op_code)
+   apply simp
+   apply (rule step.intros(3))
+    apply simp
+    apply (rule disjI2)
+    apply (subst (4) new_comp_op_code)
+    apply simp
+   apply (subst new_comp_op_code)
+   apply simp
+   apply (rule step.intros(3))
+    apply simp
+    apply (rule disjI1)
+    apply (rule refl)
+   apply (rule step.intros(2))
+  apply (erule thin_rl)
+  apply (elim exE conjE)
+  apply (subst (asm) (2) new_comp_op_code)
+  apply auto
+  subgoal
+    apply (erule bisim.cases)
+    apply hypsubst_thin
+    unfolding sim_def
+    apply (drule spec2)
+    apply (drule mp)
+     apply (subst new_comp_op_code)
+     apply simp
+     apply (rule step.intros(3))
+      apply simp
+      apply (rule disjI1)
+      apply (rule refl)
+     apply (rule step.intros(1)[where x=2])
+    apply (erule thin_rl)
+    apply safe
+    apply (subst (asm) (2) new_comp_op_code)
+    apply auto
+    apply (subst (asm) (7) new_comp_op_code)
+    apply auto
+    subgoal
+      apply (subst (asm) (4) new_comp_op_code)
+      apply auto
+      apply (subst (asm) (7) new_comp_op_code)
+      apply auto
+      apply (subst (asm) (4) new_comp_op_code)
+      apply auto
+      done
+    subgoal
+      apply (subst (asm) (4) new_comp_op_code)
+      apply auto
+      apply (subst (asm) (7) new_comp_op_code)
+      apply auto
+      apply (subst (asm) (4) new_comp_op_code)
+      apply auto
+      apply (subst (asm) (7) new_comp_op_code)
+      apply auto
+      apply (subst (asm) (4) new_comp_op_code)
+      apply auto
+      oops
+
+lemma 
+  "read_or_write \<bullet> ((end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1)) ~ read_or_write \<bullet> (end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1)"
+  unfolding new_scomp_op_def
+  apply (coinduction rule: bisim_coinduct_upto)
+  unfolding sim_def
+  apply (intro impI allI conjI)
+  subgoal for io op
+    apply (subst (asm) (1) new_comp_op_code)
+    apply auto
+    subgoal
+      apply (subst (asm) (1) new_comp_op_code)
+      apply auto
+      subgoal for x
+        apply hypsubst_thin
+        apply (intro exI conjI)
+         apply (subst (2) new_comp_op_code)
+         apply simp
+         apply (rule step.intros(3))
+          apply simp
+          apply (rule disjI2)
+          apply (subst (5) new_comp_op_code)
+          apply simp
+          apply (rule disjI1)
+          apply (rule refl)
+         apply (subst (2) new_comp_op_code)
+         apply simp
+         apply (rule step.intros(3))
+          apply simp
+          apply (rule disjI2)
+          apply (subst (5) new_comp_op_code)
+          apply simp
+         apply (subst (2) new_comp_op_code)
+         apply simp
+         apply (rule step.intros(3))
+          apply (rule cinsertI2)
+          apply (rule cinsertI1)
+         apply (rule step.intros(1))
+        apply (simp add: bc_refl new_comp_op.code)
+        done
+      subgoal
+        apply (subst (asm) (4) new_comp_op_code)
+        apply auto
+        apply hypsubst_thin
+        apply (subst (asm) (2) new_comp_op_code)
+        apply simp
+        apply (subst (asm) (1) new_comp_op_code)
+        apply auto
+        subgoal
+          apply hypsubst_thin
+          apply (intro exI conjI)
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI2)
+            apply (subst (5) new_comp_op_code)
+            apply simp
+            apply (rule disjI2)
+            apply (rule refl)
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI1)
+            apply (rule refl)
+           apply (rule step.intros(2))
+          apply (simp add: bc_refl new_comp_op.code)
+          done
+        subgoal
+          apply hypsubst_thin
+          apply (intro exI conjI)
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI2)
+            apply (subst (5) new_comp_op_code)
+            apply simp
+            apply (rule disjI1)
+            apply (rule refl)
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI2)
+            apply (subst (5) new_comp_op_code)
+            apply simp
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply (rule cinsertI2)
+            apply (rule cinsertI1)
+           apply (rule step.intros(1))
+          apply (simp add: bc_refl new_comp_op.code)
+          done
+        done
+      done
+    subgoal
+      apply (subst (asm) (1) new_comp_op_code)
+      apply auto
+      subgoal
+        apply (subst (asm) (1) new_comp_op_code)
+        apply auto
+        subgoal for x
+          apply hypsubst_thin
+          apply (intro exI conjI)
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI2)
+            apply (subst (5) new_comp_op_code)
+            apply simp
+            apply (rule disjI2)
+            apply (rule refl)
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI2)
+            apply (subst (5) new_comp_op_code)
+            apply simp
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI2)
+            apply (subst (5) new_comp_op_code)
+            apply simp
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply (rule cinsertI2)
+            apply (rule cinsertI1)
+           apply (rule step.intros(1))
+          apply (simp add: bc_refl new_comp_op.code)
+          done
+        subgoal for x
+          apply (subst (asm) (4) new_comp_op_code)
+          apply auto
+          apply hypsubst_thin
+          apply (subst (asm) (2) new_comp_op_code)
+          apply simp
+          apply (subst (asm) (1) new_comp_op_code)
+          apply auto
+          subgoal
+            apply hypsubst_thin
+            apply (intro exI conjI)
+             apply (subst (2) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI2)
+              apply (subst (5) new_comp_op_code)
+              apply simp
+              apply (rule disjI2)
+              apply (rule refl)
+             apply (subst (2) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI1)
+              apply (rule refl)
+             apply (rule step.intros(2))
+            apply (simp add: bc_refl new_comp_op.code)
+            done
+          subgoal
+            apply hypsubst_thin
+            apply (intro exI conjI)
+             apply (subst (2) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI2)
+              apply (subst (5) new_comp_op_code)
+              apply simp
+              apply (rule disjI2)
+              apply (rule refl)
+             apply (subst (2) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI2)
+              apply (subst (5) new_comp_op_code)
+              apply simp
+             apply (subst (2) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI2)
+              apply (subst (5) new_comp_op_code)
+              apply simp
+             apply (subst (2) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply (rule cinsertI2)
+              apply (rule cinsertI1)
+             apply (rule step.intros(1))
+            apply (simp add: bc_refl new_comp_op.code)
+            done
+          done
+        done
+      subgoal for x
+        apply (subst (asm) (4) new_comp_op_code)
+        apply auto
+        apply hypsubst_thin
+        apply (subst (asm) (2) new_comp_op_code)
+        apply simp
+        apply (subst (asm) (1) new_comp_op_code)
+        apply auto
+        subgoal
+          apply hypsubst_thin
+          apply (intro exI conjI)
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI2)
+            apply (subst (5) new_comp_op_code)
+            apply simp
+            apply (rule disjI2)
+            apply (rule refl)
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI1)
+            apply (rule refl)
+           apply (rule step.intros(2))
+          apply (simp add: bc_refl new_comp_op.code)
+          done
+        subgoal
+          apply (subst (asm) (1) new_comp_op_code)
+          apply auto
+          subgoal
+            apply hypsubst_thin
+            apply (intro exI conjI)
+             apply (subst (2) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI2)
+              apply (subst (5) new_comp_op_code)
+              apply simp
+              apply (rule disjI2)
+              apply (rule refl)
+             apply (subst (2) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI2)
+              apply (subst (5) new_comp_op_code)
+              apply simp
+             apply (subst (2) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI1)
+              apply (rule refl)
+             apply (rule step.intros(2))
+            apply (simp add: bc_refl new_comp_op.code)
+            done
+          subgoal
+            apply hypsubst_thin
+            apply (intro exI conjI)
+             apply (subst (2) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI2)
+              apply (subst (5) new_comp_op_code)
+              apply simp
+              apply (rule disjI2)
+              apply (rule refl)
+             apply (subst (2) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI2)
+              apply (subst (5) new_comp_op_code)
+              apply simp
+             apply (subst (2) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI2)
+              apply (subst (5) new_comp_op_code)
+              apply simp
+             apply (subst (2) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply (rule cinsertI2)
+              apply (rule cinsertI1)
+             apply (rule step.intros(1))
+            apply (simp add: bc_refl new_comp_op.code)
+            done
+          done
+        done
+      done
+    subgoal for x
+      apply (subst (asm) (4) new_comp_op_code)
+      apply auto
+      apply hypsubst_thin
+      apply (subst (asm) (2) new_comp_op_code)
+      apply simp
+      apply (subst (asm) (1) new_comp_op_code)
+      apply auto
+      subgoal
+        apply hypsubst_thin
+        apply (intro exI conjI)
+         apply (subst (2) new_comp_op_code)
+         apply simp
+         apply (rule step.intros(3))
+          apply simp
+          apply (rule disjI2)
+          apply (subst (5) new_comp_op_code)
+          apply simp
+          apply (rule disjI2)
+          apply (rule refl)
+         apply (subst (2) new_comp_op_code)
+         apply simp
+         apply (rule step.intros(3))
+          apply simp
+          apply (rule disjI1)
+          apply (rule refl)
+         apply (rule step.intros(2))
+        apply (simp add: bc_refl new_comp_op.code)
+        done
+      subgoal
+        apply (subst (asm) (1) new_comp_op_code)
+        apply auto
+        subgoal
+          apply hypsubst_thin
+          apply (intro exI conjI)
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI2)
+            apply (subst (5) new_comp_op_code)
+            apply simp
+            apply (rule disjI2)
+            apply (rule refl)
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI2)
+            apply (subst (5) new_comp_op_code)
+            apply simp
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI1)
+            apply (rule refl)
+           apply (rule step.intros(2))
+          apply (simp add: bc_refl new_comp_op.code)
+          done
+        subgoal
+          apply hypsubst_thin
+          apply (intro exI conjI)
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI2)
+            apply (subst (5) new_comp_op_code)
+            apply simp
+            apply (rule disjI1)
+            apply (rule refl)
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI2)
+            apply (subst (5) new_comp_op_code)
+            apply simp
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply (rule cinsertI2)
+            apply (rule cinsertI1)
+           apply (rule step.intros(1))
+          apply (simp add: bc_refl new_comp_op.code)
+          done
+        done
+      subgoal
+        apply (subst (asm) (1) new_comp_op_code)
+        apply auto
+        subgoal
+          apply hypsubst_thin
+          apply (intro exI conjI)
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI2)
+            apply (subst (5) new_comp_op_code)
+            apply simp
+            apply (rule disjI2)
+            apply (rule refl)
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI2)
+            apply (subst (5) new_comp_op_code)
+            apply simp
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI1)
+            apply (rule refl)
+           apply (rule step.intros(2))
+          apply (simp add: bc_refl new_comp_op.code)
+          done
+        subgoal
+          apply (subst (asm) (1) new_comp_op_code)
+          apply auto
+          subgoal
+            apply hypsubst_thin
+            apply (intro exI conjI)
+             apply (subst (2) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI2)
+              apply (subst (5) new_comp_op_code)
+              apply simp
+              apply (rule disjI2)
+              apply (rule refl)
+             apply (subst (2) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI2)
+              apply (subst (5) new_comp_op_code)
+              apply simp
+             apply (subst (2) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI1)
+              apply (rule refl)
+             apply (rule step.intros(2))
+            apply (simp add: bc_refl new_comp_op.code)
+            done
+          subgoal for x
+            apply hypsubst_thin
+            apply (intro exI conjI)
+             apply (subst (2) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI2)
+              apply (subst (5) new_comp_op_code)
+              apply simp
+              apply (rule disjI2)
+              apply (rule refl)
+             apply (subst (2) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI2)
+              apply (subst (5) new_comp_op_code)
+              apply simp
+             apply (subst (2) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI2)
+              apply (subst (5) new_comp_op_code)
+              apply simp
+             apply (subst (2) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply (rule cinsertI2)
+              apply (rule cinsertI1)
+             apply (rule step.intros(1))
+            apply (simp add: bc_refl new_comp_op.code)
+            done
+          done
+        done
+      done
+    done
+  subgoal for io op
+    apply (subst (asm) (1) new_comp_op_code)
+    apply auto
+    apply (subst (asm) (3) new_comp_op_code)
+    apply auto
+    subgoal
+      apply hypsubst_thin
+      apply (intro exI conjI)
+       apply (subst (2) new_comp_op_code)
+       apply simp
+       apply (subst (1) new_comp_op_code)
+       apply simp
+       apply (rule step.intros(3))
+        apply simp
+        apply (rule disjI1)
+        apply (rule refl)
+       apply (subst (1) new_comp_op_code)
+       apply simp
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(2))
+      apply (simp add: bc_refl new_comp_op.code)
+      done
+    subgoal
+      apply (subst (asm) (2) new_comp_op_code)
+      apply auto
+      subgoal
+        apply hypsubst_thin
+        apply (intro exI conjI)
+         apply (subst (1) new_comp_op_code)
+         apply simp
+         apply (rule step.intros(3))
+          apply simp
+          apply (rule disjI1)
+          apply (rule refl)
+         apply (subst (1) new_comp_op_code)
+         apply simp
+         apply (rule step.intros(3))
+          apply simp
+          apply (rule disjI2)
+          apply (subst (4) new_comp_op_code)
+          apply simp
+         apply (subst (1) new_comp_op_code)
+         apply simp
+         apply (rule step.intros(3))
+          apply (rule cinsertI1)
+         apply (rule step.intros(2))
+        apply (simp add: bc_refl new_comp_op.code)
+        done
+      subgoal for x
+        apply (subst (asm) (5) new_comp_op_code)
+        apply simp
+        apply hypsubst_thin
+        apply (subst (asm) (2) new_comp_op_code)
+        apply auto
+        subgoal
+          apply hypsubst_thin
+          apply (intro exI conjI)
+           apply (subst (1) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI2)+
+            apply (subst (4) new_comp_op_code)
+            apply simp
+           apply (subst (1) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply (rule cinsertI1)
+           apply (rule step.intros(2))
+          apply (simp add: bc_refl new_comp_op.code)
+          done
+        subgoal
+          apply hypsubst_thin
+          apply (intro exI conjI)
+           apply (subst (1) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI1)
+            apply (rule refl)
+           apply (subst (1) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI1)
+            apply (rule refl)
+           apply (rule step.intros(1))
+          apply (simp add: bc_refl new_comp_op.code)
+          done
+        done
+      done
+    subgoal
+      apply (subst (asm) (2) new_comp_op_code)
+      apply auto
+      subgoal
+        apply hypsubst_thin
+        apply (intro exI conjI)
+         apply (subst (1) new_comp_op_code)
+         apply simp
+         apply (rule step.intros(3))
+          apply simp
+          apply (rule disjI2)+
+          apply (subst (4) new_comp_op_code)
+          apply simp
+         apply (subst (1) new_comp_op_code)
+         apply simp
+         apply (rule step.intros(3))
+          apply (rule cinsertI1)
+         apply (rule step.intros(2))
+        apply (simp add: bc_refl new_comp_op.code)
+        done
+      subgoal
+        apply (subst (asm) (5) new_comp_op_code)
+        apply simp
+        apply hypsubst_thin
+        apply (subst (asm) (2) new_comp_op_code)
+        apply auto
+        subgoal
+          apply hypsubst_thin
+          apply (intro exI conjI)
+           apply (subst (1) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI2)+
+            apply (subst (4) new_comp_op_code)
+            apply simp
+           apply (subst (1) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply (rule cinsertI1)
+           apply (rule step.intros(2))
+          apply (simp add: bc_refl new_comp_op.code)
+          done
+        subgoal for x
+          apply (subst (asm) (5) new_comp_op_code)
+          apply auto
+          apply hypsubst_thin
+          apply (subst (asm) (2) new_comp_op_code)
+          apply auto
+          subgoal
+            apply hypsubst_thin
+            apply (intro exI conjI)
+             apply (subst (1) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI2)+
+              apply (subst (4) new_comp_op_code)
+              apply simp
+             apply (subst (1) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply (rule cinsertI1)
+             apply (rule step.intros(2))
+            apply (simp add: bc_refl new_comp_op.code)
+            done
+          subgoal for x
+            apply hypsubst_thin
+            apply (intro exI conjI)
+             apply (subst (1) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI2)
+              apply (rule disjI1)
+              apply (rule refl)
+             apply (subst (1) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI1)
+              apply (rule refl)
+             apply (subst (1) new_comp_op_code)
+             apply simp
+             apply (rule step.intros(3))
+              apply simp
+              apply (rule disjI1)
+              apply (rule refl)
+             apply (rule step.intros(1))
+            apply (simp add: bc_refl new_comp_op.code)
+            done
+          done
+        done
+      done
+    done
+  done
+
+
+
+
+
 
 
 end
