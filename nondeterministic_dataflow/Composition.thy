@@ -552,6 +552,7 @@ lemma
           apply auto
           subgoal for op''
             apply (cases op1)
+            apply (simp_all add: ranI)
             subgoal for p' f'
               apply auto
               subgoal for x
@@ -570,7 +571,11 @@ lemma
                   apply (rule disjI1)
                   apply (rule refl)
                 using step.simps apply fastforce
-                oops
+
+
+end
+
+oops
 
 lemma scomp_op_assoc:
   "map_op projl projr (comp_op Some buf1 op1 (map_op projl projr (comp_op Some buf2 op2 op3))) ~
