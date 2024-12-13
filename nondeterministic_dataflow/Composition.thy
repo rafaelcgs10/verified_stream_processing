@@ -18,22 +18,27 @@ datatype (discs_sels) ('ip1, 'ip2, 'op1, 'op2, 'd) comp_op_aux =
   Read_aux "'ip1 + 'ip2" "'d \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<times> ('ip1, 'op1, 'd) op \<times> ('ip2, 'op2, 'd) op"
   | Write_aux "('ip2 \<Rightarrow> 'd buf) \<times> ('ip1, 'op1, 'd) op \<times> ('ip2, 'op2, 'd) op" "'op1 + 'op2" 'd
   | Base_aux "(('ip2 \<Rightarrow> 'd buf) \<times> ('ip1, 'op1, 'd) op \<times> ('ip2, 'op2, 'd) op)"
-  | end_op_aux
-  | spin_aux
 
 abbreviation eval_comp_op_aux where
   "eval_comp_op_aux c aux \<equiv> (case aux of
     Read_aux p f \<Rightarrow> Read p (\<lambda>y. let (buf, op1, op2) = f y in c buf op1 op2)
   | Write_aux (buf, op1, op2) q x \<Rightarrow> Write (c buf op1 op2) q x
-  | Base_aux (buf, op1, op2) \<Rightarrow> c buf op1 op2
-  | end_op_aux \<Rightarrow> end_op
-  | spin_aux \<Rightarrow> spin_op)"
-
-abbreviation "sound_reads wire buf \<equiv> cfilter (\<lambda> op. case op of Read p f \<Rightarrow> p \<notin> ran wire \<or> buf p \<noteq> [] | _ \<Rightarrow> True)"
+  | Base_aux (buf, op1, op2) \<Rightarrow> c buf op1 op2)"
 
 corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
-  "comp_op wire buf op1 op2 = undefined"
+  "comp_op wire buf op1 op2 = Choice (cimage (eval_comp_op_aux (comp_op wire)) 
+  (cUn (case op1 of
+    Read p f \<Rightarrow> {| Read_aux (Inl p) (\<lambda>x. (buf, f x, op2))|}
+  | Write op p x \<Rightarrow> (case wire p of
+             None \<Rightarrow> {| Write_aux (buf, op, op2) (Inl p) x |}
+           | Some q \<Rightarrow> {| Base_aux (BENQ q x buf, op, op2) |})
+  | Choice ops \<Rightarrow> cimage (\<lambda> op. Base_aux (buf, op, op2)) ops)
+  (case op2 of
+     Read p f \<Rightarrow> if p \<in> ran wire then (if  buf p = [] then {||} else {| Base_aux (BTL p buf, op1, f (BHD p buf)) |} )else {| Read_aux (Inr p) (\<lambda>x. (buf, op1, f x)) |}
+   | Write op p x \<Rightarrow> {| Write_aux (buf, op1, op) (Inr p) x |}
+   | Choice ops \<Rightarrow> cimage (\<lambda> op. Base_aux (buf, op1, op)) ops
+   )))"
 
 lemma comp_op_code:
   "comp_op wire buf op1 op2 = Choice (cUn (case op1 of
@@ -44,13 +49,12 @@ lemma comp_op_code:
     Read p f \<Rightarrow> (if p \<in> ran wire then if buf p = [] then {||} else {|comp_op wire (BTL p buf) op1 (f (BHD p buf))|} else {|Read (Inr p) (\<lambda> x. comp_op wire buf op1 (f x))|})
   | Write op2' p x \<Rightarrow> {|Write (comp_op wire buf op1 op2') (Inr p) x|}
   | Choice ops \<Rightarrow> cimage (\<lambda> op. comp_op wire buf op1 op) ops))"
-  sorry
-(*   apply (subst comp_op.code)
+  apply (subst comp_op.code)
   apply (unfold cimage_cUn op.inject)
   apply (rule arg_cong2[where f = cUn])
    apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
       split: comp_op_aux.splits op.splits option.splits)
-  done *)
+  done
 
 lemma comp_op_simps[simp]:
   "comp_op wire buf (Read p1 f1) (Read p2 f2) =
@@ -302,7 +306,8 @@ lemma comp_op_Some_Write_dummy_source_op_sink_op:
           apply (auto simp add: ranI split: if_splits)
           apply (subst (2) sink_op.code)
           apply (auto simp add: ranI split: if_splits)
-           apply (auto simp add: cUNIV.rep_eq comp_op.code comp_op.cong_refl)
+          apply (metis (mono_tags, lifting) cUNIV.rep_eq dummy_source_op.cong_base dummy_source_op.cong_sym iso_tuple_UNIV_I sink_op.code)
+          apply (metis (mono_tags, lifting) cUNIV.rep_eq dummy_source_op.cong_base dummy_source_op.cong_sym iso_tuple_UNIV_I sink_op.code)
           done
         subgoal
           apply (subst comp_op_code)
@@ -311,7 +316,8 @@ lemma comp_op_Some_Write_dummy_source_op_sink_op:
           apply (auto simp add: ranI split: if_splits)
           apply (subst (2) sink_op.code)
           apply (auto simp add: ranI split: if_splits)
-           apply (auto simp add: cUNIV.rep_eq comp_op.code comp_op.cong_refl)
+          apply (metis (mono_tags, lifting) cUNIV.rep_eq dummy_source_op.cong_base dummy_source_op.cong_sym iso_tuple_UNIV_I sink_op.code)
+          apply (metis (mono_tags, lifting) cUNIV.rep_eq dummy_source_op.cong_base dummy_source_op.cong_sym iso_tuple_UNIV_I sink_op.code)
           done
         subgoal
           apply (subst comp_op_code)
@@ -320,30 +326,23 @@ lemma comp_op_Some_Write_dummy_source_op_sink_op:
           apply (auto simp add: ranI split: if_splits)
           apply (subst (2) sink_op.code)
           apply (auto simp add: ranI split: if_splits)
-           apply (auto simp add: cUNIV.rep_eq comp_op.code comp_op.cong_refl)
+          apply (smt (verit, del_insts) UNIV_witness cUNIV.rep_eq dummy_source_op.cong_base dummy_source_op.cong_sym dummy_source_op.cong_trans num1_eq1)
+          apply (smt (verit, del_insts) UNIV_witness cUNIV.rep_eq dummy_source_op.cong_base dummy_source_op.cong_sym dummy_source_op.cong_trans num1_eq1)
           done
         done
       subgoal for op
+          apply (subst comp_op_code)
         apply (subst (asm) comp_op_code)
         apply (subst (asm) dummy_source_op.code)
+          apply (subst (asm) (5) sink_op.code)
         apply (auto simp add: ranI split: if_splits)
+        apply (smt (verit, ccfv_threshold) dummy_source_op.cong_base dummy_source_op.cong_sym num1_eq1)
+        apply (smt (verit, ccfv_threshold) dummy_source_op.cong_base dummy_source_op.cong_sym num1_eq1)
         subgoal
-          apply hypsubst_thin
-          apply (subst comp_op_code)
-          apply simp
-          apply (subst dummy_source_op.code)
-          apply (auto simp add: ranI split: if_splits)
-          apply (subst (2) sink_op.code)
-          apply (auto simp add: cUNIV.rep_eq comp_op.code comp_op.cong_refl)
-          done
-        subgoal
-          apply (subst (asm) sink_op.code)
-          apply (subst comp_op_code)
-          apply simp
-          apply (subst dummy_source_op.code)
-          apply (auto simp add: ranI split: if_splits)
-          apply (subst (2) sink_op.code)
-          apply (auto simp add: cUNIV.rep_eq comp_op.code comp_op.cong_refl)
+        apply (subst (asm) sink_op.code)
+        apply (auto simp add: ranI split: if_splits)
+          apply (smt (verit, del_insts) dummy_source_op.cong_base dummy_source_op.cong_sym dummy_source_op.cong_trans)
+          apply (smt (verit, del_insts) dummy_source_op.cong_base dummy_source_op.cong_sym dummy_source_op.cong_trans)
           done
         done
       done
@@ -457,19 +456,188 @@ lemma BHD_BAPPEND_2_cases:
    buf3 p = [] \<and> buf2 p = [] \<and> BHD p buf1 = x \<and> buf1 p \<noteq> []"
   by (metis append_Nil hd_append)
 
-
-
 abbreviation "read_or_write \<equiv> Choice {| Read (1::2) (\<lambda> _. end_op), Write (Read (2::2) (\<lambda> _. end_op)) (1::1) (1::nat) |}"
 
-lemma assoc_example_1:
-  "read_or_write \<bullet> ((end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1)) ~ read_or_write \<bullet> (end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1)"
-  unfolding scomp_op_def
-  apply (coinduction rule: bisim_coinduct_upto)
-  unfolding sim_def
-  apply (intro impI allI conjI)
-  subgoal by (smt (verit, ccfv_SIG) cUn_cempty cempty_not_cinsert cimage_is_cempty comp_op.code comp_op_simps(9) op.inject(3))
-  subgoal by (smt (verit, ccfv_SIG) cUn_cempty cempty_not_cinsert cimage_is_cempty comp_op.code comp_op_simps(9) op.inject(3))
+lemma 
+  "read_or_write \<bullet> ((end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1)) ~ read_or_write \<bullet> (end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1) \<Longrightarrow> False"
+  apply (erule bisim.cases)
+  apply simp
+  apply hypsubst_thin
+  unfolding sim_def scomp_op_def
+  apply (drule spec2)
+  apply (drule mp)
+   apply (rule step_map_op)
+   apply (subst comp_op_code)
+   apply (rule step.intros(3))
+    apply (rule cUnI1)
+    apply simp
+    apply (rule disjI2)
+    apply (rule refl)
+   apply (rule step.intros(3))
+    apply (rule cinsertI2)
+    apply (rule cinsertI1)
+   apply (rule step.intros(3))
+    apply (rule cinsertI1)
+   apply (rule step.intros(3))
+    apply (rule cinsertI2)
+    apply (rule cinsertI1)
+   apply (rule step.intros(2))
+  apply (erule thin_rl)
+  apply (elim exE conjE)
+  apply (subst (asm) (2) comp_op_code)
+  apply auto
+  subgoal
+    apply (erule bisim.cases)
+    unfolding sim_def
+    apply auto
+    apply (erule thin_rl)
+    apply (drule spec2)
+    apply (drule mp)
+     apply (rule step.intros(3))
+      apply (rule cinsertI1)
+     apply (rule step.intros(3))
+      apply (rule cinsertI1)
+     apply (rule step.intros(3))
+      apply (rule cinsertI1)
+     apply (rule step.intros(1)[where x=1])
+    apply auto
+    done
+  subgoal
+    apply (subst (asm) comp_op_code)
+    apply auto
+    subgoal
+  apply (erule bisim.cases)
+    unfolding sim_def
+    apply auto
+    apply (erule thin_rl)
+    apply (drule spec2)
+    apply (drule mp)
+     apply (rule step.intros(3))
+      apply (rule cinsertI1)
+     apply (rule step.intros(3))
+      apply (rule cinsertI1)
+     apply (rule step.intros(1)[where x=1])
+    apply auto
+    done
+subgoal
+  apply (erule bisim.cases)
+    unfolding sim_def
+    apply auto
+    apply (erule thin_rl)
+    apply (drule spec2)
+    apply (drule mp)
+     apply (rule step.intros(3))
+      apply (rule cinsertI1)
+     apply (rule step.intros(1)[where x=1])
+    apply auto
+    done
   done
+    subgoal
+       apply (subst (asm) comp_op_code)
+    apply auto
+      oops
+
+
+lemma 
+  "read_or_write \<bullet> ((end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1)) ~ read_or_write \<bullet> (end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1)"
+ apply (coinduction rule: bisim_coinduct_upto)
+  unfolding sim_def scomp_op_def
+  apply (intro impI allI conjI)
+  subgoal
+    apply auto
+    subgoal
+      apply (drule step_map_op_inv)
+      apply auto
+      apply hypsubst_thin
+      find_theorems step map_op
+
+      apply (subst (asm) comp_op_code)
+      apply auto
+      subgoal
+      apply (intro conjI exI)
+        apply (subst comp_op_code)
+        apply auto
+        apply (rule step.intros(3))
+         apply (rule cinsertI1)
+        using step.intros(2) apply fast
+        apply (rule bc_bisim)
+        subgoal sorry
+        done
+
+
+end
+        apply (rule step_map_op[where f=projl and g=projr and io="Out (Inr 1) (Suc 0)", simplified])
+         apply (subst comp_op_code)
+         apply simp
+         apply (rule step.intros(3))
+          apply simp
+          apply (rule disjI1)
+        apply (rule refl)
+         apply (rule step.intros(2))
+        apply simp
+        apply (rule bc_Choice)
+        unfolding rel_cset_def
+        apply simp
+        apply (rule rel_setI)
+        subgoal
+          apply simp
+          apply (elim disjE)
+          subgoal
+            apply hypsubst_thin
+            apply (rule disjI1)
+            apply (rule bc_base)
+            
+
+
+end
+          apply (rule disjI2)
+          apply (subst (5) new_comp_op_code)
+          apply simp
+          apply (rule disjI1)
+          apply (rule refl)
+         apply (subst (2) new_comp_op_code)
+         apply simp
+         apply (rule step.intros(3))
+          apply simp
+          apply (rule disjI2)
+          apply (subst (5) new_comp_op_code)
+          apply simp
+         apply (subst (2) new_comp_op_code)
+         apply simp
+         apply (rule step.intros(3))
+          apply (rule cinsertI2)
+          apply (rule cinsertI1)
+         apply (rule step.intros(1))
+        apply (simp add: bc_refl new_comp_op.code)
+        done
+      subgoal
+        apply (subst (asm) (4) new_comp_op_code)
+        apply auto
+        apply hypsubst_thin
+        apply (subst (asm) (2) new_comp_op_code)
+        apply simp
+        apply (subst (asm) (1) new_comp_op_code)
+        apply auto
+        subgoal
+          apply hypsubst_thin
+          apply (intro exI conjI)
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI2)
+            apply (subst (5) new_comp_op_code)
+            apply simp
+            apply (rule disjI2)
+            apply (rule refl)
+           apply (subst (2) new_comp_op_code)
+           apply simp
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI1)
+            apply (rule refl)
+          apply (rule step.intros(2))
+
 
 
 lemma assoc_example_2:
