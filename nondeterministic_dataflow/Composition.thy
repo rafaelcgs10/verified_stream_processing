@@ -458,6 +458,90 @@ lemma BHD_BAPPEND_2_cases:
   by (metis append_Nil hd_append)
 
 
+
+abbreviation "read_or_write \<equiv> Choice {| Read (1::2) (\<lambda> _. end_op), Write (Read (2::2) (\<lambda> _. end_op)) (1::1) (1::nat) |}"
+
+lemma assoc_example_1:
+  "read_or_write \<bullet> ((end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1)) ~ read_or_write \<bullet> (end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1)"
+  unfolding scomp_op_def
+  apply (coinduction rule: bisim_coinduct_upto)
+  unfolding sim_def
+  apply (intro impI allI conjI)
+  subgoal by (smt (verit, ccfv_SIG) cUn_cempty cempty_not_cinsert cimage_is_cempty comp_op.code comp_op_simps(9) op.inject(3))
+  subgoal by (smt (verit, ccfv_SIG) cUn_cempty cempty_not_cinsert cimage_is_cempty comp_op.code comp_op_simps(9) op.inject(3))
+  done
+
+
+lemma assoc_example_2:
+  "read_or_write \<bullet> ((Read (1::1) (\<lambda> _. end_op :: (1, 1, nat) op)) \<bullet> (Write end_op (1::1) 1)) ~ read_or_write \<bullet> (Read (1::1) (\<lambda> _. end_op :: (1, 1, nat) op)) \<bullet> (Write end_op (1::1) 1)"
+   unfolding scomp_op_def
+  apply (coinduction rule: bisim_coinduct_upto)
+  unfolding sim_def
+  apply (intro impI allI conjI)
+  subgoal
+    by (metis bc_refl comp_op.code)
+  subgoal
+    by (metis bc_refl comp_op.code)
+  done
+
+abbreviation "read_or_write_2 \<equiv> Choice {| Read (1::2) (\<lambda> x. Write end_op (2::2) x), Write (Read (2::2) (\<lambda> _. end_op)) (1::2) (1::nat) |}"
+
+lemma assoc_example_3:
+  "read_or_write_2 \<bullet> (read_or_write_2 \<bullet> read_or_write_2) ~ read_or_write_2 \<bullet> read_or_write_2 \<bullet> read_or_write_2"
+  apply (coinduction rule: bisim_coinduct_upto)
+  unfolding sim_def
+  apply (intro impI allI conjI)
+  subgoal
+    by (metis bc_refl comp_op.code scomp_op_def)
+  subgoal
+    by (metis bc_refl comp_op.code scomp_op_def)
+  done
+
+abbreviation "read_or_write_3 \<equiv> Choice {| Read (1::2) (\<lambda> x. Write end_op (2::2) x), Read (2::2) (\<lambda> x. Write end_op (1::2) x) |}"
+
+lemma assoc_example_4:
+  "read_or_write_3 \<bullet> (read_or_write_3 \<bullet> read_or_write_3) ~ read_or_write_3 \<bullet> read_or_write_3 \<bullet> read_or_write_3"
+  apply (coinduction rule: bisim_coinduct_upto)
+  unfolding sim_def
+  apply (intro impI allI conjI)
+  subgoal
+    by (metis bc_refl comp_op.code scomp_op_def)
+  subgoal
+    by (metis bc_refl comp_op.code scomp_op_def)
+  done
+
+lemma assoc_example_5:
+  "cp_op \<bullet> (cp_op \<bullet> cp_op) ~ cp_op \<bullet> cp_op \<bullet> cp_op"
+ apply (coinduction rule: bisim_coinduct_upto)
+  unfolding sim_def scomp_op_def
+  apply (intro impI allI conjI)
+  subgoal
+   by (metis bc_refl comp_op.code)
+  subgoal
+   by (metis bc_refl comp_op.code)
+  done
+
+corec cp_2_op :: "(2, 2, 'd) op" where
+  "cp_2_op = undefined"
+
+lemma cp_2_op_code:
+  "cp_2_op = Choice {| Read 1 (Write cp_2_op 1),  Read 2 (Write cp_2_op 2) |}"
+  sorry
+
+
+lemma assoc_example_6:
+  "op1 \<bullet> (op2 \<bullet> op3) ~ op1 \<bullet> cp_2_op \<bullet> cp_2_op"
+ apply (coinduction rule: bisim_coinduct_upto)
+  unfolding sim_def scomp_op_def
+  apply (intro impI allI conjI)
+  subgoal
+        by (metis bc_refl comp_op.code)
+  subgoal
+        by (metis bc_refl comp_op.code)
+      oops
+
+
+
 lemma
   "step (map_op projl projr (comp_op Some (buf1 :: 'd \<Rightarrow> 'c buf) op1 (map_op projl projr (comp_op Some (buf2 :: 'e \<Rightarrow> 'c buf) op2 op3)))) io op \<Longrightarrow>
    \<exists> op1' op2' op3' (buf1' :: 'd \<Rightarrow> 'c buf) (buf2' :: 'e \<Rightarrow> 'c buf).
@@ -570,12 +654,8 @@ lemma
                   apply simp
                   apply (rule disjI1)
                   apply (rule refl)
-                using step.simps apply fastforce
-
-
-end
-
-oops
+        (*         using step.simps apply fastforce *)
+                oops
 
 lemma scomp_op_assoc:
   "map_op projl projr (comp_op Some buf1 op1 (map_op projl projr (comp_op Some buf2 op2 op3))) ~
@@ -599,6 +679,7 @@ lemma scomp_op_assoc:
 
 
 end
+
 lemma step_comp_op_Some_id_op_id_op:
   "step (comp_op Some buf2 op1 op2) io op \<Longrightarrow>
    op1 = id_op buf1 \<Longrightarrow>
