@@ -390,8 +390,8 @@ inductive_cases stepWriteE [elim!]: "step (Write op q x) io op'"
 inductive_cases stepChoiceE [elim!]: "step (Choice ops) io op'"
 
 lemma step_map_op:
-  "step op io op' \<Longrightarrow>
-   step (map_op f g op) (map_IO f g id io) (map_op f g op')"
+  "step op io op' \<Longrightarrow> io' = map_IO f g id io \<Longrightarrow>
+   step (map_op f g op) io' (map_op f g op')"
   by (induct op io op' rule: step.induct) (force simp add: comp_def intro: step.intros)+
 
 lemma step_map_op_inv:

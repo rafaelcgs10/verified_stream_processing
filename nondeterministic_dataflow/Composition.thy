@@ -63,8 +63,8 @@ lemma comp_op_simps[simp]:
       else csingle (Read (Inr p2) (\<lambda>y. comp_op wire buf (Read p1 f1) (f2 y)))))"
   "comp_op wire buf (Read p1 f1) (Write op2 q2 x2) =
     choice2 (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Write op2 q2 x2))) (Write (comp_op wire buf (Read p1 f1) op2) (Inr q2) x2)"
-  "comp_op wire buf (Read p1 f1) (Choice ops) = 
-    Choice (cinsert (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Choice ops))) (cimage (\<lambda> op. comp_op wire buf (Read p1 f1) op) ops))"
+  "comp_op wire buf (Read p1 f1) (Choice op2s) = 
+    Choice (cinsert (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Choice op2s))) (cimage (\<lambda> op. comp_op wire buf (Read p1 f1) op) op2s))"
    "comp_op wire buf (Write op1 q1 x1) (Read p2 f2) =
     Choice (cinsert (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Read p2 f2)) (Inl q1) x1
       | Some q \<Rightarrow> comp_op wire (buf(q := benq x1 (buf q))) op1 (Read p2 f2))
@@ -74,18 +74,18 @@ lemma comp_op_simps[simp]:
     choice2 (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Write op2 q2 x2)) (Inl q1) x1
       | Some q \<Rightarrow> comp_op wire (buf(q := benq x1 (buf q))) op1 (Write op2 q2 x2))
       (Write (comp_op wire buf (Write op1 q1 x1) op2) (Inr q2) x2)"
-  "comp_op wire buf (Write op1 q1 x1) (Choice ops) =
-     Choice (cinsert (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Choice ops)) (Inl q1) x1
-      | Some q \<Rightarrow> comp_op wire (buf(q := benq x1 (buf q))) op1 (Choice ops))
-      (cimage (\<lambda> op. comp_op wire buf (Write op1 q1 x1) op) ops))"
-  "comp_op wire buf (Choice ops) (Read p2 f2) =
-    Choice (cUn (if p2 \<in> ran wire then (if buf p2 = [] then cempty else csingle (comp_op wire (buf(p2 := btl (buf p2))) (Choice ops) (f2 (BHD p2 buf))))
-        else csingle (Read (Inr p2) (\<lambda>y. comp_op wire buf (Choice ops) (f2 y)))) (cimage (\<lambda> op. comp_op wire buf op (Read p2 f2)) ops))"
- "comp_op wire buf (Choice ops) (Write op2 q2 x2) =
-    Choice (cinsert (Write (comp_op wire buf (Choice ops) op2) (Inr q2) x2) (cimage (\<lambda> op. comp_op wire buf op (Write op2 q2 x2)) ops))"
-   "comp_op wire buf (Choice ops1) (Choice ops2) =
-    Choice (cUn (cimage (\<lambda> op. comp_op wire buf op (Choice ops2)) ops1)
-        (cimage (\<lambda> op. comp_op wire buf (Choice ops1) op) ops2))" 
+  "comp_op wire buf (Write op1 q1 x1) (Choice op2s) =
+     Choice (cinsert (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Choice op2s)) (Inl q1) x1
+      | Some q \<Rightarrow> comp_op wire (buf(q := benq x1 (buf q))) op1 (Choice op2s))
+      (cimage (\<lambda> op. comp_op wire buf (Write op1 q1 x1) op) op2s))"
+  "comp_op wire buf (Choice op1s) (Read p2 f2) =
+    Choice (cUn (if p2 \<in> ran wire then (if buf p2 = [] then cempty else csingle (comp_op wire (buf(p2 := btl (buf p2))) (Choice op1s) (f2 (BHD p2 buf))))
+        else csingle (Read (Inr p2) (\<lambda>y. comp_op wire buf (Choice op1s) (f2 y)))) (cimage (\<lambda> op. comp_op wire buf op (Read p2 f2)) op1s))"
+ "comp_op wire buf (Choice op1s) (Write op2 q2 x2) =
+    Choice (cinsert (Write (comp_op wire buf (Choice op1s) op2) (Inr q2) x2) (cimage (\<lambda> op. comp_op wire buf op (Write op2 q2 x2)) op1s))"
+   "comp_op wire buf (Choice op1s) (Choice op2s) =
+    Choice (cUn (cimage (\<lambda> op. comp_op wire buf op (Choice op2s)) op1s)
+        (cimage (\<lambda> op. comp_op wire buf (Choice op1s) op) op2s))" 
   by (subst comp_op_code, auto simp add: image_iff split: option.splits)+
 
 
@@ -455,6 +455,176 @@ lemma BHD_BAPPEND_2_cases:
    buf3 p = [] \<and> BHD p buf2 = x \<and> buf2 p \<noteq> [] \<or>
    buf3 p = [] \<and> buf2 p = [] \<and> BHD p buf1 = x \<and> buf1 p \<noteq> []"
   by (metis append_Nil hd_append)
+
+lemma map_op_Read_iff[simp]:
+  "map_op g h op = Read p f \<longleftrightarrow> (\<exists>p' f'. op = Read p' f' \<and> p = g p' \<and> f = map_op g h o f')"
+  "Read p f = map_op g h op \<longleftrightarrow> (\<exists>p' f'. op = Read p' f' \<and> p = g p' \<and> f = map_op g h o f')"
+  by (cases op; auto)+
+lemma map_op_Write_iff[simp]:
+  "map_op g h op = Write op' p x \<longleftrightarrow> (\<exists>p' op''. op = Write op'' p' x \<and> p = h p' \<and> op' = map_op g h op'')"
+  "Write op' p x = map_op g h op \<longleftrightarrow> (\<exists>p' op''. op = Write op'' p' x \<and> p = h p' \<and> op' = map_op g h op'')"
+  by (cases op; auto)+
+lemma map_op_Choice_iff[simp]:
+  "map_op g h op = Choice ops \<longleftrightarrow> (\<exists>ops'. op = Choice ops' \<and> ops = cimage (map_op g h) ops')"
+  "Choice ops = map_op g h op \<longleftrightarrow> (\<exists>ops'. op = Choice ops' \<and> ops = cimage (map_op g h) ops')"
+  by (cases op; auto)+
+lemma comp_op_Read_iff[simp]:
+  "comp_op wire buf op1 op2 = Read p f \<longleftrightarrow> False"
+  "Read p f = comp_op wire buf op1 op2 \<longleftrightarrow> False"
+  by (subst comp_op_code; auto)+
+lemma comp_op_Write_iff[simp]:
+  "comp_op wire buf op1 op2 = Write op p x \<longleftrightarrow> False"
+  "Write op p x = comp_op wire buf op1 op2 \<longleftrightarrow> False"
+  by (subst comp_op_code; auto)+
+definition "lchoices wire buf op1 op2 =
+  (case op1 of
+    Read p f \<Rightarrow> csingle (Read (Inl p) (\<lambda>x. comp_op wire buf (f x) op2))
+  | Write op p x \<Rightarrow> csingle (case wire p of Some q \<Rightarrow> comp_op wire (BENQ q x buf) op op2 | None \<Rightarrow> Write (comp_op wire buf op op2) (Inl p) x)
+  | Choice ops \<Rightarrow> cimage (\<lambda>op. comp_op wire buf op op2) ops)"
+definition "rchoices wire buf op1 op2 =
+  (case op2 of
+    Read p f \<Rightarrow> (if p \<in> ran wire then if buf p = [] then {||} else csingle (comp_op wire (BTL p buf) op1 (f (BHD p buf))) else csingle (Read (Inr p) (\<lambda>x. comp_op wire buf op1 (f x))))
+  | Write op p x \<Rightarrow> csingle (Write (comp_op wire buf op1 op) (Inr p) x)
+  | Choice ops \<Rightarrow> cimage (\<lambda>op. comp_op wire buf op1 op) ops)"
+lemma comp_op_Choice[simp]: "comp_op wire buf op1 op2 = Choice ops \<longleftrightarrow> (\<exists>op1s op2s. ops = cUn op1s op2s \<and>
+   op1s = lchoices wire buf op1 op2 \<and> op2s = rchoices wire buf op1 op2)"
+  "Choice ops = comp_op wire buf op1 op2 \<longleftrightarrow> (\<exists>op1s op2s. ops = cUn op1s op2s \<and>
+   op1s = lchoices wire buf op1 op2 \<and> op2s = rchoices wire buf op1 op2)"
+  by (subst comp_op_code; auto simp: lchoices_def rchoices_def split: op.splits option.splits)+
+declare cin.rep_eq[simp del] cin.rep_eq[symmetric, simp]
+
+lemma scomp_op_assoc:
+  "map_op projl projr (comp_op Some buf1 op1 (map_op projl projr (comp_op Some buf2 op2 op3))) ~
+   map_op projl projr (comp_op Some buf2 (map_op projl projr (comp_op Some buf1 op1 op2)) op3)"
+  apply (coinduction arbitrary: op1 op2 op3 buf1 buf2 rule: bisim_coinduct_upto)
+  subgoal for op1 op2 op3 buf1 buf2
+    apply (intro conjI)
+      unfolding sim_def
+      apply safe
+      subgoal for io op
+        apply (induct "map_op projl projr (comp_op Some buf1 op1 (map_op projl projr (comp_op Some buf2 op2 op3)))" io op arbitrary: buf1 buf2 op1 op2 op3 rule: step.induct)
+          apply simp
+         apply simp
+        apply simp
+        subgoal premises prems for op ops io op' buf1 buf2 op1 op2 op3
+          using prems(1,2)
+          apply safe
+           apply (unfold lchoices_def) []
+          apply (cases op1; auto simp: ranI split: option.splits if_splits)
+          subgoal
+               apply (rule exI conjI)+
+                apply (rule step_map_op)
+                 apply (rule step_comp_op_L)
+                  apply (rule step_map_op)
+                   apply (rule step_comp_op_L)
+                    apply (rule step.intros(1))
+                   apply simp
+                  apply (rule refl)
+                 apply simp
+                apply simp
+            apply (rule bc_base)
+            apply metis
+            done
+          subgoal
+            apply (drule prems(3))
+            apply (erule exE conjE)+
+            apply (rule exI conjI[rotated] | assumption)+
+            apply (subst (2) comp_op_code; simp)
+            apply (erule step.intros(3)[rotated])
+             apply (rule cimageI)
+             apply (rule cUnI1)
+            apply (subst (5) comp_op_code; simp)
+            done
+          subgoal
+            apply (drule prems(3))
+            apply (erule exE conjE)+
+            apply (rule exI conjI[rotated] | assumption)+
+            apply (subst (2) comp_op_code; simp)
+            apply (erule step.intros(3)[rotated])
+             apply (rule cimageI)
+             apply (rule cUnI1)
+            apply (subst (5) comp_op_code; simp)
+            done
+          apply (unfold rchoices_def) []
+          apply (cases "map_op projl projr (comp_op Some buf2 op2 op3)"; simp)
+          apply safe
+           apply (unfold lchoices_def) []
+           apply (cases op2; simp)
+          subgoal for op'' p f
+(*
+            apply hypsubst_thin
+            apply (induct "map_op projl projr
+          (comp_op Some buf1 op1 (Read p (map_op projl projr \<circ> (\<lambda>x. comp_op Some buf2 (f x) op3))))" io op' arbitrary: buf1 buf2 op1 f op3 rule: step.induct)
+              apply simp
+             apply simp
+            apply simp
+            subgoal premises prems2 for op ops l op' buf1 buf2 op1 f op3
+              using prems2(1,2)
+              apply safe
+              apply (unfold lchoices_def) []
+               apply (cases op1; auto simp: ranI split: option.splits if_splits)
+              subgoal sorry
+            subgoal sorry
+            apply (rule exI conjI[rotated])+
+            apply (rule bc_refl[OF refl])
+            apply (subst (2) comp_op_code; simp)
+            apply (rule step.intros(3))
+             apply (rule cimageI)
+             apply (rule cUnI1)
+             apply (subst (5) comp_op_code; simp add: ranI)
+             apply (rule disjI1)
+             apply (rule refl)
+            apply assumption
+            apply (rule conjI impI)+
+             apply (rule cimageI)
+             apply (rule cimageI)
+             apply (rule cUnI1)
+*)
+            sorry
+          subgoal
+            apply (drule prems(3))
+            apply (erule exE conjE)+
+            apply (rule exI conjI[rotated] | assumption)+
+            apply (subst (2) comp_op_code; simp)
+            apply (rule step.intros(3))
+             apply (rule cimageI)
+             apply (rule cUnI1)
+            apply (subst (5) comp_op_code; simp)
+             apply (rule disjI1)
+            apply (rule refl)
+            apply (subst (2) comp_op_code; simp)
+            apply (erule step.intros(3)[rotated])
+            apply simp
+            done
+          subgoal
+            apply safe
+            apply (drule prems(3))
+            apply (erule exE conjE)+
+            apply (rule exI conjI[rotated] | assumption)+
+            apply (subst (2) comp_op_code; simp)
+            apply (erule step.intros(3)[rotated])
+             apply (rule cimageI)
+             apply (rule cUnI1)
+            apply (subst (5) comp_op_code; simp)
+            done
+          apply (unfold rchoices_def) [1]
+          apply (cases op3; auto simp: ranI split: option.splits if_splits)
+          subgoal
+            apply (drule prems(3))
+            apply (erule exE conjE)+
+            apply (rule exI conjI[rotated] | assumption)+
+            apply (subst (2) comp_op_code; simp add: ranI)
+            apply (erule step.intros(3)[rotated])
+            apply simp
+            done
+          subgoal sorry
+          subgoal sorry
+          done
+        done
+      subgoal sorry
+      done
+    done
+end
 
 abbreviation "read_or_write \<equiv> Choice {| Read (1::2) (\<lambda> _. end_op), Write (Read (2::2) (\<lambda> _. end_op)) (1::1) (1::nat) |}"
 
@@ -2275,8 +2445,6 @@ lemma tau_steps_step:
   subgoal for op' opa ops
     using step.intros(3) by blast
   done
-
-declare cin.rep_eq[simp del] cin.rep_eq[symmetric, simp]
 
 lemma no_Choice_in_choices[simplified, simp, dest!]: "Choice ops |\<in>| choices op \<Longrightarrow> False"
   unfolding cin.rep_eq by blast
