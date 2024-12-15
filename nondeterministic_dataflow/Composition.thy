@@ -624,7 +624,6 @@ lemma scomp_op_assoc:
       subgoal sorry
       done
     done
-end
 
 abbreviation "read_or_write \<equiv> Choice {| Read (1::2) (\<lambda> _. end_op), Write (Read (2::2) (\<lambda> _. end_op)) (1::1) (1::nat) |}"
 
@@ -651,7 +650,8 @@ lemma
    apply (rule step.intros(3))
     apply (rule cinsertI2)
     apply (rule cinsertI1)
-   apply (rule step.intros(2))
+    apply (rule step.intros(2))
+  apply (rule refl)
   apply (erule thin_rl)
   apply (elim exE conjE)
   apply (subst (asm) (2) comp_op_code)
@@ -670,55 +670,383 @@ lemma
      apply (rule step.intros(3))
       apply (rule cinsertI1)
      apply (rule step.intros(1)[where x=1])
-    apply auto
+    oops
+
+lemma Choice_singleton_bisim:
+  "Choice {|op|} ~ op"
+  apply (rule bisim.intros)
+  unfolding sim_def
+   apply (auto intro: step.intros bisim_refl)
+  done
+
+lemma choices_Choice_bisim:
+  "choices op1 = choices op2  \<Longrightarrow>
+   op1 ~ op2"
+ apply (coinduction arbitrary: op1 op2 rule: bisim_coinduct_upto)
+  unfolding sim_def scomp_op_def
+  apply (intro impI allI conjI)
+  subgoal for op1 op2 l s'
+    apply (erule step_choicesE)
+    subgoal for p f x
+      apply simp
+      apply (meson Read_in_choices_step bc_refl)
+      done
+    subgoal
+      apply simp
+      apply (meson Write_in_choices_step bc_refl)
+      done
     done
   subgoal
-    apply (subst (asm) comp_op_code)
-    apply auto
+  apply (erule step_choicesE)
+    subgoal for p f x
+      apply simp
+      apply (metis Read_in_choices_step bc_refl)
+      done
     subgoal
-  apply (erule bisim.cases)
-    unfolding sim_def
-    apply auto
-    apply (erule thin_rl)
-    apply (drule spec2)
-    apply (drule mp)
-     apply (rule step.intros(3))
-      apply (rule cinsertI1)
-     apply (rule step.intros(3))
-      apply (rule cinsertI1)
-     apply (rule step.intros(1)[where x=1])
-    apply auto
-    done
-subgoal
-  apply (erule bisim.cases)
-    unfolding sim_def
-    apply auto
-    apply (erule thin_rl)
-    apply (drule spec2)
-    apply (drule mp)
-     apply (rule step.intros(3))
-      apply (rule cinsertI1)
-     apply (rule step.intros(1)[where x=1])
-    apply auto
+      apply simp
+      apply (metis Write_in_choices_step bc_refl)
+      done
     done
   done
-    subgoal
-       apply (subst (asm) comp_op_code)
-    apply auto
-      oops
 
-
-lemma 
+lemma example_1:
   "read_or_write \<bullet> ((end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1)) ~ read_or_write \<bullet> (end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1)"
- apply (coinduction rule: bisim_coinduct_upto)
+  apply (coinduction rule: bisim_coinduct_upto)
   unfolding sim_def scomp_op_def
   apply (intro impI allI conjI)
   subgoal
     apply auto
     subgoal
-      apply (drule step_map_op_inv)
-      apply auto
       apply hypsubst_thin
+      apply (intro conjI exI)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(2))
+      apply (rule bc_bisim)
+      apply (rule choices_Choice_bisim)
+      apply simp
+      apply (metis cUN_constant cimage_constant_conv)
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (intro conjI exI)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(1))
+      apply (rule bc_refl)
+      apply simp
+      done
+    subgoal 
+      apply hypsubst_thin
+      apply (intro conjI exI)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(2))
+      apply (rule bc_bisim)
+      apply (rule bisim.intros)
+      subgoal
+        unfolding sim_def
+        apply auto
+        apply (metis (mono_tags, lifting) bisim_refl cimage_is_cempty cinsertI1 comp_apply op.simps(27) step.intros(1) step.intros(3))
+        done
+      subgoal
+        unfolding sim_def
+        apply auto
+        apply (metis (mono_tags, lifting) bisim_refl cimage_is_cempty cinsertI1 comp_apply op.simps(27) step.intros(1) step.intros(3))
+        done
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (intro conjI exI)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(1))
+      apply (rule bc_bisim)
+      apply (simp add: bisim_refl)
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (intro conjI exI)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(2))
+      apply (rule bc_bisim)
+      apply (rule choices_Choice_bisim)
+      apply simp
+      apply (metis cUN_constant cimage_constant_conv)
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (intro conjI exI)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(2))
+      apply (rule bc_bisim)
+      subgoal 
+        using Choice_singleton_bisim bisim_sym by blast
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (intro conjI exI)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(1))
+      apply (rule bc_bisim)
+      subgoal 
+        by (simp add: Choice_singleton_bisim)
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (intro conjI exI)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(1))
+      apply (rule bc_bisim)
+      subgoal 
+        by (simp add: choices_Choice_bisim)
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (intro conjI exI)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(2))
+      apply (rule bc_bisim)
+      using Choice_singleton_bisim bisim_sym bisim_trans apply blast
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (intro conjI exI)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(1))
+      apply (rule bc_bisim)
+      apply (simp add: bisim_refl)
+      using Choice_singleton_bisim bisim_sym bisim_trans apply blast
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (intro conjI exI)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(1))
+      apply (rule bc_bisim)
+      apply (simp add: bisim_refl)
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (intro conjI exI)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(2))
+      apply (rule bc_bisim)
+      using Choice_singleton_bisim bisim_sym bisim_trans apply blast
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (intro conjI exI)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(1))
+      apply (rule bc_bisim)
+      apply (simp add: bisim_refl)
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (intro conjI exI)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(2))
+      apply (rule bc_bisim)
+      using Choice_singleton_bisim bisim_sym bisim_trans apply blast
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (intro conjI exI)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(2))
+      apply (rule bc_bisim)
+      using Choice_singleton_bisim bisim_sym apply blast
+      done
+    done
+  subgoal
+    apply auto
+    subgoal
+      apply hypsubst_thin
+      apply (intro conjI exI)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(2))
+      apply (rule bc_bisim)
+      apply (rule choices_Choice_bisim)
+      apply simp
+      apply (metis cUN_constant cimage_constant_conv)
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (intro conjI exI)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(2))
+      apply (rule bc_bisim)
+      using Choice_singleton_bisim apply blast
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (intro conjI exI)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(1))
+      apply (rule bc_bisim)
+      using Choice_singleton_bisim bisim_sym apply auto
+      done
+    subgoal
+      apply hypsubst_thin
+      by (meson bc_refl cinsertI1 cinsertI2 step.intros(2) step.intros(3))
+    subgoal
+      apply hypsubst_thin
+      by (meson Choice_singleton_bisim bisim_cong.intros(2) cinsertI1 cinsertI2 step.intros(2) step.intros(3))
+    subgoal
+      apply hypsubst_thin
+      by (meson bc_refl cinsertI1 cinsertI2 step.simps)
+    subgoal
+      apply hypsubst_thin
+      apply (intro conjI exI)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI2)
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(3))
+        apply (rule cinsertI1)
+       apply (rule step.intros(1))
+      apply (simp add: bc_refl)
+      done
+    subgoal
+      apply hypsubst_thin
+      by (meson bc_refl cinsertI1 cinsertI2 step.simps)
+    done
+  done
+
+
+end
+      apply (intro conjI exI)
+      apply (rule step.intros(3))
+        apply (rule cinsertI1)
+      apply (rule step.intros(3))
+      apply (rule cinsertI2)
+        apply (rule cinsertI2)
+        apply (rule cinsertI1)
+      apply (rule step.intros(3))
+      apply (rule cinsertI1)
+      apply (rule step.intros(3))
+
+
+      apply (rule step.intros(2))
+      apply (rule bc_bisim)
+
+
+end
       find_theorems step map_op
 
       apply (subst (asm) comp_op_code)
