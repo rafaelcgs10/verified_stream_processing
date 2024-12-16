@@ -493,11 +493,36 @@ lemma comp_op_Choice[simp]: "comp_op wire buf op1 op2 = Choice ops \<longleftrig
   by (subst comp_op_code; auto simp: lchoices_def rchoices_def split: op.splits option.splits)+
 declare cin.rep_eq[simp del] cin.rep_eq[symmetric, simp]
 
+lemma "Write sink_op 1 0 \<bullet> (Read (1 :: 1) (\<lambda>_. end_op) \<bullet> Write end_op 1 42) ~
+       Write sink_op 1 0 \<bullet> Read (1 :: 1) (\<lambda>_. end_op) \<bullet> Write end_op 1 42 \<Longrightarrow> False"
+  unfolding scomp_op_def
+  apply (erule bisim.cases; hypsubst_thin)
+  apply (erule thin_rl)
+  unfolding sim_def
+  apply (drule spec2, drule mp)
+  apply (subst comp_op_code)
+  apply (auto simp: ranI) []
+
+end
+
 lemma scomp_op_assoc:
-  "map_op projl projr (comp_op Some buf1 op1 (map_op projl projr (comp_op Some buf2 op2 op3))) ~
+  fixes buf1 buf2 and op1 :: "('a, 'b, 'data) op" and op2 :: "('b, 'c, 'data) op" and op3 :: "('c, 'd, 'data) op"
+
+  shows "map_op projl projr (comp_op Some buf1 op1 (map_op projl projr (comp_op Some buf2 op2 op3))) ~
    map_op projl projr (comp_op Some buf2 (map_op projl projr (comp_op Some buf1 op1 op2)) op3)"
-  apply (coinduction arbitrary: op1 op2 op3 buf1 buf2 rule: bisim_coinduct_upto)
-  subgoal for op1 op2 op3 buf1 buf2
+  apply (rule bisim_coinduct_upto[where R = "\<lambda>l r.
+    (\<exists>buf1 buf2 (op1 :: ('a, 'b, 'data) op) (op2 :: ('b, 'c, 'data) op) (op3 :: ('c, 'd, 'data) op).
+      l = map_op projl projr (comp_op Some buf1 op1 (map_op projl projr (comp_op Some buf2 op2 op3)))
+    \<and> r = map_op projl projr (comp_op Some buf2 (map_op projl projr (comp_op Some buf1 op1 op2)) op3)) \<or>
+    (\<exists>buf1 buf2 (op1 :: ('a, 'b, 'data) op) p2 f2 (op3 :: ('c, 'd, 'data) op).
+      l = map_op projl projr (comp_op Some buf1 op1 (Read p2 (map_op projl projr o (\<lambda>x. comp_op Some buf2 (f2 x) op3))))
+    \<and> r = map_op projl projr (comp_op Some buf2 (map_op projl projr (comp_op Some buf1 op1 (Read p2 f2))) op3))"])
+   apply blast
+  apply (elim disjE conjE exE; hypsubst_thin)
+(*
+  apply (coinduction arbitrary: buf1 buf2 op1 op2 op3 rule: bisim_coinduct_upto)
+*)
+  subgoal for _ _  buf1 buf2 op1 op2 op3
     apply (intro conjI)
       unfolding sim_def
       apply safe
@@ -551,6 +576,7 @@ lemma scomp_op_assoc:
            apply (unfold lchoices_def) []
            apply (cases op2; simp)
           subgoal for op'' p f
+            find_theorems bisim comp_op
 (*
             apply hypsubst_thin
             apply (induct "map_op projl projr
@@ -623,6 +649,8 @@ lemma scomp_op_assoc:
         done
       subgoal sorry
       done
+    subgoal for _ _  buf1 buf2 op1 p2 f2 op3
+      sorry
     done
 
 abbreviation "read_or_write \<equiv> Choice {| Read (1::2) (\<lambda> _. end_op), Write (Read (2::2) (\<lambda> _. end_op)) (1::1) (1::nat) |}"
