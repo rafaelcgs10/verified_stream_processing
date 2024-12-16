@@ -493,15 +493,103 @@ lemma comp_op_Choice[simp]: "comp_op wire buf op1 op2 = Choice ops \<longleftrig
   by (subst comp_op_code; auto simp: lchoices_def rchoices_def split: op.splits option.splits)+
 declare cin.rep_eq[simp del] cin.rep_eq[symmetric, simp]
 
-lemma "Write sink_op 1 0 \<bullet> (Read (1 :: 1) (\<lambda>_. end_op) \<bullet> Write end_op 1 42) ~
-       Write sink_op 1 0 \<bullet> Read (1 :: 1) (\<lambda>_. end_op) \<bullet> Write end_op 1 42 \<Longrightarrow> False"
-  unfolding scomp_op_def
+lemma "map_op projl projr (comp_op Some (\<lambda>_. [1]) sink_op (map_op projl projr (comp_op Some (\<lambda>_. []) (Read 1 (\<lambda>_. \<oslash>)) (Write \<oslash> 1 42)))) ~
+    map_op projl projr (comp_op Some (\<lambda>_. []) (map_op projl projr (comp_op Some (\<lambda>_. [1]) sink_op (Read 1 (\<lambda>_. \<oslash>)))) (Write \<oslash> 1 42)) \<Longrightarrow>
+    False"
   apply (erule bisim.cases; hypsubst_thin)
+  apply (drule asm_rl)
   apply (erule thin_rl)
   unfolding sim_def
   apply (drule spec2, drule mp)
-  apply (subst comp_op_code)
-  apply (auto simp: ranI) []
+   apply (subst (1) comp_op_code)
+   apply (simp add: ranI)
+   apply (rule step.intros)
+    apply (rule cinsertI1)
+   apply (rule step_map_op)
+    apply (rule step_comp_op_L)
+  apply (subst sink_op.code)
+     apply (rule step.intros(1)[where x=2])
+    apply simp
+   apply (rule refl)
+  apply (elim exE disjE)
+  oops
+
+lemma bisim_comp_op_cong:
+  "op1 ~ op1' \<Longrightarrow>
+   op2 ~ op2' \<Longrightarrow>
+   comp_op wire buf op1 op2 ~ comp_op wire buf op1' op2'"
+  sorry
+
+lemma step_bisim:
+  "step op io op' \<Longrightarrow>
+   op'' ~ op \<Longrightarrow>
+   \<exists> op'''. step op'' io op''' \<and> op' ~ op'''"
+  sorry
+
+lemma map_op_cong:
+  "op1 ~ op2 \<Longrightarrow>
+   map_op f g op1 ~ map_op f g op2"
+  sorry
+
+lemma scomp_op_assoc:
+  fixes buf1 buf2 and op1 :: "('a, 'b, 'data) op" and op2 :: "('b, 'c, 'data) op" and op3 :: "('c, 'd, 'data) op"
+  assumes "op23 ~ map_op projl projr (comp_op Some buf2 op2 op3)" and
+  "op12 ~ map_op projl projr (comp_op Some buf1 op1 op2)"
+shows "map_op projl projr (comp_op Some buf1 op1 op23) ~ map_op projl projr (comp_op Some buf2 op12 op3)"
+  using assms apply -
+    apply (coinduction arbitrary: buf1 buf2 op1 op2 op3 op23 op12 rule: bisim_coinduct_upto)
+  subgoal for buf1 buf2 op1 op2 op3 op23 op12
+     unfolding sim_def
+      apply safe
+     subgoal for io op
+       apply (rotate_tac 2)
+        apply (induct "map_op projl projr (comp_op Some buf1 op1 op23)" io op arbitrary: buf1 buf2 op1 op2 op3 op12 op23 rule: step.induct)
+          apply simp
+         apply simp
+       subgoal for op ops l op' buf1 op1 op23 buf2 op2 op3 op12
+         apply auto
+         subgoal for op''
+           apply hypsubst_thin
+  apply (unfold lchoices_def) []
+          apply (cases op1; auto simp: ranI split: option.splits if_splits)
+           subgoal for p f x
+             apply hypsubst_thin
+             apply (subgoal_tac "step (map_op projl projr (comp_op Some buf2 (map_op projl projr (comp_op Some buf1 (Read p f) op2)) op3)) (Inp p x) (map_op projl projr (comp_op Some buf2 (map_op projl projr (comp_op Some buf1 (f x) op2)) op3))")
+             subgoal
+               apply (drule step_bisim)
+                apply (rule map_op_cong)
+               apply (rule bisim_comp_op_cong)
+                 apply assumption
+                apply (rule bisim_refl)
+               apply (elim exE conjE)
+               apply (intro exI conjI)
+                apply assumption
+               apply (rule bc_trans[rotated])
+               apply (rule bc_bisim)
+               apply assumption
+               apply (rule bc_base)
+               apply (intro conjI exI)
+                  apply (rule refl)+
+                apply assumption
+               apply (rule bisim_refl)
+               done
+             subgoal
+               sorry
+             done
+           subgoal sorry
+           subgoal sorry
+           done
+         subgoal for op'''
+           apply (unfold rchoices_def) []
+          apply (cases op23; (simp add: ranI split: if_splits))
+          subgoal for p f
+            apply hypsubst_thin
+
+               find_theorems map_op bisim
+
+
+         apply (subst (asm) (9) comp_op_code)
+         apply simp
 
 end
 
@@ -576,6 +664,7 @@ lemma scomp_op_assoc:
            apply (unfold lchoices_def) []
            apply (cases op2; simp)
           subgoal for op'' p f
+            using prems(3) apply hypsubst_thin
             find_theorems bisim comp_op
 (*
             apply hypsubst_thin
