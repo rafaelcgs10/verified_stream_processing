@@ -577,6 +577,23 @@ lemma Choice_with_spin_op_bisim:
     done
   done
 
+lemma Choice_with_end_op_bisim:
+  "Choice {|end_op, op|} ~ op"
+  apply (coinduction arbitrary: op rule: bisim_coinduct_upto)
+  subgoal for op
+    unfolding sim_def
+    apply (intro conjI allI impI)
+    subgoal for l op'
+      apply auto
+      using bc_refl apply blast
+      done
+    subgoal for l op'
+      apply auto
+      apply (meson bc_refl cinsert_iff step.intros(3))
+      done
+    done
+  done
+
 lemma comp_op_cong_counter_example_1:
   "Choice {|end_op, Read (1::1) (\<lambda> _. end_op) |} \<bullet> Write W (1::1) 42 ~ Read (1::1) (\<lambda> _. end_op) \<bullet> Write W (1::1) 42 \<Longrightarrow>
    False"
