@@ -42,6 +42,33 @@ lemma cfilter_eq[simp]:
    Set.filter P (cset.rcset A) = (cset.rcset B)"
   by (auto simp add: cin.rep_eq)
 
+lemma cin_cfilter[simp]:
+  "x |\<in>| cfilter P A \<longleftrightarrow> x |\<in>| A \<and> P x"
+  by (metis cfilter.rep_eq cin.rep_eq member_filter)
+
+
+lemma cin_cimage_cfilter[simp]:
+  "x |\<in>| cimage f (cfilter P A) \<longleftrightarrow> (\<exists> y. y |\<in>| A \<and> P y \<and> x = f y)"
+  by auto
+
+lemma cUnion_cempty[simp]:
+  "cUnion {||} = {||}"
+  using cUN_empty by auto
+
+lemma cfilter_cempty[simp]:
+  "cfilter P {||} = {||}"
+  by auto
+
+lemma cfilter_cfilter[simp]:
+  "cfilter P (cfilter P S) = cfilter P S"
+  by force
+
+
+lemma cUnion_cinsert[simp]:
+  "cUnion (cinsert x A) = cUn x (cUnion A)"
+  apply (subst (3 8) cset.map_id[symmetric])
+  apply (metis cUN_cinsert eq_id_iff)
+  done
 
 section\<open>Channels\<close>
 
@@ -433,6 +460,24 @@ inductive_cases finished_ReadE[elim!]: "finished (Read p f)"
 inductive_cases finished_WriteE[elim!]: "finished (Write op p x)"
 inductive_cases finished_ChoiceE[elim!]: "finished (Choice ops)"
 
+lemma finished_spin_op[simp]:
+  "finished spin_op"
+  apply coinduction
+  apply (subst spin_op.code)
+  apply auto
+  done
+
+lemma finished_end_op[simp]:
+  "finished end_op"
+  by coinduction blast
+
+lemma Read_not_finished[simp]:
+  "\<not> finished (Read p f)"
+  by force
+lemma Write_not_finished[simp]:
+  "\<not> finished (Write op p x)"
+  by force
+
 inductive ends where
   "(\<forall>op. op |\<in>|ops \<longrightarrow> ends op) \<Longrightarrow> ends (Choice ops)"
 
@@ -505,8 +550,8 @@ lemma finished_iff_all_sub_op_finished:
     using sub_op_Refl by blast
   done
 
-lemma not_finished_sub_op_steppes_or_end:
-  "\<not> finished op \<Longrightarrow> (\<exists> io op'. step op io op') \<or> (\<exists> n op'. sub_op op' op n \<and> op' = end_op)"
+lemma not_finished_stepes:
+  "\<not> finished op \<Longrightarrow> \<exists> io op'. step op io op'"
   apply (erule contrapos_np)
   apply auto
   apply (coinduction arbitrary: op)
@@ -514,7 +559,6 @@ lemma not_finished_sub_op_steppes_or_end:
     apply (cases op)
       apply (auto intro: sub_op_Refl finished.intros step.intros)
      apply (meson cin.rep_eq step.intros(3))
-    apply (meson cin.rep_eq sub_op_Choice)
     done
   done
 
@@ -711,20 +755,6 @@ lemma sim_refl: "reflp R \<Longrightarrow> sim R s s"
 
 lemma sim_trans: "transp R \<Longrightarrow> sim R s t \<Longrightarrow> sim R t u \<Longrightarrow> sim R s u"
   by (fastforce simp: sim_def transp_def)
-
-
-
-
-lemma bisim_Read_Choice[simp]:
-  "bisim (Read p f) (Choice ops) \<longleftrightarrow> ((\<forall>op. op |\<in>| ops \<longrightarrow> bisim (Read p f) op) \<and> ops \<noteq> cempty)"
-  apply (safe intro!: context_conjI)
-  subgoal for op
-    apply (rule bisim.intros)
-      apply (auto simp flip: cin.rep_eq)
-    subgoal
-      apply (erule bisim.cases)
-      apply auto
-      oops
     (* 
 lemma bisim_Choice_Read[simp]:
   "bisim (Choice ops) (Read p f) \<longleftrightarrow> (\<forall>op. op |\<in>| ops \<longrightarrow> bisim op (Read p f)) \<and> ops \<noteq> {||}"
@@ -1043,6 +1073,7 @@ lemma bisim_map_op:
         apply auto
         apply hypsubst_thin
         apply (drule step_map_op[where f=f and g=g and op=t])
+        apply (rule refl)
         apply (intro conjI exI)
         apply assumption
         apply (metis (mono_tags, lifting) bc_base bisim_sym)
@@ -1058,6 +1089,7 @@ lemma bisim_map_op:
         apply auto
         apply hypsubst_thin
         apply (drule step_map_op[where f=f and g=g and op=s])
+        apply (rule refl)
         apply (intro conjI exI)
         apply assumption
         apply (metis (mono_tags, lifting) bc_base bisim_sym)
@@ -1200,6 +1232,44 @@ lemma step_choicesE:
   obtains p f x where "io = Inp p x" "Read p f |\<in>| choices op" "op' = f x" | p x where "io = Out p x" "Write op' p x |\<in>| choices op"
   apply (atomize_elim)
   using assms by (induct op io op' rule: step.induct) (auto simp add: cinsert.rep_eq cUnion.rep_eq cimage.rep_eq)
+
+
+lemma Choice_singleton_bisim:
+  "Choice {|op|} ~ op"
+  apply (rule bisim.intros)
+  unfolding sim_def
+   apply (auto intro: step.intros bisim_refl)
+  done
+
+lemma choices_Choice_bisim:
+  "choices op1 = choices op2  \<Longrightarrow>
+   op1 ~ op2"
+ apply (coinduction arbitrary: op1 op2 rule: bisim_coinduct_upto)
+  unfolding sim_def
+  apply (intro impI allI conjI)
+  subgoal for op1 op2 l s'
+    apply (erule step_choicesE)
+    subgoal for p f x
+      apply simp
+      apply (meson Read_in_choices_step bc_refl cin.rep_eq)
+      done
+    subgoal
+      apply simp
+      apply (meson Write_in_choices_step bc_refl cin.rep_eq)
+      done
+    done
+  subgoal
+  apply (erule step_choicesE)
+    subgoal for p f x
+      apply simp
+      apply (metis Read_in_choices_step bc_refl cin.rep_eq)
+      done
+    subgoal
+      apply simp
+      apply (metis Write_in_choices_step bc_refl cin.rep_eq)
+      done
+    done
+  done
 
 
 lemma step_no_inputs:
