@@ -794,5 +794,207 @@ lemma example_1:
             apply simp
           oops
 
+lemma
+  "read_or_write \<bullet> ((end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1)) ~ read_or_write \<bullet> (end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1) \<Longrightarrow> False"
+  apply (erule bisim.cases)
+  apply simp
+  apply hypsubst_thin
+  unfolding sim_def scomp_op_def
+  apply (drule spec2)
+  apply (drule mp)
+   apply (rule step_map_op)
+    apply (subst comp_op_code)
+    apply (rule step.intros(3))
+     apply simp
+     apply (rule disjI1)
+     apply (rule refl)
+    apply (subst (1) bind_op.code)
+    apply simp
+    apply (rule step.intros(3))
+     apply simp
+     apply (rule disjI2)
+     apply (rule refl)
+    apply (subst (1) bind_op.code)
+    apply simp
+    apply (subst comp_op_code)
+    apply (rule step.intros(3))
+     apply simp
+     apply (rule disjI2)
+     apply (rule refl)
+    apply (subst (1) bind_op.code)
+    apply (subst (7) comp_op_code)
+    apply simp
+    apply (rule step.intros(3))
+     apply simp
+     apply (rule disjI2)
+     apply (rule refl)
+    apply (subst (1) bind_op.code)
+    apply (subst (1) bind_op.code)
+    apply simp
+    apply (rule step.intros(2))
+   apply (rule refl)
+  apply (erule thin_rl)
+  apply simp
+  apply (elim exE conjE)
+  apply (subst (asm) (2) comp_op_code)
+  apply auto
+  subgoal
+    apply (subst (asm) bind_op.code)
+    apply (subst (asm) (7) comp_op_code)
+    apply auto
+    subgoal
+      apply (subst (asm) bind_op.code)
+      apply (subst (asm) bind_op.code)
+      apply auto
+      subgoal
+        apply (subst (asm) bind_op.code)
+        apply (subst (asm) bind_op.code)
+        apply auto
+        done
+      subgoal
+        apply (subst (asm) bind_op.code)
+        apply (subst (asm) bind_op.code)
+        apply auto
+        apply (subst (asm) (7) comp_op_code)
+        apply auto
+        subgoal
+          apply (subst (asm) bind_op.code)
+          apply (subst (asm) bind_op.code)
+          apply auto
+          done
+        subgoal
+          apply (subst (asm) bind_op.code)
+          apply (subst (asm) bind_op.code)
+          apply auto
+          done
+        done
+      done
+    subgoal
+      apply (subst (asm) bind_op.code)
+      apply (subst (asm) bind_op.code)
+      apply auto
+      done
+    done
+  subgoal
+    apply (subst (asm) bind_op.code)
+    apply auto
+    apply hypsubst_thin
+    apply (erule bisim.cases)
+    apply auto
+    unfolding sim_def
+    apply (erule thin_rl)
+    apply (drule spec2)
+    apply (drule mp)
+     apply (rule step_map_op)
+      apply (subst (2) comp_op_code)
+      apply simp
+      apply (rule step.intros(3))
+       apply simp
+       apply (rule disjI1)
+       apply (rule refl)
+      apply (subst bind_op.code)
+      apply (subst (5) comp_op_code)
+      apply simp
+      apply (rule step.intros(3))
+       apply simp
+       apply (rule disjI1)
+       apply (rule refl)
+      apply (subst bind_op.code)
+      apply (subst bind_op.code)
+      apply simp
+      apply (rule step.intros(3))
+       apply simp
+       apply (rule disjI1)
+       apply (rule refl)
+      apply (subst bind_op.code)
+      apply (subst bind_op.code)
+      apply simp
+      apply (rule step.intros(1))
+     apply (rule refl)
+    apply auto
+    apply (subst (asm) comp_op_code)
+    apply auto
+     apply (subst (asm) bind_op.code)
+     apply auto
+    apply (subst (asm) bind_op.code)
+    apply (subst (asm) (9) comp_op_code)
+    apply auto
+     apply (subst (asm) bind_op.code)
+     apply (subst (asm) bind_op.code)
+     apply auto
+    apply (subst (asm) bind_op.code)
+    apply (subst (asm) bind_op.code)
+    apply auto
+    done
+  done
+
+
+
+
+
+    find_theorems step map_op
+
+
+
+
+
+  subgoal
+    apply (auto simp del: cimage_cinsert simp add:  ranI split: op.splits)
+    apply hypsubst_thin
+    apply (simp add: comp_def cimage_cUnion)
+    apply (erule bisim.cases)
+    apply hypsubst_thin
+    apply (erule thin_rl)
+    unfolding sim_def
+    apply (drule spec2)
+    apply (drule mp)
+     apply (rule step.intros(3))
+      apply (rule cinsertI1)
+     apply (rule step.intros(1))
+    apply auto
+    done
+  done
+
+end
+
+     apply (rule cUnI1)
+     apply (rule cimageI)
+     apply (simp (no_asm) only: choices_Choice)
+     apply (rule cUN_I)
+      apply (rule cinsertI2)
+      apply (rule cinsertI1)
+     apply simp
+    apply (simp (no_asm) only: op.case option.case)
+    apply (rule step_comp_op_R)
+     apply (rule step_map_op)
+      apply (rule step_comp_op_R)
+       apply (rule step.intros(2))
+      apply simp
+     apply simp
+    apply simp
+   apply (rule refl)
+  apply (erule thin_rl)
+  apply simp
+  apply (elim exE conjE)
+  apply (erule step_choicesE)
+  subgoal
+    apply simp
+    done
+  subgoal
+    apply (auto simp del: cimage_cinsert simp add:  ranI split: op.splits)
+    apply hypsubst_thin
+    apply (simp add: comp_def cimage_cUnion)
+    apply (erule bisim.cases)
+    apply hypsubst_thin
+    apply (erule thin_rl)
+    unfolding sim_def
+    apply (drule spec2)
+    apply (drule mp)
+     apply (rule step.intros(3))
+      apply (rule cinsertI1)
+     apply (rule step.intros(1))
+    apply auto
+    done
+  done
 
 
