@@ -589,51 +589,6 @@ lemma cfilter_not_finshed_end_op[simp]:
   by fastforce
 
 lemma
-  "step (comp_op wire buf (Choice ops) op2) io op \<Longrightarrow>
-   \<exists> op'. step (comp_op wire buf (Choice (cfilter (Not \<circ> finished) ops)) op2) io op' \<and> op ~ op'"
-  apply (induct "comp_op wire buf (Choice ops) op2" io op arbitrary: ops op2 buf pred: step)
-  apply simp_all
-  subgoal for op ops l op' ops' op2 buf
-    apply (elim disjE)
-    subgoal
-      unfolding lchoices_def
-      apply (auto simp add: cimage_iff)
-      apply hypsubst_thin
-      subgoal for op''
-        apply (cases op'')
-        subgoal for p f
-          apply simp
-          apply hypsubst_thin
-          apply (subst (asm) comp_op_code)
-          apply auto
-          subgoal for x
-            apply (intro conjI exI)
-            apply (subst comp_op_code)
-             apply simp
-            apply (rule step.intros)
-              apply simp
-              apply (rule disjI1)
-              apply (rule cimage_eqI[of _ _ "Read p f"])
-               apply (rule refl)
-              apply simp
-            apply (subst comp_op_code)
-            apply simp
-            apply (rule step.intros)
-              apply simp
-              apply (rule disjI1)
-              apply (rule refl)
-            apply (rule step.intros)
-            apply (rule bisim_refl)
-            done
-          subgoal for op'''
-            apply (cases op2)
-            subgoal for p' f'
-              apply (auto split: if_splits)
-              subgoal
-                apply hypsubst_thin
-                oops
-
-lemma
   "comp_op wire buf (Choice ops) op2 ~ comp_op wire buf (Choice (cfilter (Not o finished) ops)) op2"
   apply (coinduction arbitrary: ops op2 buf rule: bisim_coinduct_upto)
   subgoal for ops op2 buf
@@ -915,24 +870,6 @@ lemma bisim_comp_op_cong:
               oops
 
 
-end
-              apply (drule sorried_1)
-               apply assumption
-              apply (drule meta_spec)+
-              apply (drule meta_mp)
-              apply (rule refl)
-              apply (drule meta_mp)
-               apply assumption
-              apply (drule meta_mp)
-               apply assumption
-              apply safe
-              apply (intro conjI[rotated] exI)
-              apply assumption
-
-
-
-end
-
 lemma map_op_cong:
   "op1 ~ op2 \<Longrightarrow>
    map_op f g op1 ~ map_op f g op2"
@@ -1055,100 +992,7 @@ lemma scomp_op_assoc:
              apply (rule cimageI)
              apply (rule cUnI1)
             apply (subst (5) comp_op_code; simp)
-            done
-          subgoal
-            apply (drule prems(3))
-            apply (erule exE conjE)+
-            apply (rule exI conjI[rotated] | assumption)+
-            apply (subst (2) comp_op_code; simp)
-            apply (erule step.intros(3)[rotated])
-             apply (rule cimageI)
-             apply (rule cUnI1)
-            apply (subst (5) comp_op_code; simp)
-            done
-          apply (unfold rchoices_def) []
-          apply (cases "map_op projl projr (comp_op Some buf2 op2 op3)"; simp)
-          apply safe
-           apply (unfold lchoices_def) []
-           apply (cases op2; simp)
-          subgoal for op'' p f
-            using prems(3) apply hypsubst_thin
-            find_theorems bisim comp_op
-(*
-            apply hypsubst_thin
-            apply (induct "map_op projl projr
-          (comp_op Some buf1 op1 (Read p (map_op projl projr \<circ> (\<lambda>x. comp_op Some buf2 (f x) op3))))" io op' arbitrary: buf1 buf2 op1 f op3 rule: step.induct)
-              apply simp
-             apply simp
-            apply simp
-            subgoal premises prems2 for op ops l op' buf1 buf2 op1 f op3
-              using prems2(1,2)
-              apply safe
-              apply (unfold lchoices_def) []
-               apply (cases op1; auto simp: ranI split: option.splits if_splits)
-              subgoal sorry
-            subgoal sorry
-            apply (rule exI conjI[rotated])+
-            apply (rule bc_refl[OF refl])
-            apply (subst (2) comp_op_code; simp)
-            apply (rule step.intros(3))
-             apply (rule cimageI)
-             apply (rule cUnI1)
-             apply (subst (5) comp_op_code; simp add: ranI)
-             apply (rule disjI1)
-             apply (rule refl)
-            apply assumption
-            apply (rule conjI impI)+
-             apply (rule cimageI)
-             apply (rule cimageI)
-             apply (rule cUnI1)
-*)
-            sorry
-          subgoal
-            apply (drule prems(3))
-            apply (erule exE conjE)+
-            apply (rule exI conjI[rotated] | assumption)+
-            apply (subst (2) comp_op_code; simp)
-            apply (rule step.intros(3))
-             apply (rule cimageI)
-             apply (rule cUnI1)
-            apply (subst (5) comp_op_code; simp)
-             apply (rule disjI1)
-            apply (rule refl)
-            apply (subst (2) comp_op_code; simp)
-            apply (erule step.intros(3)[rotated])
-            apply simp
-            done
-          subgoal
-            apply safe
-            apply (drule prems(3))
-            apply (erule exE conjE)+
-            apply (rule exI conjI[rotated] | assumption)+
-            apply (subst (2) comp_op_code; simp)
-            apply (erule step.intros(3)[rotated])
-             apply (rule cimageI)
-             apply (rule cUnI1)
-            apply (subst (5) comp_op_code; simp)
-            done
-          apply (unfold rchoices_def) [1]
-          apply (cases op3; auto simp: ranI split: option.splits if_splits)
-          subgoal
-            apply (drule prems(3))
-            apply (erule exE conjE)+
-            apply (rule exI conjI[rotated] | assumption)+
-            apply (subst (2) comp_op_code; simp add: ranI)
-            apply (erule step.intros(3)[rotated])
-            apply simp
-            done
-          subgoal sorry
-          subgoal sorry
-          done
-        done
-      subgoal sorry
-      done
-    subgoal for _ _  buf1 buf2 op1 p2 f2 op3
-      sorry
-    done
+            oops
 
 abbreviation "read_or_write \<equiv> Choice {| Read (1::2) (\<lambda> _. end_op), Write (Read (2::2) (\<lambda> _. end_op)) (1::1) (1::nat) |}"
 
