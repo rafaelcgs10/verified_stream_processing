@@ -678,32 +678,121 @@ lemma example_1:
       apply (subst (asm) bind_op.code)
       apply auto
       subgoal
-      apply (subst (asm) bind_op.code)
+        apply (subst (asm) bind_op.code)
         apply auto
         apply hypsubst_thin
         subgoal for x
           apply (intro conjI exI)
            apply (rule step_map_op)
             apply (subst (2) comp_op_code)
-          apply simp
-       apply (rule step.intros(3))
-        apply (rule cinsertI1)
-      apply (subst bind_op.code)
-            apply (subst (5) comp_op_code)
-          apply auto
-       apply (rule step.intros(3))
-        apply (rule cinsertI1)
-      apply (subst bind_op.code)
-      apply (subst bind_op.code)
-          apply simp
-       apply (rule step.intros(3))
-        apply (rule cinsertI1)
-            apply (subst (1) bind_op.code)
-      apply (subst (1) bind_op.code)
             apply simp
-       apply (rule step.intros(1))
+            apply (rule step.intros(3))
+             apply (rule cinsertI1)
+            apply (subst bind_op.code)
+            apply (subst (5) comp_op_code)
+            apply auto
+            apply (rule step.intros(3))
+             apply (rule cinsertI1)
+            apply (subst bind_op.code)
+            apply (subst bind_op.code)
+            apply simp
+            apply (rule step.intros(3))
+             apply (rule cinsertI1)
+            apply (subst (1) bind_op.code)
+            apply (subst (1) bind_op.code)
+            apply simp
+            apply (rule step.intros(1))
            apply auto[1]
           apply (rule bc_bisim)
           sorry
         done
       subgoal
+        apply (subst (asm) bind_op.code)
+        apply auto
+        apply (subst (asm) comp_op_code)
+        apply auto
+         apply (subst (asm) bind_op.code)
+         apply auto
+        subgoal 
+          apply hypsubst_thin
+          apply (intro conjI exI)
+           apply (rule step_map_op)
+            apply (subst (2) comp_op_code)
+            apply simp
+            apply (rule step.intros(3))
+             apply (rule cinsertI1)
+            apply (subst bind_op.code)
+            apply (subst (5) comp_op_code)
+            apply auto
+            apply (rule step.intros(3))
+             apply (rule cinsertI1)
+            apply (subst bind_op.code)
+            apply (subst bind_op.code)
+            apply simp
+            apply (rule step.intros(3))
+             apply (rule cinsertI2)
+             apply (subst (1) bind_op.code)
+             apply (subst (1) bind_op.code)
+             apply simp
+            apply (subst (5) comp_op_code)
+            apply simp
+            apply (rule step.intros(3))
+             apply simp
+             apply (rule disjI1)
+             apply (rule refl)
+            apply (subst (1) bind_op.code)
+            apply (subst (1) bind_op.code)
+            apply simp
+            apply (rule step.intros(1))
+           apply simp
+          apply (rule bc_bisim)
+          sorry
+        subgoal
+          apply (subst (asm) bind_op.code)
+          apply (subst (asm) (7) comp_op_code)
+          apply auto
+           apply (subst (asm) bind_op.code)
+           apply (subst (asm) bind_op.code)
+           apply auto
+          apply (subst (asm) bind_op.code)
+          apply (subst (asm) bind_op.code)
+          apply auto
+          apply hypsubst_thin
+          apply (intro conjI exI)
+           apply (rule step_map_op)
+            apply (subst (2) comp_op_code)
+            apply simp
+            apply (rule step.intros(3))
+             apply simp
+             apply (rule disjI1)
+             apply (rule refl)
+            apply (subst (1) bind_op.code)
+            apply (subst (5) comp_op_code)
+            apply simp
+            apply (rule step.intros(3))
+             apply simp
+             apply (rule disjI1)
+             apply (rule refl)
+            apply (subst (1) bind_op.code)
+            apply (subst (1) bind_op.code)
+            apply simp
+            apply (rule step.intros(3))
+             apply simp
+             apply (rule disjI2)
+             apply (rule refl)
+            apply (subst (1) bind_op.code)
+            apply (subst (1) bind_op.code)
+            apply simp
+            apply (subst (5) comp_op_code)
+            apply simp
+            apply (rule step.intros(3))
+             apply simp
+             apply (rule disjI2)
+             apply (rule refl)
+            apply (subst (1) bind_op.code)
+            apply (subst (1) bind_op.code)
+            apply simp
+          oops
+
+
+
