@@ -6,28 +6,6 @@ imports
   Operator
 begin
 
-corec bind_op where
-  "bind_op r w op = (case op of
-    Read p f \<Rightarrow> r p f
-  | Write op p x \<Rightarrow> w op p x
-  | Choice ops \<Rightarrow> Choice (cimage (bind_op r w) ops))"
-
-consts comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
-  ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" 
-
-lemma
-  "comp_op wire buf op1 op2 = Choice {| bind_op 
-   (\<lambda> p f. Read (Inl p) (\<lambda> x. comp_op wire buf (f x) op2))
-   (\<lambda> op1' p x. case wire p of None \<Rightarrow> Write (comp_op wire buf op1' op2) (Inl p) x | Some q \<Rightarrow> comp_op wire (BENQ q x buf) op1' op2) op1,
-   bind_op
-   (\<lambda> p f. if p \<in> ran wire then if buf p = [] then \<oslash> else comp_op wire (BTL p buf) op1 (f (BHD p buf)) else Read (Inr p) (\<lambda> x. comp_op wire buf op1 (f x)))
-   (\<lambda> op2' p x. Write (comp_op wire buf op1 op2') (Inr p) x)
-   op2  
- |}"
-
-
-end
-
 (*workaround about termination issue in corecursive*)
 lemma case_prod_cong4[fundef_cong]:
   fixes prod prod' f g
