@@ -409,25 +409,25 @@ section\<open>Trace model basics\<close>
 datatype ('a, 'b, 'd) IO = Inp (proji: 'a) (data: "'d") | Out (projo: 'b) (data: 'd) | Tau
 
 inductive step where
-  "step (Read p f) (Inp p x) (f x)"
-| "step (Write op q x) (Out q x) op"
-| "step (Silent op) Tau op"
-| "cin op ops \<Longrightarrow> step op l op' \<Longrightarrow> step (Choice ops) l op'"
+  "step (Inp p x) (Read p f) (f x)"
+| "step (Out q x) (Write op q x) op"
+| "step Tau (Silent op) op"
+| "cin op ops \<Longrightarrow> step io op op' \<Longrightarrow> step io (Choice ops) op'"
 
-inductive_cases stepReadE [elim!]: "step (Read p f) io op'"
-inductive_cases stepWriteE [elim!]: "step (Write op q x) io op'"
-inductive_cases stepSilentE [elim!]: "step (Silent op) io op'"
-inductive_cases stepChoiceE [elim!]: "step (Choice ops) io op'"
+inductive_cases stepReadE [elim!]: "step io (Read p f) op'"
+inductive_cases stepWriteE [elim!]: "step io (Write op q x) op'"
+inductive_cases stepSilentE [elim!]: "step io (Silent op) op'"
+inductive_cases stepChoiceE [elim!]: "step io (Choice ops) op'"
 
 lemma step_map_op:
-  "step op io op' \<Longrightarrow> io' = map_IO f g id io \<Longrightarrow>
-   step (map_op f g op) io' (map_op f g op')"
-  by (induct op io op' rule: step.induct) (force simp add: comp_def intro: step.intros)+
+  "step io op op' \<Longrightarrow> io' = map_IO f g id io \<Longrightarrow>
+   step io' (map_op f g op) (map_op f g op')"
+  by (induct io op op' rule: step.induct) (force simp add: comp_def intro: step.intros)+
 
 lemma step_map_op_inv:
-  "step (map_op f g op) io op' \<Longrightarrow>
-   \<exists> io' op''. step op io' op'' \<and> io = map_IO f g id io' \<and> op' = map_op f g op''"
-  apply (induct "map_op f g op" io op' arbitrary: op rule: step.induct)
+  "step io (map_op f g op) op' \<Longrightarrow>
+   \<exists> io' op''. step io' op op'' \<and> io = map_IO f g id io' \<and> op' = map_op f g op''"
+  apply (induct io "map_op f g op" op' arbitrary: op rule: step.induct)
      apply (auto intro: step.intros)
   subgoal for p fa x op
     apply (cases op)
@@ -447,24 +447,14 @@ lemma step_map_op_inv:
     done
   done
 
-definition "sim R s t = (\<forall>l s'. step s l s' \<longrightarrow> (\<exists>t'. step t l t' \<and> R s' t'))"
-
-abbreviation "visible_step io op1 op2 \<equiv> (if io = Tau then False else step op1 io op2)"
-
-abbreviation "tau_step op1 op2 \<equiv> step op1 Tau op2"
-
-definition "wstep io = tau_step^** OO visible_step io OO tau_step^**"
-
-definition "wsim R s t = (\<forall>l s'. wstep l s s' \<longrightarrow> (\<exists>t'. wstep l t t' \<and> R s' t'))"
-
-lemma sim_mono[mono]: "R \<le> S \<Longrightarrow> sim R \<le> sim S"
-  by (force simp: sim_def le_fun_def)
+definition "wstep io = (step Tau)^** OO (step io) OO (step Tau)^**"
+definition "wsim R op1 op2 = (\<forall>io op1'. step io op1 op1' \<longrightarrow> (\<exists>op2'. wstep io op2 op2' \<and> R op1' op2'))"
 
 lemma wsim_mono[mono]: "R \<le> S \<Longrightarrow> wsim R \<le> wsim S"
   by (force simp: wsim_def le_fun_def)
 
 coinductive wbisim (infix "\<approx>"40) where
-  "wsim wbisim s t \<Longrightarrow> wsim wbisim t s \<Longrightarrow> wbisim s t"
+  "wsim wbisim op1 op2 \<Longrightarrow> wsim wbisim op2 op1 \<Longrightarrow> wbisim op1 op2"
 
 inductive wbisim_cong for R where
   wbc_base:  "R x y \<Longrightarrow> wbisim_cong R x y"
@@ -481,22 +471,82 @@ lemma wbisim_cong_disj:
   "(wbisim_cong R x y \<or> wbisim x y) = wbisim_cong R x y"
   by (auto intro: wbisim_cong.intros)
 
-lemma trans_tau_Read:
-  "tau_step\<^sup>*\<^sup>* (Read p f) op \<Longrightarrow> op = Read p f"
-  apply (erule converse_rtranclpE)
-   apply auto
-  done
-  
-lemma trans_tau_Write:
-  "tau_step\<^sup>*\<^sup>* (Write op p x) op \<Longrightarrow> op = Write op p x"
-  apply (erule converse_rtranclpE)
-   apply auto
+lemma wbisim_refl:
+  "wbisim op op"
+  apply (coinduction arbitrary: op)
+  subgoal for op
+    unfolding wsim_def wstep_def
+    apply auto
+    done
   done
 
+lemma wbisim_sym:
+  "op1 \<approx> op2 \<longleftrightarrow> op2 \<approx> op1"
+  apply (intro iffI)
+  subgoal
+    apply (coinduction arbitrary: op1 op2)
+    subgoal for op1 op2
+      apply simp
+      unfolding wsim_def wstep_def
+      apply auto
+      subgoal for io op
+        apply (erule wbisim.cases)
+        unfolding wsim_def wstep_def
+        apply blast
+        done
+      subgoal for io op
+        apply (erule wbisim.cases)
+        unfolding wsim_def wstep_def
+        apply blast
+        done
+      done
+    done
+  subgoal
+    apply (coinduction arbitrary: op1 op2)
+    subgoal for op1 op2
+      apply simp
+      unfolding wsim_def wstep_def
+      apply auto
+      subgoal for io op
+        apply (erule wbisim.cases)
+        unfolding wsim_def wstep_def
+        apply blast
+        done
+      subgoal for io op
+        apply (erule wbisim.cases)
+        unfolding wsim_def wstep_def
+        apply blast
+        done
+      done
+    done
+  done
+
+lemma step_wstep:
+  "step io op op' \<Longrightarrow> wstep io op op'"
+  unfolding wstep_def by force
+
+lemma wbisim_trans:
+  "op1 \<approx> op2 \<Longrightarrow> op2 \<approx> op3 \<Longrightarrow> op1 \<approx> op3"
+  apply (coinduction arbitrary: op1 op2 op3)
+  apply (erule wbisim.cases)+
+  unfolding wstep_def wsim_def
+  apply auto
+  subgoal for op1 op2'' op2 io op1'
+    apply (drule spec2)
+    apply (drule mp)
+     apply assumption
+    apply auto
+    apply (erule wbisim.cases)+
+  unfolding wstep_def wsim_def
+  apply auto
+  sledgehammer [timeout = 100, provers = cvc4 vampire verit z3]
+
+
+end
 lemma wbisim_coinduct_upto:
   "R op1 op2 \<Longrightarrow>
    (\<And>s t. R s t \<Longrightarrow> wsim (wbisim_cong R) s t \<and> wsim (wbisim_cong R) t s) \<Longrightarrow>
-   wbisim op1 op2"
+   op1 \<approx> op2"
   apply (rule wbisim.coinduct[where X="wbisim_cong R", unfolded wbisim_cong_disj, of op1 op2])
   subgoal
     by (auto intro: wbisim_cong.intros)
@@ -510,22 +560,39 @@ lemma wbisim_coinduct_upto:
       apply (auto simp: le_fun_def wbc_bisim elim: wbisim.cases)
       done
     subgoal
-      by (auto intro: wbc_refl simp: wsim_def)
+      by (auto intro: wbc_refl simp: wsim_def wstep_def)
     subgoal
-      by (fastforce)
+      by fastforce
     subgoal
-      by (smt (verit, ccfv_threshold) wbc_trans wsim_def)
-    subgoal
-      apply (auto simp: rel_fun_def wstep_def wsim_def intro: wbc_Read wbc_sym step.intros dest!: trans_tau_Read)
+      unfolding wsim_def wstep_def
+      apply (auto intro: wbc_sym simp: wsim_def wstep_def)
+      subgoal
+        apply (drule spec2)
+        apply (drule mp)
+        apply assumption
+        apply auto
+        subgoal for op2'
+          apply (rule exI[of _ op2'])
+          apply auto
+
+
+end
+(*     subgoal
       sorry
-    subgoal
-      sorry
-    subgoal
-      sorry
-    subgoal
-      sorry
-    done
-  done
+    subgoal for op1 op2 p d
+      apply (auto simp: wstep_def wsim_def intro: wbc_Read wbc_sym step.intros)
+      subgoal for io x op1' op1''
+        apply (frule visible_cant_tau_step)
+         apply auto
+        apply hypsubst_thin
+        apply (rule exI)
+        apply auto
+         apply (rule relcomppI)
+          apply (rule rtranclp.rtrancl_refl)
+            apply (rule relcomppI)
+          apply (rule step.intros)
+         apply blast *)
+        oops
 
 coinductive finished where
   "(\<forall>op. op |\<in>|ops \<longrightarrow> finished op) \<Longrightarrow> finished (Choice ops)"
@@ -744,14 +811,23 @@ lemma bisim_trans:
 
 lemma bisim_Write_cong:
   "op1 \<approx> op2 \<Longrightarrow> Write op1 p x \<approx> Write op2 p x"
-  sorry
-(*   apply (coinduction arbitrary: op1 op2 rule: bisim_coinduct_upto)
-  apply (erule bisim.cases)
-  apply (unfold sim_def)
+  apply (coinduction arbitrary: op1 op2)
+  subgoal for op1 op2
+  apply (erule wbisim.cases)
+  apply (unfold wsim_def)
   apply clarsimp
   apply safe
-   apply (metis (no_types, lifting) bc_bisim bisim.intros sim_def step.intros(2))+
-  done *)
+    subgoal for io op
+      unfolding wstep_def
+      apply auto
+      subgoal for op' op''
+        apply (drule spec[of _ io])
+        apply (drule spec[of _ op''])
+        apply (drule mp)
+        oops
+
+
+end
 
 lemma bisim_Silent_cong:
   "op1 \<approx> op2 \<Longrightarrow> Silent op1 \<approx> Silent op2"
