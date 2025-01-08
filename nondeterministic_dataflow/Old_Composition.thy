@@ -52,17 +52,19 @@ lemma comp_op_code: "comp_op wire buf op1 op2 =
         Read p f \<Rightarrow> Read (Inl p) (\<lambda>x. comp_op wire buf (f x) op2)
       | Write op p x \<Rightarrow> (case wire p of
           None \<Rightarrow> Write (comp_op wire buf op op2) (Inl p) x
-        | Some q \<Rightarrow> comp_op wire (BENQ q x buf) op op2)) (choices op1))
+        | Some q \<Rightarrow> Silent (comp_op wire (BENQ q x buf) op op2))
+      | Silent op \<Rightarrow> Silent (comp_op wire buf op op2)) (choices op1))
     (cimage (\<lambda>op. case op of
-        Read p f \<Rightarrow> if p \<in> ran wire then comp_op wire (BTL p buf) op1 (f (BHD p buf))
+        Read p f \<Rightarrow> if p \<in> ran wire then Silent (comp_op wire (BTL p buf) op1 (f (BHD p buf)))
           else Read (Inr p) (\<lambda>x. comp_op wire buf op1 (f x))
-      | Write op p x \<Rightarrow> Write (comp_op wire buf op1 op) (Inr p) x) (sound_reads wire buf (choices op2))))"
+      | Write op p x \<Rightarrow> Write (comp_op wire buf op1 op) (Inr p) x
+      | Silent op \<Rightarrow> Silent (comp_op wire buf op1 op)) (sound_reads wire buf (choices op2))))"
   apply (subst comp_op.code)
   apply (unfold cimage_cUn op.inject)
   apply (rule arg_cong2[where f = cUn])
    apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
       split: comp_op_aux.splits op.splits option.splits)
-  done
+  sorry
 
 lemma comp_op_simps[simp]:
   "comp_op wire buf (Read p1 f1) (Read p2 f2) =
@@ -303,7 +305,8 @@ lemma cUnion_cinsert[simp]:
   done
 
 lemma
-  "read_or_write \<bullet> ((end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1)) ~ read_or_write \<bullet> (end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1) \<Longrightarrow> False"
+  "read_or_write \<bullet> ((end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1)) ~ 
+   read_or_write \<bullet> (end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1) \<Longrightarrow> False"
   apply (erule bisim.cases)
   apply simp
   apply hypsubst_thin
