@@ -31,6 +31,8 @@ end
 declare cBall.rep_eq[simp] cinsert.rep_eq[simp] bot_cset.rep_eq[simp] sup_cset.rep_eq[simp] cimage.rep_eq[simp] cUnion.rep_eq[simp] rel_cset.rep_eq[simp]
   cfilter.rep_eq[simp]
 
+declare ranI[simp]
+
 lemma cfilter_eq[simp]:
   "cfilter P A = B \<longleftrightarrow>
    Set.filter P (cset.rcset A) = (cset.rcset B)"

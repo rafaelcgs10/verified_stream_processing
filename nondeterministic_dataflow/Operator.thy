@@ -5,7 +5,6 @@ theory Operator
 imports
   "Coinductive.Coinductive_List"
   "HOL-Library.BNF_Corec"
-  "HOL-Library.BNF_Corec"
   "HOL-Library.Code_Lazy"
   "HOL-Library.Numeral_Type"
   "HOL-Library.Code_Cardinality"
@@ -328,10 +327,10 @@ section\<open>Transition system\<close>
 datatype ('a, 'b, 'd) IO = Inp (proji: 'a) (data: "'d") | Out (projo: 'b) (data: 'd) | Tau
 
 inductive step where
-  "step (Inp p x) (Read p f) (f x)"
-| "step (Out q x) (Write op q x) op"
-| "step Tau (Silent op) op"
-| "cin op ops \<Longrightarrow> step io op op' \<Longrightarrow> step io (Choice ops) op'"
+  SR: "step (Inp p x) (Read p f) (f x)"
+| SW: "step (Out q x) (Write op q x) op"
+| ST: "step Tau (Silent op) op"
+| SC: "cin op ops \<Longrightarrow> step io op op' \<Longrightarrow> step io (Choice ops) op'"
 
 inductive_cases stepReadE [elim!]: "step io (Read p f) op'"
 inductive_cases stepWriteE [elim!]: "step io (Write op q x) op'"
@@ -1152,6 +1151,7 @@ lemma inputs_W[simp]:
         apply (subst (asm) W.code, auto)+
     done
   done
+
     (* 
 lemma step_AW_inv:
   "step op io op' \<Longrightarrow>
@@ -1422,6 +1422,12 @@ lemma traces_Write[simp]:
 lemma traces_end_op[simp]:
   "traces end_op = {LNil}"
   by (auto simp: traces_def intro: finished.intros traced.intros step.intros elim: traced.cases)
+
+
+lemma step_spin_op_no_label:
+  "step io \<otimes> op \<Longrightarrow> False"
+  using spin_op_finished step_not_finished by blast
+
     (* 
 corec traced_wit where
   "traced_wit op = (case op of
