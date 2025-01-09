@@ -1008,6 +1008,11 @@ lemma example_1:
       apply (intro conjI exI)
        apply (rule step.intros(3))
         apply (rule cinsertI1)
+      apply simp
+       apply (rule step.intros(2))
+
+
+end
        apply (rule step.intros(2))
       apply (rule bc_bisim)
       apply (rule choices_Choice_bisim)
