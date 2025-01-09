@@ -3,7 +3,8 @@ text \<open>Operators, trace model, history model, cleaned predicate, and wellty
 theory Operator
 
 imports
-  Linear_Temporal_Logic_on_Llists
+  "Coinductive.Coinductive_List"
+  "HOL-Library.BNF_Corec"
   "HOL-Library.BNF_Corec"
   "HOL-Library.Code_Lazy"
   "HOL-Library.Numeral_Type"

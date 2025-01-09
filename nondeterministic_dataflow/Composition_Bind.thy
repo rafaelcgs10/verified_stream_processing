@@ -1,6 +1,6 @@
 section \<open>The composition operator\<close>
 
-theory New_Composition
+theory Composition_Bind
 
 imports
   Operator

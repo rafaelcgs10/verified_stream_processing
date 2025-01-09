@@ -1,6 +1,6 @@
 section \<open>The composition operator\<close>
 
-theory Composition
+theory Composition_Slow
 
 imports
   Operator
