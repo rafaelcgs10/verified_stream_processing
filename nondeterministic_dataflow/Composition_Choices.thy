@@ -411,4 +411,309 @@ lemma
     done
   done
 
+lemma choices_id_op[simp]:
+  "choices (id_op buf) = cinsert (Silent (id_op buf))
+     (cUn (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda>x. id_op (buf(p := bulk_benq [x] (buf p))))) cUNIV)))
+       (cUnion (cimage choices (cimage (\<lambda>p. Write (id_op (buf(p := btl (buf p)))) p (BHD p buf)) (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV)))))"
+  apply (subst id_op_code)
+  apply simp
+  done
+
+lemma step_comp_op_Some_id_op_id_op:
+  "step io (comp_op Some buf2 op1 op2) op \<Longrightarrow>
+   op1 = id_op buf1 \<Longrightarrow>
+   op2 = id_op buf3 \<Longrightarrow>
+   (\<exists> p x. io = Inp (Inl p) x \<and>
+     (\<exists> buf1' buf2' buf3'. op = comp_op Some buf2' (id_op (BENQ p x buf1')) (id_op buf3') \<and>
+      buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3')) \<or>
+
+   (\<exists> p x. io = Out (Inr p) x \<and>
+     (\<exists> buf1' buf2' buf3'. op = comp_op Some buf2' (id_op buf1') (id_op (BTL p buf3')) \<and> BHD p buf3' = x \<and> buf3' p \<noteq> [] \<and>
+     buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3')) \<or>
+
+   (io = Tau \<and> op = comp_op Some buf2 op1 op2) \<or>
+   (\<exists> p x. io = Tau \<and>
+     (\<exists> buf1' buf2' buf3'. op = comp_op Some (BTL p buf2') (id_op buf1') (id_op (BENQ p x buf3')) \<and> BHD p buf2' = x \<and> buf2' p \<noteq> [] \<and>
+     buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3')) \<or>
+
+   (\<exists> p x. io = Tau \<and>
+     (\<exists> buf1' buf2' buf3'. op = comp_op Some (BENQ p x buf2') (id_op (BTL p buf1')) (id_op buf3') \<and> BHD p buf1' = x \<and> buf1' p \<noteq> [] \<and>
+     buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3'))"
+  apply (induction io "comp_op Some buf2 op1 op2" op arbitrary: op1 op2 buf1 buf2 buf3 rule: step.induct)
+  subgoal
+    apply hypsubst_thin
+    apply (subst (asm) comp_op_code)
+    apply auto
+    done
+  subgoal
+    apply hypsubst_thin
+    apply (subst (asm) comp_op_code)
+    apply auto
+    done
+  subgoal
+    apply hypsubst_thin
+    apply (subst (asm) comp_op_code)
+    apply auto
+    done
+  subgoal for op ops io op' op1 op2 buf2 buf1 buf3
+    apply hypsubst_thin
+    apply (subst (asm) (7) comp_op_code)
+    apply (auto 0 0)
+                     apply blast+
+    done
+  done
+
+lemma id_id_gen:
+  "map_op projl projr (comp_op Some buf2 (id_op buf1) (id_op buf3)) ~ id_op (buf1 >> buf2 >> buf3)"
+  apply (coinduction arbitrary: buf1 buf2 buf3 rule: bisim_coinduct_upto)
+  subgoal for buf1 buf2 buf3
+    unfolding sim_def
+    apply auto
+    subgoal for io op
+      apply (drule step_map_op_inv)
+      apply safe
+      apply hypsubst_thin
+      subgoal for io' op'
+        apply (drule step_comp_op_Some_id_op_id_op)
+          apply (rule refl)+
+        apply simp
+        
+
+
+end
+      apply (drule step_comp_op_Some_id_op_id_op)
+        apply simp_all
+      apply (elim exE disjE)
+      subgoal for io' op'' p x
+        apply simp
+        apply (intro conjI exI)
+         apply (subst id_op_code)
+         apply (rule step.intros(3))
+          apply simp
+          apply (rule disjI1)
+          apply (rule image_eqI[of _ _ p])
+           apply (rule refl)
+          apply (simp add: cUNIV.rep_eq)
+         apply (rule step.intros(1))
+        apply (rule bc_base)
+        apply auto
+        apply (intro conjI exI)
+         apply (rule refl)
+        apply (rule arg_cong[where f=id_op]) 
+        apply (auto split: option.splits)
+        apply hypsubst_thin
+        apply (rule ext)
+        apply (clarsimp split: if_splits)
+        apply meson
+        done
+      subgoal for io' op'' p x
+        apply auto
+        subgoal for p'
+          apply (drule sym[of x])
+          apply simp
+          apply hypsubst_thin
+          apply (intro conjI exI)
+           apply (subst id_op_code)
+           apply (rule step.intros(3))
+            apply simp
+            apply (rule disjI2)
+            apply (rule image_eqI[of _ _ p])
+             apply (rule refl)
+            apply (simp add: cUNIV.rep_eq)
+          using step.intros(2) apply force
+          apply (rule bc_base)
+          apply (intro conjI exI)
+           apply (rule refl)
+          apply (rule arg_cong[where f=id_op]) 
+          apply (auto split: option.splits)
+          done
+        done
+      done      
+    subgoal for io op
+      apply (cases io)
+      subgoal for p x
+        apply hypsubst_thin
+        apply (drule step_id_op_Inp)
+         apply simp
+        apply hypsubst_thin
+        apply (rule exI[of _ "map_op projl projr (comp_op Some buf2 (id_op (BENQ p x buf1)) (id_op buf3))"])
+        apply (intro conjI)
+        subgoal
+          apply (rule step_map_op[where f=projl and g=projr and io="Inp (Inl p) x", simplified])
+          apply (subst comp_op_code)
+          apply simp
+          apply (rule step.intros(3))
+           apply (simp add: Set.filter_def)
+           apply (rule disjI1)
+           apply simp
+           apply (rule image_eqI)
+            apply (rule refl)
+           apply simp
+           apply (rule disjI1)
+           apply (rule image_eqI[of _ _ p])
+            apply (rule refl)
+           apply (simp add: cUNIV.rep_eq)
+          apply simp
+          apply (rule step.intros(1))
+          done
+        subgoal
+          apply (rule bc_sym)
+          apply (rule bc_base)
+          apply (intro conjI exI)
+           apply (rule refl)
+          apply (rule arg_cong[where f=id_op])
+          apply (rule ext)
+          apply auto
+          done
+        done
+      subgoal for p x
+        apply hypsubst_thin
+        apply (drule step_id_op_Out)
+         apply simp
+        apply (elim conjE)
+        apply (drule BHD_BAPPEND_2_cases)
+         apply simp
+        apply hypsubst_thin
+        apply (elim exE disjE)
+        subgoal
+          apply (rule exI[of _ "map_op projl projr (comp_op Some buf2 (id_op buf1) (id_op (BTL p buf3)))"])
+          apply (intro conjI)
+          subgoal
+            apply (rule step_map_op[where f=projl and g=projr and io="Out (Inr p) x", simplified])
+            apply (subst comp_op_code)
+            apply simp
+            apply (rule step.intros(3))
+             apply (simp add: Set.filter_def)
+             apply (rule disjI2)
+             apply (rule image_eqI)
+              apply (rule refl)
+             apply (simp add: cUNIV.rep_eq)
+             apply (intro conjI)
+              apply (rule disjI2)
+              apply (rule image_eqI[of _ _ p])
+               apply (rule refl)
+              apply (auto simp add: step.intros(2))
+            done
+          subgoal
+            apply (rule bc_sym)
+            apply (rule bc_base)
+            apply (intro exI conjI) 
+             apply (rule refl)
+            apply (rule arg_cong[where f=id_op])
+            apply (rule ext)
+            apply (auto simp only: split: if_splits)
+              apply (smt (verit, best) fun_upd_apply tl_append2)+
+            done
+          done
+        subgoal
+          apply (rule exI[of _ "map_op projl projr (comp_op Some (BTL p buf2) (id_op buf1) (id_op buf3))"])
+          apply (intro conjI)
+          subgoal
+            apply (rule step_map_op[where f=projl and g=projr and io="Out (Inr p) x", simplified])
+            apply (subst comp_op_code)
+            apply simp
+            apply (rule step.intros(3))
+             apply (simp add: Set.filter_def)
+             apply (rule disjI2)+
+             apply (rule image_eqI)
+              apply (rule refl)
+             apply (simp add: cUNIV.rep_eq)
+             apply (intro conjI)
+              apply (rule disjI1)
+              apply (rule image_eqI[of _ _ p])
+               apply (rule refl)
+              apply simp
+             apply simp
+            apply simp
+            apply (simp add: ranI)
+            apply (subst comp_op_code)
+            apply simp
+            apply (rule step.intros(3))
+             apply (simp add: Set.filter_def)
+             apply (rule disjI2)+
+             apply (rule image_eqI)
+              apply (rule refl)
+             apply (simp add: cUNIV.rep_eq)
+             apply (intro conjI)
+              apply (rule disjI2)
+              apply (rule image_eqI[of _ _ p])
+               apply (rule refl)
+              apply simp_all
+            apply (metis fun_upd_triv step.intros(2))
+            done
+          subgoal
+            apply (rule bc_sym)
+            apply (rule bc_base)
+            apply (intro exI conjI) 
+             apply (rule refl)
+            apply (rule arg_cong[where f=id_op])
+            apply (rule ext)
+            apply (auto simp only:  split: if_splits)
+             apply (smt (verit, best) append_self_conv2 fun_upd_other fun_upd_same tl_append2)+
+            done
+          done
+        subgoal
+          apply (elim conjE)
+          apply (rule exI[of _ "map_op projl projr (comp_op Some buf2 (id_op (BTL p buf1)) (id_op buf3))"])
+          apply (intro conjI)
+          subgoal
+            apply (rule step_map_op[where f=projl and g=projr and io="Out (Inr p) x", simplified])
+            apply (subst (1) comp_op_code)
+            apply simp
+            apply (rule step.intros(3))
+             apply (simp add: cUNIV.rep_eq Set.filter_def)
+             apply (rule disjI1)
+             apply simp
+             apply (rule image_eqI)
+              defer
+              apply (simp add: cUNIV.rep_eq)
+              apply (rule disjI2)
+              apply (rule image_eqI[of _ _ p])
+               apply (rule refl)
+              apply simp
+             apply simp_all
+            apply (subst (1) comp_op_code)
+            apply (rule step.intros(3))
+             apply (simp add: cUNIV.rep_eq Set.filter_def)
+             apply (rule disjI2)
+             apply (rule image_eqI)
+              apply (rule refl)
+             apply simp_all
+             apply (intro conjI)
+              apply (rule disjI1)
+              apply (rule image_eqI[of _ _ p])
+               apply (rule refl)
+              apply (simp_all add: ranI)
+            apply (subst (1) comp_op_code)
+            apply (rule step.intros(3))
+             apply simp
+             apply (rule disjI2)
+             apply (rule image_eqI)
+              apply (rule refl)
+             apply simp
+             apply (intro conjI)
+              apply (rule disjI2)
+              apply (rule image_eqI[of _ _ p])
+               apply (rule refl)
+              apply simp
+            using cUNIV.rep_eq apply blast
+             apply simp_all
+            apply (metis fun_upd_triv step.simps)
+            done
+          subgoal
+            apply (rule bc_sym)
+            apply (rule bc_base)
+            apply (intro exI conjI) 
+             apply (rule refl)
+            apply (rule arg_cong[where f=id_op])
+            apply (rule ext)
+            apply (auto simp only:  split: if_splits)
+            apply (smt (verit, best) append_self_conv2 fun_upd_other fun_upd_same tl_append2)+
+            done
+          done
+        done
+      done
+    done
+  done
+
 end

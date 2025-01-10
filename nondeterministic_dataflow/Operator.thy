@@ -72,25 +72,28 @@ abbreviation "safe_read f x \<equiv> (case x of None \<Rightarrow> end_op | Some
 
 datatype (discs_sels) ('m, 'd) id_op_aux =
   id_Read_aux "'m" "'d \<Rightarrow> ('m \<Rightarrow> 'd buf)"
-  | id_Write_aux "('m \<Rightarrow> 'd buf)" "'m" 'd
+  | id_Write_aux "('m \<Rightarrow> 'd buf)" "'m" 'd 
+  | id_Silent_aux "('m \<Rightarrow> 'd buf)"
 
 abbreviation eval_id_op_aux where
   "eval_id_op_aux c aux \<equiv> (case aux of
     id_Read_aux p f \<Rightarrow> Read p (\<lambda>y. let buf = f y in c buf)
-  | id_Write_aux buf q x \<Rightarrow> Write (c buf) q x)"
+  | id_Write_aux buf q x \<Rightarrow> (Write (c buf) q x)
+  | id_Silent_aux buf \<Rightarrow> Silent (c buf))"
 
 corec id_op :: "_ \<Rightarrow> ('m :: countable, 'm, 'd) op" where
-  "id_op buf = Choice (cimage (eval_id_op_aux id_op) (cUn 
+  "id_op buf = Choice (cimage (eval_id_op_aux id_op) (cinsert (id_Silent_aux buf) (cUn 
     (cimage (\<lambda> p. id_Read_aux p (\<lambda> x. BENQ p x buf)) (cUNIV :: 'm cset)) 
-    (cimage (\<lambda> p. id_Write_aux (BTL p buf) p (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUNIV :: 'm cset)))))"
+    (cimage (\<lambda> p. id_Write_aux (BTL p buf) p (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUNIV :: 'm cset))))))"
 
 lemma id_op_code:
-  "id_op buf = Choice (cUn 
+  "id_op buf = Choice (cinsert (Silent (id_op buf)) (cUn 
     (cimage (\<lambda> p. Read p ((\<lambda> x. id_op (BENQ p x buf)))) (cUNIV :: 'm cset))
-    (cimage (\<lambda> p. Write (id_op (BTL p buf)) p  (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUNIV :: ('m :: countable) cset))))"
+    (cimage (\<lambda> p. Write (id_op (BTL p buf)) p  (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUNIV :: ('m :: countable) cset)))))"
   apply (subst id_op.code)
   apply (unfold cimage_cUn cimage_cinsert op.inject)
   apply simp
+  apply (rule arg_cong[where f="cinsert (Silent (id_op buf))"])
   apply (rule arg_cong2[where f = cUn])
    apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
       split: id_op_aux.splits op.splits option.splits)
