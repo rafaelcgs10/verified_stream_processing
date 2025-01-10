@@ -43,7 +43,7 @@ corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow
          | Write op p x \<Rightarrow> Write_aux (buf, op1, op) (Inr p) x
          | Silent op \<Rightarrow> Silent_aux (buf, op1, op)) (sound_reads wire buf (choices op2)))))"
 
-lemma comp_op_code: "comp_op wire buf op1 op2 =
+lemma comp_op_code[code]: "comp_op wire buf op1 op2 =
   Choice (cUn
     (cimage (\<lambda>op. case op of
         Read p f \<Rightarrow> Read (Inl p) (\<lambda>x. comp_op wire buf (f x) op2)
@@ -333,66 +333,82 @@ lemma
   subgoal
     apply (intro exI conjI)
      apply (rule SC)
-    apply (rule cinsertI2)
-    apply (rule cinsertI2)
-    apply (rule cinsertI1)
+      apply (rule cinsertI2)
+      apply (rule cinsertI2)
+      apply (rule cinsertI1)
      apply (rule ST)
     apply (rule bc_bisim)
-   
-    
-
-end
-lemma
-  "read_or_write \<bullet> ((end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1)) ~ 
-   read_or_write \<bullet> (end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1) \<Longrightarrow> False"
-  apply (erule bisim.cases)
-  apply simp
-  apply hypsubst_thin
-  unfolding sim_def scomp_op_def
-  apply (drule spec2)
-  apply (drule mp)
-   apply (rule step_map_op)
-    apply (subst comp_op_code)
-    apply (rule SC)
-    apply (rule cUnI1)
-    apply (rule cimageI)
-    apply (simp (no_asm) only: choices_Choice)
-    apply (rule cUN_I)
-    apply (rule cinsertI2)
-    apply (rule cinsertI1)
-    apply simp
-    apply (simp (no_asm) only: op.case option.case)
-    apply (rule step_comp_op_R)
-    apply (rule step_map_op)
-    apply (rule step_comp_op_R)
-    apply (rule step.intros(2))
-    apply simp
-    apply simp
-    apply simp
-    apply (rule refl)
-    apply (erule thin_rl)
-    apply simp
-    apply (elim exE conjE)
-    apply (erule step_choicesE)
-  subgoal
-    apply simp
+    subgoal 
+      apply (coinduction rule: bisim_coinduct_upto)
+      unfolding sim_def
+      apply auto
+      subgoal
+        using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
+      subgoal
+        using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
+      subgoal
+        apply (intro exI conjI)
+         apply (rule SC)
+          apply (rule cinsertI2)
+          apply force
+         apply (rule step_map_op)
+          apply (rule SW)
+         apply simp
+        subgoal
+          using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
+        done
+      subgoal
+        using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
+      done
     done
   subgoal
-    apply (auto simp del: cimage_cinsert simp add:  ranI split: op.splits)
-    apply hypsubst_thin
-    apply (simp add: comp_def cimage_cUnion)
-    apply (erule bisim.cases)
-    apply hypsubst_thin
-    apply (erule thin_rl)
+    using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
+  subgoal
+    using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
+  subgoal
+    apply (intro exI conjI)
+     apply (rule SC)
+      apply (rule cinsertI2)
+      apply (rule cinsertI2)
+      apply force
+     apply (rule step_map_op)
+      apply (rule SW)
+     apply simp
+    subgoal
+      using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
+    done
+  subgoal
+    using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
+  subgoal
+    apply (intro exI conjI)
+     apply (rule SC)
+      apply (rule cinsertI1)
+     apply (rule ST)
+    apply (rule bc_bisim)
+    apply (coinduction rule: bisim_coinduct_upto)
     unfolding sim_def
-    apply (drule spec2)
-    apply (drule mp)
-    apply (rule SC)
-    apply (rule cinsertI1)
-    apply (rule step.intros(1))
     apply auto
+    subgoal
+      apply (intro exI conjI)
+       apply (rule SC)
+        apply (rule cinsertI2)
+        apply simp
+        apply force
+       apply (rule step_map_op)
+        apply (rule SW)
+       apply simp
+      apply (rule bc_bisim)
+      apply (coinduction rule: bisim_coinduct_upto)
+      unfolding sim_def
+      apply (force intro: step_map_op step.intros bc_refl)
+      done
+    subgoal
+      using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
+    subgoal
+      using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
+    subgoal
+      using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
     done
   done
-
 
 end
