@@ -635,6 +635,75 @@ lemma step_wstep:
   "step io op op' \<Longrightarrow> wstep io op op'"
   unfolding wstep_def by force
 
+lemma
+  "step io op op' \<Longrightarrow>
+   io = Tau \<Longrightarrow>
+   op \<approx> op'' \<Longrightarrow>
+   op' \<approx> op''"
+  apply (induct io op op' arbitrary: op'' rule: step.induct)
+  apply simp_all
+  subgoal for op op''
+    apply (coinduction arbitrary: op op'')
+    apply (erule wbisim.cases)
+    unfolding wsim_def wstep_def
+    apply auto
+    subgoal
+      apply (drule spec2)
+      apply (drule mp)
+       apply (rule ST)
+      apply auto
+    apply (erule wbisim.cases)
+    unfolding wsim_def wstep_def
+    apply hypsubst_thin
+          apply (drule spec2, drule mp, assumption)
+    apply auto
+    apply (meson converse_rtranclp_into_rtranclp relcomppI rtranclp_trans)
+    done
+  subgoal for op op2 io op1'
+          apply (drule spec2, drule mp, assumption)
+    apply auto
+    apply (erule converse_rtranclpE)
+     apply auto
+    subgoal for op2'
+      apply hypsubst_thin
+      oops
+
+lemma wbisim_wstep:
+  assumes  "\<forall>op1 op2. R op1 op2 \<longrightarrow> wsim R op1 op2"
+    and "R op1 op2"
+    and "wstep io op1 op1'"
+  obtains op2' where "wstep io op2 op2'" and "R op1' op2'"
+proof (atomize_elim)
+  from assms(3) obtain opi opj where \<open>(step Tau)\<^sup>*\<^sup>* op1 opi\<close> \<open>step io opi opj\<close> \<open>(step Tau)\<^sup>*\<^sup>* opj op1'\<close> unfolding wstep_def by blast
+  moreover from assms(1,2) obtain \<open>wsim R op1 op2\<close> by blast
+  ultimately show \<open>\<exists>op2'. wstep io op2 op2' \<and> R op1' op2'\<close>
+  proof (induct op1 opi)
+    case (rtrancl_refl a)
+    then obtain opj' where \<open>wstep io op2 opj'\<close> \<open>R opj opj'\<close> unfolding wsim_def by blast
+    with assms(1) have \<open>wsim R opj opj'\<close> by blast
+    with rtrancl_refl(2) obtain op2' where \<open>(step Tau)\<^sup>*\<^sup>* opj' op2'\<close> \<open>R op1' op2'\<close> sorry 
+    with \<open>wstep io op2 opj'\<close> show ?thesis unfolding wstep_def by (smt (verit, best) relcompp_apply rtranclp_trans)
+  next
+    case (rtrancl_into_rtrancl a b c)
+    then show ?case sorry
+  qed
+
+lemma
+  assumes  "\<forall>op1 op2. R op1 op2 \<longrightarrow> wsim R op1 op2 \<and> wsim R op2 op1"
+  and "\<forall>op1 op2. S op1 op2 \<longrightarrow> wsim S op1 op2 \<and> wsim S op2 op1"
+  and "(R OO S) op1 op2"
+  shows "wsim (R OO S) op1 op2 \<and> wsim (R OO S) op2 op1"
+proof (unfold wsim_def, safe)
+  fix io op1'
+  assume "step io op1 op1'"
+  from assms(3) obtain op where "R op1 op" "S op op2" by blast
+  then have "wsim R op1 op" "wsim R op op1" using assms(1) by blast+
+  with \<open>step io op1 op1'\<close> obtain op' where "wstep io op op'" "R op1' op'" unfolding wsim_def by blast
+  with wbisim_wstep \<open>S op op2\<close> obtain op2' where "wstep io op2 op2'" "S op' op2'" using assms(2) by blast
+  with \<open>R op1' op'\<close> show "\<exists>op2'. wstep io op2 op2' \<and> (R OO S) op1' op2'" by blast
+
+
+
 lemma wbisim_trans:
   "op1 \<approx> op2 \<Longrightarrow> op2 \<approx> op3 \<Longrightarrow> op1 \<approx> op3"
   apply (coinduction arbitrary: op1 op2 op3)
@@ -646,6 +715,31 @@ lemma wbisim_trans:
     apply (drule mp)
      apply assumption
     apply auto
+    subgoal premises prems for op2' opx opy
+      using prems(6,2,5,7-) apply -
+      apply (induct op2'' opx  rule: rtranclp.induct)
+      subgoal for opa
+ apply (drule spec2)
+    apply (drule mp)
+         apply assumption
+        apply auto
+        subgoal for op2a' b ba
+          apply (rule exI[of _ op2'])
+          apply (intro conjI)
+           apply auto
+          apply (rule relcomppI)
+          apply assumption
+ apply (rule relcomppI)
+           apply assumption
+          sledgehammer
+          apply (rule disjI1)
+          apply (intro exI conjI)
+           apply assumption
+
+
+      thm rtranclp.induct
+
+
     apply (erule wbisim.cases)+
     unfolding wstep_def wsim_def
     apply auto
