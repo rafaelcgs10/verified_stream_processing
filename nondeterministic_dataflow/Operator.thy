@@ -42,6 +42,15 @@ lemma BULK_BENQ_bulk_benq:
   "(buf1 >> buf2) p = bulk_benq (buf1 p) (buf2 p)"
   by auto
 
+lemma BHD_BAPPEND_2_cases:
+  "BHD p ((buf1 >> buf2) >> buf3) = x \<Longrightarrow>
+  ((buf1 >> buf2) >> buf3) p \<noteq> [] \<Longrightarrow>
+   BHD p buf3 = x \<and> buf3 p \<noteq> [] \<or>
+   buf3 p = [] \<and> BHD p buf2 = x \<and> buf2 p \<noteq> [] \<or>
+   buf3 p = [] \<and> buf2 p = [] \<and> BHD p buf1 = x \<and> buf1 p \<noteq> []"
+  by (metis append_Nil hd_append)
+
+
 section\<open>Operator\<close>
 
 codatatype (inputs: 'ip, outputs: 'op, dead 'd) op =
@@ -1430,6 +1439,32 @@ lemma traces_end_op[simp]:
 lemma step_spin_op_no_label:
   "step io \<otimes> op \<Longrightarrow> False"
   using spin_op_finished step_not_finished by blast
+
+lemma step_id_op_Inp:
+  "step io (id_op buf) op' \<Longrightarrow>
+   io = Inp p x \<Longrightarrow>
+   op' = id_op (BENQ p x buf)"
+  apply (induct io "id_op buf" op' arbitrary: buf rule: step.induct)
+    apply simp_all
+   apply (subst (asm) id_op_code)
+   apply simp
+  apply (subst (asm) (3) id_op_code)
+  apply auto
+  done
+
+lemma step_id_op_Out:
+  "step io (id_op buf) op' \<Longrightarrow>
+   io = Out p x \<Longrightarrow>
+   op' = id_op (BTL p buf) \<and> BHD p buf = x \<and> buf p \<noteq> []"
+  apply (induct io "id_op buf" op' arbitrary: buf rule: step.induct)
+    apply simp_all
+   apply (subst (asm) id_op_code)
+  apply simp
+  apply (subst (asm) (3) id_op_code)
+  apply auto
+  done
+
+
 
     (* 
 corec traced_wit where

@@ -477,7 +477,197 @@ lemma id_id_gen:
         apply (drule step_comp_op_Some_id_op_id_op)
           apply (rule refl)+
         apply simp
-        
+        apply (elim disjE exE conjE)
+        subgoal for p x buf1' buf2' buf3'
+          apply hypsubst_thin
+          apply (intro conjI exI)
+           apply (subst id_op_code)
+           apply (rule SC[rotated])
+            apply simp
+            apply (rule SR)
+           apply (rule cinsertI2)
+           apply simp
+           apply (rule disjI1)
+           apply (rule image_eqI)
+            apply (rule refl)
+           apply simp
+          apply (rule bc_base)
+          apply (intro conjI exI)
+           apply (rule refl)
+          apply (rule arg_cong[where f=id_op])
+          apply (rule ext)
+          apply simp
+          apply metis
+          done
+        subgoal for p x buf1' buf2' buf3'
+          apply hypsubst_thin
+          apply simp
+          apply (intro conjI exI)
+           apply (subst id_op_code)
+           apply (rule SC[rotated])
+            apply (rule SW)
+           apply (rule cinsertI2)
+           apply simp
+           apply (rule disjI2)
+           apply (rule image_eqI)
+            apply force
+           apply (simp add: cUNIV.rep_eq)
+          apply (rule bc_base)
+          apply (intro conjI exI)
+           apply (rule refl)
+          apply (rule arg_cong[where f=id_op])
+          apply (rule ext)
+          apply simp
+          done
+        subgoal
+          apply hypsubst_thin
+          apply (intro conjI exI)
+           apply (subst id_op_code)
+           apply (rule SC[rotated])
+            apply simp
+            apply (rule ST)
+           apply simp
+           apply (rule disjI1)
+           apply (rule refl)
+          apply (rule bc_base)
+          apply force
+          done
+        subgoal for p buf1' buf2' buf3'
+          apply hypsubst_thin
+          apply (intro conjI exI)
+           apply (subst id_op_code)
+           apply (rule SC[rotated])
+            apply simp
+            apply (rule ST)
+           apply simp
+           apply (rule disjI1)
+           apply (rule refl)
+          apply (rule bc_base)
+          apply (intro conjI exI)
+           apply (rule refl)
+          apply (rule arg_cong[where f=id_op])
+          apply (rule ext)
+          apply simp
+          done
+        subgoal for p buf1' buf2' buf3'
+          apply hypsubst_thin
+          apply (intro conjI exI)
+           apply (subst id_op_code)
+           apply (rule SC[rotated])
+            apply simp
+            apply (rule ST)
+           apply simp
+           apply (rule disjI1)
+           apply (rule refl)
+          apply (rule bc_base)
+          apply (intro conjI exI)
+           apply (rule refl)
+          apply (rule arg_cong[where f=id_op])
+          apply (rule ext)
+          apply simp
+          done
+        done
+      done
+    subgoal for io op1'
+      apply (cases io)
+      subgoal for p x
+        apply hypsubst_thin
+        apply (drule step_id_op_Inp)
+         apply simp
+        apply hypsubst_thin
+        apply (rule exI[of _ "map_op projl projr (comp_op Some buf2 (id_op (BENQ p x buf1)) (id_op buf3))"])
+        apply (intro conjI)
+        subgoal
+          apply (rule step_map_op[where f=projl and g=projr and io="Inp (Inl p) x", simplified])
+           apply (subst comp_op_code)
+           apply simp
+           apply (rule SC)
+            apply (simp add: Set.filter_def)
+            apply (rule disjI2)
+            apply simp
+            apply (rule disjI1)
+            apply (rule image_eqI)
+             apply (rule refl)
+            apply simp
+            apply (rule disjI1)
+            apply (intro exI)
+            apply (rule refl)
+           apply simp_all
+          apply (rule SR)
+          done
+        subgoal
+          apply (rule bc_sym)
+          apply (rule bc_base)
+          apply (intro conjI exI)
+           apply simp_all
+          apply (rule arg_cong[where f=id_op])
+          apply auto
+          done
+        done
+      subgoal for p x
+        apply hypsubst_thin
+        apply (drule step_id_op_Out)
+         apply simp
+        apply (elim conjE)
+        apply (drule BHD_BAPPEND_2_cases)
+         apply simp
+        apply hypsubst_thin
+        apply (elim exE disjE conjE)
+        subgoal
+          apply (rule exI[of _ "map_op projl projr (comp_op Some buf2 (id_op buf1) (id_op (BTL p buf3)))"])
+          apply (intro conjI)
+          subgoal
+            apply (rule step_map_op[where f=projl and g=projr and io="Out (Inr p) x", simplified])
+             apply (subst comp_op_code)
+             apply simp
+             apply (rule SC)
+              apply (simp add: Set.filter_def)
+              apply (rule disjI2)
+              apply simp
+              apply (rule disjI2)
+              apply (rule image_eqI)
+               apply (rule refl)
+              apply (simp add: cUNIV.rep_eq)
+              apply (intro conjI)
+               apply (rule disjI2)
+               apply (rule disjI2)
+               apply (intro conjI exI)
+                apply assumption
+               apply (rule refl)
+              apply (auto simp add: step.intros(2))
+            done
+          subgoal
+            apply (rule bc_sym)
+            apply (rule bc_base)
+            apply (intro exI conjI) 
+             apply (rule refl)
+            apply (rule arg_cong[where f=id_op])
+            apply (rule ext)
+            apply (auto simp only: split: if_splits)
+              apply (smt (verit, best) fun_upd_apply tl_append2)+
+            done
+          done
+        subgoal
+          apply (rule exI[of _ "map_op projl projr (comp_op Some (BTL p buf2) (id_op buf1) (id_op buf3))"])
+          apply (intro conjI)
+          subgoal
+            apply (rule step_map_op[where f=projl and g=projr and io="Out (Inr p) x", simplified])
+            apply (subst comp_op_code)
+            apply simp
+            apply (rule SC)
+             apply simp
+             apply (rule disjI2)+
+             apply (rule image_eqI)
+              apply (rule refl)
+             apply (simp add: Set.filter_def cUNIV.rep_eq)
+              apply (intro conjI)
+               apply (rule disjI2)
+               apply (rule disjI1)
+            apply (intro conjI exI)
+               apply simp_all
+             apply force
+            apply simp
+           
 
 
 end
