@@ -669,7 +669,7 @@ lemma
       oops
 
 lemma wbisim_wstep:
-  assumes  "\<forall>op1 op2. R op1 op2 \<longrightarrow> wsim R op1 op2"
+  assumes "\<forall>op1 op2. R op1 op2 \<longrightarrow> wsim R op1 op2"
     and "R op1 op2"
     and "wstep io op1 op1'"
   obtains op2' where "wstep io op2 op2'" and "R op1' op2'"
@@ -677,15 +677,65 @@ proof (atomize_elim)
   from assms(3) obtain opi opj where \<open>(step Tau)\<^sup>*\<^sup>* op1 opi\<close> \<open>step io opi opj\<close> \<open>(step Tau)\<^sup>*\<^sup>* opj op1'\<close> unfolding wstep_def by blast
   moreover from assms(1,2) obtain \<open>wsim R op1 op2\<close> by blast
   ultimately show \<open>\<exists>op2'. wstep io op2 op2' \<and> R op1' op2'\<close>
-  proof (induct op1 opi)
-    case (rtrancl_refl a)
-    then obtain opj' where \<open>wstep io op2 opj'\<close> \<open>R opj opj'\<close> unfolding wsim_def by blast
+  proof (induct op1 opi arbitrary: io opj op1' rule: rtranclp.induct)
+    case (rtrancl_refl op1)
+    then obtain opj' where H1: \<open>wstep io op2 opj'\<close> \<open>R opj opj'\<close> unfolding wsim_def by blast
     with assms(1) have \<open>wsim R opj opj'\<close> by blast
-    with rtrancl_refl(2) obtain op2' where \<open>(step Tau)\<^sup>*\<^sup>* opj' op2'\<close> \<open>R op1' op2'\<close> sorry 
-    with \<open>wstep io op2 opj'\<close> show ?thesis unfolding wstep_def by (smt (verit, best) relcompp_apply rtranclp_trans)
+    with rtrancl_refl(2) H1(2) obtain op2' where \<open>(step Tau)\<^sup>*\<^sup>* opj' op2'\<close> \<open>R op1' op2'\<close> 
+    proof (induct opj op1' arbitrary: opj' rule: rtranclp.induct)
+      case (rtrancl_refl a)
+      then show ?case by auto
+    next
+      case (rtrancl_into_rtrancl a b c opj')
+      with assms(1) show ?case 
+        unfolding wsim_def wstep_def
+        using converse_rtranclp_into_rtranclp relcomppE rtranclp_trans
+        by (smt (verit, ccfv_threshold))
+    qed
+    with \<open>wstep io op2 opj'\<close> show ?case unfolding wstep_def by (smt (verit, best) relcompp_apply rtranclp_trans)
   next
-    case (rtrancl_into_rtrancl a b c)
-    then show ?case sorry
+    case (rtrancl_into_rtrancl op1 op1' op1'' io opj op1a)
+    then show ?case 
+      apply -
+      apply simp
+      unfolding wsim_def wstep_def
+      apply (drule meta_spec)+
+      apply (drule meta_mp)
+       apply assumption
+      apply (drule meta_mp)
+      apply (rule rtranclp.intros(1))
+      apply safe
+      using assms(1) apply -
+      apply (drule spec2, drule mp, assumption)
+      unfolding wsim_def wstep_def
+      apply (drule spec2, drule mp, assumption)
+      apply auto
+      subgoal for op2' b ba op2'a bb bc
+        apply (rule exI[of _ op2'a])
+        apply auto
+         apply (meson converse_rtranclp_into_rtranclp relcomppI rtranclp_trans)
+
+        thm rtranclp.induct rtranclp_induct
+        
+
+       apply fast
+      apply auto
+      apply (erule converse_rtranclpE)
+       apply auto
+      subgoal
+        apply (drule spec2[of _ Tau op1''])
+        apply (drule mp)
+         apply fastforce
+        apply auto
+        apply hypsubst_thin
+
+      thm rtranclp.induct rtranclp_induct
+
+      
+
+
+end
+
   qed
 
 lemma
