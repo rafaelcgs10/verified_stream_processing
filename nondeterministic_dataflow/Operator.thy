@@ -59,70 +59,6 @@ codatatype (inputs: 'ip, outputs: 'op, dead 'd) op =
   | Choice "('ip, 'op, 'd) op cset"
   | Silent "('ip, 'op, 'd) op"
 
-subsection\<open>Basic Operators\<close>
-
-corec spin_op :: "('a, 'b, 'd) op" ("\<otimes>") where
-  "spin_op = Choice (cimage (\<lambda> _. spin_op) (csingle ()))"
-
-abbreviation end_op ("\<oslash>") where "end_op \<equiv> Choice cempty"
-abbreviation "ARead i f op \<equiv> Choice (cimage (\<lambda> x. if x then op else Read i f) (cinsert True (csingle False)))"
-lemma ARead_simp[simp]: "ARead i f op = Choice ({| op, Read i f |})"
-  by simp
-
-abbreviation "safe_choice_stop stop f ops \<equiv> (if ops = cempty then stop else Choice (cimage f ops))"
-abbreviation "safe_choice f \<equiv> safe_choice_stop (f end_op) f"
-abbreviation "safe_choice2 f op1s op2s \<equiv> (if op1s = cempty \<and> op2s = cempty then end_op
-  else if op1s = cempty then Choice (cimage (f end_op) op2s)
-  else if op2s = cempty then Choice (cimage (\<lambda>op1. f op1 end_op) op1s)
-  else Choice (cimage (case_prod f) (cproduct op1s op2s)))"
-abbreviation "choice1 op \<equiv> Choice (cimage (\<lambda>_. op) {|()|})"
-abbreviation "choice2 op1 op2 \<equiv> Choice (cimage (\<lambda>b. if b then op1 else op2) (cinsert True (csingle False)))"
-abbreviation "safe_read f x \<equiv> (case x of None \<Rightarrow> end_op | Some x \<Rightarrow> f x)"
-
-datatype (discs_sels) ('m, 'd) id_op_aux =
-  id_Read_aux "'m" "'d \<Rightarrow> ('m \<Rightarrow> 'd buf)"
-  | id_Write_aux "('m \<Rightarrow> 'd buf)" "'m" 'd 
-  | id_Silent_aux "('m \<Rightarrow> 'd buf)"
-
-abbreviation eval_id_op_aux where
-  "eval_id_op_aux c aux \<equiv> (case aux of
-    id_Read_aux p f \<Rightarrow> Read p (\<lambda>y. let buf = f y in c buf)
-  | id_Write_aux buf q x \<Rightarrow> (Write (c buf) q x)
-  | id_Silent_aux buf \<Rightarrow> Silent (c buf))"
-
-corec id_op :: "_ \<Rightarrow> ('m :: countable, 'm, 'd) op" where
-  "id_op buf = Choice (cimage (eval_id_op_aux id_op) (cinsert (id_Silent_aux buf) (cUn 
-    (cimage (\<lambda> p. id_Read_aux p (\<lambda> x. BENQ p x buf)) (cUNIV :: 'm cset)) 
-    (cimage (\<lambda> p. id_Write_aux (BTL p buf) p (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUNIV :: 'm cset))))))"
-
-lemma id_op_code:
-  "id_op buf = Choice (cinsert (Silent (id_op buf)) (cUn 
-    (cimage (\<lambda> p. Read p ((\<lambda> x. id_op (BENQ p x buf)))) (cUNIV :: 'm cset))
-    (cimage (\<lambda> p. Write (id_op (BTL p buf)) p  (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUNIV :: ('m :: countable) cset)))))"
-  apply (subst id_op.code)
-  apply (unfold cimage_cUn cimage_cinsert op.inject)
-  apply simp
-  apply (rule arg_cong[where f="cinsert (Silent (id_op buf))"])
-  apply (rule arg_cong2[where f = cUn])
-   apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
-      split: id_op_aux.splits op.splits option.splits)
-  done
-
-corec cp_op :: "(1, 1, 'd) op" where
-  "cp_op = Read 1 (Write cp_op 1)"
-
-corec W :: "(1, 1, nat) op" where
-  "W = Write W 1 42"
-
-corec AW :: "('b, 1, nat) op" where
-  "AW = choice2 AW (Write AW 1 42)"
-
-corec dummy_source_op :: "_ \<Rightarrow> (1,'m :: countable, nat) op" where
-  "dummy_source_op x = Choice (cimage (\<lambda> p. Write (dummy_source_op x) p x) (cUNIV :: 'm cset))"
-
-corec sink_op :: "(1, 'b, 'd) op" where
-  "sink_op = Read 1 (\<lambda>_. sink_op)"
-
 type_synonym 'd channel = "'d llist"
 
 code_lazy_type op
@@ -611,6 +547,10 @@ lemma step_wstep:
 lemma wstep_steps_Tau: "wstep Tau \<le> (step Tau)\<^sup>*\<^sup>*"
   unfolding wstep_def by force
 
+lemma step_step_tau_wstep:
+  "step io op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> wstep io op op''"
+  unfolding wstep_def by blast
+
 abbreviation "wbisimulation R \<equiv> (\<forall>op1 op2. R op1 op2 \<longrightarrow> wsim R op1 op2 \<and> wsim (conversep R) op2 op1)"
 
 lemma wbisim_wstep:
@@ -805,25 +745,12 @@ inductive_cases finished_ReadE[elim!]: "finished (Read p f)"
 inductive_cases finished_WriteE[elim!]: "finished (Write op p x)"
 inductive_cases finished_ChoiceE[elim!]: "finished (Choice ops)"
 
-lemma finished_spin_op[simp]:
-  "finished spin_op"
-  apply coinduction
-  apply (subst spin_op.code)
-  apply auto
-  done
-
-lemma finished_end_op[simp]:
-  "finished end_op"
-  by coinduction blast
 lemma Read_not_finished[simp]:
   "\<not> finished (Read p f)"
   by force
 lemma Write_not_finished[simp]:
   "\<not> finished (Write op p x)"
   by force
-
-lemma step_end_op[simp]: "step l end_op t' = False"
-  by auto
 
 lemma step_not_finished: "step l op op' \<Longrightarrow> \<not> finished op"
   by (induct l op op' pred: step) (auto elim: finished.cases)
@@ -917,12 +844,6 @@ lemma bisim_Read_cong:
     done
   done *)
 
-lemma spin_op_finished[simp]:
-  "finished spin_op"
-  apply coinduction
-  apply (subst spin_op.code)
-  apply (auto 0 0 simp add:  sup_cset.rep_eq cinsert.rep_eq cimage.rep_eq bot_cset.rep_eq; hypsubst_thin?)
-  done
 
 section\<open>Choices function\<close>
 fun choices_at where
@@ -1032,32 +953,6 @@ lemma finished_choices_empty:
     done
   done
 
-lemma choices_W[simp]:
-  "choices W = {|Write W 1 42|}"
-  unfolding choices_def
-  apply auto
-  subgoal for x n
-    apply (induct n)
-     apply (metis W.code bot_cset.rep_eq choices_at.simps(2) cinsert.rep_eq empty_iff insert_iff)
-    apply (metis UNIV_I W.code natcUNIV.rep_eq choices_at.simps(2))
-    done
-  subgoal
-    by (metis W.code natcUNIV.rep_eq choices_at.simps(2) cin.rep_eq csingleton_iff iso_tuple_UNIV_I)
-  done
-
-lemma choices_cp_op[simp]:
-  "choices cp_op = {|Read 1 (Write cp_op 1)|}"
-  unfolding choices_def
-  apply auto
-  subgoal for x n
-    apply (induct n)
-     apply (metis cp_op.code bot_cset.rep_eq choices_at.simps(1) cinsert.rep_eq empty_iff insert_iff)
-    apply (metis cp_op.code UNIV_I natcUNIV.rep_eq choices_at.simps(1))
-    done
-  subgoal 
-    by (metis cp_op.code natcUNIV.rep_eq choices_at.simps(1) cin.rep_eq csingleton_iff iso_tuple_UNIV_I)
-  done
-
 lemma in_choices_step:
   "op' |\<in>| choices op \<Longrightarrow>
    \<exists> io op''. step io op' op''"
@@ -1096,28 +991,6 @@ lemma Read_in_choices_stepEx:
       subgoal    
         by (metis UNIV_I cin.rep_eq natcUNIV.rep_eq step.intros(4))
       done
-    done
-  done
-
-lemma choices_spin_op[simp]:
-  "choices spin_op = {||}"
-  by (simp add: finished_choices_empty)
-
-lemma choices_sink_op[simp]:
-  "choices sink_op = {|Read 1 (\<lambda> _. sink_op)|}"
-  unfolding choices_def
-  apply safe
-  subgoal premises prems for x n
-    using prems(2) apply -
-    apply (induct n)
-     apply (subst (asm) sink_op.code)
-     apply simp 
-    apply (subst (asm) (3) sink_op.code)
-    apply simp
-    done
-  subgoal for x
-    apply auto
-    apply (metis UNIV_witness natcUNIV.rep_eq choices_at.simps(1) cin.rep_eq cinsertI1 sink_op.code)
     done
   done
 
@@ -1219,15 +1092,6 @@ lemma step_no_inputs_not_inputs:
   "step io op1 op1' \<Longrightarrow> inputs op1 = {} \<Longrightarrow> inputs op1' = {}"
   apply (induct io op1 op1' rule: step.induct)
   apply auto
-  done
-
-lemma inputs_W[simp]:
-  "inputs W = {}"
-  apply safe
-  subgoal for p
-    apply (induct W rule: op.set_induct(1))
-        apply (subst (asm) W.code, auto)+
-    done
   done
 
     (* 
@@ -1496,41 +1360,6 @@ lemma traced_coinduct_upto:
 lemma traces_Write[simp]:
   "traces (Write op p x) = LCons (Out p x) ` traces op"
   by (auto simp: traces_def intro: step.intros(2) traced.intros elim: traced.cases)
-
-lemma traces_end_op[simp]:
-  "traces end_op = {LNil}"
-  by (auto simp: traces_def intro: finished.intros traced.intros step.intros elim: traced.cases)
-
-
-lemma step_spin_op_no_label:
-  "step io \<otimes> op \<Longrightarrow> False"
-  using spin_op_finished step_not_finished by blast
-
-lemma step_id_op_Inp:
-  "step io (id_op buf) op' \<Longrightarrow>
-   io = Inp p x \<Longrightarrow>
-   op' = id_op (BENQ p x buf)"
-  apply (induct io "id_op buf" op' arbitrary: buf rule: step.induct)
-    apply simp_all
-   apply (subst (asm) id_op_code)
-   apply simp
-  apply (subst (asm) (3) id_op_code)
-  apply auto
-  done
-
-lemma step_id_op_Out:
-  "step io (id_op buf) op' \<Longrightarrow>
-   io = Out p x \<Longrightarrow>
-   op' = id_op (BTL p buf) \<and> BHD p buf = x \<and> buf p \<noteq> []"
-  apply (induct io "id_op buf" op' arbitrary: buf rule: step.induct)
-    apply simp_all
-   apply (subst (asm) id_op_code)
-  apply simp
-  apply (subst (asm) (3) id_op_code)
-  apply auto
-  done
-
-
 
     (* 
 corec traced_wit where
@@ -2069,7 +1898,7 @@ lemma history_produce:
   done
  *)
 section\<open>Well-typed\<close>
-
+(* 
 coinductive welltyped where
   "welltyped A B (f EOB) \<Longrightarrow> welltyped A B (f EOS) \<Longrightarrow> \<forall>x \<in> A p. welltyped A B (f (Observed x)) \<Longrightarrow> welltyped A B (Read p f)"
 | "x \<in> B p \<Longrightarrow> welltyped A B op \<Longrightarrow> welltyped A B (Write op p x)"
@@ -2077,7 +1906,7 @@ coinductive welltyped where
 
 inductive_cases welltyped_ReadE[elim!]: "welltyped A B (Read p f)"
 inductive_cases welltyped_WriteE[elim!]: "welltyped A B (Write op q x)"
-inductive_cases welltyped_end_opE[elim!]: "welltyped A B end_op"
+inductive_cases welltyped_end_opE[elim!]: "welltyped A B end_op" *)
   (*
 (*characteristic property of welltyped*)
 lemma "x \<in> lset (lproject (=) lxs (Out q)) \<Longrightarrow> traced m op lxs \<Longrightarrow> welltyped A B op \<Longrightarrow> \<forall>p. lset (lproject (=) lxs (Inp p)) \<subseteq> A p \<Longrightarrow> x \<in> B q"
@@ -2085,7 +1914,6 @@ lemma "x \<in> lset (lproject (=) lxs (Out q)) \<Longrightarrow> traced m op lxs
    apply (erule traced.cases; auto split: if_splits)
   oops
 *)
-
 
 section\<open>Convenient types\<close>
 
