@@ -7,7 +7,7 @@ imports
   Operator
   Composition_Choices
 begin
-section \<open>spin_op/end_op/I_0\<close>
+section \<open>spin_op/end_op/silent_op/I_0\<close>
 abbreviation end_op ("\<oslash>") where "end_op \<equiv> Choice cempty"
 \<comment> \<open>spin_op/end_op is I_0 in the BNA book\<close>
 \<comment> \<open>In the transition system this is a dead-lock\<close>
@@ -25,6 +25,9 @@ abbreviation "safe_read f x \<equiv> (case x of None \<Rightarrow> end_op | Some
 
 corec spin_op :: "('a, 'b, 'd) op" ("\<otimes>") where
   "spin_op = Choice (cimage (\<lambda> _. spin_op) (csingle ()))"
+
+primcorec silent_op where
+  "silent_op = Silent silent_op"
 
 abbreviation "ARead i f op \<equiv> Choice (cimage (\<lambda> x. if x then op else Read i f) (cinsert True (csingle False)))"
 lemma ARead_simp[simp]: "ARead i f op = Choice ({| op, Read i f |})"
@@ -63,8 +66,8 @@ lemma step_spin_op_no_label:
   "step io \<otimes> op \<Longrightarrow> False"
   using spin_op_finished step_not_finished by blast
 
-lemma
-  "(spin_op \<parallel> spin_op) ~ spin_op"
+lemma spin_op_parallel:
+  "\<otimes> \<parallel> \<otimes> ~ \<otimes> "
   apply (coinduction rule: bisim_coinduct_upto)
   apply safe
   subgoal
@@ -78,6 +81,20 @@ lemma
     apply auto
     using step_spin_op_no_label apply blast
     done
+  done
+
+lemma spin_op_silent_op:
+  "\<otimes> \<approx> silent_op"
+  apply (coinduction rule: wbisim_coinduct_upto)
+  unfolding wsim_def
+  apply auto
+  subgoal
+    using step_spin_op_no_label by blast
+  subgoal
+    apply (subst (asm) silent_op.code)
+    apply auto
+    apply hypsubst_thin
+    by (metis (mono_tags, lifting) rtranclp.rtrancl_refl wbc_base wbc_sym)
   done
 
 \<comment> \<open>TODO: both are delta\<close>

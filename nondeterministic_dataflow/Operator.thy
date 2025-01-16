@@ -733,9 +733,10 @@ lemma wbisim_coinduct_upto:
       done
     done
 *)
+    done
   done
 
-lemma bisim_map_op:
+lemma wbisim_map_op:
   "op \<approx> op' \<Longrightarrow> map_op f g op \<approx> map_op f g op'"
   oops(* 
   apply (coinduction arbitrary: op op' rule: bisim_coinduct_upto)
