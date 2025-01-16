@@ -492,7 +492,8 @@ lemma sim_trans: "transp R \<Longrightarrow> sim R s t \<Longrightarrow> sim R t
 
 section\<open>Weak Bisimilarity\<close>
 
-definition "wstep io = (step Tau)^** OO (step io) OO (step Tau)^**"
+fun estep where "estep Tau = (step Tau)\<^sup>=\<^sup>=" | "estep io = step io"
+definition "wstep io = (step Tau)^** OO (estep io) OO (step Tau)^**"
 definition "wsim R op1 op2 = (\<forall>io op1'. step io op1 op1' \<longrightarrow> (\<exists>op2'. wstep io op2 op2' \<and> R op1' op2'))"
 
 lemma wsim_mono[mono]: "R \<le> S \<Longrightarrow> wsim R \<le> wsim S"
@@ -518,7 +519,10 @@ lemma wbisim_cong_disj:
 
 lemma wbisim_refl:
   "wbisim op op"
-  by (coinduction arbitrary: op) (auto simp: wsim_def wstep_def)
+  apply (coinduction arbitrary: op)
+  apply (auto simp: wsim_def wstep_def)
+  apply (metis (no_types, lifting) Nitpick.rtranclp_unfold estep.elims relcompp_apply sup2I1)
+  done
 
 lemma wbisim_sym:
   "op1 \<approx> op2 \<Longrightarrow> op2 \<approx> op1"
@@ -542,14 +546,16 @@ lemma wbisim_sym:
 
 lemma step_wstep:
   "step io op op' \<Longrightarrow> wstep io op op'"
-  unfolding wstep_def by force
+  unfolding wstep_def 
+  by (smt (verit) OO_eq eq_OO estep.elims reflclp_tranclp relcompp_distrib relcompp_distrib2 sup2CI)
 
 lemma wstep_steps_Tau: "wstep Tau \<le> (step Tau)\<^sup>*\<^sup>*"
   unfolding wstep_def by force
 
 lemma step_step_tau_wstep:
   "step io op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> wstep io op op''"
-  unfolding wstep_def by blast
+  unfolding wstep_def 
+  by (smt (verit, best) predicate2D relcompp_apply rtranclp_trans step_wstep wstep_def wstep_steps_Tau)
 
 abbreviation "wbisimulation R \<equiv> (\<forall>op1 op2. R op1 op2 \<longrightarrow> wsim R op1 op2 \<and> wsim (conversep R) op2 op1)"
 
@@ -558,22 +564,38 @@ lemma wbisim_wstep:
     and "R op1 op2"
     and "wstep io op1 op1'"
   obtains op2' where "wstep io op2 op2'" and "R op1' op2'"
-proof (atomize_elim)
-  from assms(3) obtain opi opj where \<open>(step Tau)\<^sup>*\<^sup>* op1 opi\<close> \<open>step io opi opj\<close> \<open>(step Tau)\<^sup>*\<^sup>* opj op1'\<close> unfolding wstep_def by blast
+proof -
+  from assms(3) obtain opi opj where \<open>(step Tau)\<^sup>*\<^sup>* op1 opi\<close> \<open>estep io opi opj\<close> \<open>(step Tau)\<^sup>*\<^sup>* opj op1'\<close> unfolding wstep_def by blast
   moreover from assms(1,2) obtain \<open>wsim R op1 op2\<close> by blast
-  ultimately show \<open>\<exists>op2'. wstep io op2 op2' \<and> R op1' op2'\<close>
+  ultimately have \<open>\<exists>op2'. wstep io op2 op2' \<and> R op1' op2'\<close>
   proof (induct op1 arbitrary: op2 rule: converse_rtranclp_induct)
     case base
-    then obtain opj' where H1: \<open>wstep io op2 opj'\<close> \<open>R opj opj'\<close> unfolding wsim_def by blast
-    with assms(1) have \<open>wsim R opj opj'\<close> by blast
-    with base(2) H1(2) have \<open>\<exists>op2'. (step Tau)\<^sup>*\<^sup>* opj' op2' \<and> R op1' op2'\<close>
-    proof (induct opj arbitrary: opj' rule: converse_rtranclp_induct)
-      case (step opj opj'')
-      with assms(1) show ?case unfolding wsim_def wstep_def
-        by (smt (verit, ccfv_threshold) converse_rtranclp_into_rtranclp relcomppE rtranclp_trans)
-    qed auto
-    with \<open>wstep io op2 opj'\<close> show ?case unfolding wstep_def
-      by (smt (verit, best) relcompp_apply rtranclp_trans)
+    show ?case
+    proof (cases "io = Tau \<and> opi = opj")
+      case True
+      with base(2,1,3) show ?thesis
+        apply clarsimp
+      proof (induct opj arbitrary: op1' rule: converse_rtranclp_induct)
+        case base
+        then show ?case unfolding wstep_def wsim_def apply auto
+          sorry
+      next
+        case (step y z)
+        then show ?case sorry
+      qed
+    next
+      case False
+      with base obtain opj' where H1: \<open>wstep io op2 opj'\<close> \<open>R opj opj'\<close> unfolding wsim_def by (cases io) auto
+      with assms(1) have \<open>wsim R opj opj'\<close> by blast
+      with base(2) H1(2) have \<open>\<exists>op2'. (step Tau)\<^sup>*\<^sup>* opj' op2' \<and> R op1' op2'\<close>
+      proof (induct opj arbitrary: opj' rule: converse_rtranclp_induct)
+        case (step opj opj'')
+        with assms(1) show ?case unfolding wsim_def wstep_def
+          by (smt (verit, best) assms(1) predicate2D rtranclp_trans step.hyps(3) wstep_def wstep_steps_Tau)
+      qed auto
+      with \<open>wstep io op2 opj'\<close> show ?thesis unfolding wstep_def
+        by (smt (verit, best) relcompp_apply rtranclp_trans)
+    qed
   next
     case (step op1 opk)
     from step(1) obtain opk' where "(step Tau)\<^sup>*\<^sup>* op2 opk'" "R opk opk'"
@@ -581,6 +603,24 @@ proof (atomize_elim)
     with step(3)[of opk'] step(4,5) assms(1) show ?case unfolding wstep_def
       by (smt (verit) relcompp.simps rtranclp_trans)  
   qed
+  then show ?thesis using that by force
+qed
+                       
+    
+
+
+end
+
+  then show ?thesis using that 
+    apply (atomize_elim)
+    using assms apply -
+    apply hypsubst_thin
+    apply (drule spec2, drule mp, assumption)
+    unfolding wsim_def wstep_def
+    apply auto
+                    sledgehammer [timeout = 100, provers = cvc4 vampire verit z3]
+
+
 qed
 
 lemma wbisimulation_eq:
