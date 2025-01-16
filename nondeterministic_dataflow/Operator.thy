@@ -511,7 +511,7 @@ inductive wbisim_cong for R where
 | wbc_Read:"x1 = y1 \<Longrightarrow> rel_fun (=) (wbisim_cong R) x2 y2 \<Longrightarrow> wbisim_cong R (Read x1 x2) (Read y1 y2)"
 | wbc_Write: "wbisim_cong R x1 y1 \<Longrightarrow> wbisim_cong R (Write x1 x2 x3) (Write y1 x2 x3)"
 | wbc_Silent: "wbisim_cong R x1 y1 \<Longrightarrow> wbisim_cong R (Silent x1) (Silent y1)"
-| wbc_Choice:"rel_cset (wbisim_cong R) x y \<Longrightarrow> wbisim_cong R (Choice x) (Choice y)"
+(*| wbc_Choice:"rel_cset (wbisim_cong R) x y \<Longrightarrow> wbisim_cong R (Choice x) (Choice y)"*)
 
 lemma wbisim_cong_disj:
   "(wbisim_cong R x y \<or> wbisim x y) = wbisim_cong R x y"
@@ -549,7 +549,7 @@ lemma step_wstep:
   unfolding wstep_def 
   by (smt (verit) OO_eq eq_OO estep.elims reflclp_tranclp relcompp_distrib relcompp_distrib2 sup2CI)
 
-lemma wstep_steps_Tau: "wstep Tau \<le> (step Tau)\<^sup>*\<^sup>*"
+lemma wstep_steps_Tau[simp]: "wstep Tau = (step Tau)\<^sup>*\<^sup>*"
   unfolding wstep_def by force
 
 lemma step_step_tau_wstep:
@@ -559,6 +559,21 @@ lemma step_step_tau_wstep:
 
 abbreviation "wbisimulation R \<equiv> (\<forall>op1 op2. R op1 op2 \<longrightarrow> wsim R op1 op2 \<and> wsim (conversep R) op2 op1)"
 
+lemma wbisim_wstep_Tau:
+  assumes "wbisimulation R"
+    and "R op1 op2"
+    and "(step Tau)\<^sup>*\<^sup>* op1 op1'"
+  shows "\<exists>op2'. wstep Tau op2 op2' \<and> R op1' op2'"
+  using assms(3,2)
+proof (induct op1 arbitrary: op2 rule: converse_rtranclp_induct)
+  case (step op1 op1'')
+  with assms(1) obtain op2'' where "wstep Tau op2 op2''" "R op1'' op2''"
+    unfolding wsim_def by blast
+  moreover from step(3)[OF \<open>R op1'' op2''\<close>] obtain op2' where "wstep Tau op2'' op2'" "R op1' op2'"
+    by blast
+  ultimately show ?case by (auto intro!: exI[of _ op2'])
+qed force
+
 lemma wbisim_wstep:
   assumes "wbisimulation R"
     and "R op1 op2"
@@ -567,61 +582,35 @@ lemma wbisim_wstep:
 proof -
   from assms(3) obtain opi opj where \<open>(step Tau)\<^sup>*\<^sup>* op1 opi\<close> \<open>estep io opi opj\<close> \<open>(step Tau)\<^sup>*\<^sup>* opj op1'\<close> unfolding wstep_def by blast
   moreover from assms(1,2) obtain \<open>wsim R op1 op2\<close> by blast
-  ultimately have \<open>\<exists>op2'. wstep io op2 op2' \<and> R op1' op2'\<close>
+  ultimately have \<open>\<exists>op2'. wstep io op2 op2' \<and> R op1' op2'\<close> using assms(2)
   proof (induct op1 arbitrary: op2 rule: converse_rtranclp_induct)
     case base
     show ?case
     proof (cases "io = Tau \<and> opi = opj")
       case True
-      with base(2,1,3) show ?thesis
-        apply clarsimp
-      proof (induct opj arbitrary: op1' rule: converse_rtranclp_induct)
-        case base
-        then show ?case unfolding wstep_def wsim_def apply auto
-          sorry
-      next
-        case (step y z)
-        then show ?case sorry
-      qed
+      with base(2,3,4) show ?thesis
+        using wbisim_wstep_Tau[OF assms(1), of opi op2 op1'] by auto
     next
       case False
-      with base obtain opj' where H1: \<open>wstep io op2 opj'\<close> \<open>R opj opj'\<close> unfolding wsim_def by (cases io) auto
+      with base obtain opj' where H1: \<open>wstep io op2 opj'\<close> \<open>R opj opj'\<close> unfolding wsim_def by (cases io) force+
       with assms(1) have \<open>wsim R opj opj'\<close> by blast
       with base(2) H1(2) have \<open>\<exists>op2'. (step Tau)\<^sup>*\<^sup>* opj' op2' \<and> R op1' op2'\<close>
-      proof (induct opj arbitrary: opj' rule: converse_rtranclp_induct)
-        case (step opj opj'')
-        with assms(1) show ?case unfolding wsim_def wstep_def
-          by (smt (verit, best) assms(1) predicate2D rtranclp_trans step.hyps(3) wstep_def wstep_steps_Tau)
-      qed auto
+        using wbisim_wstep_Tau[OF assms(1), of opj opj' op1'] by auto
       with \<open>wstep io op2 opj'\<close> show ?thesis unfolding wstep_def
         by (smt (verit, best) relcompp_apply rtranclp_trans)
     qed
   next
     case (step op1 opk)
     from step(1) obtain opk' where "(step Tau)\<^sup>*\<^sup>* op2 opk'" "R opk opk'"
-      by (auto dest!: step(6)[unfolded wsim_def, rule_format] predicate2D[OF wstep_steps_Tau])
+      by (auto dest!: step(6)[unfolded wsim_def, rule_format])
     with step(3)[of opk'] step(4,5) assms(1) show ?case unfolding wstep_def
       by (smt (verit) relcompp.simps rtranclp_trans)  
   qed
   then show ?thesis using that by force
 qed
-                       
-    
 
-
-end
-
-  then show ?thesis using that 
-    apply (atomize_elim)
-    using assms apply -
-    apply hypsubst_thin
-    apply (drule spec2, drule mp, assumption)
-    unfolding wsim_def wstep_def
-    apply auto
-                    sledgehammer [timeout = 100, provers = cvc4 vampire verit z3]
-
-
-qed
+lemma step_estep[intro]: "step io op1 op2 \<Longrightarrow> estep io op1 op2"
+  by (cases io) auto
 
 lemma wbisimulation_eq:
   shows "wbisimulation (=)"
@@ -686,16 +675,23 @@ lemma wsim_Choice[simp]: "wsim R (Choice ops) t \<longleftrightarrow> (\<forall>
 lemma wsim_SilentI: "R op1 op2 \<Longrightarrow> wsim R (Silent op1) (Silent op2)"
   unfolding wsim_def by (auto intro!: step_wstep[OF ST])
 
+(* no longer true?
 lemma WSC: "op |\<in>| ops \<Longrightarrow> wstep io op op' \<Longrightarrow> wstep io (Choice ops) op'"
   unfolding wstep_def
   apply clarsimp
   subgoal premises prems for opi opj
     using prems(2,1,3,4)
     apply (induct op rule: converse_rtranclp_induct)
-     apply (metis SC cin.rep_eq relcompp.simps rtranclp.rtrancl_refl)
+     apply (cases io; simp)
+       apply (metis SC cin.rep_eq relcompp.simps rtranclp.rtrancl_refl)
+      apply (metis SC cin.rep_eq relcompp.simps rtranclp.rtrancl_refl)
+     apply (cases io; simp)
+    apply (meson SC cin.rep_eq converse_rtranclp_into_rtranclp relcomppI)
+      apply (metis SC cin.rep_eq relcompp.simps rtranclp.rtrancl_refl)
     apply (meson SC cin.rep_eq converse_rtranclp_into_rtranclp relcomppI)
     done
   done
+*)
 
 lemma wbisim_coinduct_upto:
   "R op1 op2 \<Longrightarrow>
@@ -723,12 +719,20 @@ lemma wbisim_coinduct_upto:
       by (auto intro!: step_wstep[OF SW] intro: wbc_sym)
     subgoal for op1 op2
       by (auto intro: wsim_SilentI wbc_sym)
+(*
     subgoal for ops1 ops2
       apply (auto simp: rel_set_def)
+      unfolding wsim_def
+       apply auto
+       apply (drule bspec, assumption, (erule bexE conjE)+, drule spec2, drule mp, assumption, (erule exE conjE)+)
+      subgoal for op io op1' y op2'
+        apply (cases "y = op2'")
+        apply simp
       subgoal by (metis WSC cin.rep_eq wsim_def)
       subgoal by (metis WSC cin.rep_eq wsim_def)
       done
     done
+*)
   done
 
 lemma bisim_map_op:
