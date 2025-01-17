@@ -7,13 +7,13 @@ imports
 begin
 
 (*workaround about termination issue in corecursive*)
-(* lemma case_prod_cong4[fundef_cong]:
+lemma case_prod_cong4[fundef_cong]:
   fixes prod prod' f g
   shows "prod = prod' \<Longrightarrow>
     (\<And>x1 x2 y1 y2. prod' = ((x1, x2), (y1, y2)) \<Longrightarrow> f x1 x2 y1 y2 = g x1 x2 y1 y2) \<Longrightarrow>
     ((\<lambda>((x1, x2), (y1, y2)). f x1 x2 y1 y2) prod) = ((\<lambda>((x1, x2), (y1, y2)). g x1 x2 y1 y2) prod')"
   by (auto split: prod.splits)
- *)
+
 datatype (discs_sels) ('ip1, 'ip2, 'op1, 'op2, 'd) comp_op_aux =
   Read_aux "'ip1 + 'ip2" "'d \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<times> ('ip1, 'op1, 'd) op \<times> ('ip2, 'op2, 'd) op"
   | Write_aux "('ip2 \<Rightarrow> 'd buf) \<times> ('ip1, 'op1, 'd) op \<times> ('ip2, 'op2, 'd) op" "'op1 + 'op2" 'd
@@ -116,7 +116,19 @@ lemma comp_op_simps[simp]:
                    else Read (Inr p) (\<lambda>x. comp_op wire buf (Choice op1s) (f x)))
             (\<lambda>op p. Write (comp_op wire buf (Choice op1s) op) (Inr p)) (\<lambda>a. undefined) (\<lambda>op. Silent (comp_op wire buf (Choice op1s) op)))
           (sound_reads wire buf (cUnion (cimage choices op2s)))))" 
-  by (subst comp_op_code, auto simp add: image_iff split: option.splits)+
+  apply simp
+  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
+  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
+  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
+  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
+  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
+  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
+  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
+  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
+  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
+  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
+  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
+  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
 
 section \<open>Properties of the (general) composition\<close>
 

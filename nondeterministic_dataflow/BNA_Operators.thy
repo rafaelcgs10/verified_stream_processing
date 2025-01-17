@@ -8,20 +8,8 @@ imports
   Composition_Choices
 begin
 section \<open>spin_op/end_op/silent_op/I_0\<close>
-abbreviation end_op ("\<oslash>") where "end_op \<equiv> Choice cempty"
 \<comment> \<open>spin_op/end_op is I_0 in the BNA book\<close>
 \<comment> \<open>In the transition system this is a dead-lock\<close>
-
-\<comment> \<open>Some useful functions for defining operators\<close>
-abbreviation "safe_choice_stop stop f ops \<equiv> (if ops = cempty then stop else Choice (cimage f ops))"
-abbreviation "safe_choice f \<equiv> safe_choice_stop (f end_op) f"
-abbreviation "safe_choice2 f op1s op2s \<equiv> (if op1s = cempty \<and> op2s = cempty then end_op
-  else if op1s = cempty then Choice (cimage (f end_op) op2s)
-  else if op2s = cempty then Choice (cimage (\<lambda>op1. f op1 end_op) op1s)
-  else Choice (cimage (case_prod f) (cproduct op1s op2s)))"
-abbreviation "choice1 op \<equiv> Choice (cimage (\<lambda>_. op) {|()|})"
-abbreviation "choice2 op1 op2 \<equiv> Choice (cimage (\<lambda>b. if b then op1 else op2) (cinsert True (csingle False)))"
-abbreviation "safe_read f x \<equiv> (case x of None \<Rightarrow> end_op | Some x \<Rightarrow> f x)"
 
 corec spin_op :: "('a, 'b, 'd) op" ("\<otimes>") where
   "spin_op = Choice (cimage (\<lambda> _. spin_op) (csingle ()))"
@@ -230,7 +218,7 @@ lemma id_id_gen:
           apply hypsubst_thin
           apply (intro conjI exI)
            apply (subst id_op_code)
-          apply (rule step_wstep)
+           apply (rule step_wstep)
            apply (rule SC[rotated])
             apply simp
             apply (rule SR)
@@ -252,7 +240,7 @@ lemma id_id_gen:
           apply simp
           apply (intro conjI exI)
            apply (subst id_op_code)
-          apply (rule step_wstep)
+           apply (rule step_wstep)
            apply (rule SC[rotated])
             apply (rule SW)
            apply simp
@@ -270,39 +258,36 @@ lemma id_id_gen:
         subgoal for p buf1' buf2' buf3'
           apply hypsubst_thin
           apply (intro conjI exI)
-           apply (subst id_op_code)
-          oops
-(* 
-          apply (rule step_step_tau_wstep[rotated])
-           apply (rule SC[rotated])
-            apply simp
-            apply (rule ST)
+          unfolding wstep_def
            apply simp
-           apply (rule disjI1)
-           apply (rule refl)
-          apply (rule bc_base)
+           apply (rule disjI2)
+           apply (rule relcomppI[rotated])
+            apply (rule relcomppI[rotated])
+             apply (rule rtranclp.intros(1))
+            apply (rule refl)
+           apply (rule rtranclp.intros(1))
+          apply (rule wbc_base)
           apply (intro conjI exI)
            apply (rule refl)
           apply (rule arg_cong[where f=id_op])
-          apply (rule ext)
-          apply simp
+          apply auto
           done
         subgoal for p buf1' buf2' buf3'
           apply hypsubst_thin
           apply (intro conjI exI)
-           apply (subst id_op_code)
-           apply (rule SC[rotated])
-            apply simp
-            apply (rule ST)
+          unfolding wstep_def
            apply simp
-           apply (rule disjI1)
-           apply (rule refl)
-          apply (rule bc_base)
+           apply (rule disjI2)
+           apply (rule relcomppI[rotated])
+            apply (rule relcomppI[rotated])
+             apply (rule rtranclp.intros(1))
+            apply (rule refl)
+           apply (rule rtranclp.intros(1))
+          apply (rule wbc_base)
           apply (intro conjI exI)
            apply (rule refl)
           apply (rule arg_cong[where f=id_op])
-          apply (rule ext)
-          apply simp
+          apply auto
           done
         done
       done
@@ -316,6 +301,27 @@ lemma id_id_gen:
         apply (rule exI[of _ "map_op projl projr (comp_op Some buf2 (id_op (BENQ p x buf1)) (id_op buf3))"])
         apply (intro conjI)
         subgoal
+          apply (rule wstep_map_op)
+          apply (rule step_wstep)
+           apply (subst comp_op_code)
+           apply (rule SC)
+            apply (rule cUnI1)
+            apply (rule cimage_eqI)
+             apply simp
+            apply simp
+            apply (rule disjI1)
+            apply (rule exI)
+            apply (rule refl)
+           apply simp
+           apply (rule SR)
+          apply auto
+          done
+
+          apply (rule cinsertI1)
+
+          find_theorems wstep
+
+end
           apply (rule step_map_op[where f=projl and g=projr and io="Inp (Inl p) x", simplified])
            apply (subst comp_op_code)
            apply simp

@@ -59,6 +59,19 @@ codatatype (inputs: 'ip, outputs: 'op, dead 'd) op =
   | Choice "('ip, 'op, 'd) op cset"
   | Silent "('ip, 'op, 'd) op"
 
+\<comment> \<open>Some useful functions for defining operators\<close>
+abbreviation end_op ("\<oslash>") where "end_op \<equiv> Choice cempty"
+
+abbreviation "safe_choice_stop stop f ops \<equiv> (if ops = cempty then stop else Choice (cimage f ops))"
+abbreviation "safe_choice f \<equiv> safe_choice_stop (f end_op) f"
+abbreviation "safe_choice2 f op1s op2s \<equiv> (if op1s = cempty \<and> op2s = cempty then end_op
+  else if op1s = cempty then Choice (cimage (f end_op) op2s)
+  else if op2s = cempty then Choice (cimage (\<lambda>op1. f op1 end_op) op1s)
+  else Choice (cimage (case_prod f) (cproduct op1s op2s)))"
+abbreviation "choice1 op \<equiv> Choice (cimage (\<lambda>_. op) {|()|})"
+abbreviation "choice2 op1 op2 \<equiv> Choice (cimage (\<lambda>b. if b then op1 else op2) (cinsert True (csingle False)))"
+abbreviation "safe_read f x \<equiv> (case x of None \<Rightarrow> end_op | Some x \<Rightarrow> f x)"
+
 type_synonym 'd channel = "'d llist"
 
 code_lazy_type op
@@ -733,6 +746,30 @@ lemma wbisim_coinduct_upto:
       done
     done
 *)
+    done
+  done
+
+lemma step_star_map_op:
+  "(step Tau)\<^sup>*\<^sup>* op op' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (map_op f g op) (map_op f g op')"
+    apply (induct op arbitrary: rule: converse_rtranclp_induct)
+   apply auto[1]
+  apply (metis (no_types, lifting) ST converse_rtranclp_into_rtranclp op.simps(39) stepSilentE step_map_op)
+  done
+
+lemma wstep_map_op:
+  "wstep io op op' \<Longrightarrow> io' = map_IO f g id io \<Longrightarrow>
+   wstep io' (map_op f g op) (map_op f g op')"
+  unfolding wstep_def
+  apply hypsubst_thin
+  apply (erule relcomppE)
+  subgoal for op''
+    apply (induct op arbitrary: rule: converse_rtranclp_induct)
+    subgoal
+      apply (cases io)
+      using step_star_map_op step_map_op apply fastforce+
+      done
+    subgoal
+      by (smt (verit, ccfv_SIG) relcompp_apply rtranclp_trans step_star_map_op step_wstep wstep_steps_Tau)
     done
   done
 
