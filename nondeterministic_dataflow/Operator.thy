@@ -565,10 +565,20 @@ lemma step_wstep:
 lemma wstep_steps_Tau[simp]: "wstep Tau = (step Tau)\<^sup>*\<^sup>*"
   unfolding wstep_def by force
 
-lemma step_step_tau_wstep:
+lemma step_io_step_tau_wstep:
   "step io op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> wstep io op op''"
   unfolding wstep_def 
   by (smt (verit, best) predicate2D relcompp_apply rtranclp_trans step_wstep wstep_def wstep_steps_Tau)
+
+lemma step_tau_step_io_wstep:
+  "step Tau op op' \<Longrightarrow> step io op' op'' \<Longrightarrow> wstep io op op''"
+  unfolding wstep_def 
+  by (smt (verit, del_insts) estep.elims reflclp_tranclp relcomppI step_wstep sup2CI wstep_steps_Tau)
+
+lemma step_tau_step_tau_step_io_wstep:
+  "step Tau op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step io op'' op''' \<Longrightarrow> wstep io op op'''"
+  unfolding wstep_def 
+  by (smt (verit, del_insts) estep.elims reflclp_tranclp relcomppI rtranclp.rtrancl_into_rtrancl sup2CI)
 
 abbreviation "wbisimulation R \<equiv> (\<forall>op1 op2. R op1 op2 \<longrightarrow> wsim R op1 op2 \<and> wsim (conversep R) op2 op1)"
 

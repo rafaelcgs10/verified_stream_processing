@@ -1,6 +1,6 @@
 section \<open>The BNA operators\<close>
-\<comment> \<open>The basic operators - except compositions, loop and fair merge- from the BNA book "Network Algebra for Synchronous and Asynchronous Dataflow" (https://staff.fnwi.uva.nl/c.a.middelburg/papers/P9508.pdf) \<close>
-\<comment> \<open>Here we list most of the axioms from Table 1, and Table 4\<close>
+  \<comment> \<open>The basic operators - except compositions, loop and fair merge- from the BNA book "Network Algebra for Synchronous and Asynchronous Dataflow" (https://staff.fnwi.uva.nl/c.a.middelburg/papers/P9508.pdf) \<close>
+  \<comment> \<open>Here we list most of the axioms from Table 1, and Table 4\<close>
 theory BNA_Operators
 
 imports
@@ -8,8 +8,8 @@ imports
   Composition_Choices
 begin
 section \<open>spin_op/end_op/silent_op/I_0\<close>
-\<comment> \<open>spin_op/end_op is I_0 in the BNA book\<close>
-\<comment> \<open>In the transition system this is a dead-lock\<close>
+  \<comment> \<open>spin_op/end_op is I_0 in the BNA book\<close>
+  \<comment> \<open>In the transition system this is a dead-lock\<close>
 
 corec spin_op :: "('a, 'b, 'd) op" ("\<otimes>") where
   "spin_op = Choice (cimage (\<lambda> _. spin_op) (csingle ()))"
@@ -89,8 +89,8 @@ lemma spin_op_silent_op:
 lemma "\<otimes> ~ \<oslash>"
   oops
 
-section \<open>id_op/\<I>/I_m\<close>
-\<comment> \<open>id_op is I_m in the BNA paper\<close>
+  section \<open>id_op/\<I>/I_m\<close>
+    \<comment> \<open>id_op is I_m in the BNA paper\<close>
 
 datatype (discs_sels) ('m, 'd) id_op_aux =
   id_Read_aux "'m" "'d \<Rightarrow> ('m \<Rightarrow> 'd buf)"
@@ -128,7 +128,7 @@ lemma step_id_op_Inp:
    io = Inp p x \<Longrightarrow>
    op' = id_op (BENQ p x buf)"
   apply (induct io "id_op buf" op' arbitrary: buf rule: step.induct)
-    apply simp_all
+     apply simp_all
    apply (subst (asm) id_op_code)
    apply simp
   apply (subst (asm) (3) id_op_code)
@@ -140,9 +140,9 @@ lemma step_id_op_Out:
    io = Out p x \<Longrightarrow>
    op' = id_op (BTL p buf) \<and> BHD p buf = x \<and> buf p \<noteq> []"
   apply (induct io "id_op buf" op' arbitrary: buf rule: step.induct)
-    apply simp_all
+     apply simp_all
    apply (subst (asm) id_op_code)
-  apply simp
+   apply simp
   apply (subst (asm) (3) id_op_code)
   apply auto
   done
@@ -194,7 +194,7 @@ lemma step_comp_op_Some_id_op_id_op:
     apply hypsubst_thin
     apply (subst (asm) (6) comp_op_code)
     apply (auto 0 0)
-                     apply blast+
+             apply blast+
     done
   done
 
@@ -302,7 +302,7 @@ lemma id_id_gen:
         apply (intro conjI)
         subgoal
           apply (rule wstep_map_op)
-          apply (rule step_wstep)
+           apply (rule step_wstep)
            apply (subst comp_op_code)
            apply (rule SC)
             apply (rule cUnI1)
@@ -316,34 +316,11 @@ lemma id_id_gen:
            apply (rule SR)
           apply auto
           done
-
-          apply (rule cinsertI1)
-
-          find_theorems wstep
-
-end
-          apply (rule step_map_op[where f=projl and g=projr and io="Inp (Inl p) x", simplified])
-           apply (subst comp_op_code)
-           apply simp
-           apply (rule SC)
-            apply (simp add: Set.filter_def)
-            apply (rule disjI2)
-            apply simp
-            apply (rule disjI1)
-            apply (rule image_eqI)
-             apply (rule refl)
-            apply simp
-            apply (rule disjI1)
-            apply (intro exI)
-            apply (rule refl)
-           apply simp_all
-          apply (rule SR)
-          done
         subgoal
-          apply (rule bc_sym)
-          apply (rule bc_base)
+          apply (rule wbc_sym)
+          apply (rule wbc_base)
           apply (intro conjI exI)
-           apply simp_all
+           apply (rule refl)
           apply (rule arg_cong[where f=id_op])
           apply auto
           done
@@ -361,19 +338,18 @@ end
           apply (rule exI[of _ "map_op projl projr (comp_op Some buf2 (id_op buf1) (id_op (BTL p buf3)))"])
           apply (intro conjI)
           subgoal
-            apply (rule step_map_op[where f=projl and g=projr and io="Out (Inr p) x", simplified])
+            apply (rule wstep_map_op[where f=projl and g=projr and io="Out (Inr p) x", simplified])
              apply (subst comp_op_code)
              apply simp
+             apply (rule step_wstep)
              apply (rule SC)
               apply (simp add: Set.filter_def)
               apply (rule disjI2)
               apply simp
-              apply (rule disjI2)
               apply (rule image_eqI)
                apply (rule refl)
               apply (simp add: cUNIV.rep_eq)
               apply (intro conjI)
-               apply (rule disjI2)
                apply (rule disjI2)
                apply (intro conjI exI)
                 apply assumption
@@ -381,8 +357,8 @@ end
               apply (auto simp add: step.intros(2))
             done
           subgoal
-            apply (rule bc_sym)
-            apply (rule bc_base)
+            apply (rule wbc_sym)
+            apply (rule wbc_base)
             apply (intro exI conjI) 
              apply (rule refl)
             apply (rule arg_cong[where f=id_op])
@@ -395,31 +371,122 @@ end
           apply (rule exI[of _ "map_op projl projr (comp_op Some (BTL p buf2) (id_op buf1) (id_op buf3))"])
           apply (intro conjI)
           subgoal
-            apply (rule step_map_op[where f=projl and g=projr and io="Out (Inr p) x", simplified])
+            apply (rule wstep_map_op[where f=projl and g=projr and io="Out (Inr p) x", simplified])
+             apply simp_all
+            apply (rule step_tau_step_io_wstep[of _ "comp_op Some (BTL p buf2) (id_op buf1) (id_op (BENQ p x buf3))"])
+             apply (subst comp_op_code)
+             apply simp
+             apply (rule SC[rotated])
+              apply (rule ST)
+             apply simp
+             apply (rule disjI2)
+             apply simp
+             apply (rule image_eqI[rotated])
+              apply (simp add: Set.filter_def)
+              apply (intro conjI)
+               apply (rule disjI1)
+               apply (intro exI conjI)
+               apply (rule refl)
+              apply simp_all
+             apply simp
+            apply (subst comp_op_code)
+            apply (rule SC[rotated])
+             apply (rule SW)
+            apply simp
+            apply (rule disjI2)
+            apply (rule image_eqI[rotated])
+             apply (simp add: Set.filter_def)
+             apply (intro conjI)
+              apply (rule disjI2)
+              apply (intro exI conjI)
+               apply blast+
+             apply simp_all
+            apply (metis fun_upd_idem_iff)
+            done
+          subgoal
+            apply (rule wbc_sym)
+            apply (rule wbc_base)
+            apply (intro conjI exI)
+             apply (rule refl)
+            apply (rule arg_cong[where f=id_op])
+            apply auto
+            done
+          done
+        subgoal
+          apply (rule exI[of _ "map_op projl projr (comp_op Some buf2 (id_op (BTL p buf1)) (id_op buf3))"])
+          apply (intro conjI)
+          subgoal
+            apply (rule wstep_map_op[where f=projl and g=projr and io="Out (Inr p) x", simplified])
+             apply simp_all
+            apply (rule step_tau_step_tau_step_io_wstep[of _ "comp_op Some (BENQ p x buf2) (id_op (BTL p buf1)) (id_op buf3)" "comp_op Some (BTL p (BENQ p x buf2)) (id_op (BTL p buf1)) (id_op (BENQ p x buf3))"])
+              apply (subst comp_op_code)
+              apply simp
+              apply (rule SC[rotated])
+               apply (rule ST)
+              apply simp
+              apply (rule disjI1)
+              apply simp
+              apply (rule image_eqI[rotated])
+               apply (simp add: Set.filter_def)
+               apply (rule disjI2)
+               apply (intro exI conjI)
+                apply simp_all
+              apply simp
+             apply (subst comp_op_code)
+             apply (rule SC[rotated])
+              apply (rule ST)
+             apply simp
+             apply (rule disjI2)
+             apply (rule image_eqI[rotated])
+              apply (simp add: Set.filter_def)
+              apply (intro conjI)
+               apply (rule disjI1)
+               apply (intro conjI exI)
+               apply (rule refl)
+              apply simp
+              apply blast
+             apply simp
             apply (subst comp_op_code)
             apply simp
-            apply (rule SC)
-             apply simp
-             apply (rule disjI2)+
-             apply (rule image_eqI)
-              apply (rule refl)
-             apply (simp add: Set.filter_def cUNIV.rep_eq)
-              apply (intro conjI)
-               apply (rule disjI2)
-               apply (rule disjI1)
+            apply (rule SC[rotated])
+             apply (rule SW)
+            apply simp
+            apply (simp add: Set.filter_def)          
+            apply (rule disjI2)
+            apply (rule image_eqI[rotated])
+             apply (simp add: Set.filter_def)
+             apply (intro exI conjI)
+              apply (rule disjI2)
+              apply (intro exI conjI)
+               apply blast
+              apply simp_all
+             apply blast
+            apply (simp add: fun_upd_idem)
+            done
+          subgoal
+            apply (rule wbc_sym)
+            apply (rule wbc_base)
             apply (intro conjI exI)
-               apply simp_all
-             apply force
-            apply simp *)
+             apply (rule refl)
+            apply (rule arg_cong[where f=id_op])
+            apply auto
+            done
+          done
+        done
+      subgoal
+        apply (subst (asm) id_op_code)
+        apply auto
+        done
+      done
+    done
+  done
 
-\<comment> \<open>TODO: id o id is id\<close>
 subsubsection \<open>Axiom: B4\<close>
 lemma scomp_op_id_id:
   "\<I> \<bullet> \<I> \<approx> \<I>"
   unfolding scomp_op_def
- (*  using id_id_gen[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []"] apply simp
-  done *)
-  oops
+  using id_id_gen[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []"] apply simp
+  done
 
 subsection \<open>Axiom: B6\<close>
 subsubsection \<open>Auxiliary lemmas\<close>
@@ -428,24 +495,24 @@ lemma pcomp_op_id_id:
   "\<I> \<parallel> \<I> ~ \<I>"
   oops
 
-section \<open>dummy_source_op\<close>                                     
+  section \<open>dummy_source_op\<close>                                     
 abbreviation dummy_source_op ("\<exclamdown>") where
   "\<exclamdown> \<equiv> \<oslash> \<bullet> \<I>"
 
 subsection \<open>Axiom: A12\<close>
 lemma dummy_source_op_end_op:
- "\<exclamdown> ~ \<oslash>"
+  "\<exclamdown> ~ \<oslash>"
   oops
 lemma dummy_source_op_spin_op:
- "\<exclamdown> = \<otimes>"
+  "\<exclamdown> = \<otimes>"
   oops
 
-subsection \<open>Axiom: A13\<close>
+  subsection \<open>Axiom: A13\<close>
 lemma pcomp_opdummy_source:
- "\<exclamdown> \<parallel> \<exclamdown> ~ \<exclamdown>"
+  "\<exclamdown> \<parallel> \<exclamdown> ~ \<exclamdown>"
   oops
 
-section \<open>sink_op\<close>                                     
+  section \<open>sink_op\<close>                                     
 corec drain_op :: "('m :: countable, 'o, 'd) op" where
   "drain_op = Choice ((cimage (\<lambda> p. Read p (\<lambda> x. drain_op)) (cUNIV :: 'm cset)))"
 
@@ -479,8 +546,8 @@ lemma choices_sink_op[simp]:
   subgoal premises prems for x n
     using prems(2) apply -
     apply (induct n)
-     apply (subst (asm) sink_op.code)
-     apply simp 
+    apply (subst (asm) sink_op.code)
+    apply simp 
     apply (subst (asm) (3) sink_op.code)
     apply simp
     done
@@ -491,7 +558,7 @@ lemma choices_sink_op[simp]:
   done
 
 section \<open>transp_op - transposition operator\<close>
-\<comment> \<open>TODO: define the operator + write and prove axioms B7, B8, B9, B10, R1, F2, \<close>
+  \<comment> \<open>TODO: define the operator + write and prove axioms B7, B8, B9, B10, R1, F2, \<close>
 
 section \<open>User defined operators\<close>
 abbreviation buffered ("\<stileturn> _ \<turnstile>" [150]151) where
