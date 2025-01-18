@@ -116,19 +116,14 @@ lemma comp_op_simps[simp]:
                    else Read (Inr p) (\<lambda>x. comp_op wire buf (Choice op1s) (f x)))
             (\<lambda>op p. Write (comp_op wire buf (Choice op1s) op) (Inr p)) (\<lambda>a. undefined) (\<lambda>op. Silent (comp_op wire buf (Choice op1s) op)))
           (sound_reads wire buf (cUnion (cimage choices op2s)))))" 
-  apply simp
-  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
-  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
-  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
-  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
-  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
-  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
-  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
-  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
-  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
-  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
-  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
-  apply (subst comp_op_code, auto simp add: image_iff split: option.splits)
+  by (subst comp_op_code, auto simp add: image_iff split: option.splits)+
+
+lemma comp_op_not_Read[simp]:
+  "\<not> is_Read (comp_op wire buf op1 op2)"
+  by (subst comp_op_code, simp)
+lemma comp_op_not_Write[simp]:
+  "\<not> is_Write (comp_op wire buf op1 op2)"
+  by (subst comp_op_code, simp)
 
 section \<open>Properties of the (general) composition\<close>
 
@@ -305,97 +300,534 @@ lemma assoc_reassoc[simp]:
 section \<open>Sequential composition operator\<close>
 definition scomp_op (infixl "\<bullet>" 65) where
   "scomp_op op1 op2 = map_op projl projr (comp_op Some (\<lambda>_. []) op1 op2)"
-(* 
-abbreviation "read_or_write \<equiv> Choice {| Read (1::2) (\<lambda> _. end_op), Write (Read (2::2) (\<lambda> _. end_op)) (1::1) (1::nat) |}"
 
-lemma choices_read_or_write[simp]:
-  "choices read_or_write = {| Read (1::2) (\<lambda> _. end_op), Write (Read (2::2) (\<lambda> _. end_op)) (1::1) (1::nat) |}"
-  by (auto simp del: cimage_cinsert)
 
-lemma assoc_example_1:
-  "read_or_write \<bullet> ((end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1)) ~ read_or_write \<bullet> (end_op :: (1, 1, nat) op) \<bullet> (Write end_op (1::1) 1)"
-  apply (coinduction rule: bisim_coinduct_upto)
-  unfolding sim_def scomp_op_def
-  apply auto
-  subgoal
-    apply (intro exI conjI)
-     apply (rule SC)
-      apply (rule cinsertI2)
-      apply (rule cinsertI2)
-      apply (rule cinsertI1)
-     apply (rule ST)
-    apply (rule bc_bisim)
-    subgoal 
-      apply (coinduction rule: bisim_coinduct_upto)
-      unfolding sim_def
-      apply auto
+section \<open>Axiom B3: Associativity\<close>
+
+lemma step_scomp_op_1:
+  "step io (map_op projl projr (comp_op Some (buf1 :: 'd \<Rightarrow> 'c buf) op1 (map_op projl projr (comp_op Some (buf2 :: 'e \<Rightarrow> 'c buf) op2 op3)))) op \<Longrightarrow>
+   \<exists> op1' op2' op3' (buf1' :: 'd \<Rightarrow> 'c buf) (buf2' :: 'e \<Rightarrow> 'c buf). op = map_op projl projr (comp_op Some buf1' op1' (map_op projl projr (comp_op Some buf2' op2' op3'))) \<and>
+   step io (map_op projl projr (comp_op Some buf2 (map_op projl projr (comp_op Some buf1 op1 op2)) op3)) (map_op projl projr (comp_op Some buf2' (map_op projl projr (comp_op Some buf1' op1' op2')) op3'))"
+  apply (induct "map_op projl projr (comp_op Some buf1 op1 (map_op projl projr (comp_op Some buf2 op2 op3)))" op arbitrary: op1 op2 op3 buf1 buf2 pred: step)
+     apply (subst (asm) comp_op_code, simp)
+    apply (subst (asm) comp_op_code, simp)
+   apply (subst (asm) comp_op_code, simp)
+  subgoal for op ops io op' op1 op2 op3 buf1 buf2
+    apply (subst (asm) (9) comp_op_code)
+    apply clarsimp
+    apply hypsubst_thin
+    subgoal for op''
+      apply (elim disjE)
       subgoal
-        using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
-      subgoal
-        using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
-      subgoal
-        apply (intro exI conjI)
-         apply (rule SC)
-          apply (rule cinsertI2)
-          apply force
-         apply (rule step_map_op)
-          apply (rule SW)
-         apply simp
-        subgoal
-          using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
+        apply clarsimp
+        subgoal for op1
+          apply (cases op1)
+          subgoal for p f
+            apply clarsimp
+            apply (erule thin_rl)
+            apply hypsubst_thin
+            apply (intro exI conjI)
+             apply (rule refl)
+            apply (subst (2) comp_op_code)
+            apply (rule step_map_op)
+             apply (rule SC[rotated])
+              apply (rule SR)
+             apply simp
+             apply (rule disjI1)
+             apply (rule image_eqI[rotated])
+              apply (subst comp_op_code)
+              apply simp
+              apply (rule disjI1)
+              apply (rule bexI[rotated])
+               apply simp
+              apply fastforce+
+            done
+          subgoal for op1' p x
+            apply clarsimp
+            apply (erule thin_rl)
+            apply hypsubst_thin
+            apply (intro exI conjI)
+             apply (rule refl)
+            apply (subst (2) comp_op_code)
+            apply (rule step_map_op)
+             apply (rule SC[rotated])
+              apply (rule ST)
+             apply simp
+             apply (rule disjI1)
+             apply (rule image_eqI[rotated])
+              apply (subst comp_op_code)
+              apply simp
+              apply (rule disjI1)
+              apply (rule bexI[rotated])
+               apply simp
+              apply fastforce+
+            done
+          subgoal for ops
+            by clarsimp
+          subgoal
+            apply clarsimp
+            apply (erule thin_rl)
+            apply hypsubst_thin
+            apply (intro exI conjI)
+             apply (rule refl)
+            apply (subst (2) comp_op_code)
+            apply (rule step_map_op)
+             apply (rule SC)
+              apply simp
+              apply (rule disjI1)
+              apply (rule image_eqI[rotated])
+               apply (subst comp_op_code)
+               apply simp
+               apply (rule disjI1)
+               apply (rule bexI[rotated])
+                apply simp
+               apply force+
+             apply (rule ST)
+            apply auto
+            done
+          done
         done
       subgoal
-        using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
+        apply clarsimp
+        subgoal for op23
+          apply (cases op23)
+          subgoal for p f
+            apply clarsimp
+            apply (erule thin_rl)
+            apply hypsubst_thin
+            apply (subst (asm) comp_op_code)
+            apply auto
+            subgoal for op2
+              apply (cases op2)
+              subgoal
+                apply (intro exI conjI)
+                 apply auto
+                apply hypsubst_thin
+                apply (subst (2) comp_op_code)
+                apply (rule step_map_op)
+                 apply (rule SC[rotated])
+                  apply (rule ST)
+                 apply simp
+                 apply (rule disjI1)
+                 apply (rule image_eqI[rotated])
+                  apply (subst comp_op_code)
+                  apply simp
+                  apply (rule disjI2)
+                  apply (rule bexI[rotated])
+                   apply simp
+                   apply fastforce+
+                done
+              subgoal by auto
+              subgoal by auto
+              subgoal by auto
+              done
+            subgoal for op3
+              apply (cases op3)
+                 apply auto
+              done
+            done
+          subgoal for op23' p x
+            apply clarsimp
+            apply (erule thin_rl)
+            apply hypsubst_thin
+            apply (subst (asm) comp_op_code)
+            apply auto
+            subgoal for op2
+              apply (cases op2)
+                 apply auto
+              done
+            subgoal for op3
+              apply (cases op3)
+                 apply auto
+              apply hypsubst_thin
+              apply (intro exI conjI)
+               apply (rule refl)
+              apply (subst (2) comp_op_code)
+              apply (rule step_map_op)
+               apply (rule SC)
+                apply simp
+                apply (rule disjI2)
+                apply (rule image_eqI[rotated])
+                 apply simp
+                 apply force
+                apply simp_all
+               apply (rule SW)
+              apply auto
+              done
+            done
+          subgoal
+            by clarsimp
+          subgoal for op'
+            apply clarsimp
+            apply (erule thin_rl)
+            apply hypsubst_thin
+            apply (subst (asm) comp_op_code)
+            apply auto
+            subgoal for op2'
+              apply (cases op2')
+                 apply auto
+              subgoal
+                apply hypsubst_thin
+                apply (intro exI conjI)
+                 apply (rule refl)
+                apply (subst (2) comp_op_code)
+                apply (rule step_map_op[of Tau])
+                 apply (rule SC)
+                  apply simp
+                  apply (rule disjI1)
+                  apply (rule image_eqI[rotated])
+                   apply (subst comp_op_code)
+                   apply simp_all
+                 apply (rule disjI2)
+                 apply (intro bexI)
+                  apply (auto intro: ST)
+                done
+              subgoal for op2'
+                apply hypsubst_thin
+                apply (intro exI conjI)
+                 apply (rule refl)
+                apply (subst (2) comp_op_code)
+                apply (rule step_map_op[of Tau])
+                 apply (rule SC)
+                  apply simp
+                  apply (rule disjI1)
+                  apply (rule image_eqI[rotated])
+                   apply (subst comp_op_code)
+                   apply simp_all
+                 apply (rule disjI2)
+                 apply (intro bexI)
+                  apply (auto intro: ST)
+                done
+              done
+            subgoal for op3'
+              apply (cases op3')
+                 apply auto
+              subgoal for p f
+                apply hypsubst_thin
+                apply (intro exI conjI)
+                 apply (rule refl)
+                apply (subst (2) comp_op_code)
+                apply (rule step_map_op[of Tau])
+                 apply (rule SC)
+                  apply simp
+                  apply (rule disjI2)
+                  apply (rule image_eqI[rotated])
+                   apply force
+                  apply simp_all
+                apply (auto intro: ST)
+                done
+              subgoal
+                apply hypsubst_thin
+                apply (intro exI conjI)
+                 apply (rule refl)
+                apply (subst (2) comp_op_code)
+                apply (rule step_map_op[of Tau])
+                 apply (rule SC)
+                  apply simp
+                  apply (rule disjI2)
+                  apply (rule image_eqI[rotated])
+                   apply force
+                  apply simp_all
+                apply (auto intro: ST)
+                done
+              done
+            done
+          done
+        done
       done
     done
-  subgoal
-    using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
-  subgoal
-    using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
-  subgoal
-    apply (intro exI conjI)
-     apply (rule SC)
-      apply (rule cinsertI2)
-      apply (rule cinsertI2)
-      apply force
-     apply (rule step_map_op)
-      apply (rule SW)
-     apply simp
-    subgoal
-      using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
+  done
+
+lemma step_scomp_op_2:
+  "step io (map_op projl projr (comp_op Some (buf2 :: 'e \<Rightarrow> 'c buf) (map_op projl projr (comp_op Some (buf1 :: 'd \<Rightarrow> 'c buf) op1 op2)) op3)) op \<Longrightarrow>
+   \<exists> op1' op2' op3' (buf1' :: 'd \<Rightarrow> 'c buf) (buf2' :: 'e \<Rightarrow> 'c buf). op = map_op projl projr (comp_op Some buf2' (map_op projl projr (comp_op Some buf1' op1' op2')) op3') \<and>
+   step io (map_op projl projr (comp_op Some buf1 op1 (map_op projl projr (comp_op Some buf2 op2 op3)))) (map_op projl projr (comp_op Some buf1' op1' (map_op projl projr (comp_op Some buf2' op2' op3'))))"
+  apply (induct "map_op projl projr (comp_op Some buf2 (map_op projl projr (comp_op Some buf1 op1 op2)) op3)" op arbitrary: op1 op2 op3 buf1 buf2 pred: step)
+     apply (subst (asm) (2) comp_op_code, simp)
+    apply (subst (asm) (2) comp_op_code, simp)
+   apply (subst (asm) (2) comp_op_code, simp)
+  subgoal for op ops io op' op1 op2 op3 buf1 buf2
+    apply (subst (asm) (10) comp_op_code)
+    apply clarsimp
+    apply hypsubst_thin
+    subgoal for op''
+      apply (elim disjE)
+      subgoal
+        apply clarsimp
+        subgoal for op12
+          apply (cases op12)
+          subgoal for p f
+            apply clarsimp
+            apply (erule thin_rl)
+            apply hypsubst_thin
+            apply (subst (asm) comp_op_code)
+            apply auto
+            subgoal for op1 op1'
+              apply (cases op1')
+              subgoal
+                apply (intro exI conjI)
+                 apply auto
+                apply hypsubst_thin
+                apply (subst (1) comp_op_code)
+                apply (rule step_map_op)
+                 apply (rule SC[rotated])
+                  apply (rule SR)
+                 apply simp
+                 apply (rule disjI1)
+                 apply (rule image_eqI[rotated])
+                  apply simp
+                 apply auto
+                done
+                apply auto
+              done
+            subgoal for op2 op2'
+              apply (cases op2')
+                 apply auto
+              done
+            done
+          subgoal for op12' p x
+            apply auto
+            apply (erule thin_rl)
+            apply hypsubst_thin
+            apply (subst (asm) comp_op_code)
+            apply auto
+            subgoal for op1'
+              apply (cases op1')
+                 apply auto
+              done
+            subgoal for op1'
+              apply (cases op1')
+                 apply auto
+              apply hypsubst_thin
+              apply (intro exI conjI)
+               apply auto
+              apply (subst (1) comp_op_code)
+              apply (rule step_map_op)
+               apply (rule SC[rotated])
+                apply (rule ST)
+               apply simp_all
+              apply simp
+              apply (rule disjI2)
+              apply (rule image_eqI[rotated])
+               apply simp_all
+               apply (subst (1) comp_op_code)
+               apply simp
+               apply (intro exI conjI)
+                apply (rule disjI1)
+                apply force
+               apply simp_all
+              apply (metis fun_upd_apply)
+              done
+            done
+          subgoal
+            by auto
+          subgoal
+            apply clarsimp
+            apply (erule thin_rl)
+            apply hypsubst_thin
+            apply (subst (asm) comp_op_code)
+            apply auto
+            subgoal for op1'
+              apply (cases op1')
+              subgoal
+                by auto
+              subgoal for op1'' p x
+                apply (intro exI conjI)
+                 apply simp_all
+                apply (subst (1) comp_op_code)
+                apply simp
+                apply (rule SC)
+                 apply simp_all
+                 apply force
+                apply simp
+                apply (rule ST)
+                done
+              subgoal
+                by auto
+              subgoal for op1'''
+                apply simp
+                apply hypsubst_thin
+                apply (intro exI conjI)
+                 apply simp_all
+                apply (subst (1) comp_op_code)
+                apply simp
+                apply (rule SC)
+                 apply simp_all
+                 apply force
+                apply simp
+                apply (rule ST)
+                done
+              done
+            subgoal for op2'
+              apply (cases op2')
+              subgoal for p f
+                apply clarsimp
+                apply hypsubst_thin
+                apply (intro exI conjI)
+                 apply simp_all
+                apply (subst (1) comp_op_code)
+                apply simp
+                apply (rule SC)
+                 apply simp_all
+                 apply (rule image_eqI[rotated])
+                  apply simp
+                  apply (rule disjI2)
+                  apply (rule image_eqI[rotated])
+                   apply (subst (1) comp_op_code)
+                   apply simp
+                   apply (intro conjI)
+                    apply (rule disjI1)
+                    apply force
+                   apply simp_all
+                apply simp
+                apply (rule ST)
+                done
+              subgoal
+                by auto
+              subgoal
+                by auto
+              subgoal
+                apply clarsimp
+                apply hypsubst_thin
+                apply (intro exI conjI)
+                 apply simp_all
+                apply (subst (1) comp_op_code)
+                apply simp
+                apply (rule SC)
+                 apply simp_all
+                 apply (rule image_eqI[rotated])
+                  apply simp
+                  apply (rule disjI2)
+                  apply simp_all
+                 apply (rule image_eqI[rotated])
+                  apply (subst (1) comp_op_code)
+                  apply simp
+                  apply (intro conjI)
+                   apply (rule disjI1)
+                   apply force
+                  apply simp_all
+                apply simp
+                apply (rule ST)
+                done
+              done
+            done
+          done
+        done
+      subgoal
+        apply auto
+        subgoal for op3'
+          apply (cases op3')
+             apply auto
+          subgoal
+            apply (erule thin_rl)
+            apply hypsubst_thin
+            apply (intro exI conjI)
+             apply simp_all
+            apply (subst (1) comp_op_code)
+            apply simp
+            apply (rule SC)
+             apply simp_all
+             apply (rule image_eqI[rotated])
+              apply simp
+              apply (rule disjI2)
+              apply (rule image_eqI[rotated])
+               apply (subst (1) comp_op_code)
+               apply simp
+               apply (intro conjI)
+                apply (rule disjI2)
+                apply force
+               apply simp_all
+            apply simp
+            apply (rule ST)
+            done
+          subgoal
+            apply (erule thin_rl)
+            apply hypsubst_thin
+            apply (intro exI conjI)
+             apply simp_all
+            apply (subst (1) comp_op_code)
+            apply simp
+            apply (rule SC)
+             apply simp_all
+             apply (rule image_eqI[rotated])
+              apply simp
+              apply (rule disjI2)
+              apply (rule image_eqI[rotated])
+               apply (subst (1) comp_op_code)
+               apply simp
+               apply (intro conjI)
+                apply (rule disjI2)
+                apply force
+               apply auto
+            apply (rule SW)
+            done
+          subgoal
+            apply (erule thin_rl)
+            apply hypsubst_thin
+            apply (intro exI conjI)
+             apply simp_all
+            apply (subst (1) comp_op_code)
+            apply simp
+            apply (rule SC)
+             apply simp_all
+             apply (rule image_eqI[rotated])
+              apply simp
+              apply (rule disjI2)
+              apply (rule image_eqI[rotated])
+               apply (subst (1) comp_op_code)
+               apply simp
+               apply (intro conjI)
+                apply (rule disjI2)
+                apply force
+               apply simp_all
+            apply simp
+            apply (rule ST)
+            done
+          done
+        done
+      done
     done
-  subgoal
-    using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
-  subgoal
-    apply (intro exI conjI)
-     apply (rule SC)
-      apply (rule cinsertI1)
-     apply (rule ST)
-    apply (rule bc_bisim)
-    apply (coinduction rule: bisim_coinduct_upto)
-    unfolding sim_def
-    apply auto
+  done
+
+lemma scomp_op_assoc_gen:
+  "map_op projl projr (comp_op Some buf1 op1 (map_op projl projr (comp_op Some buf2 op2 op3))) ~
+   map_op projl projr (comp_op Some buf2 (map_op projl projr (comp_op Some buf1 op1 op2)) op3)"
+  apply (coinduction arbitrary: op1 op2 op3 buf1 buf2 rule: bisim_coinduct_upto)
+  subgoal for op1 op2 op3 buf1 buf2
+    apply (intro conjI)
     subgoal
-      apply (intro exI conjI)
-       apply (rule SC)
-        apply (rule cinsertI2)
-        apply simp
-        apply force
-       apply (rule step_map_op)
-        apply (rule SW)
-       apply simp
-      apply (rule bc_bisim)
-      apply (coinduction rule: bisim_coinduct_upto)
       unfolding sim_def
-      apply (force intro: step_map_op step.intros bc_refl)
+      apply safe
+      subgoal for io op
+        apply (drule step_scomp_op_1)
+        apply auto
+        apply hypsubst_thin
+        apply (intro conjI[rotated] exI)
+         apply (rule bc_base)
+         apply auto
+        apply fast
+        done
       done
     subgoal
-      using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
-    subgoal
-      using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
-    subgoal
-      using bisim_coinduct_upto by (force intro: step_map_op step.intros bc_refl)
+      unfolding sim_def
+      apply safe
+      subgoal for io op
+        apply (drule step_scomp_op_2)
+        apply auto
+        apply hypsubst_thin
+        apply (intro conjI[rotated] exI)
+         apply (rule bc_sym)
+         apply (rule bc_base)
+         apply auto
+        apply blast
+        done
+      done
     done
-  done *)
+  done
+
+lemma scomp_op_assoc:
+  "op1 \<bullet> op2 \<bullet> op3 ~ op1 \<bullet> (op2 \<bullet> op3)"
+  unfolding scomp_op_def using scomp_op_assoc_gen
+  using bisim_sym by blast
 
 end

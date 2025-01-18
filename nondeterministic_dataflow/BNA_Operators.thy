@@ -534,29 +534,6 @@ lemma
   "\<exclamdown> \<bullet> ! = \<otimes>"
   oops
 
-
-end
-corec sink_op :: "('a, 'b, 'd) op" where
-  "sink_op = Read 1 (\<lambda>_. sink_op)"
-
-lemma choices_sink_op[simp]:
-  "choices sink_op = {|Read 1 (\<lambda> _. sink_op)|}"
-  unfolding choices_def
-  apply safe
-  subgoal premises prems for x n
-    using prems(2) apply -
-    apply (induct n)
-    apply (subst (asm) sink_op.code)
-    apply simp 
-    apply (subst (asm) (3) sink_op.code)
-    apply simp
-    done
-  subgoal for x
-    apply auto
-    apply (metis UNIV_witness natcUNIV.rep_eq choices_at.simps(1) cin.rep_eq cinsertI1 sink_op.code)
-    done
-  done
-
 section \<open>transp_op - transposition operator\<close>
   \<comment> \<open>TODO: define the operator + write and prove axioms B7, B8, B9, B10, R1, F2, \<close>
 
