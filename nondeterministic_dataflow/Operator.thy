@@ -288,10 +288,10 @@ section\<open>Transition system\<close>
 datatype ('a, 'b, 'd) IO = Inp (proji: 'a) (data: "'d") | Out (projo: 'b) (data: 'd) | Tau
 
 inductive step where
-  SR: "step (Inp p x) (Read p f) (f x)"
-| SW: "step (Out q x) (Write op q x) op"
-| ST: "step Tau (Silent op) op"
-| SC: "cin op ops \<Longrightarrow> step io op op' \<Longrightarrow> step io (Choice ops) op'"
+  SR[intro]: "step (Inp p x) (Read p f) (f x)"
+| SW[intro]: "step (Out q x) (Write op q x) op"
+| ST[intro]: "step Tau (Silent op) op"
+| SC[intro]: "cin op ops \<Longrightarrow> step io op op' \<Longrightarrow> step io (Choice ops) op'"
 
 inductive_cases stepReadE [elim!]: "step io (Read p f) op'"
 inductive_cases stepWriteE [elim!]: "step io (Write op q x) op'"
@@ -785,13 +785,12 @@ lemma wstep_map_op:
 
 lemma wbisim_map_op:
   "op \<approx> op' \<Longrightarrow> map_op f g op \<approx> map_op f g op'"
-  oops(* 
-  apply (coinduction arbitrary: op op' rule: bisim_coinduct_upto)
+  apply (coinduction arbitrary: op op' rule: wbisim_coinduct_upto)
   subgoal for op op'
     apply clarsimp
-    apply (erule bisim.cases)
+    apply (erule wbisim.cases)
     subgoal for s t
-      unfolding sim_def
+      unfolding wsim_def
       apply auto
       subgoal for l s'
         apply hypsubst_thin
@@ -802,11 +801,11 @@ lemma wbisim_map_op:
         apply assumption
         apply auto
         apply hypsubst_thin
-        apply (drule step_map_op[where f=f and g=g and op=t])
+        apply (drule wstep_map_op[where f=f and g=g and op=t])
         apply (rule refl)
         apply (intro conjI exI)
         apply assumption
-        apply (metis (mono_tags, lifting) bc_base bisim_sym)
+        apply (metis (mono_tags, lifting) wbc_base wbisim_sym)
         done
       subgoal for l s'
         apply hypsubst_thin
@@ -818,15 +817,15 @@ lemma wbisim_map_op:
         apply assumption
         apply auto
         apply hypsubst_thin
-        apply (drule step_map_op[where f=f and g=g and op=s])
+        apply (drule wstep_map_op[where f=f and g=g and op=s])
         apply (rule refl)
         apply (intro conjI exI)
         apply assumption
-        apply (metis (mono_tags, lifting) bc_base bisim_sym)
+        apply (metis (mono_tags, lifting) wbc_base wbisim_sym)
         done
       done
     done
-  done *)
+  done
 
 
 section\<open>Trace model\<close>

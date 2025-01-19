@@ -7,6 +7,7 @@ imports
   Operator
   Composition_Choices
 begin
+
 section \<open>spin_op/end_op/silent_op/I_0\<close>
   \<comment> \<open>spin_op/end_op is I_0 in the BNA book\<close>
   \<comment> \<open>In the transition system this is a dead-lock\<close>
@@ -89,7 +90,7 @@ lemma spin_op_silent_op:
 lemma "\<otimes> ~ \<oslash>"
   oops
 
-  section \<open>id_op/\<I>/I_m\<close>
+section \<open>id_op/\<I>/I_m\<close>
     \<comment> \<open>id_op is I_m in the BNA paper\<close>
 
 datatype (discs_sels) ('m, 'd) id_op_aux =
@@ -153,6 +154,13 @@ lemma choices_id_op[simp]:
   apply (subst id_op_code)
   apply simp
   done
+
+
+
+subsection \<open>User defined operators\<close>
+abbreviation buffered ("\<stileturn> _ \<turnstile>" [150]151) where
+  "\<stileturn>op\<turnstile> \<equiv> \<I> \<bullet> op \<bullet> \<I>"
+
 
 subsection \<open>Compositional properties id_op\<close>
 lemma step_comp_op_Some_id_op_id_op:
@@ -488,6 +496,46 @@ lemma scomp_op_id_id:
   using id_id_gen[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []"] apply simp
   done
 
+lemma
+  "\<stileturn>op\<turnstile> \<bullet> \<I> \<approx> \<stileturn>op\<turnstile>"
+  unfolding scomp_op_def
+  apply (rule wbisim_map_op)
+  oops
+(* 
+   apply (rule bisim_wbisim[rotated])
+   apply (rule scomp_op_assoc[unfolded scomp_op_def])
+  apply (rule wbisim_map_op)
+  apply (rule wbisim_comp_op_cong)
+   apply (rule wbisim_refl)
+  sledgehammer
+
+
+  thm scomp_op_id_id[unfolded scomp_op_def]
+
+  apply (rule scomp_op_id_id[unfolded scomp_op_def])
+
+  apply (rule bisim_comp_op_cong[rotated])
+
+  thm  scomp_op_assoc[unfolded scomp_op_def]
+
+   apply (rule scomp_op_assoc[unfolded scomp_op_def, OF wbisim_refl])
+  apply (rule wbisim_map_op)
+
+
+  apply (rule )
+
+  apply (rule arg_cong2[where f=map_op])
+
+
+  using scomp_op_id_id[unfolded scomp_op_def] scomp_op_assoc[unfolded scomp_op_def]
+
+  apply (rule arg_cong2)
+
+  apply (rule wbisim_comp_op_cong)
+
+  apply (simp add: scomp_op_id_id[unfolded scomp_op_def])
+ *)
+
 subsection \<open>Axiom: B6\<close>
 subsubsection \<open>Auxiliary lemmas\<close>
 subsubsection \<open>Axiom: B6\<close>
@@ -536,10 +584,6 @@ lemma
 
 section \<open>transp_op - transposition operator\<close>
   \<comment> \<open>TODO: define the operator + write and prove axioms B7, B8, B9, B10, R1, F2, \<close>
-
-section \<open>User defined operators\<close>
-abbreviation buffered ("\<stileturn> _ \<turnstile>" [150]151) where
-  "\<stileturn>op\<turnstile> \<equiv> \<I> \<bullet> op \<bullet> \<I>"
 
 (* 
 abbreviation "write op p x \<equiv> Write op p (Observed x)"

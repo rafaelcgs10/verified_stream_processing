@@ -175,10 +175,27 @@ lemma step_comp_op_L:
     done
   done
 
+lemma step_Tau_comp_op_L:
+  "step (Out p x) op1 op1' \<Longrightarrow>
+   wire p = Some q \<Longrightarrow>
+   step Tau (comp_op wire buf op1 op2) (comp_op wire (BENQ q x buf) op1' op2)"
+  apply (erule step_choicesE)
+  apply simp_all
+    apply (subst (1) comp_op_code)
+  apply simp
+  apply (rule SC)
+   apply simp
+   apply (rule disjI1)
+  apply (rule image_eqI)
+    apply (rule refl)
+   apply assumption
+  apply auto
+  done
+
 lemma step_comp_op_R:
   "step io op2 op2' \<Longrightarrow>
    (case io of Out p x \<Rightarrow> True | Inp p x \<Rightarrow> p \<notin> ran wire | Tau \<Rightarrow> True) \<Longrightarrow>
-   step (map_IO Inr Inr id io)  (comp_op wire buf op1 op2)(comp_op wire buf op1 op2')"
+   step (map_IO Inr Inr id io) (comp_op wire buf op1 op2)(comp_op wire buf op1 op2')"
   apply (induct io op2 op2' arbitrary: op1 buf rule: step.induct)
   subgoal for p x f op1 buf
     apply (subst (1) comp_op_code)
@@ -236,7 +253,6 @@ lemma step_comp_op_R:
       apply simp
       unfolding cfilter_def Set.filter_def
       apply auto
-      apply (meson step.intros(1))
       done
     subgoal for p x
       apply simp
@@ -249,7 +265,6 @@ lemma step_comp_op_R:
       apply simp
       unfolding cfilter_def Set.filter_def
       apply auto
-      apply (meson step.intros(2))
       done
     subgoal
       apply auto
@@ -260,6 +275,49 @@ lemma step_comp_op_R:
       done
     done
   done
+
+lemma step_Tau_comp_op_R:
+  "step (Inp p x) op2 op2' \<Longrightarrow>
+   p \<in> ran wire \<Longrightarrow>
+   buf p \<noteq> [] \<Longrightarrow>
+   BHD p buf = x \<Longrightarrow>
+   step Tau (comp_op wire buf op1 op2) (comp_op wire (BTL p buf) op1 op2')"
+  apply (erule step_choicesE)
+  apply simp_all
+    apply (subst (1) comp_op_code)
+  apply simp
+  apply (rule SC)
+   apply simp
+   apply (rule disjI2)
+  apply (rule image_eqI)
+    apply (rule refl)
+  apply auto
+  done
+
+lemma step_comp_op_R_Out[intro]:
+  "step (Out p x) op2 op2' \<Longrightarrow> step (Out (Inr p) x) (comp_op wire buf op1 op2) (comp_op wire buf op1 op2')"
+  using step_comp_op_R by force
+
+lemma step_comp_op_R_Inp[intro]:
+  "step (Inp p x) op2 op2' \<Longrightarrow> p \<notin> ran wire \<Longrightarrow> step (Inp (Inr p) x) (comp_op wire buf op1 op2) (comp_op wire buf op1 op2')"
+  using step_comp_op_R by fastforce
+
+lemma step_comp_op_R_Tau[intro]:
+  "step Tau op2 op2' \<Longrightarrow> step Tau (comp_op wire buf op1 op2) (comp_op wire buf op1 op2')"
+  using step_comp_op_R by force
+
+lemma step_comp_op_L_Inp[intro]:
+  "step (Inp p x) op1 op1' \<Longrightarrow> step (Inp (Inl p) x) (comp_op wire buf op1 op2) (comp_op wire buf op1' op2)"
+  using step_comp_op_L by force
+
+lemma step_comp_op_L_Out[intro]:
+  "step (Out p x) op1 op1' \<Longrightarrow> p \<notin> dom wire \<Longrightarrow> step (Out (Inl p) x) (comp_op wire buf op1 op2) (comp_op wire buf op1' op2)"
+  using step_comp_op_L
+  by (metis IO.map_id IO.simps(10) IO.simps(16))
+
+lemma step_comp_op_L_Tau[intro]:
+  "step Tau op1 op1' \<Longrightarrow> step Tau (comp_op wire buf op1 op2) (comp_op wire buf op1' op2)"
+  using step_comp_op_L by force
 
 section \<open>Parallel composition operator\<close>
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
@@ -301,9 +359,979 @@ section \<open>Sequential composition operator\<close>
 definition scomp_op (infixl "\<bullet>" 65) where
   "scomp_op op1 op2 = map_op projl projr (comp_op Some (\<lambda>_. []) op1 op2)"
 
+subsection \<open>Congruence for strong bisim\<close>
+lemma bisim_choices_Read:
+  "op1 ~ op1' \<Longrightarrow>
+   Read p f |\<in>| (choices op1) \<Longrightarrow>
+   \<exists> f'. Read p f' |\<in>| (choices op1') \<and> f x ~ f' x"
+  apply (erule bisim.cases)
+  apply auto
+  unfolding sim_def
+  apply (drule Read_in_choices_step[where x=x, simplified])
+  apply (drule spec2)
+  apply (drule mp)
+   apply assumption
+  apply safe
+  apply (erule step_choicesE[where op=op1'])
+   apply auto
+  done
 
-section \<open>Axiom B3: Associativity\<close>
+lemma bisim_choices_Write:
+  "op1 ~ op1' \<Longrightarrow>
+   Write op1'' p x |\<in>| choices op1 \<Longrightarrow>
+   \<exists> op. Write op p x |\<in>| choices op1' \<and> op1'' ~ op"
+ apply (erule bisim.cases)
+  apply auto
+  unfolding sim_def
+  apply (drule Write_in_choices_step[where x=x, simplified])
+  apply (drule spec2)
+  apply (drule mp)
+   apply assumption
+  apply safe
+  apply (erule step_choicesE[where op=op1'])
+   apply auto
+  done
 
+lemma bisim_choices_Silent:
+  "op1 ~ op1' \<Longrightarrow>
+   Silent op1'' |\<in>| choices op1 \<Longrightarrow>
+   \<exists> op. Silent op |\<in>| choices op1' \<and> op1'' ~ op"
+ apply (erule bisim.cases)
+  apply auto
+  unfolding sim_def
+  apply (drule Silent_in_choices_step[simplified])
+  apply (drule spec2)
+  apply (drule mp)
+   apply assumption
+  apply safe
+  apply (erule step_choicesE[where op=op1'])
+   apply auto
+  done
+
+lemma bisim_comp_op_cong:
+  "op1 ~ op1' \<Longrightarrow>
+   op2 ~ op2' \<Longrightarrow>
+   comp_op wire buf op1 op2 ~ comp_op wire buf op1' op2'"
+  apply (coinduction arbitrary: op1 op2 op1' op2' buf rule: bisim_coinduct_upto)
+  subgoal for op1 op2 op1' op2' buf
+    unfolding sim_def
+    apply (intro conjI impI allI)
+    subgoal for io op
+      apply (rotate_tac 2)
+      apply (induct io "comp_op wire buf op1 op2" op arbitrary: buf op1 op2 op1' op2' pred: step)
+         apply (subst (asm) comp_op_code, simp)
+        apply (subst (asm) comp_op_code, simp)
+       apply (subst (asm) comp_op_code, simp)
+      subgoal for op ops l op' buf op1 op2 op1'
+        apply auto
+        apply (subst (asm) (5) comp_op_code)
+        apply (simp add: Set.filter_def ranI image_iff bex_Un split: option.splits)
+        apply (elim exE bexE disjE)
+        subgoal for op'
+          apply (cases op')
+          subgoal for p f
+            apply simp
+            apply auto
+            subgoal for x
+              apply (drule bisim_choices_Read[where x=x])
+               apply simp
+              apply safe
+              subgoal for f'
+                apply (intro exI conjI)
+                 apply (subst comp_op_code)
+                 apply simp
+                 apply (rule SC)
+                  apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                  apply hypsubst_thin
+                  apply (rule disjI1)
+                  apply (rule bexI[of _ "Read p f'"])
+                   apply simp
+                  apply assumption
+                 apply hypsubst_thin
+                using step.intros(1) apply force
+                apply (rule bc_base)
+                apply (intro conjI exI)
+                   apply (rule refl)+
+                 apply assumption+
+                done
+              done
+            done
+          subgoal for op1'' p x
+            apply (simp add: Set.filter_def ranI image_iff bex_Un split: option.splits)
+            subgoal
+              apply hypsubst_thin
+              apply (drule bisim_choices_Write)
+               apply simp
+              apply safe
+              apply (intro conjI exI)
+               apply (subst comp_op_code)
+               apply simp
+               apply (rule SC)
+                apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                apply (rule disjI1)
+                apply (erule bexI[rotated])
+                apply simp
+               apply (rule step.intros(2))
+              apply (metis (mono_tags, lifting) bc_base)
+              done
+            subgoal
+              apply auto
+              apply hypsubst_thin
+              apply (drule bisim_choices_Write)
+               apply simp
+              apply safe
+              apply (intro conjI exI)
+               apply (subst comp_op_code)
+               apply simp
+               apply (rule SC)
+                apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                apply (rule disjI1)
+                apply (erule bexI[rotated])
+                apply simp
+               apply (rule ST)
+              apply (metis (mono_tags, lifting) bc_base)
+              done
+            done
+          subgoal 
+            by auto
+          subgoal for op'''
+            apply auto
+            apply hypsubst_thin
+            apply (drule bisim_choices_Silent)
+             apply simp
+            apply safe
+            apply (intro conjI exI)
+             apply (subst comp_op_code)
+             apply simp
+             apply (rule SC)
+              apply (simp add: Set.filter_def ranI image_iff bex_Un)
+              apply (rule disjI1)
+              apply (erule bexI[rotated])
+              apply simp
+             apply (rule ST)
+            apply (metis (mono_tags, lifting) bc_base)
+            done
+          done
+        subgoal for op''
+          apply hypsubst_thin
+          apply (cases op'')
+          subgoal for p f
+            apply auto
+             apply (erule thin_rl)
+             apply rotate_tac
+            subgoal for x
+              apply (drule bisim_choices_Read[where x=x])
+               apply simp
+              apply safe
+              subgoal for f'
+                apply (intro exI conjI)
+                 apply (subst comp_op_code)
+                 apply simp
+                 apply (rule SC)
+                  apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                  apply hypsubst_thin
+                  apply (rule disjI2)
+                  apply force
+                 apply (rule SR)
+                apply (rule bc_base)
+                apply (intro conjI exI)
+                   apply (rule refl)+
+                 apply assumption+
+                done
+              done
+            subgoal
+              apply (auto split: if_splits)
+              subgoal
+                apply (erule thin_rl)
+                apply rotate_tac
+                apply hypsubst_thin
+                apply (drule bisim_choices_Read[where x="BHD p buf"])
+                 apply force
+                apply safe
+                apply (intro exI conjI)
+                 apply (subst comp_op_code)
+                 apply simp
+                 apply (rule SC)
+                  apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                  apply (rule disjI2)
+                  apply (intro exI conjI)
+                    apply blast
+                   apply force+
+                apply (rule bc_base)
+                apply (intro conjI exI)
+                   apply (rule refl)+
+                 apply assumption+
+                done
+              subgoal for x
+                apply (erule thin_rl)
+                apply rotate_tac
+                apply hypsubst_thin
+                apply (drule bisim_choices_Read[where x=x])
+                 apply force
+                apply safe
+                apply (intro exI conjI)
+                 apply (subst comp_op_code)
+                 apply simp
+                 apply (rule SC)
+                  apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                  apply (rule disjI2)
+                  apply (intro exI conjI)
+                    apply blast
+                   apply force+
+                apply (rule bc_base)
+                apply (intro conjI exI)
+                   apply (rule refl)+
+                 apply assumption+
+                done
+              done
+            done
+          subgoal for op1'' p x
+            apply auto
+            subgoal
+              apply hypsubst_thin
+              apply (erule thin_rl)
+              apply rotate_tac
+              apply (drule bisim_choices_Write)
+               apply simp
+              apply safe
+              apply (intro conjI exI)
+               apply (subst comp_op_code)
+               apply simp
+               apply (rule SC)
+                apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                apply (rule disjI2)
+                apply (intro exI conjI)
+                  apply simp_all
+                apply force+
+              apply (metis (mono_tags, lifting) bc_base)
+              done
+            done
+          subgoal
+            by auto
+          subgoal
+            apply auto
+            apply hypsubst_thin
+            apply (erule thin_rl)
+            apply rotate_tac
+            apply (drule bisim_choices_Silent)
+             apply simp
+            apply safe
+            apply (intro conjI exI)
+             apply (subst comp_op_code)
+             apply simp
+             apply (rule SC)
+              apply (simp add: Set.filter_def ranI image_iff bex_Un)
+              apply (rule disjI2)
+              apply (intro exI conjI)
+                apply simp_all
+              apply force+
+            apply (metis (mono_tags, lifting) bc_base)
+            done
+          done
+        done
+      done
+    subgoal for io op
+      apply (rotate_tac 2)
+      apply (induct io "comp_op wire buf op1' op2'" op arbitrary: buf op1 op2 op1' op2' pred: step)
+         apply (subst (asm) comp_op_code, simp)
+        apply (subst (asm) comp_op_code, simp)
+       apply (subst (asm) comp_op_code, simp)
+      subgoal for op ops l op' buf op1' op2' op1 op2
+        apply auto
+        apply (subst (asm) (5) comp_op_code)
+        apply (simp add: Set.filter_def ranI image_iff bex_Un split: option.splits)
+        apply (elim exE bexE disjE)
+        subgoal for op'
+          apply (cases op')
+          subgoal for p f
+            apply simp
+            apply auto
+            subgoal for x
+              apply (subst (asm) (5) bisim_sym)
+              apply (drule bisim_choices_Read[where x=x])
+               apply simp
+              apply safe
+              subgoal for f'
+                apply (intro exI conjI)
+                 apply (subst comp_op_code)
+                 apply simp
+                 apply (rule SC)
+                  apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                  apply hypsubst_thin
+                  apply (rule disjI1)
+                  apply (rule bexI[of _ "Read p f'"])
+                   apply simp
+                  apply assumption
+                 apply hypsubst_thin
+                using step.intros(1) apply force
+                apply (smt (verit, ccfv_threshold) bc_base bisim_sym)
+                done
+              done
+            done
+          subgoal for op1'' p x
+            apply (simp add: Set.filter_def ranI image_iff bex_Un split: option.splits)
+            subgoal
+              apply hypsubst_thin
+              apply (subst (asm) (5) bisim_sym)
+              apply (drule bisim_choices_Write)
+               apply simp
+              apply safe
+              apply (intro conjI exI)
+               apply (subst comp_op_code)
+               apply simp
+               apply (rule SC)
+                apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                apply (rule disjI1)
+                apply (erule bexI[rotated])
+                apply simp
+               apply (rule step.intros(2))
+              apply (smt (verit, ccfv_threshold) bc_base bisim_sym)
+              done
+            subgoal 
+              apply auto
+              apply hypsubst_thin
+              apply (erule thin_rl)
+              apply (subst (asm) (1) bisim_sym)
+              apply (drule bisim_choices_Write)
+               apply simp
+              apply safe
+              apply (intro conjI exI)
+               apply (subst comp_op_code)
+               apply simp
+               apply (rule SC)
+                apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                apply (rule disjI1)
+                apply (erule bexI[rotated])
+                apply simp_all
+               apply (rule ST)
+              apply (rule bc_sym)
+              apply (rule bc_base)
+              apply (intro exI conjI)
+                 apply (rule refl)
+              using bisim_sym apply blast+
+              done
+            done
+          subgoal
+            by auto
+          subgoal for op'
+            apply auto
+            apply hypsubst_thin
+            apply (erule thin_rl)
+            apply (subst (asm) (1) bisim_sym)
+            apply (drule bisim_choices_Silent)
+             apply simp
+            apply safe
+            apply (intro conjI exI)
+             apply (subst comp_op_code)
+             apply simp
+             apply (rule SC)
+              apply (simp add: Set.filter_def ranI image_iff bex_Un)
+              apply (rule disjI1)
+              apply (erule bexI[rotated])
+              apply simp_all
+             apply (rule ST)
+            apply (rule bc_sym)
+            apply (rule bc_base)
+            apply (intro exI conjI)
+               apply (rule refl)
+            using bisim_sym apply blast+
+            done
+          done
+        subgoal for op'
+          apply (cases op')
+             apply auto
+          subgoal for op'' p f
+            apply hypsubst_thin
+            apply (erule thin_rl)
+            apply rotate_tac
+            apply (subst (asm) (1) bisim_sym)
+            apply (drule bisim_choices_Read)
+             apply simp
+            apply safe
+            apply (intro conjI exI)
+             apply (subst comp_op_code)
+             apply simp
+             apply (rule SC)
+              apply (simp add: Set.filter_def ranI image_iff bex_Un)
+              apply (rule disjI2)
+              apply force
+             apply simp_all
+             apply auto
+            apply (rule bc_sym)
+            apply (rule bc_base)
+            apply (intro exI conjI)
+               apply (rule refl)
+            using bisim_sym apply blast+
+            done
+          subgoal
+            apply hypsubst_thin
+            apply (auto split: if_splits)
+            subgoal
+              apply (erule thin_rl)
+              apply rotate_tac
+              apply (subst (asm) (1) bisim_sym)
+              apply (drule bisim_choices_Read)
+               apply simp
+              apply safe
+              apply (intro conjI exI)
+               apply (subst comp_op_code)
+               apply simp
+               apply (rule SC)
+                apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                apply (rule disjI2)
+                apply force
+               apply simp_all
+               apply auto
+              apply (rule bc_base)
+              apply (intro exI conjI)
+                 apply (rule refl)
+                defer
+              using bisim_sym apply blast+
+              apply (simp add: fun_upd_def)
+              done
+            subgoal
+              apply (erule thin_rl)
+              apply rotate_tac
+              apply (subst (asm) (1) bisim_sym)
+              apply (drule bisim_choices_Read)
+               apply simp
+              apply safe
+              apply (intro conjI exI)
+               apply (subst comp_op_code)
+               apply simp
+               apply (rule SC)
+                apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                apply (rule disjI2)
+                apply force
+               apply simp_all
+               apply auto
+              apply (rule bc_base)
+              apply (intro exI conjI)
+                 apply (rule refl)
+                defer
+              using bisim_sym apply blast+
+              done
+            done
+          subgoal for op1'' p x
+            apply hypsubst_thin
+            apply (erule thin_rl)
+            apply rotate_tac
+            apply (subst (asm) bisim_sym)
+            apply (drule bisim_choices_Write)
+             apply auto
+            apply (intro conjI exI)
+             apply (rule step_comp_op_R_Out)
+             apply (rule Write_in_choices_step)
+             apply simp_all
+            apply (metis (mono_tags, lifting) bc_base bisim_sym)
+            done
+          subgoal
+            apply hypsubst_thin
+            apply (erule thin_rl)
+            apply rotate_tac
+            apply (subst (asm) bisim_sym)
+            apply (drule bisim_choices_Silent)
+             apply auto
+            apply (intro conjI exI)
+             apply (rule step_comp_op_R_Tau)
+             apply (rule Silent_in_choices_step)
+             apply simp
+            apply (metis (mono_tags, lifting) bc_base bisim_sym)
+            done
+          done
+        done
+      done
+    done
+  done
+
+subsection \<open>Congruence for weak bisim (wbisim)\<close>
+
+lemma wbisim_choices_Read:
+  "op \<approx> op' \<Longrightarrow>
+   Read p f |\<in>| (choices op) \<Longrightarrow>
+   \<exists> f' op'' op'''. (step Tau)\<^sup>*\<^sup>* op' op'' \<and> Read p f' |\<in>| (choices op'') \<and> (step Tau)\<^sup>*\<^sup>* (f' x) op''' \<and> f x \<approx> op'''"
+  apply (drule Read_in_choices_step[where x=x])
+  apply (drule step_wstep)
+  apply (erule wbisim_wstep[OF wbisimulation_wbisim])
+   apply assumption
+  unfolding wstep_def
+  apply auto
+  apply (erule step_choicesE)
+    apply auto
+  apply (erule step_choicesE)
+    apply auto
+  done
+
+lemma wbisim_choices_Write:
+  "op1 \<approx> op' \<Longrightarrow>
+   Write op1' p x |\<in>| (choices op1) \<Longrightarrow>
+   \<exists> op'''' op'' op'''. (step Tau)\<^sup>*\<^sup>* op' op'' \<and> Write op''' p x |\<in>| (choices op'') \<and> (step Tau)\<^sup>*\<^sup>* op''' op'''' \<and> op'''' \<approx> op1'"
+  apply (drule Write_in_choices_step)
+  apply (drule step_wstep)
+  apply (erule wbisim_wstep[OF wbisimulation_wbisim])
+   apply assumption
+  unfolding wstep_def
+  apply auto
+  apply (erule step_choicesE)
+    apply auto
+  apply (erule step_choicesE)
+    apply auto
+  using wbisim_sym apply blast
+  done
+
+lemma wbisim_choices_Silent:
+  "op1 \<approx> op' \<Longrightarrow>
+   Silent op1' |\<in>| (choices op1) \<Longrightarrow>
+   (\<exists> op'''' op'' op'''. (step Tau)\<^sup>*\<^sup>* op' op'' \<and> Silent op''' |\<in>| (choices op'') \<and> (step Tau)\<^sup>*\<^sup>* op''' op'''' \<and> op'''' \<approx> op1') \<or> op1' \<approx> op'"
+  apply (drule Silent_in_choices_step)
+  apply (drule step_wstep)
+  apply (erule wbisim_wstep[OF wbisimulation_wbisim])
+   apply assumption
+  unfolding wstep_def
+  apply auto
+  subgoal
+  apply (erule step_choicesE)
+    apply auto
+  apply (erule step_choicesE)
+    apply auto
+  using wbisim_sym apply blast
+  done
+  subgoal
+    by (metis IO.simps(6) IO.simps(8) cin.rep_eq converse_rtranclpE rtranclp.rtrancl_refl step_choicesE wbisim_sym)
+  subgoal
+    by (metis IO.simps(6) IO.simps(8) cin.rep_eq converse_rtranclpE rtranclp.rtrancl_refl step_choicesE wbisim_sym)
+  subgoal
+    by (metis IO.simps(6) IO.simps(8) cin.rep_eq converse_rtranclpE rtranclp.rtrancl_refl step_choicesE wbisim_sym)
+  done
+
+lemma step_comp_op_L_Tau_start[intro]:
+  "(step Tau)\<^sup>*\<^sup>* op1 op1' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (comp_op wire buf op1 op2) (comp_op wire buf op1' op2)"
+  apply (induct op1 op1' rule: rtranclp.induct)
+   apply simp
+  apply (meson rtranclp.simps step_comp_op_L_Tau)
+  done
+
+lemma step_comp_op_R_Tau_start[intro]:
+  "(step Tau)\<^sup>*\<^sup>* op2 op2' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (comp_op wire buf op1 op2) (comp_op wire buf op1 op2')"
+  apply (induct op2 op2' rule: rtranclp.induct)
+   apply simp
+  apply (meson rtranclp.simps step_comp_op_R_Tau)
+  done
+
+lemma wbisim_comp_op_cong:
+  "op1 \<approx> op1' \<Longrightarrow>
+   op2 \<approx> op2' \<Longrightarrow>
+   comp_op wire buf op1 op2 \<approx> comp_op wire buf op1' op2'"
+  apply (coinduction arbitrary: op1 op2 op1' op2' buf rule: wbisim_coinduct_upto)
+  subgoal for op1 op2 op1' op2' buf
+    unfolding wsim_def
+    apply (intro conjI impI allI)
+    subgoal for io op
+      apply (rotate_tac 2)
+      apply (induct io "comp_op wire buf op1 op2" op arbitrary: buf op1 op2 op1' op2' pred: step)
+         apply (subst (asm) comp_op_code, simp)
+        apply (subst (asm) comp_op_code, simp)
+       apply (subst (asm) comp_op_code, simp)
+      subgoal for op ops io op' buf op1 op2 op1' op2'
+        apply auto
+        apply (subst (asm) (5) comp_op_code)
+        apply (simp add: Set.filter_def ranI image_iff bex_Un split: option.splits)
+        apply (elim exE bexE disjE)
+        subgoal for op'
+          apply (cases op')
+          subgoal for p f
+            apply simp
+            apply auto
+            subgoal for x
+              apply (erule thin_rl)
+              apply hypsubst_thin
+              apply (drule wbisim_choices_Read[where x=x])
+               apply simp
+              apply auto
+              subgoal for f' op'' op'''
+                apply (rule exI[of _ "comp_op wire buf op''' op2'"])
+                apply (intro conjI[rotated])
+                 apply (metis (mono_tags, lifting) wbc_base)
+                unfolding wstep_def
+                apply auto
+                apply (rule relcomppI)
+                 apply (rule step_comp_op_L_Tau_start)
+                 apply assumption
+                apply (rule relcomppI)
+                 apply (rule step_comp_op_L_Inp)
+                 apply (rule Read_in_choices_step)
+                 apply simp
+                apply blast
+                done
+              done
+            done
+          subgoal for op1'' p x
+            apply (auto split: option.splits)
+            subgoal 
+              apply (erule thin_rl)
+              apply hypsubst_thin
+              apply (drule wbisim_choices_Write)
+               apply simp
+              apply auto
+              subgoal for op'''' op'' op'''
+                apply (rule exI[of _ "comp_op wire buf op'''' op2'"])
+                apply (intro conjI[rotated])
+                 apply (metis (mono_tags, lifting) wbc_base wbisim_sym)
+                unfolding wstep_def
+                apply auto
+                apply (rule relcomppI)
+                 apply (rule step_comp_op_L_Tau_start)
+                 apply assumption
+                apply (rule relcomppI)
+                 apply (rule step_comp_op_L_Out)
+                  apply (rule Write_in_choices_step)
+                  apply simp
+                 apply blast+
+                done
+              done
+            subgoal for q
+              apply (erule thin_rl)
+              apply hypsubst_thin
+              apply (drule wbisim_choices_Write)
+               apply simp
+              apply auto
+              subgoal for op'''' op'' op'''
+                apply (rule exI[of _ "comp_op wire (BENQ q x buf) op'''' op2'"])
+                apply (intro conjI[rotated])
+                 apply (metis (mono_tags, lifting) wbc_base wbisim_sym)
+                apply (rule rtranclp_trans)
+                 apply (rule step_comp_op_L_Tau_start)
+                 apply assumption
+                apply (rule converse_rtranclp_into_rtranclp)
+                 apply (rule step_Tau_comp_op_L)
+                  apply simp_all
+                 apply (rule Write_in_choices_step)
+                 apply simp
+                apply blast
+                done
+              done
+            done
+          subgoal
+            by auto
+          subgoal for op
+            apply auto
+            apply (erule thin_rl)
+            apply hypsubst_thin
+            apply (drule wbisim_choices_Silent)
+             apply simp
+            apply auto
+            subgoal for op'''' op'' op'''
+              apply (rule exI[of _ "comp_op wire buf op'''' op2'"])
+              apply (intro conjI[rotated])
+               apply (metis (mono_tags, lifting) wbc_base wbisim_sym)
+              apply (meson Silent_in_choices_step cin.rep_eq rtranclp.rtrancl_into_rtrancl rtranclp_trans step_comp_op_L_Tau_start)
+              done
+            subgoal
+              by (metis (mono_tags, lifting) rtranclp.rtrancl_refl wbc_base)
+            done
+          done
+        subgoal for op
+          apply (cases op)
+             apply auto
+          subgoal for p f x
+            apply (erule thin_rl)
+            apply hypsubst_thin
+            apply rotate_tac
+            apply (drule wbisim_choices_Read[where x=x])
+             apply simp
+            apply auto
+            subgoal for f' op'' op'''
+              apply (rule exI[of _ "comp_op wire buf op1' op'''"])
+              apply (intro conjI[rotated])
+               apply (metis (mono_tags, lifting) wbc_base)
+              unfolding wstep_def
+              apply auto
+              apply (rule relcomppI)
+               apply (rule step_comp_op_R_Tau_start)
+               apply assumption
+              apply (rule relcomppI)
+               apply (rule step_comp_op_R_Inp)
+                apply (rule Read_in_choices_step)
+                apply simp
+               apply blast+
+              done
+            done
+          subgoal for p f
+            apply (auto split: if_splits)
+            subgoal
+              apply (erule thin_rl)
+              apply hypsubst_thin
+              apply rotate_tac
+              apply (drule wbisim_choices_Read[where x="BHD p buf"])
+               apply simp
+              apply auto
+              subgoal for f' op'' op'''
+                apply (rule exI[of _ "comp_op wire (BTL p buf) op1' op'''"])
+                apply (intro conjI[rotated])
+                 apply (metis (mono_tags, lifting) wbc_base)
+                unfolding wstep_def
+                apply (smt (verit, ccfv_SIG) Read_in_choices_step cin.rep_eq rtranclp.rtrancl_into_rtrancl rtranclp_trans step_Tau_comp_op_R step_comp_op_R_Tau_start)
+                done
+              done
+            subgoal for x
+              apply (erule thin_rl)
+              apply hypsubst_thin
+              apply rotate_tac
+              apply (drule wbisim_choices_Read[where x=x])
+               apply simp
+              apply auto
+              subgoal for f' op'' op'''
+                apply (rule exI[of _ "comp_op wire buf op1' op'''"])
+                apply (intro conjI[rotated])
+                 apply (metis (mono_tags, lifting) wbc_base)
+                unfolding wstep_def
+                apply auto
+                apply (rule relcomppI)
+                 apply (rule step_comp_op_R_Tau_start)
+                 apply assumption
+                apply (rule relcomppI)
+                 apply (rule step_comp_op_R_Inp)
+                  apply (rule Read_in_choices_step)
+                  apply simp
+                 apply blast+
+                done
+              done
+            done
+          subgoal for op2 p x
+            apply (erule thin_rl)
+            apply hypsubst_thin
+            apply rotate_tac
+            apply (drule wbisim_choices_Write)
+             apply auto
+            subgoal for op'''' op'' op'''
+              apply (rule exI[of _ "comp_op wire buf op1' op''''"])
+              apply (intro conjI[rotated])
+               apply (metis (mono_tags, lifting) wbc_base wbisim_sym)
+              unfolding wstep_def
+              apply auto
+              apply (smt (verit, ccfv_SIG) Write_in_choices_step cin.rep_eq relcompp_apply step_comp_op_R_Out step_comp_op_R_Tau_start)
+              done
+            done
+          subgoal for op
+            apply (erule thin_rl)
+            apply hypsubst_thin
+            apply rotate_tac
+            apply (drule wbisim_choices_Silent)
+             apply auto
+            subgoal for op'''' op'' op'''
+              apply (rule exI[of _ "comp_op wire buf op1' op''''"])
+              apply (intro conjI[rotated])
+               apply (metis (mono_tags, lifting) wbc_base wbisim_sym)
+              apply (metis Silent_in_choices_step cin.rep_eq rtranclp.simps rtranclp_trans step_comp_op_R_Tau_start)
+              done
+            subgoal
+              by (metis (mono_tags, lifting) rtranclp.rtrancl_refl wbc_base)
+            done
+          done
+        done
+      done
+    subgoal for io op12
+      apply (rotate_tac 2)
+      apply (induct io "comp_op wire buf op1' op2'" op12 arbitrary: buf op1 op2 op1' op2' pred: step)
+         apply (subst (asm) comp_op_code, simp)
+        apply (subst (asm) comp_op_code, simp)
+       apply (subst (asm) comp_op_code, simp)
+      subgoal for op ops io op' buf op1' op2' op1 op2
+        apply auto
+        apply (subst (asm) (5) comp_op_code)
+        apply (simp add: Set.filter_def ranI image_iff bex_Un split: option.splits)
+        apply (elim exE bexE disjE)
+        subgoal for op'
+          apply simp
+          apply (cases op')
+          subgoal for p f
+            apply simp
+            apply auto
+            subgoal for x
+              apply (erule thin_rl)
+              apply hypsubst_thin
+              apply (drule wbisim_sym)
+              apply rotate_tac
+              apply (drule wbisim_choices_Read[where x=x])
+               apply auto
+              subgoal for f' op'' op'''
+                apply (rule exI[of _ "comp_op wire buf op''' op2"])
+                apply (intro conjI[rotated])
+                 apply (smt (verit, ccfv_threshold) wbc_base wbisim_sym wbisim_trans)
+                unfolding wstep_def
+                apply auto
+                apply (rule relcomppI)
+                 apply (rule step_comp_op_L_Tau_start)
+                 apply assumption
+                apply (rule relcomppI)
+                 apply (rule step_comp_op_L_Inp)
+                 apply (rule Read_in_choices_step)
+                 apply simp
+                apply blast
+                done
+              done
+            done
+          subgoal for op1'' p x
+            apply (auto split: option.splits)
+            subgoal
+              apply hypsubst_thin
+              apply (erule thin_rl)
+              apply (drule wbisim_sym)
+              apply rotate_tac
+              apply (drule wbisim_choices_Write)
+               apply auto
+              subgoal for op'''' op'' op'''
+                apply (rule exI[of _ "comp_op wire buf op'''' op2"])
+                apply (intro conjI[rotated])
+                 apply (metis (mono_tags, lifting) wbc_base wbisim_refl wbisim_sym)
+                unfolding wstep_def
+                apply auto
+                apply (rule relcomppI)
+                 apply (rule step_comp_op_L_Tau_start)
+                 apply assumption
+                apply (rule relcomppI)
+                 apply (rule step_comp_op_L_Out)
+                  apply (rule Write_in_choices_step)
+                  apply simp
+                 apply blast+
+                done
+              done
+            subgoal for q
+              apply hypsubst_thin
+              apply (erule thin_rl)
+              apply (drule wbisim_sym)
+              apply rotate_tac
+              apply (drule wbisim_choices_Write)
+               apply auto
+              subgoal for op'''' op'' op'''
+                apply (rule exI[of _ "comp_op wire (BENQ q x buf) op'''' op2"])
+                apply (intro conjI[rotated])
+                 apply (metis (mono_tags, lifting) wbc_base wbisim_refl wbisim_sym)
+                unfolding wstep_def
+                apply (rule rtranclp_trans)
+                 apply (rule step_comp_op_L_Tau_start)
+                 apply assumption
+                apply (rule converse_rtranclp_into_rtranclp)
+                 apply (rule step_Tau_comp_op_L)
+                  apply simp_all
+                 apply (rule Write_in_choices_step)
+                 apply simp
+                apply blast
+                done
+              done
+            done
+          subgoal
+            by auto
+          subgoal for op1''
+            apply auto
+            apply hypsubst_thin
+            apply (erule thin_rl)
+            apply (drule wbisim_sym)
+            apply rotate_tac
+            apply (drule wbisim_choices_Silent)
+             apply auto
+            subgoal for op'''' op'' op'''
+              apply (rule exI[of _ "comp_op wire buf op'''' op2"])
+              apply (intro conjI[rotated])
+               apply (metis (mono_tags, lifting) wbc_base wbisim_refl wbisim_sym)
+              unfolding wstep_def
+              apply (meson Silent_in_choices_step cin.rep_eq rtranclp.rtrancl_into_rtrancl rtranclp_trans step_comp_op_L_Tau_start)
+              done
+            subgoal
+              by (metis (mono_tags, lifting) rtranclp.rtrancl_refl wbc_base wbisim_sym)
+            done
+          done
+        subgoal for op
+          apply (cases op)
+             apply auto
+          subgoal for f p x
+            apply hypsubst_thin
+            apply (erule thin_rl)
+            apply rotate_tac
+            apply (drule wbisim_sym)
+            apply (drule wbisim_choices_Read[where x=x, of op2'])
+             apply auto
+            subgoal for f' op'' op'''
+              apply (rule exI[of _ "comp_op wire buf op1 op'''"])
+              apply (intro conjI[rotated])
+               apply (metis (mono_tags, lifting) wbc_base wbisim_sym)
+              unfolding wstep_def
+              apply auto
+              apply (smt (verit, ccfv_SIG) Read_in_choices_step cin.rep_eq relcompp_apply step_comp_op_R_Inp step_comp_op_R_Tau_start)
+              done
+            done
+          subgoal for p x
+            apply (auto split: if_splits)
+            subgoal
+              apply hypsubst_thin
+              apply (erule thin_rl)
+              apply rotate_tac
+              apply (drule wbisim_sym)
+              apply (drule wbisim_choices_Read[where x="BHD p buf", of op2'])
+               apply auto
+              subgoal for f' op'' op'''
+                apply (rule exI[of _ "comp_op wire (BTL p buf) op1 op'''"])
+                apply (intro conjI[rotated])
+                 apply (metis (mono_tags, lifting) wbc_base wbisim_sym)
+                apply (smt (verit, best) Read_in_choices_step cin.rep_eq rtranclp.rtrancl_into_rtrancl rtranclp_trans step_Tau_comp_op_R step_comp_op_R_Tau_start)
+                done
+              done
+            subgoal for x
+              apply hypsubst_thin
+              apply (erule thin_rl)
+              apply rotate_tac
+              apply (drule wbisim_sym)
+              apply (drule wbisim_choices_Read[where x=x, of op2'])
+               apply auto
+              subgoal for f' op'' op'''
+                apply (rule exI[of _ "comp_op wire buf op1 op'''"])
+                apply (intro conjI[rotated])
+                 apply (metis (mono_tags, lifting) wbc_base wbisim_sym)
+                unfolding wstep_def
+                apply auto
+                apply (smt (verit, ccfv_SIG) Read_in_choices_step cin.rep_eq relcompp_apply step_comp_op_R_Inp step_comp_op_R_Tau_start)
+                done
+              done
+            done
+          subgoal for op2'' p x
+            apply hypsubst_thin
+            apply (erule thin_rl)
+            apply rotate_tac
+            apply (drule wbisim_sym)
+            apply (drule wbisim_choices_Write[of op2'])
+             apply auto
+            subgoal for op'''' op'' op'''
+              apply (rule exI[of _ "comp_op wire buf op1 op''''"])
+              apply (intro conjI[rotated])
+               apply (metis (mono_tags, lifting) wbc_base wbisim_sym)
+              unfolding wstep_def
+              apply auto
+              apply (smt (verit, ccfv_threshold) Write_in_choices_step cin.rep_eq relcompp_apply step_comp_op_R_Out step_comp_op_R_Tau_start)
+              done
+            done
+          subgoal
+            apply hypsubst_thin
+            apply (erule thin_rl)
+            apply rotate_tac
+            apply (drule wbisim_sym)
+            apply (drule wbisim_choices_Silent[of op2'])
+            apply auto
+            subgoal for op'''' op'' op'''
+              apply (rule exI[of _ "comp_op wire buf op1 op''''"])
+              apply (intro conjI[rotated])
+              apply (metis (mono_tags, lifting) wbc_base wbisim_sym)
+              apply (meson Silent_in_choices_step cin.rep_eq rtranclp.rtrancl_into_rtrancl rtranclp_trans step_comp_op_R_Tau_start)
+              done
+            subgoal
+              by (metis (mono_tags, lifting) rtranclp.rtrancl_refl wbc_base wbisim_sym)
+            done
+          done
+        done
+      done
+    done
+  done
+
+subsection \<open>Axiom B3: Associativity\<close>
 lemma step_scomp_op_1:
   "step io (map_op projl projr (comp_op Some (buf1 :: 'd \<Rightarrow> 'c buf) op1 (map_op projl projr (comp_op Some (buf2 :: 'e \<Rightarrow> 'c buf) op2 op3)))) op \<Longrightarrow>
    \<exists> op1' op2' op3' (buf1' :: 'd \<Rightarrow> 'c buf) (buf2' :: 'e \<Rightarrow> 'c buf). op = map_op projl projr (comp_op Some buf1' op1' (map_op projl projr (comp_op Some buf2' op2' op3'))) \<and>
@@ -382,8 +1410,6 @@ lemma step_scomp_op_1:
                apply (rule bexI[rotated])
                 apply simp
                apply force+
-             apply (rule ST)
-            apply auto
             done
           done
         done
@@ -759,7 +1785,6 @@ lemma step_scomp_op_2:
                 apply (rule disjI2)
                 apply force
                apply auto
-            apply (rule SW)
             done
           subgoal
             apply (erule thin_rl)
