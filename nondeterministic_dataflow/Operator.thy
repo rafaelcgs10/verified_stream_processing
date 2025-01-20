@@ -503,6 +503,52 @@ lemma sim_refl: "reflp R \<Longrightarrow> sim R s s"
 lemma sim_trans: "transp R \<Longrightarrow> sim R s t \<Longrightarrow> sim R t u \<Longrightarrow> sim R s u"
   by (fastforce simp: sim_def transp_def)
 
+
+lemma bisim_map_op:
+  "op ~ op' \<Longrightarrow> map_op f g op ~ map_op f g op'"
+  apply (coinduction arbitrary: op op' rule: bisim_coinduct_upto)
+  subgoal for op op'
+    apply clarsimp
+    apply (erule bisim.cases)
+    subgoal for s t
+      unfolding sim_def
+      apply auto
+      subgoal for l s'
+        apply hypsubst_thin
+        apply (drule step_map_op_inv[where f=f and g=g])
+        apply auto
+        apply (drule spec2)
+        apply (drule mp)
+        apply assumption
+        apply auto
+        apply hypsubst_thin
+        apply (drule step_map_op[where f=f and g=g and op=t])
+        apply (rule refl)
+        apply (intro conjI exI)
+        apply assumption
+        apply (metis (mono_tags, lifting) bc_base bisim_sym)
+        done
+      subgoal for l s'
+        apply hypsubst_thin
+        apply rotate_tac
+        apply (drule step_map_op_inv[where f=f and g=g])
+        apply auto
+        apply (drule spec2)
+        apply (drule mp)
+        apply assumption
+        apply auto
+        apply hypsubst_thin
+        apply (drule step_map_op[where f=f and g=g and op=s])
+        apply (rule refl)
+        apply (intro conjI exI)
+        apply assumption
+        apply (metis (mono_tags, lifting) bc_base bisim_sym)
+        done
+      done
+    done
+  done
+
+
 section\<open>Weak Bisimilarity\<close>
 
 fun estep where "estep Tau = (step Tau)\<^sup>=\<^sup>=" | "estep io = step io"
@@ -822,6 +868,31 @@ lemma wbisim_map_op:
         apply (intro conjI exI)
         apply assumption
         apply (metis (mono_tags, lifting) wbc_base wbisim_sym)
+        done
+      done
+    done
+  done
+
+lemma bisim_wbisim:
+  "op1 ~ op2 \<Longrightarrow> op1 \<approx> op2"
+  apply (coinduction arbitrary: op1 op2 rule: wbisim_coinduct_upto)
+  subgoal for op1 op2
+    apply clarsimp
+    apply (erule bisim.cases)
+    subgoal for s t
+      unfolding sim_def
+      apply auto
+      subgoal
+        apply hypsubst_thin
+        unfolding wsim_def wstep_def
+        apply auto
+        apply (metis step_wstep wbc_base wstep_def)
+        done
+      subgoal
+        apply hypsubst_thin
+        unfolding wsim_def wstep_def
+        apply auto
+        apply (metis step_wstep wbc_base wstep_def)
         done
       done
     done

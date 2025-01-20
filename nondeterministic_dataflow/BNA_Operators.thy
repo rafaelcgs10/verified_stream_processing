@@ -496,45 +496,13 @@ lemma scomp_op_id_id:
   using id_id_gen[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []"] apply simp
   done
 
-lemma
+lemma scomp_op_id_op_right_neutral:
   "\<stileturn>op\<turnstile> \<bullet> \<I> \<approx> \<stileturn>op\<turnstile>"
-  unfolding scomp_op_def
-  apply (rule wbisim_map_op)
-  oops
-(* 
-   apply (rule bisim_wbisim[rotated])
-   apply (rule scomp_op_assoc[unfolded scomp_op_def])
-  apply (rule wbisim_map_op)
-  apply (rule wbisim_comp_op_cong)
-   apply (rule wbisim_refl)
-  sledgehammer
+  using bisim_wbisim scomp_op_assoc scomp_op_id_id wbisim_refl wbisim_scomp_op_cong wbisim_trans by blast
 
-
-  thm scomp_op_id_id[unfolded scomp_op_def]
-
-  apply (rule scomp_op_id_id[unfolded scomp_op_def])
-
-  apply (rule bisim_comp_op_cong[rotated])
-
-  thm  scomp_op_assoc[unfolded scomp_op_def]
-
-   apply (rule scomp_op_assoc[unfolded scomp_op_def, OF wbisim_refl])
-  apply (rule wbisim_map_op)
-
-
-  apply (rule )
-
-  apply (rule arg_cong2[where f=map_op])
-
-
-  using scomp_op_id_id[unfolded scomp_op_def] scomp_op_assoc[unfolded scomp_op_def]
-
-  apply (rule arg_cong2)
-
-  apply (rule wbisim_comp_op_cong)
-
-  apply (simp add: scomp_op_id_id[unfolded scomp_op_def])
- *)
+lemma scomp_op_id_op_left_neutral:
+  "\<I> \<bullet> \<stileturn>op\<turnstile> \<approx> \<stileturn>op\<turnstile>"
+  by (smt (verit, best) bisim_wbisim scomp_op_assoc scomp_op_id_id wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans)
 
 subsection \<open>Axiom: B6\<close>
 subsubsection \<open>Auxiliary lemmas\<close>

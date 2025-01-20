@@ -844,6 +844,12 @@ lemma bisim_comp_op_cong:
     done
   done
 
+lemma bisim_scomp_op_cong:
+  "op1 ~ op1' \<Longrightarrow>
+   op2 ~ op2' \<Longrightarrow>
+   op1 \<bullet> op2 ~ op1' \<bullet> op2'"
+  unfolding scomp_op_def using bisim_comp_op_cong bisim_map_op by blast
+
 subsection \<open>Congruence for weak bisim (wbisim)\<close>
 
 lemma wbisim_choices_Read:
@@ -1330,6 +1336,12 @@ lemma wbisim_comp_op_cong:
       done
     done
   done
+
+lemma wbisim_scomp_op_cong:
+  "op1 \<approx> op1' \<Longrightarrow>
+   op2 \<approx> op2' \<Longrightarrow>
+   op1 \<bullet> op2 \<approx> op1' \<bullet> op2'"
+  unfolding scomp_op_def using wbisim_comp_op_cong wbisim_map_op by blast
 
 subsection \<open>Axiom B3: Associativity\<close>
 lemma step_scomp_op_1:
