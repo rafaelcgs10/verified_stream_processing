@@ -610,19 +610,77 @@ corec split_op :: "('m :: countable, 'm + 'm, 'a) op" where
   "split_op = Choice (cimage (eval_split_op_aux split_op) 
    (cimage (\<lambda> p. split_Read_aux p) (cUNIV :: 'm cset)))"
 
+lemma split_op_code:
+  "split_op = Choice (cimage (\<lambda> p. Read p (\<lambda> y. Choice {|Write split_op (Inl p) y, Write split_op (Inr p) y|})) (cUNIV :: 'm :: countable cset))"
+  apply (subst split_op.code)
+   apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
+      split: op.splits option.splits)
+  done
+
+subsection \<open>Axiom: A6\<close>
 lemma
   "split_op \<bullet> (transp_op buf) \<approx> map_op id (case_sum Inr Inl) split_op"
   oops
 
-
 section \<open>merge_op - nondeterministic merge operator\<close>
   \<comment> \<open>TODO: define the operator + write and prove axioms (Table 4): A1, A2, A3, A4, A14, A15, F3 \<close>
+datatype (discs_sels) ('m) merge_op_aux =
+  merge_Read_aux "'m"
+
+abbreviation eval_merge_op_aux where
+  "eval_merge_op_aux c aux \<equiv> (case aux of
+    merge_Read_aux p \<Rightarrow> choice2 (Read (Inl p) (\<lambda>y. Write c p y)) (Read (Inr p) (\<lambda>y. Write c p y)))"
+
+corec merge_op :: "('m + 'm :: countable, 'm, 'a) op" where
+  "merge_op = Choice (cimage (eval_merge_op_aux merge_op) 
+   (cimage (\<lambda> p. merge_Read_aux p) (cUNIV :: 'm cset)))"
+
+lemma merge_op_code:
+  "merge_op = Choice (cimage (\<lambda> p. Choice {|Read (Inl p) (\<lambda>y. Write merge_op p y), Read (Inr p) (\<lambda>y. Write merge_op p y)|}) (cUNIV :: 'm :: countable cset))"
+  apply (subst merge_op.code)
+   apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
+      split: op.splits option.splits)
+  done
 
 section \<open>acopy_op - async copy operator\<close>
   \<comment> \<open>TODO: define the operator + write and prove axioms (Table 3): A6, A8, A18, A19, F4 \<close>
+datatype (discs_sels) ('m) acopy_op_aux =
+  acopy_Read_aux "'m"
+
+abbreviation eval_acopy_op_aux where
+  "eval_acopy_op_aux c aux \<equiv> (case aux of
+    acopy_Read_aux p \<Rightarrow> Read p (\<lambda>y. choice2 (Write (Write c (Inr p) y) (Inl p) y) (Write (Write c (Inl p) y) (Inr p) y)))"
+
+corec acopy_op :: "('m :: countable, 'm + 'm, 'a) op" where
+  "acopy_op = Choice (cimage (eval_acopy_op_aux acopy_op) 
+   (cimage (\<lambda> p. acopy_Read_aux p) (cUNIV :: 'm cset)))"
+
+lemma acopy_op_code:
+  "acopy_op = Choice (cimage (\<lambda> p. Read p (\<lambda> y. Choice {|Write (Write acopy_op (Inr p) y) (Inl p) y, Write (Write acopy_op (Inl p) y) (Inr p) y|})) (cUNIV :: 'm :: countable cset))"
+  apply (subst acopy_op.code)
+   apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
+      split: op.splits option.splits)
+  done
 
 section \<open>aeq_op - async equality operator\<close>
   \<comment> \<open>TODO: define the operator + write and prove axioms (Table 3): A1, A2, A3, A4, A14, A15, F3 \<close>
+datatype (discs_sels) ('m) aeq_op_aux =
+  aeq_Read_aux "'m"
+
+abbreviation eval_aeq_op_aux where
+  "eval_aeq_op_aux c aux \<equiv> (case aux of
+    aeq_Read_aux p \<Rightarrow> choice2 (Read (Inl p) ((\<lambda> y. Read (Inr p) (\<lambda>x. if x = y then Write c p x else Silent c)))) (Read (Inr p) ((\<lambda> y. Read (Inl p) (\<lambda>x. if x = y then Write c p x else Silent c)))))"
+
+corec aeq_op :: "('m + 'm :: countable, 'm, 'a) op" where
+  "aeq_op = Choice (cimage (eval_aeq_op_aux aeq_op) 
+   (cimage (\<lambda> p. aeq_Read_aux p) (cUNIV :: 'm cset)))"
+
+lemma aeq_op_code:
+  "aeq_op = Choice (cimage (\<lambda> p. Choice {|Read (Inl p) ((\<lambda> y. Read (Inr p) (\<lambda>x. if x = y then Write aeq_op p x else Silent aeq_op))), Read (Inr p) ((\<lambda> y. Read (Inl p) (\<lambda>x. if x = y then Write aeq_op p x else Silent aeq_op)))|}) (cUNIV :: 'm :: countable cset))"
+  apply (subst aeq_op.code)
+   apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: cimage_cong
+      split: op.splits option.splits if_splits)
+  done
 
 (* 
 abbreviation "write op p x \<equiv> Write op p (Observed x)"
