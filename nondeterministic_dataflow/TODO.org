@@ -72,7 +72,7 @@
 ** loop_op:
 *** TODO: Correctness
 *** DONE:
-** colatz_op
+** collatz_op
 *** TODO: Correctness
 *** DONE:
 ** Time (Brock-Ackermann) anomaly
