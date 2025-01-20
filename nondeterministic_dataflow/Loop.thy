@@ -7,6 +7,8 @@ imports
 begin
 
 
+\<comment> \<open>TODO: define loop_op and prove axioms: R1, R2, R3, R4, R5, R6\<close>
+
 fun choices_at where
   "choices_at _ (Read p f) = csingle (Read p f)"
 | "choices_at _ (Write op p x) = csingle (Write op p x)"
@@ -97,7 +99,7 @@ lemma loop_op_code[code]:
 simps_of_case loop_op_simps': loop_op_code
 simps_of_case loop_op_simps[simp]: loop_op.code[unfolded prod.case Let_def]
 
-
+end
 section\<open>Correctness\<close>
 
 definition "lift A lxs lys p = (if p \<in> A then lxs p else lys p)"

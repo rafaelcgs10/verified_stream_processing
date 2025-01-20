@@ -355,6 +355,9 @@ lemma assoc_reassoc[simp]:
     done
   done
 
+subsection \<open>Axiom B1: Associativity\<close>
+  \<comment> \<open>TODO\<close>
+
 section \<open>Sequential composition operator\<close>
 definition scomp_op (infixl "\<bullet>" 65) where
   "scomp_op op1 op2 = map_op projl projr (comp_op Some (\<lambda>_. []) op1 op2)"
@@ -1866,5 +1869,8 @@ lemma scomp_op_assoc:
   "op1 \<bullet> op2 \<bullet> op3 ~ op1 \<bullet> (op2 \<bullet> op3)"
   unfolding scomp_op_def using scomp_op_assoc_gen
   using bisim_sym by blast
+
+section \<open>Axiom B5: Parallel and sequential distributes\<close>
+  \<comment> \<open>TODO\<close>
 
 end

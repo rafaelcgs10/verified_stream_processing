@@ -90,6 +90,9 @@ lemma spin_op_silent_op:
 lemma "\<otimes> ~ \<oslash>"
   oops
 
+subsection \<open>Axiom: B2\<close>
+\<comment> \<open>Neutral element parallel composition\<close>
+
 section \<open>id_op/\<I>/I_m\<close>
     \<comment> \<open>id_op is I_m in the BNA paper\<close>
 
@@ -207,6 +210,7 @@ lemma step_comp_op_Some_id_op_id_op:
   done
 
 subsection \<open>Axiom: B4\<close>
+\<comment> \<open>Neutral element sequential composition\<close>
 lemma id_id_gen:
   "map_op projl projr (comp_op Some buf2 (id_op buf1) (id_op buf3)) \<approx> id_op (buf1 >> buf2 >> buf3)"
   apply (coinduction arbitrary: buf1 buf2 buf3 rule: wbisim_coinduct_upto)
@@ -505,11 +509,14 @@ lemma scomp_op_id_op_left_neutral:
   by (smt (verit, best) bisim_wbisim scomp_op_assoc scomp_op_id_id wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans)
 
 subsection \<open>Axiom: B6\<close>
-subsubsection \<open>Auxiliary lemmas\<close>
-subsubsection \<open>Axiom: B6\<close>
+  \<comment> \<open>TODO\<close>
 lemma pcomp_op_id_id:
   "\<I> \<parallel> \<I> ~ \<I>"
   oops
+
+subsection \<open>Axiom: F1\<close>
+  \<comment> \<open>TODO\<close>
+
 
   section \<open>dummy_source_op\<close>                                     
 abbreviation dummy_source_op ("\<exclamdown>") where
@@ -517,13 +524,16 @@ abbreviation dummy_source_op ("\<exclamdown>") where
 
 subsection \<open>Axiom: A12\<close>
 lemma dummy_source_op_end_op:
+  \<comment> \<open>TODO\<close>
   "\<exclamdown> ~ \<oslash>"
   oops
+  \<comment> \<open>TODO\<close>
 lemma dummy_source_op_spin_op:
   "\<exclamdown> = \<otimes>"
   oops
 
   subsection \<open>Axiom: A13\<close>
+  \<comment> \<open>TODO\<close>
 lemma pcomp_opdummy_source:
   "\<exclamdown> \<parallel> \<exclamdown> ~ \<exclamdown>"
   oops
@@ -543,15 +553,31 @@ lemma
   by simp
 
 subsection \<open>Axiom: A9\<close>
+  \<comment> \<open>TODO\<close>
 lemma
   "\<exclamdown> \<bullet> sink_0_op ~ \<oslash>"
   oops
+  \<comment> \<open>TODO\<close>
 lemma
   "\<exclamdown> \<bullet> ! = \<otimes>"
   oops
+subsection \<open>Axiom: A17\<close>
+  \<comment> \<open>TODO\<close>
 
 section \<open>transp_op - transposition operator\<close>
-  \<comment> \<open>TODO: define the operator + write and prove axioms B7, B8, B9, B10, R1, F2, \<close>
+  \<comment> \<open>TODO: define the operator + write and prove axioms: B7, B8, B9, B10, F2 \<close>
+
+section \<open>split_op - nondeterministic split operator\<close>
+  \<comment> \<open>TODO: define the operator + write and prove axioms (Table 4): A6, A8, A18, A19, F4 \<close>
+
+section \<open>merge_op - nondeterministic merge operator\<close>
+  \<comment> \<open>TODO: define the operator + write and prove axioms (Table 4): A1, A2, A3, A4, A14, A15, F3 \<close>
+
+section \<open>acopy_op - async copy operator\<close>
+  \<comment> \<open>TODO: define the operator + write and prove axioms (Table 3): A6, A8, A18, A19, F4 \<close>
+
+section \<open>aeq_op - async equality operator\<close>
+  \<comment> \<open>TODO: define the operator + write and prove axioms (Table 3): A1, A2, A3, A4, A14, A15, F3 \<close>
 
 (* 
 abbreviation "write op p x \<equiv> Write op p (Observed x)"
