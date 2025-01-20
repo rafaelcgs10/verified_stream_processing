@@ -1,22 +1,23 @@
 #+title: Todo
 
-* BNA:
+* BNA equivalences:
 ** bisim:
 *** TODO: bisim -> trace equivalence
 *** DONE: coinduct up-to, map_op_bisim
 ** wbisim:
 *** TODO: wbisim -> trace equivalence
 *** DONE: coinduct up-to, bisim -> wbisim, map_op_bisim
+* BNA operators and properties:
 ** comp_op:
 *** DONE: bisim congruence, wbisim congruence
 ** scomp_op:
 *** TODO: B5
 *** DONE: B3
 ** pcomp_op:
-*** TODO: B1, commutativity
+*** TODO: B1, commutativity (not listed as BNA axiom?)
 *** DONE:
 ** loop_op:
-*** TODO: bisim congruence, wbisim congruence, R1, R2, R3, R4, R5, R6
+*** TODO: define it, bisim congruence, wbisim congruence, R1, R2, R3, R4, R5, R6
 *** DONE:
 ** end_op/spin_op/silent_op:
 *** TODO: B2
@@ -31,19 +32,19 @@
 *** TODO: A9, A16, A17
 *** DONE:
 ** transp_op:
-*** TODO: B7, B8, B9, B10, F2
+*** TODO: define it, B7, B8, B9, B10, F2
 *** DONE:
 ** split_op:
-*** TODO: (Table 4): A6, A8, A18, A19, F4
+*** TODO: define it, (Table 4): A6, A8, A18, A19, F4
 *** DONE:
 ** merge_op:
-*** TODO: (Table 4): A1, A2, A3, A4, A14, A15, F3
+*** TODO: define it, (Table 4): A1, A2, A3, A4, A14, A15, F3
 *** DONE:
 ** acopy_op:
-*** TODO: (Table 3): A6, A8, A18, A19, F4
+*** TODO: define it, (Table 3): A6, A8, A18, A19, F4
 *** DONE:
 ** aeq_op:
-*** TODO: (Table 3): A1, A2, A3, A4, A14, A15, F3
+*** TODO: define it, (Table 3): A1, A2, A3, A4, A14, A15, F3
 *** DONE:
 
 * Trace model:
