@@ -504,6 +504,10 @@ lemma scomp_op_id_op_right_neutral:
   "\<stileturn>op\<turnstile> \<bullet> \<I> \<approx> \<stileturn>op\<turnstile>"
   using bisim_wbisim scomp_op_assoc scomp_op_id_id wbisim_refl wbisim_scomp_op_cong wbisim_trans by blast
 
+lemma scomp_op_id_op_right_neutral_gen:
+  "op \<bullet> \<I> \<approx> op"
+  oops
+
 lemma scomp_op_id_op_left_neutral:
   "\<I> \<bullet> \<stileturn>op\<turnstile> \<approx> \<stileturn>op\<turnstile>"
   by (smt (verit, best) bisim_wbisim scomp_op_assoc scomp_op_id_id wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans)
@@ -567,8 +571,49 @@ subsection \<open>Axiom: A17\<close>
 section \<open>transp_op - transposition operator\<close>
   \<comment> \<open>TODO: define the operator + write and prove axioms: B7, B8, B9, B10, F2 \<close>
 
+datatype (discs_sels) ('m, 'n, 'd) transp_op_aux =
+  transp_Read_aux "'m + 'n" "'d \<Rightarrow> ('m + 'n \<Rightarrow> 'd buf)"
+  | transp_Write_aux "('m + 'n \<Rightarrow> 'd buf)" "'n + 'm" 'd 
+
+abbreviation eval_transp_op_aux where
+  "eval_transp_op_aux c aux \<equiv> (case aux of
+    transp_Read_aux p f \<Rightarrow> Read p (\<lambda>y. let buf = f y in c buf)
+  | transp_Write_aux buf q x \<Rightarrow> (Write (c buf) q x))"
+
+corec transp_op :: "_ \<Rightarrow> ('m :: countable + 'n :: countable, 'n + 'm, 'd) op" where
+  "transp_op buf = Choice (cimage (eval_transp_op_aux transp_op) (cUn 
+    (cimage (\<lambda> p. transp_Read_aux p (\<lambda> x. BENQ p x buf)) (cUNIV :: ('m + 'n) cset)) 
+    (cimage (\<lambda> p. transp_Write_aux (BTL p buf) (case_sum Inr Inl p) (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUNIV :: ('m + 'n) cset)))))"
+
+lemma transp_op_code:
+   "transp_op buf = Choice (cUn 
+    (cimage (\<lambda> p. Read p (\<lambda> x. transp_op (BENQ p x buf))) (cUNIV :: ('m :: countable + 'n :: countable) cset)) 
+    (cimage (\<lambda> p. Write (transp_op (BTL p buf)) (case_sum Inr Inl p) (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUNIV :: ('m + 'n) cset))))"
+  apply (subst transp_op.code)
+  apply (unfold cimage_cUn cimage_cinsert op.inject)
+  apply simp
+  apply (rule arg_cong2[where f = cUn])
+   apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
+      split: op.splits option.splits)
+  done
+
 section \<open>split_op - nondeterministic split operator\<close>
   \<comment> \<open>TODO: define the operator + write and prove axioms (Table 4): A6, A8, A18, A19, F4 \<close>
+datatype (discs_sels) ('m) split_op_aux =
+  split_Read_aux "'m"
+
+abbreviation eval_split_op_aux where
+  "eval_split_op_aux c aux \<equiv> (case aux of
+    split_Read_aux p \<Rightarrow> Read p (\<lambda>y. choice2 (Write c (Inl p) y) (Write c (Inr p) y)))"
+
+corec split_op :: "('m :: countable, 'm + 'm, 'a) op" where
+  "split_op = Choice (cimage (eval_split_op_aux split_op) 
+   (cimage (\<lambda> p. split_Read_aux p) (cUNIV :: 'm cset)))"
+
+lemma
+  "split_op \<bullet> (transp_op buf) \<approx> map_op id (case_sum Inr Inl) split_op"
+  oops
+
 
 section \<open>merge_op - nondeterministic merge operator\<close>
   \<comment> \<open>TODO: define the operator + write and prove axioms (Table 4): A1, A2, A3, A4, A14, A15, F3 \<close>

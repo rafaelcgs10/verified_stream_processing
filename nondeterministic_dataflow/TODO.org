@@ -2,10 +2,10 @@
 
 * BNA equivalences:
 ** bisim:
-*** TODO: bisim -> trace equivalence
+*** TODO: bisim -> trace equivalence with taus
 *** DONE: coinduct up-to, map_op_bisim
 ** wbisim:
-*** TODO: wbisim -> trace equivalence
+*** TODO: wbisim -> trace equivalence (with no taus)
 *** DONE: coinduct up-to, bisim -> wbisim, map_op_bisim
 * BNA operators and properties:
 ** comp_op:
@@ -14,7 +14,7 @@
 *** TODO: B5
 *** DONE: B3
 ** pcomp_op:
-*** TODO: B1, commutativity (not listed as BNA axiom?)
+*** TODO: B1
 *** DONE:
 ** loop_op:
 *** TODO: define it, bisim congruence, wbisim congruence, R1, R2, R3, R4, R5, R6
@@ -48,25 +48,22 @@
 *** DONE:
 
 * Trace model:
-** scomp_op:
-*** TODO: Correctness
-*** DONE:
-** pcomp_op:
+** comp_op:
 *** TODO: Correctness
 *** DONE:
 ** loop_op:
 *** TODO: Correctness
 *** DONE:
-** colatz_op
+** collatz_op
 *** TODO: Correctness
+*** DONE:
+** Time (Brock-Ackermann) nomaly
+*** TODO: Prove the nomaly
 *** DONE:
 ** some other example with nondeterminism?
 
 * History model:
-** scomp_op:
-*** TODO: Correctness
-*** DONE:
-** pcomp_op:
+** comp_op:
 *** TODO: Correctness
 *** DONE:
 ** loop_op:

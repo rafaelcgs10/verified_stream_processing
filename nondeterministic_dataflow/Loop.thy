@@ -9,21 +9,13 @@ begin
 
 \<comment> \<open>TODO: define loop_op and prove axioms: R1, R2, R3, R4, R5, R6\<close>
 
-fun choices_at where
-  "choices_at _ (Read p f) = csingle (Read p f)"
-| "choices_at _ (Write op p x) = csingle (Write op p x)"
-| "choices_at 0 (Choice ops) = cempty"
-| "choices_at (Suc n) (Choice ops) = cUnion (cimage (choices_at n) ops)"
-
-definition "choices op = cUnion (cimage (\<lambda>i. choices_at i op) natcUNIV)"
-
 abbreviation "sound_reads wire buf \<equiv> cfilter (\<lambda> op. case op of Read p f \<Rightarrow> p \<notin> ran wire \<or> buf p \<noteq> [] | _ \<Rightarrow> True)"
 
 corec loop_op :: "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op" where
   "loop_op wire buf op = Choice (cimage (\<lambda> op. case op of
-     Read p f \<Rightarrow> (if p \<in> ran wire then loop_op wire (BTL p buf) (f (BHD p buf)) else Read p (\<lambda> x. loop_op wire buf (f x)))
-   | Write op' p x \<Rightarrow> (case wire p of None \<Rightarrow> Write (loop_op wire buf op') p x | Some q \<Rightarrow> loop_op wire (BENQ q x buf) op')  
+     Read p f \<Rightarrow> (if p \<in> ran wire then Silent (loop_op wire (BTL p buf) (f (BHD p buf))) else Read p (\<lambda> x. loop_op wire buf (f x)))
+   | Write op' p x \<Rightarrow> (case wire p of None \<Rightarrow> Write (loop_op wire buf op') p x | Some q \<Rightarrow> Silent (loop_op wire (BENQ q x buf) op'))  
    ) (sound_reads wire buf (choices op)))"
 
 definition feedback_op ( "_ \<up>" [66] 65) where
@@ -34,8 +26,13 @@ fun assoc where
 | "assoc (Inr (Inl x)) = Inl (Inr x)"
 | "assoc (Inr (Inr x)) = Inr x"
 
+\<comment> \<open>Axiom: A6\<close>
 lemma
   "(op\<up>)\<up> = (map_op assoc assoc op)\<up>"
+
+
+
+end
 
 inductive loop_producing :: "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightarrow> 'd buf) \<Rightarrow> ('ip, 'op, 'd) op \<Rightarrow> nat \<Rightarrow> bool" where
   "loop_producing wire buf end_op 0"

@@ -5,6 +5,7 @@ theory Composition_Slow
 imports
   Operator
 begin
+end
 
 (*workaround about termination issue in corecursive*)
 lemma case_prod_cong4[fundef_cong]:
