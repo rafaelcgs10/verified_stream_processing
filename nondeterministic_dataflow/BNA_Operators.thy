@@ -241,15 +241,6 @@ lemma
   "sink_0_op = \<oslash>"
   by simp
 
-subsection \<open>Axiom: A9\<close>
-  \<comment> \<open>TODO\<close>
-lemma
-  "\<exclamdown> \<bullet> sink_0_op ~ \<oslash>"
-  oops
-  \<comment> \<open>TODO\<close>
-lemma
-  "\<exclamdown> \<bullet> ! = \<otimes>"
-  oops
 subsection \<open>Axiom: A17\<close>
   \<comment> \<open>TODO\<close>
 
