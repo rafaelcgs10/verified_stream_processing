@@ -880,19 +880,24 @@ lemma loop_op_distribute_scomp_op:
   "(op1\<up>) \<bullet> op2 ~ (op1 \<bullet> (op2 \<parallel> \<I>))\<up>"
   oops
 
-  section \<open>Axiom: R3: Parallel loop\<close>
+section \<open>Axiom: R3: Parallel loop\<close>
 lemma loop_op_parallel:
-  "map_op f g (op1 \<parallel> (op2\<up>)) ~ (op1 \<parallel> op2)\<up>"
+  "op1 \<parallel> (op2\<up>) ~ (map_op assoc assoc (op1 \<parallel> op2))\<up>"
+  oops
+
+section \<open>Axiom: R4: Loop commutes sequential composition\<close>
+lemma loop_op_commutes_scomp_op:
+  "(op1 \<bullet> (\<I> \<parallel> op2))\<up> ~ ((\<I> \<parallel> op2) \<bullet> op1)\<up>"
+  oops
+
+section \<open>Axiom: R5: Loop with no loop\<close>
+lemma loop_op_no_loop:
+  "loop_op (\<lambda> _. None) buf op = op"
   oops
 
 section \<open>Axiom: R6: Loop absorb\<close>
 lemma loop_op_absorb:
   "(op\<up>)\<up> = (map_op reassoc reassoc op)\<up>"
   oops
-
-
-  find_consts " _ llist" name: transpo
-
-
 
 end
