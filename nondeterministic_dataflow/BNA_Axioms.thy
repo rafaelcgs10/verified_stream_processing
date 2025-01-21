@@ -1,6 +1,4 @@
-section \<open>The BNA Axioms\<close>
-  \<comment> \<open>The basic operators - except compositions, loop and fair merge- from the BNA book "Network Algebra for Synchronous and Asynchronous Dataflow" (https://staff.fnwi.uva.nl/c.a.middelburg/papers/P9508.pdf) \<close>
-  \<comment> \<open>Here we list most of the axioms from Table 1, and Table 4\<close>
+\<comment> \<open>Axioms from Table 1 for BNA operators\<close>
 theory BNA_Axioms
 
 imports

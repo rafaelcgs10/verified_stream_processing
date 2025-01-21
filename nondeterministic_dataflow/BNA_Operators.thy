@@ -306,7 +306,7 @@ abbreviation eval_merge_op_aux where
   "eval_merge_op_aux c aux \<equiv> (case aux of
     merge_Read_aux p \<Rightarrow> choice2 (Read (Inl p) (\<lambda>y. Write c p y)) (Read (Inr p) (\<lambda>y. Write c p y)))"
 
-corec merge_op :: "('m + 'm :: countable, 'm, 'a) op"  ("\<V>") where
+corec merge_op :: "('m + 'm :: countable, 'm, 'a) op" ("\<V>") where
   "merge_op = Choice (cimage (eval_merge_op_aux merge_op) 
    (cimage (\<lambda> p. merge_Read_aux p) (cUNIV :: 'm cset)))"
 
@@ -326,7 +326,7 @@ abbreviation eval_acopy_op_aux where
   "eval_acopy_op_aux c aux \<equiv> (case aux of
     acopy_Read_aux p \<Rightarrow> Read p (\<lambda>y. choice2 (Write (Write c (Inr p) y) (Inl p) y) (Write (Write c (Inl p) y) (Inr p) y)))"
 
-corec acopy_op :: "('m :: countable, 'm + 'm, 'a) op" where
+corec acopy_op :: "('m :: countable, 'm + 'm, 'a) op" ("\<C>") where
   "acopy_op = Choice (cimage (eval_acopy_op_aux acopy_op) 
    (cimage (\<lambda> p. acopy_Read_aux p) (cUNIV :: 'm cset)))"
 
@@ -346,7 +346,7 @@ abbreviation eval_aeq_op_aux where
   "eval_aeq_op_aux c aux \<equiv> (case aux of
     aeq_Read_aux p \<Rightarrow> choice2 (Read (Inl p) ((\<lambda> y. Read (Inr p) (\<lambda>x. if x = y then Write c p x else Silent c)))) (Read (Inr p) ((\<lambda> y. Read (Inl p) (\<lambda>x. if x = y then Write c p x else Silent c)))))"
 
-corec aeq_op :: "('m + 'm :: countable, 'm, 'a) op" where
+corec aeq_op :: "('m + 'm :: countable, 'm, 'a) op" ("\<Q>") where
   "aeq_op = Choice (cimage (eval_aeq_op_aux aeq_op) 
    (cimage (\<lambda> p. aeq_Read_aux p) (cUNIV :: 'm cset)))"
 
