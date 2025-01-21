@@ -5,7 +5,9 @@ theory BNA_Axioms
 
 imports
   BNA_Operators
+  Loop
 begin
+no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
 section \<open>Axiom B1: Associativity of parallel composition\<close>
 \<comment> \<open>TODO\<close>
@@ -853,19 +855,44 @@ lemma scomp_op_transp_transp:
   "\<X> \<bullet> \<X> \<approx> \<X>"
   oops
 
-section \<open>Axiom B8: Transpose on side only\<close>
-  \<comment> \<open>Question: how do we define this?\<close>
-
 section \<open>Axiom B9: Transpose decomposes in parallel and sequential composition\<close>
-
 lemma trans_op_decomposes_scomp_op_pcomp_op:
   assumes "\<X>klm = (\<X> :: ('k :: countable + 'l :: countable + 'm :: countable, ('l + 'm) + 'k, 'c) op)"
   and "\<X>kl = (\<X> :: ('k + 'l, 'l + 'k, 'c) op)"
   and "\<X>km = (\<X> :: ('k + 'm, 'm + 'k, 'c) op)"
   and "\<I>m = (\<I> :: ('m, 'm, 'c) op)"
   and "\<I>l = (\<I> :: ('l, 'l, 'c) op)"
-shows "False"
-  term "\<X>kl \<parallel> \<I>m"
-  term "\<I>l \<parallel> \<X>km"
+shows "\<X>klm \<approx> map_op reassoc reassoc (\<X>kl \<parallel> \<I>m) \<bullet> map_op id assoc (\<I>l \<parallel> \<X>km)"
+  oops
+
+section \<open>Axiom B10: Transpose commutes with sequential composition of parallel operators\<close>
+lemma transp_op_commutes_scomp_op_pcomp_op:
+ "(op1 \<parallel> op2) \<bullet> \<X> = \<X> \<bullet> (op2 \<parallel> op1)"
+  oops
+
+section \<open>Axiom: R1: Loop absorb\<close>
+lemma loop_op_absorb:
+  "op2 \<bullet> (op1\<up>) ~ ((op2 \<parallel> \<I>) \<bullet> op1)\<up>"
+  oops
+
+section \<open>Axiom: R2: Loop distribute scomp_op\<close>
+lemma loop_op_distribute_scomp_op:
+  "(op1\<up>) \<bullet> op2 ~ (op1 \<bullet> (op2 \<parallel> \<I>))\<up>"
+  oops
+
+  section \<open>Axiom: R3: Parallel loop\<close>
+lemma loop_op_parallel:
+  "map_op f g (op1 \<parallel> (op2\<up>)) ~ (op1 \<parallel> op2)\<up>"
+  oops
+
+section \<open>Axiom: R6: Loop absorb\<close>
+lemma loop_op_absorb:
+  "(op\<up>)\<up> = (map_op reassoc reassoc op)\<up>"
+  oops
+
+
+  find_consts " _ llist" name: transpo
+
+
 
 end
