@@ -3,7 +3,6 @@ theory BNA_Axioms
 
 imports
   BNA_Operators
-  Loop
 begin
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
@@ -538,6 +537,49 @@ lemma scomp_op_assoc:
   using bisim_sym by blast
 
 section \<open>Axiom B4: Neutral element of sequential composition\<close>
+lemma step_comp_op_Some_id_op_id_op:
+  "step io (comp_op Some buf2 op1 op2) op \<Longrightarrow>
+   op1 = id_op buf1 \<Longrightarrow>
+   op2 = id_op buf3 \<Longrightarrow>
+   (\<exists> p x. io = Inp (Inl p) x \<and>
+     (\<exists> buf1' buf2' buf3'. op = comp_op Some buf2' (id_op (BENQ p x buf1')) (id_op buf3') \<and>
+      buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3')) \<or>
+
+   (\<exists> p x. io = Out (Inr p) x \<and>
+     (\<exists> buf1' buf2' buf3'. op = comp_op Some buf2' (id_op buf1') (id_op (BTL p buf3')) \<and> BHD p buf3' = x \<and> buf3' p \<noteq> [] \<and>
+     buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3')) \<or>
+
+   (\<exists> p x. io = Tau \<and>
+     (\<exists> buf1' buf2' buf3'. op = comp_op Some (BTL p buf2') (id_op buf1') (id_op (BENQ p x buf3')) \<and> BHD p buf2' = x \<and> buf2' p \<noteq> [] \<and>
+     buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3')) \<or>
+
+   (\<exists> p x. io = Tau \<and>
+     (\<exists> buf1' buf2' buf3'. op = comp_op Some (BENQ p x buf2') (id_op (BTL p buf1')) (id_op buf3') \<and> BHD p buf1' = x \<and> buf1' p \<noteq> [] \<and>
+     buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3'))"
+  apply (induction io "comp_op Some buf2 op1 op2" op arbitrary: op1 op2 buf1 buf2 buf3 rule: step.induct)
+  subgoal
+    apply hypsubst_thin
+    apply (subst (asm) comp_op_code)
+    apply auto
+    done
+  subgoal
+    apply hypsubst_thin
+    apply (subst (asm) comp_op_code)
+    apply auto
+    done
+  subgoal
+    apply hypsubst_thin
+    apply (subst (asm) comp_op_code)
+    apply auto
+    done
+  subgoal for op ops io op' op1 op2 buf2 buf1 buf3
+    apply hypsubst_thin
+    apply (subst (asm) (6) comp_op_code)
+    apply (auto 0 0)
+             apply blast+
+    done
+  done
+
 lemma id_id_gen:
   "map_op projl projr (comp_op Some buf2 (id_op buf1) (id_op buf3)) \<approx> id_op (buf1 >> buf2 >> buf3)"
   apply (coinduction arbitrary: buf1 buf2 buf3 rule: wbisim_coinduct_upto)

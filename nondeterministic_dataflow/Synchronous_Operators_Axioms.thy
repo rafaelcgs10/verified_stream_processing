@@ -3,7 +3,6 @@ theory Synchronous_Operators_Axioms
 
 imports
   BNA_Operators
-  Loop
 begin
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
