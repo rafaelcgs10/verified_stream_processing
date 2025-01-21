@@ -294,7 +294,7 @@ abbreviation eval_split_op_aux where
   "eval_split_op_aux c aux \<equiv> (case aux of
     split_Read_aux p \<Rightarrow> Read p (\<lambda>y. choice2 (Write c (Inl p) y) (Write c (Inr p) y)))"
 
-corec split_op :: "('m :: countable, 'm + 'm, 'a) op" where
+corec split_op :: "('m :: countable, 'm + 'm, 'a) op" ("\<Lambda>")  where
   "split_op = Choice (cimage (eval_split_op_aux split_op) 
    (cimage (\<lambda> p. split_Read_aux p) (cUNIV :: 'm cset)))"
 
@@ -305,10 +305,6 @@ lemma split_op_code:
       split: op.splits option.splits)
   done
 
-subsection \<open>Axiom: A6\<close>
-lemma
-  "split_op \<bullet> (transp_op buf) \<approx> map_op id (case_sum Inr Inl) split_op"
-  oops
 
 section \<open>merge_op - nondeterministic merge operator\<close>
   \<comment> \<open>TODO: define the operator + write and prove axioms (Table 4): A1, A2, A3, A4, A14, A15, F3 \<close>
@@ -319,7 +315,7 @@ abbreviation eval_merge_op_aux where
   "eval_merge_op_aux c aux \<equiv> (case aux of
     merge_Read_aux p \<Rightarrow> choice2 (Read (Inl p) (\<lambda>y. Write c p y)) (Read (Inr p) (\<lambda>y. Write c p y)))"
 
-corec merge_op :: "('m + 'm :: countable, 'm, 'a) op" where
+corec merge_op :: "('m + 'm :: countable, 'm, 'a) op"  ("\<V>") where
   "merge_op = Choice (cimage (eval_merge_op_aux merge_op) 
    (cimage (\<lambda> p. merge_Read_aux p) (cUNIV :: 'm cset)))"
 
