@@ -72,6 +72,11 @@ abbreviation "choice1 op \<equiv> Choice (cimage (\<lambda>_. op) {|()|})"
 abbreviation "choice2 op1 op2 \<equiv> Choice (cimage (\<lambda>b. if b then op1 else op2) (cinsert True (csingle False)))"
 abbreviation "safe_read f x \<equiv> (case x of None \<Rightarrow> end_op | Some x \<Rightarrow> f x)"
 
+abbreviation "ARead i f op \<equiv> Choice (cimage (\<lambda> x. if x then op else Read i f) (cinsert True (csingle False)))"
+lemma ARead_simp[simp]: "ARead i f op = Choice ({| op, Read i f |})"
+  by simp
+
+
 type_synonym 'd channel = "'d llist"
 
 code_lazy_type op
