@@ -899,8 +899,8 @@ lemma pcomp_op_id_id:
   oops
 
 section \<open>Axiom B7: Transpose of transpose is identity\<close>
-lemma scomp_op_transp_transp:
-  "\<X> \<bullet> \<X> \<approx> \<X>"
+lemma scomp_op_transp_transp_id:
+  "\<X> \<bullet> \<X> \<approx> \<I>"
   oops
 
 section \<open>Axiom B9: Transpose decomposes in parallel and sequential composition\<close>
