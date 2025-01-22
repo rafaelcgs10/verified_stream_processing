@@ -945,7 +945,7 @@ lemma loop_op_no_loop:
 
 section \<open>Axiom: R6: Loop absorb\<close>
 
-lemma
+lemma step_loop_op:
   "step io (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) op' \<Longrightarrow>
    (\<exists>p x. io = Inp (Inl p) x \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op'' \<and> step io op op'')) \<or>
    (\<exists>p x. io = Out (Inl p) x \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op'' \<and> step io op op'')) \<or>
@@ -1030,10 +1030,13 @@ lemma
       subgoal for op'
         apply (clarsimp split: if_splits option.splits)
           apply hypsubst_thin
-          apply (erule thin_rl)
+        apply (erule thin_rl)
+        apply (metis Silent_in_choices_step cin.rep_eq)
+        done
+      done
+    done
+  done
 
-
-      oops
 lemma
   "Read (Inl p) f |\<in>| (choices (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (\<lambda>_. []) op)) \<Longrightarrow>
    \<exists> f'. Read (Inl p) f' |\<in>| choices op"
@@ -1072,19 +1075,23 @@ lemma step_double_loop_1:
                apply (rule image_eqI)
               apply (rule refl)
                apply (rule image_eqI[of _ _ "Read (Inl lp) _"])
-              apply (simp_all add: ran_def sum.case_eq_if comp_def) 
+              apply (simp_all add: ran_def sum.case_eq_if) 
                apply simp_all
                defer
-              unfolding comp_def
+              apply (drule Read_in_choices_step[simplified])
+              apply (drule step_map_op_inv)
+               apply safe
+              apply (drule step_loop_op)
+               apply auto
+              apply (subst (1 2 3) comp_def)
                apply (rule SR)
-              subgoal sorry
-              done
-            subgoal
-              apply (rule arg_cong2[where f="map_op projl"])
-              apply simp
-              apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-              apply simp
-              apply (simp add: ran_def sum.case_eq_if) 
+                          apply (drule Read_in_choices_step[simplified])
+          apply (drule step_map_op_inv)
+               apply safe
+              apply (drule step_loop_op)
+              apply auto
+              apply (erule step_choicesE)
+                apply auto
               oops
 
 lemma step_double_loop_2:
