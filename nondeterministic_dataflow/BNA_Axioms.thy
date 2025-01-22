@@ -1081,7 +1081,7 @@ lemma step_double_loop_2:
   "step io (map_op reassoc reassoc op \<up>) op' \<Longrightarrow>
    \<exists> op''. op' = (map_op reassoc reassoc op'' \<up>) \<and>
    step io ((op \<up>) \<up>) ((op'' \<up>) \<up>)"
-  sorry
+  oops
 
 lemma loop_op_absorb:
   "(op\<up>)\<up> ~ (map_op reassoc reassoc op)\<up>"
@@ -1117,5 +1117,14 @@ lemma loop_op_absorb:
   done
  *)
 
+section \<open>Axiom F1: Identity looped is end_op\<close>
+
+lemma id_op_loop_spin: \<open>\<I>\<up> = \<oslash>\<close>
+  oops
+
+section \<open>Axiom F2: Transpose looped is identity\<close>
+
+lemma transp_op_loop_id: \<open>\<X>\<up> \<approx> \<I>\<close>
+  oops
 
 end
