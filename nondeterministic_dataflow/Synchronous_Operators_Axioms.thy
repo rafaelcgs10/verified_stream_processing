@@ -26,14 +26,34 @@ lemma aeq_op_sink_op:
    "\<Q> \<bullet> ! ~ ! \<parallel> !"
   oops
 
-section \<open>Axiom: A6: Split to transpose\<close>
+section \<open>Axiom: A5: Acopy to acopy and identity\<close>
+lemma acopy_op_acopy_id:
+  "\<C> \<bullet> (\<C> \<parallel> \<I>) ~ map_op id assoc (\<C> \<bullet> (\<I> \<parallel> \<C>))"
+  oops
+
+section \<open>Axiom: A6: Acopy to transpose\<close>
 lemma acopy_op_transp_op:
  "\<C> \<bullet> \<X> \<approx> map_op id (case_sum Inr Inl) \<C>"
   oops
 
-section \<open>Axiom: A8: Split dummy source\<close>
+section \<open>Axiom: A7: Acopy to sink and identity\<close>
+lemma acopy_op_acopy_sink:
+  "map_op id projr (\<C> \<bullet> (! \<parallel> \<I>)) ~ \<I>"
+  oops
+
+section \<open>Axiom: A8: Acopy dummy source\<close>
 lemma acopy_op_dummy_source:
   "\<exclamdown> \<bullet> \<C> \<approx> \<exclamdown> \<parallel> \<exclamdown>"
+  oops
+
+section \<open>Axiom: A10: Equality test to acopy\<close>
+lemma aeq_op_acopy:
+ "\<Q> \<bullet> \<C> ~ (\<C> \<parallel> \<C>) \<bullet> (map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)) \<bullet> (\<Q> \<parallel> \<Q>)"
+  oops
+
+section \<open>Axiom: A11: Acopy to equality test\<close>
+lemma acopy_op_aeq:
+  "\<C> \<bullet> \<Q> \<approx> \<I>"
   oops
 
 section \<open>Axiom A15: Transpose and equality test\<close>
@@ -47,7 +67,7 @@ lemma aeq_op_transp_aeq:
   shows "Qmn \<approx> map_op reassoc reassoc (map_op assoc assoc (Imm \<parallel> Xnm) \<parallel> Inn) \<bullet> (Qm \<parallel> Qn)"
   oops
 
-section \<open>Axiom A19: Split and equality test\<close>
+section \<open>Axiom A19: Acopy and equality test\<close>
 lemma acopy_op_transp_acopy:
   assumes "Cmn \<equiv> \<C> :: ('m + 'n,('m :: countable + 'n ::countable) + 'm + 'n,  'd) op"
     and "Cm \<equiv> \<C> :: ('m, 'm + 'm, 'd) op"
