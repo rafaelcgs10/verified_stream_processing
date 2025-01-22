@@ -7,10 +7,17 @@ begin
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
 section \<open>Axiom B1: Associativity of parallel composition\<close>
-\<comment> \<open>TODO\<close>
+lemma pcomp_op_assoc:
+ "bisim (pcomp_op op1 (pcomp_op op2 op3)) (map_op reassoc reassoc (pcomp_op (pcomp_op op1 op2) op3))"
+  oops
 
-section \<open>Axiom B2: Neutral element of parallel composition\<close>
-\<comment> \<open>TODO\<close>
+  section \<open>Axiom B2: Neutral element of parallel composition\<close>
+lemma pcomp_op_end_op_right_neutral:
+  "map_op projl projl (op \<parallel> \<oslash>) ~ op"
+  oops
+lemma pcomp_op_end_op_left_neutral:
+  "map_op projr projr (\<oslash> \<parallel> op) ~ op"
+  oops
 
 section \<open>Axiom B3: Associativity of sequential composition\<close>
 lemma step_scomp_op_1:
@@ -862,7 +869,6 @@ lemma id_id_gen:
     done
   done
 
-subsubsection \<open>Axiom: B4\<close>
 lemma scomp_op_id_id:
   "\<I> \<bullet> \<I> \<approx> \<I>"
   unfolding scomp_op_def
@@ -883,7 +889,9 @@ lemma scomp_op_id_op_left_neutral:
 
 
 section \<open>Axiom B5: Parallel and sequential distributes\<close>
-  \<comment> \<open>TODO\<close>
+lemma pcomp_op_scomp_distributes:
+ "(op1 \<parallel> op2) \<bullet> (op3 \<parallel> op4) ~ (op1 \<bullet> op3) \<parallel> (op2 \<bullet> op4)"
+  oops
 
 section \<open>Axiom B6: Parallel composition of identities\<close>
 lemma pcomp_op_id_id:
