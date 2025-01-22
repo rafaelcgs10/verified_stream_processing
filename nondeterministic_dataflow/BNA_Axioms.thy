@@ -997,7 +997,7 @@ lemma
           done
         done
       subgoal for op' p x
-        apply (simp del: disjCI split: if_splits option.splits)
+        apply (simp split: if_splits option.splits)
         subgoal
           apply hypsubst_thin
           apply (erule thin_rl)
@@ -1023,6 +1023,16 @@ lemma
             done
           done
         done
+      subgoal for op'
+        apply (simp split: if_splits option.splits)
+        apply blast
+        done
+      subgoal for op'
+        apply (clarsimp split: if_splits option.splits)
+          apply hypsubst_thin
+          apply (erule thin_rl)
+
+
       oops
 lemma
   "Read (Inl p) f |\<in>| (choices (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (\<lambda>_. []) op)) \<Longrightarrow>
