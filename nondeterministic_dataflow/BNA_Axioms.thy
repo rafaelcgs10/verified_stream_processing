@@ -945,7 +945,9 @@ lemma loop_op_no_loop:
 
 section \<open>Axiom: R6: Loop absorb\<close>
 lemma loop_op_absorb:
-  "(op\<up>)\<up> = (map_op reassoc reassoc op)\<up>"
-  oops
+  "(op\<up>)\<up> ~ (map_op reassoc reassoc op)\<up>"
+  apply (coinduction arbitrary: op rule: bisim_coinduct_upto)
+
+
 
 end

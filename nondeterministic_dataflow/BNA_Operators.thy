@@ -3,7 +3,6 @@ theory BNA_Operators
 
 imports
   Operator
-  Composition_Choices
 begin
 
 section \<open>comp_op: Compositions\<close>
