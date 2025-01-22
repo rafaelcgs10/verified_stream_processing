@@ -910,8 +910,8 @@ lemma transp_op_commutes_scomp_op_pcomp_op:
  "(op1 \<parallel> op2) \<bullet> \<X> = \<X> \<bullet> (op2 \<parallel> op1)"
   oops
 
-section \<open>Axiom: R1: Loop absorb\<close>
-lemma loop_op_absorb:
+section \<open>Axiom: R1: Loop commute sequential composition\<close>
+lemma loop_op_scomp_commute:
   "op2 \<bullet> (op1\<up>) ~ ((op2 \<parallel> \<I>) \<bullet> op1)\<up>"
   oops
 
@@ -920,13 +920,13 @@ lemma loop_op_distribute_scomp_op:
   "(op1\<up>) \<bullet> op2 ~ (op1 \<bullet> (op2 \<parallel> \<I>))\<up>"
   oops
 
-section \<open>Axiom: R3: Parallel loop\<close>
-lemma loop_op_parallel:
+section \<open>Axiom: R3: Loop parallel composition\<close>
+lemma loop_op_pcomp_commue:
   "op1 \<parallel> (op2\<up>) ~ (map_op assoc assoc (op1 \<parallel> op2))\<up>"
   oops
 
-section \<open>Axiom: R4: Loop commutes sequential composition\<close>
-lemma loop_op_commutes_scomp_op:
+section \<open>Axiom: R4: Loop commutes inner sequential composition\<close>
+lemma loop_op_commutes_inner_scomp_op:
   "(op1 \<bullet> (\<I> \<parallel> op2))\<up> ~ ((\<I> \<parallel> op2) \<bullet> op1)\<up>"
   oops
 

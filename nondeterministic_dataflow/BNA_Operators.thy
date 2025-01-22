@@ -1538,7 +1538,6 @@ abbreviation transp_empty_op ("\<X>") where
   "\<X> \<equiv> transp_op (\<lambda> _. [])"
 
 section \<open>split_op - nondeterministic split operator\<close>
-  \<comment> \<open>TODO: define the operator + write and prove axioms (Table 4): A6, A8, A18, A19, F4 \<close>
 datatype (discs_sels) ('m) split_op_aux =
   split_Read_aux "'m"
 
@@ -1559,7 +1558,6 @@ lemma split_op_code:
 
 
 section \<open>merge_op - nondeterministic merge operator\<close>
-  \<comment> \<open>TODO: define the operator + write and prove axioms (Table 4): A1, A2, A3, A4, A14, A15, F3 \<close>
 datatype (discs_sels) ('m) merge_op_aux =
   merge_Read_aux "'m"
 
@@ -1579,7 +1577,6 @@ lemma merge_op_code:
   done
 
 section \<open>acopy_op - async copy operator\<close>
-  \<comment> \<open>TODO: define the operator + write and prove axioms (Table 3): A6, A8, A18, A19, F4 \<close>
 datatype (discs_sels) ('m) acopy_op_aux =
   acopy_Read_aux "'m"
 
@@ -1599,7 +1596,6 @@ lemma acopy_op_code:
   done
 
 section \<open>aeq_op - async equality operator\<close>
-  \<comment> \<open>TODO: define the operator + write and prove axioms (Table 3): A1, A2, A3, A4, A14, A15, F3 \<close>
 datatype (discs_sels) ('m) aeq_op_aux =
   aeq_Read_aux "'m"
 
