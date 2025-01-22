@@ -944,6 +944,145 @@ lemma loop_op_no_loop:
   oops
 
 section \<open>Axiom: R6: Loop absorb\<close>
+
+lemma
+  "step io (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) op' \<Longrightarrow>
+   (\<exists>p x. io = Inp (Inl p) x \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op'' \<and> step io op op'')) \<or>
+   (\<exists>p x. io = Out (Inl p) x \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op'' \<and> step io op op'')) \<or>
+   (io = Tau \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op'' \<and> step io op op'')) \<or>
+   (io = Tau \<and> (\<exists> op'' p x. op' = loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (BTL (Inr p) buf) op'' \<and> step (Inp (Inr p) x) op op'' \<and> buf (Inr p) \<noteq> [])) \<or>
+   (io = Tau \<and> (\<exists> op'' p x. op' = loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (BENQ (Inr p) x buf) op'' \<and> step (Out (Inr p) x) op op''))"
+  apply (induct io "loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op" op' arbitrary: buf op pred: step)
+     apply (simp add: loop_op.code)
+    apply (simp add: loop_op.code)
+   apply (simp add: loop_op.code)
+  subgoal for op ops io op' buf op''
+    apply (subst (asm) (7) loop_op.code)
+    apply (clarsimp del: disjCI split: if_splits option.splits)
+    subgoal for op
+      apply (cases op)
+      subgoal for p f
+        apply (simp del: disjCI split: if_splits option.splits)
+        subgoal
+          apply hypsubst_thin
+          apply (erule thin_rl)
+          apply (cases p)
+          subgoal for lp
+            apply (clarsimp del: disjCI)
+            apply hypsubst_thin
+            apply (smt (verit, best) Inl_Inr_False comp_apply mem_Collect_eq option.discI option.sel ran_def sum.case_eq_if)
+            done
+          subgoal for rp
+            apply (clarsimp del: disjCI)
+            apply hypsubst_thin
+            apply (rule disjI2)
+            apply (rule disjI1)
+            apply (metis Read_in_choices_step cin.rep_eq)
+            done
+          done
+        subgoal
+          apply hypsubst_thin
+          apply (erule thin_rl)
+          apply (cases p)
+          subgoal for lp
+            apply (clarsimp del: disjCI)
+            apply hypsubst_thin
+            apply (metis Read_in_choices_step cin.rep_eq)
+            done
+          subgoal
+                    apply (clarsimp del: disjCI)
+            apply hypsubst_thin
+            apply (metis (full_types) comp_apply old.sum.simps(6) ranI)
+            done
+          done
+        done
+      subgoal for op' p x
+        apply (simp del: disjCI split: if_splits option.splits)
+        subgoal
+          apply hypsubst_thin
+          apply (erule thin_rl)
+          apply (cases p)
+          subgoal for lp
+            apply (clarsimp del: disjCI)
+            apply hypsubst_thin
+            using Write_in_choices_step apply fastforce
+            done
+          subgoal
+            by (clarsimp del: disjCI)
+          done
+        subgoal
+          apply hypsubst_thin
+          apply (erule thin_rl)
+          apply (cases p)
+          subgoal
+            by (clarsimp del: disjCI)
+          subgoal
+                   apply (clarsimp del: disjCI)
+            apply hypsubst_thin
+            using Write_in_choices_step apply fastforce
+            done
+          done
+        done
+      oops
+lemma
+  "Read (Inl p) f |\<in>| (choices (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (\<lambda>_. []) op)) \<Longrightarrow>
+   \<exists> f'. Read (Inl p) f' |\<in>| choices op"
+  oops
+
+lemma step_double_loop_1:
+  "step io (((op :: (('a + 'd) + 'e, ('b + 'd) + 'e, 'c) op) \<up>) \<up>) op' \<Longrightarrow>
+   \<exists> op'' :: (('a + 'd) + 'e, ('b + 'd) + 'e, 'c) op. op' = ((op'' \<up>) \<up>) \<and>
+   step io (map_op reassoc reassoc op \<up>) (map_op reassoc reassoc op'' \<up>)"
+  apply (induct io "(op \<up>) \<up>" op' arbitrary: op pred: step)
+  unfolding feedback_op_def
+  apply (simp add: loop_op.code)
+  apply (simp add: loop_op.code)
+  apply (simp add: loop_op.code)
+  subgoal for op ops io op' op''
+    apply (subst (asm) (7) loop_op.code)
+    apply (auto split: if_splits option.splits)
+    subgoal for op'''
+      apply (cases op''')
+      subgoal for p f
+        apply auto
+        subgoal for x
+        apply hypsubst_thin
+          apply (erule thin_rl)
+          apply (cases p)
+          subgoal for lp
+            apply hypsubst_thin
+            apply (rule exI[of _ "map_op Inl Inl (f x)"])
+            apply (intro conjI[rotated])
+             apply simp
+            subgoal
+              apply (subst loop_op.code)
+              apply simp
+              apply (rule SC)
+               apply simp
+               apply (rule image_eqI)
+              apply (rule refl)
+               apply (rule image_eqI[of _ _ "Read (Inl lp) _"])
+              apply (simp_all add: ran_def sum.case_eq_if comp_def) 
+               apply simp_all
+               defer
+              unfolding comp_def
+               apply (rule SR)
+              subgoal sorry
+              done
+            subgoal
+              apply (rule arg_cong2[where f="map_op projl"])
+              apply simp
+              apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+              apply simp
+              apply (simp add: ran_def sum.case_eq_if) 
+              oops
+
+lemma step_double_loop_2:
+  "step io (map_op reassoc reassoc op \<up>) op' \<Longrightarrow>
+   \<exists> op''. op' = (map_op reassoc reassoc op'' \<up>) \<and>
+   step io ((op \<up>) \<up>) ((op'' \<up>) \<up>)"
+  sorry
+
 lemma loop_op_absorb:
   "(op\<up>)\<up> ~ (map_op reassoc reassoc op)\<up>"
   apply (coinduction arbitrary: op rule: bisim_coinduct_upto)
@@ -952,8 +1091,31 @@ lemma loop_op_absorb:
     apply auto
     subgoal for io op'
       oops
-
-
+ (*      apply (drule step_double_loop_1)
+      apply auto
+      apply hypsubst_thin
+      apply (intro exI conjI)
+       apply assumption
+      apply (rule bc_base)
+      apply (intro exI conjI)
+       apply (rule refl)
+      apply auto
+      done
+    subgoal for io op'
+   apply (drule step_double_loop_2)
+      apply auto
+      apply hypsubst_thin
+      apply (intro exI conjI)
+       apply assumption
+      apply (rule bc_sym)
+      apply (rule bc_base)
+      apply (intro exI conjI)
+       apply (rule refl)
+      apply auto
+      done
+    done
+  done
+ *)
 
 
 end

@@ -1340,8 +1340,34 @@ corec loop_op :: "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightarrow> '
   ('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op" where
   "loop_op wire buf op = Choice (cimage (\<lambda> op. case op of
      Read p f \<Rightarrow> (if p \<in> ran wire then Silent (loop_op wire (BTL p buf) (f (BHD p buf))) else Read p (\<lambda> x. loop_op wire buf (f x)))
-   | Write op' p x \<Rightarrow> (case wire p of None \<Rightarrow> Write (loop_op wire buf op') p x | Some q \<Rightarrow> Silent (loop_op wire (BENQ q x buf) op'))  
+   | Write op' p x \<Rightarrow> (case wire p of None \<Rightarrow> Write (loop_op wire buf op') p x | Some q \<Rightarrow> Silent (loop_op wire (BENQ q x buf) op'))
+   | Silent op' \<Rightarrow> Silent (loop_op wire buf op')
    ) (sound_reads wire buf (choices op)))"
+
+
+subsection \<open>Simp rules\<close>
+lemma loop_op_simps[simp]:
+  "loop_op wire buf (Read p1 f1) = (if p1 \<in> ran wire then (if buf p1 = [] then Choice {||} else Choice {| Silent (loop_op wire (BTL p1 buf) (f1 (BHD p1 buf))) |} )
+   else Choice {|Read p1 (\<lambda> x. loop_op wire buf (f1 x)) |})"
+  "loop_op wire buf (Write op' p2 x) = (case wire p2 of None \<Rightarrow> Choice {|Write (loop_op wire buf op') p2 x  |} |
+   Some q \<Rightarrow> Choice {|Silent (loop_op wire (BENQ q x buf) op')|})"
+  "loop_op wire buf (Silent op') = Choice {|Silent (loop_op wire buf op') |}"
+  "loop_op wire buf (Choice ops) = Choice (cimage (\<lambda> op. case op of
+     Read p f \<Rightarrow> (if p \<in> ran wire then Silent (loop_op wire (BTL p buf) (f (BHD p buf))) else Read p (\<lambda> x. loop_op wire buf (f x)))
+   | Write op' p x \<Rightarrow> (case wire p of None \<Rightarrow> Write (loop_op wire buf op') p x | Some q \<Rightarrow> Silent (loop_op wire (BENQ q x buf) op'))
+   | Silent op' \<Rightarrow> Silent (loop_op wire buf op')
+   ) (sound_reads wire buf (choices (Choice ops))))"
+  by (subst loop_op.code, (auto simp add: image_iff Set.filter_def split: option.splits if_splits))+
+
+lemma loop_op_not_Read[simp]:
+  "\<not> is_Read (loop_op wire buf op)"
+  by (subst loop_op.code, simp)
+lemma loop_op_not_Write[simp]:
+  "\<not> is_Write (loop_op wire buf op)"
+  by (subst loop_op.code, simp)
+lemma loop_op_not_Silent[simp]:
+  "\<not> is_Silent (loop_op wire buf op)"
+  by (subst loop_op.code, simp)
 
 definition feedback_op ( "_ \<up>" [66] 65) where
   "feedback_op op = map_op projl projl (loop_op (case_sum (\<lambda> _. None) (Some o Inr)) (\<lambda> _. []) op)"
