@@ -947,6 +947,12 @@ section \<open>Axiom: R6: Loop absorb\<close>
 lemma loop_op_absorb:
   "(op\<up>)\<up> ~ (map_op reassoc reassoc op)\<up>"
   apply (coinduction arbitrary: op rule: bisim_coinduct_upto)
+  subgoal for op
+    unfolding sim_def
+    apply auto
+    subgoal for io op'
+      oops
+
 
 
 
