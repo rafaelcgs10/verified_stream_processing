@@ -80,7 +80,7 @@ lemma loop_op_merge_sink:
 
 section \<open>Axiom F4: Loop split\<close>
 lemma loop_op_split_dummy_source:
-  "map_op Inr id \<Lambda> ~ \<exclamdown>"
+  "map_op Inr id \<Lambda>\<up> ~ \<exclamdown>"
   oops
 
 end

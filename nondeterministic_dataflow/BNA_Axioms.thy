@@ -953,7 +953,14 @@ lemma loop_op_absorb:
     subgoal for io op'
       oops
 
+section \<open>Axiom F1: Identity looped is end_op\<close>
 
+lemma id_op_loop_spin: \<open>\<I>\<up> = \<oslash>\<close>
+  oops
 
+section \<open>Axiom F2: Transpose looped is identity\<close>
+
+lemma transp_op_loop_id: \<open>\<X>\<up> \<approx> \<I>\<close>
+  oops
 
 end

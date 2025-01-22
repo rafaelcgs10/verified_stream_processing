@@ -85,7 +85,7 @@ lemma loop_op_aeq_sink:
 
 section \<open>Axiom F4: Loop acopy\<close>
 lemma loop_op_acopy_dummy_source:
-  "map_op Inr id \<C> ~ \<exclamdown>"
+  "map_op Inr id \<C>\<up> ~ \<exclamdown>"
   oops
 
 end
