@@ -72,6 +72,49 @@ abbreviation "choice1 op \<equiv> Choice (cimage (\<lambda>_. op) {|()|})"
 abbreviation "choice2 op1 op2 \<equiv> Choice (cimage (\<lambda>b. if b then op1 else op2) (cinsert True (csingle False)))"
 abbreviation "safe_read f x \<equiv> (case x of None \<Rightarrow> end_op | Some x \<Rightarrow> f x)"
 
+abbreviation "sound_reads wire buf \<equiv> cfilter (\<lambda> op. case op of Read p f \<Rightarrow> p \<notin> ran wire \<or> buf p \<noteq> [] | _ \<Rightarrow> True)"
+
+abbreviation "ARead i f op \<equiv> Choice (cimage (\<lambda> x. if x then op else Read i f) (cinsert True (csingle False)))"
+lemma ARead_simp[simp]: "ARead i f op = Choice ({| op, Read i f |})"
+  by simp
+
+fun reassoc where
+  "reassoc (Inl (Inl x)) = Inl x"
+| "reassoc (Inl (Inr x)) = Inr (Inl x)"
+| "reassoc (Inr x) = Inr (Inr x)"
+
+fun assoc where
+  "assoc (Inl x) = Inl (Inl x)"
+| "assoc (Inr (Inl x)) = Inl (Inr x)"
+| "assoc (Inr (Inr x)) = Inr x"
+
+lemma reassoc_assoc[simp]:
+  "reassoc o assoc = id"
+  unfolding comp_def
+  apply (rule ext)
+  subgoal for x
+    apply (induct x rule: assoc.induct)
+      apply auto
+    done
+  done
+
+lemma assoc_reassoc[simp]:
+  "assoc o reassoc = id"
+  unfolding comp_def
+  apply (rule ext)
+  subgoal for x
+    apply (induct x rule: reassoc.induct)
+      apply auto
+    done
+  done
+
+lemma map_op_inj_inv:
+  "inj f \<Longrightarrow>
+   inj g \<Longrightarrow>
+   map_op f g op = map_op f g op' \<Longrightarrow>
+   op = op'"
+  by (meson injD op.inj_map)
+
 type_synonym 'd channel = "'d llist"
 
 code_lazy_type op
