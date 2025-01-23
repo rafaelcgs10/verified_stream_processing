@@ -347,6 +347,19 @@ lemma assoc_reassoc[simp]:
     done
   done
 
+lemma reassoc_ing[simp]:
+  "inj reassoc"
+  by (metis BNA_Operators.assoc_reassoc comp_apply id_apply injI)
+lemma assoc_inj[simp]:
+  "inj assoc"
+  by (metis BNA_Operators.reassoc_assoc comp_def id_apply inj_on_inverseI)
+lemma map_op_assoc_inj:
+  "inj (map_op assoc assoc)"
+  by (simp add: op.inj_map)
+lemma map_op_reassoc_inj:
+  "inj (map_op reassoc reassoc)"
+  by (simp add: op.inj_map)
+
 subsection \<open>Sequential composition operator\<close>
 definition scomp_op (infixl "\<bullet>" 65) where
   "scomp_op op1 op2 = map_op projl projr (comp_op Some (\<lambda>_. []) op1 op2)"
