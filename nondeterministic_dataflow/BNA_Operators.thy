@@ -1368,6 +1368,9 @@ lemma loop_op_not_Write[simp]:
 lemma loop_op_not_Silent[simp]:
   "\<not> is_Silent (loop_op wire buf op)"
   by (subst loop_op.code, simp)
+lemma loop_op_Choice[simp]:
+  "is_Choice (loop_op wire buf op)"
+  by (subst loop_op.code, simp)
 
 definition feedback_op ( "_ \<up>" [66] 65) where
   "feedback_op op = map_op projl projl (loop_op (case_sum (\<lambda> _. None) (Some o Inr)) (\<lambda> _. []) op)"

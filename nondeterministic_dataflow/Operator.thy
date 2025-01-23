@@ -108,6 +108,13 @@ lemma assoc_reassoc[simp]:
     done
   done
 
+lemma map_op_inj_inv:
+  "inj f \<Longrightarrow>
+   inj g \<Longrightarrow>
+   map_op f g op = map_op f g op' \<Longrightarrow>
+   op = op'"
+  by (meson injD op.inj_map)
+
 type_synonym 'd channel = "'d llist"
 
 code_lazy_type op
