@@ -1373,7 +1373,7 @@ lemma loop_op_Choice[simp]:
   by (subst loop_op.code, simp)
 
 definition feedback_op ( "_ \<up>" [66] 65) where
-  "feedback_op op = map_op projl projl (loop_op (case_sum (\<lambda> _. None) (Some o Inr)) (\<lambda> _. []) op)"
+  "feedback_op op = map_op projl projl (loop_op (case_sum (\<lambda> _. None) (Some o Inr)) (case_sum undefined (\<lambda> _. [])) op)"
 
 section \<open>spin_op/end_op/silent_op/I_0\<close>
   \<comment> \<open>spin_op/end_op is I_0 in the BNA book\<close>
