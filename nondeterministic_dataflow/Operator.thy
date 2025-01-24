@@ -10,13 +10,10 @@ imports
   "HOL-Library.Code_Cardinality"
   "HOL-Library.Simps_Case_Conv"
   "Cset_Setup"
-  "CSet_LList_Impl"
 begin
 
 section\<open>Channels\<close>
-(*
-code_lazy_type llist
-*)
+
 section\<open>Buffer infrastrcuture\<close>
 
 type_alias buf = list
@@ -1081,6 +1078,9 @@ lemma choices_Choice[simp]: "choices (Choice ops) = cUnion (cimage choices ops)"
     apply (auto simp: cUnion.rep_eq cimage.rep_eq)
     done
   done
+
+declare choices_def[code del]
+lemmas choices_code[code] = choices_Read choices_Write choices_Silent choices_Choice
 
 lemma no_Choice_in_choices[simplified, simp, dest!]: "Choice ops |\<in>| choices op \<Longrightarrow> False"
   unfolding choices_def
