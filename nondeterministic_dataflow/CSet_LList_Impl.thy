@@ -311,6 +311,9 @@ lemma cUnion_code[code]:
   "cUnion (cset_of_llist (LCons xs xss)) = cUn xs (cUnion (cset_of_llist xss))"
   unfolding cUnion_def cset_of_llist_def by (auto simp: cin_def)
 
+code_thms lmerge
+code_thms cUnion
+
 lemma cfilter_code[code]: "cfilter P (cset_of_llist xs) = cset_of_llist (lfilter P xs)"
   unfolding cfilter_def cset_of_llist_def by (auto simp: Set.filter_def)
 
