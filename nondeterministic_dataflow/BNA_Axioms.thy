@@ -894,9 +894,161 @@ lemma pcomp_op_scomp_distributes:
   oops
 
 section \<open>Axiom B6: Parallel composition of identities\<close>
+
+lemma case_sum_updateL:
+  \<open>(case_sum x y)(Inl a := b) = case_sum (x(a := b)) y\<close>
+  by (auto split: sum.splits)
+
+lemma case_sum_updateR:
+  \<open>(case_sum x y)(Inr a := b) = case_sum x (y(a := b))\<close>
+  by (auto split: sum.splits)
+
+lemma pcomp_op_id_id_bufs:
+  \<open>id_op buf1 \<parallel> id_op buf2 ~ id_op (case_sum buf1 buf2)\<close>
+  apply (coinduction arbitrary: buf1 buf2 rule: bisim_coinduct_upto)
+  apply (rule conjI)
+  subgoal for buf1 buf2
+    unfolding pcomp_op_def sim_def
+    apply auto
+    apply (subst (asm) comp_op_code)
+    apply auto
+    subgoal for p x
+      apply (rule exI[of _ \<open>id_op (case_sum (BENQ p x buf1) buf2)\<close>])
+      apply (rule conjI)
+      subgoal
+        apply (rule Read_in_choices_step)
+        apply (subst (2) id_op_code)
+        apply (simp add: case_sum_updateL)
+        done
+      subgoal
+        apply (rule bc_base)
+        apply (rule exI[of _ \<open>BENQ p x buf1\<close>])
+        apply (rule exI[of _ buf2])
+        apply simp
+        done
+      done
+    subgoal for p
+      apply (rule exI[of _ \<open>id_op (case_sum (BTL p buf1) buf2)\<close>])
+      apply (rule conjI)
+      subgoal
+        apply (rule Write_in_choices_step)
+        apply (subst (2) id_op_code)
+        apply (simp add: case_sum_updateL)
+        done
+      subgoal
+        apply (rule bc_base)
+        apply (rule exI[of _ \<open>BTL p buf1\<close>])
+        apply (rule exI[of _ buf2])
+        apply simp
+        done
+      done
+    subgoal for p x
+      apply (rule exI[of _ \<open>id_op (case_sum buf1 (BENQ p x buf2))\<close>])
+      apply (rule conjI)
+      subgoal
+        apply (rule Read_in_choices_step)
+        apply (subst (2) id_op_code)
+        apply (simp add: case_sum_updateR)
+        done
+      subgoal
+        apply (rule bc_base)
+        apply (rule exI[of _ buf1])
+        apply (rule exI[of _ \<open>BENQ p x buf2\<close>])
+        apply simp
+        done
+      done
+    subgoal for p
+      apply (rule exI[of _ \<open>id_op (case_sum buf1 (BTL p buf2))\<close>])
+      apply (rule conjI)
+      subgoal
+        apply (rule Write_in_choices_step)
+        apply (subst (2) id_op_code)
+        apply (simp add: case_sum_updateR)
+        done
+      subgoal
+        apply (rule bc_base)
+        apply (rule exI[of _ buf1])
+        apply (rule exI[of _ \<open>BTL p buf2\<close>])
+        apply simp
+        done
+      done
+    done
+  subgoal for buf1 buf2
+    unfolding pcomp_op_def sim_def
+    apply auto
+    apply (subst (asm) id_op_code)
+    apply (auto split: sum.splits)
+    subgoal for x p
+      apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BENQ p x buf1)) (id_op buf2)\<close>])
+      apply (rule conjI)
+      subgoal
+        apply (rule Read_in_choices_step)
+        apply (subst (2) comp_op_code)
+        apply simp
+        done
+      subgoal
+        apply (rule bc_sym)
+        apply (rule bc_base)
+        apply (rule exI[of _ \<open>BENQ p x buf1\<close>])
+        apply (rule exI[of _ buf2])
+        apply (simp add: case_sum_updateL)
+        done
+      done
+    subgoal for x p
+      apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (id_op (BENQ p x buf2))\<close>])
+      apply (rule conjI)
+      subgoal
+        apply (rule Read_in_choices_step)
+        apply (subst (2) comp_op_code)
+        apply force
+        done
+      subgoal
+        apply (rule bc_sym)
+        apply (rule bc_base)
+        apply (rule exI[of _ buf1])
+        apply (rule exI[of _ \<open>BENQ p x buf2\<close>])
+        apply (simp add: case_sum_updateR)
+        done
+      done
+    subgoal for p
+      apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BTL p buf1)) (id_op buf2)\<close>])
+      apply (rule conjI)
+      subgoal
+        apply (rule Write_in_choices_step)
+        apply (subst (2) comp_op_code)
+        apply simp
+        done
+      subgoal
+        apply (rule bc_sym)
+        apply (rule bc_base)
+        apply (rule exI[of _ \<open>BTL p buf1\<close>])
+        apply (rule exI[of _ buf2])
+        apply (simp add: case_sum_updateL)
+        done
+      done
+    subgoal for p
+      apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (id_op (BTL p buf2))\<close>])
+      apply (rule conjI)
+      subgoal
+        apply (rule Write_in_choices_step)
+        apply (subst (2) comp_op_code)
+        apply force
+        done
+      subgoal
+        apply (rule bc_sym)
+        apply (rule bc_base)
+        apply (rule exI[of _ buf1])
+        apply (rule exI[of _ \<open>BTL p buf2\<close>])
+        apply (simp add: case_sum_updateR)
+        done
+      done
+    done
+  done
+
 lemma pcomp_op_id_id:
-  "\<I> \<parallel> \<I> ~ \<I>"
-  oops
+  \<open>\<I> \<parallel> \<I> ~ \<I>\<close>
+  using pcomp_op_id_id_bufs[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>]
+  by auto
 
 section \<open>Axiom B7: Transpose of transpose is identity\<close>
 lemma scomp_op_transp_transp_id:

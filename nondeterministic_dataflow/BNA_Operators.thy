@@ -2605,4 +2605,5 @@ lemma aeq_op_code:
    apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: cimage_cong
       split: op.splits option.splits if_splits)
   done
+
 end
