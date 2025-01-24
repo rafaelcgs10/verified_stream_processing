@@ -10,12 +10,13 @@ imports
   "HOL-Library.Code_Cardinality"
   "HOL-Library.Simps_Case_Conv"
   "Cset_Setup"
+  "CSet_LList_Impl"
 begin
 
 section\<open>Channels\<close>
-
+(*
 code_lazy_type llist
-
+*)
 section\<open>Buffer infrastrcuture\<close>
 
 type_alias buf = list

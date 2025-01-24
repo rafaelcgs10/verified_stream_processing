@@ -3,6 +3,7 @@ theory CSet_LList_Impl
    "Coinductive.Coinductive_List"
    "HOL-Library.Code_Lazy"
    "HOL-Library.BNF_Corec"
+   "HOL-Library.Debug"
    "HOL-Library.Simps_Case_Conv"
 begin
 
@@ -18,9 +19,13 @@ end
 code_datatype cset_of_llist
 quickcheck_generator cset constructors: cset_of_llist
 
-lemma cempty_code[code]: "cempty = cset_of_llist LNil"
-  including cset.lifting
+definition "cempty' (TYPE('a)) = cset_of_llist (LNil :: 'a llist)"
+
+lemma cempty_code[code_unfold]: "(cempty :: 'a cset) = cempty'(TYPE('a))"
+  including cset.lifting unfolding cempty'_def
   by transfer auto
+
+code_thms cempty'
 
 lemma cinsert_code[code]: "cinsert x (cset_of_llist xs) = cset_of_llist (LCons x xs)"
   including cset.lifting
@@ -148,7 +153,7 @@ lemma lset_linterleave[simp]:
   by (auto dest: lset_linterleave1 lset_linterleave2 lset_linterleave3)
 
 corec lmerge where
-  "lmerge xss = (case ldropWhile (\<lambda>xs. xs = LNil) xss of LNil \<Rightarrow> LNil
+  "lmerge xss = (case ldropWhile lnull xss of LNil \<Rightarrow> LNil
      | LCons xs xss \<Rightarrow> LCons (lhd xs) (linterleave (lmerge xss) (ltl xs)))"
 
 lemma lmerge_LNil[simp]: "lmerge LNil = LNil"
@@ -265,7 +270,7 @@ lemma in_lset_lmergeD: "x \<in> lset (lmerge xss) \<Longrightarrow> x \<in> (\<U
         apply simp
         apply (subst (asm) lmerge.code)
         apply (auto split: llist.splits)
-        apply (smt (verit, ccfv_threshold) eq_LConsD ldropWhile_LCons ldropWhile_eq_LNil_iff lhd_ldropWhile lhd_ldropWhile_in_lset linterleave_LCons1 llist.exhaust_sel lmerge.code lmerge_LCons lnth_0 lset_intros(1))
+        apply (smt (verit, ccfv_threshold) lnull_def eq_LConsD ldropWhile_LCons ldropWhile_eq_LNil_iff lhd_ldropWhile lhd_ldropWhile_in_lset linterleave_LCons1 llist.exhaust_sel lmerge.code lmerge_LCons lnth_0 lset_intros(1))
         done
       subgoal for m
         apply (subst (asm) (3 4) lmerge.code)
@@ -291,15 +296,79 @@ lemma lset_lmerge[simp]: "lset (lmerge xss) = (\<Union>xs \<in> lset xss. lset x
 
 lemma cproduct_code[code]:
   "cproduct (cset_of_llist xs) (cset_of_llist ys) = cset_of_llist (lmerge (lmap (\<lambda>x. lmap (Pair x) ys) xs))"
-  unfolding cproduct_def cset_of_llist_def
-  by (auto simp: acset_inverse)
+  unfolding cproduct_def cset_of_llist_def by auto
 
-(*
+lemma cUn_code[code]:
+  "cUn (cset_of_llist xs) (cset_of_llist ys) = cset_of_llist (linterleave xs ys)"
+  unfolding sup_cset_def cset_of_llist_def by auto
+
+lemma cUnion_not_code:
+  "cUnion (cset_of_llist (lmap cset_of_llist xss)) = cset_of_llist (lmerge xss)"
+  unfolding cUnion_def cset_of_llist_def by auto
+
+lemma cUnion_code[code]:
+  "cUnion (cset_of_llist LNil) = cempty"
+  "cUnion (cset_of_llist (LCons xs xss)) = cUn xs (cUnion (cset_of_llist xss))"
+  unfolding cUnion_def cset_of_llist_def by (auto simp: cin_def)
+
+lemma cfilter_code[code]: "cfilter P (cset_of_llist xs) = cset_of_llist (lfilter P xs)"
+  unfolding cfilter_def cset_of_llist_def by (auto simp: Set.filter_def)
+
+lemma cimage_code[code]: "cimage f (cset_of_llist xs) = cset_of_llist (lmap f xs)"
+  unfolding cimage_def cset_of_llist_def by auto
+
+definition cis_empty :: "'a cset \<Rightarrow> bool" where "cis_empty X = (X = cempty)"
+
+lemma cis_empty_code[code]:
+  "cis_empty (cset_of_llist LNil) = True"
+  "cis_empty (cset_of_llist (LCons x xs)) = False"
+  unfolding cis_empty_def cset_of_llist_def by (auto simp: cin_def)
+
+lemma eq_cempty_cis_empty[code_unfold]:
+  "(X = cempty) = cis_empty X"
+  "(cempty = X) = cis_empty X"
+  "(X = cempty' (TYPE('a))) = cis_empty X"
+  "(cempty' (TYPE('a)) = X) = cis_empty X"
+  unfolding cis_empty_def cempty_code[symmetric] by auto
+
+lemma if_Lazy_llist [code_unfold]:
+   "(if c then Lazy_llist (delay (\<lambda>_. x)) else Lazy_llist (delay (\<lambda>_. y))) =
+    Lazy_llist (delay (\<lambda>_. if c then x else y))"
+   by(simp)
+
+lemma case_lazy_llist_Lazy_llist [code_unfold]:
+   "case_llist_lazy (Lazy_llist (delay (\<lambda>_. x))) (\<lambda>x xs. Lazy_llist (delay (\<lambda>_. f x xs))) xs =
+    Lazy_llist (delay (\<lambda>_. case_llist_lazy x f xs))"
+  by(simp add: Lazy_llist_def force_delay case_llist_lazy_def split: llist.split)
+
+
+corec const where "const x = LCons x (const x)"
+corec "from" where "from x = LCons x (from (Suc x))"
+
+fun ltaken where
+  "ltaken (Suc n) (LCons x xs) = x # ltaken n xs"
+| "ltaken _ _  = []"
+
+definition force_cset :: "nat \<Rightarrow> 'a cset \<Rightarrow> 'a cset" where
+  "force_cset n xs = xs"
+
+lemma
+  force_cset_code[code]: "force_cset n (cset_of_llist xs) =
+    (let _ = ltaken n xs in cset_of_llist xs)"
+  by (auto simp: force_cset_def)
+
+value "force_cset 10 (cUn (cset_of_llist (from 42)) (cset_of_llist (const 2)))"
+value "force_cset 10 (cempty :: nat cset)"
+value "force_cset 10 (cUNIV :: nat cset)"
+value "force_cset 10 (cimage (\<lambda>x. x + 5) (cfilter (\<lambda>x. x mod 2 = 0) cUNIV :: nat cset))"
+value "force_cset 10 (cproduct (cUNIV :: nat cset) (cUNIV :: nat cset))"
 value "(5 :: nat, True) |\<in>| cproduct cUNIV cUNIV"
-*)
+value "force_cset 10 (cUnion (cset_of_llist (lmap (cset_of_llist o from) (llist_of [1,2,3]))))"
+
 
 value "(5 :: nat) |\<in>| cUNIV"
-value "cempty :: nat cset"
+value "5 |\<in>| (cempty :: nat cset)"
+value "5 |\<in>| (cset_of_llist (llist_of []) :: nat cset)"
 value "(5 :: nat) |\<in>| cinsert 5 cempty"
 
 end
