@@ -306,12 +306,33 @@ lemma cUnion_not_code:
   "cUnion (cset_of_llist (lmap cset_of_llist xss)) = cset_of_llist (lmerge xss)"
   unfolding cUnion_def cset_of_llist_def by auto
 
-lemma cUnion_code[code]:
-  "cUnion (cset_of_llist LNil) = cempty"
-  "cUnion (cset_of_llist (LCons xs xss)) = cUn xs (cUnion (cset_of_llist xss))"
-  unfolding cUnion_def cset_of_llist_def by (auto simp: cin_def)
+typedef 'a ccset = "UNIV :: 'a cset cset set"
+  by blast
 
-code_thms lmerge
+setup_lifting type_definition_ccset
+
+lift_definition ccset_of_llist :: "'a llist llist \<Rightarrow> 'a ccset" is
+  "\<lambda>xss. cimage cset_of_llist (cset_of_llist xss)" .
+
+code_datatype ccset_of_llist
+
+lift_definition ccUnion :: "'a ccset \<Rightarrow> 'a cset" is "cUnion" .
+
+lift_definition ccset :: "'a cset llist \<Rightarrow> 'a ccset" is "cset_of_llist" .
+
+lemma ccUnion_code[code]: "ccUnion (ccset_of_llist xss) = cset_of_llist (lmerge xss)"
+  unfolding ccUnion_def ccset_of_llist_def cset_of_llist_def
+  by (auto simp: Abs_ccset_inverse cin_def)
+
+lemma Rep_ccset[code]:
+  "Rep_ccset (ccset_of_llist xss) = cset_of_llist (lmap cset_of_llist xss)"
+  unfolding ccset_of_llist_def cset_of_llist_def cin_def cimage_def
+  by (auto simp: Abs_ccset_inverse)
+
+lemma cUnion_code[code]: "cUnion (cset_of_llist X) = ccUnion (ccset X)"
+  unfolding cUnion_def ccUnion_def ccset_def
+  by (auto simp: Abs_ccset_inverse)
+
 code_thms cUnion
 
 lemma cfilter_code[code]: "cfilter P (cset_of_llist xs) = cset_of_llist (lfilter P xs)"
