@@ -2488,6 +2488,13 @@ section \<open>dummy_source_op\<close>
 abbreviation dummy_source_op ("\<exclamdown>") where
   "\<exclamdown> \<equiv> \<oslash> \<bullet> \<I>"
 
+lemma choices_dummy_source[simp]:
+  \<open>choices \<exclamdown> = {||}\<close>
+  unfolding scomp_op_def
+  apply (subst comp_op_code)
+  apply auto
+  done
+
 section \<open>sink_op\<close>                                     
 corec drain_op :: "('m :: countable, 'o, 'd) op" where
   "drain_op = Choice ((cimage (\<lambda> p. Read p (\<lambda> x. drain_op)) (cUNIV :: 'm cset)))"
