@@ -339,6 +339,10 @@ inductive_cases stepWriteE [elim!]: "step io (Write op q x) op'"
 inductive_cases stepSilentE [elim!]: "step io (Silent op) op'"
 inductive_cases stepChoiceE [elim!]: "step io (Choice ops) op'"
 
+lemma ST':
+  "op = op' \<Longrightarrow> step Tau (Silent op) op'"
+  by auto
+
 lemma step_map_op:
   "step io op op' \<Longrightarrow> io' = map_IO f g id io \<Longrightarrow>
    step io' (map_op f g op) (map_op f g op')"
