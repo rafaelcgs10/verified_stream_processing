@@ -17,6 +17,7 @@ corec cp_op :: "(1,1,bool) op" where "cp_op = Read 1 (\<lambda>x. Write cp_op 1 
 value "force_cset 10 (cimage fst (eval 10 W42))"
 value "force_cset 10 (cimage fst (eval 10 CP))"
 value "force_cset 100 (cimage fst (eval 10 cp_op))"
+value "force_cset 100 (cimage fst (eval 1000 (CP \<bullet> CP)))"
 value "force_cset 100 (cimage fst (eval 10 (cp_op \<bullet> cp_op)))"
 value "force_cset 100 (cimage fst (eval 10 (cp_op \<parallel> cp_op)))"
 
