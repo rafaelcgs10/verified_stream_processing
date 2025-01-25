@@ -1874,16 +1874,16 @@ lemma loop_op_distribute_scomp_op_gen:
             apply auto
             subgoal for op1'
               apply hypsubst_thin
-          apply (intro exI conjI)
-           apply (rule step_wstep)
-           apply (rule step_map_op[of "Inp (Inl p) x"])
-            apply (rule step_Inp_Inl_loop_op)
-            apply (rule step_map_op[of "Inp (Inl (Inl p)) x"])
-             apply (rule step_comp_op_L_Inp)
-             apply assumption
-            apply simp_all
-          apply (rule wbc_base)
-          apply fast
+              apply (intro exI conjI)
+               apply (rule step_wstep)
+               apply (rule step_map_op[of "Inp (Inl p) x"])
+                apply (rule step_Inp_Inl_loop_op)
+                apply (rule step_map_op[of "Inp (Inl (Inl p)) x"])
+                 apply (rule step_comp_op_L_Inp)
+                 apply assumption
+                apply simp_all
+              apply (rule wbc_base)
+              apply fast
               done
             done
           done
@@ -1892,14 +1892,14 @@ lemma loop_op_distribute_scomp_op_gen:
           apply (intro exI conjI[rotated])
            apply (rule wbc_base)
            apply fast
-           apply (rule step_wstep)
-           apply (rule step_map_op[of "Out (Inl p) x"])
-          apply (rule step_Out_Inl_loop_op)
+          apply (rule step_wstep)
+          apply (rule step_map_op[of "Out (Inl p) x"])
+           apply (rule step_Out_Inl_loop_op)
            apply simp_all
-           apply (rule step_map_op[of "Out (Inr (Inl p)) x"])
+          apply (rule step_map_op[of "Out (Inr (Inl p)) x"])
            apply simp_all
-             apply (rule step_comp_op_R_Out)
-             apply (rule step_comp_op_L_Out)
+          apply (rule step_comp_op_R_Out)
+          apply (rule step_comp_op_L_Out)
            apply auto
           done
         subgoal for p x op1'
@@ -1907,39 +1907,39 @@ lemma loop_op_distribute_scomp_op_gen:
           apply (drule step_map_op_inv)
           apply auto
           apply hypsubst_thin
-           apply (drule step_loop_op)
+          apply (drule step_loop_op)
           apply auto
           subgoal for op1'
-    apply (intro exI conjI[rotated])
-           apply (rule wbc_base)
+            apply (intro exI conjI[rotated])
+             apply (rule wbc_base)
              apply fast
- apply (rule transitive_closurep_trans'(6))
+            apply (rule transitive_closurep_trans'(6))
              apply (rule step_map_op[of Tau])
               apply simp_all
-            apply (rule step_Tau_loop_op)
+             apply (rule step_Tau_loop_op)
              apply (rule step_map_op[of Tau])
               apply simp_all
              apply (rule step_Tau_comp_op_L)
               apply assumption
              apply simp_all
-  apply (rule rtranclp_intros_1')
-              apply (rule arg_cong[where f="map_op projl projl"])
-              apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+            apply (rule rtranclp_intros_1')
+            apply (rule arg_cong[where f="map_op projl projl"])
+            apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
              apply (auto split: sum.splits if_splits simp add: fun_upd_def)
             done
           done
         subgoal for p op2'
           apply hypsubst_thin
-   apply (intro exI conjI[rotated])
+          apply (intro exI conjI[rotated])
            apply (rule wbc_base)
            apply fast
-apply (rule transitive_closurep_trans'(6))
-             apply (rule step_map_op[of Tau])
+          apply (rule transitive_closurep_trans'(6))
+           apply (rule step_map_op[of Tau])
             apply simp_all
-            apply (rule step_Tau_loop_op)
-            apply (rule step_map_op[of Tau])
+           apply (rule step_Tau_loop_op)
+           apply (rule step_map_op[of Tau])
             apply simp_all
-             apply (rule step_Tau_comp_op_R)
+           apply (rule step_Tau_comp_op_R)
               apply (rule step_comp_op_L_Inp)
               apply assumption
              apply simp_all
@@ -1949,17 +1949,17 @@ apply (rule transitive_closurep_trans'(6))
           apply (drule step_map_op_inv)
           apply auto
           apply hypsubst_thin
-           apply (drule step_loop_op)
+          apply (drule step_loop_op)
           apply auto
           subgoal for op1'
-   apply (intro exI conjI[rotated])
-           apply (rule wbc_base)
+            apply (intro exI conjI[rotated])
+             apply (rule wbc_base)
              apply fast
             apply (rule transitive_closurep_trans'(6))
              apply (rule step_map_op[of Tau])
-            apply simp_all
-            apply (rule step_Tau_loop_op)
-            apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_Tau_loop_op)
+             apply (rule step_map_op[of Tau])
               apply simp_all
              apply (rule step_comp_op_L_Tau)
              apply assumption
@@ -1970,43 +1970,257 @@ apply (rule transitive_closurep_trans'(6))
             subgoal
               apply (intro exI conjI[rotated])
                apply (rule wbc_base)
-                   apply (rule exI[of _ op1'])
+               apply (rule exI[of _ op1'])
                apply (rule exI[of _ op2])
                apply (rule exI[of _ "buf2"])
                apply (rule exI[of _ "lbuf1"])
                apply (rule exI[of _ "BTL p lbuf2"])
-                   apply (rule exI[of _ "lbuf3"])
+               apply (rule exI[of _ "lbuf3"])
                apply (intro exI conjI)
                 apply (rule arg_cong[where f="map_op projl projr"])
                 apply (rule arg_cong2[where f="comp_op Some buf2"])
                  apply simp_all
-     apply (rule arg_cong[where f="map_op projl projl"])
-              apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+               apply (rule arg_cong[where f="map_op projl projl"])
+               apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
                 apply (auto split: sum.splits if_splits simp add: fun_upd_def)[2]
-        apply (rule transitive_closurep_trans'(6))
-             apply (rule step_map_op[of Tau])
+              apply (rule transitive_closurep_trans'(6))
+               apply (rule step_map_op[of Tau])
+                apply simp_all
+               apply (rule step_Out_Inr_loop_op)
+               apply (rule step_map_op[of "Out (Inr (Inr p)) _"])
+                apply simp_all
+               apply (rule step_comp_op_R_Out)
+               apply (rule step_comp_op_R_Out)
+               apply (rule step_id_op_Write)
+                apply simp_all
+              apply (rule transitive_closurep_trans'(6))
+               apply (rule step_map_op[of Tau])
+                apply simp_all
+               apply (rule step_Inp_Inr_loop_op[where p=p])
+                apply (rule step_map_op[of "Inp (Inl (Inr p)) (BHD p lbuf2)"])
                  apply simp_all
-              apply (rule step_Out_Inr_loop_op)
-             apply (rule step_map_op[of "Out (Inr (Inr p)) _"])
-                 apply simp_all
-              apply (rule step_comp_op_R_Out)
-                apply (rule step_comp_op_R_Out)
-                apply (rule step_id_op_Write)
-                 apply simp_all
-        apply (rule transitive_closurep_trans'(6))
-           apply (rule step_map_op[of Tau])
-                 apply simp_all
-                apply (rule step_Inp_Inr_loop_op[where p=p])
-           apply (rule step_map_op[of "Inp (Inl (Inr p)) (BHD p lbuf2)"])
-                 apply simp_all
-              apply (rule step_comp_op_L_Inp)
+               apply (rule step_comp_op_L_Inp)
                apply simp
               apply (metis (no_types, lifting) Nitpick.rtranclp_unfold case_sum_updateR fun_upd_triv)
               done
             subgoal for x lbuf3'
+              apply (intro exI conjI[rotated])
+               apply (rule wbc_base)
+               apply (rule exI[of _ op1'])
+               apply (rule exI[of _ op2])
+               apply (rule exI[of _ "buf2"])
+               apply (rule exI[of _ "lbuf1"])
+               apply (rule exI[of _ "lbuf2"])
+               apply (rule exI[of _ "BTL p lbuf3"])
+               apply (intro exI conjI)
+                apply (rule arg_cong[where f="map_op projl projr"])
+                apply (rule arg_cong2[where f="comp_op Some buf2"])
+                 apply simp_all
+               apply (rule arg_cong[where f="map_op projl projl"])
+               apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+                apply (auto split: sum.splits if_splits simp add: fun_upd_def)[2]
+              apply (rule transitive_closurep_trans'(6))
+               apply (rule step_map_op[of Tau])
+                apply simp_all
+               apply (rule step_Inp_Inr_loop_op[where p=p])
+                apply (rule step_map_op[of "Inp (Inl (Inr p)) (BHD p lbuf3)"])
+                 apply simp_all
+               apply (rule step_comp_op_L_Inp)
+               apply simp
+              apply (metis (no_types, lifting) Nitpick.rtranclp_unfold case_sum_updateR)
+              done
+            done
+          subgoal for op1' p
+            apply (intro exI conjI[rotated])
+             apply (rule wbc_base)
+             apply (rule exI[of _ op1'])
+             apply (rule exI[of _ op2])
+             apply (rule exI[of _ "buf2"])
+             apply (rule exI[of _ "lbuf1"])
+             apply (rule exI[of _ "lbuf2"])
+             apply (rule exI[of _ "BTL p lbuf3"])
+             apply (intro exI conjI)
+              apply (rule arg_cong[where f="map_op projl projr"])
+              apply (rule arg_cong2[where f="comp_op Some buf2"])
+               apply simp_all
+             apply (rule arg_cong[where f="map_op projl projl"])
+             apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+              apply (auto split: sum.splits if_splits simp add: fun_upd_def)[2]
+            apply (rule transitive_closurep_trans'(6))
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_Inp_Inr_loop_op[where p=p])
+              apply (rule step_map_op[of "Inp (Inl (Inr p)) (BHD p lbuf3)"])
+               apply simp_all
+             apply (rule step_comp_op_L_Inp)
+             apply simp
+            apply (metis (no_types, lifting) Nitpick.rtranclp_unfold case_sum_updateR)
+            done
+          subgoal for op1' p
+            apply (cases "lbuf3 p")
+            subgoal 
+              apply (cases "lbuf2 p")
+              subgoal
+                apply (intro exI conjI[rotated])
+                 apply (rule wbc_base)
+                 apply (rule exI[of _ op1'])
+                 apply (rule exI[of _ op2])
+                 apply (rule exI[of _ "buf2"])
+                 apply (rule exI[of _ "BTL p lbuf1"])
+                 apply (rule exI[of _ "lbuf2"])
+                 apply (rule exI[of _ "lbuf3"])
+                 apply (intro exI conjI)
+                  apply (rule arg_cong[where f="map_op projl projr"])
+                  apply (rule arg_cong2[where f="comp_op Some buf2"])
+                   apply simp_all
+                 apply (rule arg_cong[where f="map_op projl projl"])
+                 apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+                  apply (auto split: sum.splits if_splits simp add: fun_upd_def)[2]
+                apply (rule transitive_closurep_trans'(6))
+                 apply (rule step_map_op[of Tau])
+                  apply simp_all
+                 apply (rule step_Tau_loop_op)
+                 apply (rule step_map_op[of Tau])
+                  apply simp_all
+                 apply (rule step_Tau_comp_op_R)
+                    apply (rule step_comp_op_R_Inp)
+                     apply (rule step_id_op_Read)
+                    apply simp_all
+                apply (rule transitive_closurep_trans'(6))
+                 apply (rule step_map_op[of Tau])
+                  apply simp_all
+                 apply (rule step_Out_Inr_loop_op)
+                 apply (rule step_map_op[of "Out (Inr (Inr p)) _"])
+                  apply simp_all
+                 apply (rule step_comp_op_R_Out)
+                 apply (rule step_comp_op_R_Out)
+                 apply (rule step_id_op_Write)
+                  apply simp_all
+                apply (rule transitive_closurep_trans'(6))
+                 apply (rule step_map_op[of Tau])
+                  apply simp_all
+                 apply (rule step_Inp_Inr_loop_op[where p=p])
+                  apply (rule step_map_op[of "Inp (Inl (Inr p)) (BHD p lbuf1)"])
+                   apply simp_all
+                 apply (rule step_comp_op_L_Inp)
+                 apply simp
+                apply (metis (no_types, lifting) Nitpick.rtranclp_unfold case_sum_updateR fun_upd_triv)
+                done
+              subgoal for x lbuf2'
+                apply (intro exI conjI[rotated])
+                 apply (rule wbc_base)
+                 apply (rule exI[of _ op1'])
+                 apply (rule exI[of _ op2])
+                 apply (rule exI[of _ "buf2"])
+                 apply (rule exI[of _ "lbuf1"])
+                 apply (rule exI[of _ "BTL p lbuf2"])
+                 apply (rule exI[of _ "lbuf3"])
+                 apply (intro exI conjI)
+                  apply (rule arg_cong[where f="map_op projl projr"])
+                  apply (rule arg_cong2[where f="comp_op Some buf2"])
+                   apply simp_all
+                 apply (rule arg_cong[where f="map_op projl projl"])
+                 apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+                  apply (auto split: sum.splits if_splits simp add: fun_upd_def)[2]
+                apply (rule transitive_closurep_trans'(6))
+                 apply (rule step_map_op[of Tau])
+                  apply simp_all
+                 apply (rule step_Out_Inr_loop_op)
+                 apply (rule step_map_op[of "Out (Inr (Inr p)) _"])
+                  apply simp_all
+                 apply (rule step_comp_op_R_Out)
+                 apply (rule step_comp_op_R_Out)
+                 apply (rule step_id_op_Write)
+                  apply simp_all
+                apply (rule transitive_closurep_trans'(6))
+                 apply (rule step_map_op[of Tau])
+                  apply simp_all
+                 apply (rule step_Inp_Inr_loop_op[where p=p])
+                  apply (rule step_map_op[of "Inp (Inl (Inr p)) (BHD p lbuf2)"])
+                   apply simp_all
+                 apply (rule step_comp_op_L_Inp)
+                 apply simp
+                apply (metis (no_types, lifting) Nitpick.rtranclp_unfold case_sum_updateR fun_upd_triv)
+                done
+              done
+            subgoal for x lbuf3'
+              apply (intro exI conjI[rotated])
+               apply (rule wbc_base)
+               apply (rule exI[of _ op1'])
+               apply (rule exI[of _ op2])
+               apply (rule exI[of _ "buf2"])
+               apply (rule exI[of _ "lbuf1"])
+               apply (rule exI[of _ "lbuf2"])
+               apply (rule exI[of _ "BTL p lbuf3"])
+               apply (intro exI conjI)
+                apply (rule arg_cong[where f="map_op projl projr"])
+                apply (rule arg_cong2[where f="comp_op Some buf2"])
+                 apply simp_all
+               apply (rule arg_cong[where f="map_op projl projl"])
+               apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+                apply (auto split: sum.splits if_splits simp add: fun_upd_def)[2]
+              apply (rule transitive_closurep_trans'(6))
+               apply (rule step_map_op[of Tau])
+                apply simp_all
+               apply (rule step_Inp_Inr_loop_op[where p=p])
+                apply (rule step_map_op[of "Inp (Inl (Inr p)) (BHD p lbuf3)"])
+                 apply simp_all
+               apply (rule step_comp_op_L_Inp)
+               apply simp
+              apply (metis (no_types, lifting) Nitpick.rtranclp_unfold case_sum_updateR)
+              done
+            done
+          subgoal for op1' p x
+            apply (intro exI conjI[rotated])
+             apply (rule wbc_base)
+             apply (rule exI[of _ op1'])
+             apply (rule exI[of _ op2])
+             apply (rule exI[of _ "buf2"])
+             apply (rule exI[of _ "BENQ p x lbuf1"])
+             apply (rule exI[of _ "lbuf2"])
+             apply (rule exI[of _ "lbuf3"])
+             apply (intro exI conjI)
+              apply (rule arg_cong[where f="map_op projl projr"])
+              apply (rule arg_cong2[where f="comp_op Some buf2"])
+               apply simp_all
+             apply (rule arg_cong[where f="map_op projl projl"])
+             apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+              apply (auto split: sum.splits if_splits simp add: fun_upd_def)[2]
+            apply (rule transitive_closurep_trans'(6))
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_Tau_loop_op)
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_Tau_comp_op_L)
+              apply simp_all
+            apply simp
+            done
+          done
+        subgoal for op2'
+          apply hypsubst_thin
+          apply (intro exI conjI[rotated])
+           apply (rule wbc_base)
+           apply force
+          apply (rule transitive_closurep_trans'(6))
+           apply (rule step_map_op[of Tau])
+            apply simp_all
+           apply (rule step_Tau_loop_op)
+           apply (rule step_map_op[of Tau])
+            apply simp_all
+           apply (rule step_comp_op_R_Tau)
+           apply (rule step_comp_op_L_Tau)
+           apply auto
+          done
+        done
+      done
+    subgoal for io op1'
 
 
+                find_theorems Tau comp_op  
 
+
+end
 
 
               apply (rule step_Tau_loop_op)
