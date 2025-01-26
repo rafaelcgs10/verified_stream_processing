@@ -288,6 +288,38 @@ lemma in_lset_lmergeD: "x \<in> lset (lmerge xss) \<Longrightarrow> x \<in> (\<U
     done
   done
 
+typedef 'a dlist = "{xs :: 'a list. distinct xs}"
+  by auto
+
+setup_lifting type_definition_dlist
+
+lift_definition (code_dt) dsublists :: "'a dlist \<Rightarrow> 'a dlist list" is sublists
+  sorry
+
+term Rep_x'a_dlist_list_x_x_x'a_list_list
+term list.sel21
+
+lemma "Rep_isom x \<equiv>
+  if dis1 x then [] else sel21 x # Rep_isom (sel22 x)"
+  sorry
+
+lemma "dsublists xs \<equiv> Rep_isom (dsublists_aux xs)"
+  sorry
+
+print_theorems
+code_thms dsublists
+
+find_theorems dsublists
+
+quotient_type 'a cset' = "'a llist" / "\<lambda>xs ys. lset xs = lset ys"
+  by (auto simp: equivp_def fun_eq_iff)
+
+lift_definition ccUnion :: "'a cset' llist \<Rightarrow> 'a cset'" is lmerge
+  sorry
+
+print_theorems
+code_thms ccUnion
+
 lemma in_lset_lmergeI: "xs \<in> lset xss \<Longrightarrow> x \<in> lset xs \<Longrightarrow> x \<in> lset (lmerge xss)"
   by (induct xs xss rule: llist.set_induct) auto
 
@@ -306,31 +338,153 @@ lemma cUnion_not_code:
   "cUnion (cset_of_llist (lmap cset_of_llist xss)) = cset_of_llist (lmerge xss)"
   unfolding cUnion_def cset_of_llist_def by auto
 
-typedef 'a ccset = "UNIV :: 'a cset cset set"
+quotient_type 'a cset_llist = "'a llist llist" / "\<lambda>xss yss. lmap lset xss = lmap lset yss"
+  by (auto simp: equivp_def fun_eq_iff)
+
+lift_definition cset_llist_merge :: "'a cset_llist \<Rightarrow> 'a cset" is
+  "cset_of_llist o lmerge"
+  apply (auto simp: cset_of_llist_def)
+  apply (metis UN_E in_lset_lmergeI lset_lmap lset_lmerge)+
+  done
+
+lemma countable_ex_llist: "countable A \<Longrightarrow> \<exists>xs. lset xs = A"
+  by (metis lset_LNil lset_inf_llist uncountable_def)
+
+context includes cset.lifting begin
+lift_definition wit_cset :: "'a cset \<Rightarrow> 'a llist" is
+   "\<lambda>A. SOME xs. lset xs = A" .
+
+lemma lset_wit_cset: "lset (wit_cset A) = rcset A"
+  by transfer (auto dest: someI_ex[OF countable_ex_llist])
+
+lemma wit_cset_inverse: "cset_of_llist (wit_cset A) = A"
+  by transfer (auto dest: someI_ex[OF countable_ex_llist])
+end
+
+lift_definition cset_llist_of :: "'a cset llist \<Rightarrow> 'a cset_llist" is
+  "lmap wit_cset" .
+
+lift_definition CLNil :: "'a itself \<Rightarrow> 'a cset_llist" is "\<lambda>_. LNil" .
+
+lift_definition CLCons :: "'a cset \<Rightarrow> 'a cset_llist \<Rightarrow> 'a cset_llist" is "LCons o wit_cset" by auto
+
+lemma abs_cset_llist_inverse[simp]:
+  "lmap lset (rep_cset_llist (abs_cset_llist xs)) = lmap lset xs"
+  by (metis (mono_tags, lifting) Quotient3_cset_llist rep_abs_rsp)
+
+lemma CLCons_code[code]: "CLCons (cset_of_llist xs) (abs_cset_llist xss) =
+  abs_cset_llist (LCons xs xss)"
+  unfolding CLCons_def cset_of_llist_def
+  by (auto simp: cset_llist.abs_eq_iff lset_wit_cset)
+
+codatatype 'a cset_llist_lazy = CLNil_Lazy | CLCons_Lazy "'a cset" "'a cset_llist"
+
+primcorec Lazy_cset_llist where
+  "Lazy_cset_llist xs = Lazy.force"
+code_thms LNil LCons
+code_thms Lazy_llist
+find_theorems Lazy_llist
+term LNil_Lazy
+term LCons_Lazy
+
+(*
+free_constructors case_cset_llist for CLNil | CLCons
+     apply safe
+       apply transfer
+  subgoal for P xs
+    apply (cases xs; auto simp: lset_wit_cset)
+    apply (metis cset_of_llist.rep_eq)
+    done
+  subgoal
+    apply transfer
+    apply auto
+    apply (metis cin_code wit_cset_inverse)
+    done
+  subgoal
+    apply transfer
+    apply auto
+    apply (metis cin_code wit_cset_inverse)
+    done
+  subgoal
+    apply transfer
+    apply auto
+    done
+  subgoal
+    apply transfer
+    apply auto
+    done
+  done
+
+code_lazy_type cset_llist
+print_theorems
+*)
+
+lemma cset_llist_of_code[code]:
+  "cset_llist_of LNil = CLNil (TYPE('a))"
+  "cset_llist_of (LCons X Xs) = CLCons X (cset_llist_of Xs)"
+  by (transfer; auto)+
+
+lemma cUnion_code[code]: "cUnion (cset_of_llist xs) = cset_llist_merge (cset_llist_of xs)"
+  unfolding cset_llist_merge_def cset_of_llist_def cset_llist_of_def
+  apply (auto simp: cin_def)
+  apply (metis UN_E cset_llist_merge.abs_eq cset_llist_merge.rep_eq cset_of_llist.rep_eq image_eqI in_lset_lmergeI lset_lmap lset_lmerge lset_wit_cset)
+  apply (smt (verit, best) UN_E cset_llist_merge.abs_eq cset_llist_merge.rep_eq cset_of_llist.rep_eq imageE in_lset_lmergeI lset_lmap lset_lmerge wit_cset_inverse)
+  done
+
+code_thms cUnion
+
+(**)
+
+codatatype 'a cllist = CLNil | CLCons "'a cset" "'a cllist"
+
+primcorec cllist_of_llist :: "'a llist llist \<Rightarrow> 'a cllist" where
+  "cllist_of_llist xss = (case xss of LNil \<Rightarrow> CLNil | LCons xs xss \<Rightarrow> CLCons (cset_of_llist xs) (cllist_of_llist xss))"
+
+primcorec llist_of_cllist :: "'a cllist \<Rightarrow> 'a cset llist" where
+  "llist_of_cllist Xs = (case Xs of CLNil \<Rightarrow> LNil | CLCons X Xs \<Rightarrow> LCons X (llist_of_cllist Xs))"
+
+primcorec cllist_of_llist' :: "'a cset llist \<Rightarrow> 'a cllist" where
+  "cllist_of_llist' Xs = (case Xs of LNil \<Rightarrow> CLNil | LCons X Xs \<Rightarrow> CLCons X (cllist_of_llist' Xs))"
+
+lemma cllist_of_llist_inverse[simp]: 
+  "llist_of_cllist (cllist_of_llist xs) = lmap cset_of_llist xs"
+  apply (coinduction arbitrary: xs)
+  apply (auto split: cllist.splits)
+    apply (simp add: cllist_of_llist.code llist.case_eq_if)
+   apply (simp add: cllist_of_llist.code llist.case_eq_if)
+  apply (metis cllist.sel(2) cllist_of_llist.simps(4) llist.case_eq_if)
+  done
+
+lemma cllist_of_llist'_inverse[simp]: 
+  "llist_of_cllist (cllist_of_llist' xs) = xs"
+  apply (coinduction arbitrary: xs)
+  apply (auto split: cllist.splits)
+    apply (simp add: cllist_of_llist'.code llist.case_eq_if)
+   apply (simp add: cllist_of_llist'.code llist.case_eq_if)
+  apply (metis cllist.sel(2) cllist_of_llist'.simps(4) llist.case_eq_if)
+  done
+
+typedef 'a ccset = "UNIV :: 'a cllist set"
   by blast
 
 setup_lifting type_definition_ccset
 
 lift_definition ccset_of_llist :: "'a llist llist \<Rightarrow> 'a ccset" is
-  "\<lambda>xss. cimage cset_of_llist (cset_of_llist xss)" .
+  cllist_of_llist .
+
+lift_definition ccset_of_llist' :: "'a cset llist \<Rightarrow> 'a ccset" is
+  cllist_of_llist' .
 
 code_datatype ccset_of_llist
 
-lift_definition ccUnion :: "'a ccset \<Rightarrow> 'a cset" is "cUnion" .
-
-lift_definition ccset :: "'a cset llist \<Rightarrow> 'a ccset" is "cset_of_llist" .
+lift_definition ccUnion :: "'a ccset \<Rightarrow> 'a cset" is "cUnion o cset_of_llist o llist_of_cllist" .
 
 lemma ccUnion_code[code]: "ccUnion (ccset_of_llist xss) = cset_of_llist (lmerge xss)"
-  unfolding ccUnion_def ccset_of_llist_def cset_of_llist_def
-  by (auto simp: Abs_ccset_inverse cin_def)
+  unfolding ccUnion_def ccset_of_llist_def
+  by (auto simp: Abs_ccset_inverse cin_def cset_of_llist_def)
 
-lemma Rep_ccset[code]:
-  "Rep_ccset (ccset_of_llist xss) = cset_of_llist (lmap cset_of_llist xss)"
-  unfolding ccset_of_llist_def cset_of_llist_def cin_def cimage_def
-  by (auto simp: Abs_ccset_inverse)
-
-lemma cUnion_code[code]: "cUnion (cset_of_llist X) = ccUnion (ccset X)"
-  unfolding cUnion_def ccUnion_def ccset_def
+lemma cUnion_code[code]: "cUnion (cset_of_llist X) = ccUnion (ccset_of_llist' X)"
+  unfolding cUnion_def ccUnion_def ccset_of_llist'_def
   by (auto simp: Abs_ccset_inverse)
 
 code_thms cUnion
@@ -388,6 +542,7 @@ value "force_cset 10 (cimage (\<lambda>x. x + 5) (cfilter (\<lambda>x. x mod 2 =
 value "force_cset 10 (cproduct (cUNIV :: nat cset) (cUNIV :: nat cset))"
 value "(5 :: nat, True) |\<in>| cproduct cUNIV cUNIV"
 value "force_cset 10 (cUnion (cset_of_llist (lmap (cset_of_llist o from) (llist_of [1,2,3]))))"
+value "force_cset 10 (cUnion (cset_of_llist (lmap (cset_of_llist o from) (from 1))))"
 
 
 value "(5 :: nat) |\<in>| cUNIV"
