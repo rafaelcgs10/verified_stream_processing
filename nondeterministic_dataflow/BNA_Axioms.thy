@@ -1084,7 +1084,7 @@ lemma case_sum_BTL_L[simp]:
   "case_sum (BTL p buf) A = BTL (Inl p) (case_sum buf A)"
   by (auto split: sum.splits)
 
-lemma step_id_op_Read:
+lemma step_id_op_Read[intro]:
   "step (Inp p x) (id_op buf) (id_op (BENQ p x buf))"
   apply (subst id_op_code)
   apply (rule SC)
@@ -1093,7 +1093,7 @@ lemma step_id_op_Read:
    apply force+
   done
 
-lemma step_id_op_Write:
+lemma step_id_op_Write[intro]:
   "BHD p buf = x \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> step (Out p x) (id_op buf) (id_op (BTL p buf))"
   apply (subst id_op_code)
   apply (rule SC)
@@ -1125,17 +1125,10 @@ lemma loop_op_scomp_commute_gen:
         apply auto
         subgoal for p x op2'
           apply hypsubst_thin
-          apply (intro exI conjI)
-           apply (rule step_wstep)
-           apply (rule step_map_op[of "Inp (Inl p) x"])
-            apply (rule step_Inp_Inl_loop_op)
-            apply (rule step_map_op[of "Inp (Inl (Inl p)) x"])
-             apply (rule step_comp_op_L_Inp)
-             apply (rule step_comp_op_L_Inp)
-             apply assumption
-            apply simp_all
+          apply (intro exI conjI[rotated])
           apply (rule wbc_base)
-          apply fast
+           apply fast
+          apply force
           done
         subgoal for p x op2'
           apply hypsubst_thin
@@ -1151,16 +1144,10 @@ lemma loop_op_scomp_commute_gen:
               apply auto
               subgoal for p op''
                 apply hypsubst_thin
-                apply (intro exI conjI)
-                 apply (rule step_wstep)
-                 apply (rule step_map_op[of "Out (Inl p) x"])
-                  apply (rule step_Out_Inl_loop_op)
-                  apply (rule step_map_op[of "Out (Inr (Inl p)) x"])
-                   apply (rule step_comp_op_R_Out)
-                   apply assumption
-                  apply simp_all
-                apply (rule wbc_base)
-                apply fast
+                apply (intro exI conjI[rotated])
+                          apply (rule wbc_base)
+                 apply fast
+                apply force
                 done
               done
             done
@@ -1169,7 +1156,7 @@ lemma loop_op_scomp_commute_gen:
           apply hypsubst_thin
           apply (intro exI conjI[rotated])
            apply (rule wbc_base)
-           apply fast
+          apply fast
           apply (rule rtranclp.intros(2))
            apply (rule rtranclp.intros(1))
           apply (rule step_map_op[of Tau])
@@ -2197,80 +2184,264 @@ lemma loop_op_distribute_scomp_op_gen:
             apply simp
             done
           done
-        subgoal for op2'
+        subgoal
           apply hypsubst_thin
           apply (intro exI conjI[rotated])
            apply (rule wbc_base)
-           apply force
-          apply (rule transitive_closurep_trans'(6))
-           apply (rule step_map_op[of Tau])
-            apply simp_all
-           apply (rule step_Tau_loop_op)
-           apply (rule step_map_op[of Tau])
-            apply simp_all
-           apply (rule step_comp_op_R_Tau)
-           apply (rule step_comp_op_L_Tau)
-           apply auto
+           apply force+
           done
         done
       done
-    subgoal for io op1'
-
-
-                find_theorems Tau comp_op  
-
-
-end
-
-
-              apply (rule step_Tau_loop_op)
-             apply (rule step_map_op[of Tau])
+    subgoal for io op2'
+      apply (drule step_map_op_inv)
+      apply auto
+      apply hypsubst_thin
+      apply (drule step_loop_op)
+      apply auto
+      subgoal
+        apply (drule step_map_op_inv)
+        apply auto
+        apply hypsubst_thin
+        apply (drule step_comp_op_cases)
+        apply auto
+        subgoal
+          apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+           apply (rule wbc_base)
+           apply force+
+          done
+        done
+      subgoal for p op2'' x
+        apply (drule step_map_op_inv)
+        apply auto
+        subgoal for io op2''
+          apply hypsubst_thin
+          apply (drule step_comp_op_cases)
+          apply auto
+          apply hypsubst_thin
+          subgoal for op2''
+            apply (drule step_comp_op_cases)
+            apply auto
+            subgoal for op2''
+              apply hypsubst_thin
+              apply (intro exI conjI[rotated])
+               apply (rule wbc_sym)
+               apply (rule wbc_base)
+               apply force+
+              done
+            done
+          done
+        done
+      subgoal for op2'
+        apply (drule step_map_op_inv)
+        apply auto
+        subgoal for io op2''
+          apply hypsubst_thin
+          apply (drule step_comp_op_cases)
+          apply auto
+          subgoal for p x op1'
+            apply hypsubst_thin
+            apply (cases p)
+            subgoal for lp
+              apply auto
+              apply hypsubst_thin
+              apply (intro exI conjI[rotated])
+               apply (rule wbc_sym)
+               apply (rule wbc_base)
+               apply (rule exI[of _ op1'])
+               apply (rule exI[of _ op2])
+               apply (rule exI[of _ "BENQ lp x buf2"])
+               apply (rule exI[of _ "lbuf1"])
+               apply (rule exI[of _ "lbuf2"])
+               apply (rule exI[of _ "lbuf3"])
+               apply (intro exI conjI)
+                apply force+
+              done
+            subgoal for rp
+              apply auto
+              apply hypsubst_thin
+              apply (intro exI conjI[rotated])
+               apply (rule wbc_sym)
+               apply (rule wbc_base)
+               apply (rule exI[of _ op1'])
+               apply (rule exI[of _ op2])
+               apply (rule exI[of _ "buf2"])
+               apply (rule exI[of _ "BENQ rp x lbuf1"])
+               apply (rule exI[of _ "lbuf2"])
+               apply (rule exI[of _ "lbuf3"])
+               apply (intro exI conjI)
+                apply force+
+              apply (rule transitive_closurep_trans'(6))
+               apply (rule step_map_op[of Tau])
                 apply simp_all
-
-              apply (rule step_comp_op_L_Inp)
-
-              find_theorems comp_op Inp 
-
-                apply (rule step_Tau_loop_op)
+               apply (rule step_comp_op_L_Tau)
+               apply (rule step_map_op[of Tau])
+                apply simp_all
+               apply (rule step_Out_Inr_loop_op)
+               apply assumption
+              apply simp
+              apply (rule rtranclp_intros_1')
+              apply (rule arg_cong[where f="map_op projl projr"])
+              apply (rule arg_cong2[where f="comp_op Some buf2"])
+               apply (rule arg_cong[where f="map_op projl projl"])
+               apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+                apply (auto split: sum.splits if_splits simp add: fun_upd_def)
+              done
+            done
+          subgoal for p op2'
+            apply (cases p)
+            subgoal for lp
+              apply auto
+              apply hypsubst_thin
+              apply (drule step_comp_op_cases)
+              apply auto
+              subgoal for op2'
+                apply hypsubst_thin
+                apply (intro exI conjI[rotated])
+                 apply (rule wbc_sym)
+                 apply (rule wbc_base)
+                 apply (rule exI[of _ op1])
+                 apply (rule exI[of _ op2'])
+                 apply (rule exI[of _ "BTL lp buf2"])
+                 apply (rule exI[of _ "lbuf1"])
+                 apply (rule exI[of _ "lbuf2"])
+                 apply (rule exI[of _ "lbuf3"])
+                 apply force+
+                done
+              done
+            subgoal for rp
+              apply auto
+              apply hypsubst_thin
+              apply (drule step_comp_op_cases)
+              apply auto
+              subgoal for op2'
+                apply hypsubst_thin
+                apply (intro exI conjI[rotated])
+                 apply (rule wbc_sym)
+                 apply (rule wbc_base)
+                 apply (rule exI[of _ op1])
+                 apply (drule step_id_op_Inp)
+                  apply auto
+                apply hypsubst_thin
+                apply (rule exI[of _ op2])
+                apply (rule exI[of _ "buf2"])
+                apply (rule exI[of _ "BTL rp lbuf1"])
+                apply (rule exI[of _ "BENQ rp (BHD rp lbuf1) lbuf2"])
+                apply (rule exI[of _ "lbuf3"])
+                apply (intro exI conjI[rotated])
+                 apply (rule arg_cong[where f="map_op projl projl"])
+                 apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+                  apply auto
+                apply (rule arg_cong[where f="map_op projl projr"])
+                apply (rule arg_cong2[where f="comp_op Some buf2"])
+                 apply auto
+                apply (rule arg_cong[where f="map_op projl projl"])
+                apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+                 apply (auto split: sum.splits)
+                done
+              done
+            done
+          subgoal for op1'
+            apply hypsubst_thin
+            apply (intro exI conjI[rotated])
+             apply (rule wbc_sym)
+             apply (rule wbc_base)
+             apply force+
+            done
+          subgoal for op1'
+            apply hypsubst_thin
+            apply (drule step_comp_op_cases)
+            apply auto
+            subgoal for op2'
+              apply hypsubst_thin
+              apply (intro exI conjI[rotated])
+               apply (rule wbc_sym)
+               apply (rule wbc_base)
+               apply force+
+              done
+            subgoal for op2'
+              apply hypsubst_thin
+              apply (subst (asm) id_op_code)
+              apply auto
+              done
+            done
+          done
+        done
+      subgoal for op1' p
+        apply (drule step_map_op_inv)
+        apply auto
+        subgoal for io op2''
+          apply hypsubst_thin
+          apply (drule step_comp_op_cases)
+          apply auto
+          apply hypsubst_thin
+          subgoal for op1'
+            apply (intro exI conjI[rotated])
+             apply (rule wbc_sym)
+             apply (rule wbc_base)
+             apply (rule exI[of _ op1'])
+             apply (rule exI[of _ op2])
+             apply (rule exI[of _ "buf2"])
+             apply (rule exI[of _ "lbuf1"])
+             apply (rule exI[of _ "lbuf2"])
+             apply (rule exI[of _ "BTL p lbuf3"])
+             apply force+
+            apply (rule transitive_closurep_trans'(6))
              apply (rule step_map_op[of Tau])
-                 apply simp_all
-
-
-                apply (rule step_Inp_Inr_loop_op)
-
-
-            apply (rule step_map_op[of "Inp (Inl (Inr p)) _ "])
-              apply simp_all
-
-
-            apply (rule step_Tau_loop_op)
-            apply (rule step_map_op[of Tau])
               apply simp_all
              apply (rule step_comp_op_L_Tau)
-
-
-
-            find_theorems loop_op Tau 
-
-
-            find_theorems step Tau loop_op
-
-
-           apply (rule step_wstep)
-
-
-            apply (rule step_map_op[of "Inp (Inl (Inl p)) x"])
-             apply (rule step_comp_op_R_Inp)
-             apply assumption
-
-
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_Inp_Inr_loop_op[where p=p])
+              apply simp_all
+            apply (rule rtranclp_intros_1')
+            apply (rule arg_cong[where f="map_op projl projr"])
+            apply (rule arg_cong2[where f="comp_op Some buf2"])
+             apply (rule arg_cong[where f="map_op projl projl"])
+             apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+              apply (auto split: sum.splits if_splits simp add: fun_upd_def)
+            done
+          done
+        done
+      subgoal for op1' p x
+        apply (drule step_map_op_inv)
+        apply auto
+        subgoal for io op2''
+          apply hypsubst_thin
+          apply (drule step_comp_op_cases)
+          apply auto
+          apply hypsubst_thin
+          apply (drule step_comp_op_cases)
+          apply auto
+          apply (drule step_id_op_Out)
+           apply auto
+          apply hypsubst_thin
+          apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+           apply (rule wbc_base)
+           apply (rule exI[of _ op1])
+           apply (rule exI[of _ op2])
+           apply (rule exI[of _ "buf2"])
+           apply (rule exI[of _ "lbuf1"])
+           apply (rule exI[of _ "BTL p lbuf2"])
+           apply (rule exI[of _ "BENQ p (BHD p lbuf2) lbuf3"])
+           apply force
+          apply (rule rtranclp_intros_1')
+          apply (rule arg_cong[where f="map_op projl projr"])
+          apply (rule arg_cong2[where f="comp_op Some buf2"])
+           apply (rule arg_cong[where f="map_op projl projl"])
+           apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+            apply (auto split: sum.splits if_splits simp add: fun_upd_def)
+          done
+        done
+      done
+    done
+  done
 
 lemma loop_op_distribute_scomp_op:
   "(op1\<up>) \<bullet> op2 \<approx> (op1 \<bullet> (op2 \<parallel> \<I>))\<up>"
   unfolding feedback_op_def scomp_op_def pcomp_op_def
-
-
-  oops
+  using loop_op_distribute_scomp_op_gen[of "\<lambda>_. []" "\<lambda>_. []" "\<lambda>_. []" "\<lambda>_. []" op1 op2] by simp
 
 section \<open>Axiom: R3: Loop parallel composition\<close>
 lemma loop_op_pcomp_commue:

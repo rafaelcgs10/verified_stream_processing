@@ -119,7 +119,7 @@ lemma comp_op_not_Write[simp]:
 
 subsection \<open>Properties of the (general) composition\<close>
 
-lemma step_comp_op_L:
+lemma step_comp_op_L[intro]:
   "step io op1 op1' \<Longrightarrow>
    (case io of Inp p x \<Rightarrow> True | Out p x \<Rightarrow> p \<notin> dom wire | Tau \<Rightarrow> True) \<Longrightarrow>
    step (map_IO Inl Inl id io) (comp_op wire buf op1 op2) (comp_op wire buf op1' op2)"
@@ -167,7 +167,7 @@ lemma step_comp_op_L:
     done
   done
 
-lemma step_Tau_comp_op_L:
+lemma step_Tau_comp_op_L[intro]:
   "step (Out p x) op1 op1' \<Longrightarrow>
    wire p = Some q \<Longrightarrow>
    step Tau (comp_op wire buf op1 op2) (comp_op wire (BENQ q x buf) op1' op2)"
@@ -184,7 +184,7 @@ lemma step_Tau_comp_op_L:
   apply auto
   done
 
-lemma step_comp_op_R:
+lemma step_comp_op_R[intro]:
   "step io op2 op2' \<Longrightarrow>
    (case io of Out p x \<Rightarrow> True | Inp p x \<Rightarrow> p \<notin> ran wire | Tau \<Rightarrow> True) \<Longrightarrow>
    step (map_IO Inr Inr id io) (comp_op wire buf op1 op2)(comp_op wire buf op1 op2')"
@@ -268,7 +268,7 @@ lemma step_comp_op_R:
     done
   done
 
-lemma step_Tau_comp_op_R:
+lemma step_Tau_comp_op_R[intro]:
   "step (Inp p x) op2 op2' \<Longrightarrow>
    p \<in> ran wire \<Longrightarrow>
    buf p \<noteq> [] \<Longrightarrow>
@@ -1607,7 +1607,7 @@ lemma step_loop_op:
     done
   done
 
-lemma step_Inp_Inl_loop_op:
+lemma step_Inp_Inl_loop_op[intro]:
   "step (Inp (Inl p) x) op op' \<Longrightarrow>
    step (Inp (Inl p) x) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op')"
   apply (subst loop_op.code)
@@ -1628,7 +1628,7 @@ lemma step_Inp_Inl_loop_op:
     done
   done
 
-lemma step_Out_Inl_loop_op:
+lemma step_Out_Inl_loop_op[intro]:
   "step (Out (Inl p) x) op op' \<Longrightarrow>
    step (Out (Inl p) x) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op')"
   apply (subst loop_op.code)
@@ -1643,7 +1643,7 @@ lemma step_Out_Inl_loop_op:
     done
   done
 
-lemma step_Tau_loop_op:
+lemma step_Tau_loop_op[intro]:
   "step Tau op op' \<Longrightarrow>
    step Tau (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op')"
   apply (subst loop_op.code)
@@ -1657,7 +1657,7 @@ lemma step_Tau_loop_op:
     done
   done
 
-lemma step_Out_Inr_loop_op:
+lemma step_Out_Inr_loop_op[intro]:
   "step (Out (Inr p) x) op op' \<Longrightarrow>
    step Tau (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (BENQ (Inr p) x buf) op')"
   apply (subst loop_op.code)
@@ -1670,7 +1670,7 @@ lemma step_Out_Inr_loop_op:
    apply simp_all
   done
 
-lemma step_Inp_Inr_loop_op:
+lemma step_Inp_Inr_loop_op[intro]:
   "step (Inp (Inr p) (BHD (Inr p) buf)) op op' \<Longrightarrow>
    buf (Inr p) \<noteq> [] \<Longrightarrow>
    step Tau (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (BTL (Inr p) buf) op')"

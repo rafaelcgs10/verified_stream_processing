@@ -343,7 +343,7 @@ lemma ST':
   "op = op' \<Longrightarrow> step Tau (Silent op) op'"
   by auto
 
-lemma step_map_op:
+lemma step_map_op[intro]:
   "step io op op' \<Longrightarrow> io' = map_IO f g id io \<Longrightarrow>
    step io' (map_op f g op) (map_op f g op')"
   by (induct io op op' rule: step.induct) (force simp add: comp_def intro: step.intros)+
@@ -648,7 +648,7 @@ lemma wbisim_sym:
     done
   done
 
-lemma step_wstep:
+lemma step_wstep[intro]:
   "step io op op' \<Longrightarrow> wstep io op op'"
   unfolding wstep_def 
   by (smt (verit) OO_eq eq_OO estep.elims reflclp_tranclp relcompp_distrib relcompp_distrib2 sup2CI)
