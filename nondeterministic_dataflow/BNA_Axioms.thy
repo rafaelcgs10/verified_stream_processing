@@ -2444,9 +2444,229 @@ lemma loop_op_distribute_scomp_op:
   using loop_op_distribute_scomp_op_gen[of "\<lambda>_. []" "\<lambda>_. []" "\<lambda>_. []" "\<lambda>_. []" op1 op2] by simp
 
 section \<open>Axiom: R3: Loop parallel composition\<close>
+
+lemma loop_op_pcomp_commue_gen:
+  "comp_op (\<lambda>_. None) (\<lambda>_. []) op1 (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1) op2)) ~
+   map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1) (map_op BNA_Operators.assoc BNA_Operators.assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) op1 op2)))"
+  apply (coinduction arbitrary: op1 op2 buf1 rule: bisim_coinduct_upto)
+  subgoal for op1 op2 buf1
+    unfolding sim_def
+    apply auto
+    subgoal for io op'
+      apply (drule step_comp_op_cases)
+      apply (auto; hypsubst_thin)
+      subgoal
+        apply (intro conjI[rotated] exI)
+         apply (rule bc_base)
+         apply force+
+        done
+      subgoal for p x op2'
+        apply (drule step_map_op_inv)
+        apply auto
+        subgoal for io op2''
+          apply hypsubst_thin
+          apply (drule step_loop_op)
+          apply (auto; hypsubst_thin)
+          subgoal for op2'
+            apply (intro conjI[rotated] exI)
+             apply (rule bc_base)
+             apply force+
+            done
+          done
+        done
+      subgoal
+        apply (intro conjI[rotated] exI)
+         apply (rule bc_base)
+         apply force+
+        done
+      subgoal for p x op2'
+        apply (drule step_map_op_inv)
+        apply auto
+        subgoal for io op2''
+          apply hypsubst_thin
+          apply (drule step_loop_op)
+          apply (auto; hypsubst_thin)
+          subgoal for op2'
+            apply (intro conjI[rotated] exI)
+             apply (rule bc_base)
+             apply force+
+            done
+          done
+        done
+      subgoal
+        apply (intro conjI[rotated] exI)
+         apply (rule bc_base)
+         apply force+
+        done
+      subgoal
+        apply (drule step_map_op_inv)
+        apply auto
+        subgoal for io op2''
+          apply (drule step_loop_op)
+          apply (auto; hypsubst_thin)
+          subgoal 
+            apply (intro conjI[rotated] exI)
+             apply (rule bc_base)
+             apply force+
+            done
+          subgoal for op2' p
+            apply (intro conjI[rotated] exI)
+             apply (rule bc_base)
+             apply (rule exI[of _ op1])
+             apply (rule exI[of _ op2'])
+             apply (rule exI[of _ "BTL p buf1"])
+             apply force+
+            apply (rule step_map_op[of Tau])
+             apply simp_all
+            apply (drule step_comp_op_R_Inp[where wire="\<lambda>_. None"])
+             apply simp
+            apply (drule step_map_op[where f=assoc and g=assoc])
+             apply (rule refl)
+            apply simp
+            apply (drule step_Inp_Inr_loop_op[where buf="case_sum undefined buf1", simplified] )
+             apply auto
+            done
+          subgoal for op2' p x
+            apply (intro conjI[rotated] exI)
+             apply (rule bc_base)
+             apply (rule exI[of _ op1])
+             apply (rule exI[of _ op2'])
+             apply (rule exI[of _ "BENQ p x buf1"])
+             apply force+
+            apply (rule step_map_op[of Tau])
+             apply simp_all
+            apply (drule step_comp_op_R_Out[where wire="\<lambda>_. None"])
+            apply (drule step_map_op[where f=assoc and g=assoc])
+             apply (rule refl)
+            apply simp
+            apply (drule step_Out_Inr_loop_op[where buf="case_sum undefined buf1", simplified] )
+            apply auto
+            done
+          done
+        done
+      done
+    subgoal for io op'
+      apply (drule step_map_op_inv)
+      apply auto
+      apply hypsubst_thin
+      subgoal for io' op'
+        apply (drule step_loop_op)
+        apply (auto; hypsubst_thin)
+        subgoal for p op x
+          apply (drule step_map_op_inv)
+          apply auto
+          apply hypsubst_thin
+          apply (drule step_comp_op_cases)
+          apply auto
+           apply hypsubst_thin
+          subgoal for p op1'
+            apply (intro conjI[rotated] exI)
+             apply (rule bc_sym)
+             apply (rule bc_base)
+             apply force+
+            done
+          subgoal for p' op2'
+            apply (cases p; cases p')
+               apply auto
+            apply hypsubst_thin
+            apply (intro conjI[rotated] exI)
+             apply (rule bc_sym)
+             apply (rule bc_base)
+             apply force+
+            done
+          done
+        subgoal for p op x
+          apply (drule step_map_op_inv)
+          apply (auto; hypsubst_thin)
+          apply (drule step_comp_op_cases)
+          apply (auto; hypsubst_thin?)
+          subgoal for p' op2'
+            apply (cases p; cases p')
+               apply auto
+            apply hypsubst_thin
+            apply (intro conjI[rotated] exI)
+             apply (rule bc_sym)
+             apply (rule bc_base)
+             apply force+
+            done
+          subgoal for p' op2'
+            apply (intro conjI[rotated] exI)
+             apply (rule bc_sym)
+             apply (rule bc_base)
+             apply force+
+            done
+          done
+        subgoal for op'
+          apply (drule step_map_op_inv)
+          apply (auto; hypsubst_thin)
+          apply (drule step_comp_op_cases)
+          apply (auto; hypsubst_thin?)
+          subgoal for op1'
+            apply (intro conjI[rotated] exI)
+             apply (rule bc_sym)
+             apply (rule bc_base)
+             apply force+
+            done
+          subgoal for op2'
+            apply (intro conjI[rotated] exI)
+             apply (rule bc_sym)
+             apply (rule bc_base)
+             apply force+
+            done
+          done
+        subgoal for op'' p
+          apply (drule step_map_op_inv)
+          apply (auto; hypsubst_thin)
+          apply (drule step_comp_op_cases)
+          apply (auto; hypsubst_thin?)
+          subgoal for p' op2'
+            apply (cases p')
+             apply auto
+            apply hypsubst_thin
+            apply (intro conjI[rotated] exI)
+             apply (rule bc_sym)
+             apply (rule bc_base)
+             apply (rule exI[of _ op1])
+             apply (rule exI[of _ op2'])
+             apply (rule exI[of _ "BTL p buf1"])
+             apply force+
+            apply (rule step_comp_op_R_Tau)
+            apply (rule step_map_op[of Tau])
+             apply simp_all
+            using step_Inp_Inr_loop_op[where buf="case_sum undefined buf1"] apply force
+            done
+          done
+        subgoal for op'' p x
+          apply (drule step_map_op_inv)
+          apply (auto; hypsubst_thin)
+          apply (drule step_comp_op_cases)
+          apply (auto; hypsubst_thin?)
+          subgoal for p' op2'
+            apply (cases p')
+             apply (auto; hypsubst_thin)
+            apply (intro conjI[rotated] exI)
+             apply (rule bc_sym)
+             apply (rule bc_base)
+             apply (rule exI[of _ op1])
+             apply (rule exI[of _ op2'])
+             apply (rule exI[of _ "BENQ p x buf1"])
+             apply force
+            apply (rule step_comp_op_R_Tau)
+            apply (rule step_map_op[of Tau])
+             apply simp_all
+            apply (drule step_Out_Inr_loop_op[where buf="case_sum undefined buf1", simplified])
+            apply (auto simp flip: fun_upd_apply)
+            done
+          done
+        done
+      done
+    done
+  done
+
 lemma loop_op_pcomp_commue:
   "op1 \<parallel> (op2\<up>) ~ (map_op assoc assoc (op1 \<parallel> op2))\<up>"
-  oops
+  unfolding feedback_op_def scomp_op_def pcomp_op_def
+  using loop_op_pcomp_commue_gen[of op1 "\<lambda>_. []" op2] by auto
 
 section \<open>Axiom: R4: Loop commutes inner sequential composition\<close>
 lemma loop_op_commutes_inner_scomp_op:
