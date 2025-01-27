@@ -14,8 +14,6 @@ begin
 
 section\<open>Channels\<close>
 
-code_lazy_type llist
-
 section\<open>Buffer infrastrcuture\<close>
 
 type_alias buf = list
@@ -341,7 +339,11 @@ inductive_cases stepWriteE [elim!]: "step io (Write op q x) op'"
 inductive_cases stepSilentE [elim!]: "step io (Silent op) op'"
 inductive_cases stepChoiceE [elim!]: "step io (Choice ops) op'"
 
-lemma step_map_op:
+lemma ST':
+  "op = op' \<Longrightarrow> step Tau (Silent op) op'"
+  by auto
+
+lemma step_map_op[intro]:
   "step io op op' \<Longrightarrow> io' = map_IO f g id io \<Longrightarrow>
    step io' (map_op f g op) (map_op f g op')"
   by (induct io op op' rule: step.induct) (force simp add: comp_def intro: step.intros)+
@@ -646,7 +648,7 @@ lemma wbisim_sym:
     done
   done
 
-lemma step_wstep:
+lemma step_wstep[intro]:
   "step io op op' \<Longrightarrow> wstep io op op'"
   unfolding wstep_def 
   by (smt (verit) OO_eq eq_OO estep.elims reflclp_tranclp relcompp_distrib relcompp_distrib2 sup2CI)
@@ -1080,6 +1082,9 @@ lemma choices_Choice[simp]: "choices (Choice ops) = cUnion (cimage choices ops)"
     apply (auto simp: cUnion.rep_eq cimage.rep_eq)
     done
   done
+
+declare choices_def[code del]
+lemmas choices_code[code] = choices_Read choices_Write choices_Silent choices_Choice
 
 lemma no_Choice_in_choices[simplified, simp, dest!]: "Choice ops |\<in>| choices op \<Longrightarrow> False"
   unfolding choices_def

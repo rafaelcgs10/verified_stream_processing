@@ -42,9 +42,19 @@ lemma dummy_source_op_sink_op:
   oops
 
 section \<open>Axiom A13: Parallel dummy source\<close>
+
+lemma choices_pcomp_op_dummy_source:
+  \<open>choices (\<exclamdown> \<parallel> \<exclamdown>) = {||}\<close>
+  unfolding pcomp_op_def
+  apply (subst comp_op_code)
+  apply simp
+  done
+
 lemma dummy_source_op_pcomp_op:
-  "\<exclamdown> ~ \<exclamdown> \<parallel> \<exclamdown>"
-  oops
+  \<open>\<exclamdown> ~ \<exclamdown> \<parallel> \<exclamdown>\<close>
+  apply (rule choices_Choice_bisim)
+  apply (simp add: choices_pcomp_op_dummy_source)
+  done
 
 section \<open>Axiom A15: Transpose and merge\<close>
 lemma merge_op_transp_merge:
