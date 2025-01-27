@@ -48,6 +48,27 @@ lemma BHD_BAPPEND_2_cases:
    buf3 p = [] \<and> buf2 p = [] \<and> BHD p buf1 = x \<and> buf1 p \<noteq> []"
   by (metis append_Nil hd_append)
 
+lemma case_sum_updateL:
+  \<open>(case_sum x y)(Inl a := b) = case_sum (x(a := b)) y\<close>
+  by (auto split: sum.splits)
+lemma case_sum_updateR:
+  \<open>(case_sum x y)(Inr a := b) = case_sum x (y(a := b))\<close>
+  by (auto split: sum.splits)
+lemma fun_empty_upd[simp]:
+  "(\<lambda>_. [])(p := []) = (\<lambda>_. [])"
+  by auto
+lemma case_sum_BENQ_R[simp]:
+  "case_sum A (BENQ p x buf) = BENQ (Inr p) x (case_sum A buf)"
+  by (auto split: sum.splits)
+lemma case_sum_BTL_R[simp]:
+  "case_sum A (BTL p buf) = BTL (Inr p) (case_sum A buf)"
+  by (auto split: sum.splits)
+lemma case_sum_BENQ_L[simp]:
+  "case_sum (BENQ p x buf) A = BENQ (Inl p) x (case_sum buf A)"
+  by (auto split: sum.splits)
+lemma case_sum_BTL_L[simp]:
+  "case_sum (BTL p buf) A = BTL (Inl p) (case_sum buf A)"
+  by (auto split: sum.splits)
 
 section\<open>Operator\<close>
 

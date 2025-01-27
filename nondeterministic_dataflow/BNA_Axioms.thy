@@ -1004,15 +1004,6 @@ lemma pcomp_op_scomp_distributes:
   oops
 
 section \<open>Axiom B6: Parallel composition of identities\<close>
-
-lemma case_sum_updateL:
-  \<open>(case_sum x y)(Inl a := b) = case_sum (x(a := b)) y\<close>
-  by (auto split: sum.splits)
-
-lemma case_sum_updateR:
-  \<open>(case_sum x y)(Inr a := b) = case_sum x (y(a := b))\<close>
-  by (auto split: sum.splits)
-
 lemma pcomp_op_id_id_bufs:
   \<open>id_op buf1 \<parallel> id_op buf2 ~ id_op (case_sum buf1 buf2)\<close>
   apply (coinduction arbitrary: buf1 buf2 rule: bisim_coinduct_upto)
@@ -1028,7 +1019,7 @@ lemma pcomp_op_id_id_bufs:
       subgoal
         apply (rule Read_in_choices_step)
         apply (subst (2) id_op_code)
-        apply (simp add: case_sum_updateL)
+        apply simp
         done
       subgoal
         apply (rule bc_base)
@@ -1043,7 +1034,7 @@ lemma pcomp_op_id_id_bufs:
       subgoal
         apply (rule Write_in_choices_step)
         apply (subst (2) id_op_code)
-        apply (simp add: case_sum_updateL)
+        apply simp
         done
       subgoal
         apply (rule bc_base)
@@ -1058,7 +1049,7 @@ lemma pcomp_op_id_id_bufs:
       subgoal
         apply (rule Read_in_choices_step)
         apply (subst (2) id_op_code)
-        apply (simp add: case_sum_updateR)
+        apply simp
         done
       subgoal
         apply (rule bc_base)
@@ -1073,7 +1064,7 @@ lemma pcomp_op_id_id_bufs:
       subgoal
         apply (rule Write_in_choices_step)
         apply (subst (2) id_op_code)
-        apply (simp add: case_sum_updateR)
+        apply simp
         done
       subgoal
         apply (rule bc_base)
@@ -1101,7 +1092,7 @@ lemma pcomp_op_id_id_bufs:
         apply (rule bc_base)
         apply (rule exI[of _ \<open>BENQ p x buf1\<close>])
         apply (rule exI[of _ buf2])
-        apply (simp add: case_sum_updateL)
+        apply simp
         done
       done
     subgoal for x p
@@ -1117,7 +1108,7 @@ lemma pcomp_op_id_id_bufs:
         apply (rule bc_base)
         apply (rule exI[of _ buf1])
         apply (rule exI[of _ \<open>BENQ p x buf2\<close>])
-        apply (simp add: case_sum_updateR)
+        apply simp
         done
       done
     subgoal for p
@@ -1133,7 +1124,7 @@ lemma pcomp_op_id_id_bufs:
         apply (rule bc_base)
         apply (rule exI[of _ \<open>BTL p buf1\<close>])
         apply (rule exI[of _ buf2])
-        apply (simp add: case_sum_updateL)
+        apply simp
         done
       done
     subgoal for p
@@ -1149,7 +1140,7 @@ lemma pcomp_op_id_id_bufs:
         apply (rule bc_base)
         apply (rule exI[of _ buf1])
         apply (rule exI[of _ \<open>BTL p buf2\<close>])
-        apply (simp add: case_sum_updateR)
+        apply simp
         done
       done
     done
@@ -1180,20 +1171,7 @@ lemma transp_op_commutes_scomp_op_pcomp_op:
  "(op1 \<parallel> op2) \<bullet> \<X> = \<X> \<bullet> (op2 \<parallel> op1)"
   oops
 
-
-lemma case_sum_BENQ_R[simp]:
-  "case_sum A (BENQ p x buf) = BENQ (Inr p) x (case_sum A buf)"
-  by (auto split: sum.splits)
-lemma case_sum_BTL_R[simp]:
-  "case_sum A (BTL p buf) = BTL (Inr p) (case_sum A buf)"
-  by (auto split: sum.splits)
-lemma case_sum_BENQ_L[simp]:
-  "case_sum (BENQ p x buf) A = BENQ (Inl p) x (case_sum buf A)"
-  by (auto split: sum.splits)
-lemma case_sum_BTL_L[simp]:
-  "case_sum (BTL p buf) A = BTL (Inl p) (case_sum buf A)"
-  by (auto split: sum.splits)
-
+(* FIXME: move me *)
 lemma step_id_op_Read[intro]:
   "step (Inp p x) (id_op buf) (id_op (BENQ p x buf))"
   apply (subst id_op_code)
@@ -1202,7 +1180,6 @@ lemma step_id_op_Read[intro]:
    apply (rule disjI1)
    apply force+
   done
-
 lemma step_id_op_Write[intro]:
   "BHD p buf = x \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> step (Out p x) (id_op buf) (id_op (BTL p buf))"
   apply (subst id_op_code)
@@ -1211,8 +1188,6 @@ lemma step_id_op_Write[intro]:
    apply (rule disjI2)
    apply force+
   done
-
-(* FIXME: move me *)
 lemma rtranclp_intros_1':
   "a = b \<Longrightarrow> r\<^sup>*\<^sup>* a b"
   by auto
@@ -2782,11 +2757,12 @@ lemma loop_op_pcomp_commue:
 
 
 section \<open>Axiom: R4: Loop commutes inner sequential composition\<close>
-lemma
-  "map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum (\<lambda> _. []) buf2) op1 (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (\<lambda> _. [])) op2)))) \<approx>
-   map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf2) (map_op projl projr (comp_op Some (case_sum (\<lambda> _. []) buf1) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (\<lambda> _. [])) op2) op1)))"
-  apply (coinduction arbitrary: op1 op2 buf1 buf2 rule: wbisim_coinduct_upto)
- subgoal for op1 op2 buf1 buf2
+lemma loop_op_commutes_inner_scomp_op_gen:
+  "map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1 (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2)))) \<approx>
+   map_op projl projl
+     (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined (\<lambda>_. [])) (map_op projl projr (comp_op Some (case_sum (\<lambda>_. []) buf1) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> op2) (map_op projl projr (comp_op Some (\<lambda>_. []) op1 (id_op (case_sum (buf3 >> buf3') buf2)))))))"
+ apply (coinduction arbitrary: op1 op2 buf1 buf2 buf3 buf3' rule: wbisim_coinduct_upto)
+  subgoal for op1 op2 buf1 buf2 buf3 buf3'
     unfolding wsim_def
     apply auto
     subgoal for io op'
@@ -2794,7 +2770,7 @@ lemma
       apply (auto; hypsubst_thin)
       subgoal for io' op''
         apply (drule step_loop_op)
-      apply (auto; hypsubst_thin)
+        apply (auto; hypsubst_thin)
         subgoal for p op'' x
           apply (drule step_map_op_inv)
           apply (auto; hypsubst_thin)
@@ -2803,40 +2779,64 @@ lemma
           subgoal for op1'
             apply (rule exI)
             apply (rule conjI[rotated])
-             apply (rule wbc_base)
-             apply force
+            apply (rule wbc_base)
+            apply force
             apply (rule step_io_step_tau_tau_wstep)
-             apply (rule step_map_op[of "Inp (Inl p) _"])
-              apply simp_all
-            apply (rule step_Inp_Inl_loop_op)
-             apply (rule step_map_op[of "Inp (Inl (Inl p)) _"])
-              apply simp_all
-            apply (rule step_comp_op_L_Inp)
-             apply (rule step_comp_op_L_Inp)
-             apply (rule step_id_op_Read)
-             apply (rule step_map_op[of Tau])
-              apply simp_all
-            apply (rule step_Tau_loop_op)
-        apply (rule step_map_op[of Tau])
-              apply simp_all
-             apply (rule step_Tau_comp_op_L)
-              apply (rule step_comp_op_L_Out)
-               apply (rule step_id_op_Write)
+            apply (rule step_map_op[of "Inp (Inl p) _"])
             apply simp_all
-             apply (rule step_map_op[of Tau])
+            apply (rule step_Inp_Inl_loop_op)
+            apply (rule step_map_op[of "Inp (Inl (Inl p)) _"])
+            apply simp_all
+            apply (rule step_comp_op_L_Inp)
+            apply (rule step_comp_op_L_Inp)
+            apply (rule step_id_op_Read)
+            apply (rule step_map_op[of Tau])
+            apply simp_all
             apply (rule step_Tau_loop_op)
-             apply (rule step_map_op[of Tau])
-              apply simp_all
-            using step_Tau_comp_op_R[where buf="(case_sum (\<lambda>_. []) buf1)(Inl p := [x])" and p="Inl p", simplified] 
-            apply (metis (mono_tags, lifting) case_sum_updateL fun_upd_idem_iff ranI)
+            apply (rule step_map_op[of Tau])
+            apply simp_all
+            apply (rule step_Tau_comp_op_L)
+            apply (rule step_comp_op_L_Out)
+            apply (rule step_id_op_Write)
+            apply simp_all
+            apply (rule step_map_op[of Tau])
+            apply (rule step_Tau_loop_op)
+            apply (rule step_map_op[of Tau])
+              apply (simp_all add: case_sum_updateL)
+            apply (rule step_Tau_comp_op_R[where buf="(case_sum (\<lambda>_. []) buf1)(Inl p := [x])" and p="Inl p" and x=x and wire=Some , unfolded case_sum_updateL, simplified])
+            apply (rule step_map_op[of "Inp (Inl _) _"])
+             apply simp_all
+            apply force
+            done
+          done
+            
+
+end
+            apply (rule step_Tau_comp_op_R)
+
+
+            apply (drule step_comp_op_L_Inp[where wire="\<lambda> _.None", of  "comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op ((\<lambda>_. [])(p := []))) op2" _ _ _ _ "id_op (case_sum (buf3 >> buf3') buf2)"])
+
+
+            apply (drule step_Tau_comp_op_R[where buf="(case_sum (\<lambda>_. []) buf1)(Inl p := [x])" and wire=Some, of _ _ _ _ "comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> op2"])
+            apply simp_all
+
+            apply (drule step_map_op[where f=projl and g=projr])
+
+            find_theorems step comp_op Inp 
+            thm fun_upd_triv
+            using
+ step_Tau_comp_op_R[where buf="(case_sum (\<lambda>_. []) buf1)(Inl p := [x])" and p="Inl p" and x=x and wire=Some, unfolded fun_upd_triv  case_sum_updateL fun_upd_idem_iff, simplified]
+            
+
             done
           done
         subgoal for p op'' x
-   apply (drule step_map_op_inv)
+          apply (drule step_map_op_inv)
           apply (auto; hypsubst_thin)
-   apply (drule step_comp_op_cases)
+          apply (drule step_comp_op_cases)
           apply (auto; hypsubst_thin?)
-   apply (drule step_comp_op_cases)
+          apply (drule step_comp_op_cases)
           apply (auto; hypsubst_thin?)
           apply (drule step_id_op_Out)
           apply (auto; hypsubst_thin?)
@@ -2845,9 +2845,9 @@ lemma
             done
           done
         subgoal for op''
-   apply (drule step_map_op_inv)
+          apply (drule step_map_op_inv)
           apply (auto; hypsubst_thin)
-  apply (drule step_comp_op_cases)
+          apply (drule step_comp_op_cases)
           apply (auto; hypsubst_thin?)
           subgoal for p x op1'
             apply (cases p)
@@ -2855,18 +2855,19 @@ lemma
               apply auto
               apply hypsubst_thin
               apply (intro exI conjI[rotated])
-               apply (rule wbc_base)
+              apply (rule wbc_base)
               apply (rule exI[of _ "op1"])
               apply (rule exI[])
               apply (rule exI[])
-               apply (rule exI[])
+              apply (rule exI[])
               apply (intro conjI)
-              oops
+              oops *)
 
 lemma loop_op_commutes_inner_scomp_op:
-  "(\<stileturn>op1\<turnstile> \<bullet> (\<I> \<parallel> op2))\<up> \<approx> ((\<I> \<parallel> op2) \<bullet> \<stileturn>op1\<turnstile>)\<up>"
+  "(op1 \<bullet> (\<I> \<parallel> op2))\<up> \<approx> ((\<I> \<parallel> op2) \<bullet> op1\<turnstile>)\<up>"
   unfolding feedback_op_def scomp_op_def pcomp_op_def
-  oops
+  using loop_op_commutes_inner_scomp_op_gen[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" op1 "\<lambda> _. []" op2] by force
+
 
 section \<open>Axiom: R5: Loop with no loop\<close>
 lemma loop_op_no_loop:
