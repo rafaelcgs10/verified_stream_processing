@@ -2494,6 +2494,14 @@ section \<open>dummy_source_op\<close>
 abbreviation dummy_source_op ("\<exclamdown>") where
   "\<exclamdown> \<equiv> \<oslash> \<bullet> \<I>"
 
+lemma finished_dummy_source:
+  \<open>finished \<exclamdown>\<close>
+  apply coinduction
+  unfolding scomp_op_def
+  apply (subst comp_op_code)
+  apply auto
+  done
+
 lemma choices_dummy_source[simp]:
   \<open>choices \<exclamdown> = {||}\<close>
   unfolding scomp_op_def

@@ -11,13 +11,80 @@ lemma pcomp_op_assoc:
  "bisim (pcomp_op op1 (pcomp_op op2 op3)) (map_op reassoc reassoc (pcomp_op (pcomp_op op1 op2) op3))"
   oops
 
-  section \<open>Axiom B2: Neutral element of parallel composition\<close>
+section \<open>Axiom B2: Neutral element of parallel composition\<close>
+
 lemma pcomp_op_end_op_right_neutral:
-  "map_op projl projl (op \<parallel> \<oslash>) ~ op"
-  oops
+  \<open>map_op projl projl (op \<parallel> \<oslash>) ~ op\<close>
+  unfolding pcomp_op_def
+  apply (coinduction arbitrary: op rule: bisim_coinduct_upto)
+  subgoal for op
+    unfolding sim_def
+    apply auto
+    subgoal for io op'
+      apply (drule step_map_op_inv)
+      apply auto
+      apply (drule step_comp_op_cases)
+      apply (auto simp: bc_base)
+      done
+    subgoal for io op'
+      apply (rule exI[of _ \<open>(map_op projl projl (comp_op (\<lambda>_. None) (\<lambda>_. []) op' \<oslash>))\<close>])
+      apply (cases io)
+      apply auto
+      subgoal for p x
+        apply (drule step_comp_op_L_Inp)
+        apply (simp add: bc_base bc_sym)
+        done
+      subgoal for p x
+        apply (drule step_comp_op_L_Out[of _ _ _ _ \<open>\<lambda>_. None\<close>])
+        apply (simp_all add: bc_base bc_sym)
+        done
+      subgoal
+        apply (drule step_comp_op_L_Tau)
+        apply (simp add: bc_base bc_sym)
+        done
+      done
+    done
+  done
+
 lemma pcomp_op_end_op_left_neutral:
-  "map_op projr projr (\<oslash> \<parallel> op) ~ op"
-  oops
+  \<open>map_op projr projr (\<oslash> \<parallel> op) ~ op\<close>
+  unfolding pcomp_op_def
+  apply (coinduction arbitrary: op rule: bisim_coinduct_upto)
+  subgoal for op
+    unfolding sim_def
+    apply auto
+    subgoal for io op'
+      apply (drule step_map_op_inv)
+      apply auto
+      apply (drule step_comp_op_cases)
+      apply (auto simp: bc_base)
+      done
+    subgoal for io op'
+      apply (rule exI[of _ \<open>(map_op projr projr (comp_op (\<lambda>_. None) (\<lambda>_. []) \<oslash> op'))\<close>])
+      apply (cases io)
+      apply auto
+      subgoal for p x
+        apply hypsubst_thin
+        apply (drule step_comp_op_R_Inp[of _ _ _ _ \<open>\<lambda>_. None\<close>])
+         apply simp
+        apply (drule step_map_op)
+        apply simp_all
+        done
+      subgoal for p x
+        apply (drule step_comp_op_R_Inp[of _ _ _ _ \<open>\<lambda>_. None\<close>])
+        apply (simp_all add: bc_base bc_sym)
+        done
+      subgoal
+        apply (drule step_comp_op_R_Out)
+        apply (simp add: bc_base bc_sym)
+        done
+      subgoal
+        apply (drule step_comp_op_R_Tau)
+        apply (simp add: bc_base bc_sym)
+        done
+      done
+    done
+  done
 
 section \<open>Axiom B3: Associativity of sequential composition\<close>
 lemma step_scomp_op_1:
@@ -1091,7 +1158,7 @@ lemma pcomp_op_id_id_bufs:
 lemma pcomp_op_id_id:
   \<open>\<I> \<parallel> \<I> ~ \<I>\<close>
   using pcomp_op_id_id_bufs[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>]
-  by auto
+  by simp
 
 section \<open>Axiom B7: Transpose of transpose is identity\<close>
 lemma scomp_op_transp_transp_id:
