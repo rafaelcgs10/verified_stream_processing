@@ -501,6 +501,54 @@ lemma step_scomp_op_2:
       done
     done
   done
+(* 
+lemma comp_op_assoc:
+  fixes op1 :: "('i1,'o1, 'd) op"
+ and op2 :: "('i2, 'o2, 'd) op"
+  and op3 :: "('i3, 'o3, 'd) op"
+ and buf12 :: "'i2 \<Rightarrow> 'd list"
+ and buf23 :: "'i3 \<Rightarrow> 'd list"
+ and wire12 :: "'o1 \<rightharpoonup> 'i2"
+ and wire23 :: "'o2 \<rightharpoonup> 'i3"
+shows  "(comp_op (map_option Inl o wire12) (buf12 o projl) op1 (comp_op wire23 buf23 op2 op3)) ~
+   map_op reassoc reassoc (comp_op (case_sum (\<lambda> _ . None) wire23) buf23 (comp_op wire12 buf12 op1 op2) op3)"
+  sorry
+
+lemma *:
+  fixes op1 :: "('i1,'o1, 'd) op"
+   and op2 :: "('i2, 'o2, 'd) op"
+ assumes "inj_on g A"
+shows "comp_op wire buf (map_op f g op1) op2 = map_op (case_sum (Inl o f) Inr) (case_sum (Inl o g) Inr) (comp_op (\<lambda>x. if x \<in> A then wire (g x) else None) buf op1 op2)"
+  sorry
+
+lemma **:
+  fixes op1 :: "('i1,'o1, 'd) op"
+   and op2 :: "('i2, 'o2, 'd) op"
+ assumes "\<And>x. f (f' x) = x"
+ shows "comp_op wire buf op1 (map_op f g op2) = map_op (map_sum id f) (map_sum id g) (comp_op (map_option f' o wire) (buf o f) op1 op2)"
+  sorry
+
+lemma bisim_reflI:
+  "op1 = op2 \<Longrightarrow> op1 ~ op2"
+  using bisim_refl by auto
+
+lemma scomp_op_assoc_gen:
+  "map_op projl projr (comp_op Some buf1 op1 (map_op projl projr (comp_op Some buf2 op2 op3))) ~
+   map_op projl projr (comp_op Some buf2 (map_op projl projr (comp_op Some buf1 op1 op2)) op3)"
+  unfolding *[where A = "Inr ` UNIV" and g=projr,unfolded inj_on_def,simplified] **[where f=projl and f'=Inl,simplified]
+  apply (rule bisim_trans)
+   apply (rule bisim_map_op)
+   apply (rule bisim_map_op)
+   apply (rule comp_op_assoc[of Some buf1 op1 Some buf2 op2 op3])
+  apply (unfold op.map_comp)
+  thm bisim_refl
+  apply (rule bisim_reflI)
+  apply (rule op.map_cong)
+  apply (rule arg_cong[where f="\<lambda> x. comp_op x _ _ _"])
+    apply (auto simp: fun_eq_iff split: sum.splits)
+  apply (smt (verit) BNA_Operators.reassoc.simps(1) BNA_Operators.reassoc.simps(2) id_apply map_sum.simps(1) map_sum.simps(2) sum.exhaust_sel sum.sel(1))
+  oops *)
+
 
 lemma scomp_op_assoc_gen:
   "map_op projl projr (comp_op Some buf1 op1 (map_op projl projr (comp_op Some buf2 op2 op3))) ~
@@ -876,17 +924,12 @@ lemma scomp_op_id_id:
   done
 
 lemma scomp_op_id_op_right_neutral:
-  "\<stileturn>op\<turnstile> \<bullet> \<I> \<approx> \<stileturn>op\<turnstile>"
+  "op\<turnstile> \<bullet> \<I> \<approx> op\<turnstile>"
   using bisim_wbisim scomp_op_assoc scomp_op_id_id wbisim_refl wbisim_scomp_op_cong wbisim_trans by blast
 
-lemma scomp_op_id_op_right_neutral_gen:
-  "op \<bullet> \<I> \<approx> op"
-  oops
-
 lemma scomp_op_id_op_left_neutral:
-  "\<I> \<bullet> \<stileturn>op\<turnstile> \<approx> \<stileturn>op\<turnstile>"
+  "\<I> \<bullet> \<stileturn>op \<approx> \<stileturn>op"
   by (smt (verit, best) bisim_wbisim scomp_op_assoc scomp_op_id_id wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans)
-
 
 section \<open>Axiom B5: Parallel and sequential distributes\<close>
 lemma pcomp_op_scomp_distributes:
@@ -2663,14 +2706,99 @@ lemma loop_op_pcomp_commue_gen:
     done
   done
 
+thm step_comp_op_cases
+
 lemma loop_op_pcomp_commue:
   "op1 \<parallel> (op2\<up>) ~ (map_op assoc assoc (op1 \<parallel> op2))\<up>"
   unfolding feedback_op_def scomp_op_def pcomp_op_def
   using loop_op_pcomp_commue_gen[of op1 "\<lambda>_. []" op2] by auto
 
+
 section \<open>Axiom: R4: Loop commutes inner sequential composition\<close>
+lemma
+  "map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum (\<lambda> _. []) buf2) op1 (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (\<lambda> _. [])) op2)))) \<approx>
+   map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf2) (map_op projl projr (comp_op Some (case_sum (\<lambda> _. []) buf1) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (\<lambda> _. [])) op2) op1)))"
+  apply (coinduction arbitrary: op1 op2 buf1 buf2 rule: wbisim_coinduct_upto)
+ subgoal for op1 op2 buf1 buf2
+    unfolding wsim_def
+    apply auto
+    subgoal for io op'
+      apply (drule step_map_op_inv)
+      apply (auto; hypsubst_thin)
+      subgoal for io' op''
+        apply (drule step_loop_op)
+      apply (auto; hypsubst_thin)
+        subgoal for p op'' x
+          apply (drule step_map_op_inv)
+          apply (auto; hypsubst_thin)
+          apply (drule step_comp_op_cases)
+          apply (auto; hypsubst_thin?)
+          subgoal for op1'
+            apply (rule exI)
+            apply (rule conjI[rotated])
+             apply (rule wbc_base)
+             apply force
+            apply (rule step_io_step_tau_tau_wstep)
+             apply (rule step_map_op[of "Inp (Inl p) _"])
+              apply simp_all
+            apply (rule step_Inp_Inl_loop_op)
+             apply (rule step_map_op[of "Inp (Inl (Inl p)) _"])
+              apply simp_all
+            apply (rule step_comp_op_L_Inp)
+             apply (rule step_comp_op_L_Inp)
+             apply (rule step_id_op_Read)
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+            apply (rule step_Tau_loop_op)
+        apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_Tau_comp_op_L)
+              apply (rule step_comp_op_L_Out)
+               apply (rule step_id_op_Write)
+            apply simp_all
+             apply (rule step_map_op[of Tau])
+            apply (rule step_Tau_loop_op)
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+            using step_Tau_comp_op_R[where buf="(case_sum (\<lambda>_. []) buf1)(Inl p := [x])" and p="Inl p", simplified] 
+            apply (metis (mono_tags, lifting) case_sum_updateL fun_upd_idem_iff ranI)
+            done
+          done
+        subgoal for p op'' x
+   apply (drule step_map_op_inv)
+          apply (auto; hypsubst_thin)
+   apply (drule step_comp_op_cases)
+          apply (auto; hypsubst_thin?)
+   apply (drule step_comp_op_cases)
+          apply (auto; hypsubst_thin?)
+          apply (drule step_id_op_Out)
+          apply (auto; hypsubst_thin?)
+          subgoal for op1'
+            apply auto
+            done
+          done
+        subgoal for op''
+   apply (drule step_map_op_inv)
+          apply (auto; hypsubst_thin)
+  apply (drule step_comp_op_cases)
+          apply (auto; hypsubst_thin?)
+          subgoal for p x op1'
+            apply (cases p)
+            subgoal for lp
+              apply auto
+              apply hypsubst_thin
+              apply (intro exI conjI[rotated])
+               apply (rule wbc_base)
+              apply (rule exI[of _ "op1"])
+              apply (rule exI[])
+              apply (rule exI[])
+               apply (rule exI[])
+              apply (intro conjI)
+              oops
+
 lemma loop_op_commutes_inner_scomp_op:
-  "(op1 \<bullet> (\<I> \<parallel> op2))\<up> ~ ((\<I> \<parallel> op2) \<bullet> op1)\<up>"
+  "(\<stileturn>op1\<turnstile> \<bullet> (\<I> \<parallel> op2))\<up> \<approx> ((\<I> \<parallel> op2) \<bullet> \<stileturn>op1\<turnstile>)\<up>"
+  unfolding feedback_op_def scomp_op_def pcomp_op_def
   oops
 
 section \<open>Axiom: R5: Loop with no loop\<close>

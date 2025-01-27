@@ -661,6 +661,11 @@ lemma step_io_step_tau_wstep:
   unfolding wstep_def 
   by (smt (verit, best) predicate2D relcompp_apply rtranclp_trans step_wstep wstep_def wstep_steps_Tau)
 
+lemma step_io_step_tau_tau_wstep:
+  "step io op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step Tau op'' op''' \<Longrightarrow> wstep io op op'''"
+  unfolding wstep_def 
+  by (smt (verit, best) predicate2D relcompp_apply rtranclp_trans step_wstep wstep_def wstep_steps_Tau)
+
 lemma step_tau_step_io_wstep:
   "step Tau op op' \<Longrightarrow> step io op' op'' \<Longrightarrow> wstep io op op''"
   unfolding wstep_def 

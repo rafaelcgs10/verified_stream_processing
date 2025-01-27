@@ -2481,8 +2481,14 @@ lemma choices_id_op[simp]:
   done
 
 section \<open>User defined operators\<close>
-abbreviation buffered ("\<stileturn> _ \<turnstile>" [150]151) where
-  "\<stileturn>op\<turnstile> \<equiv> \<I> \<bullet> op \<bullet> \<I>"
+(* abbreviation buffered ("\<stileturn> _ \<turnstile>" [150]151) where
+  "\<stileturn>op\<turnstile> \<equiv> \<I> \<bullet> op \<bullet> \<I>" *)
+
+abbreviation post_buffered ("_ \<turnstile>" [150]151) where
+  "op\<turnstile> \<equiv> op \<bullet> \<I>"
+
+abbreviation pre_buffered ("\<stileturn>_" [150]151) where
+  "\<stileturn>op \<equiv> \<I> \<bullet> op"
 
 section \<open>dummy_source_op\<close>                                     
 abbreviation dummy_source_op ("\<exclamdown>") where
