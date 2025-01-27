@@ -2509,6 +2509,13 @@ lemma choices_dummy_source[simp]:
   apply auto
   done
 
+lemma choices_pcomp_op_dummy_source:
+  \<open>choices (\<exclamdown> \<parallel> \<exclamdown>) = {||}\<close>
+  unfolding pcomp_op_def
+  apply (subst comp_op_code)
+  apply simp
+  done
+
 section \<open>sink_op\<close>                                     
 corec drain_op :: "('m :: countable, 'o, 'd) op" where
   "drain_op = Choice ((cimage (\<lambda> p. Read p (\<lambda> x. drain_op)) (cUNIV :: 'm cset)))"

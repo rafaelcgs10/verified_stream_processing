@@ -43,13 +43,6 @@ lemma dummy_source_op_sink_op:
 
 section \<open>Axiom A13: Parallel dummy source\<close>
 
-lemma choices_pcomp_op_dummy_source:
-  \<open>choices (\<exclamdown> \<parallel> \<exclamdown>) = {||}\<close>
-  unfolding pcomp_op_def
-  apply (subst comp_op_code)
-  apply simp
-  done
-
 lemma dummy_source_op_pcomp_op:
   \<open>\<exclamdown> ~ \<exclamdown> \<parallel> \<exclamdown>\<close>
   apply (rule choices_Choice_bisim)
