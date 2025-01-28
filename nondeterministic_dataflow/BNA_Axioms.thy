@@ -7,18 +7,257 @@ begin
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
 section \<open>Axiom B1: Associativity of parallel composition\<close>
+
 lemma pcomp_op_assoc:
- "bisim (pcomp_op op1 (pcomp_op op2 op3)) (map_op reassoc reassoc (pcomp_op (pcomp_op op1 op2) op3))"
-  oops
+  \<open>op1 \<parallel> (op2 \<parallel> op3) ~ map_op reassoc reassoc ((op1 \<parallel> op2) \<parallel> op3)\<close>
+  apply (coinduction arbitrary: op1 op2 op3 rule: bisim_coinduct_upto)
+  unfolding pcomp_op_def sim_def
+  subgoal for op1 op2 op3
+    apply auto
+    subgoal for io
+      apply (drule step_comp_op_cases)
+      apply auto
+      subgoal for p x op1'
+        apply (rule exI[of _ \<open>map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) op1' op2) op3)\<close>])
+        apply (rule conjI)  
+        subgoal
+          apply fastforce
+          done
+        subgoal
+          apply (rule bc_base)
+          apply auto
+          done
+        done
+      subgoal for p x
+        apply (drule step_comp_op_cases)
+        apply auto
+        subgoal for pr op3'
+          apply (rule exI[of _ \<open>map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) op1 op2) op3')\<close>])
+          apply (auto intro: bc_base)
+          done
+        subgoal for pl op2'
+          apply (rule exI[of _ \<open>map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) op1 op2') op3)\<close>])
+          apply (rule conjI)
+          subgoal
+            apply fastforce
+            done
+          subgoal
+            apply (rule bc_base)
+            apply auto
+            done
+          done
+        done
+      subgoal for p x op1'
+        apply (rule exI[of _ \<open>map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) op1' op2) op3)\<close>])
+        apply (rule conjI)
+        subgoal
+          apply fastforce
+          done
+        subgoal
+          apply (rule bc_base)
+          apply auto
+          done
+        done
+      subgoal for p x
+        apply (drule step_comp_op_cases)
+        apply auto
+        subgoal for pl op2'
+          apply (rule exI[of _ \<open>map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) op1 op2') op3)\<close>])
+          apply (rule conjI)
+          subgoal
+            apply fastforce
+            done
+          subgoal
+            apply (rule bc_base)
+            apply auto
+            done
+          done
+        subgoal for pr op3'
+          apply (rule exI[of _ \<open>map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) op1 op2) op3')\<close>])
+          apply (rule conjI)
+          subgoal
+            apply fastforce
+            done
+          subgoal
+            apply (rule bc_base)
+            apply auto
+            done
+          done
+        done
+      subgoal for op1'
+        apply (rule exI[of _ \<open>map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) op1' op2) op3)\<close>])
+        apply (rule conjI)
+        subgoal
+          apply fastforce
+          done
+        subgoal
+          apply (rule bc_base)
+          apply auto
+          done
+        done
+      subgoal
+        apply (drule step_comp_op_cases)
+        apply auto
+        subgoal for op2'
+          apply (rule exI[of _ \<open>map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) op1 op2') op3)\<close>])
+          apply (rule conjI)
+          subgoal
+            apply fastforce
+            done
+          subgoal
+            apply (rule bc_base)
+            apply auto
+            done
+          done
+        subgoal for op3'
+          apply (rule exI[of _ \<open>map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) op1 op2) op3')\<close>])
+          apply (rule conjI)
+          subgoal
+            apply fastforce
+            done
+          subgoal
+            apply (rule bc_base)
+            apply auto
+            done
+          done
+        done
+      done
+    subgoal for io
+      apply (drule step_map_op_inv)
+      apply auto
+      apply (drule step_comp_op_cases)
+      apply auto
+      subgoal for p x
+        apply (drule step_comp_op_cases)
+        apply auto
+        subgoal for pl op1'
+          apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) op1' (comp_op (\<lambda>_. None) (\<lambda>_. []) op2 op3)\<close>])
+          apply (rule conjI)
+          subgoal
+            apply auto
+            done
+          subgoal
+            apply (rule bc_sym)
+            apply (rule bc_base)
+            apply auto
+            done
+          done
+        subgoal for pr op2'
+          apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) op1 (comp_op (\<lambda>_. None) (\<lambda>_. []) op2' op3)\<close>])
+          apply (rule conjI)
+          subgoal
+            apply auto
+            done
+          subgoal
+            apply (rule bc_sym)
+            apply (rule bc_base)
+            apply auto
+            done
+          done
+        done
+      subgoal for p x op3'
+        apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) op1 (comp_op (\<lambda>_. None) (\<lambda>_. []) op2 op3')\<close>])
+        apply (rule conjI)
+        subgoal
+          apply auto
+          done
+        subgoal
+          apply (rule bc_sym)
+          apply (rule bc_base)
+          apply auto
+          done
+        done
+      subgoal for p x
+        apply (drule step_comp_op_cases)
+        apply auto
+        subgoal for pr op2'
+          apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) op1 (comp_op (\<lambda>_. None) (\<lambda>_. []) op2' op3)\<close>])
+          apply (rule conjI)
+          subgoal
+            apply auto
+            done
+          subgoal
+            apply (rule bc_sym)
+            apply (rule bc_base)
+            apply auto
+            done
+          done
+        subgoal for pl op1'
+          apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) op1' (comp_op (\<lambda>_. None) (\<lambda>_. []) op2 op3)\<close>])
+          apply (rule conjI)
+          subgoal
+            apply auto
+            done
+          subgoal
+            apply (rule bc_sym)
+            apply (rule bc_base)
+            apply auto
+            done
+          done
+        done
+      subgoal for p x op3'
+        apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) op1 (comp_op (\<lambda>_. None) (\<lambda>_. []) op2 op3')\<close>])
+        apply (rule conjI)
+        subgoal
+          apply fastforce
+          done
+        subgoal
+          apply (rule bc_sym)
+          apply (rule bc_base)
+          apply auto
+          done
+        done
+      subgoal
+        apply (drule step_comp_op_cases)
+        apply auto
+        subgoal for op1'
+          apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) op1' (comp_op (\<lambda>_. None) (\<lambda>_. []) op2 op3)\<close>])
+          apply (rule conjI)
+          subgoal
+            apply auto
+            done
+          subgoal
+            apply (rule bc_sym)
+            apply (rule bc_base)
+            apply auto
+            done
+          done
+        subgoal for op2'
+          apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) op1 (comp_op (\<lambda>_. None) (\<lambda>_. []) op2' op3)\<close>])
+          apply (rule conjI)
+          subgoal
+            apply auto
+            done
+          subgoal
+            apply (rule bc_sym)
+            apply (rule bc_base)
+            apply auto
+            done
+          done
+        done
+      subgoal for op3'
+        apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) op1 (comp_op (\<lambda>_. None) (\<lambda>_. []) op2 op3')\<close>])
+        apply (rule conjI)
+        subgoal
+          apply auto
+          done
+        subgoal
+          apply (rule bc_sym)
+          apply (rule bc_base)
+          apply auto
+          done
+        done
+      done
+    done
+  done
 
 section \<open>Axiom B2: Neutral element of parallel composition\<close>
 
 lemma pcomp_op_end_op_right_neutral:
   \<open>map_op projl projl (op \<parallel> \<oslash>) ~ op\<close>
-  unfolding pcomp_op_def
   apply (coinduction arbitrary: op rule: bisim_coinduct_upto)
   subgoal for op
-    unfolding sim_def
+    unfolding pcomp_op_def sim_def
     apply auto
     subgoal for io op'
       apply (drule step_map_op_inv)
@@ -27,7 +266,7 @@ lemma pcomp_op_end_op_right_neutral:
       apply (auto simp: bc_base)
       done
     subgoal for io op'
-      apply (rule exI[of _ \<open>(map_op projl projl (comp_op (\<lambda>_. None) (\<lambda>_. []) op' \<oslash>))\<close>])
+      apply (rule exI[of _ \<open>map_op projl projl (comp_op (\<lambda>_. None) (\<lambda>_. []) op' \<oslash>)\<close>])
       apply (cases io)
       apply auto
       subgoal for p x
@@ -48,10 +287,9 @@ lemma pcomp_op_end_op_right_neutral:
 
 lemma pcomp_op_end_op_left_neutral:
   \<open>map_op projr projr (\<oslash> \<parallel> op) ~ op\<close>
-  unfolding pcomp_op_def
   apply (coinduction arbitrary: op rule: bisim_coinduct_upto)
   subgoal for op
-    unfolding sim_def
+    unfolding pcomp_op_def sim_def
     apply auto
     subgoal for io op'
       apply (drule step_map_op_inv)
@@ -60,11 +298,10 @@ lemma pcomp_op_end_op_left_neutral:
       apply (auto simp: bc_base)
       done
     subgoal for io op'
-      apply (rule exI[of _ \<open>(map_op projr projr (comp_op (\<lambda>_. None) (\<lambda>_. []) \<oslash> op'))\<close>])
+      apply (rule exI[of _ \<open>map_op projr projr (comp_op (\<lambda>_. None) (\<lambda>_. []) \<oslash> op')\<close>])
       apply (cases io)
       apply auto
       subgoal for p x
-        apply hypsubst_thin
         apply (drule step_comp_op_R_Inp[of _ _ _ _ \<open>\<lambda>_. None\<close>])
          apply simp
         apply (drule step_map_op)
@@ -1007,140 +1244,139 @@ section \<open>Axiom B6: Parallel composition of identities\<close>
 lemma pcomp_op_id_id_bufs:
   \<open>id_op buf1 \<parallel> id_op buf2 ~ id_op (case_sum buf1 buf2)\<close>
   apply (coinduction arbitrary: buf1 buf2 rule: bisim_coinduct_upto)
-  apply (rule conjI)
   subgoal for buf1 buf2
     unfolding pcomp_op_def sim_def
     apply auto
-    apply (subst (asm) comp_op_code)
-    apply auto
-    subgoal for p x
-      apply (rule exI[of _ \<open>id_op (case_sum (BENQ p x buf1) buf2)\<close>])
-      apply (rule conjI)
-      subgoal
-        apply (rule Read_in_choices_step)
-        apply (subst (2) id_op_code)
-        apply simp
+    subgoal
+      apply (subst (asm) comp_op_code)
+      apply auto
+      subgoal for p x
+        apply (rule exI[of _ \<open>id_op (case_sum (BENQ p x buf1) buf2)\<close>])
+        apply (rule conjI)
+        subgoal
+          apply (rule Read_in_choices_step)
+          apply (subst (2) id_op_code)
+          apply simp
+          done
+        subgoal
+          apply (rule bc_base)
+          apply (rule exI[of _ \<open>BENQ p x buf1\<close>])
+          apply (rule exI[of _ buf2])
+          apply simp
+          done
         done
-      subgoal
-        apply (rule bc_base)
-        apply (rule exI[of _ \<open>BENQ p x buf1\<close>])
-        apply (rule exI[of _ buf2])
-        apply simp
+      subgoal for p
+        apply (rule exI[of _ \<open>id_op (case_sum (BTL p buf1) buf2)\<close>])
+        apply (rule conjI)
+        subgoal
+          apply (rule Write_in_choices_step)
+          apply (subst (2) id_op_code)
+          apply simp
+          done
+        subgoal
+          apply (rule bc_base)
+          apply (rule exI[of _ \<open>BTL p buf1\<close>])
+          apply (rule exI[of _ buf2])
+          apply simp
+          done
         done
-      done
-    subgoal for p
-      apply (rule exI[of _ \<open>id_op (case_sum (BTL p buf1) buf2)\<close>])
-      apply (rule conjI)
-      subgoal
-        apply (rule Write_in_choices_step)
-        apply (subst (2) id_op_code)
-        apply simp
+      subgoal for p x
+        apply (rule exI[of _ \<open>id_op (case_sum buf1 (BENQ p x buf2))\<close>])
+        apply (rule conjI)
+        subgoal
+          apply (rule Read_in_choices_step)
+          apply (subst (2) id_op_code)
+          apply simp
+          done
+        subgoal
+          apply (rule bc_base)
+          apply (rule exI[of _ buf1])
+          apply (rule exI[of _ \<open>BENQ p x buf2\<close>])
+          apply simp
+          done
         done
-      subgoal
-        apply (rule bc_base)
-        apply (rule exI[of _ \<open>BTL p buf1\<close>])
-        apply (rule exI[of _ buf2])
-        apply simp
-        done
-      done
-    subgoal for p x
-      apply (rule exI[of _ \<open>id_op (case_sum buf1 (BENQ p x buf2))\<close>])
-      apply (rule conjI)
-      subgoal
-        apply (rule Read_in_choices_step)
-        apply (subst (2) id_op_code)
-        apply simp
-        done
-      subgoal
-        apply (rule bc_base)
-        apply (rule exI[of _ buf1])
-        apply (rule exI[of _ \<open>BENQ p x buf2\<close>])
-        apply simp
-        done
-      done
-    subgoal for p
-      apply (rule exI[of _ \<open>id_op (case_sum buf1 (BTL p buf2))\<close>])
-      apply (rule conjI)
-      subgoal
-        apply (rule Write_in_choices_step)
-        apply (subst (2) id_op_code)
-        apply simp
-        done
-      subgoal
-        apply (rule bc_base)
-        apply (rule exI[of _ buf1])
-        apply (rule exI[of _ \<open>BTL p buf2\<close>])
-        apply simp
-        done
-      done
-    done
-  subgoal for buf1 buf2
-    unfolding pcomp_op_def sim_def
-    apply auto
-    apply (subst (asm) id_op_code)
-    apply (auto split: sum.splits)
-    subgoal for x p
-      apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BENQ p x buf1)) (id_op buf2)\<close>])
-      apply (rule conjI)
-      subgoal
-        apply (rule Read_in_choices_step)
-        apply (subst (2) comp_op_code)
-        apply simp
-        done
-      subgoal
-        apply (rule bc_sym)
-        apply (rule bc_base)
-        apply (rule exI[of _ \<open>BENQ p x buf1\<close>])
-        apply (rule exI[of _ buf2])
-        apply simp
+      subgoal for p
+        apply (rule exI[of _ \<open>id_op (case_sum buf1 (BTL p buf2))\<close>])
+        apply (rule conjI)
+        subgoal
+          apply (rule Write_in_choices_step)
+          apply (subst (2) id_op_code)
+          apply simp
+          done
+        subgoal
+          apply (rule bc_base)
+          apply (rule exI[of _ buf1])
+          apply (rule exI[of _ \<open>BTL p buf2\<close>])
+          apply simp
+          done
         done
       done
-    subgoal for x p
-      apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (id_op (BENQ p x buf2))\<close>])
-      apply (rule conjI)
-      subgoal
-        apply (rule Read_in_choices_step)
-        apply (subst (2) comp_op_code)
-        apply force
+    subgoal
+      apply (subst (asm) id_op_code)
+      apply (auto split: sum.splits)
+      subgoal for x p
+        apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BENQ p x buf1)) (id_op buf2)\<close>])
+        apply (rule conjI)
+        subgoal
+          apply (rule Read_in_choices_step)
+          apply (subst (2) comp_op_code)
+          apply simp
+          done
+        subgoal
+          apply (rule bc_sym)
+          apply (rule bc_base)
+          apply (rule exI[of _ \<open>BENQ p x buf1\<close>])
+          apply (rule exI[of _ buf2])
+          apply simp
+          done
         done
-      subgoal
-        apply (rule bc_sym)
-        apply (rule bc_base)
-        apply (rule exI[of _ buf1])
-        apply (rule exI[of _ \<open>BENQ p x buf2\<close>])
-        apply simp
+      subgoal for x p
+        apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (id_op (BENQ p x buf2))\<close>])
+        apply (rule conjI)
+        subgoal
+          apply (rule Read_in_choices_step)
+          apply (subst (2) comp_op_code)
+          apply force
+          done
+        subgoal
+          apply (rule bc_sym)
+          apply (rule bc_base)
+          apply (rule exI[of _ buf1])
+          apply (rule exI[of _ \<open>BENQ p x buf2\<close>])
+          apply simp
+          done
         done
-      done
-    subgoal for p
-      apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BTL p buf1)) (id_op buf2)\<close>])
-      apply (rule conjI)
-      subgoal
-        apply (rule Write_in_choices_step)
-        apply (subst (2) comp_op_code)
-        apply simp
+      subgoal for p
+        apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BTL p buf1)) (id_op buf2)\<close>])
+        apply (rule conjI)
+        subgoal
+          apply (rule Write_in_choices_step)
+          apply (subst (2) comp_op_code)
+          apply simp
+          done
+        subgoal
+          apply (rule bc_sym)
+          apply (rule bc_base)
+          apply (rule exI[of _ \<open>BTL p buf1\<close>])
+          apply (rule exI[of _ buf2])
+          apply simp
+          done
         done
-      subgoal
-        apply (rule bc_sym)
-        apply (rule bc_base)
-        apply (rule exI[of _ \<open>BTL p buf1\<close>])
-        apply (rule exI[of _ buf2])
-        apply simp
-        done
-      done
-    subgoal for p
-      apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (id_op (BTL p buf2))\<close>])
-      apply (rule conjI)
-      subgoal
-        apply (rule Write_in_choices_step)
-        apply (subst (2) comp_op_code)
-        apply force
-        done
-      subgoal
-        apply (rule bc_sym)
-        apply (rule bc_base)
-        apply (rule exI[of _ buf1])
-        apply (rule exI[of _ \<open>BTL p buf2\<close>])
-        apply simp
+      subgoal for p
+        apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (id_op (BTL p buf2))\<close>])
+        apply (rule conjI)
+        subgoal
+          apply (rule Write_in_choices_step)
+          apply (subst (2) comp_op_code)
+          apply force
+          done
+        subgoal
+          apply (rule bc_sym)
+          apply (rule bc_base)
+          apply (rule exI[of _ buf1])
+          apply (rule exI[of _ \<open>BTL p buf2\<close>])
+          apply simp
+          done
         done
       done
     done

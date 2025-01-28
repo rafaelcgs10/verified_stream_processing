@@ -46,15 +46,15 @@ section \<open>Axiom: A8: Acopy dummy source\<close>
 lemma acopy_op_dummy_source:
   \<open>\<exclamdown> \<bullet> \<C> \<approx> \<exclamdown> \<parallel> \<exclamdown>\<close>
   apply (coinduction rule: wbisim_coinduct_upto)
+  unfolding wsim_def
   apply (rule conjI)
   subgoal
-    unfolding scomp_op_def pcomp_op_def wsim_def
+    unfolding scomp_op_def pcomp_op_def
     apply (subst comp_op_code)
     apply (subst acopy_op_code)
     apply auto
     done
   subgoal
-    unfolding wsim_def
     apply (metis cempty_iff choices_pcomp_op_dummy_source step_choicesE)
     done
   done
