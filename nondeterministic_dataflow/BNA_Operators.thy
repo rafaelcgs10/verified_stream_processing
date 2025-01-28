@@ -1863,13 +1863,6 @@ lemma step_double_loop_1:
               apply (rule image_eqI[rotated])
                apply assumption
               apply auto
-             apply (rule ST')
-            subgoal
-              apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-               apply auto
-              apply (rule ext)
-              apply (auto split: sum.splits)
-              done
             subgoal
               by (metis (no_types, lifting) comp_apply old.sum.simps(6) ranI)
             done
@@ -1903,18 +1896,10 @@ lemma step_double_loop_1:
            apply (rule image_eqI[rotated])
             apply assumption
            apply auto
-          apply (rule ST')
-          subgoal
-            apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-             apply auto
-            apply (rule ext)
-            apply (auto split: sum.splits)
             done
           done
         done
       done
-    done
-
 
 lemma step_double_loop_2:
   "step io (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined (case_sum buf2 buf1)) (map_op reassoc reassoc (op :: (('a + 'd) + 'e, ('b + 'd) + 'e, 'c) op)))) op' \<Longrightarrow>
@@ -2079,11 +2064,6 @@ lemma step_double_loop_2:
         apply (rule arg_cong[where f="map_op projl projl"])
         apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
          apply (auto simp add: op.map_comp op.map_id)
-        apply (rule ext)
-        subgoal for x
-          apply (cases x)
-           apply (auto split: sum.splits)
-          done
         done
       subgoal
         apply (rule step_map_op[of "Tau"])
@@ -2137,12 +2117,7 @@ lemma step_double_loop_2:
         apply (rule arg_cong[where f="map_op projl projl"])
         apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
          apply (auto simp add: op.map_comp op.map_id)
-        apply (rule ext)
-        subgoal for x
-          apply (cases x)
-           apply (auto split: sum.splits)
           done
-        done
       subgoal
         apply (rule step_map_op[of "Tau"])
          apply auto
@@ -2196,12 +2171,7 @@ lemma step_double_loop_2:
         apply (rule arg_cong[where f="map_op projl projl"])
         apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
          apply (auto simp add: op.map_comp op.map_id)
-        apply (rule ext)
-        subgoal for x
-          apply (cases x)
-           apply (auto split: sum.splits)
           done
-        done
       subgoal
         apply (rule step_map_op[of "Tau"])
          apply auto
@@ -2243,12 +2213,7 @@ lemma step_double_loop_2:
         apply (rule arg_cong[where f="map_op projl projl"])
         apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
          apply (auto simp add: op.map_comp op.map_id)
-        apply (rule ext)
-        subgoal for x
-          apply (cases x)
-           apply (auto split: sum.splits)
           done
-        done
       subgoal
         apply (rule step_map_op[of "Tau"])
          apply auto
@@ -2415,6 +2380,22 @@ lemma step_id_op_Out:
    apply simp
   apply (subst (asm) (3) id_op_code)
   apply auto
+  done
+lemma step_id_op_Read[intro]:
+  "step (Inp p x) (id_op buf) (id_op (BENQ p x buf))"
+  apply (subst id_op_code)
+  apply (rule SC)
+   apply simp
+   apply (rule disjI1)
+   apply force+
+  done
+lemma step_id_op_Write[intro]:
+  "BHD p buf = x \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> step (Out p x) (id_op buf) (id_op (BTL p buf))"
+  apply (subst id_op_code)
+  apply (rule SC)
+   apply simp
+   apply (rule disjI2)
+   apply force+
   done
 
 lemma choices_id_op[simp]:

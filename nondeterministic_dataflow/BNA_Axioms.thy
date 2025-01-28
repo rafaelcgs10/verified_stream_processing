@@ -8,10 +8,10 @@ no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
 section \<open>Axiom B1: Associativity of parallel composition\<close>
 lemma pcomp_op_assoc:
- "bisim (pcomp_op op1 (pcomp_op op2 op3)) (map_op reassoc reassoc (pcomp_op (pcomp_op op1 op2) op3))"
+  "bisim (pcomp_op op1 (pcomp_op op2 op3)) (map_op reassoc reassoc (pcomp_op (pcomp_op op1 op2) op3))"
   oops
 
-section \<open>Axiom B2: Neutral element of parallel composition\<close>
+  section \<open>Axiom B2: Neutral element of parallel composition\<close>
 
 lemma pcomp_op_end_op_right_neutral:
   \<open>map_op projl projl (op \<parallel> \<oslash>) ~ op\<close>
@@ -29,14 +29,14 @@ lemma pcomp_op_end_op_right_neutral:
     subgoal for io op'
       apply (rule exI[of _ \<open>(map_op projl projl (comp_op (\<lambda>_. None) (\<lambda>_. []) op' \<oslash>))\<close>])
       apply (cases io)
-      apply auto
+        apply auto
       subgoal for p x
         apply (drule step_comp_op_L_Inp)
         apply (simp add: bc_base bc_sym)
         done
       subgoal for p x
         apply (drule step_comp_op_L_Out[of _ _ _ _ \<open>\<lambda>_. None\<close>])
-        apply (simp_all add: bc_base bc_sym)
+         apply (simp_all add: bc_base bc_sym)
         done
       subgoal
         apply (drule step_comp_op_L_Tau)
@@ -62,17 +62,17 @@ lemma pcomp_op_end_op_left_neutral:
     subgoal for io op'
       apply (rule exI[of _ \<open>(map_op projr projr (comp_op (\<lambda>_. None) (\<lambda>_. []) \<oslash> op'))\<close>])
       apply (cases io)
-      apply auto
+        apply auto
       subgoal for p x
         apply hypsubst_thin
         apply (drule step_comp_op_R_Inp[of _ _ _ _ \<open>\<lambda>_. None\<close>])
          apply simp
         apply (drule step_map_op)
-        apply simp_all
+         apply simp_all
         done
       subgoal for p x
         apply (drule step_comp_op_R_Inp[of _ _ _ _ \<open>\<lambda>_. None\<close>])
-        apply (simp_all add: bc_base bc_sym)
+         apply (simp_all add: bc_base bc_sym)
         done
       subgoal
         apply (drule step_comp_op_R_Out)
@@ -568,7 +568,7 @@ lemma step_scomp_op_2:
       done
     done
   done
-(* 
+    (* 
 lemma comp_op_assoc:
   fixes op1 :: "('i1,'o1, 'd) op"
  and op2 :: "('i2, 'o2, 'd) op"
@@ -736,27 +736,15 @@ lemma id_id_gen:
           apply (rule arg_cong[where f=id_op])
           apply (rule ext)
           apply simp
-          apply metis
           done
         subgoal for p x buf1' buf2' buf3'
           apply hypsubst_thin
           apply simp
-          apply (intro conjI exI)
-           apply (subst id_op_code)
-           apply (rule step_wstep)
-           apply (rule SC[rotated])
-            apply (rule SW)
-           apply simp
-           apply (rule disjI2)
-           apply (rule image_eqI)
-            apply force
-           apply (simp add: cUNIV.rep_eq)
-          apply (rule wbc_base)
-          apply (intro conjI exI)
-           apply (rule refl)
-          apply (rule arg_cong[where f=id_op])
-          apply (rule ext)
-          apply simp
+          apply (intro conjI[rotated] exI)
+           apply (rule wbc_base)
+           apply blast
+          apply (rule step_wstep)
+          apply (smt (verit, best) BAPPEND_BTL BULK_BENQ_def append_is_Nil_conv hd_append2 step_id_op_Write)
           done
         subgoal for p buf1' buf2' buf3'
           apply hypsubst_thin
@@ -773,7 +761,7 @@ lemma id_id_gen:
           apply (intro conjI exI)
            apply (rule refl)
           apply (rule arg_cong[where f=id_op])
-          apply auto
+          apply (metis BAPPEND_BENQ_BHD BULK_BENQ_assoc)
           done
         subgoal for p buf1' buf2' buf3'
           apply hypsubst_thin
@@ -790,7 +778,7 @@ lemma id_id_gen:
           apply (intro conjI exI)
            apply (rule refl)
           apply (rule arg_cong[where f=id_op])
-          apply auto
+          apply (metis BAPPEND_BENQ_BHD BULK_BENQ_assoc)
           done
         done
       done
@@ -833,15 +821,15 @@ lemma id_id_gen:
         apply (drule step_id_op_Out)
          apply simp
         apply (elim conjE)
+        apply hypsubst_thin
         apply (drule BHD_BAPPEND_2_cases)
          apply simp
-        apply hypsubst_thin
         apply (elim exE disjE conjE)
         subgoal
           apply (rule exI[of _ "map_op projl projr (comp_op Some buf2 (id_op buf1) (id_op (BTL p buf3)))"])
           apply (intro conjI)
           subgoal
-            apply (rule wstep_map_op[where f=projl and g=projr and io="Out (Inr p) x", simplified])
+            apply (rule wstep_map_op[where f=projl and g=projr and io="Out (Inr p) (BHD p buf3)", simplified])
              apply (subst comp_op_code)
              apply simp
              apply (rule step_wstep)
@@ -865,18 +853,16 @@ lemma id_id_gen:
             apply (intro exI conjI) 
              apply (rule refl)
             apply (rule arg_cong[where f=id_op])
-            apply (rule ext)
-            apply (auto simp only: split: if_splits)
-              apply (smt (verit, best) fun_upd_apply tl_append2)+
+            apply simp
             done
           done
         subgoal
           apply (rule exI[of _ "map_op projl projr (comp_op Some (BTL p buf2) (id_op buf1) (id_op buf3))"])
           apply (intro conjI)
           subgoal
-            apply (rule wstep_map_op[where f=projl and g=projr and io="Out (Inr p) x", simplified])
+            apply (rule wstep_map_op[where f=projl and g=projr and io="Out (Inr p) (BHD p buf2)", simplified])
              apply simp_all
-            apply (rule step_tau_step_io_wstep[of _ "comp_op Some (BTL p buf2) (id_op buf1) (id_op (BENQ p x buf3))"])
+            apply (rule step_tau_step_io_wstep[of _ "comp_op Some (BTL p buf2) (id_op buf1) (id_op (BENQ p (BHD p buf2) buf3))"])
              apply (subst comp_op_code)
              apply simp
              apply (rule SC[rotated])
@@ -919,9 +905,9 @@ lemma id_id_gen:
           apply (rule exI[of _ "map_op projl projr (comp_op Some buf2 (id_op (BTL p buf1)) (id_op buf3))"])
           apply (intro conjI)
           subgoal
-            apply (rule wstep_map_op[where f=projl and g=projr and io="Out (Inr p) x", simplified])
+            apply (rule wstep_map_op[where f=projl and g=projr and io="Out (Inr p) (BHD p buf1)", simplified])
              apply simp_all
-            apply (rule step_tau_step_tau_step_io_wstep[of _ "comp_op Some (BENQ p x buf2) (id_op (BTL p buf1)) (id_op buf3)" "comp_op Some (BTL p (BENQ p x buf2)) (id_op (BTL p buf1)) (id_op (BENQ p x buf3))"])
+            apply (rule step_tau_step_tau_step_io_wstep[of _ "comp_op Some (BENQ p (BHD p buf1) buf2) (id_op (BTL p buf1)) (id_op buf3)" "comp_op Some (BTL p (BENQ p (BHD p buf1) buf2)) (id_op (BTL p buf1)) (id_op (BENQ p (BHD p buf1) buf3))"])
               apply (subst comp_op_code)
               apply simp
               apply (rule SC[rotated])
@@ -949,22 +935,7 @@ lemma id_id_gen:
               apply simp
               apply blast
              apply simp
-            apply (subst comp_op_code)
-            apply simp
-            apply (rule SC[rotated])
-             apply (rule SW)
-            apply simp
-            apply (simp add: Set.filter_def)          
-            apply (rule disjI2)
-            apply (rule image_eqI[rotated])
-             apply (simp add: Set.filter_def)
-             apply (intro exI conjI)
-              apply (rule disjI2)
-              apply (intro exI conjI)
-               apply blast
-              apply simp_all
-             apply blast
-            apply (simp add: fun_upd_idem)
+            apply (metis (mono_tags, lifting) append_Nil fun_upd_same fun_upd_triv fun_upd_upd list.sel(1) list.sel(3) snoc_eq_iff_butlast step_comp_op_R_Out step_id_op_Write)
             done
           subgoal
             apply (rule wbc_sym)
@@ -987,8 +958,7 @@ lemma id_id_gen:
 lemma scomp_op_id_id:
   "\<I> \<bullet> \<I> \<approx> \<I>"
   unfolding scomp_op_def
-  using id_id_gen[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []"] apply simp
-  done
+  using id_id_gen[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []"] by auto
 
 lemma scomp_op_id_op_right_neutral:
   "op\<turnstile> \<bullet> \<I> \<approx> op\<turnstile>"
@@ -1000,10 +970,10 @@ lemma scomp_op_id_op_left_neutral:
 
 section \<open>Axiom B5: Parallel and sequential distributes\<close>
 lemma pcomp_op_scomp_distributes:
- "(op1 \<parallel> op2) \<bullet> (op3 \<parallel> op4) ~ (op1 \<bullet> op3) \<parallel> (op2 \<bullet> op4)"
+  "(op1 \<parallel> op2) \<bullet> (op3 \<parallel> op4) ~ (op1 \<bullet> op3) \<parallel> (op2 \<bullet> op4)"
   oops
 
-section \<open>Axiom B6: Parallel composition of identities\<close>
+  section \<open>Axiom B6: Parallel composition of identities\<close>
 lemma pcomp_op_id_id_bufs:
   \<open>id_op buf1 \<parallel> id_op buf2 ~ id_op (case_sum buf1 buf2)\<close>
   apply (coinduction arbitrary: buf1 buf2 rule: bisim_coinduct_upto)
@@ -1156,38 +1126,22 @@ lemma scomp_op_transp_transp_id:
   "\<X> \<bullet> \<X> \<approx> \<I>"
   oops
 
-section \<open>Axiom B9: Transpose decomposes in parallel and sequential composition\<close>
+  section \<open>Axiom B9: Transpose decomposes in parallel and sequential composition\<close>
 lemma trans_op_decomposes_scomp_op_pcomp_op:
   assumes "\<X>klm = (\<X> :: ('k :: countable + 'l :: countable + 'm :: countable, ('l + 'm) + 'k, 'c) op)"
-  and "\<X>kl = (\<X> :: ('k + 'l, 'l + 'k, 'c) op)"
-  and "\<X>km = (\<X> :: ('k + 'm, 'm + 'k, 'c) op)"
-  and "\<I>m = (\<I> :: ('m, 'm, 'c) op)"
-  and "\<I>l = (\<I> :: ('l, 'l, 'c) op)"
-shows "\<X>klm \<approx> map_op reassoc reassoc (\<X>kl \<parallel> \<I>m) \<bullet> map_op id assoc (\<I>l \<parallel> \<X>km)"
+    and "\<X>kl = (\<X> :: ('k + 'l, 'l + 'k, 'c) op)"
+    and "\<X>km = (\<X> :: ('k + 'm, 'm + 'k, 'c) op)"
+    and "\<I>m = (\<I> :: ('m, 'm, 'c) op)"
+    and "\<I>l = (\<I> :: ('l, 'l, 'c) op)"
+  shows "\<X>klm \<approx> map_op reassoc reassoc (\<X>kl \<parallel> \<I>m) \<bullet> map_op id assoc (\<I>l \<parallel> \<X>km)"
   oops
 
-section \<open>Axiom B10: Transpose commutes with sequential composition of parallel operators\<close>
+  section \<open>Axiom B10: Transpose commutes with sequential composition of parallel operators\<close>
 lemma transp_op_commutes_scomp_op_pcomp_op:
- "(op1 \<parallel> op2) \<bullet> \<X> = \<X> \<bullet> (op2 \<parallel> op1)"
+  "(op1 \<parallel> op2) \<bullet> \<X> = \<X> \<bullet> (op2 \<parallel> op1)"
   oops
 
 (* FIXME: move me *)
-lemma step_id_op_Read[intro]:
-  "step (Inp p x) (id_op buf) (id_op (BENQ p x buf))"
-  apply (subst id_op_code)
-  apply (rule SC)
-   apply simp
-   apply (rule disjI1)
-   apply force+
-  done
-lemma step_id_op_Write[intro]:
-  "BHD p buf = x \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> step (Out p x) (id_op buf) (id_op (BTL p buf))"
-  apply (subst id_op_code)
-  apply (rule SC)
-   apply simp
-   apply (rule disjI2)
-   apply force+
-  done
 lemma rtranclp_intros_1':
   "a = b \<Longrightarrow> r\<^sup>*\<^sup>* a b"
   by auto
@@ -1211,7 +1165,7 @@ lemma loop_op_scomp_commute_gen:
         subgoal for p x op2'
           apply hypsubst_thin
           apply (intro exI conjI[rotated])
-          apply (rule wbc_base)
+           apply (rule wbc_base)
            apply fast
           apply force
           done
@@ -1230,7 +1184,7 @@ lemma loop_op_scomp_commute_gen:
               subgoal for p op''
                 apply hypsubst_thin
                 apply (intro exI conjI[rotated])
-                          apply (rule wbc_base)
+                 apply (rule wbc_base)
                  apply fast
                 apply force
                 done
@@ -1241,7 +1195,7 @@ lemma loop_op_scomp_commute_gen:
           apply hypsubst_thin
           apply (intro exI conjI[rotated])
            apply (rule wbc_base)
-          apply fast
+           apply fast
           apply (rule rtranclp.intros(2))
            apply (rule rtranclp.intros(1))
           apply (rule step_map_op[of Tau])
@@ -1272,7 +1226,7 @@ lemma loop_op_scomp_commute_gen:
             apply (rule step_Tau_loop_op)
             apply (rule step_map_op[of Tau])
              apply simp_all
-            apply (metis ranI step_Tau_comp_op_R sum.case(1))
+            apply (metis (mono_tags, lifting) case_sum_BTL_L case_sum_o_inj(1) comp_eq_dest_lhs ranI step_Tau_comp_op_R)
             done
           done
         subgoal for op'
@@ -1310,106 +1264,6 @@ lemma loop_op_scomp_commute_gen:
           subgoal for op''' p
             apply (cases "lbuf3 p")
             subgoal
-              apply (intro exI conjI[rotated])
-               apply (rule wbc_base)
-               apply (rule exI[of _ op'''])
-               apply (rule exI[of _ op2])
-               apply (rule exI[of _ buf2])
-               apply (rule exI[of _ "lbuf1"])
-               apply (rule exI[of _ "BTL p lbuf2"])
-               apply (rule exI[of _ "lbuf3"])
-               apply (intro exI conjI)
-                apply simp_all
-               apply (rule arg_cong[where f="map_op projl projr"])
-               apply (rule arg_cong[where f="comp_op Some buf2 op2"])
-               apply (rule arg_cong[where f="map_op projl projl"])
-               apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-                apply simp_all
-               apply (rule ext)
-               apply (auto split: sum.splits)[1]
-              apply (rule transitive_closurep_trans'(6))
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_Tau_loop_op)
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_Tau_comp_op_L)
-                apply simp_all
-               apply (rule step_comp_op_R_Out)
-               apply (rule step_id_op_Write)
-                apply simp_all
-              apply (rule transitive_closurep_trans'(6))
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_Tau_loop_op)
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_Tau_comp_op_R)
-                  apply assumption
-                 apply simp_all
-              apply (simp add: fun_upd_idem) 
-              done
-            subgoal for x lbuf3'
-              apply (intro exI conjI[rotated])
-               apply (rule wbc_base)
-               apply (rule exI[of _ op'''])
-               apply (rule exI[of _ op2])
-               apply (rule exI[of _ buf2])
-               apply (rule exI[of _ "lbuf1"])
-               apply (rule exI[of _ "lbuf2"])
-               apply (rule exI[of _ "BTL p lbuf3"])
-               apply (intro exI conjI)
-                apply simp_all
-               apply (rule arg_cong[where f="map_op projl projr"])
-               apply (rule arg_cong[where f="comp_op Some buf2 op2"])
-               apply (rule arg_cong[where f="map_op projl projl"])
-               apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-                apply simp_all
-               apply (rule ext)
-               apply (auto split: sum.splits)[1]
-              apply (rule transitive_closurep_trans'(6))
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_Tau_loop_op)
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_Tau_comp_op_R)
-                  apply assumption
-                 apply simp_all
-              apply (simp add: case_sum_updateR)
-              done
-            done
-          subgoal for op''' p
-            apply (intro exI conjI[rotated])
-             apply (rule wbc_base)
-             apply (rule exI[of _ op'''])
-             apply (rule exI[of _ op2])
-             apply (rule exI[of _ buf2])
-             apply (rule exI[of _ "lbuf1"])
-             apply (rule exI[of _ "lbuf2"])
-             apply (rule exI[of _ "BTL p lbuf3"])
-             apply (intro exI conjI)
-              apply simp_all
-             apply (rule arg_cong[where f="map_op projl projr"])
-             apply (rule arg_cong[where f="comp_op Some buf2 op2"])
-             apply (rule arg_cong[where f="map_op projl projl"])
-             apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-              apply simp_all
-             apply (rule ext)
-             apply (auto split: sum.splits)[1]
-            apply (rule transitive_closurep_trans'(6))
-             apply (rule step_map_op[of Tau])
-              apply simp_all
-             apply (rule step_Tau_loop_op)
-             apply (rule step_map_op[of Tau])
-              apply simp_all
-             apply (rule step_Tau_comp_op_R)
-                apply assumption
-               apply simp_all
-            done
-          subgoal for op''' p
-            apply (cases "lbuf3 p")
-            subgoal
               apply (cases "lbuf2 p")
               subgoal
                 apply (intro exI conjI[rotated])
@@ -1418,28 +1272,19 @@ lemma loop_op_scomp_commute_gen:
                  apply (rule exI[of _ op2])
                  apply (rule exI[of _ buf2])
                  apply (rule exI[of _ "BTL p lbuf1"])
-                 apply (rule exI[of _ " lbuf2"])
+                 apply (rule exI[of _ "lbuf2"])
                  apply (rule exI[of _ "lbuf3"])
                  apply (intro exI conjI)
                   apply simp_all
-                 apply (rule arg_cong[where f="map_op projl projr"])
-                 apply (rule arg_cong[where f="comp_op Some buf2 op2"])
-                 apply (rule arg_cong[where f="map_op projl projl"])
-                 apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-                  apply simp_all
-                 apply (rule ext)
-                 apply (auto split: sum.splits)[1]
                 apply (rule transitive_closurep_trans'(6))
                  apply (rule step_map_op[of Tau])
                   apply simp_all
-                 apply (rule step_Inp_Inr_loop_op[where buf="case_sum undefined lbuf1" and p=p])
+                 apply (rule step_Inp_Inr_loop_op[where p=p])
                   apply simp_all
-                 apply (rule step_map_op[of "Inp (Inl (Inr p)) _"])
-                  apply simp_all
-                 apply (rule step_comp_op_L_Inp)
-                 apply (rule step_comp_op_R_Inp)
-                  apply (rule step_id_op_Read)
-                 apply simp_all
+                  apply (rule step_map_op[of "Inp (Inl _) _"])
+                   apply simp_all
+                  apply force
+                 apply (simp add: BULK_BENQ_def)
                 apply (rule transitive_closurep_trans'(6))
                  apply (rule step_map_op[of Tau])
                   apply simp_all
@@ -1447,62 +1292,33 @@ lemma loop_op_scomp_commute_gen:
                  apply (rule step_map_op[of Tau])
                   apply simp_all
                  apply (rule step_Tau_comp_op_L)
-                  apply simp_all
-                 apply (rule step_comp_op_R_Out)
-                 apply (rule step_id_op_Write)
-                  apply simp_all
-                 apply blast
+                  apply (rule step_comp_op_R_Out)
+                  apply (rule step_id_op_Write[where p=p])
+                   apply force+
                 apply simp
                 apply (rule transitive_closurep_trans'(6))
                  apply (rule step_map_op[of Tau])
                   apply simp_all
                  apply (rule step_Tau_loop_op)
                  apply (rule step_map_op[of Tau])
-                  apply simp_all
-                 apply (rule step_Tau_comp_op_R)
-                    apply assumption
-                   apply simp_all
-                apply (simp add: fun_upd_idem) 
+                  apply (rule step_Tau_comp_op_R)
+                     apply assumption
+                    apply simp_all
+                 apply (simp_all add: BULK_BENQ_bulk_benq fun_upd_idem)
                 done
-              subgoal 
-                apply (intro exI conjI[rotated])
-                 apply (rule wbc_base)
-                 apply (rule exI[of _ op'''])
-                 apply (rule exI[of _ op2])
-                 apply (rule exI[of _ buf2])
-                 apply (rule exI[of _ "lbuf1"])
-                 apply (rule exI[of _ "BTL p lbuf2"])
-                 apply (rule exI[of _ "lbuf3"])
-                 apply (intro exI conjI)
-                  apply simp_all
-                 apply (rule arg_cong[where f="map_op projl projr"])
-                 apply (rule arg_cong[where f="comp_op Some buf2 op2"])
-                 apply (rule arg_cong[where f="map_op projl projl"])
-                 apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-                  apply simp_all
-                 apply (rule ext)
-                 apply (auto split: sum.splits)[1]
-                apply (rule transitive_closurep_trans'(6))
-                 apply (rule step_map_op[of Tau])
-                  apply simp_all
-                 apply (rule step_Tau_loop_op)
-                 apply (rule step_map_op[of Tau])
-                  apply simp_all
-                 apply (rule step_Tau_comp_op_L)
-                  apply simp_all
-                 apply (rule step_comp_op_R_Out)
-                 apply (rule step_id_op_Write[where p=p])
-                  apply simp_all          
-                apply (rule transitive_closurep_trans'(6))
-                 apply (rule step_map_op[of Tau])
-                  apply simp_all
-                 apply (rule step_Tau_loop_op)
-                 apply (rule step_map_op[of Tau])
-                  apply simp_all
-                 apply (rule step_Tau_comp_op_R)
-                    apply assumption
-                   apply simp_all
-                apply (simp add: fun_upd_idem)
+              subgoal for x lbuf2'
+                subgoal 
+                  apply (intro exI conjI[rotated])
+                   apply (rule wbc_base)
+                   apply (rule exI[of _ op'''])
+                   apply (rule exI[of _ op2])
+                   apply (rule exI[of _ buf2])
+                   apply (rule exI[of _ "lbuf1"])
+                   apply (rule exI[of _ "BTL p lbuf2"])
+                   apply (rule exI[of _ "lbuf3"])
+                   apply (intro exI conjI)
+                    apply simp_all
+                  done
                 done
               done
             subgoal for x lbuf3'
@@ -1516,43 +1332,73 @@ lemma loop_op_scomp_commute_gen:
                apply (rule exI[of _ "BTL p lbuf3"])
                apply (intro exI conjI)
                 apply simp_all
-               apply (rule arg_cong[where f="map_op projl projr"])
-               apply (rule arg_cong[where f="comp_op Some buf2 op2"])
-               apply (rule arg_cong[where f="map_op projl projl"])
-               apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-                apply simp_all
-               apply (rule ext)
-               apply (auto split: sum.splits)[1]
-              apply (rule transitive_closurep_trans'(6))
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_Tau_loop_op)
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_Tau_comp_op_R)
-                  apply assumption
-                 apply simp_all
-              apply (simp add: case_sum_updateR)
               done
             done
+          subgoal for op p
+            apply (intro exI conjI[rotated])
+             apply (rule wbc_base)
+             apply force+
+            apply (rule transitive_closurep_trans'(6))
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_Tau_loop_op)
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_Tau_comp_op_R[where p="Inr p", of _ _ op])
+                apply simp_all
+            apply (metis BHD_BAPPEND_2_cases)
+            done
+
+          subgoal for op p
+            apply (intro exI conjI[rotated])
+             apply (rule wbc_base)
+             apply force+
+            apply (rule transitive_closurep_trans'(6))
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_Tau_loop_op)
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_Tau_comp_op_L)
+              apply (rule step_comp_op_R_Out)
+              apply (rule step_id_op_Write[where p=p])
+               apply force+
+            apply simp
+            apply (rule transitive_closurep_trans'(6))
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_Tau_loop_op)
+             apply (rule step_map_op[of Tau])
+              apply (rule step_Tau_comp_op_R)
+                 apply assumption
+                apply simp_all
+             apply (simp_all add: BULK_BENQ_bulk_benq fun_upd_idem)
+            done
+          subgoal for op p
+            apply (intro exI conjI[rotated])
+             apply (rule wbc_base)
+             apply force+
+            apply (rule transitive_closurep_trans'(6))
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_Tau_loop_op)
+             apply (rule step_map_op[of Tau])
+              apply (rule step_Tau_comp_op_R)
+                 apply assumption
+                apply simp_all
+            apply (simp_all add: BULK_BENQ_bulk_benq fun_upd_idem)
+            done
           subgoal for op''' p x
-            apply (intro conjI[rotated] exI)
+            apply (intro exI conjI[rotated])
              apply (rule wbc_base)
              apply (rule exI[of _ op'''])
              apply (rule exI[of _ op2])
              apply (rule exI[of _ buf2])
-             apply (rule exI[of _ "BENQ p x lbuf1"])
+             apply (rule exI[of _ "BENQ p x  lbuf1"])
              apply (rule exI[of _ "lbuf2"])
              apply (rule exI[of _ "lbuf3"])
              apply (intro exI conjI)
-              apply (simp add: fun_upd_idem) 
-              apply (rule arg_cong[where f="map_op projl projr"])
-              apply (rule arg_cong[where f="comp_op Some buf2 op2"])
-              apply (rule arg_cong[where f="map_op projl projl"])
-              apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-               apply simp_all
-             apply (rule ext)
-             apply (auto split: sum.splits)[1]
+              apply simp_all
             apply (rule transitive_closurep_trans'(6))
              apply (rule step_map_op[of Tau])
               apply simp_all
@@ -1561,7 +1407,7 @@ lemma loop_op_scomp_commute_gen:
               apply simp_all
              apply (rule step_comp_op_R_Out)
              apply assumption
-            apply blast 
+            apply blast
             done
           done
         done
@@ -1720,7 +1566,8 @@ lemma loop_op_scomp_commute_gen:
                 apply (rule arg_cong[where f="comp_op Some buf2 op2"])
                 apply (rule arg_cong[where f="map_op projl projl"])
                 apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-                 apply (auto split: sum.splits if_splits simp add: fun_upd_def)
+                 apply (auto split: sum.splits if_splits simp add: )
+                apply (metis BAPPEND_BENQ_BHD BULK_BENQ_assoc)
                 done
               done
             done
@@ -1772,12 +1619,7 @@ lemma loop_op_scomp_commute_gen:
                 apply simp_all
                apply (rule step_Inp_Inr_loop_op[where p=lr, of _ _ op1'])
                 apply simp_all
-              apply (rule rtranclp_intros_1')
-              apply (rule arg_cong[where f="map_op projl projr"])
-              apply (rule arg_cong[where f="comp_op Some buf2 op2"])
-              apply (rule arg_cong[where f="map_op projl projl"])
-              apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-               apply (auto split: sum.splits if_splits simp add: fun_upd_def)
+               apply (simp add: BULK_BENQ_bulk_benq)+
               done
             done
           subgoal for op2'
@@ -1866,12 +1708,6 @@ lemma loop_op_scomp_commute_gen:
                apply (intro conjI)
                 apply (rule refl)
                apply auto
-              apply (rule rtranclp_intros_1')
-              apply (rule arg_cong[where f="map_op projl projr"])
-              apply (rule arg_cong[where f="comp_op Some buf2 op2"])
-              apply (rule arg_cong[where f="map_op projl projl"])
-              apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-               apply (auto split: sum.splits if_splits simp add: fun_upd_def)
               done
             done
           done
@@ -1908,7 +1744,7 @@ lemma loop_op_scomp_commute_gen:
             apply (rule arg_cong[where f="comp_op Some buf2 op2"])
             apply (rule arg_cong[where f="map_op projl projl"])
             apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-             apply (auto split: sum.splits if_splits simp add: fun_upd_def)
+             apply (auto split: sum.splits if_splits simp add: case_sum_updateR)
             done
           done
         done
@@ -1997,7 +1833,7 @@ lemma loop_op_distribute_scomp_op_gen:
             apply (rule rtranclp_intros_1')
             apply (rule arg_cong[where f="map_op projl projl"])
             apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-             apply (auto split: sum.splits if_splits simp add: fun_upd_def)
+             apply (auto split: sum.splits if_splits)
             done
           done
         subgoal for p op2'
@@ -2039,97 +1875,6 @@ lemma loop_op_distribute_scomp_op_gen:
             done
           subgoal for op1' p
             apply (cases "lbuf3 p")
-            subgoal
-              apply (intro exI conjI[rotated])
-               apply (rule wbc_base)
-               apply (rule exI[of _ op1'])
-               apply (rule exI[of _ op2])
-               apply (rule exI[of _ "buf2"])
-               apply (rule exI[of _ "lbuf1"])
-               apply (rule exI[of _ "BTL p lbuf2"])
-               apply (rule exI[of _ "lbuf3"])
-               apply (intro exI conjI)
-                apply (rule arg_cong[where f="map_op projl projr"])
-                apply (rule arg_cong2[where f="comp_op Some buf2"])
-                 apply simp_all
-               apply (rule arg_cong[where f="map_op projl projl"])
-               apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-                apply (auto split: sum.splits if_splits simp add: fun_upd_def)[2]
-              apply (rule transitive_closurep_trans'(6))
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_Out_Inr_loop_op)
-               apply (rule step_map_op[of "Out (Inr (Inr p)) _"])
-                apply simp_all
-               apply (rule step_comp_op_R_Out)
-               apply (rule step_comp_op_R_Out)
-               apply (rule step_id_op_Write)
-                apply simp_all
-              apply (rule transitive_closurep_trans'(6))
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_Inp_Inr_loop_op[where p=p])
-                apply (rule step_map_op[of "Inp (Inl (Inr p)) (BHD p lbuf2)"])
-                 apply simp_all
-               apply (rule step_comp_op_L_Inp)
-               apply simp
-              apply (metis (no_types, lifting) Nitpick.rtranclp_unfold case_sum_updateR fun_upd_triv)
-              done
-            subgoal for x lbuf3'
-              apply (intro exI conjI[rotated])
-               apply (rule wbc_base)
-               apply (rule exI[of _ op1'])
-               apply (rule exI[of _ op2])
-               apply (rule exI[of _ "buf2"])
-               apply (rule exI[of _ "lbuf1"])
-               apply (rule exI[of _ "lbuf2"])
-               apply (rule exI[of _ "BTL p lbuf3"])
-               apply (intro exI conjI)
-                apply (rule arg_cong[where f="map_op projl projr"])
-                apply (rule arg_cong2[where f="comp_op Some buf2"])
-                 apply simp_all
-               apply (rule arg_cong[where f="map_op projl projl"])
-               apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-                apply (auto split: sum.splits if_splits simp add: fun_upd_def)[2]
-              apply (rule transitive_closurep_trans'(6))
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_Inp_Inr_loop_op[where p=p])
-                apply (rule step_map_op[of "Inp (Inl (Inr p)) (BHD p lbuf3)"])
-                 apply simp_all
-               apply (rule step_comp_op_L_Inp)
-               apply simp
-              apply (metis (no_types, lifting) Nitpick.rtranclp_unfold case_sum_updateR)
-              done
-            done
-          subgoal for op1' p
-            apply (intro exI conjI[rotated])
-             apply (rule wbc_base)
-             apply (rule exI[of _ op1'])
-             apply (rule exI[of _ op2])
-             apply (rule exI[of _ "buf2"])
-             apply (rule exI[of _ "lbuf1"])
-             apply (rule exI[of _ "lbuf2"])
-             apply (rule exI[of _ "BTL p lbuf3"])
-             apply (intro exI conjI)
-              apply (rule arg_cong[where f="map_op projl projr"])
-              apply (rule arg_cong2[where f="comp_op Some buf2"])
-               apply simp_all
-             apply (rule arg_cong[where f="map_op projl projl"])
-             apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-              apply (auto split: sum.splits if_splits simp add: fun_upd_def)[2]
-            apply (rule transitive_closurep_trans'(6))
-             apply (rule step_map_op[of Tau])
-              apply simp_all
-             apply (rule step_Inp_Inr_loop_op[where p=p])
-              apply (rule step_map_op[of "Inp (Inl (Inr p)) (BHD p lbuf3)"])
-               apply simp_all
-             apply (rule step_comp_op_L_Inp)
-             apply simp
-            apply (metis (no_types, lifting) Nitpick.rtranclp_unfold case_sum_updateR)
-            done
-          subgoal for op1' p
-            apply (cases "lbuf3 p")
             subgoal 
               apply (cases "lbuf2 p")
               subgoal
@@ -2145,9 +1890,6 @@ lemma loop_op_distribute_scomp_op_gen:
                   apply (rule arg_cong[where f="map_op projl projr"])
                   apply (rule arg_cong2[where f="comp_op Some buf2"])
                    apply simp_all
-                 apply (rule arg_cong[where f="map_op projl projl"])
-                 apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-                  apply (auto split: sum.splits if_splits simp add: fun_upd_def)[2]
                 apply (rule transitive_closurep_trans'(6))
                  apply (rule step_map_op[of Tau])
                   apply simp_all
@@ -2156,8 +1898,9 @@ lemma loop_op_distribute_scomp_op_gen:
                   apply simp_all
                  apply (rule step_Tau_comp_op_R)
                     apply (rule step_comp_op_R_Inp)
-                     apply (rule step_id_op_Read)
+                     apply (rule step_id_op_Read[where p=p])
                     apply simp_all
+                 apply (simp add: BULK_BENQ_bulk_benq)
                 apply (rule transitive_closurep_trans'(6))
                  apply (rule step_map_op[of Tau])
                   apply simp_all
@@ -2174,8 +1917,8 @@ lemma loop_op_distribute_scomp_op_gen:
                  apply (rule step_Inp_Inr_loop_op[where p=p])
                   apply (rule step_map_op[of "Inp (Inl (Inr p)) (BHD p lbuf1)"])
                    apply simp_all
-                 apply (rule step_comp_op_L_Inp)
-                 apply simp
+                 apply (rule step_comp_op_L_Inp[of _ _ _ op1'])
+                 apply (metis BHD_BAPPEND_2_cases)
                 apply (metis (no_types, lifting) Nitpick.rtranclp_unfold case_sum_updateR fun_upd_triv)
                 done
               subgoal for x lbuf2'
@@ -2191,56 +1934,64 @@ lemma loop_op_distribute_scomp_op_gen:
                   apply (rule arg_cong[where f="map_op projl projr"])
                   apply (rule arg_cong2[where f="comp_op Some buf2"])
                    apply simp_all
-                 apply (rule arg_cong[where f="map_op projl projl"])
-                 apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-                  apply (auto split: sum.splits if_splits simp add: fun_upd_def)[2]
-                apply (rule transitive_closurep_trans'(6))
-                 apply (rule step_map_op[of Tau])
-                  apply simp_all
-                 apply (rule step_Out_Inr_loop_op)
-                 apply (rule step_map_op[of "Out (Inr (Inr p)) _"])
-                  apply simp_all
-                 apply (rule step_comp_op_R_Out)
-                 apply (rule step_comp_op_R_Out)
-                 apply (rule step_id_op_Write)
-                  apply simp_all
-                apply (rule transitive_closurep_trans'(6))
-                 apply (rule step_map_op[of Tau])
-                  apply simp_all
-                 apply (rule step_Inp_Inr_loop_op[where p=p])
-                  apply (rule step_map_op[of "Inp (Inl (Inr p)) (BHD p lbuf2)"])
-                   apply simp_all
-                 apply (rule step_comp_op_L_Inp)
-                 apply simp
-                apply (metis (no_types, lifting) Nitpick.rtranclp_unfold case_sum_updateR fun_upd_triv)
                 done
               done
             subgoal for x lbuf3'
-              apply (intro exI conjI[rotated])
-               apply (rule wbc_base)
-               apply (rule exI[of _ op1'])
-               apply (rule exI[of _ op2])
-               apply (rule exI[of _ "buf2"])
-               apply (rule exI[of _ "lbuf1"])
-               apply (rule exI[of _ "lbuf2"])
-               apply (rule exI[of _ "BTL p lbuf3"])
-               apply (intro exI conjI)
-                apply (rule arg_cong[where f="map_op projl projr"])
-                apply (rule arg_cong2[where f="comp_op Some buf2"])
-                 apply simp_all
-               apply (rule arg_cong[where f="map_op projl projl"])
-               apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-                apply (auto split: sum.splits if_splits simp add: fun_upd_def)[2]
-              apply (rule transitive_closurep_trans'(6))
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_Inp_Inr_loop_op[where p=p])
-                apply (rule step_map_op[of "Inp (Inl (Inr p)) (BHD p lbuf3)"])
-                 apply simp_all
-               apply (rule step_comp_op_L_Inp)
-               apply simp
-              apply (metis (no_types, lifting) Nitpick.rtranclp_unfold case_sum_updateR)
+              apply auto
               done
+            done
+          subgoal for op p
+            apply (intro exI conjI[rotated])
+             apply (rule wbc_base)
+             apply fast
+            apply (rule transitive_closurep_trans'(6))
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_Inp_Inr_loop_op)
+              apply (rule step_map_op[of "Inp (Inl (Inr p)) _"])
+               apply simp_all
+             apply (rule step_comp_op_L_Inp[of _ _ _ op])
+             apply (metis BHD_BAPPEND_2_cases)
+            apply auto
+            done
+          subgoal for op p
+            apply (intro exI conjI[rotated])
+             apply (rule wbc_base)
+             apply fast
+            apply (rule transitive_closurep_trans'(6))
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_Out_Inr_loop_op)
+             apply (rule step_map_op[of "Out (Inr _) _"])
+              apply simp_all
+             apply (rule step_comp_op_R_Out)
+             apply (rule step_comp_op_R_Out)
+             apply (rule step_id_op_Write)
+              apply simp_all
+            apply (rule transitive_closurep_trans'(6))
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_Inp_Inr_loop_op)
+              apply (rule step_map_op[of "Inp (Inl (Inr p)) _"])
+               apply simp_all
+              apply (rule step_comp_op_L_Inp[of _ _ _ op])
+              apply (metis BHD_BAPPEND_2_cases)
+             apply auto
+            apply (metis fun_upd_triv rtranclp_intros_1')
+            done
+          subgoal for op p
+            apply (intro exI conjI[rotated])
+             apply (rule wbc_base)
+             apply fast
+            apply (rule transitive_closurep_trans'(6))
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_Inp_Inr_loop_op)
+              apply (rule step_map_op[of "Inp (Inl (Inr p)) _"])
+               apply simp_all
+             apply (rule step_comp_op_L_Inp[of _ _ _ op])
+             apply (metis BHD_BAPPEND_2_cases)
+            apply auto
             done
           subgoal for op1' p x
             apply (intro exI conjI[rotated])
@@ -2255,9 +2006,6 @@ lemma loop_op_distribute_scomp_op_gen:
               apply (rule arg_cong[where f="map_op projl projr"])
               apply (rule arg_cong2[where f="comp_op Some buf2"])
                apply simp_all
-             apply (rule arg_cong[where f="map_op projl projl"])
-             apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-              apply (auto split: sum.splits if_splits simp add: fun_upd_def)[2]
             apply (rule transitive_closurep_trans'(6))
              apply (rule step_map_op[of Tau])
               apply simp_all
@@ -2365,12 +2113,6 @@ lemma loop_op_distribute_scomp_op_gen:
                apply (rule step_Out_Inr_loop_op)
                apply assumption
               apply simp
-              apply (rule rtranclp_intros_1')
-              apply (rule arg_cong[where f="map_op projl projr"])
-              apply (rule arg_cong2[where f="comp_op Some buf2"])
-               apply (rule arg_cong[where f="map_op projl projl"])
-               apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-                apply (auto split: sum.splits if_splits simp add: fun_upd_def)
               done
             done
           subgoal for p op2'
@@ -2417,12 +2159,6 @@ lemma loop_op_distribute_scomp_op_gen:
                  apply (rule arg_cong[where f="map_op projl projl"])
                  apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
                   apply auto
-                apply (rule arg_cong[where f="map_op projl projr"])
-                apply (rule arg_cong2[where f="comp_op Some buf2"])
-                 apply auto
-                apply (rule arg_cong[where f="map_op projl projl"])
-                apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-                 apply (auto split: sum.splits)
                 done
               done
             done
@@ -2479,12 +2215,8 @@ lemma loop_op_distribute_scomp_op_gen:
               apply simp_all
              apply (rule step_Inp_Inr_loop_op[where p=p])
               apply simp_all
-            apply (rule rtranclp_intros_1')
-            apply (rule arg_cong[where f="map_op projl projr"])
-            apply (rule arg_cong2[where f="comp_op Some buf2"])
-             apply (rule arg_cong[where f="map_op projl projl"])
-             apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-              apply (auto split: sum.splits if_splits simp add: fun_upd_def)
+              apply (auto split: sum.splits if_splits simp add: case_sum_updateR)
+             apply (simp add: BULK_BENQ_def)+
             done
           done
         done
@@ -2516,7 +2248,7 @@ lemma loop_op_distribute_scomp_op_gen:
           apply (rule arg_cong2[where f="comp_op Some buf2"])
            apply (rule arg_cong[where f="map_op projl projl"])
            apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
-            apply (auto split: sum.splits if_splits simp add: fun_upd_def)
+            apply (auto split: sum.splits if_splits simp add: BULK_BENQ_def)
           done
         done
       done
@@ -2755,14 +2487,14 @@ lemma loop_op_pcomp_commue:
   unfolding feedback_op_def scomp_op_def pcomp_op_def
   using loop_op_pcomp_commue_gen[of op1 "\<lambda>_. []" op2] by auto
 
-
 section \<open>Axiom: R4: Loop commutes inner sequential composition\<close>
 lemma loop_op_commutes_inner_scomp_op_gen:
-  "map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1 (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2)))) \<approx>
+  "map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 (buf2 >> buf2')) op1 (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2)))) \<approx>
    map_op projl projl
-     (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined (\<lambda>_. [])) (map_op projl projr (comp_op Some (case_sum (\<lambda>_. []) buf1) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> op2) (map_op projl projr (comp_op Some (\<lambda>_. []) op1 (id_op (case_sum (buf3 >> buf3') buf2)))))))"
- apply (coinduction arbitrary: op1 op2 buf1 buf2 buf3 buf3' rule: wbisim_coinduct_upto)
-  subgoal for op1 op2 buf1 buf2 buf3 buf3'
+  (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf2')
+   (map_op projl projr (comp_op Some (case_sum (\<lambda>_. []) buf1) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> op2) (map_op projl projr (comp_op Some (\<lambda>_. []) op1 (id_op (case_sum (buf3 >> buf3') buf2)))))))"
+  apply (coinduction arbitrary: op1 op2 buf1 buf2 buf2' buf3 buf3' rule: wbisim_coinduct_upto)
+  subgoal for op1 op2 buf1 buf2 buf2' buf3 buf3'
     unfolding wsim_def
     apply auto
     subgoal for io op'
@@ -2779,56 +2511,34 @@ lemma loop_op_commutes_inner_scomp_op_gen:
           subgoal for op1'
             apply (rule exI)
             apply (rule conjI[rotated])
-            apply (rule wbc_base)
-            apply force
+             apply (rule wbc_base)
+             apply force
             apply (rule step_io_step_tau_tau_wstep)
-            apply (rule step_map_op[of "Inp (Inl p) _"])
-            apply simp_all
-            apply (rule step_Inp_Inl_loop_op)
-            apply (rule step_map_op[of "Inp (Inl (Inl p)) _"])
-            apply simp_all
-            apply (rule step_comp_op_L_Inp)
-            apply (rule step_comp_op_L_Inp)
-            apply (rule step_id_op_Read)
+              apply (rule step_map_op[of "Inp (Inl p) _"])
+               apply simp_all
+              apply (rule step_Inp_Inl_loop_op)
+              apply (rule step_map_op[of "Inp (Inl (Inl p)) _"])
+               apply simp_all
+              apply (rule step_comp_op_L_Inp)
+              apply (rule step_comp_op_L_Inp)
+              apply (rule step_id_op_Read)
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_Tau_loop_op)
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_Tau_comp_op_L)
+              apply (rule step_comp_op_L_Out)
+               apply (rule step_id_op_Write)
+                apply simp_all
             apply (rule step_map_op[of Tau])
-            apply simp_all
-            apply (rule step_Tau_loop_op)
-            apply (rule step_map_op[of Tau])
-            apply simp_all
-            apply (rule step_Tau_comp_op_L)
-            apply (rule step_comp_op_L_Out)
-            apply (rule step_id_op_Write)
-            apply simp_all
-            apply (rule step_map_op[of Tau])
-            apply (rule step_Tau_loop_op)
-            apply (rule step_map_op[of Tau])
+             apply (rule step_Tau_loop_op)
+             apply (rule step_map_op[of Tau])
               apply (simp_all add: case_sum_updateL)
             apply (rule step_Tau_comp_op_R[where buf="(case_sum (\<lambda>_. []) buf1)(Inl p := [x])" and p="Inl p" and x=x and wire=Some , unfolded case_sum_updateL, simplified])
             apply (rule step_map_op[of "Inp (Inl _) _"])
              apply simp_all
             apply force
-            done
-          done
-            
-
-end
-            apply (rule step_Tau_comp_op_R)
-
-
-            apply (drule step_comp_op_L_Inp[where wire="\<lambda> _.None", of  "comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op ((\<lambda>_. [])(p := []))) op2" _ _ _ _ "id_op (case_sum (buf3 >> buf3') buf2)"])
-
-
-            apply (drule step_Tau_comp_op_R[where buf="(case_sum (\<lambda>_. []) buf1)(Inl p := [x])" and wire=Some, of _ _ _ _ "comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> op2"])
-            apply simp_all
-
-            apply (drule step_map_op[where f=projl and g=projr])
-
-            find_theorems step comp_op Inp 
-            thm fun_upd_triv
-            using
- step_Tau_comp_op_R[where buf="(case_sum (\<lambda>_. []) buf1)(Inl p := [x])" and p="Inl p" and x=x and wire=Some, unfolded fun_upd_triv  case_sum_updateL fun_upd_idem_iff, simplified]
-            
-
             done
           done
         subgoal for p op'' x
@@ -2839,9 +2549,34 @@ end
           apply (drule step_comp_op_cases)
           apply (auto; hypsubst_thin?)
           apply (drule step_id_op_Out)
-          apply (auto; hypsubst_thin?)
+           apply (auto; hypsubst_thin?)
           subgoal for op1'
             apply auto
+            apply hypsubst_thin
+            apply (rule exI)
+            apply (rule conjI[rotated])
+             apply (rule wbc_base)
+             apply (rule exI[of _ op1])
+             apply (rule exI[of _ op2])
+             apply (rule exI[of _ buf1])
+             apply (rule exI[of _ buf2])
+             apply (rule exI[of _ buf2'])
+             apply (rule exI[of _ "buf3"])
+             apply (rule exI[of _ "BTL p buf3'"])   
+             apply (intro exI conjI)
+              apply simp
+             apply (rule refl)
+            apply (rule step_wstep)
+            apply (rule step_map_op[of "Out (Inl p) _", rotated])
+             apply simp
+            apply (rule step_Out_Inl_loop_op)
+            apply (rule step_map_op[of "Out (Inr (Inl p)) _", rotated])
+             apply simp
+            apply (rule step_comp_op_R_Out)
+            apply (rule step_map_op[of "Out (Inr (Inl p)) _", rotated])
+             apply simp
+            apply (rule step_comp_op_R_Out)
+            apply (smt (verit, del_insts) BAPPEND_BTL BULK_BENQ_def append_is_Nil_conv case_sum_BTL_L hd_append2 old.sum.simps(5) step_id_op_Write)      
             done
           done
         subgoal for op''
@@ -2855,13 +2590,61 @@ end
               apply auto
               apply hypsubst_thin
               apply (intro exI conjI[rotated])
-              apply (rule wbc_base)
-              apply (rule exI[of _ "op1"])
-              apply (rule exI[])
-              apply (rule exI[])
-              apply (rule exI[])
-              apply (intro conjI)
-              oops *)
+               apply (rule wbc_base)
+               apply (rule exI[of _ "op1'"])
+               apply (rule exI[of _ op2])
+               apply (rule exI[of _ buf1])
+               apply (rule exI[of _ buf2])
+               apply (rule exI[of _ buf2'])
+               apply (rule exI[of _ "BENQ lp x buf3"])
+               apply (rule exI[of _ buf3'])
+               apply (intro conjI)
+                apply force+
+              apply (rule transitive_closurep_trans'(6))
+               apply (rule step_map_op[of Tau])
+                apply simp_all
+               apply (rule step_Tau_loop_op)
+               apply (rule step_map_op[of Tau])
+                apply simp_all
+               apply (rule step_comp_op_R_Tau)
+               apply (rule step_map_op[of Tau])
+                apply simp_all
+               apply (rule step_Tau_comp_op_L)
+                apply simp_all
+              apply (rule transitive_closurep_trans'(6))
+               apply (rule step_map_op[of Tau])
+                apply simp_all
+               apply (rule step_Tau_loop_op)
+               apply (rule step_map_op[of Tau])
+                apply simp_all
+               apply (rule step_comp_op_R_Tau)
+               apply (rule step_map_op[of Tau])
+                apply simp_all
+               apply (rule step_Tau_comp_op_R)
+                  apply simp_all
+               apply (rule step_id_op_Read)
+              apply (smt (verit) BAPPEND_BENQ case_sum_BENQ_L fun_upd_idem_iff fun_upd_upd rtranclp.simps)
+              done
+            subgoal for lr
+              apply hypsubst_thin
+              apply (intro exI conjI[rotated])
+               apply (rule wbc_base)
+               apply (rule exI[of _ "op1'"])
+               apply (rule exI[of _ op2])
+               apply (rule exI[of _ buf1])
+               apply (rule exI[of _ "BENQ lr x buf2"])
+               apply (rule exI[of _ buf2'])
+               apply (rule exI[of _ "buf3"])
+               apply (rule exI[of _ buf3'])
+               apply (intro conjI)
+                apply simp_all
+
+              find_theorems id_op Inp
+
+              oops
+
+
+end
 
 lemma loop_op_commutes_inner_scomp_op:
   "(op1 \<bullet> (\<I> \<parallel> op2))\<up> \<approx> ((\<I> \<parallel> op2) \<bullet> op1\<turnstile>)\<up>"
@@ -2874,7 +2657,7 @@ lemma loop_op_no_loop:
   "loop_op (\<lambda> _. None) buf op = op"
   oops
 
-section \<open>Axiom: R6: Loop absorb\<close>
+  section \<open>Axiom: R6: Loop absorb\<close>
 lemma loop_op_absorb_gen:
   "map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf2) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1) op))) ~
    map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined (case_sum buf2 buf1)) (map_op reassoc reassoc op))"
@@ -2886,20 +2669,20 @@ lemma loop_op_absorb_gen:
       apply (drule step_double_loop_1)
       apply auto
       apply (intro exI conjI)
-       apply auto
+      apply auto
       apply (rule bc_base)
       apply (intro exI conjI)
-       apply auto
+      apply auto
       done
     subgoal for io op'
       apply (drule step_double_loop_2)
       apply auto
       apply (intro exI conjI)
-       apply auto
+      apply auto
       apply (rule bc_sym)
       apply (rule bc_base)
       apply (intro exI conjI)
-       apply auto
+      apply auto
       done
     done
   done
@@ -2914,7 +2697,7 @@ section \<open>Axiom F1: Identity looped is end_op\<close>
 lemma id_op_loop_spin: \<open>\<I>\<up> = \<oslash>\<close>
   oops
 
-section \<open>Axiom F2: Transpose looped is identity\<close>
+  section \<open>Axiom F2: Transpose looped is identity\<close>
 
 lemma transp_op_loop_id: \<open>\<X>\<up> \<approx> \<I>\<close>
   oops
