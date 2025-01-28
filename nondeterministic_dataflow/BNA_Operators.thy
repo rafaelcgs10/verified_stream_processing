@@ -918,7 +918,6 @@ lemma bisim_comp_op_cong:
                  apply (rule refl)
                 defer
               using bisim_sym apply blast+
-              apply (simp add: fun_upd_def)
               done
             subgoal
               apply (erule thin_rl)
@@ -2402,7 +2401,7 @@ lemma choices_id_op[simp]:
   "choices (id_op buf) = cUn (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda>x. id_op (buf(p := bulk_benq [x] (buf p))))) cUNIV)))
        (cUnion (cimage choices (cimage (\<lambda>p. Write (id_op (buf(p := btl (buf p)))) p (BHD p buf)) (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV))))"
   apply (subst id_op_code)
-  apply simp
+  apply (simp add: BTL_def BENQ_def)
   done
 
 section \<open>User defined operators\<close>

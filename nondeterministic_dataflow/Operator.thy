@@ -24,8 +24,8 @@ abbreviation "benq x xs \<equiv> xs @ [x]"
 
 abbreviation BHD :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> 'd" where "BHD p buf \<equiv> bhd (buf p)"
 abbreviation (input) BUPD where "BUPD f p buf \<equiv> buf(p := f (buf p))"
-abbreviation BTL :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BTL \<equiv> BUPD btl"
-abbreviation BENQ :: "'a \<Rightarrow> 'd \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BENQ p x buf \<equiv> BUPD (benq x) p buf"
+definition BTL :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BTL = BUPD btl"
+definition BENQ :: "'a \<Rightarrow> 'd \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BENQ p x buf = BUPD (benq x) p buf"
 abbreviation BENQ_TL :: "'a \<Rightarrow> 'd \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BENQ_TL p x buf \<equiv> BUPD (btl o benq x) p buf"
 
 abbreviation "bulk_benq xs ys \<equiv> ys @ xs"
@@ -50,14 +50,14 @@ lemma BHD_BAPPEND_2_cases:
 
 lemma BAPPEND_BENQ[simp]:
   "BENQ p x (buf1 >> buf2) = (BENQ p x buf1) >> buf2"
-  unfolding BULK_BENQ_def by force
+  unfolding BULK_BENQ_def BENQ_def by force
 lemma BAPPEND_BTL[simp]:
   "BTL p (buf1 >> buf2) = (if buf2 p = [] then BTL p buf1 >> buf2 else buf1 >> (BTL p buf2))"
-  unfolding BULK_BENQ_def by force
+  unfolding BULK_BENQ_def BTL_def by force
 
 lemma BAPPEND_BENQ_BHD[simp]:
   "buf1 p \<noteq> [] \<Longrightarrow> (BTL p buf1) >> (BENQ p (BHD p buf1) buf2) = buf1 >> buf2"
-  unfolding BULK_BENQ_def by force
+  unfolding BULK_BENQ_def BTL_def BENQ_def by force
 
 lemma BULK_BENQ_left_neutral[simp]:
   "(\<lambda> _. []) >> buf = buf"
@@ -65,6 +65,19 @@ lemma BULK_BENQ_left_neutral[simp]:
 lemma BULK_BENQ_right_neutral[simp]:
   "buf >> (\<lambda> _. []) = buf"
   unfolding BULK_BENQ_def by force
+
+lemma BHD_BENQ_empty[simp]:
+  "buf p = [] \<Longrightarrow> (BHD p (BENQ p x buf)) = x"
+  unfolding BENQ_def by force
+lemma BTL_BENQ_empty[simp]:
+  "buf p = [] \<Longrightarrow> BTL p (BENQ p x buf) = buf"
+  unfolding BENQ_def BTL_def by force
+lemma BENQ_access[simp]:
+  "(BENQ p x buf) p = (buf p @ [x])"
+  unfolding BENQ_def by force
+lemma BTL_access[simp]:
+  "(BTL p buf) p = tl (buf p)"
+  unfolding BTL_def by force
 
 lemma case_sum_updateL[simp]:
   \<open>(case_sum x y)(Inl a := b) = case_sum (x(a := b)) y\<close>
@@ -83,18 +96,33 @@ lemma case_sum_same_right[simp]:
   "case_sum A C = case_sum B C \<longleftrightarrow> A = B"
   using case_sum_inject by blast
 
-lemma case_sum_BENQ_R[]:
-  "case_sum A (BENQ p x buf) = BENQ (Inr p) x (case_sum A buf)"
-  by (auto split: sum.splits)
-lemma case_sum_BTL_R[]:
-  "case_sum A (BTL p buf) = BTL (Inr p) (case_sum A buf)"
-  by (auto split: sum.splits)
-lemma case_sum_BENQ_L[]:
-  "case_sum (BENQ p x buf) A = BENQ (Inl p) x (case_sum buf A)"
-  by (auto split: sum.splits)
-lemma case_sum_BTL_L[]:
-  "case_sum (BTL p buf) A = BTL (Inl p) (case_sum buf A)"
-  by (auto split: sum.splits)
+lemma case_sum_BENQ_R[simp]:
+  "BENQ (Inr p) x (case_sum A buf) = case_sum A (BENQ p x buf)"
+  unfolding BENQ_def by (auto split: sum.splits)
+lemma case_sum_BTL_R[simp]:
+  "BTL (Inr p) (case_sum A buf) = case_sum A (BTL p buf)"
+  unfolding BTL_def by (auto split: sum.splits)
+lemma case_sum_BENQ_L[simp]:
+  "BENQ (Inl p) x (case_sum buf A) = case_sum (BENQ p x buf) A"
+ unfolding BENQ_def by (auto split: sum.splits)
+lemma case_sum_BTL_L[simp]:
+  "BTL (Inl p) (case_sum buf A) = case_sum (BTL p buf) A"
+  unfolding BTL_def by (auto split: sum.splits)
+lemma BHD_BULK_BENQ_right_empty[simp]:
+  "buf1 p = [] \<Longrightarrow> BHD p (buf1 >> buf2) = BHD p buf2"
+  by (simp add: BENQ_def BULK_BENQ_def)
+lemma BHD_BULK_BENQ_left_empty[simp]:
+  "buf2 p = [] \<Longrightarrow> BHD p (buf1 >> buf2) = BHD p buf1"
+  by (simp add: BENQ_def BULK_BENQ_def)
+lemma BULK_BENQ_right_empty[simp]:
+  "buf2 p = [] \<Longrightarrow> (buf1 >> buf2) p = buf1 p "
+  by (simp add: BENQ_def BULK_BENQ_def)
+lemma BULK_BENQ_left_empty[simp]:
+  "buf1 p = [] \<Longrightarrow> (buf1 >> buf2) p = buf2 p "
+  by (simp add: BENQ_def BULK_BENQ_def)
+lemma BHD_BULK_BENQ_right_not_empty[simp]:
+  "buf2 p \<noteq> [] \<Longrightarrow> BHD p (buf1 >> buf2) = BHD p buf2"
+  by (simp add: BENQ_def BULK_BENQ_def)
 
 section\<open>Operator\<close>
 
