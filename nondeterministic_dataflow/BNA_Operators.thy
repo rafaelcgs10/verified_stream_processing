@@ -119,7 +119,7 @@ lemma comp_op_not_Write[simp]:
 
 subsection \<open>Properties of the (general) composition\<close>
 
-lemma step_comp_op_L:
+lemma step_comp_op_L[intro]:
   "step io op1 op1' \<Longrightarrow>
    (case io of Inp p x \<Rightarrow> True | Out p x \<Rightarrow> p \<notin> dom wire | Tau \<Rightarrow> True) \<Longrightarrow>
    step (map_IO Inl Inl id io) (comp_op wire buf op1 op2) (comp_op wire buf op1' op2)"
@@ -167,7 +167,7 @@ lemma step_comp_op_L:
     done
   done
 
-lemma step_Tau_comp_op_L:
+lemma step_Tau_comp_op_L[intro]:
   "step (Out p x) op1 op1' \<Longrightarrow>
    wire p = Some q \<Longrightarrow>
    step Tau (comp_op wire buf op1 op2) (comp_op wire (BENQ q x buf) op1' op2)"
@@ -184,7 +184,7 @@ lemma step_Tau_comp_op_L:
   apply auto
   done
 
-lemma step_comp_op_R:
+lemma step_comp_op_R[intro]:
   "step io op2 op2' \<Longrightarrow>
    (case io of Out p x \<Rightarrow> True | Inp p x \<Rightarrow> p \<notin> ran wire | Tau \<Rightarrow> True) \<Longrightarrow>
    step (map_IO Inr Inr id io) (comp_op wire buf op1 op2)(comp_op wire buf op1 op2')"
@@ -268,7 +268,7 @@ lemma step_comp_op_R:
     done
   done
 
-lemma step_Tau_comp_op_R:
+lemma step_Tau_comp_op_R[intro]:
   "step (Inp p x) op2 op2' \<Longrightarrow>
    p \<in> ran wire \<Longrightarrow>
    buf p \<noteq> [] \<Longrightarrow>
@@ -310,6 +310,132 @@ lemma step_comp_op_L_Out[intro]:
 lemma step_comp_op_L_Tau[intro]:
   "step Tau op1 op1' \<Longrightarrow> step Tau (comp_op wire buf op1 op2) (comp_op wire buf op1' op2)"
   using step_comp_op_L by force
+
+
+lemma step_comp_op_cases:
+  "step io (comp_op wire buf op1 op2) op \<Longrightarrow>
+   (\<exists> p x op1'. io = Inp (Inl p) x \<and> op = comp_op wire buf op1' op2 \<and> step (Inp p x) op1 op1') \<or>
+   (\<exists> p x op2'. io = Out (Inr p) x \<and> op = comp_op wire buf op1 op2' \<and> step (Out p x) op2 op2') \<or>
+   (\<exists> p x op1'. io = Out (Inl p) x \<and> op = comp_op wire buf op1' op2 \<and> wire p = None \<and> step (Out p x) op1 op1') \<or>
+   (\<exists> p x op2'. io = Inp (Inr p) x \<and> op = comp_op wire buf op1 op2' \<and> p \<notin> ran wire \<and> step (Inp p x) op2 op2') \<or> 
+   (\<exists> p x op1' q. io = Tau \<and> op = comp_op wire (BENQ q x buf) op1' op2 \<and> wire p = Some q \<and> step (Out p x) op1 op1') \<or> 
+   (\<exists> p x op2'. io = Tau \<and> op = comp_op wire (BTL p buf) op1 op2' \<and> p \<in> ran wire \<and> step (Inp p x) op2 op2' \<and> buf p \<noteq> [] \<and> BHD p buf = x) \<or>
+   (\<exists> p x op1'. io = Tau \<and> op = comp_op wire buf op1' op2 \<and> step Tau op1 op1') \<or>
+   (\<exists> p x op2'. io = Tau \<and> op = comp_op wire buf op1 op2' \<and> step Tau op2 op2')"
+  apply (erule step_choicesE)
+  subgoal for p f x
+    apply simp
+    apply (cases p)
+    subgoal for lp
+      apply simp
+      apply hypsubst_thin
+      apply (subst (asm) comp_op_code)
+      apply (auto split: if_splits)
+      subgoal for op'
+        apply (cases op')
+           apply auto
+        subgoal for f'
+          apply hypsubst_thin
+          apply (intro exI conjI)
+           apply (rule refl)
+          apply (simp add: Read_in_choices_step)
+          done
+        subgoal
+          by (auto split: option.splits)
+        done
+      subgoal for op'
+        apply (cases op')
+           apply auto
+        subgoal for f' p'
+          by (auto split: if_splits)
+        done
+      done
+    subgoal for rp
+      apply simp
+      apply hypsubst_thin
+      apply (subst (asm) comp_op_code)
+      apply (auto split: if_splits option.splits)
+      subgoal for op'
+        apply (cases op')
+           apply (auto split: if_splits option.splits)
+        done
+      subgoal for op'
+        apply (cases op')
+           apply (auto split: if_splits option.splits)
+        apply hypsubst_thin
+        apply (intro exI conjI)
+         apply (rule refl)
+        apply (simp add: Read_in_choices_step)
+        done
+      done
+    done
+  subgoal for p x
+    apply simp
+    apply (cases p)
+    subgoal for lp
+      apply simp
+      apply hypsubst_thin
+      apply (subst (asm) comp_op_code)
+      apply (auto split: if_splits option.splits)
+      subgoal for op'
+        apply (cases op')
+           apply (auto split: if_splits option.splits)
+        subgoal for f'
+          apply hypsubst_thin
+          apply (intro exI conjI)
+           apply (rule refl)
+          apply (simp add: Write_in_choices_step)
+          done
+        done
+      subgoal for op'
+        apply (cases op')
+           apply auto
+        subgoal for f' p'
+          by (auto split: if_splits)
+        done
+      done
+    subgoal for rp
+      apply simp
+      apply hypsubst_thin
+      apply (subst (asm) comp_op_code)
+      apply (auto split: if_splits option.splits)
+      subgoal for op'
+        apply (cases op')
+           apply (auto split: if_splits option.splits)
+        done
+      subgoal for op'
+        apply (cases op')
+           apply (auto split: if_splits option.splits)
+        apply hypsubst_thin
+        apply (intro exI conjI)
+         apply (rule refl)
+        apply (simp add: Write_in_choices_step)
+        done
+      done
+    done
+  subgoal
+    apply simp
+    apply hypsubst_thin
+    apply (subst (asm) comp_op_code)
+    apply (auto del: disjCI split: if_splits option.splits)
+    subgoal for op'
+      apply (cases op')
+         apply (auto  del: disjCI split: if_splits option.splits)
+      subgoal for op'' p x' q
+        by (metis Write_in_choices_step cin.rep_eq)
+      subgoal
+        using Silent_in_choices_step by auto
+      done
+    subgoal for op'
+      apply (cases op')
+         apply (auto  del: disjCI split: if_splits option.splits)
+      subgoal
+        by (metis Read_in_choices_step cin.rep_eq)
+      subgoal
+        using Silent_in_choices_step by fastforce
+      done
+    done
+  done
 
 subsection \<open>Parallel composition operator\<close>
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
@@ -1388,6 +1514,738 @@ lemma loop_op_Choice[simp]:
 definition feedback_op ( "_ \<up>" [66] 65) where
   "feedback_op op = map_op projl projl (loop_op (case_sum (\<lambda> _. None) (Some o Inr)) (case_sum undefined (\<lambda> _. [])) op)"
 
+
+lemma step_loop_op:
+  "step io (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) op' \<Longrightarrow>
+   (\<exists>p x. io = Inp (Inl p) x \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op'' \<and> step io op op'')) \<or>
+   (\<exists>p x. io = Out (Inl p) x \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op'' \<and> step io op op'')) \<or>
+   (io = Tau \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op'' \<and> step io op op'')) \<or>
+   (io = Tau \<and> (\<exists> op'' p x. op' = loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (BTL (Inr p) buf) op'' \<and> step (Inp (Inr p) x) op op'' \<and> buf (Inr p) \<noteq> [] \<and> BHD (Inr p) buf = x)) \<or>
+   (io = Tau \<and> (\<exists> op'' p x. op' = loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (BENQ (Inr p) x buf) op'' \<and> step (Out (Inr p) x) op op''))"
+  apply (induct io "loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op" op' arbitrary: buf op pred: step)
+     apply (simp add: loop_op.code)
+    apply (simp add: loop_op.code)
+   apply (simp add: loop_op.code)
+  subgoal for op ops io op' buf op''
+    apply (subst (asm) (7) loop_op.code)
+    apply (clarsimp del: disjCI split: if_splits option.splits)
+    subgoal for op
+      apply (cases op)
+      subgoal for p f
+        apply (simp del: disjCI split: if_splits option.splits)
+        subgoal
+          apply hypsubst_thin
+          apply (erule thin_rl)
+          apply (cases p)
+          subgoal for lp
+            apply (clarsimp del: disjCI)
+            apply hypsubst_thin
+            apply (smt (verit, best) Inl_Inr_False comp_apply mem_Collect_eq option.discI option.sel ran_def sum.case_eq_if)
+            done
+          subgoal for rp
+            apply (clarsimp del: disjCI)
+            apply hypsubst_thin
+            apply (rule disjI2)
+            apply (rule disjI1)
+            apply (metis Read_in_choices_step cin.rep_eq)
+            done
+          done
+        subgoal
+          apply hypsubst_thin
+          apply (erule thin_rl)
+          apply (cases p)
+          subgoal for lp
+            apply (clarsimp del: disjCI)
+            apply hypsubst_thin
+            apply (metis Read_in_choices_step cin.rep_eq)
+            done
+          subgoal
+            apply (clarsimp del: disjCI)
+            apply hypsubst_thin
+            apply (metis (full_types) comp_apply old.sum.simps(6) ranI)
+            done
+          done
+        done
+      subgoal for op' p x
+        apply (simp split: if_splits option.splits)
+        subgoal
+          apply hypsubst_thin
+          apply (erule thin_rl)
+          apply (cases p)
+          subgoal for lp
+            apply (clarsimp del: disjCI)
+            apply hypsubst_thin
+            using Write_in_choices_step apply fastforce
+            done
+          subgoal
+            by (clarsimp del: disjCI)
+          done
+        subgoal
+          apply hypsubst_thin
+          apply (erule thin_rl)
+          apply (cases p)
+          subgoal
+            by (clarsimp del: disjCI)
+          subgoal
+            apply (clarsimp del: disjCI)
+            apply hypsubst_thin
+            using Write_in_choices_step apply fastforce
+            done
+          done
+        done
+      subgoal for op'
+        apply (simp split: if_splits option.splits)
+        apply blast
+        done
+      subgoal for op'
+        apply (clarsimp split: if_splits option.splits)
+        apply hypsubst_thin
+        apply (erule thin_rl)
+        apply (metis Silent_in_choices_step cin.rep_eq)
+        done
+      done
+    done
+  done
+
+lemma step_Inp_Inl_loop_op[intro]:
+  "step (Inp (Inl p) x) op op' \<Longrightarrow>
+   step (Inp (Inl p) x) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op')"
+  apply (subst loop_op.code)
+  apply simp
+  apply (erule step_choicesE)
+    apply simp_all
+  subgoal for p' f
+    apply clarsimp
+    apply hypsubst_thin
+    apply (rule SC)
+     apply (rule cimage_eqI[of _  _ "Read _ _"])
+      apply simp_all
+     apply (intro conjI)
+      apply assumption
+     apply auto
+     apply (smt (verit) mem_Collect_eq o_apply option.sel option.simps(3) ran_def sum.case_eq_if sum.simps(4))
+    apply (smt (verit) mem_Collect_eq o_apply option.sel option.simps(3) ran_def sum.case_eq_if sum.simps(4))
+    done
+  done
+
+lemma step_Out_Inl_loop_op[intro]:
+  "step (Out (Inl p) x) op op' \<Longrightarrow>
+   step (Out (Inl p) x) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op')"
+  apply (subst loop_op.code)
+  apply simp
+  apply (erule step_choicesE)
+    apply simp_all
+  subgoal
+    apply (rule SC)
+     apply (rule cimage_eqI[of _  _ "Write _ _ _"])
+      apply simp_all
+    apply auto
+    done
+  done
+
+lemma step_Tau_loop_op[intro]:
+  "step Tau op op' \<Longrightarrow>
+   step Tau (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op')"
+  apply (subst loop_op.code)
+  apply simp
+  apply (erule step_choicesE)
+    apply simp_all
+  subgoal
+    apply (rule SC)
+     apply (rule cimage_eqI[of _  _ "Silent _"])
+      apply auto
+    done
+  done
+
+lemma step_Out_Inr_loop_op[intro]:
+  "step (Out (Inr p) x) op op' \<Longrightarrow>
+   step Tau (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (BENQ (Inr p) x buf) op')"
+  apply (subst loop_op.code)
+  apply simp
+  apply (erule step_choicesE)
+    apply simp_all
+  apply (rule SC[rotated])
+   apply (rule ST)
+  apply (rule cimage_eqI[of _ _ "Write _ (Inr p) _"])
+   apply simp_all
+  done
+
+lemma step_Inp_Inr_loop_op[intro]:
+  "step (Inp (Inr p) (BHD (Inr p) buf)) op op' \<Longrightarrow>
+   buf (Inr p) \<noteq> [] \<Longrightarrow>
+   step Tau (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (BTL (Inr p) buf) op')"
+  apply (subst loop_op.code)
+  apply simp
+  apply (erule step_choicesE)
+    apply simp_all
+  apply (rule SC[rotated])
+   apply (rule ST)
+  apply (rule cimage_eqI[of _ _ ])
+   apply auto
+  apply (metis comp_apply sum.simps(6) ranI)
+  done
+
+lemma step_double_loop_1:
+  "step io (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf2) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1) (op :: (('a + 'd) + 'e, ('b + 'd) + 'e, 'c) op))))) op' \<Longrightarrow>
+   \<exists> (op'' :: (('a + 'd) + 'e, ('b + 'd) + 'e, 'c) op) buf1' buf2'.
+   op' = (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf2') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1') op''))))  \<and>
+   step io (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined (case_sum buf2 buf1)) (map_op reassoc reassoc op)))
+   (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined (case_sum buf2' buf1')) (map_op reassoc reassoc op'')))"
+  unfolding feedback_op_def
+  apply (drule step_map_op_inv)
+  apply auto
+  apply (drule step_loop_op)
+  apply auto
+  subgoal for p op'' x
+    apply hypsubst_thin
+    apply (drule step_map_op_inv)
+    apply auto
+    subgoal for io'
+      apply (cases io')
+        apply auto
+      apply (drule step_loop_op)
+      apply auto
+      apply hypsubst_thin
+      apply (intro exI conjI[rotated])
+       apply (rule step_map_op)
+        apply (rule step_Inp_Inl_loop_op)
+        apply (rule step_map_op)
+         apply auto
+      done
+    done
+  subgoal for p op'' x
+    apply hypsubst_thin
+    apply (drule step_map_op_inv)
+    apply auto
+    subgoal for io'
+      apply (cases io')
+        apply auto
+      apply hypsubst_thin
+      apply (drule step_loop_op)
+      apply auto
+      apply (intro exI conjI[rotated])
+       apply (rule step_map_op)
+        apply (rule step_Out_Inl_loop_op)
+        apply (rule step_map_op)
+         apply auto
+      done
+    done
+  subgoal for op'
+    apply hypsubst_thin
+    apply (drule step_map_op_inv)
+    apply auto
+    subgoal for io' op'
+      apply hypsubst_thin
+      apply (drule step_loop_op)
+      apply auto
+      subgoal
+        apply hypsubst_thin
+        apply (intro exI conjI[rotated])
+         apply (rule step_map_op)
+          apply (rule step_Tau_loop_op)
+          apply (rule step_map_op)
+           apply auto
+        done
+      subgoal for op'' p
+        apply hypsubst_thin
+        apply (rule exI[of _op''])
+        apply (rule exI[of _ "BTL p buf1"])
+        apply (rule exI[of _ "buf2"])
+        apply (intro conjI)
+        subgoal
+          apply (rule arg_cong[where f="map_op projl projl"])
+          apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+           apply force
+          apply (rule arg_cong[where f="map_op projl projl"])
+          apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+           apply auto
+          done
+        subgoal
+          apply (erule step_choicesE)
+            apply auto
+          subgoal for f
+            apply hypsubst_thin
+            apply (subst loop_op.code)
+            apply simp
+            apply (rule SC)
+             apply (rule cimage_eqI)
+              apply (rule refl)
+             apply (rule cimage_eqI[of _ _ "Read (Inr (Inr p)) (\<lambda> x. map_op reassoc reassoc (f x))"])
+              apply simp_all
+             defer
+             apply (rule step_map_op)
+              apply simp
+              apply (intro conjI impI)
+               apply (rule ST')
+               apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+            subgoal
+              unfolding fun_upd_def
+              apply (rule ext)
+              apply (auto split: sum.splits)
+              done
+               apply auto
+             apply (smt (verit, ccfv_SIG) comp_apply old.sum.simps(6) ranI)
+            apply (auto simp flip: choices_map_op)
+            apply (rule image_eqI[rotated])
+             apply assumption
+            apply auto
+            done
+          done
+        done
+      subgoal for op'' p x
+        apply hypsubst_thin
+        apply (rule exI[of _op''])
+        apply (rule exI[of _ "BENQ p x buf1"])
+        apply (rule exI[of _ "buf2"])
+        apply (intro conjI)
+        subgoal
+          apply (rule arg_cong[where f="map_op projl projl"])
+          apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+           apply force
+          apply (rule arg_cong[where f="map_op projl projl"])
+          apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+           apply auto
+          done
+        subgoal
+          apply (erule step_choicesE)
+            apply auto
+          apply (subst loop_op.code)
+          apply simp
+          apply (rule SC)
+           apply (rule cimage_eqI)
+            apply (rule refl)
+           apply (rule cimage_eqI[of _ _ "Write (map_op reassoc reassoc op'') (Inr (Inr p)) x"])
+            apply simp_all
+           defer
+           apply (rule step_map_op[rotated, of _ _ _ Tau])
+            apply simp
+           apply (rule ST')
+           apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+          subgoal
+            unfolding fun_upd_def
+            apply (rule ext)
+            apply (auto split: sum.splits)
+            done
+           apply auto
+          apply (auto simp flip: choices_map_op)
+          apply (rule image_eqI[rotated])
+           apply assumption
+          apply auto
+          done
+        done
+      done
+    done
+  subgoal for op'' p
+    apply hypsubst_thin
+    apply (drule step_map_op_inv)
+    apply auto
+    subgoal for io op'''
+      apply hypsubst_thin
+      apply (drule step_loop_op)
+      apply auto
+      subgoal for op'''
+        apply hypsubst_thin
+        apply (rule exI[of _ "op'''"])
+        apply (rule exI[of _ buf1])
+        apply (rule exI[of _ "BTL p buf2"])
+        apply auto
+          apply (rule step_map_op[of Tau, rotated])
+           apply simp_all
+          apply (erule step_choicesE)
+            apply auto
+          subgoal for f
+            apply (subst loop_op.code)
+            apply simp
+            apply (rule SC)
+             apply (rule cimage_eqI[of _ _ "Read (Inr (Inl p)) (\<lambda> x. map_op reassoc reassoc (f x))"])
+              apply (rule refl)
+             apply (auto simp flip: choices_map_op)
+              apply (rule image_eqI[rotated])
+               apply assumption
+              apply auto
+            subgoal
+              by (metis (no_types, lifting) comp_apply old.sum.simps(6) ranI)
+            done
+          done
+        done
+      done
+  subgoal for op'' p x
+    apply hypsubst_thin
+    apply (drule step_map_op_inv)
+    apply auto
+    subgoal for io op'''
+      apply hypsubst_thin
+      apply (drule step_loop_op)
+      apply auto
+      subgoal for op'''
+        apply hypsubst_thin
+        apply (rule exI[of _ "op'''"])
+        apply (rule exI[of _ buf1])
+        apply (rule exI[of _ "BENQ p x buf2"])
+        apply auto
+          apply (rule step_map_op[of Tau, rotated])
+           apply simp_all
+          apply (erule step_choicesE)
+            apply auto
+          apply (subst loop_op.code)
+          apply simp
+          apply (rule SC)
+           apply (rule cimage_eqI[of _ _ "Write _  (Inr (Inl p)) x"])
+            apply (rule refl)
+           apply (auto simp flip: choices_map_op)
+           apply (rule image_eqI[rotated])
+            apply assumption
+           apply auto
+            done
+          done
+        done
+      done
+
+lemma step_double_loop_2:
+  "step io (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined (case_sum buf2 buf1)) (map_op reassoc reassoc (op :: (('a + 'd) + 'e, ('b + 'd) + 'e, 'c) op)))) op' \<Longrightarrow>
+   \<exists> (op'' :: (('a + 'd) + 'e, ('b + 'd) + 'e, 'c) op) buf1' buf2'.
+   op' = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined (case_sum buf2' buf1')) (map_op reassoc reassoc op''))  \<and>
+   step io (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf2) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1) op))))
+   (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf2') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1') op''))))"
+  unfolding feedback_op_def
+  apply (drule step_map_op_inv)
+  apply auto
+  apply (drule step_loop_op)
+  apply auto
+  subgoal for p op'' x
+    apply hypsubst_thin
+    apply (rule exI[of _ "map_op assoc assoc op''"])
+    apply (rule exI[of _ buf1])
+    apply (rule exI[of _ buf2])
+    apply auto
+    subgoal
+      apply (rule arg_cong[where f="map_op projl projl"])
+      apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+       apply (auto simp add: op.map_comp op.map_id)
+      done
+    subgoal
+      apply (rule step_map_op[of "Inp (Inl p) x"])
+       apply auto
+      apply (erule step_choicesE)
+        apply simp_all
+      apply (subst loop_op.code)
+      apply simp
+      subgoal for p' f
+        apply clarsimp
+        apply hypsubst_thin
+        apply (rule SC)
+         apply (rule cimage_eqI)
+          apply simp_all
+         apply (simp flip: choices_map_op)
+         apply (intro conjI)
+          apply (subst loop_op.code)
+          apply (simp flip: choices_map_op add: Set.filter_def)
+          apply (rule image_eqI)
+           apply (rule refl)
+          apply simp
+          apply (intro exI[of _  "Read (Inl (Inl p)) (\<lambda> x. map_op assoc assoc (f x))"] conjI)
+            apply (subst inj_image_mem_iff[where f="map_op reassoc reassoc", where a="Read (Inl (Inl p)) (\<lambda> x. map_op assoc assoc (f x))", symmetric, simplified])
+        using map_op_reassoc_inj apply force
+            apply simp
+        subgoal
+          unfolding comp_def
+          apply auto
+          apply (rule image_eqI[rotated])
+           apply assumption
+          subgoal for x
+            apply (cases x)
+               apply auto
+            apply (rule ext)
+            apply auto
+            apply (simp add: op.map_comp)
+            done
+          done
+           apply (auto simp add: ran_def sum.case_eq_if)
+        done
+      done
+    done
+  subgoal for p op'' x
+    apply hypsubst_thin
+    apply (rule exI[of _ "map_op assoc assoc op''"])
+    apply (rule exI[of _ buf1])
+    apply (rule exI[of _ buf2])
+    apply auto
+    subgoal
+      apply (rule arg_cong[where f="map_op projl projl"])
+      apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+       apply (auto simp add: op.map_comp op.map_id)
+      done
+    subgoal
+      apply (rule step_map_op[of "Out (Inl p) x"])
+       apply auto
+      apply (erule step_choicesE)
+        apply simp_all
+      apply (subst loop_op.code)
+      apply (rule SC)
+       apply (rule cimage_eqI)
+        apply simp_all
+       apply (simp flip: choices_map_op)
+       apply (intro conjI)
+        apply (subst loop_op.code)
+        apply (simp flip: choices_map_op add: Set.filter_def)
+        apply (rule image_eqI)
+         apply (rule refl)
+        apply simp
+        apply (intro exI[of _  "Write (map_op assoc assoc op'') (Inl (Inl p)) x"] conjI)
+          apply (subst inj_image_mem_iff[where f="map_op reassoc reassoc", where a="Write (map_op assoc assoc op'') (Inl (Inl p)) x", symmetric, simplified])
+      using map_op_reassoc_inj apply force
+          apply simp
+      subgoal
+        unfolding comp_def
+        apply auto
+        apply (rule image_eqI[rotated])
+         apply assumption
+        subgoal for x
+          apply (cases x)
+             apply (auto simp add: op.map_comp)
+          done
+        done
+         apply (auto simp add: ran_def sum.case_eq_if)
+      done
+    done
+  subgoal for op''
+    apply hypsubst_thin
+    apply (rule exI[of _ "map_op assoc assoc op''"])
+    apply (rule exI[of _ buf1])
+    apply (rule exI[of _ buf2])
+    apply auto
+    subgoal
+      apply (rule arg_cong[where f="map_op projl projl"])
+      apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+       apply (auto simp add: op.map_comp op.map_id)
+      done
+    subgoal
+      apply (rule step_map_op[of "Tau"])
+       apply auto
+      apply (erule step_choicesE)
+        apply simp_all
+      apply (subst loop_op.code)
+      apply (rule SC)
+       apply (rule cimage_eqI)
+        apply simp_all
+       apply (simp flip: choices_map_op)
+       apply (intro conjI)
+        apply (subst loop_op.code)
+        apply (simp flip: choices_map_op add: Set.filter_def)
+        apply (rule image_eqI)
+         apply (rule refl)
+        apply simp
+        apply (intro exI[of _  "Silent (map_op assoc assoc op'')"] conjI)
+          apply (subst inj_image_mem_iff[where f="map_op reassoc reassoc", where a="Silent (map_op assoc assoc op'')", symmetric, simplified])
+      using map_op_reassoc_inj apply force
+          apply simp
+      subgoal
+        unfolding comp_def
+        apply auto
+        apply (rule image_eqI[rotated])
+         apply assumption
+        subgoal for x
+          apply (cases x)
+             apply (auto simp add: op.map_comp)
+          done
+        done
+         apply (auto simp add: ran_def sum.case_eq_if)
+      done
+    done
+  subgoal for op'' p
+    apply hypsubst_thin
+    apply (cases p; simp; hypsubst_thin)
+    subgoal for lp
+      apply (rule exI[of _ "map_op assoc assoc op''"])
+      apply (rule exI[of _ buf1])
+      apply (rule exI[of _ "BTL lp buf2"])
+      apply auto
+      subgoal
+        apply (rule arg_cong[where f="map_op projl projl"])
+        apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+         apply (auto simp add: op.map_comp op.map_id)
+        done
+      subgoal
+        apply (rule step_map_op[of "Tau"])
+         apply auto
+        apply (erule step_choicesE)
+          apply simp_all
+        subgoal for p f
+          apply (subst loop_op.code)
+          apply (rule SC)
+           apply (rule cimage_eqI)
+            apply (simp_all flip: choices_map_op)
+           apply (intro conjI)
+            apply (subst loop_op.code)
+            apply (simp flip: choices_map_op add: Set.filter_def)
+            apply (rule image_eqI)
+             apply (rule refl)
+            apply simp
+            apply (intro exI[of _ "Read (Inl (Inr lp)) _"] conjI)
+              apply (subst inj_image_mem_iff[where f="map_op reassoc reassoc" and a="Read _ (\<lambda> x. map_op assoc assoc (f x))", symmetric, simplified])
+          using map_op_reassoc_inj apply force
+              apply simp_all
+          subgoal
+            unfolding comp_def
+            apply auto
+            apply (rule image_eqI[rotated])
+             apply assumption
+            subgoal for x
+              apply (cases x)
+                 apply auto
+              apply (rule ext)
+              apply auto
+              apply (simp add: op.map_comp)
+              done
+            done
+             apply (auto simp add: ran_def sum.case_eq_if)
+          subgoal for p'
+            apply (cases p')
+               apply auto
+              done
+          subgoal
+            by (meson sum.disc(2) sum.sel(2))
+          done
+        done
+      done
+    subgoal for rp
+      apply (rule exI[of _ "map_op assoc assoc op''"])
+      apply (rule exI[of _ "BTL rp buf1"])
+      apply (rule exI[of _ "buf2"])
+      apply auto
+      subgoal
+        apply (rule arg_cong[where f="map_op projl projl"])
+        apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+         apply (auto simp add: op.map_comp op.map_id)
+          done
+      subgoal
+        apply (rule step_map_op[of "Tau"])
+         apply auto
+        apply (erule step_choicesE)
+          apply simp_all
+        subgoal for p f
+          apply (rule step_Tau_loop_op)
+          apply (subst loop_op.code)
+          apply (rule step_map_op)
+           apply (rule SC)
+            apply (simp_all flip: Set.filter_def choices_map_op)
+            apply (rule image_eqI)
+             apply (rule refl)
+            apply simp
+            apply (intro conjI)
+             apply (subst inj_image_mem_iff[where f="map_op reassoc reassoc" and a="Read (Inr rp) (\<lambda> x. map_op assoc assoc (f x))", symmetric, simplified])
+          using map_op_reassoc_inj apply force
+
+          subgoal
+            unfolding comp_def
+            apply auto
+            apply (rule image_eqI[rotated])
+             apply assumption
+            subgoal for x
+              apply (cases x)
+                 apply auto
+              apply (rule ext)
+              apply auto
+              apply (simp add: op.map_comp)
+              done
+            done
+            apply (auto simp add: ran_def sum.case_eq_if)
+          subgoal for x
+            apply (cases x)
+               apply (auto split: sum.splits)
+          apply (meson sum.disc(2) sum.sel(2))
+          done
+        done
+      done
+    done
+  done
+  subgoal for op'' p x
+    apply hypsubst_thin
+    apply (cases p; simp; hypsubst_thin)
+    subgoal for lp
+      apply (rule exI[of _ "map_op assoc assoc op''"])
+      apply (rule exI[of _ buf1])
+      apply (rule exI[of _ "BENQ lp x buf2"])
+      apply auto
+      subgoal
+        apply (rule arg_cong[where f="map_op projl projl"])
+        apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+         apply (auto simp add: op.map_comp op.map_id)
+          done
+      subgoal
+        apply (rule step_map_op[of "Tau"])
+         apply auto
+        apply (erule step_choicesE)
+          apply simp_all
+        apply (subst loop_op.code)
+        apply (rule SC)
+         apply (rule cimage_eqI)
+          apply (simp_all flip: choices_map_op)
+         apply (intro conjI)
+          apply (subst loop_op.code)
+          apply (simp flip: choices_map_op add: Set.filter_def)
+          apply (rule image_eqI)
+           apply (rule refl)
+          apply simp
+          apply (intro exI[of _ "Write _ (Inl (Inr lp)) x"] conjI)
+            apply (subst inj_image_mem_iff[where f="map_op reassoc reassoc" and a="Write (map_op assoc assoc op'') (Inl (Inr lp))  x", symmetric, simplified])
+        using map_op_reassoc_inj apply force
+            apply simp_all
+        subgoal
+          unfolding comp_def
+          apply auto
+          apply (rule image_eqI[rotated])
+           apply assumption
+          subgoal for x
+            apply (cases x)
+               apply (auto simp add: op.map_comp)
+            done
+          done
+         apply (auto simp add: ran_def sum.case_eq_if)
+        done
+      done
+    subgoal for rp
+      apply (rule exI[of _ "map_op assoc assoc op''"])
+      apply (rule exI[of _ "BENQ rp x buf1"])
+      apply (rule exI[of _ "buf2"])
+      apply auto
+      subgoal
+        apply (rule arg_cong[where f="map_op projl projl"])
+        apply (rule arg_cong2[where f="loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr))"])
+         apply (auto simp add: op.map_comp op.map_id)
+          done
+      subgoal
+        apply (rule step_map_op[of "Tau"])
+         apply auto
+        apply (erule step_choicesE)
+          apply simp_all
+        apply (rule step_Tau_loop_op)
+        apply (subst loop_op.code)
+        apply (rule step_map_op)
+         apply (rule SC)
+          apply (simp_all flip: Set.filter_def choices_map_op)
+          apply (rule image_eqI)
+           apply (rule refl)
+          apply simp
+          apply (intro conjI)
+           apply (subst inj_image_mem_iff[where f="map_op reassoc reassoc" and a="Write (map_op assoc assoc op'') (Inr rp) x", symmetric, simplified])
+        using map_op_reassoc_inj apply force
+        subgoal
+          unfolding comp_def
+          apply auto
+          apply (rule image_eqI[rotated])
+           apply assumption
+          subgoal for x
+            apply (cases x)
+               apply (auto simp add: op.map_comp)
+            done
+          done
+          apply (auto simp add: ran_def sum.case_eq_if)
+          done
+        done
+      done
+    done
+
 section \<open>spin_op/end_op/silent_op/I_0\<close>
   \<comment> \<open>spin_op/end_op is I_0 in the BNA book\<close>
   \<comment> \<open>In the transition system this is a dead-lock\<close>
@@ -1523,6 +2381,22 @@ lemma step_id_op_Out:
   apply (subst (asm) (3) id_op_code)
   apply auto
   done
+lemma step_id_op_Read[intro]:
+  "step (Inp p x) (id_op buf) (id_op (BENQ p x buf))"
+  apply (subst id_op_code)
+  apply (rule SC)
+   apply simp
+   apply (rule disjI1)
+   apply force+
+  done
+lemma step_id_op_Write[intro]:
+  "BHD p buf = x \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> step (Out p x) (id_op buf) (id_op (BTL p buf))"
+  apply (subst id_op_code)
+  apply (rule SC)
+   apply simp
+   apply (rule disjI2)
+   apply force+
+  done
 
 lemma choices_id_op[simp]:
   "choices (id_op buf) = cUn (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda>x. id_op (buf(p := bulk_benq [x] (buf p))))) cUNIV)))
@@ -1532,12 +2406,40 @@ lemma choices_id_op[simp]:
   done
 
 section \<open>User defined operators\<close>
-abbreviation buffered ("\<stileturn> _ \<turnstile>" [150]151) where
-  "\<stileturn>op\<turnstile> \<equiv> \<I> \<bullet> op \<bullet> \<I>"
+(* abbreviation buffered ("\<stileturn> _ \<turnstile>" [150]151) where
+  "\<stileturn>op\<turnstile> \<equiv> \<I> \<bullet> op \<bullet> \<I>" *)
+
+abbreviation post_buffered ("_ \<turnstile>" [150]151) where
+  "op\<turnstile> \<equiv> op \<bullet> \<I>"
+
+abbreviation pre_buffered ("\<stileturn>_" [150]151) where
+  "\<stileturn>op \<equiv> \<I> \<bullet> op"
 
 section \<open>dummy_source_op\<close>                                     
 abbreviation dummy_source_op ("\<exclamdown>") where
   "\<exclamdown> \<equiv> \<oslash> \<bullet> \<I>"
+
+lemma finished_dummy_source:
+  \<open>finished \<exclamdown>\<close>
+  apply coinduction
+  unfolding scomp_op_def
+  apply (subst comp_op_code)
+  apply auto
+  done
+
+lemma choices_dummy_source[simp]:
+  \<open>choices \<exclamdown> = {||}\<close>
+  unfolding scomp_op_def
+  apply (subst comp_op_code)
+  apply auto
+  done
+
+lemma choices_pcomp_op_dummy_source:
+  \<open>choices (\<exclamdown> \<parallel> \<exclamdown>) = {||}\<close>
+  unfolding pcomp_op_def
+  apply (subst comp_op_code)
+  apply simp
+  done
 
 section \<open>sink_op\<close>                                     
 corec drain_op :: "('m :: countable, 'o, 'd) op" where
@@ -1616,6 +2518,8 @@ lemma merge_op_code:
    apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
       split: op.splits option.splits)
   done
+
+
 
 section \<open>acopy_op - async copy operator\<close>
 datatype (discs_sels) ('m) acopy_op_aux =

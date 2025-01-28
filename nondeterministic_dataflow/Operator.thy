@@ -30,24 +30,71 @@ abbreviation BENQ_TL :: "'a \<Rightarrow> 'd \<Rightarrow> ('a \<Rightarrow> 'd 
 
 abbreviation "bulk_benq xs ys \<equiv> ys @ xs"
 
-abbreviation BULK_BENQ (infixr ">>" 65) where "BULK_BENQ buf1 buf2 \<equiv> (\<lambda> p. bulk_benq (buf1 p) (buf2 p))"
+definition BULK_BENQ (infixr ">>" 65) where "BULK_BENQ buf1 buf2 = (\<lambda> p. bulk_benq (buf1 p) (buf2 p))"
 
-lemma BULK_BENQ_assoc:
+lemma BULK_BENQ_assoc[simp]:
   "buf1 >> (buf2 >> buf3) = (buf1 >> buf2) >> buf3"
-  by auto
+  by (auto simp add: BULK_BENQ_def)
 
 lemma BULK_BENQ_bulk_benq:
   "(buf1 >> buf2) p = bulk_benq (buf1 p) (buf2 p)"
-  by auto
+  by (auto simp add: BULK_BENQ_def)
 
 lemma BHD_BAPPEND_2_cases:
-  "BHD p ((buf1 >> buf2) >> buf3) = x \<Longrightarrow>
-  ((buf1 >> buf2) >> buf3) p \<noteq> [] \<Longrightarrow>
+  "((buf1 >> buf2) >> buf3) p \<noteq> [] \<Longrightarrow>
+   BHD p ((buf1 >> buf2) >> buf3) = x \<Longrightarrow>
    BHD p buf3 = x \<and> buf3 p \<noteq> [] \<or>
    buf3 p = [] \<and> BHD p buf2 = x \<and> buf2 p \<noteq> [] \<or>
    buf3 p = [] \<and> buf2 p = [] \<and> BHD p buf1 = x \<and> buf1 p \<noteq> []"
-  by (metis append_Nil hd_append)
+  by (metis append_Nil hd_append BULK_BENQ_def)
 
+lemma BAPPEND_BENQ[simp]:
+  "BENQ p x (buf1 >> buf2) = (BENQ p x buf1) >> buf2"
+  unfolding BULK_BENQ_def by force
+lemma BAPPEND_BTL[simp]:
+  "BTL p (buf1 >> buf2) = (if buf2 p = [] then BTL p buf1 >> buf2 else buf1 >> (BTL p buf2))"
+  unfolding BULK_BENQ_def by force
+
+lemma BAPPEND_BENQ_BHD[simp]:
+  "buf1 p \<noteq> [] \<Longrightarrow> (BTL p buf1) >> (BENQ p (BHD p buf1) buf2) = buf1 >> buf2"
+  unfolding BULK_BENQ_def by force
+
+lemma BULK_BENQ_left_neutral[simp]:
+  "(\<lambda> _. []) >> buf = buf"
+  unfolding BULK_BENQ_def by force
+lemma BULK_BENQ_right_neutral[simp]:
+  "buf >> (\<lambda> _. []) = buf"
+  unfolding BULK_BENQ_def by force
+
+lemma case_sum_updateL[simp]:
+  \<open>(case_sum x y)(Inl a := b) = case_sum (x(a := b)) y\<close>
+  by (auto split: sum.splits)
+lemma case_sum_updateR[simp]:
+  \<open>(case_sum x y)(Inr a := b) = case_sum x (y(a := b))\<close>
+  by (auto split: sum.splits)
+lemma fun_empty_upd[simp]:
+  "(\<lambda>_. [])(p := []) = (\<lambda>_. [])"
+  by auto
+
+lemma case_sum_same_left[simp]:
+  "case_sum A B = case_sum A C \<longleftrightarrow> B = C"
+  by (meson case_sum_inject)
+lemma case_sum_same_right[simp]:
+  "case_sum A C = case_sum B C \<longleftrightarrow> A = B"
+  using case_sum_inject by blast
+
+lemma case_sum_BENQ_R[]:
+  "case_sum A (BENQ p x buf) = BENQ (Inr p) x (case_sum A buf)"
+  by (auto split: sum.splits)
+lemma case_sum_BTL_R[]:
+  "case_sum A (BTL p buf) = BTL (Inr p) (case_sum A buf)"
+  by (auto split: sum.splits)
+lemma case_sum_BENQ_L[]:
+  "case_sum (BENQ p x buf) A = BENQ (Inl p) x (case_sum buf A)"
+  by (auto split: sum.splits)
+lemma case_sum_BTL_L[]:
+  "case_sum (BTL p buf) A = BTL (Inl p) (case_sum buf A)"
+  by (auto split: sum.splits)
 
 section\<open>Operator\<close>
 
@@ -339,7 +386,11 @@ inductive_cases stepWriteE [elim!]: "step io (Write op q x) op'"
 inductive_cases stepSilentE [elim!]: "step io (Silent op) op'"
 inductive_cases stepChoiceE [elim!]: "step io (Choice ops) op'"
 
-lemma step_map_op:
+lemma ST':
+  "op = op' \<Longrightarrow> step Tau (Silent op) op'"
+  by auto
+
+lemma step_map_op[intro]:
   "step io op op' \<Longrightarrow> io' = map_IO f g id io \<Longrightarrow>
    step io' (map_op f g op) (map_op f g op')"
   by (induct io op op' rule: step.induct) (force simp add: comp_def intro: step.intros)+
@@ -603,10 +654,10 @@ coinductive wbisim (infix "\<approx>"40) where
   "wsim wbisim op1 op2 \<Longrightarrow> wsim wbisim op2 op1 \<Longrightarrow> wbisim op1 op2"
 
 inductive wbisim_cong for R where
-  wbc_base:  "R x y \<Longrightarrow> wbisim_cong R x y"
+  wbc_base[intro]:  "R x y \<Longrightarrow> wbisim_cong R x y"
 | wbc_bisim:  "wbisim x y \<Longrightarrow> wbisim_cong R x y"
-| wbc_refl: "x = y \<Longrightarrow> wbisim_cong R x y"
-| wbc_sym: "wbisim_cong R x y \<Longrightarrow> wbisim_cong R y x"
+| wbc_refl[intro]: "x = y \<Longrightarrow> wbisim_cong R x y"
+| wbc_sym[intro]: "wbisim_cong R x y \<Longrightarrow> wbisim_cong R y x"
 (*| wbc_trans: "wbisim_cong R x y \<Longrightarrow> wbisim_cong R y z \<Longrightarrow> wbisim_cong R x z"*)
 | wbc_Read:"x1 = y1 \<Longrightarrow> rel_fun (=) (wbisim_cong R) x2 y2 \<Longrightarrow> wbisim_cong R (Read x1 x2) (Read y1 y2)"
 | wbc_Write: "wbisim_cong R x1 y1 \<Longrightarrow> wbisim_cong R (Write x1 x2 x3) (Write y1 x2 x3)"
@@ -644,7 +695,7 @@ lemma wbisim_sym:
     done
   done
 
-lemma step_wstep:
+lemma step_wstep[intro]:
   "step io op op' \<Longrightarrow> wstep io op op'"
   unfolding wstep_def 
   by (smt (verit) OO_eq eq_OO estep.elims reflclp_tranclp relcompp_distrib relcompp_distrib2 sup2CI)
@@ -654,6 +705,11 @@ lemma wstep_steps_Tau[simp]: "wstep Tau = (step Tau)\<^sup>*\<^sup>*"
 
 lemma step_io_step_tau_wstep:
   "step io op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> wstep io op op''"
+  unfolding wstep_def 
+  by (smt (verit, best) predicate2D relcompp_apply rtranclp_trans step_wstep wstep_def wstep_steps_Tau)
+
+lemma step_io_step_tau_tau_wstep:
+  "step io op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step Tau op'' op''' \<Longrightarrow> wstep io op op'''"
   unfolding wstep_def 
   by (smt (verit, best) predicate2D relcompp_apply rtranclp_trans step_wstep wstep_def wstep_steps_Tau)
 

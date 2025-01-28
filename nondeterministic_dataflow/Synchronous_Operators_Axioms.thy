@@ -42,9 +42,22 @@ lemma acopy_op_acopy_sink:
   oops
 
 section \<open>Axiom: A8: Acopy dummy source\<close>
+
 lemma acopy_op_dummy_source:
-  "\<exclamdown> \<bullet> \<C> \<approx> \<exclamdown> \<parallel> \<exclamdown>"
-  oops
+  \<open>\<exclamdown> \<bullet> \<C> \<approx> \<exclamdown> \<parallel> \<exclamdown>\<close>
+  apply (coinduction rule: wbisim_coinduct_upto)
+  unfolding wsim_def
+  apply (rule conjI)
+  subgoal
+    unfolding scomp_op_def pcomp_op_def
+    apply (subst comp_op_code)
+    apply (subst acopy_op_code)
+    apply auto
+    done
+  subgoal
+    apply (metis cempty_iff choices_pcomp_op_dummy_source step_choicesE)
+    done
+  done
 
 section \<open>Axiom: A10: Equality test to acopy\<close>
 lemma aeq_op_acopy:
