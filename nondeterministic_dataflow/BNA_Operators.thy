@@ -116,6 +116,9 @@ lemma comp_op_not_Read[simp]:
 lemma comp_op_not_Write[simp]:
   "\<not> is_Write (comp_op wire buf op1 op2)"
   by (subst comp_op_code, simp)
+lemma comp_op_is_choice[simp]:
+  "is_Choice (comp_op wire buf op1 op2)"
+  by (subst comp_op_code, simp)
 
 subsection \<open>Properties of the (general) composition\<close>
 

@@ -804,54 +804,6 @@ lemma step_scomp_op_2:
       done
     done
   done
-    (* 
-lemma comp_op_assoc:
-  fixes op1 :: "('i1,'o1, 'd) op"
- and op2 :: "('i2, 'o2, 'd) op"
-  and op3 :: "('i3, 'o3, 'd) op"
- and buf12 :: "'i2 \<Rightarrow> 'd list"
- and buf23 :: "'i3 \<Rightarrow> 'd list"
- and wire12 :: "'o1 \<rightharpoonup> 'i2"
- and wire23 :: "'o2 \<rightharpoonup> 'i3"
-shows  "(comp_op (map_option Inl o wire12) (buf12 o projl) op1 (comp_op wire23 buf23 op2 op3)) ~
-   map_op reassoc reassoc (comp_op (case_sum (\<lambda> _ . None) wire23) buf23 (comp_op wire12 buf12 op1 op2) op3)"
-  sorry
-
-lemma *:
-  fixes op1 :: "('i1,'o1, 'd) op"
-   and op2 :: "('i2, 'o2, 'd) op"
- assumes "inj_on g A"
-shows "comp_op wire buf (map_op f g op1) op2 = map_op (case_sum (Inl o f) Inr) (case_sum (Inl o g) Inr) (comp_op (\<lambda>x. if x \<in> A then wire (g x) else None) buf op1 op2)"
-  sorry
-
-lemma **:
-  fixes op1 :: "('i1,'o1, 'd) op"
-   and op2 :: "('i2, 'o2, 'd) op"
- assumes "\<And>x. f (f' x) = x"
- shows "comp_op wire buf op1 (map_op f g op2) = map_op (map_sum id f) (map_sum id g) (comp_op (map_option f' o wire) (buf o f) op1 op2)"
-  sorry
-
-lemma bisim_reflI:
-  "op1 = op2 \<Longrightarrow> op1 ~ op2"
-  using bisim_refl by auto
-
-lemma scomp_op_assoc_gen:
-  "map_op projl projr (comp_op Some buf1 op1 (map_op projl projr (comp_op Some buf2 op2 op3))) ~
-   map_op projl projr (comp_op Some buf2 (map_op projl projr (comp_op Some buf1 op1 op2)) op3)"
-  unfolding *[where A = "Inr ` UNIV" and g=projr,unfolded inj_on_def,simplified] **[where f=projl and f'=Inl,simplified]
-  apply (rule bisim_trans)
-   apply (rule bisim_map_op)
-   apply (rule bisim_map_op)
-   apply (rule comp_op_assoc[of Some buf1 op1 Some buf2 op2 op3])
-  apply (unfold op.map_comp)
-  thm bisim_refl
-  apply (rule bisim_reflI)
-  apply (rule op.map_cong)
-  apply (rule arg_cong[where f="\<lambda> x. comp_op x _ _ _"])
-    apply (auto simp: fun_eq_iff split: sum.splits)
-  apply (smt (verit) BNA_Operators.reassoc.simps(1) BNA_Operators.reassoc.simps(2) id_apply map_sum.simps(1) map_sum.simps(2) sum.exhaust_sel sum.sel(1))
-  oops *)
-
 
 lemma scomp_op_assoc_gen:
   "map_op projl projr (comp_op Some buf1 op1 (map_op projl projr (comp_op Some buf2 op2 op3))) ~
@@ -3373,13 +3325,7 @@ lemma loop_op_commutes_inner_scomp_op:
   unfolding feedback_op_def scomp_op_def pcomp_op_def
   using loop_op_commutes_inner_scomp_op_gen[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []"  "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" _ "\<lambda> _. []"   ] by force
 
-
-section \<open>Axiom: R5: Loop with no loop\<close>
-lemma loop_op_no_loop:
-  "loop_op (\<lambda> _. None) buf op = op"
-  oops
-
-  section \<open>Axiom: R6: Loop absorb\<close>
+section \<open>Axiom: R6: Loop absorb\<close>
 lemma loop_op_absorb_gen:
   "map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf2) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1) op))) ~
    map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined (case_sum buf2 buf1)) (map_op reassoc reassoc op))"
@@ -3423,5 +3369,100 @@ lemma id_op_loop_spin: \<open>\<I>\<up> = \<oslash>\<close>
 
 lemma transp_op_loop_id: \<open>\<X>\<up> \<approx> \<I>\<close>
   oops
+
+
+section "Tests"
+
+lemma comp_op_assoc:
+  fixes op1 :: "('i1,'o1, 'd) op"
+ and op2 :: "('i2, 'o2, 'd) op"
+  and op3 :: "('i3, 'o3, 'd) op"
+ and buf12 :: "'i2 \<Rightarrow> 'd list"
+ and buf23 :: "'i3 \<Rightarrow> 'd list"
+ and wire12 :: "'o1 \<rightharpoonup> 'i2"
+ and wire23 :: "'o2 \<rightharpoonup> 'i3"
+shows  "(comp_op (map_option Inl o wire12) (buf12 o projl) op1 (comp_op wire23 buf23 op2 op3)) ~
+   map_op reassoc reassoc (comp_op (case_sum (\<lambda> _ . None) wire23) buf23 (comp_op wire12 buf12 op1 op2) op3)"
+  sorry
+
+lemma *:
+  fixes op1 :: "('i1,'o1, 'd) op"
+   and op2 :: "('i2, 'o2, 'd) op"
+ assumes "inj_on g A"
+shows "comp_op wire buf (map_op f g op1) op2 = map_op (case_sum (Inl o f) Inr) (case_sum (Inl o g) Inr) (comp_op (\<lambda>x. if x \<in> A then wire (g x) else None) buf op1 op2)"
+  using assms apply -
+  apply (coinduction arbitrary: op1 op2 buf rule: op.coinduct_upto)
+  subgoal for op1 op2 buf
+    apply auto
+    apply (rule rel_setI)
+    subgoal for op
+      apply (subst (asm) comp_op_code)
+      apply auto
+      subgoal for op'
+        apply (cases op')
+           apply auto
+        subgoal for p f
+          apply hypsubst_thin
+             apply (simp flip: choices_map_op)
+            apply (simp add: image_iff)
+          apply (elim bexE)
+          subgoal for op'
+            apply (cases op')
+               apply auto
+            subgoal for p' f'
+              apply hypsubst_thin
+          apply (intro bexI)
+           apply (rule id_op.corec.cong_Read)
+            apply (rule refl)
+          defer
+      apply (subst (1) comp_op_code)
+           apply simp
+               apply (rule image_eqI)
+          defer
+          apply simp
+           apply (rule disjI1)
+           apply (rule image_eqI[of _ _ "Read _ _"])
+                 apply (simp flip: choices_map_op)
+                apply assumption
+               apply auto
+              apply (smt (verit, ccfv_threshold) comp_eq_dest_lhs rel_fun_def transp_op.cong_base)
+              done
+            done
+          done
+
+            defer
+
+
+          find_theorems  "(_ \<in>_ ` _) = _"
+
+ 
+
+lemma **:
+  fixes op1 :: "('i1,'o1, 'd) op"
+   and op2 :: "('i2, 'o2, 'd) op"
+ assumes "\<And>x. f (f' x) = x"
+ shows "comp_op wire buf op1 (map_op f g op2) = map_op (map_sum id f) (map_sum id g) (comp_op (map_option f' o wire) (buf o f) op1 op2)"
+  sorry
+
+lemma bisim_reflI:
+  "op1 = op2 \<Longrightarrow> op1 ~ op2"
+  using bisim_refl by auto
+
+lemma scomp_op_assoc_gen:
+  "map_op projl projr (comp_op Some buf1 op1 (map_op projl projr (comp_op Some buf2 op2 op3))) ~
+   map_op projl projr (comp_op Some buf2 (map_op projl projr (comp_op Some buf1 op1 op2)) op3)"
+  unfolding *[where A = "Inr ` UNIV" and g=projr,unfolded inj_on_def,simplified] **[where f=projl and f'=Inl,simplified]
+  apply (rule bisim_trans)
+   apply (rule bisim_map_op)
+   apply (rule bisim_map_op)
+   apply (rule comp_op_assoc[of Some buf1 op1 Some buf2 op2 op3])
+  apply (unfold op.map_comp)
+  thm bisim_refl
+  apply (rule bisim_reflI)
+  apply (rule op.map_cong)
+  apply (rule arg_cong[where f="\<lambda> x. comp_op x _ _ _"])
+    apply (auto simp: fun_eq_iff split: sum.splits)
+  apply (smt (verit) BNA_Operators.reassoc.simps(1) BNA_Operators.reassoc.simps(2) id_apply map_sum.simps(1) map_sum.simps(2) sum.exhaust_sel sum.sel(1))
+  oops 
 
 end
