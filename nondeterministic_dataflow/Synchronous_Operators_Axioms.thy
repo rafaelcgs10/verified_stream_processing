@@ -44,9 +44,9 @@ lemma acopy_op_acopy_sink:
 section \<open>Axiom: A8: Acopy dummy source\<close>
 
 lemma acopy_op_dummy_source:
-  \<open>\<exclamdown> \<bullet> \<C> \<approx> \<exclamdown> \<parallel> \<exclamdown>\<close>
-  apply (coinduction rule: wbisim_coinduct_upto)
-  unfolding wsim_def
+  \<open>\<exclamdown> \<bullet> \<C> ~ \<exclamdown> \<parallel> \<exclamdown>\<close>
+  apply (coinduction rule: bisim_coinduct_upto)
+  unfolding sim_def
   apply (rule conjI)
   subgoal
     unfolding scomp_op_def pcomp_op_def

@@ -19,7 +19,7 @@ lemma pcomp_op_assoc:
       apply auto
       subgoal for p x op1'
         apply (rule exI[of _ \<open>map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) op1' op2) op3)\<close>])
-        apply (rule conjI)  
+        apply (rule conjI)
         subgoal
           apply fastforce
           done
