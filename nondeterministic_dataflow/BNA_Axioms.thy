@@ -2729,6 +2729,27 @@ lemma step_tau_tau_tau_star_tau[intro]:
   (step Tau)\<^sup>*\<^sup>* (map_op f g op0) (map_op f g opf)"
   by (meson rtranclp_trans step_tau_star_tau)
 
+lemma step_tau_loop_op_case_sum[intro]:
+  "step (Out (Inr p) x) op op' \<Longrightarrow>
+   step Tau (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1) op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined (BENQ p x buf1)) op')"
+  using step_Out_Inr_loop_op[where buf="case_sum undefined buf1" and p=p, simplified] by blast
+
+lemma step_tau_comp_op_Out_case_sum[intro]:
+  "step (Out (Inl p) x) op1 op1' \<Longrightarrow>
+   step Tau (comp_op Some (case_sum buf4' buf1'') op1 op2) (comp_op Some (case_sum (BENQ p x buf4') buf1'') op1' op2)"
+  using step_Tau_comp_op_L[where buf="case_sum buf4' buf1''" and q="Inl p" and p="Inl p" and wire=Some, simplified] by auto
+
+lemma step_tau_comp_op_Inl_case_sum[intro]:
+  "step (Inp (Inl lp) x) op2 op2' \<Longrightarrow>
+   buf4' lp \<noteq> [] \<Longrightarrow> BHD lp buf4' = x \<Longrightarrow> step Tau (comp_op Some (case_sum buf4' buf1'') op1 op2) (comp_op Some (case_sum (BTL lp buf4') buf1'') op1 op2')"
+  using step_Tau_comp_op_R[where wire=Some and buf="case_sum buf4' buf1''" and p="Inl lp", simplified] by auto
+
+lemma step_tau_loop_op_Inp_Inr_case_sum[intro]:
+  "step (Inp (Inr rp) (BHD rp buf1)) op op' \<Longrightarrow>
+   buf1 rp \<noteq> [] \<Longrightarrow>
+   step Tau (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1) op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined (BTL rp buf1)) op')"
+  using step_Inp_Inr_loop_op[where buf="case_sum undefined buf1" and p="rp", simplified] by auto
+
 section \<open>Axiom: R4: Loop commutes inner sequential composition\<close>
 lemma loop_op_commutes_inner_scomp_op_gen:
   "map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1)
@@ -3142,7 +3163,257 @@ lemma loop_op_commutes_inner_scomp_op_gen:
           apply auto
           done
         done
+      subgoal for op''
+        apply (drule step_map_op_inv)
+        apply (auto; hypsubst_thin?)
+        apply (drule step_comp_op_cases)
+        apply auto
+           apply (drule step_comp_op_cases)
+           apply auto
+        subgoal for x p op2'
+          apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+           apply (rule wbc_base)
+           apply force+
+          done
+        subgoal for x p
+          apply (drule step_id_op_Out)
+           apply (auto; hypsubst_thin?)
+          apply auto
+          apply hypsubst_thin
+          apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+           apply (rule wbc_base)
+           apply force
+          apply (rule step_tau_star_tau) 
+          apply (rule step_Tau_loop_op)
+          apply (rule step_map_op[of Tau])
+           apply simp_all
+          apply (rule step_comp_op_L_Tau)
+          apply (rule step_map_op[of Tau])
+          apply simp_all
+          apply (rule step_tau_comp_op_Out_case_sum)
+          apply (metis case_sum_BTL_L old.sum.simps(5) step_id_op_Write)
+          done
+        subgoal for p op2'
+          apply (cases p)
+          subgoal for lp
+            apply auto
+            apply (drule step_map_op_inv)
+            apply (auto; hypsubst_thin?)
+            apply (drule step_comp_op_cases)
+            apply auto
+            subgoal for op1'
+              apply (intro exI conjI[rotated])
+               apply (rule wbc_sym)
+               apply (rule wbc_base)
+               apply force+
+              done
+            done
+          subgoal for rp
+            apply auto
+               apply (drule step_map_op_inv)
+               apply (auto; hypsubst_thin?)
+               apply (drule step_comp_op_cases)
+               apply auto
+            subgoal for op1'
+              apply (intro exI conjI[rotated])
+               apply (rule wbc_sym)
+               apply (rule wbc_base)
+               apply force
+              apply (rule step_star_map_op)
 
+              find_theorems step map_op
+
+end
+     apply (rule step_tau_tau_tau_star_tau) 
+              apply (rule step_tau_loop_op_Inp_Inr_case_sum)
+              apply (rule step_map_op[of "Inp (Inl (Inr _)) _"])
+               apply simp_all
+              apply (rule step_comp_op_L_Inp)
+           apply (rule step_map_op[of "Inp (Inl (Inr _)) _"])
+                apply simp_all
+              apply (rule step_comp_op_L_Inp)
+               apply (rule step_id_op_Read)
+               apply simp_all
+              apply (rule step_Tau_loop_op)
+                        apply (rule step_map_op[of Tau])
+               apply simp_all
+              apply (rule step_comp_op_L_Tau)
+                  apply (rule step_map_op[of Tau])
+                apply simp_all
+               apply (rule step_Tau_comp_op_L)
+                apply (rule step_id_op_Write[where p="Inr rp"])
+                 apply blast
+                apply simp_all
+              
+
+              using step_tau_comp_op_Out_case_sum[where buf="case_sum buf4' buf1''" and p=rp, simplified]
+              find_theorems step id_op Out
+
+
+end
+               apply (rule step_tau_comp_op_Out_case_sum)
+               apply (rule step_id_op_Write[where p="_"])
+              apply simp_all
+
+
+
+              apply (rule step_tau_star_tau) 
+              apply (rule step_tau_loop_op_Inp_Inr_case_sum)
+               apply auto
+              
+
+end
+
+
+              apply (rule step_Inp_Inr_loop_op[where buf="case_sum undefined buf1" and p="rp", simplified])
+
+              find_theorems step loop_op Tau Inp
+
+end
+
+          apply (rule step_Tau_loop_op)
+          apply (rule step_map_op[of Tau])
+           apply simp_all
+
+
+end
+              sorry
+            subgoal
+              apply (drule step_map_op_inv)
+              apply (auto; hypsubst_thin?)
+              apply (drule step_comp_op_cases)
+              apply auto
+              apply (intro exI conjI[rotated])
+               apply (rule wbc_sym)
+               apply (rule wbc_base)
+               apply force
+              sorry
+            subgoal
+              apply (drule step_map_op_inv)
+              apply (auto; hypsubst_thin?)
+              apply (drule step_comp_op_cases)
+              apply auto
+              apply (intro exI conjI[rotated])
+               apply (rule wbc_sym)
+               apply (rule wbc_base)
+               apply force
+              sorry
+            subgoal
+              apply (drule step_map_op_inv)
+              apply (auto; hypsubst_thin?)
+              apply (drule step_comp_op_cases)
+              apply auto
+              apply (intro exI conjI[rotated])
+               apply (rule wbc_sym)
+               apply (rule wbc_base)
+               apply force
+              sorry
+            done
+          done
+        subgoal for op2'
+          apply (drule step_comp_op_cases)
+          apply (auto; hypsubst_thin?)
+          subgoal for op2'
+            apply (intro exI conjI[rotated])
+             apply (rule wbc_sym)
+             apply (rule wbc_base)
+            sorry
+          subgoal for op2'
+            apply (intro exI conjI[rotated])
+             apply (rule wbc_sym)
+             apply (rule wbc_base)
+             apply force+
+            done
+          done
+        subgoal for op2'
+          apply (drule step_map_op_inv)
+          apply (auto; hypsubst_thin?)
+          apply (drule step_comp_op_cases)
+          apply auto
+          subgoal for p x op1'
+            apply (cases p)
+            subgoal
+              apply (intro exI conjI[rotated])
+               apply (rule wbc_sym)
+               apply (rule wbc_base)
+               apply force
+              sorry
+            subgoal for rp
+              apply (intro exI conjI[rotated])
+               apply (rule wbc_sym)
+               apply (rule wbc_base)
+               apply force
+              sorry
+            done
+          subgoal for p op2'
+            apply (drule step_id_op_Inp)
+             apply auto
+            apply (cases p)
+            subgoal
+              apply auto
+              apply (intro exI conjI[rotated])
+               apply (rule wbc_sym)
+               apply (rule wbc_base)
+               apply force
+              sorry
+            subgoal
+              apply auto
+              apply (intro exI conjI[rotated])
+               apply (rule wbc_sym)
+               apply (rule wbc_base)
+               apply force+
+              done
+            done
+          subgoal for op1'
+            apply (intro exI conjI[rotated])
+             apply (rule wbc_sym)
+             apply (rule wbc_base)
+             apply force+
+            done
+          subgoal
+            apply (subst (asm) id_op_code)
+            apply auto
+            done
+          done
+        done
+      subgoal for op p
+        apply hypsubst_thin
+        apply (drule step_map_op_inv)
+        apply (auto; hypsubst_thin?)
+        apply (drule step_comp_op_cases)
+        apply auto
+        apply (drule step_comp_op_cases)
+        apply auto
+        subgoal for op2'
+          apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+           apply (rule wbc_base)
+           apply force
+          sorry
+        done
+      subgoal for op p x
+        apply hypsubst_thin
+        apply (drule step_map_op_inv)
+        apply (auto; hypsubst_thin?)
+        apply (drule step_comp_op_cases)
+        apply auto
+        apply (drule step_map_op_inv)
+        apply (auto; hypsubst_thin?)
+        apply (drule step_comp_op_cases)
+        apply auto
+        apply (drule step_id_op_Out)
+         apply (auto; hypsubst_thin?)
+        apply auto
+        apply (intro exI conjI[rotated])
+         apply (rule wbc_sym)
+         apply (rule wbc_base)
+         apply force
+        sorry
+      done
+    done
+  done
 
 
       find_theorems loop_op Out

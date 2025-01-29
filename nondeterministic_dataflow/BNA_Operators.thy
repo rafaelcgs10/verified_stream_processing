@@ -58,57 +58,57 @@ lemma comp_op_code[code]: "comp_op wire buf op1 op2 =
 lemma comp_op_simps[simp]:
   "comp_op wire buf (Read p1 f1) (Read p2 f2) =
     Choice (cinsert (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Read p2 f2)))
-     (if p2 \<in> ran wire then (if buf p2 = [] then cempty else csingle (Silent (comp_op wire (buf(p2 := btl (buf p2))) (Read p1 f1) (f2 (BHD p2 buf)))))
+     (if p2 \<in> ran wire then (if buf p2 = [] then cempty else csingle (Silent (comp_op wire (BTL p2 buf) (Read p1 f1) (f2 (BHD p2 buf)))))
       else csingle (Read (Inr p2) (\<lambda>y. comp_op wire buf (Read p1 f1) (f2 y)))))"
   "comp_op wire buf (Read p1 f1) (Write op2 q2 x2) =
     choice2 (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Write op2 q2 x2))) (Write (comp_op wire buf (Read p1 f1) op2) (Inr q2) x2)"
   "comp_op wire buf (Read p1 f1) (Choice op2s) = 
     Choice (cinsert (Read (Inl p1) (\<lambda>y. comp_op wire buf (f1 y) (Choice op2s))) (cimage
-       (case_op (\<lambda>p f. if p \<in> ran wire then Silent (comp_op wire (buf(p := btl (buf p))) (Read p1 f1) (f (BHD p buf))) else Read (Inr p) (\<lambda>x. comp_op wire buf (Read p1 f1) (f x)))
+       (case_op (\<lambda>p f. if p \<in> ran wire then Silent (comp_op wire (BTL p buf) (Read p1 f1) (f (BHD p buf))) else Read (Inr p) (\<lambda>x. comp_op wire buf (Read p1 f1) (f x)))
          (\<lambda>op p. Write (comp_op wire buf (Read p1 f1) op) (Inr p)) (\<lambda> op. undefined) (\<lambda>op. Silent (comp_op wire buf (Read p1 f1) op)))
        (sound_reads wire buf (cUnion (cimage choices op2s)))))"
   "comp_op wire buf (Write op1 q1 x1) (Read p2 f2) =
     Choice (cinsert (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Read p2 f2)) (Inl q1) x1
-      | Some q \<Rightarrow> Silent (comp_op wire (buf(q := benq x1 (buf q))) op1 (Read p2 f2)))
-      (if p2 \<in> ran wire then (if buf p2 = [] then cempty else csingle (Silent (comp_op wire (buf(p2 := btl (buf p2))) (Write op1 q1 x1) (f2 (BHD p2 buf)))))
+      | Some q \<Rightarrow> Silent (comp_op wire (BENQ q x1 buf) op1 (Read p2 f2)))
+      (if p2 \<in> ran wire then (if buf p2 = [] then cempty else csingle (Silent (comp_op wire (BTL p2 buf) (Write op1 q1 x1) (f2 (BHD p2 buf)))))
         else csingle (Read (Inr p2) (\<lambda>y. comp_op wire buf (Write op1 q1 x1) (f2 y)))))"
   "comp_op wire buf (Write op1 q1 x1) (Write op2 q2 x2) =
     choice2 (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Write op2 q2 x2)) (Inl q1) x1
-      | Some q \<Rightarrow> Silent (comp_op wire (buf(q := benq x1 (buf q))) op1 (Write op2 q2 x2)))
+      | Some q \<Rightarrow> Silent (comp_op wire (BENQ q x1 buf) op1 (Write op2 q2 x2)))
       (Write (comp_op wire buf (Write op1 q1 x1) op2) (Inr q2) x2)"
   "comp_op wire buf (Write op1 q1 x1) (Choice op2s) =
      Choice (cinsert (case wire q1 of None \<Rightarrow> Write (comp_op wire buf op1 (Choice op2s)) (Inl q1) x1
-      | Some q \<Rightarrow> Silent (comp_op wire (buf(q := benq x1 (buf q))) op1 (Choice op2s)))
+      | Some q \<Rightarrow> Silent (comp_op wire (BENQ q x1 buf) op1 (Choice op2s)))
       (cimage
-       (case_op (\<lambda>p f. if p \<in> ran wire then Silent (comp_op wire (buf(p := btl (buf p))) (Write op1 q1 x1) (f (BHD p buf))) else Read (Inr p) (\<lambda>x. comp_op wire buf (Write op1 q1 x1) (f x)))
+       (case_op (\<lambda>p f. if p \<in> ran wire then Silent (comp_op wire (BTL p buf) (Write op1 q1 x1) (f (BHD p buf))) else Read (Inr p) (\<lambda>x. comp_op wire buf (Write op1 q1 x1) (f x)))
          (\<lambda>op p. Write (comp_op wire buf (Write op1 q1 x1) op) (Inr p)) (\<lambda>a. undefined) (\<lambda>op. Silent (comp_op wire buf (Write op1 q1 x1) op)))
        (sound_reads wire buf (cUnion (cimage choices op2s)))))"
   "comp_op wire buf (Choice op1s) (Read p2 f2) =
-    Choice (cUn (if p2 \<in> ran wire then (if buf p2 = [] then cempty else csingle (Silent (comp_op wire (buf(p2 := btl (buf p2))) (Choice op1s) (f2 (BHD p2 buf)))))
+    Choice (cUn (if p2 \<in> ran wire then (if buf p2 = [] then cempty else csingle (Silent (comp_op wire (BTL p2 buf) (Choice op1s) (f2 (BHD p2 buf)))))
         else csingle (Read (Inr p2) (\<lambda>y. comp_op wire buf (Choice op1s) (f2 y)))) (cimage
        (case_op (\<lambda>p f. Read (Inl p) (\<lambda>x. comp_op wire buf (f x) (Read p2 f2)))
-         (\<lambda>op p x. case wire p of None \<Rightarrow> Write (comp_op wire buf op (Read p2 f2)) (Inl p) x | Some q \<Rightarrow> Silent (comp_op wire (buf(q := benq x (buf q))) op (Read p2 f2))) (\<lambda>a. undefined) (\<lambda>op. Silent (comp_op wire buf op (Read p2 f2))))
+         (\<lambda>op p x. case wire p of None \<Rightarrow> Write (comp_op wire buf op (Read p2 f2)) (Inl p) x | Some q \<Rightarrow> Silent (comp_op wire (BENQ q x buf) op (Read p2 f2))) (\<lambda>a. undefined) (\<lambda>op. Silent (comp_op wire buf op (Read p2 f2))))
        (cUnion (cimage choices op1s))))"
   "comp_op wire buf (Choice op1s) (Write op2 q2 x2) =
     Choice (cinsert (Write (comp_op wire buf (Choice op1s) op2) (Inr q2) x2) (cimage
        (case_op (\<lambda>p f. Read (Inl p) (\<lambda>x. comp_op wire buf (f x) (Write op2 q2 x2)))
-         (\<lambda>op p x. case wire p of None \<Rightarrow> Write (comp_op wire buf op (Write op2 q2 x2)) (Inl p) x | Some q \<Rightarrow> Silent (comp_op wire (buf(q := benq x (buf q))) op (Write op2 q2 x2))) (\<lambda>a. undefined) (\<lambda>op. Silent (comp_op wire buf op (Write op2 q2 x2))))
+         (\<lambda>op p x. case wire p of None \<Rightarrow> Write (comp_op wire buf op (Write op2 q2 x2)) (Inl p) x | Some q \<Rightarrow> Silent (comp_op wire (BENQ q x buf) op (Write op2 q2 x2))) (\<lambda>a. undefined) (\<lambda>op. Silent (comp_op wire buf op (Write op2 q2 x2))))
        (cUnion (cimage choices op1s))))"
   "comp_op wire buf (Choice op1s) (Choice op2s) =
     Choice (cUn (cimage
              (case_op (\<lambda>p f. Read (Inl p) (\<lambda>x. comp_op wire buf (f x) (Choice op2s)))
                (\<lambda>op p x.
                    case wire p of None \<Rightarrow> Write (comp_op wire buf op (Choice op2s)) (Inl p) x
-                   | Some q \<Rightarrow> Silent (comp_op wire (buf(q := benq x (buf q))) op (Choice op2s)))
+                   | Some q \<Rightarrow> Silent (comp_op wire (BENQ q x buf) op (Choice op2s)))
                (\<lambda>a. undefined) (\<lambda>op. Silent (comp_op wire buf op (Choice op2s))))
              (cUnion (cimage choices op1s)))
         (cimage
           (case_op
-            (\<lambda>p f. if p \<in> ran wire then Silent (comp_op wire (buf(p := btl (buf p))) (Choice op1s) (f (BHD p buf)))
+            (\<lambda>p f. if p \<in> ran wire then Silent (comp_op wire (BTL p buf) (Choice op1s) (f (BHD p buf)))
                    else Read (Inr p) (\<lambda>x. comp_op wire buf (Choice op1s) (f x)))
             (\<lambda>op p. Write (comp_op wire buf (Choice op1s) op) (Inr p)) (\<lambda>a. undefined) (\<lambda>op. Silent (comp_op wire buf (Choice op1s) op)))
           (sound_reads wire buf (cUnion (cimage choices op2s)))))" 
-  by (subst comp_op_code, auto simp add: image_iff split: option.splits)+
+  by (subst comp_op_code, auto simp add: image_iff  split: option.splits)+
 
 lemma comp_op_not_Read[simp]:
   "\<not> is_Read (comp_op wire buf op1 op2)"
