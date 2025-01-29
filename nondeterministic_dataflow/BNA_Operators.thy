@@ -437,6 +437,26 @@ lemma step_comp_op_cases:
     done
   done
 
+lemma step_tau_comp_op_Out_Inl_case_sum[intro]:
+  "step (Out (Inl p) x) op1 op1' \<Longrightarrow>
+   step Tau (comp_op Some (case_sum buf4' buf1'') op1 op2) (comp_op Some (case_sum (BENQ p x buf4') buf1'') op1' op2)"
+  using step_Tau_comp_op_L[where buf="case_sum buf4' buf1''" and q="Inl p" and p="Inl p" and wire=Some, simplified] by auto
+
+lemma step_tau_comp_op_Out_Inr_case_sum[intro]:
+  "step (Out (Inr p) x) op1 op1' \<Longrightarrow>
+   step Tau (comp_op Some (case_sum buf4' buf1'') op1 op2) (comp_op Some (case_sum buf4' (BENQ p x buf1'')) op1' op2)"
+  using step_Tau_comp_op_L[where buf="case_sum buf4' buf1''" and q="Inr p" and p="Inr p" and wire=Some, simplified] by auto
+
+lemma step_tau_comp_op_Inl_case_sum[intro]:
+  "step (Inp (Inl lp) x) op2 op2' \<Longrightarrow>
+   buf4' lp \<noteq> [] \<Longrightarrow> BHD lp buf4' = x \<Longrightarrow> step Tau (comp_op Some (case_sum buf4' buf1'') op1 op2) (comp_op Some (case_sum (BTL lp buf4') buf1'') op1 op2')"
+  using step_Tau_comp_op_R[where wire=Some and buf="case_sum buf4' buf1''" and p="Inl lp", simplified] by auto
+
+lemma step_tau_comp_op_Inr_case_sum[intro]:
+  "step (Inp (Inr p) x) op2 op2' \<Longrightarrow>
+   buf1 p \<noteq> [] \<Longrightarrow> BHD p buf1 = x \<Longrightarrow> step Tau (comp_op Some (case_sum buf4' buf1) op1 op2) (comp_op Some (case_sum buf4' (BTL p buf1)) op1 op2')"
+  using step_Tau_comp_op_R[where wire=Some and buf="case_sum buf4' buf1" and p="Inr p", simplified] by auto
+
 subsection \<open>Parallel composition operator\<close>
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
@@ -1513,7 +1533,7 @@ lemma loop_op_Choice[simp]:
 definition feedback_op ( "_ \<up>" [66] 65) where
   "feedback_op op = map_op projl projl (loop_op (case_sum (\<lambda> _. None) (Some o Inr)) (case_sum undefined (\<lambda> _. [])) op)"
 
-
+subsection \<open>Step properties\<close>
 lemma step_loop_op:
   "step io (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) op' \<Longrightarrow>
    (\<exists>p x. io = Inp (Inl p) x \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op'' \<and> step io op op'')) \<or>
@@ -2244,6 +2264,18 @@ lemma step_double_loop_2:
         done
       done
     done
+
+lemma step_tau_loop_op_case_sum[intro]:
+  "step (Out (Inr p) x) op op' \<Longrightarrow>
+   step Tau (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1) op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined (BENQ p x buf1)) op')"
+  using step_Out_Inr_loop_op[where buf="case_sum undefined buf1" and p=p, simplified] by blast
+
+lemma step_tau_loop_op_Inp_Inr_case_sum[intro]:
+  "step (Inp (Inr rp) (BHD rp buf1)) op op' \<Longrightarrow>
+   buf1 rp \<noteq> [] \<Longrightarrow>
+   step Tau (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1) op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined (BTL rp buf1)) op')"
+  using step_Inp_Inr_loop_op[where buf="case_sum undefined buf1" and p="rp", simplified] by auto
+
 
 section \<open>spin_op/end_op/silent_op/I_0\<close>
   \<comment> \<open>spin_op/end_op is I_0 in the BNA book\<close>
