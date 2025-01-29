@@ -32,11 +32,25 @@ lemma split_op_transp_op:
   oops
 
 section \<open>Axiom: A8: Split dummy source\<close>
+
 lemma split_op_dummy_source:
-  "\<exclamdown> \<bullet> \<Lambda> \<approx> \<exclamdown> \<parallel> \<exclamdown>"
-  oops
+  \<open>\<exclamdown> \<bullet> \<Lambda> ~ \<exclamdown> \<parallel> \<exclamdown>\<close>
+  apply (coinduction rule: bisim_coinduct_upto)
+  unfolding sim_def
+  apply (rule conjI)
+  subgoal
+    unfolding scomp_op_def pcomp_op_def
+    apply (subst comp_op_code)
+    apply (subst split_op_code)
+    apply auto
+    done
+  subgoal
+    apply (metis cempty_iff choices_pcomp_op_dummy_source step_choicesE)
+    done
+  done
 
 section \<open>Axiom: A9\<close>
+
 lemma dummy_source_op_sink_op:
   "\<exclamdown> \<bullet> ! = \<otimes>"
   oops

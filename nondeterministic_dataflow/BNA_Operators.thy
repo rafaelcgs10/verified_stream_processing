@@ -2321,7 +2321,7 @@ lemma spin_op_silent_op:
 
 \<comment> \<open>TODO: both are delta\<close>
 lemma "\<otimes> ~ \<oslash>"
-  oops
+  by (simp add: choices_Choice_bisim)
 
 section \<open>id_op/\<I>/I_m\<close>
 \<comment> \<open>id_op is I_m in the BNA paper\<close>
