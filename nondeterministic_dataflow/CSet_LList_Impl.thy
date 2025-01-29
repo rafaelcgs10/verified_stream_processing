@@ -393,16 +393,18 @@ fun ltaken where
   "ltaken (Suc n) (LCons x xs) = x # ltaken n xs"
 | "ltaken _ _  = []"
 
-definition force_cset :: "('a \<Rightarrow> String.literal) \<Rightarrow> nat \<Rightarrow> 'a cset \<Rightarrow> 'a cset" where
-  "force_cset f n xs = xs"
+definition force_cset' :: "('a \<Rightarrow> String.literal) \<Rightarrow> nat \<Rightarrow> 'a cset \<Rightarrow> 'a cset \<Rightarrow> 'a cset" where
+  "force_cset' f n = cUn"
+
+definition "force_cset f n xs = force_cset' f n xs cempty"
 
 lemma
-  force_cset_code[code]: "force_cset f n (cset_of_llist xs) =
-    (if n = 0 \<or> lnull xs then cset_of_llist xs else force_cset f (n - 1) (cinsert (Debug.tracing STR ''foo'' (lhd xs)) (cset_of_llist (ltl xs))))"
-  unfolding force_cset_def
-  apply (induct n arbitrary: xs)
+  force_cset_code[code]: "force_cset' f n (cset_of_llist xs) ys =
+    (if n = 0 \<or> lnull xs then cUn (cset_of_llist xs) ys else Debug.tracing (f (lhd xs)) (force_cset' f (n - 1) (cset_of_llist (ltl xs)) (cinsert (lhd xs) ys)))"
+  unfolding force_cset'_def
+  apply (induct n arbitrary: xs ys)
    apply simp_all
-  subgoal premises IH for n xs
+  subgoal premises IH for n xs ys
     apply (cases xs; simp_all add: Let_def cset_of_llist_def)
     apply (subst cinsert.abs_eq[symmetric])
     apply (auto simp: eq_onp_def)
@@ -418,19 +420,52 @@ code_printing constant Debug.tracing \<rightharpoonup> (Haskell) "Debug.trace"
 
 export_code force_cset in Haskell
 
-definition "bar = force_cset undefined 10 (cUn (cset_of_llist (from 42)) (cset_of_llist (const 2)))"
+fun print_nat where
+  "print_nat 0 = ''0''"
+| "print_nat (Suc 0) = ''1''"
+| "print_nat (Suc (Suc 0)) = ''2''"
+| "print_nat (Suc (Suc (Suc 0))) = ''3''"
+| "print_nat (Suc (Suc (Suc (Suc 0)))) = ''4''"
+| "print_nat (Suc (Suc (Suc (Suc (Suc 0))))) = ''5''"
+| "print_nat (Suc (Suc (Suc (Suc (Suc (Suc 0)))))) = ''6''"
+| "print_nat (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))) = ''7''"
+| "print_nat (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))) = ''8''"
+| "print_nat (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))) = ''9''"
+| "print_nat n = print_nat (n div 10) @ print_nat (n mod 10)"
+
+definition show_nat where
+  "show_nat x = String.implode (print_nat x)"
+
+definition "enclose s = STR ''('' + s + STR '')''"
+find_consts "char list \<Rightarrow> String.literal"
+definition show_prod where
+  "show_prod show1 show2 x = enclose (show1 (fst x) + STR '','' + show2 (snd x))"
+fun show_sum where
+  "show_sum show1 show2 (Inl x) = STR ''Inl '' + show1 x"
+| "show_sum show1 show2 (Inr x) = STR ''Inr '' + show2 x"
+fun show_bool where
+  "show_bool True = STR ''T''"
+| "show_bool False = STR ''F''"
+fun show_list0 where
+  "show_list0 show [] = STR ''''"
+| "show_list0 show [x] = show x"
+| "show_list0 show (x # y # z) = show x + STR '','' + show_list0 show (y # z)"
+definition "show_list show xs = enclose (show_list0 show xs)"
+
+definition "bar = force_cset show_nat 10 (cUn (cset_of_llist (from 42)) (cset_of_llist (const 2)))"
 export_code bar cis_empty in Haskell module_name Bar
 
-value [GHC] "force_cset undefined 10 (cUn (cset_of_llist (from 42)) (cset_of_llist (const 2)))"
-value [GHC] "force_cset undefined 10 (cempty :: nat cset)"
-value [GHC] "force_cset undefined 10 (cUNIV :: nat cset)"
-value [GHC] "force_cset undefined 10 (cimage (\<lambda>x. x + 5) (cfilter (\<lambda>x. x mod 2 = 0) cUNIV :: nat cset))"
-value [GHC] "force_cset undefined 10 (cproduct (cUNIV :: nat cset) (cUNIV :: nat cset))"
+
+value [GHC] "force_cset show_nat 10 (cUn (cset_of_llist (from 42)) (cset_of_llist (const 2)))"
+value [GHC] "force_cset show_nat 10 (cempty :: nat cset)"
+value [GHC] "force_cset show_nat 10 (cUNIV :: nat cset)"
+value [GHC] "force_cset show_nat 10 (cimage (\<lambda>x. x + 5) (cfilter (\<lambda>x. x mod 2 = 0) cUNIV :: nat cset))"
+value [GHC] "force_cset (show_prod show_nat show_nat) 10 (cproduct (cUNIV :: nat cset) (cUNIV :: nat cset))"
 value [GHC] "(5 :: nat, True) |\<in>| cproduct cUNIV cUNIV"
-value [GHC] "force_cset undefined 10 (cUnion (cset_of_llist (lmap (cset_of_llist o from) (llist_of [1,2,3]))))"
-value [GHC] "force_cset undefined 10 (cUnion (cset_of_llist (lmap (cset_of_llist o from) (from 1))))"
+value [GHC] "force_cset show_nat 10 (cUnion (cset_of_llist (lmap (cset_of_llist o from) (llist_of [1,2,3]))))"
+value [GHC] "force_cset show_nat 10 (cUnion (cset_of_llist (lmap (cset_of_llist o from) (from 1))))"
 
 value [GHC] "cset_llist_of (lmap (cset_of_llist o from) (from 1))"
-value [GHC] "force_cset undefined 10 (cset_llist_merge (CLCons (cset_of_llist (llist_of [1,2,3::nat])) (abs_cset_llist (lmap from (from 1)))))"
+value [GHC] "force_cset show_nat 10 (cset_llist_merge (CLCons (cset_of_llist (llist_of [1,2,3::nat])) (abs_cset_llist (lmap from (from 1)))))"
 
 end
