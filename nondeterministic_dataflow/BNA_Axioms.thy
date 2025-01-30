@@ -1304,9 +1304,153 @@ lemma pcomp_op_id_id:
   by simp
 
 section \<open>Axiom B7: Transpose of transpose is identity\<close>
+
+lemma comp_op_transp_transp_id_bufs:
+  \<open>map_op projl projr (comp_op Some buf2 (transp_op buf1) (transp_op buf3))
+  \<approx> id_op (buf1 >> (buf2 >> buf3 o case_sum Inr Inl))\<close>
+  apply (coinduction arbitrary: buf1 buf2 buf3 rule: wbisim_coinduct_upto)
+  subgoal for buf1 buf2 buf3
+    unfolding scomp_op_def wsim_def
+    apply auto
+    subgoal for io
+      apply (drule step_map_op_inv)
+      apply auto
+      apply (drule step_comp_op_cases)
+      apply auto
+      subgoal for p x op
+        apply (erule step_transp_op_Inp)
+         apply simp
+        apply (rule exI[of _ \<open>id_op ((BENQ p x buf1) >> (buf2 >> buf3 o case_sum Inr Inl))\<close>])
+        apply auto
+        apply (rule step_wstep)
+        apply (metis BAPPEND_BENQ step_id_op_Read)
+        done
+      subgoal for p x op
+        apply (erule step_transp_op_Out)
+          apply simp_all
+        apply (rule exI[of _ \<open>id_op (buf1 >> (buf2 >> BTL (case_sum Inr Inl p) buf3 o case_sum Inr Inl))\<close>])
+        apply auto
+        apply (rule step_wstep)
+        apply (rule step_id_op_Write)
+        apply (auto simp: BULK_BENQ_def BTL_def split: sum.splits)
+        done
+      subgoal for p x op
+        apply (erule step_transp_op_Out)
+          apply simp_all
+        apply (rule exI[of _ \<open>id_op (buf1 >> (buf2 >> buf3 o case_sum Inr Inl))\<close>])
+        apply simp
+        apply (rule wbc_base)
+        apply (rule exI[of _ \<open>BTL (case_sum Inr Inl p) buf1\<close>])
+        apply (rule exI[of _ \<open>BENQ p x buf2\<close>])
+        apply (rule exI[of _ buf3])
+        apply auto
+        using BAPPEND_BENQ_BHD[of _ \<open>case_sum Inr Inl p\<close> \<open>buf2 >> buf3 o case_sum Inr Inl\<close>]
+        apply (simp add: BENQ_case_sum_compose)
+        done
+      subgoal for p
+        apply (erule step_transp_op_Inp)
+         apply simp
+        apply (rule exI[of _ \<open>id_op (buf1 >> (buf2 >> buf3 o case_sum Inr Inl))\<close>])
+        apply simp
+        apply (rule wbc_base)
+        apply (rule exI)
+        apply (rule exI[of _ \<open>BTL p buf2\<close>])
+        apply auto
+        done
+         apply (rule no_step_transp_op_Tau, simp_all)+
+      done
+    subgoal for io
+      apply (erule step_id_op_cases)
+      subgoal for p x
+        apply (rule exI[of _ \<open>map_op projl projr (comp_op Some buf2 (transp_op (BENQ p x buf1)) (transp_op buf3))\<close>])
+        apply auto
+         apply fastforce
+        apply blast
+        done
+      subgoal for p x
+        apply hypsubst_thin
+        apply (drule BHD_BULK_BENQ_cases)
+         apply auto
+        subgoal
+          apply (drule BHD_BULK_BENQ_cases)
+           apply auto
+          subgoal
+            apply (rule exI[of _ \<open>map_op projl projr (comp_op Some buf2 (transp_op buf1) (transp_op (BTL (case_sum Inr Inl p) buf3)))\<close>])
+            apply (rule conjI)
+            subgoal
+              apply (rule step_wstep)
+              apply (rule step_map_op)
+               apply auto
+              apply (simp split: sum.splits)
+              done
+            subgoal
+              apply (rule wbc_sym)
+              apply (rule wbc_base)
+              apply (rule exI)
+              apply (rule exI)
+              apply (rule exI[of _ \<open>BTL (case_sum Inr Inl p) buf3\<close>])
+              apply (auto simp: BULK_BENQ_BTL_right_not_empty_case_sum)
+              done
+            done
+          subgoal
+            apply (rule exI[of _ \<open>map_op projl projr (comp_op Some (BTL (case_sum Inr Inl p) buf2) (transp_op buf1) (transp_op buf3))\<close>])
+            apply (rule conjI)
+            subgoal
+              apply (rule wstep_map_op[of \<open>Out (Inr p) _\<close>])
+               apply simp_all
+              apply (rule step_tau_step_io_wstep)
+               apply auto
+              apply (rule step_comp_op_R_Out)
+              apply (rule step_transp_op_Write[of _ \<open>case_sum Inr Inl p\<close>])
+                 apply (simp_all split: sum.splits)
+              done
+            subgoal
+              apply (rule wbc_sym)
+              apply (rule wbc_base)
+              apply (rule exI)
+              apply (rule exI[of _ \<open>BTL (case_sum Inr Inl p) buf2\<close>])
+              apply (rule exI)
+              using BTL_case_sum_compose[of \<open>case_sum Inr Inl p\<close> \<open>buf2 >> buf3\<close>]
+              apply (simp split: sum.splits)
+              done
+            done
+          done
+        subgoal
+          apply (rule exI[of _ \<open>map_op projl projr (comp_op Some buf2 (transp_op (BTL p buf1)) (transp_op buf3))\<close>])
+          apply (rule conjI)
+          subgoal
+            apply (rule wstep_map_op[of \<open>Out (Inr p) _\<close>])
+             apply simp_all
+            apply (rule step_tau_step_tau_step_io_wstep[of _ _ \<open>comp_op Some buf2 (transp_op (BTL p buf1)) (transp_op (BENQ (case_sum Inr Inl p) (BHD p buf1) buf3))\<close>])
+              apply auto
+            subgoal
+              apply (drule BULK_BENQ_empty)
+              apply auto
+              using step_Tau_comp_op_R[of \<open>case_sum Inr Inl p\<close> \<open>BHD p buf1\<close> _ _ Some \<open>BENQ (case_sum Inr Inl p) (BHD p buf1) buf2\<close>]
+              apply (auto simp: BTL_BENQ_empty[of buf2])
+              done
+            subgoal
+              apply (rule step_comp_op_R_Out)
+              apply (rule step_transp_op_Write[of _ \<open>case_sum Inr Inl p\<close>])
+              apply (drule BULK_BENQ_empty, simp split: sum.splits)+
+              done
+            done
+          subgoal
+            apply (rule wbc_sym)
+            apply (rule wbc_base)
+            apply auto
+            done
+          done
+        done
+      done
+    done
+  done
+
 lemma scomp_op_transp_transp_id:
-  "\<X> \<bullet> \<X> \<approx> \<I>"
-  oops
+  \<open>\<X> \<bullet> \<X> \<approx> \<I>\<close>
+  using comp_op_transp_transp_id_bufs[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>]
+  unfolding scomp_op_def
+  by (auto simp: o_def)
 
   section \<open>Axiom B9: Transpose decomposes in parallel and sequential composition\<close>
 lemma trans_op_decomposes_scomp_op_pcomp_op:

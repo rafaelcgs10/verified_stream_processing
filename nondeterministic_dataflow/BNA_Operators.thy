@@ -2354,8 +2354,8 @@ lemma spin_op_silent_op:
     by (metis (mono_tags, lifting) rtranclp.rtrancl_refl wbc_base wbc_sym)
   done
 
-\<comment> \<open>TODO: both are delta\<close>
-lemma "\<otimes> ~ \<oslash>"
+lemma spin_op_end_op:
+  \<open>\<otimes> ~ \<oslash>\<close>
   by (simp add: choices_Choice_bisim)
 
 section \<open>id_op/\<I>/I_m\<close>
@@ -2415,6 +2415,31 @@ lemma step_id_op_Out:
   apply (subst (asm) (3) id_op_code)
   apply auto
   done
+
+lemma no_step_id_op_Tau:
+  assumes \<open>step io (id_op buf) op\<close>
+    and \<open>io = Tau\<close>
+  obtains False
+  apply atomize_elim
+  using assms
+    apply (induct io \<open>id_op buf\<close> op arbitrary: buf rule: step.induct)
+     apply simp_all
+   apply (subst (asm) id_op_code)
+   apply simp
+  apply (subst (asm) (2) id_op_code)
+  apply auto
+  done
+
+lemma step_id_op_cases:
+  assumes \<open>step io (id_op buf) op\<close>
+  obtains p x where \<open>io = Inp p x\<close> \<open>op = id_op (BENQ p x buf)\<close>
+  |       p x where \<open>io = Out p x\<close> \<open>op = id_op (BTL p buf)\<close> \<open>BHD p buf = x\<close> \<open>buf p \<noteq> []\<close>
+  apply atomize_elim
+  using assms
+  apply (rule step_choicesE)
+    apply (subst (asm) id_op_code, simp)+
+  done
+
 lemma step_id_op_Read[intro]:
   "step (Inp p x) (id_op buf) (id_op (BENQ p x buf))"
   apply (subst id_op_code)
@@ -2424,7 +2449,8 @@ lemma step_id_op_Read[intro]:
    apply force+
   done
 lemma step_id_op_Write[intro]:
-  "BHD p buf = x \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> step (Out p x) (id_op buf) (id_op (BTL p buf))"
+  \<open>BHD p buf = x \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> buf' = BTL p buf \<Longrightarrow>
+  step (Out p x) (id_op buf) (id_op buf')\<close>
   apply (subst id_op_code)
   apply (rule SC)
    apply simp
@@ -2513,6 +2539,103 @@ lemma transp_op_code:
 
 abbreviation transp_empty_op ("\<X>") where
   "\<X> \<equiv> transp_op (\<lambda> _. [])"
+
+lemma step_transp_op_Inp:
+  assumes \<open>step io (transp_op buf) op\<close>
+    and \<open>io = Inp p x\<close>
+  obtains \<open>op = transp_op (BENQ p x buf)\<close>
+  apply atomize_elim
+  using assms
+  apply (induct io \<open>transp_op buf\<close> op arbitrary: buf rule: step.induct)
+     apply simp_all
+   apply (subst (asm) transp_op_code)
+   apply simp
+  apply (subst (asm) (3) transp_op_code)
+  apply auto
+  done
+
+lemma step_transp_op_Out:
+  assumes \<open>step io (transp_op buf) op\<close>
+    and \<open>io = Out p x\<close>
+    and \<open>p' = case_sum Inr Inl p\<close>
+  obtains \<open>op = transp_op (BTL p' buf)\<close>
+          \<open>BHD p' buf = x\<close>
+          \<open>buf p' \<noteq> []\<close>
+  apply atomize_elim
+  using assms
+  apply (induct io \<open>transp_op buf\<close> op arbitrary: buf rule: step.induct)
+     apply simp_all
+   apply (subst (asm) transp_op_code)
+   apply simp
+  apply (subst (asm) (3) transp_op_code)
+  apply (simp split: sum.splits)
+   apply auto
+       apply (metis Inl_Inr_False sum.simps(5) sum.simps(6) sumE)+
+  done
+
+lemma no_step_transp_op_Tau:
+  assumes \<open>step io (transp_op buf) op\<close>
+    and \<open>io = Tau\<close>
+  obtains False
+  apply atomize_elim
+  using assms
+  apply (induct io \<open>transp_op buf\<close> op arbitrary: buf rule: step.induct)
+     apply simp_all
+   apply (subst (asm) transp_op_code)
+   apply simp
+  apply (subst (asm) (2) transp_op_code)
+  apply auto
+  done
+
+lemma step_transp_op_cases:
+  assumes \<open>step io (transp_op buf) op\<close>
+  obtains p x where \<open>io = Inp p x\<close> \<open>op = transp_op (BENQ p x buf)\<close>
+  |       p x p' where \<open>io = Out p x\<close> \<open>p' = case_sum Inr Inl p\<close> \<open>op = transp_op (BTL p' buf)\<close>
+                       \<open>BHD p' buf = x\<close> \<open>buf p' \<noteq> []\<close>
+  apply atomize_elim
+  using assms
+  apply (rule step_choicesE)
+  subgoal for p f x
+    apply (subst (asm) transp_op_code)
+    apply simp
+    done
+  subgoal for p x
+    apply (subst (asm) transp_op_code)
+    using assms step_transp_op_Out
+    apply fastforce
+    done
+  subgoal
+    apply (subst (asm) transp_op_code)
+    using assms no_step_transp_op_Tau
+    apply simp
+    done
+  done
+
+lemma step_transp_op_Read[intro]:
+  \<open>step (Inp p x) (transp_op buf) (transp_op (BENQ p x buf))\<close>
+  apply (subst transp_op_code)
+  apply (rule SC)
+   apply simp
+   apply (rule disjI1)
+   apply force+
+  done
+
+lemma step_transp_op_Write[intro]:
+  \<open>BHD p buf = x \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> buf' = BTL p buf \<Longrightarrow> p' = case_sum Inr Inl p \<Longrightarrow>
+  step (Out p' x) (transp_op buf) (transp_op buf')\<close>
+  apply (subst transp_op_code)
+  apply (rule SC)
+   apply simp
+   apply (rule disjI2)
+   apply force+
+  done
+
+lemma choices_transp_op[simp]:
+  \<open>choices (transp_op buf) = cUn (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda>x. transp_op (buf(p := bulk_benq [x] (buf p))))) cUNIV)))
+       (cUnion (cimage choices (cimage (\<lambda>p. Write (transp_op (buf(p := btl (buf p)))) (case_sum Inr Inl p) (BHD p buf)) (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV))))\<close>
+  apply (subst transp_op_code)
+  apply (simp add: BTL_def BENQ_def)
+  done
 
 section \<open>split_op - nondeterministic split operator\<close>
 datatype (discs_sels) ('m) split_op_aux =

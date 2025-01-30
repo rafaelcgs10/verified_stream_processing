@@ -40,6 +40,13 @@ lemma BULK_BENQ_bulk_benq:
   "(buf1 >> buf2) p = bulk_benq (buf1 p) (buf2 p)"
   by (auto simp add: BULK_BENQ_def)
 
+lemma BHD_BULK_BENQ_cases:
+  \<open>(buf1 >> buf2) p \<noteq> [] \<Longrightarrow>
+  BHD p (buf1 >> buf2) = x \<Longrightarrow>
+  BHD p buf2 = x \<and> buf2 p \<noteq> [] \<or>
+  buf2 p = [] \<and> BHD p buf1 = x \<and> buf1 p \<noteq> []\<close>
+  by (metis append_Nil hd_append BULK_BENQ_def)
+
 lemma BHD_BAPPEND_2_cases:
   "((buf1 >> buf2) >> buf3) p \<noteq> [] \<Longrightarrow>
    BHD p ((buf1 >> buf2) >> buf3) = x \<Longrightarrow>
@@ -65,6 +72,10 @@ lemma BULK_BENQ_left_neutral[simp]:
 lemma BULK_BENQ_right_neutral[simp]:
   "buf >> (\<lambda> _. []) = buf"
   unfolding BULK_BENQ_def by force
+
+lemma BULK_BENQ_empty:
+  \<open>(buf1 >> buf2) p = [] \<Longrightarrow> buf1 p = [] \<and> buf2 p = []\<close>
+  unfolding BULK_BENQ_def by simp
 
 lemma BHD_BENQ_empty[simp]:
   "buf p = [] \<Longrightarrow> (BHD p (BENQ p x buf)) = x"
@@ -123,6 +134,23 @@ lemma BULK_BENQ_left_empty[simp]:
 lemma BHD_BULK_BENQ_right_not_empty[simp]:
   "buf2 p \<noteq> [] \<Longrightarrow> BHD p (buf1 >> buf2) = BHD p buf2"
   by (simp add: BENQ_def BULK_BENQ_def)
+
+lemma BENQ_case_sum_compose:
+  \<open>BENQ (case_sum Inr Inl p) x (buf \<circ> case_sum Inr Inl) = (BENQ p x buf) \<circ> case_sum Inr Inl\<close>
+  unfolding BENQ_def
+  apply (auto split: sum.splits)
+  done
+
+lemma BTL_case_sum_compose:
+  \<open>BTL (case_sum Inr Inl p) (buf \<circ> case_sum Inr Inl) = (BTL p buf) \<circ> case_sum Inr Inl\<close>
+  unfolding BTL_def
+  apply (auto split: sum.splits)
+  done
+
+lemma BULK_BENQ_BTL_right_not_empty_case_sum:
+  \<open>buf2 (case_sum Inr Inl p) \<noteq> [] \<Longrightarrow>
+  BTL p (buf1 >> buf2 \<circ> case_sum Inr Inl) = buf1 >> BTL (case_sum Inr Inl p) buf2 \<circ> case_sum Inr Inl\<close>
+  unfolding BTL_def BULK_BENQ_def by (auto split: sum.splits)
 
 section\<open>Operator\<close>
 
