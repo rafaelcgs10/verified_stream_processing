@@ -2532,9 +2532,7 @@ lemma transp_op_code:
   apply (subst transp_op.code)
   apply (unfold cimage_cUn cimage_cinsert op.inject)
   apply simp
-  apply (rule arg_cong2[where f = cUn])
-   apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
-      split: op.splits option.splits)
+  apply (auto simp add: cset.map_comp o_def intro!: arg_cong2[where f = cUn])
   done
 
 abbreviation transp_empty_op ("\<X>") where
@@ -2614,25 +2612,20 @@ lemma step_transp_op_cases:
 lemma step_transp_op_Read[intro]:
   \<open>step (Inp p x) (transp_op buf) (transp_op (BENQ p x buf))\<close>
   apply (subst transp_op_code)
-  apply (rule SC)
-   apply simp
-   apply (rule disjI1)
-   apply force+
+  apply fastforce
   done
 
 lemma step_transp_op_Write[intro]:
   \<open>BHD p buf = x \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> buf' = BTL p buf \<Longrightarrow> p' = case_sum Inr Inl p \<Longrightarrow>
   step (Out p' x) (transp_op buf) (transp_op buf')\<close>
   apply (subst transp_op_code)
-  apply (rule SC)
-   apply simp
-   apply (rule disjI2)
-   apply force+
+  apply fastforce
   done
 
 lemma choices_transp_op[simp]:
-  \<open>choices (transp_op buf) = cUn (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda>x. transp_op (buf(p := bulk_benq [x] (buf p))))) cUNIV)))
-       (cUnion (cimage choices (cimage (\<lambda>p. Write (transp_op (buf(p := btl (buf p)))) (case_sum Inr Inl p) (BHD p buf)) (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV))))\<close>
+  \<open>choices (transp_op buf) = cUn
+  (cUnion (cimage choices (cimage (\<lambda> p. Read p (\<lambda> x. transp_op (buf(p := bulk_benq [x] (buf p))))) cUNIV)))
+  (cUnion (cimage choices (cimage (\<lambda> p. Write (transp_op (buf(p := btl (buf p)))) (case_sum Inr Inl p) (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) cUNIV))))\<close>
   apply (subst transp_op_code)
   apply (simp add: BTL_def BENQ_def)
   done
@@ -2652,10 +2645,60 @@ corec split_op :: "('m :: countable, 'm + 'm, 'a) op" ("\<Lambda>")  where
 lemma split_op_code:
   "split_op = Choice (cimage (\<lambda> p. Read p (\<lambda> y. Choice {|Write split_op (Inl p) y, Write split_op (Inr p) y|})) (cUNIV :: 'm :: countable cset))"
   apply (subst split_op.code)
-   apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
-      split: op.splits option.splits)
+  apply (auto simp add: cset.map_comp intro!: arg_cong2[where f = cUn])
   done
 
+lemma step_split_op_Inp:
+  assumes \<open>step io \<Lambda> op\<close>
+    and \<open>io = Inp p x\<close>
+  obtains \<open>op = Choice {|Write \<Lambda> (Inl p) x, Write \<Lambda> (Inr p) x|}\<close>
+  apply atomize_elim
+  using assms
+  apply (subst (asm) split_op_code)
+  apply auto
+  done
+
+lemma no_step_split_op_Out:
+  assumes \<open>step io \<Lambda> op\<close>
+    and \<open>io = Out p x\<close>
+  obtains False
+  apply atomize_elim
+  using assms
+  apply (subst (asm) split_op_code)
+  apply auto
+  done
+
+lemma no_step_split_op_Tau:
+  assumes \<open>step io \<Lambda> op\<close>
+    and \<open>io = Tau\<close>
+  obtains False
+  apply atomize_elim
+  using assms
+  apply (subst (asm) split_op_code)
+  apply auto
+  done
+
+lemma step_split_op:
+  assumes \<open>step io \<Lambda> op\<close>
+  obtains p x where \<open>io = Inp p x\<close> \<open>op = Choice {|Write \<Lambda> (Inl p) x, Write \<Lambda> (Inr p) x|}\<close>
+  apply atomize_elim
+  using assms
+  apply (subst (asm) split_op_code)
+  apply auto
+  done
+
+lemma step_split_op_Read[intro]:
+  \<open>step (Inp p x) \<Lambda> (Choice {|Write \<Lambda> (Inl p) x, Write \<Lambda> (Inr p) x|})\<close>
+  apply (subst split_op_code)
+  apply fastforce
+  done
+
+lemma choices_split_op[simp]:
+  \<open>choices \<Lambda> =
+  cimage (\<lambda> p. Read p (\<lambda> y. Choice {|Write \<Lambda> (Inl p) y, Write \<Lambda> (Inr p) y|})) cUNIV\<close>
+  apply (subst split_op_code)
+  apply auto
+  done
 
 section \<open>merge_op - nondeterministic merge operator\<close>
 datatype (discs_sels) ('m) merge_op_aux =
@@ -2672,11 +2715,63 @@ corec merge_op :: "('m + 'm :: countable, 'm, 'a) op" ("\<V>") where
 lemma merge_op_code:
   "merge_op = Choice (cimage (\<lambda> p. Choice {|Read (Inl p) (\<lambda>y. Write merge_op p y), Read (Inr p) (\<lambda>y. Write merge_op p y)|}) (cUNIV :: 'm :: countable cset))"
   apply (subst merge_op.code)
-   apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
-      split: op.splits option.splits)
+  apply (auto simp add: cset.map_comp intro!: arg_cong2[where f = cUn])
   done
 
+lemma step_merge_op_Inp:
+  assumes \<open>step io \<V> op\<close>
+    and \<open>io = Inp p x\<close>
+    and \<open>p' = case_sum id id p\<close>
+  obtains \<open>op = Write \<V> p' x\<close>
+  apply atomize_elim
+  using assms
+  apply (subst (asm) merge_op_code)
+  apply auto
+  done
 
+lemma no_step_merge_op_Out:
+  assumes \<open>step io \<V> op\<close>
+    and \<open>io = Out p x\<close>
+  obtains False
+  apply atomize_elim
+  using assms
+  apply (subst (asm) merge_op_code)
+  apply auto
+  done
+
+lemma no_step_merge_op_Tau:
+  assumes \<open>step io \<V> op\<close>
+    and \<open>io = Tau\<close>
+  obtains False
+  apply atomize_elim
+  using assms
+  apply (subst (asm) merge_op_code)
+  apply auto
+  done
+
+lemma step_merge_op:
+  assumes \<open>step io \<V> op\<close>
+  obtains p x p' where \<open>io = Inp p x\<close> \<open>p' = case_sum id id p\<close> \<open>op = Write \<V> p' x\<close>
+  apply atomize_elim
+  using assms
+  apply (subst (asm) merge_op_code)
+  apply auto
+  done
+
+lemma step_merge_op_Read[intro]:
+  \<open>p' = case_sum id id p \<Longrightarrow> step (Inp p x) \<V> (Write \<V> p' x)\<close>
+  apply (subst merge_op_code)
+  apply (simp split: sum.splits)
+   apply fastforce+
+  done
+
+lemma choices_merge_op[simp]:
+  \<open>choices \<V> = cUn
+  (cUnion (cimage choices (cimage (\<lambda> p. Read (Inl p) (\<lambda> y. Write \<V> p y)) cUNIV)))
+  (cUnion (cimage choices (cimage (\<lambda> p. Read (Inr p) (\<lambda> y. Write \<V> p y)) cUNIV)))\<close>
+  apply (subst merge_op_code)
+  apply auto
+  done
 
 section \<open>acopy_op - async copy operator\<close>
 datatype (discs_sels) ('m) acopy_op_aux =
@@ -2693,8 +2788,58 @@ corec acopy_op :: "('m :: countable, 'm + 'm, 'a) op" ("\<C>") where
 lemma acopy_op_code:
   "acopy_op = Choice (cimage (\<lambda> p. Read p (\<lambda> y. Choice {|Write (Write acopy_op (Inr p) y) (Inl p) y, Write (Write acopy_op (Inl p) y) (Inr p) y|})) (cUNIV :: 'm :: countable cset))"
   apply (subst acopy_op.code)
-   apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
-      split: op.splits option.splits)
+  apply (auto simp add: cset.map_comp intro!: arg_cong2[where f = cUn])
+  done
+
+lemma step_acopy_op_Inp:
+  assumes \<open>step io \<C> op\<close>
+    and \<open>io = Inp p x\<close>
+  obtains \<open>op = Choice {|Write (Write \<C> (Inr p) x) (Inl p) x, Write (Write \<C> (Inl p) x) (Inr p) x|}\<close>
+  apply atomize_elim
+  using assms
+  apply (subst (asm) acopy_op_code)
+  apply auto
+  done
+
+lemma no_step_acopy_op_Out:
+  assumes \<open>step io \<C> op\<close>
+    and \<open>io = Out p x\<close>
+  obtains False
+  apply atomize_elim
+  using assms
+  apply (subst (asm) acopy_op_code)
+  apply auto
+  done
+
+lemma no_step_acopy_op_Tau:
+  assumes \<open>step io \<C> op\<close>
+    and \<open>io = Tau\<close>
+  obtains False
+  apply atomize_elim
+  using assms
+  apply (subst (asm) acopy_op_code)
+  apply auto
+  done
+
+lemma step_acopy_op:
+  assumes \<open>step io \<C> op\<close>
+  obtains p x where \<open>io = Inp p x\<close> \<open>op = Choice {|Write (Write \<C> (Inr p) x) (Inl p) x, Write (Write \<C> (Inl p) x) (Inr p) x|}\<close>
+  apply atomize_elim
+  using assms
+  apply (subst (asm) acopy_op_code)
+  apply auto
+  done
+
+lemma step_acopy_op_Read[intro]:
+  \<open>step (Inp p x) \<C> (Choice {|Write (Write \<C> (Inr p) x) (Inl p) x, Write (Write \<C> (Inl p) x) (Inr p) x|})\<close>
+  apply (subst acopy_op_code)
+  apply fastforce
+  done
+
+lemma choices_acopy_op[simp]:
+  \<open>choices \<C> = cimage (\<lambda> p. Read p (\<lambda> y. Choice {|Write (Write \<C> (Inr p) y) (Inl p) y, Write (Write \<C> (Inl p) y) (Inr p) y|})) cUNIV\<close>
+  apply (subst acopy_op_code)
+  apply auto
   done
 
 section \<open>aeq_op - async equality operator\<close>
@@ -2712,8 +2857,79 @@ corec aeq_op :: "('m + 'm :: countable, 'm, 'a) op" ("\<Q>") where
 lemma aeq_op_code:
   "aeq_op = Choice (cimage (\<lambda> p. Choice {|Read (Inl p) ((\<lambda> y. Read (Inr p) (\<lambda>x. if x = y then Write aeq_op p x else Silent aeq_op))), Read (Inr p) ((\<lambda> y. Read (Inl p) (\<lambda>x. if x = y then Write aeq_op p x else Silent aeq_op)))|}) (cUNIV :: 'm :: countable cset))"
   apply (subst aeq_op.code)
-   apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: cimage_cong
-      split: op.splits option.splits if_splits)
+  apply (auto simp add: cset.map_comp)
+  done
+
+lemma step_aeq_op_Inp_L:
+  assumes \<open>step io \<Q> op\<close>
+    and \<open>io = Inp (Inl p) y\<close>
+  obtains \<open>op = Read (Inr p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)\<close>
+  apply atomize_elim
+  using assms
+  apply (subst (asm) aeq_op_code)
+  apply auto
+  done
+
+lemma step_aeq_op_Inp_R:
+  assumes \<open>step io \<Q> op\<close>
+    and \<open>io = Inp (Inr p) y\<close>
+  obtains \<open>op = Read (Inl p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)\<close>
+  apply atomize_elim
+  using assms
+  apply (subst (asm) aeq_op_code)
+  apply auto
+  done
+
+lemma no_step_aeq_op_Out:
+  assumes \<open>step io \<Q> op\<close>
+    and \<open>io = Out p x\<close>
+  obtains False
+  apply atomize_elim
+  using assms
+  apply (subst (asm) aeq_op_code)
+  apply auto
+  done
+
+lemma no_step_aeq_op_Tau:
+  assumes \<open>step io \<Q> op\<close>
+    and \<open>io = Tau\<close>
+  obtains False
+  apply atomize_elim
+  using assms
+  apply (subst (asm) aeq_op_code)
+  apply auto
+  done
+
+lemma step_aeq_op:
+  assumes \<open>step io \<Q> op\<close>
+  obtains p y where \<open>io = Inp (Inl p) y\<close> \<open>op = Read (Inr p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)\<close>
+  |       p y where \<open>io = Inp (Inr p) y\<close> \<open>op = Read (Inl p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)\<close>
+  apply atomize_elim
+  using assms
+  apply (subst (asm) aeq_op_code)
+  apply auto
+  done
+
+lemma step_aeq_op_Read_L[intro]:
+  \<open>step (Inp (Inl p) y) \<Q> (Read (Inr p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>))\<close>
+  apply (subst aeq_op_code)
+  apply (rule Read_in_choices_step)
+  apply simp
+  done
+
+lemma step_aeq_op_Read_R[intro]:
+  \<open>step (Inp (Inr p) y) \<Q> (Read (Inl p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>))\<close>
+  apply (subst aeq_op_code)
+  apply (rule Read_in_choices_step)
+  apply simp
+  done
+
+lemma choices_aeq_op[simp]:
+  \<open>choices \<Q> = cUn
+  (cUnion (cimage choices (cimage (\<lambda> p. Read (Inl p) ((\<lambda> y. Read (Inr p) (\<lambda> x. if x = y then Write aeq_op p x else Silent aeq_op)))) cUNIV)))
+  (cUnion (cimage choices (cimage (\<lambda> p. Read (Inr p) ((\<lambda> y. Read (Inl p) (\<lambda> x. if x = y then Write aeq_op p x else Silent aeq_op)))) cUNIV)))\<close>
+  apply (subst aeq_op_code)
+  apply auto
   done
 
 end
