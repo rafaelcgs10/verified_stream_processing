@@ -3509,12 +3509,138 @@ section \<open>Axiom F1: Identity looped is end_op\<close>
 lemma id_op_loop_spin: \<open>\<I>\<up> = \<oslash>\<close>
   oops
 
-  section \<open>Axiom F2: Transpose looped is identity\<close>
+section \<open>Axiom F2: Transpose looped is identity\<close>
+lemma transp_op_loop_id_gen:
+  "map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf') (transp_op (case_sum buf buf''))) \<approx> id_op (buf >> buf' >> buf'')"
+  apply (coinduction arbitrary: buf buf' buf'' rule: wbisim_coinduct_upto)
+  subgoal for buf buf' buf''
+    unfolding wsim_def
+    apply auto
+    subgoal for io op'
+      apply (drule step_map_op_inv)
+      apply (auto; hypsubst_thin?)
+      apply (drule step_loop_op)
+      apply (auto; hypsubst_thin?)
+      subgoal for p op'' x
+        apply (drule step_transp_op_Inp)
+         apply auto
+        apply hypsubst_thin
+        apply (intro exI conjI[rotated])
+         apply (rule wbc_base)
+         apply force
+        apply (metis BAPPEND_BENQ step_id_op_Read step_wstep)
+        done
+      subgoal for p op'' x
+        apply (drule step_transp_op_Out)
+          apply auto
+        apply hypsubst_thin
+        apply (intro exI conjI[rotated])
+         apply (rule wbc_base)
+         apply force
+        using BULK_BENQ_empty apply fastforce
+        done
+      subgoal
+        by (meson no_step_transp_op_Tau)
+      subgoal for op' p
+        apply (drule step_transp_op_Inp)
+         apply auto
+        apply hypsubst_thin
+        apply (intro exI conjI[rotated])
+         apply (rule wbc_base)
+         apply force
+        apply (metis BAPPEND_BENQ_BHD BULK_BENQ_assoc rtranclp_intros_1')
+        done
+      subgoal for op' p x
+        apply (drule step_transp_op_Out)
+          apply auto
+        apply hypsubst_thin
+        apply (intro exI conjI[rotated])
+         apply (rule wbc_base)
+         apply force+
+        done
+      done
+    subgoal for op op1'
+      apply (erule step_id_op_cases)
+      subgoal for p x
+        apply (auto; hypsubst_thin?)
+        apply (intro exI conjI[rotated])
+         apply (rule wbc_sym)
+         apply (rule wbc_base)
+         apply force
+        apply (rule step_wstep)
+        apply (rule step_map_op)
+         apply (rule step_Inp_Inl_loop_op)
+         apply simp_all
+        apply (metis case_sum_BENQ_L step_transp_op_Read)
+        done
+      subgoal for p x
+        apply (auto; hypsubst_thin?)
+        subgoal 
+          apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+           apply (rule wbc_base)
+           apply force
+          apply (rule step_tau_step_tau_step_io_wstep)
+            apply (rule step_map_op[of Tau])
+             apply simp_all
+            apply (rule step_Out_Inr_loop_op[where p=p])
+            apply (rule step_transp_op_Write[where p="Inl p"])
+               apply simp_all
+           apply (rule step_map_op[of Tau])
+            apply simp_all
+           apply (rule step_Inp_Inr_loop_op[where p=p])
+            apply simp_all
+           apply (rule step_transp_op_Read)
+          apply simp
+          apply (rule step_map_op[of "Out (Inl _) _"])
+           apply simp_all
+          apply (metis (mono_tags, lifting) BENQ_access BHD_BENQ_empty BTL_BENQ_empty case_sum_BTL_R not_Cons_self2 self_append_conv2 step_Out_Inl_loop_op step_transp_op_Write sum.case(2))
+          done
+        subgoal
+          apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+           apply (rule wbc_base)
+           apply force
+          apply (rule step_wstep)
+          apply (rule step_map_op[of "Out (Inl _) _"])
+           apply simp_all
+          apply (metis case_sum_BTL_R old.sum.simps(6) step_Out_Inl_loop_op step_transp_op_Write)
+          done
+        subgoal
+          apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+           apply (rule wbc_base)
+           apply force
+          apply (rule step_tau_step_io_wstep)
+           apply (rule step_map_op[of Tau])
+            apply simp_all
+           apply (rule step_Inp_Inr_loop_op[where p=p])
+            apply simp_all
+           apply (rule step_transp_op_Read)
+          apply simp
+          apply (rule step_map_op[of "Out (Inl _) _"])
+           apply simp_all
+          apply (smt (verit, ccfv_threshold) BENQ_access BHD_BENQ_empty BTL_BENQ_empty case_sum_BENQ_R not_Cons_self2 old.sum.simps(6) self_append_conv2 step_Out_Inl_loop_op step_transp_op_Write)
+          done
+        subgoal
+          apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+           apply (rule wbc_base)
+           apply force
+          apply (rule step_wstep)
+          apply (rule step_map_op[of "Out (Inl _) _"])
+           apply simp_all
+          apply (metis case_sum_BTL_R old.sum.simps(6) step_Out_Inl_loop_op step_transp_op_Write)
+          done
+        done
+      done
+    done
+  done
 
 lemma transp_op_loop_id: \<open>\<X>\<up> \<approx> \<I>\<close>
-  oops
-
-
+  unfolding feedback_op_def 
+  using transp_op_loop_id_gen[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []"] by auto
+(* 
 section "Tests"
 
 lemma comp_op_assoc:
@@ -3607,6 +3733,6 @@ lemma scomp_op_assoc_gen:
   apply (rule arg_cong[where f="\<lambda> x. comp_op x _ _ _"])
     apply (auto simp: fun_eq_iff split: sum.splits)
   apply (smt (verit) BNA_Operators.reassoc.simps(1) BNA_Operators.reassoc.simps(2) id_apply map_sum.simps(1) map_sum.simps(2) sum.exhaust_sel sum.sel(1))
-  oops 
+  oops  *)
 
 end
