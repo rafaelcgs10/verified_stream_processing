@@ -1452,7 +1452,524 @@ lemma scomp_op_transp_transp_id:
   unfolding scomp_op_def
   by (auto simp: o_def)
 
-  section \<open>Axiom B9: Transpose decomposes in parallel and sequential composition\<close>
+section \<open>Axiom B9: Transpose decomposes in parallel and sequential composition\<close>
+lemma trans_op_decomposes_scomp_op_pcomp_op_gen:
+  "transp_op (case_sum (buf1 >> buf1' >> buf1'') (case_sum (buf2 >> buf2' >> buf2'') (buf3 >> buf3' >> buf3''))) \<approx>
+   map_op projl projr (comp_op Some (case_sum buf2' (case_sum buf1' buf3')) 
+   (map_op BNA_Operators.reassoc BNA_Operators.reassoc (transp_op (case_sum buf1 buf2) \<parallel> id_op buf3))
+   (map_op id BNA_Operators.assoc (id_op buf2'' \<parallel> transp_op (case_sum buf1'' buf3''))))"
+  apply (coinduction arbitrary: buf1 buf1' buf1'' buf2 buf2' buf2'' buf3 buf3' buf3'' rule: wbisim_coinduct_upto)
+  subgoal for buf1 buf1' buf1'' buf2 buf2' buf2'' buf3 buf3' buf3''
+    unfolding wsim_def
+    apply auto
+    subgoal for io op'
+      apply (erule step_transp_op_cases)
+      subgoal for p x
+        apply (auto; hypsubst_thin?)
+        apply (cases p)
+        subgoal for lp
+          apply hypsubst_thin
+          apply (intro exI conjI[rotated])        
+           apply (rule wbc_base)
+           apply force
+          apply (rule step_wstep)
+          apply (rule step_map_op)
+           apply (rule step_comp_op_L_Inp)
+           apply (rule step_map_op)
+          unfolding pcomp_op_def
+            apply (rule step_comp_op_L_Inp)
+            apply (rule step_transp_op_Read[where buf="case_sum buf1 buf2" and p="Inl lp", simplified])
+           apply auto
+          done
+        subgoal for rp
+          apply hypsubst_thin
+          apply (cases rp)
+          subgoal for lp
+            apply hypsubst_thin
+            apply (intro exI conjI[rotated])        
+             apply (rule wbc_base)
+             apply force
+            apply (rule step_wstep)
+            apply (rule step_map_op)
+             apply (rule step_comp_op_L_Inp)
+             apply (rule step_map_op)
+            unfolding pcomp_op_def
+              apply (rule step_comp_op_L_Inp)
+              apply (rule step_transp_op_Read[where buf="case_sum buf1 buf2" and p="Inr lp", simplified])
+             apply auto
+            done
+          subgoal for rp
+            apply hypsubst_thin
+            apply (intro exI conjI[rotated])        
+             apply (rule wbc_base)
+             apply force
+            apply (rule step_wstep)
+            apply (rule step_map_op[of "Inp (Inl (Inr (Inr rp))) _"])
+             apply simp_all
+            apply (rule step_comp_op_L_Inp)
+            apply (rule step_map_op)
+            unfolding pcomp_op_def
+             apply (rule step_comp_op_R_Inp)
+              apply (rule step_id_op_Read)
+             apply auto
+            done
+          done
+        done
+      subgoal for p x p'
+        apply (cases p)
+        subgoal for lp
+          apply (cases lp)
+          subgoal for lp
+            apply (auto; hypsubst_thin?)
+            subgoal
+              apply (intro exI conjI[rotated])        
+               apply (rule wbc_base)
+               apply force
+              apply (rule step_tau_tau_step_tau_step_io_wstep)
+                 apply (rule step_map_op[of Tau])
+                  apply simp_all
+                 apply (rule step_tau_comp_op_Out_Inl_case_sum)
+                 apply (rule step_map_op[of "Out (Inl (Inl lp)) _"])
+                  apply simp_all
+              unfolding pcomp_op_def
+                 apply (rule step_comp_op_L_Out)
+                  apply (rule step_transp_op_Write[where p="Inr lp"])
+                     apply simp_all
+                apply (rule step_map_op[of Tau])
+                 apply simp_all
+                apply (rule step_tau_comp_op_Inl_case_sum[where lp=lp])
+                  apply (rule step_map_op)
+                   apply simp_all
+                 apply (rule step_comp_op_L_Inp)
+                 apply (rule step_id_op_Read)
+                apply simp
+               apply (rule step_map_op[of Tau])
+                apply simp_all
+               apply (rule step_tau_comp_op_Inl_case_sum)
+                 apply (rule step_map_op[of ])
+                  apply (rule step_comp_op_L_Inp)
+                  apply (rule step_id_op_Read[where p=lp])
+                 apply simp_all
+               apply simp
+              apply (rule step_map_op[of "Out (Inr _) _"])
+               apply simp_all
+              apply (rule step_comp_op_R_Out)
+              apply (rule step_map_op[of "Out (Inl _) _"])
+               apply simp_all
+              apply force
+              done
+            subgoal
+              apply (intro exI conjI[rotated])        
+               apply (rule wbc_base)
+               apply force
+              unfolding pcomp_op_def
+              apply (rule step_wstep)
+              apply (rule step_map_op[of "Out (Inr _) _"])
+               apply simp_all
+              apply (rule step_comp_op_R_Out)
+              apply (rule step_map_op[of "Out (Inl _) _"])
+               apply simp_all
+              apply force
+              done
+            subgoal
+              apply (intro exI conjI[rotated])        
+               apply (rule wbc_base)
+               apply force
+              unfolding pcomp_op_def
+              apply (rule step_tau_step_io_wstep)
+               apply (rule step_map_op[of Tau])
+                apply simp_all
+               apply (rule step_tau_comp_op_Inl_case_sum[where lp=lp])
+                 apply (rule step_map_op)
+                  apply simp_all
+                apply (rule step_comp_op_L_Inp)
+                apply (rule step_id_op_Read)
+               apply simp
+              apply (rule step_map_op[of "Out (Inr _) _"])
+               apply simp_all
+              apply (rule step_comp_op_R_Out)
+              apply (rule step_map_op[of "Out (Inl _) _"])
+               apply simp_all
+              apply force
+              done
+            subgoal
+              apply (intro exI conjI[rotated])        
+               apply (rule wbc_base)
+               apply force
+              unfolding pcomp_op_def
+              apply (rule step_wstep)
+              apply (rule step_map_op[of "Out (Inr _) _"])
+               apply simp_all
+              apply (rule step_comp_op_R_Out)
+              apply (rule step_map_op[of "Out (Inl _) _"])
+               apply simp_all
+              apply force
+              done
+            done
+          subgoal for rp
+            apply auto
+            subgoal
+              apply hypsubst_thin
+              apply (intro exI conjI[rotated])        
+               apply (rule wbc_base)
+               apply force
+              apply (rule step_tau_tau_step_tau_step_io_wstep)
+                 apply (rule step_map_op[of Tau])
+                  apply simp_all
+                 apply (rule step_tau_comp_op_Out_Inr_case_sum)
+                 apply (rule step_map_op[of "Out (Inr rp) _"])
+                  apply simp_all
+              unfolding pcomp_op_def
+                 apply (rule step_comp_op_R_Out)
+                 apply (rule step_id_op_Write)
+                   apply simp_all
+                apply (rule step_map_op[of Tau])
+                 apply simp_all
+                apply (rule step_tau_comp_op_Inr_case_sum[where p="Inr rp"])
+                  apply (rule step_map_op)
+                   apply simp_all
+                 apply (rule step_comp_op_R_Inp)
+                  apply (rule step_transp_op_Read[where p="Inr rp"])
+                 apply simp_all
+               apply (rule step_map_op[of Tau])
+                apply simp_all
+               apply (rule step_tau_comp_op_Inr_case_sum)
+                 apply (rule step_map_op[of ])
+                  apply (rule step_comp_op_R_Inp)
+                   apply (rule step_transp_op_Read[where p="Inr rp"])
+                  apply simp_all
+               apply simp
+              apply (rule step_map_op[of "Out (Inr (Inl (Inr rp))) _"])
+               apply simp_all
+              apply (rule step_comp_op_R_Out)
+              apply (rule step_map_op[of "Out (Inr (Inl _)) _"])
+               apply simp_all
+              apply (smt (verit) BENQ_access BHD_BENQ_empty BTL_BENQ_empty append_eq_Cons_conv case_sum_BTL_R list.distinct(1) step_comp_op_R_Out step_transp_op_Write sum.case(2))
+              done
+            subgoal 
+              apply hypsubst_thin
+              apply (intro exI conjI[rotated])        
+               apply (rule wbc_base)
+               apply force
+              unfolding pcomp_op_def
+              apply (rule step_wstep)
+              apply (rule step_map_op[of "Out (Inr (Inl (Inr rp))) _"])
+               apply simp_all
+              apply (rule step_comp_op_R_Out)
+              apply (rule step_map_op[of "Out (Inr (Inl _)) _"])
+               apply simp_all
+              apply (metis case_sum_BTL_R old.sum.simps(6) step_comp_op_R_Out step_transp_op_Write)   
+              done
+            subgoal 
+              apply hypsubst_thin
+              apply (intro exI conjI[rotated])        
+               apply (rule wbc_base)
+               apply force
+              unfolding pcomp_op_def
+              apply (rule step_tau_step_io_wstep)
+               apply (rule step_map_op[of Tau])
+                apply simp_all
+               apply (rule step_tau_comp_op_Inr_case_sum[where p="Inr rp"])
+                 apply (rule step_map_op)
+                  apply simp_all
+                apply (rule step_comp_op_R_Inp)
+                 apply (rule step_transp_op_Read[where p="Inr rp"])
+                apply simp_all
+
+              apply (rule step_map_op[of "Out (Inr (Inl (Inr rp))) _"])
+               apply simp_all
+              apply (rule step_comp_op_R_Out)
+              apply (rule step_map_op[of "Out (Inr (Inl _)) _"])
+               apply simp_all
+              apply (smt (verit, best) BENQ_access BHD_BENQ_empty BTL_BENQ_empty append_eq_Cons_conv case_sum_BTL_R list.distinct(1) old.sum.simps(6) step_comp_op_R_Out step_transp_op_Write) 
+              done
+            subgoal
+              apply hypsubst_thin
+              apply (intro exI conjI[rotated])        
+               apply (rule wbc_base)
+               apply force
+              unfolding pcomp_op_def
+              apply (rule step_wstep)
+              apply (rule step_map_op[of "Out (Inr (Inl (Inr rp))) _"])
+               apply simp_all
+              apply (rule step_comp_op_R_Out)
+              apply (rule step_map_op[of "Out (Inr (Inl _)) _"])
+               apply simp_all
+              apply (metis case_sum_BTL_R old.sum.simps(6) step_comp_op_R_Out step_transp_op_Write)   
+              done
+            done
+          done
+        subgoal for lp
+          apply (simp split: if_splits; hypsubst_thin?)
+          subgoal 
+            apply (intro exI conjI[rotated])  
+             apply (rule wbc_base)
+             apply force
+            apply (rule step_tau_tau_step_tau_step_io_wstep)
+               apply (rule step_map_op[of Tau])
+                apply simp_all
+               apply (rule step_tau_comp_op_Out_Inr_case_sum[where p="Inl lp"])
+               apply (rule step_map_op)
+                apply simp_all
+            unfolding pcomp_op_def
+                apply (rule step_comp_op_L_Out)
+                 apply (rule step_transp_op_Write[where p="Inl lp"])
+                    apply simp_all
+               apply simp
+              apply (rule step_map_op[of Tau])
+               apply simp_all
+              apply (rule step_tau_comp_op_Inr_case_sum[where p="Inl lp"])
+                apply (rule step_map_op)
+                 apply simp_all
+               apply (rule step_comp_op_R_Inp)
+                apply (rule step_transp_op_Read[where p="Inl lp"])
+               apply simp_all
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_tau_comp_op_Inr_case_sum)
+               apply (rule step_map_op[of ])
+                apply (rule step_comp_op_R_Inp)
+                 apply (rule step_transp_op_Read[where p="Inl lp"])
+                apply simp_all
+             apply simp
+            apply (rule step_map_op[of "Out (Inr (Inr lp)) _"])
+             apply simp_all
+            apply (rule step_comp_op_R_Out)
+            apply (rule step_map_op[of "Out (Inr (Inr lp)) _"])
+             apply simp_all
+            apply (smt (verit, best) BENQ_access BHD_BENQ_empty BTL_BENQ_empty case_sum_BTL_L snoc_eq_iff_butlast step_comp_op_R_Out step_transp_op_Write sum.case(1))
+            done
+          subgoal
+            apply (intro exI conjI[rotated])  
+             apply (rule wbc_base)
+             apply force
+            apply (rule step_tau_step_io_wstep)
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+            unfolding pcomp_op_def
+             apply (rule step_tau_comp_op_Inr_case_sum[where p="Inl lp"])
+               apply (rule step_map_op)
+                apply simp_all
+              apply (rule step_comp_op_R_Inp)
+               apply (rule step_transp_op_Read[where p="Inl lp"])
+              apply simp_all
+            apply (rule step_map_op[of "Out (Inr (Inr lp)) _"])
+             apply simp_all
+            apply (rule step_comp_op_R_Out)
+            apply (rule step_map_op[of "Out (Inr (Inr lp)) _"])
+             apply simp_all
+            apply (smt (verit, best) BENQ_access BHD_BENQ_empty BTL_BENQ_empty append_self_conv2 case_sum_BTL_L list.distinct(1) old.sum.simps(5) step_comp_op_R_Out step_transp_op_Write)
+            done
+          subgoal
+            apply (intro exI conjI[rotated])  
+             apply (rule wbc_base)
+             apply force      
+            apply (rule step_wstep)
+            unfolding pcomp_op_def
+            apply (rule step_map_op[of "Out (Inr (Inr lp)) _"])
+             apply simp_all
+            apply (rule step_comp_op_R_Out)
+            apply (rule step_map_op[of "Out (Inr (Inr lp)) _"])
+             apply simp_all
+            apply (smt (verit, best) BENQ_access BHD_BENQ_empty BTL_BENQ_empty append_self_conv2 case_sum_BTL_L list.distinct(1) old.sum.simps(5) step_comp_op_R_Out step_transp_op_Write)
+            done
+          done
+        done
+      done
+    subgoal for io op'
+      unfolding pcomp_op_def
+      apply (drule step_map_op_inv)
+      apply (auto; hypsubst_thin?)
+      apply (drule step_comp_op_cases)
+      apply auto
+      subgoal for p x op''
+        apply (drule step_map_op_inv)
+        apply (auto; hypsubst_thin?)
+        subgoal for io op''
+          apply (drule step_comp_op_cases)
+          apply (auto; hypsubst_thin?)
+          subgoal for p op''
+            apply (erule step_transp_op_cases)
+             apply (auto; hypsubst_thin?)
+            subgoal
+              apply (cases p)
+              subgoal for lp
+                apply (auto; hypsubst_thin?)
+                apply (intro exI conjI[rotated])  
+                 apply (rule wbc_sym)
+                 apply (rule wbc_base)
+                 apply force
+                apply (metis BAPPEND_BENQ case_sum_BENQ_L step_transp_op_Read step_wstep)
+                done
+              subgoal for rp
+                apply (auto; hypsubst_thin?)
+                apply (intro exI conjI[rotated])  
+                 apply (rule wbc_sym)
+                 apply (rule wbc_base)
+                 apply force
+                apply (metis BAPPEND_BENQ case_sum_BENQ_L case_sum_BENQ_R step_transp_op_Read step_wstep)
+                done
+              done
+            subgoal
+              by simp
+            done
+          subgoal for p op''
+            apply (erule step_id_op_cases)
+             apply (auto; hypsubst_thin?)
+            subgoal
+              apply (intro exI conjI[rotated])  
+               apply (rule wbc_sym)
+               apply (rule wbc_base)
+               apply force
+              apply (metis BAPPEND_BENQ case_sum_BENQ_R step_transp_op_Read step_wstep)
+              done
+            subgoal
+              by simp
+            done
+          done
+        done
+      subgoal for p x op'
+        apply (drule step_map_op_inv)
+        apply (auto; hypsubst_thin?)
+        apply (drule step_comp_op_cases)
+        apply (auto; hypsubst_thin?)
+        subgoal for p op'
+          apply (erule step_transp_op_cases)
+           apply (auto; hypsubst_thin?)
+          subgoal for p x p'
+            apply (cases p)
+             apply (auto; hypsubst_thin?)
+            subgoal for lp
+              apply (intro exI conjI[rotated])  
+               apply (rule wbc_sym)
+               apply (rule wbc_base)
+               apply force
+              apply (smt (verit, ccfv_threshold) BAPPEND_BTL BULK_BENQ_def Nil_is_append_conv case_sum_BTL_R hd_append2 old.sum.simps(6) step_transp_op_Write step_wstep) 
+              done
+            subgoal for rp
+              apply (auto; hypsubst_thin?)
+              apply (intro exI conjI[rotated])  
+               apply (rule wbc_sym)
+               apply (rule wbc_base)
+               apply force
+              apply (rule step_wstep)
+              apply (rule step_transp_op_Write[where p="Inl _"])
+                 apply simp_all
+              apply (meson BULK_BENQ_empty)
+              done
+            done
+          done
+        subgoal for p op
+          apply (drule step_id_op_Out)
+           apply auto
+          apply hypsubst_thin
+          apply (intro exI conjI[rotated])  
+           apply (rule wbc_sym)
+           apply (rule wbc_base)
+           apply force
+          apply (rule step_wstep)
+          apply (rule step_transp_op_Write[where p="Inr _"])
+             apply simp_all
+          apply (meson BULK_BENQ_empty)
+          done
+        done
+      subgoal for p x op'
+        apply (drule step_map_op_inv)
+        apply (auto; hypsubst_thin?)
+        apply (drule step_comp_op_cases)
+        apply (auto; hypsubst_thin?)
+        subgoal for p op2
+          apply (drule step_id_op_Out)
+           apply auto
+          apply hypsubst_thin
+          apply (intro exI conjI[rotated])  
+           apply (rule wbc_sym)
+           apply (rule wbc_base)
+           apply force+
+          done
+        subgoal for p op2
+          apply (cases p)
+          subgoal for lp
+            apply (erule step_transp_op_Out)
+              apply auto
+            apply hypsubst_thin
+            apply (intro exI conjI[rotated])  
+             apply (rule wbc_sym)
+             apply (rule wbc_base)
+             apply force+
+            done
+          subgoal for rp
+            apply (erule step_transp_op_Out)
+              apply auto
+            apply hypsubst_thin
+            apply (intro exI conjI[rotated])  
+             apply (rule wbc_sym)
+             apply (rule wbc_base)
+             apply force+
+            done
+          done
+        done
+      subgoal for p op
+        apply (cases p)
+        subgoal for lp
+          apply (drule step_map_op_inv)
+          apply (auto; hypsubst_thin?)
+          apply (drule step_comp_op_cases)
+          apply (auto; hypsubst_thin?)
+          apply (drule step_id_op_Inp)
+           apply (auto; hypsubst_thin?)
+          apply (intro exI conjI[rotated])  
+           apply (rule wbc_sym)
+           apply (rule wbc_base)
+           apply force
+          apply (metis BAPPEND_BENQ_BHD BULK_BENQ_assoc rtranclp.rtrancl_refl)
+          done
+        subgoal for rp
+          apply (cases rp; auto)
+          subgoal for lp
+            apply (drule step_map_op_inv)
+            apply (auto; hypsubst_thin?)
+            apply (drule step_comp_op_cases)
+            apply (auto; hypsubst_thin?)
+            apply (erule step_transp_op_Inp)
+             apply auto
+            apply (intro exI conjI[rotated])  
+             apply (rule wbc_sym)
+             apply (rule wbc_base)
+             apply force
+            apply (metis BAPPEND_BENQ_BHD BULK_BENQ_assoc Nitpick.rtranclp_unfold)
+            done
+          subgoal for rp
+            apply (drule step_map_op_inv)
+            apply (auto; hypsubst_thin?)
+            apply (drule step_comp_op_cases)
+            apply (auto; hypsubst_thin?)
+            apply (erule step_transp_op_Inp)
+             apply auto
+            apply (intro exI conjI[rotated])  
+             apply (rule wbc_sym)
+             apply (rule wbc_base)
+             apply force
+            apply (metis BAPPEND_BENQ_BHD BULK_BENQ_assoc rtranclp.rtrancl_refl)
+            done
+          done
+        done
+      subgoal for op1
+        apply (drule step_map_op_inv)
+        apply (auto; hypsubst_thin?)
+        apply (drule step_comp_op_cases)
+        apply (auto elim: no_step_transp_op_Tau no_step_id_op_Tau)
+        done
+      subgoal for op2'
+        apply (drule step_map_op_inv)
+        apply (auto; hypsubst_thin?)
+        apply (drule step_comp_op_cases)
+        apply (auto elim: no_step_transp_op_Tau no_step_id_op_Tau)
+        done
+      done
+    done
+  done
+
 lemma trans_op_decomposes_scomp_op_pcomp_op:
   assumes "\<X>klm = (\<X> :: ('k :: countable + 'l :: countable + 'm :: countable, ('l + 'm) + 'k, 'c) op)"
     and "\<X>kl = (\<X> :: ('k + 'l, 'l + 'k, 'c) op)"
@@ -1460,7 +1977,9 @@ lemma trans_op_decomposes_scomp_op_pcomp_op:
     and "\<I>m = (\<I> :: ('m, 'm, 'c) op)"
     and "\<I>l = (\<I> :: ('l, 'l, 'c) op)"
   shows "\<X>klm \<approx> map_op reassoc reassoc (\<X>kl \<parallel> \<I>m) \<bullet> map_op id assoc (\<I>l \<parallel> \<X>km)"
-  oops
+  using assms unfolding scomp_op_def
+  apply hypsubst_thin
+  using trans_op_decomposes_scomp_op_pcomp_op_gen[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []"] by auto
 
   section \<open>Axiom B10: Transpose commutes with sequential composition of parallel operators\<close>
 lemma transp_op_commutes_scomp_op_pcomp_op:
@@ -3503,11 +4022,6 @@ lemma loop_op_absorb:
   "(op\<up>)\<up> ~ (map_op reassoc reassoc op)\<up>"
   unfolding feedback_op_def
   using loop_op_absorb_gen[of "\<lambda> _.[]" "\<lambda> _.[]" op] by auto
-
-section \<open>Axiom F1: Identity looped is end_op\<close>
-
-lemma id_op_loop_spin: \<open>\<I>\<up> = \<oslash>\<close>
-  oops
 
 section \<open>Axiom F2: Transpose looped is identity\<close>
 lemma transp_op_loop_id_gen:

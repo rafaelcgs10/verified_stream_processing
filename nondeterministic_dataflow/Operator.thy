@@ -779,6 +779,12 @@ lemma step_tau_step_tau_step_io_wstep:
   unfolding wstep_def 
   by (smt (verit, del_insts) estep.elims reflclp_tranclp relcomppI rtranclp.rtrancl_into_rtrancl sup2CI)
 
+lemma step_tau_tau_step_tau_step_io_wstep:
+  "step Tau op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step Tau op' op''' \<Longrightarrow> step io op''' op''''\<Longrightarrow>  wstep io op op''''"
+  unfolding wstep_def 
+  by (smt (verit, del_insts) estep.elims reflclp_tranclp relcomppI rtranclp.rtrancl_into_rtrancl sup2CI)
+
+
 abbreviation "wbisimulation R \<equiv> (\<forall>op1 op2. R op1 op2 \<longrightarrow> wsim R op1 op2 \<and> wsim (conversep R) op2 op1)"
 
 lemma wbisim_wstep_Tau:
