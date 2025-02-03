@@ -2279,6 +2279,17 @@ lemma step_tau_loop_op_Inp_Inr_case_sum[intro]:
    step Tau (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1) op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined (BTL rp buf1)) op')"
   using step_Inp_Inr_loop_op[where buf="case_sum undefined buf1" and p="rp", simplified] by auto
 
+subsection \<open>Congruence for strong bisim\<close>
+lemma bisim_scomp_op_cong:
+  "op ~ op' \<Longrightarrow>
+   op\<up> ~ op'\<up>"
+  oops
+
+subsection \<open>Congruence for weak bisim\<close>
+lemma wbisim_scomp_op_cong:
+  "op \<approx> op' \<Longrightarrow>
+   op\<up> \<approx> op'\<up>"
+  oops
 
 section \<open>spin_op/end_op/silent_op/I_0\<close>
   \<comment> \<open>spin_op/end_op is I_0 in the BNA book\<close>
