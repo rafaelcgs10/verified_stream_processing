@@ -1534,7 +1534,8 @@ lemma loop_op_Choice[simp]:
   by (subst loop_op.code, simp)
 
 definition feedback_op ( "_ \<up>" [66] 65) where
-  "feedback_op op = map_op projl projl (loop_op (case_sum (\<lambda> _. None) (Some o Inr)) (case_sum undefined (\<lambda> _. [])) op)"
+  "feedback_op op = map_op projl projl (loop_op (case_sum (\<lambda> _. None) (\<lambda> p. if p = default then None else (Some (Inr p)))) (case_sum undefined (\<lambda> _. [])) op)"
+
 
 subsection \<open>Step properties\<close>
 lemma step_loop_op:
@@ -2382,7 +2383,7 @@ abbreviation eval_id_op_aux where
     id_Read_aux p f \<Rightarrow> Read p (\<lambda>y. let buf = f y in c buf)
   | id_Write_aux buf q x \<Rightarrow> (Write (c buf) q x))"
 
-corec id_op :: "_ \<Rightarrow> ('m :: countable, 'm, 'd) op" where
+corec id_op :: "_ \<Rightarrow> ('m :: {countable, default}, 'm, 'd) op" where
   "id_op buf = Choice (cimage (eval_id_op_aux id_op) (cUn 
     (cimage (\<lambda> p. id_Read_aux p (\<lambda> x. BENQ p x buf)) (cUNIV :: 'm cset)) 
     (cimage (\<lambda> p. id_Write_aux (BTL p buf) p (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUNIV :: 'm cset)))))"
@@ -2393,7 +2394,7 @@ abbreviation id_empty_op ("\<I>") where
 lemma id_op_code:
   "id_op buf = Choice (cUn 
     (cimage (\<lambda> p. Read p ((\<lambda> x. id_op (BENQ p x buf)))) (cUNIV :: 'm cset))
-    (cimage (\<lambda> p. Write (id_op (BTL p buf)) p  (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUNIV :: ('m :: countable) cset))))"
+    (cimage (\<lambda> p. Write (id_op (BTL p buf)) p  (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUNIV :: ('m :: {countable, default}) cset))))"
   apply (subst id_op.code)
   apply (unfold cimage_cUn cimage_cinsert op.inject)
   apply simp
@@ -2443,8 +2444,8 @@ lemma no_step_id_op_Tau:
 
 lemma step_id_op_cases:
   assumes \<open>step io (id_op buf) op\<close>
-  obtains p x where \<open>io = Inp p x\<close> \<open>op = id_op (BENQ p x buf)\<close>
-  |       p x where \<open>io = Out p x\<close> \<open>op = id_op (BTL p buf)\<close> \<open>BHD p buf = x\<close> \<open>buf p \<noteq> []\<close>
+  obtains p x where \<open>io = Inp p x\<close> \<open>p \<noteq> default\<close> \<open>op = id_op (BENQ p x buf)\<close>
+  |       p x where \<open>io = Out p x\<close> \<open>p \<noteq> default\<close> \<open>op = id_op (BTL p buf)\<close> \<open>BHD p buf = x\<close> \<open>buf p \<noteq> []\<close>
   apply atomize_elim
   using assms
   apply (rule step_choicesE)
@@ -2452,7 +2453,7 @@ lemma step_id_op_cases:
   done
 
 lemma step_id_op_Read[intro]:
-  "step (Inp p x) (id_op buf) (id_op (BENQ p x buf))"
+  "p \<noteq> default \<Longrightarrow> step (Inp p x) (id_op buf) (id_op (BENQ p x buf))"
   apply (subst id_op_code)
   apply (rule SC)
    apply simp
@@ -2460,7 +2461,7 @@ lemma step_id_op_Read[intro]:
    apply force+
   done
 lemma step_id_op_Write[intro]:
-  \<open>BHD p buf = x \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> buf' = BTL p buf \<Longrightarrow>
+  \<open>p \<noteq> default \<Longrightarrow> BHD p buf = x \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> buf' = BTL p buf \<Longrightarrow>
   step (Out p x) (id_op buf) (id_op buf')\<close>
   apply (subst id_op_code)
   apply (rule SC)
@@ -2475,6 +2476,25 @@ lemma choices_id_op[simp]:
   apply (subst id_op_code)
   apply (simp add: BTL_def BENQ_def)
   done
+
+lemma
+  fixes op :: "('a :: {countable, default} + unit, 'b :: {countable, default} + unit, 'c) op"
+  shows "op\<up> ~ map_op projl projl op"
+  unfolding feedback_op_def
+  apply (coinduction  rule: bisim_coinduct_upto)
+  oops
+
+instantiation sum :: (default, type) default
+begin
+definition default_sum where "default_sum = Inl default"
+instance
+proof qed
+end
+
+lemma
+   "(\<I> :: (unit + 'a :: {countable, default}, unit + 'a :: {countable, default}, 'c) op)\<up> ~ \<I>"
+
+end
 
 section \<open>User defined operators\<close>
 (* abbreviation buffered ("\<stileturn> _ \<turnstile>" [150]151) where
@@ -2513,7 +2533,7 @@ lemma choices_pcomp_op_dummy_source:
   done
 
 section \<open>sink_op\<close>                                     
-corec drain_op :: "('m :: countable, 'o, 'd) op" where
+corec drain_op :: "('m :: {countable, default}, 'o, 'd) op" where
   "drain_op = Choice ((cimage (\<lambda> p. Read p (\<lambda> x. drain_op)) (cUNIV :: 'm cset)))"
 
 lemma step_drain_op_Inp:
@@ -2548,7 +2568,7 @@ lemma no_step_drain_op_Tau:
 
 lemma step_drain_op:
   assumes \<open>step io drain_op op\<close>
-  obtains p x where \<open>io = Inp p x\<close> \<open>op = drain_op\<close>
+  obtains p x where \<open>io = Inp p x\<close> \<open>p \<noteq> default\<close> \<open>op = drain_op\<close>
   apply atomize_elim
   using assms
   apply (subst (asm) drain_op.code)
@@ -2556,7 +2576,7 @@ lemma step_drain_op:
   done
 
 lemma step_drain_op_Read[intro]:
-  \<open>step (Inp p x) drain_op drain_op\<close>
+  \<open>p \<noteq> default \<Longrightarrow> step (Inp p x) drain_op drain_op\<close>
   apply (subst drain_op.code)
   apply fastforce
   done
@@ -2583,15 +2603,15 @@ abbreviation eval_transp_op_aux where
     transp_Read_aux p f \<Rightarrow> Read p (\<lambda>y. let buf = f y in c buf)
   | transp_Write_aux buf q x \<Rightarrow> (Write (c buf) q x))"
 
-corec transp_op :: "_ \<Rightarrow> ('m :: countable + 'n :: countable, 'n + 'm, 'd) op" where
+corec transp_op :: "_ \<Rightarrow> ('m :: {countable, default} + 'n :: {countable, default}, 'n + 'm, 'd) op" where
   "transp_op buf = Choice (cimage (eval_transp_op_aux transp_op) (cUn 
-    (cimage (\<lambda> p. transp_Read_aux p (\<lambda> x. BENQ p x buf)) (cUNIV :: ('m + 'n) cset)) 
-    (cimage (\<lambda> p. transp_Write_aux (BTL p buf) (case_sum Inr Inl p) (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUNIV :: ('m + 'n) cset)))))"
+    (cimage (\<lambda> p. transp_Read_aux p (\<lambda> x. BENQ p x buf)) (cUn (cimage Inl cUNIV) (cimage Inr cUNIV) :: ('m + 'n) cset)) 
+    (cimage (\<lambda> p. transp_Write_aux (BTL p buf) (case_sum Inr Inl p) (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUn (cimage Inl cUNIV) (cimage Inr cUNIV) :: ('m + 'n) cset)))))"
 
 lemma transp_op_code:
    "transp_op buf = Choice (cUn 
-    (cimage (\<lambda> p. Read p (\<lambda> x. transp_op (BENQ p x buf))) (cUNIV :: ('m :: countable + 'n :: countable) cset)) 
-    (cimage (\<lambda> p. Write (transp_op (BTL p buf)) (case_sum Inr Inl p) (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUNIV :: ('m + 'n) cset))))"
+    (cimage (\<lambda> p. Read p (\<lambda> x. transp_op (BENQ p x buf))) (cUn (cimage Inl cUNIV) (cimage Inr cUNIV) :: ('m :: {countable, default} + 'n :: {countable, default}) cset)) 
+    (cimage (\<lambda> p. Write (transp_op (BTL p buf)) (case_sum Inr Inl p) (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUn (cimage Inl cUNIV) (cimage Inr cUNIV) :: ('m + 'n) cset))))"
   apply (subst transp_op.code)
   apply (unfold cimage_cUn cimage_cinsert op.inject)
   apply simp
@@ -2618,6 +2638,8 @@ lemma step_transp_op_Inp:
 lemma step_transp_op_Out:
   assumes \<open>step io (transp_op buf) op\<close>
     and \<open>io = Out p x\<close>
+    and \<open>p \<noteq> Inl default\<close>
+    and \<open>p \<noteq> Inr default\<close>
     and \<open>p' = case_sum Inr Inl p\<close>
   obtains \<open>op = transp_op (BTL p' buf)\<close>
           \<open>BHD p' buf = x\<close>
@@ -2629,9 +2651,9 @@ lemma step_transp_op_Out:
    apply (subst (asm) transp_op_code)
    apply simp
   apply (subst (asm) (3) transp_op_code)
-  apply (simp split: sum.splits)
-   apply auto
-       apply (metis Inl_Inr_False sum.simps(5) sum.simps(6) sumE)+
+  apply (simp add: Set.filter_def split: sum.splits)
+  apply (smt (verit, best) IO.simps(2) IO.simps(4) imageE mem_Collect_eq stepReadE stepWriteE sum.case(1) sum.case_eq_if sum.sel(1) sum.sel(2) sum.simps(4))
+  apply (smt (z3) IO.inject(2) IO.simps(4) assms(5) imageE mem_Collect_eq old.sum.simps(5) old.sum.simps(6) stepReadE stepWriteE)
   done
 
 lemma no_step_transp_op_Tau:
@@ -2650,15 +2672,15 @@ lemma no_step_transp_op_Tau:
 
 lemma step_transp_op_cases:
   assumes \<open>step io (transp_op buf) op\<close>
-  obtains p x where \<open>io = Inp p x\<close> \<open>op = transp_op (BENQ p x buf)\<close>
-  |       p x p' where \<open>io = Out p x\<close> \<open>p' = case_sum Inr Inl p\<close> \<open>op = transp_op (BTL p' buf)\<close>
+  obtains p x where  \<open>io = Inp p x\<close> \<open>p \<noteq> Inl default\<close> \<open>p \<noteq> Inr default\<close> \<open>op = transp_op (BENQ p x buf)\<close> 
+  |       p x p' where \<open>io = Out p x\<close> \<open>p' = case_sum Inr Inl p\<close> \<open>p \<noteq> Inl default\<close> \<open>p \<noteq> Inr default\<close> \<open>op = transp_op (BTL p' buf)\<close>
                        \<open>BHD p' buf = x\<close> \<open>buf p' \<noteq> []\<close>
   apply atomize_elim
   using assms
   apply (rule step_choicesE)
   subgoal for p f x
     apply (subst (asm) transp_op_code)
-    apply simp
+    apply force+
     done
   subgoal for p x
     apply (subst (asm) transp_op_code)
@@ -2672,23 +2694,38 @@ lemma step_transp_op_cases:
     done
   done
 
+(* FIXME: move me *)
+lemma cUn_cimage[intro!]:
+  "p \<noteq> Inl default \<Longrightarrow> p \<noteq> Inr default \<Longrightarrow> p |\<in>| cUn (cimage Inl cUNIV) (cimage Inr cUNIV)"
+  by (cases p) (auto simp: image_iff)
+
 lemma step_transp_op_Read[intro]:
-  \<open>step (Inp p x) (transp_op buf) (transp_op (BENQ p x buf))\<close>
+  \<open>p \<noteq> Inl default \<Longrightarrow> p \<noteq> Inr default \<Longrightarrow> step (Inp p x) (transp_op buf) (transp_op (BENQ p x buf))\<close>
   apply (subst transp_op_code)
-  apply fastforce
+  apply (rule SC[rotated])
+  apply (rule SR)
+  apply (rule cUnI1)
+  apply (rule cimageI)
+  apply (rule cUn_cimage)
+  apply assumption+
   done
 
 lemma step_transp_op_Write[intro]:
   \<open>BHD p buf = x \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> buf' = BTL p buf \<Longrightarrow> p' = case_sum Inr Inl p \<Longrightarrow>
-  step (Out p' x) (transp_op buf) (transp_op buf')\<close>
+   p \<noteq> Inl default \<Longrightarrow> p \<noteq> Inr default \<Longrightarrow> step (Out p' x) (transp_op buf) (transp_op buf')\<close>
   apply (subst transp_op_code)
-  apply fastforce
+  apply (rule SC[rotated])
+  apply (rule SW)
+  apply (rule cUnI2)
+  apply hypsubst_thin
+  apply (rule cimageI)
+  using cUn_cimage apply auto
   done
 
 lemma choices_transp_op[simp]:
   \<open>choices (transp_op buf) = cUn
-  (cUnion (cimage choices (cimage (\<lambda> p. Read p (\<lambda> x. transp_op (buf(p := bulk_benq [x] (buf p))))) cUNIV)))
-  (cUnion (cimage choices (cimage (\<lambda> p. Write (transp_op (buf(p := btl (buf p)))) (case_sum Inr Inl p) (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) cUNIV))))\<close>
+  (cUnion (cimage choices (cimage (\<lambda> p. Read p (\<lambda> x. transp_op (buf(p := bulk_benq [x] (buf p))))) (cUn (cimage Inl cUNIV) (cimage Inr cUNIV)))))
+  (cUnion (cimage choices (cimage (\<lambda> p. Write (transp_op (buf(p := btl (buf p)))) (case_sum Inr Inl p) (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUn (cimage Inl cUNIV) (cimage Inr cUNIV))))))\<close>
   apply (subst transp_op_code)
   apply (simp add: BTL_def BENQ_def)
   done
@@ -2701,12 +2738,12 @@ abbreviation eval_split_op_aux where
   "eval_split_op_aux c aux \<equiv> (case aux of
     split_Read_aux p \<Rightarrow> Read p (\<lambda>y. choice2 (Write c (Inl p) y) (Write c (Inr p) y)))"
 
-corec split_op :: "('m :: countable, 'm + 'm, 'a) op" ("\<Lambda>")  where
+corec split_op :: "('m :: {countable, default}, 'm + 'm, 'a) op" ("\<Lambda>")  where
   "split_op = Choice (cimage (eval_split_op_aux split_op) 
    (cimage (\<lambda> p. split_Read_aux p) (cUNIV :: 'm cset)))"
 
 lemma split_op_code:
-  "split_op = Choice (cimage (\<lambda> p. Read p (\<lambda> y. Choice {|Write split_op (Inl p) y, Write split_op (Inr p) y|})) (cUNIV :: 'm :: countable cset))"
+  "split_op = Choice (cimage (\<lambda> p. Read p (\<lambda> y. Choice {|Write split_op (Inl p) y, Write split_op (Inr p) y|})) (cUNIV :: 'm :: {countable, default} cset))"
   apply (subst split_op.code)
   apply (auto simp add: cset.map_comp intro!: arg_cong2[where f = cUn])
   done
@@ -2743,7 +2780,7 @@ lemma no_step_split_op_Tau:
 
 lemma step_split_op:
   assumes \<open>step io \<Lambda> op\<close>
-  obtains p x where \<open>io = Inp p x\<close> \<open>op = Choice {|Write \<Lambda> (Inl p) x, Write \<Lambda> (Inr p) x|}\<close>
+  obtains p x where \<open>io = Inp p x\<close> \<open>p \<noteq> default\<close> \<open>op = Choice {|Write \<Lambda> (Inl p) x, Write \<Lambda> (Inr p) x|}\<close>
   apply atomize_elim
   using assms
   apply (subst (asm) split_op_code)
@@ -2751,7 +2788,7 @@ lemma step_split_op:
   done
 
 lemma step_split_op_Read[intro]:
-  \<open>step (Inp p x) \<Lambda> (Choice {|Write \<Lambda> (Inl p) x, Write \<Lambda> (Inr p) x|})\<close>
+  \<open>p \<noteq> default \<Longrightarrow> step (Inp p x) \<Lambda> (Choice {|Write \<Lambda> (Inl p) x, Write \<Lambda> (Inr p) x|})\<close>
   apply (subst split_op_code)
   apply fastforce
   done
@@ -2771,12 +2808,12 @@ abbreviation eval_merge_op_aux where
   "eval_merge_op_aux c aux \<equiv> (case aux of
     merge_Read_aux p \<Rightarrow> choice2 (Read (Inl p) (\<lambda>y. Write c p y)) (Read (Inr p) (\<lambda>y. Write c p y)))"
 
-corec merge_op :: "('m + 'm :: countable, 'm, 'a) op" ("\<V>") where
+corec merge_op :: "('m + 'm :: {countable, default}, 'm, 'a) op" ("\<V>") where
   "merge_op = Choice (cimage (eval_merge_op_aux merge_op) 
    (cimage (\<lambda> p. merge_Read_aux p) (cUNIV :: 'm cset)))"
 
 lemma merge_op_code:
-  "merge_op = Choice (cimage (\<lambda> p. Choice {|Read (Inl p) (\<lambda>y. Write merge_op p y), Read (Inr p) (\<lambda>y. Write merge_op p y)|}) (cUNIV :: 'm :: countable cset))"
+  "merge_op = Choice (cimage (\<lambda> p. Choice {|Read (Inl p) (\<lambda>y. Write merge_op p y), Read (Inr p) (\<lambda>y. Write merge_op p y)|}) (cUNIV :: 'm :: {countable, default} cset))"
   apply (subst merge_op.code)
   apply (auto simp add: cset.map_comp intro!: arg_cong2[where f = cUn])
   done
@@ -2814,7 +2851,7 @@ lemma no_step_merge_op_Tau:
 
 lemma step_merge_op:
   assumes \<open>step io \<V> op\<close>
-  obtains p x p' where \<open>io = Inp p x\<close> \<open>p' = case_sum id id p\<close> \<open>op = Write \<V> p' x\<close>
+  obtains p x p' where \<open>io = Inp p x\<close> \<open>p \<noteq> default\<close> \<open>p' = case_sum id id p\<close> \<open>op = Write \<V> p' x\<close>
   apply atomize_elim
   using assms
   apply (subst (asm) merge_op_code)
@@ -2822,7 +2859,7 @@ lemma step_merge_op:
   done
 
 lemma step_merge_op_Read[intro]:
-  \<open>p' = case_sum id id p \<Longrightarrow> step (Inp p x) \<V> (Write \<V> p' x)\<close>
+  \<open>p \<noteq> Inl default \<Longrightarrow> p \<noteq> Inr default \<Longrightarrow> p' = case_sum id id p \<Longrightarrow> step (Inp p x) \<V> (Write \<V> p' x)\<close>
   apply (subst merge_op_code)
   apply (simp split: sum.splits)
    apply fastforce+
@@ -2844,12 +2881,14 @@ abbreviation eval_acopy_op_aux where
   "eval_acopy_op_aux c aux \<equiv> (case aux of
     acopy_Read_aux p \<Rightarrow> Read p (\<lambda>y. choice2 (Write (Write c (Inr p) y) (Inl p) y) (Write (Write c (Inl p) y) (Inr p) y)))"
 
-corec acopy_op :: "('m :: countable, 'm + 'm, 'a) op" ("\<C>") where
+corec acopy_op :: "('m :: {countable, default}, 'm + 'm, 'a) op" ("\<C>") where
   "acopy_op = Choice (cimage (eval_acopy_op_aux acopy_op) 
    (cimage (\<lambda> p. acopy_Read_aux p) (cUNIV :: 'm cset)))"
 
 lemma acopy_op_code:
-  "acopy_op = Choice (cimage (\<lambda> p. Read p (\<lambda> y. Choice {|Write (Write acopy_op (Inr p) y) (Inl p) y, Write (Write acopy_op (Inl p) y) (Inr p) y|})) (cUNIV :: 'm :: countable cset))"
+  "acopy_op = Choice (cimage (\<lambda> p. Read p (\<lambda> y. Choice {|
+    Write (Write acopy_op (Inr p) y) (Inl p) y,
+    Write (Write acopy_op (Inl p) y) (Inr p) y|})) (cUNIV :: 'm :: {countable, default} cset))"
   apply (subst acopy_op.code)
   apply (auto simp add: cset.map_comp intro!: arg_cong2[where f = cUn])
   done
@@ -2894,7 +2933,7 @@ lemma step_acopy_op:
   done
 
 lemma step_acopy_op_Read[intro]:
-  \<open>step (Inp p x) \<C> (Choice {|Write (Write \<C> (Inr p) x) (Inl p) x, Write (Write \<C> (Inl p) x) (Inr p) x|})\<close>
+  \<open>p \<noteq> default \<Longrightarrow> step (Inp p x) \<C> (Choice {|Write (Write \<C> (Inr p) x) (Inl p) x, Write (Write \<C> (Inl p) x) (Inr p) x|})\<close>
   apply (subst acopy_op_code)
   apply fastforce
   done
@@ -2913,12 +2952,14 @@ abbreviation eval_aeq_op_aux where
   "eval_aeq_op_aux c aux \<equiv> (case aux of
     aeq_Read_aux p \<Rightarrow> choice2 (Read (Inl p) ((\<lambda> y. Read (Inr p) (\<lambda>x. if x = y then Write c p x else Silent c)))) (Read (Inr p) ((\<lambda> y. Read (Inl p) (\<lambda>x. if x = y then Write c p x else Silent c)))))"
 
-corec aeq_op :: "('m + 'm :: countable, 'm, 'a) op" ("\<Q>") where
+corec aeq_op :: "('m + 'm :: {countable, default}, 'm, 'a) op" ("\<Q>") where
   "aeq_op = Choice (cimage (eval_aeq_op_aux aeq_op) 
    (cimage (\<lambda> p. aeq_Read_aux p) (cUNIV :: 'm cset)))"
 
 lemma aeq_op_code:
-  "aeq_op = Choice (cimage (\<lambda> p. Choice {|Read (Inl p) ((\<lambda> y. Read (Inr p) (\<lambda>x. if x = y then Write aeq_op p x else Silent aeq_op))), Read (Inr p) ((\<lambda> y. Read (Inl p) (\<lambda>x. if x = y then Write aeq_op p x else Silent aeq_op)))|}) (cUNIV :: 'm :: countable cset))"
+  "aeq_op = Choice (cimage (\<lambda> p. Choice {| 
+    Read (Inl p) ((\<lambda> y. Read (Inr p) (\<lambda>x. if x = y then Write aeq_op p x else Silent aeq_op))),
+    Read (Inr p) ((\<lambda> y. Read (Inl p) (\<lambda>x. if x = y then Write aeq_op p x else Silent aeq_op)))|}) (cUNIV :: 'm :: {countable, default} cset))"
   apply (subst aeq_op.code)
   apply (auto simp add: cset.map_comp)
   done
@@ -2965,8 +3006,8 @@ lemma no_step_aeq_op_Tau:
 
 lemma step_aeq_op:
   assumes \<open>step io \<Q> op\<close>
-  obtains p y where \<open>io = Inp (Inl p) y\<close> \<open>op = Read (Inr p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)\<close>
-  |       p y where \<open>io = Inp (Inr p) y\<close> \<open>op = Read (Inl p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)\<close>
+  obtains p y where \<open>io = Inp (Inl p) y\<close> \<open>p \<noteq> default\<close> \<open>op = Read (Inr p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)\<close>
+  |       p y where \<open>io = Inp (Inr p) y\<close> \<open>p \<noteq> default\<close> \<open>op = Read (Inl p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)\<close>
   apply atomize_elim
   using assms
   apply (subst (asm) aeq_op_code)
@@ -2974,14 +3015,14 @@ lemma step_aeq_op:
   done
 
 lemma step_aeq_op_Read_L[intro]:
-  \<open>step (Inp (Inl p) y) \<Q> (Read (Inr p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>))\<close>
+  \<open>p \<noteq> default \<Longrightarrow> step (Inp (Inl p) y) \<Q> (Read (Inr p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>))\<close>
   apply (subst aeq_op_code)
   apply (rule Read_in_choices_step)
   apply simp
   done
 
 lemma step_aeq_op_Read_R[intro]:
-  \<open>step (Inp (Inr p) y) \<Q> (Read (Inl p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>))\<close>
+  \<open>p \<noteq> default \<Longrightarrow> step (Inp (Inr p) y) \<Q> (Read (Inl p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>))\<close>
   apply (subst aeq_op_code)
   apply (rule Read_in_choices_step)
   apply simp

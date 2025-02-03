@@ -101,4 +101,7 @@ lemma loop_op_acopy_dummy_source:
   "map_op Inr id \<C>\<up> ~ \<exclamdown>"
   oops
 
+section \<open>Axiom F5: TODO\<close>
+
+
 end

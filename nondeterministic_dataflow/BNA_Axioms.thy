@@ -1077,6 +1077,7 @@ lemma scomp_op_id_op_left_neutral:
   "\<I> \<bullet> \<stileturn>op \<approx> \<stileturn>op"
   by (smt (verit, best) bisim_wbisim scomp_op_assoc scomp_op_id_id wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans)
 
+
 section \<open>Axiom B5: Parallel and sequential distributes\<close>
 
 lemma pcomp_op_scomp_distributes_bufs:
@@ -4276,6 +4277,7 @@ lemma loop_op_commutes_inner_scomp_op_gen:
               apply (rule step_comp_op_R_Tau)
               apply (rule step_map_op[of Tau])
                apply simp_all
+   (* Come back here! *)
               apply (rule step_Tau_comp_op_R[where buf="case_sum buf3 buf2" and p="Inl lp", simplified])
                  apply auto
               apply (metis case_sum_BENQ_L step_id_op_Read)
