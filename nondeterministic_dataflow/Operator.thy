@@ -1085,6 +1085,148 @@ lemma sub_op_finished:
   "sub_op op' op n \<Longrightarrow> finished op \<Longrightarrow> finished op'"
   by (induct op n rule: sub_op.induct) auto
 
+
+coinductive traced where
+  Nil: "finished op \<Longrightarrow> traced op LNil"
+| Step: "step io op op' \<Longrightarrow> traced op' lxs \<Longrightarrow> traced op (LCons io lxs)"
+
+inductive_cases traced_LNilE[elim!]: "traced op LNil"
+inductive_cases traced_LConsE[elim!]: "traced op (LCons l lxs)"
+
+lemma traced_Read[simp]: "traced (Read p f) lxs \<longleftrightarrow> (\<exists>x l lxs'. lxs = LCons l lxs' \<and> l = Inp p x \<and> traced (f x) lxs')"
+  by (cases lxs) (auto intro: traced.intros step.intros)
+
+lemma traced_LCons_iff: "traced op (LCons io lxs') \<longleftrightarrow> (\<exists>op'. step io op op' \<and> traced op' lxs')"
+  by (auto intro: traced.intros)
+
+definition "traces op = {lxs. traced op lxs}"
+
+lemma finished_no_step:
+  "finished op \<longleftrightarrow> \<not> (\<exists>io op'. step io op op')"
+  apply (intro iffI)
+  subgoal
+    apply safe
+    apply (erule finished.cases)
+    using step_not_finished apply auto
+    done
+  subgoal
+    apply (coinduction arbitrary: op)
+    subgoal for op
+      apply auto
+      subgoal 
+        by (metis cin.rep_eq op.exhaust step.intros(1) step.intros(2) step.intros(3) step.intros(4))
+      done
+    done
+  done
+
+lemma bisim_traced: "bisim op op' \<Longrightarrow> traced op lxs \<Longrightarrow> traced op' lxs"
+  apply (coinduction arbitrary: op op' lxs) 
+  subgoal for op op' lxs
+    apply (erule bisim.cases)
+    subgoal for s t
+      apply (erule traced.cases)
+      subgoal
+        apply simp
+        apply hypsubst_thin
+        unfolding sim_def
+        apply (meson finished_no_step)
+        done
+      subgoal
+        by (metis simE)
+      done
+    done
+  done
+
+lemma bisim_traces: "bisim op op' \<Longrightarrow> (traces op = traces op')"
+  unfolding traces_def set_eq_iff mem_Collect_eq
+  apply (intro iffI allI)
+   apply (auto elim: bisim_traced dest: bisim_sym[THEN iffD1]) [2]
+  done 
+
+inductive traced_cong for R where
+  tc_base: "R op lxs \<Longrightarrow> traced_cong R op lxs"
+| tc_traced: "traced op lxs \<Longrightarrow> traced_cong R op lxs"
+| tc_read: "traced_cong R (f x) lxs \<Longrightarrow> traced_cong R (Read p f) (LCons (Inp p x) lxs)"
+| tc_write: "traced_cong R op lxs \<Longrightarrow> traced_cong R (Write op q x) (LCons (Out q x) lxs)"
+| tc_silent: "traced_cong R op lxs \<Longrightarrow> traced_cong R (Silent op) (LCons Tau lxs)"
+| tc_choice: "cin op ops \<Longrightarrow> \<not> finished op \<Longrightarrow> traced_cong R op lxs \<Longrightarrow> traced_cong R (Choice ops) lxs"
+
+lemma traced_cong_disj:
+  "(traced_cong R op lxs \<or> traced op lxs) = traced_cong R op lxs"
+  by (auto intro: traced_cong.intros)
+
+thm traced.coinduct[where X = "traced_cong X", unfolded traced_cong_disj, of op ios]
+
+lemma traced_coinduct_upto_step:
+  assumes  "X op ios"
+    "(\<And>x1 x2. X x1 x2 \<Longrightarrow>
+     (\<exists>op. x1 = op \<and> x2 = LNil \<and> finished op) \<or> (\<exists>op l op' lxs. x1 = op \<and> x2 = LCons l lxs \<and> step l op op' \<and> traced_cong X op' lxs))"
+  shows "traced op ios"
+  apply (rule traced.coinduct[where X = "traced_cong X", unfolded traced_cong_disj, of op ios])
+  apply (rule tc_base, rule assms(1))
+  subgoal for op lxs
+    apply (induct op lxs rule: traced_cong.induct)
+    subgoal for op lxs
+      apply (drule assms(2))
+      apply (auto simp del: fun_upd_apply intro: step.intros)
+      done
+    subgoal for op lxs
+      by (erule traced.cases)
+        (auto 10 10 simp add: tc_traced simp del: fun_upd_apply)
+    subgoal for p f x lxs
+      by (auto simp del: fun_upd_apply intro: step.intros)
+    subgoal for p n f 
+      by (auto simp del: fun_upd_apply intro: step.intros)
+    subgoal
+      by (auto simp del: fun_upd_apply intro: step.intros)
+    subgoal
+      by (auto 10 10 simp add: step.intros(3) simp del: fun_upd_apply intro: step.intros)
+    done
+  done
+
+lemma traced_coinduct_upto:
+  assumes "X op lxs"
+    "(\<And>x1 x2.
+     X x1 x2 \<Longrightarrow>
+    (\<exists>f x lxs p. x1 = Read p f \<and> x2 = LCons (Inp p x) lxs \<and> traced_cong X (f x) lxs) \<or>
+    (\<exists>op lxs p x. x1 = Write op p x \<and> x2 = LCons (Out p x) lxs \<and> traced_cong X op lxs) \<or>
+     (x2 = LNil \<and> finished x1))"
+  shows "traced op lxs"
+  apply (rule traced.coinduct[where X = "traced_cong X"])
+  apply (rule tc_base, rule assms(1))
+  subgoal for op lxs
+    apply (induct op lxs rule: traced_cong.induct)
+    subgoal for op lxs
+      apply (drule assms(2))
+      apply (auto simp del: fun_upd_apply intro: step.intros)
+      done
+    subgoal for op lxs
+      by (erule traced.cases)
+        (auto 10 10 simp add: tc_traced simp del: fun_upd_apply)
+    subgoal for p f x lxs
+      by (auto simp del: fun_upd_apply intro: step.intros)
+    subgoal for p n f 
+      by (auto simp del: fun_upd_apply intro: step.intros)
+    subgoal
+      by (auto simp del: fun_upd_apply intro: step.intros) 
+    subgoal
+      by (auto 10 10 simp add: step.intros(3) simp del: fun_upd_apply intro: step.intros)
+    done
+  done
+
+
+(* lemma traces_Read[simp]:
+  "traces (Read p f) = (\<Union>x. LCons (Inp p (Observed x)) ` traces (f (Observed x))) \<union>
+                       LCons (Inp p EOB) ` traces (f EOB) \<union>
+                       LCons (Inp p EOS) ` traces (f EOS)"
+  apply (auto simp: traces_def image_iff intro: traced.intros split: nat.splits)
+     apply (metis observation.exhaust)+
+  done
+ *)
+lemma traces_Write[simp]:
+  "traces (Write op p x) = LCons (Out p x) ` traces op"
+  by (auto simp: traces_def intro: step.intros(2) traced.intros elim: traced.cases)
+
 (* 
 lemma sim_finished_can_end_split:
   "sim bisim s t \<Longrightarrow> sim bisim t s \<Longrightarrow> can_end s \<and> \<not> finished s \<longleftrightarrow> can_end t \<and> \<not> finished t \<Longrightarrow> (can_end s \<longleftrightarrow> can_end t) \<and> (finished s \<longleftrightarrow> finished t)"
@@ -1143,6 +1285,8 @@ lemma bisim_Choice_cong:
   apply (smt (verit, ccfv_SIG) bc_bisim bisim.cases cin.rep_eq sim_def step.intros(3))
   apply (smt (verit, ccfv_SIG) bc_bisim bisim.cases cin.rep_eq sim_def step.intros(3))
    done *)
+
+  find_theorems bisim traced
 
 lemma bisim_Read_cong:
   "rel_fun (=) (\<approx>) f1 f2 \<Longrightarrow> Read p f1 \<approx> Read p f2"
@@ -1544,146 +1688,6 @@ lemma bisim_ChoiceD: "bisim (Choice ops1) (Choice ops2) \<Longrightarrow> rel_cs
   apply (erule step.cases)
 *)
 
-coinductive traced where
-  Nil: "finished op \<Longrightarrow> traced op LNil"
-| Step: "step io op op' \<Longrightarrow> traced op' lxs \<Longrightarrow> traced op (LCons io lxs)"
-
-inductive_cases traced_LNilE[elim!]: "traced op LNil"
-inductive_cases traced_LConsE[elim!]: "traced op (LCons l lxs)"
-
-lemma traced_Read[simp]: "traced (Read p f) lxs \<longleftrightarrow> (\<exists>x l lxs'. lxs = LCons l lxs' \<and> l = Inp p x \<and> traced (f x) lxs')"
-  by (cases lxs) (auto intro: traced.intros step.intros)
-
-lemma traced_LCons_iff: "traced op (LCons io lxs') \<longleftrightarrow> (\<exists>op'. step io op op' \<and> traced op' lxs')"
-  by (auto intro: traced.intros)
-
-definition "traces op = {lxs. traced op lxs}"
-
-lemma finished_no_step:
-  "finished op \<longleftrightarrow> \<not> (\<exists>io op'. step io op op')"
-  apply (intro iffI)
-  subgoal
-    apply safe
-    apply (erule finished.cases)
-    using step_not_finished apply auto
-    done
-  subgoal
-    apply (coinduction arbitrary: op)
-    subgoal for op
-      apply auto
-      subgoal 
-        by (metis cin.rep_eq op.exhaust step.intros(1) step.intros(2) step.intros(3) step.intros(4))
-      done
-    done
-  done
-
-lemma bisim_traced: "bisim op op' \<Longrightarrow> traced op lxs \<Longrightarrow> traced op' lxs"
-  apply (coinduction arbitrary: op op' lxs) 
-  subgoal for op op' lxs
-    apply (erule bisim.cases)
-    subgoal for s t
-      apply (erule traced.cases)
-      subgoal
-        apply simp
-        apply hypsubst_thin
-        unfolding sim_def
-        apply (meson finished_no_step)
-        done
-      subgoal
-        by (metis simE)
-      done
-    done
-  done
-
-lemma bisim_traces: "bisim op op' \<Longrightarrow> (traces op = traces op')"
-  unfolding traces_def set_eq_iff mem_Collect_eq
-  apply (intro iffI allI)
-   apply (auto elim: bisim_traced dest: bisim_sym[THEN iffD1]) [2]
-  done 
-
-inductive traced_cong for R where
-  tc_base: "R op lxs \<Longrightarrow> traced_cong R op lxs"
-| tc_traced: "traced op lxs \<Longrightarrow> traced_cong R op lxs"
-| tc_read: "traced_cong R (f x) lxs \<Longrightarrow> traced_cong R (Read p f) (LCons (Inp p x) lxs)"
-| tc_write: "traced_cong R op lxs \<Longrightarrow> traced_cong R (Write op q x) (LCons (Out q x) lxs)"
-| tc_silent: "traced_cong R op lxs \<Longrightarrow> traced_cong R (Silent op) (LCons Tau lxs)"
-| tc_choice: "cin op ops \<Longrightarrow> \<not> finished op \<Longrightarrow> traced_cong R op lxs \<Longrightarrow> traced_cong R (Choice ops) lxs"
-
-lemma traced_cong_disj:
-  "(traced_cong R op lxs \<or> traced op lxs) = traced_cong R op lxs"
-  by (auto intro: traced_cong.intros)
-
-thm traced.coinduct[where X = "traced_cong X", unfolded traced_cong_disj, of op ios]
-
-lemma traced_coinduct_upto_step:
-  assumes  "X op ios"
-    "(\<And>x1 x2. X x1 x2 \<Longrightarrow>
-     (\<exists>op. x1 = op \<and> x2 = LNil \<and> finished op) \<or> (\<exists>op l op' lxs. x1 = op \<and> x2 = LCons l lxs \<and> step l op op' \<and> traced_cong X op' lxs))"
-  shows "traced op ios"
-  apply (rule traced.coinduct[where X = "traced_cong X", unfolded traced_cong_disj, of op ios])
-  apply (rule tc_base, rule assms(1))
-  subgoal for op lxs
-    apply (induct op lxs rule: traced_cong.induct)
-    subgoal for op lxs
-      apply (drule assms(2))
-      apply (auto simp del: fun_upd_apply intro: step.intros)
-      done
-    subgoal for op lxs
-      by (erule traced.cases)
-        (auto 10 10 simp add: tc_traced simp del: fun_upd_apply)
-    subgoal for p f x lxs
-      by (auto simp del: fun_upd_apply intro: step.intros)
-    subgoal for p n f 
-      by (auto simp del: fun_upd_apply intro: step.intros)
-    subgoal
-      by (auto simp del: fun_upd_apply intro: step.intros)
-    subgoal
-      by (auto 10 10 simp add: step.intros(3) simp del: fun_upd_apply intro: step.intros)
-    done
-  done
-
-lemma traced_coinduct_upto:
-  assumes "X op lxs"
-    "(\<And>x1 x2.
-     X x1 x2 \<Longrightarrow>
-    (\<exists>f x lxs p. x1 = Read p f \<and> x2 = LCons (Inp p x) lxs \<and> traced_cong X (f x) lxs) \<or>
-    (\<exists>op lxs p x. x1 = Write op p x \<and> x2 = LCons (Out p x) lxs \<and> traced_cong X op lxs) \<or>
-     (x2 = LNil \<and> finished x1))"
-  shows "traced op lxs"
-  apply (rule traced.coinduct[where X = "traced_cong X"])
-  apply (rule tc_base, rule assms(1))
-  subgoal for op lxs
-    apply (induct op lxs rule: traced_cong.induct)
-    subgoal for op lxs
-      apply (drule assms(2))
-      apply (auto simp del: fun_upd_apply intro: step.intros)
-      done
-    subgoal for op lxs
-      by (erule traced.cases)
-        (auto 10 10 simp add: tc_traced simp del: fun_upd_apply)
-    subgoal for p f x lxs
-      by (auto simp del: fun_upd_apply intro: step.intros)
-    subgoal for p n f 
-      by (auto simp del: fun_upd_apply intro: step.intros)
-    subgoal
-      by (auto simp del: fun_upd_apply intro: step.intros) 
-    subgoal
-      by (auto 10 10 simp add: step.intros(3) simp del: fun_upd_apply intro: step.intros)
-    done
-  done
-
-
-(* lemma traces_Read[simp]:
-  "traces (Read p f) = (\<Union>x. LCons (Inp p (Observed x)) ` traces (f (Observed x))) \<union>
-                       LCons (Inp p EOB) ` traces (f EOB) \<union>
-                       LCons (Inp p EOS) ` traces (f EOS)"
-  apply (auto simp: traces_def image_iff intro: traced.intros split: nat.splits)
-     apply (metis observation.exhaust)+
-  done
- *)
-lemma traces_Write[simp]:
-  "traces (Write op p x) = LCons (Out p x) ` traces op"
-  by (auto simp: traces_def intro: step.intros(2) traced.intros elim: traced.cases)
 
     (* 
 corec traced_wit where
