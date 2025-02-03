@@ -75,9 +75,213 @@ lemma merge_op_transp_merge:
   oops
 
 section \<open>Axiom A17: Parallel sink\<close>
+
+lemma sink_op_pcomp_op_bufs:
+  \<open>map_op projl projr (comp_op Some (case_sum buf1' buf2') (id_op (case_sum buf1 buf2)) drain_op)
+  ~ (map_op projl projr (comp_op Some buf1' (id_op buf1) drain_op)) \<parallel> (map_op projl projr (comp_op Some buf2' (id_op buf2) drain_op))\<close>
+  apply (coinduction arbitrary: buf1 buf1' buf2 buf2' rule: bisim_coinduct_upto)
+  subgoal for buf1 buf1' buf2 buf2'
+    unfolding sim_def pcomp_op_def
+    apply auto
+    subgoal for io
+      apply (drule step_map_op_inv)
+      apply auto
+      apply (drule step_comp_op_cases)
+      apply auto
+      subgoal for p x
+        apply (drule step_id_op_Inp)
+         apply simp
+        apply (cases p)
+        subgoal for p'
+          apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some buf1' (id_op (BENQ p' x buf1)) drain_op))
+          (map_op projl projr (comp_op Some buf2' (id_op buf2) drain_op))\<close>])
+          apply (rule conjI)
+           apply fastforce
+          apply (rule bc_base)
+          apply auto
+          done
+        subgoal for p'
+          apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some buf1' (id_op buf1) drain_op))
+          (map_op projl projr (comp_op Some buf2' (id_op (BENQ p' x buf2)) drain_op))\<close>])
+          apply (rule conjI)
+           apply fastforce
+          apply (rule bc_base)
+          apply auto
+          done
+        done
+      subgoal
+        using no_step_drain_op_Out
+        apply meson
+        done
+      subgoal for p x
+        apply (drule step_id_op_Out)
+         apply (simp_all split: sum.splits)
+        subgoal for p'
+          apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (BENQ p' x buf1') (id_op (BTL p' buf1)) drain_op))
+          (map_op projl projr (comp_op Some buf2' (id_op buf2) drain_op))\<close>])
+          apply (rule conjI)
+           apply fastforce
+          apply (rule bc_base)
+          apply auto
+          done
+        subgoal for p'
+          apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some buf1' (id_op buf1) drain_op))
+          (map_op projl projr (comp_op Some (BENQ p' x buf2') (id_op (BTL p' buf2)) drain_op))\<close>])
+          apply (rule conjI)
+           apply fastforce
+          apply (rule bc_base)
+          apply auto
+          done
+        done
+      subgoal for p
+        apply (erule step_drain_op_Inp)
+        apply (auto split: sum.splits)
+        subgoal for p'
+          apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (BTL p' buf1') (id_op buf1) drain_op))
+       (map_op projl projr (comp_op Some buf2' (id_op buf2) drain_op))\<close>])
+          apply (rule conjI)
+           apply fastforce
+          apply (rule bc_base)
+          apply fast
+          done
+        subgoal for p'
+          apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some buf1' (id_op buf1) drain_op))
+       (map_op projl projr (comp_op Some (BTL p' buf2') (id_op buf2) drain_op))\<close>])
+          apply (rule conjI)
+           apply fastforce
+          apply (rule bc_base)
+          apply fast
+          done
+        done
+      using no_step_id_op_Tau no_step_drain_op_Tau
+       apply meson+
+      done
+    subgoal for io
+      apply (drule step_comp_op_cases)
+      apply auto
+      subgoal for p x
+        apply (drule step_map_op_inv)
+        apply auto
+        apply (drule step_comp_op_cases)
+        apply auto
+        apply (drule step_id_op_Inp)
+         apply simp
+        apply (rule exI[of _ \<open>map_op projl projr (comp_op Some (case_sum buf1' buf2') (id_op (case_sum (BENQ p x buf1) buf2)) drain_op)\<close>])
+        apply (rule conjI)
+        subgoal
+          apply (rule step_map_op[of \<open>Inp (Inl (Inl p)) x\<close>])
+           apply simp_all
+          apply (rule step_comp_op_L_Inp)
+          apply (metis case_sum_BENQ_L step_id_op_Read)
+          done
+        subgoal
+          apply (rule bc_sym)
+          apply (rule bc_base)
+          apply fast
+          done
+        done
+      subgoal for p x
+        apply (drule step_map_op_inv)
+        apply auto
+        apply (drule step_comp_op_cases)
+        apply auto
+        using no_step_drain_op_Out
+        apply meson
+        done
+      subgoal for p x
+        apply (drule step_map_op_inv)
+        apply auto
+        apply (drule step_comp_op_cases)
+        apply auto
+        using no_step_drain_op_Out
+        apply meson
+        done
+      subgoal for p x
+        apply (drule step_map_op_inv)
+        apply auto
+        apply (drule step_comp_op_cases)
+        apply auto
+        apply (drule step_id_op_Inp)
+         apply simp
+        apply (rule exI[of _ \<open>map_op projl projr (comp_op Some (case_sum buf1' buf2') (id_op (case_sum buf1 (BENQ p x buf2))) drain_op)\<close>])
+        apply (rule conjI)
+        subgoal
+          apply (rule step_map_op[of \<open>Inp (Inl (Inr p)) x\<close>])
+           apply simp_all
+          apply (rule step_comp_op_L_Inp)
+          apply (metis case_sum_BENQ_R step_id_op_Read)
+          done
+        subgoal
+          apply (rule bc_sym)
+          apply (rule bc_base)
+          apply fast
+          done
+        done
+      subgoal
+        apply (drule step_map_op_inv)
+        apply auto
+        apply (drule step_comp_op_cases)
+        apply auto
+        subgoal for p x
+          apply (drule step_id_op_Out)
+           apply simp
+          apply (rule exI[of _ \<open>map_op projl projr (comp_op Some (case_sum (BENQ p x buf1') buf2') (id_op (case_sum (BTL p buf1) buf2)) drain_op)\<close>])
+          apply (rule conjI)
+           apply fastforce
+          apply (rule bc_sym)
+          apply (rule bc_base)
+          apply fast
+          done
+        subgoal for p
+          apply (erule step_drain_op_Inp)
+           apply simp
+          apply (rule exI[of _ \<open>map_op projl projr (comp_op Some (case_sum (BTL p buf1') buf2') (id_op (case_sum buf1 buf2)) drain_op)\<close>])
+          apply (rule conjI)
+           apply fastforce
+          apply (rule bc_sym)
+          apply (rule bc_base)
+          apply fast
+          done
+        using no_step_id_op_Tau no_step_drain_op_Tau
+         apply meson+
+        done
+      subgoal
+        apply (drule step_map_op_inv)
+        apply auto
+        apply (drule step_comp_op_cases)
+        apply auto
+        subgoal for p x
+          apply (drule step_id_op_Out)
+           apply simp
+          apply (rule exI[of _ \<open>map_op projl projr (comp_op Some (case_sum buf1' (BENQ p x buf2')) (id_op (case_sum buf1 (BTL p buf2))) drain_op)\<close>])
+          apply (rule conjI)
+           apply fastforce
+          apply (rule bc_sym)
+          apply (rule bc_base)
+          apply fast
+          done
+        subgoal for p
+          apply (erule step_drain_op_Inp)
+           apply simp
+          apply (rule exI[of _ \<open>map_op projl projr (comp_op Some (case_sum buf1' (BTL p buf2')) (id_op (case_sum buf1 buf2)) drain_op)\<close>])
+          apply (rule conjI)
+           apply fastforce
+          apply (rule bc_sym)
+          apply (rule bc_base)
+          apply fast
+          done
+        using no_step_id_op_Tau no_step_drain_op_Tau
+         apply meson+
+        done
+      done
+    done
+  done
+
 lemma sink_op_pcomp_op:
   "! ~ ! \<parallel> !"
-  oops
+  unfolding scomp_op_def
+  using sink_op_pcomp_op_bufs[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>]
+  by simp
 
 section \<open>Axiom A19: Split and merge\<close>
 lemma split_op_transp_split:
