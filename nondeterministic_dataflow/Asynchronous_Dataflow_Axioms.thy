@@ -52,8 +52,54 @@ lemma split_op_dummy_source:
 section \<open>Axiom: A9\<close>
 
 lemma dummy_source_op_sink_op:
-  "\<exclamdown> \<bullet> ! = \<otimes>"
-  oops
+  \<open>\<exclamdown> \<bullet> ! ~ \<oslash>\<close>
+  apply (coinduction rule: bisim_coinduct_upto)
+  unfolding sim_def scomp_op_def
+  apply auto
+  apply (drule step_map_op_inv)
+  apply auto
+  apply (drule step_comp_op_cases)
+  apply auto
+  subgoal
+    apply (drule step_map_op_inv)
+    apply auto
+    apply (drule step_comp_op_cases)
+    apply auto
+    done
+  subgoal
+    apply (drule step_map_op_inv)
+    apply auto
+    apply (drule step_comp_op_cases)
+    using no_step_drain_op_Out
+    apply fastforce
+    done
+  subgoal
+    apply (drule step_map_op_inv)
+    apply auto
+    apply (drule step_comp_op_cases)
+    apply auto
+    apply (drule step_id_op_Out)
+     apply auto
+    done
+  subgoal
+    apply (drule step_map_op_inv)
+    apply auto
+    apply (drule step_comp_op_cases)
+    apply auto
+    using no_step_id_op_Tau
+    apply blast
+    done
+  subgoal
+    apply (drule step_map_op_inv)
+    apply auto
+    apply (drule step_comp_op_cases)
+    apply auto
+      apply (drule step_id_op_Out)
+       apply auto
+    using no_step_id_op_Tau no_step_drain_op_Tau
+     apply blast+
+    done
+  done
 
 section \<open>Axiom A13: Parallel dummy source\<close>
 
@@ -278,7 +324,7 @@ lemma sink_op_pcomp_op_bufs:
   done
 
 lemma sink_op_pcomp_op:
-  "! ~ ! \<parallel> !"
+  \<open>! ~ ! \<parallel> !\<close>
   unfolding scomp_op_def
   using sink_op_pcomp_op_bufs[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>]
   by simp
