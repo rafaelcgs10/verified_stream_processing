@@ -4657,7 +4657,7 @@ lemma transp_op_loop_id_gen:
 lemma transp_op_loop_id: \<open>\<X>\<up> \<approx> \<I>\<close>
   unfolding feedback_op_def 
   using transp_op_loop_id_gen[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []"] by auto
-(* 
+
 section "Tests"
 
 lemma comp_op_assoc:
@@ -4672,12 +4672,25 @@ shows  "(comp_op (map_option Inl o wire12) (buf12 o projl) op1 (comp_op wire23 b
    map_op reassoc reassoc (comp_op (case_sum (\<lambda> _ . None) wire23) buf23 (comp_op wire12 buf12 op1 op2) op3)"
   sorry
 
-lemma *:
+
+(* FIXME: move me to utils file *)
+lemma ran_comp[simp]:
+  "range g = dom f \<Longrightarrow>
+   x \<in> ran f \<Longrightarrow> x \<in> ran (f \<circ> g)"
+  by (smt (verit, best) comp_def domI image_def mem_Collect_eq ran_def)
+lemma projr_surj[simp]:
+  "surj projr"
+  by (metis sum.sel(2) surj_def)
+lemma projl_surj[simp]:
+  "surj projl"
+  by (metis sum.sel(1) surj_def)
+
+lemma map_op_first_comp_op:
   fixes op1 :: "('i1,'o1, 'd) op"
-   and op2 :: "('i2, 'o2, 'd) op"
- assumes "inj_on g A"
-shows "comp_op wire buf (map_op f g op1) op2 = map_op (case_sum (Inl o f) Inr) (case_sum (Inl o g) Inr) (comp_op (\<lambda>x. if x \<in> A then wire (g x) else None) buf op1 op2)"
-  using assms apply -
+    and op2 :: "('i2, 'o2, 'd) op"
+  assumes "range g = dom wire"
+  shows "comp_op wire buf (map_op f g op1) op2 = map_op (case_sum (Inl o f) Inr) (case_sum (Inl o g) Inr) (comp_op (wire o g) buf op1 op2)"
+  using assms
   apply (coinduction arbitrary: op1 op2 buf rule: op.coinduct_upto)
   subgoal for op1 op2 buf
     apply auto
@@ -4690,25 +4703,25 @@ shows "comp_op wire buf (map_op f g op1) op2 = map_op (case_sum (Inl o f) Inr) (
            apply auto
         subgoal for p f
           apply hypsubst_thin
-             apply (simp flip: choices_map_op)
-            apply (simp add: image_iff)
+          apply (simp flip: choices_map_op)
+          apply (simp add: image_iff)
           apply (elim bexE)
           subgoal for op'
             apply (cases op')
                apply auto
             subgoal for p' f'
               apply hypsubst_thin
-          apply (intro bexI)
-           apply (rule id_op.corec.cong_Read)
-            apply (rule refl)
-          defer
-      apply (subst (1) comp_op_code)
-           apply simp
+              apply (intro bexI)
+               apply (rule id_op.corec.cong_Read)
+                apply (rule refl)
+               defer
+               apply (subst (1) comp_op_code)
+               apply simp
                apply (rule image_eqI)
-          defer
-          apply simp
-           apply (rule disjI1)
-           apply (rule image_eqI[of _ _ "Read _ _"])
+                defer
+                apply simp
+                apply (rule disjI1)
+                apply (rule image_eqI[of _ _ "Read _ _"])
                  apply (simp flip: choices_map_op)
                 apply assumption
                apply auto
@@ -4716,13 +4729,277 @@ shows "comp_op wire buf (map_op f g op1) op2 = map_op (case_sum (Inl o f) Inr) (
               done
             done
           done
-
+        subgoal for op1' p x
+          apply (auto simp flip: choices_map_op simp add: image_iff split: option.splits)
+          subgoal for op
+            apply (cases op; auto; hypsubst?)
+            subgoal for op1'' p'
+              apply (intro bexI)
+               apply (rule id_op.corec.cong_Write)
+                 apply (rule id_op.corec.cong_base)
+                 apply force+
+              done
+            done
+          subgoal for q op
+            apply (cases op; auto; hypsubst?)
+            subgoal for op p'
+              apply (intro bexI)
+               apply (rule id_op.corec.cong_Silent)
+               apply (rule id_op.corec.cong_base)
+               apply force
+              apply (subst (2) comp_op_code)
+              apply simp
+              apply (rule image_eqI)
+               defer
+               apply simp
+               apply (rule disjI1)
+               apply (rule image_eqI)
+                apply (rule refl)
+               apply assumption
+              apply auto
+              done
+            done
+          done
+        subgoal for op
+          apply (auto simp flip: choices_map_op simp add: image_iff split: option.splits)
+          subgoal for op
+            apply (cases op; auto; hypsubst?)
+            apply (intro bexI)
+             apply (rule id_op.corec.cong_Silent)
+             apply (rule id_op.corec.cong_base)
+             apply force+
+            apply (subst (2) comp_op_code)
+            apply simp
+            apply (rule image_eqI)
+             defer
+             apply simp
+             apply (rule disjI1)
+             apply (rule image_eqI)
+              apply (rule refl)
+             apply assumption
+            apply auto
+            done
+          done
+        done
+      subgoal for op'
+        apply (cases op')
+           apply auto
+        subgoal for f p
+          apply hypsubst_thin
+          apply (intro bexI)
+           apply (rule id_op.corec.cong_Read)
+            apply (rule refl)
+           defer
+           apply (subst (1) comp_op_code)
+           apply simp
+           apply (rule image_eqI)
             defer
+            apply simp
+            apply (rule disjI2)
+            apply (rule image_eqI[of _ _ "Read _ _"])
+             apply (auto simp add: ran_def Set.filter_def simp flip: choices_map_op)
+          apply (smt (verit, ccfv_threshold) comp_eq_dest_lhs rel_fun_def transp_op.cong_base)
+          done    
+        subgoal for f p
+          apply hypsubst_thin
+          apply (intro bexI)
+           apply (rule id_op.corec.cong_Silent)
+           apply (rule id_op.corec.cong_base)
+           apply blast
+          apply (subst (2) comp_op_code)
+          apply simp
+          apply (rule image_eqI)
+           defer
+           apply simp
+           apply (rule disjI2)
+           apply (rule image_eqI)
+            apply (rule refl)
+           apply (auto simp add:  Set.filter_def simp flip: choices_map_op)
+          done
+        subgoal for p f
+          apply hypsubst_thin
+          apply (intro bexI)
+           apply (rule id_op.corec.cong_Read)
+            apply (rule refl)
+           defer
+           apply (subst (1) comp_op_code)
+           apply simp
+           apply (rule image_eqI)
+            defer
+            apply simp
+            apply (rule disjI2)
+            apply (rule image_eqI[of _ _ "Read _ _"])
+             apply (simp flip: choices_map_op)
+            apply auto
+           apply (smt (verit, del_insts) comp_apply fun_upd_apply rel_funI transp_op.cong_base)
+          apply (simp add: ran_def)
+          done
+        subgoal for op2' p x
+          apply hypsubst_thin
+          apply (intro bexI)
+           apply (rule id_op.corec.cong_Write)
+             apply (rule id_op.corec.cong_base)
+             apply blast
+            apply (rule refl)+
+          apply (subst (2) comp_op_code)
+          apply simp
+          apply (rule image_eqI)
+           defer
+           apply simp
+           apply (rule disjI2)
+           apply (rule image_eqI)
+            apply (rule refl)
+           apply force+
+          done
+        subgoal for op'
+          apply hypsubst_thin
+          apply (intro bexI)
+           apply (rule id_op.corec.cong_Silent)
+           apply (rule id_op.corec.cong_base)
+           apply blast
+          apply (subst (2) comp_op_code)
+          apply simp
+          apply (rule image_eqI)
+           defer
+           apply simp
+           apply (rule disjI2)
+           apply (rule image_eqI)
+            apply (rule refl)
+           apply force+
+          done
+        done
+      done
+    subgoal for op
+      apply (subst (asm) comp_op_code)
+      apply (auto split: option.splits)
+      subgoal for op'
+        apply (cases op')
+           apply auto
+        subgoal for p f
+          apply hypsubst_thin
+          apply (intro bexI)
+           apply (rule id_op.corec.cong_Read)
+            apply (rule refl)
+           defer
+           apply (subst (1) comp_op_code)
+           apply simp
+           apply (rule disjI1)
+           apply (rule image_eqI)
+            defer
+            apply (simp flip: image_iff choices_map_op)
+            apply auto
+          apply (smt (verit, ccfv_threshold) comp_eq_dest_lhs rel_fun_def transp_op.cong_base)
+          done
+        subgoal for op p x
+          apply hypsubst_thin
+          apply (auto split: option.splits)
+          subgoal
+            apply (intro bexI)
+             apply (rule id_op.corec.cong_Write)
+               apply (rule id_op.corec.cong_base)
+               apply blast
+              apply (rule refl)+
+            apply (subst (2) comp_op_code)
+            apply simp
+            apply (rule disjI1)
+            apply (rule image_eqI)
+             apply auto
+            done
+          subgoal for op
+            apply (intro bexI)
+             apply (rule id_op.corec.cong_Silent)
+             apply (rule id_op.corec.cong_base)
+             apply blast
+            apply (subst (2) comp_op_code)
+            apply simp
+            apply (rule disjI1)
+            apply (rule image_eqI)
+             apply (auto simp flip: image_iff choices_map_op)
+            done
+          done
+        subgoal for op
+          apply hypsubst_thin
+          apply (intro bexI)
+           apply (rule id_op.corec.cong_Silent)
+           apply (rule id_op.corec.cong_base)
+           apply blast
+          apply (subst (2) comp_op_code)
+          apply simp
+          apply (rule disjI1)
+          apply (rule image_eqI)
+           apply (auto simp flip: image_iff choices_map_op)
+          done
+        done
+      subgoal for op'
+        apply (cases op')
+           apply auto
+        subgoal for p f
+          apply hypsubst_thin
+          apply (intro bexI)
+           apply (rule id_op.corec.cong_Read)
+            apply (rule refl)
+           defer
+           apply (subst (1) comp_op_code)
+           apply simp
+           apply (rule disjI2)
+           apply (rule image_eqI)
+            apply (auto simp flip: image_iff choices_map_op)
+          apply (smt (verit, ccfv_threshold) comp_eq_dest_lhs fun_upd_idem_iff rel_fun_def transp_op.cong_base)
+          done
+        subgoal for p f
+          apply hypsubst_thin
+          apply (intro bexI)
+           apply (rule id_op.corec.cong_Silent)
+           apply (rule id_op.corec.cong_base)
+           apply force
+          apply (subst (2) comp_op_code)
+          apply simp
+          apply (rule disjI2)
+          apply (rule image_eqI)
+           apply (auto simp flip: image_iff choices_map_op simp add: ran_def)
+          done
+        subgoal for p f
+          apply (intro bexI)
+           apply (rule id_op.corec.cong_Read)
+            apply (rule refl)
+           defer
+           apply (subst (1) comp_op_code)
+           apply simp
+           apply (rule disjI2)
+           apply (rule image_eqI)
+            apply (auto simp flip: image_iff choices_map_op)
+          apply (smt (verit, ccfv_threshold) comp_apply fun_upd_apply rel_funI transp_op.cong_base)
+          done
+        subgoal for op p x
+          apply hypsubst_thin
+          apply (intro bexI)
+           apply (rule id_op.corec.cong_Write)
+             apply (rule id_op.corec.cong_base)
+             apply blast
+            apply (rule refl)+
+          apply (subst (2) comp_op_code)
+          apply simp
+          apply (rule disjI2)
+          apply (rule image_eqI)
+           apply (auto simp flip: image_iff choices_map_op)
+          done
+        subgoal for op
+          apply hypsubst_thin
+          apply (intro bexI)
+           apply (rule id_op.corec.cong_Silent)
+           apply (rule id_op.corec.cong_base)
+           apply blast
+          apply (subst (2) comp_op_code)
+          apply simp
+          apply (rule disjI2)
+          apply (rule image_eqI)
+           apply (auto simp flip: image_iff choices_map_op)
+          done
+        done
+      done
+    done
+  done
 
-
-          find_theorems  "(_ \<in>_ ` _) = _"
-
- 
 
 lemma **:
   fixes op1 :: "('i1,'o1, 'd) op"
@@ -4738,18 +5015,26 @@ lemma bisim_reflI:
 lemma scomp_op_assoc_gen:
   "map_op projl projr (comp_op Some buf1 op1 (map_op projl projr (comp_op Some buf2 op2 op3))) ~
    map_op projl projr (comp_op Some buf2 (map_op projl projr (comp_op Some buf1 op1 op2)) op3)"
-  unfolding *[where A = "Inr ` UNIV" and g=projr,unfolded inj_on_def,simplified] **[where f=projl and f'=Inl,simplified]
+  unfolding map_op_first_comp_op[where  g=projr and wire=Some and f=projl,unfolded inj_on_def,simplified] **[where f=projl and f'=Inl,simplified]
   apply (rule bisim_trans)
    apply (rule bisim_map_op)
    apply (rule bisim_map_op)
-   apply (rule comp_op_assoc[of Some buf1 op1 Some buf2 op2 op3])
-  apply (unfold op.map_comp)
-  thm bisim_refl
+   apply (rule comp_op_assoc)
   apply (rule bisim_reflI)
-  apply (rule op.map_cong)
-  apply (rule arg_cong[where f="\<lambda> x. comp_op x _ _ _"])
+  apply (unfold op.map_comp)
+  apply (rule arg_cong2[where f=map_op])
+
+  apply (simp split: sum.splits)
+
+  apply (rule arg_cong[where f=map_op])
+
+
+
+  apply (rule arg_cong[where f="map_op projl projr"])
+
+
     apply (auto simp: fun_eq_iff split: sum.splits)
   apply (smt (verit) BNA_Operators.reassoc.simps(1) BNA_Operators.reassoc.simps(2) id_apply map_sum.simps(1) map_sum.simps(2) sum.exhaust_sel sum.sel(1))
-  oops  *)
+  oops 
 
 end
