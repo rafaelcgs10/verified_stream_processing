@@ -1421,12 +1421,7 @@ lemma finished_choices_empty:
     done
   done
 
-lemma in_choices_step:
-  "op' |\<in>| choices op \<Longrightarrow>
-   \<exists> io op''. step io op' op''"
-  oops
-
-lemma Read_in_choices_step:
+lemma Read_in_choices_step[intro]:
   "Read p f |\<in>| choices op \<Longrightarrow> step (Inp p x) op (f x)"
   unfolding choices_def
   apply safe
@@ -1462,7 +1457,7 @@ lemma Read_in_choices_stepEx:
     done
   done
 
-lemma Write_in_choices_step:
+lemma Write_in_choices_step[intro]:
   "Write op' p x |\<in>| choices op \<Longrightarrow> step (Out p x) op op'"
   unfolding choices_def
   apply safe
@@ -1480,7 +1475,7 @@ lemma Write_in_choices_step:
     done
   done
 
-lemma Silent_in_choices_step:
+lemma Silent_in_choices_step[intro]:
   "Silent op' |\<in>| choices op \<Longrightarrow> step Tau op op'"
   unfolding choices_def
   apply safe

@@ -776,11 +776,11 @@ lemma step_comp_op_Some_id_op_id_op:
   "step io (comp_op Some buf2 op1 op2) op \<Longrightarrow>
    op1 = id_op buf1 \<Longrightarrow>
    op2 = id_op buf3 \<Longrightarrow>
-   (\<exists> p x. io = Inp (Inl p) x \<and>
+   (\<exists> p x. io = Inp (Inl p) x \<and> p \<notin> defaults \<and>
      (\<exists> buf1' buf2' buf3'. op = comp_op Some buf2' (id_op (BENQ p x buf1')) (id_op buf3') \<and>
       buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3')) \<or>
 
-   (\<exists> p x. io = Out (Inr p) x \<and>
+   (\<exists> p x. io = Out (Inr p) x \<and> p \<notin> defaults \<and>
      (\<exists> buf1' buf2' buf3'. op = comp_op Some buf2' (id_op buf1') (id_op (BTL p buf3')) \<and> BHD p buf3' = x \<and> buf3' p \<noteq> [] \<and>
      buf1 >> buf2 >> buf3 = buf1' >> buf2' >> buf3')) \<or>
 
@@ -909,8 +909,7 @@ lemma id_id_gen:
       subgoal for p x
         apply hypsubst_thin
         apply (drule step_id_op_Inp)
-         apply simp
-        apply hypsubst_thin
+         apply auto
         apply (rule exI[of _ "map_op projl projr (comp_op Some buf2 (id_op (BENQ p x buf1)) (id_op buf3))"])
         apply (intro conjI)
         subgoal
@@ -956,7 +955,6 @@ lemma id_id_gen:
                apply (rule disjI2)
                apply (intro conjI exI)
                 apply assumption
-               apply (rule refl)
               apply (auto simp add: step.intros(2))
             apply (simp add: BTL_def SW)
             done
@@ -987,9 +985,8 @@ lemma id_id_gen:
               apply (simp add: Set.filter_def)
               apply (intro conjI)
                apply (rule disjI1)
-               apply (intro exI conjI)
-               apply (rule refl)
-              apply simp_all
+               apply blast+
+            apply simp_all
              apply (simp add: BENQ_def)
             apply (subst comp_op_code)
             apply (rule SC[rotated])
@@ -1001,8 +998,7 @@ lemma id_id_gen:
              apply (intro conjI)
               apply (rule disjI2)
               apply (intro exI[of _ p] conjI)
-               apply (auto simp add: BENQ_def)
-            apply (simp add: fun_upd_idem)
+               apply (auto simp add: fun_upd_idem BENQ_def)
             done
           subgoal
             apply (rule wbc_sym)
@@ -1041,8 +1037,6 @@ lemma id_id_gen:
               apply (simp add: Set.filter_def)
               apply (intro conjI)
                apply (rule disjI1)
-               apply (intro exI[of _ p] conjI)
-               apply (rule refl)
               apply (auto simp add: BTL_def BENQ_def)
             apply (smt (verit, best) BTL_def append_self_conv2 fun_upd_same fun_upd_triv fun_upd_upd list.sel(1) list.sel(3) snoc_eq_iff_butlast step_comp_op_R_Out step_id_op_Write)
             done
@@ -1384,138 +1378,105 @@ lemma pcomp_op_scomp_distributes:
 
 section \<open>Axiom B6: Parallel composition of identities\<close>
 
+
+
 lemma pcomp_op_id_id_bufs:
   \<open>id_op buf1 \<parallel> id_op buf2 ~ id_op (case_sum buf1 buf2)\<close>
   apply (coinduction arbitrary: buf1 buf2 rule: bisim_coinduct_upto)
   subgoal for buf1 buf2
     unfolding pcomp_op_def sim_def
     apply auto
-    subgoal
-      apply (subst (asm) comp_op_code)
+    subgoal for io op
+      apply (drule step_comp_op_cases)
       apply auto
-      subgoal for p x
-        apply (rule exI[of _ \<open>id_op (case_sum (BENQ p x buf1) buf2)\<close>])
-        apply (rule conjI)
-        subgoal
-          apply (rule Read_in_choices_step)
-          apply (subst (2) id_op_code)
-          apply simp
-          done
-        subgoal
-          apply (rule bc_base)
-          apply (rule exI[of _ \<open>BENQ p x buf1\<close>])
-          apply (rule exI[of _ buf2])
-          apply (simp add: BENQ_def)
-          done
-        done
-      subgoal for p
-        apply (rule exI[of _ \<open>id_op (case_sum (BTL p buf1) buf2)\<close>])
-        apply (rule conjI)
-        subgoal
-          apply (rule Write_in_choices_step)
-          apply (subst (2) id_op_code)
-          apply simp
-          done
-        subgoal
-          apply (rule bc_base)
-          apply (rule exI[of _ \<open>BTL p buf1\<close>])
-          apply (rule exI[of _ buf2])
-          apply (simp add: BTL_def)
-          done
-        done
-      subgoal for p x
-        apply (rule exI[of _ \<open>id_op (case_sum buf1 (BENQ p x buf2))\<close>])
-        apply (rule conjI)
-        subgoal
-          apply (rule Read_in_choices_step)
-          apply (subst (2) id_op_code)
-          apply simp
-          done
-        subgoal
-          apply (rule bc_base)
-          apply (rule exI[of _ buf1])
-          apply (rule exI[of _ \<open>BENQ p x buf2\<close>])
-          apply (simp add: BENQ_def)
-          done
-        done
-      subgoal for p
-        apply (rule exI[of _ \<open>id_op (case_sum buf1 (BTL p buf2))\<close>])
-        apply (rule conjI)
-        subgoal
-          apply (rule Write_in_choices_step)
-          apply (subst (2) id_op_code)
-          apply simp
-          done
-        subgoal
-          apply (rule bc_base)
-          apply (rule exI[of _ buf1])
-          apply (rule exI[of _ \<open>BTL p buf2\<close>])
-          apply (simp add: BTL_def)
-          done
-        done
-      done
-    subgoal
-      apply (subst (asm) id_op_code)
-      apply (auto split: sum.splits simp add: BENQ_def BTL_def)
-      subgoal for x p
-        apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BENQ p x buf1)) (id_op buf2)\<close>])
-        apply (rule conjI)
-        subgoal
-          apply (rule Read_in_choices_step)
-          apply (subst (2) comp_op_code)
-          apply (simp add: BENQ_def BTL_def)
-          done
-        subgoal
-          apply (rule bc_sym)
-          apply (rule bc_base)
-          apply (rule exI[of _ \<open>BENQ p x buf1\<close>])
-          apply (rule exI[of _ buf2])
-          apply (simp add: BENQ_def BTL_def)
-          done
-        done
-      subgoal for x p
-        apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (id_op (BENQ p x buf2))\<close>])
-        apply (rule conjI)
-        subgoal
-          apply (rule step_comp_op_R_Inp)
-           apply (rule step_id_op_Read)
-          apply auto
-          done
-        subgoal
-          apply (rule bc_sym)
-          apply (rule bc_base)
-          apply (rule exI[of _ buf1])
-          apply (rule exI[of _ \<open>BENQ p x buf2\<close>])
-          apply (simp add: BENQ_def BTL_def)
-          done
-        done
-      subgoal for p
-        apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BTL p buf1)) (id_op buf2)\<close>])
-        apply (rule conjI)
-        subgoal
-          apply (rule Write_in_choices_step)
-          apply (subst (2) comp_op_code)
-          apply (simp add: BENQ_def BTL_def)
-          done
-        subgoal
-          apply (rule bc_sym)
-          apply (rule bc_base)
-          apply (rule exI[of _ \<open>BTL p buf1\<close>])
-          apply (rule exI[of _ buf2])
-          apply (simp add: BENQ_def BTL_def)
-          done
-        done
-      subgoal for p
-        apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (id_op (BTL p buf2))\<close>])
+      subgoal
+        apply (drule step_id_op_Inp)
         apply auto
-        apply (rule bc_sym)
-        apply (rule bc_base)
-        apply (rule exI[of _ buf1])
-        apply (rule exI[of _ \<open>BTL p buf2\<close>])
-        apply (simp add: BTL_def)
+      apply (intro conjI[rotated] exI)
+         apply (rule bc_base)
+         apply blast
+        apply (metis Inr_Inl_False PlusE Plus_def case_sum_BENQ_L defaults_sum_def step_id_op_Read sum.sel(1))
+        done
+      subgoal 
+        apply (drule step_id_op_Out)
+        apply auto
+      apply (intro conjI[rotated] exI)
+         apply (rule bc_base)
+         apply blast
+        apply (smt (verit) Inr_Inl_False PlusE Plus_def case_sum_BTL_R defaults_sum_def old.sum.simps(6) step_id_op_Write sum.sel(2))
+        done
+  subgoal 
+        apply (drule step_id_op_Out)
+        apply auto
+      apply (intro conjI[rotated] exI)
+         apply (rule bc_base)
+     apply blast
+    apply (smt (verit, best) Inr_Inl_False PlusE Plus_def case_sum_BTL_L defaults_sum_def old.sum.simps(5) step_id_op_Write sum.inject(1))
+    done
+      subgoal
+        apply (drule step_id_op_Inp)
+        apply auto
+      apply (intro conjI[rotated] exI)
+         apply (rule bc_base)
+         apply blast
+        apply (metis Inr_Inl_False Inr_inject PlusE Plus_def case_sum_BENQ_R defaults_sum_def step_id_op_Read)
         done
       done
+    subgoal for io op
+      apply (cases io)
+      subgoal for p x
+        apply (cases p)
+        subgoal for lp
+        apply (drule step_id_op_Inp)
+         apply auto
+        apply hypsubst_thin
+        apply (intro conjI[rotated] exI)
+         apply (rule bc_sym)
+         apply (rule bc_base)
+           apply blast
+          apply (auto simp add: defaults_sum_def step_comp_op_L_Inp step_id_op_Read)
+          done
+        subgoal for p
+        apply (drule step_id_op_Inp)
+         apply auto
+        apply hypsubst_thin
+        apply (intro conjI[rotated] exI)
+         apply (rule bc_sym)
+         apply (rule bc_base)
+           apply blast
+          apply (rule step_comp_op_R_Inp)
+           apply auto
+          apply (rule step_id_op_Read)
+          apply (auto simp add: defaults_sum_def step_comp_op_L_Inp step_id_op_Read)
+          done
+        done
+      subgoal for p x
+        apply (cases p)
+        subgoal
+        apply (drule step_id_op_Out)
+         apply auto
+          apply hypsubst_thin
+  apply (intro conjI[rotated] exI)
+         apply (rule bc_sym)
+         apply (rule bc_base)
+           apply blast
+          apply (simp add: defaults_sum_def image_iff step_comp_op_L_Out step_id_op_Write)
+          done
+        subgoal
+        apply (drule step_id_op_Out)
+         apply auto
+          apply hypsubst_thin
+  apply (intro conjI[rotated] exI)
+         apply (rule bc_sym)
+         apply (rule bc_base)
+           apply blast
+          apply (simp add: defaults_sum_def image_iff step_comp_op_R_Out step_id_op_Write)
+          done
     done
+  subgoal
+    by auto
+  done
+  done
   done
 
 lemma pcomp_op_id_id:
@@ -1547,12 +1508,15 @@ lemma comp_op_transp_transp_id_bufs:
         done
       subgoal for p x
         apply (erule step_transp_op_Out)
-          apply simp_all
+           apply simp_all
         apply (rule exI[of _ \<open>id_op (buf1 >> (buf2 >> BTL (case_sum Inr Inl p) buf3 \<circ> case_sum Inr Inl))\<close>])
         apply auto
         apply (rule step_wstep)
         apply (rule step_id_op_Write)
-        apply (auto simp: BULK_BENQ_def BTL_def split: sum.splits)
+           apply (auto simp: BULK_BENQ_def BTL_def  split: sum.splits)
+         apply (metis case_sum_defaults old.sum.simps(6))
+        apply (metis case_sum_defaults old.sum.simps(5))
+end
         done
       subgoal for p x
         apply (erule step_transp_op_Out)
