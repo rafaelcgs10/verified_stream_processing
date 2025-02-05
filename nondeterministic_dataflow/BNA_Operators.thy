@@ -174,7 +174,8 @@ lemma step_comp_op_L[intro]:
 lemma step_Tau_comp_op_L[intro]:
   "step (Out p x) op1 op1' \<Longrightarrow>
    wire p = Some q \<Longrightarrow>
-   step Tau (comp_op wire buf op1 op2) (comp_op wire (BENQ q x buf) op1' op2)"
+   buf' = BENQ q x buf \<Longrightarrow>
+   step Tau (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2)"
   apply (erule step_choicesE)
   apply simp_all
     apply (subst (1) comp_op_code)
@@ -191,7 +192,7 @@ lemma step_Tau_comp_op_L[intro]:
 lemma step_comp_op_R[intro]:
   "step io op2 op2' \<Longrightarrow>
    (case io of Out p x \<Rightarrow> True | Inp p x \<Rightarrow> p \<notin> ran wire | Tau \<Rightarrow> True) \<Longrightarrow>
-   step (map_IO Inr Inr id io) (comp_op wire buf op1 op2)(comp_op wire buf op1 op2')"
+   step (map_IO Inr Inr id io) (comp_op wire buf op1 op2) (comp_op wire buf op1 op2')"
   apply (induct io op2 op2' arbitrary: op1 buf rule: step.induct)
   subgoal for p x f op1 buf
     apply (subst (1) comp_op_code)
@@ -277,7 +278,8 @@ lemma step_Tau_comp_op_R[intro]:
    p \<in> ran wire \<Longrightarrow>
    buf p \<noteq> [] \<Longrightarrow>
    BHD p buf = x \<Longrightarrow>
-   step Tau (comp_op wire buf op1 op2) (comp_op wire (BTL p buf) op1 op2')"
+   buf' = BTL p buf \<Longrightarrow>
+   step Tau (comp_op wire buf op1 op2) (comp_op wire buf' op1 op2')"
   apply (erule step_choicesE)
   apply simp_all
     apply (subst (1) comp_op_code)
@@ -290,31 +292,30 @@ lemma step_Tau_comp_op_R[intro]:
   apply auto
   done
 
-lemma step_comp_op_R_Out[intro]:
-  "step (Out p x) op2 op2' \<Longrightarrow> step (Out (Inr p) x) (comp_op wire buf op1 op2) (comp_op wire buf op1 op2')"
+lemma step_comp_op_R_Out[intro!]:
+  "step (Out p x) op2 op2' \<Longrightarrow> buf = buf' \<Longrightarrow> op1 = op1' \<Longrightarrow> step (Out (Inr p) x) (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
   using step_comp_op_R by force
 
-lemma step_comp_op_R_Inp[intro]:
-  "step (Inp p x) op2 op2' \<Longrightarrow> p \<notin> ran wire \<Longrightarrow> step (Inp (Inr p) x) (comp_op wire buf op1 op2) (comp_op wire buf op1 op2')"
-  using step_comp_op_R by fastforce
+lemma step_comp_op_R_Inp[intro!]:
+  "step (Inp p x) op2 op2' \<Longrightarrow> p \<notin> ran wire \<Longrightarrow> buf = buf' \<Longrightarrow> op1 = op1' \<Longrightarrow> step (Inp (Inr p) x) (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
+  using step_comp_op_R by force
 
 lemma step_comp_op_R_Tau[intro]:
-  "step Tau op2 op2' \<Longrightarrow> step Tau (comp_op wire buf op1 op2) (comp_op wire buf op1 op2')"
+  "step Tau op2 op2' \<Longrightarrow> buf = buf' \<Longrightarrow> op1 = op1' \<Longrightarrow> step Tau (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
   using step_comp_op_R by force
 
-lemma step_comp_op_L_Inp[intro]:
-  "step (Inp p x) op1 op1' \<Longrightarrow> step (Inp (Inl p) x) (comp_op wire buf op1 op2) (comp_op wire buf op1' op2)"
+lemma step_comp_op_L_Inp[intro!]:
+  "step (Inp p x) op1 op1' \<Longrightarrow> buf = buf' \<Longrightarrow> op2 = op2' \<Longrightarrow>  step (Inp (Inl p) x) (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
   using step_comp_op_L by force
 
-lemma step_comp_op_L_Out[intro]:
-  "step (Out p x) op1 op1' \<Longrightarrow> p \<notin> dom wire \<Longrightarrow> step (Out (Inl p) x) (comp_op wire buf op1 op2) (comp_op wire buf op1' op2)"
+lemma step_comp_op_L_Out[intro!]:
+  "step (Out p x) op1 op1' \<Longrightarrow> p \<notin> dom wire \<Longrightarrow> buf = buf' \<Longrightarrow> op2 = op2' \<Longrightarrow> step (Out (Inl p) x) (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
   using step_comp_op_L
   by (metis IO.map_id IO.simps(10) IO.simps(16))
 
 lemma step_comp_op_L_Tau[intro]:
-  "step Tau op1 op1' \<Longrightarrow> step Tau (comp_op wire buf op1 op2) (comp_op wire buf op1' op2)"
+  "step Tau op1 op1' \<Longrightarrow> buf = buf' \<Longrightarrow> op2 = op2' \<Longrightarrow> step Tau (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
   using step_comp_op_L by force
-
 
 lemma step_comp_op_cases:
   "step io (comp_op wire buf op1 op2) op \<Longrightarrow>
@@ -441,7 +442,7 @@ lemma step_comp_op_cases:
     done
   done
 
-lemma step_tau_comp_op_Out_Inl_case_sum[intro]:
+(* lemma step_tau_comp_op_Out_Inl_case_sum[intro]:
   "step (Out (Inl p) x) op1 op1' \<Longrightarrow>
    step Tau (comp_op Some (case_sum buf4' buf1'') op1 op2) (comp_op Some (case_sum (BENQ p x buf4') buf1'') op1' op2)"
   using step_Tau_comp_op_L[where buf="case_sum buf4' buf1''" and q="Inl p" and p="Inl p" and wire=Some, simplified] by auto
@@ -459,7 +460,7 @@ lemma step_tau_comp_op_Inl_case_sum[intro]:
 lemma step_tau_comp_op_Inr_case_sum[intro]:
   "step (Inp (Inr p) x) op2 op2' \<Longrightarrow>
    buf1 p \<noteq> [] \<Longrightarrow> BHD p buf1 = x \<Longrightarrow> step Tau (comp_op Some (case_sum buf4' buf1) op1 op2) (comp_op Some (case_sum buf4' (BTL p buf1)) op1 op2')"
-  using step_Tau_comp_op_R[where wire=Some and buf="case_sum buf4' buf1" and p="Inr p", simplified] by auto
+  using step_Tau_comp_op_R[where wire=Some and buf="case_sum buf4' buf1" and p="Inr p", simplified] by auto *)
 
 subsection \<open>Parallel composition operator\<close>
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
@@ -471,6 +472,10 @@ fun reassoc where
   "reassoc (Inl (Inl x)) = Inl x"
 | "reassoc (Inl (Inr x)) = Inr (Inl x)"
 | "reassoc (Inr x) = Inr (Inr x)"
+
+lemma reassoc_extra_simps[simp]:
+  "reassoc (Inl p) = (case p of Inl p \<Rightarrow> Inl p | Inr p \<Rightarrow> Inr (Inl p))"
+  by (cases p; auto)
 
 fun assoc where
   "assoc (Inl x) = Inl (Inl x)"
@@ -509,6 +514,25 @@ lemma map_op_assoc_inj:
 lemma map_op_reassoc_inj:
   "inj (map_op reassoc reassoc)"
   by (simp add: op.inj_map)
+
+lemma map_IO_assoc_eq_Out_Inl[intro!]:
+  "IO = Out (Inl p) x \<Longrightarrow>
+   map_IO id assoc id IO = Out (Inl (Inl p)) x"
+  by auto
+
+lemma map_IO_assoc_eq_Inp_Inl[intro!]:
+  "IO = Out (Inl p) x \<Longrightarrow>
+   map_IO f assoc id IO = Out (Inl (Inl p)) x"
+  by auto
+
+lemma map_IO_assoc_eq_Inp_Inr_Inl[intro!]:
+  "IO = Out (Inr (Inl p)) x \<Longrightarrow>
+   map_IO f assoc id IO = Out (Inl (Inr p)) x"
+  by auto
+
+lemma map_IO_assoc_Inp_Inl[simp]:
+  "map_IO id assoc id (Inp (Inl p) x) = Inp (Inl p) x"
+  by simp
 
 subsection \<open>Sequential composition operator\<close>
 definition scomp_op (infixl "\<bullet>" 65) where
@@ -989,7 +1013,7 @@ lemma bisim_comp_op_cong:
             apply (intro conjI exI)
              apply (rule step_comp_op_R_Tau)
              apply (rule Silent_in_choices_step)
-             apply simp
+              apply simp_all
             apply (metis (mono_tags, lifting) bc_base bisim_sym)
             done
           done
@@ -1120,7 +1144,7 @@ lemma wbisim_comp_op_cong:
                 apply (rule relcomppI)
                  apply (rule step_comp_op_L_Inp)
                  apply (rule Read_in_choices_step)
-                 apply simp
+                 apply simp_all
                 apply blast
                 done
               done
@@ -1326,7 +1350,7 @@ lemma wbisim_comp_op_cong:
                 apply (rule relcomppI)
                  apply (rule step_comp_op_L_Inp)
                  apply (rule Read_in_choices_step)
-                 apply simp
+                 apply simp_all
                 apply blast
                 done
               done
@@ -1683,7 +1707,9 @@ lemma step_Tau_loop_op_old[intro]:
 
 lemma step_Out_Inr_loop_op[intro]:
   "step (Out (Inr p) x) op op' \<Longrightarrow>
-   step Tau (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (BENQ (Inr p) x buf) op')"
+   buf' = BENQ (Inr p) x buf \<Longrightarrow>
+   step Tau (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf' op')"
+  apply hypsubst_thin
   apply (subst loop_op.code)
   apply simp
   apply (erule step_choicesE)
@@ -1697,7 +1723,9 @@ lemma step_Out_Inr_loop_op[intro]:
 lemma step_Inp_Inr_loop_op[intro]:
   "step (Inp (Inr p) (BHD (Inr p) buf)) op op' \<Longrightarrow>
    buf (Inr p) \<noteq> [] \<Longrightarrow>
-   step Tau (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (BTL (Inr p) buf) op')"
+   buf' = BTL (Inr p) buf \<Longrightarrow>
+   step Tau (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf' op')"
+  apply hypsubst_thin
   apply (subst loop_op.code)
   apply simp
   apply (erule step_choicesE)
@@ -2453,8 +2481,8 @@ lemma step_id_op_cases:
     apply (subst (asm) id_op_code, simp)+
   done
 
-lemma step_id_op_Read[intro]:
-  "p \<notin> defaults \<Longrightarrow> step (Inp p x) (id_op buf) (id_op (BENQ p x buf))"
+lemma step_id_op_Read[intro!]:
+  "p \<notin> defaults \<Longrightarrow> buf' = BENQ p x buf \<Longrightarrow> step (Inp p x) (id_op buf) (id_op buf')"
   apply (subst id_op_code)
   apply (rule SC)
    apply simp
@@ -2462,7 +2490,7 @@ lemma step_id_op_Read[intro]:
    apply force+
   done
 
-lemma step_id_op_Write[intro]:
+lemma step_id_op_Write[intro!]:
   \<open>p \<notin> defaults \<Longrightarrow> BHD p buf = x \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> buf' = BTL p buf \<Longrightarrow>
   step (Out p x) (id_op buf) (id_op buf')\<close>
   apply (subst id_op_code)
@@ -2474,11 +2502,10 @@ lemma step_id_op_Write[intro]:
 
 lemma choices_id_op[simp]:
   "choices (id_op buf) = cUn (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda>x. id_op (buf(p := bulk_benq [x] (buf p))))) cUNIV)))
-       (cUnion (cimage choices (cimage (\<lambda>p. Write (id_op (buf(p := btl (buf p)))) p (BHD p buf)) (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV))))"
+       (cUnion (cimage choices (cimage (\<lambda>p. Write (id_op (BTL p buf)) p (BHD p buf)) (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV))))"
   apply (subst id_op_code)
   apply (simp add: BTL_def BENQ_def)
   done
-
 
 lemma step_Inp_loop_op[intro]:
   "step (Inp p x) op op' \<Longrightarrow>
@@ -2636,7 +2663,7 @@ lemma R5:
         apply hypsubst_thin
         apply (intro exI conjI[rotated])
          apply (rule wbc_base)
-        apply force+
+        apply fastforce+
         done
       subgoal
         apply hypsubst_thin
@@ -2869,8 +2896,8 @@ lemma step_transp_op_Out:
    apply simp
   apply (subst (asm) (3) transp_op_code)
   apply (simp add: Set.filter_def split: sum.splits)
-  apply (smt (verit, del_insts) IO.inject(2) IO.simps(4) imageE mem_Collect_eq old.sum.exhaust old.sum.simps(5) old.sum.simps(6) stepReadE stepWriteE sum.inject(1) sum.simps(4))
-  apply (smt (verit, ccfv_threshold) IO.inject(2) IO.simps(4) assms(3) imageE mem_Collect_eq old.sum.exhaust old.sum.simps(5) old.sum.simps(6) stepReadE stepWriteE)
+  apply (smt (z3) IO.inject(2) IO.simps(4) Inl_inject Un_iff defaults_sum_def image_iff mem_Collect_eq stepReadE stepWriteE sum.case_eq_if sum.collapse(2) sum.simps(4))
+  apply (smt (z3) IO.inject(2) IO.simps(4) UnI1 defaults_sum_def image_iff isl_def mem_Collect_eq stepReadE stepWriteE sum.case_eq_if sum.sel(1) sum.sel(2) sum.simps(4))
   done
 
 lemma no_step_transp_op_Tau:
@@ -2913,8 +2940,9 @@ lemma step_transp_op_cases:
   done
 
 
-lemma step_transp_op_Read[intro]:
-  \<open>p \<notin> defaults \<Longrightarrow> step (Inp p x) (transp_op buf) (transp_op (BENQ p x buf))\<close>
+lemma step_transp_op_Read[intro!]:
+  \<open>p \<notin> defaults \<Longrightarrow> buf' = (BENQ p x buf) \<Longrightarrow> step (Inp p x) (transp_op buf) (transp_op buf')\<close>
+  apply hypsubst_thin
   apply (subst transp_op_code)
   apply (rule SC[rotated])
   apply (rule SR)
@@ -2923,8 +2951,8 @@ lemma step_transp_op_Read[intro]:
   apply force
   done
 
-lemma step_transp_op_Write[intro]:
-  \<open>BHD p buf = x \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> buf' = BTL p buf \<Longrightarrow> p' = case_sum Inr Inl p \<Longrightarrow>
+lemma step_transp_op_Write[intro!]:
+  \<open>BHD p buf = x \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> buf' = BTL p buf \<Longrightarrow> case_sum Inr Inl p = p' \<Longrightarrow>
    p \<notin> defaults \<Longrightarrow> step (Out p' x) (transp_op buf) (transp_op buf')\<close>
   apply (subst transp_op_code)
   apply (rule SC[rotated])
@@ -2938,7 +2966,7 @@ lemma step_transp_op_Write[intro]:
 lemma choices_transp_op[simp]:
   \<open>choices (transp_op buf) = cUn
   (cUnion (cimage choices (cimage (\<lambda> p. Read p (\<lambda> x. transp_op (buf(p := bulk_benq [x] (buf p))))) cUNIV)))
-  (cUnion (cimage choices (cimage (\<lambda> p. Write (transp_op (buf(p := btl (buf p)))) (case_sum Inr Inl p) (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) cUNIV))))\<close>
+  (cUnion (cimage choices (cimage (\<lambda> p. Write (transp_op (BTL p buf)) (case_sum Inr Inl p) (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) cUNIV))))\<close>
   apply (subst transp_op_code)
   apply (simp add: BTL_def BENQ_def)
   done
@@ -3069,7 +3097,6 @@ lemma step_merge_op:
   using assms
   apply (subst (asm) merge_op_code)
   apply auto
-  using defaults_sum_def imageE apply blast+
   done
 
 lemma step_merge_op_Read[intro]:
@@ -3077,7 +3104,6 @@ lemma step_merge_op_Read[intro]:
   apply (subst merge_op_code)
   apply (simp split: sum.splits)
   apply auto
-  using defaults_sum_def imageE apply fastforce+
   done
 
 lemma choices_merge_op[simp]:

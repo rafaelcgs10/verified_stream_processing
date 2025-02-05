@@ -12,6 +12,15 @@ imports
   "Cset_Setup"
 begin
 
+(* FIXME: move me to utils file *)
+lemma case_sum_invert_Inl[simp]:
+  "case_sum Inr Inl p' = Inl p \<longleftrightarrow> p' = Inr p"
+  by (cases p'; auto)
+lemma case_sum_invert_Inr[simp]:
+  "case_sum Inr Inl p' = Inr p \<longleftrightarrow> p' = Inl p"
+  by (cases p'; auto)
+
+
 section\<open>Channels\<close>
 
 section\<open>Buffer infrastrcuture\<close>
@@ -73,9 +82,9 @@ lemma BULK_BENQ_right_neutral[simp]:
   "buf >> (\<lambda> _. []) = buf"
   unfolding BULK_BENQ_def by force
 
-lemma BULK_BENQ_empty:
-  \<open>(buf1 >> buf2) p = [] \<Longrightarrow> buf1 p = [] \<and> buf2 p = []\<close>
-  unfolding BULK_BENQ_def by simp
+lemma BULK_BENQ_empty[simp]:
+  \<open>(buf1 >> buf2) p = [] \<longleftrightarrow> buf1 p = [] \<and> buf2 p = []\<close>
+  unfolding BULK_BENQ_def by auto
 
 lemma BHD_BENQ_empty[simp]:
   "buf p = [] \<Longrightarrow> (BHD p (BENQ p x buf)) = x"
@@ -86,8 +95,11 @@ lemma BTL_BENQ_empty[simp]:
 lemma BENQ_access[simp]:
   "(BENQ p x buf) p = (buf p @ [x])"
   unfolding BENQ_def by force
-lemma BTL_access[simp]:
+lemma BTL_access:
   "(BTL p buf) p = tl (buf p)"
+  unfolding BTL_def by force
+lemma BTL_empty[simp]:
+  "buf p = [] \<Longrightarrow> (BTL p buf) = buf"
   unfolding BTL_def by force
 
 lemma case_sum_updateL[simp]:
@@ -178,7 +190,7 @@ abbreviation "sound_reads wire buf \<equiv> cfilter (\<lambda> op. case op of Re
 abbreviation "ARead i f op \<equiv> Choice (cimage (\<lambda> x. if x then op else Read i f) (cinsert True (csingle False)))"
 lemma ARead_simp[simp]: "ARead i f op = Choice ({| op, Read i f |})"
   by simp
-
+(* 
 fun reassoc where
   "reassoc (Inl (Inl x)) = Inl x"
 | "reassoc (Inl (Inr x)) = Inr (Inl x)"
@@ -208,6 +220,7 @@ lemma assoc_reassoc[simp]:
       apply auto
     done
   done
+ *)
 
 lemma map_op_inj_inv:
   "inj f \<Longrightarrow>
@@ -215,6 +228,7 @@ lemma map_op_inj_inv:
    map_op f g op = map_op f g op' \<Longrightarrow>
    op = op'"
   by (meson injD op.inj_map)
+
 
 type_synonym 'd channel = "'d llist"
 
@@ -447,7 +461,7 @@ lemma ST':
   by auto
 
 lemma step_map_op[intro]:
-  "step io op op' \<Longrightarrow> io' = map_IO f g id io \<Longrightarrow>
+  "step io op op' \<Longrightarrow> map_IO f g id io = io' \<Longrightarrow>
    step io' (map_op f g op) (map_op f g op')"
   by (induct io op op' rule: step.induct) (force simp add: comp_def intro: step.intros)+
 
@@ -759,31 +773,34 @@ lemma step_wstep[intro]:
 lemma wstep_steps_Tau[simp]: "wstep Tau = (step Tau)\<^sup>*\<^sup>*"
   unfolding wstep_def by force
 
-lemma step_io_step_tau_wstep:
+lemma step_io_step_tau_wstep[intro]:
   "step io op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> wstep io op op''"
   unfolding wstep_def 
   by (smt (verit, best) predicate2D relcompp_apply rtranclp_trans step_wstep wstep_def wstep_steps_Tau)
 
-lemma step_io_step_tau_tau_wstep:
+lemma step_io_step_tau_tau_wstep[intro]:
   "step io op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step Tau op'' op''' \<Longrightarrow> wstep io op op'''"
   unfolding wstep_def 
   by (smt (verit, best) predicate2D relcompp_apply rtranclp_trans step_wstep wstep_def wstep_steps_Tau)
 
-lemma step_tau_step_io_wstep:
+lemma step_tau_step_io_wstep[intro]:
   "step Tau op op' \<Longrightarrow> step io op' op'' \<Longrightarrow> wstep io op op''"
   unfolding wstep_def 
   by (smt (verit, del_insts) estep.elims reflclp_tranclp relcomppI step_wstep sup2CI wstep_steps_Tau)
 
-lemma step_tau_step_tau_step_io_wstep:
+lemma step_tau_step_tau_step_io_wstep[intro]:
   "step Tau op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step io op'' op''' \<Longrightarrow> wstep io op op'''"
   unfolding wstep_def 
   by (smt (verit, del_insts) estep.elims reflclp_tranclp relcomppI rtranclp.rtrancl_into_rtrancl sup2CI)
 
-lemma step_tau_tau_step_tau_step_io_wstep:
+lemma step_tau_step_tau_step_io_wstep_backwards:
+  "step io op'' op''' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step Tau op op' \<Longrightarrow>  wstep io op op'''"
+  using step_tau_step_tau_step_io_wstep by force
+
+lemma step_tau_tau_step_tau_step_io_wstep[intro]:
   "step Tau op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step Tau op' op''' \<Longrightarrow> step io op''' op''''\<Longrightarrow>  wstep io op op''''"
   unfolding wstep_def 
   by (smt (verit, del_insts) estep.elims reflclp_tranclp relcomppI rtranclp.rtrancl_into_rtrancl sup2CI)
-
 
 abbreviation "wbisimulation R \<equiv> (\<forall>op1 op2. R op1 op2 \<longrightarrow> wsim R op1 op2 \<and> wsim (conversep R) op2 op1)"
 
@@ -2242,5 +2259,18 @@ section\<open>Convenient types\<close>
 
 type_synonym 'd op22 = "(2, 2, 'd) op"
 type_synonym 'd op11 = "(1, 1, 'd) op"
+
+
+(* FIXME : move *)
+lemma map_IO_projr_eq_Out[intro!]:
+  "IO = Out (Inr p) x \<Longrightarrow>
+   map_IO f projr id IO = Out p x"
+  by auto
+
+lemma map_IO_projl_eq_Inp[intro!]:
+  "IO = Inp (Inl p) x \<Longrightarrow>
+   map_IO projl g id IO = Inp p x"
+  by auto
+
 
 end
