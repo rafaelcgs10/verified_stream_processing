@@ -2645,8 +2645,13 @@ lemma rtranclp_intros_1':
   "a = b \<Longrightarrow> r\<^sup>*\<^sup>* a b"
   by auto
 
+(* FIXME: move me *)
+lemma Inl_notin_ran_feedback_wire[simp]:
+  "Inl p \<notin> ran (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p)))"
+  by (auto simp add: ran_def  split: sum.splits if_splits)
 
-section \<open>Axiom: R1: Loop commute sequential composition\<close>
+term feedback_op
+
 lemma loop_op_scomp_commute_gen:
   "map_op projl projr (comp_op Some buf2 op2 (map_op projl projl (loop_op (case_sum (\<lambda> _. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined (lbuf1 >> lbuf2 >> lbuf3)) op1))) \<approx>
    map_op projl projl (loop_op (case_sum (\<lambda> _. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined lbuf1) (map_op projl projr (comp_op Some (case_sum buf2 lbuf3) (comp_op (\<lambda>_. None) (\<lambda>_. []) op2 (id_op lbuf2)) op1)))"
@@ -2666,7 +2671,7 @@ lemma loop_op_scomp_commute_gen:
           apply (intro exI conjI[rotated])
            apply (rule wbc_base)
            apply fast
-          apply blast
+          apply force
           done
         subgoal for p x op2'
           apply hypsubst_thin
@@ -2682,6 +2687,13 @@ lemma loop_op_scomp_commute_gen:
               apply auto
               subgoal for p op''
                 apply hypsubst_thin
+                apply (intro exI conjI[rotated])
+                 apply (rule wbc_base)
+                 apply fast
+                apply force
+                done
+              subgoal
+           apply hypsubst_thin
                 apply (intro exI conjI[rotated])
                  apply (rule wbc_base)
                  apply fast
@@ -2722,7 +2734,6 @@ lemma loop_op_scomp_commute_gen:
             apply (rule step_map_op[of Tau])
              apply auto
             done
-          done
         subgoal for op'
           apply hypsubst_thin
           apply (intro exI conjI[rotated])
@@ -2734,7 +2745,18 @@ lemma loop_op_scomp_commute_gen:
            apply simp_all
           apply (rule step_Tau_loop_op)
           apply (rule step_map_op[of Tau])
-           apply auto
+            apply auto
+          apply (rule step_Tau_comp_op_R)
+              apply simp_all
+          apply auto
+
+
+          apply (rule step_Inp_Tau_loop_op)
+
+
+          find_theorems step Inp comp_op Tau
+
+end
           done
         subgoal for op'
           apply hypsubst_thin
@@ -4798,7 +4820,7 @@ lemma comp_op_assoc:
  and wire23 :: "'o2 \<rightharpoonup> 'i3"
 shows  "(comp_op (map_option Inl o wire12) (buf12 o projl) op1 (comp_op wire23 buf23 op2 op3)) ~
    map_op reassoc reassoc (comp_op (case_sum (\<lambda> _ . None) wire23) buf23 (comp_op wire12 buf12 op1 op2) op3)"
-  sorry
+  oops
 
 
 (* FIXME: move me to utils file *)
@@ -5134,7 +5156,7 @@ lemma **:
    and op2 :: "('i2, 'o2, 'd) op"
  assumes "\<And>x. f (f' x) = x"
  shows "comp_op wire buf op1 (map_op f g op2) = map_op (map_sum id f) (map_sum id g) (comp_op (map_option f' o wire) (buf o f) op1 op2)"
-  sorry
+  oops
 
 lemma bisim_reflI:
   "op1 = op2 \<Longrightarrow> op1 ~ op2"

@@ -1547,9 +1547,10 @@ lemma loop_op_Choice[simp]:
   "is_Choice (loop_op wire buf op)"
   by (subst loop_op.code, simp)
 
+term projl
+
 definition feedback_op ( "_ \<up>" [66] 65) where
   "feedback_op op = map_op projl projl (loop_op (case_sum (\<lambda> _. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined (\<lambda> _. [])) op)"
-
 
 subsection \<open>Step properties\<close>
 
@@ -2444,10 +2445,45 @@ lemma step_Inp_loop_op[intro!]:
     done
   done
 
+lemma step_Inp_Tau_loop_op[intro]:
+  "step (Inp p x) op op' \<Longrightarrow>
+   p \<in> ran wire \<Longrightarrow> buf' = BTL p buf \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> BHD p buf = x \<Longrightarrow>
+   step Tau (loop_op wire buf op) (loop_op wire buf' op')"
+  apply (subst loop_op.code)
+  apply simp
+  apply (erule step_choicesE)
+    apply simp_all
+  subgoal for p' f
+    apply hypsubst_thin
+    apply (rule SC)
+     apply (rule cimage_eqI[of _  _ "Read _ _"])
+      apply simp_all
+     apply (intro conjI)
+      apply assumption
+     apply (auto simp add: ran_def split: sum.splits)
+    done
+  done
+
 lemma step_Out_loop_op[intro!]:
   "step (Out p x) op op' \<Longrightarrow>
    wire p = None \<Longrightarrow> buf = buf' \<Longrightarrow>
    step (Out p x) (loop_op wire buf op) (loop_op wire buf' op')"
+  apply (subst loop_op.code)
+  apply simp
+  apply (erule step_choicesE)
+    apply simp_all
+  subgoal for p'
+    apply hypsubst_thin
+    apply (rule SC)
+     apply (rule cimage_eqI[of _  _ "Write _ _ _"])
+     apply (auto simp add: ran_def split: sum.splits)
+    done
+  done
+
+lemma step_Out_Tau_loop_op[intro]:
+  "step (Out p x) op op' \<Longrightarrow>
+   wire p = Some q \<Longrightarrow> buf' = BENQ q x buf \<Longrightarrow>
+   step Tau (loop_op wire buf op) (loop_op wire buf' op')"
   apply (subst loop_op.code)
   apply simp
   apply (erule step_choicesE)
@@ -3138,7 +3174,5 @@ lemma choices_aeq_op[simp]:
   apply (subst aeq_op_code)
   apply auto
   done
-
-find_theorems step loop_op Out 
 
 end
