@@ -779,22 +779,27 @@ lemma step_wstep[intro]:
 lemma wstep_steps_Tau[simp]: "wstep Tau = (step Tau)\<^sup>*\<^sup>*"
   unfolding wstep_def by force
 
-lemma step_io_step_tau_wstep[intro]:
+lemma step_io_step_tau_wstep:
   "step io op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> wstep io op op''"
   unfolding wstep_def 
   by (smt (verit, best) predicate2D relcompp_apply rtranclp_trans step_wstep wstep_def wstep_steps_Tau)
 
-lemma step_io_step_tau_tau_wstep[intro]:
+lemma step_io_step_tau_tau_wstep:
   "step io op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step Tau op'' op''' \<Longrightarrow> wstep io op op'''"
   unfolding wstep_def 
   by (smt (verit, best) predicate2D relcompp_apply rtranclp_trans step_wstep wstep_def wstep_steps_Tau)
 
-lemma step_tau_step_io_wstep[intro]:
+lemma step_tau_step_io_wstep:
   "step Tau op op' \<Longrightarrow> step io op' op'' \<Longrightarrow> wstep io op op''"
   unfolding wstep_def 
   by (smt (verit, del_insts) estep.elims reflclp_tranclp relcomppI step_wstep sup2CI wstep_steps_Tau)
 
-lemma step_tau_step_tau_step_io_wstep[intro]:
+lemma wstep_trans_tau_1[trans, intro]:
+  "step Tau op op' \<Longrightarrow> wstep io op' op'' \<Longrightarrow> wstep io op op''"
+  unfolding wstep_def 
+  by (smt (verit, ccfv_SIG) converse_rtranclp_into_rtranclp relcompp_apply)
+
+lemma step_tau_step_tau_step_io_wstep:
   "step Tau op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step io op'' op''' \<Longrightarrow> wstep io op op'''"
   unfolding wstep_def 
   by (smt (verit, del_insts) estep.elims reflclp_tranclp relcomppI rtranclp.rtrancl_into_rtrancl sup2CI)
@@ -803,7 +808,7 @@ lemma step_tau_step_tau_step_io_wstep_backwards:
   "step io op'' op''' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step Tau op op' \<Longrightarrow>  wstep io op op'''"
   using step_tau_step_tau_step_io_wstep by force
 
-lemma step_tau_tau_step_tau_step_io_wstep[intro]:
+lemma step_tau_tau_step_tau_step_io_wstep:
   "step Tau op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step Tau op' op''' \<Longrightarrow> step io op''' op''''\<Longrightarrow>  wstep io op op''''"
   unfolding wstep_def 
   by (smt (verit, del_insts) estep.elims reflclp_tranclp relcomppI rtranclp.rtrancl_into_rtrancl sup2CI)
@@ -987,15 +992,15 @@ lemma wbisim_coinduct_upto:
     done
   done
 
-lemma step_star_map_op:
+lemma step_star_map_op[intro!]:
   "(step Tau)\<^sup>*\<^sup>* op op' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (map_op f g op) (map_op f g op')"
     apply (induct op arbitrary: rule: converse_rtranclp_induct)
    apply auto[1]
   apply (metis (no_types, lifting) ST converse_rtranclp_into_rtranclp op.simps(39) stepSilentE step_map_op)
   done
 
-lemma wstep_map_op:
-  "wstep io op op' \<Longrightarrow> io' = map_IO f g id io \<Longrightarrow>
+lemma wstep_map_op[intro!]:
+  "wstep io op op' \<Longrightarrow> map_IO f g id io  = io'\<Longrightarrow>
    wstep io' (map_op f g op) (map_op f g op')"
   unfolding wstep_def
   apply hypsubst_thin
@@ -1028,12 +1033,6 @@ lemma wbisim_map_op:
         apply (drule mp)
         apply assumption
         apply auto
-        apply hypsubst_thin
-        apply (drule wstep_map_op[where f=f and g=g and op=t])
-        apply (rule refl)
-        apply (intro conjI exI)
-        apply assumption
-        apply (metis (mono_tags, lifting) wbc_base wbisim_sym)
         done
       subgoal for l s'
         apply hypsubst_thin
@@ -1044,12 +1043,6 @@ lemma wbisim_map_op:
         apply (drule mp)
         apply assumption
         apply auto
-        apply hypsubst_thin
-        apply (drule wstep_map_op[where f=f and g=g and op=s])
-        apply (rule refl)
-        apply (intro conjI exI)
-        apply assumption
-        apply (metis (mono_tags, lifting) wbc_base wbisim_sym)
         done
       done
     done

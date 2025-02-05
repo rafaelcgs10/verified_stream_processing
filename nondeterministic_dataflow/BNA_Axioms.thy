@@ -8,7 +8,8 @@ no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
 section \<open>Axiom B1: Associativity of parallel composition\<close>
 
-declare step_map_op[intro!]
+(* FIXME: make intro! at the proof*)
+declare step_map_op[intro!,simp]
 
 lemma pcomp_op_assoc:
   \<open>op1 \<parallel> (op2 \<parallel> op3) ~ map_op reassoc reassoc ((op1 \<parallel> op2) \<parallel> op3)\<close>
@@ -1405,7 +1406,7 @@ lemma pcomp_op_id_id_bufs:
          apply (rule bc_sym)
          apply (rule bc_base)
            apply blast
-          apply (auto simp add: defaults_sum_def step_comp_op_L_Inp step_id_op_Read)
+           apply (auto simp add: defaults_sum_def step_comp_op_L_Inp step_id_op_Read)
           done
         subgoal for p
         apply (drule step_id_op_Inp)
@@ -1669,7 +1670,7 @@ lemma scomp_op_transp_transp_id:
 section \<open>Axiom B9: Transpose decomposes in parallel and sequential composition\<close>
 lemma trans_op_decomposes_scomp_op_pcomp_op_gen:
   "transp_op (case_sum (buf1 >> buf1' >> buf1'') (case_sum (buf2 >> buf2' >> buf2'') (buf3 >> buf3' >> buf3''))) \<approx>
-   map_op projl projr (comp_op Some (case_sum buf2' (case_sum buf1' buf3')) 
+   map_op projl projr (comp_op Some (case_sum buf2' (case_sum buf1' buf3'))
    (map_op BNA_Operators.reassoc BNA_Operators.reassoc (transp_op (case_sum buf1 buf2) \<parallel> id_op buf3))
    (map_op id BNA_Operators.assoc (id_op buf2'' \<parallel> transp_op (case_sum buf1'' buf3''))))"
   apply (coinduction arbitrary: buf1 buf1' buf1'' buf2 buf2' buf2'' buf3 buf3' buf3'' rule: wbisim_coinduct_upto)
@@ -1938,89 +1939,49 @@ apply (intro exI conjI[rotated])
             apply (intro exI conjI[rotated])  
              apply (rule wbc_base)
              apply force
-            apply (rule step_tau_tau_step_tau_step_io_wstep)
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_Tau_comp_op_L)
+            unfolding pcomp_op_def
+            apply auto
+            apply (rule wstep_trans_tau_1)
+             apply (rule step_Tau_comp_op_L)
                apply (rule step_map_op)
                 apply simp_all
-            unfolding pcomp_op_def
                 apply (rule step_comp_op_L_Out)
                  apply (rule step_transp_op_Write)
-                       apply simp_all
-            prefer 3
-               apply (rule step_map_op)
+                     apply (rule refl)+
+            apply auto
+             apply (rule wstep_trans_tau_1)
                  apply (rule step_Tau_comp_op_R)
-               apply (rule step_map_op)
+           apply (rule step_map_op)
                 apply (rule step_comp_op_R_Inp)
-                 apply (rule step_transp_op_Read)
-            apply simp_all
-
-
-            find_theorems comp_op step Inp Tau
-
-end
-               apply simp
-              apply (rule step_map_op[of Tau])
-               apply simp_all
-              apply (rule step_Tau_comp_op_L)
-                apply (rule step_map_op)
-                 apply simp_all
-               apply (rule step_comp_op_R_Inp)
-                apply (rule step_transp_op_Read[where p="Inl lp"])
-               apply simp_all
-             apply (rule step_map_op[of Tau])
-              apply simp_all
-             apply (rule step_Tau_comp_op_R)
-               apply (rule step_map_op[of ])
-                apply (rule step_comp_op_R_Inp)
-                 apply (rule step_transp_op_Read[where p="Inl lp"])
-                apply simp_all
-             apply simp
-            apply (rule step_map_op[of "Out (Inr (Inr lp)) _"])
-             apply simp_all
-            apply (rule step_comp_op_R_Out)
-            apply (rule step_map_op[of "Out (Inr (Inr lp)) _"])
-             apply simp_all
-            apply (smt (verit, best) BENQ_access BHD_BENQ_empty BTL_BENQ_empty case_sum_BTL_L snoc_eq_iff_butlast step_comp_op_R_Out step_transp_op_Write sum.case(1))
+                     apply (rule step_transp_op_Read)
+                      apply auto
+            apply (rule step_wstep)
+            apply auto+
             done
-          subgoal
+          subgoal 
             apply (intro exI conjI[rotated])  
              apply (rule wbc_base)
              apply force
-            apply (rule step_tau_step_io_wstep)
-             apply (rule step_map_op[of Tau])
-              apply simp_all
             unfolding pcomp_op_def
-             apply (rule step_Tau_comp_op_R[where p="Inl lp"])
-               apply (rule step_map_op)
-                apply simp_all
-              apply (rule step_comp_op_R_Inp)
-               apply (rule step_transp_op_Read[where p="Inl lp"])
-              apply simp_all
-            apply (rule step_map_op[of "Out (Inr (Inr lp)) _"])
-             apply simp_all
-            apply (rule step_comp_op_R_Out)
-            apply (rule step_map_op[of "Out (Inr (Inr lp)) _"])
-             apply simp_all
-            apply (smt (verit, best) BENQ_access BHD_BENQ_empty BTL_BENQ_empty append_self_conv2 case_sum_BTL_L list.distinct(1) old.sum.simps(5) step_comp_op_R_Out step_transp_op_Write)
+            apply auto
+   apply (rule wstep_trans_tau_1)
+                 apply (rule step_Tau_comp_op_R)
+           apply (rule step_map_op)
+                apply (rule step_comp_op_R_Inp)
+                     apply (rule step_transp_op_Read)
+                      apply auto
+            apply (rule step_wstep)
+            apply auto+
             done
-          subgoal
             apply (intro exI conjI[rotated])  
              apply (rule wbc_base)
-             apply force      
-            apply (rule step_wstep)
+             apply force
             unfolding pcomp_op_def
-            apply (rule step_map_op[of "Out (Inr (Inr lp)) _"])
-             apply simp_all
-            apply (rule step_comp_op_R_Out)
-            apply (rule step_map_op[of "Out (Inr (Inr lp)) _"])
-             apply simp_all
-            apply (smt (verit, best) BENQ_access BHD_BENQ_empty BTL_BENQ_empty append_self_conv2 case_sum_BTL_L list.distinct(1) old.sum.simps(5) step_comp_op_R_Out step_transp_op_Write)
+            apply auto
+            apply force
             done
           done
         done
-      done
     subgoal for io op'
       unfolding pcomp_op_def
       apply (drule step_map_op_inv)
@@ -2043,16 +2004,14 @@ end
                 apply (intro exI conjI[rotated])  
                  apply (rule wbc_sym)
                  apply (rule wbc_base)
-                 apply force
-                apply (metis BAPPEND_BENQ case_sum_BENQ_L step_transp_op_Read step_wstep)
+                 apply force+
                 done
               subgoal for rp
                 apply (auto; hypsubst_thin?)
                 apply (intro exI conjI[rotated])  
                  apply (rule wbc_sym)
                  apply (rule wbc_base)
-                 apply force
-                apply (metis BAPPEND_BENQ case_sum_BENQ_L case_sum_BENQ_R step_transp_op_Read step_wstep)
+                 apply force+
                 done
               done
             subgoal
@@ -2065,8 +2024,7 @@ end
               apply (intro exI conjI[rotated])  
                apply (rule wbc_sym)
                apply (rule wbc_base)
-               apply force
-              apply (metis BAPPEND_BENQ case_sum_BENQ_R step_transp_op_Read step_wstep)
+               apply force+
               done
             subgoal
               by simp
@@ -2089,7 +2047,8 @@ end
                apply (rule wbc_sym)
                apply (rule wbc_base)
                apply force
-              apply (smt (verit, ccfv_threshold) BAPPEND_BTL BULK_BENQ_def Nil_is_append_conv case_sum_BTL_R hd_append2 old.sum.simps(6) step_transp_op_Write step_wstep) 
+              apply (rule step_wstep)
+              apply auto
               done
             subgoal for rp
               apply (auto; hypsubst_thin?)
@@ -2100,7 +2059,6 @@ end
               apply (rule step_wstep)
               apply (rule step_transp_op_Write[where p="Inl _"])
                  apply simp_all
-              apply (meson BULK_BENQ_empty)
               done
             done
           done
@@ -2115,7 +2073,7 @@ end
           apply (rule step_wstep)
           apply (rule step_transp_op_Write[where p="Inr _"])
              apply simp_all
-          apply (meson BULK_BENQ_empty)
+          apply simp
           done
         done
       subgoal for p x op'
@@ -2216,7 +2174,7 @@ end
   done
 
 lemma trans_op_decomposes_scomp_op_pcomp_op:
-  assumes "\<X>klm = (\<X> :: ('k :: countable + 'l :: countable + 'm :: countable, ('l + 'm) + 'k, 'c) op)"
+  assumes "\<X>klm = (\<X> :: ('k :: {countable,defaults} + 'l :: {countable,defaults} + 'm :: {countable,defaults}, ('l + 'm) + 'k, 'c) op)"
     and "\<X>kl = (\<X> :: ('k + 'l, 'l + 'k, 'c) op)"
     and "\<X>km = (\<X> :: ('k + 'm, 'm + 'k, 'c) op)"
     and "\<I>m = (\<I> :: ('m, 'm, 'c) op)"
@@ -2253,24 +2211,12 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
           apply (drule step_comp_op_cases)
           apply auto
           apply (drule step_id_op_Inp[of \<open>Inp p' x\<close> buf1 _ p' x])
-           apply simp
-          apply (rule exI[of _ \<open>map_op projl projr
-             (comp_op Some (case_sum buf2' buf1') (transp_op (case_sum (BENQ p' x buf1) buf2))
-               (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some buf2''' op2 (id_op buf2'')))
-                 (map_op projl projr (comp_op Some buf1''' op1 (id_op buf1'')))))\<close>])
-          apply (rule conjI)
-          subgoal
-            apply (rule step_wstep)
-            apply (rule step_map_op[of \<open>Inp (Inl p) x\<close>])
-             apply simp_all
-            apply (rule step_comp_op_L_Inp)+
-            apply (simp flip: case_sum_BENQ_L)
-            apply (rule step_transp_op_Read)
-            done
-          subgoal
-            apply (rule wbc_base)
-            apply fast
-            done
+           apply auto
+          apply hypsubst_thin
+            apply (intro exI conjI[rotated])  
+             apply (rule wbc_base)
+             apply force
+          apply auto
           done
         subgoal for p'
           apply (drule step_map_op_inv)
@@ -2278,64 +2224,30 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
           apply (drule step_comp_op_cases)
           apply auto
           apply (drule step_id_op_Inp[of \<open>Inp p' x\<close> buf2 _ p' x])
-           apply simp
-          apply (rule exI[of _ \<open>map_op projl projr
-             (comp_op Some (case_sum buf2' buf1') (transp_op (case_sum buf1 (BENQ p' x buf2)))
-               (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some buf2''' op2 (id_op buf2'')))
-                 (map_op projl projr (comp_op Some buf1''' op1 (id_op buf1'')))))\<close>])
-          apply (rule conjI)
-          subgoal
-            apply (rule step_wstep)
-            apply (rule step_map_op[of \<open>Inp (Inl p) x\<close>])
-             apply simp_all
-            apply (rule step_comp_op_L_Inp)+
-            apply (simp flip: case_sum_BENQ_R)
-            apply (rule step_transp_op_Read)
-            done
-          subgoal
-            apply (rule wbc_base)
-            apply fast
-            done
+           apply auto
+         apply hypsubst_thin
+            apply (intro exI conjI[rotated])  
+             apply (rule wbc_base)
+             apply force
+          apply auto
           done
-        done
+          done
       subgoal for p x
         apply (erule step_transp_op_Out)
           apply (auto split: sum.splits)
         subgoal for p'
-          apply (rule exI[of _ \<open>map_op projl projr
-            (comp_op Some (case_sum buf2' buf1') (transp_op (case_sum buf1 buf2))
-              (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some buf2''' op2 (id_op buf2'')))
-                (map_op projl projr (comp_op Some buf1''' op1 (id_op (BTL p' buf1''))))))\<close>])
-          apply (rule conjI)
-          subgoal
-            apply (rule step_wstep)
-            apply (rule step_map_op[of \<open>Out (Inr p) x\<close>])
-             apply simp_all
-            apply (rule step_comp_op_R_Out)+
-            apply fastforce
-            done
-          subgoal
-            apply (rule wbc_base)
-            apply fast
-            done
+         apply hypsubst_thin
+            apply (intro exI conjI[rotated])  
+             apply (rule wbc_base)
+             apply force
+          apply auto
           done
         subgoal for p'
-          apply (rule exI[of _ \<open>map_op projl projr
-            (comp_op Some (case_sum buf2' buf1') (transp_op (case_sum buf1 buf2))
-              (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some buf2''' op2 (id_op (BTL p' buf2''))))
-                (map_op projl projr (comp_op Some buf1''' op1 (id_op  buf1'')))))\<close>])
-          apply (rule conjI)
-          subgoal
-            apply (rule step_wstep)
-            apply (rule step_map_op[of \<open>Out (Inr p) x\<close>])
-             apply simp_all
-            apply (rule step_comp_op_R_Out)+
-            apply fastforce
-            done
-          subgoal
-            apply (rule wbc_base)
-            apply fast
-            done
+       apply hypsubst_thin
+            apply (intro exI conjI[rotated])  
+             apply (rule wbc_base)
+             apply force
+          apply auto
           done
         done
       subgoal for p x
@@ -2347,14 +2259,11 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
           apply (drule step_comp_op_cases)
           apply auto
           subgoal for op2'
-            apply (rule exI[of _ \<open>map_op projl projr
-          (comp_op Some (case_sum buf2' buf1') (transp_op (case_sum buf1 buf2))
-            (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (BENQ p' x buf2''') op2' (id_op buf2'')))
-              (map_op projl projr (comp_op Some buf1''' op1 (id_op buf1'')))))\<close>])
-            apply (rule conjI)
-             apply fastforce
-            apply (rule wbc_base)
-            apply fast
+       apply hypsubst_thin
+            apply (intro exI conjI[rotated])  
+             apply (rule wbc_base)
+             apply force
+            apply auto
             done
           done
         subgoal for p'
@@ -2409,23 +2318,10 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
           subgoal for p x
             apply (drule step_id_op_Out)
              apply auto
-            apply (rule exI[of _ \<open>map_op projl projr
-          (comp_op Some (case_sum buf2' (BENQ p x buf1')) (transp_op (case_sum (BTL p buf1) buf2))
-            (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some buf2''' op2 (id_op buf2'')))
-              (map_op projl projr (comp_op Some buf1''' op1 (id_op buf1'')))))\<close>])
-            apply (rule conjI)
-            subgoal
-              apply (rule step_star_map_op)
-              apply (rule rtranclp.intros(2))
-              apply (rule rtranclp.intros(1))
-              apply (rule step_Tau_comp_op_L)
-              apply (rule step_transp_op_Write[of _ \<open>Inl p\<close>])
-              apply simp_all
-              done
-            subgoal
-              apply (rule wbc_base)
-              apply fast
-              done
+       apply hypsubst_thin
+            apply (intro exI conjI[rotated])  
+             apply (rule wbc_base)
+             apply force+
             done
           subgoal for p op1'
             apply (rule exI[of _ \<open>map_op projl projr
@@ -2441,21 +2337,6 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
             using no_step_id_op_Tau
             apply blast
             done
-          subgoal for op1'
-            apply (rule exI[of _ \<open>map_op projl projr
-       (comp_op Some (case_sum buf2' buf1') (transp_op (case_sum buf1 buf2))
-         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some buf2''' op2 (id_op buf2'')))
-           (map_op projl projr (comp_op Some buf1''' op1' (id_op buf1'')))))\<close>])
-            apply (rule conjI)
-            subgoal
-              apply (rule step_star_map_op)
-              apply fastforce
-              done
-            subgoal
-              apply (rule wbc_base)
-              apply fast
-              done
-            done
           done
         subgoal
           apply (drule step_map_op_inv)
@@ -2465,38 +2346,17 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
           subgoal for p x
             apply (drule step_id_op_Out)
              apply auto
-            apply (rule exI[of _ \<open>map_op projl projr
-          (comp_op Some (case_sum (BENQ p x buf2') buf1') (transp_op (case_sum buf1 (BTL p buf2)))
-            (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some buf2''' op2 (id_op buf2'')))
-              (map_op projl projr (comp_op Some buf1''' op1 (id_op buf1'')))))\<close>])
-            apply (rule conjI)
-            subgoal
-              apply (rule step_star_map_op)
-              apply (rule rtranclp.intros(2))
-               apply (rule rtranclp.intros(1))
-              apply (rule step_Tau_comp_op_L)
-              apply (rule step_transp_op_Write[of _ \<open>Inr p\<close>])
-              apply simp_all
+       apply hypsubst_thin
+            apply (intro exI conjI[rotated])  
+             apply (rule wbc_base)
+             apply force+
               done
-            subgoal
-              apply (rule wbc_base)
-              apply fast
+            subgoal for p op2'
+       apply hypsubst_thin
+   apply (intro exI conjI[rotated])  
+             apply (rule wbc_base)
+               apply force+
               done
-            done
-          subgoal for p op2'
-            apply (rule exI[of _ \<open>map_op projl projr
-          (comp_op Some (case_sum (BTL p buf2') buf1') (transp_op (case_sum buf1 buf2))
-            (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some buf2''' op2' (id_op buf2'')))
-              (map_op projl projr (comp_op Some buf1''' op1 (id_op buf1'')))))\<close>])
-            apply (rule conjI)
-             apply fastforce
-            apply (rule wbc_base)
-            apply fast
-            done
-          subgoal
-            using no_step_id_op_Tau
-            apply blast
-            done
           subgoal for op2'
             apply (rule exI[of _ \<open>map_op projl projr
        (comp_op Some (case_sum buf2' buf1') (transp_op (case_sum buf1 buf2))
@@ -2558,26 +2418,11 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
           apply auto
           apply (drule step_id_op_Out)
            apply auto
-          apply (rule exI[of _ \<open>map_op projl projr
-       (comp_op Some (case_sum buf1''' buf2''')
-         (comp_op (\<lambda>_. None) (\<lambda>_. [])
-           (map_op projl projr (comp_op Some buf1' (id_op buf1) op1))
-           (map_op projl projr (comp_op Some buf2' (id_op buf2) op2)))
-         (transp_op (case_sum (BTL p' buf1'') buf2'')))\<close>])
-          apply (rule conjI)
-          subgoal
-            apply (rule wstep_map_op[of \<open>Out (Inr p) x\<close>])
-             apply simp_all
-            apply (rule step_wstep)
-            apply (rule step_comp_op_R_Out)
-            apply (rule step_transp_op_Write[of _ \<open>Inl p'\<close>])
-               apply simp_all
-            done
-          subgoal
-            apply (rule wbc_sym)
-            apply (rule wbc_base)
-            apply fast
-            done
+          apply hypsubst_thin
+          apply (intro exI conjI[rotated])  
+             apply (rule wbc_sym)
+             apply (rule wbc_base)
+           apply force+
           done
         subgoal for p'
           apply (drule step_map_op_inv)
@@ -2586,26 +2431,11 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
           apply auto
           apply (drule step_id_op_Out)
            apply auto
-          apply (rule exI[of _ \<open>map_op projl projr
-       (comp_op Some (case_sum buf1''' buf2''')
-         (comp_op (\<lambda>_. None) (\<lambda>_. [])
-           (map_op projl projr (comp_op Some buf1' (id_op buf1) op1))
-           (map_op projl projr (comp_op Some buf2' (id_op buf2) op2)))
-         (transp_op (case_sum buf1'' (BTL p' buf2''))))\<close>])
-          apply (rule conjI)
-          subgoal
-            apply (rule wstep_map_op[of \<open>Out (Inr p) x\<close>])
-             apply simp_all
-            apply (rule step_wstep)
-            apply (rule step_comp_op_R_Out)
-            apply (rule step_transp_op_Write[of _ \<open>Inr p'\<close>])
-               apply simp_all
-            done
-          subgoal
-            apply (rule wbc_sym)
-            apply (rule wbc_base)
-            apply fast
-            done
+          apply hypsubst_thin
+          apply (intro exI conjI[rotated])  
+             apply (rule wbc_sym)
+             apply (rule wbc_base)
+           apply force+
           done
         done
       subgoal for p x
@@ -2720,8 +2550,8 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
               apply (rule rtranclp.intros(2))
                apply (rule rtranclp.intros(1))
               apply (rule step_Tau_comp_op_R)
-                apply simp_all
-              apply (metis step_transp_op_Read case_sum_BENQ_R)
+                  apply simp_all
+              apply auto
               done
             subgoal
               apply (rule wbc_sym)
@@ -2741,10 +2571,6 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
             apply (rule wbc_sym)
             apply (rule wbc_base)
             apply fast
-            done
-          subgoal
-            using no_step_id_op_Tau
-            apply blast
             done
           done
         subgoal
@@ -2780,8 +2606,7 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
               apply (rule rtranclp.intros(2))
                apply (rule rtranclp.intros(1))
               apply (rule step_Tau_comp_op_R)
-                apply simp_all
-              apply (metis step_transp_op_Read case_sum_BENQ_L)
+                apply auto
               done
             subgoal
               apply (rule wbc_sym)
@@ -2802,15 +2627,11 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
             apply (rule wbc_base)
             apply fast
             done
-          subgoal
-            using no_step_id_op_Tau
-            apply blast
             done
           done
         done
       done
     done
-  done
 
 thm transp_op_commutes_scomp_op_pcomp_op_bufs[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> _ \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> _  \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>]
 lemma transp_op_commutes_scomp_op_pcomp_op:
@@ -2874,17 +2695,13 @@ lemma loop_op_scomp_commute_gen:
           apply (intro exI conjI[rotated])
            apply (rule wbc_base)
            apply fast
+          apply auto
           apply (rule rtranclp.intros(2))
            apply (rule rtranclp.intros(1))
-          apply (rule step_map_op[of Tau])
-           apply simp_all
           apply (rule step_Tau_loop_op)
-          apply (rule step_map_op[of Tau])
+          apply (rule step_map_op)
            apply simp_all
-          apply (drule step_comp_op_L_Out[where wire="\<lambda>_. None" and buf="\<lambda>_. []", of _ _ _ _ "id_op lbuf2"])
-           apply simp
-          apply (drule step_Tau_comp_op_L[where wire=Some and buf="case_sum buf2 lbuf3", of _ _ _ _ _ op1])
-           apply (auto split: sum.splits)
+           apply auto
           done
         subgoal for p op'
           apply hypsubst_thin
@@ -2903,8 +2720,7 @@ lemma loop_op_scomp_commute_gen:
              apply simp_all
             apply (rule step_Tau_loop_op)
             apply (rule step_map_op[of Tau])
-             apply simp_all
-            apply (metis (mono_tags, lifting) case_sum_BTL_L case_sum_o_inj(1) comp_eq_dest_lhs ranI step_Tau_comp_op_R)
+             apply auto
             done
           done
         subgoal for op'
@@ -2954,34 +2770,6 @@ lemma loop_op_scomp_commute_gen:
                  apply (rule exI[of _ "lbuf3"])
                  apply (intro exI conjI)
                   apply simp_all
-                apply (rule transitive_closurep_trans'(6))
-                 apply (rule step_map_op[of Tau])
-                  apply simp_all
-                 apply (rule step_Inp_Inr_loop_op[where p=p])
-                  apply simp_all
-                 apply (rule step_map_op[of "Inp (Inl _) _"])
-                  apply simp_all
-                 apply force
-                apply (rule transitive_closurep_trans'(6))
-                 apply (rule step_map_op[of Tau])
-                  apply simp_all
-                 apply (rule step_Tau_loop_op)
-                 apply (rule step_map_op[of Tau])
-                  apply simp_all
-                 apply (rule step_Tau_comp_op_L)
-                  apply (rule step_comp_op_R_Out)
-                  apply (rule step_id_op_Write[where p=p])
-                   apply force+
-                apply (simp add: BENQ_def)
-                apply (rule transitive_closurep_trans'(6))
-                 apply (rule step_map_op[of Tau])
-                  apply simp_all
-                 apply (rule step_Tau_loop_op)
-                 apply (rule step_map_op[of Tau])
-                  apply (rule step_Tau_comp_op_R)
-                     apply assumption
-                    apply simp_all
-                apply (auto simp add: fun_upd_idem BULK_BENQ_def BENQ_def BTL_def)
                 done
               subgoal for x lbuf2'
                 subgoal 
@@ -2994,7 +2782,10 @@ lemma loop_op_scomp_commute_gen:
                    apply (rule exI[of _ "BTL p lbuf2"])
                    apply (rule exI[of _ "lbuf3"])
                    apply (intro exI conjI)
-                    apply simp_all
+                    apply auto
+                  try0
+
+end
                   done
                 done
               done

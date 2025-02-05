@@ -514,6 +514,11 @@ lemma map_IO_assoc_eq_Inp_Inr_Inl[intro!]:
    map_IO f assoc id IO = Out (Inl (Inr p)) x"
   by auto
 
+lemma map_IO_assoc_eq_Out_Inr[intro!]:
+  "IO = Out (Inr (Inr p)) x \<Longrightarrow>
+   map_IO id assoc id IO = Out (Inr p) x"
+  by auto
+
 lemma map_IO_assoc_Inp_Inl[simp]:
   "map_IO id assoc id (Inp (Inl p) x) = Inp (Inl p) x"
   by simp

@@ -27,6 +27,18 @@ lemma Inr_in_defaults[simp]:
   "Inr x \<in> (defaults :: ('a :: defaults + 'b :: defaults) set) \<longleftrightarrow> x \<in> defaults"
   by (auto simp add: defaults_sum_def)
 
+lemma sum_in_defaults[intro]:
+  "(isl x \<and> projl x \<in> defaults \<or> (\<not> isl x \<and> projr x \<in> defaults)) \<Longrightarrow> x \<in> (defaults :: ('a :: defaults + 'b :: defaults) set)"
+  by (cases x; auto simp add: defaults_sum_def)
+
+lemma Inl_not_in_defaults[dest]:
+  "Inl x \<in> (defaults :: ('a :: defaults + 'b :: defaults) set) \<Longrightarrow> x \<in> defaults"
+  by (auto simp add: defaults_sum_def)
+lemma Inr_not_in_defaults[dest]:
+  "Inr x \<in> (defaults :: ('a :: defaults + 'b :: defaults) set) \<Longrightarrow> x \<in> defaults"
+  by auto
+
+
 instantiation unit :: defaults
 begin
 definition defaults_unit where "defaults_unit = {()}"
