@@ -865,7 +865,7 @@ lemma id_id_gen:
            apply (rule wbc_base)
            apply blast
           apply (rule step_wstep)
-          apply (smt (verit, best) BAPPEND_BTL BULK_BENQ_def append_is_Nil_conv hd_append2 step_id_op_Write)
+          apply auto
           done
         subgoal for p buf1' buf2' buf3'
           apply hypsubst_thin
@@ -1374,7 +1374,7 @@ lemma pcomp_op_id_id_bufs:
       apply (intro conjI[rotated] exI)
          apply (rule bc_base)
          apply blast
-        apply (smt (verit) Inr_Inl_False PlusE Plus_def case_sum_BTL_R defaults_sum_def old.sum.simps(6) step_id_op_Write sum.sel(2))
+        apply auto
         done
   subgoal 
         apply (drule step_id_op_Out)
@@ -1382,7 +1382,7 @@ lemma pcomp_op_id_id_bufs:
       apply (intro conjI[rotated] exI)
          apply (rule bc_base)
      apply blast
-    apply (smt (verit, best) Inr_Inl_False PlusE Plus_def case_sum_BTL_L defaults_sum_def old.sum.simps(5) step_id_op_Write sum.inject(1))
+    apply auto
     done
       subgoal
         apply (drule step_id_op_Inp)
@@ -1480,8 +1480,20 @@ lemma comp_op_transp_transp_id_bufs:
         apply (rule exI[of _ \<open>id_op (buf1 >> (buf2 >> BTL (case_sum Inr Inl p) buf3 \<circ> case_sum Inr Inl))\<close>])
         apply auto
         apply (rule step_wstep)
+           apply (auto simp:   split: sum.splits)
+
+
+end
+
         apply (rule step_id_op_Write)
-           apply (auto simp: BULK_BENQ_def BTL_def  split: sum.splits)
+           apply (auto simp:   split: sum.splits)
+        apply (simp add: BHD_def BULK_BENQ_def)
+        apply (simp add: BHD_def BULK_BENQ_def)
+        apply (simp add: BHD_def BULK_BENQ_def)
+
+        sledgehammer
+        find_theorems BHD BULK_BENQ
+end
         done
       subgoal for p x
         apply (erule step_transp_op_Out)
@@ -1822,45 +1834,10 @@ apply (intro exI conjI[rotated])
               apply (rule step_Tau_comp_op_R)
                apply (rule step_map_op)
                      apply (rule step_comp_op_R_Inp)
-              apply (rule step_transp_op_Read)
-                         apply (auto split: sum.splits)
-               defer
-
-              using map_IO_assoc_eq_Inp_Inr_Inl
-
-              find_theorems map_IO Out
-
-              find_theorems transp_op Inp 
-
-end
-              apply (rule step_Tau_comp_op_L)
-                 apply (rule step_map_op)
-                  apply simp_all
-                 apply (rule step_comp_op_R_Out)
-                 apply (rule step_id_op_Write)
-                   apply simp_all
-                apply (rule step_map_op[of Tau])
-                 apply simp_all
-                apply (rule step_tau_comp_op_Inr_case_sum[where p="Inr rp"])
-                  apply (rule step_map_op)
-                   apply simp_all
-                 apply (rule step_comp_op_R_Inp)
-                  apply (rule step_transp_op_Read[where p="Inr rp"])
-                 apply simp_all
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_tau_comp_op_Inr_case_sum)
-                 apply (rule step_map_op[of ])
-                  apply (rule step_comp_op_R_Inp)
-                   apply (rule step_transp_op_Read[where p="Inr rp"])
-                  apply simp_all
-               apply simp
-              apply (rule step_map_op[of "Out (Inr (Inl (Inr rp))) _"])
-               apply simp_all
-              apply (rule step_comp_op_R_Out)
-              apply (rule step_map_op[of "Out (Inr (Inl _)) _"])
-               apply simp_all
-              apply (smt (verit) BENQ_access BHD_BENQ_empty BTL_BENQ_empty append_eq_Cons_conv case_sum_BTL_R list.distinct(1) step_comp_op_R_Out step_transp_op_Write sum.case(2))
+                        apply (rule step_transp_op_Read)
+              apply (simp_all split: sum.splits)
+              apply auto
+               apply auto
               done
             subgoal 
               apply hypsubst_thin
@@ -1873,8 +1850,8 @@ end
                apply simp_all
               apply (rule step_comp_op_R_Out)
               apply (rule step_map_op[of "Out (Inr (Inl _)) _"])
-               apply simp_all
-              apply (metis case_sum_BTL_R old.sum.simps(6) step_comp_op_R_Out step_transp_op_Write)   
+                 apply simp_all
+              apply auto  
               done
             subgoal 
               apply hypsubst_thin
@@ -1882,15 +1859,88 @@ end
                apply (rule wbc_base)
                apply force
               unfolding pcomp_op_def
-              apply (rule step_tau_step_io_wstep)
-               apply (rule step_map_op[of Tau])
+              apply (rule step_tau_step_tau_step_io_wstep)
+                apply (rule step_map_op[of Tau])
+                 apply force
+                apply simp
+                apply (rule step_map_op[of Tau])
                 apply simp_all
-               apply (rule step_tau_comp_op_Inr_case_sum[where p="Inr rp"])
+               apply (rule step_Tau_comp_op_R)
+                   apply (rule step_map_op)
+                    apply (rule step_comp_op_R_Inp)
+                       apply (rule step_transp_op_Read)
+                        apply (auto split: sum.splits)
+                              apply (rule step_comp_op_R_Out)
+                 apply (rule step_transp_op_Write)
+                     apply auto
+              done
+         subgoal 
+              apply hypsubst_thin
+              apply (intro exI conjI[rotated])        
+               apply (rule wbc_base)
+            apply force
+              unfolding pcomp_op_def
+              apply (rule step_wstep)
+              apply (auto 2 2)
+               apply (rule step_comp_op_R_Out)
+                 apply (rule step_transp_op_Write)
+                     apply auto
+              done
+         subgoal 
+              apply hypsubst_thin
+              apply (intro exI conjI[rotated])        
+               apply (rule wbc_base)
+            apply force
+          unfolding pcomp_op_def
+              apply (rule step_wstep)
+              apply (rule step_map_op)
+              apply (rule step_comp_op_R_Out)
+              apply (rule step_map_op)
+                 apply simp_all
+            apply (auto split: sum.splits)
+          apply blast+
+            apply (auto split: sum.splits)
+
+
+              find_theorems  bhd BHD name: Operator
+
+end
+
+                apply (rule step_comp_op_R_Out)
+                   apply (rule step_map_op)
+                apply (rule step_comp_op_R_Out)
+                      apply blast
+                     apply simp_all
+              defer
+                apply (rule step_map_op)
+                 apply simp_all
+              defer
+                apply (rule step_map_op)
+
+              find_theorems reassoc case_sum
+
+
+                apply simp_all
+               apply (rule step_Tau_comp_op_R)
                  apply (rule step_map_op)
                   apply simp_all
                 apply (rule step_comp_op_R_Inp)
-                 apply (rule step_transp_op_Read[where p="Inr rp"])
-                apply simp_all
+                 apply (rule step_transp_op_Read)
+                     apply simp_all
+                prefer 3
+                 apply (rule step_map_op)
+              apply (rule step_comp_op_L_Inp)
+                 apply (rule step_map_op)
+              apply (rule step_comp_op_R_Inp)
+                       apply blast
+              apply simp_all
+
+              find_theorems comp_op Out Inl
+
+
+
+              apply (auto split: sum.splits)
+
 
               apply (rule step_map_op[of "Out (Inr (Inl (Inr rp))) _"])
                apply simp_all
@@ -1924,7 +1974,7 @@ end
             apply (rule step_tau_tau_step_tau_step_io_wstep)
                apply (rule step_map_op[of Tau])
                 apply simp_all
-               apply (rule step_tau_comp_op_Out_Inr_case_sum[where p="Inl lp"])
+               apply (rule step_Tau_comp_op_L[where p="Inl lp"])
                apply (rule step_map_op)
                 apply simp_all
             unfolding pcomp_op_def
@@ -1934,7 +1984,7 @@ end
                apply simp
               apply (rule step_map_op[of Tau])
                apply simp_all
-              apply (rule step_tau_comp_op_Inr_case_sum[where p="Inl lp"])
+              apply (rule step_Tau_comp_op_R[where p="Inl lp"])
                 apply (rule step_map_op)
                  apply simp_all
                apply (rule step_comp_op_R_Inp)
@@ -1942,7 +1992,7 @@ end
                apply simp_all
              apply (rule step_map_op[of Tau])
               apply simp_all
-             apply (rule step_tau_comp_op_Inr_case_sum)
+             apply (rule step_Tau_comp_op_R)
                apply (rule step_map_op[of ])
                 apply (rule step_comp_op_R_Inp)
                  apply (rule step_transp_op_Read[where p="Inl lp"])
@@ -1963,7 +2013,7 @@ end
              apply (rule step_map_op[of Tau])
               apply simp_all
             unfolding pcomp_op_def
-             apply (rule step_tau_comp_op_Inr_case_sum[where p="Inl lp"])
+             apply (rule step_Tau_comp_op_R[where p="Inl lp"])
                apply (rule step_map_op)
                 apply simp_all
               apply (rule step_comp_op_R_Inp)
@@ -2389,7 +2439,7 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
               apply (rule step_star_map_op)
               apply (rule rtranclp.intros(2))
               apply (rule rtranclp.intros(1))
-              apply (rule step_tau_comp_op_Out_Inr_case_sum)
+              apply (rule step_Tau_comp_op_L)
               apply (rule step_transp_op_Write[of _ \<open>Inl p\<close>])
               apply simp_all
               done
@@ -2445,7 +2495,7 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
               apply (rule step_star_map_op)
               apply (rule rtranclp.intros(2))
                apply (rule rtranclp.intros(1))
-              apply (rule step_tau_comp_op_Out_Inl_case_sum)
+              apply (rule step_Tau_comp_op_L)
               apply (rule step_transp_op_Write[of _ \<open>Inr p\<close>])
               apply simp_all
               done
@@ -2690,7 +2740,7 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
               apply (rule step_star_map_op)
               apply (rule rtranclp.intros(2))
                apply (rule rtranclp.intros(1))
-              apply (rule step_tau_comp_op_Inr_case_sum)
+              apply (rule step_Tau_comp_op_R)
                 apply simp_all
               apply (metis step_transp_op_Read case_sum_BENQ_R)
               done
@@ -2750,7 +2800,7 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
               apply (rule step_star_map_op)
               apply (rule rtranclp.intros(2))
                apply (rule rtranclp.intros(1))
-              apply (rule step_tau_comp_op_Inl_case_sum)
+              apply (rule step_Tau_comp_op_R)
                 apply simp_all
               apply (metis step_transp_op_Read case_sum_BENQ_L)
               done
@@ -4554,7 +4604,7 @@ lemma loop_op_commutes_inner_scomp_op_gen:
           apply (rule step_comp_op_L_Tau)
           apply (rule step_map_op[of Tau])
            apply simp_all
-          apply (rule step_tau_comp_op_Out_Inl_case_sum)
+          apply (rule step_Tau_comp_op_L)
           apply (metis case_sum_BTL_L old.sum.simps(5) step_id_op_Write)
           done
         subgoal for p op2'
@@ -4609,7 +4659,7 @@ lemma loop_op_commutes_inner_scomp_op_gen:
               apply (rule step_comp_op_L_Tau)
               apply (rule step_map_op[of Tau])
                apply simp_all
-              using step_tau_comp_op_Inr_case_sum
+              using step_Tau_comp_op_R
               apply (metis (no_types, lifting) BENQ_access BHD_BENQ_empty BTL_BENQ_empty snoc_eq_iff_butlast)
               done
             subgoal
@@ -4648,7 +4698,7 @@ lemma loop_op_commutes_inner_scomp_op_gen:
               apply (rule step_comp_op_L_Tau)
               apply (rule step_map_op[of Tau])
                apply simp_all
-              using step_tau_comp_op_Inr_case_sum
+              using step_Tau_comp_op_R
               apply (metis (no_types, lifting) BENQ_access BHD_BENQ_empty BTL_BENQ_empty snoc_eq_iff_butlast)
               done
             subgoal
@@ -4703,7 +4753,7 @@ lemma loop_op_commutes_inner_scomp_op_gen:
               apply (rule step_Tau_loop_op)
               apply (rule step_map_op[of Tau])
                apply simp_all
-              using step_tau_comp_op_Out_Inr_case_sum[of rp x "map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)" _ buf3 "(buf2 >> buf2') >> buf2''" "comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2"] 
+              using step_Tau_comp_op_L[of rp x "map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)" _ buf3 "(buf2 >> buf2') >> buf2''" "comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2"] 
               apply force
               done
             done
@@ -4757,7 +4807,7 @@ lemma loop_op_commutes_inner_scomp_op_gen:
            apply (rule step_Tau_loop_op)
            apply (rule step_map_op[of Tau])
             apply simp_all
-           apply (rule step_tau_comp_op_Inr_case_sum)
+           apply (rule step_Tau_comp_op_R)
              apply (rule step_comp_op_R_Inp)
               apply assumption
              apply simp_all

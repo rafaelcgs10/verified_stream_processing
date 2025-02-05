@@ -442,26 +442,6 @@ lemma step_comp_op_cases:
     done
   done
 
-(* lemma step_tau_comp_op_Out_Inl_case_sum[intro]:
-  "step (Out (Inl p) x) op1 op1' \<Longrightarrow>
-   step Tau (comp_op Some (case_sum buf4' buf1'') op1 op2) (comp_op Some (case_sum (BENQ p x buf4') buf1'') op1' op2)"
-  using step_Tau_comp_op_L[where buf="case_sum buf4' buf1''" and q="Inl p" and p="Inl p" and wire=Some, simplified] by auto
-
-lemma step_tau_comp_op_Out_Inr_case_sum[intro]:
-  "step (Out (Inr p) x) op1 op1' \<Longrightarrow>
-   step Tau (comp_op Some (case_sum buf4' buf1'') op1 op2) (comp_op Some (case_sum buf4' (BENQ p x buf1'')) op1' op2)"
-  using step_Tau_comp_op_L[where buf="case_sum buf4' buf1''" and q="Inr p" and p="Inr p" and wire=Some, simplified] by auto
-
-lemma step_tau_comp_op_Inl_case_sum[intro]:
-  "step (Inp (Inl lp) x) op2 op2' \<Longrightarrow>
-   buf4' lp \<noteq> [] \<Longrightarrow> BHD lp buf4' = x \<Longrightarrow> step Tau (comp_op Some (case_sum buf4' buf1'') op1 op2) (comp_op Some (case_sum (BTL lp buf4') buf1'') op1 op2')"
-  using step_Tau_comp_op_R[where wire=Some and buf="case_sum buf4' buf1''" and p="Inl lp", simplified] by auto
-
-lemma step_tau_comp_op_Inr_case_sum[intro]:
-  "step (Inp (Inr p) x) op2 op2' \<Longrightarrow>
-   buf1 p \<noteq> [] \<Longrightarrow> BHD p buf1 = x \<Longrightarrow> step Tau (comp_op Some (case_sum buf4' buf1) op1 op2) (comp_op Some (case_sum buf4' (BTL p buf1)) op1 op2')"
-  using step_Tau_comp_op_R[where wire=Some and buf="case_sum buf4' buf1" and p="Inr p", simplified] by auto *)
-
 subsection \<open>Parallel composition operator\<close>
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
@@ -481,6 +461,10 @@ fun assoc where
   "assoc (Inl x) = Inl (Inl x)"
 | "assoc (Inr (Inl x)) = Inl (Inr x)"
 | "assoc (Inr (Inr x)) = Inr x"
+
+lemma assoc_extra_simps[simp]:
+  "assoc (Inr p) = (case p of Inl p \<Rightarrow> Inl (Inr p) | Inr p \<Rightarrow> Inr p)"
+  by (cases p; auto)
 
 lemma reassoc_assoc[simp]:
   "reassoc o assoc = id"
@@ -1836,8 +1820,8 @@ lemma step_double_loop_1:
               apply (auto split: sum.splits)
               done
                apply auto
-             apply (smt (verit, ccfv_SIG) comp_apply old.sum.simps(6) ranI)
-            apply (auto simp flip: choices_map_op)
+             apply (smt (verit, ccfv_SIG) BHD_def comp_apply old.sum.simps(6) ranI)
+             apply (auto simp add: BHD_def simp flip: choices_map_op)
             apply (rule image_eqI[rotated])
              apply assumption
             apply auto
@@ -2151,7 +2135,7 @@ lemma step_double_loop_2:
               done
             done
              apply (auto simp add: ran_def sum.case_eq_if)
-          subgoal for p'
+          subgoal for x p'
             apply (cases p')
                apply auto
               done
@@ -2205,11 +2189,14 @@ lemma step_double_loop_2:
           subgoal for x
             apply (cases x)
                apply (auto split: sum.splits)
-          apply (meson sum.disc(2) sum.sel(2))
-          done
+          subgoal
+            apply (auto simp add: BHD_def)
+            apply (meson sum.disc(2) sum.sel(2))
+            done
         done
       done
     done
+  done
   done
   subgoal for op'' p x
     apply hypsubst_thin
@@ -2307,7 +2294,7 @@ lemma step_tau_loop_op_Inp_Inr_case_sum[intro]:
   "step (Inp (Inr rp) (BHD rp buf1)) op op' \<Longrightarrow>
    buf1 rp \<noteq> [] \<Longrightarrow>
    step Tau (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1) op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined (BTL rp buf1)) op')"
-  using step_Inp_Inr_loop_op[where buf="case_sum undefined buf1" and p="rp", simplified] by auto
+  using step_Inp_Inr_loop_op[where buf="case_sum undefined buf1" and p="rp", simplified] unfolding BHD_def by auto
 
 subsection \<open>Congruence for strong bisim\<close>
 lemma bisim_scomp_op_cong:
