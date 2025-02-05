@@ -1476,24 +1476,23 @@ lemma comp_op_transp_transp_id_bufs:
         done
       subgoal for p x
         apply (erule step_transp_op_Out)
-           apply simp_all
-        apply (rule exI[of _ \<open>id_op (buf1 >> (buf2 >> BTL (case_sum Inr Inl p) buf3 \<circ> case_sum Inr Inl))\<close>])
-        apply auto
+          apply simp_all
+        apply (intro exI conjI[rotated])
+         apply (rule wbc_base)
+         apply fast
+        apply (cases p)
+        subgoal for lp
         apply (rule step_wstep)
-           apply (auto simp:   split: sum.splits)
-
-
-end
-
-        apply (rule step_id_op_Write)
-           apply (auto simp:   split: sum.splits)
-        apply (simp add: BHD_def BULK_BENQ_def)
-        apply (simp add: BHD_def BULK_BENQ_def)
-        apply (simp add: BHD_def BULK_BENQ_def)
-
-        sledgehammer
-        find_theorems BHD BULK_BENQ
-end
+          apply auto
+          apply (metis BHD_BULK_BENQ_cases BULK_BENQ_empty case_sum_BHD_L case_sum_BHD_R case_sum_Inl_Inr_L o_case_sum)
+          apply (simp add: BULK_BENQ_BTL_right_not_empty_case_sum)
+          done
+        subgoal for rp
+    apply (rule step_wstep)
+          apply auto
+          apply (metis BHD_BULK_BENQ_cases BULK_BENQ_empty case_sum_BHD_L case_sum_BHD_R case_sum_expand_Inr_pointfree o_case_sum)
+          apply (simp add: BULK_BENQ_BTL_right_not_empty_case_sum)
+          done
         done
       subgoal for p x
         apply (erule step_transp_op_Out)
@@ -1545,18 +1544,18 @@ end
               done
             subgoal
               apply (simp split: sum.splits)
-              subgoal for lp
-              apply (rule step_wstep)
-              apply (rule step_map_op[of "Out (Inr (Inl lp)) _"])
-                 apply (auto split: sum.splits simp add: step_comp_op_R_Out step_transp_op_Write)
+              subgoal
+                apply (rule step_wstep)
+                apply auto
+                apply (metis BHD_BULK_BENQ_cases BHD_def BULK_BENQ_empty comp_eq_dest_lhs old.sum.simps(5))
                 done
-              subgoal for lp
-              apply (rule step_wstep)
-              apply (rule step_map_op[of "Out (Inr (Inr lp)) _"])
-                 apply (auto split: sum.splits simp add: step_comp_op_R_Out step_transp_op_Write)
+              subgoal
+                apply (rule step_wstep)
+                apply auto
+                apply (metis BHD_BULK_BENQ_right_not_empty BHD_def comp_apply old.sum.simps(6))
+                done
               done
             done
-          done
           subgoal
             apply (rule exI[of _ \<open>map_op projl projr (comp_op Some (BTL (case_sum Inr Inl p) buf2) (transp_op buf1) (transp_op buf3))\<close>])
             apply (rule conjI[rotated])
@@ -1581,7 +1580,8 @@ end
               apply (rule step_map_op[of "Out (Inr (Inl lp)) _"])
                  apply (rule step_comp_op_R_Out)
                  apply (rule step_transp_op_Write[where p="Inr lp"])
-                     apply simp_all
+                       apply simp_all
+                apply (simp add: BHD_def)
                 done
               subgoal for rp
                 apply simp
@@ -1594,7 +1594,8 @@ end
                  apply (rule step_comp_op_R_Out)
                 apply simp_all
                  apply (rule step_transp_op_Write[where p="Inl rp"])
-                     apply simp_all
+                    apply simp_all
+                apply (simp add: BHD_def)
             done
           done
         done
@@ -1772,8 +1773,8 @@ lemma trans_op_decomposes_scomp_op_pcomp_op_gen:
                   apply (rule step_Tau_comp_op_R)
                       apply (rule step_map_op)
                        apply (rule step_comp_op_L_Inp)
-                         apply (rule step_id_op_Read)
-                          apply (auto split: sum.splits)
+                         apply (rule step_id_op_Read[where p=lp])
+                          apply (auto simp add: BHD_def split: sum.splits)
               done
             subgoal
      apply (intro exI conjI[rotated])        
@@ -1892,80 +1893,46 @@ apply (intro exI conjI[rotated])
                apply (rule wbc_base)
             apply force
           unfolding pcomp_op_def
-              apply (rule step_wstep)
-              apply (rule step_map_op)
-              apply (rule step_comp_op_R_Out)
-              apply (rule step_map_op)
-                 apply simp_all
-            apply (auto split: sum.splits)
-          apply blast+
-            apply (auto split: sum.splits)
-
-
-              find_theorems  bhd BHD name: Operator
-
-end
-
-                apply (rule step_comp_op_R_Out)
-                   apply (rule step_map_op)
-                apply (rule step_comp_op_R_Out)
-                      apply blast
-                     apply simp_all
-              defer
-                apply (rule step_map_op)
-                 apply simp_all
-              defer
-                apply (rule step_map_op)
-
-              find_theorems reassoc case_sum
-
-
-                apply simp_all
-               apply (rule step_Tau_comp_op_R)
-                 apply (rule step_map_op)
-                  apply simp_all
-                apply (rule step_comp_op_R_Inp)
-                 apply (rule step_transp_op_Read)
-                     apply simp_all
-                prefer 3
-                 apply (rule step_map_op)
-              apply (rule step_comp_op_L_Inp)
-                 apply (rule step_map_op)
-              apply (rule step_comp_op_R_Inp)
-                       apply blast
-              apply simp_all
-
-              find_theorems comp_op Out Inl
-
-
-
-              apply (auto split: sum.splits)
-
-
-              apply (rule step_map_op[of "Out (Inr (Inl (Inr rp))) _"])
-               apply simp_all
-              apply (rule step_comp_op_R_Out)
-              apply (rule step_map_op[of "Out (Inr (Inl _)) _"])
-               apply simp_all
-              apply (smt (verit, best) BENQ_access BHD_BENQ_empty BTL_BENQ_empty append_eq_Cons_conv case_sum_BTL_R list.distinct(1) old.sum.simps(6) step_comp_op_R_Out step_transp_op_Write) 
-              done
-            subgoal
+          apply (rule step_tau_step_io_wstep)
+            apply (rule step_map_op)
+             apply (rule step_Tau_comp_op_R)
+            apply (rule step_map_op)
+                  apply (rule step_comp_op_R_Inp)
+                     apply (rule step_transp_op_Read)
+                     apply (auto split: sum.splits)
+           apply auto
+          done
+  subgoal 
               apply hypsubst_thin
               apply (intro exI conjI[rotated])        
                apply (rule wbc_base)
-               apply force
-              unfolding pcomp_op_def
+     apply force
+          unfolding pcomp_op_def
               apply (rule step_wstep)
-              apply (rule step_map_op[of "Out (Inr (Inl (Inr rp))) _"])
-               apply simp_all
-              apply (rule step_comp_op_R_Out)
-              apply (rule step_map_op[of "Out (Inr (Inl _)) _"])
-               apply simp_all
-              apply (metis case_sum_BTL_R old.sum.simps(6) step_comp_op_R_Out step_transp_op_Write)   
-              done
-            done
+          apply force
           done
-        subgoal for lp
+        subgoal
+      apply hypsubst_thin
+              apply (intro exI conjI[rotated])        
+               apply (rule wbc_base)
+     apply force
+          unfolding pcomp_op_def
+          apply (rule step_wstep)
+          apply force
+          done
+  subgoal
+      apply hypsubst_thin
+              apply (intro exI conjI[rotated])        
+               apply (rule wbc_base)
+     apply force
+          unfolding pcomp_op_def
+          apply (rule step_wstep)
+          apply force
+          done
+        done
+      done
+    subgoal for lp
+      apply simp
           apply (simp split: if_splits; hypsubst_thin?)
           subgoal 
             apply (intro exI conjI[rotated])  
@@ -1974,17 +1941,29 @@ end
             apply (rule step_tau_tau_step_tau_step_io_wstep)
                apply (rule step_map_op[of Tau])
                 apply simp_all
-               apply (rule step_Tau_comp_op_L[where p="Inl lp"])
+               apply (rule step_Tau_comp_op_L)
                apply (rule step_map_op)
                 apply simp_all
             unfolding pcomp_op_def
                 apply (rule step_comp_op_L_Out)
-                 apply (rule step_transp_op_Write[where p="Inl lp"])
-                    apply simp_all
+                 apply (rule step_transp_op_Write)
+                       apply simp_all
+            prefer 3
+               apply (rule step_map_op)
+                 apply (rule step_Tau_comp_op_R)
+               apply (rule step_map_op)
+                apply (rule step_comp_op_R_Inp)
+                 apply (rule step_transp_op_Read)
+            apply simp_all
+
+
+            find_theorems comp_op step Inp Tau
+
+end
                apply simp
               apply (rule step_map_op[of Tau])
                apply simp_all
-              apply (rule step_Tau_comp_op_R[where p="Inl lp"])
+              apply (rule step_Tau_comp_op_L)
                 apply (rule step_map_op)
                  apply simp_all
                apply (rule step_comp_op_R_Inp)
