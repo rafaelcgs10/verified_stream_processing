@@ -2392,15 +2392,12 @@ lemma id_op_code:
   done
 
 subsection \<open>Some basic properties id_op\<close>
+
 lemma step_id_op_Inp:
   "step io (id_op buf) op' \<Longrightarrow>
    io = Inp p x \<Longrightarrow>
    op' = id_op (BENQ p x buf)"
-  apply (induct io "id_op buf" op' arbitrary: buf rule: step.induct)
-     apply simp_all
-   apply (subst (asm) id_op_code)
-   apply simp
-  apply (subst (asm) (3) id_op_code)
+  apply (subst (asm) id_op_code)
   apply auto
   done
 
@@ -2408,11 +2405,7 @@ lemma step_id_op_Out:
   "step io (id_op buf) op' \<Longrightarrow>
    io = Out p x \<Longrightarrow>
    op' = id_op (BTL p buf) \<and> BHD p buf = x \<and> buf p \<noteq> []"
-  apply (induct io "id_op buf" op' arbitrary: buf rule: step.induct)
-     apply simp_all
-   apply (subst (asm) id_op_code)
-   apply simp
-  apply (subst (asm) (3) id_op_code)
+  apply (subst (asm) id_op_code)
   apply auto
   done
 
@@ -2420,13 +2413,8 @@ lemma no_step_id_op_Tau:
   assumes \<open>step io (id_op buf) op\<close>
     and \<open>io = Tau\<close>
   obtains False
-  apply atomize_elim
   using assms
-    apply (induct io \<open>id_op buf\<close> op arbitrary: buf rule: step.induct)
-     apply simp_all
-   apply (subst (asm) id_op_code)
-   apply simp
-  apply (subst (asm) (2) id_op_code)
+  apply (subst (asm) id_op_code)
   apply auto
   done
 
@@ -2509,7 +2497,6 @@ lemma step_drain_op_Inp:
   assumes \<open>step io drain_op op\<close>
     and \<open>io = Inp p x\<close>
   obtains \<open>op = drain_op\<close>
-  apply atomize_elim
   using assms
   apply (subst (asm) drain_op.code)
   apply auto
@@ -2519,7 +2506,6 @@ lemma no_step_drain_op_Out:
   assumes \<open>step io drain_op op\<close>
     and \<open>io = Out p x\<close>
   obtains False
-  apply atomize_elim
   using assms
   apply (subst (asm) drain_op.code)
   apply auto
@@ -2529,7 +2515,6 @@ lemma no_step_drain_op_Tau:
   assumes \<open>step io drain_op op\<close>
     and \<open>io = Tau\<close>
   obtains False
-  apply atomize_elim
   using assms
   apply (subst (asm) drain_op.code)
   apply auto
@@ -2594,13 +2579,8 @@ lemma step_transp_op_Inp:
   assumes \<open>step io (transp_op buf) op\<close>
     and \<open>io = Inp p x\<close>
   obtains \<open>op = transp_op (BENQ p x buf)\<close>
-  apply atomize_elim
   using assms
-  apply (induct io \<open>transp_op buf\<close> op arbitrary: buf rule: step.induct)
-     apply simp_all
-   apply (subst (asm) transp_op_code)
-   apply simp
-  apply (subst (asm) (3) transp_op_code)
+  apply (subst (asm) transp_op_code)
   apply auto
   done
 
@@ -2611,7 +2591,6 @@ lemma step_transp_op_Out:
   obtains \<open>op = transp_op (BTL p' buf)\<close>
           \<open>BHD p' buf = x\<close>
           \<open>buf p' \<noteq> []\<close>
-  apply atomize_elim
   using assms
   apply (induct io \<open>transp_op buf\<close> op arbitrary: buf rule: step.induct)
      apply simp_all
@@ -2627,13 +2606,8 @@ lemma no_step_transp_op_Tau:
   assumes \<open>step io (transp_op buf) op\<close>
     and \<open>io = Tau\<close>
   obtains False
-  apply atomize_elim
   using assms
-  apply (induct io \<open>transp_op buf\<close> op arbitrary: buf rule: step.induct)
-     apply simp_all
-   apply (subst (asm) transp_op_code)
-   apply simp
-  apply (subst (asm) (2) transp_op_code)
+  apply (subst (asm) transp_op_code)
   apply auto
   done
 
@@ -2704,7 +2678,6 @@ lemma step_split_op_Inp:
   assumes \<open>step io \<Lambda> op\<close>
     and \<open>io = Inp p x\<close>
   obtains \<open>op = Choice {|Write \<Lambda> (Inl p) x, Write \<Lambda> (Inr p) x|}\<close>
-  apply atomize_elim
   using assms
   apply (subst (asm) split_op_code)
   apply auto
@@ -2714,7 +2687,6 @@ lemma no_step_split_op_Out:
   assumes \<open>step io \<Lambda> op\<close>
     and \<open>io = Out p x\<close>
   obtains False
-  apply atomize_elim
   using assms
   apply (subst (asm) split_op_code)
   apply auto
@@ -2724,7 +2696,6 @@ lemma no_step_split_op_Tau:
   assumes \<open>step io \<Lambda> op\<close>
     and \<open>io = Tau\<close>
   obtains False
-  apply atomize_elim
   using assms
   apply (subst (asm) split_op_code)
   apply auto
@@ -2775,7 +2746,6 @@ lemma step_merge_op_Inp:
     and \<open>io = Inp p x\<close>
     and \<open>p' = case_sum id id p\<close>
   obtains \<open>op = Write \<V> p' x\<close>
-  apply atomize_elim
   using assms
   apply (subst (asm) merge_op_code)
   apply auto
@@ -2785,7 +2755,6 @@ lemma no_step_merge_op_Out:
   assumes \<open>step io \<V> op\<close>
     and \<open>io = Out p x\<close>
   obtains False
-  apply atomize_elim
   using assms
   apply (subst (asm) merge_op_code)
   apply auto
@@ -2795,7 +2764,6 @@ lemma no_step_merge_op_Tau:
   assumes \<open>step io \<V> op\<close>
     and \<open>io = Tau\<close>
   obtains False
-  apply atomize_elim
   using assms
   apply (subst (asm) merge_op_code)
   apply auto
@@ -2847,7 +2815,6 @@ lemma step_acopy_op_Inp:
   assumes \<open>step io \<C> op\<close>
     and \<open>io = Inp p x\<close>
   obtains \<open>op = Choice {|Write (Write \<C> (Inr p) x) (Inl p) x, Write (Write \<C> (Inl p) x) (Inr p) x|}\<close>
-  apply atomize_elim
   using assms
   apply (subst (asm) acopy_op_code)
   apply auto
@@ -2857,7 +2824,6 @@ lemma no_step_acopy_op_Out:
   assumes \<open>step io \<C> op\<close>
     and \<open>io = Out p x\<close>
   obtains False
-  apply atomize_elim
   using assms
   apply (subst (asm) acopy_op_code)
   apply auto
@@ -2867,7 +2833,6 @@ lemma no_step_acopy_op_Tau:
   assumes \<open>step io \<C> op\<close>
     and \<open>io = Tau\<close>
   obtains False
-  apply atomize_elim
   using assms
   apply (subst (asm) acopy_op_code)
   apply auto
@@ -2916,7 +2881,6 @@ lemma step_aeq_op_Inp_L:
   assumes \<open>step io \<Q> op\<close>
     and \<open>io = Inp (Inl p) y\<close>
   obtains \<open>op = Read (Inr p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)\<close>
-  apply atomize_elim
   using assms
   apply (subst (asm) aeq_op_code)
   apply auto
@@ -2926,7 +2890,6 @@ lemma step_aeq_op_Inp_R:
   assumes \<open>step io \<Q> op\<close>
     and \<open>io = Inp (Inr p) y\<close>
   obtains \<open>op = Read (Inl p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)\<close>
-  apply atomize_elim
   using assms
   apply (subst (asm) aeq_op_code)
   apply auto
@@ -2936,7 +2899,6 @@ lemma no_step_aeq_op_Out:
   assumes \<open>step io \<Q> op\<close>
     and \<open>io = Out p x\<close>
   obtains False
-  apply atomize_elim
   using assms
   apply (subst (asm) aeq_op_code)
   apply auto
@@ -2946,7 +2908,6 @@ lemma no_step_aeq_op_Tau:
   assumes \<open>step io \<Q> op\<close>
     and \<open>io = Tau\<close>
   obtains False
-  apply atomize_elim
   using assms
   apply (subst (asm) aeq_op_code)
   apply auto
@@ -2978,8 +2939,8 @@ lemma step_aeq_op_Read_R[intro]:
 
 lemma choices_aeq_op[simp]:
   \<open>choices \<Q> = cUn
-  (cUnion (cimage choices (cimage (\<lambda> p. Read (Inl p) ((\<lambda> y. Read (Inr p) (\<lambda> x. if x = y then Write aeq_op p x else Silent aeq_op)))) cUNIV)))
-  (cUnion (cimage choices (cimage (\<lambda> p. Read (Inr p) ((\<lambda> y. Read (Inl p) (\<lambda> x. if x = y then Write aeq_op p x else Silent aeq_op)))) cUNIV)))\<close>
+  (cUnion (cimage choices (cimage (\<lambda> p. Read (Inl p) ((\<lambda> y. Read (Inr p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)))) cUNIV)))
+  (cUnion (cimage choices (cimage (\<lambda> p. Read (Inr p) ((\<lambda> y. Read (Inl p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)))) cUNIV)))\<close>
   apply (subst aeq_op_code)
   apply auto
   done
