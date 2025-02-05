@@ -1552,94 +1552,58 @@ definition feedback_op ( "_ \<up>" [66] 65) where
 
 
 subsection \<open>Step properties\<close>
+
 lemma step_loop_op:
-  "step io (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) op' \<Longrightarrow>
-   (\<exists>p x. io = Inp (Inl p) x \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op'' \<and> step io op op'')) \<or>
-   (\<exists>p x. io = Out (Inl p) x \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op'' \<and> step io op op'')) \<or>
-   (io = Tau \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op'' \<and> step io op op'')) \<or>
-   (io = Tau \<and> (\<exists> op'' p x. op' = loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (BTL (Inr p) buf) op'' \<and> step (Inp (Inr p) x) op op'' \<and> buf (Inr p) \<noteq> [] \<and> BHD (Inr p) buf = x)) \<or>
-   (io = Tau \<and> (\<exists> op'' p x. op' = loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (BENQ (Inr p) x buf) op'' \<and> step (Out (Inr p) x) op op''))"
-  apply (induct io "loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op" op' arbitrary: buf op pred: step)
-     apply (simp add: loop_op.code)
-    apply (simp add: loop_op.code)
-   apply (simp add: loop_op.code)
-  subgoal for op ops io op' buf op''
-    apply (subst (asm) (7) loop_op.code)
-    apply (clarsimp del: disjCI split: if_splits option.splits)
+  "step io (loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) buf op) op' \<Longrightarrow>
+   (\<exists>p x. io = Inp (Inl p) x \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) buf op'' \<and> step io op op'')) \<or>
+   (\<exists>p x. io = Out (Inl p) x \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) buf op'' \<and> step io op op'')) \<or>
+   (io = Tau \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) buf op'' \<and> step io op op'')) \<or>
+   (io = Tau \<and> (\<exists> op'' p x. p \<notin> defaults \<and> op' = loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (BTL (Inr p) buf) op'' \<and> step (Inp (Inr p) x) op op'' \<and> buf (Inr p) \<noteq> [] \<and> BHD (Inr p) buf = x)) \<or>
+   (io = Tau \<and> (\<exists> op'' p x. p \<notin> defaults \<and> op' = loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (BENQ (Inr p) x buf) op'' \<and> step (Out (Inr p) x) op op'')) \<or>
+   (\<exists>p x. p \<in> defaults \<and> io = Inp (Inr p) x \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) buf op'' \<and> step io op op'')) \<or>
+   (\<exists>p x. p \<in> defaults \<and> io = Out (Inr p) x \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) buf op'' \<and> step io op op''))"
+  apply (erule step_choicesE)
+  subgoal for p f x
+    apply (cases p)
+    subgoal for lp
+      apply (subst (asm) (1) loop_op.code)
+      apply auto
+      subgoal for op
+        apply (cases op)
+           apply (auto 10 10 simp add: ran_def split: if_splits sum.splits)
+        done
+      done
+    subgoal for rp
+      apply (subst (asm) (1) loop_op.code)
+      apply auto
+      subgoal for op
+        apply (cases op)
+           apply (auto 10 10 simp add: ran_def split: if_splits sum.splits)
+        done
+      subgoal for op
+        apply (cases op)
+           apply (auto 10 10 simp add: ran_def split: if_splits sum.splits)
+        done
+      done
+    done
+  subgoal for p x
+    apply (subst (asm) (1) loop_op.code)
+    apply auto
     subgoal for op
       apply (cases op)
-      subgoal for p f
-        apply (simp del: disjCI split: if_splits option.splits)
-        subgoal
-          apply hypsubst_thin
-          apply (erule thin_rl)
-          apply (cases p)
-          subgoal for lp
-            apply (clarsimp del: disjCI)
-            apply hypsubst_thin
-            apply (smt (verit, best) Inl_Inr_False comp_apply mem_Collect_eq option.discI option.sel ran_def sum.case_eq_if)
-            done
-          subgoal for rp
-            apply (clarsimp del: disjCI)
-            apply hypsubst_thin
-            apply (rule disjI2)
-            apply (rule disjI1)
-            apply (metis Read_in_choices_step cin.rep_eq)
-            done
-          done
-        subgoal
-          apply hypsubst_thin
-          apply (erule thin_rl)
-          apply (cases p)
-          subgoal for lp
-            apply (clarsimp del: disjCI)
-            apply hypsubst_thin
-            apply (metis Read_in_choices_step cin.rep_eq)
-            done
-          subgoal
-            apply (clarsimp del: disjCI)
-            apply hypsubst_thin
-            apply (metis (full_types) comp_apply old.sum.simps(6) ranI)
-            done
-          done
-        done
-      subgoal for op' p x
-        apply (simp split: if_splits option.splits)
-        subgoal
-          apply hypsubst_thin
-          apply (erule thin_rl)
-          apply (cases p)
-          subgoal for lp
-            apply (clarsimp del: disjCI)
-            apply hypsubst_thin
-            using Write_in_choices_step apply fastforce
-            done
-          subgoal
-            by (clarsimp del: disjCI)
-          done
-        subgoal
-          apply hypsubst_thin
-          apply (erule thin_rl)
-          apply (cases p)
-          subgoal
-            by (clarsimp del: disjCI)
-          subgoal
-            apply (clarsimp del: disjCI)
-            apply hypsubst_thin
-            using Write_in_choices_step apply fastforce
-            done
-          done
-        done
-      subgoal for op'
-        apply (simp split: if_splits option.splits)
-        apply blast
-        done
-      subgoal for op'
-        apply (clarsimp split: if_splits option.splits)
-        apply hypsubst_thin
-        apply (erule thin_rl)
-        apply (metis Silent_in_choices_step cin.rep_eq)
-        done
+         apply (auto 10 10 simp add: ran_def split: if_splits sum.splits)
+      done
+    subgoal for op
+      apply (cases op)
+         apply (auto 10 10 simp add: ran_def split: if_splits sum.splits)
+      done
+    done
+  subgoal 
+    apply (subst (asm) (1) loop_op.code)
+    apply auto
+    subgoal for op
+      apply (cases op)
+         apply (auto 10 10 simp add: ran_def split: if_splits sum.splits)
       done
     done
   done
@@ -1662,35 +1626,6 @@ lemma step_Inp_Inl_loop_op[intro]:
      apply auto
      apply (smt (verit) mem_Collect_eq o_apply option.sel option.simps(3) ran_def sum.case_eq_if sum.simps(4))
     apply (smt (verit) mem_Collect_eq o_apply option.sel option.simps(3) ran_def sum.case_eq_if sum.simps(4))
-    done
-  done
-
-lemma step_Out_Inl_loop_op[intro]:
-  "step (Out (Inl p) x) op op' \<Longrightarrow>
-   step (Out (Inl p) x) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op')"
-  apply (subst loop_op.code)
-  apply simp
-  apply (erule step_choicesE)
-    apply simp_all
-  subgoal
-    apply (rule SC)
-     apply (rule cimage_eqI[of _  _ "Write _ _ _"])
-      apply simp_all
-    apply auto
-    done
-  done
-
-lemma step_Tau_loop_op_old[intro]:
-  "step Tau op op' \<Longrightarrow>
-   step Tau (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op')"
-  apply (subst loop_op.code)
-  apply simp
-  apply (erule step_choicesE)
-    apply simp_all
-  subgoal
-    apply (rule SC)
-     apply (rule cimage_eqI[of _  _ "Silent _"])
-      apply auto
     done
   done
 
@@ -1734,7 +1669,7 @@ lemma step_double_loop_1:
    (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined (case_sum buf2' buf1')) (map_op reassoc reassoc op'')))"
   unfolding feedback_op_def
   apply (drule step_map_op_inv)
-  apply auto
+  apply auto(* 
   apply (drule step_loop_op)
   apply auto
   subgoal for p op'' x
@@ -1940,7 +1875,8 @@ lemma step_double_loop_1:
             done
           done
         done
-      done
+      done *)
+  oops
 
 lemma step_double_loop_2:
   "step io (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined (case_sum buf2 buf1)) (map_op reassoc reassoc (op :: (('a + 'd) + 'e, ('b + 'd) + 'e, 'c) op)))) op' \<Longrightarrow>
@@ -1951,6 +1887,7 @@ lemma step_double_loop_2:
   unfolding feedback_op_def
   apply (drule step_map_op_inv)
   apply auto
+  oops(* 
   apply (drule step_loop_op)
   apply auto
   subgoal for p op'' x
@@ -2288,18 +2225,7 @@ lemma step_double_loop_2:
           done
         done
       done
-    done
-
-lemma step_tau_loop_op_case_sum[intro]:
-  "step (Out (Inr p) x) op op' \<Longrightarrow>
-   step Tau (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1) op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined (BENQ p x buf1)) op')"
-  using step_Out_Inr_loop_op[where buf="case_sum undefined buf1" and p=p, simplified] by blast
-
-lemma step_tau_loop_op_Inp_Inr_case_sum[intro]:
-  "step (Inp (Inr rp) (BHD rp buf1)) op op' \<Longrightarrow>
-   buf1 rp \<noteq> [] \<Longrightarrow>
-   step Tau (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1) op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined (BTL rp buf1)) op')"
-  using step_Inp_Inr_loop_op[where buf="case_sum undefined buf1" and p="rp", simplified] unfolding BHD_def by auto
+    done *)
 
 subsection \<open>Congruence for strong bisim\<close>
 lemma bisim_scomp_op_cong:
@@ -2499,7 +2425,7 @@ lemma choices_id_op[simp]:
   apply (simp add: BTL_def BENQ_def)
   done
 
-lemma step_Inp_loop_op[intro]:
+lemma step_Inp_loop_op[intro!]:
   "step (Inp p x) op op' \<Longrightarrow>
    p \<notin> ran wire \<Longrightarrow>
    step (Inp p x) (loop_op wire buf op) (loop_op wire buf op')"
@@ -2518,10 +2444,10 @@ lemma step_Inp_loop_op[intro]:
     done
   done
 
-lemma step_Out_loop_op[intro]:
+lemma step_Out_loop_op[intro!]:
   "step (Out p x) op op' \<Longrightarrow>
-   wire p = None \<Longrightarrow>   
-   step (Out p x) (loop_op wire buf op) (loop_op wire buf op')"
+   wire p = None \<Longrightarrow> buf = buf' \<Longrightarrow>
+   step (Out p x) (loop_op wire buf op) (loop_op wire buf' op')"
   apply (subst loop_op.code)
   apply simp
   apply (erule step_choicesE)
@@ -2534,11 +2460,9 @@ lemma step_Out_loop_op[intro]:
     done
   done
 
-thm step_Tau_loop_op_old
-
 lemma step_Tau_loop_op[intro]:
-  "step Tau op op' \<Longrightarrow>
-   step Tau (loop_op wire buf op) (loop_op wire buf op')"
+  "step Tau op op' \<Longrightarrow> buf' = buf \<Longrightarrow>
+   step Tau (loop_op wire buf op) (loop_op wire buf' op')"
   apply (subst loop_op.code)
   apply simp
   apply (erule step_choicesE)
@@ -2550,60 +2474,6 @@ lemma step_Tau_loop_op[intro]:
     done
   done
 
-lemma step_loop_op':
-  "step io (loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) buf op) op' \<Longrightarrow>
-   (\<exists>p x. io = Inp (Inl p) x \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) buf op'' \<and> step io op op'')) \<or>
-   (\<exists>p x. io = Out (Inl p) x \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) buf op'' \<and> step io op op'')) \<or>
-   (io = Tau \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) buf op'' \<and> step io op op'')) \<or>
-   (io = Tau \<and> (\<exists> op'' p x. p \<notin> defaults \<and> op' = loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (BTL (Inr p) buf) op'' \<and> step (Inp (Inr p) x) op op'' \<and> buf (Inr p) \<noteq> [] \<and> BHD (Inr p) buf = x)) \<or>
-   (io = Tau \<and> (\<exists> op'' p x. p \<notin> defaults \<and> op' = loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (BENQ (Inr p) x buf) op'' \<and> step (Out (Inr p) x) op op'')) \<or>
-   (\<exists>p x. p \<in> defaults \<and> io = Inp (Inr p) x \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) buf op'' \<and> step io op op'')) \<or>
-   (\<exists>p x. p \<in> defaults \<and> io = Out (Inr p) x \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) buf op'' \<and> step io op op''))"
-  apply (erule step_choicesE)
-  subgoal for p f x
-    apply (cases p)
-    subgoal for lp
-      apply (subst (asm) (1) loop_op.code)
-      apply auto
-      subgoal for op
-        apply (cases op)
-           apply (auto 10 10 simp add: ran_def split: if_splits sum.splits)
-        done
-      done
-    subgoal for rp
-      apply (subst (asm) (1) loop_op.code)
-      apply auto
-      subgoal for op
-        apply (cases op)
-           apply (auto 10 10 simp add: ran_def split: if_splits sum.splits)
-        done
-      subgoal for op
-        apply (cases op)
-           apply (auto 10 10 simp add: ran_def split: if_splits sum.splits)
-        done
-      done
-    done
-  subgoal for p x
-    apply (subst (asm) (1) loop_op.code)
-    apply auto
-    subgoal for op
-      apply (cases op)
-         apply (auto 10 10 simp add: ran_def split: if_splits sum.splits)
-      done
-    subgoal for op
-      apply (cases op)
-         apply (auto 10 10 simp add: ran_def split: if_splits sum.splits)
-      done
-    done
-  subgoal 
-    apply (subst (asm) (1) loop_op.code)
-    apply auto
-    subgoal for op
-      apply (cases op)
-         apply (auto 10 10 simp add: ran_def split: if_splits sum.splits)
-      done
-    done
-  done
 
 (* R5 *)
 lemma R5:
@@ -2619,7 +2489,7 @@ lemma R5:
     apply auto
     apply hypsubst_thin
     subgoal for io' op'
-      apply (drule step_loop_op'[where io=io', simplified])
+      apply (drule step_loop_op[where io=io', simplified])
       apply (elim disjE conjE exE)
       subgoal
         apply hypsubst_thin
@@ -2681,7 +2551,7 @@ lemma R5:
            apply blast
           apply (rule step_wstep)
           apply (rule step_map_op[of "Inp (Inl _) _", rotated])
-           apply (auto simp add: ran_def step_Inp_loop_op sum.case_eq_if)
+           apply (auto simp add: ran_def sum.case_eq_if split: if_splits)
           done
         subgoal for rp
           apply hypsubst_thin
@@ -3268,5 +3138,7 @@ lemma choices_aeq_op[simp]:
   apply (subst aeq_op_code)
   apply auto
   done
+
+find_theorems step loop_op Out 
 
 end

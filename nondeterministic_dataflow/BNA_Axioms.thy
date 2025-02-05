@@ -2648,8 +2648,8 @@ lemma rtranclp_intros_1':
 
 section \<open>Axiom: R1: Loop commute sequential composition\<close>
 lemma loop_op_scomp_commute_gen:
-  "map_op projl projr (comp_op Some buf2 op2 (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined (lbuf1 >> lbuf2 >> lbuf3)) op1))) \<approx>
-   map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined lbuf1) (map_op projl projr (comp_op Some (case_sum buf2 lbuf3) (comp_op (\<lambda>_. None) (\<lambda>_. []) op2 (id_op lbuf2)) op1)))"
+  "map_op projl projr (comp_op Some buf2 op2 (map_op projl projl (loop_op (case_sum (\<lambda> _. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined (lbuf1 >> lbuf2 >> lbuf3)) op1))) \<approx>
+   map_op projl projl (loop_op (case_sum (\<lambda> _. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined lbuf1) (map_op projl projr (comp_op Some (case_sum buf2 lbuf3) (comp_op (\<lambda>_. None) (\<lambda>_. []) op2 (id_op lbuf2)) op1)))"
   apply (coinduction arbitrary: op1 op2 buf2 lbuf1 lbuf2 lbuf3 rule: wbisim_coinduct_upto)
   subgoal for op1 op2 buf2 lbuf1 lbuf2 lbuf3
     unfolding wsim_def
@@ -2666,7 +2666,7 @@ lemma loop_op_scomp_commute_gen:
           apply (intro exI conjI[rotated])
            apply (rule wbc_base)
            apply fast
-          apply force
+          apply blast
           done
         subgoal for p x op2'
           apply hypsubst_thin
@@ -2775,15 +2775,21 @@ lemma loop_op_scomp_commute_gen:
                 subgoal 
                   apply (intro exI conjI[rotated])
                    apply (rule wbc_base)
-                   apply (rule exI[of _ op'''])
-                   apply (rule exI[of _ op2])
-                   apply (rule exI[of _ buf2])
-                   apply (rule exI[of _ "lbuf1"])
-                   apply (rule exI[of _ "BTL p lbuf2"])
-                   apply (rule exI[of _ "lbuf3"])
-                   apply (intro exI conjI)
-                    apply auto
-                  try0
+                  apply blast
+                   apply auto
+                  apply (rule rtranclp.intros(2))
+                  apply (rule rtranclp.intros(2))
+             apply (rule rtranclp.intros(1))
+            apply (rule step_Tau_loop_op)
+            apply (rule step_map_op[of Tau])
+                     apply (rule step_Tau_comp_op_L)
+                       apply (rule step_comp_op_R_Out)
+                  apply (rule step_id_op_Write)
+
+                  find_theorems step Out id_op
+
+
+                  find_theorems comp_op Out  step
 
 end
                   done
