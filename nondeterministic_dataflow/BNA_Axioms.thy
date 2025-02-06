@@ -2649,12 +2649,21 @@ lemma rtranclp_intros_1':
 lemma Inl_notin_ran_feedback_wire[simp]:
   "Inl p \<notin> ran (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p)))"
   by (auto simp add: ran_def  split: sum.splits if_splits)
+term scomp_op
 
-term feedback_op
+no_notation scomp_op (infixl "\<bullet>" 65)
+
+definition scomp_op (infixl "\<bullet>" 65) where
+  "scomp_op op1 op2 = map_op projl projr (comp_op (\<lambda> p. if p \<in> defaults then None else Some p) (\<lambda>_. []) op1 op2)"
+
+lemma loop_op_scomp_commute:
+  "op2 \<bullet> (op1\<up>) \<approx> ((op2 \<parallel> \<I>) \<bullet> op1)\<up>"
+  unfolding feedback_op_def scomp_op_def pcomp_op_def comp_def
+  oops
 
 lemma loop_op_scomp_commute_gen:
-  "map_op projl projr (comp_op Some buf2 op2 (map_op projl projl (loop_op (case_sum (\<lambda> _. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined (lbuf1 >> lbuf2 >> lbuf3)) op1))) \<approx>
-   map_op projl projl (loop_op (case_sum (\<lambda> _. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined lbuf1) (map_op projl projr (comp_op Some (case_sum buf2 lbuf3) (comp_op (\<lambda>_. None) (\<lambda>_. []) op2 (id_op lbuf2)) op1)))"
+  "map_op projl projr (comp_op (\<lambda>p. if p \<in> defaults then None else Some p) buf2 op2 (map_op projl projl (loop_op (case_sum (\<lambda> _. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined (lbuf1 >> lbuf2 >> lbuf3)) op1))) \<approx>
+   map_op projl projl (loop_op (case_sum (\<lambda> _. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined lbuf1) (map_op projl projr (comp_op (\<lambda>p. if p \<in> defaults then None else Some p) (case_sum buf2 lbuf3) (comp_op (\<lambda>_. None) (\<lambda>_. []) op2 (id_op lbuf2)) op1)))"
   apply (coinduction arbitrary: op1 op2 buf2 lbuf1 lbuf2 lbuf3 rule: wbisim_coinduct_upto)
   subgoal for op1 op2 buf2 lbuf1 lbuf2 lbuf3
     unfolding wsim_def
@@ -2707,6 +2716,8 @@ lemma loop_op_scomp_commute_gen:
           apply (intro exI conjI[rotated])
            apply (rule wbc_base)
            apply fast
+          apply (simp split: if_splits)
+
           apply auto
           apply (rule rtranclp.intros(2))
            apply (rule rtranclp.intros(1))
@@ -2722,7 +2733,7 @@ lemma loop_op_scomp_commute_gen:
           apply hypsubst_thin
           apply (drule step_loop_op)
           apply auto
-          subgoal for op''
+          subgoal for op1'
             apply (intro exI conjI[rotated])
              apply (rule wbc_base)
              apply fast
@@ -2734,30 +2745,13 @@ lemma loop_op_scomp_commute_gen:
             apply (rule step_map_op[of Tau])
              apply auto
             done
-        subgoal for op'
+        subgoal for p op1'
           apply hypsubst_thin
-          apply (intro exI conjI[rotated])
-           apply (rule wbc_base)
-           apply fast
-          apply (rule rtranclp.intros(2))
-           apply (rule rtranclp.intros(1))
-          apply (rule step_map_op[of Tau])
-           apply simp_all
-          apply (rule step_Tau_loop_op)
-          apply (rule step_map_op[of Tau])
-            apply auto
-          apply (rule step_Tau_comp_op_R)
-              apply simp_all
-          apply auto
+          term scomp_op
 
 
-          apply (rule step_Inp_Tau_loop_op)
-
-
-          find_theorems step Inp comp_op Tau
 
 end
-          done
         subgoal for op'
           apply hypsubst_thin
           apply (drule step_map_op_inv)

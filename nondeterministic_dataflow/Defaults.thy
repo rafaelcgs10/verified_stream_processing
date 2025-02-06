@@ -1,10 +1,11 @@
 text \<open>defaultss setup\<close>
 
 theory Defaults
-  imports HOL.HOL HOL.Sum_Type HOL.Product_Type
+  imports HOL.HOL HOL.Sum_Type HOL.Product_Type Main
 begin
 
 class defaults = fixes defaults :: "'a set"
+
 
 instantiation sum :: (defaults, type) defaults
 begin
@@ -45,5 +46,11 @@ definition defaults_unit where "defaults_unit = {()}"
 instance
 proof qed
 end 
+
+class no_defaults = defaults +
+  assumes no_defaults: "defaults = {}"
+
+subclass (in no_defaults) defaults.
+
 
 end
