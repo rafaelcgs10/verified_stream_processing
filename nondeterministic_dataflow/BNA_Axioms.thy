@@ -23,30 +23,30 @@ lemma pcomp_op_assoc:
       subgoal for p x op1'
         apply (rule exI)
         apply (rule conjI[rotated])
-        apply (rule bc_base)
+         apply (rule bc_base)
          apply auto
         done
       subgoal for p x
         apply (drule step_comp_op_cases)
         apply auto
         subgoal for pr op3'
-        apply (rule exI)
-        apply (rule conjI[rotated])
-        apply (rule bc_base)
+          apply (rule exI)
+          apply (rule conjI[rotated])
+           apply (rule bc_base)
            apply auto
           done
         subgoal
           apply (rule exI)
-        apply (rule conjI[rotated])
-        apply (rule bc_base)
+          apply (rule conjI[rotated])
+           apply (rule bc_base)
            apply auto
           done
         done
       subgoal 
-            apply (rule exI)
+        apply (rule exI)
         apply (rule conjI[rotated])
-        apply (rule bc_base)
-           apply auto
+         apply (rule bc_base)
+         apply auto
         done
       subgoal for p x
         apply (drule step_comp_op_cases)
@@ -54,27 +54,27 @@ lemma pcomp_op_assoc:
         subgoal
           apply hypsubst_thin
           apply (rule exI)
-        apply (rule conjI[rotated])
+          apply (rule conjI[rotated])
            apply (rule bc_base)
            apply blast
           apply auto
-          apply (rule step_comp_op_L_Inp)
-          apply auto
+           apply (rule step_comp_op_L_Inp)
+             apply auto
           done
         subgoal
           apply hypsubst_thin
           apply (rule exI)
-        apply (rule conjI[rotated])
+          apply (rule conjI[rotated])
            apply (rule bc_base)
            apply blast
           apply auto
           done
         done
       subgoal
-          apply hypsubst_thin
-          apply (rule exI)
+        apply hypsubst_thin
+        apply (rule exI)
         apply (rule conjI[rotated])
-           apply (rule bc_base)
+         apply (rule bc_base)
          apply blast
         apply auto
         done
@@ -84,17 +84,17 @@ lemma pcomp_op_assoc:
         apply auto
         subgoal
           apply (rule exI)
-        apply (rule conjI[rotated])
+          apply (rule conjI[rotated])
            apply (rule bc_base)
-         apply blast
-        apply auto
+           apply blast
+          apply auto
           done
-     subgoal
+        subgoal
           apply (rule exI)
-        apply (rule conjI[rotated])
+          apply (rule conjI[rotated])
            apply (rule bc_base)
-         apply blast
-        apply auto
+           apply blast
+          apply auto
           done
         done
       done
@@ -167,7 +167,7 @@ lemma pcomp_op_assoc:
         subgoal for op2'
           apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) op1 (comp_op (\<lambda>_. None) (\<lambda>_. []) op2' op3)\<close>])
           apply auto
-           apply (rule bc_sym)
+          apply (rule bc_sym)
           apply (rule bc_base)
           apply auto
           done
@@ -175,7 +175,7 @@ lemma pcomp_op_assoc:
       subgoal for op3'
         apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) op1 (comp_op (\<lambda>_. None) (\<lambda>_. []) op2 op3')\<close>])
         apply (rule conjI)
-        apply auto
+         apply auto
         apply (rule bc_sym)
         apply (rule bc_base)
         apply auto
@@ -204,15 +204,15 @@ lemma pcomp_op_end_op_right_neutral:
         apply auto
       subgoal for p x
         apply (drule step_comp_op_L_Inp)
-        apply (simp_all add: bc_base bc_sym)
+          apply (simp_all add: bc_base bc_sym)
         done
       subgoal for p x
         apply (drule step_comp_op_L_Out[of _ _ _ _ \<open>\<lambda>_. None\<close>])
-         apply (simp_all add: bc_base bc_sym)
+           apply (simp_all add: bc_base bc_sym)
         done
       subgoal
         apply (drule step_comp_op_L_Tau)
-        apply (simp_all add: bc_base bc_sym)
+          apply (simp_all add: bc_base bc_sym)
         done
       done
     done
@@ -359,17 +359,17 @@ lemma step_scomp_op_1:
                  apply auto
                 apply hypsubst_thin
                 apply (subst (2) comp_op_code)
-                 apply (rule SC[rotated])
-                  apply (rule ST)
+                apply (rule SC[rotated])
+                 apply (rule ST)
+                apply simp
+                apply (rule disjI1)
+                apply (rule image_eqI[rotated])
+                 apply (subst comp_op_code)
                  apply simp
-                 apply (rule disjI1)
-                 apply (rule image_eqI[rotated])
-                  apply (subst comp_op_code)
+                 apply (rule disjI2)
+                 apply (rule bexI[rotated])
                   apply simp
-                  apply (rule disjI2)
-                  apply (rule bexI[rotated])
-                   apply simp
-                   apply fastforce+
+                  apply fastforce+
                 done
               subgoal by auto
               subgoal by auto
@@ -546,9 +546,9 @@ lemma step_scomp_op_2:
               apply (intro exI conjI)
                apply auto
               apply (subst (1) comp_op_code)
-               apply (rule SC[rotated])
-                apply (rule ST)
-               apply simp_all
+              apply (rule SC[rotated])
+               apply (rule ST)
+              apply simp_all
               apply simp
               apply (rule disjI2)
               apply (rule image_eqI[rotated])
@@ -954,8 +954,8 @@ lemma id_id_gen:
               apply (intro conjI)
                apply (rule disjI2)
                apply (intro conjI exI)
-                apply assumption
-              apply (auto simp add: step.intros(2))
+                 apply assumption
+                apply (auto simp add: step.intros(2))
             done
           subgoal
             apply (rule wbc_sym)
@@ -985,7 +985,7 @@ lemma id_id_gen:
               apply (intro conjI)
                apply (rule disjI1)
                apply blast+
-            apply simp_all
+              apply simp_all
              apply (simp add: BENQ_def)
             apply (subst comp_op_code)
             apply (rule SC[rotated])
@@ -997,7 +997,7 @@ lemma id_id_gen:
              apply (intro conjI)
               apply (rule disjI2)
               apply (intro exI[of _ p] conjI)
-               apply (auto simp add: fun_upd_idem)
+                apply (auto simp add: fun_upd_idem)
             done
           subgoal
             apply (rule wbc_sym)
@@ -1080,15 +1080,15 @@ lemma pcomp_op_scomp_distributes_bufs:
         subgoal 
           apply (intro exI conjI[rotated])
            apply (rule bc_base)
-         apply blast
-      apply auto
+           apply blast
+          apply auto
           done
-       subgoal 
+        subgoal 
           apply (intro exI conjI[rotated])
            apply (rule bc_base)
-         apply blast
-      apply auto
-         done
+           apply blast
+          apply auto
+          done
         done
       subgoal for p x
         apply (drule step_comp_op_cases)
@@ -1117,15 +1117,15 @@ lemma pcomp_op_scomp_distributes_bufs:
           apply hypsubst_thin
           apply (intro exI conjI[rotated])
            apply (rule bc_base)
-         apply blast
-      apply auto
+           apply blast
+          apply auto
           done     
         subgoal
           apply hypsubst_thin
           apply (intro exI conjI[rotated])
            apply (rule bc_base)
-         apply blast
-      apply auto
+           apply blast
+          apply auto
           done     
         done
       subgoal for p op2'
@@ -1133,60 +1133,60 @@ lemma pcomp_op_scomp_distributes_bufs:
         apply (cases p)
          apply simp_all
         subgoal
-        apply (drule step_comp_op_cases)
+          apply (drule step_comp_op_cases)
           apply auto
           apply hypsubst_thin
-        apply (intro exI conjI[rotated])
+          apply (intro exI conjI[rotated])
            apply (rule bc_base)
            apply blast
           apply (rule step_comp_op_L_Tau)
             apply auto
           done
         subgoal
-     apply (drule step_comp_op_cases)
+          apply (drule step_comp_op_cases)
           apply auto
           apply hypsubst_thin
-        apply (intro exI conjI[rotated])
-        apply (rule bc_base)
+          apply (intro exI conjI[rotated])
+           apply (rule bc_base)
            apply blast
           apply (rule step_comp_op_R_Tau)
+            apply auto
+          done
+        done
+      subgoal
+        apply hypsubst_thin
+        apply (drule step_comp_op_cases)
+        apply auto
+        subgoal
+          apply hypsubst_thin
+          apply (intro exI conjI[rotated])
+           apply (rule bc_base)
+           apply blast
+          apply auto
+          done
+        subgoal
+          apply hypsubst_thin
+          apply (intro exI conjI[rotated])
+           apply (rule bc_base)
+           apply blast
           apply auto
           done
         done
       subgoal
         apply hypsubst_thin
-       apply (drule step_comp_op_cases)
+        apply (drule step_comp_op_cases)
         apply auto
         subgoal
           apply hypsubst_thin
-        apply (intro exI conjI[rotated])
-        apply (rule bc_base)
+          apply (intro exI conjI[rotated])
+           apply (rule bc_base)
            apply blast
           apply auto
           done
         subgoal
           apply hypsubst_thin
-        apply (intro exI conjI[rotated])
-        apply (rule bc_base)
-           apply blast
-          apply auto
-          done
-        done
-     subgoal
-        apply hypsubst_thin
-   apply (drule step_comp_op_cases)
-        apply auto
-        subgoal
-          apply hypsubst_thin
-        apply (intro exI conjI[rotated])
-        apply (rule bc_base)
-           apply blast
-          apply auto
-          done
-        subgoal
-          apply hypsubst_thin
-        apply (intro exI conjI[rotated])
-        apply (rule bc_base)
+          apply (intro exI conjI[rotated])
+           apply (rule bc_base)
            apply blast
           apply auto
           done
@@ -1267,79 +1267,79 @@ lemma pcomp_op_scomp_distributes_bufs:
         subgoal
           apply hypsubst_thin
           apply (intro exI conjI[rotated])
-        apply (rule bc_sym)
-        apply (rule bc_base)
+           apply (rule bc_sym)
+           apply (rule bc_base)
            apply blast
           apply auto
           done
-       subgoal
+        subgoal
           apply hypsubst_thin
           apply (intro exI conjI[rotated])
-        apply (rule bc_sym)
-        apply (rule bc_base)
+           apply (rule bc_sym)
+           apply (rule bc_base)
            apply blast
           apply auto
-         done
-       subgoal
+          done
+        subgoal
           apply hypsubst_thin
           apply (intro exI conjI[rotated])
-        apply (rule bc_sym)
-        apply (rule bc_base)
+           apply (rule bc_sym)
+           apply (rule bc_base)
            apply blast
           apply auto
-         done
-       subgoal
+          done
+        subgoal
           apply hypsubst_thin
           apply (intro exI conjI[rotated])
-        apply (rule bc_sym)
-        apply (rule bc_base)
+           apply (rule bc_sym)
+           apply (rule bc_base)
            apply blast
           apply auto
-         done
-       done
- subgoal
+          done
+        done
+      subgoal
         apply (drule step_map_op_inv)
         apply auto
         apply (drule step_comp_op_cases)
-   apply auto
-   apply hypsubst_thin
-  subgoal
+        apply auto
+           apply hypsubst_thin
+        subgoal
           apply (intro exI conjI[rotated])
-        apply (rule bc_sym)
-        apply (rule bc_base)
+           apply (rule bc_sym)
+           apply (rule bc_base)
            apply blast
           apply auto
           done
-       subgoal
+        subgoal
           apply hypsubst_thin
           apply (intro exI conjI[rotated])
-        apply (rule bc_sym)
-        apply (rule bc_base)
-          apply blast
-         apply (rule step_map_op)
-         apply (rule step_Tau_comp_op_R)
-              apply (rule step_comp_op_R_Inp)
-         apply auto
-         done
-       subgoal
-        apply hypsubst_thin
+           apply (rule bc_sym)
+           apply (rule bc_base)
+           apply blast
+          apply (rule step_map_op)
+           apply (rule step_Tau_comp_op_R)
+               apply (rule step_comp_op_R_Inp)
+                  apply auto
+          done
+        subgoal
+          apply hypsubst_thin
           apply (intro exI conjI[rotated])
-        apply (rule bc_sym)
-        apply (rule bc_base)
-          apply blast
-         apply auto
-         done
-    subgoal
-        apply hypsubst_thin
+           apply (rule bc_sym)
+           apply (rule bc_base)
+           apply blast
+          apply auto
+          done
+        subgoal
+          apply hypsubst_thin
           apply (intro exI conjI[rotated])
-        apply (rule bc_sym)
-        apply (rule bc_base)
-          apply blast
-         apply auto
+           apply (rule bc_sym)
+           apply (rule bc_base)
+           apply blast
+          apply auto
+          done
+        done
       done
     done
-  done
-  done
   done
 
 lemma pcomp_op_scomp_distributes:
@@ -1363,32 +1363,32 @@ lemma pcomp_op_id_id_bufs:
       apply auto
       subgoal
         apply (drule step_id_op_Inp)
-        apply auto
-      apply (intro conjI[rotated] exI)
+         apply auto
+        apply (intro conjI[rotated] exI)
          apply (rule bc_base)
          apply blast
         apply (metis Inr_Inl_False PlusE Plus_def case_sum_BENQ_L defaults_sum_def step_id_op_Read sum.sel(1))
         done
       subgoal 
         apply (drule step_id_op_Out)
-        apply auto
-      apply (intro conjI[rotated] exI)
+         apply auto
+        apply (intro conjI[rotated] exI)
          apply (rule bc_base)
          apply blast
         apply auto
         done
-  subgoal 
+      subgoal 
         apply (drule step_id_op_Out)
-        apply auto
-      apply (intro conjI[rotated] exI)
+         apply auto
+        apply (intro conjI[rotated] exI)
          apply (rule bc_base)
-     apply blast
-    apply auto
-    done
+         apply blast
+        apply auto
+        done
       subgoal
         apply (drule step_id_op_Inp)
-        apply auto
-      apply (intro conjI[rotated] exI)
+         apply auto
+        apply (intro conjI[rotated] exI)
          apply (rule bc_base)
          apply blast
         apply (metis Inr_Inl_False Inr_inject PlusE Plus_def case_sum_BENQ_R defaults_sum_def step_id_op_Read)
@@ -1399,54 +1399,54 @@ lemma pcomp_op_id_id_bufs:
       subgoal for p x
         apply (cases p)
         subgoal for lp
-        apply (drule step_id_op_Inp)
-         apply auto
-        apply hypsubst_thin
-        apply (intro conjI[rotated] exI)
-         apply (rule bc_sym)
-         apply (rule bc_base)
+          apply (drule step_id_op_Inp)
+           apply auto
+          apply hypsubst_thin
+          apply (intro conjI[rotated] exI)
+           apply (rule bc_sym)
+           apply (rule bc_base)
            apply blast
-           apply (auto simp add: defaults_sum_def step_comp_op_L_Inp step_id_op_Read)
+          apply (auto simp add: defaults_sum_def step_comp_op_L_Inp step_id_op_Read)
           done
         subgoal for p
-        apply (drule step_id_op_Inp)
-         apply auto
-        apply hypsubst_thin
-        apply (intro conjI[rotated] exI)
-         apply (rule bc_sym)
-         apply (rule bc_base)
+          apply (drule step_id_op_Inp)
+           apply auto
+          apply hypsubst_thin
+          apply (intro conjI[rotated] exI)
+           apply (rule bc_sym)
+           apply (rule bc_base)
            apply blast
           apply (rule step_comp_op_R_Inp)
-           apply auto
+             apply auto
           done
         done
       subgoal for p x
         apply (cases p)
         subgoal
-        apply (drule step_id_op_Out)
-         apply auto
+          apply (drule step_id_op_Out)
+           apply auto
           apply hypsubst_thin
-  apply (intro conjI[rotated] exI)
-         apply (rule bc_sym)
-         apply (rule bc_base)
+          apply (intro conjI[rotated] exI)
+           apply (rule bc_sym)
+           apply (rule bc_base)
            apply blast
           apply (simp add: defaults_sum_def image_iff step_comp_op_L_Out step_id_op_Write)
           done
         subgoal
-        apply (drule step_id_op_Out)
-         apply auto
+          apply (drule step_id_op_Out)
+           apply auto
           apply hypsubst_thin
-  apply (intro conjI[rotated] exI)
-         apply (rule bc_sym)
-         apply (rule bc_base)
+          apply (intro conjI[rotated] exI)
+           apply (rule bc_sym)
+           apply (rule bc_base)
            apply blast
           apply (simp add: defaults_sum_def image_iff step_comp_op_R_Out step_id_op_Write)
           done
+        done
+      subgoal
+        by force
+      done
     done
-  subgoal
-    by force
-  done
-  done
   done
 
 
@@ -1483,15 +1483,15 @@ lemma comp_op_transp_transp_id_bufs:
          apply fast
         apply (cases p)
         subgoal for lp
-        apply (rule step_wstep)
+          apply (rule step_wstep)
           apply auto
-          apply (metis BHD_BULK_BENQ_cases BULK_BENQ_empty case_sum_BHD_L case_sum_BHD_R case_sum_Inl_Inr_L o_case_sum)
+           apply (metis BHD_BULK_BENQ_cases BULK_BENQ_empty case_sum_BHD_L case_sum_BHD_R case_sum_Inl_Inr_L o_case_sum)
           apply (simp add: BULK_BENQ_BTL_right_not_empty_case_sum)
           done
         subgoal for rp
-    apply (rule step_wstep)
+          apply (rule step_wstep)
           apply auto
-          apply (metis BHD_BULK_BENQ_cases BULK_BENQ_empty case_sum_BHD_L case_sum_BHD_R case_sum_expand_Inr_pointfree o_case_sum)
+           apply (metis BHD_BULK_BENQ_cases BULK_BENQ_empty case_sum_BHD_L case_sum_BHD_R case_sum_expand_Inr_pointfree o_case_sum)
           apply (simp add: BULK_BENQ_BTL_right_not_empty_case_sum)
           done
         done
@@ -1516,7 +1516,7 @@ lemma comp_op_transp_transp_id_bufs:
         apply (rule wbc_base)
         apply fastforce
         done
-         apply (rule no_step_transp_op_Tau, simp_all)+
+       apply (rule no_step_transp_op_Tau, simp_all)+
       done
     subgoal for io
       apply (erule step_id_op_cases)
@@ -1574,82 +1574,82 @@ lemma comp_op_transp_transp_id_bufs:
               subgoal for lp
                 apply simp
                 apply (rule step_tau_step_io_wstep)
-                apply (rule step_map_op[of Tau])
+                 apply (rule step_map_op[of Tau])
                   apply (rule step_Tau_comp_op_R[where p="Inr lp"])
-                     apply (rule step_transp_op_Read)
+                      apply (rule step_transp_op_Read)
                        apply simp_all
-              apply (rule step_map_op[of "Out (Inr (Inl lp)) _"])
+                apply (rule step_map_op[of "Out (Inr (Inl lp)) _"])
                  apply (rule step_comp_op_R_Out)
-                 apply (rule step_transp_op_Write[where p="Inr lp"])
+                   apply (rule step_transp_op_Write[where p="Inr lp"])
                        apply simp_all
                 apply (simp add: BHD_def)
                 done
               subgoal for rp
                 apply simp
                 apply (rule step_tau_step_io_wstep)
-                apply (rule step_map_op[of Tau])
+                 apply (rule step_map_op[of Tau])
                   apply (rule step_Tau_comp_op_R[where p="Inl rp"])
-                     apply (rule step_transp_op_Read)
+                      apply (rule step_transp_op_Read)
                        apply simp_all
-              apply (rule step_map_op[of "Out (Inr (Inr rp)) _"])
+                apply (rule step_map_op[of "Out (Inr (Inr rp)) _"])
                  apply (rule step_comp_op_R_Out)
-                apply simp_all
-                 apply (rule step_transp_op_Write[where p="Inl rp"])
+                   apply simp_all
+                apply (rule step_transp_op_Write[where p="Inl rp"])
                     apply simp_all
                 apply (simp add: BHD_def)
+                done
+              done
             done
           done
-        done
-      done
-    subgoal
-     apply (cases p)
-              subgoal for lp
-                apply simp
-              apply (intro conjI[rotated] exI)
-                 apply (rule wbc_sym)
-              apply (rule wbc_base)
-                 apply (rule exI)
-                apply blast
-                    apply (rule step_tau_step_tau_step_io_wstep)
-                 apply (rule step_map_op[of Tau])
-                   apply simp_all
-                 apply (rule step_Tau_comp_op_L[where p="Inr lp"])
-                    apply simp_all
-                  apply (rule step_transp_op_Write)
-                      apply simp_all
+        subgoal
+          apply (cases p)
+          subgoal for lp
+            apply simp
+            apply (intro conjI[rotated] exI)
+             apply (rule wbc_sym)
+             apply (rule wbc_base)
+             apply (rule exI)
+             apply blast
+            apply (rule step_tau_step_tau_step_io_wstep)
+              apply (rule step_map_op[of Tau])
+               apply simp_all
+              apply (rule step_Tau_comp_op_L[where p="Inr lp"])
                 apply simp_all
-                 apply (rule step_map_op[of Tau])
-                apply simp_all
-                apply (rule step_Tau_comp_op_R[where p="Inr lp"])
-                apply simp_all
-                 apply (rule step_transp_op_Read)
-                apply simp_all
-              apply (rule step_map_op[of "Out (Inr (Inl lp)) _"])
+              apply (rule step_transp_op_Write)
+                  apply simp_all
+              apply simp_all
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_Tau_comp_op_R[where p="Inr lp"])
                  apply simp_all
-                apply (rule step_comp_op_R_Out)
-                  apply simp_all
-                apply auto
-                done
-              subgoal for rp
-      apply simp
-              apply (intro conjI[rotated] exI)
-                 apply (rule wbc_sym)
-              apply (rule wbc_base)
-                 apply (rule exI)
-                 apply blast
-                    apply (rule step_tau_step_tau_step_io_wstep)
-                 apply (rule step_map_op[of Tau])
-                   apply simp_all
-                  apply (rule step_Tau_comp_op_L)
-                    apply force
-                   apply simp_all
-                        apply (rule step_map_op[of Tau])
-                  apply simp_all
-                apply (rule step_Tau_comp_op_R[where p="Inl rp"])
-                     apply auto
-                  apply simp_all
-                apply auto
-                done
+             apply (rule step_transp_op_Read)
+              apply simp_all
+            apply (rule step_map_op[of "Out (Inr (Inl lp)) _"])
+             apply simp_all
+            apply (rule step_comp_op_R_Out)
+              apply simp_all
+            apply auto
+            done
+          subgoal for rp
+            apply simp
+            apply (intro conjI[rotated] exI)
+             apply (rule wbc_sym)
+             apply (rule wbc_base)
+             apply (rule exI)
+             apply blast
+            apply (rule step_tau_step_tau_step_io_wstep)
+              apply (rule step_map_op[of Tau])
+               apply simp_all
+              apply (rule step_Tau_comp_op_L)
+                apply force
+               apply simp_all
+             apply (rule step_map_op[of Tau])
+              apply simp_all
+             apply (rule step_Tau_comp_op_R[where p="Inl rp"])
+                 apply auto
+                apply simp_all
+            apply auto
+            done
           done
         done
       done
@@ -1702,11 +1702,11 @@ lemma trans_op_decomposes_scomp_op_pcomp_op_gen:
             apply (rule step_wstep)
             apply (rule step_map_op)
              apply (rule step_comp_op_L_Inp)
-             apply (rule step_map_op)
+               apply (rule step_map_op)
             unfolding pcomp_op_def
-              apply (rule step_comp_op_L_Inp)
-              apply (rule step_transp_op_Read[where buf="case_sum buf1 buf2" and p="Inr lp", simplified])
-             apply auto
+                apply (rule step_comp_op_L_Inp)
+                  apply (rule step_transp_op_Read)
+                   apply auto
             done
           subgoal for rp
             apply hypsubst_thin
@@ -1714,14 +1714,14 @@ lemma trans_op_decomposes_scomp_op_pcomp_op_gen:
              apply (rule wbc_base)
              apply force
             apply (rule step_wstep)
-            apply (rule step_map_op[of "Inp (Inl (Inr (Inr rp))) _"])
+            apply (rule step_map_op)
              apply simp_all
             apply (rule step_comp_op_L_Inp)
-            apply (rule step_map_op)
+              apply (rule step_map_op)
             unfolding pcomp_op_def
-             apply (rule step_comp_op_R_Inp)
-              apply (rule step_id_op_Read)
-             apply auto
+               apply (rule step_comp_op_R_Inp)
+                  apply (rule step_id_op_Read)
+                   apply auto
             done
           done
         done
@@ -1742,13 +1742,13 @@ lemma trans_op_decomposes_scomp_op_pcomp_op_gen:
                apply (rule step_Tau_comp_op_R)
                    apply (rule step_map_op)
                     apply (rule step_comp_op_L_Inp)
-              apply blast
-                    apply simp_all
+                      apply blast
+                     apply simp_all
                apply simp
               apply (rule step_map_op)
                apply simp_all
                apply (rule step_comp_op_R_Out)
-              apply auto
+                 apply auto
               done
             subgoal
               apply (intro exI conjI[rotated])        
@@ -1758,15 +1758,15 @@ lemma trans_op_decomposes_scomp_op_pcomp_op_gen:
               apply force+
               done
             subgoal
-     apply (intro exI conjI[rotated])        
+              apply (intro exI conjI[rotated])        
                apply (rule wbc_base)
                apply blast
               unfolding pcomp_op_def
               apply (rule step_tau_step_tau_step_io_wstep)
-                 apply (rule step_map_op)
-                  apply (rule step_Tau_comp_op_L)
-                 apply (rule step_map_op)
-                     apply (rule step_comp_op_L_Out)
+                apply (rule step_map_op)
+                 apply (rule step_Tau_comp_op_L)
+                   apply (rule step_map_op)
+                    apply (rule step_comp_op_L_Out)
                        apply (rule step_transp_op_Write)
                            apply simp_all
                  prefer 3
@@ -1774,48 +1774,48 @@ lemma trans_op_decomposes_scomp_op_pcomp_op_gen:
                   apply (rule step_Tau_comp_op_R)
                       apply (rule step_map_op)
                        apply (rule step_comp_op_L_Inp)
-                         apply (rule step_id_op_Read[where p=lp])
+                         apply (rule step_id_op_Read)
                           apply (auto simp add: BHD_def split: sum.splits)
               done
             subgoal
-     apply (intro exI conjI[rotated])        
+              apply (intro exI conjI[rotated])        
                apply (rule wbc_base)
                apply blast
               unfolding pcomp_op_def
               apply (rule step_wstep)
               apply auto
               done
-      subgoal
-apply (intro exI conjI[rotated])        
+            subgoal
+              apply (intro exI conjI[rotated])        
                apply (rule wbc_base)
                apply blast
               unfolding pcomp_op_def
               apply (rule step_tau_step_io_wstep)
                apply (rule step_map_op)
-                  apply (rule step_Tau_comp_op_R)
-                 apply (rule step_map_op)
-                       apply (rule step_comp_op_L_Inp)
-                         apply (rule step_id_op_Read)
-                          apply (auto split: sum.splits)
+                apply (rule step_Tau_comp_op_R)
+                    apply (rule step_map_op)
+                     apply (rule step_comp_op_L_Inp)
+                       apply (rule step_id_op_Read)
+                        apply (auto split: sum.splits)
               done
-          subgoal
-     apply (intro exI conjI[rotated])        
+            subgoal
+              apply (intro exI conjI[rotated])        
                apply (rule wbc_base)
                apply blast
               unfolding pcomp_op_def
               apply (rule step_wstep)
               apply auto
               done
-          subgoal
-     apply (intro exI conjI[rotated])        
+            subgoal
+              apply (intro exI conjI[rotated])        
                apply (rule wbc_base)
                apply blast
               unfolding pcomp_op_def
               apply (rule step_wstep)
               apply auto
               done
-          subgoal
-     apply (intro exI conjI[rotated])        
+            subgoal
+              apply (intro exI conjI[rotated])        
                apply (rule wbc_base)
                apply blast
               unfolding pcomp_op_def
@@ -1833,12 +1833,12 @@ apply (intro exI conjI[rotated])
               unfolding pcomp_op_def
               apply (rule step_tau_step_io_wstep)
                apply (rule step_map_op)
-              apply (rule step_Tau_comp_op_R)
-               apply (rule step_map_op)
+                apply (rule step_Tau_comp_op_R)
+                    apply (rule step_map_op)
                      apply (rule step_comp_op_R_Inp)
                         apply (rule step_transp_op_Read)
-              apply (simp_all split: sum.splits)
-              apply auto
+                         apply (simp_all split: sum.splits)
+                apply auto
                apply auto
               done
             subgoal 
@@ -1851,7 +1851,7 @@ apply (intro exI conjI[rotated])
               apply (rule step_map_op[of "Out (Inr (Inl (Inr rp))) _"])
                apply simp_all
               apply (rule step_comp_op_R_Out)
-              apply (rule step_map_op[of "Out (Inr (Inl _)) _"])
+                apply (rule step_map_op[of "Out (Inr (Inl _)) _"])
                  apply simp_all
               apply auto  
               done
@@ -1865,22 +1865,22 @@ apply (intro exI conjI[rotated])
                 apply (rule step_map_op[of Tau])
                  apply force
                 apply simp
-                apply (rule step_map_op[of Tau])
+               apply (rule step_map_op[of Tau])
                 apply simp_all
                apply (rule step_Tau_comp_op_R)
                    apply (rule step_map_op)
                     apply (rule step_comp_op_R_Inp)
                        apply (rule step_transp_op_Read)
                         apply (auto split: sum.splits)
-                              apply (rule step_comp_op_R_Out)
+               apply (rule step_comp_op_R_Out)
                  apply (rule step_transp_op_Write)
                      apply auto
               done
-         subgoal 
+            subgoal 
               apply hypsubst_thin
               apply (intro exI conjI[rotated])        
                apply (rule wbc_base)
-            apply force
+               apply force
               unfolding pcomp_op_def
               apply (rule step_wstep)
               apply (auto 2 2)
@@ -1888,52 +1888,52 @@ apply (intro exI conjI[rotated])
                  apply (rule step_transp_op_Write)
                      apply auto
               done
-         subgoal 
+            subgoal 
               apply hypsubst_thin
               apply (intro exI conjI[rotated])        
                apply (rule wbc_base)
-            apply force
-          unfolding pcomp_op_def
-          apply (rule step_tau_step_io_wstep)
-            apply (rule step_map_op)
-             apply (rule step_Tau_comp_op_R)
-            apply (rule step_map_op)
-                  apply (rule step_comp_op_R_Inp)
-                     apply (rule step_transp_op_Read)
-                     apply (auto split: sum.splits)
-           apply auto
-          done
-  subgoal 
+               apply force
+              unfolding pcomp_op_def
+              apply (rule step_tau_step_io_wstep)
+               apply (rule step_map_op)
+                apply (rule step_Tau_comp_op_R)
+                    apply (rule step_map_op)
+                     apply (rule step_comp_op_R_Inp)
+                        apply (rule step_transp_op_Read)
+                         apply (auto split: sum.splits)
+               apply auto
+              done
+            subgoal 
               apply hypsubst_thin
               apply (intro exI conjI[rotated])        
                apply (rule wbc_base)
-     apply force
-          unfolding pcomp_op_def
+               apply force
+              unfolding pcomp_op_def
               apply (rule step_wstep)
-          apply force
-          done
-        subgoal
-      apply hypsubst_thin
+              apply force
+              done
+            subgoal
+              apply hypsubst_thin
               apply (intro exI conjI[rotated])        
                apply (rule wbc_base)
-     apply force
-          unfolding pcomp_op_def
-          apply (rule step_wstep)
-          apply force
-          done
-  subgoal
-      apply hypsubst_thin
+               apply force
+              unfolding pcomp_op_def
+              apply (rule step_wstep)
+              apply force
+              done
+            subgoal
+              apply hypsubst_thin
               apply (intro exI conjI[rotated])        
                apply (rule wbc_base)
-     apply force
-          unfolding pcomp_op_def
-          apply (rule step_wstep)
-          apply force
+               apply force
+              unfolding pcomp_op_def
+              apply (rule step_wstep)
+              apply force
+              done
+            done
           done
-        done
-      done
-    subgoal for lp
-      apply simp
+        subgoal for lp
+          apply simp
           apply (simp split: if_splits; hypsubst_thin?)
           subgoal 
             apply (intro exI conjI[rotated])  
@@ -1945,14 +1945,14 @@ apply (intro exI conjI[rotated])
              apply (rule step_Tau_comp_op_L)
                apply (rule step_map_op)
                 apply simp_all
-                apply (rule step_comp_op_L_Out)
+              apply (rule step_comp_op_L_Out)
                  apply (rule step_transp_op_Write)
                      apply (rule refl)+
-            apply auto
-             apply (rule wstep_trans_tau_1)
-                 apply (rule step_Tau_comp_op_R)
-           apply (rule step_map_op)
-                apply (rule step_comp_op_R_Inp)
+                    apply auto
+            apply (rule wstep_trans_tau_1)
+             apply (rule step_Tau_comp_op_R)
+                 apply (rule step_map_op)
+                  apply (rule step_comp_op_R_Inp)
                      apply (rule step_transp_op_Read)
                       apply auto
             apply (rule step_wstep)
@@ -1964,24 +1964,24 @@ apply (intro exI conjI[rotated])
              apply force
             unfolding pcomp_op_def
             apply auto
-   apply (rule wstep_trans_tau_1)
-                 apply (rule step_Tau_comp_op_R)
-           apply (rule step_map_op)
-                apply (rule step_comp_op_R_Inp)
+            apply (rule wstep_trans_tau_1)
+             apply (rule step_Tau_comp_op_R)
+                 apply (rule step_map_op)
+                  apply (rule step_comp_op_R_Inp)
                      apply (rule step_transp_op_Read)
                       apply auto
             apply (rule step_wstep)
             apply auto+
             done
-            apply (intro exI conjI[rotated])  
-             apply (rule wbc_base)
-             apply force
-            unfolding pcomp_op_def
-            apply auto
-            apply force
-            done
+          apply (intro exI conjI[rotated])  
+           apply (rule wbc_base)
+           apply force
+          unfolding pcomp_op_def
+          apply auto
+          apply force
           done
         done
+      done
     subgoal for io op'
       unfolding pcomp_op_def
       apply (drule step_map_op_inv)
@@ -2057,8 +2057,8 @@ apply (intro exI conjI[rotated])
                apply (rule wbc_base)
                apply force
               apply (rule step_wstep)
-              apply (rule step_transp_op_Write[where p="Inl _"])
-                 apply simp_all
+              apply (rule step_transp_op_Write)
+                  apply auto
               done
             done
           done
@@ -2071,9 +2071,8 @@ apply (intro exI conjI[rotated])
            apply (rule wbc_base)
            apply force
           apply (rule step_wstep)
-          apply (rule step_transp_op_Write[where p="Inr _"])
-             apply simp_all
-          apply simp
+          apply (rule step_transp_op_Write)
+              apply auto
           done
         done
       subgoal for p x op'
@@ -2210,12 +2209,12 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
           apply auto
           apply (drule step_comp_op_cases)
           apply auto
-          apply (drule step_id_op_Inp[of \<open>Inp p' x\<close> buf1 _ p' x])
+          apply (drule step_id_op_Inp)
            apply auto
           apply hypsubst_thin
-            apply (intro exI conjI[rotated])  
-             apply (rule wbc_base)
-             apply force
+          apply (intro exI conjI[rotated])  
+           apply (rule wbc_base)
+           apply force
           apply auto
           done
         subgoal for p'
@@ -2223,30 +2222,30 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
           apply auto
           apply (drule step_comp_op_cases)
           apply auto
-          apply (drule step_id_op_Inp[of \<open>Inp p' x\<close> buf2 _ p' x])
+          apply (drule step_id_op_Inp)
            apply auto
-         apply hypsubst_thin
-            apply (intro exI conjI[rotated])  
-             apply (rule wbc_base)
-             apply force
+          apply hypsubst_thin
+          apply (intro exI conjI[rotated])  
+           apply (rule wbc_base)
+           apply force
           apply auto
           done
-          done
+        done
       subgoal for p x
         apply (erule step_transp_op_Out)
           apply (auto split: sum.splits)
         subgoal for p'
-         apply hypsubst_thin
-            apply (intro exI conjI[rotated])  
-             apply (rule wbc_base)
-             apply force
+          apply hypsubst_thin
+          apply (intro exI conjI[rotated])  
+           apply (rule wbc_base)
+           apply force
           apply auto
           done
         subgoal for p'
-       apply hypsubst_thin
-            apply (intro exI conjI[rotated])  
-             apply (rule wbc_base)
-             apply force
+          apply hypsubst_thin
+          apply (intro exI conjI[rotated])  
+           apply (rule wbc_base)
+           apply force
           apply auto
           done
         done
@@ -2259,7 +2258,7 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
           apply (drule step_comp_op_cases)
           apply auto
           subgoal for op2'
-       apply hypsubst_thin
+            apply hypsubst_thin
             apply (intro exI conjI[rotated])  
              apply (rule wbc_base)
              apply force
@@ -2272,14 +2271,10 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
           apply (drule step_comp_op_cases)
           apply auto
           subgoal for op1'
-            apply (rule exI[of _ \<open>map_op projl projr
-          (comp_op Some (case_sum buf2' buf1') (transp_op (case_sum buf1 buf2))
-            (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some buf2''' op2 (id_op buf2'')))
-              (map_op projl projr (comp_op Some (BENQ p' x buf1''') op1' (id_op buf1'')))))\<close>])
-            apply (rule conjI)
-              apply fastforce
-            apply (rule wbc_base)
-            apply fast
+           apply hypsubst_thin
+            apply (intro exI conjI[rotated])  
+             apply (rule wbc_base)
+             apply force+
             done
           done
         done
@@ -2287,24 +2282,16 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
         apply (erule step_transp_op_Inp)
          apply (auto split: sum.splits)
         subgoal for p'
-          apply (rule exI[of _ \<open>map_op projl projr
-                (comp_op Some (case_sum buf2' buf1') (transp_op (case_sum buf1 buf2))
-                  (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some buf2''' op2 (id_op buf2'')))
-                    (map_op projl projr (comp_op Some (BTL p' buf1''') op1 (id_op (BENQ p' (BHD p' buf1''') buf1''))))))\<close>])
-          apply (rule conjI)
-           apply fastforce
-          apply (rule wbc_base)
-          apply fast
+           apply hypsubst_thin
+            apply (intro exI conjI[rotated])  
+             apply (rule wbc_base)
+             apply force+
           done
         subgoal for p'
-          apply (rule exI[of _ \<open>map_op projl projr
-                (comp_op Some (case_sum buf2' buf1') (transp_op (case_sum buf1 buf2))
-                  (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (BTL p' buf2''') op2 (id_op (BENQ p' (BHD p' buf2''') buf2''))))
-                    (map_op projl projr (comp_op Some buf1''' op1 (id_op buf1'')))))\<close>])
-          apply (rule conjI)
-           apply fastforce
-          apply (rule wbc_base)
-          apply fast
+           apply hypsubst_thin
+            apply (intro exI conjI[rotated])  
+             apply (rule wbc_base)
+             apply force+
           done
         done
       subgoal
@@ -2318,20 +2305,16 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
           subgoal for p x
             apply (drule step_id_op_Out)
              apply auto
-       apply hypsubst_thin
+            apply hypsubst_thin
             apply (intro exI conjI[rotated])  
              apply (rule wbc_base)
              apply force+
             done
           subgoal for p op1'
-            apply (rule exI[of _ \<open>map_op projl projr
-          (comp_op Some (case_sum buf2' (BTL p buf1')) (transp_op (case_sum buf1 buf2))
-            (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some buf2''' op2 (id_op buf2'')))
-              (map_op projl projr (comp_op Some buf1''' op1' (id_op buf1'')))))\<close>])
-            apply (rule conjI)
-             apply fastforce
-            apply (rule wbc_base)
-            apply fast
+           apply hypsubst_thin
+            apply (intro exI conjI[rotated])  
+             apply (rule wbc_base)
+             apply force+
             done
           subgoal
             using no_step_id_op_Tau
@@ -2346,26 +2329,22 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
           subgoal for p x
             apply (drule step_id_op_Out)
              apply auto
-       apply hypsubst_thin
+            apply hypsubst_thin
             apply (intro exI conjI[rotated])  
              apply (rule wbc_base)
              apply force+
-              done
-            subgoal for p op2'
-       apply hypsubst_thin
-   apply (intro exI conjI[rotated])  
+            done
+          subgoal for p op2'
+            apply hypsubst_thin
+            apply (intro exI conjI[rotated])  
              apply (rule wbc_base)
-               apply force+
-              done
+             apply force+
+            done
           subgoal for op2'
-            apply (rule exI[of _ \<open>map_op projl projr
-       (comp_op Some (case_sum buf2' buf1') (transp_op (case_sum buf1 buf2))
-         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some buf2''' op2' (id_op buf2'')))
-           (map_op projl projr (comp_op Some buf1''' op1 (id_op buf1'')))))\<close>])
-            apply (rule conjI)
-             apply fastforce
-            apply (rule wbc_base)
-            apply fast
+  apply (intro exI conjI[rotated])
+           apply (rule wbc_base)
+            apply blast
+            apply blast
             done
           done
         done
@@ -2384,28 +2363,16 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
          apply auto
         apply (cases p)
         subgoal for p'
-        apply (rule exI[of _ \<open>map_op projl projr
-          (comp_op Some (case_sum buf1''' buf2''')
-            (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some buf1' (id_op (BENQ p' x buf1)) op1))
-              (map_op projl projr (comp_op Some buf2' (id_op buf2) op2)))
-            (transp_op (case_sum buf1'' buf2'')))\<close>])
-          apply (rule conjI)
-           apply fastforce
-          apply (rule wbc_sym)
-          apply (rule wbc_base)
-          apply fastforce
+  apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+           apply (rule wbc_base)
+            apply fastforce+
           done
         subgoal for p'
-        apply (rule exI[of _ \<open>map_op projl projr
-          (comp_op Some (case_sum buf1''' buf2''')
-            (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some buf1' (id_op buf1) op1))
-              (map_op projl projr (comp_op Some buf2' (id_op (BENQ p' x buf2)) op2)))
-            (transp_op (case_sum buf1'' buf2'')))\<close>])
-          apply (rule conjI)
-           apply fastforce
-          apply (rule wbc_sym)
-          apply (rule wbc_base)
-          apply fastforce
+  apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+           apply (rule wbc_base)
+            apply fastforce+
           done
         done
       subgoal for p x
@@ -2420,8 +2387,8 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
            apply auto
           apply hypsubst_thin
           apply (intro exI conjI[rotated])  
-             apply (rule wbc_sym)
-             apply (rule wbc_base)
+           apply (rule wbc_sym)
+           apply (rule wbc_base)
            apply force+
           done
         subgoal for p'
@@ -2433,8 +2400,8 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
            apply auto
           apply hypsubst_thin
           apply (intro exI conjI[rotated])  
-             apply (rule wbc_sym)
-             apply (rule wbc_base)
+           apply (rule wbc_sym)
+           apply (rule wbc_base)
            apply force+
           done
         done
@@ -2442,30 +2409,16 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
         apply (drule step_transp_op_Out)
            apply (auto split: sum.splits)
         subgoal for p'
-          apply (rule exI[of _ \<open>map_op projl projr
-          (comp_op Some (case_sum buf1''' buf2''')
-            (comp_op (\<lambda>_. None) (\<lambda>_. [])
-              (map_op projl projr (comp_op Some (BENQ p' x buf1') (id_op (BTL p' buf1)) op1))
-              (map_op projl projr (comp_op Some buf2' (id_op buf2) op2)))
-            (transp_op (case_sum buf1'' buf2'')))\<close>])
-          apply (rule conjI)
-           apply fastforce
-          apply (rule wbc_sym)
+          apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
           apply (rule wbc_base)
-          apply fast
+           apply fast+
           done
         subgoal for p'
-          apply (rule exI[of _ \<open>map_op projl projr
-          (comp_op Some (case_sum buf1''' buf2''')
-            (comp_op (\<lambda>_. None) (\<lambda>_. [])
-              (map_op projl projr (comp_op Some buf1' (id_op buf1) op1))
-              (map_op projl projr (comp_op Some (BENQ p' x buf2') (id_op (BTL p' buf2)) op2)))
-            (transp_op (case_sum buf1'' buf2'')))\<close>])
-          apply (rule conjI)
-           apply fastforce
-          apply (rule wbc_sym)
+          apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
           apply (rule wbc_base)
-          apply fast
+           apply fast+
           done
         done
       subgoal for p
@@ -2477,17 +2430,11 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
           apply (drule step_comp_op_cases)
           apply auto
           subgoal for op2'
-            apply (rule exI[of _ \<open>map_op projl projr
-       (comp_op Some (case_sum buf1''' buf2''')
-         (comp_op (\<lambda>_. None) (\<lambda>_. [])
-           (map_op projl projr (comp_op Some buf1' (id_op buf1) op1))
-           (map_op projl projr (comp_op Some (BTL p' buf2') (id_op buf2) op2')))
-         (transp_op (case_sum buf1'' buf2'')))\<close>])
-            apply (rule conjI)
-             apply fastforce
-            apply (rule wbc_sym)
-            apply (rule wbc_base)
-            apply fast
+          apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+          apply (rule wbc_base)
+             apply fast
+            apply fastforce
             done
           done
         subgoal for p'
@@ -2496,17 +2443,11 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
           apply (drule step_comp_op_cases)
           apply auto
           subgoal for op1'
-            apply (rule exI[of _ \<open>map_op projl projr
-       (comp_op Some (case_sum buf1''' buf2''')
-         (comp_op (\<lambda>_. None) (\<lambda>_. [])
-           (map_op projl projr (comp_op Some (BTL p' buf1') (id_op buf1) op1'))
-           (map_op projl projr (comp_op Some buf2' (id_op buf2) op2)))
-         (transp_op (case_sum buf1'' buf2'')))\<close>])
-            apply (rule conjI)
-             apply fastforce
-            apply (rule wbc_sym)
-            apply (rule wbc_base)
-            apply fast
+            apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+          apply (rule wbc_base)
+             apply fast
+            apply fastforce
             done
           done
         done
@@ -2523,54 +2464,27 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
           apply (drule step_comp_op_cases)
           apply auto
           subgoal for p x op2'
-            apply (rule exI[of _ \<open>map_op projl projr
-       (comp_op Some (case_sum buf1''' (BENQ p x buf2'''))
-         (comp_op (\<lambda>_. None) (\<lambda>_. [])
-           (map_op projl projr (comp_op Some buf1' (id_op buf1) op1))
-           (map_op projl projr (comp_op Some buf2' (id_op buf2) op2')))
-         (transp_op (case_sum buf1'' buf2'')))\<close>])
-            apply (rule conjI)
-             apply fastforce
-            apply (rule wbc_sym)
-            apply (rule wbc_base)
-            apply fast
+  apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+          apply (rule wbc_base)
+             apply fast
+            apply fastforce
             done
           subgoal for p
             apply (drule step_id_op_Inp)
              apply simp
-            apply (rule exI[of _ \<open>map_op projl projr
-       (comp_op Some (case_sum buf1''' (BTL p buf2'''))
-         (comp_op (\<lambda>_. None) (\<lambda>_. [])
-           (map_op projl projr (comp_op Some buf1' (id_op buf1) op1))
-           (map_op projl projr (comp_op Some buf2' (id_op buf2) op2)))
-         (transp_op (case_sum buf1'' (BENQ p (BHD p buf2''') buf2''))))\<close>])
-            apply (rule conjI)
-            subgoal
-              apply (rule step_star_map_op)
-              apply (rule rtranclp.intros(2))
-               apply (rule rtranclp.intros(1))
-              apply (rule step_Tau_comp_op_R)
-                  apply simp_all
-              apply auto
-              done
-            subgoal
-              apply (rule wbc_sym)
-              apply (rule wbc_base)
-              apply fast
-              done
+  apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+          apply (rule wbc_base)
+             apply fast
+            apply fastforce
             done
           subgoal for op2'
-            apply (rule exI[of _ \<open>map_op projl projr
-          (comp_op Some (case_sum buf1''' buf2''')
-            (comp_op (\<lambda>_. None) (\<lambda>_. [])
-              (map_op projl projr (comp_op Some buf1' (id_op buf1) op1))
-              (map_op projl projr (comp_op Some buf2' (id_op buf2) op2')))
-            (transp_op (case_sum buf1'' buf2'')))\<close>])
-            apply (rule conjI)
-             apply fastforce
-            apply (rule wbc_sym)
-            apply (rule wbc_base)
-            apply fast
+  apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+          apply (rule wbc_base)
+             apply fast
+            apply fastforce
             done
           done
         subgoal
@@ -2579,59 +2493,33 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
           apply (drule step_comp_op_cases)
           apply auto
           subgoal for p x op1'
-            apply (rule exI[of _ \<open>map_op projl projr
-       (comp_op Some (case_sum (BENQ p x buf1''') buf2''')
-         (comp_op (\<lambda>_. None) (\<lambda>_. [])
-           (map_op projl projr (comp_op Some buf1' (id_op buf1) op1'))
-           (map_op projl projr (comp_op Some buf2' (id_op buf2) op2)))
-         (transp_op (case_sum buf1'' buf2'')))\<close>])
-            apply (rule conjI)
-             apply fastforce
-            apply (rule wbc_sym)
-            apply (rule wbc_base)
-            apply fast
+  apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+          apply (rule wbc_base)
+             apply fast
+            apply fastforce
             done
           subgoal for p
             apply (drule step_id_op_Inp)
              apply simp
-            apply (rule exI[of _ \<open>map_op projl projr
-       (comp_op Some (case_sum (BTL p buf1''') buf2''')
-         (comp_op (\<lambda>_. None) (\<lambda>_. [])
-           (map_op projl projr (comp_op Some buf1' (id_op buf1) op1))
-           (map_op projl projr (comp_op Some buf2' (id_op buf2) op2)))
-         (transp_op (case_sum (BENQ p (BHD p buf1''') buf1'') buf2'')))\<close>])
-            apply (rule conjI)
-            subgoal
-              apply (rule step_star_map_op)
-              apply (rule rtranclp.intros(2))
-               apply (rule rtranclp.intros(1))
-              apply (rule step_Tau_comp_op_R)
-                apply auto
-              done
-            subgoal
-              apply (rule wbc_sym)
-              apply (rule wbc_base)
-              apply fast
-              done
+  apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+          apply (rule wbc_base)
+             apply fast
+            apply fastforce
             done
           subgoal for op1'
-            apply (rule exI[of _ \<open>map_op projl projr
-       (comp_op Some (case_sum buf1''' buf2''')
-         (comp_op (\<lambda>_. None) (\<lambda>_. [])
-           (map_op projl projr (comp_op Some buf1' (id_op buf1) op1'))
-           (map_op projl projr (comp_op Some buf2' (id_op buf2) op2)))
-         (transp_op (case_sum buf1'' buf2'')))\<close>])
-            apply (rule conjI)
-             apply fastforce
-            apply (rule wbc_sym)
-            apply (rule wbc_base)
-            apply fast
-            done
+  apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+          apply (rule wbc_base)
+             apply fast
+            apply fastforce
             done
           done
         done
       done
     done
+  done
 
 thm transp_op_commutes_scomp_op_pcomp_op_bufs[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> _ \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> _  \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>]
 lemma transp_op_commutes_scomp_op_pcomp_op:
@@ -2651,7 +2539,7 @@ lemma Inl_notin_ran_feedback_wire[simp]:
   by (auto simp add: ran_def  split: sum.splits if_splits)
 term scomp_op
 
-no_notation scomp_op (infixl "\<bullet>" 65)
+(* no_notation scomp_op (infixl "\<bullet>" 65)
 
 definition scomp_op (infixl "\<bullet>" 65) where
   "scomp_op op1 op2 = map_op projl projr (comp_op (\<lambda> p. if p \<in> defaults then None else Some p) (\<lambda>_. []) op1 op2)"
@@ -2659,11 +2547,15 @@ definition scomp_op (infixl "\<bullet>" 65) where
 lemma loop_op_scomp_commute:
   "op2 \<bullet> (op1\<up>) \<approx> ((op2 \<parallel> \<I>) \<bullet> op1)\<up>"
   unfolding feedback_op_def scomp_op_def pcomp_op_def comp_def
-  oops
+  oops 
+ *)
+
+term feedback_op
+
 
 lemma loop_op_scomp_commute_gen:
-  "map_op projl projr (comp_op (\<lambda>p. if p \<in> defaults then None else Some p) buf2 op2 (map_op projl projl (loop_op (case_sum (\<lambda> _. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined (lbuf1 >> lbuf2 >> lbuf3)) op1))) \<approx>
-   map_op projl projl (loop_op (case_sum (\<lambda> _. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined lbuf1) (map_op projl projr (comp_op (\<lambda>p. if p \<in> defaults then None else Some p) (case_sum buf2 lbuf3) (comp_op (\<lambda>_. None) (\<lambda>_. []) op2 (id_op lbuf2)) op1)))"
+  "map_op projl projr (comp_op Some buf2 op2 (map_op projl projl (loop_op (case_sum (\<lambda> _. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined (lbuf1 >> lbuf2 >> lbuf3)) op1))) \<approx>
+   map_op projl projl (loop_op (case_sum (\<lambda> _. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined lbuf1) (map_op projl projr (comp_op Some (case_sum buf2 lbuf3) (comp_op (\<lambda>_. None) (\<lambda>_. []) op2 (id_op lbuf2)) op1)))"
   apply (coinduction arbitrary: op1 op2 buf2 lbuf1 lbuf2 lbuf3 rule: wbisim_coinduct_upto)
   subgoal for op1 op2 buf2 lbuf1 lbuf2 lbuf3
     unfolding wsim_def
@@ -2702,7 +2594,7 @@ lemma loop_op_scomp_commute_gen:
                 apply force
                 done
               subgoal
-           apply hypsubst_thin
+                apply hypsubst_thin
                 apply (intro exI conjI[rotated])
                  apply (rule wbc_base)
                  apply fast
@@ -2716,39 +2608,51 @@ lemma loop_op_scomp_commute_gen:
           apply (intro exI conjI[rotated])
            apply (rule wbc_base)
            apply fast
-          apply (simp split: if_splits)
-
           apply auto
-          apply (rule rtranclp.intros(2))
+           apply (rule rtranclp.intros(2))
            apply (rule rtranclp.intros(1))
-          apply (rule step_Tau_loop_op)
-          apply (rule step_map_op)
+           apply (rule step_Tau_loop_op)
+           apply (rule step_map_op)
            apply simp_all
            apply auto
           done
         subgoal for p op'
-          apply hypsubst_thin
-          apply (drule step_map_op_inv)
-          apply auto
-          apply hypsubst_thin
-          apply (drule step_loop_op)
-          apply auto
+           apply hypsubst_thin
+           apply (drule step_map_op_inv)
+           apply auto
+           apply hypsubst_thin
+           apply (drule step_loop_op)
+           apply auto
           subgoal for op1'
-            apply (intro exI conjI[rotated])
+             apply (intro exI conjI[rotated])
              apply (rule wbc_base)
              apply fast
-            apply (rule rtranclp.intros(2))
+             apply (rule rtranclp.intros(2))
              apply (rule rtranclp.intros(1))
-            apply (rule step_map_op[of Tau])
+             apply (rule step_map_op[of Tau])
              apply simp_all
-            apply (rule step_Tau_loop_op)
-            apply (rule step_map_op[of Tau])
+             apply (rule step_Tau_loop_op)
+             apply (rule step_map_op[of Tau])
              apply auto
             done
-        subgoal for p op1'
-          apply hypsubst_thin
-          term scomp_op
+          subgoal for p op1'
+            apply hypsubst_thin
+            apply (intro exI conjI[rotated])
+             apply (rule wbc_base)
+            apply force
+            apply auto
+            apply (rule rtranclp.intros(2))
+             apply (rule rtranclp.intros(2))
+              apply (rule rtranclp.intros(1))
+             apply (rule step_Tau_loop_op)
+            apply (rule step_map_op)
+               apply (rule step_Tau_comp_op_R)
+                    apply assumption
+                   apply simp
+                  apply simp_all
+            try0
 
+            find_theorems comp_op Tau 
 
 
 end

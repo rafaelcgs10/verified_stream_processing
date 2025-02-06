@@ -279,7 +279,8 @@ lemma step_Tau_comp_op_R[intro]:
    buf p \<noteq> [] \<Longrightarrow>
    BHD p buf = x \<Longrightarrow>
    buf' = BTL p buf \<Longrightarrow>
-   step Tau (comp_op wire buf op1 op2) (comp_op wire buf' op1 op2')"
+   op1' = op1 \<Longrightarrow>
+   step Tau (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
   apply (erule step_choicesE)
   apply simp_all
     apply (subst (1) comp_op_code)
@@ -1547,7 +1548,7 @@ lemma loop_op_Choice[simp]:
   "is_Choice (loop_op wire buf op)"
   by (subst loop_op.code, simp)
 
-term projl
+term loop_op
 
 definition feedback_op ( "_ \<up>" [66] 65) where
   "feedback_op op = map_op projl projl (loop_op (case_sum (\<lambda> _. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined (\<lambda> _. [])) op)"
