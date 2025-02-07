@@ -248,14 +248,16 @@ inductive sub_op :: \<open>('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op \<R
   sub_op_Refl: \<open>sub_op op op 0\<close>
 | sub_op_Read: \<open>sub_op op (f x) n \<Longrightarrow> sub_op op (Read p f) (Suc n)\<close>
 | sub_op_Write: \<open>sub_op op op' n \<Longrightarrow> sub_op op (Write op' p x) (Suc n)\<close>
+| sub_op_Silent: \<open>sub_op op op' n \<Longrightarrow> sub_op op (Silent op') (Suc n)\<close>
 | sub_op_Choice: \<open>cin op' ops \<Longrightarrow> sub_op op op' n \<Longrightarrow> sub_op op (Choice ops) (Suc n)\<close>
 
 inductive_cases sub_op_ReflE [elim!]: \<open>sub_op op op n\<close>
 inductive_cases sub_op_ReadE [elim!]: \<open>sub_op op (Read p f) n\<close>
 inductive_cases sub_op_WriteE [elim!]: \<open>sub_op op (Write op' p x) n\<close>   
+inductive_cases sub_op_SilentE [elim!]: \<open>sub_op op (Silent op') n\<close>   
 inductive_cases sub_op_ChoiceE [elim!]: \<open>sub_op op (Choice ops) n\<close>   
 
-(* lemma inputs_sub_op_Read: \<open>p \<in> inputs op \<Longrightarrow> \<exists>f n. sub_op (Read p f) op n\<close>
+ lemma inputs_sub_op_Read: \<open>p \<in> inputs op \<Longrightarrow> \<exists>f n. sub_op (Read p f) op n\<close>
   by (induct op pred: inputs) (force intro: sub_op.intros)+
 
 lemma sub_op_Read_inputs: \<open>sub_op (Read p f) op n \<Longrightarrow> p \<in> inputs op\<close>
@@ -263,7 +265,6 @@ lemma sub_op_Read_inputs: \<open>sub_op (Read p f) op n \<Longrightarrow> p \<in
 
 lemma outputs_sub_op_Write: \<open>p \<in> outputs op \<Longrightarrow> \<exists>op' x n. sub_op (Write op' p x) op n\<close>
   by (induct op pred: outputs) (force intro: sub_op.intros)+
- *)
 
 lemma sub_op_Write_outputs: \<open>sub_op (Write op' p x) op n \<Longrightarrow> p \<in> outputs op\<close>
   by (induct op n pred: sub_op) auto
@@ -273,6 +274,7 @@ lemma sub_op_Read_induct [consumes 1, case_names Read1 Read2 Write Choice]:
     and \<open>\<And>f p. P p (Read p f)\<close>
     and \<open>\<And>p p' f x d g. sub_op (Read p g) (f x) d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Read p' f)\<close>
     and \<open>\<And>p p' op' x d g. sub_op (Read p g) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Write op' p' x)\<close>
+    and \<open>\<And>p p' op' x d g. sub_op (Read p g) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Silent op')\<close>
     and \<open>\<And>p p' ops x d g. \<exists>op'. cin op' ops \<and> sub_op (Read p g) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Choice ops)\<close>
   shows \<open>P p op\<close>
   using assms(1)
@@ -286,6 +288,7 @@ lemma sub_op_Write_induct [consumes 1, case_names Read Write1 Choice Write2]:
   assumes \<open>sub_op (Write op2 p y) op d\<close>
     and \<open>\<And>p p' f x op2 y d. sub_op (Write op2 p y) (f x) d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Read p' f)\<close>
     and \<open>\<And>p p' op' x op2 y d. sub_op (Write op2 p y) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Write op' p' x)\<close>
+    and \<open>\<And>p p' op' x op2 y d. sub_op (Write op2 p y) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Silent op')\<close>
     and \<open>\<And>p op' op2 y d ops.  \<exists>op'. cin op' ops \<and> sub_op (Write op2 p y) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Choice ops)\<close>
     and \<open>\<And>p op' x. P p (Write op' p x)\<close>
   shows \<open>P p op\<close>
@@ -302,18 +305,18 @@ inductive input_at where
   "input_at p (Read p f) n"
 | "p \<noteq> p' \<Longrightarrow> input_at p (f x) n \<Longrightarrow> input_at p (Read p' f) (Suc n)"
 | "input_at p op' n \<Longrightarrow> input_at p (Write op' p' x) (Suc n)"
+| "input_at p op' n \<Longrightarrow> input_at p (Silent op') (Suc n)"
 | "cin op' ops \<Longrightarrow> input_at p op' n \<Longrightarrow> input_at p (Choice ops) (Suc n)"
-  (* 
 
 lemma inputs_input_at: "p \<in> inputs op \<Longrightarrow> \<exists>n. input_at p op n"
   by (induct p op rule: op.set_induct(1)) (auto 4 4 intro: input_at.intros)
- *)
+
 lemma input_at_inputs: "input_at p op n \<Longrightarrow> p \<in> inputs op"
   by (induct p op n rule: input_at.induct) auto
-    (* 
+
 lemma inputs_alt: "p \<in> inputs op \<longleftrightarrow> (\<exists>n. input_at p op n)"
   by (metis input_at_inputs inputs_input_at)
- *)
+ 
 definition "input_depth p op = (LEAST n. input_at p op n)"
 
 (* lemma input_depth_Read: "p \<in> inputs op \<Longrightarrow> input_depth p op = 0 \<longleftrightarrow> (\<exists>f. op = Read p f)"
@@ -1096,11 +1099,6 @@ lemma step_exchange: "step (Inp p x) op op' \<Longrightarrow> \<exists>op'. step
   apply (induct "Inp p x :: ('a, 'b, 'c) IO" op  op' pred: step)
    apply (auto intro!: step.intros)
   done
-
-lemma sub_op_finished:
-  "sub_op op' op n \<Longrightarrow> finished op \<Longrightarrow> finished op'"
-  by (induct op n rule: sub_op.induct) auto
-
 
 coinductive traced where
   Nil: "finished op \<Longrightarrow> traced op LNil"
