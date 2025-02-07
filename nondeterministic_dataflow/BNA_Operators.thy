@@ -163,7 +163,7 @@ lemma inputs_after_choices_at:
 lemma inputs_after_choices:
   "op' |\<in>| (choices op) \<Longrightarrow> p' \<in> inputs op' \<Longrightarrow> p' \<in> inputs op"
   unfolding choices_def
- inputs_after_choices_at 
+    inputs_after_choices_at 
   by (meson cUN_E inputs_after_choices_at)
 
 lemma inputs_comp_op: "sub_op (Read p g) (comp_op wire buf op1 op2) d \<Longrightarrow> p \<in> Inl ` inputs op1 \<union> Inr ` (inputs op2 - ran wire)"
@@ -308,7 +308,7 @@ lemma inputs_comp_op_le:
 
 subsection \<open>Outputs of comp_op\<close>
 
-lemma Write_choices_inputs:
+lemma Write_choices_outputs:
   "Write op p x |\<in>| choices op \<Longrightarrow> p \<in> outputs op"
   using choices_sub_op by blast
 
@@ -526,13 +526,13 @@ lemma step_Tau_comp_op_L[intro]:
    buf' = BENQ q x buf \<Longrightarrow>
    step Tau (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2)"
   apply (erule step_choicesE)
-  apply simp_all
-    apply (subst (1) comp_op_code)
+    apply simp_all
+  apply (subst (1) comp_op_code)
   apply simp
   apply (rule SC)
    apply simp
    apply (rule disjI1)
-  apply (rule image_eqI)
+   apply (rule image_eqI)
     apply (rule refl)
    apply assumption
   apply auto
@@ -549,13 +549,13 @@ lemma step_comp_op_R[intro]:
     apply (clarsimp split: IO.splits option.splits intro: step.intros)
     subgoal
       apply (rule SC)
-      apply (rule cUnI2)
-      apply simp
-      apply (rule image_eqI[of "Read (Inr p) (\<lambda>x. (comp_op wire buf op1 (f x)))" _ "Read p f"])
-      apply simp_all
+       apply (rule cUnI2)
+       apply simp
+       apply (rule image_eqI[of "Read (Inr p) (\<lambda>x. (comp_op wire buf op1 (f x)))" _ "Read p f"])
+        apply simp_all
       subgoal 
         apply (subst cset.acset_inverse)
-        apply (auto simp add: countableI' inj_on_def)
+         apply (auto simp add: countableI' inj_on_def)
         done
       subgoal
         by (meson step.intros(1))
@@ -566,13 +566,13 @@ lemma step_comp_op_R[intro]:
     unfolding cfilter_def Set.filter_def
     apply (clarsimp split: IO.splits option.splits intro: step.intros)
     apply (rule SC)
-    apply (rule cUnI2)
-    apply simp
-    apply (rule image_eqI[of _ _ "Write op q x"])
-    apply simp_all
+     apply (rule cUnI2)
+     apply simp
+     apply (rule image_eqI[of _ _ "Write op q x"])
+      apply simp_all
     subgoal 
       apply (subst cset.acset_inverse)
-      apply (auto simp add: countableI' inj_on_def)
+       apply (auto simp add: countableI' inj_on_def)
       done
     subgoal
       by (meson step.intros(2))
@@ -593,30 +593,30 @@ lemma step_comp_op_R[intro]:
       apply hypsubst_thin
       apply (subst (1) comp_op_code)
       apply (rule SC)
-      apply (rule cUnI2)
-      apply simp
-      apply (rule image_eqI[of "Read (Inr p) (\<lambda>x. comp_op wire buf op1 (f x))" _ "Read p f"])
-      apply simp
+       apply (rule cUnI2)
+       apply simp
+       apply (rule image_eqI[of "Read (Inr p) (\<lambda>x. comp_op wire buf op1 (f x))" _ "Read p f"])
+        apply simp
       unfolding cfilter_def Set.filter_def
-      apply auto
+       apply auto
       done
     subgoal for p x
       apply simp
       apply hypsubst_thin
       apply (subst (1) comp_op_code)
       apply (rule SC)
-      apply (rule cUnI2)
-      apply simp
-      apply (rule image_eqI[of _ _ "Write op' p x"])
-      apply simp
+       apply (rule cUnI2)
+       apply simp
+       apply (rule image_eqI[of _ _ "Write op' p x"])
+        apply simp
       unfolding cfilter_def Set.filter_def
-      apply auto
+       apply auto
       done
     subgoal
       apply auto
-    apply (subst (1) comp_op_code)
+      apply (subst (1) comp_op_code)
       apply (rule SC[rotated])
-      apply (rule ST)
+       apply (rule ST)
       apply (smt (verit, ccfv_threshold) cUN_I cUnI2 choices_Choice cin.rep_eq cin_cimage_cfilter op.simps(20))
       done
     done
@@ -631,15 +631,15 @@ lemma step_Tau_comp_op_R[intro]:
    op1' = op1 \<Longrightarrow>
    step Tau (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
   apply (erule step_choicesE)
-  apply simp_all
-    apply (subst (1) comp_op_code)
+    apply simp_all
+  apply (subst (1) comp_op_code)
   apply simp
   apply (rule SC)
    apply simp
    apply (rule disjI2)
-  apply (rule image_eqI)
+   apply (rule image_eqI)
     apply (rule refl)
-  apply auto
+   apply auto
   done
 
 lemma step_comp_op_R_Out[intro!]:
@@ -891,14 +891,14 @@ lemma bisim_choices_Read:
    apply assumption
   apply safe
   apply (erule step_choicesE[where op=op1'])
-   apply auto
+    apply auto
   done
 
 lemma bisim_choices_Write:
   "op1 ~ op1' \<Longrightarrow>
    Write op1'' p x |\<in>| choices op1 \<Longrightarrow>
    \<exists> op. Write op p x |\<in>| choices op1' \<and> op1'' ~ op"
- apply (erule bisim.cases)
+  apply (erule bisim.cases)
   apply auto
   unfolding sim_def
   apply (drule Write_in_choices_step[where x=x, simplified])
@@ -907,14 +907,14 @@ lemma bisim_choices_Write:
    apply assumption
   apply safe
   apply (erule step_choicesE[where op=op1'])
-   apply auto
+    apply auto
   done
 
 lemma bisim_choices_Silent:
   "op1 ~ op1' \<Longrightarrow>
    Silent op1'' |\<in>| choices op1 \<Longrightarrow>
    \<exists> op. Silent op |\<in>| choices op1' \<and> op1'' ~ op"
- apply (erule bisim.cases)
+  apply (erule bisim.cases)
   apply auto
   unfolding sim_def
   apply (drule Silent_in_choices_step[simplified])
@@ -923,7 +923,7 @@ lemma bisim_choices_Silent:
    apply assumption
   apply safe
   apply (erule step_choicesE[where op=op1'])
-   apply auto
+    apply auto
   done
 
 lemma bisim_comp_op_cong:
@@ -1338,8 +1338,8 @@ lemma bisim_comp_op_cong:
              apply auto
             apply (intro conjI exI)
              apply (rule step_comp_op_R_Out)
-             apply (rule Write_in_choices_step)
-             apply simp_all
+               apply (rule Write_in_choices_step)
+               apply simp_all
             apply (metis (mono_tags, lifting) bc_base bisim_sym)
             done
           subgoal
@@ -1351,8 +1351,8 @@ lemma bisim_comp_op_cong:
              apply auto
             apply (intro conjI exI)
              apply (rule step_comp_op_R_Tau)
-             apply (rule Silent_in_choices_step)
-              apply simp_all
+               apply (rule Silent_in_choices_step)
+               apply simp_all
             apply (metis (mono_tags, lifting) bc_base bisim_sym)
             done
           done
@@ -1413,12 +1413,12 @@ lemma wbisim_choices_Silent:
   unfolding wstep_def
   apply auto
   subgoal
-  apply (erule step_choicesE)
-    apply auto
-  apply (erule step_choicesE)
-    apply auto
-  using wbisim_sym apply blast
-  done
+    apply (erule step_choicesE)
+      apply auto
+    apply (erule step_choicesE)
+      apply auto
+    using wbisim_sym apply blast
+    done
   subgoal
     by (metis IO.simps(6) IO.simps(8) cin.rep_eq converse_rtranclpE rtranclp.rtrancl_refl step_choicesE wbisim_sym)
   subgoal
@@ -1482,8 +1482,8 @@ lemma wbisim_comp_op_cong:
                  apply assumption
                 apply (rule relcomppI)
                  apply (rule step_comp_op_L_Inp)
-                 apply (rule Read_in_choices_step)
-                 apply simp_all
+                   apply (rule Read_in_choices_step)
+                   apply simp_all
                 apply blast
                 done
               done
@@ -1507,9 +1507,9 @@ lemma wbisim_comp_op_cong:
                  apply assumption
                 apply (rule relcomppI)
                  apply (rule step_comp_op_L_Out)
-                  apply (rule Write_in_choices_step)
-                  apply simp
-                 apply blast+
+                    apply (rule Write_in_choices_step)
+                    apply simp
+                   apply blast+
                 done
               done
             subgoal for q
@@ -1527,7 +1527,7 @@ lemma wbisim_comp_op_cong:
                  apply assumption
                 apply (rule converse_rtranclp_into_rtranclp)
                  apply (rule step_Tau_comp_op_L)
-                  apply simp_all
+                   apply simp_all
                  apply (rule Write_in_choices_step)
                  apply simp
                 apply blast
@@ -1574,9 +1574,9 @@ lemma wbisim_comp_op_cong:
                apply assumption
               apply (rule relcomppI)
                apply (rule step_comp_op_R_Inp)
-                apply (rule Read_in_choices_step)
-                apply simp
-               apply blast+
+                  apply (rule Read_in_choices_step)
+                  apply simp
+                 apply blast+
               done
             done
           subgoal for p f
@@ -1614,9 +1614,9 @@ lemma wbisim_comp_op_cong:
                  apply assumption
                 apply (rule relcomppI)
                  apply (rule step_comp_op_R_Inp)
-                  apply (rule Read_in_choices_step)
-                  apply simp
-                 apply blast+
+                    apply (rule Read_in_choices_step)
+                    apply simp
+                   apply blast+
                 done
               done
             done
@@ -1688,8 +1688,8 @@ lemma wbisim_comp_op_cong:
                  apply assumption
                 apply (rule relcomppI)
                  apply (rule step_comp_op_L_Inp)
-                 apply (rule Read_in_choices_step)
-                 apply simp_all
+                   apply (rule Read_in_choices_step)
+                   apply simp_all
                 apply blast
                 done
               done
@@ -1714,9 +1714,9 @@ lemma wbisim_comp_op_cong:
                  apply assumption
                 apply (rule relcomppI)
                  apply (rule step_comp_op_L_Out)
-                  apply (rule Write_in_choices_step)
-                  apply simp
-                 apply blast+
+                    apply (rule Write_in_choices_step)
+                    apply simp
+                   apply blast+
                 done
               done
             subgoal for q
@@ -1736,7 +1736,7 @@ lemma wbisim_comp_op_cong:
                  apply assumption
                 apply (rule converse_rtranclp_into_rtranclp)
                  apply (rule step_Tau_comp_op_L)
-                  apply simp_all
+                   apply simp_all
                  apply (rule Write_in_choices_step)
                  apply simp
                 apply blast
@@ -1838,11 +1838,11 @@ lemma wbisim_comp_op_cong:
             apply rotate_tac
             apply (drule wbisim_sym)
             apply (drule wbisim_choices_Silent[of op2'])
-            apply auto
+             apply auto
             subgoal for op'''' op'' op'''
               apply (rule exI[of _ "comp_op wire buf op1 op''''"])
               apply (intro conjI[rotated])
-              apply (metis (mono_tags, lifting) wbc_base wbisim_sym)
+               apply (metis (mono_tags, lifting) wbc_base wbisim_sym)
               apply (meson Silent_in_choices_step cin.rep_eq rtranclp.rtrancl_into_rtrancl rtranclp_trans step_comp_op_R_Tau_start)
               done
             subgoal
@@ -2578,17 +2578,238 @@ lemma step_double_loop_2:
       done
     done *)
 
-subsection \<open>Congruence for strong bisim\<close>
+  subsection \<open>Congruence for strong bisim\<close>
 lemma bisim_scomp_op_cong:
   "op ~ op' \<Longrightarrow>
    op\<up> ~ op'\<up>"
   oops
 
-subsection \<open>Congruence for weak bisim\<close>
+  subsection \<open>Congruence for weak bisim\<close>
 lemma wbisim_scomp_op_cong:
   "op \<approx> op' \<Longrightarrow>
    op\<up> \<approx> op'\<up>"
   oops
+
+  subsection \<open>Inputs of loop_op\<close>
+
+lemma inputs_loop_op:
+  "sub_op (Read p f) (loop_op wire buf op) n \<Longrightarrow> p \<in> (inputs op - ran wire)"
+proof (induct p \<open>loop_op wire buf op\<close> arbitrary: buf op rule: sub_op_Read_induct)
+  case (Read1 f p)
+  then show ?case by (auto simp add: loop_op.code)
+next
+  case (Read2 p p' f x d g)
+  then show ?case by (auto simp add: loop_op.code)
+next
+  case (Write p p' op' x d g)
+  then show ?case by (auto simp add: loop_op.code)
+next
+  case (Silent p op' d)
+  then show ?case by (auto simp add: loop_op.code)
+next
+  case (Choice p ops d g)
+  then show ?case 
+    apply -
+    apply (subst (asm) (2) loop_op.code)
+    apply auto
+    subgoal for op
+      apply (cases op)
+         apply (auto simp add: Read_choices_inputs split: if_splits option.splits)
+      subgoal for _  _ n
+        apply hypsubst_thin
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+        apply (auto del: disjCI)
+        apply (meson cin.rep_eq inputs_after_choices inputs_sub_op_Read sub_op_Read sub_op_Read_inputs)
+        done
+      subgoal for _ _ _ n
+        apply hypsubst_thin
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+        apply (auto del: disjCI)
+        apply (meson cin.rep_eq inputs_after_choices inputs_sub_op_Read sub_op_Read sub_op_Read_inputs)
+        done
+      subgoal for _ _ _ n
+        apply hypsubst_thin
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+        apply (auto del: disjCI)
+        apply (simp add: inputs_after_choices)
+        done
+      subgoal for _ _ _ _ n
+        apply hypsubst_thin
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+        apply (auto del: disjCI)
+        apply (simp add: inputs_after_choices)
+        done
+      subgoal for _ n
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+        apply (auto del: disjCI)
+        apply (simp add: inputs_after_choices)
+        done
+      done
+    subgoal for op
+      apply hypsubst_thin
+      apply (cases op)
+         apply (auto simp add: Read_choices_inputs split: if_splits option.splits; force?)+
+      done
+    done
+qed
+
+lemma inputs_loop_op_le:
+  "inputs (loop_op wire buf op) \<subseteq> (inputs op - ran wire)"
+  using inputs_loop_op by (metis inputs_sub_op_Read subsetI) 
+
+
+subsection \<open>Outputs of loop_op\<close>
+
+lemma outputs_loop_op:
+  "sub_op (Write op' p x) (loop_op wire buf op) n \<Longrightarrow> p \<in> (outputs op - dom wire)"
+proof (induct p \<open>loop_op wire buf op\<close> arbitrary: buf op rule: sub_op_Write_induct)
+  case (Read p p' f x op2 y d)
+  then show ?case by (auto simp add: loop_op.code)
+next
+  case (Write1 p p' op' x op2 y d)
+  then show ?case by (auto simp add: loop_op.code)
+next
+  case (Silent p op' op2 y d)
+  then show ?case by (auto simp add: loop_op.code)
+next
+  case (Choice p op2 y d ops)
+  then show ?case 
+    apply -
+    apply -
+    apply (subst (asm) (2) loop_op.code)
+    apply auto
+    subgoal for op
+      apply (cases op)
+         apply (auto simp add: Write_choices_outputs outputs_after_choices split: if_splits option.splits)
+      subgoal for _  _ n
+        apply hypsubst_thin
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+        apply (auto del: disjCI)
+        apply (meson cin.rep_eq outputs_after_choices outputs_sub_op_Write sub_op_Read sub_op_Write_outputs)
+        done
+      subgoal for _ _ _ n
+        apply hypsubst_thin
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+        apply (auto del: disjCI)
+        apply (meson cin.rep_eq outputs_after_choices outputs_sub_op_Write sub_op_Read sub_op_Write_outputs)
+        done
+      subgoal for _ _ _ n
+        apply hypsubst_thin
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+        apply (auto del: disjCI)
+        apply (simp add: outputs_after_choices)
+        done
+      subgoal for _ _ _ _ n
+        apply hypsubst_thin
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+        apply (auto del: disjCI)
+        apply (simp add: outputs_after_choices)
+        done
+      subgoal for _  n
+        apply hypsubst_thin
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+        apply (auto del: disjCI)
+        apply (simp add: outputs_after_choices)
+        done
+      done
+    subgoal for op
+      apply (cases op)
+         apply (auto simp add: Write_choices_outputs outputs_after_choices split: if_splits option.splits)
+      subgoal for _ _ n
+        apply hypsubst_thin
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+        apply (auto del: disjCI)
+        done
+      subgoal for _ _ _ n
+        apply hypsubst_thin
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+        apply (auto del: disjCI)
+        done
+      subgoal for _ _ _ n
+        apply hypsubst_thin
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+        apply (auto del: disjCI)
+        done
+      subgoal for _ _ _ _ n
+        apply hypsubst_thin
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+        apply (auto del: disjCI)
+        done
+      subgoal for _ n
+        apply hypsubst_thin
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+        apply (auto del: disjCI)
+        done
+      done
+    done
+next
+  case (Write2 p op' x)
+  then show ?case by (auto simp add: loop_op.code)
+qed
+
+lemma outputs_loop_op_le:
+  "outputs (loop_op wire buf op) \<subseteq> (outputs op - dom wire)"
+  using outputs_loop_op by (metis outputs_sub_op_Write subsetI) 
 
 section \<open>spin_op/end_op/silent_op/I_0\<close>
   \<comment> \<open>spin_op/end_op is I_0 in the BNA book\<close>
@@ -2669,7 +2890,7 @@ lemma spin_op_end_op:
   by (simp add: choices_Choice_bisim)
 
 section \<open>id_op/\<I>/I_m\<close>
-\<comment> \<open>id_op is I_m in the BNA paper\<close>
+  \<comment> \<open>id_op is I_m in the BNA paper\<close>
 
 datatype (discs_sels) ('m, 'd) id_op_aux =
   id_Read_aux "'m" "'d \<Rightarrow> ('m \<Rightarrow> 'd buf)"
@@ -2732,7 +2953,7 @@ lemma no_step_id_op_Tau[elim]:
   obtains False
   apply atomize_elim
   using assms
-    apply (induct io \<open>id_op buf\<close> op arbitrary: buf rule: step.induct)
+  apply (induct io \<open>id_op buf\<close> op arbitrary: buf rule: step.induct)
      apply simp_all
    apply (subst (asm) id_op_code)
    apply simp
@@ -2826,7 +3047,7 @@ lemma step_Out_loop_op[intro!]:
     apply hypsubst_thin
     apply (rule SC)
      apply (rule cimage_eqI[of _  _ "Write _ _ _"])
-     apply (auto simp add: ran_def split: sum.splits)
+      apply (auto simp add: ran_def split: sum.splits)
     done
   done
 
@@ -2842,7 +3063,7 @@ lemma step_Out_Tau_loop_op[intro]:
     apply hypsubst_thin
     apply (rule SC)
      apply (rule cimage_eqI[of _  _ "Write _ _ _"])
-     apply (auto simp add: ran_def split: sum.splits)
+      apply (auto simp add: ran_def split: sum.splits)
     done
   done
 
@@ -2856,7 +3077,7 @@ lemma step_Tau_loop_op[intro]:
   subgoal
     apply (rule SC)
      apply (rule cimage_eqI[of _  _ "Silent _"])
-     apply (auto simp add: ran_def split: sum.splits)
+      apply (auto simp add: ran_def split: sum.splits)
     done
   done
 
@@ -2899,28 +3120,28 @@ lemma R5:
         apply hypsubst_thin
         apply (intro exI conjI[rotated])
          apply (rule wbc_base)
-        apply simp_all
+         apply simp_all
         done
       subgoal
         apply hypsubst_thin
         apply (intro exI conjI[rotated])
          apply (rule wbc_base)
-        apply (simp_all add: defaults_unit_def)
+         apply (simp_all add: defaults_unit_def)
         done
       subgoal
         apply hypsubst_thin
         apply (intro exI conjI[rotated])
          apply (rule wbc_base)
-        apply fastforce+
+         apply fastforce+
         done
       subgoal
         apply hypsubst_thin
         apply (intro exI conjI[rotated])
          apply (rule wbc_base)
-        apply force+
-      done
-    done 
-  done
+         apply force+
+        done
+      done 
+    done
   subgoal for op io op1'
     apply (drule step_map_op_inv)
     apply auto
@@ -2985,11 +3206,11 @@ lemma R5:
 
 (* F1 *)
 lemma F1:
-   "(\<I> :: (unit + 'a :: {countable, defaults}, unit + 'a :: {countable, defaults}, 'c) op)\<up> ~ \<I>"
+  "(\<I> :: (unit + 'a :: {countable, defaults}, unit + 'a :: {countable, defaults}, 'c) op)\<up> ~ \<I>"
   oops
 
-section \<open>User defined operators\<close>
-(* abbreviation buffered ("\<stileturn> _ \<turnstile>" [150]151) where
+  section \<open>User defined operators\<close>
+    (* abbreviation buffered ("\<stileturn> _ \<turnstile>" [150]151) where
   "\<stileturn>op\<turnstile> \<equiv> \<I> \<bullet> op \<bullet> \<I>" *)
 
 abbreviation post_buffered ("_ \<turnstile>" [150]151) where
@@ -3102,7 +3323,7 @@ corec transp_op :: "_ \<Rightarrow> ('m :: {countable, defaults} + 'n :: {counta
 
 
 lemma transp_op_code:
-   "transp_op buf = Choice (cUn 
+  "transp_op buf = Choice (cUn 
     (cimage (\<lambda> p. Read p (\<lambda> x. transp_op (BENQ p x buf))) (cUNIV :: ('m :: {countable, defaults} + 'n :: {countable, defaults}) cset)) 
     (cimage (\<lambda> p. Write (transp_op (BTL p buf)) (case_sum Inr Inl p) (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUNIV :: ('m + 'n) cset))))"
   apply (subst transp_op.code)
@@ -3133,9 +3354,9 @@ lemma step_transp_op_Out:
     and \<open>io = Out p x\<close>
     and \<open>p' = case_sum Inr Inl p\<close>
   obtains \<open>op = transp_op (BTL p' buf)\<close>
-          \<open>BHD p' buf = x\<close>
-          \<open>buf p' \<noteq> []\<close>
-          \<open>p' \<notin> defaults\<close>
+    \<open>BHD p' buf = x\<close>
+    \<open>buf p' \<noteq> []\<close>
+    \<open>p' \<notin> defaults\<close>
   apply atomize_elim
   using assms
   apply (induct io \<open>transp_op buf\<close> op arbitrary: buf rule: step.induct)
@@ -3144,7 +3365,7 @@ lemma step_transp_op_Out:
    apply simp
   apply (subst (asm) (3) transp_op_code)
   apply (simp add: Set.filter_def split: sum.splits)
-  apply (smt (z3) IO.inject(2) IO.simps(4) Inl_inject Un_iff defaults_sum_def image_iff mem_Collect_eq stepReadE stepWriteE sum.case_eq_if sum.collapse(2) sum.simps(4))
+   apply (smt (z3) IO.inject(2) IO.simps(4) Inl_inject Un_iff defaults_sum_def image_iff mem_Collect_eq stepReadE stepWriteE sum.case_eq_if sum.collapse(2) sum.simps(4))
   apply (smt (z3) IO.inject(2) IO.simps(4) UnI1 defaults_sum_def image_iff isl_def mem_Collect_eq stepReadE stepWriteE sum.case_eq_if sum.sel(1) sum.sel(2) sum.simps(4))
   done
 
@@ -3155,9 +3376,9 @@ lemma no_step_transp_op_Tau:
   apply atomize_elim
   using assms
   apply (induct io \<open>transp_op buf\<close> op arbitrary: buf rule: step.induct)
-     apply simp_all
-   apply (subst (asm) transp_op_code)
-   apply simp
+  apply simp_all
+  apply (subst (asm) transp_op_code)
+  apply simp
   apply (subst (asm) (2) transp_op_code)
   apply auto
   done
@@ -3167,7 +3388,7 @@ lemma step_transp_op_cases:
   assumes \<open>step io (transp_op buf) op\<close>
   obtains p x where  \<open>io = Inp p x\<close> \<open>p \<notin> defaults\<close> \<open>op = transp_op (BENQ p x buf)\<close> 
   |       p x p' where \<open>io = Out p x\<close> \<open>p' = case_sum Inr Inl p\<close> \<open>p' \<notin> defaults\<close> \<open>p \<notin> defaults\<close> \<open>op = transp_op (BTL p' buf)\<close>
-                       \<open>BHD p' buf = x\<close> \<open>buf p' \<noteq> []\<close>
+    \<open>BHD p' buf = x\<close> \<open>buf p' \<noteq> []\<close>
   apply atomize_elim
   using assms
   apply (rule step_choicesE)
