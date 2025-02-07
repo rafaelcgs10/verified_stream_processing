@@ -2614,16 +2614,300 @@ no_notation id_empty_op ("\<I>")
 abbreviation id_empty_operator ("\<I>") where
   "\<I> \<equiv> id_operator (\<lambda> _. [])"
 
+no_notation wbisim (infix "\<approx>"40)
 
 lift_definition wbisim_operator :: "('a :: defaults, 'b :: defaults, 'c) operator \<Rightarrow> ('a, 'b, 'c) operator \<Rightarrow> bool" is wbisim.
 
-lemma loop_op_scomp_commute:
-  "wbisim_operator (op2 \<bullet> (op1\<up>)) (((op2 \<parallel> \<I>) \<bullet> op1)\<up>)"
-  unfolding pcomp_operator_def scomp_operator_def feedback_op_def
+abbreviation wbisim_operator' (infix "\<approx>"40) where
+  "wbisim_operator' \<equiv> wbisim_operator"
+
+lemma loop_operator_scomp_commute:
+  "(op2 \<bullet> (op1\<up>)) \<approx> ((op2 \<parallel> \<I>) \<bullet> op1)\<up>"
+  unfolding pcomp_operator_def scomp_operator_def feedback_operator_def
   apply transfer
-  using loop_op_scomp_commute [unfolded scomp_op_def feedback_op_def pcomp_op_def]
-  inputs_comp_op_le[unfolded subset_eq, simplified] outputs_comp_op_le[unfolded subset_eq, simplified]
+  apply (simp split: if_splits)
+  apply (intro impI conjI)
+  subgoal
+    by (auto intro!: loop_op_scomp_commute [unfolded scomp_op_def feedback_op_def pcomp_op_def])
+  subgoal
+    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
+  subgoal
+    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
+  subgoal
+    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
+  subgoal
+    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
+  subgoal
+    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
+  subgoal
+    apply (auto 2 2 simp add: op.set_map ran_def disjoint_iff_not_equal dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
+     apply (metis (no_types, lifting) Inl_in_defaults Inr_in_defaults disjoint_iff_not_equal sum.exhaust_sel)+
+    done
+  subgoal
+    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
+  subgoal
+    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
+  subgoal
+    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
+  subgoal
+    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
+  subgoal
+    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
+  done
+
+
+
+
+
+
+
+end
+    subgoal for x
+      apply (cases x)
+      apply (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
+      done
+    subgoal for x
+      apply (cases x)
+      apply (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
+      done
+
+
+end
+      apply (fastforce simp add: op.set_map ran_def dest!: set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)[1]
+      done
+
+
+
+end
+
+       apply auto
+      subgoal for lp
+        apply hypsubst_thin
+        using inputs_loop_op_le[unfolded subset_eq, simplified] apply -
+        apply (drule meta_spec)+
+        apply (drule bspec[of _ _ "Inl lp"])
+         apply assumption
+        apply (auto simp add: op.set_map)
+        subgoal for p
+          apply (cases p)
+          subgoal for lp
+            by auto
+          subgoal for rp
+            apply (auto simp add: op.set_map)
+            apply hypsubst_thin
+            using inputs_comp_op_le[unfolded subset_eq, simplified] apply -
+            apply (drule meta_spec)+
+            apply (drule bspec[of _ _ "Inr rp"])
+             apply assumption
+            apply (auto simp add: op.set_map)
+            done
+          done
+        done
+      subgoal for rp
+        apply hypsubst_thin
+        using inputs_loop_op_le[unfolded subset_eq, simplified] apply -
+        apply (drule meta_spec)+
+        apply (drule bspec[of _ _ "Inr rp"])
+         apply assumption
+        apply (auto simp add: op.set_map)
+        subgoal for p
+          apply (cases p)
+          subgoal for lp
+            apply (auto simp add: op.set_map)
+            apply hypsubst_thin
+            using inputs_comp_op_le[unfolded subset_eq, simplified] apply -
+            apply (drule meta_spec)+
+            apply (drule bspec[of _ _ "Inl (Inr rp)"])
+             apply assumption
+            apply (auto simp add: op.set_map)
+            using inputs_comp_op_le[unfolded subset_eq, simplified] apply -
+            apply (drule meta_spec)+
+            apply (drule bspec[of _ _ "Inr rp"])
+             apply assumption
+            apply (auto simp add: op.set_map)
+            apply (metis (mono_tags, lifting) old.sum.simps(6) ranI)
+            done
+          subgoal for rp
+            apply hypsubst_thin
+            using inputs_comp_op_le[unfolded subset_eq, simplified] apply -
+            apply (drule meta_spec)+
+            apply (drule bspec[of _ _ "Inr rp"])
+             apply assumption
+            apply (auto simp add: op.set_map)
+            done
+          done
+        done
+      done
+    subgoal for x
+      apply (cases x)
+       apply auto
+      subgoal for lp
+        apply hypsubst_thin
+        using outputs_loop_op_le[unfolded subset_eq, simplified] apply -
+        apply (drule meta_spec)+
+        apply (drule bspec[of _ _ "Inl lp"])
+         apply assumption
+        apply (auto simp add: op.set_map)
+        subgoal for p
+          apply (cases p)
+           defer
+          subgoal for lp
+            by auto
+          subgoal for rp
+            apply (auto simp add: op.set_map)
+            apply hypsubst_thin
+            using outputs_comp_op_le[unfolded subset_eq, simplified] apply -
+            apply (drule meta_spec)+
+            apply (drule bspec[of _ _ "Inl rp"])
+             apply assumption
+            apply (auto simp add: op.set_map)
+            done
+          done
+        done
+      subgoal for rp
+        apply hypsubst_thin
+        using outputs_loop_op_le[unfolded subset_eq, simplified] apply -
+        apply (drule meta_spec)+
+        apply (drule bspec[of _ _ "Inr rp"])
+         apply assumption
+        apply (auto simp add: op.set_map)
+        subgoal for p
+          apply (cases p)
+          subgoal for lp
+            apply (auto simp add: op.set_map split: sum.splits)
+            done
+          subgoal for rp
+            apply hypsubst_thin
+            apply (auto simp add: op.set_map split: sum.splits)
+            done
+          done
+        done
+      done
+    done
   
+
+end
+
+
+
+  donemp_commute:
+  "wbisim_operator (op2 \<bullet> (op1\<up>)) (((op2 \<parallel> \<I>) \<bullet> op1)\<up>)"
+  unfolding pcomp_operator_def scomp_operator_def feedback_operator_def
+  apply transfer
+  apply (simp split: if_splits)
+  apply (intro impI conjI)
+  subgoal
+    by (auto intro!: loop_op_scomp_commute [unfolded scomp_op_def feedback_op_def pcomp_op_def])
+  subgoal for op2 op1
+    apply auto
+    subgoal for x
+      apply (cases x)
+       apply auto
+      subgoal for lp
+        apply hypsubst_thin
+        using inputs_loop_op_le[unfolded subset_eq, simplified] apply -
+        apply (drule meta_spec)+
+        apply (drule bspec[of _ _ "Inl lp"])
+         apply assumption
+        apply (auto simp add: op.set_map)
+        subgoal for p
+          apply (cases p)
+          subgoal for lp
+            by auto
+          subgoal for rp
+            apply (auto simp add: op.set_map)
+            apply hypsubst_thin
+            using inputs_comp_op_le[unfolded subset_eq, simplified] apply -
+            apply (drule meta_spec)+
+            apply (drule bspec[of _ _ "Inr rp"])
+             apply assumption
+            apply (auto simp add: op.set_map)
+            done
+          done
+        done
+      subgoal for rp
+        apply hypsubst_thin
+        using inputs_loop_op_le[unfolded subset_eq, simplified] apply -
+        apply (drule meta_spec)+
+        apply (drule bspec[of _ _ "Inr rp"])
+         apply assumption
+        apply (auto simp add: op.set_map)
+        subgoal for p
+          apply (cases p)
+          subgoal for lp
+            apply (auto simp add: op.set_map)
+            apply hypsubst_thin
+            using inputs_comp_op_le[unfolded subset_eq, simplified] apply -
+            apply (drule meta_spec)+
+            apply (drule bspec[of _ _ "Inl (Inr rp)"])
+             apply assumption
+            apply (auto simp add: op.set_map)
+            using inputs_comp_op_le[unfolded subset_eq, simplified] apply -
+            apply (drule meta_spec)+
+            apply (drule bspec[of _ _ "Inr rp"])
+             apply assumption
+            apply (auto simp add: op.set_map)
+            apply (metis (mono_tags, lifting) old.sum.simps(6) ranI)
+            done
+          subgoal for rp
+            apply hypsubst_thin
+            using inputs_comp_op_le[unfolded subset_eq, simplified] apply -
+            apply (drule meta_spec)+
+            apply (drule bspec[of _ _ "Inr rp"])
+             apply assumption
+            apply (auto simp add: op.set_map)
+            done
+          done
+        done
+      done
+    subgoal for x
+      apply (cases x)
+       apply auto
+      subgoal for lp
+        apply hypsubst_thin
+        using outputs_loop_op_le[unfolded subset_eq, simplified] apply -
+        apply (drule meta_spec)+
+        apply (drule bspec[of _ _ "Inl lp"])
+         apply assumption
+        apply (auto simp add: op.set_map)
+        subgoal for p
+          apply (cases p)
+           defer
+          subgoal for lp
+            by auto
+          subgoal for rp
+            apply (auto simp add: op.set_map)
+            apply hypsubst_thin
+            using outputs_comp_op_le[unfolded subset_eq, simplified] apply -
+            apply (drule meta_spec)+
+            apply (drule bspec[of _ _ "Inl rp"])
+             apply assumption
+            apply (auto simp add: op.set_map)
+            done
+          done
+        done
+      subgoal for rp
+        apply hypsubst_thin
+        using outputs_loop_op_le[unfolded subset_eq, simplified] apply -
+        apply (drule meta_spec)+
+        apply (drule bspec[of _ _ "Inr rp"])
+         apply assumption
+        apply (auto simp add: op.set_map)
+        subgoal for p
+          apply (cases p)
+          subgoal for lp
+            apply (auto simp add: op.set_map split: sum.splits)
+            done
+          subgoal for rp
+            apply hypsubst_thin
+            apply (auto simp add: op.set_map split: sum.splits)
+            done
+          done
+        done
+      done
+    done
+  
+
 
 end
 
