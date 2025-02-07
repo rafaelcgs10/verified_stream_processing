@@ -284,7 +284,7 @@ proof (induct d arbitrary: op p rule: less_induct)
     by (induct op m pred: sub_op) (auto intro!: assms)
 qed
 
-lemma sub_op_Write_induct [consumes 1, case_names Read Write1 Choice Write2]:
+lemma sub_op_Write_induct [consumes 1, case_names Read Write1 Silent Choice Write2]:
   assumes \<open>sub_op (Write op2 p y) op d\<close>
     and \<open>\<And>p p' f x op2 y d. sub_op (Write op2 p y) (f x) d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Read p' f)\<close>
     and \<open>\<And>p p' op' x op2 y d. sub_op (Write op2 p y) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Write op' p' x)\<close>

@@ -331,9 +331,145 @@ lemma outputs_after_choices:
   unfolding choices_def
   by (meson cUN_E outputs_after_choices_at)
 
+lemma outputs_comp_op:
+  "sub_op (Write op' p y) (comp_op wire buf op1 op2) d \<Longrightarrow> p \<in> Inl ` (outputs op1 - dom wire) \<union> Inr ` outputs op2"
+proof (induct p \<open>comp_op wire buf op1 op2\<close> arbitrary: buf op1 op2 rule: sub_op_Write_induct)
+  case (Read p p' f x op2 y d)
+  then show ?case by (auto simp add: comp_op_code)
+next
+  case (Write1 p p' op' x op2 y d)
+  then show ?case by (auto simp add: comp_op_code)
+next
+  case (Silent p op' op2 y d)
+  then show ?case by (auto simp add: comp_op_code)
+next
+  case (Choice p op2 y d ops)
+  then show ?case 
+    apply -
+    apply -
+    apply (auto del: disjCI)
+    apply (subst (asm) (2) comp_op_code)
+    apply (auto del: disjCI)
+    subgoal for op
+      apply (cases op)
+         apply (auto del: disjCI split: option.splits; hypsubst_thin?)
+      subgoal for p f x n
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+        apply (auto del: disjCI)
+        apply hypsubst_thin
+        using domIff outputs_after_choices apply fastforce
+        done
+      subgoal for op p x
+        apply hypsubst_thin
+        apply (auto del: disjCI split: option.splits; hypsubst_thin?)
+        subgoal
+          by (simp add: domIff outputs_after_choices)
+        subgoal for n
+          apply (drule meta_spec[of _ n])
+          apply (drule meta_spec)+
+          apply simp
+          apply (drule meta_mp)
+           apply assumption
+          apply (auto del: disjCI)
+          apply hypsubst_thin
+          using domIff outputs_after_choices apply fastforce
+          done
+        subgoal for _ n
+          apply (drule meta_spec[of _ n])
+          apply (drule meta_spec)+
+          apply simp
+          apply (drule meta_mp)
+           apply assumption
+          apply (auto del: disjCI)
+          apply hypsubst_thin
+          using domIff outputs_after_choices apply fastforce
+          done
+        done
+      subgoal for op
+        by auto
+      subgoal for p
+        apply hypsubst_thin
+        apply auto
+        subgoal for n
+          apply (drule meta_spec[of _ n])
+          apply (drule meta_spec)+
+          apply simp
+          apply (drule meta_mp)
+           apply assumption
+          apply (auto del: disjCI)
+          apply hypsubst_thin
+          using domIff outputs_after_choices apply fastforce
+          done
+        done
+      done
+    subgoal for op
+      apply hypsubst_thin
+      apply (cases op)
+         apply (auto del: disjCI split: if_splits option.splits; hypsubst_thin?)
+      subgoal for _ _ n
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+        apply (auto del: disjCI)
+        apply hypsubst_thin
+        using domIff outputs_after_choices apply fastforce
+        done
+      subgoal for _ _ _ n
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+        apply (auto del: disjCI)
+        apply hypsubst_thin
+        using domIff outputs_after_choices apply fastforce
+        done
+      subgoal 
+        apply auto
+        subgoal
+          by (simp add: outputs_after_choices)
+        subgoal for n
+          apply (drule meta_spec[of _ n])
+          apply (drule meta_spec)+
+          apply simp
+          apply (drule meta_mp)
+           apply assumption
+          apply (auto del: disjCI)
+          apply hypsubst_thin
+          using domIff outputs_after_choices apply fastforce
+          done
+        done
+      subgoal 
+        by auto
+      subgoal
+        apply auto
+        subgoal for n
+          apply (drule meta_spec[of _ n])
+          apply (drule meta_spec)+
+          apply simp
+          apply (drule meta_mp)
+           apply assumption
+          apply (auto del: disjCI)
+          apply hypsubst_thin
+          using domIff outputs_after_choices apply fastforce
+          done
+        done
+      done
+    done
+next
+  case (Write2 p op' x)
+  then show ?case by (auto simp add: comp_op_code)
+qed
 
-
-end
+lemma outputs_comp_op_le:
+  "outputs (comp_op wire buf op1 op2) \<subseteq> Inl ` (outputs op1 - dom wire) \<union> Inr ` outputs op2"
+  using outputs_comp_op by (metis outputs_sub_op_Write subsetI)
 
 subsection \<open>Properties of the (general) composition\<close>
 
