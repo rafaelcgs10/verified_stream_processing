@@ -122,8 +122,9 @@ lemma comp_op_is_choice[simp]:
   "is_Choice (comp_op wire buf op1 op2)"
   by (subst comp_op_code, simp)
 
-section\<open>Inputs of comp_op\<close>
+subsection \<open>Inputs of comp_op\<close>
 
+(* FIXME: move me *)
 lemma choices_at_sub_op:
   "op |\<in>| (choices_at n op') \<Longrightarrow> \<exists> m \<le> n. sub_op op op' m"
   apply (induct n arbitrary: op op')
@@ -158,6 +159,7 @@ lemma inputs_after_choices_at:
     done
   done
 
+(* FIXME: move me *)
 lemma inputs_after_choices:
   "op' |\<in>| (choices op) \<Longrightarrow> p' \<in> inputs op' \<Longrightarrow> p' \<in> inputs op"
   unfolding choices_def
@@ -203,85 +205,132 @@ next
         done
       subgoal for op1' p' x'
         apply hypsubst_thin
-         apply (auto del: disjCI split: option.splits; hypsubst_thin?)
+        apply (auto del: disjCI split: option.splits; hypsubst_thin?)
         subgoal for n
           apply (drule meta_spec[of _ n])
-        apply (drule meta_spec)+
-        apply simp
-        apply (drule meta_mp)
-         apply assumption
+          apply (drule meta_spec)+
+          apply simp
+          apply (drule meta_mp)
+           apply assumption
           apply (auto del: disjCI)
-        apply hypsubst_thin
+          apply hypsubst_thin
           apply (simp add: inputs_after_choices)
           done
         subgoal for p' n
           apply (drule meta_spec[of _ n])
-        apply (drule meta_spec)+
-        apply simp
-        apply (drule meta_mp)
-         apply assumption
+          apply (drule meta_spec)+
+          apply simp
+          apply (drule meta_mp)
+           apply assumption
           apply (auto del: disjCI)
           apply hypsubst_thin
-              apply (simp add: inputs_after_choices)
+          apply (simp add: inputs_after_choices)
           done
         done
       subgoal 
-         by (auto del: disjCI split: option.splits)
-       subgoal for ops
-         apply (auto del: disjCI split: option.splits; hypsubst_thin?)
-         subgoal for n
+        by (auto del: disjCI split: option.splits)
+      subgoal for ops
+        apply (auto del: disjCI split: option.splits; hypsubst_thin?)
+        subgoal for n
           apply (drule meta_spec[of _ n])
-        apply (drule meta_spec)+
-        apply simp
-        apply (drule meta_mp)
-         apply assumption
+          apply (drule meta_spec)+
+          apply simp
+          apply (drule meta_mp)
+           apply assumption
           apply (auto del: disjCI)
           apply hypsubst_thin
-           apply (simp add: inputs_after_choices)
-           done
-         done
-       done
-     subgoal for op
+          apply (simp add: inputs_after_choices)
+          done
+        done
+      done
+    subgoal for op
       apply (cases op)
-          apply (auto simp add: Read_choices_inputs del: disjCI split: option.splits if_splits; hypsubst_thin?)
-       subgoal for p' x n
-          apply (drule meta_spec[of _ n])
+         apply (auto simp add: Read_choices_inputs del: disjCI split: option.splits if_splits; hypsubst_thin?)
+      subgoal for p' x n
+        apply (drule meta_spec[of _ n])
         apply (drule meta_spec)+
         apply simp
         apply (drule meta_mp)
          apply assumption
-          apply (auto del: disjCI)
-         apply hypsubst_thin
-         apply (meson DiffI cin.rep_eq image_eqI inputs_after_choices inputs_sub_op_Read sub_op_Read sub_op_Read_inputs)
-         done
-       subgoal for p f x n
-          apply (drule meta_spec[of _ n])
+        apply (auto del: disjCI)
+        apply hypsubst_thin
+        apply (meson DiffI cin.rep_eq image_eqI inputs_after_choices inputs_sub_op_Read sub_op_Read sub_op_Read_inputs)
+        done
+      subgoal for p f x n
+        apply (drule meta_spec[of _ n])
         apply (drule meta_spec)+
         apply simp
         apply (drule meta_mp)
          apply assumption
-          apply (auto del: disjCI)
-         apply hypsubst_thin
-         apply (meson DiffI cin.rep_eq imageI inputs_after_choices inputs_sub_op_Read sub_op_Read sub_op_Read_inputs)
-         done
-       subgoal for p x n
-          apply (drule meta_spec[of _ n])
-        apply (drule meta_spec)+
+        apply (auto del: disjCI)
+        apply hypsubst_thin
+        apply (meson DiffI cin.rep_eq imageI inputs_after_choices inputs_sub_op_Read sub_op_Read sub_op_Read_inputs)
+        done
+      subgoal
+        apply hypsubst_thin
         apply simp
-        apply (drule meta_mp)
-         apply assumption
+        apply (auto del: disjCI)
+        subgoal for n
+          apply (drule meta_spec[of _ n])
+          apply (drule meta_spec)+
+          apply simp
+          apply (drule meta_mp)
+           apply assumption
           apply (auto del: disjCI)
-         apply hypsubst_thin
-
-
+          apply hypsubst_thin
+          apply (simp add: inputs_after_choices)
+          done
+        done
+      subgoal
+        by (auto del: disjCI)
+      subgoal
+        apply hypsubst_thin
+        apply simp
+        apply (auto del: disjCI)
+        subgoal for n
+          apply (drule meta_spec[of _ n])
+          apply (drule meta_spec)+
+          apply simp
+          apply (drule meta_mp)
+           apply assumption
+          apply (auto del: disjCI)
+          apply hypsubst_thin
+          apply (simp add: inputs_after_choices)
+          done
+        done
+      done
+    done
 qed
-
-
-
 
 lemma inputs_comp_op_le:
   "inputs (comp_op wire buf op1 op2) \<subseteq> Inl ` inputs op1 \<union> Inr ` (inputs op2 - ran wire)"
   using inputs_comp_op by (metis inputs_sub_op_Read subsetI)
+
+subsection \<open>Outputs of comp_op\<close>
+
+lemma Write_choices_inputs:
+  "Write op p x |\<in>| choices op \<Longrightarrow> p \<in> outputs op"
+  using choices_sub_op by blast
+
+lemma outputs_after_choices_at:
+  "p' \<in> outputs op' \<Longrightarrow> op' |\<in>| choices_at n op \<Longrightarrow> p' \<in> outputs op"
+  apply (induct n arbitrary: op)
+  subgoal for op
+    apply (cases op)
+       apply auto
+    done
+  subgoal for n op
+    apply (cases op)
+       apply auto
+    done
+  done
+
+(* FIXME: move me *)
+lemma outputs_after_choices:
+  "op' |\<in>| (choices op) \<Longrightarrow> p' \<in> outputs op' \<Longrightarrow> p' \<in> outputs op"
+  unfolding choices_def
+  by (meson cUN_E outputs_after_choices_at)
+
 
 
 end
