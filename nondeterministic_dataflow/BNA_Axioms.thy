@@ -2539,18 +2539,68 @@ lemma Inl_notin_ran_feedback_wire[simp]:
   by (auto simp add: ran_def  split: sum.splits if_splits)
 term scomp_op
 
-(* no_notation scomp_op (infixl "\<bullet>" 65)
-
-definition scomp_op (infixl "\<bullet>" 65) where
-  "scomp_op op1 op2 = map_op projl projr (comp_op (\<lambda> p. if p \<in> defaults then None else Some p) (\<lambda>_. []) op1 op2)"
 
 lemma loop_op_scomp_commute:
-  "op2 \<bullet> (op1\<up>) \<approx> ((op2 \<parallel> \<I>) \<bullet> op1)\<up>"
-  unfolding feedback_op_def scomp_op_def pcomp_op_def comp_def
-  oops 
- *)
+  fixes op1 :: "('d + 'e :: {countable, defaults}, 'b + 'e, 'c) op"
+  assumes "Inr -` inputs op1 \<inter> defaults = {}"
+  and "Inr -` outputs op1 \<inter> defaults = {}"
+  shows "op2 \<bullet> (op1\<up>) \<approx> ((op2 \<parallel> \<I>) \<bullet> op1)\<up>"
+  sorry
 
-term feedback_op
+context notes [[typedef_overloaded]] begin
+typedef ('ip, 'op, 'd) operator = 
+  "{op :: ('ip :: defaults, 'op :: defaults, 'd) op. inputs op \<inter> defaults = {} \<and> outputs op \<inter> defaults = {}}" morphisms from_operator top_operator
+  apply (rule exI[of _ end_op])
+  apply simp
+    done
+end
+
+setup_lifting type_definition_operator
+
+lift_definition 
+  comp_operator :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
+  ('ip1, 'op1, 'd) operator \<Rightarrow> ('ip2, 'op2, 'd) operator \<Rightarrow> ('ip1  :: defaults + 'ip2 :: defaults, 'op1 :: defaults + 'op2 :: defaults, 'd) operator" is comp_op
+  apply (auto intro: inputs_comp_op_le outputs_comp_op_le)
+  subgoal for fun1 fun2 op1 op2 x
+    apply (cases x)
+    using inputs_comp_op_le[unfolded subset_eq, simplified]
+     apply force+
+    done
+  subgoal for fun1 fun2 op1 op2 x
+    apply (cases x)
+    using outputs_comp_op_le[unfolded subset_eq, simplified]
+     apply force+
+    done
+  done
+
+lift_definition
+  loop_operator ::  "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightarrow> 'd buf) \<Rightarrow>
+  ('ip, 'op, 'd) operator \<Rightarrow> ('ip :: defaults, 'op :: defaults, 'd) operator" is loop_op
+  by (smt (verit, del_insts) Diff_Diff_Int Diff_Int_distrib Int_Diff diff_shunt inputs_loop_op_le le_iff_inf outputs_loop_op_le)
+
+term map_op
+
+lift_definition
+ map_operator :: "('a :: defaults \<Rightarrow> 'b :: defaults) \<Rightarrow> ('c :: defaults \<Rightarrow> 'd :: defaults) \<Rightarrow> ('a, 'c, 'e) operator \<Rightarrow> ('b, 'd, 'e) operator" is map_op
+  apply (auto simp add: op.set_map)
+  subgoal
+   
+
+
+  thm image_iff
+
+  find_theorems outputs map_op
+
+end
+
+
+no_notation scomp_op (infixl "\<bullet>" 65)
+definition scomp_operator (infixl "\<bullet>" 65) where
+  "scomp_operator op1 op2 = map_op projl projr (comp_operator Some (\<lambda>_. []) op1 op2)"
+
+
+
+end
 
 
 lemma loop_op_scomp_commute_gen:
