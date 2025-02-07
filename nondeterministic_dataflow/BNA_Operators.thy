@@ -122,6 +122,170 @@ lemma comp_op_is_choice[simp]:
   "is_Choice (comp_op wire buf op1 op2)"
   by (subst comp_op_code, simp)
 
+section\<open>Inputs of comp_op\<close>
+
+lemma choices_at_sub_op:
+  "op |\<in>| (choices_at n op') \<Longrightarrow> \<exists> m \<le> n. sub_op op op' m"
+  apply (induct n arbitrary: op op')
+  subgoal for op op'
+    apply (cases op')
+       apply auto
+    done
+  subgoal for n op op'
+    apply (cases op')
+    by fastforce+
+  done
+
+lemma choices_sub_op:
+  "op |\<in>| choices op' \<Longrightarrow> \<exists> n. sub_op op op' n"
+  unfolding choices_def
+  using choices_at_sub_op by force
+
+lemma Read_choices_inputs:
+  "Read p f |\<in>| choices op \<Longrightarrow> p \<in> inputs op"
+  by (meson choices_sub_op sub_op_Read_inputs)
+
+lemma inputs_after_choices_at:
+  "p' \<in> inputs op' \<Longrightarrow> op' |\<in>| choices_at n op \<Longrightarrow> p' \<in> inputs op"
+  apply (induct n arbitrary: op)
+  subgoal for op
+    apply (cases op)
+       apply auto
+    done
+  subgoal for n op
+    apply (cases op)
+       apply auto
+    done
+  done
+
+lemma inputs_after_choices:
+  "op' |\<in>| (choices op) \<Longrightarrow> p' \<in> inputs op' \<Longrightarrow> p' \<in> inputs op"
+  unfolding choices_def
+ inputs_after_choices_at 
+  by (meson cUN_E inputs_after_choices_at)
+
+lemma inputs_comp_op: "sub_op (Read p g) (comp_op wire buf op1 op2) d \<Longrightarrow> p \<in> Inl ` inputs op1 \<union> Inr ` (inputs op2 - ran wire)"
+proof (induct p \<open>comp_op wire buf op1 op2\<close> arbitrary: buf op1 op2 rule: sub_op_Read_induct)
+  case (Read1 f p)
+  then show ?case by (auto simp add: comp_op_code)
+next
+  case (Read2 p p' f x d g)
+  then show ?case by (auto simp add: comp_op_code)
+next
+  case (Write p p' op' x d g)
+  then show ?case by (auto simp add: comp_op_code)
+next
+  case (Silent p p' op' x d g)
+  then show ?case by (auto simp add: comp_op_code)
+next
+  case (Choice p p' ops f buf op1)
+  then show ?case 
+    apply -
+    apply (auto del: disjCI)
+    apply (subst (asm) (2) comp_op_code)
+    apply (auto del: disjCI)
+    subgoal for op
+      apply (cases op)
+         apply (auto del: disjCI split: option.splits; hypsubst_thin?)
+      subgoal for p f
+        by (meson choices_sub_op cin.rep_eq image_iff sub_op_Read_inputs)
+      subgoal for p' f' x' n
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+        apply (auto del: disjCI)
+        apply hypsubst_thin
+        apply (rule disjI1)
+        using inputs_after_choices 
+        apply (metis cin.rep_eq imageI inputs_sub_op_Read sub_op.intros(2) sub_op_Read_inputs)
+        done
+      subgoal for op1' p' x'
+        apply hypsubst_thin
+         apply (auto del: disjCI split: option.splits; hypsubst_thin?)
+        subgoal for n
+          apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+          apply (auto del: disjCI)
+        apply hypsubst_thin
+          apply (simp add: inputs_after_choices)
+          done
+        subgoal for p' n
+          apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+          apply (auto del: disjCI)
+          apply hypsubst_thin
+              apply (simp add: inputs_after_choices)
+          done
+        done
+      subgoal 
+         by (auto del: disjCI split: option.splits)
+       subgoal for ops
+         apply (auto del: disjCI split: option.splits; hypsubst_thin?)
+         subgoal for n
+          apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+          apply (auto del: disjCI)
+          apply hypsubst_thin
+           apply (simp add: inputs_after_choices)
+           done
+         done
+       done
+     subgoal for op
+      apply (cases op)
+          apply (auto simp add: Read_choices_inputs del: disjCI split: option.splits if_splits; hypsubst_thin?)
+       subgoal for p' x n
+          apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+          apply (auto del: disjCI)
+         apply hypsubst_thin
+         apply (meson DiffI cin.rep_eq image_eqI inputs_after_choices inputs_sub_op_Read sub_op_Read sub_op_Read_inputs)
+         done
+       subgoal for p f x n
+          apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+          apply (auto del: disjCI)
+         apply hypsubst_thin
+         apply (meson DiffI cin.rep_eq imageI inputs_after_choices inputs_sub_op_Read sub_op_Read sub_op_Read_inputs)
+         done
+       subgoal for p x n
+          apply (drule meta_spec[of _ n])
+        apply (drule meta_spec)+
+        apply simp
+        apply (drule meta_mp)
+         apply assumption
+          apply (auto del: disjCI)
+         apply hypsubst_thin
+
+
+qed
+
+
+
+
+lemma inputs_comp_op_le:
+  "inputs (comp_op wire buf op1 op2) \<subseteq> Inl ` inputs op1 \<union> Inr ` (inputs op2 - ran wire)"
+  using inputs_comp_op by (metis inputs_sub_op_Read subsetI)
+
+
+end
+
 subsection \<open>Properties of the (general) composition\<close>
 
 lemma step_comp_op_L[intro]:

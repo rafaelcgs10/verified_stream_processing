@@ -245,11 +245,11 @@ section \<open>Sub operators\<close>
 declare cin.rep_eq[simp]
 
 inductive sub_op :: \<open>('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op \<Rightarrow> nat \<Rightarrow> bool\<close> for op where
-  sub_op_Refl: \<open>sub_op op op 0\<close>
-| sub_op_Read: \<open>sub_op op (f x) n \<Longrightarrow> sub_op op (Read p f) (Suc n)\<close>
-| sub_op_Write: \<open>sub_op op op' n \<Longrightarrow> sub_op op (Write op' p x) (Suc n)\<close>
-| sub_op_Silent: \<open>sub_op op op' n \<Longrightarrow> sub_op op (Silent op') (Suc n)\<close>
-| sub_op_Choice: \<open>cin op' ops \<Longrightarrow> sub_op op op' n \<Longrightarrow> sub_op op (Choice ops) (Suc n)\<close>
+  sub_op_Refl[intro]: \<open>sub_op op op 0\<close>
+| sub_op_Read[intro]: \<open>sub_op op (f x) n \<Longrightarrow> sub_op op (Read p f) (Suc n)\<close>
+| sub_op_Write[intro]: \<open>sub_op op op' n \<Longrightarrow> sub_op op (Write op' p x) (Suc n)\<close>
+| sub_op_Silent[intro]: \<open>sub_op op op' n \<Longrightarrow> sub_op op (Silent op') (Suc n)\<close>
+| sub_op_Choice[intro]: \<open>cin op' ops \<Longrightarrow> sub_op op op' n \<Longrightarrow> sub_op op (Choice ops) (Suc n)\<close>
 
 inductive_cases sub_op_ReflE [elim!]: \<open>sub_op op op n\<close>
 inductive_cases sub_op_ReadE [elim!]: \<open>sub_op op (Read p f) n\<close>
@@ -260,22 +260,22 @@ inductive_cases sub_op_ChoiceE [elim!]: \<open>sub_op op (Choice ops) n\<close>
  lemma inputs_sub_op_Read: \<open>p \<in> inputs op \<Longrightarrow> \<exists>f n. sub_op (Read p f) op n\<close>
   by (induct op pred: inputs) (force intro: sub_op.intros)+
 
-lemma sub_op_Read_inputs: \<open>sub_op (Read p f) op n \<Longrightarrow> p \<in> inputs op\<close>
+lemma sub_op_Read_inputs[intro]: \<open>sub_op (Read p f) op n \<Longrightarrow> p \<in> inputs op\<close>
   by (induct op n pred: sub_op) auto
 
 lemma outputs_sub_op_Write: \<open>p \<in> outputs op \<Longrightarrow> \<exists>op' x n. sub_op (Write op' p x) op n\<close>
   by (induct op pred: outputs) (force intro: sub_op.intros)+
 
-lemma sub_op_Write_outputs: \<open>sub_op (Write op' p x) op n \<Longrightarrow> p \<in> outputs op\<close>
+lemma sub_op_Write_outputs[intro]: \<open>sub_op (Write op' p x) op n \<Longrightarrow> p \<in> outputs op\<close>
   by (induct op n pred: sub_op) auto
 
-lemma sub_op_Read_induct [consumes 1, case_names Read1 Read2 Write Choice]:
+lemma sub_op_Read_induct [consumes 1, case_names Read1 Read2 Write Silent Choice]:
   assumes \<open>sub_op (Read p g) op d\<close>
     and \<open>\<And>f p. P p (Read p f)\<close>
     and \<open>\<And>p p' f x d g. sub_op (Read p g) (f x) d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Read p' f)\<close>
     and \<open>\<And>p p' op' x d g. sub_op (Read p g) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Write op' p' x)\<close>
-    and \<open>\<And>p p' op' x d g. sub_op (Read p g) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Silent op')\<close>
-    and \<open>\<And>p p' ops x d g. \<exists>op'. cin op' ops \<and> sub_op (Read p g) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Choice ops)\<close>
+    and \<open>\<And>p op' d. sub_op (Read p g) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Silent op')\<close>
+    and \<open>\<And>p ops d g. \<exists>op'. cin op' ops \<and> sub_op (Read p g) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Choice ops)\<close>
   shows \<open>P p op\<close>
   using assms(1)
 proof (induct d arbitrary: op p rule: less_induct)
@@ -288,8 +288,8 @@ lemma sub_op_Write_induct [consumes 1, case_names Read Write1 Choice Write2]:
   assumes \<open>sub_op (Write op2 p y) op d\<close>
     and \<open>\<And>p p' f x op2 y d. sub_op (Write op2 p y) (f x) d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Read p' f)\<close>
     and \<open>\<And>p p' op' x op2 y d. sub_op (Write op2 p y) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Write op' p' x)\<close>
-    and \<open>\<And>p p' op' x op2 y d. sub_op (Write op2 p y) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Silent op')\<close>
-    and \<open>\<And>p op' op2 y d ops.  \<exists>op'. cin op' ops \<and> sub_op (Write op2 p y) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Choice ops)\<close>
+    and \<open>\<And>p op' op2 y d. sub_op (Write op2 p y) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Silent op')\<close>
+    and \<open>\<And>p op2 y d ops.  \<exists>op'. cin op' ops \<and> sub_op (Write op2 p y) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Choice ops)\<close>
     and \<open>\<And>p op' x. P p (Write op' p x)\<close>
   shows \<open>P p op\<close>
   using assms(1)
