@@ -65,6 +65,38 @@ lemma aeq_op_acopy:
   oops
 
 section \<open>Axiom: A11: Acopy to equality test\<close>
+
+lemma acopy_op_aeq_op_id_op_bufs:
+  \<open>map_op projl projr (comp_op Some (case_sum buf buf) \<C> \<Q>) \<approx> id_op buf\<close>
+  apply (coinduction arbitrary: buf rule: wbisim_coinduct_upto)
+  subgoal for buf
+    unfolding wsim_def
+    apply auto
+    subgoal
+      sorry
+    subgoal
+      apply (drule step_id_op_cases)
+        apply auto
+      subgoal for p x
+        apply (rule exI[of _ \<open>map_op projl projr (comp_op Some (case_sum (BENQ p x buf) (BENQ p x buf)) \<C> \<Q>)\<close>])
+        apply auto
+        apply (rule step_io_step_tau_tau_wstep)
+          apply fastforce+
+        done
+      subgoal for p
+        apply (rule exI[of _ \<open>map_op projl projr (comp_op Some (case_sum (BTL p buf) (BTL p buf)) \<C> \<Q>)\<close>])
+        apply auto
+        apply (rule step_tau_step_tau_step_io_wstep)
+          apply fastforce+
+        done
+      done
+    done
+  oops
+
+lemma acopy_op_aeq_op_id_op_bufs:
+  \<open>map_op projl projr (comp_op Some (case_sum buf buf) \<C> \<Q>) \<approx> id_op buf\<close>
+  oops
+
 lemma acopy_op_aeq:
   "\<C> \<bullet> \<Q> \<approx> \<I>"
   oops

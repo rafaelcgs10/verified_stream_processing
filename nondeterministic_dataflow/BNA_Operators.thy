@@ -1496,6 +1496,67 @@ lemma wbisim_scomp_op_cong:
    op1 \<bullet> op2 \<approx> op1' \<bullet> op2'"
   unfolding scomp_op_def using wbisim_comp_op_cong wbisim_map_op by blast
 
+lemma wbisim_scomp_op_Write_buf:
+  \<open>comp_op Some buf (Write op1 p x) op2 \<approx> comp_op Some (BENQ p x buf) op1 op2\<close>
+  apply (coinduction arbitrary: op1 op2 buf rule: wbisim_coinduct_upto)
+  subgoal for op1 op2 buf
+    unfolding wsim_def
+    apply auto
+    subgoal
+      apply (drule step_comp_op_cases)
+      apply auto
+      subgoal for p' x' op2'
+        apply blast
+        done
+      subgoal for p' op2'
+        apply (rule exI[of _ \<open>comp_op Some (BENQ p x (BTL p' buf)) op1 op2'\<close>])
+        apply (auto simp flip: wstep_steps_Tau)
+        apply (rule step_wstep)
+        using step_Tau_comp_op_R[of p' \<open>BHD p' buf\<close> op2 op2' Some \<open>BENQ p x buf\<close> op1]
+        by (smt (verit, ccfv_threshold) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_BENQ_empty BTL_BENQ_empty BULK_BENQ_left_neutral Nil_is_append_conv fun_upd_apply hd_append ranI snoc_eq_iff_butlast)
+      subgoal for op2'
+        apply (rule exI[of _ \<open>comp_op Some (BENQ p x buf) op1 op2'\<close>])
+        apply auto
+        done
+      done
+    subgoal
+      apply (drule step_comp_op_cases)
+      apply auto
+      subgoal for p' x' op1'
+        apply (rule exI[of _ \<open>comp_op Some (BENQ p x buf) op1' op2\<close>])
+        apply (rule conjI)
+         apply (rule step_tau_step_io_wstep)
+          apply auto
+        done
+      subgoal for p' x' op2'
+        apply blast
+        done
+      subgoal for p' x' op1'
+        apply (rule exI[of _ \<open>comp_op Some (BENQ p' x' (BENQ p x buf)) op1' op2\<close>])
+        apply (auto simp flip: wstep_steps_Tau)
+        apply (rule step_tau_step_io_wstep)
+         apply auto
+        done
+      subgoal for p' op2'
+        apply (rule exI[of _ \<open>comp_op Some (BTL p' (BENQ p x buf)) op1 op2'\<close>])
+        apply (auto simp flip: wstep_steps_Tau)
+        apply (rule step_tau_step_io_wstep)
+         apply auto
+        done
+      subgoal for op1'
+        apply (rule exI[of _ \<open>comp_op Some (BENQ p x buf) op1' op2\<close>])
+        apply (auto simp flip: wstep_steps_Tau)
+        apply (rule step_tau_step_io_wstep)
+         apply auto
+        done
+      subgoal for op2'
+        apply (rule exI[of _ \<open>comp_op Some buf (Write op1 p x) op2'\<close>])
+        apply blast
+        done
+      done
+    done
+  done
+
 section \<open>loop_op: Loop/Feedback\<close>
 corec loop_op :: "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op" where
@@ -2926,15 +2987,13 @@ lemma step_aeq_op:
 lemma step_aeq_op_Read_L[intro]:
   \<open>step (Inp (Inl p) y) \<Q> (Read (Inr p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>))\<close>
   apply (subst aeq_op_code)
-  apply (rule Read_in_choices_step)
-  apply simp
+  apply fastforce
   done
 
 lemma step_aeq_op_Read_R[intro]:
   \<open>step (Inp (Inr p) y) \<Q> (Read (Inl p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>))\<close>
   apply (subst aeq_op_code)
-  apply (rule Read_in_choices_step)
-  apply simp
+  apply fastforce
   done
 
 lemma choices_aeq_op[simp]:
