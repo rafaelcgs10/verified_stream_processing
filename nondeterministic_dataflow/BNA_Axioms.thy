@@ -2650,7 +2650,7 @@ lemma loop_op_scomp_commute_gen:
                     apply assumption
                    apply simp
                   apply simp_all
-            try0
+            
 
             find_theorems comp_op Tau 
 
