@@ -524,7 +524,8 @@ lemma step_Tau_comp_op_L[intro]:
   "step (Out p x) op1 op1' \<Longrightarrow>
    wire p = Some q \<Longrightarrow>
    buf' = BENQ q x buf \<Longrightarrow>
-   step Tau (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2)"
+   op2 = op2' \<Longrightarrow>
+   step Tau (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
   apply (erule step_choicesE)
     apply simp_all
   apply (subst (1) comp_op_code)
@@ -1904,6 +1905,28 @@ definition feedback_op ( "_ \<up>" [66] 65) where
 
 subsection \<open>Step properties\<close>
 
+lemma step_loop_op_gen:
+  "step io (loop_op wire buf op) op' \<Longrightarrow>
+   (\<exists>p x. p \<notin> ran wire \<and> io = Inp p x \<and> (\<exists> op''. op' = loop_op wire buf op'' \<and> step io op op'')) \<or>
+   (\<exists>p x. wire p = None \<and> io = Out p x \<and> (\<exists> op''. op' = loop_op wire buf op'' \<and> step io op op'')) \<or>
+   (io = Tau \<and> (\<exists> op''. op' = loop_op wire buf op'' \<and> step io op op'')) \<or>
+   (io = Tau \<and> (\<exists> op'' p x. p \<in> ran wire \<and> op' = loop_op wire (BTL p buf) op'' \<and> step (Inp p x) op op'' \<and> buf p \<noteq> [] \<and> BHD p buf = x)) \<or>
+   (io = Tau \<and> (\<exists> op'' p q x. wire p = Some q \<and> op' = loop_op wire (BENQ q x buf) op'' \<and> step (Out p x) op op''))"
+  apply (erule step_choicesE)
+  subgoal
+    apply (subst (asm) (1) loop_op.code)
+    apply (auto 10 10 simp add: ran_def split: option.splits if_splits sum.splits op.splits)
+    done
+  subgoal
+    apply (subst (asm) (1) loop_op.code)
+    apply (auto 10 10 simp add: ran_def split: option.splits if_splits sum.splits op.splits)
+    done
+  subgoal 
+    apply (subst (asm) (1) loop_op.code)
+    apply (fastforce simp add: ran_def split: option.splits if_splits sum.splits op.splits)
+    done
+  done
+
 lemma step_loop_op:
   "step io (loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) buf op) op' \<Longrightarrow>
    (\<exists>p x. io = Inp (Inl p) x \<and> (\<exists> op''. op' = loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) buf op'' \<and> step io op op'')) \<or>
@@ -1959,7 +1982,7 @@ lemma step_loop_op:
     done
   done
 
-lemma step_Inp_Inl_loop_op[intro]:
+(* lemma step_Inp_Inl_loop_op[intro]:
   "step (Inp (Inl p) x) op op' \<Longrightarrow>
    step (Inp (Inl p) x) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op')"
   apply (subst loop_op.code)
@@ -1978,9 +2001,9 @@ lemma step_Inp_Inl_loop_op[intro]:
      apply (smt (verit) mem_Collect_eq o_apply option.sel option.simps(3) ran_def sum.case_eq_if sum.simps(4))
     apply (smt (verit) mem_Collect_eq o_apply option.sel option.simps(3) ran_def sum.case_eq_if sum.simps(4))
     done
-  done
+  done *)
 
-lemma step_Out_Inr_loop_op[intro]:
+(* lemma step_Out_Inr_loop_op[intro]:
   "step (Out (Inr p) x) op op' \<Longrightarrow>
    buf' = BENQ (Inr p) x buf \<Longrightarrow>
    step Tau (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf op) (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) buf' op')"
@@ -1994,8 +2017,8 @@ lemma step_Out_Inr_loop_op[intro]:
   apply (rule cimage_eqI[of _ _ "Write _ (Inr p) _"])
    apply simp_all
   done
-
-lemma step_Inp_Inr_loop_op[intro]:
+ *)
+(* lemma step_Inp_Inr_loop_op[intro]:
   "step (Inp (Inr p) (BHD (Inr p) buf)) op op' \<Longrightarrow>
    buf (Inr p) \<noteq> [] \<Longrightarrow>
    buf' = BTL (Inr p) buf \<Longrightarrow>
@@ -2011,6 +2034,7 @@ lemma step_Inp_Inr_loop_op[intro]:
    apply auto
   apply (metis comp_apply sum.simps(6) ranI)
   done
+ *)
 
 lemma step_double_loop_1:
   "step io (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf2) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (Some \<circ> Inr)) (case_sum undefined buf1) (op :: (('a + 'd) + 'e, ('b + 'd) + 'e, 'c) op))))) op' \<Longrightarrow>
@@ -3198,11 +3222,12 @@ lemma R5:
         apply (intro exI conjI[rotated])
          apply (rule wbc_sym)
          apply (rule wbc_base)
-         apply blast+
+        apply auto
         done
       done
     done
   done
+  
 
 (* F1 *)
 lemma F1:

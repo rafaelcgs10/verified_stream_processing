@@ -476,7 +476,7 @@ lemma step_map_op[intro]:
 
 lemma step_map_op_inv:
   "step io (map_op f g op) op' \<Longrightarrow>
-   \<exists> io' op''. step io' op op'' \<and> io = map_IO f g id io' \<and> op' = map_op f g op''"
+   \<exists> io' op''. step io' op op'' \<and> map_IO f g id io' = io \<and> map_op f g op'' = op'"
   apply (induct io "map_op f g op" op' arbitrary: op rule: step.induct)
      apply (auto intro: step.intros)
   subgoal for p fa x op

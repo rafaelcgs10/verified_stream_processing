@@ -2539,7 +2539,7 @@ lemma Inl_notin_ran_feedback_wire[simp]:
   by (auto simp add: ran_def  split: sum.splits if_splits)
 term scomp_op
 
-
+(* 
 lemma loop_op_scomp_commute:
   fixes op1 :: "('d + 'e :: {countable, defaults}, 'b + 'e, 'c) op"
   assumes "Inr -` inputs op1 \<inter> defaults = {}"
@@ -2547,375 +2547,20 @@ lemma loop_op_scomp_commute:
   shows "op2 \<bullet> (op1\<up>) \<approx> ((op2 \<parallel> \<I>) \<bullet> op1)\<up>"
   sorry
 
-context notes [[typedef_overloaded]] begin
-typedef ('ip, 'op, 'd) operator = 
-  "{op :: ('ip :: defaults, 'op :: defaults, 'd) op. inputs op \<inter> defaults = {} \<and> outputs op \<inter> defaults = {}}" morphisms from_operator top_operator
-  apply (rule exI[of _ end_op])
-  apply simp
-    done
-end
+ *)
 
-setup_lifting type_definition_operator
-
-lift_definition 
-  comp_operator :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
-  ('ip1, 'op1, 'd) operator \<Rightarrow> ('ip2, 'op2, 'd) operator \<Rightarrow> ('ip1  :: defaults + 'ip2 :: defaults, 'op1 :: defaults + 'op2 :: defaults, 'd) operator" is comp_op
-  apply (auto intro: inputs_comp_op_le outputs_comp_op_le)
-  subgoal for fun1 fun2 op1 op2 x
-    apply (cases x)
-    using inputs_comp_op_le[unfolded subset_eq, simplified]
-     apply force+
-    done
-  subgoal for fun1 fun2 op1 op2 x
-    apply (cases x)
-    using outputs_comp_op_le[unfolded subset_eq, simplified]
-     apply force+
-    done
-  done
-
-lift_definition
-  loop_operator ::  "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightarrow> 'd buf) \<Rightarrow>
-  ('ip, 'op, 'd) operator \<Rightarrow> ('ip :: defaults, 'op :: defaults, 'd) operator" is loop_op
-  by (smt (verit, del_insts) Diff_Diff_Int Diff_Int_distrib Int_Diff diff_shunt inputs_loop_op_le le_iff_inf outputs_loop_op_le)
-
-term "map_op projl projr"
-
-lift_definition
- map_operator :: "('a :: defaults \<Rightarrow> 'b :: defaults) \<Rightarrow> ('c :: defaults \<Rightarrow> 'd :: defaults) \<Rightarrow> ('a, 'c, 'e) operator \<Rightarrow> ('b, 'd, 'e) operator" is 
-"\<lambda> f g op. (if f ` inputs op \<inter> defaults = {} \<and> g ` outputs op \<inter> defaults = {} then map_op f g op else end_op)"
-  by (auto simp add: op.set_map)
-
-no_notation scomp_op (infixl "\<bullet>" 65)
-definition scomp_operator (infixl "\<bullet>" 65) where
-  "scomp_operator op1 op2 = map_operator projl projr (comp_operator Some (\<lambda>_. []) op1 op2)"
-
-no_notation feedback_op ( "_ \<up>" [66] 65)
-no_notation pcomp_op (infixl "\<parallel>" 64)
-
-definition pcomp_operator (infixl "\<parallel>" 64) where
-  "pcomp_operator = comp_operator (\<lambda>_. None) (\<lambda>_. [])"
-
-definition feedback_operator ( "_ \<up>" [66] 65) where
-  "feedback_operator op = map_operator projl projl (loop_operator (case_sum (\<lambda> _. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined (\<lambda> _. [])) op)"
-
-lemma inputs_id_op[simp]:
-  "inputs (id_op buf) = UNIV - defaults"
-  sorry
-
-lemma outputs_id_op[simp]:
-  "outputs (id_op buf) = UNIV - defaults"
-  sorry
-
-lift_definition id_operator :: "('a \<Rightarrow> 'b buf) \<Rightarrow> ('a :: {countable, defaults}, 'a, 'b) operator" is id_op
-  by auto
-
-no_notation id_empty_op ("\<I>")
-
-abbreviation id_empty_operator ("\<I>") where
-  "\<I> \<equiv> id_operator (\<lambda> _. [])"
-
-no_notation wbisim (infix "\<approx>"40)
-
-lift_definition wbisim_operator :: "('a :: defaults, 'b :: defaults, 'c) operator \<Rightarrow> ('a, 'b, 'c) operator \<Rightarrow> bool" is wbisim.
-
-abbreviation wbisim_operator' (infix "\<approx>"40) where
-  "wbisim_operator' \<equiv> wbisim_operator"
-
-lemma loop_operator_scomp_commute:
-  "(op2 \<bullet> (op1\<up>)) \<approx> ((op2 \<parallel> \<I>) \<bullet> op1)\<up>"
-  unfolding pcomp_operator_def scomp_operator_def feedback_operator_def
-  apply transfer
-  apply (simp split: if_splits)
-  apply (intro impI conjI)
-  subgoal
-    by (auto intro!: loop_op_scomp_commute [unfolded scomp_op_def feedback_op_def pcomp_op_def])
-  subgoal
-    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
-  subgoal
-    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
-  subgoal
-    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
-  subgoal
-    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
-  subgoal
-    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
-  subgoal
-    apply (auto 2 2 simp add: op.set_map ran_def disjoint_iff_not_equal dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
-     apply (metis (no_types, lifting) Inl_in_defaults Inr_in_defaults disjoint_iff_not_equal sum.exhaust_sel)+
-    done
-  subgoal
-    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
-  subgoal
-    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
-  subgoal
-    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
-  subgoal
-    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
-  subgoal
-    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
-  done
-
-
-
-
-
-
-
-end
-    subgoal for x
-      apply (cases x)
-      apply (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
-      done
-    subgoal for x
-      apply (cases x)
-      apply (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
-      done
-
-
-end
-      apply (fastforce simp add: op.set_map ran_def dest!: set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)[1]
-      done
-
-
-
-end
-
-       apply auto
-      subgoal for lp
-        apply hypsubst_thin
-        using inputs_loop_op_le[unfolded subset_eq, simplified] apply -
-        apply (drule meta_spec)+
-        apply (drule bspec[of _ _ "Inl lp"])
-         apply assumption
-        apply (auto simp add: op.set_map)
-        subgoal for p
-          apply (cases p)
-          subgoal for lp
-            by auto
-          subgoal for rp
-            apply (auto simp add: op.set_map)
-            apply hypsubst_thin
-            using inputs_comp_op_le[unfolded subset_eq, simplified] apply -
-            apply (drule meta_spec)+
-            apply (drule bspec[of _ _ "Inr rp"])
-             apply assumption
-            apply (auto simp add: op.set_map)
-            done
-          done
-        done
-      subgoal for rp
-        apply hypsubst_thin
-        using inputs_loop_op_le[unfolded subset_eq, simplified] apply -
-        apply (drule meta_spec)+
-        apply (drule bspec[of _ _ "Inr rp"])
-         apply assumption
-        apply (auto simp add: op.set_map)
-        subgoal for p
-          apply (cases p)
-          subgoal for lp
-            apply (auto simp add: op.set_map)
-            apply hypsubst_thin
-            using inputs_comp_op_le[unfolded subset_eq, simplified] apply -
-            apply (drule meta_spec)+
-            apply (drule bspec[of _ _ "Inl (Inr rp)"])
-             apply assumption
-            apply (auto simp add: op.set_map)
-            using inputs_comp_op_le[unfolded subset_eq, simplified] apply -
-            apply (drule meta_spec)+
-            apply (drule bspec[of _ _ "Inr rp"])
-             apply assumption
-            apply (auto simp add: op.set_map)
-            apply (metis (mono_tags, lifting) old.sum.simps(6) ranI)
-            done
-          subgoal for rp
-            apply hypsubst_thin
-            using inputs_comp_op_le[unfolded subset_eq, simplified] apply -
-            apply (drule meta_spec)+
-            apply (drule bspec[of _ _ "Inr rp"])
-             apply assumption
-            apply (auto simp add: op.set_map)
-            done
-          done
-        done
-      done
-    subgoal for x
-      apply (cases x)
-       apply auto
-      subgoal for lp
-        apply hypsubst_thin
-        using outputs_loop_op_le[unfolded subset_eq, simplified] apply -
-        apply (drule meta_spec)+
-        apply (drule bspec[of _ _ "Inl lp"])
-         apply assumption
-        apply (auto simp add: op.set_map)
-        subgoal for p
-          apply (cases p)
-           defer
-          subgoal for lp
-            by auto
-          subgoal for rp
-            apply (auto simp add: op.set_map)
-            apply hypsubst_thin
-            using outputs_comp_op_le[unfolded subset_eq, simplified] apply -
-            apply (drule meta_spec)+
-            apply (drule bspec[of _ _ "Inl rp"])
-             apply assumption
-            apply (auto simp add: op.set_map)
-            done
-          done
-        done
-      subgoal for rp
-        apply hypsubst_thin
-        using outputs_loop_op_le[unfolded subset_eq, simplified] apply -
-        apply (drule meta_spec)+
-        apply (drule bspec[of _ _ "Inr rp"])
-         apply assumption
-        apply (auto simp add: op.set_map)
-        subgoal for p
-          apply (cases p)
-          subgoal for lp
-            apply (auto simp add: op.set_map split: sum.splits)
-            done
-          subgoal for rp
-            apply hypsubst_thin
-            apply (auto simp add: op.set_map split: sum.splits)
-            done
-          done
-        done
-      done
-    done
-  
-
-end
-
-
-
-  donemp_commute:
-  "wbisim_operator (op2 \<bullet> (op1\<up>)) (((op2 \<parallel> \<I>) \<bullet> op1)\<up>)"
-  unfolding pcomp_operator_def scomp_operator_def feedback_operator_def
-  apply transfer
-  apply (simp split: if_splits)
-  apply (intro impI conjI)
-  subgoal
-    by (auto intro!: loop_op_scomp_commute [unfolded scomp_op_def feedback_op_def pcomp_op_def])
-  subgoal for op2 op1
-    apply auto
-    subgoal for x
-      apply (cases x)
-       apply auto
-      subgoal for lp
-        apply hypsubst_thin
-        using inputs_loop_op_le[unfolded subset_eq, simplified] apply -
-        apply (drule meta_spec)+
-        apply (drule bspec[of _ _ "Inl lp"])
-         apply assumption
-        apply (auto simp add: op.set_map)
-        subgoal for p
-          apply (cases p)
-          subgoal for lp
-            by auto
-          subgoal for rp
-            apply (auto simp add: op.set_map)
-            apply hypsubst_thin
-            using inputs_comp_op_le[unfolded subset_eq, simplified] apply -
-            apply (drule meta_spec)+
-            apply (drule bspec[of _ _ "Inr rp"])
-             apply assumption
-            apply (auto simp add: op.set_map)
-            done
-          done
-        done
-      subgoal for rp
-        apply hypsubst_thin
-        using inputs_loop_op_le[unfolded subset_eq, simplified] apply -
-        apply (drule meta_spec)+
-        apply (drule bspec[of _ _ "Inr rp"])
-         apply assumption
-        apply (auto simp add: op.set_map)
-        subgoal for p
-          apply (cases p)
-          subgoal for lp
-            apply (auto simp add: op.set_map)
-            apply hypsubst_thin
-            using inputs_comp_op_le[unfolded subset_eq, simplified] apply -
-            apply (drule meta_spec)+
-            apply (drule bspec[of _ _ "Inl (Inr rp)"])
-             apply assumption
-            apply (auto simp add: op.set_map)
-            using inputs_comp_op_le[unfolded subset_eq, simplified] apply -
-            apply (drule meta_spec)+
-            apply (drule bspec[of _ _ "Inr rp"])
-             apply assumption
-            apply (auto simp add: op.set_map)
-            apply (metis (mono_tags, lifting) old.sum.simps(6) ranI)
-            done
-          subgoal for rp
-            apply hypsubst_thin
-            using inputs_comp_op_le[unfolded subset_eq, simplified] apply -
-            apply (drule meta_spec)+
-            apply (drule bspec[of _ _ "Inr rp"])
-             apply assumption
-            apply (auto simp add: op.set_map)
-            done
-          done
-        done
-      done
-    subgoal for x
-      apply (cases x)
-       apply auto
-      subgoal for lp
-        apply hypsubst_thin
-        using outputs_loop_op_le[unfolded subset_eq, simplified] apply -
-        apply (drule meta_spec)+
-        apply (drule bspec[of _ _ "Inl lp"])
-         apply assumption
-        apply (auto simp add: op.set_map)
-        subgoal for p
-          apply (cases p)
-           defer
-          subgoal for lp
-            by auto
-          subgoal for rp
-            apply (auto simp add: op.set_map)
-            apply hypsubst_thin
-            using outputs_comp_op_le[unfolded subset_eq, simplified] apply -
-            apply (drule meta_spec)+
-            apply (drule bspec[of _ _ "Inl rp"])
-             apply assumption
-            apply (auto simp add: op.set_map)
-            done
-          done
-        done
-      subgoal for rp
-        apply hypsubst_thin
-        using outputs_loop_op_le[unfolded subset_eq, simplified] apply -
-        apply (drule meta_spec)+
-        apply (drule bspec[of _ _ "Inr rp"])
-         apply assumption
-        apply (auto simp add: op.set_map)
-        subgoal for p
-          apply (cases p)
-          subgoal for lp
-            apply (auto simp add: op.set_map split: sum.splits)
-            done
-          subgoal for rp
-            apply hypsubst_thin
-            apply (auto simp add: op.set_map split: sum.splits)
-            done
-          done
-        done
-      done
-    done
-  
-
-
-end
-
+(* FIXME: move me *)
+lemma step_inputs_outputs:
+  "step io op op' \<Longrightarrow>
+   inputs op' \<subseteq> inputs op \<and> outputs op' \<subseteq> outputs op"
+  by (induct io op op' pred: step) auto
 
 lemma loop_op_scomp_commute_gen:
-  "map_op projl projr (comp_op Some buf2 op2 (map_op projl projl (loop_op (case_sum (\<lambda> _. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined (lbuf1 >> lbuf2 >> lbuf3)) op1))) \<approx>
+  assumes "Inr -` inputs op1 \<inter> defaults = {}"
+  and "Inr -` outputs op1 \<inter> defaults = {}"
+shows "map_op projl projr (comp_op Some buf2 op2 (map_op projl projl (loop_op (case_sum (\<lambda> _. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined (lbuf1 >> lbuf2 >> lbuf3)) op1))) \<approx>
    map_op projl projl (loop_op (case_sum (\<lambda> _. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined lbuf1) (map_op projl projr (comp_op Some (case_sum buf2 lbuf3) (comp_op (\<lambda>_. None) (\<lambda>_. []) op2 (id_op lbuf2)) op1)))"
-  apply (coinduction arbitrary: op1 op2 buf2 lbuf1 lbuf2 lbuf3 rule: wbisim_coinduct_upto)
+  using assms apply (coinduction arbitrary: op1 op2 buf2 lbuf1 lbuf2 lbuf3 rule: wbisim_coinduct_upto)
   subgoal for op1 op2 buf2 lbuf1 lbuf2 lbuf3
     unfolding wsim_def
     apply auto
@@ -2930,8 +2575,8 @@ lemma loop_op_scomp_commute_gen:
           apply hypsubst_thin
           apply (intro exI conjI[rotated])
            apply (rule wbc_base)
-           apply fast
-          apply force
+          apply fast
+          apply fastforce
           done
         subgoal for p x op2'
           apply hypsubst_thin
@@ -2949,24 +2594,22 @@ lemma loop_op_scomp_commute_gen:
                 apply hypsubst_thin
                 apply (intro exI conjI[rotated])
                  apply (rule wbc_base)
-                 apply fast
-                apply force
+                using step_inputs_outputs apply force+
                 done
               subgoal
                 apply hypsubst_thin
                 apply (intro exI conjI[rotated])
                  apply (rule wbc_base)
-                 apply fast
-                apply force
+                using step_inputs_outputs apply force+
                 done
               done
             done
           done
         subgoal for p x op2'
           apply hypsubst_thin
-          apply (intro exI conjI[rotated])
-           apply (rule wbc_base)
-           apply fast
+     apply (intro exI conjI[rotated])
+          apply (rule wbc_base)
+           apply blast
           apply auto
            apply (rule rtranclp.intros(2))
            apply (rule rtranclp.intros(1))
@@ -2985,166 +2628,101 @@ lemma loop_op_scomp_commute_gen:
           subgoal for op1'
              apply (intro exI conjI[rotated])
              apply (rule wbc_base)
-             apply fast
+            using step_inputs_outputs apply fast
              apply (rule rtranclp.intros(2))
              apply (rule rtranclp.intros(1))
-             apply (rule step_map_op[of Tau])
-             apply simp_all
+            apply (rule step_map_op[of Tau])
              apply (rule step_Tau_loop_op)
-             apply (rule step_map_op[of Tau])
-             apply auto
+          apply auto
             done
-          subgoal for p op1'
+          subgoal for p op'
             apply hypsubst_thin
-            apply (intro exI conjI[rotated])
-             apply (rule wbc_base)
-            apply force
-            apply auto
-            apply (rule rtranclp.intros(2))
-             apply (rule rtranclp.intros(2))
-              apply (rule rtranclp.intros(1))
-             apply (rule step_Tau_loop_op)
-            apply (rule step_map_op)
-               apply (rule step_Tau_comp_op_R)
-                    apply assumption
-                   apply simp
-                  apply simp_all
-            
-
-            find_theorems comp_op Tau 
-
-
-end
-        subgoal for op'
-          apply hypsubst_thin
-          apply (drule step_map_op_inv)
-          apply auto
-          apply hypsubst_thin
-          apply (drule step_loop_op)
-          apply auto
-          subgoal for op'''
-            apply (intro exI conjI[rotated])
-             apply (rule wbc_base)
-             apply fast
-            apply (rule rtranclp.intros(2))
-             apply (rule rtranclp.intros(1))
-            apply (rule step_map_op[of Tau])
-             apply simp_all
-            apply (rule step_Tau_loop_op)
-            apply (rule step_map_op[of Tau])
-             apply auto
-            done
-          subgoal for op''' p
-            apply (cases "lbuf3 p")
-            subgoal
-              apply (cases "lbuf2 p")
-              subgoal
-                apply (intro exI conjI[rotated])
-                 apply (rule wbc_base)
-                 apply (rule exI[of _ op'''])
-                 apply (rule exI[of _ op2])
-                 apply (rule exI[of _ buf2])
-                 apply (rule exI[of _ "BTL p lbuf1"])
-                 apply (rule exI[of _ "lbuf2"])
-                 apply (rule exI[of _ "lbuf3"])
-                 apply (intro exI conjI)
-                  apply simp_all
-                done
-              subgoal for x lbuf2'
-                subgoal 
-                  apply (intro exI conjI[rotated])
-                   apply (rule wbc_base)
-                  apply blast
-                   apply auto
-                  apply (rule rtranclp.intros(2))
-                  apply (rule rtranclp.intros(2))
-             apply (rule rtranclp.intros(1))
-            apply (rule step_Tau_loop_op)
-            apply (rule step_map_op[of Tau])
-                     apply (rule step_Tau_comp_op_L)
-                       apply (rule step_comp_op_R_Out)
-                  apply (rule step_id_op_Write)
-
-                  find_theorems step Out id_op
-
-
-                  find_theorems comp_op Out  step
-
-end
-                  done
-                done
-              done
-            subgoal for x lbuf3'
-              apply (intro exI conjI[rotated])
-               apply (rule wbc_base)
-               apply (rule exI[of _ op'''])
-               apply (rule exI[of _ op2])
-               apply (rule exI[of _ buf2])
-               apply (rule exI[of _ "lbuf1"])
-               apply (rule exI[of _ "lbuf2"])
-               apply (rule exI[of _ "BTL p lbuf3"])
-               apply (intro exI conjI)
-                apply simp_all
-              done
-            done
-          subgoal for op p
-            apply (intro exI conjI[rotated])
-             apply (rule wbc_base)
-             apply force+
-            done
-          subgoal for op p
-            apply (intro exI conjI[rotated])
-             apply (rule wbc_base)
-             apply force+
-            apply (rule transitive_closurep_trans'(6))
-             apply (rule step_map_op[of Tau])
-              apply simp_all
-             apply (rule step_Tau_loop_op)
-             apply (rule step_map_op[of Tau])
-              apply simp_all
-             apply (rule step_Tau_comp_op_L)
-              apply (rule step_comp_op_R_Out)
-              apply (rule step_id_op_Write[where p=p])
-               apply force+
-            apply simp
-            apply (rule transitive_closurep_trans'(6))
-             apply (rule step_map_op[of Tau])
-              apply simp_all
-             apply (rule step_Tau_loop_op)
-             apply (rule step_map_op[of Tau])
-              apply (rule step_Tau_comp_op_R)
-                 apply assumption
-                apply simp_all
-            done
-          subgoal for op p
-            apply (intro exI conjI[rotated])
-             apply (rule wbc_base)
-             apply force+
-            done
-          subgoal for op''' p x
-            apply (intro exI conjI[rotated])
-             apply (rule wbc_base)
-             apply (rule exI[of _ op'''])
-             apply (rule exI[of _ op2])
-             apply (rule exI[of _ buf2])
-             apply (rule exI[of _ "BENQ p x  lbuf1"])
-             apply (rule exI[of _ "lbuf2"])
-             apply (rule exI[of _ "lbuf3"])
-             apply (intro exI conjI)
-              apply simp_all
-            apply (rule transitive_closurep_trans'(6))
-             apply (rule step_map_op[of Tau])
-              apply simp_all
-             apply (rule step_Out_Inr_loop_op)
-             apply (rule step_map_op[of "Out (Inr _) _"])
-              apply simp_all
-             apply (rule step_comp_op_R_Out)
-             apply assumption
-            apply blast
+            apply (rule FalseE)
+            apply (metis IO.distinct(1) IO.inject(1) IO.simps(6) IntI Read_choices_inputs emptyE step_choicesE vimageI2)
             done
           done
-        done
-      done
+        subgoal for op2'
+          apply hypsubst_thin
+            apply (intro exI conjI[rotated])
+             apply (rule wbc_base)
+          using step_inputs_outputs apply fast
+           apply (rule rtranclp.intros(2))
+             apply (rule rtranclp.intros(1))
+            apply (rule step_map_op[of Tau])
+          apply (rule step_Tau_loop_op)
+            apply auto
+          done
+        subgoal for op2'
+          apply hypsubst_thin
+        apply (drule step_map_op_inv)
+           apply auto
+           apply hypsubst_thin
+         apply (drule step_loop_op)
+          apply auto
+          subgoal
+            apply (intro exI conjI[rotated])
+           apply (rule wbc_base)
+          using step_inputs_outputs apply force
+           apply (rule rtranclp.intros(2))
+             apply (rule rtranclp.intros(1))
+            apply (rule step_map_op[of Tau])
+          apply (rule step_Tau_loop_op)
+            apply auto
+          done
+        subgoal
+         apply (intro exI conjI[rotated])
+           apply (rule wbc_base)
+          using step_inputs_outputs apply fast
+          apply auto
+          apply (rule rtranclp.intros(2))
+          apply (rule rtranclp.intros(2))
+           apply (rule rtranclp.intros(1))
+           apply (rule step_Tau_loop_op)
+            apply (rule step_map_op[])
+          apply (rule step_Tau_comp_op_L)
+          apply (rule step_comp_op_R_Out)
+                 apply blast
+                 apply simp_all
+           apply (rule step_Tau_loop_op)
+           apply auto
+          done
+        subgoal
+         apply (intro exI conjI[rotated])
+           apply (rule wbc_base)
+          using step_inputs_outputs apply fast
+          apply auto
+                    apply (rule rtranclp.intros(2))
+          apply (rule rtranclp.intros(2))
+           apply (rule rtranclp.intros(1))
+           apply (rule step_Tau_loop_op)
+            apply (rule step_map_op)
+          apply (rule step_Tau_comp_op_L)
+
+
+          apply auto
+      apply (rule step_Tau_loop_op)
+           apply auto
+
+
+end
+
+
+            apply auto[1]
+
+
+
+end
+          apply (rule step_Tau_comp_op_L)
+          apply (rule step_comp_op_R_Out)
+                  apply blast
+          apply simp
+          apply simp
+
+          find_theorems step comp_op Out 
+
+
+end
+  
     subgoal for io op1'
       apply (drule step_map_op_inv)
       apply auto
