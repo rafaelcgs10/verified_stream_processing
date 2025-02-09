@@ -2691,17 +2691,32 @@ shows "map_op projl projr (comp_op Some buf2 op2 (map_op projl projl (loop_op (c
            apply (rule wbc_base)
           using step_inputs_outputs apply fast
           apply auto
-                    apply (rule rtranclp.intros(2))
           apply (rule rtranclp.intros(2))
            apply (rule rtranclp.intros(1))
-           apply (rule step_Tau_loop_op)
-            apply (rule step_map_op)
-          apply (rule step_Tau_comp_op_L)
-
-
+          apply (rule step_Tau_loop_op)
           apply auto
-      apply (rule step_Tau_loop_op)
-           apply auto
+          done
+        subgoal
+         apply (intro exI conjI[rotated])
+           apply (rule wbc_base)
+          using step_inputs_outputs apply fast
+          apply auto
+          apply (rule rtranclp.intros(2))
+           apply (rule rtranclp.intros(2))
+            apply (rule rtranclp.intros(2))
+            apply (rule rtranclp.intros(1))
+           apply (rule step_Inp_Tau_loop_op)
+                apply (rule step_map_op)
+          apply (rule step_comp_op_L_Inp)
+          apply (rule step_comp_op_R_Inp)
+                     apply blast
+                    apply simp_all
+          apply (auto simp add: ran_def split: sum.splits)[2]
+         apply (rule step_Tau_loop_op)
+            apply auto
+
+
+          find_theorems step comp_op Inp
 
 
 end
