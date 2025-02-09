@@ -3105,7 +3105,6 @@ lemma step_Tau_loop_op[intro]:
     done
   done
 
-
 (* R5 *)
 lemma R5:
   fixes op :: "('a :: {countable, defaults} + unit, 'b :: {countable, defaults} + unit, 'c) op"

@@ -2555,6 +2555,7 @@ lemma step_inputs_outputs:
    inputs op' \<subseteq> inputs op \<and> outputs op' \<subseteq> outputs op"
   by (induct io op op' pred: step) auto
 
+
 lemma loop_op_scomp_commute_gen:
   assumes "Inr -` inputs op1 \<inter> defaults = {}"
   and "Inr -` outputs op1 \<inter> defaults = {}"
@@ -2704,7 +2705,7 @@ shows "map_op projl projr (comp_op Some buf2 op2 (map_op projl projl (loop_op (c
           apply (rule rtranclp.intros(2))
            apply (rule rtranclp.intros(2))
           apply (rule rtranclp.intros(2))
-            apply (rule rtranclp.intros(1))
+             apply (rule rtranclp.intros(1))
            apply (rule step_Inp_Tau_loop_op)
                 apply (rule step_map_op)
           apply (rule step_comp_op_L_Inp)
@@ -2712,17 +2713,14 @@ shows "map_op projl projr (comp_op Some buf2 op2 (map_op projl projl (loop_op (c
                      apply blast
                     apply simp_all
           apply (auto simp add: ran_def split: sum.splits)[2]
-         apply (rule step_Tau_loop_op)
+           apply (rule step_Tau_loop_op)
             apply (rule step_map_op)
           apply (rule step_Tau_comp_op_L)
-          apply (rule step_comp_op_R_Out)
-                  apply force
+                apply (rule step_comp_op_R_Out)
           apply simp_all
-             apply (rule step_Tau_loop_op)
-           apply auto
 
+             apply (auto del:  step_Inp_Tau_loop_op step_Out_Tau_loop_op intro: step_Tau_loop_op)
 
-        thm step_comp_op_L_Inp[]
 
 
           done
