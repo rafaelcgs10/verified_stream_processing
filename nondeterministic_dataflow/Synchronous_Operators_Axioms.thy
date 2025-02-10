@@ -82,7 +82,7 @@ lemma acopy_op_aeq_op_id_op_bufs:
          apply simp
         apply (rule exI[of _ \<open>id_op (BENQ p x buf)\<close>])
         apply (rule conjI)
-        apply fast
+         apply fast
         sorry
           apply (meson no_step_aeq_op_Out no_step_acopy_op_Out)+
         apply (simp split: sum.splits)
@@ -191,15 +191,49 @@ lemma acopy_op_aeq_op_id_op_bufs':
         apply (meson no_step_aeq_op_Out)
        apply blast
       apply blast
-    apply (simp split: sum.splits)
+     apply (simp split: sum.splits)
+    subgoal for _ _ p'
+      apply (erule step_aeq_op_Inp_L)
+       apply simp
+      apply (rule exI[of _ \<open>id_op (BENQ p x buf)\<close>])
+      apply (rule conjI)
+      apply (rule rtranclp.intros(1))
+      oops
+
+lemma wbisim_scomp_op_Write_Write_acopy_op_aeq_op_L:
+  \<open>comp_op Some (case_sum buf buf) (Write (Write \<C> (Inr p) x) (Inl p) x) \<Q>
+  \<approx> comp_op Some (case_sum (BENQ p x buf) (BENQ p x buf)) \<C> \<Q>\<close>
+  by (metis (no_types, opaque_lifting) case_sum_BENQ_L case_sum_BENQ_R wbisim_scomp_op_Write_buf wbisim_trans)
+
+lemma wbisim_scomp_op_Write_Write_acopy_op_aeq_op_R:
+  \<open>comp_op Some (case_sum buf buf) (Write (Write \<C> (Inl p) x) (Inr p) x) \<Q>
+  \<approx> comp_op Some (case_sum (BENQ p x buf) (BENQ p x buf)) \<C> \<Q>\<close>
+  by (metis (no_types, opaque_lifting) case_sum_BENQ_L case_sum_BENQ_R wbisim_scomp_op_Write_buf wbisim_trans)
+
+lemma wbisim_scomp_op_acopy_op_Read_Write_aeq_op_L:
+  \<open>buf p \<noteq> [] \<Longrightarrow>
+  comp_op Some (case_sum (BTL p buf) buf) \<C> (Read (Inr p) (\<lambda>x. if x = BHD p buf then Write \<Q> p x else Silent \<Q>))
+  \<approx> comp_op Some (case_sum (BTL p buf) (BTL p buf)) \<C> (Write \<Q> p (BHD p buf))\<close>
+  using wbisim_scomp_op_Read_buf[of \<open>case_sum (BTL p buf) buf\<close> \<open>Inr p\<close> \<C> \<open>\<lambda>x. if x = BHD p buf then Write \<Q> p x else Silent \<Q>\<close>]
+  by simp
+
+lemma
+  \<open>comp_op Some buf op1 op \<approx> comp_op Some buf' op' op \<Longrightarrow>
+  comp_op Some buf op2 op \<approx> comp_op Some buf' op' op \<Longrightarrow>
+  comp_op Some buf (Choice {|op1, op2|}) op \<approx> comp_op Some buf' op' op\<close>
+  oops
+
+lemma
+  \<open>comp_op Some (case_sum buf buf) (Choice {|Write (Write \<C> (Inr p) x) (Inl p) x, Write (Write \<C> (Inl p) x) (Inr p) x|}) \<Q>
+  \<approx> comp_op Some (case_sum (BENQ p x buf) (BENQ p x buf)) \<C> \<Q>\<close>
   oops
 
 lemma
   \<open>buf p \<noteq> [] \<Longrightarrow>
   comp_op Some (case_sum (BTL p buf) buf) \<C> (Read (Inr p) (\<lambda>x. if x = BHD p buf then Write \<Q> p x else Silent \<Q>))
-  \<greatersim> comp_op Some (case_sum buf buf) \<C> \<Q>\<close>
-  apply (coinduction arbitrary: buf p rule: expand.coinduct)
-  unfolding wsim_def expansion_def
+  \<greaterapprox> comp_op Some (case_sum buf buf) \<C> \<Q>\<close>
+  apply (coinduction arbitrary: buf p)
+  unfolding wsim_def elab_def
   subgoal for buf p
     apply auto
     subgoal
@@ -211,22 +245,21 @@ lemma
         apply (rule exI[of _ \<open>comp_op Some (case_sum (BTL p buf) buf) (Choice {|Write (Write \<C> (Inr p') x) (Inl p') x, Write (Write \<C> (Inl p') x) (Inr p') x|}) (Read (Inr p) (\<lambda>x. if x = BHD p buf then Write \<Q> p x else Silent \<Q>))\<close>])
         apply (rule conjI)
          apply (rule step_io_step_tau_wstep)
-          apply fast+
+          apply blast+
         apply (rule disjI2)
-        apply (simp add: expand_refl)
+        apply (simp add: elaboration_refl)
         done
         apply (meson no_step_acopy_op_Out)
       subgoal
         apply (rule exI[of _ \<open>comp_op Some (case_sum (BTL p buf) (BTL p buf)) \<C> (Write \<Q> p (BHD p buf))\<close>])
         apply (rule conjI)
          apply (rule rtranclp.intros(2))
-        apply (rule rtranclp.intros(2))
+          apply (rule rtranclp.intros(2))
            apply (rule rtranclp.intros(1))
           apply blast
-        using step_tau_comp_op_Inl_case_sum[of p \<open>BHD p buf\<close> \<open>Read (Inl p) (\<lambda>x. if x = BHD p buf then Write \<Q> p x else Silent \<Q>)\<close> \<open>Write \<Q> p (BHD p buf)\<close> buf \<open>BTL p buf\<close> \<C>]
-         apply (smt (verit, ccfv_SIG) SR)
+         apply (smt (verit, ccfv_SIG) SR step_tau_comp_op_Inl_case_sum)
         apply (rule disjI2)
-        apply (rule expand_refl)
+        apply (rule elaboration_refl)
         done
       apply (meson no_step_acopy_op_Tau)
       done
@@ -235,12 +268,13 @@ lemma
       apply auto
       subgoal for p' x
         apply (erule step_acopy_op_Inp)
+         apply simp
+        sorry
+          apply (meson no_step_aeq_op_Out no_step_acopy_op_Out)+
+      apply (simp split: sum.splits)
+      subgoal for _ _ p'
+        apply (erule step_aeq_op_Inp_L)
         apply simp
-  oops
-
-
-lemma acopy_op_aeq_op_id_op_bufs:
-  \<open>map_op projl projr (comp_op Some (case_sum buf buf) \<C> \<Q>) \<approx> id_op buf\<close>
   oops
 
 lemma acopy_op_aeq:

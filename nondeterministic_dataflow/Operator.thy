@@ -1084,6 +1084,28 @@ lemma expand_trans: \<open>op1 \<greatersim> op2 \<Longrightarrow> op2 \<greater
   apply (auto simp: wsim_def expansion_def)
   oops
 
+section \<open>Elaboration\<close>
+
+definition "wstep' io = (step Tau)^** OO (step io) OO (step Tau)^**"
+definition \<open>elab R op1 op2 = (\<forall> io op2'. step io op2 op2' \<longrightarrow> (\<exists> op1'. wstep' io op1 op1' \<and> R op1' op2'))\<close>
+
+lemma elab_mono[mono]: \<open>R \<le> S \<Longrightarrow> elab R \<le> elab S\<close>
+  unfolding elab_def
+  by fast
+
+coinductive elaboration :: \<open>('a, 'b, 'c) op \<Rightarrow> ('a, 'b, 'c) op \<Rightarrow> bool\<close> (infix \<open>\<greaterapprox>\<close> 40) where
+  \<open>wsim (\<greaterapprox>) op1 op2 \<Longrightarrow> elab (\<greaterapprox>) op1 op2 \<Longrightarrow> op1 \<greaterapprox> op2\<close>
+
+lemma elaboration_refl: \<open>op \<greaterapprox> op\<close>
+  apply (coinduction arbitrary: op)
+  apply (auto simp: wsim_def wstep'_def elab_def)
+  done
+
+lemma expand_trans: \<open>op1 \<greaterapprox> op2 \<Longrightarrow> op2 \<greaterapprox> op3 \<Longrightarrow> op1 \<greaterapprox> op3\<close>
+  apply (coinduction arbitrary: op1 op2 op3)
+  apply (auto simp: wsim_def wstep'_def elab_def)
+  oops
+
 section\<open>Trace model\<close>
 coinductive finished where
   "(\<forall>op. op |\<in>|ops \<longrightarrow> finished op) \<Longrightarrow> finished (Choice ops)"

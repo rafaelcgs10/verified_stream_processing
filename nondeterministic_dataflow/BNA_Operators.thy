@@ -1557,6 +1557,65 @@ lemma wbisim_scomp_op_Write_buf:
     done
   done
 
+lemma wbisim_scomp_op_Read_buf:
+  \<open>buf p \<noteq> [] \<Longrightarrow> comp_op Some buf op (Read p f) \<approx> comp_op Some (BTL p buf) op (f (BHD p buf))\<close>
+  apply (coinduction arbitrary: op buf rule: wbisim_coinduct_upto)
+  unfolding wsim_def
+  subgoal for op buf
+    apply auto
+    subgoal
+      apply (drule step_comp_op_cases)
+      apply auto
+      subgoal for p' x op'
+        apply (rule exI[of _ \<open>comp_op Some (BTL p (BENQ p' x buf)) op' (f (BHD p (BENQ p' x buf)))\<close>])
+        apply (auto simp flip: wstep_steps_Tau)
+         apply (rule step_wstep)
+        apply (smt (verit, ccfv_SIG) BENQ_access BENQ_def BTL_access BTL_def fun_upd_other fun_upd_twist fun_upd_upd hd_append step_Tau_comp_op_L tl_append2)
+        apply (rule wbc_base)
+        apply (rule exI[of _ op'])
+        apply (rule exI[of _ \<open>BENQ p' x buf\<close>])
+        apply (simp add: BENQ_def)
+        done
+      done
+    subgoal
+      apply (drule step_comp_op_cases)
+      apply auto
+           apply blast
+      subgoal for p' x op'
+        apply (rule exI[of _ \<open>comp_op Some (BTL p buf) op op'\<close>])
+        apply auto
+         apply (rule step_tau_step_io_wstep)
+         apply fastforce+
+        done
+      subgoal for p' x op'
+        apply (rule exI[of _ \<open>comp_op Some (BENQ p' x (BTL p buf)) op' (f (BHD p buf))\<close>])
+        apply (auto simp flip: wstep_steps_Tau)
+        apply (rule step_tau_step_io_wstep)
+         apply (rule step_Tau_comp_op_R)
+            apply fastforce+
+        done
+      subgoal for p' op'
+        apply (rule exI[of _ \<open>comp_op Some (BTL p' (BTL p buf)) op op'\<close>])
+        apply (auto simp flip: wstep_steps_Tau)
+        apply (rule step_tau_step_io_wstep)
+         apply fastforce+
+        done
+      subgoal for op'
+        apply (rule exI[of _ \<open>comp_op Some (BTL p buf) op' (f (BHD p buf))\<close>])
+        apply (auto simp flip: wstep_steps_Tau)
+        apply (rule step_tau_step_io_wstep)
+         apply fastforce+
+        done
+      subgoal for op'
+        apply (rule exI[of _ \<open>comp_op Some (BTL p buf) op op'\<close>])
+        apply (auto simp flip: wstep_steps_Tau)
+        apply (rule step_tau_step_io_wstep)
+         apply fastforce+
+        done
+      done
+    done
+  done
+
 section \<open>loop_op: Loop/Feedback\<close>
 corec loop_op :: "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op" where
