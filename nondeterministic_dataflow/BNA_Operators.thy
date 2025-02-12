@@ -3105,7 +3105,7 @@ lemma step_Tau_loop_op[intro]:
     done
   done
 
-(* R5 *)
+(* FIXME: move me to *)
 lemma R5:
   fixes op :: "('a :: {countable, defaults} + unit, 'b :: {countable, defaults} + unit, 'c) op"
   shows "op\<up> \<approx> map_op projl projl op"
