@@ -12,6 +12,83 @@ lemma aeq_op_commutes_identity:
   oops
 
 section \<open>Axiom: A2: Equality test transpose is equality test\<close>
+
+lemma transp_op_aeq_op_scomp_op_bufs:
+  \<open>map_op projl projr (comp_op Some buf2 (transp_op buf1) (aeq_op buf3))
+  \<approx> aeq_op (buf1 >> (buf2 \<circ> case_sum Inr Inl) >> buf3)\<close>
+  apply (coinduction arbitrary: buf1 buf2 buf3 rule: wbisim_coinduct_upto)
+  subgoal for buf1 buf2 buf3
+    unfolding wsim_def
+    apply auto
+    subgoal
+      apply (drule step_map_op_inv)
+      apply auto
+      apply (drule step_comp_op_cases)
+      apply auto
+      subgoal for p x
+        apply (erule step_transp_op_Inp)
+         apply simp
+        apply (rule exI[of _ \<open>aeq_op ((BENQ p x buf1 >> (buf2 \<circ> case_sum Inr Inl)) >> buf3)\<close>])
+        apply auto
+        apply fastforce
+        done
+      subgoal for p x
+        apply (erule step_aeq_op_Out)
+         apply simp
+        apply (rule exI[of _ \<open>aeq_op ((buf1 >> (buf2 \<circ> case_sum Inr Inl)) >> BTL (Inr p) (BTL (Inl p) buf3))\<close>])
+        apply auto
+        by (smt (verit, ccfv_threshold) BAPPEND_BTL BHD_BULK_BENQ_right_not_empty BTL_def BULK_BENQ_empty Inr_Inl_False fun_upd_apply step_wstep step_aeq_op_Write)
+      subgoal for _ x
+        apply (erule step_transp_op_Out)
+          apply (auto split: sum.splits)
+        subgoal for p
+          apply (rule exI[of _ \<open>aeq_op (buf1 >> (buf2 \<circ> case_sum Inr Inl) >> buf3)\<close>])
+          apply auto
+          apply (rule wbc_base)
+          by (metis BAPPEND_BENQ_BHD BENQ_case_sum_compose sum.simps(5))
+        subgoal for p
+          apply (rule exI[of _ \<open>aeq_op (buf1 >> (buf2 \<circ> case_sum Inr Inl) >> buf3)\<close>])
+          apply auto
+          apply (rule wbc_base)
+          by (metis BAPPEND_BENQ_BHD BENQ_case_sum_compose sum.simps(6))
+        done
+      subgoal for p
+        apply (erule step_aeq_op_Inp)
+         apply simp
+        apply (rule exI[of _ \<open>aeq_op (buf1 >> (buf2 \<circ> case_sum Inr Inl) >> buf3)\<close>])
+        apply auto
+        apply (rule wbc_base)
+        apply (rule exI[of _ buf1])
+        apply (rule exI[of _ \<open>BTL p buf2\<close>])
+        apply (rule exI[of _ \<open>BENQ p (BHD p buf2) buf3\<close>])
+        sorry
+       apply (meson no_step_transp_op_Tau)
+      subgoal
+        apply (erule step_aeq_op_Tau)
+         apply simp
+        subgoal for p
+          apply (rule exI[of _ \<open>aeq_op ((buf1 >> (buf2 \<circ> case_sum Inr Inl)) >> BTL (Inr p) (BTL (Inl p) buf3))\<close>])
+          apply (auto simp flip: wstep_steps_Tau)
+          by (smt (verit, del_insts) BAPPEND_BTL BHD_BULK_BENQ_right_not_empty BTL_def BULK_BENQ_empty fun_upd_apply step_aeq_op_Silent step_wstep)
+        done
+      done
+    subgoal
+      apply (erule step_aeq_op_cases)
+      subgoal for p x
+        apply (rule exI[of _ \<open>map_op projl projr (comp_op Some buf2 (transp_op (BENQ p x buf1)) (aeq_op buf3))\<close>])
+        apply (rule conjI)
+         apply fastforce
+        apply (rule wbc_sym)
+        apply auto
+        done
+      subgoal for p x
+        sorry
+      subgoal for p
+        sorry
+      done
+    done
+  oops
+
 lemma aeq_op_transp_op:
   "\<X> \<bullet> \<Q> \<approx> \<Q>"
   oops
@@ -26,6 +103,7 @@ lemma aeq_op_sink_op:
    "\<Q> \<bullet> ! ~ ! \<parallel> !"
   oops
 
+end
 section \<open>Axiom: A5: Acopy to acopy and identity\<close>
 lemma acopy_op_acopy_id:
   "\<C> \<bullet> (\<C> \<parallel> \<I>) ~ map_op id assoc (\<C> \<bullet> (\<I> \<parallel> \<C>))"

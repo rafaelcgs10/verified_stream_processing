@@ -7,11 +7,115 @@ begin
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
 section \<open>Axiom: A1: Merge commutes with identity\<close>
+
+lemma merge_op_id_op_comp_op_bufs:
+  \<open>map_op projl projr (comp_op Some buf2 (merge_op buf1 \<parallel> id_op buf1') (merge_op buf3))
+  ~ map_op assoc id (map_op projl projr (comp_op Some buf2 (id_op buf1' \<parallel> merge_op buf1) (merge_op buf3)))\<close>
+  apply (coinduction arbitrary: buf1 buf1' buf2 buf3 rule: bisim_coinduct_upto)
+  subgoal for buf1 buf1' buf2 buf3
+    unfolding sim_def pcomp_op_def
+    apply auto
+    subgoal
+      apply (drule step_map_op_inv)
+      apply auto
+      apply (drule step_comp_op_cases)
+      apply auto
+      subgoal for _ x
+        apply (drule step_comp_op_cases)
+        apply auto
+        subgoal for p
+          apply (erule step_merge_op_Inp)
+           apply simp
+          apply (cases p)
+          apply (rule exI[of _ \<open>map_op assoc id (map_op projl projr (comp_op Some buf2 (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1') (merge_op (BENQ p x buf1))) (merge_op buf3)))\<close>])
+          apply (rule conjI)
+          subgoal
+            apply (rule step_map_op)
+             apply fastforce
+  oops
+
 lemma merge_op_commutes_identity:
   "(\<V> \<parallel> \<I>) \<bullet> \<V> ~ map_op assoc id ((\<I> \<parallel> \<V>) \<bullet> \<V>)"
   oops
 
 section \<open>Axiom: A2: Merge transpose is merge\<close>
+
+lemma transp_op_merge_op_bufs:
+  \<open>map_op projl projr (comp_op Some buf2 (transp_op buf1) (merge_op buf3))
+  \<approx> merge_op (buf1 >> (buf2 \<circ> case_sum Inr Inl) >> buf3)\<close>
+  apply (coinduction arbitrary: buf1 buf2 buf3 rule: wbisim_coinduct_upto)
+  unfolding wsim_def
+  subgoal for buf1 buf2 buf3
+    apply auto
+    subgoal
+      apply (drule step_map_op_inv)
+      apply auto
+      apply (drule step_comp_op_cases)
+      apply auto
+      subgoal for p x
+        apply (erule step_transp_op_Inp)
+         apply simp
+        apply (rule exI[of _ \<open>merge_op (BENQ p x buf1 >> (buf2 \<circ> case_sum Inr Inl) >> buf3)\<close>])
+        apply auto
+        apply (rule step_wstep)
+        apply fastforce
+        done
+      subgoal for p
+        apply (erule step_merge_op_Out)
+          apply simp
+        subgoal
+          apply (rule exI[of _ \<open>merge_op (buf1 >> (buf2 \<circ> case_sum Inr Inl) >> BTL (Inl p) buf3)\<close>])
+          apply auto
+          by (metis BAPPEND_BTL BHD_BULK_BENQ_right_not_empty BULK_BENQ_empty step_merge_op_Write_L step_wstep)
+        subgoal
+          apply (rule exI[of _ \<open>merge_op (buf1 >> (buf2 \<circ> case_sum Inr Inl) >> BTL (Inr p) buf3)\<close>])
+          apply auto
+          by (metis BAPPEND_BTL BHD_BULK_BENQ_right_not_empty BULK_BENQ_empty step_merge_op_Write_R step_wstep)
+        done
+      subgoal for _ x
+        apply (erule step_transp_op_Out)
+          apply (auto split: sum.splits)
+        subgoal for p
+          apply (rule exI[of _ \<open>merge_op (buf1 >> (buf2 \<circ> case_sum Inr Inl) >> buf3)\<close>])
+          apply auto
+          apply (rule wbc_base)
+          by (metis BAPPEND_BENQ_BHD BENQ_case_sum_compose sum.simps(5))
+        subgoal for p
+          apply (rule exI[of _ \<open>merge_op (buf1 >> (buf2 \<circ> case_sum Inr Inl) >> buf3)\<close>])
+          apply auto
+          apply (rule wbc_base)
+          by (metis BAPPEND_BENQ_BHD BENQ_case_sum_compose sum.simps(6))
+        done
+      subgoal for p
+        apply (erule step_merge_op_Inp)
+         apply simp
+        apply (rule exI[of _ \<open>merge_op (buf1 >> (buf2 \<circ> case_sum Inr Inl) >> buf3)\<close>])
+        apply auto
+        apply (rule wbc_base)
+        apply (rule exI[of _ buf1])
+        apply (rule exI[of _ \<open>BTL p buf2\<close>])
+        apply (rule exI[of _ \<open>BENQ p (BHD p buf2) buf3\<close>])
+        sorry
+       apply (meson no_step_transp_op_Tau no_step_merge_op_Tau)+
+      done
+    subgoal
+      apply (erule step_merge_op_cases)
+      subgoal for p x
+        apply (rule exI[of _ \<open>map_op projl projr (comp_op Some buf2 (transp_op (BENQ p x buf1)) (merge_op buf3))\<close>])
+        apply (rule conjI)
+         apply (rule step_wstep)
+         apply fastforce
+        apply (rule wbc_sym)
+        apply auto
+        done
+      subgoal for p x
+        sorry
+      subgoal for p x
+        sorry
+      done
+    done
+  oops
+
 lemma merge_op_transp_op:
   "\<X> \<bullet> \<V> \<approx> \<V>"
   oops
