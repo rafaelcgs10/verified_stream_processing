@@ -217,6 +217,50 @@ lemma wbisim_scomp_op_acopy_op_Read_Write_aeq_op_L:
   using wbisim_scomp_op_Read_buf[of \<open>case_sum (BTL p buf) buf\<close> \<open>Inr p\<close> \<C> \<open>\<lambda>x. if x = BHD p buf then Write \<Q> p x else Silent \<Q>\<close>]
   by simp
 
+lemma wbisim_scomp_op_acopy_op_Read_Write_aeq_op_R:
+  \<open>buf p \<noteq> [] \<Longrightarrow>
+  comp_op Some (case_sum buf (BTL p buf)) \<C> (Read (Inl p) (\<lambda>x. if x = BHD p buf then Write \<Q> p x else Silent \<Q>))
+  \<approx> comp_op Some (case_sum (BTL p buf) (BTL p buf)) \<C> (Write \<Q> p (BHD p buf))\<close>
+  using wbisim_scomp_op_Read_buf[of \<open>case_sum buf (BTL p buf)\<close> \<open>Inl p\<close> \<C> \<open>\<lambda>x. if x = BHD p buf then Write \<Q> p x else Silent \<Q>\<close>]
+  by simp
+
+lemma wbisim_scomp_op_acopy_op_Write_aeq_op:
+  \<open>buf p \<noteq> [] \<Longrightarrow>
+  comp_op Some (case_sum (BTL p buf) (BTL p buf)) \<C> (Write \<Q> p (BHD p buf))
+  \<approx> comp_op Some (case_sum buf buf) \<C> \<Q>\<close>
+  apply (coinduction arbitrary: buf p rule: wbisim_coinduct_upto)
+  subgoal for buf p
+    unfolding wsim_def
+    apply auto
+    subgoal
+      apply (drule step_comp_op_cases)
+      apply auto
+      subgoal for p' x
+        apply (erule step_acopy_op_Inp)
+         apply simp
+        apply (rule exI[of _ \<open>comp_op Some (case_sum (BTL p buf) (BTL p buf)) (Choice {|Write (Write \<C> (Inr p') x) (Inl p') x, Write (Write \<C> (Inl p') x) (Inr p') x|}) (Write \<Q> p (BHD p buf))\<close>])
+        apply (rule conjI)
+         apply (rule step_io_step_tau_tau_wstep[of _ _ \<open>comp_op Some (case_sum buf buf) (Choice {|Write (Write \<C> (Inr p') x) (Inl p') x, Write (Write \<C> (Inl p') x) (Inr p') x|}) \<Q>\<close> \<open>comp_op Some (case_sum (BTL p buf) buf) (Choice {|Write (Write \<C> (Inr p') x) (Inl p') x, Write (Write \<C> (Inl p') x) (Inr p') x|}) (Read (Inr p) (\<lambda>x. if x = BHD p buf then Write \<Q> p x else Silent \<Q>))\<close>])
+           apply fast+
+         apply auto
+        done
+      subgoal
+        apply (rule exI[of _ \<open>comp_op Some (case_sum (BTL p buf) (BTL p buf)) \<C> \<Q>\<close>])
+        apply auto
+        apply (rule step_tau_step_tau_step_io_wstep)
+          apply fastforce+
+        done
+       apply (meson no_step_acopy_op_Out no_step_acopy_op_Tau)+
+      done
+    subgoal
+      apply (drule step_comp_op_cases)
+      apply auto
+      subgoal for p' x
+        apply (erule step_acopy_op_Inp)
+         apply simp
+        apply (rule exI)
+  oops
+
 lemma
   \<open>comp_op Some buf op1 op \<approx> comp_op Some buf' op' op \<Longrightarrow>
   comp_op Some buf op2 op \<approx> comp_op Some buf' op' op \<Longrightarrow>
