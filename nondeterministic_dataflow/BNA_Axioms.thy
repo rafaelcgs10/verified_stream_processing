@@ -4265,91 +4265,280 @@ lemma loop_op_commutes_inner_scomp_op_gen:
            (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2))))"
           apply (rule step_Tau_loop_op)
                   apply (rule step_map_op)
-
-
-
-end
-        apply (intro exI conjI[rotated])
+            apply (rule step_comp_op_L_Tau)
+                  apply (rule step_map_op)
+            apply (rule step_Tau_comp_op_L)
+          using BISIM that apply (auto simp add: ran_def split: sum.splits dest!: Read_choices_inputs elim!: step_choicesE)
+          done
+        moreover have "step Tau
+      (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BTL x2 buf1))
+       (map_op projl projr
+         (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' (BENQ x2 (BHD x2 buf1) buf1'')) (id_op (case_sum buf4 buf1')) op1))
+           (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2))))
+      (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BTL x2 buf1))
+       (map_op projl projr
+         (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4'  buf1'') (id_op (case_sum buf4 buf1')) op1'))
+           (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2))))"
+          apply (rule step_Tau_loop_op)
+                  apply (rule step_map_op)
+            apply (rule step_comp_op_L_Tau)
+                  apply (rule step_map_op)
+               apply (rule step_Tau_comp_op_R)
+          using BISIM that apply blast
+ using BISIM that apply (auto simp add: ran_def split: sum.splits dest!: Read_choices_inputs elim!: step_choicesE)
+  done
+  ultimately show ?thesis
+   apply (intro exI conjI[rotated])
          apply (rule wbc_sym)
          apply (rule wbc_base)
          apply (intro exI conjI)
               apply (rule refl)+
-        using BISIM step_inputs_outputs apply force
-        using BISIM step_inputs_outputs apply force
-        using BISIM step_inputs_outputs apply force
-        using BISIM step_inputs_outputs apply force
+        using that BISIM step_inputs_outputs apply force
+           using that BISIM step_inputs_outputs apply force
+        using that BISIM step_inputs_outputs apply force
+        using that BISIM step_inputs_outputs apply force
         apply auto
-  
-
-
-end
-        apply (rule step_map_op)
-         apply (rule step_Inp_Tau_loop_op[where p="Inr x2" and x="BHD x2 buf1"])
-        apply (auto simp add: ran_def split: sum.splits if_splits intro!: step_comp_op_L_Inp[where p="Inr x2" ])
-          apply (rule step_comp_op_L_Inp[where p="Inr x2" ])
-            apply auto
-        apply (metis BISIM(1) IO.inject(1) IO.simps(4) IO.simps(6) Read_choices_inputs disjoint_iff step_choicesE vimageI)
-        sledgehammer
-
-
-end
+        done
+    qed
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2))))) op2' \<and> wbisim_cong (\<lambda>op1axx op2axx. \<exists>op1 op2 buf1 buf1' buf1'' buf2 buf2' buf2'' buf3 buf3' buf4 buf4'. op1axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'m) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2)))) \<and> op2axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'n) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf2'') (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2) (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1 (id_op (case_sum buf3' buf2'))))))) \<and> Inr -` inputs op1 \<inter> defaults = {} \<and> Inr -` outputs op1 \<inter> defaults = {} \<and> inputs op2 \<inter> defaults = {} \<and> outputs op2 \<inter> defaults = {}) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf2'') (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> BTL x2 buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2) (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1' (id_op (case_sum buf3' buf2')))))))) op2'"
         if "step (Inp (Inr x2) (BHD x2 buf1')) op1 op1'"
           and "buf1'' x2 = []"
           and "buf1' x2 \<noteq> []"
         for op1' :: "('k + 'm, 'l + 'n, 'd) op"
           and x2 :: 'm
-        using that sorry
+        using that 
+      proof -
+        have "step Tau
+     (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1)
+       (map_op projl projr
+         (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2))))
+     (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1)
+       (map_op projl projr
+         (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' (BENQ x2 (BHD x2 buf1') buf1'')) (id_op (case_sum buf4 (BTL x2 buf1'))) op1))
+           (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2))))"
+    apply (rule step_Tau_loop_op)
+                  apply (rule step_map_op)
+            apply (rule step_comp_op_L_Tau)
+                  apply (rule step_map_op)
+            apply (rule step_Tau_comp_op_L)
+          using BISIM that apply (auto simp add: ran_def split: sum.splits dest!: Read_choices_inputs elim!: step_choicesE)
+          done
+        moreover have "step Tau
+(loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1)
+       (map_op projl projr
+         (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' (BENQ x2 (BHD x2 buf1') buf1'')) (id_op (case_sum buf4 (BTL x2 buf1'))) op1))
+           (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2))))
+     (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1)
+       (map_op projl projr
+         (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 (BTL x2 buf1'))) op1'))
+           (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2))))"
+          apply (rule step_Tau_loop_op)
+                  apply (rule step_map_op)
+            apply (rule step_comp_op_L_Tau)
+                  apply (rule step_map_op)
+               apply (rule step_Tau_comp_op_R)
+          using BISIM that apply blast
+ using BISIM that apply (auto simp add: ran_def split: sum.splits dest!: Read_choices_inputs elim!: step_choicesE)
+  done
+  ultimately show ?thesis
+   apply (intro exI conjI[rotated])
+         apply (rule wbc_sym)
+         apply (rule wbc_base)
+         apply (intro exI conjI)
+              apply (rule refl)+
+        using that BISIM step_inputs_outputs apply force
+           using that BISIM step_inputs_outputs apply force
+        using that BISIM step_inputs_outputs apply force
+        using that BISIM step_inputs_outputs apply force
+        apply auto
+        done
+    qed
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2))))) op2' \<and> wbisim_cong (\<lambda>op1axx op2axx. \<exists>op1 op2 buf1 buf1' buf1'' buf2 buf2' buf2'' buf3 buf3' buf4 buf4'. op1axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'m) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2)))) \<and> op2axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'n) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf2'') (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2) (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1 (id_op (case_sum buf3' buf2'))))))) \<and> Inr -` inputs op1 \<inter> defaults = {} \<and> Inr -` outputs op1 \<inter> defaults = {} \<and> inputs op2 \<inter> defaults = {} \<and> outputs op2 \<inter> defaults = {}) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf2'') (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> BTL x2 buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2) (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1' (id_op (case_sum buf3' buf2')))))))) op2'"
         if "step (Inp (Inr x2) (BHD x2 buf1'')) op1 op1'"
           and "buf1'' x2 \<noteq> []"
         for op1' :: "('k + 'm, 'l + 'n, 'd) op"
           and x2 :: 'm
-        using that sorry
+        using that 
+apply (intro exI conjI[rotated])
+         apply (rule wbc_sym)
+         apply (rule wbc_base)
+         apply (intro exI conjI)
+              apply (rule refl)+
+        using that BISIM step_inputs_outputs apply force
+           using that BISIM step_inputs_outputs apply force
+        using that BISIM step_inputs_outputs apply force
+        using that BISIM step_inputs_outputs apply force
+    apply (rule rtranclp.intros(2))
+         apply (rule rtranclp.intros(1))
+        apply (rule step_map_op)
+ apply (rule step_Tau_loop_op)
+                  apply (rule step_map_op)
+            apply (rule step_comp_op_L_Tau)
+                  apply (rule step_map_op)
+               apply (rule step_Tau_comp_op_R)
+          using BISIM that apply blast
+ using BISIM that apply (auto simp add: ran_def split: sum.splits dest!: Read_choices_inputs elim!: step_choicesE)
+  done
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2))))) op2' \<and> wbisim_cong (\<lambda>op1axx op2axx. \<exists>op1 op2 buf1 buf1' buf1'' buf2 buf2' buf2'' buf3 buf3' buf4 buf4'. op1axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'m) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2)))) \<and> op2axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'n) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf2'') (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2) (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1 (id_op (case_sum buf3' buf2'))))))) \<and> Inr -` inputs op1 \<inter> defaults = {} \<and> Inr -` outputs op1 \<inter> defaults = {} \<and> inputs op2 \<inter> defaults = {} \<and> outputs op2 \<inter> defaults = {}) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf2'') (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) op1'a op2) (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1 (id_op (case_sum buf3' buf2')))))))) op2'"
         if "step Tau (id_op buf4) op1'a"
         for op1'a :: "('k, 'k, 'd) op"
-        using that sorry
+        using that 
+   apply (intro exI conjI[rotated])
+         apply (rule wbc_sym)
+         apply (rule wbc_base)
+        using that BISIM step_inputs_outputs apply force
+        apply auto
+        done
       moreover have "\<exists>op2'a. (step Tau)\<^sup>*\<^sup>* (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2))))) op2'a \<and> wbisim_cong (\<lambda>op1axx op2axx. \<exists>op1 op2 buf1 buf1' buf1'' buf2 buf2' buf2'' buf3 buf3' buf4 buf4'. op1axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'m) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2)))) \<and> op2axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'n) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf2'') (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2) (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1 (id_op (case_sum buf3' buf2'))))))) \<and> Inr -` inputs op1 \<inter> defaults = {} \<and> Inr -` outputs op1 \<inter> defaults = {} \<and> inputs op2 \<inter> defaults = {} \<and> outputs op2 \<inter> defaults = {}) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf2'') (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2') (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1 (id_op (case_sum buf3' buf2')))))))) op2'a"
         if "step Tau op2 op2'"
         for op2' :: "('n, 'm, 'd) op"
-        using that sorry
+        using that 
+   apply (intro exI conjI[rotated])
+         apply (rule wbc_sym)
+         apply (rule wbc_base)
+        using that BISIM step_inputs_outputs apply fast
+  apply (rule rtranclp.intros(2))
+         apply (rule rtranclp.intros(1))
+        apply (rule step_map_op)
+         apply (rule step_Tau_loop_op)
+          apply auto
+        done
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2))))) op2' \<and> wbisim_cong (\<lambda>op1axx op2axx. \<exists>op1 op2 buf1 buf1' buf1'' buf2 buf2' buf2'' buf3 buf3' buf4 buf4'. op1axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'m) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2)))) \<and> op2axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'n) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf2'') (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2) (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1 (id_op (case_sum buf3' buf2'))))))) \<and> Inr -` inputs op1 \<inter> defaults = {} \<and> Inr -` outputs op1 \<inter> defaults = {} \<and> inputs op2 \<inter> defaults = {} \<and> outputs op2 \<inter> defaults = {}) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf2'') (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2) (map_op projl projr (comp_op Some (BENQ q xa (case_sum buf3 buf2)) op1' (id_op (case_sum buf3' buf2')))))))) op2'"
         if "step (Out q xa) op1 op1'"
         for xa :: 'd
           and op1' :: "('k + 'm, 'l + 'n, 'd) op"
           and q :: "'l + 'n"
-        using that sorry
+        using that 
+      proof (cases q)
+        case (Inl a)
+        from this that show ?thesis 
+   apply (intro exI conjI[rotated])
+         apply (rule wbc_sym)
+           apply (rule wbc_base)
+         apply (intro exI conjI)
+              apply (rule refl)+
+          using that BISIM step_inputs_outputs apply force
+           using that BISIM step_inputs_outputs apply force
+           using that BISIM step_inputs_outputs apply force
+           using that BISIM step_inputs_outputs apply force
+           using that BISIM step_inputs_outputs apply blast
+ apply (rule rtranclp.intros(2))
+         apply (rule rtranclp.intros(1))
+        apply (rule step_map_op)
+         apply (rule step_Tau_loop_op)
+          apply auto
+           done
+      next
+        case (Inr b)
+        from this that  show ?thesis 
+   apply (intro exI conjI[rotated])
+         apply (rule wbc_sym)
+           apply (rule wbc_base)
+         apply (intro exI conjI)
+              apply (rule refl)+
+          using that BISIM step_inputs_outputs apply force
+           using that BISIM step_inputs_outputs apply force
+           using that BISIM step_inputs_outputs apply force
+           using that BISIM step_inputs_outputs apply force
+           using that BISIM step_inputs_outputs apply blast
+            apply (rule rtranclp.intros(2))
+         apply (rule rtranclp.intros(1))
+        apply (rule step_map_op)
+            apply (rule step_Tau_loop_op)
+             apply (rule step_map_op)
+              apply (rule step_Tau_comp_op_L)
+                 apply auto
+           done
+      qed
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2))))) op2' \<and> wbisim_cong (\<lambda>op1axx op2axx. \<exists>op1 op2 buf1 buf1' buf1'' buf2 buf2' buf2'' buf3 buf3' buf4 buf4'. op1axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'m) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2)))) \<and> op2axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'n) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf2'') (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2) (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1 (id_op (case_sum buf3' buf2'))))))) \<and> Inr -` inputs op1 \<inter> defaults = {} \<and> Inr -` outputs op1 \<inter> defaults = {} \<and> inputs op2 \<inter> defaults = {} \<and> outputs op2 \<inter> defaults = {}) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf2'') (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2) (map_op projl projr (comp_op Some (case_sum (BTL x1 buf3) buf2) op1 (id_op (case_sum (BENQ x1 (BHD x1 buf3) buf3') buf2')))))))) op2'"
         if "x1 \<notin> defaults"
           and "buf3 x1 \<noteq> []"
         for x1 :: 'l
-        using that sorry
+        using that 
+   apply (intro exI conjI[rotated])
+         apply (rule wbc_sym)
+         apply (rule wbc_base)
+        using that BISIM step_inputs_outputs apply blast
+     apply (rule rtranclp.intros(2))
+         apply (rule rtranclp.intros(1))
+        apply (rule step_map_op)
+            apply (rule step_Tau_loop_op)
+             apply (rule step_map_op)
+           apply auto
+        done
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2))))) op2' \<and> wbisim_cong (\<lambda>op1axx op2axx. \<exists>op1 op2 buf1 buf1' buf1'' buf2 buf2' buf2'' buf3 buf3' buf4 buf4'. op1axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'m) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2)))) \<and> op2axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'n) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf2'') (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2) (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1 (id_op (case_sum buf3' buf2'))))))) \<and> Inr -` inputs op1 \<inter> defaults = {} \<and> Inr -` outputs op1 \<inter> defaults = {} \<and> inputs op2 \<inter> defaults = {} \<and> outputs op2 \<inter> defaults = {}) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf2'') (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2) (map_op projl projr (comp_op Some (case_sum buf3 (BTL x2 buf2)) op1 (id_op (case_sum buf3' (BENQ x2 (BHD x2 buf2) buf2'))))))))) op2'"
         if "x2 \<notin> defaults"
           and "buf2 x2 \<noteq> []"
         for x2 :: 'n
-        using that sorry
+        using that 
+   apply (intro exI conjI[rotated])
+         apply (rule wbc_sym)
+         apply (rule wbc_base)
+        using that BISIM step_inputs_outputs apply blast
+        apply auto
+        done
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2))))) op2' \<and> wbisim_cong (\<lambda>op1axx op2axx. \<exists>op1 op2 buf1 buf1' buf1'' buf2 buf2' buf2'' buf3 buf3' buf4 buf4'. op1axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'m) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2)))) \<and> op2axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'n) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf2'') (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2) (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1 (id_op (case_sum buf3' buf2'))))))) \<and> Inr -` inputs op1 \<inter> defaults = {} \<and> Inr -` outputs op1 \<inter> defaults = {} \<and> inputs op2 \<inter> defaults = {} \<and> outputs op2 \<inter> defaults = {}) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf2'') (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2) (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1' (id_op (case_sum buf3' buf2')))))))) op2'"
         if "step Tau op1 op1'"
         for op1' :: "('k + 'm, 'l + 'n, 'd) op"
-        using that sorry
+        using that 
+    apply (intro exI conjI[rotated])
+         apply (rule wbc_sym)
+           apply (rule wbc_base)
+         apply (intro exI conjI)
+              apply (rule refl)+
+          using that BISIM step_inputs_outputs apply force
+           using that BISIM step_inputs_outputs apply force
+           using that BISIM step_inputs_outputs apply force
+           using that BISIM step_inputs_outputs apply force
+     apply (rule rtranclp.intros(2))
+         apply (rule rtranclp.intros(1))
+        apply (rule step_map_op)
+            apply (rule step_Tau_loop_op)
+             apply (rule step_map_op)
+           apply auto
+           done
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2))))) op2' \<and> wbisim_cong (\<lambda>op1axx op2axx. \<exists>op1 op2 buf1 buf1' buf1'' buf2 buf2' buf2'' buf3 buf3' buf4 buf4'. op1axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'m) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2)))) \<and> op2axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'n) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf2'') (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2) (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1 (id_op (case_sum buf3' buf2'))))))) \<and> Inr -` inputs op1 \<inter> defaults = {} \<and> Inr -` outputs op1 \<inter> defaults = {} \<and> inputs op2 \<inter> defaults = {} \<and> outputs op2 \<inter> defaults = {}) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf2'') (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2) (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1 op2'a)))))) op2'"
         if "step Tau (id_op (case_sum buf3' buf2')) op2'a"
         for op2'a :: "('l + 'n, 'l + 'n, 'd) op"
-        using that sorry
+        using that 
+   apply (intro exI conjI[rotated])
+         apply (rule wbc_sym)
+         apply (rule wbc_base)
+        using that BISIM step_inputs_outputs apply blast
+        apply auto
+        done
       moreover have "\<exists>op2'a. (step Tau)\<^sup>*\<^sup>* (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2))))) op2'a \<and> wbisim_cong (\<lambda>op1axx op2axx. \<exists>op1 op2 buf1 buf1' buf1'' buf2 buf2' buf2'' buf3 buf3' buf4 buf4'. op1axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'m) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2)))) \<and> op2axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'n) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf2'') (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2) (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1 (id_op (case_sum buf3' buf2'))))))) \<and> Inr -` inputs op1 \<inter> defaults = {} \<and> Inr -` outputs op1 \<inter> defaults = {} \<and> inputs op2 \<inter> defaults = {} \<and> outputs op2 \<inter> defaults = {}) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BTL x2 buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2') (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1 (id_op (case_sum buf3' buf2')))))))) op2'a"
         if "Inr x2 \<in> ran (case_sum ((\<lambda>_. None)::'l \<Rightarrow> ('k + 'n) option) (\<lambda>p. if p \<in> defaults then None else Some (Inr p)))"
           and "step (Inp x2 (BHD x2 buf2'')) op2 op2'"
           and "buf2'' x2 \<noteq> []"
         for op2' :: "('n, 'm, 'd) op"
           and x2 :: 'n
-        using that sorry
+        using that 
+apply (intro exI conjI[rotated])
+         apply (rule wbc_sym)
+         apply (rule wbc_base)
+        using that BISIM step_inputs_outputs apply fast
+     apply (rule rtranclp.intros(2))
+         apply (rule rtranclp.intros(1))
+        apply (rule step_map_op)
+            apply (rule step_Tau_loop_op)
+          apply (rule step_map_op)
+           apply (rule step_Tau_comp_op_R[where p="Inr x2"])
+                apply simp_all
+        apply (rule step_comp_op_R_Inp)
+           apply auto
+        done
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2))))) op2' \<and> wbisim_cong (\<lambda>op1axx op2axx. \<exists>op1 op2 buf1 buf1' buf1'' buf2 buf2' buf2'' buf3 buf3' buf4 buf4'. op1axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'m) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf1) (map_op projl projr (comp_op Some (case_sum buf3 ((buf2 >> buf2') >> buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2)))) \<and> op2axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'n) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf2'') (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2) (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1 (id_op (case_sum buf3' buf2'))))))) \<and> Inr -` inputs op1 \<inter> defaults = {} \<and> Inr -` outputs op1 \<inter> defaults = {} \<and> inputs op2 \<inter> defaults = {} \<and> outputs op2 \<inter> defaults = {}) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BENQ x2 (BHD x2 buf2') buf2'')) (map_op projl projr (comp_op Some (case_sum buf4' ((buf1 >> buf1') >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2) (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1 (id_op (case_sum buf3' (BTL x2 buf2'))))))))) op2'"
         if "buf2' x2 \<noteq> []"
           and "x2 \<notin> defaults"
         for x2 :: 'n
-        using that sorry
+        using that 
+apply (intro exI conjI[rotated])
+         apply (rule wbc_sym)
+         apply (rule wbc_base)
+        using that BISIM step_inputs_outputs apply blast
+        apply (metis (no_types, lifting) BAPPEND_BENQ_BHD BULK_BENQ_assoc Nitpick.rtranclp_unfold)
+        done
       ultimately show ?thesis
         apply -
         subgoal premises prems
@@ -4360,676 +4549,6 @@ end
     qed
   qed
 qed
-
-end
-  subgoal for op1 op2 buf1 buf1' buf1'' buf2 buf2' buf2'' buf3 buf3' buf4 buf4'
-    unfolding wsim_def
-    apply auto
-    subgoal for io op'
-      apply (drule step_map_op_inv)
-      apply (auto; hypsubst_thin)
-      subgoal for io' op''
-        apply (drule step_loop_op)
-        apply (auto; hypsubst_thin)
-        subgoal for p op'' x
-          apply (drule step_map_op_inv)
-          apply (auto; hypsubst_thin)
-          apply (drule step_comp_op_cases)
-          apply (auto; hypsubst_thin?)
-          apply (drule step_map_op_inv)
-          apply (auto; hypsubst_thin?)
-          apply (drule step_comp_op_cases)
-          apply (auto; hypsubst_thin?)
-          apply (drule step_id_op_Inp)
-           apply (auto; hypsubst_thin?)
-          subgoal for op1'
-            apply hypsubst_thin
-            apply (rule exI)
-            apply (rule conjI[rotated])
-             apply (rule wbc_base)
-             apply force
-            apply (rule step_wstep)
-            apply (rule step_map_op[of "Inp (Inl p) _"])
-             apply simp_all
-            apply (rule step_Inp_Inl_loop_op)
-            apply (rule step_map_op[of "Inp (Inl (Inl p)) _"])
-             apply simp_all
-            apply (rule step_comp_op_L_Inp)
-            apply (rule step_comp_op_L_Inp)
-            using step_id_op_Read apply (metis BAPPEND_BENQ)
-            done
-          done
-        subgoal for p op'' x
-          apply (drule step_map_op_inv)
-          apply (auto; hypsubst_thin)
-          apply (drule step_comp_op_cases)
-          apply (auto; hypsubst_thin?)
-          apply (drule step_comp_op_cases)
-          apply (auto; hypsubst_thin?)
-          apply (drule step_id_op_Out)
-           apply (auto; hypsubst_thin?)
-          subgoal for op1'
-            apply auto
-            apply hypsubst_thin
-            apply (rule exI)
-            apply (rule conjI[rotated])
-             apply (rule wbc_base)
-             apply (rule exI[of _ op1])
-             apply (rule exI[of _ op2])
-             apply (rule exI[of _ buf1])
-             apply (rule exI[of _ buf1'])
-             apply (rule exI[of _ buf1''])
-             apply (rule exI[of _ buf2])
-             apply (rule exI[of _ buf2'])
-             apply (rule exI[of _ buf2''])
-             apply (rule exI[of _ "buf3"])
-             apply (rule exI[of _ "BTL p buf3'"])   
-             apply (intro exI conjI)
-              apply simp
-             apply (rule refl)
-            apply (rule step_wstep)
-            apply (rule step_map_op[of "Out (Inl p) _", rotated])
-             apply simp
-            apply (rule step_Out_Inl_loop_op)
-            apply (rule step_map_op[of "Out (Inr (Inl p)) _", rotated])
-             apply simp
-            apply (rule step_comp_op_R_Out)
-            apply (rule step_map_op[of "Out (Inr (Inl p)) _", rotated])
-             apply simp
-            apply (rule step_comp_op_R_Out)
-            apply (smt (verit, del_insts) BAPPEND_BTL BULK_BENQ_def append_is_Nil_conv case_sum_BTL_L hd_append2 old.sum.simps(5) step_id_op_Write)      
-            done
-          done
-        subgoal for op''
-          apply (drule step_map_op_inv)
-          apply (auto; hypsubst_thin)
-          apply (drule step_comp_op_cases)
-          apply (auto; hypsubst_thin?)
-             apply (drule step_map_op_inv)
-             apply (auto; hypsubst_thin?)
-             apply (drule step_comp_op_cases)
-             apply auto
-          subgoal for x p op1'
-            apply (cases p)
-            subgoal for lp
-              apply auto
-              apply hypsubst_thin
-              apply (intro exI conjI[rotated])
-               apply (rule wbc_base)
-               apply (rule exI[of _ "op1'"])
-               apply (rule exI[of _ op2])
-               apply (rule exI[of _ buf1])
-               apply (rule exI[of _ buf1'])
-               apply (rule exI[of _ buf1''])
-               apply (rule exI[of _ buf2])
-               apply (rule exI[of _ buf2'])
-               apply (rule exI[of _ buf2''])
-               apply (rule exI[of _ "BENQ lp x buf3"])
-               apply (rule exI[of _ buf3'])
-               apply (rule exI[of _ buf4])
-               apply (rule exI[of _ buf4'])
-               apply (intro conjI)
-                apply force
-               apply simp
-              apply (rule transitive_closurep_trans'(6))
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_Tau_loop_op)
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_comp_op_R_Tau)
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_Tau_comp_op_L)
-                apply simp_all
-              apply simp
-              done
-            subgoal for lr
-              apply hypsubst_thin
-              apply (intro exI conjI[rotated])
-               apply (rule wbc_base)
-               apply (rule exI[of _ "op1'"])
-               apply (rule exI[of _ op2])
-               apply (rule exI[of _ buf1])
-               apply (rule exI[of _ buf1'])
-               apply (rule exI[of _ buf1''])
-               apply (rule exI[of _ "BENQ lr x buf2"])
-               apply (rule exI[of _ buf2'])
-               apply (rule exI[of _ buf2''])
-               apply (rule exI[of _ "buf3"])
-               apply (rule exI[of _ buf3'])
-               apply (rule exI[of _ buf4])
-               apply (rule exI[of _ buf4'])
-               apply (intro conjI)
-                apply simp_all
-              apply (rule step_tau_star_tau) 
-              apply (auto 10 10 simp flip: case_sum_BENQ_R)
-              done
-            done
-          subgoal for p op2'
-            apply (cases p)
-            subgoal for lp
-              apply (auto dest!: step_id_op_Inp step_comp_op_cases; hypsubst_thin?)
-              apply (intro exI conjI[rotated])
-               apply (rule wbc_base)
-               apply force
-              apply (rule step_tau_star_tau) 
-              apply (rule step_Tau_loop_op)
-              apply (rule step_map_op[of Tau])
-               apply simp_all
-              apply (rule step_comp_op_R_Tau)
-              apply (rule step_map_op[of Tau])
-               apply simp_all
-   (* Come back here! *)
-              apply (rule step_Tau_comp_op_R[where buf="case_sum buf3 buf2" and p="Inl lp", simplified])
-                 apply auto
-              apply (metis case_sum_BENQ_L step_id_op_Read)
-              done
-            subgoal for rp
-              apply (auto dest!: step_id_op_Inp step_comp_op_cases; hypsubst_thin?)
-              subgoal for op2'
-                apply (intro exI conjI[rotated])
-                 apply (rule wbc_base)
-                 apply force
-                apply (rule step_tau_tau_tau_star_tau) 
-                  apply (rule step_Tau_loop_op)
-                  apply (rule step_map_op[of Tau])
-                   apply simp_all
-                  apply (rule step_comp_op_R_Tau)
-                  apply (rule step_map_op[of Tau])
-                   apply simp_all
-                  apply (rule step_Tau_comp_op_R[where p="Inr rp"])
-                     apply auto[4]
-                 apply (rule step_Out_Inr_loop_op)
-                 apply (rule step_map_op[of "Out (Inr (Inr rp)) _"])
-                  apply simp_all
-                 apply (rule step_comp_op_R_Out)
-                 apply (rule step_map_op[of "Out (Inr (Inr rp)) _"])
-                  apply simp_all
-                 apply (rule step_comp_op_R_Out)
-                 apply auto
-                apply (rule subst[rotated])
-                 apply (rule step_Inp_Inr_loop_op[where buf="case_sum undefined (BENQ rp (BHD rp buf2) buf2'')" and p=rp, simplified])
-                 defer
-                 apply simp_all
-                apply (rule step_map_op[of "Inp (Inl (Inr rp)) _"])
-                 apply simp_all
-                apply (rule step_comp_op_L_Inp)
-                apply (rule step_comp_op_R_Inp)
-                 apply auto
-                done
-              subgoal for op2'
-                apply (intro exI conjI[rotated])
-                 apply (rule wbc_base)
-                 apply force
-                apply (rule step_tau_star_tau) 
-                apply (rule step_Inp_Inr_loop_op[where buf="case_sum undefined buf2''" and p=rp, simplified])
-                 apply simp_all
-                apply (rule step_map_op[of "Inp (Inl (Inr rp)) _"])
-                 apply simp_all
-                apply (rule step_comp_op_L_Inp)
-                apply (rule step_comp_op_R_Inp)
-                 apply auto
-                done
-              subgoal for op2'
-                apply (intro exI conjI[rotated])
-                 apply (rule wbc_base)
-                 apply force
-                apply (rule step_tau_tau_star_tau) 
-                 apply (rule step_Out_Inr_loop_op)
-                 apply (rule step_map_op[of "Out (Inr (Inr rp)) _"])
-                  apply simp_all
-                 apply (rule step_comp_op_R_Out)
-                 apply (rule step_map_op[of "Out (Inr (Inr rp)) _"])
-                  apply simp_all
-                 apply (rule step_comp_op_R_Out)
-                 apply (rule step_id_op_Write)
-                  apply blast
-                 apply simp
-                apply simp
-                apply (rule subst[rotated])
-                 apply (rule step_Inp_Inr_loop_op[where buf="case_sum undefined (BENQ rp (BHD rp buf2') buf2'')" and p=rp, simplified])
-                 apply auto
-                apply (rule step_map_op[of "Inp (Inl (Inr rp)) _"])
-                 apply simp_all
-                apply (rule step_comp_op_L_Inp)
-                apply (rule step_comp_op_R_Inp)
-                 apply auto
-                done
-              subgoal for op2'
-                apply (intro exI conjI[rotated])
-                 apply (rule wbc_base)
-                 apply force
-                apply (rule step_tau_star_tau) 
-                apply (rule step_Inp_Inr_loop_op[where buf="case_sum undefined buf2''" and p=rp, simplified])
-                 apply simp_all
-                apply (rule step_map_op[of "Inp (Inl (Inr rp)) _"])
-                 apply simp_all
-                apply (rule step_comp_op_L_Inp)
-                apply (rule step_comp_op_R_Inp)
-                 apply auto
-                done
-              done
-            done
-          subgoal for op1'
-            apply (drule step_map_op_inv)
-            apply (auto; hypsubst_thin)
-            apply (drule step_comp_op_cases)
-            apply (auto; hypsubst_thin?)
-            subgoal for p x op1'
-              apply (drule step_id_op_Out)
-               apply auto
-              apply (cases p; auto; hypsubst_thin?)
-              subgoal for lp
-                apply (intro exI conjI[rotated])
-                 apply (rule wbc_base)
-                 apply fast
-                apply (rule step_tau_star_tau)
-                apply (rule step_Tau_loop_op)
-                apply (rule step_map_op[of Tau])
-                 apply simp_all
-                apply (rule step_Tau_comp_op_L[where buf="case_sum buf4' ((buf1 >> buf1') >> buf1'')" and wire="Some" and x="BHD lp buf4" and q="Inl lp" and p="Inl lp", simplified])
-                apply blast
-                done
-              subgoal for rp
-                apply (intro exI conjI[rotated])
-                 apply (rule wbc_base)
-                 apply fast
-                apply (metis (no_types, lifting) BAPPEND_BENQ_BHD BULK_BENQ_assoc Nitpick.rtranclp_unfold)
-                done
-              done
-            subgoal for p op1'
-              apply (cases p; auto; hypsubst_thin?)
-              subgoal for lp
-                apply (intro exI conjI[rotated])
-                 apply (rule wbc_base)
-                 apply fast
-                apply (rule step_tau_star_tau)
-                apply (rule step_Tau_loop_op)
-                apply (rule step_map_op[of Tau])
-                 apply simp_all
-                apply (rule step_Tau_comp_op_R[where buf="case_sum buf4' ((buf1 >> buf1') >> buf1'')" and wire="Some" and p="Inl lp", simplified])
-                  apply simp_all
-                apply (rule step_map_op[of "Inp (Inl (Inl lp)) _"])
-                 apply simp_all
-                apply auto
-                done
-              subgoal for rp
-                apply (intro exI conjI[rotated])
-                 apply (rule wbc_base)
-                 apply fast
-                apply (rule step_tau_star_tau)
-                apply (rule step_Tau_loop_op)
-                apply (rule step_map_op[of Tau])
-                 apply simp_all
-                using step_Tau_comp_op_R[where buf="case_sum buf4' ((buf1 >> buf1') >> buf1'')" and wire="Some" and x="BHD rp buf1''" and p="Inr rp", simplified]
-                apply simp
-                apply (drule meta_spec)+
-                apply (drule meta_mp)
-                 defer
-                 apply (drule meta_mp)
-                  apply (simp add: BULK_BENQ_def)
-                 apply assumption
-                apply (rule step_map_op[of "Inp (Inl (Inr rp)) _"])
-                 apply simp_all
-                apply auto
-                done
-              done
-            subgoal for op1'
-              apply (subst (asm) id_op_code)
-              apply auto
-              done
-            subgoal 
-              apply (intro exI conjI[rotated])
-               apply (rule wbc_base)
-               apply force+
-              done
-            done
-          subgoal
-            apply (drule step_comp_op_cases)
-            apply (auto; hypsubst_thin?)
-            subgoal for op1'
-              apply (subst (asm) id_op_code)
-              apply auto
-              done
-            subgoal for op2'
-              apply (intro exI conjI[rotated])
-               apply (rule wbc_base)
-               apply force+
-              done
-            done
-          done
-        subgoal for op'' p
-          apply (auto dest!: step_comp_op_cases step_map_op_inv step_id_op_Inp; hypsubst_thin?)
-          apply (intro exI conjI[rotated])
-           apply (rule wbc_base)
-           apply force+
-          done
-        subgoal for op2'' p x
-          apply (auto dest!: step_comp_op_cases step_map_op_inv step_loop_op split: sum.splits; hypsubst_thin?)
-          apply (intro exI conjI[rotated])
-           apply (rule wbc_base)
-           apply force
-          apply (rule step_tau_star_tau) 
-          apply (rule step_Tau_loop_op)
-          apply (rule step_map_op[of Tau])
-           apply simp_all
-          apply (metis BAPPEND_BENQ case_sum_BENQ_R step_Tau_comp_op_L step_comp_op_R_Out)
-          done
-        done
-      done
-    subgoal for io op1'
-      apply (drule step_map_op_inv)
-      apply auto
-      apply (drule step_loop_op)
-      apply auto
-          apply hypsubst_thin
-      subgoal for p op' x
-        apply (auto dest!: step_id_op_Inp step_comp_op_cases step_map_op_inv step_loop_op split: sum.splits; hypsubst_thin?)
-        apply (intro exI conjI[rotated])
-         apply (rule wbc_sym)
-         apply (rule wbc_base)
-         apply force
-        apply (rule step_wstep)
-        apply (rule step_map_op[of "Inp (Inl _) _"])
-         apply simp_all
-        apply (rule step_Inp_Inl_loop_op)
-        apply (rule step_map_op[of "Inp (Inl _) _"])
-         apply simp_all
-        apply (rule step_comp_op_L_Inp)
-        apply (rule step_map_op[of "Inp (Inl _) _"])
-         apply simp_all
-        apply (rule step_comp_op_L_Inp)
-        apply (metis case_sum_BENQ_L step_id_op_Read)
-        done
-      subgoal for p op' x
-        apply (drule step_map_op_inv)
-        apply (auto; hypsubst_thin?)
-        subgoal for io op'
-          apply (drule step_comp_op_cases)
-          apply auto
-          apply (drule step_map_op_inv)
-          apply (auto; hypsubst_thin?)
-          apply (drule step_comp_op_cases)
-          apply auto
-          apply (drule step_id_op_Out)
-           apply auto
-          apply (intro exI conjI[rotated])
-           apply (rule wbc_sym)
-           apply (rule wbc_base)
-           apply force
-          apply (rule step_wstep)
-          apply (rule step_map_op[of "Out (Inl _) _"])
-           apply simp_all
-          apply (rule step_Out_Inl_loop_op)
-          apply (rule step_map_op[of "Out (Inr _) _"])
-           apply simp_all
-          apply (rule step_comp_op_R_Out)
-          apply auto
-          done
-        done
-      subgoal for op''
-        apply (drule step_map_op_inv)
-        apply (auto; hypsubst_thin?)
-        apply (drule step_comp_op_cases)
-        apply auto
-           apply (drule step_comp_op_cases)
-           apply auto
-        subgoal for x p op2'
-          apply (intro exI conjI[rotated])
-           apply (rule wbc_sym)
-           apply (rule wbc_base)
-           apply force+
-          done
-        subgoal for x p
-          apply (drule step_id_op_Out)
-           apply (auto; hypsubst_thin?)
-          apply auto
-          apply hypsubst_thin
-          apply (intro exI conjI[rotated])
-           apply (rule wbc_sym)
-           apply (rule wbc_base)
-           apply force
-          apply (rule step_tau_star_tau) 
-          apply (rule step_Tau_loop_op)
-          apply (rule step_map_op[of Tau])
-           apply simp_all
-          apply (rule step_comp_op_L_Tau)
-          apply (rule step_map_op[of Tau])
-           apply simp_all
-          apply (rule step_Tau_comp_op_L)
-          apply (metis case_sum_BTL_L old.sum.simps(5) step_id_op_Write)
-          done
-        subgoal for p op2'
-          apply (cases p)
-          subgoal for lp
-            apply auto
-            apply (drule step_map_op_inv)
-            apply (auto; hypsubst_thin?)
-            apply (drule step_comp_op_cases)
-            apply auto
-            subgoal for op1'
-              apply (intro exI conjI[rotated])
-               apply (rule wbc_sym)
-               apply (rule wbc_base)
-               apply force+
-              done
-            done
-          subgoal for rp
-            apply auto
-               apply (drule step_map_op_inv)
-               apply (auto; hypsubst_thin?)
-               apply (drule step_comp_op_cases)
-               apply auto
-            subgoal for op1'
-              apply (intro exI conjI[rotated])
-               apply (rule wbc_sym)
-               apply (rule wbc_base)
-               apply force
-              apply (rule step_tau_tau_tau_star_tau) 
-                apply (rule step_tau_loop_op_Inp_Inr_case_sum)
-                 apply (rule step_map_op[of "Inp (Inl (Inr _)) _"])
-                  apply simp_all
-                apply (rule step_comp_op_L_Inp)
-                apply (rule step_map_op[of "Inp (Inl (Inr _)) _"])
-                 apply simp_all
-                apply (rule step_comp_op_L_Inp)
-                apply (rule step_id_op_Read)
-               apply simp_all
-               apply (rule step_Tau_loop_op)
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_comp_op_L_Tau)
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_Tau_comp_op_L)
-                apply (rule step_id_op_Write[where p="Inr rp"])
-                 apply blast
-                apply simp_all
-              apply (rule step_Tau_loop_op)
-              apply (rule step_map_op[of Tau])
-               apply simp_all
-              apply (rule step_comp_op_L_Tau)
-              apply (rule step_map_op[of Tau])
-               apply simp_all
-              using step_Tau_comp_op_R
-              apply (metis (no_types, lifting) BENQ_access BHD_BENQ_empty BTL_BENQ_empty snoc_eq_iff_butlast)
-              done
-            subgoal
-              apply (drule step_map_op_inv)
-              apply (auto; hypsubst_thin?)
-              apply (drule step_comp_op_cases)
-              apply auto
-              apply (intro exI conjI[rotated])
-               apply (rule wbc_sym)
-               apply (rule wbc_base)
-               apply force+
-              done
-            subgoal
-              apply (drule step_map_op_inv)
-              apply (auto; hypsubst_thin?)
-              apply (drule step_comp_op_cases)
-              apply auto
-              apply (intro exI conjI[rotated])
-               apply (rule wbc_sym)
-               apply (rule wbc_base)
-               apply force
-              apply (rule step_tau_tau_star_tau) 
-               apply (rule step_Tau_loop_op)
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_comp_op_L_Tau)
-               apply (rule step_map_op[of Tau])
-                apply simp_all
-               apply (rule step_Tau_comp_op_L)
-                apply (rule step_id_op_Write[where p="Inr rp"])
-                 apply blast
-                apply simp_all
-              apply (rule step_Tau_loop_op)
-              apply (rule step_map_op[of Tau])
-               apply simp_all
-              apply (rule step_comp_op_L_Tau)
-              apply (rule step_map_op[of Tau])
-               apply simp_all
-              using step_Tau_comp_op_R
-              apply (metis (no_types, lifting) BENQ_access BHD_BENQ_empty BTL_BENQ_empty snoc_eq_iff_butlast)
-              done
-            subgoal
-              apply (drule step_map_op_inv)
-              apply (auto; hypsubst_thin?)
-              apply (drule step_comp_op_cases)
-              apply auto
-              apply (intro exI conjI[rotated])
-               apply (rule wbc_sym)
-               apply (rule wbc_base)
-               apply force+
-              done
-            done
-          done
-        subgoal for op2'
-          apply (drule step_comp_op_cases)
-          apply (auto; hypsubst_thin?)
-          subgoal for op2'
-            apply (intro exI conjI[rotated])
-             apply (rule wbc_sym)
-             apply (rule wbc_base)
-             apply (subst (asm) id_op_code)
-             apply auto
-            done
-          subgoal for op2'
-            apply (intro exI conjI[rotated])
-             apply (rule wbc_sym)
-             apply (rule wbc_base)
-             apply force+
-            done
-          done
-        subgoal for op2'
-          apply (drule step_map_op_inv)
-          apply (auto; hypsubst_thin?)
-          apply (drule step_comp_op_cases)
-          apply auto
-          subgoal for p x op1'
-            apply (cases p)
-            subgoal
-              apply (intro exI conjI[rotated])
-               apply (rule wbc_sym)
-               apply (rule wbc_base)
-               apply force+
-              done
-            subgoal for rp
-              apply (intro exI conjI[rotated])
-               apply (rule wbc_sym)
-               apply (rule wbc_base)
-               apply force
-              apply hypsubst_thin
-              apply (rule step_tau_star_tau) 
-              apply (rule step_Tau_loop_op)
-              apply (rule step_map_op[of Tau])
-               apply simp_all
-              using step_Tau_comp_op_L[of rp x "map_op projl projr (comp_op Some (case_sum buf4' buf1'') (id_op (case_sum buf4 buf1')) op1)" _ buf3 "(buf2 >> buf2') >> buf2''" "comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3') op2"] 
-              apply force
-              done
-            done
-          subgoal for p op2'
-            apply (drule step_id_op_Inp)
-             apply auto
-            apply (cases p)
-            subgoal
-              apply auto
-              apply (intro exI conjI[rotated])
-               apply (rule wbc_sym)
-               apply (rule wbc_base)
-               apply force+
-              done
-            subgoal
-              apply auto
-              apply (intro exI conjI[rotated])
-               apply (rule wbc_sym)
-               apply (rule wbc_base)
-               apply force+
-              done
-            done
-          subgoal for op1'
-            apply (intro exI conjI[rotated])
-             apply (rule wbc_sym)
-             apply (rule wbc_base)
-             apply force+
-            done
-          subgoal
-            apply (subst (asm) id_op_code)
-            apply auto
-            done
-          done
-        done
-      subgoal for op p
-        apply hypsubst_thin
-        apply (drule step_map_op_inv)
-        apply (auto; hypsubst_thin?)
-        apply (drule step_comp_op_cases)
-        apply auto
-        apply (drule step_comp_op_cases)
-        apply auto
-        subgoal for op2'
-          apply (intro exI conjI[rotated])
-           apply (rule wbc_sym)
-           apply (rule wbc_base)
-           apply force
-          apply (rule transitive_closurep_trans'(6))
-           apply (rule step_map_op[of Tau])
-            apply simp_all
-           apply (rule step_Tau_loop_op)
-           apply (rule step_map_op[of Tau])
-            apply simp_all
-           apply (rule step_Tau_comp_op_R)
-             apply (rule step_comp_op_R_Inp)
-              apply assumption
-             apply simp_all
-          apply (simp add: BULK_BENQ_def)
-          done
-        done
-      subgoal for op p x
-        apply hypsubst_thin
-        apply (drule step_map_op_inv)
-        apply (auto; hypsubst_thin?)
-        apply (drule step_comp_op_cases)
-        apply auto
-        apply (drule step_map_op_inv)
-        apply (auto; hypsubst_thin?)
-        apply (drule step_comp_op_cases)
-        apply auto
-        apply (drule step_id_op_Out)
-         apply (auto; hypsubst_thin?)
-        apply auto
-        apply (intro exI conjI[rotated])
-         apply (rule wbc_sym)
-         apply (rule wbc_base)
-         apply force
-        apply (metis (no_types, lifting) BAPPEND_BENQ_BHD BULK_BENQ_assoc Nitpick.rtranclp_unfold)
-        done
-      done
-    done
-  done
- *)
 
 lemma loop_op_commutes_inner_scomp_op:
   fixes op1 :: "('k :: {countable,defaults} + 'm :: {countable,defaults}, 'l :: {countable,defaults} + 'n :: {countable,defaults}, 'd) op"
