@@ -525,7 +525,7 @@ lemma bisim_cong_disj:
   "(bisim_cong R x y \<or> bisim x y) = bisim_cong R x y"
   by (auto intro: bisim_cong.intros)
 
-lemma bisim_coinduct_upto:
+lemma bisim_coinduct_upto[consumes 1, case_names BISIM]:
   "R s t \<Longrightarrow>
    (\<And>op1 op2. R op1 op2 \<Longrightarrow> sim (bisim_cong R) op1 op2 \<and> sim (bisim_cong R) op2 op1) \<Longrightarrow>
    s ~ t"
@@ -952,7 +952,7 @@ lemma WSC: "op |\<in>| ops \<Longrightarrow> wstep io op op' \<Longrightarrow> w
   done
 *)
 
-lemma wbisim_coinduct_upto:
+lemma wbisim_coinduct_upto[consumes 1, case_names BISIM]:
   "R op1 op2 \<Longrightarrow>
    (\<And>s t. R s t \<Longrightarrow> wsim (wbisim_cong R) s t \<and> wsim (wbisim_cong R) t s) \<Longrightarrow>
    op1 \<approx> op2"

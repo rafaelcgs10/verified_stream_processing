@@ -9,6 +9,61 @@ no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
 section \<open>Axiom B1: Associativity of parallel composition\<close>
 
+
+(* FIXME: move me *)
+lemma Inl_notin_ran_feedback_wire[simp]:
+  "Inl p \<notin> ran (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p)))"
+  by (auto simp add: ran_def  split: sum.splits if_splits)
+term scomp_op
+
+(* FIXME: move me *)
+lemma step_inputs_outputs:
+  "step io op op' \<Longrightarrow>
+   inputs op' \<subseteq> inputs op \<and> outputs op' \<subseteq> outputs op"
+  by (induct io op op' pred: step) auto
+
+lemma step_map_op_elim[]:
+  assumes  "step io (map_op f g op) op'"
+  obtains io' op'' where "step io' op op'' \<and> map_IO f g id io' = io \<and> map_op f g op'' = op'"
+  apply atomize
+  apply (simp add: assms step_map_op_inv)
+  done
+
+lemma step_comp_op_elim[]:
+  assumes "step io (comp_op wire buf op1 op2) op"
+  obtains p x op1' where "io = Inp (Inl p) x" "op = comp_op wire buf op1' op2" "step (Inp p x) op1 op1'" |
+    p x op2' where "io = Out (Inr p) x" "op = comp_op wire buf op1 op2'" "step (Out p x) op2 op2'" |
+    p x op1' where "io = Out (Inl p) x" "op = comp_op wire buf op1' op2" "wire p = None" "step (Out p x) op1 op1'" |
+    p x op2' where "io = Inp (Inr p) x" "op = comp_op wire buf op1 op2'" "p \<notin> ran wire" "step (Inp p x) op2 op2'" |
+    p x op1' q where "io = Tau" "op = comp_op wire (BENQ q x buf) op1' op2" "wire p = Some q" "step (Out p x) op1 op1'" |
+    p x op2' where "io = Tau" "op = comp_op wire (BTL p buf) op1 op2'" "p \<in> ran wire" "step (Inp p x) op2 op2'" "buf p \<noteq> []" "BHD p buf = x" |
+    p x op1' where "io = Tau" "op = comp_op wire buf op1' op2" "step Tau op1 op1'" |
+    p x op2' where "io = Tau" "op = comp_op wire buf op1 op2'" "step Tau op2 op2'"
+  using assms apply -
+  apply (drule step_comp_op_cases[where io=io and wire=wire and buf=buf, of op1 op2 op])
+  apply auto
+  done
+
+lemma step_loop_op_elim:
+  assumes "step io (loop_op wire buf op) op'"
+  obtains
+    p x op'' where "p \<notin> ran wire" "io = Inp p x" "op' = loop_op wire buf op''" "step io op op''" |
+    p x op'' where "wire p = None" "io = Out p x" "op' = loop_op wire buf op''" "step io op op''" |
+    op'' where "io = Tau" "op' = loop_op wire buf op''" "step io op op''" |
+    op'' p x where "io = Tau" "p \<in> ran wire" "op' = loop_op wire (BTL p buf) op''" "step (Inp p x) op op''" "buf p \<noteq> []" "BHD p buf = x" |
+    op'' p q x where "io = Tau" "wire p = Some q" "op' = loop_op wire (BENQ q x buf) op''" "step (Out p x) op op''"
+  using assms apply -
+  apply (drule step_loop_op_gen)
+  apply auto
+  done
+
+lemma step_id_op_Inp_elim:
+  assumes  "step (Inp p x) (id_op buf) op'"
+  obtains "op' = id_op (BENQ p x buf)" "p \<notin> defaults"
+  apply atomize
+  apply (meson assms step_id_op_Inp)
+  done
+
 (* FIXME: make intro! at the proof*)
 declare step_map_op[intro!,simp]
 
@@ -1663,10 +1718,81 @@ lemma scomp_op_transp_transp_id:
   unfolding scomp_op_def
   by (auto simp: o_def)
 
-(* lemma map_IO_eq_Out[intro!]:
-  "\<exists> p'. g p' = p \<and> IO = Out p' x \<Longrightarrow>
-   map_IO f g id IO = Out p x"
-  by auto *)
+
+section \<open>Axiom B8\<close>
+lemma B8:
+  \<open>map_op projl projr (transp_op (case_sum buf undefined) :: ('a :: {countable,defaults} + unit, unit + 'a, 'b) op) ~ id_op buf\<close>
+proof (coinduction arbitrary: buf rule: bisim_coinduct_upto)
+  case BISIM
+  then show ?case 
+    unfolding sim_def
+  proof (intro conjI impI allI)
+    fix io :: "('a, 'a, 'b) IO"
+      and op1' :: "('a, 'a, 'b) op"
+    assume H: "step io (map_op projl projr (transp_op (case_sum buf (undefined::unit \<Rightarrow> 'b buf)))) op1'"
+    show "\<exists>op2'. step io (id_op buf) op2' \<and> bisim_cong (\<lambda>sxx txx. \<exists>buf. sxx = map_op projl projr (transp_op (case_sum buf (undefined::unit \<Rightarrow> 'b buf))) \<and> txx = id_op buf) op1' op2'"
+    proof -
+      have "\<exists>op2'. step (Inp (projl p) x) (id_op buf) op2' \<and> bisim_cong (\<lambda>sxx txx. \<exists>buf. sxx = map_op projl projr (transp_op (case_sum buf (undefined::unit \<Rightarrow> 'b buf))) \<and> txx = id_op buf) (map_op projl projr (transp_op (BENQ p x (case_sum buf undefined)))) op2'"
+        if "p \<notin> defaults"
+        for p :: "'a + unit"
+          and x :: 'b
+        using that 
+      proof (cases p)
+        case (Inl a)
+        from this that show ?thesis 
+          apply (intro exI conjI[rotated,OF bc_base])
+          using BISIM step_inputs_outputs apply force
+          apply auto
+          done
+      next
+        case (Inr b)
+        from this that show ?thesis by (simp add: defaults_unit_def)
+      qed
+      moreover have "\<exists>op2'. step (Out (projr (Inl ())) (BHD () undefined)) (id_op buf) op2' \<and> bisim_cong (\<lambda>sxx txx. \<exists>buf. sxx = map_op projl projr (transp_op (case_sum buf (undefined::unit \<Rightarrow> 'b buf))) \<and> txx = id_op buf) (map_op projl projr (transp_op (case_sum buf (BTL () undefined)))) op2'"
+        if "() \<notin> defaults"
+          and "undefined () \<noteq> ([]::'b buf)"
+        using that by (simp add: defaults_unit_def)
+      moreover have "\<exists>op2'. step (Out x2 (BHD x2 buf)) (id_op buf) op2' \<and> bisim_cong (\<lambda>sxx txx. \<exists>buf. sxx = map_op projl projr (transp_op (case_sum buf (undefined::unit \<Rightarrow> 'b buf))) \<and> txx = id_op buf) (map_op projl projr (transp_op (case_sum (BTL x2 buf) (undefined::unit \<Rightarrow> 'b buf)))) op2'"
+        if "x2 \<notin> defaults"
+          and "buf x2 \<noteq> []"
+        for x2 :: 'a
+        using that 
+        apply (intro exI conjI[rotated,OF bc_base])
+        using BISIM step_inputs_outputs apply force
+        apply auto
+        done
+      ultimately show ?thesis
+        using H by (auto 0 0 del: disjCI elim !: step_transp_op_cases step_loop_op_elim step_map_op_elim step_comp_op_elim split: if_splits sum.splits)
+    qed
+  next
+    fix io :: "('a, 'a, 'b) IO"
+      and op1' :: "('a, 'a, 'b) op"
+    assume H: "step io (id_op buf) op1'"
+    show "\<exists>op2'. step io (map_op projl projr (transp_op (case_sum buf (undefined::unit \<Rightarrow> 'b buf)))) op2' \<and> bisim_cong (\<lambda>sxx txx. \<exists>buf. sxx = map_op projl projr (transp_op (case_sum buf (undefined::unit \<Rightarrow> 'b buf))) \<and> txx = id_op buf) op1' op2'"
+    proof -
+      have "\<exists>op2'. step (Inp p x) (map_op projl projr (transp_op (case_sum buf (undefined::unit \<Rightarrow> 'b buf)))) op2' \<and> bisim_cong (\<lambda>sxx txx. \<exists>buf. sxx = map_op projl projr (transp_op (case_sum buf (undefined::unit \<Rightarrow> 'b buf))) \<and> txx = id_op buf) (id_op (BENQ p x buf)) op2'"
+        if "p \<notin> defaults"
+        for p :: 'a
+          and x :: 'b
+        using that 
+        apply (intro exI conjI[rotated, OF bc_sym [OF bc_base]])
+        using BISIM step_inputs_outputs apply force
+        apply auto
+        done
+      moreover have "\<exists>op2'. step (Out p (BHD p buf)) (map_op projl projr (transp_op (case_sum buf (undefined::unit \<Rightarrow> 'b buf)))) op2' \<and> bisim_cong (\<lambda>sxx txx. \<exists>buf. sxx = map_op projl projr (transp_op (case_sum buf (undefined::unit \<Rightarrow> 'b buf))) \<and> txx = id_op buf) (id_op (BTL p buf)) op2'"
+        if "p \<notin> defaults"
+          and "buf p \<noteq> []"
+        for p :: 'a
+        using that 
+        apply (intro exI conjI[rotated, OF bc_sym [OF bc_base]])
+        using BISIM step_inputs_outputs apply force
+        apply force
+        done
+      ultimately show ?thesis
+        using H by (auto 0 0 del: disjCI elim !: step_id_op_cases step_map_op_elim split: if_splits sum.splits)
+    qed
+  qed
+qed
 
 section \<open>Axiom B9: Transpose decomposes in parallel and sequential composition\<close>
 lemma trans_op_decomposes_scomp_op_pcomp_op_gen:
@@ -2534,64 +2660,6 @@ lemma rtranclp_intros_1':
   "a = b \<Longrightarrow> r\<^sup>*\<^sup>* a b"
   by auto
 
-(* FIXME: move me *)
-lemma Inl_notin_ran_feedback_wire[simp]:
-  "Inl p \<notin> ran (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p)))"
-  by (auto simp add: ran_def  split: sum.splits if_splits)
-term scomp_op
-
-(* FIXME: move me *)
-lemma step_inputs_outputs:
-  "step io op op' \<Longrightarrow>
-   inputs op' \<subseteq> inputs op \<and> outputs op' \<subseteq> outputs op"
-  by (induct io op op' pred: step) auto
-
-lemma wbisim_coinduct_upto_alt[consumes 1, case_names BISIM]:
-  "R op1 op2 \<Longrightarrow> (\<And>s t. R s t \<Longrightarrow> wsim (wbisim_cong R) s t \<and> wsim (wbisim_cong R) t s) \<Longrightarrow> op1 \<approx> op2"
-  using wbisim_coinduct_upto by blast
-
-lemma step_map_op_elim[]:
-  assumes  "step io (map_op f g op) op'"
-  obtains io' op'' where "step io' op op'' \<and> map_IO f g id io' = io \<and> map_op f g op'' = op'"
-  apply atomize
-  apply (simp add: assms step_map_op_inv)
-  done
-
-lemma step_comp_op_elim[]:
-  assumes "step io (comp_op wire buf op1 op2) op"
-  obtains p x op1' where "io = Inp (Inl p) x" "op = comp_op wire buf op1' op2" "step (Inp p x) op1 op1'" |
-    p x op2' where "io = Out (Inr p) x" "op = comp_op wire buf op1 op2'" "step (Out p x) op2 op2'" |
-    p x op1' where "io = Out (Inl p) x" "op = comp_op wire buf op1' op2" "wire p = None" "step (Out p x) op1 op1'" |
-    p x op2' where "io = Inp (Inr p) x" "op = comp_op wire buf op1 op2'" "p \<notin> ran wire" "step (Inp p x) op2 op2'" |
-    p x op1' q where "io = Tau" "op = comp_op wire (BENQ q x buf) op1' op2" "wire p = Some q" "step (Out p x) op1 op1'" |
-    p x op2' where "io = Tau" "op = comp_op wire (BTL p buf) op1 op2'" "p \<in> ran wire" "step (Inp p x) op2 op2'" "buf p \<noteq> []" "BHD p buf = x" |
-    p x op1' where "io = Tau" "op = comp_op wire buf op1' op2" "step Tau op1 op1'" |
-    p x op2' where "io = Tau" "op = comp_op wire buf op1 op2'" "step Tau op2 op2'"
-  using assms apply -
-  apply (drule step_comp_op_cases[where io=io and wire=wire and buf=buf, of op1 op2 op])
-  apply auto
-  done
-
-
-lemma step_loop_op_elim:
-  assumes "step io (loop_op wire buf op) op'"
-  obtains
-    p x op'' where "p \<notin> ran wire" "io = Inp p x" "op' = loop_op wire buf op''" "step io op op''" |
-    p x op'' where "wire p = None" "io = Out p x" "op' = loop_op wire buf op''" "step io op op''" |
-    op'' where "io = Tau" "op' = loop_op wire buf op''" "step io op op''" |
-    op'' p x where "io = Tau" "p \<in> ran wire" "op' = loop_op wire (BTL p buf) op''" "step (Inp p x) op op''" "buf p \<noteq> []" "BHD p buf = x" |
-    op'' p q x where "io = Tau" "wire p = Some q" "op' = loop_op wire (BENQ q x buf) op''" "step (Out p x) op op''"
-  using assms apply -
-  apply (drule step_loop_op_gen)
-  apply auto
-  done
-
-lemma step_id_op_Inp_elim:
-  assumes  "step (Inp p x) (id_op buf) op'"
-  obtains "op' = id_op (BENQ p x buf)" "p \<notin> defaults"
-  apply atomize
-  apply (meson assms step_id_op_Inp)
-  done
 
 lemma step_id_op_Out:
   assumes  "step (Out p x) (id_op buf) op'"
@@ -2600,6 +2668,7 @@ lemma step_id_op_Out:
   apply (meson assms step_id_op_Out)
   done
 
+section \<open>Axiom: R1\<close>
 lemma loop_op_scomp_commute_gen:
   fixes op1 :: "('a + 'm :: {countable, defaults}, 'b + 'm, 'd) op"
     and op2 :: "('c, 'a, 'd) op"
@@ -2608,7 +2677,7 @@ lemma loop_op_scomp_commute_gen:
   shows "map_op projl projr (comp_op Some buf2 op2 (map_op projl projl (loop_op (case_sum (\<lambda> _. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined (lbuf1 >> lbuf2 >> lbuf3)) op1))) \<approx>
    map_op projl projl (loop_op (case_sum (\<lambda> _. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined lbuf1) (map_op projl projr (comp_op Some (case_sum buf2 lbuf3) (comp_op (\<lambda>_. None) (\<lambda>_. []) op2 (id_op lbuf2)) op1)))"
   using assms
-proof (coinduction arbitrary: op1 op2 buf2 lbuf1 lbuf2 lbuf3 rule: wbisim_coinduct_upto_alt)
+proof (coinduction arbitrary: op1 op2 buf2 lbuf1 lbuf2 lbuf3 rule: wbisim_coinduct_upto)
   case BISIM
   then show ?case 
     unfolding wsim_def
@@ -3037,7 +3106,7 @@ lemma loop_op_distribute_scomp_op_gen:
     and "Inr -` outputs op1 \<inter> defaults = {}"
   shows "map_op projl projr (comp_op Some buf2 (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined (lbuf1 >> lbuf2 >> lbuf3)) op1)) op2) \<approx>
    map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined lbuf3) (map_op projl projr (comp_op Some (case_sum buf2 lbuf1) op1 (comp_op (\<lambda>_. None) (\<lambda>_. []) op2 (id_op lbuf2)))))"
-  using assms proof (coinduction arbitrary: op1 op2 buf2 lbuf1 lbuf2 lbuf3 rule: wbisim_coinduct_upto_alt)
+  using assms proof (coinduction arbitrary: op1 op2 buf2 lbuf1 lbuf2 lbuf3 rule: wbisim_coinduct_upto)
   case BISIM
   then show ?case 
     unfolding wsim_def
@@ -3466,13 +3535,6 @@ lemma loop_op_distribute_scomp_op:
 
 section \<open>Axiom: R3: Loop parallel composition\<close>
 
-
-lemma bisim_coinduct_upto_alt[consumes 1, case_names BISIM]:
-  "R s t \<Longrightarrow>
-   (\<And>op1 op2. R op1 op2 \<Longrightarrow> sim (bisim_cong R) op1 op2 \<and> sim (bisim_cong R) op2 op1) \<Longrightarrow>
-   s ~ t"
-  using bisim_coinduct_upto by blast
-
 lemma loop_op_pcomp_commue_gen:
   fixes op1 :: "('b + 'a, 'c + 'd, 'e) op"
     and op2 :: "('f + 'm :: defaults, 'g + 'm, 'e) op"
@@ -3480,7 +3542,7 @@ lemma loop_op_pcomp_commue_gen:
     and "Inr -` outputs op2 \<inter> defaults = {}"
   shows  "comp_op (\<lambda>_. None) (\<lambda>_. []) op1 (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined buf1) op2)) ~
    map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined buf1) (map_op BNA_Operators.assoc BNA_Operators.assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) op1 op2)))"
-  using assms proof (coinduction arbitrary: op1 op2 buf1 rule: bisim_coinduct_upto_alt)
+  using assms proof (coinduction arbitrary: op1 op2 buf1 rule: bisim_coinduct_upto)
   case BISIM
   then show ?case 
     apply -
@@ -3799,7 +3861,7 @@ lemma loop_op_commutes_inner_scomp_op_gen:
    map_op projl projl
   (loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined buf2'')
    (map_op projl projr (comp_op Some (case_sum buf4' (buf1 >> buf1' >> buf1'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf4) op2) (map_op projl projr (comp_op Some (case_sum buf3 buf2) op1 (id_op (case_sum buf3' buf2')))))))"
-  using assms proof (coinduction arbitrary: op1 op2 buf1 buf1' buf1'' buf2 buf2' buf2'' buf3 buf3' buf4 buf4' rule: wbisim_coinduct_upto_alt)
+  using assms proof (coinduction arbitrary: op1 op2 buf1 buf1' buf1'' buf2 buf2' buf2'' buf3 buf3' buf4 buf4' rule: wbisim_coinduct_upto)
   case BISIM
   then show ?case 
     unfolding wsim_def
@@ -4590,6 +4652,127 @@ lemma step_outputs_not_in_defaults[elim!]:
    p \<in> defaults \<Longrightarrow> step (Out p x) op op' \<Longrightarrow> False"
   by (auto simp add: outputs_after_choices Write_choices_outputs disjoint_iff elim: step_choicesE)
 
+section \<open>Axiom: R5\<close>
+lemma R5:
+  fixes op :: "('a :: {countable, defaults} + unit, 'b :: {countable, defaults} + unit, 'c) op"
+  shows "op\<up> \<approx> map_op projl projl op"
+  unfolding feedback_op_def
+  apply simp
+  apply (coinduction arbitrary: op  rule: wbisim_coinduct_upto)
+  unfolding wsim_def
+  apply auto
+  subgoal for op io op1'
+    apply (drule step_map_op_inv)
+    apply auto
+    apply hypsubst_thin
+    subgoal for io' op'
+      apply (drule step_loop_op[where io=io', simplified])
+      apply (elim disjE conjE exE)
+      subgoal
+        apply hypsubst_thin
+        apply (intro exI conjI[rotated])
+         apply (rule wbc_base)
+         apply blast+
+        done
+      subgoal
+        apply hypsubst_thin
+        apply (intro exI conjI[rotated])
+         apply (rule wbc_base)
+         apply blast+
+        done
+      subgoal
+        apply hypsubst_thin
+        apply (intro exI conjI[rotated])
+         apply (rule wbc_base)
+         apply blast+
+        done
+      subgoal
+        apply hypsubst_thin
+        apply (intro exI conjI[rotated])
+         apply (rule wbc_base)
+         apply simp_all
+        done
+      subgoal
+        apply hypsubst_thin
+        apply (intro exI conjI[rotated])
+         apply (rule wbc_base)
+         apply (simp_all add: defaults_unit_def)
+        done
+      subgoal
+        apply hypsubst_thin
+        apply (intro exI conjI[rotated])
+         apply (rule wbc_base)
+         apply fastforce+
+        done
+      subgoal
+        apply hypsubst_thin
+        apply (intro exI conjI[rotated])
+         apply (rule wbc_base)
+         apply force+
+        done
+      done 
+    done
+  subgoal for op io op1'
+    apply (drule step_map_op_inv)
+    apply auto
+    apply hypsubst_thin
+    subgoal for io' op'
+      apply (cases io')
+      subgoal for p x
+        apply (cases p)
+        subgoal for lp
+          apply hypsubst_thin
+          apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+           apply (rule wbc_base)
+           apply blast
+          apply (rule step_wstep)
+          apply (rule step_map_op[of "Inp (Inl _) _", rotated])
+           apply (auto simp add: ran_def sum.case_eq_if split: if_splits)
+          done
+        subgoal for rp
+          apply hypsubst_thin
+          apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+           apply (rule wbc_base)
+           apply blast
+          apply (rule step_wstep)
+          apply (rule step_map_op[of "Inp (Inr _) _", rotated])
+           apply (auto simp add: defaults_unit_def step_Inp_loop_op)
+          done
+        done
+      subgoal for p x
+        apply (cases p)
+        subgoal for lp
+          apply hypsubst_thin
+          apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+           apply (rule wbc_base)
+           apply blast
+          apply (rule step_wstep)
+          apply (rule step_map_op[rotated])
+           apply auto
+          done
+        subgoal for rp
+          apply (intro exI conjI[rotated])
+           apply (rule wbc_sym)
+           apply (rule wbc_base)
+           apply blast
+          apply (rule step_wstep)
+          apply (rule step_map_op[of "Out (Inr _) _", rotated])
+           apply (auto simp add: defaults_unit_def step_Out_loop_op)
+          done
+        done
+      subgoal
+        apply hypsubst_thin
+        apply (intro exI conjI[rotated])
+         apply (rule wbc_sym)
+         apply (rule wbc_base)
+        apply auto
+        done
+      done
+    done
+  done
 
 section \<open>Axiom: R6: Loop absorb\<close>
 lemma loop_op_absorb_gen:
@@ -4600,7 +4783,7 @@ lemma loop_op_absorb_gen:
     and "Inr -` Inl -`  outputs op \<inter> defaults = {}"
   shows "map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined buf2) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined buf1) op))) ~
    map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined (case_sum buf2 buf1)) (map_op reassoc reassoc op))"
-  using assms proof (coinduction arbitrary: op buf1 buf2 rule: bisim_coinduct_upto_alt)
+  using assms proof (coinduction arbitrary: op buf1 buf2 rule: bisim_coinduct_upto)
   case BISIM
   then show ?case 
     apply -
@@ -4976,7 +5159,6 @@ lemma loop_op_absorb_gen:
   qed
 qed
 
-
 lemma loop_op_absorb:
   fixes op :: "(('a + 'l) + 'k, ('b + 'l :: defaults) + 'k :: defaults, 'c) op"
   assumes "Inr -` inputs op \<inter> defaults = {}"
@@ -4987,12 +5169,49 @@ lemma loop_op_absorb:
   unfolding feedback_op_def
   using loop_op_absorb_gen[OF assms, of "\<lambda> _. []" "\<lambda> _. []"] by auto
 
-find_theorems step transp_op
+section \<open>Axiom F1\<close>
+lemma F1:
+  \<open>\<I>\<up> ~ (\<I> :: (unit, unit, 'd) op)\<close>
+  unfolding feedback_op_def 
+proof (coinduction rule: bisim_coinduct_upto)
+  case BISIM
+  then show ?case 
+    unfolding sim_def
+  proof (intro conjI impI allI)
+    fix io :: "(unit, unit, 'd) IO"
+      and op1' :: "(unit, unit, 'd) op"
+    assume H: "step io (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'a) \<in> defaults then None else Some (Inr p))) (case_sum undefined (\<lambda>_. [])) \<I>)) op1'"
+    show "\<exists>op2'. step io \<I> op2' \<and> bisim_cong (\<lambda>sxx txx. sxx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'a) \<in> defaults then None else Some (Inr p))) (case_sum undefined (\<lambda>_. [])) \<I>) \<and> txx = \<I>) op1' op2'" 
+    proof -
+      have "\<exists>op2'. step (Inp () xa) \<I> op2' \<and> bisim_cong (\<lambda>sxx txx. sxx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'a) \<in> defaults then None else Some (Inr p))) (case_sum undefined (\<lambda>_. [])) \<I>) \<and> txx = \<I>) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (\<lambda>_. [])) (id_op (BENQ pa xa (\<lambda>_. []))))) op2'"
+        if "\<forall>p'. pa = Inr p' \<longrightarrow> p' \<in> defaults"
+          and "pa \<notin> defaults"
+        for pa :: "unit + 'a"
+          and xa :: 'd
+        using that by (cases pa; simp add: defaults_unit_def)
+      then show ?thesis
+        using H by (auto 0 0 del: disjCI elim !: step_id_op_cases step_loop_op_elim step_map_op_elim step_comp_op_elim split: if_splits sum.splits)
+    qed
+  next
+    fix io :: "(unit, unit, 'd) IO"
+      and op1' :: "(unit, unit, 'd) op"
+    assume H: "step io \<I> op1'"
+    show "\<exists>op2'. step io (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'a) \<in> defaults then None else Some (Inr p))) (case_sum undefined (\<lambda>_. [])) \<I>)) op2' \<and> bisim_cong (\<lambda>sxx txx. sxx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'a) \<in> defaults then None else Some (Inr p))) (case_sum undefined (\<lambda>_. [])) \<I>) \<and> txx = \<I>) op1' op2'"
+    proof -
+      have "\<exists>op2'. step (Inp () x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'a) \<in> defaults then None else Some (Inr p))) (case_sum undefined (\<lambda>_. [])) \<I>)) op2' \<and> bisim_cong (\<lambda>sxx txx. sxx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'a) \<in> defaults then None else Some (Inr p))) (case_sum undefined (\<lambda>_. [])) \<I>) \<and> txx = \<I>) (id_op (BENQ () x (\<lambda>_. []))) op2'"
+        if "() \<notin> defaults"
+        for x :: 'd
+        using that by (simp add: defaults_unit_def)
+      then show ?thesis
+        using H by (auto 0 0 del: disjCI elim !: step_id_op_cases step_map_op_elim step_comp_op_elim split: if_splits sum.splits)
+    qed
+  qed
+qed
 
 section \<open>Axiom F2: Transpose looped is identity\<close>
 lemma transp_op_loop_id_gen:
   "map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda> p. if p \<in> defaults then None else (Some (Inr p)))) (case_sum undefined buf') (transp_op (case_sum buf buf''))) \<approx> id_op (buf >> buf' >> buf'')"
-proof (coinduction arbitrary: buf buf' buf'' rule: wbisim_coinduct_upto_alt)
+proof (coinduction arbitrary: buf buf' buf'' rule: wbisim_coinduct_upto)
   case BISIM
   then show ?case 
     unfolding wsim_def
