@@ -469,7 +469,7 @@ lemma ST':
   "op = op' \<Longrightarrow> step Tau (Silent op) op'"
   by auto
 
-lemma step_map_op[intro]:
+lemma step_map_op[intro!,simp]:
   "step io op op' \<Longrightarrow> map_IO f g id io = io' \<Longrightarrow>
    step io' (map_op f g op) (map_op f g op')"
   by (induct io op op' rule: step.induct) (force simp add: comp_def intro: step.intros)+
@@ -495,6 +495,13 @@ lemma step_map_op_inv:
     apply (cases opa)
        apply (force simp add: cimage.rep_eq intro: step.intros)+
     done
+  done
+
+lemma step_map_op_elim:
+  assumes  "step io (map_op f g op) op'"
+  obtains io' op'' where "step io' op op'' \<and> map_IO f g id io' = io \<and> map_op f g op'' = op'"
+  apply atomize
+  apply (simp add: assms step_map_op_inv)
   done
 
 section\<open>Strong Bisimilarity\<close>
@@ -729,6 +736,9 @@ definition "wsim R op1 op2 = (\<forall>io op1'. step io op1 op1' \<longrightarro
 lemma wsim_mono[mono]: "R \<le> S \<Longrightarrow> wsim R \<le> wsim S"
   by (force simp: wsim_def le_fun_def)
 
+lemma wsim_conversep_mono[mono]: \<open>R \<le> S \<Longrightarrow> wsim (R\<inverse>\<inverse>) \<le> wsim (S\<inverse>\<inverse>)\<close>
+  by (simp add: wsim_mono)
+
 coinductive wbisim (infix "\<approx>"40) where
   "wsim wbisim op1 op2 \<Longrightarrow> wsim wbisim op2 op1 \<Longrightarrow> wbisim op1 op2"
 
@@ -804,15 +814,6 @@ lemma wstep_trans_tau_1[trans, intro]:
 
 lemma step_tau_step_tau_step_io_wstep:
   "step Tau op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step io op'' op''' \<Longrightarrow> wstep io op op'''"
-  unfolding wstep_def 
-  by (smt (verit, del_insts) estep.elims reflclp_tranclp relcomppI rtranclp.rtrancl_into_rtrancl sup2CI)
-
-lemma step_tau_step_tau_step_io_wstep_backwards:
-  "step io op'' op''' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step Tau op op' \<Longrightarrow>  wstep io op op'''"
-  using step_tau_step_tau_step_io_wstep by force
-
-lemma step_tau_tau_step_tau_step_io_wstep:
-  "step Tau op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step Tau op' op''' \<Longrightarrow> step io op''' op''''\<Longrightarrow>  wstep io op op''''"
   unfolding wstep_def 
   by (smt (verit, del_insts) estep.elims reflclp_tranclp relcomppI rtranclp.rtrancl_into_rtrancl sup2CI)
 
@@ -1076,6 +1077,50 @@ lemma bisim_wbisim:
     done
   done
 
+section \<open>Expansion\<close>
+
+abbreviation \<open>expstep io op1 op2 \<equiv> (if io = Tau then estep Tau op1 op2 else step io op1 op2)\<close>
+
+definition \<open>expansion R op1 op2 = (\<forall> io op1'. step io op1 op1' \<longrightarrow> (\<exists> op2'. expstep io op2 op2' \<and> R op1' op2'))\<close>
+
+lemma expansion_mono[mono]: \<open>R \<le> S \<Longrightarrow> expansion R \<le> expansion S\<close>
+  unfolding expansion_def
+  by fast
+
+coinductive expand :: \<open>('a, 'b, 'c) op \<Rightarrow> ('a, 'b, 'c) op \<Rightarrow> bool\<close> (infix \<open>\<greatersim>\<close> 40) where
+  \<open>wsim (conversep (\<greatersim>)) op1 op2 \<Longrightarrow> expansion (\<greatersim>) op1 op2 \<Longrightarrow> op1 \<greatersim> op2\<close>
+
+lemma expand_refl: \<open>op \<greatersim> op\<close>
+  apply (coinduction arbitrary: op)
+  apply (auto simp: wsim_def expansion_def)
+  done
+
+lemma expand_trans: \<open>op1 \<greatersim> op2 \<Longrightarrow> op2 \<greatersim> op3 \<Longrightarrow> op1 \<greatersim> op3\<close>
+  apply (coinduction arbitrary: op1 op2 op3)
+  apply (auto simp: wsim_def expansion_def)
+  oops
+
+section \<open>Elaboration\<close>
+
+definition "wstep' io = (step Tau)^** OO (step io) OO (step Tau)^**"
+definition \<open>elab R op1 op2 = (\<forall> io op2'. step io op2 op2' \<longrightarrow> (\<exists> op1'. wstep' io op1 op1' \<and> R op1' op2'))\<close>
+
+lemma elab_mono[mono]: \<open>R \<le> S \<Longrightarrow> elab R \<le> elab S\<close>
+  unfolding elab_def
+  by fast
+
+coinductive elaboration :: \<open>('a, 'b, 'c) op \<Rightarrow> ('a, 'b, 'c) op \<Rightarrow> bool\<close> (infix \<open>\<greaterapprox>\<close> 40) where
+  \<open>wsim (\<greaterapprox>) op1 op2 \<Longrightarrow> elab (\<greaterapprox>) op1 op2 \<Longrightarrow> op1 \<greaterapprox> op2\<close>
+
+lemma elaboration_refl: \<open>op \<greaterapprox> op\<close>
+  apply (coinduction arbitrary: op)
+  apply (auto simp: wsim_def wstep'_def elab_def)
+  done
+
+lemma expand_trans: \<open>op1 \<greaterapprox> op2 \<Longrightarrow> op2 \<greaterapprox> op3 \<Longrightarrow> op1 \<greaterapprox> op3\<close>
+  apply (coinduction arbitrary: op1 op2 op3)
+  apply (auto simp: wsim_def wstep'_def elab_def)
+  oops
 
 section\<open>Trace model\<close>
 coinductive finished where
@@ -2269,5 +2314,82 @@ lemma map_IO_projl_eq_Inp[intro!]:
    map_IO projl g id IO = Inp p x"
   by auto
 
+
+(* FIXME: move me *)
+lemma choices_at_sub_op:
+  "op |\<in>| (choices_at n op') \<Longrightarrow> \<exists> m \<le> n. sub_op op op' m"
+  apply (induct n arbitrary: op op')
+  subgoal for op op'
+    apply (cases op')
+       apply auto
+    done
+  subgoal for n op op'
+    apply (cases op')
+    by fastforce+
+  done
+
+lemma choices_sub_op:
+  "op |\<in>| choices op' \<Longrightarrow> \<exists> n. sub_op op op' n"
+  unfolding choices_def
+  using choices_at_sub_op by force
+
+lemma Read_choices_inputs:
+  "Read p f |\<in>| choices op \<Longrightarrow> p \<in> inputs op"
+  by (meson choices_sub_op sub_op_Read_inputs)
+
+lemma inputs_after_choices_at:
+  "p' \<in> inputs op' \<Longrightarrow> op' |\<in>| choices_at n op \<Longrightarrow> p' \<in> inputs op"
+  apply (induct n arbitrary: op)
+  subgoal for op
+    apply (cases op)
+       apply auto
+    done
+  subgoal for n op
+    apply (cases op)
+       apply auto
+    done
+  done
+
+(* FIXME: move me *)
+lemma inputs_after_choices:
+  "op' |\<in>| (choices op) \<Longrightarrow> p' \<in> inputs op' \<Longrightarrow> p' \<in> inputs op"
+  unfolding choices_def
+    inputs_after_choices_at 
+  by (meson cUN_E inputs_after_choices_at)
+(* FIXME: move me *)
+lemma step_inputs_outputs:
+  "step io op op' \<Longrightarrow>
+   inputs op' \<subseteq> inputs op \<and> outputs op' \<subseteq> outputs op"
+  by (induct io op op' pred: step) auto
+(* FIXME: move me *)
+lemma step_inputs_not_in_defaults[elim!]:
+  "inputs op \<inter> defaults = {} \<Longrightarrow>
+   p \<in> defaults \<Longrightarrow> step (Inp p x) op op' \<Longrightarrow> False"
+  by (auto simp add: Read_choices_inputs disjoint_iff elim: step_choicesE)
+
+lemma Write_choices_outputs:
+  "Write op p x |\<in>| choices op \<Longrightarrow> p \<in> outputs op"
+  using choices_sub_op by blast
+
+lemma outputs_after_choices_at:
+  "p' \<in> outputs op' \<Longrightarrow> op' |\<in>| choices_at n op \<Longrightarrow> p' \<in> outputs op"
+  apply (induct n arbitrary: op)
+  subgoal for op
+    apply (cases op)
+       apply auto
+    done
+  subgoal for n op
+    apply (cases op)
+       apply auto
+    done
+  done
+lemma outputs_after_choices:
+  "op' |\<in>| (choices op) \<Longrightarrow> p' \<in> outputs op' \<Longrightarrow> p' \<in> outputs op"
+  unfolding choices_def
+  by (meson cUN_E outputs_after_choices_at)
+lemma step_outputs_not_in_defaults[elim!]:
+  "outputs op \<inter> defaults = {} \<Longrightarrow>
+   p \<in> defaults \<Longrightarrow> step (Out p x) op op' \<Longrightarrow> False"
+  by (auto simp add: outputs_after_choices Write_choices_outputs disjoint_iff elim: step_choicesE)
 
 end
