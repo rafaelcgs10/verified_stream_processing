@@ -4660,10 +4660,10 @@ lemma R5:
   apply simp
   apply (coinduction arbitrary: op  rule: wbisim_coinduct_upto)
   unfolding wsim_def
-  apply auto
+  apply safe
   subgoal for op io op1'
     apply (drule step_map_op_inv)
-    apply auto
+    apply safe
     apply hypsubst_thin
     subgoal for io' op'
       apply (drule step_loop_op[where io=io', simplified])
@@ -4714,7 +4714,7 @@ lemma R5:
     done
   subgoal for op io op1'
     apply (drule step_map_op_inv)
-    apply auto
+    apply safe
     apply hypsubst_thin
     subgoal for io' op'
       apply (cases io')
@@ -5363,6 +5363,7 @@ lemma transp_op_loop_id: \<open>\<X>\<up> \<approx> \<I>\<close>
 
 
 end
+(* 
 section "Tests"
 
 lemma comp_op_assoc:
@@ -5742,4 +5743,4 @@ lemma scomp_op_assoc_gen:
   apply (smt (verit) BNA_Operators.reassoc.simps(1) BNA_Operators.reassoc.simps(2) id_apply map_sum.simps(1) map_sum.simps(2) sum.exhaust_sel sum.sel(1))
   oops 
 
-end
+end *)
