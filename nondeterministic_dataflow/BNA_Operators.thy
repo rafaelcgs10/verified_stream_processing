@@ -2779,34 +2779,38 @@ lemma choices_transp_op[simp]:
 section \<open>split_op - nondeterministic split operator\<close>
 
 datatype (discs_sels) ('m, 'd) split_op_aux =
-  split_Read_aux 'm \<open>'d \<Rightarrow> 'm \<Rightarrow> 'd buf\<close>
-  | split_Write_aux \<open>'m \<Rightarrow> 'd buf\<close> \<open>'m + 'm\<close> 'd
+  split_Read_aux 'm \<open>'d \<Rightarrow> 'm + 'm \<Rightarrow> 'd buf\<close>
+  | split_Write_aux \<open>'m + 'm \<Rightarrow> 'd buf\<close> \<open>'m + 'm\<close> 'd
 
 abbreviation eval_split_op_aux where
   \<open>eval_split_op_aux c aux \<equiv> (case aux of
     split_Read_aux p f \<Rightarrow> Read p (c \<circ> f)
   | split_Write_aux buf p x \<Rightarrow> Write (c buf) p x)\<close>
 
-corec split_op :: \<open>('m :: countable \<Rightarrow> 'd buf) \<Rightarrow> ('m, 'm + 'm, 'd) op\<close> where
-  \<open>split_op buf = Choice (cimage (eval_split_op_aux split_op) (cUn
-    (cimage (\<lambda>p. split_Read_aux p (\<lambda>x. BENQ p x buf)) cUNIV)
-    (cimage (\<lambda>p. split_Write_aux (BTL (case_sum id id p) buf) p (BHD (case_sum id id p) buf))
-      (cfilter (\<lambda>p. buf (case_sum id id p) \<noteq> []) cUNIV))))\<close>
+corec split_op :: \<open>('m :: countable + 'm \<Rightarrow> 'd buf) \<Rightarrow> ('m, 'm + 'm, 'd) op\<close> where
+  \<open>split_op buf = Choice (cimage (eval_split_op_aux split_op) (cUn (cUn
+    (cimage (\<lambda>p. split_Read_aux p (\<lambda>x. BENQ (Inl p) x buf)) cUNIV)
+    (cimage (\<lambda>p. split_Read_aux p (\<lambda>x. BENQ (Inr p) x buf)) cUNIV))
+    (cimage (\<lambda>p. split_Write_aux (BTL p buf) p (BHD p buf))
+      (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV))))\<close>
 
 lemma split_op_code:
-  \<open>split_op buf = Choice (cUn
-    (cimage (\<lambda>p. Read p (\<lambda>x. split_op (BENQ p x buf))) cUNIV)
-    (cimage (\<lambda>p. Write (split_op (BTL (case_sum id id p) buf)) p (BHD (case_sum id id p) buf))
-      (cfilter (\<lambda>p. buf (case_sum id id p) \<noteq> []) cUNIV)))\<close>
+  \<open>split_op buf = Choice (cUn (cUn
+    (cimage (\<lambda>p. Read p (\<lambda>x. split_op (BENQ (Inl p) x buf))) cUNIV)
+    (cimage (\<lambda>p. Read p (\<lambda>x. split_op (BENQ (Inr p) x buf))) cUNIV))
+    (cimage (\<lambda>p. Write (split_op (BTL p buf)) p (BHD p buf))
+      (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV)))\<close>
   apply (subst split_op.code)
-  by force
+  apply (unfold cimage_cUn cimage_cinsert op.inject)
+  apply (auto simp add: cset.map_comp o_def)
+  done
 
 abbreviation split_empty_op (\<open>\<Lambda>\<close>) where \<open>\<Lambda> \<equiv> split_op (\<lambda>_. [])\<close>
 
 lemma step_split_op_Inp:
   assumes \<open>step io (split_op buf) op\<close>
     and \<open>io = Inp p x\<close>
-  obtains \<open>op = split_op (BENQ p x buf)\<close>
+  obtains \<open>op = split_op (BENQ (Inl p) x buf)\<close> | \<open>op = split_op (BENQ (Inr p) x buf)\<close>
   using assms
   apply (subst (asm) split_op_code)
   by force
@@ -2814,8 +2818,7 @@ lemma step_split_op_Inp:
 lemma step_split_op_Out:
   assumes \<open>step io (split_op buf) op\<close>
     and \<open>io = Out p x\<close>
-    and \<open>p' = case_sum id id p\<close>
-  obtains \<open>op = split_op (BTL p' buf)\<close> \<open>buf p' \<noteq> []\<close> \<open>BHD p' buf = x\<close>
+  obtains \<open>op = split_op (BTL p buf)\<close> \<open>buf p \<noteq> []\<close> \<open>BHD p buf = x\<close>
   using assms
   apply (subst (asm) split_op_code)
   by force
@@ -2830,58 +2833,61 @@ lemma no_step_split_op_Tau:
 
 lemma step_split_op_cases:
   assumes \<open>step io (split_op buf) op\<close>
-  obtains p x where \<open>io = Inp p x\<close> \<open>op = split_op (BENQ p x buf)\<close>
-  |       p x p' where \<open>io = Out p x\<close> \<open>p' = case_sum id id p\<close> \<open>op = split_op (BTL p' buf)\<close> \<open>buf p' \<noteq> []\<close> \<open>BHD p' buf = x\<close>
+  obtains p x where \<open>io = Inp p x\<close> \<open>op = split_op (BENQ (Inl p) x buf)\<close>
+  |       p x where \<open>io = Inp p x\<close> \<open>op = split_op (BENQ (Inr p) x buf)\<close>
+  |       p x where \<open>io = Out p x\<close> \<open>op = split_op (BTL p buf)\<close> \<open>buf p \<noteq> []\<close> \<open>BHD p buf = x\<close>
   apply atomize_elim
   using assms
   apply (subst (asm) split_op_code)
   by force
 
-lemma step_split_op_Read[intro]:
-  \<open>buf' = BENQ p x buf \<Longrightarrow> step (Inp p x) (split_op buf) (split_op buf')\<close>
+lemma step_split_op_Read_L[intro]:
+  \<open>buf' = BENQ (Inl p) x buf \<Longrightarrow> step (Inp p x) (split_op buf) (split_op buf')\<close>
+  apply (subst split_op_code)
+  by force
+
+lemma step_split_op_Read_R[intro]:
+  \<open>buf' = BENQ (Inr p) x buf \<Longrightarrow> step (Inp p x) (split_op buf) (split_op buf')\<close>
   apply (subst split_op_code)
   by force
 
 lemma step_split_op_Write[intro]:
-  \<open>p' = case_sum id id p \<Longrightarrow> buf p' \<noteq> [] \<Longrightarrow> BHD p' buf = x \<Longrightarrow> buf' = BTL p' buf \<Longrightarrow>
+  \<open>buf p \<noteq> [] \<Longrightarrow> BHD p buf = x \<Longrightarrow> buf' = BTL p buf \<Longrightarrow>
   step (Out p x) (split_op buf) (split_op buf')\<close>
   apply (subst split_op_code)
   by fastforce
 
 lemma choices_split_op[simp]:
-  \<open>choices (split_op buf) = cUn
-    (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda>x. split_op (BENQ p x buf))) cUNIV)))
-    (cUnion (cimage choices (cimage (\<lambda>p. Write (split_op (BTL (case_sum id id p) buf)) p (BHD (case_sum id id p) buf))
-      (cfilter (\<lambda>p. buf (case_sum id id p) \<noteq> []) cUNIV))))\<close>
+  \<open>choices (split_op buf) = cUn (cUn
+    (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda>x. split_op (BENQ (Inl p) x buf))) cUNIV)))
+    (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda>x. split_op (BENQ (Inr p) x buf))) cUNIV))))
+    (cUnion (cimage choices (cimage (\<lambda>p. Write (split_op (BTL p buf)) p (BHD p buf))
+      (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV))))\<close>
   apply (subst split_op_code)
   by simp
 
 section \<open>merge_op - nondeterministic merge operator\<close>
 
 datatype (discs_sels) ('m, 'd) merge_op_aux =
-  merge_Read_aux \<open>'m + 'm\<close> \<open>'d \<Rightarrow> 'm + 'm \<Rightarrow> 'd buf\<close>
-  | merge_Write_aux \<open>'m + 'm \<Rightarrow> 'd buf\<close> 'm 'd
+  merge_Read_aux \<open>'m + 'm\<close> \<open>'d \<Rightarrow> 'm \<Rightarrow> 'd buf\<close>
+  | merge_Write_aux \<open>'m \<Rightarrow> 'd buf\<close> 'm 'd
 
 abbreviation eval_merge_op_aux where
   \<open>eval_merge_op_aux c aux \<equiv> (case aux of
     merge_Read_aux p f \<Rightarrow> Read p (c \<circ> f)
   | merge_Write_aux buf p x \<Rightarrow> Write (c buf) p x)\<close>
 
-corec merge_op :: \<open>('m + 'm :: countable \<Rightarrow> 'd buf) \<Rightarrow> ('m + 'm, 'm, 'd) op\<close> where
-  \<open>merge_op buf = Choice (cimage (eval_merge_op_aux merge_op) (cUn (cUn
-    (cimage (\<lambda>p. merge_Read_aux p (\<lambda>x. BENQ p x buf)) cUNIV)
-    (cimage (\<lambda>p. merge_Write_aux (BTL (Inl p) buf) p (BHD (Inl p) buf))
-      (cfilter (\<lambda>p. buf (Inl p) \<noteq> []) cUNIV)))
-    (cimage (\<lambda>p. merge_Write_aux (BTL (Inr p) buf) p (BHD (Inr p) buf))
-      (cfilter (\<lambda>p. buf (Inr p) \<noteq> []) cUNIV))))\<close>
+corec merge_op :: \<open>('m :: countable \<Rightarrow> 'd buf) \<Rightarrow> ('m + 'm, 'm, 'd) op\<close> where
+  \<open>merge_op buf = Choice (cimage (eval_merge_op_aux merge_op) (cUn
+    (cimage (\<lambda>p. merge_Read_aux p (\<lambda>x. BENQ (case_sum id id p) x buf)) cUNIV)
+    (cimage (\<lambda>p. merge_Write_aux (BTL p buf) p (BHD p buf))
+      (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV))))\<close>
 
 lemma merge_op_code:
-  \<open>merge_op buf = Choice (cUn (cUn
-    (cimage (\<lambda>p. Read p (\<lambda>x. merge_op (BENQ p x buf))) cUNIV)
-    (cimage (\<lambda>p. Write (merge_op (BTL (Inl p) buf)) p (BHD (Inl p) buf))
-      (cfilter (\<lambda>p. buf (Inl p) \<noteq> []) cUNIV)))
-    (cimage (\<lambda>p. Write (merge_op (BTL (Inr p) buf)) p (BHD (Inr p) buf))
-      (cfilter (\<lambda>p. buf (Inr p) \<noteq> []) cUNIV)))\<close>
+  \<open>merge_op buf = Choice (cUn
+    (cimage (\<lambda>p. Read p (\<lambda>x. merge_op (BENQ (case_sum id id p) x buf))) cUNIV)
+    (cimage (\<lambda>p. Write (merge_op (BTL p buf)) p (BHD p buf))
+      (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV)))\<close>
   apply (subst merge_op.code)
   by force
 
@@ -2890,7 +2896,8 @@ abbreviation merge_empty_op (\<open>\<V>\<close>) where \<open>\<V> \<equiv> mer
 lemma step_merge_op_Inp:
   assumes \<open>step io (merge_op buf) op\<close>
     and \<open>io = Inp p x\<close>
-  obtains \<open>op = merge_op (BENQ p x buf)\<close>
+    and \<open>p' = case_sum id id p\<close>
+  obtains \<open>op = merge_op (BENQ p' x buf)\<close>
   using assms
   apply (subst (asm) merge_op_code)
   by force
@@ -2898,8 +2905,7 @@ lemma step_merge_op_Inp:
 lemma step_merge_op_Out:
   assumes \<open>step io (merge_op buf) op\<close>
     and \<open>io = Out p x\<close>
-  obtains \<open>op = merge_op (BTL (Inl p) buf)\<close> \<open>buf (Inl p) \<noteq> []\<close> \<open>BHD (Inl p) buf = x\<close>
-  |       \<open>op = merge_op (BTL (Inr p) buf)\<close> \<open>buf (Inr p) \<noteq> []\<close> \<open>BHD (Inr p) buf = x\<close>
+  obtains \<open>op = merge_op (BTL p buf)\<close> \<open>buf p \<noteq> []\<close> \<open>BHD p buf = x\<close>
   using assms
   apply (subst (asm) merge_op_code)
   by force
@@ -2910,43 +2916,34 @@ lemma no_step_merge_op_Tau:
   obtains False
   using assms
   apply (subst (asm) merge_op_code)
-  by force
+  by auto
 
 lemma step_merge_op_cases:
   assumes \<open>step io (merge_op buf) op\<close>
-  obtains p x where \<open>io = Inp p x\<close> \<open>op = merge_op (BENQ p x buf)\<close>
-  |       p x where \<open>io = Out p x\<close> \<open>op = merge_op (BTL (Inl p) buf)\<close> \<open>buf (Inl p) \<noteq> []\<close> \<open>BHD (Inl p) buf = x\<close>
-  |       p x where \<open>io = Out p x\<close> \<open>op = merge_op (BTL (Inr p) buf)\<close> \<open>buf (Inr p) \<noteq> []\<close> \<open>BHD (Inr p) buf = x\<close>
+  obtains p x p' where \<open>io = Inp p x\<close> \<open>p' = case_sum id id p\<close> \<open>op = merge_op (BENQ p' x buf)\<close>
+  |       p x where \<open>io = Out p x\<close> \<open>op = merge_op (BTL p buf)\<close> \<open>buf p \<noteq> []\<close> \<open>BHD p buf = x\<close>
   apply atomize_elim
   using assms
   apply (subst (asm) merge_op_code)
-  by fastforce
+  by auto
 
 lemma step_merge_op_Read[intro]:
-  \<open>io = Inp p x \<Longrightarrow> op = merge_op (BENQ p x buf) \<Longrightarrow>
-  step io (merge_op buf) op\<close>
+  \<open>io = Inp p x \<Longrightarrow> p' = case_sum id id p \<Longrightarrow> buf' = BENQ p' x buf \<Longrightarrow>
+  step io (merge_op buf) (merge_op buf')\<close>
   apply (subst merge_op_code)
   by force
 
-lemma step_merge_op_Write_L[intro]:
-  \<open>io = Out p x \<Longrightarrow> op = merge_op (BTL (Inl p) buf) \<Longrightarrow> buf (Inl p) \<noteq> [] \<Longrightarrow> BHD (Inl p) buf = x \<Longrightarrow>
-  step io (merge_op buf) op\<close>
-  apply (subst merge_op_code)
-  by force
-
-lemma step_merge_op_Write_R[intro]:
-  \<open>io = Out p x \<Longrightarrow> op = merge_op (BTL (Inr p) buf) \<Longrightarrow> buf (Inr p) \<noteq> [] \<Longrightarrow> BHD (Inr p) buf = x \<Longrightarrow>
-  step io (merge_op buf) op\<close>
+lemma step_merge_op_Write[intro]:
+  \<open>io = Out p x \<Longrightarrow> buf' = BTL p buf \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> BHD p buf = x \<Longrightarrow>
+  step io (merge_op buf) (merge_op buf')\<close>
   apply (subst merge_op_code)
   by fastforce
 
 lemma choices_merge_op[simp]:
-  \<open>choices (merge_op buf) = cUn (cUn
-    (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda>x. merge_op (BENQ p x buf))) cUNIV)))
-    (cUnion (cimage choices (cimage (\<lambda>p. Write (merge_op (BTL (Inl p) buf)) p (BHD (Inl p) buf))
-      (cfilter (\<lambda>p. buf (Inl p) \<noteq> []) cUNIV)))))
-    (cUnion (cimage choices (cimage (\<lambda>p. Write (merge_op (BTL (Inr p) buf)) p (BHD (Inr p) buf))
-      (cfilter (\<lambda>p. buf (Inr p) \<noteq> []) cUNIV))))\<close>
+  \<open>choices (merge_op buf) = cUn
+    (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda>x. merge_op (BENQ (case_sum id id p) x buf))) cUNIV)))
+    (cUnion (cimage choices (cimage (\<lambda>p. Write (merge_op (BTL p buf)) p (BHD p buf))
+      (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV))))\<close>
   apply (subst merge_op_code)
   by simp
 
@@ -2954,76 +2951,136 @@ section \<open>acopy_op - async copy operator\<close>
 
 datatype (discs_sels) ('m, 'd) acopy_op_aux =
   acopy_Read_aux 'm \<open>'d \<Rightarrow> 'm \<Rightarrow> 'd buf\<close>
-  | acopy_Write_aux \<open>'m \<Rightarrow> 'd buf\<close> 'm 'd
+  | acopy_Write_LR_aux \<open>'m \<Rightarrow> 'd buf\<close> 'm 'd
+  | acopy_Write_RL_aux \<open>'m \<Rightarrow> 'd buf\<close> 'm 'd
 
 abbreviation eval_acopy_op_aux where
   \<open>eval_acopy_op_aux c aux \<equiv> (case aux of
     acopy_Read_aux p f \<Rightarrow> Read p (c \<circ> f)
-  | acopy_Write_aux buf p x \<Rightarrow> Choice {|Write (Write (c buf) (Inr p) x) (Inl p) x, Write (Write (c buf) (Inl p) x) (Inr p) x|})\<close>
+  | acopy_Write_LR_aux buf p x \<Rightarrow> Write (Write (c buf) (Inr p) x) (Inl p) x
+  | acopy_Write_RL_aux buf p x \<Rightarrow> Write (Write (c buf) (Inl p) x) (Inr p) x)\<close>
 
-(*
 corec acopy_op :: \<open>('m :: countable \<Rightarrow> 'd buf) \<Rightarrow> ('m, 'm + 'm, 'd) op\<close> where
-  \<open>acopy_op buf = Choice (cimage (eval_acopy_op_aux acopy_op) (cUn
+  \<open>acopy_op buf = Choice (cimage (eval_acopy_op_aux acopy_op) (cUn (cUn
     (cimage (\<lambda>p. acopy_Read_aux p (\<lambda>x. BENQ p x buf)) cUNIV)
-    (cimage (\<lambda>p. acopy_Write_aux (BTL p buf) p (BHD p buf))
+    (cimage (\<lambda>p. acopy_Write_LR_aux (BTL p buf) p (BHD p buf))
+      (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV)))
+    (cimage (\<lambda>p. acopy_Write_RL_aux (BTL p buf) p (BHD p buf))
       (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV))))\<close>
 
 lemma acopy_op_code:
-  "acopy_op buf = Choice (cimage (\<lambda> p. Read p (\<lambda> y. Choice {|Write (Write acopy_op (Inr p) y) (Inl p) y, Write (Write acopy_op (Inl p) y) (Inr p) y|})) (cUNIV :: 'm :: countable cset))"
+  \<open>acopy_op buf = Choice (cUn (cUn
+    (cimage (\<lambda>p. Read p (\<lambda>x. acopy_op (BENQ p x buf))) cUNIV)
+    (cimage (\<lambda>p. Write (Write (acopy_op (BTL p buf)) (Inr p) (BHD p buf)) (Inl p) (BHD p buf))
+      (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV)))
+    (cimage (\<lambda>p. Write (Write (acopy_op (BTL p buf)) (Inl p) (BHD p buf)) (Inr p) (BHD p buf))
+      (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV)))\<close>
   apply (subst acopy_op.code)
-  apply (auto simp add: cset.map_comp intro!: arg_cong2[where f = cUn])
+  apply (unfold cimage_cUn cimage_cinsert op.inject)
+  apply (auto simp add: cset.map_comp o_def)
   done
 
-abbreviation acopy_empty_op (\<open>\<C>\<close>) where \<open>\<C> = acopy_op (\<lambda>_. [])\<close>
+abbreviation acopy_empty_op (\<open>\<C>\<close>) where \<open>\<C> \<equiv> acopy_op (\<lambda>_. [])\<close>
 
 lemma step_acopy_op_Inp:
-  assumes \<open>step io \<C> op\<close>
+  assumes \<open>step io (acopy_op buf) op\<close>
     and \<open>io = Inp p x\<close>
-  obtains \<open>op = Choice {|Write (Write \<C> (Inr p) x) (Inl p) x, Write (Write \<C> (Inl p) x) (Inr p) x|}\<close>
+  obtains \<open>op = acopy_op (BENQ p x buf)\<close>
   using assms
   apply (subst (asm) acopy_op_code)
-  apply auto
-  done
+  by fastforce
 
-lemma no_step_acopy_op_Out:
-  assumes \<open>step io \<C> op\<close>
+lemma step_acopy_op_Out:
+  assumes \<open>step io (acopy_op buf) op\<close>
     and \<open>io = Out p x\<close>
-  obtains False
+    and \<open>p' = case_sum Inr Inl p\<close>
+    and \<open>p0 = case_sum id id p\<close>
+  obtains \<open>op = Write (acopy_op (BTL p0 buf)) p' x\<close> \<open>buf p0 \<noteq> []\<close> \<open>BHD p0 buf = x\<close>
   using assms
   apply (subst (asm) acopy_op_code)
-  apply auto
-  done
+  by auto
+
+lemma step_acopy_op_Out_LR:
+  assumes \<open>step io (acopy_op buf) op\<close>
+    and \<open>io = Out (Inl p) x\<close>
+  obtains \<open>op = Write (acopy_op (BTL p buf)) (Inr p) x\<close> \<open>buf p \<noteq> []\<close> \<open>BHD p buf = x\<close>
+  using assms
+  apply (subst (asm) acopy_op_code)
+  by force
+
+lemma step_acopy_op_Out_RL:
+  assumes \<open>step io (acopy_op buf) op\<close>
+    and \<open>io = Out (Inr p) x\<close>
+  obtains \<open>op = Write (acopy_op (BTL p buf)) (Inl p) x\<close> \<open>buf p \<noteq> []\<close> \<open>BHD p buf = x\<close>
+  using assms
+  apply (subst (asm) acopy_op_code)
+  by force
 
 lemma no_step_acopy_op_Tau:
-  assumes \<open>step io \<C> op\<close>
+  assumes \<open>step io (acopy_op buf) op\<close>
     and \<open>io = Tau\<close>
   obtains False
   using assms
   apply (subst (asm) acopy_op_code)
-  apply auto
-  done
+  by auto
 
-lemma step_acopy_op:
-  assumes \<open>step io \<C> op\<close>
-  obtains p x where \<open>io = Inp p x\<close> \<open>op = Choice {|Write (Write \<C> (Inr p) x) (Inl p) x, Write (Write \<C> (Inl p) x) (Inr p) x|}\<close>
+(*
+lemma step_acopy_op_cases:
+  assumes \<open>step io (acopy_op buf) op\<close>
+  obtains p x where \<open>io = Inp p x\<close> \<open>op = acopy_op (BENQ p x buf)\<close>
+  |       p x p' p0 where \<open>io = Out p x\<close> \<open>p' = case_sum Inr Inl p\<close> \<open>p0 = case_sum id id p\<close>
+                          \<open>op = Write (acopy_op (BTL p0 buf)) p' x\<close> \<open>buf p0 \<noteq> []\<close> \<open>BHD p0 buf = x\<close>
   apply atomize_elim
   using assms
   apply (subst (asm) acopy_op_code)
-  apply auto
-  done
+  by fastforce
+*)
+
+lemma step_acopy_op_cases:
+  assumes \<open>step io (acopy_op buf) op\<close>
+  obtains p x where \<open>io = Inp p x\<close> \<open>op = acopy_op (BENQ p x buf)\<close>
+  |       p x where \<open>io = Out (Inl p) x\<close> \<open>op = Write (acopy_op (BTL p buf)) (Inr p) x\<close>
+                    \<open>buf p \<noteq> []\<close> \<open>BHD p buf = x\<close>
+  |       p x where \<open>io = Out (Inr p) x\<close> \<open>op = Write (acopy_op (BTL p buf)) (Inl p) x\<close>
+                    \<open>buf p \<noteq> []\<close> \<open>BHD p buf = x\<close>
+  apply atomize_elim
+  using assms
+  apply (subst (asm) acopy_op_code)
+  by fastforce
 
 lemma step_acopy_op_Read[intro]:
-  \<open>step (Inp p x) \<C> (Choice {|Write (Write \<C> (Inr p) x) (Inl p) x, Write (Write \<C> (Inl p) x) (Inr p) x|})\<close>
+  \<open>io = Inp p x \<Longrightarrow> buf' = BENQ p x buf \<Longrightarrow> step io (acopy_op buf) (acopy_op buf')\<close>
   apply (subst acopy_op_code)
-  apply fastforce
-  done
+  by force
+
+lemma step_acopy_op_Write[intro]:
+  \<open>io = Out p x \<Longrightarrow> p' = case_sum Inr Inl p \<Longrightarrow> p0 = case_sum id id p \<Longrightarrow> buf' = BTL p0 buf \<Longrightarrow>
+  buf p0 \<noteq> [] \<Longrightarrow> BHD p0 buf = x \<Longrightarrow> step io (acopy_op buf) (Write (acopy_op buf') p' x)\<close>
+  apply (subst acopy_op_code)
+  apply (simp split: sum.splits)
+  by force+
+
+lemma step_acopy_op_Write_LR[intro]:
+  \<open>io = Out (Inl p) x \<Longrightarrow> buf' = BTL p buf \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> BHD p buf = x \<Longrightarrow>
+  step io (acopy_op buf) (Write (acopy_op buf') (Inr p) x)\<close>
+  apply (subst acopy_op_code)
+  by force
+
+lemma step_acopy_op_Write_RL[intro]:
+  \<open>io = Out (Inr p) x \<Longrightarrow> buf' = BTL p buf \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> BHD p buf = x \<Longrightarrow>
+  step io (acopy_op buf) (Write (acopy_op buf') (Inl p) x)\<close>
+  apply (subst acopy_op_code)
+  by force
 
 lemma choices_acopy_op[simp]:
-  \<open>choices \<C> = cimage (\<lambda> p. Read p (\<lambda> y. Choice {|Write (Write \<C> (Inr p) y) (Inl p) y, Write (Write \<C> (Inl p) y) (Inr p) y|})) cUNIV\<close>
+  \<open>choices (acopy_op buf) = cUn (cUn
+    (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda>x. acopy_op (BENQ p x buf))) cUNIV)))
+    (cUnion (cimage choices (cimage (\<lambda>p. Write (Write (acopy_op (BTL p buf)) (Inr p) (BHD p buf)) (Inl p) (BHD p buf))
+      (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV)))))
+    (cUnion (cimage choices (cimage (\<lambda>p. Write (Write (acopy_op (BTL p buf)) (Inl p) (BHD p buf)) (Inr p) (BHD p buf))
+      (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV))))\<close>
   apply (subst acopy_op_code)
-  apply auto
-  done
-*)
+  by simp
 
 section \<open>aeq_op - async equality operator\<close>
 
@@ -3079,8 +3136,8 @@ lemma step_aeq_op_Out:
 lemma step_aeq_op_Tau:
   assumes \<open>step io (aeq_op buf) op\<close>
     and \<open>io = Tau\<close>
-  obtains p where \<open>op = aeq_op (BTL (Inr p) (BTL (Inl p) buf))\<close> \<open>buf (Inl p) \<noteq> []\<close> \<open>buf (Inr p) \<noteq> []\<close>
-          \<open>BHD (Inl p) buf \<noteq> BHD (Inr p) buf\<close>
+  obtains p where \<open>op = aeq_op (BTL (Inr p) (BTL (Inl p) buf))\<close>
+                  \<open>buf (Inl p) \<noteq> []\<close> \<open>buf (Inr p) \<noteq> []\<close> \<open>BHD (Inl p) buf \<noteq> BHD (Inr p) buf\<close>
   apply atomize_elim
   using assms
   apply (subst (asm) aeq_op_code)
@@ -3092,8 +3149,8 @@ lemma step_aeq_op_cases:
   |       p x where \<open>io = Out p x\<close> \<open>op = aeq_op (BTL (Inr p) (BTL (Inl p) buf))\<close>
                     \<open>buf (Inl p) \<noteq> []\<close> \<open>buf (Inr p) \<noteq> []\<close> \<open>BHD (Inl p) buf = BHD (Inr p) buf\<close>
                     \<open>BHD (Inl p) buf = x\<close>
-  |       p where \<open>io = Tau\<close> \<open>op = aeq_op (BTL (Inr p) (BTL (Inl p) buf))\<close> \<open>buf (Inl p) \<noteq> []\<close> \<open>buf (Inr p) \<noteq> []\<close>
-          \<open>BHD (Inl p) buf \<noteq> BHD (Inr p) buf\<close>
+  |       p where \<open>io = Tau\<close> \<open>op = aeq_op (BTL (Inr p) (BTL (Inl p) buf))\<close>
+                  \<open>buf (Inl p) \<noteq> []\<close> \<open>buf (Inr p) \<noteq> []\<close> \<open>BHD (Inl p) buf \<noteq> BHD (Inr p) buf\<close>
   apply atomize_elim
   using assms
   apply (subst (asm) aeq_op_code)

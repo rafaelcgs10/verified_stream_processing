@@ -27,11 +27,6 @@ lemma merge_op_id_op_comp_op_bufs:
           apply (erule step_merge_op_Inp)
            apply simp
           apply (cases p)
-          apply (rule exI[of _ \<open>map_op assoc id (map_op projl projr (comp_op Some buf2 (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1') (merge_op (BENQ p x buf1))) (merge_op buf3)))\<close>])
-          apply (rule conjI)
-          subgoal
-            apply (rule step_map_op)
-             apply fastforce
   oops
 
 lemma merge_op_commutes_identity:
@@ -42,7 +37,7 @@ section \<open>Axiom: A2: Merge transpose is merge\<close>
 
 lemma transp_op_merge_op_bufs:
   \<open>map_op projl projr (comp_op Some buf2 (transp_op buf1) (merge_op buf3))
-  \<approx> merge_op (buf1 >> (buf2 \<circ> case_sum Inr Inl) >> buf3)\<close>
+  \<approx> merge_op buf\<close>
   apply (coinduction arbitrary: buf1 buf2 buf3 rule: wbisim_coinduct_upto)
   unfolding wsim_def
   subgoal for buf1 buf2 buf3
@@ -55,7 +50,7 @@ lemma transp_op_merge_op_bufs:
       subgoal for p x
         apply (erule step_transp_op_Inp)
          apply simp
-        apply (rule exI[of _ \<open>merge_op (BENQ p x buf1 >> (buf2 \<circ> case_sum Inr Inl) >> buf3)\<close>])
+(*         apply (rule exI[of _ \<open>merge_op (BENQ p x buf1 >> (buf2 \<circ> case_sum Inr Inl) >> buf3)\<close>])
         apply auto
         apply (rule step_wstep)
         apply fastforce
@@ -113,7 +108,7 @@ lemma transp_op_merge_op_bufs:
       subgoal for p x
         sorry
       done
-    done
+    done *)
   oops
 
 lemma merge_op_transp_op:
@@ -131,9 +126,171 @@ lemma merge_op_sink_op:
   oops
 
 section \<open>Axiom: A6: Split to transpose\<close>
+
+lemma split_op_transp_op_bufs:
+  \<open>map_op projl projr (comp_op Some buf2 (split_op buf1) (transp_op buf3))
+  \<approx> map_op id (case_sum Inr Inl) (split_op (buf1 >> buf2 >> buf3))\<close>
+  apply (coinduction arbitrary: buf1 buf2 buf3 rule: wbisim_coinduct_upto)
+  unfolding wsim_def
+  subgoal for buf1 buf2 buf3
+    apply auto
+    subgoal
+      apply (drule step_map_op_inv)
+      apply auto
+      apply (drule step_comp_op_cases)
+      apply auto
+      subgoal for p x
+        apply (erule step_split_op_Inp)
+          apply simp
+        subgoal
+          apply (rule exI[of _ \<open>map_op id (case_sum Inr Inl) (split_op (BENQ (Inl p) x buf1 >> buf2 >> buf3))\<close>])
+          apply auto
+          apply force
+          done
+        subgoal
+          apply (rule exI[of _ \<open>map_op id (case_sum Inr Inl) (split_op (BENQ (Inr p) x buf1 >> buf2 >> buf3))\<close>])
+          apply auto
+          apply force
+          done
+        done
+      subgoal
+        apply (erule step_transp_op_Out)
+          apply (auto split: sum.splits)
+        subgoal for p
+          apply (rule exI[of _ \<open>map_op id (case_sum Inr Inl) (split_op (buf1 >> buf2 >> BTL (Inr p) buf3))\<close>])
+          apply auto
+          apply (rule step_wstep)
+          using BULK_BENQ_empty
+          by fastforce
+        subgoal for p
+          apply (rule exI[of _ \<open>map_op id (case_sum Inr Inl) (split_op (buf1 >> buf2 >> BTL (Inl p) buf3))\<close>])
+          apply auto
+          apply (rule step_wstep)
+          using BULK_BENQ_empty
+          by fastforce
+        done
+      subgoal for p x
+        apply (erule step_split_op_Out)
+         apply simp
+        apply (rule exI[of _ \<open>map_op id (case_sum Inr Inl) (split_op (buf1 >> buf2 >> buf3))\<close>])
+        apply auto
+        apply (rule wbc_base)
+        apply fastforce
+        done
+      subgoal for p
+        apply (erule step_transp_op_Inp)
+         apply simp
+        apply (rule exI[of _ \<open>map_op id (case_sum Inr Inl) (split_op (buf1 >> buf2 >> buf3))\<close>])
+        apply auto
+        apply (rule wbc_base)
+        apply (rule exI[of _ buf1])
+        apply (rule exI[of _ \<open>BTL p buf2\<close>])
+        apply (rule exI[of _ \<open>BENQ p (BHD p buf2) buf3\<close>])
+        by (metis BAPPEND_BENQ_BHD BULK_BENQ_assoc)
+       apply (meson no_step_split_op_Tau no_step_transp_op_Tau)+
+      done
+    subgoal
+      apply (drule step_map_op_inv)
+      apply auto
+      apply (erule step_split_op_cases)
+        apply (auto split: sum.splits)
+      subgoal for p x
+        apply (rule exI[of _ \<open>map_op projl projr (comp_op Some buf2 (split_op (BENQ (Inl p) x buf1)) (transp_op buf3))\<close>])
+        apply (rule conjI)
+         apply fastforce
+        apply blast
+        done
+      subgoal for p x
+        apply (rule exI[of _ \<open>map_op projl projr (comp_op Some buf2 (split_op (BENQ (Inr p) x buf1)) (transp_op buf3))\<close>])
+        apply (rule conjI)
+         apply fastforce
+        apply blast
+        done
+      subgoal for p
+        apply (rule exI[of _ \<open>map_op projl projr (comp_op Some buf2 (split_op (BTL (Inl p) buf1)) (transp_op buf3))\<close>])
+        apply (rule conjI)
+        apply (rule step_tau_step_tau_step_io_wstep[of _
+            \<open>map_op projl projr (comp_op Some (BENQ (Inl p) (BHD (Inl p) buf1) buf2) (split_op (BTL (Inl p) buf1)) (transp_op buf3))\<close>
+            \<open>map_op projl projr (comp_op Some (BTL (Inl p) (BENQ (Inl p) (BHD (Inl p) buf1) buf2)) (split_op (BTL (Inl p) buf1)) (transp_op (BENQ (Inl p) (BHD (Inl p) buf1) buf3)))\<close>])
+           apply fastforce
+          apply fastforce
+         apply simp
+         apply (rule step_map_op[of \<open>Out (Inr (Inr p)) (BHD (Inl p) buf1)\<close>])
+          apply (rule step_comp_op_R_Out)
+          apply (rule step_transp_op_Write[of _ \<open>Inl p\<close>])
+        apply simp_all
+        apply blast
+        done
+      subgoal for p
+        apply (rule exI[of _ \<open>map_op projl projr (comp_op Some buf2 (split_op buf1) (transp_op (BTL (Inl p) buf3)))\<close>])
+        apply (rule conjI)
+         apply fastforce
+        apply blast
+        done
+      subgoal for p
+        apply (rule exI[of _ \<open>map_op projl projr (comp_op Some (BTL (Inl p) buf2) (split_op buf1) (transp_op buf3))\<close>])
+        apply (rule conjI)
+         apply (rule step_tau_step_io_wstep)
+          apply fastforce
+         apply (rule step_map_op[of \<open>Out (Inr (Inr p)) (BHD (Inl p) buf2)\<close>])
+          apply (rule step_comp_op_R_Out)
+          apply (rule step_transp_op_Write[of _ \<open>Inl p\<close>])
+        apply simp_all
+        apply blast
+        done
+      subgoal for p
+        apply (rule exI[of _ \<open>map_op projl projr (comp_op Some buf2 (split_op buf1) (transp_op (BTL (Inl p) buf3)))\<close>])
+        apply (rule conjI)
+         apply fastforce
+        apply blast
+        done
+      subgoal for p
+        apply (rule exI[of _ \<open>map_op projl projr (comp_op Some buf2 (split_op (BTL (Inr p) buf1)) (transp_op buf3))\<close>])
+        apply (rule conjI)
+        apply (rule step_tau_step_tau_step_io_wstep[of _
+            \<open>map_op projl projr (comp_op Some (BENQ (Inr p) (BHD (Inr p) buf1) buf2) (split_op (BTL (Inr p) buf1)) (transp_op buf3))\<close>
+            \<open>map_op projl projr (comp_op Some (BTL (Inr p) (BENQ (Inr p) (BHD (Inr p) buf1) buf2)) (split_op (BTL (Inr p) buf1)) (transp_op (BENQ (Inr p) (BHD (Inr p) buf1) buf3)))\<close>])
+           apply fastforce
+          apply fastforce
+         apply simp
+         apply (rule step_map_op[of \<open>Out (Inr (Inl p)) (BHD (Inr p) buf1)\<close>])
+          apply (rule step_comp_op_R_Out)
+          apply (rule step_transp_op_Write[of _ \<open>Inr p\<close>])
+        apply simp_all
+        apply blast
+        done
+      subgoal for p
+        apply (rule exI[of _ \<open>map_op projl projr (comp_op Some buf2 (split_op buf1) (transp_op (BTL (Inr p) buf3)))\<close>])
+        apply (rule conjI)
+         apply fastforce
+        apply blast
+        done
+      subgoal for p
+        apply (rule exI[of _ \<open>map_op projl projr (comp_op Some (BTL (Inr p) buf2) (split_op buf1) (transp_op buf3))\<close>])
+        apply (rule conjI)
+         apply (rule step_tau_step_io_wstep)
+          apply fastforce
+         apply (rule step_map_op[of \<open>Out (Inr (Inl p)) (BHD (Inr p) buf2)\<close>])
+          apply (rule step_comp_op_R_Out)
+          apply (rule step_transp_op_Write[of _ \<open>Inr p\<close>])
+        apply simp_all
+        apply blast
+        done
+      subgoal for p
+        apply (rule exI[of _ \<open>map_op projl projr (comp_op Some buf2 (split_op buf1) (transp_op (BTL (Inr p) buf3)))\<close>])
+        apply (rule conjI)
+         apply fastforce
+        apply blast
+        done
+      done
+    done
+  done
+
 lemma split_op_transp_op:
- "\<Lambda> \<bullet> \<X> \<approx> map_op id (case_sum Inr Inl) \<Lambda>"
-  oops
+  \<open>\<Lambda> \<bullet> \<X> \<approx> map_op id (case_sum Inr Inl) \<Lambda>\<close>
+  using split_op_transp_op_bufs[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>]
+  unfolding scomp_op_def
+  by simp
 
 section \<open>Axiom: A8: Split dummy source\<close>
 
@@ -214,6 +371,19 @@ lemma dummy_source_op_pcomp_op:
   done
 
 section \<open>Axiom A15: Transpose and merge\<close>
+
+lemma merge_op_comp_op_transp_op_id_op_bufs:
+  assumes "Vmn \<equiv> merge_op bufmnmn :: (('m :: countable + 'n :: countable) + 'm + 'n, 'm + 'n, 'd) op"
+    and "Vm \<equiv> merge_op bufmm :: ('m + 'm, 'm, 'd) op"
+    and "Vn \<equiv>  merge_op bufnn :: ('n + 'n, 'n, 'd) op"
+    and "Imm \<equiv> id_op bufm :: ('m, 'm, 'd) op"
+    and "Inn \<equiv> id_op bufn :: ('n, 'n, 'd) op"
+    and "Xnm \<equiv> transp_op bufnm :: ('n + 'm, 'm + 'n, 'd) op"
+  shows "Vmn \<approx> map_op projl projr (comp_op Some buf
+      (map_op reassoc reassoc (map_op assoc assoc (Imm \<parallel> Xnm) \<parallel> Inn))
+      (Vm \<parallel> Vn))"
+  oops
+
 lemma merge_op_transp_merge:
   assumes "Vmn \<equiv> \<V> :: (('m :: countable + 'n ::countable) + 'm + 'n, 'm + 'n, 'd) op"
     and "Vm \<equiv> \<V> :: ('m + 'm, 'm, 'd) op"
@@ -433,7 +603,20 @@ lemma sink_op_pcomp_op:
   using sink_op_pcomp_op_bufs[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>]
   by simp
 
-section \<open>Axiom A19: Split and merge\<close>
+section \<open>Axiom A19: Split and transpose\<close>
+
+lemma split_op_comp_op_transp_op_id_op_bufs:
+  assumes "Smn \<equiv> split_op buf :: ('m :: countable + 'n :: countable, ('m + 'n) + 'm + 'n, 'd) op"
+    and "Sm \<equiv> split_op buf1 :: ('m, 'm + 'm, 'd) op"
+    and "Sn \<equiv> split_op buf1' :: ('n, 'n + 'n, 'd) op"
+    and "Imm \<equiv> id_op buf3 :: ('m, 'm, 'd) op"
+    and "Inn \<equiv> id_op buf3'' :: ('n, 'n, 'd) op"
+    and "Xmn \<equiv> transp_op buf3' :: ('m + 'n, 'n + 'm, 'd) op"
+  shows "Smn \<approx> map_op projl projr (comp_op Some buf2
+      (Sm \<parallel> Sn)
+      (map_op reassoc reassoc (map_op assoc assoc (Imm \<parallel> Xmn) \<parallel> Inn)))"
+  oops
+
 lemma split_op_transp_split:
   assumes "Smn \<equiv> \<Lambda> :: ('m + 'n,('m :: countable + 'n ::countable) + 'm + 'n,  'd) op"
     and "Sm \<equiv> \<Lambda> :: ('m, 'm + 'm, 'd) op"
