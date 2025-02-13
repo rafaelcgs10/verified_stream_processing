@@ -1496,6 +1496,126 @@ lemma wbisim_scomp_op_cong:
    op1 \<bullet> op2 \<approx> op1' \<bullet> op2'"
   unfolding scomp_op_def using wbisim_comp_op_cong wbisim_map_op by blast
 
+lemma wbisim_scomp_op_Write_buf:
+  \<open>comp_op Some buf (Write op1 p x) op2 \<approx> comp_op Some (BENQ p x buf) op1 op2\<close>
+  apply (coinduction arbitrary: op1 op2 buf rule: wbisim_coinduct_upto)
+  subgoal for op1 op2 buf
+    unfolding wsim_def
+    apply auto
+    subgoal
+      apply (drule step_comp_op_cases)
+      apply auto
+      subgoal for p' x' op2'
+        apply blast
+        done
+      subgoal for p' op2'
+        apply (rule exI[of _ \<open>comp_op Some (BENQ p x (BTL p' buf)) op1 op2'\<close>])
+        apply (auto simp flip: wstep_steps_Tau)
+        apply (rule step_wstep)
+        using step_Tau_comp_op_R[of p' \<open>BHD p' buf\<close> op2 op2' Some \<open>BENQ p x buf\<close> op1]
+        by (smt (verit, ccfv_threshold) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_BENQ_empty BTL_BENQ_empty BULK_BENQ_left_neutral Nil_is_append_conv fun_upd_apply hd_append ranI snoc_eq_iff_butlast)
+      subgoal for op2'
+        apply (rule exI[of _ \<open>comp_op Some (BENQ p x buf) op1 op2'\<close>])
+        apply auto
+        done
+      done
+    subgoal
+      apply (drule step_comp_op_cases)
+      apply auto
+      subgoal for p' x' op1'
+        apply (rule exI[of _ \<open>comp_op Some (BENQ p x buf) op1' op2\<close>])
+        apply (rule conjI)
+         apply (rule step_tau_step_io_wstep)
+          apply auto
+        done
+      subgoal for p' x' op2'
+        apply blast
+        done
+      subgoal for p' x' op1'
+        apply (rule exI[of _ \<open>comp_op Some (BENQ p' x' (BENQ p x buf)) op1' op2\<close>])
+        apply (auto simp flip: wstep_steps_Tau)
+        apply (rule step_tau_step_io_wstep)
+         apply auto
+        done
+      subgoal for p' op2'
+        apply (rule exI[of _ \<open>comp_op Some (BTL p' (BENQ p x buf)) op1 op2'\<close>])
+        apply (auto simp flip: wstep_steps_Tau)
+        apply (rule step_tau_step_io_wstep)
+         apply auto
+        done
+      subgoal for op1'
+        apply (rule exI[of _ \<open>comp_op Some (BENQ p x buf) op1' op2\<close>])
+        apply (auto simp flip: wstep_steps_Tau)
+        apply (rule step_tau_step_io_wstep)
+         apply auto
+        done
+      subgoal for op2'
+        apply (rule exI[of _ \<open>comp_op Some buf (Write op1 p x) op2'\<close>])
+        apply blast
+        done
+      done
+    done
+  done
+
+lemma wbisim_scomp_op_Read_buf:
+  \<open>buf p \<noteq> [] \<Longrightarrow> comp_op Some buf op (Read p f) \<approx> comp_op Some (BTL p buf) op (f (BHD p buf))\<close>
+  apply (coinduction arbitrary: op buf rule: wbisim_coinduct_upto)
+  unfolding wsim_def
+  subgoal for op buf
+    apply auto
+    subgoal
+      apply (drule step_comp_op_cases)
+      apply auto
+      subgoal for p' x op'
+        apply (rule exI[of _ \<open>comp_op Some (BTL p (BENQ p' x buf)) op' (f (BHD p (BENQ p' x buf)))\<close>])
+        apply (auto simp flip: wstep_steps_Tau)
+         apply (rule step_wstep)
+        apply (smt (verit, ccfv_SIG) BENQ_access BENQ_def BTL_access BTL_def fun_upd_other fun_upd_twist fun_upd_upd hd_append step_Tau_comp_op_L tl_append2)
+        apply (rule wbc_base)
+        apply (rule exI[of _ op'])
+        apply (rule exI[of _ \<open>BENQ p' x buf\<close>])
+        apply (simp add: BENQ_def)
+        done
+      done
+    subgoal
+      apply (drule step_comp_op_cases)
+      apply auto
+           apply blast
+      subgoal for p' x op'
+        apply (rule exI[of _ \<open>comp_op Some (BTL p buf) op op'\<close>])
+        apply auto
+         apply (rule step_tau_step_io_wstep)
+         apply fastforce+
+        done
+      subgoal for p' x op'
+        apply (rule exI[of _ \<open>comp_op Some (BENQ p' x (BTL p buf)) op' (f (BHD p buf))\<close>])
+        apply (auto simp flip: wstep_steps_Tau)
+        apply (rule step_tau_step_io_wstep)
+         apply (rule step_Tau_comp_op_R)
+            apply fastforce+
+        done
+      subgoal for p' op'
+        apply (rule exI[of _ \<open>comp_op Some (BTL p' (BTL p buf)) op op'\<close>])
+        apply (auto simp flip: wstep_steps_Tau)
+        apply (rule step_tau_step_io_wstep)
+         apply fastforce+
+        done
+      subgoal for op'
+        apply (rule exI[of _ \<open>comp_op Some (BTL p buf) op' (f (BHD p buf))\<close>])
+        apply (auto simp flip: wstep_steps_Tau)
+        apply (rule step_tau_step_io_wstep)
+         apply fastforce+
+        done
+      subgoal for op'
+        apply (rule exI[of _ \<open>comp_op Some (BTL p buf) op op'\<close>])
+        apply (auto simp flip: wstep_steps_Tau)
+        apply (rule step_tau_step_io_wstep)
+         apply fastforce+
+        done
+      done
+    done
+  done
+
 section \<open>loop_op: Loop/Feedback\<close>
 corec loop_op :: "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op" where
@@ -2403,15 +2523,12 @@ lemma id_op_code:
   done
 
 subsection \<open>Some basic properties id_op\<close>
+
 lemma step_id_op_Inp:
   "step io (id_op buf) op' \<Longrightarrow>
    io = Inp p x \<Longrightarrow>
    op' = id_op (BENQ p x buf)"
-  apply (induct io "id_op buf" op' arbitrary: buf rule: step.induct)
-     apply simp_all
-   apply (subst (asm) id_op_code)
-   apply simp
-  apply (subst (asm) (3) id_op_code)
+  apply (subst (asm) id_op_code)
   apply auto
   done
 
@@ -2419,11 +2536,7 @@ lemma step_id_op_Out:
   "step io (id_op buf) op' \<Longrightarrow>
    io = Out p x \<Longrightarrow>
    op' = id_op (BTL p buf) \<and> BHD p buf = x \<and> buf p \<noteq> []"
-  apply (induct io "id_op buf" op' arbitrary: buf rule: step.induct)
-     apply simp_all
-   apply (subst (asm) id_op_code)
-   apply simp
-  apply (subst (asm) (3) id_op_code)
+  apply (subst (asm) id_op_code)
   apply auto
   done
 
@@ -2431,13 +2544,8 @@ lemma no_step_id_op_Tau:
   assumes \<open>step io (id_op buf) op\<close>
     and \<open>io = Tau\<close>
   obtains False
-  apply atomize_elim
   using assms
-    apply (induct io \<open>id_op buf\<close> op arbitrary: buf rule: step.induct)
-     apply simp_all
-   apply (subst (asm) id_op_code)
-   apply simp
-  apply (subst (asm) (2) id_op_code)
+  apply (subst (asm) id_op_code)
   apply auto
   done
 
@@ -2520,7 +2628,6 @@ lemma step_drain_op_Inp:
   assumes \<open>step io drain_op op\<close>
     and \<open>io = Inp p x\<close>
   obtains \<open>op = drain_op\<close>
-  apply atomize_elim
   using assms
   apply (subst (asm) drain_op.code)
   apply auto
@@ -2530,7 +2637,6 @@ lemma no_step_drain_op_Out:
   assumes \<open>step io drain_op op\<close>
     and \<open>io = Out p x\<close>
   obtains False
-  apply atomize_elim
   using assms
   apply (subst (asm) drain_op.code)
   apply auto
@@ -2540,7 +2646,6 @@ lemma no_step_drain_op_Tau:
   assumes \<open>step io drain_op op\<close>
     and \<open>io = Tau\<close>
   obtains False
-  apply atomize_elim
   using assms
   apply (subst (asm) drain_op.code)
   apply auto
@@ -2605,13 +2710,8 @@ lemma step_transp_op_Inp:
   assumes \<open>step io (transp_op buf) op\<close>
     and \<open>io = Inp p x\<close>
   obtains \<open>op = transp_op (BENQ p x buf)\<close>
-  apply atomize_elim
   using assms
-  apply (induct io \<open>transp_op buf\<close> op arbitrary: buf rule: step.induct)
-     apply simp_all
-   apply (subst (asm) transp_op_code)
-   apply simp
-  apply (subst (asm) (3) transp_op_code)
+  apply (subst (asm) transp_op_code)
   apply auto
   done
 
@@ -2622,7 +2722,6 @@ lemma step_transp_op_Out:
   obtains \<open>op = transp_op (BTL p' buf)\<close>
           \<open>BHD p' buf = x\<close>
           \<open>buf p' \<noteq> []\<close>
-  apply atomize_elim
   using assms
   apply (induct io \<open>transp_op buf\<close> op arbitrary: buf rule: step.induct)
      apply simp_all
@@ -2638,13 +2737,8 @@ lemma no_step_transp_op_Tau:
   assumes \<open>step io (transp_op buf) op\<close>
     and \<open>io = Tau\<close>
   obtains False
-  apply atomize_elim
   using assms
-  apply (induct io \<open>transp_op buf\<close> op arbitrary: buf rule: step.induct)
-     apply simp_all
-   apply (subst (asm) transp_op_code)
-   apply simp
-  apply (subst (asm) (2) transp_op_code)
+  apply (subst (asm) transp_op_code)
   apply auto
   done
 
@@ -2715,7 +2809,6 @@ lemma step_split_op_Inp:
   assumes \<open>step io \<Lambda> op\<close>
     and \<open>io = Inp p x\<close>
   obtains \<open>op = Choice {|Write \<Lambda> (Inl p) x, Write \<Lambda> (Inr p) x|}\<close>
-  apply atomize_elim
   using assms
   apply (subst (asm) split_op_code)
   apply auto
@@ -2725,7 +2818,6 @@ lemma no_step_split_op_Out:
   assumes \<open>step io \<Lambda> op\<close>
     and \<open>io = Out p x\<close>
   obtains False
-  apply atomize_elim
   using assms
   apply (subst (asm) split_op_code)
   apply auto
@@ -2735,7 +2827,6 @@ lemma no_step_split_op_Tau:
   assumes \<open>step io \<Lambda> op\<close>
     and \<open>io = Tau\<close>
   obtains False
-  apply atomize_elim
   using assms
   apply (subst (asm) split_op_code)
   apply auto
@@ -2786,7 +2877,6 @@ lemma step_merge_op_Inp:
     and \<open>io = Inp p x\<close>
     and \<open>p' = case_sum id id p\<close>
   obtains \<open>op = Write \<V> p' x\<close>
-  apply atomize_elim
   using assms
   apply (subst (asm) merge_op_code)
   apply auto
@@ -2796,7 +2886,6 @@ lemma no_step_merge_op_Out:
   assumes \<open>step io \<V> op\<close>
     and \<open>io = Out p x\<close>
   obtains False
-  apply atomize_elim
   using assms
   apply (subst (asm) merge_op_code)
   apply auto
@@ -2806,7 +2895,6 @@ lemma no_step_merge_op_Tau:
   assumes \<open>step io \<V> op\<close>
     and \<open>io = Tau\<close>
   obtains False
-  apply atomize_elim
   using assms
   apply (subst (asm) merge_op_code)
   apply auto
@@ -2858,7 +2946,6 @@ lemma step_acopy_op_Inp:
   assumes \<open>step io \<C> op\<close>
     and \<open>io = Inp p x\<close>
   obtains \<open>op = Choice {|Write (Write \<C> (Inr p) x) (Inl p) x, Write (Write \<C> (Inl p) x) (Inr p) x|}\<close>
-  apply atomize_elim
   using assms
   apply (subst (asm) acopy_op_code)
   apply auto
@@ -2868,7 +2955,6 @@ lemma no_step_acopy_op_Out:
   assumes \<open>step io \<C> op\<close>
     and \<open>io = Out p x\<close>
   obtains False
-  apply atomize_elim
   using assms
   apply (subst (asm) acopy_op_code)
   apply auto
@@ -2878,7 +2964,6 @@ lemma no_step_acopy_op_Tau:
   assumes \<open>step io \<C> op\<close>
     and \<open>io = Tau\<close>
   obtains False
-  apply atomize_elim
   using assms
   apply (subst (asm) acopy_op_code)
   apply auto
@@ -2927,7 +3012,6 @@ lemma step_aeq_op_Inp_L:
   assumes \<open>step io \<Q> op\<close>
     and \<open>io = Inp (Inl p) y\<close>
   obtains \<open>op = Read (Inr p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)\<close>
-  apply atomize_elim
   using assms
   apply (subst (asm) aeq_op_code)
   apply auto
@@ -2937,7 +3021,6 @@ lemma step_aeq_op_Inp_R:
   assumes \<open>step io \<Q> op\<close>
     and \<open>io = Inp (Inr p) y\<close>
   obtains \<open>op = Read (Inl p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)\<close>
-  apply atomize_elim
   using assms
   apply (subst (asm) aeq_op_code)
   apply auto
@@ -2947,7 +3030,6 @@ lemma no_step_aeq_op_Out:
   assumes \<open>step io \<Q> op\<close>
     and \<open>io = Out p x\<close>
   obtains False
-  apply atomize_elim
   using assms
   apply (subst (asm) aeq_op_code)
   apply auto
@@ -2957,7 +3039,6 @@ lemma no_step_aeq_op_Tau:
   assumes \<open>step io \<Q> op\<close>
     and \<open>io = Tau\<close>
   obtains False
-  apply atomize_elim
   using assms
   apply (subst (asm) aeq_op_code)
   apply auto
@@ -2976,21 +3057,19 @@ lemma step_aeq_op:
 lemma step_aeq_op_Read_L[intro]:
   \<open>step (Inp (Inl p) y) \<Q> (Read (Inr p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>))\<close>
   apply (subst aeq_op_code)
-  apply (rule Read_in_choices_step)
-  apply simp
+  apply fastforce
   done
 
 lemma step_aeq_op_Read_R[intro]:
   \<open>step (Inp (Inr p) y) \<Q> (Read (Inl p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>))\<close>
   apply (subst aeq_op_code)
-  apply (rule Read_in_choices_step)
-  apply simp
+  apply fastforce
   done
 
 lemma choices_aeq_op[simp]:
   \<open>choices \<Q> = cUn
-  (cUnion (cimage choices (cimage (\<lambda> p. Read (Inl p) ((\<lambda> y. Read (Inr p) (\<lambda> x. if x = y then Write aeq_op p x else Silent aeq_op)))) cUNIV)))
-  (cUnion (cimage choices (cimage (\<lambda> p. Read (Inr p) ((\<lambda> y. Read (Inl p) (\<lambda> x. if x = y then Write aeq_op p x else Silent aeq_op)))) cUNIV)))\<close>
+  (cUnion (cimage choices (cimage (\<lambda> p. Read (Inl p) ((\<lambda> y. Read (Inr p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)))) cUNIV)))
+  (cUnion (cimage choices (cimage (\<lambda> p. Read (Inr p) ((\<lambda> y. Read (Inl p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)))) cUNIV)))\<close>
   apply (subst aeq_op_code)
   apply auto
   done
