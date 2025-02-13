@@ -4,6 +4,7 @@ theory Cset_Setup
 
 imports
   "HOL-Library.Countable_Set_Type"
+  Defaults
 begin
 
 section \<open>cset Syntax\<close>
@@ -24,7 +25,7 @@ context includes cset.lifting begin
 lift_definition natcUNIV :: "nat cset" is UNIV by auto
 lift_definition cproduct :: "'a cset \<Rightarrow> 'b cset \<Rightarrow> ('a \<times> 'b) cset" is "(\<times>)" by auto
 lift_definition cfilter :: "('a \<Rightarrow> bool) \<Rightarrow> 'a cset \<Rightarrow> 'a cset" is Set.filter by (simp add: Set.filter_def)
-lift_definition cUNIV :: "('m :: countable) cset" is UNIV by auto
+lift_definition cUNIV :: "('m :: {countable, defaults}) cset" is "UNIV - defaults" by auto
 
 end
 

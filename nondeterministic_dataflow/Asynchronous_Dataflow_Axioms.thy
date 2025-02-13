@@ -86,8 +86,6 @@ lemma dummy_source_op_sink_op:
     apply auto
     apply (drule step_comp_op_cases)
     apply auto
-    using no_step_id_op_Tau
-    apply blast
     done
   subgoal
     apply (drule step_map_op_inv)
@@ -110,7 +108,8 @@ lemma dummy_source_op_pcomp_op:
   done
 
 section \<open>Axiom A15: Transpose and merge\<close>
-lemma merge_op_transp_merge:
+(* FIXME:  fix types *)
+(* lemma merge_op_transp_merge:
   assumes "Vmn \<equiv> \<V> :: (('m :: countable + 'n ::countable) + 'm + 'n, 'm + 'n, 'd) op"
     and "Vm \<equiv> \<V> :: ('m + 'm, 'm, 'd) op"
     and "Vn \<equiv>  \<V> :: ('n + 'n, 'n, 'd) op"
@@ -118,10 +117,9 @@ lemma merge_op_transp_merge:
     and "Inn \<equiv> \<I> :: ('n, 'n, 'd) op"
     and "Xnm \<equiv> \<X> :: ('n + 'm, 'm + 'n, 'd) op"
   shows "Vmn \<approx> map_op reassoc reassoc (map_op assoc assoc (Imm \<parallel> Xnm) \<parallel> Inn) \<bullet> (Vm \<parallel> Vn)"
-  oops
+  oops *)
 
 section \<open>Axiom A17: Parallel sink\<close>
-
 lemma sink_op_pcomp_op_bufs:
   \<open>map_op projl projr (comp_op Some (case_sum buf1' buf2') (id_op (case_sum buf1 buf2)) drain_op)
   ~ (map_op projl projr (comp_op Some buf1' (id_op buf1) drain_op)) \<parallel> (map_op projl projr (comp_op Some buf2' (id_op buf2) drain_op))\<close>
@@ -166,7 +164,10 @@ lemma sink_op_pcomp_op_bufs:
           apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (BENQ p' x buf1') (id_op (BTL p' buf1)) drain_op))
           (map_op projl projr (comp_op Some buf2' (id_op buf2) drain_op))\<close>])
           apply (rule conjI)
-           apply fastforce
+          apply safe
+           apply hypsubst_thin
+           apply (rule step_comp_op_L_Tau)
+          apply auto
           apply (rule bc_base)
           apply auto
           done
@@ -174,7 +175,8 @@ lemma sink_op_pcomp_op_bufs:
           apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some buf1' (id_op buf1) drain_op))
           (map_op projl projr (comp_op Some (BENQ p' x buf2') (id_op (BTL p' buf2)) drain_op))\<close>])
           apply (rule conjI)
-           apply fastforce
+  apply (rule step_comp_op_R_Tau)
+          apply auto
           apply (rule bc_base)
           apply auto
           done
@@ -186,7 +188,8 @@ lemma sink_op_pcomp_op_bufs:
           apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (BTL p' buf1') (id_op buf1) drain_op))
        (map_op projl projr (comp_op Some buf2' (id_op buf2) drain_op))\<close>])
           apply (rule conjI)
-           apply fastforce
+       apply (rule step_comp_op_L_Tau)
+             apply auto
           apply (rule bc_base)
           apply fast
           done
@@ -194,7 +197,8 @@ lemma sink_op_pcomp_op_bufs:
           apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some buf1' (id_op buf1) drain_op))
        (map_op projl projr (comp_op Some (BTL p' buf2') (id_op buf2) drain_op))\<close>])
           apply (rule conjI)
-           apply fastforce
+           apply (rule step_comp_op_R_Tau)
+          apply auto
           apply (rule bc_base)
           apply fast
           done
@@ -218,7 +222,7 @@ lemma sink_op_pcomp_op_bufs:
           apply (rule step_map_op[of \<open>Inp (Inl (Inl p)) x\<close>])
            apply simp_all
           apply (rule step_comp_op_L_Inp)
-          apply (metis case_sum_BENQ_L step_id_op_Read)
+          apply auto
           done
         subgoal
           apply (rule bc_sym)
@@ -255,7 +259,7 @@ lemma sink_op_pcomp_op_bufs:
           apply (rule step_map_op[of \<open>Inp (Inl (Inr p)) x\<close>])
            apply simp_all
           apply (rule step_comp_op_L_Inp)
-          apply (metis case_sum_BENQ_R step_id_op_Read)
+          apply auto
           done
         subgoal
           apply (rule bc_sym)
@@ -273,7 +277,7 @@ lemma sink_op_pcomp_op_bufs:
            apply simp
           apply (rule exI[of _ \<open>map_op projl projr (comp_op Some (case_sum (BENQ p x buf1') buf2') (id_op (case_sum (BTL p buf1) buf2)) drain_op)\<close>])
           apply (rule conjI)
-           apply fastforce
+              apply auto[1]
           apply (rule bc_sym)
           apply (rule bc_base)
           apply fast
@@ -283,7 +287,9 @@ lemma sink_op_pcomp_op_bufs:
            apply simp
           apply (rule exI[of _ \<open>map_op projl projr (comp_op Some (case_sum (BTL p buf1') buf2') (id_op (case_sum buf1 buf2)) drain_op)\<close>])
           apply (rule conjI)
-           apply fastforce
+           apply (rule step_map_op)
+            apply (rule step_Tau_comp_op_R)
+              apply auto
           apply (rule bc_sym)
           apply (rule bc_base)
           apply fast
@@ -301,7 +307,7 @@ lemma sink_op_pcomp_op_bufs:
            apply simp
           apply (rule exI[of _ \<open>map_op projl projr (comp_op Some (case_sum buf1' (BENQ p x buf2')) (id_op (case_sum buf1 (BTL p buf2))) drain_op)\<close>])
           apply (rule conjI)
-           apply fastforce
+          apply auto[1]
           apply (rule bc_sym)
           apply (rule bc_base)
           apply fast
@@ -311,7 +317,7 @@ lemma sink_op_pcomp_op_bufs:
            apply simp
           apply (rule exI[of _ \<open>map_op projl projr (comp_op Some (case_sum buf1' (BTL p buf2')) (id_op (case_sum buf1 buf2)) drain_op)\<close>])
           apply (rule conjI)
-           apply fastforce
+          apply auto[1]
           apply (rule bc_sym)
           apply (rule bc_base)
           apply fast
@@ -321,7 +327,7 @@ lemma sink_op_pcomp_op_bufs:
         done
       done
     done
-  done
+  done 
 
 lemma sink_op_pcomp_op:
   \<open>! ~ ! \<parallel> !\<close>

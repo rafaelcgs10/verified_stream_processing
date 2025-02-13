@@ -12,6 +12,15 @@ imports
   "Cset_Setup"
 begin
 
+(* FIXME: move me to utils file *)
+lemma case_sum_invert_Inl[simp]:
+  "case_sum Inr Inl p' = Inl p \<longleftrightarrow> p' = Inr p"
+  by (cases p'; auto)
+lemma case_sum_invert_Inr[simp]:
+  "case_sum Inr Inl p' = Inr p \<longleftrightarrow> p' = Inl p"
+  by (cases p'; auto)
+
+
 section\<open>Channels\<close>
 
 section\<open>Buffer infrastrcuture\<close>
@@ -22,7 +31,7 @@ abbreviation "bhd \<equiv> hd"
 abbreviation "btl \<equiv> tl"
 abbreviation "benq x xs \<equiv> xs @ [x]"
 
-abbreviation BHD :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> 'd" where "BHD p buf \<equiv> bhd (buf p)"
+definition BHD :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> 'd" where "BHD p buf = bhd (buf p)"
 abbreviation (input) BUPD where "BUPD f p buf \<equiv> buf(p := f (buf p))"
 definition BTL :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BTL = BUPD btl"
 definition BENQ :: "'a \<Rightarrow> 'd \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BENQ p x buf = BUPD (benq x) p buf"
@@ -45,7 +54,7 @@ lemma BHD_BULK_BENQ_cases:
   BHD p (buf1 >> buf2) = x \<Longrightarrow>
   BHD p buf2 = x \<and> buf2 p \<noteq> [] \<or>
   buf2 p = [] \<and> BHD p buf1 = x \<and> buf1 p \<noteq> []\<close>
-  by (metis append_Nil hd_append BULK_BENQ_def)
+  by (metis append_Nil hd_append BULK_BENQ_def BHD_def)
 
 lemma BHD_BAPPEND_2_cases:
   "((buf1 >> buf2) >> buf3) p \<noteq> [] \<Longrightarrow>
@@ -53,7 +62,7 @@ lemma BHD_BAPPEND_2_cases:
    BHD p buf3 = x \<and> buf3 p \<noteq> [] \<or>
    buf3 p = [] \<and> BHD p buf2 = x \<and> buf2 p \<noteq> [] \<or>
    buf3 p = [] \<and> buf2 p = [] \<and> BHD p buf1 = x \<and> buf1 p \<noteq> []"
-  by (metis append_Nil hd_append BULK_BENQ_def)
+  by (metis append_Nil hd_append BULK_BENQ_def BHD_def)
 
 lemma BAPPEND_BENQ[simp]:
   "BENQ p x (buf1 >> buf2) = (BENQ p x buf1) >> buf2"
@@ -64,7 +73,7 @@ lemma BAPPEND_BTL[simp]:
 
 lemma BAPPEND_BENQ_BHD[simp]:
   "buf1 p \<noteq> [] \<Longrightarrow> (BTL p buf1) >> (BENQ p (BHD p buf1) buf2) = buf1 >> buf2"
-  unfolding BULK_BENQ_def BTL_def BENQ_def by force
+  unfolding BULK_BENQ_def BTL_def BENQ_def BHD_def by force
 
 lemma BULK_BENQ_left_neutral[simp]:
   "(\<lambda> _. []) >> buf = buf"
@@ -73,21 +82,24 @@ lemma BULK_BENQ_right_neutral[simp]:
   "buf >> (\<lambda> _. []) = buf"
   unfolding BULK_BENQ_def by force
 
-lemma BULK_BENQ_empty:
-  \<open>(buf1 >> buf2) p = [] \<Longrightarrow> buf1 p = [] \<and> buf2 p = []\<close>
-  unfolding BULK_BENQ_def by simp
+lemma BULK_BENQ_empty[simp]:
+  \<open>(buf1 >> buf2) p = [] \<longleftrightarrow> buf1 p = [] \<and> buf2 p = []\<close>
+  unfolding BULK_BENQ_def by auto
 
 lemma BHD_BENQ_empty[simp]:
   "buf p = [] \<Longrightarrow> (BHD p (BENQ p x buf)) = x"
-  unfolding BENQ_def by force
+  unfolding BENQ_def BHD_def by force
 lemma BTL_BENQ_empty[simp]:
   "buf p = [] \<Longrightarrow> BTL p (BENQ p x buf) = buf"
   unfolding BENQ_def BTL_def by force
 lemma BENQ_access[simp]:
   "(BENQ p x buf) p = (buf p @ [x])"
   unfolding BENQ_def by force
-lemma BTL_access[simp]:
+lemma BTL_access:
   "(BTL p buf) p = tl (buf p)"
+  unfolding BTL_def by force
+lemma BTL_empty[simp]:
+  "buf p = [] \<Longrightarrow> (BTL p buf) = buf"
   unfolding BTL_def by force
 
 lemma case_sum_updateL[simp]:
@@ -119,12 +131,18 @@ lemma case_sum_BENQ_L[simp]:
 lemma case_sum_BTL_L[simp]:
   "BTL (Inl p) (case_sum buf A) = case_sum (BTL p buf) A"
   unfolding BTL_def by (auto split: sum.splits)
+lemma case_sum_BHD_L[simp]:
+  "BHD (Inl p) (case_sum buf A) = BHD p buf"
+  unfolding BHD_def by (auto split: sum.splits)
+lemma case_sum_BHD_R[simp]:
+  "BHD (Inr p) (case_sum buf A) = BHD p A"
+  unfolding BHD_def by (auto split: sum.splits)
 lemma BHD_BULK_BENQ_right_empty[simp]:
   "buf1 p = [] \<Longrightarrow> BHD p (buf1 >> buf2) = BHD p buf2"
-  by (simp add: BENQ_def BULK_BENQ_def)
+  by (simp add: BENQ_def BHD_def BULK_BENQ_def)
 lemma BHD_BULK_BENQ_left_empty[simp]:
   "buf2 p = [] \<Longrightarrow> BHD p (buf1 >> buf2) = BHD p buf1"
-  by (simp add: BENQ_def BULK_BENQ_def)
+  by (simp add: BENQ_def BHD_def BULK_BENQ_def)
 lemma BULK_BENQ_right_empty[simp]:
   "buf2 p = [] \<Longrightarrow> (buf1 >> buf2) p = buf1 p "
   by (simp add: BENQ_def BULK_BENQ_def)
@@ -133,7 +151,7 @@ lemma BULK_BENQ_left_empty[simp]:
   by (simp add: BENQ_def BULK_BENQ_def)
 lemma BHD_BULK_BENQ_right_not_empty[simp]:
   "buf2 p \<noteq> [] \<Longrightarrow> BHD p (buf1 >> buf2) = BHD p buf2"
-  by (simp add: BENQ_def BULK_BENQ_def)
+  by (simp add: BENQ_def BHD_def BULK_BENQ_def)
 
 lemma BENQ_case_sum_compose:
   \<open>BENQ (case_sum Inr Inl p) x (buf \<circ> case_sum Inr Inl) = (BENQ p x buf) \<circ> case_sum Inr Inl\<close>
@@ -178,7 +196,7 @@ abbreviation "sound_reads wire buf \<equiv> cfilter (\<lambda> op. case op of Re
 abbreviation "ARead i f op \<equiv> Choice (cimage (\<lambda> x. if x then op else Read i f) (cinsert True (csingle False)))"
 lemma ARead_simp[simp]: "ARead i f op = Choice ({| op, Read i f |})"
   by simp
-
+(* 
 fun reassoc where
   "reassoc (Inl (Inl x)) = Inl x"
 | "reassoc (Inl (Inr x)) = Inr (Inl x)"
@@ -208,6 +226,7 @@ lemma assoc_reassoc[simp]:
       apply auto
     done
   done
+ *)
 
 lemma map_op_inj_inv:
   "inj f \<Longrightarrow>
@@ -215,6 +234,7 @@ lemma map_op_inj_inv:
    map_op f g op = map_op f g op' \<Longrightarrow>
    op = op'"
   by (meson injD op.inj_map)
+
 
 type_synonym 'd channel = "'d llist"
 
@@ -225,35 +245,37 @@ section \<open>Sub operators\<close>
 declare cin.rep_eq[simp]
 
 inductive sub_op :: \<open>('ip, 'op, 'd) op \<Rightarrow> ('ip, 'op, 'd) op \<Rightarrow> nat \<Rightarrow> bool\<close> for op where
-  sub_op_Refl: \<open>sub_op op op 0\<close>
-| sub_op_Read: \<open>sub_op op (f x) n \<Longrightarrow> sub_op op (Read p f) (Suc n)\<close>
-| sub_op_Write: \<open>sub_op op op' n \<Longrightarrow> sub_op op (Write op' p x) (Suc n)\<close>
-| sub_op_Choice: \<open>cin op' ops \<Longrightarrow> sub_op op op' n \<Longrightarrow> sub_op op (Choice ops) (Suc n)\<close>
+  sub_op_Refl[intro]: \<open>sub_op op op 0\<close>
+| sub_op_Read[intro]: \<open>sub_op op (f x) n \<Longrightarrow> sub_op op (Read p f) (Suc n)\<close>
+| sub_op_Write[intro]: \<open>sub_op op op' n \<Longrightarrow> sub_op op (Write op' p x) (Suc n)\<close>
+| sub_op_Silent[intro]: \<open>sub_op op op' n \<Longrightarrow> sub_op op (Silent op') (Suc n)\<close>
+| sub_op_Choice[intro]: \<open>cin op' ops \<Longrightarrow> sub_op op op' n \<Longrightarrow> sub_op op (Choice ops) (Suc n)\<close>
 
 inductive_cases sub_op_ReflE [elim!]: \<open>sub_op op op n\<close>
 inductive_cases sub_op_ReadE [elim!]: \<open>sub_op op (Read p f) n\<close>
 inductive_cases sub_op_WriteE [elim!]: \<open>sub_op op (Write op' p x) n\<close>   
+inductive_cases sub_op_SilentE [elim!]: \<open>sub_op op (Silent op') n\<close>   
 inductive_cases sub_op_ChoiceE [elim!]: \<open>sub_op op (Choice ops) n\<close>   
 
-(* lemma inputs_sub_op_Read: \<open>p \<in> inputs op \<Longrightarrow> \<exists>f n. sub_op (Read p f) op n\<close>
+ lemma inputs_sub_op_Read: \<open>p \<in> inputs op \<Longrightarrow> \<exists>f n. sub_op (Read p f) op n\<close>
   by (induct op pred: inputs) (force intro: sub_op.intros)+
 
-lemma sub_op_Read_inputs: \<open>sub_op (Read p f) op n \<Longrightarrow> p \<in> inputs op\<close>
+lemma sub_op_Read_inputs[intro]: \<open>sub_op (Read p f) op n \<Longrightarrow> p \<in> inputs op\<close>
   by (induct op n pred: sub_op) auto
 
 lemma outputs_sub_op_Write: \<open>p \<in> outputs op \<Longrightarrow> \<exists>op' x n. sub_op (Write op' p x) op n\<close>
   by (induct op pred: outputs) (force intro: sub_op.intros)+
- *)
 
-lemma sub_op_Write_outputs: \<open>sub_op (Write op' p x) op n \<Longrightarrow> p \<in> outputs op\<close>
+lemma sub_op_Write_outputs[intro]: \<open>sub_op (Write op' p x) op n \<Longrightarrow> p \<in> outputs op\<close>
   by (induct op n pred: sub_op) auto
 
-lemma sub_op_Read_induct [consumes 1, case_names Read1 Read2 Write Choice]:
+lemma sub_op_Read_induct [consumes 1, case_names Read1 Read2 Write Silent Choice]:
   assumes \<open>sub_op (Read p g) op d\<close>
     and \<open>\<And>f p. P p (Read p f)\<close>
     and \<open>\<And>p p' f x d g. sub_op (Read p g) (f x) d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Read p' f)\<close>
     and \<open>\<And>p p' op' x d g. sub_op (Read p g) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Write op' p' x)\<close>
-    and \<open>\<And>p p' ops x d g. \<exists>op'. cin op' ops \<and> sub_op (Read p g) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Choice ops)\<close>
+    and \<open>\<And>p op' d. sub_op (Read p g) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Silent op')\<close>
+    and \<open>\<And>p ops d g. \<exists>op'. cin op' ops \<and> sub_op (Read p g) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Read p g) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Choice ops)\<close>
   shows \<open>P p op\<close>
   using assms(1)
 proof (induct d arbitrary: op p rule: less_induct)
@@ -262,11 +284,12 @@ proof (induct d arbitrary: op p rule: less_induct)
     by (induct op m pred: sub_op) (auto intro!: assms)
 qed
 
-lemma sub_op_Write_induct [consumes 1, case_names Read Write1 Choice Write2]:
+lemma sub_op_Write_induct [consumes 1, case_names Read Write1 Silent Choice Write2]:
   assumes \<open>sub_op (Write op2 p y) op d\<close>
     and \<open>\<And>p p' f x op2 y d. sub_op (Write op2 p y) (f x) d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Read p' f)\<close>
     and \<open>\<And>p p' op' x op2 y d. sub_op (Write op2 p y) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Write op' p' x)\<close>
-    and \<open>\<And>p op' op2 y d ops.  \<exists>op'. cin op' ops \<and> sub_op (Write op2 p y) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Choice ops)\<close>
+    and \<open>\<And>p op' op2 y d. sub_op (Write op2 p y) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Silent op')\<close>
+    and \<open>\<And>p op2 y d ops.  \<exists>op'. cin op' ops \<and> sub_op (Write op2 p y) op' d \<Longrightarrow> (\<And>m op. m < Suc d \<Longrightarrow> sub_op (Write op2 p y) op m \<Longrightarrow> P p op) \<Longrightarrow> P p (Choice ops)\<close>
     and \<open>\<And>p op' x. P p (Write op' p x)\<close>
   shows \<open>P p op\<close>
   using assms(1)
@@ -282,18 +305,18 @@ inductive input_at where
   "input_at p (Read p f) n"
 | "p \<noteq> p' \<Longrightarrow> input_at p (f x) n \<Longrightarrow> input_at p (Read p' f) (Suc n)"
 | "input_at p op' n \<Longrightarrow> input_at p (Write op' p' x) (Suc n)"
+| "input_at p op' n \<Longrightarrow> input_at p (Silent op') (Suc n)"
 | "cin op' ops \<Longrightarrow> input_at p op' n \<Longrightarrow> input_at p (Choice ops) (Suc n)"
-  (* 
 
 lemma inputs_input_at: "p \<in> inputs op \<Longrightarrow> \<exists>n. input_at p op n"
   by (induct p op rule: op.set_induct(1)) (auto 4 4 intro: input_at.intros)
- *)
+
 lemma input_at_inputs: "input_at p op n \<Longrightarrow> p \<in> inputs op"
   by (induct p op n rule: input_at.induct) auto
-    (* 
+
 lemma inputs_alt: "p \<in> inputs op \<longleftrightarrow> (\<exists>n. input_at p op n)"
   by (metis input_at_inputs inputs_input_at)
- *)
+ 
 definition "input_depth p op = (LEAST n. input_at p op n)"
 
 (* lemma input_depth_Read: "p \<in> inputs op \<Longrightarrow> input_depth p op = 0 \<longleftrightarrow> (\<exists>f. op = Read p f)"
@@ -446,14 +469,14 @@ lemma ST':
   "op = op' \<Longrightarrow> step Tau (Silent op) op'"
   by auto
 
-lemma step_map_op[intro]:
-  "step io op op' \<Longrightarrow> io' = map_IO f g id io \<Longrightarrow>
+lemma step_map_op[intro!,simp]:
+  "step io op op' \<Longrightarrow> map_IO f g id io = io' \<Longrightarrow>
    step io' (map_op f g op) (map_op f g op')"
   by (induct io op op' rule: step.induct) (force simp add: comp_def intro: step.intros)+
 
 lemma step_map_op_inv:
   "step io (map_op f g op) op' \<Longrightarrow>
-   \<exists> io' op''. step io' op op'' \<and> io = map_IO f g id io' \<and> op' = map_op f g op''"
+   \<exists> io' op''. step io' op op'' \<and> map_IO f g id io' = io \<and> map_op f g op'' = op'"
   apply (induct io "map_op f g op" op' arbitrary: op rule: step.induct)
      apply (auto intro: step.intros)
   subgoal for p fa x op
@@ -472,6 +495,13 @@ lemma step_map_op_inv:
     apply (cases opa)
        apply (force simp add: cimage.rep_eq intro: step.intros)+
     done
+  done
+
+lemma step_map_op_elim:
+  assumes  "step io (map_op f g op) op'"
+  obtains io' op'' where "step io' op op'' \<and> map_IO f g id io' = io \<and> map_op f g op'' = op'"
+  apply atomize
+  apply (simp add: assms step_map_op_inv)
   done
 
 section\<open>Strong Bisimilarity\<close>
@@ -502,7 +532,7 @@ lemma bisim_cong_disj:
   "(bisim_cong R x y \<or> bisim x y) = bisim_cong R x y"
   by (auto intro: bisim_cong.intros)
 
-lemma bisim_coinduct_upto:
+lemma bisim_coinduct_upto[consumes 1, case_names BISIM]:
   "R s t \<Longrightarrow>
    (\<And>op1 op2. R op1 op2 \<Longrightarrow> sim (bisim_cong R) op1 op2 \<and> sim (bisim_cong R) op2 op1) \<Longrightarrow>
    s ~ t"
@@ -777,17 +807,15 @@ lemma step_tau_step_io_wstep:
   unfolding wstep_def 
   by (smt (verit, del_insts) estep.elims reflclp_tranclp relcomppI step_wstep sup2CI wstep_steps_Tau)
 
+lemma wstep_trans_tau_1[trans, intro]:
+  "step Tau op op' \<Longrightarrow> wstep io op' op'' \<Longrightarrow> wstep io op op''"
+  unfolding wstep_def 
+  by (smt (verit, ccfv_SIG) converse_rtranclp_into_rtranclp relcompp_apply)
+
 lemma step_tau_step_tau_step_io_wstep:
   "step Tau op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step io op'' op''' \<Longrightarrow> wstep io op op'''"
   unfolding wstep_def 
   by (smt (verit, del_insts) estep.elims reflclp_tranclp relcomppI rtranclp.rtrancl_into_rtrancl sup2CI)
-
-(* Why is the third assumption from op' to op'''? Shouldn't it be from op'' to op'''? *)
-lemma step_tau_tau_step_tau_step_io_wstep:
-  "step Tau op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step Tau op' op''' \<Longrightarrow> step io op''' op''''\<Longrightarrow>  wstep io op op''''"
-  unfolding wstep_def 
-  by (smt (verit, del_insts) estep.elims reflclp_tranclp relcomppI rtranclp.rtrancl_into_rtrancl sup2CI)
-
 
 abbreviation "wbisimulation R \<equiv> (\<forall>op1 op2. R op1 op2 \<longrightarrow> wsim R op1 op2 \<and> wsim (conversep R) op2 op1)"
 
@@ -925,7 +953,7 @@ lemma WSC: "op |\<in>| ops \<Longrightarrow> wstep io op op' \<Longrightarrow> w
   done
 *)
 
-lemma wbisim_coinduct_upto:
+lemma wbisim_coinduct_upto[consumes 1, case_names BISIM]:
   "R op1 op2 \<Longrightarrow>
    (\<And>s t. R s t \<Longrightarrow> wsim (wbisim_cong R) s t \<and> wsim (wbisim_cong R) t s) \<Longrightarrow>
    op1 \<approx> op2"
@@ -968,15 +996,15 @@ lemma wbisim_coinduct_upto:
     done
   done
 
-lemma step_star_map_op:
+lemma step_star_map_op[intro!]:
   "(step Tau)\<^sup>*\<^sup>* op op' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (map_op f g op) (map_op f g op')"
     apply (induct op arbitrary: rule: converse_rtranclp_induct)
    apply auto[1]
   apply (metis (no_types, lifting) ST converse_rtranclp_into_rtranclp op.simps(39) stepSilentE step_map_op)
   done
 
-lemma wstep_map_op:
-  "wstep io op op' \<Longrightarrow> io' = map_IO f g id io \<Longrightarrow>
+lemma wstep_map_op[intro!]:
+  "wstep io op op' \<Longrightarrow> map_IO f g id io  = io'\<Longrightarrow>
    wstep io' (map_op f g op) (map_op f g op')"
   unfolding wstep_def
   apply hypsubst_thin
@@ -1009,12 +1037,6 @@ lemma wbisim_map_op:
         apply (drule mp)
         apply assumption
         apply auto
-        apply hypsubst_thin
-        apply (drule wstep_map_op[where f=f and g=g and op=t])
-        apply (rule refl)
-        apply (intro conjI exI)
-        apply assumption
-        apply (metis (mono_tags, lifting) wbc_base wbisim_sym)
         done
       subgoal for l s'
         apply hypsubst_thin
@@ -1025,12 +1047,6 @@ lemma wbisim_map_op:
         apply (drule mp)
         apply assumption
         apply auto
-        apply hypsubst_thin
-        apply (drule wstep_map_op[where f=f and g=g and op=s])
-        apply (rule refl)
-        apply (intro conjI exI)
-        apply assumption
-        apply (metis (mono_tags, lifting) wbc_base wbisim_sym)
         done
       done
     done
@@ -1128,11 +1144,6 @@ lemma step_exchange: "step (Inp p x) op op' \<Longrightarrow> \<exists>op'. step
   apply (induct "Inp p x :: ('a, 'b, 'c) IO" op  op' pred: step)
    apply (auto intro!: step.intros)
   done
-
-lemma sub_op_finished:
-  "sub_op op' op n \<Longrightarrow> finished op \<Longrightarrow> finished op'"
-  by (induct op n rule: sub_op.induct) auto
-
 
 coinductive traced where
   Nil: "finished op \<Longrightarrow> traced op LNil"
@@ -1469,12 +1480,7 @@ lemma finished_choices_empty:
     done
   done
 
-lemma in_choices_step:
-  "op' |\<in>| choices op \<Longrightarrow>
-   \<exists> io op''. step io op' op''"
-  oops
-
-lemma Read_in_choices_step:
+lemma Read_in_choices_step[intro]:
   "Read p f |\<in>| choices op \<Longrightarrow> step (Inp p x) op (f x)"
   unfolding choices_def
   apply safe
@@ -1510,7 +1516,7 @@ lemma Read_in_choices_stepEx:
     done
   done
 
-lemma Write_in_choices_step:
+lemma Write_in_choices_step[intro]:
   "Write op' p x |\<in>| choices op \<Longrightarrow> step (Out p x) op op'"
   unfolding choices_def
   apply safe
@@ -1528,7 +1534,7 @@ lemma Write_in_choices_step:
     done
   done
 
-lemma Silent_in_choices_step:
+lemma Silent_in_choices_step[intro]:
   "Silent op' |\<in>| choices op \<Longrightarrow> step Tau op op'"
   unfolding choices_def
   apply safe
@@ -2295,5 +2301,95 @@ section\<open>Convenient types\<close>
 
 type_synonym 'd op22 = "(2, 2, 'd) op"
 type_synonym 'd op11 = "(1, 1, 'd) op"
+
+
+(* FIXME : move *)
+lemma map_IO_projr_eq_Out[intro!]:
+  "IO = Out (Inr p) x \<Longrightarrow>
+   map_IO f projr id IO = Out p x"
+  by auto
+
+lemma map_IO_projl_eq_Inp[intro!]:
+  "IO = Inp (Inl p) x \<Longrightarrow>
+   map_IO projl g id IO = Inp p x"
+  by auto
+
+
+(* FIXME: move me *)
+lemma choices_at_sub_op:
+  "op |\<in>| (choices_at n op') \<Longrightarrow> \<exists> m \<le> n. sub_op op op' m"
+  apply (induct n arbitrary: op op')
+  subgoal for op op'
+    apply (cases op')
+       apply auto
+    done
+  subgoal for n op op'
+    apply (cases op')
+    by fastforce+
+  done
+
+lemma choices_sub_op:
+  "op |\<in>| choices op' \<Longrightarrow> \<exists> n. sub_op op op' n"
+  unfolding choices_def
+  using choices_at_sub_op by force
+
+lemma Read_choices_inputs:
+  "Read p f |\<in>| choices op \<Longrightarrow> p \<in> inputs op"
+  by (meson choices_sub_op sub_op_Read_inputs)
+
+lemma inputs_after_choices_at:
+  "p' \<in> inputs op' \<Longrightarrow> op' |\<in>| choices_at n op \<Longrightarrow> p' \<in> inputs op"
+  apply (induct n arbitrary: op)
+  subgoal for op
+    apply (cases op)
+       apply auto
+    done
+  subgoal for n op
+    apply (cases op)
+       apply auto
+    done
+  done
+
+(* FIXME: move me *)
+lemma inputs_after_choices:
+  "op' |\<in>| (choices op) \<Longrightarrow> p' \<in> inputs op' \<Longrightarrow> p' \<in> inputs op"
+  unfolding choices_def
+    inputs_after_choices_at 
+  by (meson cUN_E inputs_after_choices_at)
+(* FIXME: move me *)
+lemma step_inputs_outputs:
+  "step io op op' \<Longrightarrow>
+   inputs op' \<subseteq> inputs op \<and> outputs op' \<subseteq> outputs op"
+  by (induct io op op' pred: step) auto
+(* FIXME: move me *)
+lemma step_inputs_not_in_defaults[elim!]:
+  "inputs op \<inter> defaults = {} \<Longrightarrow>
+   p \<in> defaults \<Longrightarrow> step (Inp p x) op op' \<Longrightarrow> False"
+  by (auto simp add: Read_choices_inputs disjoint_iff elim: step_choicesE)
+
+lemma Write_choices_outputs:
+  "Write op p x |\<in>| choices op \<Longrightarrow> p \<in> outputs op"
+  using choices_sub_op by blast
+
+lemma outputs_after_choices_at:
+  "p' \<in> outputs op' \<Longrightarrow> op' |\<in>| choices_at n op \<Longrightarrow> p' \<in> outputs op"
+  apply (induct n arbitrary: op)
+  subgoal for op
+    apply (cases op)
+       apply auto
+    done
+  subgoal for n op
+    apply (cases op)
+       apply auto
+    done
+  done
+lemma outputs_after_choices:
+  "op' |\<in>| (choices op) \<Longrightarrow> p' \<in> outputs op' \<Longrightarrow> p' \<in> outputs op"
+  unfolding choices_def
+  by (meson cUN_E outputs_after_choices_at)
+lemma step_outputs_not_in_defaults[elim!]:
+  "outputs op \<inter> defaults = {} \<Longrightarrow>
+   p \<in> defaults \<Longrightarrow> step (Out p x) op op' \<Longrightarrow> False"
+  by (auto simp add: outputs_after_choices Write_choices_outputs disjoint_iff elim: step_choicesE)
 
 end
