@@ -124,7 +124,6 @@ lemma comp_op_is_choice[simp]:
 
 subsection \<open>Inputs of comp_op\<close>
 
-
 lemma inputs_comp_op: "sub_op (Read p g) (comp_op wire buf op1 op2) d \<Longrightarrow> p \<in> Inl ` inputs op1 \<union> Inr ` (inputs op2 - ran wire)"
 proof (induct p \<open>comp_op wire buf op1 op2\<close> arbitrary: buf op1 op2 rule: sub_op_Read_induct)
   case (Read1 f p)
@@ -264,6 +263,9 @@ qed
 lemma inputs_comp_op_le:
   "inputs (comp_op wire buf op1 op2) \<subseteq> Inl ` inputs op1 \<union> Inr ` (inputs op2 - ran wire)"
   using inputs_comp_op by (metis inputs_sub_op_Read subsetI)
+lemma inputs_comp_op_le_alt[dest!]:
+  "c \<in> inputs (comp_op wire buf op1 op2) \<Longrightarrow> c \<in> Inl ` inputs op1 \<or> c \<in> Inr ` (inputs op2 - ran wire)"
+  using set_mp[OF inputs_comp_op_le, simplified] by force
 
 subsection \<open>Outputs of comp_op\<close>
 
@@ -406,6 +408,9 @@ qed
 lemma outputs_comp_op_le:
   "outputs (comp_op wire buf op1 op2) \<subseteq> Inl ` (outputs op1 - dom wire) \<union> Inr ` outputs op2"
   using outputs_comp_op by (metis outputs_sub_op_Write subsetI)
+lemma outputs_comp_op_le_alt[dest!]:
+  "c \<in> outputs (comp_op wire buf op1 op2) \<Longrightarrow> c \<in> Inl ` (outputs op1 - dom wire) \<or> c \<in> Inr ` outputs op2"
+  using set_mp[OF outputs_comp_op_le, simplified] by force
 
 subsection \<open>Properties of the (general) composition\<close>
 
@@ -2679,7 +2684,9 @@ qed
 lemma inputs_loop_op_le:
   "inputs (loop_op wire buf op) \<subseteq> (inputs op - ran wire)"
   using inputs_loop_op by (metis inputs_sub_op_Read subsetI) 
-
+lemma inputs_loop_op_le_alt[dest!]:
+  "ca \<in> inputs (loop_op wirea bufa opa) \<Longrightarrow> ca \<in> inputs opa \<and> ca \<notin> ran wirea"
+  using set_mp[OF inputs_loop_op_le, simplified] by fast 
 
 subsection \<open>Outputs of loop_op\<close>
 
@@ -2813,6 +2820,9 @@ qed
 lemma outputs_loop_op_le:
   "outputs (loop_op wire buf op) \<subseteq> (outputs op - dom wire)"
   using outputs_loop_op by (metis outputs_sub_op_Write subsetI) 
+lemma outputs_loop_op_le_alt[dest!]:
+  "c \<in> outputs (loop_op wire buf op) \<Longrightarrow> c \<in> outputs op \<and> c \<notin> dom wire"
+  using set_mp[OF outputs_loop_op_le, simplified] by force
 
 section \<open>spin_op/end_op/silent_op/I_0\<close>
   \<comment> \<open>spin_op/end_op is I_0 in the BNA book\<close>
