@@ -605,16 +605,455 @@ lemma sink_op_pcomp_op:
 
 section \<open>Axiom A19: Split and transpose\<close>
 
+lemma BENQ_case_sum_nestedLL:
+  \<open>BENQ (Inl (Inl p)) x (case_sum buf1 buf2 >> buf \<circ>
+    case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+             (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr)))
+  = case_sum (BENQ (Inl p) x buf1) buf2 >> buf \<circ>
+    case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+             (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr))\<close>
+  unfolding BENQ_def BULK_BENQ_def
+  by (auto split: sum.splits)
+
+lemma BENQ_case_sum_nestedLR:
+  \<open>BENQ (Inl (Inr p)) x (case_sum buf1 buf2 >> buf \<circ>
+    case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+             (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr)))
+  = case_sum buf1 (BENQ (Inl p) x buf2) >> buf \<circ>
+    case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+             (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr))\<close>
+  unfolding BENQ_def BULK_BENQ_def
+  by (auto split: sum.splits)
+
+lemma BENQ_case_sum_nestedRL:
+  \<open>BENQ (Inr (Inl p)) x (case_sum buf1 buf2 >> buf \<circ>
+    case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+             (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr)))
+  = case_sum (BENQ (Inr p) x buf1) buf2 >> buf \<circ>
+    case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+             (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr))\<close>
+  unfolding BENQ_def BULK_BENQ_def
+  by (auto split: sum.splits)
+
+lemma BENQ_case_sum_nestedRR:
+  \<open>BENQ (Inr (Inr p)) x (case_sum buf1 buf2 >> buf \<circ>
+    case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+             (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr)))
+  = case_sum buf1 (BENQ (Inr p) x buf2) >> buf \<circ>
+    case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+             (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr))\<close>
+  unfolding BENQ_def BULK_BENQ_def
+  by (auto split: sum.splits)
+
+lemma BTL_case_sum_nestedLL:
+  \<open>buf1 p \<noteq> [] \<Longrightarrow> (case_sum (case_sum buf1 buf2) buf3 \<circ>
+       case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+        (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr))) (Inl (Inl p)) \<noteq> [] \<and>
+  BTL (Inl (Inl p))
+      (case_sum (case_sum buf1 buf2) buf3 \<circ>
+       case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+        (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr)))
+  = (case_sum (case_sum (BTL p buf1) buf2) buf3 \<circ>
+     case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr)) (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr)))\<close>
+  unfolding BTL_def
+  by (auto split: sum.splits)
+
+lemma BTL_case_sum_nestedLR:
+  \<open>buf3 (Inr p) \<noteq> [] \<Longrightarrow> (case_sum (case_sum buf1 buf2) buf3 \<circ>
+       case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+        (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr))) (Inl (Inr p)) \<noteq> [] \<and>
+  BTL (Inl (Inr p))
+      (case_sum (case_sum buf1 buf2) buf3 \<circ>
+       case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+        (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr)))
+  = (case_sum (case_sum buf1 buf2) (BTL (Inr p) buf3) \<circ>
+     case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr)) (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr)))\<close>
+  unfolding BTL_def
+  by (auto split: sum.splits)
+
+lemma BTL_case_sum_nestedRL:
+  \<open>buf3 (Inl p) \<noteq> [] \<Longrightarrow> (case_sum (case_sum buf1 buf2) buf3 \<circ>
+       case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+        (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr))) (Inr (Inl p)) \<noteq> [] \<and>
+  BTL (Inr (Inl p))
+      (case_sum (case_sum buf1 buf2) buf3 \<circ>
+       case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+        (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr)))
+  = (case_sum (case_sum buf1 buf2) (BTL (Inl p) buf3) \<circ>
+     case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr)) (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr)))\<close>
+  unfolding BTL_def
+  by (auto split: sum.splits)
+
+lemma BTL_case_sum_nestedRR:
+  \<open>buf2 p \<noteq> [] \<Longrightarrow> (case_sum (case_sum buf1 buf2) buf3 \<circ>
+       case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+        (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr))) (Inr (Inr p)) \<noteq> [] \<and>
+  BTL (Inr (Inr p))
+      (case_sum (case_sum buf1 buf2) buf3 \<circ>
+       case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+        (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr)))
+  = (case_sum (case_sum buf1 (BTL p buf2)) buf3 \<circ>
+     case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr)) (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr)))\<close>
+  unfolding BTL_def
+  by (auto split: sum.splits)
+
 lemma split_op_comp_op_transp_op_id_op_bufs:
-  assumes "Smn \<equiv> split_op buf :: ('m :: countable + 'n :: countable, ('m + 'n) + 'm + 'n, 'd) op"
-    and "Sm \<equiv> split_op buf1 :: ('m, 'm + 'm, 'd) op"
-    and "Sn \<equiv> split_op buf1' :: ('n, 'n + 'n, 'd) op"
-    and "Imm \<equiv> id_op buf3 :: ('m, 'm, 'd) op"
-    and "Inn \<equiv> id_op buf3'' :: ('n, 'n, 'd) op"
-    and "Xmn \<equiv> transp_op buf3' :: ('m + 'n, 'n + 'm, 'd) op"
-  shows "Smn \<approx> map_op projl projr (comp_op Some buf2
-      (Sm \<parallel> Sn)
-      (map_op reassoc reassoc (map_op assoc assoc (Imm \<parallel> Xmn) \<parallel> Inn)))"
+  \<open>split_op ((case_sum buf1 buf1' >> buf2 \<circ> case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl)) (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr)))
+  >> (case_sum (case_sum buf3 buf3'') buf3' \<circ> case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr)) (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr))))
+  \<approx> map_op projl projr (comp_op Some buf2
+    (split_op buf1 \<parallel> split_op buf1')
+    (map_op reassoc reassoc (map_op assoc assoc (id_op buf3 \<parallel> transp_op buf3') \<parallel> id_op buf3'')))\<close>
+  apply (coinduction arbitrary: buf1 buf1' buf2 buf3 buf3' buf3'' rule: wbisim_coinduct_upto)
+  unfolding wsim_def pcomp_op_def
+  subgoal for buf1 buf1' buf2 buf3 buf3' buf3''
+    apply auto
+    subgoal
+      apply (erule step_split_op_cases)
+      subgoal for p x
+        apply (cases p)
+        subgoal for p'
+          apply (rule exI[of _ \<open>map_op projl projr
+       (comp_op Some buf2
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (split_op (BENQ (Inl p') x buf1)) (split_op buf1'))
+         (map_op reassoc reassoc
+           (comp_op (\<lambda>_. None) (\<lambda>_. [])
+             (map_op assoc assoc
+               (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3) (transp_op buf3')))
+             (id_op buf3''))))\<close>])
+          apply auto
+           apply fastforce
+          apply (rule wbc_base)
+          apply (metis BENQ_case_sum_nestedLL)
+          done
+        subgoal for p'
+          apply (rule exI[of _ \<open>map_op projl projr
+       (comp_op Some buf2
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (split_op buf1) (split_op (BENQ (Inl p') x buf1')))
+         (map_op reassoc reassoc
+           (comp_op (\<lambda>_. None) (\<lambda>_. [])
+             (map_op assoc assoc
+               (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3) (transp_op buf3')))
+             (id_op buf3''))))\<close>])
+          apply auto
+           apply fastforce
+          apply (rule wbc_base)
+          apply (metis BENQ_case_sum_nestedLR)
+          done
+        done
+      subgoal for p x
+        apply (cases p)
+        subgoal for p'
+          apply (rule exI[of _ \<open>map_op projl projr
+       (comp_op Some buf2
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (split_op (BENQ (Inr p') x buf1)) (split_op buf1'))
+         (map_op reassoc reassoc
+           (comp_op (\<lambda>_. None) (\<lambda>_. [])
+             (map_op assoc assoc
+               (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3) (transp_op buf3')))
+             (id_op buf3''))))\<close>])
+          apply auto
+           apply fastforce
+          apply (rule wbc_base)
+          apply (metis BENQ_case_sum_nestedRL)
+          done
+        subgoal for p'
+          apply (rule exI[of _ \<open>map_op projl projr
+       (comp_op Some buf2
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (split_op buf1) (split_op (BENQ (Inr p') x buf1')))
+         (map_op reassoc reassoc
+           (comp_op (\<lambda>_. None) (\<lambda>_. [])
+             (map_op assoc assoc
+               (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf3) (transp_op buf3')))
+             (id_op buf3''))))\<close>])
+          apply auto
+           apply fastforce
+          apply (rule wbc_base)
+          apply (metis BENQ_case_sum_nestedRR)
+          done
+        done
+      subgoal for p x
+        sorry
+      done
+    subgoal
+      apply (drule step_map_op_inv)
+      apply auto
+      apply (drule step_comp_op_cases)
+      apply auto
+      subgoal for _ x
+        apply (drule step_comp_op_cases)
+        apply auto
+        subgoal for p
+          apply (erule step_split_op_Inp)
+            apply simp
+          subgoal
+            apply (rule exI[of _ \<open>split_op
+       ((case_sum (BENQ (Inl p) x buf1) buf1' >> buf2 \<circ>
+         case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+          (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr))) >>
+        (case_sum (case_sum buf3 buf3'') buf3' \<circ>
+        case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+         (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr))))\<close>])
+            apply (rule conjI)
+             apply (rule step_wstep)
+             apply (rule step_split_op_Read_L)
+            apply (metis BENQ_case_sum_nestedLL BAPPEND_BENQ)
+            apply (rule wbc_sym)
+            apply blast
+            done
+          subgoal
+            apply (rule exI[of _ \<open>split_op
+       ((case_sum (BENQ (Inr p) x buf1) buf1' >> buf2 \<circ>
+         case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+          (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr))) >>
+        (case_sum (case_sum buf3 buf3'') buf3' \<circ>
+        case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+         (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr))))\<close>])
+            apply (rule conjI)
+             apply (rule step_wstep)
+             apply (rule step_split_op_Read_R)
+            apply (metis BENQ_case_sum_nestedRL BAPPEND_BENQ)
+            apply (rule wbc_sym)
+            apply blast
+            done
+          done
+        subgoal for p
+          apply (erule step_split_op_Inp)
+            apply simp
+          subgoal
+            apply (rule exI[of _ \<open>split_op
+       ((case_sum buf1 (BENQ (Inl p) x buf1') >> buf2 \<circ>
+         case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+          (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr))) >>
+        (case_sum (case_sum buf3 buf3'') buf3' \<circ>
+        case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+         (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr))))\<close>])
+            apply (rule conjI)
+             apply (rule step_wstep)
+             apply (rule step_split_op_Read_L)
+            apply (metis BENQ_case_sum_nestedLR BAPPEND_BENQ)
+            apply (rule wbc_sym)
+            apply blast
+            done
+          subgoal
+            apply (rule exI[of _ \<open>split_op
+       ((case_sum buf1 (BENQ (Inr p) x buf1') >> buf2 \<circ>
+         case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+          (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr))) >>
+        (case_sum (case_sum buf3 buf3'') buf3' \<circ>
+        case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+         (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr))))\<close>])
+            apply (rule conjI)
+             apply (rule step_wstep)
+             apply (rule step_split_op_Read_R)
+            apply (metis BENQ_case_sum_nestedRR BAPPEND_BENQ)
+            apply (rule wbc_sym)
+            apply blast
+            done
+          done
+        done
+      subgoal for _ x
+        apply (drule step_map_op_inv)
+        apply auto
+        apply (drule step_comp_op_cases)
+        apply auto
+        subgoal for p
+          apply (drule step_id_op_Out)
+           apply simp
+          apply (rule exI[of _ \<open>split_op
+       ((case_sum buf1 buf1' >> buf2 \<circ>
+         case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+          (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr))) >>
+        (case_sum (case_sum buf3 (BTL p buf3'')) buf3' \<circ>
+        case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+         (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr))))\<close>])
+          apply (rule conjI)
+           apply (rule step_wstep)
+           apply (rule step_split_op_Write)
+             apply (simp_all add: BTL_case_sum_nestedRR)
+           apply (metis BTL_case_sum_nestedRR BULK_BENQ_empty)
+          apply (rule wbc_sym)
+          apply blast
+          done
+        subgoal
+          apply (drule step_map_op_inv)
+          apply auto
+          apply (drule step_comp_op_cases)
+          apply auto
+          subgoal
+            apply (erule step_transp_op_Out)
+              apply (auto split: sum.splits)
+            subgoal for p
+              apply (rule exI[of _ \<open>split_op
+       ((case_sum buf1 buf1' >> buf2 \<circ>
+         case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+          (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr))) >>
+        (case_sum (case_sum buf3 buf3'') (BTL (Inr p) buf3') \<circ>
+         case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+          (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr))))\<close>])
+              apply (rule conjI)
+               apply (rule step_wstep)
+               apply (rule step_split_op_Write)
+                 apply (simp_all add: BTL_case_sum_nestedLR)
+               apply (metis BTL_case_sum_nestedLR BULK_BENQ_empty)
+              apply (rule wbc_sym)
+              apply blast
+              done
+            subgoal for p
+              apply (rule exI[of _ \<open>split_op
+       ((case_sum buf1 buf1' >> buf2 \<circ>
+         case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+          (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr))) >>
+        (case_sum (case_sum buf3 buf3'') (BTL (Inl p) buf3') \<circ>
+         case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+          (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr))))\<close>])
+              apply (rule conjI)
+               apply (rule step_wstep)
+               apply (rule step_split_op_Write)
+                 apply (simp_all add: BTL_case_sum_nestedRL)
+               apply (metis BTL_case_sum_nestedRL BULK_BENQ_empty)
+              apply (rule wbc_sym)
+              apply blast
+              done
+            done
+          subgoal for p
+            apply (drule step_id_op_Out)
+             apply simp
+            apply (rule exI[of _ \<open>split_op
+       ((case_sum buf1 buf1' >> buf2 \<circ>
+         case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+          (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr))) >>
+        (case_sum (case_sum (BTL p buf3) buf3'') buf3' \<circ>
+        case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+         (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr))))\<close>])
+            apply (rule conjI)
+             apply (rule step_wstep)
+             apply (rule step_split_op_Write)
+               apply (simp_all add: BTL_case_sum_nestedLL)
+             apply (metis BTL_case_sum_nestedLL BULK_BENQ_empty)
+            apply (rule wbc_sym)
+            apply blast
+            done
+          done
+        done
+      subgoal for _ x
+        apply (drule step_comp_op_cases)
+        apply auto
+        subgoal for p
+          apply (erule step_split_op_Out)
+           apply simp
+          apply (rule exI[of _ \<open>split_op
+       ((case_sum buf1 buf1' >> buf2 \<circ>
+         case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+          (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr))) >>
+        (case_sum (case_sum buf3 buf3'') buf3' \<circ>
+        case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+         (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr))))\<close>])
+          apply auto
+          apply (rule wbc_sym)
+          apply (rule wbc_base)
+          by (smt (verit, best) BAPPEND_BENQ_BHD case_sum_BTL_R sum.simps(6))
+        subgoal for p
+          apply (erule step_split_op_Out)
+           apply simp
+          apply (rule exI[of _ \<open>split_op
+       ((case_sum buf1 buf1' >> buf2 \<circ>
+         case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+          (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr))) >>
+        (case_sum (case_sum buf3 buf3'') buf3' \<circ>
+        case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+         (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr))))\<close>])
+          apply auto
+          apply (rule wbc_sym)
+          apply (rule wbc_base)
+          by (smt (verit, best) BAPPEND_BENQ_BHD case_sum_BTL_L sum.simps(5))
+        done
+      subgoal
+        apply (drule step_map_op_inv)
+        apply auto
+        apply (drule step_comp_op_cases)
+        apply auto
+        subgoal
+          apply (drule step_map_op_inv)
+          apply auto
+          apply (drule step_comp_op_cases)
+          apply auto
+          subgoal for p
+            apply (drule step_id_op_Inp)
+             apply simp
+            apply (rule exI[of _ \<open>split_op
+       ((case_sum buf1 buf1' >> buf2 \<circ>
+         case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+          (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr))) >>
+        (case_sum (case_sum buf3 buf3'') buf3' \<circ>
+        case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+         (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr))))\<close>])
+            apply auto
+            apply (rule wbc_sym)
+            apply (rule wbc_base)
+            apply (rule exI[of _ buf1])
+            apply (rule exI[of _ buf1'])
+            apply (rule exI[of _ \<open>BTL (Inl (Inl p)) buf2\<close>])
+            apply (rule exI[of _ \<open>BENQ p (BHD (Inl (Inl p)) buf2) buf3\<close>])
+            sorry
+          subgoal for p
+            apply (erule step_transp_op_Inp)
+             apply simp
+            apply (rule exI[of _ \<open>split_op
+       ((case_sum buf1 buf1' >> buf2 \<circ>
+         case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+          (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr))) >>
+        (case_sum (case_sum buf3 buf3'') buf3' \<circ>
+        case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+         (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr))))\<close>])
+            apply auto
+            apply (rule wbc_sym)
+            apply (rule wbc_base)
+            apply (rule exI[of _ buf1])
+            apply (rule exI[of _ buf1'])
+            apply (rule exI[of _ \<open>BTL (reassoc (Inl (assoc (Inr p)))) buf2\<close>])
+            apply (rule exI[of _ buf3])
+            apply (rule exI[of _ \<open>BENQ p (BHD (reassoc (Inl (assoc (Inr p)))) buf2) buf3'\<close>])
+            sorry
+          done
+        subgoal for p
+          apply (drule step_id_op_Inp)
+           apply simp
+          apply (rule exI[of _ \<open>split_op
+     ((case_sum buf1 buf1' >> buf2 \<circ>
+       case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inl))
+        (case_sum (Inl \<circ> Inr) (Inr \<circ> Inr))) >>
+      (case_sum (case_sum buf3 buf3'') buf3' \<circ>
+      case_sum (case_sum (Inl \<circ> Inl) (Inr \<circ> Inr))
+       (case_sum (Inr \<circ> Inl) (Inl \<circ> Inr))))\<close>])
+          apply auto
+          apply (rule wbc_sym)
+          apply (rule wbc_base)
+          apply (rule exI[of _ buf1])
+          apply (rule exI[of _ buf1'])
+          apply (rule exI[of _ \<open>BTL (Inr (Inr p)) buf2\<close>])
+          apply (rule exI[of _ buf3])
+          apply (rule exI[of _ buf3'])
+          apply (rule exI[of _ \<open>BENQ p (BHD (Inr (Inr p)) buf2) buf3''\<close>])
+          sorry
+        done
+      subgoal
+        apply (drule step_comp_op_cases)
+        apply auto
+         apply (meson no_step_split_op_Tau)+
+        done
+      subgoal
+        apply (drule step_map_op_inv)
+        apply auto
+        apply (drule step_comp_op_cases)
+        apply auto
+         apply (drule step_map_op_inv)
+         apply auto
+         apply (drule step_comp_op_cases)
+         apply auto
+          apply (meson no_step_id_op_Tau no_step_transp_op_Tau)+
+        done
+      done
+    done
   oops
 
 lemma split_op_transp_split:
