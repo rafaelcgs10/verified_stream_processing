@@ -3327,71 +3327,95 @@ lemma choices_transp_op[simp]:
   done
 
 section \<open>split_op - nondeterministic split operator\<close>
-datatype (discs_sels) ('m) split_op_aux =
-  split_Read_aux "'m"
+
+datatype (discs_sels) ('m, 'd) split_op_aux =
+  split_Read_aux 'm \<open>'d \<Rightarrow> 'm + 'm \<Rightarrow> 'd buf\<close>
+  | split_Write_aux \<open>'m + 'm \<Rightarrow> 'd buf\<close> \<open>'m + 'm\<close> 'd
 
 abbreviation eval_split_op_aux where
-  "eval_split_op_aux c aux \<equiv> (case aux of
-    split_Read_aux p \<Rightarrow> Read p (\<lambda>y. choice2 (Write c (Inl p) y) (Write c (Inr p) y)))"
+  \<open>eval_split_op_aux c aux \<equiv> (case aux of
+    split_Read_aux p f \<Rightarrow> Read p (c \<circ> f)
+  | split_Write_aux buf p x \<Rightarrow> Write (c buf) p x)\<close>
 
-corec split_op :: "('m :: {countable, defaults}, 'm + 'm, 'a) op" ("\<Lambda>")  where
-  "split_op = Choice (cimage (eval_split_op_aux split_op) 
-   (cimage (\<lambda> p. split_Read_aux p) (cUNIV :: 'm cset)))"
+corec split_op :: \<open>('m :: {countable, defaults} + 'm \<Rightarrow> 'd buf) \<Rightarrow> ('m, 'm + 'm, 'd) op\<close> where
+  \<open>split_op buf = Choice (cimage (eval_split_op_aux split_op) (cUn (cUn
+    (cimage (\<lambda>p. split_Read_aux p (\<lambda>x. BENQ (Inl p) x buf)) cUNIV)
+    (cimage (\<lambda>p. split_Read_aux p (\<lambda>x. BENQ (Inr p) x buf)) cUNIV))
+    (cimage (\<lambda>p. split_Write_aux (BTL p buf) p (BHD p buf))
+      (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV))))\<close>
 
 lemma split_op_code:
-  "split_op = Choice (cimage (\<lambda> p. Read p (\<lambda> y. Choice {|Write split_op (Inl p) y, Write split_op (Inr p) y|})) (cUNIV :: 'm :: {countable, defaults} cset))"
+  \<open>split_op buf = Choice (cUn (cUn
+    (cimage (\<lambda>p. Read p (\<lambda>x. split_op (BENQ (Inl p) x buf))) cUNIV)
+    (cimage (\<lambda>p. Read p (\<lambda>x. split_op (BENQ (Inr p) x buf))) cUNIV))
+    (cimage (\<lambda>p. Write (split_op (BTL p buf)) p (BHD p buf))
+      (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV)))\<close>
   apply (subst split_op.code)
-  apply (auto simp add: cset.map_comp intro!: arg_cong2[where f = cUn])
+  apply (unfold cimage_cUn cimage_cinsert op.inject)
+  apply (auto simp add: cset.map_comp o_def)
   done
+
+
+abbreviation split_empty_op (\<open>\<Lambda>\<close>) where \<open>\<Lambda> \<equiv> split_op (\<lambda>_. [])\<close>
 
 lemma step_split_op_Inp:
-  assumes \<open>step io \<Lambda> op\<close>
+  assumes \<open>step io (split_op buf) op\<close>
     and \<open>io = Inp p x\<close>
-  obtains \<open>op = Choice {|Write \<Lambda> (Inl p) x, Write \<Lambda> (Inr p) x|}\<close>
+  obtains \<open>op = split_op (BENQ (Inl p) x buf)\<close> | \<open>op = split_op (BENQ (Inr p) x buf)\<close>
   using assms
   apply (subst (asm) split_op_code)
-  apply auto
-  done
+  by force
 
-lemma no_step_split_op_Out:
-  assumes \<open>step io \<Lambda> op\<close>
+lemma step_split_op_Out:
+  assumes \<open>step io (split_op buf) op\<close>
     and \<open>io = Out p x\<close>
-  obtains False
+  obtains \<open>op = split_op (BTL p buf)\<close> \<open>buf p \<noteq> []\<close> \<open>BHD p buf = x\<close>
   using assms
   apply (subst (asm) split_op_code)
-  apply auto
-  done
+  by force
 
 lemma no_step_split_op_Tau:
-  assumes \<open>step io \<Lambda> op\<close>
+  assumes \<open>step io (split_op buf) op\<close>
     and \<open>io = Tau\<close>
   obtains False
   using assms
   apply (subst (asm) split_op_code)
-  apply auto
-  done
+  by force
 
-lemma step_split_op:
-  assumes \<open>step io \<Lambda> op\<close>
-  obtains p x where \<open>io = Inp p x\<close> \<open>p \<notin> defaults\<close> \<open>op = Choice {|Write \<Lambda> (Inl p) x, Write \<Lambda> (Inr p) x|}\<close>
+lemma step_split_op_cases:
+  assumes \<open>step io (split_op buf) op\<close>
+  obtains p x where \<open>io = Inp p x\<close> \<open>op = split_op (BENQ (Inl p) x buf)\<close> \<open>p \<notin> defaults\<close>
+  |       p x where \<open>io = Inp p x\<close> \<open>op = split_op (BENQ (Inr p) x buf)\<close> \<open>p \<notin> defaults\<close>
+  |       p x where \<open>io = Out p x\<close> \<open>op = split_op (BTL p buf)\<close> \<open>buf p \<noteq> []\<close> \<open>BHD p buf = x\<close> \<open>p \<notin> defaults\<close>
   apply atomize_elim
   using assms
   apply (subst (asm) split_op_code)
-  apply auto
-  done
+  by force
 
-lemma step_split_op_Read[intro]:
-  \<open>p \<notin> defaults \<Longrightarrow> step (Inp p x) \<Lambda> (Choice {|Write \<Lambda> (Inl p) x, Write \<Lambda> (Inr p) x|})\<close>
+lemma step_split_op_Read_L[intro]:
+  \<open>p \<notin> defaults \<Longrightarrow> buf' = BENQ (Inl p) x buf \<Longrightarrow> step (Inp p x) (split_op buf) (split_op buf')\<close>
   apply (subst split_op_code)
-  apply fastforce
-  done
+  by force
+
+lemma step_split_op_Read_R[intro]:
+  \<open>p \<notin> defaults \<Longrightarrow> buf' = BENQ (Inr p) x buf \<Longrightarrow> step (Inp p x) (split_op buf) (split_op buf')\<close>
+  apply (subst split_op_code)
+  by force
+
+lemma step_split_op_Write[intro]:
+  \<open>p \<notin> defaults \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> BHD p buf = x \<Longrightarrow> buf' = BTL p buf \<Longrightarrow>
+  step (Out p x) (split_op buf) (split_op buf')\<close>
+  apply (subst split_op_code)
+  by fastforce
 
 lemma choices_split_op[simp]:
-  \<open>choices \<Lambda> =
-  cimage (\<lambda> p. Read p (\<lambda> y. Choice {|Write \<Lambda> (Inl p) y, Write \<Lambda> (Inr p) y|})) cUNIV\<close>
+  \<open>choices (split_op buf) = cUn (cUn
+    (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda>x. split_op (BENQ (Inl p) x buf))) cUNIV)))
+    (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda>x. split_op (BENQ (Inr p) x buf))) cUNIV))))
+    (cUnion (cimage choices (cimage (\<lambda>p. Write (split_op (BTL p buf)) p (BHD p buf))
+      (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV))))\<close>
   apply (subst split_op_code)
-  apply auto
-  done
+  by simp
 
 section \<open>merge_op - nondeterministic merge operator\<close>
 datatype (discs_sels) ('m) merge_op_aux =

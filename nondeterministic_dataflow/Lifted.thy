@@ -33,14 +33,14 @@ lift_definition
      apply force+
     done
   subgoal 
-    using inputs_comp_op_le by force
+    using inputs_comp_op_le by blast
   subgoal for fun1 fun2 op1 op2 x
     apply (cases x)
     using outputs_comp_op_le[unfolded subset_eq, simplified]
      apply force+
     done
   subgoal 
-    using outputs_comp_op_le by force
+    using outputs_comp_op_le by blast
   done
 
 lift_definition
