@@ -1494,7 +1494,7 @@ lemma wbisim_comp_op_cong:
                  apply assumption
                 apply (rule converse_rtranclp_into_rtranclp)
                  apply (rule step_Tau_comp_op_L)
-                   apply simp_all
+                    apply simp_all
                  apply (rule Write_in_choices_step)
                  apply simp
                 apply blast
@@ -1703,7 +1703,7 @@ lemma wbisim_comp_op_cong:
                  apply assumption
                 apply (rule converse_rtranclp_into_rtranclp)
                  apply (rule step_Tau_comp_op_L)
-                   apply simp_all
+                    apply simp_all
                  apply (rule Write_in_choices_step)
                  apply simp
                 apply blast
@@ -3103,8 +3103,8 @@ lemma step_Tau_loop_op[intro]:
 
 
 
-  section \<open>User defined operators\<close>
-    (* abbreviation buffered ("\<stileturn> _ \<turnstile>" [150]151) where
+section \<open>User defined operators\<close>
+  (* abbreviation buffered ("\<stileturn> _ \<turnstile>" [150]151) where
   "\<stileturn>op\<turnstile> \<equiv> \<I> \<bullet> op \<bullet> \<I>" *)
 
 abbreviation post_buffered ("_ \<turnstile>" [150]151) where
@@ -3262,9 +3262,9 @@ lemma no_step_transp_op_Tau:
   obtains False
   using assms
   apply (induct io \<open>transp_op buf\<close> op arbitrary: buf rule: step.induct)
-  apply simp_all
-  apply (subst (asm) transp_op_code)
-  apply simp
+     apply simp_all
+   apply (subst (asm) transp_op_code)
+   apply simp
   apply (subst (asm) (2) transp_op_code)
   apply auto
   done
@@ -3285,7 +3285,7 @@ lemma step_transp_op_cases:
   subgoal for p x
     apply (subst (asm) transp_op_code)
     apply (auto simp add: Set.filter_def split: sum.splits)
-    apply (metis case_sum_defaults obj_sumE old.sum.simps)+
+           apply (metis case_sum_defaults obj_sumE old.sum.simps)+
     done
   subgoal
     apply (subst (asm) transp_op_code)
@@ -3300,7 +3300,7 @@ lemma step_transp_op_Read[intro!]:
   apply hypsubst_thin
   apply (subst transp_op_code)
   apply (rule SC[rotated])
-  apply (rule SR)
+   apply (rule SR)
   apply (rule cUnI1)
   apply (rule cimageI)
   apply force
@@ -3311,7 +3311,7 @@ lemma step_transp_op_Write[intro!]:
    p \<notin> defaults \<Longrightarrow> step (Out p' x) (transp_op buf) (transp_op buf')\<close>
   apply (subst transp_op_code)
   apply (rule SC[rotated])
-  apply (rule SW)
+   apply (rule SW)
   apply (rule cUnI2)
   apply hypsubst_thin
   apply (rule cimageI)
@@ -3402,7 +3402,7 @@ lemma step_split_op_Read_R[intro]:
   apply (subst split_op_code)
   by force
 
-lemma step_split_op_Write[intro]:
+lemma step_split_op_Write[intro!]:
   \<open>p \<notin> defaults \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> BHD p buf = x \<Longrightarrow> buf' = BTL p buf \<Longrightarrow>
   step (Out p x) (split_op buf) (split_op buf')\<close>
   apply (subst split_op_code)
@@ -3476,7 +3476,7 @@ lemma step_merge_op_Read[intro]:
   \<open>p \<notin> defaults \<Longrightarrow> p' = case_sum id id p \<Longrightarrow> step (Inp p x) \<V> (Write \<V> p' x)\<close>
   apply (subst merge_op_code)
   apply (simp split: sum.splits)
-  apply auto
+   apply auto
   done
 
 lemma choices_merge_op[simp]:
@@ -3556,89 +3556,141 @@ lemma choices_acopy_op[simp]:
   done
 
 section \<open>aeq_op - async equality operator\<close>
-datatype (discs_sels) ('m) aeq_op_aux =
-  aeq_Read_aux "'m"
+datatype (discs_sels) ('m, 'd) aeq_op_aux =
+  aeq_Read_aux \<open>'m + 'm\<close> \<open>'d \<Rightarrow> 'm + 'm \<Rightarrow> 'd buf\<close>
+  | aeq_Write_aux \<open>'m + 'm \<Rightarrow> 'd buf\<close> 'm 'd
+  | aeq_Silent_aux \<open>'m + 'm \<Rightarrow> 'd buf\<close>
 
 abbreviation eval_aeq_op_aux where
-  "eval_aeq_op_aux c aux \<equiv> (case aux of
-    aeq_Read_aux p \<Rightarrow> choice2 (Read (Inl p) ((\<lambda> y. Read (Inr p) (\<lambda>x. if x = y then Write c p x else Silent c)))) (Read (Inr p) ((\<lambda> y. Read (Inl p) (\<lambda>x. if x = y then Write c p x else Silent c)))))"
+  \<open>eval_aeq_op_aux c aux \<equiv> (case aux of
+    aeq_Read_aux p f \<Rightarrow> Read p (c \<circ> f)
+  | aeq_Write_aux buf p x \<Rightarrow> Write (c buf) p x
+  | aeq_Silent_aux buf \<Rightarrow> Silent (c buf))\<close>
 
-corec aeq_op :: "('m + 'm :: {countable, defaults}, 'm, 'a) op" ("\<Q>") where
-  "aeq_op = Choice (cimage (eval_aeq_op_aux aeq_op) 
-   (cimage (\<lambda> p. aeq_Read_aux p) (cUNIV :: 'm cset)))"
+corec aeq_op :: \<open>('m :: {countable, defaults} + 'm \<Rightarrow> 'd buf) \<Rightarrow> ('m + 'm, 'm, 'd) op\<close> where
+  \<open>aeq_op buf = Choice (cimage (eval_aeq_op_aux aeq_op) (cUn (cUn
+    (cimage (\<lambda>p. aeq_Read_aux (Inl p) (\<lambda>x. BENQ (Inl p) x buf)) cUNIV)
+    (cimage (\<lambda>p. aeq_Read_aux (Inr p) (\<lambda>x. BENQ (Inr p) x buf)) cUNIV))
+    (cimage (\<lambda>p. (if BHD (Inl p) buf = BHD (Inr p) buf then aeq_Write_aux (BTL (Inr p) (BTL (Inl p) buf)) p (BHD (Inl p) buf) else aeq_Silent_aux (BTL (Inr p) (BTL (Inl p) buf))))
+      (cfilter (\<lambda>p. buf (Inl p) \<noteq> [] \<and> buf (Inr p) \<noteq> []) cUNIV))))\<close> 
 
 lemma aeq_op_code:
-  "aeq_op = Choice (cimage (\<lambda> p. Choice {| 
-    Read (Inl p) ((\<lambda> y. Read (Inr p) (\<lambda>x. if x = y then Write aeq_op p x else Silent aeq_op))),
-    Read (Inr p) ((\<lambda> y. Read (Inl p) (\<lambda>x. if x = y then Write aeq_op p x else Silent aeq_op)))|}) (cUNIV :: 'm :: {countable, defaults} cset))"
+  "aeq_op buf = Choice (cUn (cUn
+    (cimage (\<lambda> p. Read (Inl p) (\<lambda> x. aeq_op (BENQ (Inl p) x buf))) (cUNIV :: 'm :: {countable, defaults} cset))
+    (cimage (\<lambda> p. Read (Inr p) (\<lambda> x. aeq_op (BENQ (Inr p) x buf))) (cUNIV :: 'm cset)))
+    (cimage (\<lambda>p. (if BHD (Inl p) buf = BHD (Inr p) buf 
+      then Write (aeq_op (BTL (Inr p) (BTL (Inl p) buf))) p (BHD (Inl p) buf) 
+      else Silent (aeq_op (BTL (Inr p) (BTL (Inl p) buf))))) (cfilter (\<lambda>p. buf (Inl p) \<noteq> [] \<and> buf (Inr p) \<noteq> []) cUNIV)))"
   apply (subst aeq_op.code)
-  apply (auto simp add: cset.map_comp)
+  apply (auto simp add: comp_def cset.map_comp o_def split: if_splits op.splits)
+  subgoal
+    apply (rule image_eqI[rotated])
+     apply simp
+     apply (rule disjI1)
+     apply force
+    apply auto
+    done
+  subgoal
+    apply (rule image_eqI[rotated])
+     apply simp
+     apply (rule disjI2)
+     apply force
+    apply auto
+    done
+  subgoal
+    apply (rule image_eqI[rotated])
+     apply simp
+     apply (rule disjI2)
+     apply force
+    apply auto
+    done
+  subgoal
+    apply (rule image_eqI[rotated])
+     apply simp
+     apply (rule disjI2)
+     apply force
+    apply auto
+    done
   done
 
+abbreviation aeq_empty_op (\<open>\<Q>\<close>) where \<open>\<Q> \<equiv> aeq_op (\<lambda>_. [])\<close>
+
 lemma step_aeq_op_Inp_L:
-  assumes \<open>step io \<Q> op\<close>
+  assumes \<open>step io (aeq_op buf) op\<close>
     and \<open>io = Inp (Inl p) y\<close>
-  obtains \<open>op = Read (Inr p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)\<close>
+  obtains \<open>op = aeq_op (BENQ (Inl p) y buf)\<close> \<open>p \<notin> defaults\<close>
   using assms
   apply (subst (asm) aeq_op_code)
   apply auto
   done
 
 lemma step_aeq_op_Inp_R:
-  assumes \<open>step io \<Q> op\<close>
+  assumes \<open>step io (aeq_op buf) op\<close>
     and \<open>io = Inp (Inr p) y\<close>
-  obtains \<open>op = Read (Inl p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)\<close>
+  obtains \<open>op = aeq_op (BENQ (Inr p) y buf)\<close> \<open>p \<notin> defaults\<close>
   using assms
   apply (subst (asm) aeq_op_code)
   apply auto
   done
 
 lemma no_step_aeq_op_Out:
-  assumes \<open>step io \<Q> op\<close>
+  assumes \<open>step io (aeq_op buf) op\<close>
     and \<open>io = Out p x\<close>
-  obtains False
-  using assms
-  apply (subst (asm) aeq_op_code)
+  obtains \<open>op = aeq_op (BTL (Inr p) (BTL (Inl p) buf))\<close> \<open>buf (Inl p) \<noteq> []\<close> \<open>x = BHD (Inl p) buf\<close> \<open>buf (Inr p) \<noteq> []\<close> \<open>BHD (Inl p) buf = BHD (Inr p) buf\<close> \<open>p \<notin> defaults\<close>
+  using assms apply atomize
+  apply (subst (asm) (2) aeq_op_code)
   apply auto
   done
 
 lemma no_step_aeq_op_Tau:
-  assumes \<open>step io \<Q> op\<close>
+  assumes \<open>step io (aeq_op buf) op\<close>
     and \<open>io = Tau\<close>
-  obtains False
-  using assms
-  apply (subst (asm) aeq_op_code)
+  obtains p where \<open>op = aeq_op (BTL (Inr p) (BTL (Inl p) buf))\<close> \<open>buf (Inl p) \<noteq> []\<close> \<open>buf (Inr p) \<noteq> []\<close> \<open>BHD (Inl p) buf \<noteq> BHD (Inr p) buf\<close> \<open>p \<notin> defaults\<close>
+  using assms apply atomize
+  apply (subst (asm) (2) aeq_op_code)
   apply auto
   done
 
-lemma step_aeq_op:
-  assumes \<open>step io \<Q> op\<close>
-  obtains p y where \<open>io = Inp (Inl p) y\<close> \<open>p \<notin> defaults\<close> \<open>op = Read (Inr p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)\<close>
-  |       p y where \<open>io = Inp (Inr p) y\<close> \<open>p \<notin> defaults\<close> \<open>op = Read (Inl p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)\<close>
+lemma step_aeq_op_elim:
+  assumes \<open>step io (aeq_op buf) op\<close>
+  obtains p y where \<open>io = Inp (Inl p) y\<close> \<open>op = aeq_op (BENQ (Inl p) y buf)\<close> \<open>p \<notin> defaults\<close>
+  | p y where \<open>io = Inp (Inr p) y\<close> \<open>op = aeq_op (BENQ (Inr p) y buf)\<close> \<open>p \<notin> defaults\<close>
+  | p x where \<open>io = Out p x\<close> \<open>op = aeq_op (BTL (Inr p) (BTL (Inl p) buf))\<close> \<open>buf (Inl p) \<noteq> []\<close> \<open>buf (Inr p) \<noteq> []\<close> \<open>x = BHD (Inl p) buf\<close> \<open>BHD (Inl p) buf = BHD (Inr p) buf\<close> \<open>p \<notin> defaults\<close>
+  | p where \<open>io = Tau\<close> \<open>op = aeq_op (BTL (Inr p) (BTL (Inl p) buf))\<close> \<open>buf (Inl p) \<noteq> []\<close> \<open>buf (Inr p) \<noteq> []\<close> \<open>BHD (Inl p) buf \<noteq> BHD (Inr p) buf\<close> \<open>p \<notin> defaults\<close>
   apply atomize_elim
   using assms
   apply (subst (asm) aeq_op_code)
-  apply auto
-  done
-
-lemma step_aeq_op_Read_L[intro]:
-  \<open>p \<notin> defaults \<Longrightarrow> step (Inp (Inl p) y) \<Q> (Read (Inr p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>))\<close>
-  apply (subst aeq_op_code)
   apply fastforce
   done
 
-lemma step_aeq_op_Read_R[intro]:
-  \<open>p \<notin> defaults \<Longrightarrow> step (Inp (Inr p) y) \<Q> (Read (Inl p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>))\<close>
-  apply (subst aeq_op_code)
-  apply fastforce
-  done
-
-lemma choices_aeq_op[simp]:
-  \<open>choices \<Q> = cUn
-  (cUnion (cimage choices (cimage (\<lambda> p. Read (Inl p) ((\<lambda> y. Read (Inr p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)))) cUNIV)))
-  (cUnion (cimage choices (cimage (\<lambda> p. Read (Inr p) ((\<lambda> y. Read (Inl p) (\<lambda> x. if x = y then Write \<Q> p x else Silent \<Q>)))) cUNIV)))\<close>
+lemma step_aeq_op_Read_L[intro!]:
+  \<open>p \<notin> defaults \<Longrightarrow> buf' = BENQ (Inl p) y buf \<Longrightarrow> step (Inp (Inl p) y) (aeq_op buf) (aeq_op buf')\<close>
   apply (subst aeq_op_code)
   apply auto
+  done
+
+lemma step_aeq_op_Read_R[intro!]:
+  \<open>p \<notin> defaults \<Longrightarrow> buf' = BENQ (Inr p) y buf \<Longrightarrow> step (Inp (Inr p) y) (aeq_op buf) (aeq_op buf')\<close>
+  apply (subst aeq_op_code)
+  apply auto
+  done
+
+lemma step_aeq_op_Write[intro!]:
+  \<open>p \<notin> defaults \<Longrightarrow>
+   buf (Inl p) \<noteq> [] \<Longrightarrow> buf (Inr p) \<noteq> [] \<Longrightarrow> BHD (Inl p) buf = BHD (Inr p) buf \<Longrightarrow> 
+   buf' = BTL (Inr p) (BTL (Inl p) buf) \<Longrightarrow> y = BHD (Inl p) buf \<Longrightarrow>
+   step (Out p y) (aeq_op buf) (aeq_op buf')\<close>
+  apply (subst aeq_op_code)
+  apply auto
+  done
+
+lemma step_aeq_op_Silent[intro!]:
+  \<open>p \<notin> defaults \<Longrightarrow>
+   buf (Inl p) \<noteq> [] \<Longrightarrow> buf (Inr p) \<noteq> [] \<Longrightarrow> BHD (Inl p) buf \<noteq> BHD (Inr p) buf \<Longrightarrow> 
+   buf' = BTL (Inr p) (BTL (Inl p) buf) \<Longrightarrow>
+   step Tau (aeq_op buf) (aeq_op buf')\<close>
+  apply (subst aeq_op_code)
+  apply fastforce
   done
 
 end
