@@ -3488,45 +3488,79 @@ lemma choices_merge_op[simp]:
   done
 
 section \<open>acopy_op - async copy operator\<close>
-datatype (discs_sels) ('m) acopy_op_aux =
-  acopy_Read_aux "'m"
+datatype (discs_sels) ('m, 'd) acopy_op_aux =
+  acopy_Read_aux \<open>'m\<close> \<open>'d \<Rightarrow> 'm + 'm \<Rightarrow> 'd buf\<close>
+  | acopy_Write_aux \<open>'m + 'm \<Rightarrow> 'd buf\<close>  \<open>'m + 'm\<close> 'd
 
 abbreviation eval_acopy_op_aux where
   "eval_acopy_op_aux c aux \<equiv> (case aux of
-    acopy_Read_aux p \<Rightarrow> Read p (\<lambda>y. choice2 (Write (Write c (Inr p) y) (Inl p) y) (Write (Write c (Inl p) y) (Inr p) y)))"
+    acopy_Read_aux p f \<Rightarrow> Read p (c \<circ> f)
+  | acopy_Write_aux buf p x \<Rightarrow> Write (c buf) p x)"
 
-corec acopy_op :: "('m :: {countable, defaults}, 'm + 'm, 'a) op" ("\<C>") where
-  "acopy_op = Choice (cimage (eval_acopy_op_aux acopy_op) 
-   (cimage (\<lambda> p. acopy_Read_aux p) (cUNIV :: 'm cset)))"
+
+corec acopy_op :: "('m + 'm \<Rightarrow> 'a buf) \<Rightarrow> ('m :: {countable, defaults}, 'm + 'm, 'a) op" where
+  "acopy_op buf = Choice (cimage (eval_acopy_op_aux acopy_op) (cUn 
+    (cimage (\<lambda> p. acopy_Read_aux p (\<lambda> x. BENQ (Inr p) x (BENQ (Inl p) x buf))) (cUNIV :: 'm cset)) (cUn
+    (cimage (\<lambda> p. acopy_Write_aux (BTL (Inl p) buf) (Inl p) (BHD (Inl p) buf)) (cfilter (\<lambda>p. buf (Inl p) \<noteq> [])(cUNIV :: 'm cset)))
+    (cimage (\<lambda> p. acopy_Write_aux (BTL (Inr p) buf) (Inr p) (BHD (Inr p) buf)) (cfilter (\<lambda>p. buf (Inr p) \<noteq> [])(cUNIV :: 'm cset))))))"
 
 lemma acopy_op_code:
-  "acopy_op = Choice (cimage (\<lambda> p. Read p (\<lambda> y. Choice {|
-    Write (Write acopy_op (Inr p) y) (Inl p) y,
-    Write (Write acopy_op (Inl p) y) (Inr p) y|})) (cUNIV :: 'm :: {countable, defaults} cset))"
+  "acopy_op buf = Choice (cUn 
+    (cimage (\<lambda> p. Read p (\<lambda> x. acopy_op (BENQ (Inr p) x (BENQ (Inl p) x buf)))) (cUNIV :: 'm :: {countable, defaults} cset)) (cUn
+    (cimage (\<lambda> p.  Write (acopy_op (BTL (Inl p) buf)) (Inl p) (BHD (Inl p) buf)) (cfilter (\<lambda>p. buf (Inl p) \<noteq> [])(cUNIV :: 'm cset)))
+    (cimage (\<lambda> p.  Write (acopy_op (BTL (Inr p) buf)) (Inr p) (BHD (Inr p) buf)) (cfilter (\<lambda>p. buf (Inr p) \<noteq> [])(cUNIV :: 'm cset)))))"
   apply (subst acopy_op.code)
-  apply (auto simp add: cset.map_comp intro!: arg_cong2[where f = cUn])
+  apply (auto simp add: comp_def cset.map_comp o_def split: if_splits op.splits)
+  subgoal
+    apply (rule image_eqI[rotated])
+     apply simp
+     apply (rule disjI1)
+     apply force
+    apply auto
+    done
+  subgoal
+    unfolding Set.filter_def
+    apply (rule image_eqI[rotated])
+     apply simp
+     apply (rule disjI2)
+     apply (rule disjI1)
+     apply (rule image_eqI)
+      apply blast
+     apply simp_all
+    done
+  subgoal
+    apply (rule image_eqI[rotated])
+     apply simp
+     apply (rule disjI2)
+     apply force
+    apply auto
+    done
   done
 
+abbreviation acopy_empty_op  ("\<C>") where \<open>\<C> \<equiv> acopy_op (\<lambda>_. [])\<close>
+
+
 lemma step_acopy_op_Inp:
-  assumes \<open>step io \<C> op\<close>
+  assumes \<open>step io (acopy_op buf) op\<close>
     and \<open>io = Inp p x\<close>
-  obtains \<open>op = Choice {|Write (Write \<C> (Inr p) x) (Inl p) x, Write (Write \<C> (Inl p) x) (Inr p) x|}\<close> \<open>p \<notin> defaults\<close>
+  obtains \<open>op = acopy_op (BENQ (Inr p) x (BENQ (Inl p) x buf))\<close> \<open>p \<notin> defaults\<close>
   using assms
   apply (subst (asm) acopy_op_code)
   apply auto
   done
 
+
 lemma no_step_acopy_op_Out:
-  assumes \<open>step io \<C> op\<close>
+  assumes \<open>step io (acopy_op buf) op\<close>
     and \<open>io = Out p x\<close>
-  obtains False
+  obtains \<open>op = acopy_op (BTL p buf)\<close> \<open>buf p \<noteq> []\<close> \<open>BHD p buf = x\<close> \<open>p \<notin> defaults\<close>
   using assms
   apply (subst (asm) acopy_op_code)
   apply auto
   done
 
 lemma no_step_acopy_op_Tau:
-  assumes \<open>step io \<C> op\<close>
+  assumes \<open>step io (acopy_op buf) op\<close>
     and \<open>io = Tau\<close>
   obtains False
   using assms
@@ -3534,26 +3568,39 @@ lemma no_step_acopy_op_Tau:
   apply auto
   done
 
-lemma step_acopy_op:
-  assumes \<open>step io \<C> op\<close>
-  obtains p x where \<open>io = Inp p x\<close> \<open>op = Choice {|Write (Write \<C> (Inr p) x) (Inl p) x, Write (Write \<C> (Inl p) x) (Inr p) x|}\<close> \<open>p \<notin> defaults\<close>
+lemma step_acopy_op_elim:
+  assumes \<open>step io (acopy_op buf) op\<close>
+  obtains p x where \<open>io = Inp p x\<close> \<open>op = acopy_op (BENQ (Inr p) x (BENQ (Inl p) x buf))\<close> \<open>p \<notin> defaults\<close> |
+   p x where \<open>io = Out (Inl p) x\<close> \<open>op = acopy_op (BTL (Inl p) buf)\<close> \<open>buf (Inl p) \<noteq> []\<close> \<open>BHD (Inl p) buf = x\<close> \<open>p \<notin> defaults\<close> |
+   p x where \<open>io = Out (Inr p) x\<close> \<open>op = acopy_op (BTL (Inr p) buf)\<close> \<open>buf (Inr p) \<noteq> []\<close> \<open>BHD (Inr p) buf = x\<close> \<open>p \<notin> defaults\<close>
   apply atomize_elim
   using assms
   apply (subst (asm) acopy_op_code)
   apply auto
   done
 
-lemma step_acopy_op_Read[intro]:
-  \<open>p \<notin> defaults \<Longrightarrow> step (Inp p x) \<C> (Choice {|Write (Write \<C> (Inr p) x) (Inl p) x, Write (Write \<C> (Inl p) x) (Inr p) x|})\<close>
+
+lemma step_acopy_op_Read[intro!]:
+  \<open>p \<notin> defaults \<Longrightarrow> buf' = BENQ (Inr p) x (BENQ (Inl p) x buf) \<Longrightarrow> step (Inp p x) (acopy_op buf) (acopy_op buf')\<close>
   apply (subst acopy_op_code)
-  apply fastforce
+  apply force
   done
 
-lemma choices_acopy_op[simp]:
-  \<open>choices \<C> = cimage (\<lambda> p. Read p (\<lambda> y. Choice {|Write (Write \<C> (Inr p) y) (Inl p) y, Write (Write \<C> (Inl p) y) (Inr p) y|})) cUNIV\<close>
+lemma step_acopy_op_WriteL[intro!]:
+  \<open>p \<notin> defaults \<Longrightarrow> buf' = BTL (Inl p) buf \<Longrightarrow> buf (Inl p) \<noteq> [] \<Longrightarrow> BHD (Inl p) buf = x \<Longrightarrow> step (Out (Inl p) x) (acopy_op buf) (acopy_op buf')\<close>
   apply (subst acopy_op_code)
-  apply auto
+  apply force
   done
+
+lemma step_acopy_op_WriteR[intro!]:
+  \<open>p \<notin> defaults \<Longrightarrow> buf' = BTL (Inr p) buf \<Longrightarrow> buf (Inr p) \<noteq> [] \<Longrightarrow> BHD (Inr p) buf = x \<Longrightarrow> step (Out (Inr p) x) (acopy_op buf) (acopy_op buf')\<close>
+  apply (subst acopy_op_code)
+  apply force
+  done
+
+lemma step_acopy_op_Write[intro]:
+  \<open>p \<notin> defaults \<Longrightarrow> buf' = BTL p buf \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> BHD p buf = x \<Longrightarrow> step (Out p x) (acopy_op buf) (acopy_op buf')\<close>
+  by (metis Inl_in_defaults Inr_in_defaults obj_sumE step_acopy_op_WriteL step_acopy_op_WriteR)
 
 section \<open>aeq_op - async equality operator\<close>
 datatype (discs_sels) ('m, 'd) aeq_op_aux =
