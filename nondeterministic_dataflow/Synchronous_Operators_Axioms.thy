@@ -21,99 +21,79 @@ proof (coinduction arbitrary: buf1 buf1' buf1'' buf2 buf2' buf3 buf3' rule: bisi
       and op1' :: "(('a + 'a) + 'a, 'a, 'b) op"
     assume H: "step io (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))) op1'"
     show "\<exists>op2'. step io (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op1' op2'"
-  proof -
-    have "\<exists>op2'. step (Inp (Inl (Inl pb)) y) (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum (BENQ pb y buf1) buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))) op2'"
-      if "io = Inp (Inl (Inl pb)) y"
-        and "op1' = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum (BENQ pb y buf1) buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))"
-        and "pb \<notin> defaults"
-      for pb :: 'a
-        and y :: 'b
-        using that by (fastforce intro: bc_base)
-    moreover have "\<exists>op2'. step (Inp (Inl (Inr pb)) y) (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 (BENQ pb y buf1'))) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))) op2'"
-      if "io = Inp (Inl (Inr pb)) y"
-        and "op1' = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 (BENQ pb y buf1'))) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))"
-        and "pb \<notin> defaults"
-      for pb :: 'a
-        and y :: 'b
-        using that by (fastforce intro: bc_base)
-    moreover have "\<exists>op2'. step (Inp (Inr pb) xb) (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op (BENQ pb xb buf1''))) (aeq_op (case_sum buf3 buf3')))) op2'"
-      if "io = Inp (Inr pb) xb"
-        and "op1' = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op (BENQ pb xb buf1''))) (aeq_op (case_sum buf3 buf3')))"
-        and "pb \<notin> defaults"
-      for pb :: 'a
-        and xb :: 'b
-        using that by (fastforce intro: bc_base)
-    moreover have "\<exists>op2'. step (Out pa (BHD pa buf3')) (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum (BTL pa buf3) (BTL pa buf3'))))) op2'"
-      if "io = Out pa (BHD pa buf3')"
-        and "op1' = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum (BTL pa buf3) (BTL pa buf3'))))"
-        and "buf3 pa \<noteq> []"
-        and "buf3' pa \<noteq> []"
-        and "BHD pa buf3 = BHD pa buf3'"
-        and "pa \<notin> defaults"
-      for pa :: 'a
-        using that by (fastforce intro: bc_base)
-    moreover have "\<exists>op2'. step Tau (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op projl projr (comp_op Some (case_sum buf2 (BENQ pb (BHD pb buf1'') buf2')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op (BTL pb buf1''))) (aeq_op (case_sum buf3 buf3')))) op2'"
-      if "io = Tau"
-        and "op1' = map_op projl projr (comp_op Some (case_sum buf2 (BENQ pb (BHD pb buf1'') buf2')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op (BTL pb buf1''))) (aeq_op (case_sum buf3 buf3')))"
-        and "pb \<notin> defaults"
-        and "buf1'' pb \<noteq> []"
-      for pb :: 'a
-      using that by (fastforce intro: bc_base)
-    moreover have "\<exists>op2'. step Tau (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op projl projr (comp_op Some (case_sum (BENQ pb (BHD pb buf1') buf2) buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum (BTL pb buf1) (BTL pb buf1'))) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))) op2'"
-      if "io = Tau"
-        and "op1' = map_op projl projr (comp_op Some (case_sum (BENQ pb (BHD pb buf1') buf2) buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum (BTL pb buf1) (BTL pb buf1'))) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))"
-        and "buf1 pb \<noteq> []"
-        and "buf1' pb \<noteq> []"
-        and "BHD pb buf1 = BHD pb buf1'"
-        and "pb \<notin> defaults"
-      for pb :: 'a
-      using that by (fastforce intro: bc_base)
-    moreover have "\<exists>op2'. step Tau (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op projl projr (comp_op Some (case_sum (BTL pa buf2) buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum (BENQ pa (BHD pa buf2) buf3) buf3')))) op2'"
-      if "io = Tau"
-        and "op1' = map_op projl projr (comp_op Some (case_sum (BTL pa buf2) buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum (BENQ pa (BHD pa buf2) buf3) buf3')))"
-        and "buf2 pa \<noteq> []"
-        and "pa \<notin> defaults"
-      for pa :: 'a
-      using that by (fastforce intro: bc_base)+
-    moreover have "\<exists>op2'. step Tau (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op projl projr (comp_op Some (case_sum buf2 (BTL pa buf2')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 (BENQ pa (BHD pa buf2') buf3'))))) op2'"
-      if "io = Tau"
-        and "op1' = map_op projl projr (comp_op Some (case_sum buf2 (BTL pa buf2')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 (BENQ pa (BHD pa buf2') buf3'))))"
-        and "buf2' pa \<noteq> []"
-        and "pa \<notin> defaults"
-      for pa :: 'a
-      using that by (fastforce intro: bc_base)+
-    moreover have "\<exists>op2'. step Tau (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum (BTL pb buf1) (BTL pb buf1'))) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))) op2'"
-      if "io = Tau"
-        and "op1' = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum (BTL pb buf1) (BTL pb buf1'))) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))"
-        and "buf1 pb \<noteq> []"
-        and "buf1' pb \<noteq> []"
-        and "BHD pb buf1 \<noteq> BHD pb buf1'"
-        and "pb \<notin> defaults"
-      for pb :: 'a
     proof -
-      have \<open>step Tau
-     (comp_op Some (case_sum buf2' buf2)
-       (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1')))
-       (aeq_op (case_sum buf3' buf3)))
-     (comp_op Some (case_sum buf2' buf2)
-       (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'')
-         (aeq_op (case_sum (BTL pb buf1) (BTL pb buf1'))))
-       (aeq_op (case_sum buf3' buf3))) \<close>
-        using that by fastforce
-      thus ?thesis by (fastforce intro: bc_base)
+      have "\<exists>op2'. step (Inp (Inl (Inl pb)) y) (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum (BENQ pb y buf1) buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))) op2'"
+        if "pb \<notin> defaults"
+        for pb :: 'a
+          and y :: 'b
+          using that by (fastforce intro: bc_base)
+      moreover have "\<exists>op2'. step (Inp (Inl (Inr pb)) y) (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 (BENQ pb y buf1'))) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))) op2'"
+        if "pb \<notin> defaults"
+        for pb :: 'a
+          and y :: 'b
+          using that by (fastforce intro: bc_base)
+      moreover have "\<exists>op2'. step (Inp (Inr pb) xb) (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op (BENQ pb xb buf1''))) (aeq_op (case_sum buf3 buf3')))) op2'"
+        if "pb \<notin> defaults"
+        for pb :: 'a
+          and xb :: 'b
+          using that by (fastforce intro: bc_base)
+      moreover have "\<exists>op2'. step (Out pa (BHD pa buf3')) (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum (BTL pa buf3) (BTL pa buf3'))))) op2'"
+        if "buf3 pa \<noteq> []"
+          and "buf3' pa \<noteq> []"
+          and "BHD pa buf3 = BHD pa buf3'"
+          and "pa \<notin> defaults"
+        for pa :: 'a
+          using that by (fastforce intro: bc_base)
+      moreover have "\<exists>op2'. step Tau (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op projl projr (comp_op Some (case_sum buf2 (BENQ pb (BHD pb buf1'') buf2')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op (BTL pb buf1''))) (aeq_op (case_sum buf3 buf3')))) op2'"
+        if "pb \<notin> defaults"
+          and "buf1'' pb \<noteq> []"
+        for pb :: 'a
+        using that by (fastforce intro: bc_base)
+      moreover have "\<exists>op2'. step Tau (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op projl projr (comp_op Some (case_sum (BENQ pb (BHD pb buf1') buf2) buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum (BTL pb buf1) (BTL pb buf1'))) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))) op2'"
+        if "buf1 pb \<noteq> []"
+          and "buf1' pb \<noteq> []"
+          and "BHD pb buf1 = BHD pb buf1'"
+          and "pb \<notin> defaults"
+        for pb :: 'a
+        using that by (fastforce intro: bc_base)
+      moreover have "\<exists>op2'. step Tau (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op projl projr (comp_op Some (case_sum (BTL pa buf2) buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum (BENQ pa (BHD pa buf2) buf3) buf3')))) op2'"
+        if "buf2 pa \<noteq> []"
+          and "pa \<notin> defaults"
+        for pa :: 'a
+        using that by (fastforce intro: bc_base)+
+      moreover have "\<exists>op2'. step Tau (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op projl projr (comp_op Some (case_sum buf2 (BTL pa buf2')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 (BENQ pa (BHD pa buf2') buf3'))))) op2'"
+        if "buf2' pa \<noteq> []"
+          and "pa \<notin> defaults"
+        for pa :: 'a
+        using that by (fastforce intro: bc_base)+
+      moreover have "\<exists>op2'. step Tau (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum (BTL pb buf1) (BTL pb buf1'))) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))) op2'"
+        if "buf1 pb \<noteq> []"
+          and "buf1' pb \<noteq> []"
+          and "BHD pb buf1 \<noteq> BHD pb buf1'"
+          and "pb \<notin> defaults"
+        for pb :: 'a
+      proof -
+        have \<open>step Tau
+       (comp_op Some (case_sum buf2' buf2)
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1')))
+         (aeq_op (case_sum buf3' buf3)))
+       (comp_op Some (case_sum buf2' buf2)
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'')
+           (aeq_op (case_sum (BTL pb buf1) (BTL pb buf1'))))
+         (aeq_op (case_sum buf3' buf3))) \<close>
+          using that by fastforce
+        thus ?thesis by (fastforce intro: bc_base)
+      qed
+      moreover have "\<exists>op2'. step Tau (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum (BTL pa buf3) (BTL pa buf3'))))) op2'"
+        if "buf3 pa \<noteq> []"
+          and "buf3' pa \<noteq> []"
+          and "BHD pa buf3 \<noteq> BHD pa buf3'"
+          and "pa \<notin> defaults"
+        for pa :: 'a
+        using that by (intro exI conjI[rotated, OF bc_base], auto)
+      ultimately show ?thesis
+        using H by (auto elim !: step_map_op_elim step_comp_op_elim step_aeq_op_elim step_id_op_cases)
     qed
-    moreover have "\<exists>op2'. step Tau (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum (BTL pa buf3) (BTL pa buf3'))))) op2'"
-      if "io = Tau"
-        and "op1' = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum (BTL pa buf3) (BTL pa buf3'))))"
-        and "buf3 pa \<noteq> []"
-        and "buf3' pa \<noteq> []"
-        and "BHD pa buf3 \<noteq> BHD pa buf3'"
-        and "pa \<notin> defaults"
-      for pa :: 'a
-      using that by (intro exI conjI[rotated, OF bc_base], auto)
-    ultimately show ?thesis
-      using H by (auto elim !: step_map_op_elim step_comp_op_elim step_aeq_op_elim step_id_op_cases)
-  qed
   next
     fix io :: "(('a + 'a) + 'a, 'a, 'b) IO"
       and op1' :: "(('a + 'a) + 'a, 'a, 'b) op"
@@ -121,69 +101,51 @@ proof (coinduction arbitrary: buf1 buf1' buf1'' buf2 buf2' buf3 buf3' rule: bisi
     show "\<exists>op2'. step io (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op1' op2'"
     proof -
       have "\<exists>op2'. step (Inp (Inr pb) xb) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BENQ pb xb buf1'')) (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2'"
-        if "io = Inp (Inr pb) xb"
-          and "op1' = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BENQ pb xb buf1'')) (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))"
-          and "pb \<notin> defaults"
+        if "pb \<notin> defaults"
         for pb :: 'a
           and xb :: 'b
         using that by (fastforce intro: bc_sym[OF bc_base])
       moreover have "\<exists>op2'. step (Inp (Inl (Inl pb)) y) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum (BENQ pb y buf1) buf1'))) (aeq_op (case_sum buf3' buf3))))) op2'"
-        if "io = Inp (Inl (Inl pb)) y"
-          and "op1' = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum (BENQ pb y buf1) buf1'))) (aeq_op (case_sum buf3' buf3))))"
-          and "pb \<notin> defaults"
+        if "pb \<notin> defaults"
         for pb :: 'a
           and y :: 'b
         using that by (fastforce intro: bc_sym[OF bc_base])
       moreover have "\<exists>op2'. step (Inp (Inl (Inr pb)) y) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 (BENQ pb y buf1')))) (aeq_op (case_sum buf3' buf3))))) op2'"
-        if "io = Inp (Inl (Inr pb)) y"
-          and "op1' = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 (BENQ pb y buf1')))) (aeq_op (case_sum buf3' buf3))))"
-          and "pb \<notin> defaults"
+        if "pb \<notin> defaults"
         for pb :: 'a
           and y :: 'b
         using that by (fastforce intro: bc_sym[OF bc_base])
       moreover have "\<exists>op2'. step (Out pa (BHD pa buf3)) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum (BTL pa buf3') (BTL pa buf3)))))) op2'"
-        if "io = Out pa (BHD pa buf3)"
-          and "op1' = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum (BTL pa buf3') (BTL pa buf3)))))"
-          and "buf3' pa \<noteq> []"
+        if "buf3' pa \<noteq> []"
           and "buf3 pa \<noteq> []"
           and "BHD pa buf3' = BHD pa buf3"
           and "pa \<notin> defaults"
         for pa :: 'a
         using that by (fastforce intro: bc_sym[OF bc_base])
       moreover have "\<exists>op2'. step Tau (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' (BENQ pb (BHD pb buf1') buf2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum (BTL pb buf1) (BTL pb buf1')))) (aeq_op (case_sum buf3' buf3))))) op2'"
-        if "io = Tau"
-          and "op1' = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' (BENQ pb (BHD pb buf1') buf2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum (BTL pb buf1) (BTL pb buf1')))) (aeq_op (case_sum buf3' buf3))))"
-          and "buf1 pb \<noteq> []"
+        if "buf1 pb \<noteq> []"
           and "buf1' pb \<noteq> []"
           and "BHD pb buf1 = BHD pb buf1'"
           and "pb \<notin> defaults"
         for pb :: 'a
         using that by (fastforce intro: bc_sym[OF bc_base])
       moreover have "\<exists>op2'. step Tau (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum (BENQ pb (BHD pb buf1'') buf2') buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BTL pb buf1'')) (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) op2'"
-        if "io = Tau"
-          and "op1' = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum (BENQ pb (BHD pb buf1'') buf2') buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BTL pb buf1'')) (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))"
-          and "pb \<notin> defaults"
+        if "pb \<notin> defaults"
           and "buf1'' pb \<noteq> []"
         for pb :: 'a
         using that by (fastforce intro: bc_sym[OF bc_base])
       moreover have "\<exists>op2'. step Tau (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum (BTL pa buf2') buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum (BENQ pa (BHD pa buf2') buf3') buf3))))) op2'"
-        if "io = Tau"
-          and "op1' = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum (BTL pa buf2') buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum (BENQ pa (BHD pa buf2') buf3') buf3))))"
-          and "buf2' pa \<noteq> []"
+        if "buf2' pa \<noteq> []"
           and "pa \<notin> defaults"
         for pa :: 'a
         using that by (fastforce intro: bc_sym[OF bc_base])
       moreover have "\<exists>op2'. step Tau (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' (BTL pa buf2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' (BENQ pa (BHD pa buf2) buf3)))))) op2'"
-        if "io = Tau"
-          and "op1' = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' (BTL pa buf2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' (BENQ pa (BHD pa buf2) buf3)))))"
-          and "buf2 pa \<noteq> []"
+        if "buf2 pa \<noteq> []"
           and "pa \<notin> defaults"
         for pa :: 'a
         using that by (fastforce intro: bc_sym[OF bc_base])
       moreover have "\<exists>op2'. step Tau (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum (BTL pb buf1) (BTL pb buf1')))) (aeq_op (case_sum buf3' buf3))))) op2'"
-        if "io = Tau"
-          and "op1' = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum (BTL pb buf1) (BTL pb buf1')))) (aeq_op (case_sum buf3' buf3))))"
-          and "buf1 pb \<noteq> []"
+        if "buf1 pb \<noteq> []"
           and "buf1' pb \<noteq> []"
           and "BHD pb buf1 \<noteq> BHD pb buf1'"
           and "pb \<notin> defaults"
@@ -201,9 +163,7 @@ proof (coinduction arbitrary: buf1 buf1' buf1'' buf2 buf2' buf3 buf3' rule: bisi
         thus ?thesis by (fastforce intro: bc_sym[OF bc_base])
       qed
       moreover have "\<exists>op2'. step Tau (map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> bisim_cong (\<lambda>s t. \<exists>buf1 buf1' buf1'' buf2 buf2' buf3 buf3'. s = map_op projl projr (comp_op Some (case_sum buf2 buf2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1 buf1')) (id_op buf1'')) (aeq_op (case_sum buf3 buf3'))) \<and> t = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum buf3' buf3))))) (map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum (BTL pa buf3') (BTL pa buf3)))))) op2'"
-        if "io = Tau"
-          and "op1' = map_op (case_sum Inr Inl) id (map_op projl projr (comp_op Some (case_sum buf2' buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (aeq_op (case_sum buf1 buf1'))) (aeq_op (case_sum (BTL pa buf3') (BTL pa buf3)))))"
-          and "buf3' pa \<noteq> []"
+        if "buf3' pa \<noteq> []"
           and "buf3 pa \<noteq> []"
           and "BHD pa buf3' \<noteq> BHD pa buf3"
           and "pa \<notin> defaults"
@@ -237,9 +197,7 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
     show "\<exists>op2'. wstep io (map_op (case_sum Inr Inl) id (aeq_op (case_sum (buf1' >> buf2 >> buf3) (buf1 >> buf2' >> buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum (buf1' >> buf2 >> buf3) (buf1 >> buf2' >> buf3')))) op1' op2'"
     proof -
       have "\<exists>op2'. wstep (Inp pa xa) (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (BENQ pa xa (case_sum buf1 buf1'))) (aeq_op (case_sum buf3 buf3')))) op2'"
-        if "io = Inp pa xa"
-          and "op1' = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (BENQ pa xa (case_sum buf1 buf1'))) (aeq_op (case_sum buf3 buf3')))"
-          and "pa \<notin> defaults"
+        if "pa \<notin> defaults"
         for pa :: "'a + 'a"
           and xa :: 'b
       proof (cases pa)
@@ -251,9 +209,7 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
         from this that show ?thesis by (fastforce del: wbc_base intro: wbc_base)
       qed
       moreover have "\<exists>op2'. wstep (Out pa (BHD pa buf3')) (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum (BTL pa buf3) (BTL pa buf3'))))) op2'"
-        if "io = Out pa (BHD pa buf3')"
-          and "op1' = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum (BTL pa buf3) (BTL pa buf3'))))"
-          and "buf3 pa \<noteq> []"
+        if "buf3 pa \<noteq> []"
           and "buf3' pa \<noteq> []"
           and "BHD pa buf3 = BHD pa buf3'"
           and "pa \<notin> defaults"
@@ -262,37 +218,29 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op projl projr (comp_op Some (case_sum (BENQ x1 (BHD x1 buf1') buf2) buf2') (transp_op (case_sum buf1 (BTL x1 buf1'))) (aeq_op (case_sum buf3 buf3')))) op2'"
         if "x1 \<notin> defaults"
           and "buf1' x1 \<noteq> []"
-          and "io = Tau"
           and "op1' = map_op projl projr (comp_op Some (case_sum (BENQ x1 (BHD x1 buf1') buf2) buf2') (transp_op (case_sum buf1 (BTL x1 buf1'))) (aeq_op (case_sum buf3 buf3')))"
         for x1 :: 'a
         using that by (fastforce del: wbc_base intro: wbc_base)
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op projl projr (comp_op Some (case_sum buf2 (BENQ x2 (BHD x2 buf1) buf2')) (transp_op (case_sum (BTL x2 buf1) buf1')) (aeq_op (case_sum buf3 buf3')))) op2'"
         if "x2 \<notin> defaults"
           and "buf1 x2 \<noteq> []"
-          and "io = Tau"
           and "op1' = map_op projl projr (comp_op Some (case_sum buf2 (BENQ x2 (BHD x2 buf1) buf2')) (transp_op (case_sum (BTL x2 buf1) buf1')) (aeq_op (case_sum buf3 buf3')))"
         for x2 :: 'a
         using that by (fastforce del: wbc_base intro: wbc_base)
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op projl projr (comp_op Some (case_sum (BTL pa buf2) buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum (BENQ pa (BHD pa buf2) buf3) buf3')))) op2'"
-        if "io = Tau"
-          and "op1' = map_op projl projr (comp_op Some (case_sum (BTL pa buf2) buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum (BENQ pa (BHD pa buf2) buf3) buf3')))"
-          and "buf2 pa \<noteq> []"
+        if "buf2 pa \<noteq> []"
           and "pa \<notin> defaults"
         for pa :: 'a
         using that
         by (intro exI conjI[rotated, OF wbc_base], simp, metis BAPPEND_BENQ_BHD BULK_BENQ_assoc rtranclp.rtrancl_refl)
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op projl projr (comp_op Some (case_sum buf2 (BTL pa buf2')) (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 (BENQ pa (BHD pa buf2') buf3'))))) op2'"
-        if "io = Tau"
-          and "op1' = map_op projl projr (comp_op Some (case_sum buf2 (BTL pa buf2')) (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 (BENQ pa (BHD pa buf2') buf3'))))"
-          and "buf2' pa \<noteq> []"
+        if "buf2' pa \<noteq> []"
           and "pa \<notin> defaults"
         for pa :: 'a
         using that
         by (intro exI conjI[rotated, OF wbc_base], simp, metis BAPPEND_BENQ_BHD BULK_BENQ_assoc rtranclp.rtrancl_refl)
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum (BTL pa buf3) (BTL pa buf3'))))) op2'"
-        if "io = Tau"
-          and "op1' = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum (BTL pa buf3) (BTL pa buf3'))))"
-          and "buf3 pa \<noteq> []"
+        if "buf3 pa \<noteq> []"
           and "buf3' pa \<noteq> []"
           and "BHD pa buf3 \<noteq> BHD pa buf3'"
           and "pa \<notin> defaults"
@@ -308,16 +256,12 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
     show "\<exists>op2'. wstep io (map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum (buf1' >> buf2 >> buf3) (buf1 >> buf2' >> buf3')))) op1' op2'"
     proof -
       have "\<exists>op2'. wstep (Inp (Inr p) y) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((BENQ p y buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) op2'"
-        if "io = Inp (Inr p) y"
-          and "op1' = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((BENQ p y buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))"
-          and "p \<notin> defaults"
+        if "p \<notin> defaults"
         for p :: 'a
           and y :: 'b
         using that by (fastforce intro: wbc_sym[OF wbc_base])
       moreover have "\<exists>op2'. wstep (Inp (Inl p) y) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((BENQ p y buf1 >> buf2') >> buf3')))) op2'"
-        if "io = Inp (Inl p) y"
-          and "op1' = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((BENQ p y buf1 >> buf2') >> buf3')))"
-          and "p \<notin> defaults"
+        if "p \<notin> defaults"
         for p :: 'a
           and y :: 'b
         using that by (fastforce intro: wbc_sym[OF wbc_base])
@@ -326,12 +270,10 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
           and "buf1 p \<noteq> []"
           and "BHD p buf1' = BHD p buf1"
           and "p \<notin> defaults"
-          and "io = Out p (BHD p buf1)"
           and "buf3' p = []"
           and "buf3 p = []"
           and "buf2' p = []"
           and "buf2 p = []"
-          and "op1' = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((BTL p buf1' >> buf2) >> buf3) ((BTL p buf1 >> buf2') >> buf3')))"
         for p :: 'a
       proof -
         have \<open>step Tau (map_op projl projr
@@ -364,12 +306,10 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
         if "buf1 p \<noteq> []"
           and "BHD p buf2 = BHD p buf1"
           and "p \<notin> defaults"
-          and "io = Out p (BHD p buf1)"
           and "buf3' p = []"
           and "buf3 p = []"
           and "buf2' p = []"
           and "buf2 p \<noteq> []"
-          and "op1' = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> BTL p buf2) >> buf3) ((BTL p buf1 >> buf2') >> buf3')))"
         for p :: 'a
       proof -
         have \<open>step Tau (map_op projl projr
@@ -397,12 +337,10 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
         if "buf1' p \<noteq> []"
           and "BHD p buf1' = BHD p buf2'"
           and "p \<notin> defaults"
-          and "io = Out p (BHD p buf2')"
           and "buf3' p = []"
           and "buf3 p = []"
           and "buf2' p \<noteq> []"
           and "buf2 p = []"
-          and "op1' = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((BTL p buf1' >> buf2) >> buf3) ((buf1 >> BTL p buf2') >> buf3')))"
         for p :: 'a
       proof -
         have \<open>step Tau (map_op projl projr
@@ -429,12 +367,10 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
       moreover have "\<exists>op2'. wstep (Out p (BHD p buf2')) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> BTL p buf2) >> buf3) ((buf1 >> BTL p buf2') >> buf3')))) op2'"
         if "BHD p buf2 = BHD p buf2'"
           and "p \<notin> defaults"
-          and "io = Out p (BHD p buf2')"
           and "buf3' p = []"
           and "buf3 p = []"
           and "buf2' p \<noteq> []"
           and "buf2 p \<noteq> []"
-          and "op1' = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> BTL p buf2) >> buf3) ((buf1 >> BTL p buf2') >> buf3')))"
         for p :: 'a
       proof -
         have \<open>step Tau (map_op projl projr
@@ -457,11 +393,9 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
         if "buf1 p \<noteq> []"
           and "BHD p buf3 = BHD p buf1"
           and "p \<notin> defaults"
-          and "io = Out p (BHD p buf1)"
           and "buf3' p = []"
           and "buf3 p \<noteq> []"
           and "buf2' p = []"
-          and "op1' = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> BTL p buf3) ((BTL p buf1 >> buf2') >> buf3')))"
         for p :: 'a
       proof -
         have \<open>step Tau (map_op projl projr
@@ -484,11 +418,9 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
       moreover have "\<exists>op2'. wstep (Out p (BHD p buf2')) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> BTL p buf3) ((buf1 >> BTL p buf2') >> buf3')))) op2'"
         if "BHD p buf3 = BHD p buf2'"
           and "p \<notin> defaults"
-          and "io = Out p (BHD p buf2')"
           and "buf3' p = []"
           and "buf3 p \<noteq> []"
           and "buf2' p \<noteq> []"
-          and "op1' = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> BTL p buf3) ((buf1 >> BTL p buf2') >> buf3')))"
         for p :: 'a
       proof -
         have \<open>step Tau (map_op projl projr
@@ -507,11 +439,9 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
         if "buf1' p \<noteq> []"
           and "BHD p buf1' = BHD p buf3'"
           and "p \<notin> defaults"
-          and "io = Out p (BHD p buf3')"
           and "buf3' p \<noteq> []"
           and "buf3 p = []"
           and "buf2 p = []"
-          and "op1' = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((BTL p buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> BTL p buf3')))"
         for p :: 'a
       proof -
         have \<open>step Tau (map_op projl projr
@@ -534,11 +464,9 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
       moreover have "\<exists>op2'. wstep (Out p (BHD p buf3')) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> BTL p buf2) >> buf3) ((buf1 >> buf2') >> BTL p buf3')))) op2'"
         if "BHD p buf2 = BHD p buf3'"
           and "p \<notin> defaults"
-          and "io = Out p (BHD p buf3')"
           and "buf3' p \<noteq> []"
           and "buf3 p = []"
           and "buf2 p \<noteq> []"
-          and "op1' = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> BTL p buf2) >> buf3) ((buf1 >> buf2') >> BTL p buf3')))"
         for p :: 'a
       proof -
         have \<open>step Tau (map_op projl projr
@@ -556,10 +484,8 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
       moreover have "\<exists>op2'. wstep (Out p (BHD p buf3')) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> BTL p buf3) ((buf1 >> buf2') >> BTL p buf3')))) op2'"
         if "BHD p buf3 = BHD p buf3'"
           and "p \<notin> defaults"
-          and "io = Out p (BHD p buf3')"
           and "buf3' p \<noteq> []"
           and "buf3 p \<noteq> []"
-          and "op1' = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> BTL p buf3) ((buf1 >> buf2') >> BTL p buf3')))"
         for p :: 'a
         using that by (fastforce intro: wbc_sym[OF wbc_base])
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((BTL p buf1' >> buf2) >> buf3) ((BTL p buf1 >> buf2') >> buf3')))) op2'"
@@ -567,12 +493,10 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
           and "buf1 p \<noteq> []"
           and "BHD p buf1' \<noteq> BHD p buf1"
           and "p \<notin> defaults"
-          and "io = Tau"
           and "buf3' p = []"
           and "buf3 p = []"
           and "buf2' p = []"
           and "buf2 p = []"
-          and "op1' = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((BTL p buf1' >> buf2) >> buf3) ((BTL p buf1 >> buf2') >> buf3')))"
         for p :: 'a
       proof -
         have \<open>step Tau (map_op projl projr
@@ -605,12 +529,10 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
         if "buf1 p \<noteq> []"
           and "BHD p buf2 \<noteq> BHD p buf1"
           and "p \<notin> defaults"
-          and "io = Tau"
           and "buf3' p = []"
           and "buf3 p = []"
           and "buf2' p = []"
           and "buf2 p \<noteq> []"
-          and "op1' = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> BTL p buf2) >> buf3) ((BTL p buf1 >> buf2') >> buf3')))"
         for p :: 'a
       proof -
         have \<open>step Tau (map_op projl projr
@@ -638,12 +560,10 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
         if "buf1' p \<noteq> []"
           and "BHD p buf1' \<noteq> BHD p buf2'"
           and "p \<notin> defaults"
-          and "io = Tau"
           and "buf3' p = []"
           and "buf3 p = []"
           and "buf2' p \<noteq> []"
           and "buf2 p = []"
-          and "op1' = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((BTL p buf1' >> buf2) >> buf3) ((buf1 >> BTL p buf2') >> buf3')))"
         for p :: 'a
       proof -
         have \<open>step Tau (map_op projl projr
@@ -670,12 +590,10 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> BTL p buf2) >> buf3) ((buf1 >> BTL p buf2') >> buf3')))) op2'"
         if "BHD p buf2 \<noteq> BHD p buf2'"
           and "p \<notin> defaults"
-          and "io = Tau"
           and "buf3' p = []"
           and "buf3 p = []"
           and "buf2' p \<noteq> []"
           and "buf2 p \<noteq> []"
-          and "op1' = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> BTL p buf2) >> buf3) ((buf1 >> BTL p buf2') >> buf3')))"
         for p :: 'a
       proof -
         have \<open>step Tau (map_op projl projr
@@ -698,11 +616,9 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
         if "buf1 p \<noteq> []"
           and "BHD p buf3 \<noteq> BHD p buf1"
           and "p \<notin> defaults"
-          and "io = Tau"
           and "buf3' p = []"
           and "buf3 p \<noteq> []"
           and "buf2' p = []"
-          and "op1' = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> BTL p buf3) ((BTL p buf1 >> buf2') >> buf3')))"
         for p :: 'a
       proof -
         have \<open>step Tau (map_op projl projr
@@ -725,11 +641,9 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> BTL p buf3) ((buf1 >> BTL p buf2') >> buf3')))) op2'"
         if "BHD p buf3 \<noteq> BHD p buf2'"
           and "p \<notin> defaults"
-          and "io = Tau"
           and "buf3' p = []"
           and "buf3 p \<noteq> []"
           and "buf2' p \<noteq> []"
-          and "op1' = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> BTL p buf3) ((buf1 >> BTL p buf2') >> buf3')))"
         for p :: 'a
       proof -
         have \<open>step Tau (map_op projl projr
@@ -748,11 +662,9 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
         if "buf1' p \<noteq> []"
           and "BHD p buf1' \<noteq> BHD p buf3'"
           and "p \<notin> defaults"
-          and "io = Tau"
           and "buf3' p \<noteq> []"
           and "buf3 p = []"
           and "buf2 p = []"
-          and "op1' = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((BTL p buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> BTL p buf3')))"
         for p :: 'a
       proof -
         have \<open>step Tau (map_op projl projr
@@ -775,11 +687,9 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> BTL p buf2) >> buf3) ((buf1 >> buf2') >> BTL p buf3')))) op2'"
         if "BHD p buf2 \<noteq> BHD p buf3'"
           and "p \<notin> defaults"
-          and "io = Tau"
           and "buf3' p \<noteq> []"
           and "buf3 p = []"
           and "buf2 p \<noteq> []"
-          and "op1' = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> BTL p buf2) >> buf3) ((buf1 >> buf2') >> BTL p buf3')))"
         for p :: 'a
       proof -
         have \<open>step Tau (map_op projl projr
@@ -797,10 +707,8 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> BTL p buf3) ((buf1 >> buf2') >> BTL p buf3')))) op2'"
         if "BHD p buf3 \<noteq> BHD p buf3'"
           and "p \<notin> defaults"
-          and "io = Tau"
           and "buf3' p \<noteq> []"
           and "buf3 p \<noteq> []"
-          and "op1' = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> BTL p buf3) ((buf1 >> buf2') >> BTL p buf3')))"
         for p :: 'a
         using that
         apply (intro exI conjI[rotated, OF wbc_sym[OF wbc_base]]) by auto[1] fastforce
@@ -821,10 +729,80 @@ lemma aeq_op_dummy_source_op:
   "map_op projr id (\<exclamdown> \<parallel> \<I>) \<bullet> \<Q> \<approx> \<I>"
   oops
 
-  section \<open>Axiom: A4: Equality test to sink\<close>
-lemma aeq_op_sink_op:
-  "\<Q> \<bullet> ! ~ ! \<parallel> !"
-  oops
+section \<open>Axiom A4: Equality test to sink\<close>
+
+lemma A4_gen:
+  \<open>map_op projl projr (comp_op Some buf2 (aeq_op (case_sum buf1 buf1')) !) \<approx> ! \<parallel> !\<close>
+  unfolding pcomp_op_def
+proof (coinduction arbitrary: buf1 buf1' buf2 rule: wbisim_coinduct_upto)
+  case BISIM
+  then show ?case
+    unfolding wsim_def
+  proof (intro allI conjI impI)
+    fix io :: "('a + 'a, 'b + 'c, 'd) IO"
+      and op1' :: "('a + 'a, 'b + 'c, 'd) op"
+    assume H: "step io (map_op projl projr (comp_op Some buf2 (aeq_op (case_sum buf1 buf1')) !)) op1'"
+    show "\<exists>op2'. wstep io (comp_op (\<lambda>_. None) (\<lambda>_. []) sink_op sink_op) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2. op1 = map_op projl projr (comp_op Some buf2 (aeq_op (case_sum buf1 buf1')) sink_op) \<and> op2 = comp_op (\<lambda>_. None) (\<lambda>_. []) sink_op sink_op) op1' op2'"
+    proof -
+      have "\<exists>op2'. wstep (Inp (Inl pa) y) (comp_op (\<lambda>_. None) (\<lambda>_. []) (sink_op::('a, 'b, 'd) op) (sink_op::('a, 'c, 'd) op)) op2' \<and> wbisim_cong (\<lambda>op1 op2. (\<exists>buf1 buf1' buf2. op1 = map_op projl projr (comp_op Some buf2 (aeq_op (case_sum buf1 buf1')) sink_op)) \<and> op2 = comp_op (\<lambda>_. None) (\<lambda>_. []) sink_op sink_op) (map_op projl projr (comp_op Some buf2 (aeq_op (case_sum (BENQ pa y buf1) buf1')) sink_op)) op2'"
+        if "pa \<notin> defaults"
+        for pa :: 'a
+          and y :: 'd
+        using that by (fastforce del: wbc_base intro: wbc_base)
+      moreover have "\<exists>op2'. wstep (Inp (Inr pa) y) (comp_op (\<lambda>_. None) (\<lambda>_. []) (sink_op::('a, 'b, 'd) op) (sink_op::('a, 'c, 'd) op)) op2' \<and> wbisim_cong (\<lambda>op1 op2. (\<exists>buf1 buf1' buf2. op1 = map_op projl projr (comp_op Some buf2 (aeq_op (case_sum buf1 buf1')) sink_op)) \<and> op2 = comp_op (\<lambda>_. None) (\<lambda>_. []) sink_op sink_op) (map_op projl projr (comp_op Some buf2 (aeq_op (case_sum buf1 (BENQ pa y buf1'))) sink_op)) op2'"
+        if "pa \<notin> defaults"
+        for pa :: 'a
+          and y :: 'd
+        using that by (fastforce del: wbc_base intro: wbc_base)
+      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (comp_op (\<lambda>_. None) (\<lambda>_. []) (sink_op::('a, 'b, 'd) op) (sink_op::('a, 'c, 'd) op)) op2' \<and> wbisim_cong (\<lambda>op1 op2. (\<exists>buf1 buf1' buf2. op1 = map_op projl projr (comp_op Some buf2 (aeq_op (case_sum buf1 buf1')) sink_op)) \<and> op2 = comp_op (\<lambda>_. None) (\<lambda>_. []) sink_op sink_op) (map_op projl projr (comp_op Some (BENQ pa (BHD pa buf1') buf2) (aeq_op (case_sum (BTL pa buf1) (BTL pa buf1'))) sink_op)) op2'"
+        if "buf1 pa \<noteq> []"
+          and "buf1' pa \<noteq> []"
+          and "BHD pa buf1 = BHD pa buf1'"
+          and "pa \<notin> defaults"
+        for pa :: 'a
+        using that by (fastforce del: wbc_base intro: wbc_base)
+      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (comp_op (\<lambda>_. None) (\<lambda>_. []) (sink_op::('a, 'b, 'd) op) (sink_op::('a, 'c, 'd) op)) op2' \<and> wbisim_cong (\<lambda>op1 op2. (\<exists>buf1 buf1' buf2. op1 = map_op projl projr (comp_op Some buf2 (aeq_op (case_sum buf1 buf1')) sink_op)) \<and> op2 = comp_op (\<lambda>_. None) (\<lambda>_. []) sink_op sink_op) (map_op projl projr (comp_op Some (BTL pa buf2) (aeq_op (case_sum buf1 buf1')) sink_op)) op2'"
+        if "buf2 pa \<noteq> []"
+          and "pa \<notin> defaults"
+        for pa :: 'a
+        using that by (fastforce del: wbc_base intro: wbc_base)
+      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (comp_op (\<lambda>_. None) (\<lambda>_. []) (sink_op::('a, 'b, 'd) op) (sink_op::('a, 'c, 'd) op)) op2' \<and> wbisim_cong (\<lambda>op1 op2. (\<exists>buf1 buf1' buf2. op1 = map_op projl projr (comp_op Some buf2 (aeq_op (case_sum buf1 buf1')) sink_op)) \<and> op2 = comp_op (\<lambda>_. None) (\<lambda>_. []) sink_op sink_op) (map_op projl projr (comp_op Some buf2 (aeq_op (case_sum (BTL pa buf1) (BTL pa buf1'))) sink_op)) op2'"
+        if "buf1 pa \<noteq> []"
+          and "buf1' pa \<noteq> []"
+          and "BHD pa buf1 \<noteq> BHD pa buf1'"
+          and "pa \<notin> defaults"
+        for pa :: 'a
+        using that by (fastforce del: wbc_base intro: wbc_base)
+      ultimately show ?thesis
+        using H by (auto elim !: step_map_op_elim step_comp_op_elim step_aeq_op_elim step_drain_op)
+    qed
+  next
+    fix io :: "('a + 'a, 'b + 'c, 'd) IO"
+      and op1' :: "('a + 'a, 'b + 'c, 'd) op"
+    assume H: "step io (comp_op (\<lambda>_. None) (\<lambda>_. []) sink_op sink_op) op1'"
+    show "\<exists>op2'. wstep io (map_op projl projr (comp_op Some buf2 (aeq_op (case_sum buf1 buf1')) sink_op)) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2. op1 = map_op projl projr (comp_op Some buf2 (aeq_op (case_sum buf1 buf1')) sink_op) \<and> op2 = comp_op (\<lambda>_. None) (\<lambda>_. []) sink_op sink_op) op1' op2'"
+    proof -
+      have "\<exists>op2'. wstep (Inp (Inl pa) xa) (map_op projl projr (comp_op Some buf2 (aeq_op (case_sum buf1 buf1')) sink_op)) op2' \<and> wbisim_cong (\<lambda>op1 op2. (\<exists>buf1 buf1' buf2. op1 = map_op projl projr (comp_op Some buf2 (aeq_op (case_sum buf1 buf1')) sink_op)) \<and> op2 = comp_op (\<lambda>_. None) (\<lambda>_. []) (sink_op::('a, 'b, 'd) op) (sink_op::('a, 'c, 'd) op)) (comp_op (\<lambda>_. None) (\<lambda>_. []) sink_op sink_op) op2'"
+        if "pa \<notin> defaults"
+        for pa :: 'a
+          and xa :: 'd
+        using that by (fastforce intro: wbc_sym[OF wbc_base])
+      moreover have "\<exists>op2'. wstep (Inp (Inr pa) xa) (map_op projl projr (comp_op Some buf2 (aeq_op (case_sum buf1 buf1')) sink_op)) op2' \<and> wbisim_cong (\<lambda>op1 op2. (\<exists>buf1 buf1' buf2. op1 = map_op projl projr (comp_op Some buf2 (aeq_op (case_sum buf1 buf1')) sink_op)) \<and> op2 = comp_op (\<lambda>_. None) (\<lambda>_. []) (sink_op::('a, 'b, 'd) op) (sink_op::('a, 'c, 'd) op)) (comp_op (\<lambda>_. None) (\<lambda>_. []) sink_op sink_op) op2'"
+        if "pa \<notin> defaults"
+        for pa :: 'a
+          and xa :: 'd
+        using that by (fastforce intro: wbc_sym[OF wbc_base])
+      ultimately show ?thesis
+        using H by (auto elim !: step_comp_op_elim step_drain_op)
+    qed
+  qed
+qed
+
+lemma A4:
+  \<open>\<Q> \<bullet> ! \<approx> ! \<parallel> !\<close>
+  unfolding scomp_op_def
+  using A4_gen[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>  \<open>\<lambda>_. []\<close>]
+  by simp
 
   section \<open>Axiom: A5: Acopy to acopy and identity\<close>
 lemma acopy_op_acopy_id:
