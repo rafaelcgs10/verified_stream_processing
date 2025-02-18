@@ -3152,7 +3152,7 @@ lemma step_drain_op_Inp:
   apply auto
   done
 
-lemma no_step_drain_op_Out:
+lemma no_step_drain_op_Out[elim!]:
   assumes \<open>step io sink_op op\<close>
     and \<open>io = Out p x\<close>
   obtains False
@@ -3161,7 +3161,7 @@ lemma no_step_drain_op_Out:
   apply auto
   done
 
-lemma no_step_drain_op_Tau:
+lemma no_step_drain_op_Tau[elim!]:
   assumes \<open>step io sink_op op\<close>
     and \<open>io = Tau\<close>
   obtains False
