@@ -906,7 +906,19 @@ lemma acopy_op_aeq:
   "\<C> \<bullet> \<Q> \<approx> \<I>"
   oops
 
-  section \<open>Axiom A15: Transpose and equality test\<close>
+section \<open>Axiom A14: Equality test with 0 ports\<close>
+
+lemma A14:
+  \<open>(\<Q> :: ((unit + unit) + unit + unit, unit + unit, 'd) op) ~ \<oslash>\<close>
+proof -
+  have \<open>choices (\<Q> :: ((unit + unit) + unit + unit, unit + unit, 'd) op) = {||}\<close>
+    by (subst aeq_op_code, auto simp add: defaults_unit_def sum_in_defaults)
+  also have \<open>{||} = choices \<oslash>\<close> by simp
+  finally show ?thesis by (rule choices_Choice_bisim)
+qed
+
+section \<open>Axiom A15: Transpose and equality test\<close>
+
 lemma A15_gen:
   "(aeq_op (case_sum (case_sum (buf1M >> buf1M' >> buf1M'') (buf2N >> buf2N' >> buf2N'')) (case_sum (buf2M >> buf2M' >> buf2M'') (buf1N >> buf1N' >> buf1N''))) :: (('m :: {countable,defaults} + 'n ::{countable,defaults}) + 'm + 'n, 'm + 'n, 'd) op) \<approx>
    map_op projl projr (comp_op Some (case_sum (case_sum buf1M' buf2M') (case_sum buf2N' buf1N')) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. [])
