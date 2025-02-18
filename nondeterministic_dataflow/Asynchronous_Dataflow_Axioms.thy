@@ -68,7 +68,7 @@ lemma dummy_source_op_sink_op:
     apply auto
     done
   subgoal
-    using no_step_drain_op_Out
+    using no_step_sink_op_Out
     apply fastforce
     done
   subgoal
@@ -86,7 +86,7 @@ lemma dummy_source_op_sink_op:
     apply auto
     done
   subgoal
-    using no_step_id_op_Tau no_step_drain_op_Tau
+    using no_step_id_op_Tau no_step_sink_op_Tau
      apply blast+
     done
   done
@@ -146,7 +146,7 @@ lemma sink_op_pcomp_op_bufs:
           done
         done
       subgoal
-        using no_step_drain_op_Out
+        using no_step_sink_op_Out
         apply meson
         done
       subgoal for p x
@@ -174,7 +174,7 @@ lemma sink_op_pcomp_op_bufs:
           done
         done
       subgoal for p
-        apply (erule step_drain_op_Inp)
+        apply (erule step_sink_op_Inp)
         apply (auto split: sum.splits)
         subgoal for p'
           apply (rule exI[of _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (BTL p' buf1') (id_op buf1) sink_op))
@@ -195,7 +195,7 @@ lemma sink_op_pcomp_op_bufs:
           apply fast
           done
         done
-      using no_step_id_op_Tau no_step_drain_op_Tau
+      using no_step_id_op_Tau no_step_sink_op_Tau
        apply meson+
       done
     subgoal for io
@@ -227,7 +227,7 @@ lemma sink_op_pcomp_op_bufs:
         apply auto
         apply (drule step_comp_op_cases)
         apply auto
-        using no_step_drain_op_Out
+        using no_step_sink_op_Out
         apply meson
         done
       subgoal for p x
@@ -235,7 +235,7 @@ lemma sink_op_pcomp_op_bufs:
         apply auto
         apply (drule step_comp_op_cases)
         apply auto
-        using no_step_drain_op_Out
+        using no_step_sink_op_Out
         apply meson
         done
       subgoal for p x
@@ -275,7 +275,7 @@ lemma sink_op_pcomp_op_bufs:
           apply fast
           done
         subgoal for p
-          apply (erule step_drain_op_Inp)
+          apply (erule step_sink_op_Inp)
            apply simp
           apply (rule exI[of _ \<open>map_op projl projr (comp_op Some (case_sum (BTL p buf1') buf2') (id_op (case_sum buf1 buf2)) sink_op)\<close>])
           apply (rule conjI)
@@ -286,7 +286,7 @@ lemma sink_op_pcomp_op_bufs:
           apply (rule bc_base)
           apply fast
           done
-        using no_step_id_op_Tau no_step_drain_op_Tau
+        using no_step_id_op_Tau no_step_sink_op_Tau
          apply meson+
         done
       subgoal
@@ -305,7 +305,7 @@ lemma sink_op_pcomp_op_bufs:
           apply fast
           done
         subgoal for p
-          apply (erule step_drain_op_Inp)
+          apply (erule step_sink_op_Inp)
            apply simp
           apply (rule exI[of _ \<open>map_op projl projr (comp_op Some (case_sum buf1' (BTL p buf2')) (id_op (case_sum buf1 buf2)) sink_op)\<close>])
           apply (rule conjI)
@@ -314,7 +314,7 @@ lemma sink_op_pcomp_op_bufs:
           apply (rule bc_base)
           apply fast
           done
-        using no_step_id_op_Tau no_step_drain_op_Tau
+        using no_step_id_op_Tau no_step_sink_op_Tau
          apply meson+
         done
       done
@@ -345,12 +345,12 @@ proof (coinduction rule: bisim_coinduct_upto'')
         by (intro exI conjI[rotated, OF bc_base], force, force)
     qed
     then show ?thesis
-      using SIM1  by (elim step_drain_op)
+      using SIM1  by (elim step_sink_op)
   qed
 next
   case SIM2
   then show ?case 
-    explore (elim step_comp_op_elim step_drain_op; simp split: sum.splits; hypsubst_thin?)
+    explore (elim step_comp_op_elim step_sink_op; simp split: sum.splits; hypsubst_thin?)
   proof -
     have "\<exists>op2'. step (Inp (Inl pa) x) sink_op op2' \<and> bisim_cong (\<lambda>op1xx op2xx. op1xx = sink_op \<and> op2xx = comp_op (\<lambda>_. None) (\<lambda>_. []) (sink_op::('a, 'c, 'e) op) (sink_op::('b, 'd, _) op)) op2' (comp_op (\<lambda>_. None) (\<lambda>_. []) sink_op sink_op)"
       if "(pa::'a) \<notin> defaults"
@@ -373,7 +373,7 @@ next
       using that    
       by (intro exI conjI[rotated, OF bc_base], force, force)
     ultimately show ?thesis
-      using SIM2 by (elim step_comp_op_elim step_drain_op ; simp split: sum.splits ; hypsubst_thin ?)
+      using SIM2 by (elim step_comp_op_elim step_sink_op ; simp split: sum.splits ; hypsubst_thin ?)
   qed
 qed
 
