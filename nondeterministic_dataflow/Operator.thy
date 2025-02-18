@@ -812,6 +812,20 @@ lemma wstep_trans_tau_1[trans, intro]:
   unfolding wstep_def 
   by (smt (verit, ccfv_SIG) converse_rtranclp_into_rtranclp relcompp_apply)
 
+declare rtranclp.rtrancl_into_rtrancl[OF r_into_rtranclp, of "step Tau", trans]
+lemma step_Tau_closure_single[trans]:
+  "step Tau a c \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* a c"
+  by force
+
+lemma wstep_trans[trans]:
+  "(step Tau)\<^sup>*\<^sup>* op1 op1' \<Longrightarrow> step (Out p x) op1' op1'' \<Longrightarrow> wstep (Out p x) op1 op1''"
+  "(step Tau)\<^sup>*\<^sup>* op2 op2' \<Longrightarrow> step (Inp p' x') op2' op2'' \<Longrightarrow> wstep (Inp p' x') op2 op2''"
+  unfolding wstep_def by (simp add: relcomppI)+
+lemma wstep_trans_base[trans]:
+  "step Tau op1 op1' \<Longrightarrow> step (Out p x) op1' op1'' \<Longrightarrow> wstep (Out p x) op1 op1''"
+  "step Tau op2 op2' \<Longrightarrow> step (Inp p' x') op2' op2'' \<Longrightarrow> wstep (Inp p' x') op2 op2''"
+  unfolding wstep_def by auto
+
 lemma step_tau_step_tau_step_io_wstep:
   "step Tau op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step io op'' op''' \<Longrightarrow> wstep io op op'''"
   unfolding wstep_def 
@@ -995,6 +1009,21 @@ lemma wbisim_coinduct_upto[consumes 1, case_names BISIM]:
 *)
     done
   done
+
+lemma wbisim_coinduct_upto'[unfolded wsim_def, rule_format, consumes 1, case_names SIM1 SIM2]:
+  "R op1 op2 \<Longrightarrow>
+   (\<And>s t. R s t \<Longrightarrow> wsim (wbisim_cong R) s t) \<Longrightarrow>
+   (\<And>s t. R s t \<Longrightarrow> wsim (wbisim_cong R) t s) \<Longrightarrow>
+   op1 \<approx> op2"
+  using wbisim_coinduct_upto by blast
+thm wbisim_coinduct_upto'[no_vars]
+
+lemma wbisim_coinduct_upto''[consumes 1, case_names SIM1 SIM2]:
+  "R op1 op2 \<Longrightarrow>
+  (\<And>s t io op1'. R s t \<Longrightarrow> step io s op1' \<Longrightarrow> \<exists>op2'. wstep io t op2' \<and> wbisim_cong R op1' op2') \<Longrightarrow>
+  (\<And>s t io op1'. R s t \<Longrightarrow> step io t op1' \<Longrightarrow> \<exists>op2'. wstep io s op2' \<and> wbisim_cong R op2' op1') \<Longrightarrow>
+   op1 \<approx> op2"
+  using wbisim_coinduct_upto' by (smt (verit, ccfv_SIG) wbc_sym)
 
 lemma step_star_map_op[intro!]:
   "(step Tau)\<^sup>*\<^sup>* op op' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (map_op f g op) (map_op f g op')"
