@@ -3680,7 +3680,7 @@ lemma step_aeq_op_Inp_R:
   apply auto
   done
 
-lemma no_step_aeq_op_Out:
+lemma step_aeq_op_Out:
   assumes \<open>step io (aeq_op buf) op\<close>
     and \<open>io = Out p x\<close>
   obtains \<open>op = aeq_op (BTL (Inr p) (BTL (Inl p) buf))\<close> \<open>buf (Inl p) \<noteq> []\<close> \<open>x = BHD (Inl p) buf\<close> \<open>buf (Inr p) \<noteq> []\<close> \<open>BHD (Inl p) buf = BHD (Inr p) buf\<close> \<open>p \<notin> defaults\<close>
@@ -3689,7 +3689,7 @@ lemma no_step_aeq_op_Out:
   apply auto
   done
 
-lemma no_step_aeq_op_Tau:
+lemma step_aeq_op_Tau:
   assumes \<open>step io (aeq_op buf) op\<close>
     and \<open>io = Tau\<close>
   obtains p where \<open>op = aeq_op (BTL (Inr p) (BTL (Inl p) buf))\<close> \<open>buf (Inl p) \<noteq> []\<close> \<open>buf (Inr p) \<noteq> []\<close> \<open>BHD (Inl p) buf \<noteq> BHD (Inr p) buf\<close> \<open>p \<notin> defaults\<close>
