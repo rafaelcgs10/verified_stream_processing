@@ -3143,7 +3143,7 @@ section \<open>sink_op\<close>
 corec sink_op :: "('m :: {countable, defaults}, 'o, 'd) op" ("!") where
   "sink_op = Choice ((cimage (\<lambda> p. Read p (\<lambda> x. sink_op)) (cUNIV :: 'm cset)))"
 
-lemma step_drain_op_Inp:
+lemma step_sink_op_Inp:
   assumes \<open>step io sink_op op\<close>
     and \<open>io = Inp p x\<close>
   obtains \<open>op = sink_op\<close> \<open>p \<notin> defaults\<close>
@@ -3170,7 +3170,7 @@ lemma no_step_drain_op_Tau[elim!]:
   apply auto
   done
 
-lemma step_drain_op:
+lemma step_sink_op:
   assumes \<open>step io sink_op op\<close>
   obtains p x where \<open>io = Inp p x\<close> \<open>p \<notin> defaults\<close> \<open>op = sink_op\<close>
   apply atomize_elim
@@ -3179,13 +3179,13 @@ lemma step_drain_op:
   apply auto
   done
 
-lemma step_drain_op_Read[intro!]:
+lemma step_sink_op_Read[intro!]:
   \<open>p \<notin> defaults \<Longrightarrow> step (Inp p x) sink_op sink_op\<close>
   apply (subst sink_op.code)
   apply fastforce
   done
 
-lemma choices_drain_op[simp]:
+lemma choices_sink_op[simp]:
   \<open>choices sink_op =
   cimage (\<lambda> p. Read p (\<lambda> x. sink_op)) cUNIV\<close>
   apply (subst sink_op.code)
