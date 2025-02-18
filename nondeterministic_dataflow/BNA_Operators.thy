@@ -3140,61 +3140,57 @@ lemma choices_pcomp_op_dummy_source:
   done
 
 section \<open>sink_op\<close>                                     
-corec drain_op :: "('m :: {countable, defaults}, 'o, 'd) op" where
-  "drain_op = Choice ((cimage (\<lambda> p. Read p (\<lambda> x. drain_op)) (cUNIV :: 'm cset)))"
+corec sink_op :: "('m :: {countable, defaults}, 'o, 'd) op" ("!") where
+  "sink_op = Choice ((cimage (\<lambda> p. Read p (\<lambda> x. sink_op)) (cUNIV :: 'm cset)))"
 
 lemma step_drain_op_Inp:
-  assumes \<open>step io drain_op op\<close>
+  assumes \<open>step io sink_op op\<close>
     and \<open>io = Inp p x\<close>
-  obtains \<open>op = drain_op\<close> \<open>p \<notin> defaults\<close>
+  obtains \<open>op = sink_op\<close> \<open>p \<notin> defaults\<close>
   using assms
-  apply (subst (asm) drain_op.code)
+  apply (subst (asm) sink_op.code)
   apply auto
   done
 
 lemma no_step_drain_op_Out:
-  assumes \<open>step io drain_op op\<close>
+  assumes \<open>step io sink_op op\<close>
     and \<open>io = Out p x\<close>
   obtains False
   using assms
-  apply (subst (asm) drain_op.code)
+  apply (subst (asm) sink_op.code)
   apply auto
   done
 
 lemma no_step_drain_op_Tau:
-  assumes \<open>step io drain_op op\<close>
+  assumes \<open>step io sink_op op\<close>
     and \<open>io = Tau\<close>
   obtains False
   using assms
-  apply (subst (asm) drain_op.code)
+  apply (subst (asm) sink_op.code)
   apply auto
   done
 
 lemma step_drain_op:
-  assumes \<open>step io drain_op op\<close>
-  obtains p x where \<open>io = Inp p x\<close> \<open>p \<notin> defaults\<close> \<open>op = drain_op\<close>
+  assumes \<open>step io sink_op op\<close>
+  obtains p x where \<open>io = Inp p x\<close> \<open>p \<notin> defaults\<close> \<open>op = sink_op\<close>
   apply atomize_elim
   using assms
-  apply (subst (asm) drain_op.code)
+  apply (subst (asm) sink_op.code)
   apply auto
   done
 
 lemma step_drain_op_Read[intro!]:
-  \<open>p \<notin> defaults \<Longrightarrow> step (Inp p x) drain_op drain_op\<close>
-  apply (subst drain_op.code)
+  \<open>p \<notin> defaults \<Longrightarrow> step (Inp p x) sink_op sink_op\<close>
+  apply (subst sink_op.code)
   apply fastforce
   done
 
 lemma choices_drain_op[simp]:
-  \<open>choices drain_op =
-  cimage (\<lambda> p. Read p (\<lambda> x. drain_op)) cUNIV\<close>
-  apply (subst drain_op.code)
+  \<open>choices sink_op =
+  cimage (\<lambda> p. Read p (\<lambda> x. sink_op)) cUNIV\<close>
+  apply (subst sink_op.code)
   apply force
   done
-
-abbreviation "sink_gen_op buf \<equiv> id_op (\<lambda> _. []) \<bullet> drain_op"
-abbreviation sink_op ("!") where
-  "! \<equiv> \<I> \<bullet> drain_op"
 
 section \<open>transp_op - transposition operator\<close>
 

@@ -567,6 +567,20 @@ lemma bisim_coinduct_upto[consumes 1, case_names BISIM]:
     done
   done
 
+lemma bisim_coinduct_upto'[unfolded sim_def, rule_format, consumes 1, case_names SIM1 SIM2]:
+  "R op1 op2 \<Longrightarrow>
+   (\<And>s t. R s t \<Longrightarrow> sim (bisim_cong R) s t) \<Longrightarrow>
+   (\<And>s t. R s t \<Longrightarrow> sim (bisim_cong R) t s) \<Longrightarrow>
+   op1 ~ op2"
+  using bisim_coinduct_upto by blast
+
+lemma bisim_coinduct_upto''[consumes 1, case_names SIM1 SIM2]:
+  "R op1 op2 \<Longrightarrow>
+  (\<And>s t io op1'. R s t \<Longrightarrow> step io s op1' \<Longrightarrow> \<exists>op2'. step io t op2' \<and> bisim_cong R op1' op2') \<Longrightarrow>
+  (\<And>s t io op1'. R s t \<Longrightarrow> step io t op1' \<Longrightarrow> \<exists>op2'. step io s op2' \<and> bisim_cong R op2' op1') \<Longrightarrow>
+   op1 ~ op2"
+  using bisim_coinduct_upto' by (smt (verit, ccfv_SIG) bc_sym)
+
 lemma bisim_refl:
   "op1 ~ op1"
   by (coinduction rule: bisim_coinduct_upto) (auto intro: bc_refl simp: sim_def)
