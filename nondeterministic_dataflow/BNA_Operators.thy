@@ -3,6 +3,7 @@ theory BNA_Operators
 
 imports
   Operator
+  "HOL-ex.Sketch_and_Explore"
 begin
 
 term Inl
@@ -3152,7 +3153,7 @@ lemma step_sink_op_Inp:
   apply auto
   done
 
-lemma no_step_drain_op_Out[elim!]:
+lemma no_step_sink_op_Out:
   assumes \<open>step io sink_op op\<close>
     and \<open>io = Out p x\<close>
   obtains False
@@ -3161,7 +3162,7 @@ lemma no_step_drain_op_Out[elim!]:
   apply auto
   done
 
-lemma no_step_drain_op_Tau[elim!]:
+lemma no_step_sink_op_Tau:
   assumes \<open>step io sink_op op\<close>
     and \<open>io = Tau\<close>
   obtains False
@@ -3191,6 +3192,120 @@ lemma choices_sink_op[simp]:
   apply (subst sink_op.code)
   apply force
   done
+
+corec sink_buf_op :: "_ \<Rightarrow> ('m :: {countable, defaults}, 'o, 'd) op" where
+  "sink_buf_op buf = Choice ((cimage (\<lambda> p. Read p (\<lambda> x. (sink_buf_op (BENQ p x buf)))) (cUNIV :: 'm cset)))"
+
+lemma step_sink_buf_op_Inp:
+  assumes \<open>step io (sink_buf_op buf) op\<close>
+    and \<open>io = Inp p x\<close>
+  obtains \<open>op = (sink_buf_op (BENQ p x buf))\<close> \<open>p \<notin> defaults\<close>
+  using assms
+  apply (subst (asm) sink_buf_op.code)
+  apply auto
+  done
+
+lemma no_step_sink_buf_op_Out[elim!]:
+  assumes \<open>step io (sink_buf_op buf) op\<close>
+    and \<open>io = Out p x\<close>
+  obtains False
+  using assms
+  apply (subst (asm) sink_buf_op.code)
+  apply auto
+  done
+
+lemma no_step_sink_buf_op_Tau[elim!]:
+  assumes \<open>step io (sink_buf_op buf) op\<close>
+    and \<open>io = Tau\<close>
+  obtains False
+  using assms
+  apply (subst (asm) sink_buf_op.code)
+  apply auto
+  done
+
+lemma step_sink_buf_op:
+  assumes \<open>step io (sink_buf_op buf) op\<close>
+  obtains p x where \<open>io = Inp p x\<close> \<open>p \<notin> defaults\<close> \<open>op = sink_buf_op (BENQ p x buf)\<close>
+  apply atomize_elim
+  using assms
+  apply (subst (asm) sink_buf_op.code)
+  apply auto
+  done
+
+lemma step_sink_buf_op_Read[intro!]:
+  \<open>p \<notin> defaults \<Longrightarrow> buf' = BENQ p x buf \<Longrightarrow> step (Inp p x) (sink_buf_op buf) (sink_buf_op buf')\<close>
+  apply (subst sink_buf_op.code)
+  apply fastforce
+  done
+
+lemma sink_buf_op_sink:
+  "sink_buf_op buf ~ sink_op"
+proof (coinduction arbitrary: buf rule: bisim_coinduct_upto'')
+  case SIM1
+  then show ?case 
+  proof -
+    have "\<exists>op2'. step (Inp p x) (!::('a, 'b, 'c) op) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. (\<exists>buf. op1xx = sink_buf_op buf) \<and> op2xx = !) (sink_buf_op (BENQ p x buf)) op2'"
+      if "p \<notin> defaults"
+      for p :: 'a
+        and x :: 'c
+      using that by(intro exI conjI[rotated, OF bc_base], force, force)
+    then show ?thesis
+      using SIM1 by (auto elim !: step_sink_buf_op)
+  qed
+next
+  case SIM2
+  then show ?case 
+  proof -
+    have "\<exists>op2'. step (Inp p x) (sink_buf_op buf) (op2'::('a, 'b, 'c) op) \<and> bisim_cong (\<lambda>op1xx op2xx. (\<exists>buf. op1xx = sink_buf_op buf) \<and> op2xx = !) op2' !"
+      if "p \<notin> defaults"
+      for p :: 'a
+        and x :: 'c
+      using that by(intro exI conjI[rotated, OF bc_base], force, force)
+    then show ?thesis
+      using SIM2 by (auto elim !: step_sink_op)
+  qed
+qed
+
+
+lemma id_sink_op_sink_op:
+  "map_op projl projr (comp_op Some buf2 (id_op buf1) !) \<approx> !"
+  unfolding scomp_op_def
+proof (coinduction arbitrary: buf1 buf2 rule: wbisim_coinduct_upto'')
+  case SIM1
+  then show ?case 
+  proof -
+    have "\<exists>op2'. wstep (Inp pa xa) (!::('a, 'b, 'c) op) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. (\<exists>buf1 buf2. op1xx = map_op projl projr (comp_op Some buf2 (id_op buf1) !)) \<and> op2xx = !) (map_op projl projr (comp_op Some buf2 (id_op (BENQ pa xa buf1)) !)) op2'"
+      if "pa \<notin> defaults"
+      for pa :: 'a
+        and xa :: 'c
+      using that by (intro exI conjI[rotated, OF wbc_base], force, force)
+    moreover have "\<exists>op2'. (step (Tau::('a, 'b, 'c) IO))\<^sup>*\<^sup>* ! op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. (\<exists>buf1 buf2. op1xx = map_op projl projr (comp_op Some buf2 (id_op buf1) !)) \<and> op2xx = !) (map_op projl projr (comp_op Some (BENQ pa (BHD pa buf1) buf2) (id_op (BTL pa buf1)) !)) op2'"
+      if "pa \<notin> defaults"
+        and "buf1 pa \<noteq> []"
+      for pa :: 'a
+      using that by (intro exI conjI[rotated, OF wbc_base], force, force)
+    moreover have "\<exists>op2'. (step (Tau::('a, 'b, 'c) IO))\<^sup>*\<^sup>* ! op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. (\<exists>buf1 buf2. op1xx = map_op projl projr (comp_op Some buf2 (id_op buf1) !)) \<and> op2xx = !) (map_op projl projr (comp_op Some (BTL pa buf2) (id_op buf1) !)) op2'"
+      if "buf2 pa \<noteq> []"
+        and "pa \<notin> defaults"
+      for pa :: 'a
+      using that by (intro exI conjI[rotated, OF wbc_base], force, force)
+    ultimately show ?thesis
+      using SIM1 by (auto 0 0 elim !: step_map_op_elim step_comp_op_elim step_id_op_cases step_sink_op split: if_splits sum.splits)
+  qed
+next
+  case SIM2
+  then show ?case 
+  proof -
+    have "\<exists>op2'. wstep (Inp p x) (map_op projl projr (comp_op Some buf2 (id_op buf1) (!::('a, 'b, 'c) op))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. (\<exists>buf1 buf2. op1xx = map_op projl projr (comp_op Some buf2 (id_op buf1) !)) \<and> op2xx = !) op2' !"
+      if "p \<notin> defaults"
+      for p :: 'a
+        and x :: 'c
+      using that by (intro exI conjI[rotated, OF wbc_base], force, force)
+    then show ?thesis
+      using SIM2  by (auto 0 0 elim !: step_map_op_elim step_comp_op_elim step_id_op_cases step_sink_op split: if_splits sum.splits)
+  qed
+qed
+
 
 section \<open>transp_op - transposition operator\<close>
 
