@@ -316,6 +316,16 @@ section \<open>Axiom A15: Transpose and merge\<close>
   shows "Vmn \<approx> map_op reassoc reassoc (map_op assoc assoc (Imm \<parallel> Xnm) \<parallel> Inn) \<bullet> (Vm \<parallel> Vn)"
   oops *)
 
+section \<open>Axiom A16: Sink with 0 ports is end_op\<close>
+
+lemma A16:
+  \<open>(! :: (unit, unit, 'd) op) ~ \<oslash>\<close>
+proof -
+  have \<open>choices (! :: (unit, unit, 'd) op) = {||}\<close> by (auto simp add: defaults_unit_def sum_in_defaults)
+  also have \<open>{||} = choices \<oslash>\<close> by simp
+  finally show ?thesis by (rule choices_Choice_bisim)
+qed
+
 section \<open>Axiom A17: Parallel sink\<close>
 lemma sink_op_pcomp_op_bufs:
   \<open>map_op projl projr (comp_op Some (case_sum buf1' buf2') (id_op (case_sum buf1 buf2)) sink_op)
