@@ -638,6 +638,17 @@ next
   qed
 qed
 
+section \<open>Axiom A18: Split with 0 ports\<close>
+
+lemma A18:
+  \<open>(\<Lambda> :: (unit + unit, (unit + unit) + unit + unit, 'd) op) ~ \<oslash>\<close>
+proof -
+  have \<open>choices (\<Lambda> :: (unit + unit, (unit + unit) + unit + unit, 'd) op) = {||}\<close>
+    by (subst split_op_code, auto simp add: defaults_unit_def sum_in_defaults)
+  also have \<open>{||} = choices \<oslash>\<close> by simp
+  finally show ?thesis by (rule choices_Choice_bisim)
+qed
+
 section \<open>Axiom A19\<close>
 lemma split_op_transp_split_gen:
   "(split_op (case_sum (case_sum (buf1L >> buf1L' >> buf1L'') (buf2L >> buf2L' >> buf2L'')) (case_sum (buf1R >> buf1R' >> buf1R'') (buf2R >> buf2R' >> buf2R''))) :: ('m + 'n :: {countable, defaults},('m :: {countable, defaults} + 'n) + 'm + 'n,  'd) op) \<approx>
