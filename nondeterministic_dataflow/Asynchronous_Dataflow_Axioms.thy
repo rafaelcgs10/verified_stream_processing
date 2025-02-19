@@ -276,6 +276,26 @@ lemma dummy_source_op_sink_op:
     done
   done
 
+section \<open>Axiom A12: Dummy source with 0 ports is end_op\<close>
+
+lemma A12:
+  \<open>(\<exclamdown> :: (unit, unit, 'd) op) ~ \<oslash>\<close>
+proof -
+  have \<open>choices (\<exclamdown> :: (unit, unit, 'd) op) = {||}\<close> by simp
+  also have \<open>{||} = choices \<oslash>\<close> by simp
+  finally show ?thesis by (rule choices_Choice_bisim)
+qed
+
+(*
+lemma A12:
+  \<open>\<exclamdown> ~ \<oslash>\<close>
+proof -
+  have \<open>choices \<exclamdown> = {||}\<close> by simp
+  also have \<open>{||} = choices \<oslash>\<close> by simp
+  finally show ?thesis by (rule choices_Choice_bisim)
+qed
+*)
+
 section \<open>Axiom A13: Parallel dummy source\<close>
 
 lemma dummy_source_op_pcomp_op:
