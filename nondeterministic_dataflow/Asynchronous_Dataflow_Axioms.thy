@@ -46,22 +46,22 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
         if "pa \<notin> defaults"
         for pa :: 'a
           and xa :: 'b
-        using that by (force del: wbc_base intro!: wbc_base wstep_map_op[of \<open>Inp pa xa\<close>])
+        using that by (fastforce del: wbc_base intro!: wbc_base wstep_map_op[of \<open>Inp pa xa\<close>])
       moreover have "\<exists>op2'. wstep (Inp pa xa) (map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 (BENQ pa xa buf1'))) (transp_op (case_sum buf3 buf3')))) op2'"
         if "pa \<notin> defaults"
         for pa :: 'a
           and xa :: 'b
-        using that by (force del: wbc_base intro!: wbc_base wstep_map_op[of \<open>Inp pa xa\<close>])
+        using that by (fastforce del: wbc_base intro!: wbc_base wstep_map_op[of \<open>Inp pa xa\<close>])
       moreover have "\<exists>op2'. wstep (Out (Inl x1) (BHD x1 buf3')) (map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 (BTL x1 buf3'))))) op2'"
         if "x1 \<notin> defaults"
           and "buf3' x1 \<noteq> []"
         for x1 :: 'a
-        using that by (force del: wbc_base intro!: wbc_base wstep_map_op[of \<open>Out (Inr x1) (BHD x1 buf3')\<close>])
+        using that by (fastforce del: wbc_base intro!: wbc_base wstep_map_op[of \<open>Out (Inr x1) (BHD x1 buf3')\<close>])
       moreover have "\<exists>op2'. wstep (Out (Inr x2) (BHD x2 buf3)) (map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum (BTL x2 buf3) buf3')))) op2'"
         if "x2 \<notin> defaults"
           and "buf3 x2 \<noteq> []"
         for x2 :: 'a
-        using that by (force del: wbc_base intro!: wbc_base wstep_map_op[of \<open>Out (Inl x2) (BHD x2 buf3)\<close>])
+        using that by (fastforce del: wbc_base intro!: wbc_base wstep_map_op[of \<open>Out (Inl x2) (BHD x2 buf3)\<close>])
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op projl projr (comp_op Some (case_sum (BENQ x1 (BHD x1 buf1) buf2) buf2') (split_op (case_sum (BTL x1 buf1) buf1')) (transp_op (case_sum buf3 buf3')))) op2'"
         if "x1 \<notin> defaults"
           and "buf1 x1 \<noteq> []"
@@ -102,7 +102,7 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
         if "p \<notin> defaults"
         for p :: 'a
           and x :: 'b
-        using that by (force intro!: wbc_sym[OF wbc_base])
+        using that by (fastforce intro!: wbc_sym[OF wbc_base])
       moreover have "\<exists>op2'. wstep (Out (Inr x1a) (BHD x1a buf1)) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op id (case_sum Inr Inl) (split_op (case_sum ((BTL x1a buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) op2'"
         if "buf1 x1a \<noteq> []"
           and "x1a \<notin> defaults"
