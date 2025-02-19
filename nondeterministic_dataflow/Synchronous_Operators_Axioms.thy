@@ -2737,6 +2737,17 @@ lemma aeq_op_transp_aeq:
   shows "Qmn \<approx> map_op reassoc reassoc (map_op assoc assoc (Imm \<parallel> Xnm) \<parallel> Inn) \<bullet> (Qm \<parallel> Qn)"
   using assms unfolding scomp_op_def pcomp_op_def using A15_gen[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []"] by auto
 
+section \<open>Axiom A18: Acopy with 0 ports\<close>
+
+lemma A18:
+  \<open>(\<C> :: (unit + unit, (unit + unit) + unit + unit, 'd) op) ~ \<oslash>\<close>
+proof -
+  have \<open>choices (\<C> :: (unit + unit, (unit + unit) + unit + unit, 'd) op) = {||}\<close>
+    by (subst acopy_op_code, auto simp add: defaults_unit_def sum_in_defaults)
+  also have \<open>{||} = choices \<oslash>\<close> by simp
+  finally show ?thesis by (rule choices_Choice_bisim)
+qed
+
 section \<open>Axiom A19: Acopy and equality test\<close>
 lemma A19_gen:
   "(acopy_op (case_sum (case_sum (bufML >> bufML' >> bufML'') (bufNL >> bufNL' >> bufNL'')) (case_sum (bufMR >> bufMR' >> bufMR'') (bufNR >> bufNR' >> bufNR''))) :: ('m + 'n,('m :: {countable,defaults} + 'n ::{countable,defaults}) + 'm + 'n, 'd) op) \<approx>
