@@ -103,32 +103,9 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
         for p :: 'a
           and x :: 'b
         using that by (force intro!: wbc_sym[OF wbc_base])
-      moreover have "\<exists>op2'. wstep (Out (Inr x1a) (BHD x1a buf2)) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> BTL x1a buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) op2'"
-        if "x1a \<notin> defaults"
-          and "buf2 x1a \<noteq> []"
-          and "buf3 x1a = []"
-        for x1a :: 'a
-      proof -
-        have \<open>step Tau (map_op projl projr (comp_op Some (case_sum buf2 buf2')
-    (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))))
-    (map_op projl projr (comp_op Some (case_sum (BTL x1a buf2) buf2')
-    (split_op (case_sum buf1 buf1')) (transp_op (case_sum (BENQ x1a (BHD x1a buf2) buf3) buf3'))))\<close>
-          using that by auto
-        also have \<open>step (Out (Inr x1a) (BHD x1a buf2)) \<dots>
-    (map_op projl projr (comp_op Some (case_sum (BTL x1a buf2) buf2')
-    (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))))\<close>
-          using that by (auto intro!: step_map_op[of \<open>Out (Inr (Inr x1a)) (BHD x1a buf2)\<close>])
-        finally show ?thesis by (fastforce intro: wbc_sym[OF wbc_base])
-      qed
-      moreover have "\<exists>op2'. wstep (Out (Inr x1a) (BHD x1a buf3)) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> BTL x1a buf3) ((buf1' >> buf2') >> buf3')))) op2'"
-        if "x1a \<notin> defaults"
-          and "buf2 x1a \<noteq> []"
-          and "buf3 x1a \<noteq> []"
-        for x1a :: 'a
-        using that by (intro exI conjI[rotated, OF wbc_sym[OF wbc_base]], force+)
       moreover have "\<exists>op2'. wstep (Out (Inr x1a) (BHD x1a buf1)) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op id (case_sum Inr Inl) (split_op (case_sum ((BTL x1a buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) op2'"
-        if "x1a \<notin> defaults"
-          and "buf1 x1a \<noteq> []"
+        if "buf1 x1a \<noteq> []"
+          and "x1a \<notin> defaults"
           and "buf2 x1a = []"
           and "buf3 x1a = []"
         for x1a :: 'a
@@ -148,16 +125,8 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
           using that by (auto intro!: step_map_op[of \<open>Out (Inr (Inr x1a)) (BHD x1a buf1)\<close>])
         finally show ?thesis by (fastforce intro: wbc_sym[OF wbc_base])
       qed
-      moreover have "\<exists>op2'. wstep (Out (Inr x1a) (BHD x1a buf3)) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> BTL x1a buf3) ((buf1' >> buf2') >> buf3')))) op2'"
-        if "x1a \<notin> defaults"
-          and "buf1 x1a \<noteq> []"
-          and "buf2 x1a = []"
-          and "buf3 x1a \<noteq> []"
-        for x1a :: 'a
-        using that by (intro exI conjI[rotated, OF wbc_sym[OF wbc_base]], force+)
       moreover have "\<exists>op2'. wstep (Out (Inr x1a) (BHD x1a buf2)) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> BTL x1a buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) op2'"
         if "x1a \<notin> defaults"
-          and "buf1 x1a \<noteq> []"
           and "buf2 x1a \<noteq> []"
           and "buf3 x1a = []"
         for x1a :: 'a
@@ -175,13 +144,6 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
       qed
       moreover have "\<exists>op2'. wstep (Out (Inr x1a) (BHD x1a buf3)) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> BTL x1a buf3) ((buf1' >> buf2') >> buf3')))) op2'"
         if "x1a \<notin> defaults"
-          and "buf1 x1a \<noteq> []"
-          and "buf2 x1a \<noteq> []"
-          and "buf3 x1a \<noteq> []"
-        for x1a :: 'a
-        using that by (intro exI conjI[rotated, OF wbc_sym[OF wbc_base]], force+)
-      moreover have "\<exists>op2'. wstep (Out (Inr x1a) (BHD x1a buf3)) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> BTL x1a buf3) ((buf1' >> buf2') >> buf3')))) op2'"
-        if "x1a \<notin> defaults"
           and "buf2 x1a = []"
           and "buf3 x1a \<noteq> []"
         for x1a :: 'a
@@ -192,32 +154,9 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
           and "buf3 x1a \<noteq> []"
         for x1a :: 'a
         using that by (intro exI conjI[rotated, OF wbc_sym[OF wbc_base]], force+)
-      moreover have "\<exists>op2'. wstep (Out (Inl x2a) (BHD x2a buf2')) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> BTL x2a buf2') >> buf3')))) op2'"
-        if "x2a \<notin> defaults"
-          and "buf2' x2a \<noteq> []"
-          and "buf3' x2a = []"
-        for x2a :: 'a
-      proof -
-        have \<open>step Tau (map_op projl projr (comp_op Some (case_sum buf2 buf2')
-    (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))))
-    (map_op projl projr (comp_op Some (case_sum buf2 (BTL x2a buf2'))
-    (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 (BENQ x2a (BHD x2a buf2') buf3')))))\<close>
-          using that by auto
-        also have \<open>step (Out (Inl x2a) (BHD x2a buf2')) \<dots>
-    (map_op projl projr (comp_op Some (case_sum buf2 (BTL x2a buf2'))
-    (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))))\<close>
-          using that by (auto intro!: step_map_op[of \<open>Out (Inr (Inl x2a)) (BHD x2a buf2')\<close>])
-        finally show ?thesis by (fastforce intro: wbc_sym[OF wbc_base])
-      qed
-      moreover have "\<exists>op2'. wstep (Out (Inl x2a) (BHD x2a buf3')) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> BTL x2a buf3')))) op2'"
-        if "x2a \<notin> defaults"
-          and "buf2' x2a \<noteq> []"
-          and "buf3' x2a \<noteq> []"
-        for x2a :: 'a
-        using that by (intro exI conjI[rotated, OF wbc_sym[OF wbc_base]], force+)
       moreover have "\<exists>op2'. wstep (Out (Inl x2a) (BHD x2a buf1')) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((BTL x2a buf1' >> buf2') >> buf3')))) op2'"
-        if "x2a \<notin> defaults"
-          and "buf1' x2a \<noteq> []"
+        if "buf1' x2a \<noteq> []"
+          and "x2a \<notin> defaults"
           and "buf2' x2a = []"
           and "buf3' x2a = []"
         for x2a :: 'a
@@ -237,16 +176,8 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
           using that by (auto intro!: step_map_op[of \<open>Out (Inr (Inl x2a)) (BHD x2a buf1')\<close>])
         finally show ?thesis by (fastforce intro: wbc_sym[OF wbc_base])
       qed
-      moreover have "\<exists>op2'. wstep (Out (Inl x2a) (BHD x2a buf3')) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> BTL x2a buf3')))) op2'"
-        if "x2a \<notin> defaults"
-          and "buf1' x2a \<noteq> []"
-          and "buf2' x2a = []"
-          and "buf3' x2a \<noteq> []"
-        for x2a :: 'a
-        using that by (intro exI conjI[rotated, OF wbc_sym[OF wbc_base]], force+)
       moreover have "\<exists>op2'. wstep (Out (Inl x2a) (BHD x2a buf2')) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> BTL x2a buf2') >> buf3')))) op2'"
         if "x2a \<notin> defaults"
-          and "buf1' x2a \<noteq> []"
           and "buf2' x2a \<noteq> []"
           and "buf3' x2a = []"
         for x2a :: 'a
@@ -264,13 +195,6 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
       qed
       moreover have "\<exists>op2'. wstep (Out (Inl x2a) (BHD x2a buf3')) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> BTL x2a buf3')))) op2'"
         if "x2a \<notin> defaults"
-          and "buf1' x2a \<noteq> []"
-          and "buf2' x2a \<noteq> []"
-          and "buf3' x2a \<noteq> []"
-        for x2a :: 'a
-        using that by (intro exI conjI[rotated, OF wbc_sym[OF wbc_base]], force+)
-      moreover have "\<exists>op2'. wstep (Out (Inl x2a) (BHD x2a buf3')) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> BTL x2a buf3')))) op2'"
-        if "x2a \<notin> defaults"
           and "buf2' x2a = []"
           and "buf3' x2a \<noteq> []"
         for x2a :: 'a
@@ -282,7 +206,7 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
         for x2a :: 'a
         using that by (intro exI conjI[rotated, OF wbc_sym[OF wbc_base]], force+)
       ultimately show ?thesis
-        using H by (auto elim !: step_map_op_elim step_split_op_cases split: sum.splits)
+        using H by (auto elim !: step_map_op_elim step_split_op_cases split: sum.splits if_splits)
     qed
   qed
 qed
@@ -1200,8 +1124,27 @@ lemma loop_op_merge_sink:
   oops
 
 section \<open>Axiom F4: Loop split\<close>
-lemma loop_op_split_dummy_source:
-  "map_op Inr id \<Lambda>\<up> ~ \<exclamdown>"
-  oops
+
+lemma F4:
+  \<open>map_op Inr id \<Lambda>\<up> ~ \<exclamdown>\<close>
+  unfolding feedback_op_def scomp_op_def
+proof (coinduction rule: bisim_coinduct_upto)
+  case BISIM
+  then show ?case
+    unfolding sim_def
+  proof (intro allI conjI impI)
+    fix io :: "('a, 'b, 'c) IO"
+      and op1' :: "('a, 'b, 'c) op"
+    assume H: "step io (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (\<lambda>_. [])) (map_op Inr id \<Lambda>))) op1'"
+    show "\<exists>op2'. step io (map_op projl projr (comp_op Some (\<lambda>_. []) \<oslash> \<I>)) op2' \<and> bisim_cong (\<lambda>s t. s = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (\<lambda>_. [])) (map_op Inr id \<Lambda>)) \<and> t = map_op projl projr (comp_op Some (\<lambda>_. []) \<oslash> \<I>)) op1' op2'"
+      using H by (auto elim!: step_map_op_elim step_loop_op_elim step_split_op_cases)
+  next
+    fix io :: "('a, 'b, 'c) IO"
+      and op1' :: "('a, 'b, 'c) op"
+    assume H: "step io (map_op projl projr (comp_op Some (\<lambda>_. []) \<oslash> \<I>)) op1'"
+    show "\<exists>op2'. step io (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (\<lambda>_. [])) (map_op Inr id \<Lambda>))) op2' \<and> bisim_cong (\<lambda>s t. s = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (\<lambda>_. [])) (map_op Inr id \<Lambda>)) \<and> t = map_op projl projr (comp_op Some (\<lambda>_. []) \<oslash> \<I>)) op1' op2'"
+      using H by (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases)
+  qed
+qed
 
 end
