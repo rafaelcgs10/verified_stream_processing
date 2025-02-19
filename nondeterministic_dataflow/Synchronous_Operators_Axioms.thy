@@ -218,13 +218,11 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op projl projr (comp_op Some (case_sum (BENQ x1 (BHD x1 buf1') buf2) buf2') (transp_op (case_sum buf1 (BTL x1 buf1'))) (aeq_op (case_sum buf3 buf3')))) op2'"
         if "x1 \<notin> defaults"
           and "buf1' x1 \<noteq> []"
-          and "op1' = map_op projl projr (comp_op Some (case_sum (BENQ x1 (BHD x1 buf1') buf2) buf2') (transp_op (case_sum buf1 (BTL x1 buf1'))) (aeq_op (case_sum buf3 buf3')))"
         for x1 :: 'a
         using that by (fastforce del: wbc_base intro: wbc_base)
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op projl projr (comp_op Some (case_sum buf2 (BENQ x2 (BHD x2 buf1) buf2')) (transp_op (case_sum (BTL x2 buf1) buf1')) (aeq_op (case_sum buf3 buf3')))) op2'"
         if "x2 \<notin> defaults"
           and "buf1 x2 \<noteq> []"
-          and "op1' = map_op projl projr (comp_op Some (case_sum buf2 (BENQ x2 (BHD x2 buf1) buf2')) (transp_op (case_sum (BTL x2 buf1) buf1')) (aeq_op (case_sum buf3 buf3')))"
         for x2 :: 'a
         using that by (fastforce del: wbc_base intro: wbc_base)
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum buf3 buf3'))) \<and> op2 = map_op (case_sum Inr Inl) id (aeq_op (case_sum ((buf1' >> buf2) >> buf3) ((buf1 >> buf2') >> buf3')))) (map_op projl projr (comp_op Some (case_sum (BTL pa buf2) buf2') (transp_op (case_sum buf1 buf1')) (aeq_op (case_sum (BENQ pa (BHD pa buf2) buf3) buf3')))) op2'"
