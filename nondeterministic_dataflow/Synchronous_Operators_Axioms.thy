@@ -1162,9 +1162,42 @@ lemma acopy_op_dummy_source:
 
 section \<open>Axiom: A10: Equality test to acopy\<close>
 
-lemma aux:
-  "map_op projl projr (comp_op Some buf2 (aeq_op (case_sum buf1 buf1')) (id_op buf3)) \<approx> (aeq_op (case_sum (buf1 >> buf2 >> buf3) (buf1' >> buf2 >> buf3)))"
+lemma wstep_map_op_inv:
+  "wstep io (map_op f g op) op' \<Longrightarrow>
+   \<exists> io' op''. wstep io' op op'' \<and> map_IO f g id io' = io \<and> map_op f g op'' = op'"
   sorry
+
+lemma
+  "map_op projl projl op \<approx> map_op projl projl op' \<Longrightarrow>
+   map_op projr projr op \<approx> map_op projr projr op' \<Longrightarrow>
+   op \<approx> op'"
+  apply (coinduction arbitrary: op op' rule: wbisim_coinduct_upto'')
+  subgoal for io op1' op op'
+    apply (erule step.cases)
+    subgoal for p f x
+      apply hypsubst_thin
+      apply (cases p)
+      subgoal premises prems for lp
+        using prems(1,3)
+        apply hypsubst_thin
+        apply (erule wbisim_wstep[OF wbisimulation_wbisim])
+         apply simp
+         apply (rule step_wstep)
+         apply (rule SR)
+        apply (drule wstep_map_op_inv)
+        apply (elim exE conjE)
+        apply simp
+        apply hypsubst_thin
+        apply (intro conjI[rotated] exI)
+        apply blast
+        apply (drule sym[of _ "Inp lp f"])
+        apply simp
+        subgoal for io'
+          apply (cases io'; simp)
+          subgoal for q
+            apply (cases q; simp)
+            oops
+
 
 lemma
   "map_op projl projr (comp_op Some K (aeq_op (case_sum buf1 buf2)) (acopy_op B)) \<approx>
@@ -1175,6 +1208,17 @@ lemma
          (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (transp_op (case_sum buf1'' buf2'')))) (id_op buf2'')))))
      (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1'''' buf2''')) (aeq_op (case_sum buf1'''' buf2''''))))"
   oops
+
+lemma
+  "map_op projl projr (comp_op Some A1 (aeq_op (case_sum (B1 >> B1' >> B1'' >> B1''') (B2 >> B2' >> B2'' >> B2'''))) (acopy_op (case_sum A2 A3))) \<approx>
+   map_op projl projr
+   (comp_op Some (case_sum (case_sum B1''' B2''') (case_sum (\<lambda> _. []) (\<lambda> _. [])))
+     (map_op projl projr
+       (comp_op Some (case_sum (case_sum B1 (\<lambda> _. [])) (case_sum B2' (\<lambda> _. []))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum B1 (\<lambda> _. []))) (acopy_op (case_sum B2 (\<lambda> _. []))))
+         (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1'') (transp_op (case_sum (\<lambda> _. []) B2'')))) (id_op (\<lambda> _. []))))))
+     (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum (A1 >> A2) (A1 >> A3))) (aeq_op (case_sum (\<lambda>_. []) (\<lambda>_. [])))))"
+  oops
+
 
 
 lemma A10:
