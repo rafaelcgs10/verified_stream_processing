@@ -919,8 +919,25 @@ lemma acopy_op_dummy_source:
   done
 
 section \<open>Axiom: A10: Equality test to acopy\<close>
-lemma aeq_op_acopy:
-  "\<Q> \<bullet> \<C> ~ (\<C> \<parallel> \<C>) \<bullet> (map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)) \<bullet> (\<Q> \<parallel> \<Q>)"
+
+lemma aux:
+  "map_op projl projr (comp_op Some buf2 (aeq_op (case_sum buf1 buf1')) (id_op buf3)) \<approx> (aeq_op (case_sum (buf1 >> buf2 >> buf3) (buf1' >> buf2 >> buf3)))"
+  sorry
+
+lemma
+  "map_op projl projr (comp_op Some K (aeq_op (case_sum buf1 buf2)) (acopy_op B)) \<approx>
+   map_op projl projr
+   (comp_op Some (case_sum (case_sum buf1''' buf2''') (case_sum buf1''' buf2'''))
+     (map_op projl projr
+       (comp_op Some (case_sum (case_sum buf1' buf1') (case_sum buf2' buf2')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum buf1 buf1)) (acopy_op (case_sum buf2 buf2)))
+         (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1'') (transp_op (case_sum buf1'' buf2'')))) (id_op buf2'')))))
+     (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum buf1'''' buf2''')) (aeq_op (case_sum buf1'''' buf2''''))))"
+  oops
+
+
+lemma A10:
+  "\<Q> \<bullet> \<C> \<approx> (\<C> \<parallel> \<C>) \<bullet> (map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)) \<bullet> (\<Q> \<parallel> \<Q>)"
+  unfolding scomp_op_def pcomp_op_def
   oops
 
   section \<open>Axiom: A11: Acopy to equality test\<close>
@@ -2485,7 +2502,7 @@ proof (coinduction arbitrary: buf1M buf1M' buf1M'' buf1N buf1N' buf1N'' buf2M bu
 qed
 
 
-lemma aeq_op_transp_aeq:
+lemma A15:
   assumes "Qmn = (\<Q> :: (('m :: {countable,defaults} + 'n ::{countable,defaults}) + 'm + 'n, 'm + 'n, 'd) op)"
     and "Qm = (\<Q> :: ('m + 'm, 'm, 'd) op)"
     and "Qn =  (\<Q> :: ('n + 'n, 'n, 'd) op)"
