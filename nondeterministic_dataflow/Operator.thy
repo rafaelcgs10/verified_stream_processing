@@ -170,6 +170,14 @@ lemma BULK_BENQ_BTL_right_not_empty_case_sum:
   BTL p (buf1 >> buf2 \<circ> case_sum Inr Inl) = buf1 >> BTL (case_sum Inr Inl p) buf2 \<circ> case_sum Inr Inl\<close>
   unfolding BTL_def BULK_BENQ_def by (auto split: sum.splits)
 
+lemma BULK_BENQ_eq_right[simp]:
+  "A >> B = A >> C \<longleftrightarrow> B = C"
+  unfolding BULK_BENQ_def by (meson append_same_eq ext)
+
+lemma BULK_BENQ_eq_left[simp]:
+  "A >> C = B >> C \<longleftrightarrow> A = B"
+  unfolding BULK_BENQ_def by (meson ext same_append_eq)
+
 section\<open>Operator\<close>
 
 codatatype (inputs: 'ip, outputs: 'op, dead 'd) op =
