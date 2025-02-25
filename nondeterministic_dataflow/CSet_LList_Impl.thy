@@ -48,9 +48,9 @@ subclass countable
 
 end
 
-lemma cUNIV_code[code]: "(cUNIV :: 'a :: cenum cset) = cset_of_llist cenum"
+lemma cUNIV_code[code]: "(cUNIV :: 'a :: {cenum, defaults} cset) = cset_of_llist (lfilter (\<lambda>x. x \<notin> defaults) cenum)"
   including cset.lifting
-  by (transfer, rule UNIV_cenum)
+  by (transfer) (auto simp: UNIV_cenum[symmetric])
 
 context enum begin
 sublocale enum_cenum: cenum "llist_of Enum.enum"
@@ -455,6 +455,15 @@ definition "show_list show xs = enclose (show_list0 show xs)"
 definition "bar = force_cset show_nat 10 (cUn (cset_of_llist (from 42)) (cset_of_llist (const 2)))"
 export_code bar cis_empty in Haskell module_name Bar
 
+instantiation bool :: defaults begin
+definition defaults_bool :: "bool set" where "defaults_bool = {}"
+instance by standard
+end
+
+instantiation nat :: defaults begin
+definition defaults_nat :: "nat set" where "defaults_nat = {}"
+instance by standard
+end
 
 value [GHC] "force_cset show_nat 10 (cUn (cset_of_llist (from 42)) (cset_of_llist (const 2)))"
 value [GHC] "force_cset show_nat 10 (cempty :: nat cset)"

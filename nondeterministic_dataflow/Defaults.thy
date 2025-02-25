@@ -1,11 +1,10 @@
 text \<open>defaultss setup\<close>
 
 theory Defaults
-  imports HOL.HOL HOL.Sum_Type HOL.Product_Type Main
+  imports Main
 begin
 
 class defaults = fixes defaults :: "'a set"
-
 
 instantiation sum :: (defaults, type) defaults
 begin
