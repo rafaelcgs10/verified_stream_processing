@@ -3102,7 +3102,9 @@ lemma step_Tau_loop_op[intro]:
     done
   done
 
-
+lemma id_op_unit_end_op:
+  \<open>(\<I> :: (unit, unit, 'd) op) ~ \<oslash>\<close>
+  by (rule choices_Choice_bisim) (simp add: defaults_unit_def)
 
 section \<open>User defined operators\<close>
   (* abbreviation buffered ("\<stileturn> _ \<turnstile>" [150]151) where
@@ -3782,6 +3784,16 @@ lemma step_acopy_op_Write[intro]:
   \<open>p \<notin> defaults \<Longrightarrow> buf' = BTL p buf \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> BHD p buf = x \<Longrightarrow> step (Out p x) (acopy_op buf) (acopy_op buf')\<close>
   by (metis Inl_in_defaults Inr_in_defaults obj_sumE step_acopy_op_WriteL step_acopy_op_WriteR)
 
+lemma choices_acopy_op[simp]:
+  \<open>choices (acopy_op buf) = cUn (cUn
+    (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda> x. acopy_op (BENQ (Inr p) x (BENQ (Inl p) x buf)))) cUNIV)))
+    (cUnion (cimage choices (cimage (\<lambda>p. Write (acopy_op (BTL (Inl p) buf)) (Inl p) (BHD (Inl p) buf))
+      (cfilter (\<lambda>p. buf (Inl p) \<noteq> []) cUNIV)))))
+    (cUnion (cimage choices (cimage (\<lambda>p. Write (acopy_op (BTL (Inr p) buf)) (Inr p) (BHD (Inr p) buf))
+      (cfilter (\<lambda>p. buf (Inr p) \<noteq> []) cUNIV))))\<close>
+  apply (subst acopy_op_code)
+  by auto
+
 section \<open>aeq_op - async equality operator\<close>
 datatype (discs_sels) ('m, 'd) aeq_op_aux =
   aeq_Read_aux \<open>'m + 'm\<close> \<open>'d \<Rightarrow> 'm + 'm \<Rightarrow> 'd buf\<close>
@@ -3919,5 +3931,16 @@ lemma step_aeq_op_Silent[intro!]:
   apply (subst aeq_op_code)
   apply fastforce
   done
+
+lemma choices_aeq_op[simp]:
+  \<open>choices (aeq_op buf) = cUn (cUn
+    (cUnion (cimage choices (cimage (\<lambda>p. Read (Inl p) (\<lambda>x. aeq_op (BENQ (Inl p) x buf))) cUNIV)))
+    (cUnion (cimage choices (cimage (\<lambda>p. Read (Inr p) (\<lambda>x. aeq_op (BENQ (Inr p) x buf))) cUNIV))))
+    (cUnion (cimage choices (cimage (\<lambda>p. (if BHD (Inl p) buf = BHD (Inr p) buf
+        then Write (aeq_op (BTL (Inr p) (BTL (Inl p) buf))) p (BHD (Inl p) buf)
+        else Silent (aeq_op (BTL (Inr p) (BTL (Inl p) buf)))))
+      (cfilter (\<lambda>p. buf (Inl p) \<noteq> [] \<and> buf (Inr p) \<noteq> []) cUNIV))))\<close>
+  apply (subst aeq_op_code)
+  by simp
 
 end
