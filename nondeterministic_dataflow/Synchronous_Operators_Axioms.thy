@@ -1184,6 +1184,20 @@ lemma nprefix_0[simp]: "nprefix 0 xs ys \<longleftrightarrow> xs = ys"
 
 declare BULK_BENQ_left_empty[simp del] BULK_BENQ_right_empty[simp del] list_emb_Nil2[simp del]
 
+definition "length_consumed n xs ys = length (filter (case_prod (=)) (zip (take n xs) (take n ys)))"
+
+lemma length_consumed_0[simp]:
+  "length_consumed 0 xs ys = 0"
+  unfolding length_consumed_def by simp
+
+lemma length_consumed_Suc[simp]:
+  "xs \<noteq> [] \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> hd xs \<noteq> hd ys \<Longrightarrow> length_consumed (Suc n) xs ys = length_consumed n (tl xs) (tl ys)"
+  unfolding length_consumed_def by (simp add: take_Suc)
+
+lemma length_consumed_leq:
+  "length_consumed n xs ys \<le> n"
+  unfolding length_consumed_def by (metis length_filter_le length_take length_zip min.bounded_iff)
+
 
 lemma
   assumes "A = A1 >> A2 >> A3 >> A4 >> A5"
@@ -1193,7 +1207,7 @@ lemma
   and "AC = AC1 >> AC2"
   and "BD = BD1 >> BD2"
   and "\<forall> p. \<exists> m n m' n'. (m = 0 \<or> n = 0) \<and> nsuffix n (A p) (X p) \<and> nsuffix n (C p) (Y p) \<and> nsuffix m (B p) (X p) \<and> nsuffix m (D p) (Y p) \<and> 
-       nprefix n' ((Z >> V) p) (AC p) \<and> nprefix m' ((Z >> W) p) (BD p) \<and> n' \<le> n \<and> m' \<le> m"
+       nprefix n' ((Z >> V) p) (AC p) \<and> nprefix m' ((Z >> W) p) (BD p) \<and> n' = length_consumed n (X p) (Y p) \<and> m' = length_consumed m (X p) (Y p) "
   shows  "map_op projl projr (comp_op Some Z (aeq_op (case_sum X Y)) (acopy_op (case_sum V W))) \<approx>
    map_op projl projr
    (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
@@ -1215,13 +1229,13 @@ next
     apply (elim exE conjE step_acopy_op_elim step_aeq_op_elim step_comp_op_elim step_map_op_elim step_transp_op_cases step_id_op_cases)
     apply (simp_all only: IO.simps)
     apply (simp_all split!: sum.splits if_splits; hypsubst_thin?)
-                        prefer 55
+    prefer 55
     apply (simp_all split: sum.splits if_splits)[1]
     subgoal for io' op'' op2' op2'a io'a op''a op1'a pc
       apply hypsubst_thin
       apply (frule spec[of _ pc])
       apply (elim exE disjE conjE)
-      subgoal for m n m' n'
+      subgoal for m n
         apply hypsubst_thin
         apply (cases "n = 0")
         subgoal
@@ -1229,114 +1243,287 @@ next
           apply (intro exI conjI)
           apply (rule rtranclp.intros(1))
           apply (rule wbc_base)
-        apply (intro exI conjI)
-           apply (rule refl)+
-         apply (intro allI)
-         subgoal for pd
-           apply (cases "pc = pd")
-           subgoal
-             apply simp
-             apply (rule exI[of _ 1])
-             apply (rule exI[of _ 0])
-             apply simp
-             apply (intro conjI)
-             subgoal
-               unfolding nsuffix_def
-               by (metis (no_types, lifting) BTL_access BULK_BENQ_def BULK_BENQ_empty One_nat_def Suc_pred add_diff_cancel_right' length_greater_0_conv length_tl plus_1_eq_Suc suffix_BTL tl_append2)
-    subgoal
-               unfolding nsuffix_def
-               by (metis (no_types, lifting) BTL_access BULK_BENQ_def BULK_BENQ_empty One_nat_def Suc_pred add_diff_cancel_right' length_greater_0_conv length_tl plus_1_eq_Suc suffix_BTL tl_append2)
-         apply (rule exI[of _ 0])
-             apply simp
-             done
-           subgoal
-             apply (drule spec[of _ pd])
-             apply (elim conjE exE)
-             subgoal for m n m'' n''
-               apply (rule exI[of _ m])
-               apply (rule exI[of _ n])
-               apply (intro conjI)
-                    apply assumption
-               subgoal
-                 unfolding nsuffix_def
-                 by blast
- subgoal
-                 unfolding nsuffix_def
-                 by blast
-               subgoal
-                 apply simp
-                 thm list_emb_Nil2
-                 unfolding nsuffix_def
-                 apply (intro conjI)
-                 apply (simp add: BTL_def BULK_BENQ_def)
-                 apply (simp add: BTL_def BULK_BENQ_def)
-                 done
-     subgoal
-                 apply simp
-                 thm list_emb_Nil2
-                 unfolding nsuffix_def
-                 apply (intro conjI)
-                 apply (simp add: BTL_def BULK_BENQ_def)
-                 apply (simp add: BTL_def BULK_BENQ_def)
-                 done
-         apply (rule exI[of _ m''])
-             apply (rule exI[of _ n''])
-               apply simp
-               done
-             done
-           done
-         done
-       subgoal 
-         apply (intro exI conjI)
-      apply (rule rtranclp.intros(2))
+          apply (intro exI conjI)
+          apply (rule refl)+
+          apply (intro allI)
+          apply simp
+          subgoal for pd
+            apply (cases "pc = pd")
+            subgoal
+              apply simp
+              apply (rule exI[of _ 1])
+              apply (rule exI[of _ 0])
+              apply simp
+              apply (intro conjI)
+              subgoal
+                unfolding nsuffix_def
+                by (metis (no_types, lifting) BTL_access BULK_BENQ_def BULK_BENQ_empty One_nat_def Suc_pred add_diff_cancel_right' length_greater_0_conv length_tl plus_1_eq_Suc suffix_BTL tl_append2)
+              subgoal
+                unfolding nsuffix_def
+                by (metis (no_types, lifting) BTL_access BULK_BENQ_def BULK_BENQ_empty One_nat_def Suc_pred add_diff_cancel_right' length_greater_0_conv length_tl plus_1_eq_Suc suffix_BTL tl_append2)
+              subgoal
+                apply hypsubst_thin
+                apply (subst length_consumed_Suc)
+                   apply force
+                  apply force
+                 apply (metis BHD_BULK_BENQ_right_not_empty BHD_def)
+                apply simp
+                done
+              done
+            subgoal
+              apply (drule spec[of _ pd])
+              apply (elim conjE exE)
+              subgoal for m n
+                apply (rule exI[of _ m])
+                apply (rule exI[of _ n])
+                apply simp
+                apply (intro conjI)
+                subgoal
+                  by (simp add: BTL_def BULK_BENQ_def)
+                subgoal
+                  by (simp add: BTL_def BULK_BENQ_def)
+                done
+              done
+            done
+          done
+        subgoal 
+          apply (intro exI conjI)
+          apply (rule rtranclp.intros(2))
           apply (rule rtranclp.intros(1))
-      apply (rule step_map_op)
-        apply (rule step_comp_op_L_Tau)
+          apply (rule step_map_op)
+          apply (rule step_comp_op_L_Tau)
           apply (rule step_aeq_op_Silent)
-              apply assumption
-                 apply simp_all
+          apply assumption
+          apply simp_all
           subgoal
             unfolding nsuffix_def
             by (metis BULK_BENQ_empty suffix_bot.extremum_uniqueI)
           subgoal
-      unfolding nsuffix_def
+            unfolding nsuffix_def
             by (metis BULK_BENQ_empty suffix_bot.extremum_uniqueI)
+          subgoal
+            unfolding nsuffix_def
+            by (metis (no_types, lifting) BHD_BAPPEND_2_cases BHD_def BULK_BENQ_empty self_append_conv2 suffix_take take0)
+          subgoal
+            apply (rule wbc_base)
+            apply (intro exI conjI)
+            apply (rule refl)+
+            apply (intro allI)
+            subgoal for pd
+              apply (cases "pc = pd")
+              subgoal
+                apply simp
+                apply (rule exI[of _ 0])
+                apply (rule exI[of _ "n - 1"])
+                apply simp
+                apply (intro conjI)
+                subgoal
+                  unfolding nsuffix_def
+                  apply (intro conjI)
+                  apply (metis (no_types, lifting) BTL_access BULK_BENQ_empty One_nat_def Suc_pred length_greater_0_conv length_tl less_Suc_eq_le suffix_BTL suffix_length_suffix zero_less_diff)
+                  apply (metis BTL_access One_nat_def diff_right_commute length_tl)
+                  done
+                subgoal
+                  unfolding nsuffix_def
+                  apply (intro conjI)
+                  apply (metis (no_types, lifting) BTL_access BULK_BENQ_empty One_nat_def Suc_pred length_greater_0_conv length_tl less_Suc_eq_le suffix_BTL suffix_length_suffix zero_less_diff)
+                  apply (metis BTL_access One_nat_def diff_right_commute length_tl)
+                  done
+                subgoal
+                  by (metis BAPPEND_BTL BTL_access)
+                subgoal
+                  by (metis BAPPEND_BTL BTL_access)
+                subgoal
+                  by (metis BHD_BAPPEND_2_cases BHD_def BTL_access BULK_BENQ_empty Suc_pred length_consumed_Suc)          
+                done
        subgoal
-         unfolding nsuffix_def
-         by (metis (no_types, lifting) BHD_BAPPEND_2_cases BHD_def BULK_BENQ_empty self_append_conv2 suffix_take take0)
+              apply (drule spec[of _ pd])
+              apply (elim conjE exE)
+              subgoal for m n
+                apply (rule exI[of _ m])
+                apply (rule exI[of _ n])
+                apply (simp add: BTL_def BULK_BENQ_def)
+                done
+              done
+            done
+          done
+        done
+      done
+      subgoal for m n
+        apply hypsubst_thin
+        apply simp
+        apply (cases "m = 0")
+        subgoal
+          apply hypsubst_thin
+          apply (intro exI conjI)
+          apply (rule rtranclp.intros(1))
+          apply (rule wbc_base)
+          apply (intro exI conjI)
+          apply (rule refl)+
+          apply (intro allI)
+          apply simp
+          subgoal for pd
+            apply (cases "pc = pd")
+            subgoal
+              apply simp
+              apply (rule exI[of _ 1])
+              apply (rule exI[of _ 0])
+              apply simp
+              apply (intro conjI)
+              subgoal
+                unfolding nsuffix_def
+                by (metis (no_types, lifting) BTL_access BULK_BENQ_def BULK_BENQ_empty One_nat_def Suc_pred add_diff_cancel_right' length_greater_0_conv length_tl plus_1_eq_Suc suffix_BTL tl_append2)
+              subgoal
+                unfolding nsuffix_def
+                by (metis (no_types, lifting) BTL_access BULK_BENQ_def BULK_BENQ_empty One_nat_def Suc_pred add_diff_cancel_right' length_greater_0_conv length_tl plus_1_eq_Suc suffix_BTL tl_append2)
+              subgoal
+                apply hypsubst_thin
+                apply (subst length_consumed_Suc)
+                   apply force
+                  apply force
+                 apply (metis BHD_BULK_BENQ_right_not_empty BHD_def)
+                apply simp
+                done
+              done
+            subgoal
+              apply (drule spec[of _ pd])
+              apply (elim conjE exE)
+              subgoal for m n
+                apply (rule exI[of _ m])
+                apply (rule exI[of _ n])
+                apply simp
+                apply (intro conjI)
+                subgoal
+                  by (simp add: BTL_def BULK_BENQ_def)
+                subgoal
+                  by (simp add: BTL_def BULK_BENQ_def)
+                done
+              done
+            done
+          done
+        subgoal
+          apply (intro exI conjI)
+          apply (rule rtranclp.intros(1))
+          apply (rule wbc_base)
+          apply (intro exI conjI)
+          apply (rule refl)+
+          apply (intro allI)
+          apply simp
+          subgoal for pd
+            apply (cases "pc = pd")
+            subgoal
+              apply simp
+              apply (rule exI[of _ "Suc m"])
+              apply (rule exI[of _ 0])
+              apply simp
+              apply (intro conjI)
+              subgoal
+                unfolding nsuffix_def
+                by (smt (verit) BAPPEND_BTL BTL_access BULK_BENQ_empty One_nat_def Suc_diff_Suc Suc_pred diff_is_0_eq diffs0_imp_equal length_greater_0_conv length_tl not_gr_zero suffix_BTL suffix_length_le suffix_order.dual_order.trans zero_less_diff)
+            subgoal
+                unfolding nsuffix_def
+                by (smt (verit) BAPPEND_BTL BTL_access BULK_BENQ_empty One_nat_def Suc_diff_Suc Suc_pred diff_is_0_eq diffs0_imp_equal length_greater_0_conv length_tl not_gr_zero suffix_BTL suffix_length_le suffix_order.dual_order.trans zero_less_diff)
+              subgoal
+              apply (subst length_consumed_Suc)
+              apply (metis BULK_BENQ_empty nsuffix_def suffix_bot.extremum_uniqueI)
+                apply (metis BULK_BENQ_empty nsuffix_def suffix_bot.extremum_uniqueI)
+              defer
+              subgoal premises prems
+                using prems(2-) apply -
+                apply hypsubst_thin
+                unfolding nsuffix_def
+                apply auto
+                
+
+end
+                by (metis (no_types, lifting) BTL_access BULK_BENQ_def BULK_BENQ_empty One_nat_def Suc_pred add_diff_cancel_right' length_greater_0_conv length_tl plus_1_eq_Suc suffix_BTL tl_append2)
+              subgoal
+                unfolding nsuffix_def
+                by (metis (no_types, lifting) BTL_access BULK_BENQ_def BULK_BENQ_empty One_nat_def Suc_pred add_diff_cancel_right' length_greater_0_conv length_tl plus_1_eq_Suc suffix_BTL tl_append2)
+              subgoal
+                apply hypsubst_thin
+                apply (subst length_consumed_Suc)
+                   apply force
+                  apply force
+                 apply (metis BHD_BULK_BENQ_right_not_empty BHD_def)
+                apply simp
+                done
+              done
+            subgoal
+              apply (drule spec[of _ pd])
+              apply (elim conjE exE)
+              subgoal for m n
+                apply (rule exI[of _ m])
+                apply (rule exI[of _ n])
+                apply simp
+                apply (intro conjI)
+                subgoal
+                  by (simp add: BTL_def BULK_BENQ_def)
+                subgoal
+                  by (simp add: BTL_def BULK_BENQ_def)
+                done
+              done
+            done
+          done
+
+        subgoal 
+          apply (intro exI conjI)
+          apply (rule rtranclp.intros(1))
+          apply simp_all
+          subgoal
+            unfolding nsuffix_def
+            by (metis BULK_BENQ_empty suffix_bot.extremum_uniqueI)
+          subgoal
+            unfolding nsuffix_def
+            by (metis BULK_BENQ_empty suffix_bot.extremum_uniqueI)
+          subgoal
+            unfolding nsuffix_def
+end
+            by (metis (no_types, lifting) BHD_BAPPEND_2_cases BHD_def BULK_BENQ_empty self_append_conv2 suffix_take take0)
+          subgoal
+            apply (rule wbc_base)
+            apply (intro exI conjI)
+            apply (rule refl)+
+            apply (intro allI)
+            subgoal for pd
+              apply (cases "pc = pd")
+              subgoal
+                apply simp
+                apply (rule exI[of _ 0])
+                apply (rule exI[of _ "n - 1"])
+                apply simp
+                apply (intro conjI)
+                subgoal
+                  unfolding nsuffix_def
+                  apply (intro conjI)
+                  apply (metis (no_types, lifting) BTL_access BULK_BENQ_empty One_nat_def Suc_pred length_greater_0_conv length_tl less_Suc_eq_le suffix_BTL suffix_length_suffix zero_less_diff)
+                  apply (metis BTL_access One_nat_def diff_right_commute length_tl)
+                  done
+                subgoal
+                  unfolding nsuffix_def
+                  apply (intro conjI)
+                  apply (metis (no_types, lifting) BTL_access BULK_BENQ_empty One_nat_def Suc_pred length_greater_0_conv length_tl less_Suc_eq_le suffix_BTL suffix_length_suffix zero_less_diff)
+                  apply (metis BTL_access One_nat_def diff_right_commute length_tl)
+                  done
+                subgoal
+                  by (metis BAPPEND_BTL BTL_access)
+                subgoal
+                  by (metis BAPPEND_BTL BTL_access)
+                subgoal
+                  by (metis BHD_BAPPEND_2_cases BHD_def BTL_access BULK_BENQ_empty Suc_pred length_consumed_Suc)          
+                done
        subgoal
-  apply (rule wbc_base)
-        apply (intro exI conjI)
-           apply (rule refl)+
-         apply (intro allI)
-         subgoal for pd
-           apply (cases "pc = pd")
-           subgoal
-             apply simp
-             apply (rule exI[of _ 0])
-             apply (rule exI[of _ "n - 1"])
-             apply simp
-             apply (intro conjI)
-             subgoal
-               unfolding nsuffix_def
-               apply (intro conjI)
-               apply (metis (no_types, lifting) BTL_access BULK_BENQ_empty One_nat_def Suc_pred length_greater_0_conv length_tl less_Suc_eq_le suffix_BTL suffix_length_suffix zero_less_diff)
-               apply (metis BTL_access One_nat_def diff_right_commute length_tl)
-               done
- subgoal
-               unfolding nsuffix_def
-               apply (intro conjI)
-               apply (metis (no_types, lifting) BTL_access BULK_BENQ_empty One_nat_def Suc_pred length_greater_0_conv length_tl less_Suc_eq_le suffix_BTL suffix_length_suffix zero_less_diff)
-               apply (metis BTL_access One_nat_def diff_right_commute length_tl)
-               done
-             subgoal
-               by (metis BAPPEND_BTL BTL_access)
-   subgoal
-               by (metis BAPPEND_BTL BTL_access)
-             subgoal
-               apply (rule exI[of _ "n'"])
-               apply auto
-               
+              apply (drule spec[of _ pd])
+              apply (elim conjE exE)
+              subgoal for m n
+                apply (rule exI[of _ m])
+                apply (rule exI[of _ n])
+                apply (simp add: BTL_def BULK_BENQ_def)
+                done
+              done
+            done
+          done
+        done
 
 end
           apply (rule rtranclp.intros(1))
