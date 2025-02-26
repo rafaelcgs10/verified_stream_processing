@@ -1216,7 +1216,7 @@ lemma
   and "AC = AC1 >> AC2"
   and "BD = BD1 >> BD2"
   and "\<forall> p. \<exists> m n. (m = 0 \<or> n = 0) \<and> (A p) = (drop n (X p)) \<and> (C p) = drop n (Y p) \<and> (B p) = drop m (X p) \<and> (D p) = drop m (Y p) \<and> 
-        (AC p) = ((Z >> V) p) @ (tested n (X p) (Y p)) \<and> (BD p) = ((Z >> W) p) @ (tested m (X p) (Y p))"
+        (AC p) = ((Z >> V) p) @ (tested n (A p) (C p)) \<and> (BD p) = ((Z >> W) p) @ (tested m (B p) (D p))"
   shows  "map_op projl projr (comp_op Some Z (aeq_op (case_sum X Y)) (acopy_op (case_sum V W))) \<approx>
    map_op projl projr
    (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
@@ -1272,8 +1272,10 @@ next
               subgoal
                 unfolding tested_def
                 apply (auto simp add: filter_empty_conv)
-                sorry
-              done
+
+              
+end
+                done
             subgoal
               apply (drule spec[of _ pd])
               apply (elim conjE exE)
