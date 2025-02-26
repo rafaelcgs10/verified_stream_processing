@@ -1198,6 +1198,15 @@ lemma length_consumed_leq:
   "length_consumed n xs ys \<le> n"
   unfolding length_consumed_def by (metis length_filter_le length_take length_zip min.bounded_iff)
 
+definition "tested n xs ys = map fst (filter (case_prod (=)) (zip (take n xs) (take n ys)))"
+
+lemma tested_Suc[simp]:
+  "xs \<noteq> [] \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> hd xs \<noteq> hd ys \<Longrightarrow> tested (Suc n) xs ys = tested n (tl xs) (tl ys)"
+  unfolding tested_def by (simp add: take_Suc)
+
+lemma length_tested_0[simp]:
+  "tested 0 xs ys = []"
+  unfolding tested_def by simp
 
 lemma
   assumes "A = A1 >> A2 >> A3 >> A4 >> A5"
@@ -1206,8 +1215,8 @@ lemma
   and "D = D1 >> D2 >> D3 >> D4 >> D5"
   and "AC = AC1 >> AC2"
   and "BD = BD1 >> BD2"
-  and "\<forall> p. \<exists> m n m' n'. (m = 0 \<or> n = 0) \<and> nsuffix n (A p) (X p) \<and> nsuffix n (C p) (Y p) \<and> nsuffix m (B p) (X p) \<and> nsuffix m (D p) (Y p) \<and> 
-       nprefix n' ((Z >> V) p) (AC p) \<and> nprefix m' ((Z >> W) p) (BD p) \<and> n' = length_consumed n (A p) (C p) \<and> m' = length_consumed m (B p) (D p) "
+  and "\<forall> p. \<exists> m n. (m = 0 \<or> n = 0) \<and> (A p) = (drop n (X p)) \<and> (C p) = drop n (Y p) \<and> (B p) = drop m (X p) \<and> (D p) = drop m (Y p) \<and> 
+        (AC p) = ((Z >> V) p) @ (tested n (X p) (Y p)) \<and> (BD p) = ((Z >> W) p) @ (tested m (X p) (Y p))"
   shows  "map_op projl projr (comp_op Some Z (aeq_op (case_sum X Y)) (acopy_op (case_sum V W))) \<approx>
    map_op projl projr
    (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
@@ -1257,32 +1266,13 @@ next
               apply simp
               apply (intro conjI)
               subgoal
-                unfolding nsuffix_def
-                by (metis (no_types, lifting) BTL_access BULK_BENQ_def BULK_BENQ_empty One_nat_def Suc_pred add_diff_cancel_right' length_greater_0_conv length_tl plus_1_eq_Suc suffix_BTL tl_append2)
+                by (metis BAPPEND_BTL BTL_access drop0 drop_Suc)
               subgoal
-                unfolding nsuffix_def
-                by (metis (no_types, lifting) BTL_access BULK_BENQ_def BULK_BENQ_empty One_nat_def Suc_pred add_diff_cancel_right' length_greater_0_conv length_tl plus_1_eq_Suc suffix_BTL tl_append2)
+                by (metis BAPPEND_BTL BTL_access drop0 drop_Suc)
               subgoal
-                apply (drule sym)
-                apply (drule sym)
-                apply simp
-                apply hypsubst_thin
-                unfolding nprefix_def length_consumed_def
-                apply (auto 0 0 simp add: filter_empty_conv zip_same)
-                subgoal premises prems
-                  using prems(2-) apply -
-          
-
-
-end
-                apply (subst length_consumed_Suc)
-                sledgehammer
-end
-                   apply force
-                  apply force
-                 apply (metis BHD_BULK_BENQ_right_not_empty BHD_def)
-                apply simp
-                done
+                unfolding tested_def
+                apply (auto simp add: filter_empty_conv)
+                sorry
               done
             subgoal
               apply (drule spec[of _ pd])
@@ -1311,10 +1301,10 @@ end
           apply simp_all
           subgoal
             unfolding nsuffix_def
-            by (metis BULK_BENQ_empty suffix_bot.extremum_uniqueI)
+            by (metis BULK_BENQ_empty)
           subgoal
             unfolding nsuffix_def
-            by (metis BULK_BENQ_empty suffix_bot.extremum_uniqueI)
+            by (metis BULK_BENQ_empty)
           subgoal
             unfolding nsuffix_def
             by (metis (no_types, lifting) BHD_BAPPEND_2_cases BHD_def BULK_BENQ_empty self_append_conv2 suffix_take take0)
@@ -1332,38 +1322,39 @@ end
                 apply simp
                 apply (intro conjI)
                 subgoal
-                  unfolding nsuffix_def
-                  apply (intro conjI)
-                  apply (metis (no_types, lifting) BTL_access BULK_BENQ_empty One_nat_def Suc_pred length_greater_0_conv length_tl less_Suc_eq_le suffix_BTL suffix_length_suffix zero_less_diff)
-                  apply (metis BTL_access One_nat_def diff_right_commute length_tl)
-                  done
+                  by (metis BTL_access Suc_pred drop_Suc)
                 subgoal
-                  unfolding nsuffix_def
-                  apply (intro conjI)
-                  apply (metis (no_types, lifting) BTL_access BULK_BENQ_empty One_nat_def Suc_pred length_greater_0_conv length_tl less_Suc_eq_le suffix_BTL suffix_length_suffix zero_less_diff)
-                  apply (metis BTL_access One_nat_def diff_right_commute length_tl)
-                  done
+                  by (metis BTL_access Suc_pred drop_Suc)
                 subgoal
                   by (metis BAPPEND_BTL BTL_access)
                 subgoal
                   by (metis BAPPEND_BTL BTL_access)
                 subgoal
-                  by (metis BHD_BAPPEND_2_cases BHD_def BTL_access BULK_BENQ_empty Suc_pred length_consumed_Suc)          
+                  apply (cases n)
+                  apply simp_all
+                  apply (subst tested_Suc)
+                     apply force
+                    apply force
+                   apply (metis BHD_def BULK_BENQ_def hd_append2)
+                  apply (metis BTL_access)
+                  done
                 done
-       subgoal
+ subgoal
               apply (drule spec[of _ pd])
               apply (elim conjE exE)
               subgoal for m n
                 apply (rule exI[of _ m])
                 apply (rule exI[of _ n])
-                apply (simp add: BTL_def BULK_BENQ_def)
+                apply simp
+                apply (intro conjI)
+                apply (simp_all add: BTL_def BULK_BENQ_def)
                 done
               done
             done
           done
         done
       done
-      subgoal for m n
+    subgoal for m n
         apply hypsubst_thin
         apply simp
         apply (cases "m = 0")
@@ -1385,19 +1376,13 @@ end
               apply simp
               apply (intro conjI)
               subgoal
-                unfolding nsuffix_def
-                by (metis (no_types, lifting) BTL_access BULK_BENQ_def BULK_BENQ_empty One_nat_def Suc_pred add_diff_cancel_right' length_greater_0_conv length_tl plus_1_eq_Suc suffix_BTL tl_append2)
+                by (metis BAPPEND_BTL BTL_access drop0 drop_Suc)
               subgoal
-                unfolding nsuffix_def
-                by (metis (no_types, lifting) BTL_access BULK_BENQ_def BULK_BENQ_empty One_nat_def Suc_pred add_diff_cancel_right' length_greater_0_conv length_tl plus_1_eq_Suc suffix_BTL tl_append2)
+                by (metis BAPPEND_BTL BTL_access drop0 drop_Suc)
               subgoal
-                apply hypsubst_thin
-                apply (subst length_consumed_Suc)
-                   apply force
-                  apply force
-                 apply (metis BHD_BULK_BENQ_right_not_empty BHD_def)
-                apply simp
-                done
+                unfolding tested_def
+                apply (auto simp add: filter_empty_conv)
+                sorry
               done
             subgoal
               apply (drule spec[of _ pd])
@@ -1432,22 +1417,21 @@ end
               apply simp
               apply (intro conjI)
               subgoal
-                unfolding nsuffix_def
-                by (smt (verit) BAPPEND_BTL BTL_access BULK_BENQ_empty One_nat_def Suc_diff_Suc Suc_pred diff_is_0_eq diffs0_imp_equal length_greater_0_conv length_tl not_gr_zero suffix_BTL suffix_length_le suffix_order.dual_order.trans zero_less_diff)
-            subgoal
-                unfolding nsuffix_def
-                by (smt (verit) BAPPEND_BTL BTL_access BULK_BENQ_empty One_nat_def Suc_diff_Suc Suc_pred diff_is_0_eq diffs0_imp_equal length_greater_0_conv length_tl not_gr_zero suffix_BTL suffix_length_le suffix_order.dual_order.trans zero_less_diff)
+                by (metis BAPPEND_BTL BTL_access drop_Suc drop_tl)
               subgoal
-              apply (subst length_consumed_Suc)
-              apply (metis BULK_BENQ_empty nsuffix_def suffix_bot.extremum_uniqueI)
-                apply (metis BULK_BENQ_empty nsuffix_def suffix_bot.extremum_uniqueI)
-              defer
-              subgoal premises prems
-                using prems(2-) apply -
-                apply hypsubst_thin
-                unfolding nsuffix_def
-                apply auto
-                
+                by (metis BAPPEND_BTL BTL_access drop_Suc drop_tl)
+              subgoal
+                apply (cases m)
+                 apply simp_all
+   apply (subst tested_Suc)
+                     apply force
+                  apply force
+                sledgehammer
+
+
+                unfolding tested_def
+
+
 
 end
                 by (metis (no_types, lifting) BTL_access BULK_BENQ_def BULK_BENQ_empty One_nat_def Suc_pred add_diff_cancel_right' length_greater_0_conv length_tl plus_1_eq_Suc suffix_BTL tl_append2)
