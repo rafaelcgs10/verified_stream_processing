@@ -1179,6 +1179,7 @@ coinductive finished where
 
 inductive_cases finished_ReadE[elim!]: "finished (Read p f)"
 inductive_cases finished_WriteE[elim!]: "finished (Write op p x)"
+inductive_cases finished_SilentE[elim!]: "finished (Silent op)"
 inductive_cases finished_ChoiceE[elim!]: "finished (Choice ops)"
 
 lemma Read_not_finished[simp]:
@@ -1186,6 +1187,9 @@ lemma Read_not_finished[simp]:
   by force
 lemma Write_not_finished[simp]:
   "\<not> finished (Write op p x)"
+  by force
+lemma Silent_not_finished[simp]:
+  "\<not> finished (Silent op)"
   by force
 
 lemma step_not_finished: "step l op op' \<Longrightarrow> \<not> finished op"
@@ -1251,7 +1255,90 @@ lemma bisim_traces: "bisim op op' \<Longrightarrow> (traces op = traces op')"
   unfolding traces_def set_eq_iff mem_Collect_eq
   apply (intro iffI allI)
    apply (auto elim: bisim_traced dest: bisim_sym[THEN iffD1]) [2]
-  done 
+  done
+
+corec wbisim_finished_wit where
+  "wbisim_finished_wit op = (if finished op then LNil else LCons Tau (wbisim_finished_wit (SOME op'. step Tau op op')))"
+
+lemma traced_wbisim_finished_wit: "wbisim op op' \<Longrightarrow> finished op \<Longrightarrow> traced op' (wbisim_finished_wit op')"
+  apply (coinduction arbitrary: op op')
+  subgoal for op op'
+    apply (cases "finished op'")
+     apply (rule disjI1)
+     apply (subst wbisim_finished_wit.code; simp)
+     apply (rule disjI2)
+    apply (subst wbisim_finished_wit.code; simp add: finished_no_step)
+    apply (erule exE)+
+    subgoal for io op''
+      apply (cases "io = Tau"; hypsubst_thin?)
+       apply (rule exI)
+       apply (rule conjI[rotated])
+        apply (rule disjI1)
+        apply (rule conjI)
+         apply (rule refl)
+        apply (erule wbisim.cases; hypsubst_thin)
+        apply (subst (asm) (2) wsim_def)
+        apply (drule spec2, drule mp)
+         apply (erule someI)
+        apply (erule exE conjE)+
+        apply (metis converse_rtranclpE wbisim_sym wstep_steps_Tau)
+       apply (erule someI)
+        apply (erule wbisim.cases; hypsubst_thin)
+        apply (subst (asm) (2) wsim_def)
+        apply (drule spec2, drule mp, assumption)
+      apply (metis converse_rtranclpE estep.elims relcompp.cases wstep_def)
+      done
+    done
+  done
+
+lemma lset_wbisim_finished_wit:
+  "x \<in> lset lxs \<Longrightarrow> lxs = wbisim_finished_wit op' \<Longrightarrow> x = Tau"
+  apply (induct x lxs arbitrary: op' rule: llist.set_induct)
+   apply (subst (asm) wbisim_finished_wit.code; auto split: if_splits)
+  apply (subst (asm) wbisim_finished_wit.code; auto split: if_splits)
+  done
+
+lemma wbisim_finished:
+  "wbisim op op' \<Longrightarrow> finished op \<Longrightarrow> (\<exists>\<tau>s. traced op' \<tau>s \<and> lset \<tau>s \<subseteq> {Tau})"
+  using traced_wbisim_finished_wit lset_wbisim_finished_wit
+  by blast
+
+
+inductive chain for R where
+  "chain R [x]"
+| "R x y \<Longrightarrow> chain R (y # zs) \<Longrightarrow> chain R (x # y # zs)"
+
+lemma chain_nonempty: "chain R xs \<Longrightarrow> xs \<noteq> []"
+  by (erule chain.cases) auto
+
+lemma rtranclp_chain: "rtranclp R x z \<Longrightarrow> \<exists>zs. chain R zs \<and> hd zs = x \<and> last zs = z"
+proof (induct x rule: converse_rtranclp_induct)
+  case (step x y)
+  then obtain zs where "chain R zs" "bhd zs = y" "last zs = z" by blast
+  with step(1,2) show ?case
+    by (intro exI[of _ "x # zs"], cases zs)
+      (auto intro: chain.intros dest: chain_nonempty)
+qed (auto intro: chain.intros)
+
+fun lshift where
+  "lshift [] lys = lys"
+| "lshift (x # xs) lys = LCons x (lshift xs lys)"
+
+friend_of_corec lshift where
+  "lshift xs lys = (case xs of [] \<Rightarrow> (case lys of LNil \<Rightarrow> LNil | LCons x xs \<Rightarrow> LCons x xs)
+    | x # xs \<Rightarrow> LCons x (lshift xs lys))"
+  subgoal by (cases xs; cases lys; simp)
+  subgoal by transfer_prover
+  done
+
+lemma lset_lshift[simp]: "lset (lshift xs lxs) = set xs \<union> lset lxs"
+  by (induct xs) auto
+
+abbreviation "\<tau>shift ops \<equiv> lshift (replicate (length ops - Suc 0) Tau)"
+
+lemma traced_Taus:
+  "chain (step Tau) ops \<Longrightarrow> traced (last ops) lxs \<Longrightarrow> traced (hd ops) (\<tau>shift ops lxs)"
+  by (induct ops rule: chain.induct) (auto intro!: traced.intros)
 
 inductive traced_cong for R where
   tc_base: "R op lxs \<Longrightarrow> traced_cong R op lxs"
@@ -1267,10 +1354,63 @@ lemma traced_cong_disj:
 
 thm traced.coinduct[where X = "traced_cong X", unfolded traced_cong_disj, of op ios]
 
+coinductive traced' where
+  Nil': "finished op \<Longrightarrow> traced' op LNil"
+| Step': "chain (step Tau) ops1 \<Longrightarrow> step io (last ops1) (hd ops2) \<Longrightarrow>
+   chain (step Tau) ops2 \<Longrightarrow> traced' (last ops2) lxs \<Longrightarrow> traced' (hd ops1) (\<tau>shift ops1 (LCons io (\<tau>shift ops2 lxs)))"
+
+lemma traced'_LCons: "step io op op' \<Longrightarrow> traced' op' lxs \<Longrightarrow> traced' op (LCons io lxs)"
+  using Step'[of "[op]" io "[op']" lxs] by (auto intro: chain.intros)
+
+lemma traced'_Taus:
+  "chain (step Tau) ops \<Longrightarrow> traced' (last ops) lxs \<Longrightarrow> traced' (hd ops) (\<tau>shift ops lxs)"
+  by (induct ops rule: chain.induct) (auto intro!: traced'_LCons)
+
+lemma traced_traced': "traced op lxs \<Longrightarrow> traced' op lxs"
+  apply (coinduction arbitrary: op lxs)
+  apply (erule traced.cases)
+   apply (rule disjI1)
+  apply blast
+  apply (rule disjI2)
+  apply hypsubst_thin
+  apply simp
+  apply (rule exI[of _ "[_]"] conjI)+
+  apply simp
+  apply (rule exI[of _ "_"])
+  apply (rule exI[of _ "[_]"])
+  apply (rule exI[of _ "_"])
+  apply (auto intro: chain.intros)
+  done
+
+lemma traced'_traced: "traced' op lxs \<Longrightarrow> traced op lxs"
+  apply (coinduction arbitrary: op lxs)
+  apply (erule traced'.cases)
+   apply (rule disjI1)
+   apply blast
+  apply (rule disjI2)
+  apply hypsubst_thin
+  apply simp
+  subgoal for ops1 op ops2 lxs
+  apply (induct ops1 rule: chain.induct)
+   apply simp
+   apply (rule exI conjI | assumption)+
+   apply (rule disjI1)
+     apply (erule (1) traced'_Taus)
+    apply (auto intro!: traced'_LCons Step)
+    done
+  done
+
+lemma traced_alt: "traced op lxs = traced' op lxs"
+  using traced_traced' traced'_traced by blast
+
+lemmas traced_coinduct_alt = traced'.coinduct[folded traced_alt]
+lemmas traced_cases_alt = traced'.cases[folded traced_alt]
+
 lemma traced_coinduct_upto_step:
   assumes  "X op ios"
     "(\<And>x1 x2. X x1 x2 \<Longrightarrow>
-     (\<exists>op. x1 = op \<and> x2 = LNil \<and> finished op) \<or> (\<exists>op l op' lxs. x1 = op \<and> x2 = LCons l lxs \<and> step l op op' \<and> traced_cong X op' lxs))"
+     (\<exists>op. x1 = op \<and> x2 = LNil \<and> finished op) \<or>
+     (\<exists>op l op' lxs. x1 = op \<and> x2 = LCons l lxs \<and> step l op op' \<and> traced_cong X op' lxs))"
   shows "traced op ios"
   apply (rule traced.coinduct[where X = "traced_cong X", unfolded traced_cong_disj, of op ios])
   apply (rule tc_base, rule assms(1))
@@ -1333,9 +1473,17 @@ lemma traced_coinduct_upto:
      apply (metis observation.exhaust)+
   done
  *)
+
+lemma traces_Read[simp]:
+  "traces (Read p f) = (\<Union>x. LCons (Inp p x) ` traces (f x))"
+  by (auto simp: traces_def image_iff intro: traced.intros elim: traced.cases)
+
 lemma traces_Write[simp]:
   "traces (Write op p x) = LCons (Out p x) ` traces op"
-  by (auto simp: traces_def intro: step.intros(2) traced.intros elim: traced.cases)
+  by (auto simp: traces_def intro: traced.intros elim: traced.cases)
+
+lemma traces_Silent[simp]: "traces (Silent op) = LCons Tau ` traces op"
+  by (auto simp: traces_def intro: traced.intros elim: traced.cases)
 
 (* 
 lemma sim_finished_can_end_split:
@@ -1395,8 +1543,6 @@ lemma bisim_Choice_cong:
   apply (smt (verit, ccfv_SIG) bc_bisim bisim.cases cin.rep_eq sim_def step.intros(3))
   apply (smt (verit, ccfv_SIG) bc_bisim bisim.cases cin.rep_eq sim_def step.intros(3))
    done *)
-
-  find_theorems bisim traced
 
 lemma bisim_Read_cong:
   "rel_fun (=) (\<approx>) f1 f2 \<Longrightarrow> Read p f1 \<approx> Read p f2"
@@ -2015,6 +2161,420 @@ lemma traces_op_eqI: "traces op = traces op' \<Longrightarrow> op = op'"
       done
     done
   done *)
+
+datatype ('a, 'b, 'd) VIO = VInp (vproji: 'a) (vdata: "'d") | VOut (vprojo: 'b) (vdata: 'd)
+fun io_of_vio where
+  "io_of_vio (VInp p x) = Inp p x"
+| "io_of_vio (VOut p x) = Out p x"
+fun vio_of_io where
+  "vio_of_io (Inp p x) = VInp p x"
+| "vio_of_io (Out p x) = VOut p x"
+| "vio_of_io Tau = undefined"
+lemma io_of_vio_inverse: "vio_of_io (io_of_vio vio) = vio"
+  by (cases vio; simp)
+lemma vio_of_io_inverse: "io \<noteq> Tau \<Longrightarrow> io_of_vio (vio_of_io io) = io"
+  by (cases io; simp)
+fun wsteps where
+  "wsteps [] = rtranclp (step Tau)"
+| "wsteps (vio # vios) = wstep (io_of_vio vio) OO wsteps vios"
+definition "wsim' R op1 op2 = (\<forall>vios op1'. wsteps vios op1 op1' \<longrightarrow> (\<exists>op2'. wsteps vios op2 op2' \<and> R op1' op2'))"
+abbreviation "wbisimulation' R \<equiv>
+   (\<forall>op1 op2. R op1 op2 \<longrightarrow> wsim' R op1 op2 \<and> wsim' (conversep R) op2 op1)"
+lemma wsim'D1: "wsim' R op1 op2 \<Longrightarrow> wstep (io_of_vio vio) op1 op1' \<Longrightarrow> \<exists>op2'. wstep (io_of_vio vio) op2 op2' \<and> R op1' op2'"
+  unfolding wsim'_def
+  by (auto 0 5 dest!: spec2[of _ "[vio]" op1'] simp: wstep_def intro: rtranclp_trans)
+
+lemma wbisimulation_alt: "wbisimulation R \<longleftrightarrow> wbisimulation' R"
+proof (intro allI impI iffI)
+  fix op1 op2
+  assume *: "wbisimulation R" "R op1 op2"
+  have "wsim' R op1 op2"
+    unfolding wsim'_def
+  proof safe
+    fix vios op1'
+    assume "wsteps vios op1 op1'"
+    with *(2) show "\<exists>op2'. wsteps vios op2 op2' \<and> R op1' op2'"
+    proof (induct vios arbitrary: op1 op2)
+      case Nil
+      then show ?case
+        unfolding wsteps.simps wstep_steps_Tau[symmetric]
+        using wbisim_wstep[OF *(1)] by blast
+    next
+      case (Cons vio vios)
+      then obtain op1'' where "wstep (io_of_vio vio) op1 op1''" and wsteps: "wsteps vios op1'' op1'"
+        by auto
+      then obtain op2'' where "wstep (io_of_vio vio) op2 op2''" "R op1'' op2''"
+        using wbisim_wstep[OF *(1) Cons(2)] by blast
+      moreover
+      from Cons(1)[OF \<open>R op1'' op2''\<close> wsteps] obtain op2' where "wsteps vios op2'' op2'" "R op1' op2'" by blast
+      ultimately show ?case by auto
+    qed
+  qed
+  moreover have "wsim' R\<inverse>\<inverse> op2 op1"
+    unfolding wsim'_def conversep_iff
+  proof safe
+    fix vios op2'
+    assume "wsteps vios op2 op2'"
+    with *(2) show "\<exists>op1'. wsteps vios op1 op1' \<and> R op1' op2'"
+    proof (induct vios arbitrary: op1 op2)
+      case Nil
+      then show ?case
+        unfolding wsteps.simps wstep_steps_Tau[symmetric]
+        using wbisim_wstep'[OF *(1)] by blast
+    next
+      case (Cons vio vios)
+      then obtain op2'' where "wstep (io_of_vio vio) op2 op2''" and wsteps: "wsteps vios op2'' op2'"
+        by auto
+      then obtain op1'' where "wstep (io_of_vio vio) op1 op1''" "R op1'' op2''"
+        using wbisim_wstep'[OF *(1) Cons(2)] by blast
+      moreover
+      from Cons(1)[OF \<open>R op1'' op2''\<close> wsteps] obtain op1' where "wsteps vios op1'' op1'" "R op1' op2'" by blast
+      ultimately show ?case by auto
+    qed
+  qed
+  ultimately show "wsim' R op1 op2 \<and> wsim' R\<inverse>\<inverse> op2 op1" by blast
+next
+  fix op1 op2
+  assume *: "wbisimulation' R" "R op1 op2"
+  have "wsim R op1 op2"
+    unfolding wsim_def
+  proof safe
+    fix io op1'
+    assume step: "step io op1 op1'"
+    then show "\<exists>op2'. wstep io op2 op2' \<and> R op1' op2'"
+    proof (cases "io = Tau")
+      case True
+      with step have "wsteps [] op1 op1'" by auto
+      then obtain op2' where "wsteps [] op2 op2'" "R op1' op2'" using *
+        unfolding wsim'_def by blast
+      with True show ?thesis
+        by auto
+    next
+      case False
+      from vio_of_io_inverse[OF False] step obtain vio where "wsteps [vio] op1 op1'" and vio[simp]: "io_of_vio vio = io"
+        by auto
+      then obtain op2' where "wsteps [vio] op2 op2'" "R op1' op2'" using *
+        unfolding wsim'_def by blast
+      then show ?thesis
+        by (intro exI[of _ op2']) (fastforce simp: wstep_def)
+    qed
+  qed
+  moreover have "wsim R\<inverse>\<inverse> op2 op1"
+    unfolding wsim_def conversep_iff
+  proof safe
+    fix io op2'
+    assume step: "step io op2 op2'"
+    then show "\<exists>op1'. wstep io op1 op1' \<and> R op1' op2'"
+    proof (cases "io = Tau")
+      case True
+      with step have "wsteps [] op2 op2'" by auto
+      then obtain op1' where "wsteps [] op1 op1'" "R op1' op2'" using *
+        unfolding wsim'_def by blast
+      with True show ?thesis
+        by auto
+    next
+      case False
+      from vio_of_io_inverse[OF False] step obtain vio where "wsteps [vio] op2 op2'" and vio[simp]: "io_of_vio vio = io"
+        by auto
+      then obtain op1' where "wsteps [vio] op1 op1'" "R op1' op2'" using *
+        unfolding wsim'_def by blast
+      then show ?thesis
+        by (intro exI[of _ op1']) (fastforce simp: wstep_def)
+    qed
+  qed
+  ultimately show "wsim R op1 op2 \<and> wsim R\<inverse>\<inverse> op2 op1" by blast
+qed
+
+lemma wsim'_mono[mono]: "R \<le> S \<Longrightarrow> wsim' R \<le> wsim' S"
+  by (force simp: wsim'_def le_fun_def)
+
+coinductive wbisim' (infix "\<approx>\<approx>"40) where
+  "wsim' wbisim' op1 op2 \<Longrightarrow> wsim' wbisim' op2 op1 \<Longrightarrow> wbisim' op1 op2"
+
+lemma wbisim'_sym:
+  "op1 \<approx>\<approx> op2 \<Longrightarrow> op2 \<approx>\<approx> op1"
+  apply (coinduction arbitrary: op1 op2)
+  subgoal for op1 op2
+    apply simp
+    unfolding wsim'_def wstep_def
+    apply auto
+    subgoal for io op
+      apply (erule wbisim'.cases)
+      unfolding wsim'_def wstep_def
+      apply blast
+      done
+    subgoal for io op
+      apply (erule wbisim'.cases)
+      unfolding wsim'_def wstep_def
+      apply blast
+      done
+    done
+  done
+
+lemma wbisimulation'_wbisim': "wbisimulation' (\<approx>\<approx>)"
+  by (auto elim: wbisim'.cases elim!: wsim'_mono[THEN predicate2D, rotated] wbisim'_sym)
+
+lemma wbisim'_wbisim: "op1 \<approx>\<approx> op2 \<Longrightarrow> op1 \<approx> op2"
+  apply (coinduction arbitrary: op1 op2)
+  using wbisimulation'_wbisim'[folded wbisimulation_alt]
+  apply (auto elim!: wsim_mono[THEN predicate2D, rotated] wbisim'_sym)
+  done
+
+lemma wbisim_wbisim': "op1 \<approx> op2 \<Longrightarrow> op1 \<approx>\<approx> op2"
+  apply (coinduction arbitrary: op1 op2)
+  using wbisimulation_wbisim[unfolded wbisimulation_alt]
+  apply (auto elim!: wsim'_mono[THEN predicate2D, rotated] wbisim_sym)
+  done
+
+lemma wbisim'_alt: "(\<approx>\<approx>) = (\<approx>)"
+  using wbisim'_wbisim wbisim_wbisim'
+  by blast
+
+coinductive wfinished where
+  "(\<forall>op. op |\<in>|ops \<longrightarrow> wfinished op) \<Longrightarrow> wfinished (Choice ops)"
+| "wfinished op \<Longrightarrow> wfinished (Silent op)"
+
+coinductive wtraced where
+  Nil: "wfinished op \<Longrightarrow> wtraced op LNil"
+| Step: "wstep (io_of_vio vio) op op' \<Longrightarrow> wtraced op' lxs \<Longrightarrow> wtraced op (LCons vio lxs)"
+
+definition "wtraces op = {lxs. wtraced op lxs}"
+
+lemma finished_wfinished[simp]: "finished op \<Longrightarrow> wfinished op"
+  by (coinduction arbitrary: op) (auto elim: finished.cases)
+
+corec wfinished_wit where
+  "wfinished_wit op = (if \<exists>op'. Silent op' |\<in>| choices op then LCons Tau (wfinished_wit (SOME op'. Silent op' |\<in>| choices op)) else LNil)"
+
+lemma wfinished_choices_at: "wfinished op \<Longrightarrow> op' |\<in>| choices_at n op \<Longrightarrow> wfinished op'"
+proof (induct n arbitrary: op)
+  case 0
+  then show ?case by (cases op) (auto intro: wfinished.intros)
+next
+  case (Suc n)
+  then show ?case
+    by (cases op) (auto 0 3 elim: wfinished.cases)
+qed
+
+lemma wfinished_choices: "wfinished op \<Longrightarrow> op' |\<in>| choices op \<Longrightarrow> wfinished op'"
+  unfolding choices_def by (auto elim: wfinished_choices_at)
+
+lemma wfinished_finished:
+  "wfinished op \<Longrightarrow> \<not> (\<exists>op'. Silent op' |\<in>| choices op) \<Longrightarrow> finished op"
+  by (coinduction arbitrary: op) (auto elim: wfinished.cases)
+
+lemma lset_wfinished_wit: "x \<in> lset lxs \<Longrightarrow> lxs = wfinished_wit op \<Longrightarrow> x = Tau"
+  apply (induct x lxs arbitrary: op rule: llist.set_induct)
+  apply (subst (asm) wfinished_wit.code; simp split: if_splits)
+  apply (subst (asm) (2) wfinished_wit.code; simp split: if_splits)
+  done
+
+lemma traced_wfinished_wit: "wfinished op \<Longrightarrow> traced op (wfinished_wit op)"
+  apply (coinduction arbitrary: op)
+  subgoal for op
+    apply (cases "\<exists>op'. Silent op' |\<in>| choices op")
+    subgoal
+      apply (rule disjI2)
+      apply (rule exI[of _ Tau])
+      apply (rule exI[of _ op])
+      apply (rule exI[of _ "SOME op'. Silent op' |\<in>| choices op"])
+      apply (rule exI[of _ "wfinished_wit (SOME op'. Silent op' |\<in>| choices op)"])
+      apply (rule conjI refl)+
+      apply (subst wfinished_wit.code; simp)
+      apply (rule conjI refl)+
+       apply (rule Silent_in_choices_step)
+       apply (erule someI_ex)
+      apply (rule disjI1 exI conjI refl)+
+      apply (drule wfinished_choices)
+       apply (erule someI_ex)
+      apply (blast elim: wfinished.cases)
+      done
+    apply (rule disjI1)
+    apply (subst wfinished_wit.code; simp add: wfinished_finished)
+    done
+  done
+
+coinductive fair_traced where
+  Nil: "wfinished op \<Longrightarrow> fair_traced op (wfinished_wit op)"
+| Step: "chain (step Tau) ops1 \<Longrightarrow> step io (last ops1) (hd ops2) \<Longrightarrow> io \<noteq> Tau \<Longrightarrow>
+    chain (step Tau) ops2 \<Longrightarrow> fair_traced (last ops2) lxs \<Longrightarrow>
+    fair_traced (hd ops1) (\<tau>shift ops1 (LCons io (\<tau>shift ops2 lxs)))"
+
+lemma fair_traced_traced: "fair_traced op lxs \<Longrightarrow> traced op lxs"
+  apply (coinduction arbitrary: op lxs rule: traced_coinduct_alt)
+  subgoal for op lxs
+    apply (erule fair_traced.cases; hypsubst_thin; simp)
+     apply (drule traced_wfinished_wit)
+     apply (erule traced_cases_alt)
+      apply blast
+     apply blast
+    apply blast
+    done
+  done
+
+corec wtraced_traced_wit where
+  "wtraced_traced_wit op lxs = 
+    (if wfinished op then wfinished_wit op
+    else let io = io_of_vio (lhd lxs); lxs' = ltl lxs;
+         (ops1, ops2) = SOME (ops1, ops2). hd ops1 = op \<and> chain (step Tau) ops1 \<and> step io (last ops1) (hd ops2) \<and> chain (step Tau) ops2 \<and> wtraced (last ops2) lxs'
+     in \<tau>shift ops1 (LCons io (\<tau>shift ops2 (wtraced_traced_wit (last ops2) lxs'))))"
+
+lemma WSC: "op |\<in>| ops \<Longrightarrow> wstep (io_of_vio vio) op op' \<Longrightarrow> wstep (io_of_vio vio) (Choice ops) op'"
+  unfolding wstep_def
+  apply clarsimp
+  subgoal premises prems for opi opj
+    using prems(2,1,3,4)
+    apply (induct op rule: converse_rtranclp_induct)
+     apply (cases vio; simp)
+      apply (meson SC cin.rep_eq relcomppI rtranclp.rtrancl_refl)
+     apply (meson SC cin.rep_eq relcomppI rtranclp.rtrancl_refl)
+    apply (cases vio; simp)
+     apply (meson SC cin.rep_eq converse_rtranclp_into_rtranclp relcomppI)
+    apply (meson SC cin.rep_eq converse_rtranclp_into_rtranclp relcomppI)
+    done
+  done
+
+lemma step_not_wfinished: "step (io_of_vio vio) op op' \<Longrightarrow> \<not> wfinished op"
+  by (induct "io_of_vio vio" op op' pred: step) (cases vio; auto elim: wfinished.cases)+
+
+lemma step_Tau_wfinished: "step Tau op op' \<Longrightarrow> wfinished op \<Longrightarrow> wfinished op'"
+  by (induct op op' pred: step) (auto elim: wfinished.cases)
+
+lemma wfinished_no_wstep:
+  "wfinished op \<longleftrightarrow> \<not> (\<exists>vio op'. wstep (io_of_vio vio) op op')"
+  apply safe
+  subgoal for vio op'
+    unfolding wstep_def
+    apply clarsimp
+    subgoal premises prems for opi opj
+      using prems(2,1,3,4)
+      apply (induct op rule: converse_rtranclp_induct)
+      using step_not_wfinished[of vio opi opj]
+       apply (cases vio; auto elim: wfinished.cases)
+      apply (auto dest: step_Tau_wfinished)
+      done
+    done
+  subgoal
+    apply (coinduction arbitrary: op)
+    subgoal for op
+      apply (cases op)
+         apply (auto)
+      apply (metis SR io_of_vio.simps(1) step_wstep)
+       apply (metis SW io_of_vio.simps(2) step_wstep)
+      apply (meson WSC cin.rep_eq)
+      done
+    done
+  done
+
+lemma wtraced_fair_traced: "wtraced op lxs \<Longrightarrow> fair_traced op (wtraced_traced_wit op lxs)"
+  apply (coinduction arbitrary: op lxs)
+  apply (erule wtraced.cases)
+    apply (subst wtraced_traced_wit.code; simp)
+   apply (rule disjI2)
+   apply (subst wtraced_traced_wit.code; simp)
+  apply (auto simp: Let_def split_beta wfinished_no_wstep)
+  apply (auto simp add: wstep_def dest!: rtranclp_chain)
+  apply (rule exI)
+  apply (rule conjI[rotated])
+   apply (rule exI conjI)+
+    apply (rule refl)
+   apply (rule someI2_ex)
+  subgoal for vio
+    apply (cases vio; auto)
+    done
+  subgoal for vio
+    apply (cases vio; auto)
+    done
+  apply (rule someI2_ex)
+  subgoal for vio
+    apply (cases vio; auto)
+    done
+  apply force
+  done
+
+lemma io_of_vio_not_Tau[simp]:
+  "Tau \<noteq> io_of_vio vio"
+  "io_of_vio vio \<noteq> Tau"
+  by (cases vio; auto)+
+
+lemma lfilter_Tau_lshift[simp]: "lfilter ((\<noteq>) Tau) (lshift (replicate n Tau) lxs) = lfilter ((\<noteq>) Tau) lxs"
+  by (induct n) auto
+lemma ldropWhile_Tau_lshift[simp]: "ldropWhile ((=) Tau) (lshift (replicate n Tau) lxs) = ldropWhile ((=) Tau) lxs"
+  by (induct n) auto
+
+lemma lmap_lfilter_wtraced_traced_wit: "wtraced op lxs \<Longrightarrow> lmap vio_of_io (lfilter ((\<noteq>) Tau) (wtraced_traced_wit op lxs)) = lxs"
+  apply (coinduction arbitrary: op lxs)
+  apply simp
+  apply (intro conjI impI)
+    apply (subst wtraced_traced_wit.code)
+    apply (auto dest: lset_wfinished_wit simp: wfinished_no_wstep Let_def split_beta elim: wtraced.cases) []
+   apply (subst wtraced_traced_wit.code)
+   apply (auto dest: lset_wfinished_wit simp: wfinished_no_wstep Let_def split_beta io_of_vio_inverse
+      elim: wtraced.cases) []
+  apply (subst wtraced_traced_wit.code)
+  apply (auto dest: lset_wfinished_wit simp: wfinished_no_wstep Let_def split_beta io_of_vio_inverse
+      elim: wtraced.cases) []
+  apply (rule exI conjI refl)+
+  apply (rule someI2_ex)
+   apply (erule wtraced.cases)
+  apply (auto simp add: wstep_def dest!: rtranclp_chain)
+  subgoal for _ _ vio
+    apply (cases vio; auto)
+    done
+  done
+
+lemma chain_rtranclp: "chain R xs \<Longrightarrow> rtranclp R (hd xs) (last xs)"
+  by (induct xs rule: chain.induct) auto
+
+lemma traced_wtraced: "fair_traced op lxs \<Longrightarrow> wtraced op (lmap vio_of_io (lfilter ((\<noteq>) Tau) lxs))"
+  apply (coinduction arbitrary: op lxs)
+  apply (erule fair_traced.cases)
+   apply (auto simp: vio_of_io_inverse lmap_eq_LNil lfilter_eq_LNil
+    lmap_eq_LCons_conv dest: lset_wfinished_wit)
+    apply (rule exI conjI[rotated] disjI1)+
+      apply assumption
+     apply (rule refl)
+  apply (auto simp add: wstep_def dest: chain_rtranclp) []
+  done
+
+definition "fair_traces op = {lxs. fair_traced op lxs}"
+
+lemma wtraces_alt: "wtraces op = ((lmap vio_of_io o lfilter ((\<noteq>) Tau)) ` fair_traces op)"
+  unfolding wtraces_def fair_traces_def
+  apply (auto simp: traced_wtraced image_iff
+    intro!: lmap_lfilter_wtraced_traced_wit[symmetric] wtraced_fair_traced)
+  done
+
+lemmas wbisim_coinduct_alt = wbisim'.coinduct[unfolded wbisim'_alt]
+lemmas wbisim_cases_alt = wbisim'.cases[unfolded wbisim'_alt]
+
+thm wbisim_wstep[OF wbisimulation_wbisim]
+
+lemma wbisim_wfinished: "op1 \<approx> op2 \<Longrightarrow> wfinished op1 \<Longrightarrow> wfinished op2"
+  unfolding wfinished_no_wstep by (erule wbisim_cases_alt) (auto dest: wsim'D1)
+
+lemma wbisim_wtraced: "op1 \<approx> op2 \<Longrightarrow> wtraced op1 lxs \<Longrightarrow> wtraced op2 lxs"
+  apply (coinduction arbitrary: op1 op2 lxs rule: wtraced.coinduct)
+  apply (erule wtraced.cases)
+   apply (rule disjI1)
+   apply (auto intro: wbisim_wfinished) []
+  apply hypsubst_thin
+  apply clarsimp
+  apply (erule wbisim_cases_alt)
+  apply (auto dest!: wsim'D1)
+  done
+
+lemma wbisim_wtraces: "op1 \<approx> op2 \<Longrightarrow> wtraces op1 = wtraces op2"
+  by (auto simp: wtraces_def elim: wbisim_wtraced wbisim_wtraced[OF wbisim_sym])
+
+lemma lmap_vio_of_io:
+  "lmap (\<lambda>z. io_of_vio (vio_of_io z)) (lfilter ((\<noteq>) Tau) lxs) = lfilter ((\<noteq>) Tau) lxs"
+  by (rule llist.map_ident_strong) (auto simp: vio_of_io_inverse)
+
+lemma wbisim_fair_traces:
+  "op1 \<approx> op2 \<Longrightarrow> lfilter ((\<noteq>) Tau) ` fair_traces op1 = lfilter ((\<noteq>) Tau) ` fair_traces op2"
+  by (drule wbisim_wtraces, unfold wtraces_alt, drule image_eq_imp_comp[where h = "lmap io_of_vio"])
+    (auto simp: wtraces_alt simp: llist.map_comp lmap_vio_of_io)
 
 section\<open>Produce function\<close>
   (* 

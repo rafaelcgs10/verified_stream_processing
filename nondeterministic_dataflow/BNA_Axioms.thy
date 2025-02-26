@@ -2631,7 +2631,7 @@ lemma step_id_op_Out:
   apply (meson assms step_id_op_Out)
   done
 
-section \<open>Axiom: R1\<close>
+section \<open>Axiom R1\<close>
 lemma loop_op_scomp_commute_gen:
   fixes op1 :: "('a + 'm :: {countable, defaults}, 'b + 'm, 'd) op"
     and op2 :: "('c, 'a, 'd) op"
@@ -3089,7 +3089,7 @@ lemma loop_op_scomp_commute:
 
 
 
-section \<open>Axiom: R2: Loop distribute scomp_op\<close>
+section \<open>Axiom R2: Loop distribute scomp_op\<close>
 lemma loop_op_distribute_scomp_op_gen:
   fixes op1 :: "('b + 'm :: {defaults, countable}, 'c + 'm, 'd) op"
     and op2 :: "('c, 'a, 'd) op"
@@ -3540,7 +3540,7 @@ lemma loop_op_distribute_scomp_op:
   unfolding feedback_op_def scomp_op_def pcomp_op_def
   using loop_op_distribute_scomp_op_gen[of op1 "\<lambda>_. []" "\<lambda>_. []" "\<lambda>_. []" "\<lambda>_. []" op2, simplified, OF assms] by blast  
 
-section \<open>Axiom: R3: Loop parallel composition\<close>
+section \<open>Axiom R3: Loop parallel composition\<close>
 
 lemma loop_op_pcomp_commue_gen:
   fixes op1 :: "('b + 'a, 'c + 'd, 'e) op"
@@ -3830,7 +3830,7 @@ lemma loop_op_pcomp_commue:
   unfolding feedback_op_def scomp_op_def pcomp_op_def
   using assms loop_op_pcomp_commue_gen[OF assms, of op1 "\<lambda> _. []"] by auto 
 
-section \<open>Axiom: R4: Loop commutes inner sequential composition\<close>
+section \<open>Axiom R4: Loop commutes inner sequential composition\<close>
 lemma loop_op_commutes_inner_scomp_op_gen:
   fixes op1 :: "('k :: {countable,defaults} + 'm :: {countable,defaults}, 'l :: {countable,defaults} + 'n :: {countable,defaults}, 'd) op"
     and op2 :: "('n, 'm, 'd) op"
@@ -4761,7 +4761,7 @@ lemma loop_op_commutes_inner_scomp_op:
   unfolding feedback_op_def scomp_op_def pcomp_op_def
   using loop_op_commutes_inner_scomp_op_gen[OF assms, of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" ] by force 
 
-section \<open>Axiom: R5\<close>
+section \<open>Axiom R5\<close>
 lemma R5:
   fixes op :: "('a :: {countable, defaults} + unit, 'b :: {countable, defaults} + unit, 'c) op"
   shows "op\<up> \<approx> map_op projl projl op"
@@ -4883,7 +4883,7 @@ lemma R5:
     done
   done
 
-section \<open>Axiom: R6: Loop absorb\<close>
+section \<open>Axiom R6: Loop absorb\<close>
 lemma loop_op_absorb_gen:
   fixes op :: "(('a + 'l) + 'k, ('b + 'l :: defaults) + 'k :: defaults, 'c) op"
   assumes "Inr -` inputs op \<inter> defaults = {}"
