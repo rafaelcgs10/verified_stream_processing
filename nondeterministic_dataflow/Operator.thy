@@ -1130,47 +1130,41 @@ lemma bisim_wbisim:
 
 section \<open>Expansion\<close>
 
-abbreviation \<open>expstep io op1 op2 \<equiv> (if io = Tau then estep Tau op1 op2 else step io op1 op2)\<close>
+definition "wstep' io = (step Tau)^** OO (step io) OO (step Tau)^**"
 
-definition \<open>expansion R op1 op2 = (\<forall> io op1'. step io op1 op1' \<longrightarrow> (\<exists> op2'. expstep io op2 op2' \<and> R op1' op2'))\<close>
+definition \<open>expansion1 R op1 op2 = (\<forall>io op1'. step io op1 op1' \<longrightarrow> (\<exists>op2'. estep io op2 op2' \<and> R op1' op2'))\<close>
+definition \<open>expansion2 R op1 op2 = (\<forall>io op2'. step io op2 op2' \<longrightarrow> (\<exists>op1'. wstep' io op1 op1' \<and> R op1' op2'))\<close>
 
-lemma expansion_mono[mono]: \<open>R \<le> S \<Longrightarrow> expansion R \<le> expansion S\<close>
-  unfolding expansion_def
+lemma expansion1_mono[mono]: \<open>R \<le> S \<Longrightarrow> expansion1 R \<le> expansion1 S\<close>
+  unfolding expansion1_def
   by fast
 
-coinductive expand :: \<open>('a, 'b, 'c) op \<Rightarrow> ('a, 'b, 'c) op \<Rightarrow> bool\<close> (infix \<open>\<greatersim>\<close> 40) where
-  \<open>wsim (conversep (\<greatersim>)) op1 op2 \<Longrightarrow> expansion (\<greatersim>) op1 op2 \<Longrightarrow> op1 \<greatersim> op2\<close>
+lemma expansion2_mono[mono]: \<open>R \<le> S \<Longrightarrow> expansion2 R \<le> expansion2 S\<close>
+  unfolding expansion2_def
+  by fast
 
-lemma expand_refl: \<open>op \<greatersim> op\<close>
-  apply (coinduction arbitrary: op)
-  apply (auto simp: wsim_def expansion_def)
-  done
+coinductive expansion :: \<open>('a, 'b, 'c) op \<Rightarrow> ('a, 'b, 'c) op \<Rightarrow> bool\<close> (infix \<open>\<greatersim>\<close> 40) where
+  \<open>expansion1 (\<greatersim>) op1 op2 \<Longrightarrow> expansion2 (\<greatersim>) op1 op2 \<Longrightarrow> op1 \<greatersim> op2\<close>
 
-lemma expand_trans: \<open>op1 \<greatersim> op2 \<Longrightarrow> op2 \<greatersim> op3 \<Longrightarrow> op1 \<greatersim> op3\<close>
+lemma expansion_refl: \<open>op \<greatersim> op\<close>
+  by (coinduction arbitrary: op) (auto simp: expansion1_def expansion2_def wstep'_def)
+
+lemma expansion_trans: \<open>op1 \<greatersim> op2 \<Longrightarrow> op2 \<greatersim> op3 \<Longrightarrow> op1 \<greatersim> op3\<close>
   apply (coinduction arbitrary: op1 op2 op3)
-  apply (auto simp: wsim_def expansion_def)
+  apply (auto simp: expansion1_def expansion2_def wstep'_def)
   oops
 
 section \<open>Elaboration\<close>
 
-definition "wstep' io = (step Tau)^** OO (step io) OO (step Tau)^**"
-definition \<open>elab R op1 op2 = (\<forall> io op2'. step io op2 op2' \<longrightarrow> (\<exists> op1'. wstep' io op1 op1' \<and> R op1' op2'))\<close>
-
-lemma elab_mono[mono]: \<open>R \<le> S \<Longrightarrow> elab R \<le> elab S\<close>
-  unfolding elab_def
-  by fast
-
 coinductive elaboration :: \<open>('a, 'b, 'c) op \<Rightarrow> ('a, 'b, 'c) op \<Rightarrow> bool\<close> (infix \<open>\<greaterapprox>\<close> 40) where
-  \<open>wsim (\<greaterapprox>) op1 op2 \<Longrightarrow> elab (\<greaterapprox>) op1 op2 \<Longrightarrow> op1 \<greaterapprox> op2\<close>
+  \<open>wsim (\<greaterapprox>) op1 op2 \<Longrightarrow> expansion2 (\<greaterapprox>) op1 op2 \<Longrightarrow> op1 \<greaterapprox> op2\<close>
 
 lemma elaboration_refl: \<open>op \<greaterapprox> op\<close>
-  apply (coinduction arbitrary: op)
-  apply (auto simp: wsim_def wstep'_def elab_def)
-  done
+  by (coinduction arbitrary: op) (auto simp: wsim_def expansion2_def wstep'_def)
 
-lemma expand_trans: \<open>op1 \<greaterapprox> op2 \<Longrightarrow> op2 \<greaterapprox> op3 \<Longrightarrow> op1 \<greaterapprox> op3\<close>
+lemma elaboration_trans: \<open>op1 \<greaterapprox> op2 \<Longrightarrow> op2 \<greaterapprox> op3 \<Longrightarrow> op1 \<greaterapprox> op3\<close>
   apply (coinduction arbitrary: op1 op2 op3)
-  apply (auto simp: wsim_def wstep'_def elab_def)
+  apply (auto simp: wsim_def expansion2_def wstep'_def)
   oops
 
 section\<open>Trace model\<close>
