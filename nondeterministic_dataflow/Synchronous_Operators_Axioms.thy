@@ -1207,7 +1207,7 @@ lemma
   and "AC = AC1 >> AC2"
   and "BD = BD1 >> BD2"
   and "\<forall> p. \<exists> m n m' n'. (m = 0 \<or> n = 0) \<and> nsuffix n (A p) (X p) \<and> nsuffix n (C p) (Y p) \<and> nsuffix m (B p) (X p) \<and> nsuffix m (D p) (Y p) \<and> 
-       nprefix n' ((Z >> V) p) (AC p) \<and> nprefix m' ((Z >> W) p) (BD p) \<and> n' = length_consumed n (X p) (Y p) \<and> m' = length_consumed m (X p) (Y p) "
+       nprefix n' ((Z >> V) p) (AC p) \<and> nprefix m' ((Z >> W) p) (BD p) \<and> n' = length_consumed n (A p) (C p) \<and> m' = length_consumed m (B p) (D p) "
   shows  "map_op projl projr (comp_op Some Z (aeq_op (case_sum X Y)) (acopy_op (case_sum V W))) \<approx>
    map_op projl projr
    (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
@@ -1237,6 +1237,7 @@ next
       apply (elim exE disjE conjE)
       subgoal for m n
         apply hypsubst_thin
+        apply simp
         apply (cases "n = 0")
         subgoal
           apply hypsubst_thin
@@ -1262,8 +1263,21 @@ next
                 unfolding nsuffix_def
                 by (metis (no_types, lifting) BTL_access BULK_BENQ_def BULK_BENQ_empty One_nat_def Suc_pred add_diff_cancel_right' length_greater_0_conv length_tl plus_1_eq_Suc suffix_BTL tl_append2)
               subgoal
+                apply (drule sym)
+                apply (drule sym)
+                apply simp
                 apply hypsubst_thin
+                unfolding nprefix_def length_consumed_def
+                apply (auto 0 0 simp add: filter_empty_conv zip_same)
+                subgoal premises prems
+                  using prems(2-) apply -
+          
+
+
+end
                 apply (subst length_consumed_Suc)
+                sledgehammer
+end
                    apply force
                   apply force
                  apply (metis BHD_BULK_BENQ_right_not_empty BHD_def)
