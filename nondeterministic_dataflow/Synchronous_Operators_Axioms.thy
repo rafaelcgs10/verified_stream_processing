@@ -1125,6 +1125,10 @@ lemma length_consumed_leq:
 definition "tested n xs ys = map fst (filter (case_prod (=)) (zip (take n xs) (take n ys)))"
 
 lemma tested_Suc:
+  "xs \<noteq> [] \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> hd xs \<noteq> hd ys \<Longrightarrow> tested (Suc n) xs ys = tested n (tl xs) (tl ys)"
+  unfolding tested_def by (simp add: take_Suc)
+
+lemma tested_Suc_gen:
   "length xs > n \<Longrightarrow> length ys > n \<Longrightarrow> xs ! n \<noteq> ys ! n \<Longrightarrow> tested (Suc n) xs ys = tested n xs ys"
   unfolding tested_def
   apply (induct n arbitrary: xs ys)
@@ -1140,12 +1144,12 @@ lemma length_tested_0[simp]:
 
 lemma
   assumes "A = A1 >> A2 >> A3 >> A4 >> A5"
-  and "B = B1 >> B2 >> B3 >> B4 >> B5"
-  and "C = C1 >> C2 >> C3 >> C4 >> C5"
-  and "D = D1 >> D2 >> D3 >> D4 >> D5"
-  and "AC = AC1 >> AC2"
-  and "BD = BD1 >> BD2"
-  and "\<forall> p. \<exists> m n. (m = 0 \<or> n = 0) \<and> (A p) = (drop n (X p)) \<and> (C p) = drop n (Y p) \<and> (B p) = drop m (X p) \<and> (D p) = drop m (Y p) \<and> 
+    and "B = B1 >> B2 >> B3 >> B4 >> B5"
+    and "C = C1 >> C2 >> C3 >> C4 >> C5"
+    and "D = D1 >> D2 >> D3 >> D4 >> D5"
+    and "AC = AC1 >> AC2"
+    and "BD = BD1 >> BD2"
+    and "\<forall> p. \<exists> m n. (m = 0 \<or> n = 0) \<and> (A p) = (drop n (X p)) \<and> (C p) = drop n (Y p) \<and> (B p) = drop m (X p) \<and> (D p) = drop m (Y p) \<and> 
         (AC p) = ((Z >> V) p) @ (tested n (X p) (Y p)) \<and> (BD p) = ((Z >> W) p) @ (tested m (X p) (Y p))"
   shows  "map_op projl projr (comp_op Some Z (aeq_op (case_sum X Y)) (acopy_op (case_sum V W))) \<approx>
    map_op projl projr
@@ -1154,11 +1158,11 @@ lemma
        (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1)))
          (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3)))))
      (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2)))))"
-using assms proof (coinduction arbitrary: A1 A2 A3 A4 A5 B1 B2 B3 B4 B5 C1 C2 C3 C4 C5 D1 D2 D3 D4 D5 AC1 AC2 BD1 BD2 X Y Z W V A B C D AC BD  rule: wbisim_coinduct_upto'')
+  using assms proof (coinduction arbitrary: A1 A2 A3 A4 A5 B1 B2 B3 B4 B5 C1 C2 C3 C4 C5 D1 D2 D3 D4 D5 AC1 AC2 BD1 BD2 X Y Z W V A B C D AC BD  rule: wbisim_coinduct_upto'')
   case SIM1
   then show ?case 
     apply -
-(*     explore (auto 0 0 elim!: step_aeq_op_elim step_acopy_op_elim step_transp_op_cases step_map_op_elim step_comp_op_elim step_id_op_cases split: if_splits sum.splits; hypsubst_thin?)
+      (*     explore (auto 0 0 elim!: step_aeq_op_elim step_acopy_op_elim step_transp_op_cases step_map_op_elim step_comp_op_elim step_id_op_cases split: if_splits sum.splits; hypsubst_thin?)
  *)    sorry
 next
   case SIM2
@@ -1166,10 +1170,10 @@ next
     apply -
     apply hypsubst_thin
     apply (elim exE conjE step_acopy_op_elim step_aeq_op_elim step_comp_op_elim step_map_op_elim step_transp_op_cases step_id_op_cases)
-    apply (simp_all only: IO.simps)
-    apply (simp_all split!: sum.splits if_splits; hypsubst_thin?)
-    prefer 55
-    apply (simp_all split: sum.splits if_splits)[1]
+                        apply (simp_all only: IO.simps)
+                        apply (simp_all split!: sum.splits if_splits; hypsubst_thin?)
+                        prefer 55
+                        apply (simp_all split: sum.splits if_splits)[1]
     subgoal for io' op'' op2' op2'a io'a op''a op1'a pc
       apply hypsubst_thin
       apply (frule spec[of _ pc])
@@ -1181,10 +1185,10 @@ next
         subgoal
           apply hypsubst_thin
           apply (intro exI conjI)
-          apply (rule rtranclp.intros(1))
+           apply (rule rtranclp.intros(1))
           apply (rule wbc_base)
           apply (intro exI conjI)
-          apply (rule refl)+
+            apply (rule refl)+
           apply (intro allI)
           apply simp
           subgoal for pd
@@ -1223,13 +1227,13 @@ next
           done
         subgoal 
           apply (intro exI conjI)
-          apply (rule rtranclp.intros(2))
-          apply (rule rtranclp.intros(1))
-          apply (rule step_map_op)
-          apply (rule step_comp_op_L_Tau)
-          apply (rule step_aeq_op_Silent)
-          apply assumption
-          apply simp_all
+           apply (rule rtranclp.intros(2))
+            apply (rule rtranclp.intros(1))
+           apply (rule step_map_op)
+            apply (rule step_comp_op_L_Tau)
+              apply (rule step_aeq_op_Silent)
+                  apply assumption
+                 apply simp_all
           subgoal
             unfolding nsuffix_def
             by (metis BULK_BENQ_empty)
@@ -1242,7 +1246,7 @@ next
           subgoal
             apply (rule wbc_base)
             apply (intro exI conjI)
-            apply (rule refl)+
+              apply (rule refl)+
             apply (intro allI)
             subgoal for pd
               apply (cases "pc = pd")
@@ -1262,7 +1266,7 @@ next
                   by (metis BAPPEND_BTL BTL_access)
                 subgoal
                   apply (cases n)
-                  apply simp_all
+                   apply simp_all
                   apply (subst tested_Suc)
                      apply force
                     apply force
@@ -1270,32 +1274,32 @@ next
                   apply (metis BTL_access)
                   done
                 done
- subgoal
-              apply (drule spec[of _ pd])
-              apply (elim conjE exE)
-              subgoal for m n
-                apply (rule exI[of _ m])
-                apply (rule exI[of _ n])
-                apply simp
-                apply (intro conjI)
-                apply (simp_all add: BTL_def BULK_BENQ_def)
+              subgoal
+                apply (drule spec[of _ pd])
+                apply (elim conjE exE)
+                subgoal for m n
+                  apply (rule exI[of _ m])
+                  apply (rule exI[of _ n])
+                  apply simp
+                  apply (intro conjI)
+                       apply (simp_all add: BTL_def BULK_BENQ_def)
+                  done
                 done
               done
             done
           done
         done
-      done
-    subgoal for m n
+      subgoal for m n
         apply hypsubst_thin
         apply simp
         apply (cases "m = 0")
         subgoal
           apply hypsubst_thin
           apply (intro exI conjI)
-          apply (rule rtranclp.intros(1))
+           apply (rule rtranclp.intros(1))
           apply (rule wbc_base)
           apply (intro exI conjI)
-          apply (rule refl)+
+            apply (rule refl)+
           apply (intro allI)
           apply simp
           subgoal for pd
@@ -1334,10 +1338,10 @@ next
           done
         subgoal
           apply (intro exI conjI)
-          apply (rule rtranclp.intros(1))
+           apply (rule rtranclp.intros(1))
           apply (rule wbc_base)
           apply (intro exI conjI)
-          apply (rule refl)+
+            apply (rule refl)+
           apply (intro allI)
           apply simp
           subgoal for pd
@@ -1353,12 +1357,33 @@ next
               subgoal
                 by (metis BAPPEND_BTL BTL_access drop_Suc drop_tl)
               subgoal
-                apply (cases m)
-                 apply simp_all
-   apply (subst tested_Suc)
-                     apply force
-                  apply force
-                sledgehammer
+                apply (subst tested_Suc_gen)
+                   apply (metis BULK_BENQ_empty drop_all linorder_not_less)
+                  apply (metis BULK_BENQ_empty drop_all linorder_not_less)
+                 apply (metis (mono_tags, lifting) BHD_def BULK_BENQ_def BULK_BENQ_empty drop_all hd_append2 hd_drop_conv_nth linorder_not_less)
+                apply simp
+                done
+              done
+            subgoal
+              apply (drule spec[of _ pd])
+              apply (elim conjE exE)
+              subgoal for m n
+                apply (rule exI[of _ m])
+                apply (rule exI[of _ n])
+                apply simp
+                apply (intro conjI)
+                subgoal
+                  by (simp add: BTL_def BULK_BENQ_def)
+                subgoal
+                  by (simp add: BTL_def BULK_BENQ_def)
+                done
+              done
+            done
+          done
+        done
+      done
+                        prefer 28
+    apply (simp split: sum.splits)
 
 
                 unfolding tested_def
