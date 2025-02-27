@@ -1124,9 +1124,15 @@ lemma length_consumed_leq:
 
 definition "tested n xs ys = map fst (filter (case_prod (=)) (zip (take n xs) (take n ys)))"
 
-lemma tested_Suc[simp]:
-  "xs \<noteq> [] \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> hd xs \<noteq> hd ys \<Longrightarrow> tested (Suc n) xs ys = tested n (tl xs) (tl ys)"
-  unfolding tested_def by (simp add: take_Suc)
+lemma tested_Suc:
+  "length xs > n \<Longrightarrow> length ys > n \<Longrightarrow> xs ! n \<noteq> ys ! n \<Longrightarrow> tested (Suc n) xs ys = tested n xs ys"
+  unfolding tested_def
+  apply (induct n arbitrary: xs ys)
+   apply (auto simp: take_Suc hd_conv_nth)
+  subgoal for n xs ys
+    apply (cases xs; cases ys; simp)
+    done
+  done
 
 lemma length_tested_0[simp]:
   "tested 0 xs ys = []"
@@ -1140,7 +1146,7 @@ lemma
   and "AC = AC1 >> AC2"
   and "BD = BD1 >> BD2"
   and "\<forall> p. \<exists> m n. (m = 0 \<or> n = 0) \<and> (A p) = (drop n (X p)) \<and> (C p) = drop n (Y p) \<and> (B p) = drop m (X p) \<and> (D p) = drop m (Y p) \<and> 
-        (AC p) = ((Z >> V) p) @ (tested n (A p) (C p)) \<and> (BD p) = ((Z >> W) p) @ (tested m (B p) (D p))"
+        (AC p) = ((Z >> V) p) @ (tested n (X p) (Y p)) \<and> (BD p) = ((Z >> W) p) @ (tested m (X p) (Y p))"
   shows  "map_op projl projr (comp_op Some Z (aeq_op (case_sum X Y)) (acopy_op (case_sum V W))) \<approx>
    map_op projl projr
    (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
@@ -1195,11 +1201,10 @@ next
                 by (metis BAPPEND_BTL BTL_access drop0 drop_Suc)
               subgoal
                 unfolding tested_def
-                apply (auto simp add: filter_empty_conv)
-
-              
-end
+                apply (auto simp add: filter_empty_conv in_set_zip)
+                apply (metis (mono_tags, lifting) BHD_BULK_BENQ_cases BHD_def hd_drop_conv_nth length_greater_0_conv)
                 done
+              done
             subgoal
               apply (drule spec[of _ pd])
               apply (elim conjE exE)
@@ -1307,8 +1312,9 @@ end
                 by (metis BAPPEND_BTL BTL_access drop0 drop_Suc)
               subgoal
                 unfolding tested_def
-                apply (auto simp add: filter_empty_conv)
-                sorry
+                apply (auto simp add: filter_empty_conv in_set_zip)
+                apply (metis (mono_tags, lifting) BHD_BULK_BENQ_cases BHD_def hd_conv_nth)
+                done
               done
             subgoal
               apply (drule spec[of _ pd])
