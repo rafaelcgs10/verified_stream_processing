@@ -1838,7 +1838,244 @@ next
         and op1'a :: "('a + 'a, 'a, 'b) op"
         and pc :: 'a
         and xc :: 'b
-      using that sorry
+      using that 
+      apply -
+      apply (frule spec[of _ pb])
+      apply (elim exE disjE conjE)
+      subgoal for m n
+        apply hypsubst_thin
+        apply simp
+        apply (cases "n = 0")
+        subgoal
+          apply hypsubst_thin
+          apply (intro exI conjI)
+           apply (rule rtranclp.intros(1))
+          apply (rule wbc_base)
+          apply (intro exI conjI)
+            apply (rule refl)+
+          apply (intro allI)
+          apply simp
+          subgoal for pd
+            apply (cases "pb = pd")
+            subgoal
+              apply simp
+              apply (rule exI[of _ 0])
+              apply (rule exI[of _ 1])
+              apply simp
+              apply (intro conjI)
+              subgoal
+                by (metis BAPPEND_BTL BTL_access drop0 drop_Suc)
+              subgoal
+                by (metis BAPPEND_BTL BTL_access drop0 drop_Suc)
+              subgoal
+                unfolding tested_def
+                apply (subst (1 2) take_Suc)
+                  apply force
+                 apply force
+                apply auto
+                 apply (metis BAPPEND_BENQ BENQ_access BHD_def BULK_BENQ_def hd_append2)+
+                done
+              subgoal
+                by (metis BULK_BENQ_empty Suc_leI length_greater_0_conv)
+              subgoal
+                by (metis BULK_BENQ_empty Suc_leI length_greater_0_conv)
+              done
+            subgoal
+              apply (drule spec[of _ pd])
+              apply (elim conjE exE)
+              subgoal for m n
+                apply (rule exI[of _ m])
+                apply (rule exI[of _ n])
+                apply simp
+                apply (intro conjI)
+                subgoal
+                  by (simp add: BTL_def BULK_BENQ_def)
+                subgoal
+                  by (simp add: BTL_def BULK_BENQ_def)
+                subgoal
+                  by (metis BAPPEND_BENQ BENQ_diff_access)
+                done
+              done
+            done
+          done
+        subgoal
+          apply (intro exI conjI)
+           apply (rule rtranclp.intros(1))
+          apply (rule wbc_base)
+          apply (intro exI conjI)
+            apply (rule refl)+
+          apply (intro allI)
+          apply simp
+          subgoal for pd
+            apply (cases "pb = pd")
+            subgoal
+              apply simp
+              apply (rule exI[of _ 0])
+              apply (rule exI[of _ \<open>Suc n\<close>])
+              apply simp
+              apply (intro conjI)
+              subgoal
+                by (metis BAPPEND_BTL BTL_access drop_Suc drop_tl)
+              subgoal
+                by (metis BAPPEND_BTL BTL_access drop_Suc drop_tl)
+              subgoal
+                apply (subst tested_eq_Suc_gen)
+                   apply (metis BULK_BENQ_empty drop_all linorder_not_less)
+                  apply (metis BULK_BENQ_empty drop_all linorder_not_less)
+                 apply (metis BHD_BULK_BENQ_cases BHD_def BULK_BENQ_empty drop_all hd_drop_conv_nth nat_less_le)
+                apply (metis BAPPEND_BENQ BENQ_access BHD_BULK_BENQ_cases BHD_def BULK_BENQ_empty append_assoc drop_all hd_drop_conv_nth nat_less_le)
+                done
+              subgoal
+                using not_less_eq_eq by fastforce
+              subgoal
+                using not_less_eq_eq by fastforce
+              done
+            subgoal
+              apply (drule spec[of _ pd])
+              apply (elim conjE exE)
+              subgoal for m n
+                apply (rule exI[of _ m])
+                apply (rule exI[of _ n])
+                apply simp
+                apply (intro conjI)
+                subgoal
+                  by (simp add: BTL_def BULK_BENQ_def)
+                subgoal
+                  by (simp add: BTL_def BULK_BENQ_def)
+                subgoal
+                  by (metis BAPPEND_BENQ BENQ_diff_access)
+                done
+              done
+            done
+          done
+        done
+      subgoal for m n
+        apply hypsubst_thin
+        apply simp
+        apply (cases "m = 0")
+        subgoal
+          apply hypsubst_thin
+          apply (intro exI conjI)
+           apply (rule rtranclp.intros(1))
+          apply (rule wbc_base)
+          apply (intro exI conjI)
+            apply (rule refl)+
+          apply (intro allI)
+          apply simp
+          subgoal for pd
+            apply (cases "pb = pd")
+            subgoal
+              apply simp
+              apply (rule exI[of _ 0])
+              apply (rule exI[of _ 1])
+              apply simp
+              apply (intro conjI)
+              subgoal
+                by (metis BAPPEND_BTL BTL_access drop0 drop_Suc)
+              subgoal
+                by (metis BAPPEND_BTL BTL_access drop0 drop_Suc)
+              subgoal
+                unfolding tested_def
+                apply (subst (1 2) take_Suc)
+                  apply force
+                 apply force
+                apply auto
+                 apply (metis BAPPEND_BENQ BENQ_access BHD_def BULK_BENQ_def hd_append2)+
+                done
+              subgoal
+                using not_less_eq_eq by fastforce
+              subgoal
+                using not_less_eq_eq by fastforce
+              done
+            subgoal
+              apply (drule spec[of _ pd])
+              apply (elim conjE exE)
+              subgoal for m n
+                apply (rule exI[of _ m])
+                apply (rule exI[of _ n])
+                apply simp
+                apply (intro conjI)
+                subgoal
+                  by (simp add: BTL_def BULK_BENQ_def)
+                subgoal
+                  by (simp add: BTL_def BULK_BENQ_def)
+                subgoal
+                  by (metis BAPPEND_BENQ BENQ_diff_access)
+                done
+              done
+            done
+          done
+        subgoal 
+          apply (intro exI conjI)
+           apply (rule rtranclp.intros(2))
+            apply (rule rtranclp.intros(1))
+           apply (rule step_map_op)
+            apply (rule step_Tau_comp_op_L)
+               apply (rule step_aeq_op_Write)
+                    apply assumption
+                   apply simp_all
+          subgoal
+            by (metis BULK_BENQ_empty)
+          subgoal
+            by (metis BULK_BENQ_empty)
+          subgoal
+            by (metis (no_types, lifting) BHD_BAPPEND_2_cases BHD_def BULK_BENQ_empty self_append_conv2 suffix_take take0)
+          subgoal
+            apply (rule wbc_base)
+            apply (intro exI conjI)
+              apply (rule refl)+
+            apply (intro allI)
+            subgoal for pd
+              apply (cases "pb = pd")
+              subgoal
+                apply simp
+                apply (rule exI[of _ "m - 1"])
+                apply (rule exI[of _ 0])
+                apply simp
+                apply (intro conjI)
+                subgoal
+                  by (metis BAPPEND_BTL BTL_access)
+                subgoal
+                  by (metis BAPPEND_BTL BTL_access)
+                subgoal
+                  by (metis BTL_access Suc_pred drop_Suc)
+                subgoal
+                  by (metis BTL_access Suc_pred drop_Suc)
+                subgoal
+                  apply (cases m)
+                   apply simp_all
+                  apply (metis (mono_tags, lifting) BENQ_access BHD_BULK_BENQ_cases BHD_def BULK_BENQ_def BULK_BENQ_empty append_assoc)
+                  done
+                subgoal
+                apply (cases m)
+                   apply simp_all
+     apply (subst tested_eq_Suc)
+                     apply force
+                    apply force
+                   apply (metis BHD_BULK_BENQ_cases BHD_def BULK_BENQ_empty)
+                  apply (metis (no_types) BAPPEND_BENQ BENQ_access BHD_def BTL_access Cons_eq_appendI append_assoc append_self_conv2)
+                  done
+                subgoal
+                  by (simp add: BTL_access)
+                subgoal
+                  by (simp add: BTL_access)
+                done
+              subgoal
+                apply (drule spec[of _ pd])
+                apply (elim conjE exE)
+                subgoal for m n
+                  apply (rule exI[of _ m])
+                  apply (rule exI[of _ n])
+                  apply simp
+                  apply (intro conjI)
+                           apply (simp_all add: BENQ_diff_access BTL_def BULK_BENQ_def)
+                  done
+                done
+              done
+            done
+          done
+        done
+      done
     moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some Z (aeq_op (case_sum X Y)) (acopy_op (case_sum V W)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>A1 A2 A3 A4 A5 B1 B2 B3 B4 B5 C1 C2 C3 C4 C5 D1 D2 D3 D4 D5 AC1 AC2 BD1 BD2 X Y Z W V. op1xx = map_op projl projr (comp_op Some Z (aeq_op (case_sum X Y)) (acopy_op (case_sum V W))) \<and> op2xx = map_op projl projr (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4)) (map_op projl projr (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))) \<and> (\<forall>p. \<exists>m n. (m = 0 \<or> n = 0) \<and> ((((A1 >> A2) >> A3) >> A4) >> A5) p = drop n (X p) \<and> ((((C1 >> C2) >> C3) >> C4) >> C5) p = drop n (Y p) \<and> ((((B1 >> B2) >> B3) >> B4) >> B5) p = drop m (X p) \<and> ((((D1 >> D2) >> D3) >> D4) >> D5) p = drop m (Y p) \<and> (AC1 >> AC2) p = bulk_benq (tested n (X p) (Y p)) ((Z >> V) p) \<and> (BD1 >> BD2) p = bulk_benq (tested m (X p) (Y p)) ((Z >> W) p) \<and> n \<le> length (X p) \<and> n \<le> length (Y p) \<and> m \<le> length (X p) \<and> m \<le> length (Y p))) op2' (map_op projl projr (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4)) (map_op projl projr (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (BTL pc AC1) (aeq_op (case_sum A5 C5)) (id_op (BENQ pc (BHD pc AC1) AC2)))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))))"
       if "\<forall>p. \<exists>m n. (m = 0 \<or> n = 0) \<and> ((((A1 >> A2) >> A3) >> A4) >> A5) p = drop n (X p) \<and> ((((C1 >> C2) >> C3) >> C4) >> C5) p = drop n (Y p) \<and> ((((B1 >> B2) >> B3) >> B4) >> B5) p = drop m (X p) \<and> ((((D1 >> D2) >> D3) >> D4) >> D5) p = drop m (Y p) \<and> (AC1 >> AC2) p = bulk_benq (tested n (X p) (Y p)) ((Z >> V) p) \<and> (BD1 >> BD2) p = bulk_benq (tested m (X p) (Y p)) ((Z >> W) p) \<and> n \<le> length (X p) \<and> n \<le> length (Y p) \<and> m \<le> length (X p) \<and> m \<le> length (Y p)"
         and "AC1 pc \<noteq> []"
@@ -2093,7 +2330,6 @@ next
           done
         done
       done
-        (* Rafael *)
     moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some Z (aeq_op (case_sum X Y)) (acopy_op (case_sum V W)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>A1 A2 A3 A4 A5 B1 B2 B3 B4 B5 C1 C2 C3 C4 C5 D1 D2 D3 D4 D5 AC1 AC2 BD1 BD2 X Y Z W V. op1xx = map_op projl projr (comp_op Some Z (aeq_op (case_sum X Y)) (acopy_op (case_sum V W))) \<and> op2xx = map_op projl projr (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4)) (map_op projl projr (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))) \<and> (\<forall>p. \<exists>m n. (m = 0 \<or> n = 0) \<and> ((((A1 >> A2) >> A3) >> A4) >> A5) p = drop n (X p) \<and> ((((C1 >> C2) >> C3) >> C4) >> C5) p = drop n (Y p) \<and> ((((B1 >> B2) >> B3) >> B4) >> B5) p = drop m (X p) \<and> ((((D1 >> D2) >> D3) >> D4) >> D5) p = drop m (Y p) \<and> (AC1 >> AC2) p = bulk_benq (tested n (X p) (Y p)) ((Z >> V) p) \<and> (BD1 >> BD2) p = bulk_benq (tested m (X p) (Y p)) ((Z >> W) p) \<and> n \<le> length (X p) \<and> n \<le> length (Y p) \<and> m \<le> length (X p) \<and> m \<le> length (Y p))) op2' (map_op projl projr (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4)) (map_op projl projr (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some (BENQ pb (BHD pb D5) BD1) (aeq_op (case_sum (BTL pb B5) (BTL pb D5))) (id_op BD2))))))"
       if "\<forall>p. \<exists>m n. (m = 0 \<or> n = 0) \<and> ((((A1 >> A2) >> A3) >> A4) >> A5) p = drop n (X p) \<and> ((((C1 >> C2) >> C3) >> C4) >> C5) p = drop n (Y p) \<and> ((((B1 >> B2) >> B3) >> B4) >> B5) p = drop m (X p) \<and> ((((D1 >> D2) >> D3) >> D4) >> D5) p = drop m (Y p) \<and> (AC1 >> AC2) p = bulk_benq (tested n (X p) (Y p)) ((Z >> V) p) \<and> (BD1 >> BD2) p = bulk_benq (tested m (X p) (Y p)) ((Z >> W) p) \<and> n \<le> length (X p) \<and> n \<le> length (Y p) \<and> m \<le> length (X p) \<and> m \<le> length (Y p)"
         and "B5 pb \<noteq> []"
