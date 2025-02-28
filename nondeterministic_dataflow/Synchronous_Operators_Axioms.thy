@@ -1744,6 +1744,10 @@ next
                 apply (auto simp add: filter_empty_conv in_set_zip)
                 apply (metis (mono_tags, lifting) BHD_BULK_BENQ_cases BHD_def hd_drop_conv_nth length_greater_0_conv)
                 done
+              subgoal
+                by (metis BULK_BENQ_empty Suc_leI length_greater_0_conv)
+              subgoal
+                by (metis BULK_BENQ_empty Suc_leI length_greater_0_conv)
               done
             subgoal
               apply (drule spec[of _ pd])
@@ -1788,6 +1792,10 @@ next
                  apply (metis (mono_tags, lifting) BHD_def BULK_BENQ_def BULK_BENQ_empty drop_all hd_append2 hd_drop_conv_nth linorder_not_less)
                 apply simp
                 done
+              subgoal
+                using not_less_eq_eq by fastforce
+              subgoal
+                using not_less_eq_eq by fastforce
               done
             subgoal
               apply (drule spec[of _ pd])
@@ -1836,6 +1844,10 @@ next
                 apply (auto simp add: filter_empty_conv in_set_zip)
                 apply (metis (mono_tags, lifting) BHD_BULK_BENQ_cases BHD_def hd_conv_nth)
                 done
+              subgoal
+                using not_less_eq_eq by fastforce
+              subgoal
+                using not_less_eq_eq by fastforce
               done
             subgoal
               apply (drule spec[of _ pd])
@@ -1901,6 +1913,10 @@ next
                    apply (metis BHD_def BULK_BENQ_def hd_append2)
                   apply (metis BTL_access)
                   done
+                subgoal
+                  by (simp add: BTL_access)
+                subgoal
+                  by (simp add: BTL_access)
                 done
               subgoal
                 apply (drule spec[of _ pd])
@@ -1910,7 +1926,7 @@ next
                   apply (rule exI[of _ n])
                   apply simp
                   apply (intro conjI)
-                       apply (simp_all add: BTL_def BULK_BENQ_def)
+                           apply (simp_all add: BTL_def BULK_BENQ_def)
                   done
                 done
               done
