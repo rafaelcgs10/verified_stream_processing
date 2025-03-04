@@ -1809,6 +1809,92 @@ proof -
   finally (rtranclp_trans) show ?thesis by blast
 qed
 
+(* TODO move or write proof without this lemma *)
+lemma arg_cong3:
+  \<open>x = x' \<Longrightarrow> y = y' \<Longrightarrow> z = z' \<Longrightarrow> f x y z = f x' y' z'\<close>
+  by simp
+
+lemma move_some_buffers:
+  assumes \<open>p \<notin> defaults\<close>
+  shows \<open>(step Tau)\<^sup>*\<^sup>*
+     (map_op projl projr
+       (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1)))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))))
+     (map_op projl projr
+       (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1)))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (AC1(p := [])) (aeq_op (case_sum A5 C5)) (id_op (AC2(p := (AC1 >> AC2) p))))) (map_op projl projr (comp_op Some (BD1(p := [])) (aeq_op (case_sum B5 D5)) (id_op (BD2(p := (BD1 >> BD2) p))))))))\<close>
+proof -
+  have \<open>(step Tau)\<^sup>*\<^sup>*
+     (map_op projl projr
+       (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1)))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))))
+     (map_op projl projr
+       (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1)))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (AC1(p := [])) (aeq_op (case_sum A5 C5)) (id_op (AC2(p := (AC1 >> AC2) p))))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))))\<close>
+    using assms proof (induct \<open>AC1 p\<close> arbitrary: AC1 AC2)
+    case Nil
+    then show ?case
+      by (simp add: BULK_BENQ_left_empty fun_upd_idem)
+  next
+    case (Cons a x)
+    then show ?case
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)
+        apply (rule step_comp_op_R_Tau)
+          apply (rule step_comp_op_L_Tau)
+            apply (rule step_map_op)
+             apply (rule step_Tau_comp_op_R)
+                  apply (rule step_id_op_Read)
+                   apply simp_all
+       apply fastforce
+      by (smt (verit, ccfv_SIG) BAPPEND_BENQ_BHD BENQ_def BTL_access BTL_def fun_upd_upd list.sel(2) list.sel(3) not_Cons_self2)
+  qed
+  also have \<open>(step Tau)\<^sup>*\<^sup>* \<dots>
+     (map_op projl projr
+       (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1)))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (AC1(p := [])) (aeq_op (case_sum A5 C5)) (id_op (AC2(p := (AC1 >> AC2) p))))) (map_op projl projr (comp_op Some (BD1(p := [])) (aeq_op (case_sum B5 D5)) (id_op (BD2(p := (BD1 >> BD2) p))))))))\<close>
+    using assms proof (induct \<open>BD1 p\<close> arbitrary: BD1 BD2)
+    case Nil
+    then show ?case
+      by (simp add: BULK_BENQ_left_empty fun_upd_idem)
+  next
+    case (Cons a x)
+    then show ?case
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)
+        apply (rule step_comp_op_R_Tau)
+          apply (rule step_comp_op_R_Tau)
+            apply (rule step_map_op)
+             apply (rule step_Tau_comp_op_R)
+                  apply (rule step_id_op_Read)
+                   apply simp_all
+       apply fastforce
+      by (smt (verit, ccfv_SIG) BAPPEND_BENQ_BHD BENQ_def BTL_access BTL_def fun_upd_upd list.sel(2) list.sel(3) not_Cons_self2)
+  qed
+  finally (rtranclp_trans) show ?thesis by blast
+qed
+
 lemma wstep_Tau_acopy_op_id_op_transp_op_aeq_op2:
   assumes \<open>p \<notin> defaults\<close>
     and \<open>n \<le> length ((A1 >> A2 >> A3 >> A4 >> A5) p)\<close>
@@ -1816,6 +1902,20 @@ lemma wstep_Tau_acopy_op_id_op_transp_op_aeq_op2:
     and \<open>m \<le> length ((B1 >> B2 >> B3 >> B4 >> B5) p)\<close>
     and \<open>m \<le> length ((D1 >> D2 >> D3 >> D4 >> D5) p)\<close>
   shows \<open>(step Tau)\<^sup>*\<^sup>*
+      (map_op projl projr
+        (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
+          (map_op projl projr
+            (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1)))
+              (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3)))))
+          (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))))
+     (map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) (C4(p := []))) (case_sum (B4(p := [])) (D4(p := []))))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := [])) (D2(p := [])))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) (D1(p := [])))))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) (C3(p := [])))))) (id_op (D3(p := [])))))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (AC1(p := [])) (aeq_op (case_sum (A5(p := drop n ((A1 >> A2 >> A3 >> A4 >> A5) p))) (C5(p := drop n ((C1 >> C2 >> C3 >> C4 >> C5) p))))) (id_op (AC2(p := (AC1 >> AC2) p @ tested n ((A1 >> A2 >> A3 >> A4 >> A5) p) ((C1 >> C2 >> C3 >> C4 >> C5) p)))))) (map_op projl projr (comp_op Some (BD1(p := [])) (aeq_op (case_sum (B5(p := drop m ((B1 >> B2 >> B3 >> B4 >> B5) p))) (D5(p := drop m ((D1 >> D2 >> D3 >> D4 >> D5) p))))) (id_op (BD2(p := (BD1 >> BD2) p @ tested m ((B1 >> B2 >> B3 >> B4 >> B5) p) ((D1 >> D2 >> D3 >> D4 >> D5) p)))))))))\<close>
+proof -
+  have \<open>(step Tau)\<^sup>*\<^sup>*
      (map_op projl projr
        (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
          (map_op projl projr
@@ -1827,8 +1927,139 @@ lemma wstep_Tau_acopy_op_id_op_transp_op_aeq_op2:
          (map_op projl projr
            (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := [])) (D2(p := [])))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) (D1(p := [])))))
              (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) (C3(p := [])))))) (id_op (D3(p := [])))))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := (A1 >> A2 >> A3 >> A4 >> A5) p)) (C5(p := (C1 >> C2 >> C3 >> C4 >> C5) p)))) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum (B5(p := (B1 >> B2 >> B3 >> B4 >> B5) p)) (D5(p := (D1 >> D2 >> D3 >> D4 >> D5) p)))) (id_op BD2))))))\<close>
+    using assms move_all_buffers by metis
+  also have \<open>(step Tau)\<^sup>*\<^sup>* \<dots>
+     (map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) (C4(p := []))) (case_sum (B4(p := [])) (D4(p := []))))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := [])) (D2(p := [])))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) (D1(p := [])))))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) (C3(p := [])))))) (id_op (D3(p := [])))))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (AC1(p := AC1 p @ tested n ((A1 >> A2 >> A3 >> A4 >> A5) p) ((C1 >> C2 >> C3 >> C4 >> C5) p))) (aeq_op (case_sum (A5(p := drop n ((A1 >> A2 >> A3 >> A4 >> A5) p))) (C5(p := drop n ((C1 >> C2 >> C3 >> C4 >> C5) p))))) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum (B5(p := (B1 >> B2 >> B3 >> B4 >> B5) p)) (D5(p := (D1 >> D2 >> D3 >> D4 >> D5) p)))) (id_op BD2))))))\<close>
+    using assms proof (induct n)
+    case 0
+    then show ?case
+      by (simp add: drop_0)
+  next
+    case (Suc n)
+    then show ?case
+      apply -
+      apply (rule rtranclp.intros(2)[of _ _ \<open>map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) (C4(p := []))) (case_sum (B4(p := [])) (D4(p := []))))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := [])) (D2(p := [])))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) (D1(p := [])))))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) (C3(p := [])))))) (id_op (D3(p := [])))))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (AC1(p := AC1 p @ tested n ((A1 >> A2 >> A3 >> A4 >> A5) p) ((C1 >> C2 >> C3 >> C4 >> C5) p))) (aeq_op (case_sum (A5(p := drop n ((A1 >> A2 >> A3 >> A4 >> A5) p))) (C5(p := drop n ((C1 >> C2 >> C3 >> C4 >> C5) p))))) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum (B5(p := (B1 >> B2 >> B3 >> B4 >> B5) p)) (D5(p := (D1 >> D2 >> D3 >> D4 >> D5) p)))) (id_op BD2)))))\<close>])
+       apply linarith
+      apply (rule step_map_op[of Tau])
+       apply (rule step_comp_op_R_Tau)
+         apply (rule step_comp_op_L_Tau)
+           apply (rule step_map_op[of Tau])
+            apply (cases \<open>bhd (drop n ((A1 >> A2 >> A3 >> A4 >> A5) p)) = bhd (drop n ((C1 >> C2 >> C3 >> C4 >> C5) p))\<close>)
+      subgoal
+        apply (rule step_Tau_comp_op_L[of p \<open>bhd (drop n ((A1 >> A2 >> A3 >> A4 >> A5) p))\<close>])
+           apply (rule step_aeq_op_Write)
+                apply (simp_all add: BHD_def)
+         apply (smt (verit, best) BTL_def BULK_BENQ_assoc drop_Suc fun_upd_def fun_upd_upd tl_drop)
+        apply (simp add: BENQ_def)
+        apply (subst tested_eq_Suc_gen)
+           apply (simp_all add: hd_drop_conv_nth)
+        by fastforce
+      subgoal
+        apply (rule step_comp_op_L_Tau)
+          apply (rule step_aeq_op_Silent)
+              apply (simp_all add: BHD_def)
+            apply (metis BHD_def fun_upd_same)
+           apply fastforce+
+         apply (smt (verit, del_insts) BTL_def BULK_BENQ_assoc drop_Suc fun_upd_def fun_upd_upd tl_drop)
+        apply (subst tested_diff_Suc_gen)
+           apply (simp_all add: hd_drop_conv_nth)
+        by fastforce
+           apply simp_all
+      using BULK_BENQ_assoc apply force
+      apply (rule arg_cong[of _ _ \<open>map_op projl projr\<close>])
+      apply (rule arg_cong3[of _ _ _ _ _ _ \<open>comp_op Some\<close>])
+        apply blast+
+      apply (rule arg_cong[of _ _ \<open>map_op reassoc reassoc\<close>])
+      apply (rule arg_cong2[of _ _ _ _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. [])\<close>])
+       apply (rule arg_cong[of _ _ \<open>map_op assoc assoc\<close>])
+       apply (rule arg_cong2[of _ _ _ _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. [])\<close>])
+        apply (metis fun_upd_def)+
+      done
+  qed
+  also (rtranclp_trans) have \<open>(step Tau)\<^sup>*\<^sup>* \<dots>
+     (map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) (C4(p := []))) (case_sum (B4(p := [])) (D4(p := []))))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := [])) (D2(p := [])))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) (D1(p := [])))))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) (C3(p := [])))))) (id_op (D3(p := [])))))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (AC1(p := AC1 p @ tested n ((A1 >> A2 >> A3 >> A4 >> A5) p) ((C1 >> C2 >> C3 >> C4 >> C5) p))) (aeq_op (case_sum (A5(p := drop n ((A1 >> A2 >> A3 >> A4 >> A5) p))) (C5(p := drop n ((C1 >> C2 >> C3 >> C4 >> C5) p))))) (id_op AC2))) (map_op projl projr (comp_op Some (BD1(p := BD1 p @ tested m ((B1 >> B2 >> B3 >> B4 >> B5) p) ((D1 >> D2 >> D3 >> D4 >> D5) p))) (aeq_op (case_sum (B5(p := drop m ((B1 >> B2 >> B3 >> B4 >> B5) p))) (D5(p := drop m ((D1 >> D2 >> D3 >> D4 >> D5) p))))) (id_op BD2))))))\<close>
+    using assms proof (induct m)
+    case 0
+    then show ?case
+      by (simp add: drop_0)
+  next
+    case (Suc m)
+    then show ?case
+      apply -
+      apply (rule rtranclp.intros(2)[of _ _ \<open>map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) (C4(p := []))) (case_sum (B4(p := [])) (D4(p := []))))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := [])) (D2(p := [])))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) (D1(p := [])))))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) (C3(p := [])))))) (id_op (D3(p := [])))))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (AC1(p := AC1 p @ tested n ((A1 >> A2 >> A3 >> A4 >> A5) p) ((C1 >> C2 >> C3 >> C4 >> C5) p))) (aeq_op (case_sum (A5(p := drop n ((A1 >> A2 >> A3 >> A4 >> A5) p))) (C5(p := drop n ((C1 >> C2 >> C3 >> C4 >> C5) p))))) (id_op AC2))) (map_op projl projr (comp_op Some (BD1(p := BD1 p @ tested m ((B1 >> B2 >> B3 >> B4 >> B5) p) ((D1 >> D2 >> D3 >> D4 >> D5) p))) (aeq_op (case_sum (B5(p := drop m ((B1 >> B2 >> B3 >> B4 >> B5) p))) (D5(p := drop m ((D1 >> D2 >> D3 >> D4 >> D5) p))))) (id_op BD2)))))\<close>])
+       apply linarith
+      apply (rule step_map_op[of Tau])
+       apply (rule step_comp_op_R_Tau)
+         apply (rule step_comp_op_R_Tau)
+           apply (rule step_map_op[of Tau])
+            apply (cases \<open>bhd (drop m ((B1 >> B2 >> B3 >> B4 >> B5) p)) = bhd (drop m ((D1 >> D2 >> D3 >> D4 >> D5) p))\<close>)
+      subgoal
+        apply (rule step_Tau_comp_op_L[of p \<open>bhd (drop m ((B1 >> B2 >> B3 >> B4 >> B5) p))\<close>])
+           apply (rule step_aeq_op_Write)
+                apply (simp_all add: BHD_def)
+         apply (smt (verit, best) BTL_def BULK_BENQ_assoc drop_Suc fun_upd_def fun_upd_upd tl_drop)
+        apply (simp add: BENQ_def)
+        apply (subst tested_eq_Suc_gen)
+           apply (simp_all add: hd_drop_conv_nth)
+        by fastforce
+      subgoal
+        apply (rule step_comp_op_L_Tau)
+          apply (rule step_aeq_op_Silent)
+              apply (simp_all add: BHD_def)
+            apply (metis BHD_def fun_upd_same)
+           apply fastforce+
+         apply (smt (verit, del_insts) BTL_def BULK_BENQ_assoc drop_Suc fun_upd_def fun_upd_upd tl_drop)
+        apply (subst tested_diff_Suc_gen)
+           apply (simp_all add: hd_drop_conv_nth)
+        by fastforce
+           apply simp_all
+       apply (rule arg_cong[of _ _ \<open>map_op projl projr\<close>])
+       apply (rule arg_cong3[of _ _ _ _ _ _ \<open>comp_op Some\<close>])
+         apply fastforce
+        apply (rule arg_cong[of _ _ aeq_op])
+      using BULK_BENQ_assoc apply force
+       apply simp
+      apply (rule arg_cong[of _ _ \<open>map_op projl projr\<close>])
+      apply (rule arg_cong3[of _ _ _ _ _ _ \<open>comp_op Some\<close>])
+        apply blast+
+      apply (rule arg_cong[of _ _ \<open>map_op reassoc reassoc\<close>])
+      apply (rule arg_cong2[of _ _ _ _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. [])\<close>])
+       apply (rule arg_cong[of _ _ \<open>map_op assoc assoc\<close>])
+       apply (rule arg_cong2[of _ _ _ _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. [])\<close>])
+        apply (metis fun_upd_def)+
+      done
+  qed
+  also (rtranclp_trans) have \<open>(step Tau)\<^sup>*\<^sup>* \<dots>
+     (map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) (C4(p := []))) (case_sum (B4(p := [])) (D4(p := []))))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := [])) (D2(p := [])))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) (D1(p := [])))))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) (C3(p := [])))))) (id_op (D3(p := [])))))))
          (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (AC1(p := [])) (aeq_op (case_sum (A5(p := drop n ((A1 >> A2 >> A3 >> A4 >> A5) p))) (C5(p := drop n ((C1 >> C2 >> C3 >> C4 >> C5) p))))) (id_op (AC2(p := (AC1 >> AC2) p @ tested n ((A1 >> A2 >> A3 >> A4 >> A5) p) ((C1 >> C2 >> C3 >> C4 >> C5) p)))))) (map_op projl projr (comp_op Some (BD1(p := [])) (aeq_op (case_sum (B5(p := drop m ((B1 >> B2 >> B3 >> B4 >> B5) p))) (D5(p := drop m ((D1 >> D2 >> D3 >> D4 >> D5) p))))) (id_op (BD2(p := (BD1 >> BD2) p @ tested m ((B1 >> B2 >> B3 >> B4 >> B5) p) ((D1 >> D2 >> D3 >> D4 >> D5) p)))))))))\<close>
-  sorry
+    sorry
+  finally (rtranclp_trans) show ?thesis by blast
+qed
 
 lemma A10_gen:
   assumes "A = A1 >> A2 >> A3 >> A4 >> A5"
@@ -1928,13 +2159,397 @@ lemma A10_gen:
         and "V pa \<noteq> []"
         and "pa \<notin> defaults"
       for pa :: 'a
-      using that sorry
+      using that
+      apply -
+      apply (frule spec[of _ pa])
+      apply (elim exE disjE conjE)
+      subgoal for m n
+        apply (cases \<open>AC2 pa \<noteq> []\<close>)
+        subgoal
+          apply (intro exI conjI[rotated] wbc_base)
+             defer
+             apply (rule refl)+
+           apply (rule step_wstep)
+           apply (rule step_map_op[of \<open>Out (Inr (Inl pa)) (BHD pa AC2)\<close>])
+            apply fastforce
+           apply auto[1]
+           apply (metis BHD_BULK_BENQ_cases BHD_def BULK_BENQ_empty hd_append2)
+          apply (rule allI)
+          subgoal for p
+            apply (cases \<open>p = pa\<close>)
+            subgoal
+              apply (rule exI[of _ m])
+              apply (rule exI[of _ n])
+              apply auto[1]
+              by (smt (verit) BAPPEND_BTL BTL_access BULK_BENQ_empty tl_append2)
+            subgoal
+              apply (drule spec[of _ p])
+              apply (elim conjE exE)
+              subgoal for m' n'
+                apply (rule exI[of _ m'])
+                apply (rule exI[of _ n'])
+                apply (simp add: BTL_def BULK_BENQ_def)
+                done
+              done
+            done
+          done
+        subgoal
+          apply (cases \<open>AC1 pa \<noteq> []\<close>)
+          subgoal
+            apply (intro exI conjI[rotated] wbc_base)
+               defer
+               apply (rule refl)+
+             apply (rule step_tau_step_io_wstep[of _ \<open>map_op projl projr
+       (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2))
+             (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1)))
+             (map_op reassoc reassoc
+               (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (BTL pa AC1) (aeq_op (case_sum A5 C5)) (id_op (BENQ pa (BHD pa AC1) AC2))))
+           (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2)))))\<close>])
+              apply auto[1]
+              apply fastforce
+             apply (rule step_map_op[of \<open>Out (Inr (Inl pa)) (BHD pa AC1)\<close>])
+              apply auto[3]
+             apply (metis BHD_BULK_BENQ_cases BHD_def BULK_BENQ_empty hd_append2)
+            subgoal for p
+              apply (cases \<open>p = pa\<close>)
+              subgoal
+                apply (rule exI[of _ m])
+                apply (rule exI[of _ n])
+                apply auto[1]
+                by (metis (no_types, opaque_lifting) BTL_access BULK_BENQ_def self_append_conv2 tl_append2)
+              subgoal
+                apply (drule spec[of _ p])
+                apply (elim conjE exE)
+                subgoal for m' n'
+                  apply (rule exI[of _ m'])
+                  apply (rule exI[of _ n'])
+                  apply (simp add: BTL_def BULK_BENQ_def)
+                  done
+                done
+              done
+            done
+          subgoal
+            apply (cases n)
+            subgoal
+              apply (rule FalseE)
+              by (metis BULK_BENQ_empty append_self_conv2 length_tested_0)
+            subgoal for n'
+              apply (intro exI conjI[rotated] wbc_base)
+                 defer
+                 apply (rule refl)+
+               apply (rule wstep_trans(1))
+                apply (rule wstep_Tau_acopy_op_id_op_transp_op_aeq_op2[of _ n _ _ _ _ _ _ _ _ _ _ m])
+                    apply simp_all
+               apply (rule step_map_op[of \<open>Out (Inr (Inl pa)) (BHD pa V)\<close>])
+                apply (rule step_comp_op_R_Out)
+                  apply (rule step_comp_op_L_Out)
+                     apply (rule step_map_op[of \<open>Out (Inr pa) (BHD pa V)\<close>])
+                      apply (rule step_comp_op_R_Out)
+                        apply (rule step_id_op_Write)
+                           apply (simp_all add: BHD_def)
+               apply (metis BHD_BULK_BENQ_right_not_empty BHD_def)
+              apply (rule allI)
+              subgoal for p
+                apply (cases \<open>p = pa\<close>)
+                subgoal
+                  apply (rule exI[of _ 0])
+                  apply (rule exI[of _ 0])
+                  apply auto[1]
+                       apply (metis BULK_BENQ_left_empty fun_upd_same)
+                      apply (metis BULK_BENQ_left_empty fun_upd_same)
+                     apply (metis BULK_BENQ_left_empty fun_upd_same)
+                    apply (metis BULK_BENQ_left_empty fun_upd_same)
+                   apply (metis BAPPEND_BTL BTL_access BULK_BENQ_left_empty fun_upd_same)
+                  by (metis BULK_BENQ_left_empty fun_upd_same)
+                subgoal
+                  apply (drule spec[of _ p])
+                  apply (elim conjE exE)
+                  subgoal for m' n''
+                    apply (rule exI[of _ m'])
+                    apply (rule exI[of _ n''])
+                    apply (simp add: BTL_def BULK_BENQ_def)
+                    done
+                  done
+                done
+              done
+            done
+          done
+        done
+      subgoal for m n
+        apply (cases \<open>AC2 pa \<noteq> []\<close>)
+        subgoal
+          apply (intro exI conjI[rotated] wbc_base)
+             defer
+             apply (rule refl)+
+           apply (rule step_wstep)
+           apply (rule step_map_op[of \<open>Out (Inr (Inl pa)) (BHD pa AC2)\<close>])
+            apply fastforce
+           apply auto[1]
+           apply (metis BHD_BULK_BENQ_cases BHD_def BULK_BENQ_empty)
+          apply (rule allI)
+          subgoal for p
+            apply (cases \<open>p = pa\<close>)
+            subgoal
+              apply (rule exI[of _ m])
+              apply (rule exI[of _ n])
+              apply auto[1]
+              by (smt (verit) BAPPEND_BTL BTL_access BULK_BENQ_empty tl_append2)
+            subgoal
+              apply (drule spec[of _ p])
+              apply (elim conjE exE)
+              subgoal for m' n'
+                apply (rule exI[of _ m'])
+                apply (rule exI[of _ n'])
+                apply (simp add: BTL_def BULK_BENQ_def)
+                done
+              done
+            done
+          done
+        subgoal
+          apply (cases \<open>AC1 pa \<noteq> []\<close>)
+          subgoal
+            apply (intro exI conjI[rotated] wbc_base)
+               defer
+               apply (rule refl)+
+             apply (rule step_tau_step_io_wstep[of _ \<open>map_op projl projr
+       (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2))
+             (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1)))
+             (map_op reassoc reassoc
+               (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (BTL pa AC1) (aeq_op (case_sum A5 C5)) (id_op (BENQ pa (BHD pa AC1) AC2))))
+           (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2)))))\<close>])
+              apply auto[1]
+              apply fastforce
+             apply (rule step_map_op[of \<open>Out (Inr (Inl pa)) (BHD pa AC1)\<close>])
+              apply auto[3]
+             apply (metis BHD_BULK_BENQ_cases BHD_def BULK_BENQ_empty)
+            subgoal for p
+              apply (cases \<open>p = pa\<close>)
+              subgoal
+                apply (rule exI[of _ m])
+                apply (rule exI[of _ n])
+                apply auto[1]
+                by (metis (no_types, opaque_lifting) BTL_access BULK_BENQ_def self_append_conv2 tl_append2)
+              subgoal
+                apply (drule spec[of _ p])
+                apply (elim conjE exE)
+                subgoal for m' n'
+                  apply (rule exI[of _ m'])
+                  apply (rule exI[of _ n'])
+                  apply (simp add: BTL_def BULK_BENQ_def)
+                  done
+                done
+              done
+            done
+          subgoal
+            apply (rule FalseE)
+            by (metis BULK_BENQ_empty append_self_conv2 length_tested_0)
+          done
+        done
+      done
     moreover have "\<exists>op2'. wstep (Out (Inr pa) (BHD pa W)) (map_op projl projr (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4)) (map_op projl projr (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2)))))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>A1 A2 A3 A4 A5 B1 B2 B3 B4 B5 C1 C2 C3 C4 C5 D1 D2 D3 D4 D5 AC1 AC2 BD1 BD2 X Y Z W V. op1 = map_op projl projr (comp_op Some Z (aeq_op (case_sum X Y)) (acopy_op (case_sum V W))) \<and> op2 = map_op projl projr (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4)) (map_op projl projr (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))) \<and> (\<forall>p. \<exists>m n. (m = 0 \<or> n = 0) \<and> drop n (((((A1 >> A2) >> A3) >> A4) >> A5) p) = X p \<and> drop n (((((C1 >> C2) >> C3) >> C4) >> C5) p) = Y p \<and> drop m (((((B1 >> B2) >> B3) >> B4) >> B5) p) = X p \<and> drop m (((((D1 >> D2) >> D3) >> D4) >> D5) p) = Y p \<and> bulk_benq (tested n (((((A1 >> A2) >> A3) >> A4) >> A5) p) (((((C1 >> C2) >> C3) >> C4) >> C5) p)) ((AC1 >> AC2) p) = (Z >> V) p \<and> bulk_benq (tested m (((((B1 >> B2) >> B3) >> B4) >> B5) p) (((((D1 >> D2) >> D3) >> D4) >> D5) p)) ((BD1 >> BD2) p) = (Z >> W) p \<and> n \<le> length (((((A1 >> A2) >> A3) >> A4) >> A5) p) \<and> n \<le> length (((((C1 >> C2) >> C3) >> C4) >> C5) p) \<and> m \<le> length (((((B1 >> B2) >> B3) >> B4) >> B5) p) \<and> m \<le> length (((((D1 >> D2) >> D3) >> D4) >> D5) p))) (map_op projl projr (comp_op Some Z (aeq_op (case_sum X Y)) (acopy_op (case_sum V (BTL pa W))))) op2'"
       if "\<forall>p. \<exists>m n. (m = 0 \<or> n = 0) \<and> drop n (((((A1 >> A2) >> A3) >> A4) >> A5) p) = X p \<and> drop n (((((C1 >> C2) >> C3) >> C4) >> C5) p) = Y p \<and> drop m (((((B1 >> B2) >> B3) >> B4) >> B5) p) = X p \<and> drop m (((((D1 >> D2) >> D3) >> D4) >> D5) p) = Y p \<and> bulk_benq (tested n (((((A1 >> A2) >> A3) >> A4) >> A5) p) (((((C1 >> C2) >> C3) >> C4) >> C5) p)) ((AC1 >> AC2) p) = (Z >> V) p \<and> bulk_benq (tested m (((((B1 >> B2) >> B3) >> B4) >> B5) p) (((((D1 >> D2) >> D3) >> D4) >> D5) p)) ((BD1 >> BD2) p) = (Z >> W) p \<and> n \<le> length (((((A1 >> A2) >> A3) >> A4) >> A5) p) \<and> n \<le> length (((((C1 >> C2) >> C3) >> C4) >> C5) p) \<and> m \<le> length (((((B1 >> B2) >> B3) >> B4) >> B5) p) \<and> m \<le> length (((((D1 >> D2) >> D3) >> D4) >> D5) p)"
         and "W pa \<noteq> []"
         and "pa \<notin> defaults"
       for pa :: 'a
-      using that sorry
+      using that
+      apply -
+      apply (frule spec[of _ pa])
+      apply (elim exE disjE conjE)
+      subgoal for m n
+        apply (cases \<open>BD2 pa \<noteq> []\<close>)
+        subgoal
+          apply (intro exI conjI[rotated] wbc_base)
+             defer
+             apply (rule refl)+
+           apply (rule step_wstep)
+           apply (rule step_map_op[of \<open>Out (Inr (Inr pa)) (BHD pa BD2)\<close>])
+            apply fastforce
+           apply auto[1]
+           apply (metis BHD_BULK_BENQ_cases BHD_def BULK_BENQ_empty)
+          apply (rule allI)
+          subgoal for p
+            apply (cases \<open>p = pa\<close>)
+            subgoal
+              apply (rule exI[of _ m])
+              apply (rule exI[of _ n])
+              apply auto[1]
+              by (smt (verit) BAPPEND_BTL BTL_access BULK_BENQ_empty tl_append2)
+            subgoal
+              apply (drule spec[of _ p])
+              apply (elim conjE exE)
+              subgoal for m' n'
+                apply (rule exI[of _ m'])
+                apply (rule exI[of _ n'])
+                apply (simp add: BTL_def BULK_BENQ_def)
+                done
+              done
+            done
+          done
+        subgoal
+          apply (cases \<open>BD1 pa \<noteq> []\<close>)
+          subgoal
+            apply (intro exI conjI[rotated] wbc_base)
+               defer
+               apply (rule refl)+
+             apply (rule step_tau_step_io_wstep[of _ \<open>map_op projl projr
+       (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2))
+             (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1)))
+             (map_op reassoc reassoc
+               (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2)))
+           (map_op projl projr (comp_op Some (BTL pa BD1) (aeq_op (case_sum B5 D5)) (id_op (BENQ pa (BHD pa BD1) BD2))))))\<close>])
+              apply auto[1]
+              apply fastforce
+             apply (rule step_map_op[of \<open>Out (Inr (Inr pa)) (BHD pa BD1)\<close>])
+              apply auto[3]
+             apply (metis BHD_BULK_BENQ_cases BHD_def BULK_BENQ_empty)
+            subgoal for p
+              apply (cases \<open>p = pa\<close>)
+              subgoal
+                apply (rule exI[of _ m])
+                apply (rule exI[of _ n])
+                apply auto[1]
+                by (metis (no_types, opaque_lifting) BTL_access BULK_BENQ_def self_append_conv2 tl_append2)
+              subgoal
+                apply (drule spec[of _ p])
+                apply (elim conjE exE)
+                subgoal for m' n'
+                  apply (rule exI[of _ m'])
+                  apply (rule exI[of _ n'])
+                  apply (simp add: BTL_def BULK_BENQ_def)
+                  done
+                done
+              done
+            done
+          subgoal
+            apply (rule FalseE)
+            by (metis BULK_BENQ_empty append_self_conv2 length_tested_0)
+          done
+        done
+      subgoal for m n
+        apply (cases \<open>BD2 pa \<noteq> []\<close>)
+        subgoal
+          apply (intro exI conjI[rotated] wbc_base)
+             defer
+             apply (rule refl)+
+           apply (rule step_wstep)
+           apply (rule step_map_op[of \<open>Out (Inr (Inr pa)) (BHD pa BD2)\<close>])
+            apply fastforce
+           apply auto[1]
+           apply (metis BHD_BULK_BENQ_cases BHD_def BULK_BENQ_empty hd_append2)
+          apply (rule allI)
+          subgoal for p
+            apply (cases \<open>p = pa\<close>)
+            subgoal
+              apply (rule exI[of _ m])
+              apply (rule exI[of _ n])
+              apply auto[1]
+              by (smt (verit) BAPPEND_BTL BTL_access BULK_BENQ_empty tl_append2)
+            subgoal
+              apply (drule spec[of _ p])
+              apply (elim conjE exE)
+              subgoal for m' n'
+                apply (rule exI[of _ m'])
+                apply (rule exI[of _ n'])
+                apply (simp add: BTL_def BULK_BENQ_def)
+                done
+              done
+            done
+          done
+        subgoal
+          apply (cases \<open>BD1 pa \<noteq> []\<close>)
+          subgoal
+            apply (intro exI conjI[rotated] wbc_base)
+               defer
+               apply (rule refl)+
+             apply (rule step_tau_step_io_wstep[of _ \<open>map_op projl projr
+       (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2))
+             (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1)))
+             (map_op reassoc reassoc
+               (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2)))
+           (map_op projl projr (comp_op Some (BTL pa BD1) (aeq_op (case_sum B5 D5)) (id_op (BENQ pa (BHD pa BD1) BD2))))))\<close>])
+              apply auto[1]
+              apply fastforce
+             apply (rule step_map_op[of \<open>Out (Inr (Inr pa)) (BHD pa BD1)\<close>])
+              apply auto[3]
+             apply (metis BHD_BULK_BENQ_cases BHD_def BULK_BENQ_empty hd_append2)
+            subgoal for p
+              apply (cases \<open>p = pa\<close>)
+              subgoal
+                apply (rule exI[of _ m])
+                apply (rule exI[of _ n])
+                apply auto[1]
+                by (metis (no_types, opaque_lifting) BTL_access BULK_BENQ_def self_append_conv2 tl_append2)
+              subgoal
+                apply (drule spec[of _ p])
+                apply (elim conjE exE)
+                subgoal for m' n'
+                  apply (rule exI[of _ m'])
+                  apply (rule exI[of _ n'])
+                  apply (simp add: BTL_def BULK_BENQ_def)
+                  done
+                done
+              done
+            done
+          subgoal
+            apply (cases m)
+            subgoal
+              apply (rule FalseE)
+              by (metis BULK_BENQ_empty append_self_conv2 length_tested_0)
+            subgoal for m'
+              apply (intro exI conjI[rotated] wbc_base)
+                 defer
+                 apply (rule refl)+
+               apply (rule wstep_trans(1))
+                apply (rule wstep_Tau_acopy_op_id_op_transp_op_aeq_op2[of _ n _ _ _ _ _ _ _ _ _ _ m])
+                    apply simp_all
+               apply (rule step_map_op[of \<open>Out (Inr (Inr pa)) (BHD pa W)\<close>])
+                apply (rule step_comp_op_R_Out)
+                  apply (rule step_comp_op_R_Out)
+                     apply (rule step_map_op[of \<open>Out (Inr pa) (BHD pa W)\<close>])
+                      apply (rule step_comp_op_R_Out)
+                        apply (rule step_id_op_Write)
+                           apply (simp_all add: BHD_def)
+               apply (metis BHD_BULK_BENQ_right_not_empty BHD_def)
+              apply (rule allI)
+              subgoal for p
+                apply (cases \<open>p = pa\<close>)
+                subgoal
+                  apply (rule exI[of _ 0])
+                  apply (rule exI[of _ 0])
+                  apply auto[1]
+                       apply (metis BULK_BENQ_left_empty fun_upd_same)
+                      apply (metis BULK_BENQ_left_empty fun_upd_same)
+                     apply (metis BULK_BENQ_left_empty fun_upd_same)
+                    apply (metis BULK_BENQ_left_empty fun_upd_same)
+                   apply (metis BULK_BENQ_left_empty fun_upd_same)
+                  by (metis BAPPEND_BTL BTL_access BULK_BENQ_left_empty fun_upd_same)
+                subgoal
+                  apply (drule spec[of _ p])
+                  apply (elim conjE exE)
+                  subgoal for m'' n'
+                    apply (rule exI[of _ m''])
+                    apply (rule exI[of _ n'])
+                    apply (simp add: BTL_def BULK_BENQ_def)
+                    done
+                  done
+                done
+              done
+            done
+          done
+        done
+      done
     moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4)) (map_op projl projr (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2)))))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>A1 A2 A3 A4 A5 B1 B2 B3 B4 B5 C1 C2 C3 C4 C5 D1 D2 D3 D4 D5 AC1 AC2 BD1 BD2 X Y Z W V. op1 = map_op projl projr (comp_op Some Z (aeq_op (case_sum X Y)) (acopy_op (case_sum V W))) \<and> op2 = map_op projl projr (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4)) (map_op projl projr (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))) \<and> (\<forall>p. \<exists>m n. (m = 0 \<or> n = 0) \<and> drop n (((((A1 >> A2) >> A3) >> A4) >> A5) p) = X p \<and> drop n (((((C1 >> C2) >> C3) >> C4) >> C5) p) = Y p \<and> drop m (((((B1 >> B2) >> B3) >> B4) >> B5) p) = X p \<and> drop m (((((D1 >> D2) >> D3) >> D4) >> D5) p) = Y p \<and> bulk_benq (tested n (((((A1 >> A2) >> A3) >> A4) >> A5) p) (((((C1 >> C2) >> C3) >> C4) >> C5) p)) ((AC1 >> AC2) p) = (Z >> V) p \<and> bulk_benq (tested m (((((B1 >> B2) >> B3) >> B4) >> B5) p) (((((D1 >> D2) >> D3) >> D4) >> D5) p)) ((BD1 >> BD2) p) = (Z >> W) p \<and> n \<le> length (((((A1 >> A2) >> A3) >> A4) >> A5) p) \<and> n \<le> length (((((C1 >> C2) >> C3) >> C4) >> C5) p) \<and> m \<le> length (((((B1 >> B2) >> B3) >> B4) >> B5) p) \<and> m \<le> length (((((D1 >> D2) >> D3) >> D4) >> D5) p))) (map_op projl projr (comp_op Some (BENQ pa (BHD pa Y) Z) (aeq_op (case_sum (BTL pa X) (BTL pa Y))) (acopy_op (case_sum V W)))) op2'"
       if "\<forall>p. \<exists>m n. (m = 0 \<or> n = 0) \<and> drop n (((((A1 >> A2) >> A3) >> A4) >> A5) p) = X p \<and> drop n (((((C1 >> C2) >> C3) >> C4) >> C5) p) = Y p \<and> drop m (((((B1 >> B2) >> B3) >> B4) >> B5) p) = X p \<and> drop m (((((D1 >> D2) >> D3) >> D4) >> D5) p) = Y p \<and> bulk_benq (tested n (((((A1 >> A2) >> A3) >> A4) >> A5) p) (((((C1 >> C2) >> C3) >> C4) >> C5) p)) ((AC1 >> AC2) p) = (Z >> V) p \<and> bulk_benq (tested m (((((B1 >> B2) >> B3) >> B4) >> B5) p) (((((D1 >> D2) >> D3) >> D4) >> D5) p)) ((BD1 >> BD2) p) = (Z >> W) p \<and> n \<le> length (((((A1 >> A2) >> A3) >> A4) >> A5) p) \<and> n \<le> length (((((C1 >> C2) >> C3) >> C4) >> C5) p) \<and> m \<le> length (((((B1 >> B2) >> B3) >> B4) >> B5) p) \<and> m \<le> length (((((D1 >> D2) >> D3) >> D4) >> D5) p)"
         and "X pa \<noteq> []"
