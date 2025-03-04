@@ -101,6 +101,9 @@ lemma BENQ_diff_access:
 lemma BTL_access:
   "(BTL p buf) p = tl (buf p)"
   unfolding BTL_def by force
+lemma BTL_diff_access:
+  "p \<noteq> p' \<Longrightarrow> (BTL p buf) p' = buf p'"
+  unfolding BTL_def by force
 lemma BTL_empty[simp]:
   "buf p = [] \<Longrightarrow> (BTL p buf) = buf"
   unfolding BTL_def by force

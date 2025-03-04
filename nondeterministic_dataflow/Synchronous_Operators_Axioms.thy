@@ -1809,6 +1809,26 @@ proof -
   finally (rtranclp_trans) show ?thesis by blast
 qed
 
+lemma wstep_Tau_acopy_op_id_op_transp_op_aeq_op2:
+  assumes \<open>p \<notin> defaults\<close>
+    and \<open>n \<le> length ((A1 >> A2 >> A3 >> A4 >> A5) p)\<close>
+    and \<open>n \<le> length ((C1 >> C2 >> C3 >> C4 >> C5) p)\<close>
+    and \<open>m \<le> length ((B1 >> B2 >> B3 >> B4 >> B5) p)\<close>
+    and \<open>m \<le> length ((D1 >> D2 >> D3 >> D4 >> D5) p)\<close>
+  shows \<open>(step Tau)\<^sup>*\<^sup>*
+     (map_op projl projr
+       (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1)))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))))
+     (map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) (C4(p := []))) (case_sum (B4(p := [])) (D4(p := []))))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := [])) (D2(p := [])))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) (D1(p := [])))))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) (C3(p := [])))))) (id_op (D3(p := [])))))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (AC1(p := [])) (aeq_op (case_sum (A5(p := drop n ((A1 >> A2 >> A3 >> A4 >> A5) p))) (C5(p := drop n ((C1 >> C2 >> C3 >> C4 >> C5) p))))) (id_op (AC2(p := (AC1 >> AC2) p @ tested n ((A1 >> A2 >> A3 >> A4 >> A5) p) ((C1 >> C2 >> C3 >> C4 >> C5) p)))))) (map_op projl projr (comp_op Some (BD1(p := [])) (aeq_op (case_sum (B5(p := drop m ((B1 >> B2 >> B3 >> B4 >> B5) p))) (D5(p := drop m ((D1 >> D2 >> D3 >> D4 >> D5) p))))) (id_op (BD2(p := (BD1 >> BD2) p @ tested m ((B1 >> B2 >> B3 >> B4 >> B5) p) ((D1 >> D2 >> D3 >> D4 >> D5) p)))))))))\<close>
+  sorry
 
 lemma A10_gen:
   assumes "A = A1 >> A2 >> A3 >> A4 >> A5"
@@ -1936,7 +1956,131 @@ lemma A10_gen:
         and "BHD pa X \<noteq> BHD pa Y"
         and "pa \<notin> defaults"
       for pa :: 'a
-      using that sorry
+      using that 
+      apply -
+      apply (drule spec[of _ pa])
+      apply (elim conjE exE disjE)
+      subgoal for m n
+        apply (intro exI conjI)
+         apply (rule rtranclp_trans)
+          apply (rule rtranclp_trans)
+           apply (rule move_all_buffers[where p=pa])
+           apply assumption
+          apply (rule wstep_Tau_acopy_op_id_op_transp_op_aeq_op2[where n=n and m=m])
+              apply assumption
+             apply (metis BULK_BENQ_assoc BULK_BENQ_left_empty fun_upd_same)
+            apply (metis BULK_BENQ_assoc BULK_BENQ_left_empty fun_upd_same)
+           apply (metis BULK_BENQ_assoc BULK_BENQ_left_empty fun_upd_same)
+          apply (metis BULK_BENQ_assoc BULK_BENQ_left_empty fun_upd_same)
+         apply (rule rtranclp.intros(2))
+          apply (rule rtranclp.intros(1))
+         apply (rule step_map_op)
+          apply (rule step_comp_op_R_Tau)
+            apply (rule step_comp_op_R_Tau)
+              apply (rule step_map_op)
+               apply (rule step_comp_op_L_Tau)
+                 apply (rule step_aeq_op_Silent)
+                     apply assumption
+                    apply simp_all
+         apply (metis BHD_def BULK_BENQ_bulk_benq append_self_conv fun_upd_apply)
+        apply (rule wbc_base)
+        apply (intro exI conjI)
+          apply (rule refl)+
+        apply (intro allI)
+        subgoal for p
+          apply (cases "p = pa")
+          subgoal
+            apply (rule exI[of _ 0])
+            apply (rule exI[of _ "Suc 0"])
+            apply simp
+            apply (intro conjI)
+            subgoal
+              by (simp add: BHD_def BULK_BENQ_left_empty BTL_def drop_Suc)
+            subgoal
+              by (simp add: BHD_def BULK_BENQ_left_empty BTL_def drop_Suc)
+            subgoal
+              by (simp add: BHD_def BULK_BENQ_left_empty BTL_def drop_Suc)
+            subgoal
+              by (simp add: BHD_def BULK_BENQ_left_empty BTL_def drop_Suc)
+            subgoal
+              by (simp add: BHD_def BULK_BENQ_left_empty tested_diff_Suc)
+            subgoal
+              by (metis BULK_BENQ_left_empty fun_upd_same)
+            subgoal
+              by (simp add: BULK_BENQ_left_empty Suc_leI)
+            subgoal
+              by (simp add: BULK_BENQ_left_empty Suc_leI)
+            done
+          subgoal
+            using that apply -
+            apply (drule spec[of _ p])
+            apply (elim conjE exE)
+            subgoal for m' n'
+              apply (rule exI[of _ m'])
+              apply (rule exI[of _ n'])
+              apply (simp add: BENQ_diff_access BTL_diff_access flip: BAPPEND_BENQ)
+              apply (intro conjI)
+              apply (smt (verit, del_insts) BTL_def BULK_BENQ_bulk_benq fun_upd_apply)+
+            done
+          done
+        done
+      done
+   subgoal for m n
+        apply (intro exI conjI)
+         apply (rule rtranclp_trans)
+          apply (rule rtranclp_trans)
+           apply (rule move_all_buffers[where p=pa])
+           apply assumption
+          apply (rule wstep_Tau_acopy_op_id_op_transp_op_aeq_op2[where n=n and m=m])
+              apply assumption
+             apply (metis BULK_BENQ_assoc BULK_BENQ_left_empty fun_upd_same)
+            apply (metis BULK_BENQ_assoc BULK_BENQ_left_empty fun_upd_same)
+           apply (metis BULK_BENQ_assoc BULK_BENQ_left_empty fun_upd_same)
+          apply (metis BULK_BENQ_assoc BULK_BENQ_left_empty fun_upd_same)
+         apply (rule rtranclp.intros(2))
+          apply (rule rtranclp.intros(1))
+         apply (rule step_map_op)
+          apply (rule step_comp_op_R_Tau)
+            apply (rule step_comp_op_L_Tau)
+              apply (rule step_map_op)
+               apply (rule step_comp_op_L_Tau)
+                 apply (rule step_aeq_op_Silent)
+                     apply assumption
+                 apply simp_all
+      apply (simp add: BHD_def BULK_BENQ_left_empty)
+   apply (rule wbc_base)
+        apply (intro exI conjI)
+          apply (rule refl)+
+        apply (intro allI)
+        subgoal for p
+          apply (cases "p = pa")
+          subgoal
+            apply (rule exI[of _ "Suc 0"])
+            apply (rule exI[of _ "0"])
+            apply (simp add: drop_Suc BTL_access BULK_BENQ_left_empty)
+            apply (intro conjI)
+            subgoal
+              by (metis BHD_def length_tested_0 tested_diff_Suc)
+            subgoal
+              using Suc_le_eq by blast
+                 subgoal
+              using Suc_le_eq by blast
+            done
+  subgoal
+            using that apply -
+            apply (drule spec[of _ p])
+            apply (elim conjE exE)
+            subgoal for m' n'
+              apply (rule exI[of _ m'])
+              apply (rule exI[of _ n'])
+              apply (simp add:  BENQ_diff_access BTL_diff_access flip: BAPPEND_BENQ)
+              apply (intro conjI)
+              apply (smt (verit, del_insts) BTL_def BULK_BENQ_bulk_benq fun_upd_apply)+
+              done
+            done
+          done
+        done
+      done
     ultimately show ?thesis
       apply -
       subgoal premises prems
