@@ -1194,6 +1194,622 @@ lemma wstep_Tau_aeq_op_acopy_op:
     done
   done
 
+lemma move_all_buffers:
+  assumes  "p \<notin> defaults"
+  shows "(step Tau)\<^sup>*\<^sup>*
+     (map_op projl projr
+       (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1)))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))))
+     (map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) (C4(p := []))) (case_sum (B4(p := [])) (D4(p := []))))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := [])) (D2(p := [])))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) (D1(p := [])))))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) (C3(p := [])))))) (id_op (D3(p := [])))))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := (A1 >> A2 >> A3 >> A4 >> A5) p)) (C5(p := (C1 >> C2 >> C3 >> C4 >> C5) p)))) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum (B5(p := (B1 >> B2 >> B3 >> B4 >> B5) p)) (D5(p := (D1 >> D2 >> D3 >> D4 >> D5) p)))) (id_op BD2))))))"
+proof -
+  have "(step Tau)\<^sup>*\<^sup>*
+     (map_op projl projr
+       (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1)))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))))
+      (map_op projl projr
+       (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := (A1 >> A2) p)) B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) B1)) (acopy_op (case_sum C1 D1)))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))))" (is "(step Tau)\<^sup>*\<^sup>* ?op ?op'")
+    using assms proof (induct "A1 p" arbitrary: A1 A2)
+    case Nil
+    then show ?case by (smt (verit, best) BULK_BENQ_left_empty Nitpick.rtranclp_unfold fun_upd_idem)
+  next
+    case (Cons a x A1 A2)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)
+        apply (rule step_comp_op_L_Tau)
+          apply (rule step_map_op)
+           apply (rule step_Tau_comp_op_L)
+              apply (rule step_comp_op_L_Out)
+                 apply (rule step_acopy_op_Write[where p="Inl p"])
+                    apply simp_all
+       apply fastforce
+      apply (smt (z3) BAPPEND_BENQ_BHD BENQ_def BTL_access BTL_def BTL_empty case_sum_BENQ_L fun_upd_upd list.sel(3) not_Cons_self2)
+      done
+  qed
+  also have "(step Tau)\<^sup>*\<^sup>* \<dots> 
+      (map_op projl projr
+       (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) B1)) (acopy_op (case_sum C1 D1)))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := (A1 >> A2 >> A3) p))) (transp_op (case_sum B3 C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))))"
+    using assms proof (induct "(A1 >> A2) p" arbitrary: A1 A2 A3)
+    case Nil
+    then show ?case 
+      by (smt (verit, best) BULK_BENQ_assoc BULK_BENQ_left_empty Nitpick.rtranclp_unfold fun_upd_idem_iff)
+  next
+    case (Cons a xa A1 A2 A3)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)
+        apply (rule step_comp_op_L_Tau)
+          apply (rule step_map_op)
+           apply (rule step_Tau_comp_op_R)
+                apply (rule step_map_op)
+                 apply (rule step_comp_op_L_Inp)
+                   apply (rule step_map_op)
+                    apply (rule step_comp_op_L_Inp)
+                      apply (rule step_id_op_Read)
+                       apply simp_all
+       apply (auto simp add: BULK_BENQ_left_empty)[1]
+      apply simp
+      apply (cases "A2 p")
+      subgoal
+        apply (drule meta_spec[of _ "BTL p A1"])
+        apply (drule meta_spec[of _ "A2"])
+        apply (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_def fun_upd_same fun_upd_same fun_upd_upd list.sel(2) list.sel(3) not_Cons_self2)
+        done
+      subgoal
+        apply (drule meta_spec[of _ "A1"])
+        apply (drule meta_spec[of _ "BTL p A2"])
+        apply (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BTL_def BULK_BENQ_def fun_upd_same fun_upd_upd list.distinct(1) list.sel(3))
+        done
+      done
+  qed
+  also (rtranclp_trans) have "(step Tau)\<^sup>*\<^sup>* \<dots> 
+      (map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := (A1 >> A2 >> A3 >> A4) p)) C4) (case_sum B4 D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) B1)) (acopy_op (case_sum C1 D1)))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum B3 C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))))"
+    using assms proof (induct "(A1 >> A2 >> A3) p" arbitrary: A1 A2 A3 A4)
+    case Nil
+    then show ?case 
+      by (smt (verit, best) BULK_BENQ_assoc BULK_BENQ_left_empty Nitpick.rtranclp_unfold fun_upd_idem_iff)
+  next
+    case (Cons a xa A1 A2 A3 A4)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)
+        apply (rule step_Tau_comp_op_L)
+           apply (rule step_map_op)
+            apply (rule step_comp_op_R_Out)
+              apply (rule step_map_op)
+               apply (rule step_comp_op_L_Out)
+                  apply (rule step_map_op)
+                   apply (rule step_comp_op_L_Out)
+                      apply (rule step_id_op_Write)
+                         apply simp_all
+       apply (metis BULK_BENQ_left_empty neq_Nil_conv)
+      apply simp
+      apply (cases "A3 p")
+      subgoal
+        by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_access BTL_def Cons.hyps(1) assms fun_upd_same fun_upd_upd list.sel(2) list.sel(3) not_Cons_self2)
+      subgoal
+        by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_def BULK_BENQ_empty \<open>\<lbrakk>\<And>A1 A2 A3 A4. xa = ((A1 >> A2) >> A3) p \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4)) (map_op projl projr (comp_op Some (case_sum (case_sum (A2(p := [])) B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) B1)) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := ((A1 >> A2) >> A3) p))) (transp_op (case_sum B3 C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2)))))) (map_op projl projr (comp_op Some (case_sum (case_sum (A4(p := (((A1 >> A2) >> A3) >> A4) p)) C4) (case_sum B4 D4)) (map_op projl projr (comp_op Some (case_sum (case_sum (A2(p := [])) B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) B1)) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum B3 C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2)))))); a # xa = ((A1 >> A2) >> A3) p; p \<notin> defaults; A3 p = []\<rbrakk> \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum (case_sum (BENQ p (BHD p (A3(p := ((A1 >> A2) >> A3) p))) A4) C4) (case_sum B4 D4)) (map_op projl projr (comp_op Some (case_sum (case_sum (A2(p := [])) B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) B1)) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BTL p (A3(p := ((A1 >> A2) >> A3) p)))) (transp_op (case_sum B3 C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2)))))) (map_op projl projr (comp_op Some (case_sum (case_sum (A4(p := (((A1 >> A2) >> A3) >> A4) p)) C4) (case_sum B4 D4)) (map_op projl projr (comp_op Some (case_sum (case_sum (A2(p := [])) B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) B1)) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum B3 C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))))\<close> fun_upd_same fun_upd_upd list.sel(3))
+      done
+  qed
+  also (rtranclp_trans) have "(step Tau)\<^sup>*\<^sup>* \<dots> 
+      (map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) C4) (case_sum B4 D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) B1)) (acopy_op (case_sum C1 D1)))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum B3 C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := (A1 >> A2 >> A3 >> A4 >> A5) p)) C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))))"
+    using assms proof (induct "(A1 >> A2 >> A3 >> A4) p" arbitrary: A1 A2 A3 A4 A5)
+    case Nil
+    then show ?case 
+      by (smt (verit, best) BULK_BENQ_assoc BULK_BENQ_left_empty Nitpick.rtranclp_unfold fun_upd_idem_iff)
+  next
+    case (Cons a xa A1 A2 A3 A4 A5)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)
+        apply (rule step_Tau_comp_op_R)
+             apply (rule step_comp_op_L_Inp)
+               apply (rule step_map_op)
+                apply (rule step_comp_op_L_Inp)
+                  apply (rule step_aeq_op_Read_L)
+                   apply simp_all
+       apply (metis Cons.hyps(2) fun_upd_same neq_Nil_conv old.sum.simps(5))
+      apply (cases "A4 p")
+      subgoal
+        apply (cases "A3 p")
+        subgoal
+          by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_BAPPEND_2_cases BHD_def BTL_def BTL_empty case_sum_BTL_L fun_upd_same fun_upd_triv fun_upd_upd list.sel(3) not_Cons_self2)
+        subgoal
+          by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_def case_sum_updateL fun_upd_same fun_upd_upd list.sel(2) list.sel(3) not_Cons_self2)
+        done
+      subgoal
+        by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_def BULK_BENQ_empty \<open>\<lbrakk>\<And>A1 A2 A3 A4 A5. xa = (((A1 >> A2) >> A3) >> A4) p \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum (case_sum (A4(p := (((A1 >> A2) >> A3) >> A4) p)) C4) (case_sum B4 D4)) (map_op projl projr (comp_op Some (case_sum (case_sum (A2(p := [])) B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) B1)) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum B3 C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2)))))) (map_op projl projr (comp_op Some (case_sum (case_sum (A4(p := [])) C4) (case_sum B4 D4)) (map_op projl projr (comp_op Some (case_sum (case_sum (A2(p := [])) B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) B1)) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum B3 C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := ((((A1 >> A2) >> A3) >> A4) >> A5) p)) C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2)))))); a # xa = (((A1 >> A2) >> A3) >> A4) p; p \<notin> defaults; A4 p = []\<rbrakk> \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum (BTL (Inl p) (case_sum (A4(p := (((A1 >> A2) >> A3) >> A4) p)) C4)) (case_sum B4 D4)) (map_op projl projr (comp_op Some (case_sum (case_sum (A2(p := [])) B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) B1)) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum B3 C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (BENQ p (BHD p (A4 (p := (((A1 >> A2) >> A3) >> A4) p))) A5) C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2)))))) (map_op projl projr (comp_op Some (case_sum (case_sum (A4(p := [])) C4) (case_sum B4 D4)) (map_op projl projr (comp_op Some (case_sum (case_sum (A2(p := [])) B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) B1)) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum B3 C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := ((((A1 >> A2) >> A3) >> A4) >> A5) p)) C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))))\<close> case_sum_updateL fun_upd_same fun_upd_upd list.sel(3))
+      done
+  qed
+  also (rtranclp_trans) have "(step Tau)\<^sup>*\<^sup>* \<dots> 
+      (map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) C4) (case_sum B4 D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := (B1 >> B2) p))) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum C1 D1)))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum B3 C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := (A1 >> A2 >> A3 >> A4 >> A5) p)) C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))))"
+    using assms proof (induct "B1 p" arbitrary: B1 B2)
+    case Nil
+    then show ?case by (smt (verit, best) BULK_BENQ_left_empty Nitpick.rtranclp_unfold fun_upd_idem)
+  next
+    case (Cons a x B1 B2)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)
+        apply (rule step_comp_op_L_Tau)
+          apply (rule step_map_op)
+           apply (rule step_Tau_comp_op_L)
+              apply (rule step_comp_op_L_Out)
+                 apply (rule step_acopy_op_Write[where p="Inr p"])
+                    apply simp_all
+       apply fastforce
+      apply (smt (z3) BAPPEND_BENQ_BHD BENQ_def BTL_def case_sum_BENQ_L case_sum_BENQ_R fun_upd_def fun_upd_upd list.distinct(1) list.sel(3))
+      done
+  qed
+  also (rtranclp_trans) have "(step Tau)\<^sup>*\<^sup>* \<dots> 
+      (map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) C4) (case_sum B4 D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum C1 D1)))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := (B1 >> B2 >> B3) p)) C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := (A1 >> A2 >> A3 >> A4 >> A5) p)) C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))))"
+    using assms proof (induct "(B1 >> B2) p" arbitrary: B1 B2 B3)
+    case Nil
+    then show ?case 
+      by (smt (verit, best) BULK_BENQ_assoc BULK_BENQ_left_empty Nitpick.rtranclp_unfold fun_upd_idem_iff)
+  next
+    case (Cons a xa B1 B2 B3)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)
+        apply (rule step_comp_op_L_Tau)
+          apply (rule step_map_op)
+           apply (rule step_Tau_comp_op_R)
+                apply simp_all
+        apply (rule step_map_op)
+         apply (rule step_comp_op_L_Inp)
+           apply (rule step_map_op)
+            apply (rule step_comp_op_R_Inp)
+               apply simp_all
+        apply (rule step_transp_op_Read[where p="Inl _"])
+         apply simp_all
+       apply (auto simp add: BULK_BENQ_left_empty)[1]
+      apply (cases "B2 p")
+      subgoal
+        apply (drule meta_spec[of _ "BTL p B1"])
+        apply (drule meta_spec[of _ "B2"])
+        apply (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_def fun_upd_same fun_upd_same fun_upd_upd list.sel(2) list.sel(3) not_Cons_self2)
+        done
+      subgoal
+        apply (drule meta_spec[of _ "B1"])
+        apply (drule meta_spec[of _ "BTL p B2"])
+        apply (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BTL_def BULK_BENQ_def fun_upd_same fun_upd_upd list.distinct(1) list.sel(3))
+        done
+      done
+  qed
+  also (rtranclp_trans) have "(step Tau)\<^sup>*\<^sup>* \<dots> 
+      (map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) C4) (case_sum (B4(p := (B1 >> B2 >> B3 >> B4) p)) D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum C1 D1)))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := (A1 >> A2 >> A3 >> A4 >> A5) p)) C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))))"
+    using assms proof (induct "(B1 >> B2 >> B3) p" arbitrary: B1 B2 B3 B4)
+    case Nil
+    then show ?case 
+      by (smt (verit, best) BULK_BENQ_assoc BULK_BENQ_left_empty Nitpick.rtranclp_unfold fun_upd_idem_iff)
+  next
+    case (Cons a xa B1 B2 B3 B4)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)
+        apply (rule step_Tau_comp_op_L)
+           apply (rule step_map_op)
+            apply (rule step_comp_op_R_Out)
+              apply (rule step_map_op)
+               apply (rule step_comp_op_L_Out)
+                  apply (rule step_map_op)
+                   apply (rule step_comp_op_R_Out)
+                     apply (rule step_transp_op_Write[where p="Inl p"])
+                         apply simp_all
+       apply (metis BHD_BAPPEND_2_cases list.discI)
+      apply simp
+      apply (cases "B3 p")
+      subgoal
+        by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_access BTL_def Cons.hyps(1) assms fun_upd_same fun_upd_upd list.sel(2) list.sel(3) not_Cons_self2)
+      subgoal
+        by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_def BULK_BENQ_empty \<open>\<lbrakk>\<And>B1 B2 B3 B4. xa = ((B1 >> B2) >> B3) p \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum (case_sum (A4(p := [])) C4) (case_sum B4 D4)) (map_op projl projr (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := ((B1 >> B2) >> B3) p)) C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := ((((A1 >> A2) >> A3) >> A4) >> A5) p)) C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2)))))) (map_op projl projr (comp_op Some (case_sum (case_sum (A4(p := [])) C4) (case_sum (B4(p := (((B1 >> B2) >> B3) >> B4) p)) D4)) (map_op projl projr (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := ((((A1 >> A2) >> A3) >> A4) >> A5) p)) C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2)))))); a # xa = ((B1 >> B2) >> B3) p; p \<notin> defaults; B3 p = []\<rbrakk> \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum (case_sum (A4(p := [])) C4) (case_sum (BENQ p (BHD p (B3(p := ((B1 >> B2) >> B3) p))) B4) D4)) (map_op projl projr (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (BTL p (B3(p := ((B1 >> B2) >> B3) p))) C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := ((((A1 >> A2) >> A3) >> A4) >> A5) p)) C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2)))))) (map_op projl projr (comp_op Some (case_sum (case_sum (A4(p := [])) C4) (case_sum (B4(p := (((B1 >> B2) >> B3) >> B4) p)) D4)) (map_op projl projr (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := ((((A1 >> A2) >> A3) >> A4) >> A5) p)) C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))))\<close> fun_upd_same fun_upd_upd list.sel(3))
+      done
+  qed
+  also (rtranclp_trans) have "(step Tau)\<^sup>*\<^sup>* \<dots> 
+      (map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) C4) (case_sum (B4(p := [])) D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum C1 D1)))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := (A1 >> A2 >> A3 >> A4 >> A5) p)) C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum (B5(p := (B1 >> B2 >> B3 >> B4 >> B5) p)) D5)) (id_op BD2))))))"
+    using assms proof (induct "(B1 >> B2 >> B3 >> B4) p" arbitrary: B1 B2 B3 B4 B5)
+    case Nil
+    then show ?case 
+      by (smt (verit, best) BULK_BENQ_assoc BULK_BENQ_left_empty Nitpick.rtranclp_unfold fun_upd_idem_iff)
+  next
+    case (Cons a xa B1 B2 B3 B4 B5)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)
+        apply (rule step_Tau_comp_op_R)
+             apply (rule step_comp_op_R_Inp)
+                apply (rule step_map_op)
+                 apply (rule step_comp_op_L_Inp)
+                   apply (rule step_aeq_op_Read_L)
+                    apply simp_all
+       apply (metis Cons.hyps(2) fun_upd_same neq_Nil_conv old.sum.simps(5))
+      apply (cases "B4 p")
+      subgoal
+        apply (cases "B3 p")
+        subgoal
+          by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_BAPPEND_2_cases BHD_def BTL_def BTL_empty case_sum_BTL_L fun_upd_same fun_upd_triv fun_upd_upd list.sel(3) not_Cons_self2)
+        subgoal
+          by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_def case_sum_updateL fun_upd_same fun_upd_upd list.sel(2) list.sel(3) not_Cons_self2)
+        done
+      subgoal
+        by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_BULK_BENQ_right_not_empty BHD_def BTL_access BTL_def BULK_BENQ_assoc BULK_BENQ_empty BULK_BENQ_eq_left BULK_BENQ_eq_right assms case_sum_BTL_L case_sum_updateL fun_upd_idem_iff fun_upd_same fun_upd_same fun_upd_triv fun_upd_upd list.sel(2) list.sel(3) not_Cons_self2)
+      done
+  qed
+  also (rtranclp_trans) have "(step Tau)\<^sup>*\<^sup>* \<dots> 
+      (map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) C4) (case_sum (B4(p := [])) D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := (C1 >> C2) p)) D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) D1)))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) C3)))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := (A1 >> A2 >> A3 >> A4 >> A5) p)) C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum (B5(p := (B1 >> B2 >> B3 >> B4 >> B5) p)) D5)) (id_op BD2))))))"
+    using assms proof (induct "C1 p" arbitrary: C1 C2)
+    case Nil
+    then show ?case by (smt (verit, best) BULK_BENQ_left_empty Nitpick.rtranclp_unfold fun_upd_idem)
+  next
+    case (Cons a x C1 C2)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)
+        apply (rule step_comp_op_L_Tau)
+          apply (rule step_map_op)
+           apply (rule step_Tau_comp_op_L)
+              apply (rule step_comp_op_R_Out)
+                apply (rule step_acopy_op_Write[where p="Inl p"])
+                   apply simp_all
+       apply fastforce
+      apply (smt (z3) BAPPEND_BENQ_BHD BENQ_def BTL_def case_sum_BENQ_L case_sum_BENQ_R fun_upd_def fun_upd_upd list.distinct(1) list.sel(3))
+      done
+  qed
+  also (rtranclp_trans) have "(step Tau)\<^sup>*\<^sup>* \<dots> 
+      (map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) C4) (case_sum (B4(p := [])) D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := [])) D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) D1)))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) (C3(p := (C1 >> C2 >> C3) p)))))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := (A1 >> A2 >> A3 >> A4 >> A5) p)) C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum (B5(p := (B1 >> B2 >> B3 >> B4 >> B5) p)) D5)) (id_op BD2))))))"
+    using assms proof (induct "(C1 >> C2) p" arbitrary: C1 C2 C3)
+    case Nil
+    then show ?case 
+      by (smt (verit, best) BULK_BENQ_assoc BULK_BENQ_left_empty Nitpick.rtranclp_unfold fun_upd_idem_iff)
+  next
+    case (Cons a xa C1 C2 C3)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)
+        apply (rule step_comp_op_L_Tau)
+          apply (rule step_map_op)
+           apply (rule step_Tau_comp_op_R)
+                apply simp_all
+        apply (rule step_map_op)
+         apply (rule step_comp_op_L_Inp)
+           apply (rule step_map_op)
+            apply (rule step_comp_op_R_Inp)
+               apply simp_all
+        apply (rule step_transp_op_Read[where p="Inr _"])
+         apply simp_all
+       apply (auto simp add: BULK_BENQ_left_empty)[1]
+      apply (cases "C2 p")
+      subgoal
+        apply (drule meta_spec[of _ "BTL p C1"])
+        apply (drule meta_spec[of _ "C2"])
+        apply (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_def fun_upd_same fun_upd_same fun_upd_upd list.sel(2) list.sel(3) not_Cons_self2)
+        done
+      subgoal
+        apply (drule meta_spec[of _ "C1"])
+        apply (drule meta_spec[of _ "BTL p C2"])
+        apply (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BTL_def BULK_BENQ_def fun_upd_same fun_upd_upd list.distinct(1) list.sel(3))
+        done
+      done
+  qed
+  also (rtranclp_trans) have "(step Tau)\<^sup>*\<^sup>* \<dots> 
+      (map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) (C4(p := (C1 >> C2 >> C3 >> C4) p))) (case_sum (B4(p := [])) D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := [])) D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) D1)))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) (C3(p := [])))))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := (A1 >> A2 >> A3 >> A4 >> A5) p)) C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum (B5(p := (B1 >> B2 >> B3 >> B4 >> B5) p)) D5)) (id_op BD2))))))"
+    using assms proof (induct "(C1 >> C2 >> C3) p" arbitrary: C1 C2 C3 C4)
+    case Nil
+    then show ?case 
+      by (smt (verit, best) BULK_BENQ_assoc BULK_BENQ_left_empty Nitpick.rtranclp_unfold fun_upd_idem_iff)
+  next
+    case (Cons a xa C1 C2 C3 C4)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)
+        apply (rule step_Tau_comp_op_L)
+           apply (rule step_map_op)
+            apply (rule step_comp_op_R_Out)
+              apply (rule step_map_op)
+               apply (rule step_comp_op_L_Out)
+                  apply (rule step_map_op)
+                   apply (rule step_comp_op_R_Out)
+                     apply (rule step_transp_op_Write[where p="Inr p"])
+                         apply simp_all
+       apply (metis BHD_BAPPEND_2_cases list.discI)
+      apply simp
+      apply (cases "C3 p")
+      subgoal
+        by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_access BTL_def Cons.hyps(1) assms fun_upd_same fun_upd_upd list.sel(2) list.sel(3) not_Cons_self2)
+      subgoal
+        by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_def BULK_BENQ_empty \<open>\<lbrakk>\<And>C1 C2 C3 C4. xa = ((C1 >> C2) >> C3) p \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum (case_sum (A4(p := [])) C4) (case_sum (B4(p := [])) D4)) (map_op projl projr (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := [])) D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) (C3(p := ((C1 >> C2) >> C3) p)))))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := ((((A1 >> A2) >> A3) >> A4) >> A5) p)) C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum (B5(p := ((((B1 >> B2) >> B3) >> B4) >> B5) p)) D5)) (id_op BD2)))))) (map_op projl projr (comp_op Some (case_sum (case_sum (A4(p := [])) (C4(p := (((C1 >> C2) >> C3) >> C4) p))) (case_sum (B4(p := [])) D4)) (map_op projl projr (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := [])) D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) (C3(p := [])))))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := ((((A1 >> A2) >> A3) >> A4) >> A5) p)) C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum (B5(p := ((((B1 >> B2) >> B3) >> B4) >> B5) p)) D5)) (id_op BD2)))))); a # xa = ((C1 >> C2) >> C3) p; p \<notin> defaults; C3 p = []\<rbrakk> \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum (case_sum (A4(p := [])) (BENQ p (BHD p (C3(p := ((C1 >> C2) >> C3) p))) C4)) (case_sum (B4(p := [])) D4)) (map_op projl projr (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := [])) D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) (BTL p (C3(p := ((C1 >> C2) >> C3) p))))))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := ((((A1 >> A2) >> A3) >> A4) >> A5) p)) C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum (B5(p := ((((B1 >> B2) >> B3) >> B4) >> B5) p)) D5)) (id_op BD2)))))) (map_op projl projr (comp_op Some (case_sum (case_sum (A4(p := [])) (C4(p := (((C1 >> C2) >> C3) >> C4) p))) (case_sum (B4(p := [])) D4)) (map_op projl projr (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := [])) D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) (C3(p := [])))))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := ((((A1 >> A2) >> A3) >> A4) >> A5) p)) C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum (B5(p := ((((B1 >> B2) >> B3) >> B4) >> B5) p)) D5)) (id_op BD2))))))\<close> fun_upd_same fun_upd_upd list.sel(3))
+      done
+  qed
+  also (rtranclp_trans) have "(step Tau)\<^sup>*\<^sup>* \<dots> 
+      (map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) (C4(p := []))) (case_sum (B4(p := [])) D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := [])) D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) D1)))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) (C3(p := [])))))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := (A1 >> A2 >> A3 >> A4 >> A5) p)) (C5(p := (C1 >> C2 >> C3 >> C4 >> C5) p)))) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum (B5(p := (B1 >> B2 >> B3 >> B4 >> B5) p)) D5)) (id_op BD2))))))"
+    using assms proof (induct "(C1 >> C2 >> C3 >> C4) p" arbitrary: C1 C2 C3 C4 C5)
+    case Nil
+    then show ?case 
+      by (smt (verit, best) BULK_BENQ_assoc BULK_BENQ_left_empty Nitpick.rtranclp_unfold fun_upd_idem_iff)
+  next
+    case (Cons a xa C1 C2 C3 C4 C5)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)
+        apply (rule step_Tau_comp_op_R)
+             apply (rule step_comp_op_L_Inp)
+               apply (rule step_map_op)
+                apply (rule step_comp_op_L_Inp)
+                  apply (rule step_aeq_op_Read_R)
+                   apply simp_all
+       apply simp
+       apply (metis BULK_BENQ_right_empty list.distinct(1))
+      apply (cases "C4 p")
+      subgoal
+        apply (cases "C3 p")
+        subgoal
+          apply (cases "C2 p")
+          subgoal
+            by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_BULK_BENQ_left_empty BHD_def BTL_access BTL_def BTL_empty BULK_BENQ_assoc case_sum_BTL_L case_sum_updateL case_sum_updateR fun_upd_idem_iff fun_upd_same fun_upd_triv fun_upd_upd list.sel(3) not_Cons_self old.sum.simps(5) sum.case(2))
+          subgoal
+            by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_def BTL_empty BULK_BENQ_right_empty case_sum_updateR fun_upd_idem_iff fun_upd_same fun_upd_upd list.sel(3) not_Cons_self)
+          done
+        subgoal
+          by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_def BTL_empty BULK_BENQ_right_empty case_sum_updateR fun_upd_idem_iff fun_upd_same fun_upd_upd list.sel(3) not_Cons_self)
+        done
+      subgoal
+        by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_def BTL_empty BULK_BENQ_right_empty case_sum_updateR fun_upd_idem_iff fun_upd_same fun_upd_upd list.sel(3) not_Cons_self)
+      done
+  qed
+  also (rtranclp_trans) have "(step Tau)\<^sup>*\<^sup>* \<dots> 
+      (map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) (C4(p := []))) (case_sum (B4(p := [])) D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := [])) (D2(p := (D1 >> D2) p)))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) (D1(p := [])))))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) (C3(p := [])))))) (id_op D3)))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := (A1 >> A2 >> A3 >> A4 >> A5) p)) (C5(p := (C1 >> C2 >> C3 >> C4 >> C5) p)))) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum (B5(p := (B1 >> B2 >> B3 >> B4 >> B5) p)) D5)) (id_op BD2))))))"
+    using assms proof (induct "D1 p" arbitrary: D1 D2)
+    case Nil
+    then show ?case by (smt (verit, best) BULK_BENQ_left_empty Nitpick.rtranclp_unfold fun_upd_idem)
+  next
+    case (Cons a x D1 D2)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)
+        apply (rule step_comp_op_L_Tau)
+          apply (rule step_map_op)
+           apply (rule step_Tau_comp_op_L)
+              apply (rule step_comp_op_R_Out)
+                apply (rule step_acopy_op_Write[where p="Inr p"])
+                   apply simp_all
+       apply fastforce
+      apply (smt (z3) BAPPEND_BENQ_BHD BENQ_def BTL_def case_sum_BENQ_L case_sum_BENQ_R fun_upd_def fun_upd_upd list.distinct(1) list.sel(3))
+      done
+  qed
+  also (rtranclp_trans) have "(step Tau)\<^sup>*\<^sup>* \<dots> 
+      (map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) (C4(p := []))) (case_sum (B4(p := [])) D4))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := [])) (D2(p := [])))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) (D1(p := [])))))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) (C3(p := [])))))) (id_op (D3(p := (D1 >> D2 >> D3) p)))))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := (A1 >> A2 >> A3 >> A4 >> A5) p)) (C5(p := (C1 >> C2 >> C3 >> C4 >> C5) p)))) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum (B5(p := (B1 >> B2 >> B3 >> B4 >> B5) p)) D5)) (id_op BD2))))))"
+    using assms proof (induct "(D1 >> D2) p" arbitrary: D1 D2 D3)
+    case Nil
+    then show ?case 
+      by (smt (verit, best) BULK_BENQ_assoc BULK_BENQ_left_empty Nitpick.rtranclp_unfold fun_upd_idem_iff)
+  next
+    case (Cons a xa D1 D2 D3)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)
+        apply (rule step_comp_op_L_Tau)
+          apply (rule step_map_op)
+           apply (rule step_Tau_comp_op_R)
+                apply simp_all
+        apply (rule step_map_op)
+         apply (rule step_comp_op_R_Inp)
+            apply (rule step_id_op_Read)
+             apply simp_all
+       apply (auto simp add: BULK_BENQ_left_empty)[1]
+      apply (cases "D2 p")
+      subgoal
+        apply (drule meta_spec[of _ "BTL p D1"])
+        apply (drule meta_spec[of _ "D2"])
+        apply (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_access BTL_def BTL_def BTL_empty BULK_BENQ_assoc BULK_BENQ_empty BULK_BENQ_eq_left BULK_BENQ_right_empty Cons.hyps(1) assms case_sum_updateL case_sum_updateR case_sum_updateR fun_upd_same fun_upd_same fun_upd_upd fun_upd_upd list.sel(3) not_Cons_self sum.case(2))
+        done
+      subgoal
+        apply (drule meta_spec[of _ "D1"])
+        apply (drule meta_spec[of _ "BTL p D2"])
+        apply (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_access BTL_def BTL_def BTL_empty BULK_BENQ_assoc BULK_BENQ_empty BULK_BENQ_eq_left BULK_BENQ_right_empty Cons.hyps(1) assms case_sum_updateL case_sum_updateR case_sum_updateR fun_upd_same fun_upd_same fun_upd_upd fun_upd_upd list.sel(3) not_Cons_self sum.case(2))
+        done
+      done
+  qed
+  also (rtranclp_trans) have "(step Tau)\<^sup>*\<^sup>* \<dots> 
+      (map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) (C4(p := []))) (case_sum (B4(p := [])) (D4(p := (D1 >> D2 >> D3 >> D4) p))))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := [])) (D2(p := [])))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) (D1(p := [])))))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) (C3(p := [])))))) (id_op (D3(p := [])))))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := (A1 >> A2 >> A3 >> A4 >> A5) p)) (C5(p := (C1 >> C2 >> C3 >> C4 >> C5) p)))) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum (B5(p := (B1 >> B2 >> B3 >> B4 >> B5) p)) D5)) (id_op BD2))))))"
+    using assms proof (induct "(D1 >> D2 >> D3) p" arbitrary: D1 D2 D3 D4)
+    case Nil
+    then show ?case 
+      by (smt (verit, best) BULK_BENQ_assoc BULK_BENQ_left_empty Nitpick.rtranclp_unfold fun_upd_idem_iff)
+  next
+    case (Cons a xa D1 D2 D3 D4)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)
+        apply (rule step_Tau_comp_op_L)
+           apply (rule step_map_op)
+            apply (rule step_comp_op_R_Out)
+              apply (rule step_map_op)
+               apply (rule step_comp_op_R_Out)
+                 apply (rule step_id_op_Write)
+                    apply simp_all
+       apply (metis BHD_BAPPEND_2_cases list.discI)
+      apply simp
+      apply (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_access BTL_def Cons.hyps(1) assms fun_upd_same fun_upd_upd list.sel(2) list.sel(3) not_Cons_self2)
+      done
+  qed
+  also (rtranclp_trans) have "(step Tau)\<^sup>*\<^sup>* \<dots> 
+      (map_op projl projr
+       (comp_op Some (case_sum (case_sum (A4(p := [])) (C4(p := []))) (case_sum (B4(p := [])) (D4(p := []))))
+         (map_op projl projr
+           (comp_op Some (case_sum (case_sum (A2(p := [])) (B2(p := []))) (case_sum (C2(p := [])) (D2(p := [])))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum (A1(p := [])) (B1(p := [])))) (acopy_op (case_sum (C1(p := [])) (D1(p := [])))))
+             (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A3(p := []))) (transp_op (case_sum (B3(p := [])) (C3(p := [])))))) (id_op (D3(p := [])))))))
+         (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum (A5(p := (A1 >> A2 >> A3 >> A4 >> A5) p)) (C5(p := (C1 >> C2 >> C3 >> C4 >> C5) p)))) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum (B5(p := (B1 >> B2 >> B3 >> B4 >> B5) p)) (D5(p := (D1 >> D2 >> D3 >> D4 >> D5) p)))) (id_op BD2))))))"
+    using assms proof (induct "(D1 >> D2 >> D3 >> D4) p" arbitrary: D1 D2 D3 D4 D5)
+    case Nil
+    then show ?case 
+      by (smt (verit, best) BULK_BENQ_assoc BULK_BENQ_left_empty Nitpick.rtranclp_unfold fun_upd_idem_iff)
+  next
+    case (Cons a xa D1 D2 D3 D4 D5)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)
+        apply (rule step_Tau_comp_op_R)
+             apply (rule step_comp_op_R_Inp)
+                apply (rule step_map_op)
+                 apply (rule step_comp_op_L_Inp)
+                   apply (rule step_aeq_op_Read_R)
+                    apply simp_all
+       apply simp
+       apply (metis BULK_BENQ_right_empty list.distinct(1))
+      apply (cases "D4 p")
+      subgoal
+        apply (cases "D3 p")
+        subgoal
+          apply (cases "D2 p")
+          subgoal
+            by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_BULK_BENQ_left_empty BHD_def BTL_access BTL_def BTL_empty BULK_BENQ_assoc case_sum_BTL_L case_sum_updateL case_sum_updateR fun_upd_idem_iff fun_upd_same fun_upd_triv fun_upd_upd list.sel(3) not_Cons_self old.sum.simps(5) sum.case(2))
+          subgoal
+            by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_def BTL_empty BULK_BENQ_right_empty case_sum_updateR fun_upd_idem_iff fun_upd_same fun_upd_upd list.sel(3) not_Cons_self)
+          done
+        subgoal
+          by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_def BTL_empty BULK_BENQ_right_empty case_sum_updateR fun_upd_idem_iff fun_upd_same fun_upd_upd list.sel(3) not_Cons_self)
+        done
+      subgoal
+        by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_def BTL_empty BULK_BENQ_right_empty case_sum_updateR fun_upd_idem_iff fun_upd_same fun_upd_upd list.sel(3) not_Cons_self)
+      done
+  qed
+  finally (rtranclp_trans) show ?thesis by blast
+qed
+
+
 lemma A10_gen:
   assumes "A = A1 >> A2 >> A3 >> A4 >> A5"
     and "B = B1 >> B2 >> B3 >> B4 >> B5"
