@@ -1256,7 +1256,37 @@ lemma A10_gen:
         and "pa \<notin> defaults"
       for pa :: 'a
         and y :: 'b
-      using that sorry
+      using that
+      apply -
+      apply (intro exI conjI[rotated] wbc_base)
+         defer
+         apply (rule refl)+
+       apply fastforce
+      apply (intro allI)
+      subgoal for p
+        apply (drule spec[of _ p])
+        apply (elim conjE exE)
+        subgoal for m n
+          apply (rule exI[of _ m])
+          apply (rule exI[of _ n])
+          apply simp
+          apply (intro conjI)
+          apply (simp_all add: tested_def flip: BAPPEND_BENQ)
+          subgoal
+            by (metis BENQ_access BENQ_diff_access diff_is_0_eq' drop_0 drop_append)
+          subgoal
+            by (metis BENQ_access BENQ_diff_access diff_is_0_eq' drop_0 drop_append)
+          subgoal
+            by (smt (verit, ccfv_threshold) BENQ_access BENQ_diff_access append_eq_append_conv_if append_take_drop_id length_append_singleton length_take min_def not_less_eq_eq)
+          subgoal
+            by (smt (verit, ccfv_threshold) BENQ_access BENQ_diff_access append_eq_append_conv_if append_take_drop_id length_append_singleton length_take min_def not_less_eq_eq)
+          subgoal
+            by (metis BENQ_access BENQ_diff_access length_append_singleton less_Suc_eq_le less_or_eq_imp_le)
+          subgoal
+            by (metis BENQ_access BENQ_diff_access length_append_singleton less_Suc_eq_le less_or_eq_imp_le)
+          done
+        done
+      done
     moreover have "\<exists>op2'. wstep (Out (Inl pa) (BHD pa V)) (map_op projl projr (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4)) (map_op projl projr (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2)))))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>A1 A2 A3 A4 A5 B1 B2 B3 B4 B5 C1 C2 C3 C4 C5 D1 D2 D3 D4 D5 AC1 AC2 BD1 BD2 X Y Z W V. op1 = map_op projl projr (comp_op Some Z (aeq_op (case_sum X Y)) (acopy_op (case_sum V W))) \<and> op2 = map_op projl projr (comp_op Some (case_sum (case_sum A4 C4) (case_sum B4 D4)) (map_op projl projr (comp_op Some (case_sum (case_sum A2 B2) (case_sum C2 D2)) (comp_op (\<lambda>_. None) (\<lambda>_. []) (acopy_op (case_sum A1 B1)) (acopy_op (case_sum C1 D1))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A3) (transp_op (case_sum B3 C3)))) (id_op D3))))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some AC1 (aeq_op (case_sum A5 C5)) (id_op AC2))) (map_op projl projr (comp_op Some BD1 (aeq_op (case_sum B5 D5)) (id_op BD2))))) \<and> (\<forall>p. \<exists>m n. (m = 0 \<or> n = 0) \<and> drop n (((((A1 >> A2) >> A3) >> A4) >> A5) p) = X p \<and> drop n (((((C1 >> C2) >> C3) >> C4) >> C5) p) = Y p \<and> drop m (((((B1 >> B2) >> B3) >> B4) >> B5) p) = X p \<and> drop m (((((D1 >> D2) >> D3) >> D4) >> D5) p) = Y p \<and> bulk_benq (tested n (((((A1 >> A2) >> A3) >> A4) >> A5) p) (((((C1 >> C2) >> C3) >> C4) >> C5) p)) ((AC1 >> AC2) p) = (Z >> V) p \<and> bulk_benq (tested m (((((B1 >> B2) >> B3) >> B4) >> B5) p) (((((D1 >> D2) >> D3) >> D4) >> D5) p)) ((BD1 >> BD2) p) = (Z >> W) p \<and> n \<le> length (((((A1 >> A2) >> A3) >> A4) >> A5) p) \<and> n \<le> length (((((C1 >> C2) >> C3) >> C4) >> C5) p) \<and> m \<le> length (((((B1 >> B2) >> B3) >> B4) >> B5) p) \<and> m \<le> length (((((D1 >> D2) >> D3) >> D4) >> D5) p))) (map_op projl projr (comp_op Some Z (aeq_op (case_sum X Y)) (acopy_op (case_sum (BTL pa V) W)))) op2'"
       if "\<forall>p. \<exists>m n. (m = 0 \<or> n = 0) \<and> drop n (((((A1 >> A2) >> A3) >> A4) >> A5) p) = X p \<and> drop n (((((C1 >> C2) >> C3) >> C4) >> C5) p) = Y p \<and> drop m (((((B1 >> B2) >> B3) >> B4) >> B5) p) = X p \<and> drop m (((((D1 >> D2) >> D3) >> D4) >> D5) p) = Y p \<and> bulk_benq (tested n (((((A1 >> A2) >> A3) >> A4) >> A5) p) (((((C1 >> C2) >> C3) >> C4) >> C5) p)) ((AC1 >> AC2) p) = (Z >> V) p \<and> bulk_benq (tested m (((((B1 >> B2) >> B3) >> B4) >> B5) p) (((((D1 >> D2) >> D3) >> D4) >> D5) p)) ((BD1 >> BD2) p) = (Z >> W) p \<and> n \<le> length (((((A1 >> A2) >> A3) >> A4) >> A5) p) \<and> n \<le> length (((((C1 >> C2) >> C3) >> C4) >> C5) p) \<and> m \<le> length (((((B1 >> B2) >> B3) >> B4) >> B5) p) \<and> m \<le> length (((((D1 >> D2) >> D3) >> D4) >> D5) p)"
         and "V pa \<noteq> []"
