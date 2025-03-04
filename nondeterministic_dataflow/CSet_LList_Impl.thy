@@ -50,7 +50,7 @@ end
 
 lemma c\<UU>_code[code]: "(c\<UU> :: 'a :: {cenum, defaults} cset) = cset_of_llist (lfilter (\<lambda>x. x \<notin> defaults) cenum)"
   including cset.lifting
-  by (transfer) (auto simp: \<UU>_def UNIV_cenum[symmetric])
+  by (transfer) (auto simp: UNIV_cenum[symmetric])
 
 context enum begin
 sublocale enum_cenum: cenum "llist_of Enum.enum"

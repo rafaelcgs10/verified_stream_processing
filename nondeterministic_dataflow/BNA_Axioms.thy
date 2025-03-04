@@ -5411,23 +5411,18 @@ proof (coinduction rule: bisim_coinduct_upto)
     then have False
       apply (elim step_map_op_inv[elim_format] exE conjE; hypsubst)
       apply (auto elim!: step_loop_op_elim step_id_op_cases)
-      sledgehammer
-      find_theorems step 
-      thm 
-    show "\<exists>op2'. step io \<I> op2' \<and> bisim_cong (\<lambda>sxx txx. sxx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'a) \<in> defaults then None else Some (Inr p))) (case_sum undefined (\<lambda>_. [])) \<I>) \<and> txx = \<I>) op1' op2'"
-      apply ( FalseE)
-      
-      using H by (auto 0 0 del: disjCI elim !: step_id_op_cases step_loop_op_elim step_map_op_elim step_comp_op_elim split: if_splits sum.splits)
-    qed
+      apply (metis default_0 sum.collapse(2) sum_in_defaults)
+      done
+    then show "\<exists>op2'. step io \<I> op2' \<and> bisim_cong (\<lambda>sxx txx. sxx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'a) \<in> defaults then None else Some (Inr p))) (case_sum undefined (\<lambda>_. [])) \<I>) \<and> txx = \<I>) op1' op2'"
+      by blast
   next
     fix io :: "(0, 0, 'd) IO"
       and op1' :: "(0, 0, 'd) op"
     assume H: "step io \<I> op1'"
-    show "\<exists>op2'. step io (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'a) \<in> defaults then None else Some (Inr p))) (case_sum undefined (\<lambda>_. [])) \<I>)) op2' \<and> bisim_cong (\<lambda>sxx txx. sxx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'a) \<in> defaults then None else Some (Inr p))) (case_sum undefined (\<lambda>_. [])) \<I>) \<and> txx = \<I>) op1' op2'"
-    proof -
-      show ?thesis
-        using H by (auto 0 0 del: disjCI elim !: step_id_op_cases step_map_op_elim step_comp_op_elim split: if_splits sum.splits)
-    qed
+    then have False
+      by (auto elim!: step_id_op_cases)
+    then show "\<exists>op2'. step io (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'a) \<in> defaults then None else Some (Inr p))) (case_sum undefined (\<lambda>_. [])) \<I>)) op2' \<and> bisim_cong (\<lambda>sxx txx. sxx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'a) \<in> defaults then None else Some (Inr p))) (case_sum undefined (\<lambda>_. [])) \<I>) \<and> txx = \<I>) op1' op2'"
+      by blast
   qed
 qed
 

@@ -1574,19 +1574,19 @@ fun choices_at where
 | "choices_at 0 (Choice ops) = cempty"
 | "choices_at (Suc n) (Choice ops) = cUnion (cimage (choices_at n) ops)"
 
-definition "choices op = cUnion (cimage (\<lambda>i. choices_at i op) natcUNIV)"
+definition "choices op = cUnion (cimage (\<lambda>i. choices_at i op) cUNIV)"
 
 lemma choices_Read[simp]: "choices (Read p f) = csingle (Read p f)"
-  unfolding choices_def by (auto simp: cset_eq_iff bot_cset.rep_eq natcUNIV.rep_eq)
+  unfolding choices_def by (auto simp: cset_eq_iff bot_cset.rep_eq cUNIV.rep_eq)
 
 lemma choices_Silent[simp]: "choices (Silent op) = csingle (Silent op)"
-  unfolding choices_def by (auto simp: cset_eq_iff bot_cset.rep_eq natcUNIV.rep_eq)
+  unfolding choices_def by (auto simp: cset_eq_iff bot_cset.rep_eq cUNIV.rep_eq)
 
 lemma choices_Write[simp]: "choices (Write op p x) = csingle (Write op p x)"
-  unfolding choices_def by (auto simp: cset_eq_iff bot_cset.rep_eq natcUNIV.rep_eq)
+  unfolding choices_def by (auto simp: cset_eq_iff bot_cset.rep_eq cUNIV.rep_eq)
 
 lemma choices_Choice[simp]: "choices (Choice ops) = cUnion (cimage choices ops)"
-  apply (auto simp: choices_def cUnion.rep_eq cimage.rep_eq natcUNIV.rep_eq)
+  apply (auto simp: choices_def cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
   subgoal for x n
     apply (induct n "Choice ops" arbitrary: ops rule: choices_at.induct)
      apply (auto simp: bot_cset.rep_eq cUnion.rep_eq cimage.rep_eq)
@@ -1602,7 +1602,7 @@ lemmas choices_code[code] = choices_Read choices_Write choices_Silent choices_Ch
 
 lemma no_Choice_in_choices[simplified, simp, dest!]: "Choice ops |\<in>| choices op \<Longrightarrow> False"
   unfolding choices_def
-  apply (auto simp: cUnion.rep_eq cimage.rep_eq natcUNIV.rep_eq)
+  apply (auto simp: cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
   subgoal for n
     apply (induct n op rule: choices_at.induct)
         apply (auto simp: cinsert.rep_eq bot_cset.rep_eq cUnion.rep_eq cimage.rep_eq)
@@ -1613,7 +1613,7 @@ lemma choices_map_op[simp]:
   "cimage (map_op f g) (choices op) = choices (map_op f g op)"
   apply safe
   unfolding choices_def
-   apply (clarsimp simp add: cUnion.rep_eq cimage.rep_eq natcUNIV.rep_eq)
+   apply (clarsimp simp add: cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
   subgoal for x n
     apply (induct n arbitrary: op)
     subgoal for op
@@ -1634,7 +1634,7 @@ lemma choices_map_op[simp]:
       done
     done
   subgoal for op'
-    apply (clarsimp simp add: cUnion.rep_eq cimage.rep_eq natcUNIV.rep_eq)
+    apply (clarsimp simp add: cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
     subgoal for n
       apply (induct n arbitrary: op)
       subgoal for op''
@@ -1665,7 +1665,7 @@ lemma finished_choices_empty:
    choices op = {||}"
   apply safe
   unfolding choices_def
-  apply (clarsimp simp add: cUnion.rep_eq cimage.rep_eq natcUNIV.rep_eq)
+  apply (clarsimp simp add: cUnion.rep_eq cimage.rep_eq cUNIV.rep_eq)
   subgoal for x n
     apply (induct n arbitrary: op)
     subgoal for op
@@ -1690,7 +1690,7 @@ lemma Read_in_choices_step[intro]:
       apply (cases op)
          apply (auto simp: bot_cset.rep_eq cinsert.rep_eq step.intros(1))
       subgoal 
-        using natcUNIV.rep_eq step.simps by fastforce
+        unfolding cUNIV.rep_eq using step.simps by fastforce
       done
     done
   done
@@ -1708,7 +1708,7 @@ lemma Read_in_choices_stepEx:
       apply (cases op)
          apply (auto simp: bot_cset.rep_eq cinsert.rep_eq step.intros(1))
       subgoal    
-        by (metis UNIV_I cin.rep_eq natcUNIV.rep_eq step.intros(4))
+        by (metis UNIV_I cin.rep_eq cUNIV.rep_eq step.intros(4))
       done
     done
   done
@@ -1726,7 +1726,7 @@ lemma Write_in_choices_step[intro]:
       apply (cases op)
       apply (auto simp: bot_cset.rep_eq cinsert.rep_eq step.intros(2))
       subgoal 
-        by (simp add: natcUNIV.rep_eq step.intros(4))
+        by (simp add: cUNIV.rep_eq step.intros(4))
       done
     done
   done
@@ -1742,7 +1742,7 @@ lemma Silent_in_choices_step[intro]:
       by (clarsimp simp: step.intros intro: step.intros(2))+     
     subgoal for n op
       apply (cases op)
-         apply (auto simp: natcUNIV.rep_eq step.intros)
+         apply (auto simp: cUNIV.rep_eq step.intros)
       done
     done
   done
