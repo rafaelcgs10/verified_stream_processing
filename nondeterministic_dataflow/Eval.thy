@@ -12,7 +12,7 @@ definition show_1 where "show_1 (x :: 1) = STR ''1''"
 definition show_11 where "show_11 = show_sum show_1 show_1"
 definition show_2 where "show_2 (x :: 2) = (if x = 1 then STR ''1'' else STR ''2'')"
 
-fun eval :: "nat \<Rightarrow> ('i, 'o, 'd :: countable) op \<Rightarrow> (('i, 'o, 'd) IO list \<times> ('i, 'o, 'd) op) cset"  where
+fun eval :: "nat \<Rightarrow> ('i, 'o, 'd :: {countable, defaults}) op \<Rightarrow> (('i, 'o, 'd) IO list \<times> ('i, 'o, 'd) op) cset"  where
   "eval 0 op = {|([], op)|}"
 | "eval (Suc n) (Read p f) = cUnion (cimage (\<lambda>x. cimage (\<lambda>(t, op). (Inp p x # t, op)) (eval n (f x))) (c\<UU> :: 'd cset))"
 | "eval (Suc n) (Write op p x) = cimage (\<lambda>(t, op). (Out p x # t, op)) (eval n op)"
