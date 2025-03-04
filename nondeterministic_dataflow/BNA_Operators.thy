@@ -6,7 +6,9 @@ imports
   "HOL-ex.Sketch_and_Explore"
 begin
 
-term Inl
+instantiation num0 :: countable begin
+instance proof qed (auto simp: inj_def Rep_num0_inject intro!: exI[of _ Rep_num0])
+end
 
 section \<open>comp_op: Compositions\<close>
 datatype (discs_sels) ('ip1, 'ip2, 'op1, 'op2, 'd) comp_op_aux =
@@ -2918,16 +2920,16 @@ abbreviation eval_id_op_aux where
 
 corec id_op :: "_ \<Rightarrow> ('m :: {countable, defaults}, 'm, 'd) op" where
   "id_op buf = Choice (cimage (eval_id_op_aux id_op) (cUn 
-    (cimage (\<lambda> p. id_Read_aux p (\<lambda> x. BENQ p x buf)) (cUNIV :: 'm cset)) 
-    (cimage (\<lambda> p. id_Write_aux (BTL p buf) p (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUNIV :: 'm cset)))))"
+    (cimage (\<lambda> p. id_Read_aux p (\<lambda> x. BENQ p x buf)) (c\<UU> :: 'm cset)) 
+    (cimage (\<lambda> p. id_Write_aux (BTL p buf) p (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (c\<UU> :: 'm cset)))))"
 
 abbreviation id_empty_op ("\<I>") where
   "\<I> \<equiv> id_op (\<lambda> _. [])"
 
 lemma id_op_code:
   "id_op buf = Choice (cUn 
-    (cimage (\<lambda> p. Read p ((\<lambda> x. id_op (BENQ p x buf)))) (cUNIV :: 'm cset))
-    (cimage (\<lambda> p. Write (id_op (BTL p buf)) p  (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUNIV :: ('m :: {countable, defaults}) cset))))"
+    (cimage (\<lambda> p. Read p ((\<lambda> x. id_op (BENQ p x buf)))) (c\<UU> :: 'm cset))
+    (cimage (\<lambda> p. Write (id_op (BTL p buf)) p  (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (c\<UU> :: ('m :: {countable, defaults}) cset))))"
   apply (subst id_op.code)
   apply (unfold cimage_cUn cimage_cinsert op.inject)
   apply simp
@@ -2989,7 +2991,7 @@ lemma step_id_op_cases:
   apply atomize_elim
   using assms
   apply (rule step_choicesE)
-    apply (subst (asm) id_op_code, simp)+
+    apply (subst (asm) id_op_code, auto)+
   done
 
 lemma step_id_op_Read[intro!]:
@@ -3012,8 +3014,8 @@ lemma step_id_op_Write[intro!]:
   done
 
 lemma choices_id_op[simp]:
-  "choices (id_op buf) = cUn (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda>x. id_op (buf(p := bulk_benq [x] (buf p))))) cUNIV)))
-       (cUnion (cimage choices (cimage (\<lambda>p. Write (id_op (BTL p buf)) p (BHD p buf)) (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV))))"
+  "choices (id_op buf) = cUn (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda>x. id_op (buf(p := bulk_benq [x] (buf p))))) c\<UU>)))
+       (cUnion (cimage choices (cimage (\<lambda>p. Write (id_op (BTL p buf)) p (BHD p buf)) (cfilter (\<lambda>p. buf p \<noteq> []) c\<UU>))))"
   apply (subst id_op_code)
   apply (simp add: BTL_def BENQ_def)
   done
@@ -3102,9 +3104,12 @@ lemma step_Tau_loop_op[intro]:
     done
   done
 
-lemma id_op_unit_end_op:
-  \<open>(\<I> :: (unit, unit, 'd) op) ~ \<oslash>\<close>
-  by (rule choices_Choice_bisim) (simp add: defaults_unit_def)
+lemma default_0[simp]: "x \<in> (defaults :: 0 set)"
+  by transfer simp
+
+lemma id_op_0_end_op:
+  \<open>(\<I> :: (0, 0, 'd) op) ~ \<oslash>\<close>
+  by (rule choices_Choice_bisim) auto
 
 section \<open>User defined operators\<close>
   (* abbreviation buffered ("\<stileturn> _ \<turnstile>" [150]151) where
@@ -3144,7 +3149,7 @@ lemma choices_pcomp_op_dummy_source:
 
 section \<open>sink_op\<close>                                     
 corec sink_op :: "('m :: {countable, defaults}, 'o, 'd) op" ("!") where
-  "sink_op = Choice ((cimage (\<lambda> p. Read p (\<lambda> x. sink_op)) (cUNIV :: 'm cset)))"
+  "sink_op = Choice ((cimage (\<lambda> p. Read p (\<lambda> x. sink_op)) (c\<UU> :: 'm cset)))"
 
 lemma step_sink_op_Inp:
   assumes \<open>step io sink_op op\<close>
@@ -3185,18 +3190,18 @@ lemma step_sink_op:
 lemma step_sink_op_Read[intro!]:
   \<open>p \<notin> defaults \<Longrightarrow> step (Inp p x) sink_op sink_op\<close>
   apply (subst sink_op.code)
-  apply fastforce
+  apply auto
   done
 
 lemma choices_sink_op[simp]:
   \<open>choices sink_op =
-  cimage (\<lambda> p. Read p (\<lambda> x. sink_op)) cUNIV\<close>
+  cimage (\<lambda> p. Read p (\<lambda> x. sink_op)) c\<UU>\<close>
   apply (subst sink_op.code)
   apply force
   done
 
 corec sink_buf_op :: "_ \<Rightarrow> ('m :: {countable, defaults}, 'o, 'd) op" where
-  "sink_buf_op buf = Choice ((cimage (\<lambda> p. Read p (\<lambda> x. (sink_buf_op (BENQ p x buf)))) (cUNIV :: 'm cset)))"
+  "sink_buf_op buf = Choice ((cimage (\<lambda> p. Read p (\<lambda> x. (sink_buf_op (BENQ p x buf)))) (c\<UU> :: 'm cset)))"
 
 lemma step_sink_buf_op_Inp:
   assumes \<open>step io (sink_buf_op buf) op\<close>
@@ -3237,7 +3242,7 @@ lemma step_sink_buf_op:
 lemma step_sink_buf_op_Read[intro!]:
   \<open>p \<notin> defaults \<Longrightarrow> buf' = BENQ p x buf \<Longrightarrow> step (Inp p x) (sink_buf_op buf) (sink_buf_op buf')\<close>
   apply (subst sink_buf_op.code)
-  apply fastforce
+  apply auto
   done
 
 lemma sink_buf_op_sink:
@@ -3322,14 +3327,14 @@ abbreviation eval_transp_op_aux where
 
 corec transp_op :: "_ \<Rightarrow> ('m :: {countable, defaults} + 'n :: {countable, defaults}, 'n + 'm, 'd) op" where
   "transp_op buf = Choice (cimage (eval_transp_op_aux transp_op) (cUn 
-    (cimage (\<lambda> p. transp_Read_aux p (\<lambda> x. BENQ p x buf)) (cUNIV :: ('m + 'n) cset)) 
-    (cimage (\<lambda> p. transp_Write_aux (BTL p buf) (case_sum Inr Inl p) (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUNIV :: ('m + 'n) cset)))))"
+    (cimage (\<lambda> p. transp_Read_aux p (\<lambda> x. BENQ p x buf)) (c\<UU> :: ('m + 'n) cset)) 
+    (cimage (\<lambda> p. transp_Write_aux (BTL p buf) (case_sum Inr Inl p) (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (c\<UU> :: ('m + 'n) cset)))))"
 
 
 lemma transp_op_code:
   "transp_op buf = Choice (cUn 
-    (cimage (\<lambda> p. Read p (\<lambda> x. transp_op (BENQ p x buf))) (cUNIV :: ('m :: {countable, defaults} + 'n :: {countable, defaults}) cset)) 
-    (cimage (\<lambda> p. Write (transp_op (BTL p buf)) (case_sum Inr Inl p) (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (cUNIV :: ('m + 'n) cset))))"
+    (cimage (\<lambda> p. Read p (\<lambda> x. transp_op (BENQ p x buf))) (c\<UU> :: ('m :: {countable, defaults} + 'n :: {countable, defaults}) cset)) 
+    (cimage (\<lambda> p. Write (transp_op (BTL p buf)) (case_sum Inr Inl p) (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) (c\<UU> :: ('m + 'n) cset))))"
   apply (subst transp_op.code)
   apply (unfold cimage_cUn cimage_cinsert op.inject)
   apply simp
@@ -3364,7 +3369,7 @@ lemma step_transp_op_Out:
    apply (subst (asm) transp_op_code)
    apply simp
   apply (subst (asm) (3) transp_op_code)
-  apply (simp add: Set.filter_def split: sum.splits)
+  apply (simp add: Set.filter_def \<UU>_def split: sum.splits)
    apply (smt (z3) IO.inject(2) IO.simps(4) Inl_inject Un_iff defaults_sum_def image_iff mem_Collect_eq stepReadE stepWriteE sum.case_eq_if sum.collapse(2) sum.simps(4))
   apply (smt (z3) IO.inject(2) IO.simps(4) UnI1 defaults_sum_def image_iff isl_def mem_Collect_eq stepReadE stepWriteE sum.case_eq_if sum.sel(1) sum.sel(2) sum.simps(4))
   done
@@ -3393,11 +3398,11 @@ lemma step_transp_op_cases:
   apply (rule step_choicesE)
   subgoal for p f x
     apply (subst (asm) transp_op_code)
-    apply simp
+    apply auto
     done
   subgoal for p x
     apply (subst (asm) transp_op_code)
-    apply (auto simp add: Set.filter_def split: sum.splits)
+    apply (auto simp add: Set.filter_def \<UU>_def split: sum.splits)
            apply (metis case_sum_defaults obj_sumE old.sum.simps)+
     done
   subgoal
@@ -3433,8 +3438,8 @@ lemma step_transp_op_Write[intro!]:
 
 lemma choices_transp_op[simp]:
   \<open>choices (transp_op buf) = cUn
-  (cUnion (cimage choices (cimage (\<lambda> p. Read p (\<lambda> x. transp_op (buf(p := bulk_benq [x] (buf p))))) cUNIV)))
-  (cUnion (cimage choices (cimage (\<lambda> p. Write (transp_op (BTL p buf)) (case_sum Inr Inl p) (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) cUNIV))))\<close>
+  (cUnion (cimage choices (cimage (\<lambda> p. Read p (\<lambda> x. transp_op (buf(p := bulk_benq [x] (buf p))))) c\<UU>)))
+  (cUnion (cimage choices (cimage (\<lambda> p. Write (transp_op (BTL p buf)) (case_sum Inr Inl p) (BHD p buf)) (cfilter (\<lambda> p. buf p \<noteq> []) c\<UU>))))\<close>
   apply (subst transp_op_code)
   apply (simp add: BTL_def BENQ_def)
   done
@@ -3452,17 +3457,17 @@ abbreviation eval_split_op_aux where
 
 corec split_op :: \<open>('m :: {countable, defaults} + 'm \<Rightarrow> 'd buf) \<Rightarrow> ('m, 'm + 'm, 'd) op\<close> where
   \<open>split_op buf = Choice (cimage (eval_split_op_aux split_op) (cUn (cUn
-    (cimage (\<lambda>p. split_Read_aux p (\<lambda>x. BENQ (Inl p) x buf)) cUNIV)
-    (cimage (\<lambda>p. split_Read_aux p (\<lambda>x. BENQ (Inr p) x buf)) cUNIV))
+    (cimage (\<lambda>p. split_Read_aux p (\<lambda>x. BENQ (Inl p) x buf)) c\<UU>)
+    (cimage (\<lambda>p. split_Read_aux p (\<lambda>x. BENQ (Inr p) x buf)) c\<UU>))
     (cimage (\<lambda>p. split_Write_aux (BTL p buf) p (BHD p buf))
-      (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV))))\<close>
+      (cfilter (\<lambda>p. buf p \<noteq> []) c\<UU>))))\<close>
 
 lemma split_op_code:
   \<open>split_op buf = Choice (cUn (cUn
-    (cimage (\<lambda>p. Read p (\<lambda>x. split_op (BENQ (Inl p) x buf))) cUNIV)
-    (cimage (\<lambda>p. Read p (\<lambda>x. split_op (BENQ (Inr p) x buf))) cUNIV))
+    (cimage (\<lambda>p. Read p (\<lambda>x. split_op (BENQ (Inl p) x buf))) c\<UU>)
+    (cimage (\<lambda>p. Read p (\<lambda>x. split_op (BENQ (Inr p) x buf))) c\<UU>))
     (cimage (\<lambda>p. Write (split_op (BTL p buf)) p (BHD p buf))
-      (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV)))\<close>
+      (cfilter (\<lambda>p. buf p \<noteq> []) c\<UU>)))\<close>
   apply (subst split_op.code)
   apply (unfold cimage_cUn cimage_cinsert op.inject)
   apply (auto simp add: cset.map_comp o_def)
@@ -3519,14 +3524,14 @@ lemma step_split_op_Write[intro!]:
   \<open>p \<notin> defaults \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> BHD p buf = x \<Longrightarrow> buf' = BTL p buf \<Longrightarrow>
   step (Out p x) (split_op buf) (split_op buf')\<close>
   apply (subst split_op_code)
-  by fastforce
+  by force
 
 lemma choices_split_op[simp]:
   \<open>choices (split_op buf) = cUn (cUn
-    (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda>x. split_op (BENQ (Inl p) x buf))) cUNIV)))
-    (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda>x. split_op (BENQ (Inr p) x buf))) cUNIV))))
+    (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda>x. split_op (BENQ (Inl p) x buf))) c\<UU>)))
+    (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda>x. split_op (BENQ (Inr p) x buf))) c\<UU>))))
     (cUnion (cimage choices (cimage (\<lambda>p. Write (split_op (BTL p buf)) p (BHD p buf))
-      (cfilter (\<lambda>p. buf p \<noteq> []) cUNIV))))\<close>
+      (cfilter (\<lambda>p. buf p \<noteq> []) c\<UU>))))\<close>
   apply (subst split_op_code)
   by simp
 
@@ -3543,21 +3548,21 @@ abbreviation eval_merge_op_aux where
 
 corec merge_op :: \<open>('m :: {countable, defaults} + 'm \<Rightarrow> 'd buf) \<Rightarrow> ('m + 'm, 'm, 'd) op\<close> where
   \<open>merge_op buf = Choice (cimage (eval_merge_op_aux merge_op) (cUn (cUn (cUn
-    (cimage (\<lambda>p. merge_Read_aux (Inl p) (\<lambda>x. BENQ (Inl p) x buf)) cUNIV)
-    (cimage (\<lambda>p. merge_Read_aux (Inr p) (\<lambda>x. BENQ (Inr p) x buf)) cUNIV))
+    (cimage (\<lambda>p. merge_Read_aux (Inl p) (\<lambda>x. BENQ (Inl p) x buf)) c\<UU>)
+    (cimage (\<lambda>p. merge_Read_aux (Inr p) (\<lambda>x. BENQ (Inr p) x buf)) c\<UU>))
     (cimage (\<lambda>p. merge_Write_aux (BTL (Inl p) buf) p (BHD (Inl p) buf))
-      (cfilter (\<lambda>p. buf (Inl p) \<noteq> []) cUNIV)))
+      (cfilter (\<lambda>p. buf (Inl p) \<noteq> []) c\<UU>)))
     (cimage (\<lambda>p. merge_Write_aux (BTL (Inr p) buf) p (BHD (Inr p) buf))
-      (cfilter (\<lambda>p. buf (Inr p) \<noteq> []) cUNIV))))\<close>
+      (cfilter (\<lambda>p. buf (Inr p) \<noteq> []) c\<UU>))))\<close>
 
 lemma merge_op_code:
   \<open>merge_op buf = Choice (cUn (cUn (cUn
-    (cimage (\<lambda>p. Read (Inl p) (\<lambda>x. merge_op (BENQ (Inl p) x buf))) cUNIV)
-    (cimage (\<lambda>p. Read (Inr p) (\<lambda>x. merge_op (BENQ (Inr p) x buf))) cUNIV))
+    (cimage (\<lambda>p. Read (Inl p) (\<lambda>x. merge_op (BENQ (Inl p) x buf))) c\<UU>)
+    (cimage (\<lambda>p. Read (Inr p) (\<lambda>x. merge_op (BENQ (Inr p) x buf))) c\<UU>))
     (cimage (\<lambda>p. Write (merge_op (BTL (Inl p) buf)) p (BHD (Inl p) buf))
-      (cfilter (\<lambda>p. buf (Inl p) \<noteq> []) cUNIV)))
+      (cfilter (\<lambda>p. buf (Inl p) \<noteq> []) c\<UU>)))
     (cimage (\<lambda>p. Write (merge_op (BTL (Inr p) buf)) p (BHD (Inr p) buf))
-      (cfilter (\<lambda>p. buf (Inr p) \<noteq> []) cUNIV)))\<close>
+      (cfilter (\<lambda>p. buf (Inr p) \<noteq> []) c\<UU>)))\<close>
   apply (subst merge_op.code)
   apply (auto simp add: comp_def cset.map_comp o_def split: if_splits op.splits)
   subgoal
@@ -3571,6 +3576,7 @@ lemma merge_op_code:
     apply (rule image_eqI[rotated])
      apply simp
      apply (rule disjI2)
+     apply (rule disjI1)
      apply force
     apply auto
     done
@@ -3578,13 +3584,15 @@ lemma merge_op_code:
     apply (rule image_eqI[rotated])
      apply simp
      apply (rule disjI2)
+     apply (rule disjI2)
+     apply (rule disjI1)
      apply force
     apply auto
     done
   subgoal
     apply (rule image_eqI[rotated])
      apply simp
-     apply (rule disjI2)
+     apply (rule disjI2)+
      apply force
     apply auto
     done
@@ -3660,12 +3668,12 @@ lemma step_merge_op_Write_R[intro!]:
 
 lemma choices_merge_op[simp]:
   \<open>choices (merge_op buf) = cUn (cUn (cUn
-    (cUnion (cimage choices (cimage (\<lambda>p. Read (Inl p) (\<lambda>x. merge_op (BENQ (Inl p) x buf))) cUNIV)))
-    (cUnion (cimage choices (cimage (\<lambda>p. Read (Inr p) (\<lambda>x. merge_op (BENQ (Inr p) x buf))) cUNIV))))
+    (cUnion (cimage choices (cimage (\<lambda>p. Read (Inl p) (\<lambda>x. merge_op (BENQ (Inl p) x buf))) c\<UU>)))
+    (cUnion (cimage choices (cimage (\<lambda>p. Read (Inr p) (\<lambda>x. merge_op (BENQ (Inr p) x buf))) c\<UU>))))
     (cUnion (cimage choices (cimage (\<lambda>p. Write (merge_op (BTL (Inl p) buf)) p (BHD (Inl p) buf))
-      (cfilter (\<lambda>p. buf (Inl p) \<noteq> []) cUNIV)))))
+      (cfilter (\<lambda>p. buf (Inl p) \<noteq> []) c\<UU>)))))
     (cUnion (cimage choices (cimage (\<lambda>p. Write (merge_op (BTL (Inr p) buf)) p (BHD (Inr p) buf))
-      (cfilter (\<lambda>p. buf (Inr p) \<noteq> []) cUNIV))))\<close>
+      (cfilter (\<lambda>p. buf (Inr p) \<noteq> []) c\<UU>))))\<close>
   apply (subst merge_op_code)
   by simp
 
@@ -3682,15 +3690,15 @@ abbreviation eval_acopy_op_aux where
 
 corec acopy_op :: "('m + 'm \<Rightarrow> 'a buf) \<Rightarrow> ('m :: {countable, defaults}, 'm + 'm, 'a) op" where
   "acopy_op buf = Choice (cimage (eval_acopy_op_aux acopy_op) (cUn 
-    (cimage (\<lambda> p. acopy_Read_aux p (\<lambda> x. BENQ (Inr p) x (BENQ (Inl p) x buf))) (cUNIV :: 'm cset)) (cUn
-    (cimage (\<lambda> p. acopy_Write_aux (BTL (Inl p) buf) (Inl p) (BHD (Inl p) buf)) (cfilter (\<lambda>p. buf (Inl p) \<noteq> [])(cUNIV :: 'm cset)))
-    (cimage (\<lambda> p. acopy_Write_aux (BTL (Inr p) buf) (Inr p) (BHD (Inr p) buf)) (cfilter (\<lambda>p. buf (Inr p) \<noteq> [])(cUNIV :: 'm cset))))))"
+    (cimage (\<lambda> p. acopy_Read_aux p (\<lambda> x. BENQ (Inr p) x (BENQ (Inl p) x buf))) (c\<UU> :: 'm cset)) (cUn
+    (cimage (\<lambda> p. acopy_Write_aux (BTL (Inl p) buf) (Inl p) (BHD (Inl p) buf)) (cfilter (\<lambda>p. buf (Inl p) \<noteq> [])(c\<UU> :: 'm cset)))
+    (cimage (\<lambda> p. acopy_Write_aux (BTL (Inr p) buf) (Inr p) (BHD (Inr p) buf)) (cfilter (\<lambda>p. buf (Inr p) \<noteq> [])(c\<UU> :: 'm cset))))))"
 
 lemma acopy_op_code:
   "acopy_op buf = Choice (cUn 
-    (cimage (\<lambda> p. Read p (\<lambda> x. acopy_op (BENQ (Inr p) x (BENQ (Inl p) x buf)))) (cUNIV :: 'm :: {countable, defaults} cset)) (cUn
-    (cimage (\<lambda> p.  Write (acopy_op (BTL (Inl p) buf)) (Inl p) (BHD (Inl p) buf)) (cfilter (\<lambda>p. buf (Inl p) \<noteq> [])(cUNIV :: 'm cset)))
-    (cimage (\<lambda> p.  Write (acopy_op (BTL (Inr p) buf)) (Inr p) (BHD (Inr p) buf)) (cfilter (\<lambda>p. buf (Inr p) \<noteq> [])(cUNIV :: 'm cset)))))"
+    (cimage (\<lambda> p. Read p (\<lambda> x. acopy_op (BENQ (Inr p) x (BENQ (Inl p) x buf)))) (c\<UU> :: 'm :: {countable, defaults} cset)) (cUn
+    (cimage (\<lambda> p.  Write (acopy_op (BTL (Inl p) buf)) (Inl p) (BHD (Inl p) buf)) (cfilter (\<lambda>p. buf (Inl p) \<noteq> [])(c\<UU> :: 'm cset)))
+    (cimage (\<lambda> p.  Write (acopy_op (BTL (Inr p) buf)) (Inr p) (BHD (Inr p) buf)) (cfilter (\<lambda>p. buf (Inr p) \<noteq> [])(c\<UU> :: 'm cset)))))"
   apply (subst acopy_op.code)
   apply (auto simp add: comp_def cset.map_comp o_def split: if_splits op.splits)
   subgoal
@@ -3786,11 +3794,11 @@ lemma step_acopy_op_Write[intro]:
 
 lemma choices_acopy_op[simp]:
   \<open>choices (acopy_op buf) = cUn (cUn
-    (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda> x. acopy_op (BENQ (Inr p) x (BENQ (Inl p) x buf)))) cUNIV)))
+    (cUnion (cimage choices (cimage (\<lambda>p. Read p (\<lambda> x. acopy_op (BENQ (Inr p) x (BENQ (Inl p) x buf)))) c\<UU>)))
     (cUnion (cimage choices (cimage (\<lambda>p. Write (acopy_op (BTL (Inl p) buf)) (Inl p) (BHD (Inl p) buf))
-      (cfilter (\<lambda>p. buf (Inl p) \<noteq> []) cUNIV)))))
+      (cfilter (\<lambda>p. buf (Inl p) \<noteq> []) c\<UU>)))))
     (cUnion (cimage choices (cimage (\<lambda>p. Write (acopy_op (BTL (Inr p) buf)) (Inr p) (BHD (Inr p) buf))
-      (cfilter (\<lambda>p. buf (Inr p) \<noteq> []) cUNIV))))\<close>
+      (cfilter (\<lambda>p. buf (Inr p) \<noteq> []) c\<UU>))))\<close>
   apply (subst acopy_op_code)
   by auto
 
@@ -3808,18 +3816,18 @@ abbreviation eval_aeq_op_aux where
 
 corec aeq_op :: \<open>('m :: {countable, defaults} + 'm \<Rightarrow> 'd buf) \<Rightarrow> ('m + 'm, 'm, 'd) op\<close> where
   \<open>aeq_op buf = Choice (cimage (eval_aeq_op_aux aeq_op) (cUn (cUn
-    (cimage (\<lambda>p. aeq_Read_aux (Inl p) (\<lambda>x. BENQ (Inl p) x buf)) cUNIV)
-    (cimage (\<lambda>p. aeq_Read_aux (Inr p) (\<lambda>x. BENQ (Inr p) x buf)) cUNIV))
+    (cimage (\<lambda>p. aeq_Read_aux (Inl p) (\<lambda>x. BENQ (Inl p) x buf)) c\<UU>)
+    (cimage (\<lambda>p. aeq_Read_aux (Inr p) (\<lambda>x. BENQ (Inr p) x buf)) c\<UU>))
     (cimage (\<lambda>p. (if BHD (Inl p) buf = BHD (Inr p) buf then aeq_Write_aux (BTL (Inr p) (BTL (Inl p) buf)) p (BHD (Inl p) buf) else aeq_Silent_aux (BTL (Inr p) (BTL (Inl p) buf))))
-      (cfilter (\<lambda>p. buf (Inl p) \<noteq> [] \<and> buf (Inr p) \<noteq> []) cUNIV))))\<close> 
+      (cfilter (\<lambda>p. buf (Inl p) \<noteq> [] \<and> buf (Inr p) \<noteq> []) c\<UU>))))\<close> 
 
 lemma aeq_op_code:
   "aeq_op buf = Choice (cUn (cUn
-    (cimage (\<lambda> p. Read (Inl p) (\<lambda> x. aeq_op (BENQ (Inl p) x buf))) (cUNIV :: 'm :: {countable, defaults} cset))
-    (cimage (\<lambda> p. Read (Inr p) (\<lambda> x. aeq_op (BENQ (Inr p) x buf))) (cUNIV :: 'm cset)))
+    (cimage (\<lambda> p. Read (Inl p) (\<lambda> x. aeq_op (BENQ (Inl p) x buf))) (c\<UU> :: 'm :: {countable, defaults} cset))
+    (cimage (\<lambda> p. Read (Inr p) (\<lambda> x. aeq_op (BENQ (Inr p) x buf))) (c\<UU> :: 'm cset)))
     (cimage (\<lambda>p. (if BHD (Inl p) buf = BHD (Inr p) buf 
       then Write (aeq_op (BTL (Inr p) (BTL (Inl p) buf))) p (BHD (Inl p) buf) 
-      else Silent (aeq_op (BTL (Inr p) (BTL (Inl p) buf))))) (cfilter (\<lambda>p. buf (Inl p) \<noteq> [] \<and> buf (Inr p) \<noteq> []) cUNIV)))"
+      else Silent (aeq_op (BTL (Inr p) (BTL (Inl p) buf))))) (cfilter (\<lambda>p. buf (Inl p) \<noteq> [] \<and> buf (Inr p) \<noteq> []) c\<UU>)))"
   apply (subst aeq_op.code)
   apply (auto simp add: comp_def cset.map_comp o_def split: if_splits op.splits)
   subgoal
@@ -3833,6 +3841,7 @@ lemma aeq_op_code:
     apply (rule image_eqI[rotated])
      apply simp
      apply (rule disjI2)
+     apply (rule disjI1)
      apply force
     apply auto
     done
@@ -3840,13 +3849,15 @@ lemma aeq_op_code:
     apply (rule image_eqI[rotated])
      apply simp
      apply (rule disjI2)
+     apply (rule disjI2)
+     apply (rule disjI1)
      apply force
     apply auto
     done
   subgoal
     apply (rule image_eqI[rotated])
      apply simp
-     apply (rule disjI2)
+     apply (rule disjI2)+
      apply force
     apply auto
     done
@@ -3934,12 +3945,12 @@ lemma step_aeq_op_Silent[intro!]:
 
 lemma choices_aeq_op[simp]:
   \<open>choices (aeq_op buf) = cUn (cUn
-    (cUnion (cimage choices (cimage (\<lambda>p. Read (Inl p) (\<lambda>x. aeq_op (BENQ (Inl p) x buf))) cUNIV)))
-    (cUnion (cimage choices (cimage (\<lambda>p. Read (Inr p) (\<lambda>x. aeq_op (BENQ (Inr p) x buf))) cUNIV))))
+    (cUnion (cimage choices (cimage (\<lambda>p. Read (Inl p) (\<lambda>x. aeq_op (BENQ (Inl p) x buf))) c\<UU>)))
+    (cUnion (cimage choices (cimage (\<lambda>p. Read (Inr p) (\<lambda>x. aeq_op (BENQ (Inr p) x buf))) c\<UU>))))
     (cUnion (cimage choices (cimage (\<lambda>p. (if BHD (Inl p) buf = BHD (Inr p) buf
         then Write (aeq_op (BTL (Inr p) (BTL (Inl p) buf))) p (BHD (Inl p) buf)
         else Silent (aeq_op (BTL (Inr p) (BTL (Inl p) buf)))))
-      (cfilter (\<lambda>p. buf (Inl p) \<noteq> [] \<and> buf (Inr p) \<noteq> []) cUNIV))))\<close>
+      (cfilter (\<lambda>p. buf (Inl p) \<noteq> [] \<and> buf (Inr p) \<noteq> []) c\<UU>))))\<close>
   apply (subst aeq_op_code)
   by simp
 

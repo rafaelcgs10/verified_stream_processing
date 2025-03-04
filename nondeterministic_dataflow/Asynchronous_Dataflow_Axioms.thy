@@ -683,7 +683,7 @@ lemma A9:
 section \<open>Axiom A12: Dummy source with 0 ports is end_op\<close>
 
 lemma A12:
-  \<open>(\<exclamdown> :: (unit, unit, 'd) op) ~ \<oslash>\<close>
+  \<open>(\<exclamdown> :: (0, 0, 'd) op) ~ \<oslash>\<close>
   by (rule choices_Choice_bisim) simp
 
 (*
@@ -701,8 +701,8 @@ lemma A13:
 section \<open>Axiom A14: Merge with 0 ports\<close>
 
 lemma A14:
-  \<open>(\<V> :: (unit + unit, unit, 'd) op) ~ \<oslash>\<close>
-  by (rule choices_Choice_bisim) (simp add: defaults_unit_def)
+  \<open>(\<V> :: (0 + 0, 0, 'd) op) ~ \<oslash>\<close>
+  by (rule choices_Choice_bisim) auto
 
 section \<open>Axiom A15: Transpose and merge\<close>
 
@@ -1248,8 +1248,8 @@ lemma A15:
 section \<open>Axiom A16: Sink with 0 ports is end_op\<close>
 
 lemma A16:
-  \<open>(! :: (unit, unit, 'd) op) ~ \<oslash>\<close>
-  by (rule choices_Choice_bisim) (auto simp add: defaults_unit_def)
+  \<open>(! :: (0, 0, 'd) op) ~ \<oslash>\<close>
+  by (rule choices_Choice_bisim) auto
 
 section \<open>Axiom A17: Parallel sink\<close>
 
@@ -1312,8 +1312,8 @@ qed
 section \<open>Axiom A18: Split with 0 ports\<close>
 
 lemma A18:
-  \<open>(\<Lambda> :: (unit, unit + unit, 'd) op) ~ \<oslash>\<close>
-  by (rule choices_Choice_bisim) (simp add: defaults_unit_def)
+  \<open>(\<Lambda> :: (0, 0 + 0, 'd) op) ~ \<oslash>\<close>
+  by (rule choices_Choice_bisim) auto
 
 section \<open>Axiom A19\<close>
 lemma A19_gen:
@@ -1858,7 +1858,7 @@ lemma A19:
     and "Xmn = (\<X> :: ('m + 'n, 'n + 'm, 'd) op)"
   shows "Smn \<approx> (Sm \<parallel> Sn) \<bullet> map_op reassoc reassoc (map_op assoc assoc (Imm \<parallel> Xmn) \<parallel> Inn)"
   unfolding scomp_op_def pcomp_op_def
-  using assms split_op_transp_split_gen[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []"] by simp
+  using assms A19_gen[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []"] by simp
 
 section \<open>Axiom F3: Loop merge\<close>
 

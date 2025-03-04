@@ -4668,8 +4668,8 @@ lemma A11:
 section \<open>Axiom A14: Equality test with 0 ports\<close>
 
 lemma A14:
-  \<open>(\<Q> :: (unit + unit, unit, 'd) op) ~ \<oslash>\<close>
-  by (rule choices_Choice_bisim) (simp add: defaults_unit_def)
+  \<open>(\<Q> :: (0 + 0, 0, 'd) op) ~ \<oslash>\<close>
+  by (rule choices_Choice_bisim) auto
 
 section \<open>Axiom A15: Transpose and equality test\<close>
 
@@ -6225,8 +6225,8 @@ lemma A15:
 section \<open>Axiom A18: Acopy with 0 ports\<close>
 
 lemma A18:
-  \<open>(\<C> :: (unit, unit + unit, 'd) op) ~ \<oslash>\<close>
-  by (rule choices_Choice_bisim) (simp add: defaults_unit_def)
+  \<open>(\<C> :: (0, 0 + 0, 'd) op) ~ \<oslash>\<close>
+  by (rule choices_Choice_bisim) auto
 
 section \<open>Axiom A19: Acopy and equality test\<close>
 lemma A19_gen:

@@ -48,9 +48,9 @@ subclass countable
 
 end
 
-lemma cUNIV_code[code]: "(cUNIV :: 'a :: {cenum, defaults} cset) = cset_of_llist (lfilter (\<lambda>x. x \<notin> defaults) cenum)"
+lemma c\<UU>_code[code]: "(c\<UU> :: 'a :: {cenum, defaults} cset) = cset_of_llist (lfilter (\<lambda>x. x \<notin> defaults) cenum)"
   including cset.lifting
-  by (transfer) (auto simp: UNIV_cenum[symmetric])
+  by (transfer) (auto simp: \<UU>_def UNIV_cenum[symmetric])
 
 context enum begin
 sublocale enum_cenum: cenum "llist_of Enum.enum"
@@ -467,10 +467,10 @@ end
 
 value [GHC] "force_cset show_nat 10 (cUn (cset_of_llist (from 42)) (cset_of_llist (const 2)))"
 value [GHC] "force_cset show_nat 10 (cempty :: nat cset)"
-value [GHC] "force_cset show_nat 10 (cUNIV :: nat cset)"
-value [GHC] "force_cset show_nat 10 (cimage (\<lambda>x. x + 5) (cfilter (\<lambda>x. x mod 2 = 0) cUNIV :: nat cset))"
-value [GHC] "force_cset (show_prod show_nat show_nat) 10 (cproduct (cUNIV :: nat cset) (cUNIV :: nat cset))"
-value [GHC] "(5 :: nat, True) |\<in>| cproduct cUNIV cUNIV"
+value [GHC] "force_cset show_nat 10 (c\<UU> :: nat cset)"
+value [GHC] "force_cset show_nat 10 (cimage (\<lambda>x. x + 5) (cfilter (\<lambda>x. x mod 2 = 0) c\<UU> :: nat cset))"
+value [GHC] "force_cset (show_prod show_nat show_nat) 10 (cproduct (c\<UU> :: nat cset) (c\<UU> :: nat cset))"
+value [GHC] "(5 :: nat, True) |\<in>| cproduct c\<UU> c\<UU>"
 value [GHC] "force_cset show_nat 10 (cUnion (cset_of_llist (lmap (cset_of_llist o from) (llist_of [1,2,3]))))"
 value [GHC] "force_cset show_nat 10 (cUnion (cset_of_llist (lmap (cset_of_llist o from) (from 1))))"
 

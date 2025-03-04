@@ -22,15 +22,15 @@ abbreviation cmember :: "'a \<Rightarrow> 'a cset \<Rightarrow> bool" (infix "|\
 
 section \<open>cset lifts\<close>
 context includes cset.lifting begin
-lift_definition natcUNIV :: "nat cset" is UNIV by auto
+lift_definition cUNIV :: "'m :: countable cset" is UNIV by auto
 lift_definition cproduct :: "'a cset \<Rightarrow> 'b cset \<Rightarrow> ('a \<times> 'b) cset" is "(\<times>)" by auto
 lift_definition cfilter :: "('a \<Rightarrow> bool) \<Rightarrow> 'a cset \<Rightarrow> 'a cset" is Set.filter by (simp add: Set.filter_def)
-lift_definition cUNIV :: "('m :: {countable, defaults}) cset" is "UNIV - defaults" by auto
+lift_definition c\<UU> :: "('m :: {countable, defaults}) cset" is "\<UU>" by auto
 
 end
 
 declare cBall.rep_eq[simp] cinsert.rep_eq[simp] bot_cset.rep_eq[simp] sup_cset.rep_eq[simp] cimage.rep_eq[simp] cUnion.rep_eq[simp] rel_cset.rep_eq[simp]
-  cfilter.rep_eq[simp] cUNIV.rep_eq[simp]
+  cfilter.rep_eq[simp] c\<UU>.rep_eq[simp]
 
 declare ranI[simp]
 

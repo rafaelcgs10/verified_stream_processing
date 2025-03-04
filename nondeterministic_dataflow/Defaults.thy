@@ -1,10 +1,21 @@
 text \<open>defaultss setup\<close>
 
 theory Defaults
-  imports Main
+  imports "HOL-Library.Numeral_Type"
 begin
 
 class defaults = fixes defaults :: "'a set"
+begin
+
+definition "\<UU> = (UNIV - defaults)"
+
+lemma \<UU>_I[simp, intro]: "p \<notin> defaults \<Longrightarrow> p \<in> \<UU>"
+  unfolding \<UU>_def by auto
+
+lemma \<UU>_E[elim!]: "p \<in> \<UU> \<Longrightarrow> (p \<notin> defaults \<Longrightarrow> P) \<Longrightarrow> P"
+  unfolding \<UU>_def by auto
+
+end
 
 instantiation sum :: (defaults, type) defaults
 begin
@@ -50,6 +61,29 @@ class no_defaults = defaults +
   assumes no_defaults: "defaults = {}"
 
 subclass (in no_defaults) defaults.
+
+
+
+setup_lifting type_definition_num0
+instantiation num0 :: defaults begin
+lift_definition defaults_num0 :: "num0 set" is "UNIV" .
+instance ..
+end
+setup_lifting type_definition_num1
+instantiation num1 :: defaults begin
+lift_definition defaults_num1 :: "num1 set" is "{}" .
+instance ..
+end
+setup_lifting type_definition_bit0
+instantiation bit0 :: (finite) defaults begin
+lift_definition defaults_bit0 :: "'a bit0 set" is "{}" by simp
+instance ..
+end
+setup_lifting type_definition_bit1
+instantiation bit1 :: (finite) defaults begin
+lift_definition defaults_bit1 :: "'a bit1 set" is "{}" by simp
+instance ..
+end
 
 
 end
