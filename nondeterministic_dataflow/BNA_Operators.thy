@@ -622,6 +622,46 @@ lemma step_comp_op_L_Tau[intro]:
   "step Tau op1 op1' \<Longrightarrow> buf = buf' \<Longrightarrow> op2 = op2' \<Longrightarrow> step Tau (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
   using step_comp_op_L by force
 
+lemma step_comp_op_R_Taus:
+  "(step Tau)\<^sup>*\<^sup>* op2 op2' \<Longrightarrow> buf = buf' \<Longrightarrow> op1 = op1' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
+ apply (induct op2 rule: converse_rtranclp_induct)
+   apply blast
+  apply (meson converse_rtranclp_into_rtranclp step_comp_op_R_Tau)
+  done
+
+lemma step_comp_op_L_Taus:
+  "(step Tau)\<^sup>*\<^sup>* op1 op1' \<Longrightarrow> buf = buf' \<Longrightarrow> op2 = op2' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
+  apply (induct op1 rule: converse_rtranclp_induct)
+   apply blast
+  apply (meson converse_rtranclp_into_rtranclp step_comp_op_L_Tau)
+  done
+
+lemma wstep_Tau_comp_op_L[]:
+  "wstep (Out p x) op1 op1' \<Longrightarrow>
+   wire p = Some q \<Longrightarrow>
+   buf' = BENQ q x buf \<Longrightarrow>
+   op2 = op2' \<Longrightarrow>
+   wstep Tau (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
+  unfolding wstep_def by (auto intro: step_comp_op_L_Taus)
+
+lemma wstep_Tau_comp_op_R[]:
+  "wstep (Inp p x) op2 op2' \<Longrightarrow>
+   p \<in> ran wire \<Longrightarrow>
+   buf p \<noteq> [] \<Longrightarrow>
+   BHD p buf = x \<Longrightarrow>
+   buf' = BTL p buf \<Longrightarrow>
+   op1' = op1 \<Longrightarrow>
+   wstep Tau (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
+  unfolding wstep_def by (auto intro: step_comp_op_R_Taus)
+
+lemma wstep_comp_op_L_Inp[]:
+  "wstep (Inp p x) op1 op1' \<Longrightarrow> buf = buf' \<Longrightarrow> op2 = op2' \<Longrightarrow>  wstep (Inp (Inl p) x) (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
+  unfolding wstep_def by (auto intro: step_comp_op_L_Taus)
+
+lemma wstep_comp_op_R_Out[]:
+  "wstep (Out p x) op2 op2' \<Longrightarrow> buf = buf' \<Longrightarrow> op1 = op1' \<Longrightarrow> wstep (Out (Inr p) x) (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
+  unfolding wstep_def by (auto intro: step_comp_op_R_Taus)
+
 lemma step_comp_op_cases:
   "step io (comp_op wire buf op1 op2) op \<Longrightarrow>
    (\<exists> p x op1'. io = Inp (Inl p) x \<and> op = comp_op wire buf op1' op2 \<and> step (Inp p x) op1 op1') \<or>

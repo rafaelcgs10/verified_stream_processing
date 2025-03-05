@@ -2488,7 +2488,8 @@ lemma transp_op_commutes_scomp_op_pcomp_op_bufs:
           apply (intro exI conjI[rotated])  
            apply (rule wbc_sym)
            apply (rule wbc_base)
-           apply force+
+          apply blast
+          apply (force del: step_wstep intro!: step_wstep)
           done
         done
       subgoal for p x
@@ -2927,7 +2928,7 @@ proof (coinduction arbitrary: op1 op2 buf2 lbuf1 lbuf2 lbuf3 rule: wbisim_coindu
            apply blast
         using step_inputs_outputs apply (smt (verit, best) disjoint_iff subsetD vimage_mono)
         using step_inputs_outputs apply (smt (verit, best) disjoint_iff subsetD vimage_mono)
-        apply force
+        apply (force del: step_wstep intro!: step_wstep)+
         done
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some buf2 op2 (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined ((lbuf1 >> lbuf2) >> lbuf3)) op1)))) op2' \<and> wbisim_cong (\<lambda>op1axx op2axx. \<exists>op1 op2 buf2 lbuf1 lbuf2 lbuf3. op1axx = map_op projl projr (comp_op Some buf2 op2 (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p::'a + 'm))) (case_sum undefined ((lbuf1 >> lbuf2) >> lbuf3)) op1))) \<and> op2axx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined lbuf1) (map_op projl projr (comp_op Some (case_sum buf2 lbuf3) (comp_op (\<lambda>_. None) (\<lambda>_. []) op2 (id_op lbuf2)) op1))) \<and> Inr -` inputs op1 \<inter> defaults = {} \<and> Inr -` outputs op1 \<inter> defaults = {}) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined lbuf1) (map_op projl projr (comp_op Some (case_sum buf2 (BENQ pa (BHD pa lbuf2) lbuf3)) (comp_op (\<lambda>_. None) (\<lambda>_. []) op2 (id_op (BTL pa lbuf2))) op1)))) op2'"
         if "Inr -` inputs op1 \<inter> defaults = {}"
@@ -3068,7 +3069,7 @@ proof (coinduction arbitrary: op1 op2 buf2 lbuf1 lbuf2 lbuf3 rule: wbisim_coindu
         using that 
         apply (intro exI conjI[rotated, OF wbc_sym[OF wbc_base]])
         using step_inputs_outputs that apply fast
-        apply force
+        apply (force del: step_wstep intro!: step_wstep)
         done
       ultimately show ?thesis
         using BISIM H by (auto 0 0 dest!: step_loop_op elim !: step_id_op_Out step_id_op_Inp_elim step_map_op_elim step_comp_op_elim split: sum.splits)

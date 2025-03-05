@@ -295,7 +295,7 @@ proof (coinduction arbitrary: buf1 buf2 buf3 rule: wbisim_coinduct_upto)
         if "p \<notin> defaults"
         for p :: 'a
           and x :: 'b
-        using that by (fastforce intro: wbc_sym[OF wbc_base])
+        using that by (fastforce intro: wbc_sym[OF wbc_base]  del: wstep_loop_ intro!: wstep_loop_)
       moreover have "\<exists>op2'. wstep (Out p (BHD p buf1)) (map_op projl projr (comp_op Some (case_sum (\<lambda>_. []) buf2) (map_op projr id (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (\<lambda>_. []) (\<oslash>::('c, 'a, 'b) op) \<I>)) (id_op buf1))) (merge_op (case_sum (\<lambda>_. []) buf3)))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf2 buf3. op1 = map_op projl projr (comp_op Some (case_sum (\<lambda>_. []) buf2) (map_op projr id (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (\<lambda>_. []) (\<oslash>::('c, 'a, 'b) op) \<I>)) (id_op buf1))) (merge_op (case_sum (\<lambda>_. []) buf3))) \<and> op2 = id_op ((buf1 >> buf2) >> buf3)) (id_op ((BTL p buf1 >> buf2) >> buf3)) op2'"
         if "buf1 p \<noteq> []"
           and "p \<notin> defaults"
@@ -551,13 +551,13 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
           and "buf2 x1a = []"
           and "buf3 x1a \<noteq> []"
         for x1a :: 'a
-        using that by (intro exI conjI[rotated, OF wbc_sym[OF wbc_base]], force+)
+        using that by (intro exI conjI[rotated, OF wbc_sym[OF wbc_base]], (force del: step_wstep intro!: step_wstep)+)
       moreover have "\<exists>op2'. wstep (Out (Inr x1a) (BHD x1a buf3)) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> BTL x1a buf3) ((buf1' >> buf2') >> buf3')))) op2'"
         if "x1a \<notin> defaults"
           and "buf2 x1a \<noteq> []"
           and "buf3 x1a \<noteq> []"
         for x1a :: 'a
-        using that by (intro exI conjI[rotated, OF wbc_sym[OF wbc_base]], force+)
+        using that by (intro exI conjI[rotated, OF wbc_sym[OF wbc_base]], (force del: step_wstep intro!: step_wstep)+)
       moreover have "\<exists>op2'. wstep (Out (Inl x2a) (BHD x2a buf1')) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((BTL x2a buf1' >> buf2') >> buf3')))) op2'"
         if "buf1' x2a \<noteq> []"
           and "x2a \<notin> defaults"
@@ -602,13 +602,13 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
           and "buf2' x2a = []"
           and "buf3' x2a \<noteq> []"
         for x2a :: 'a
-        using that by (intro exI conjI[rotated, OF wbc_sym[OF wbc_base]], force+)
+        using that by (intro exI conjI[rotated, OF wbc_sym[OF wbc_base]], (force del: step_wstep intro!: step_wstep)+)
       moreover have "\<exists>op2'. wstep (Out (Inl x2a) (BHD x2a buf3')) (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3')))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (transp_op (case_sum buf3 buf3'))) \<and> op2 = map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')))) (map_op id (case_sum Inr Inl) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> BTL x2a buf3')))) op2'"
         if "x2a \<notin> defaults"
           and "buf2' x2a \<noteq> []"
           and "buf3' x2a \<noteq> []"
         for x2a :: 'a
-        using that by (intro exI conjI[rotated, OF wbc_sym[OF wbc_base]], force+)
+        using that by (intro exI conjI[rotated, OF wbc_sym[OF wbc_base]], (force del: step_wstep intro!: step_wstep)+)
       ultimately show ?thesis
         using H by (auto elim !: step_map_op_elim step_split_op_cases split: sum.splits if_splits)
     qed
@@ -1133,7 +1133,7 @@ proof (coinduction arbitrary: buf1 buf1' buf1'' buf1''' buf2 buf2' buf2'' buf2''
         if "x2 \<notin> defaults"
           and "buf3''' x2 \<noteq> []"
         for x2 :: 'b
-        using that by (fastforce del: wbc_base intro: wbc_base)
+        using that by (fastforce del: wbc_base intro: wbc_base del: step_wstep intro!: step_wstep)
       ultimately show ?thesis
         using H by (auto elim !: step_merge_op_elim split: sum.splits if_splits)
     qed
@@ -1451,7 +1451,7 @@ have "step Tau
         using that 
           apply (intro exI conjI[rotated,OF wbc_base])
           using BISIM apply force
-          apply force
+          apply (force del: step_wstep intro!: step_wstep)
           done
       moreover have "\<exists>op2'. wstep (Out (Inl (Inr x2)) (BHD x2 buf2L)) (map_op projl projr (comp_op Some (case_sum (case_sum buf1L' buf1R') (case_sum buf2L' buf2R')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (split_op (case_sum buf1L buf1R)) (split_op (case_sum buf2L buf2R))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1L'') (transp_op (case_sum buf1R'' buf2L'')))) (id_op buf2R''))))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf1L' buf1L'' buf2L buf2L' buf2L'' buf1R buf1R' buf1R'' buf2R buf2R' buf2R''. op1xx = split_op (case_sum (case_sum ((buf1L >> buf1L') >> buf1L'') ((buf2L >> buf2L') >> buf2L'')) (case_sum ((buf1R >> buf1R') >> buf1R'') ((buf2R >> buf2R') >> buf2R''))) \<and> op2xx = map_op projl projr (comp_op Some (case_sum (case_sum buf1L' buf1R') (case_sum buf2L' buf2R')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (split_op (case_sum buf1L buf1R)) (split_op (case_sum buf2L buf2R))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1L'') (transp_op (case_sum buf1R'' buf2L'')))) (id_op buf2R''))))) (split_op (case_sum (case_sum ((buf1L >> buf1L') >> buf1L'') ((BTL x2 buf2L >> buf2L') >> buf2L'')) (case_sum ((buf1R >> buf1R') >> buf1R'') ((buf2R >> buf2R') >> buf2R'')))) op2'"
         if "x2 \<notin> defaults"
@@ -1638,7 +1638,7 @@ have "step Tau
         using that 
       apply (intro exI conjI[rotated,OF wbc_base])
         using BISIM apply force
-        apply force
+        apply (force del: step_wstep intro!: step_wstep)
         done
       moreover have "\<exists>op2'. wstep (Out (Inr (Inr x2a)) (BHD x2a buf2R)) (map_op projl projr (comp_op Some (case_sum (case_sum buf1L' buf1R') (case_sum buf2L' buf2R')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (split_op (case_sum buf1L buf1R)) (split_op (case_sum buf2L buf2R))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1L'') (transp_op (case_sum buf1R'' buf2L'')))) (id_op buf2R''))))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf1L' buf1L'' buf2L buf2L' buf2L'' buf1R buf1R' buf1R'' buf2R buf2R' buf2R''. op1xx = split_op (case_sum (case_sum ((buf1L >> buf1L') >> buf1L'') ((buf2L >> buf2L') >> buf2L'')) (case_sum ((buf1R >> buf1R') >> buf1R'') ((buf2R >> buf2R') >> buf2R''))) \<and> op2xx = map_op projl projr (comp_op Some (case_sum (case_sum buf1L' buf1R') (case_sum buf2L' buf2R')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (split_op (case_sum buf1L buf1R)) (split_op (case_sum buf2L buf2R))) (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op assoc assoc (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1L'') (transp_op (case_sum buf1R'' buf2L'')))) (id_op buf2R''))))) (split_op (case_sum (case_sum ((buf1L >> buf1L') >> buf1L'') ((buf2L >> buf2L') >> buf2L'')) (case_sum ((buf1R >> buf1R') >> buf1R'') ((BTL x2a buf2R >> buf2R') >> buf2R'')))) op2'"
         if "x2a \<notin> defaults"
@@ -1689,7 +1689,7 @@ have "step Tau
         using that 
           apply (intro exI conjI[rotated,OF wbc_base])
         using BISIM apply force
-        apply force
+        apply (force del: step_wstep intro!: step_wstep)
         done
         ultimately show ?thesis
         using H  by (auto 0 0 elim!: step_split_op_cases step_transp_op_cases step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
