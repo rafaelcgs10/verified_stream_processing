@@ -109,14 +109,14 @@ lemma inputs_id_op[intro]:
   "inputs (id_op buf) \<subseteq> UNIV - defaults"
   apply (intro subsetI)
   using id_op_reads by (metis inputs_sub_op_Read)
-lemma inputs_id_op_alt[intro]:
+lemma inputs_id_op_alt[intro!]:
   "\<forall>x\<in>inputs (id_op buf). x \<notin> defaults"
   using inputs_id_op[unfolded subset_eq, simplified] by fast
 lemma outputs_id_op[intro]:
   "outputs (id_op buf) \<subseteq> UNIV - defaults"
   apply (intro subsetI)
   using id_op_writes by (metis outputs_sub_op_Write)
-lemma outputs_id_op_alt[intro]:
+lemma outputs_id_op_alt[intro!]:
   "\<forall>x\<in>outputs (id_op buf). x \<notin> defaults"
   using outputs_id_op[unfolded subset_eq, simplified] by fast
 
@@ -137,47 +137,35 @@ lift_definition wbisim_operator :: "('a :: defaults, 'b :: defaults, 'c) operato
 abbreviation wbisim_operator' (infix "\<approx>"40) where
   "wbisim_operator' \<equiv> wbisim_operator"
 
+(* FIXME: move me *)
+lemma inputs_scomp_op_le_dest[dest!]:
+  "c \<in> inputs (comp_op Some buf op1 op2) \<Longrightarrow> c \<in> Inl ` inputs op1"
+  using set_mp[OF inputs_comp_op_le, simplified] by force
+lemma inputs_pcomp_op_le_dest[dest!]:
+  "c \<in> inputs (comp_op (\<lambda> _. None) buf op1 op2) \<Longrightarrow> c \<in> Inl ` inputs op1 \<or> c \<in> Inr ` (inputs op2)"
+  using set_mp[OF inputs_comp_op_le, simplified] by force
+lemma inputs_id_op_dest[dest!]:
+  "x\<in>inputs (id_op buf) \<Longrightarrow> x \<notin> defaults"
+  using inputs_id_op_alt by blast
+
+lemma outputs_scomp_op_le_dest[dest!]:
+  "c \<in> outputs (comp_op Some buf op1 op2) \<Longrightarrow>c \<in> Inr ` outputs op2"
+  using set_mp[OF outputs_comp_op_le, simplified] by force
+lemma outputs_pcomp_op_le_alt[dest!]:
+  "c \<in> outputs (comp_op (\<lambda> _. None) buf op1 op2) \<Longrightarrow> c \<in> Inl ` outputs op1 \<or> c \<in> Inr ` outputs op2"
+  using set_mp[OF outputs_comp_op_le, simplified] by force
+lemma outputs_id_op_dest[dest!]:
+  "x\<in>outputs (id_op buf) \<Longrightarrow> x \<notin> defaults"
+  using outputs_id_op_alt by blast
+
 lemma loop_operator_scomp_commute:
   "(op2 \<bullet> (op1\<up>)) \<approx> ((op2 \<parallel> \<I>) \<bullet> op1)\<up>"
   unfolding pcomp_operator_def scomp_operator_def feedback_operator_def
   apply transfer
-  apply (simp split: if_splits)
+  apply (simp split: if_splits add: image_iff)
   apply (intro impI conjI)
   subgoal
     by (auto intro!: loop_op_scomp_commute [unfolded scomp_op_def feedback_op_def pcomp_op_def])
-  subgoal
-    apply (auto intro!: inputs_id_op_alt Inl_in_defaults Inr_in_defaults simp add: inputs_id_op_alt disjoint_iff op.set_map ran_def dest!:  split: sum.splits if_splits)
-      apply (metis inputs_id_op_alt)
-     apply (meson Inl_in_defaults)
-    apply (meson Inr_in_defaults)
-    done
-  subgoal
-    by (auto 5 5 simp add: op.set_map ran_def split: sum.splits if_splits)
-  subgoal
-    by (auto 5 5 simp add: op.set_map ran_def split: sum.splits if_splits)
-  subgoal
-    by (auto intro!: inputs_id_op_alt Inl_in_defaults Inr_in_defaults simp add: inputs_id_op_alt disjoint_iff op.set_map ran_def dest!:  split: sum.splits if_splits)
-  subgoal
-    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
-  subgoal
-    apply (auto 2 2 simp add: op.set_map ran_def disjoint_iff_not_equal dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
-     apply (metis (no_types, lifting) Inl_in_defaults Inr_in_defaults sum.exhaust_sel)+
-    done
-  subgoal
-    apply (auto 0 0 intro!: Inl_in_defaults Inr_in_defaults simp add: inputs_id_op_alt disjoint_iff op.set_map ran_def dest!:  split: sum.splits if_splits)
-            apply (metis inputs_id_op_alt)
-           apply (meson Inl_in_defaults)
-          apply (meson Inr_in_defaults)
-         apply force+
-    done
-  subgoal
-    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
-  subgoal
-    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
-  subgoal
-    by (auto intro!: Inl_in_defaults Inr_in_defaults simp add: inputs_id_op_alt disjoint_iff op.set_map ran_def dest!:  split: sum.splits if_splits)
-  subgoal
-    by (auto 5 5 simp add: op.set_map ran_def dest!: set_mp[OF outputs_comp_op_le, simplified] set_mp[OF outputs_loop_op_le, simplified] set_mp[OF inputs_comp_op_le, simplified] set_mp[OF inputs_loop_op_le, simplified] split: sum.splits if_splits)
-  done
+  by (fastforce intro!: Inl_in_defaults Inr_in_defaults simp add: image_iff disjoint_iff op.set_map ran_def split: sum.splits if_splits)+
 
 end
