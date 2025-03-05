@@ -480,7 +480,7 @@ lemma A4':
   \<open>\<Q>' \<bullet> ! \<approx> ! \<parallel> !\<close>
 proof -
   have \<open>\<Q>' \<bullet> ! \<approx> \<Q> \<bullet> \<stileturn>!\<close> using bisim_wbisim scomp_op_assoc by blast
-  also have \<open>\<dots> \<approx> \<Q> \<bullet> !\<close> using aux calculation wbisim_sym wbisim_trans by blast
+  also have \<open>\<dots> \<approx> \<Q> \<bullet> !\<close> using scomp_op_id_left_absorb calculation wbisim_sym wbisim_trans by (metis id_sink_op_sink_op scomp_op_def wbisim_refl wbisim_scomp_op_cong)
   also have \<open>\<dots> \<approx> ! \<parallel> !\<close> by (rule Synchronous_Operators_Axioms.A4)
   finally show ?thesis.
 qed
