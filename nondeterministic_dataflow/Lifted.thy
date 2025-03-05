@@ -424,9 +424,139 @@ lemma scomp_op_id_left_absorb:
   shows  "op1\<turnstile> \<bullet> op2 \<approx> op1 \<bullet> op2"
   unfolding scomp_op_def using assms scomp_op_id_left_absorb_gen[of op2  "\<lambda> _. []"  "\<lambda> _. []" op1  "\<lambda> _. []"] by force
 
-lemma aux2:
+lemma map_op_out_id_vdash_gen:
+  "map_op f id (map_op projl projr (comp_op Some buf2 op (id_op buf1))) \<approx> map_op projl projr (comp_op Some buf2 (map_op f id op) (id_op buf1))"
+proof (coinduction arbitrary: op buf1 buf2 rule: wbisim_coinduct_upto'')
+  case SIM1
+  then show ?case 
+  proof -
+    have "\<exists>op2'. wstep (Inp (f p) x) (map_op projl projr (comp_op Some buf2 (map_op f id op) (id_op buf1))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf1 buf2. op1xx = map_op f id (map_op projl projr (comp_op Some buf2 op (id_op buf1))) \<and> op2xx = map_op projl projr (comp_op Some buf2 (map_op f id op) (id_op buf1))) (map_op f id (map_op projl projr (comp_op Some buf2 op1' (id_op buf1)))) op2'"
+      if "step (Inp p x) op op1'"
+      for p :: 'd
+        and x :: 'c
+        and op1' :: "('d, 'b, 'c) op"
+      using that apply -
+      apply (intro exI conjI[rotated] wbc_base)
+        apply auto
+      done
+    moreover have "\<exists>op2'. wstep (Out pa (BHD pa buf1)) (map_op projl projr (comp_op Some buf2 (map_op f id op) (id_op buf1))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf1 buf2. op1xx = map_op f id (map_op projl projr (comp_op Some buf2 op (id_op buf1))) \<and> op2xx = map_op projl projr (comp_op Some buf2 (map_op f id op) (id_op buf1))) (map_op f id (map_op projl projr (comp_op Some buf2 op (id_op (BTL pa buf1))))) op2'"
+      if "pa \<notin> defaults"
+        and "buf1 pa \<noteq> []"
+      for pa :: 'b
+      using that apply -
+      apply (intro exI conjI[rotated] wbc_base)
+        apply auto
+      done
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some buf2 (map_op f id op) (id_op buf1))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf1 buf2. op1xx = map_op f id (map_op projl projr (comp_op Some buf2 op (id_op buf1))) \<and> op2xx = map_op projl projr (comp_op Some buf2 (map_op f id op) (id_op buf1))) (map_op f id (map_op projl projr (comp_op Some (BENQ q x buf2) op1' (id_op buf1)))) op2'"
+      if "step (Out q x) op op1'"
+      for x :: 'c
+        and op1' :: "('d, 'b, 'c) op"
+        and q :: 'b
+      using that apply -
+      apply (intro exI conjI[rotated] wbc_base)
+        apply auto
+      done
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some buf2 (map_op f id op) (id_op buf1))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf1 buf2. op1xx = map_op f id (map_op projl projr (comp_op Some buf2 op (id_op buf1))) \<and> op2xx = map_op projl projr (comp_op Some buf2 (map_op f id op) (id_op buf1))) (map_op f id (map_op projl projr (comp_op Some (BTL pa buf2) op (id_op (BENQ pa (BHD pa buf2) buf1))))) op2'"
+      if "buf2 pa \<noteq> []"
+        and "pa \<notin> defaults"
+      for pa :: 'b
+      using that apply -
+      apply (intro exI conjI[rotated] wbc_base)
+        apply auto
+      done
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some buf2 (map_op f id op) (id_op buf1))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf1 buf2. op1xx = map_op f id (map_op projl projr (comp_op Some buf2 op (id_op buf1))) \<and> op2xx = map_op projl projr (comp_op Some buf2 (map_op f id op) (id_op buf1))) (map_op f id (map_op projl projr (comp_op Some buf2 op1' (id_op buf1)))) op2'"
+      if "step Tau op op1'"
+      for op1' :: "('d, 'b, 'c) op"
+      using that apply -
+      apply (intro exI conjI[rotated] wbc_base)
+        apply auto
+      done
+    ultimately show ?thesis
+      using SIM1 by (auto elim !: step_id_op_cases step_comp_op_elim step_map_op_elim split: if_splits)
+  qed
+next
+  case SIM2
+  then show ?case 
+    apply -
+    explore (auto elim !: step_id_op_cases step_comp_op_elim step_map_op_elim split: if_splits; hypsubst_thin)
+  proof -
+    have "\<exists>op2'. wstep (Inp p x) (map_op f id (map_op projl projr (comp_op Some buf2 op (id_op buf1)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf1 buf2. op1xx = map_op f id (map_op projl projr (comp_op Some buf2 op (id_op buf1))) \<and> op2xx = map_op projl projr (comp_op Some buf2 (map_op f id op) (id_op buf1))) op2' (map_op projl projr (comp_op Some buf2 (map_op f id op''a) (id_op buf1)))"
+      if "step io'a op op''a"
+        and "map_IO f id id io'a = Inp p x"
+      for p :: 'a
+        and x :: 'c
+        and io'a :: "('d, 'b, 'c) IO"
+        and op''a :: "('d, 'b, 'c) op"
+    proof (cases "io'a")
+      case (Inp x11 x12)
+      from this that show ?thesis 
+        using that apply -
+        apply hypsubst_thin
+        apply (intro exI conjI[rotated] wbc_base)
+          apply (rule refl)+
+        apply fastforce
+        done
+    next
+      case (Out x21 x22)
+      from this that show ?thesis 
+        using that apply -
+        apply hypsubst_thin
+        apply (intro exI conjI[rotated] wbc_base)
+          apply (rule refl)+
+        apply fastforce
+        done
+    next
+      case Tau
+      from this that show ?thesis 
+        using that apply -
+        apply hypsubst_thin
+        apply (intro exI conjI[rotated] wbc_base)
+          apply (rule refl)+
+        apply fastforce
+        done
+    qed
+    moreover have "\<exists>op2'. wstep (Out pa (BHD pa buf1)) (map_op f id (map_op projl projr (comp_op Some buf2 op (id_op buf1)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf1 buf2. op1xx = map_op f id (map_op projl projr (comp_op Some buf2 op (id_op buf1))) \<and> op2xx = map_op projl projr (comp_op Some buf2 (map_op f id op) (id_op buf1))) op2' (map_op projl projr (comp_op Some buf2 (map_op f id op) (id_op (BTL pa buf1))))"
+      if "pa \<notin> defaults"
+        and "buf1 pa \<noteq> []"
+      for pa :: 'b
+      using that apply -
+      apply (intro exI conjI[rotated] wbc_base)
+        apply auto
+      done
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op f id (map_op projl projr (comp_op Some buf2 op (id_op buf1)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf1 buf2. op1xx = map_op f id (map_op projl projr (comp_op Some buf2 op (id_op buf1))) \<and> op2xx = map_op projl projr (comp_op Some buf2 (map_op f id op) (id_op buf1))) op2' (map_op projl projr (comp_op Some (BENQ q x buf2) (map_op f id op''a) (id_op buf1)))"
+      if "step io'a op op''a"
+        and "map_IO f id id io'a = Out q x"
+      for x :: 'c
+        and q :: 'b
+        and io'a :: "('d, 'b, 'c) IO"
+        and op''a :: "('d, 'b, 'c) op"
+      using that apply -
+      apply (intro exI conjI[rotated] wbc_base)
+        apply (rule refl)+
+      apply (smt (z3) IO.exhaust IO.simps(15) IO.simps(16) IO.simps(17) IO.simps(4) id_def step_Tau_comp_op_L_alt step_star_map_op step_wstep wstep_steps_Tau)
+      done     moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op f id (map_op projl projr (comp_op Some buf2 op (id_op buf1)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf1 buf2. op1xx = map_op f id (map_op projl projr (comp_op Some buf2 op (id_op buf1))) \<and> op2xx = map_op projl projr (comp_op Some buf2 (map_op f id op) (id_op buf1))) op2' (map_op projl projr (comp_op Some (BTL pa buf2) (map_op f id op) (id_op (BENQ pa (BHD pa buf2) buf1))))"
+      if "buf2 pa \<noteq> []"
+        and "pa \<notin> defaults"
+      for pa :: 'b
+      using that apply -
+      apply (intro exI conjI[rotated] wbc_base)
+        apply auto
+      done
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op f id (map_op projl projr (comp_op Some buf2 op (id_op buf1)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf1 buf2. op1xx = map_op f id (map_op projl projr (comp_op Some buf2 op (id_op buf1))) \<and> op2xx = map_op projl projr (comp_op Some buf2 (map_op f id op) (id_op buf1))) op2' (map_op projl projr (comp_op Some buf2 (map_op f id op''a) (id_op buf1)))"
+      if "step Tau op op''a"
+      for op''a :: "('d, 'b, 'c) op"
+      using that apply -
+      apply (intro exI conjI[rotated] wbc_base)
+        apply auto
+      done
+    ultimately show ?thesis
+      using SIM2  by (auto elim !: step_id_op_cases step_comp_op_elim step_map_op_elim split: if_splits)
+  qed
+qed
+
+lemma map_op_out_id_vdash:
   "map_op f id (op\<turnstile>) \<approx> (map_op f id op)\<turnstile>"
-  sorry
+  unfolding scomp_op_def using map_op_out_id_vdash_gen by force
 
 lemma A10':
   "\<Q>' \<bullet> \<C> \<approx> (\<C> \<parallel> \<C>) \<bullet> (map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)) \<bullet> (\<Q>' \<parallel> \<Q>')"
@@ -434,9 +564,326 @@ lemma A10':
   using inputs_acopy_op apply fastforce
   done
 
-lemma aux3:
+lemma aeq_id_absorb_gen:
+  "aeq_op (case_sum (buf1L >> buf2L >> buf3L) (buf1R >> buf2R >> buf3R)) \<approx> map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R) ) (aeq_op (case_sum buf3L buf3R) ))"
+proof (coinduction arbitrary: buf1L buf2L buf3L buf1R buf2R buf3R  rule: wbisim_coinduct_upto'')
+  case SIM1
+  then show ?case 
+    apply -
+    explore (elim exE conjE disjE step_id_op_cases step_comp_op_elim step_map_op_elim step_aeq_op_elim; simp split: if_splits sum.splits; hypsubst_thin)
+  proof -
+    have "\<exists>op2'. wstep (Inp (Inl p) y) (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((BENQ p y buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R))) op2'"
+      if "p \<notin> defaults"
+      for p :: 'a
+        and y :: 'b
+      using that sorry
+    moreover have "\<exists>op2'. wstep (Inp (Inr p) y) (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((BENQ p y buf1R >> buf2R) >> buf3R))) op2'"
+      if "p \<notin> defaults"
+      for p :: 'a
+        and y :: 'b
+      using that sorry
+    moreover have "\<exists>op2'. wstep (Out p (BHD p buf1R)) (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((BTL p buf1L >> buf2L) >> buf3L) ((BTL p buf1R >> buf2R) >> buf3R))) op2'"
+      if "buf1L p \<noteq> []"
+        and "buf1R p \<noteq> []"
+        and "BHD p buf1L = BHD p buf1R"
+        and "p \<notin> defaults"
+        and "buf3R p = []"
+        and "buf3L p = []"
+        and "buf2R p = []"
+        and "buf2L p = []"
+      for p :: 'a
+        and x :: 'b
+      using that sorry
+    moreover have "\<exists>op2'. wstep (Out p (BHD p buf1R)) (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((buf1L >> BTL p buf2L) >> buf3L) ((BTL p buf1R >> buf2R) >> buf3R))) op2'"
+      if "buf1R p \<noteq> []"
+        and "BHD p buf2L = BHD p buf1R"
+        and "p \<notin> defaults"
+        and "buf3R p = []"
+        and "buf3L p = []"
+        and "buf2R p = []"
+        and "buf2L p \<noteq> []"
+      for p :: 'a
+        and x :: 'b
+      using that sorry
+    moreover have "\<exists>op2'. wstep (Out p (BHD p buf2R)) (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((BTL p buf1L >> buf2L) >> buf3L) ((buf1R >> BTL p buf2R) >> buf3R))) op2'"
+      if "buf1L p \<noteq> []"
+        and "BHD p buf1L = BHD p buf2R"
+        and "p \<notin> defaults"
+        and "buf3R p = []"
+        and "buf3L p = []"
+        and "buf2R p \<noteq> []"
+        and "buf2L p = []"
+      for p :: 'a
+        and x :: 'b
+      using that sorry
+    moreover have "\<exists>op2'. wstep (Out p (BHD p buf2R)) (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((buf1L >> BTL p buf2L) >> buf3L) ((buf1R >> BTL p buf2R) >> buf3R))) op2'"
+      if "BHD p buf2L = BHD p buf2R"
+        and "p \<notin> defaults"
+        and "buf3R p = []"
+        and "buf3L p = []"
+        and "buf2R p \<noteq> []"
+        and "buf2L p \<noteq> []"
+      for p :: 'a
+      using that sorry
+    moreover have "\<exists>op2'. wstep (Out p (BHD p buf1R)) (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((buf1L >> buf2L) >> BTL p buf3L) ((BTL p buf1R >> buf2R) >> buf3R))) op2'"
+      if "buf1R p \<noteq> []"
+        and "BHD p buf3L = BHD p buf1R"
+        and "p \<notin> defaults"
+        and "buf3R p = []"
+        and "buf3L p \<noteq> []"
+        and "buf2R p = []"
+      for p :: 'a
+        and x :: 'b
+      using that sorry
+    moreover have "\<exists>op2'. wstep (Out p (BHD p buf2R)) (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((buf1L >> buf2L) >> BTL p buf3L) ((buf1R >> BTL p buf2R) >> buf3R))) op2'"
+      if "BHD p buf3L = BHD p buf2R"
+        and "p \<notin> defaults"
+        and "buf3R p = []"
+        and "buf3L p \<noteq> []"
+        and "buf2R p \<noteq> []"
+      for p :: 'a
+      using that sorry
+    moreover have "\<exists>op2'. wstep (Out p (BHD p buf3R)) (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((BTL p buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> BTL p buf3R))) op2'"
+      if "buf1L p \<noteq> []"
+        and "BHD p buf1L = BHD p buf3R"
+        and "p \<notin> defaults"
+        and "buf3R p \<noteq> []"
+        and "buf3L p = []"
+        and "buf2L p = []"
+      for p :: 'a
+        and x :: 'b
+      using that sorry
+    moreover have "\<exists>op2'. wstep (Out p (BHD p buf3R)) (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((buf1L >> BTL p buf2L) >> buf3L) ((buf1R >> buf2R) >> BTL p buf3R))) op2'"
+      if "BHD p buf2L = BHD p buf3R"
+        and "p \<notin> defaults"
+        and "buf3R p \<noteq> []"
+        and "buf3L p = []"
+        and "buf2L p \<noteq> []"
+      for p :: 'a
+      using that sorry
+    moreover have "\<exists>op2'. wstep (Out p (BHD p buf3R)) (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((buf1L >> buf2L) >> BTL p buf3L) ((buf1R >> buf2R) >> BTL p buf3R))) op2'"
+      if "BHD p buf3L = BHD p buf3R"
+        and "p \<notin> defaults"
+        and "buf3R p \<noteq> []"
+        and "buf3L p \<noteq> []"
+      for p :: 'a
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((BTL p buf1L >> buf2L) >> buf3L) ((BTL p buf1R >> buf2R) >> buf3R))) op2'"
+      if "buf1L p \<noteq> []"
+        and "buf1R p \<noteq> []"
+        and "BHD p buf1L \<noteq> BHD p buf1R"
+        and "p \<notin> defaults"
+        and "buf3R p = []"
+        and "buf3L p = []"
+        and "buf2R p = []"
+        and "buf2L p = []"
+      for p :: 'a
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((buf1L >> BTL p buf2L) >> buf3L) ((BTL p buf1R >> buf2R) >> buf3R))) op2'"
+      if "buf1R p \<noteq> []"
+        and "BHD p buf2L \<noteq> BHD p buf1R"
+        and "p \<notin> defaults"
+        and "buf3R p = []"
+        and "buf3L p = []"
+        and "buf2R p = []"
+        and "buf2L p \<noteq> []"
+      for p :: 'a
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((BTL p buf1L >> buf2L) >> buf3L) ((buf1R >> BTL p buf2R) >> buf3R))) op2'"
+      if "buf1L p \<noteq> []"
+        and "BHD p buf1L \<noteq> BHD p buf2R"
+        and "p \<notin> defaults"
+        and "buf3R p = []"
+        and "buf3L p = []"
+        and "buf2R p \<noteq> []"
+        and "buf2L p = []"
+      for p :: 'a
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((buf1L >> BTL p buf2L) >> buf3L) ((buf1R >> BTL p buf2R) >> buf3R))) op2'"
+      if "BHD p buf2L \<noteq> BHD p buf2R"
+        and "p \<notin> defaults"
+        and "buf3R p = []"
+        and "buf3L p = []"
+        and "buf2R p \<noteq> []"
+        and "buf2L p \<noteq> []"
+      for p :: 'a
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((buf1L >> buf2L) >> BTL p buf3L) ((BTL p buf1R >> buf2R) >> buf3R))) op2'"
+      if "buf1R p \<noteq> []"
+        and "BHD p buf3L \<noteq> BHD p buf1R"
+        and "p \<notin> defaults"
+        and "buf3R p = []"
+        and "buf3L p \<noteq> []"
+        and "buf2R p = []"
+      for p :: 'a
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((buf1L >> buf2L) >> BTL p buf3L) ((buf1R >> BTL p buf2R) >> buf3R))) op2'"
+      if "BHD p buf3L \<noteq> BHD p buf2R"
+        and "p \<notin> defaults"
+        and "buf3R p = []"
+        and "buf3L p \<noteq> []"
+        and "buf2R p \<noteq> []"
+      for p :: 'a
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((BTL p buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> BTL p buf3R))) op2'"
+      if "buf1L p \<noteq> []"
+        and "BHD p buf1L \<noteq> BHD p buf3R"
+        and "p \<notin> defaults"
+        and "buf3R p \<noteq> []"
+        and "buf3L p = []"
+        and "buf2L p = []"
+      for p :: 'a
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((buf1L >> BTL p buf2L) >> buf3L) ((buf1R >> buf2R) >> BTL p buf3R))) op2'"
+      if "BHD p buf2L \<noteq> BHD p buf3R"
+        and "p \<notin> defaults"
+        and "buf3R p \<noteq> []"
+        and "buf3L p = []"
+        and "buf2L p \<noteq> []"
+      for p :: 'a
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((buf1L >> buf2L) >> BTL p buf3L) ((buf1R >> buf2R) >> BTL p buf3R))) op2'"
+      if "BHD p buf3L \<noteq> BHD p buf3R"
+        and "p \<notin> defaults"
+        and "buf3R p \<noteq> []"
+        and "buf3L p \<noteq> []"
+      for p :: 'a
+      using that sorry
+    ultimately show ?thesis
+      apply -
+      subgoal premises prems
+        using SIM1 apply (elim exE conjE disjE step_id_op_cases step_comp_op_elim step_map_op_elim step_aeq_op_elim; simp split: if_splits sum.splits ; hypsubst_thin)
+                           apply (rule prems; assumption)+
+        done
+      done
+  qed
+next
+  case SIM2
+  then show ?case 
+   apply -
+    explore (elim exE conjE disjE step_id_op_cases step_comp_op_elim step_map_op_elim step_aeq_op_elim; simp split: if_splits sum.splits; hypsubst_thin)
+  proof -
+    have "\<exists>op2'. wstep (Inp pa x) (aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (BENQ pa x (case_sum buf1L buf1R))) (aeq_op (case_sum buf3L buf3R))))"
+      if "(pa::'a + 'a) \<notin> defaults"
+      for io' :: "(('a + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO"
+        and op'' :: "(('a + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) op"
+        and p :: "'a + 'a"
+        and x :: 'b
+        and op1' :: "('a + 'a, 'a + 'a, 'b) op"
+        and pa :: "'a + 'a"
+      using that sorry
+    moreover have "\<exists>op2'. wstep (Inp (Inl pa) y) (aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum (BENQ pa y buf3L) buf3R))))"
+      if "Out p x = Inp (Inl pa::'a + 'a) y"
+        and "pa \<notin> defaults"
+      for io' :: "(('a + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO"
+        and op'' :: "(('a + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) op"
+        and p :: 'a
+        and x :: 'b
+        and op2' :: "('a + 'a, 'a, 'b) op"
+        and pa :: 'a
+        and y :: 'b
+      using that sorry
+    moreover have "\<exists>op2'. wstep (Inp (Inr pa) y) (aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L (BENQ pa y buf3R)))))"
+      if "Out p x = Inp (Inr pa::'a + 'a) y"
+        and "pa \<notin> defaults"
+      for io' :: "(('a + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO"
+        and op'' :: "(('a + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) op"
+        and p :: 'a
+        and x :: 'b
+        and op2' :: "('a + 'a, 'a, 'b) op"
+        and pa :: 'a
+        and y :: 'b
+      using that sorry
+    moreover have "\<exists>op2'. wstep (Out pa (BHD pa buf3R)) (aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum (BTL pa buf3L) (BTL pa buf3R)))))"
+      if "(Out p x::('a + 'a, 'a, 'b) IO) = Out pa (BHD pa buf3R)"
+        and "buf3L pa \<noteq> []"
+        and "buf3R pa \<noteq> []"
+        and "BHD pa buf3L = BHD pa buf3R"
+        and "pa \<notin> defaults"
+      for io' :: "(('a + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO"
+        and op'' :: "(('a + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) op"
+        and p :: 'a
+        and x :: 'b
+        and op2' :: "('a + 'a, 'a, 'b) op"
+        and pa :: 'a
+        and xa :: 'b
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' (map_op projl projr (comp_op Some (case_sum (BENQ x1 (BHD x1 buf1L) buf2L) buf2R) (id_op (case_sum (BTL x1 buf1L) buf1R)) (aeq_op (case_sum buf3L buf3R))))"
+      if "(x1::'a) \<notin> defaults"
+        and "buf1L x1 \<noteq> []"
+      for io' :: "(('a + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO"
+        and op'' :: "(('a + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) op"
+        and p :: "'a + 'a"
+        and x :: 'b
+        and op1' :: "('a + 'a, 'a + 'a, 'b) op"
+        and q :: "'a + 'a"
+        and pa :: "'a + 'a"
+        and x1 :: 'a
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' (map_op projl projr (comp_op Some (case_sum buf2L (BENQ x2 (BHD x2 buf1R) buf2R)) (id_op (case_sum buf1L (BTL x2 buf1R))) (aeq_op (case_sum buf3L buf3R))))"
+      if "(x2::'a) \<notin> defaults"
+        and "buf1R x2 \<noteq> []"
+      for io' :: "(('a + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO"
+        and op'' :: "(('a + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) op"
+        and p :: "'a + 'a"
+        and x :: 'b
+        and op1' :: "('a + 'a, 'a + 'a, 'b) op"
+        and q :: "'a + 'a"
+        and pa :: "'a + 'a"
+        and x2 :: 'a
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' (map_op projl projr (comp_op Some (case_sum (BTL pa buf2L) buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum (BENQ pa (BHD pa buf2L) buf3L) buf3R))))"
+      if "buf2L pa \<noteq> []"
+        and "pa \<notin> defaults"
+      for io' :: "(('a + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO"
+        and op'' :: "(('a + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) op"
+        and p :: "'a + 'a"
+        and x :: 'b
+        and op2' :: "('a + 'a, 'a, 'b) op"
+        and pa :: 'a
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' (map_op projl projr (comp_op Some (case_sum buf2L (BTL pa buf2R)) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L (BENQ pa (BHD pa buf2R) buf3R)))))"
+      if "buf2R pa \<noteq> []"
+        and "pa \<notin> defaults"
+      for io' :: "(('a + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO"
+        and op'' :: "(('a + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) op"
+        and p :: "'a + 'a"
+        and x :: 'b
+        and op2' :: "('a + 'a, 'a, 'b) op"
+        and pa :: 'a
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum (BTL pa buf3L) (BTL pa buf3R)))))"
+      if "buf3L pa \<noteq> []"
+        and "buf3R pa \<noteq> []"
+        and "BHD pa buf3L \<noteq> BHD pa buf3R"
+        and "pa \<notin> defaults"
+      for io' :: "(('a + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO"
+        and op'' :: "(('a + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) op"
+        and op2' :: "('a + 'a, 'a, 'b) op"
+        and pa :: 'a
+      using that sorry
+    ultimately show ?thesis
+  apply -
+      subgoal premises prems
+        using SIM2 apply (elim exE conjE disjE step_id_op_cases step_comp_op_elim step_map_op_elim step_aeq_op_elim; simp split: if_splits sum.splits ; hypsubst_thin)
+                           apply (rule prems; assumption)+
+        done
+      done
+  qed
+qed  
+
+lemma aeq_id_absorb:
+  "\<Q> \<approx> \<stileturn>\<Q>"
+  unfolding scomp_op_def
+  using aeq_id_absorb_gen[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []", simplified] by simp
+
+lemma aeq_vdash_absorb:
+  "\<Q>' \<approx> (\<stileturn>(\<Q>'))"
+  using aeq_id_absorb using bisim_wbisim scomp_op_assoc wbisim_refl wbisim_scomp_op_cong wbisim_trans by blast
+
+lemma aeq_double_vdash_absorb:
   "\<Q>' \<approx> (\<stileturn>(\<Q>'\<turnstile>))"
-  sorry
+  using aeq_vdash_absorb using scomp_op_id_op_right_neutral wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans by blast
 
 (* FIXME: make trans at the lemma *)
 declare wbisim_trans[trans]
@@ -450,12 +897,12 @@ proof -
     by (simp add: bisim_scomp_op_cong bisim_wbisim choices_Choice_bisim pcomp_op_scomp_distributes wbisim_sym)  
   also have "\<dots> \<approx> (\<Q> \<parallel> \<I>) \<bullet> \<I> \<bullet> \<Q>'"
     by (simp add: bisim_wbisim pcomp_op_id_id wbisim_refl wbisim_scomp_op_cong)
-  also have "\<dots> \<approx> (\<Q> \<parallel> \<I>) \<bullet> \<Q>'" using scomp_op_id_left_absorb by (smt (verit, ccfv_SIG) aux3 bisim_wbisim scomp_op_assoc scomp_op_id_op_right_neutral wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans)
+  also have "\<dots> \<approx> (\<Q> \<parallel> \<I>) \<bullet> \<Q>'" using scomp_op_id_left_absorb by (smt (verit, ccfv_SIG) aeq_double_vdash_absorb bisim_wbisim scomp_op_assoc scomp_op_id_op_right_neutral wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans)
   also have "\<dots> \<approx> (\<Q> \<parallel> \<I>) \<bullet> \<Q> \<bullet> \<I>"
     using bisim_wbisim scomp_op_assoc wbisim_sym by blast 
   also have "\<dots> \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>) \<bullet> \<I>" using wbisim_refl wbisim_scomp_op_cong using Synchronous_Operators_Axioms.A1 bisim_wbisim by blast
-  also have "\<dots> \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>')" using aux2 bisim_wbisim scomp_op_assoc wbisim_map_op wbisim_sym wbisim_trans by blast
-  also have "\<dots>  \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>)\<turnstile> \<bullet> \<Q>')" using scomp_op_id_left_absorb wbisim_map_op wbisim_sym by (smt (verit, best) aux3 bisim_wbisim scomp_op_assoc scomp_op_id_op_right_neutral wbisim_refl wbisim_scomp_op_cong wbisim_trans)
+  also have "\<dots> \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>')" using map_op_out_id_vdash bisim_wbisim scomp_op_assoc wbisim_map_op wbisim_sym wbisim_trans by blast
+  also have "\<dots>  \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>)\<turnstile> \<bullet> \<Q>')" using scomp_op_id_left_absorb wbisim_map_op wbisim_sym by (smt (verit, best) aeq_double_vdash_absorb bisim_wbisim scomp_op_assoc scomp_op_id_op_right_neutral wbisim_refl wbisim_scomp_op_cong wbisim_trans)
   also have "\<dots>  \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>) \<bullet> (\<I> \<parallel> \<I>) \<bullet> \<Q>')" by (metis bisim_wbisim pcomp_op_id_id wbisim_map_op wbisim_refl wbisim_scomp_op_cong wbisim_sym)
   also have "\<dots>  \<approx> map_op (case_sum Inr Inl) id ((\<I>\<turnstile> \<parallel> \<Q>') \<bullet> \<Q>')" by (simp add: bisim_wbisim pcomp_op_scomp_distributes wbisim_map_op wbisim_refl wbisim_scomp_op_cong)
   also have "\<dots>  \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>') \<bullet> \<Q>')" by (simp add: pcomp_op_def scomp_op_id_id wbisim_comp_op_cong wbisim_map_op wbisim_refl wbisim_scomp_op_cong)
@@ -468,7 +915,7 @@ proof -
   have \<open>\<X> \<bullet> \<Q>' \<approx> \<X> \<bullet> \<Q> \<bullet> \<I>\<close> using bisim_wbisim scomp_op_assoc wbisim_sym by blast
   also have \<open>\<dots> \<approx> (map_op (case_sum Inr Inl) id \<Q>) \<bullet> \<I>\<close>
     using Synchronous_Operators_Axioms.A2 wbisim_refl wbisim_scomp_op_cong by blast
-  also have \<open>\<dots> \<approx> map_op (case_sum Inr Inl) id \<Q>'\<close> using aux2 wbisim_sym by blast
+  also have \<open>\<dots> \<approx> map_op (case_sum Inr Inl) id \<Q>'\<close> using map_op_out_id_vdash wbisim_sym by blast
   finally show ?thesis.
 qed
 
