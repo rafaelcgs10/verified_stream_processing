@@ -2946,7 +2946,7 @@ lemma bisim_loop_op_cong:
   unfolding feedback_op_def using bisim_loop_op_cong_gen by auto
 
 subsection \<open>Congruence for weak bisim\<close>
-lemma wstep_Inp_loop_op[intro!]:
+lemma wstep_Inp_loop_op[intro]:
   "wstep (Inp p x) op op' \<Longrightarrow>
    p \<notin> ran wire \<Longrightarrow>
    wstep (Inp p x) (loop_op wire buf op) (loop_op wire buf op')"
@@ -2988,7 +2988,7 @@ lemma wstep_Inp_Tau_loop_op[intro]:
    wstep Tau (loop_op wire buf op) (loop_op wire buf' op')"
   unfolding wstep_def by auto
 
-lemma wstep_Out_loop_op[intro!]:
+lemma wstep_Out_loop_op[intro]:
   "wstep (Out p x) op op' \<Longrightarrow>
    wire p = None \<Longrightarrow> buf = buf' \<Longrightarrow>
    wstep (Out p x) (loop_op wire buf op) (loop_op wire buf' op')"
