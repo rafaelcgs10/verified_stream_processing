@@ -2589,19 +2589,635 @@ lemma step_double_loop_2:
       done
     done *)
 
-  subsection \<open>Congruence for strong bisim\<close>
-lemma bisim_scomp_op_cong:
+
+lemma step_Inp_loop_op[intro!]:
+  "step (Inp p x) op op' \<Longrightarrow>
+   p \<notin> ran wire \<Longrightarrow>
+   step (Inp p x) (loop_op wire buf op) (loop_op wire buf op')"
+  apply (subst loop_op.code)
+  apply simp
+  apply (erule step_choicesE)
+    apply simp_all
+  subgoal for p' f
+    apply hypsubst_thin
+    apply (rule SC)
+     apply (rule cimage_eqI[of _  _ "Read _ _"])
+      apply simp_all
+     apply (intro conjI)
+      apply assumption
+     apply (auto simp add: ran_def split: sum.splits)
+    done
+  done
+
+lemma step_Inp_Tau_loop_op[intro]:
+  "step (Inp p x) op op' \<Longrightarrow>
+   p \<in> ran wire \<Longrightarrow> buf' = BTL p buf \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> BHD p buf = x \<Longrightarrow>
+   step Tau (loop_op wire buf op) (loop_op wire buf' op')"
+  apply (subst loop_op.code)
+  apply simp
+  apply (erule step_choicesE)
+    apply simp_all
+  subgoal for p' f
+    apply hypsubst_thin
+    apply (rule SC)
+     apply (rule cimage_eqI[of _  _ "Read _ _"])
+      apply simp_all
+     apply (intro conjI)
+      apply assumption
+     apply (auto simp add: ran_def split: sum.splits)
+    done
+  done
+
+lemma step_Out_loop_op[intro!]:
+  "step (Out p x) op op' \<Longrightarrow>
+   wire p = None \<Longrightarrow> buf = buf' \<Longrightarrow>
+   step (Out p x) (loop_op wire buf op) (loop_op wire buf' op')"
+  apply (subst loop_op.code)
+  apply simp
+  apply (erule step_choicesE)
+    apply simp_all
+  subgoal for p'
+    apply hypsubst_thin
+    apply (rule SC)
+     apply (rule cimage_eqI[of _  _ "Write _ _ _"])
+      apply (auto simp add: ran_def split: sum.splits)
+    done
+  done
+
+lemma step_Out_Tau_loop_op[intro]:
+  "step (Out p x) op op' \<Longrightarrow>
+   wire p = Some q \<Longrightarrow> buf' = BENQ q x buf \<Longrightarrow>
+   step Tau (loop_op wire buf op) (loop_op wire buf' op')"
+  apply (subst loop_op.code)
+  apply simp
+  apply (erule step_choicesE)
+    apply simp_all
+  subgoal for p'
+    apply hypsubst_thin
+    apply (rule SC)
+     apply (rule cimage_eqI[of _  _ "Write _ _ _"])
+      apply (auto simp add: ran_def split: sum.splits)
+    done
+  done
+
+lemma step_Tau_loop_op[intro]:
+  "step Tau op op' \<Longrightarrow> buf' = buf \<Longrightarrow>
+   step Tau (loop_op wire buf op) (loop_op wire buf' op')"
+  apply (subst loop_op.code)
+  apply simp
+  apply (erule step_choicesE)
+    apply simp_all
+  subgoal
+    apply (rule SC)
+     apply (rule cimage_eqI[of _  _ "Silent _"])
+      apply (auto simp add: ran_def split: sum.splits)
+    done
+  done
+
+subsection \<open>Congruence for strong bisim\<close>
+lemma bisim_loop_op_cong_gen:
+  "op ~ op' \<Longrightarrow>
+   map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) ~
+   map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')"
+proof (coinduction arbitrary: op op' buf rule: bisim_coinduct_upto'')
+  case SIM1
+  then show ?case 
+  proof -
+    have "\<exists>op2'. step (Inp (projl p) x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a)) op2'"
+      if "sim (~) op op'"
+        and "sim (~) op' op"
+        and "\<forall>p'. p = Inr p' \<longrightarrow> p' \<in> defaults"
+        and "step (Inp p x) op op''a"
+      for p :: "'a + 'b"
+        and x :: 'd
+        and op''a :: "('a + 'b, 'c + 'b, 'd) op"
+      using that apply -
+      unfolding sim_def
+      apply (drule spec2, drule mp, simp)
+      apply (elim exE conjE)
+      apply (intro exI conjI)
+       apply (rule step_map_op)
+        apply (rule step_Inp_loop_op)
+         apply assumption
+        apply simp_all
+      apply (rule bc_base)
+      apply fast
+      done
+    moreover have "\<exists>op2'. step (Out x1 x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a)) op2'"
+      if "step (Out (Inl x1) x) op op''a"
+        and "sim (~) op op'"
+        and "sim (~) op' op"
+      for x :: 'd
+        and op''a :: "('a + 'b, 'c + 'b, 'd) op"
+        and x1 :: 'c
+      using that apply -
+      unfolding sim_def
+      apply (drule spec2, drule mp, simp)
+      apply (elim exE conjE)
+      apply (intro exI conjI)
+       apply (rule step_map_op)
+        apply (rule step_Out_loop_op)
+          apply assumption
+         apply simp_all
+      apply (rule bc_base)
+      apply fast
+      done
+    moreover have "\<exists>op2'. step (Out (projl (Inr x2)) x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a)) op2'"
+      if "step (Out (Inr x2) x) op op''a"
+        and "sim (~) op op'"
+        and "sim (~) op' op"
+        and "x2 \<in> defaults"
+      for x :: 'd
+        and op''a :: "('a + 'b, 'c + 'b, 'd) op"
+        and x2 :: 'b
+      using that apply -
+      unfolding sim_def
+      apply (drule spec2, drule mp, simp)
+      apply (elim exE conjE)
+      apply (intro exI conjI)
+       apply (rule step_map_op)
+        apply (rule step_Out_loop_op)
+          apply assumption
+         apply simp_all
+      apply (rule bc_base)
+      apply fast
+      done
+    moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a)) op2'"
+      if "sim (~) op op'"
+        and "sim (~) op' op"
+        and "step Tau op op''a"
+      for op''a :: "('a + 'b, 'c + 'b, 'd) op"
+      using that apply -
+      unfolding sim_def
+      apply (drule spec2, drule mp, simp)
+      apply (elim exE conjE)
+      apply (intro exI conjI)
+       apply (rule step_map_op)
+        apply (rule step_Tau_loop_op)
+         apply assumption
+        apply simp_all
+      apply (rule bc_base)
+      apply fast
+      done
+    moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BTL x2 buf)) op''a)) op2'"
+      if "step (Inp (Inr x2) (BHD x2 buf)) op op''a"
+        and "sim (~) op op'"
+        and "sim (~) op' op"
+        and "x2 \<notin> defaults"
+        and "buf x2 \<noteq> []"
+      for op''a :: "('a + 'b, 'c + 'b, 'd) op"
+        and x2 :: 'b
+      using that apply -
+      unfolding sim_def
+      apply (drule spec2, drule mp, simp)
+      apply (elim exE conjE)
+      apply (intro exI conjI)
+       apply (rule step_map_op)
+        apply (rule step_Inp_Tau_loop_op)
+            apply assumption
+           apply simp_all
+      apply (rule bc_base)
+      apply fast
+      done
+    moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BENQ x2 x buf)) op''a)) op2'"
+      if "step (Out (Inr x2) x) op op''a"
+        and "sim (~) op op'"
+        and "sim (~) op' op"
+        and "x2 \<notin> defaults"
+      for op''a :: "('a + 'b, 'c + 'b, 'd) op"
+        and x :: 'd
+        and x2 :: 'b
+      using that apply -
+      unfolding sim_def
+      apply (drule spec2, drule mp, simp)
+      apply (elim exE conjE)
+      apply (intro exI conjI)
+       apply (rule step_map_op)
+        apply (rule step_Out_Tau_loop_op)
+          apply assumption
+         apply simp_all
+      apply (rule bc_base)
+      apply force
+      done
+    ultimately show ?thesis
+      using SIM1 by (auto elim !: bisim.cases step_map_op_elim step_loop_op_elim split: if_splits sum.splits)
+  qed
+next
+  case SIM2
+  then show ?case 
+  proof -
+    have "\<exists>op2'. step (Inp (projl p) x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a))"
+      if "sim (~) op' op" 
+        and "sim (~) op op'"
+        and "\<forall>p'. p = Inr p' \<longrightarrow> p' \<in> defaults"
+        and "step (Inp p x) op' op''a"
+      for p :: "'a + 'b"
+        and x :: 'd
+        and op''a :: "('a + 'b, 'c + 'b, 'd) op"
+      using that 
+      apply -
+      unfolding sim_def
+      apply (drule spec2, drule mp, simp)
+      apply (elim exE conjE)
+      apply (intro exI conjI)
+       apply (rule step_map_op)
+        apply (rule step_Inp_loop_op)
+         apply assumption
+        apply simp_all
+      apply (rule bc_sym)
+      apply (rule bc_base)
+      apply (intro conjI exI)
+        apply force+
+      done
+    moreover have "\<exists>op2'. step (Out x1 x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a))"
+      if "step (Out (Inl x1) x) op' op''a"
+        and "sim (~) op op'"
+        and "sim (~) op' op"
+      for x :: 'd
+        and op''a :: "('a + 'b, 'c + 'b, 'd) op"
+        and x1 :: 'c
+      using that 
+      apply -
+      unfolding sim_def
+      apply (drule spec2, drule mp, simp)
+      apply (elim exE conjE)
+      apply (intro exI conjI)
+       apply (rule step_map_op)
+        apply (rule step_Out_loop_op)
+          apply assumption
+         apply simp_all
+      apply (rule bc_sym)
+      apply (rule bc_base)
+      apply fast
+      done
+    moreover have "\<exists>op2'. step (Out (projl (Inr x2)) x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a))"
+      if "step (Out (Inr x2) x) op' op''a"
+        and "sim (~) op' op"
+        and "sim (~) op op'"
+        and "x2 \<in> defaults"
+      for x :: 'd
+        and op''a :: "('a + 'b, 'c + 'b, 'd) op"
+        and x2 :: 'b
+      using that 
+      apply -
+      unfolding sim_def
+      apply (drule spec2, drule mp, simp)
+      apply (elim exE conjE)
+      apply (intro exI conjI)
+       apply (rule step_map_op)
+        apply (rule step_Out_loop_op)
+          apply assumption
+         apply simp_all
+      apply (rule bc_sym)
+      apply (rule bc_base)
+      apply fast
+      done
+    moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a))"
+      if "sim (~) op' op"
+        and "sim (~) op op'"
+        and "step Tau op' op''a"
+      for op''a :: "('a + 'b, 'c + 'b, 'd) op"
+      using that 
+      apply -
+      unfolding sim_def
+      apply (drule spec2, drule mp, simp)
+      apply (elim exE conjE)
+      apply (intro exI conjI)
+       apply (rule step_map_op)
+        apply (rule step_Tau_loop_op)
+         apply assumption
+        apply simp_all
+      apply (rule bc_sym)
+      apply (rule bc_base)
+      apply fast
+      done
+    moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BTL x2 buf)) op''a))"
+      if "step (Inp (Inr x2) (BHD x2 buf)) op' op''a"
+        and "sim (~) op' op"
+        and "sim (~) op op'"
+        and "x2 \<notin> defaults"
+        and "buf x2 \<noteq> []"
+      for op''a :: "('a + 'b, 'c + 'b, 'd) op"
+        and x2 :: 'b
+      using that 
+      apply -
+      unfolding sim_def
+      apply (drule spec2, drule mp, simp)
+      apply (elim exE conjE)
+      apply (intro exI conjI)
+       apply (rule step_map_op)
+        apply (rule step_Inp_Tau_loop_op)
+            apply assumption
+           apply simp_all
+      apply (rule bc_sym)
+      apply (rule bc_base)
+      apply fast
+      done
+    moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BENQ x2 x buf)) op''a))"
+      if "step (Out (Inr x2) x) op' op''a"
+        and "sim (~) op' op"
+        and "sim (~) op op'"
+        and "x2 \<notin> defaults"
+      for op''a :: "('a + 'b, 'c + 'b, 'd) op"
+        and x :: 'd
+        and x2 :: 'b
+      using that 
+      apply -
+      unfolding sim_def
+      apply (drule spec2, drule mp, simp)
+      apply (elim exE conjE)
+      apply (intro exI conjI)
+       apply (rule step_map_op)
+        apply (rule step_Out_Tau_loop_op)
+          apply assumption
+         apply simp_all
+      apply (rule bc_sym)
+      apply (rule bc_base)
+      apply force
+      done
+    ultimately show ?thesis
+      using SIM2 by (auto elim !: step_map_op_elim step_loop_op_elim bisim.cases split: if_splits sum.splits)
+  qed
+qed
+
+lemma bisim_loop_op_cong:
   "op ~ op' \<Longrightarrow>
    op\<up> ~ op'\<up>"
+  unfolding feedback_op_def using bisim_loop_op_cong_gen by auto
+
+subsection \<open>Congruence for weak bisim\<close>
+lemma wstep_Inp_loop_op[intro!]:
+  "wstep (Inp p x) op op' \<Longrightarrow>
+   p \<notin> ran wire \<Longrightarrow>
+   wstep (Inp p x) (loop_op wire buf op) (loop_op wire buf op')"
+  unfolding wstep_def
+  apply safe
   oops
 
-  subsection \<open>Congruence for weak bisim\<close>
-lemma wbisim_scomp_op_cong:
+(* FIXME: move me *)
+lemma wbisim_wstep:
+  "op1 \<approx> op2 \<Longrightarrow>
+   step io op1 op1' \<Longrightarrow>
+   \<exists> op2'. wstep io op2 op2' \<and> op1' \<approx> op2'"
+  apply (drule step_wstep)
+  apply (erule wbisim_wstep[OF wbisimulation_wbisim])
+   apply assumption
+  unfolding wstep_def
+  apply auto
+  done
+
+(* FIXME: move me *)
+lemma step_taus_loop_[intro]:
+  "(step Tau)\<^sup>*\<^sup>* op op' \<Longrightarrow>
+   (step Tau)\<^sup>*\<^sup>* (loop_op wire buf op) (loop_op wire buf op')"
+  apply (induct op rule: converse_rtranclp_induct)
+   apply blast
+  apply (meson converse_rtranclp_into_rtranclp step_Tau_loop_op)
+  done
+
+(* FIXME: move me *)
+lemma wstep_loop_[intro]:
+  "wstep (Inp p x) op op' \<Longrightarrow>
+   p \<notin> ran wire \<Longrightarrow>
+   wstep (Inp p x) (loop_op wire buf op) (loop_op wire buf op')"
+  unfolding wstep_def by auto
+
+lemma wstep_Inp_Tau_loop_op[intro]:
+  "wstep (Inp p x) op op' \<Longrightarrow>
+   p \<in> ran wire \<Longrightarrow> buf' = BTL p buf \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> BHD p buf = x \<Longrightarrow>
+   wstep Tau (loop_op wire buf op) (loop_op wire buf' op')"
+  unfolding wstep_def by auto
+
+lemma wstep_Out_loop_op[intro!]:
+  "wstep (Out p x) op op' \<Longrightarrow>
+   wire p = None \<Longrightarrow> buf = buf' \<Longrightarrow>
+   wstep (Out p x) (loop_op wire buf op) (loop_op wire buf' op')"
+  unfolding wstep_def by auto
+
+lemma wstep_Out_Tau_loop_op[intro]:
+  "wstep (Out p x) op op' \<Longrightarrow>
+   wire p = Some q \<Longrightarrow> buf' = BENQ q x buf \<Longrightarrow>
+   wstep Tau (loop_op wire buf op) (loop_op wire buf' op')"
+  unfolding wstep_def by auto
+
+lemma wstep_Tau_loop_op[intro]:
+  "wstep Tau op op' \<Longrightarrow> buf' = buf \<Longrightarrow>
+   wstep Tau (loop_op wire buf op) (loop_op wire buf' op')"
+  unfolding wstep_def by auto
+
+
+lemma wbisim_loop_op_cong_gen:
+  "op \<approx> op' \<Longrightarrow>
+   map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<approx>
+   map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')"
+proof (coinduction arbitrary: op op' buf rule: wbisim_coinduct_upto'')
+  case SIM1
+  then show ?case 
+  proof -
+    have "\<exists>op2'. wstep (Inp (projl p) x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op \<approx> op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a)) op2'"
+      if "op \<approx> op'"
+        and "\<forall>p'. p = Inr p' \<longrightarrow> p' \<in> defaults"
+        and "step (Inp p x) op op''a"
+      for p :: "'a + 'b"
+        and x :: 'd
+        and op''a :: "('a + 'b, 'c + 'b, 'd) op"
+      using that apply -
+      apply (drule wbisim_wstep, assumption)
+      apply (elim conjE exE)
+      apply (intro conjI[rotated] exI wbc_base)
+         apply assumption
+        apply (rule refl)+
+      apply (smt (verit, ccfv_SIG) IO.map(1) in_feedback_wire map_IO_projl_eq_Inp sum.sel(1) wstep_loop_ wstep_map_op)
+      done
+    moreover have "\<exists>op2'. wstep (Out x1 x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op \<approx> op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a)) op2'"
+      if "step (Out (Inl x1) x) op op''a"
+        and "op \<approx> op'"
+      for x :: 'd
+        and op''a :: "('a + 'b, 'c + 'b, 'd) op"
+        and x1 :: 'c
+      using that apply -
+      apply (drule wbisim_wstep, assumption)
+      apply (elim conjE exE)
+      apply (intro conjI[rotated] exI wbc_base)
+         apply assumption
+        apply (rule refl)+
+      apply auto
+      done      
+    moreover have "\<exists>op2'. wstep (Out (projl (Inr x2)) x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op \<approx> op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a)) op2'"
+      if "step (Out (Inr x2) x) op op''a"
+        and "op \<approx> op'"
+        and "x2 \<in> defaults"
+      for x :: 'd
+        and op''a :: "('a + 'b, 'c + 'b, 'd) op"
+        and x2 :: 'b
+      using that apply -
+      apply (drule wbisim_wstep, assumption)
+      apply (elim conjE exE)
+      apply (intro conjI[rotated] exI wbc_base)
+         apply assumption
+        apply (rule refl)+
+      apply auto
+      done
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op \<approx> op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a)) op2'"
+      if "op \<approx> op'"
+        and "step Tau op op''a"
+      for op''a :: "('a + 'b, 'c + 'b, 'd) op"
+      using that apply -
+      apply (drule wbisim_wstep, assumption)
+      apply (elim conjE exE)
+      apply (intro conjI[rotated] exI wbc_base)
+         apply assumption
+        apply (rule refl)+
+      apply auto
+      done
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op \<approx> op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BTL x2 buf)) op''a)) op2'"
+      if "step (Inp (Inr x2) (BHD x2 buf)) op op''a"
+        and "op \<approx> op'"
+        and "x2 \<notin> defaults"
+        and "buf x2 \<noteq> []"
+      for op''a :: "('a + 'b, 'c + 'b, 'd) op"
+        and x2 :: 'b
+      using that apply -
+      apply (drule wbisim_wstep, assumption)
+      apply (elim conjE exE)
+      apply (intro conjI[rotated] exI wbc_base)
+         apply assumption
+        apply (rule refl)+
+      apply (smt (verit, best) case_sum_BHD_R case_sum_BTL_R in_feedback_wire old.sum.simps(6) step_star_map_op wstep_Inp_Tau_loop_op wstep_steps_Tau)
+      done
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op \<approx> op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BENQ x2 x buf)) op''a)) op2'"
+      if "step (Out (Inr x2) x) op op''a"
+        and "op \<approx> op'"
+        and "x2 \<notin> defaults"
+      for op''a :: "('a + 'b, 'c + 'b, 'd) op"
+        and x :: 'd
+        and x2 :: 'b
+      using that apply -
+      apply (drule wbisim_wstep, assumption)
+      apply (elim conjE exE)
+      apply (intro conjI[rotated] exI wbc_base)
+         apply assumption
+        apply (rule refl)+
+      apply (smt (verit, del_insts) case_sum_BENQ_R old.sum.simps(6) step_star_map_op wstep_Out_Tau_loop_op wstep_steps_Tau)
+      done
+    ultimately show ?thesis
+      using SIM1  by (auto elim !: step_map_op_elim step_loop_op_elim split: if_splits sum.splits)
+  qed
+next
+  case SIM2
+  then show ?case 
+    apply -
+    explore (auto elim !: step_map_op_elim step_loop_op_elim split: if_splits sum.splits; hypsubst_thin)
+  proof -
+    have "\<exists>op2'. wstep (Inp (projl p) x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op \<approx> op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a))"
+      if "op \<approx> op'"
+        and "\<forall>p'. p = Inr p' \<longrightarrow> p' \<in> defaults"
+        and "step (Inp p x) op' op''a"
+      for p :: "'a + 'b"
+        and x :: 'd
+        and op''a :: "('a + 'b, 'c + 'b, 'd) op"
+      using that apply -
+      apply (drule wbisim_sym)
+      apply (drule wbisim_wstep, assumption)
+      apply (elim conjE exE)
+      apply (intro conjI[rotated] exI)
+       apply (rule wbc_sym)
+       apply (rule wbc_base)
+       apply blast
+      apply (smt (verit, ccfv_threshold) IO.map(1) id_apply in_feedback_wire wstep_loop_ wstep_map_op)
+      done
+    moreover have "\<exists>op2'. wstep (Out x1 x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op \<approx> op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a))"
+      if "step (Out (Inl x1) x) op' op''a"
+        and "op \<approx> op'"
+      for x :: 'd
+        and op''a :: "('a + 'b, 'c + 'b, 'd) op"
+        and x1 :: 'c
+      using that apply -
+      apply (drule wbisim_sym)
+      apply (drule wbisim_wstep, assumption)
+      apply (elim conjE exE)
+      apply (intro conjI[rotated] exI)
+       apply (rule wbc_sym)
+       apply (rule wbc_base)
+       apply blast
+      apply auto
+      done
+    moreover have "\<exists>op2'. wstep (Out (projl (Inr x2)) x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op \<approx> op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a))"
+      if "step (Out (Inr x2) x) op' op''a"
+        and "op \<approx> op'"
+        and "x2 \<in> defaults"
+      for x :: 'd
+        and op''a :: "('a + 'b, 'c + 'b, 'd) op"
+        and x2 :: 'b
+      using that apply -
+      apply (drule wbisim_sym)
+      apply (drule wbisim_wstep, assumption)
+      apply (elim conjE exE)
+      apply (intro conjI[rotated] exI)
+       apply (rule wbc_sym)
+       apply (rule wbc_base)
+       apply blast
+      apply auto
+      done
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op \<approx> op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a))"
+      if "op \<approx> op'"
+        and "step Tau op' op''a"
+      for op''a :: "('a + 'b, 'c + 'b, 'd) op"
+      using that apply -
+      apply (drule wbisim_sym)
+      apply (drule wbisim_wstep, assumption)
+      apply (elim conjE exE)
+      apply (intro conjI[rotated] exI)
+       apply (rule wbc_sym)
+       apply (rule wbc_base)
+       apply blast
+      apply auto
+      done
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op \<approx> op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BTL x2 buf)) op''a))"
+      if "step (Inp (Inr x2) (BHD x2 buf)) op' op''a"
+        and "op \<approx> op'"
+        and "x2 \<notin> defaults"
+        and "buf x2 \<noteq> []"
+      for op''a :: "('a + 'b, 'c + 'b, 'd) op"
+        and x2 :: 'b
+      using that apply -
+      apply (drule wbisim_sym)
+      apply (drule wbisim_wstep, assumption)
+      apply (elim conjE exE)
+      apply (intro conjI[rotated] exI)
+       apply (rule wbc_sym)
+       apply (rule wbc_base)
+       apply blast
+      apply (smt (verit, best) case_sum_BHD_R case_sum_BTL_R case_sum_if in_feedback_wire step_star_map_op wstep_Inp_Tau_loop_op wstep_steps_Tau)
+      done
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op \<approx> op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BENQ x2 x buf)) op''a))"
+      if "step (Out (Inr x2) x) op' op''a"
+        and "op \<approx> op'"
+        and "x2 \<notin> defaults"
+      for op''a :: "('a + 'b, 'c + 'b, 'd) op"
+        and x :: 'd
+        and x2 :: 'b
+      using that apply -
+      apply (drule wbisim_sym)
+      apply (drule wbisim_wstep, assumption)
+      apply (elim conjE exE)
+      apply (intro conjI[rotated] exI)
+       apply (rule wbc_sym)
+       apply (rule wbc_base)
+       apply blast
+      apply (smt (verit, ccfv_SIG) case_sum_BENQ_R old.sum.simps(6) step_star_map_op wstep_Out_Tau_loop_op wstep_steps_Tau)
+      done
+    ultimately show ?thesis
+      using SIM2 by (auto elim !: step_map_op_elim step_loop_op_elim split: if_splits sum.splits)
+  qed
+qed
+
+lemma wbisim_loop_op_cong:
   "op \<approx> op' \<Longrightarrow>
    op\<up> \<approx> op'\<up>"
-  oops
+  unfolding feedback_op_def using wbisim_loop_op_cong_gen by auto
 
-  subsection \<open>Inputs of loop_op\<close>
+subsection \<open>Inputs of loop_op\<close>
 
 lemma inputs_loop_op:
   "sub_op (Read p f) (loop_op wire buf op) n \<Longrightarrow> p \<in> (inputs op - ran wire)"
@@ -3020,89 +3636,6 @@ lemma choices_id_op[simp]:
   apply (simp add: BTL_def BENQ_def)
   done
 
-lemma step_Inp_loop_op[intro!]:
-  "step (Inp p x) op op' \<Longrightarrow>
-   p \<notin> ran wire \<Longrightarrow>
-   step (Inp p x) (loop_op wire buf op) (loop_op wire buf op')"
-  apply (subst loop_op.code)
-  apply simp
-  apply (erule step_choicesE)
-    apply simp_all
-  subgoal for p' f
-    apply hypsubst_thin
-    apply (rule SC)
-     apply (rule cimage_eqI[of _  _ "Read _ _"])
-      apply simp_all
-     apply (intro conjI)
-      apply assumption
-     apply (auto simp add: ran_def split: sum.splits)
-    done
-  done
-
-lemma step_Inp_Tau_loop_op[intro]:
-  "step (Inp p x) op op' \<Longrightarrow>
-   p \<in> ran wire \<Longrightarrow> buf' = BTL p buf \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> BHD p buf = x \<Longrightarrow>
-   step Tau (loop_op wire buf op) (loop_op wire buf' op')"
-  apply (subst loop_op.code)
-  apply simp
-  apply (erule step_choicesE)
-    apply simp_all
-  subgoal for p' f
-    apply hypsubst_thin
-    apply (rule SC)
-     apply (rule cimage_eqI[of _  _ "Read _ _"])
-      apply simp_all
-     apply (intro conjI)
-      apply assumption
-     apply (auto simp add: ran_def split: sum.splits)
-    done
-  done
-
-lemma step_Out_loop_op[intro!]:
-  "step (Out p x) op op' \<Longrightarrow>
-   wire p = None \<Longrightarrow> buf = buf' \<Longrightarrow>
-   step (Out p x) (loop_op wire buf op) (loop_op wire buf' op')"
-  apply (subst loop_op.code)
-  apply simp
-  apply (erule step_choicesE)
-    apply simp_all
-  subgoal for p'
-    apply hypsubst_thin
-    apply (rule SC)
-     apply (rule cimage_eqI[of _  _ "Write _ _ _"])
-      apply (auto simp add: ran_def split: sum.splits)
-    done
-  done
-
-lemma step_Out_Tau_loop_op[intro]:
-  "step (Out p x) op op' \<Longrightarrow>
-   wire p = Some q \<Longrightarrow> buf' = BENQ q x buf \<Longrightarrow>
-   step Tau (loop_op wire buf op) (loop_op wire buf' op')"
-  apply (subst loop_op.code)
-  apply simp
-  apply (erule step_choicesE)
-    apply simp_all
-  subgoal for p'
-    apply hypsubst_thin
-    apply (rule SC)
-     apply (rule cimage_eqI[of _  _ "Write _ _ _"])
-      apply (auto simp add: ran_def split: sum.splits)
-    done
-  done
-
-lemma step_Tau_loop_op[intro]:
-  "step Tau op op' \<Longrightarrow> buf' = buf \<Longrightarrow>
-   step Tau (loop_op wire buf op) (loop_op wire buf' op')"
-  apply (subst loop_op.code)
-  apply simp
-  apply (erule step_choicesE)
-    apply simp_all
-  subgoal
-    apply (rule SC)
-     apply (rule cimage_eqI[of _  _ "Silent _"])
-      apply (auto simp add: ran_def split: sum.splits)
-    done
-  done
 
 lemma default_0[simp]: "x \<in> (defaults :: 0 set)"
   by transfer simp
