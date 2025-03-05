@@ -7,6 +7,57 @@ imports
 begin
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
+abbreviation "\<Q>' \<equiv> \<Q>\<turnstile>"
+
+lemma aux:
+  "op1\<turnstile> \<bullet> op2 \<approx> op1 \<bullet> op2"
+  sorry
+
+lemma aux2:
+  "map_op f id (op\<turnstile>) \<approx> (map_op f id op)\<turnstile>"
+  sorry
+
+lemma A1:
+  \<open>(\<Q> \<parallel> \<I>) \<bullet> \<Q> \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>)\<close>
+  sorry
+
+lemma A10:
+  "\<Q> \<bullet> \<C> \<approx> (\<C> \<parallel> \<C>) \<bullet> (map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)) \<bullet> (\<Q>\<turnstile> \<parallel> \<Q>\<turnstile>)"
+  unfolding scomp_op_def pcomp_op_def
+  sorry
+
+lemma A10':
+  "\<Q>' \<bullet> \<C> \<approx> (\<C> \<parallel> \<C>) \<bullet> (map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)) \<bullet> (\<Q>' \<parallel> \<Q>')"
+  apply (rule wbisim_trans[OF aux A10])
+  done
+
+lemma aux3:
+  "\<Q>' \<approx> (\<stileturn>(\<Q>'\<turnstile>))"
+  sorry
+
+(* FIXME: make trans at the lemma *)
+declare wbisim_trans[trans]
+
+lemma A1':
+  \<open>(\<Q>' \<parallel> \<I>) \<bullet> \<Q>' \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>') \<bullet> \<Q>')\<close>
+proof -
+  have "(\<Q>' \<parallel> \<I>) \<bullet> \<Q>' \<approx> (\<Q>' \<parallel> \<I>\<turnstile>) \<bullet> \<Q>'" 
+    by (simp add: pcomp_op_def scomp_op_id_id wbisim_comp_op_cong wbisim_refl wbisim_scomp_op_cong wbisim_sym)
+  also have "\<dots> \<approx> (\<Q> \<parallel> \<I>) \<bullet> (\<I> \<parallel> \<I>) \<bullet> \<Q>'"
+    by (simp add: bisim_scomp_op_cong bisim_wbisim choices_Choice_bisim pcomp_op_scomp_distributes wbisim_sym)  
+  also have "\<dots> \<approx> (\<Q> \<parallel> \<I>) \<bullet> \<I> \<bullet> \<Q>'"
+    by (simp add: bisim_wbisim pcomp_op_id_id wbisim_refl wbisim_scomp_op_cong)
+  also have "\<dots> \<approx> (\<Q> \<parallel> \<I>) \<bullet> \<Q>'" by (rule aux)
+  also have "\<dots> \<approx> (\<Q> \<parallel> \<I>) \<bullet> \<Q> \<bullet> \<I>"
+    using bisim_wbisim scomp_op_assoc wbisim_sym by blast 
+  also have "\<dots> \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>) \<bullet> \<I>" using A1 wbisim_refl wbisim_scomp_op_cong by blast
+  also have "\<dots> \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>')" using aux2 bisim_wbisim scomp_op_assoc wbisim_map_op wbisim_sym wbisim_trans by blast
+  also have "\<dots>  \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>)\<turnstile> \<bullet> \<Q>')" using aux wbisim_map_op wbisim_sym by blast 
+  also have "\<dots>  \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>) \<bullet> (\<I> \<parallel> \<I>) \<bullet> \<Q>')" by (metis bisim_wbisim pcomp_op_id_id wbisim_map_op wbisim_refl wbisim_scomp_op_cong wbisim_sym)
+  also have "\<dots>  \<approx> map_op (case_sum Inr Inl) id ((\<I>\<turnstile> \<parallel> \<Q>') \<bullet> \<Q>')" by (simp add: bisim_wbisim pcomp_op_scomp_distributes wbisim_map_op wbisim_refl wbisim_scomp_op_cong)
+  also have "\<dots>  \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>') \<bullet> \<Q>')" by (simp add: pcomp_op_def scomp_op_id_id wbisim_comp_op_cong wbisim_map_op wbisim_refl wbisim_scomp_op_cong)
+  finally show ?thesis.
+qed
 
 context notes [[typedef_overloaded]] begin
 typedef ('ip, 'op, 'd) operator = 
@@ -164,8 +215,8 @@ lemma loop_operator_scomp_commute:
   apply transfer
   apply (simp split: if_splits add: image_iff)
   apply (intro impI conjI)
-  subgoal
-    by (auto intro!: loop_op_scomp_commute [unfolded scomp_op_def feedback_op_def pcomp_op_def])
-  by (fastforce intro!: Inl_in_defaults Inr_in_defaults simp add: image_iff disjoint_iff op.set_map ran_def split: sum.splits if_splits)+
+  by (fastforce intro!: loop_op_scomp_commute[unfolded scomp_op_def feedback_op_def pcomp_op_def] Inl_in_defaults Inr_in_defaults simp add: image_iff disjoint_iff op.set_map ran_def split: sum.splits if_splits)+
+
+
 
 end
