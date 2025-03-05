@@ -4,6 +4,8 @@ theory Lifted
 imports
   BNA_Operators
   BNA_Axioms
+  Synchronous_Operators_Axioms
+  Asynchronous_Dataflow_Axioms
 begin
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
@@ -15,15 +17,6 @@ lemma aux:
 
 lemma aux2:
   "map_op f id (op\<turnstile>) \<approx> (map_op f id op)\<turnstile>"
-  sorry
-
-lemma A1:
-  \<open>(\<Q> \<parallel> \<I>) \<bullet> \<Q> \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>)\<close>
-  sorry
-
-lemma A10:
-  "\<Q> \<bullet> \<C> \<approx> (\<C> \<parallel> \<C>) \<bullet> (map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)) \<bullet> (\<Q>\<turnstile> \<parallel> \<Q>\<turnstile>)"
-  unfolding scomp_op_def pcomp_op_def
   sorry
 
 lemma A10':
