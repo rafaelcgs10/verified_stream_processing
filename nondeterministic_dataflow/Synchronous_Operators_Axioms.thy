@@ -5061,7 +5061,10 @@ next
     ultimately show ?thesis
       apply -
       subgoal premises prems
-        using SIM2 by (elim exE conjE step_acopy_op_elim step_aeq_op_elim step_comp_op_elim step_map_op_elim step_transp_op_cases step_id_op_cases ; simp only: IO.simps ; simp split: sum.splits if_splits; rule prems; assumption)
+        using SIM2 apply -
+        apply (elim exE conjE step_acopy_op_elim step_aeq_op_elim step_comp_op_elim step_map_op_elim step_transp_op_cases step_id_op_cases ; simp only: IO.simps ; simp split: sum.splits if_splits; hypsubst_thin?)
+        apply (rule prems; assumption)+
+        done
       done
   qed
 qed
