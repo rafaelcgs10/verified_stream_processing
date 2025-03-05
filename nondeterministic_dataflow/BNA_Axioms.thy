@@ -4840,7 +4840,7 @@ lemma R5:
            apply (rule exI conjI refl)+
             apply (metis step_inputs_outputs subset_empty vimage_mono)
            apply (metis step_inputs_outputs subset_empty vimage_mono)
-          apply force
+          apply fastforce
           done
         apply (rule FalseE)
         apply hypsubst_thin
@@ -4854,7 +4854,7 @@ lemma R5:
            apply (rule exI conjI refl)+
             apply (metis step_inputs_outputs subset_empty vimage_mono)
            apply (metis step_inputs_outputs subset_empty vimage_mono)
-          apply force
+          apply blast
           done
         subgoal
           apply (intro exI conjI[rotated])
