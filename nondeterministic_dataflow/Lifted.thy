@@ -43,7 +43,7 @@ proof -
   also have "\<dots> \<approx> (\<Q> \<parallel> \<I>) \<bullet> \<Q>'" by (rule aux)
   also have "\<dots> \<approx> (\<Q> \<parallel> \<I>) \<bullet> \<Q> \<bullet> \<I>"
     using bisim_wbisim scomp_op_assoc wbisim_sym by blast 
-  also have "\<dots> \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>) \<bullet> \<I>" using A1 wbisim_refl wbisim_scomp_op_cong by blast
+  also have "\<dots> \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>) \<bullet> \<I>" using Synchronous_Operators_Axioms.A1 bisim_refl bisim_scomp_op_cong bisim_wbisim by blast
   also have "\<dots> \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>')" using aux2 bisim_wbisim scomp_op_assoc wbisim_map_op wbisim_sym wbisim_trans by blast
   also have "\<dots>  \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>)\<turnstile> \<bullet> \<Q>')" using aux wbisim_map_op wbisim_sym by blast 
   also have "\<dots>  \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>) \<bullet> (\<I> \<parallel> \<I>) \<bullet> \<Q>')" by (metis bisim_wbisim pcomp_op_id_id wbisim_map_op wbisim_refl wbisim_scomp_op_cong wbisim_sym)
@@ -51,6 +51,70 @@ proof -
   also have "\<dots>  \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>') \<bullet> \<Q>')" by (simp add: pcomp_op_def scomp_op_id_id wbisim_comp_op_cong wbisim_map_op wbisim_refl wbisim_scomp_op_cong)
   finally show ?thesis.
 qed
+
+lemma A2':
+  \<open>\<X> \<bullet> \<Q>' \<approx> map_op (case_sum Inr Inl) id \<Q>'\<close>
+proof -
+  have \<open>\<X> \<bullet> \<Q>' \<approx> \<X> \<bullet> \<Q> \<bullet> \<I>\<close> using bisim_wbisim scomp_op_assoc wbisim_sym by blast
+  also have \<open>\<dots> \<approx> (map_op (case_sum Inr Inl) id \<Q>) \<bullet> \<I>\<close>
+    using Synchronous_Operators_Axioms.A2 wbisim_refl wbisim_scomp_op_cong by blast
+  also have \<open>\<dots> \<approx> map_op (case_sum Inr Inl) id \<Q>'\<close> using aux2 wbisim_sym by blast
+  finally show ?thesis.
+qed
+
+lemma A3':
+  \<open>map_op projr id (\<exclamdown> \<parallel> \<I>) \<bullet> \<Q>' \<approx> ! \<bullet> \<exclamdown>\<close>
+  oops
+
+lemma A4':
+  \<open>\<Q>' \<bullet> ! \<approx> ! \<parallel> !\<close>
+proof -
+  have \<open>\<Q>' \<bullet> ! \<approx> \<Q> \<bullet> \<stileturn>!\<close> using bisim_wbisim scomp_op_assoc by blast
+  also have \<open>\<dots> \<approx> \<Q> \<bullet> !\<close> using aux calculation wbisim_sym wbisim_trans by blast
+  also have \<open>\<dots> \<approx> ! \<parallel> !\<close> by (rule Synchronous_Operators_Axioms.A4)
+  finally show ?thesis.
+qed
+
+lemma A11':
+  \<open>\<C> \<bullet> \<Q>' \<approx> \<I>\<close>
+proof -
+  have \<open>\<C> \<bullet> \<Q>' \<approx> (\<C> \<bullet> \<Q>)\<turnstile>\<close> using bisim_wbisim scomp_op_assoc wbisim_sym by blast
+  also have \<open>\<dots> \<approx> \<I>\<turnstile>\<close>
+    using Synchronous_Operators_Axioms.A11 wbisim_refl wbisim_scomp_op_cong by blast
+  also have \<open>\<dots> \<approx> \<I>\<close> using scomp_op_id_id by blast
+  finally show ?thesis.
+qed
+
+lemma A14':
+  \<open>(\<Q>' :: (0 + 0, 0, 'd) op) ~ \<oslash>\<close>
+  by (smt (verit) Synchronous_Operators_Axioms.A14 bisim_scomp_op_cong bisim_trans choices_Choice_bisim choices_dummy_source choices_spin_op spin_op_end_op)
+
+lemma A15':
+  \<open>\<Q>' \<approx> map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>) \<bullet> (\<Q>' \<parallel> \<Q>')\<close>
+proof -
+  have H1: \<open>map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)
+    \<approx> map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)\<close> by (rule wbisim_refl)
+  have H2: \<open>\<Q>' \<parallel> \<Q>' \<approx> (\<Q> \<parallel> \<Q>) \<bullet> (\<I> \<parallel> \<I>)\<close>
+    using bisim_wbisim pcomp_op_scomp_distributes wbisim_sym by blast
+  have \<open>map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>) \<bullet> (\<Q>' \<parallel> \<Q>')
+    \<approx> map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>) \<bullet> ((\<Q> \<parallel> \<Q>) \<bullet> (\<I> \<parallel> \<I>))\<close>
+    using wbisim_scomp_op_cong H1 H2 by blast
+  also have \<open>\<dots> \<approx> map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>) \<bullet> ((\<Q> \<parallel> \<Q>) \<bullet> \<I>)\<close>
+    by (simp add: bisim_scomp_op_cong bisim_wbisim choices_Choice_bisim pcomp_op_id_id)
+  also have \<open>\<dots> \<approx> map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>) \<bullet> (\<Q> \<parallel> \<Q>) \<bullet> \<I>\<close>
+    using bisim_wbisim scomp_op_assoc wbisim_sym by blast
+  also have \<open>\<dots> \<approx> \<Q>'\<close> using Synchronous_Operators_Axioms.A15
+    by (smt (verit) scomp_op_id_id wbisim_scomp_op_cong wbisim_sym wbisim_trans)
+  finally show ?thesis by (rule wbisim_sym)
+qed
+
+lemma F3':
+  \<open>map_op id Inr \<Q>' \<up> \<approx> !\<close>
+  oops
+
+lemma F5':
+  \<open>((\<I> \<parallel> \<C>) \<bullet> map_op reassoc reassoc (\<X> \<parallel> \<I>) \<bullet> (\<I> \<parallel> \<Q>')) \<up> \<approx> ! \<bullet> \<exclamdown>\<close>
+  oops
 
 context notes [[typedef_overloaded]] begin
 typedef ('ip, 'op, 'd) operator = 
