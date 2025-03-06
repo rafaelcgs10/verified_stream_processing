@@ -143,13 +143,88 @@ lemma F5':
   \<open>((\<I> \<parallel> \<C>) \<bullet> map_op reassoc reassoc (\<X> \<parallel> \<I>) \<bullet> (\<I> \<parallel> \<Q>')) \<up> \<approx> ! \<bullet> \<exclamdown>\<close>
   oops
 
+lemma scomp_op_move_vdash:
+  "\<stileturn>((op1 \<bullet> op2)\<turnstile>) \<approx> \<stileturn>op1 \<bullet> op2\<turnstile>"
+  by (smt (verit, del_insts) bisim_wbisim scomp_op_assoc scomp_op_id_id wbisim_scomp_op_cong wbisim_sym wbisim_trans)
+
+lemma pcomp_op_move_vdash_left:
+  "\<stileturn>(op1 \<parallel> op2) \<approx> \<stileturn>op1 \<parallel> \<stileturn>op2"
+    by (smt (verit, del_insts) bisim_comp_op_cong bisim_scomp_op_cong bisim_trans bisim_wbisim choices_Choice_bisim pcomp_op_def pcomp_op_id_id pcomp_op_scomp_distributes wbisim_sym wbisim_trans)
+
+lemma pcomp_op_move_vdash_right:
+ "(op1 \<parallel> op2)\<turnstile> \<approx> op1\<turnstile> \<parallel> op2\<turnstile>"
+    by (smt (verit, del_insts) bisim_comp_op_cong bisim_scomp_op_cong bisim_trans bisim_wbisim choices_Choice_bisim pcomp_op_def pcomp_op_id_id pcomp_op_scomp_distributes wbisim_sym wbisim_trans)
+
+lemma pcomp_op_move_vdash:
+  "\<stileturn>((op1 \<parallel> op2)\<turnstile>) \<approx> \<stileturn>(op1\<turnstile>) \<parallel> \<stileturn>(op2\<turnstile>)"
+proof -
+  have "(\<stileturn>(op1 \<parallel> op2))\<turnstile> \<approx> (\<stileturn>op1 \<parallel> \<stileturn>op2)\<turnstile>" (is "?a \<approx> ?b")
+    using pcomp_op_move_vdash_left wbisim_refl wbisim_scomp_op_cong by blast
+  moreover have "?b \<approx> \<stileturn>(op1\<turnstile>) \<parallel> \<stileturn>(op2\<turnstile>)" 
+    using pcomp_op_move_vdash_right wbisim_refl wbisim_scomp_op_cong 
+    by (smt (verit, best) bisim_wbisim pcomp_op_def scomp_op_assoc wbisim_comp_op_cong wbisim_trans)
+  ultimately show ?thesis
+    by (meson bisim_wbisim scomp_op_assoc wbisim_sym wbisim_trans)
+qed
+
+lemma feedback_op_move_left_vdash:
+  assumes "Inr -` inputs op \<inter> defaults = {}"
+    and "Inr -` outputs op \<inter> defaults = {}"
+  shows  "\<stileturn>(op\<up>) \<approx> \<stileturn>op\<up>"
+  using assms apply -
+  apply (rule wbisim_trans[OF loop_op_scomp_commute])
+  apply (simp_all add: bisim_wbisim pcomp_op_id_id wbisim_loop_op_cong wbisim_refl wbisim_scomp_op_cong)
+  done
+
+lemma feedback_op_move_right_vdash:
+  assumes "Inr -` inputs op \<inter> defaults = {}"
+    and "Inr -` outputs op \<inter> defaults = {}"
+  shows  "(op\<up>)\<turnstile> \<approx> op\<turnstile>\<up>"
+  using assms apply -
+  apply (rule wbisim_trans[OF loop_op_distribute_scomp_op])
+  apply (simp_all add: bisim_wbisim pcomp_op_id_id wbisim_loop_op_cong wbisim_refl wbisim_scomp_op_cong)
+  done
+
+(* FIXME: move me *)
+lemma inputs_scomp_op_le_dest[dest!]:
+  "c \<in> inputs (comp_op Some buf op1 op2) \<Longrightarrow> c \<in> Inl ` inputs op1"
+  using set_mp[OF inputs_comp_op_le, simplified] by force
+lemma inputs_pcomp_op_le_dest[dest!]:
+  "c \<in> inputs (comp_op (\<lambda> _. None) buf op1 op2) \<Longrightarrow> c \<in> Inl ` inputs op1 \<or> c \<in> Inr ` (inputs op2)"
+  using set_mp[OF inputs_comp_op_le, simplified] by force
+lemma inputs_id_op_dest[dest!]:
+  "x\<in>inputs (id_op buf) \<Longrightarrow> x \<notin> defaults"
+  using inputs_id_op_alt by blast
+
+lemma outputs_scomp_op_le_dest[dest!]:
+  "c \<in> outputs (comp_op Some buf op1 op2) \<Longrightarrow>c \<in> Inr ` outputs op2"
+  using set_mp[OF outputs_comp_op_le, simplified] by force
+lemma outputs_pcomp_op_le_alt[dest!]:
+  "c \<in> outputs (comp_op (\<lambda> _. None) buf op1 op2) \<Longrightarrow> c \<in> Inl ` outputs op1 \<or> c \<in> Inr ` outputs op2"
+  using set_mp[OF outputs_comp_op_le, simplified] by force
+lemma outputs_id_op_dest[dest!]:
+  "x\<in>outputs (id_op buf) \<Longrightarrow> x \<notin> defaults"
+  using outputs_id_op_alt by blast
+
+lemma feedback_op_move_vdash:
+  assumes "Inr -` inputs op \<inter> defaults = {}"
+    and "Inr -` outputs op \<inter> defaults = {}"
+  shows  "(\<stileturn>(op\<up>))\<turnstile> \<approx> (\<stileturn>op)\<turnstile>\<up>"
+  using assms apply -
+  apply (rule wbisim_trans[OF wbisim_scomp_op_cong])
+    apply (rule feedback_op_move_left_vdash)
+     apply assumption+
+   apply (rule wbisim_refl)
+  apply (rule feedback_op_move_right_vdash)
+   apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def)
+  done
+
 context notes [[typedef_overloaded]] begin
 typedef ('ip, 'op, 'd) operator = 
   "{op :: ('ip :: defaults, 'op :: defaults, 'd) op. inputs op \<inter> defaults = {} \<and> outputs op \<inter> defaults = {}}" morphisms from_operator top_operator
   apply (rule exI[of _ end_op])
   apply simp
   done
-end
 
 setup_lifting type_definition_operator
 
@@ -215,27 +290,6 @@ lift_definition wbisim_operator :: "('a :: defaults, 'b :: defaults, 'c) operato
 
 abbreviation wbisim_operator' (infix "\<approx>"40) where
   "wbisim_operator' \<equiv> wbisim_operator"
-
-(* FIXME: move me *)
-lemma inputs_scomp_op_le_dest[dest!]:
-  "c \<in> inputs (comp_op Some buf op1 op2) \<Longrightarrow> c \<in> Inl ` inputs op1"
-  using set_mp[OF inputs_comp_op_le, simplified] by force
-lemma inputs_pcomp_op_le_dest[dest!]:
-  "c \<in> inputs (comp_op (\<lambda> _. None) buf op1 op2) \<Longrightarrow> c \<in> Inl ` inputs op1 \<or> c \<in> Inr ` (inputs op2)"
-  using set_mp[OF inputs_comp_op_le, simplified] by force
-lemma inputs_id_op_dest[dest!]:
-  "x\<in>inputs (id_op buf) \<Longrightarrow> x \<notin> defaults"
-  using inputs_id_op_alt by blast
-
-lemma outputs_scomp_op_le_dest[dest!]:
-  "c \<in> outputs (comp_op Some buf op1 op2) \<Longrightarrow>c \<in> Inr ` outputs op2"
-  using set_mp[OF outputs_comp_op_le, simplified] by force
-lemma outputs_pcomp_op_le_alt[dest!]:
-  "c \<in> outputs (comp_op (\<lambda> _. None) buf op1 op2) \<Longrightarrow> c \<in> Inl ` outputs op1 \<or> c \<in> Inr ` outputs op2"
-  using set_mp[OF outputs_comp_op_le, simplified] by force
-lemma outputs_id_op_dest[dest!]:
-  "x\<in>outputs (id_op buf) \<Longrightarrow> x \<notin> defaults"
-  using outputs_id_op_alt by blast
 
 lemma loop_operator_scomp_commute:
   "(op2 \<bullet> (op1\<up>)) \<approx> ((op2 \<parallel> \<I>) \<bullet> op1)\<up>"
