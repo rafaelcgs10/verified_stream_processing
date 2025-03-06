@@ -59,8 +59,18 @@ proof -
 qed
 
 lemma A3':
-  \<open>map_op projr id (\<exclamdown> \<parallel> \<I>) \<bullet> \<Q>' \<approx> ! \<bullet> \<exclamdown>\<close>
-  oops
+  \<open>map_op projr id ((\<exclamdown>::(0, 'a :: {countable, defaults}, 'b) op) \<parallel> \<I>) \<bullet> \<Q>'
+  \<approx> (!::('a, 0, 'b) op) \<bullet> (\<exclamdown>::(0, 'a, 'b) op)\<close>
+proof -
+  have \<open>map_op projr id ((\<exclamdown>::(0, 'a, 'b) op) \<parallel> \<I>) \<bullet> \<Q>'
+    \<approx> map_op projr id ((\<exclamdown>::(0, 'a, 'b) op) \<parallel> \<I>) \<bullet> \<Q> \<bullet> \<I>\<close>
+    using bisim_wbisim scomp_op_assoc wbisim_sym by blast
+  also have \<open>\<dots> \<approx> ((!::('a, 0, 'b) op) \<bullet> (\<exclamdown>::(0, 'a, 'b) op)) \<bullet> \<I>\<close>
+    using Synchronous_Operators_Axioms.A3 wbisim_refl wbisim_scomp_op_cong by blast
+  also have \<open>\<dots> \<approx> (!::('a, 0, 'b) op) \<bullet> (\<exclamdown>::(0, 'a, 'b) op)\<close>
+    using bisim_wbisim scomp_op_assoc scomp_op_id_op_right_neutral wbisim_refl wbisim_scomp_op_cong wbisim_trans by blast
+  finally show ?thesis.
+qed
 
 lemma A4':
   \<open>\<Q>' \<bullet> ! \<approx> ! \<parallel> !\<close>
