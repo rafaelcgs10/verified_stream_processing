@@ -9,6 +9,7 @@ imports
   "HOL-ex.Sketch_and_Explore"
 begin
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
+no_notation nth (infixl "!" 100)
 
 lemma aeq_vdash_absorb:
   "\<Q>' \<approx> (\<stileturn>(\<Q>'))"
@@ -105,8 +106,28 @@ proof -
 qed
 
 lemma F3':
-  \<open>map_op id Inr \<Q>' \<up> \<approx> !\<close>
-  oops
+  assumes \<open>(S :: ('a :: {countable,defaults}, 'a, 'c) op) = !\<close>
+    and "(Q' :: ('a :: {countable,defaults} + 'a, 'a, 'c) op) = \<Q>'"
+    and "(Q :: ('a :: {countable,defaults} + 'a, 'a, 'c) op) = \<Q>"
+    and "(I :: ('a :: {countable,defaults}, 'a, 'c) op) = \<I>"
+  shows  \<open>map_op id Inr Q' \<up> \<approx> S\<close>
+proof -
+  have "map_op id Inr Q' \<up> \<approx> (map_op id Inr Q \<bullet> (S \<parallel> I)) \<up>"  using assms map_op_id_Inr_move_vdash wbisim_loop_op_cong by blast
+  also have \<open>\<dots> \<approx> map_op id Inr Q\<up> \<bullet> S\<close>
+    using assms apply -
+    apply (rule wbisim_trans)
+     apply (rule wbisim_sym)
+     apply hypsubst_thin
+     apply (rule loop_op_distribute_scomp_op)
+      prefer 3
+      apply hypsubst_thin
+    using wbisim_refl apply blast
+     apply (metis (no_types, lifting) Inr_in_defaults \<UU>_E \<UU>_def disjoint_iff id_apply image_id inputs_aeq_op op.set_map(1) subsetD vimageE)
+    apply (smt (verit, del_insts) Diff_disjoint Inr_inject disjoint_iff imageE op.set_map(2) outputs_aeq_op subsetD vimageE)
+    done
+  also have \<open>\<dots> \<approx> S\<close> using assms sink_sink Synchronous_Operators_Axioms.F3 wbisim_refl wbisim_scomp_op_cong wbisim_trans by fast
+  finally show ?thesis.
+qed
 
 lemma F5':
   \<open>((\<I> \<parallel> \<C>) \<bullet> map_op reassoc reassoc (\<X> \<parallel> \<I>) \<bullet> (\<I> \<parallel> \<Q>')) \<up> \<approx> ! \<bullet> \<exclamdown>\<close>
@@ -134,14 +155,14 @@ lift_definition
   subgoal for fun1 fun2 op1 op2 x
     apply (cases x)
     using inputs_comp_op_le[unfolded subset_eq, simplified]
-    apply force+
+     apply force+
     done
   subgoal 
     using inputs_comp_op_le by blast
   subgoal for fun1 fun2 op1 op2 x
     apply (cases x)
     using outputs_comp_op_le[unfolded subset_eq, simplified]
-    apply force+
+     apply force+
     done
   subgoal 
     using outputs_comp_op_le by blast
