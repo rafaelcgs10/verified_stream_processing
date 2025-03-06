@@ -808,6 +808,13 @@ no_notation Sublist.parallel (infixl "\<parallel>" 50)
 definition pcomp_op (infixl "\<parallel>" 64) where
   "pcomp_op = comp_op (\<lambda>_. None) (\<lambda>_. [])"
 
+lemma inputs_pcomp_op_le_dest[dest!]:
+  "c \<in> inputs (comp_op (\<lambda> _. None) buf op1 op2) \<Longrightarrow> c \<in> Inl ` inputs op1 \<or> c \<in> Inr ` (inputs op2)"
+  using set_mp[OF inputs_comp_op_le, simplified] by force
+lemma outputs_pcomp_op_le_alt[dest!]:
+  "c \<in> outputs (comp_op (\<lambda> _. None) buf op1 op2) \<Longrightarrow> c \<in> Inl ` outputs op1 \<or> c \<in> Inr ` outputs op2"
+  using set_mp[OF outputs_comp_op_le, simplified] by force
+
 fun reassoc where
   "reassoc (Inl (Inl x)) = Inl x"
 | "reassoc (Inl (Inr x)) = Inr (Inl x)"
@@ -886,6 +893,13 @@ lemma map_IO_assoc_Inp_Inl[simp]:
 subsection \<open>Sequential composition operator\<close>
 definition scomp_op (infixl "\<bullet>" 65) where
   "scomp_op op1 op2 = map_op projl projr (comp_op Some (\<lambda>_. []) op1 op2)"
+
+lemma inputs_scomp_op_le_dest[dest!]:
+  "c \<in> inputs (comp_op Some buf op1 op2) \<Longrightarrow> c \<in> Inl ` inputs op1"
+  using set_mp[OF inputs_comp_op_le, simplified] by force
+lemma outputs_scomp_op_le_dest[dest!]:
+  "c \<in> outputs (comp_op Some buf op1 op2) \<Longrightarrow>c \<in> Inr ` outputs op2"
+  using set_mp[OF outputs_comp_op_le, simplified] by force
 
 subsubsection \<open>Congruence for strong bisim\<close>
 lemma bisim_choices_Read:
@@ -3676,25 +3690,6 @@ lemma choices_id_op[simp]:
   apply (simp add: BTL_def BENQ_def)
   done
 
-
-lemma default_0[simp]: "x \<in> (defaults :: 0 set)"
-  by transfer simp
-
-lemma id_op_0_end_op:
-  \<open>(\<I> :: (0, 0, 'd) op) ~ \<oslash>\<close>
-  by (rule choices_Choice_bisim) auto
-
-section \<open>User defined operators\<close>
-  (* abbreviation buffered ("\<stileturn> _ \<turnstile>" [150]151) where
-  "\<stileturn>op\<turnstile> \<equiv> \<I> \<bullet> op \<bullet> \<I>" *)
-
-abbreviation post_buffered ("_ \<turnstile>" [150]151) where
-  "op\<turnstile> \<equiv> op \<bullet> \<I>"
-
-abbreviation pre_buffered ("\<stileturn>_" [150]151) where
-  "\<stileturn>op \<equiv> \<I> \<bullet> op"
-
-subsection \<open>Some properties about vdash\<close>
 lemma id_op_reads:
   "sub_op (Read p f) (id_op buf) n \<Longrightarrow> p \<in> UNIV - defaults"
 proof (induct p \<open>id_op buf\<close> arbitrary: buf rule: sub_op_Read_induct)
@@ -3740,6 +3735,9 @@ lemma inputs_id_op[intro]:
 lemma inputs_id_op_alt[intro!]:
   "\<forall>x\<in>inputs (id_op buf). x \<notin> defaults"
   using inputs_id_op[unfolded subset_eq, simplified] by fast
+lemma inputs_id_op_dest[dest!]:
+  "x\<in>inputs (id_op buf) \<Longrightarrow> x \<notin> defaults"
+  using inputs_id_op_alt by blast
 lemma outputs_id_op[intro]:
   "outputs (id_op buf) \<subseteq> UNIV - defaults"
   apply (intro subsetI)
@@ -3747,7 +3745,28 @@ lemma outputs_id_op[intro]:
 lemma outputs_id_op_alt[intro!]:
   "\<forall>x\<in>outputs (id_op buf). x \<notin> defaults"
   using outputs_id_op[unfolded subset_eq, simplified] by fast
+lemma outputs_id_op_dest[dest!]:
+  "x\<in>outputs (id_op buf) \<Longrightarrow> x \<notin> defaults"
+  using outputs_id_op_alt by blast
 
+lemma default_0[simp]: "x \<in> (defaults :: 0 set)"
+  by transfer simp
+
+lemma id_op_0_end_op:
+  \<open>(\<I> :: (0, 0, 'd) op) ~ \<oslash>\<close>
+  by (rule choices_Choice_bisim) auto
+
+section \<open>User defined operators\<close>
+  (* abbreviation buffered ("\<stileturn> _ \<turnstile>" [150]151) where
+  "\<stileturn>op\<turnstile> \<equiv> \<I> \<bullet> op \<bullet> \<I>" *)
+
+abbreviation post_buffered ("_ \<turnstile>" [150]151) where
+  "op\<turnstile> \<equiv> op \<bullet> \<I>"
+
+abbreviation pre_buffered ("\<stileturn>_" [150]151) where
+  "\<stileturn>op \<equiv> \<I> \<bullet> op"
+
+subsection \<open>Some properties about vdash\<close>
 
 lemma scomp_op_id_left_absorb_gen:
   assumes "inputs op2 \<inter> defaults = {}"
@@ -4646,6 +4665,55 @@ lemma choices_transp_op[simp]:
   apply (subst transp_op_code)
   apply (simp add: BTL_def BENQ_def)
   done
+
+lemma transp_op_reads:
+  "sub_op (Read p f) (transp_op buf) n \<Longrightarrow> p \<in> UNIV - defaults"
+proof (induct p \<open>transp_op buf\<close> arbitrary: buf rule: sub_op_Read_induct)
+  case (Read1 f p)
+  then show ?case by (subst (asm) transp_op_code, simp)
+next
+  case (Read2 p p' f x d g)
+  then show ?case by (subst (asm) transp_op_code, simp)
+next
+  case (Write p p' op' x d g)
+  then show ?case by (subst (asm) transp_op_code, simp)
+next
+  case (Silent p op' d)
+  then show ?case by (subst (asm) transp_op_code, simp)
+next
+  case (Choice p ops d g)
+  then show ?case by (subst (asm) (2) transp_op_code, simp; force)
+qed
+
+lemma inputs_transp_op[intro]:
+  "inputs (transp_op buf) \<subseteq> UNIV - defaults"
+  apply (intro subsetI)
+  using transp_op_reads by (metis inputs_sub_op_Read)
+
+lemma transp_op_writes:
+  "sub_op (Write op p x) (transp_op buf) n \<Longrightarrow> p \<in> UNIV - defaults"
+proof (induct p \<open>transp_op buf\<close> arbitrary: buf rule: sub_op_Write_induct)
+  case (Read p p' f x op2 y d)
+  then show ?case by (subst (asm) transp_op_code, simp)
+next
+  case (Write1 p p' op' x op2 y d)
+  then show ?case by (subst (asm) transp_op_code, simp)
+next
+  case (Silent p op' op2 y d)
+  then show ?case by (subst (asm) transp_op_code, simp)
+next
+  case (Choice p op2 y d ops)
+  then show ?case
+    by (subst (asm) (2) transp_op_code, (auto split: sum.splits)[1]) force+
+next
+  case (Write2 p op' x)
+  then show ?case by (subst (asm) transp_op_code, simp)
+qed
+
+lemma outputs_transp_op[intro]:
+  "outputs (transp_op buf) \<subseteq> UNIV - defaults"
+  apply (intro subsetI)
+  using transp_op_writes by (metis outputs_sub_op_Write)
 
 section \<open>split_op - nondeterministic split operator\<close>
 
