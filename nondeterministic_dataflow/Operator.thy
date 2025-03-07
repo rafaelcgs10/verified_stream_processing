@@ -952,7 +952,7 @@ qed
 lemma wbisimulation_wbisim: "wbisimulation (\<approx>)"
   by (auto elim: wbisim.cases elim!: wsim_mono[THEN predicate2D, rotated] wbisim_sym)
 
-lemma wbisim_trans:
+lemma wbisim_trans[trans]:
   "op1 \<approx> op2 \<Longrightarrow> op2 \<approx> op3 \<Longrightarrow> op1 \<approx> op3"
   apply (coinduction arbitrary: op1 op2 op3)
   apply clarsimp

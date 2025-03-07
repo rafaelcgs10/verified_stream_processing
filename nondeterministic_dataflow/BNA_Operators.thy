@@ -5368,6 +5368,8 @@ lemma split_id_absorb_right:
   using split_id_absorb_right_gen[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>]
   by simp
 
+abbreviation \<open>\<Lambda>' \<equiv> \<stileturn>\<Lambda>\<close>
+
 section \<open>merge_op - nondeterministic merge operator\<close>
 
 datatype (discs_sels) ('m, 'd) merge_op_aux =
@@ -5568,6 +5570,8 @@ lemma merge_id_absorb_left:
   unfolding scomp_op_def
   using merge_id_absorb_left_gen[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>]
   by simp
+
+abbreviation \<open>\<V>' \<equiv> \<V>\<turnstile>\<close>
 
 section \<open>acopy_op - async copy operator\<close>
 datatype (discs_sels) ('m, 'd) acopy_op_aux =
