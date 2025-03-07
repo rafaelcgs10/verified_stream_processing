@@ -251,14 +251,11 @@ section \<open>Typedef and lifting\<close>
 
 context notes [[typedef_overloaded]] begin
 typedef ('ip, 'op, 'd) operator = 
-  "{op :: ('ip :: {countable,defaults}, 'op :: {countable,defaults}, 'd) op.
-     \<exists> op' :: ('ip, 'op, 'd) op. op \<approx> \<stileturn>(op'\<turnstile>) \<and> inputs op' \<inter> defaults = {} \<and> outputs op' \<inter> defaults = {}}" morphisms from_operator top_operator
+  "{op :: ('ip :: {countable,defaults}, 'op :: {countable,defaults}, 'd) op. \<exists> op' :: ('ip, 'op, 'd) op. op \<approx> \<stileturn>(op'\<turnstile>)}" morphisms from_operator top_operator
   apply (rule exI[of _ "\<stileturn>(\<oslash>\<turnstile>)"])
   apply simp
   apply (rule exI[of _ "\<stileturn>\<oslash>"])
-  apply (auto intro: wbisim_refl)
   apply (smt (verit, ccfv_SIG) bisim_wbisim scomp_op_assoc scomp_op_id_op_left_neutral scomp_op_move_vdash wbisim_sym wbisim_trans)
-   apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def)
   done
 
 setup_lifting type_definition_operator
@@ -282,97 +279,19 @@ lemma wstep_inputs_outputs:
    inputs op' \<subseteq> inputs op \<and> outputs op' \<subseteq> outputs op"
   unfolding wstep_def by (smt (verit, ccfv_SIG) estep.elims pick_middlep rtranclp.rtrancl_into_rtrancl rtranclp_less_eq step_inputs_outputs step_taus_inputs_outputs wstep_def wstep_steps_Tau)
 
-lemma sub_op_trans:
- "sub_op op1 op2 n \<Longrightarrow> sub_op op2 op3 m \<Longrightarrow> sub_op op1 op3 (n + m)"
-  oops
-
-lemma
-  "sub_op (Read p f) op1 n \<Longrightarrow> op1 \<approx> op2 \<Longrightarrow> p \<in> inputs op2"
-proof (induct p op1 arbitrary: op2 f rule: sub_op_Read_induct)
-  case (Read1 f p)
-  then show ?case 
-    apply -
-    apply (erule wbisim.cases)
-    unfolding wsim_def
-    apply safe
-    apply (metis Read_not_finished finished_no_step stepReadE wstep_Inp_inputs)
-    done
-next
-  case (Read2 p p' f' x n f op2)
-  then show ?case 
-    apply -
-      apply (drule meta_spec[of _ n])
-      apply (drule meta_spec)
-      apply (drule meta_spec)
-      apply (drule meta_mp)
-       apply simp
-      apply (drule meta_mp)
-       apply assumption
-      apply (drule meta_mp)
-    using wbisim_refl apply auto[1]
-    apply (erule wbisim.cases)
-    unfolding wsim_def
-    apply safe
-    apply (drule spec2, drule mp, rule SR[where x=x])
-    apply safe
-      apply (meson Read2.hyps(2) less_Suc_eq subset_eq wstep_inputs_outputs)
-      done
-next
-  case (Write p p' op' x d g)
-  then show ?case 
-    apply -
-    apply (erule wbisim.cases)
-    unfolding wsim_def
-    apply safe
-    apply (meson SW lessI subsetD wstep_inputs_outputs)
-    done
-next
-  case (Silent p op' d)
-  then show ?case 
-    apply -
-    apply (erule wbisim.cases)
-    unfolding wsim_def
-    apply safe
-    apply (metis lessI step.simps subsetD wstep_inputs_outputs)
-    done
-next
-  case (Choice p ops n g op2)
-  then show ?case 
-    apply -
-    apply safe
-    subgoal for op'
-      oops
-
-      
-lemma scomp_op_id_right_absorb:
-  assumes "outputs op1 \<inter> defaults = {}"
-  shows  "op1 \<bullet> \<stileturn>op2 \<approx> op1 \<bullet> op2"
-  sorry
-
-
 lift_definition 
   scomp_operator :: "('ip1 :: {countable,defaults}, 'op1  :: {countable,defaults}, 'd) operator \<Rightarrow> ('op1, 'op2  :: {countable,defaults}, 'd) operator \<Rightarrow>
   ('ip1, 'op2, 'd) operator" is "scomp_op"
   apply (clarsimp simp add: intersect_empty_iff)
   subgoal for op1 op2 op1' op2'
-    apply (intro exI[of _ "scomp_op op1' op2'"])
-    apply (intro allI conjI ballI)
-    subgoal
+    apply (intro exI[of _ "scomp_op (op1'\<turnstile>) (\<stileturn>op2')"])
       apply (rule wbisim_trans)
        apply (rule wbisim_scomp_op_cong)
         apply assumption+
       apply (rule wbisim_trans[rotated])
        apply (rule wbisim_sym)
-       apply (rule scomp_op_move_vdash)
-      apply (rule wbisim_trans[rotated])
-       apply (rule scomp_op_id_left_absorb)
-       apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_inputs)[1]
-      apply (rule wbisim_trans[rotated])
-       apply (rule scomp_op_id_right_absorb)
-       apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_outputs)[1]
-      apply (meson bisim_sym bisim_wbisim scomp_op_assoc wbisim_refl wbisim_scomp_op_cong)
-      done
-       apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_inputs)
+     apply (rule scomp_op_move_vdash)
+    using bisim_wbisim scomp_op_assoc wbisim_refl wbisim_scomp_op_cong wbisim_sym apply blast
     done
   done
 
@@ -400,57 +319,49 @@ lemma map_op_out_id_left_vdash:
   "map_op id f (\<stileturn>op) \<approx> \<stileturn>(map_op id f op)"
   oops
 
+lemma funny:
+  "inputs (\<stileturn>(op\<turnstile>)) \<inter> defaults = {} \<and> outputs (\<stileturn>(op\<turnstile>)) \<inter> defaults = {}"
+  by (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def)
+
 lemma aux:
-  "map_op f g (\<stileturn>(op\<turnstile>)) \<approx> \<stileturn>((map_op f g op)\<turnstile>)"
-  apply (rule wbisim_trans)
+  "f ` inputs op \<inter> defaults = {} \<Longrightarrow> g ` outputs op \<inter> defaults = {} \<Longrightarrow>
+   map_op f g (\<stileturn>(op\<turnstile>)) \<approx> \<stileturn>((map_op f g op)\<turnstile>)"
+     sledgehammer [timeout = 100, provers = vampire verit cvc4 e z3]
+
+  
   sorry
 
-lemma aux2:
-  "p \<in> inputs op \<Longrightarrow> p \<in> inputs (\<stileturn>op)"
-       apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_inputs)[1]
+lemma bisim_double_vdash:
+  assumes "op \<approx> \<stileturn>(op'\<turnstile>)"
+  shows "op \<approx> \<stileturn>(op\<turnstile>)"
+proof -
+  have "\<stileturn>(op'\<turnstile>) \<approx> \<stileturn>\<stileturn>(op'\<turnstile>)" using scomp_op_id_op_left_neutral wbisim_sym by blast
+  also have "\<dots> \<approx> \<stileturn>\<stileturn>(op'\<turnstile>\<turnstile>)" by (simp add: scomp_op_id_op_right_neutral wbisim_refl wbisim_scomp_op_cong wbisim_sym)
+  also have "\<dots> \<approx> \<stileturn>(op\<turnstile>)" by (smt (verit, del_insts) assms bisim_wbisim scomp_op_assoc wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans)
+  finally show ?thesis using assms wbisim_trans by blast
+qed
 
-  find_theorems inputs id_op 
-
-  oops
 
 lift_definition
   map_operator :: "('a :: {countable,defaults} \<Rightarrow> 'b :: {countable,defaults}) \<Rightarrow> ('c :: {countable,defaults} \<Rightarrow> 'd :: {countable,defaults}) \<Rightarrow> ('a, 'c, 'e) operator \<Rightarrow> ('b, 'd, 'e) operator" is 
-  "\<lambda> f g op. (if f ` inputs op \<inter> defaults = {} \<and> g ` outputs op \<inter> defaults = {} then map_op f g op else end_op)"
+  "\<lambda> f g op. (if f ` inputs op \<inter> defaults = {} \<and> g ` outputs op \<inter> defaults = {} then map_op f g op else \<stileturn>(end_op\<turnstile>))"
   apply (simp add: op.set_map split: if_splits)
   apply (intro allI conjI impI)
   subgoal for fun1 fun2 op
     apply safe
     subgoal for op'
-    apply (rule exI[of _ "map_op fun1 fun2 op'"])
-    apply (intro conjI)
-      apply safe
-    subgoal
-  apply (rule wbisim_trans[rotated])
+      apply (rule exI)
+      apply (rule wbisim_trans[rotated])
        apply (rule aux)
-      apply (meson wbisim_map_op)
+        apply assumption+
+      using bisim_double_vdash apply (metis wbisim_map_op)
       done
-    subgoal for p
-       apply (auto simp add: image_iff disjoint_iff op.set_map ran_def)[1]
-      subgoal for p'
-        apply (drule spec[of _ "fun1 p'"])
-        apply (drule mp)
-         apply (rule bexI[of _ "p'"])
-          apply simp_all
-       apply (auto simp add: image_iff disjoint_iff op.set_map ran_def dest!: wbisim_inputs)[1]
-        
-        thm wbisim_inputs
-
-        term "fun1 p'"
-
-    find_theorems "_ = _ ` _ \<Longrightarrow> _"
-
-
-
-
-  find_theorems map_op name: cong
-
-end
-  by (auto simp add: op.set_map)
+    done
+  subgoal
+    apply (rule exI[of _ "end_op"])
+    using wbisim_refl apply blast
+    done
+  done
 
 no_notation scomp_op (infixl "\<bullet>" 65)
 definition scomp_operator (infixl "\<bullet>" 65) where
