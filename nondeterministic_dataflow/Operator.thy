@@ -2994,6 +2994,7 @@ lemma outputs_after_choices_at:
        apply auto
     done
   done
+
 lemma outputs_after_choices:
   "op' |\<in>| (choices op) \<Longrightarrow> p' \<in> outputs op' \<Longrightarrow> p' \<in> outputs op"
   unfolding choices_def
@@ -3002,5 +3003,39 @@ lemma step_outputs_not_in_defaults[elim!]:
   "outputs op \<inter> defaults = {} \<Longrightarrow>
    p \<in> defaults \<Longrightarrow> step (Out p x) op op' \<Longrightarrow> False"
   by (auto simp add: outputs_after_choices Write_choices_outputs disjoint_iff elim: step_choicesE)
+
+lemma step_Inp_inputs:
+  "step (Inp p x) op op' \<Longrightarrow> p \<in> inputs op"
+  by (metis IO.distinct(3) IO.sel(1) IO.simps(4) Read_choices_inputs step_choicesE)
+
+lemma step_Out_outputs:
+  "step (Out p x) op op' \<Longrightarrow> p \<in> outputs op"
+  by (metis IO.distinct(5) IO.sel(4) IO.simps(4) op.set_intros(8) outputs_after_choices step_choicesE)
+
+lemma wstep_Inp_inputs:
+  "wstep (Inp p x) op opf \<Longrightarrow> p \<in> inputs op"
+  unfolding wstep_def
+  apply safe
+  subgoal for op' op''
+    apply (induct op rule: converse_rtranclp_induct)
+    subgoal
+      using step_Inp_inputs by force
+    subgoal for op1 op2
+      using step_inputs_outputs by blast
+    done
+  done
+
+lemma wstep_Out_outputs:
+  "wstep (Out p x) op opf \<Longrightarrow> p \<in> outputs op"
+  unfolding wstep_def
+  apply safe
+  subgoal for op' op''
+    apply (induct op rule: converse_rtranclp_induct)
+    subgoal
+      using step_Out_outputs by force
+    subgoal for op1 op2
+      using step_inputs_outputs by blast
+    done
+  done
 
 end

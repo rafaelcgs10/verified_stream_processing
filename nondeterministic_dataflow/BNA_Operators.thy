@@ -2995,7 +2995,7 @@ lemma wstep_Inp_loop_op[intro]:
   oops
 
 (* FIXME: move me *)
-lemma wbisim_wstep:
+lemma wbisim_wstep_alt:
   "op1 \<approx> op2 \<Longrightarrow>
    step io op1 op1' \<Longrightarrow>
    \<exists> op2'. wstep io op2 op2' \<and> op1' \<approx> op2'"
@@ -3062,7 +3062,7 @@ proof (coinduction arbitrary: op op' buf rule: wbisim_coinduct_upto'')
         and x :: 'd
         and op''a :: "('a + 'b, 'c + 'b, 'd) op"
       using that apply -
-      apply (drule wbisim_wstep, assumption)
+      apply (drule wbisim_wstep_alt, assumption)
       apply (elim conjE exE)
       apply (intro conjI[rotated] exI wbc_base)
          apply assumption
@@ -3076,7 +3076,7 @@ proof (coinduction arbitrary: op op' buf rule: wbisim_coinduct_upto'')
         and op''a :: "('a + 'b, 'c + 'b, 'd) op"
         and x1 :: 'c
       using that apply -
-      apply (drule wbisim_wstep, assumption)
+      apply (drule wbisim_wstep_alt, assumption)
       apply (elim conjE exE)
       apply (intro conjI[rotated] exI wbc_base)
          apply assumption
@@ -3091,7 +3091,7 @@ proof (coinduction arbitrary: op op' buf rule: wbisim_coinduct_upto'')
         and op''a :: "('a + 'b, 'c + 'b, 'd) op"
         and x2 :: 'b
       using that apply -
-      apply (drule wbisim_wstep, assumption)
+      apply (drule wbisim_wstep_alt, assumption)
       apply (elim conjE exE)
       apply (intro conjI[rotated] exI wbc_base)
          apply assumption
@@ -3103,7 +3103,7 @@ proof (coinduction arbitrary: op op' buf rule: wbisim_coinduct_upto'')
         and "step Tau op op''a"
       for op''a :: "('a + 'b, 'c + 'b, 'd) op"
       using that apply -
-      apply (drule wbisim_wstep, assumption)
+      apply (drule wbisim_wstep_alt, assumption)
       apply (elim conjE exE)
       apply (intro conjI[rotated] exI wbc_base)
          apply assumption
@@ -3118,7 +3118,7 @@ proof (coinduction arbitrary: op op' buf rule: wbisim_coinduct_upto'')
       for op''a :: "('a + 'b, 'c + 'b, 'd) op"
         and x2 :: 'b
       using that apply -
-      apply (drule wbisim_wstep, assumption)
+      apply (drule wbisim_wstep_alt, assumption)
       apply (elim conjE exE)
       apply (intro conjI[rotated] exI wbc_base)
          apply assumption
@@ -3133,7 +3133,7 @@ proof (coinduction arbitrary: op op' buf rule: wbisim_coinduct_upto'')
         and x :: 'd
         and x2 :: 'b
       using that apply -
-      apply (drule wbisim_wstep, assumption)
+      apply (drule wbisim_wstep_alt, assumption)
       apply (elim conjE exE)
       apply (intro conjI[rotated] exI wbc_base)
          apply assumption
@@ -3158,7 +3158,7 @@ next
         and op''a :: "('a + 'b, 'c + 'b, 'd) op"
       using that apply -
       apply (drule wbisim_sym)
-      apply (drule wbisim_wstep, assumption)
+      apply (drule wbisim_wstep_alt, assumption)
       apply (elim conjE exE)
       apply (intro conjI[rotated] exI)
        apply (rule wbc_sym)
@@ -3174,7 +3174,7 @@ next
         and x1 :: 'c
       using that apply -
       apply (drule wbisim_sym)
-      apply (drule wbisim_wstep, assumption)
+      apply (drule wbisim_wstep_alt, assumption)
       apply (elim conjE exE)
       apply (intro conjI[rotated] exI)
        apply (rule wbc_sym)
@@ -3191,7 +3191,7 @@ next
         and x2 :: 'b
       using that apply -
       apply (drule wbisim_sym)
-      apply (drule wbisim_wstep, assumption)
+      apply (drule wbisim_wstep_alt, assumption)
       apply (elim conjE exE)
       apply (intro conjI[rotated] exI)
        apply (rule wbc_sym)
@@ -3205,7 +3205,7 @@ next
       for op''a :: "('a + 'b, 'c + 'b, 'd) op"
       using that apply -
       apply (drule wbisim_sym)
-      apply (drule wbisim_wstep, assumption)
+      apply (drule wbisim_wstep_alt, assumption)
       apply (elim conjE exE)
       apply (intro conjI[rotated] exI)
        apply (rule wbc_sym)
@@ -3222,7 +3222,7 @@ next
         and x2 :: 'b
       using that apply -
       apply (drule wbisim_sym)
-      apply (drule wbisim_wstep, assumption)
+      apply (drule wbisim_wstep_alt, assumption)
       apply (elim conjE exE)
       apply (intro conjI[rotated] exI)
        apply (rule wbc_sym)
@@ -3239,7 +3239,7 @@ next
         and x2 :: 'b
       using that apply -
       apply (drule wbisim_sym)
-      apply (drule wbisim_wstep, assumption)
+      apply (drule wbisim_wstep_alt, assumption)
       apply (elim conjE exE)
       apply (intro conjI[rotated] exI)
        apply (rule wbc_sym)

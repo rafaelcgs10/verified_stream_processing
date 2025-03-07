@@ -221,9 +221,14 @@ lemma feedback_op_move_vdash:
 
 context notes [[typedef_overloaded]] begin
 typedef ('ip, 'op, 'd) operator = 
-  "{op :: ('ip :: defaults, 'op :: defaults, 'd) op. inputs op \<inter> defaults = {} \<and> outputs op \<inter> defaults = {}}" morphisms from_operator top_operator
-  apply (rule exI[of _ end_op])
+  "{op :: ('ip :: {countable,defaults}, 'op :: {countable,defaults}, 'd) op.
+     \<exists> op' :: ('ip, 'op, 'd) op. op \<approx> \<stileturn>(op'\<turnstile>) \<and> inputs op' \<inter> defaults = {} \<and> outputs op' \<inter> defaults = {}}" morphisms from_operator top_operator
+  apply (rule exI[of _ "\<stileturn>(\<oslash>\<turnstile>)"])
   apply simp
+  apply (rule exI[of _ "\<stileturn>\<oslash>"])
+  apply (auto intro: wbisim_refl)
+  apply (smt (verit, ccfv_SIG) bisim_wbisim scomp_op_assoc scomp_op_id_op_left_neutral scomp_op_move_vdash wbisim_sym wbisim_trans)
+   apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def)
   done
 
 setup_lifting type_definition_operator
@@ -232,35 +237,156 @@ lemma intersect_empty_iff:
   "A \<inter> B = {} \<longleftrightarrow> (\<forall> x \<in> A. x \<notin> B \<and> (\<forall> x \<in> B. x \<notin> A))"
   by blast
 
-lift_definition 
-  comp_operator :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
-  ('ip1, 'op1, 'd) operator \<Rightarrow> ('ip2, 'op2, 'd) operator \<Rightarrow> ('ip1  :: defaults + 'ip2 :: defaults, 'op1 :: defaults + 'op2 :: defaults, 'd) operator" is comp_op
-  apply (clarsimp simp add: intersect_empty_iff)
-  apply (intro allI conjI ballI)
-  subgoal for fun1 fun2 op1 op2 x
-    apply (cases x)
-    using inputs_comp_op_le[unfolded subset_eq, simplified]
-     apply force+
-    done
-  subgoal 
-    using inputs_comp_op_le by blast
-  subgoal for fun1 fun2 op1 op2 x
-    apply (cases x)
-    using outputs_comp_op_le[unfolded subset_eq, simplified]
-     apply force+
-    done
-  subgoal 
-    using outputs_comp_op_le by blast
+lemma step_taus_inputs_outputs:
+  "(step Tau)\<^sup>*\<^sup>* op op' \<Longrightarrow>
+   inputs op' \<subseteq> inputs op \<and> outputs op' \<subseteq> outputs op"
+  apply (induct op arbitrary:  rule: converse_rtranclp_induct)
+  subgoal
+    by simp
+  subgoal
+    by (meson dual_order.trans step_inputs_outputs)
   done
 
-lift_definition
+lemma wstep_inputs_outputs:
+  "wstep io op op' \<Longrightarrow>
+   inputs op' \<subseteq> inputs op \<and> outputs op' \<subseteq> outputs op"
+  unfolding wstep_def by (smt (verit, ccfv_SIG) estep.elims pick_middlep rtranclp.rtrancl_into_rtrancl rtranclp_less_eq step_inputs_outputs step_taus_inputs_outputs wstep_def wstep_steps_Tau)
+
+lemma sub_op_trans:
+ "sub_op op1 op2 n \<Longrightarrow> sub_op op2 op3 m \<Longrightarrow> sub_op op1 op3 (n + m)"
+  oops
+
+lemma
+  "sub_op (Read p f) op1 n \<Longrightarrow> op1 \<approx> op2 \<Longrightarrow> p \<in> inputs op2"
+proof (induct p op1 arbitrary: op2 f rule: sub_op_Read_induct)
+  case (Read1 f p)
+  then show ?case 
+    apply -
+    apply (erule wbisim.cases)
+    unfolding wsim_def
+    apply safe
+    apply (metis Read_not_finished finished_no_step stepReadE wstep_Inp_inputs)
+    done
+next
+  case (Read2 p p' f' x n f op2)
+  then show ?case 
+    apply -
+      apply (drule meta_spec[of _ n])
+      apply (drule meta_spec)
+      apply (drule meta_spec)
+      apply (drule meta_mp)
+       apply simp
+      apply (drule meta_mp)
+       apply assumption
+      apply (drule meta_mp)
+    using wbisim_refl apply auto[1]
+    apply (erule wbisim.cases)
+    unfolding wsim_def
+    apply safe
+    apply (drule spec2, drule mp, rule SR[where x=x])
+    apply safe
+      apply (meson Read2.hyps(2) less_Suc_eq subset_eq wstep_inputs_outputs)
+      done
+next
+  case (Write p p' op' x d g)
+  then show ?case 
+    apply -
+    apply (erule wbisim.cases)
+    unfolding wsim_def
+    apply safe
+    apply (meson SW lessI subsetD wstep_inputs_outputs)
+    done
+next
+  case (Silent p op' d)
+  then show ?case 
+    apply -
+    apply (erule wbisim.cases)
+    unfolding wsim_def
+    apply safe
+    apply (metis lessI step.simps subsetD wstep_inputs_outputs)
+    done
+next
+  case (Choice p ops n g op2)
+  then show ?case 
+    apply -
+    apply safe
+    subgoal for op'
+      oops
+
+      
+lemma wbisim_same_inputs_outputs:
+  "op1 \<approx> op2 \<Longrightarrow>
+   inputs op1 = inputs op2 \<and> outputs op1 = outputs op2"
+  sorry
+
+lemma scomp_op_id_right_absorb:
+  assumes "outputs op1 \<inter> defaults = {}"
+  shows  "op1 \<bullet> \<stileturn>op2 \<approx> op1 \<bullet> op2"
+  sorry
+
+
+lift_definition 
+  scomp_operator :: "('ip1 :: {countable,defaults}, 'op1  :: {countable,defaults}, 'd) operator \<Rightarrow> ('op1, 'op2  :: {countable,defaults}, 'd) operator \<Rightarrow>
+  ('ip1, 'op2, 'd) operator" is "scomp_op"
+  apply (clarsimp simp add: intersect_empty_iff)
+  subgoal for op1 op2 op1' op2'
+  apply (intro exI[of _ "scomp_op op1' op2'"])
+    apply (intro allI conjI ballI)
+    subgoal
+      apply (rule wbisim_trans)
+       apply (rule wbisim_scomp_op_cong)
+      apply assumption+
+      apply (rule wbisim_trans[rotated])
+      apply (rule wbisim_sym)
+      apply (rule scomp_op_move_vdash)
+      apply (rule wbisim_trans[rotated])
+       apply (rule scomp_op_id_left_absorb)
+       apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_same_inputs_outputs)[1]
+            apply (rule wbisim_trans[rotated])
+       apply (rule scomp_op_id_right_absorb)
+       apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_same_inputs_outputs)[1]
+      apply (meson bisim_sym bisim_wbisim scomp_op_assoc wbisim_refl wbisim_scomp_op_cong)
+      done
+       apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_same_inputs_outputs)
+    done
+  done
+
+(* lift_definition 
+  comp_operator :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
+  ('ip1, 'op1, 'd) operator \<Rightarrow> ('ip2, 'op2, 'd) operator \<Rightarrow>
+  ('ip1  :: {countable,defaults} + 'ip2 :: {countable,defaults}, 'op1 :: {countable,defaults} + 'op2 :: {countable,defaults}, 'd) operator" is "comp_op"
+  apply (clarsimp simp add: intersect_empty_iff)
+  subgoal for fun1 fun2 op1 op2 op' op'a
+  apply (intro exI[of _ "comp_op fun1 fun2 op1 op2"])
+    apply (intro allI conjI ballI)
+    subgoal
+      apply (rule wbisim_trans)
+ *)
+
+
+
+(* lift_definition
   loop_operator ::  "('op \<rightharpoonup> 'ip) \<Rightarrow> ('ip \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip, 'op, 'd) operator \<Rightarrow> ('ip :: defaults, 'op :: defaults, 'd) operator" is loop_op
   by (smt (verit, del_insts) Diff_Diff_Int Diff_Int_distrib Int_Diff diff_shunt inputs_loop_op_le le_iff_inf outputs_loop_op_le)
+ *)
+
+lemma aux:
+  "map_op f g (\<stileturn>(op\<turnstile>)) \<approx> \<stileturn>(map_op f g op \<turnstile>)"
+  sorry
 
 lift_definition
-  map_operator :: "('a :: defaults \<Rightarrow> 'b :: defaults) \<Rightarrow> ('c :: defaults \<Rightarrow> 'd :: defaults) \<Rightarrow> ('a, 'c, 'e) operator \<Rightarrow> ('b, 'd, 'e) operator" is 
+  map_operator :: "('a :: {countable,defaults} \<Rightarrow> 'b :: {countable,defaults}) \<Rightarrow> ('c :: {countable,defaults} \<Rightarrow> 'd :: {countable,defaults}) \<Rightarrow> ('a, 'c, 'e) operator \<Rightarrow> ('b, 'd, 'e) operator" is 
   "\<lambda> f g op. (if f ` inputs op \<inter> defaults = {} \<and> g ` outputs op \<inter> defaults = {} then map_op f g op else end_op)"
+  apply (simp add: op.set_map split: if_splits)
+  apply (intro allI conjI impI)
+  subgoal for fun1 fun2 op
+    apply (rule exI[of _ "map_op fun1 fun2 op"])
+
+
+  find_theorems map_op wbisim
+
+end
   by (auto simp add: op.set_map)
 
 no_notation scomp_op (infixl "\<bullet>" 65)
