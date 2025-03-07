@@ -952,7 +952,7 @@ qed
 lemma wbisimulation_wbisim: "wbisimulation (\<approx>)"
   by (auto elim: wbisim.cases elim!: wsim_mono[THEN predicate2D, rotated] wbisim_sym)
 
-lemma wbisim_trans:
+lemma wbisim_trans[trans]:
   "op1 \<approx> op2 \<Longrightarrow> op2 \<approx> op3 \<Longrightarrow> op1 \<approx> op3"
   apply (coinduction arbitrary: op1 op2 op3)
   apply clarsimp
@@ -3037,5 +3037,81 @@ lemma wstep_Out_outputs:
       using step_inputs_outputs by blast
     done
   done
+
+lemma wsim_Silent[simp]: "wsim R (Silent op'') op \<longleftrightarrow> (\<exists>op'. wstep Tau op op' \<and> R op'' op')"
+  by (fastforce simp: wsim_def)
+
+lemma step_taus_inputs_outputs:
+  "(step Tau)\<^sup>*\<^sup>* op op' \<Longrightarrow>
+   inputs op' \<subseteq> inputs op \<and> outputs op' \<subseteq> outputs op"
+  apply (induct op arbitrary:  rule: converse_rtranclp_induct)
+  subgoal
+    by simp
+  subgoal
+    by (meson dual_order.trans step_inputs_outputs)
+  done
+
+lemma wstep_inputs_outputs:
+  "wstep io op op' \<Longrightarrow>
+   inputs op' \<subseteq> inputs op \<and> outputs op' \<subseteq> outputs op"
+  unfolding wstep_def by (smt (verit, ccfv_SIG) estep.elims pick_middlep rtranclp.rtrancl_into_rtrancl rtranclp_less_eq step_inputs_outputs step_taus_inputs_outputs wstep_def wstep_steps_Tau)
+
+lemma wstep_Inp: "wstep (Inp p x) op op' \<Longrightarrow> p \<in> inputs op"
+  unfolding wstep_def
+  by (auto dest!: step_taus_inputs_outputs elim!: step_choicesE dest: Read_choices_inputs)
+
+lemma sub_op_Read_wsim: "sub_op (Read p f) op n \<Longrightarrow> wsim (\<approx>) op op' \<Longrightarrow> \<exists>g m. sub_op (Read p g) op' m"
+  apply (induct op n arbitrary: op' rule: sub_op.induct)
+      apply auto
+     apply (meson inputs_sub_op_Read wstep_Inp)
+  subgoal for g x n q op
+    apply (drule spec[of _ x])
+    apply (auto elim!: wbisim.cases)
+    apply (metis inputs_sub_op_Read sub_op_Read_inputs subset_iff wstep_inputs_outputs)
+    done
+  subgoal for g x n q op
+    apply (auto elim!: wbisim.cases)
+    apply (metis inputs_sub_op_Read sub_op_Read_inputs subset_iff wstep_inputs_outputs)
+    done
+  subgoal for op n op'
+    apply (auto elim!: wbisim.cases)
+    apply (meson inputs_sub_op_Read step_taus_inputs_outputs sub_op_Read_inputs subsetD)
+    done
+  done
+
+lemma wsim_inputs: "wsim (\<approx>) op op' \<Longrightarrow> p \<in> inputs op \<Longrightarrow> p \<in> inputs op'"
+  by (meson inputs_sub_op_Read sub_op_Read_inputs sub_op_Read_wsim)
+
+lemma wbisim_inputs: "op \<approx> op' \<Longrightarrow> inputs op = inputs op'"
+  by (meson antisym wsim_inputs subset_eq wbisim.cases)
+
+lemma wstep_Out: "wstep (Out p x) op op' \<Longrightarrow> p \<in> outputs op"
+  unfolding wstep_def
+  by (auto dest!: step_taus_inputs_outputs outputs_after_choices elim!: step_choicesE)
+
+lemma sub_op_Write_wsim: "sub_op (Write opw p x) op n \<Longrightarrow> wsim (\<approx>) op op' \<Longrightarrow> \<exists>x op m. sub_op (Write op p x) op' m"
+  apply (induct op n arbitrary: op' rule: sub_op.induct)
+      apply auto
+     apply (meson outputs_sub_op_Write wstep_Out)
+  subgoal for g x n q op
+    apply (drule spec[of _ x])
+    apply (auto elim!: wbisim.cases)
+    apply (meson in_mono outputs_sub_op_Write sub_op_Write_outputs wstep_inputs_outputs)
+    done
+  subgoal for g x n q op
+    apply (auto elim!: wbisim.cases)
+    apply (meson in_mono outputs_sub_op_Write sub_op_Write_outputs wstep_inputs_outputs)
+    done
+  subgoal for op n op'
+    apply (auto elim!: wbisim.cases)
+    apply (meson outputs_sub_op_Write step_taus_inputs_outputs sub_op_Write_outputs subset_iff)
+    done
+  done
+
+lemma wsim_outputs: "wsim (\<approx>) op op' \<Longrightarrow> p \<in> outputs op \<Longrightarrow> p \<in> outputs op'"
+  by (meson outputs_sub_op_Write sub_op_Write_outputs sub_op_Write_wsim)
+
+lemma wbisim_outputs: "op \<approx> op' \<Longrightarrow> outputs op = outputs op'"
+  by (meson antisym wsim_outputs subset_eq wbisim.cases)
 
 end

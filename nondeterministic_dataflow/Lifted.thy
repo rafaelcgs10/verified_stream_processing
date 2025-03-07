@@ -11,6 +11,28 @@ begin
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
 no_notation nth (infixl "!" 100)
 
+section \<open>Axioms for split_op surrounded by identities\<close>
+
+lemma split'_id_absorb_right:
+  \<open>\<Lambda>' \<approx> \<Lambda>'\<turnstile>\<close>
+  using split_id_absorb_right bisim_wbisim scomp_op_assoc wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans by blast
+
+lemma split'_id_absorb:
+  \<open>\<Lambda>' \<approx> (\<stileturn>\<Lambda>')\<turnstile>\<close>
+  using split'_id_absorb_right scomp_op_id_op_left_neutral wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans by blast
+
+section \<open>Axioms for merge_op surrounded by identities\<close>
+
+lemma merge'_id_absorb_left:
+  \<open>\<V>' \<approx> \<stileturn>\<V>'\<close>
+  using merge_id_absorb_left bisim_wbisim scomp_op_assoc wbisim_refl wbisim_scomp_op_cong wbisim_trans by blast
+
+lemma merge'_id_absorb:
+  \<open>\<V>' \<approx> (\<stileturn>\<V>')\<turnstile>\<close>
+  using merge'_id_absorb_left scomp_op_id_op_right_neutral wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans by blast
+
+section \<open>Axioms for aeq_op surrounded by identities\<close>
+
 lemma aeq_vdash_absorb:
   "\<Q>' \<approx> (\<stileturn>(\<Q>'))"
   using aeq_id_absorb using bisim_wbisim scomp_op_assoc wbisim_refl wbisim_scomp_op_cong wbisim_trans by blast
@@ -18,15 +40,6 @@ lemma aeq_vdash_absorb:
 lemma aeq_double_vdash_absorb:
   "\<Q>' \<approx> (\<stileturn>(\<Q>'\<turnstile>))"
   using aeq_vdash_absorb using scomp_op_id_op_right_neutral wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans by blast
-
-lemma A10':
-  "\<Q>' \<bullet> \<C> \<approx> (\<C> \<parallel> \<C>) \<bullet> (map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)) \<bullet> (\<Q>' \<parallel> \<Q>')"
-  apply (rule wbisim_trans[OF scomp_op_id_left_absorb A10])
-  using inputs_acopy_op apply fastforce
-  done
-
-(* FIXME: make trans at the lemma *)
-declare wbisim_trans[trans]
 
 lemma A1':
   \<open>(\<Q>' \<parallel> \<I>) \<bullet> \<Q>' \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>') \<bullet> \<Q>')\<close>
@@ -81,6 +94,12 @@ proof -
   also have \<open>\<dots> \<approx> ! \<parallel> !\<close> by (rule Synchronous_Operators_Axioms.A4)
   finally show ?thesis.
 qed
+
+lemma A10':
+  "\<Q>' \<bullet> \<C> \<approx> (\<C> \<parallel> \<C>) \<bullet> (map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)) \<bullet> (\<Q>' \<parallel> \<Q>')"
+  apply (rule wbisim_trans[OF scomp_op_id_left_absorb A10])
+  using inputs_acopy_op apply fastforce
+  done
 
 lemma A11':
   \<open>\<C> \<bullet> \<Q>' \<approx> \<I>\<close>
@@ -139,9 +158,39 @@ proof -
   finally show ?thesis.
 qed
 
+lemma F5'_gen:
+  \<open>map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (\<lambda>_. []))
+    (map_op projl projr (comp_op Some (case_sum (\<lambda>_. []) (case_sum buf4 (\<lambda>_. [])))
+      (map_op projl projr (comp_op Some (case_sum buf2 (\<lambda>_. []))
+        (comp_op (\<lambda>_. None) (\<lambda>_. [])
+          ((id_op buf1) :: ('a :: {countable,defaults}, 'a, 'b) op) \<C>)
+        (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. [])
+          (transp_op (case_sum buf3 (\<lambda>_. []))) \<I>))))
+      (comp_op (\<lambda>_. None) (\<lambda>_. [])
+        \<I>
+        (map_op projl projr (comp_op Some (\<lambda>_. []) (aeq_op (case_sum buf5 (\<lambda>_. []))) \<I>))))))
+  \<approx> map_op projl projr (comp_op Some (\<lambda>_. []) (!::('a, 0, 'b) op)
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<oslash> \<I>)::(0, 'a, 'b) op))\<close>
+proof (coinduction arbitrary: buf1 buf2 buf3 buf4 buf5 rule: wbisim_coinduct_upto'')
+  case SIM1
+  then show ?case
+    using SIM1 by (auto 0 0 elim!: step_map_op_elim step_loop_op_elim step_comp_op_elim step_id_op_cases step_acopy_op_elim step_transp_op_cases step_aeq_op_elim split: sum.splits if_splits)
+    (force del: wbc_base intro!: wbc_base)+
+next
+  case SIM2
+  then show ?case
+    using SIM2 by (auto elim !: step_map_op_elim step_comp_op_elim step_sink_op step_id_op_cases split: if_splits sum.splits)
+      (intro exI conjI[rotated, OF wbc_base], force, force del: step_wstep intro!: step_wstep)
+qed
+
 lemma F5':
-  \<open>((\<I> \<parallel> \<C>) \<bullet> map_op reassoc reassoc (\<X> \<parallel> \<I>) \<bullet> (\<I> \<parallel> \<Q>')) \<up> \<approx> ! \<bullet> \<exclamdown>\<close>
-  oops
+  \<open>((\<I> \<parallel> \<C>) \<bullet> map_op reassoc reassoc (\<X> \<parallel> \<I>) \<bullet> (\<I> \<parallel> \<Q>')) \<up>
+  \<approx> (!::('a :: {countable, defaults}, 0, 'b) op) \<bullet> (\<exclamdown>::(0, 'a, 'b) op)\<close>
+  unfolding feedback_op_def scomp_op_def pcomp_op_def
+  using F5'_gen[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>]
+  by simp
+
+section \<open>Properties of compositions and feedback surrounded by identities\<close>
 
 lemma scomp_op_move_vdash:
   "\<stileturn>((op1 \<bullet> op2)\<turnstile>) \<approx> \<stileturn>op1 \<bullet> op2\<turnstile>"
@@ -185,27 +234,6 @@ lemma feedback_op_move_right_vdash:
   apply (simp_all add: bisim_wbisim pcomp_op_id_id wbisim_loop_op_cong wbisim_refl wbisim_scomp_op_cong)
   done
 
-(* FIXME: move me *)
-lemma inputs_scomp_op_le_dest[dest!]:
-  "c \<in> inputs (comp_op Some buf op1 op2) \<Longrightarrow> c \<in> Inl ` inputs op1"
-  using set_mp[OF inputs_comp_op_le, simplified] by force
-lemma inputs_pcomp_op_le_dest[dest!]:
-  "c \<in> inputs (comp_op (\<lambda> _. None) buf op1 op2) \<Longrightarrow> c \<in> Inl ` inputs op1 \<or> c \<in> Inr ` (inputs op2)"
-  using set_mp[OF inputs_comp_op_le, simplified] by force
-lemma inputs_id_op_dest[dest!]:
-  "x\<in>inputs (id_op buf) \<Longrightarrow> x \<notin> defaults"
-  using inputs_id_op_alt by blast
-
-lemma outputs_scomp_op_le_dest[dest!]:
-  "c \<in> outputs (comp_op Some buf op1 op2) \<Longrightarrow>c \<in> Inr ` outputs op2"
-  using set_mp[OF outputs_comp_op_le, simplified] by force
-lemma outputs_pcomp_op_le_alt[dest!]:
-  "c \<in> outputs (comp_op (\<lambda> _. None) buf op1 op2) \<Longrightarrow> c \<in> Inl ` outputs op1 \<or> c \<in> Inr ` outputs op2"
-  using set_mp[OF outputs_comp_op_le, simplified] by force
-lemma outputs_id_op_dest[dest!]:
-  "x\<in>outputs (id_op buf) \<Longrightarrow> x \<notin> defaults"
-  using outputs_id_op_alt by blast
-
 lemma feedback_op_move_vdash:
   assumes "Inr -` inputs op \<inter> defaults = {}"
     and "Inr -` outputs op \<inter> defaults = {}"
@@ -218,6 +246,8 @@ lemma feedback_op_move_vdash:
   apply (rule feedback_op_move_right_vdash)
    apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def)
   done
+
+section \<open>Typedef and lifting\<close>
 
 context notes [[typedef_overloaded]] begin
 typedef ('ip, 'op, 'd) operator = 
@@ -314,11 +344,6 @@ next
       oops
 
       
-lemma wbisim_same_inputs_outputs:
-  "op1 \<approx> op2 \<Longrightarrow>
-   inputs op1 = inputs op2 \<and> outputs op1 = outputs op2"
-  sorry
-
 lemma scomp_op_id_right_absorb:
   assumes "outputs op1 \<inter> defaults = {}"
   shows  "op1 \<bullet> \<stileturn>op2 \<approx> op1 \<bullet> op2"
@@ -330,24 +355,24 @@ lift_definition
   ('ip1, 'op2, 'd) operator" is "scomp_op"
   apply (clarsimp simp add: intersect_empty_iff)
   subgoal for op1 op2 op1' op2'
-  apply (intro exI[of _ "scomp_op op1' op2'"])
+    apply (intro exI[of _ "scomp_op op1' op2'"])
     apply (intro allI conjI ballI)
     subgoal
       apply (rule wbisim_trans)
        apply (rule wbisim_scomp_op_cong)
-      apply assumption+
+        apply assumption+
       apply (rule wbisim_trans[rotated])
-      apply (rule wbisim_sym)
-      apply (rule scomp_op_move_vdash)
+       apply (rule wbisim_sym)
+       apply (rule scomp_op_move_vdash)
       apply (rule wbisim_trans[rotated])
        apply (rule scomp_op_id_left_absorb)
-       apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_same_inputs_outputs)[1]
-            apply (rule wbisim_trans[rotated])
+       apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_inputs)[1]
+      apply (rule wbisim_trans[rotated])
        apply (rule scomp_op_id_right_absorb)
-       apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_same_inputs_outputs)[1]
+       apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_outputs)[1]
       apply (meson bisim_sym bisim_wbisim scomp_op_assoc wbisim_refl wbisim_scomp_op_cong)
       done
-       apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_same_inputs_outputs)
+       apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_inputs)
     done
   done
 
@@ -371,9 +396,22 @@ lift_definition
   by (smt (verit, del_insts) Diff_Diff_Int Diff_Int_distrib Int_Diff diff_shunt inputs_loop_op_le le_iff_inf outputs_loop_op_le)
  *)
 
+lemma map_op_out_id_left_vdash:
+  "map_op id f (\<stileturn>op) \<approx> \<stileturn>(map_op id f op)"
+  oops
+
 lemma aux:
-  "map_op f g (\<stileturn>(op\<turnstile>)) \<approx> \<stileturn>(map_op f g op \<turnstile>)"
+  "map_op f g (\<stileturn>(op\<turnstile>)) \<approx> \<stileturn>((map_op f g op)\<turnstile>)"
+  apply (rule wbisim_trans)
   sorry
+
+lemma aux2:
+  "p \<in> inputs op \<Longrightarrow> p \<in> inputs (\<stileturn>op)"
+       apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_inputs)[1]
+
+  find_theorems inputs id_op 
+
+  oops
 
 lift_definition
   map_operator :: "('a :: {countable,defaults} \<Rightarrow> 'b :: {countable,defaults}) \<Rightarrow> ('c :: {countable,defaults} \<Rightarrow> 'd :: {countable,defaults}) \<Rightarrow> ('a, 'c, 'e) operator \<Rightarrow> ('b, 'd, 'e) operator" is 
@@ -381,10 +419,35 @@ lift_definition
   apply (simp add: op.set_map split: if_splits)
   apply (intro allI conjI impI)
   subgoal for fun1 fun2 op
-    apply (rule exI[of _ "map_op fun1 fun2 op"])
+    apply safe
+    subgoal for op'
+    apply (rule exI[of _ "map_op fun1 fun2 op'"])
+    apply (intro conjI)
+      apply safe
+    subgoal
+  apply (rule wbisim_trans[rotated])
+       apply (rule aux)
+      apply (meson wbisim_map_op)
+      done
+    subgoal for p
+       apply (auto simp add: image_iff disjoint_iff op.set_map ran_def)[1]
+      subgoal for p'
+        apply (drule spec[of _ "fun1 p'"])
+        apply (drule mp)
+         apply (rule bexI[of _ "p'"])
+          apply simp_all
+       apply (auto simp add: image_iff disjoint_iff op.set_map ran_def dest!: wbisim_inputs)[1]
+        
+        thm wbisim_inputs
+
+        term "fun1 p'"
+
+    find_theorems "_ = _ ` _ \<Longrightarrow> _"
 
 
-  find_theorems map_op wbisim
+
+
+  find_theorems map_op name: cong
 
 end
   by (auto simp add: op.set_map)
