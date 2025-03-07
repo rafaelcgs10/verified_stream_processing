@@ -11,6 +11,28 @@ begin
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
 no_notation nth (infixl "!" 100)
 
+section \<open>Axioms for split_op surrounded by identities\<close>
+
+lemma split'_id_absorb_right:
+  \<open>\<Lambda>' \<approx> \<Lambda>'\<turnstile>\<close>
+  using split_id_absorb_right bisim_wbisim scomp_op_assoc wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans by blast
+
+lemma split'_id_absorb:
+  \<open>\<Lambda>' \<approx> (\<stileturn>\<Lambda>')\<turnstile>\<close>
+  using split'_id_absorb_right scomp_op_id_op_left_neutral wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans by blast
+
+section \<open>Axioms for merge_op surrounded by identities\<close>
+
+lemma merge'_id_absorb_left:
+  \<open>\<V>' \<approx> \<stileturn>\<V>'\<close>
+  using merge_id_absorb_left bisim_wbisim scomp_op_assoc wbisim_refl wbisim_scomp_op_cong wbisim_trans by blast
+
+lemma merge'_id_absorb:
+  \<open>\<V>' \<approx> (\<stileturn>\<V>')\<turnstile>\<close>
+  using merge'_id_absorb_left scomp_op_id_op_right_neutral wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans by blast
+
+section \<open>Axioms for aeq_op surrounded by identities\<close>
+
 lemma aeq_vdash_absorb:
   "\<Q>' \<approx> (\<stileturn>(\<Q>'))"
   using aeq_id_absorb using bisim_wbisim scomp_op_assoc wbisim_refl wbisim_scomp_op_cong wbisim_trans by blast
@@ -18,15 +40,6 @@ lemma aeq_vdash_absorb:
 lemma aeq_double_vdash_absorb:
   "\<Q>' \<approx> (\<stileturn>(\<Q>'\<turnstile>))"
   using aeq_vdash_absorb using scomp_op_id_op_right_neutral wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans by blast
-
-lemma A10':
-  "\<Q>' \<bullet> \<C> \<approx> (\<C> \<parallel> \<C>) \<bullet> (map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)) \<bullet> (\<Q>' \<parallel> \<Q>')"
-  apply (rule wbisim_trans[OF scomp_op_id_left_absorb A10])
-  using inputs_acopy_op apply fastforce
-  done
-
-(* FIXME: make trans at the lemma *)
-declare wbisim_trans[trans]
 
 lemma A1':
   \<open>(\<Q>' \<parallel> \<I>) \<bullet> \<Q>' \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>') \<bullet> \<Q>')\<close>
@@ -81,6 +94,12 @@ proof -
   also have \<open>\<dots> \<approx> ! \<parallel> !\<close> by (rule Synchronous_Operators_Axioms.A4)
   finally show ?thesis.
 qed
+
+lemma A10':
+  "\<Q>' \<bullet> \<C> \<approx> (\<C> \<parallel> \<C>) \<bullet> (map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)) \<bullet> (\<Q>' \<parallel> \<Q>')"
+  apply (rule wbisim_trans[OF scomp_op_id_left_absorb A10])
+  using inputs_acopy_op apply fastforce
+  done
 
 lemma A11':
   \<open>\<C> \<bullet> \<Q>' \<approx> \<I>\<close>
@@ -171,6 +190,8 @@ lemma F5':
   using F5'_gen[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>]
   by simp
 
+section \<open>Properties of compositions and feedback surrounded by identities\<close>
+
 lemma scomp_op_move_vdash:
   "\<stileturn>((op1 \<bullet> op2)\<turnstile>) \<approx> \<stileturn>op1 \<bullet> op2\<turnstile>"
   by (smt (verit, del_insts) bisim_wbisim scomp_op_assoc scomp_op_id_id wbisim_scomp_op_cong wbisim_sym wbisim_trans)
@@ -225,6 +246,8 @@ lemma feedback_op_move_vdash:
   apply (rule feedback_op_move_right_vdash)
    apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def)
   done
+
+section \<open>Typedef and lifting\<close>
 
 context notes [[typedef_overloaded]] begin
 typedef ('ip, 'op, 'd) operator = 
