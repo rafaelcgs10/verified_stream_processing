@@ -323,13 +323,138 @@ lemma funny:
   "inputs (\<stileturn>(op\<turnstile>)) \<inter> defaults = {} \<and> outputs (\<stileturn>(op\<turnstile>)) \<inter> defaults = {}"
   by (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def)
 
-lemma aux:
+lemma map_op_double_vdash_gen:
+  "f ` inputs op \<inter> defaults = {} \<Longrightarrow>
+   g ` outputs op \<inter> defaults = {} \<Longrightarrow>
+   map_op f g (map_op projl projr (comp_op Some (buf3 o f) (id_op (buf2 o f)) (map_op projl projr (comp_op Some (buf1 o g) op (id_op (buf0 o g)))))) \<approx>
+   map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0))))"
+proof (coinduction arbitrary: op buf0 buf1 buf2 buf3 rule: wbisim_coinduct_upto'')
+  case SIM1
+  then show ?case 
+
+proof -
+  have "\<exists>op2'. wstep (Inp (f pa) xa) (map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0))))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf0 buf1 buf2 buf3. op1xx = map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0)))) \<and> f ` inputs op \<inter> defaults = {} \<and> g ` outputs op \<inter> defaults = {}) (map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (BENQ pa xa (buf2 \<circ> f))) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g))))))) op2'"
+    if "f ` inputs op \<inter> defaults = {}"
+      and "g ` outputs op \<inter> defaults = {}"
+      and "pa \<notin> defaults"
+    for pa :: 'b
+      and xa :: 'd
+    using that sorry
+  moreover have "\<exists>op2'. wstep (Out (g p) (BHD p (buf0 \<circ> g))) (map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0))))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf0 buf1 buf2 buf3. op1xx = map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0)))) \<and> f ` inputs op \<inter> defaults = {} \<and> g ` outputs op \<inter> defaults = {}) (map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (BTL p (buf0 \<circ> g)))))))) op2'"
+    if "f ` inputs op \<inter> defaults = {}"
+      and "g ` outputs op \<inter> defaults = {}"
+      and "p \<notin> defaults"
+      and "buf0 (g p) \<noteq> []"
+    for p :: 'c
+    using that sorry
+  moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0))))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf0 buf1 buf2 buf3. op1xx = map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0)))) \<and> f ` inputs op \<inter> defaults = {} \<and> g ` outputs op \<inter> defaults = {}) (map_op f g (map_op projl projr (comp_op Some (BENQ pa (BHD pa (buf2 \<circ> f)) (buf3 \<circ> f)) (id_op (BTL pa (buf2 \<circ> f))) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g))))))) op2'"
+    if "f ` inputs op \<inter> defaults = {}"
+      and "g ` outputs op \<inter> defaults = {}"
+      and "pa \<notin> defaults"
+      and "buf2 (f pa) \<noteq> []"
+    for pa :: 'b
+    using that sorry
+  moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0))))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf0 buf1 buf2 buf3. op1xx = map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0)))) \<and> f ` inputs op \<inter> defaults = {} \<and> g ` outputs op \<inter> defaults = {}) (map_op f g (map_op projl projr (comp_op Some (BTL p (buf3 \<circ> f)) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op1' (id_op (buf0 \<circ> g))))))) op2'"
+    if "f ` inputs op \<inter> defaults = {}"
+      and "g ` outputs op \<inter> defaults = {}"
+      and "buf3 (f p) \<noteq> []"
+      and "step (Inp p (BHD p (buf3 \<circ> f))) op op1'"
+    for p :: 'b
+      and op1' :: "('b, 'c, 'd) op"
+    using that sorry
+  moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0))))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf0 buf1 buf2 buf3. op1xx = map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0)))) \<and> f ` inputs op \<inter> defaults = {} \<and> g ` outputs op \<inter> defaults = {}) (map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (BENQ q xa (buf1 \<circ> g)) op1' (id_op (buf0 \<circ> g))))))) op2'"
+    if "f ` inputs op \<inter> defaults = {}"
+      and "g ` outputs op \<inter> defaults = {}"
+      and "step (Out q xa) op op1'"
+    for xa :: 'd
+      and op1' :: "('b, 'c, 'd) op"
+      and q :: 'c
+    using that sorry
+  moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0))))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf0 buf1 buf2 buf3. op1xx = map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0)))) \<and> f ` inputs op \<inter> defaults = {} \<and> g ` outputs op \<inter> defaults = {}) (map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (BTL pb (buf1 \<circ> g)) op (id_op (BENQ pb (BHD pb (buf1 \<circ> g)) (buf0 \<circ> g)))))))) op2'"
+    if "f ` inputs op \<inter> defaults = {}"
+      and "g ` outputs op \<inter> defaults = {}"
+      and "buf1 (g pb) \<noteq> []"
+      and "pb \<notin> defaults"
+    for pb :: 'c
+    using that sorry
+  moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0))))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf0 buf1 buf2 buf3. op1xx = map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0)))) \<and> f ` inputs op \<inter> defaults = {} \<and> g ` outputs op \<inter> defaults = {}) (map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op1' (id_op (buf0 \<circ> g))))))) op2'"
+    if "f ` inputs op \<inter> defaults = {}"
+      and "g ` outputs op \<inter> defaults = {}"
+      and "step Tau op op1'"
+    for op1' :: "('b, 'c, 'd) op"
+    using that sorry
+  ultimately show ?thesis
+    using SIM1  by (auto 0 0 elim !: step_id_op_cases step_comp_op_elim step_map_op_elim split: if_splits)
+qed
+next
+  case SIM2
+  then show ?case 
+   apply -
+    explore (auto 0 0 elim !: step_id_op_cases step_comp_op_elim step_map_op_elim split: if_splits; hypsubst_thin)
+  proof -
+    have "\<exists>op2'. wstep (Inp pa xa) (map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g))))))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf0 buf1 buf2 buf3. op1xx = map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0)))) \<and> f ` inputs op \<inter> defaults = {} \<and> g ` outputs op \<inter> defaults = {}) op2' (map_op projl projr (comp_op Some buf3 (id_op (BENQ pa xa buf2)) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0)))))"
+      if "f ` inputs op \<inter> defaults = {}"
+        and "g ` outputs op \<inter> defaults = {}"
+        and "pa \<notin> defaults"
+      for pa :: 'a
+        and xa :: 'd
+      using that sorry
+    moreover have "\<exists>op2'. wstep (Out p (BHD p buf0)) (map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g))))))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf0 buf1 buf2 buf3. op1xx = map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0)))) \<and> f ` inputs op \<inter> defaults = {} \<and> g ` outputs op \<inter> defaults = {}) op2' (map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op (BTL p buf0))))))"
+      if "f ` inputs op \<inter> defaults = {}"
+        and "g ` outputs op \<inter> defaults = {}"
+        and "p \<notin> defaults"
+        and "buf0 p \<noteq> []"
+      for p :: 'e
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g))))))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf0 buf1 buf2 buf3. op1xx = map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0)))) \<and> f ` inputs op \<inter> defaults = {} \<and> g ` outputs op \<inter> defaults = {}) op2' (map_op projl projr (comp_op Some (BENQ pa (BHD pa buf2) buf3) (id_op (BTL pa buf2)) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0)))))"
+      if "f ` inputs op \<inter> defaults = {}"
+        and "g ` outputs op \<inter> defaults = {}"
+        and "pa \<notin> defaults"
+        and "buf2 pa \<noteq> []"
+      for pa :: 'a
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g))))))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf0 buf1 buf2 buf3. op1xx = map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0)))) \<and> f ` inputs op \<inter> defaults = {} \<and> g ` outputs op \<inter> defaults = {}) op2' (map_op projl projr (comp_op Some (BTL p buf3) (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op''b) (id_op buf0)))))"
+      if "f ` inputs op \<inter> defaults = {}"
+        and "g ` outputs op \<inter> defaults = {}"
+        and "buf3 p \<noteq> []"
+        and "step io'b op op''b"
+        and "map_IO f g id io'b = Inp p (BHD p buf3)"
+      for p :: 'a
+        and io'b :: "('b, 'c, 'd) IO"
+        and op''b :: "('b, 'c, 'd) op"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g))))))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf0 buf1 buf2 buf3. op1xx = map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0)))) \<and> f ` inputs op \<inter> defaults = {} \<and> g ` outputs op \<inter> defaults = {}) op2' (map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some (BENQ q xa buf1) (map_op f g op''b) (id_op buf0)))))"
+      if "f ` inputs op \<inter> defaults = {}"
+        and "g ` outputs op \<inter> defaults = {}"
+        and "step io'b op op''b"
+        and "map_IO f g id io'b = Out q xa"
+      for xa :: 'd
+        and q :: 'e
+        and io'b :: "('b, 'c, 'd) IO"
+        and op''b :: "('b, 'c, 'd) op"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g))))))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf0 buf1 buf2 buf3. op1xx = map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0)))) \<and> f ` inputs op \<inter> defaults = {} \<and> g ` outputs op \<inter> defaults = {}) op2' (map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some (BTL pb buf1) (map_op f g op) (id_op (BENQ pb (BHD pb buf1) buf0))))))"
+      if "f ` inputs op \<inter> defaults = {}"
+        and "g ` outputs op \<inter> defaults = {}"
+        and "buf1 pb \<noteq> []"
+        and "pb \<notin> defaults"
+      for pb :: 'e
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g))))))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf0 buf1 buf2 buf3. op1xx = map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0)))) \<and> f ` inputs op \<inter> defaults = {} \<and> g ` outputs op \<inter> defaults = {}) op2' (map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op''b) (id_op buf0)))))"
+      if "f ` inputs op \<inter> defaults = {}"
+        and "g ` outputs op \<inter> defaults = {}"
+        and "step Tau op op''b"
+      for op''b :: "('b, 'c, 'd) op"
+      using that sorry
+    ultimately show ?thesis
+      using SIM2 by (auto 0 0 elim !: step_id_op_cases step_comp_op_elim step_map_op_elim split: if_splits)
+  qed
+qed
+
+lemma map_op_double_vdash:
   "f ` inputs op \<inter> defaults = {} \<Longrightarrow> g ` outputs op \<inter> defaults = {} \<Longrightarrow>
    map_op f g (\<stileturn>(op\<turnstile>)) \<approx> \<stileturn>((map_op f g op)\<turnstile>)"
-     sledgehammer [timeout = 100, provers = vampire verit cvc4 e z3]
-
-  
-  sorry
+  unfolding scomp_op_def using map_op_double_vdash_gen[of f op g "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []", unfolded comp_def, simplified] by simp
 
 lemma bisim_double_vdash:
   assumes "op \<approx> \<stileturn>(op'\<turnstile>)"
