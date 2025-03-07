@@ -41,6 +41,11 @@ lemma aeq_double_vdash_absorb:
   "\<Q>' \<approx> (\<stileturn>(\<Q>'\<turnstile>))"
   using aeq_vdash_absorb using scomp_op_id_op_right_neutral wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans by blast
 
+section \<open>Axioms for sink surrounded by identities\<close>
+lemma sink_vdash_absorb:
+  "\<stileturn>((! :: ('m :: {countable, defaults}, 0, 'd) op)\<turnstile>) \<approx> !"
+  sorry
+
 lemma A1':
   \<open>(\<Q>' \<parallel> \<I>) \<bullet> \<Q>' \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>') \<bullet> \<Q>')\<close>
 proof -
@@ -374,14 +379,42 @@ lemma wbisim_vdash_outputs_no_defaults[dest]:
   apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_outputs)[1]
   done
 
-lemma loop_operator_scomp_commute:
+lemma B3:
+  "op1 \<bullet> op2 \<bullet> op3 \<approx> op1 \<bullet> (op2 \<bullet> op3)"
+  apply transfer
+  apply (rule bisim_wbisim)
+  apply (rule scomp_op_assoc)
+  done
+
+lemma R1:
   "(op2 \<bullet> (op1\<up>)) \<approx> ((op2 \<parallel> \<I>) \<bullet> op1)\<up>"
   apply transfer
   apply (rule loop_op_scomp_commute)
    apply blast+
   done
 
+no_notation aeq_empty_op ("\<Q>")
+lift_definition aeq_empty_operator :: "('a :: {countable, defaults} + 'a, 'a, 'b) operator"  ("\<Q>") is "aeq_empty_op\<turnstile>"
+  apply (rule exI[of _ "aeq_empty_op"])
+  using aeq_vdash_absorb apply blast
+  done
 
+abbreviation "sink_op_0 :: ('a :: {countable, defaults}, 0, 'c) op \<equiv> sink_op"
+
+no_notation sink_op ("!")
+lift_definition sink_op_0_operator :: "('a :: {countable, defaults}, 0, 'b) operator"  ("!") is "sink_op_0"
+  apply (rule exI[of _ "sink_op"])
+  using sink_vdash_absorb wbisim_sym apply blast
+  done
+
+
+(* since we fixed sink_op with output 0, now this lemma needs map_op *)
+lemma A4:
+  \<open>\<Q> \<bullet> ! \<approx> ! \<parallel> !\<close>
+
+(* since we fixed sink_op with output 0, now this lemma needs map_op *)
+lemma A14':
+  \<open>(\<Q> :: (0 + 0, 0, 'd) operator) \<approx> \<I>\<close>
 
 end
 end
