@@ -113,16 +113,13 @@ lemma lset_linterleave1:
    x \<in> lset xs \<union> lset ys"
   apply (induct "linterleave xs ys" arbitrary: xs ys rule: lset_induct)
   subgoal for xs' xs ys 
-    apply (cases xs; cases ys)
+    apply (cases xs)
        apply auto
     done
   subgoal for x' xs' xs ys
-    apply (cases xs; cases ys)
-       apply (simp split: llist.splits)
-      apply auto
-    apply hypsubst_thin
-    using linterleave_LCons1 
-    by (metis insert_iff llist.set(2))
+    apply (cases xs)
+     apply auto
+    done
   done
 
 lemma lset_linterleave2:
