@@ -3076,7 +3076,7 @@ lemma sub_op_Write_wsim: "sub_op (Write opw p x) op n \<Longrightarrow> wsim (\<
 lemma wsim_outputs: "wsim (\<approx>) op op' \<Longrightarrow> p \<in> outputs op \<Longrightarrow> p \<in> outputs op'"
   by (meson outputs_sub_op_Write sub_op_Write_outputs sub_op_Write_wsim)
 
-lemma wbisim_outputs: "op \<approx> op' \<Longrightarrow> inputs op = inputs op'"
-  by (meson antisym wsim_inputs subset_eq wbisim.cases)
+lemma wbisim_outputs: "op \<approx> op' \<Longrightarrow> outputs op = outputs op'"
+  by (meson antisym wsim_outputs subset_eq wbisim.cases)
 
 end
