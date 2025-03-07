@@ -275,9 +275,10 @@ proof -
   finally show ?thesis using assms wbisim_trans by blast
 qed
 
+no_notation scomp_op (infixl "\<bullet>" 65)
 lift_definition 
   scomp_operator :: "('ip1 :: {countable,defaults}, 'op1  :: {countable,defaults}, 'd) operator \<Rightarrow> ('op1, 'op2  :: {countable,defaults}, 'd) operator \<Rightarrow>
-  ('ip1, 'op2, 'd) operator" is "scomp_op"
+  ('ip1, 'op2, 'd) operator" (infixl "\<bullet>" 65) is "scomp_op"
   apply (clarsimp simp add: intersect_empty_iff)
   subgoal for op1 op2 op1' op2'
     apply (intro exI[of _ "scomp_op (op1'\<turnstile>) (\<stileturn>op2')"])
@@ -291,18 +292,26 @@ lift_definition
     done
   done
 
-(* lift_definition 
-  comp_operator :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
-  ('ip1, 'op1, 'd) operator \<Rightarrow> ('ip2, 'op2, 'd) operator \<Rightarrow>
-  ('ip1  :: {countable,defaults} + 'ip2 :: {countable,defaults}, 'op1 :: {countable,defaults} + 'op2 :: {countable,defaults}, 'd) operator" is "comp_op"
-  apply (clarsimp simp add: intersect_empty_iff)
-  subgoal for fun1 fun2 op1 op2 op' op'a
-  apply (intro exI[of _ "comp_op fun1 fun2 op1 op2"])
-    apply (intro allI conjI ballI)
-    subgoal
-      apply (rule wbisim_trans)
- *)
+(* FIXME: move me *)
+lemma wbisim_pcomp_op_cong:
+  "op1 \<approx> op1' \<Longrightarrow>
+   op2 \<approx> op2' \<Longrightarrow>
+   op1 \<parallel> op2 \<approx> op1' \<parallel> op2'"
+  unfolding pcomp_op_def using wbisim_comp_op_cong wbisim_map_op by blast
 
+no_notation pcomp_op (infixl "\<parallel>" 64)
+lift_definition 
+  pcomp_operator :: "('ip1, 'op1, 'd) operator \<Rightarrow> ('ip2, 'op2, 'd) operator \<Rightarrow>
+  ('ip1  :: {countable,defaults} + 'ip2 :: {countable,defaults}, 'op1 :: {countable,defaults} + 'op2 :: {countable,defaults}, 'd) operator" (infixl "\<parallel>" 64) is "pcomp_op"
+  apply (clarsimp simp add: intersect_empty_iff)
+  subgoal for op1 op2 op1' op2'
+    apply (intro exI[of _ "pcomp_op op1' op2'"])
+    apply (rule wbisim_trans)
+       apply (rule wbisim_pcomp_op_cong)
+      apply assumption+
+    apply (smt (verit, best) pcomp_op_move_vdash_left pcomp_op_move_vdash_right scomp_op_id_id wbisim_scomp_op_cong wbisim_sym wbisim_trans)
+    done
+  done
 
 lemma feedback_op_move_vdash_alt:
   assumes "Inr -` inputs op \<inter> defaults = {}"
@@ -312,7 +321,7 @@ lemma feedback_op_move_vdash_alt:
 
 lift_definition
   feedback_operator :: 
-  "('ip :: {countable, defaults} + 'p :: {countable, defaults}, 'op :: {countable, defaults} + 'p, 'd) operator \<Rightarrow> ('ip, 'op, 'd) operator" is feedback_op
+  "('ip :: {countable, defaults} + 'p :: {countable, defaults}, 'op :: {countable, defaults} + 'p, 'd) operator \<Rightarrow> ('ip, 'op, 'd) operator" ( "_ \<up>" [66] 65) is feedback_op
   apply safe
   subgoal for op op'
     apply (rule exI[of _ "\<stileturn>(op\<turnstile>) \<up>"])
@@ -327,47 +336,7 @@ lift_definition
     apply (smt (verit, ccfv_threshold) bisim_wbisim scomp_op_assoc wbisim_double_vdash wbisim_loop_op_cong wbisim_sym wbisim_trans)
     done
   done
-
-lemma map_op_out_id_left_vdash:
-  "map_op id f (\<stileturn>op) \<approx> \<stileturn>(map_op id f op)"
-  oops
-
-lemma funny:
-  "inputs (\<stileturn>(op\<turnstile>)) \<inter> defaults = {} \<and> outputs (\<stileturn>(op\<turnstile>)) \<inter> defaults = {}"
-  by (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def)
-
-lemma map_op_double_vdash_gen:
-  "range f \<inter> defaults = {} \<Longrightarrow>
-   range g \<inter> defaults = {} \<Longrightarrow>
-   map_op f g (map_op projl projr (comp_op Some (buf3 o f) (id_op (buf2 o f)) (map_op projl projr (comp_op Some (buf1 o g) op (id_op (buf0 o g)))))) \<approx>
-   map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0))))"
-proof (coinduction arbitrary: op buf0 buf1 buf2 buf3 rule: wbisim_coinduct_upto'')
-  case SIM1
-  then show ?case 
-  apply -
-    explore (auto 0 0 elim !: step_id_op_cases step_comp_op_elim step_map_op_elim split: if_splits; hypsubst_thin)
-  proof -
-    have "\<exists>op2'. wstep (Inp (f pa) xa) (map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0))))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf0 buf1 buf2 buf3. op1xx = map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (buf2 \<circ> f)) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some buf3 (id_op buf2) (map_op projl projr (comp_op Some buf1 (map_op f g op) (id_op buf0))))) (map_op f g (map_op projl projr (comp_op Some (buf3 \<circ> f) (id_op (BENQ pa xa (buf2 \<circ> f))) (map_op projl projr (comp_op Some (buf1 \<circ> g) op (id_op (buf0 \<circ> g))))))) op2'"
-      if "range f \<inter> defaults = {}"
-        and "range g \<inter> defaults = {}"
-        and "pa \<notin> defaults"
-      for pa :: 'b
-        and xa :: 'e
-      using that 
-      apply -
-      apply (intro exI conjI[rotated] wbc_base)
-      apply (rule refl)+
-
-      oops
-
-lemma map_op_double_vdash:
-  "range f \<inter> defaults = {} \<Longrightarrow>
-   range g \<inter> defaults = {} \<Longrightarrow>
-   map_op f g (\<stileturn>(op\<turnstile>)) \<approx> \<stileturn>((map_op f g op)\<turnstile>)"
-(*   unfolding scomp_op_def using map_op_double_vdash_gen[of f op g "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []", unfolded comp_def, simplified] by simp
- *)
-  oops
-
+no_notation feedback_op ( "_ \<up>" [66] 65)
 
 lift_definition
   map_operator :: "('a :: {countable,defaults} \<Rightarrow> 'b :: {countable,defaults}) \<Rightarrow> ('c :: {countable,defaults} \<Rightarrow> 'd :: {countable,defaults}) \<Rightarrow> ('a, 'c, 'e) operator \<Rightarrow> ('b, 'd, 'e) operator" is 
@@ -380,49 +349,39 @@ lift_definition
       apply (rule exI[of _ "map_op f g op'"])
       oops
 
-no_notation scomp_op (infixl "\<bullet>" 65)
-definition scomp_operator' (infixl "\<bullet>" 65) where
-  "scomp_operator'  = scomp_operator"
-
-no_notation feedback_op ( "_ \<up>" [66] 65)
-no_notation pcomp_op (infixl "\<parallel>" 64)
-
-(* definition pcomp_operator (infixl "\<parallel>" 64) where
-  "pcomp_operator = comp_operator (\<lambda>_. None) (\<lambda>_. [])"
- *)
-
-end
-
-definition feedback_operator' ( "_ \<up>" [66] 65) where
-  "feedback_operator'  = feedback_operator"
-
-lift_definition id_operator :: "('a \<Rightarrow> 'b buf) \<Rightarrow> ('a :: {countable, defaults}, 'a, 'b) operator" is id_op
-  subgoal for buf
-    apply (rule exI[of _ "id_op buf"])
+no_notation id_empty_op ("\<I>")
+lift_definition id_operator :: "('a :: {countable, defaults}, 'a, 'b) operator"  ("\<I>") is id_empty_op
+  subgoal 
+    apply (rule exI[of _ id_empty_op])
     unfolding scomp_op_def
     apply (rule wbisim_sym)
-    using id_id_gen[of buf "\<lambda> _. []" "\<lambda> _. []", simplified] apply (smt (verit) BULK_BENQ_left_neutral id_id_gen wbisim_comp_op_cong wbisim_map_op wbisim_sym wbisim_trans) 
+    using id_id_gen[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []", simplified] apply (smt (verit) BULK_BENQ_left_neutral id_id_gen wbisim_comp_op_cong wbisim_map_op wbisim_sym wbisim_trans) 
     done
   done
 
-no_notation id_empty_op ("\<I>")
-
-abbreviation id_empty_operator ("\<I>") where
-  "\<I> \<equiv> id_operator (\<lambda> _. [])"
-
 no_notation wbisim (infix "\<approx>"40)
+lift_definition wbisim_operator :: "('a :: {countable, defaults}, 'b :: {countable, defaults}, 'c) operator \<Rightarrow> ('a, 'b, 'c) operator \<Rightarrow> bool" (infix "\<approx>"40) is wbisim.
 
-lift_definition wbisim_operator :: "('a :: {countable, defaults}, 'b :: {countable, defaults}, 'c) operator \<Rightarrow> ('a, 'b, 'c) operator \<Rightarrow> bool" is wbisim.
+lemma wbisim_vdash_inputs_no_defaults[dest]:
+  "wbisim op1 (\<stileturn>(op'\<turnstile>)) \<Longrightarrow> Inr -` inputs op1 \<inter> defaults = {}"
+  apply (drule wbisim_double_vdash)
+  apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_inputs)[1]
+  done
 
-abbreviation wbisim_operator' (infix "\<approx>"40) where
-  "wbisim_operator' \<equiv> wbisim_operator"
+lemma wbisim_vdash_outputs_no_defaults[dest]:
+  "wbisim op1 (\<stileturn>(op'\<turnstile>)) \<Longrightarrow> Inr -` outputs op1 \<inter> defaults = {}"
+  apply (drule wbisim_double_vdash)
+  apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_outputs)[1]
+  done
 
 lemma loop_operator_scomp_commute:
   "(op2 \<bullet> (op1\<up>)) \<approx> ((op2 \<parallel> \<I>) \<bullet> op1)\<up>"
-  unfolding pcomp_operator_def scomp_operator_def feedback_operator_def
   apply transfer
-  apply (simp split: if_splits add: image_iff)
-  apply (intro impI conjI)
-  by (fastforce intro!: loop_op_scomp_commute[unfolded scomp_op_def feedback_op_def pcomp_op_def] Inl_in_defaults Inr_in_defaults simp add: image_iff disjoint_iff op.set_map ran_def split: sum.splits if_splits)+
+  apply (rule loop_op_scomp_commute)
+   apply blast+
+  done
 
+
+
+end
 end
