@@ -68,10 +68,16 @@ lemma B8:
   apply (simp add: inj_eq split: if_splits)
   apply (intro impI conjI)
    apply (auto simp add: inj_eq split: if_splits sum.splits intro!: inj_onI B8 bisim_wbisim)[1]
-  sledgehammer
-
-
-end
+    apply (auto split: sum.splits)
+  subgoal for x
+    by (cases x; simp)
+  subgoal for x
+    by (cases x; simp)
+   subgoal 
+     by (metis Inl_in_defaults Inr_in_defaults default_0 inv_case_sum_defaults sumE)
+   subgoal
+     by (smt (verit) \<UU>_E \<open>\<And>x. \<lbrakk>\<forall>x1. x \<noteq> Inl x1; x \<notin> defaults\<rbrakk> \<Longrightarrow> wbisim transp_empty_op (\<stileturn>\<exclamdown>)\<close> case_sum_defaults case_sum_invert_Inl in_case_sum inj_on_def inv_f_eq old.sum.simps(5))
+   done
 
 lemma R1:
   "(op2 \<bullet> (op1\<up>)) \<approx> ((op2 \<parallel> \<I>) \<bullet> op1)\<up>"
@@ -79,6 +85,5 @@ lemma R1:
   apply (rule R1)
    apply blast+
   done
-
 
 end

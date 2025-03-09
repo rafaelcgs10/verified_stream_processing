@@ -673,6 +673,17 @@ lemma assoc_reassoc[simp]:
   "assoc (reassoc p) = p"
   by (cases p; simp split: sum.splits)
 
+lemma in_case_sum[simp]:
+  "inj (case_sum Inr Inl)"
+  apply (rule injI)
+  apply (auto split: sum.splits)
+  done
+
+lemma inv_case_sum_defaults[simp]:
+  "inv (case_sum Inr Inl) (Inr p) \<in> (defaults :: ('a :: defaults + 'b :: defaults) set) \<longleftrightarrow> p \<in> defaults"
+  unfolding inv_into_def
+  apply auto
+  done
 
 end
 end
