@@ -5,8 +5,6 @@ imports
 begin
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
-
-
 section \<open>Axiom B3: Associativity of sequential composition\<close>
 lemma step_scomp_op_1:
   "step io (map_op projl projr (comp_op Some (buf1 :: 'd \<Rightarrow> 'c buf) op1 (map_op projl projr (comp_op Some (buf2 :: 'e \<Rightarrow> 'c buf) op2 op3)))) op \<Longrightarrow>
