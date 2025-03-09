@@ -390,6 +390,13 @@ lift_definition sink_op_0_operator :: "('a :: {countable, defaults}, 0, 'b) oper
   using sink_vdash_absorb wbisim_sym apply blast
   done
 
+abbreviation "dummy_source_op_0 :: (0, 'a :: {countable, defaults}, 'c) op \<equiv> dummy_source_op"
+
+no_notation dummy_source_op ("\<exclamdown>")
+lift_definition dummy_source_operator :: "(0, 'a :: {countable, defaults}, 'b) operator"  ("\<exclamdown>") is "dummy_source_op_0"
+  apply (rule exI[of _ "dummy_source_op"])
+  apply (smt (verit, ccfv_SIG) B4_1 bisim_wbisim id_op_0_end_op scomp_op_dummy_source scomp_op_id_id wbisim_scomp_op_cong wbisim_sym wbisim_trans)
+  done
 
 lemma wbisim_vdash_inputs_no_defaults[dest]:
   "wbisim op1 (\<stileturn>(op'\<turnstile>)) \<Longrightarrow> Inr -` inputs op1 \<inter> defaults = {}"

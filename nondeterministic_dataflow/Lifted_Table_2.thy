@@ -33,6 +33,7 @@ no_notation feedback_operator ( "_ \<up>" [66] 65)
 no_notation transp_empty_operator ("\<X>")
 no_notation aeq_empty_operator ("\<Q>")
 no_notation sink_op_0_operator ("!")
+no_notation dummy_source_operator ("\<exclamdown>")
 
 lemma A1':
   \<open>(\<Q>' \<parallel> \<I>) \<bullet> \<Q>' \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>') \<bullet> \<Q>')\<close>
@@ -66,14 +67,16 @@ proof -
 qed
 
 lemma A3':
-  \<open>map_op projr id ((\<exclamdown>::(0, 'a :: {countable, defaults}, 'b) op) \<parallel> \<I>) \<bullet> \<Q>' \<approx> (!::('a, 0, 'b) op) \<bullet> (\<exclamdown>::(0, 'a, 'b) op)\<close>
+  assumes "D = (\<exclamdown> :: (0, 'a :: {countable,defaults}, 'd) op)"
+    and "S = (! :: (0 + 'a :: {countable,defaults}, 0, 'd) op)"
+  shows  \<open>(D \<parallel> \<I>) \<bullet> \<Q>' \<approx> S \<bullet> \<exclamdown>\<close>
 proof -
-  have \<open>map_op projr id ((\<exclamdown>::(0, 'a, 'b) op) \<parallel> \<I>) \<bullet> \<Q>'
-    \<approx> map_op projr id ((\<exclamdown>::(0, 'a, 'b) op) \<parallel> \<I>) \<bullet> \<Q> \<bullet> \<I>\<close>
+  have \<open>(D \<parallel> \<I>) \<bullet> \<Q>'
+    \<approx> (D \<parallel> \<I>) \<bullet> \<Q> \<bullet> \<I>\<close>
     using bisim_wbisim B3.B3 wbisim_sym by blast
-  also have \<open>\<dots> \<approx> ((!::('a, 0, 'b) op) \<bullet> (\<exclamdown>::(0, 'a, 'b) op)) \<bullet> \<I>\<close>
-    using A3.A3 wbisim_refl wbisim_scomp_op_cong by blast
-  also have \<open>\<dots> \<approx> (!::('a, 0, 'b) op) \<bullet> (\<exclamdown>::(0, 'a, 'b) op)\<close>
+  also have \<open>\<dots> \<approx> (S \<bullet> \<exclamdown>) \<bullet> \<I>\<close>
+    using A3.A3[OF assms] wbisim_refl wbisim_scomp_op_cong by blast
+  also have \<open>\<dots> \<approx> S \<bullet> \<exclamdown>\<close>
     using bisim_wbisim B3.B3 B4.B4_1 wbisim_refl wbisim_scomp_op_cong wbisim_trans by (smt (verit, best))
   finally show ?thesis.
 qed
@@ -191,6 +194,7 @@ no_notation feedback_op ( "_ \<up>" [66] 65)
 no_notation transp_empty_op ("\<X>")
 no_notation aeq_empty_op ("\<Q>")
 no_notation sink_op ("!")
+no_notation dummy_source_op ("\<exclamdown>")
 
 notation wbisim_operator (infix "\<approx>"40)
 notation id_empty_operator ("\<I>")
@@ -200,6 +204,7 @@ notation feedback_operator ( "_ \<up>" [66] 65)
 notation transp_empty_operator ("\<X>")
 notation aeq_empty_operator ("\<Q>")
 notation sink_op_0_operator ("!")
+notation dummy_source_operator ("\<exclamdown>")
 
 lemma A1:
   \<open>(\<Q> \<parallel> \<I>) \<bullet> \<Q> \<approx> map_operator (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>)\<close>
@@ -219,6 +224,15 @@ lemma A2:
   apply (meson old.sum.exhaust)
   done
 
+lemma A3:
+  assumes "D = (\<exclamdown> :: (0, 'a :: {countable,defaults}, 'd) operator)"
+    and "S = (! :: (0 + 'a :: {countable,defaults}, 0 , 'd) operator)"
+  shows  \<open>(D \<parallel> \<I>) \<bullet> \<Q> \<approx> S \<bullet> \<exclamdown>\<close>
+  using assms apply -
+  apply transfer
+  apply (rule A3')
+   apply auto
+  done
 
 (* since we fixed sink_op with output 0, now this lemma needs map_op *)
 lemma A4:
