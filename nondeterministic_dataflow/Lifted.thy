@@ -12,6 +12,12 @@ imports
   "HOL-ex.Sketch_and_Explore"
 begin
 
+no_notation Sublist.parallel (infixl "\<parallel>" 50)
+no_notation nth (infixl "!" 100)
+
+section \<open>Axioms for split_op surrounded by identities\<close>
+
+
 section \<open>Properties of compositions and feedback surrounded by identities\<close>
 
 lemma scomp_op_move_vdash:

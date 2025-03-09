@@ -32,7 +32,7 @@ proof (coinduction arbitrary: buf1 buf2 buf3 rule: wbisim_coinduct_upto)
 qed
 
 lemma A3:
-  \<open>map_op projr id (\<exclamdown> \<parallel> \<I>) \<bullet> \<Q> \<approx> ! \<bullet> \<exclamdown>\<close>
+  \<open>map_op projr id ((\<exclamdown> :: (0, 'b :: {countable,defaults}, 'c) op) \<parallel> \<I>) \<bullet> \<Q> \<approx> ! \<bullet> \<exclamdown>\<close>
   unfolding scomp_op_def
   using A3_gen[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>]
   by simp

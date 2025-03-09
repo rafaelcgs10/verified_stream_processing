@@ -210,6 +210,16 @@ lemma A1:
   apply (meson old.sum.exhaust)
   done
 
+lemma A2:
+  \<open>\<X> \<bullet> \<Q> \<approx> map_operator (case_sum Inr Inl) id \<Q>\<close>
+  apply transfer
+  apply (auto split: if_splits split: sum.splits)
+  apply (rule A2')
+   apply (smt (verit, best) case_sum_invert_Inl case_sum_invert_Inr inj_onI sum.case_eq_if)
+  apply (meson old.sum.exhaust)
+  done
+
+
 (* since we fixed sink_op with output 0, now this lemma needs map_op *)
 lemma A4:
   \<open>\<Q> \<bullet> ! \<approx> ! \<parallel> !\<close>
