@@ -136,8 +136,4 @@ next
   qed
 qed
 
-lemma B2_1':
-  \<open>map_op projl projl (op \<parallel> (\<I> :: (0, 0, 'd) op)) ~ op\<close>
-  sorry
-
 end

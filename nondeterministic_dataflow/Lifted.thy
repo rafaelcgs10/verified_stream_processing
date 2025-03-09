@@ -111,7 +111,6 @@ lemma sink_vdash_absorb:
   "\<stileturn>((! :: ('m :: {countable, defaults}, 0, 'd) op)\<turnstile>) \<approx> !"
   sorry
 
-
 section \<open>Typedef and lifting\<close>
 
 context notes [[typedef_overloaded]] begin
