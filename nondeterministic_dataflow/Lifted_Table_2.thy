@@ -206,22 +206,26 @@ notation aeq_empty_operator ("\<Q>")
 notation sink_op_0_operator ("!")
 notation dummy_source_operator ("\<exclamdown>")
 
+
 lemma A1:
   \<open>(\<Q> \<parallel> \<I>) \<bullet> \<Q> \<approx> map_operator (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>)\<close>
   apply transfer
   apply (auto split: if_splits split: sum.splits)
-    apply (rule A1')
-   apply (smt (verit, best) case_sum_invert_Inl case_sum_invert_Inr inj_onI sum.case_eq_if)
-  apply (meson old.sum.exhaust)
+   apply (rule A1')
+  apply (smt (verit, best) case_sum_invert_Inl case_sum_invert_Inr inj_onI inv_f_eq old.sum.exhaust)
   done
 
 lemma A2:
   \<open>\<X> \<bullet> \<Q> \<approx> map_operator (case_sum Inr Inl) id \<Q>\<close>
   apply transfer
   apply (auto split: if_splits split: sum.splits)
-  apply (rule A2')
+   apply (rule A2')
+
+end
+
    apply (smt (verit, best) case_sum_invert_Inl case_sum_invert_Inr inj_onI sum.case_eq_if)
-  apply (meson old.sum.exhaust)
+   apply (meson old.sum.exhaust)
+  apply (smt (verit, ccfv_SIG) case_sum_defaults case_sum_invert_Inl case_sum_invert_Inr inj_onI inv_f_eq sum.case_eq_if)
   done
 
 lemma A3:
@@ -234,12 +238,12 @@ lemma A3:
    apply auto
   done
 
-(* since we fixed sink_op with output 0, now this lemma needs map_op *)
+(* (* since we fixed sink_op with output 0, now this lemma needs map_op *)
 lemma A4:
   \<open>\<Q> \<bullet> ! \<approx> ! \<parallel> !\<close>
 
 (* since we fixed sink_op with output 0, now this lemma needs map_op *)
 lemma A14':
   \<open>(\<Q> :: (0 + 0, 0, 'd) operator) \<approx> \<I>\<close>
-
+ *)
 end

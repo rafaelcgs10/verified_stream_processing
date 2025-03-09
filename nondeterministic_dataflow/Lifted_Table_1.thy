@@ -48,8 +48,8 @@ lemma B8:
   apply transfer
   apply (simp add: inj_eq split: if_splits)
   apply (intro impI conjI)
-   apply (auto simp add: inj_eq split: if_splits intro!: inj_onI B8 bisim_wbisim)[1]
-  apply (smt (verit, ccfv_SIG) case_sum_defaults case_sum_invert_Inl case_sum_invert_Inr inj_onI sum.case_eq_if)
+   apply (auto simp add: inj_eq split: if_splits sum.splits intro!: inj_onI B8 bisim_wbisim)[1]
+  apply (smt (verit, ccfv_threshold) case_sum_defaults case_sum_invert_Inl case_sum_invert_Inr inj_onI inv_f_eq sum.case_eq_if)
   done
 
 lemma R1:
