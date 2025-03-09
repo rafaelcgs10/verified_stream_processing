@@ -1,4 +1,4 @@
-\<comment> \<open>The basic operators from the BNA book "Network Algebra for Synchronous and Asynchronous Dataflow" (https://staff.fnwi.uva.nl/c.a.middelburg/papers/P9508.pdf) \<close>
+\<comment> \<open>The basic operators from the "Network Algebra for Synchronous and Asynchronous Dataflow" (https://staff.fnwi.uva.nl/c.a.middelburg/papers/P9508.pdf) \<close>
 theory BNA_Operators
 
 imports
