@@ -307,14 +307,6 @@ lemma A15:
   apply transfer
   using A15' by auto
 
-
-lemma A17:
-  \<open>map_operator Inr Inr ! \<approx> ! \<parallel> !\<close>
-  apply transfer
-  apply (auto split: if_splits split: sum.splits)
-  oops
-
-
 lemma A18:
   \<open>(\<Lambda> :: (0, 0 + 0, 'd) operator) \<approx> map_operator id Inr \<I>\<close>
   apply transfer
