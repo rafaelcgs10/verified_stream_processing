@@ -62,31 +62,7 @@ class no_defaults = defaults +
 
 subclass (in no_defaults) defaults.
 
-class all_defaults = defaults +
-  assumes all_defaults: "defaults = UNIV"
 
-subclass (in all_defaults) defaults.
-
-instantiation sum :: (all_defaults, type) all_defaults
-begin
-instance
-  apply -
-  apply (rule all_defaults.intro_of_class)
-  unfolding class.all_defaults_def defaults_sum_def
-  sledgehammer
-
-end
-  
-
-  find_theorems class.all_defaults
-
-  apply (rule )
-
-  find_theorems "OFCLASS(_, all_defaults_class)"
-
-
-
-end
 
 setup_lifting type_definition_num0
 instantiation num0 :: defaults begin

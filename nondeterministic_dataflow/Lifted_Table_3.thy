@@ -160,7 +160,7 @@ proof -
   finally show ?thesis.
 qed
 
-lemma A2_merge':
+lemma A2':
   \<open>\<X> \<bullet> \<V>' \<approx> map_op (case_sum Inr Inl) id \<V>'\<close>
 proof -
   have \<open>\<X> \<bullet> \<V>' \<approx> \<X> \<bullet> \<V> \<bullet> \<I>\<close>
@@ -172,28 +172,26 @@ proof -
   finally show ?thesis.
 qed
 
-lemma A3_merge':
-  \<open>map_op projr id ((\<exclamdown>::(0, 'a :: {countable, defaults}, 'b) op) \<parallel> \<I>) \<bullet> \<V>' \<approx> \<I>\<close>
+lemma A3':
+  \<open>((\<exclamdown>::(0, 'a :: {countable, defaults}, 'b) op) \<parallel> \<I>) \<bullet> \<V>' \<approx> map_op Inr id \<I>\<close>
 proof -
-  have \<open>map_op projr id ((\<exclamdown>::(0, 'a, 'b) op) \<parallel> \<I>) \<bullet> \<V>'
-    \<approx> map_op projr id ((\<exclamdown>::(0, 'a, 'b) op) \<parallel> \<I>) \<bullet> \<V> \<bullet> \<I>\<close>
+  have \<open>((\<exclamdown>::(0, 'a, 'b) op) \<parallel> \<I>) \<bullet> \<V>' \<approx> ((\<exclamdown>::(0, 'a, 'b) op) \<parallel> \<I>) \<bullet> \<V> \<bullet> \<I>\<close>
     using bisim_wbisim B3 wbisim_sym by blast
-  also have \<open>\<dots> \<approx> \<I> \<bullet> \<I>\<close>
+  also have \<open>\<dots> \<approx> (map_op Inr id \<I>) \<bullet> \<I>\<close>
     using A3 wbisim_refl wbisim_scomp_op_cong by blast
-  also have \<open>\<dots> \<approx> \<I>\<close>
-    using scomp_op_id_id by blast
+  also have \<open>\<dots> \<approx> map_op Inr id \<I>\<close>
+    using map_op_out_id_vdash scomp_op_id_id wbisim_map_op wbisim_sym wbisim_trans by blast
   finally show ?thesis.
 qed
 
-lemma A4_merge':
-  \<open>\<V>' \<bullet> ! \<approx> ! \<parallel> !\<close>
+lemma A4':
+  \<open>map_op id Inl (\<V>' \<bullet> !) \<approx> ! \<parallel> !\<close>
 proof -
-  have \<open>\<V>' \<bullet> ! \<approx> \<V> \<bullet> (\<I> \<bullet> !)\<close>
-    using bisim_wbisim B3 by blast
-  also have \<open>\<dots> \<approx> \<V> \<bullet> !\<close>
-    by (metis id_sink_op_sink_op scomp_op_def wbisim_refl wbisim_scomp_op_cong)
-  also have \<open>\<dots> \<approx> ! \<parallel> !\<close>
-    using A4 by auto
+  have \<open>map_op id Inl (\<V>' \<bullet> !) \<approx> map_op id Inl (\<V> \<bullet> (\<I> \<bullet> !))\<close>
+    by (simp add: B3 bisim_map_op bisim_wbisim)
+  also have \<open>\<dots> \<approx> map_op id Inl (\<V> \<bullet> !)\<close>
+    by (metis bisim_refl bisim_wbisim id_sink_op_sink_op scomp_op_def wbisim_map_op wbisim_scomp_op_cong)
+  also have \<open>\<dots> \<approx> ! \<parallel> !\<close> by (rule A4)
   finally show ?thesis.
 qed
 
@@ -264,6 +262,25 @@ lemma A1:
   apply (auto split: if_splits split: sum.splits)
   apply (rule A1')
   done
+
+lemma A2:
+  \<open>\<X> \<bullet> \<V> \<approx> map_operator (case_sum Inr Inl) id \<V>\<close>
+  apply transfer
+  apply (auto split: sum.splits)[1]
+  by (rule A2')
+
+lemma A3:
+  \<open>((\<exclamdown>::(0, 'a :: {countable, defaults}, 'b) operator) \<parallel> \<I>) \<bullet> \<V> \<approx> map_operator Inr id \<I>\<close>
+  apply transfer
+  apply auto[1]
+  by (rule A3')
+
+lemma A4:
+  \<open>map_operator id Inl (\<V> \<bullet> !) \<approx> ! \<parallel> !\<close>
+  apply transfer
+  apply auto[1]
+  by (rule A4')
+
 
 lemma A17:
   \<open>map_operator Inr Inr ! \<approx> ! \<parallel> !\<close>
