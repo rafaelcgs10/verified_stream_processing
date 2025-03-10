@@ -5,6 +5,8 @@ imports
 begin
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
+section \<open>Axiom A9\<close>
+
 lemma A9:
   \<open>\<exclamdown> \<bullet> ! ~ \<oslash>\<close>
   apply (coinduction rule: bisim_coinduct_upto)
@@ -43,6 +45,5 @@ lemma A9:
      apply blast+
     done
   done
-
 
 end

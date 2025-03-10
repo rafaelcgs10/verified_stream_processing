@@ -12,8 +12,12 @@ imports
   "table_2/A9"
   "table_2/A10"
   "table_2/A11"
+  "table_2/A12"
+  "table_2/A13"
   "table_2/A14"
   "table_2/A15"
+  "table_2/A16"
+  "table_2/A17"
   "table_2/A18"
   "table_2/A19"
   "table_2/F3"
@@ -214,6 +218,36 @@ lemma A4:
   apply (auto simp add: inj_on_def)[1]
   by (rule A4')
 
+lemma A5:
+  \<open>\<C> \<bullet> (\<C> \<parallel> \<I>) \<approx> map_operator id (case_sum Inr Inl) (\<C> \<bullet> (\<I> \<parallel> \<C>))\<close>
+  apply transfer
+  apply (auto split: sum.splits)[1]
+  using A5 bisim_wbisim by blast
+
+lemma A6:
+  \<open>\<C> \<bullet> \<X> \<approx> map_operator id (case_sum Inr Inl) \<C>\<close>
+  apply transfer
+  apply (auto split: sum.splits)[1]
+  by (rule A6)
+
+lemma A7:
+  \<open>\<C> \<bullet> (! \<parallel> \<I>) \<approx> map_operator id Inr \<I>\<close>
+  apply transfer
+  apply auto[1]
+  by (rule A7)
+
+lemma A8:
+  \<open>map_operator Inl id (\<exclamdown> \<bullet> \<C>) \<approx> \<exclamdown> \<parallel> \<exclamdown>\<close>
+  apply transfer
+  apply auto[1]
+  apply (rule bisim_wbisim)
+  by (rule A8)
+
+lemma A9:
+  \<open>\<exclamdown> \<bullet> ! \<approx> \<I>\<close>
+  apply transfer
+  using A9 bisim_wbisim id_op_0_end_op wbisim_sym wbisim_trans by blast
+
 lemma A10:
   \<open>\<Q> \<bullet> \<C> \<approx> (\<C> \<parallel> \<C>) \<bullet> (map_operator reassoc reassoc (map_operator assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)) \<bullet> (\<Q> \<parallel> \<Q>)\<close>
   apply transfer
@@ -223,6 +257,16 @@ lemma A10:
 lemma A11:
   \<open>\<C> \<bullet> \<Q> \<approx> \<I>\<close>
   by transfer (rule A11')
+
+lemma A12:
+  \<open>\<exclamdown> \<approx> (\<I> :: (0, 0, 'd) operator)\<close>
+  apply transfer
+  using A12 bisim_sym bisim_trans bisim_wbisim id_op_0_end_op by blast
+
+lemma A13:
+  \<open>map_operator Inl id \<exclamdown> \<approx> \<exclamdown> \<parallel> \<exclamdown>\<close>
+  apply transfer
+  using A13 bisim_wbisim by auto
 
 lemma A14:
   \<open>map_operator id Inl (\<Q> :: (0 + 0, 0, 'd) operator) \<approx> \<I>\<close>
@@ -236,6 +280,26 @@ lemma A15:
   apply (auto simp add: \<UU>_def inj_on_diff)[1]
   by (rule A15')
 
+lemma A16:
+  \<open>! \<approx> (\<I> :: (0, 0, 'd) operator)\<close>
+  apply transfer
+  using A16 bisim_wbisim bisim_sym bisim_trans id_op_0_end_op by blast
+
+lemma A17:
+  \<open>map_operator id Inl ! \<approx> ! \<parallel> !\<close>
+  apply transfer
+  using A17 bisim_wbisim by auto
+
+lemma A18:
+  \<open>map_operator Inl id (\<C> :: (0, 0 + 0, 'd) operator) \<approx> \<I>\<close>
+  apply transfer
+  using A18 bisim_wbisim by auto
+
+lemma A19:
+  \<open>\<C> \<approx> (\<C> \<parallel> \<C>) \<bullet> map_operator reassoc reassoc (map_operator assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)\<close>
+  apply transfer
+  using A19 by fastforce
+
 lemma F3:
   assumes \<open>(S :: ('a :: {countable,defaults}, 0, 'c) operator) = !\<close>
     and \<open>(Q' :: ('a :: {countable,defaults} + 'a, 'a, 'c) operator) = \<Q>\<close>
@@ -248,6 +312,11 @@ lemma F3:
   apply auto[1]
   apply (rule F3')
   by simp_all
+
+lemma F4:
+  \<open>map_operator Inr id \<C> \<up> \<approx> \<exclamdown>\<close>
+  apply transfer
+  using F4 bisim_wbisim by auto
 
 lemma F5:
   \<open>((\<I> \<parallel> \<C>) \<bullet> map_operator reassoc reassoc (\<X> \<parallel> \<I>) \<bullet> (\<I> \<parallel> \<Q>)) \<up>
