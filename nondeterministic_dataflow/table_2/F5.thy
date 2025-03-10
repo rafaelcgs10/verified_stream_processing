@@ -89,4 +89,37 @@ lemma F5:
   using F5_gen[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []"] apply force
   done
 
+lemma F5'_gen:
+  \<open>map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (\<lambda>_. []))
+    (map_op projl projr (comp_op Some (case_sum (\<lambda>_. []) (case_sum buf4 (\<lambda>_. [])))
+      (map_op projl projr (comp_op Some (case_sum buf2 (\<lambda>_. []))
+        (comp_op (\<lambda>_. None) (\<lambda>_. [])
+          ((id_op buf1) :: ('a :: {countable,defaults}, 'a, 'b) op) \<C>)
+        (map_op reassoc reassoc (comp_op (\<lambda>_. None) (\<lambda>_. [])
+          (transp_op (case_sum buf3 (\<lambda>_. []))) \<I>))))
+      (comp_op (\<lambda>_. None) (\<lambda>_. [])
+        \<I>
+        (map_op projl projr (comp_op Some (\<lambda>_. []) (aeq_op (case_sum buf5 (\<lambda>_. []))) \<I>))))))
+  \<approx> map_op projl projr (comp_op Some (\<lambda>_. []) (!::('a, 0, 'b) op)
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<oslash> \<I>)::(0, 'a, 'b) op))\<close>
+proof (coinduction arbitrary: buf1 buf2 buf3 buf4 buf5 rule: wbisim_coinduct_upto'')
+  case SIM1
+  then show ?case
+    using SIM1 by (auto 0 0 elim!: step_map_op_elim step_loop_op_elim step_comp_op_elim step_id_op_cases step_acopy_op_elim step_transp_op_cases step_aeq_op_elim split: sum.splits if_splits)
+    (force del: wbc_base intro!: wbc_base)+
+next
+  case SIM2
+  then show ?case
+    using SIM2 by (auto elim !: step_map_op_elim step_comp_op_elim step_sink_op step_id_op_cases split: if_splits sum.splits)
+      (intro exI conjI[rotated, OF wbc_base], force, force del: step_wstep intro!: step_wstep)
+qed
+
+lemma F5':
+  \<open>((\<I> \<parallel> \<C>) \<bullet> map_op reassoc reassoc (\<X> \<parallel> \<I>) \<bullet> (\<I> \<parallel> \<Q>')) \<up>
+  \<approx> (!::('a :: {countable, defaults}, 0, 'b) op) \<bullet> (\<exclamdown>::(0, 'a, 'b) op)\<close>
+  unfolding feedback_op_def scomp_op_def pcomp_op_def
+  using F5'_gen[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>]
+  by simp
+
+
 end
