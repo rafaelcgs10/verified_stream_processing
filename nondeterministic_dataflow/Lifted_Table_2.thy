@@ -114,16 +114,9 @@ qed
 
 lemma A14':
   \<open>map_op id Inl (\<Q>' :: (0 + 0, 0, 'd) op) \<approx> \<I>\<close>
-proof (coinduction rule: wbisim_coinduct_upto'')
-  case SIM1
-  then show ?case
-    unfolding scomp_op_def
-    by (auto elim!: step_map_op_elim step_comp_op_elim step_aeq_op_elim step_id_op_cases)
-next
-  case SIM2
-  then show ?case
-    by (auto elim!: step_id_op_cases)
-qed
+  unfolding scomp_op_def
+  by (coinduction rule: wbisim_coinduct_upto'')
+    (auto elim!: step_map_op_elim step_comp_op_elim step_aeq_op_elim step_id_op_cases)
 
 lemma A15':
   \<open>\<Q>' \<approx> map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>) \<bullet> (\<Q>' \<parallel> \<Q>')\<close>
