@@ -108,12 +108,14 @@ lemma merge'_id_absorb:
 
 section \<open>Axioms for sink surrounded by identities\<close>
 lemma sink_vdash_absorb_gen:
-  "map_op projl projr (comp_op Some buf2 (id_op buf1) (map_op projl projr (comp_op Some (\<lambda>_. []) (! :: ('m :: {countable, defaults}, 0, 'd) op) \<I>))) \<approx> !"
+  "map_op projl projr (comp_op Some buf2 (id_op buf1) (map_op projl projr (comp_op Some (\<lambda>_. []) (! :: ('m :: {countable, defaults}, 'c :: {countable, all_defaults}, 'd) op) \<I>))) \<approx> !"
 proof (coinduction arbitrary: buf1 buf2  rule: wbisim_coinduct_upto'')
   case SIM1
   then show ?case 
+    apply -
+    explore (auto elim !: step_sink_op step_map_op_elim step_comp_op_elim step_id_op_cases; hypsubst_thin)
   proof -
-    have "\<exists>op2'. wstep (Inp pa xa) (!::('m, 0, 'd) op) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. (\<exists>buf1 buf2. op1xx = map_op projl projr (comp_op Some buf2 (id_op buf1) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) \<and> op2xx = !) (map_op projl projr (comp_op Some buf2 (id_op (BENQ pa xa buf1)) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) op2'"
+    have "\<exists>op2'. wstep (Inp pa xa) (!::('m, 'c, 'd) op) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. (\<exists>buf1 buf2. op1xx = map_op projl projr (comp_op Some buf2 (id_op buf1) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) \<and> op2xx = !) (map_op projl projr (comp_op Some buf2 (id_op (BENQ pa xa buf1)) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) op2'"
       if "pa \<notin> defaults"
       for pa :: 'm
         and xa :: 'd
@@ -122,7 +124,7 @@ proof (coinduction arbitrary: buf1 buf2  rule: wbisim_coinduct_upto'')
       apply (intro exI conjI[rotated] wbc_base)
         apply blast+
       done
-    moreover have "\<exists>op2'. (step (Tau::('m, 0, 'd) IO))\<^sup>*\<^sup>* ! op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. (\<exists>buf1 buf2. op1xx = map_op projl projr (comp_op Some buf2 (id_op buf1) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) \<and> op2xx = !) (map_op projl projr (comp_op Some (BENQ pa (BHD pa buf1) buf2) (id_op (BTL pa buf1)) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) op2'"
+    moreover have "\<exists>op2'. (step (Tau::('m, 'c, 'd) IO))\<^sup>*\<^sup>* ! op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. (\<exists>buf1 buf2. op1xx = map_op projl projr (comp_op Some buf2 (id_op buf1) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) \<and> op2xx = !) (map_op projl projr (comp_op Some (BENQ pa (BHD pa buf1) buf2) (id_op (BTL pa buf1)) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) op2'"
       if "pa \<notin> defaults"
         and "buf1 pa \<noteq> []"
       for pa :: 'm
@@ -131,7 +133,7 @@ proof (coinduction arbitrary: buf1 buf2  rule: wbisim_coinduct_upto'')
       apply (intro exI conjI[rotated] wbc_base)
         apply blast+
       done
-    moreover have "\<exists>op2'. (step (Tau::('m, 0, 'd) IO))\<^sup>*\<^sup>* ! op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. (\<exists>buf1 buf2. op1xx = map_op projl projr (comp_op Some buf2 (id_op buf1) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) \<and> op2xx = !) (map_op projl projr (comp_op Some (BTL p buf2) (id_op buf1) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) op2'"
+    moreover have "\<exists>op2'. (step (Tau::('m, 'c, 'd) IO))\<^sup>*\<^sup>* ! op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. (\<exists>buf1 buf2. op1xx = map_op projl projr (comp_op Some buf2 (id_op buf1) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) \<and> op2xx = !) (map_op projl projr (comp_op Some (BTL p buf2) (id_op buf1) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) op2'"
       if "buf2 p \<noteq> []"
         and "p \<notin> defaults"
       for p :: 'm
@@ -141,7 +143,7 @@ proof (coinduction arbitrary: buf1 buf2  rule: wbisim_coinduct_upto'')
         apply blast+
       done
     ultimately show ?thesis
-      using SIM1 by (auto elim !: step_sink_op step_map_op_elim step_comp_op_elim step_id_op_cases)
+      using SIM1  by (auto elim !: step_sink_op step_map_op_elim step_comp_op_elim step_id_op_cases)
   qed
 next
   case SIM2
@@ -149,7 +151,7 @@ next
     apply -
     explore (auto elim!: step_sink_op step_map_op_elim step_comp_op_elim step_id_op_cases; hypsubst_thin?)
   proof -
-    have "\<exists>op2'. wstep (Inp p x) (map_op projl projr (comp_op Some buf2 (id_op buf1) (map_op projl projr (comp_op (Some::0 \<Rightarrow> _ option) (\<lambda>_. []) ! \<I>)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. (\<exists>buf1 buf2. op1xx = map_op projl projr (comp_op Some buf2 (id_op buf1) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) \<and> op2xx = !) op2' !"
+    have "\<exists>op2'. wstep (Inp p x) (map_op projl projr (comp_op Some buf2 (id_op buf1) (map_op projl projr (comp_op (Some::'c \<Rightarrow> _ option) (\<lambda>_. []) ! \<I>)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. (\<exists>buf1 buf2. op1xx = map_op projl projr (comp_op Some buf2 (id_op buf1) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) \<and> op2xx = !) op2' !"
       if "p \<notin> defaults"
       for p :: 'm
         and x :: 'd
@@ -159,12 +161,12 @@ next
         apply blast+
       done
     then show ?thesis
-      using SIM2 by (auto elim !: step_sink_op step_map_op_elim step_comp_op_elim step_id_op_cases ; hypsubst_thin ?)
+      using SIM2  by (auto elim !: step_sink_op step_map_op_elim step_comp_op_elim step_id_op_cases)
   qed
 qed
 
 lemma sink_vdash_absorb:
-  "\<stileturn>((! :: ('m :: {countable, defaults}, 0, 'd) op)\<turnstile>) \<approx> !"
+  "\<stileturn>((! :: ('m :: {countable, defaults}, 'c :: {countable, all_defaults}, 'd) op)\<turnstile>) \<approx> !"
   unfolding scomp_op_def using sink_vdash_absorb_gen by force
 
 
@@ -675,12 +677,12 @@ lift_definition transp_empty_operator :: "('a :: {countable, defaults} + 'b :: {
   using bisim_wbisim B3.B3 transp_id_absorb wbisim_trans apply blast
   done
 
-abbreviation "sink_op_0 :: ('a :: {countable, defaults}, 0, 'c) op \<equiv> sink_op"
+abbreviation "sink_op_0 :: ('a :: {countable, defaults}, 'b :: all_defaults, 'e) op \<equiv> sink_op"
 
 no_notation sink_op ("!")
-lift_definition sink_op_0_operator :: "('a :: {countable, defaults}, 0, 'b) operator"  ("!") is "sink_op_0"
+lift_definition sink_op_0_operator :: "('a :: {countable, defaults}, 'b :: {countable, all_defaults}, 'd) operator"  ("!") is "sink_op_0"
   apply (rule exI[of _ "sink_op"])
-  using sink_vdash_absorb wbisim_sym apply blast
+  using sink_vdash_absorb wbisim_sym apply auto
   done
 
 no_notation merge_empty_op ("\<V>")
@@ -701,12 +703,13 @@ lift_definition split_empty_operator :: "('a :: {countable, defaults}, 'a  + 'a,
   apply (simp add: split_id_absorb_right wbisim_refl wbisim_scomp_op_cong)
   done
 
-abbreviation "dummy_source_op_0 :: (0, 'a :: {countable, defaults}, 'c) op \<equiv> dummy_source_op"
+abbreviation "dummy_source_op_0 :: ('b :: {countable, all_defaults}, 'a :: {countable, defaults}, 'c) op \<equiv> dummy_source_op"
 
 no_notation dummy_source_op ("\<exclamdown>")
-lift_definition dummy_source_operator :: "(0, 'a :: {countable, defaults}, 'b) operator"  ("\<exclamdown>") is "dummy_source_op_0"
+lift_definition dummy_source_operator :: "('c :: {countable, all_defaults}, 'a :: {countable, defaults}, 'b) operator"  ("\<exclamdown>") is "dummy_source_op_0"
   apply (rule exI[of _ "dummy_source_op"])
-  apply (smt (verit, ccfv_SIG) B4_1 bisim_wbisim id_op_0_end_op scomp_op_dummy_source scomp_op_id_id wbisim_scomp_op_cong wbisim_sym wbisim_trans)
+  using B4_1 bisim_wbisim id_op_0_end_op scomp_op_dummy_source scomp_op_id_id wbisim_scomp_op_cong wbisim_sym wbisim_trans
+  apply (smt (verit, best))
   done
 
 lemma wbisim_vdash_inputs_no_defaults[dest]:
@@ -772,25 +775,24 @@ lemma not_Inl_not_Inr_False_dest[dest!]:
   by (meson old.sum.exhaust)
 
 lemma inj_on_Inl[simp]:
-  "inj_on (inv (Inl :: 'a \<Rightarrow> 'a :: defaults + 0)) \<UU>"
+  "inj_on (inv (Inl :: 'a \<Rightarrow> 'a :: defaults + 'c :: all_defaults)) \<UU>"
   unfolding inv_into_def
-  apply auto
-  apply (smt (verit, del_insts) Un_iff \<UU>_E default_0 defaults_sum_def image_iff inj_on_def someI_ex sum.exhaust_sel)
+  apply (smt (verit, del_insts) UNIV_sum Un_iff \<UU>_E all_defaults defaults_sum_def imageE inj_onCI iso_tuple_UNIV_I someI_ex)
   done
 
 lemma inj_on_Inr[simp]:
-  "inj_on (inv (Inr :: 'a \<Rightarrow> 0 + 'a :: defaults)) \<UU>"
+  "inj_on (inv (Inr :: 'a \<Rightarrow> 'c :: all_defaults + 'a :: defaults)) \<UU>"
   unfolding inv_into_def
   apply auto
-  apply (smt (verit, del_insts) Un_iff \<UU>_E default_0 defaults_sum_def image_iff inj_on_def someI_ex sum.exhaust_sel)
+  apply (smt (verit, del_insts) UNIV_sum Un_iff \<UU>_E all_defaults defaults_sum_def imageE inj_onCI iso_tuple_UNIV_I someI_ex)
   done
 
 lemma inv_Inl_defaults[dest!]:
-  "inv (Inl :: 'a \<Rightarrow> 'a :: defaults + 0) x \<in> defaults \<Longrightarrow> x \<in> defaults"
+  "inv (Inl :: 'a \<Rightarrow> 'a :: defaults + 'c :: all_defaults) x \<in> defaults \<Longrightarrow> x \<in> defaults"
   by (cases x; simp)
 
 lemma inv_Inr_defaults[dest!]:
-  "inv (Inr :: 'a \<Rightarrow> 0 + 'a :: defaults) x \<in> defaults \<Longrightarrow> x \<in> defaults"
+  "inv (Inr :: 'a \<Rightarrow> 'c :: all_defaults + 'a :: defaults) x \<in> defaults \<Longrightarrow> x \<in> defaults"
   by (cases x; simp)
 
 lemma inj_on_reassoc[simp]:

@@ -3753,7 +3753,7 @@ lemma default_0[simp]: "x \<in> (defaults :: 0 set)"
   by transfer simp
 
 lemma id_op_0_end_op:
-  \<open>(\<I> :: (0, 0, 'd) op) ~ \<oslash>\<close>
+  \<open>(\<I> :: ('b :: {countable, all_defaults}, 'b :: {countable, all_defaults}, 'd) op) ~ \<oslash>\<close>
   by (rule choices_Choice_bisim) auto
 
 section \<open>User defined operators\<close>

@@ -8,7 +8,7 @@ no_notation Sublist.parallel (infixl "\<parallel>" 50)
 section \<open>Axiom A8: Acopy dummy source\<close>
 
 lemma A8:
-  \<open>map_op Inl id (\<exclamdown> \<bullet> \<C>) ~ \<exclamdown> \<parallel> \<exclamdown>\<close>
+  \<open>(\<exclamdown> \<bullet> \<C>) ~ \<exclamdown> \<parallel> \<exclamdown>\<close>
   apply (coinduction rule: bisim_coinduct_upto)
   unfolding sim_def
   apply (rule conjI)

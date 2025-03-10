@@ -7,7 +7,6 @@ no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
 section \<open>Axiom A8: Split dummy source\<close>
 
-(*
 lemma A8:
   \<open>\<exclamdown> \<bullet> \<Lambda> ~ \<exclamdown> \<parallel> \<exclamdown>\<close>
   apply (coinduction rule: bisim_coinduct_upto)
@@ -23,12 +22,5 @@ lemma A8:
     apply (metis cempty_iff choices_pcomp_op_dummy_source step_choicesE)
     done
   done
-*)
-
-lemma A8:
-  \<open>map_op Inl id (\<exclamdown> \<bullet> \<Lambda>) ~ \<exclamdown> \<parallel> \<exclamdown>\<close>
-  unfolding scomp_op_def pcomp_op_def
-  by (coinduction rule: bisim_coinduct_upto'')
-    (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_split_op_cases)
 
 end

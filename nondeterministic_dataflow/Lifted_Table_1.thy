@@ -36,7 +36,6 @@ lemma B1:
   apply (auto simp add: inj_eq split: if_splits  intro!: inj_onI B1 bisim_wbisim)
   done
 
-
 lemma B2_1:
   \<open>(op \<parallel> (\<I> :: (0, 0, 'd) operator)) \<approx> map_operator Inl Inl op\<close>
   apply transfer
@@ -229,10 +228,8 @@ lemma R5:
   apply transfer
   apply (simp add: inj_eq split: if_splits)
   apply (intro impI conjI)
-  apply (rule R5)
-  using default_0 apply blast
-  using default_0 apply blast
-  apply (auto split: sum.splits)
+    apply (rule R5)
+  apply force+
   done
 
 lemma R6:

@@ -148,9 +148,9 @@ proof -
 qed
 
 lemma A8':
-  \<open>map_op Inl id (\<exclamdown> \<bullet> \<Lambda>') \<approx> \<exclamdown> \<parallel> \<exclamdown>\<close>
+  \<open>\<exclamdown> \<bullet> \<Lambda>' \<approx> \<exclamdown> \<parallel> \<exclamdown>\<close>
 proof -
-  have \<open>map_op Inl id (\<exclamdown> \<bullet> \<Lambda>') \<approx> map_op Inl id (\<exclamdown> \<bullet> \<Lambda>)\<close>
+  have \<open>\<exclamdown> \<bullet> \<Lambda>' \<approx> \<exclamdown> \<bullet> \<Lambda>\<close>
     by (smt (verit, best) B3 B4_1 bisim_sym bisim_wbisim wbisim_map_op wbisim_refl wbisim_scomp_op_cong wbisim_trans)
   also have \<open>\<dots> \<approx> \<exclamdown> \<parallel> \<exclamdown>\<close>
     using A8 bisim_wbisim by blast
@@ -203,37 +203,37 @@ proof -
 qed
 
 lemma F3':
-  \<open>map_op id Inr (\<V>' :: ('a :: {countable, defaults} + 'a, 'a, 'c) op)\<up> \<approx> (!::('a, 0, 'c) op)\<close>
+  \<open>map_op id Inr (\<V>' :: ('a :: {countable, defaults} + 'a, 'a, 'c) op)\<up> \<approx> (!::('a, 'd :: all_defaults, 'c) op)\<close>
 proof -
-  have \<open>map_op id Inr \<V>' \<up> \<approx> (map_op id Inr \<V> \<bullet> ((!::('a, 0, 'c) op) \<parallel> \<I>)) \<up>\<close> 
+  have \<open>map_op id Inr \<V>' \<up> \<approx> (map_op id Inr \<V> \<bullet> ((!::('a, 'd :: all_defaults, 'c) op) \<parallel> \<I>)) \<up>\<close> 
     using map_op_id_Inr_move_vdash wbisim_loop_op_cong by blast
-  also have \<open>\<dots> \<approx> map_op id Inr \<V>\<up> \<bullet> (!::('a, 0, 'c) op)\<close>
+  also have \<open>\<dots> \<approx> map_op id Inr \<V>\<up> \<bullet> (!::('a, 'd :: all_defaults, 'c) op)\<close>
     apply (rule wbisim_trans)
      apply (rule wbisim_sym)
     apply (rule R2)
      apply (metis (no_types, lifting) Inr_in_defaults \<UU>_E \<UU>_def disjoint_iff id_apply image_id inputs_merge_op op.set_map(1) subsetD vimageE)
     apply (smt (verit, del_insts) Diff_disjoint Inr_inject disjoint_iff imageE op.set_map(2) outputs_merge_op subsetD vimageE)
     by (rule wbisim_refl)
-  also have \<open>\<dots> \<approx> (!::('a, 0, 'c) op)\<close>
+  also have \<open>\<dots> \<approx> (!::('a, 'd :: all_defaults, 'c) op)\<close>
     using sink_sink F3 wbisim_refl wbisim_scomp_op_cong wbisim_trans  by blast
   finally show ?thesis.
 qed
 
 lemma F4':
-  \<open>map_op Inr id (\<Lambda>'::('b :: {countable, defaults}, 'b + 'b, 'c) op) \<up> \<approx> (\<exclamdown>::(0, 'b, 'c) op)\<close>
+  \<open>map_op Inr id (\<Lambda>'::('b :: {countable, defaults}, 'b + 'b, 'c) op) \<up> \<approx> (\<exclamdown>::('d :: all_defaults, 'b, 'c) op)\<close>
 proof -
-  have \<open>map_op Inr id \<Lambda>' \<up> \<approx> (((\<exclamdown>::(0, 'b, 'c) op) \<parallel> \<I>) \<bullet> map_op Inr id \<Lambda>) \<up>\<close>
+  have \<open>map_op Inr id \<Lambda>' \<up> \<approx> (((\<exclamdown>::('d :: all_defaults, 'b, 'c) op) \<parallel> \<I>) \<bullet> map_op Inr id \<Lambda>) \<up>\<close>
     using map_op_Inr_id_left_identity wbisim_loop_op_cong by blast
-  also have \<open>\<dots> \<approx> (\<exclamdown>::(0, 'b, 'c) op) \<bullet> (map_op Inr id \<Lambda> \<up>)\<close>
+  also have \<open>\<dots> \<approx> (\<exclamdown>::('d :: all_defaults, 'b, 'c) op) \<bullet> (map_op Inr id \<Lambda> \<up>)\<close>
     apply (rule wbisim_trans)
      apply (rule wbisim_sym)
      apply (rule R1)
       apply (smt (verit, ccfv_SIG) Inr_in_defaults \<UU>_E \<UU>_def disjoint_iff id_apply image_id inputs_split_op op.set_map(1) subsetD vimageE image_iff le_iff_inf)
      apply (smt (verit) Inr_in_defaults \<UU>_E \<UU>_def id_apply Inr_inject disjoint_iff imageE op.set_map(2) outputs_split_op subsetD vimageE)
     by (rule wbisim_refl)
-  also have \<open>\<dots> \<approx> (\<exclamdown>::(0, 'b, 'c) op) \<bullet> (\<exclamdown>::('b, 'a :: {countable, defaults}, 'c) op)\<close>
+  also have \<open>\<dots> \<approx> (\<exclamdown>::('d :: all_defaults, 'b, 'c) op) \<bullet> (\<exclamdown>::('b, 'a :: {countable, defaults}, 'c) op)\<close>
    using F4 bisim_refl bisim_scomp_op_cong bisim_wbisim by blast
-  also have \<open>\<dots> \<approx> (\<exclamdown>::(0, 'b, 'c) op)\<close>
+  also have \<open>\<dots> \<approx> (\<exclamdown>::('d :: all_defaults, 'b, 'c) op)\<close>
     using scomp_op_dummy_source by blast
   finally show ?thesis.
 qed
@@ -293,9 +293,24 @@ lemma A6:
   using A6' by (auto split: sum.splits)
 
 lemma A8:
-  \<open>map_operator Inl id (\<exclamdown> \<bullet> \<Lambda>) \<approx> \<exclamdown> \<parallel> \<exclamdown>\<close>
+  \<open>(\<exclamdown> \<bullet> \<Lambda>) \<approx> \<exclamdown> \<parallel> \<exclamdown>\<close>
   apply transfer
   using A8' by auto
+
+lemma A9:
+  \<open>\<exclamdown> \<bullet> ! \<approx> \<I>\<close>
+  apply transfer
+  using A9 bisim_wbisim id_op_0_end_op wbisim_sym wbisim_trans by blast
+
+lemma A12:
+  \<open>\<exclamdown> \<approx> (\<I> :: (0, 0, 'd) operator)\<close>
+  apply transfer
+  using A12 bisim_sym bisim_trans bisim_wbisim id_op_0_end_op by blast
+
+lemma A13:
+  \<open>\<exclamdown> \<approx> \<exclamdown> \<parallel> \<exclamdown>\<close>
+  apply transfer
+  using A13 bisim_wbisim by auto
 
 lemma A14:
   \<open>map_operator id Inl (\<V> :: (0 + 0, 0, 'd) operator) \<approx> \<I>\<close>
@@ -307,13 +322,17 @@ lemma A15:
   apply transfer
   using A15' by auto
 
+lemma A16:
+  \<open>! \<approx> (\<I> :: (0, 0, 'd) operator)\<close>
+  apply transfer
+  using A16 bisim_wbisim bisim_sym bisim_trans id_op_0_end_op by blast
 
 lemma A17:
-  \<open>map_operator Inr Inr ! \<approx> ! \<parallel> !\<close>
+  \<open>! \<approx> ! \<parallel> !\<close>
   apply transfer
-  apply (auto split: if_splits split: sum.splits)
-  oops
-
+  apply (rule bisim_wbisim)
+  apply (rule A17)
+  done
 
 lemma A18:
   \<open>(\<Lambda> :: (0, 0 + 0, 'd) operator) \<approx> map_operator id Inr \<I>\<close>

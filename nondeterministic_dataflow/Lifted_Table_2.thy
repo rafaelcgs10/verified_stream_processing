@@ -230,11 +230,11 @@ lemma A7:
   by (rule A7)
 
 lemma A8:
-  \<open>map_operator Inl id (\<exclamdown> \<bullet> \<C>) \<approx> \<exclamdown> \<parallel> \<exclamdown>\<close>
+  \<open>(\<exclamdown> \<bullet> \<C>) \<approx> \<exclamdown> \<parallel> \<exclamdown>\<close>
   apply transfer
-  apply auto[1]
   apply (rule bisim_wbisim)
-  by (rule A8)
+  apply (rule A8)
+  done
 
 lemma A9:
   \<open>\<exclamdown> \<bullet> ! \<approx> \<I>\<close>
@@ -257,7 +257,7 @@ lemma A12:
   using A12 bisim_sym bisim_trans bisim_wbisim id_op_0_end_op by blast
 
 lemma A13:
-  \<open>map_operator Inl id \<exclamdown> \<approx> \<exclamdown> \<parallel> \<exclamdown>\<close>
+  \<open>\<exclamdown> \<approx> \<exclamdown> \<parallel> \<exclamdown>\<close>
   apply transfer
   using A13 bisim_wbisim by auto
 

@@ -86,4 +86,30 @@ instance ..
 end
 
 
+class all_defaults = defaults +
+  assumes all_defaults: "defaults = UNIV"
+
+instantiation sum :: (all_defaults, all_defaults) all_defaults
+begin
+instance
+  apply -
+  apply (rule all_defaults.intro_of_class) 
+  unfolding class.all_defaults_def 
+  apply (simp add: UNIV_sum all_defaults defaults_sum_def)
+  done
+end
+
+instantiation num0 :: all_defaults begin
+instance 
+  apply -
+  apply (rule all_defaults.intro_of_class) 
+  unfolding class.all_defaults_def 
+  apply (metis defaults_num0_def type_definition.Abs_image type_definition_num0)
+  done
+end
+
+lemma in_all_defaults[simp]:
+  "x \<in> (defaults :: ('a :: all_defaults) set)"
+  by (simp add: all_defaults)
+
 end
