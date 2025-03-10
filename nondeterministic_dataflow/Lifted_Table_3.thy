@@ -269,6 +269,12 @@ lemma A1:
   apply (rule A1')
   done
 
+lemma A19:
+ "\<Lambda> \<approx> (\<Lambda> \<parallel> \<Lambda>) \<bullet> map_operator reassoc reassoc (map_operator assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)"
+  apply transfer
+  apply (auto split: if_splits split: sum.splits intro: A19_split')
+  done
+
 lemma F3:
  \<open>map_operator id Inr \<V>\<up> \<approx> !\<close>
   apply transfer
