@@ -225,18 +225,18 @@ proof -
 qed
 
 lemma F3_merge':
-  \<open>map_op id Inr (\<V>' :: ('a :: {countable, defaults} + 'a, 'a, 'c) op)\<up> \<approx> (!::('a, 'a, 'c) op)\<close>
+  \<open>map_op id Inr (\<V>' :: ('a :: {countable, defaults} + 'a, 'a, 'c) op)\<up> \<approx> (!::('a, 0, 'c) op)\<close>
 proof -
-  have \<open>map_op id Inr \<V>' \<up> \<approx> (map_op id Inr \<V> \<bullet> ((!::('a, 'a, 'c) op) \<parallel> \<I>)) \<up>\<close> 
+  have \<open>map_op id Inr \<V>' \<up> \<approx> (map_op id Inr \<V> \<bullet> ((!::('a, 0, 'c) op) \<parallel> \<I>)) \<up>\<close> 
     using map_op_id_Inr_move_vdash wbisim_loop_op_cong by blast
-  also have \<open>\<dots> \<approx> map_op id Inr \<V>\<up> \<bullet> (!::('a, 'a, 'c) op)\<close>
+  also have \<open>\<dots> \<approx> map_op id Inr \<V>\<up> \<bullet> (!::('a, 0, 'c) op)\<close>
     apply (rule wbisim_trans)
      apply (rule wbisim_sym)
     apply (rule R2)
      apply (metis (no_types, lifting) Inr_in_defaults \<UU>_E \<UU>_def disjoint_iff id_apply image_id inputs_merge_op op.set_map(1) subsetD vimageE)
     apply (smt (verit, del_insts) Diff_disjoint Inr_inject disjoint_iff imageE op.set_map(2) outputs_merge_op subsetD vimageE)
     by (rule wbisim_refl)
-  also have \<open>\<dots> \<approx> (!::('a, 'a, 'c) op)\<close>
+  also have \<open>\<dots> \<approx> (!::('a, 0, 'c) op)\<close>
     using sink_sink F3 wbisim_refl wbisim_scomp_op_cong wbisim_trans  by blast
   finally show ?thesis.
 qed
@@ -250,6 +250,7 @@ no_notation transp_empty_op ("\<X>")
 no_notation sink_op ("!")
 no_notation dummy_source_op ("\<exclamdown>")
 no_notation merge_empty_op ("\<V>")
+no_notation split_empty_op ("\<Lambda>")
 
 notation wbisim_operator (infix "\<approx>"40)
 notation id_empty_operator ("\<I>")
@@ -266,6 +267,19 @@ lemma A1:
   apply transfer
   apply (auto split: if_splits split: sum.splits)
   apply (rule A1')
+  done
+
+lemma F3:
+ \<open>map_operator id Inr \<V>\<up> \<approx> !\<close>
+  apply transfer
+  apply (auto split: if_splits split: sum.splits intro: F3_merge')
+  done
+
+lemma F4:
+  \<open>map_operator Inr id \<Lambda>\<up> \<approx> \<exclamdown>\<close>
+  apply transfer
+  apply (auto split: if_splits split: sum.splits)
+  apply (rule F4_split')
   done
 
 end
