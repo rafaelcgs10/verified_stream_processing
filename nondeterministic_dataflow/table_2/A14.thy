@@ -3,12 +3,19 @@ theory A14
 imports
   "../BNA_Operators"
 begin
-no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
 section \<open>Axiom A14: Equality test with 0 ports\<close>
 
 lemma A14:
-  \<open>(\<Q> :: (0 + 0, 0, 'd) op) ~ \<oslash>\<close>
-  by (rule choices_Choice_bisim) auto
+  \<open>map_op id Inl (\<Q> :: (0 + 0, 0, 'd) op) \<approx> \<I>\<close>
+proof (coinduction rule: wbisim_coinduct_upto'')
+  case SIM1
+  then show ?case
+    by (auto elim!: step_map_op_elim step_aeq_op_elim)
+next
+  case SIM2
+  then show ?case
+    by (auto elim!: step_id_op_cases)
+qed
 
 end
