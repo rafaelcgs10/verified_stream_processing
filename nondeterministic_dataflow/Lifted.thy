@@ -178,6 +178,7 @@ typedef ('ip, 'op, 'd) operator =
   apply (rule exI[of _ "\<stileturn>\<oslash>"])
   apply (smt (verit, ccfv_SIG) bisim_wbisim B3.B3 B4.B4_2 scomp_op_move_vdash wbisim_sym wbisim_trans)
   done
+end
 
 setup_lifting type_definition_operator
 
