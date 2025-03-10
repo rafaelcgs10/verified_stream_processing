@@ -31,6 +31,7 @@ no_notation scomp_operator (infixl "\<bullet>" 65)
 no_notation pcomp_operator (infixl "\<parallel>" 64)
 no_notation feedback_operator ( "_ \<up>" [66] 65)
 no_notation transp_empty_operator ("\<X>")
+no_notation acopy_empty_operator ("\<C>")
 no_notation aeq_empty_operator ("\<Q>")
 no_notation sink_op_0_operator ("!")
 no_notation dummy_source_operator ("\<exclamdown>")
@@ -71,8 +72,7 @@ lemma A3':
     and "S = (! :: (0 + 'a :: {countable,defaults}, 0, 'd) op)"
   shows  \<open>(D \<parallel> \<I>) \<bullet> \<Q>' \<approx> S \<bullet> \<exclamdown>\<close>
 proof -
-  have \<open>(D \<parallel> \<I>) \<bullet> \<Q>'
-    \<approx> (D \<parallel> \<I>) \<bullet> \<Q> \<bullet> \<I>\<close>
+  have \<open>(D \<parallel> \<I>) \<bullet> \<Q>' \<approx> (D \<parallel> \<I>) \<bullet> \<Q> \<bullet> \<I>\<close>
     using bisim_wbisim B3.B3 wbisim_sym by blast
   also have \<open>\<dots> \<approx> (S \<bullet> \<exclamdown>) \<bullet> \<I>\<close>
     using A3.A3[OF assms] wbisim_refl wbisim_scomp_op_cong by blast
@@ -82,10 +82,12 @@ proof -
 qed
 
 lemma A4':
-  \<open>\<Q>' \<bullet> ! \<approx> ! \<parallel> !\<close>
+  \<open>map_op id Inl (\<Q>' \<bullet> !) \<approx> ! \<parallel> !\<close>
 proof -
-  have \<open>\<Q>' \<bullet> ! \<approx> \<Q> \<bullet> \<stileturn>!\<close> using bisim_wbisim B3.B3 by blast
-  also have \<open>\<dots> \<approx> \<Q> \<bullet> !\<close> using scomp_op_id_left_absorb calculation wbisim_sym wbisim_trans by (metis id_sink_op_sink_op scomp_op_def wbisim_refl wbisim_scomp_op_cong)
+  have \<open>map_op id Inl (\<Q>' \<bullet> !) \<approx> map_op id Inl (\<Q> \<bullet> (\<I> \<bullet> !))\<close>
+    using B3 bisim_map_op bisim_wbisim by blast
+  also have \<open>\<dots> \<approx> map_op id Inl (\<Q> \<bullet> !)\<close>
+    by (metis id_sink_op_sink_op scomp_op_def wbisim_map_op wbisim_refl wbisim_scomp_op_cong)
   also have \<open>\<dots> \<approx> ! \<parallel> !\<close> by (rule A4.A4)
   finally show ?thesis.
 qed
@@ -107,8 +109,17 @@ proof -
 qed
 
 lemma A14':
-  \<open>(\<Q>' :: (0 + 0, 0, 'd) op) ~ \<oslash>\<close>
-  by (smt (verit) A14.A14 bisim_scomp_op_cong bisim_trans choices_Choice_bisim choices_dummy_source choices_spin_op spin_op_end_op)
+  \<open>map_op id Inl (\<Q>' :: (0 + 0, 0, 'd) op) \<approx> \<I>\<close>
+proof (coinduction rule: wbisim_coinduct_upto'')
+  case SIM1
+  then show ?case
+    unfolding scomp_op_def
+    by (auto elim!: step_map_op_elim step_comp_op_elim step_aeq_op_elim step_id_op_cases)
+next
+  case SIM2
+  then show ?case
+    by (auto elim!: step_id_op_cases)
+qed
 
 lemma A15':
   \<open>\<Q>' \<approx> map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>) \<bullet> (\<Q>' \<parallel> \<Q>')\<close>
@@ -130,7 +141,7 @@ proof -
 qed
 
 lemma F3':
-  assumes \<open>(S :: ('a :: {countable,defaults}, 'a, 'c) op) = !\<close>
+  assumes \<open>(S :: ('a :: {countable,defaults}, 0, 'c) op) = !\<close>
     and "(Q' :: ('a :: {countable,defaults} + 'a, 'a, 'c) op) = \<Q>'"
     and "(Q :: ('a :: {countable,defaults} + 'a, 'a, 'c) op) = \<Q>"
     and "(I :: ('a :: {countable,defaults}, 'a, 'c) op) = \<I>"
@@ -159,6 +170,7 @@ no_notation scomp_op (infixl "\<bullet>" 65)
 no_notation pcomp_op (infixl "\<parallel>" 64)
 no_notation feedback_op ( "_ \<up>" [66] 65)
 no_notation transp_empty_op ("\<X>")
+no_notation acopy_empty_op ("\<C>")
 no_notation aeq_empty_op ("\<Q>")
 no_notation sink_op ("!")
 no_notation dummy_source_op ("\<exclamdown>")
@@ -169,6 +181,7 @@ notation scomp_operator (infixl "\<bullet>" 65)
 notation pcomp_operator (infixl "\<parallel>" 64)
 notation feedback_operator ( "_ \<up>" [66] 65)
 notation transp_empty_operator ("\<X>")
+notation acopy_empty_operator ("\<C>")
 notation aeq_empty_operator ("\<Q>")
 notation sink_op_0_operator ("!")
 notation dummy_source_operator ("\<exclamdown>")
@@ -177,18 +190,14 @@ notation dummy_source_operator ("\<exclamdown>")
 lemma A1:
   \<open>(\<Q> \<parallel> \<I>) \<bullet> \<Q> \<approx> map_operator (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>)\<close>
   apply transfer
-  apply (auto split: if_splits split: sum.splits)
-   apply (rule A1')
-  done
+  apply (auto split: sum.splits)[1]
+  by (rule A1')
 
 lemma A2:
   \<open>\<X> \<bullet> \<Q> \<approx> map_operator (case_sum Inr Inl) id \<Q>\<close>
   apply transfer
-  apply (simp split: if_splits sum.splits)
-  apply (intro allI impI conjI)
-   apply (rule A2')
-  apply auto
-  done
+  apply (auto split: sum.splits)[1]
+  by (rule A2')
 
 lemma A3:
   assumes "D = (\<exclamdown> :: (0, 'a :: {countable,defaults}, 'd) operator)"
@@ -197,15 +206,54 @@ lemma A3:
   using assms apply -
   apply transfer
   apply (rule A3')
-   apply auto
-  done
+  by auto
 
-(* (* since we fixed sink_op with output 0, now this lemma needs map_op *)
 lemma A4:
-  \<open>\<Q> \<bullet> ! \<approx> ! \<parallel> !\<close>
+  \<open>map_operator id Inl (\<Q> \<bullet> !) \<approx> ! \<parallel> !\<close>
+  apply transfer
+  apply (auto simp add: inj_on_def)[1]
+  by (rule A4')
 
-(* since we fixed sink_op with output 0, now this lemma needs map_op *)
-lemma A14':
-  \<open>(\<Q> :: (0 + 0, 0, 'd) operator) \<approx> \<I>\<close>
- *)
+lemma A10:
+  \<open>\<Q> \<bullet> \<C> \<approx> (\<C> \<parallel> \<C>) \<bullet> (map_operator reassoc reassoc (map_operator assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)) \<bullet> (\<Q> \<parallel> \<Q>)\<close>
+  apply transfer
+  apply (auto simp add: \<UU>_def inj_on_diff)[1]
+  by (rule A10')
+
+lemma A11:
+  \<open>\<C> \<bullet> \<Q> \<approx> \<I>\<close>
+  by transfer (rule A11')
+
+lemma A14:
+  \<open>map_operator id Inl (\<Q> :: (0 + 0, 0, 'd) operator) \<approx> \<I>\<close>
+  apply transfer
+  apply (auto simp add: inj_on_def)[1]
+  by (rule A14')
+
+lemma A15:
+  \<open>\<Q> \<approx> map_operator reassoc reassoc (map_operator assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>) \<bullet> (\<Q> \<parallel> \<Q>)\<close>
+  apply transfer
+  apply (auto simp add: \<UU>_def inj_on_diff)[1]
+  by (rule A15')
+
+lemma F3:
+  assumes \<open>(S :: ('a :: {countable,defaults}, 0, 'c) operator) = !\<close>
+    and \<open>(Q' :: ('a :: {countable,defaults} + 'a, 'a, 'c) operator) = \<Q>\<close>
+    and \<open>(Q :: ('a :: {countable,defaults} + 'a, 'a, 'c) operator) = \<Q>\<close>
+    and \<open>(I :: ('a :: {countable,defaults}, 'a, 'c) operator) = \<I>\<close>
+  shows  \<open>map_operator id Inr Q' \<up> \<approx> S\<close>
+  using assms
+  apply -
+  apply transfer
+  apply auto[1]
+  apply (rule F3')
+  by simp_all
+
+lemma F5:
+  \<open>((\<I> \<parallel> \<C>) \<bullet> map_operator reassoc reassoc (\<X> \<parallel> \<I>) \<bullet> (\<I> \<parallel> \<Q>)) \<up>
+  \<approx> (!::('a :: {countable, defaults}, 0, 'b) operator) \<bullet> (\<exclamdown>::(0, 'a, 'b) operator)\<close>
+  apply transfer
+  apply (auto simp add: \<UU>_def inj_on_diff)[1]
+  by (rule F5')
+
 end
