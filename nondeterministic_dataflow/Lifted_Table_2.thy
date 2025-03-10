@@ -185,7 +185,6 @@ lemma F5':
   using F5'_gen[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>]
   by simp
 
-
 no_notation wbisim (infix "\<approx>"40)
 no_notation id_empty_op ("\<I>")
 no_notation scomp_op (infixl "\<bullet>" 65)
@@ -212,20 +211,15 @@ lemma A1:
   apply transfer
   apply (auto split: if_splits split: sum.splits)
    apply (rule A1')
-  apply (smt (verit, best) case_sum_invert_Inl case_sum_invert_Inr inj_onI inv_f_eq old.sum.exhaust)
   done
 
 lemma A2:
   \<open>\<X> \<bullet> \<Q> \<approx> map_operator (case_sum Inr Inl) id \<Q>\<close>
   apply transfer
-  apply (auto split: if_splits split: sum.splits)
+  apply (simp split: if_splits sum.splits)
+  apply (intro allI impI conjI)
    apply (rule A2')
-
-end
-
-   apply (smt (verit, best) case_sum_invert_Inl case_sum_invert_Inr inj_onI sum.case_eq_if)
-   apply (meson old.sum.exhaust)
-  apply (smt (verit, ccfv_SIG) case_sum_defaults case_sum_invert_Inl case_sum_invert_Inr inj_onI inv_f_eq sum.case_eq_if)
+  apply auto
   done
 
 lemma A3:

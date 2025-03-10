@@ -678,11 +678,22 @@ lemma in_case_sum[simp]:
   apply (auto split: sum.splits)
   done
 
-lemma inv_case_sum_defaults[simp]:
+lemma inv_case_sum_defaults_Inr[simp]:
   "inv (case_sum Inr Inl) (Inr p) \<in> (defaults :: ('a :: defaults + 'b :: defaults) set) \<longleftrightarrow> p \<in> defaults"
   unfolding inv_into_def
   apply auto
   done
+lemma inv_case_sum_defaults[simp]:
+  "inv (case_sum Inr Inl) p \<in> defaults \<longleftrightarrow> p \<in> defaults"
+  by (cases p; simp add: inv_f_eq)
+
+lemma inj_on_inv_case_sum_Inr_Inl[simp]:
+  "inj_on (inv (case_sum Inr Inl)) \<UU>"
+  by (metis (no_types, opaque_lifting) inj_on_inverseI old.sum.simps(5) old.sum.simps(6) sumE surj_def surj_iff_all)
+
+lemma not_Inl_not_Inr_False_dest[dest!]:
+  "\<exists>x. (\<forall>x1. x \<noteq> Inl x1) \<and> (\<forall>x2. x \<noteq> Inr x2) \<Longrightarrow> False"
+  by (meson old.sum.exhaust)
 
 end
 end
