@@ -26,11 +26,11 @@ lemma scomp_op_move_vdash:
 
 lemma pcomp_op_move_vdash_left:
   "\<stileturn>(op1 \<parallel> op2) \<approx> \<stileturn>op1 \<parallel> \<stileturn>op2"
-    by (smt (verit, del_insts) bisim_comp_op_cong bisim_scomp_op_cong bisim_trans bisim_wbisim choices_Choice_bisim pcomp_op_def B5 B6 wbisim_sym wbisim_trans)
+  by (smt (verit, del_insts) bisim_comp_op_cong bisim_scomp_op_cong bisim_trans bisim_wbisim choices_Choice_bisim pcomp_op_def B5 B6 wbisim_sym wbisim_trans)
 
 lemma pcomp_op_move_vdash_right:
- "(op1 \<parallel> op2)\<turnstile> \<approx> op1\<turnstile> \<parallel> op2\<turnstile>"
-    by (smt (verit, del_insts) bisim_comp_op_cong bisim_scomp_op_cong bisim_trans bisim_wbisim choices_Choice_bisim pcomp_op_def B5 B6 wbisim_sym wbisim_trans)
+  "(op1 \<parallel> op2)\<turnstile> \<approx> op1\<turnstile> \<parallel> op2\<turnstile>"
+  by (smt (verit, del_insts) bisim_comp_op_cong bisim_scomp_op_cong bisim_trans bisim_wbisim choices_Choice_bisim pcomp_op_def B5 B6 wbisim_sym wbisim_trans)
 
 lemma pcomp_op_move_vdash:
   "\<stileturn>((op1 \<parallel> op2)\<turnstile>) \<approx> \<stileturn>(op1\<turnstile>) \<parallel> \<stileturn>(op2\<turnstile>)"
@@ -50,7 +50,7 @@ lemma feedback_op_move_left_vdash:
   shows  "\<stileturn>(op\<up>) \<approx> \<stileturn>op\<up>"
   using assms apply -
   apply (rule wbisim_trans[OF R1])
-  apply (simp_all add: bisim_wbisim B6 wbisim_loop_op_cong wbisim_refl wbisim_scomp_op_cong)
+    apply (simp_all add: bisim_wbisim B6 wbisim_loop_op_cong wbisim_refl wbisim_scomp_op_cong)
   done
 
 lemma feedback_op_move_right_vdash:
@@ -59,7 +59,7 @@ lemma feedback_op_move_right_vdash:
   shows  "(op\<up>)\<turnstile> \<approx> op\<turnstile>\<up>"
   using assms apply -
   apply (rule wbisim_trans[OF R2])
-  apply (simp_all add: bisim_wbisim B6 wbisim_loop_op_cong wbisim_refl wbisim_scomp_op_cong)
+    apply (simp_all add: bisim_wbisim B6 wbisim_loop_op_cong wbisim_refl wbisim_scomp_op_cong)
   done
 
 lemma feedback_op_move_vdash:
@@ -107,9 +107,66 @@ lemma merge'_id_absorb:
   using merge'_id_absorb_left B4.B4_1 wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans by blast
 
 section \<open>Axioms for sink surrounded by identities\<close>
+lemma sink_vdash_absorb_gen:
+  "map_op projl projr (comp_op Some buf2 (id_op buf1) (map_op projl projr (comp_op Some (\<lambda>_. []) (! :: ('m :: {countable, defaults}, 0, 'd) op) \<I>))) \<approx> !"
+proof (coinduction arbitrary: buf1 buf2  rule: wbisim_coinduct_upto'')
+  case SIM1
+  then show ?case 
+  proof -
+    have "\<exists>op2'. wstep (Inp pa xa) (!::('m, 0, 'd) op) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. (\<exists>buf1 buf2. op1xx = map_op projl projr (comp_op Some buf2 (id_op buf1) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) \<and> op2xx = !) (map_op projl projr (comp_op Some buf2 (id_op (BENQ pa xa buf1)) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) op2'"
+      if "pa \<notin> defaults"
+      for pa :: 'm
+        and xa :: 'd
+      using that 
+      apply -
+      apply (intro exI conjI[rotated] wbc_base)
+        apply blast+
+      done
+    moreover have "\<exists>op2'. (step (Tau::('m, 0, 'd) IO))\<^sup>*\<^sup>* ! op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. (\<exists>buf1 buf2. op1xx = map_op projl projr (comp_op Some buf2 (id_op buf1) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) \<and> op2xx = !) (map_op projl projr (comp_op Some (BENQ pa (BHD pa buf1) buf2) (id_op (BTL pa buf1)) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) op2'"
+      if "pa \<notin> defaults"
+        and "buf1 pa \<noteq> []"
+      for pa :: 'm
+      using that 
+      apply -
+      apply (intro exI conjI[rotated] wbc_base)
+        apply blast+
+      done
+    moreover have "\<exists>op2'. (step (Tau::('m, 0, 'd) IO))\<^sup>*\<^sup>* ! op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. (\<exists>buf1 buf2. op1xx = map_op projl projr (comp_op Some buf2 (id_op buf1) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) \<and> op2xx = !) (map_op projl projr (comp_op Some (BTL p buf2) (id_op buf1) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) op2'"
+      if "buf2 p \<noteq> []"
+        and "p \<notin> defaults"
+      for p :: 'm
+      using that 
+      apply -
+      apply (intro exI conjI[rotated] wbc_base)
+        apply blast+
+      done
+    ultimately show ?thesis
+      using SIM1 by (auto elim !: step_sink_op step_map_op_elim step_comp_op_elim step_id_op_cases)
+  qed
+next
+  case SIM2
+  then show ?case 
+    apply -
+    explore (auto elim!: step_sink_op step_map_op_elim step_comp_op_elim step_id_op_cases; hypsubst_thin?)
+  proof -
+    have "\<exists>op2'. wstep (Inp p x) (map_op projl projr (comp_op Some buf2 (id_op buf1) (map_op projl projr (comp_op (Some::0 \<Rightarrow> _ option) (\<lambda>_. []) ! \<I>)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. (\<exists>buf1 buf2. op1xx = map_op projl projr (comp_op Some buf2 (id_op buf1) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) \<and> op2xx = !) op2' !"
+      if "p \<notin> defaults"
+      for p :: 'm
+        and x :: 'd
+      using that 
+      apply -
+      apply (intro exI conjI[rotated] wbc_base)
+        apply blast+
+      done
+    then show ?thesis
+      using SIM2 by (auto elim !: step_sink_op step_map_op_elim step_comp_op_elim step_id_op_cases ; hypsubst_thin ?)
+  qed
+qed
+
 lemma sink_vdash_absorb:
   "\<stileturn>((! :: ('m :: {countable, defaults}, 0, 'd) op)\<turnstile>) \<approx> !"
-  sorry
+  unfolding scomp_op_def using sink_vdash_absorb_gen by force
+
 
 section \<open>Typedef and lifting\<close>
 
@@ -146,11 +203,11 @@ lift_definition
   apply (clarsimp simp add: intersect_empty_iff)
   subgoal for op1 op2 op1' op2'
     apply (intro exI[of _ "scomp_op (op1'\<turnstile>) (\<stileturn>op2')"])
-      apply (rule wbisim_trans)
-       apply (rule wbisim_scomp_op_cong)
-        apply assumption+
-      apply (rule wbisim_trans[rotated])
-       apply (rule wbisim_sym)
+    apply (rule wbisim_trans)
+     apply (rule wbisim_scomp_op_cong)
+      apply assumption+
+    apply (rule wbisim_trans[rotated])
+     apply (rule wbisim_sym)
      apply (rule scomp_op_move_vdash)
     using bisim_wbisim B3.B3 wbisim_refl wbisim_scomp_op_cong wbisim_sym apply blast
     done
@@ -171,7 +228,7 @@ lift_definition
   subgoal for op1 op2 op1' op2'
     apply (intro exI[of _ "pcomp_op op1' op2'"])
     apply (rule wbisim_trans)
-       apply (rule wbisim_pcomp_op_cong)
+     apply (rule wbisim_pcomp_op_cong)
       apply assumption+
     apply (smt (verit, best) pcomp_op_move_vdash_left pcomp_op_move_vdash_right scomp_op_id_id wbisim_scomp_op_cong wbisim_sym wbisim_trans)
     done
@@ -191,12 +248,12 @@ lift_definition
     apply (rule exI[of _ "\<stileturn>(op\<turnstile>) \<up>"])
     apply (rule wbisim_trans)
      apply (rule wbisim_loop_op_cong)
-    apply assumption
+     apply assumption
     apply (rule wbisim_trans[rotated])
      apply (rule wbisim_sym)
-    apply (rule feedback_op_move_vdash_alt)
-       apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def)[1]
-       apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def)[1]
+     apply (rule feedback_op_move_vdash_alt)
+      apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def)[1]
+     apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def)[1]
     apply (smt (verit, ccfv_threshold) bisim_wbisim B3.B3 wbisim_double_vdash wbisim_loop_op_cong wbisim_sym wbisim_trans)
     done
   done
@@ -243,11 +300,11 @@ proof (coinduction arbitrary: A B C D op rule: bisim_coinduct_upto'')
         and "pa \<notin> defaults"
       for pa :: 'a
         and xa :: 'e
-     using that 
+      using that 
       apply -
-     apply (intro conjI[rotated] exI bc_base)
-       apply force+
-     done
+      apply (intro conjI[rotated] exI bc_base)
+        apply force+
+      done
     moreover have "\<exists>op2'. step (Out (g p) (BHD p (D \<circ> g))) (map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>A B C D op. op1xx = map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) (map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (BTL p (D \<circ> g)))))))) op2'"
       if "inj f"
         and "inj g"
@@ -256,20 +313,20 @@ proof (coinduction arbitrary: A B C D op rule: bisim_coinduct_upto'')
         and "p \<notin> defaults"
         and "D (g p) \<noteq> []"
       for p :: 'c
-     using that 
+      using that 
       apply -
-     apply (intro conjI[rotated] exI bc_base)
+      apply (intro conjI[rotated] exI bc_base)
+        apply force
        apply force
-      apply force
-     apply (rule step_map_op)
-      apply (rule step_comp_op_R_Out)
-     apply (rule step_map_op)
-         apply (rule step_comp_op_R_Out)
-           apply (rule step_id_op_Write[where p ="g p"])
-     apply blast
-          apply simp_all
-     done
-   moreover have "\<exists>op2'. step Tau (map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>A B C D op. op1xx = map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) (map_op f g (map_op projl projr (comp_op Some (BENQ pa (BHD pa (A \<circ> f)) (B \<circ> f)) (id_op (BTL pa (A \<circ> f))) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g))))))) op2'"
+      apply (rule step_map_op)
+       apply (rule step_comp_op_R_Out)
+         apply (rule step_map_op)
+          apply (rule step_comp_op_R_Out)
+            apply (rule step_id_op_Write[where p ="g p"])
+               apply blast
+              apply simp_all
+      done
+    moreover have "\<exists>op2'. step Tau (map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>A B C D op. op1xx = map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) (map_op f g (map_op projl projr (comp_op Some (BENQ pa (BHD pa (A \<circ> f)) (B \<circ> f)) (id_op (BTL pa (A \<circ> f))) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g))))))) op2'"
       if "inj f"
         and "inj g"
         and "\<forall>x. f x \<in> defaults \<longrightarrow> x \<in> defaults"
@@ -277,15 +334,15 @@ proof (coinduction arbitrary: A B C D op rule: bisim_coinduct_upto'')
         and "pa \<notin> defaults"
         and "A (f pa) \<noteq> []"
       for pa :: 'a
-     using that 
+      using that 
       apply -
-     apply (intro conjI[rotated] exI bc_base)
+      apply (intro conjI[rotated] exI bc_base)
+        apply force
        apply force
+      apply (rule step_map_op)
+       apply simp_all
       apply force
-     apply (rule step_map_op)
-      apply simp_all
-     apply force
-     done
+      done
     moreover have "\<exists>op2'. step Tau (map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>A B C D op. op1xx = map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) (map_op f g (map_op projl projr (comp_op Some (BTL p (B \<circ> f)) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op1' (id_op (D \<circ> g))))))) op2'"
       if "inj f"
         and "inj g"
@@ -295,12 +352,12 @@ proof (coinduction arbitrary: A B C D op rule: bisim_coinduct_upto'')
         and "step (Inp p (BHD p (B \<circ> f))) op op1'"
       for p :: 'a
         and op1' :: "('a, 'c, 'e) op"
-     using that 
+      using that 
       apply -
-     apply (intro conjI[rotated] exI bc_base)
-       apply force+
-     done
-   moreover have "\<exists>op2'. step Tau (map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>A B C D op. op1xx = map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) (map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (BENQ q xa (C \<circ> g)) op1' (id_op (D \<circ> g))))))) op2'"
+      apply (intro conjI[rotated] exI bc_base)
+        apply force+
+      done
+    moreover have "\<exists>op2'. step Tau (map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>A B C D op. op1xx = map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) (map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (BENQ q xa (C \<circ> g)) op1' (id_op (D \<circ> g))))))) op2'"
       if "inj f"
         and "inj g"
         and "\<forall>x. f x \<in> defaults \<longrightarrow> x \<in> defaults"
@@ -309,15 +366,15 @@ proof (coinduction arbitrary: A B C D op rule: bisim_coinduct_upto'')
       for xa :: 'e
         and op1' :: "('a, 'c, 'e) op"
         and q :: 'c
-     using that 
+      using that 
       apply -
-     apply (intro conjI[rotated] exI bc_base)
+      apply (intro conjI[rotated] exI bc_base)
+        apply force
        apply force
+      apply (rule step_map_op)
+       apply simp_all
       apply force
-     apply (rule step_map_op)
-      apply simp_all
-     apply force
-     done
+      done
     moreover have "\<exists>op2'. step Tau (map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>A B C D op. op1xx = map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) (map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (BTL pb (C \<circ> g)) op (id_op (BENQ pb (BHD pb (C \<circ> g)) (D \<circ> g)))))))) op2'"
       if "inj f"
         and "inj g"
@@ -326,35 +383,35 @@ proof (coinduction arbitrary: A B C D op rule: bisim_coinduct_upto'')
         and "C (g pb) \<noteq> []"
         and "pb \<notin> defaults"
       for pb :: 'c
-     using that 
+      using that 
       apply -
-     apply (intro conjI[rotated] exI bc_base)
-       apply force
+      apply (intro conjI[rotated] exI bc_base)
       apply force
-     apply (rule step_map_op)
+      apply force
+      apply (rule step_map_op)
       apply simp_all
-     apply force
-     done
-   moreover have "\<exists>op2'. step Tau (map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>A B C D op. op1xx = map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) (map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op1' (id_op (D \<circ> g))))))) op2'"
+      apply force
+      done
+    moreover have "\<exists>op2'. step Tau (map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>A B C D op. op1xx = map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) (map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op1' (id_op (D \<circ> g))))))) op2'"
       if "inj f"
         and "inj g"
         and "\<forall>x. f x \<in> defaults \<longrightarrow> x \<in> defaults"
         and "\<forall>x. g x \<in> defaults \<longrightarrow> x \<in> defaults"
         and "step Tau op op1'"
       for op1' :: "('a, 'c, 'e) op"
-     using that 
+      using that 
       apply -
-     apply (intro conjI[rotated] exI bc_base)
-       apply force
+      apply (intro conjI[rotated] exI bc_base)
       apply force
-     apply (rule step_map_op)
+      apply force
+      apply (rule step_map_op)
       apply simp_all
-     apply (rule step_comp_op_R_Tau)
-       apply auto
-     done
-   ultimately show ?thesis
-       using SIM1 by (auto 0 0 elim !: step_map_op_elim step_comp_op_elim step_id_op_cases split: if_splits)
-   qed
+      apply (rule step_comp_op_R_Tau)
+      apply auto
+      done
+    ultimately show ?thesis
+      using SIM1 by (auto 0 0 elim !: step_map_op_elim step_comp_op_elim step_id_op_cases split: if_splits)
+  qed
 next
   case SIM2
   then show ?case 
@@ -372,20 +429,20 @@ next
         and "pa \<notin> defaults"
       for pa :: 'b
         and xa :: 'e
-        using that
+      using that
       apply -
-     apply (intro conjI[rotated] exI bc_base)
-       apply force
-       apply force
-     apply (rule step_map_op)
-     apply (rule step_map_op)
-     apply (rule step_comp_op_L_Inp)
-          apply (rule step_id_op_Read[where p="inv f pa" and x=xa])
-           apply simp_all
-        apply force
-         apply (metis \<UU>_I inj_on_contraD inv_f_f)
-        apply (metis IO.simps(15) \<UU>_I id_apply inj_on_contraD inv_f_f)
-        done
+      apply (intro conjI[rotated] exI bc_base)
+      apply force
+      apply force
+      apply (rule step_map_op)
+      apply (rule step_map_op)
+      apply (rule step_comp_op_L_Inp)
+      apply (rule step_id_op_Read[where p="inv f pa" and x=xa])
+      apply simp_all
+      apply force
+      apply (metis \<UU>_I inj_on_contraD inv_f_f)
+      apply (metis IO.simps(15) \<UU>_I id_apply inj_on_contraD inv_f_f)
+      done
     moreover have "\<exists>op2'. step (Out p (BHD p D)) (map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g))))))) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>A B C D op. op1xx = map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) op2' (map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op (BTL p D))))))"
       if "inj f"
         and "inj g"
@@ -399,18 +456,18 @@ next
         and "D p \<noteq> []"
       for p :: 'd
       using that
-    apply -
-     apply (intro conjI[rotated] exI bc_base)
-       apply force
-       apply force
-     apply (rule step_map_op)
-       apply (rule step_map_op)
-           apply (rule step_comp_op_R_Out)
-       apply (rule step_map_op)
-           apply (rule step_comp_op_R_Out[where p="inv g p"])
-             apply simp_all
-          apply (rule step_id_op_Write)
-          apply blast
+      apply -
+      apply (intro conjI[rotated] exI bc_base)
+      apply force
+      apply force
+      apply (rule step_map_op)
+      apply (rule step_map_op)
+      apply (rule step_comp_op_R_Out)
+      apply (rule step_map_op)
+      apply (rule step_comp_op_R_Out[where p="inv g p"])
+      apply simp_all
+      apply (rule step_id_op_Write)
+      apply blast
       apply (simp add: comp_def)
       apply (metis \<UU>_I comp_apply inj_on_contraD inv_f_f)
       apply (metis (no_types, lifting) BTL_comp \<UU>_I inj_on_contraD inv_f_f)
@@ -427,23 +484,23 @@ next
         and "pa \<notin> defaults"
         and "A pa \<noteq> []"
       for pa :: 'b
-        using that
-    apply -
-     apply (intro conjI[rotated] exI bc_base)
-       apply force
-       apply force
-     apply (rule step_map_op)
-        apply (rule step_map_op)
-          apply (rule step_Tau_comp_op_L)
-             apply (rule step_id_op_Write[where p="inv f pa"])
-                apply simp_all
-        apply fast
-        apply (metis \<UU>_I inj_on_contraD inv_f_f)
-        subgoal 
-          by (metis \<UU>_I inj_on_contraD inv_f_eq)
-   subgoal 
-          by (metis (no_types, lifting) BHD_comp \<UU>_I inj_on_contraD inv_f_f)
-        done
+      using that
+      apply -
+      apply (intro conjI[rotated] exI bc_base)
+      apply force
+      apply force
+      apply (rule step_map_op)
+      apply (rule step_map_op)
+      apply (rule step_Tau_comp_op_L)
+      apply (rule step_id_op_Write[where p="inv f pa"])
+      apply simp_all
+      apply fast
+      apply (metis \<UU>_I inj_on_contraD inv_f_f)
+      subgoal 
+        by (metis \<UU>_I inj_on_contraD inv_f_eq)
+      subgoal 
+        by (metis (no_types, lifting) BHD_comp \<UU>_I inj_on_contraD inv_f_f)
+      done
     moreover have "\<exists>op2'. step Tau (map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g))))))) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>A B C D op. op1xx = map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) op2' (map_op projl projr (comp_op Some (BTL p B) (id_op A) (map_op projl projr (comp_op Some C (map_op f g op''b) (id_op D)))))"
       if "inj f"
         and "inj g"
@@ -458,19 +515,19 @@ next
       for p :: 'b
         and io'b :: "('a, 'c, 'e) IO"
         and op''b :: "('a, 'c, 'e) op"
- using that
-  apply -
-  apply (cases io'b; simp)
-     apply (intro conjI[rotated] exI bc_base)
-       apply force
-       apply force
-     apply (rule step_map_op)
-  apply (rule step_map_op)
-   apply auto[1]
-  apply blast
-  apply force
-  done
-  moreover have "\<exists>op2'. step Tau (map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g))))))) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>A B C D op. op1xx = map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) op2' (map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some (BENQ q xa C) (map_op f g op''b) (id_op D)))))"
+      using that
+      apply -
+      apply (cases io'b; simp)
+      apply (intro conjI[rotated] exI bc_base)
+      apply force
+      apply force
+      apply (rule step_map_op)
+      apply (rule step_map_op)
+      apply auto[1]
+      apply blast
+      apply force
+      done
+    moreover have "\<exists>op2'. step Tau (map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g))))))) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>A B C D op. op1xx = map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) op2' (map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some (BENQ q xa C) (map_op f g op''b) (id_op D)))))"
       if "inj f"
         and "inj g"
         and "\<forall>x. f x \<in> defaults \<longrightarrow> x \<in> defaults"
@@ -484,20 +541,20 @@ next
         and q :: 'd
         and io'b :: "('a, 'c, 'e) IO"
         and op''b :: "('a, 'c, 'e) op"
- using that
-  apply -
-  apply (cases io'b; simp)
-     apply (intro conjI[rotated] exI bc_base)
-       apply force
-       apply force
-     apply (rule step_map_op)
-  apply (rule step_map_op)
-   apply (rule step_comp_op_R_Tau)
-     apply auto[1]
-    apply blast+
-  apply simp
-  done
-  moreover have "\<exists>op2'. step Tau (map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g))))))) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>A B C D op. op1xx = map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) op2' (map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some (BTL pb C) (map_op f g op) (id_op (BENQ pb (BHD pb C) D))))))"
+      using that
+      apply -
+      apply (cases io'b; simp)
+      apply (intro conjI[rotated] exI bc_base)
+      apply force
+      apply force
+      apply (rule step_map_op)
+      apply (rule step_map_op)
+      apply (rule step_comp_op_R_Tau)
+      apply auto[1]
+      apply blast+
+      apply simp
+      done
+    moreover have "\<exists>op2'. step Tau (map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g))))))) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>A B C D op. op1xx = map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) op2' (map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some (BTL pb C) (map_op f g op) (id_op (BENQ pb (BHD pb C) D))))))"
       if "inj f"
         and "inj g"
         and "\<forall>x. f x \<in> defaults \<longrightarrow> x \<in> defaults"
@@ -508,29 +565,29 @@ next
         and "C pb \<noteq> []"
         and "pb \<notin> defaults"
       for pb :: 'd
-    using that
-    apply -
-    apply (intro conjI[rotated] exI bc_base)
+      using that
+      apply -
+      apply (intro conjI[rotated] exI bc_base)
       apply force
-     apply force
-    apply (rule step_map_op)
-     apply (rule step_map_op)
+      apply force
+      apply (rule step_map_op)
+      apply (rule step_map_op)
       apply (rule step_comp_op_R_Tau)
-        apply (rule step_map_op)
-         apply simp_all
-    apply (rule step_Tau_comp_op_R)
-         apply (rule step_id_op_Read[where p="inv g pb" and x="BHD pb C"])
-          apply blast
-         apply (metis (no_types, lifting) BENQ_comp SIM2(8) \<UU>_I inj_on_contraD inv_f_f)
-        apply force
-       apply (metis SIM2(8) \<UU>_I comp_apply inj_on_contraD inv_f_f)
-    subgoal 
-      by (metis BHD_comp SIM2(8) \<UU>_I inj_on_contraD inv_f_f)
-    subgoal 
-      by (metis (no_types, lifting) BTL_comp SIM2(8) \<UU>_I inj_on_contraD inv_f_f)
-    apply simp
-    done
-  moreover have "\<exists>op2'. step Tau (map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g))))))) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>A B C D op. op1xx = map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) op2' (map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op''b) (id_op D)))))"
+      apply (rule step_map_op)
+      apply simp_all
+      apply (rule step_Tau_comp_op_R)
+      apply (rule step_id_op_Read[where p="inv g pb" and x="BHD pb C"])
+      apply blast
+      apply (metis (no_types, lifting) BENQ_comp SIM2(8) \<UU>_I inj_on_contraD inv_f_f)
+      apply force
+      apply (metis SIM2(8) \<UU>_I comp_apply inj_on_contraD inv_f_f)
+      subgoal 
+        by (metis BHD_comp SIM2(8) \<UU>_I inj_on_contraD inv_f_f)
+      subgoal 
+        by (metis (no_types, lifting) BTL_comp SIM2(8) \<UU>_I inj_on_contraD inv_f_f)
+      apply simp
+      done
+    moreover have "\<exists>op2'. step Tau (map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g))))))) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>A B C D op. op1xx = map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) op2' (map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op''b) (id_op D)))))"
       if "inj f"
         and "inj g"
         and "\<forall>x. f x \<in> defaults \<longrightarrow> x \<in> defaults"
@@ -540,23 +597,23 @@ next
         and "inj_on (inv f) \<UU>"
         and "step Tau op op''b"
       for op''b :: "('a, 'c, 'e) op"
-   using that
-    apply -
-    apply (intro conjI[rotated] exI bc_base)
+      using that
+      apply -
+      apply (intro conjI[rotated] exI bc_base)
       apply force
-     apply force
-    apply (rule step_map_op)
-     apply (rule step_map_op)
+      apply force
+      apply (rule step_map_op)
+      apply (rule step_map_op)
       apply (rule step_comp_op_R_Tau)
-        apply (rule step_map_op)
-   apply simp_all
-   apply auto
-   done
-   ultimately show ?thesis
+      apply (rule step_map_op)
+      apply simp_all
+      apply auto
+      done
+    ultimately show ?thesis
       using SIM2 by (auto 0 0 elim !: step_map_op_elim step_comp_op_elim step_id_op_cases split: if_splits)
   qed
 qed
- 
+
 
 lemma map_op_vdash:
   "inj f \<Longrightarrow>
@@ -581,9 +638,9 @@ lift_definition
     apply safe
     subgoal for op'
       apply (rule exI[of _ "map_op f g op"])
-       apply (rule wbisim_trans[OF _ map_op_vdash])
+      apply (rule wbisim_trans[OF _ map_op_vdash])
       using wbisim_double_vdash wbisim_map_op apply blast
-             apply assumption+ 
+      apply assumption+ 
       done  
     done
   subgoal
@@ -671,7 +728,7 @@ lemma inj_on_case_sum_Inr_Inl_inputs_scomp_op[simp]:
   done
 
 (* FIXME: move me *)
- lemma inv_reassoc[simp]:
+lemma inv_reassoc[simp]:
   "inv reassoc = assoc"
   by (simp add: inj_imp_inv_eq pointfree_idE)
 lemma inv_assoc[simp]:
@@ -715,17 +772,17 @@ lemma not_Inl_not_Inr_False_dest[dest!]:
 
 lemma inj_on_Inl[simp]:
   "inj_on (inv (Inl :: 'a \<Rightarrow> 'a :: defaults + 0)) \<UU>"
-    unfolding inv_into_def
-    apply auto
-    apply (smt (verit, del_insts) Un_iff \<UU>_E default_0 defaults_sum_def image_iff inj_on_def someI_ex sum.exhaust_sel)
-    done
+  unfolding inv_into_def
+  apply auto
+  apply (smt (verit, del_insts) Un_iff \<UU>_E default_0 defaults_sum_def image_iff inj_on_def someI_ex sum.exhaust_sel)
+  done
 
 lemma inj_on_Inr[simp]:
   "inj_on (inv (Inr :: 'a \<Rightarrow> 0 + 'a :: defaults)) \<UU>"
-   unfolding inv_into_def
-    apply auto
-    apply (smt (verit, del_insts) Un_iff \<UU>_E default_0 defaults_sum_def image_iff inj_on_def someI_ex sum.exhaust_sel)
-   done
+  unfolding inv_into_def
+  apply auto
+  apply (smt (verit, del_insts) Un_iff \<UU>_E default_0 defaults_sum_def image_iff inj_on_def someI_ex sum.exhaust_sel)
+  done
 
 lemma inv_Inl_defaults[dest!]:
   "inv (Inl :: 'a \<Rightarrow> 'a :: defaults + 0) x \<in> defaults \<Longrightarrow> x \<in> defaults"
