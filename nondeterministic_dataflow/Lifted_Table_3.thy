@@ -24,6 +24,7 @@ begin
 
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
 no_notation nth (infixl "!" 100)
+
 no_notation wbisim_operator (infix "\<approx>"40)
 no_notation id_empty_operator ("\<I>")
 no_notation scomp_operator (infixl "\<bullet>" 65)
@@ -133,7 +134,7 @@ proof -
   finally show ?thesis.
 qed
 
-lemma A1_merge':
+lemma A1':
   \<open>(\<V>' \<parallel> \<I>) \<bullet> \<V>' \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<V>') \<bullet> \<V>')\<close>
 proof -
   have \<open>(\<V>' \<parallel> \<I>) \<bullet> \<V>' \<approx> (\<V>' \<parallel> \<I> \<bullet> \<I>) \<bullet> \<V>'\<close>
@@ -240,7 +241,31 @@ proof -
   finally show ?thesis.
 qed
 
+no_notation wbisim (infix "\<approx>"40)
+no_notation id_empty_op ("\<I>")
+no_notation scomp_op (infixl "\<bullet>" 65)
+no_notation pcomp_op (infixl "\<parallel>" 64)
+no_notation feedback_op ( "_ \<up>" [66] 65)
+no_notation transp_empty_op ("\<X>")
+no_notation sink_op ("!")
+no_notation dummy_source_op ("\<exclamdown>")
+no_notation merge_empty_op ("\<V>")
 
+notation wbisim_operator (infix "\<approx>"40)
+notation id_empty_operator ("\<I>")
+notation scomp_operator (infixl "\<bullet>" 65)
+notation pcomp_operator (infixl "\<parallel>" 64)
+notation feedback_operator ( "_ \<up>" [66] 65)
+notation transp_empty_operator ("\<X>")
+notation sink_op_0_operator ("!")
+notation dummy_source_operator ("\<exclamdown>")
+notation merge_empty_operator ("\<V>")
 
+lemma A1:
+  \<open>(\<V> \<parallel> \<I>) \<bullet> \<V> \<approx> map_operator (case_sum Inr Inl) id ((\<I> \<parallel> \<V>) \<bullet> \<V>)\<close>
+  apply transfer
+  apply (auto split: if_splits split: sum.splits)
+  apply (rule A1')
+  done
 
 end
