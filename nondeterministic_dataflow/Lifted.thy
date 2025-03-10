@@ -802,6 +802,4 @@ lemma inj_on_assoc[simp]:
   "inj_on assoc \<UU>"
   by (simp add: \<UU>_def inj_on_diff)
 
-
-end
 end
