@@ -91,10 +91,6 @@ proof -
   finally show ?thesis.
 qed
 
-lemma A18_split':
-  \<open>(\<Lambda>' :: (0, 0 + 0, 'd) op) ~ \<oslash>\<close>
-  by (smt (z3) A12 A9 A18 bisim_refl bisim_scomp_op_cong bisim_sym bisim_trans id_op_0_end_op B3)
-
 lemma A19_split':
   \<open>\<Lambda>' \<approx> (\<Lambda>' \<parallel> \<Lambda>') \<bullet> map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)\<close>
 proof -
@@ -267,6 +263,21 @@ lemma A1:
   apply transfer
   apply (auto split: if_splits split: sum.splits)
   apply (rule A1')
+  done
+
+lemma A17:
+  \<open>map_operator Inr Inr ! \<approx> ! \<parallel> !\<close>
+  apply transfer
+  apply (auto split: if_splits split: sum.splits)
+  oops
+
+
+lemma A18:
+  \<open>(\<Lambda> :: (0, 0 + 0, 'd) operator) \<approx> map_operator id Inr \<I>\<close>
+  apply transfer
+  apply (auto split: if_splits split: sum.splits)
+  apply (rule bisim_wbisim)
+  apply (rule A18')
   done
 
 lemma A19:
