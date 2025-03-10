@@ -343,7 +343,7 @@ lemma B10_gen:
     done
   done
 
-lemma transp_op_commutes_scomp_op_pcomp_op:
+lemma B10:
   \<open>(\<stileturn>op1 \<parallel> \<stileturn>op2) \<bullet> \<X> \<approx> \<X> \<bullet> (op2\<turnstile> \<parallel> op1\<turnstile>)\<close>
   using B10_gen[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> _ \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> _  \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>]
   unfolding scomp_op_def
