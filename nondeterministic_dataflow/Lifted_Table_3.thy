@@ -30,9 +30,9 @@ no_notation scomp_operator (infixl "\<bullet>" 65)
 no_notation pcomp_operator (infixl "\<parallel>" 64)
 no_notation feedback_operator ( "_ \<up>" [66] 65)
 no_notation transp_empty_operator ("\<X>")
-no_notation aeq_empty_operator ("\<Q>")
 no_notation sink_op_0_operator ("!")
 no_notation dummy_source_operator ("\<exclamdown>")
+no_notation merge_empty_operator ("\<V>")
 
 
 lemma A5_split':

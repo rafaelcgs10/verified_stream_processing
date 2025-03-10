@@ -625,6 +625,24 @@ lift_definition sink_op_0_operator :: "('a :: {countable, defaults}, 0, 'b) oper
   using sink_vdash_absorb wbisim_sym apply blast
   done
 
+no_notation merge_empty_op ("\<V>")
+lift_definition merge_empty_operator :: "('a :: {countable, defaults} + 'a, 'a, 'b) operator"  ("\<V>") is "merge_empty_op\<turnstile>"
+  apply (rule exI[of _ "merge_empty_op"])
+  using merge'_id_absorb_left apply blast
+  done
+
+no_notation acopy_empty_op ("\<C>")
+lift_definition acopy_empty_operator :: "('a :: {countable, defaults}, 'a  + 'a, 'b) operator"  ("\<C>") is "acopy_empty_op"
+  apply (rule exI[of _ "acopy_empty_op"])
+  using B3 acopy_id_absorb bisim_wbisim wbisim_trans apply blast
+  done
+
+no_notation split_empty_op ("\<Lambda>")
+lift_definition split_empty_operator :: "('a :: {countable, defaults}, 'a  + 'a, 'b) operator"  ("\<Lambda>") is "\<stileturn>split_empty_op"
+  apply (rule exI[of _ "split_empty_op"])
+  apply (simp add: split_id_absorb_right wbisim_refl wbisim_scomp_op_cong)
+  done
+
 abbreviation "dummy_source_op_0 :: (0, 'a :: {countable, defaults}, 'c) op \<equiv> dummy_source_op"
 
 no_notation dummy_source_op ("\<exclamdown>")
