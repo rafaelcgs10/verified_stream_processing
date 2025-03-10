@@ -713,5 +713,27 @@ lemma not_Inl_not_Inr_False_dest[dest!]:
   "\<exists>x. (\<forall>x1. x \<noteq> Inl x1) \<and> (\<forall>x2. x \<noteq> Inr x2) \<Longrightarrow> False"
   by (meson old.sum.exhaust)
 
+lemma inj_on_Inl[simp]:
+  "inj_on (inv (Inl :: 'a \<Rightarrow> 'a :: defaults + 0)) \<UU>"
+    unfolding inv_into_def
+    apply auto
+    apply (smt (verit, del_insts) Un_iff \<UU>_E default_0 defaults_sum_def image_iff inj_on_def someI_ex sum.exhaust_sel)
+    done
+
+lemma inj_on_Inr[simp]:
+  "inj_on (inv (Inr :: 'a \<Rightarrow> 0 + 'a :: defaults)) \<UU>"
+   unfolding inv_into_def
+    apply auto
+    apply (smt (verit, del_insts) Un_iff \<UU>_E default_0 defaults_sum_def image_iff inj_on_def someI_ex sum.exhaust_sel)
+   done
+
+lemma inv_Inl_defaults[dest!]:
+  "inv (Inl :: 'a \<Rightarrow> 'a :: defaults + 0) x \<in> defaults \<Longrightarrow> x \<in> defaults"
+  by (cases x; simp)
+
+lemma inv_Inr_defaults[dest!]:
+  "inv (Inr :: 'a \<Rightarrow> 0 + 'a :: defaults) x \<in> defaults \<Longrightarrow> x \<in> defaults"
+  by (cases x; simp)
+
 end
 end

@@ -47,12 +47,6 @@ lemma B2_1:
       apply (rule bisim_wbisim)
       apply (rule B2_1)
      apply (auto simp add: inj_eq split: if_splits sum.splits intro!: inj_onI  bisim_wbisim)
-     apply (metis default_0 inj_Inl inv_f_eq sum.collapse(1) sum_in_defaults)
-  subgoal for op op' x
-    by (cases x; simp)
-     apply (metis default_0 inj_Inl inv_f_eq sum.collapse(1) sum_in_defaults)
-  subgoal for op op' x y
-    by (cases x; cases y; simp)
   done
 
 lemma B3:
@@ -80,6 +74,18 @@ lemma R1:
   apply transfer
   apply (rule R1)
    apply blast+
+  done
+
+lemma R5:
+  fixes op :: "('a :: {countable, defaults} + 0, 'b :: {countable, defaults} + 0, 'c) operator"
+  shows "map_operator Inl Inl (op\<up>) \<approx> op"
+  apply transfer
+  apply (simp add: inj_eq split: if_splits)
+  apply (intro impI conjI)
+   apply (rule R5)
+  using default_0 apply blast
+  using default_0 apply blast
+   apply (auto split: sum.splits)
   done
 
 end
