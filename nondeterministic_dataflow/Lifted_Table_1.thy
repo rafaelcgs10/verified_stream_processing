@@ -113,10 +113,8 @@ lemma B9:
   "\<X> \<approx> map_operator reassoc reassoc (\<X> \<parallel> \<I>) \<bullet> map_operator id assoc (\<I> \<parallel> \<X>)"
   apply transfer
   apply (simp add: inj_eq split: if_splits)
-  apply (intro impI conjI)
-     apply (rule B9)
-         apply simp_all
-    apply (auto simp add: \<UU>_def inj_on_diff split: sum.splits)
+  apply (rule B9)
+      apply simp_all
   done
 
 lemma B10:
@@ -169,6 +167,62 @@ lemma R1:
   apply blast+
   done
 
+lemma R2:
+  fixes op1 :: "('b :: {countable,defaults} + 'm :: {defaults, countable}, 'c :: {countable,defaults} + 'm, 'd) operator"
+    and op2 :: "('c, 'a :: {countable,defaults}, 'd) operator"
+  shows  "(op1\<up>) \<bullet> op2 \<approx> (op1 \<bullet> (op2 \<parallel> \<I>))\<up>"
+  apply transfer
+  apply (rule R2)
+   apply blast+
+  done
+
+lemma R3:
+  fixes op1 :: "('b :: {countable,defaults} + 'a :: {countable,defaults}, 'c :: {countable,defaults} + 'd :: {countable,defaults}, 'e) operator"
+    and op2 :: "('f  :: {countable,defaults} + 'm :: {countable,defaults}, 'g :: {countable,defaults} + 'm, 'e) operator"
+  shows  "op1 \<parallel> (op2\<up>) \<approx> (map_operator assoc assoc (op1 \<parallel> op2))\<up>"
+  apply transfer
+  apply (simp add: inj_eq split: if_splits)
+  apply (rule bisim_wbisim)
+   apply (rule R3)
+    apply blast
+    apply blast
+  done
+
+lemma R4:
+  fixes op1 :: "('k :: {countable,defaults} + 'm :: {countable,defaults}, 'l :: {countable,defaults} + 'n :: {countable,defaults}, 'd) operator"
+    and op2 :: "('n, 'm, 'd) operator"
+  shows  "(op1 \<bullet> (\<I> \<parallel> op2))\<up> \<approx> ((\<I> \<parallel> op2) \<bullet> op1)\<up>"
+  apply transfer
+  apply safe
+  subgoal for op1 op2 op1' op2'
+    apply (subgoal_tac " wbisim (feedback_op (scomp_op op1 (pcomp_op id_empty_op op2))) (feedback_op (scomp_op (\<stileturn>\<stileturn>(op1'\<turnstile>)) (pcomp_op id_empty_op (\<stileturn>(op2' \<turnstile>)))))")
+     defer
+    subgoal
+      apply (rule wbisim_loop_op_cong)
+      apply (rule wbisim_scomp_op_cong)
+      using B4.B4_2 wbisim_sym wbisim_trans apply blast
+      apply (rule wbisim_pcomp_op_cong)
+       apply (rule wbisim_refl)
+      apply assumption
+      done
+    apply (rule wbisim_trans)
+     apply assumption
+    apply (rule wbisim_trans)
+     apply (rule R4)
+        apply (metis wbisim_inputs wbisim_vdash_inputs_no_defaults)
+       apply (metis wbisim_outputs wbisim_vdash_outputs_no_defaults)
+      apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_inputs)[2]
+    apply (rule wbisim_loop_op_cong)
+    apply (rule wbisim_scomp_op_cong)
+     apply (rule wbisim_pcomp_op_cong)
+      apply (rule wbisim_refl)
+    using wbisim_sym apply blast
+    apply (subgoal_tac "wbisim ((\<stileturn>op1') \<turnstile> \<turnstile>) ((\<stileturn>op1') \<turnstile>)")
+     apply (smt (verit, del_insts) B3.B3 bisim_wbisim scomp_op_id_id wbisim_scomp_op_cong wbisim_sym wbisim_trans)
+    using B4.B4_1 apply blast
+    done
+  done
+
 lemma R5:
   fixes op :: "('a :: {countable, defaults} + 0, 'b :: {countable, defaults} + 0, 'c) operator"
   shows "map_operator Inl Inl (op\<up>) \<approx> op"
@@ -179,6 +233,19 @@ lemma R5:
   using default_0 apply blast
   using default_0 apply blast
   apply (auto split: sum.splits)
+  done
+
+lemma R6:
+  fixes op :: "(('a :: {countable, defaults} + 'l) + 'k, ('b :: {countable, defaults} + 'l :: {countable, defaults}) + 'k :: {countable, defaults}, 'c) operator"
+  shows  "(op\<up>)\<up> \<approx> (map_operator reassoc reassoc op)\<up>"
+  apply transfer
+  apply (simp add: inj_eq split: if_splits)
+  apply (rule bisim_wbisim)
+  apply (rule R6)
+     apply blast
+    apply blast
+   apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_inputs)[1]
+   apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_outputs)[1]
   done
 
 end

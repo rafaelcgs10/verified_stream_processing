@@ -735,5 +735,13 @@ lemma inv_Inr_defaults[dest!]:
   "inv (Inr :: 'a \<Rightarrow> 0 + 'a :: defaults) x \<in> defaults \<Longrightarrow> x \<in> defaults"
   by (cases x; simp)
 
+lemma inj_on_reassoc[simp]:
+  "inj_on reassoc \<UU>"
+  by (simp add: \<UU>_def inj_on_diff)
+lemma inj_on_assoc[simp]:
+  "inj_on assoc \<UU>"
+  by (simp add: \<UU>_def inj_on_diff)
+
+
 end
 end

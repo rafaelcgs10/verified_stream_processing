@@ -522,7 +522,7 @@ lemma loop_op_absorb_gen:
   qed
 qed
 
-lemma loop_op_absorb:
+lemma R6:
   fixes op :: "(('a + 'l) + 'k, ('b + 'l :: defaults) + 'k :: defaults, 'c) op"
   assumes "Inr -` inputs op \<inter> defaults = {}"
     and "Inr -` outputs op \<inter> defaults = {}"
