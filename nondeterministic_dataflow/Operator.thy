@@ -193,7 +193,7 @@ codatatype (inputs: 'ip, outputs: 'op, dead 'd) op =
   | Silent "('ip, 'op, 'd) op"
 
 \<comment> \<open>Some useful functions for defining operators\<close>
-abbreviation end_op ("\<oslash>") where "end_op \<equiv> Choice cempty"
+abbreviation end_op ("\<oslash>") where "\<oslash> \<equiv> Choice {||}"
 
 abbreviation "safe_choice_stop stop f ops \<equiv> (if ops = cempty then stop else Choice (cimage f ops))"
 abbreviation "safe_choice f \<equiv> safe_choice_stop (f end_op) f"

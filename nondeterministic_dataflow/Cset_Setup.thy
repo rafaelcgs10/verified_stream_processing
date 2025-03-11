@@ -20,6 +20,9 @@ translations
 abbreviation cmember :: "'a \<Rightarrow> 'a cset \<Rightarrow> bool" (infix "|\<in>|" 50) where
   "x |\<in>| X \<equiv> cin x X"
 
+abbreviation cim :: "('a \<Rightarrow> 'b) \<Rightarrow> 'a cset \<Rightarrow> 'b cset" (infix "|`|" 50) where
+  "f |`| X \<equiv> cimage f X"
+
 section \<open>cset lifts\<close>
 context includes cset.lifting begin
 lift_definition cUNIV :: "'m :: countable cset" is UNIV by auto

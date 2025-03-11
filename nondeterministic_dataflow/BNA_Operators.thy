@@ -3502,10 +3502,16 @@ section \<open>spin_op/end_op/silent_op/I_0\<close>
   \<comment> \<open>In the transition system this is a dead-lock\<close>
 
 corec spin_op :: "('a, 'b, 'd) op" ("\<otimes>") where
-  "spin_op = Choice (cimage (\<lambda> _. spin_op) (csingle ()))"
+  "\<otimes> = Choice ((\<lambda> _. spin_op) |`| {|()|})"
 
-primcorec silent_op where
-  "silent_op = Silent silent_op"
+lemma spin_op_code:
+  "\<otimes> = Choice {|\<otimes>|}"
+  apply (subst spin_op.code)
+  apply simp
+  done
+
+corec silent_op ("\<odot>") where
+  "\<odot> = Silent silent_op"
 
 lemma finished_spin_op[simp]:
   "finished \<otimes>"
