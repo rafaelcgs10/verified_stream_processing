@@ -3581,6 +3581,47 @@ lemma spin_op_end_op:
   \<open>\<otimes> ~ \<oslash>\<close>
   by (simp add: choices_Choice_bisim)
 
+section \<open>Basic operator examples\<close>
+abbreviation ex1_op where
+  "ex1_op \<equiv> Silent (Write \<oslash> (1::2) (42::nat))"
+abbreviation ex2_op where
+  "ex2_op \<equiv> Choice {|Silent (Write \<oslash> (1::2) (42::nat)), Choice {|Silent (Write end_op (1::2) (42::nat))|}|}"
+abbreviation ex3_op where
+  "ex3_op \<equiv> Silent (Write \<odot> (1::2) (42::nat))"
+
+lemma ex1_bisim_ex2_op:
+  "ex1_op ~ ex2_op"
+  apply (rule choices_Choice_bisim)
+  apply auto
+  done
+
+lemma ex1_bisim_ex3_op:
+  "ex1_op \<approx> ex3_op"
+  apply (coinduction rule: wbisim_coinduct_upto'')
+  subgoal for io op1
+    apply auto
+    apply hypsubst_thin
+    apply (intro conjI exI)
+     apply (rule rtranclp.intros(2))
+      apply (rule rtranclp.intros(1))
+     apply blast
+    apply (rule wbc_Write)
+    apply (rule wbc_bisim)
+    using bisim_wbisim spin_op_end_op spin_op_silent_op wbisim_sym wbisim_trans apply blast
+    done
+  subgoal for io op1
+    apply auto
+    apply hypsubst_thin
+    apply (intro conjI exI)
+     apply (rule rtranclp.intros(2))
+      apply (rule rtranclp.intros(1))
+     apply blast
+    apply (rule wbc_Write)
+    apply (rule wbc_bisim)
+    using bisim_wbisim spin_op_end_op spin_op_silent_op wbisim_sym wbisim_trans apply blast
+    done
+  done
+
 section \<open>id_op/\<I>/I_m\<close>
   \<comment> \<open>id_op is I_m in the BNA paper\<close>
 
