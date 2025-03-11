@@ -595,6 +595,15 @@ lemma bisim_coinduct_upto''[consumes 1, case_names SIM1 SIM2]:
    op1 ~ op2"
   using bisim_coinduct_upto' by (smt (verit, ccfv_SIG) bc_sym)
 
+lemma bisim_coinduct_upto'''[consumes 1, case_names SIM1 SIM2]:
+  "R op1 op2 \<Longrightarrow>
+  (\<And>s t io op1'. R s t \<Longrightarrow> step io s op1' \<Longrightarrow> \<exists>op2'. step io t op2' \<and> R op1' op2') \<Longrightarrow>
+  (\<And>s t io op1'. R s t \<Longrightarrow> step io t op1' \<Longrightarrow> \<exists>op2'. step io s op2' \<and> R op2' op1') \<Longrightarrow>
+   op1 ~ op2"
+  using bisim_coinduct_upto'
+  apply (smt (verit, ccfv_threshold) bc_base bisim_coinduct_upto'')
+  done
+
 lemma bisim_refl:
   "op1 ~ op1"
   by (coinduction rule: bisim_coinduct_upto) (auto intro: bc_refl simp: sim_def)
@@ -1052,6 +1061,16 @@ lemma wbisim_coinduct_upto''[consumes 1, case_names SIM1 SIM2]:
   (\<And>s t io op1'. R s t \<Longrightarrow> step io t op1' \<Longrightarrow> \<exists>op2'. wstep io s op2' \<and> wbisim_cong R op2' op1') \<Longrightarrow>
    op1 \<approx> op2"
   using wbisim_coinduct_upto' by (smt (verit, ccfv_SIG) wbc_sym)
+
+lemma wbisim_coinduct_upto'''[consumes 1, case_names SIM1 SIM2]:
+  "R op1 op2 \<Longrightarrow>
+  (\<And>s t io op1'. R s t \<Longrightarrow> step io s op1' \<Longrightarrow> \<exists>op2'. wstep io t op2' \<and> R op1' op2') \<Longrightarrow>
+  (\<And>s t io op1'. R s t \<Longrightarrow> step io t op1' \<Longrightarrow> \<exists>op2'. wstep io s op2' \<and> R op2' op1') \<Longrightarrow>
+   op1 \<approx> op2"
+  apply (rule wbisim_coinduct_upto'')
+    apply assumption
+   apply blast+
+  done
 
 lemma step_star_map_op[intro!]:
   "(step Tau)\<^sup>*\<^sup>* op op' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (map_op f g op) (map_op f g op')"

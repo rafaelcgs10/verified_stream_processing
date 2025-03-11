@@ -3585,7 +3585,7 @@ section \<open>Basic operator examples\<close>
 abbreviation ex1_op where
   "ex1_op \<equiv> Silent (Write \<oslash> (1::2) (42::nat))"
 abbreviation ex2_op where
-  "ex2_op \<equiv> Choice {|Silent (Write \<oslash> (1::2) (42::nat)), Choice {|Silent (Write end_op (1::2) (42::nat))|}|}"
+  "ex2_op \<equiv> Choice {|ex1_op, Choice {|ex1_op|}|}"
 abbreviation ex3_op where
   "ex3_op \<equiv> Silent (Write \<odot> (1::2) (42::nat))"
 
