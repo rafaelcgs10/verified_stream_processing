@@ -14,7 +14,7 @@ lemma A18:
 lemma A18':
   \<open>(\<Lambda>' :: (0, 0 + 0, 'd) op) ~ map_op id Inr \<I>\<close>
   unfolding scomp_op_def
-proof (coinduction rule: bisim_coinduct_upto'')
+proof (coinduction rule: bisim_coinduct)
   case SIM1
   then show ?case
     by (auto elim!:  step_comp_op_elim step_id_op_cases step_map_op_elim step_split_op_cases)

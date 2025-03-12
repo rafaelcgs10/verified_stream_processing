@@ -15,7 +15,7 @@ lemma A14:
 
 lemma A14:
   \<open>map_op id Inl (\<V> :: (0 + 0, 0, 'd) op) ~ \<I>\<close>
-  by (coinduction rule: bisim_coinduct_upto'')
+  by (coinduction rule: bisim_coinduct)
     (auto elim!: step_map_op_elim step_merge_op_elim step_id_op_cases)
 
 end

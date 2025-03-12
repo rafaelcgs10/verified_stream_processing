@@ -2733,11 +2733,11 @@ lemma bisim_loop_op_cong_gen:
   "op ~ op' \<Longrightarrow>
    map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) ~
    map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')"
-proof (coinduction arbitrary: op op' buf rule: bisim_coinduct_upto'')
+proof (coinduction arbitrary: op op' buf rule: bisim_coinduct)
   case SIM1
   then show ?case 
   proof -
-    have "\<exists>op2'. step (Inp (projl p) x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a)) op2'"
+    have "\<exists>op2'. step (Inp (projl p) x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a)) op2'"
       if "sim (~) op op'"
         and "sim (~) op' op"
         and "\<forall>p'. p = Inr p' \<longrightarrow> p' \<in> defaults"
@@ -2754,10 +2754,10 @@ proof (coinduction arbitrary: op op' buf rule: bisim_coinduct_upto'')
         apply (rule step_Inp_loop_op)
          apply assumption
         apply simp_all
-      apply (rule bc_base)
+      apply (rule bcr_base)
       apply fast
       done
-    moreover have "\<exists>op2'. step (Out x1 x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a)) op2'"
+    moreover have "\<exists>op2'. step (Out x1 x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a)) op2'"
       if "step (Out (Inl x1) x) op op''a"
         and "sim (~) op op'"
         and "sim (~) op' op"
@@ -2773,10 +2773,10 @@ proof (coinduction arbitrary: op op' buf rule: bisim_coinduct_upto'')
         apply (rule step_Out_loop_op)
           apply assumption
          apply simp_all
-      apply (rule bc_base)
+      apply (rule bcr_base)
       apply fast
       done
-    moreover have "\<exists>op2'. step (Out (projl (Inr x2)) x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a)) op2'"
+    moreover have "\<exists>op2'. step (Out (projl (Inr x2)) x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a)) op2'"
       if "step (Out (Inr x2) x) op op''a"
         and "sim (~) op op'"
         and "sim (~) op' op"
@@ -2793,10 +2793,10 @@ proof (coinduction arbitrary: op op' buf rule: bisim_coinduct_upto'')
         apply (rule step_Out_loop_op)
           apply assumption
          apply simp_all
-      apply (rule bc_base)
+      apply (rule bcr_base)
       apply fast
       done
-    moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a)) op2'"
+    moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a)) op2'"
       if "sim (~) op op'"
         and "sim (~) op' op"
         and "step Tau op op''a"
@@ -2810,10 +2810,10 @@ proof (coinduction arbitrary: op op' buf rule: bisim_coinduct_upto'')
         apply (rule step_Tau_loop_op)
          apply assumption
         apply simp_all
-      apply (rule bc_base)
+      apply (rule bcr_base)
       apply fast
       done
-    moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BTL x2 buf)) op''a)) op2'"
+    moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BTL x2 buf)) op''a)) op2'"
       if "step (Inp (Inr x2) (BHD x2 buf)) op op''a"
         and "sim (~) op op'"
         and "sim (~) op' op"
@@ -2830,10 +2830,10 @@ proof (coinduction arbitrary: op op' buf rule: bisim_coinduct_upto'')
         apply (rule step_Inp_Tau_loop_op)
             apply assumption
            apply simp_all
-      apply (rule bc_base)
+      apply (rule bcr_base)
       apply fast
       done
-    moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BENQ x2 x buf)) op''a)) op2'"
+    moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BENQ x2 x buf)) op''a)) op2'"
       if "step (Out (Inr x2) x) op op''a"
         and "sim (~) op op'"
         and "sim (~) op' op"
@@ -2850,7 +2850,7 @@ proof (coinduction arbitrary: op op' buf rule: bisim_coinduct_upto'')
         apply (rule step_Out_Tau_loop_op)
           apply assumption
          apply simp_all
-      apply (rule bc_base)
+      apply (rule bcr_base)
       apply force
       done
     ultimately show ?thesis
@@ -2860,7 +2860,7 @@ next
   case SIM2
   then show ?case 
   proof -
-    have "\<exists>op2'. step (Inp (projl p) x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a))"
+    have "\<exists>op2'. step (Inp (projl p) x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a))"
       if "sim (~) op' op" 
         and "sim (~) op op'"
         and "\<forall>p'. p = Inr p' \<longrightarrow> p' \<in> defaults"
@@ -2878,12 +2878,12 @@ next
         apply (rule step_Inp_loop_op)
          apply assumption
         apply simp_all
-      apply (rule bc_sym)
-      apply (rule bc_base)
+      apply (rule bcr_sym)
+      apply (rule bcr_base)
       apply (intro conjI exI)
         apply force+
       done
-    moreover have "\<exists>op2'. step (Out x1 x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a))"
+    moreover have "\<exists>op2'. step (Out x1 x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a))"
       if "step (Out (Inl x1) x) op' op''a"
         and "sim (~) op op'"
         and "sim (~) op' op"
@@ -2900,11 +2900,11 @@ next
         apply (rule step_Out_loop_op)
           apply assumption
          apply simp_all
-      apply (rule bc_sym)
-      apply (rule bc_base)
+      apply (rule bcr_sym)
+      apply (rule bcr_base)
       apply fast
       done
-    moreover have "\<exists>op2'. step (Out (projl (Inr x2)) x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a))"
+    moreover have "\<exists>op2'. step (Out (projl (Inr x2)) x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a))"
       if "step (Out (Inr x2) x) op' op''a"
         and "sim (~) op' op"
         and "sim (~) op op'"
@@ -2922,11 +2922,11 @@ next
         apply (rule step_Out_loop_op)
           apply assumption
          apply simp_all
-      apply (rule bc_sym)
-      apply (rule bc_base)
+      apply (rule bcr_sym)
+      apply (rule bcr_base)
       apply fast
       done
-    moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a))"
+    moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a))"
       if "sim (~) op' op"
         and "sim (~) op op'"
         and "step Tau op' op''a"
@@ -2941,11 +2941,11 @@ next
         apply (rule step_Tau_loop_op)
          apply assumption
         apply simp_all
-      apply (rule bc_sym)
-      apply (rule bc_base)
+      apply (rule bcr_sym)
+      apply (rule bcr_base)
       apply fast
       done
-    moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BTL x2 buf)) op''a))"
+    moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BTL x2 buf)) op''a))"
       if "step (Inp (Inr x2) (BHD x2 buf)) op' op''a"
         and "sim (~) op' op"
         and "sim (~) op op'"
@@ -2963,11 +2963,11 @@ next
         apply (rule step_Inp_Tau_loop_op)
             apply assumption
            apply simp_all
-      apply (rule bc_sym)
-      apply (rule bc_base)
+      apply (rule bcr_sym)
+      apply (rule bcr_base)
       apply fast
       done
-    moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BENQ x2 x buf)) op''a))"
+    moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BENQ x2 x buf)) op''a))"
       if "step (Out (Inr x2) x) op' op''a"
         and "sim (~) op' op"
         and "sim (~) op op'"
@@ -2985,8 +2985,8 @@ next
         apply (rule step_Out_Tau_loop_op)
           apply assumption
          apply simp_all
-      apply (rule bc_sym)
-      apply (rule bc_base)
+      apply (rule bcr_sym)
+      apply (rule bcr_base)
       apply force
       done
     ultimately show ?thesis
@@ -3583,42 +3583,48 @@ lemma spin_op_end_op:
 
 section \<open>Basic operator examples\<close>
 abbreviation ex1_op where
-  "ex1_op \<equiv> Silent (Write \<oslash> (1::2) (42::nat))"
+  "ex1_op \<equiv> Write \<oslash> (1::2) (42::nat)"
 abbreviation ex2_op where
   "ex2_op \<equiv> Choice {|ex1_op, Choice {|ex1_op|}|}"
 abbreviation ex3_op where
-  "ex3_op \<equiv> Silent (Write \<odot> (1::2) (42::nat))"
+  "ex3_op \<equiv> Write \<odot> (1::2) (42::nat)"
 
 lemma ex1_bisim_ex2_op:
   "ex1_op ~ ex2_op"
-  apply (rule choices_Choice_bisim)
-  apply auto
+  apply (coinduction rule: bisim_coinduct)
+  subgoal for io op1
+    apply auto
+    done
+  subgoal for io op1
+    apply auto
+     apply hypsubst_thin
+     apply (intro conjI exI)
+      apply blast
+     apply (rule bcr_refl)
+     apply simp
+    apply (intro conjI exI)
+     apply blast
+    apply (rule bcr_refl)
+    apply simp
+    done
   done
 
 lemma ex1_bisim_ex3_op:
   "ex1_op \<approx> ex3_op"
-  apply (coinduction rule: wbisim_coinduct_upto'')
+  apply (coinduction rule: wbisim_coinduct)
   subgoal for io op1
     apply auto
     apply hypsubst_thin
     apply (intro conjI exI)
-     apply (rule rtranclp.intros(2))
-      apply (rule rtranclp.intros(1))
      apply blast
-    apply (rule wbc_Write)
-    apply (rule wbc_bisim)
-    using bisim_wbisim spin_op_end_op spin_op_silent_op wbisim_sym wbisim_trans apply blast
+    using bisim_wbisim spin_op_end_op spin_op_silent_op wbisim_R.intros(2) wbisim_sym wbisim_trans apply blast    
     done
   subgoal for io op1
     apply auto
     apply hypsubst_thin
     apply (intro conjI exI)
-     apply (rule rtranclp.intros(2))
-      apply (rule rtranclp.intros(1))
-     apply blast
-    apply (rule wbc_Write)
-    apply (rule wbc_bisim)
-    using bisim_wbisim spin_op_end_op spin_op_silent_op wbisim_sym wbisim_trans apply blast
+    apply blast
+    using bisim_wbisim spin_op_end_op spin_op_silent_op wbisim_R.intros(2) wbisim_sym wbisim_trans apply blast    
     done
   done
 
@@ -4547,15 +4553,15 @@ lemma step_sink_buf_op_Read[intro!]:
 
 lemma sink_buf_op_sink:
   "sink_buf_op buf ~ sink_op"
-proof (coinduction arbitrary: buf rule: bisim_coinduct_upto'')
+proof (coinduction arbitrary: buf rule: bisim_coinduct)
   case SIM1
   then show ?case 
   proof -
-    have "\<exists>op2'. step (Inp p x) (!::('a, 'b, 'c) op) op2' \<and> bisim_cong (\<lambda>op1xx op2xx. (\<exists>buf. op1xx = sink_buf_op buf) \<and> op2xx = !) (sink_buf_op (BENQ p x buf)) op2'"
+    have "\<exists>op2'. step (Inp p x) (!::('a, 'b, 'c) op) op2' \<and> bisim_R (\<lambda>op1xx op2xx. (\<exists>buf. op1xx = sink_buf_op buf) \<and> op2xx = !) (sink_buf_op (BENQ p x buf)) op2'"
       if "p \<notin> defaults"
       for p :: 'a
         and x :: 'c
-      using that by(intro exI conjI[rotated, OF bc_base], force, force)
+      using that by(intro exI conjI[rotated, OF bcr_base], force, force)
     then show ?thesis
       using SIM1 by (auto elim !: step_sink_buf_op)
   qed
@@ -4563,11 +4569,11 @@ next
   case SIM2
   then show ?case 
   proof -
-    have "\<exists>op2'. step (Inp p x) (sink_buf_op buf) (op2'::('a, 'b, 'c) op) \<and> bisim_cong (\<lambda>op1xx op2xx. (\<exists>buf. op1xx = sink_buf_op buf) \<and> op2xx = !) op2' !"
+    have "\<exists>op2'. step (Inp p x) (sink_buf_op buf) (op2'::('a, 'b, 'c) op) \<and> bisim_R (\<lambda>op1xx op2xx. (\<exists>buf. op1xx = sink_buf_op buf) \<and> op2xx = !) op2' !"
       if "p \<notin> defaults"
       for p :: 'a
         and x :: 'c
-      using that by(intro exI conjI[rotated, OF bc_base], force, force)
+      using that by(intro exI conjI[rotated, OF bcr_base], force, force)
     then show ?thesis
       using SIM2 by (auto elim !: step_sink_op)
   qed

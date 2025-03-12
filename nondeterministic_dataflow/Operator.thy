@@ -595,13 +595,24 @@ lemma bisim_coinduct_upto''[consumes 1, case_names SIM1 SIM2]:
    op1 ~ op2"
   using bisim_coinduct_upto' by (smt (verit, ccfv_SIG) bc_sym)
 
-lemma bisim_coinduct_upto'''[consumes 1, case_names SIM1 SIM2]:
+inductive bisim_R for R where
+  bcr_base[intro]:  "R x y \<Longrightarrow> bisim_R R x y"
+| bcr_bisim:  "bisim x y \<Longrightarrow> bisim_R R x y"
+| bcr_refl[intro]:  "x = y \<Longrightarrow> bisim_R R x y"
+| bcr_sym: "bisim_R R x y \<Longrightarrow> bisim_R R y x"
+
+lemma bisim_R_bisim_cong:
+  "bisim_R R op1 op2 \<Longrightarrow> bisim_cong R op1 op2"
+  by (induction pred: bisim_R) (auto intro: bisim_cong.intros)
+
+lemma bisim_coinduct[consumes 1, case_names SIM1 SIM2]:
   "R op1 op2 \<Longrightarrow>
-  (\<And>s t io op1'. R s t \<Longrightarrow> step io s op1' \<Longrightarrow> \<exists>op2'. step io t op2' \<and> R op1' op2') \<Longrightarrow>
-  (\<And>s t io op1'. R s t \<Longrightarrow> step io t op1' \<Longrightarrow> \<exists>op2'. step io s op2' \<and> R op2' op1') \<Longrightarrow>
+  (\<And>s t io op1'. R s t \<Longrightarrow> step io s op1' \<Longrightarrow> \<exists>op2'. step io t op2' \<and> (bisim_R R op1' op2')) \<Longrightarrow>
+  (\<And>s t io op1'. R s t \<Longrightarrow> step io t op1' \<Longrightarrow> \<exists>op2'. step io s op2' \<and> (bisim_R R op2' op1')) \<Longrightarrow>
    op1 ~ op2"
-  using bisim_coinduct_upto'
-  apply (smt (verit, ccfv_threshold) bc_base bisim_coinduct_upto'')
+  apply (rule bisim_coinduct_upto'')
+    apply assumption
+  using bisim_R_bisim_cong apply blast+
   done
 
 lemma bisim_refl:
@@ -1053,24 +1064,30 @@ lemma wbisim_coinduct_upto'[unfolded wsim_def, rule_format, consumes 1, case_nam
    (\<And>s t. R s t \<Longrightarrow> wsim (wbisim_cong R) t s) \<Longrightarrow>
    op1 \<approx> op2"
   using wbisim_coinduct_upto by blast
-thm wbisim_coinduct_upto'[no_vars]
 
-lemma wbisim_coinduct_upto''[consumes 1, case_names SIM1 SIM2]:
+lemma wbisim_coinduct_upto''[rule_format, consumes 1, case_names SIM1 SIM2]:
   "R op1 op2 \<Longrightarrow>
   (\<And>s t io op1'. R s t \<Longrightarrow> step io s op1' \<Longrightarrow> \<exists>op2'. wstep io t op2' \<and> wbisim_cong R op1' op2') \<Longrightarrow>
   (\<And>s t io op1'. R s t \<Longrightarrow> step io t op1' \<Longrightarrow> \<exists>op2'. wstep io s op2' \<and> wbisim_cong R op2' op1') \<Longrightarrow>
    op1 \<approx> op2"
   using wbisim_coinduct_upto' by (smt (verit, ccfv_SIG) wbc_sym)
 
-lemma wbisim_coinduct_upto'''[consumes 1, case_names SIM1 SIM2]:
+inductive wbisim_R for R where
+  wbcr_base[intro]:  "R x y \<Longrightarrow> wbisim_R R x y"
+| wbcr_bisim:  "x \<approx> y \<Longrightarrow> wbisim_R R x y"
+| wbcr_refl[intro]:  "x = y \<Longrightarrow> wbisim_R R x y"
+
+lemma wbisim_coinduct[rule_format, consumes 1, case_names SIM1 SIM2]:
   "R op1 op2 \<Longrightarrow>
-  (\<And>s t io op1'. R s t \<Longrightarrow> step io s op1' \<Longrightarrow> \<exists>op2'. wstep io t op2' \<and> R op1' op2') \<Longrightarrow>
-  (\<And>s t io op1'. R s t \<Longrightarrow> step io t op1' \<Longrightarrow> \<exists>op2'. wstep io s op2' \<and> R op2' op1') \<Longrightarrow>
+  (\<And>s t io op1'. R s t \<Longrightarrow> step io s op1' \<Longrightarrow> \<exists>op2'. wstep io t op2' \<and> (wbisim_R R op1' op2')) \<Longrightarrow>
+  (\<And>s t io op1'. R s t \<Longrightarrow> step io t op1' \<Longrightarrow> \<exists>op2'. wstep io s op2' \<and> (wbisim_R R op2' op1')) \<Longrightarrow>
    op1 \<approx> op2"
   apply (rule wbisim_coinduct_upto'')
     apply assumption
-   apply blast+
+  apply (metis wbc_base wbc_bisim wbc_refl wbisim_R.cases)+
   done
+
+
 
 lemma step_star_map_op[intro!]:
   "(step Tau)\<^sup>*\<^sup>* op op' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (map_op f g op) (map_op f g op')"
