@@ -894,9 +894,6 @@ abbreviation "wbisimulation_canonical R \<equiv> wsimulation_canonical R \<and> 
 
 abbreviation "wbisimulation R \<equiv> (\<forall>op1 op2. R op1 op2 \<longrightarrow> wsim R op1 op2 \<and> wsim (conversep R) op2 op1)"
 
-lemma wbisimulation_correct:
-  "wbisimulation_canonical R = wbisimulation R"
-  by (auto simp add: wsim_def wsimulation_canonical_def)
 
 lemma wbisim_wstep_Tau:
   assumes "wbisimulation R"
@@ -3188,5 +3185,39 @@ lemma wsim_outputs: "wsim (\<approx>) op op' \<Longrightarrow> p \<in> outputs o
 
 lemma wbisim_outputs: "op \<approx> op' \<Longrightarrow> outputs op = outputs op'"
   by (meson antisym wsim_outputs subset_eq wbisim.cases)
+
+lemma wbisimulation_correct:
+  "wbisimulation_canonical R = wbisimulation R"
+  by (auto simp add: wsim_def wsimulation_canonical_def)
+
+lemma bisim_set_correct:
+ "(~) = \<Squnion> {R. bisimulation_canonical R}"
+  unfolding sim_def simulation_canonical_def
+  apply (rule ext)+
+  apply safe
+  subgoal for op1 op2
+    apply clarsimp
+    apply (smt (verit) bisim.cases bisim_sym sim_def)
+    done
+  subgoal for op1 op2 R
+    apply (coinduction arbitrary: op1 op2 rule: bisim_coinduct)
+     apply blast+
+    done
+  done
+
+lemma wbisim_set_correct:
+ "(\<approx>) = \<Squnion> {R. wbisimulation_canonical R}"
+  unfolding wsim_def wsimulation_canonical_def
+  apply (rule ext)+
+  apply safe
+  subgoal for op1 op2
+    apply clarsimp
+    apply (smt (verit) wbisim.cases wbisim_sym wsim_def)
+    done
+  subgoal for op1 op2 R
+    apply (coinduction arbitrary: op1 op2 rule: wbisim_coinduct)
+     apply blast+
+    done
+  done
 
 end
