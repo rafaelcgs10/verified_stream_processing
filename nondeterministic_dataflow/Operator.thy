@@ -2608,6 +2608,18 @@ lemma wbisim_wtraced: "op1 \<approx> op2 \<Longrightarrow> wtraced op1 lxs \<Lon
 abbreviation wtrace_equiv (infix "\<equiv>\<^sub>t"40) where
  "wtrace_equiv op1 op2 \<equiv> wtraces op1 = wtraces op2" 
 
+lemma wtrace_equiv_refl:
+  "op1 \<equiv>\<^sub>t op1"
+  by simp
+
+lemma wtrace_equiv_sym:
+  "op1 \<equiv>\<^sub>t op2 \<longleftrightarrow> op2 \<equiv>\<^sub>t op1"
+  by auto
+
+lemma wtrace_equiv_trans:
+  "op1 \<equiv>\<^sub>t op2 \<Longrightarrow> op2 \<equiv>\<^sub>t op3 \<Longrightarrow> op1 \<equiv>\<^sub>t op3"
+  by auto
+
 lemma wbisim_wtraces: "op1 \<approx> op2 \<Longrightarrow> op1 \<equiv>\<^sub>t op2"
   by (auto simp: wtraces_def elim: wbisim_wtraced wbisim_wtraced[OF wbisim_sym])
 
