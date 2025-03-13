@@ -3682,7 +3682,7 @@ lemma step_ex3_op_intro2[intro]:
   done
 
 lemma ex1_bisim_ex3_op:
-  "ex1_op \<approx> ex3_op"
+  "ex2_op \<approx> ex3_op"
   by (coinduction rule: wbisim_coinduct) auto
 
 section \<open>id_op/\<I>/I_m\<close>

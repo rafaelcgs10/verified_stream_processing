@@ -607,8 +607,8 @@ lemma bisim_R_bisim_cong:
 
 lemma bisim_coinduct[consumes 1, case_names SIM1 SIM2]:
   "R op1 op2 \<Longrightarrow>
-  (\<And>s t io op1'. R s t \<Longrightarrow> step io s op1' \<Longrightarrow> \<exists>op2'. step io t op2' \<and> (bisim_R R op1' op2')) \<Longrightarrow>
-  (\<And>s t io op1'. R s t \<Longrightarrow> step io t op1' \<Longrightarrow> \<exists>op2'. step io s op2' \<and> (bisim_R R op2' op1')) \<Longrightarrow>
+  (\<And>op1 op2 io op1'. R op1 op2 \<Longrightarrow> step io op1 op1' \<Longrightarrow> \<exists>op2'. step io op2 op2' \<and> (bisim_R R op1' op2')) \<Longrightarrow>
+  (\<And>op1 op2 io op2'. R op1 op2 \<Longrightarrow> step io op2 op2' \<Longrightarrow> \<exists>op1'. step io op1 op1' \<and> (bisim_R R op1' op2')) \<Longrightarrow>
    op1 ~ op2"
   apply (rule bisim_coinduct_upto'')
     apply assumption
@@ -778,7 +778,7 @@ lemma bisim_map_op:
 section\<open>Weak Bisimilarity\<close>
 
 fun estep where "estep Tau = (step Tau)\<^sup>=\<^sup>=" | "estep io = step io"
-definition "wstep io = (step Tau)^** OO (estep io) OO (step Tau)^**"
+definition "wstep io = (step Tau)\<^sup>*\<^sup>* OO (estep io) OO (step Tau)\<^sup>*\<^sup>*"
 definition "wsim R op1 op2 = (\<forall>io op1'. step io op1 op1' \<longrightarrow> (\<exists>op2'. wstep io op2 op2' \<and> R op1' op2'))"
 
 lemma wsim_mono[mono]: "R \<le> S \<Longrightarrow> wsim R \<le> wsim S"
@@ -972,6 +972,8 @@ qed
 lemma wbisimulation_wbisim: "wbisimulation (\<approx>)"
   by (auto elim: wbisim.cases elim!: wsim_mono[THEN predicate2D, rotated] wbisim_sym)
 
+thm wbisimulation_relcompp
+
 lemma wbisim_trans[trans]:
   "op1 \<approx> op2 \<Longrightarrow> op2 \<approx> op3 \<Longrightarrow> op1 \<approx> op3"
   apply (coinduction arbitrary: op1 op2 op3)
@@ -1072,22 +1074,25 @@ lemma wbisim_coinduct_upto''[rule_format, consumes 1, case_names SIM1 SIM2]:
    op1 \<approx> op2"
   using wbisim_coinduct_upto' by (smt (verit, ccfv_SIG) wbc_sym)
 
-inductive wbisim_R for R where
-  wbcr_base[intro]:  "R x y \<Longrightarrow> wbisim_R R x y"
-| wbcr_bisim:  "x \<approx> y \<Longrightarrow> wbisim_R R x y"
-| wbcr_refl[intro]:  "x = y \<Longrightarrow> wbisim_R R x y"
+inductive wbisim_R ("\<W>")  for R where
+  wbcr_base[intro]:  "R x y \<Longrightarrow> \<W> R x y"
+| wbcr_bisim:  "x \<approx> y \<Longrightarrow> \<W> R x y"
+| wbcr_refl[intro]:  "x = y \<Longrightarrow> \<W> R x y"
+| wbcr_sym:  "\<W> R y x \<Longrightarrow> \<W> R x y"
+
+lemma wbisim_R_wbisim_cong:
+  "\<W> R op1 op2 \<Longrightarrow> wbisim_cong R op1 op2"
+  by (induct pred: wbisim_R) (auto intro: wbc_bisim)
 
 lemma wbisim_coinduct[rule_format, consumes 1, case_names SIM1 SIM2]:
   "R op1 op2 \<Longrightarrow>
-  (\<And>s t io op1'. R s t \<Longrightarrow> step io s op1' \<Longrightarrow> \<exists>op2'. wstep io t op2' \<and> (wbisim_R R op1' op2')) \<Longrightarrow>
-  (\<And>s t io op1'. R s t \<Longrightarrow> step io t op1' \<Longrightarrow> \<exists>op2'. wstep io s op2' \<and> (wbisim_R R op2' op1')) \<Longrightarrow>
+  (\<And>op1 op2 io op1'. R op1 op2 \<Longrightarrow> step io op1 op1' \<Longrightarrow> \<exists>op2'. wstep io op2 op2' \<and> (\<W> R op1' op2')) \<Longrightarrow>
+  (\<And>op1 op2 io op2'. R op1 op2 \<Longrightarrow> step io op2 op2' \<Longrightarrow> \<exists>op1'. wstep io op1 op1' \<and> (\<W> R op1' op2')) \<Longrightarrow>
    op1 \<approx> op2"
   apply (rule wbisim_coinduct_upto'')
     apply assumption
-  apply (metis wbc_base wbc_bisim wbc_refl wbisim_R.cases)+
+  using wbisim_R_wbisim_cong apply blast+
   done
-
-
 
 lemma step_star_map_op[intro!]:
   "(step Tau)\<^sup>*\<^sup>* op op' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (map_op f g op) (map_op f g op')"
@@ -2600,7 +2605,10 @@ lemma wbisim_wtraced: "op1 \<approx> op2 \<Longrightarrow> wtraced op1 lxs \<Lon
   apply (auto dest!: wsim'D1)
   done
 
-lemma wbisim_wtraces: "op1 \<approx> op2 \<Longrightarrow> wtraces op1 = wtraces op2"
+abbreviation wtrace_equiv (infix "\<equiv>\<^sub>t"40) where
+ "wtrace_equiv op1 op2 \<equiv> wtraces op1 = wtraces op2" 
+
+lemma wbisim_wtraces: "op1 \<approx> op2 \<Longrightarrow> op1 \<equiv>\<^sub>t op2"
   by (auto simp: wtraces_def elim: wbisim_wtraced wbisim_wtraced[OF wbisim_sym])
 
 lemma lmap_vio_of_io:
