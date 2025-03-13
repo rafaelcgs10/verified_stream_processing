@@ -3584,7 +3584,6 @@ lemma spin_op_end_op:
   done
 
 section \<open>Basic operator examples\<close>
-term choice2
 
 corec ex1_op where
   "ex1_op = choice2 (Write ex1_op (1::2) (42::nat)) \<oslash>"
@@ -3595,7 +3594,7 @@ lemma ex1_op_code:
 
 lemma step_ex1_op_elim[elim!]:
   assumes "step io ex1_op op'"
-  obtains "op' = ex1_op" "io = Out 1 42"
+  obtains "op' = ex1_op" and "io = Out 1 42"
   using assms
   apply atomize_elim
   apply (subst (asm) ex1_op_code)
@@ -3620,7 +3619,7 @@ lemma ex2_op_code:
 
 lemma step_ex2_op_aux:
   "step io op op' \<Longrightarrow>
-   op = (Choice {|Write ex2_op 1 42, ex2_op|}) \<Longrightarrow>
+   op = Choice {|Write ex2_op 1 42, ex2_op|} \<Longrightarrow>
    op' = ex2_op \<and> io = Out 1 42"
   apply (induct op op' pred: step)
   using ex2_op_code apply blast+
