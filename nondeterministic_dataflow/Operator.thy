@@ -521,6 +521,16 @@ lemma step_map_op_elim:
 section\<open>Strong Bisimilarity\<close>
 definition "sim R op1 op2 = (\<forall>io op1'. step io op1 op1' \<longrightarrow> (\<exists>op2'. step io op2 op2' \<and> R op1' op2'))"
 
+definition "simulation_canonical R = (\<forall> op1 op2. R op1 op2 \<longrightarrow> (\<forall> io op1'. step io op1 op1' \<longrightarrow> (\<exists> op2'. step io op2 op2' \<and> R op1' op2')))" 
+
+abbreviation "bisimulation_canonical R \<equiv> simulation_canonical R \<and> simulation_canonical (conversep R)"
+abbreviation "bisimulation R \<equiv> (\<forall>op1 op2. R op1 op2 \<longrightarrow> sim R op1 op2 \<and> sim (conversep R) op2 op1)"
+
+lemma bisimulation_correct:
+  "bisimulation_canonical R = bisimulation R"
+    by (auto simp add: sim_def simulation_canonical_def)
+
+
 lemma sim_mono[mono]: "R \<le> S \<Longrightarrow> sim R \<le> sim S"
   by (force simp: sim_def le_fun_def)
 
@@ -879,7 +889,14 @@ lemma step_tau_step_tau_step_io_wstep:
   unfolding wstep_def 
   by (smt (verit, del_insts) estep.elims reflclp_tranclp relcomppI rtranclp.rtrancl_into_rtrancl sup2CI)
 
+definition "wsimulation_canonical R = (\<forall> op1 op2. R op1 op2 \<longrightarrow> (\<forall> io op1'. step io op1 op1' \<longrightarrow> (\<exists> op2'. wstep io op2 op2' \<and> R op1' op2')))" 
+abbreviation "wbisimulation_canonical R \<equiv> wsimulation_canonical R \<and> wsimulation_canonical (conversep R)"
+
 abbreviation "wbisimulation R \<equiv> (\<forall>op1 op2. R op1 op2 \<longrightarrow> wsim R op1 op2 \<and> wsim (conversep R) op2 op1)"
+
+lemma wbisimulation_correct:
+  "wbisimulation_canonical R = wbisimulation R"
+  by (auto simp add: wsim_def wsimulation_canonical_def)
 
 lemma wbisim_wstep_Tau:
   assumes "wbisimulation R"
@@ -2619,6 +2636,8 @@ lemma wtrace_equiv_sym:
 lemma wtrace_equiv_trans:
   "op1 \<equiv>\<^sub>t op2 \<Longrightarrow> op2 \<equiv>\<^sub>t op3 \<Longrightarrow> op1 \<equiv>\<^sub>t op3"
   by auto
+
+term map_op
 
 lemma wbisim_wtraces: "op1 \<approx> op2 \<Longrightarrow> op1 \<equiv>\<^sub>t op2"
   by (auto simp: wtraces_def elim: wbisim_wtraced wbisim_wtraced[OF wbisim_sym])
