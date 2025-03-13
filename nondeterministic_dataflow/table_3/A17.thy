@@ -24,11 +24,11 @@ proof (coinduction rule: bisim_coinduct)
     proof (cases p)
       case (Inl a)
       from this that show ?thesis 
-        by (intro exI conjI[rotated, OF bcr_base], force, force)
+        by (intro exI conjI[rotated, OF b_base], force, force)
     next
       case (Inr b)
       from this that show ?thesis 
-        by (intro exI conjI[rotated, OF bcr_base], force, force)
+        by (intro exI conjI[rotated, OF b_base], force, force)
     qed
     then show ?thesis
       using SIM1  by (elim step_sink_op)
@@ -47,7 +47,7 @@ next
         and op1' :: "('a, 'c, 'e) op"
         and pa :: 'a
       using that
-      by (intro exI conjI[rotated, OF bcr_base], force, force)
+      by (intro exI conjI[rotated, OF b_base], force, force)
     moreover have "\<exists>op2'. step (Inp (Inr pa) x) sink_op op2' \<and> bisim_R (\<lambda>op1xx op2xx. op1xx = sink_op \<and> op2xx = comp_op (\<lambda>_. None) (\<lambda>_. []) (sink_op::('a, 'c, 'e) op) (sink_op::('b, 'd, 'e) op)) op2' (comp_op (\<lambda>_. None) (\<lambda>_. []) sink_op sink_op)"
       if "pa \<notin> defaults"
         and "step (Inp (Inr pa) x) (comp_op (\<lambda>_. None) (\<lambda>_. []) (sink_op::('a, 'c, 'e) op) (sink_op::('b, 'd, 'e) op)) (comp_op (\<lambda>_. None) (\<lambda>_. []) sink_op sink_op)"
@@ -57,7 +57,7 @@ next
         and op2' :: "('b, 'd, 'e) op"
         and pa :: 'b
       using that    
-      by (intro exI conjI[rotated, OF bcr_base], force, force)
+      by (intro exI conjI[rotated, OF b_base], force, force)
     ultimately show ?thesis
       using SIM2 by (elim step_comp_op_elim step_sink_op ; simp split: sum.splits ; hypsubst_thin ?)
   qed

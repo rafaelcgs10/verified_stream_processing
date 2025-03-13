@@ -23,11 +23,11 @@ proof (coinduction rule: bisim_coinduct)
     proof (cases p)
       case (Inl a)
       from this that show ?thesis
-        by (intro exI conjI[rotated, OF bcr_base], fastforce+)
+        by (intro exI conjI[rotated, OF b_base], fastforce+)
     next
       case (Inr b)
       from this that show ?thesis
-        by (intro exI conjI[rotated, OF bcr_base], fastforce+)
+        by (intro exI conjI[rotated, OF b_base], fastforce+)
     qed
     then show ?thesis
       using SIM1 by (auto elim !: step_map_op_elim step_sink_op)
@@ -35,7 +35,7 @@ proof (coinduction rule: bisim_coinduct)
 next
   case SIM2
   then show ?case
-    by (auto elim!: step_comp_op_elim step_sink_op; intro exI conjI[rotated, OF bcr_base], force+)
+    by (auto elim!: step_comp_op_elim step_sink_op; intro exI conjI[rotated, OF b_base], force+)
 qed
 
 end

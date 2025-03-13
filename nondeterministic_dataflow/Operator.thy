@@ -595,11 +595,11 @@ lemma bisim_coinduct_upto''[consumes 1, case_names SIM1 SIM2]:
    op1 ~ op2"
   using bisim_coinduct_upto' by (smt (verit, ccfv_SIG) bc_sym)
 
-inductive bisim_R for R where
-  bcr_base[intro]:  "R x y \<Longrightarrow> bisim_R R x y"
-| bcr_bisim:  "bisim x y \<Longrightarrow> bisim_R R x y"
-| bcr_refl[intro]:  "x = y \<Longrightarrow> bisim_R R x y"
-| bcr_sym: "bisim_R R x y \<Longrightarrow> bisim_R R y x"
+inductive bisim_R ("\<B>") for R where
+  b_base[intro]:  "R x y \<Longrightarrow> \<B> R x y"
+| b_bisim:  "bisim x y \<Longrightarrow> \<B> R x y"
+| b_refl[intro]:  "x = y \<Longrightarrow> \<B> R x y"
+| b_sym: "\<B> R x y \<Longrightarrow> \<B> R y x"
 
 lemma bisim_R_bisim_cong:
   "bisim_R R op1 op2 \<Longrightarrow> bisim_cong R op1 op2"

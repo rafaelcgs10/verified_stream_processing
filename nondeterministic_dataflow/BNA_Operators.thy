@@ -2754,7 +2754,7 @@ proof (coinduction arbitrary: op op' buf rule: bisim_coinduct)
         apply (rule step_Inp_loop_op)
          apply assumption
         apply simp_all
-      apply (rule bcr_base)
+      apply (rule b_base)
       apply fast
       done
     moreover have "\<exists>op2'. step (Out x1 x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a)) op2'"
@@ -2773,7 +2773,7 @@ proof (coinduction arbitrary: op op' buf rule: bisim_coinduct)
         apply (rule step_Out_loop_op)
           apply assumption
          apply simp_all
-      apply (rule bcr_base)
+      apply (rule b_base)
       apply fast
       done
     moreover have "\<exists>op2'. step (Out (projl (Inr x2)) x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a)) op2'"
@@ -2793,7 +2793,7 @@ proof (coinduction arbitrary: op op' buf rule: bisim_coinduct)
         apply (rule step_Out_loop_op)
           apply assumption
          apply simp_all
-      apply (rule bcr_base)
+      apply (rule b_base)
       apply fast
       done
     moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a)) op2'"
@@ -2810,7 +2810,7 @@ proof (coinduction arbitrary: op op' buf rule: bisim_coinduct)
         apply (rule step_Tau_loop_op)
          apply assumption
         apply simp_all
-      apply (rule bcr_base)
+      apply (rule b_base)
       apply fast
       done
     moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BTL x2 buf)) op''a)) op2'"
@@ -2830,7 +2830,7 @@ proof (coinduction arbitrary: op op' buf rule: bisim_coinduct)
         apply (rule step_Inp_Tau_loop_op)
             apply assumption
            apply simp_all
-      apply (rule bcr_base)
+      apply (rule b_base)
       apply fast
       done
     moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op')) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BENQ x2 x buf)) op''a)) op2'"
@@ -2850,7 +2850,7 @@ proof (coinduction arbitrary: op op' buf rule: bisim_coinduct)
         apply (rule step_Out_Tau_loop_op)
           apply assumption
          apply simp_all
-      apply (rule bcr_base)
+      apply (rule b_base)
       apply force
       done
     ultimately show ?thesis
@@ -2878,8 +2878,8 @@ next
         apply (rule step_Inp_loop_op)
          apply assumption
         apply simp_all
-      apply (rule bcr_sym)
-      apply (rule bcr_base)
+      apply (rule b_sym)
+      apply (rule b_base)
       apply (intro conjI exI)
         apply force+
       done
@@ -2900,8 +2900,8 @@ next
         apply (rule step_Out_loop_op)
           apply assumption
          apply simp_all
-      apply (rule bcr_sym)
-      apply (rule bcr_base)
+      apply (rule b_sym)
+      apply (rule b_base)
       apply fast
       done
     moreover have "\<exists>op2'. step (Out (projl (Inr x2)) x) (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a))"
@@ -2922,8 +2922,8 @@ next
         apply (rule step_Out_loop_op)
           apply assumption
          apply simp_all
-      apply (rule bcr_sym)
-      apply (rule bcr_base)
+      apply (rule b_sym)
+      apply (rule b_base)
       apply fast
       done
     moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op''a))"
@@ -2941,8 +2941,8 @@ next
         apply (rule step_Tau_loop_op)
          apply assumption
         apply simp_all
-      apply (rule bcr_sym)
-      apply (rule bcr_base)
+      apply (rule b_sym)
+      apply (rule b_base)
       apply fast
       done
     moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BTL x2 buf)) op''a))"
@@ -2963,8 +2963,8 @@ next
         apply (rule step_Inp_Tau_loop_op)
             apply assumption
            apply simp_all
-      apply (rule bcr_sym)
-      apply (rule bcr_base)
+      apply (rule b_sym)
+      apply (rule b_base)
       apply fast
       done
     moreover have "\<exists>op2'. step Tau (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op)) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if (p::'b) \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op) \<and> op2xx = map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined buf) op') \<and> op ~ op') op2' (map_op projl projl (loop_op (case_sum (\<lambda>_. None) (\<lambda>p. if p \<in> defaults then None else Some (Inr p))) (case_sum undefined (BENQ x2 x buf)) op''a))"
@@ -2985,8 +2985,8 @@ next
         apply (rule step_Out_Tau_loop_op)
           apply assumption
          apply simp_all
-      apply (rule bcr_sym)
-      apply (rule bcr_base)
+      apply (rule b_sym)
+      apply (rule b_base)
       apply force
       done
     ultimately show ?thesis
@@ -3579,54 +3579,112 @@ lemma spin_op_silent_op:
 
 lemma spin_op_end_op:
   \<open>\<otimes> ~ \<oslash>\<close>
-  by (simp add: choices_Choice_bisim)
+  apply (coinduction rule: bisim_coinduct)
+   apply (auto elim: step_spin_op_no_label)
+  done
 
 section \<open>Basic operator examples\<close>
-abbreviation ex1_op where
-  "ex1_op \<equiv> Write \<oslash> (1::2) (42::nat)"
-abbreviation ex2_op where
-  "ex2_op \<equiv> Choice {|ex1_op, Choice {|ex1_op|}|}"
-abbreviation ex3_op where
-  "ex3_op \<equiv> Write \<odot> (1::2) (42::nat)"
+term choice2
+
+corec ex1_op where
+  "ex1_op = choice2 (Write ex1_op (1::2) (42::nat)) \<oslash>"
+
+lemma ex1_op_code:
+  "ex1_op = Choice {|Write ex1_op (1::2) (42::nat), \<oslash>|}"
+  by (subst ex1_op.code, simp)
+
+lemma step_ex1_op_elim[elim!]:
+  assumes "step io ex1_op op'"
+  obtains "op' = ex1_op" "io = Out 1 42"
+  using assms
+  apply atomize_elim
+  apply (subst (asm) ex1_op_code)
+  apply auto
+  done
+
+lemma step_ex1_op_intro[intro!]:
+  assumes "io = Out 1 42"
+    and "op' = ex1_op"
+  shows "step io ex1_op op'"
+  using assms apply -
+  apply (subst ex1_op_code)
+  apply auto
+  done
+
+corec ex2_op where
+  "ex2_op = choice2 (Write ex2_op (1::2) (42::nat)) ex2_op"
+
+lemma ex2_op_code:
+  "ex2_op = Choice {|Write ex2_op (1::2) (42::nat), ex2_op|}"
+  by (subst ex2_op.code, simp)
+
+lemma step_ex2_op_aux:
+  "step io op op' \<Longrightarrow>
+   op = (Choice {|Write ex2_op 1 42, ex2_op|}) \<Longrightarrow>
+   op' = ex2_op \<and> io = Out 1 42"
+  apply (induct op op' pred: step)
+  using ex2_op_code apply blast+
+  done
+
+lemma step_ex2_op_elim[elim!]:
+  assumes "step io ex2_op op'"
+  obtains "op' = ex2_op" "io = Out 1 42"
+  using assms
+  apply atomize_elim
+  apply (subst (asm) ex2_op_code)
+  using step_ex2_op_aux apply metis
+  done
+
+lemma step_ex2_op_intro[intro!]:
+  assumes "io = Out 1 42"
+    and "op' = ex2_op"
+  shows "step io ex2_op op'"
+  using assms apply -
+  apply (subst ex2_op_code)
+  apply auto
+  done
 
 lemma ex1_bisim_ex2_op:
   "ex1_op ~ ex2_op"
-  apply (coinduction rule: bisim_coinduct)
-  subgoal for io op1
-    apply auto
-    done
-  subgoal for io op1
-    apply auto
-     apply hypsubst_thin
-     apply (intro conjI exI)
-      apply blast
-     apply (rule bcr_refl)
-     apply simp
-    apply (intro conjI exI)
-     apply blast
-    apply (rule bcr_refl)
-    apply simp
-    done
+  by (coinduction rule: bisim_coinduct) auto
+
+corec ex3_op where
+  "ex3_op = choice2 (Write ex3_op (1::2) (42::nat)) (Silent ex3_op)"
+
+lemma ex3_op_code:
+  "ex3_op = Choice {|Write ex3_op (1::2) (42::nat), Silent ex3_op|}"
+  by (subst ex3_op.code, simp)
+
+lemma step_ex3_op_elim[elim!]:
+  assumes "step io ex3_op op'"
+  obtains "op' = ex3_op" "io = Out 1 42" | "op' = ex3_op" "io = Tau" 
+  using assms
+  apply atomize_elim
+  apply (subst (asm) ex3_op_code)
+  apply auto
+  done
+
+lemma step_ex3_op_intro1[intro]:
+  assumes "io = Out 1 42"
+    and "op' = ex3_op"
+  shows "step io ex3_op op'"
+  using assms apply -
+  apply (subst ex3_op_code)
+  apply auto
+  done
+
+lemma step_ex3_op_intro2[intro]:
+  assumes "io = Tau"
+    and "op' = ex3_op"
+  shows "step io ex3_op op'"
+  using assms apply -
+  apply (subst ex3_op_code)
+  apply auto
   done
 
 lemma ex1_bisim_ex3_op:
   "ex1_op \<approx> ex3_op"
-  apply (coinduction rule: wbisim_coinduct)
-  subgoal for io op1
-    apply auto
-    apply hypsubst_thin
-    apply (intro conjI exI)
-     apply blast
-    using bisim_wbisim spin_op_end_op spin_op_silent_op wbisim_R.intros(2) wbisim_sym wbisim_trans apply blast    
-    done
-  subgoal for io op1
-    apply auto
-    apply hypsubst_thin
-    apply (intro conjI exI)
-    apply blast
-    using bisim_wbisim spin_op_end_op spin_op_silent_op wbisim_R.intros(2) wbisim_sym wbisim_trans apply blast    
-    done
-  done
+  by (coinduction rule: wbisim_coinduct) auto
 
 section \<open>id_op/\<I>/I_m\<close>
   \<comment> \<open>id_op is I_m in the BNA paper\<close>
@@ -4561,7 +4619,7 @@ proof (coinduction arbitrary: buf rule: bisim_coinduct)
       if "p \<notin> defaults"
       for p :: 'a
         and x :: 'c
-      using that by(intro exI conjI[rotated, OF bcr_base], force, force)
+      using that by(intro exI conjI[rotated, OF b_base], force, force)
     then show ?thesis
       using SIM1 by (auto elim !: step_sink_buf_op)
   qed
@@ -4573,7 +4631,7 @@ next
       if "p \<notin> defaults"
       for p :: 'a
         and x :: 'c
-      using that by(intro exI conjI[rotated, OF bcr_base], force, force)
+      using that by(intro exI conjI[rotated, OF b_base], force, force)
     then show ?thesis
       using SIM2 by (auto elim !: step_sink_op)
   qed

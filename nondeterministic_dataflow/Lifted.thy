@@ -295,7 +295,7 @@ proof (coinduction arbitrary: A B C D op rule: bisim_coinduct)
         and xa :: 'e
       using that 
       apply -
-      apply (intro conjI[rotated] exI bcr_base)
+      apply (intro conjI[rotated] exI b_base)
         apply force+
       done
     moreover have "\<exists>op2'. step (Out (g p) (BHD p (D \<circ> g))) (map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>A B C D op. op1xx = map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) (map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (BTL p (D \<circ> g)))))))) op2'"
@@ -308,7 +308,7 @@ proof (coinduction arbitrary: A B C D op rule: bisim_coinduct)
       for p :: 'c
       using that 
       apply -
-      apply (intro conjI[rotated] exI bcr_base)
+      apply (intro conjI[rotated] exI b_base)
         apply force
        apply force
       apply (rule step_map_op)
@@ -329,7 +329,7 @@ proof (coinduction arbitrary: A B C D op rule: bisim_coinduct)
       for pa :: 'a
       using that 
       apply -
-      apply (intro conjI[rotated] exI bcr_base)
+      apply (intro conjI[rotated] exI b_base)
         apply force
        apply force
       apply (rule step_map_op)
@@ -347,7 +347,7 @@ proof (coinduction arbitrary: A B C D op rule: bisim_coinduct)
         and op1' :: "('a, 'c, 'e) op"
       using that 
       apply -
-      apply (intro conjI[rotated] exI bcr_base)
+      apply (intro conjI[rotated] exI b_base)
         apply force+
       done
     moreover have "\<exists>op2'. step Tau (map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>A B C D op. op1xx = map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) (map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (BENQ q xa (C \<circ> g)) op1' (id_op (D \<circ> g))))))) op2'"
@@ -361,7 +361,7 @@ proof (coinduction arbitrary: A B C D op rule: bisim_coinduct)
         and q :: 'c
       using that 
       apply -
-      apply (intro conjI[rotated] exI bcr_base)
+      apply (intro conjI[rotated] exI b_base)
         apply force
        apply force
       apply (rule step_map_op)
@@ -378,7 +378,7 @@ proof (coinduction arbitrary: A B C D op rule: bisim_coinduct)
       for pb :: 'c
       using that 
       apply -
-      apply (intro conjI[rotated] exI bcr_base)
+      apply (intro conjI[rotated] exI b_base)
       apply force
       apply force
       apply (rule step_map_op)
@@ -394,7 +394,7 @@ proof (coinduction arbitrary: A B C D op rule: bisim_coinduct)
       for op1' :: "('a, 'c, 'e) op"
       using that 
       apply -
-      apply (intro conjI[rotated] exI bcr_base)
+      apply (intro conjI[rotated] exI b_base)
       apply force
       apply force
       apply (rule step_map_op)
@@ -424,7 +424,7 @@ next
         and xa :: 'e
       using that
       apply -
-      apply (intro conjI[rotated] exI bcr_base)
+      apply (intro conjI[rotated] exI b_base)
       apply force
       apply force
       apply (rule step_map_op)
@@ -450,7 +450,7 @@ next
       for p :: 'd
       using that
       apply -
-      apply (intro conjI[rotated] exI bcr_base)
+      apply (intro conjI[rotated] exI b_base)
       apply force
       apply force
       apply (rule step_map_op)
@@ -479,7 +479,7 @@ next
       for pa :: 'b
       using that
       apply -
-      apply (intro conjI[rotated] exI bcr_base)
+      apply (intro conjI[rotated] exI b_base)
       apply force
       apply force
       apply (rule step_map_op)
@@ -511,7 +511,7 @@ next
       using that
       apply -
       apply (cases io'b; simp)
-      apply (intro conjI[rotated] exI bcr_base)
+      apply (intro conjI[rotated] exI b_base)
       apply force
       apply force
       apply (rule step_map_op)
@@ -537,7 +537,7 @@ next
       using that
       apply -
       apply (cases io'b; simp)
-      apply (intro conjI[rotated] exI bcr_base)
+      apply (intro conjI[rotated] exI b_base)
       apply force
       apply force
       apply (rule step_map_op)
@@ -560,7 +560,7 @@ next
       for pb :: 'd
       using that
       apply -
-      apply (intro conjI[rotated] exI bcr_base)
+      apply (intro conjI[rotated] exI b_base)
       apply force
       apply force
       apply (rule step_map_op)
@@ -592,7 +592,7 @@ next
       for op''b :: "('a, 'c, 'e) op"
       using that
       apply -
-      apply (intro conjI[rotated] exI bcr_base)
+      apply (intro conjI[rotated] exI b_base)
       apply force
       apply force
       apply (rule step_map_op)

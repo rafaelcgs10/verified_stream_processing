@@ -23,7 +23,7 @@ proof (coinduction arbitrary: op rule: bisim_coinduct)
         and op1' :: "('a, 'b, 'd) op"
       using that 
       apply -
-      apply (intro conjI[rotated] bcr_base exI)
+      apply (intro conjI[rotated] b_base exI)
         apply force+
       done
     moreover have "\<exists>op2'. step (Out (Inl p) x) (map_op Inl Inl op) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op. op1xx = comp_op (\<lambda>_. None::0 option) (\<lambda>_. []) op \<I> \<and> op2xx = map_op Inl Inl op) (comp_op (\<lambda>_. None) (\<lambda>_. []) op1' \<I>) op2'"
@@ -33,7 +33,7 @@ proof (coinduction arbitrary: op rule: bisim_coinduct)
         and op1' :: "('a, 'b, 'd) op"
       using that 
       apply -
-      apply (intro conjI[rotated] bcr_base exI)
+      apply (intro conjI[rotated] b_base exI)
         apply force+
       done
     moreover have "\<exists>op2'. step Tau (map_op Inl Inl op) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op. op1xx = comp_op (\<lambda>_. None::0 option) (\<lambda>_. []) op \<I> \<and> op2xx = map_op Inl Inl op) (comp_op (\<lambda>_. None) (\<lambda>_. []) op1' \<I>) op2'"
@@ -41,7 +41,7 @@ proof (coinduction arbitrary: op rule: bisim_coinduct)
       for op1' :: "('a, 'b, 'd) op"
       using that 
       apply -
-      apply (intro conjI[rotated] bcr_base exI)
+      apply (intro conjI[rotated] b_base exI)
         apply force+
       done
     ultimately show ?thesis
@@ -59,7 +59,7 @@ next
         and op'' :: "('a, 'b, 'd) op"
       using that 
       apply -
-      apply (intro conjI[rotated] bcr_base exI)
+      apply (intro conjI[rotated] b_base exI)
       apply force+
       apply (smt (verit, del_insts) IO.map(1) IO.map(3) IO.simps(16) dom_empty empty_iff id_def step_choicesE step_comp_op_L_Inp step_comp_op_L_Out step_comp_op_L_Tau)
       done
@@ -85,7 +85,7 @@ proof (coinduction arbitrary: op rule: bisim_coinduct)
         and op2' :: "('a, 'b, 'd) op"
      using that 
       apply -
-      apply (intro conjI[rotated] bcr_base exI)
+      apply (intro conjI[rotated] b_base exI)
         apply force+
      done
     moreover have "\<exists>op2'a. step (Inp (Inr p::0 + 'a) x) (map_op Inr Inr op) op2'a \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op. op1xx = comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> op \<and> op2xx = map_op Inr Inr op) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> op2') op2'a"
@@ -95,7 +95,7 @@ proof (coinduction arbitrary: op rule: bisim_coinduct)
         and op2' :: "('a, 'b, 'd) op"
      using that 
       apply -
-      apply (intro conjI[rotated] bcr_base exI)
+      apply (intro conjI[rotated] b_base exI)
         apply force+
      done
    moreover have "\<exists>op2'a. step Tau (map_op Inr Inr op) op2'a \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op. op1xx = comp_op (\<lambda>_. None) (\<lambda>_. []) (\<I>::(0, _, 'd) op) op \<and> op2xx = map_op Inr Inr op) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> op2') op2'a"
@@ -103,7 +103,7 @@ proof (coinduction arbitrary: op rule: bisim_coinduct)
       for op2' :: "('a, 'b, 'd) op"
      using that 
       apply -
-      apply (intro conjI[rotated] bcr_base exI)
+      apply (intro conjI[rotated] b_base exI)
         apply force+
      done
    ultimately show ?thesis
@@ -121,7 +121,7 @@ next
         and op'' :: "('a, 'b, 'd) op"
       using that 
       apply -
-      apply (intro conjI[rotated] bcr_base exI)
+      apply (intro conjI[rotated] b_base exI)
       apply force+
       apply (cases io'; simp)
       subgoal
