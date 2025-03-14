@@ -47,7 +47,7 @@ lemma feedback_op_move_left_vdash:
   shows  "\<stileturn>(op\<up>) \<approx> \<stileturn>op\<up>"
   using assms apply -
   apply (rule wbisim_trans[OF R1])
-    apply (simp_all add: bisim_wbisim B6 wbisim_loop_op_cong wbisim_refl wbisim_scomp_op_cong)
+    apply (simp_all add: bisim_wbisim B6 wbisim_feedback_op_cong wbisim_refl wbisim_scomp_op_cong)
   done
 
 lemma feedback_op_move_right_vdash:
@@ -56,7 +56,7 @@ lemma feedback_op_move_right_vdash:
   shows  "(op\<up>)\<turnstile> \<approx> op\<turnstile>\<up>"
   using assms apply -
   apply (rule wbisim_trans[OF R2])
-    apply (simp_all add: bisim_wbisim B6 wbisim_loop_op_cong wbisim_refl wbisim_scomp_op_cong)
+    apply (simp_all add: bisim_wbisim B6 wbisim_feedback_op_cong wbisim_refl wbisim_scomp_op_cong)
   done
 
 lemma feedback_op_move_vdash:
@@ -245,14 +245,14 @@ lift_definition
   subgoal for op op'
     apply (rule exI[of _ "\<stileturn>(op\<turnstile>) \<up>"])
     apply (rule wbisim_trans)
-     apply (rule wbisim_loop_op_cong)
+     apply (rule wbisim_feedback_op_cong)
      apply assumption
     apply (rule wbisim_trans[rotated])
      apply (rule wbisim_sym)
      apply (rule feedback_op_move_vdash_alt)
       apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def)[1]
      apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def)[1]
-    apply (smt (verit, ccfv_threshold) bisim_wbisim B3.B3 wbisim_double_vdash wbisim_loop_op_cong wbisim_sym wbisim_trans)
+    apply (smt (verit, ccfv_threshold) bisim_wbisim B3.B3 wbisim_double_vdash wbisim_feedback_op_cong wbisim_sym wbisim_trans)
     done
   done
 no_notation feedback_op ( "_ \<up>" [66] 65)

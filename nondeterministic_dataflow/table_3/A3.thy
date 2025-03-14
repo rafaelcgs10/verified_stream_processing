@@ -49,7 +49,7 @@ next
       if "p \<notin> defaults"
       for p :: 'b
         and x :: 'c
-      using that by (fastforce intro: wbc_sym[OF wbc_base]  del: wstep_loop_ intro!: wstep_loop_)
+      using that by (fastforce intro: wbc_sym[OF wbc_base]  del: wstep_loop_Inp intro!: wstep_loop_Inp)
     moreover have "\<exists>op2'. wstep (Out p (BHD p buf1)) (map_op projl projr (comp_op Some (case_sum (\<lambda>_. []) buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (\<lambda>_. []) (\<oslash>::('a, 'b, 'c) op) \<I>)) (id_op buf1)) (merge_op (case_sum (\<lambda>_. []) buf3)))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf2 buf3. op1 = map_op projl projr (comp_op Some (case_sum (\<lambda>_. []) buf2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some (\<lambda>_. []) \<oslash> \<I>)) (id_op buf1)) (merge_op (case_sum (\<lambda>_. []) buf3))) \<and> op2 = map_op Inr id (id_op ((buf1 >> buf2) >> buf3))) op2' (map_op Inr id (id_op ((BTL p buf1 >> buf2) >> buf3)))"
       if "p \<notin> defaults"
         and "buf1 p \<noteq> []"

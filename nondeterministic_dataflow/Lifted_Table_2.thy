@@ -144,7 +144,7 @@ lemma F3':
     and "(I :: ('a :: {countable,defaults}, 'a, 'c) op) = \<I>"
   shows  \<open>map_op id Inr Q' \<up> \<approx> S\<close>
 proof -
-  have "map_op id Inr Q' \<up> \<approx> (map_op id Inr Q \<bullet> (S \<parallel> I)) \<up>"  using assms map_op_id_Inr_move_vdash wbisim_loop_op_cong by blast
+  have "map_op id Inr Q' \<up> \<approx> (map_op id Inr Q \<bullet> (S \<parallel> I)) \<up>"  using assms map_op_id_Inr_move_vdash wbisim_feedback_op_cong by blast
   also have \<open>\<dots> \<approx> map_op id Inr Q\<up> \<bullet> S\<close>
     using assms apply -
     apply (rule wbisim_trans)
@@ -316,5 +316,7 @@ lemma F5:
   apply transfer
   apply (auto simp add: \<UU>_def inj_on_diff)[1]
   by (rule F5')
+
+find_theorems loop_op name: cong
 
 end

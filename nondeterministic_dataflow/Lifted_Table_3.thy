@@ -206,7 +206,7 @@ lemma F3':
   \<open>map_op id Inr (\<V>' :: ('a :: {countable, defaults} + 'a, 'a, 'c) op)\<up> \<approx> (!::('a, 'd :: all_defaults, 'c) op)\<close>
 proof -
   have \<open>map_op id Inr \<V>' \<up> \<approx> (map_op id Inr \<V> \<bullet> ((!::('a, 'd :: all_defaults, 'c) op) \<parallel> \<I>)) \<up>\<close> 
-    using map_op_id_Inr_move_vdash wbisim_loop_op_cong by blast
+    using map_op_id_Inr_move_vdash wbisim_feedback_op_cong by blast
   also have \<open>\<dots> \<approx> map_op id Inr \<V>\<up> \<bullet> (!::('a, 'd :: all_defaults, 'c) op)\<close>
     apply (rule wbisim_trans)
      apply (rule wbisim_sym)
@@ -223,7 +223,7 @@ lemma F4':
   \<open>map_op Inr id (\<Lambda>'::('b :: {countable, defaults}, 'b + 'b, 'c) op) \<up> \<approx> (\<exclamdown>::('d :: all_defaults, 'b, 'c) op)\<close>
 proof -
   have \<open>map_op Inr id \<Lambda>' \<up> \<approx> (((\<exclamdown>::('d :: all_defaults, 'b, 'c) op) \<parallel> \<I>) \<bullet> map_op Inr id \<Lambda>) \<up>\<close>
-    using map_op_Inr_id_left_identity wbisim_loop_op_cong by blast
+    using map_op_Inr_id_left_identity wbisim_feedback_op_cong by blast
   also have \<open>\<dots> \<approx> (\<exclamdown>::('d :: all_defaults, 'b, 'c) op) \<bullet> (map_op Inr id \<Lambda> \<up>)\<close>
     apply (rule wbisim_trans)
      apply (rule wbisim_sym)

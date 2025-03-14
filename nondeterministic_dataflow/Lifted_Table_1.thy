@@ -197,7 +197,7 @@ lemma R4:
     apply (subgoal_tac " wbisim (feedback_op (scomp_op op1 (pcomp_op id_empty_op op2))) (feedback_op (scomp_op (\<stileturn>\<stileturn>(op1'\<turnstile>)) (pcomp_op id_empty_op (\<stileturn>(op2' \<turnstile>)))))")
      defer
     subgoal
-      apply (rule wbisim_loop_op_cong)
+      apply (rule wbisim_feedback_op_cong)
       apply (rule wbisim_scomp_op_cong)
       using B4.B4_2 wbisim_sym wbisim_trans apply blast
       apply (rule wbisim_pcomp_op_cong)
@@ -211,7 +211,7 @@ lemma R4:
         apply (metis wbisim_inputs wbisim_vdash_inputs_no_defaults)
        apply (metis wbisim_outputs wbisim_vdash_outputs_no_defaults)
       apply (auto simp add: scomp_op_def image_iff disjoint_iff op.set_map ran_def dest!: wbisim_inputs)[2]
-    apply (rule wbisim_loop_op_cong)
+    apply (rule wbisim_feedback_op_cong)
     apply (rule wbisim_scomp_op_cong)
      apply (rule wbisim_pcomp_op_cong)
       apply (rule wbisim_refl)
