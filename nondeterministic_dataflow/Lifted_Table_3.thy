@@ -91,12 +91,12 @@ proof -
 qed
 
 lemma A4':
-  \<open>map_op id Inl (\<V>' \<bullet> !) \<approx> ! \<parallel> !\<close>
+  \<open>\<V>' \<bullet> ! \<approx> ! \<parallel> !\<close>
 proof -
-  have \<open>map_op id Inl (\<V>' \<bullet> !) \<approx> map_op id Inl (\<V> \<bullet> (\<I> \<bullet> !))\<close>
+  have \<open>\<V>' \<bullet> ! \<approx> \<V> \<bullet> (\<I> \<bullet> !)\<close>
     by (simp add: B3 bisim_map_op bisim_wbisim)
-  also have \<open>\<dots> \<approx> map_op id Inl (\<V> \<bullet> !)\<close>
-    by (metis bisim_refl bisim_wbisim id_sink_op_sink_op scomp_op_def wbisim_map_op wbisim_scomp_op_cong)
+  also have \<open>\<dots> \<approx> \<V> \<bullet> !\<close>
+    by (metis bisim_refl bisim_wbisim id_sink_op_sink_op scomp_op_def wbisim_scomp_op_cong)
   also have \<open>\<dots> \<approx> ! \<parallel> !\<close> by (rule A4)
   finally show ?thesis.
 qed
@@ -278,7 +278,7 @@ lemma A3:
   using A3' by auto
 
 lemma A4:
-  \<open>map_operator id Inl (\<V> \<bullet> !) \<approx> ! \<parallel> !\<close>
+  \<open>\<V> \<bullet> ! \<approx> ! \<parallel> !\<close>
   apply transfer
   using A4' by auto
 

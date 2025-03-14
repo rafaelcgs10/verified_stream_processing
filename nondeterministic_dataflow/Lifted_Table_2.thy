@@ -86,12 +86,12 @@ proof -
 qed
 
 lemma A4':
-  \<open>map_op id Inl (\<Q>' \<bullet> !) \<approx> ! \<parallel> !\<close>
+  \<open>\<Q>' \<bullet> ! \<approx> ! \<parallel> !\<close>
 proof -
-  have \<open>map_op id Inl (\<Q>' \<bullet> !) \<approx> map_op id Inl (\<Q> \<bullet> (\<I> \<bullet> !))\<close>
-    using B3 bisim_map_op bisim_wbisim by blast
-  also have \<open>\<dots> \<approx> map_op id Inl (\<Q> \<bullet> !)\<close>
-    by (metis id_sink_op_sink_op scomp_op_def wbisim_map_op wbisim_refl wbisim_scomp_op_cong)
+  have \<open>\<Q>' \<bullet> ! \<approx> \<Q> \<bullet> (\<I> \<bullet> !)\<close>
+  using B3 bisim_wbisim by blast
+  also have \<open>\<dots> \<approx> \<Q> \<bullet> !\<close>
+    by (metis id_sink_op_sink_op scomp_op_def wbisim_refl wbisim_scomp_op_cong)
   also have \<open>\<dots> \<approx> ! \<parallel> !\<close> by (rule A4.A4)
   finally show ?thesis.
 qed
@@ -206,10 +206,9 @@ lemma A3:
   by auto
 
 lemma A4:
-  \<open>map_operator id Inl (\<Q> \<bullet> !) \<approx> ! \<parallel> !\<close>
+  \<open>\<Q> \<bullet> ! \<approx> ! \<parallel> !\<close>
   apply transfer
-  apply (auto simp add: inj_on_def)[1]
-  by (rule A4')
+  using A4' by auto
 
 lemma A5:
   \<open>\<C> \<bullet> (\<C> \<parallel> \<I>) \<approx> map_operator id (case_sum Inr Inl) (\<C> \<bullet> (\<I> \<parallel> \<C>))\<close>
@@ -230,7 +229,7 @@ lemma A7:
   by (rule A7)
 
 lemma A8:
-  \<open>(\<exclamdown> \<bullet> \<C>) \<approx> \<exclamdown> \<parallel> \<exclamdown>\<close>
+  \<open>\<exclamdown> \<bullet> \<C> \<approx> \<exclamdown> \<parallel> \<exclamdown>\<close>
   apply transfer
   apply (rule bisim_wbisim)
   apply (rule A8)
@@ -279,7 +278,7 @@ lemma A16:
   using A16 bisim_wbisim bisim_sym bisim_trans id_op_0_end_op by blast
 
 lemma A17:
-  \<open>map_operator id Inl ! \<approx> ! \<parallel> !\<close>
+  \<open>! \<approx> ! \<parallel> !\<close>
   apply transfer
   using A17 bisim_wbisim by auto
 
