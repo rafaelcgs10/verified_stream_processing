@@ -521,16 +521,6 @@ lemma step_map_op_elim:
 section\<open>Strong Bisimilarity\<close>
 definition "sim R op1 op2 = (\<forall>io op1'. step io op1 op1' \<longrightarrow> (\<exists>op2'. step io op2 op2' \<and> R op1' op2'))"
 
-definition "simulation_canonical R = (\<forall> op1 op2. R op1 op2 \<longrightarrow> (\<forall> io op1'. step io op1 op1' \<longrightarrow> (\<exists> op2'. step io op2 op2' \<and> R op1' op2')))" 
-
-abbreviation "bisimulation_canonical R \<equiv> simulation_canonical R \<and> simulation_canonical (conversep R)"
-abbreviation "bisimulation R \<equiv> (\<forall>op1 op2. R op1 op2 \<longrightarrow> sim R op1 op2 \<and> sim (conversep R) op2 op1)"
-
-lemma bisimulation_correct:
-  "bisimulation_canonical R = bisimulation R"
-    by (auto simp add: sim_def simulation_canonical_def)
-
-
 lemma sim_mono[mono]: "R \<le> S \<Longrightarrow> sim R \<le> sim S"
   by (force simp: sim_def le_fun_def)
 
@@ -889,7 +879,7 @@ lemma step_tau_step_tau_step_io_wstep:
   unfolding wstep_def 
   by (smt (verit, del_insts) estep.elims reflclp_tranclp relcomppI rtranclp.rtrancl_into_rtrancl sup2CI)
 
-definition "wsimulation_canonical R = (\<forall> op1 op2. R op1 op2 \<longrightarrow> (\<forall> io op1'. step io op1 op1' \<longrightarrow> (\<exists> op2'. wstep io op2 op2' \<and> R op1' op2')))" 
+definition "wsimulation_canonical R = (\<forall> op1 op2. R op1 op2 \<longrightarrow> (\<forall> op1' io. step io op1 op1' \<longrightarrow> (\<exists> op2'. wstep io op2 op2' \<and> R op1' op2')))" 
 abbreviation "wbisimulation_canonical R \<equiv> wsimulation_canonical R \<and> wsimulation_canonical (conversep R)"
 
 abbreviation "wbisimulation R \<equiv> (\<forall>op1 op2. R op1 op2 \<longrightarrow> wsim R op1 op2 \<and> wsim (conversep R) op2 op1)"
@@ -3186,9 +3176,19 @@ lemma wsim_outputs: "wsim (\<approx>) op op' \<Longrightarrow> p \<in> outputs o
 lemma wbisim_outputs: "op \<approx> op' \<Longrightarrow> outputs op = outputs op'"
   by (meson antisym wsim_outputs subset_eq wbisim.cases)
 
-lemma wbisimulation_correct:
-  "wbisimulation_canonical R = wbisimulation R"
-  by (auto simp add: wsim_def wsimulation_canonical_def)
+section \<open>Shows our definitions to match the literature\<close>
+
+definition "simulation_canonical R = (\<forall> op1 op2. R op1 op2 \<longrightarrow> (\<forall> io op1'. step io op1 op1' \<longrightarrow> (\<exists> op2'. step io op2 op2' \<and> R op1' op2')))" 
+lemma sim_correct:
+  "simulation_canonical R = (\<forall> op1 op2. R op1 op2 \<longrightarrow> (sim R op1 op2))"
+  unfolding sim_def simulation_canonical_def by auto
+
+abbreviation "bisimulation_canonical R \<equiv> simulation_canonical R \<and> simulation_canonical (conversep R)"
+abbreviation "bisimulation R \<equiv> (\<forall>op1 op2. R op1 op2 \<longrightarrow> sim R op1 op2 \<and> sim (conversep R) op2 op1)"
+
+lemma bisimulation_correct:
+  "bisimulation_canonical R = bisimulation R"
+    by (auto simp add: sim_def simulation_canonical_def)
 
 lemma bisim_set_correct:
  "(~) = \<Squnion> {R. bisimulation_canonical R}"
@@ -3204,6 +3204,14 @@ lemma bisim_set_correct:
      apply blast+
     done
   done
+
+lemma wsim_correct:
+  "wsimulation_canonical R = (\<forall> op1 op2. R op1 op2 \<longrightarrow> (wsim R op1 op2))"
+  unfolding wsim_def wsimulation_canonical_def by auto
+
+lemma wbisimulation_correct:
+  "wbisimulation_canonical R = wbisimulation R"
+  by (auto simp add: wsim_def wsimulation_canonical_def)
 
 lemma wbisim_set_correct:
  "(\<approx>) = \<Squnion> {R. wbisimulation_canonical R}"
