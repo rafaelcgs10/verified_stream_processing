@@ -207,9 +207,9 @@ lemma A4:
   using A4' by simp
 
 lemma A5:
-  \<open>\<C> \<bullet> (\<C> \<parallel> \<I>) \<approx> map_operator id (case_sum Inr Inl) (\<C> \<bullet> (\<I> \<parallel> \<C>))\<close>
+  \<open>\<C> \<bullet> (\<C> \<parallel> \<I>) \<approx> map_operator id assoc (\<C> \<bullet> (\<I> \<parallel> \<C>))\<close>
   apply transfer
-  using A5 bisim_wbisim by (auto split: sum.splits)
+  using A5 by simp
 
 lemma A6:
   \<open>\<C> \<bullet> \<X> \<approx> \<C>\<close>
