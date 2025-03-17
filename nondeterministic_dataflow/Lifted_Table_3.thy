@@ -5,7 +5,6 @@ imports
   "table_3/A2"
   "table_3/A3"
   "table_3/A4"
-  "table_3/A5"
   "table_3/A6"
   "table_3/A8"
   "table_3/A9"
@@ -98,40 +97,6 @@ proof -
   also have \<open>\<dots> \<approx> \<V> \<bullet> !\<close>
     by (metis bisim_refl bisim_wbisim id_sink_op_sink_op scomp_op_def wbisim_scomp_op_cong)
   also have \<open>\<dots> \<approx> ! \<parallel> !\<close> by (rule A4)
-  finally show ?thesis.
-qed
-
-lemma A5':
-  \<open>\<Lambda>' \<bullet> (\<Lambda>' \<parallel> \<I>) \<approx> map_op id (case_sum Inr Inl) (\<Lambda>' \<bullet> (\<I> \<parallel> \<Lambda>'))\<close>
-proof -
-  have \<open>\<Lambda>' \<bullet> (\<Lambda>' \<parallel> \<I>) \<approx> \<Lambda>' \<bullet> (\<Lambda>' \<parallel> (\<I> \<bullet> \<I>))\<close>
-    by (simp add: pcomp_op_def scomp_op_id_id wbisim_comp_op_cong wbisim_refl wbisim_scomp_op_cong wbisim_sym)
-  also have \<open>\<dots> \<approx> \<Lambda>' \<bullet> ((\<I> \<parallel> \<I>) \<bullet> (\<Lambda> \<parallel> \<I>))\<close>
-    using bisim_wbisim B5 wbisim_refl wbisim_scomp_op_cong wbisim_sym by blast
-  also have \<open>\<dots> \<approx> \<Lambda>' \<bullet> (\<I> \<bullet> (\<Lambda> \<parallel> \<I>))\<close>
-    by (simp add: bisim_wbisim B6 wbisim_refl wbisim_scomp_op_cong)
-  also have \<open>\<dots> \<approx> \<Lambda>' \<bullet> \<I> \<bullet> (\<Lambda> \<parallel> \<I>)\<close>
-    using bisim_wbisim B3 wbisim_sym by blast
-  also have \<open>\<dots> \<approx> \<Lambda>' \<bullet> (\<Lambda> \<parallel> \<I>)\<close>
-    using split'_id_absorb_right wbisim_refl wbisim_scomp_op_cong wbisim_sym by blast
-  also have \<open>\<dots> \<approx> \<I> \<bullet> (\<Lambda> \<bullet> (\<Lambda> \<parallel> \<I>))\<close>
-    by (simp add: bisim_wbisim B3)
-  also have \<open>\<dots> \<approx> \<I> \<bullet> (map_op id (case_sum Inr Inl) (\<Lambda> \<bullet> (\<I> \<parallel> \<Lambda>)))\<close>
-    by (simp add: A5 bisim_wbisim wbisim_refl wbisim_scomp_op_cong)
-  also have \<open>\<dots> \<approx> map_op id (case_sum Inr Inl) (\<I> \<bullet> (\<Lambda> \<bullet> (\<I> \<parallel> \<Lambda>)))\<close>
-    using map_op_id_f_left_absorb by blast
-  also have \<open>\<dots> \<approx> map_op id (case_sum Inr Inl) (\<Lambda>' \<bullet> (\<I> \<parallel> \<Lambda>))\<close>
-    using bisim_wbisim B3 wbisim_map_op wbisim_sym by metis
-  also have \<open>\<dots> \<approx> map_op id (case_sum Inr Inl) (\<Lambda>' \<bullet> \<I> \<bullet> (\<I> \<parallel> \<Lambda>))\<close>
-    using split'_id_absorb_right wbisim_map_op wbisim_refl wbisim_scomp_op_cong by blast
-  also have \<open>\<dots> \<approx> map_op id (case_sum Inr Inl) (\<Lambda>' \<bullet> (\<I> \<bullet> (\<I> \<parallel> \<Lambda>)))\<close>
-  using bisim_wbisim B3 wbisim_map_op by blast
-  also have \<open>\<dots> \<approx> map_op id (case_sum Inr Inl) (\<Lambda>' \<bullet> ((\<I> \<parallel> \<I>) \<bullet> (\<I> \<parallel> \<Lambda>)))\<close>
-    by (metis B6 bisim_wbisim wbisim_map_op wbisim_refl wbisim_scomp_op_cong wbisim_sym)
-  also have \<open>\<dots> \<approx> map_op id (case_sum Inr Inl) (\<Lambda>' \<bullet> ((\<I> \<bullet> \<I>) \<parallel> \<Lambda>'))\<close>
-    by (meson bisim_refl bisim_scomp_op_cong bisim_wbisim B5 wbisim_map_op)
-  also have \<open>\<dots> \<approx> map_op id (case_sum Inr Inl) (\<Lambda>' \<bullet> (\<I> \<parallel> \<Lambda>'))\<close>
-    by (simp add: pcomp_op_def scomp_op_id_id wbisim_comp_op_cong wbisim_map_op wbisim_refl wbisim_scomp_op_cong)
   finally show ?thesis.
 qed
 
