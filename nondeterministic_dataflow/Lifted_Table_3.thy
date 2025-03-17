@@ -143,6 +143,12 @@ proof -
   finally show ?thesis by (rule wbisim_sym)
 qed
 
+lemma A18':
+  \<open>map_op Inl id (\<Lambda>' :: (0, 0 + 0, 'd) op) \<approx> \<I>\<close>
+  unfolding scomp_op_def
+  by (coinduction rule: wbisim_coinduct)
+    (auto elim!: step_map_op_elim step_comp_op_elim step_split_op_cases step_id_op_cases)
+
 lemma A19':
   \<open>\<Lambda>' \<approx> (\<Lambda>' \<parallel> \<Lambda>') \<bullet> map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)\<close>
 proof -
@@ -287,9 +293,9 @@ lemma A17:
   using A17 bisim_wbisim by blast
 
 lemma A18:
-  \<open>(\<Lambda> :: (0, 0 + 0, 'd) operator) \<approx> map_operator id Inr \<I>\<close>
+  \<open>map_operator Inl id (\<Lambda> :: (0, 0 + 0, 'd) operator) \<approx> \<I>\<close>
   apply transfer
-  using A18' bisim_wbisim by auto
+  using A18' by simp
 
 lemma A19:
  "\<Lambda> \<approx> (\<Lambda> \<parallel> \<Lambda>) \<bullet> map_operator reassoc reassoc (map_operator assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)"

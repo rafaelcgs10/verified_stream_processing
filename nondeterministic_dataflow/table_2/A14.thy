@@ -7,15 +7,8 @@ begin
 section \<open>Axiom A14: Equality test with 0 ports\<close>
 
 lemma A14:
-  \<open>map_op id Inl (\<Q> :: (0 + 0, 0, 'd) op) \<approx> \<I>\<close>
-proof (coinduction rule: wbisim_coinduct_upto'')
-  case SIM1
-  then show ?case
-    by (auto elim!: step_map_op_elim step_aeq_op_elim)
-next
-  case SIM2
-  then show ?case
-    by (auto elim!: step_id_op_cases)
-qed
+  \<open>map_op id Inl (\<Q> :: (0 + 0, 0, 'd) op) ~ \<I>\<close>
+  by (coinduction rule: bisim_coinduct)
+    (auto elim!: step_map_op_elim step_aeq_op_elim step_id_op_cases)
 
 end
