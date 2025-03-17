@@ -66,14 +66,12 @@ proof -
 qed
 
 lemma A2':
-  \<open>\<X> \<bullet> \<V>' \<approx> map_op (case_sum Inr Inl) id \<V>'\<close>
+  \<open>\<X> \<bullet> \<V>' \<approx> \<V>'\<close>
 proof -
   have \<open>\<X> \<bullet> \<V>' \<approx> \<X> \<bullet> \<V> \<bullet> \<I>\<close>
     using bisim_wbisim B3 wbisim_sym by blast
-  also have \<open>\<dots> \<approx> (map_op (case_sum Inr Inl) id \<V>) \<bullet> \<I>\<close>
+  also have \<open>\<dots> \<approx> \<V>'\<close>
     using A2 wbisim_refl wbisim_scomp_op_cong by blast
-  also have \<open>\<dots> \<approx> map_op (case_sum Inr Inl) id \<V>'\<close>
-    using map_op_out_id_vdash wbisim_sym by blast
   finally show ?thesis.
 qed
 
@@ -101,14 +99,12 @@ proof -
 qed
 
 lemma A6':
-  \<open>\<Lambda>' \<bullet> \<X> \<approx> map_op id (case_sum Inr Inl) \<Lambda>'\<close>
+  \<open>\<Lambda>' \<bullet> \<X> \<approx> \<Lambda>'\<close>
 proof -
   have \<open>\<Lambda>' \<bullet> \<X> \<approx> \<I> \<bullet> (\<Lambda> \<bullet> \<X>)\<close>
     using bisim_wbisim B3 by blast
-  also have \<open>\<dots> \<approx> \<I> \<bullet> (map_op id (case_sum Inr Inl) \<Lambda>)\<close>
+  also have \<open>\<dots> \<approx> \<Lambda>'\<close>
     using A6 wbisim_refl wbisim_scomp_op_cong by blast
-  also have \<open>\<dots> \<approx> map_op id (case_sum Inr Inl) \<Lambda>'\<close>
-    by (simp add: map_op_id_f_left_absorb)
   finally show ?thesis.
 qed
 
@@ -228,14 +224,12 @@ notation split_empty_operator ("\<Lambda>")
 lemma A1:
   \<open>(\<V> \<parallel> \<I>) \<bullet> \<V> \<approx> map_operator (case_sum Inr Inl) id ((\<I> \<parallel> \<V>) \<bullet> \<V>)\<close>
   apply transfer
-  apply (auto split: if_splits split: sum.splits)
-  apply (rule A1')
-  done
+  using A1' by (auto split: sum.splits)
 
 lemma A2:
-  \<open>\<X> \<bullet> \<V> \<approx> map_operator (case_sum Inr Inl) id \<V>\<close>
+  \<open>\<X> \<bullet> \<V> \<approx> \<V>\<close>
   apply transfer
-  using A2' by (auto split: sum.splits)
+  using A2' by simp
 
 lemma A3:
   \<open>((\<exclamdown>::(0, 'a :: {countable, defaults}, 'b) operator) \<parallel> \<I>) \<bullet> \<V> \<approx> map_operator Inr id \<I>\<close>
@@ -245,22 +239,17 @@ lemma A3:
 lemma A4:
   \<open>\<V> \<bullet> ! \<approx> ! \<parallel> !\<close>
   apply transfer
-  using A4' by auto
-
-lemma A5:
-  \<open>\<Lambda> \<bullet> (\<Lambda> \<parallel> \<I>) \<approx> map_operator id (case_sum Inr Inl) (\<Lambda> \<bullet> (\<I> \<parallel> \<Lambda>))\<close>
-  apply transfer
-  using A5' by (auto split: sum.splits)
+  using A4' by simp
 
 lemma A6:
-  \<open>\<Lambda> \<bullet> \<X> \<approx> map_operator id (case_sum Inr Inl) \<Lambda>\<close>
+  \<open>\<Lambda> \<bullet> \<X> \<approx> \<Lambda>\<close>
   apply transfer
-  using A6' by (auto split: sum.splits)
+  using A6' by simp
 
 lemma A8:
   \<open>(\<exclamdown> \<bullet> \<Lambda>) \<approx> \<exclamdown> \<parallel> \<exclamdown>\<close>
   apply transfer
-  using A8' by auto
+  using A8' by simp
 
 lemma A9:
   \<open>\<exclamdown> \<bullet> ! \<approx> \<I>\<close>
@@ -275,17 +264,17 @@ lemma A12:
 lemma A13:
   \<open>\<exclamdown> \<approx> \<exclamdown> \<parallel> \<exclamdown>\<close>
   apply transfer
-  using A13 bisim_wbisim by auto
+  using A13 bisim_wbisim by blast
 
 lemma A14:
   \<open>map_operator id Inl (\<V> :: (0 + 0, 0, 'd) operator) \<approx> \<I>\<close>
   apply transfer
-  using A14' by auto
+  using A14' by simp
 
 lemma A15:
   \<open>\<V> \<approx> map_operator reassoc reassoc (map_operator assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>) \<bullet> (\<V> \<parallel> \<V>)\<close>
   apply transfer
-  using A15' by auto
+  using A15' by simp
 
 lemma A16:
   \<open>! \<approx> (\<I> :: (0, 0, 'd) operator)\<close>
@@ -295,34 +284,26 @@ lemma A16:
 lemma A17:
   \<open>! \<approx> ! \<parallel> !\<close>
   apply transfer
-  apply (rule bisim_wbisim)
-  apply (rule A17)
-  done
+  using A17 bisim_wbisim by blast
 
 lemma A18:
   \<open>(\<Lambda> :: (0, 0 + 0, 'd) operator) \<approx> map_operator id Inr \<I>\<close>
   apply transfer
-  apply (auto split: if_splits split: sum.splits)
-  apply (rule bisim_wbisim)
-  apply (rule A18')
-  done
+  using A18' bisim_wbisim by auto
 
 lemma A19:
  "\<Lambda> \<approx> (\<Lambda> \<parallel> \<Lambda>) \<bullet> map_operator reassoc reassoc (map_operator assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)"
   apply transfer
-  using A19' by auto
+  using A19' by simp
 
 lemma F3:
  \<open>map_operator id Inr \<V>\<up> \<approx> !\<close>
   apply transfer
-  apply (auto split: if_splits split: sum.splits intro: F3')
-  done
+  using F3' by auto
 
 lemma F4:
   \<open>map_operator Inr id \<Lambda>\<up> \<approx> \<exclamdown>\<close>
   apply transfer
-  apply (auto split: if_splits split: sum.splits)
-  apply (rule F4')
-  done
+  using F4' by auto
 
 end
