@@ -9,7 +9,6 @@ imports
   "table_1/B6"
   "table_1/R1"
   "table_1/R2"
-  "HOL-ex.Sketch_and_Explore"
 begin
 
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
@@ -143,8 +142,6 @@ proof (coinduction arbitrary: buf1 buf2  rule: wbisim_coinduct)
 next
   case SIM2
   then show ?case 
-    apply -
-    explore (auto elim!: step_sink_op step_map_op_elim step_comp_op_elim step_id_op_cases; hypsubst_thin?)
   proof -
     have "\<exists>op2'. wstep (Inp p x) (map_op projl projr (comp_op Some buf2 (id_op buf1) (map_op projl projr (comp_op (Some::'c \<Rightarrow> _ option) (\<lambda>_. []) ! \<I>)))) op2' \<and> wbisim_R (\<lambda>op1xx op2xx. (\<exists>buf1 buf2. op1xx = map_op projl projr (comp_op Some buf2 (id_op buf1) (map_op projl projr (comp_op Some (\<lambda>_. []) ! \<I>)))) \<and> op2xx = !) op2' !"
       if "p \<notin> defaults"
@@ -408,8 +405,6 @@ proof (coinduction arbitrary: A B C D op rule: bisim_coinduct)
 next
   case SIM2
   then show ?case 
-    apply -
-    explore (auto 0 0 elim!: step_map_op_elim step_comp_op_elim step_id_op_cases split: if_splits; hypsubst_thin?)
   proof -
     have "\<exists>op2'. step (Inp pa xa) (map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g))))))) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>A B C D op. op1xx = map_op f g (map_op projl projr (comp_op Some (B \<circ> f) (id_op (A \<circ> f)) (map_op projl projr (comp_op Some (C \<circ> g) op (id_op (D \<circ> g)))))) \<and> op2xx = map_op projl projr (comp_op Some B (id_op A) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D))))) op2' (map_op projl projr (comp_op Some B (id_op (BENQ pa xa A)) (map_op projl projr (comp_op Some C (map_op f g op) (id_op D)))))"
       if "inj f"

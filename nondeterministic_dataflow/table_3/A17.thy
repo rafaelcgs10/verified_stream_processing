@@ -36,7 +36,6 @@ proof (coinduction rule: bisim_coinduct)
 next
   case SIM2
   then show ?case 
-    explore (elim step_comp_op_elim step_sink_op; simp split: sum.splits; hypsubst_thin?)
   proof -
     have "\<exists>op2'. step (Inp (Inl pa) x) sink_op op2' \<and> bisim_R (\<lambda>op1xx op2xx. op1xx = sink_op \<and> op2xx = comp_op (\<lambda>_. None) (\<lambda>_. []) (sink_op::('a, 'c, 'e) op) (sink_op::('b, 'd, _) op)) op2' (comp_op (\<lambda>_. None) (\<lambda>_. []) sink_op sink_op)"
       if "(pa::'a) \<notin> defaults"

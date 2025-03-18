@@ -73,8 +73,6 @@ proof (coinduction arbitrary: l1 l2 l3 r1 r2 r3 rule: wbisim_coinduct)
 next
   case SIM2
   then show ?case 
-    apply -
-    explore (auto elim !: step_map_op_elim step_comp_op_elim step_id_op_cases step_transp_op_cases split: if_splits sum.splits; hypsubst_thin)
   proof -
     have "\<exists>op1'. wstep (Inp p x) (map_op projl projr (comp_op Some (case_sum r2 l2) (transp_op (case_sum l1 r1)) (transp_op (case_sum r3 l3)))) op1' \<and> \<W> (\<lambda>op1xx op2xx. \<exists>l1 l2 l3 r1 r2 r3. op1xx = map_op projl projr (comp_op Some (case_sum r2 l2) (transp_op (case_sum l1 r1)) (transp_op (case_sum r3 l3))) \<and> op2xx = id_op (case_sum ((l1 >> l2) >> l3) ((r1 >> r2) >> r3))) op1' (id_op (BENQ p x (case_sum ((l1 >> l2) >> l3) ((r1 >> r2) >> r3))))"
       if "p \<notin> defaults"

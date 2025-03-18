@@ -19,7 +19,6 @@ lemma R3_gen:
   then show ?case 
     apply -
     unfolding sim_def
-    sketch (intro allI conjI impI)
   proof (intro allI conjI impI)
     fix io :: "(('b + 'a) + 'f, ('c + 'd) + 'g, 'e) IO"
       and op1' :: "(('b + 'a) + 'f, ('c + 'd) + 'g, 'e) op"
