@@ -55,57 +55,42 @@ begin
 definition defaults_unit where "defaults_unit = {()}"
 instance
 proof qed
-end 
+end
+
+instantiation num0 :: defaults begin
+definition defaults_num0 :: "num0 set" where "defaults_num0 = UNIV"
+instance ..
+end
+instantiation num1 :: defaults begin
+definition defaults_num1 :: "num1 set" where "defaults_num1 = {}"
+instance ..
+end
+instantiation bit0 :: (finite) defaults begin
+definition defaults_bit0 :: "'a bit0 set" where "defaults_bit0 = {}"
+instance ..
+end
+instantiation bit1 :: (finite) defaults begin
+definition defaults_bit1 :: "'a bit1 set" where "defaults_bit1 = {}"
+instance ..
+end
 
 class no_defaults = defaults +
   assumes no_defaults: "defaults = {}"
-
-subclass (in no_defaults) defaults.
-
-
-
-setup_lifting type_definition_num0
-instantiation num0 :: defaults begin
-lift_definition defaults_num0 :: "num0 set" is "UNIV" .
-instance ..
-end
-setup_lifting type_definition_num1
-instantiation num1 :: defaults begin
-lift_definition defaults_num1 :: "num1 set" is "{}" .
-instance ..
-end
-setup_lifting type_definition_bit0
-instantiation bit0 :: (finite) defaults begin
-lift_definition defaults_bit0 :: "'a bit0 set" is "{}" by simp
-instance ..
-end
-setup_lifting type_definition_bit1
-instantiation bit1 :: (finite) defaults begin
-lift_definition defaults_bit1 :: "'a bit1 set" is "{}" by simp
-instance ..
-end
-
-
 class all_defaults = defaults +
   assumes all_defaults: "defaults = UNIV"
 
+instantiation sum :: (no_defaults, no_defaults) no_defaults
+begin
+instance by standard (simp add: no_defaults defaults_sum_def)
+end
+
 instantiation sum :: (all_defaults, all_defaults) all_defaults
 begin
-instance
-  apply -
-  apply (rule all_defaults.intro_of_class) 
-  unfolding class.all_defaults_def 
-  apply (simp add: UNIV_sum all_defaults defaults_sum_def)
-  done
+instance by standard (simp add: UNIV_sum all_defaults defaults_sum_def)
 end
 
 instantiation num0 :: all_defaults begin
-instance 
-  apply -
-  apply (rule all_defaults.intro_of_class) 
-  unfolding class.all_defaults_def 
-  apply (metis defaults_num0_def type_definition.Abs_image type_definition_num0)
-  done
+instance by standard (auto simp add: defaults_num0_def image_iff Rep_num0_inverse intro!: exI[of _ "Rep_num0 _"])
 end
 
 lemma in_all_defaults[simp]:

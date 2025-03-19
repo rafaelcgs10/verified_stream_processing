@@ -9,8 +9,6 @@ theory CSet_LList_Impl
    "HOL-Library.Debug"
 begin
 
-code_lazy_type llist
-
 lemma countable_lset[simp]: "countable (lset xs)"
   by (metis (mono_tags, opaque_lifting) countableI_type countable_image countable_subset in_lset_conv_lnth rangeI subset_iff)
 
@@ -172,10 +170,9 @@ lemma lmerge_LCons[simp]: "lmerge (LCons xs xss) = linterleave xs (lmerge xss)"
     by (cases xs) (auto intro: llist.cong_intros)
   done
 
-(*
-declare lmerge.code[code del]
-declare lmerge_LNil[code] lmerge_LCons[code]
-*)
+lemma csubset_eq_code[code]: "csubset_eq (cset_of_llist xs) (cset_of_llist ys) = (\<forall>x \<in> lset xs. x \<in> lset ys)"
+  including cset.lifting
+  by transfer auto
 
 coinductive linfinite where
   "linfinite xs \<Longrightarrow> linfinite (LCons x xs)"
@@ -449,9 +446,6 @@ fun show_list0 where
 | "show_list0 show (x # y # z) = show x + STR '','' + show_list0 show (y # z)"
 definition "show_list show xs = enclose (show_list0 show xs)"
 
-definition "bar = force_cset show_nat 10 (cUn (cset_of_llist (from 42)) (cset_of_llist (const 2)))"
-export_code bar cis_empty in Haskell module_name Bar
-
 instantiation bool :: defaults begin
 definition defaults_bool :: "bool set" where "defaults_bool = {}"
 instance by standard
@@ -462,16 +456,13 @@ definition defaults_nat :: "nat set" where "defaults_nat = {}"
 instance by standard
 end
 
-value [GHC] "force_cset show_nat 10 (cUn (cset_of_llist (from 42)) (cset_of_llist (const 2)))"
-value [GHC] "force_cset show_nat 10 (cempty :: nat cset)"
-value [GHC] "force_cset show_nat 10 (c\<UU> :: nat cset)"
-value [GHC] "force_cset show_nat 10 (cimage (\<lambda>x. x + 5) (cfilter (\<lambda>x. x mod 2 = 0) c\<UU> :: nat cset))"
-value [GHC] "force_cset (show_prod show_nat show_nat) 10 (cproduct (c\<UU> :: nat cset) (c\<UU> :: nat cset))"
+value [GHC] "csubset_eq (cset_of_llist (llist_of [42, 50, 2])) (cUn (cset_of_llist (from 42)) (cset_of_llist (const 2)))"
+value [GHC] "cempty :: nat cset"
+value [GHC] "cset_of_llist (llist_of [42, 50, 2 :: nat])"
+value [GHC] "csubset_eq (cset_of_llist (llist_of [42, 50, 2::nat])) c\<UU>"
 value [GHC] "(5 :: nat, True) |\<in>| cproduct c\<UU> c\<UU>"
-value [GHC] "force_cset show_nat 10 (cUnion (cset_of_llist (lmap (cset_of_llist o from) (llist_of [1,2,3]))))"
-value [GHC] "force_cset show_nat 10 (cUnion (cset_of_llist (lmap (cset_of_llist o from) (from 1))))"
-
-value [GHC] "cset_llist_of (lmap (cset_of_llist o from) (from 1))"
-value [GHC] "force_cset show_nat 10 (cset_llist_merge (CLCons (cset_of_llist (llist_of [1,2,3::nat])) (abs_cset_llist (lmap from (from 1)))))"
-
+value [GHC] "csubset_eq (cset_of_llist (llist_of [45, 57, 5::nat])) (cimage (\<lambda>x. x + 5) (cfilter (\<lambda>x. x mod 2 = 0) c\<UU> :: nat cset))"
+value [GHC] "csubset_eq (cset_of_llist (llist_of [2 ..< 15])) (cUnion (cimage (\<lambda>x. cset_of_llist (lmap (\<lambda>i. x * i) (from 1))) (cset_of_llist (from 2))))"
+value [GHC] "let X = force_cset show_nat 100 c\<UU> in 42 |\<in>| X"
+value [GHC] "let X = force_cset (show_prod show_nat show_bool) 100 (cproduct c\<UU> c\<UU>) in (5 :: nat, True) |\<in>| X"
 end

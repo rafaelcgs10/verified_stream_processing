@@ -1,7 +1,6 @@
 text \<open>cset setup\<close>
 
 theory Cset_Setup
-
 imports
   "HOL-Library.Countable_Set_Type"
   Defaults
