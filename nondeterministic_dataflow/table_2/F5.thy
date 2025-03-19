@@ -44,9 +44,9 @@ lemma F5'_gen:
     (fastforce del: wbc_base intro!: wbc_base)+
 
 lemma F5':
-  \<open>((\<I> \<parallel> \<C>) \<bullet> map_op reassoc reassoc (\<X> \<parallel> \<I>) \<bullet> (\<I> \<parallel> \<Q>)) \<up> \<approx> ! \<bullet> \<exclamdown>\<close>
+  \<open>((\<I> \<parallel> \<C>) \<bullet> map_op reassoc reassoc (\<X> \<parallel> \<I>) \<bullet> (\<I> \<parallel> \<Q> \<turnstile>)) \<up> \<approx> ! \<bullet> \<exclamdown>\<close>
   unfolding feedback_op_def scomp_op_def
-  using F5_gen[of \<open>\<lambda> _. []\<close> \<open>\<lambda> _. []\<close> \<open>\<lambda> _. []\<close> \<open>\<lambda> _. []\<close> \<open>\<lambda> _. []\<close>]
+  using F5'_gen[of \<open>\<lambda> _. []\<close> \<open>\<lambda> _. []\<close> \<open>\<lambda> _. []\<close> \<open>\<lambda> _. []\<close> \<open>\<lambda> _. []\<close>]
   by simp
 
 end

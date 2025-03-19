@@ -76,7 +76,7 @@ section \<open>Axioms for aeq_op surrounded by identities\<close>
 
 lemma aeq_vdash_absorb:
   "\<Q>' \<approx> (\<stileturn>(\<Q>'))"
-  using aeq_id_absorb using bisim_wbisim B3.B3 wbisim_refl wbisim_scomp_op_cong wbisim_trans by blast
+  using aeq_id_absorb_left using bisim_wbisim B3.B3 wbisim_refl wbisim_scomp_op_cong wbisim_trans by blast
 
 lemma aeq_double_vdash_absorb:
   "\<Q>' \<approx> (\<stileturn>(\<Q>'\<turnstile>))"
@@ -400,7 +400,9 @@ proof (coinduction arbitrary: A B C D op rule: bisim_coinduct)
       apply auto
       done
     ultimately show ?thesis
-      using SIM1 by (auto 0 0 elim !: step_map_op_elim step_comp_op_elim step_id_op_cases split: if_splits)
+      subgoal premises prems
+        using SIM1 by (auto 0 0 simp: prems elim !: step_map_op_elim step_comp_op_elim step_id_op_cases split: if_splits)
+      done
   qed
 next
   case SIM2
@@ -598,7 +600,9 @@ next
       apply auto
       done
     ultimately show ?thesis
-      using SIM2 by (auto 0 0 elim !: step_map_op_elim step_comp_op_elim step_id_op_cases split: if_splits)
+      subgoal premises prems
+        using SIM2 by (auto 0 0 simp: prems elim !: step_map_op_elim step_comp_op_elim step_id_op_cases split: if_splits)
+      done
   qed
 qed
 
@@ -651,7 +655,7 @@ lift_definition wbisim_operator :: "('a :: {countable, defaults}, 'b :: {countab
 
 
 no_notation aeq_empty_op ("\<Q>")
-lift_definition aeq_empty_operator :: "('a :: {countable, defaults} + 'a, 'a, 'b) operator"  ("\<Q>") is "aeq_empty_op\<turnstile>"
+lift_definition aeq_empty_operator :: "('a :: {countable, defaults} + 'a, 'a, 'b option) operator"  ("\<Q>") is "aeq_empty_op\<turnstile>"
   apply (rule exI[of _ "aeq_empty_op"])
   using aeq_vdash_absorb apply blast
   done

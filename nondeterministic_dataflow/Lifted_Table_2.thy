@@ -41,7 +41,7 @@ no_notation sink_op_0_operator ("!")
 no_notation dummy_source_operator ("\<exclamdown>")
 
 lemma A1':
-  \<open>(\<Q>' \<parallel> \<I>) \<bullet> \<Q>' \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>') \<bullet> \<Q>')\<close>
+  \<open>(\<Q>' \<parallel> \<I>) \<bullet> \<Q>' \<approx> map_op assoc id ((\<I> \<parallel> \<Q>') \<bullet> \<Q>')\<close>
 proof -
   have "(\<Q>' \<parallel> \<I>) \<bullet> \<Q>' \<approx> (\<Q>' \<parallel> \<I>\<turnstile>) \<bullet> \<Q>'" 
     by (simp add: pcomp_op_def scomp_op_id_id wbisim_comp_op_cong wbisim_refl wbisim_scomp_op_cong wbisim_sym)
@@ -52,12 +52,12 @@ proof -
   also have "\<dots> \<approx> (\<Q> \<parallel> \<I>) \<bullet> \<Q>'" using scomp_op_id_left_absorb by (smt (verit, ccfv_SIG) aeq_double_vdash_absorb bisim_wbisim B3.B3 B4.B4_1 wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans)
   also have "\<dots> \<approx> (\<Q> \<parallel> \<I>) \<bullet> \<Q> \<bullet> \<I>"
     using bisim_wbisim B3.B3 wbisim_sym by blast 
-  also have "\<dots> \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>) \<bullet> \<I>" using wbisim_refl wbisim_scomp_op_cong using A1.A1 bisim_wbisim by blast
-  also have "\<dots> \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>')" using map_op_out_id_vdash bisim_wbisim B3.B3 wbisim_map_op wbisim_sym wbisim_trans by (smt (verit, best))
-  also have "\<dots>  \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>)\<turnstile> \<bullet> \<Q>')" using scomp_op_id_left_absorb wbisim_map_op wbisim_sym by (smt (verit, best) aeq_double_vdash_absorb bisim_wbisim B3.B3 B4.B4_1 wbisim_refl wbisim_scomp_op_cong wbisim_trans)
-  also have "\<dots>  \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>) \<bullet> (\<I> \<parallel> \<I>) \<bullet> \<Q>')" by (metis bisim_wbisim B6 wbisim_map_op wbisim_refl wbisim_scomp_op_cong wbisim_sym)
-  also have "\<dots>  \<approx> map_op (case_sum Inr Inl) id ((\<I>\<turnstile> \<parallel> \<Q>') \<bullet> \<Q>')" by (simp add: bisim_wbisim B5 wbisim_map_op wbisim_refl wbisim_scomp_op_cong)
-  also have "\<dots>  \<approx> map_op (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>') \<bullet> \<Q>')" by (simp add: pcomp_op_def scomp_op_id_id wbisim_comp_op_cong wbisim_map_op wbisim_refl wbisim_scomp_op_cong)
+  also have "\<dots> \<approx> map_op assoc id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>) \<bullet> \<I>" using wbisim_refl wbisim_scomp_op_cong using A1.A1 by blast
+  also have "\<dots> \<approx> map_op assoc id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>')" using map_op_out_id_vdash bisim_wbisim B3.B3 wbisim_map_op wbisim_sym wbisim_trans by (smt (verit, best))
+  also have "\<dots>  \<approx> map_op assoc id ((\<I> \<parallel> \<Q>)\<turnstile> \<bullet> \<Q>')" using scomp_op_id_left_absorb wbisim_map_op wbisim_sym by (smt (verit, best) aeq_double_vdash_absorb bisim_wbisim B3.B3 B4.B4_1 wbisim_refl wbisim_scomp_op_cong wbisim_trans)
+  also have "\<dots>  \<approx> map_op assoc id ((\<I> \<parallel> \<Q>) \<bullet> (\<I> \<parallel> \<I>) \<bullet> \<Q>')" by (metis bisim_wbisim B6 wbisim_map_op wbisim_refl wbisim_scomp_op_cong wbisim_sym)
+  also have "\<dots>  \<approx> map_op assoc id ((\<I>\<turnstile> \<parallel> \<Q>') \<bullet> \<Q>')" by (simp add: bisim_wbisim B5 wbisim_map_op wbisim_refl wbisim_scomp_op_cong)
+  also have "\<dots>  \<approx> map_op assoc id ((\<I> \<parallel> \<Q>') \<bullet> \<Q>')" by (simp add: pcomp_op_def scomp_op_id_id wbisim_comp_op_cong wbisim_map_op wbisim_refl wbisim_scomp_op_cong)
   finally show ?thesis.
 qed
 
@@ -71,14 +71,14 @@ proof -
 qed
 
 lemma A3':
-  assumes "D = (\<exclamdown> :: (0, 'a :: {countable,defaults}, 'd) op)"
-    and "S = (! :: (0 + 'a :: {countable,defaults}, 0, 'd) op)"
+  assumes "D = (\<exclamdown> :: (0, 'a :: {countable,defaults}, 'd option) op)"
+    and "S = (! :: (0 + 'a :: {countable,defaults}, 0, 'd option) op)"
   shows  \<open>(D \<parallel> \<I>) \<bullet> \<Q>' \<approx> S \<bullet> \<exclamdown>\<close>
 proof -
   have \<open>(D \<parallel> \<I>) \<bullet> \<Q>' \<approx> (D \<parallel> \<I>) \<bullet> \<Q> \<bullet> \<I>\<close>
     using bisim_wbisim B3.B3 wbisim_sym by blast
   also have \<open>\<dots> \<approx> (S \<bullet> \<exclamdown>) \<bullet> \<I>\<close>
-    using A3.A3[OF assms] wbisim_refl wbisim_scomp_op_cong by blast
+    using A3.A3 assms wbisim_refl wbisim_scomp_op_cong by blast
   also have \<open>\<dots> \<approx> S \<bullet> \<exclamdown>\<close>
     using bisim_wbisim B3.B3 B4.B4_1 wbisim_refl wbisim_scomp_op_cong wbisim_trans by (smt (verit, best))
   finally show ?thesis.
@@ -112,7 +112,7 @@ proof -
 qed
 
 lemma A14':
-  \<open>map_op id Inl (\<Q>' :: (0 + 0, 0, 'd) op) \<approx> \<I>\<close>
+  \<open>map_op id Inl (\<Q>' :: (0 + 0, 0, 'd option) op) \<approx> \<I>\<close>
   unfolding scomp_op_def
   by (coinduction rule: wbisim_coinduct_upto'')
     (auto elim!: step_map_op_elim step_comp_op_elim step_aeq_op_elim step_id_op_cases)
@@ -137,10 +137,10 @@ proof -
 qed
 
 lemma F3':
-  assumes \<open>(S :: ('a :: {countable,defaults}, 0, 'c) op) = !\<close>
-    and "(Q' :: ('a :: {countable,defaults} + 'a, 'a, 'c) op) = \<Q>'"
-    and "(Q :: ('a :: {countable,defaults} + 'a, 'a, 'c) op) = \<Q>"
-    and "(I :: ('a :: {countable,defaults}, 'a, 'c) op) = \<I>"
+  assumes \<open>(S :: ('a :: {countable,defaults}, 0, 'c option) op) = !\<close>
+    and "(Q' :: ('a :: {countable,defaults} + 'a, 'a, 'c option) op) = \<Q>'"
+    and "(Q :: ('a :: {countable,defaults} + 'a, 'a, 'c option) op) = \<Q>"
+    and "(I :: ('a :: {countable,defaults}, 'a, 'c option) op) = \<I>"
   shows  \<open>map_op id Inr Q' \<up> \<approx> S\<close>
 proof -
   have "map_op id Inr Q' \<up> \<approx> (map_op id Inr Q \<bullet> (S \<parallel> I)) \<up>"  using assms map_op_id_Inr_move_vdash wbisim_feedback_op_cong by blast
@@ -184,7 +184,7 @@ notation dummy_source_operator ("\<exclamdown>")
 
 
 lemma A1:
-  \<open>(\<Q> \<parallel> \<I>) \<bullet> \<Q> \<approx> map_operator (case_sum Inr Inl) id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>)\<close>
+  \<open>(\<Q> \<parallel> \<I>) \<bullet> \<Q> \<approx> map_operator assoc id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>)\<close>
   apply transfer
   using A1' by (auto split: sum.splits)
 
@@ -194,8 +194,8 @@ lemma A2:
   using A2' by simp
 
 lemma A3:
-  assumes "D = (\<exclamdown> :: (0, 'a :: {countable,defaults}, 'd) operator)"
-    and "S = (! :: (0 + 'a :: {countable,defaults}, 0 , 'd) operator)"
+  assumes "D = (\<exclamdown> :: (0, 'a :: {countable,defaults}, 'd option) operator)"
+    and "S = (! :: (0 + 'a :: {countable,defaults}, 0 , 'd option) operator)"
   shows  \<open>(D \<parallel> \<I>) \<bullet> \<Q> \<approx> S \<bullet> \<exclamdown>\<close>
   using assms apply -
   apply transfer
@@ -250,7 +250,7 @@ lemma A13:
   using A13 bisim_wbisim by blast
 
 lemma A14:
-  \<open>map_operator id Inl (\<Q> :: (0 + 0, 0, 'd) operator) \<approx> \<I>\<close>
+  \<open>map_operator id Inl (\<Q> :: (0 + 0, 0, 'd option) operator) \<approx> \<I>\<close>
   apply transfer
   using A14' by simp
 
@@ -280,10 +280,10 @@ lemma A19:
   using A19 by fastforce
 
 lemma F3:
-  assumes \<open>(S :: ('a :: {countable,defaults}, 0, 'c) operator) = !\<close>
-    and \<open>(Q' :: ('a :: {countable,defaults} + 'a, 'a, 'c) operator) = \<Q>\<close>
-    and \<open>(Q :: ('a :: {countable,defaults} + 'a, 'a, 'c) operator) = \<Q>\<close>
-    and \<open>(I :: ('a :: {countable,defaults}, 'a, 'c) operator) = \<I>\<close>
+  assumes \<open>(S :: ('a :: {countable,defaults}, 0, 'c option) operator) = !\<close>
+    and \<open>(Q' :: ('a :: {countable,defaults} + 'a, 'a, 'c option) operator) = \<Q>\<close>
+    and \<open>(Q :: ('a :: {countable,defaults} + 'a, 'a, 'c option) operator) = \<Q>\<close>
+    and \<open>(I :: ('a :: {countable,defaults}, 'a, 'c option) operator) = \<I>\<close>
   shows  \<open>map_operator id Inr Q' \<up> \<approx> S\<close>
   using assms
   apply -
@@ -297,7 +297,7 @@ lemma F4:
 
 lemma F5:
   \<open>((\<I> \<parallel> \<C>) \<bullet> map_operator reassoc reassoc (\<X> \<parallel> \<I>) \<bullet> (\<I> \<parallel> \<Q>)) \<up>
-  \<approx> (!::('a :: {countable, defaults}, 0, 'b) operator) \<bullet> (\<exclamdown>::(0, 'a, 'b) operator)\<close>
+  \<approx> (!::('a :: {countable, defaults}, 0, 'b option) operator) \<bullet> (\<exclamdown>::(0, 'a, 'b option) operator)\<close>
   apply transfer
   using F5' by simp
 
