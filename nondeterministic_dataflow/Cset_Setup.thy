@@ -32,7 +32,7 @@ lift_definition c\<UU> :: "('m :: {countable, defaults}) cset" is "\<UU>" by aut
 end
 
 declare cBall.rep_eq[simp] cinsert.rep_eq[simp] bot_cset.rep_eq[simp] sup_cset.rep_eq[simp] cimage.rep_eq[simp] cUnion.rep_eq[simp] rel_cset.rep_eq[simp]
-  cfilter.rep_eq[simp] c\<UU>.rep_eq[simp]
+  cfilter.rep_eq[simp] c\<UU>.rep_eq[simp] cUNIV.rep_eq[simp]
 
 declare ranI[simp]
 
