@@ -10,40 +10,6 @@ section \<open>Axiom A10: Equality test to acopy\<close>
 
 declare BULK_BENQ_left_empty[simp del] BULK_BENQ_right_empty[simp del] list_emb_Nil2[simp del]
 
-definition \<open>tested n xs ys = map (\<lambda>(x, y). if x = y then x else None) (zip (take n xs) (take n ys))\<close>
-
-lemma tested_diff_Suc:
-  \<open>xs \<noteq> [] \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> hd xs \<noteq> hd ys \<Longrightarrow> tested (Suc n) xs ys = None # tested n (tl xs) (tl ys)\<close>
-  unfolding tested_def by (simp add: take_Suc)
-
-lemma tested_eq_Suc:
-  \<open>xs \<noteq> [] \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> hd xs = hd ys \<Longrightarrow> tested (Suc n) xs ys = hd xs # tested n (tl xs) (tl ys)\<close>
-  unfolding tested_def by (simp add: take_Suc)
-
-lemma tested_diff_Suc_gen:
-  \<open>length xs > n \<Longrightarrow> length ys > n \<Longrightarrow> xs ! n \<noteq> ys ! n \<Longrightarrow> tested (Suc n) xs ys = tested n xs ys @ [None]\<close>
-  unfolding tested_def
-  apply (induct n arbitrary: xs ys)
-   apply (auto simp: take_Suc hd_conv_nth)
-  subgoal for n xs ys
-    apply (cases xs; cases ys; simp)
-    done
-  done
-
-lemma tested_eq_Suc_gen:
-  \<open>length xs > n \<Longrightarrow> length ys > n \<Longrightarrow> xs ! n = ys ! n \<Longrightarrow> tested (Suc n) xs ys = tested n xs ys @ [xs ! n]\<close>
-  unfolding tested_def
-  apply (induct n arbitrary: xs ys)
-   apply (auto simp: take_Suc hd_conv_nth)
-  subgoal for n xs ys
-    apply (cases xs; cases ys; simp)
-    done
-  done
-
-lemma length_tested_0[simp]:
-  "tested 0 xs ys = []"
-  unfolding tested_def by simp
-
 lemma progress_before_aeq_op:
   assumes  "p \<notin> defaults"
   shows "(step Tau)\<^sup>*\<^sup>*

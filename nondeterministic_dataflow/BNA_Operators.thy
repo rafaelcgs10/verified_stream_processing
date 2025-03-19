@@ -6480,4 +6480,46 @@ lemma aeq_id_absorb_left:
   using aeq_id_absorb_left_gen[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []"]
   by simp
 
+definition \<open>tested n xs ys = map (\<lambda>(x, y). if x = y then x else None) (zip (take n xs) (take n ys))\<close>
+
+lemma tested_diff_Suc:
+  \<open>xs \<noteq> [] \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> hd xs \<noteq> hd ys \<Longrightarrow> tested (Suc n) xs ys = None # tested n (tl xs) (tl ys)\<close>
+  unfolding tested_def by (simp add: take_Suc)
+
+lemma tested_eq_Suc:
+  \<open>xs \<noteq> [] \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> hd xs = hd ys \<Longrightarrow> tested (Suc n) xs ys = hd xs # tested n (tl xs) (tl ys)\<close>
+  unfolding tested_def by (simp add: take_Suc)
+
+lemma tested_diff_Suc_gen:
+  \<open>length xs > n \<Longrightarrow> length ys > n \<Longrightarrow> xs ! n \<noteq> ys ! n \<Longrightarrow> tested (Suc n) xs ys = tested n xs ys @ [None]\<close>
+  unfolding tested_def
+  apply (induct n arbitrary: xs ys)
+   apply (auto simp: take_Suc hd_conv_nth)
+  subgoal for n xs ys
+    apply (cases xs; cases ys; simp)
+    done
+  done
+
+lemma tested_eq_Suc_gen:
+  \<open>length xs > n \<Longrightarrow> length ys > n \<Longrightarrow> xs ! n = ys ! n \<Longrightarrow> tested (Suc n) xs ys = tested n xs ys @ [xs ! n]\<close>
+  unfolding tested_def
+  apply (induct n arbitrary: xs ys)
+   apply (auto simp: take_Suc hd_conv_nth)
+  subgoal for n xs ys
+    apply (cases xs; cases ys; simp)
+    done
+  done
+
+lemma length_tested_0[simp]:
+  "tested 0 xs ys = []"
+  unfolding tested_def by simp
+
+lemma tested_comm:
+  \<open>tested n xs ys = tested n ys xs\<close>
+  apply (induct n arbitrary: xs ys)
+   apply simp
+  subgoal for n xs ys
+    by (cases xs; cases ys; simp_all add: tested_def)
+  done
+
 end
