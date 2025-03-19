@@ -534,7 +534,10 @@ have "step Tau
         apply (metis BAPPEND_BENQ_BHD BULK_BENQ_assoc rtranclp.rtrancl_refl)     
         done
       ultimately show ?thesis
-        using H by (auto 0 0 elim !: step_map_op_elim step_split_op_cases step_transp_op_cases step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+        apply -
+        subgoal premises prems
+          using H by (auto 0 0 simp: prems elim !: step_map_op_elim step_split_op_cases step_transp_op_cases step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+        done
     qed
   qed
 qed
