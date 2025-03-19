@@ -6504,22 +6504,70 @@ lemma tested_eq_Suc_gen:
   \<open>length xs > n \<Longrightarrow> length ys > n \<Longrightarrow> xs ! n = ys ! n \<Longrightarrow> tested (Suc n) xs ys = tested n xs ys @ [xs ! n]\<close>
   unfolding tested_def
   apply (induct n arbitrary: xs ys)
-   apply (auto simp: take_Suc hd_conv_nth)
+   apply (simp add: take_Suc hd_conv_nth)
   subgoal for n xs ys
-    apply (cases xs; cases ys; simp)
-    done
+    by (cases xs; cases ys; simp)
   done
 
 lemma length_tested_0[simp]:
   "tested 0 xs ys = []"
   unfolding tested_def by simp
 
+lemma tested_empty:
+  \<open>tested n xs ys = [] \<Longrightarrow> n \<le> length xs \<Longrightarrow> n \<le> length ys \<Longrightarrow> n = 0\<close>
+  unfolding tested_def
+  by force
+
 lemma tested_comm:
   \<open>tested n xs ys = tested n ys xs\<close>
+  unfolding tested_def
   apply (induct n arbitrary: xs ys)
    apply simp
   subgoal for n xs ys
-    by (cases xs; cases ys; simp_all add: tested_def)
+    by (cases xs; cases ys; simp)
   done
+
+lemma finds_tested_first_equal:
+  \<open>tested n xs ys \<noteq> [] \<Longrightarrow> n \<le> length xs \<Longrightarrow> n \<le> length ys \<Longrightarrow>
+   \<exists>k < n. nth xs k = z \<and> nth ys k = z \<and> tested k xs ys = replicate (n - k) None\<close>
+  apply (induction n arbitrary: xs ys)
+   apply simp
+  subgoal for n xs ys
+    apply (cases xs; cases ys; simp)
+    subgoal for x xs y ys
+      apply hypsubst_thin
+      apply (cases \<open>x = y\<close>)
+(*
+       apply (subst (asm) tested_diff_Suc)
+          apply simp_all
+        apply (drule meta_spec)+
+       apply (drule meta_mp)
+      apply assumption
+      apply (drule meta_mp)
+       apply assumption
+      apply (drule meta_mp)
+       apply assumption
+      apply safe
+      subgoal for k
+        apply (rule exI[of _ "Suc k"])
+        apply (simp add: tested_diff_Suc)
+        done
+      done
+    done
+  done
+*)
+    oops
+
+lemma tested_all:
+  \<open>tested (min (length xs) (length ys)) xs ys = map (\<lambda>(x, y). if x = y then x else None) (zip xs ys)\<close>
+  unfolding tested_def
+  by (metis (no_types, lifting) map_fst_zip_take map_snd_zip_take zip_map_fst_snd)
+
+lemma tested_min_drop:
+  \<open>xs' = drop m xs \<Longrightarrow> ys' = drop m ys \<Longrightarrow> zs = tested m xs ys \<Longrightarrow>
+   tested (min (length xs) (length ys)) xs ys = zs @ tested (min (length xs') (length ys')) xs' ys'\<close>
+  apply (simp (no_asm) add: tested_all)
+  unfolding tested_def
+  by (metis (no_types, lifting) append_take_drop_id drop_zip map_append take_zip)
 
 end
