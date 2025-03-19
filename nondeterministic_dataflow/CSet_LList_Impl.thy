@@ -5,7 +5,7 @@ theory CSet_LList_Impl
    "HOL-Library.Debug"
    "HOL-Library.Simps_Case_Conv"
    "HOL-Library.Code_Test"
-   "HOL-Library.Code_Lazy"
+   "HOL-Library.Code_Cardinality"
    "HOL-Library.Debug"
 begin
 
@@ -46,6 +46,10 @@ subclass countable
 
 end
 
+lemma cUNIV_code[code]: "(cUNIV :: 'a :: {cenum} cset) = cset_of_llist cenum"
+  including cset.lifting
+  by (transfer) (auto simp: UNIV_cenum[symmetric])
+
 lemma c\<UU>_code[code]: "(c\<UU> :: 'a :: {cenum, defaults} cset) = cset_of_llist (lfilter (\<lambda>x. x \<notin> defaults) cenum)"
   including cset.lifting
   by (transfer) (auto simp: UNIV_cenum[symmetric])
@@ -58,6 +62,11 @@ end
 instantiation bool :: cenum begin
 definition cenum_bool :: "bool llist" where "cenum_bool = llist_of Enum.enum"
 instance by standard (simp_all only: cenum_bool_def enum_cenum.UNIV_cenum enum_cenum.cenum_distinct)
+end
+
+instantiation option :: (cenum) cenum begin
+definition cenum_option :: "'a option llist" where "cenum_option = LCons None (lmap Some (cenum :: 'a llist))"
+instance by standard (auto simp: cenum_option_def image_iff UNIV_cenum[symmetric] cenum_distinct)
 end
 
 instantiation nat :: cenum begin
@@ -75,6 +84,34 @@ lemma ldistinct_iterates_Suc: "ldistinct (iterates Suc n)"
 
 instance by standard (auto simp: cenum_nat_def lset_iterates_Suc_ge ldistinct_iterates_Suc)
 end
+
+instantiation num0 :: cenum begin
+definition cenum_num0 :: "0 llist" where "cenum_num0 = lmap Abs_num0 cenum"
+instance by standard
+  (auto simp: cenum_num0_def UNIV_cenum[symmetric] cenum_distinct image_iff inj_on_def
+     Abs_num0_inject Rep_num0_inverse intro!: exI[of _ "Rep_num0 _"])
+end
+instantiation num1 :: cenum begin
+definition cenum_num1 :: "1 llist" where "cenum_num1 = llist_of [1]"
+instance by standard (auto simp: cenum_num1_def)
+end
+instantiation bit0 :: ("{finite}") cenum begin
+definition cenum_bit0 :: "'a bit0 llist" where "cenum_bit0 = llist_of (map (Abs_bit0' \<circ> int) (upt 0 (CARD('a bit0))))"
+instance by standard
+  (use Rep_bit0[where 'a='a] in \<open>auto simp: cenum_bit0_def image_iff distinct_map inj_on_def
+     nat_less_iff Abs_bit0'_def Abs_bit0_inject Rep_bit0_inverse
+     intro!: bexI[of _ "nat (Rep_bit0 (_ :: 'a bit0))"]\<close>)
+end
+instantiation bit1 :: ("{finite}") cenum begin
+definition cenum_bit1 :: "'a bit1 llist" where "cenum_bit1 = llist_of (map (Abs_bit1' \<circ> int) (upt 0 (CARD('a bit1))))"
+instance by standard
+  (use Rep_bit1[where 'a='a] in \<open>auto simp: cenum_bit1_def image_iff distinct_map inj_on_def
+     nat_less_iff Abs_bit1'_def Abs_bit1_inject Rep_bit1_inverse simp del: upt.simps
+     intro!: bexI[of _ "nat (Rep_bit1 (_ :: 'a bit1))"]\<close>)
+end
+
+lemma c\<UU>_0[code_unfold]: "(c\<UU> :: 0 cset) = cset_of_llist LNil"
+  unfolding c\<UU>_code defaults_num0_def by auto
 
 corec (friend) linterleave where
   "linterleave xs ys = (case (xs, ys) of
@@ -148,6 +185,22 @@ lemma lset_linterleave3:
 lemma lset_linterleave[simp]:
   "lset (linterleave xs ys) = lset xs \<union> lset ys"
   by (auto dest: lset_linterleave1 lset_linterleave2 lset_linterleave3)
+
+lemma ldistinct_linterleave: "ldistinct xs \<Longrightarrow> ldistinct ys \<Longrightarrow> lset xs \<inter> lset ys = {} \<Longrightarrow> ldistinct (linterleave xs ys)"
+  apply (coinduction arbitrary: xs ys)
+  subgoal for xs ys
+    apply (cases xs; cases ys)
+       apply (force intro!: linterleave_LCons1[symmetric])+
+    done
+  done
+
+instantiation sum :: (cenum, cenum) cenum begin
+definition cenum_sum :: "('a + 'b) llist" where "cenum_sum = linterleave (lmap Inl cenum) (lmap Inr cenum)"
+instance apply standard
+   apply (auto simp: cenum_sum_def image_iff UNIV_cenum[symmetric] cenum_distinct intro!: ldistinct_linterleave)
+  apply (meson obj_sumE)
+  done
+end
 
 corec lmerge where
   "lmerge xss = (case ldropWhile lnull xss of LNil \<Rightarrow> LNil
@@ -456,6 +509,11 @@ definition defaults_nat :: "nat set" where "defaults_nat = {}"
 instance by standard
 end
 
+value [GHC] "c\<UU> :: 0 cset"
+value [GHC] "c\<UU> :: 1 cset"
+value [GHC] "c\<UU> :: 2 cset"
+value [GHC] "c\<UU> :: 3 cset"
+value [GHC] "c\<UU> :: 15 cset"
 value [GHC] "csubset_eq (cset_of_llist (llist_of [42, 50, 2])) (cUn (cset_of_llist (from 42)) (cset_of_llist (const 2)))"
 value [GHC] "cempty :: nat cset"
 value [GHC] "cset_of_llist (llist_of [42, 50, 2 :: nat])"

@@ -13,14 +13,17 @@ definition show_1 where "show_1 (x :: 1) = STR ''1''"
 definition show_11 where "show_11 = show_sum show_1 show_1"
 definition show_2 where "show_2 (x :: 2) = (if x = 1 then STR ''1'' else STR ''2'')"
 
-fun eval' :: "nat \<Rightarrow> ('i, 'o, 'd :: {countable, defaults}) op \<Rightarrow> (('i, 'o, 'd) VIO list \<times> ('i, 'o, 'd) op) cset"  where
+fun eval' :: "nat \<Rightarrow> ('i, 'o, 'd :: {countable}) op \<Rightarrow> (('i, 'o, 'd) VIO list \<times> ('i, 'o, 'd) op) cset"  where
   "eval' 0 op = {|([], op)|}"
-| "eval' (Suc n) (Read p f) = cUnion (cimage (\<lambda>x. cimage (\<lambda>(t, op). (VInp p x # t, op)) (eval' n (f x))) (c\<UU> :: 'd cset))"
+| "eval' (Suc n) (Read p f) = cUnion (cimage (\<lambda>x. cimage (\<lambda>(t, op). (VInp p x # t, op)) (eval' n (f x))) (cUNIV :: 'd cset))"
 | "eval' (Suc n) (Write op p x) = cimage (\<lambda>(t, op). (VOut p x # t, op)) (eval' n op)"
 | "eval' (Suc n) (Silent op) = cimage (\<lambda>(t, op). (t, op)) (eval' n op)"
 | "eval' (Suc n) (Choice ops) = (if ops = {||} then {|([], \<oslash>)|} else cUnion (cimage (eval' n) ops))"
 
 definition "eval n op = cimage fst (eval' n op)"
+definition "eq n op op' = 
+  (csubset_eq (cimage fst (eval' n op)) (cimage fst (eval' n op')) \<and>
+   csubset_eq (cimage fst (eval' n op)) (cimage fst (eval' n op')))"
 
 definition W42 :: "(2,1,nat) op" where "W42 = Write end_op 1 42"
 definition CP :: "(1,1,bool) op" where "CP = Read 1 (\<lambda>x. Write end_op 1 x)"
@@ -32,5 +35,14 @@ value [GHC] "eval 10 cp_op"
 value [GHC] "eval 1000 (CP \<bullet> CP)"
 value [GHC] "eval 10 (cp_op \<bullet> cp_op)"
 value [GHC] "eval 10 (cp_op \<parallel> cp_op)"
+
+value [GHC] "eval 4 (\<Q> \<bullet> \<C> :: (2 + 2, 2 + 2, bool option) op)"
+value [GHC] "eval 4 ((\<C> \<parallel> \<C>) \<bullet> (map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)) \<bullet> (\<Q>\<turnstile> \<parallel> \<Q>\<turnstile>) :: (2 + 2, 2 + 2, bool option) op)"
+value [GHC] "eq 6 (\<Q> \<bullet> \<C> :: (2 + 2, 2 + 2, bool option) op)
+                  ((\<C> \<parallel> \<C>) \<bullet> (map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)) \<bullet> (\<Q>\<turnstile> \<parallel> \<Q>\<turnstile>) :: (2 + 2, 2 + 2, bool option) op)"
+value [GHC] "eq 6 (\<Q> \<bullet> \<C> :: (2 + 2, 2 + 2, bool option) op) \<I>"
+value [GHC] "eq 6 (\<Q> \<bullet> \<C> :: (2 + 2, 2 + 2, bool option) op) \<I>"
+value [GHC] "cfilter (\<lambda>x. \<not> x |\<in>| eval 4 (map_op assoc id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>))) (eval 4 ((\<Q> \<parallel> \<I>) \<bullet> \<Q> :: ((2 + 2) + 2, 2, bool option) op))"
+value [GHC] "eq 4 ((\<Q> \<parallel> \<I>) \<bullet> \<Q> :: ((2 + 2) + 2, 2, bool option) op) (map_op assoc id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>))"
 
 end
