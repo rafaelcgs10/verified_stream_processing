@@ -3,7 +3,6 @@ theory BNA_Operators
 
 imports
   Operator
-  "HOL-ex.Sketch_and_Explore"
 begin
 
 instantiation num0 :: countable begin
@@ -2736,8 +2735,6 @@ lemma bisim_loop_op_cong:
 proof (coinduction arbitrary: op op' buf rule: bisim_coinduct)
   case SIM1
   then show ?case
-    apply -
-    explore (auto elim !: bisim.cases step_map_op_elim step_loop_op_elim split: if_splits sum.splits; hypsubst_thin)
   proof -
     have "\<exists>op2'. step (Inp p x) (loop_op wire buf op') op2' \<and> \<B> (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = loop_op wire buf op \<and> op2xx = loop_op wire buf op' \<and> op ~ op') (loop_op wire buf op'') op2'"
       if "sim (~) op op'"
@@ -2838,8 +2835,6 @@ proof (coinduction arbitrary: op op' buf rule: bisim_coinduct)
 next
   case SIM2
   then show ?case 
-    apply -
-    explore (auto elim !: step_map_op_elim step_loop_op_elim bisim.cases split: if_splits sum.splits; hypsubst_thin)
   proof -
     have "\<exists>op1'. step (Inp p x) (loop_op wire buf op) op1' \<and> \<B> (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = loop_op wire buf op \<and> op2xx = loop_op wire buf op' \<and> op ~ op') op1' (loop_op wire buf op'')"
       if "sim (~) op op'"
@@ -3023,8 +3018,6 @@ lemma wbisim_loop_op_cong:
 proof (coinduction arbitrary: op op' buf rule: wbisim_coinduct)
   case SIM1
   then show ?case 
-    apply -
-    explore (auto elim !: step_map_op_elim step_loop_op_elim split: if_splits sum.splits; hypsubst_thin)
   proof -
     have "\<exists>op2'. wstep (Inp p x) (loop_op wire buf op') op2' \<and> \<W> (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = loop_op wire buf op \<and> op2xx = loop_op wire buf op' \<and> op \<approx> op') (loop_op wire buf op'') op2'"
       if "op \<approx> op'"
@@ -3104,8 +3097,6 @@ proof (coinduction arbitrary: op op' buf rule: wbisim_coinduct)
 next
   case SIM2
   then show ?case 
-    apply -
-    explore (auto elim !: step_map_op_elim step_loop_op_elim split: if_splits sum.splits; hypsubst_thin)
   proof -
     have "\<exists>op1'. wstep (Inp p x) (loop_op wire buf op) op1' \<and> \<W> (\<lambda>op1xx op2xx. \<exists>op op' buf. op1xx = loop_op wire buf op \<and> op2xx = loop_op wire buf op' \<and> op \<approx> op') op1' (loop_op wire buf op'')"
       if "op \<approx> op'"
@@ -3904,8 +3895,6 @@ lemma scomp_op_id_left_absorb_gen:
 next
   case SIM2
   then show ?case 
-    apply -
-    explore (auto elim!: step_id_op_cases step_comp_op_elim step_map_op_elim split: if_splits; hypsubst_thin)
   proof -
     have "\<exists>op2'. wstep (Inp p x) (map_op projl projr (comp_op Some buf3 (map_op projl projr (comp_op Some buf1 op1 (id_op buf2))) op2)) op2' \<and> wbisim_cong (\<lambda>op1axx op2axx. \<exists>op1 op2 buf1 buf2 buf3. op1axx = map_op projl projr (comp_op Some buf3 (map_op projl projr (comp_op Some buf1 op1 (id_op buf2))) op2) \<and> op2axx = map_op projl projr (comp_op Some ((buf1 >> buf2) >> buf3) op1 op2) \<and> inputs op2 \<inter> (defaults::'a set) = {}) op2' (map_op projl projr (comp_op Some ((buf1 >> buf2) >> buf3) op1' op2))"
       if "inputs op2 \<inter> defaults = {}"
@@ -4211,8 +4200,6 @@ proof (coinduction arbitrary: op buf1 buf2 rule: wbisim_coinduct_upto'')
 next
   case SIM2
   then show ?case 
-    apply -
-    explore (auto elim !: step_id_op_cases step_comp_op_elim step_map_op_elim split: if_splits; hypsubst_thin)
   proof -
     have "\<exists>op2'. wstep (Inp p x) (map_op f id (map_op projl projr (comp_op Some buf2 op (id_op buf1)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf1 buf2. op1xx = map_op f id (map_op projl projr (comp_op Some buf2 op (id_op buf1))) \<and> op2xx = map_op projl projr (comp_op Some buf2 (map_op f id op) (id_op buf1))) op2' (map_op projl projr (comp_op Some buf2 (map_op f id op''a) (id_op buf1)))"
       if "step io'a op op''a"
@@ -4621,8 +4608,6 @@ proof (coinduction arbitrary: buf rule: wbisim_coinduct_upto'')
 next
   case SIM2
   then show ?case 
-    apply -
-    explore (auto elim!: step_map_op_elim step_comp_op_elim step_sink_op ;hypsubst_thin)
   proof -
     have "\<exists>op2'. wstep (Inp p x) (map_op projl projr (comp_op Some buf ! (!::('d, 'b, 'c) op))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. (\<exists>buf. op1xx = map_op projl projr (comp_op (Some::'d \<Rightarrow> _ option) buf ! !)) \<and> op2xx = !) op2' !"
       if "p \<notin> defaults"
@@ -4644,8 +4629,6 @@ lemma map_op_id_Inr_move_vdash_gen:
 proof (coinduction arbitrary: op buf1 buf2 A rule: wbisim_coinduct_upto'')
   case SIM1
   then show ?case 
-    apply -
-    explore (auto elim!: step_id_op_cases step_map_op_elim step_comp_op_elim step_sink_op simp add: pcomp_op_def ;hypsubst_thin)
   proof -
     have "\<exists>op2'. wstep (Inp p x) (map_op projl projr (comp_op Some (case_sum A buf1) (map_op id Inr op) (comp_op (\<lambda>_. None) (\<lambda>_. []) (!::('e, 'b, 'd) op) (id_op buf2)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf1 buf2. op1xx = map_op id Inr (map_op projl projr (comp_op Some buf1 op (id_op buf2))) \<and> (\<exists>A. op2xx = map_op projl projr (comp_op Some (case_sum (A::'e \<Rightarrow> 'd buf) buf1) (map_op id Inr op) (comp_op (\<lambda>_. None) (\<lambda>_. []) ! (id_op buf2))))) (map_op id Inr (map_op projl projr (comp_op Some buf1 op1' (id_op buf2)))) op2'"
       if "step (Inp p x) op op1'"
@@ -4697,8 +4680,6 @@ proof (coinduction arbitrary: op buf1 buf2 A rule: wbisim_coinduct_upto'')
 next
   case SIM2
   then show ?case
-    apply -
-    explore (auto simp add: pcomp_op_def elim !: step_id_op_cases step_map_op_elim step_comp_op_elim step_sink_op; hypsubst_thin)
   proof -
     have "\<exists>op2'. wstep (Inp p x) (map_op id Inr (map_op projl projr (comp_op Some buf1 op (id_op buf2)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>op buf1 buf2. op1xx = map_op id Inr (map_op projl projr (comp_op Some buf1 op (id_op buf2))) \<and> (\<exists>A. op2xx = map_op projl projr (comp_op Some (case_sum A buf1) (map_op id Inr op) (comp_op (\<lambda>_. None) (\<lambda>_. []) (!::('e, 'b, 'd) op) (id_op buf2))))) op2' (map_op projl projr (comp_op Some (case_sum A buf1) (map_op id Inr op''a) (comp_op (\<lambda>_. None) (\<lambda>_. []) ! (id_op buf2))))"
       if "step io'a op op''a"
@@ -5604,7 +5585,6 @@ proof (coinduction arbitrary: buf1 buf1' buf2 buf2' buf3 buf3' rule: wbisim_coin
 next
   case SIM2
   then show ?case
-    apply - explore (auto elim !: step_map_op_elim step_comp_op_elim step_id_op_cases step_split_op_cases split: sum.splits; hypsubst_thin?)
   proof -
     have "\<exists>op2'. wstep (Inp pa xa) (split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3'))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>buf1 buf1' buf2 buf2' buf3 buf3'. op1 = split_op (case_sum ((buf1 >> buf2) >> buf3) ((buf1' >> buf2') >> buf3')) \<and> op2 = map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum buf1 buf1')) (id_op (case_sum buf3 buf3')))) op2' (map_op projl projr (comp_op Some (case_sum buf2 buf2') (split_op (case_sum (BENQ pa xa buf1) buf1')) (id_op (case_sum buf3 buf3'))))"
       if "pa \<notin> defaults"
@@ -6520,8 +6500,6 @@ lemma aeq_id_absorb_gen:
 proof (coinduction arbitrary: buf1L buf2L buf3L buf1R buf2R buf3R  rule: wbisim_coinduct_upto'')
   case SIM1
   then show ?case 
-    apply -
-    explore (elim exE conjE disjE step_id_op_cases step_comp_op_elim step_map_op_elim step_aeq_op_elim; simp split: if_splits sum.splits; hypsubst_thin)
   proof -
     have "\<exists>op2'. wstep (Inp (Inl p) y) (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) (aeq_op (case_sum ((BENQ p y buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R))) op2'"
       if "p \<notin> defaults"
@@ -6918,8 +6896,6 @@ proof (coinduction arbitrary: buf1L buf2L buf3L buf1R buf2R buf3R  rule: wbisim_
 next
   case SIM2
   then show ?case 
-    apply -
-    explore (elim exE conjE disjE step_id_op_cases step_comp_op_elim step_map_op_elim step_aeq_op_elim; simp split: if_splits sum.splits; hypsubst_thin)
   proof -
     have "\<exists>op2'. wstep (Inp pa x) (aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R))) op2' \<and> wbisim_cong (\<lambda>op1xx op2xx. \<exists>buf1L buf2L buf3L buf1R buf2R buf3R. op1xx = aeq_op (case_sum ((buf1L >> buf2L) >> buf3L) ((buf1R >> buf2R) >> buf3R)) \<and> op2xx = map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (case_sum buf1L buf1R)) (aeq_op (case_sum buf3L buf3R)))) op2' (map_op projl projr (comp_op Some (case_sum buf2L buf2R) (id_op (BENQ pa x (case_sum buf1L buf1R))) (aeq_op (case_sum buf3L buf3R))))"
       if "(pa::'a + 'a) \<notin> defaults"

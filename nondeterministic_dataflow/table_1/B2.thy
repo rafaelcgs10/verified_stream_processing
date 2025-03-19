@@ -13,8 +13,6 @@ lemma B2_1:
 proof (coinduction arbitrary: op rule: bisim_coinduct)
   case SIM1
   then show ?case 
-    apply -
-    explore (auto elim!: step_comp_op_elim step_id_op_cases; hypsubst_thin?)
   proof -
     have "\<exists>op2'. step (Inp (Inl p) x) (map_op Inl Inl op) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op. op1xx = comp_op (\<lambda>_. None::0 option) (\<lambda>_. []) op \<I> \<and> op2xx = map_op Inl Inl op) (comp_op (\<lambda>_. None) (\<lambda>_. []) op1' \<I>) op2'"
       if "step (Inp p x) op op1'"
@@ -50,8 +48,6 @@ proof (coinduction arbitrary: op rule: bisim_coinduct)
 next
   case SIM2
   then show ?case 
-    apply -
-    explore (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases; hypsubst_thin?)
   proof -
     have "\<exists>op2'. step (map_IO Inl Inl id io') (comp_op (\<lambda>_. None::0 option) (\<lambda>_. []) op \<I>) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op. op1xx = comp_op (\<lambda>_. None) (\<lambda>_. []) op \<I> \<and> op2xx = map_op Inl Inl op) op2' (map_op Inl Inl op'')"
       if "step io' op op''"
@@ -75,8 +71,6 @@ lemma B2_2:
 proof (coinduction arbitrary: op rule: bisim_coinduct)
   case SIM1
   then show ?case 
-    apply -
-    explore (auto elim!: step_comp_op_elim step_id_op_cases; hypsubst_thin?)
   proof -
     have "\<exists>op2'a. step (Out (Inr p::0 + 'b) x) (map_op Inr Inr op) op2'a \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op. op1xx = comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> op \<and> op2xx = map_op Inr Inr op) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> op2') op2'a"
       if "step (Out p x) op op2'"
@@ -112,8 +106,6 @@ proof (coinduction arbitrary: op rule: bisim_coinduct)
 next
   case SIM2
   then show ?case 
-    apply -
-    explore (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases; hypsubst_thin?)
   proof -
     have "\<exists>op2'. step (map_IO Inr Inr id io') (comp_op (\<lambda>_. None) (\<lambda>_. []) (\<I>::(0, _, 'd) op) op) op2' \<and> bisim_R (\<lambda>op1xx op2xx. \<exists>op. op1xx = comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> op \<and> op2xx = map_op Inr Inr op) op2' (map_op Inr Inr op'')"
       if "step io' op op''"

@@ -2,7 +2,6 @@ theory B8
 
 imports
   "../BNA_Operators"
-  "HOL-ex.Sketch_and_Explore"
 begin
 no_notation Sublist.parallel (infixl "\<parallel>" 50)
 

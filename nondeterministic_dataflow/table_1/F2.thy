@@ -12,7 +12,6 @@ proof (coinduction arbitrary: buf buf' buf'' rule: wbisim_coinduct_upto)
   case BISIM
   then show ?case 
     unfolding wsim_def
-    sketch (intro allI conjI impI)
   proof (intro allI conjI impI)
     fix io :: "('a, 'a, 'b) IO"
       and op1' :: "('a, 'a, 'b) op"

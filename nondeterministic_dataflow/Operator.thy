@@ -1021,6 +1021,8 @@ lemma WSC: "op |\<in>| ops \<Longrightarrow> wstep io op op' \<Longrightarrow> w
   done
 *)
 
+thm bisim.coinduct[simplified, no_vars]
+
 lemma wbisim_coinduct_upto[consumes 1, case_names BISIM]:
   "R op1 op2 \<Longrightarrow>
    (\<And>s t. R s t \<Longrightarrow> wsim (wbisim_cong R) s t \<and> wsim (wbisim_cong R) t s) \<Longrightarrow>
