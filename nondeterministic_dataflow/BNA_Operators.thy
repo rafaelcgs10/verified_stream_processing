@@ -3499,10 +3499,10 @@ lemma spin_op_end_op:
 section \<open>Basic operator examples\<close>
 
 corec ex1_op where
-  "ex1_op = choice2 (Write ex1_op (1::2) (42::nat)) \<oslash>"
+  "ex1_op = choice2 (Write ex1_op (1::nat) (42::nat)) \<oslash>"
 
 lemma ex1_op_code:
-  "ex1_op = Choice {|Write ex1_op (1::2) (42::nat), \<oslash>|}"
+  "ex1_op = Choice {|Write ex1_op (1::nat) (42::nat), \<oslash>|}"
   by (subst ex1_op.code, simp)
 
 lemma step_ex1_op_elim[elim!]:
@@ -3524,10 +3524,10 @@ lemma step_ex1_op_intro[intro!]:
   done
 
 corec ex2_op where
-  "ex2_op = choice2 (Write ex2_op (1::2) (42::nat)) ex2_op"
+  "ex2_op = choice2 (Write ex2_op (1::nat) (42::nat)) ex2_op"
 
 lemma ex2_op_code:
-  "ex2_op = Choice {|Write ex2_op (1::2) (42::nat), ex2_op|}"
+  "ex2_op = Choice {|Write ex2_op (1::nat) (42::nat), ex2_op|}"
   by (subst ex2_op.code, simp)
 
 lemma step_ex2_op_aux:
@@ -3561,10 +3561,10 @@ lemma ex1_bisim_ex2_op:
   by (coinduction rule: bisim_coinduct) auto
 
 corec ex3_op where
-  "ex3_op = choice2 (Write ex3_op (1::2) (42::nat)) (Silent ex3_op)"
+  "ex3_op = choice2 (Write ex3_op (1::nat) (42::nat)) (Silent ex3_op)"
 
 lemma ex3_op_code:
-  "ex3_op = Choice {|Write ex3_op (1::2) (42::nat), Silent ex3_op|}"
+  "ex3_op = Choice {|Write ex3_op (1::nat) (42::nat), Silent ex3_op|}"
   by (subst ex3_op.code, simp)
 
 lemma step_ex3_op_elim[elim!]:

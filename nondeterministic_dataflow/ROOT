@@ -66,6 +66,6 @@ session Nondeterministic_Dataflow = Coinductive +
     Lifted
     Lifted_Table_1
     Lifted_Table_2
-    Lifted_Table_2
+    Lifted_Table_3
     CSet_LList_Impl
     Eval

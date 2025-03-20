@@ -21,9 +21,9 @@ fun eval' :: "nat \<Rightarrow> ('i, 'o, 'd :: {countable}) op \<Rightarrow> (('
 | "eval' (Suc n) (Choice ops) = (if ops = {||} then {|([], \<oslash>)|} else cUnion (cimage (eval' n) ops))"
 
 definition "eval n op = cimage fst (eval' n op)"
-definition "eq n op op' = 
-  (csubset_eq (cimage fst (eval' n op)) (cimage fst (eval' n op')) \<and>
-   csubset_eq (cimage fst (eval' n op)) (cimage fst (eval' n op')))"
+definition "approx_eq n op op' = 
+  (cis_empty (cfilter (\<lambda>xs. cis_empty (cfilter (\<lambda>ys. prefix xs ys) (cimage fst (eval' (2 * n) op')))) (cimage fst (eval' n op)))  \<and>
+   cis_empty (cfilter (\<lambda>xs. cis_empty (cfilter (\<lambda>ys. prefix xs ys) (cimage fst (eval' (2 * n) op)))) (cimage fst (eval' n op'))))"
 
 definition W42 :: "(2,1,nat) op" where "W42 = Write end_op 1 42"
 definition CP :: "(1,1,bool) op" where "CP = Read 1 (\<lambda>x. Write end_op 1 x)"
@@ -38,11 +38,11 @@ value [GHC] "eval 10 (cp_op \<parallel> cp_op)"
 
 value [GHC] "eval 4 (\<Q> \<bullet> \<C> :: (2 + 2, 2 + 2, bool option) op)"
 value [GHC] "eval 4 ((\<C> \<parallel> \<C>) \<bullet> (map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)) \<bullet> (\<Q>\<turnstile> \<parallel> \<Q>\<turnstile>) :: (2 + 2, 2 + 2, bool option) op)"
-value [GHC] "eq 6 (\<Q> \<bullet> \<C> :: (2 + 2, 2 + 2, bool option) op)
+value [GHC] "approx_eq 4 (\<Q> \<bullet> \<C> :: (2 + 2, 2 + 2, bool option) op)
                   ((\<C> \<parallel> \<C>) \<bullet> (map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)) \<bullet> (\<Q>\<turnstile> \<parallel> \<Q>\<turnstile>) :: (2 + 2, 2 + 2, bool option) op)"
-value [GHC] "eq 6 (\<Q> \<bullet> \<C> :: (2 + 2, 2 + 2, bool option) op) \<I>"
-value [GHC] "eq 6 (\<Q> \<bullet> \<C> :: (2 + 2, 2 + 2, bool option) op) \<I>"
+value [GHC] "approx_eq 4 (\<Q> \<bullet> \<C> :: (2 + 2, 2 + 2, bool option) op) \<I>"
+value [GHC] "approx_eq 6 (\<Q> \<bullet> \<C> :: (2 + 2, 2 + 2, bool option) op) \<I>"
 value [GHC] "cfilter (\<lambda>x. \<not> x |\<in>| eval 4 (map_op assoc id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>))) (eval 4 ((\<Q> \<parallel> \<I>) \<bullet> \<Q> :: ((2 + 2) + 2, 2, bool option) op))"
-value [GHC] "eq 4 ((\<Q> \<parallel> \<I>) \<bullet> \<Q> :: ((2 + 2) + 2, 2, bool option) op) (map_op assoc id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>))"
+value [GHC] "approx_eq 4 ((\<Q> \<parallel> \<I>) \<bullet> \<Q> :: ((2 + 2) + 2, 2, bool option) op) (map_op assoc id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>))"
 
 end
