@@ -6527,37 +6527,6 @@ lemma tested_comm:
     by (cases xs; cases ys; simp)
   done
 
-lemma finds_tested_first_equal:
-  \<open>tested n xs ys \<noteq> [] \<Longrightarrow> n \<le> length xs \<Longrightarrow> n \<le> length ys \<Longrightarrow>
-   \<exists>k < n. nth xs k = z \<and> nth ys k = z \<and> tested k xs ys = replicate (n - k) None\<close>
-  apply (induction n arbitrary: xs ys)
-   apply simp
-  subgoal for n xs ys
-    apply (cases xs; cases ys; simp)
-    subgoal for x xs y ys
-      apply hypsubst_thin
-      apply (cases \<open>x = y\<close>)
-(*
-       apply (subst (asm) tested_diff_Suc)
-          apply simp_all
-        apply (drule meta_spec)+
-       apply (drule meta_mp)
-      apply assumption
-      apply (drule meta_mp)
-       apply assumption
-      apply (drule meta_mp)
-       apply assumption
-      apply safe
-      subgoal for k
-        apply (rule exI[of _ "Suc k"])
-        apply (simp add: tested_diff_Suc)
-        done
-      done
-    done
-  done
-*)
-    oops
-
 lemma tested_all:
   \<open>tested (min (length xs) (length ys)) xs ys = map (\<lambda>(x, y). if x = y then x else None) (zip xs ys)\<close>
   unfolding tested_def

@@ -217,15 +217,25 @@ using assms proof (coinduction arbitrary: A A1 A1' A1'' B'' B1 B1' B1'' A2 A2' B
           apply (drule tested_empty)
             apply simp_all
           apply (metis BULK_BENQ_empty length_0_conv length_tested_0 min_0R min_def nat_le_linear tested_empty)
+        apply (rule disjI1)
          apply auto[1]
-        subgoal for y
-          unfolding tested_def
+        subgoal
+          unfolding BHD_def tested_def
+          apply (simp add: fun_upd_same)
           sorry
-        subgoal for y
+        subgoal
+          unfolding BHD_def
+          apply (simp add: fun_upd_same flip: length_drop)
+          apply (subst (2) tested_comm)
+          apply (subst min.commute)
+          using tested_min_drop[of \<open>drop m ((A1 >> A2 >> A3) pa)\<close> m \<open>(A1 >> A2 >> A3) pa\<close> \<open>drop m (C pa)\<close> \<open>C pa\<close> \<open>tested m ((A1 >> A2 >> A3) pa) (C pa)\<close>, symmetric]
+          apply simp
+          apply (subst tested_all)
+          by (smt (verit, del_insts) BHD_BULK_BENQ_cases BHD_def BULK_BENQ_empty \<open>\<lbrakk>A3' pa \<noteq> []; A3 pa \<noteq> []; pa \<notin> defaults; BHD pa A3' = BHD pa A3; A1'' pa = drop n (((B1'' >> B2'') >> B3'') pa); A1' pa = drop n (C pa); B1' pa = drop m (C pa); B1 pa = drop m (((A1 >> A2) >> A3) pa); (A2' >> A3') pa = tested n (C pa) (((B1'' >> B2'') >> B3'') pa); (B2 >> B3) pa = tested m (((A1 >> A2) >> A3) pa) (C pa); n \<le> length (C pa); n \<le> length (((B1'' >> B2'') >> B3'') pa); m \<le> length (C pa); m \<le> length (((A1 >> A2) >> A3) pa)\<rbrakk> \<Longrightarrow> BHD pa A3 = BHD pa (B3''(pa := ((B1'' >> B2'') >> B3'') pa))\<close> append_take_drop_id diff_diff_cancel drop_Nil fun_upd_same hd_append2 hd_zip length_drop length_tested_0 list.map_disc_iff list.map_sel(1) list.size(3) tested_comm tested_def zip_eq_Nil_iff)
+        subgoal
+          apply (rule wbc_base)
           sorry
-        subgoal sorry
-        apply (rule wbc_base)
-        sorry
+        done
       done
     moreover have "\<exists>op2'. wstep (Out pa None) (map_op assoc id (map_op projl projr (comp_op Some (case_sum B2'' B2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1'') (aeq_op (case_sum B1' B1))) (aeq_op (case_sum B3'' B3))))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>A A1 A1' A1'' B'' B1 B1' B1'' A2 A2' B2 B2'' A3 A3'. op1 = map_op projl projr (comp_op Some (case_sum A2' A2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum A1'' A1')) (id_op A1)) (aeq_op (case_sum A3' A3))) \<and> (\<exists>B3 B3''. op2 = map_op assoc id (map_op projl projr (comp_op Some (case_sum B2'' B2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1'') (aeq_op (case_sum B1' B1))) (aeq_op (case_sum B3'' B3)))) \<and> A = (A1 >> A2) >> A3 \<and> B'' = (B1'' >> B2'') >> B3'' \<and> (\<forall>p. \<exists>m n. A1'' p = drop n (B'' p) \<and> (\<exists>C. A1' p = drop n (C p) \<and> B1' p = drop m (C p) \<and> B1 p = drop m (A p) \<and> (A2' >> A3') p = tested n (C p) (B'' p) \<and> (B2 >> B3) p = tested m (A p) (C p) \<and> n \<le> length (C p) \<and> n \<le> length (B'' p) \<and> m \<le> length (C p) \<and> m \<le> length (A p))))) (map_op projl projr (comp_op Some (case_sum A2' A2) (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum A1'' A1')) (id_op A1)) (aeq_op (case_sum (BTL pa A3') (BTL pa A3))))) op2'"
       if "\<forall>p. \<exists>m n. A1'' p = drop n (((B1'' >> B2'') >> B3'') p) \<and> (\<exists>C. A1' p = drop n (C p) \<and> B1' p = drop m (C p) \<and> B1 p = drop m (((A1 >> A2) >> A3) p) \<and> (A2' >> A3') p = tested n (C p) (((B1'' >> B2'') >> B3'') p) \<and> (B2 >> B3) p = tested m (((A1 >> A2) >> A3) p) (C p) \<and> n \<le> length (C p) \<and> n \<le> length (((B1'' >> B2'') >> B3'') p) \<and> m \<le> length (C p) \<and> m \<le> length (((A1 >> A2) >> A3) p))"
