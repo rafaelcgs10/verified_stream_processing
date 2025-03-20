@@ -30,6 +30,28 @@ lemma progress_buffers2:
     (aeq_op (case_sum (A3'(p := ((A2' >> A3') p) @ tested n (A1'' p) (A1' p))) (A3(p := (A1 >> A2 >> A3) p))))))\<close>
   sorry
 
+lemma tested_Cons_cases:
+  "tested n xs ys = z # zs \<Longrightarrow>
+  n > 0 \<and> xs \<noteq> [] \<and> ys \<noteq> [] \<and> tested (n - 1) (tl xs) (tl ys) = zs \<and> (hd xs = hd ys \<and> hd xs = z \<or> (hd xs \<noteq> hd ys \<and> z = None))"
+  apply (induct n arbitrary: xs ys)
+   apply (simp add: tested_def)
+  subgoal for n xs ys
+    apply (cases xs; cases ys; simp)
+      apply (simp add: tested_def)
+      apply (simp add: tested_def)
+    apply (simp add: tested_def)
+    subgoal for x xs y ys
+      apply hypsubst_thin
+      apply (cases "x = y"; simp)
+       apply (simp_all add: tested_eq_Suc tested_diff_Suc)
+      done
+    done
+  done
+
+lemma tested_Suc:
+  \<open>xs \<noteq> [] \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> z = (if hd xs = hd ys then hd xs else None) \<Longrightarrow> k = Suc n \<Longrightarrow> tested k xs ys = z # tested n (tl xs) (tl ys)\<close>
+  unfolding tested_def by (simp add: take_Suc)
+
 lemma A1_gen:
   assumes \<open>A = A1 >> A2 >> A3\<close>
     and \<open>B'' = B1'' >> B2'' >> B3''\<close>
@@ -217,12 +239,25 @@ using assms proof (coinduction arbitrary: A A1 A1' A1'' B'' B1 B1' B1'' A2 A2' B
           apply (drule tested_empty)
             apply simp_all
           apply (metis BULK_BENQ_empty length_0_conv length_tested_0 min_0R min_def nat_le_linear tested_empty)
-        apply (rule disjI1)
          apply auto[1]
+        apply (smt (verit, ccfv_threshold) BHD_BULK_BENQ_cases BHD_def BULK_BENQ_empty fun_upd_same le_SucE le_zero_eq length_tested_0 list.sel(1) list.size(3) option.simps(3) tested_Suc zero_induct)
         subgoal
-          unfolding BHD_def tested_def
-          apply (simp add: fun_upd_same)
-          sorry
+    using tested_Cons_cases[where n=n and xs="C pa" and ys="((B1'' >> B2'') >> B3'') pa" and z="BHD pa A3'" and zs="tl ((A2' >> A3') pa)"] apply -
+          apply (drule meta_mp)
+           apply (metis BHD_BULK_BENQ_cases BHD_def BULK_BENQ_empty list.collapse)
+          apply (elim disjE conjE)
+    subgoal
+      apply (simp flip: length_drop)
+      apply (subst tested_min_drop[symmetric])
+         apply (rule refl)+
+      apply (rule tested_comm)
+            apply (subst tested_Suc[where n="min (length (C pa)) (length (((A1 >> A2) >> A3) pa)) - 1"])
+                apply simp_all
+            apply (simp split: if_splits)
+            apply (metis BHD_BULK_BENQ_cases BHD_def BULK_BENQ_empty fun_upd_same list.sel(1))
+      done
+    apply simp
+    done
         subgoal
           unfolding BHD_def
           apply (simp add: fun_upd_same flip: length_drop)
@@ -231,7 +266,8 @@ using assms proof (coinduction arbitrary: A A1 A1' A1'' B'' B1 B1' B1'' A2 A2' B
           using tested_min_drop[of \<open>drop m ((A1 >> A2 >> A3) pa)\<close> m \<open>(A1 >> A2 >> A3) pa\<close> \<open>drop m (C pa)\<close> \<open>C pa\<close> \<open>tested m ((A1 >> A2 >> A3) pa) (C pa)\<close>, symmetric]
           apply simp
           apply (subst tested_all)
-          by (smt (verit, del_insts) BHD_BULK_BENQ_cases BHD_def BULK_BENQ_empty \<open>\<lbrakk>A3' pa \<noteq> []; A3 pa \<noteq> []; pa \<notin> defaults; BHD pa A3' = BHD pa A3; A1'' pa = drop n (((B1'' >> B2'') >> B3'') pa); A1' pa = drop n (C pa); B1' pa = drop m (C pa); B1 pa = drop m (((A1 >> A2) >> A3) pa); (A2' >> A3') pa = tested n (C pa) (((B1'' >> B2'') >> B3'') pa); (B2 >> B3) pa = tested m (((A1 >> A2) >> A3) pa) (C pa); n \<le> length (C pa); n \<le> length (((B1'' >> B2'') >> B3'') pa); m \<le> length (C pa); m \<le> length (((A1 >> A2) >> A3) pa)\<rbrakk> \<Longrightarrow> BHD pa A3 = BHD pa (B3''(pa := ((B1'' >> B2'') >> B3'') pa))\<close> append_take_drop_id diff_diff_cancel drop_Nil fun_upd_same hd_append2 hd_zip length_drop length_tested_0 list.map_disc_iff list.map_sel(1) list.size(3) tested_comm tested_def zip_eq_Nil_iff)
+          apply (smt (verit, ccfv_threshold) BHD_BULK_BENQ_cases BHD_def BULK_BENQ_empty list.collapse list.map_disc_iff tested_Cons_cases tested_all zip_eq_Nil_iff)
+          done
         subgoal
           apply (rule wbc_base)
           sorry
