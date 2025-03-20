@@ -8,6 +8,199 @@ no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
 section \<open>Axiom A1: Equality test commutes with identity\<close>
 
+lemma test_all_buffers_B1:
+  assumes \<open>p \<notin> defaults\<close>
+    and \<open>n = min (length (B1' p)) (length (B1 p))\<close>
+  shows  \<open>(step Tau)\<^sup>*\<^sup>* (map_op assoc id (map_op projl projr (comp_op Some (case_sum B2'' B2)
+    (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1'') (aeq_op (case_sum B1' B1)))
+    (aeq_op (case_sum B3'' B3)))))
+   (map_op assoc id (map_op projl projr (comp_op Some (case_sum B2'' (B2(p := B2 p @ tested n (B1' p) (B1 p))))
+    (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1'') (aeq_op (case_sum (B1'(p := drop n (B1' p))) (B1(p := drop n (B1 p))))))
+    (aeq_op (case_sum B3'' B3)))))\<close>
+  using assms proof (induct n arbitrary: B1' B1 B2 rule: less_induct)
+  case (less n)
+  then show ?case
+  proof (cases n)
+    case 0
+    then show ?thesis   using rtranclp.rtrancl_refl by force
+  next
+    case (Suc n')
+    from this less show ?thesis 
+      apply -
+      apply simp
+      apply (cases "BHD p B1' = None")
+      subgoal
+        apply (rule converse_rtranclp_into_rtranclp)
+         apply (rule step_map_op[of Tau])
+          apply (rule step_map_op[of Tau])
+           apply simp_all
+         apply (rule step_Tau_comp_op_L)
+            apply (rule step_comp_op_R_Out)
+              apply (rule step_aeq_op_Write[where  x="BHD p B1'"])
+                  apply (rule assms(1))
+                 apply simp_all
+          apply force
+         apply force
+        apply (drule meta_spec[of _ n'])
+        apply (drule meta_spec[of _ "BTL p B1'"])
+        apply (drule meta_spec[of _ "BTL p B1"])
+        apply simp
+        apply (drule meta_spec[of _ "BENQ p None B2"])
+        apply (drule meta_mp)
+         apply (simp add: BTL_access min_diff)
+        apply simp
+        apply (smt (verit) BENQ_def BHD_def BTL_access BTL_def One_nat_def diff_Suc_1' drop_Suc drop_eq_Nil fun_upd_upd length_0_conv length_greater_0_conv length_tl min.absorb2 min.absorb3 min.cobounded1 min_def nat.discI tested_diff_Suc tested_eq_Suc)
+        done
+      subgoal
+        apply (cases "BHD p B1' = BHD p B1")
+        subgoal
+          apply (rule converse_rtranclp_into_rtranclp)
+           apply (rule step_map_op[of Tau])
+            apply (rule step_map_op[of Tau])
+             apply simp_all
+           apply (rule step_Tau_comp_op_L)
+              apply (rule step_comp_op_R_Out)
+                apply (rule step_aeq_op_Write[where  x="BHD p B1'"])
+                    apply (rule assms(1))
+                   apply simp_all
+            apply force
+           apply force
+          apply (drule meta_spec[of _ n'])
+          apply (drule meta_spec[of _ "BTL p B1'"])
+          apply (drule meta_spec[of _ "BTL p B1"])
+          apply simp
+          apply (drule meta_spec[of _ "BENQ p (BHD p B1) B2"])
+          apply (drule meta_mp)
+           apply (simp add: BTL_access min_diff)
+          apply simp
+          apply (smt (verit) BENQ_def BHD_def BTL_access BTL_def One_nat_def diff_Suc_1' drop_Suc drop_eq_Nil fun_upd_upd length_0_conv length_greater_0_conv length_tl min.absorb2 min.absorb3 min.cobounded1 min_def nat.discI tested_eq_Suc)
+          done
+        subgoal
+          apply simp
+          apply (elim exE)
+          subgoal for y
+            apply (rule converse_rtranclp_into_rtranclp)
+             apply (rule step_map_op[of Tau])
+              apply (rule step_map_op[of Tau])
+               apply simp_all
+             apply (rule step_Tau_comp_op_L)
+                apply (rule step_comp_op_R_Out)
+                  apply (rule step_aeq_op_Write[where  x=None])
+                      apply (rule assms(1))
+                     apply simp_all
+              apply force
+             apply force
+            apply (drule meta_spec[of _ n'])
+            apply (drule meta_spec[of _ "BTL p B1'"])
+            apply (drule meta_spec[of _ "BTL p B1"])
+            apply simp
+            apply (drule meta_spec[of _ "BENQ p None B2"])
+            apply (drule meta_mp)
+             apply (simp add: BTL_access min_diff)
+            apply simp
+            apply (smt (z3) BENQ_def BHD_def BTL_access BTL_def One_nat_def diff_Suc_1' drop_Suc drop_eq_Nil fun_upd_upd length_0_conv length_tl min.absorb2 min.cobounded1 min_0R min_def nat.discI tested_diff_Suc)
+            done
+          done
+        done
+      done
+  qed
+qed
+
+lemma progress_buffers1_non_testing:
+  assumes \<open>p \<notin> defaults\<close>
+    and \<open>n = min (length (B1' p)) (length (B1 p))\<close>
+  shows \<open>(step Tau)\<^sup>*\<^sup>* (map_op assoc id (map_op projl projr (comp_op Some (case_sum B2'' B2)
+    (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1'') (aeq_op (case_sum B1' B1)))
+    (aeq_op (case_sum B3'' B3)))))
+   (map_op assoc id (map_op projl projr (comp_op Some (case_sum (B2''(p := [])) (B2(p := [])))
+    (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (B1''(p := []))) (aeq_op (case_sum B1' B1)))
+    (aeq_op (case_sum (B3''(p := (B1'' >> B2'' >> B3'') p)) (B3(p := ((B2 >> B3) p))))))))\<close>
+proof -
+  have \<open>(step Tau)\<^sup>*\<^sup>* (map_op assoc id (map_op projl projr (comp_op Some (case_sum B2'' B2)
+    (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1'') (aeq_op (case_sum B1' B1)))
+    (aeq_op (case_sum B3'' B3)))))
+   (map_op assoc id (map_op projl projr (comp_op Some (case_sum B2'' (B2(p := [])))
+    (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1'') (aeq_op (case_sum B1' B1)))
+    (aeq_op (case_sum B3'' (B3(p := ((B2 >> B3) p))))))))\<close>
+    using assms proof (induct "B2 p" arbitrary: B3 B2)
+    case Nil
+    then show ?case 
+      using rtranclp.rtrancl_refl by (simp add: fun_upd_idem)
+  next
+    case (Cons a x)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)+
+         apply (rule step_Tau_comp_op_R)
+              apply (rule step_aeq_op_Read_R)
+               apply assumption
+              apply simp_all
+       apply force
+      apply (smt (verit) BAPPEND_BENQ_BHD BENQ_def BTL_access BTL_def fun_upd_upd list.discI list.sel(3))
+      done
+  qed
+  also have \<open>(step Tau)\<^sup>*\<^sup>* \<dots>
+   (map_op assoc id (map_op projl projr (comp_op Some (case_sum (B2''(p := ((B1'' >> B2'') p))) (B2(p := [])))
+    (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (B1''(p := []))) (aeq_op (case_sum B1' B1)))
+    (aeq_op (case_sum B3'' (B3(p := ((B2 >> B3) p))))))))\<close>
+    using assms proof (induct "B1'' p" arbitrary: B2'' B1'')
+    case Nil
+    then show ?case 
+      using rtranclp.rtrancl_refl by (simp add: fun_upd_idem)
+  next
+    case (Cons a x)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)+
+         apply simp_all
+       apply (rule step_Tau_comp_op_L)
+          apply (rule step_comp_op_L_Out)
+             apply force
+            apply force
+           apply simp_all
+      apply (smt (verit, ccfv_threshold) BAPPEND_BENQ_BHD BENQ_def BTL_access BTL_def case_sum_BENQ_L fun_upd_upd length_0_conv length_Cons list.sel(3) nat.discI)
+      done
+  qed
+  also (rtranclp_trans) have \<open>(step Tau)\<^sup>*\<^sup>* \<dots>
+   (map_op assoc id (map_op projl projr (comp_op Some (case_sum (B2''(p := [])) (B2(p := [])))
+    (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (B1''(p := []))) (aeq_op (case_sum B1' B1)))
+    (aeq_op (case_sum (B3''(p := ((B1'' >> B2'' >> B3'') p))) (B3(p := ((B2 >> B3) p))))))))\<close>
+    using assms proof (induct "(B1'' >> B2'') p" arbitrary: B3'' B2'' B1'')
+    case Nil
+    then show ?case 
+      using rtranclp.rtrancl_refl by (simp add: fun_upd_idem)
+  next
+    case (Cons a x)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)+
+         apply simp_all
+       apply (rule step_Tau_comp_op_R)
+            apply (rule step_aeq_op_Read_L)
+             apply simp_all
+       apply force
+      apply (cases "B2'' p")
+      subgoal
+        apply simp
+        apply (smt (verit) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_def Cons.hyps(2) fun_upd_same fun_upd_upd list.discI list.sel(3))
+        done
+      subgoal
+        by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_def BULK_BENQ_empty \<open>\<lbrakk>\<And>B1'' B2'' B3''. x = (B1'' >> B2'') p \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (map_op assoc id (map_op projl projr (comp_op Some (case_sum (B2''(p := (B1'' >> B2'') p)) (B2(p := []))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (B1''(p := []))) (aeq_op (case_sum B1' B1))) (aeq_op (case_sum B3'' (B3(p := (B2 >> B3) p))))))) (map_op assoc id (map_op projl projr (comp_op Some (case_sum (B2''(p := [])) (B2(p := []))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (B1''(p := []))) (aeq_op (case_sum B1' B1))) (aeq_op (case_sum (B3''(p := ((B1'' >> B2'') >> B3'') p)) (B3(p := (B2 >> B3) p))))))); a # x = (B1'' >> B2'') p; p \<notin> defaults; n = min (length (B1' p)) (length (B1 p)); B2'' p = []\<rbrakk> \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (map_op assoc id (map_op projl projr (comp_op Some (case_sum (BTL p (B2''(p := (B1'' >> B2'') p))) (B2(p := []))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (B1''(p := []))) (aeq_op (case_sum B1' B1))) (aeq_op (case_sum (BENQ p (BHD p (B2''(p := (B1'' >> B2'') p))) B3'') (B3(p := (B2 >> B3) p))))))) (map_op assoc id (map_op projl projr (comp_op Some (case_sum (B2''(p := [])) (B2(p := []))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (B1''(p := []))) (aeq_op (case_sum B1' B1))) (aeq_op (case_sum (B3''(p := ((B1'' >> B2'') >> B3'') p)) (B3(p := (B2 >> B3) p)))))))\<close> fun_upd_same fun_upd_upd list.sel(3))
+      done
+  qed
+  ultimately show ?thesis
+    by auto
+qed
+
 lemma progress_buffers1:
   assumes \<open>p \<notin> defaults\<close>
     and \<open>n = min (length (B1' p)) (length (B1 p))\<close>
@@ -17,7 +210,204 @@ lemma progress_buffers1:
    (map_op assoc id (map_op projl projr (comp_op Some (case_sum (B2''(p := [])) (B2(p := [])))
     (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (B1''(p := []))) (aeq_op (case_sum (B1'(p := drop n (B1' p))) (B1(p := drop n (B1 p))))))
     (aeq_op (case_sum (B3''(p := (B1'' >> B2'' >> B3'') p)) (B3(p := ((B2 >> B3) p) @ tested n (B1' p) (B1 p))))))))\<close>
-  sorry
+  using assms apply -
+  apply (rule rtranclp_trans)
+   apply (rule test_all_buffers_B1)
+    apply assumption+
+  apply (rule rtranclp_trans)
+   apply (rule progress_buffers1_non_testing)
+    apply assumption+
+   apply auto[1]
+  apply simp
+  apply (simp add: BULK_BENQ_def)
+  done
+
+lemma test_all_buffers_A1:
+  assumes \<open>p \<notin> defaults\<close>
+    and \<open>n = min (length (A1'' p)) (length (A1' p))\<close>
+  shows \<open>(step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum A2' A2)
+    (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum A1'' A1')) (id_op A1))
+    (aeq_op (case_sum A3' A3))))
+  (map_op projl projr (comp_op Some (case_sum (A2'(p := (A2' p) @ tested n (A1'' p) (A1' p))) A2)
+    (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum (A1''(p := drop n (A1'' p))) (A1'(p := drop n (A1' p))))) (id_op A1))
+    (aeq_op (case_sum A3' A3))))\<close>
+  using assms proof (induct n arbitrary: A1'' A1' A2' rule: less_induct)
+  case (less n)
+  then show ?case
+  proof (cases n)
+    case 0
+    then show ?thesis   using rtranclp.rtrancl_refl by force
+  next
+    case (Suc n')
+    from this less show ?thesis 
+      apply -
+      apply simp
+      apply (cases "BHD p A1'' = None")
+      subgoal
+        apply (rule converse_rtranclp_into_rtranclp)
+         apply (rule step_map_op[of Tau])
+          apply simp_all
+         apply (rule step_Tau_comp_op_L)
+            apply (rule step_comp_op_L_Out)
+               apply (rule step_aeq_op_Write[where  x="BHD p A1''"])
+                   apply (rule assms(1))
+                  apply simp_all
+          apply force
+         apply force
+        apply (drule meta_spec[of _ n'])
+        apply (drule meta_spec[of _ "BTL p A1''"])
+        apply (drule meta_spec[of _ "BTL p A1'"])
+        apply simp
+        apply (drule meta_spec[of _ "BENQ p None A2'"])
+        apply (drule meta_mp)
+         apply (simp add: BTL_access min_diff)
+        apply simp
+        apply (smt (verit) BENQ_def BHD_def BTL_access BTL_def One_nat_def diff_Suc_1' drop_Suc drop_eq_Nil fun_upd_upd length_0_conv length_greater_0_conv length_tl min.absorb2 min.absorb3 min.cobounded1 min_def nat.discI tested_diff_Suc tested_eq_Suc)
+        done
+      subgoal
+        apply (cases "BHD p A1'' = BHD p A1'")
+        subgoal
+          apply (rule converse_rtranclp_into_rtranclp)
+           apply (rule step_map_op[of Tau])
+            apply simp_all
+           apply (rule step_Tau_comp_op_L)
+              apply (rule step_comp_op_L_Out)
+                 apply (rule step_aeq_op_Write[where  x="BHD p A1''"])
+                     apply (rule assms(1))
+                    apply simp_all
+            apply force
+           apply force
+          apply (drule meta_spec[of _ n'])
+          apply (drule meta_spec[of _ "BTL p A1''"])
+          apply (drule meta_spec[of _ "BTL p A1'"])
+          apply simp
+          apply (drule meta_spec[of _ "BENQ p (BHD p A1'') A2'"])
+          apply (drule meta_mp)
+           apply (simp add: BTL_access min_diff)
+          apply (smt (verit) BENQ_access BENQ_def BHD_def BTL_access BTL_def One_nat_def append.assoc append.simps(2) diff_Suc_1' drop_Suc drop_eq_Nil fun_upd_upd length_greater_0_conv length_tl list.size(3) min.absorb2 min.absorb3 min.cobounded1 min_def nat.discI self_append_conv2 tested_eq_Suc)
+          done
+        subgoal
+          apply simp
+          apply (elim exE)
+          subgoal for y
+            apply (rule converse_rtranclp_into_rtranclp)
+             apply (rule step_map_op[of Tau])
+              apply (rule step_Tau_comp_op_L)
+                 apply (rule step_comp_op_L_Out)
+                    apply (rule step_aeq_op_Write[where  x=None])
+                        apply (rule assms(1))
+                       apply simp_all
+              apply force
+             apply force
+            apply (drule meta_spec[of _ n'])
+            apply (drule meta_spec[of _ "BTL p A1''"])
+            apply (drule meta_spec[of _ "BTL p A1'"])
+            apply simp
+            apply (drule meta_spec[of _ "BENQ p None A2'"])
+            apply (drule meta_mp)
+             apply (simp add: BTL_access min_diff)
+            apply simp
+            apply (smt (z3) BENQ_def BHD_def BTL_access BTL_def One_nat_def diff_Suc_1' drop_Suc drop_eq_Nil fun_upd_upd length_0_conv length_tl min.absorb2 min.cobounded1 min_0R min_def nat.discI tested_diff_Suc)
+            done
+          done
+        done
+      done
+  qed
+qed
+
+lemma progress_buffers2_non_testing:
+  assumes \<open>p \<notin> defaults\<close>
+  shows \<open>(step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum A2' A2)
+    (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum A1'' A1')) (id_op A1))
+    (aeq_op (case_sum A3' A3))))
+  (map_op projl projr (comp_op Some (case_sum (A2'(p := [])) (A2(p := [])))
+    (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum A1'' A1')) (id_op (A1(p := []))))
+    (aeq_op (case_sum (A3'(p := ((A2' >> A3') p))) (A3(p := (A1 >> A2 >> A3) p))))))\<close>
+proof -
+  have \<open>(step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum A2' A2)
+    (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum A1'' A1')) (id_op A1))
+    (aeq_op (case_sum A3' A3))))
+  (map_op projl projr (comp_op Some (case_sum (A2'(p := [])) A2)
+    (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum A1'' A1')) (id_op A1))
+    (aeq_op (case_sum (A3'(p := ((A2' >> A3') p))) A3))))\<close>
+    using assms proof (induct "A2' p" arbitrary: A3' A2')
+    case Nil
+    then show ?case 
+      using rtranclp.rtrancl_refl by (simp add: fun_upd_idem)
+  next
+    case (Cons a x)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)+
+        apply (rule step_Tau_comp_op_R)
+             apply (rule step_aeq_op_Read_L)
+              apply assumption
+             apply simp_all
+       apply force
+      apply (smt (verit) BAPPEND_BENQ_BHD BENQ_def BTL_access BTL_def fun_upd_upd list.discI list.sel(3))
+      done
+  qed
+  also have \<open>(step Tau)\<^sup>*\<^sup>* \<dots>
+  (map_op projl projr (comp_op Some (case_sum (A2'(p := [])) (A2(p := ((A1 >> A2) p))))
+    (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum A1'' A1')) (id_op (A1(p := []))))
+    (aeq_op (case_sum (A3'(p := ((A2' >> A3') p))) A3))))\<close>
+    using assms proof (induct "A1 p" arbitrary: A1 A2)
+    case Nil
+    then show ?case 
+      using rtranclp.rtrancl_refl by (simp add: fun_upd_idem)
+  next
+    case (Cons a x)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)+
+        apply simp_all
+       apply (rule step_Tau_comp_op_L)
+          apply (rule step_comp_op_R_Out)
+            apply force
+           apply force
+          apply simp_all
+      apply (smt (verit, del_insts) BAPPEND_BENQ_BHD BENQ_def BTL_access BTL_def case_sum_BENQ_R fun_upd_upd list.discI list.sel(3))
+      done
+  qed
+  also (rtranclp_trans) have \<open>(step Tau)\<^sup>*\<^sup>* \<dots>
+  (map_op projl projr (comp_op Some (case_sum (A2'(p := [])) (A2(p := [])))
+    (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum A1'' A1')) (id_op (A1(p := []))))
+    (aeq_op (case_sum (A3'(p := ((A2' >> A3') p))) (A3(p := ((A1 >> A2 >> A3) p)))))))\<close>
+    using assms proof (induct "(A1 >> A2) p" arbitrary: A1 A2 A3)
+    case Nil
+    then show ?case 
+      using rtranclp.rtrancl_refl by (simp add: fun_upd_idem)
+  next
+    case (Cons a x)
+    then show ?case 
+      apply -
+      apply (rule rtranclp_trans)
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+       apply (rule step_map_op)+
+        apply simp_all
+       apply (rule step_Tau_comp_op_R)
+            apply (rule step_aeq_op_Read_R)
+             apply simp_all
+       apply force
+      apply (cases "A2 p")
+      subgoal
+        apply simp
+        apply (smt (verit) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_def Cons.hyps(2) fun_upd_same fun_upd_upd list.discI list.sel(3))
+        done
+      subgoal
+        by (smt (z3) BAPPEND_BENQ_BHD BAPPEND_BTL BENQ_def BHD_def BTL_def BULK_BENQ_assoc BULK_BENQ_def \<open>\<lbrakk>\<And>A1 A2 A3. x = (A1 >> A2) p \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum (A2'(p := [])) (A2(p := (A1 >> A2) p))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum A1'' A1')) (id_op (A1(p := [])))) (aeq_op (case_sum (A3'(p := (A2' >> A3') p)) A3)))) (map_op projl projr (comp_op Some (case_sum (A2'(p := [])) (A2(p := []))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum A1'' A1')) (id_op (A1(p := [])))) (aeq_op (case_sum (A3'(p := (A2' >> A3') p)) (A3(p := ((A1 >> A2) >> A3) p)))))); a # x = (A1 >> A2) p; p \<notin> defaults; A2 p = []\<rbrakk> \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (case_sum (A2'(p := [])) (BTL p (A2(p := (A1 >> A2) p)))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum A1'' A1')) (id_op (A1(p := [])))) (aeq_op (case_sum (A3'(p := (A2' >> A3') p)) (BENQ p (BHD p (A2(p := (A1 >> A2) p))) A3))))) (map_op projl projr (comp_op Some (case_sum (A2'(p := [])) (A2(p := []))) (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum A1'' A1')) (id_op (A1(p := [])))) (aeq_op (case_sum (A3'(p := (A2' >> A3') p)) (A3(p := ((A1 >> A2) >> A3) p))))))\<close> fun_upd_same fun_upd_upd hd_append2 list.sel(3))
+      done
+  qed
+  ultimately show ?thesis
+    by auto
+qed
 
 lemma progress_buffers2:
   assumes \<open>p \<notin> defaults\<close>
@@ -28,7 +418,16 @@ lemma progress_buffers2:
   (map_op projl projr (comp_op Some (case_sum (A2'(p := [])) (A2(p := [])))
     (comp_op (\<lambda>_. None) (\<lambda>_. []) (aeq_op (case_sum (A1''(p := drop n (A1'' p))) (A1'(p := drop n (A1' p))))) (id_op (A1(p := []))))
     (aeq_op (case_sum (A3'(p := ((A2' >> A3') p) @ tested n (A1'' p) (A1' p))) (A3(p := (A1 >> A2 >> A3) p))))))\<close>
-  sorry
+  using assms apply -
+  apply (rule rtranclp_trans)
+   apply (rule test_all_buffers_A1)
+    apply assumption+
+  apply (rule rtranclp_trans)
+   apply (rule progress_buffers2_non_testing)
+   apply assumption+
+  apply auto[1]
+  apply (simp add: BULK_BENQ_def)
+  done
 
 lemma tested_Cons_cases:
   "tested n xs ys = z # zs \<Longrightarrow>
