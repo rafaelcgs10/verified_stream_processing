@@ -6539,4 +6539,10 @@ lemma tested_min_drop:
   unfolding tested_def
   by (metis (no_types, lifting) append_take_drop_id drop_zip map_append take_zip)
 
+lemma tested_all_tl:
+  \<open>tl (tested (min (length xs) (length ys)) xs ys)
+  = tested (min (length (tl xs)) (length (tl ys))) (tl xs) (tl ys)\<close>
+  unfolding tested_def
+  by (metis (no_types, lifting) length_tl map_fst_zip_take map_snd_zip_take map_tl take_take tl_take zip_map_fst_snd)
+
 end
