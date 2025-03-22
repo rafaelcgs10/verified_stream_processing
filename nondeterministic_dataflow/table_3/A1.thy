@@ -387,6 +387,316 @@ lemma foo:
     done
   done
 
+lemma foo2:
+  "wstep (io_of_vio (VInp (Inl (Inl p)) x)) (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A B) \<parallel> id_op C) \<V>)) op' \<Longrightarrow>
+    wtraced op' lxs \<Longrightarrow>
+    wstep (io_of_vio (VInp (Inl (Inl p)) x)) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B C)) \<V>))) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op (BENQ p x A) \<parallel> merge_op (case_sum B C)) \<V>))) \<and>
+    wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum (BENQ p x A) B) \<parallel> id_op C) \<V>)) lxs"
+  apply (intro conjI)
+  subgoal
+    unfolding pcomp_op_def
+    apply (rule step_wstep)
+    apply (rule step_map_op)+
+      apply (rule step_comp_op_L_Inp)
+        apply (rule step_comp_op_L_Inp)
+          apply (rule step_id_op_Read[where p=p])
+           apply simp_all
+    subgoal 
+      apply (subgoal_tac "Inl (Inl p) \<notin> defaults")
+       apply force
+      apply (rule wstep_inputs_not_in_defaults)
+       apply simp
+      apply (auto simp add: op.set_map; hypsubst_thin?)
+      apply (meson DiffD2 inputs_sub_op_Read merge_op_reads)
+      done
+    apply simp_all
+    done
+  subgoal 
+    unfolding wstep_def
+    apply (erule relcomppE)+
+    subgoal for op'' op'''
+      apply simp
+      apply (frule wstep_Tau_busy_wtraced[where op=op'''])
+      subgoal premises prems2
+        using prems2(2-) apply -
+        apply (drule longer_bar)
+         apply fast
+        apply safe
+        unfolding pcomp_op_def
+        apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim)
+        apply hypsubst_thin
+        apply (frule longer_bar[unfolded pcomp_op_def])
+         apply fast
+        apply safe
+        apply hypsubst_thin
+        using bar_not_wfinished[where p=p] apply -
+        apply simp
+        apply force
+        done
+       apply assumption
+      subgoal premises prems2
+        using prems2(2,5,3) apply -
+        apply (induct op'' arbitrary: op''' rule: rtranclp_induct)
+        subgoal
+          unfolding pcomp_op_def
+          apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases)
+          done
+        apply (drule bar)
+        apply (elim exE)
+        apply hypsubst_thin
+        apply (drule meta_spec)
+        apply (drule meta_mp)
+         defer
+         apply (drule meta_mp)
+        unfolding pcomp_op_def
+          apply (rule step_map_op)+
+           apply (rule step_comp_op_L_Inp)
+             apply (rule step_comp_op_L_Inp)
+               apply (rule step_merge_op_Read_L[where p=p and x=x])
+        subgoal
+          apply (subgoal_tac "Inr p \<notin> defaults")
+           apply simp
+          apply (auto 0 0 elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim)
+          done
+               apply simp_all
+        subgoal
+          unfolding pcomp_op_def
+          apply (auto 0 0 elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim; hypsubst_thin?)
+          subgoal for pc
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+              apply (rule step_Tau_comp_op_L)
+                 apply simp_all
+             apply (rule step_comp_op_R_Out)
+               apply (rule step_id_op_Write)
+                  apply auto
+            subgoal 
+              using bar_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal for pc
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+              apply (rule step_Tau_comp_op_L)
+                 apply simp_all
+             apply (rule step_comp_op_L_Out)
+                apply (rule step_merge_op_Write_L)
+                   apply auto
+            subgoal
+              apply (cases "pc = p")
+               apply auto
+               apply (simp add: BENQ_def BTL_def)
+              apply (auto simp add: BENQ_def BTL_def)[1]
+              done
+              apply (metis BENQ_access BENQ_diff_access snoc_eq_iff_butlast)
+             apply (metis BENQ_access BENQ_diff_access BHD_def hd_append2)
+            subgoal 
+              using bar_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal for pc
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+              apply (rule step_Tau_comp_op_L)
+                 apply simp_all
+             apply (rule step_comp_op_L_Out)
+                apply (rule step_merge_op_Write_R)
+                   apply simp_all
+            subgoal 
+              using bar_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal for pc
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+              apply (rule step_Tau_comp_op_R)
+                   apply simp_all
+             apply blast
+            subgoal 
+              using bar_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal for pc
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+              apply (rule step_Tau_comp_op_R)
+                   apply simp_all
+             apply blast
+            subgoal 
+              using bar_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          done
+        done
+      done
+    done
+  done
+
+lemma foo3:
+  "wstep (io_of_vio (VInp (Inl (Inr p)) x)) (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A B) \<parallel> id_op C) \<V>)) op' \<Longrightarrow>
+    wtraced op' lxs \<Longrightarrow>
+    wstep (io_of_vio (VInp (Inl (Inr p)) x)) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B C)) \<V>))) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum (BENQ p x B) C)) \<V>))) \<and>
+    wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A (BENQ p x B)) \<parallel> id_op C) \<V>)) lxs"
+ apply (intro conjI)
+  subgoal
+    unfolding pcomp_op_def
+    apply (rule step_wstep)
+    apply (rule step_map_op)+
+      apply (rule step_comp_op_L_Inp)
+        apply (rule step_comp_op_R_Inp)
+           apply (rule step_merge_op_Read_L[where p=p])
+    apply simp_all
+    subgoal 
+      apply (subgoal_tac "Inl (Inr p) \<notin> defaults")
+       apply force
+      apply (rule wstep_inputs_not_in_defaults)
+       apply simp
+      apply (auto simp add: op.set_map; hypsubst_thin?)
+      apply (meson DiffD2 inputs_sub_op_Read merge_op_reads)
+      done
+    apply simp_all
+    done
+  subgoal 
+  unfolding wstep_def
+    apply (erule relcomppE)+
+    subgoal for op'' op'''
+      apply simp
+      apply (frule wstep_Tau_busy_wtraced[where op=op'''])
+      subgoal premises prems2
+        using prems2(2-) apply -
+        apply (drule longer_bar)
+         apply fast
+        apply safe
+        unfolding pcomp_op_def
+        apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim)
+        apply hypsubst_thin
+        apply (frule longer_bar[unfolded pcomp_op_def])
+         apply fast
+        apply safe
+        apply hypsubst_thin
+        using bar_not_wfinished[where p=p] apply -
+        apply simp
+        apply force
+        done
+       apply assumption
+      subgoal premises prems2
+        using prems2(2,5,3) apply -
+        apply (induct op'' arbitrary: op''' rule: rtranclp_induct)
+        subgoal
+          unfolding pcomp_op_def
+          apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases)
+          done
+   apply (drule bar)
+        apply (elim exE)
+        apply hypsubst_thin
+        apply (drule meta_spec)
+        apply (drule meta_mp)
+         defer
+         apply (drule meta_mp)
+        unfolding pcomp_op_def
+          apply (rule step_map_op)+
+           apply (rule step_comp_op_L_Inp)
+             apply (rule step_comp_op_L_Inp)
+               apply (rule step_merge_op_Read_R[where p=p and x=x])
+        subgoal
+          apply (subgoal_tac "Inr p \<notin> defaults")
+           apply simp
+          apply (auto 0 0 elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim)
+          done
+               apply simp_all
+        subgoal
+          unfolding pcomp_op_def
+          apply (auto 0 0 elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim; hypsubst_thin?)
+          subgoal for pc
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+              apply (rule step_Tau_comp_op_L)
+                 apply simp_all
+             apply (rule step_comp_op_R_Out)
+               apply (rule step_id_op_Write)
+                  apply auto
+            subgoal 
+              using bar_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal for pc
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+              apply (rule step_Tau_comp_op_L)
+                 apply simp_all
+             apply (rule step_comp_op_L_Out)
+                apply (rule step_merge_op_Write_L)
+                   apply auto
+            subgoal 
+              using bar_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal for pc
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+              apply (rule step_Tau_comp_op_L)
+                 apply simp_all
+             apply (rule step_comp_op_L_Out)
+                apply (rule step_merge_op_Write_R)
+                   apply simp_all
+ subgoal
+              apply (cases "pc = p")
+               apply auto
+               apply (simp add: BENQ_def BTL_def)
+              apply (auto simp add: BENQ_def BTL_def)[1]
+              done
+              apply (metis BENQ_access BENQ_diff_access snoc_eq_iff_butlast)
+             apply (metis BENQ_access BENQ_diff_access BHD_def hd_append2)
+            subgoal 
+              using bar_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal for pc
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+              apply (rule step_Tau_comp_op_R)
+                   apply simp_all
+             apply blast
+            subgoal 
+              using bar_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal for pc
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+              apply (rule step_Tau_comp_op_R)
+                   apply simp_all
+             apply blast
+            subgoal 
+              using bar_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          done
+        done
+      done
+    done
+  done
+
 lemma wfinished_comp_op_intro:
   "wfinished op1 \<Longrightarrow>
    wfinished op2 \<Longrightarrow>
@@ -404,7 +714,7 @@ lemma no_usable_ports_wfinished:
    apply (metis Diff_disjoint \<UU>_I bot.extremum_uniqueI inf_absorb2 inputs_merge_op no_IO_wfinished outputs_merge_op subsetI sum_in_defaults)+
   done
 
-lemma
+lemma L_R:
   \<open>wtraced (map_op projl projr (comp_op Some (case_sum (\<lambda> _. []) (\<lambda> _. []))
     (merge_op (case_sum A B) \<parallel> id_op C)
     (merge_op (case_sum (\<lambda> _. []) (\<lambda> _. []))))) lxs \<Longrightarrow>
@@ -446,7 +756,21 @@ lemma
       subgoal for vio op op' p x
         apply hypsubst_thin
         apply (cases p)
-        subgoal sorry
+        subgoal for p
+          apply hypsubst_thin
+          apply (cases p)
+          subgoal for p
+            apply hypsubst_thin
+            apply (drule foo2)
+             apply assumption
+            apply auto
+            done
+        subgoal for p
+          apply hypsubst_thin
+          apply (drule foo3)
+           apply auto
+          done
+        done
         subgoal for p
           apply hypsubst_thin
         apply simp
@@ -455,196 +779,24 @@ lemma
            apply assumption
           apply auto
           done
-
-      find_theorems wtraced Tau
-
-
-(* fun interleaves :: \<open>'a list \<Rightarrow> 'a list \<Rightarrow> 'a list \<Rightarrow> bool\<close> where
-  \<open>interleaves (x # xs) (y # ys) (z # zs) = (x = y \<and> interleaves xs ys (z # zs) \<or> x = z \<and> interleaves xs (y # ys) zs)\<close>
-| \<open>interleaves (x # xs) (y # ys) [] = (x # xs = y # ys)\<close>
-| \<open>interleaves (x # xs) [] (z # zs) = (x # xs = z # zs)\<close>
-| \<open>interleaves (_ # _) [] [] = False\<close>
-| \<open>interleaves [] [] [] = True\<close>
-| \<open>interleaves _ _ _ = False\<close>
- *)
-inductive merged where
-  merged_base[intro]: \<open>merged [] [] []\<close>
-| merged_append_L: \<open>merged xs ys zs \<Longrightarrow> merged (xs @ [x]) ys (zs @ [x])\<close>
-| merged_append_R: \<open>merged xs ys zs \<Longrightarrow> merged xs (ys @ [x]) (zs @ [x])\<close>
-
-(* 
-lemma interleaves_length:
-  \<open>interleaves xs ys zs \<Longrightarrow> length xs = length ys + length zs\<close>
-  by (induct xs ys zs rule: interleaves.induct) auto
-
-lemma interleaves_comm:
-  \<open>interleaves xs ys zs = interleaves xs zs ys\<close>
-  by (induction xs ys zs rule: interleaves.induct) auto
-
-abbreviation merged where \<open>merged xs ys zs \<equiv> interleaves (rev xs) (rev ys) (rev zs)\<close>
-
-lemma merged_length:
-  \<open>merged xs ys zs \<Longrightarrow> length xs = length ys + length zs\<close>
-  using interleaves_length by force
-
-lemma merged_empty:
-  \<open>merged [] ys zs \<Longrightarrow> ys = [] \<and> zs = []\<close>
-  using interleaves.elims(2) by blast
-
-lemma merged_comm:
-  \<open>merged xs ys zs = merged xs zs ys\<close>
-  using interleaves_comm by blast
-
-lemma merged_empty_left:
-  \<open>merged xs [] xs\<close>
-  using interleaves.elims(3) by fastforce 
-
-lemma merged_empty_right:
-  \<open>merged xs xs []\<close>
-  using merged_comm merged_empty_left by blast
-
-lemma merge_append_L:
-  \<open>merged xs ys zs \<Longrightarrow> merged (xs @ [x]) (ys @ [x]) zs\<close>
-  using interleaves.elims(2) by fastforce
-
-lemma merge_append_R:
-  \<open>merged xs ys zs \<Longrightarrow> merged (xs @ [x]) ys (zs @ [x])\<close>
-  using interleaves.elims(2) by fastforce*)
-
-lemma progress_buffers1:
-  assumes \<open>p \<notin> defaults\<close>
-    and \<open>n = min (length (B1' p)) (length (B1 p))\<close>
-    and \<open>merged xs (take n (B1' p)) (take n (B1 p))\<close>
-  shows \<open>(step Tau)\<^sup>*\<^sup>* (map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2')
-    (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1'')))
-    (merge_op (case_sum B3 B3')))))
-   (map_op assoc id (map_op projl projr (comp_op Some (case_sum (B2(p := [])) (B2'(p := [])))
-    (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (B1(p := []))) (merge_op (case_sum (B1'(p := drop n (B1' p))) (B1''(p := drop n (B1'' p))))))
-    (merge_op (case_sum (B3(p := (B1 >> B2 >> B3) p)) (B3'(p := ((B2' >> B3') p) @ xs)))))))\<close>
-  sorry
-
-lemma A1_gen:
-  assumes \<open>A'' = A1'' >> A2'' >> A3''\<close>
-    and \<open>B = B1 >> B2 >> B3\<close>
-    and \<open>\<forall>p. \<exists>xs ys zs. merged xs (A'' p) ((A2 >> A3) p @ ys) \<and> merged ys (A1 p) (A1' p)
-      \<and> merged xs (B p) ((B2' >> B3') p @ zs) \<and> merged zs (B1' p) (B1'' p)\<close>
-  shows \<open>map_op projl projr (comp_op Some (case_sum A2 A2'')
-    (merge_op (case_sum A1 A1') \<parallel> id_op A1'')
-    (merge_op (case_sum A3 A3'')))
-  \<approx> map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2')
-      (id_op B1 \<parallel> merge_op (case_sum B1' B1''))
-      (merge_op (case_sum B3 B3'))))\<close>
-  unfolding pcomp_op_def
-using assms proof (coinduction arbitrary: A'' A1 A1' A1'' A2 A2'' A3 A3'' B B1 B1' B1'' B2 B2' B3 B3' rule: wbisim_coinduct_upto'')
-  case SIM1
-  then show ?case
-    (* apply - explore (auto elim!: step_map_op_elim step_comp_op_elim step_merge_op_elim step_id_op_cases; hypsubst_thin?) *)
-  proof -
-    have "\<exists>op2'. wstep (Inp (Inl (Inl pb)) xb) (map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1''))) (merge_op (case_sum B3 B3'))))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>A'' A1 A1' A1'' A2 A2'' A3 A3''. op1 = map_op projl projr (comp_op Some (case_sum A2 A2'') (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum A1 A1')) (id_op A1'')) (merge_op (case_sum A3 A3''))) \<and> (\<exists>B1 B1' B1'' B2 B2' B3 B3'. op2 = map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1''))) (merge_op (case_sum B3 B3')))) \<and> A'' = (A1'' >> A2'') >> A3'' \<and> (\<forall>p. \<exists>xs ys. merged xs (A'' p) (bulk_benq ys ((A2 >> A3) p)) \<and> merged ys (A1 p) (A1' p) \<and> (\<exists>zs. merged xs (((B1 >> B2) >> B3) p) (bulk_benq zs ((B2' >> B3') p)) \<and> merged zs (B1' p) (B1'' p))))) (map_op projl projr (comp_op Some (case_sum A2 A2'') (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum (BENQ pb xb A1) A1')) (id_op A1'')) (merge_op (case_sum A3 A3'')))) op2'"
-      if "\<forall>p. \<exists>xs ys. merged xs (((A1'' >> A2'') >> A3'') p) (bulk_benq ys ((A2 >> A3) p)) \<and> merged ys (A1 p) (A1' p) \<and> (\<exists>zs. merged xs (((B1 >> B2) >> B3) p) (bulk_benq zs ((B2' >> B3') p)) \<and> merged zs (B1' p) (B1'' p))"
-        and "pb \<notin> defaults"
-      for pb :: 'a
-        and xb :: 'b
-      using that
-      apply -
-      apply (drule spec[of _ pb])
-      apply (elim exE conjE)
-      subgoal for xs ys zs
-        apply (intro exI conjI)
-         apply fastforce
-        apply (rule wbc_base)
-        apply (intro exI conjI)
-           apply (rule refl)+
-        apply (intro allI)
-        subgoal for p
-          apply (cases \<open>p = pb\<close>)
-           apply (rule exI[of _ \<open>xs @ [xb]\<close>])
-           apply (rule exI[of _ \<open>ys @ [xb]\<close>])
-           apply (smt (verit, del_insts) BAPPEND_BENQ BENQ_access append_eq_appendI merge_append_L merge_append_R)
-          by (metis BAPPEND_BENQ BENQ_diff_access that(1))
         done
-      done
-    moreover have "\<exists>op2'. wstep (Inp (Inl (Inr pb)) xb) (map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1''))) (merge_op (case_sum B3 B3'))))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>A'' A1 A1' A1'' A2 A2'' A3 A3''. op1 = map_op projl projr (comp_op Some (case_sum A2 A2'') (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum A1 A1')) (id_op A1'')) (merge_op (case_sum A3 A3''))) \<and> (\<exists>B1 B1' B1'' B2 B2' B3 B3'. op2 = map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1''))) (merge_op (case_sum B3 B3')))) \<and> A'' = (A1'' >> A2'') >> A3'' \<and> (\<forall>p. \<exists>xs ys. merged xs (A'' p) (bulk_benq ys ((A2 >> A3) p)) \<and> merged ys (A1 p) (A1' p) \<and> (\<exists>zs. merged xs (((B1 >> B2) >> B3) p) (bulk_benq zs ((B2' >> B3') p)) \<and> merged zs (B1' p) (B1'' p))))) (map_op projl projr (comp_op Some (case_sum A2 A2'') (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum A1 (BENQ pb xb A1'))) (id_op A1'')) (merge_op (case_sum A3 A3'')))) op2'"
-      if "\<forall>p. \<exists>xs ys. merged xs (((A1'' >> A2'') >> A3'') p) (bulk_benq ys ((A2 >> A3) p)) \<and> merged ys (A1 p) (A1' p) \<and> (\<exists>zs. merged xs (((B1 >> B2) >> B3) p) (bulk_benq zs ((B2' >> B3') p)) \<and> merged zs (B1' p) (B1'' p))"
-        and "pb \<notin> defaults"
-      for pb :: 'a
-        and xb :: 'b
-      using that sorry
-    moreover have "\<exists>op2'. wstep (Inp (Inr pb) xb) (map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1''))) (merge_op (case_sum B3 B3'))))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>A'' A1 A1' A1'' A2 A2'' A3 A3''. op1 = map_op projl projr (comp_op Some (case_sum A2 A2'') (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum A1 A1')) (id_op A1'')) (merge_op (case_sum A3 A3''))) \<and> (\<exists>B1 B1' B1'' B2 B2' B3 B3'. op2 = map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1''))) (merge_op (case_sum B3 B3')))) \<and> A'' = (A1'' >> A2'') >> A3'' \<and> (\<forall>p. \<exists>xs ys. merged xs (A'' p) (bulk_benq ys ((A2 >> A3) p)) \<and> merged ys (A1 p) (A1' p) \<and> (\<exists>zs. merged xs (((B1 >> B2) >> B3) p) (bulk_benq zs ((B2' >> B3') p)) \<and> merged zs (B1' p) (B1'' p))))) (map_op projl projr (comp_op Some (case_sum A2 A2'') (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum A1 A1')) (id_op (BENQ pb xb A1''))) (merge_op (case_sum A3 A3'')))) op2'"
-      if "\<forall>p. \<exists>xs ys. merged xs (((A1'' >> A2'') >> A3'') p) (bulk_benq ys ((A2 >> A3) p)) \<and> merged ys (A1 p) (A1' p) \<and> (\<exists>zs. merged xs (((B1 >> B2) >> B3) p) (bulk_benq zs ((B2' >> B3') p)) \<and> merged zs (B1' p) (B1'' p))"
-        and "pb \<notin> defaults"
-      for pb :: 'a
-        and xb :: 'b
-      using that sorry
-    moreover have "\<exists>op2'. wstep (Out pa (BHD pa A3)) (map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1''))) (merge_op (case_sum B3 B3'))))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>A'' A1 A1' A1'' A2 A2'' A3 A3''. op1 = map_op projl projr (comp_op Some (case_sum A2 A2'') (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum A1 A1')) (id_op A1'')) (merge_op (case_sum A3 A3''))) \<and> (\<exists>B1 B1' B1'' B2 B2' B3 B3'. op2 = map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1''))) (merge_op (case_sum B3 B3')))) \<and> A'' = (A1'' >> A2'') >> A3'' \<and> (\<forall>p. \<exists>xs ys. merged xs (A'' p) (bulk_benq ys ((A2 >> A3) p)) \<and> merged ys (A1 p) (A1' p) \<and> (\<exists>zs. merged xs (((B1 >> B2) >> B3) p) (bulk_benq zs ((B2' >> B3') p)) \<and> merged zs (B1' p) (B1'' p))))) (map_op projl projr (comp_op Some (case_sum A2 A2'') (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum A1 A1')) (id_op A1'')) (merge_op (case_sum (BTL pa A3) A3'')))) op2'"
-      if "\<forall>p. \<exists>xs ys. merged xs (((A1'' >> A2'') >> A3'') p) (bulk_benq ys ((A2 >> A3) p)) \<and> merged ys (A1 p) (A1' p) \<and> (\<exists>zs. merged xs (((B1 >> B2) >> B3) p) (bulk_benq zs ((B2' >> B3') p)) \<and> merged zs (B1' p) (B1'' p))"
-        and "A3 pa \<noteq> []"
-        and "pa \<notin> defaults"
-      for pa :: 'a
-      using that
-      apply -
-      apply (drule spec[of _ pa])
-      apply (elim exE conjE)
-      subgoal for xs ys zs
-        apply (intro exI conjI)
-         apply (rule wstep_trans(1))
-          apply (rule progress_buffers1)
-            apply assumption
+      subgoal
         sorry
       done
-    moreover have "\<exists>op2'. wstep (Out pa (BHD pa A3'')) (map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1''))) (merge_op (case_sum B3 B3'))))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>A'' A1 A1' A1'' A2 A2'' A3 A3''. op1 = map_op projl projr (comp_op Some (case_sum A2 A2'') (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum A1 A1')) (id_op A1'')) (merge_op (case_sum A3 A3''))) \<and> (\<exists>B1 B1' B1'' B2 B2' B3 B3'. op2 = map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1''))) (merge_op (case_sum B3 B3')))) \<and> A'' = (A1'' >> A2'') >> A3'' \<and> (\<forall>p. \<exists>xs ys. merged xs (A'' p) (bulk_benq ys ((A2 >> A3) p)) \<and> merged ys (A1 p) (A1' p) \<and> (\<exists>zs. merged xs (((B1 >> B2) >> B3) p) (bulk_benq zs ((B2' >> B3') p)) \<and> merged zs (B1' p) (B1'' p))))) (map_op projl projr (comp_op Some (case_sum A2 A2'') (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum A1 A1')) (id_op A1'')) (merge_op (case_sum A3 (BTL pa A3''))))) op2'"
-      if "\<forall>p. \<exists>xs ys. merged xs (((A1'' >> A2'') >> A3'') p) (bulk_benq ys ((A2 >> A3) p)) \<and> merged ys (A1 p) (A1' p) \<and> (\<exists>zs. merged xs (((B1 >> B2) >> B3) p) (bulk_benq zs ((B2' >> B3') p)) \<and> merged zs (B1' p) (B1'' p))"
-        and "A3'' pa \<noteq> []"
-        and "pa \<notin> defaults"
-      for pa :: 'a
-      using that sorry
-    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1''))) (merge_op (case_sum B3 B3'))))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>A'' A1 A1' A1'' A2 A2'' A3 A3''. op1 = map_op projl projr (comp_op Some (case_sum A2 A2'') (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum A1 A1')) (id_op A1'')) (merge_op (case_sum A3 A3''))) \<and> (\<exists>B1 B1' B1'' B2 B2' B3 B3'. op2 = map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1''))) (merge_op (case_sum B3 B3')))) \<and> A'' = (A1'' >> A2'') >> A3'' \<and> (\<forall>p. \<exists>xs ys. merged xs (A'' p) (bulk_benq ys ((A2 >> A3) p)) \<and> merged ys (A1 p) (A1' p) \<and> (\<exists>zs. merged xs (((B1 >> B2) >> B3) p) (bulk_benq zs ((B2' >> B3') p)) \<and> merged zs (B1' p) (B1'' p))))) (map_op projl projr (comp_op Some (case_sum A2 (BENQ pb (BHD pb A1'') A2'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum A1 A1')) (id_op (BTL pb A1''))) (merge_op (case_sum A3 A3'')))) op2'"
-      if "\<forall>p. \<exists>xs ys. merged xs (((A1'' >> A2'') >> A3'') p) (bulk_benq ys ((A2 >> A3) p)) \<and> merged ys (A1 p) (A1' p) \<and> (\<exists>zs. merged xs (((B1 >> B2) >> B3) p) (bulk_benq zs ((B2' >> B3') p)) \<and> merged zs (B1' p) (B1'' p))"
-        and "pb \<notin> defaults"
-        and "A1'' pb \<noteq> []"
-      for pb :: 'a
-      using that sorry
-    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1''))) (merge_op (case_sum B3 B3'))))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>A'' A1 A1' A1'' A2 A2'' A3 A3''. op1 = map_op projl projr (comp_op Some (case_sum A2 A2'') (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum A1 A1')) (id_op A1'')) (merge_op (case_sum A3 A3''))) \<and> (\<exists>B1 B1' B1'' B2 B2' B3 B3'. op2 = map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1''))) (merge_op (case_sum B3 B3')))) \<and> A'' = (A1'' >> A2'') >> A3'' \<and> (\<forall>p. \<exists>xs ys. merged xs (A'' p) (bulk_benq ys ((A2 >> A3) p)) \<and> merged ys (A1 p) (A1' p) \<and> (\<exists>zs. merged xs (((B1 >> B2) >> B3) p) (bulk_benq zs ((B2' >> B3') p)) \<and> merged zs (B1' p) (B1'' p))))) (map_op projl projr (comp_op Some (case_sum (BENQ pb (BHD pb A1) A2) A2'') (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum (BTL pb A1) A1')) (id_op A1'')) (merge_op (case_sum A3 A3'')))) op2'"
-      if "\<forall>p. \<exists>xs ys. merged xs (((A1'' >> A2'') >> A3'') p) (bulk_benq ys ((A2 >> A3) p)) \<and> merged ys (A1 p) (A1' p) \<and> (\<exists>zs. merged xs (((B1 >> B2) >> B3) p) (bulk_benq zs ((B2' >> B3') p)) \<and> merged zs (B1' p) (B1'' p))"
-        and "A1 pb \<noteq> []"
-        and "pb \<notin> defaults"
-      for pb :: 'a
-      using that sorry
-    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1''))) (merge_op (case_sum B3 B3'))))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>A'' A1 A1' A1'' A2 A2'' A3 A3''. op1 = map_op projl projr (comp_op Some (case_sum A2 A2'') (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum A1 A1')) (id_op A1'')) (merge_op (case_sum A3 A3''))) \<and> (\<exists>B1 B1' B1'' B2 B2' B3 B3'. op2 = map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1''))) (merge_op (case_sum B3 B3')))) \<and> A'' = (A1'' >> A2'') >> A3'' \<and> (\<forall>p. \<exists>xs ys. merged xs (A'' p) (bulk_benq ys ((A2 >> A3) p)) \<and> merged ys (A1 p) (A1' p) \<and> (\<exists>zs. merged xs (((B1 >> B2) >> B3) p) (bulk_benq zs ((B2' >> B3') p)) \<and> merged zs (B1' p) (B1'' p))))) (map_op projl projr (comp_op Some (case_sum (BENQ pb (BHD pb A1') A2) A2'') (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum A1 (BTL pb A1'))) (id_op A1'')) (merge_op (case_sum A3 A3'')))) op2'"
-      if "\<forall>p. \<exists>xs ys. merged xs (((A1'' >> A2'') >> A3'') p) (bulk_benq ys ((A2 >> A3) p)) \<and> merged ys (A1 p) (A1' p) \<and> (\<exists>zs. merged xs (((B1 >> B2) >> B3) p) (bulk_benq zs ((B2' >> B3') p)) \<and> merged zs (B1' p) (B1'' p))"
-        and "A1' pb \<noteq> []"
-        and "pb \<notin> defaults"
-      for pb :: 'a
-      using that sorry
-    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1''))) (merge_op (case_sum B3 B3'))))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>A'' A1 A1' A1'' A2 A2'' A3 A3''. op1 = map_op projl projr (comp_op Some (case_sum A2 A2'') (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum A1 A1')) (id_op A1'')) (merge_op (case_sum A3 A3''))) \<and> (\<exists>B1 B1' B1'' B2 B2' B3 B3'. op2 = map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1''))) (merge_op (case_sum B3 B3')))) \<and> A'' = (A1'' >> A2'') >> A3'' \<and> (\<forall>p. \<exists>xs ys. merged xs (A'' p) (bulk_benq ys ((A2 >> A3) p)) \<and> merged ys (A1 p) (A1' p) \<and> (\<exists>zs. merged xs (((B1 >> B2) >> B3) p) (bulk_benq zs ((B2' >> B3') p)) \<and> merged zs (B1' p) (B1'' p))))) (map_op projl projr (comp_op Some (case_sum (BTL pa A2) A2'') (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum A1 A1')) (id_op A1'')) (merge_op (case_sum (BENQ pa (BHD pa A2) A3) A3'')))) op2'"
-      if "\<forall>p. \<exists>xs ys. merged xs (((A1'' >> A2'') >> A3'') p) (bulk_benq ys ((A2 >> A3) p)) \<and> merged ys (A1 p) (A1' p) \<and> (\<exists>zs. merged xs (((B1 >> B2) >> B3) p) (bulk_benq zs ((B2' >> B3') p)) \<and> merged zs (B1' p) (B1'' p))"
-        and "A2 pa \<noteq> []"
-        and "pa \<notin> defaults"
-      for pa :: 'a
-      using that sorry
-    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1''))) (merge_op (case_sum B3 B3'))))) op2' \<and> wbisim_cong (\<lambda>op1 op2. \<exists>A'' A1 A1' A1'' A2 A2'' A3 A3''. op1 = map_op projl projr (comp_op Some (case_sum A2 A2'') (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum A1 A1')) (id_op A1'')) (merge_op (case_sum A3 A3''))) \<and> (\<exists>B1 B1' B1'' B2 B2' B3 B3'. op2 = map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2') (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op B1) (merge_op (case_sum B1' B1''))) (merge_op (case_sum B3 B3')))) \<and> A'' = (A1'' >> A2'') >> A3'' \<and> (\<forall>p. \<exists>xs ys. merged xs (A'' p) (bulk_benq ys ((A2 >> A3) p)) \<and> merged ys (A1 p) (A1' p) \<and> (\<exists>zs. merged xs (((B1 >> B2) >> B3) p) (bulk_benq zs ((B2' >> B3') p)) \<and> merged zs (B1' p) (B1'' p))))) (map_op projl projr (comp_op Some (case_sum A2 (BTL pa A2'')) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum A1 A1')) (id_op A1'')) (merge_op (case_sum A3 (BENQ pa (BHD pa A2'') A3''))))) op2'"
-      if "\<forall>p. \<exists>xs ys. merged xs (((A1'' >> A2'') >> A3'') p) (bulk_benq ys ((A2 >> A3) p)) \<and> merged ys (A1 p) (A1' p) \<and> (\<exists>zs. merged xs (((B1 >> B2) >> B3) p) (bulk_benq zs ((B2' >> B3') p)) \<and> merged zs (B1' p) (B1'' p))"
-        and "A2'' pa \<noteq> []"
-        and "pa \<notin> defaults"
-      for pa :: 'a
-      using that sorry
-    ultimately show ?thesis
-      using SIM1 by (auto elim !: step_map_op_elim step_comp_op_elim step_merge_op_elim step_id_op_cases)
-  qed
-next
-  case SIM2
-  then show ?case
-    (* apply - apply (auto elim !: step_map_op_elim step_comp_op_elim step_merge_op_elim step_id_op_cases; hypsubst_thin?) *)
-    sorry
-qed
+    done
+  done
 
-lemma A1:
-  \<open>(\<V> \<parallel> \<I>) \<bullet> \<V> \<approx> map_op assoc id ((\<I> \<parallel> \<V>) \<bullet> \<V>)\<close>
-  unfolding scomp_op_def
-  using A1_gen[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>]
+lemma R_L:
+  \<open>wtraced (map_op assoc id (map_op projl projr (comp_op Some (case_sum (\<lambda> _. []) (\<lambda> _. []))
+      (id_op (A :: 'a :: {countable,defaults} \<Rightarrow> 'b buf) \<parallel> merge_op (case_sum B C))
+      (merge_op (case_sum (\<lambda> _. []) (\<lambda> _. [])))))) lxs \<Longrightarrow>
+   wtraced (map_op projl projr (comp_op Some (case_sum (\<lambda> _. []) (\<lambda> _. []))
+    (merge_op (case_sum A B) \<parallel> id_op C)
+    (merge_op (case_sum (\<lambda> _. []) (\<lambda> _. []))))) lxs\<close>
   sorry
 
-
-end
+lemma A1:
+  \<open>(\<V> \<parallel> \<I>) \<bullet> \<V> \<equiv>\<^sub>t map_op assoc id ((\<I> \<parallel> \<V>) \<bullet> \<V>)\<close>
+  using L_R[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []", simplified]  R_L[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []", simplified] by (metis Collect_cong scomp_op_def wtraces_def)
 
 end
