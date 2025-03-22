@@ -22,6 +22,27 @@ section \<open>Axiom A1: Merge commutes with identity\<close>
 end
  *)
 
+lemma wfinished_map_op[simp]:
+  "wfinished (map_op f g op) \<longleftrightarrow> wfinished op"
+  apply (rule iffI)
+  subgoal
+    apply (coinduction arbitrary: op)
+    subgoal for op
+      apply (erule wfinished.cases)
+       apply auto
+       apply (metis (no_types, lifting) cimage.rep_eq image_eqI is_Choice_def op.map_disc_iff(3) op.map_sel(6) op.sel(6))
+      apply (metis is_Silent_def op.map_disc_iff(4) op.map_sel(7) op.sel(7))
+      done
+    done
+  subgoal
+    apply (coinduction arbitrary: op)
+    subgoal for op
+      apply (erule wfinished.cases)
+       apply auto
+      done
+    done
+  done
+
 lemma wstep_Silent_undo:
   "wstep io (Silent op) op' \<Longrightarrow>
    io \<noteq> Tau \<Longrightarrow>
@@ -50,86 +71,21 @@ lemma wstep_Choice_undo:
    wstep io op op'"
   oops
 
-coinductive busy where
- "(\<And>op' vio. wstep (io_of_vio vio) op op' \<Longrightarrow> busy op') \<Longrightarrow> \<not> wfinished op \<Longrightarrow> busy op"
-
-lemma
-   "busy (id_op buf)"
-  apply (coinduction arbitrary: buf rule: busy.coinduct)
-  subgoal for buf
-    apply simp
-    apply safe
-    oops
-
-lemma lfinite_wtraced_not_busy:
-  "lfinite lxs \<Longrightarrow> busy op \<Longrightarrow> wtraced op lxs \<Longrightarrow> False"
-  apply (induct lxs arbitrary: op rule: lfinite_induct)
-  subgoal for xs op
-    by (metis busy.simps not_lnull_conv wtraced.cases)
-  subgoal for lxs op
-    apply (cases lxs; simp)
-    subgoal for x lxs
-      apply hypsubst_thin
-      apply (metis busy.cases llist.inject wtraced.simps)
-      done
-    done
-  done
-
-lemma busy_no_finite_traces:
-  "busy op \<longleftrightarrow> (\<forall> lxs. wtraced op lxs \<longrightarrow> \<not> lfinite lxs)"
-  apply (rule iffI)
-  subgoal
-    apply (intro impI allI)
-    apply (erule wtraced.cases)
-     apply auto
-    subgoal 
-      apply (erule busy.cases)
-      apply auto
-      done
-    subgoal for vio op' lxs
-      using lfinite_wtraced_not_busy by (metis busy.cases)
-    done
-  subgoal
-    apply (coinduction arbitrary: op rule: busy.coinduct)
-    subgoal for op
-      apply simp
-      apply (intro conjI impI allI disjI1)
-      subgoal for x lxs
-        by (meson lfinite_LConsI wtraced.Step)
-      subgoal
-        using wtraced.Nil by blast
-      done
-    done
-  done
-
-lemma busy_no_wtraced_LNil:
-  "busy op \<Longrightarrow> \<not> wtraced op LNil"
-  by (auto simp add: busy_no_finite_traces)
-
-lemma busy_not_wfinished:
-  "busy op \<Longrightarrow> \<not> wfinished op"
-  by (metis busy.cases)
-
-lemma
-  "busy (Choice ops) \<Longrightarrow> op |\<in>| ops \<Longrightarrow> busy op"
-  apply (erule busy.cases)
-  apply (auto simp add: wfinished_no_wstep)
-  oops
-
 lemma wstep_Tau_busy_wtraced:
   "(step Tau)\<^sup>*\<^sup>* op op' \<Longrightarrow>
-   busy op' \<Longrightarrow>
+   \<not> wfinished op' \<Longrightarrow>
    wtraced op' lxs \<Longrightarrow>
    wtraced op lxs"
   apply (induct op rule: converse_rtranclp_induct)
   apply (auto intro: )
-  apply (metis busy_no_wtraced_LNil wstep_trans_tau_1 wtraced.simps)
+  apply (smt (verit, best) rtranclp_induct step_Tau_wfinished wstep_trans_tau_1 wtraced.simps)
   done
+
 
 lemma step_Tau_busy_wtraced:
   "step io op op' \<Longrightarrow>
    io = Tau \<Longrightarrow>
-   busy op' \<Longrightarrow>
+   \<not> wfinished op' \<Longrightarrow>
    wtraced op' lxs \<Longrightarrow>
    wtraced op lxs"
   apply (induction io op op' arbitrary: pred: step)
@@ -139,7 +95,6 @@ lemma step_Tau_busy_wtraced:
     subgoal for op lxs
       apply (erule wtraced.cases)
        apply simp_all
-       apply (erule wfinished.intros)
       apply blast
       done
     done
@@ -152,7 +107,7 @@ lemma step_Tau_busy_wtraced:
        apply simp_all
       subgoal for op lxs opa
         apply hypsubst_thin
-        apply (auto simp add: busy_no_finite_traces wfinished_no_wstep)
+        apply (auto simp add: wfinished_no_wstep)
         done
       subgoal for op lxs vio opa op' lxsa
         apply hypsubst_thin
@@ -161,20 +116,118 @@ lemma step_Tau_busy_wtraced:
     done
   done
 
-lemma busy_wstep:
- "busy op \<Longrightarrow> wstep io op op' \<Longrightarrow> io \<noteq> Tau \<Longrightarrow> busy op'"
-  by (metis busy.cases vio_of_io_inverse)
+lemma short_bar:
+  "step Tau op op1 \<Longrightarrow>
+   op = map_op projl projr (comp_op Some X (merge_op A \<parallel> id_op C) (merge_op K)) \<Longrightarrow>
+   \<exists> X A C K. op1 = map_op projl projr (comp_op Some X (merge_op A \<parallel> id_op C) (merge_op K))"
+  apply hypsubst_thin
+  unfolding pcomp_op_def
+  apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim; hypsubst_thin)
+  done
+
+lemma longer_bar:
+  "(step Tau)\<^sup>*\<^sup>* op op1 \<Longrightarrow>
+   op = map_op projl projr (comp_op Some X (merge_op A \<parallel> id_op C) (merge_op K)) \<Longrightarrow>
+   \<exists> X A C K. op1 = map_op projl projr (comp_op Some X (merge_op A \<parallel> id_op C) (merge_op K))"
+  apply (induct op arbitrary: X A C K rule: converse_rtranclp_induct)
+  using short_bar apply blast
+  using short_bar apply meson
+  done
 
 lemma bar:
   "(step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A B) \<parallel> id_op C) \<V>)) op1 \<Longrightarrow>
-   \<exists> A B C D E. op1 =  (map_op projl projr (comp_op Some D (merge_op (case_sum A B) \<parallel> id_op C) (merge_op E)))"
-  sorry
-
+   \<exists> A B C D E. op1 = map_op projl projr (comp_op Some D (merge_op (case_sum A B) \<parallel> id_op C) (merge_op E))"
+  apply (drule longer_bar)
+   apply simp
+  apply (metis surjective_sum)
+  done
+  
 lemma wstep_inputs_not_in_defaults:
   "wstep (Inp p x) op op' \<Longrightarrow>
    inputs op \<inter> defaults = {} \<Longrightarrow>
    p \<notin> defaults"
   by (simp add: disjoint_iff wstep_Inp)
+
+lemma reads_not_wfinished:
+  "sub_op (Read p f) op n \<Longrightarrow> \<not> wfinished op"
+proof (induct p op arbitrary: rule: sub_op_Read_induct)
+  case (Read1 f p)
+  then show ?case 
+    by (metis op.simps(10) op.simps(8) wfinished.cases)
+next
+  case (Read2 p p' f x d g)
+  then show ?case 
+    using wfinished.cases by blast
+next
+  case (Write p p' op' x d g)
+  then show ?case 
+    by (meson op.distinct(7) op.distinct(9) wfinished.simps)
+next
+  case (Silent p op' d)
+  then show ?case by (meson ST' less_Suc_eq step_Tau_wfinished)
+next
+  case (Choice p ops d g)
+  then show ?case  by (metis less_Suc_eq op.distinct(11) op.sel(6) wfinished.cases)
+qed
+
+lemma inputs_not_wfinished:
+  "p \<in> inputs op \<Longrightarrow> \<not> wfinished op"
+  apply (drule inputs_sub_op_Read)
+  using reads_not_wfinished apply force
+  done
+
+lemma writes_not_wfinished:
+  "sub_op (Write op' p x) op n \<Longrightarrow> \<not> wfinished op"
+proof (induct p op arbitrary: rule: sub_op_Write_induct)
+  case (Read p p' f x op2 y d)
+  then show ?case  
+    by (meson inputs_not_wfinished op.set_intros(1))
+next
+  case (Write1 p p' op' x op2 y d)
+  then show ?case  
+    by (metis op.distinct(7) op.simps(14) wfinished.simps)
+next
+  case (Silent p op' op2 y d)
+  then show ?case  
+    using lessI step_Tau_wfinished by blast
+next
+  case (Choice p op2 y d ops)
+  then show ?case 
+    by (metis lessI op.distinct(11) op.sel(6) wfinished.cases)
+next
+  case (Write2 p op' x)
+  then show ?case
+    using wfinished.simps by fastforce
+qed
+
+lemma no_IO_wfinished:
+  "inputs op = {} \<Longrightarrow> outputs op = {} \<Longrightarrow> wfinished op"
+  by (metis empty_iff estep.elims io_of_vio_not_Tau(2) wfinished_no_wstep wstep_Inp wstep_Out)
+
+lemma outputs_not_wfinished:
+  "p \<in> outputs op \<Longrightarrow> \<not> wfinished op"
+  apply (drule outputs_sub_op_Write)
+  using writes_not_wfinished apply force
+  done
+
+lemma wfinished_no_IO:
+  "wfinished op \<longleftrightarrow> inputs op = {} \<and> outputs op = {}"
+  by (metis ex_in_conv inputs_not_wfinished no_IO_wfinished outputs_not_wfinished)
+
+
+lemma step_not_wfinished_alt:
+  "step io op op' \<Longrightarrow>
+   io \<noteq> Tau \<Longrightarrow>
+   \<not> wfinished op"
+  by (metis step_not_wfinished vio_of_io_inverse)
+
+lemma bar_not_wfinished:
+  "p |\<in>| (c\<UU> :: ('a :: {countable, defaults}) cset) \<Longrightarrow>
+   \<not> wfinished (comp_op Some X (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op A) (id_op (C :: 'a :: {countable,defaults} \<Rightarrow> 'b buf))) (merge_op E))"
+  apply (rule step_not_wfinished_alt[where io="Inp (Inl (Inr p)) undefined"])
+   apply simp_all
+  apply force
+  done
 
 lemma foo:
   "wstep io op op' \<Longrightarrow>
@@ -210,10 +263,23 @@ lemma foo:
       apply hypsubst_thin
       apply simp
       apply (frule wstep_Tau_busy_wtraced[where op=op'''])
-        apply (rule busy_wstep[OF _ prems(1), unfolded prems])
-      subgoal sorry
+      subgoal premises prems2
+        using prems2(2-) apply -
+        apply (drule longer_bar)
+        apply fast
+         apply safe
+        unfolding pcomp_op_def
+          apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim)
+        apply hypsubst_thin
+        apply (frule longer_bar[unfolded pcomp_op_def])
+        apply fast
+        apply safe
+        apply hypsubst_thin
+        using bar_not_wfinished[where p=p] apply -
         apply simp
-       apply assumption
+        apply force
+        done
+        apply simp
       subgoal premises prems2
         using prems2(2,5,3) apply -
   apply (induct op'' arbitrary: op''' rule: rtranclp_induct)
@@ -281,6 +347,7 @@ lemma
        apply simp_all
       apply hypsubst_thin
       apply (rule FalseE)
+      apply simp
       sorry
     subgoal for x lxs
       apply simp
@@ -489,37 +556,6 @@ lemma A1:
   unfolding scomp_op_def
   using A1_gen[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>]
   sorry
-
-
-
-lemma aux1:
-  "\<V> \<approx> map_op (case_sum Inr Inl) id \<V>"
-  sorry
-
-lemma A1_aux1:
-  \<open>(\<V> \<parallel> \<I>) \<bullet> \<V> \<approx> (\<V> \<parallel> \<I>) \<bullet> (map_op (case_sum Inr Inl) id \<V>)\<close>
-  using aux1 wbisim_refl wbisim_scomp_op_cong by blast
-
-lemma A1_aux2:
-  \<open>(op1 \<parallel> op2) \<bullet> (map_op (case_sum Inr Inl) id op3) \<approx> (op2 \<parallel> op1) \<bullet> op3\<close>
-  sorry
-
-lemma A1:
-  \<open>(\<V> \<parallel> \<I>) \<bullet> \<V> \<approx> map_op assoc id ((\<I> \<parallel> \<V>) \<bullet> \<V>)\<close>
-  apply (rule wbisim_trans)
-   apply (rule A1_aux1)
-    apply (rule wbisim_trans)
-
-
-
-lemma A1_aux2:
-  \<open>(\<V> \<parallel> \<I>) \<bullet> (map_op (case_sum Inr Inl) id \<V>) \<approx> map_op assoc id ((\<I> \<parallel> \<V>) \<bullet> \<V>)\<close>
-
-end
-
-lemma A1:
-  \<open>(\<V> \<parallel> \<I>) \<bullet> \<V> \<approx> map_op assoc id ((\<I> \<parallel> \<V>) \<bullet> \<V>)\<close>
-
 
 
 end
