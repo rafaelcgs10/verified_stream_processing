@@ -319,7 +319,11 @@ lemma foo:
             apply simp_all
             apply (simp add: BENQ_def BTL_def)
              apply (auto simp add: BENQ_def BTL_def)[1]
-            subgoal sorry
+            subgoal 
+     using bar_not_wfinished[where p=p] apply -
+        apply simp
+        apply force
+     done
             done
             subgoal sorry
             subgoal sorry
