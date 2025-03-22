@@ -242,17 +242,17 @@ lemma foo:
     apply (rule step_wstep)
     apply (rule step_map_op)+
       apply (rule step_comp_op_L_Inp)
-      apply (rule step_comp_op_R_Inp)
+        apply (rule step_comp_op_R_Inp)
            apply (rule step_merge_op_Read_R[where p=p])
     subgoal 
       apply (subgoal_tac "Inr p \<notin> defaults")
-      apply simp
-    apply (rule wstep_inputs_not_in_defaults)
+       apply simp
+      apply (rule wstep_inputs_not_in_defaults)
        apply simp
       apply (auto simp add: op.set_map; hypsubst_thin)
       using \<UU>_E inputs_merge_op apply blast
       done
-  apply simp_all
+           apply simp_all
     apply simp
     done
   subgoal premises prems
@@ -266,23 +266,23 @@ lemma foo:
       subgoal premises prems2
         using prems2(2-) apply -
         apply (drule longer_bar)
-        apply fast
-         apply safe
+         apply fast
+        apply safe
         unfolding pcomp_op_def
-          apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim)
+        apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim)
         apply hypsubst_thin
         apply (frule longer_bar[unfolded pcomp_op_def])
-        apply fast
+         apply fast
         apply safe
         apply hypsubst_thin
         using bar_not_wfinished[where p=p] apply -
         apply simp
         apply force
         done
-        apply simp
+       apply simp
       subgoal premises prems2
         using prems2(2,5,3) apply -
-  apply (induct op'' arbitrary: op''' rule: rtranclp_induct)
+        apply (induct op'' arbitrary: op''' rule: rtranclp_induct)
         subgoal
           unfolding pcomp_op_def
           apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases)
@@ -293,47 +293,99 @@ lemma foo:
           apply hypsubst_thin
           apply (drule meta_spec)
           apply (drule meta_mp)
-          defer
-          apply (drule meta_mp)
- unfolding pcomp_op_def
-    apply (rule step_map_op)+
-     apply (rule step_comp_op_L_Inp)
-      apply (rule step_comp_op_R_Inp)
-         apply (rule step_id_op_Read[where p=p])
-  subgoal
-    sorry
-  apply simp_all
+           defer
+           apply (drule meta_mp)
+          unfolding pcomp_op_def
+            apply (rule step_map_op)+
+             apply (rule step_comp_op_L_Inp)
+               apply (rule step_comp_op_R_Inp)
+                  apply (rule step_id_op_Read[where p=p])
+          subgoal
+            apply (subgoal_tac "Inr p \<notin> defaults")
+             apply simp
+            apply (auto 0 0 elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim; hypsubst_thin?)
+            done
+                  apply simp_all
           unfolding pcomp_op_def
           apply (auto 0 0 elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim; hypsubst_thin?)
           subgoal for A B C D E pc
-          apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
-         apply (rule step_map_op)+
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
               apply (rule step_Tau_comp_op_L)
                  apply simp_all
              apply (rule step_comp_op_R_Out)
                apply (rule step_id_op_Write)
                   apply auto
                apply (metis BENQ_access BENQ_diff_access BHD_def hd_append2)
-            apply (metis BENQ_access BENQ_diff_access append_is_Nil_conv)
+              apply (metis BENQ_access BENQ_diff_access append_is_Nil_conv)
              apply (cases "p = pc")
-            apply simp_all
-            apply (simp add: BENQ_def BTL_def)
+              apply simp_all
+              apply (simp add: BENQ_def BTL_def)
              apply (auto simp add: BENQ_def BTL_def)[1]
             subgoal 
-     using bar_not_wfinished[where p=p] apply -
-        apply simp
-        apply force
-     done
+              using bar_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
             done
-            subgoal sorry
-            subgoal sorry
-            subgoal sorry
-            subgoal sorry
+          subgoal for A B C D E pc
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+              apply (rule step_Tau_comp_op_L)
+                 apply simp_all
+             apply (rule step_comp_op_L_Out)
+                apply (simp add: step_merge_op_Write_L)
+               apply simp_all
+            subgoal 
+              using bar_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal 
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+              apply simp_all
+             apply (rule step_Tau_comp_op_L)
+                apply simp_all
+             apply force
+            subgoal 
+              using bar_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal 
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+              apply simp_all
+             apply (rule step_Tau_comp_op_R)
+                  apply blast
+                 apply simp_all
+            subgoal 
+              using bar_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal 
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+              apply simp_all
+             apply (rule step_Tau_comp_op_R)
+                  apply blast
+                 apply simp_all
+            subgoal 
+              using bar_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
             done
           done
         done
       done
     done
+  done
 
 lemma
   \<open>wtraced (map_op projl projr (comp_op Some (case_sum (\<lambda> _. []) (\<lambda> _. []))
