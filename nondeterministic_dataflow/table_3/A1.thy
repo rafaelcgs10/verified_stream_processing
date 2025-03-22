@@ -387,24 +387,55 @@ lemma foo:
     done
   done
 
+lemma wfinished_comp_op_intro:
+  "wfinished op1 \<Longrightarrow>
+   wfinished op2 \<Longrightarrow>
+   wfinished (comp_op wire buf op1 op2)"
+  apply (simp add: wfinished_no_IO)
+  apply auto
+  done
+
+lemma no_usable_ports_wfinished:
+  "\<nexists>p :: 'a. p \<in> \<UU> \<Longrightarrow>
+   wfinished (comp_op Some X (id_op (A :: 'a :: {countable,defaults} \<Rightarrow> 'b buf) \<parallel> merge_op B) (merge_op P))"
+  unfolding pcomp_op_def
+  apply (intro wfinished_comp_op_intro)
+  apply (meson \<UU>_I equals0I inputs_id_op_alt no_IO_wfinished outputs_id_op_dest)
+   apply (metis Diff_disjoint \<UU>_I bot.extremum_uniqueI inf_absorb2 inputs_merge_op no_IO_wfinished outputs_merge_op subsetI sum_in_defaults)+
+  done
+
 lemma
   \<open>wtraced (map_op projl projr (comp_op Some (case_sum (\<lambda> _. []) (\<lambda> _. []))
     (merge_op (case_sum A B) \<parallel> id_op C)
     (merge_op (case_sum (\<lambda> _. []) (\<lambda> _. []))))) lxs \<Longrightarrow>
   wtraced (map_op assoc id (map_op projl projr (comp_op Some (case_sum (\<lambda> _. []) (\<lambda> _. []))
-      (id_op A \<parallel> merge_op (case_sum B C))
+      (id_op (A :: 'a :: {countable,defaults} \<Rightarrow> 'b buf) \<parallel> merge_op (case_sum B C))
       (merge_op (case_sum (\<lambda> _. []) (\<lambda> _. [])))))) lxs\<close>
   apply (coinduction arbitrary: A B C lxs rule: wtraced.coinduct)
   subgoal for A B C lxs
     apply (cases lxs)
     subgoal
       apply simp
+      apply (cases "\<exists> p :: 'a. p \<in> \<UU>")
+      subgoal
       apply (erule wtraced.cases)
        apply simp_all
       apply hypsubst_thin
       apply (rule FalseE)
-      apply simp
-      sorry
+        apply simp
+        apply safe
+        subgoal for p
+          using bar_not_wfinished[where p=p] apply -
+          apply simp
+          unfolding pcomp_op_def
+          apply blast
+          done
+        done
+      subgoal
+        apply hypsubst_thin
+        using no_usable_ports_wfinished apply blast
+        done
+      done
     subgoal for x lxs
       apply simp
       apply hypsubst_thin
