@@ -8,20 +8,6 @@ no_notation Sublist.parallel (infixl "\<parallel>" 50)
 
 section \<open>Axiom A1: Merge commutes with identity\<close>
 
-
-(* lemma                                                  
-  assumes \<open>map_op projl projr (comp_op Some (case_sum (\<lambda> (1::1) . [1]) A2'')
-    (merge_op (case_sum A1 A1') \<parallel> id_op A1'')
-    (merge_op (case_sum A3 A3'')))
-  \<approx> map_op assoc id (map_op projl projr (comp_op Some (case_sum B2 B2')
-      (id_op B1 \<parallel> merge_op (case_sum B1' B1''))
-      (merge_op (case_sum B3 B3'))))\<close>
-  shows False
-
-
-end
- *)
-
 lemma wfinished_map_op[simp]:
   "wfinished (map_op f g op) \<longleftrightarrow> wfinished op"
   apply (rule iffI)
@@ -63,13 +49,6 @@ lemma wstep_Silent_undo:
       apply auto
     done
   done
-
-lemma wstep_Choice_undo:
-  "wstep io (Choice ops) op' \<Longrightarrow>
-   io \<noteq> Tau \<Longrightarrow>
-   op |\<in>| ops \<Longrightarrow>
-   wstep io op op'"
-  oops
 
 lemma wstep_Tau_busy_wtraced:
   "(step Tau)\<^sup>*\<^sup>* op op' \<Longrightarrow>
@@ -116,7 +95,7 @@ lemma step_Tau_busy_wtraced:
     done
   done
 
-lemma short_bar:
+lemma short_foo:
   "step Tau op op1 \<Longrightarrow>
    op = map_op projl projr (comp_op Some X (map_op projl projr (comp_op Some R (merge_op A) (id_op V)) \<parallel> id_op C) (map_op projl projr (comp_op Some D (merge_op K) (id_op P)))) \<Longrightarrow>
    \<exists>X A C K V P D R. op1 = map_op projl projr (comp_op Some X (map_op projl projr (comp_op Some R (merge_op A) (id_op V)) \<parallel> id_op C) (map_op projl projr (comp_op Some D (merge_op K) (id_op P))))"
@@ -125,21 +104,15 @@ lemma short_bar:
   apply (auto 10 10 elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim; hypsubst_thin?)
   done
 
-lemma longer_bar:
+lemma longer_foo:
   "(step Tau)\<^sup>*\<^sup>* op op1 \<Longrightarrow>
    op = map_op projl projr (comp_op Some X (map_op projl projr (comp_op Some R (merge_op A) (id_op V)) \<parallel> id_op C) (map_op projl projr (comp_op Some D (merge_op K) (id_op P)))) \<Longrightarrow>
    \<exists>X A C K V P D R. op1 = map_op projl projr (comp_op Some X (map_op projl projr (comp_op Some R (merge_op A) (id_op V)) \<parallel> id_op C) (map_op projl projr (comp_op Some D (merge_op K) (id_op P))))"
   unfolding scomp_op_def
   apply (induct op arbitrary: X A C K V P D R rule: converse_rtranclp_induct)
-  using short_bar apply blast
-  using short_bar apply meson
+  using short_foo apply blast
+  using short_foo apply meson
   done
-
-lemma bar:
-  "(step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A B) \<parallel> id_op C) \<V>)) op1 \<Longrightarrow>
-   \<exists> A B C D E. op1 = map_op projl projr (comp_op Some D (merge_op (case_sum A B) \<parallel> id_op C) (merge_op E))"
-  oops
-
 
 lemma wstep_inputs_not_in_defaults:
   "wstep (Inp p x) op op' \<Longrightarrow>
@@ -220,7 +193,7 @@ lemma step_not_wfinished_alt:
    \<not> wfinished op"
   by (metis step_not_wfinished vio_of_io_inverse)
 
-lemma bar_not_wfinished:
+lemma foo_not_wfinished:
   "p |\<in>| (c\<UU> :: ('a :: {countable, defaults}) cset) \<Longrightarrow>
    \<not> wfinished (comp_op Some X (comp_op (\<lambda>_. None) (\<lambda>_. []) (map_op projl projr (comp_op Some F (merge_op A) (id_op H))) (id_op (C :: 'a :: {countable,defaults} \<Rightarrow> 'b buf))) (map_op projl projr (comp_op Some G (merge_op E) (id_op I))))"
   unfolding scomp_op_def
@@ -284,18 +257,18 @@ lemma foo1:
       apply (frule wstep_Tau_busy_wtraced[where op=op'''])
       subgoal premises prems2
         using prems2(2-) apply -
-        apply (drule longer_bar)
+        apply (drule longer_foo)
         unfolding scomp_op_def
          apply fast
         apply safe
         unfolding pcomp_op_def
         apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim)
         apply hypsubst_thin
-        apply (drule longer_bar[unfolded pcomp_op_def])
+        apply (drule longer_foo[unfolded pcomp_op_def])
          apply fast
         apply safe
         apply hypsubst_thin
-        using bar_not_wfinished[where p=p] apply -
+        using foo_not_wfinished[where p=p] apply -
         apply simp      
         apply force
         done
@@ -308,7 +281,7 @@ lemma foo1:
           apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases)
           done
         subgoal for op1 op2 op3
-          apply (drule longer_bar)
+          apply (drule longer_foo)
           unfolding scomp_op_def apply blast
           apply (elim exE)
           apply hypsubst_thin
@@ -367,7 +340,7 @@ lemma foo1:
               apply (simp add: BENQ_def BTL_def)
              apply (auto simp add: BENQ_def BTL_def)[1]
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -379,7 +352,7 @@ lemma foo1:
               apply simp_all
              apply force 
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -391,7 +364,7 @@ lemma foo1:
               apply simp_all
              apply force 
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -403,7 +376,7 @@ lemma foo1:
               apply simp_all
              apply force
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -420,7 +393,7 @@ lemma foo1:
                 apply simp_all
              apply (metis step_Tau_comp_op_L step_merge_op_Write_L)
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -434,7 +407,7 @@ lemma foo1:
                apply simp_all         
              apply force
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -446,7 +419,7 @@ lemma foo1:
               apply simp_all
              apply force
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -464,7 +437,7 @@ lemma foo1:
              apply (rule step_merge_op_Write_L)
                 apply auto
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -476,7 +449,7 @@ lemma foo1:
               apply simp_all
              apply force
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -488,7 +461,7 @@ lemma foo1:
               apply simp_all
              apply force
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -532,17 +505,17 @@ lemma foo2:
       subgoal premises prems2
         using prems2(2-) apply -
         unfolding scomp_op_def
-        apply (drule longer_bar)
+        apply (drule longer_foo)
          apply fast
         apply safe
         unfolding pcomp_op_def
         apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim)
         apply hypsubst_thin
-        apply (frule longer_bar[unfolded pcomp_op_def])
+        apply (frule longer_foo[unfolded pcomp_op_def])
          apply fast
         apply safe
         apply hypsubst_thin
-        using bar_not_wfinished[where p=p] apply -
+        using foo_not_wfinished[where p=p] apply -
         apply simp
         apply force
         done
@@ -554,7 +527,7 @@ lemma foo2:
           unfolding pcomp_op_def scomp_op_def
           apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases)
           done
-        apply (drule longer_bar)
+        apply (drule longer_foo)
         unfolding scomp_op_def
          apply fast
         apply (elim exE)
@@ -607,7 +580,7 @@ lemma foo2:
               apply simp_all
              apply force
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -619,7 +592,7 @@ lemma foo2:
               apply simp_all
              apply force
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -631,7 +604,7 @@ lemma foo2:
               apply simp_all
              apply force
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -643,7 +616,7 @@ lemma foo2:
               apply simp_all
              apply force
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -670,7 +643,7 @@ lemma foo2:
               apply (metis BENQ_access BENQ_diff_access append_is_Nil_conv)
              apply (metis BENQ_access BENQ_diff_access BHD_def hd_append2)
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -690,7 +663,7 @@ lemma foo2:
               apply (simp add: BENQ_diff_access)
              apply (simp add: BENQ_diff_access BHD_def)
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -703,7 +676,7 @@ lemma foo2:
                 apply simp_all
              apply force
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -719,7 +692,7 @@ lemma foo2:
                  apply (rule step_merge_op_Write_L)
                     apply simp_all
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -734,7 +707,7 @@ lemma foo2:
               apply force
              apply simp_all
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -750,7 +723,7 @@ lemma foo2:
                    apply blast
                   apply simp_all
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -796,17 +769,17 @@ lemma foo3:
       subgoal premises prems2
         using prems2(2-) apply -
         unfolding scomp_op_def
-        apply (drule longer_bar)
+        apply (drule longer_foo)
          apply fast
         apply safe
         unfolding pcomp_op_def
         apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim)
         apply hypsubst_thin
-        apply (frule longer_bar[unfolded pcomp_op_def])
+        apply (frule longer_foo[unfolded pcomp_op_def])
          apply fast
         apply safe
         apply hypsubst_thin
-        using bar_not_wfinished[where p=p] apply -
+        using foo_not_wfinished[where p=p] apply -
         apply simp
         apply force
         done
@@ -818,7 +791,7 @@ lemma foo3:
           unfolding pcomp_op_def scomp_op_def
           apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases)
           done
-        apply (drule longer_bar)
+        apply (drule longer_foo)
         unfolding scomp_op_def
          apply fast
         apply (elim exE)
@@ -871,7 +844,7 @@ lemma foo3:
               apply simp_all
              apply force
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -883,7 +856,7 @@ lemma foo3:
               apply simp_all
              apply force
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -895,7 +868,7 @@ lemma foo3:
               apply simp_all
              apply force
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -907,7 +880,7 @@ lemma foo3:
               apply simp_all
              apply force
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -927,7 +900,7 @@ lemma foo3:
               apply (simp add: BENQ_diff_access)
              apply (simp add: BENQ_diff_access BHD_def)
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -953,7 +926,7 @@ lemma foo3:
               apply (metis BENQ_access BENQ_diff_access append_is_Nil_conv)
              apply (metis BENQ_access BENQ_diff_access BHD_def hd_append2)
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -965,7 +938,7 @@ lemma foo3:
               apply simp_all
              apply force
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -973,15 +946,15 @@ lemma foo3:
           subgoal
             apply (elim step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim exE conjE; simp split: if_splits sum.splits; hypsubst_thin)
             apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
-            apply (rule step_map_op)+
-            apply (rule step_comp_op_R_Tau)
-            apply simp_all
-            apply (rule step_map_op)+
-            apply (rule step_Tau_comp_op_L)
-            apply (rule step_merge_op_Write_L)
-            apply simp_all
+             apply (rule step_map_op)+
+              apply (rule step_comp_op_R_Tau)
+                apply simp_all
+             apply (rule step_map_op)+
+              apply (rule step_Tau_comp_op_L)
+                 apply (rule step_merge_op_Write_L)
+                    apply simp_all
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -989,14 +962,14 @@ lemma foo3:
           subgoal
             apply (elim step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim exE conjE; simp split: if_splits sum.splits; hypsubst_thin)
             apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
-            apply (rule step_map_op)+
-            apply (rule step_comp_op_R_Tau)
-            apply simp_all
-            apply (rule step_map_op)+
-            apply force
-            apply simp_all
+             apply (rule step_map_op)+
+              apply (rule step_comp_op_R_Tau)
+                apply simp_all
+             apply (rule step_map_op)+
+              apply force
+             apply simp_all
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -1004,15 +977,15 @@ lemma foo3:
           subgoal for io' op'' op2' io'a op''a pa xa op2'a pb
             apply (elim step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim exE conjE; simp split: if_splits sum.splits; hypsubst_thin)
             apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
-            apply (rule step_map_op)+
-            apply (rule step_comp_op_R_Tau)
-            apply simp_all
-            apply (rule step_map_op)+
-            apply (rule step_Tau_comp_op_R[where p=pb])
-            apply blast
-            apply simp_all
+             apply (rule step_map_op)+
+              apply (rule step_comp_op_R_Tau)
+                apply simp_all
+             apply (rule step_map_op)+
+              apply (rule step_Tau_comp_op_R[where p=pb])
+                   apply blast
+                  apply simp_all
             subgoal 
-              using bar_not_wfinished[where p=p] apply -
+              using foo_not_wfinished[where p=p] apply -
               apply simp
               apply force
               done
@@ -1022,6 +995,22 @@ lemma foo3:
       done
     done
   done
+
+lemma foo4:
+  "wstep (Out p x) (map_op projl projr (comp_op Some D1 (map_op projl projr (comp_op Some D2 (merge_op (case_sum A B)) (id_op D3)) \<parallel> id_op C) (map_op projl projr (comp_op Some D5 (merge_op D6) (id_op D4))))) op' \<Longrightarrow>
+   wtraced op' lxs \<Longrightarrow>
+   wstep (Out p x) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>')))
+    (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op (BTL p A) \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>'))) \<and>
+   wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum (BTL p A) B) \<turnstile> \<parallel> id_op C) \<V>')) lxs
+\<or>
+    wstep (Out p x) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>')))
+     (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum (BTL p B) C) \<turnstile>) \<V>'))) \<and>
+    wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A (BTL p B)) \<turnstile> \<parallel> id_op C) \<V>')) lxs
+\<or>
+    (wstep (Out p x) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>')))
+     (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B (BTL p C)) \<turnstile>) \<V>'))) \<and>
+    wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A B) \<turnstile> \<parallel> id_op (BTL p C)) \<V>')) lxs)"
+  sorry
 
 lemma L_R:
   \<open>wtraced (map_op projl projr (comp_op Some (case_sum (\<lambda> _. []) (\<lambda> _. []))
@@ -1038,13 +1027,13 @@ lemma L_R:
       apply (cases "\<exists> p :: 'a. p \<in> \<UU>")
       subgoal
         apply (erule wtraced.cases)
-        apply simp_all
+         apply simp_all
         apply hypsubst_thin
         apply (rule FalseE)
         apply simp
         apply safe
         subgoal for p
-          using bar_not_wfinished[where p=p] apply -
+          using foo_not_wfinished[where p=p] apply -
           apply simp
           unfolding pcomp_op_def scomp_op_def
           apply blast
@@ -1059,7 +1048,7 @@ lemma L_R:
       apply simp
       apply hypsubst_thin
       apply (erule wtraced.cases)
-      apply simp_all    
+       apply simp_all    
       apply hypsubst_thin
       apply (cases x)
       subgoal for vio op op' p x
@@ -1071,25 +1060,829 @@ lemma L_R:
           subgoal for p
             apply hypsubst_thin
             apply (drule foo2)
-            apply auto
+             apply auto
             done
           subgoal for p
             apply hypsubst_thin
             apply (drule foo3)
-            apply auto
+             apply auto
             done
           done
         subgoal for p
           apply hypsubst_thin
           apply (drule foo1)
-          apply auto
+             apply auto
           done
         done
       subgoal
-        sorry
+        apply hypsubst_thin
+        apply simp
+        unfolding scomp_op_def
+        apply (drule foo4[unfolded scomp_op_def])
+         apply simp_all
+        apply auto
+        done
       done
     done
   done
+
+lemma oof_not_wfinished:
+  "p |\<in>| (c\<UU> :: ('a :: {countable, defaults}) cset) \<Longrightarrow>
+  \<not> wfinished (comp_op Some T (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (A :: 'a :: {countable,defaults} \<Rightarrow> 'b buf)) (map_op projl projr (comp_op Some V (merge_op B) (id_op X)))) (map_op projl projr (comp_op Some H (merge_op P) (id_op W))))"
+  unfolding scomp_op_def pcomp_op_def
+  apply (rule step_not_wfinished_alt[where io="Inp (Inl (Inl p)) undefined"])
+   apply simp_all
+  apply force
+  done
+
+lemma oof_no_usable_ports_wfinished:
+  "\<nexists>p :: 'a. p \<in> \<UU> \<Longrightarrow>
+   wfinished (comp_op Some (\<lambda>_. []) (merge_op (case_sum A B) \<turnstile> \<parallel> id_op (C :: 'a :: {countable,defaults} \<Rightarrow> 'b buf)) \<V>')"
+  unfolding pcomp_op_def scomp_op_def
+  apply (intro wfinished_comp_op_intro)
+    apply (metis Diff_disjoint \<UU>_I bot.extremum_uniqueI inf_absorb2 inputs_id_op_alt inputs_merge_op no_IO_wfinished outputs_id_op_dest outputs_merge_op subsetI sum_in_defaults wfinished_comp_op_intro wfinished_map_op)
+   apply (meson \<UU>_I equals0I inputs_id_op_alt no_IO_wfinished outputs_id_op_dest)
+  apply (metis Diff_disjoint \<UU>_I bot.extremum_uniqueI inf_absorb2 inputs_id_op_alt inputs_merge_op no_IO_wfinished outputs_id_op_dest outputs_merge_op subsetI sum_in_defaults wfinished_comp_op_intro wfinished_map_op)
+  done
+
+lemma short_oof:
+  "step Tau (map_op assoc id (map_op projl projr (comp_op Some X (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A) (map_op projl projr (comp_op Some R (merge_op (case_sum B C)) (id_op V)))) (map_op projl projr (comp_op Some D (merge_op K) (id_op P)))))) op1 \<Longrightarrow>
+   \<exists>X A C K V P D R B. op1 = map_op assoc id (map_op projl projr (comp_op Some X (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A) (map_op projl projr (comp_op Some R (merge_op (case_sum B C)) (id_op V)))) (map_op projl projr (comp_op Some D (merge_op K) (id_op P)))))"
+  unfolding pcomp_op_def scomp_op_def
+  apply (auto 10 10 elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim; hypsubst_thin?)
+  done
+
+lemma longer_oof:
+  "(step Tau)\<^sup>*\<^sup>* op op1 \<Longrightarrow>
+   op = map_op assoc id (map_op projl projr (comp_op Some X (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A) (map_op projl projr (comp_op Some R (merge_op (case_sum B C)) (id_op V)))) (map_op projl projr (comp_op Some D (merge_op K) (id_op P))))) \<Longrightarrow>
+   \<exists>X A C K V P D R B. op1 = map_op assoc id (map_op projl projr (comp_op Some X (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op A) (map_op projl projr (comp_op Some R (merge_op (case_sum B C)) (id_op V)))) (map_op projl projr (comp_op Some D (merge_op K) (id_op P)))))"
+  unfolding pcomp_op_def scomp_op_def
+  apply (induct op arbitrary: X A C K V P D R B rule: converse_rtranclp_induct)
+   apply blast
+  apply hypsubst_thin
+  apply (drule short_oof)
+  apply auto
+  done
+
+lemma oof1:
+  "wstep (Inp (Inl (Inl p)) x) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>'))) op' \<Longrightarrow>
+   wtraced op' lxs \<Longrightarrow>
+   wstep (Inp (Inl (Inl p)) x) (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A B) \<turnstile> \<parallel> id_op C) \<V>')) (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum (BENQ p x A) B) \<turnstile> \<parallel> id_op C) \<V>')) \<and>
+   wtraced (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op (BENQ p x A) \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>'))) lxs"
+  apply (intro conjI)
+  subgoal
+    unfolding pcomp_op_def scomp_op_def
+    apply (rule step_wstep)
+    apply (rule step_map_op)+
+     apply (rule step_comp_op_L_Inp)
+       apply (rule step_comp_op_L_Inp)
+         apply (rule step_map_op)+
+          apply (rule step_comp_op_L_Inp)
+            apply (rule step_merge_op_Read_L)
+             apply simp_all
+    subgoal 
+      apply (subgoal_tac "Inl (Inl p) \<notin> defaults")
+       apply force
+      apply (rule wstep_inputs_not_in_defaults)
+       apply simp
+      apply (auto simp add: op.set_map split: sum.splits; hypsubst_thin?)
+       apply (meson Diff_iff Inl_in_defaults inputs_merge_op subsetD)
+      using inputs_merge_op apply fastforce
+      done
+    done
+  subgoal 
+    unfolding wstep_def
+    apply (erule relcomppE)+
+    subgoal for op'' op'''
+      apply simp
+      apply (frule wstep_Tau_busy_wtraced[where op=op'''])
+      subgoal premises prems2
+        using prems2(2-) apply -
+        unfolding scomp_op_def pcomp_op_def
+        apply (drule longer_oof)
+         apply fast
+        apply safe
+        unfolding pcomp_op_def
+        apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim)
+        apply hypsubst_thin
+        apply (frule longer_oof[unfolded pcomp_op_def])
+         apply fast
+        apply safe
+        apply hypsubst_thin
+        using oof_not_wfinished[where p=p,unfolded pcomp_op_def scomp_op_def] apply -
+        apply simp
+        apply force
+        done
+       apply assumption
+      subgoal premises prems2
+        using prems2(2,5,3) apply -
+        apply (induct op'' arbitrary: op''' rule: rtranclp_induct)
+        subgoal
+          unfolding pcomp_op_def scomp_op_def
+          apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases)
+          done
+        apply (drule longer_oof)
+        unfolding scomp_op_def pcomp_op_def
+         apply fast
+        apply (elim exE)
+        apply hypsubst_thin
+        apply (drule meta_spec)
+        apply (drule meta_mp)
+         defer
+         apply (drule meta_mp)
+        unfolding pcomp_op_def
+          apply (rule step_map_op)+
+            apply (rule step_comp_op_L_Inp)
+              apply (rule step_comp_op_L_Inp)
+                apply simp_all
+          apply (rule step_id_op_Read)
+           apply simp_all
+        subgoal for z op''' X A C K V P D R B
+          apply (elim step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim exE conjE; simp split: if_splits sum.splits; hypsubst_thin)
+          subgoal
+            by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+          subgoal
+            by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+          subgoal
+            by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+          subgoal
+            by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+          subgoal
+            by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+          subgoal
+            by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+          subgoal
+            by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+          subgoal
+            by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+          subgoal
+            by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+          subgoal
+            by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+          done
+        apply simp_all
+        subgoal
+          unfolding pcomp_op_def
+          apply (elim step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim exE conjE; simp split: if_splits sum.splits; hypsubst_thin)
+
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply force
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal for io' op'' io'a op''a pa xa op1' q paa xaa op1'a
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply (rule step_Tau_comp_op_L)
+                apply simp_all
+             apply (rule step_comp_op_L_Out)
+                apply (rule step_id_op_Write)
+                   apply simp_all
+               apply (metis BENQ_access BENQ_diff_access BHD_def hd_append2)
+              apply (metis BENQ_access BENQ_diff_access snoc_eq_iff_butlast)
+             apply (cases "p = paa")
+            subgoal
+              by (simp add: BENQ_def BTL_def)
+            subgoal
+              subgoal
+                by (auto simp add: BENQ_def BTL_def)[1]
+              done
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply force
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply force
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal for io' op'' op1' op1'a io'a op''a pb xb op1'b q pc
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply (rule step_comp_op_L_Tau)
+               apply (rule step_comp_op_R_Tau)
+                 apply (rule step_map_op)+
+                  apply simp_all
+             apply (metis case_sum_BHD_L case_sum_BTL_L old.sum.simps(5) step_Tau_comp_op_L step_merge_op_Write_L)
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply (rule step_comp_op_L_Tau)
+                 apply simp_all
+             apply force
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply (rule step_comp_op_L_Tau)
+                 apply simp_all
+             apply force
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply (rule step_comp_op_R_Tau)
+               apply (rule step_map_op)+
+                apply simp_all
+             apply (metis step_Tau_comp_op_L step_merge_op_Write_L)
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply force
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal for io' op'' op2' io'a op''a pa xa op2'a pb
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply force
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          done
+        done
+      done
+    done
+  done
+
+lemma oof2:
+  "wstep (Inp (Inl (Inr p)) x) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>'))) op' \<Longrightarrow>
+   wtraced op' lxs \<Longrightarrow>
+   wstep (Inp (Inl (Inr p)) x) (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A B) \<turnstile> \<parallel> id_op C) \<V>')) (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A (BENQ p x B)) \<turnstile> \<parallel> id_op C) \<V>')) \<and>
+   wtraced (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum (BENQ p x B) C) \<turnstile>) \<V>'))) lxs"
+  apply (intro conjI)
+  subgoal
+    unfolding pcomp_op_def scomp_op_def
+    apply (rule step_wstep)
+    apply (rule step_map_op)+
+     apply (rule step_comp_op_L_Inp)
+       apply (rule step_comp_op_L_Inp)
+         apply (rule step_map_op)+
+          apply (rule step_comp_op_L_Inp)
+            apply (rule step_merge_op_Read_R)
+             apply simp_all
+    subgoal 
+      apply (subgoal_tac "Inl (Inr p) \<notin> defaults")
+       apply force
+      apply (rule wstep_inputs_not_in_defaults)
+       apply simp
+      apply (auto simp add: op.set_map split: sum.splits; hypsubst_thin?)
+       apply (meson Diff_iff Inl_in_defaults inputs_merge_op subsetD)
+      using inputs_merge_op apply fastforce
+      done
+    done
+  subgoal 
+    unfolding wstep_def
+    apply (erule relcomppE)+
+    subgoal for op'' op'''
+      apply simp
+      apply (frule wstep_Tau_busy_wtraced[where op=op'''])
+      subgoal premises prems2
+        using prems2(2-) apply -
+        unfolding scomp_op_def pcomp_op_def
+        apply (drule longer_oof)
+         apply fast
+        apply safe
+        unfolding pcomp_op_def
+        apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim)
+        apply hypsubst_thin
+        apply (frule longer_oof[unfolded pcomp_op_def])
+         apply fast
+        apply safe
+        apply hypsubst_thin
+        using oof_not_wfinished[where p=p] apply -
+        apply simp
+        apply force
+        done
+       apply assumption
+      subgoal premises prems2
+        using prems2(2,5,3) apply -
+        apply (induct op'' arbitrary: op''' rule: rtranclp_induct)
+        subgoal
+          unfolding pcomp_op_def scomp_op_def
+          apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases)
+          done
+        apply (drule longer_oof)
+        unfolding scomp_op_def pcomp_op_def
+         apply fast
+        apply (elim exE)
+        apply hypsubst_thin
+        apply (drule meta_spec)
+        apply (drule meta_mp)
+         defer
+         apply (drule meta_mp)
+        unfolding pcomp_op_def
+          apply (rule step_map_op)+
+            apply (rule step_comp_op_L_Inp)
+              apply (rule step_comp_op_R_Inp)
+                 apply simp_all
+          apply (rule step_map_op)+
+           apply (rule step_comp_op_L_Inp)
+             apply (rule step_merge_op_Read_L[where p=p and x=x])
+              apply simp_all
+        subgoal
+          apply (subgoal_tac "Inr p \<notin> defaults")
+           apply simp
+          apply (elim step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim exE conjE; simp split: if_splits sum.splits; hypsubst_thin)
+          subgoal
+            by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+          subgoal
+            by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+          subgoal
+            by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+          subgoal
+            by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+          subgoal
+            by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+          subgoal
+            by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+          subgoal
+            by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+          subgoal
+            by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+          subgoal
+            by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+          subgoal
+            by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+          done
+         apply simp_all
+        subgoal
+          unfolding pcomp_op_def
+          apply (elim step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim exE conjE; simp split: if_splits sum.splits; hypsubst_thin)
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply force
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply force
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply force
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply force
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal for io' op'' io'a op''a op1' op2' io'b op''b pb xb op1'a q pc
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply (rule step_comp_op_L_Tau)
+               apply (rule step_comp_op_R_Tau)
+                 apply (rule step_map_op)+
+                  apply simp_all
+             apply (rule step_Tau_comp_op_L)
+                apply simp_all
+             apply (rule step_merge_op_Write_L)
+                apply simp_all
+               apply (cases "p = pc")
+            subgoal
+              by (simp add: BENQ_def BTL_def)
+            subgoal
+              by (auto simp add: BENQ_def BTL_def)[1]
+              apply (metis BENQ_access BENQ_diff_access butlast.simps(1) butlast_snoc)
+             apply (metis BENQ_access BENQ_diff_access BHD_def hd_append2)
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal for io' op'' op1' op1'a io'a op''a pb xb op1'b q pc
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply force
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply force
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply (rule step_comp_op_R_Tau)
+               apply simp_all
+             apply (rule step_map_op)+
+              apply (rule step_Tau_comp_op_L)
+                 apply (rule step_merge_op_Write_L)
+                    apply simp_all
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply (rule step_comp_op_R_Tau)
+                 apply simp_all
+             apply (rule step_map_op)+
+              apply force
+             apply simp_all
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal for io' op'' op2' io'a op''a pa xa op2'a pb
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply force
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          done
+        done
+      done
+    done
+  done
+
+
+lemma oof3:
+  "wstep (Inp (Inr p) x) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>'))) op' \<Longrightarrow>
+    wtraced op' lxs \<Longrightarrow>
+    wstep (Inp (Inr p) x) (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A B) \<turnstile> \<parallel> id_op C) \<V>')) (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A B) \<turnstile> \<parallel> id_op (BENQ p x C)) \<V>')) \<and>
+    wtraced (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B (BENQ p x C)) \<turnstile>) \<V>'))) lxs"
+  apply (intro conjI)
+  subgoal
+    unfolding pcomp_op_def scomp_op_def
+    apply (rule step_wstep)
+    apply (rule step_map_op)+
+     apply (rule step_comp_op_L_Inp)
+       apply simp_all
+    apply (rule step_comp_op_R_Inp)
+       apply (rule step_id_op_Read)
+        apply simp_all
+    subgoal 
+      apply (subgoal_tac "Inr p \<notin> defaults")
+       apply simp
+      apply (rule wstep_inputs_not_in_defaults)
+       apply simp
+      apply (auto simp add: op.set_map; hypsubst_thin?)
+      apply (metis Diff_iff Inl_in_defaults Inr_in_defaults inputs_merge_op subsetD sum.case_eq_if sum_in_defaults)
+      done
+    done
+  subgoal premises prems
+    using prems apply -
+    unfolding wstep_def
+    apply (erule relcomppE)+
+    subgoal for op'' op'''
+      apply simp
+      apply (frule wstep_Tau_busy_wtraced[where op=op'''])
+      subgoal premises prems2
+        using prems2(2-) apply -
+        apply (drule longer_oof)
+        unfolding scomp_op_def pcomp_op_def
+         apply fast
+        apply safe
+        unfolding pcomp_op_def
+        apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim)
+        apply hypsubst_thin
+        apply (drule longer_oof[unfolded pcomp_op_def])
+         apply fast
+        apply safe
+        apply hypsubst_thin
+        using oof_not_wfinished[where p=p] apply -
+        apply simp      
+        apply force
+        done
+       apply simp
+      subgoal premises prems2
+        using prems2(2,5,3) apply -
+        apply (induct op'' arbitrary: op''' rule: rtranclp_induct)
+        subgoal
+          unfolding pcomp_op_def scomp_op_def
+          apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim split: sum.splits; hypsubst_thin?)
+          done
+        subgoal for op1 op2 op3
+          apply (drule longer_oof)
+          unfolding scomp_op_def pcomp_op_def apply blast
+          apply (elim exE)
+          apply hypsubst_thin
+          apply (drule meta_spec)
+          apply (drule meta_mp)
+           defer
+           apply (drule meta_mp)
+          unfolding pcomp_op_def
+            apply (rule step_map_op)+
+              apply (rule step_comp_op_L_Inp)
+                apply simp_all
+            apply (rule step_comp_op_R_Inp)
+               apply simp_all                
+            apply (rule step_map_op)+
+             apply (rule step_comp_op_L_Inp)
+               apply simp_all
+            apply (rule step_merge_op_Read_R[where p=p])
+             apply simp_all
+          subgoal
+            apply (subgoal_tac "Inr p \<notin> defaults")
+             apply simp
+            apply (elim step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim exE conjE; simp split: if_splits sum.splits; hypsubst_thin)
+            subgoal
+              by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+            subgoal
+              by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+            subgoal
+              by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+            subgoal
+              by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+            subgoal
+              by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+            subgoal
+              by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+            subgoal
+              by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+            subgoal
+              by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+            subgoal
+              by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+            subgoal
+              by (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits)
+            done
+          unfolding pcomp_op_def
+          apply (elim step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim exE conjE; simp split: if_splits sum.splits; hypsubst_thin)
+          subgoal for X A C K V P D R io' op'' pa xa op1' q paa xaa op2'
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply force
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply force 
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply force 
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply force
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply (rule step_comp_op_L_Tau)
+               apply simp_all         
+             apply (rule step_comp_op_R_Tau)
+               apply simp_all
+             apply (rule step_map_op)+
+              apply simp_all
+             apply (metis case_sum_BHD_L case_sum_BTL_L old.sum.simps(5) step_Tau_comp_op_L step_merge_op_Write_L)
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal for X A C K V P D R B io' op'' io'a op''a op1' op2' io'b op''b pb xb op1'a q pc
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply (rule step_comp_op_L_Tau)
+               apply simp_all         
+             apply (rule step_comp_op_R_Tau)
+               apply simp_all
+             apply (rule step_map_op)+
+              apply simp_all
+             apply (rule step_Tau_comp_op_L)
+                apply simp_all
+             apply (rule step_merge_op_Write_R)
+                apply simp_all
+               apply (cases "pc = p")
+            subgoal
+              by (simp add: BENQ_def BTL_def)
+            subgoal
+              by (auto simp add: BENQ_def BTL_def)[1]
+              apply (metis BENQ_access BENQ_diff_access snoc_eq_iff_butlast)
+             apply (metis BENQ_access BENQ_diff_access BHD_def hd_append2)
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply force
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply (rule step_comp_op_R_Tau)
+               apply (rule step_map_op)+
+                apply simp_all         
+             apply (rule step_Tau_comp_op_L)
+                apply simp_all
+             apply (rule step_merge_op_Write_L)
+                apply auto
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply force
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          subgoal
+            apply (auto elim!: step_merge_op_elim step_map_op_elim step_comp_op_elim step_id_op_cases split: sum.splits if_splits; hypsubst_thin)
+            apply (erule step_Tau_busy_wtraced[OF _ refl, rotated 2])
+             apply (rule step_map_op)+
+               apply simp_all
+             apply force
+            subgoal 
+              using oof_not_wfinished[where p=p] apply -
+              apply simp
+              apply force
+              done
+            done
+          done
+        done
+      done
+    done
+  done
+
 
 lemma R_L:
   \<open>wtraced (map_op assoc id (map_op projl projr (comp_op Some (case_sum (\<lambda> _. []) (\<lambda> _. []))
@@ -1098,13 +1891,74 @@ lemma R_L:
    wtraced (map_op projl projr (comp_op Some (case_sum (\<lambda> _. []) (\<lambda> _. []))
     ((merge_op (case_sum A B))\<turnstile> \<parallel> id_op C)
     ((merge_op (case_sum (\<lambda> _. []) (\<lambda> _. [])))\<turnstile>))) lxs\<close>
-  sorry
-
+  apply (coinduction arbitrary: A B C lxs rule: wtraced.coinduct)
+  subgoal for A B C lxs
+    apply (cases lxs)
+    subgoal
+      apply simp
+      apply (cases "\<exists> p :: 'a. p \<in> \<UU>")
+      subgoal
+        apply (erule wtraced.cases)
+         apply simp_all
+        apply hypsubst_thin
+        apply (rule FalseE)
+        apply simp
+        apply safe
+        subgoal for p
+          using oof_not_wfinished[where p=p] apply -
+          apply simp
+          unfolding pcomp_op_def scomp_op_def
+          apply blast
+          done
+        done
+      subgoal
+        apply hypsubst_thin
+        using oof_no_usable_ports_wfinished apply blast
+        done
+      done
+    subgoal for x lxs
+      apply simp
+      apply hypsubst_thin
+      apply (erule wtraced.cases)
+       apply simp_all    
+      apply hypsubst_thin
+      apply (cases x)
+      subgoal for vio op op' p x
+        apply simp
+        apply hypsubst_thin
+        apply (cases p)
+        subgoal for p
+          apply hypsubst_thin
+          apply (cases p)
+          subgoal for p
+            apply hypsubst_thin
+            apply (drule oof1)
+             apply auto
+            done
+          subgoal for p
+            apply hypsubst_thin
+            apply (drule oof2)
+             apply auto
+            done
+          done
+        subgoal for p
+          apply hypsubst_thin
+          apply (drule oof3)
+           apply auto
+          done
+        done
+      subgoal for vio op op' p x
+        apply simp
+        apply hypsubst_thin
+        sorry
+      done
+    done
+  done
 
 lemma A1:
   \<open>(\<V>' \<parallel> \<I>) \<bullet> \<V>' \<equiv>\<^sub>t map_op assoc id ((\<I> \<parallel> \<V>') \<bullet> \<V>')\<close>
   unfolding wtraces_def scomp_op_def
-  using L_R[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []", simplified, unfolded scomp_op_def]   R_L[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []", simplified, unfolded scomp_op_def]
+  using L_R[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []", simplified, unfolded scomp_op_def]  R_L[of "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []", simplified, unfolded scomp_op_def]
   apply force
   done
 
