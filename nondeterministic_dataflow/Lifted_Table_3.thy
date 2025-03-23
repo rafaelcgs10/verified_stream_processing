@@ -34,36 +34,7 @@ no_notation sink_op_0_operator ("!")
 no_notation dummy_source_operator ("\<exclamdown>")
 no_notation merge_empty_operator ("\<V>")
 no_notation split_empty_operator ("\<Lambda>")
-
-lemma A1':
-  \<open>(\<V>' \<parallel> \<I>) \<bullet> \<V>' \<approx> map_op assoc id ((\<I> \<parallel> \<V>') \<bullet> \<V>')\<close>
-proof -
-  have \<open>(\<V>' \<parallel> \<I>) \<bullet> \<V>' \<approx> (\<V>' \<parallel> \<I> \<bullet> \<I>) \<bullet> \<V>'\<close>
-    by (smt (verit, del_insts) merge'_id_absorb_left pcomp_op_def scomp_op_id_id wbisim_comp_op_cong wbisim_scomp_op_cong wbisim_sym wbisim_trans)
-  also have \<open>\<dots> \<approx> (\<V> \<parallel> \<I>) \<bullet> (\<I> \<parallel> \<I>) \<bullet> \<V>'\<close>
-    by (meson bisim_sym bisim_wbisim B5 wbisim_refl wbisim_scomp_op_cong)
-  also have \<open>\<dots> \<approx> (\<V> \<parallel> \<I>) \<bullet> \<I> \<bullet> \<V>'\<close>
-    by (simp add: bisim_wbisim B6 wbisim_refl wbisim_scomp_op_cong)
-  also have \<open>\<dots> \<approx> (\<V> \<parallel> \<I>) \<bullet> \<V>'\<close>
-    using bisim_wbisim merge'_id_absorb_left B3 wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans by (smt (verit, ccfv_SIG))
-  also have \<open>\<dots> \<approx> ((\<V> \<parallel> \<I>) \<bullet> \<V>) \<bullet> \<I>\<close>
-    using bisim_wbisim B3 wbisim_sym by blast
-  also have \<open>\<dots> \<approx> (map_op assoc id ((\<I> \<parallel> \<V>) \<bullet> \<V>)) \<bullet> \<I>\<close>
-    using A1 bisim_wbisim wbisim_refl wbisim_scomp_op_cong by blast
-  also have \<open>\<dots> \<approx> map_op assoc id ((\<I> \<parallel> \<V>) \<bullet> \<V>')\<close>
-    using bisim_map_op bisim_wbisim map_op_out_id_vdash B3 wbisim_sym wbisim_trans by (smt (verit, ccfv_SIG))
-  also have \<open>\<dots> \<approx> map_op assoc id ((\<I> \<parallel> \<V>) \<bullet> (\<I> \<bullet> \<V>'))\<close>
-    using merge'_id_absorb_left wbisim_map_op wbisim_refl wbisim_scomp_op_cong by (smt (verit, ccfv_SIG))
-  also have \<open>\<dots> \<approx> map_op assoc id ((\<I> \<parallel> \<V>) \<bullet> \<I> \<bullet> \<V>')\<close>
-    using bisim_map_op bisim_wbisim B3 wbisim_sym by blast
-  also have \<open>\<dots> \<approx> map_op assoc id ((\<I> \<parallel> \<V>) \<bullet> (\<I> \<parallel> \<I>) \<bullet> \<V>')\<close>
-    by (metis bisim_wbisim B6 wbisim_map_op wbisim_refl wbisim_scomp_op_cong wbisim_sym)
-  also have \<open>\<dots> \<approx> map_op assoc id (((\<I> \<bullet> \<I>) \<parallel> \<V>') \<bullet> \<V>')\<close>
-    by (simp add: bisim_map_op bisim_scomp_op_cong bisim_wbisim choices_Choice_bisim B5)
-  also have \<open>\<dots> \<approx> map_op assoc id ((\<I> \<parallel> \<V>') \<bullet> \<V>')\<close>
-    by (simp add: pcomp_op_def scomp_op_id_id wbisim_comp_op_cong wbisim_map_op wbisim_refl wbisim_scomp_op_cong)
-  finally show ?thesis.
-qed
+no_notation wtrace_equiv_operator (infix "\<equiv>\<^sub>t"40)
 
 lemma A2':
   \<open>\<X> \<bullet> \<V>' \<approx> \<V>'\<close>
@@ -215,6 +186,7 @@ no_notation sink_op ("!")
 no_notation dummy_source_op ("\<exclamdown>")
 no_notation merge_empty_op ("\<V>")
 no_notation split_empty_op ("\<Lambda>")
+no_notation wtrace_equiv (infix "\<equiv>\<^sub>t"40)
 
 notation wbisim_operator (infix "\<approx>"40)
 notation id_empty_operator ("\<I>")
@@ -226,11 +198,14 @@ notation sink_op_0_operator ("!")
 notation dummy_source_operator ("\<exclamdown>")
 notation merge_empty_operator ("\<V>")
 notation split_empty_operator ("\<Lambda>")
+notation wtrace_equiv_operator (infix "\<equiv>\<^sub>t"40)
 
 lemma A1:
-  \<open>(\<V> \<parallel> \<I>) \<bullet> \<V> \<approx> map_operator assoc id ((\<I> \<parallel> \<V>) \<bullet> \<V>)\<close>
+  \<open>(\<V> \<parallel> \<I>) \<bullet> \<V> \<equiv>\<^sub>t map_operator assoc id ((\<I> \<parallel> \<V>) \<bullet> \<V>)\<close>
   apply transfer
-  using A1' by (auto split: sum.splits)
+  apply (auto split: sum.splits)
+  using A1 apply blast+
+  done
 
 lemma A2:
   \<open>\<X> \<bullet> \<V> \<approx> \<V>\<close>

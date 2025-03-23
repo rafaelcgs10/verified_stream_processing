@@ -652,7 +652,8 @@ lift_definition id_empty_operator :: "('a :: {countable, defaults}, 'a, 'b) oper
 no_notation wbisim (infix "\<approx>"40)
 lift_definition wbisim_operator :: "('a :: {countable, defaults}, 'b :: {countable, defaults}, 'c) operator \<Rightarrow> ('a, 'b, 'c) operator \<Rightarrow> bool" (infix "\<approx>"40) is wbisim.
 
-
+no_notation wtrace_equiv (infix "\<equiv>\<^sub>t"40)
+lift_definition wtrace_equiv_operator :: "('a :: {countable, defaults}, 'b :: {countable, defaults}, 'c) operator \<Rightarrow> ('a, 'b, 'c) operator \<Rightarrow> bool" (infix "\<equiv>\<^sub>t"40) is wtrace_equiv.
 
 no_notation aeq_empty_op ("\<Q>")
 lift_definition aeq_empty_operator :: "('a :: {countable, defaults} + 'a, 'a, 'b option) operator"  ("\<Q>") is "aeq_empty_op\<turnstile>"
