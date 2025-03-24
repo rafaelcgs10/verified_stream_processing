@@ -5,17 +5,17 @@ Nondeterministic Asynchronous Dataflow in Isabelle/HOL
 ### How To Run?
 The artifact contains the formalization of Nondeterministic Asynchronous Dataflow in Isabelle/HOL.
 
-It works with Isabelle 2024, which can be downloaded here:
+It works with Isabelle 2025, which can be downloaded here:
 
-[https://isabelle.in.tum.de/website-Isabelle2024/](https://isabelle.in.tum.de/website-Isabelle2024/)
+[https://isabelle.in.tum.de/website-Isabelle2025/](https://isabelle.in.tum.de/website-Isabelle2025/)
 
 More instalation instructions can be found here:
 
-[https://isabelle.in.tum.de/website-Isabelle2024/installation.html](https://isabelle.in.tum.de/website-Isabelle2024/installation.html)
+[https://isabelle.in.tum.de/website-Isabelle2025/installation.html](https://isabelle.in.tum.de/website-Isabelle2024/installation.html)
 
-After installing Isabelle, you must also obtain the Archive of Formal Proofs (AFP) version 2024 here:
+After installing Isabelle, you must also obtain the Archive of Formal Proofs (AFP) version 2025 here:
 
-[https://foss.heptapod.net/isa-afp/afp-devel/-/tree/Isabelle2024?ref_type=tags](https://foss.heptapod.net/isa-afp/afp-devel/-/tree/Isabelle2024?ref_type=tags)
+[https://www.isa-afp.org/release/afp-current.tar.gz](https://www.isa-afp.org/release/afp-current.tar.gz)
 
 Setup the AFP following the instructions:
 
