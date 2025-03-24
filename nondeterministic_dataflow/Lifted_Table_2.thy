@@ -52,7 +52,7 @@ proof -
   also have "\<dots> \<approx> (\<Q> \<parallel> \<I>) \<bullet> \<Q>'" using scomp_op_id_left_absorb by (smt (verit, ccfv_SIG) aeq_double_vdash_absorb bisim_wbisim B3.B3 B4.B4_1 wbisim_refl wbisim_scomp_op_cong wbisim_sym wbisim_trans)
   also have "\<dots> \<approx> (\<Q> \<parallel> \<I>) \<bullet> \<Q> \<bullet> \<I>"
     using bisim_wbisim B3.B3 wbisim_sym by blast 
-  also have "\<dots> \<approx> map_op assoc id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>) \<bullet> \<I>" using wbisim_refl wbisim_scomp_op_cong using A1.A1 by blast
+  also have "\<dots> \<approx> map_op assoc id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>) \<bullet> \<I>" using wbisim_refl wbisim_scomp_op_cong using A1 by blast
   also have "\<dots> \<approx> map_op assoc id ((\<I> \<parallel> \<Q>) \<bullet> \<Q>')" using map_op_out_id_vdash bisim_wbisim B3.B3 wbisim_map_op wbisim_sym wbisim_trans by (smt (verit, best))
   also have "\<dots>  \<approx> map_op assoc id ((\<I> \<parallel> \<Q>)\<turnstile> \<bullet> \<Q>')" using scomp_op_id_left_absorb wbisim_map_op wbisim_sym by (smt (verit, best) aeq_double_vdash_absorb bisim_wbisim B3.B3 B4.B4_1 wbisim_refl wbisim_scomp_op_cong wbisim_trans)
   also have "\<dots>  \<approx> map_op assoc id ((\<I> \<parallel> \<Q>) \<bullet> (\<I> \<parallel> \<I>) \<bullet> \<Q>')" by (metis bisim_wbisim B6 wbisim_map_op wbisim_refl wbisim_scomp_op_cong wbisim_sym)
@@ -66,7 +66,7 @@ lemma A2':
 proof -
   have \<open>\<X> \<bullet> \<Q>' \<approx> \<X> \<bullet> \<Q> \<bullet> \<I>\<close> using bisim_wbisim B3.B3 wbisim_sym by blast
   also have \<open>\<dots> \<approx> \<Q>'\<close>
-    using A2.A2 wbisim_refl wbisim_scomp_op_cong by blast
+    using A2 wbisim_refl wbisim_scomp_op_cong by blast
   finally show ?thesis.
 qed
 
@@ -91,7 +91,7 @@ proof -
   using B3 bisim_wbisim by blast
   also have \<open>\<dots> \<approx> \<Q> \<bullet> !\<close>
     by (metis id_sink_op_sink_op scomp_op_def wbisim_refl wbisim_scomp_op_cong)
-  also have \<open>\<dots> \<approx> ! \<parallel> !\<close> by (rule A4.A4)
+  also have \<open>\<dots> \<approx> ! \<parallel> !\<close> by (rule A4)
   finally show ?thesis.
 qed
 
@@ -106,7 +106,7 @@ lemma A11':
 proof -
   have \<open>\<C> \<bullet> \<Q>' \<approx> (\<C> \<bullet> \<Q>)\<turnstile>\<close> using bisim_wbisim B3.B3 wbisim_sym by blast
   also have \<open>\<dots> \<approx> \<I>\<turnstile>\<close>
-    using A11.A11 wbisim_refl wbisim_scomp_op_cong by blast
+    using A11 wbisim_refl wbisim_scomp_op_cong by blast
   also have \<open>\<dots> \<approx> \<I>\<close> using scomp_op_id_id by blast
   finally show ?thesis.
 qed
@@ -131,7 +131,7 @@ proof -
     by (simp add: bisim_scomp_op_cong bisim_wbisim choices_Choice_bisim B6)
   also have \<open>\<dots> \<approx> map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>) \<bullet> (\<Q> \<parallel> \<Q>) \<bullet> \<I>\<close>
     using bisim_wbisim B3.B3 wbisim_sym by blast
-  also have \<open>\<dots> \<approx> \<Q>'\<close> using A15.A15
+  also have \<open>\<dots> \<approx> \<Q>'\<close> using A15
     by (smt (verit) scomp_op_id_id wbisim_scomp_op_cong wbisim_sym wbisim_trans)
   finally show ?thesis by (rule wbisim_sym)
 qed
@@ -156,7 +156,7 @@ proof -
      apply (metis (no_types, lifting) Inr_in_defaults \<UU>_E \<UU>_def disjoint_iff id_apply image_id inputs_aeq_op op.set_map(1) subsetD vimageE)
     apply (smt (verit, del_insts) Diff_disjoint Inr_inject disjoint_iff imageE op.set_map(2) outputs_aeq_op subsetD vimageE)
     done
-  also have \<open>\<dots> \<approx> S\<close> using assms sink_sink F3.F3 wbisim_refl wbisim_scomp_op_cong wbisim_trans by (smt (verit, best))
+  also have \<open>\<dots> \<approx> S\<close> using assms sink_sink F3 wbisim_refl wbisim_scomp_op_cong wbisim_trans by (smt (verit, best))
   finally show ?thesis.
 qed
 
