@@ -78,7 +78,7 @@ proof -
   have \<open>(D \<parallel> \<I>) \<bullet> \<Q>' \<approx> (D \<parallel> \<I>) \<bullet> \<Q> \<bullet> \<I>\<close>
     using bisim_wbisim B3.B3 wbisim_sym by blast
   also have \<open>\<dots> \<approx> (S \<bullet> \<exclamdown>) \<bullet> \<I>\<close>
-    using A3.A3 assms wbisim_refl wbisim_scomp_op_cong by blast
+    using A3 assms wbisim_refl wbisim_scomp_op_cong by blast
   also have \<open>\<dots> \<approx> S \<bullet> \<exclamdown>\<close>
     using bisim_wbisim B3.B3 B4.B4_1 wbisim_refl wbisim_scomp_op_cong wbisim_trans by (smt (verit, best))
   finally show ?thesis.
