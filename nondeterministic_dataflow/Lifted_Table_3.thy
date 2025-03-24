@@ -199,13 +199,6 @@ notation merge_empty_operator ("\<V>")
 notation split_empty_operator ("\<Lambda>")
 notation wtrace_equiv_operator (infix "\<equiv>\<^sub>t"40)
 
-lemma A1:
-  \<open>(\<V> \<parallel> \<I>) \<bullet> \<V> \<equiv>\<^sub>t map_operator assoc id ((\<I> \<parallel> \<V>) \<bullet> \<V>)\<close>
-  apply transfer
-  apply (auto split: sum.splits)
-  using A1 apply blast+
-  done
-
 lemma A2:
   \<open>\<X> \<bullet> \<V> \<approx> \<V>\<close>
   apply transfer
