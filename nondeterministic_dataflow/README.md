@@ -23,6 +23,12 @@ Setup the AFP following the instructions:
 
 Assuming that Isabelle and AFP are installed, then one can open this project with
 
+Run the following command to setup Isabelle with GHC:
+
+```
+isabelle ghc_setup
+```
+
 ```
 isabelle jedit -d ~/path_to_this_folder -R Nondeterministic_Dataflow
 ```
