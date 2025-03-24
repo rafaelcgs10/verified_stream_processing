@@ -46,7 +46,6 @@ session Nondeterministic_Dataflow = Coinductive +
     "table_2/A17"
     "table_2/A18"
     "table_2/A19"
-    "table_3/A1"
     "table_3/A2"
     "table_3/A3"
     "table_3/A4"

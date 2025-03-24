@@ -1,7 +1,6 @@
 theory Lifted_Table_3
 
 imports
-  "table_3/A1"
   "table_3/A2"
   "table_3/A3"
   "table_3/A4"
