@@ -995,6 +995,66 @@ lemma foo3:
       done
     done
   done
+(*
+lemma "(step Tau)\<^sup>*\<^sup>* (map_op projl projr (comp_op Some (\<lambda>_. []) (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A B)) \<I>) \<parallel> id_op C) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))) op2 \<Longrightarrow>
+    step (Out p x) op2 op3 \<Longrightarrow>
+    wtraced op3 lxs \<Longrightarrow>
+    wstep (Out p x) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>')))
+     (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op (BTL p A) \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>'))) \<and>
+    wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum (BTL p A) B) \<turnstile> \<parallel> id_op C) \<V>')) lxs \<or>
+    wstep (Out p x) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>')))
+     (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum (BTL p B) C) \<turnstile>) \<V>'))) \<and>
+    wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A (BTL p B)) \<turnstile> \<parallel> id_op C) \<V>')) lxs \<or>
+    wstep (Out p x) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>')))
+     (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B (BTL p C)) \<turnstile>) \<V>'))) \<and>
+    wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A B) \<turnstile> \<parallel> id_op (BTL p C)) \<V>')) lxs"
+*)
+definition "has_one D1 D1' D2 D3 D4 D5 D6 D6' p =
+  (length (D1 p) + length (D2 p) + length (D3 p) + length (D4 p) + length (D5 p) + length (D6 p) + length (D6' p) = 1 \<and> 
+   (\<forall> q. q \<noteq> p \<longrightarrow> D1 q = [] \<and> D1' q = [] \<and> D2 q = [] \<and> D3 q = [] \<and> D4 q = [] \<and> D5 q = [] \<and> D6 q = [] \<and> D6 q = []))"
+
+
+definition "all_empty D1 D1' D2 D3 D4 D5 D6 D6' =
+   (\<forall> q. D1 q = [] \<and> D1' q = [] \<and> D2 q = [] \<and> D3 q = [] \<and> D4 q = [] \<and> D5 q = [] \<and> D6 q = [] \<and> D6 q = [])"
+
+
+lemma *: "(step Tau)\<^sup>*\<^sup>* op op' \<Longrightarrow>
+    op = map_op projl projr (comp_op Some (case_sum D1 D1') (map_op projl projr (comp_op Some D2 (merge_op (case_sum A B)) (id_op D3)) \<parallel> id_op C) (map_op projl projr (comp_op Some D5 (merge_op (case_sum D6 D6')) (id_op D4)))) \<Longrightarrow>
+    all_empty D1 D1' D2 D3 D4 D5 D6 D6' \<or> has_one D1 D1' D2 D3 D4 D5 D6 D6' p \<Longrightarrow>
+    step (Out p x) op' op'' \<Longrightarrow> \<exists>ops op''' A' B' C'.
+      (A p \<noteq> [] \<and> A' = BTL p A \<and> B' = B \<and> C' = C \<or> 
+       B p \<noteq> [] \<and> A' = A \<and> B' = BTL p B \<and> C' = C \<or> 
+       C p \<noteq> [] \<and> A' = A \<and> B' = B \<and> C' = BTL p C \<or>
+       has_one D1 D1' D2 D3 D4 D5 D6 D6' p \<and> A' = A \<and> B' = B \<and> C' = C) \<and> 
+      ops \<noteq> [] \<and> chain (\<lambda>op1 op2. step Tau op1 op2 \<and> (\<exists>D1 D1' D2 D3 D4 D5 D6 D6'. has_one D1 D1' D2 D3 D4 D5 D6 D6' p \<and>
+      op2 = map_op projl projr (comp_op Some (case_sum D1 D1') (map_op projl projr (comp_op Some D2 (merge_op (case_sum A' B')) (id_op D3)) \<parallel> id_op C') (map_op projl projr (comp_op Some D5 (merge_op (case_sum D6 D6')) (id_op D4)))))) (op # ops) \<and> step (Out p x) (last ops) op''' \<and> (step Tau)\<^sup>*\<^sup>* op''' op''"
+(*   apply (induct op' rule: rtranclp_induct)
+   apply simp
+  subgoal sorry
+  subgoal for op1 op2
+    apply simp *)
+    apply hypsubst_thin
+      apply (subst (asm) rtranclp_is_Sup_relpowp)
+      apply (unfold Sup_fun_def Sup_bool_def)
+      apply simp
+    apply (elim exE conjE)
+    subgoal for n
+      apply (induct n arbitrary: op' rule: less_induct)
+      subgoal for n op'
+        apply (cases n)
+        subgoal sorry
+        subgoal for n
+          apply hypsubst_thin
+          apply (erule relpowp_Suc_E2)
+          apply simp
+          oops
+
+
+
+lemma chain_mono: "chain P ops \<Longrightarrow> P \<le> Q \<Longrightarrow> chain Q ops"
+  apply (induct ops rule: chain.induct)
+   apply (auto intro: chain.intros)
+  done
 
 lemma foo4:
   "wstep (Out p x) (map_op projl projr (comp_op Some (\<lambda>_. []) (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A B)) \<I>) \<parallel> id_op C) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))) op' \<Longrightarrow>
@@ -1033,6 +1093,31 @@ lemma foo4:
         apply force
         done
        apply assumption
+    (*   apply (drule *[OF _ refl])
+       apply assumption
+      apply (erule disjE exE conjE)+
+      subgoal for ops op'' A' B' C'
+        apply (rule disjI1)
+        apply (subgoal_tac "op'' = map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum (BTL p A) B) \<turnstile> \<parallel> id_op C) \<V>')")
+        apply (rule conjI[rotated])
+          apply simp
+          apply (rule wstep_Tau_busy_wtraced)
+            apply assumption
+        subgoal sorry
+          apply assumption
+        subgoal sorry
+        subgoal sorry
+        find_theorems chain last
+
+          apply (drule chain_mono[where Q="step Tau"])
+           apply blast
+          apply (drule chain_rtranclp)
+          apply (simp)
+        apply (rule wstep_trans)
+        find_theorems wstep step
+        find_theorems chain name: mono
+        find_theorems chain rtranclp
+
       subgoal premises prems
         using prems (2,3) apply -
    apply (induct op'' arbitrary: op''' rule: rtranclp_induct)
@@ -1047,35 +1132,120 @@ lemma foo4:
           apply hypsubst_thin
           apply (drule meta_spec)
           oops
+ *)
+      oops
 
 lemma foo4:
   "wstep (Out (p :: 'a :: {countable,defaults}) x) op op' \<Longrightarrow>
-   op = map_op projl projr (comp_op Some (case_sum D1 D1') (map_op projl projr (comp_op Some (case_sum D2 D2') (merge_op (case_sum A B)) (id_op D3)) \<parallel> id_op C) (map_op projl projr (comp_op Some D5 (merge_op (case_sum D6 D6')) (id_op D4)))) \<Longrightarrow>
-   length (D1 p) + length (D2 p) + length (D3 p) + length (D4 p) + length (D5 p) + length (D6 p) = 0 \<or>
-   length (D1 p) + length (D2 p) + length (D3 p) + length (D4 p) + length (D5 p) + length (D6 p) = 1 \<and> op' = map_op projl projr (comp_op Some [] (map_op projl projr (comp_op Some [] (merge_op (case_sum A B)) (id_op [])) \<parallel> id_op C) (map_op projl projr (comp_op Some [] (merge_op []) (id_op []))))
-
- \<Longrightarrow>
-
-wtraced op' lxs \<Longrightarrow>
-   length (D1 p) + length (D2 p) + length (D3 p) + length (D4 p) + length (D5 p) + length (D6 p) = 1 \<and>
-   wstep (Out p x) op
-    (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>'))) \<and>
-   wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A B) \<turnstile> \<parallel> id_op C) \<V>')) lxs
-\<or>
-   length (D1 p) + length (D2 p) + length (D3 p) + length (D4 p) + length (D5 p) + length (D6 p) = 0 \<and>
-   wstep (Out p x) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>')))
-    (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op (BTL p A) \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>'))) \<and>
-   wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum (BTL p A) B) \<turnstile> \<parallel> id_op C) \<V>')) lxs
-\<or>
-   length (D1 p) + length (D2 p) + length (D3 p) + length (D4 p) + length (D5 p) + length (D6 p) = 0 \<and>
-    wstep (Out p x) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>')))
-     (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum (BTL p B) C) \<turnstile>) \<V>'))) \<and>
-    wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A (BTL p B)) \<turnstile> \<parallel> id_op C) \<V>')) lxs
-\<or>
-   length (D1 p) + length (D2 p) + length (D3 p) + length (D4 p) + length (D5 p) + length (D6 p) = 0 \<and>
-    (wstep (Out p x) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>')))
+   op = map_op projl projr (comp_op Some (case_sum D1 D1') (map_op projl projr (comp_op Some D2 (merge_op (case_sum A B)) (id_op D3)) \<parallel> id_op C) (map_op projl projr (comp_op Some D5 (merge_op (case_sum D6 D6')) (id_op D4)))) \<Longrightarrow>
+   all_empty D1 D1' D2 D3 D4 D5 D6 D6' \<or>
+   has_one D1 D1' D2 D3 D4 D5 D6 D6' p \<Longrightarrow>
+   wtraced op' lxs \<Longrightarrow>
+     has_one D1 D1' D2 D3 D4 D5 D6 D6' p \<and>
+     wstep (Out p x) op
+      (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>'))) \<and>
+     wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A B) \<turnstile> \<parallel> id_op C) \<V>')) lxs
+  \<or>
+     all_empty D1 D1' D2 D3 D4 D5 D6 D6' \<and>
+     wstep (Out p x) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>')))
+      (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op (BTL p A) \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>'))) \<and>
+     wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum (BTL p A) B) \<turnstile> \<parallel> id_op C) \<V>')) lxs
+  \<or>
+     all_empty D1 D1' D2 D3 D4 D5 D6 D6' \<and>
+      wstep (Out p x) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>')))
+      (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum (BTL p B) C) \<turnstile>) \<V>'))) \<and>
+      wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A (BTL p B)) \<turnstile> \<parallel> id_op C) \<V>')) lxs
+  \<or>
+     all_empty D1 D1' D2 D3 D4 D5 D6 D6' \<and>
+     (wstep (Out p x) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B C) \<turnstile>) \<V>')))
      (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (id_op A \<parallel> merge_op (case_sum B (BTL p C)) \<turnstile>) \<V>'))) \<and>
-    wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A B) \<turnstile> \<parallel> id_op (BTL p C)) \<V>')) lxs)"
+     wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (merge_op (case_sum A B) \<turnstile> \<parallel> id_op (BTL p C)) \<V>')) lxs)"
+ apply (subst (asm) wstep_def)
+    apply (erule relcomppE)+
+    subgoal for op'' op'''
+      apply (frule wstep_Tau_busy_wtraced[where op=op'''])
+        subgoal premises prems2
+        using prems2(1,3-) apply -
+        unfolding scomp_op_def
+        apply (drule longer_foo)
+        apply simp
+        apply safe
+        unfolding pcomp_op_def
+        apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim)
+        apply hypsubst_thin
+        apply (frule longer_foo[unfolded pcomp_op_def])
+         apply fast
+        apply safe
+        apply hypsubst_thin
+        using foo_not_wfinished[where p=p] apply -
+        apply simp
+         apply force
+        done
+       apply assumption
+      subgoal premises prems
+        using prems (4,1,2,5-) apply -
+        apply (induct op'' arbitrary: op''' rule: rtranclp_induct)
+        subgoal sorry
+         apply simp
+        apply hypsubst_thin
+        subgoal for op1 op2 op3
+          apply (cases "\<exists> op2'. step (Out p x) op1 op2'")
+          apply (elim exE conjE)
+          subgoal for op2'
+            apply (subgoal_tac " step Tau op2' op3")
+            subgoal
+            apply (drule meta_spec[of _ op2'])
+            apply simp
+            apply (drule meta_mp)
+            apply auto[1]
+            apply (drule meta_mp)
+             apply (rule step_Tau_busy_wtraced)
+                apply assumption
+               apply simp_all
+            subgoal sorry
+            done
+          subgoal
+            sorry
+          done
+          subgoal
+            apply (elim disjE conjE)
+            subgoal sorry
+            oops
+(* 
+        find_theorems Sup name: "E"
+
+end
+        apply (induction op arbitrary: op''' D1 D1' D2 D3 D4 D5 D6 D6' rule: converse_rtranclp_induct)
+        subgoal for op''' D1 D1' D2 D3 D4 D5 D6 D6'
+          unfolding pcomp_op_def scomp_op_def
+          apply hypsubst_thin
+          apply simp
+          apply (elim step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim exE conjE; simp split: if_splits sum.splits; hypsubst_thin?)
+          
+          apply (erule disjE)
+          apply (auto simp add: all_empty_def)[1]
+          apply (elim conjE)
+          apply hypsubst_thin
+          apply simp
+          apply (intro disjI1 conjI)
+          subgoal sorry
+          subgoal sorry
+          done
+        subgoal for op1 op2 op3 D1 D1' D2 D3 D4 D5 D6 D6'
+          apply hypsubst_thin
+          apply simp
+
+          find_theorems rtranclp
+          apply (drule longer_foo)
+          unfolding scomp_op_def apply blast
+          apply (elim exE)
+          apply hypsubst_thin
+          apply (drule meta_spec)
+          sorry
+        done
+      done
+    done *)
+
 
 (* 
 lemma foo4_wstep:
@@ -1084,6 +1254,7 @@ lemma foo4_wstep:
 
 
 end *)
+
 lemma L_R:
   \<open>wtraced (map_op projl projr (comp_op Some (case_sum (\<lambda> _. []) (\<lambda> _. []))
     ((merge_op (case_sum A B))\<turnstile> \<parallel> id_op C)
@@ -1150,8 +1321,8 @@ lemma L_R:
         apply hypsubst_thin
         apply simp
         unfolding scomp_op_def
-        apply (drule foo4[unfolded scomp_op_def])
-         apply simp_all
+        apply (drule foo4[unfolded scomp_op_def, where A=A and B=B and C=C, of _ _ _ _ "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []" "\<lambda> _. []"])
+           apply (simp_all add: has_one_def all_empty_def)
         apply auto
         done
       done
