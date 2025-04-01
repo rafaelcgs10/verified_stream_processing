@@ -29,6 +29,11 @@ lemma brbisim_wbisim:
 
 section \<open>Proof against weak bisimulation\<close>
 
+simproc_setup num1_eq (\<open>x :: 1\<close>) =
+  \<open>K (K (fn ct =>
+    if Thm.term_of ct aconv @{term \<open>1 :: 1\<close>} then NONE
+    else SOME (mk_meta_eq @{thm num1_eq1})))\<close>
+
 lemma wstep_Inp_Inl_Inl:
   assumes \<open>wstep (Inp (Inl (Inl 1)) (Suc 0)) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> (\<V> :: (1 + 1, 1, nat) op)) \<V>))) op\<close>
   obtains \<open>op = map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BENQ 1 1 (\<lambda>_. []))) \<V>) \<V>))\<close>
@@ -39,24 +44,12 @@ lemma wstep_Inp_Inl_Inl:
   unfolding wstep_def
   apply simp
   apply (erule relcomppE)+
-  apply (erule converse_rtranclpE)
-  subgoal
-    apply hypsubst_thin
-    apply (elim conjE step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim; hypsubst_thin; simp; hypsubst_thin)
-    apply (erule converse_rtranclpE)
-     apply (metis (full_types) num1_eq1)
-    apply (elim conjE step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim; hypsubst_thin; simp; hypsubst_thin)
-    apply (erule converse_rtranclpE)
-    subgoal for p _ _ p'
-      apply (rule disjI2)
-      apply (rule disjI1)
-      apply (cases \<open>p = p'\<close>, cases \<open>p = 1\<close>)
-      sorry
-    subgoal
-      sorry
-    done
-  subgoal by (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim)
-  done
+  apply (erule converse_rtranclpE)+
+    apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L)[2]
+   apply (erule converse_rtranclpE)
+    apply fast
+   apply (erule converse_rtranclpE)
+  by (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp add: BENQ_diff_access)
 
 lemma wstep_Inp_Inl_Inr1:
   assumes \<open>wstep (Inp (Inl (Inr 1)) 2) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BENQ 1 (Suc 0) (\<lambda>_. []))) (\<V> :: (1 + 1, 1, nat) op)) \<V>))) op\<close>
@@ -69,7 +62,118 @@ lemma wstep_Inp_Inl_Inr1:
         | \<open>op = map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> (merge_op (case_sum (BENQ 1 2 (\<lambda>_. [])) (\<lambda>_. [])))) (merge_op (case_sum (BENQ 1 1 (\<lambda>_. [])) (\<lambda>_. [])))))\<close>
         | \<open>op = map_op assoc id (map_op projl projr (comp_op Some (case_sum (\<lambda>_. []) (BENQ 1 2 (\<lambda>_. []))) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> \<V>) (merge_op (case_sum (BENQ 1 1 (\<lambda>_. [])) (\<lambda>_. [])))))\<close>
         | \<open>op = map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> \<V>) (merge_op (case_sum (BENQ 1 1 (\<lambda>_. [])) (BENQ 1 2 (\<lambda>_. []))))))\<close>
-  sorry
+    apply atomize_elim
+  using assms
+  unfolding wstep_def
+  apply simp
+  apply (erule relcomppE)+
+  apply (erule converse_rtranclpE)+
+    apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R)[3]
+       apply (erule converse_rtranclpE)
+        apply fast
+       apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R)[1]
+       apply (erule converse_rtranclpE)
+        apply (metis case_sum_BENQ_L case_sum_BENQ_R surjective_sum)
+        apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[6]
+     apply (erule converse_rtranclpE)
+      apply (smt (verit, ccfv_threshold) BHD_BENQ_empty BTL_BENQ_empty case_sum_BENQ_R case_sum_BHD_L case_sum_BTL_L surjective_sum)
+      apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+      apply (erule converse_rtranclpE)
+       apply (smt (verit, ccfv_threshold) BHD_BENQ_empty BTL_BENQ_empty case_sum_BENQ_R case_sum_BHD_L case_sum_BTL_L surjective_sum)
+      apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+     apply (erule converse_rtranclpE)
+      apply (smt (verit) BENQ_diff_access BHD_BENQ_empty BTL_BENQ_empty Inr_Inl_False case_sum_BENQ_L case_sum_BENQ_R surjective_sum)
+      apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+     apply (erule converse_rtranclpE)
+      apply (smt (verit, best) BHD_BENQ_empty BTL_BENQ_empty case_sum_BENQ_L case_sum_BENQ_R sum.simps(6) surjective_sum)
+     apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+      apply (metis BTL_BENQ_empty BTL_access BTL_diff_access Inr_Inl_False)
+     apply (metis BTL_BENQ_empty BTL_access BTL_diff_access Inr_Inl_False)
+    apply (erule converse_rtranclpE)
+     apply fast
+    apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+    apply (erule converse_rtranclpE)
+     apply fast
+   apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+    apply (erule converse_rtranclpE)
+     apply (metis case_sum_BENQ_L case_sum_BENQ_R surjective_sum)
+    apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+   apply (erule converse_rtranclpE)
+    apply fast
+   apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+    apply (erule converse_rtranclpE)
+     apply fast
+    apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+     apply (erule converse_rtranclpE)
+      apply (smt (verit, best) BHD_BENQ_empty BTL_BENQ_empty case_sum_BENQ_R case_sum_BHD_L case_sum_BTL_L surjective_sum)
+   apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+     apply (erule converse_rtranclpE)
+      apply (smt (verit, del_insts) BHD_BENQ_empty BTL_BENQ_empty case_sum_BENQ_R case_sum_BHD_L case_sum_BTL_L surjective_sum)
+     apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+      apply (metis BTL_BENQ_empty BTL_access BTL_diff_access Inr_Inl_False)
+     apply (metis BTL_BENQ_empty BTL_access BTL_diff_access Inr_Inl_False)
+    apply (erule converse_rtranclpE)
+     apply fast
+    apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+    apply (erule converse_rtranclpE)
+     apply (metis case_sum_BENQ_L case_sum_BENQ_R surjective_sum)
+    apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+   apply (erule converse_rtranclpE)
+    apply fast
+   apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+   apply (erule converse_rtranclpE)
+    apply fast
+   apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+   apply (erule converse_rtranclpE)
+    apply fast
+   apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+  apply (erule converse_rtranclpE)+
+    apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[2]
+   apply (erule converse_rtranclpE)
+    apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[2]
+  apply (erule converse_rtranclpE)
+   apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+    apply (erule converse_rtranclpE)
+     apply fast
+    apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+     apply (erule converse_rtranclpE)
+      apply (smt (verit, ccfv_threshold) BHD_BENQ_empty BTL_BENQ_empty case_sum_BENQ_R case_sum_BHD_L case_sum_BTL_L surjective_sum)
+     apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+     apply (erule converse_rtranclpE)
+      apply (smt (z3) BHD_BENQ_empty BTL_BENQ_empty BTL_diff_access case_sum_BENQ_L case_sum_BENQ_R case_sum_BTL_L surjective_sum)
+     apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+      apply (metis BTL_BENQ_empty BTL_access BTL_diff_access Inr_Inl_False)
+     apply (metis BTL_BENQ_empty BTL_access BTL_diff_access Inl_Inr_False)
+    apply (erule converse_rtranclpE)
+     apply fast
+    apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+    apply (erule converse_rtranclpE)
+     apply (smt (verit, ccfv_SIG) case_sum_BENQ_L case_sum_BENQ_R surjective_sum)
+    apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+   apply (erule converse_rtranclpE)
+    apply fast
+   apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+   apply (erule converse_rtranclpE)
+    apply fast
+   apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+   apply (erule converse_rtranclpE)
+    apply fast
+   apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[2]
+  apply (erule converse_rtranclpE)+
+    apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[2]
+  apply (erule converse_rtranclpE)+
+    apply hypsubst_thin
+    apply (elim conjE step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim; hypsubst_thin?; simp)
+    apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+   apply hypsubst_thin
+   apply (elim conjE step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim; hypsubst_thin?; simp)
+   apply (elim conjE step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim; hypsubst_thin?; simp)
+    apply (elim conjE step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim; hypsubst_thin?; simp)
+     apply (meson BENQ_diff_access sum.distinct(2))
+    apply (elim conjE step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim; hypsubst_thin?; simp)
+   apply (meson BENQ_diff_access Inl_Inr_False)
+    apply (elim conjE step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim; simp)
+  done
 
 lemma wstep_Inp_Inl_Inr2:
   assumes \<open>wstep (Inp (Inl (Inr 1)) 2) (map_op assoc id (map_op projl projr (comp_op Some (case_sum (BENQ 1 (Suc 0) (\<lambda>_. [])) (\<lambda>_. [])) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> (\<V> :: (1 + 1, 1, nat) op)) \<V>))) op\<close>
@@ -79,14 +183,66 @@ lemma wstep_Inp_Inl_Inr2:
         | \<open>op = map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> (merge_op (case_sum (BENQ 1 2 (\<lambda>_. [])) (\<lambda>_. [])))) (merge_op (case_sum (BENQ 1 1 (\<lambda>_. [])) (\<lambda>_. [])))))\<close>
         | \<open>op = map_op assoc id (map_op projl projr (comp_op Some (case_sum (\<lambda>_. []) (BENQ 1 2 (\<lambda>_. []))) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> \<V>) (merge_op (case_sum (BENQ 1 1 (\<lambda>_. [])) (\<lambda>_. [])))))\<close>
         | \<open>op = map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> \<V>) (merge_op (case_sum (BENQ 1 1 (\<lambda>_. [])) (BENQ 1 2 (\<lambda>_. []))))))\<close>
-  sorry
+  apply atomize_elim
+  using assms
+  unfolding wstep_def
+  apply simp
+  apply (erule relcomppE)+
+  apply (erule converse_rtranclpE)+
+    apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R)[3]
+       apply (erule converse_rtranclpE)
+        apply fast
+       apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R)[1]
+        apply (erule converse_rtranclpE)
+         apply (smt (verit, best) BHD_BENQ_empty BTL_BENQ_empty case_sum_BENQ_R case_sum_BHD_L case_sum_BTL_L surjective_sum)
+        apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[7]
+     apply (erule converse_rtranclpE)
+      apply (smt (verit, ccfv_threshold) BHD_BENQ_empty BTL_BENQ_empty case_sum_BENQ_R case_sum_BHD_L case_sum_BTL_L surjective_sum)
+     apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+      apply (smt (verit, ccfv_threshold) BHD_BENQ_empty BTL_BENQ_empty case_sum_BENQ_R case_sum_BHD_L case_sum_BTL_L surjective_sum)
+     apply (metis BTL_BENQ_empty BTL_access BTL_diff_access Inr_Inl_False)
+    apply (erule converse_rtranclpE)
+     apply fast
+    apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+    apply (erule converse_rtranclpE)
+     apply (metis case_sum_BENQ_L case_sum_BENQ_R surjective_sum)
+    apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+   apply (erule converse_rtranclpE)
+    apply fast
+   apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+   apply (erule converse_rtranclpE)
+    apply fast
+   apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+   apply (erule converse_rtranclpE)
+    apply fast
+   apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+  apply (erule converse_rtranclpE)+
+    apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[2]
+  apply (erule converse_rtranclpE)
+   apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[2]
+  apply (erule converse_rtranclpE)
+   apply fast
+  apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)[1]
+  apply (erule converse_rtranclpE)
+   apply fast
+  by (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R simp add: BENQ_diff_access BTL_access)
 
 lemma wstep_Inp_Inl_Inr3:
   assumes \<open>wstep (Inp (Inl (Inr 1)) 2) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> (\<V> :: (1 + 1, 1, nat) op)) (merge_op (case_sum (BENQ 1 (Suc 0) (\<lambda>_. [])) (\<lambda>_. [])))))) op\<close>
   obtains \<open>op = map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> (merge_op (case_sum (BENQ 1 2 (\<lambda>_. [])) (\<lambda>_. [])))) (merge_op (case_sum (BENQ 1 1 (\<lambda>_. [])) (\<lambda>_. [])))))\<close>
         | \<open>op = map_op assoc id (map_op projl projr (comp_op Some (case_sum (\<lambda>_. []) (BENQ 1 2 (\<lambda>_. []))) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> \<V>) (merge_op (case_sum (BENQ 1 1 (\<lambda>_. [])) (\<lambda>_. [])))))\<close>
         | \<open>op = map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> \<V>) (merge_op (case_sum (BENQ 1 1 (\<lambda>_. [])) (BENQ 1 2 (\<lambda>_. []))))))\<close>
-  sorry
+  apply atomize_elim
+  using assms
+  unfolding wstep_def
+  apply simp
+  apply (erule relcomppE)+
+  apply (erule converse_rtranclpE)+
+    apply (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp flip: case_sum_BENQ_L case_sum_BENQ_R)[3]
+   apply (erule converse_rtranclpE)
+    apply fast
+   apply (erule converse_rtranclpE)
+  by (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp add: BENQ_diff_access)
 
 lemma wstep_trans':
   \<open>step (Out p x) op op' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* op' op'' \<Longrightarrow> wstep (Out p x) op op''\<close>
