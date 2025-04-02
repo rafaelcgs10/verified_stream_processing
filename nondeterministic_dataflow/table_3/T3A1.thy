@@ -250,7 +250,7 @@ lemma wstep_trans':
   unfolding wstep_def
   by blast+
 
-lemma
+lemma A1_not_wbisim:
   \<open>(\<V> \<parallel> (\<I> :: (1, 1, nat) op)) \<bullet> \<V> \<approx> map_op assoc id ((\<I> \<parallel> \<V>) \<bullet> \<V>) \<Longrightarrow> False\<close>
   unfolding scomp_op_def pcomp_op_def
   apply (erule wbisim_wstep[OF wbisimulation_wbisim, where io=\<open>Inp (Inl (Inl 1)) 1\<close>])
@@ -730,3 +730,7 @@ lemma
    apply (smt (verit, best) BENQ_access BHD_BENQ_empty BHD_def One_nat_def Suc_1 append_self_conv2 hd_append2 list.simps(3) n_not_Suc_n num1_eq1)
   apply (simp add: BENQ_diff_access)
   done
+
+lemma A1_not_brbisim:
+  \<open>(\<V> \<parallel> (\<I> :: (1, 1, nat) op)) \<bullet> \<V> \<approx>\<^sub>b map_op assoc id ((\<I> \<parallel> \<V>) \<bullet> \<V>) \<Longrightarrow> False\<close>
+  using A1_not_wbisim brbisim_wbisim by blast
