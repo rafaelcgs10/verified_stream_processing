@@ -244,17 +244,11 @@ lemma wstep_Inp_Inl_Inr3:
    apply (erule converse_rtranclpE)
   by (auto elim!: step_map_op_elim step_comp_op_elim step_id_op_cases step_merge_op_elim simp add: BENQ_diff_access)
 
-lemma wstep_trans':
-  \<open>step (Out p x) op op' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* op' op'' \<Longrightarrow> wstep (Out p x) op op''\<close>
-  \<open>step (Inp p' x') op op' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* op' op'' \<Longrightarrow> wstep (Inp p' x') op op''\<close>
-  unfolding wstep_def
-  by blast+
-
 lemma A1_not_wbisim:
   \<open>(\<V> \<parallel> (\<I> :: (1, 1, nat) op)) \<bullet> \<V> \<approx> map_op assoc id ((\<I> \<parallel> \<V>) \<bullet> \<V>) \<Longrightarrow> False\<close>
   unfolding scomp_op_def pcomp_op_def
   apply (erule wbisim_wstep[OF wbisimulation_wbisim, where io=\<open>Inp (Inl (Inl 1)) 1\<close>])
-   apply (rule wstep_trans'(2))
+   apply (rule wstep_converse_trans(2))
     apply (rule step_map_op)
      apply (rule step_comp_op_L_Inp)
        apply (rule step_comp_op_L_Inp)
@@ -274,7 +268,7 @@ lemma A1_not_wbisim:
           apply (simp_all add: defaults_num1_def)
   apply (erule wstep_Inp_Inl_Inl; clarsimp)
     apply (erule wbisim_wstep[OF wbisimulation_wbisim, where io=\<open>Inp (Inl (Inr 1)) 2\<close>])
-     apply (rule wstep_trans'(2))
+     apply (rule wstep_converse_trans(2))
       apply (rule step_map_op)
        apply (rule step_comp_op_L_Inp)
          apply (rule step_comp_op_L_Inp)
@@ -492,7 +486,7 @@ lemma A1_not_wbisim:
      apply (smt (verit, best) BENQ_access BHD_BENQ_empty BHD_def One_nat_def Suc_1 append_self_conv2 hd_append2 list.simps(3) n_not_Suc_n num1_eq1)
     apply (simp add: BENQ_diff_access)
    apply (erule wbisim_wstep[OF wbisimulation_wbisim, where io=\<open>Inp (Inl (Inr 1)) 2\<close>])
-    apply (rule wstep_trans'(2))
+    apply (rule wstep_converse_trans(2))
      apply (rule step_map_op)
       apply (rule step_comp_op_L_Inp)
         apply (rule step_comp_op_L_Inp)
@@ -644,7 +638,7 @@ lemma A1_not_wbisim:
     apply (smt (verit, best) BENQ_access BHD_BENQ_empty BHD_def One_nat_def Suc_1 append_self_conv2 hd_append2 list.simps(3) n_not_Suc_n num1_eq1)
    apply (simp add: BENQ_diff_access)
   apply (erule wbisim_wstep[OF wbisimulation_wbisim, where io=\<open>Inp (Inl (Inr 1)) 2\<close>])
-   apply (rule wstep_trans'(2))
+   apply (rule wstep_converse_trans(2))
     apply (rule step_map_op)
      apply (rule step_comp_op_L_Inp)
        apply (rule step_comp_op_L_Inp)
