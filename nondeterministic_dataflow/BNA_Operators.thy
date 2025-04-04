@@ -657,6 +657,14 @@ lemma wstep_comp_op_L_Inp[]:
   "wstep (Inp p x) op1 op1' \<Longrightarrow> buf = buf' \<Longrightarrow> op2 = op2' \<Longrightarrow>  wstep (Inp (Inl p) x) (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
   unfolding wstep_def by (auto intro: step_comp_op_L_Taus)
 
+lemma wstep_comp_op_R_Inp[]:
+  "wstep (Inp p x) op2 op2' \<Longrightarrow> p \<notin> ran wire \<Longrightarrow> buf = buf' \<Longrightarrow> op1 = op1' \<Longrightarrow>  wstep (Inp (Inr p) x) (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
+  unfolding wstep_def by (smt (verit, best) estep.simps(2) relcompp_apply step_comp_op_R_Inp step_comp_op_R_Taus)
+
+lemma wstep_comp_op_L_Out[]:
+  "wstep (Out p x) op1 op1' \<Longrightarrow> buf = buf' \<Longrightarrow> p \<notin> dom wire \<Longrightarrow> op2 = op2' \<Longrightarrow> wstep (Out (Inl p) x) (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
+  unfolding wstep_def by (smt (verit, best) estep.simps(3) relcompp_apply step_comp_op_L_Out step_comp_op_L_Taus)
+
 lemma wstep_comp_op_R_Out[]:
   "wstep (Out p x) op2 op2' \<Longrightarrow> buf = buf' \<Longrightarrow> op1 = op1' \<Longrightarrow> wstep (Out (Inr p) x) (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
   unfolding wstep_def by (auto intro: step_comp_op_R_Taus)

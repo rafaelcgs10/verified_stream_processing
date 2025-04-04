@@ -710,6 +710,12 @@ lemma wstep_trans_base[trans]:
   "step Tau op2 op2' \<Longrightarrow> step (Inp p' x') op2' op2'' \<Longrightarrow> wstep (Inp p' x') op2 op2''"
   unfolding wstep_def by auto
 
+lemma wstep_converse_trans:
+  "step (Out p x) op1 op1' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* op1' op1'' \<Longrightarrow> wstep (Out p x) op1 op1''"
+  "step (Inp p' x') op2 op2' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* op2' op2'' \<Longrightarrow> wstep (Inp p' x') op2 op2''"
+  unfolding wstep_def by auto
+
+
 lemma step_tau_step_tau_step_io_wstep:
   "step Tau op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step io op'' op''' \<Longrightarrow> wstep io op op'''"
   unfolding wstep_def 

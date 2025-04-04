@@ -9,11 +9,11 @@ inductive visible_cause for wire where
 | "visible_cause wire buf (LCons (VOut (Inr p) x) ios) ios1 (LCons (VOut p x) ios2) buf ios ios1 ios2"
 | "wire p = None \<Longrightarrow> visible_cause wire buf (LCons (VOut (Inl p) x) ios) (LCons (VOut p x) ios1) ios2 buf ios ios1 ios2"
 | "p \<notin> ran wire \<Longrightarrow> visible_cause wire buf (LCons (VInp (Inr p) x) ios) ios1 (LCons (VInp p x) ios2) buf ios ios1 ios2"
-| "visible_cause wire buf ios ios1 ios2 buf' ios ios1' ios2' \<Longrightarrow>
-   wire p = Some q \<Longrightarrow> visible_cause wire buf ios (LCons (VOut p x) ios1) ios2 (BENQ q x buf') ios ios1' ios2'"
-| "visible_cause wire buf ios ios1 ios2 buf' ios ios1' ios2' \<Longrightarrow>
-   p \<in> ran wire \<Longrightarrow> buf' p \<noteq> [] \<Longrightarrow> BHD p buf' = x \<Longrightarrow>
-   visible_cause wire buf ios ios1 (LCons (VInp p x) ios2) (BTL p buf') ios' ios1' ios2'"
+| "visible_cause wire (BENQ q x buf) ios ios1 ios2 buf' ios ios1' ios2' \<Longrightarrow>
+   wire p = Some q \<Longrightarrow> visible_cause wire buf ios (LCons (VOut p x) ios1) ios2 buf' ios ios1' ios2'"
+| "visible_cause wire (BTL p buf) ios ios1 ios2 buf' ios ios1' ios2' \<Longrightarrow>
+   p \<in> ran wire \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> BHD p buf = x \<Longrightarrow>
+   visible_cause wire buf ios ios1 (LCons (VInp p x) ios2) buf' ios ios1' ios2'"
 
 coinductive causal for wire where
  "causal wire buf' ios' ios1' ios2' \<Longrightarrow> visible_cause wire buf ios ios1 ios2 buf' ios' ios1' ios2' \<Longrightarrow> causal wire buf ios ios1 ios2"
@@ -62,6 +62,74 @@ lemma visible_cause_VInp_Inl_LNil_False:
     apply auto
   done
 
+lemma visible_cause_VInp_Inr:
+  "visible_cause wire buf IOS ios1 ios2 buf' ios' ios1' ios2' \<Longrightarrow>
+   IOS = LCons (VInp (Inr p) x) ios \<Longrightarrow>
+   wtraced op1 ios1 \<Longrightarrow>
+   wtraced op2 ios2 \<Longrightarrow>
+   \<exists> op1' op2'. wstep (Inp (Inr p) x) (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2') \<and> wtraced op1' ios1' \<and> wtraced op2' ios2' \<and> ios' = ios"
+  apply (induct buf IOS ios1 ios2 buf' ios' ios1' ios2' arbitrary: op1 op2 pred: visible_cause)
+       apply auto
+  subgoal for buf ios1 ios2 op1 op2
+    apply (rotate_tac 2)
+    apply (erule wtraced.cases)
+     apply simp_all
+    subgoal for vio op op'
+      apply (cases vio; simp)
+      using wstep_comp_op_R_Inp apply fastforce
+      done
+    done
+  subgoal for q xa buf ios1 ios2 buf' ios1' ios2' pa op1 op2
+    apply (rotate_tac 3)
+    apply (erule wtraced.cases)
+     apply simp_all
+    subgoal for vio op op'
+      apply (cases vio; simp)
+      apply (drule meta_spec)+
+      apply (drule meta_mp)
+      apply assumption
+      apply (drule meta_mp)
+      apply assumption
+      apply safe
+      subgoal for p op1' op2'
+        apply (rule exI[of _ op1'])
+        apply (rule exI[of _ op2'])
+        apply simp
+        apply hypsubst_thin
+        apply (subgoal_tac "(step Tau)\<^sup>*\<^sup>* (comp_op wire buf op op2) (comp_op wire (BENQ q xa buf) op' op2)")
+         defer
+        subgoal
+          by (metis wstep_Tau_comp_op_L wstep_steps_Tau)
+        apply (smt (verit) relcompp_apply rtranclp_trans wstep_def)
+        done
+      done
+    done
+  subgoal for pa buf ios1 ios2 buf' ios1' ios2' op1 op2
+   apply (rotate_tac 5)
+    apply (erule wtraced.cases)
+     apply simp_all
+    subgoal for vio op op'
+      apply (cases vio; simp)
+      apply (drule meta_spec)+
+      apply (drule meta_mp)
+      apply assumption
+      apply (drule meta_mp)
+      apply assumption
+      apply safe
+      subgoal for p op1' op2'
+        apply (rule exI[of _ op1'])
+        apply (rule exI[of _ op2'])
+        apply simp
+        apply hypsubst_thin
+        apply (subgoal_tac "(step Tau)\<^sup>*\<^sup>* (comp_op wire buf op1 op) (comp_op wire (BTL pa buf) op1 op')")
+        defer
+        subgoal
+          by (metis wstep_Tau_comp_op_R wstep_steps_Tau)
+        apply (smt (verit) relcompp_apply rtranclp_trans wstep_def)
+        done
+      done
+    done
+  done
 
 lemma
   "wtraced (comp_op wire buf op1 op2) ios = 
@@ -88,27 +156,64 @@ lemma
               apply hypsubst_thin
               apply (erule wtraced.cases)
               subgoal
-              apply (erule causal.cases)
+                apply (erule causal.cases)
                 apply auto
                 apply hypsubst_thin
                 using visible_cause_VInp_Inl_LNil_False apply fast
                 done
               subgoal
                 apply hypsubst_thin
-         apply (erule causal.cases)
+                apply (erule causal.cases)
                 apply auto
                 sorry
               done
             subgoal for rp
-         apply (simp split: if_splits)
+              apply (simp split: if_splits)
               apply hypsubst_thin
               apply rotate_tac
               apply (erule wtraced.cases)
               subgoal sorry
+              subgoal for vio op op' lxs
+                apply hypsubst_thin
+                apply (erule causal.cases)
+                apply auto
+                subgoal for buf' ios' ios1' ios2'
+                  apply (drule visible_cause_VInp_Inr)
+                  apply simp_all
+                    apply (rule wtraced.Step)
+                    apply assumption+
+                  apply safe
+                  apply (intro conjI exI)
+                   apply assumption
+                  apply (intro conjI exI disjI1)
+                     apply (rule refl)
+                    apply assumption+
+                  done
+                done
+              done
+            done
+          subgoal for p x
+            apply (cases p)
+            subgoal for lp
+              apply (simp split: if_splits)
+              apply hypsubst_thin
+              apply (erule wtraced.cases)
+               apply simp_all
               subgoal
                 apply hypsubst_thin
-    apply (erule causal.cases)
-                apply auto
+                sorry
+              subgoal for vio op op' lx
+                apply hypsubst_thin
+                sorry
+              done
+            subgoal for rp
+              apply (simp split: if_splits)
+              apply hypsubst_thin
+              apply rotate_tac
+              apply (erule wtraced.cases)
+              subgoal sorry
+              subgoal for vio op op' lxs
+                apply hypsubst_thin
 
 end
                 by simp
