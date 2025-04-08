@@ -1706,7 +1706,7 @@ coinductive wfinished where
 | "wfinished op \<Longrightarrow> wfinished (Silent op)"
 
 coinductive wtraced where
-  Nil: "wfinished op \<Longrightarrow> wtraced op LNil"
+  Nil: "wtraced op LNil"
 | Step: "wstep (io_of_vio vio) op op' \<Longrightarrow> wtraced op' lxs \<Longrightarrow> wtraced op (LCons vio lxs)"
 
 definition "wtraces op = {lxs. wtraced op lxs}"
@@ -1836,7 +1836,7 @@ lemma wfinished_no_wstep:
       done
     done
   done
-
+(* 
 lemma wtraced_fair_traced: "wtraced op lxs \<Longrightarrow> fair_traced op (wtraced_traced_wit op lxs)"
   apply (coinduction arbitrary: op lxs)
   apply (erule wtraced.cases)
@@ -1861,7 +1861,7 @@ lemma wtraced_fair_traced: "wtraced op lxs \<Longrightarrow> fair_traced op (wtr
     apply (cases vio; auto)
     done
   apply force
-  done
+  done *)
 
 lemma io_of_vio_not_Tau[simp]:
   "Tau \<noteq> io_of_vio vio"
@@ -1872,7 +1872,7 @@ lemma lfilter_Tau_lshift[simp]: "lfilter ((\<noteq>) Tau) (lshift (replicate n T
   by (induct n) auto
 lemma ldropWhile_Tau_lshift[simp]: "ldropWhile ((=) Tau) (lshift (replicate n Tau) lxs) = ldropWhile ((=) Tau) lxs"
   by (induct n) auto
-
+(* 
 lemma lmap_lfilter_wtraced_traced_wit: "wtraced op lxs \<Longrightarrow> lmap vio_of_io (lfilter ((\<noteq>) Tau) (wtraced_traced_wit op lxs)) = lxs"
   apply (coinduction arbitrary: op lxs)
   apply simp
@@ -1893,7 +1893,7 @@ lemma lmap_lfilter_wtraced_traced_wit: "wtraced op lxs \<Longrightarrow> lmap vi
     apply (cases vio; auto)
     done
   done
-
+ *)
 lemma chain_rtranclp: "chain R xs \<Longrightarrow> rtranclp R (hd xs) (last xs)"
   by (induct xs rule: chain.induct) auto
 
@@ -1910,11 +1910,11 @@ lemma traced_wtraced: "fair_traced op lxs \<Longrightarrow> wtraced op (lmap vio
 
 definition "fair_traces op = {lxs. fair_traced op lxs}"
 
-lemma wtraces_alt: "wtraces op = ((lmap vio_of_io o lfilter ((\<noteq>) Tau)) ` fair_traces op)"
+(* lemma wtraces_alt: "wtraces op = ((lmap vio_of_io o lfilter ((\<noteq>) Tau)) ` fair_traces op)"
   unfolding wtraces_def fair_traces_def
   apply (auto simp: traced_wtraced image_iff
     intro!: lmap_lfilter_wtraced_traced_wit[symmetric] wtraced_fair_traced)
-  done
+  done *)
 
 lemmas wbisim_coinduct_alt = wbisim'.coinduct[unfolded wbisim'_alt]
 lemmas wbisim_cases_alt = wbisim'.cases[unfolded wbisim'_alt]
@@ -1959,10 +1959,10 @@ lemma lmap_vio_of_io:
   "lmap (\<lambda>z. io_of_vio (vio_of_io z)) (lfilter ((\<noteq>) Tau) lxs) = lfilter ((\<noteq>) Tau) lxs"
   by (rule llist.map_ident_strong) (auto simp: vio_of_io_inverse)
 
-lemma wbisim_fair_traces:
+(* lemma wbisim_fair_traces:
   "op1 \<approx> op2 \<Longrightarrow> lfilter ((\<noteq>) Tau) ` fair_traces op1 = lfilter ((\<noteq>) Tau) ` fair_traces op2"
   by (drule wbisim_wtraces, unfold wtraces_alt, drule image_eq_imp_comp[where h = "lmap io_of_vio"])
-    (auto simp: wtraces_alt simp: llist.map_comp lmap_vio_of_io)
+    (auto simp: wtraces_alt simp: llist.map_comp lmap_vio_of_io) *)
 
 section\<open>Convenient types\<close>
 

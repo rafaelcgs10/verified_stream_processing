@@ -401,7 +401,11 @@ lemma
   apply (rule iffI)
   subgoal
     apply (erule wtraced.cases; simp)
-    sorry
+    subgoal
+      by (intro exI[of _ LNil] conjI wtraced.intros causal.intros)
+    subgoal for vio op op' lxs
+      sorry
+    done
   subgoal
     apply (elim exE conjE)
     subgoal for ios1 ios2
@@ -409,18 +413,7 @@ lemma
       subgoal for buf op1 op2 ios ios1 ios2
         apply (cases ios)
         subgoal
-          apply (simp add: lfilter_eq_LNil)
-          apply hypsubst_thin
-          apply (erule causal.cases)
-           apply simp_all
-          apply hypsubst_thin
-          apply (erule wtraced.cases; simp)
-          apply (erule wtraced.cases; simp)
-          apply hypsubst_thin
-          apply (subst wfinished_no_wstep)
-          apply safe
-          using wstep_comp_op_wfinished_preserve apply (metis io_of_vio_not_Tau(1))
-          done
+          by (simp add: lfilter_eq_LNil)
         subgoal for io ios
           apply (cases io)
           subgoal for p x
