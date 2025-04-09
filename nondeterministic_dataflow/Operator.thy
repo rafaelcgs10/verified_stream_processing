@@ -1135,7 +1135,7 @@ proof (induct x rule: converse_rtranclp_induct)
       (auto intro: chain.intros dest: chain_nonempty)
 qed (auto intro: chain.intros)
 
-fun lshift where
+fun lshift (infixr \<open>@-\<close> 65) where
   "lshift [] lys = lys"
 | "lshift (x # xs) lys = LCons x (lshift xs lys)"
 
