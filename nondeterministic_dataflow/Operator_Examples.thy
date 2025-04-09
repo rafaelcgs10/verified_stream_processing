@@ -189,9 +189,9 @@ lemma wstep_Out_filter_op:
    io = Out p x \<Longrightarrow>
    op = filter_op P buf \<Longrightarrow>
    p = 1 \<and> op' = filter_op P (tl buf)\<and> buf \<noteq> [] \<and> bhd buf = x"
-  unfolding wstep_def by (metis (no_types, lifting) converse_rtranclpE estep.simps(3) pick_middlep step_Out_filter_op step_Tau_filter_op step_writes_silent_buf_empty writes_empty_buf_simp)
+  unfolding wstep_def by (metis (no_types, lifting) converse_rtranclpE estep.simps(3) pick_middlep step_Out_filter_op step_Tau_filter_op)
 
-lemma wtraced_production_spec:
+lemma wtraced_production_spec_soundness:
   "\<forall> x \<in> set buf. P x \<Longrightarrow>
    wtraced (filter_op P buf) lxs \<Longrightarrow>
    production_spec (\<lambda> buf inps outs buf'. map (VOut 1) buf @ map (case_VIO VOut VOut) (filter (case_VIO (\<lambda> _ x. P x) \<top>) inps) = outs @ map (VOut 1) buf') buf lxs"
@@ -241,6 +241,44 @@ lemma wtraced_production_spec:
     done
   done  
 
+lemma wtraced_production_spec_completeness:
+  "\<forall> x \<in> set buf. P x \<Longrightarrow>
+   production_spec (\<lambda> buf inps outs buf'. map (VOut 1) buf @ map (case_VIO VOut VOut) (filter (case_VIO (\<lambda> _ x. P x) \<top>) inps) = outs @ map (VOut 1) buf') buf lxs \<Longrightarrow>
+   wtraced (filter_op P buf) lxs"
+  apply (coinduction arbitrary: buf lxs rule: wtraced.coinduct)
+  subgoal for buf lxs
+    apply (erule production_spec.cases)
+    subgoal
+      by blast
+    subgoal for buf' lxs buf ins out
+      apply hypsubst_thin
+      apply (cases out; cases ins;  simp split: if_splits VIO.splits)
+      subgoal for i ins' p x
+        apply (rule exI[of _ "filter_op P (buf @ [x])"])
+        apply (intro conjI)
+        subgoal sorry
+        apply (rule disjI1)
+        apply (rule exI[of _ "buf @ [x]"])
+        apply simp
+        apply (cases ins')
+         apply simp
+         apply (smt (verit, best) Cons_eq_map_conv VIO.inject(2) list.inj_map_strong map_eq_append_conv map_is_Nil_conv)
+        apply (rule production_spec.intros(2)[where out=Nil, simplified])
+           apply assumption+
+        apply (metis (mono_tags, lifting) append.assoc append_Cons append_Nil list.simps(8) list.simps(9) map_append num1_eq1)
+         apply simp_all
+        done
+      subgoal
+        sorry
+      subgoal
+        sorry
+      subgoal
+        sorry
+      subgoal
+        sorry
+      done
+    done
+  done
 
 lemma wtraced_production_spec_extends:
   "\<forall> x \<in> set buf. P x \<Longrightarrow>
