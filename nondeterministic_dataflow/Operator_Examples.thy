@@ -386,20 +386,48 @@ lemma wtraced_production_spec_completeness:
     done
   done
 
+lemma filter_op_correctness_alt:
+  "\<forall>x\<in>set buf. P x \<Longrightarrow>
+   wtraced (filter_op P buf) lxs = production_spec (\<lambda>buf inps outs buf'. bulk_benq (map (case_VIO VOut VOut) (filter (case_VIO (\<lambda>_. P) \<top>) inps)) (map (VOut 1) buf) = bulk_benq (map (VOut 1) buf') outs) buf lxs"
+  using wtraced_production_spec_completeness wtraced_production_spec_soundness by blast
+
 definition operator_spec where
   "operator_spec op state spec = (\<forall> lxs. wtraced op lxs \<longleftrightarrow> production_spec spec state lxs)"
 
 lemma filter_op_correctness:
   "\<forall> x \<in> set buf. P x \<Longrightarrow>
    operator_spec (filter_op P buf) buf (\<lambda> buf inps outs buf'. map (VOut 1) buf @ map (case_VIO VOut VOut) (filter (case_VIO (\<lambda> _ x. P x) \<top>) inps) = outs @ map (VOut 1) buf')"
-  unfolding operator_spec_def using wtraced_production_spec_completeness wtraced_production_spec_soundness by blast
+  unfolding operator_spec_def using filter_op_correctness_alt by blast
 
-lemma wtraced_production_spec_extends:
+lemma wtraced_lappend_extends_lfinite:
+  "lfinite lxs \<Longrightarrow>
+   wtraced op lxs \<Longrightarrow>
+   \<exists> lys. wtraced op (lappend lxs lys)"
+ apply (induct lxs arbitrary: op rule: lfinite_induct)
+  subgoal for xs
+    apply (rule exI[of _ LNil])
+    apply simp
+    done
+  subgoal for xs op
+    apply (erule wtraced.cases)
+     apply simp_all
+    using wtraced.Step apply blast
+    done
+  done
+
+lemma wtraced_lappend_extends:
+  "wtraced op lxs \<Longrightarrow>
+   \<exists> lys. wtraced op (lappend lxs lys)"
+  apply (cases "lfinite lxs")
+  using wtraced_lappend_extends_lfinite apply force
+  apply (simp add: lappend_inf)
+  done
+
+lemma lfinite_wtraced_production_spec_extends:
   "\<forall> x \<in> set buf. P x \<Longrightarrow>
    wtraced (filter_op P buf) lxs \<Longrightarrow>
-   \<exists> lys. wtraced (filter_op P buf) (lappend lxs lys) \<and>
-   production_spec (\<lambda> buf inps outs buf'. map (VOut 1) buf @ map (case_VIO VOut VOut) (filter (case_VIO (\<lambda> _ x. P x) \<top>) inps) = outs @ map (VOut 1) buf') buf (lappend lxs lys)"
-  oops
+   \<exists> lys. production_spec (\<lambda> buf inps outs buf'. map (VOut 1) buf @ map (case_VIO VOut VOut) (filter (case_VIO (\<lambda> _ x. P x) \<top>) inps) = outs @ map (VOut 1) buf') buf (lappend lxs lys)"
+  using wtraced_lappend_extends wtraced_production_spec_soundness by blast
 
 
 end
