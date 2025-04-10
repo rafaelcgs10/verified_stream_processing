@@ -2,6 +2,7 @@ theory Operator_Examples
 
 imports
   Operator
+  BNA_Operators
 begin
 
 corec writes where
@@ -423,11 +424,30 @@ lemma wtraced_lappend_extends:
   apply (simp add: lappend_inf)
   done
 
+
 lemma lfinite_wtraced_production_spec_extends:
   "\<forall> x \<in> set buf. P x \<Longrightarrow>
    wtraced (filter_op P buf) lxs \<Longrightarrow>
    \<exists> lys. production_spec (\<lambda> buf inps outs buf'. map (VOut 1) buf @ map (case_VIO VOut VOut) (filter (case_VIO (\<lambda> _ x. P x) \<top>) inps) = outs @ map (VOut 1) buf') buf (lappend lxs lys)"
   using wtraced_lappend_extends wtraced_production_spec_soundness by blast
 
+(* comp_op_ind_spec wire P1 P2 (buf' >> buf) s1' s2 inps' outsR buf'' s1' s2' \<Longrightarrow> *)
+
+inductive comp_op_ind_spec for wire P1 P2 where
+  "comp_op_ind_spec wire P1 P2 buf s1 s2 [] [] buf s1 s2"
+| "P1 s1 [map_VIO projl projl id x . x <- inps, case x of VInp (Inl p) x \<Rightarrow> True | _ \<Rightarrow> False] outs' s1' \<Longrightarrow>
+   buf' = F outs' \<Longrightarrow>
+   G outs = H buf' \<Longrightarrow>
+   inps' = [x . x <- inps, case x of VInp (Inl p) x \<Rightarrow> False | _ \<Rightarrow> True] \<Longrightarrow>
+   outsR = [map_VIO projr projr id x . x <- outs, case x of VOut (Inr p) x \<Rightarrow> True | _ \<Rightarrow> False] \<Longrightarrow>
+   P2 s2 I outsR s2' \<Longrightarrow>
+   comp_op_ind_spec wire P1 P2 buf s1 s2 inps outs buf'' s1' s2'"
+
+
+
+lemma comp_op_correctness:
+  "operator_spec op1 s1 P1 \<Longrightarrow>
+   operator_spec op2 s2 P2 \<Longrightarrow>
+   operator_spec (comp_op wire buf op1 op2) (buf, s1, s2) (\<lambda> (buf, s1, s2) inps outs (buf', s1', s2'). X)"
 
 end
