@@ -446,10 +446,6 @@ lemma lfinite_wtraced_production_spec_extends:
 term subseq
  *)
 
-term fold
-
-abbreviation VIOs_to_buf :: "('i, 'o, 'd) VIO buf \<Rightarrow> 'i \<Rightarrow> 'd buf" where
-  "VIOs_to_buf vios \<equiv> fold (case_VIO BENQ undefined) vios (\<lambda> _. [])"
 
 definition comp_op_spec where
   "comp_op_spec  wire P1 P2 buf s1 s2 inps outs buf' s1' s2' = 
@@ -459,11 +455,58 @@ definition comp_op_spec where
     outs2 = [map_VIO projr projr id x . x <- outs, case x of VOut (Inr p) x \<Rightarrow> True | _ \<Rightarrow> False] \<and>
     subseq [map_VIO projl projl id x . x <- outs, case x of VOut (Inl p) x \<Rightarrow> p \<notin> dom wire | _ \<Rightarrow> False] outs1 \<and>
     subseq [map_VIO projr projr id x . x <- inps, case x of VInp (Inr p) x \<Rightarrow> p \<notin> ran wire | _ \<Rightarrow> False] inps2 \<and>
-    buf' >> fold (case_VIO BENQ undefined) inps2 (\<lambda> _. []) = fold (case_VIO undefined undefined) outs1 (\<lambda> _. []) >> buf)"
+    (\<forall> x \<in> set inps2. is_VInp x) \<and> (\<forall> x \<in> set outs1. \<not> is_VInp x) \<and>
+    buf' >> fold (case_VIO BENQ undefined) (filter (case_VIO (\<lambda> p x. p \<in> ran wire) \<bottom>) inps2) (\<lambda> _. []) =
+    fold (case_VIO undefined (\<lambda> p x. case wire p of Some q \<Rightarrow> BENQ q x)) (filter (case_VIO \<bottom> (\<lambda> p x. p \<in> dom wire)) outs1) (\<lambda> _. []) >> buf)"
+
+
+lemma wstep_comp_op_operator_spec:
+  "wstep (Inp (Inl p) x) (comp_op wire buf op1 op2) op \<Longrightarrow>
+   operator_spec op1 s1 P1 \<Longrightarrow>
+   operator_spec op2 s2 P2 \<Longrightarrow>
+   \<exists> op1' s1' op2' s2' buf'. 
+     operator_spec op1' s1' P1 \<and> operator_spec op2' s2' P2 \<and> op = comp_op wire buf' op1' op2' \<and>
+     comp_op_spec wire P1 P2 buf s1 s2 [VInp (Inl p) x] [] buf' s1' s2'"
+  sorry
 
 lemma comp_op_correctness:
   "operator_spec op1 s1 P1 \<Longrightarrow>
    operator_spec op2 s2 P2 \<Longrightarrow>
-   operator_spec (comp_op wire buf op1 op2) (buf, s1, s2) (\<lambda> (buf, s1, s2) inps outs (buf', s1', s2'). X)"
+   operator_spec (comp_op wire buf op1 op2) (buf, s1, s2) (\<lambda> (buf, s1, s2) inps outs (buf', s1', s2'). comp_op_spec  wire P1 P2 buf s1 s2 inps outs buf' s1' s2')"
+  apply (subst operator_spec_def)
+  apply (intro allI iffI)
+  subgoal for lxs
+    apply (coinduction arbitrary: op1 op2 lxs buf s1 s2 rule: production_spec.coinduct)
+    subgoal for op1 op2 lxs buf s1 s2
+      apply (erule wtraced.cases)
+      subgoal
+        by simp
+      subgoal for vio op op' lxs
+        apply simp
+        apply hypsubst_thin
+        apply (cases vio)
+        subgoal for p x
+          apply (cases p)
+          subgoal for p
+            apply hypsubst_thin
+            apply simp
+          apply (drule wstep_comp_op_operator_spec)
+            apply assumption+
+          apply safe
+          subgoal for op1' s1' op2' s2' buf'
+          apply (rule exI[of _ buf'])
+          apply (rule exI[of _ s1'])
+          apply (rule exI[of _ s2'])
+          apply (rule exI[of _ lxs])
+          apply (rule exI[of _ "[VInp (Inl p) x]"])
+          apply (rule exI[of _ "[]"])
+          apply simp
+          apply (intro conjI disjI1)
+            apply (rule exI[of _ op1'])
+             apply simp
+            apply (rule exI[of _ op2'])
+             apply simp
+            done
+
 
 end
