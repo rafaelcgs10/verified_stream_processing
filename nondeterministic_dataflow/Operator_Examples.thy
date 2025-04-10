@@ -433,17 +433,33 @@ lemma lfinite_wtraced_production_spec_extends:
 
 (* comp_op_ind_spec wire P1 P2 (buf' >> buf) s1' s2 inps' outsR buf'' s1' s2' \<Longrightarrow> *)
 
-inductive comp_op_ind_spec for wire P1 P2 where
+(* inductive comp_op_ind_spec for wire P1 P2 where
   "comp_op_ind_spec wire P1 P2 buf s1 s2 [] [] buf s1 s2"
 | "P1 s1 [map_VIO projl projl id x . x <- inps, case x of VInp (Inl p) x \<Rightarrow> True | _ \<Rightarrow> False] outs' s1' \<Longrightarrow>
    buf' = F outs' \<Longrightarrow>
    G outs = H buf' \<Longrightarrow>
    inps' = [x . x <- inps, case x of VInp (Inl p) x \<Rightarrow> False | _ \<Rightarrow> True] \<Longrightarrow>
-   outsR = [map_VIO projr projr id x . x <- outs, case x of VOut (Inr p) x \<Rightarrow> True | _ \<Rightarrow> False] \<Longrightarrow>
+   outsR = [map_VIO projr projr id x. x <- outs, case x of VOut (Inr p) x \<Rightarrow> True | _ \<Rightarrow> False] \<Longrightarrow>
    P2 s2 I outsR s2' \<Longrightarrow>
    comp_op_ind_spec wire P1 P2 buf s1 s2 inps outs buf'' s1' s2'"
 
+term subseq
+ *)
 
+term fold
+
+abbreviation VIOs_to_buf :: "('i, 'o, 'd) VIO buf \<Rightarrow> 'i \<Rightarrow> 'd buf" where
+  "VIOs_to_buf vios \<equiv> fold (case_VIO BENQ undefined) vios (\<lambda> _. [])"
+
+definition comp_op_spec where
+  "comp_op_spec  wire P1 P2 buf s1 s2 inps outs buf' s1' s2' = 
+   (\<exists> inps1 outs1 inps2 outs2.
+    P1 s1 inps1 outs1 s1' \<and> P2 s2 inps2 outs2 s2' \<and>
+    inps1 = [map_VIO projl projl id x . x <- inps, case x of VInp (Inl p) x \<Rightarrow> True | _ \<Rightarrow> False] \<and>
+    outs2 = [map_VIO projr projr id x . x <- outs, case x of VOut (Inr p) x \<Rightarrow> True | _ \<Rightarrow> False] \<and>
+    subseq [map_VIO projl projl id x . x <- outs, case x of VOut (Inl p) x \<Rightarrow> p \<notin> dom wire | _ \<Rightarrow> False] outs1 \<and>
+    subseq [map_VIO projr projr id x . x <- inps, case x of VInp (Inr p) x \<Rightarrow> p \<notin> ran wire | _ \<Rightarrow> False] inps2 \<and>
+    buf' >> fold (case_VIO BENQ undefined) inps2 (\<lambda> _. []) = fold (case_VIO undefined undefined) outs1 (\<lambda> _. []) >> buf)"
 
 lemma comp_op_correctness:
   "operator_spec op1 s1 P1 \<Longrightarrow>
