@@ -24,12 +24,12 @@ lemma foo[friend_of_corec_simps]:
 friend_of_corec writes where
   "writes op p xs =
     (case xs of [] \<Rightarrow> case_op Read Write Choice Silent op | x #xs \<Rightarrow> Write (writes op p xs) p x)"
-  apply (rule writes.code)
+   apply (rule writes.code)
   apply transfer_prover
   done
 
 corec window_op where
- "window_op f n buf time =
+  "window_op f n buf time =
    Choice (cimage (\<lambda> time. 
      choice2
      (Read (1::1) (\<lambda> x. if n < time then writes (window_op f n [] (time mod n)) (1 :: 1) (f (buf @ [x]) # replicate (time div n - 1) (f [])) else Silent (window_op f n (buf @ [x]) time)))
@@ -49,19 +49,19 @@ coinductive production_spec for P where
 
 lemma step_empty_writes:
   "step io (writes op p []) op' \<Longrightarrow> step io op op'"
-    apply (subst (asm) writes.code)
+  apply (subst (asm) writes.code)
   apply (auto split: op.splits list.splits)
   done
 
 lemma step_writes_reads_buf_empty:
   "step io (writes op p buf) op' \<Longrightarrow> io = Inp p' x \<Longrightarrow> buf = []"
-    apply (subst (asm) writes.code)
+  apply (subst (asm) writes.code)
   apply (auto split: op.splits list.splits)
   done
 
 lemma step_writes_silent_buf_empty:
   "step io (writes op p buf) op' \<Longrightarrow> io = Tau \<Longrightarrow> buf = []"
-    apply (subst (asm) writes.code)
+  apply (subst (asm) writes.code)
   apply (auto split: op.splits list.splits)
   done
 
@@ -69,16 +69,16 @@ lemma writes_empty_buf_simp[simp]:
   "writes op p [] = op"
   apply (coinduction arbitrary: op rule: op.coinduct_upto)
   apply (intro conjI impI)
-    apply (subst writes.code, simp split: op.splits)
-    apply (subst writes.code, simp split: op.splits)
+           apply (subst writes.code, simp split: op.splits)
+          apply (subst writes.code, simp split: op.splits)
          apply (subst (asm) writes.code, simp add: window_op.cong_refl writes.friend.code rel_fun_def split: op.splits)
         apply (subst writes.code, simp split: op.splits)
-         apply (subst (asm) writes.code, simp add: window_op.cong_refl writes.friend.code rel_fun_def split: op.splits)
+       apply (subst (asm) writes.code, simp add: window_op.cong_refl writes.friend.code rel_fun_def split: op.splits)
       apply (subst writes.code, simp split: op.splits)
-         apply (subst (asm) writes.code, simp add: window_op.cong_refl writes.friend.code rel_fun_def split: op.splits)
+     apply (subst (asm) writes.code, simp add: window_op.cong_refl writes.friend.code rel_fun_def split: op.splits)
     apply (subst writes.code, simp split: op.splits)
    apply (subst (asm) writes.code, simp add: window_op.cong_refl writes.friend.code rel_fun_def split: op.splits)
-  apply (meson cset.rel_refl rel_cset.rep_eq window_op.cong_refl)
+   apply (meson cset.rel_refl rel_cset.rep_eq window_op.cong_refl)
   apply (subst (asm) writes.code, simp add: window_op.cong_refl writes.friend.code rel_fun_def split: op.splits)
   done
 
@@ -91,11 +91,11 @@ lemma step_Inp_True_filter_op:
   apply (induct io op op' arbitrary: buf pred: step)
      apply (subst (asm) filter_op.code, simp)    
     apply (subst (asm) filter_op.code, simp)
-    apply (subst (asm) filter_op.code, simp)
+   apply (subst (asm) filter_op.code, simp)
   subgoal for op ops io op' buf
     apply hypsubst_thin
     apply (subst (asm) (3) filter_op.code)
-  apply (auto split: op.splits list.splits if_splits dest!: step_writes_reads_buf_empty step_empty_writes; hypsubst_thin)
+    apply (auto split: op.splits list.splits if_splits dest!: step_writes_reads_buf_empty step_empty_writes; hypsubst_thin)
     done
   done
 
@@ -108,11 +108,11 @@ lemma step_Inp_False_filter_op:
   apply (induct io op op' arbitrary: buf pred: step)
      apply (subst (asm) filter_op.code, simp)    
     apply (subst (asm) filter_op.code, simp)
-    apply (subst (asm) filter_op.code, simp)
+   apply (subst (asm) filter_op.code, simp)
   subgoal for op ops io op' buf
     apply hypsubst_thin
     apply (subst (asm) (3) filter_op.code)
-  apply (auto split: op.splits list.splits if_splits dest!: step_writes_reads_buf_empty step_empty_writes; hypsubst_thin)
+    apply (auto split: op.splits list.splits if_splits dest!: step_writes_reads_buf_empty step_empty_writes; hypsubst_thin)
     done
   done
 
@@ -124,11 +124,11 @@ lemma step_Tau_filter_op:
   apply (induct io op op' arbitrary: buf pred: step)
      apply (subst (asm) filter_op.code, simp)    
     apply (subst (asm) filter_op.code, simp)
-    apply (subst (asm) filter_op.code, simp)
+   apply (subst (asm) filter_op.code, simp)
   subgoal for op ops io op' buf
     apply hypsubst_thin
     apply (subst (asm) (2) filter_op.code)
-  apply (fastforce split: if_splits op.splits list.splits dest!: step_writes_reads_buf_empty step_empty_writes step_writes_silent_buf_empty; hypsubst_thin)
+    apply (fastforce split: if_splits op.splits list.splits dest!: step_writes_reads_buf_empty step_empty_writes step_writes_silent_buf_empty; hypsubst_thin)
     done
   done
 
@@ -155,10 +155,9 @@ lemma wstep_Inp_False_filter_op:
 lemma step_Out_writes:
   "step (Out p x) (writes (filter_op P []) 1 (y # buf)) op \<Longrightarrow>
    op = writes (filter_op P []) 1 buf \<and> p = 1 \<and> y = x"
-    apply (subst (asm) writes.code)
+  apply (subst (asm) writes.code)
   apply (auto split: op.splits list.splits)
   done
-
 
 lemma step_Out_filter_op:
   "step io op op' \<Longrightarrow>
@@ -168,7 +167,7 @@ lemma step_Out_filter_op:
   apply (induct io op op' arbitrary: buf pred: step)
      apply (subst (asm) filter_op.code, simp)    
     apply (subst (asm) filter_op.code, simp)
-    apply (subst (asm) filter_op.code, simp)
+   apply (subst (asm) filter_op.code, simp)
   subgoal for op ops io op' buf
     apply hypsubst_thin
     apply (subst (asm) (3) filter_op.code)
@@ -182,6 +181,48 @@ lemma step_Out_filter_op:
      apply blast
     apply (auto split: if_splits)
     done
+  done
+
+lemma step_Inp_True_filter_op_intro:
+  "buf' = bulk_benq [x] buf \<Longrightarrow>
+   P x \<Longrightarrow>
+   step (Inp 1 x) (filter_op P buf) (filter_op P buf')"
+  apply (subst filter_op.code)
+  apply (simp split: if_splits)
+  apply (intro conjI impI)
+   apply (rule SC)
+    apply (rule cinsertI1)
+   apply (smt (verit, del_insts) SR self_append_conv2)
+  apply (rule SC)
+   apply (rule cinsertI1)
+  apply (smt (verit, del_insts) SR self_append_conv2)
+  done  
+
+lemma step_Inp_False_filter_op_intro:
+  "\<not> P x \<Longrightarrow>
+   step (Inp 1 x) (filter_op P buf) (filter_op P buf)"
+  apply (subst filter_op.code)
+  apply (simp split: if_splits)
+  apply (intro conjI impI)
+   apply (rule SC)
+    apply (rule cinsertI1)
+   apply (smt (verit, del_insts) SR self_append_conv2)
+  apply (rule SC)
+   apply (rule cinsertI1)
+  apply (smt (verit, del_insts) SR self_append_conv2)
+  done  
+
+lemma step_Out_filter_op_intro:
+  "buf' = tl buf \<Longrightarrow>
+   buf \<noteq> [] \<Longrightarrow>
+   hd buf = x \<Longrightarrow>
+   step (Out 1 x) (filter_op P buf) (filter_op P buf')"
+  apply (subst filter_op.code)
+  apply (simp split: if_splits)
+  apply (rule SC)
+   apply (rule cinsertI2)
+   apply (rule cinsertI1)
+  apply blast
   done
 
 lemma wstep_Out_filter_op:
@@ -256,7 +297,10 @@ lemma wtraced_production_spec_completeness:
       subgoal for i ins' p x
         apply (rule exI[of _ "filter_op P (buf @ [x])"])
         apply (intro conjI)
-        subgoal sorry
+        subgoal
+          apply hypsubst_thin
+          using step_Inp_True_filter_op_intro apply (metis (full_types) num1_eq1 step_wstep)
+          done
         apply (rule disjI1)
         apply (rule exI[of _ "buf @ [x]"])
         apply simp
@@ -265,20 +309,90 @@ lemma wtraced_production_spec_completeness:
          apply (smt (verit, best) Cons_eq_map_conv VIO.inject(2) list.inj_map_strong map_eq_append_conv map_is_Nil_conv)
         apply (rule production_spec.intros(2)[where out=Nil, simplified])
            apply assumption+
-        apply (metis (mono_tags, lifting) append.assoc append_Cons append_Nil list.simps(8) list.simps(9) map_append num1_eq1)
+          apply (metis (mono_tags, lifting) append.assoc append_Cons append_Nil list.simps(8) list.simps(9) map_append num1_eq1)
          apply simp_all
         done
-      subgoal
-        sorry
-      subgoal
-        sorry
-      subgoal
-        sorry
-      subgoal
-        sorry
+      subgoal for i ins' p x
+        apply hypsubst_thin
+        apply (rule exI[of _ "filter_op P buf"])
+        apply (intro conjI)
+        subgoal
+          using step_Inp_False_filter_op_intro apply (metis (full_types) num1_eq1 step_wstep)
+          done
+        apply (rule disjI1)
+        apply (rule exI[of _ "buf"])
+        apply simp
+        apply (cases ins')
+         apply simp
+         apply (smt (verit, best) Cons_eq_map_conv VIO.inject(2) list.inj_map_strong map_eq_append_conv map_is_Nil_conv)
+        apply (rule production_spec.intros(2)[where out=Nil, simplified])
+           apply assumption+
+          apply (metis (mono_tags, lifting) append.assoc append_Cons append_Nil list.simps(8) list.simps(9) map_append num1_eq1)
+         apply simp_all
+        done
+      subgoal for oo out'
+        apply hypsubst_thin
+        apply (cases oo; simp; hypsubst_thin)
+        subgoal for p x
+          apply (rule exI[of _ "filter_op P (tl buf)"])
+          apply (intro conjI)
+          subgoal
+            using step_Out_filter_op_intro apply force
+            done
+          apply (rule disjI1)
+          apply (rule exI[of _ "tl buf"])
+          apply simp
+          apply (intro conjI)
+           apply force
+          apply (cases out')
+           apply simp
+           apply (smt (verit, ccfv_SIG) VIO.inject(2) list.inj_map_strong list.sel(3) map_tl)
+          apply (rule production_spec.intros(2)[where ins=Nil, simplified])
+             apply assumption+
+            apply (simp add: map_tl)
+           apply simp_all
+          done
+        done
+      subgoal for oo out' i ins p x
+        apply hypsubst_thin
+        apply (rule exI[of _ "filter_op P (buf @ [x])"])
+        apply (intro conjI)
+        subgoal
+          using step_Inp_True_filter_op_intro apply (metis (full_types) num1_eq1 step_wstep)
+          done
+        apply (rule disjI1)
+        apply (rule exI[of _ "buf @ [x]"])
+        apply simp
+        apply (rule production_spec.intros(2)[where out="oo # out'" and ins=ins, simplified])
+           apply assumption+
+          apply (smt (verit, ccfv_threshold) append.assoc append_Cons list.simps(9) map_append num1_eq1 self_append_conv2)
+         apply simp_all
+        done
+      subgoal for oo out' i ins p x
+        apply (rule exI[of _ "filter_op P buf"])
+        apply (intro conjI)
+        subgoal
+          using step_Inp_False_filter_op_intro apply (metis (full_types) num1_eq1 step_wstep)
+          done
+        apply (rule disjI1)
+        apply (rule exI[of _ "buf"])
+        apply simp
+        apply (rule production_spec.intros(2)[where out="oo # out'" and ins=ins, simplified])
+           apply assumption+
+          apply (smt (verit, ccfv_threshold) append.assoc append_Cons list.simps(9) map_append num1_eq1 self_append_conv2)
+         apply simp_all
+        done
       done
     done
   done
+
+definition operator_spec where
+  "operator_spec op state spec = (\<forall> lxs. wtraced op lxs \<longleftrightarrow> production_spec spec state lxs)"
+
+lemma filter_op_correctness:
+  "\<forall> x \<in> set buf. P x \<Longrightarrow>
+   operator_spec (filter_op P buf) buf (\<lambda> buf inps outs buf'. map (VOut 1) buf @ map (case_VIO VOut VOut) (filter (case_VIO (\<lambda> _ x. P x) \<top>) inps) = outs @ map (VOut 1) buf')"
+  unfolding operator_spec_def using wtraced_production_spec_completeness wtraced_production_spec_soundness by blast
 
 lemma wtraced_production_spec_extends:
   "\<forall> x \<in> set buf. P x \<Longrightarrow>
