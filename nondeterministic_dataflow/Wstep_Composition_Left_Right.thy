@@ -30,9 +30,31 @@ lemma
   \<open>wstep io (comp_op wire buf op\<^sub>1 op\<^sub>2) op' \<longleftrightarrow>
   (\<exists>buf' buf'' buf''' op\<^sub>1' op\<^sub>2'. op' = comp_op wire buf' op\<^sub>1' op\<^sub>2'
   \<and> wstep_comp_op_L wire (case io of Inp (Inl _) _ \<Rightarrow> io | Out (Inl p) _ \<Rightarrow> if wire p = None then io else Tau | _ \<Rightarrow> Tau) buf'' op\<^sub>1 op\<^sub>1'
-  \<and> wstep_comp_op_R wire (case io of Out (Inr _) _ \<Rightarrow> io | Inp (Inr _) _ \<Rightarrow> if p \<notin> ran wire then io else Tau | _ \<Rightarrow> Tau) buf''' op\<^sub>2 op\<^sub>2'
+  \<and> wstep_comp_op_R wire (case io of Out (Inr _) _ \<Rightarrow> io | Inp (Inr p) _ \<Rightarrow> if p \<notin> ran wire then io else Tau | _ \<Rightarrow> Tau) buf''' op\<^sub>2 op\<^sub>2'
   \<and> (\<forall>p. \<exists>n \<le> length (buf p @ buf'' p). buf' p = drop n (buf p @ buf'' p) \<and> buf''' p = take n (buf p @ buf'' p)))\<close>
-  oops
+  apply (intro iffI)
+  subgoal
+    sorry
+  subgoal
+    apply (elim exE conjE)
+    subgoal for buf' buf'' buf''' op\<^sub>1' op\<^sub>2'
+      apply hypsubst_thin
+      apply (induct \<open>case io of Inp (Inl _) _ \<Rightarrow> io | Out (Inl p) _ \<Rightarrow> if wire p = None then io else Tau | _ \<Rightarrow> Tau\<close> buf'' op\<^sub>1 op\<^sub>1' arbitrary: io pred: wstep_comp_op_L)
+          apply (auto split: sum.splits IO.splits)
+      subgoal for op\<^sub>1'' x p
+        apply (cases \<open>p \<notin> ran wire\<close>; simp)
+        subgoal
+          apply rotate_tac
+          apply (induct _ buf''' op\<^sub>2 op\<^sub>2' pred: wstep_comp_op_R)
+              apply auto
+          sorry
+        subgoal
+          apply rotate_tac
+          apply (induct _ buf''' op\<^sub>2 op\<^sub>2' pred: wstep_comp_op_R)
+              apply auto
+          sorry
+        done
+      oops
 
 lemma
   \<open>wstep io (comp_op (\<lambda>_. None) (\<lambda>_. []) op\<^sub>1 op\<^sub>2) op' \<longleftrightarrow>
@@ -48,12 +70,12 @@ lemma
       apply hypsubst_thin
       apply (induct \<open>case io of Inp (Inl _) _ \<Rightarrow> io | Out (Inl _) _ \<Rightarrow> io | _ \<Rightarrow> Tau\<close> \<open>(\<lambda>_. []) :: 'b \<Rightarrow> 'e buf\<close> op\<^sub>1 op\<^sub>1' arbitrary: io pred: wstep_comp_op_L)
           apply (auto split: sum.splits IO.splits)
-      subgoal for op x p
+      subgoal
         apply (induct _ \<open>(\<lambda>_. []) :: 'b \<Rightarrow> 'e buf\<close> op\<^sub>2 op\<^sub>2' pred: wstep_comp_op_R)
             apply auto
          apply (metis empty_iff ran_empty step_comp_op_R_Inp wstep_converse_trans(2))
         by (meson step_comp_op_R_Out wstep_converse_trans(1))
-      subgoal for op x p
+      subgoal
         apply (induct _ \<open>(\<lambda>_. []) :: 'b \<Rightarrow> 'e buf\<close> op\<^sub>2 op\<^sub>2' pred: wstep_comp_op_R)
             apply auto
          apply (metis empty_iff ran_empty step_comp_op_R_Inp wstep_converse_trans(2))
