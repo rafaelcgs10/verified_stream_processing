@@ -34,11 +34,38 @@ lemma wtrace_equiv_history_equiv:
 corec suc_op :: \<open>(1, 1, nat) op\<close> where
   \<open>suc_op = Read 1 (\<lambda>x. Write suc_op 1 (Suc x))\<close>
 
+lemma step_suc_op_elim:
+  assumes \<open>step io suc_op op\<close>
+  obtains x where \<open>io = Inp 1 x\<close> \<open>op = Write suc_op 1 (Suc x)\<close>
+  apply atomize_elim
+  using assms
+  apply (rule step_choicesE)
+    apply (subst (asm) suc_op.code, simp)+
+  done
+
 corec dup_op :: \<open>(1, 1, nat) op\<close> where
   \<open>dup_op = Read 1 (\<lambda>x. Write (Write dup_op 1 x) 1 x)\<close>
 
+lemma step_dup_op_elim:
+  assumes \<open>step io dup_op op\<close>
+  obtains x where \<open>io = Inp 1 x\<close> \<open>op = Write (Write dup_op 1 x) 1 x\<close>
+  apply atomize_elim
+  using assms
+  apply (rule step_choicesE)
+    apply (subst (asm) dup_op.code, simp)+
+  done
+
 corec twobuf_op :: \<open>(1, 1, nat) op\<close> where
   \<open>twobuf_op = Read 1 (\<lambda>x. Read 1 (\<lambda>y. Write (Write twobuf_op 1 y) 1 x))\<close>
+
+lemma step_twobuf_op_elim:
+  assumes \<open>step io twobuf_op op\<close>
+  obtains x where \<open>io = Inp 1 x\<close> \<open>op = Read 1 (\<lambda>y. Write (Write twobuf_op 1 y) 1 x)\<close>
+  apply atomize_elim
+  using assms
+  apply (rule step_choicesE)
+    apply (subst (asm) twobuf_op.code, simp)+
+  done
 
 abbreviation \<open>f_op \<equiv> (dup_op \<parallel> suc_op \<bullet> dup_op) \<bullet> \<V> \<bullet> twobuf_op \<bullet> \<C>\<close>
 
@@ -59,19 +86,173 @@ lemma history_equiv_f_f':
     subgoal
       apply (elim exE conjE)
       subgoal for vios
-        sorry
+        apply (intro exI[of _ vios] conjI)
+        subgoal premises prems
+          using prems(1)
+          apply coinduction
+          apply (cases vios; hypsubst_thin)
+          subgoal
+            by blast
+          subgoal for vio vios'
+            sorry
+          done
+        subgoal
+          by assumption
+        subgoal
+          by assumption
+        done
       done
     subgoal
       sorry
     done
   sorry
 
+lemma history_f'_11:
+  \<open>history f'_op (case_sum (\<lambda>_. LCons 1 LNil) (\<lambda>_. LNil)) (case_sum (\<lambda>_. LCons 1 LNil) (\<lambda>_. LNil))\<close>
+  unfolding history_def pcomp_op_def scomp_op_def
+  apply (rule exI[of _ \<open>LCons (VInp (Inl 1) 1) (LCons (VOut (Inl 1) 1) LNil)\<close>])
+  apply (intro conjI)
+  subgoal
+    apply (rule wtraced.Step)
+     apply simp
+     apply (rule step_wstep)
+     apply (rule step_map_op)
+      apply (rule step_comp_op_L_Inp)
+        apply (rule step_map_op)
+         apply (rule step_comp_op_L_Inp)
+           apply (rule step_map_op)
+            apply (rule step_comp_op_L_Inp)
+              apply (rule step_comp_op_L_Inp)
+                apply (subst dup_op.code)
+                apply blast
+               apply simp_all
+    apply (rule wtraced.Step)
+     apply simp
+     apply (rule wstep_trans(1))
+      apply (rule rtranclp.intros(2))
+       apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(2))
+         apply (rule rtranclp.intros(2))
+          apply (rule rtranclp.intros(2))
+           apply (rule rtranclp.intros(2))
+            apply (rule rtranclp.intros(1))
+           apply (rule step_map_op)
+            apply (rule step_comp_op_L_Tau)
+              apply (rule step_map_op)
+               apply (rule step_comp_op_L_Tau)
+                 apply (rule step_map_op)
+                  apply (rule step_Tau_comp_op_L)
+                     apply (rule step_comp_op_L_Out)
+                        apply blast
+                       apply simp_all
+          apply (rule step_map_op)
+           apply (rule step_comp_op_L_Tau)
+             apply (rule step_map_op)
+              apply (rule step_comp_op_L_Tau)
+                apply (rule step_map_op)
+                 apply (rule step_Tau_comp_op_R)
+                      apply (rule step_merge_op_Read_L)
+                       apply (simp_all add: defaults_num1_def)
+         apply (rule step_map_op)
+          apply (rule step_comp_op_L_Tau)
+            apply (rule step_map_op)
+             apply (rule step_Tau_comp_op_L)
+                apply (rule step_map_op)
+                 apply (rule step_comp_op_R_Out)
+                   apply (rule step_merge_op_Write_L)
+                      apply (simp_all add: defaults_num1_def)
+        apply (rule step_map_op)
+         apply (rule step_comp_op_L_Tau)
+           apply (rule step_map_op)
+            apply (rule step_Tau_comp_op_R)
+                 apply (rule step_id_op_Read)
+                  apply (simp_all add: defaults_num1_def)
+       apply (rule step_map_op)
+        apply (rule step_Tau_comp_op_L)
+           apply (rule step_map_op)
+            apply (rule step_comp_op_R_Out)
+              apply (rule step_id_op_Write)
+                 apply (simp_all add: defaults_num1_def)
+      apply (rule step_map_op)
+       apply (rule step_Tau_comp_op_R)
+            apply (rule step_acopy_op_Read)
+             apply (simp_all add: defaults_num1_def)
+     apply (rule step_map_op)
+      apply (rule step_comp_op_R_Out)
+        apply (rule step_acopy_op_WriteL)
+           apply (simp_all add: defaults_num1_def BENQ_diff_access BHD_def)
+    apply (rule wtraced.Nil)
+    done
+  subgoal
+    by (simp add: lproject_def)
+  subgoal
+    by (auto simp: lproject_def split: sum.splits)
+  done
+
 lemma no_history_f_feedback_12:
   \<open>history (f_op \<up>) (\<lambda>_. LCons 1 LNil) (\<lambda>_. LCons 1 (LCons 2 LNil)) \<Longrightarrow> False\<close>
   unfolding history_def feedback_op_def pcomp_op_def scomp_op_def
   apply (elim exE conjE)
   subgoal for vios
-    sorry
+    apply (cases vios; hypsubst_thin)
+    subgoal premises prems
+      using prems(3) lproject_def
+      by (metis lfilter_LNil llist.distinct(1) lmap_eq_LNil)
+    subgoal for vio vios'
+      apply (subgoal_tac \<open>vio = VInp 1 1\<close>; hypsubst_thin?)
+      subgoal
+        apply (cases vios'; hypsubst_thin)
+        subgoal premises prems
+          using prems(3)
+          apply -
+          apply (drule fun_cong[of _ _ 1])
+          by (simp add: lproject_def)
+        subgoal for vio' vios''
+          apply (cases vio'; hypsubst_thin)
+          subgoal premises prems
+            using prems(2)
+            apply -
+            apply (drule spec[of _ 1])
+            by (simp add: lproject_def)
+          subgoal
+            sorry
+          done
+        done
+      subgoal
+        apply (cases vio; hypsubst_thin)
+        subgoal premises prems
+          using prems(2)
+          apply -
+          apply (drule spec[of _ 1])
+          by (simp add: lproject_def)
+        subgoal premises prems for _ x
+          using prems(1)
+          apply -
+          apply (rule FalseE)
+          apply (erule wtraced.cases; hypsubst_thin)
+          subgoal
+            by blast
+          subgoal
+            apply simp
+            apply (erule conjE)
+            apply hypsubst_thin
+            apply (unfold wstep_def)
+            apply simp
+            apply (erule relcomppE)+
+            apply (erule converse_rtranclpE)
+             apply hypsubst_thin
+            subgoal premises prems'
+              using prems'(2)
+              by (auto elim!: step_map_op_elim step_loop_op_elim step_comp_op_elim step_dup_op_elim step_suc_op_elim step_merge_op_elim step_twobuf_op_elim step_acopy_op_elim)
+            subgoal premises prems'
+              using prems'(4)
+              apply (auto elim!: step_map_op_elim step_loop_op_elim step_comp_op_elim step_dup_op_elim step_suc_op_elim step_merge_op_elim step_twobuf_op_elim step_acopy_op_elim)[1]
+              by (smt (verit) Inr_Inl_False in_feedback_wire mem_Collect_eq num1_eq1 ran_def sum.case_eq_if)
+            done
+          done
+        done
+      done
+    done
   done
 
 lemma history_f'_feedback_12:
