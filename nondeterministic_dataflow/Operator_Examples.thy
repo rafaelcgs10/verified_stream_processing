@@ -42,11 +42,24 @@ corec filter_op where
    (Read (1 :: 1) (\<lambda> x. filter_op P (if P x then buf @ [x] else buf)))
    (if buf = [] then filter_op P buf else Write (filter_op P (tl buf)) (1 :: 1) (hd buf))"
 
+coinductive small_production_spec for P where
+  "small_production_spec P state LNil"
+| "small_production_spec P state' lxs \<Longrightarrow> P state state' vio \<Longrightarrow> small_production_spec P state (LCons vio lxs)"
+
+inductive_cases small_production_spec_LNilE[elim!]: "small_production_spec P state LNil"
+inductive_cases small_production_spec_ConsE[elim!]: "small_production_spec P state (LCons vio lxs)"
+
+
 coinductive production_spec for P where
-  "production_spec P state LNil"
+  "P state [] [] state \<Longrightarrow> production_spec P state LNil"
 | "production_spec P state' lxs \<Longrightarrow> P state ins out state' \<Longrightarrow>
    (\<forall> x \<in> set ins. is_VInp x) \<Longrightarrow> (\<forall> x \<in> set out. \<not> is_VInp x) \<Longrightarrow>
    ins @ out \<noteq> [] \<Longrightarrow> production_spec P state (ins @- out @- lxs)"
+
+inductive_cases production_spec_LNilE[elim!]: "production_spec P state LNil"
+inductive_cases production_spec_shiftE[elim!]: "production_spec P state (ins @- out @- lxs)"
+inductive_cases production_spec_ConsVInpE[elim!]: "production_spec P state (LCons (VInp p x) lxs)"
+inductive_cases production_spec_ConsVOutE[elim!]: "production_spec P state (LCons (VOut p x) lxs)"
 
 lemma step_empty_writes:
   "step io (writes op p []) op' \<Longrightarrow> step io op op'"
@@ -283,6 +296,7 @@ lemma wtraced_production_spec_soundness:
     done
   done  
 
+
 lemma wtraced_production_spec_completeness:
   "\<forall> x \<in> set buf. P x \<Longrightarrow>
    production_spec (\<lambda> buf inps outs buf'. map (VOut 1) buf @ map (case_VIO VOut VOut) (filter (case_VIO (\<lambda> _ x. P x) \<top>) inps) = outs @ map (VOut 1) buf') buf lxs \<Longrightarrow>
@@ -387,49 +401,108 @@ lemma wtraced_production_spec_completeness:
     done
   done
 
+lemma wtraced_small_production_spec_soundness:
+  "\<forall> x \<in> set buf. P x \<Longrightarrow>
+   wtraced (filter_op P buf) lxs \<Longrightarrow>
+   small_production_spec (\<lambda> buf buf'. case_VIO (\<lambda>p x. p = 1 \<and> (if P x then buf' = buf @ [x] else buf = buf')) (\<lambda> p x. p = 1 \<and> buf \<noteq> [] \<and> P x \<and> buf' = tl buf \<and> bhd buf = x)) buf lxs"
+  apply (coinduction arbitrary: buf lxs rule: small_production_spec.coinduct)
+  subgoal for buf lxs
+    apply (erule wtraced.cases)
+    subgoal for op
+      by (cases buf; simp)
+    subgoal for vio op op' lxs'
+      apply hypsubst_thin
+      apply (cases vio; simp; hypsubst_thin?)
+      subgoal for p x
+        apply (cases "P x")
+        subgoal
+          apply (rule exI[of _ "buf @ [x]"])
+          apply simp
+          apply (intro disjI1 conjI)
+          using wstep_Inp_True_filter_op apply force
+          done
+        subgoal
+          apply (rule exI[of _ "buf"])
+          apply simp
+          apply (intro disjI1 conjI)
+          using wstep_Inp_False_filter_op apply force
+          done
+        done
+      subgoal for p x
+        apply (drule wstep_Out_filter_op)
+          apply (rule refl)+
+        apply safe
+         apply (meson list.set_sel(2))
+        apply simp
+        done
+      done
+    done
+  done
+
+lemma wtraced_small_production_spec_completeness:
+  "\<forall> x \<in> set buf. P x \<Longrightarrow>
+   small_production_spec (\<lambda> buf buf'. case_VIO (\<lambda>p x. p = 1 \<and> (if P x then buf' = buf @ [x] else buf = buf')) (\<lambda> p x. p = 1 \<and> buf \<noteq> [] \<and> P x \<and> buf' = tl buf \<and> bhd buf = x)) buf lxs \<Longrightarrow>
+   wtraced (filter_op P buf) lxs"
+  apply (coinduction arbitrary: buf lxs rule: wtraced.coinduct)
+  subgoal for buf lxs
+    apply (erule small_production_spec.cases)
+    subgoal
+      by blast
+    subgoal for state' lxs state vio
+      apply hypsubst_thin
+      apply (cases vio; simp split: if_splits; hypsubst_thin)
+      subgoal for p x
+        apply (rule exI[of _ "filter_op P (state @ [x])"])
+        apply (intro conjI)
+        subgoal
+          using step_Inp_True_filter_op_intro apply (metis (full_types) num1_eq1 step_wstep)
+          done
+        apply (rule disjI1)
+        apply (rule exI[of _ "state @ [x]"])
+        apply simp
+        apply linarith
+        done
+      subgoal for p x
+        apply (rule exI[of _ "filter_op P state'"])
+        apply (intro conjI)
+        subgoal
+          apply (metis (full_types) num1_eq1 step_Inp_False_filter_op_intro step_wstep)
+          done
+        apply (rule disjI1)
+        apply (rule exI[of _ "state'"])
+        apply simp
+        apply linarith
+        done
+      subgoal for p 
+        apply (rule exI[of _ "filter_op P (tl state)"])
+        apply (intro conjI)
+        subgoal
+          apply (rule step_wstep)
+          apply (metis (full_types) num1_eq1 step_Out_filter_op_intro)
+          done
+        apply (rule disjI1)
+        apply (rule exI[of _ "tl state"])
+        apply simp
+        apply (intro conjI)
+         apply (meson list.set_sel(2))
+        apply linarith
+        done
+      done
+    done
+  done
+
 lemma filter_op_correctness_alt:
   "\<forall>x\<in>set buf. P x \<Longrightarrow>
    wtraced (filter_op P buf) lxs = production_spec (\<lambda>buf inps outs buf'. bulk_benq (map (case_VIO VOut VOut) (filter (case_VIO (\<lambda>_. P) \<top>) inps)) (map (VOut 1) buf) = bulk_benq (map (VOut 1) buf') outs) buf lxs"
   using wtraced_production_spec_completeness wtraced_production_spec_soundness by blast
 
-definition operator_spec where
+definition operator_spec where                                   
   "operator_spec op state spec = (\<forall> lxs. wtraced op lxs \<longleftrightarrow> production_spec spec state lxs)"
 
 lemma filter_op_correctness:
   "\<forall> x \<in> set buf. P x \<Longrightarrow>
    operator_spec (filter_op P buf) buf (\<lambda> buf inps outs buf'. map (VOut 1) buf @ map (case_VIO VOut VOut) (filter (case_VIO (\<lambda> _ x. P x) \<top>) inps) = outs @ map (VOut 1) buf')"
   unfolding operator_spec_def using filter_op_correctness_alt by blast
-
-lemma wtraced_lappend_extends_lfinite:
-  "lfinite lxs \<Longrightarrow>
-   wtraced op lxs \<Longrightarrow>
-   \<exists> lys. wtraced op (lappend lxs lys)"
- apply (induct lxs arbitrary: op rule: lfinite_induct)
-  subgoal for xs
-    apply (rule exI[of _ LNil])
-    apply simp
-    done
-  subgoal for xs op
-    apply (erule wtraced.cases)
-     apply simp_all
-    using wtraced.Step apply blast
-    done
-  done
-
-lemma wtraced_lappend_extends:
-  "wtraced op lxs \<Longrightarrow>
-   \<exists> lys. wtraced op (lappend lxs lys)"
-  apply (cases "lfinite lxs")
-  using wtraced_lappend_extends_lfinite apply force
-  apply (simp add: lappend_inf)
-  done
-
-
-lemma lfinite_wtraced_production_spec_extends:
-  "\<forall> x \<in> set buf. P x \<Longrightarrow>
-   wtraced (filter_op P buf) lxs \<Longrightarrow>
-   \<exists> lys. production_spec (\<lambda> buf inps outs buf'. map (VOut 1) buf @ map (case_VIO VOut VOut) (filter (case_VIO (\<lambda> _ x. P x) \<top>) inps) = outs @ map (VOut 1) buf') buf (lappend lxs lys)"
-  using wtraced_lappend_extends wtraced_production_spec_soundness by blast
 
 (* comp_op_ind_spec wire P1 P2 (buf' >> buf) s1' s2 inps' outsR buf'' s1' s2' \<Longrightarrow> *)
 
@@ -459,6 +532,99 @@ definition comp_op_spec where
     buf' >> fold (case_VIO BENQ undefined) (filter (case_VIO (\<lambda> p x. p \<in> ran wire) \<bottom>) inps2) (\<lambda> _. []) =
     fold (case_VIO undefined (\<lambda> p x. case wire p of Some q \<Rightarrow> BENQ q x)) (filter (case_VIO \<bottom> (\<lambda> p x. p \<in> dom wire)) outs1) (\<lambda> _. []) >> buf)"
 
+lemma
+  "step (Inp p x) op1 op1' \<Longrightarrow> production_spec P1 s1 (LCons (VInp p x) lxs) \<Longrightarrow> wtraced op1' lxs \<Longrightarrow> \<exists> s1'. production_spec P1 s1' lxs"
+    apply (auto del: disjCI)
+    subgoal for s1' lxsa ins out
+      apply (rule exI[of _ s1'])
+      oops
+
+lemma
+  "step io op1 op1' \<Longrightarrow>
+   operator_spec op1 s1 P1 \<Longrightarrow>
+   \<exists> s1'. operator_spec op1' s1' P1"
+  apply (subst operator_spec_def)
+  subgoal
+    apply (rule exI)
+    apply safe
+    oops
+(*   apply (intro allI iffI)
+  subgoal for lxs
+    apply (coinduction arbitrary: s1 s1' op1 lxs rule: production_spec.coinduct)
+    subgoal for s1 s1' op1 lxs                                
+      apply (cases io)
+      subgoal for p x
+        apply hypsubst_thin
+        apply (drule spec[of _ "LCons (VInp p x) lxs"])
+        apply (auto del: disjCI)
+        subgoal for state' lxs' ins out op'
+          apply (cases lxs)
+          subgoal
+            apply simp
+            apply hypsubst_thin
+            apply (cases out; cases lxs'; cases ins; simp; hypsubst_thin)
+            subgoal for xs
+              apply (rule disjI2)
+              apply (rule exI[of _ state'])
+              apply (rule exI[of _ LNil])
+              apply (rule exI[of _ Nil])
+              apply (rule exI[of _ Nil])
+              apply simp
+              apply (cases xs; simp)
+              apply auto
+  oops *)
+
+lemma comp_op_spec_empty:
+  "P1 s1 [] [] s1 \<Longrightarrow>
+   P2 s2 [] [] s2 \<Longrightarrow>
+   comp_op_spec wire P1 P2 buf s1 s2 [] [] buf s1 s2"
+  unfolding comp_op_spec_def
+  apply force
+  done
+
+lemma step_taus_comp_op_operator_spec:
+  "(step Tau)\<^sup>*\<^sup>* (comp_op wire buf op1 op2) op \<Longrightarrow>
+   operator_spec op1 s1 P1 \<Longrightarrow>
+   operator_spec op2 s2 P2 \<Longrightarrow>
+   \<exists> op1' s1' op2' s2' buf'. 
+     operator_spec op1' s1' P1 \<and> operator_spec op2' s2' P2 \<and> op = comp_op wire buf' op1' op2' \<and>
+     comp_op_spec wire P1 P2 buf s1 s2 [] [] buf' s1' s2'"
+   apply (induct "comp_op wire buf op1 op2" arbitrary: buf op1 op2 s1 s2 rule: converse_rtranclp_induct)
+  subgoal for buf op1 op2 s1 s2
+    apply simp
+       apply (rule exI[of _ op1])
+        apply (rule exI[of _ s1])
+        apply simp
+        apply (rule exI[of _ op2])
+    apply (rule exI[of _ s2])
+    apply simp
+        apply (rule exI[of _ buf])
+    apply simp
+    unfolding comp_op_spec_def
+    apply simp
+       apply (rule exI[of _ "[]"])
+       apply (rule exI[of _ "[]"])
+    apply simp
+    apply (intro conjI)
+    subgoal
+      unfolding operator_spec_def
+      by (smt (verit) llist.simps(3) lshift.elims production_spec_LNilE wtraced.Nil)
+    subgoal
+       apply (rule exI[of _ "[]"])
+    apply simp
+      unfolding operator_spec_def
+      apply (smt (verit, del_insts) llist.simps(3) lshift.elims production_spec_LNilE wtraced.Nil)
+      done
+    done
+  subgoal for op buf op1 op2 s1 s2
+    apply (elim step_comp_op_elim)
+           apply simp_all
+    subgoal for p x op1' q
+      apply (drule meta_spec)+
+      apply (drule meta_mp)
+       apply (rule refl)
+      apply hypsubst_thin
+      oops
 
 lemma wstep_comp_op_operator_spec:
   "wstep (Inp (Inl p) x) (comp_op wire buf op1 op2) op \<Longrightarrow>
@@ -467,12 +633,27 @@ lemma wstep_comp_op_operator_spec:
    \<exists> op1' s1' op2' s2' buf'. 
      operator_spec op1' s1' P1 \<and> operator_spec op2' s2' P2 \<and> op = comp_op wire buf' op1' op2' \<and>
      comp_op_spec wire P1 P2 buf s1 s2 [VInp (Inl p) x] [] buf' s1' s2'"
-  sorry
+  unfolding wstep_def
+   apply (erule relcomppE)
+  subgoal for op
+    apply simp
+    apply (rotate_tac 2)
+      apply (induct "comp_op wire buf op1 op2" arbitrary: buf op1 op2  rule: converse_rtranclp_induct)
+      subgoal for buf op1 op2
+            apply hypsubst_thin
+        apply (erule relcomppE)
+    apply (elim step_comp_op_elim)
+               apply simp_all
+        subgoal for op p op1'
+          apply hypsubst_thin
+        apply (rule exI[of _ op1'])
+        apply (rule exI[of _ s1])
+        oops
 
 lemma comp_op_correctness:
   "operator_spec op1 s1 P1 \<Longrightarrow>
    operator_spec op2 s2 P2 \<Longrightarrow>
-   operator_spec (comp_op wire buf op1 op2) (buf, s1, s2) (\<lambda> (buf, s1, s2) inps outs (buf', s1', s2'). comp_op_spec  wire P1 P2 buf s1 s2 inps outs buf' s1' s2')"
+   operator_spec (comp_op wire buf op1 op2) (buf, s1, s2) (\<lambda> (buf, s1, s2) inps outs (buf', s1', s2'). comp_op_spec wire P1 P2 buf s1 s2 inps outs buf' s1' s2')"
   apply (subst operator_spec_def)
   apply (intro allI iffI)
   subgoal for lxs
@@ -480,33 +661,64 @@ lemma comp_op_correctness:
     subgoal for op1 op2 lxs buf s1 s2
       apply (erule wtraced.cases)
       subgoal
-        by simp
-      subgoal for vio op op' lxs
         apply simp
+        apply (rule disjI1)
+        apply (smt (verit, ccfv_threshold) comp_op_spec_empty llist.simps(3) lshift.elims operator_spec_def production_spec_LNilE wtraced.Nil)
+        done
+      subgoal for vio op op' lx
         apply hypsubst_thin
-        apply (cases vio)
-        subgoal for p x
-          apply (cases p)
-          subgoal for p
-            apply hypsubst_thin
+        apply simp
+        oops
+
+definition operator_small_spec where                                            
+  "operator_small_spec op state spec = (\<forall> lxs. wtraced op lxs = small_production_spec spec state lxs)"
+
+lemma
+  "wstep (Inp p x) op1 op1' \<Longrightarrow>
+   P1 s1 (VInp p x) s1' \<Longrightarrow>
+   operator_small_spec op1 s1 P1 \<Longrightarrow>
+   operator_small_spec op1' s1' P1"
+  unfolding operator_small_spec_def
+  apply safe
+  subgoal for lxs
+        apply (drule spec[of _ "LCons (VInp p x) lxs"])
+    apply auto
+    sledgehammer
+
+
+end
+  apply (intro allI iffI)
+  subgoal for lxs
+    apply (coinduction arbitrary: s1 s1' op1 lxs rule: small_production_spec.coinduct)
+    subgoal for s1 s1' op1 lxs                                
+      apply (cases io)
+      subgoal for p x
+        apply hypsubst_thin
+        apply (drule spec[of _ "LCons (VInp p x) lxs"])
+        apply (auto del: disjCI)
+        subgoal for state' op'
+          apply (cases lxs)
+          subgoal
+            by simp
+          subgoal for io ios
             apply simp
-          apply (drule wstep_comp_op_operator_spec)
-            apply assumption+
-          apply safe
-          subgoal for op1' s1' op2' s2' buf'
-          apply (rule exI[of _ buf'])
-          apply (rule exI[of _ s1'])
-          apply (rule exI[of _ s2'])
-          apply (rule exI[of _ lxs])
-          apply (rule exI[of _ "[VInp (Inl p) x]"])
-          apply (rule exI[of _ "[]"])
-          apply simp
-          apply (intro conjI disjI1)
-            apply (rule exI[of _ op1'])
-             apply simp
-            apply (rule exI[of _ op2'])
-             apply simp
-            done
+            apply hypsubst_thin
+            apply (rule exI[of _ state'])
+            apply (intro conjI disjI1)
+              oops
+
+(* inductive comp_op_invisible_small_spec where
+  "comp_op_invisible_small_spec wire P1 P2 buf s1 s2 buf s1 s2"
+| "comp_op_invisible_small_spec wire P1 P2 buf s1 s2 buf'' s1'' s2''" *)
+
+definition comp_op_small_spec where
+  "comp_op_small_spec (wire :: 'op1 \<rightharpoonup> 'ip2) P1 P2 (buf :: 'ip2 \<Rightarrow> 'd buf) (s1 :: 's1) s2 (buf'' :: 'ip2 \<Rightarrow> 'd buf) s1'' s2'' (vio :: ('ip1 + 'ip2, 'op1 + 'op2, 'd) VIO) =
+   (\<exists> (outs1 :: (('ip1, 'op1, 'd) VIO) list). buf = fold undefined outs1 (\<lambda> _. []))"
+
+lemma comp_op_small_correctness:
+  "operator_small_spec op1 s1 P1 \<Longrightarrow>
+   operator_small_spec op2 s2 P2 \<Longrightarrow>
+   operator_small_spec (comp_op wire buf op1 op2) (buf, s1, s2) (\<lambda> (buf, s1, s2) (buf', s1', s2'). comp_op_small_spec wire P1 P2 buf s1 s2 buf' s1' s2')"
 
 
 end

@@ -1709,6 +1709,9 @@ coinductive wtraced where
   Nil: "wtraced op LNil"
 | Step: "wstep (io_of_vio vio) op op' \<Longrightarrow> wtraced op' lxs \<Longrightarrow> wtraced op (LCons vio lxs)"
 
+inductive_cases wtraced_LNilE[elim!]: "wtraced op LNil"
+inductive_cases wtraced_StepE[elim!]: "wtraced op (LCons vio lxs)"
+
 definition "wtraces op = {lxs. wtraced op lxs}"
 
 lemma finished_wfinished[simp]: "finished op \<Longrightarrow> wfinished op"
