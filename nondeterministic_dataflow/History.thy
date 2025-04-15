@@ -4,12 +4,17 @@ imports
  "BNA_Operators"
 begin
 
+section \<open>History model\<close>
+
 definition \<open>lproject f g vios p =
   lmap vdata (lfilter (\<lambda>vio. case vio of VInp q _ \<Rightarrow> f p q | VOut q _ \<Rightarrow> g p q) vios)\<close>
 
+abbreviation \<open>extract_inputs \<equiv> lproject (=) \<bottom>\<close>
+abbreviation \<open>extract_outputs \<equiv> lproject \<bottom> (=)\<close>
+
 definition \<open>history op lxs lys =
   (\<exists>vios. wtraced op vios \<and>
-  (\<forall>p. lprefix (lproject (=) \<bottom> vios p) (lxs p)) \<and> lys = lproject \<bottom> (=) vios)\<close>
+  (\<forall>p. lprefix (extract_inputs vios p) (lxs p)) \<and> lys = extract_outputs vios)\<close>
 
 abbreviation history_equiv (infix \<open>\<equiv>\<^sub>h\<close> 40) where
   \<open>op\<^sub>1 \<equiv>\<^sub>h op\<^sub>2 \<equiv> history op\<^sub>1 = history op\<^sub>2\<close>
@@ -30,6 +35,102 @@ lemma wtrace_equiv_history_equiv:
   \<open>op\<^sub>1 \<equiv>\<^sub>t op\<^sub>2 \<Longrightarrow> op\<^sub>1 \<equiv>\<^sub>h op\<^sub>2\<close>
   unfolding wtraces_def history_def
   by blast
+
+datatype (discs_sels) ('m, 'd) source_op_aux =
+  source_Write_aux \<open>'m \<Rightarrow> 'd llist\<close> 'm 'd
+
+abbreviation eval_source_op_aux where
+  \<open>eval_source_op_aux c aux \<equiv> (case aux of
+    source_Write_aux lxs q x \<Rightarrow> Write (c lxs) q x)\<close>
+
+corec source_op :: \<open>('m :: {countable, defaults} \<Rightarrow> 'd llist) \<Rightarrow> (0, 'm, 'd) op\<close> where
+  \<open>source_op lxs = Choice (cimage (eval_source_op_aux source_op)
+    (cimage (\<lambda>p. source_Write_aux (lxs(p := ltl (lxs p))) p (lhd (lxs p)))
+      (cfilter (\<lambda>p. lxs p \<noteq> LNil) c\<UU>)))\<close>
+
+lemma source_op_code:
+  \<open>source_op lxs = Choice
+    (cimage (\<lambda>p. Write (source_op (lxs(p := ltl (lxs p)))) p (lhd (lxs p)))
+      (cfilter (\<lambda>p. lxs p \<noteq> LNil) c\<UU>))\<close>
+  by (subst source_op.code) (auto simp add: cset.map_comp)
+
+lemma source_op_reads:
+  \<open>sub_op (Read p f) (source_op lxs) n \<Longrightarrow> False\<close>
+proof (induct p \<open>source_op lxs\<close> arbitrary: lxs rule: sub_op_Read_induct)
+  case (Read1 f p)
+  then show ?case by (subst (asm) source_op_code, simp)
+next
+  case (Read2 p p' f x d g)
+  then show ?case by (subst (asm) source_op_code, simp)
+next
+  case (Write p p' op' x d g)
+  then show ?case by (subst (asm) source_op_code, simp)
+next
+  case (Silent p op' d)
+  then show ?case by (subst (asm) source_op_code, simp)
+next
+  case (Choice p ops d g)
+  then show ?case by (subst (asm) (2) source_op_code, simp; force)
+qed
+
+lemma source_op_writes:
+  \<open>sub_op (Write op p x) (source_op lxs) n \<Longrightarrow> p \<in> UNIV - defaults\<close>
+proof (induct p \<open>source_op lxs\<close> arbitrary: lxs rule: sub_op_Write_induct)
+  case (Read p p' f x op2 y d)
+  then show ?case by (subst (asm) source_op_code, simp)
+next
+  case (Write1 p p' op' x op2 y d)
+  then show ?case by (subst (asm) source_op_code, simp)
+next
+  case (Silent p op' op2 y d)
+  then show ?case by (subst (asm) source_op_code, simp)
+next
+  case (Choice p op2 y d ops)
+  then show ?case by (subst (asm) (2) source_op_code, simp; force)
+next
+  case (Write2 p op' x)
+  then show ?case by (subst (asm) source_op_code, simp)
+qed
+
+lemma inputs_source_op:
+  \<open>inputs (source_op lxs) = {}\<close>
+  using source_op_reads inputs_sub_op_Read
+  by fast
+
+lemma outputs_source_op:
+  \<open>outputs (source_op lxs) \<subseteq> UNIV - defaults\<close>
+  apply (intro subsetI)
+  using source_op_writes by (metis outputs_sub_op_Write)
+lemma outputs_source_op_alt:
+  \<open>\<forall>x \<in> outputs (source_op lxs). x \<notin> defaults\<close>
+  using outputs_source_op[unfolded subset_eq, simplified] by fast
+lemma outputs_source_op_dest:
+  \<open>x \<in> outputs (source_op lxs) \<Longrightarrow> x \<notin> defaults\<close>
+  using outputs_source_op_alt by blast
+
+lemma inputs_source_op_scomp_op:
+  \<open>inputs (source_op lxs \<bullet> op) = {}\<close>
+  unfolding scomp_op_def
+  by (metis empty_iff equals0I image_is_empty inputs_scomp_op_le_dest inputs_source_op op.set_map(1))
+
+lemma outputs_source_op_scomp_op:
+  \<open>outputs (source_op lxs \<bullet> op) \<subseteq> outputs op\<close>
+  unfolding scomp_op_def
+  using outputs_scomp_op_le_dest
+  by (smt (verit, ccfv_threshold) image_iff op.set_map(2) subsetI sum.sel(2))
+
+definition \<open>history' op lxs =
+  {lys. \<exists>vios. wtraced (source_op lxs \<bullet> op) vios \<and> lys = lproject \<bottom> (=) vios}\<close>
+
+lemma
+  \<open>op\<^sub>1 \<equiv>\<^sub>t op\<^sub>2 \<Longrightarrow> source_op lxs \<bullet> op\<^sub>1 \<equiv>\<^sub>t source_op lxs \<bullet> op\<^sub>2\<close>
+  oops
+
+lemma wtrace_equiv_history'_equiv:
+  \<open>op\<^sub>1 \<equiv>\<^sub>t op\<^sub>2 \<Longrightarrow> history' op\<^sub>1 = history' op\<^sub>2\<close>
+  oops
+
+section \<open>Time anomaly\<close>
 
 corec suc_op :: \<open>(1, 1, nat) op\<close> where
   \<open>suc_op = Read 1 (\<lambda>x. Write suc_op 1 (Suc x))\<close>
@@ -68,7 +169,6 @@ lemma step_twobuf_op_elim:
   done
 
 abbreviation \<open>f_op \<equiv> (dup_op \<parallel> suc_op \<bullet> dup_op) \<bullet> \<V> \<bullet> twobuf_op \<bullet> \<C>\<close>
-
 abbreviation \<open>f'_op \<equiv> (dup_op \<parallel> suc_op \<bullet> dup_op) \<bullet> \<V> \<bullet> \<I> \<bullet> \<C>\<close>
 
 simproc_setup num1_eq (\<open>x :: 1\<close>) =
