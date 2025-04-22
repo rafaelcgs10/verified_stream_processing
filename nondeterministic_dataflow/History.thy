@@ -120,14 +120,18 @@ lemma outputs_source_op_scomp_op:
   by (smt (verit, ccfv_threshold) image_iff op.set_map(2) subsetI sum.sel(2))
 
 definition \<open>history' op lxs =
-  {lys. \<exists>vios. wtraced (source_op lxs \<bullet> op) vios \<and> lys = lproject \<bottom> (=) vios}\<close>
+  {lys. \<exists>vios. wtraced (source_op lxs \<bullet> op) vios \<and> lys = extract_outputs vios}\<close>
 
-lemma
+lemma wtrace_equiv_source_op:
   \<open>op\<^sub>1 \<equiv>\<^sub>t op\<^sub>2 \<Longrightarrow> source_op lxs \<bullet> op\<^sub>1 \<equiv>\<^sub>t source_op lxs \<bullet> op\<^sub>2\<close>
   oops
 
 lemma wtrace_equiv_history'_equiv:
   \<open>op\<^sub>1 \<equiv>\<^sub>t op\<^sub>2 \<Longrightarrow> history' op\<^sub>1 = history' op\<^sub>2\<close>
+  oops
+
+lemma history_history':
+  \<open>op\<^sub>1 \<equiv>\<^sub>h op\<^sub>2 \<longleftrightarrow> history' op\<^sub>1 = history' op\<^sub>2\<close>
   oops
 
 section \<open>Time anomaly\<close>
