@@ -604,6 +604,8 @@ lemma wstep_Out_filter_op:
    p = 1 \<and> op' = filter_op P (tl buf)\<and> buf \<noteq> [] \<and> bhd buf = x"
   unfolding wstep_def by (metis (no_types, lifting) converse_rtranclpE estep.simps(3) pick_middlep step_Out_filter_op step_Tau_filter_op)
 
+term replicate
+
 lemma wtraced_production_spec_soundness:
   "\<forall> x \<in> set buf. P x \<Longrightarrow>
    wtraced (filter_op P buf) lxs \<Longrightarrow>
@@ -744,7 +746,7 @@ lemma
    \<forall>x\<in>set buf2. P x \<Longrightarrow>
    \<forall>x\<in>set buf3. P x \<and> Q x \<Longrightarrow>
    wtraced (map_op projl projr (comp_op Some (\<lambda>_. buf2) (filter_op P buf1) (filter_op Q buf3))) lxs =
-   production_spec (\<lambda>buf inps outs buf'. (length outs = 1 \<and> inps = [] \<or> length inps = 1 \<and> outs = []) \<and> bulk_benq (map (case_VIO VOut VOut) (filter (case_VIO (\<lambda>p x. P x \<and> Q x) \<top>) inps)) (map (VOut 1) buf) = bulk_benq (map (VOut 1) buf') outs) (buf3 @ buf2 @ buf1) lxs"
+   production_spec (\<lambda>buf inps outs buf'. (length outs = 1 \<and> inps = [] \<or> length inps = 1 \<and> outs = []) \<and> bulk_benq (map (case_VIO VOut VOut) (filter (case_VIO (\<lambda>p x. P x \<and> Q x) \<top>) inps)) (map (VOut 1) buf) = bulk_benq (map (VOut 1) buf') outs) (buf3 @ filter Q (buf2 @ buf1)) lxs"
   unfolding scomp_op_def
   apply (subst wtraced_map_op)
   subgoal
@@ -773,73 +775,137 @@ lemma
           apply (rule disjI2)
           subgoal premises prems
             using prems(8,1-7) apply -
-          apply (induct "\<lambda> _ :: 1. buf2" ios ios1 ios2 buf' ios' ios1' ios2' arbitrary: buf1 buf2 buf3 rule: visible_cause.induct)
-               apply simp_all
-          subgoal for x iosa ios1 ios2 buf2 buf1 buf3
-            apply (cases "P x"; cases "Q x")
-            subgoal
-            apply (rule exI)
-            apply (rule exI[of _ "lmap (map_VIO projl projr id) iosa"])
-            apply (rule exI[of _ "[VInp 1 x]"])
-            apply (rule exI[of _ "[]"])
-              apply simp
-            apply (intro conjI)
-            apply (rule exI[of _ "buf1 @ [x]"])
-            apply (intro exI)
-            apply (intro conjI)
-              apply (rule refl)
-               apply (intro conjI exI)
-                    apply (rule refl)+
-                   apply simp_all
-              apply (subst filter_op_correctness)
-               apply simp
-              apply (subst (asm) filter_op_correctness)
-               apply simp
-              apply (erule production_spec.cases)
-               apply auto
-               apply (metis (no_types, lifting) VIO.discI(1) list.set_intros(1) llist.inject lshift.elims)
-              subgoal for state' lxs ins
-                apply (cases ins; simp; hypsubst_thin)
-                apply (smt (z3) VIO.inject(2) length_0_conv length_map list.inj_map_strong map_eq_Cons_D map_eq_append_conv)
-                done
-              done
-            subgoal
-              sorry
-     subgoal
-       sorry
-     subgoal
-              sorry
-            done
-          subgoal for x iosa ios1 ios2 buf2 buf1 buf3
-            sorry
-          subgoal premises prems for x ios ios1 ios2 buf' ios1' ios2' buf2 buf1 buf3
-            using prems(1,3-) prems(2)[where ?buf2.0="buf2 @ [x]" and ?buf1.0="tl buf1" and ?buf3.0=buf3] apply (auto simp: fun_eq_iff)
-            apply (drule meta_mp)
-             apply (metis list.sel(2) list.set_sel(2))
-            apply (drule meta_mp)
-            apply (metis list.collapse list.set_intros(1) wstep_Out_filter_op)
-            apply (drule meta_mp)
-             apply (metis wstep_Out_filter_op)
-            apply (elim exE conjE)
-            subgoal for op' state' lxs ins out buf1 buf2 buf3 ios1 ios2 lys
-              apply hypsubst
-              apply (rule exI[of _ state'])
-              apply (rule exI[of _ "lmap (map_VIO projl projr id) lys"])
-              apply (rule exI[of _ ins])
-              apply (rule exI[of _ out])
-              apply simp
-              apply (intro conjI)
+            apply (induct "\<lambda> _ :: 1. buf2" ios ios1 ios2 buf' ios' ios1' ios2' arbitrary: buf1 buf2 buf3 rule: visible_cause.induct)
+                 apply simp_all
+            subgoal for x iosa ios1 ios2 buf2 buf1 buf3
+              apply (cases "P x"; cases "Q x")
               subgoal
-              apply (rule exI[of _ buf1])
-              apply (rule exI[of _ buf2])
-              apply (rule exI[of _ buf3])
-                apply auto
+                apply (rule exI)
+                apply (rule exI[of _ "lmap (map_VIO projl projr id) iosa"])
+                apply (rule exI[of _ "[VInp 1 x]"])
+                apply (rule exI[of _ "[]"])
+                apply simp
+                apply (intro conjI)
+                 apply (rule exI[of _ "buf1 @ [x]"])
+                 apply (intro exI)
+                 apply (intro conjI)
+                  apply (rule refl)
+                 apply (intro conjI exI)
+                       apply (rule refl)+
+                      apply simp_all
+                apply (subst filter_op_correctness)
+                 apply simp
+                apply (subst (asm) filter_op_correctness)
+                 apply simp
+                apply (erule production_spec.cases)
+                 apply auto
+                 apply (metis (no_types, lifting) VIO.discI(1) list.set_intros(1) llist.inject lshift.elims)
+                subgoal for state' lxs ins
+                  apply (cases ins; simp; hypsubst_thin)
+                  apply (smt (z3) VIO.inject(2) length_0_conv length_map list.inj_map_strong map_eq_Cons_D map_eq_append_conv)
+                  done
                 done
-              apply (smt (verit, ccfv_SIG) append_Cons list.exhaust_sel list.simps(9) wstep_Out_filter_op)
+              subgoal
+                sorry
+              subgoal
+                sorry
+              subgoal
+                sorry
+              done
+            subgoal for x iosa ios1 ios2 buf2 buf1 buf3
+              sorry
+            subgoal premises prems for x ios ios1 ios2 buf' ios1' ios2' buf2 buf1 buf3
+              using prems(1,3-) prems(2)[where ?buf2.0="buf2 @ [x]" and ?buf1.0="tl buf1" and ?buf3.0=buf3] apply (auto simp: fun_eq_iff)
+              apply (drule meta_mp)
+               apply (metis list.sel(2) list.set_sel(2))
+              apply (drule meta_mp)
+               apply (metis list.collapse list.set_intros(1) wstep_Out_filter_op)
+              apply (drule meta_mp)
+               apply (metis wstep_Out_filter_op)
+              apply (elim exE conjE)
+              subgoal for op' state' lxs ins out buf1 buf2 buf3 ios1 ios2 lys
+                apply (rule exI[of _ state'])
+                apply (rule exI[of _ "lmap (map_VIO projl projr id) lys"])
+                apply (rule exI[of _ ins])
+                apply (rule exI[of _ out])
+                apply simp
+                apply (intro conjI)
+                subgoal
+                  apply (rule exI[of _ buf1])
+                  apply (rule exI[of _ buf2])
+                  apply (rule exI[of _ buf3])
+                  apply auto
+                  done
+                apply (simp split: if_splits)
+                 apply (smt (verit, best) append_Cons filter.simps(2) list.collapse list.simps(9) wstep_Out_filter_op)+
+                done
+              done
+            subgoal premises prems for ios ios1 ios2 buf' ios1' ios2' x buf2 buf1 buf3
+              apply (cases "Q x")
+              subgoal
+                using prems(1,3-) prems(2)[where ?buf2.0="tl buf2" and ?buf3.0="buf3 @ [x]" and ?buf1.0=buf1] apply (auto simp: fun_eq_iff)
+                apply (drule meta_mp)
+                 apply (meson BTL_access)
+                apply (drule meta_mp)
+                 apply (meson list.set_sel(2))
+                apply (drule meta_mp)
+                 apply (metis BHD_def list.set_sel(1))
+                apply (drule meta_mp)
+                 apply (metis wstep_Inp_True_filter_op)
+                apply (elim exE conjE)
+                subgoal for op' state' lxs ins out buf1 buf2 buf3 ios1 ios2 lys
+                  apply hypsubst
+                  apply (rule exI[of _ state'])
+                  apply (rule exI[of _ "lmap (map_VIO projl projr id) lys"])
+                  apply (rule exI[of _ ins])
+                  apply (rule exI[of _ out])
+                  apply simp
+                  apply (intro conjI)
+                  subgoal
+                    apply (rule exI[of _ buf1])
+                    apply (rule exI[of _ buf2])
+                    apply (rule exI[of _ buf3])
+                    apply auto
+                    done
+                  subgoal
+                    by (smt (verit, best) BHD_def append_Cons filter.simps(2) list.exhaust_sel list.simps(9))
+                  done
+                done
+              subgoal
+                using prems(1,3-) prems(2)[where ?buf2.0="tl buf2" and ?buf3.0="buf3" and ?buf1.0=buf1] apply (auto simp: fun_eq_iff)
+                apply (drule meta_mp)
+                 apply (meson BTL_access)
+                apply (drule meta_mp)
+                 apply (meson list.set_sel(2))
+                apply (drule meta_mp)
+                 apply (metis wstep_Inp_False_filter_op)
+                apply (elim exE conjE)
+                subgoal for op' state' lxs ins out buf1 buf2 buf3 ios1 ios2 lys
+                  apply hypsubst
+                  apply (rule exI[of _ state'])
+                  apply (rule exI[of _ "lmap (map_VIO projl projr id) lys"])
+                  apply (rule exI[of _ ins])
+                  apply (rule exI[of _ out])
+                  apply simp
+                  apply (intro conjI)
+                  subgoal
+                    apply (rule exI[of _ buf1])
+                    apply (rule exI[of _ buf2])
+                    apply (rule exI[of _ buf3])
+                    apply auto
+                    done
+                  apply hypsubst_thin
+                  apply (smt (verit) BHD_def filter.simps(2) list.collapse)
+                  done
+                done
               done
             done
-
-
+          done
+        done
+      done
+    done
+  subgoal
+       
 end
 
           apply (rule exI)
