@@ -2,8 +2,9 @@ theory Wtraced_Composition
 
 imports
   "BNA_Operators"
+  Progress_Tracking.Antichain
+    "HOL-Library.Finite_Map"
 begin
-
 
 inductive wstep_comp_op where
   \<open>comp_op wire buf' op1' op2' = comp_op wire buf op1 op2 \<Longrightarrow> wstep_comp_op Tau wire buf buf' op1 op1' op2 op2'\<close>
@@ -400,12 +401,7 @@ lemma wtraced_comp_op:
    (\<exists> ios1 ios2. wtraced op1 ios1 \<and> wtraced op2 ios2 \<and> causal wire buf ios ios1 ios2)"
   apply (rule iffI)
   subgoal
-    apply (erule wtraced.cases; simp)
-    subgoal
-      by (intro exI[of _ LNil] conjI wtraced.intros causal.intros)
-    subgoal for vio op op' lxs
       sorry
-    done
   subgoal
     apply (elim exE conjE)
     subgoal for ios1 ios2
@@ -459,7 +455,7 @@ coinductive production_spec for P where
   "production_spec P state LNil"
 | "production_spec P state' lxs \<Longrightarrow> P state ins out state' \<Longrightarrow>
    (\<forall> x \<in> set ins. is_VInp x) \<Longrightarrow> (\<forall> x \<in> set out. \<not> is_VInp x) \<Longrightarrow>
-   ins @ out \<noteq> [] \<Longrightarrow> production_spec P state (ins @- out @- lxs)"
+   ins @ out \<noteq> [] \<Longrightarrow> production_spec P state (ins @@- out @@- lxs)"
 
 lemma step_Inp_True_filter_op:
   "step io op op' \<Longrightarrow>
@@ -724,8 +720,6 @@ simproc_setup num1_eq (\<open>x :: 1\<close>) =
     if Thm.term_of ct aconv @{term \<open>1 :: 1\<close>} then NONE
     else SOME (mk_meta_eq @{thm num1_eq1})))\<close>
 
-thm production_spec.coinduct[no_vars]
-
 lemma production_spec_coinduct:
   "X x1 x2 \<Longrightarrow>
 (\<And>x1 x2.
@@ -733,12 +727,37 @@ lemma production_spec_coinduct:
     (\<exists>state. x1 = state \<and> x2 = LNil) \<or>
     (\<exists>state' lxs state ins out.
         x1 = state \<and>
-        x2 = ins @- out @- lxs \<and>
+        x2 = ins @@- out @@- lxs \<and>
         (X state' lxs) \<and>
         P state ins out state' \<and> Ball (set ins) is_VInp \<and> (\<forall>x\<in>set out. \<not> is_VInp x) \<and> bulk_benq out ins \<noteq> [])) \<Longrightarrow>
   production_spec P x1 x2"
   apply (erule production_spec.coinduct)
   apply blast
+  done
+
+
+corec writes where
+  "writes op p xs =
+    (case xs of [] \<Rightarrow> case_op Read Write Choice Silent op | x #xs \<Rightarrow> Write (writes op p xs) p x)"
+
+lemma foo[friend_of_corec_simps]:
+  "(if snd (snd x) = [] then ctor_op (Abs_op_pre_op (Rep_op_pre_op (dtor_op (fst x)))) else ctor_op (Abs_op_pre_op (Inl (Inr (algrho (fst x, fst (snd x), btl (snd (snd x))), fst (snd x), bhd (snd (snd x))))))) =
+         (if snd (snd x) = []
+         then if isl (Rep_op_pre_op (dtor_op (fst x))) \<and> isl (projl (Rep_op_pre_op (dtor_op (fst x)))) then ctor_op (Abs_op_pre_op (Rep_op_pre_op (dtor_op (fst x))))
+              else if isl (Rep_op_pre_op (dtor_op (fst x))) \<and> \<not> isl (projl (Rep_op_pre_op (dtor_op (fst x)))) then ctor_op (Abs_op_pre_op (Rep_op_pre_op (dtor_op (fst x))))
+                   else if \<not> isl (Rep_op_pre_op (dtor_op (fst x))) \<and> isl (projr (Rep_op_pre_op (dtor_op (fst x)))) then ctor_op (Abs_op_pre_op (Rep_op_pre_op (dtor_op (fst x))))
+                        else ctor_op
+                              (Abs_op_pre_op
+                                (Inr (Inr (if isl (Rep_op_pre_op (dtor_op (fst x))) then undefined
+                                           else if isl (projr (Rep_op_pre_op (dtor_op (fst x)))) then undefined else projr (projr (Rep_op_pre_op (dtor_op (fst x))))))))
+         else ctor_op (Abs_op_pre_op (Inl (Inr (algrho (fst x, fst (snd x), btl (snd (snd x))), fst (snd x), bhd (snd (snd x)))))))"
+  by (auto split: if_splits)
+
+friend_of_corec writes where
+  "writes op p xs =
+    (case xs of [] \<Rightarrow> case_op Read Write Choice Silent op | x #xs \<Rightarrow> Write (writes op p xs) p x)"
+   apply (rule writes.code)
+  apply transfer_prover
   done
 
 lemma
@@ -806,14 +825,103 @@ lemma
                   done
                 done
               subgoal
-                sorry
+                apply (rule exI)
+                apply (rule exI[of _ "lmap (map_VIO projl projr id) iosa"])
+                apply (rule exI[of _ "[VInp 1 x]"])
+                apply (rule exI[of _ "[]"])
+                apply simp
+                apply (intro conjI)
+                 apply (rule exI[of _ "buf1 @ [x]"])
+                 apply (intro exI)
+                 apply (intro conjI)
+                  apply (rule refl)
+                 apply (intro conjI exI)
+                       apply (rule refl)+
+                      apply simp_all
+                apply (subst filter_op_correctness)
+                 apply simp
+                apply (subst (asm) filter_op_correctness)
+                 apply simp
+                apply (erule production_spec.cases)
+                 apply auto
+                 apply (metis (no_types, lifting) VIO.discI(1) list.set_intros(1) llist.inject lshift.elims)
+                subgoal for state' lxs ins
+                  apply (cases ins; simp; hypsubst_thin)
+                  apply (smt (z3) VIO.inject(2) length_0_conv length_map list.inj_map_strong map_eq_Cons_D map_eq_append_conv)
+                  done
+                done
               subgoal
-                sorry
+                apply (rule exI)
+                apply (rule exI[of _ "lmap (map_VIO projl projr id) iosa"])
+                apply (rule exI[of _ "[VInp 1 x]"])
+                apply (rule exI[of _ "[]"])
+                apply simp
+                apply (intro conjI)
+                 apply (rule exI[of _ "buf1"])
+                 apply (intro exI)
+                 apply (intro conjI)
+                  apply (rule refl)
+                 apply (intro conjI exI)
+                       apply (rule refl)+
+                      apply simp_all
+                apply (subst filter_op_correctness)
+                 apply simp
+                apply (subst (asm) filter_op_correctness)
+                 apply simp
+                apply (erule production_spec.cases)
+                 apply auto
+                 apply (metis (no_types, lifting) VIO.discI(1) list.set_intros(1) llist.inject lshift.elims)
+                subgoal for state' lxs ins
+                  apply (cases ins; simp; hypsubst_thin)
+                  apply (smt (z3) VIO.inject(2) length_0_conv length_map list.inj_map_strong map_eq_Cons_D map_eq_append_conv)
+                  done
+                done
               subgoal
-                sorry
+                apply (rule exI)
+                apply (rule exI[of _ "lmap (map_VIO projl projr id) iosa"])
+                apply (rule exI[of _ "[VInp 1 x]"])
+                apply (rule exI[of _ "[]"])
+                apply simp
+                apply (intro conjI)
+                 apply (rule exI[of _ "buf1"])
+                 apply (intro exI)
+                 apply (intro conjI)
+                  apply (rule refl)
+                 apply (intro conjI exI)
+                       apply (rule refl)+
+                      apply simp_all
+                apply (subst filter_op_correctness)
+                 apply simp
+                apply (subst (asm) filter_op_correctness)
+                 apply simp
+                apply (erule production_spec.cases)
+                 apply auto
+                 apply (metis (no_types, lifting) VIO.discI(1) list.set_intros(1) llist.inject lshift.elims)
+                subgoal for state' lxs ins
+                  apply (cases ins; simp; hypsubst_thin)
+                  apply (smt (z3) VIO.inject(2) length_0_conv length_map list.inj_map_strong map_eq_Cons_D map_eq_append_conv)
+                  done
+                done
               done
             subgoal for x iosa ios1 ios2 buf2 buf1 buf3
-              sorry
+              apply (rule exI)
+              apply (rule exI[of _ "lmap (map_VIO projl projr id) iosa"])
+              apply (rule exI[of _ "[]"])
+              apply (rule exI[of _ "[VOut 1 x]"])
+              apply simp
+              apply (intro conjI)
+               apply (rule exI[of _ "buf1"])
+               apply (rule exI[of _ "buf2"])
+               apply (rule exI[of _ "tl buf3"])
+               apply (intro conjI)
+                apply (rule refl)
+               apply (intro conjI exI)
+                     apply (rule refl)+
+                    apply simp_all
+                apply (metis list.sel(2) list.set_sel(2))
+               apply (metis io_of_vio.simps(2) wstep_Out_filter_op wtraced_StepE)
+              apply (metis io_of_vio.simps(2) list.exhaust_sel list.simps(9) wstep_Out_filter_op wtraced_StepE)
+              done
             subgoal premises prems for x ios ios1 ios2 buf' ios1' ios2' buf2 buf1 buf3
               using prems(1,3-) prems(2)[where ?buf2.0="buf2 @ [x]" and ?buf1.0="tl buf1" and ?buf3.0=buf3] apply (auto simp: fun_eq_iff)
               apply (drule meta_mp)
@@ -905,19 +1013,36 @@ lemma
       done
     done
   subgoal
-       
-end
+    sorry
+  done
+         
+definition
+  map_merge :: "('b \<Rightarrow> 'b \<Rightarrow> 'b) \<Rightarrow> ('a \<rightharpoonup> 'b) \<Rightarrow> ('a \<rightharpoonup> 'b) \<Rightarrow> 'a \<rightharpoonup> 'b" where
+  "map_merge f m1 m2 = (\<lambda>x. case m2 x of None \<Rightarrow> m1 x | Some y \<Rightarrow> (case m1 x of None \<Rightarrow> Some y | Some y' \<Rightarrow> Some (f y' y)))"
 
-          apply (rule exI)
-          apply (rule exI[of _ "lmap (map_VIO projl projr id) ios"])
-          apply (rule exI[of _ "[]"])
-          apply (rule exI[of _ "[]"])
+lemma map_merge_empty[simp]: "map_merge f m Map.empty = m"
+  by(simp add: map_merge_def)
 
+lemma empty_map_merge[simp]: "map_merge f Map.empty m = m"
+  by (rule ext) (simp add: map_merge_def split: option.split)
 
-              oops
-end
-end
-                
+datatype 'p channel = Time 'p | Data 'p
+            
+term restrict_map
+
+term map_upds
+
+find_consts "(_, _) fmap" "_ list"
+
+corec max_op where
+  "max_op impli stash = 
+   choice2
+   (Read (Time 1 :: 1 channel) (\<lambda> t. max_op (add_zmset (fst t) impli) stash))
+   (pull (Data 1 :: 1 channel)(\<lambda> x. let
+      impl_frontier = frontier impli ;
+      stash = case x of Some x \<Rightarrow> x # stash | None \<Rightarrow> stash  
+    in max_op impli stash))"
+
 
 
 
