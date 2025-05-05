@@ -35,11 +35,11 @@ inductive wstep_comp_op_L :: \<open>('c \<Rightarrow> 'b option) \<Rightarrow> (
 
 inductive wstep_comp_op_R :: \<open>('c \<Rightarrow> 'b option) \<Rightarrow> ('a + 'b, 'c + 'd, 'e) IO \<Rightarrow> ('b \<Rightarrow> 'e buf) \<Rightarrow>
   ('b, 'd, 'e) op \<Rightarrow> ('b, 'd, 'e) op \<Rightarrow> bool\<close> for wire where
-  \<open>io = Tau \<Longrightarrow> op' = op \<Longrightarrow> wstep_comp_op_R wire io buf op op'\<close>
+  \<open>io = Tau \<Longrightarrow> buf = (\<lambda>_. []) \<Longrightarrow> op' = op \<Longrightarrow> wstep_comp_op_R wire io buf op op'\<close>
 | \<open>io = Inp (Inr p) x \<Longrightarrow> step (Inp p x) op op' \<Longrightarrow> p \<notin> ran wire \<Longrightarrow>
   wstep_comp_op_R wire Tau buf op' op'' \<Longrightarrow> wstep_comp_op_R wire io buf op op''\<close>
-| \<open>step (Inp p x) op op' \<Longrightarrow> p \<in> ran wire \<Longrightarrow> wstep_comp_op_R wire io buf op' op'' \<Longrightarrow>
-  buf p \<noteq> [] \<Longrightarrow> x = BHD p buf \<Longrightarrow> buf' = BTL p buf \<Longrightarrow> wstep_comp_op_R wire io buf' op op''\<close>
+| \<open>step (Inp p x) op op' \<Longrightarrow> p \<in> ran wire \<Longrightarrow> wstep_comp_op_R wire io (BTL p buf) op' op'' \<Longrightarrow>
+  buf p \<noteq> [] \<Longrightarrow> x = BHD p buf \<Longrightarrow> wstep_comp_op_R wire io buf op op''\<close>
 | \<open>io = Out (Inr p) x \<Longrightarrow> step (Out p x) op op' \<Longrightarrow> wstep_comp_op_R wire Tau buf op' op'' \<Longrightarrow>
   wstep_comp_op_R wire io buf op op''\<close>
 | \<open>step Tau op op' \<Longrightarrow> wstep_comp_op_R wire io buf op' op'' \<Longrightarrow> wstep_comp_op_R wire io buf op op''\<close>
@@ -65,13 +65,45 @@ lemma
         apply (rotate_tac 2)
         apply (induct \<open>Inp (Inr p) x :: ('a + 'b, 'c + 'd, 'e) IO\<close> buf2 op\<^sub>2 op\<^sub>2' pred: wstep_comp_op_R)
             apply auto
-          subgoal for op\<^sub>2 op\<^sub>2' buf2 op\<^sub>2''
-            apply (rule wstep_converse_trans(2))
-             apply blast
-            sorry
-          subgoal for p' op\<^sub>2 op\<^sub>2' buf2 op\<^sub>2''
-            sorry
+        subgoal for op\<^sub>2 op\<^sub>2' buf2 op\<^sub>2''
+          apply (rule wstep_converse_trans(2))
+           apply blast
+          apply (erule thin_rl)
+          apply (erule thin_rl)
+          apply (induct \<open>Tau :: ('a + 'b, 'c + 'd, 'e) IO\<close> buf2 op\<^sub>2' op\<^sub>2'' arbitrary: buf pred: wstep_comp_op_R)
+              apply auto
+          subgoal
+            by (metis drop0 ext le_0_eq list.size(3) rtranclp.rtrancl_refl)
+          subgoal for p op op' buf2 op'' buf
+            apply (drule meta_spec[of _ \<open>BTL p buf\<close>])
+            apply (drule meta_mp)
+            apply (rule allI)
+            subgoal for p'
+              apply (cases \<open>p' = p\<close>; simp?)
+              subgoal
+                apply (drule spec[of _ p])
+                apply auto
+                subgoal for n
+                  apply (rule exI[of _ \<open>n - 1\<close>])
+                  by (metis BTL_access Nitpick.size_list_simp(2) One_nat_def Suc_pred drop_Suc less_Suc_eq_le less_eq_Suc_le
+                      tl_take)
+                done
+              subgoal
+                by (simp add: BTL_diff_access)
+              done
+            subgoal
+              by (metis BHD_def append_take_drop_id hd_append2 step_Tau_comp_op_R take_eq_Nil2 wstep_steps_Tau
+                  wstep_trans_tau_1)
+            done
+          subgoal
+            by (meson converse_rtranclp_into_rtranclp step_comp_op_R_Tau)
           done
+        subgoal for p' op\<^sub>2 op\<^sub>2' buf2 op\<^sub>2''
+          apply (rule wstep_trans_tau_1)
+          
+          find_theorems wstep Tau
+          sorry
+        done
       subgoal for op\<^sub>1 x p
         apply rotate_tac
         apply (induct \<open>Out (Inr p) x :: ('a + 'b, 'c + 'd, 'e) IO\<close> buf2 op\<^sub>2 op\<^sub>2' pred: wstep_comp_op_R)
@@ -80,11 +112,16 @@ lemma
         subgoal for op\<^sub>2 op\<^sub>2' buf2 op\<^sub>2''
           apply (rule wstep_converse_trans(1))
            apply blast
+          apply (erule thin_rl)
+          apply (induct \<open>Tau :: ('a + 'b, 'c + 'd, 'e) IO\<close> buf2 op\<^sub>2' op\<^sub>2'' arbitrary: buf buf' pred: wstep_comp_op_R)
+              apply auto
           sorry
         done
       subgoal for op\<^sub>1
         apply (induct \<open>Tau :: ('a + 'b, 'c + 'd, 'e) IO\<close> buf2 op\<^sub>2 op\<^sub>2' pred: wstep_comp_op_R)
-        apply auto
+            apply auto
+        subgoal
+          by (metis drop0 ext le_0_eq list.size(3) rtranclp.rtrancl_refl)
   oops
 
 lemma
