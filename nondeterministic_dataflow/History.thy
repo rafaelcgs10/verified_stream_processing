@@ -180,6 +180,30 @@ simproc_setup num1_eq (\<open>x :: 1\<close>) =
     if Thm.term_of ct aconv @{term \<open>1 :: 1\<close>} then NONE
     else SOME (mk_meta_eq @{thm num1_eq1})))\<close>
 
+lemma wstep_Tau_map_op_elim:
+  assumes \<open>(step Tau)\<^sup>*\<^sup>* (map_op f g op) op'\<close>
+  obtains op'' where \<open>(step Tau)\<^sup>*\<^sup>* op op''\<close> \<open>map_op f g op'' = op'\<close>
+  apply atomize_elim
+  using assms
+  apply (rule rtranclp_induct)
+   apply blast
+  by (metis IO.map_disc_iff(3) rtranclp.rtrancl_into_rtrancl step_map_op_inv)
+
+lemma
+  assumes \<open>wstep io (map_op f g op) op'\<close>
+  obtains io' op'' where \<open>wstep io' op op''\<close> \<open>map_IO f g id io' = io\<close> \<open>map_op f g op'' = op'\<close>
+  apply atomize_elim
+  using assms
+  unfolding wstep_def
+  apply (cases io)
+  subgoal
+    by (auto elim!: wstep_Tau_map_op_elim step_map_op_elim) blast
+  subgoal
+    by (auto elim!: wstep_Tau_map_op_elim step_map_op_elim) blast
+  subgoal
+    by (auto elim!: wstep_Tau_map_op_elim step_map_op_elim) blast
+  done
+
 lemma history_equiv_f_f':
   \<open>f_op \<equiv>\<^sub>h f'_op\<close>
   unfolding history_def feedback_op_def pcomp_op_def scomp_op_def

@@ -4,6 +4,24 @@ imports
   "BNA_Operators"
 begin
 
+lemma
+  \<open>p \<notin> defaults \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> p' \<notin> defaults \<Longrightarrow> p \<in> ran wire \<Longrightarrow> wire p' = Some q \<Longrightarrow>
+  step Tau (comp_op wire buf op\<^sub>1 op\<^sub>2) (comp_op wire (BTL p buf) op\<^sub>1 op\<^sub>2') \<Longrightarrow>
+  step Tau (comp_op wire buf op\<^sub>1 op\<^sub>2') (comp_op wire (BENQ q x (BTL p buf)) op\<^sub>1' op\<^sub>2') \<Longrightarrow>
+  step Tau (comp_op wire buf op\<^sub>1 op\<^sub>2) (comp_op wire (BENQ q x buf) op\<^sub>1' op\<^sub>2)
+  \<and> step Tau (comp_op wire (BENQ q x buf) op\<^sub>1' op\<^sub>2) (comp_op wire (BTL p (BENQ q x buf)) op\<^sub>1' op\<^sub>2')\<close>
+  apply (auto elim!: step_comp_op_elim)
+  oops
+
+lemma
+  \<open>p \<notin> defaults \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow> p' \<notin> defaults \<Longrightarrow> p \<in> ran wire \<Longrightarrow> wire p' = Some q \<Longrightarrow>
+  step (Inp p (BHD p buf)) op\<^sub>2 op\<^sub>2' \<Longrightarrow> step (Out p' x) op\<^sub>1 op\<^sub>1' \<Longrightarrow>
+  step Tau (comp_op wire buf op\<^sub>1 op\<^sub>2) (comp_op wire (BENQ q x buf) op\<^sub>1' op\<^sub>2)
+  \<and> step Tau (comp_op wire (BENQ q x buf) op\<^sub>1' op\<^sub>2) (comp_op wire (BTL p (BENQ q x buf)) op\<^sub>1' op\<^sub>2')\<close>
+  apply (auto elim!: step_comp_op_elim)
+   apply (metis BENQ_access BENQ_diff_access BHD_def hd_append2)
+  by (metis BENQ_access BENQ_diff_access Nil_is_append_conv)
+
 inductive wstep_comp_op_L :: \<open>('c \<Rightarrow> 'b option) \<Rightarrow> ('a + 'b, 'c + 'd, 'e) IO \<Rightarrow> ('b \<Rightarrow> 'e buf) \<Rightarrow>
   ('a, 'c, 'e) op \<Rightarrow> ('a, 'c, 'e) op \<Rightarrow> bool\<close> for wire where
   \<open>io = Tau \<Longrightarrow> buf = (\<lambda>_. []) \<Longrightarrow> op' = op \<Longrightarrow> wstep_comp_op_L wire io buf op op'\<close>
@@ -44,8 +62,7 @@ lemma
       apply (induct \<open>case io of Inp (Inl _) _ \<Rightarrow> io | Out (Inl _) _ \<Rightarrow> io | _ \<Rightarrow> Tau\<close> buf1 op\<^sub>1 op\<^sub>1' arbitrary: io pred: wstep_comp_op_L)
           apply (auto split: sum.splits IO.splits)
       subgoal for op\<^sub>1 x p
-        apply rotate_tac
-        apply rotate_tac
+        apply (rotate_tac 2)
         apply (induct \<open>Inp (Inr p) x :: ('a + 'b, 'c + 'd, 'e) IO\<close> buf2 op\<^sub>2 op\<^sub>2' pred: wstep_comp_op_R)
             apply auto
           subgoal for op\<^sub>2 op\<^sub>2' buf2 op\<^sub>2''
@@ -55,6 +72,19 @@ lemma
           subgoal for p' op\<^sub>2 op\<^sub>2' buf2 op\<^sub>2''
             sorry
           done
+      subgoal for op\<^sub>1 x p
+        apply rotate_tac
+        apply (induct \<open>Out (Inr p) x :: ('a + 'b, 'c + 'd, 'e) IO\<close> buf2 op\<^sub>2 op\<^sub>2' pred: wstep_comp_op_R)
+            apply auto
+        subgoal sorry
+        subgoal for op\<^sub>2 op\<^sub>2' buf2 op\<^sub>2''
+          apply (rule wstep_converse_trans(1))
+           apply blast
+          sorry
+        done
+      subgoal for op\<^sub>1
+        apply (induct \<open>Tau :: ('a + 'b, 'c + 'd, 'e) IO\<close> buf2 op\<^sub>2 op\<^sub>2' pred: wstep_comp_op_R)
+        apply auto
   oops
 
 lemma
