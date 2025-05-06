@@ -30,7 +30,7 @@ inductive wstep_comp_op_L :: \<open>('c \<Rightarrow> 'b option) \<Rightarrow> (
 | \<open>io = Out (Inl p) x \<Longrightarrow> step (Out p x) op op' \<Longrightarrow> wire p = None \<Longrightarrow>
   wstep_comp_op_L wire Tau buf op' op'' \<Longrightarrow> wstep_comp_op_L wire io buf op op''\<close>
 | \<open>step (Out p x) op op' \<Longrightarrow> wire p = Some q \<Longrightarrow> wstep_comp_op_L wire io buf op' op'' \<Longrightarrow>
-  buf' = BENQ q x buf \<Longrightarrow> wstep_comp_op_L wire io buf' op op''\<close>
+  buf' = buf(q := x # buf q) \<Longrightarrow> wstep_comp_op_L wire io buf' op op''\<close>
 | \<open>step Tau op op' \<Longrightarrow> wstep_comp_op_L wire io buf op' op'' \<Longrightarrow> wstep_comp_op_L wire io buf op op''\<close>
 
 inductive wstep_comp_op_R :: \<open>('c \<Rightarrow> 'b option) \<Rightarrow> ('a + 'b, 'c + 'd, 'e) IO \<Rightarrow> ('b \<Rightarrow> 'e buf) \<Rightarrow>
@@ -59,13 +59,13 @@ lemma
     apply (elim exE conjE)
     subgoal for buf' buf1 buf2 op\<^sub>1' op\<^sub>2'
       apply hypsubst_thin
-      apply (induct \<open>case io of Inp (Inl _) _ \<Rightarrow> io | Out (Inl _) _ \<Rightarrow> io | _ \<Rightarrow> Tau\<close> buf1 op\<^sub>1 op\<^sub>1' arbitrary: io pred: wstep_comp_op_L)
+      apply (induct \<open>case io of Inp (Inl _) _ \<Rightarrow> io | Out (Inl _) _ \<Rightarrow> io | _ \<Rightarrow> Tau\<close> buf1 op\<^sub>1 op\<^sub>1' arbitrary: io buf pred: wstep_comp_op_L)
           apply (auto split: sum.splits IO.splits)
-      subgoal for op\<^sub>1 x p
+      subgoal for op\<^sub>1 buf x p
         apply (rotate_tac 2)
-        apply (induct \<open>Inp (Inr p) x :: ('a + 'b, 'c + 'd, 'e) IO\<close> buf2 op\<^sub>2 op\<^sub>2' pred: wstep_comp_op_R)
+        apply (induct \<open>Inp (Inr p) x :: ('a + 'b, 'c + 'd, 'e) IO\<close> buf2 op\<^sub>2 op\<^sub>2' arbitrary: buf pred: wstep_comp_op_R)
             apply auto
-        subgoal for op\<^sub>2 op\<^sub>2' buf2 op\<^sub>2''
+        subgoal for op\<^sub>2 op\<^sub>2' buf2 op\<^sub>2'' buf
           apply (rule wstep_converse_trans(2))
            apply blast
           apply (erule thin_rl)
@@ -74,7 +74,7 @@ lemma
               apply auto
           subgoal
             by (metis drop0 ext le_0_eq list.size(3) rtranclp.rtrancl_refl)
-          subgoal for p op op' buf2 op'' buf
+          subgoal for p op\<^sub>2 op\<^sub>2' buf2 op\<^sub>2'' buf
             apply (drule meta_spec[of _ \<open>BTL p buf\<close>])
             apply (drule meta_mp)
             apply (rule allI)
@@ -82,12 +82,7 @@ lemma
               apply (cases \<open>p' = p\<close>; simp?)
               subgoal
                 apply (drule spec[of _ p])
-                apply auto
-                subgoal for n
-                  apply (rule exI[of _ \<open>n - 1\<close>])
-                  by (metis BTL_access Nitpick.size_list_simp(2) One_nat_def Suc_pred drop_Suc less_Suc_eq_le less_eq_Suc_le
-                      tl_take)
-                done
+                by (metis BTL_access Suc_diff_1 diff_le_mono drop_Suc le_0_eq length_tl linorder_not_le take_0 tl_take)
               subgoal
                 by (simp add: BTL_diff_access)
               done
@@ -98,30 +93,211 @@ lemma
           subgoal
             by (meson converse_rtranclp_into_rtranclp step_comp_op_R_Tau)
           done
-        subgoal for p' op\<^sub>2 op\<^sub>2' buf2 op\<^sub>2''
-          apply (rule wstep_trans_tau_1)
-          
-          find_theorems wstep Tau
-          sorry
+        subgoal for p' op\<^sub>2 op\<^sub>2' buf2 op\<^sub>2'' buf
+          apply (drule meta_spec[of _ \<open>BTL p' buf\<close>])
+          apply (drule meta_mp)
+           apply (rule allI)
+          subgoal for p''
+            apply (cases \<open>p'' = p'\<close>; simp?)
+            subgoal
+              apply (drule spec[of _ p'])
+              by (metis (no_types, lifting) BTL_access One_nat_def Suc_diff_1 bot_nat_0.extremum_uniqueI diff_le_mono drop0 drop_Suc length_drop
+                  not_le take_eq_Nil2 tl_take)
+            subgoal
+              by (simp add: BTL_diff_access)
+            done
+          subgoal
+            by (metis BHD_def append_take_drop_id hd_append2 step_Tau_comp_op_R take_Nil wstep_trans_tau_1)
+          done
         done
-      subgoal for op\<^sub>1 x p
+      subgoal for op\<^sub>1 buf x p
         apply rotate_tac
-        apply (induct \<open>Out (Inr p) x :: ('a + 'b, 'c + 'd, 'e) IO\<close> buf2 op\<^sub>2 op\<^sub>2' pred: wstep_comp_op_R)
+        apply (induct \<open>Out (Inr p) x :: ('a + 'b, 'c + 'd, 'e) IO\<close> buf2 op\<^sub>2 op\<^sub>2' arbitrary: buf pred: wstep_comp_op_R)
             apply auto
-        subgoal sorry
-        subgoal for op\<^sub>2 op\<^sub>2' buf2 op\<^sub>2''
+        subgoal for p' op\<^sub>2 op\<^sub>2' buf2 op\<^sub>2'' buf
+          apply (drule meta_spec[of _ \<open>BTL p' buf\<close>])
+          apply (drule meta_mp)
+           apply (rule allI)
+          subgoal for p''
+            apply (cases \<open>p'' = p'\<close>; simp?)
+            subgoal
+              apply (drule spec[of _ p'])
+              by (metis (no_types, lifting) BTL_access One_nat_def Suc_diff_1 bot_nat_0.extremum_uniqueI diff_le_mono drop0 drop_Suc length_drop
+                  not_le take_eq_Nil2 tl_take)
+            subgoal
+              by (simp add: BTL_diff_access)
+            done
+          subgoal
+            by (metis BHD_def append_take_drop_id hd_append2 step_Tau_comp_op_R take_Nil wstep_trans_tau_1)
+          done
+        subgoal for op\<^sub>2 op\<^sub>2' buf2 op\<^sub>2'' buf
           apply (rule wstep_converse_trans(1))
            apply blast
           apply (erule thin_rl)
-          apply (induct \<open>Tau :: ('a + 'b, 'c + 'd, 'e) IO\<close> buf2 op\<^sub>2' op\<^sub>2'' arbitrary: buf buf' pred: wstep_comp_op_R)
+          apply (induct \<open>Tau :: ('a + 'b, 'c + 'd, 'e) IO\<close> buf2 op\<^sub>2' op\<^sub>2'' arbitrary: buf pred: wstep_comp_op_R)
               apply auto
-          sorry
+          subgoal
+            by (metis drop0 ext le_0_eq list.size(3) rtranclp.rtrancl_refl)
+          subgoal for p op\<^sub>2 op\<^sub>2' buf2 op\<^sub>2'' buf
+            apply (drule meta_spec[of _ \<open>BTL p buf\<close>])
+            apply (drule meta_mp)
+            apply (rule allI)
+            subgoal for p'
+              apply (cases \<open>p' = p\<close>; simp?)
+              subgoal
+                apply (drule spec[of _ p])
+                by (metis BTL_access Suc_diff_1 diff_le_mono drop_Suc le_0_eq length_tl linorder_not_le take_0 tl_take)
+              subgoal
+                by (simp add: BTL_diff_access)
+              done
+            subgoal
+              by (metis BHD_def append_take_drop_id hd_append2 step_Tau_comp_op_R take_eq_Nil2 wstep_steps_Tau
+                  wstep_trans_tau_1)
+            done
+          subgoal
+            by (meson converse_rtranclp_into_rtranclp step_comp_op_R_Tau)
+          done
         done
-      subgoal for op\<^sub>1
-        apply (induct \<open>Tau :: ('a + 'b, 'c + 'd, 'e) IO\<close> buf2 op\<^sub>2 op\<^sub>2' pred: wstep_comp_op_R)
+      subgoal for op\<^sub>1 buf
+        apply (induct \<open>Tau :: ('a + 'b, 'c + 'd, 'e) IO\<close> buf2 op\<^sub>2 op\<^sub>2' arbitrary: buf pred: wstep_comp_op_R)
             apply auto
         subgoal
           by (metis drop0 ext le_0_eq list.size(3) rtranclp.rtrancl_refl)
+        subgoal for p op\<^sub>2 op\<^sub>2' buf2 op\<^sub>2'' buf
+          apply (drule meta_spec[of _ \<open>BTL p buf\<close>])
+          apply (drule meta_mp)
+          apply (rule allI)
+          subgoal for p'
+            apply (cases \<open>p' = p\<close>; simp?)
+            subgoal
+              apply (drule spec[of _ p])
+              by (metis BTL_access Suc_diff_1 diff_le_mono drop_Suc le_0_eq length_tl linorder_not_le take_0 tl_take)
+            subgoal
+              by (simp add: BTL_diff_access)
+            done
+          subgoal
+            by (metis BHD_def append_take_drop_id hd_append2 step_Tau_comp_op_R take_eq_Nil2 wstep_steps_Tau
+                  wstep_trans_tau_1)
+          done
+        subgoal
+          by (meson converse_rtranclp_into_rtranclp step_comp_op_R_Tau)
+        done
+      subgoal for p x op\<^sub>1 op\<^sub>1' buf1 op\<^sub>1'' buf
+        apply (drule meta_spec[of _ Tau])
+        apply (drule meta_spec[of _ buf])
+        apply (drule meta_mp)
+         apply simp_all
+        by (meson step_comp_op_L_Inp wstep_converse_trans(2))
+      subgoal for p x op\<^sub>1 op\<^sub>1' buf1 op\<^sub>1'' buf
+        apply (drule meta_spec[of _ Tau])
+        apply (drule meta_spec[of _ buf])
+        apply (drule meta_mp)
+         apply simp_all
+        apply (rule wstep_converse_trans(1))
+         apply blast
+        apply assumption
+        done
+      subgoal for p x op\<^sub>1 op\<^sub>1' q buf1 op\<^sub>1'' buf x' p'
+        apply (drule meta_spec[of _ \<open>Inp (Inl p') x'\<close>])
+        apply (drule meta_spec[of _ \<open>BENQ q x buf\<close>])
+        apply (drule meta_mp)
+         apply simp_all
+        apply (drule meta_mp)
+         apply (rule allI)
+        subgoal for p''
+          apply (cases \<open>p'' = q\<close>; simp?)
+          subgoal
+            apply (drule spec[of _ q])
+            apply simp
+            by (smt (verit, del_insts) Cons_eq_appendI append.assoc drop_append length_append_singleton self_append_conv2 take_append)
+          subgoal
+            by (smt (verit, ccfv_SIG) BENQ_diff_access)
+          done
+        subgoal
+          by blast
+        done
+      subgoal for p x op\<^sub>1 op\<^sub>1' q buf1 op\<^sub>1'' buf x' p'
+        apply (drule meta_spec[of _ \<open>Inp (Inr p') x'\<close>])
+        apply (drule meta_spec[of _ \<open>BENQ q x buf\<close>])
+        apply (drule meta_mp)
+         apply simp_all
+        apply (drule meta_mp)
+         apply (rule allI)
+        subgoal for p''
+          apply (cases \<open>p'' = q\<close>; simp?)
+          subgoal
+            apply (drule spec[of _ q])
+            apply simp
+            by (smt (verit, del_insts) Cons_eq_appendI append.assoc drop_append length_append_singleton self_append_conv2 take_append)
+          subgoal
+            by (smt (verit, ccfv_SIG) BENQ_diff_access)
+          done
+        subgoal
+          by blast
+        done
+      subgoal for p x op\<^sub>1 op\<^sub>1' q buf1 op\<^sub>1'' buf x' p'
+        apply (drule meta_spec[of _ \<open>Out (Inl p') x'\<close>])
+        apply (drule meta_spec[of _ \<open>BENQ q x buf\<close>])
+        apply (drule meta_mp)
+         apply simp_all
+        apply (drule meta_mp)
+         apply (rule allI)
+        subgoal for p''
+          apply (cases \<open>p'' = q\<close>; simp?)
+          subgoal
+            apply (drule spec[of _ q])
+            apply simp
+            by (smt (verit, del_insts) Cons_eq_appendI append.assoc drop_append length_append_singleton self_append_conv2 take_append)
+          subgoal
+            by (smt (verit, ccfv_SIG) BENQ_diff_access)
+          done
+        subgoal
+          by blast
+        done
+      subgoal for p x op\<^sub>1 op\<^sub>1' q buf1 op\<^sub>1'' buf x' p'
+        apply (drule meta_spec[of _ \<open>Out (Inr p') x'\<close>])
+        apply (drule meta_spec[of _ \<open>BENQ q x buf\<close>])
+        apply (drule meta_mp)
+         apply simp_all
+        apply (drule meta_mp)
+         apply (rule allI)
+        subgoal for p''
+          apply (cases \<open>p'' = q\<close>; simp?)
+          subgoal
+            apply (drule spec[of _ q])
+            apply simp
+            by (smt (verit, del_insts) Cons_eq_appendI append.assoc drop_append length_append_singleton self_append_conv2 take_append)
+          subgoal
+            by (smt (verit, ccfv_SIG) BENQ_diff_access)
+          done
+        subgoal
+          by blast
+        done
+      subgoal for p x op\<^sub>1 op\<^sub>1' q buf1 op\<^sub>1'' buf
+        apply (drule meta_spec[of _ Tau])
+        apply (drule meta_spec[of _ \<open>BENQ q x buf\<close>])
+        apply (drule meta_mp)
+         apply simp_all
+        apply (drule meta_mp)
+         apply (rule allI)
+        subgoal for p''
+          apply (cases \<open>p'' = q\<close>; simp?)
+          subgoal
+            apply (drule spec[of _ q])
+            apply simp
+            by (smt (verit, del_insts) Cons_eq_appendI append.assoc drop_append length_append_singleton self_append_conv2 take_append)
+          subgoal
+            by (smt (verit, ccfv_SIG) BENQ_diff_access)
+          done
+        subgoal
+          by (metis step_Tau_comp_op_L wstep_steps_Tau wstep_trans_tau_1)
+        done
+      subgoal for op\<^sub>1 op\<^sub>1' buf1 op\<^sub>1'' buf
+        apply (drule meta_spec[of _ Tau])
+        apply (drule meta_spec[of _ buf])
+        by (metis IO.simps(11) step_comp_op_L_Tau wstep_steps_Tau wstep_trans_tau_1)
+      done
+    done
   oops
 
 lemma
