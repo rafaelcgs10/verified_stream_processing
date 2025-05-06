@@ -1028,22 +1028,25 @@ lemma empty_map_merge[simp]: "map_merge f Map.empty m = m"
 
 datatype 'p channel = Time 'p | Data 'p
             
-term restrict_map
-
-term map_upds
-
-find_consts "(_, _) fmap" "_ list"
-
 corec max_op where
   "max_op impli stash = 
    choice2
    (Read (Time 1 :: 1 channel) (\<lambda> t. max_op (add_zmset (fst t) impli) stash))
-   (pull (Data 1 :: 1 channel)(\<lambda> x. let
+   (pull (Data 1 :: 1 channel) (\<lambda> x. let
       impl_frontier = frontier impli ;
-      stash = case x of Some x \<Rightarrow> x # stash | None \<Rightarrow> stash  
-    in max_op impli stash))"
+      stash = case x of Some x \<Rightarrow> x # stash | None \<Rightarrow> stash ;
+      outs = [(t, v) <- stash. \<exists> t'. t' \<in>\<^sub>A impl_frontier \<and> t \<le> t' \<and> (\<forall> (t', v) \<in> set stash. \<not> t < t')] ;
+      stash = [(t, v) <- stash. \<not> (\<exists> t'. t' \<in>\<^sub>A impl_frontier \<and> t \<le> t')]
+    in writes (max_op impli stash) (Data 1 :: 1 channel) outs))"
 
+consts
+  unordered_input_op :: "('t \<times> 'd list) cset \<Rightarrow> nat \<Rightarrow> (0, 1 channel, 'd) op"
 
+term id_op
+
+lemma
+  "unordered_input_op (inps :: ('t \<times> 'd list) cset) n = Choice
+   (cimage (\<lambda> (t, batch). case batch of [] \<Rightarrow> undefined) inps)"
 
 
 end
