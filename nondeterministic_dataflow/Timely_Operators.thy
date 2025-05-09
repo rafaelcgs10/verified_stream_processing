@@ -94,6 +94,54 @@ lemma activate_op1_sg:
   apply auto
   done
 
+lemma op2_update_cap:
+  "op2 \<lparr>conf = C, cap = A\<rparr> = op2 \<lparr>conf = C, cap = B\<rparr>"
+  apply (coinduction arbitrary: A B C rule: op.coinduct_upto)
+  apply (intro conjI impI)
+  apply (subst (1 2) op2.code, simp)
+  apply (subst (asm) op2.code, simp)
+           apply (subst (asm) op2.code, simp)
+  apply (subst (1 2) op2.code, simp)
+  apply (subst (asm) op2.code, simp)
+  apply (subst (asm) op2.code, simp)
+     apply (subst (asm) op2.code, simp)
+    apply (subst (1 2) op2.code, simp)
+  subgoal
+    apply (subst (3 4) op2.code, simp)
+    apply (intro rel_setI)
+     apply simp_all
+    subgoal
+      apply (elim disjE)
+      subgoal
+        apply hypsubst_thin
+        apply (smt (verit, ccfv_threshold) transp_op.cong_Silent transp_op.cong_base)        
+        done
+      subgoal
+        apply hypsubst_thin
+        apply (rule disjI2)
+        apply (rule transp_op.cong_Read)
+         apply simp
+        apply (smt (verit, del_insts) comp_apply option.simps(5) rel_funI transp_op.cong_Silent transp_op.cong_base transp_op.cong_refl)
+        done
+      done
+    subgoal
+      apply (elim disjE)
+      subgoal
+        apply hypsubst_thin
+        apply (smt (verit, ccfv_threshold) transp_op.cong_Silent transp_op.cong_base)        
+        done
+      subgoal
+        apply hypsubst_thin
+        apply (rule disjI2)
+        apply (rule transp_op.cong_Read)
+         apply simp
+        apply (smt (verit, del_insts) comp_apply option.simps(5) rel_funI transp_op.cong_Silent transp_op.cong_base transp_op.cong_refl)
+        done
+      done
+    done
+  apply (subst (asm) op2.code, simp)
+  done
+
 lemma
   "activate Tau init_prog op1_op2_sg (init_prog\<lparr>cap := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) (Comp Some (BENQ 1 0 (\<lambda> _. [])) op1_sg op2_sg)"
   apply (rule activate.intros(2)[where p=1])
@@ -101,8 +149,8 @@ lemma
    apply simp
   apply (rule activate.intros(1))
   apply simp
-  apply (rule rtranclp_intros)
-
+  apply (metis op2_update_cap rtranclp.rtrancl_refl)
+  done
 
 
 end
