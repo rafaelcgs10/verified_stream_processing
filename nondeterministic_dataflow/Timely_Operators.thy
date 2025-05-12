@@ -72,13 +72,13 @@ lemma activate_compiles:
 
 record ('loc, 't) progress =
   conf :: "('loc, 't) configuration"
-  cap :: "'loc \<Rightarrow> 't zmultiset"
+  internal :: "'loc \<Rightarrow> 't zmultiset"
 
 abbreviation "init_conf \<equiv> \<lparr>c_work = (\<lambda> _. {#}\<^sub>z), c_pts = (\<lambda> _. {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
-abbreviation "init_prog \<equiv> \<lparr> conf = init_conf, cap = \<lambda> _. {# 1 #}\<^sub>z \<rparr>"
+abbreviation "init_prog \<equiv> \<lparr> conf = init_conf, internal = \<lambda> _. {# 1 #}\<^sub>z \<rparr>"
 
 corec op1 :: "(2, nat) progress \<Rightarrow> (nat, nat, nat) op" where
-  "op1 pg = (if zcount ((cap pg) 1) 1 > 0 then Write (op1 (pg\<lparr>cap := (cap pg)(1 := {#}\<^sub>z)\<rparr>)) 1 0  else Silent (op1 pg))"
+  "op1 pg = (if zcount ((internal pg) 1) 1 > 0 then Write (op1 (pg\<lparr>internal := (internal pg)(1 := {#}\<^sub>z)\<rparr>)) 1 0 else Silent (op1 pg))"
 
 corec op2 :: "(2, nat) progress \<Rightarrow> (nat, nat, nat) op" where
   "op2 pg = pull 1 (case_option (Silent (op2 pg)) (\<lambda> x. if \<exists> t. t \<in>\<^sub>A frontier ((c_imp (conf pg)) 2) \<and> 1 \<le> t then Write \<oslash> 1 x else Silent (op2 pg)))"
@@ -88,14 +88,14 @@ abbreviation "op2_sg \<equiv> Logic op2"
 abbreviation "op1_op2_sg \<equiv> Comp Some (\<lambda> _. []) op1_sg op2_sg"
 
 lemma activate_op1_sg:
-  "activate (Out 1 0) init_prog op1_sg (init_prog\<lparr>cap := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) op1_sg"
+  "activate (Out 1 0) init_prog op1_sg (init_prog\<lparr>internal := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) op1_sg"
   apply (rule activate.intros(1))
   apply (subst op1.code)
   apply auto
   done
 
-lemma op2_update_cap:
-  "op2 \<lparr>conf = C, cap = A\<rparr> = op2 \<lparr>conf = C, cap = B\<rparr>"
+lemma op2_update_internal:
+  "op2 \<lparr>conf = C, internal = A\<rparr> = op2 \<lparr>conf = C, internal = B\<rparr>"
   apply (coinduction arbitrary: A B C rule: op.coinduct_upto)
   apply (intro conjI impI)
   apply (subst (1 2) op2.code, simp)
@@ -143,14 +143,18 @@ lemma op2_update_cap:
   done
 
 lemma
-  "activate Tau init_prog op1_op2_sg (init_prog\<lparr>cap := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) (Comp Some (BENQ 1 0 (\<lambda> _. [])) op1_sg op2_sg)"
+  "activate Tau init_prog op1_op2_sg (init_prog\<lparr>internal := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) (Comp Some (BENQ 1 0 (\<lambda> _. [])) op1_sg op2_sg)"
   apply (rule activate.intros(2)[where p=1])
     apply (rule activate_op1_sg)
    apply simp
   apply (rule activate.intros(1))
   apply simp
-  apply (metis op2_update_cap rtranclp.rtrancl_refl)
+  apply (metis op2_update_internal rtranclp.rtrancl_refl)
   done
+
+lemma
+  "activate Tau (init_prog\<lparr>internal := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) (Comp Some (BENQ 1 0 (\<lambda> _. [])) op1_sg op2_sg)
+   (init_prog\<lparr>internal := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) (Comp Some (BENQ 1 0 (\<lambda> _. [])) op1_sg op2_sg)"
 
 
 end
