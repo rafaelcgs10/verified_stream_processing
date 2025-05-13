@@ -114,6 +114,51 @@ lemma wstep_comp_op_L_Inp_Tau:
     done
   done
 
+lemma wstep_comp_op_L_Out_BENQ:
+  \<open>wstep_comp_op_L wire (Out (Inl p) x) buf op op' \<Longrightarrow> wire p = None \<Longrightarrow> wire p' = Some q \<Longrightarrow>
+  step (Out p' x') op' op'' \<Longrightarrow>
+  wstep_comp_op_L wire (Out (Inl p) x) (BENQ q x' buf) op op''\<close>
+  apply (induct \<open>Out (Inl p) x :: ('c + 'b, 'a + 'd, 'e) IO\<close> buf op op' pred: wstep_comp_op_L)
+      apply auto
+  subgoal
+    apply (rule wstep_comp_op_L.intros(3))
+       apply (rule refl)
+      apply assumption+
+    apply (drule wstep_comp_op_L_Tau_BENQ)
+      apply assumption+
+    done
+  subgoal
+    apply (rule wstep_comp_op_L.intros(4))
+       apply assumption+
+    apply (simp add: BENQ_def fun_upd_twist)
+    done
+  subgoal
+    apply (rule wstep_comp_op_L.intros(5))
+     apply assumption+
+    done
+  done
+
+lemma wstep_comp_op_L_Out_Tau:
+  \<open>wstep_comp_op_L wire (Out (Inl p) x) buf op op' \<Longrightarrow> wire p = None \<Longrightarrow> step Tau op' op'' \<Longrightarrow>
+  wstep_comp_op_L wire (Out (Inl p) x) buf op op''\<close>
+  apply (induct \<open>Out (Inl p) x :: ('c + 'b, 'a + 'd, 'e) IO\<close> buf op op' pred: wstep_comp_op_L)
+      apply auto
+  subgoal
+    apply (rule wstep_comp_op_L.intros(3))
+       apply simp_all
+    apply (drule wstep_comp_op_L_Tau_Tau)
+     apply assumption+
+    done
+  subgoal
+    apply (rule wstep_comp_op_L.intros(4))
+       apply simp_all
+    done
+  subgoal
+    apply (rule wstep_comp_op_L.intros(5))
+     apply assumption+
+    done
+  done
+
 lemma wstep_comp_op_R_Tau_BENQ:
   \<open>wstep_comp_op_R wire Tau buf op op' \<Longrightarrow> p \<in> ran wire \<Longrightarrow> step (Inp p x) op' op'' \<Longrightarrow>
   wstep_comp_op_R wire Tau (BENQ p x buf) op op''\<close>
@@ -155,6 +200,53 @@ lemma wstep_comp_op_R_Tau_Tau:
     apply (rule wstep_comp_op_R.intros(3))
         apply assumption+
     apply (rule refl)
+    done
+  subgoal
+    apply (rule wstep_comp_op_R.intros(5))
+     apply assumption+
+    done
+  done
+
+lemma wstep_comp_op_R_Inp_BENQ:
+  \<open>wstep_comp_op_R wire (Inp (Inr p) x) buf op op' \<Longrightarrow> p' \<in> ran wire \<Longrightarrow> step (Inp p' x') op' op'' \<Longrightarrow>
+  wstep_comp_op_R wire (Inp (Inr p) x) (BENQ p' x' buf) op op''\<close>
+  apply (induct \<open>Inp (Inr p) x :: ('c + 'b, 'a + 'd, 'e) IO\<close> buf op op' pred: wstep_comp_op_R)
+      apply auto
+  subgoal
+    apply (rule wstep_comp_op_R.intros(2))
+       apply (rule refl)
+      apply assumption+
+    apply (drule wstep_comp_op_R_Tau_BENQ)
+      apply assumption+
+    done
+  subgoal
+    apply (rule wstep_comp_op_R.intros(3))
+        apply assumption+
+      apply (metis BAPPEND_BENQ BAPPEND_BTL BULK_BENQ_left_neutral)
+     apply (metis BENQ_access BENQ_diff_access Nil_is_append_conv)
+    apply (metis BENQ_access BENQ_diff_access BHD_def hd_append2)
+    done
+  subgoal
+    apply (rule wstep_comp_op_R.intros(5))
+     apply assumption+
+    done
+  done
+
+lemma wstep_comp_op_R_Inp_Tau:
+  \<open>wstep_comp_op_R wire (Inp (Inr p) x) buf op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow>
+  wstep_comp_op_R wire (Inp (Inr p) x) buf op op''\<close>
+  apply (induct \<open>Inp (Inr p) x :: ('c + 'b, 'a + 'd, 'e) IO\<close> buf op op' pred: wstep_comp_op_R)
+      apply auto
+  subgoal
+    apply (rule wstep_comp_op_R.intros(2))
+       apply (rule refl)
+      apply assumption+
+    apply (drule wstep_comp_op_R_Tau_Tau)
+      apply assumption+
+    done
+  subgoal
+    apply (rule wstep_comp_op_R.intros(3))
+        apply simp_all
     done
   subgoal
     apply (rule wstep_comp_op_R.intros(5))
@@ -206,7 +298,7 @@ lemma wstep_comp_op_R_Out_Tau:
     done
   done
 
-lemma
+lemma wstep_comp_op_L_R:
   \<open>wstep io (comp_op wire buf op\<^sub>1 op\<^sub>2) op' \<longleftrightarrow>
   (\<exists>buf' buf1 buf2 op\<^sub>1' op\<^sub>2'. op' = comp_op wire buf' op\<^sub>1' op\<^sub>2'
   \<and> wstep_comp_op_L wire (case io of Inp (Inl _) _ \<Rightarrow> io | Out (Inl _) _ \<Rightarrow> io | _ \<Rightarrow> Tau) buf1 op\<^sub>1 op\<^sub>1'
@@ -434,10 +526,444 @@ lemma
           done
         done
       done
-    subgoal for op op'' p x
-      sorry
     subgoal
-      sorry
+      apply (induct \<open>comp_op wire buf op\<^sub>1 op\<^sub>2\<close> arbitrary: buf op\<^sub>1 op\<^sub>2 rule: converse_rtranclp_induct)
+      subgoal for buf op\<^sub>1 op\<^sub>2
+        apply hypsubst_thin
+        apply rotate_tac
+        apply (induct op' rule: rtranclp_induct)
+        subgoal
+          apply (auto elim!: step_comp_op_elim)
+          subgoal for op\<^sub>2'
+            apply (rule exI[of _ buf])
+            apply (rule exI[of _ \<open>\<lambda>_. []\<close>])
+            apply (rule exI[of _ \<open>\<lambda>_. []\<close>])
+            apply (rule exI[of _ op\<^sub>1])
+            apply (rule exI[of _ op\<^sub>2'])
+            apply (auto intro: wstep_comp_op_L.intros wstep_comp_op_R.intros)
+            done
+          done
+        subgoal
+          apply simp
+          apply (elim exE)
+          subgoal for buf' buf1 buf2 op\<^sub>1' op\<^sub>2'
+            apply (auto elim!: step_comp_op_elim)
+            subgoal for p' x' op\<^sub>1'' q op\<^sub>2''
+              apply hypsubst_thin
+              apply (rule exI[of _ \<open>BENQ q x' buf'\<close>])
+              apply (rule exI[of _ \<open>BENQ q x' buf1\<close>])
+              apply (rule exI[of _ buf2])
+              apply (rule exI[of _ op\<^sub>1''])
+              apply (rule exI[of _ op\<^sub>2'])
+              apply (intro conjI)
+              subgoal
+                by (rule refl)
+              subgoal
+                by (simp add: wstep_comp_op_L_Tau_BENQ)
+              subgoal
+                by assumption
+              subgoal
+                apply (auto simp: BENQ_def)
+                by (metis append_Nil2 append_assoc diff_is_0_eq' drop_0 le_SucI take_0)
+              done
+            subgoal for p' op\<^sub>2'' op\<^sub>2'''
+              apply hypsubst_thin
+              apply (rule exI[of _ \<open>BTL p' buf'\<close>])
+              apply (rule exI[of _ buf1])
+              apply (rule exI[of _ \<open>BENQ p' (BHD p' buf') buf2\<close>])
+              apply (rule exI[of _ op\<^sub>1'])
+              apply (rule exI[of _ op\<^sub>2''])
+              apply (intro conjI)
+              subgoal
+                by (rule refl)
+              subgoal
+                by assumption
+              subgoal
+                by (simp add: wstep_comp_op_R_Inp_BENQ)
+              subgoal
+                apply (auto simp: BTL_def BENQ_def)
+                apply (drule spec[of _ p'])
+                apply (elim exE)
+                subgoal for n
+                  apply (rule exI[of _ \<open>Suc n\<close>])
+                  apply auto
+                     apply (simp add: drop_Suc tl_drop)
+                    apply (simp add: BHD_def take_hd_drop)
+                   apply (metis drop_Suc drop_append drop_tl)
+                  by (metis (no_types, lifting) BHD_def Nil_is_append_conv append.assoc drop_append drop_eq_Nil2 linorder_not_le take_append
+                      take_hd_drop)
+                done
+              done
+            subgoal for op\<^sub>1'' op\<^sub>2''
+              apply hypsubst_thin
+              apply (rule exI[of _ buf'])
+              apply (rule exI[of _ buf1])
+              apply (rule exI[of _ buf2])
+              apply (rule exI[of _ op\<^sub>1''])
+              apply (rule exI[of _ op\<^sub>2'])
+              apply (intro conjI)
+              subgoal
+                by (rule refl)
+              subgoal
+                by (simp add: wstep_comp_op_L_Tau_Tau)
+              subgoal
+                by assumption
+              subgoal
+                by assumption
+              done
+            subgoal for op\<^sub>2'' op\<^sub>2'''
+              apply hypsubst_thin
+              apply (rule exI[of _ buf'])
+              apply (rule exI[of _ buf1])
+              apply (rule exI[of _ buf2])
+              apply (rule exI[of _ op\<^sub>1'])
+              apply (rule exI[of _ op\<^sub>2''])
+              apply (intro conjI)
+              subgoal
+                by (rule refl)
+              subgoal
+                by assumption
+              subgoal
+                by (simp add: wstep_comp_op_R_Inp_Tau)
+              subgoal
+                by assumption
+              done
+            done
+          done
+        done
+      subgoal for op'''' buf op\<^sub>1 op\<^sub>2
+        apply (auto elim!: step_comp_op_elim)
+        subgoal for p' x' op\<^sub>1' q
+          apply hypsubst_thin
+          apply (drule meta_spec[of _ \<open>BENQ q x' buf\<close>])
+          apply (drule meta_spec[of _ op\<^sub>1'])
+          apply (drule meta_spec[of _ op\<^sub>2])
+          apply simp
+          apply (elim exE conjE)
+          subgoal for buf' buf1 buf2 op\<^sub>1'' op\<^sub>2'
+            apply (rule exI[of _ buf'])
+            apply (rule exI[of _ \<open>buf1(q := x' # buf1 q)\<close>])
+            apply (rule exI[of _ buf2])
+            apply (rule exI[of _ op\<^sub>1''])
+            apply (rule exI[of _ op\<^sub>2'])
+            apply (intro conjI)
+            subgoal
+              by assumption
+            subgoal
+              apply (rule wstep_comp_op_L.intros(4))
+              by simp_all
+            subgoal
+              by assumption
+            subgoal
+              apply (rule allI)
+              subgoal for p''
+                apply (cases \<open>p'' = q\<close>; simp?)
+                subgoal
+                  apply (drule spec[of _ q])
+                  by (metis BENQ_def Cons_eq_appendI add.commute append_Nil append_eq_append_conv2 drop_append fun_upd_same
+                      length_append_singleton nat_arith.suc1 take_append)
+                subgoal
+                  by (metis BENQ_diff_access)
+                done
+              done
+            subgoal
+              by assumption
+            done
+          done
+        subgoal for p' op\<^sub>2'
+          apply hypsubst_thin
+          apply (drule meta_spec[of _ \<open>BTL p' buf\<close>])
+          apply (drule meta_spec[of _ op\<^sub>1])
+          apply (drule meta_spec[of _ op\<^sub>2'])
+          apply simp
+          apply (elim exE conjE)
+          subgoal for buf' buf1 buf2 op\<^sub>1' op\<^sub>2''
+            apply (rule exI[of _ buf'])
+            apply (rule exI[of _ buf1])
+            apply (rule exI[of _ \<open>buf2(p' := BHD p' buf # buf2 p')\<close>])
+            apply (rule exI[of _ op\<^sub>1'])
+            apply (rule exI[of _ op\<^sub>2''])
+            apply (intro conjI)
+               apply assumption
+              apply assumption
+            subgoal
+              apply (rule wstep_comp_op_R.intros(3))
+                  apply assumption+
+                apply (simp_all add: BTL_def BHD_def)
+              done
+            subgoal
+              apply (rule allI)
+              subgoal for p''
+                apply (cases \<open>p'' = p'\<close>; simp?)
+                subgoal
+                  apply (drule spec[of _ p'])
+                  apply (erule exE)
+                  subgoal for n
+                    apply (rule exI[of _ \<open>Suc n\<close>])
+                    by (metis BHD_def BTL_access Cons_eq_appendI Nitpick.size_list_simp(2) add_le_cancel_left diff_Suc_Suc drop_Suc plus_1_eq_Suc
+                        plus_nat.simps(2) take_Suc)
+                  done
+                subgoal
+                  by (metis BTL_diff_access)
+                done
+              done
+            subgoal
+              by assumption
+            done
+          done
+        subgoal for op\<^sub>1'
+          apply hypsubst_thin
+          apply (drule meta_spec[of _ buf])
+          apply (drule meta_spec[of _ op\<^sub>1'])
+          apply (drule meta_spec[of _ op\<^sub>2])
+          apply simp
+          apply (elim exE conjE)
+          subgoal for buf' buf1 buf2 op\<^sub>1'' op\<^sub>2'
+            apply (rule exI[of _ buf'])
+            apply (rule exI[of _ buf1])
+            apply (rule exI[of _ buf2])
+            apply (rule exI[of _ op\<^sub>1''])
+            apply (rule exI[of _ op\<^sub>2'])
+            apply (auto intro: wstep_comp_op_L.intros(5))
+            done
+          done
+        subgoal for op\<^sub>2'
+          apply hypsubst_thin
+          apply (drule meta_spec[of _ buf])
+          apply (drule meta_spec[of _ op\<^sub>1])
+          apply (drule meta_spec[of _ op\<^sub>2'])
+          apply simp
+          apply (elim exE conjE)
+          subgoal for buf' buf1 buf2 op\<^sub>1' op\<^sub>2''
+            apply (rule exI[of _ buf'])
+            apply (rule exI[of _ buf1])
+            apply (rule exI[of _ buf2])
+            apply (rule exI[of _ op\<^sub>1'])
+            apply (rule exI[of _ op\<^sub>2''])
+            apply (auto intro: wstep_comp_op_R.intros(5))
+            done
+          done
+        done
+      done
+    subgoal
+      apply (induct \<open>comp_op wire buf op\<^sub>1 op\<^sub>2\<close> arbitrary: buf op\<^sub>1 op\<^sub>2 rule: converse_rtranclp_induct)
+      subgoal for buf op\<^sub>1 op\<^sub>2
+        apply hypsubst_thin
+        apply rotate_tac
+        apply (induct op' rule: rtranclp_induct)
+        subgoal
+          apply (auto elim!: step_comp_op_elim)
+          subgoal for op\<^sub>1'
+            apply (rule exI[of _ buf])
+            apply (rule exI[of _ \<open>\<lambda>_. []\<close>])
+            apply (rule exI[of _ \<open>\<lambda>_. []\<close>])
+            apply (rule exI[of _ op\<^sub>1'])
+            apply (rule exI[of _ op\<^sub>2])
+            apply (auto intro: wstep_comp_op_L.intros wstep_comp_op_R.intros)
+            done
+          done
+        subgoal
+          apply simp
+          apply (elim exE)
+          subgoal for buf' buf1 buf2 op\<^sub>1' op\<^sub>2'
+            apply (auto elim!: step_comp_op_elim)
+            subgoal for p' x' op\<^sub>1'' q op\<^sub>2''
+              apply hypsubst_thin
+              apply (rule exI[of _ \<open>BENQ q x' buf'\<close>])
+              apply (rule exI[of _ \<open>BENQ q x' buf1\<close>])
+              apply (rule exI[of _ buf2])
+              apply (rule exI[of _ op\<^sub>1''])
+              apply (rule exI[of _ op\<^sub>2'])
+              apply (intro conjI)
+              subgoal
+                by (rule refl)
+              subgoal
+                by (simp add: wstep_comp_op_L_Out_BENQ)
+              subgoal
+                by assumption
+              subgoal
+                apply (auto simp: BENQ_def)
+                by (metis append_Nil2 append_assoc diff_is_0_eq' drop_0 le_SucI take_0)
+              done
+            subgoal for p' op\<^sub>2'' op\<^sub>1''
+              apply hypsubst_thin
+              apply (rule exI[of _ \<open>BTL p' buf'\<close>])
+              apply (rule exI[of _ buf1])
+              apply (rule exI[of _ \<open>BENQ p' (BHD p' buf') buf2\<close>])
+              apply (rule exI[of _ op\<^sub>1'])
+              apply (rule exI[of _ op\<^sub>2''])
+              apply (intro conjI)
+              subgoal
+                by (rule refl)
+              subgoal
+                by assumption
+              subgoal
+                by (simp add: wstep_comp_op_R_Tau_BENQ)
+              subgoal
+                apply (auto simp: BTL_def BENQ_def)
+                apply (drule spec[of _ p'])
+                apply (elim exE)
+                subgoal for n
+                  apply (rule exI[of _ \<open>Suc n\<close>])
+                  apply auto
+                     apply (simp add: drop_Suc tl_drop)
+                    apply (simp add: BHD_def take_hd_drop)
+                   apply (metis drop_Suc drop_append drop_tl)
+                  by (metis (no_types, lifting) BHD_def Nil_is_append_conv append.assoc drop_append drop_eq_Nil2 linorder_not_le take_append
+                      take_hd_drop)
+                done
+              done
+            subgoal for op\<^sub>1'' op\<^sub>1'''
+              apply hypsubst_thin
+              apply (rule exI[of _ buf'])
+              apply (rule exI[of _ buf1])
+              apply (rule exI[of _ buf2])
+              apply (rule exI[of _ op\<^sub>1''])
+              apply (rule exI[of _ op\<^sub>2'])
+              apply (intro conjI)
+              subgoal
+                by (rule refl)
+              subgoal
+                by (simp add: wstep_comp_op_L_Out_Tau)
+              subgoal
+                by assumption
+              subgoal
+                by assumption
+              done
+            subgoal for op\<^sub>2'' op\<^sub>1''
+              apply hypsubst_thin
+              apply (rule exI[of _ buf'])
+              apply (rule exI[of _ buf1])
+              apply (rule exI[of _ buf2])
+              apply (rule exI[of _ op\<^sub>1'])
+              apply (rule exI[of _ op\<^sub>2''])
+              apply (intro conjI)
+              subgoal
+                by (rule refl)
+              subgoal
+                by assumption
+              subgoal
+                by (simp add: wstep_comp_op_R_Tau_Tau)
+              subgoal
+                by assumption
+              done
+            done
+          done
+        done
+      subgoal for op'''' buf op\<^sub>1 op\<^sub>2
+        apply (auto elim!: step_comp_op_elim)
+        subgoal for p' x' op\<^sub>1' q
+          apply hypsubst_thin
+          apply (drule meta_spec[of _ \<open>BENQ q x' buf\<close>])
+          apply (drule meta_spec[of _ op\<^sub>1'])
+          apply (drule meta_spec[of _ op\<^sub>2])
+          apply simp
+          apply (elim exE conjE)
+          subgoal for buf' buf1 buf2 op\<^sub>1'' op\<^sub>2'
+            apply (rule exI[of _ buf'])
+            apply (rule exI[of _ \<open>buf1(q := x' # buf1 q)\<close>])
+            apply (rule exI[of _ buf2])
+            apply (rule exI[of _ op\<^sub>1''])
+            apply (rule exI[of _ op\<^sub>2'])
+            apply (intro conjI)
+            subgoal
+              by assumption
+            subgoal
+              apply (rule wstep_comp_op_L.intros(4))
+              by simp_all
+            subgoal
+              by assumption
+            subgoal
+              apply (rule allI)
+              subgoal for p''
+                apply (cases \<open>p'' = q\<close>; simp?)
+                subgoal
+                  apply (drule spec[of _ q])
+                  by (metis BENQ_def Cons_eq_appendI add.commute append_Nil append_eq_append_conv2 drop_append fun_upd_same
+                      length_append_singleton nat_arith.suc1 take_append)
+                subgoal
+                  by (metis BENQ_diff_access)
+                done
+              done
+            subgoal
+              by assumption
+            done
+          done
+        subgoal for p' op\<^sub>2'
+          apply hypsubst_thin
+          apply (drule meta_spec[of _ \<open>BTL p' buf\<close>])
+          apply (drule meta_spec[of _ op\<^sub>1])
+          apply (drule meta_spec[of _ op\<^sub>2'])
+          apply simp
+          apply (elim exE conjE)
+          subgoal for buf' buf1 buf2 op\<^sub>1' op\<^sub>2''
+            apply (rule exI[of _ buf'])
+            apply (rule exI[of _ buf1])
+            apply (rule exI[of _ \<open>buf2(p' := BHD p' buf # buf2 p')\<close>])
+            apply (rule exI[of _ op\<^sub>1'])
+            apply (rule exI[of _ op\<^sub>2''])
+            apply (intro conjI)
+               apply assumption
+              apply assumption
+            subgoal
+              apply (rule wstep_comp_op_R.intros(3))
+                  apply assumption+
+                apply (simp_all add: BTL_def BHD_def)
+              done
+            subgoal
+              apply (rule allI)
+              subgoal for p''
+                apply (cases \<open>p'' = p'\<close>; simp?)
+                subgoal
+                  apply (drule spec[of _ p'])
+                  apply (erule exE)
+                  subgoal for n
+                    apply (rule exI[of _ \<open>Suc n\<close>])
+                    by (metis BHD_def BTL_access Cons_eq_appendI Nitpick.size_list_simp(2) add_le_cancel_left diff_Suc_Suc drop_Suc plus_1_eq_Suc
+                        plus_nat.simps(2) take_Suc)
+                  done
+                subgoal
+                  by (metis BTL_diff_access)
+                done
+              done
+            subgoal
+              by assumption
+            done
+          done
+        subgoal for op\<^sub>1'
+          apply hypsubst_thin
+          apply (drule meta_spec[of _ buf])
+          apply (drule meta_spec[of _ op\<^sub>1'])
+          apply (drule meta_spec[of _ op\<^sub>2])
+          apply simp
+          apply (elim exE conjE)
+          subgoal for buf' buf1 buf2 op\<^sub>1'' op\<^sub>2'
+            apply (rule exI[of _ buf'])
+            apply (rule exI[of _ buf1])
+            apply (rule exI[of _ buf2])
+            apply (rule exI[of _ op\<^sub>1''])
+            apply (rule exI[of _ op\<^sub>2'])
+            apply (auto intro: wstep_comp_op_L.intros(5))
+            done
+          done
+        subgoal for op\<^sub>2'
+          apply hypsubst_thin
+          apply (drule meta_spec[of _ buf])
+          apply (drule meta_spec[of _ op\<^sub>1])
+          apply (drule meta_spec[of _ op\<^sub>2'])
+          apply simp
+          apply (elim exE conjE)
+          subgoal for buf' buf1 buf2 op\<^sub>1' op\<^sub>2''
+            apply (rule exI[of _ buf'])
+            apply (rule exI[of _ buf1])
+            apply (rule exI[of _ buf2])
+            apply (rule exI[of _ op\<^sub>1'])
+            apply (rule exI[of _ op\<^sub>2''])
+            apply (auto intro: wstep_comp_op_R.intros(5))
+            done
+          done
+        done
+      done
     subgoal
       apply (induct \<open>comp_op wire buf op\<^sub>1 op\<^sub>2\<close> arbitrary: buf op\<^sub>1 op\<^sub>2 rule: converse_rtranclp_induct)
       subgoal for buf op\<^sub>1 op\<^sub>2
@@ -1054,7 +1580,6 @@ lemma
         done
       done
     done
-end
   subgoal
     apply (elim exE conjE)
     subgoal for buf' buf1 buf2 op\<^sub>1' op\<^sub>2'
@@ -1298,53 +1823,38 @@ end
         by (metis IO.simps(11) step_comp_op_L_Tau wstep_steps_Tau wstep_trans_tau_1)
       done
     done
-  oops
+  done
 
-lemma
+lemma wstep_pcomp_op_L_R:
   \<open>wstep io (comp_op (\<lambda>_. None) (\<lambda>_. []) op\<^sub>1 op\<^sub>2) op' \<longleftrightarrow>
   (\<exists>op\<^sub>1' op\<^sub>2'. op' = comp_op (\<lambda>_. None) (\<lambda>_. []) op\<^sub>1' op\<^sub>2'
   \<and> wstep_comp_op_L (\<lambda>_. None) (case io of Inp (Inl _) _ \<Rightarrow> io | Out (Inl _) _ \<Rightarrow> io | _ \<Rightarrow> Tau) (\<lambda>_. []) op\<^sub>1 op\<^sub>1'
   \<and> wstep_comp_op_R (\<lambda>_. None) (case io of Inp (Inr _) _ \<Rightarrow> io | Out (Inr _) _ \<Rightarrow> io | _ \<Rightarrow> Tau) (\<lambda>_. []) op\<^sub>2 op\<^sub>2')\<close>
-  apply (intro iffI)
+  apply (subst wstep_comp_op_L_R[of io \<open>\<lambda>_. None\<close> \<open>\<lambda>_. []\<close> op\<^sub>1 op\<^sub>2 op'])
+  apply (rule iffI)
   subgoal
-    apply (unfold wstep_def)
-    apply (erule relcomppE)+
-    apply (auto split: sum.splits IO.splits)
-    sorry
+    apply (elim exE conjE)
+    subgoal for buf' buf1 buf2 op\<^sub>1' op\<^sub>2'
+      apply (rule exI[of _ op\<^sub>1'])
+      apply (rule exI[of _ op\<^sub>2'])
+      apply (subgoal_tac \<open>buf1 = (\<lambda>_. [])\<close>)
+       apply (metis (no_types, lifting) ext append_is_Nil_conv drop_Nil take_Nil)
+      apply (erule thin_rl)
+      apply (induct _ buf1 op\<^sub>1 op\<^sub>1' pred: wstep_comp_op_L)
+          apply simp_all
+      done
+    done
   subgoal
     apply (elim exE conjE)
     subgoal for op\<^sub>1' op\<^sub>2'
-      apply hypsubst_thin
-      apply (induct \<open>case io of Inp (Inl _) _ \<Rightarrow> io | Out (Inl _) _ \<Rightarrow> io | _ \<Rightarrow> Tau\<close> \<open>(\<lambda>_. []) :: 'b \<Rightarrow> 'e buf\<close> op\<^sub>1 op\<^sub>1' arbitrary: io pred: wstep_comp_op_L)
-          apply (auto split: sum.splits IO.splits)
-      subgoal
-        apply (induct _ \<open>(\<lambda>_. []) :: 'b \<Rightarrow> 'e buf\<close> op\<^sub>2 op\<^sub>2' pred: wstep_comp_op_R)
-            apply auto
-         apply (metis empty_iff ran_empty step_comp_op_R_Inp wstep_converse_trans(2))
-        by (meson step_comp_op_R_Out wstep_converse_trans(1))
-      subgoal
-        apply (induct _ \<open>(\<lambda>_. []) :: 'b \<Rightarrow> 'e buf\<close> op\<^sub>2 op\<^sub>2' pred: wstep_comp_op_R)
-            apply auto
-         apply (metis empty_iff ran_empty step_comp_op_R_Inp wstep_converse_trans(2))
-        by (meson step_comp_op_R_Out wstep_converse_trans(1))
-      subgoal
-        apply (induct \<open>Tau :: ('a + 'b, 'c + 'd, 'e) IO\<close> \<open>(\<lambda>_. []) :: 'b \<Rightarrow> 'e buf\<close> op\<^sub>2 op\<^sub>2' pred: wstep_comp_op_R)
-            apply auto
-        by (meson rtranclp_trans step_Tau_closure_single step_comp_op_R_Tau_start)
-      subgoal
-        apply (drule meta_spec[of _ Tau])
-        apply simp
-        by (meson step_comp_op_L_Inp wstep_converse_trans(2))
-      subgoal
-        apply (drule meta_spec[of _ Tau])
-        apply simp
-        by (metis domIff step_comp_op_L_Out wstep_converse_trans(1))
-      subgoal
-        apply (drule meta_spec[of _ Tau])
-        apply simp
-        by (meson rtranclp_trans step_Tau_closure_single step_comp_op_L_Tau_start)
+      apply (rule exI[of _ \<open>\<lambda>_. []\<close>])
+      apply (rule exI[of _ \<open>\<lambda>_. []\<close>])
+      apply (rule exI[of _ \<open>\<lambda>_. []\<close>])
+      apply (rule exI[of _ op\<^sub>1'])
+      apply (rule exI[of _ op\<^sub>2'])
+      apply (simp add: IO.case_eq_if sum.case_eq_if)
       done
     done
-  oops
+  done
 
 end
