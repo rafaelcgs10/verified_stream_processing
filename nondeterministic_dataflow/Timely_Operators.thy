@@ -4,6 +4,8 @@ imports
   Operator
   BNA_Operators
   Progress_Tracking.Propagate
+  Eval
+   "HOL-Library.Debug"
 begin
 
 datatype ('c, 'd) subgraph = 
@@ -74,18 +76,49 @@ record ('loc, 't) progress =
   conf :: "('loc, 't) configuration"
   internal :: "'loc \<Rightarrow> 't zmultiset"
 
-abbreviation "init_conf \<equiv> \<lparr>c_work = (\<lambda> _. {#}\<^sub>z), c_pts = (\<lambda> _. {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
-abbreviation "init_prog \<equiv> \<lparr> conf = init_conf, internal = \<lambda> _. {# 1 #}\<^sub>z \<rparr>"
+abbreviation "init_conf \<equiv> \<lparr>c_work = (\<lambda> _. {#}\<^sub>z), c_pts = (\<lambda> _. {#}\<^sub>z), c_imp = (\<lambda> _. {# 0 #}\<^sub>z)\<rparr>"
+abbreviation "init_prog \<equiv> \<lparr> conf = init_conf, internal = \<lambda> _. {# 0 #}\<^sub>z \<rparr>"
 
-corec op1 :: "(2, nat) progress \<Rightarrow> (nat, nat, nat) op" where
-  "op1 pg = (if zcount ((internal pg) 1) 1 > 0 then Write (op1 (pg\<lparr>internal := (internal pg)(1 := {#}\<^sub>z)\<rparr>)) 1 0 else Silent (op1 pg))"
+lift_definition is_empty_antichain :: "'a :: order antichain \<Rightarrow> bool" is "Set.is_empty".
 
-corec op2 :: "(2, nat) progress \<Rightarrow> (nat, nat, nat) op" where
-  "op2 pg = pull 1 (case_option (Silent (op2 pg)) (\<lambda> x. if \<exists> t. t \<in>\<^sub>A frontier ((c_imp (conf pg)) 2) \<and> 1 \<le> t then Write \<oslash> 1 x else Silent (op2 pg)))"
+lemma set_zmset_code[code]:
+  "set_zmset (abs_zmultiset x) = (case x of (A, B) \<Rightarrow> set_mset (A - B) \<union> set_mset (B - A))"
+  unfolding set_zmset_def
+  by transfer (auto simp: set_mset_def)
+
+lemma frontier_code[code]:
+  "set_antichain (frontier x) = minimal_antichain {t \<in> set_zmset x. 0 < zcount x t}"
+  by transfer' (auto intro!: arg_cong[of _ _ minimal_antichain] zcount_inI)
+
+corec op1 :: "(2, nat) progress \<Rightarrow> (nat, nat, bool) op" where
+  "op1 pg = (if zcount ((internal pg) 1) 1 > 0 then Write (op1 (pg\<lparr>internal := (internal pg)(1 := {#}\<^sub>z)\<rparr>)) 1 True else Silent (op1 pg))"
+
+abbreviation "advancing \<equiv> Debug.tracing (String.implode ''advancing'')"
+
+value "{# 1 :: nat #}\<^sub>z + {# 1 :: nat #}\<^sub>z"
+
+value "update_zmultiset {# 1 :: nat #}\<^sub>z 1 1"
+
+find_consts "'a zmultiset \<Rightarrow> 'a zmultiset \<Rightarrow> 'a zmultiset"
+
+definition advance_frontier_at :: "('loc, 't) progress \<Rightarrow> 'loc \<Rightarrow> 't \<Rightarrow> ('loc, 't) progress" where
+  "advance_frontier_at pg loc t = advancing pg\<lparr>conf := (conf pg)\<lparr>c_imp := (c_imp (conf pg))(loc := {# t #}\<^sub>z)\<rparr>\<rparr>"
+
+corec op2 :: "unit list \<Rightarrow> (2, nat) progress \<Rightarrow> (nat, nat, unit) op" where
+  "op2 buf pg = pull 1 (case_option
+   (if \<not> is_empty_antichain (filter_antichain (\<lambda> t. \<not> even t) (frontier ((c_imp (conf pg)) 2))) \<and> buf \<noteq> [] then Write \<oslash> 1 (hd buf) else Silent (op2 buf (advance_frontier_at pg 2 1)))
+   (\<lambda> x. if is_empty_antichain (filter_antichain (\<lambda> t. \<not> even t) (frontier ((c_imp (conf pg)) 2))) then Silent (op2 (buf @ [x]) (advance_frontier_at pg 2 1)) else Write \<oslash> 1 (bhd (buf @ [x]))))"
+
+
+value "eval 5 (op2 [] init_prog)"
+
+
+end
 
 abbreviation "op1_sg \<equiv> Logic op1"
-abbreviation "op2_sg \<equiv> Logic op2"
+abbreviation "op2_sg \<equiv> Logic (op2 [])"
 abbreviation "op1_op2_sg \<equiv> Comp Some (\<lambda> _. []) op1_sg op2_sg"
+
 
 lemma activate_op1_sg:
   "activate (Out 1 0) init_prog op1_sg (init_prog\<lparr>internal := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) op1_sg"
@@ -93,6 +126,8 @@ lemma activate_op1_sg:
   apply (subst op1.code)
   apply auto
   done
+
+end
 
 lemma op2_update_internal:
   "op2 \<lparr>conf = C, internal = A\<rparr> = op2 \<lparr>conf = C, internal = B\<rparr>"

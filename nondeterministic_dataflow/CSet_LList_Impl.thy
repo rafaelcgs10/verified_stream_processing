@@ -64,6 +64,12 @@ definition cenum_bool :: "bool llist" where "cenum_bool = llist_of Enum.enum"
 instance by standard (simp_all only: cenum_bool_def enum_cenum.UNIV_cenum enum_cenum.cenum_distinct)
 end
 
+instantiation unit :: cenum begin
+definition cenum_unit :: "unit llist" where "cenum_unit = llist_of Enum.enum"
+instance 
+  by standard (auto simp: enum_unit_def cenum_unit_def image_iff UNIV_cenum[symmetric] cenum_distinct)
+end
+
 instantiation option :: (cenum) cenum begin
 definition cenum_option :: "'a option llist" where "cenum_option = LCons None (lmap Some (cenum :: 'a llist))"
 instance by standard (auto simp: cenum_option_def image_iff UNIV_cenum[symmetric] cenum_distinct)

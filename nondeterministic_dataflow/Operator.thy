@@ -213,8 +213,9 @@ lemma ARead_simp[simp]: "ARead i f op = Choice ({| op, Read i f |})"
   by simp
 
 abbreviation "pull i f \<equiv> Choice (cimage (\<lambda> x. if x then f None else Read i (f o Some)) (cinsert True (csingle False)))"
-lemma pull_simp[simp]: "pull i f = Choice ({| f None, Read i (f o Some) |})"
-  by simp
+
+lemma pull_simp[simp, code]: "pull i f = Choice ({| f None, Read i (f o Some) |})"
+  by auto
 
 lemma map_op_inj_inv:
   "inj f \<Longrightarrow>

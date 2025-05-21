@@ -15,8 +15,8 @@ definition show_2 where "show_2 (x :: 2) = (if x = 1 then STR ''1'' else STR ''2
 
 fun eval' :: "nat \<Rightarrow> ('i, 'o, 'd :: {countable}) op \<Rightarrow> (('i, 'o, 'd) VIO list \<times> ('i, 'o, 'd) op) cset"  where
   "eval' 0 op = {|([], op)|}"
-| "eval' (Suc n) (Read p f) = cUnion (cimage (\<lambda>x. cimage (\<lambda>(t, op). (VInp p x # t, op)) (eval' n (f x))) (cUNIV :: 'd cset))"
 | "eval' (Suc n) (Write op p x) = cimage (\<lambda>(t, op). (VOut p x # t, op)) (eval' n op)"
+| "eval' (Suc n) (Read p f) = cUnion (cimage (\<lambda>x. cimage (\<lambda>(t, op). (VInp p x # t, op)) (eval' n (f x))) (cUNIV :: 'd cset))"
 | "eval' (Suc n) (Silent op) = cimage (\<lambda>(t, op). (t, op)) (eval' n op)"
 | "eval' (Suc n) (Choice ops) = (if ops = {||} then {|([], \<oslash>)|} else cUnion (cimage (eval' n) ops))"
 

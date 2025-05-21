@@ -57,14 +57,6 @@ instance
 proof qed
 end
 
-instantiation nat :: defaults
-begin
-definition defaults_nat where "defaults_nat = ({0} :: nat set)"
-instance
-proof qed
-end
-
-
 instantiation num0 :: defaults begin
 definition defaults_num0 :: "num0 set" where "defaults_num0 = UNIV"
 instance ..
