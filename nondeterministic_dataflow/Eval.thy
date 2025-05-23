@@ -17,13 +17,16 @@ fun eval' :: "nat \<Rightarrow> ('i, 'o, 'd :: {countable}) op \<Rightarrow> (('
   "eval' 0 op = {|([], op)|}"
 | "eval' (Suc n) (Write op p x) = cimage (\<lambda>(t, op). (VOut p x # t, op)) (eval' n op)"
 | "eval' (Suc n) (Read p f) = cUnion (cimage (\<lambda>x. cimage (\<lambda>(t, op). (VInp p x # t, op)) (eval' n (f x))) (cUNIV :: 'd cset))"
-| "eval' (Suc n) (Silent op) = cimage (\<lambda>(t, op). (t, op)) (eval' n op)"
-| "eval' (Suc n) (Choice ops) = (if ops = {||} then {|([], \<oslash>)|} else cUnion (cimage (eval' n) ops))"
+| "eval' (Suc n) (Silent op) = Debug.tracing (show_nat n) (cimage (\<lambda>(t, op). (t, op)) (eval' n op))"
+| "eval' (Suc n) (Choice ops) = Debug.tracing (show_nat n) (if ops = {||} then {|([], \<oslash>)|} else cUnion (cimage (eval' n) ops))"
 
 definition "eval n op = cimage fst (eval' n op)"
 definition "approx_eq n op op' = 
   (cis_empty (cfilter (\<lambda>xs. cis_empty (cfilter (\<lambda>ys. prefix xs ys) (cimage fst (eval' (2 * n) op')))) (cimage fst (eval' n op)))  \<and>
    cis_empty (cfilter (\<lambda>xs. cis_empty (cfilter (\<lambda>ys. prefix xs ys) (cimage fst (eval' (2 * n) op)))) (cimage fst (eval' n op'))))"
+
+definition "approx_in n pfx op = 
+  (\<not> cis_empty (cfilter (\<lambda>xs. prefix pfx xs) (cimage fst (eval' n op))))"
 
 definition W42 :: "(2,1,nat) op" where "W42 = Write end_op 1 42"
 definition CP :: "(1,1,bool) op" where "CP = Read 1 (\<lambda>x. Write end_op 1 x)"
@@ -39,7 +42,7 @@ value [GHC] "eval 1000 (CP \<bullet> CP)"
 value [GHC] "eval 10 (cp_op \<bullet> cp_op)"
 value [GHC] "eval 10 (cp_op \<parallel> cp_op)"
 
-value [GHC] "eval 4 (\<Q> \<bullet> \<C> :: (2 + 2, 2 + 2, bool option) op)"
+value [GHC] "approx_in 12 [VInp (Inl 0) (Some 1), VInp (Inr 0) (Some 1), VOut (Inl 0) (Some 1), VOut (Inr 0) (Some 1)] (\<Q> \<bullet> \<C> :: (2 + 2, 2 + 2, nat option) op)"
 value [GHC] "eval 4 ((\<C> \<parallel> \<C>) \<bullet> (map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)) \<bullet> (\<Q>\<turnstile> \<parallel> \<Q>\<turnstile>) :: (2 + 2, 2 + 2, bool option) op)"
 value [GHC] "approx_eq 4 (\<Q> \<bullet> \<C> :: (2 + 2, 2 + 2, bool option) op)
                   ((\<C> \<parallel> \<C>) \<bullet> (map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)) \<bullet> (\<Q>\<turnstile> \<parallel> \<Q>\<turnstile>) :: (2 + 2, 2 + 2, bool option) op)"

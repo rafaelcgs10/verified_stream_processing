@@ -6,6 +6,7 @@ imports
   Progress_Tracking.Propagate
   Eval
    "HOL-Library.Debug"
+  Executable
 begin
 
 datatype ('c, 'd) subgraph = 
@@ -90,8 +91,8 @@ lemma frontier_code[code]:
   "set_antichain (frontier x) = minimal_antichain {t \<in> set_zmset x. 0 < zcount x t}"
   by transfer' (auto intro!: arg_cong[of _ _ minimal_antichain] zcount_inI)
 
-corec op1 :: "(2, nat) progress \<Rightarrow> (nat, nat, bool) op" where
-  "op1 pg = (if zcount ((internal pg) 1) 1 > 0 then Write (op1 (pg\<lparr>internal := (internal pg)(1 := {#}\<^sub>z)\<rparr>)) 1 True else Silent (op1 pg))"
+corec op1 :: "(2, nat) progress \<Rightarrow> (nat, nat, unit) op" where
+  "op1 pg = (if zcount ((internal pg) 1) 1 > 0 then Write (op1 (pg\<lparr>internal := (internal pg)(1 := {#}\<^sub>z)\<rparr>)) 1 () else Silent (op1 pg))"
 
 abbreviation "advancing \<equiv> Debug.tracing (String.implode ''advancing'')"
 
@@ -106,18 +107,73 @@ definition advance_frontier_at :: "('loc, 't) progress \<Rightarrow> 'loc \<Righ
 
 corec op2 :: "unit list \<Rightarrow> (2, nat) progress \<Rightarrow> (nat, nat, unit) op" where
   "op2 buf pg = pull 1 (case_option
-   (if \<not> is_empty_antichain (filter_antichain (\<lambda> t. \<not> even t) (frontier ((c_imp (conf pg)) 2))) \<and> buf \<noteq> [] then Write \<oslash> 1 (hd buf) else Silent (op2 buf (advance_frontier_at pg 2 1)))
-   (\<lambda> x. if is_empty_antichain (filter_antichain (\<lambda> t. \<not> even t) (frontier ((c_imp (conf pg)) 2))) then Silent (op2 (buf @ [x]) (advance_frontier_at pg 2 1)) else Write \<oslash> 1 (bhd (buf @ [x]))))"
+   (if \<not> is_empty_antichain (filter_antichain (\<lambda> t. \<not> even t) (frontier ((c_imp (conf pg)) 2))) \<and> buf \<noteq> [] 
+   then Write (op2 (tl buf) pg) 1 (hd buf) 
+   else Silent (op2 buf (advance_frontier_at pg 2 1)))
+   (\<lambda> x. 
+   if is_empty_antichain (filter_antichain (\<lambda> t. \<not> even t) (frontier ((c_imp (conf pg)) 2))) 
+   then Silent (op2 (buf @ [x]) (advance_frontier_at pg 2 1)) 
+   else Write (op2 (tl (buf @ [x])) pg) 1 (bhd (buf @ [x]))))"
 
+value "eval 8 (op2 [] init_prog)"
 
-value "eval 5 (op2 [] init_prog)"
-
-
-end
 
 abbreviation "op1_sg \<equiv> Logic op1"
 abbreviation "op2_sg \<equiv> Logic (op2 [])"
 abbreviation "op1_op2_sg \<equiv> Comp Some (\<lambda> _. []) op1_sg op2_sg"
+
+term "compile_subgraph init_prog op1_op2_sg"
+
+global_interpretation sum: enum_dataflow_topology
+  "summary :: (op_meta \<times> port) \<Rightarrow> (op_meta \<times> port) \<Rightarrow> sum antichain"
+  "results_in :: sum \<Rightarrow> sum \<Rightarrow> sum"
+  defines take_step' = "enum_dataflow_topology.take_step summary results_in :: _ \<Rightarrow> (op_meta \<times> port, sum) Step \<Rightarrow> _ \<Rightarrow> _" and
+      after_summary = "dataflow_topology.after_summary results_in :: sum zmultiset \<Rightarrow> sum antichain \<Rightarrow> sum zmultiset"
+  sorry
+
+definition mymin_code :: "(sum \<times> (op_meta \<times> port)) set \<Rightarrow> (sum \<times> (op_meta \<times> port))" where [code del]: "mymin_code = mymin (<)"
+
+lemma mymin_code[code]: "mymin_code (set (x # xs)) = fold (\<lambda>a b. if t_loc_linord (<) a b then a else b) xs x"
+  unfolding mymin_code_def
+  apply (rule linorderMin)
+  apply unfold_locales
+      apply auto
+  done
+
+
+term take_step'
+
+definition take_step where
+  "take_step = take_step' (<)"
+
+declare sum.take_step.simps[of "((<) :: sum \<Rightarrow> _ \<Rightarrow> _)",  folded mymin_code_def take_step_def, code]
+
+definition initial_state where
+"initial_state = (\<lparr> c_work =  (\<lambda>x. zmultiset_of_antichain (frontier (default_capabilities x))),
+                    c_pts = (default_capabilities),
+                    c_imp = (\<lambda>x.{#}\<^sub>z) \<rparr>
+                    :: ((op_meta \<times> port, sum) configuration))"
+
+lift_definition zequal :: "'a zmultiset \<Rightarrow> 'a zmultiset \<Rightarrow> bool" is
+  "\<lambda> (M, N) (P, Q). (M-N) = (P-Q) \<and> (N-M) = (Q-P)"
+  apply (auto simp: equiv_zmset_def)
+    apply (metis (full_types) Multiset.diff_right_commute add_diff_cancel_right')
+    apply (metis Multiset.diff_right_commute add_diff_cancel_left')
+  apply (metis add_diff_cancel_right' cancel_ab_semigroup_add_class.diff_right_commute)
+  by (metis Multiset.diff_right_commute add_diff_cancel_left')
+
+definition "reachable_locations \<equiv> { loc . \<exists> loc' .
+     \<not> is_empty_antichain (summary loc loc') \<or> \<not> is_empty_antichain (summary loc' loc) }"
+
+definition worklist_is_empty :: "(op_meta \<times> port, sum) configuration \<Rightarrow> bool" where
+"worklist_is_empty c = Set.Ball reachable_locations (\<lambda> loc. zequal (c_work c loc) {#}\<^sub>z)"
+
+definition "prop_metaagate_all c0 = while_op_metation worklist_is_empty
+                                            (take_step PR) c0"
+
+
+
+end
 
 
 lemma activate_op1_sg:
