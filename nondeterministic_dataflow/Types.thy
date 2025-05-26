@@ -225,4 +225,14 @@ definition linord_nat :: "nat \<Rightarrow> nat \<Rightarrow> bool" where
 definition linord_nat_prod :: "(nat \<times> nat) \<Rightarrow> (nat \<times> nat) \<Rightarrow> bool" where
   "linord_nat_prod \<equiv> Product_Lexorder.ord_prod_inst.less_prod"
 
+type_synonym t = "(nat \<times> nat)"
+type_synonym sum = "(nat \<times> nat)"
+
+
+definition followed_by :: "sum \<Rightarrow> sum \<Rightarrow> sum" where
+  "followed_by \<equiv> plus"
+
+definition results_in :: "sum \<Rightarrow> sum \<Rightarrow> sum" where
+  "results_in \<equiv> plus"
+
 end

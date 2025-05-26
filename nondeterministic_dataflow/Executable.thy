@@ -199,15 +199,6 @@ lemma frontier_code[code]:
 
 end
 
-type_synonym t = "(nat \<times> nat)"
-type_synonym sum = "(nat \<times> nat)"
-
-definition followed_by :: "sum \<Rightarrow> sum \<Rightarrow> sum" where
-  "followed_by \<equiv> plus"
-
-definition results_in :: "sum \<Rightarrow> sum \<Rightarrow> sum" where
-  "results_in \<equiv> plus"
-
 lemma frontier_empty_zmset: "frontier {#}\<^sub>z = {}\<^sub>A"
   by transfer' (auto simp: minimal_antichain_def)
 

@@ -5,7 +5,7 @@ imports
   BNA_Operators
   Progress_Tracking.Propagate
   Eval
-   "HOL-Library.Debug"
+   "HOL-Library.While_Combinator"
   Executable
 begin
 
@@ -17,9 +17,16 @@ fun embed_nat where
   "embed_nat (Inl n) =  2 * n"
 | "embed_nat (Inr n) =  2 * n + 1"
 
-fun compile_subgraph where
-  "compile_subgraph c (Logic l) = l c"
-| "compile_subgraph c (Comp wire buf sg1 sg2) = map_op embed_nat embed_nat (comp_op wire buf (compile_subgraph c sg1) (compile_subgraph c sg2))"
+consts send_update_conf :: "('loc, 't) configuration \<Rightarrow> ('loc, 't) configuration"
+consts read_update_conf :: "('loc, 't) configuration \<Rightarrow> ('loc, 't) configuration"
+
+fun activate_children where
+  "activate_children c (Logic l) = ((\<lambda> op. case op of Write op' p x \<Rightarrow> (send_update_conf c, Write op' p x)) |`| choices (l c))"
+(* | "compile_subgraph c (Comp wire buf sg1 sg2) = (map_op embed_nat embed_nat (comp_op wire buf (compile_subgraph c sg1) (compile_subgraph c sg2)))"
+ *)
+
+corec compile_subgraph where
+  "compile_subgraph c sg = ((\<lambda> (c', op). undefined) |`| activate_children c sg)" 
 
 inductive activate where
   "wstep io (l c) (l' c') \<Longrightarrow> activate io c (Logic l) c' (Logic l')"
@@ -124,6 +131,14 @@ abbreviation "op1_op2_sg \<equiv> Comp Some (\<lambda> _. []) op1_sg op2_sg"
 
 term "compile_subgraph init_prog op1_op2_sg"
 
+
+definition summary :: "(op_meta \<times> port) \<Rightarrow> (op_meta \<times> port) \<Rightarrow> (sum antichain)" where
+  "summary opp1 opp2 = (case (opp1, opp2) of ((o1, p1), (o2, p2)) \<Rightarrow>
+  (if o1=(Op 0) \<and> p1=(trg 0) \<and> o2=(Op 1) \<and> p2=(src 0) then frontier (abs_zmultiset (mset [(0, 0)], {#}))
+   else frontier {#}\<^sub>z))"
+
+declare zmultiset_of_antichain_def[code]
+
 global_interpretation sum: enum_dataflow_topology
   "summary :: (op_meta \<times> port) \<Rightarrow> (op_meta \<times> port) \<Rightarrow> sum antichain"
   "results_in :: sum \<Rightarrow> sum \<Rightarrow> sum"
@@ -148,11 +163,11 @@ definition take_step where
 
 declare sum.take_step.simps[of "((<) :: sum \<Rightarrow> _ \<Rightarrow> _)",  folded mymin_code_def take_step_def, code]
 
-definition initial_state where
+(* definition initial_state where
 "initial_state = (\<lparr> c_work =  (\<lambda>x. zmultiset_of_antichain (frontier (default_capabilities x))),
                     c_pts = (default_capabilities),
                     c_imp = (\<lambda>x.{#}\<^sub>z) \<rparr>
-                    :: ((op_meta \<times> port, sum) configuration))"
+                    :: ((op_meta \<times> port, sum) configuration))" *)
 
 lift_definition zequal :: "'a zmultiset \<Rightarrow> 'a zmultiset \<Rightarrow> bool" is
   "\<lambda> (M, N) (P, Q). (M-N) = (P-Q) \<and> (N-M) = (Q-P)"
@@ -168,7 +183,7 @@ definition "reachable_locations \<equiv> { loc . \<exists> loc' .
 definition worklist_is_empty :: "(op_meta \<times> port, sum) configuration \<Rightarrow> bool" where
 "worklist_is_empty c = Set.Ball reachable_locations (\<lambda> loc. zequal (c_work c loc) {#}\<^sub>z)"
 
-definition "prop_metaagate_all c0 = while_op_metation worklist_is_empty
+definition "propagate_all c0 = while_option worklist_is_empty
                                             (take_step PR) c0"
 
 
