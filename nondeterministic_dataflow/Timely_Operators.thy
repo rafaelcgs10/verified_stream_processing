@@ -91,10 +91,15 @@ term "\<lambda> pg loc t. pg\<lparr>internal := (internal pg)(loc := image_zmset
 definition advance_cap_at :: "('loc, 't) progress \<Rightarrow> 'loc \<Rightarrow> 't :: plus \<Rightarrow> ('loc, 't) progress" where
   "advance_cap_at pg loc t = pg\<lparr>internal := (internal pg)(loc := image_zmset ((+)t) ((internal pg) loc))\<rparr>"
 
-term writes
+find_consts "_ zmultiset \<Rightarrow> _ set"
+
+term "Min (set_zmset {# 0 :: nat #}\<^sub>z)"
+
+definition get_cap_at :: "('loc, 't) progress \<Rightarrow> 'loc \<Rightarrow> 't" where
+  "advance_cap_at pg loc = pg\<lparr>internal := internal pg loc \<rparr>"
 
 corec input_op :: "'a list llist \<Rightarrow> (0 option, 1 option, 'a \<times> 256 + (2, 256) progress) op" where
-  "input_op inputs = (case inputs of LNil \<Rightarrow> \<oslash> | LCons xs lxs \<Rightarrow> Read None (\<lambda> pg. writes (input_op lxs) )"
+  "input_op inps = (case inps of LNil \<Rightarrow> \<oslash> | LCons xs lxs \<Rightarrow> Read None (\<lambda> pg. writes (input_op lxs) (Some 1) (map Inl xs)))"
 
 value "eval 30 (dataflow_op init_prog (op2 []))"
 
