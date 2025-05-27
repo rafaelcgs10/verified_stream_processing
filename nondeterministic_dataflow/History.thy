@@ -119,12 +119,17 @@ lemma outputs_source_op_scomp_op:
   using outputs_scomp_op_le_dest
   by (smt (verit, ccfv_threshold) image_iff op.set_map(2) subsetI sum.sel(2))
 
-definition \<open>history' op lxs =
-  {lys. \<exists>vios. wtraced (source_op lxs \<bullet> op) vios \<and> lys = extract_outputs vios}\<close>
+lemma wtraced_source_op:
+  \<open>wtraced op lxs \<Longrightarrow>
+  \<exists>vios. wtraced (source_op (extract_inputs lxs) \<bullet> op) vios \<and> extract_outputs vios = extract_outputs lxs\<close>
+  oops
 
 lemma wtrace_equiv_source_op:
   \<open>op\<^sub>1 \<equiv>\<^sub>t op\<^sub>2 \<Longrightarrow> source_op lxs \<bullet> op\<^sub>1 \<equiv>\<^sub>t source_op lxs \<bullet> op\<^sub>2\<close>
   oops
+
+definition \<open>history' op lxs =
+  {lys. \<exists>vios. wtraced (source_op lxs \<bullet> op) vios \<and> lys = extract_outputs vios}\<close>
 
 lemma wtrace_equiv_history'_equiv:
   \<open>op\<^sub>1 \<equiv>\<^sub>t op\<^sub>2 \<Longrightarrow> history' op\<^sub>1 = history' op\<^sub>2\<close>
@@ -179,30 +184,6 @@ simproc_setup num1_eq (\<open>x :: 1\<close>) =
   \<open>K (K (fn ct =>
     if Thm.term_of ct aconv @{term \<open>1 :: 1\<close>} then NONE
     else SOME (mk_meta_eq @{thm num1_eq1})))\<close>
-
-lemma wstep_Tau_map_op_elim:
-  assumes \<open>(step Tau)\<^sup>*\<^sup>* (map_op f g op) op'\<close>
-  obtains op'' where \<open>(step Tau)\<^sup>*\<^sup>* op op''\<close> \<open>map_op f g op'' = op'\<close>
-  apply atomize_elim
-  using assms
-  apply (rule rtranclp_induct)
-   apply blast
-  by (metis IO.map_disc_iff(3) rtranclp.rtrancl_into_rtrancl step_map_op_inv)
-
-lemma
-  assumes \<open>wstep io (map_op f g op) op'\<close>
-  obtains io' op'' where \<open>wstep io' op op''\<close> \<open>map_IO f g id io' = io\<close> \<open>map_op f g op'' = op'\<close>
-  apply atomize_elim
-  using assms
-  unfolding wstep_def
-  apply (cases io)
-  subgoal
-    by (auto elim!: wstep_Tau_map_op_elim step_map_op_elim) blast
-  subgoal
-    by (auto elim!: wstep_Tau_map_op_elim step_map_op_elim) blast
-  subgoal
-    by (auto elim!: wstep_Tau_map_op_elim step_map_op_elim) blast
-  done
 
 lemma history_equiv_f_f':
   \<open>f_op \<equiv>\<^sub>h f'_op\<close>
