@@ -9,6 +9,96 @@ imports
   Executable
 begin
 
+corec writes where
+  "writes op p xs =
+    (case xs of [] \<Rightarrow> case_op Read Write Choice Silent op | x #xs \<Rightarrow> Write (writes op p xs) p x)"
+
+lemma foo[friend_of_corec_simps]:
+  "(if snd (snd x) = [] then ctor_op (Abs_op_pre_op (Rep_op_pre_op (dtor_op (fst x)))) else ctor_op (Abs_op_pre_op (Inl (Inr (algrho (fst x, fst (snd x), btl (snd (snd x))), fst (snd x), bhd (snd (snd x))))))) =
+         (if snd (snd x) = []
+         then if isl (Rep_op_pre_op (dtor_op (fst x))) \<and> isl (projl (Rep_op_pre_op (dtor_op (fst x)))) then ctor_op (Abs_op_pre_op (Rep_op_pre_op (dtor_op (fst x))))
+              else if isl (Rep_op_pre_op (dtor_op (fst x))) \<and> \<not> isl (projl (Rep_op_pre_op (dtor_op (fst x)))) then ctor_op (Abs_op_pre_op (Rep_op_pre_op (dtor_op (fst x))))
+                   else if \<not> isl (Rep_op_pre_op (dtor_op (fst x))) \<and> isl (projr (Rep_op_pre_op (dtor_op (fst x)))) then ctor_op (Abs_op_pre_op (Rep_op_pre_op (dtor_op (fst x))))
+                        else ctor_op
+                              (Abs_op_pre_op
+                                (Inr (Inr (if isl (Rep_op_pre_op (dtor_op (fst x))) then undefined
+                                           else if isl (projr (Rep_op_pre_op (dtor_op (fst x)))) then undefined else projr (projr (Rep_op_pre_op (dtor_op (fst x))))))))
+         else ctor_op (Abs_op_pre_op (Inl (Inr (algrho (fst x, fst (snd x), btl (snd (snd x))), fst (snd x), bhd (snd (snd x)))))))"
+  by (auto split: if_splits)
+
+friend_of_corec writes where
+  "writes op p xs =
+    (case xs of [] \<Rightarrow> case_op Read Write Choice Silent op | x #xs \<Rightarrow> Write (writes op p xs) p x)"
+   apply (rule writes.code)
+  apply transfer_prover
+  done
+
+consts send_update_conf :: "('loc, 't) configuration \<Rightarrow> ('loc, 't) configuration"
+consts read_update_conf :: "('loc, 't) configuration \<Rightarrow> ('loc, 't) configuration"
+
+record ('loc, 't) progress =
+  conf :: "('loc, 't) configuration"
+  internal :: "'loc \<Rightarrow> 't zmultiset"
+
+abbreviation "init_conf \<equiv> \<lparr>c_work = (\<lambda> _. {#}\<^sub>z), c_pts = (\<lambda> _. {#}\<^sub>z), c_imp = (\<lambda> _. {# 0 #}\<^sub>z)\<rparr>"
+abbreviation "init_prog \<equiv> \<lparr> conf = init_conf, internal = \<lambda> _. {# 0 #}\<^sub>z \<rparr>"
+
+definition tscomp_op ::
+  "('ip option, 'op1 option, 'd + ('loc, 't) progress) op \<Rightarrow>
+   ('op1 option, 'op option, 'd + ('loc, 't) progress) op \<Rightarrow>
+   ('ip option, 'op option, 'd + ('loc, 't) progress) op" (infixl "\<cdot>" 65) where
+  "tscomp_op op1 op2 = map_op (case_sum id (\<lambda> _. None)) (case_sum (\<lambda> _. None) id) (comp_op (case_option None (Some o Some)) (\<lambda>_. []) op1 op2)"
+
+lift_definition is_empty_antichain :: "'a :: order antichain \<Rightarrow> bool" is "Set.is_empty".
+
+lemma set_zmset_code[code]:
+  "set_zmset (abs_zmultiset x) = (case x of (A, B) \<Rightarrow> set_mset (A - B) \<union> set_mset (B - A))"
+  unfolding set_zmset_def
+  by transfer (auto simp: set_mset_def)
+
+lemma frontier_code[code]:
+  "set_antichain (frontier x) = minimal_antichain {t \<in> set_zmset x. 0 < zcount x t}"
+  by transfer' (auto intro!: arg_cong[of _ _ minimal_antichain] zcount_inI)
+
+corec op1 :: "(1 option, 1 option, unit + (2, 256) progress) op" where
+  "op1 = (Read None (\<lambda> pg. if zcount ((internal (projr pg)) 1) 0 > 0 then Write op1 (Some 1) (Inl ()) else Silent op1))"
+
+corec dataflow_op where
+  "dataflow_op pg op = Choice (cimage (\<lambda> op. case op of 
+     Read None f \<Rightarrow> Silent (dataflow_op pg (f (Inr pg)))
+   | Read (Some p) f \<Rightarrow> Read p (\<lambda> x. dataflow_op pg (f (Inl x)))
+   | Write op' None (Inr pg') \<Rightarrow> Silent (dataflow_op pg' op')
+   | Write op' (Some p) (Inl x) \<Rightarrow> Write (dataflow_op pg op') p x
+   | Silent op' \<Rightarrow> Silent (dataflow_op pg op')) (choices op))"
+
+value "eval 20 (dataflow_op init_prog op1)"
+
+definition advance_frontier_at :: "('loc, 't) progress \<Rightarrow> 'loc \<Rightarrow> 't \<Rightarrow> ('loc, 't) progress" where
+  "advance_frontier_at pg loc t = pg\<lparr>conf := (conf pg)\<lparr>c_imp := (c_imp (conf pg))(loc := {# t #}\<^sub>z)\<rparr>\<rparr>"
+
+corec op2 :: "unit list \<Rightarrow> (1 option, 1 option, unit + (2, 256) progress) op" where
+  "op2 buf = Read None (\<lambda> pg. pull (Some 1) (case_option
+   (if \<not> is_empty_antichain (filter_antichain (\<lambda> t. 2 < t) (frontier ((c_imp (conf (projr pg))) 2))) \<and> buf \<noteq> [] 
+   then Write (op2 (tl buf)) (Some 1) (Inl (hd buf)) 
+   else Silent (op2 buf))
+   (\<lambda> x. 
+   if is_empty_antichain (filter_antichain (\<lambda> t. 2 < t) (frontier ((c_imp (conf (projr pg))) 2))) 
+   then Silent (op2 (buf @ [projl x])) 
+   else Write (op2 (tl (buf @ [projl x]))) (Some 1) (Inl (bhd (buf @ [projl x]))))))"
+
+term "\<lambda> pg loc t. pg\<lparr>internal := (internal pg)(loc := image_zmset ((+)t) ((internal pg) loc))\<rparr>"
+
+definition advance_cap_at :: "('loc, 't) progress \<Rightarrow> 'loc \<Rightarrow> 't :: plus \<Rightarrow> ('loc, 't) progress" where
+  "advance_cap_at pg loc t = pg\<lparr>internal := (internal pg)(loc := image_zmset ((+)t) ((internal pg) loc))\<rparr>"
+
+term writes
+
+corec input_op :: "'a list llist \<Rightarrow> (0 option, 1 option, 'a \<times> 256 + (2, 256) progress) op" where
+  "input_op inputs = (case inputs of LNil \<Rightarrow> \<oslash> | LCons xs lxs \<Rightarrow> Read None (\<lambda> pg. writes (input_op lxs) )"
+
+value "eval 30 (dataflow_op init_prog (op2 []))"
+
+
 datatype ('c, 'd) subgraph = 
   "apply": Logic "'c \<Rightarrow> (nat, nat, 'd) op"
   | Comp "nat \<Rightarrow> nat option" "nat \<Rightarrow> 'd buf" "('c, 'd) subgraph" "('c, 'd) subgraph"
@@ -17,16 +107,13 @@ fun embed_nat where
   "embed_nat (Inl n) =  2 * n"
 | "embed_nat (Inr n) =  2 * n + 1"
 
-consts send_update_conf :: "('loc, 't) configuration \<Rightarrow> ('loc, 't) configuration"
-consts read_update_conf :: "('loc, 't) configuration \<Rightarrow> ('loc, 't) configuration"
-
 fun activate_children where
   "activate_children c (Logic l) = ((\<lambda> op. case op of Write op' p x \<Rightarrow> (send_update_conf c, Write op' p x)) |`| choices (l c))"
 (* | "compile_subgraph c (Comp wire buf sg1 sg2) = (map_op embed_nat embed_nat (comp_op wire buf (compile_subgraph c sg1) (compile_subgraph c sg2)))"
  *)
 
 corec compile_subgraph where
-  "compile_subgraph c sg = ((\<lambda> (c', op). undefined) |`| activate_children c sg)" 
+  "compile_subgraph c sg = ((\<lambda> (c', op). undefined) |`| activate_children c sg)"  
 
 inductive activate where
   "wstep io (l c) (l' c') \<Longrightarrow> activate io c (Logic l) c' (Logic l')"
@@ -43,86 +130,6 @@ inductive activate where
    activate Tau c sg2 c' sg2' \<Longrightarrow>
    activate (Inp (2 * p) x) c (Comp wire buf sg1 sg2) c' (Comp wire buf sg1' sg2')"  
 
-lemma wstep_trans_taus:
-  "wstep io op op' \<Longrightarrow> wstep Tau op' op'' \<Longrightarrow> wstep io op op''"
-  apply simp
-  apply (metis (no_types, opaque_lifting) relcomppI relcompp_assoc rtranclp_idemp rtranclp_tranclp_absorb tranclp_unfold_left wstep_def)
-  done
-
-lemma wstep_Inp_comp_op:
-  "wstep (Inp p x) op1 op1' \<Longrightarrow>
-   wstep Tau op2 op2' \<Longrightarrow>
-   wstep (Inp (2 * p) x) (map_op embed_nat embed_nat (comp_op wire buf op1 op2)) (map_op embed_nat embed_nat (comp_op wire buf op1' op2'))"
-  apply (rule wstep_map_op)
-   apply (rule wstep_trans_taus)
-    apply (rule wstep_comp_op_L_Inp)
-      apply assumption
-     apply simp_all
-  apply blast
-  done
-
-lemma activate_compiles:
-  "activate io c sg c' sg' \<Longrightarrow>
-   wstep io (compile_subgraph c sg) (compile_subgraph c' sg')"
-  apply (induct io c sg c' sg'  pred: activate)
-  subgoal for io l c l' c'
-    apply simp
-    done
-  subgoal for p x c sg1 c' sg1' sg2 buf
-    apply simp
-      apply (metis (mono_tags, lifting) rtranclp_trans step_comp_op_R_Taus step_star_map_op wstep_Tau_comp_op_L wstep_steps_Tau)
-    done
-  subgoal for p x c sg2 c' sg2' buf sg1 sg1'
-    apply simp
-    apply (metis (mono_tags, lifting) rtranclp_trans step_comp_op_L_Taus step_star_map_op wstep_Tau_comp_op_R wstep_steps_Tau)
-  done
-  subgoal for p x c sg1 c' sg1' sg2 sg2' buf
-    by (simp add: wstep_Inp_comp_op)
-  done
-
-record ('loc, 't) progress =
-  conf :: "('loc, 't) configuration"
-  internal :: "'loc \<Rightarrow> 't zmultiset"
-
-abbreviation "init_conf \<equiv> \<lparr>c_work = (\<lambda> _. {#}\<^sub>z), c_pts = (\<lambda> _. {#}\<^sub>z), c_imp = (\<lambda> _. {# 0 #}\<^sub>z)\<rparr>"
-abbreviation "init_prog \<equiv> \<lparr> conf = init_conf, internal = \<lambda> _. {# 0 #}\<^sub>z \<rparr>"
-
-lift_definition is_empty_antichain :: "'a :: order antichain \<Rightarrow> bool" is "Set.is_empty".
-
-lemma set_zmset_code[code]:
-  "set_zmset (abs_zmultiset x) = (case x of (A, B) \<Rightarrow> set_mset (A - B) \<union> set_mset (B - A))"
-  unfolding set_zmset_def
-  by transfer (auto simp: set_mset_def)
-
-lemma frontier_code[code]:
-  "set_antichain (frontier x) = minimal_antichain {t \<in> set_zmset x. 0 < zcount x t}"
-  by transfer' (auto intro!: arg_cong[of _ _ minimal_antichain] zcount_inI)
-
-corec op1 :: "(2, nat) progress \<Rightarrow> (nat, nat, unit) op" where
-  "op1 pg = (if zcount ((internal pg) 1) 1 > 0 then Write (op1 (pg\<lparr>internal := (internal pg)(1 := {#}\<^sub>z)\<rparr>)) 1 () else Silent (op1 pg))"
-
-abbreviation "advancing \<equiv> Debug.tracing (String.implode ''advancing'')"
-
-value "{# 1 :: nat #}\<^sub>z + {# 1 :: nat #}\<^sub>z"
-
-value "update_zmultiset {# 1 :: nat #}\<^sub>z 1 1"
-
-find_consts "'a zmultiset \<Rightarrow> 'a zmultiset \<Rightarrow> 'a zmultiset"
-
-definition advance_frontier_at :: "('loc, 't) progress \<Rightarrow> 'loc \<Rightarrow> 't \<Rightarrow> ('loc, 't) progress" where
-  "advance_frontier_at pg loc t = advancing pg\<lparr>conf := (conf pg)\<lparr>c_imp := (c_imp (conf pg))(loc := {# t #}\<^sub>z)\<rparr>\<rparr>"
-
-corec op2 :: "unit list \<Rightarrow> (2, nat) progress \<Rightarrow> (nat, nat, unit) op" where
-  "op2 buf pg = pull 1 (case_option
-   (if \<not> is_empty_antichain (filter_antichain (\<lambda> t. \<not> even t) (frontier ((c_imp (conf pg)) 2))) \<and> buf \<noteq> [] 
-   then Write (op2 (tl buf) pg) 1 (hd buf) 
-   else Silent (op2 buf (advance_frontier_at pg 2 1)))
-   (\<lambda> x. 
-   if is_empty_antichain (filter_antichain (\<lambda> t. \<not> even t) (frontier ((c_imp (conf pg)) 2))) 
-   then Silent (op2 (buf @ [x]) (advance_frontier_at pg 2 1)) 
-   else Write (op2 (tl (buf @ [x])) pg) 1 (bhd (buf @ [x]))))"
-
-value "eval 8 (op2 [] init_prog)"
 
 
 abbreviation "op1_sg \<equiv> Logic op1"
