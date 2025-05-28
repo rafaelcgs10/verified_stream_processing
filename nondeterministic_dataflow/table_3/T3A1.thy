@@ -732,13 +732,13 @@ lemma A1_not_brbisim:
 
 (* TODO move *)
 lemma io_of_vio_map_VIO:
-  \<open>io_of_vio (map_VIO f g id vio) = map_IO f g id (io_of_vio vio)\<close>
+  \<open>io_of_vio (map_VIO f g h vio) = map_IO f g h (io_of_vio vio)\<close>
   by (cases vio; simp)
 
 (* TODO move *)
-lemma map_VIO_comp:
-  \<open>map_VIO f g h (map_VIO f' g' h' x) = map_VIO (f \<circ> f') (g \<circ> g') (h \<circ> h') x\<close>
-  by (cases x; simp)
+lemma vio_of_io_map_IO:
+  \<open>io \<noteq> Tau \<Longrightarrow> vio_of_io (map_IO f g h io) = map_VIO f g h (vio_of_io io)\<close>
+  by (cases io; simp)
 
 (* TODO move *)
 lemma wstep_Tau_map_op_elim:
@@ -762,39 +762,50 @@ lemma wstep_map_op_elim:
     apply blast+
   done
 
+lemma
+  \<open>inj_on f (inputs op) \<Longrightarrow> inj_on g (outputs op) \<Longrightarrow> wtraced (map_op f g op) lxs \<Longrightarrow>
+  lxs = lmap (map_VIO f g id) lys \<Longrightarrow> wtraced op lys\<close>
+  apply (coinduction arbitrary: op lxs lys pred: wtraced)
+  apply (erule wtraced.cases; simp add: LNil_eq_lmap; hypsubst_thin)
+  apply (erule wstep_map_op_elim; hypsubst_thin)
+  subgoal for op lxs lys vio opa op' lxsa io' op''
+    apply (rule disjI2)
+    apply (rule exI[of _ \<open>vio_of_io io'\<close>])
+    apply (rule exI[of _ op''])
+    apply (intro exI[of _ \<open>lmap (map_VIO (inv_into (inputs op) f) (inv_into (outputs op) g) id) lxsa\<close>] conjI)
+    subgoal sorry
+     apply (metis IO.map_disc_iff(3) io_of_vio_not_Tau(2) vio_of_io_inverse)
+    apply (intro disjI1 conjI)
+      apply (meson subset_inj_on wstep_inputs_outputs)
+     apply (meson subset_inj_on wstep_inputs_outputs)
+    apply (simp add: llist.map_comp VIO.map_comp)
+    oops
+
 (* TODO move *)
 lemma wtraced_map_op:
-  \<open>bij f \<Longrightarrow> bij g \<Longrightarrow>
-  wtraced (map_op f g op) lxs = (\<exists>lys. wtraced op lys \<and> lxs = lmap (map_VIO f g id) lys)\<close>
+  \<open>inj_on f (inputs op) \<Longrightarrow> inj_on g (outputs op) \<Longrightarrow>
+  wtraced (map_op f g op) lxs \<longleftrightarrow> (\<exists>lys. wtraced op lys \<and> lxs = lmap (map_VIO f g id) lys)\<close>
   apply (rule iffI)
   subgoal
-    apply (intro exI[of _ \<open>lmap (map_VIO (inv f) (inv g) id) lxs\<close>] conjI)
-    subgoal
-      apply (coinduction arbitrary: op lxs pred: wtraced)
-      apply (erule wtraced.cases; simp; hypsubst_thin)
-      apply (erule wstep_map_op_elim; hypsubst_thin)
-      subgoal for op _ vio _ _ lxs io op'
-        apply (intro exI[of _ op'] conjI)
-         apply (cases vio; cases io)
-              apply (auto simp: bij_def inj_iff)
-        done
-      done
-    apply (simp add: llist.map_comp map_VIO_comp VIO.map_id0 bij_def surj_iff)
-    done
+    sorry
   subgoal
     apply (elim exE conjE)
     subgoal for lys
       apply (coinduction arbitrary: op lxs lys pred: wtraced)
       apply (erule wtraced.cases; simp)
-      by (metis io_of_vio_map_VIO wstep_map_op)
+      by (metis (no_types, opaque_lifting) inj_on_subset io_of_vio_map_VIO wstep_inputs_outputs wstep_map_op)
     done
   done
 
 lemma
   \<open>(\<V> \<parallel> (\<I> :: (1, 1, nat) op)) \<bullet> \<V> \<equiv>\<^sub>t map_op assoc id ((\<I> \<parallel> \<V>) \<bullet> \<V>)\<close>
   unfolding wtraces_def pcomp_op_def scomp_op_def
-  apply auto
+  apply (rule Collect_eqI)
+  apply (rule iffI)
   subgoal for lxs
+    apply (erule wtraced.cases; hypsubst_thin)
+     apply (rule wtraced.Nil)
+    apply (erule wstep_map_op_elim)
     sorry
   subgoal for lxs
     sorry
