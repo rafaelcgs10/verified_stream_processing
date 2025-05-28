@@ -17,8 +17,8 @@ fun eval' :: "nat \<Rightarrow> ('i, 'o, 'd :: {countable}) op \<Rightarrow> (('
   "eval' 0 op = {|([], op)|}"
 | "eval' (Suc n) (Write op p x) = cimage (\<lambda>(t, op). (VOut p x # t, op)) (eval' n op)"
 | "eval' (Suc n) (Read p f) = cUnion (cimage (\<lambda>x. cimage (\<lambda>(t, op). (VInp p x # t, op)) (eval' n (f x))) (cUNIV :: 'd cset))"
-| "eval' (Suc n) (Silent op) = Debug.tracing (show_nat n) (cimage (\<lambda>(t, op). (t, op)) (eval' n op))"
-| "eval' (Suc n) (Choice ops) = Debug.tracing (show_nat n) (if ops = {||} then {|([], \<oslash>)|} else cUnion (cimage (eval' n) ops))"
+| "eval' (Suc n) (Silent op) = (cimage (\<lambda>(t, op). (t, op)) (eval' n op))"
+| "eval' (Suc n) (Choice ops) = (if ops = {||} then {|([], \<oslash>)|} else cUnion (cimage (eval' n) ops))"
 
 definition "eval n op = cimage fst (eval' n op)"
 definition "approx_eq n op op' = 

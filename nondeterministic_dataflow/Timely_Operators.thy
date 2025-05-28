@@ -46,7 +46,7 @@ abbreviation "init_prog \<equiv> \<lparr> conf = init_conf, internal = \<lambda>
 definition tscomp_op ::
   "('ip option, 'op1 option, 'd + ('loc, 't) progress) op \<Rightarrow>
    ('op1 option, 'op option, 'd + ('loc, 't) progress) op \<Rightarrow>
-   ('ip option, 'op option, 'd + ('loc, 't) progress) op" (infixl "\<cdot>" 65) where
+   ('ip option, 'op option, 'd + ('loc, 't) progress) op" (infixl "\<bullet>\<^sub>t" 65) where
   "tscomp_op op1 op2 = map_op (case_sum id (\<lambda> _. None)) (case_sum (\<lambda> _. None) id) (comp_op (case_option None (Some o Some)) (\<lambda>_. []) op1 op2)"
 
 lift_definition is_empty_antichain :: "'a :: order antichain \<Rightarrow> bool" is "Set.is_empty".
@@ -63,15 +63,20 @@ lemma frontier_code[code]:
 corec op1 :: "(1 option, 1 option, unit + (2, 256) progress) op" where
   "op1 = (Read None (\<lambda> pg. if zcount ((internal (projr pg)) 1) 0 > 0 then Write op1 (Some 1) (Inl ()) else Silent op1))"
 
+
+definition propagate_all_mock where
+  "propagate_all_mock pg = Debug.tracing (String.implode (''propagate_all!'')) pg\<lparr>conf := (conf pg)\<lparr>c_imp := (c_imp (conf pg))(2 := internal pg 1)\<rparr>\<rparr>"
+
+
 corec dataflow_op where
   "dataflow_op pg op = Choice (cimage (\<lambda> op. case op of 
      Read None f \<Rightarrow> Silent (dataflow_op pg (f (Inr pg)))
    | Read (Some p) f \<Rightarrow> Read p (\<lambda> x. dataflow_op pg (f (Inl x)))
-   | Write op' None (Inr pg') \<Rightarrow> Silent (dataflow_op pg' op')
+   | Write op' None (Inr pg') \<Rightarrow> Silent (dataflow_op (propagate_all_mock pg') op')
    | Write op' (Some p) (Inl x) \<Rightarrow> Write (dataflow_op pg op') p x
    | Silent op' \<Rightarrow> Silent (dataflow_op pg op')) (choices op))"
 
-value "eval 20 (dataflow_op init_prog op1)"
+value [GHC] "eval 20 (dataflow_op init_prog op1)"
 
 definition advance_frontier_at :: "('loc, 't) progress \<Rightarrow> 'loc \<Rightarrow> 't \<Rightarrow> ('loc, 't) progress" where
   "advance_frontier_at pg loc t = pg\<lparr>conf := (conf pg)\<lparr>c_imp := (c_imp (conf pg))(loc := {# t #}\<^sub>z)\<rparr>\<rparr>"
@@ -86,23 +91,46 @@ corec op2 :: "unit list \<Rightarrow> (1 option, 1 option, unit + (2, 256) progr
    then Silent (op2 (buf @ [projl x])) 
    else Write (op2 (tl (buf @ [projl x]))) (Some 1) (Inl (bhd (buf @ [projl x]))))))"
 
-term "\<lambda> pg loc t. pg\<lparr>internal := (internal pg)(loc := image_zmset ((+)t) ((internal pg) loc))\<rparr>"
+value [GHC] "eval 10 (dataflow_op init_prog (op2 []))"
 
 definition advance_cap_at :: "('loc, 't) progress \<Rightarrow> 'loc \<Rightarrow> 't :: plus \<Rightarrow> ('loc, 't) progress" where
-  "advance_cap_at pg loc t = pg\<lparr>internal := (internal pg)(loc := image_zmset ((+)t) ((internal pg) loc))\<rparr>"
+  "advance_cap_at pg loc t = Debug.tracing (String.implode (''advancing cap!''))  pg\<lparr>internal := (internal pg)(loc := image_zmset ((+)t) ((internal pg) loc))\<rparr>"
 
-find_consts "_ zmultiset \<Rightarrow> _ set"
+definition get_cap_at where
+  "get_cap_at pg loc = Min (set_zmset (internal pg loc))"
 
-term "Min (set_zmset {# 0 :: nat #}\<^sub>z)"
+corec input_op :: "'a list llist \<Rightarrow> (0 option, 1 option, 'a \<times> nat + (2, nat) progress) op" where
+  "input_op inps = Read None (\<lambda> pg. (case inps of
+    LNil \<Rightarrow> \<odot>
+  | LCons xs lxs \<Rightarrow> let cap = get_cap_at (projr pg) 1 in
+     writes (Write (input_op lxs) None (Inr (advance_cap_at (projr pg) 1 1))) (Some 1) (map (\<lambda> x. Inl (x, cap)) xs)))"
 
-definition get_cap_at :: "('loc, 't) progress \<Rightarrow> 'loc \<Rightarrow> 't" where
-  "advance_cap_at pg loc = pg\<lparr>internal := internal pg loc \<rparr>"
+value [GHC] "eval 20 (dataflow_op init_prog (input_op (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
 
-corec input_op :: "'a list llist \<Rightarrow> (0 option, 1 option, 'a \<times> 256 + (2, 256) progress) op" where
-  "input_op inps = (case inps of LNil \<Rightarrow> \<oslash> | LCons xs lxs \<Rightarrow> Read None (\<lambda> pg. writes (input_op lxs) (Some 1) (map Inl xs)))"
+term "Debug.tracing (show_nat n)"
 
-value "eval 30 (dataflow_op init_prog (op2 []))"
+abbreviation "maxs ft buf \<equiv> [(n, t) \<leftarrow> buf. ft t \<and> n = Max (set (map fst ((filter (\<lambda> (n', t'). t = t') buf))))]"
 
+abbreviation
+   "less_than_frontier pg t \<equiv> (let ft = frontier ((c_imp (conf pg)) 2) in \<not> is_empty_antichain (filter_antichain (\<lambda> f. t < f) ft))"
+
+
+value "less_than_frontier (propagate_all_mock (advance_cap_at (init_prog :: (2, 256) progress) 1 1)) 0"
+
+
+corec max_op :: "(nat \<times> 256) list \<Rightarrow> (1 option, 1 option, nat \<times> 256 + (2, 256) progress) op" where
+  "max_op buf = Read None (\<lambda> pg. pull (Some 1) (case_option
+   (writes (max_op [(n, t) \<leftarrow> buf. \<not> less_than_frontier (projr pg) t]) (Some 1) (map Inl (maxs (less_than_frontier (projr pg)) buf)))
+   (\<lambda> x.
+   writes (max_op [(n, t) \<leftarrow> buf @ [projl x]. \<not> less_than_frontier (projr pg) t]) (Some 1) (map Inl (maxs (less_than_frontier (projr pg)) (buf @ [projl x]))))))"
+
+
+
+value [GHC] "cfilter ((\<noteq>) []) (eval 20 (dataflow_op init_prog ((input_op (LCons [5, Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
+
+term cfilter
+
+end
 
 datatype ('c, 'd) subgraph = 
   "apply": Logic "'c \<Rightarrow> (nat, nat, 'd) op"

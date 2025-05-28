@@ -212,6 +212,7 @@ corec lmerge where
   "lmerge xss = (case ldropWhile lnull xss of LNil \<Rightarrow> LNil
      | LCons xs xss \<Rightarrow> LCons (lhd xs) (linterleave (lmerge xss) (ltl xs)))"
 
+
 lemma lmerge_LNil[simp]: "lmerge LNil = LNil"
   by (subst lmerge.code; auto)
 lemma lmerge_LCons_LNil[simp]: "lmerge (LCons LNil xss) = lmerge xss"
@@ -514,6 +515,34 @@ instantiation nat :: defaults begin
 definition defaults_nat :: "nat set" where "defaults_nat = {}"
 instance by standard
 end
+
+lemma ldistinct_lmerge:
+  "\<forall>ys zs. ys \<in> lset lxs \<and> zs \<in> lset lxs \<and> ys \<noteq> zs \<longrightarrow> lset ys \<inter> lset zs = {} \<Longrightarrow>
+   \<forall>xs \<in> lset lxs. ldistinct xs \<Longrightarrow>
+   ldistinct (lmerge lxs)"
+  apply (coinduction arbitrary: lxs)
+  subgoal for lxs
+    apply (intro conjI)
+    subgoal
+      apply safe
+      sorry
+    subgoal
+      sorry
+    done
+  done
+
+instantiation prod :: (cenum, cenum) cenum begin
+definition cenum_prod :: "('a \<times> 'b) llist" where "cenum_prod = lmerge (lmap (\<lambda> x. lmap (Pair x) cenum) cenum)"
+instance apply standard
+   apply (auto simp: cenum_prod_def image_iff UNIV_cenum[symmetric] cenum_distinct intro!: ldistinct_linterleave)
+  apply (rule ldistinct_lmerge)
+  apply force
+  apply auto
+  using cenum_distinct apply blast
+  apply (meson Pair_inject inj_onI)
+  done
+end
+
 
 value [GHC] "c\<UU> :: 0 cset"
 value [GHC] "c\<UU> :: 1 cset"
