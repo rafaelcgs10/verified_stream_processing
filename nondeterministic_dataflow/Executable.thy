@@ -8,7 +8,6 @@ imports Complex_Main
   "HOL-Library.Product_Lexorder"
   "HOL.List"
    Progress_Tracking.Propagate
-   Types
 begin
 
 declare [[typedef_overloaded]]

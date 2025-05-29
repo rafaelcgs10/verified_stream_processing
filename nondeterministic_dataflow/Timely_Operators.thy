@@ -33,20 +33,76 @@ friend_of_corec writes where
   apply transfer_prover
   done
 
-consts send_update_conf :: "('loc, 't) configuration \<Rightarrow> ('loc, 't) configuration"
-consts read_update_conf :: "('loc, 't) configuration \<Rightarrow> ('loc, 't) configuration"
+definition summary :: "3 \<Rightarrow> 3 \<Rightarrow> (nat antichain)" where
+  "summary l1 l2 = 
+  (if l1 = 1 \<and> l2 = 2 then frontier (abs_zmultiset (mset [0], {#}))
+   else
+   if l1 = 2 \<and> l2 = 3 then frontier (abs_zmultiset (mset [0], {#})) else
+   frontier {#}\<^sub>z)"
 
-record ('loc, 't) progress =
-  conf :: "('loc, 't) configuration"
-  internal :: "'loc \<Rightarrow> 't zmultiset"
+declare zmultiset_of_antichain_def[code]
+
+global_interpretation sum: enum_dataflow_topology
+  "summary :: 3 \<Rightarrow> 3 \<Rightarrow> nat antichain"
+  "(+)"
+  defines take_step' = "enum_dataflow_topology.take_step summary (+) :: _ \<Rightarrow> (3, nat) Step \<Rightarrow> _ \<Rightarrow> _" and
+      after_summary = "dataflow_topology.after_summary (+) :: nat zmultiset \<Rightarrow> nat antichain \<Rightarrow> nat zmultiset"
+  sorry
+
+definition mymin_code :: "(nat \<times> 3) set \<Rightarrow> (nat \<times> 3)" 
+  where [code del]: "mymin_code = mymin (<)"
+
+lemma mymin_code[code]: "mymin_code (set (x # xs)) = fold (\<lambda>a b. if t_loc_linord (<) a b then a else b) xs x"
+  unfolding mymin_code_def
+  apply (rule linorderMin)
+  apply unfold_locales
+      apply auto
+  done
+
+definition take_step where
+  "take_step = take_step' (<)"
+
+declare sum.take_step.simps[of "((<) :: nat \<Rightarrow> _ \<Rightarrow> _)",  folded mymin_code_def take_step_def, code]
+
+lift_definition zequal :: "'a zmultiset \<Rightarrow> 'a zmultiset \<Rightarrow> bool" is
+  "\<lambda> (M, N) (P, Q). (M-N) = (P-Q) \<and> (N-M) = (Q-P)"
+  apply (auto simp: equiv_zmset_def)
+    apply (metis (full_types) Multiset.diff_right_commute add_diff_cancel_right')
+    apply (metis Multiset.diff_right_commute add_diff_cancel_left')
+  apply (metis add_diff_cancel_right' cancel_ab_semigroup_add_class.diff_right_commute)
+  by (metis Multiset.diff_right_commute add_diff_cancel_left')
+
+definition "reachable_locations \<equiv> { loc . \<exists> loc' .
+     \<not> is_empty_antichain (summary loc loc') \<or> \<not> is_empty_antichain (summary loc' loc) }"
+
+definition worklist_is_empty :: "(3, nat) configuration \<Rightarrow> bool" where
+"worklist_is_empty c = Set.Ball reachable_locations (\<lambda> loc. zequal (c_work c loc) {#}\<^sub>z)"
+
+definition "propagate_all c0 = while_option worklist_is_empty
+                                            (take_step PR) c0"
+
+(* Inspired by timely/src/progress/change_batch.rs:20 *)
+type_synonym ('loc, 't) change_batch = "('loc \<times> 't zmultiset) list"
+
+(* Inspired by timely/src/progress/subgraph.rs:237 *)
+record ('loc, 't) subgraph =
+  pointstamp_tracker :: "('loc, 't) configuration"
+(* We consider local_pointstamp and final_pointstamp as the same thing in this non-distributed version *)
+  local_pointstamp :: "('loc, 't) change_batch"
 
 abbreviation "init_conf \<equiv> \<lparr>c_work = (\<lambda> _. {#}\<^sub>z), c_pts = (\<lambda> _. {#}\<^sub>z), c_imp = (\<lambda> _. {# 0 #}\<^sub>z)\<rparr>"
-abbreviation "init_prog \<equiv> \<lparr> conf = init_conf, internal = \<lambda> _. {# 0 #}\<^sub>z \<rparr>"
+abbreviation "init_subgraph \<equiv> \<lparr> pointstamp_tracker = init_conf, local_pointstamp = [] \<rparr>"
+
+(* Inspired by timely/src/progress/subgraph.rs:453 *)
+(* First migrate all change batches to the worklist, then call propagate_all *)
+fun propagate_pointstamps :: "(3, nat) configuration \<Rightarrow> 'a buf \<Rightarrow> (3, nat) configuration option"  where
+  "propagate_pointstamps conf [] = propagate_all conf"
+| "propagate_pointstamps conf (cb # cbs) = undefined"
 
 definition tscomp_op ::
-  "('ip option, 'op1 option, 'd + ('loc, 't) progress) op \<Rightarrow>
-   ('op1 option, 'op option, 'd + ('loc, 't) progress) op \<Rightarrow>
-   ('ip option, 'op option, 'd + ('loc, 't) progress) op" (infixl "\<bullet>\<^sub>t" 65) where
+  "('ip option, 'op1 option, 'd + ('loc, 't) subgraph) op \<Rightarrow>
+   ('op1 option, 'op option, 'd + ('loc, 't) subgraph) op \<Rightarrow>
+   ('ip option, 'op option, 'd + ('loc, 't) subgraph) op" (infixl "\<bullet>\<^sub>t" 65) where
   "tscomp_op op1 op2 = map_op (case_sum id (\<lambda> _. None)) (case_sum (\<lambda> _. None) id) (comp_op (case_option None (Some o Some)) (\<lambda>_. []) op1 op2)"
 
 lift_definition is_empty_antichain :: "'a :: order antichain \<Rightarrow> bool" is "Set.is_empty".
@@ -60,12 +116,8 @@ lemma frontier_code[code]:
   "set_antichain (frontier x) = minimal_antichain {t \<in> set_zmset x. 0 < zcount x t}"
   by transfer' (auto intro!: arg_cong[of _ _ minimal_antichain] zcount_inI)
 
-corec op1 :: "(1 option, 1 option, unit + (2, 256) progress) op" where
-  "op1 = (Read None (\<lambda> pg. if zcount ((internal (projr pg)) 1) 0 > 0 then Write op1 (Some 1) (Inl ()) else Silent op1))"
-
-
-definition propagate_all_mock where
-  "propagate_all_mock pg = Debug.tracing (String.implode (''propagate_all!'')) pg\<lparr>conf := (conf pg)\<lparr>c_imp := (c_imp (conf pg))(2 := internal pg 1)\<rparr>\<rparr>"
+corec op1 :: "(1 option, 1 option, unit + (2, 256) subgraph) op" where
+  "op1 = (Read None (\<lambda> pg. if zcount ((local_pointstamp (projr pg)) 1) 0 > 0 then Write op1 (Some 1) (Inl ()) else Silent op1))"
 
 
 corec dataflow_op where
@@ -76,49 +128,49 @@ corec dataflow_op where
    | Write op' (Some p) (Inl x) \<Rightarrow> Write (dataflow_op pg op') p x
    | Silent op' \<Rightarrow> Silent (dataflow_op pg op')) (choices op))"
 
-value [GHC] "eval 20 (dataflow_op init_prog op1)"
+value [GHC] "eval 20 (dataflow_op init_subgraph op1)"
 
-definition advance_frontier_at :: "('loc, 't) progress \<Rightarrow> 'loc \<Rightarrow> 't \<Rightarrow> ('loc, 't) progress" where
-  "advance_frontier_at pg loc t = pg\<lparr>conf := (conf pg)\<lparr>c_imp := (c_imp (conf pg))(loc := {# t #}\<^sub>z)\<rparr>\<rparr>"
+definition advance_frontier_at :: "('loc, 't) subgraph \<Rightarrow> 'loc \<Rightarrow> 't \<Rightarrow> ('loc, 't) subgraph" where
+  "advance_frontier_at pg loc t = pg\<lparr>pointstamp_tracker := (pointstamp_tracker pg)\<lparr>c_imp := (c_imp (pointstamp_tracker pg))(loc := {# t #}\<^sub>z)\<rparr>\<rparr>"
 
-corec op2 :: "unit list \<Rightarrow> (1 option, 1 option, unit + (2, 256) progress) op" where
+corec op2 :: "unit list \<Rightarrow> (1 option, 1 option, unit + (2, 256) subgraph) op" where
   "op2 buf = Read None (\<lambda> pg. pull (Some 1) (case_option
-   (if \<not> is_empty_antichain (filter_antichain (\<lambda> t. 2 < t) (frontier ((c_imp (conf (projr pg))) 2))) \<and> buf \<noteq> [] 
+   (if \<not> is_empty_antichain (filter_antichain (\<lambda> t. 2 < t) (frontier ((c_imp (pointstamp_tracker (projr pg))) 2))) \<and> buf \<noteq> [] 
    then Write (op2 (tl buf)) (Some 1) (Inl (hd buf)) 
    else Silent (op2 buf))
    (\<lambda> x. 
-   if is_empty_antichain (filter_antichain (\<lambda> t. 2 < t) (frontier ((c_imp (conf (projr pg))) 2))) 
+   if is_empty_antichain (filter_antichain (\<lambda> t. 2 < t) (frontier ((c_imp (pointstamp_tracker (projr pg))) 2))) 
    then Silent (op2 (buf @ [projl x])) 
    else Write (op2 (tl (buf @ [projl x]))) (Some 1) (Inl (bhd (buf @ [projl x]))))))"
 
-value [GHC] "eval 10 (dataflow_op init_prog (op2 []))"
+value [GHC] "eval 10 (dataflow_op init_subgraph (op2 []))"
 
-definition advance_cap_at :: "('loc, 't) progress \<Rightarrow> 'loc \<Rightarrow> 't :: plus \<Rightarrow> ('loc, 't) progress" where
-  "advance_cap_at pg loc t = Debug.tracing (String.implode (''advancing cap!''))  pg\<lparr>internal := (internal pg)(loc := image_zmset ((+)t) ((internal pg) loc))\<rparr>"
+definition advance_cap_at :: "('loc, 't) subgraph \<Rightarrow> 'loc \<Rightarrow> 't :: plus \<Rightarrow> ('loc, 't) subgraph" where
+  "advance_cap_at pg loc t = Debug.tracing (String.implode (''advancing cap!''))  pg\<lparr>local_pointstamp := (local_pointstamp pg)(loc := image_zmset ((+)t) ((local_pointstamp pg) loc))\<rparr>"
 
 definition get_cap_at where
-  "get_cap_at pg loc = Min (set_zmset (internal pg loc))"
+  "get_cap_at pg loc = Min (set_zmset (local_pointstamp pg loc))"
 
-corec input_op :: "'a list llist \<Rightarrow> (0 option, 1 option, 'a \<times> nat + (2, nat) progress) op" where
+corec input_op :: "'a list llist \<Rightarrow> (0 option, 1 option, 'a \<times> nat + (2, nat) subgraph) op" where
   "input_op inps = Read None (\<lambda> pg. (case inps of
     LNil \<Rightarrow> \<odot>
   | LCons xs lxs \<Rightarrow> let cap = get_cap_at (projr pg) 1 in
      writes (Write (input_op lxs) None (Inr (advance_cap_at (projr pg) 1 1))) (Some 1) (map (\<lambda> x. Inl (x, cap)) xs)))"
 
-value [GHC] "eval 20 (dataflow_op init_prog (input_op (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
+value [GHC] "eval 20 (dataflow_op init_subgraph (input_op (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
 
 term "Debug.tracing (show_nat n)"
 
 abbreviation "maxs ft buf \<equiv> [(n, t) \<leftarrow> buf. ft t \<and> n = Max (set (map fst ((filter (\<lambda> (n', t'). t = t') buf))))]"
 
 abbreviation
-   "less_than_frontier pg t \<equiv> (let ft = frontier ((c_imp (conf pg)) 2) in \<not> is_empty_antichain (filter_antichain (\<lambda> f. t < f) ft))"
+   "less_than_frontier pg t \<equiv> (let ft = frontier ((c_imp (pointstamp_tracker pg)) 2) in \<not> is_empty_antichain (filter_antichain (\<lambda> f. t < f) ft))"
 
 
-value "less_than_frontier (propagate_all_mock (advance_cap_at (init_prog :: (2, 256) progress) 1 1)) 0"
+value "less_than_frontier (propagate_all_mock (advance_cap_at (init_subgraph :: (2, 256) subgraph) 1 1)) 0"
 
 
-corec max_op :: "(nat \<times> 256) list \<Rightarrow> (1 option, 1 option, nat \<times> 256 + (2, 256) progress) op" where
+corec max_op :: "(nat \<times> nat) list \<Rightarrow> (1 option, 1 option, nat \<times> nat + (2, nat) subgraph) op" where
   "max_op buf = Read None (\<lambda> pg. pull (Some 1) (case_option
    (writes (max_op [(n, t) \<leftarrow> buf. \<not> less_than_frontier (projr pg) t]) (Some 1) (map Inl (maxs (less_than_frontier (projr pg)) buf)))
    (\<lambda> x.
@@ -126,7 +178,7 @@ corec max_op :: "(nat \<times> 256) list \<Rightarrow> (1 option, 1 option, nat 
 
 
 
-value [GHC] "cfilter ((\<noteq>) []) (eval 20 (dataflow_op init_prog ((input_op (LCons [5, Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
+value [GHC] "cfilter ((\<noteq>) []) (eval 20 (dataflow_op init_subgraph ((input_op (LCons [5, Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
 
 term cfilter
 
@@ -169,62 +221,9 @@ abbreviation "op1_sg \<equiv> Logic op1"
 abbreviation "op2_sg \<equiv> Logic (op2 [])"
 abbreviation "op1_op2_sg \<equiv> Comp Some (\<lambda> _. []) op1_sg op2_sg"
 
-term "compile_subgraph init_prog op1_op2_sg"
+term "compile_subgraph init_subgraph op1_op2_sg"
 
 
-definition summary :: "(op_meta \<times> port) \<Rightarrow> (op_meta \<times> port) \<Rightarrow> (sum antichain)" where
-  "summary opp1 opp2 = (case (opp1, opp2) of ((o1, p1), (o2, p2)) \<Rightarrow>
-  (if o1=(Op 0) \<and> p1=(trg 0) \<and> o2=(Op 1) \<and> p2=(src 0) then frontier (abs_zmultiset (mset [(0, 0)], {#}))
-   else frontier {#}\<^sub>z))"
-
-declare zmultiset_of_antichain_def[code]
-
-global_interpretation sum: enum_dataflow_topology
-  "summary :: (op_meta \<times> port) \<Rightarrow> (op_meta \<times> port) \<Rightarrow> sum antichain"
-  "results_in :: sum \<Rightarrow> sum \<Rightarrow> sum"
-  defines take_step' = "enum_dataflow_topology.take_step summary results_in :: _ \<Rightarrow> (op_meta \<times> port, sum) Step \<Rightarrow> _ \<Rightarrow> _" and
-      after_summary = "dataflow_topology.after_summary results_in :: sum zmultiset \<Rightarrow> sum antichain \<Rightarrow> sum zmultiset"
-  sorry
-
-definition mymin_code :: "(sum \<times> (op_meta \<times> port)) set \<Rightarrow> (sum \<times> (op_meta \<times> port))" where [code del]: "mymin_code = mymin (<)"
-
-lemma mymin_code[code]: "mymin_code (set (x # xs)) = fold (\<lambda>a b. if t_loc_linord (<) a b then a else b) xs x"
-  unfolding mymin_code_def
-  apply (rule linorderMin)
-  apply unfold_locales
-      apply auto
-  done
-
-
-term take_step'
-
-definition take_step where
-  "take_step = take_step' (<)"
-
-declare sum.take_step.simps[of "((<) :: sum \<Rightarrow> _ \<Rightarrow> _)",  folded mymin_code_def take_step_def, code]
-
-(* definition initial_state where
-"initial_state = (\<lparr> c_work =  (\<lambda>x. zmultiset_of_antichain (frontier (default_capabilities x))),
-                    c_pts = (default_capabilities),
-                    c_imp = (\<lambda>x.{#}\<^sub>z) \<rparr>
-                    :: ((op_meta \<times> port, sum) configuration))" *)
-
-lift_definition zequal :: "'a zmultiset \<Rightarrow> 'a zmultiset \<Rightarrow> bool" is
-  "\<lambda> (M, N) (P, Q). (M-N) = (P-Q) \<and> (N-M) = (Q-P)"
-  apply (auto simp: equiv_zmset_def)
-    apply (metis (full_types) Multiset.diff_right_commute add_diff_cancel_right')
-    apply (metis Multiset.diff_right_commute add_diff_cancel_left')
-  apply (metis add_diff_cancel_right' cancel_ab_semigroup_add_class.diff_right_commute)
-  by (metis Multiset.diff_right_commute add_diff_cancel_left')
-
-definition "reachable_locations \<equiv> { loc . \<exists> loc' .
-     \<not> is_empty_antichain (summary loc loc') \<or> \<not> is_empty_antichain (summary loc' loc) }"
-
-definition worklist_is_empty :: "(op_meta \<times> port, sum) configuration \<Rightarrow> bool" where
-"worklist_is_empty c = Set.Ball reachable_locations (\<lambda> loc. zequal (c_work c loc) {#}\<^sub>z)"
-
-definition "propagate_all c0 = while_option worklist_is_empty
-                                            (take_step PR) c0"
 
 
 
@@ -232,7 +231,7 @@ end
 
 
 lemma activate_op1_sg:
-  "activate (Out 1 0) init_prog op1_sg (init_prog\<lparr>internal := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) op1_sg"
+  "activate (Out 1 0) init_subgraph op1_sg (init_subgraph\<lparr>local_pointstamp := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) op1_sg"
   apply (rule activate.intros(1))
   apply (subst op1.code)
   apply auto
@@ -241,7 +240,7 @@ lemma activate_op1_sg:
 end
 
 lemma op2_update_internal:
-  "op2 \<lparr>conf = C, internal = A\<rparr> = op2 \<lparr>conf = C, internal = B\<rparr>"
+  "op2 \<lparr>pointstamp_tracker = C, local_pointstamp = A\<rparr> = op2 \<lparr>pointstamp_tracker = C, local_pointstamp = B\<rparr>"
   apply (coinduction arbitrary: A B C rule: op.coinduct_upto)
   apply (intro conjI impI)
   apply (subst (1 2) op2.code, simp)
@@ -289,7 +288,7 @@ lemma op2_update_internal:
   done
 
 lemma
-  "activate Tau init_prog op1_op2_sg (init_prog\<lparr>internal := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) (Comp Some (BENQ 1 0 (\<lambda> _. [])) op1_sg op2_sg)"
+  "activate Tau init_subgraph op1_op2_sg (init_subgraph\<lparr>local_pointstamp := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) (Comp Some (BENQ 1 0 (\<lambda> _. [])) op1_sg op2_sg)"
   apply (rule activate.intros(2)[where p=1])
     apply (rule activate_op1_sg)
    apply simp
@@ -299,8 +298,8 @@ lemma
   done
 
 lemma
-  "activate Tau (init_prog\<lparr>internal := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) (Comp Some (BENQ 1 0 (\<lambda> _. [])) op1_sg op2_sg)
-   (init_prog\<lparr>internal := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) (Comp Some (BENQ 1 0 (\<lambda> _. [])) op1_sg op2_sg)"
+  "activate Tau (init_subgraph\<lparr>local_pointstamp := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) (Comp Some (BENQ 1 0 (\<lambda> _. [])) op1_sg op2_sg)
+   (init_subgraph\<lparr>local_pointstamp := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) (Comp Some (BENQ 1 0 (\<lambda> _. [])) op1_sg op2_sg)"
 
 
 end
