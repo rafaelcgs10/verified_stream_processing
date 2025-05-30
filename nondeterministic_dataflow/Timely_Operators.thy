@@ -5,9 +5,140 @@ imports
   BNA_Operators
   Progress_Tracking.Propagate
   Eval
-   "HOL-Library.While_Combinator"
+  "HOL-Library.While_Combinator"
   Executable
+  Sum_Order
 begin
+
+(* Inspired by timely/src/progress/mod.rs:61 *)
+datatype 'loc port = Trg 'loc | Src 'loc
+  (* Inspired by timely/src/progress/mod.rs:19 *)
+datatype 'loc location = Loc (node: 'loc) (port: "'loc port")
+
+instantiation port :: (enum) enum
+begin
+definition
+  "enum_port = map Trg enum_class.enum @ map Src enum_class.enum"
+
+definition "enum_all_port P \<longleftrightarrow> list_all (\<lambda> x. P (Src x)) enum_class.enum \<and> list_all (\<lambda> x. P (Trg x)) enum_class.enum"
+
+definition "enum_ex_port P \<longleftrightarrow> list_ex (\<lambda> x. P (Src x)) enum_class.enum \<or> list_ex (\<lambda> x. P (Trg x)) enum_class.enum"
+
+instance
+  apply standard
+  subgoal
+    apply (simp add: enum_port_def enum_UNIV)
+    apply (metis IntE UNIV_eq_I Un_Int_eq(2,3) port.exhaust rangeI)
+    done
+  subgoal
+    by (auto simp add: enum_class.enum_distinct enum_port_def enum_UNIV distinct_map inj_on_def)
+  subgoal
+    apply (simp add:  enum_all_port_def enum_UNIV list_all_iff)
+    apply (metis port.exhaust)
+    done
+  subgoal
+    apply (simp add:  enum_ex_port_def enum_UNIV list_ex_iff)
+    apply (metis port.exhaust)
+    done
+  done
+end
+
+instantiation location :: (enum) enum
+begin
+definition
+  "enum_location = map (\<lambda> (x, y). Loc x y) (List.product enum_class.enum enum_class.enum)"
+
+definition
+  "enum_all_location P \<longleftrightarrow> enum_class.enum_all (%x. enum_class.enum_all (%y. P (Loc x y)))"
+
+definition
+  "enum_ex_location P = enum_class.enum_ex (%x. enum_class.enum_ex (%y. P (Loc x y)))"
+
+instance
+  apply standard
+     apply (simp_all add: distinct_map enum_location_def enum_UNIV enum_distinct enum_all_location_def enum_ex_location_def split: prod.splits location.splits)
+     apply (metis case_prod_conv location.exhaust surj_def)
+    apply (auto simp add: inj_def enum_class.enum_distinct intro!: distinct_product)[1]
+   apply (metis location.collapse)+
+  done
+end
+
+instantiation port :: (ord) ord
+begin
+
+fun less_eq_port :: "'a port \<Rightarrow> 'a port \<Rightarrow> bool" where
+  "less_eq_port (Trg t) (Trg u) = (t \<le> u)"
+| "less_eq_port (Src t) (Src u) = (t \<le> u)"
+| "less_eq_port (Trg t) (Src u) = True"
+| "less_eq_port _ _ = False"
+
+definition less_port where
+  "(x::'a port) < y \<longleftrightarrow> x \<le> y \<and> \<not> y \<le> x"
+
+instance ..
+end
+
+instance port :: (preorder) preorder
+proof
+  fix x y z :: "'a port"
+  show "x < y \<longleftrightarrow> x \<le> y \<and> \<not> y \<le> x"
+    by (rule less_port_def)
+  show "x \<le> x"
+    apply (cases x)
+     apply auto
+    done
+  assume "x \<le> y" and "y \<le> z" thus "x \<le> z"
+    apply (cases x; cases y; cases z)
+           apply (auto elim!: order_trans)
+    done
+qed
+
+instance port :: (order) order
+  apply standard
+  subgoal for x y
+    apply (cases x; cases y)
+       apply (auto intro!: antisym elim: less_eq_port.cases)
+    done
+  done
+
+
+instantiation location :: (linorder) linorder
+begin
+definition
+  "less_eq_location = (\<lambda> x y. case (x, y) of (Loc n1 p1, Loc n2 p2) \<Rightarrow> n1 = n2 \<and> p1 \<le> p2 \<or> n1 \<noteq> n2 \<and> n1 < n2)"
+
+definition
+  "less_location = (\<lambda> x y. case (x, y) of (Loc n1 p1, Loc n2 p2) \<Rightarrow> n1 = n2 \<and> p1 < p2 \<or> n1 \<noteq> n2 \<and> n1 < n2)"
+
+instance 
+  apply standard
+      apply (auto intro!: elim!: less_eq_port.cases simp add: less_port_def less_eq_location_def less_location_def split: location.splits port.splits)[4]
+  subgoal for x y
+    apply (cases x; cases y; simp; hypsubst_thin)
+    subgoal for n1 p1 n2 p2
+      apply (cases "n1 = n2")
+      subgoal
+        apply (cases "p1 \<le> p2")
+         apply (auto intro!: elim!: less_eq_port.cases simp add: less_port_def less_eq_location_def less_location_def split: location.splits port.splits)
+        apply (smt (verit, del_insts) less_eq_port.elims(1) less_eq_port.simps(1) nle_le port.distinct(1) port.inject(2))
+        done
+      subgoal
+        apply (auto intro!: elim!: less_eq_port.cases simp add: less_port_def less_eq_location_def less_location_def split: location.splits port.splits)
+        done
+      done
+    done
+  done
+end
+
+(* Inspired by timely/src/progress/change_batch.rs:12 *)
+type_synonym 'a change_batch = "'a list"
+
+(* Inspired by timely/src/progress/subgraph.rs:237 *)
+record ('loc, 't) subgraph =
+  pt_tr :: "('loc location, 't) configuration"
+  (* We consider local_pointstamp and final_pointstamp as the same thing in this non-distributed version *)
+  lo_pt :: "('loc location \<times> 't \<times> int) change_batch"
+  edges :: "'loc location \<Rightarrow> 'loc location list"
 
 corec writes where
   "writes op p xs =
@@ -29,34 +160,33 @@ lemma foo[friend_of_corec_simps]:
 friend_of_corec writes where
   "writes op p xs =
     (case xs of [] \<Rightarrow> case_op Read Write Choice Silent op | x #xs \<Rightarrow> Write (writes op p xs) p x)"
-   apply (rule writes.code)
+  apply (rule writes.code)
   apply transfer_prover
   done
 
-definition summary :: "3 \<Rightarrow> 3 \<Rightarrow> (nat antichain)" where
+definition summary :: "2 location \<Rightarrow> 2 location \<Rightarrow> (nat antichain)" where
   "summary l1 l2 = 
-  (if l1 = 1 \<and> l2 = 2 then frontier (abs_zmultiset (mset [0], {#}))
-   else
-   if l1 = 2 \<and> l2 = 3 then frontier (abs_zmultiset (mset [0], {#})) else
+  (if node l1 = 0 \<and> port l1 = Src 0 \<and> node l2 = 1 \<and> port l2 = Trg 0 then frontier (abs_zmultiset (mset [0], {#})) else
+   if node l1 = 1 \<and> port l1 = Trg 0 \<and> node l2 = 1 \<and> port l2 = Src 0 then frontier (abs_zmultiset (mset [0], {#})) else
    frontier {#}\<^sub>z)"
 
 declare zmultiset_of_antichain_def[code]
 
 global_interpretation sum: enum_dataflow_topology
-  "summary :: 3 \<Rightarrow> 3 \<Rightarrow> nat antichain"
+  "summary :: 2 location \<Rightarrow> 2 location \<Rightarrow> nat antichain"
   "(+)"
-  defines take_step' = "enum_dataflow_topology.take_step summary (+) :: _ \<Rightarrow> (3, nat) Step \<Rightarrow> _ \<Rightarrow> _" and
-      after_summary = "dataflow_topology.after_summary (+) :: nat zmultiset \<Rightarrow> nat antichain \<Rightarrow> nat zmultiset"
+  defines take_step' = "enum_dataflow_topology.take_step summary (+) :: _ \<Rightarrow> (2 location, nat) Step \<Rightarrow> _ \<Rightarrow> _" and
+    after_summary = "dataflow_topology.after_summary (+) :: nat zmultiset \<Rightarrow> nat antichain \<Rightarrow> nat zmultiset"
   sorry
 
-definition mymin_code :: "(nat \<times> 3) set \<Rightarrow> (nat \<times> 3)" 
+definition mymin_code :: "(nat \<times> ('a :: linorder) location) set \<Rightarrow> (nat \<times> 'a location)" 
   where [code del]: "mymin_code = mymin (<)"
 
 lemma mymin_code[code]: "mymin_code (set (x # xs)) = fold (\<lambda>a b. if t_loc_linord (<) a b then a else b) xs x"
   unfolding mymin_code_def
   apply (rule linorderMin)
   apply unfold_locales
-      apply auto
+  apply auto
   done
 
 definition take_step where
@@ -67,37 +197,52 @@ declare sum.take_step.simps[of "((<) :: nat \<Rightarrow> _ \<Rightarrow> _)",  
 lift_definition zequal :: "'a zmultiset \<Rightarrow> 'a zmultiset \<Rightarrow> bool" is
   "\<lambda> (M, N) (P, Q). (M-N) = (P-Q) \<and> (N-M) = (Q-P)"
   apply (auto simp: equiv_zmset_def)
-    apply (metis (full_types) Multiset.diff_right_commute add_diff_cancel_right')
-    apply (metis Multiset.diff_right_commute add_diff_cancel_left')
+  apply (metis (full_types) Multiset.diff_right_commute add_diff_cancel_right')
+  apply (metis Multiset.diff_right_commute add_diff_cancel_left')
   apply (metis add_diff_cancel_right' cancel_ab_semigroup_add_class.diff_right_commute)
   by (metis Multiset.diff_right_commute add_diff_cancel_left')
 
 definition "reachable_locations \<equiv> { loc . \<exists> loc' .
      \<not> is_empty_antichain (summary loc loc') \<or> \<not> is_empty_antichain (summary loc' loc) }"
 
-definition worklist_is_empty :: "(3, nat) configuration \<Rightarrow> bool" where
-"worklist_is_empty c = Set.Ball reachable_locations (\<lambda> loc. zequal (c_work c loc) {#}\<^sub>z)"
+definition worklist_is_empty where
+  "worklist_is_empty c = Set.Ball reachable_locations (\<lambda> loc. zequal (c_work c loc) {#}\<^sub>z)"
 
-definition "propagate_all c0 = while_option worklist_is_empty
-                                            (take_step PR) c0"
-
-(* Inspired by timely/src/progress/change_batch.rs:20 *)
-type_synonym ('loc, 't) change_batch = "('loc \<times> 't zmultiset) list"
-
-(* Inspired by timely/src/progress/subgraph.rs:237 *)
-record ('loc, 't) subgraph =
-  pointstamp_tracker :: "('loc, 't) configuration"
-(* We consider local_pointstamp and final_pointstamp as the same thing in this non-distributed version *)
-  local_pointstamp :: "('loc, 't) change_batch"
-
-abbreviation "init_conf \<equiv> \<lparr>c_work = (\<lambda> _. {#}\<^sub>z), c_pts = (\<lambda> _. {#}\<^sub>z), c_imp = (\<lambda> _. {# 0 #}\<^sub>z)\<rparr>"
-abbreviation "init_subgraph \<equiv> \<lparr> pointstamp_tracker = init_conf, local_pointstamp = [] \<rparr>"
+definition "propagate_all c0 = while_option (Not o worklist_is_empty)
+                                            (take_step (Debug.tracing (String.implode (''propagating!'')) PR)) c0"
 
 (* Inspired by timely/src/progress/subgraph.rs:453 *)
 (* First migrate all change batches to the worklist, then call propagate_all *)
-fun propagate_pointstamps :: "(3, nat) configuration \<Rightarrow> 'a buf \<Rightarrow> (3, nat) configuration option"  where
+fun propagate_pointstamps :: "(2 location, nat) configuration \<Rightarrow> (2 location \<times> nat \<times> int) change_batch \<Rightarrow> (2 location, nat) configuration option"  where
   "propagate_pointstamps conf [] = propagate_all conf"
-| "propagate_pointstamps conf (cb # cbs) = undefined"
+| "propagate_pointstamps conf ((l, t, m) # cbs) = propagate_pointstamps ((take_step (CM l t m)) conf) cbs"
+
+abbreviation empty_conf where
+  "empty_conf \<equiv> \<lparr>c_work = (\<lambda> _.  {#}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
+
+abbreviation "init_subgraph \<equiv>
+  \<lparr> pt_tr = the (propagate_pointstamps empty_conf [(Loc 0 (Src 0), 0, 1),
+   (Loc 1 (Trg 0), 0, 1), (Loc 1 (Src 0), 0, 1)]),
+   lo_pt = [],
+   edges = (\<lambda> l1. [l2 \<leftarrow> enum_location_inst.enum_location. summary l1 l2 \<noteq> antichain {} ]) \<rparr>"
+
+(* Inspired by timely/src/dataflow/operators/generic/builder_rc.rs:29 *)
+(* This is the shared that the operator exposes to the subgraph *)
+record ('loc, 't) shared_state =
+  cons :: "('loc \<times> 'loc \<times> 't \<times> int) change_batch"
+  inte :: "('loc \<times> 'loc \<times> 't \<times> int) change_batch"
+  prod :: "('loc \<times> 'loc \<times> 't \<times> int) change_batch"
+  fron :: "'t antichain"
+
+(* Inspired by timely/src/progress/subgraph.rs:759 *)
+definition extract_progress :: "('loc location \<Rightarrow> 'loc location list) \<Rightarrow> ('loc, 't) shared_state \<Rightarrow> ('loc location \<times> 't \<times> int) change_batch" where
+  "extract_progress edg st =
+    map (\<lambda> (node, p, t, m). (Loc node (Trg p), t, -m)) (cons st) @ 
+    map (\<lambda> (node, p, t, m). (Loc node (Src p), t, m)) (inte st) @
+    concat (map (\<lambda> (node, p, t, m). map (\<lambda> l. (l, t, m)) (edg (Loc node (Src p)))) (prod st))"
+
+(* Inspired by timely/src/dataflow/operators/capability.rs:62 *)
+datatype 't capability = Cap 't
 
 definition tscomp_op ::
   "('ip option, 'op1 option, 'd + ('loc, 't) subgraph) op \<Rightarrow>
@@ -116,46 +261,22 @@ lemma frontier_code[code]:
   "set_antichain (frontier x) = minimal_antichain {t \<in> set_zmset x. 0 < zcount x t}"
   by transfer' (auto intro!: arg_cong[of _ _ minimal_antichain] zcount_inI)
 
-corec op1 :: "(1 option, 1 option, unit + (2, 256) subgraph) op" where
-  "op1 = (Read None (\<lambda> pg. if zcount ((local_pointstamp (projr pg)) 1) 0 > 0 then Write op1 (Some 1) (Inl ()) else Silent op1))"
-
-
 corec dataflow_op where
-  "dataflow_op pg op = Choice (cimage (\<lambda> op. case op of 
-     Read None f \<Rightarrow> Silent (dataflow_op pg (f (Inr pg)))
-   | Read (Some p) f \<Rightarrow> Read p (\<lambda> x. dataflow_op pg (f (Inl x)))
-   | Write op' None (Inr pg') \<Rightarrow> Silent (dataflow_op (propagate_all_mock pg') op')
-   | Write op' (Some p) (Inl x) \<Rightarrow> Write (dataflow_op pg op') p x
-   | Silent op' \<Rightarrow> Silent (dataflow_op pg op')) (choices op))"
+  "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
+     Read None f \<Rightarrow> Silent (dataflow_op sg (f (Inr (Inr (c_imp (pt_tr sg))))))
+   | Read (Some p) f \<Rightarrow> Read p (\<lambda> x. dataflow_op sg (f (Inl x)))
+   | Write op' None (Inr (Inl st)) \<Rightarrow> (case propagate_pointstamps (pt_tr sg) (lo_pt sg @ extract_progress (edges sg) st) of
+                                   Some conf' \<Rightarrow> Silent (dataflow_op (sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr>) op')
+                                 | None \<Rightarrow> undefined)
+   | Write op' (Some p) (Inl x) \<Rightarrow> Write (dataflow_op sg op') p x
+   | Silent op' \<Rightarrow> Silent (dataflow_op sg op')) (choices op))"
 
-value [GHC] "eval 20 (dataflow_op init_subgraph op1)"
+abbreviation "push cap batch " 
 
-definition advance_frontier_at :: "('loc, 't) subgraph \<Rightarrow> 'loc \<Rightarrow> 't \<Rightarrow> ('loc, 't) subgraph" where
-  "advance_frontier_at pg loc t = pg\<lparr>pointstamp_tracker := (pointstamp_tracker pg)\<lparr>c_imp := (c_imp (pointstamp_tracker pg))(loc := {# t #}\<^sub>z)\<rparr>\<rparr>"
-
-corec op2 :: "unit list \<Rightarrow> (1 option, 1 option, unit + (2, 256) subgraph) op" where
-  "op2 buf = Read None (\<lambda> pg. pull (Some 1) (case_option
-   (if \<not> is_empty_antichain (filter_antichain (\<lambda> t. 2 < t) (frontier ((c_imp (pointstamp_tracker (projr pg))) 2))) \<and> buf \<noteq> [] 
-   then Write (op2 (tl buf)) (Some 1) (Inl (hd buf)) 
-   else Silent (op2 buf))
-   (\<lambda> x. 
-   if is_empty_antichain (filter_antichain (\<lambda> t. 2 < t) (frontier ((c_imp (pointstamp_tracker (projr pg))) 2))) 
-   then Silent (op2 (buf @ [projl x])) 
-   else Write (op2 (tl (buf @ [projl x]))) (Some 1) (Inl (bhd (buf @ [projl x]))))))"
-
-value [GHC] "eval 10 (dataflow_op init_subgraph (op2 []))"
-
-definition advance_cap_at :: "('loc, 't) subgraph \<Rightarrow> 'loc \<Rightarrow> 't :: plus \<Rightarrow> ('loc, 't) subgraph" where
-  "advance_cap_at pg loc t = Debug.tracing (String.implode (''advancing cap!''))  pg\<lparr>local_pointstamp := (local_pointstamp pg)(loc := image_zmset ((+)t) ((local_pointstamp pg) loc))\<rparr>"
-
-definition get_cap_at where
-  "get_cap_at pg loc = Min (set_zmset (local_pointstamp pg loc))"
-
-corec input_op :: "'a list llist \<Rightarrow> (0 option, 1 option, 'a \<times> nat + (2, nat) subgraph) op" where
-  "input_op inps = Read None (\<lambda> pg. (case inps of
+corec input_op :: "'a list llist \<Rightarrow> nat capability \<Rightarrow> (0 option, 1 option, 'a \<times> nat + (2, nat) subgraph) op" where
+  "input_op inps cap = Read None (\<lambda> pg. (case inps of
     LNil \<Rightarrow> \<odot>
-  | LCons xs lxs \<Rightarrow> let cap = get_cap_at (projr pg) 1 in
-     writes (Write (input_op lxs) None (Inr (advance_cap_at (projr pg) 1 1))) (Some 1) (map (\<lambda> x. Inl (x, cap)) xs)))"
+  | LCons xs lxs \<Rightarrow> writes (Write (input_op lxs cap) None (Inr (advance_cap_at (projr pg) 1 1))) (Some 1) (map (\<lambda> x. Inl (x, cap)) xs)))"
 
 value [GHC] "eval 20 (dataflow_op init_subgraph (input_op (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
 
@@ -164,7 +285,7 @@ term "Debug.tracing (show_nat n)"
 abbreviation "maxs ft buf \<equiv> [(n, t) \<leftarrow> buf. ft t \<and> n = Max (set (map fst ((filter (\<lambda> (n', t'). t = t') buf))))]"
 
 abbreviation
-   "less_than_frontier pg t \<equiv> (let ft = frontier ((c_imp (pointstamp_tracker pg)) 2) in \<not> is_empty_antichain (filter_antichain (\<lambda> f. t < f) ft))"
+  "less_than_frontier pg t \<equiv> (let ft = frontier ((c_imp (pt_tr pg)) 2) in \<not> is_empty_antichain (filter_antichain (\<lambda> f. t < f) ft))"
 
 
 value "less_than_frontier (propagate_all_mock (advance_cap_at (init_subgraph :: (2, 256) subgraph) 1 1)) 0"
@@ -194,7 +315,7 @@ fun embed_nat where
 
 fun activate_children where
   "activate_children c (Logic l) = ((\<lambda> op. case op of Write op' p x \<Rightarrow> (send_update_conf c, Write op' p x)) |`| choices (l c))"
-(* | "compile_subgraph c (Comp wire buf sg1 sg2) = (map_op embed_nat embed_nat (comp_op wire buf (compile_subgraph c sg1) (compile_subgraph c sg2)))"
+  (* | "compile_subgraph c (Comp wire buf sg1 sg2) = (map_op embed_nat embed_nat (comp_op wire buf (compile_subgraph c sg1) (compile_subgraph c sg2)))"
  *)
 
 corec compile_subgraph where
@@ -206,12 +327,12 @@ inductive activate where
    wire p = Some q \<Longrightarrow>
    activate Tau c sg2 c' sg2 \<Longrightarrow>
    activate Tau c (Comp wire buf sg1 sg2) c' (Comp wire (BENQ q x buf) sg1' sg2)"
- | "activate (Inp p x) c sg2 c' sg2' \<Longrightarrow>
+| "activate (Inp p x) c sg2 c' sg2' \<Longrightarrow>
    BHD p buf = x \<Longrightarrow> buf p \<noteq> [] \<Longrightarrow>
    p \<in> ran wire \<Longrightarrow>
    activate Tau c sg1 c' sg1' \<Longrightarrow>
    activate Tau c (Comp wire buf sg1 sg2) c' (Comp wire (BTL p buf) sg1' sg2')" 
- | "activate (Inp p x) c sg1 c' sg1' \<Longrightarrow>
+| "activate (Inp p x) c sg1 c' sg1' \<Longrightarrow>
    activate Tau c sg2 c' sg2' \<Longrightarrow>
    activate (Inp (2 * p) x) c (Comp wire buf sg1 sg2) c' (Comp wire buf sg1' sg2')"  
 
@@ -231,7 +352,7 @@ end
 
 
 lemma activate_op1_sg:
-  "activate (Out 1 0) init_subgraph op1_sg (init_subgraph\<lparr>local_pointstamp := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) op1_sg"
+  "activate (Out 1 0) init_subgraph op1_sg (init_subgraph\<lparr>lo_pt := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) op1_sg"
   apply (rule activate.intros(1))
   apply (subst op1.code)
   apply auto
@@ -240,21 +361,21 @@ lemma activate_op1_sg:
 end
 
 lemma op2_update_internal:
-  "op2 \<lparr>pointstamp_tracker = C, local_pointstamp = A\<rparr> = op2 \<lparr>pointstamp_tracker = C, local_pointstamp = B\<rparr>"
+  "op2 \<lparr>pt_tr = C, lo_pt = A\<rparr> = op2 \<lparr>pt_tr = C, lo_pt = B\<rparr>"
   apply (coinduction arbitrary: A B C rule: op.coinduct_upto)
   apply (intro conjI impI)
   apply (subst (1 2) op2.code, simp)
   apply (subst (asm) op2.code, simp)
-           apply (subst (asm) op2.code, simp)
+  apply (subst (asm) op2.code, simp)
   apply (subst (1 2) op2.code, simp)
   apply (subst (asm) op2.code, simp)
   apply (subst (asm) op2.code, simp)
-     apply (subst (asm) op2.code, simp)
-    apply (subst (1 2) op2.code, simp)
+  apply (subst (asm) op2.code, simp)
+  apply (subst (1 2) op2.code, simp)
   subgoal
     apply (subst (3 4) op2.code, simp)
     apply (intro rel_setI)
-     apply simp_all
+    apply simp_all
     subgoal
       apply (elim disjE)
       subgoal
@@ -265,7 +386,7 @@ lemma op2_update_internal:
         apply hypsubst_thin
         apply (rule disjI2)
         apply (rule transp_op.cong_Read)
-         apply simp
+        apply simp
         apply (smt (verit, del_insts) comp_apply option.simps(5) rel_funI transp_op.cong_Silent transp_op.cong_base transp_op.cong_refl)
         done
       done
@@ -279,7 +400,7 @@ lemma op2_update_internal:
         apply hypsubst_thin
         apply (rule disjI2)
         apply (rule transp_op.cong_Read)
-         apply simp
+        apply simp
         apply (smt (verit, del_insts) comp_apply option.simps(5) rel_funI transp_op.cong_Silent transp_op.cong_base transp_op.cong_refl)
         done
       done
@@ -288,18 +409,18 @@ lemma op2_update_internal:
   done
 
 lemma
-  "activate Tau init_subgraph op1_op2_sg (init_subgraph\<lparr>local_pointstamp := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) (Comp Some (BENQ 1 0 (\<lambda> _. [])) op1_sg op2_sg)"
+  "activate Tau init_subgraph op1_op2_sg (init_subgraph\<lparr>lo_pt := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) (Comp Some (BENQ 1 0 (\<lambda> _. [])) op1_sg op2_sg)"
   apply (rule activate.intros(2)[where p=1])
-    apply (rule activate_op1_sg)
-   apply simp
+  apply (rule activate_op1_sg)
+  apply simp
   apply (rule activate.intros(1))
   apply simp
   apply (metis op2_update_internal rtranclp.rtrancl_refl)
   done
 
 lemma
-  "activate Tau (init_subgraph\<lparr>local_pointstamp := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) (Comp Some (BENQ 1 0 (\<lambda> _. [])) op1_sg op2_sg)
-   (init_subgraph\<lparr>local_pointstamp := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) (Comp Some (BENQ 1 0 (\<lambda> _. [])) op1_sg op2_sg)"
+  "activate Tau (init_subgraph\<lparr>lo_pt := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) (Comp Some (BENQ 1 0 (\<lambda> _. [])) op1_sg op2_sg)
+   (init_subgraph\<lparr>lo_pt := (\<lambda> _. {# 1 #}\<^sub>z)(1 := {#}\<^sub>z)\<rparr>) (Comp Some (BENQ 1 0 (\<lambda> _. [])) op1_sg op2_sg)"
 
 
 end
