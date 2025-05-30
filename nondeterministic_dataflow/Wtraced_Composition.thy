@@ -438,14 +438,6 @@ lemma wtraced_comp_op:
     done
   done
 
-
-lemma wtraced_map_op: 
- "inj_on f (inputs op) \<Longrightarrow>
-  inj_on g (outputs op) \<Longrightarrow>
-  wtraced (map_op f g op) lxs = (\<exists>lys. wtraced op lys \<and> lxs = lmap (map_VIO f g id) lys)"
-  sorry
-
-
 corec filter_op where
   "filter_op P buf = choice2 
    (Read (1 :: 1) (\<lambda> x. filter_op P (if P x then buf @ [x] else buf)))

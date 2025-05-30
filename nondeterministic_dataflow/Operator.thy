@@ -937,6 +937,26 @@ lemma wstep_map_op[intro!]:
     done
   done
 
+lemma wstep_Tau_map_op_elim:
+  assumes \<open>(step Tau)\<^sup>*\<^sup>* (map_op f g op) op'\<close>
+  obtains op'' where \<open>(step Tau)\<^sup>*\<^sup>* op op''\<close> \<open>map_op f g op'' = op'\<close>
+  apply atomize_elim
+  using assms
+  apply (rule rtranclp_induct)
+   apply blast
+  by (metis IO.map_disc_iff(3) rtranclp.rtrancl_into_rtrancl step_map_op_inv)
+
+lemma wstep_map_op_elim:
+  assumes \<open>wstep io (map_op f g op) op'\<close>
+  obtains io' op'' where \<open>wstep io' op op''\<close> \<open>map_IO f g id io' = io\<close> \<open>map_op f g op'' = op'\<close>
+  apply atomize_elim
+  using assms
+  unfolding wstep_def
+  apply (cases io)
+    apply (auto elim!: wstep_Tau_map_op_elim step_map_op_elim)
+    apply blast+
+  done
+
 lemma wbisim_map_op:
   "op \<approx> op' \<Longrightarrow> map_op f g op \<approx> map_op f g op'"
   apply (coinduction arbitrary: op op' rule: wbisim_coinduct_upto)
@@ -1550,6 +1570,12 @@ fun vio_of_io where
 lemma io_of_vio_inverse: "vio_of_io (io_of_vio vio) = vio"
   by (cases vio; simp)
 lemma vio_of_io_inverse: "io \<noteq> Tau \<Longrightarrow> io_of_vio (vio_of_io io) = io"
+  by (cases io; simp)
+lemma io_of_vio_map_VIO:
+  \<open>io_of_vio (map_VIO f g h vio) = map_IO f g h (io_of_vio vio)\<close>
+  by (cases vio; simp)
+lemma vio_of_io_map_IO:
+  \<open>io \<noteq> Tau \<Longrightarrow> vio_of_io (map_IO f g h io) = map_VIO f g h (vio_of_io io)\<close>
   by (cases io; simp)
 fun wsteps where
   "wsteps [] = rtranclp (step Tau)"
@@ -2178,6 +2204,61 @@ lemma wsim_outputs: "wsim (\<approx>) op op' \<Longrightarrow> p \<in> outputs o
 
 lemma wbisim_outputs: "op \<approx> op' \<Longrightarrow> outputs op = outputs op'"
   by (meson antisym wsim_outputs subset_eq wbisim.cases)
+
+lemma wtraced_inputs:
+  \<open>x \<in> lset lxs \<Longrightarrow> p \<in> set1_VIO x \<Longrightarrow> wtraced op lxs \<Longrightarrow> p \<in> inputs op\<close>
+  apply (induct x lxs arbitrary: op rule: llist.set_induct)
+   apply (metis VIO.set_cases(1) io_of_vio.simps(1) wstep_Inp wtraced_StepE)
+  by (meson subsetD wstep_inputs_outputs wtraced_StepE)
+
+lemma wtraced_outputs:
+  \<open>x \<in> lset lxs \<Longrightarrow> p \<in> set2_VIO x \<Longrightarrow> wtraced op lxs \<Longrightarrow> p \<in> outputs op\<close>
+  apply (induct x lxs arbitrary: op rule: llist.set_induct)
+   apply (metis VIO.set_cases(2) io_of_vio.simps(2) wstep_Out_outputs wtraced_StepE)
+  by (meson subsetD wstep_inputs_outputs wtraced_StepE)
+
+lemma wtraced_map_op:
+  \<open>inj_on f (inputs op) \<Longrightarrow> inj_on g (outputs op) \<Longrightarrow>
+  wtraced (map_op f g op) lxs \<longleftrightarrow> (\<exists>lys. wtraced op lys \<and> lxs = lmap (map_VIO f g id) lys)\<close>
+  apply (rule iffI)
+  subgoal
+    apply (intro exI[of _ \<open>lmap (map_VIO (the_inv_into (inputs op) f) (the_inv_into (outputs op) g) id) lxs\<close>] conjI)
+    subgoal
+      apply (coinduction arbitrary: op lxs pred: wtraced)
+      subgoal for op lxs
+        apply (erule wtraced.cases; simp; hypsubst_thin)
+        subgoal for vio _ op' lxs
+          apply (erule wstep_map_op_elim; hypsubst_thin)
+          subgoal for io' op''
+            apply (intro exI[of _ op''] conjI)
+             apply (drule arg_cong[of _ _ \<open>map_IO (the_inv_into (inputs op) f) (the_inv_into (outputs op) g) id\<close>])
+             apply (simp add: IO.map_comp o_def)
+            using the_inv_into_f_f
+             apply (smt (verit, best) eq_id_iff in_mono io_of_vio_map_VIO op.map_ident_strong wstep_inputs_outputs wstep_map_op)
+            apply (intro disjI1 exI[of _ lxs] conjI)
+            using op.set_map wstep_inputs_outputs inj_on_subset wtraced_inputs wtraced_outputs
+               apply (smt (verit, ccfv_threshold) VIO.map_cong f_the_inv_into_f llist.map_cong the_inv_into_f_f the_inv_into_into)
+              apply (meson subset_inj_on wstep_inputs_outputs)
+             apply (meson subset_inj_on wstep_inputs_outputs)
+            apply assumption
+            done
+          done
+        done
+      done
+    subgoal
+    apply (auto simp: llist.map_comp VIO.map_comp o_def op.set_map f_the_inv_into_f
+      intro!: trans[OF llist.map_cong llist.map_ident, symmetric] trans[OF VIO.map_cong VIO.map_ident]
+      dest: wtraced_inputs wtraced_outputs)
+      done
+    done
+  subgoal
+    apply (elim exE conjE)
+    subgoal for lys
+      apply (coinduction arbitrary: op lxs lys pred: wtraced)
+      apply (erule wtraced.cases; simp)
+      by (metis (no_types, opaque_lifting) inj_on_subset io_of_vio_map_VIO wstep_inputs_outputs wstep_map_op)
+    done
+  done
 
 section \<open>Shows our definitions to match the literature\<close>
 
