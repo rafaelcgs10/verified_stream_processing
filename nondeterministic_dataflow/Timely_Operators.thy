@@ -7,7 +7,6 @@ imports
   Eval
   "HOL-Library.While_Combinator"
   Executable
-  Sum_Order
 begin
 
 (* Inspired by timely/src/progress/mod.rs:61 *)
@@ -209,30 +208,44 @@ definition worklist_is_empty where
   "worklist_is_empty c = Set.Ball reachable_locations (\<lambda> loc. zequal (c_work c loc) {#}\<^sub>z)"
 
 definition "propagate_all c0 = while_option (Not o worklist_is_empty)
-                                            (take_step (Debug.tracing (String.implode (''propagating!'')) PR)) c0"
+                                            (take_step PR) c0"
+
+fun print_2 where
+  "print_2 n = (if n = 0 then STR ''0'' else STR ''1'')"
+
+definition show_port where
+  "show_port p = (case p of Src x \<Rightarrow> STR ''SRC '' + (print_2 x) | Trg x \<Rightarrow> STR ''TRG '' + (print_2 x))"
+
+definition show_loc where
+  "show_loc x = STR ''node: '' + print_2 (node x) + STR '', port: '' + show_port (port x)"
+
+
+abbreviation "print_int n \<equiv> (if n \<ge> 0 then show_nat (Int.nat n) else STR ''-'' + show_nat (Int.nat (abs n)) )"
+
+abbreviation "DEBUG \<equiv> False"
+
+abbreviation "trace \<equiv> (if DEBUG then Debug.tracing else (\<lambda> x y. y))"
 
 (* Inspired by timely/src/progress/subgraph.rs:453 *)
 (* First migrate all change batches to the worklist, then call propagate_all *)
 fun propagate_pointstamps :: "(2 location, nat) configuration \<Rightarrow> (2 location \<times> nat \<times> int) change_batch \<Rightarrow> (2 location, nat) configuration option"  where
   "propagate_pointstamps conf [] = propagate_all conf"
-| "propagate_pointstamps conf ((l, t, m) # cbs) = propagate_pointstamps ((take_step (CM l t m)) conf) cbs"
+| "propagate_pointstamps conf ((l, t, m) # cbs) = propagate_pointstamps (trace (STR ''CM ==> '' + show_loc l + STR '', t: '' + show_nat t + STR '', m: '' + print_int m) (take_step (CM l t m)) conf) cbs"
 
 abbreviation empty_conf where
   "empty_conf \<equiv> \<lparr>c_work = (\<lambda> _.  {#}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
 
 abbreviation "init_subgraph \<equiv>
-  \<lparr> pt_tr = the (propagate_pointstamps empty_conf [(Loc 0 (Src 0), 0, 1),
-   (Loc 1 (Trg 0), 0, 1), (Loc 1 (Src 0), 0, 1)]),
+  \<lparr> pt_tr = the (propagate_pointstamps empty_conf [(Loc 0 (Src 0), 0, 1)]),
    lo_pt = [],
-   edges = (\<lambda> l1. [l2 \<leftarrow> enum_location_inst.enum_location. summary l1 l2 \<noteq> antichain {} ]) \<rparr>"
+   edges = (\<lambda> l1. [l2 \<leftarrow> enum_location_inst.enum_location. \<not> is_empty_antichain (summary l1 l2) ]) \<rparr>"
 
-(* Inspired by timely/src/dataflow/operators/generic/builder_rc.rs:29 *)
+(* Inspired by timely/src/dataflow/operators/generic/builder_rc.rs:29 and timely/src/progress/operate.rs:63 *)
 (* This is the shared that the operator exposes to the subgraph *)
 record ('loc, 't) shared_state =
   cons :: "('loc \<times> 'loc \<times> 't \<times> int) change_batch"
   inte :: "('loc \<times> 'loc \<times> 't \<times> int) change_batch"
   prod :: "('loc \<times> 'loc \<times> 't \<times> int) change_batch"
-  fron :: "'t antichain"
 
 (* Inspired by timely/src/progress/subgraph.rs:759 *)
 definition extract_progress :: "('loc location \<Rightarrow> 'loc location list) \<Rightarrow> ('loc, 't) shared_state \<Rightarrow> ('loc location \<times> 't \<times> int) change_batch" where
@@ -241,13 +254,24 @@ definition extract_progress :: "('loc location \<Rightarrow> 'loc location list)
     map (\<lambda> (node, p, t, m). (Loc node (Src p), t, m)) (inte st) @
     concat (map (\<lambda> (node, p, t, m). map (\<lambda> l. (l, t, m)) (edg (Loc node (Src p)))) (prod st))"
 
+
+lift_definition Max_antichain :: "nat antichain \<Rightarrow> nat" is "\<lambda> x. if Set.is_empty x then 666 else Max x" .
+
+
+abbreviation "print_frontier x \<equiv> trace (show_nat (Max_antichain x))" 
+
+value "c_imp (the (propagate_pointstamps empty_conf [(Loc 0 (Src 0), 0, 1),(Loc 1 (Trg 0), 0, 1), (Loc 1 (Src 0), 0, 1)])) (Loc 1 (Trg 0))"
+value "print_frontier (frontier (c_imp (the (propagate_pointstamps (the (propagate_pointstamps empty_conf [(Loc 0 (Src 0), 0, 1), (Loc 1 (Trg 0), 0, 1)]))
+       [(Loc 0 (Src 0), 0, -1), (Loc 1 (Trg 0), 0, -1)])) (Loc 1 (Trg 0)))) (1 :: nat)"
+
+
 (* Inspired by timely/src/dataflow/operators/capability.rs:62 *)
-datatype 't capability = Cap 't
+datatype ('loc, 't) capability = Cap (time: 't) (out: 'loc)
 
 definition tscomp_op ::
-  "('ip option, 'op1 option, 'd + ('loc, 't) subgraph) op \<Rightarrow>
-   ('op1 option, 'op option, 'd + ('loc, 't) subgraph) op \<Rightarrow>
-   ('ip option, 'op option, 'd + ('loc, 't) subgraph) op" (infixl "\<bullet>\<^sub>t" 65) where
+  "('ip option, 'op1 option, 'd + 's) op \<Rightarrow>
+   ('op1 option, 'op option, 'd + 's) op \<Rightarrow>
+   ('ip option, 'op option, 'd + 's) op" (infixl "\<bullet>\<^sub>t" 65) where
   "tscomp_op op1 op2 = map_op (case_sum id (\<lambda> _. None)) (case_sum (\<lambda> _. None) id) (comp_op (case_option None (Some o Some)) (\<lambda>_. []) op1 op2)"
 
 lift_definition is_empty_antichain :: "'a :: order antichain \<Rightarrow> bool" is "Set.is_empty".
@@ -271,36 +295,79 @@ corec dataflow_op where
    | Write op' (Some p) (Inl x) \<Rightarrow> Write (dataflow_op sg op') p x
    | Silent op' \<Rightarrow> Silent (dataflow_op sg op')) (choices op))"
 
-abbreviation "push cap batch " 
+(* Should this be non-deterministic? (e.g. non-deterministically send events and capabilities updates) *)
+(* Inspired by timely/src/dataflow/channels/pushers/counter.rs:25 and timely/src/dataflow/channels/mod.rs:49 *)
+(* writes maybe could support multiple different ports, then this one also would *)
+abbreviation "push nid op p batch \<equiv> 
+  writes (Write op None (Inr (Inl \<lparr> cons = [], inte = [], prod = map (\<lambda> (x, c). (nid, p, time c, 1)) batch \<rparr>))) (Some p) (map (\<lambda> (x, c). Inl (x, time c)) batch)"
 
-corec input_op :: "'a list llist \<Rightarrow> nat capability \<Rightarrow> (0 option, 1 option, 'a \<times> nat + (2, nat) subgraph) op" where
-  "input_op inps cap = Read None (\<lambda> pg. (case inps of
-    LNil \<Rightarrow> \<odot>
-  | LCons xs lxs \<Rightarrow> writes (Write (input_op lxs cap) None (Inr (advance_cap_at (projr pg) 1 1))) (Some 1) (map (\<lambda> x. Inl (x, cap)) xs)))"
+abbreviation "drop_cap nid c op \<equiv>
+  Write op None (trace (String.implode (''Dropping cap!'')) Inr (Inl \<lparr> cons = [], inte = [(nid, out c, time c, -1)], prod = [] \<rparr>))"
 
-value [GHC] "eval 20 (dataflow_op init_subgraph (input_op (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
+abbreviation "delayed_cap nid c t \<equiv>
+  (Cap (time c + abs t) (out c),
+  \<lambda> op. Write op None 
+     (Inr (Inl \<lparr> cons = [],
+            inte = [(nid, out c, time c, -1), (nid, out c, time c + abs t, 1)],
+            prod = [] \<rparr>)))"
 
-term "Debug.tracing (show_nat n)"
+find_consts "_ antichain" name: empty
 
-abbreviation "maxs ft buf \<equiv> [(n, t) \<leftarrow> buf. ft t \<and> n = Max (set (map fst ((filter (\<lambda> (n', t'). t = t') buf))))]"
+(* corec input_op where
+  "input_op c inps = (case inps of
+    LNil \<Rightarrow> drop_cap 0 c \<odot>
+  | LCons xs lxs \<Rightarrow> push 0 c (let (c, f) = delayed_cap 0 c 1 in f (input_op c lxs)) 1 xs)" *)
+
+corec input_op :: "('op :: {zero, one}, 't :: {order, plus, one}) capability \<Rightarrow> 'c buf llist \<Rightarrow> (0 option, 'op option, 'c \<times> 't + ('op, 't) shared_state + 'e) op" where
+  "input_op c inps = (case inps of
+    LNil \<Rightarrow> drop_cap 0 c \<odot>
+  | LCons xs lxs \<Rightarrow> push 0 (Write (input_op (Cap (time c + 1) (out c)) lxs) None 
+     (Inr (Inl \<lparr> cons = [],
+            inte = [(0, out c, time c, -1), (0, out c, time c + 1, 1)],
+            prod = []\<rparr>))) 0 (map (\<lambda> x. (x, c)) xs))"
+
+abbreviation "try_read i f \<equiv> Choice (cimage (\<lambda> x. if x then f None else Read i (f o Some)) (cinsert True (csingle False)))"
+
+lemma try_read_simp[simp, code]: "try_read i f = Choice ({| f None, Read i (f o Some) |})"
+  by auto
+
+term "empty_antichain :: nat antichain"
+
+term "dataflow_op init_subgraph"
+term "( (input_op (Cap (0 :: nat) (0 :: 2)) (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
+
+value [GHC] "eval 35 (dataflow_op init_subgraph (input_op (Cap (0 :: nat) 0) (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
+value [GHC] "eval 20 (dataflow_op init_subgraph (input_op (Cap (0 :: nat) 0) (LCons [Suc 0] (LNil))))"
+
+abbreviation "maxs ft buf \<equiv> [(n, c) \<leftarrow> buf. ft (time c) \<and> n = Max (set (map fst ((filter (\<lambda> (n', c'). time c = time c') buf))))]"
+
+(* The minted capability must depend on the internal wiring *)
+abbreviation "pull nid i f \<equiv> (try_read (Some i) 
+  (\<lambda> x. case x of
+    None \<Rightarrow> f None 
+  | Some (Inl (d, t)) \<Rightarrow> Write (f (Some (d, Cap t 0))) None (trace(STR ''causing consuming'')Inr (Inl \<lparr>  cons = [(nid, i, t, 1)], inte = [(nid, i, t, 1)], prod = [] \<rparr>))))"
 
 abbreviation
-  "less_than_frontier pg t \<equiv> (let ft = frontier ((c_imp (pt_tr pg)) 2) in \<not> is_empty_antichain (filter_antichain (\<lambda> f. t < f) ft))"
+  "less_than_frontier nid p impf t \<equiv> (let ft = frontier (impf (Loc nid (Trg p))) in print_frontier ft (\<not> is_empty_antichain (filter_antichain (\<lambda> f. trace (STR ''Testing frontier'') t < f) ft)))"
 
 
-value "less_than_frontier (propagate_all_mock (advance_cap_at (init_subgraph :: (2, 256) subgraph) 1 1)) 0"
+corec max_op :: "(nat \<times> (2, nat) capability) buf \<Rightarrow> (2 option, 2 option, nat \<times> nat + (2, nat) shared_state + (2 location \<Rightarrow> nat zmultiset)) op" where
+  "max_op buf = Read None (\<lambda> st. pull (1 :: 2) (0 :: 2) (case_option
+   (push 1 (max_op [(n, c) \<leftarrow> buf. \<not> less_than_frontier (1 :: 2) 0 (projr (projr st)) (time c)]) 0 ((maxs (less_than_frontier 1 0 (projr (projr st))) buf)))
+   (\<lambda> x.  push 1 (max_op [(n, c) \<leftarrow> buf @ [x]. \<not> less_than_frontier 1 0 (projr (projr st)) (time c)]) 0 ((maxs (less_than_frontier 1 0 (projr (projr st))) (buf @ [x]))))))"
+
+term "(input_op (Cap (0 :: nat) (0 :: 2)) (LCons [5, Suc 0] (LCons [8, 1, 0] LNil))) \<bullet>\<^sub>t (max_op [])"
 
 
-corec max_op :: "(nat \<times> nat) list \<Rightarrow> (1 option, 1 option, nat \<times> nat + (2, nat) subgraph) op" where
-  "max_op buf = Read None (\<lambda> pg. pull (Some 1) (case_option
-   (writes (max_op [(n, t) \<leftarrow> buf. \<not> less_than_frontier (projr pg) t]) (Some 1) (map Inl (maxs (less_than_frontier (projr pg)) buf)))
-   (\<lambda> x.
-   writes (max_op [(n, t) \<leftarrow> buf @ [projl x]. \<not> less_than_frontier (projr pg) t]) (Some 1) (map Inl (maxs (less_than_frontier (projr pg)) (buf @ [projl x]))))))"
+find_consts "_ set" name: max_on
+term "ord.arg_max_on (\<lambda> xs ys. length xs < length ys) id"
 
+find_consts "_ llist \<Rightarrow> _ llist" name: rem
 
+term List.remdups
 
-value [GHC] "cfilter ((\<noteq>) []) (eval 20 (dataflow_op init_subgraph ((input_op (LCons [5, Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
-
+value [GHC] "cfilter ((\<noteq>) []) (eval 28 (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [0, 9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
+ 
 term cfilter
 
 end
