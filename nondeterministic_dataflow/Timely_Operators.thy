@@ -222,7 +222,7 @@ definition show_loc where
 
 abbreviation "print_int n \<equiv> (if n \<ge> 0 then show_nat (Int.nat n) else STR ''-'' + show_nat (Int.nat (abs n)) )"
 
-abbreviation "DEBUG \<equiv> False"
+definition "DEBUG = True"
 
 abbreviation "trace \<equiv> (if DEBUG then Debug.tracing else (\<lambda> x y. y))"
 
@@ -322,7 +322,7 @@ corec input_op :: "('op :: {zero, one}, 't :: {order, plus, one}) capability \<R
   "input_op c inps = (case inps of
     LNil \<Rightarrow> drop_cap 0 c \<odot>
   | LCons xs lxs \<Rightarrow> push 0 (Write (input_op (Cap (time c + 1) (out c)) lxs) None 
-     (Inr (Inl \<lparr> cons = [],
+     (trace (STR ''Delaying capability!'')Inr (Inl \<lparr> cons = [],
             inte = [(0, out c, time c, -1), (0, out c, time c + 1, 1)],
             prod = []\<rparr>))) 0 (map (\<lambda> x. (x, c)) xs))"
 
@@ -345,10 +345,10 @@ abbreviation "maxs ft buf \<equiv> [(n, c) \<leftarrow> buf. ft (time c) \<and> 
 abbreviation "pull nid i f \<equiv> (try_read (Some i) 
   (\<lambda> x. case x of
     None \<Rightarrow> f None 
-  | Some (Inl (d, t)) \<Rightarrow> Write (f (Some (d, Cap t 0))) None (trace(STR ''causing consuming'')Inr (Inl \<lparr>  cons = [(nid, i, t, 1)], inte = [(nid, i, t, 1)], prod = [] \<rparr>))))"
+  | Some (Inl (d, t)) \<Rightarrow> Write (f (Some (d, Cap t 0))) None (Inr (Inl \<lparr>  cons = [(nid, i, t, 1)], inte = [(nid, i, t, 1)], prod = [] \<rparr>))))"
 
 abbreviation
-  "less_than_frontier nid p impf t \<equiv> (let ft = frontier (impf (Loc nid (Trg p))) in print_frontier ft (\<not> is_empty_antichain (filter_antichain (\<lambda> f. trace (STR ''Testing frontier'') t < f) ft)))"
+  "less_than_frontier nid p impf t \<equiv> (let ft = frontier (impf (Loc nid (Trg p))) in (\<not> is_empty_antichain (filter_antichain (\<lambda> f. t < f) ft)))"
 
 
 corec max_op :: "(nat \<times> (2, nat) capability) buf \<Rightarrow> (2 option, 2 option, nat \<times> nat + (2, nat) shared_state + (2 location \<Rightarrow> nat zmultiset)) op" where
@@ -364,10 +364,13 @@ term "ord.arg_max_on (\<lambda> xs ys. length xs < length ys) id"
 
 find_consts "_ llist \<Rightarrow> _ llist" name: rem
 
-term List.remdups
+term "approx_in 12 [VInp (Inl 0) (Some 1), VInp (Inr 0) (Some 1), VOut (Inl 0) (Some 1), VOut (Inr 0) (Some 1)]"
 
-value [GHC] "cfilter ((\<noteq>) []) (eval 28 (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [0, 9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
- 
+value [GHC] "(approx_in 40 [VOut 0 (9, 0), VOut 0 (1, 0)] (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [0, 9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
+
+(* 
+value [GHC] "cfilter ((\<noteq>) []) (eval 29 (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [0, 9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
+  *)
 term cfilter
 
 end
