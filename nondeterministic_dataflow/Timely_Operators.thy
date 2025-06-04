@@ -7,6 +7,8 @@ imports
   Eval
   "HOL-Library.While_Combinator"
   Executable
+(*    "HOL-Library.Code_Target_Nat" 
+  "HOL-Library.Code_Target_Int"   *)
 begin
 
 (* Inspired by timely/src/progress/mod.rs:61 *)
@@ -55,10 +57,10 @@ definition
 
 instance
   apply standard
-     apply (simp_all add: distinct_map enum_location_def enum_UNIV enum_distinct enum_all_location_def enum_ex_location_def split: prod.splits location.splits)
-     apply (metis case_prod_conv location.exhaust surj_def)
-    apply (auto simp add: inj_def enum_class.enum_distinct intro!: distinct_product)[1]
-   apply (metis location.collapse)+
+  apply (simp_all add: distinct_map enum_location_def enum_UNIV enum_distinct enum_all_location_def enum_ex_location_def split: prod.splits location.splits)
+  apply (metis case_prod_conv location.exhaust surj_def)
+  apply (auto simp add: inj_def enum_class.enum_distinct intro!: distinct_product)[1]
+  apply (metis location.collapse)+
   done
 end
 
@@ -84,11 +86,11 @@ proof
     by (rule less_port_def)
   show "x \<le> x"
     apply (cases x)
-     apply auto
+    apply auto
     done
   assume "x \<le> y" and "y \<le> z" thus "x \<le> z"
     apply (cases x; cases y; cases z)
-           apply (auto elim!: order_trans)
+    apply (auto elim!: order_trans)
     done
 qed
 
@@ -96,7 +98,7 @@ instance port :: (order) order
   apply standard
   subgoal for x y
     apply (cases x; cases y)
-       apply (auto intro!: antisym elim: less_eq_port.cases)
+    apply (auto intro!: antisym elim: less_eq_port.cases)
     done
   done
 
@@ -111,14 +113,14 @@ definition
 
 instance 
   apply standard
-      apply (auto intro!: elim!: less_eq_port.cases simp add: less_port_def less_eq_location_def less_location_def split: location.splits port.splits)[4]
+  apply (auto intro!: elim!: less_eq_port.cases simp add: less_port_def less_eq_location_def less_location_def split: location.splits port.splits)[4]
   subgoal for x y
     apply (cases x; cases y; simp; hypsubst_thin)
     subgoal for n1 p1 n2 p2
       apply (cases "n1 = n2")
       subgoal
         apply (cases "p1 \<le> p2")
-         apply (auto intro!: elim!: less_eq_port.cases simp add: less_port_def less_eq_location_def less_location_def split: location.splits port.splits)
+        apply (auto intro!: elim!: less_eq_port.cases simp add: less_port_def less_eq_location_def less_location_def split: location.splits port.splits)
         apply (smt (verit, del_insts) less_eq_port.elims(1) less_eq_port.simps(1) nle_le port.distinct(1) port.inject(2))
         done
       subgoal
@@ -285,15 +287,17 @@ lemma frontier_code[code]:
   "set_antichain (frontier x) = minimal_antichain {t \<in> set_zmset x. 0 < zcount x t}"
   by transfer' (auto intro!: arg_cong[of _ _ minimal_antichain] zcount_inI)
 
+abbreviation "frontier_updating b \<equiv> cfilter (\<lambda> op. case op of Read None f \<Rightarrow> b | _ \<Rightarrow> True)"
+
 corec dataflow_op where
-  "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
-     Read None f \<Rightarrow> Silent (dataflow_op sg (f (Inr (Inr (c_imp (pt_tr sg))))))
-   | Read (Some p) f \<Rightarrow> Read p (\<lambda> x. dataflow_op sg (f (Inl x)))
+  "dataflow_op b sg op = Choice (cimage (\<lambda> op. case op of 
+     Read None f \<Rightarrow> Silent (dataflow_op False sg (f (Inr (Inr (c_imp (pt_tr sg))))))
+   | Read (Some p) f \<Rightarrow> Read p (\<lambda> x. dataflow_op b sg (f (Inl x)))
    | Write op' None (Inr (Inl st)) \<Rightarrow> (case propagate_pointstamps (pt_tr sg) (lo_pt sg @ extract_progress (edges sg) st) of
-                                   Some conf' \<Rightarrow> Silent (dataflow_op (sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr>) op')
+                                   Some conf' \<Rightarrow> Silent (dataflow_op True (sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr>) op')
                                  | None \<Rightarrow> undefined)
-   | Write op' (Some p) (Inl x) \<Rightarrow> Write (dataflow_op sg op') p x
-   | Silent op' \<Rightarrow> Silent (dataflow_op sg op')) (choices op))"
+   | Write op' (Some p) (Inl x) \<Rightarrow> Write (dataflow_op b sg op') p x
+   | Silent op' \<Rightarrow> Silent (dataflow_op b sg op')) (frontier_updating b (choices op)))"
 
 (* Should this be non-deterministic? (e.g. non-deterministically send events and capabilities updates) *)
 (* Inspired by timely/src/dataflow/channels/pushers/counter.rs:25 and timely/src/dataflow/channels/mod.rs:49 *)
@@ -323,7 +327,7 @@ find_consts "_ antichain" name: empty
 
 corec input_op :: "('op :: {zero, one}, 't :: {order, plus, one}) capability \<Rightarrow> 'c buf llist \<Rightarrow> (0 option, 'op option, 'c \<times> 't + ('op, 't) shared_state + 'e) op" where
   "input_op c inps = (case inps of
-    LNil \<Rightarrow> drop_cap 0 c \<odot>
+    LNil \<Rightarrow> drop_cap 0 c \<oslash>
   | LCons xs lxs \<Rightarrow> push 0 (Write (input_op (Cap (time c + 1) (out c)) lxs) None 
      (trace (STR ''Delaying capability!'')Inr (Inl \<lparr> cons = [],
             inte = [(0, out c, time c, -1), (0, out c, time c + 1, 1)],
@@ -331,64 +335,95 @@ corec input_op :: "('op :: {zero, one}, 't :: {order, plus, one}) capability \<R
 
 abbreviation "try_read i f \<equiv> Choice (cimage (\<lambda> x. if x then f None else Read i (f o Some)) (cinsert True (csingle False)))"
 
-lemma try_read_simp[simp, code]: "try_read i f = Choice ({| f None, Read i (f o Some) |})"
+lemma try_read_simp[simp, code]: "try_read i f = Choice ({| Read i (f o Some), f None |})"
   by auto
 
 term "empty_antichain :: nat antichain"
 
-term "dataflow_op init_subgraph"
+term "dataflow_op True init_subgraph"
 term "( (input_op (Cap (0 :: nat) (0 :: 2)) (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
 
-value [GHC] "eval 35 (dataflow_op init_subgraph (input_op (Cap (0 :: nat) 0) (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
-value [GHC] "eval 20 (dataflow_op init_subgraph (input_op (Cap (0 :: nat) 0) (LCons [Suc 0] (LNil))))"
+value [GHC] "eval 17 (dataflow_op True init_subgraph (input_op (Cap (0 :: nat) 0) (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
+value [GHC] "eval 5 (dataflow_op True init_subgraph (input_op (Cap (0 :: nat) 0) (LCons [Suc 0] (LNil))))"
 
 abbreviation "maxs ft buf \<equiv> [(n, c) \<leftarrow> buf. ft (time c) \<and> n = Max (set (map fst ((filter (\<lambda> (n', c'). time c = time c') buf))))]"
 
 (* The minted capability must depend on the internal wiring *)
-abbreviation "pull nid i f \<equiv> (try_read (Some i) 
+abbreviation "pull nid i f \<equiv> (Read (Some i) 
   (\<lambda> x. case x of
-    None \<Rightarrow> f None 
-  | Some (Inl (d, t)) \<Rightarrow> Write (f (Some (d, Cap t 0))) None (Inr (Inl \<lparr>  cons = [(nid, i, t, 1)], inte = [(nid, i, t, 1)], prod = [] \<rparr>))))"
+    (Inl (d, t)) \<Rightarrow> Write (f (d, Cap t 0)) None (Inr (Inl \<lparr>  cons = [(nid, i, t, 1)], inte = [(nid, i, t, 1)], prod = [] \<rparr>))))"
 
 abbreviation
-  "less_than_frontier nid p impf t \<equiv> (let ft = frontier (impf (Loc nid (Trg p))) in \<not> is_empty_antichain (filter_antichain (\<lambda> f. t < f) ft))"
+  "less_than_frontier ft t \<equiv> (\<not> is_empty_antichain (filter_antichain (\<lambda> f. t < f) ft))"
 
-corec max_op :: "(nat \<times> (2, nat) capability) buf \<Rightarrow> (2 option, 2 option, nat \<times> nat + (2, nat) shared_state + (2 location \<Rightarrow> nat zmultiset)) op" where
+term choice2
+
+declare [[unify_search_bound = 100]]
+
+corec max_op' :: "(nat \<times> (2, nat) capability) buf \<Rightarrow> (2 option, 2 option, nat \<times> nat + (2, nat) shared_state + (2 location \<Rightarrow> nat zmultiset)) op" where
+  "max_op' buf = choice2
+   (Read None (\<lambda> st.
+    let impf = projr (projr st) in
+    let ft = frontier (impf (Loc 1 (Trg 0))) in
+    if is_empty_antichain ft 
+    then \<oslash> 
+    else 
+    let result = (maxs (less_than_frontier ft) buf) in
+    push 1 (drop_caps 1 (map snd result) (max_op' [(n, c) \<leftarrow> buf. \<not> less_than_frontier ft (time c)])) 0 result))
+   (pull (1 :: 2) (0 :: 2) (\<lambda> x. max_op' (buf @ [x])))"
+
+abbreviation "max_op \<equiv> max_op' []"
+
+(* corec max_op :: "(nat \<times> (2, nat) capability) buf \<Rightarrow> (2 option, 2 option, nat \<times> nat + (2, nat) shared_state + (2 location \<Rightarrow> nat zmultiset)) op" where
   "max_op buf = Read None (\<lambda> st. pull (1 :: 2) (0 :: 2) (case_option
    (let result = (maxs (less_than_frontier 1 0 (projr (projr st))) buf) in
     push 1 (drop_caps 1 (map snd result) (max_op [(n, c) \<leftarrow> buf. \<not> less_than_frontier (1 :: 2) 0 (projr (projr st)) (time c)])) 0 result)
    (\<lambda> x. let result = (maxs (less_than_frontier 1 0 (projr (projr st))) (buf @ [x])) in
-    push 1 (drop_caps 1 (map snd result) (max_op [(n, c) \<leftarrow> buf @ [x]. \<not> less_than_frontier 1 0 (projr (projr st)) (time c)])) 0 result)))"
+    push 1 (drop_caps 1 (map snd result) (max_op [(n, c) \<leftarrow> buf @ [x]. \<not> less_than_frontier 1 0 (projr (projr st)) (time c)])) 0 result)))" *)
 
-term "(input_op (Cap (0 :: nat) (0 :: 2)) (LCons [5, Suc 0] (LCons [8, 1, 0] LNil))) \<bullet>\<^sub>t (max_op [])"
+value [GHC] "approx_in 36 [VOut 0 (9, 0), VOut 0 (5, 1)] (dataflow_op True init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [9, 3] (LCons [5] LNil))) \<bullet>\<^sub>t max_op))"
+                                                                                     
+
+end
+
+(* 
+value [GHC] "approx_in 38 [VOut 0 (9, 0), VOut 0 (5, 1), VOut 0 (2, 2)] (dataflow_op True init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [9, 3] (LCons [Suc 0, 5] (LCons [2] LNil)))) \<bullet>\<^sub>t max_op))"
+
+ *)
+fun traceprefix :: "nat \<Rightarrow> ('i, 'o, 'd) VIO list \<Rightarrow> ('i, 'o, 'd :: {countable}) op \<Rightarrow> bool" where
+  "traceprefix n [] _ = True"
+| "traceprefix n (VInp p x # lxs) (Read q f) = (p = q \<and> traceprefix n lxs (f x))"
+| "traceprefix n (VOut p x # lxs) (Write op q y) = (p = q \<and> x = y \<and> traceprefix n lxs op)"
+| "traceprefix (Suc n) lxs (Silent op) = traceprefix n lxs op"
+| "traceprefix (Suc n) lxs (Choice ops) = (\<not> cis_empty (cfilter (traceprefix n lxs) ops))"
+| "traceprefix _ _ _ = False"
 
 
-find_consts "_ set" name: max_on
-term "ord.arg_max_on (\<lambda> xs ys. length xs < length ys) id"
+definition "tp = traceprefix 1000000 [VOut 0 (9, 0)] (dataflow_op True init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [9] (LNil))) \<bullet>\<^sub>t max_op))"
 
-find_consts "_ llist \<Rightarrow> _ llist" name: rem
+definition "tp2 = traceprefix 1000000 [VOut 0 (1, 0), VOut 0 (2, 0), VOut 0 (3, 0), VOut 0 (9, 0), VOut 0 (8, 1), VOut 0 (1, 1), VOut 0 (0, 1)]
+  (dataflow_op True init_subgraph (input_op (Cap (0 :: nat) 0) (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
 
-term "approx_in 12 [VInp (Inl 0) (Some 1), VInp (Inr 0) (Some 1), VOut (Inl 0) (Some 1), VOut (Inr 0) (Some 1)]"
+(* value [GHC] tp
+ *)
+term "Not (cis_empty (choices op))"
 
-definition "v40 = (approx_in 40 [VOut 0 (9, 0), VOut 0 (1, 1)] (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [0, 9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
+find_consts "_ cset \<Rightarrow> _ llist"
 
-definition "v60 = (approx_in 60 [VOut 0 (9, 0), VOut 0 (1, 1)] (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [0, 9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
+term cset_of_llist
 
-definition "v50 = (approx_in 50 [VOut 0 (9, 0), VOut 0 (1, 1)] (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [0, 9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
+find_theorems cset_of_llist wit_cset
 
-definition "v38 = (approx_in 38 [VOut 0 (9, 0), VOut 0 (1, 1)] (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
 
-definition "v39 = (approx_in 39 [VOut 0 (9, 0), VOut 0 (1, 1)] (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
+term "\<lambda> (tr, op). while_option (\<lambda> (tr, op). Not (cis_empty (choices op))) (undefined)"
 
- value [GHC] v38
- 
 (* 
 value [GHC] "(approx_in 40 [VOut 0 (9, 0), VOut 0 (1, 1)] (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [0, 9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
  *)
 
-(* 
+
 value [GHC] "cfilter ((\<noteq>) []) (eval 29 (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [0, 9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
-  *)
+
 term cfilter
 
 end
