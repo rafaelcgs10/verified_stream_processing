@@ -28,6 +28,14 @@ definition "approx_eq n op op' =
 definition "approx_in n pfx op = 
   (\<not> cis_empty (cfilter (\<lambda>xs. prefix pfx xs) (cimage fst (eval' n op))))"
 
+fun traceprefix :: "nat \<Rightarrow> ('i, 'o, 'd) VIO list \<Rightarrow> ('i, 'o, 'd :: {countable}) op \<Rightarrow> bool" where
+  "traceprefix n [] _ = True"
+| "traceprefix n (VInp p x # lxs) (Read q f) = (p = q \<and> traceprefix n lxs (f x))"
+| "traceprefix n (VOut p x # lxs) (Write op q y) = (p = q \<and> x = y \<and> traceprefix n lxs op)"
+| "traceprefix (Suc n) lxs (Silent op) = traceprefix n lxs op"
+| "traceprefix (Suc n) lxs (Choice ops) = (\<not> cis_empty (cfilter (traceprefix n lxs) ops))"
+| "traceprefix _ _ _ = False"
+
 definition W42 :: "(2,1,nat) op" where "W42 = Write end_op 1 42"
 definition CP :: "(1,1,bool) op" where "CP = Read 1 (\<lambda>x. Write end_op 1 x)"
 corec cp_op :: "(1,1,bool) op" where "cp_op = Read 1 (\<lambda>x. Write cp_op 1 x)"
@@ -41,6 +49,8 @@ value [GHC] "eval 10 cp_op"
 value [GHC] "eval 1000 (CP \<bullet> CP)"
 value [GHC] "eval 10 (cp_op \<bullet> cp_op)"
 value [GHC] "eval 10 (cp_op \<parallel> cp_op)"
+
+value [GHC] "traceprefix 1000000 [VInp (Inl 0) (Some 1), VInp (Inr 0) (Some 1), VOut (Inl 0) (Some 1), VOut (Inr 0) (Some 1)] (\<Q> \<bullet> \<C> :: (2 + 2, 2 + 2, nat option) op)"
 
 value [GHC] "approx_in 12 [VInp (Inl 0) (Some 1), VInp (Inr 0) (Some 1), VOut (Inl 0) (Some 1), VOut (Inr 0) (Some 1)] (\<Q> \<bullet> \<C> :: (2 + 2, 2 + 2, nat option) op)"
 value [GHC] "eval 4 ((\<C> \<parallel> \<C>) \<bullet> (map_op reassoc reassoc (map_op assoc assoc (\<I> \<parallel> \<X>) \<parallel> \<I>)) \<bullet> (\<Q>\<turnstile> \<parallel> \<Q>\<turnstile>) :: (2 + 2, 2 + 2, bool option) op)"
