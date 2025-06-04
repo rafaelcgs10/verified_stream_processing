@@ -516,31 +516,166 @@ definition defaults_nat :: "nat set" where "defaults_nat = {}"
 instance by standard
 end
 
-lemma ldistinct_lmerge:
-  "\<forall>ys zs. ys \<in> lset lxs \<and> zs \<in> lset lxs \<and> ys \<noteq> zs \<longrightarrow> lset ys \<inter> lset zs = {} \<Longrightarrow>
-   \<forall>xs \<in> lset lxs. ldistinct xs \<Longrightarrow>
-   ldistinct (lmerge lxs)"
-  apply (coinduction arbitrary: lxs)
-  subgoal for lxs
-    apply (intro conjI)
-    subgoal
-      apply safe
-      sorry
-    subgoal
-      sorry
+inductive ldistinct_cong for X where
+  "X lxs \<Longrightarrow> ldistinct_cong X lxs"
+| "lset lxs \<inter> lset lys = {} \<Longrightarrow> ldistinct lys \<Longrightarrow> ldistinct_cong X lxs \<Longrightarrow> ldistinct_cong X (linterleave lys lxs)"
+| "lset lxs \<inter> lset lys = {} \<Longrightarrow> ldistinct lys \<Longrightarrow> ldistinct_cong X lxs \<Longrightarrow> ldistinct_cong X (linterleave lxs lys)"
+
+lemma ldistinct_coinduct_strong[consumes 1, case_names ldistinct, case_conclusion ldistinct lhd ltl, coinduct pred: ldistinct]: 
+  assumes "X xs"
+   "(\<And>xs. X xs \<Longrightarrow>
+       \<not> lnull xs \<Longrightarrow>
+       lhd xs \<notin> lset (ltl xs) \<and> ldistinct_cong X (ltl xs))"
+  shows "ldistinct xs"
+  apply (rule ldistinct_coinduct[where X="ldistinct_cong X"])
+   apply (rule ldistinct_cong.intros(1))
+   apply (rule assms(1))
+  subgoal for xs
+    apply (induct xs rule: ldistinct_cong.induct)
+      apply (auto dest: assms(2)) []
+    subgoal for lxs lys
+      apply (cases lys; cases lxs)
+       apply auto
+      apply (metis Int_insert_left_if0 ldistinct_cong.intros(3) linterleave_LCons1
+          lset_LCons)+
+      done
+    subgoal for lxs lys
+      apply (cases lxs)
+       apply auto
+      using ldistinct_lhdD apply blast
+      using ldistinct_ltlI apply blast
+      using ldistinct_cong.intros(2) apply blast
+      using ldistinct_linterleave apply blast
+      done
     done
   done
 
+lemma ldistinct_lmerge:
+  assumes "\<forall>i j. i < j \<longrightarrow> j < llength lxs \<longrightarrow> lset (lnth lxs i) \<inter> lset (lnth lxs j) = {}"
+  and "\<forall>xs \<in> lset lxs. ldistinct xs"
+shows "ldistinct (lmerge lxs)"
+  using assms
+proof (coinduction arbitrary: lxs)
+  case (ldistinct lxs)
+  then show ?case
+    subgoal
+      apply (subst (asm) lmerge.code)
+      apply (subst (1 2) lmerge.code)
+      apply (auto split: llist.splits)
+      subgoal for xs lxs' lxs''
+        apply (cases "lnull xs")
+         apply (metis ldropWhile_eq_LNil_iff lhd_LCons lhd_ldropWhile llist.simps(3))
+        apply (subgoal_tac "lxs = lappend (ltakeWhile lnull lxs) (ldropWhile lnull lxs)")
+        subgoal
+          apply (subgoal_tac "lfinite (ltakeWhile lnull lxs)")
+          subgoal
+            apply (subgoal_tac "\<exists>i j. i < j \<and> j < llength lxs \<and> lnth lxs i = xs \<and> lnth lxs j = lxs''")
+            subgoal
+              apply (erule exE conjE)+
+              subgoal for i j
+                apply (drule spec2[of _ i j])
+                apply (auto simp: disjoint_iff)
+                done
+              done
+            subgoal
+              apply (subst (asm) in_lset_conv_lnth)
+              apply (erule exE conjE)+
+              subgoal for k
+              apply (rule exI[of _ "the_enat (llength (ltakeWhile lnull lxs))"])
+                apply (rule exI[of _ "the_enat (llength (ltakeWhile lnull lxs)) + Suc k"])
+                apply auto
+                apply (smt (verit, del_insts) add_Suc_right add_diff_cancel_left'
+                    ldropn_Suc_LCons ldropn_lappend2 linorder_not_less llength_ltakeWhile_le
+                    lnull_ldropn order_trans)
+                apply (metis ldropWhile_eq_ldrop ldrop_eq_LConsD lhd_LCons
+                    lhd_ldrop)
+                apply (metis add_Suc_right add_diff_cancel_left' eq_LConsD le_add1
+                    lfinite_llength_enat llist.disc(2) lnth_lappend2 lnth_ltl
+                    the_enat.simps)
+                done
+              done
+            done
+          by (metis lappend_inf ldropWhile_eq_ldrop ldrop_eq_LConsD order_less_irrefl) 
+        by (metis lappend_ltakeWhile_ldropWhile)
+      subgoal for xs lxs'
+        by (metis ldistinct_lhdD ldropWhile_eq_LNil_iff lhd_LCons lhd_ldropWhile
+            lhd_ldropWhile_in_lset llist.distinct(1))
+      subgoal for xs lxs'
+        apply (subst (2) lmerge.code)
+        apply auto
+        apply (rule ldistinct_cong.intros(3))
+        subgoal
+          apply auto
+          subgoal for x lxs''
+            apply (cases "lnull xs")
+             apply (metis ldropWhile_eq_LNil_iff lhd_LCons lhd_ldropWhile llist.simps(3))
+            apply (subgoal_tac "lxs = lappend (ltakeWhile lnull lxs) (ldropWhile lnull lxs)")
+            subgoal
+              apply (subgoal_tac "lfinite (ltakeWhile lnull lxs)")
+              subgoal
+                apply (subgoal_tac "\<exists>i j. i < j \<and> j < llength lxs \<and> lnth lxs i = xs \<and> lnth lxs j = lxs''")
+                subgoal
+                  apply (erule exE conjE)+
+                  subgoal for i j
+                    apply (drule spec2[of _ i j])
+                    apply (auto simp: disjoint_iff)
+                    apply (meson in_lset_ltlD)
+                    done
+                  done
+                subgoal
+                  apply (subst (asm) (2) in_lset_conv_lnth)
+                  apply (erule exE conjE)+
+                  subgoal for k
+                    apply (rule exI[of _ "the_enat (llength (ltakeWhile lnull lxs))"])
+                    apply (rule exI[of _ "the_enat (llength (ltakeWhile lnull lxs)) + Suc k"])
+                    apply auto
+                      apply (smt (verit, del_insts) add_Suc_right add_diff_cancel_left'
+                        ldropn_Suc_LCons ldropn_lappend2 linorder_not_less llength_ltakeWhile_le
+                        lnull_ldropn order_trans)
+                     apply (metis ldropWhile_eq_ldrop ldrop_eq_LConsD lhd_LCons
+                        lhd_ldrop)
+                    apply (metis add_Suc_right add_diff_cancel_left' eq_LConsD le_add1
+                        lfinite_llength_enat llist.disc(2) lnth_lappend2 lnth_ltl
+                        the_enat.simps)
+                    done
+                  done
+                done
+              by (metis lappend_inf ldropWhile_eq_ldrop ldrop_eq_LConsD order_less_irrefl) 
+            by (metis lappend_ltakeWhile_ldropWhile)
+          done
+        apply (metis in_lset_ldropWhileD ldistinct_ltlI llist.set_intros(1))
+        apply (rule ldistinct_cong.intros(1))
+        apply (rule exI[of _ lxs'])
+        apply (intro conjI allI impI refl)
+        subgoal for i j
+          apply (subgoal_tac "lxs = lappend (ltakeWhile lnull lxs) (ldropWhile lnull lxs)")
+          subgoal
+            apply (subgoal_tac "lfinite (ltakeWhile lnull lxs)")
+            subgoal
+          apply (drule spec2[of _ "Suc (the_enat (llength (ltakeWhile lnull lxs))) + i" "Suc (the_enat (llength (ltakeWhile lnull lxs))) + j"])
+              apply auto
+              apply (smt (verit, ccfv_SIG) Extended_Nat.eSuc_mono eSuc_enat
+                  enat_less_enat_plusI2 enat_the_enat llength_LCons
+                  llength_eq_infty_conv_lfinite llength_lappend nat_arith.suc1)
+              apply (smt (z3) add_Suc_right add_diff_cancel_left' disjoint_iff
+                  enat_ord_simps(2) enat_the_enat llength_eq_infty_conv_lfinite
+                  lnth_Suc_LCons lnth_lappend not_add_less1)
+              done
+          by (metis lappend_inf ldropWhile_eq_ldrop ldrop_eq_LConsD order_less_irrefl) 
+        by (metis lappend_ltakeWhile_ldropWhile)
+        subgoal by (metis in_lset_ldropWhileD insert_iff llist.simps(19))
+        done
+      done
+    done
+qed
+
+
 instantiation prod :: (cenum, cenum) cenum begin
 definition cenum_prod :: "('a \<times> 'b) llist" where "cenum_prod = lmerge (lmap (\<lambda> x. lmap (Pair x) cenum) cenum)"
-instance apply standard
-   apply (auto simp: cenum_prod_def image_iff UNIV_cenum[symmetric] cenum_distinct intro!: ldistinct_linterleave)
-  apply (rule ldistinct_lmerge)
-  apply force
-  apply auto
-  using cenum_distinct apply blast
-  apply (meson Pair_inject inj_onI)
-  done
+instance by standard
+ (auto simp: cenum_prod_def image_iff inj_on_def order_less_subst2 UNIV_cenum[symmetric] cenum_distinct
+     intro!: ldistinct_linterleave ldistinct_lmerge
+     dest!: cenum_distinct[unfolded ldistinct_conv_lnth, rule_format, THEN notE, rotated -1])
 end
 
 
