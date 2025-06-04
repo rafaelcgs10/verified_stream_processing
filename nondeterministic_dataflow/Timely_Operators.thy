@@ -222,7 +222,7 @@ definition show_loc where
 
 abbreviation "print_int n \<equiv> (if n \<ge> 0 then show_nat (Int.nat n) else STR ''-'' + show_nat (Int.nat (abs n)) )"
 
-definition "DEBUG = True"
+definition "DEBUG = False"
 
 abbreviation "trace \<equiv> (if DEBUG then Debug.tracing else (\<lambda> x y. y))"
 
@@ -255,7 +255,7 @@ definition extract_progress :: "('loc location \<Rightarrow> 'loc location list)
     concat (map (\<lambda> (node, p, t, m). map (\<lambda> l. (l, t, m)) (edg (Loc node (Src p)))) (prod st))"
 
 
-lift_definition Max_antichain :: "nat antichain \<Rightarrow> nat" is "\<lambda> x. if Set.is_empty x then 666 else Max x" .
+lift_definition Max_antichain :: "nat antichain \<Rightarrow> nat" is "\<lambda> x. if Set.is_empty x then 0 else Max x" .
 
 
 abbreviation "print_frontier x \<equiv> trace (show_nat (Max_antichain x))" 
@@ -304,6 +304,9 @@ abbreviation "push nid op p batch \<equiv>
 abbreviation "drop_cap nid c op \<equiv>
   Write op None (trace (String.implode (''Dropping cap!'')) Inr (Inl \<lparr> cons = [], inte = [(nid, out c, time c, -1)], prod = [] \<rparr>))"
 
+abbreviation "drop_caps nid cs op \<equiv>
+  Write op None (trace (String.implode (''Dropping caps!'')) Inr (Inl \<lparr> cons = [], inte = map (\<lambda> c. (nid, out c, time c, -1)) cs, prod = [] \<rparr>))"
+
 abbreviation "delayed_cap nid c t \<equiv>
   (Cap (time c + abs t) (out c),
   \<lambda> op. Write op None 
@@ -348,13 +351,14 @@ abbreviation "pull nid i f \<equiv> (try_read (Some i)
   | Some (Inl (d, t)) \<Rightarrow> Write (f (Some (d, Cap t 0))) None (Inr (Inl \<lparr>  cons = [(nid, i, t, 1)], inte = [(nid, i, t, 1)], prod = [] \<rparr>))))"
 
 abbreviation
-  "less_than_frontier nid p impf t \<equiv> (let ft = frontier (impf (Loc nid (Trg p))) in (\<not> is_empty_antichain (filter_antichain (\<lambda> f. t < f) ft)))"
-
+  "less_than_frontier nid p impf t \<equiv> (let ft = frontier (impf (Loc nid (Trg p))) in \<not> is_empty_antichain (filter_antichain (\<lambda> f. t < f) ft))"
 
 corec max_op :: "(nat \<times> (2, nat) capability) buf \<Rightarrow> (2 option, 2 option, nat \<times> nat + (2, nat) shared_state + (2 location \<Rightarrow> nat zmultiset)) op" where
   "max_op buf = Read None (\<lambda> st. pull (1 :: 2) (0 :: 2) (case_option
-   (push 1 (max_op [(n, c) \<leftarrow> buf. \<not> less_than_frontier (1 :: 2) 0 (projr (projr st)) (time c)]) 0 ((maxs (less_than_frontier 1 0 (projr (projr st))) buf)))
-   (\<lambda> x.  push 1 (max_op [(n, c) \<leftarrow> buf @ [x]. \<not> less_than_frontier 1 0 (projr (projr st)) (time c)]) 0 ((maxs (less_than_frontier 1 0 (projr (projr st))) (buf @ [x]))))))"
+   (let result = (maxs (less_than_frontier 1 0 (projr (projr st))) buf) in
+    push 1 (drop_caps 1 (map snd result) (max_op [(n, c) \<leftarrow> buf. \<not> less_than_frontier (1 :: 2) 0 (projr (projr st)) (time c)])) 0 result)
+   (\<lambda> x. let result = (maxs (less_than_frontier 1 0 (projr (projr st))) (buf @ [x])) in
+    push 1 (drop_caps 1 (map snd result) (max_op [(n, c) \<leftarrow> buf @ [x]. \<not> less_than_frontier 1 0 (projr (projr st)) (time c)])) 0 result)))"
 
 term "(input_op (Cap (0 :: nat) (0 :: 2)) (LCons [5, Suc 0] (LCons [8, 1, 0] LNil))) \<bullet>\<^sub>t (max_op [])"
 
@@ -366,7 +370,21 @@ find_consts "_ llist \<Rightarrow> _ llist" name: rem
 
 term "approx_in 12 [VInp (Inl 0) (Some 1), VInp (Inr 0) (Some 1), VOut (Inl 0) (Some 1), VOut (Inr 0) (Some 1)]"
 
-value [GHC] "(approx_in 40 [VOut 0 (9, 0), VOut 0 (1, 0)] (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [0, 9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
+definition "v40 = (approx_in 40 [VOut 0 (9, 0), VOut 0 (1, 1)] (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [0, 9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
+
+definition "v60 = (approx_in 60 [VOut 0 (9, 0), VOut 0 (1, 1)] (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [0, 9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
+
+definition "v50 = (approx_in 50 [VOut 0 (9, 0), VOut 0 (1, 1)] (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [0, 9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
+
+definition "v38 = (approx_in 38 [VOut 0 (9, 0), VOut 0 (1, 1)] (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
+
+definition "v39 = (approx_in 39 [VOut 0 (9, 0), VOut 0 (1, 1)] (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
+
+ value [GHC] v38
+ 
+(* 
+value [GHC] "(approx_in 40 [VOut 0 (9, 0), VOut 0 (1, 1)] (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [0, 9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
+ *)
 
 (* 
 value [GHC] "cfilter ((\<noteq>) []) (eval 29 (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [0, 9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
