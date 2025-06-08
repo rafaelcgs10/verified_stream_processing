@@ -12,7 +12,10 @@ imports
 begin
 
 (* Inspired by timely/src/progress/mod.rs:61 *)
-datatype 'loc port = Trg 'loc | Src 'loc
+datatype 'loc port = Trg (idp: 'loc) | Src (idp: 'loc)
+fun is_Src where "is_Src (Trg _) = False" | "is_Src _ = True"
+fun is_Trg where "is_Trg (Trg _) = True" | "is_Trg _ = False"
+
   (* Inspired by timely/src/progress/mod.rs:19 *)
 datatype 'loc location = Loc (node: 'loc) (port: "'loc port")
 
@@ -382,7 +385,45 @@ abbreviation "max_op \<equiv> max_op' []"
     push 1 (drop_caps 1 (map snd result) (max_op [(n, c) \<leftarrow> buf @ [x]. \<not> less_than_frontier 1 0 (projr (projr st)) (time c)])) 0 result)))" *)
 
 value [GHC] "approx_in 36 [VOut 0 (9, 0), VOut 0 (5, 1)] (dataflow_op True init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [9, 3] (LCons [5] LNil))) \<bullet>\<^sub>t max_op))"
-                                                                                     
+
+datatype ('loc, 'c, 'd) dataflow_tree = 
+   "apply": Logic "'c \<Rightarrow> ('loc, 'loc, 'd) op"
+ | Comp "'loc \<Rightarrow> 'loc option" "('loc, 'c, 'd) dataflow_tree" "('loc, 'c, 'd) dataflow_tree"
+
+find_consts "_ antichain \<Rightarrow> _ antichain \<Rightarrow> _ antichain"
+
+find_consts "_ port \<Rightarrow> bool"
+
+fun build_summary :: "'loc :: {one,plus, ord} \<Rightarrow> ('loc, 'c, 'd) dataflow_tree \<Rightarrow> 'loc \<times> ('loc location \<Rightarrow> 'loc location \<Rightarrow> nat antichain)" where
+  "build_summary n (Comp wire dt1 dt2) = (
+    let (n', summary1) = build_summary n dt1 in
+    let (n'', summary2) = build_summary n' dt2 in
+    (n'', \<lambda> l1 l2. 
+     if node l1 \<ge> n \<and> node l1 < n' \<and> node l2 \<ge> n' \<and> is_Src (port l1) \<and> is_Trg (port l2)
+     then (case wire (idp (port l1)) of None \<Rightarrow> frontier {#}\<^sub>z | Some q \<Rightarrow> (if q = idp (port l2) then frontier (abs_zmultiset (mset [0], {#})) else frontier {#}\<^sub>z )) 
+     else summary1 l1 l2 + summary2 l1 l2)
+   )"
+| "build_summary n (Logic f) = (n + 1, (\<lambda> l1 l2. 
+    if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
+    then frontier (abs_zmultiset (mset [0], {#})) 
+    else frontier {#}\<^sub>z))"
+
+value "snd (build_summary (0 :: 2) (Comp Some (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))) (Loc 0 (Trg 0)) (Loc 0 (Src 0))"
+value "snd (build_summary (0 :: 2) (Comp Some (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))) (Loc 0 (Src 0)) (Loc 0 (Trg 0))"
+value "snd (build_summary (0 :: 2) (Comp Some (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))) (Loc 0 (Src 0)) (Loc 1 (Trg 0))"
+value "snd (build_summary (0 :: 2) (Comp (\<lambda> _. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))) (Loc 0 (Src 0)) (Loc 1 (Trg 0))"
+value "snd (build_summary (0 :: 2) (Comp (\<lambda> _. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))) (Loc 0 (Trg 0)) (Loc 0 (Src 0))"
+
+global_interpretation dataflow_topology_from_tree: enum_dataflow_topology
+  "build_summary g"
+  "(+)"
+  for g :: "('p :: {enum,linorder}, 'c, 'd) dataflow_tree "
+  defines take_step'' = "\<lambda> g. enum_dataflow_topology.take_step (build_summary g) (+) :: _ \<Rightarrow> (2 location, nat) Step \<Rightarrow> _ \<Rightarrow> _"
+  and after_summary' = "dataflow_topology.after_summary (+) :: nat zmultiset \<Rightarrow> nat antichain \<Rightarrow> nat zmultiset"
+  apply standard
+  sorry
+
+term "take_step''"
 
 end
 
