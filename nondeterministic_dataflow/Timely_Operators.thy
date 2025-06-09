@@ -388,19 +388,21 @@ value [GHC] "approx_in 36 [VOut 0 (9, 0), VOut 0 (5, 1)] (dataflow_op True init_
 
 datatype ('loc, 'c, 'd) dataflow_tree = 
    "apply": Logic "'c \<Rightarrow> ('loc, 'loc, 'd) op"
- | Comp "'loc \<Rightarrow> 'loc option" "('loc, 'c, 'd) dataflow_tree" "('loc, 'c, 'd) dataflow_tree"
+ | Comp "'loc \<times> 'loc \<Rightarrow> ('loc \<times> 'loc) option" "('loc, 'c, 'd) dataflow_tree" "('loc, 'c, 'd) dataflow_tree"
 
 find_consts "_ antichain \<Rightarrow> _ antichain \<Rightarrow> _ antichain"
 
 find_consts "_ port \<Rightarrow> bool"
 
-fun build_summary :: "'loc :: {one,plus, ord} \<Rightarrow> ('loc, 'c, 'd) dataflow_tree \<Rightarrow> 'loc \<times> ('loc location \<Rightarrow> 'loc location \<Rightarrow> nat antichain)" where
+fun build_summary :: "'loc :: {one,plus, ord, minus} \<Rightarrow> ('loc, 'c, 'd) dataflow_tree \<Rightarrow> 'loc \<times> ('loc location \<Rightarrow> 'loc location \<Rightarrow> nat antichain)" where
   "build_summary n (Comp wire dt1 dt2) = (
     let (n', summary1) = build_summary n dt1 in
     let (n'', summary2) = build_summary n' dt2 in
     (n'', \<lambda> l1 l2. 
      if node l1 \<ge> n \<and> node l1 < n' \<and> node l2 \<ge> n' \<and> is_Src (port l1) \<and> is_Trg (port l2)
-     then (case wire (idp (port l1)) of None \<Rightarrow> frontier {#}\<^sub>z | Some q \<Rightarrow> (if q = idp (port l2) then frontier (abs_zmultiset (mset [0], {#})) else frontier {#}\<^sub>z )) 
+     then (case wire (node l1 - n, idp (port l1)) of 
+             None \<Rightarrow> frontier {#}\<^sub>z 
+           | Some (offset, q) \<Rightarrow> (if node l2 = n' + offset \<and> q = idp (port l2) then frontier (abs_zmultiset (mset [0], {#})) else frontier {#}\<^sub>z )) 
      else summary1 l1 l2 + summary2 l1 l2)
    )"
 | "build_summary n (Logic f) = (n + 1, (\<lambda> l1 l2. 
@@ -408,11 +410,29 @@ fun build_summary :: "'loc :: {one,plus, ord} \<Rightarrow> ('loc, 'c, 'd) dataf
     then frontier (abs_zmultiset (mset [0], {#})) 
     else frontier {#}\<^sub>z))"
 
-value "snd (build_summary (0 :: 2) (Comp Some (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))) (Loc 0 (Trg 0)) (Loc 0 (Src 0))"
-value "snd (build_summary (0 :: 2) (Comp Some (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))) (Loc 0 (Src 0)) (Loc 0 (Trg 0))"
-value "snd (build_summary (0 :: 2) (Comp Some (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))) (Loc 0 (Src 0)) (Loc 1 (Trg 0))"
-value "snd (build_summary (0 :: 2) (Comp (\<lambda> _. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))) (Loc 0 (Src 0)) (Loc 1 (Trg 0))"
-value "snd (build_summary (0 :: 2) (Comp (\<lambda> _. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))) (Loc 0 (Trg 0)) (Loc 0 (Src 0))"
+value "[(Suc 0 , Suc 0) \<mapsto> (Suc 0, Suc 0)](Suc 0, 1)"
+
+value "snd (build_summary (0 :: 4)
+       (Comp Some
+         (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))
+         (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))))
+      (Loc 1 (Src 0)) (Loc 3 (Trg 0))"
+value "snd (build_summary (0 :: 4)
+       (Comp Some
+         (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))
+         (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))))
+      (Loc 1 (Trg 0)) (Loc 1 (Src 0))"
+
+value "snd (build_summary (0 :: 5)
+       (Comp Some
+         (Comp (\<lambda> l. None) (Comp Some (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>))) (Logic (\<lambda> _. \<oslash>)))
+         (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))))
+      (Loc 1 (Src 0)) (Loc 4 (Trg 0))"
+value "snd (build_summary (0 :: 5)
+       (Comp [(1, 0) \<mapsto> (0, 0), (2, 0) \<mapsto> (1, 0)]
+         (Comp (\<lambda> l. None) (Comp Some (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>))) (Logic (\<lambda> _. \<oslash>)))
+         (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))))
+      (Loc 2 (Src 0)) (Loc 4 (Trg 0))"
 
 global_interpretation dataflow_topology_from_tree: enum_dataflow_topology
   "build_summary g"
