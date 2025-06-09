@@ -7,14 +7,15 @@ imports
   Eval
   "HOL-Library.While_Combinator"
   Executable
+  Zero_Cyc_Check 
 (*    "HOL-Library.Code_Target_Nat" 
   "HOL-Library.Code_Target_Int"   *)
 begin
 
 (* Inspired by timely/src/progress/mod.rs:61 *)
 datatype 'loc port = Trg (idp: 'loc) | Src (idp: 'loc)
-fun is_Src where "is_Src (Trg _) = False" | "is_Src _ = True"
-fun is_Trg where "is_Trg (Trg _) = True" | "is_Trg _ = False"
+abbreviation is_Src where "is_Src x \<equiv> (case x of Src _ \<Rightarrow> True | _ \<Rightarrow> False)"
+abbreviation is_Trg where "is_Trg x \<equiv> (case x of Trg _ \<Rightarrow> True | _ \<Rightarrow> False)"
 
   (* Inspired by timely/src/progress/mod.rs:19 *)
 datatype 'loc location = Loc (node: 'loc) (port: "'loc port")
@@ -173,6 +174,13 @@ definition summary :: "2 location \<Rightarrow> 2 location \<Rightarrow> (nat an
   (if node l1 = 0 \<and> port l1 = Src 0 \<and> node l2 = 1 \<and> port l2 = Trg 0 then frontier (abs_zmultiset (mset [0], {#})) else
    if node l1 = 1 \<and> port l1 = Trg 0 \<and> node l2 = 1 \<and> port l2 = Src 0 then frontier (abs_zmultiset (mset [0], {#})) else
    frontier {#}\<^sub>z)"
+
+definition summ_test :: "bool \<Rightarrow> bool \<Rightarrow> (1 antichain)" where
+  "summ_test l1 l2 = 
+  (if l1 = False \<and> l2 = True then frontier (abs_zmultiset (mset [0], {#})) else
+   frontier {#}\<^sub>z)"
+
+value "cyc_checker_codeT (graph_from_weights summ_test)"
 
 declare zmultiset_of_antichain_def[code]
 
@@ -394,10 +402,10 @@ find_consts "_ antichain \<Rightarrow> _ antichain \<Rightarrow> _ antichain"
 
 find_consts "_ port \<Rightarrow> bool"
 
-fun build_summary :: "'loc :: {one,plus, ord, minus} \<Rightarrow> ('loc, 'c, 'd) dataflow_tree \<Rightarrow> 'loc \<times> ('loc location \<Rightarrow> 'loc location \<Rightarrow> nat antichain)" where
-  "build_summary n (Comp wire dt1 dt2) = (
-    let (n', summary1) = build_summary n dt1 in
-    let (n'', summary2) = build_summary n' dt2 in
+fun build_summary_aux :: "'loc :: {minus, plus, one, ord} \<Rightarrow> ('loc, 'c, 'd) dataflow_tree \<Rightarrow> 'loc \<times> ('loc location \<Rightarrow> 'loc location \<Rightarrow> nat antichain)" where
+  "build_summary_aux n (Comp wire dt1 dt2) = (
+    let (n', summary1) = build_summary_aux n dt1 in
+    let (n'', summary2) = build_summary_aux n' dt2 in
     (n'', \<lambda> l1 l2. 
      if node l1 \<ge> n \<and> node l1 < n' \<and> node l2 \<ge> n' \<and> is_Src (port l1) \<and> is_Trg (port l2)
      then (case wire (node l1 - n, idp (port l1)) of 
@@ -405,42 +413,82 @@ fun build_summary :: "'loc :: {one,plus, ord, minus} \<Rightarrow> ('loc, 'c, 'd
            | Some (offset, q) \<Rightarrow> (if node l2 = n' + offset \<and> q = idp (port l2) then frontier (abs_zmultiset (mset [0], {#})) else frontier {#}\<^sub>z )) 
      else summary1 l1 l2 + summary2 l1 l2)
    )"
-| "build_summary n (Logic f) = (n + 1, (\<lambda> l1 l2. 
+| "build_summary_aux n (Logic f) = (n + 1, (\<lambda> l1 l2. 
     if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
     then frontier (abs_zmultiset (mset [0], {#})) 
     else frontier {#}\<^sub>z))"
 
-value "[(Suc 0 , Suc 0) \<mapsto> (Suc 0, Suc 0)](Suc 0, 1)"
-
-value "snd (build_summary (0 :: 4)
+value "snd (build_summary_aux (0 :: 4)
        (Comp Some
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))))
       (Loc 1 (Src 0)) (Loc 3 (Trg 0))"
-value "snd (build_summary (0 :: 4)
+value "snd (build_summary_aux (0 :: 4)
        (Comp Some
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))))
       (Loc 1 (Trg 0)) (Loc 1 (Src 0))"
 
-value "snd (build_summary (0 :: 5)
+value "snd (build_summary_aux (0 :: 5)
        (Comp Some
          (Comp (\<lambda> l. None) (Comp Some (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>))) (Logic (\<lambda> _. \<oslash>)))
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))))
       (Loc 1 (Src 0)) (Loc 4 (Trg 0))"
-value "snd (build_summary (0 :: 5)
+value "snd (build_summary_aux (0 :: 5)
        (Comp [(1, 0) \<mapsto> (0, 0), (2, 0) \<mapsto> (1, 0)]
          (Comp (\<lambda> l. None) (Comp Some (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>))) (Logic (\<lambda> _. \<oslash>)))
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))))
       (Loc 2 (Src 0)) (Loc 4 (Trg 0))"
 
+definition "build_summary dt = snd (build_summary_aux 0 dt)"
+
+
+lemma  antichain_sum_empty[simp]:
+  "A + {}\<^sub>A = A"
+  apply transfer
+  apply simp
+  apply (smt (verit, ccfv_threshold) in_minimal_antichain incomparable_def order_class.order_eq_iff order_less_imp_not_eq subset_iff)
+  done
+
+lemma build_summary_aux_same_loc:
+  "(n'', summar) = build_summary_aux n dt \<Longrightarrow>
+   summar loc loc = {}\<^sub>A"
+  apply (induct dt arbitrary: n n'' summar)
+  subgoal for l n n' summar
+    by (cases loc; simp split: port.splits if_splits)
+  subgoal for wire dt1 dt2 n n'' summar
+    apply (cases "build_summary_aux n dt1")
+    subgoal for n' summar'
+      apply (cases "build_summary_aux n' dt2")
+      subgoal for n''' summar''
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec[of _ n'])
+        apply (drule meta_spec[of _ n'])
+        apply (drule meta_spec[of _ n''])
+        apply (drule meta_spec[of _ summar'])
+        apply (drule meta_spec[of _ summar''])
+        apply (drule meta_mp)
+        apply simp
+        apply (drule meta_mp)
+         apply simp
+        apply (simp split: if_splits)
+        apply safe
+        subgoal
+          by (auto 0 0 simp add: port.case_eq_if split: if_splits option.splits)
+        done
+      done
+    done
+  done
+
 global_interpretation dataflow_topology_from_tree: enum_dataflow_topology
   "build_summary g"
   "(+)"
-  for g :: "('p :: {enum,linorder}, 'c, 'd) dataflow_tree "
+  for g
   defines take_step'' = "\<lambda> g. enum_dataflow_topology.take_step (build_summary g) (+) :: _ \<Rightarrow> (2 location, nat) Step \<Rightarrow> _ \<Rightarrow> _"
   and after_summary' = "dataflow_topology.after_summary (+) :: nat zmultiset \<Rightarrow> nat antichain \<Rightarrow> nat zmultiset"
   apply standard
+       apply simp_all
+  using build_summary_aux_same_loc apply (metis build_summary_def old.prod.exhaust sndI)
   sorry
 
 term "take_step''"

@@ -205,5 +205,10 @@ lemma frontier_empty_zmset: "frontier {#}\<^sub>z = {}\<^sub>A"
   by (cases op; cases p) (auto simp: summary_def frontier_empty_zmset)
  *)
 
+lift_definition antichain_from_list :: "'sum :: {order, monoid_add} list \<Rightarrow> 'sum antichain" is
+  "\<lambda>A. set (filter (\<lambda> x . (list_all ((\<le>) x) A)) A)"
+  apply (subst list_all_def set_filter)
+  apply (simp add: basic_trans_rules(24) incomparable_def list.pred_set)
+  done
 
 end
