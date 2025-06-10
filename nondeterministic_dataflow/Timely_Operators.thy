@@ -171,25 +171,18 @@ friend_of_corec writes where
 
 definition summary :: "2 location \<Rightarrow> 2 location \<Rightarrow> (nat antichain)" where
   "summary l1 l2 = 
-  (if node l1 = 0 \<and> port l1 = Src 0 \<and> node l2 = 1 \<and> port l2 = Trg 0 then frontier (abs_zmultiset (mset [0], {#})) else
-   if node l1 = 1 \<and> port l1 = Trg 0 \<and> node l2 = 1 \<and> port l2 = Src 0 then frontier (abs_zmultiset (mset [0], {#})) else
+  (if node l1 = 0 \<and> port l1 = Src 0 \<and> node l2 = 1 \<and> port l2 = Trg 0 then frontier {# 0 #}\<^sub>z else
+   if node l1 = 1 \<and> port l1 = Trg 0 \<and> node l2 = 1 \<and> port l2 = Src 0 then frontier {# 0 #}\<^sub>z else
    frontier {#}\<^sub>z)"
-
-definition summ_test :: "bool \<Rightarrow> bool \<Rightarrow> (1 antichain)" where
-  "summ_test l1 l2 = 
-  (if l1 = False \<and> l2 = True then frontier (abs_zmultiset (mset [0], {#})) else
-   frontier {#}\<^sub>z)"
-
-value "cyc_checker_codeT (graph_from_weights summ_test)"
 
 declare zmultiset_of_antichain_def[code]
-
+(* 
 global_interpretation sum: enum_dataflow_topology
   "summary :: 2 location \<Rightarrow> 2 location \<Rightarrow> nat antichain"
   "(+)"
   defines take_step' = "enum_dataflow_topology.take_step summary (+) :: _ \<Rightarrow> (2 location, nat) Step \<Rightarrow> _ \<Rightarrow> _" and
     after_summary = "dataflow_topology.after_summary (+) :: nat zmultiset \<Rightarrow> nat antichain \<Rightarrow> nat zmultiset"
-  sorry
+  sorry *)
 
 definition mymin_code :: "(nat \<times> ('a :: linorder) location) set \<Rightarrow> (nat \<times> 'a location)" 
   where [code del]: "mymin_code = mymin (<)"
@@ -200,12 +193,12 @@ lemma mymin_code[code]: "mymin_code (set (x # xs)) = fold (\<lambda>a b. if t_lo
   apply unfold_locales
   apply auto
   done
-
+(* 
 definition take_step where
   "take_step = take_step' (<)"
 
 declare sum.take_step.simps[of "((<) :: nat \<Rightarrow> _ \<Rightarrow> _)",  folded mymin_code_def take_step_def, code]
-
+ *)
 lift_definition zequal :: "'a zmultiset \<Rightarrow> 'a zmultiset \<Rightarrow> bool" is
   "\<lambda> (M, N) (P, Q). (M-N) = (P-Q) \<and> (N-M) = (Q-P)"
   apply (auto simp: equiv_zmset_def)
@@ -219,10 +212,10 @@ definition "reachable_locations \<equiv> { loc . \<exists> loc' .
 
 definition worklist_is_empty where
   "worklist_is_empty c = Set.Ball reachable_locations (\<lambda> loc. zequal (c_work c loc) {#}\<^sub>z)"
-
+(* 
 definition "propagate_all c0 = while_option (Not o worklist_is_empty)
                                             (take_step PR) c0"
-
+ *)
 fun print_2 where
   "print_2 n = (if n = 0 then STR ''0'' else STR ''1'')"
 
@@ -241,18 +234,18 @@ abbreviation "trace \<equiv> (if DEBUG then Debug.tracing else (\<lambda> x y. y
 
 (* Inspired by timely/src/progress/subgraph.rs:453 *)
 (* First migrate all change batches to the worklist, then call propagate_all *)
-fun propagate_pointstamps :: "(2 location, nat) configuration \<Rightarrow> (2 location \<times> nat \<times> int) change_batch \<Rightarrow> (2 location, nat) configuration option"  where
+(* fun propagate_pointstamps :: "(2 location, nat) configuration \<Rightarrow> (2 location \<times> nat \<times> int) change_batch \<Rightarrow> (2 location, nat) configuration option"  where
   "propagate_pointstamps conf [] = propagate_all conf"
 | "propagate_pointstamps conf ((l, t, m) # cbs) = propagate_pointstamps (trace (STR ''CM ==> '' + show_loc l + STR '', t: '' + show_nat t + STR '', m: '' + print_int m) (take_step (CM l t m)) conf) cbs"
-
+ *)
 abbreviation empty_conf where
   "empty_conf \<equiv> \<lparr>c_work = (\<lambda> _.  {#}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
-
+(* 
 abbreviation "init_subgraph \<equiv>
   \<lparr> pt_tr = the (propagate_pointstamps empty_conf [(Loc 0 (Src 0), 0, 1)]),
    lo_pt = [],
    edges = (\<lambda> l1. [l2 \<leftarrow> enum_location_inst.enum_location. \<not> is_empty_antichain (summary l1 l2) ]) \<rparr>"
-
+ *)
 (* Inspired by timely/src/dataflow/operators/generic/builder_rc.rs:29 and timely/src/progress/operate.rs:63 *)
 (* This is the shared that the operator exposes to the subgraph *)
 record ('loc, 't) shared_state =
@@ -274,9 +267,9 @@ lift_definition Max_antichain :: "nat antichain \<Rightarrow> nat" is "\<lambda>
 abbreviation "print_frontier x \<equiv> trace (show_nat (Max_antichain x))" 
 
 value "c_imp (the (propagate_pointstamps empty_conf [(Loc 0 (Src 0), 0, 1),(Loc 1 (Trg 0), 0, 1), (Loc 1 (Src 0), 0, 1)])) (Loc 1 (Trg 0))"
-value "print_frontier (frontier (c_imp (the (propagate_pointstamps (the (propagate_pointstamps empty_conf [(Loc 0 (Src 0), 0, 1), (Loc 1 (Trg 0), 0, 1)]))
+(* value "print_frontier (frontier (c_imp (the (propagate_pointstamps (the (propagate_pointstamps empty_conf [(Loc 0 (Src 0), 0, 1), (Loc 1 (Trg 0), 0, 1)]))
        [(Loc 0 (Src 0), 0, -1), (Loc 1 (Trg 0), 0, -1)])) (Loc 1 (Trg 0)))) (1 :: nat)"
-
+ *)
 
 (* Inspired by timely/src/dataflow/operators/capability.rs:62 *)
 datatype ('loc, 't) capability = Cap (time: 't) (out: 'loc)
@@ -300,7 +293,7 @@ lemma frontier_code[code]:
 
 abbreviation "frontier_updating b \<equiv> cfilter (\<lambda> op. case op of Read None f \<Rightarrow> b | _ \<Rightarrow> True)"
 
-corec dataflow_op where
+(* corec dataflow_op where
   "dataflow_op b sg op = Choice (cimage (\<lambda> op. case op of 
      Read None f \<Rightarrow> Silent (dataflow_op False sg (f (Inr (Inr (c_imp (pt_tr sg))))))
    | Read (Some p) f \<Rightarrow> Read p (\<lambda> x. dataflow_op b sg (f (Inl x)))
@@ -309,7 +302,7 @@ corec dataflow_op where
                                  | None \<Rightarrow> undefined)
    | Write op' (Some p) (Inl x) \<Rightarrow> Write (dataflow_op b sg op') p x
    | Silent op' \<Rightarrow> Silent (dataflow_op b sg op')) (frontier_updating b (choices op)))"
-
+ *)
 (* Should this be non-deterministic? (e.g. non-deterministically send events and capabilities updates) *)
 (* Inspired by timely/src/dataflow/channels/pushers/counter.rs:25 and timely/src/dataflow/channels/mod.rs:49 *)
 (* writes maybe could support multiple different ports, then this one also would *)
@@ -354,9 +347,9 @@ term "empty_antichain :: nat antichain"
 term "dataflow_op True init_subgraph"
 term "( (input_op (Cap (0 :: nat) (0 :: 2)) (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
 
-value [GHC] "eval 17 (dataflow_op True init_subgraph (input_op (Cap (0 :: nat) 0) (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
+(* value [GHC] "eval 17 (dataflow_op True init_subgraph (input_op (Cap (0 :: nat) 0) (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
 value [GHC] "eval 5 (dataflow_op True init_subgraph (input_op (Cap (0 :: nat) 0) (LCons [Suc 0] (LNil))))"
-
+ *)
 abbreviation "maxs ft buf \<equiv> [(n, c) \<leftarrow> buf. ft (time c) \<and> n = Max (set (map fst ((filter (\<lambda> (n', c'). time c = time c') buf))))]"
 
 (* The minted capability must depend on the internal wiring *)
@@ -392,15 +385,68 @@ abbreviation "max_op \<equiv> max_op' []"
    (\<lambda> x. let result = (maxs (less_than_frontier 1 0 (projr (projr st))) (buf @ [x])) in
     push 1 (drop_caps 1 (map snd result) (max_op [(n, c) \<leftarrow> buf @ [x]. \<not> less_than_frontier 1 0 (projr (projr st)) (time c)])) 0 result)))" *)
 
-value [GHC] "approx_in 36 [VOut 0 (9, 0), VOut 0 (5, 1)] (dataflow_op True init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [9, 3] (LCons [5] LNil))) \<bullet>\<^sub>t max_op))"
+(* value [GHC] "approx_in 36 [VOut 0 (9, 0), VOut 0 (5, 1)] (dataflow_op True init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [9, 3] (LCons [5] LNil))) \<bullet>\<^sub>t max_op))"
+ *)
+instantiation "num0" :: hashable
+begin
+  definition [simp]: "hashcode (n :: num0) = uint32_of_int 0"
+  definition "def_hashmap_size = (\<lambda>_ :: num0 itself. 16)"
+  instance by(intro_classes)(simp_all add: def_hashmap_size_num0_def)
+end
+
+instantiation "num1" :: hashable
+begin
+  definition [simp]: "hashcode (n :: num1) = uint32_of_int 1"
+  definition "def_hashmap_size = (\<lambda>_ :: num1 itself. 16)"
+  instance by(intro_classes)(simp_all add: def_hashmap_size_num1_def)
+end
+
+instantiation "bit0" :: (finite) hashable
+begin
+  definition [simp]: "hashcode (n :: _ bit0) = uint32_of_int (Rep_bit0 n)"
+  definition "def_hashmap_size = (\<lambda>_ :: (_ bit0) itself. 16)"
+  instance by(intro_classes)(simp_all add: def_hashmap_size_bit0_def)
+end
+
+print_classes 
+
+
+instantiation "port" :: (hashable) hashable
+begin
+  definition [simp]: "hashcode (l :: _ port) = (case l of Src a \<Rightarrow> 2 * hashcode a | Trg b \<Rightarrow> 2 * hashcode b + 1)"
+  definition "def_hashmap_size = (\<lambda>_ :: ('a port) itself. def_hashmap_size TYPE('a))"
+  instance using def_hashmap_size[where ?'a="'a"]
+    by(intro_classes)(simp_all add: bounded_hashcode_bounds def_hashmap_size_port_def split: sum.split)
+end
+
+instantiation "location" :: (hashable) hashable
+begin
+  definition [simp]: "hashcode (l :: _ location) = (hashcode (node l) * 33 + hashcode (port l))"
+  definition "def_hashmap_size = (\<lambda>_ :: ('a location) itself. def_hashmap_size TYPE('a))"
+  instance using def_hashmap_size[where ?'a="'a"]
+    by(intro_classes)(simp_all add: def_hashmap_size_location_def)
+end
+
+instantiation "bit1" :: (finite) hashable
+begin
+  definition [simp]: "hashcode (n :: _ bit1) = uint32_of_int (Rep_bit1 n)"
+  definition "def_hashmap_size = (\<lambda>_ :: (_ bit1) itself. 16)"
+  instance by(intro_classes)(simp_all add: def_hashmap_size_bit1_def)
+end
+
+definition summ_test :: "3 \<Rightarrow> 3 \<Rightarrow> (nat antichain)" where
+  "summ_test l1 l2 = 
+  (if l1 = 0 \<and> l2 = 1 then frontier {# 0 #}\<^sub>z else
+   if l1 = 1 \<and> l2 = 0 then frontier {# 0 #}\<^sub>z else
+   frontier {#}\<^sub>z)"
+
+abbreviation "has_zero_cyc s \<equiv> cyc_checker_codeT (graph_from_weights s)"
+
+value "has_zero_cyc summ_test"
 
 datatype ('loc, 'c, 'd) dataflow_tree = 
    "apply": Logic "'c \<Rightarrow> ('loc, 'loc, 'd) op"
  | Comp "'loc \<times> 'loc \<Rightarrow> ('loc \<times> 'loc) option" "('loc, 'c, 'd) dataflow_tree" "('loc, 'c, 'd) dataflow_tree"
-
-find_consts "_ antichain \<Rightarrow> _ antichain \<Rightarrow> _ antichain"
-
-find_consts "_ port \<Rightarrow> bool"
 
 fun build_summary_aux :: "'loc :: {minus, plus, one, ord} \<Rightarrow> ('loc, 'c, 'd) dataflow_tree \<Rightarrow> 'loc \<times> ('loc location \<Rightarrow> 'loc location \<Rightarrow> nat antichain)" where
   "build_summary_aux n (Comp wire dt1 dt2) = (
@@ -440,8 +486,20 @@ value "snd (build_summary_aux (0 :: 5)
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))))
       (Loc 2 (Src 0)) (Loc 4 (Trg 0))"
 
-definition "build_summary dt = snd (build_summary_aux 0 dt)"
+definition "build_summary dt = (
+  let s = snd (build_summary_aux 0 dt) in
+  if \<not> has_zero_cyc s \<and>
+     no_self_loop_checker s \<and>
+     graph_checker s \<and>
+     implementation_graph_checker (weights_to_graph_fun (remove_non_zero_weights s))
+  then s
+  else Code.abort (STR ''Logic plane could not be build'') (\<lambda> _ _ _. frontier {#}\<^sub>z))"
 
+value "build_summary
+       (Comp Some
+         (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))
+         (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>))))
+      (Loc 1 (Src (0 :: 4))) (Loc 3 (Trg 0))"
 
 lemma  antichain_sum_empty[simp]:
   "A + {}\<^sub>A = A"
@@ -455,7 +513,7 @@ lemma build_summary_aux_same_loc:
    summar loc loc = {}\<^sub>A"
   apply (induct dt arbitrary: n n'' summar)
   subgoal for l n n' summar
-    by (cases loc; simp split: port.splits if_splits)
+    by (cases loc; simp add: frontier_empty_zmset split: port.splits if_splits)
   subgoal for wire dt1 dt2 n n'' summar
     apply (cases "build_summary_aux n dt1")
     subgoal for n' summar'
@@ -474,24 +532,99 @@ lemma build_summary_aux_same_loc:
         apply (simp split: if_splits)
         apply safe
         subgoal
-          by (auto 0 0 simp add: port.case_eq_if split: if_splits option.splits)
+          by (auto 0 0 simp add: frontier_empty_zmset port.case_eq_if split: if_splits option.splits)
         done
       done
     done
   done
 
+
+lemma decide_graph_construction:
+  assumes "\<not> cyc_checker_codeT \<lparr>gi_V = \<lambda>x. True, gi_E = weights_to_graph_fun (remove_non_zero_weights summ), gi_V0 = enum_class.enum\<rparr>"
+  and "graph.path summ loc loc xs" and "xs \<noteq> []"
+  and "graph_checker summ"
+    and "implementation_graph_checker (weights_to_graph_fun (remove_non_zero_weights summ))"
+  shows "t < t + foldr (+) (map (\<lambda>(s, l, t). l) xs) 0"
+proof -
+  from assms have G: "Graph.graph summ" 
+    using graph_checker_correct by blast
+  from assms obtain G Rm where E: "((graph_from_weights summ), G) \<in> \<langle>Rm, Id\<rangle> g_impl_rel_ext" 
+    using exists_graph implementation_graph_checker_correct by blast
+  with assms have D: "Digraph.graph G"
+    using Digraph.graph_def using_enum_is_digraph by blast
+  from assms have F: "finite ((g_E G)\<^sup>* `` g_V0 G)" 
+    using using_enum_is_finite E by blast
+  with assms G D F E have A: "acyclic (g_E G \<inter> (g_E G)\<^sup>* `` g_V0 G \<times> UNIV)"
+    using cyc_checker_codeT_correct[of G _ Rm] by blast
+  with assms E G show ?thesis
+    using acyclic_no_zero_cycle[unfolded graph_enum_def] by fast
+qed
+
+lemma empty_graph_no_zero_cyc:
+  "graph.path summ loc loc xs \<Longrightarrow>
+   summ = (\<lambda>_ _. frontier {#}\<^sub>z)  \<Longrightarrow>
+   Graph.graph summ \<Longrightarrow>
+   xs \<noteq> [] \<Longrightarrow>
+   0 < foldr (+) (map (\<lambda>(s, l, t). l) xs) 0"
+  apply (induct xs rule: rev_induct)
+   apply simp
+  subgoal for x xs'
+    apply (simp split: prod.splits)
+    apply (cases x)
+    apply simp
+    apply (erule graph.path_AppendE)
+    apply assumption
+    using frontier_empty_zmset mem_antichain_nonempty apply blast
+    done
+  done
+
 global_interpretation dataflow_topology_from_tree: enum_dataflow_topology
-  "build_summary g"
+  "build_summary dt"
   "(+)"
-  for g
-  defines take_step'' = "\<lambda> g. enum_dataflow_topology.take_step (build_summary g) (+) :: _ \<Rightarrow> (2 location, nat) Step \<Rightarrow> _ \<Rightarrow> _"
-  and after_summary' = "dataflow_topology.after_summary (+) :: nat zmultiset \<Rightarrow> nat antichain \<Rightarrow> nat zmultiset"
+  for dt
+  defines take_step'' = "\<lambda> dt. enum_dataflow_topology.take_step (build_summary dt) (+) :: _ \<Rightarrow> (2 location, nat) Step \<Rightarrow> _ \<Rightarrow> _"
+    and after_summary' = "dataflow_topology.after_summary (+) :: nat zmultiset \<Rightarrow> nat antichain \<Rightarrow> nat zmultiset"
   apply standard
        apply simp_all
-  using build_summary_aux_same_loc apply (metis build_summary_def old.prod.exhaust sndI)
+  subgoal
+    unfolding build_summary_def Let_def
+    apply simp
+    using build_summary_aux_same_loc
+    apply (metis (lifting) eq_snd_iff frontier_empty_zmset)
+    done
+  subgoal for loc xs s
+    unfolding build_summary_def Let_def
+    apply (simp split: if_splits)
+    subgoal
+      apply (rule decide_graph_construction[where t=0, simplified, rotated])
+          apply assumption+
+      done
+    subgoal
+      apply (rule empty_graph_no_zero_cyc)
+         apply assumption+
+        apply simp_all
+      apply standard
+        apply simp_all
+      using frontier_empty_zmset apply blast
+      done
+    done
+  done
+
+
+end
   sorry
 
-term "take_step''"
+
+(*
+instantiation bit0 :: (finite) defaults begin
+definition defaults_bit0 :: "'a bit0 set" where "defaults_bit0 = {}"
+instance ..
+end
+instantiation bit1 :: (finite) defaults begin
+definition defaults_bit1 :: "'a bit1 set" where "defaults_bit1 = {}"
+instance ..
+end *)
+
 
 end
 

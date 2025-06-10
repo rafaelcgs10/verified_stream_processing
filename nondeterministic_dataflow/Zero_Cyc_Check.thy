@@ -20,8 +20,8 @@ abbreviation remove_non_zero_weights where
   "remove_non_zero_weights weights l1 l2 \<equiv> 
    (if (0::'a) \<in>\<^sub>A weights l1 l2 then antichain_from_list [0::'a::{order, monoid_add}] else antichain_from_list [])"
 
-abbreviation weights_to_graph_fun where
-  "weights_to_graph_fun g l1 \<equiv> filter (not (is_empty_antichain \<circ> (g l1))) Enum.enum"
+definition weights_to_graph_fun where
+  "weights_to_graph_fun g l1 = filter (not (is_empty_antichain \<circ> (g l1))) Enum.enum"
 
 lemma remove_non_zero_weights_is_graph: 
   "Graph.graph weights \<Longrightarrow> Graph.graph (remove_non_zero_weights weights)"
@@ -229,24 +229,25 @@ lemma path_always_increase:
 lemma fst_snd_eq: "(\<lambda>x. fst (snd x) = 0) = (\<lambda>(s, l, t). l = 0)"
   by (simp add: split_def)
 
-locale graph = Graph.graph weights
+
+locale graph_enum = Graph.graph weights
   for weights :: "'vtx :: {order, enum} \<Rightarrow> 'vtx \<Rightarrow> 'lbl :: {order, monoid_add} antichain"
 begin
 end
 
 lemma remove_non_zero_weights_preserves_no_zero_cycle:
   assumes N: "no_zero_cycle (remove_non_zero_weights weights)"
-    and G: "graph weights" 
+    and G: "graph_enum weights" 
   shows "no_zero_cycle weights"
   apply safe
   subgoal for loc' t' s' xs'
   proof -
     assume H1: "graph.path weights loc' loc' xs'" and H2: "xs' \<noteq> []"
-    from G have H3: "Graph.graph (remove_non_zero_weights weights)" using graph_def remove_non_zero_weights_is_graph by blast
+    from G have H3: "Graph.graph (remove_non_zero_weights weights)" using graph_enum_def remove_non_zero_weights_is_graph by blast
     show ?thesis
     proof(cases "list_all (\<lambda> x . fst (snd x) = 0) xs'")
       case True
-      with assms H1 H2 H3 show ?thesis using remove_non_zero_weights_preserves_zero_path graph_def by blast
+      with assms H1 H2 H3 show ?thesis using remove_non_zero_weights_preserves_zero_path graph_enum_def by blast
     next
       case False
       show ?thesis
@@ -308,6 +309,7 @@ lemma zero_set[simp]: "{x. x = 0 \<and> x \<le> 0} = {0::'b::ordered_ab_semigrou
 lemma in_weights_in_weights_to_graph_fun:
   assumes "l \<in>\<^sub>A  (weights::'a::{enum,hashable,linorder} \<Rightarrow> 'a \<Rightarrow> 'b::ordered_ab_semigroup_monoid_add_imp_le antichain) l1 l2" 
   shows "List.member (weights_to_graph_fun (weights) l1) l2"
+  unfolding weights_to_graph_fun_def
   using assms apply (clarsimp split: if_splits)
   subgoal apply (subst  List.member_def )
     apply (subst Enum.Collect_code[symmetric])
@@ -405,13 +407,13 @@ lemma acyclic_no_zero_cycle_with_remove_non_zero_weights:
 
 lemma acyclic_no_zero_cycle:
   assumes R: "((graph_from_weights (weights::'a::{enum,hashable,linorder} \<Rightarrow> 'a \<Rightarrow> 'b::{canonically_ordered_monoid_add, ordered_ab_semigroup_monoid_add_imp_le} antichain)), G) \<in> \<langle>Rm, Id\<rangle>g_impl_rel_ext"
-    and G: "graph weights"
+    and G: "graph_enum weights"
     and N: "acyclic (g_E G \<inter> ((g_E G)\<^sup>* `` g_V0 G \<times> UNIV))"
   shows "no_zero_cycle weights"
   apply (rule remove_non_zero_weights_preserves_no_zero_cycle)
   subgoal apply (rule no_path_no_zero_cycle[of weights G Rm])
     subgoal using assms by simp
-    subgoal using assms graph_def by blast
+    subgoal using assms graph_enum_def by blast
     subgoal using assms no_cycle_no_self_path by blast
     done
   subgoal using assms by simp
@@ -419,11 +421,11 @@ lemma acyclic_no_zero_cycle:
 
 lemma acyclic_no_zero_cycle_alt:
   assumes R: "((graph_from_weights (weights::'a::{enum,hashable,linorder} \<Rightarrow> 'a \<Rightarrow> 'b::{canonically_ordered_monoid_add, ordered_ab_semigroup_monoid_add_imp_le} antichain)), G) \<in> \<langle>Rm, Id\<rangle>g_impl_rel_ext"
-    and G: "graph weights"
+    and G: "graph_enum weights"
     and N: "acyclic (g_E G \<inter> ((g_E G)\<^sup>* `` g_V0 G \<times> UNIV))"
   shows "no_zero_cycle_alt weights"
 proof -
-  from assms have "no_zero_cycle weights" using acyclic_no_zero_cycle graph_def by blast
+  from assms have "no_zero_cycle weights" using acyclic_no_zero_cycle graph_enum_def by blast
   then have "no_zero_cycle_alt weights" using less_add_same_cancel1[symmetric] by blast
   then show ?thesis by blast
 qed
@@ -464,11 +466,11 @@ lemma self_loop_checker_sound: "no_self_loop_checker g \<Longrightarrow> g (loc:
   done
 
 (* Checks that the graph is indeed a graph *)
-abbreviation graph_checker :: "('a::{enum,hashable,linorder} \<Rightarrow> 'a \<Rightarrow> 'b::{canonically_ordered_monoid_add, ordered_ab_semigroup_monoid_add_imp_le} antichain) \<Rightarrow> bool" where
+definition graph_checker :: "('a::{enum,hashable,linorder} \<Rightarrow> 'a \<Rightarrow> 'b::{canonically_ordered_monoid_add, ordered_ab_semigroup_monoid_add_imp_le} antichain) \<Rightarrow> bool" where
   "graph_checker weights \<equiv> Enum.enum_all (\<lambda> loc . is_empty_antichain (weights loc loc)) "
 
 lemma graph_checker_correct: "graph_checker weights \<Longrightarrow> Graph.graph weights"
-  unfolding Graph.graph_def
+  unfolding Graph.graph_def graph_checker_def
   apply (rule conjI)
   subgoal using zero_order(1) by blast
   subgoal apply (rule conjI)
@@ -528,10 +530,11 @@ proof -
 qed
 
 (* Check if the sucessors are all distinct *)
-abbreviation implementation_graph_checker where
-  "implementation_graph_checker (weights::('a::enum) \<Rightarrow> 'a list) \<equiv> Enum.enum_all (distinct \<circ> weights)"
+definition implementation_graph_checker where
+  "implementation_graph_checker (weights::('a::enum) \<Rightarrow> 'a list) = Enum.enum_all (distinct \<circ> weights)"
 
 lemma implementation_graph_checker_correct: "implementation_graph_checker weights = (\<forall> x . distinct (weights x))"
+  unfolding implementation_graph_checker_def
   apply (subst Enum.all_code)
   apply simp
   apply auto
