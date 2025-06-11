@@ -313,12 +313,14 @@ definition "build_summary dt = (
      no_self_loop_checker s \<and>
      graph_checker s \<and>
      implementation_graph_checker (weights_to_graph_fun (remove_non_zero_weights s))
-  then s
+  then Debug.tracing (STR ''No zero cycles'') s
   else Code.abort (STR ''Control plane could not be build'') (\<lambda> _ _ _. frontier {#}\<^sub>z))"
 
 abbreviation "dt_ex1 \<equiv> (Comp Some
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))) :: (4, 4, nat) dataflow_tree"
+
+abbreviation "dt_ex2 \<equiv> (Comp Some (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>))) :: (2, 2, nat) dataflow_tree"
 
 value "build_summary
        dt_ex1
@@ -393,26 +395,8 @@ lemma empty_graph_no_zero_cyc:
     done
   done
 
-consts summary :: "2 \<Rightarrow> 2 \<Rightarrow> nat antichain"
-
-lemma frontier_empty_zmset: "frontier {#}\<^sub>z = {}\<^sub>A"
-  by transfer' (auto simp: minimal_antichain_def)
-
-find_theorems zmultiset_of_antichain abs_zmultiset 
-
-global_interpretation sum: enum_dataflow_topology
-  "summary"
-  "(+)"
-  defines take_step' = "enum_dataflow_topology.take_step summary (+) :: _ \<Rightarrow> (2, nat) Step \<Rightarrow> _ \<Rightarrow> _" and
-      after_summary' = "dataflow_topology.after_summary (+) :: nat zmultiset \<Rightarrow> nat antichain \<Rightarrow> nat zmultiset"
-  sorry
-
-thm sum.take_step.simps    
-
-global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "build_summary dt" "(+)"
-  for dt
-  defines take_step_aux = "\<lambda> dt. enum_dataflow_topology.take_step (build_summary dt) (+)"
-  and after_summary = "dataflow_topology.after_summary (+) :: nat zmultiset \<Rightarrow> nat antichain \<Rightarrow> nat zmultiset"
+lemma enum_dataflow_topology_build_summary[simp]:
+  "enum_dataflow_topology (build_summary dt) (+)"
   apply standard
        apply simp_all
   subgoal
@@ -439,22 +423,71 @@ global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "build
     done
   done
 
+global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "build_summary dt" "(+)"
+  for dt
+  defines take_step' = "enum_dataflow_topology.take_step (build_summary dt) (+)"
+    and after_summary = "dataflow_topology.after_summary (+) :: nat zmultiset \<Rightarrow> nat antichain \<Rightarrow> nat zmultiset"
+  by simp
+
+thm enum_dataflow_topology.take_step.simps(2)[OF enum_dataflow_topology_build_summary, of _ "((<) :: nat \<Rightarrow> _ \<Rightarrow> _)",  folded mymin_code_def]
+
 definition take_step where
-  "take_step dt = take_step_aux dt (<)"
+  "take_step dt = take_step' dt (<)"
+
+thm enum_dataflow_topology.take_step.simps(2)[]
+
+thm dataflow_topology_from_tree.take_step.simps(2)[of _ "((<) :: nat \<Rightarrow> _ \<Rightarrow> _)",  folded take_step_def mymin_code_def, code, no_vars]
+
+fun take_step_fast where
+ "take_step_fast summary (CM loc t delta) c =
+  (let c_pointstamps_old = c_pts c loc; c_pointstamps_new = (c_pts c)(loc := update_zmultiset (c_pts c loc) t delta)
+   in c\<lparr>c_pts := c_pointstamps_new, c_work := (c_work c)(loc := c_work c loc + frontier_change_code c_pointstamps_old (c_pointstamps_new loc))\<rparr>)"
+| "take_step_fast summary PR c =
+   (let (t, loc) = mymin_code (t_loc_pairs c); c_implications_old = c_imp c loc; c_implications_new = (c_imp c)(loc := c_imp c loc + {#t' \<in>#\<^sub>z c_work c loc. t' = t#});
+    c_worklist_removed_loc = map_entry loc (filter_zmset (\<lambda>t'. t' \<noteq> t)) (c_work c)
+    in c\<lparr>c_work := \<lambda>loc'. c_worklist_removed_loc loc' + after_summary (frontier_change_code c_implications_old (c_implications_new loc)) (summary loc loc'),
+        c_imp := c_implications_new\<rparr>)"
 
 
-thm dataflow_topology_from_tree.take_step.simps[of _ "((<) :: nat \<Rightarrow> _ \<Rightarrow> _)",  folded take_step_def mymin_code_def, code]
+definition "propagate_all dt c0 = (let summary = build_summary dt in
+                                    while_option (Not o (worklist_is_empty summary))
+                                                 (take_step dt PR) c0)"
 
 
 declare dataflow_topology_from_tree.take_step.simps[of _ "((<) :: nat \<Rightarrow> _ \<Rightarrow> _)",  folded take_step_def mymin_code_def, code]
 
 abbreviation empty_conf where
-  "empty_conf \<equiv> \<lparr>c_work = (\<lambda> _.  {#}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
+  "empty_conf \<equiv> \<lparr>c_work = (\<lambda> _.  {# 0 #}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
 
-value "take_step_aux dt_ex1 (<) PR empty_conf"
+value "propagate_all dt_ex2 empty_conf"
 
-thm dataflow_topology_from_tree.take_step.simps
+definition take_step_efficient where
+  "take_step_efficient summ = enum_dataflow_topology.take_step summ (+) (<)"
 
+thm enum_dataflow_topology.take_step.simps[OF enum_dataflow_topology_build_summary]
+
+definition "propagate_all_efficient dt c0 = (let summary = build_summary dt in
+                                              while_option (Not o (worklist_is_empty summary))
+                                                           (take_step_fast summary PR) c0)"
+
+lemma take_step_fast_code[simp]:
+  "take_step dt x = take_step_fast (build_summary dt) x"
+  unfolding take_step_def
+  apply (cases x)
+    apply (auto simp add: fun_eq_iff mymin_code_def)
+  done
+
+lemma propagate_all_code[code]:
+  "propagate_all dt c = propagate_all_efficient dt c"
+  unfolding propagate_all_def Let_def propagate_all_efficient_def by simp
+
+
+value "propagate_all dt_ex2 empty_conf"
+
+
+end
+
+value "propagate_all_efficient dt_ex2 empty_conf"
 
 
 fun print_2 where
