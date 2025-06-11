@@ -13,12 +13,12 @@ imports
 begin 
 
 (* Inspired by timely/src/progress/mod.rs:61 *)
-datatype 'loc port = Trg (idp: 'loc) | Src (idp: 'loc)
+datatype 'p port = Trg (idp: 'p) | Src (idp: 'p)
 abbreviation is_Src where "is_Src x \<equiv> (case x of Src _ \<Rightarrow> True | _ \<Rightarrow> False)"
 abbreviation is_Trg where "is_Trg x \<equiv> (case x of Trg _ \<Rightarrow> True | _ \<Rightarrow> False)"
 
-  (* Inspired by timely/src/progress/mod.rs:19 *)
-datatype 'loc location = Loc (node: 'loc) (port: "'loc port")
+(* Inspired by timely/src/progress/mod.rs:19 *)
+datatype ('id, 'p) location = Loc (node: 'id) (port: "'p port")
 
 instantiation port :: (enum) enum
 begin
@@ -48,7 +48,7 @@ instance
   done
 end
 
-instantiation location :: (enum) enum
+instantiation location :: (enum, enum) enum
 begin
 definition
   "enum_location = map (\<lambda> (x, y). Loc x y) (List.product enum_class.enum enum_class.enum)"
@@ -107,7 +107,7 @@ instance port :: (order) order
   done
 
 
-instantiation location :: (linorder) linorder
+instantiation location :: (linorder, linorder) linorder
 begin
 definition
   "less_eq_location = (\<lambda> x y. case (x, y) of (Loc n1 p1, Loc n2 p2) \<Rightarrow> n1 = n2 \<and> p1 \<le> p2 \<or> n1 \<noteq> n2 \<and> n1 < n2)"
@@ -139,11 +139,11 @@ end
 type_synonym 'a change_batch = "'a list"
 
 (* Inspired by timely/src/progress/subgraph.rs:237 *)
-record ('loc, 't) subgraph =
-  pt_tr :: "('loc location, 't) configuration"
+record ('id, 'p, 't) subgraph =
+  pt_tr :: "(('id, 'p) location, 't) configuration"
   (* We consider local_pointstamp and final_pointstamp as the same thing in this non-distributed version *)
-  lo_pt :: "('loc location \<times> 't \<times> int) change_batch"
-  edges :: "'loc location \<Rightarrow> 'loc location list"
+  lo_pt :: "(('id, 'p) location \<times> 't \<times> int) change_batch"
+  edges :: "('id, 'p) location \<Rightarrow> ('id, 'p) location list"
 
 corec writes where
   "writes op p xs =
@@ -200,11 +200,11 @@ begin
     by(intro_classes)(simp_all add: bounded_hashcode_bounds def_hashmap_size_port_def split: sum.split)
 end
 
-instantiation "location" :: (hashable) hashable
+instantiation "location" :: (hashable, hashable) hashable
 begin
-  definition [simp]: "hashcode (l :: _ location) = (hashcode (node l) * 33 + hashcode (port l))"
-  definition "def_hashmap_size = (\<lambda>_ :: ('a location) itself. def_hashmap_size TYPE('a))"
-  instance using def_hashmap_size[where ?'a="'a"]
+  definition [simp]: "hashcode (l :: (_, _) location) = (hashcode (node l) * 33 + hashcode (port l))"
+  definition "def_hashmap_size = (\<lambda>_ :: (('a, 'b) location) itself. def_hashmap_size TYPE('a) + def_hashmap_size TYPE('b))"
+  instance using def_hashmap_size[where ?'a="'a"] def_hashmap_size[where ?'a="'b"]
     by(intro_classes)(simp_all add: def_hashmap_size_location_def)
 end
 
@@ -222,7 +222,7 @@ definition summ_test :: "3 \<Rightarrow> 3 \<Rightarrow> (nat antichain)" where
    frontier {#}\<^sub>z)"
 
 
-definition mymin_code :: "(nat \<times> ('a :: linorder) location) set \<Rightarrow> (nat \<times> 'a location)" 
+definition mymin_code :: "(nat \<times> ('a :: linorder, 'b  :: linorder) location) set \<Rightarrow> (nat \<times> ('a, 'b) location)" 
   where [code del]: "mymin_code = mymin (<)"
 
 lemma mymin_code[code]: "mymin_code (set (x # xs)) = fold (\<lambda>a b. if t_loc_linord (<) a b then a else b) xs x"
@@ -269,11 +269,11 @@ abbreviation "has_zero_cyc s \<equiv> cyc_checker_codeT (graph_from_weights s)"
 
 value "has_zero_cyc summ_test"
 
-datatype ('loc, 'c, 'd) dataflow_tree = 
-   "apply": Logic "'c \<Rightarrow> ('loc, 'loc, 'd) op"
- | Comp "'loc \<times> 'loc \<Rightarrow> ('loc \<times> 'loc) option" "('loc, 'c, 'd) dataflow_tree" "('loc, 'c, 'd) dataflow_tree"
+datatype ('id, 'p, 's, 'd) dataflow_tree = 
+   "apply": Logic "'id \<Rightarrow> ('p option, 'p option, 'd + 's) op"
+ | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "('id, 'p, 's, 'd) dataflow_tree" "('id, 'p, 's, 'd) dataflow_tree"
 
-fun build_summary_aux :: "'loc :: {minus, plus, one, ord} \<Rightarrow> ('loc, 'c, 'd) dataflow_tree \<Rightarrow> 'loc \<times> ('loc location \<Rightarrow> 'loc location \<Rightarrow> nat antichain)" where
+fun build_summary_aux :: "'id :: {minus, plus, one, ord} \<Rightarrow> ('id, 'p, 's, 'd) dataflow_tree \<Rightarrow> 'id \<times> (('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> nat antichain)" where
   "build_summary_aux n (Comp wire dt1 dt2) = (
     let (n', summary1) = build_summary_aux n dt1 in
     let (n'', summary2) = build_summary_aux n' dt2 in
@@ -289,23 +289,25 @@ fun build_summary_aux :: "'loc :: {minus, plus, one, ord} \<Rightarrow> ('loc, '
     then frontier (abs_zmultiset (mset [0], {#})) 
     else frontier {#}\<^sub>z))"
 
+value  "snd (build_summary_aux (0 :: 4)
+       (Comp Some
+         (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))
+         (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))))
+      (Loc 1 (Src 1)) (Loc 3 (Trg (1 :: 1)))"
+
+
 value "snd (build_summary_aux (0 :: 4)
        (Comp Some
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))))
-      (Loc 1 (Src 0)) (Loc 3 (Trg 0))"
-value "snd (build_summary_aux (0 :: 4)
-       (Comp Some
-         (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))
-         (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))))
-      (Loc 1 (Trg 0)) (Loc 1 (Src 0))"
+      (Loc 1 (Trg 1)) (Loc 1 (Src (1 :: 1)))"
 
 
 value "snd (build_summary_aux (0 :: 5)
-       (Comp [(1, 0) \<mapsto> (0, 0), (2, 0) \<mapsto> (1, 0)]
+       (Comp [(1, 1) \<mapsto> (0, 1), (2, 1) \<mapsto> (1, 1)]
          (Comp (\<lambda> l. None) (Comp Some (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>))) (Logic (\<lambda> _. \<oslash>)))
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))))
-      (Loc 2 (Src 0)) (Loc 4 (Trg 0))"
+      (Loc 2 (Src (1 :: 1))) (Loc 4 (Trg (1 :: 1)))"
 
 definition "build_summary dt = (
   let s = snd (build_summary_aux 0 dt) in
