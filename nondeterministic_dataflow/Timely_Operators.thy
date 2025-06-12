@@ -311,7 +311,7 @@ value "(fst o snd) (compile_dataflow_tree_aux (0 :: 5)
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))))
       (Loc 2 (Src (1 :: 1))) (Loc 4 (Trg (1 :: 1)))"
 
-definition "compile_dataflow df = (
+definition "compile_dataflow_tree df = (
   let (_, s, op) = compile_dataflow_tree_aux 0 df in
   if \<not> has_zero_cyc s \<and>
      no_self_loop_checker s \<and>
@@ -325,11 +325,11 @@ abbreviation "df_ex1 \<equiv> (Comp Some
 
 abbreviation "df_ex2 \<equiv> (Comp Some (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>))) :: (2, 2, unit, nat) dataflow_tree"
 
-value "fst (compile_dataflow
+value "fst (compile_dataflow_tree
        df_ex1)
        (Loc 1 (Src (0 :: 4))) (Loc 3 (Trg 0))"
 
-term "compile_dataflow"
+term "compile_dataflow_tree"
 
 lemma compile_dataflow_tree_aux_same_loc:
   "(n'', summar, op) = compile_dataflow_tree_aux n df \<Longrightarrow>
@@ -403,16 +403,16 @@ lemma empty_graph_no_zero_cyc:
   done
 
 lemma enum_dataflow_topology_compile_dataflow[simp]:
-  "enum_dataflow_topology (fst (compile_dataflow df)) (+)"
+  "enum_dataflow_topology (fst (compile_dataflow_tree df)) (+)"
   apply standard
        apply simp_all
   subgoal
-    unfolding compile_dataflow_def Let_def
+    unfolding compile_dataflow_tree_def Let_def
     apply (cases "compile_dataflow_tree_aux 0 df"; simp)
     using compile_dataflow_tree_aux_same_loc eq_snd_iff frontier_empty_zmset apply metis
     done
   subgoal for loc xs s
-    unfolding compile_dataflow_def Let_def
+    unfolding compile_dataflow_tree_def Let_def
     apply (cases "compile_dataflow_tree_aux 0 df")
     apply (simp add: no_self_loop_checker_is_graph_checker split: if_splits)
     subgoal
@@ -430,9 +430,9 @@ lemma enum_dataflow_topology_compile_dataflow[simp]:
     done
   done
 
-global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "fst (compile_dataflow df)" "(+)"
+global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "fst (compile_dataflow_tree df)" "(+)"
   for df
-  defines take_step' = "enum_dataflow_topology.take_step (fst (compile_dataflow df)) (+)"
+  defines take_step' = "enum_dataflow_topology.take_step (fst (compile_dataflow_tree df)) (+)"
     and after_summary = "dataflow_topology.after_summary (+) :: nat zmultiset \<Rightarrow> nat antichain \<Rightarrow> nat zmultiset"
   by simp
 
@@ -459,23 +459,23 @@ declare dataflow_topology_from_tree.take_step.simps[of _ "((<) :: nat \<Rightarr
 abbreviation empty_conf where
   "empty_conf \<equiv> \<lparr>c_work = (\<lambda> _.  {# 0 #}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
 
-value "propagate_all_locale (fst (compile_dataflow df_ex2)) df_ex2 empty_conf"
+value "propagate_all_locale (fst (compile_dataflow_tree df_ex2)) df_ex2 empty_conf"
 
 definition "propagate_all summary c0 = (while_option (Not o (worklist_is_empty summary))
                                         (take_step summary PR) c0)"
 
 lemma take_step_fast_code[simp]:
-  "take_step_locale df x = take_step (fst (compile_dataflow df)) x"
+  "take_step_locale df x = take_step (fst (compile_dataflow_tree df)) x"
   unfolding take_step_locale_def
   apply (cases x)
     apply (auto simp add: fun_eq_iff mymin_code_def)
   done
 
 lemma propagate_all_locale_eq_propagate_all:
-  "propagate_all_locale (fst (compile_dataflow df)) df c = propagate_all (fst (compile_dataflow df)) c"
+  "propagate_all_locale (fst (compile_dataflow_tree df)) df c = propagate_all (fst (compile_dataflow_tree df)) c"
   unfolding propagate_all_locale_def Let_def propagate_all_def by (auto split: prod.splits)
 
-value "propagate_all (fst (compile_dataflow df_ex2)) empty_conf"
+value "propagate_all (fst (compile_dataflow_tree df_ex2)) empty_conf"
 
 fun print_2 where
   "print_2 n = (if n = 0 then STR ''0'' else STR ''1'')"
@@ -545,6 +545,11 @@ corec dataflow_op where
    | Write op' (Some p) (Inl x) \<Rightarrow> Write (dataflow_op b sg op') p x
    | Silent op' \<Rightarrow> Silent (dataflow_op b sg op')) (frontier_updating b (choices op)))"
 
+
+definition "compile_dataflow dt = (let (summary, op) = compile_dataflow_tree dt in
+                                    let sg = init_subgraph summary in
+                                    dataflow_op True sg op)"
+
 (* Should this be non-deterministic? (e.g. non-deterministically send events and capabilities updates) *)
 (* Inspired by timely/src/dataflow/channels/pushers/counter.rs:25 and timely/src/dataflow/channels/mod.rs:49 *)
 (* writes maybe could support multiple different ports, then this one also would *)
@@ -564,17 +569,15 @@ abbreviation "delayed_cap nid c t \<equiv>
             inte = [(nid, out c, time c, -1), (nid, out c, time c + abs t, 1)],
             prod = [] \<rparr>)))"
 
-find_consts "_ antichain" name: empty
-
 (* corec input_op where
   "input_op c inps = (case inps of
     LNil \<Rightarrow> drop_cap 0 c \<odot>
   | LCons xs lxs \<Rightarrow> push 0 c (let (c, f) = delayed_cap 0 c 1 in f (input_op c lxs)) 1 xs)" *)
 
-corec input_op :: "('op :: {zero, one}, 't :: {order, plus, one}) capability \<Rightarrow> 'c buf llist \<Rightarrow> (0 option, 'op option, 'c \<times> 't + ('op, 't) shared_state + 'e) op" where
-  "input_op c inps = (case inps of
-    LNil \<Rightarrow> drop_cap 0 c \<oslash>
-  | LCons xs lxs \<Rightarrow> push 0 (Write (input_op (Cap (time c + 1) (out c)) lxs) None 
+corec input_op where
+  "input_op c inps nid = (case inps of
+    LNil \<Rightarrow> drop_cap nid c \<oslash>
+  | LCons xs lxs \<Rightarrow> push nid (Write (input_op (Cap (time c + 1) (out c)) lxs nid) None 
      (trace (STR ''Delaying capability!'')Inr (Inl \<lparr> cons = [],
             inte = [(0, out c, time c, -1), (0, out c, time c + 1, 1)],
             prod = []\<rparr>))) 0 (map (\<lambda> x. (x, c)) xs))"
@@ -584,9 +587,14 @@ abbreviation "try_read i f \<equiv> Choice (cimage (\<lambda> x. if x then f Non
 lemma try_read_simp[simp, code]: "try_read i f = Choice ({| Read i (f o Some), f None |})"
   by auto
 
-term "empty_antichain :: nat antichain"
 
-term "dataflow_op True init_subgraph"
+
+abbreviation "dt_ex1 \<equiv> compile_dataflow (Logic (input_op (Cap 0 (0 :: 2)) (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
+
+value [GHC] "eval 17 dt_ex1"
+
+end
+
 term "( (input_op (Cap (0 :: nat) (0 :: 2)) (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
 
 (* value [GHC] "eval 17 (dataflow_op True init_subgraph (input_op (Cap (0 :: nat) 0) (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
