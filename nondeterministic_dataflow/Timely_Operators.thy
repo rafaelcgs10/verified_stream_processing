@@ -144,6 +144,7 @@ record ('id, 'p, 't) subgraph =
   (* We consider local_pointstamp and final_pointstamp as the same thing in this non-distributed version *)
   lo_pt :: "(('id, 'p) location \<times> 't \<times> int) change_batch"
   edges :: "('id, 'p) location \<Rightarrow> ('id, 'p) location list"
+  summ :: "('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> 't antichain"
 
 corec writes where
   "writes op p xs =
@@ -363,15 +364,15 @@ lemma compile_dataflow_tree_aux_same_loc:
   done
 
 lemma decide_graph_construction:
-  assumes "\<not> cyc_checker_codeT \<lparr>gi_V = \<lambda>x. True, gi_E = weights_to_graph_fun (remove_non_zero_weights summ), gi_V0 = enum_class.enum\<rparr>"
-  and "graph.path summ loc loc xs" and "xs \<noteq> []"
-  and "graph_checker summ"
-    and "implementation_graph_checker (weights_to_graph_fun (remove_non_zero_weights summ))"
+  assumes "\<not> cyc_checker_codeT \<lparr>gi_V = \<lambda>x. True, gi_E = weights_to_graph_fun (remove_non_zero_weights summary), gi_V0 = enum_class.enum\<rparr>"
+  and "graph.path summary loc loc xs" and "xs \<noteq> []"
+  and "graph_checker summary"
+    and "implementation_graph_checker (weights_to_graph_fun (remove_non_zero_weights summary))"
   shows "t < t + foldr (+) (map (\<lambda>(s, l, t). l) xs) 0"
 proof -
-  from assms have G: "Graph.graph summ" 
+  from assms have G: "Graph.graph summary" 
     using graph_checker_correct by blast
-  from assms obtain G Rm where E: "((graph_from_weights summ), G) \<in> \<langle>Rm, Id\<rangle> g_impl_rel_ext" 
+  from assms obtain G Rm where E: "((graph_from_weights summary), G) \<in> \<langle>Rm, Id\<rangle> g_impl_rel_ext" 
     using exists_graph implementation_graph_checker_correct by blast
   with assms have D: "Digraph.graph G"
     using Digraph.graph_def using_enum_is_digraph by blast
@@ -384,9 +385,9 @@ proof -
 qed
 
 lemma empty_graph_no_zero_cyc:
-  "graph.path summ loc loc xs \<Longrightarrow>
-   summ = (\<lambda>_ _. frontier {#}\<^sub>z)  \<Longrightarrow>
-   Graph.graph summ \<Longrightarrow>
+  "graph.path summary loc loc xs \<Longrightarrow>
+   summary = (\<lambda>_ _. frontier {#}\<^sub>z)  \<Longrightarrow>
+   Graph.graph summary \<Longrightarrow>
    xs \<noteq> [] \<Longrightarrow>
    0 < foldr (+) (map (\<lambda>(s, l, t). l) xs) 0"
   apply (induct xs rule: rev_induct)
@@ -435,14 +436,14 @@ global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "fst (
     and after_summary = "dataflow_topology.after_summary (+) :: nat zmultiset \<Rightarrow> nat antichain \<Rightarrow> nat zmultiset"
   by simp
 
-definition take_step where
-  "take_step df = take_step' df (<)"
+definition take_step_locale where
+  "take_step_locale df = take_step' df (<)"
 
-fun take_step_fast where
- "take_step_fast summary (CM loc t delta) c =
+fun take_step where
+ "take_step summary (CM loc t delta) c =
   (let c_pointstamps_old = c_pts c loc; c_pointstamps_new = (c_pts c)(loc := update_zmultiset (c_pts c loc) t delta)
    in c\<lparr>c_pts := c_pointstamps_new, c_work := (c_work c)(loc := c_work c loc + frontier_change_code c_pointstamps_old (c_pointstamps_new loc))\<rparr>)"
-| "take_step_fast summary PR c =
+| "take_step summary PR c =
    (let (t, loc) = mymin_code (t_loc_pairs c); c_implications_old = c_imp c loc; c_implications_new = (c_imp c)(loc := c_imp c loc + {#t' \<in>#\<^sub>z c_work c loc. t' = t#});
     c_worklist_removed_loc = map_entry loc (filter_zmset (\<lambda>t'. t' \<noteq> t)) (c_work c)
     in c\<lparr>c_work := \<lambda>loc'. c_worklist_removed_loc loc' + after_summary (frontier_change_code c_implications_old (c_implications_new loc)) (summary loc loc'),
@@ -450,40 +451,31 @@ fun take_step_fast where
 
 
 definition "propagate_all_locale summary df c0 = (while_option (Not o (worklist_is_empty summary))
-                                           (take_step df PR) c0)"
+                                           (take_step_locale df PR) c0)"
 
 
-declare dataflow_topology_from_tree.take_step.simps[of _ "((<) :: nat \<Rightarrow> _ \<Rightarrow> _)",  folded take_step_def mymin_code_def, code]
+declare dataflow_topology_from_tree.take_step.simps[of _ "((<) :: nat \<Rightarrow> _ \<Rightarrow> _)",  folded take_step_locale_def mymin_code_def, code]
 
 abbreviation empty_conf where
   "empty_conf \<equiv> \<lparr>c_work = (\<lambda> _.  {# 0 #}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
 
 value "propagate_all_locale (fst (compile_dataflow df_ex2)) df_ex2 empty_conf"
 
-definition take_step_efficient where
-  "take_step_efficient summ = enum_dataflow_topology.take_step summ (+) (<)"
-
 definition "propagate_all summary c0 = (while_option (Not o (worklist_is_empty summary))
-                                        (take_step_fast summary PR) c0)"
+                                        (take_step summary PR) c0)"
 
 lemma take_step_fast_code[simp]:
-  "take_step df x = take_step_fast (fst (compile_dataflow df)) x"
-  unfolding take_step_def
+  "take_step_locale df x = take_step (fst (compile_dataflow df)) x"
+  unfolding take_step_locale_def
   apply (cases x)
     apply (auto simp add: fun_eq_iff mymin_code_def)
   done
 
-lemma propagate_all_code[code]:
+lemma propagate_all_locale_eq_propagate_all:
   "propagate_all_locale (fst (compile_dataflow df)) df c = propagate_all (fst (compile_dataflow df)) c"
   unfolding propagate_all_locale_def Let_def propagate_all_def by (auto split: prod.splits)
 
 value "propagate_all (fst (compile_dataflow df_ex2)) empty_conf"
-
-
-end
-
-value "propagate_all df_ex2 empty_conf"
-
 
 fun print_2 where
   "print_2 n = (if n = 0 then STR ''0'' else STR ''1'')"
@@ -494,7 +486,6 @@ definition show_port where
 definition show_loc where
   "show_loc x = STR ''node: '' + print_2 (node x) + STR '', port: '' + show_port (port x)"
 
-
 abbreviation "print_int n \<equiv> (if n \<ge> 0 then show_nat (Int.nat n) else STR ''-'' + show_nat (Int.nat (abs n)) )"
 
 definition "DEBUG = False"
@@ -503,20 +494,17 @@ abbreviation "trace \<equiv> (if DEBUG then Debug.tracing else (\<lambda> x y. y
 
 (* Inspired by timely/src/progress/subgraph.rs:453 *)
 (* First migrate all change batches to the worklist, then call propagate_all_locale *)
- fun propagate_pointstamps :: "_ \<Rightarrow> (2 location, nat) configuration \<Rightarrow> (2 location \<times> nat \<times> int) change_batch \<Rightarrow> (2 location, nat) configuration option"  where
-  "propagate_pointstamps df conf [] = propagate_all_locale df conf"
-| "propagate_pointstamps df conf ((l, t, m) # cbs) = propagate_pointstamps df (trace (STR ''CM ==> '' + show_loc l + STR '', t: '' + show_nat t + STR '', m: '' + print_int m) (take_step (CM l t m)) conf) cbs"
+ fun propagate_pointstamps where
+  "propagate_pointstamps summary conf [] = propagate_all summary conf"
+| "propagate_pointstamps summary conf ((l, t, m) # cbs) =
+   propagate_pointstamps summary (trace (STR ''CM ==> '' + show_loc l + STR '', t: '' + show_nat t + STR '', m: '' + print_int m) (take_step summary (CM l t m)) conf) cbs"
 
-
-end
-
-abbreviation "init_subgraph \<equiv>
-  \<lparr> pt_tr = the (propagate_pointstamps empty_conf [(Loc 0 (Src 0), 0, 1)]),
+abbreviation "init_subgraph summary \<equiv>
+  \<lparr> pt_tr = the (propagate_pointstamps summary empty_conf [(Loc 0 (Src 0), 0, 1)]),
    lo_pt = [],
-   edges = (\<lambda> l1. [l2 \<leftarrow> enum_location_inst.enum_location. \<not> is_empty_antichain (summary l1 l2) ]) \<rparr>"
+   edges = (\<lambda> l1. [l2 \<leftarrow> enum_location_inst.enum_location. \<not> is_empty_antichain (summary l1 l2) ]),
+   summ = summary \<rparr>"
 
-
-end
 (* Inspired by timely/src/dataflow/operators/generic/builder_rc.rs:29 and timely/src/progress/operate.rs:63 *)
 (* This is the shared that the operator exposes to the subgraph *)
 record ('loc, 't) shared_state =
@@ -525,25 +513,18 @@ record ('loc, 't) shared_state =
   prod :: "('loc \<times> 'loc \<times> 't \<times> int) change_batch"
 
 (* Inspired by timely/src/progress/subgraph.rs:759 *)
-definition extract_progress :: "('loc location \<Rightarrow> 'loc location list) \<Rightarrow> ('loc, 't) shared_state \<Rightarrow> ('loc location \<times> 't \<times> int) change_batch" where
+definition extract_progress where
   "extract_progress edg st =
     map (\<lambda> (node, p, t, m). (Loc node (Trg p), t, -m)) (cons st) @ 
     map (\<lambda> (node, p, t, m). (Loc node (Src p), t, m)) (inte st) @
     concat (map (\<lambda> (node, p, t, m). map (\<lambda> l. (l, t, m)) (edg (Loc node (Src p)))) (prod st))"
 
-
 lift_definition Max_antichain :: "nat antichain \<Rightarrow> nat" is "\<lambda> x. if Set.is_empty x then 0 else Max x" .
-
 
 abbreviation "print_frontier x \<equiv> trace (show_nat (Max_antichain x))" 
 
-value "c_imp (the (propagate_pointstamps empty_conf [(Loc 0 (Src 0), 0, 1),(Loc 1 (Trg 0), 0, 1), (Loc 1 (Src 0), 0, 1)])) (Loc 1 (Trg 0))"
-(* value "print_frontier (frontier (c_imp (the (propagate_pointstamps (the (propagate_pointstamps empty_conf [(Loc 0 (Src 0), 0, 1), (Loc 1 (Trg 0), 0, 1)]))
-       [(Loc 0 (Src 0), 0, -1), (Loc 1 (Trg 0), 0, -1)])) (Loc 1 (Trg 0)))) (1 :: nat)"
- *)
-
 (* Inspired by timely/src/dataflow/operators/capability.rs:62 *)
-datatype ('loc, 't) capability = Cap (time: 't) (out: 'loc)
+datatype ('p, 't) capability = Cap (time: 't) (out: 'p)
 
 definition tscomp_op ::
   "('ip option, 'op1 option, 'd + 's) op \<Rightarrow>
@@ -554,16 +535,16 @@ definition tscomp_op ::
 
 abbreviation "frontier_updating b \<equiv> cfilter (\<lambda> op. case op of Read None f \<Rightarrow> b | _ \<Rightarrow> True)"
 
-(* corec dataflow_op where
+corec dataflow_op where
   "dataflow_op b sg op = Choice (cimage (\<lambda> op. case op of 
      Read None f \<Rightarrow> Silent (dataflow_op False sg (f (Inr (Inr (c_imp (pt_tr sg))))))
    | Read (Some p) f \<Rightarrow> Read p (\<lambda> x. dataflow_op b sg (f (Inl x)))
-   | Write op' None (Inr (Inl st)) \<Rightarrow> (case propagate_pointstamps (pt_tr sg) (lo_pt sg @ extract_progress (edges sg) st) of
+   | Write op' None (Inr (Inl st)) \<Rightarrow> (case propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg @ extract_progress (edges sg) st) of
                                    Some conf' \<Rightarrow> Silent (dataflow_op True (sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr>) op')
                                  | None \<Rightarrow> undefined)
    | Write op' (Some p) (Inl x) \<Rightarrow> Write (dataflow_op b sg op') p x
    | Silent op' \<Rightarrow> Silent (dataflow_op b sg op')) (frontier_updating b (choices op)))"
- *)
+
 (* Should this be non-deterministic? (e.g. non-deterministically send events and capabilities updates) *)
 (* Inspired by timely/src/dataflow/channels/pushers/counter.rs:25 and timely/src/dataflow/channels/mod.rs:49 *)
 (* writes maybe could support multiple different ports, then this one also would *)
