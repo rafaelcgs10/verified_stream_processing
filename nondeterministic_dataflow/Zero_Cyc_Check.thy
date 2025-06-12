@@ -467,7 +467,13 @@ lemma self_loop_checker_sound: "no_self_loop_checker g \<Longrightarrow> g (loc:
 
 (* Checks that the graph is indeed a graph *)
 definition graph_checker :: "('a::{enum,hashable,linorder} \<Rightarrow> 'a \<Rightarrow> 'b::{canonically_ordered_monoid_add, ordered_ab_semigroup_monoid_add_imp_le} antichain) \<Rightarrow> bool" where
-  "graph_checker weights \<equiv> Enum.enum_all (\<lambda> loc . is_empty_antichain (weights loc loc)) "
+  "graph_checker weights \<equiv> Enum.enum_all (\<lambda> loc . is_empty_antichain (weights loc loc))"
+
+lemma no_self_loop_checker_is_graph_checker:
+  "no_self_loop_checker = graph_checker"
+  unfolding no_self_loop_checker_def graph_checker_def is_empty_antichain_def Set.is_empty_def
+  apply (auto simp add: enum_UNIV)
+  done
 
 lemma graph_checker_correct: "graph_checker weights \<Longrightarrow> Graph.graph weights"
   unfolding Graph.graph_def graph_checker_def

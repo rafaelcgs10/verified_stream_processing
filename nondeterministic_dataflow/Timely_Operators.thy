@@ -273,77 +273,79 @@ datatype ('id, 'p, 's, 'd) dataflow_tree =
    "apply": Logic "'id \<Rightarrow> ('p option, 'p option, 'd + 's) op"
  | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "('id, 'p, 's, 'd) dataflow_tree" "('id, 'p, 's, 'd) dataflow_tree"
 
-fun build_summary_aux :: "'id :: {minus, plus, one, ord} \<Rightarrow> ('id, 'p, 's, 'd) dataflow_tree \<Rightarrow> 'id \<times> (('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> nat antichain)" where
-  "build_summary_aux n (Comp wire dt1 dt2) = (
-    let (n', summary1) = build_summary_aux n dt1 in
-    let (n'', summary2) = build_summary_aux n' dt2 in
+fun compile_dataflow_tree_aux :: "'id :: {minus, plus, one, ord} \<Rightarrow> ('id, 'p, 's, 'd) dataflow_tree \<Rightarrow>
+    'id \<times> (('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> nat antichain) \<times> ('p option, 'p option, 'd + 's) op" where
+  "compile_dataflow_tree_aux n (Comp wire dt1 dt2) = (
+    let (n', summary1, _) = compile_dataflow_tree_aux n dt1 in
+    let (n'', summary2, _) = compile_dataflow_tree_aux n' dt2 in
     (n'', \<lambda> l1 l2. 
      if node l1 \<ge> n \<and> node l1 < n' \<and> node l2 \<ge> n' \<and> is_Src (port l1) \<and> is_Trg (port l2)
      then (case wire (node l1 - n, idp (port l1)) of 
              None \<Rightarrow> frontier {#}\<^sub>z 
            | Some (offset, q) \<Rightarrow> (if node l2 = n' + offset \<and> q = idp (port l2) then frontier (abs_zmultiset (mset [0], {#})) else frontier {#}\<^sub>z )) 
-     else summary1 l1 l2 + summary2 l1 l2)
+     else summary1 l1 l2 + summary2 l1 l2, \<oslash>)
    )"
-| "build_summary_aux n (Logic f) = (n + 1, (\<lambda> l1 l2. 
+| "compile_dataflow_tree_aux n (Logic f) = (n + 1, (\<lambda> l1 l2. 
     if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
     then frontier (abs_zmultiset (mset [0], {#})) 
-    else frontier {#}\<^sub>z))"
+    else frontier {#}\<^sub>z), f n)"
 
-value  "snd (build_summary_aux (0 :: 4)
+term  "(fst o snd) (compile_dataflow_tree_aux (0 :: 4)
        (Comp Some
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))))
       (Loc 1 (Src 1)) (Loc 3 (Trg (1 :: 1)))"
 
 
-value "snd (build_summary_aux (0 :: 4)
+value "(fst o snd) (compile_dataflow_tree_aux (0 :: 4)
        (Comp Some
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))))
       (Loc 1 (Trg 1)) (Loc 1 (Src (1 :: 1)))"
 
 
-value "snd (build_summary_aux (0 :: 5)
+value "(fst o snd) (compile_dataflow_tree_aux (0 :: 5)
        (Comp [(1, 1) \<mapsto> (0, 1), (2, 1) \<mapsto> (1, 1)]
          (Comp (\<lambda> l. None) (Comp Some (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>))) (Logic (\<lambda> _. \<oslash>)))
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))))
       (Loc 2 (Src (1 :: 1))) (Loc 4 (Trg (1 :: 1)))"
 
-definition "build_summary dt = (
-  let s = snd (build_summary_aux 0 dt) in
+definition "compile_dataflow df = (
+  let (_, s, op) = compile_dataflow_tree_aux 0 df in
   if \<not> has_zero_cyc s \<and>
      no_self_loop_checker s \<and>
-     graph_checker s \<and>
      implementation_graph_checker (weights_to_graph_fun (remove_non_zero_weights s))
   then Debug.tracing (STR ''No zero cycles'') s
   else Code.abort (STR ''Control plane could not be build'') (\<lambda> _ _ _. frontier {#}\<^sub>z))"
 
-abbreviation "dt_ex1 \<equiv> (Comp Some
+abbreviation "df_ex1 \<equiv> (Comp Some
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))
-         (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))) :: (4, 4, nat) dataflow_tree"
+         (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))) :: (4, 4, unit, nat) dataflow_tree"
 
-abbreviation "dt_ex2 \<equiv> (Comp Some (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>))) :: (2, 2, nat) dataflow_tree"
+abbreviation "df_ex2 \<equiv> (Comp Some (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>))) :: (2, 2, unit, nat) dataflow_tree"
 
-value "build_summary
-       dt_ex1
+value "compile_dataflow
+       df_ex1
        (Loc 1 (Src (0 :: 4))) (Loc 3 (Trg 0))"
 
-lemma build_summary_aux_same_loc:
-  "(n'', summar) = build_summary_aux n dt \<Longrightarrow>
+lemma compile_dataflow_tree_aux_same_loc:
+  "(n'', summar, op) = compile_dataflow_tree_aux n df \<Longrightarrow>
    summar loc loc = {}\<^sub>A"
-  apply (induct dt arbitrary: n n'' summar)
+  apply (induct df arbitrary: n n'' op summar)
   subgoal for l n n' summar
     by (cases loc; simp add: frontier_empty_zmset split: port.splits if_splits)
   subgoal for wire dt1 dt2 n n'' summar
-    apply (cases "build_summary_aux n dt1")
+    apply (cases "compile_dataflow_tree_aux n dt1")
     subgoal for n' summar'
-      apply (cases "build_summary_aux n' dt2")
+      apply (cases "compile_dataflow_tree_aux n' dt2")
       subgoal for n''' summar''
         apply (drule meta_spec[of _ n])
         apply (drule meta_spec[of _ n'])
         apply (drule meta_spec[of _ n'])
         apply (drule meta_spec[of _ n''])
+        apply (drule meta_spec)
         apply (drule meta_spec[of _ summar'])
+        apply (drule meta_spec)
         apply (drule meta_spec[of _ summar''])
         apply (drule meta_mp)
         apply simp
@@ -397,19 +399,19 @@ lemma empty_graph_no_zero_cyc:
     done
   done
 
-lemma enum_dataflow_topology_build_summary[simp]:
-  "enum_dataflow_topology (build_summary dt) (+)"
+lemma enum_dataflow_topology_compile_dataflow[simp]:
+  "enum_dataflow_topology (compile_dataflow df) (+)"
   apply standard
        apply simp_all
   subgoal
-    unfolding build_summary_def Let_def
-    apply simp
-    using build_summary_aux_same_loc
-    apply (metis (lifting) eq_snd_iff frontier_empty_zmset)
+    unfolding compile_dataflow_def Let_def
+    apply (cases "compile_dataflow_tree_aux 0 df"; simp)
+    using compile_dataflow_tree_aux_same_loc eq_snd_iff frontier_empty_zmset apply metis
     done
   subgoal for loc xs s
-    unfolding build_summary_def Let_def
-    apply (simp split: if_splits)
+    unfolding compile_dataflow_def Let_def
+    apply (cases "compile_dataflow_tree_aux 0 df")
+    apply (simp add: no_self_loop_checker_is_graph_checker split: if_splits)
     subgoal
       apply (rule decide_graph_construction[where t=0, simplified, rotated])
           apply assumption+
@@ -425,16 +427,16 @@ lemma enum_dataflow_topology_build_summary[simp]:
     done
   done
 
-global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "build_summary dt" "(+)"
-  for dt
-  defines take_step' = "enum_dataflow_topology.take_step (build_summary dt) (+)"
+global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "compile_dataflow df" "(+)"
+  for df
+  defines take_step' = "enum_dataflow_topology.take_step (compile_dataflow df) (+)"
     and after_summary = "dataflow_topology.after_summary (+) :: nat zmultiset \<Rightarrow> nat antichain \<Rightarrow> nat zmultiset"
   by simp
 
-thm enum_dataflow_topology.take_step.simps(2)[OF enum_dataflow_topology_build_summary, of _ "((<) :: nat \<Rightarrow> _ \<Rightarrow> _)",  folded mymin_code_def]
+thm enum_dataflow_topology.take_step.simps(2)[OF enum_dataflow_topology_compile_dataflow, of _ "((<) :: nat \<Rightarrow> _ \<Rightarrow> _)",  folded mymin_code_def]
 
 definition take_step where
-  "take_step dt = take_step' dt (<)"
+  "take_step df = take_step' df (<)"
 
 thm enum_dataflow_topology.take_step.simps(2)[]
 
@@ -451,9 +453,9 @@ fun take_step_fast where
         c_imp := c_implications_new\<rparr>)"
 
 
-definition "propagate_all dt c0 = (let summary = build_summary dt in
+definition "propagate_all df c0 = (let summary = compile_dataflow df in
                                     while_option (Not o (worklist_is_empty summary))
-                                                 (take_step dt PR) c0)"
+                                                 (take_step df PR) c0)"
 
 
 declare dataflow_topology_from_tree.take_step.simps[of _ "((<) :: nat \<Rightarrow> _ \<Rightarrow> _)",  folded take_step_def mymin_code_def, code]
@@ -461,35 +463,35 @@ declare dataflow_topology_from_tree.take_step.simps[of _ "((<) :: nat \<Rightarr
 abbreviation empty_conf where
   "empty_conf \<equiv> \<lparr>c_work = (\<lambda> _.  {# 0 #}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
 
-value "propagate_all dt_ex2 empty_conf"
+value "propagate_all df_ex2 empty_conf"
 
 definition take_step_efficient where
   "take_step_efficient summ = enum_dataflow_topology.take_step summ (+) (<)"
 
-thm enum_dataflow_topology.take_step.simps[OF enum_dataflow_topology_build_summary]
+thm enum_dataflow_topology.take_step.simps[OF enum_dataflow_topology_compile_dataflow]
 
-definition "propagate_all_efficient dt c0 = (let summary = build_summary dt in
+definition "propagate_all_efficient df c0 = (let summary = compile_dataflow df in
                                               while_option (Not o (worklist_is_empty summary))
                                                            (take_step_fast summary PR) c0)"
 
 lemma take_step_fast_code[simp]:
-  "take_step dt x = take_step_fast (build_summary dt) x"
+  "take_step df x = take_step_fast (compile_dataflow df) x"
   unfolding take_step_def
   apply (cases x)
     apply (auto simp add: fun_eq_iff mymin_code_def)
   done
 
 lemma propagate_all_code[code]:
-  "propagate_all dt c = propagate_all_efficient dt c"
+  "propagate_all df c = propagate_all_efficient df c"
   unfolding propagate_all_def Let_def propagate_all_efficient_def by simp
 
 
-value "propagate_all dt_ex2 empty_conf"
+value "propagate_all df_ex2 empty_conf"
 
 
 end
 
-value "propagate_all_efficient dt_ex2 empty_conf"
+value "propagate_all_efficient df_ex2 empty_conf"
 
 
 fun print_2 where
@@ -511,8 +513,8 @@ abbreviation "trace \<equiv> (if DEBUG then Debug.tracing else (\<lambda> x y. y
 (* Inspired by timely/src/progress/subgraph.rs:453 *)
 (* First migrate all change batches to the worklist, then call propagate_all *)
  fun propagate_pointstamps :: "_ \<Rightarrow> (2 location, nat) configuration \<Rightarrow> (2 location \<times> nat \<times> int) change_batch \<Rightarrow> (2 location, nat) configuration option"  where
-  "propagate_pointstamps dt conf [] = propagate_all dt conf"
-| "propagate_pointstamps dt conf ((l, t, m) # cbs) = propagate_pointstamps dt (trace (STR ''CM ==> '' + show_loc l + STR '', t: '' + show_nat t + STR '', m: '' + print_int m) (take_step (CM l t m)) conf) cbs"
+  "propagate_pointstamps df conf [] = propagate_all df conf"
+| "propagate_pointstamps df conf ((l, t, m) # cbs) = propagate_pointstamps df (trace (STR ''CM ==> '' + show_loc l + STR '', t: '' + show_nat t + STR '', m: '' + print_int m) (take_step (CM l t m)) conf) cbs"
 
 
 end
