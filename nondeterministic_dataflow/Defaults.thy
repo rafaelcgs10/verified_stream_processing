@@ -24,6 +24,13 @@ instance
 proof qed
 end
 
+instantiation option :: (defaults) defaults
+begin
+definition defaults_option where "defaults_option = Some ` defaults"
+instance
+proof qed
+end
+
 lemma case_sum_defaults[intro]:
   "p \<notin> defaults \<Longrightarrow> case_sum Inr Inl p \<notin> defaults"
   apply (cases p)

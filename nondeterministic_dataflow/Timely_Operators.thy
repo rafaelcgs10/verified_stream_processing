@@ -12,6 +12,11 @@ imports
   "HOL-Library.Code_Target_Int"   *)
 begin 
 
+(* FIXME: move me *)
+lemma zero_one[code]:
+  "(0 :: 1) = 1"
+  by simp
+
 (* Inspired by timely/src/progress/mod.rs:61 *)
 datatype 'p port = Trg (idp: 'p) | Src (idp: 'p)
 abbreviation is_Src where "is_Src x \<equiv> (case x of Src _ \<Rightarrow> True | _ \<Rightarrow> False)"
@@ -271,19 +276,12 @@ abbreviation "has_zero_cyc s \<equiv> cyc_checker_codeT (graph_from_weights s)"
 value "has_zero_cyc summ_test"
 
 datatype ('id, 'p, 's, 'd) dataflow_tree = 
-   "apply": Logic "('p option, 'p option, 'd + 's) op"
+   "apply": Logic "('p option, 'p option, 's + 'd) op"
    | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "('id, 'p, 's, 'd) dataflow_tree" "('id, 'p, 's, 'd) dataflow_tree"
 
 
-definition tscomp_op ::
-  "('ip option, 'op1 option, 'd + 's) op \<Rightarrow>
-   ('op1 option, 'op option, 'd + 's) op \<Rightarrow>
-   ('ip option, 'op option, 'd + 's) op" (infixl "\<bullet>\<^sub>t" 65) where
-  "tscomp_op op1 op2 = map_op (case_sum id (\<lambda> _. None)) (case_sum (\<lambda> _. None) id) (comp_op (case_option None (Some o Some)) (\<lambda>_. []) op1 op2)"
-
-
 fun compile_dataflow_tree_aux :: "'id :: {minus, plus, one, ord} \<Rightarrow> ('id, 'p, 's, 'd) dataflow_tree \<Rightarrow>
-    'id \<times> (('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> nat antichain) \<times> (('id \<times> 'p) option, ('id \<times> 'p) option, 'd + 's) op" where
+    'id \<times> (('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> nat antichain) \<times> ('id + 'id \<times> 'p, 'id + 'id \<times> 'p, 's + 'd) op" where
   "compile_dataflow_tree_aux n (Comp wire dt1 dt2) = (
     let (n', summary1, op1) = compile_dataflow_tree_aux n dt1 in
     let (n'', summary2, op2) = compile_dataflow_tree_aux n' dt2 in
@@ -292,20 +290,28 @@ fun compile_dataflow_tree_aux :: "'id :: {minus, plus, one, ord} \<Rightarrow> (
      then (case wire (node l1 - n, idp (port l1)) of 
              None \<Rightarrow> frontier {#}\<^sub>z 
            | Some (offset, q) \<Rightarrow> (if node l2 = n' + offset \<and> q = idp (port l2) then frontier (abs_zmultiset (mset [0], {#})) else frontier {#}\<^sub>z )) 
-     else summary1 l1 l2 + summary2 l1 l2, map_op (case_sum id id) (case_sum id id) (comp_op (case_option None (Some o wire)) (\<lambda> _. []) op1 op2))
+     else summary1 l1 l2 + summary2 l1 l2,
+     map_op (case_sum id id) (case_sum id id) (comp_op (case_sum (Some o Inl) ((case_option None (Some o Inr)) o wire)) (\<lambda> _. []) op1 op2))
    )"
-| "compile_dataflow_tree_aux n (Logic op) = (n + 1, (\<lambda> l1 l2. 
+| "compile_dataflow_tree_aux n (Logic op) = (n + 1,
+    (\<lambda> l1 l2. 
     if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
     then frontier (abs_zmultiset (mset [0], {#})) 
-    else frontier {#}\<^sub>z), map_op (case_option None (\<lambda> p. Some (n, p))) (case_option None (\<lambda> p. Some (n, p))) op)"
+    else frontier {#}\<^sub>z),
+    map_op (case_option (Inl n) (\<lambda> p. Inr (n, p))) (case_option (Inl n) (\<lambda> p. Inr (n, p))) op)"
 
-term  "(fst o snd) (compile_dataflow_tree_aux (0 :: 4)
+value  "(fst o snd) (compile_dataflow_tree_aux (0 :: 4)
        (Comp Some
-         (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))
-         (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))))
+         (Comp (\<lambda> l. None) (Logic \<oslash>) (Logic \<oslash>))
+         (Comp (\<lambda> l. None) (Logic \<oslash>) (Logic \<oslash>))))
       (Loc 1 (Src 1)) (Loc 3 (Trg (1 :: 1)))"
 
+term  "(snd o snd) (compile_dataflow_tree_aux (0 :: 4)
+       (Comp Some
+         (Comp (\<lambda> l. None) (Logic (\<I> :: (1 option, 1 option, unit + nat) op)) (Logic \<I>))
+         (Comp (\<lambda> l. None) (Logic \<I>) (Logic \<I>))))"
 
+(* 
 value "(fst o snd) (compile_dataflow_tree_aux (0 :: 4)
        (Comp Some
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))
@@ -317,7 +323,7 @@ value "(fst o snd) (compile_dataflow_tree_aux (0 :: 5)
        (Comp [(1, 1) \<mapsto> (0, 1), (2, 1) \<mapsto> (1, 1)]
          (Comp (\<lambda> l. None) (Comp Some (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>))) (Logic (\<lambda> _. \<oslash>)))
          (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))))
-      (Loc 2 (Src (1 :: 1))) (Loc 4 (Trg (1 :: 1)))"
+      (Loc 2 (Src (1 :: 1))) (Loc 4 (Trg (1 :: 1)))" *)
 
 definition "compile_dataflow_tree df = (
   let (_, s, op) = compile_dataflow_tree_aux 0 df in
@@ -328,10 +334,11 @@ definition "compile_dataflow_tree df = (
   else Code.abort (STR ''Control plane could not be build'') (\<lambda> _. (\<lambda> _ _. frontier {#}\<^sub>z, \<oslash>)))"
 
 abbreviation "df_ex1 \<equiv> (Comp Some
-         (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))
-         (Comp (\<lambda> l. None) (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>)))) :: (4, 4, unit, nat) dataflow_tree"
+         (Comp (\<lambda> l. None) (Logic \<oslash>) (Logic \<oslash>))
+         (Comp (\<lambda> l. None) (Logic \<oslash>) (Logic \<oslash>))) :: (4, 4, unit, nat) dataflow_tree"
 
-abbreviation "df_ex2 \<equiv> (Comp Some (Logic (\<lambda> _. \<oslash>)) (Logic (\<lambda> _. \<oslash>))) :: (2, 2, unit, nat) dataflow_tree"
+abbreviation "df_ex2 \<equiv> (Comp Some (Logic \<oslash>) (Logic \<oslash>)) :: (2, 2, unit, nat) dataflow_tree"
+
 
 value "fst (compile_dataflow_tree
        df_ex1)
@@ -409,6 +416,10 @@ lemma empty_graph_no_zero_cyc:
     using frontier_empty_zmset mem_antichain_nonempty apply blast
     done
   done
+
+lemma no_self_loop_checker_is_graph_checker:
+  "no_self_loop_checker = graph_checker"
+  sorry
 
 lemma enum_dataflow_topology_compile_dataflow[simp]:
   "enum_dataflow_topology (fst (compile_dataflow_tree df)) (+)"
@@ -508,24 +519,24 @@ abbreviation "trace \<equiv> (if DEBUG then Debug.tracing else (\<lambda> x y. y
    propagate_pointstamps summary (trace (STR ''CM ==> '' + show_loc l + STR '', t: '' + show_nat t + STR '', m: '' + print_int m) (take_step summary (CM l t m)) conf) cbs"
 
 abbreviation "init_subgraph summary \<equiv>
-  \<lparr> pt_tr = the (propagate_pointstamps summary empty_conf [(Loc 0 (Src 0), 0, 1)]),
+  \<lparr> pt_tr = the (propagate_pointstamps summary empty_conf [(Loc 0 (Src 1), 0, 1)]),
    lo_pt = [],
    edges = (\<lambda> l1. [l2 \<leftarrow> enum_location_inst.enum_location. \<not> is_empty_antichain (summary l1 l2) ]),
    summ = summary \<rparr>"
 
 (* Inspired by timely/src/dataflow/operators/generic/builder_rc.rs:29 and timely/src/progress/operate.rs:63 *)
 (* This is the shared that the operator exposes to the subgraph *)
-record ('id, 'p, 't) shared_state =
-  cons :: "('id \<times> 'p \<times> 't \<times> int) change_batch"
-  inte :: "('id \<times> 'p \<times> 't \<times> int) change_batch"
-  prod :: "('id \<times> 'p \<times> 't \<times> int) change_batch"
+record ('p, 't) shared_state =
+  cons :: "('p \<times> 't \<times> int) change_batch"
+  inte :: "('p \<times> 't \<times> int) change_batch"
+  prod :: "('p \<times> 't \<times> int) change_batch"
 
 (* Inspired by timely/src/progress/subgraph.rs:759 *)
 definition extract_progress where
-  "extract_progress edg st =
-    map (\<lambda> (node, p, t, m). (Loc node (Trg p), t, -m)) (cons st) @ 
-    map (\<lambda> (node, p, t, m). (Loc node (Src p), t, m)) (inte st) @
-    concat (map (\<lambda> (node, p, t, m). map (\<lambda> l. (l, t, m)) (edg (Loc node (Src p)))) (prod st))"
+  "extract_progress nid edg st =
+    map (\<lambda> (p, t, m). (Loc nid (Trg p), t, -m)) (cons st) @ 
+    map (\<lambda> (p, t, m). (Loc nid (Src p), t, m)) (inte st) @
+    concat (map (\<lambda> (p, t, m). map (\<lambda> l. (l, t, m)) (edg (Loc nid (Src p)))) (prod st))"
 
 lift_definition Max_antichain :: "nat antichain \<Rightarrow> nat" is "\<lambda> x. if Set.is_empty x then 0 else Max x" .
 
@@ -534,16 +545,15 @@ abbreviation "print_frontier x \<equiv> trace (show_nat (Max_antichain x))"
 (* Inspired by timely/src/dataflow/operators/capability.rs:62 *)
 datatype ('p, 't) capability = Cap (time: 't) (out: 'p)
 
-abbreviation "frontier_updating b \<equiv> cfilter (\<lambda> op. case op of Read None f \<Rightarrow> b | _ \<Rightarrow> True)"
+abbreviation "frontier_updating b \<equiv> cfilter (\<lambda> op. case op of Read (Inl _) f \<Rightarrow> b | _ \<Rightarrow> True)"
 
 corec dataflow_op where
   "dataflow_op b sg op = Choice (cimage (\<lambda> op. case op of 
-     Read None f \<Rightarrow> Silent (dataflow_op False sg (f (Inr (Inr (c_imp (pt_tr sg))))))
-   | Read (Some p) f \<Rightarrow> Read p (\<lambda> x. dataflow_op b sg (f (Inl x)))
-   | Write op' None (Inr (Inl st)) \<Rightarrow> (case propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg @ extract_progress (edges sg) st) of
-                                   Some conf' \<Rightarrow> Silent (dataflow_op True (sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr>) op')
-                                 | None \<Rightarrow> undefined)
-   | Write op' (Some p) (Inl x) \<Rightarrow> Write (dataflow_op b sg op') p x
+     Read (Inl (nid :: 2))  f \<Rightarrow> let imp_fron = (\<lambda> p. c_imp (pt_tr sg) (Loc nid (Trg p))) in Silent (dataflow_op False sg (f (Inr (Inr imp_fron))))
+   | Read (Inr (nid, p)) f \<Rightarrow> Read p (\<lambda> x. dataflow_op b sg (f (Inl x)))
+   | Write op' (Inl nid) (Inr (Inl st)) \<Rightarrow> (case propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg @ extract_progress nid (edges sg) st) of
+                                              Some conf' \<Rightarrow> Silent (dataflow_op True (sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr>) op'))
+   | Write op' (Inr (nid, p)) (Inl x) \<Rightarrow> Write (dataflow_op b sg op') p x
    | Silent op' \<Rightarrow> Silent (dataflow_op b sg op')) (frontier_updating b (choices op)))"
 
 
@@ -554,20 +564,20 @@ definition "compile_dataflow dt = (let (summary, op) = compile_dataflow_tree dt 
 (* Should this be non-deterministic? (e.g. non-deterministically send events and capabilities updates) *)
 (* Inspired by timely/src/dataflow/channels/pushers/counter.rs:25 and timely/src/dataflow/channels/mod.rs:49 *)
 (* writes maybe could support multiple different ports, then this one also would *)
-abbreviation "push nid op p batch \<equiv> 
-  writes (Write op None (Inr (Inl \<lparr> cons = [], inte = [], prod = map (\<lambda> (x, c). (nid, p, time c, 1)) batch \<rparr>))) (Some p) (map (\<lambda> (x, c). Inl (x, time c)) batch)"
+abbreviation "push op p batch \<equiv> 
+  writes (Write op None (Inr (Inl \<lparr> cons = [], inte = [], prod = map (\<lambda> (x, c). (p, time c, 1)) batch \<rparr>))) (Some p) (map (\<lambda> (x, c). Inl (x, time c)) batch)"
 
-abbreviation "drop_cap nid c op \<equiv>
-  Write op None (trace (String.implode (''Dropping cap!'')) Inr (Inl \<lparr> cons = [], inte = [(nid, out c, time c, -1)], prod = [] \<rparr>))"
+abbreviation "drop_cap c op \<equiv>
+  Write op None (trace (String.implode (''Dropping cap!'')) Inr (Inl \<lparr> cons = [], inte = [(out c, time c, -1)], prod = [] \<rparr>))"
 
-abbreviation "drop_caps nid cs op \<equiv>
-  Write op None (trace (String.implode (''Dropping caps!'')) Inr (Inl \<lparr> cons = [], inte = map (\<lambda> c. (nid, out c, time c, -1)) cs, prod = [] \<rparr>))"
+abbreviation "drop_caps cs op \<equiv>
+  Write op None (trace (String.implode (''Dropping caps!'')) Inr (Inl \<lparr> cons = [], inte = map (\<lambda> c. (out c, time c, -1)) cs, prod = [] \<rparr>))"
 
-abbreviation "delayed_cap nid c t \<equiv>
+abbreviation "delayed_cap c t \<equiv>
   (Cap (time c + abs t) (out c),
   \<lambda> op. Write op None 
      (Inr (Inl \<lparr> cons = [],
-            inte = [(nid, out c, time c, -1), (nid, out c, time c + abs t, 1)],
+            inte = [(out c, time c, -1), (out c, time c + abs t, 1)],
             prod = [] \<rparr>)))"
 
 (* corec input_op where
@@ -576,21 +586,21 @@ abbreviation "delayed_cap nid c t \<equiv>
   | LCons xs lxs \<Rightarrow> push 0 c (let (c, f) = delayed_cap 0 c 1 in f (input_op c lxs)) 1 xs)" *)
 
 corec input_op where
-  "input_op c inps (nid :: 2) = (case inps of
-    LNil \<Rightarrow> drop_cap nid c \<oslash>
-  | LCons xs lxs \<Rightarrow> push nid (Write (input_op (Cap (time c + 1) (out c)) lxs nid) None 
-     (trace (STR ''Delaying capability!'')Inr (Inl \<lparr> cons = [],
-            inte = [(0, out c, time c, -1), (0, out c, time c + 1, 1)],
-            prod = []\<rparr>))) 0 (map (\<lambda> x. (x, c)) xs))"
+  "input_op c inps = (case inps of
+    LNil \<Rightarrow> drop_cap c \<oslash>
+  | LCons xs lxs \<Rightarrow> push (Write (input_op (Cap (time c + 1) (out c)) lxs) None 
+     (trace (STR ''Delaying capability!'') Inr (Inl \<lparr> cons = [],
+            inte = [(out c, time c, -1), (out c, time c + 1, 1)],
+            prod = []\<rparr>))) 1 (map (\<lambda> x. (x, c)) xs))"
 
-abbreviation "try_read i f \<equiv> Choice (cimage (\<lambda> x. if x then f None else Read i (f o Some)) (cinsert True (csingle False)))"
+abbreviation "ex1 \<equiv> Logic (input_op (Cap 0 (1 :: 1)) (LCons [Suc 0] LNil))"
 
-lemma try_read_simp[simp, code]: "try_read i f = Choice ({| Read i (f o Some), f None |})"
-  by auto
+value [GHC] "eval 2 (compile_dataflow ex1)"
 
-abbreviation "dt_ex1 \<equiv> compile_dataflow (Logic (input_op (Cap 0 (0 :: 2)) (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
+abbreviation "ex2 \<equiv> Comp [ (0, 0) \<mapsto> (1, 0) ] ex1 (Logic \<I>)"
 
-value [GHC] "eval 17 dt_ex1"
+value [GHC] "cfilter ((\<noteq>) []) (eval 6 (compile_dataflow ex2))"
+
 
 end
 
