@@ -3,6 +3,7 @@ theory BNA_Operators
 
 imports
   Operator
+  "HOL-Library.Debug"
 begin
 
 instantiation num0 :: countable begin
@@ -20,7 +21,6 @@ abbreviation eval_comp_op_aux where
     Read_aux p f \<Rightarrow> Read p (\<lambda>y. let (buf, op1, op2) = f y in c buf op1 op2)
   | Write_aux (buf, op1, op2) q x \<Rightarrow> Write (c buf op1 op2) q x
   | Silent_aux (buf, op1, op2) \<Rightarrow> Silent (c buf op1 op2))"
-
 
 corec comp_op :: "('op1 \<rightharpoonup> 'ip2) \<Rightarrow> ('ip2 \<Rightarrow> 'd buf) \<Rightarrow>
   ('ip1, 'op1, 'd) op \<Rightarrow> ('ip2, 'op2, 'd) op \<Rightarrow> ('ip1 + 'ip2, 'op1 + 'op2, 'd) op" where
