@@ -29,8 +29,6 @@ lift_definition cproduct :: "'a cset \<Rightarrow> 'b cset \<Rightarrow> ('a \<t
 lift_definition cfilter :: "('a \<Rightarrow> bool) \<Rightarrow> 'a cset \<Rightarrow> 'a cset" is Set.filter by (simp add: Set.filter_def)
 lift_definition c\<UU> :: "('m :: {countable, defaults}) cset" is "\<UU>" by auto
 
-lift_definition ccard :: "'a cset \<Rightarrow> nat" is card .
-
 end
 
 declare cBall.rep_eq[simp] cinsert.rep_eq[simp] bot_cset.rep_eq[simp] sup_cset.rep_eq[simp] cimage.rep_eq[simp] cUnion.rep_eq[simp] rel_cset.rep_eq[simp]

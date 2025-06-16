@@ -456,7 +456,7 @@ definition "propagate_all_locale summary df c0 = (while_option (Not o (worklist_
 declare dataflow_topology_from_tree.take_step.simps[of _ "((<) :: nat \<Rightarrow> _ \<Rightarrow> _)",  folded take_step_locale_def mymin_code_def, code]
 
 abbreviation empty_conf where
-  "empty_conf \<equiv> \<lparr>c_work = (\<lambda> _.  {# 0 #}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
+  "empty_conf \<equiv> \<lparr>c_work = (\<lambda> _.  {#}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
 
 definition "propagate_all summary c0 = (while_option (Not o (worklist_is_empty summary))
                                         (take_step summary PR) c0)"
@@ -487,10 +487,18 @@ definition "DEBUG = False"
 
 abbreviation "trace \<equiv> (if DEBUG then Debug.tracing else (\<lambda> x y. y))"
 
+lift_definition Max_antichain :: "nat antichain \<Rightarrow> nat" is "\<lambda> x. if Set.is_empty x then 42 else Max x" .
+
+abbreviation "show_frontier x \<equiv> let f = Max_antichain x in if f = 42 then STR ''{}'' else STR ''{ '' + show_nat (Max_antichain x) + STR '' }''" 
+
+abbreviation "print_frontier x \<equiv> trace ((STR ''Frontier: '') + show_frontier x)" 
+
+abbreviation "show_frontiers impf \<equiv> show_list (show_prod show_loc show_frontier) (map (\<lambda> l. (l, frontier (impf l))) enum_location_inst.enum_location)"
+
 (* Inspired by timely/src/progress/subgraph.rs:453 *)
 (* First migrate all change batches to the worklist, then call propagate_all_locale *)
  fun propagate_pointstamps where
-  "propagate_pointstamps summary conf [] = trace (STR ''Propagating all'') propagate_all summary conf"
+  "propagate_pointstamps summary conf [] = (let conf' = propagate_all summary conf in trace (STR ''New frontiers: '' + show_frontiers (c_imp (the conf'))) conf')"
 | "propagate_pointstamps summary conf ((l, t, m) # cbs) =
    propagate_pointstamps summary (trace (STR ''CM ==> '' + show_loc l + STR '', t: '' + show_nat t + STR '', m: '' + print_int m) (take_step summary (CM l t m)) conf) cbs"
 
@@ -515,10 +523,6 @@ definition extract_progress where
     map (\<lambda> (p, t, m). (Loc nid (Src p), t, m)) (inte st) @
     concat (map (\<lambda> (p, t, m). map (\<lambda> l. (l, t, m)) (edg (Loc nid (Src p)))) (prod st))"
 
-lift_definition Max_antichain :: "nat antichain \<Rightarrow> nat" is "\<lambda> x. if Set.is_empty x then 42 else Max x" .
-
-abbreviation "print_frontier x \<equiv> trace ((STR ''Frontier: '') + show_nat (Max_antichain x))" 
-
 (* Inspired by timely/src/dataflow/operators/capability.rs:62 *)
 datatype ('p, 't) capability = Cap (time: 't) (out: 'p)
 
@@ -527,12 +531,13 @@ abbreviation "frontier_updating b \<equiv> cfilter (\<lambda> op. case op of Rea
 (* TODO: nid must have a concrete type *)
 corec dataflow_op where
   "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
-     Read (Inl (nid :: 2)) f \<Rightarrow> let imp_fron = (\<lambda> p. c_imp (pt_tr sg) (Loc nid (Trg p))) in Silent (dataflow_op sg (f (Inl (Inr imp_fron))))
+     Read (Inl nid) f \<Rightarrow> let imp_fron = (\<lambda> p. c_imp (pt_tr sg) (Loc nid (Trg p))) in Silent (dataflow_op sg (f (Inl (Inr imp_fron))))
    | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x)))
    | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> (case propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg @ extract_progress nid (edges sg) st) of
                                               Some conf' \<Rightarrow> Silent (dataflow_op (sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr>) op'))
    | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
-   | Silent op' \<Rightarrow> Silent (dataflow_op sg op')) (choices op))"
+   | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
+   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') undefined) (choices op))"
 
 
 definition "compile_dataflow dt = (let (summary, op) = compile_dataflow_tree dt in
@@ -571,16 +576,16 @@ corec input_op where
      (Write (input_op (Cap (time c + 1) (out c)) lxs) (trace (STR ''Delaying cap'') None) (Inl (Inl \<lparr> cons = [], nte = [(out c, time c, -1), (out c, time c + 1, 1)], prod = []\<rparr>)))
       1 (map (\<lambda> x. (x, c)) xs))"
 
-abbreviation "ex1 \<equiv> Logic (input_op (Cap 0 (1 :: 1)) (LCons [Suc 0] LNil))"
+abbreviation "ex1 \<equiv> Logic (input_op (Cap 0 (1 :: 1)) (LCons [Suc 0, 3] (LCons [9] LNil))) :: (2, 1, (1, _) shared_state + 'c, nat \<times> _) dataflow_tree"
 
 value [GHC] "eval 20 (compile_dataflow ex1)"
 
-term "compile_dataflow ex1"
+value [GHC] "cfilter ((\<noteq>) []) (eval 20 (compile_dataflow (Comp [ (0, 0) \<mapsto> (1, 0) ] ex1 (Logic \<I>))))"
 
 (* value [GHC] "eval 17 (dataflow_op True init_subgraph (input_op (Cap (0 :: nat) 0) (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
 value [GHC] "eval 5 (dataflow_op True init_subgraph (input_op (Cap (0 :: nat) 0) (LCons [Suc 0] (LNil))))"
  *)
-abbreviation "maxs ft buf \<equiv> [(n, c) \<leftarrow> buf. ft (time c) \<and> n = Max (set (map fst ((filter (\<lambda> (n', c'). time c = time c') buf))))]"
+abbreviation "maxs ft buf \<equiv> [(n, c) \<leftarrow> buf. ft (time c) \<and> n = Max (set (map fst ((filter (\<lambda> (n' :: nat, c'). time c = time c') buf))))]"
 
 (* The minted capability must depend on the internal wiring *)
 abbreviation "pull i f \<equiv> (Read ((trace (STR ''Reading data'') Some) i)
@@ -598,7 +603,7 @@ corec max_op' where
   "max_op' buf = choice2
    (Read (trace (STR ''Reading frontier'') None) (\<lambda> st.
     let impf = projr (projl st) in
-    let ft = frontier (impf 0) in
+    let ft = frontier (impf (0 :: 1)) in
     if print_frontier ft  is_empty_antichain ft 
     then trace (STR ''Empty frontier'') \<oslash> 
     else 
@@ -608,21 +613,19 @@ corec max_op' where
 
 abbreviation "max_op \<equiv> max_op' []"
 
-value [GHC] "approx_in 60 [VOut (1, 0) (1, 0)] (compile_dataflow (Comp [ (0, 0) \<mapsto> (1, 0) ] ex1 (Logic max_op)))"
+abbreviation "ex3 \<equiv> Comp [ (0 :: 2, 0) \<mapsto> (1, 0) ] ex1 (Logic max_op)"
+
+value [GHC] "approx_in 32 [VOut (1, 0) (3, 0), VOut (1, 0) (9, 1)] (compile_dataflow ex3)"
 
 term "show_list (show_nat)"
 
-(* corec max_op :: "(nat \<times> (2, nat) capability) buf \<Rightarrow> (2 option, 2 option, nat \<times> nat + (2, nat) shared_state + (2 location \<Rightarrow> nat zmultiset)) op" where
-  "max_op buf = Read None (\<lambda> st. pull (1 :: 2) (0 :: 2) (case_option
-   (let result = (maxs (less_than_frontier 1 0 (projr (projr st))) buf) in
-    push 1 (drop_caps 1 (map snd result) (max_op [(n, c) \<leftarrow> buf. \<not> less_than_frontier (1 :: 2) 0 (projr (projr st)) (time c)])) 0 result)
-   (\<lambda> x. let result = (maxs (less_than_frontier 1 0 (projr (projr st))) (buf @ [x])) in
-    push 1 (drop_caps 1 (map snd result) (max_op [(n, c) \<leftarrow> buf @ [x]. \<not> less_than_frontier 1 0 (projr (projr st)) (time c)])) 0 result)))" *)
-
-(* value [GHC] "approx_in 36 [VOut 0 (9, 0), VOut 0 (5, 1)] (dataflow_op True init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [9, 3] (LCons [5] LNil))) \<bullet>\<^sub>t max_op))"
- *)
 
 
+term "c_imp (pt_tr (init_subgraph (fst (compile_dataflow_tree ex3))))"
+
+term "(show_prod show_loc show_frontier)"
+
+term "show_list (show_prod show_loc show_frontier)"
 
 end
 

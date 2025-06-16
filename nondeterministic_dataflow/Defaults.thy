@@ -26,7 +26,7 @@ end
 
 instantiation option :: (defaults) defaults
 begin
-definition defaults_option where "defaults_option = Some ` defaults"
+definition defaults_option where "defaults_option = insert None (Some ` defaults)"
 instance
 proof qed
 end
