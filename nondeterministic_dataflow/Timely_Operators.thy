@@ -12,6 +12,20 @@ imports
   "HOL-Library.Code_Target_Int"   *)
 begin 
 
+(*
+  TODO:
+  Correctness of dataflow compilation
+  Loops
+  Scopes (change timestamp type)
+  Type inference for locations (if it is not so hard)
+  Nominal wiring (if it is not so hard)
+  Correctness of max_op
+  collatz_op
+  Correctness of collatz_op
+  wcc_op: https://timelydataflow.github.io/differential-dataflow/chapter_4/chapter_4_1.html
+  Correctness of wcc_op
+*)
+
 (* FIXME: move me *)
 lemma zero_one[code]:
   "(0 :: 1) = 1"
@@ -277,18 +291,19 @@ value "has_zero_cyc summ_test"
 
 datatype ('id, 'p, 's, 'd) dataflow_tree = 
    "apply": Logic "('p option, 'p option, 's + 'd) op"
-   | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "('id, 'p, 's, 'd) dataflow_tree" "('id, 'p, 's, 'd) dataflow_tree"
+  | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "('id, 'p, 's, 'd) dataflow_tree" "('id, 'p, 's, 'd) dataflow_tree"
 
-
-definition tscomp_op ::
-  "('ip option, 'op1 option, 'd + 's) op \<Rightarrow>
-   ('op1 option, 'op option, 'd + 's) op \<Rightarrow>
-   ('ip option, 'op option, 'd + 's) op" (infixl "\<bullet>\<^sub>t" 65) where
-  "tscomp_op op1 op2 = map_op (case_sum id (\<lambda> _. None)) (case_sum (\<lambda> _. None) id) (comp_op (case_option None (Some o Some)) (\<lambda>_. []) op1 op2)"
+term loop_op
 
 fun compile_dataflow_tree_aux :: "'id :: {minus, plus, one, ord} \<Rightarrow> ('id, 'p, 's, 'd) dataflow_tree \<Rightarrow>
     'id \<times> (('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> nat antichain) \<times> ('id + 'id \<times> 'p, 'id + 'id \<times> 'p, 's + 'd) op" where
-  "compile_dataflow_tree_aux n (Comp wire dt1 dt2) = (
+ "compile_dataflow_tree_aux n (Logic op) = (n + 1,
+    (\<lambda> l1 l2. 
+    if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
+    then frontier (abs_zmultiset (mset [0], {#})) 
+    else frontier {#}\<^sub>z),
+    map_op (case_option (Inl n) (\<lambda> p. Inr (n, p))) (case_option (Inl n) (\<lambda> p. Inr (n, p))) op)"
+| "compile_dataflow_tree_aux n (Comp wire dt1 dt2) = (
     let (n', summary1, op1) = compile_dataflow_tree_aux n dt1 in
     let (n'', summary2, op2) = compile_dataflow_tree_aux n' dt2 in
     (n'', \<lambda> l1 l2. 
@@ -300,12 +315,7 @@ fun compile_dataflow_tree_aux :: "'id :: {minus, plus, one, ord} \<Rightarrow> (
      map_op (case_sum id id) (case_sum id id)
      (comp_op (case_sum (\<lambda> _. None) ((case_option None (Some o Inr)) o (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (n' + offset, q)))) (\<lambda> _. []) op1 op2))
    )"
-| "compile_dataflow_tree_aux n (Logic op) = (n + 1,
-    (\<lambda> l1 l2. 
-    if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
-    then frontier (abs_zmultiset (mset [0], {#})) 
-    else frontier {#}\<^sub>z),
-    map_op (case_option (Inl n) (\<lambda> p. Inr (n, p))) (case_option (Inl n) (\<lambda> p. Inr (n, p))) op)"
+
 
 value  "(fst o snd) (compile_dataflow_tree_aux (0 :: 4)
        (Comp [ (1, 0) \<mapsto> (3, 0) ]
@@ -644,6 +654,12 @@ term "c_imp (pt_tr (init_subgraph (fst (compile_dataflow_tree ex3))))"
 term "(show_prod show_loc show_frontier)"
 
 term "show_list (show_prod show_loc show_frontier)"
+
+
+term compile_dataflow_tree_aux
+
+
+
 
 end
 
