@@ -293,12 +293,12 @@ fun compile_dataflow_tree_aux :: "'id :: {minus, plus, one, ord} \<Rightarrow> (
     let (n'', summary2, op2) = compile_dataflow_tree_aux n' dt2 in
     (n'', \<lambda> l1 l2. 
      if node l1 \<ge> n \<and> node l1 < n' \<and> node l2 \<ge> n' \<and> is_Src (port l1) \<and> is_Trg (port l2)
-     then (case wire (node l1, idp (port l1)) of 
+     then (case wire (node l1 - n, idp (port l1)) of 
              None \<Rightarrow> frontier {#}\<^sub>z 
-           | Some (offset, q) \<Rightarrow> (if node l2 = offset \<and> q = idp (port l2) then frontier (abs_zmultiset (mset [0], {#})) else frontier {#}\<^sub>z )) 
+           | Some (offset, q) \<Rightarrow> (if node l2 = n' + offset \<and> q = idp (port l2) then frontier (abs_zmultiset (mset [0], {#})) else frontier {#}\<^sub>z )) 
      else summary1 l1 l2 + summary2 l1 l2,
      map_op (case_sum id id) (case_sum id id)
-     (comp_op (case_sum (\<lambda> _. None) ((case_option None (Some o Inr)) o wire)) (\<lambda> _. []) op1 op2))
+     (comp_op (case_sum (\<lambda> _. None) ((case_option None (Some o Inr)) o (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (n' + offset, q)))) (\<lambda> _. []) op1 op2))
    )"
 | "compile_dataflow_tree_aux n (Logic op) = (n + 1,
     (\<lambda> l1 l2. 
@@ -321,14 +321,13 @@ definition "compile_dataflow_tree df = (
   then (s, op)
   else Code.abort (STR ''Control plane could not be build'') (\<lambda> _. (\<lambda> _ _. frontier {#}\<^sub>z, \<oslash>)))"
 
-abbreviation "df_ex1 \<equiv> (Comp [ (1, 0) \<mapsto> (3, 0) ]
+abbreviation "df_ex1 \<equiv> (Comp [ (1, 0) \<mapsto> (1, 0) ]
          (Comp (\<lambda> l. None) (Logic \<oslash>) (Logic \<oslash>))
          (Comp (\<lambda> l. None) (Logic \<oslash>) (Logic \<oslash>))) :: (4, 4, unit, nat) dataflow_tree"
 
 value "fst (compile_dataflow_tree
        df_ex1)
-       (Loc 1 (Src (0 :: 4))) (Loc 3 (Trg 0))"
-
+       (Loc 1 (Src 0)) (Loc 3 (Trg 0))"
 
 lemma compile_dataflow_tree_aux_same_loc:
   "(n'', summar, op) = compile_dataflow_tree_aux n df \<Longrightarrow>
@@ -580,7 +579,7 @@ abbreviation "ex1 \<equiv> Logic (input_op (Cap 0 (1 :: 1)) (LCons [Suc 0, 3] (L
 
 value [GHC] "eval 20 (compile_dataflow ex1)"
 
-value [GHC] "cfilter ((\<noteq>) []) (eval 20 (compile_dataflow (Comp [ (0, 0) \<mapsto> (1, 0) ] ex1 (Logic \<I>))))"
+value [GHC] "cfilter ((\<noteq>) []) (eval 20 (compile_dataflow (Comp [ (0, 0) \<mapsto> (0, 0) ] ex1 (Logic \<I>))))"
 
 (* value [GHC] "eval 17 (dataflow_op True init_subgraph (input_op (Cap (0 :: nat) 0) (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
 value [GHC] "eval 5 (dataflow_op True init_subgraph (input_op (Cap (0 :: nat) 0) (LCons [Suc 0] (LNil))))"
@@ -613,12 +612,31 @@ corec max_op' where
 
 abbreviation "max_op \<equiv> max_op' []"
 
-abbreviation "ex3 \<equiv> Comp [ (0 :: 2, 0) \<mapsto> (1, 0) ] ex1 (Logic max_op)"
+abbreviation "ex3 \<equiv> Comp [ (0 :: 2, 0) \<mapsto> (0, 0) ] ex1 (Logic max_op)"
 
 value [GHC] "approx_in 32 [VOut (1, 0) (3, 0), VOut (1, 0) (9, 1)] (compile_dataflow ex3)"
 
-term "show_list (show_nat)"
+abbreviation "ex4 \<equiv> Comp (\<lambda> _. None) (Logic (input_op (Cap 0 (1 :: 1)) (LCons [0] LNil))) (Logic (input_op (Cap 0 (1 :: 1)) (LCons [Suc 0] LNil)))"
 
+abbreviation "ex5 \<equiv> Comp (\<lambda> _. None) (Logic (\<I> :: (1 option, 1 option, _) op)) (Logic (\<I> :: (1 option, 1 option, _) op))"
+
+abbreviation "ex6 \<equiv> Comp [ (0 :: 4, 0) \<mapsto> (1, 0), (1, 0) \<mapsto> (0, 0) ] ex4 ex5"
+
+value [GHC] "approx_in 15 [VOut (3, 0) (0, 0), VOut (2, 0) (1, 0)] (compile_dataflow ex6)"
+
+corec cp_op :: "(1 option, 1 option, 'a) op" where "cp_op = Read (Some 1) (\<lambda>x. Write cp_op (Some 1) x)"
+
+abbreviation "ex7 \<equiv> Comp (\<lambda> _. None) (Logic cp_op) (Logic cp_op)"
+
+abbreviation "ex8 \<equiv> Comp [ (0 :: 4, 0) \<mapsto> (1, 0), (1, 0) \<mapsto> (0, 0) ] ex4 ex7"
+
+value [GHC] "approx_in 15 [VOut (3, 0) (0, 0), VOut (2, 0) (1, 0)] (compile_dataflow ex8)"
+
+abbreviation "ex9 \<equiv> Comp [ (0, 0) \<mapsto> (1, 0), (1, 0) \<mapsto> (0, 0) ] ex7 ex7"
+
+abbreviation "ex10 \<equiv> Comp [ (0 :: 6, 0) \<mapsto> (1, 0), (1, 0) \<mapsto> (0, 0) ] ex4 ex9"
+
+value [GHC] "approx_in 20 [VOut (4, 0) (0, 0), VOut (5, 0) (1, 0)] (compile_dataflow ex10)"
 
 
 term "c_imp (pt_tr (init_subgraph (fst (compile_dataflow_tree ex3))))"
