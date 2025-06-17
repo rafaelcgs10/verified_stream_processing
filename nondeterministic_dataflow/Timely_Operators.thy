@@ -22,6 +22,7 @@ begin
   Correctness of max_op
   collatz_op
   Correctness of collatz_op
+  unordered_input_op
   wcc_op: https://timelydataflow.github.io/differential-dataflow/chapter_4/chapter_4_1.html
   Correctness of wcc_op
 *)
@@ -658,6 +659,37 @@ term "show_list (show_prod show_loc show_frontier)"
 
 term compile_dataflow_tree_aux
 
+abbreviation "upd_max S t n \<equiv> (case S t of None \<Rightarrow> S(t \<mapsto> n) | Some n' \<Rightarrow> S(t \<mapsto> max n n'))"
+
+term "compile_dataflow (Logic max_op)"
+
+coinductive dataflow_max_op_spec where
+  "dataflow_max_op_spec S LNil"
+| "dataflow_max_op_spec (upd_max S t n) ios \<Longrightarrow> dataflow_max_op_spec S (LCons (VInp (1, 1) (n, t)) ios)"
+| "dataflow_max_op_spec (S(t := None)) ios \<Longrightarrow>
+   \<not> (\<exists> n t'. VInp (1, 1) (n, t') \<in> lset ios \<and> t' \<le> t) \<Longrightarrow> S t = Some m \<Longrightarrow> dataflow_max_op_spec S (LCons (VOut (1, 1) (m, t)) ios)"
+
+find_consts "_ list \<Rightarrow> _ \<Rightarrow> _ option"
+
+term "dataflow_op sg op"
+
+lemma
+  "wtraced (compile_dataflow (Logic (max_op' buf))) ios \<Longrightarrow>
+   dataflow_max_op_spec (map_of (map (\<lambda> (n, c). (n, time c)) (sort_key fst buf))) ios"
+  apply (coinduction arbitrary: buf ios)
+  subgoal for buf ios
+    apply (cases ios)
+    subgoal
+      by simp
+    subgoal for io ios
+      apply hypsubst_thin
+      apply simp
+      apply (cases io)
+      subgoal for p d
+        apply simp
+        unfolding compile_dataflow_def Let_def compile_dataflow_tree_def DEBUG_def
+        apply (simp split: if_splits)
+        subgoal
 
 
 
