@@ -14,17 +14,20 @@ begin
 
 (*
   TODO:
+  Correctness of max_op
   Correctness of dataflow compilation
   Loops
-  Scopes (change timestamp type)
-  Type inference for locations (if it is not so hard)
-  Nominal wiring (if it is not so hard)
-  Correctness of max_op
   collatz_op
   Correctness of collatz_op
   wcc_op: https://timelydataflow.github.io/differential-dataflow/chapter_4/chapter_4_1.html
   Correctness of wcc_op
+  Scopes (change timestamp type, maybe not now)
+  Type inference for locations (if it is not so hard)
+  Nominal wiring (if it is not so hard)
+  Provide operator builders
 *)
+
+value "0 :: 2"
 
 (* FIXME: move me *)
 lemma zero_one[code]:
@@ -657,6 +660,8 @@ term "show_list (show_prod show_loc show_frontier)"
 
 
 term compile_dataflow_tree_aux
+
+
 
 
 
