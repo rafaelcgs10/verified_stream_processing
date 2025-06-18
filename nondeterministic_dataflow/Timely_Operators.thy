@@ -19,6 +19,7 @@ begin
   Loops
   collatz_op
   Correctness of collatz_op
+  unordered_input_op
   wcc_op: https://timelydataflow.github.io/differential-dataflow/chapter_4/chapter_4_1.html
   Correctness of wcc_op
   Scopes (change timestamp type, maybe not now)
@@ -661,7 +662,111 @@ term "show_list (show_prod show_loc show_frontier)"
 
 term compile_dataflow_tree_aux
 
+abbreviation "upd_max S t n \<equiv> (case S t of None \<Rightarrow> S(t \<mapsto> n) | Some n' \<Rightarrow> S(t \<mapsto> max n n'))"
 
+term "compile_dataflow (Logic max_op)"
+
+coinductive dataflow_max_op_spec for nid where
+  "dataflow_max_op_spec nid S LNil"
+| "dataflow_max_op_spec nid (upd_max S t n) ios \<Longrightarrow> dataflow_max_op_spec nid S (LCons (VInp (nid, 1) (n, t)) ios)"
+| "dataflow_max_op_spec nid (S(t := None)) ios \<Longrightarrow>
+   \<not> (\<exists> n t'. VInp (1, 1) (n, t') \<in> lset ios \<and> t' \<le> t) \<Longrightarrow> S t = Some m \<Longrightarrow> dataflow_max_op_spec nid S (LCons (VOut (nid, 1) (m, t)) ios)"
+
+lemma
+  "compile_dataflow_tree_aux nid (Logic (input_op c inps)) = (nid', summary, op) \<Longrightarrow>
+   \<lparr> pt_tr = conf, lo_pt = [],
+     edges = (\<lambda> l1. [l2 \<leftarrow> enum_location_inst.enum_location. \<not> is_empty_antichain (summary l1 l2) ]),
+     summ = summary \<rparr> = sg \<Longrightarrow>
+   wtraced (dataflow_op sg op) ios \<Longrightarrow>
+   lprefix ios (lmap (\<lambda> (n, t). VOut (nid, 0) (n, t)) (lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps (iterates Suc 0)))))"
+  apply (coinduction arbitrary: op inps ios)
+  subgoal for op inps ios
+    apply (cases ios)
+     apply simp_all
+      apply (elim conjE)
+    apply simp
+    apply hypsubst_thin
+    subgoal for io ios'
+      unfolding lnull_def
+      apply simp
+      oops
+
+lemma
+  "compile_dataflow_tree_aux nid (Logic (max_op' buf)) = (nid', summary, op) \<Longrightarrow>
+   \<lparr> pt_tr = conf, lo_pt = [],
+     edges = (\<lambda> l1. [l2 \<leftarrow> enum_location_inst.enum_location. \<not> is_empty_antichain (summary l1 l2) ]),
+     summ = summary \<rparr> = sg \<Longrightarrow>
+   wtraced (dataflow_op sg op) ios \<Longrightarrow>
+   dataflow_max_op_spec nid (map_of (map (\<lambda> (n, c). (n, time c)) (sort_key fst buf))) ios"
+  apply (coinduction arbitrary: buf ios)
+  subgoal for buf ios
+    apply (cases ios)
+    subgoal
+      by simp
+    subgoal for io ios
+      apply hypsubst_thin
+      apply simp
+      apply (cases io)
+      subgoal for p d
+        apply simp
+        apply (elim conjE)
+        apply hypsubst_thin
+        apply (erule wtraced.cases)
+         apply simp
+        subgoal for vio op op' lxs
+          apply simp
+          apply (elim conjE)
+          apply hypsubst_thin
+          apply simp
+          oops
+
+corec wtraced_op_aux where
+  "wtraced_op_aux ios = (case ios of
+    LNil \<Rightarrow> \<oslash> 
+  | LCons io ios \<Rightarrow> (case io of VInp p x \<Rightarrow> Read p (\<lambda> _. wtraced_op_aux ios) | VOut p x \<Rightarrow> Write (wtraced_op_aux ios) p x))"
+
+definition "wtraced_op C = Choice (cimage wtraced_op_aux C)"
+
+lemma wtraced_wtraced_op:
+  "wtraced (wtraced_op C) ios \<Longrightarrow>
+   ios |\<in>| C"
+  oops
+(*   apply (erule wtraced.cases)
+   apply simp_all
+  subgoal
+    sorry
+  subgoal for vio op op' lxs
+    unfolding wtraced_op_def
+    apply hypsubst_thin
+ *)
+
+lemma step_dataflow_op_elim:
+  assumes "step io (dataflow_op sg op) op'"
+  obtains
+    nid p op'' where "io = Inp (nid, p) x" "op' = dataflow_op sg op''" "step (Inp (Inr (nid, p)) (Inr x)) op op''"
+  | nid p op'' where "io = Out (nid, p) x" "op' = dataflow_op sg op''" "step (Out (Inr (nid, p)) (Inr x)) op op''"
+  | op'' where "io = Tau" "op' = dataflow_op sg op''" "step Tau op op''"
+  | nid p op'' where "io = Tau" "op' = dataflow_op sg' op''" "step (Out (Inr (nid, p)) (Inr x)) op op''"
+
+
+lemma
+  "dataflow_op sg (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (input_op (Cap i 0) inps)) \<approx>
+   wtraced_op {|lmap (VOut (nid, 0)) (lconcat (lmap (\<lambda>z. case z of (xs, t) \<Rightarrow> map (\<lambda>n. (n, t)) xs) (lzip inps (iterates Suc i))))|}"
+proof (coinduction arbitrary: inps i rule: wbisim_coinduct)
+  case SIM1
+  then show ?case
+    apply -
+
+    find_theorems loop_op 
+
+end
+next
+  case SIM2
+  then show ?case sorry
+qed
+
+  
+  sorry
 
 
 

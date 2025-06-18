@@ -10,6 +10,7 @@ imports
   "HOL-Library.Code_Cardinality"
   "HOL-Library.Simps_Case_Conv"
   "Cset_Setup"
+  Coinductive_List_Auxiliary
 begin
 
 (* FIXME: move me to utils file *)
@@ -1155,20 +1156,6 @@ proof (induct x rule: converse_rtranclp_induct)
     by (intro exI[of _ "x # zs"], cases zs)
       (auto intro: chain.intros dest: chain_nonempty)
 qed (auto intro: chain.intros)
-
-fun lshift (infixr \<open>@@-\<close> 65) where
-  "lshift [] lys = lys"
-| "lshift (x # xs) lys = LCons x (lshift xs lys)"
-
-friend_of_corec lshift where
-  "lshift xs lys = (case xs of [] \<Rightarrow> (case lys of LNil \<Rightarrow> LNil | LCons x xs \<Rightarrow> LCons x xs)
-    | x # xs \<Rightarrow> LCons x (lshift xs lys))"
-  subgoal by (cases xs; cases lys; simp)
-  subgoal by transfer_prover
-  done
-
-lemma lset_lshift[simp]: "lset (lshift xs lxs) = set xs \<union> lset lxs"
-  by (induct xs) auto
 
 abbreviation "\<tau>shift ops \<equiv> lshift (replicate (length ops - Suc 0) Tau)"
 
