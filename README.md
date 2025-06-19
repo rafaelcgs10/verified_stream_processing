@@ -39,3 +39,5 @@ isabelle build -d ~/path_to_this_folder -v Nondeterministic_Dataflow
 ```
 
 Warning: this build process can take up to 20 minutes on a fast laptop.
+
+The organization of this repository is the following:
