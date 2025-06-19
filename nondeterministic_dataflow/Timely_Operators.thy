@@ -14,12 +14,12 @@ begin
 
 (*
   TODO:
-  Correctness of max_op
+  Correctness of max_top
   Correctness of dataflow compilation
   Loops
   collatz_op
   Correctness of collatz_op
-  unordered_input_op
+  unordered_input_top
   wcc_op: https://timelydataflow.github.io/differential-dataflow/chapter_4/chapter_4_1.html
   Correctness of wcc_op
   Scopes (change timestamp type, maybe not now)
@@ -191,6 +191,51 @@ friend_of_corec writes where
     (case xs of [] \<Rightarrow> case_op Read Write Choice Silent op | x #xs \<Rightarrow> Write (writes op p xs) p x)"
   apply (rule writes.code)
   apply transfer_prover
+  done
+
+lemma step_Out_writes:
+  "step io (writes op p buf) op' \<Longrightarrow>
+   buf \<noteq> [] \<Longrightarrow>
+   op' = writes op p (tl buf) \<and> io = Out p (hd buf)"
+  apply (subst (asm) writes.code)
+  apply (auto split: op.splits list.splits)
+  done
+
+lemma step_writes_reads_buf_empty:
+  "step io (writes op p buf) op' \<Longrightarrow> io = Inp p' x \<Longrightarrow> buf = []"
+  apply (subst (asm) writes.code)
+  apply (auto split: op.splits list.splits)
+  done
+
+
+lemma step_writes_silent_buf_empty:
+  "step io (writes op p buf) op' \<Longrightarrow> io = Tau \<Longrightarrow> buf = []"
+  apply (subst (asm) writes.code)
+  apply (auto split: op.splits list.splits)
+  done
+
+lemma step_writes_Out_intro[intro]:
+  "buf = x # buf' \<Longrightarrow>
+   step (Out p x) (writes op p buf) (writes op p buf')"
+  apply (subst writes.code)
+  apply (auto split: op.splits list.splits)
+  done
+
+lemma writes_empty_buf_simp[simp]:
+  "writes op p [] = op"
+  apply (coinduction arbitrary: op rule: op.coinduct_upto)
+  apply (intro conjI impI)
+           apply (subst writes.code, simp split: op.splits)
+          apply (subst writes.code, simp split: op.splits)
+         apply (subst (asm) writes.code, simp add: op.cong_refl writes.friend.code rel_fun_def split: op.splits)
+        apply (subst writes.code, simp split: op.splits)
+       apply (subst (asm) writes.code, simp add: op.cong_refl writes.friend.code rel_fun_def split: op.splits)
+      apply (subst writes.code, simp split: op.splits)
+     apply (subst (asm) writes.code, simp add: op.cong_refl writes.friend.code rel_fun_def split: op.splits)
+    apply (subst writes.code, simp split: op.splits)
+   apply (subst (asm) writes.code, simp add: op.cong_refl writes.friend.code rel_fun_def split: op.splits)
+   apply (meson cset.rel_refl rel_cset.rep_eq op.cong_refl)
+  apply (subst (asm) writes.code, simp add: op.cong_refl writes.friend.code rel_fun_def split: op.splits)
   done
 
 declare zmultiset_of_antichain_def[code]
@@ -550,8 +595,37 @@ corec dataflow_op where
                                               Some conf' \<Rightarrow> Silent (dataflow_op (sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr>) op'))
    | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
    | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
-   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') undefined) (choices op))"
+   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) (choices op))"
 
+lemma propagate_pointstamps_terminates[simp]:
+  "propagate_pointstamps summary conf cbs \<noteq> None"
+  sorry
+
+lemma step_dataflow_op_elim:
+  assumes "step io (dataflow_op sg op) op'"
+  obtains
+    nid p op'' x where "io = Inp (nid, p) x" "op' = dataflow_op sg op''" "step (Inp (Inr (nid, p)) (Inr x)) op op''"
+  | nid p op'' x where "io = Out (nid, p) x" "op' = dataflow_op sg op''" "step (Out (Inr (nid, p)) (Inr x)) op op''"
+  | op'' where "io = Tau" "op' = dataflow_op sg op''" "step Tau op op''"
+  | nid op'' conf' st where "io = Tau" "conf' = the (propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg @ extract_progress nid (edges sg) st))"
+    "op' = dataflow_op (sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
+  | nid op'' imp_fron where "io = Tau" "imp_fron = (\<lambda> p. c_imp (pt_tr sg) (Loc nid (Trg p)))" "op' = dataflow_op sg op''"
+    "step (Inp (Inl nid) (Inl (Inr imp_fron))) op op''"
+  | "op' = \<oslash>"
+  using assms apply -
+  apply atomize_elim
+  apply (subst (asm) dataflow_op.code)
+  apply simp
+  apply (elim stepChoiceE)
+  subgoal for op'
+  apply (auto del: disjCI split: op.splits sum.splits option.splits)
+        apply fastforce
+        apply fastforce
+    apply (metis Write_in_choices_step cin.rep_eq option.sel)
+     apply fastforce
+    apply fastforce
+    done
+  done
 
 definition "compile_dataflow dt = (let (summary, op) = compile_dataflow_tree dt in
                                     let sg = init_subgraph summary in
@@ -576,27 +650,63 @@ abbreviation "delayed_cap c t \<equiv>
             inte = [(out c, time c, -1), (out c, time c + abs t, 1)],
             prod = [] \<rparr>)))"
 
-(* corec input_op where
-  "input_op c inps = (case inps of
+(* corec input_top where
+  "input_top c inps = (case inps of
     LNil \<Rightarrow> drop_cap 0 c \<odot>
-  | LCons xs lxs \<Rightarrow> push 0 c (let (c, f) = delayed_cap 0 c 1 in f (input_op c lxs)) 1 xs)" *)
+  | LCons xs lxs \<Rightarrow> push 0 c (let (c, f) = delayed_cap 0 c 1 in f (input_top c lxs)) 1 xs)" *)
 
-corec input_op where
-  "input_op c inps = (case inps of
+corec input_top where
+  "input_top c inps = (case inps of
     LNil \<Rightarrow> drop_cap c \<oslash>
   | LCons xs lxs \<Rightarrow>
      push 
-     (Write (input_op (Cap (time c + 1) (out c)) lxs) (trace (STR ''Delaying cap'') None) (Inl (Inl \<lparr> cons = [], nte = [(out c, time c, -1), (out c, time c + 1, 1)], prod = []\<rparr>)))
-      1 (map (\<lambda> x. (x, c)) xs))"
+     (Write (input_top (Cap (time c + 1) (out c)) lxs) (trace (STR ''Delaying cap'') None) (Inl (Inl \<lparr> cons = [], nte = [(out c, time c, -1), (out c, time c + 1, 1)], prod = []\<rparr>)))
+      (1 :: 1) (map (\<lambda> x. (x, c)) xs))"
 
-abbreviation "ex1 \<equiv> Logic (input_op (Cap 0 (1 :: 1)) (LCons [Suc 0, 3] (LCons [9] LNil))) :: (2, 1, (1, _) shared_state + 'c, nat \<times> _) dataflow_tree"
+lemma step_input_top_elim:
+  assumes "step io (input_top c inps) op'"
+  obtains
+    op'' x xs where "io = Out (Some 1) (Inr (x, time c))" "lhd inps = xs" "hd xs = x" "inps \<noteq> LNil" "xs \<noteq> []"
+    "op' = writes (Write (Write (input_top (Cap (time c + 1) (out c)) (ltl inps)) None (Inl (Inl \<lparr> cons = [], nte = [(out c, time c, -1), (out c, time c + 1, 1)], prod = []\<rparr>))) None (Inl (Inl \<lparr> cons = [], inte = [], prod = map (\<lambda> (x, c). (1, time c, 1)) (map (\<lambda> x. (x, c)) xs) \<rparr>))) (Some 1) (map (\<lambda> x. Inr (x, time c)) (tl xs))"
+  | "io = Out None (Inl (Inl \<lparr> cons = [], nte = [], prod = []\<rparr>)) " "inps \<noteq> LNil" "lhd inps = []" "op' = Write (input_top (Cap (time c + 1) (out c)) (ltl inps)) None (Inl (Inl \<lparr>cons = [], inte = [(out c, time c, - 1), (out c, time c + 1, 1)], prod = []\<rparr>))"
+  | "inps = LNil" "io = Out None (Inl (Inl \<lparr> cons = [], inte = [(out c, time c, -1)], prod = [] \<rparr>))" "op' = \<oslash>"
+  using assms apply -
+  apply atomize_elim
+  apply (subst (asm) input_top.code)
+  apply (simp split: llist.splits)
+   apply force
+  subgoal for xs lxs
+    apply hypsubst_thin
+    apply (cases io; simp)
+    subgoal
+      using step_writes_reads_buf_empty by fastforce
+    subgoal for p x
+      apply hypsubst_thin
+      apply (cases xs; simp)
+      subgoal
+        by auto
+      subgoal
+        apply (drule step_Out_writes)
+         apply (auto simp add: comp_def)
+        done
+      done
+    subgoal
+      apply (cases xs; simp)
+       apply force
+      apply (drule step_Out_writes)
+       apply auto
+      done
+    done
+  done
+
+abbreviation "ex1 \<equiv> Logic (input_top (Cap 0 (1 :: 1)) (LCons [Suc 0, 3] (LCons [9] LNil))) :: (2, 1, (1, _) shared_state + 'c, nat \<times> _) dataflow_tree"
 
 value [GHC] "eval 20 (compile_dataflow ex1)"
 
 value [GHC] "cfilter ((\<noteq>) []) (eval 20 (compile_dataflow (Comp [ (0, 0) \<mapsto> (0, 0) ] ex1 (Logic \<I>))))"
 
-(* value [GHC] "eval 17 (dataflow_op True init_subgraph (input_op (Cap (0 :: nat) 0) (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
-value [GHC] "eval 5 (dataflow_op True init_subgraph (input_op (Cap (0 :: nat) 0) (LCons [Suc 0] (LNil))))"
+(* value [GHC] "eval 17 (dataflow_op True init_subgraph (input_top (Cap (0 :: nat) 0) (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
+value [GHC] "eval 5 (dataflow_op True init_subgraph (input_top (Cap (0 :: nat) 0) (LCons [Suc 0] (LNil))))"
  *)
 abbreviation "maxs ft buf \<equiv> [(n, c) \<leftarrow> buf. ft (time c) \<and> n = Max (set (map fst ((filter (\<lambda> (n' :: nat, c'). time c = time c') buf))))]"
 
@@ -612,8 +722,8 @@ term choice2
 
 declare [[unify_search_bound = 100]]
 
-corec max_op' where
-  "max_op' buf = choice2
+corec max_top' where
+  "max_top' buf = choice2
    (Read (trace (STR ''Reading frontier'') None) (\<lambda> st.
     let impf = projr (projl st) in
     let ft = frontier (impf (0 :: 1)) in
@@ -621,16 +731,16 @@ corec max_op' where
     then trace (STR ''Empty frontier'') \<oslash> 
     else 
     let result = trace (STR ''Non empty frontier'') (maxs (less_than_frontier ft) buf) in
-    push (drop_caps (map snd result) (max_op' [(n, c) \<leftarrow> buf. \<not> less_than_frontier ft (time c)])) 0 result))
-   (pull (0 :: 1) (\<lambda> x. max_op' (buf @ [x])))"
+    push (drop_caps (map snd result) (max_top' [(n, c) \<leftarrow> buf. \<not> less_than_frontier ft (time c)])) 0 result))
+   (pull (0 :: 1) (\<lambda> x. max_top' (buf @ [x])))"
 
-abbreviation "max_op \<equiv> max_op' []"
+abbreviation "max_top \<equiv> max_top' []"
 
-abbreviation "ex3 \<equiv> Comp [ (0 :: 2, 0) \<mapsto> (0, 0) ] ex1 (Logic max_op)"
+abbreviation "ex3 \<equiv> Comp [ (0 :: 2, 0) \<mapsto> (0, 0) ] ex1 (Logic max_top)"
 
 value [GHC] "approx_in 32 [VOut (1, 0) (3, 0), VOut (1, 0) (9, 1)] (compile_dataflow ex3)"
 
-abbreviation "ex4 \<equiv> Comp (\<lambda> _. None) (Logic (input_op (Cap 0 (1 :: 1)) (LCons [0] LNil))) (Logic (input_op (Cap 0 (1 :: 1)) (LCons [Suc 0] LNil)))"
+abbreviation "ex4 \<equiv> Comp (\<lambda> _. None) (Logic (input_top (Cap 0 (1 :: 1)) (LCons [0] LNil))) (Logic (input_top (Cap 0 (1 :: 1)) (LCons [Suc 0] LNil)))"
 
 abbreviation "ex5 \<equiv> Comp (\<lambda> _. None) (Logic (\<I> :: (1 option, 1 option, _) op)) (Logic (\<I> :: (1 option, 1 option, _) op))"
 
@@ -664,16 +774,16 @@ term compile_dataflow_tree_aux
 
 abbreviation "upd_max S t n \<equiv> (case S t of None \<Rightarrow> S(t \<mapsto> n) | Some n' \<Rightarrow> S(t \<mapsto> max n n'))"
 
-term "compile_dataflow (Logic max_op)"
+term "compile_dataflow (Logic max_top)"
 
-coinductive dataflow_max_op_spec for nid where
-  "dataflow_max_op_spec nid S LNil"
-| "dataflow_max_op_spec nid (upd_max S t n) ios \<Longrightarrow> dataflow_max_op_spec nid S (LCons (VInp (nid, 1) (n, t)) ios)"
-| "dataflow_max_op_spec nid (S(t := None)) ios \<Longrightarrow>
-   \<not> (\<exists> n t'. VInp (1, 1) (n, t') \<in> lset ios \<and> t' \<le> t) \<Longrightarrow> S t = Some m \<Longrightarrow> dataflow_max_op_spec nid S (LCons (VOut (nid, 1) (m, t)) ios)"
+coinductive dataflow_max_top_spec for nid where
+  "dataflow_max_top_spec nid S LNil"
+| "dataflow_max_top_spec nid (upd_max S t n) ios \<Longrightarrow> dataflow_max_top_spec nid S (LCons (VInp (nid, 1) (n, t)) ios)"
+| "dataflow_max_top_spec nid (S(t := None)) ios \<Longrightarrow>
+   \<not> (\<exists> n t'. VInp (1, 1) (n, t') \<in> lset ios \<and> t' \<le> t) \<Longrightarrow> S t = Some m \<Longrightarrow> dataflow_max_top_spec nid S (LCons (VOut (nid, 1) (m, t)) ios)"
 
 lemma
-  "compile_dataflow_tree_aux nid (Logic (input_op c inps)) = (nid', summary, op) \<Longrightarrow>
+  "compile_dataflow_tree_aux nid (Logic (input_top c inps)) = (nid', summary, op) \<Longrightarrow>
    \<lparr> pt_tr = conf, lo_pt = [],
      edges = (\<lambda> l1. [l2 \<leftarrow> enum_location_inst.enum_location. \<not> is_empty_antichain (summary l1 l2) ]),
      summ = summary \<rparr> = sg \<Longrightarrow>
@@ -692,12 +802,12 @@ lemma
       oops
 
 lemma
-  "compile_dataflow_tree_aux nid (Logic (max_op' buf)) = (nid', summary, op) \<Longrightarrow>
+  "compile_dataflow_tree_aux nid (Logic (max_top' buf)) = (nid', summary, op) \<Longrightarrow>
    \<lparr> pt_tr = conf, lo_pt = [],
      edges = (\<lambda> l1. [l2 \<leftarrow> enum_location_inst.enum_location. \<not> is_empty_antichain (summary l1 l2) ]),
      summ = summary \<rparr> = sg \<Longrightarrow>
    wtraced (dataflow_op sg op) ios \<Longrightarrow>
-   dataflow_max_op_spec nid (map_of (map (\<lambda> (n, c). (n, time c)) (sort_key fst buf))) ios"
+   dataflow_max_top_spec nid (map_of (map (\<lambda> (n, c). (n, time c)) (sort_key fst buf))) ios"
   apply (coinduction arbitrary: buf ios)
   subgoal for buf ios
     apply (cases ios)
@@ -720,44 +830,60 @@ lemma
           apply simp
           oops
 
-corec wtraced_op_aux where
-  "wtraced_op_aux ios = (case ios of
+corec spec_op_aux where
+  "spec_op_aux ios = (case ios of
     LNil \<Rightarrow> \<oslash> 
-  | LCons io ios \<Rightarrow> (case io of VInp p x \<Rightarrow> Read p (\<lambda> _. wtraced_op_aux ios) | VOut p x \<Rightarrow> Write (wtraced_op_aux ios) p x))"
+  | LCons io ios \<Rightarrow> (case io of VInp p x \<Rightarrow> Read p (\<lambda> _. spec_op_aux ios) | VOut p x \<Rightarrow> Write (spec_op_aux ios) p x))"
 
-definition "wtraced_op C = Choice (cimage wtraced_op_aux C)"
+definition "spec_op C = Choice (cimage spec_op_aux C)"
 
-lemma wtraced_wtraced_op:
-  "wtraced (wtraced_op C) ios \<Longrightarrow>
-   ios |\<in>| C"
-  oops
-(*   apply (erule wtraced.cases)
-   apply simp_all
-  subgoal
-    sorry
-  subgoal for vio op op' lxs
-    unfolding wtraced_op_def
-    apply hypsubst_thin
- *)
+corec input_op where
+  "input_op n inps = (case ldropWhile ((=) []) inps of
+     LNil \<Rightarrow> \<oslash>
+   | LCons (x # xs) lxs \<Rightarrow> Write (input_op (n + the_enat (llength (ltakeWhile ((=) []) inps))) (LCons xs lxs)) 1 (x, n))"
 
-lemma step_dataflow_op_elim:
-  assumes "step io (dataflow_op sg op) op'"
-  obtains
-    nid p op'' where "io = Inp (nid, p) x" "op' = dataflow_op sg op''" "step (Inp (Inr (nid, p)) (Inr x)) op op''"
-  | nid p op'' where "io = Out (nid, p) x" "op' = dataflow_op sg op''" "step (Out (Inr (nid, p)) (Inr x)) op op''"
-  | op'' where "io = Tau" "op' = dataflow_op sg op''" "step Tau op op''"
-  | nid p op'' where "io = Tau" "op' = dataflow_op sg' op''" "step (Out (Inr (nid, p)) (Inr x)) op op''"
-
+lemma step_input_op_Out_intro[intro]:
+  "inps = LCons (x # xs) lxs \<Longrightarrow>
+   step (Out 1 (x, n)) (input_op n inps) (input_op n (LCons xs lxs))"
+  apply (subst input_op.code)
+  apply (auto split: llist.splits)
+  done
 
 lemma
-  "dataflow_op sg (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (input_op (Cap i 0) inps)) \<approx>
-   wtraced_op {|lmap (VOut (nid, 0)) (lconcat (lmap (\<lambda>z. case z of (xs, t) \<Rightarrow> map (\<lambda>n. (n, t)) xs) (lzip inps (iterates Suc i))))|}"
+  "dataflow_op sg (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (input_top (Cap i (1 :: 1)) inps)) \<approx>
+   map_op (\<lambda> p. (nid, p)) (\<lambda> p. (nid, p)) (input_op i inps)"
 proof (coinduction arbitrary: inps i rule: wbisim_coinduct)
   case SIM1
   then show ?case
     apply -
+    apply (elim step_map_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp; hypsubst_thin)
+    subgoal for nida p op'' io' op''a xa xs
+      apply (cases inps)
+       apply simp
+      subgoal for xs lxs
+        apply (cases xs; simp)
+        subgoal for x xs'
+        apply (intro exI conjI[rotated])
+           defer
+           apply (rule step_wstep)
+           apply fastforce
+        apply (rule wbcr_base)
+          apply (intro conjI[rotated] exI)
+           apply (rule refl)
+          apply hypsubst_thin
+          apply (subst (2) input_top.code)
+          apply (simp add: comp_def)
+          
 
-    find_theorems loop_op 
+end
+         apply simp_all
+         apply (subst (2) dataflow_op.code)
+        apply simp
+
+
+
+        find_theorems iterates LCons
+
 
 end
 next
@@ -774,7 +900,7 @@ qed
 end
 
 (* 
-value [GHC] "approx_in 38 [VOut 0 (9, 0), VOut 0 (5, 1), VOut 0 (2, 2)] (dataflow_op True init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [9, 3] (LCons [Suc 0, 5] (LCons [2] LNil)))) \<bullet>\<^sub>t max_op))"
+value [GHC] "approx_in 38 [VOut 0 (9, 0), VOut 0 (5, 1), VOut 0 (2, 2)] (dataflow_op True init_subgraph ((input_top (Cap (0 :: nat) (0 :: 2)) (LCons [9, 3] (LCons [Suc 0, 5] (LCons [2] LNil)))) \<bullet>\<^sub>t max_top))"
 
  *)
 fun traceprefix :: "nat \<Rightarrow> ('i, 'o, 'd) VIO list \<Rightarrow> ('i, 'o, 'd :: {countable}) op \<Rightarrow> bool" where
@@ -786,10 +912,10 @@ fun traceprefix :: "nat \<Rightarrow> ('i, 'o, 'd) VIO list \<Rightarrow> ('i, '
 | "traceprefix _ _ _ = False"
 
 
-definition "tp = traceprefix 1000000 [VOut 0 (9, 0)] (dataflow_op True init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [9] (LNil))) \<bullet>\<^sub>t max_op))"
+definition "tp = traceprefix 1000000 [VOut 0 (9, 0)] (dataflow_op True init_subgraph ((input_top (Cap (0 :: nat) (0 :: 2)) (LCons [9] (LNil))) \<bullet>\<^sub>t max_top))"
 
 definition "tp2 = traceprefix 1000000 [VOut 0 (1, 0), VOut 0 (2, 0), VOut 0 (3, 0), VOut 0 (9, 0), VOut 0 (8, 1), VOut 0 (1, 1), VOut 0 (0, 1)]
-  (dataflow_op True init_subgraph (input_op (Cap (0 :: nat) 0) (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
+  (dataflow_op True init_subgraph (input_top (Cap (0 :: nat) 0) (LCons [Suc 0, 2, 3, 9] (LCons [8, 1, 0] LNil))))"
 
 (* value [GHC] tp
  *)
@@ -805,11 +931,11 @@ find_theorems cset_of_llist wit_cset
 term "\<lambda> (tr, op). while_option (\<lambda> (tr, op). Not (cis_empty (choices op))) (undefined)"
 
 (* 
-value [GHC] "(approx_in 40 [VOut 0 (9, 0), VOut 0 (1, 1)] (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [0, 9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
+value [GHC] "(approx_in 40 [VOut 0 (9, 0), VOut 0 (1, 1)] (dataflow_op init_subgraph ((input_top (Cap (0 :: nat) (0 :: 2)) (LCons [0, 9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_top []))))"
  *)
 
 
-value [GHC] "cfilter ((\<noteq>) []) (eval 29 (dataflow_op init_subgraph ((input_op (Cap (0 :: nat) (0 :: 2)) (LCons [0, 9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_op []))))"
+value [GHC] "cfilter ((\<noteq>) []) (eval 29 (dataflow_op init_subgraph ((input_top (Cap (0 :: nat) (0 :: 2)) (LCons [0, 9] (LCons [Suc 0] LNil))) \<bullet>\<^sub>t (max_top []))))"
 
 term cfilter
 
