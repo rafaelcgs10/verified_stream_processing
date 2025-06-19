@@ -46,9 +46,9 @@ The organization of this repository is the following:
 ├── Operator.thy: The operator codatatype, strong and weak bisimilarity, and traces
 ├── BNA_Operators.thy: The operators from nondeterministic asynchronous dataflow networks
 ├── table_1: Axioms related to identity, sequential/parallel composition, loop, and transposition
-├── table_2: Axioms related to equality test, copy, source and sink
-├── table_3: Axioms related to merge, split, source and sink
-├── CSet_LList_Impl.thy: Implementation of countable set as lazy lists
+├── table_2: Axioms related to equality test, copy, source, and sink
+├── table_3: Axioms related to merge, split, source and, sink
+├── CSet_LList_Impl.thy: Implementation of countable sets as lazy lists
 ├── Cset_Setup.thy: Auxiliary countable set setup
 ├── Defaults.thy: Defaults type class
 ├── Lifted.thy: Typedef setup that lifts the codatatype operator
