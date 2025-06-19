@@ -42,7 +42,7 @@ lemma wstep_Inp_Inl_Inr1:
         | \<open>op = map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> (merge_op (case_sum (BENQ 1 2 (\<lambda>_. [])) (\<lambda>_. [])))) (merge_op (case_sum (BENQ 1 1 (\<lambda>_. [])) (\<lambda>_. [])))))\<close>
         | \<open>op = map_op assoc id (map_op projl projr (comp_op Some (case_sum (\<lambda>_. []) (BENQ 1 2 (\<lambda>_. []))) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> \<V>) (merge_op (case_sum (BENQ 1 1 (\<lambda>_. [])) (\<lambda>_. [])))))\<close>
         | \<open>op = map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> \<V>) (merge_op (case_sum (BENQ 1 1 (\<lambda>_. [])) (BENQ 1 2 (\<lambda>_. []))))))\<close>
-    apply atomize_elim
+  apply atomize_elim
   using assms
   unfolding wstep_def
   apply simp
@@ -750,15 +750,15 @@ lemma wstep_converse_trans':
 lemma wstep_Inp_Inl_Inl_Tau1:
   \<open>wstep (Inp (Inl (Inl p)) x)
     (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op buf3))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))
      op \<Longrightarrow>
   wstep Tau
     (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum (BENQ p x buf1) buf2)) (id_op buf3))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))
      op\<close>
   apply (erule wstep_map_op_elim; hypsubst_thin)
   apply (rule wstep_map_op[of Tau])
-  subgoal for io op
+  subgoal for io
     apply (subst (asm) wstep_comp_op_L_R)
     apply (subst wstep_comp_op_L_R)
     apply (elim exE conjE)
@@ -823,19 +823,19 @@ lemma wstep_Inp_Inl_Inl_Tau1:
 lemma wtraced_Inp_Inl_Inl1:
   \<open>wtraced
     (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op buf3))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))
     (LCons (VInp (Inl (Inl p)) x) lxs) \<Longrightarrow>
   wtraced
     (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum (BENQ p x buf1) buf2)) (id_op buf3))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))
     lxs\<close>
   apply (cases lxs; simp)
    apply (rule wtraced.Nil)
-  subgoal for vio lxs
+  subgoal
     apply (erule wtraced.cases; simp; hypsubst_thin)
     apply (erule wtraced.cases; simp; hypsubst_thin)
-    subgoal for _ _ op op'
-      apply (rule wtraced.Step[where ?op'=op'])
+    subgoal for _ _ _ op
+      apply (rule wtraced.Step[where ?op'=op])
        apply (drule wstep_Inp_Inl_Inl_Tau1)
        apply (smt (verit, best) IO.exhaust io_of_vio_not_Tau(1) wstep_steps_Tau wstep_trans'(1,2))
       apply assumption
@@ -846,15 +846,15 @@ lemma wtraced_Inp_Inl_Inl1:
 lemma wstep_Inp_Inl_Inr_Tau1:
   \<open>wstep (Inp (Inl (Inr p)) x)
     (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op buf3))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))
      op \<Longrightarrow>
   wstep Tau
     (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 (BENQ p x buf2))) (id_op buf3))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))
      op\<close>
   apply (erule wstep_map_op_elim; hypsubst_thin)
   apply (rule wstep_map_op[of Tau])
-  subgoal for io op
+  subgoal for io
     apply (subst (asm) wstep_comp_op_L_R)
     apply (subst wstep_comp_op_L_R)
     apply (elim exE conjE)
@@ -919,19 +919,19 @@ lemma wstep_Inp_Inl_Inr_Tau1:
 lemma wtraced_Inp_Inl_Inr1:
   \<open>wtraced
     (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op buf3))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))
     (LCons (VInp (Inl (Inr p)) x) lxs) \<Longrightarrow>
   wtraced
     (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 (BENQ p x buf2))) (id_op buf3))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))
     lxs\<close>
   apply (cases lxs; simp)
    apply (rule wtraced.Nil)
-  subgoal for vio lxs
+  subgoal
     apply (erule wtraced.cases; simp; hypsubst_thin)
     apply (erule wtraced.cases; simp; hypsubst_thin)
-    subgoal for _ _ op op'
-      apply (rule wtraced.Step[where ?op'=op'])
+    subgoal for _ _ _ op
+      apply (rule wtraced.Step[where ?op'=op])
        apply (drule wstep_Inp_Inl_Inr_Tau1)
        apply (smt (verit, best) IO.exhaust io_of_vio_not_Tau(1) wstep_steps_Tau wstep_trans'(1,2))
       apply assumption
@@ -942,15 +942,15 @@ lemma wtraced_Inp_Inl_Inr1:
 lemma wstep_Inp_Inr_Tau1:
   \<open>wstep (Inp (Inr p) x)
     (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op buf3))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))
      op \<Longrightarrow>
   wstep Tau
     (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op (BENQ p x buf3)))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))
      op\<close>
   apply (erule wstep_map_op_elim; hypsubst_thin)
   apply (rule wstep_map_op[of Tau])
-  subgoal for io op
+  subgoal for io
     apply (subst (asm) wstep_comp_op_L_R)
     apply (subst wstep_comp_op_L_R)
     apply (elim exE conjE)
@@ -1015,19 +1015,19 @@ lemma wstep_Inp_Inr_Tau1:
 lemma wtraced_Inp_Inr1:
   \<open>wtraced
     (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op buf3))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))
     (LCons (VInp (Inr p) x) lxs) \<Longrightarrow>
   wtraced
     (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op (BENQ p x buf3)))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))
     lxs\<close>
   apply (cases lxs; simp)
    apply (rule wtraced.Nil)
-  subgoal for vio lxs
+  subgoal
     apply (erule wtraced.cases; simp; hypsubst_thin)
     apply (erule wtraced.cases; simp; hypsubst_thin)
-    subgoal for _ _ op op'
-      apply (rule wtraced.Step[where ?op'=op'])
+    subgoal for _ _ _ op
+      apply (rule wtraced.Step[where ?op'=op])
        apply (drule wstep_Inp_Inr_Tau1)
        apply (smt (verit, best) IO.exhaust io_of_vio_not_Tau(1) wstep_steps_Tau wstep_trans'(1,2))
       apply assumption
@@ -1037,102 +1037,214 @@ lemma wtraced_Inp_Inr1:
 
 lemma inputs_not_defaults1:
   \<open>p \<in> inputs (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op buf3))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))) \<Longrightarrow>
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))) \<Longrightarrow>
   p \<notin> defaults\<close>
 proof -
   assume \<open>p \<in> inputs
           (map_op projl projr
             (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op buf3))
-              (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))\<close>
-  hence \<open>p \<in> projl ` inputs (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op buf3)) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))\<close>
+              (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))\<close>
+  hence \<open>p \<in> projl ` inputs (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op buf3)) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))\<close>
     using op.set_map(1) by metis
   hence \<open>p \<in> inputs (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op buf3))\<close>
     using inputs_scomp_op_le_dest by (smt (verit, ccfv_threshold) imageE image_eqI sum.sel(1))
   hence \<open>p \<in> Inl ` inputs (merge_op (case_sum buf1 buf2)) \<or> p \<in> Inr ` inputs (id_op buf3)\<close>
     by blast
   hence \<open>p \<notin> defaults\<close>
-    using defaults_sum_def inputs_merge_op inputs_id_op
-    by blast
+    using defaults_sum_def inputs_merge_op inputs_id_op by blast
   thus ?thesis .
 qed
 
 lemma outputs_not_defaults1:
   \<open>p \<in> outputs (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op buf3))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))) \<Longrightarrow>
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))) \<Longrightarrow>
   p \<notin> defaults\<close>
 proof -
   assume \<open>p \<in> outputs
           (map_op projl projr
             (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op buf3))
-              (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))\<close>
-  hence \<open>p \<in> projr ` outputs (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op buf3))      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))\<close>
+              (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))\<close>
+  hence \<open>p \<in> projr ` outputs (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op buf3)) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))\<close>
     using op.set_map(2) by metis
-  hence \<open>p \<in> outputs (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))\<close>
+  hence \<open>p \<in> outputs (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (\<I> :: ('a, 'a, 'b) op)))\<close>
     using outputs_scomp_op_le_dest by (smt (verit, ccfv_threshold) imageE image_eqI sum.sel(2))
-  hence \<open>p \<in> projr ` outputs (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))\<close>
+  hence \<open>p \<in> projr ` outputs (comp_op Some (\<lambda>_. []) \<V> (\<I> :: ('a, 'a, 'b) op))\<close>
     using op.set_map(2) by metis
-  hence \<open>p \<in> outputs (id_op buf4)\<close>
+  hence \<open>p \<in> outputs (\<I> :: ('a, 'a, 'b) op)\<close>
     using outputs_scomp_op_le_dest by (smt (verit, best) imageE sum.sel(2))
   hence \<open>p \<notin> defaults\<close>
     using outputs_id_op by blast
   thus ?thesis .
 qed
 
+(* TODO rename *)
+lemma foo:
+  \<open>wstep_comp_op_R wire (Out (Inr p) x) buf (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)) op \<Longrightarrow>
+  buf \<noteq> (\<lambda>_. [])\<close>
+  by (erule wstep_comp_op_R.cases)
+    (auto elim!: step_map_op_elim step_comp_op_elim step_merge_op_elim step_id_op_cases)
+
 lemma wstep_Out_Tau1:
   assumes \<open>wstep (Out p x)
     (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op buf3))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))
     op\<close>
-  obtains \<open>buf4 p \<noteq> []\<close> \<open>x = BHD p buf4\<close> \<open>wstep Tau (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op buf3)) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op (BTL p buf4)))))) op\<close>
-  | \<open>buf4 p = []\<close> \<open>buf1 p \<noteq> []\<close> \<open>x = BHD p buf1\<close> \<open>wstep Tau (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum (BTL p buf1) buf2)) (id_op buf3)) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))) op\<close>
-  | \<open>buf4 p = []\<close> \<open>buf2 p \<noteq> []\<close> \<open>x = BHD p buf2\<close> \<open>wstep Tau (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 (BTL p buf2))) (id_op buf3)) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))) op\<close>
-  | \<open>buf4 p = []\<close> \<open>buf3 p \<noteq> []\<close> \<open>x = BHD p buf3\<close> \<open>wstep Tau (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op (BTL p buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))) op\<close>
+  obtains \<open>buf1 p \<noteq> []\<close> \<open>x = BHD p buf1\<close> \<open>wstep Tau (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum (BTL p buf1) buf2)) (id_op buf3)) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))) op\<close>
+  | \<open>buf2 p \<noteq> []\<close> \<open>x = BHD p buf2\<close> \<open>wstep Tau (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 (BTL p buf2))) (id_op buf3)) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))) op\<close>
+  | \<open>buf3 p \<noteq> []\<close> \<open>x = BHD p buf3\<close> \<open>wstep Tau (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op (BTL p buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))) op\<close>
   apply atomize_elim
   using assms
   apply -
   apply (erule wstep_map_op_elim)
   apply (subst (asm) wstep_comp_op_L_R)
   apply (elim exE conjE)
+  apply hypsubst_thin
   subgoal for io op' buf' buf\<^sub>1 buf\<^sub>2 op\<^sub>1' op\<^sub>2'
+    apply (subgoal_tac \<open>buf1 p \<noteq> [] \<and>
+       x = BHD p buf1 \<and>
+       wstep Tau
+        (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum (BTL p buf1) buf2)) (id_op buf3))
+            (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))
+        (comp_op Some buf' op\<^sub>1' op\<^sub>2') \<or>
+       buf2 p \<noteq> [] \<and>
+       x = BHD p buf2 \<and>
+       wstep Tau
+        (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 (BTL p buf2))) (id_op buf3))
+            (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))
+        (comp_op Some buf' op\<^sub>1' op\<^sub>2') \<or>
+       buf3 p \<noteq> [] \<and>
+       x = BHD p buf3 \<and>
+       wstep Tau
+        (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op (BTL p buf3)))
+            (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))
+        (comp_op Some buf' op\<^sub>1' op\<^sub>2')\<close>)
+    subgoal
+      by auto
+    apply (subst (1 2 3) wstep_comp_op_L_R)
     apply (cases io; simp)
     subgoal for p'
       apply (cases p'; simp; hypsubst_thin)
-      sorry
+      apply (subgoal_tac \<open>buf1 p \<noteq> [] \<and>
+    x = BHD p buf1 \<and> buf\<^sub>2 (Inl p) \<noteq> [] \<and>
+        wstep_comp_op_L Some (Tau :: ((('a + 'a) + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO) (BTL (Inl p) buf\<^sub>1) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum (BTL p buf1) buf2)) (id_op buf3))
+         op\<^sub>1' \<and>
+        wstep_comp_op_R Some (Tau :: ((('a + 'a) + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO) (BTL (Inl p) buf\<^sub>2) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)) op\<^sub>2' \<or>
+    buf2 p \<noteq> [] \<and> buf\<^sub>2 (Inl p) \<noteq> [] \<and>
+    x = BHD p buf2 \<and>
+        wstep_comp_op_L Some (Tau :: ((('a + 'a) + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO) (BTL (Inl p) buf\<^sub>1) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 (BTL p buf2))) (id_op buf3))
+         op\<^sub>1' \<and>
+        wstep_comp_op_R Some (Tau :: ((('a + 'a) + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO) (BTL (Inl p) buf\<^sub>2) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)) op\<^sub>2' \<or>
+    buf3 p \<noteq> [] \<and> buf\<^sub>2 (Inr p) \<noteq> [] \<and>
+    x = BHD p buf3 \<and>
+        wstep_comp_op_L Some (Tau :: ((('a + 'a) + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO) (BTL (Inr p) buf\<^sub>1) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op (BTL p buf3)))
+         op\<^sub>1' \<and>
+        wstep_comp_op_R Some (Tau :: ((('a + 'a) + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO) (BTL (Inr p) buf\<^sub>2) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)) op\<^sub>2'\<close>)
+      subgoal
+        apply (elim disjE conjE)
+        subgoal
+          apply (intro disjI1 conjI)
+            apply assumption
+           apply assumption
+          apply (rule exI[of _ buf'])
+          apply (rule exI[of _ \<open>BTL (Inl p) buf\<^sub>1\<close>])
+          apply (rule exI[of _ \<open>BTL (Inl p) buf\<^sub>2\<close>])
+          apply (rule exI[of _ op\<^sub>1'])
+          apply (rule exI[of _ op\<^sub>2'])
+          apply simp
+          apply (rule allI)
+          subgoal for p'
+            apply (cases \<open>p' = Inl p\<close>; simp?)
+             apply (metis BTL_access Nitpick.size_list_simp(2) append_eq_conv_conj append_take_drop_id drop_Suc nat_le_linear
+                  take_all tl_take)
+            by (metis BTL_diff_access)
+          done
+        subgoal
+          apply (rule disjI2)
+          apply (intro disjI1 conjI)
+            apply assumption
+           apply assumption
+          apply (rule exI[of _ buf'])
+          apply (rule exI[of _ \<open>BTL (Inl p) buf\<^sub>1\<close>])
+          apply (rule exI[of _ \<open>BTL (Inl p) buf\<^sub>2\<close>])
+          apply (rule exI[of _ op\<^sub>1'])
+          apply (rule exI[of _ op\<^sub>2'])
+          apply simp
+          apply (rule allI)
+          subgoal for p'
+            apply (cases \<open>p' = Inl p\<close>; simp?)
+             apply (metis BTL_access Nitpick.size_list_simp(2) append_eq_conv_conj append_take_drop_id drop_Suc nat_le_linear
+                  take_all tl_take)
+            by (metis BTL_diff_access)
+          done
+        subgoal
+          apply (intro disjI2 conjI)
+            apply assumption
+           apply assumption
+          apply (rule exI[of _ buf'])
+          apply (rule exI[of _ \<open>BTL (Inr p) buf\<^sub>1\<close>])
+          apply (rule exI[of _ \<open>BTL (Inr p) buf\<^sub>2\<close>])
+          apply (rule exI[of _ op\<^sub>1'])
+          apply (rule exI[of _ op\<^sub>2'])
+          apply simp
+          apply (rule allI)
+          subgoal for p'
+            apply (cases \<open>p' = Inr p\<close>; simp?)
+             apply (metis BTL_access Nitpick.size_list_simp(2) append_eq_conv_conj append_take_drop_id drop_Suc nat_le_linear
+                  take_all tl_take)
+            by (metis BTL_diff_access)
+          done
+        done
+      apply (induct \<open>Tau :: ((('a + 'a) + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO\<close> _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op buf3)\<close> _ arbitrary: buf1 buf2 buf3 pred: wstep_comp_op_L)
+          apply simp_all
+      subgoal
+        apply (drule foo)
+        by presburger
+      subgoal for pa xa op' q buf op'' buf'a buf1 buf2 buf3
+        apply (elim step_comp_op_elim step_merge_op_elim step_id_op_cases; simp; hypsubst_thin)
+        subgoal for p'
+          apply (drule meta_spec[of _ buf1])
+          apply (drule meta_spec[of _ buf2])
+          apply (drule meta_spec[of _ \<open>BTL p' buf3\<close>])
+          apply simp
+          sorry
+        subgoal sorry
+        subgoal sorry
+        done
+      subgoal
+        by (elim step_comp_op_elim step_merge_op_elim step_id_op_cases; simp)
+      done
     done
   done
 
 lemma wtraced_Out1:
   assumes \<open>wtraced
     (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op buf3))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))
     (LCons (VOut p x) lxs)\<close>
-  obtains \<open>p \<notin> defaults\<close> \<open>buf4 p \<noteq> []\<close> \<open>x = BHD p buf4\<close> \<open>wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op buf3)) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op (BTL p buf4)))))) lxs\<close>
-  | \<open>p \<notin> defaults\<close> \<open>buf4 p = []\<close> \<open>buf1 p \<noteq> []\<close> \<open>x = BHD p buf1\<close> \<open>wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum (BTL p buf1) buf2)) (id_op buf3)) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))) lxs\<close>
-  | \<open>p \<notin> defaults\<close> \<open>buf4 p = []\<close> \<open>buf2 p \<noteq> []\<close> \<open>x = BHD p buf2\<close> \<open>wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 (BTL p buf2))) (id_op buf3)) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))) lxs\<close>
-  | \<open>p \<notin> defaults\<close> \<open>buf4 p = []\<close> \<open>buf3 p \<noteq> []\<close> \<open>x = BHD p buf3\<close> \<open>wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op (BTL p buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))) lxs\<close>
+  obtains \<open>p \<notin> defaults\<close> \<open>buf1 p \<noteq> []\<close> \<open>x = BHD p buf1\<close> \<open>wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum (BTL p buf1) buf2)) (id_op buf3)) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))) lxs\<close>
+  | \<open>p \<notin> defaults\<close> \<open>buf2 p \<noteq> []\<close> \<open>x = BHD p buf2\<close> \<open>wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 (BTL p buf2))) (id_op buf3)) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))) lxs\<close>
+  | \<open>p \<notin> defaults\<close> \<open>buf3 p \<noteq> []\<close> \<open>x = BHD p buf3\<close> \<open>wtraced (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op (BTL p buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))) lxs\<close>
   apply atomize_elim
   using assms
   apply -
   apply (erule wtraced.cases; simp; hypsubst_thin; simp)
-  subgoal for op
-    apply (erule wstep_Out_Tau1)
-    using assms wtraced_outputs outputs_not_defaults1
+  apply (erule wstep_Out_Tau1)
+  using assms wtraced_outputs outputs_not_defaults1
   by (smt (verit, del_insts) VIO.set_intros(2) estep.elims io_of_vio_not_Tau(1) lset_intros(1) wstep_steps_Tau
     wstep_trans'(1,2) wtraced.simps)+
-  done
 
 lemma wstep_Inp_Inl_Inl_Tau2:
   \<open>wstep (Inp (Inl (Inl p)) x)
     (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3)))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))) op \<Longrightarrow>
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))) op \<Longrightarrow>
   wstep Tau
     (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BENQ p x buf1)) (merge_op (case_sum buf2 buf3)))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))) op\<close>
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))) op\<close>
   apply (erule wstep_map_op_elim; hypsubst_thin)
   apply (erule wstep_map_op_elim; hypsubst_thin)
   apply (rule wstep_map_op[of Tau])
    apply (rule wstep_map_op[of Tau])
-  subgoal for _ _ io op
+  subgoal for _ _ io
     apply (subst (asm) wstep_comp_op_L_R)
     apply (subst wstep_comp_op_L_R)
     apply (elim exE conjE)
@@ -1206,40 +1318,38 @@ lemma wtraced_Inp_Inl_Inl2:
      (map_op assoc id
        (map_op projl projr
          (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3)))
-           (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))))
+           (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))))
      (LCons (VInp (Inl (Inl p)) x) lxs) \<Longrightarrow>
   wtraced
      (map_op assoc id
        (map_op projl projr
          (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BENQ p x buf1)) (merge_op (case_sum buf2 buf3)))
-           (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))))
+           (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))))
      lxs\<close>
   apply (cases lxs; simp)
    apply (rule wtraced.Nil)
-  subgoal for vio lxs
-    apply (erule wtraced.cases; simp; hypsubst_thin)
-    apply (erule wtraced.cases; simp; hypsubst_thin)
-    subgoal for _ _ op op'
-      apply (rule wtraced.Step[where ?op'=op'])
-       apply (drule wstep_Inp_Inl_Inl_Tau2)
-       apply (smt (verit, best) IO.exhaust io_of_vio_not_Tau(1) wstep_steps_Tau wstep_trans'(1,2))
-      apply assumption
-      done
+  apply (erule wtraced.cases; simp; hypsubst_thin)
+  apply (erule wtraced.cases; simp; hypsubst_thin)
+  subgoal for _ _ _ _ _op
+    apply (rule wtraced.Step[where ?op'=op])
+     apply (drule wstep_Inp_Inl_Inl_Tau2)
+     apply (smt (verit, best) IO.exhaust io_of_vio_not_Tau(1) wstep_steps_Tau wstep_trans'(1,2))
+    apply assumption
     done
   done
 
 lemma wstep_Inp_Inl_Inr_Tau2:
   \<open>wstep (Inp (Inl (Inr p)) x)
     (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3)))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))) op \<Longrightarrow>
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))) op \<Longrightarrow>
   wstep Tau
     (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum (BENQ p x buf2) buf3)))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))) op\<close>
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))) op\<close>
   apply (erule wstep_map_op_elim; hypsubst_thin)
   apply (erule wstep_map_op_elim; hypsubst_thin)
   apply (rule wstep_map_op[of Tau])
    apply (rule wstep_map_op[of Tau])
-  subgoal for _ _ io op
+  subgoal for _ _ io
     apply (subst (asm) wstep_comp_op_L_R)
     apply (subst wstep_comp_op_L_R)
     apply (elim exE conjE)
@@ -1314,40 +1424,38 @@ lemma wtraced_Inp_Inl_Inr2:
      (map_op assoc id
        (map_op projl projr
          (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3)))
-           (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))))
+           (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))))
      (LCons (VInp (Inl (Inr p)) x) lxs) \<Longrightarrow>
   wtraced
      (map_op assoc id
        (map_op projl projr
          (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum (BENQ p x buf2) buf3)))
-           (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))))
+           (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))))
      lxs\<close>
   apply (cases lxs; simp)
    apply (rule wtraced.Nil)
-  subgoal for vio lxs
-    apply (erule wtraced.cases; simp; hypsubst_thin)
-    apply (erule wtraced.cases; simp; hypsubst_thin)
-    subgoal for _ _ op op'
-      apply (rule wtraced.Step[where ?op'=op'])
-       apply (drule wstep_Inp_Inl_Inr_Tau2)
-       apply (smt (verit, best) IO.exhaust io_of_vio_not_Tau(1) wstep_steps_Tau wstep_trans'(1,2))
-      apply assumption
-      done
+  apply (erule wtraced.cases; simp; hypsubst_thin)
+  apply (erule wtraced.cases; simp; hypsubst_thin)
+  subgoal for _ _ _ _ _ op
+    apply (rule wtraced.Step[where ?op'=op])
+     apply (drule wstep_Inp_Inl_Inr_Tau2)
+     apply (smt (verit, best) IO.exhaust io_of_vio_not_Tau(1) wstep_steps_Tau wstep_trans'(1,2))
+    apply assumption
     done
   done
 
 lemma wstep_Inp_Inr_Tau2:
   \<open>wstep (Inp (Inr p) x)
     (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3)))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))) op \<Longrightarrow>
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))) op \<Longrightarrow>
   wstep Tau
     (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 (BENQ p x buf3))))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))) op\<close>
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))) op\<close>
   apply (erule wstep_map_op_elim; hypsubst_thin)
   apply (erule wstep_map_op_elim; hypsubst_thin)
   apply (rule wstep_map_op[of Tau])
    apply (rule wstep_map_op[of Tau])
-  subgoal for _ _ io op
+  subgoal for _ _ io
     apply (subst (asm) wstep_comp_op_L_R)
     apply (subst wstep_comp_op_L_R)
     apply (elim exE conjE)
@@ -1422,25 +1530,23 @@ lemma wtraced_Inp_Inr2:
      (map_op assoc id
        (map_op projl projr
          (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3)))
-           (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))))
+           (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))))
      (LCons (VInp (Inr p) x) lxs) \<Longrightarrow>
   wtraced
      (map_op assoc id
        (map_op projl projr
          (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 (BENQ p x buf3))))
-           (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))))
+           (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))))
      lxs\<close>
   apply (cases lxs; simp)
    apply (rule wtraced.Nil)
-  subgoal for vio lxs
-    apply (erule wtraced.cases; simp; hypsubst_thin)
-    apply (erule wtraced.cases; simp; hypsubst_thin)
-    subgoal for _ _ op op'
-      apply (rule wtraced.Step[where ?op'=op'])
-       apply (drule wstep_Inp_Inr_Tau2)
-       apply (smt (verit, best) IO.exhaust io_of_vio_not_Tau(1) wstep_steps_Tau wstep_trans'(1,2))
-      apply assumption
-      done
+  apply (erule wtraced.cases; simp; hypsubst_thin)
+  apply (erule wtraced.cases; simp; hypsubst_thin)
+  subgoal for _ _ _ _ _ op
+    apply (rule wtraced.Step[where ?op'=op])
+     apply (drule wstep_Inp_Inr_Tau2)
+     apply (smt (verit, best) IO.exhaust io_of_vio_not_Tau(1) wstep_steps_Tau wstep_trans'(1,2))
+    apply assumption
     done
   done
 
@@ -1450,17 +1556,17 @@ lemma assoc_defaults:
 
 lemma inputs_not_defaults2:
   \<open>p \<in> inputs (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3)))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))) \<Longrightarrow>
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))) \<Longrightarrow>
   p \<notin> defaults\<close>
 proof -
   assume \<open>p \<in> inputs
           (map_op assoc id
             (map_op projl projr
               (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3)))
-                (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))))\<close>
-  hence \<open>p \<in> assoc ` inputs (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))\<close>
+                (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))))\<close>
+  hence \<open>p \<in> assoc ` inputs (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))\<close>
     using op.set_map(1) by metis
-  hence \<open>p \<in> assoc ` projl` inputs (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))\<close>
+  hence \<open>p \<in> assoc ` projl` inputs (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))\<close>
     using op.set_map(1) by metis
   hence \<open>p \<in> assoc ` inputs (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3)))\<close>
     using inputs_scomp_op_le_dest by (smt (verit, ccfv_threshold) imageE image_eqI sum.sel(1))
@@ -1474,23 +1580,23 @@ qed
 
 lemma outputs_not_defaults2:
   \<open>p \<in> outputs (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3)))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))) \<Longrightarrow>
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))) \<Longrightarrow>
   p \<notin> defaults\<close>
 proof -
   assume \<open>p \<in> outputs
           (map_op assoc id
             (map_op projl projr
               (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3)))
-                (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))))\<close>
-  hence \<open>p \<in> outputs (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))\<close>
+                (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))))\<close>
+  hence \<open>p \<in> outputs (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))\<close>
     using op.set_map(2) id_apply image_id by metis
-  hence \<open>p \<in> projr ` outputs (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))\<close>
+  hence \<open>p \<in> projr ` outputs (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))\<close>
     using op.set_map(2) by metis
-  hence \<open>p \<in> outputs (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))\<close>
+  hence \<open>p \<in> outputs (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (\<I> :: ('a, 'a, 'b) op)))\<close>
     using outputs_scomp_op_le_dest by (smt (verit, ccfv_threshold) imageE image_eqI sum.sel(2))
-  hence \<open>p \<in> projr ` outputs (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))\<close>
+  hence \<open>p \<in> projr ` outputs (comp_op Some (\<lambda>_. []) \<V> (\<I> :: ('a, 'a, 'b) op))\<close>
     using op.set_map(2) by metis
-  hence \<open>p \<in> outputs (id_op buf4)\<close>
+  hence \<open>p \<in> outputs (\<I> :: ('a, 'a, 'b) op)\<close>
     using outputs_scomp_op_le_dest by (smt (verit, best) imageE sum.sel(2))
   hence \<open>p \<notin> defaults\<close>
     using outputs_id_op by blast
@@ -1499,42 +1605,38 @@ qed
 
 lemma wstep_Out_Tau2:
   assumes \<open>wstep (Out p x)
-    (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))))
+    (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))))
     op\<close>
-  obtains \<open>buf4 p \<noteq> []\<close> \<open>x = BHD p buf4\<close> \<open>wstep Tau (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op (BTL p buf4))))))) op\<close>
-  | \<open>buf4 p = []\<close> \<open>buf1 p \<noteq> []\<close> \<open>x = BHD p buf1\<close> \<open>wstep Tau (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BTL p buf1)) (merge_op (case_sum buf2 buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))) op\<close>
-  | \<open>buf4 p = []\<close> \<open>buf2 p \<noteq> []\<close> \<open>x = BHD p buf2\<close> \<open>wstep Tau (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum (BTL p buf2) buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))) op\<close>
-  | \<open>buf4 p = []\<close> \<open>buf3 p \<noteq> []\<close> \<open>x = BHD p buf3\<close> \<open>wstep Tau (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 (BTL p buf3)))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))) op\<close>
+  obtains \<open>buf1 p \<noteq> []\<close> \<open>x = BHD p buf1\<close> \<open>wstep Tau (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BTL p buf1)) (merge_op (case_sum buf2 buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))) op\<close>
+  | \<open>buf2 p \<noteq> []\<close> \<open>x = BHD p buf2\<close> \<open>wstep Tau (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum (BTL p buf2) buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))) op\<close>
+  | \<open>buf3 p \<noteq> []\<close> \<open>x = BHD p buf3\<close> \<open>wstep Tau (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 (BTL p buf3)))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))) op\<close>
   sorry
 
 lemma wtraced_Out2:
   assumes \<open>wtraced
     (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3)))
-      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))))
+      (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))))
     (LCons (VOut p x) lxs)\<close>
-  obtains \<open>p \<notin> defaults\<close> \<open>buf4 p \<noteq> []\<close> \<open>x = BHD p buf4\<close> \<open>wtraced (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op (BTL p buf4))))))) lxs\<close>
-  | \<open>p \<notin> defaults\<close> \<open>buf4 p = []\<close> \<open>buf1 p \<noteq> []\<close> \<open>x = BHD p buf1\<close> \<open>wtraced (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BTL p buf1)) (merge_op (case_sum buf2 buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))) lxs\<close>
-  | \<open>p \<notin> defaults\<close> \<open>buf4 p = []\<close> \<open>buf2 p \<noteq> []\<close> \<open>x = BHD p buf2\<close> \<open>wtraced (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum (BTL p buf2) buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))) lxs\<close>
-  | \<open>p \<notin> defaults\<close> \<open>buf4 p = []\<close> \<open>buf3 p \<noteq> []\<close> \<open>x = BHD p buf3\<close> \<open>wtraced (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 (BTL p buf3)))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))) lxs\<close>
+  obtains \<open>p \<notin> defaults\<close> \<open>buf1 p \<noteq> []\<close> \<open>x = BHD p buf1\<close> \<open>wtraced (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BTL p buf1)) (merge_op (case_sum buf2 buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))) lxs\<close>
+  | \<open>p \<notin> defaults\<close> \<open>buf2 p \<noteq> []\<close> \<open>x = BHD p buf2\<close> \<open>wtraced (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum (BTL p buf2) buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))) lxs\<close>
+  | \<open>p \<notin> defaults\<close> \<open>buf3 p \<noteq> []\<close> \<open>x = BHD p buf3\<close> \<open>wtraced (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 (BTL p buf3)))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))) lxs\<close>
  apply atomize_elim
   using assms
   apply -
   apply (erule wtraced.cases; simp; hypsubst_thin; simp)
-  subgoal for op
-    apply (erule wstep_Out_Tau2)
-    using assms wtraced_outputs outputs_not_defaults2
+  apply (erule wstep_Out_Tau2)
+  using assms wtraced_outputs outputs_not_defaults2
   by (smt (verit, del_insts) VIO.set_intros(2) estep.elims io_of_vio_not_Tau(1) lset_intros(1) wstep_steps_Tau
     wstep_trans'(1,2) wtraced.simps)+
-  done
 
 lemma A1_trace_eq_gen:
-  \<open>(merge_op (case_sum buf1 buf2) \<parallel> id_op buf3) \<bullet> (\<V> \<bullet> id_op buf4) \<equiv>\<^sub>t map_op assoc id ((id_op buf1 \<parallel> merge_op (case_sum buf2 buf3)) \<bullet> (\<V> \<bullet> id_op buf4))\<close>
+  \<open>(merge_op (case_sum buf1 buf2) \<parallel> id_op buf3) \<bullet> \<V>' \<equiv>\<^sub>t map_op assoc id ((id_op buf1 \<parallel> merge_op (case_sum buf2 buf3)) \<bullet> \<V>')\<close>
   unfolding wtraces_def pcomp_op_def scomp_op_def
   apply (rule Collect_eqI)
   apply (rule iffI)
   subgoal for lxs
-    apply (coinduction arbitrary: buf1 buf2 buf3 buf4 lxs pred: wtraced)
-    subgoal for buf1 buf2 buf3 buf4 lxs
+    apply (coinduction arbitrary: buf1 buf2 buf3 lxs pred: wtraced)
+    subgoal for buf1 buf2 buf3 lxs
       apply (cases lxs; simp; hypsubst_thin)
       subgoal for vio lxs
         apply (cases vio; simp; hypsubst_thin)
@@ -1545,7 +1647,7 @@ lemma A1_trace_eq_gen:
             subgoal for p
               apply (intro exI[of _ \<open>map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. [])
   (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BENQ p x buf1)) (merge_op (case_sum buf2 buf3)))
-    (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))\<close>] conjI)
+    (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))\<close>] conjI)
                apply (rule step_wstep)
                apply (rule step_map_op)
                 apply (rule step_map_op)
@@ -1561,7 +1663,7 @@ lemma A1_trace_eq_gen:
             subgoal for p
               apply (intro exI[of _ \<open>map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. [])
   (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum (BENQ p x buf2) buf3)))
-    (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))\<close>] conjI)
+    (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))\<close>] conjI)
                apply (rule step_wstep)
                apply (rule step_map_op)
                 apply (rule step_map_op)
@@ -1578,7 +1680,7 @@ lemma A1_trace_eq_gen:
           subgoal for p
             apply (intro exI[of _ \<open>map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. [])
   (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 (BENQ p x buf3))))
-    (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4)))))\<close>] conjI)
+    (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))\<close>] conjI)
              apply (rule step_wstep)
              apply (rule step_map_op)
             apply (rule step_map_op)
@@ -1594,22 +1696,9 @@ lemma A1_trace_eq_gen:
           done
         subgoal for p x
           apply (erule wtraced_Out1)
-          apply (intro exI[of _ \<open>(map_op assoc id (map_op projl projr
-               (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 buf3)))
-  (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op (BTL p buf4)))))))\<close>] conjI)
-              apply (rule step_wstep)
-              apply (rule step_map_op)
-               apply (rule step_map_op)
-                apply (rule step_comp_op_R_Out)
-                  apply (rule step_map_op)
-                   apply (rule step_comp_op_R_Out)
-                     apply (rule step_id_op_Write)
-                        apply simp_all
-              apply simp
-             apply blast
-          apply (intro exI[of _ \<open>(map_op assoc id (map_op projl projr
-               (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BTL p buf1)) (merge_op (case_sum buf2 buf3)))
-  (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))))\<close>] conjI)
+            apply (intro exI[of _ \<open>(map_op assoc id (map_op projl projr
+  (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BTL p buf1)) (merge_op (case_sum buf2 buf3)))
+    (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))))\<close>] conjI)
              apply (rule wstep_trans(1))
               apply (rule rtranclp.intros(2))
                apply (rule rtranclp.intros(2))
@@ -1648,8 +1737,8 @@ lemma A1_trace_eq_gen:
              apply fastforce
             apply blast
            apply (intro exI[of _ \<open>(map_op assoc id (map_op projl projr
-               (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum (BTL p buf2) buf3)))
-  (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))))\<close>] conjI)
+  (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum (BTL p buf2) buf3)))
+    (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))))\<close>] conjI)
             apply (rule wstep_trans(1))
              apply (rule rtranclp.intros(2))
               apply (rule rtranclp.intros(2))
@@ -1688,8 +1777,8 @@ lemma A1_trace_eq_gen:
             apply fastforce
            apply blast
           apply (intro exI[of _ \<open>(map_op assoc id (map_op projl projr
-               (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 (BTL p buf3))))
-  (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))))\<close>] conjI)
+  (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 (BTL p buf3))))
+    (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))))\<close>] conjI)
            apply (rule wstep_trans(1))
             apply (rule rtranclp.intros(2))
              apply (rule rtranclp.intros(2))
@@ -1732,8 +1821,8 @@ lemma A1_trace_eq_gen:
       done
     done
   subgoal for lxs
-    apply (coinduction arbitrary: buf1 buf2 buf3 buf4 lxs pred: wtraced)
-    subgoal for buf1 buf2 buf3 buf4 lxs
+    apply (coinduction arbitrary: buf1 buf2 buf3 lxs pred: wtraced)
+    subgoal for buf1 buf2 buf3 lxs
       apply (cases lxs; simp; hypsubst_thin)
       subgoal for vio lxs
         apply (cases vio; simp; hypsubst_thin)
@@ -1744,7 +1833,7 @@ lemma A1_trace_eq_gen:
             subgoal for p
               apply (intro exI[of _ \<open>map_op projl projr (comp_op Some (\<lambda>_. [])
   (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum (BENQ p x buf1) buf2)) (id_op buf3))
-    (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))\<close>] conjI)
+    (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))\<close>] conjI)
                apply (rule step_wstep)
                apply (rule step_map_op)
                 apply (rule step_comp_op_L_Inp)
@@ -1758,7 +1847,7 @@ lemma A1_trace_eq_gen:
             subgoal for p
               apply (intro exI[of _ \<open>map_op projl projr (comp_op Some (\<lambda>_. [])
   (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 (BENQ p x buf2))) (id_op buf3))
-    (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))\<close>] conjI)
+    (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))\<close>] conjI)
                apply (rule step_wstep)
                apply (rule step_map_op)
                 apply (rule step_comp_op_L_Inp)
@@ -1773,7 +1862,7 @@ lemma A1_trace_eq_gen:
           subgoal for p
             apply (intro exI[of _ \<open>map_op projl projr (comp_op Some (\<lambda>_. [])
   (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op (BENQ p x buf3)))
-    (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> (id_op buf4))))\<close>] conjI)
+    (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))\<close>] conjI)
              apply (rule step_wstep)
              apply (rule step_map_op)
               apply (rule step_comp_op_L_Inp)
