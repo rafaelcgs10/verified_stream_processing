@@ -611,7 +611,7 @@ lemma step_dataflow_op_elim:
     "op' = dataflow_op (sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
   | nid op'' imp_fron where "io = Tau" "imp_fron = (\<lambda> p. c_imp (pt_tr sg) (Loc nid (Trg p)))" "op' = dataflow_op sg op''"
     "step (Inp (Inl nid) (Inl (Inr imp_fron))) op op''"
-  | "op' = \<oslash>"
+  | "op' = \<oslash>" 
   using assms apply -
   apply atomize_elim
   apply (subst (asm) dataflow_op.code)
@@ -849,10 +849,34 @@ lemma step_input_op_Out_intro[intro]:
   apply (auto split: llist.splits)
   done
 
+lemma dataflow_extract_progress_from_push:
+  "dataflow_op sg
+     (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p)))
+       (writes (Write op None (Inl (Inl \<lparr>cons = [], inte = [], prod = ps\<rparr>))) (Some 1)
+         xs)) =
+    dataflow_op (sg\<lparr>lo_pt := bulk_benq (extract_progress nid (edges sg) \<lparr>cons = [], inte = [], prod = ps\<rparr>) (lo_pt sg)\<rparr>)
+     (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p)))
+       (writes (Write op None (Inl (Inl \<lparr>cons = [], inte = [], prod = []\<rparr>))) (Some 1)
+         xs))"
+  apply (induct xs arbitrary: ps)
+  subgoal 
+    apply simp
+    apply (subst (1 2) dataflow_op.code)
+    apply (auto simp add: extract_progress_def split: option.splits)
+    done
+  subgoal for a xs' 
+    apply (subst (1 2) writes.code)
+    apply simp
+    apply (subst (1 2) dataflow_op.code)
+    apply (simp add: extract_progress_def split: option.splits sum.splits)
+    done
+  done
+
+
 lemma
   "dataflow_op sg (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (input_top (Cap i (1 :: 1)) inps)) \<approx>
    map_op (\<lambda> p. (nid, p)) (\<lambda> p. (nid, p)) (input_op i inps)"
-proof (coinduction arbitrary: inps i rule: wbisim_coinduct)
+proof (coinduction arbitrary: inps i sg rule: wbisim_coinduct)
   case SIM1
   then show ?case
     apply -
@@ -863,17 +887,62 @@ proof (coinduction arbitrary: inps i rule: wbisim_coinduct)
       subgoal for xs lxs
         apply (cases xs; simp)
         subgoal for x xs'
-        apply (intro exI conjI[rotated])
-           defer
+        apply (intro exI conjI)
            apply (rule step_wstep)
            apply fastforce
-        apply (rule wbcr_base)
-          apply (intro conjI[rotated] exI)
-           apply (rule refl)
           apply hypsubst_thin
+          apply (rule wbcr_base)
+          apply (rule exI)
+          apply (rule exI)
+          apply (intro conjI[rotated])
+           apply (rule refl)
+          apply (rule exI[of _ "sg\<lparr> lo_pt := (lo_pt sg) @ extract_progress nid (edges sg) \<lparr>cons = [], inte = [], prod = [(1, i, 1)]\<rparr> \<rparr>"])
           apply (subst (2) input_top.code)
           apply (simp add: comp_def)
-          
+          apply (rule box_equals) 
+          defer
+          apply (rule dataflow_extract_progress_from_push[symmetric])
+          apply (rule dataflow_extract_progress_from_push[symmetric])
+            apply (auto simp add: extract_progress_def split: option.splits)
+          done
+        done
+      done
+    subgoal sorry
+    subgoal
+      apply (intro exI conjI)
+       apply blast
+          apply (rule wbcr_base)
+          apply (rule exI)
+          apply (rule exI)
+          apply (intro conjI[rotated])
+           apply (rule refl)
+      apply (subst input_top.code)
+      apply auto
+      apply (subst (2) dataflow_op.code)
+      sorry
+    subgoal
+   apply (intro exI conjI)
+      sorry
+    done
+next
+  case SIM2
+  then show ?case
+
+
+end
+          apply (induct xs' arbitrary: )
+          subgoal 
+            apply simp
+            apply (subst (1 2) dataflow_op.code)
+            apply (auto simp add: extract_progress_def split: option.splits)
+            done
+          subgoal for a xs' 
+            apply simp
+            apply (subst (1 2) writes.code)
+            apply simp
+            apply (subst (1 2) dataflow_op.code)
+            apply (simp add: extract_progress_def  split: option.splits)
+
 
 end
          apply simp_all
