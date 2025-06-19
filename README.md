@@ -41,3 +41,19 @@ isabelle build -d ~/path_to_this_folder -v Nondeterministic_Dataflow
 Warning: this build process can take up to 20 minutes on a fast laptop.
 
 The organization of this repository is the following:
+
+``` shell
+├── Operator.thy: The operator codatatype, strong and weak bisimilarity, and traces
+├── BNA_Operators.thy: The operators from nondeterministic asynchronous dataflow networks
+├── table_1: Axioms related to identity, sequential/parallel composition, loop, and transposition
+├── table_2: Axioms related to equality test, copy, source and sink
+├── table_3: Axioms related to merge, split, source and sink
+├── CSet_LList_Impl.thy: Implementation of countable set as lazy lists
+├── Cset_Setup.thy: Auxiliary countable set setup
+├── Defaults.thy: Defaults type class
+├── Lifted.thy: Typedef setup that lifts the codatatype operator
+├── Lifted_Table_1.thy: Lifting of table 1
+├── Lifted_Table_2.thy: Lifting of table 2
+├── Lifted_Table_3.thy: Lifting of table 3
+└── Eval.thy: Evaluation of traces of some operators
+```
