@@ -550,8 +550,37 @@ corec dataflow_op where
                                               Some conf' \<Rightarrow> Silent (dataflow_op (sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr>) op'))
    | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
    | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
-   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') undefined) (choices op))"
+   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) (choices op))"
 
+lemma propagate_pointstamps_terminates[simp]:
+  "propagate_pointstamps summary conf cbs \<noteq> None"
+  sorry
+
+lemma step_dataflow_op_elim:
+  assumes "step io (dataflow_op sg op) op'"
+  obtains
+    nid p op'' x where "io = Inp (nid, p) x" "op' = dataflow_op sg op''" "step (Inp (Inr (nid, p)) (Inr x)) op op''"
+  | nid p op'' x where "io = Out (nid, p) x" "op' = dataflow_op sg op''" "step (Out (Inr (nid, p)) (Inr x)) op op''"
+  | op'' where "io = Tau" "op' = dataflow_op sg op''" "step Tau op op''"
+  | nid op'' conf' st where "io = Tau" "conf' = the (propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg @ extract_progress nid (edges sg) st))"
+    "op' = dataflow_op (sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
+  | nid op'' imp_fron where "io = Tau" "imp_fron = (\<lambda> p. c_imp (pt_tr sg) (Loc nid (Trg p)))" "op' = dataflow_op sg op''"
+    "step (Inp (Inl nid) (Inl (Inr imp_fron))) op op''"
+  | "op' = \<oslash>"
+  using assms apply -
+  apply atomize_elim
+  apply (subst (asm) dataflow_op.code)
+  apply simp
+  apply (elim stepChoiceE)
+  subgoal for op'
+  apply (auto del: disjCI split: op.splits sum.splits option.splits)
+        apply fastforce
+        apply fastforce
+    apply (metis Write_in_choices_step cin.rep_eq option.sel)
+     apply fastforce
+    apply fastforce
+    done
+  done
 
 definition "compile_dataflow dt = (let (summary, op) = compile_dataflow_tree dt in
                                     let sg = init_subgraph summary in
@@ -587,7 +616,20 @@ corec input_op where
   | LCons xs lxs \<Rightarrow>
      push 
      (Write (input_op (Cap (time c + 1) (out c)) lxs) (trace (STR ''Delaying cap'') None) (Inl (Inl \<lparr> cons = [], nte = [(out c, time c, -1), (out c, time c + 1, 1)], prod = []\<rparr>)))
-      1 (map (\<lambda> x. (x, c)) xs))"
+      (1 :: 1) (map (\<lambda> x. (x, c)) xs))"
+
+lemma step_input_op_elim:
+  assumes "step io (input_op c inps) op'"
+  obtains
+   op'' x xs where "io = Out (Some 1) (Inr (x, time c))" "lhd inps = xs" "hd xs = x" "inps \<noteq> LNil" "xs \<noteq> []"
+  "op' = writes (Write (Write (input_op (Cap (time c + 1) (out c)) (ltl inps)) None (Inl (Inl \<lparr> cons = [], nte = [(out c, time c, -1), (out c, time c + 1, 1)], prod = []\<rparr>))) None (Inl (Inl \<lparr> cons = [], inte = [], prod = map (\<lambda> (x, c). (1, time c, 1)) (map (\<lambda> x. (x, c)) xs) \<rparr>))) (Some 1) (map (\<lambda> x. Inr (x, time c)) (tl xs))"
+| "io = Out None (Inl (Inl \<lparr> cons = [], nte = [(out c, time c, -1), (out c, time c + 1, 1)], prod = []\<rparr>)) " "inps \<noteq> LNil" "lhd inps = []" "op' = input_op (Cap (time c + 1) (out c)) (ltl inps)"
+| "inps = LNil" "io = Out None (Inl (Inl \<lparr> cons = [], inte = [(out c, time c, -1)], prod = [] \<rparr>))" "op' = \<oslash>"
+  using assms apply -
+  apply atomize_elim
+  apply (subst (asm) input_op.code)
+  apply (simp split: llist.splits)
+  sorry
 
 abbreviation "ex1 \<equiv> Logic (input_op (Cap 0 (1 :: 1)) (LCons [Suc 0, 3] (LCons [9] LNil))) :: (2, 1, (1, _) shared_state + 'c, nat \<times> _) dataflow_tree"
 
@@ -720,15 +762,15 @@ lemma
           apply simp
           oops
 
-corec wtraced_op_aux where
-  "wtraced_op_aux ios = (case ios of
+corec spec_op_aux where
+  "spec_op_aux ios = (case ios of
     LNil \<Rightarrow> \<oslash> 
-  | LCons io ios \<Rightarrow> (case io of VInp p x \<Rightarrow> Read p (\<lambda> _. wtraced_op_aux ios) | VOut p x \<Rightarrow> Write (wtraced_op_aux ios) p x))"
+  | LCons io ios \<Rightarrow> (case io of VInp p x \<Rightarrow> Read p (\<lambda> _. spec_op_aux ios) | VOut p x \<Rightarrow> Write (spec_op_aux ios) p x))"
 
-definition "wtraced_op C = Choice (cimage wtraced_op_aux C)"
+definition "spec_op C = Choice (cimage spec_op_aux C)"
 
-lemma wtraced_wtraced_op:
-  "wtraced (wtraced_op C) ios \<Longrightarrow>
+lemma wtraced_spec_op:
+  "wtraced (spec_op C) ios \<Longrightarrow>
    ios |\<in>| C"
   oops
 (*   apply (erule wtraced.cases)
@@ -736,28 +778,54 @@ lemma wtraced_wtraced_op:
   subgoal
     sorry
   subgoal for vio op op' lxs
-    unfolding wtraced_op_def
+    unfolding spec_op_def
     apply hypsubst_thin
  *)
 
-lemma step_dataflow_op_elim:
-  assumes "step io (dataflow_op sg op) op'"
-  obtains
-    nid p op'' where "io = Inp (nid, p) x" "op' = dataflow_op sg op''" "step (Inp (Inr (nid, p)) (Inr x)) op op''"
-  | nid p op'' where "io = Out (nid, p) x" "op' = dataflow_op sg op''" "step (Out (Inr (nid, p)) (Inr x)) op op''"
-  | op'' where "io = Tau" "op' = dataflow_op sg op''" "step Tau op op''"
-  | nid p op'' where "io = Tau" "op' = dataflow_op sg' op''" "step (Out (Inr (nid, p)) (Inr x)) op op''"
 
 
 lemma
-  "dataflow_op sg (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (input_op (Cap i 0) inps)) \<approx>
-   wtraced_op {|lmap (VOut (nid, 0)) (lconcat (lmap (\<lambda>z. case z of (xs, t) \<Rightarrow> map (\<lambda>n. (n, t)) xs) (lzip inps (iterates Suc i))))|}"
+  "dataflow_op sg (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (input_op (Cap i (1 :: 1)) inps)) \<approx>
+   spec_op {|lmap (VOut (nid, (1 :: 1))) (lconcat (lmap (\<lambda>z. case z of (xs, t) \<Rightarrow> map (\<lambda>n. (n, t)) xs) (lzip inps (iterates Suc i))))|}"
 proof (coinduction arbitrary: inps i rule: wbisim_coinduct)
   case SIM1
   then show ?case
     apply -
+    apply (elim step_map_op_elim step_dataflow_op_elim step_input_op_elim conjE; simp; hypsubst_thin)
+    subgoal for nida p op'' x io' op''a
+      apply (cases inps)
+       apply simp
+      subgoal for xs lxs
+        apply (cases xs; simp)
+        subgoal for x xs'
+        apply (intro exI conjI[rotated])
+        defer
+        unfolding spec_op_def
+         apply simp
+         apply (subst iterates)
+         apply simp
+        apply (subst spec_op_aux.code)
+         apply simp
+        apply (rule step_wstep)
+         apply (rule SC)
+          apply blast
+          apply hypsubst_thin
+        apply force
+        apply (rule wbcr_base)
+        apply simp
+        apply (rule exI[of _ "LCons xs' lxs"])
+        apply (rule exI[of _ i])
+        apply (intro conjI)
+         apply simp_all
+         apply (subst (2) dataflow_op.code)
+        apply simp
 
-    find_theorems loop_op 
+         apply (subst (2) iterates)
+        apply simp
+
+
+        find_theorems iterates LCons
+
 
 end
 next
