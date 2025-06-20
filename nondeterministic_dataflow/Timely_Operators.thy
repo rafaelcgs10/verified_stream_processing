@@ -592,7 +592,7 @@ corec dataflow_op where
      Read (Inl nid) f \<Rightarrow> let imp_fron = (\<lambda> p. c_imp (pt_tr sg) (Loc nid (Trg p))) in Silent (dataflow_op sg (f (Inl (Inr imp_fron))))
    | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x)))
    | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> (case propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg @ extract_progress nid (edges sg) st) of
-                                              Some conf' \<Rightarrow> Silent (dataflow_op (sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr>) op'))
+                                              Some conf' \<Rightarrow> Silent (dataflow_op (sg\<lparr> pt_tr := conf' \<rparr>) op'))
    | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
    | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
    | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) (choices op))"
@@ -608,7 +608,7 @@ lemma step_dataflow_op_elim:
   | nid p op'' x where "io = Out (nid, p) x" "op' = dataflow_op sg op''" "step (Out (Inr (nid, p)) (Inr x)) op op''"
   | op'' where "io = Tau" "op' = dataflow_op sg op''" "step Tau op op''"
   | nid op'' conf' st where "io = Tau" "conf' = the (propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg @ extract_progress nid (edges sg) st))"
-    "op' = dataflow_op (sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
+    "op' = dataflow_op (sg\<lparr> pt_tr := conf' \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
   | nid op'' imp_fron where "io = Tau" "imp_fron = (\<lambda> p. c_imp (pt_tr sg) (Loc nid (Trg p)))" "op' = dataflow_op sg op''"
     "step (Inp (Inl nid) (Inl (Inr imp_fron))) op op''"
   | "op' = \<oslash>" 
@@ -626,6 +626,111 @@ lemma step_dataflow_op_elim:
     apply fastforce
     done
   done
+
+lemma step_Tau_dataflow_op_Out_Inl_intro[intro]:
+  "step (Out (Inl nid) (Inl (Inl st))) op op' \<Longrightarrow>
+   conf' = the (propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg @ extract_progress nid (edges sg) st)) \<Longrightarrow>
+   step Tau (dataflow_op sg op) (dataflow_op (sg\<lparr> pt_tr := conf' \<rparr>) op')"
+  apply (subst dataflow_op.code)
+  apply simp
+  apply (erule step_choicesE; simp)
+  apply (rule SC)
+  apply (rule cimage_eqI)
+    apply (rule refl)
+   apply simp
+  apply (auto split: sum.splits option.splits)
+  done
+
+lemma step_Tau_dataflow_op_Inp_Inl_intro[intro]:
+  "step (Inp (Inl nid) (Inl (Inr imp_fron))) op op' \<Longrightarrow>
+   imp_fron = (\<lambda> p. c_imp (pt_tr sg) (Loc nid (Trg p))) \<Longrightarrow>
+   step Tau (dataflow_op sg op) (dataflow_op sg op')"
+  apply (subst dataflow_op.code)
+  apply simp
+  apply (erule step_choicesE; simp)
+  apply (rule SC)
+  apply (rule cimage_eqI)
+    apply (rule refl)
+   apply simp
+  apply (auto split: sum.splits option.splits)
+  done
+
+lemma step_Tau_dataflow_op_Tau_intro[intro]:
+  "step Tau op op' \<Longrightarrow>
+   step Tau (dataflow_op sg op) (dataflow_op sg op')"
+  apply (subst dataflow_op.code)
+  apply simp
+  apply (erule step_choicesE; simp)
+  apply (rule SC)
+  apply (rule cimage_eqI)
+    apply (rule refl)
+   apply simp
+  apply (auto split: sum.splits option.splits)
+  done
+
+lemma step_Out_dataflow_op_Out_Inr_intro[intro!]:
+  "step (Out (Inr (nid, p)) (Inr x)) op op' \<Longrightarrow>
+   step (Out (nid, p) x) (dataflow_op sg op) (dataflow_op sg op')"
+  apply (subst dataflow_op.code)
+  apply simp
+  apply (erule step_choicesE; simp)
+  apply (rule SC)
+  apply (rule cimage_eqI)
+    apply (rule refl)
+   apply simp
+  apply (auto split: sum.splits option.splits)
+  done
+
+lemma step_Inp_dataflow_op_Inp_Inr_intro[intro!]:
+  "step (Inp (Inr (nid, p)) (Inr x)) op op' \<Longrightarrow>
+   step (Inp (nid, p) x) (dataflow_op sg op) (dataflow_op sg op')"
+  apply (subst dataflow_op.code)
+  apply simp
+  apply (erule step_choicesE; simp)
+  apply (rule SC)
+  apply (rule cimage_eqI)
+    apply (rule refl)
+   apply simp
+  apply (auto split: sum.splits option.splits)
+  done
+
+fun steps where
+  "steps [] = (=)"
+| "steps (io # ios) = step io OO steps ios"
+
+term "fold (\<lambda> st sg. (case propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg @ extract_progress nid (edges sg) st) of
+                Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf'\<rparr>))" 
+
+lemma
+  "fold (\<lambda> st sg. (case propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg @ extract_progress nid (edges sg) st) of
+                   Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf'\<rparr>)) xs (sg\<lparr>pt_tr := the (propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg))\<rparr>) =
+   sg\<lparr> pt_tr := the (propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg @ concat (map (\<lambda> st. (extract_progress nid (edges sg) st)) xs)))\<rparr>"
+  apply (induct xs arbitrary: sg)
+  apply simp
+  apply auto
+  oops
+
+lemma
+  "steps (map (\<lambda> st. Out (Inl nid) (Inl (Inl st))) xs) op op' \<Longrightarrow>
+   lo_pt sg = [] \<Longrightarrow>
+   conf' = the (propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg @ concat (map (\<lambda> st. (extract_progress nid (edges sg) st)) xs))) \<Longrightarrow>
+   ((step Tau)\<^sup>*\<^sup>*) (dataflow_op sg op) (dataflow_op (sg\<lparr> pt_tr := conf' \<rparr>) op')"
+  apply (induct xs arbitrary: op' conf' sg op op')
+  subgoal for op' conf' sg
+    apply simp
+    
+    
+
+end
+    by auto
+  subgoal for a xs op' conf' sg
+    apply simp
+    apply hypsubst_thin
+    
+    
+    find_theorems steps
+
+
 
 definition "compile_dataflow dt = (let (summary, op) = compile_dataflow_tree dt in
                                     let sg = init_subgraph summary in
@@ -842,6 +947,24 @@ corec input_op where
      LNil \<Rightarrow> \<oslash>
    | LCons (x # xs) lxs \<Rightarrow> Write (input_op (n + the_enat (llength (ltakeWhile ((=) []) inps))) (LCons xs lxs)) 1 (x, n))"
 
+lemma ldropWhile_LConsD:
+  "ldropWhile P lxs = LCons x lxs' \<Longrightarrow>
+   \<not> P x"
+  by (metis lhd_ldropWhile llist.disc(2) llist.sel(1) lnull_ldropWhile)
+
+
+lemma step_input_op_elim:
+  assumes "step io (input_op n inps) op"
+  obtains x xs inps' where "io = Out 1 (x, n)" "ldropWhile ((=) []) inps = LCons (x # xs) inps'" "op = input_op (n + the_enat (llength (ltakeWhile ((=) []) inps))) (LCons xs inps')"
+  using assms apply -
+  apply atomize_elim
+  apply (subst (asm) input_op.code)
+  apply (simp split: llist.splits list.splits)
+  using ldropWhile_LConsD apply fast
+  apply auto
+  done
+
+
 lemma step_input_op_Out_intro[intro]:
   "inps = LCons (x # xs) lxs \<Longrightarrow>
    step (Out 1 (x, n)) (input_op n inps) (input_op n (LCons xs lxs))"
@@ -849,16 +972,16 @@ lemma step_input_op_Out_intro[intro]:
   apply (auto split: llist.splits)
   done
 
-lemma dataflow_extract_progress_from_push:
+lemma dataflow_writes_extract_progress_from_push:
   "dataflow_op sg
      (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p)))
-       (writes (Write op None (Inl (Inl \<lparr>cons = [], inte = [], prod = ps\<rparr>))) (Some 1)
+       (writes (Write op None (Inl (Inl \<lparr>cons = cs, inte = is, prod = ps\<rparr>))) (Some 1)
          xs)) =
-    dataflow_op (sg\<lparr>lo_pt := bulk_benq (extract_progress nid (edges sg) \<lparr>cons = [], inte = [], prod = ps\<rparr>) (lo_pt sg)\<rparr>)
+    dataflow_op (sg\<lparr>lo_pt := bulk_benq (extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr>) (lo_pt sg)\<rparr>)
      (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p)))
        (writes (Write op None (Inl (Inl \<lparr>cons = [], inte = [], prod = []\<rparr>))) (Some 1)
          xs))"
-  apply (induct xs arbitrary: ps)
+  apply (induct xs arbitrary: ps "is" cs)
   subgoal 
     apply simp
     apply (subst (1 2) dataflow_op.code)
@@ -901,8 +1024,8 @@ proof (coinduction arbitrary: inps i sg rule: wbisim_coinduct)
           apply (simp add: comp_def)
           apply (rule box_equals) 
           defer
-          apply (rule dataflow_extract_progress_from_push[symmetric])
-          apply (rule dataflow_extract_progress_from_push[symmetric])
+          apply (rule dataflow_writes_extract_progress_from_push[symmetric])
+          apply (rule dataflow_writes_extract_progress_from_push[symmetric])
             apply (auto simp add: extract_progress_def split: option.splits)
           done
         done
@@ -927,7 +1050,39 @@ proof (coinduction arbitrary: inps i sg rule: wbisim_coinduct)
 next
   case SIM2
   then show ?case
+    apply -
+    apply (elim step_map_op_elim step_input_op_elim conjE; simp; hypsubst_thin)
+    subgoal for io' op'' x xs inps'
+    apply (intro exI conjI)
+    unfolding wstep_def
+     apply simp
+     apply (rule relcomppI)
+      apply (rule relpowp_imp_rtranclp[where n="the_enat (llength (ltakeWhile ((=) []) inps))",
+      of _ _ "(dataflow_op _ (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (input_top (Cap (i + the_enat (llength (ltakeWhile ((=) []) inps))) 1) (LCons (x # xs) inps'))))"])
+      apply simp
 
+    term compower
+
+    find_theorems rtranclp "_ :: _ list"
+
+    find_consts "'e \<Rightarrow> _ list \<Rightarrow> 'e"
+
+    thm relpowp_imp_rtranclp
+
+    find_theorems dataflow_op step
+      
+
+    term compow
+
+    find_theorems compow rtranclp
+
+    thm relcomppI
+
+    term relcompp
+
+    find_consts nat name: Transitive_Closure
+
+    find_theorems comp_op step Tau
 
 end
           apply (induct xs' arbitrary: )
