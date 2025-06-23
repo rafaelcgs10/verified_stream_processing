@@ -625,11 +625,6 @@ proof -
   finally (rtranclp_trans) show ?thesis by blast
 qed
 
-(* TODO move or write proof without this lemma *)
-lemma arg_cong3:
-  \<open>x = x' \<Longrightarrow> y = y' \<Longrightarrow> z = z' \<Longrightarrow> f x y z = f x' y' z'\<close>
-  by simp
-
 lemma progress_after_aeq_op:
   assumes \<open>p \<notin> defaults\<close>
   shows \<open>(step Tau)\<^sup>*\<^sup>*
@@ -794,7 +789,7 @@ proof -
            apply simp_all
       using BULK_BENQ_assoc apply force
       apply (rule arg_cong[of _ _ \<open>map_op projl projr\<close>])
-      apply (rule arg_cong3[of _ _ _ _ _ _ \<open>comp_op Some\<close>])
+      apply (rule cong[OF arg_cong2, of _ _ _ _ _ _ \<open>comp_op Some\<close>])
         apply blast+
       apply (rule arg_cong[of _ _ \<open>map_op reassoc reassoc\<close>])
       apply (rule arg_cong2[of _ _ _ _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. [])\<close>])
@@ -851,13 +846,13 @@ proof -
         by fastforce
            apply simp_all
        apply (rule arg_cong[of _ _ \<open>map_op projl projr\<close>])
-       apply (rule arg_cong3[of _ _ _ _ _ _ \<open>comp_op Some\<close>])
+       apply (rule cong[OF arg_cong2, of _ _ _ _ _ _ \<open>comp_op Some\<close>])
          apply fastforce
         apply (rule arg_cong[of _ _ aeq_op])
       using BULK_BENQ_assoc apply force
        apply simp
       apply (rule arg_cong[of _ _ \<open>map_op projl projr\<close>])
-      apply (rule arg_cong3[of _ _ _ _ _ _ \<open>comp_op Some\<close>])
+      apply (rule cong[OF arg_cong2, of _ _ _ _ _ _ \<open>comp_op Some\<close>])
         apply blast+
       apply (rule arg_cong[of _ _ \<open>map_op reassoc reassoc\<close>])
       apply (rule arg_cong2[of _ _ _ _ \<open>comp_op (\<lambda>_. None) (\<lambda>_. [])\<close>])
