@@ -1,6 +1,7 @@
 theory Lifted_Table_3
 
 imports
+  "table_3/T3A1"
   "table_3/T3A2"
   "table_3/T3A3"
   "table_3/T3A4"
@@ -34,6 +35,44 @@ no_notation dummy_source_operator ("\<exclamdown>")
 no_notation merge_empty_operator ("\<V>")
 no_notation split_empty_operator ("\<Lambda>")
 no_notation wtrace_equiv_operator (infix "\<equiv>\<^sub>t"40)
+
+lemma A1_not_wbisim':
+  \<open>(\<V>' \<parallel> (\<I> :: (1, 1, nat) op)) \<bullet> \<V>' \<approx> map_op assoc id ((\<I> \<parallel> \<V>') \<bullet> \<V>') \<Longrightarrow> False\<close>
+proof -
+  have H1: \<open>(\<V>' \<parallel> (\<I> :: (1, 1, nat) op)) \<bullet> \<V>' \<approx> (\<V> \<parallel> \<I>) \<bullet> \<V>'\<close>
+  proof -
+    have \<open>(\<V>' \<parallel> (\<I> :: (1, 1, nat) op)) \<bullet> \<V>' \<approx> (\<V>' \<parallel> \<I> \<bullet> \<I>) \<bullet> \<V>'\<close>
+      by (simp add: scomp_op_id_id wbisim_pcomp_op_cong wbisim_refl wbisim_scomp_op_cong wbisim_sym)
+    also have \<open>\<dots> \<approx> (\<V> \<parallel> \<I>) \<bullet> (\<I> \<parallel> \<I>) \<bullet> \<V>'\<close>
+      by (metis B5 bisim_wbisim wbisim_refl wbisim_scomp_op_cong wbisim_sym)
+    also have \<open>\<dots> \<approx> (\<V> \<parallel> \<I>) \<bullet> \<I> \<bullet> \<V>'\<close>
+      by (simp add: B6 bisim_wbisim wbisim_refl wbisim_scomp_op_cong)
+    also have \<open>\<dots> \<approx> (\<V> \<parallel> \<I>) \<bullet> (\<I> \<bullet> \<V>')\<close>
+      using B3 bisim_wbisim by blast
+    also have \<open>\<dots> \<approx> (\<V> \<parallel> \<I>) \<bullet> \<V>'\<close>
+      by (simp add: merge'_id_absorb_left wbisim_refl wbisim_scomp_op_cong wbisim_sym)
+    finally show ?thesis.
+  qed
+  have H2: \<open>map_op assoc id (((\<I> :: (1, 1, nat) op) \<parallel> \<V>') \<bullet> \<V>') \<approx> map_op assoc id (((\<I> :: (1, 1, nat) op) \<parallel> \<V>) \<bullet> \<V>')\<close>
+  proof -
+    have \<open>map_op assoc id (((\<I> :: (1, 1, nat) op) \<parallel> \<V>') \<bullet> \<V>') \<approx> map_op assoc id ((\<I> \<bullet> \<I> \<parallel> \<V>') \<bullet> \<V>')\<close>
+      by (metis map_op_out_id_vdash op.map_id scomp_op_id_id wbisim_map_op wbisim_pcomp_op_cong wbisim_scomp_op_cong
+        wbisim_sym)
+    also have \<open>\<dots> \<approx> map_op assoc id ((\<I> \<parallel> \<V>) \<bullet> (\<I> \<parallel> \<I>) \<bullet> \<V>')\<close>
+      by (meson B5 bisim_wbisim wbisim_map_op wbisim_refl wbisim_scomp_op_cong wbisim_sym)
+    also have \<open>\<dots> \<approx> map_op assoc id ((\<I> \<parallel> \<V>) \<bullet> \<I> \<bullet> \<V>')\<close>
+      by (metis B6 bisim_wbisim wbisim_map_op wbisim_refl wbisim_scomp_op_cong)
+    also have \<open>\<dots> \<approx> map_op assoc id ((\<I> \<parallel> \<V>) \<bullet> (\<I> \<bullet> \<V>'))\<close>
+      using B3 bisim_map_op bisim_wbisim by blast
+    also have \<open>\<dots> \<approx> map_op assoc id ((\<I> \<parallel> \<V>) \<bullet> \<V>')\<close>
+      by (simp add: merge'_id_absorb_left wbisim_map_op wbisim_refl wbisim_scomp_op_cong wbisim_sym)
+    finally show ?thesis.
+  qed
+  assume \<open>(\<V>' \<parallel> (\<I> :: (1, 1, nat) op)) \<bullet> \<V>' \<approx> map_op assoc id ((\<I> \<parallel> \<V>') \<bullet> \<V>')\<close>
+  thus ?thesis
+    using H1 H2 A1_not_wbisim
+    by (meson wbisim_sym wbisim_trans)
+qed
 
 lemma A2':
   \<open>\<X> \<bullet> \<V>' \<approx> \<V>'\<close>
@@ -198,6 +237,11 @@ notation dummy_source_operator ("\<exclamdown>")
 notation merge_empty_operator ("\<V>")
 notation split_empty_operator ("\<Lambda>")
 notation wtrace_equiv_operator (infix "\<equiv>\<^sub>t"40)
+
+lemma A1_not_wbisim:
+  \<open>(\<V> \<parallel> (\<I> :: (1, 1, nat) operator)) \<bullet> \<V> \<approx> map_operator assoc id ((\<I> \<parallel> \<V>) \<bullet> \<V>) \<Longrightarrow> False\<close>
+  apply transfer
+  using A1_not_wbisim' by simp
 
 lemma A2:
   \<open>\<X> \<bullet> \<V> \<approx> \<V>\<close>
