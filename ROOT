@@ -46,6 +46,7 @@ session Nondeterministic_Dataflow = Coinductive +
     "table_2/T2A17"
     "table_2/T2A18"
     "table_2/T2A19"
+    "table_3/T3A1"
     "table_3/T3A2"
     "table_3/T3A3"
     "table_3/T3A4"
@@ -68,3 +69,4 @@ session Nondeterministic_Dataflow = Coinductive +
     Lifted_Table_3
     CSet_LList_Impl
     Eval
+    Wstep_Composition_Left_Right

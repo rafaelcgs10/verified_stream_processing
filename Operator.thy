@@ -710,6 +710,23 @@ lemma wstep_trans_base[trans]:
   "step Tau op2 op2' \<Longrightarrow> step (Inp p' x') op2' op2'' \<Longrightarrow> wstep (Inp p' x') op2 op2''"
   unfolding wstep_def by auto
 
+lemma wstep_converse_trans:
+  "step (Out p x) op1 op1' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* op1' op1'' \<Longrightarrow> wstep (Out p x) op1 op1''"
+  "step (Inp p' x') op2 op2' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* op2' op2'' \<Longrightarrow> wstep (Inp p' x') op2 op2''"
+  unfolding wstep_def by auto
+
+lemma wstep_trans':
+  \<open>(step Tau)\<^sup>*\<^sup>* op1 op1' \<Longrightarrow> wstep (Out p x) op1' op1'' \<Longrightarrow> wstep (Out p x) op1 op1''\<close>
+  \<open>(step Tau)\<^sup>*\<^sup>* op2 op2' \<Longrightarrow> wstep (Inp p' x') op2' op2'' \<Longrightarrow> wstep (Inp p' x') op2 op2''\<close>
+  unfolding wstep_def
+  using rtranclp_trans by fastforce+
+
+lemma wstep_converse_trans':
+  \<open>wstep (Out p x) op1 op1' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* op1' op1'' \<Longrightarrow>  wstep (Out p x) op1 op1''\<close>
+  \<open>wstep (Inp p' x') op2 op2' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* op2' op2'' \<Longrightarrow> wstep (Inp p' x') op2 op2''\<close>
+  unfolding wstep_def
+  using rtranclp_trans by fastforce+
+
 lemma step_tau_step_tau_step_io_wstep:
   "step Tau op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step io op'' op''' \<Longrightarrow> wstep io op op'''"
   unfolding wstep_def 
@@ -924,6 +941,26 @@ lemma wstep_map_op[intro!]:
     subgoal
       by (smt (verit, ccfv_SIG) relcompp_apply rtranclp_trans step_star_map_op step_wstep wstep_steps_Tau)
     done
+  done
+
+lemma wstep_Tau_map_op_elim:
+  assumes \<open>(step Tau)\<^sup>*\<^sup>* (map_op f g op) op'\<close>
+  obtains op'' where \<open>(step Tau)\<^sup>*\<^sup>* op op''\<close> \<open>map_op f g op'' = op'\<close>
+  apply atomize_elim
+  using assms
+  apply (rule rtranclp_induct)
+   apply blast
+  by (metis IO.map_disc_iff(3) rtranclp.rtrancl_into_rtrancl step_map_op_inv)
+
+lemma wstep_map_op_elim:
+  assumes \<open>wstep io (map_op f g op) op'\<close>
+  obtains io' op'' where \<open>wstep io' op op''\<close> \<open>map_IO f g id io' = io\<close> \<open>map_op f g op'' = op'\<close>
+  apply atomize_elim
+  using assms
+  unfolding wstep_def
+  apply (cases io)
+    apply (auto elim!: wstep_Tau_map_op_elim step_map_op_elim)
+    apply blast+
   done
 
 lemma wbisim_map_op:

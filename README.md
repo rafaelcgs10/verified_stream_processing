@@ -55,5 +55,6 @@ The organization of this repository is the following:
 ├── Lifted_Table_1.thy: Lifting of table 1
 ├── Lifted_Table_2.thy: Lifting of table 2
 ├── Lifted_Table_3.thy: Lifting of table 3
-└── Eval.thy: Evaluation of traces of some operators
+├── Eval.thy: Evaluation of traces of some operators
+└── Wstep_Composition_Left_Right.thy: Inductive predicates for weak steps of composed operators
 ```
