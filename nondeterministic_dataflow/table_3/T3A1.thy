@@ -2489,20 +2489,17 @@ lemma wstep_Out_Tau1:
   apply (elim exE conjE)
   apply hypsubst_thin
   subgoal for io op' buf' buf\<^sub>1 buf\<^sub>2 op\<^sub>1' op\<^sub>2'
-    apply (subgoal_tac \<open>buf1 p \<noteq> [] \<and>
-       x = BHD p buf1 \<and>
+    apply (subgoal_tac \<open>buf1 p \<noteq> [] \<and> x = BHD p buf1 \<and>
        wstep Tau
         (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum (BTL p buf1) buf2)) (id_op buf3))
             (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))
         (comp_op Some buf' op\<^sub>1' op\<^sub>2') \<or>
-       buf2 p \<noteq> [] \<and>
-       x = BHD p buf2 \<and>
+       buf2 p \<noteq> [] \<and> x = BHD p buf2 \<and>
        wstep Tau
         (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 (BTL p buf2))) (id_op buf3))
             (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))
         (comp_op Some buf' op\<^sub>1' op\<^sub>2') \<or>
-       buf3 p \<noteq> [] \<and>
-       x = BHD p buf3 \<and>
+       buf3 p \<noteq> [] \<and> x = BHD p buf3 \<and>
        wstep Tau
         (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op (BTL p buf3)))
             (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)))
@@ -2513,18 +2510,15 @@ lemma wstep_Out_Tau1:
     apply (cases io; simp)
     subgoal for p'
       apply (cases p'; simp; hypsubst_thin)
-      apply (subgoal_tac \<open>buf1 p \<noteq> [] \<and>
-    x = BHD p buf1 \<and> buf\<^sub>2 (Inl p) \<noteq> [] \<and>
+      apply (subgoal_tac \<open>buf1 p \<noteq> [] \<and> x = BHD p buf1 \<and> buf\<^sub>2 (Inl p) \<noteq> [] \<and> x = BHD (Inl p) buf\<^sub>2 \<and>
         wstep_comp_op_L Some (Tau :: ((('a + 'a) + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO) (BTL (Inl p) buf\<^sub>1) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum (BTL p buf1) buf2)) (id_op buf3))
          op\<^sub>1' \<and>
         wstep_comp_op_R Some (Tau :: ((('a + 'a) + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO) (BTL (Inl p) buf\<^sub>2) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)) op\<^sub>2' \<or>
-    buf2 p \<noteq> [] \<and> buf\<^sub>2 (Inl p) \<noteq> [] \<and>
-    x = BHD p buf2 \<and>
+    buf2 p \<noteq> [] \<and> x = BHD p buf2 \<and> buf\<^sub>2 (Inl p) \<noteq> [] \<and> x = BHD (Inl p) buf\<^sub>2 \<and>
         wstep_comp_op_L Some (Tau :: ((('a + 'a) + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO) (BTL (Inl p) buf\<^sub>1) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 (BTL p buf2))) (id_op buf3))
          op\<^sub>1' \<and>
         wstep_comp_op_R Some (Tau :: ((('a + 'a) + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO) (BTL (Inl p) buf\<^sub>2) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)) op\<^sub>2' \<or>
-    buf3 p \<noteq> [] \<and> buf\<^sub>2 (Inr p) \<noteq> [] \<and>
-    x = BHD p buf3 \<and>
+    buf3 p \<noteq> [] \<and> x = BHD p buf3 \<and> buf\<^sub>2 (Inr p) \<noteq> [] \<and> x = BHD (Inr p) buf\<^sub>2 \<and>
         wstep_comp_op_L Some (Tau :: ((('a + 'a) + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO) (BTL (Inr p) buf\<^sub>1) (comp_op (\<lambda>_. None) (\<lambda>_. []) (merge_op (case_sum buf1 buf2)) (id_op (BTL p buf3)))
          op\<^sub>1' \<and>
         wstep_comp_op_R Some (Tau :: ((('a + 'a) + 'a) + 'a + 'a, ('a + 'a) + 'a, 'b) IO) (BTL (Inr p) buf\<^sub>2) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>)) op\<^sub>2'\<close>)
@@ -2587,7 +2581,7 @@ lemma wstep_Out_Tau1:
           apply simp_all
       subgoal
         apply (drule foo)
-        by presburger
+        by blast
       subgoal for pa xa op' q buf op'' buf'a buf1 buf2 buf3
         apply (elim step_comp_op_elim step_merge_op_elim step_id_op_cases; simp; hypsubst_thin)
         subgoal for p'
@@ -2616,9 +2610,9 @@ lemma wtraced_Out1:
   apply atomize_elim
   using assms
   apply -
-  apply (erule wtraced.cases; simp; hypsubst_thin; simp)
+  apply (frule wtraced.cases; simp; hypsubst_thin; simp)
   apply (erule wstep_Out_Tau1)
-  using assms wtraced_outputs outputs_not_defaults1
+  using wtraced_outputs outputs_not_defaults1
   by (smt (verit, del_insts) VIO.set_intros(2) estep.elims io_of_vio_not_Tau(1) lset_intros(1) wstep_steps_Tau
     wstep_trans'(1,2) wtraced.simps)+
 
@@ -3009,12 +3003,12 @@ lemma wtraced_Out2:
   obtains \<open>p \<notin> defaults\<close> \<open>buf1 p \<noteq> []\<close> \<open>x = BHD p buf1\<close> \<open>wtraced (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BTL p buf1)) (merge_op (case_sum buf2 buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))) lxs\<close>
   | \<open>p \<notin> defaults\<close> \<open>buf2 p \<noteq> []\<close> \<open>x = BHD p buf2\<close> \<open>wtraced (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum (BTL p buf2) buf3))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))) lxs\<close>
   | \<open>p \<notin> defaults\<close> \<open>buf3 p \<noteq> []\<close> \<open>x = BHD p buf3\<close> \<open>wtraced (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op buf1) (merge_op (case_sum buf2 (BTL p buf3)))) (map_op projl projr (comp_op Some (\<lambda>_. []) \<V> \<I>))))) lxs\<close>
- apply atomize_elim
+  apply atomize_elim
   using assms
   apply -
-  apply (erule wtraced.cases; simp; hypsubst_thin; simp)
+  apply (frule wtraced.cases; simp; hypsubst_thin; simp)
   apply (erule wstep_Out_Tau2)
-  using assms wtraced_outputs outputs_not_defaults2
+  using wtraced_outputs outputs_not_defaults2
   by (smt (verit, del_insts) VIO.set_intros(2) estep.elims io_of_vio_not_Tau(1) lset_intros(1) wstep_steps_Tau
     wstep_trans'(1,2) wtraced.simps)+
 
