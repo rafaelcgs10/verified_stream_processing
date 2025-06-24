@@ -568,10 +568,17 @@ abbreviation "show_frontiers impf \<equiv> show_list (show_prod show_loc show_fr
 
 (* Inspired by timely/src/progress/subgraph.rs:453 *)
 (* First migrate all change batches to the worklist, then call propagate_all_locale *)
- fun propagate_pointstamps where
-  "propagate_pointstamps summary conf [] = (let conf' = propagate_all summary conf in trace (STR ''New frontiers: '' + show_frontiers (c_imp (the conf'))) conf')"
-| "propagate_pointstamps summary conf ((l, t, m) # cbs) =
-   propagate_pointstamps summary (trace (STR ''CM ==> '' + show_loc l + STR '', t: '' + show_nat t + STR '', m: '' + print_int m) (take_step summary (CM l t m)) conf) cbs"
+definition "change_multiplicities summary xs conf = fold (\<lambda> (l, t, m) c. take_step summary (CM l t m) c) xs conf"
+(* 
+ fun change_multiplicities where
+  "change_multiplicities summary conf [] = conf"
+| "change_multiplicities summary conf ((l, t, m) # cbs) =
+   change_multiplicities summary (trace (STR ''CM ==> '' + show_loc l + STR '', t: '' + show_nat t + STR '', m: '' + print_int m) (take_step summary (CM l t m)) conf) cbs"
+ *)
+
+definition "propagate_pointstamps summary conf cbs = (
+  let conf' = change_multiplicities summary cbs conf in
+  let conf'' = propagate_all summary conf' in trace (STR ''New frontiers: '' + show_frontiers (c_imp (the conf''))) conf'')"
 
 abbreviation "init_subgraph summary \<equiv>
   trace (STR ''Initializing subgraph'') \<lparr> pt_tr = the (propagate_pointstamps summary empty_conf (concat (map (\<lambda> nid. map (\<lambda> p. (Loc nid (Src p), 0, 1)) enum_class.enum) enum_class.enum))),
@@ -592,8 +599,8 @@ find_consts "_ multiset" name: fol
 definition extract_progress where
   "extract_progress nid edg st =
     map (\<lambda> (p, t, m). (Loc nid (Trg p), t, -m)) (cons st) @ 
-    concat (map (\<lambda> (p, t, m). map (\<lambda> l. (l, t, m)) (edg (Loc nid (Src p)))) (prod st)) @
-    map (\<lambda> (p, t, m). (Loc nid (Src p), t, m)) (inte st)"
+    map (\<lambda> (p, t, m). (Loc nid (Src p), t, m)) (inte st) @
+    concat (map (\<lambda> (p, t, m). map (\<lambda> l. (l, t, m)) (edg (Loc nid (Src p)))) (prod st))"
 
 (* Inspired by timely/src/dataflow/operators/capability.rs:62 *)
 datatype ('p, 't) capability = Cap (time: 't) (out: 'p)
@@ -619,10 +626,10 @@ lemma propagate_all_terminates[simp]:
   "propagate_all a b \<noteq> None"
   sorry
 
-lemma propagate_pointstamps_terminates[simp]:
+lemma change_multiplicities_terminates[simp]:
   "propagate_pointstamps summary conf cbs \<noteq> None"
   apply (induct cbs arbitrary: conf) 
-  apply auto
+  apply (auto simp add: propagate_pointstamps_def)
   done
 
 lemma step_dataflow_op_elim:
@@ -981,13 +988,11 @@ lemma step_input_op_Out_intro[intro]:
   done
 
 lemma dataflow_writes_extract_progress_from_push:
-  "f = (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) \<Longrightarrow>
-   g = (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) \<Longrightarrow>
-   dataflow_op sg
-     (map_op f g
+  "dataflow_op sg
+     (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, (p :: 'a)))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p)))
        (writes (Write op None (Inl (Inl \<lparr>cons = cs, inte = is, prod = ps\<rparr>))) (Some p) xs)) =
     dataflow_op (sg\<lparr>lo_pt := bulk_benq (extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr>) (lo_pt sg)\<rparr>)
-     (map_op f g
+     (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p)))
        (writes (Write op None (Inl (Inl \<lparr>cons = [], inte = [], prod = []\<rparr>))) (Some (p :: 'a)) xs))"
   apply (induct xs arbitrary: ps "is" cs)
   subgoal 
@@ -1007,16 +1012,6 @@ lemma dataflow_writes_extract_progress_from_push:
 lemma arg_cong3:
   "a = b \<Longrightarrow> c = d \<Longrightarrow> e = g \<Longrightarrow> f a c e = f b d g"
   by fast
-
-thm cong[OF cong[OF arg_cong]]
-
-find_consts "_ \<Rightarrow> _ zmultiset"
-
-term update_zmultiset
-
-fun group_by where
-  "group_by [] = {#}\<^sub>z"
-| "group_by ((l, t, m) # xs) = update_zmultiset (group_by xs) (l, t) m"
 
 lemma update_zmultiset_simps[simp]:
   "update_zmultiset A x 0 = A"
@@ -1062,31 +1057,32 @@ lemma update_zmultiset_replicate:
   apply (metis add_uminus_conv_diff int_Suc is_num_normalize(8) nat_int update_zmultiset_simps_more(2))
   done
 
+lemma update_zmultiset_comm:
+  "update_zmultiset (update_zmultiset A x m) y n = update_zmultiset (update_zmultiset A y n) x m"
+    apply (cases m; cases n)
+   apply (clarsimp simp add: update_zmultiset_replicate)+
+  apply (simp add: add.commute)
+  done
 
-lemma
-  "group_by (xs @ ys) = group_by (ys @ xs)"
- apply (induct xs arbitrary: ys rule: rev_induct)
-  apply simp_all
-  subgoal for x xs ys
-    apply (cases x; auto simp add: update_zmultiset_replicate split: if_splits; hypsubst_thin)
+lemma update_zmultiset_plus_pos:
+  "A + update_zmultiset B x (int m) = B + update_zmultiset A x (int m)"
+  by simp
+lemma update_zmultiset_plus_neg:
+  "A + update_zmultiset B x (- (int m)) = (A + B) - update_zmultiset {#}\<^sub>z x (int m)"
+  apply simp
+  using add_diff_eq apply blast
+  done
 
-
-    oops
-     
-
-
-lemma
-  "group_by xs + group_by ys = group_by (xs @ ys)"
-  apply (induct xs arbitrary: ys)
-   apply simp_all
-  subgoal for x xs ys
-    apply (cases x; simp; hypsubst_thin)
-
-
-    find_theorems update_zmultiset
-  
-
-end
+lemma update_zmultiset_plus[simp]:
+  "update_zmultiset (update_zmultiset A t n) t m = update_zmultiset A t (n + m)"
+  apply transfer
+  apply (clarsimp simp add:  nat_add_distrib replicate_mset_plus equiv_zmset_def split: if_splits)
+  subgoal by (metis ab_group_add_class.ab_diff_conv_add_uminus diff_add_cancel less_imp_le nat_add_distrib neg_0_le_iff_le not_le replicate_mset_plus)
+  subgoal by (smt (verit, del_insts) nat_add_distrib replicate_mset_plus)
+  subgoal by (smt (verit, ccfv_threshold) add.commute add.left_commute nat_add_distrib replicate_mset_plus) 
+  subgoal by (smt (verit, ccfv_threshold) nat_add_distrib replicate_mset_plus)
+  subgoal by (smt (verit, best) nat_add_distrib replicate_mset_plus) 
+  done
 
 lemma dataflow_op_simps[simp]:
   "\<not> is_Read (dataflow_op sg op)"
@@ -1108,9 +1104,95 @@ lemma rel_set_reflI:
   apply auto
   done
 
-lemma
-  "group_by (lo_pt (sg :: ('a :: {enum,zero,linorder}, 'b :: {enum,zero,linorder}, nat) subgraph)) = group_by (lo_pt (sg' :: ('a :: {enum,zero,linorder}, 'b :: {enum,zero,linorder}, nat) subgraph)) \<Longrightarrow>
+lemma change_multiplicities_append:
+  "change_multiplicities su (xs @ ys) = (\<lambda> c. change_multiplicities su ys (change_multiplicities su xs c))"
+  unfolding change_multiplicities_def 
+  apply (rule ext)
+  apply simp
+  done
+
+lemma change_multiplicities_append_comp:
+  "change_multiplicities su (xs @ ys) = change_multiplicities su ys o change_multiplicities su xs"
+  unfolding change_multiplicities_def
+  apply simp
+  done
+
+lemma take_step_comm:
+  "(take_step su (CM l2 t2 m2) \<circ>\<circ>\<circ> take_step) su (CM l1 t1 m1) = (take_step su (CM l1 t1 m1) \<circ>\<circ>\<circ> take_step) su (CM l2 t2 m2)"
+  apply (rule ext)
+  apply (auto simp add: fun_upd_twist update_zmultiset_comm)
+  done
+
+lemma take_step_plus[simp]:
+  "take_step su (CM l t m) (take_step su (CM l t n) c) = take_step su (CM l t (m + n)) c"
+  by (cases c; auto simp add: add.commute)
+
+lemma change_multiplicitie_rev[simp]:
+  "change_multiplicities su (rev xs) c = change_multiplicities su xs c"
+  unfolding change_multiplicities_def
+  apply (subst fold_rev)
+  apply (clarsimp simp add: take_step_comm)+
+  done
+
+lemma change_multiplicities_comm:
+  "change_multiplicities su (xs @ ys) c = change_multiplicities su (ys @ xs) c"
+  unfolding change_multiplicities_def
+  by (metis (mono_tags, lifting) change_multiplicitie_rev change_multiplicities_append change_multiplicities_def rev_append)
+
+lemma change_multiplicities_simps[simp]:
+  "change_multiplicities su [] c = c"
+  "change_multiplicities su ((l, t, m) # xs) c = change_multiplicities su xs (take_step summary (CM l t m) c)"
+  unfolding change_multiplicities_def by simp+
+
+lemma change_multiplicities_simp_alt:
+  "change_multiplicities su ((l, t, m) # xs) c = take_step su (CM l t m) (change_multiplicities su xs c)"
+proof -
+  have "change_multiplicities su ((l, t, m) # xs) c = change_multiplicities su (rev ((l, t, m) # xs)) c" using change_multiplicitie_rev by metis
+  also have "\<dots> = take_step su (CM l t m) (change_multiplicities su (rev xs) c)" by (simp add: change_multiplicities_def foldr_conv_fold)
+  ultimately show ?thesis by (metis change_multiplicitie_rev)
+qed
+
+lemma change_multiplicities_same_pointstamps_aux:
+  "(\<forall> x \<in> set xs. \<forall> y \<in> set xs. fst x = fst y \<and> (fst o snd) x = (fst o snd) y) \<Longrightarrow>
+   change_multiplicities su xs c = fold (\<lambda> m c. take_step su (CM ((fst o hd) xs) ((fst o snd o hd) xs) m) c) (map (snd o snd) xs) c"
+  unfolding change_multiplicities_def
+  apply (induct xs arbitrary: c)
+   apply simp
+  subgoal premises prems for a xs c
+    using prems(2-) apply -
+    apply (cases a; clarsimp)
+    subgoal using prems(1) by (smt (verit) List.fold_cong fold_map fun_comp_eq_conv list.sel(1) list.set_cases list.set_intros(1))
+    done
+  done
+
+lemma change_multiplicities_same_pointstamps:
+  "(\<forall> x \<in> set xs. \<forall> y \<in> set xs. fst x = l \<and> (fst o snd) x = t) \<Longrightarrow>
+   m = sum_list (map (snd o snd) xs) \<Longrightarrow>
+   change_multiplicities su xs c = take_step su (CM l t m) c"
+  apply (induct xs arbitrary: c m)
+   apply simp
+  subgoal premises prems for x xs c m
+    using prems(2-) apply -
+    apply hypsubst_thin
+    apply (cases x)
+    subgoal for l t m
+      apply (simp only: change_multiplicities_simp_alt)
+      apply (subst prems(1))
+        apply force
+       apply (rule refl)
+      apply clarsimp
+      apply (intro conjI impI)
+      subgoal by (metis (no_types) group_cancel.sub1 uminus_add_add_uminus update_zmultiset_comm update_zmultiset_plus)
+      subgoal
+        by blast 
+      done
+    done
+  done
+    
+lemma dataflow_op_change_multiplicities:
+  "change_multiplicities (summ sg) (lo_pt sg) (pt_tr sg) = change_multiplicities (summ sg') (lo_pt sg') (pt_tr sg') \<Longrightarrow>
    summ sg = summ sg' \<Longrightarrow>
+   pt_tr sg = pt_tr sg' \<Longrightarrow>
    edges sg = edges sg' \<Longrightarrow>
    dataflow_op sg op = dataflow_op sg' op"
   apply (coinduction arbitrary: sg sg' op rule: op.coinduct_upto)
@@ -1131,39 +1213,33 @@ lemma
             apply (rule refl)+
            apply simp_all
         done
-      subgoal sorry
-      done
       subgoal
-        apply (rule op.cong_Read)
-         apply simp_all
-        apply (smt (verit, ccfv_threshold) op.cong_base rel_funI)
+        unfolding propagate_pointstamps_def Let_def
+        apply simp
         done
+      done
+    subgoal
+      by (force intro: op.cong_Read op.cong_base)
     subgoal
         apply (rule op.cong_Silent)
       apply (rule op.cong_base)
       apply (intro conjI exI)
-            apply (rule refl)+
-        apply simp_all
-      
+           apply (rule refl)+
+      apply (simp_all add: change_multiplicities_append)
+      done
+    subgoal
+      by (simp add: op.cong_intros(2))
+   subgoal
+     by (simp add: op.cong_intros(2))
+   subgoal
+     by (simp add: op.cong_intros(2))
+   subgoal
+     by (force intro: op.cong_Write op.cong_base)
+    subgoal
+      by (force intro: op.cong_Silent op.cong_base)
+    done
+  done
 
-
-
-      thm op.cong_Silent
-
-      find_theorems name: cong_Silent
-      find_theorems op.v1.congclp
-
-
-end
-    thm fun.rel_map
-    term "_ :: fset"
-    find_theorems "rel_set _ ?A ?A" 
-
-end
-qed
-  
-
-end
 
 lemma
   "dataflow_op sg (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (input_top (Cap i (1 :: 1)) inps)) \<approx>
@@ -1194,10 +1270,20 @@ proof (coinduction arbitrary: inps i sg rule: wbisim_coinduct)
           apply (rule box_equals) 
             defer
             apply (rule dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1", simplified])
-          defer
-          defer
           apply (rule dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1", simplified])
-          apply (auto simp add: extract_progress_def split: option.splits)
+          apply (clarsimp simp add: extract_progress_def split: option.splits)
+          apply (rule dataflow_op_change_multiplicities)
+             apply simp_all
+
+          using 
+
+end
+      apply (simp add: change_multiplicities_append)
+          apply (rule arg_cong3[where f=change_multiplicities])
+          apply simp_all
+
+
+end
           done
         done
       done
