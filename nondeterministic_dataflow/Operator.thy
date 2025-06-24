@@ -717,6 +717,18 @@ lemma wstep_converse_trans:
   "step (Inp p' x') op2 op2' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* op2' op2'' \<Longrightarrow> wstep (Inp p' x') op2 op2''"
   unfolding wstep_def by auto
 
+lemma wstep_trans':
+  \<open>(step Tau)\<^sup>*\<^sup>* op1 op1' \<Longrightarrow> wstep (Out p x) op1' op1'' \<Longrightarrow> wstep (Out p x) op1 op1''\<close>
+  \<open>(step Tau)\<^sup>*\<^sup>* op2 op2' \<Longrightarrow> wstep (Inp p' x') op2' op2'' \<Longrightarrow> wstep (Inp p' x') op2 op2''\<close>
+  unfolding wstep_def
+  using rtranclp_trans by fastforce+
+
+lemma wstep_converse_trans':
+  \<open>wstep (Out p x) op1 op1' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* op1' op1'' \<Longrightarrow>  wstep (Out p x) op1 op1''\<close>
+  \<open>wstep (Inp p' x') op2 op2' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* op2' op2'' \<Longrightarrow> wstep (Inp p' x') op2 op2''\<close>
+  unfolding wstep_def
+  using rtranclp_trans by fastforce+
+
 lemma step_tau_step_tau_step_io_wstep:
   "step Tau op op' \<Longrightarrow> step Tau op' op'' \<Longrightarrow> step io op'' op''' \<Longrightarrow> wstep io op op'''"
   unfolding wstep_def 
