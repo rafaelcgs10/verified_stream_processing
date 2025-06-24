@@ -28,9 +28,9 @@ section\<open>Buffer infrastrcuture\<close>
 
 type_alias buf = list
 
-abbreviation "bhd \<equiv> hd"
-abbreviation "btl \<equiv> tl"
-abbreviation "benq x xs \<equiv> xs @ [x]"
+abbreviation (input) "bhd \<equiv> hd"
+abbreviation (input) "btl \<equiv> tl"
+abbreviation (input) "benq x xs \<equiv> xs @ [x]"
 
 definition BHD :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> 'd" where "BHD p buf = bhd (buf p)"
 abbreviation (input) BUPD where "BUPD f p buf \<equiv> buf(p := f (buf p))"
@@ -38,7 +38,7 @@ definition BTL :: "'a \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a 
 definition BENQ :: "'a \<Rightarrow> 'd \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BENQ p x buf = BUPD (benq x) p buf"
 abbreviation BENQ_TL :: "'a \<Rightarrow> 'd \<Rightarrow> ('a \<Rightarrow> 'd buf) \<Rightarrow> ('a \<Rightarrow> 'd buf)" where "BENQ_TL p x buf \<equiv> BUPD (btl o benq x) p buf"
 
-abbreviation "bulk_benq xs ys \<equiv> ys @ xs"
+abbreviation (input) bulk_benq where "bulk_benq xs ys \<equiv> ys @ xs"
 
 definition BULK_BENQ (infixr ">>" 65) where "BULK_BENQ buf1 buf2 = (\<lambda> p. bulk_benq (buf1 p) (buf2 p))"
 
