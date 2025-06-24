@@ -1242,7 +1242,8 @@ lemma dataflow_op_change_multiplicities:
 
 
 lemma
-  "dataflow_op sg (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (input_top (Cap i (1 :: 1)) inps)) \<approx>
+  "edges sg = (\<lambda> _. []) \<Longrightarrow>
+   dataflow_op sg (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (input_top (Cap i (1 :: 1)) inps)) \<approx>
    map_op (\<lambda> p. (nid, p)) (\<lambda> p. (nid, p)) (input_op i inps)"
 proof (coinduction arbitrary: inps i sg rule: wbisim_coinduct)
   case SIM1
@@ -1262,9 +1263,10 @@ proof (coinduction arbitrary: inps i sg rule: wbisim_coinduct)
           apply (rule wbcr_base)
           apply (rule exI)
           apply (rule exI)
-          apply (intro conjI[rotated])
-           apply (rule refl)
           apply (rule exI[of _ "sg\<lparr> lo_pt := (lo_pt sg) @ extract_progress nid (edges sg) \<lparr>cons = [], inte = [], prod = [(1, i, 1)]\<rparr> \<rparr>"])
+          apply (intro conjI[rotated])
+          apply simp
+           apply (rule refl)
           apply (subst (2) input_top.code)
           apply (simp add: comp_def)
           apply (rule box_equals) 
@@ -1272,18 +1274,6 @@ proof (coinduction arbitrary: inps i sg rule: wbisim_coinduct)
             apply (rule dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1", simplified])
           apply (rule dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1", simplified])
           apply (clarsimp simp add: extract_progress_def split: option.splits)
-          apply (rule dataflow_op_change_multiplicities)
-             apply simp_all
-
-          using 
-
-end
-      apply (simp add: change_multiplicities_append)
-          apply (rule arg_cong3[where f=change_multiplicities])
-          apply simp_all
-
-
-end
           done
         done
       done
@@ -1293,8 +1283,10 @@ end
        apply blast
           apply (rule wbcr_base)
           apply (rule exI)
+      apply (rule exI)
           apply (rule exI)
-          apply (intro conjI[rotated])
+      apply (intro conjI[rotated])
+      apply simp
            apply (rule refl)
       apply (subst input_top.code)
       apply auto
