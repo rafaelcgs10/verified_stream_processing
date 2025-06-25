@@ -1,6 +1,7 @@
 # Nondeterministic Asynchronous Dataflow in Isabelle/HOL
 This is the artifact accompanying the paper:
 Nondeterministic Asynchronous Dataflow in Isabelle/HOL
+Authors: Rafael Castro Gonçalves Silva, Laouen Fernet, and Dmitriy Traytel 
 
 ### How To Run?
 It works with Isabelle 2025, which can be downloaded here:
