@@ -1376,31 +1376,38 @@ next
       apply simp
      apply (rule relcomppI[rotated])
      apply (rule relcomppI[rotated])
-       apply (rule rtranclp.intros(1))
+      defer
         apply (rule step_Out_dataflow_op_Out_Inr_intro)
-        apply (rule step_map_op)
+        apply (rule step_map_op[where f="case_option (Inl nid) (\<lambda>p. Inr (nid, 1))" and g="case_option (Inl nid) (\<lambda>p. Inr (nid, 1))"])
          apply simp_all
          apply (rule step_input_top_Out_Some_intro[where c="Cap (i + the_enat (llength (ltakeWhile ((=) []) inps))) 1" and xs="x # xs"])
            apply assumption
-         apply (rule refl)+
-      defer
+          apply (rule refl)+
+      apply simp
       apply (rule relpowp_imp_rtranclp) 
       apply (rule steps_Tau_dataflow_op_Out_Inl_intro[where nid=nid and sg=sg and xs="map (\<lambda> t. \<lparr> cons = [], inte = [(1, t, -1), (1, Suc t, 1)], prod = [] \<rparr>) ([i..< i + (the_enat (llength (ltakeWhile ((=) []) inps)))])" ])
-          defer
-         apply (rule refl)+
-       apply (intro conjI wbcr_base)
-      apply (rule exI[of _ "LCons xs inps'"])
-      apply (rule exI[of _ "i + the_enat (llength (ltakeWhile ((=) []) inps))"])
-       apply (rule exI[of _ "sg\<lparr> lo_pt := (lo_pt sg) @ extract_progress nid (edges sg) \<lparr>cons = [], inte = concat (map (\<lambda> t. [(1, t, -1), (1, Suc t, 1)]) [i..< i + (the_enat (llength (ltakeWhile ((=) []) inps)))]), prod = [(1, i, 1)]\<rparr> \<rparr>"])
-      apply simp_all
-        prefer 2
-        apply (rule steps_map_op)
+         apply (rule steps_map_op)
+      apply simp
            apply (rule ldropWhile_steps_input_top[where  c="Cap i 1", simplified])
       apply (meson ldropWhile_LCons_lfinite_ltakeWhile)
            apply simp
       apply simp
          apply (rule refl)+
-       apply simp_all
+       apply (intro conjI wbcr_base)
+      apply (rule exI[of _ "LCons xs inps'"])
+      apply (rule exI[of _ "i + the_enat (llength (ltakeWhile ((=) []) inps))"])
+       apply (rule exI[of _ "sg\<lparr> lo_pt := (lo_pt sg) @ extract_progress nid (edges sg) \<lparr>cons = [], inte = concat (map (\<lambda> t. [(1, t, -1), (1, Suc t, 1)]) [i..< i + (the_enat (llength (ltakeWhile ((=) []) inps)))]), prod = [(1, i, 1)]\<rparr> \<rparr>"])
+      apply (intro conjI)
+         apply (rule refl)+
+      apply simp
+      apply (clarsimp simp add: extract_progress_def split: option.splits)
+      apply (subst dataflow_writes_extract_progress_from_push[where p="1 :: 1", simplified])
+       apply (rule refl)
+      apply (clarsimp simp add: extract_progress_def split: option.splits)
+
+      thm input_top.code[where inps="LCons xs inps'", simplified]
+
+end
       apply (clarsimp simp add: split: option.splits)
             apply (rule box_equals) 
             defer
