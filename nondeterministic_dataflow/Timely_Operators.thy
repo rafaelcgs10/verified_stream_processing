@@ -837,10 +837,11 @@ lemma ldropWhile_LCons_lfinite_ltakeWhile:
   "ldropWhile ((=) []) inps = LCons (x # xs) inps' \<Longrightarrow> lfinite (ltakeWhile ((=) []) inps)"
   by (metis ldropWhile_eq_LNil_iff lfinite_ltakeWhile llist.simps(2))
 
-lemma
+lemma ldropWhile_steps_input_top:
   "lfinite (ltakeWhile ((=) []) inps) \<Longrightarrow>
    ldropWhile ((=) []) inps = LCons (x # xs) inps' \<Longrightarrow>
-   steps (map (\<lambda> t. Out None (Inl (Inl \<lparr> cons = [], inte = [(out c, t, -1), (out c, Suc t, 1)], prod = []\<rparr>))) [time c..<time c + the_enat (llength (ltakeWhile ((=) []) inps))]) (input_top c inps) (input_top (Cap (time c + the_enat (llength (ltakeWhile ((=) []) inps))) (out c)) (LCons (x # xs) inps'))"
+   steps (map (\<lambda> t. Out None (Inl (Inl \<lparr> cons = [], inte = [(out c, t, -1), (out c, Suc t, 1)], prod = []\<rparr>))) [time c..<time c + the_enat (llength (ltakeWhile ((=) []) inps))])
+  (input_top c inps) (input_top (Cap (time c + the_enat (llength (ltakeWhile ((=) []) inps))) (out c)) (LCons (x # xs) inps'))"
   apply (induct "ltakeWhile ((=) []) inps"  arbitrary: c inps rule: lfinite_induct)
   subgoal for inps c
     apply (cases "ltakeWhile ((=) []) inps"; simp)
@@ -864,43 +865,14 @@ lemma
         apply (metis dataflow_topology_from_tree.le_plus(1) impossible_Cons le_neq_implies_less length_list_of_conv_the_enat lfinite.simps list_of_LCons llength_LCons nat_add_left_cancel_le)
         done
       subgoal
-       apply (subst (2) the_enat_eSuc)
+       apply (subst (1 2) the_enat_eSuc)
         using llength_eq_infty_conv_lfinite apply blast
         using prems(3)[where c="Cap (time c + 1) (out c)" and inps=lxs] apply -
         apply (simp split: if_splits)
-        apply (erule relcompp.cases)
-
-        find_theorems relcompp name: cas
-
-          apply (rule relcompp)
-
-
-
-
-end
-       apply auto
-        using prems(3)[where c="Cap (time c + 1) (out c)" and inps=lxs] apply -
-        apply (simp split: if_splits)
-
-
-      find_theorems "map _ _ = _ # _"
-
-
-end
-    apply (cases inps; simp split: if_splits; hypsubst)
-    subgoal for z lxs
-      using prems(3)[of lxs "Cap (time c + 1) (out c)"] apply -
-      apply simp_all
-      apply (rule steps_intro[where xs="map (\<lambda>t. Out None (Inl (Inl \<lparr>cons = [], inte = [(out c, t, - 1), (out c, Suc t, 1)], prod = []\<rparr>))) [Suc (time c)..<the_enat (llength (ltakeWhile ((=) []) (ltl lxs)))]"])
-        apply (rule step_input_top_Out_None_intro)
-        apply (rule refl)
-       apply auto
-      defer
-      sledgehammer
-
-  find_theorems steps
-
-end
+        done
+      done
+    done
+  done
 
 abbreviation "ex1 \<equiv> Logic (input_top (Cap 0 (1 :: 1)) (LCons [Suc 0, 3] (LCons [9] LNil))) :: (2, 1, (1, _) shared_state + 'c, nat \<times> _) dataflow_tree"
 
@@ -1073,11 +1045,12 @@ lemma step_input_op_Out_intro[intro]:
   done
 
 lemma dataflow_writes_extract_progress_from_push:
-  "dataflow_op sg
-     (map_op f (case_option (Inl nid) (\<lambda>p. Inr (nid, p)))
+  "g = (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) \<Longrightarrow>
+   dataflow_op sg
+     (map_op f g
        (writes (Write op None (Inl (Inl \<lparr>cons = cs, inte = is, prod = ps\<rparr>))) (Some p) xs)) =
     dataflow_op (sg\<lparr>lo_pt := (lo_pt sg) @ extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr> \<rparr>)
-     (map_op f (case_option (Inl nid) (\<lambda>p. Inr (nid, p)))
+     (map_op f g
        (writes (Write op None (Inl (Inl \<lparr>cons = [], inte = [], prod = []\<rparr>))) (Some p) xs))"
   apply (induct xs arbitrary: ps "is" cs)
   subgoal 
@@ -1353,12 +1326,23 @@ proof (coinduction arbitrary: inps i sg rule: wbisim_coinduct)
           apply simp
            apply (rule refl)
           apply (subst (2) input_top.code)
-          apply (simp add: comp_def)
-          apply (rule box_equals) 
+          apply (simp add: comp_def split: if_splits)
+          apply (cases xs')
+          subgoal
+            apply simp
+               apply (subst (1 2) dataflow_op.code)
+            apply (auto simp add: extract_progress_def split: if_splits option.splits)
+            done
+          subgoal
+            apply simp
+            apply (rule box_equals) 
             defer
             apply (rule dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1", simplified])
-          apply (rule dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1", simplified])
+            apply (rule refl)
+             apply (rule dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1", simplified])
+            apply (rule refl)
           apply (clarsimp simp add: extract_progress_def split: option.splits)
+            done
           done
         done
       done
@@ -1401,15 +1385,43 @@ next
          apply (rule refl)+
       defer
       apply (rule relpowp_imp_rtranclp) 
-      apply (rule steps_Tau_dataflow_op_Out_Inl_intro[where nid=nid and sg=sg and xs="map (\<lambda> t. \<lparr> cons = [], inte = [(1, t, -1), (1, Suc t, 1)], prod = [] \<rparr>) ([i..< (the_enat (llength (ltakeWhile ((=) []) inps)))])" ])
+      apply (rule steps_Tau_dataflow_op_Out_Inl_intro[where nid=nid and sg=sg and xs="map (\<lambda> t. \<lparr> cons = [], inte = [(1, t, -1), (1, Suc t, 1)], prod = [] \<rparr>) ([i..< i + (the_enat (llength (ltakeWhile ((=) []) inps)))])" ])
           defer
          apply (rule refl)+
        apply (intro conjI wbcr_base)
       apply (rule exI[of _ "LCons xs inps'"])
       apply (rule exI[of _ "i + the_enat (llength (ltakeWhile ((=) []) inps))"])
-       apply (rule exI[of _ "sg\<lparr> lo_pt := (lo_pt sg) @ extract_progress nid (edges sg) \<lparr>cons = [], inte = concat (map (\<lambda> t. [(1, t, -1), (1, Suc t, 1)]) [i..< (the_enat (llength (ltakeWhile ((=) []) inps)))]), prod = [(1, i, 1)]\<rparr> \<rparr>"])
-      apply (subst (2) input_top.code)
+       apply (rule exI[of _ "sg\<lparr> lo_pt := (lo_pt sg) @ extract_progress nid (edges sg) \<lparr>cons = [], inte = concat (map (\<lambda> t. [(1, t, -1), (1, Suc t, 1)]) [i..< i + (the_enat (llength (ltakeWhile ((=) []) inps)))]), prod = [(1, i, 1)]\<rparr> \<rparr>"])
+      apply simp_all
+        prefer 2
+        apply (rule steps_map_op)
+           apply (rule ldropWhile_steps_input_top[where  c="Cap i 1", simplified])
+      apply (meson ldropWhile_LCons_lfinite_ltakeWhile)
+           apply simp
+      apply simp
+         apply (rule refl)+
+       apply simp_all
+      apply (clarsimp simp add: split: option.splits)
+            apply (rule box_equals) 
+            defer
+        apply (rule dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1", simplified])
+        apply (rule refl)+
+      apply clarsimp
+
+end
+      apply (rule refl)
+
+          apply (clarsimp simp add: extract_progress_def split: option.splits)
+            
+
+      using dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1", simplified]
+
+end
+        apply (subst (2) input_top.code)
         apply (simp add: comp_def)
+      apply (cases xs)
+      subgoal
+        apply simp
         apply (rule box_equals) 
           defer
           apply (rule dataflow_writes_extract_progress_from_push[symmetric, where f="case_option (Inl nid) (\<lambda>p. Inr (nid, 1))"])
@@ -1427,6 +1439,8 @@ next
       apply (simp add: comp_def)
       apply (rule steps_map_op)
          apply simp_all
+
+
 
       find_theorems steps 
 end
