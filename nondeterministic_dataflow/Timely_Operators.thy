@@ -1066,6 +1066,16 @@ lemma dataflow_writes_extract_progress_from_push:
     done
   done
 
+lemma dataflow_extract_progress_from_push:
+  "dataflow_op sg
+     ((Write op (Inl nid) (Inl (Inl \<lparr>cons = cs, inte = is, prod = ps\<rparr>)))) =
+    dataflow_op (sg\<lparr>lo_pt := (lo_pt sg) @ extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr> \<rparr>)
+     ((Write op (Inl nid) (Inl (Inl \<lparr>cons = [], inte = [], prod = []\<rparr>))))"
+  apply (subst (1 2) dataflow_op.code)
+  apply (auto simp add: extract_progress_def split: if_splits option.splits)
+  done
+
+
 (* FIXME: move me *)
 lemma arg_cong3:
   "a = b \<Longrightarrow> c = d \<Longrightarrow> e = g \<Longrightarrow> f a c e = f b d g"
@@ -1398,22 +1408,51 @@ next
       apply (rule exI[of _ "i + the_enat (llength (ltakeWhile ((=) []) inps))"])
        apply (rule exI[of _ "sg\<lparr> lo_pt := (lo_pt sg) @ extract_progress nid (edges sg) \<lparr>cons = [], inte = concat (map (\<lambda> t. [(1, t, -1), (1, Suc t, 1)]) [i..< i + (the_enat (llength (ltakeWhile ((=) []) inps)))]), prod = [(1, i, 1)]\<rparr> \<rparr>"])
       apply (intro conjI)
-         apply (rule refl)+
       apply simp
       apply (clarsimp simp add: extract_progress_def split: option.splits)
       apply (subst dataflow_writes_extract_progress_from_push[where p="1 :: 1", simplified])
        apply (rule refl)
-      apply (clarsimp simp add: extract_progress_def split: option.splits)
+        apply (clarsimp simp add: extract_progress_def split: option.splits)
+        apply simp_all
+      apply (cases xs)
+      subgoal
+        apply (subst (2) input_top.code)
+        apply (simp add: comp_def)
+        apply (subst (1 2) dataflow_extract_progress_from_push[simplified])
+        apply (clarsimp simp add: extract_progress_def split: option.splits)
+        apply (rule arg_cong2[where f=dataflow_op])
+         apply simp_all
+        apply (cases sg; simp)
+      apply (simp add: map_concat)
+       apply (rule arg_cong[where f=concat])
+      apply (rule map_cong)
+        apply simp_all
+        done
+      subgoal
+        apply (subst (2) input_top.code)
+        apply (simp add: comp_def)
+        apply (subst (1 2) dataflow_writes_extract_progress_from_push[simplified])
+          apply (clarsimp simp add: extract_progress_def split: option.splits)
+          apply (rule refl)+
+        apply force
+        apply (rule arg_cong2[where f=dataflow_op])
+         apply simp_all
+        apply (cases sg; simp)
+      apply (simp add: map_concat extract_progress_def)
+    apply (simp add: map_concat)
+       apply (rule arg_cong[where f=concat])
+      apply (rule map_cong)
+         apply simp_all
+        done
+      done
+    done
+qed
 
-      thm input_top.code[where inps="LCons xs inps'", simplified]
+        find_theorems concat map
 
-end
-      apply (clarsimp simp add: split: option.splits)
-            apply (rule box_equals) 
-            defer
-        apply (rule dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1", simplified])
-        apply (rule refl)+
-      apply clarsimp
+
+        apply (subst dataflow_writes_extract_progress_from_push[where p="1 :: 1", simplified])
+
 
 end
       apply (rule refl)
