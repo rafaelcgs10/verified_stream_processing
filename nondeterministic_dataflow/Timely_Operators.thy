@@ -1376,7 +1376,7 @@ next
       apply simp
      apply (rule relcomppI[rotated])
      apply (rule relcomppI[rotated])
-      defer
+      apply (rule rtranclp.intros(1))
         apply (rule step_Out_dataflow_op_Out_Inr_intro)
         apply (rule step_map_op[where f="case_option (Inl nid) (\<lambda>p. Inr (nid, 1))" and g="case_option (Inl nid) (\<lambda>p. Inr (nid, 1))"])
          apply simp_all
