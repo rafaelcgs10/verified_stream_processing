@@ -245,6 +245,22 @@ lemma writes_empty_buf_simp[simp]:
   apply (subst (asm) writes.code, simp add: op.cong_refl writes.friend.code rel_fun_def split: op.splits)
   done
 
+lemma writes_Cons_simp:
+  "writes op p (x # xs) = Write (writes op p xs) p x"
+  apply (coinduction arbitrary: op rule: op.coinduct_upto)
+  apply (intro conjI impI)
+           apply (subst writes.code, simp split: op.splits)
+          apply (subst writes.code, simp split: op.splits)
+         apply (subst (asm) writes.code, simp add: op.cong_refl writes.friend.code rel_fun_def split: op.splits)
+        apply (subst writes.code, simp split: op.splits)
+       apply (subst (asm) writes.code, simp add: op.cong_refl writes.friend.code rel_fun_def split: op.splits)
+      apply (subst writes.code, simp split: op.splits)
+     apply (subst (asm) writes.code, simp add: op.cong_refl writes.friend.code rel_fun_def split: op.splits)
+    apply (subst writes.code, simp split: op.splits)
+   apply (subst (asm) writes.code, simp add: op.cong_refl writes.friend.code rel_fun_def split: op.splits)
+  apply (subst (asm) writes.code, simp add: op.cong_refl writes.friend.code rel_fun_def split: op.splits)
+  done
+
 declare zmultiset_of_antichain_def[code]
 
 instantiation "num0" :: hashable
@@ -641,7 +657,8 @@ lemma step_dataflow_op_elim:
   | nid op'' st where "io = Tau" "op' = dataflow_op (sg\<lparr> lo_pt := lo_pt sg @ extract_progress nid (edges sg) st \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
   | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr>)"
     "imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p)))" "op' = dataflow_op sg' op''" "step (Inp (Inl nid) (Inl (Inr imp_fron))) op op''"
-  | "op' = \<oslash>" 
+  | op'' p p' where "op' = \<oslash>" "op = Write op'' (Inl p) (Inr p')"
+  | op'' p p' where "op' = \<oslash>" "op = Write op'' (Inr p) (Inl p')"
   using assms apply -
   apply atomize_elim
   apply (subst (asm) dataflow_op.code)
@@ -1356,24 +1373,54 @@ proof (coinduction arbitrary: inps i sg rule: wbisim_coinduct)
           done
         done
       done
-    subgoal sorry
-    subgoal
-      apply (intro exI conjI)
-       apply blast
+    subgoal 
+      apply (cases inps; simp)
+      subgoal for x lxs
+   apply (intro exI conjI)
+         apply (rule rtranclp.intros(1))
           apply (rule wbcr_base)
           apply (rule exI)
-      apply (rule exI)
+          apply (rule exI)
+          apply (rule exI[of _ sg])
+          apply (intro conjI[rotated])
+      defer
+          apply (rule refl)+
+        apply simp_all
+        apply (subst (2) input_top.code)
+        apply (simp add: comp_def split: if_splits)
+        sorry
+      done
+    subgoal
+      apply (intro exI conjI)
+         apply (rule rtranclp.intros(1))
+      apply (rule wbcr_base)
+        apply (rule exI)
+          apply (rule exI)
           apply (rule exI)
       apply (intro conjI[rotated])
+        apply assumption
       apply simp
-           apply (rule refl)
       apply (subst input_top.code)
-      apply auto
-      apply (subst (2) dataflow_op.code)
+      apply simp
+      apply (subst (1 2) dataflow_op.code)
+      apply simp
       sorry
-    subgoal
-   apply (intro exI conjI)
-      sorry
+    subgoal   
+      apply (rule FalseE)
+      apply (subst (asm) input_top.code)
+      apply (simp split: llist.splits)
+      subgoal for xs lxs
+        apply (cases xs; simp add: writes_Cons_simp)
+        done
+      done
+ subgoal   
+      apply (rule FalseE)
+      apply (subst (asm) input_top.code)
+      apply (simp split: llist.splits)
+      subgoal for xs lxs
+        apply (cases xs; simp add: writes_Cons_simp)
+        done
+      done
     done
 next
   case SIM2
@@ -1447,221 +1494,6 @@ next
       done
     done
 qed
-
-        find_theorems concat map
-
-
-        apply (subst dataflow_writes_extract_progress_from_push[where p="1 :: 1", simplified])
-
-
-end
-      apply (rule refl)
-
-          apply (clarsimp simp add: extract_progress_def split: option.splits)
-            
-
-      using dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1", simplified]
-
-end
-        apply (subst (2) input_top.code)
-        apply (simp add: comp_def)
-      apply (cases xs)
-      subgoal
-        apply simp
-        apply (rule box_equals) 
-          defer
-          apply (rule dataflow_writes_extract_progress_from_push[symmetric, where f="case_option (Inl nid) (\<lambda>p. Inr (nid, 1))"])
-          apply (rule dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1", simplified])
-        apply simp
-       defer
-          apply (clarsimp simp add: extract_progress_def split: option.splits)
-      apply (rule arg_cong2[where f=dataflow_op])
-        apply simp_all
-      apply (cases sg; simp)
-      apply (simp add: map_concat)
-       apply (rule arg_cong[where f=concat])
-      apply (rule map_cong)
-        apply simp_all
-      apply (simp add: comp_def)
-      apply (rule steps_map_op)
-         apply simp_all
-
-
-
-      find_theorems steps 
-end
-       apply (subst (2) input_top.code)
-       apply (simp add: comp_def)
-      apply (intro conjI)
-          apply (rule box_equals) 
-          defer
-      thm dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1" and nid=nid, simplified]
-
-end
-         apply (rule dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1" and nid=nid, simplified])
-          apply (rule refl)+
-         defer
-         apply (rule dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1" and nid=nid, simplified])
-          apply simp_all
-   apply (rule steps_map_op)
-    apply simp_all
-
-        defer
-      
-
-
-
-          apply (auto simp add: extract_progress_def split: option.splits)
-
-
-
-
-
-   apply (rule box_equals) 
-            defer
-      defer
-         apply (rule dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1", simplified])
-
-
-    apply (rule steps_map_op)
-    apply simp_all
-
-
-
-end
-       apply (subst input_top.code)
-       apply simp
-        apply (rule arg_cong3[where f=writes])
-        defer
-         apply simp
-      apply simp
-      defer
-        apply (rule arg_cong3[where f=Write])
-          apply simp
-        apply simp
-        apply (rule arg_cong[where f=Inl])
-        apply (rule arg_cong[where f=Inl])
-
-
-end
-      apply (rule relpowp_imp_rtranclp) 
-      apply (rule steps_Tau_dataflow_op_Out_Inl_intro[where nid=nid])
-       apply simp_all
-(*     apply (rule steps_map_op)
-         apply simp_all *)
-         defer
-         apply (subst (2) input_top.code)
-      apply (clarsimp simp add: comp_def split: if_splits)
-      apply (subst dataflow_writes_extract_progress_from_push)
-         apply (rule arg_cong2[where f=dataflow_op])
-        defer
-      apply simp
-      apply (rule arg_cong3[where f=map_op])
-          apply (rule refl)+
-      sledgehammer
-          apply (rule arg_cong3[where f=writes])
-            apply (rule arg_cong3[where f=Write])
-              apply (rule arg_cong3[where f=Write])
-                apply (rule arg_cong2[where f=input_top])
-      apply simp_all
-
-      apply (rule refl)+
-
-            apply auto
-
-
-
-      thm arg_cong2[OF fun_cong]
-
-      apply clarsimp
-
-      thm arg_cong2
-
-end
-        defer
-        apply simp
-      defer
-      apply (rule relpowp_imp_rtranclp) 
-      apply (rule steps_Tau_dataflow_op_Out_Inl_intro[where nid=nid ])
-       apply simp_all
-    apply (rule steps_map_op)
-    apply simp_all
-
-
-    defer
-  
-
-    find_theorems the_enat length
-
-
-    defer
-        apply (rule refl)+
-    defer
-     apply (rule relcomppI)
-        apply (rule step_Out_dataflow_op_Out_Inr_intro)
-        apply (rule step_map_op)
-    apply (rule step_input_top_Out_Some_intro)
-           apply simp_all
-
-
-    term compower
-
-    find_theorems step input_top Out 
-
-    find_consts "'e \<Rightarrow> _ list \<Rightarrow> 'e"
-
-    thm relpowp_imp_rtranclp
-
-    find_theorems dataflow_op step
-      
-
-    term compow
-
-    find_theorems compow rtranclp
-
-    thm relcomppI
-
-    term relcompp
-
-    find_consts nat name: Transitive_Closure
-
-    find_theorems comp_op step Tau
-
-end
-          apply (induct xs' arbitrary: )
-          subgoal 
-            apply simp
-            apply (subst (1 2) dataflow_op.code)
-            apply (auto simp add: extract_progress_def split: option.splits)
-            done
-          subgoal for a xs' 
-            apply simp
-            apply (subst (1 2) writes.code)
-            apply simp
-            apply (subst (1 2) dataflow_op.code)
-            apply (simp add: extract_progress_def  split: option.splits)
-
-
-end
-         apply simp_all
-         apply (subst (2) dataflow_op.code)
-        apply simp
-
-
-
-        find_theorems iterates LCons
-
-
-end
-next
-  case SIM2
-  then show ?case sorry
-qed
-
-  
-  sorry
-
-
 
 
 end
