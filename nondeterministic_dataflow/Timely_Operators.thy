@@ -1666,7 +1666,62 @@ lemma lhd_concat_ldropWhile_alt:
     done
   done
 
-lemma
+lemma lhd_lconcat_lmap_zip:
+  "lfinite (ltakeWhile ((=) []) inps) \<Longrightarrow>
+   ldropWhile ((=) []) inps = LCons (x # xs) inps' \<Longrightarrow>
+   lhd (lconcat (lmap (\<lambda>(xs, t). map (\<lambda>n. (n, t)) xs) (lzip inps (iterates Suc i)))) = (x, i + (the_enat (llength (ltakeWhile ((=) []) inps))))"
+ apply (induct "ltakeWhile ((=) []) inps"  arbitrary: inps i rule: lfinite_induct)
+  subgoal
+    apply (simp add: lconcat_correct lnull_def split: prod.splits)
+    apply (smt (z3) case_prod_conv iterates_lmap lappend_code(1) lappend_ltakeWhile_ldropWhile lhd_LCons lhd_lconcat lhd_llist_of list.map_disc_iff list.map_sel(1) llist.distinct(1) llist.map_disc_iff llist.map_sel(1) llist_of.simps(2)
+        llist_of_eq_LNil_conv lzip.ctr(1) lzip.disc_iff(2) lzip.sel(1) lzip_eq_LNil_conv)
+    done
+  subgoal for lxs i
+    apply (cases lxs; simp split: if_splits)
+    subgoal for x lxs'
+      apply (drule meta_spec[of _ lxs'])
+      apply (drule meta_spec[of _ "Suc i"])
+      apply simp
+      apply (subst iterates.code)
+      apply simp
+      apply (metis eSuc_enat lfinite_llength_enat the_enat.simps)
+      done
+    done
+  done
+
+lemma ltl_lconcat_lmap_zip:
+  "lfinite (ltakeWhile ((=) []) inps) \<Longrightarrow>
+   ldropWhile ((=) []) inps = LCons (x # xs) inps' \<Longrightarrow>
+   ltl (Coinductive_List_Auxiliary.lconcat (lmap (\<lambda>z. case z of (xs, t) \<Rightarrow> map (\<lambda>n. (n, t)) xs) (lzip inps (iterates Suc i)))) =
+   Coinductive_List_Auxiliary.lconcat (lmap (\<lambda>z. case z of (xs, t) \<Rightarrow> map (\<lambda>n. (n, t)) xs) (lzip (LCons xs inps') (iterates Suc (dataflow_topology_from_tree.followed_by i (the_enat (llength (ltakeWhile ((=) []) inps)))))))"
+  apply (induct "ltakeWhile ((=) []) inps"  arbitrary: inps i rule: lfinite_induct)
+  subgoal
+    apply (simp add: lconcat_correct lnull_def split: prod.splits)
+    apply (subst ltl_lconcat)
+      apply simp_all
+      apply (metis (lifting) ldropWhile_LNil llist.distinct(1) lnull_def)
+     apply (smt (z3) case_prod_conv ldropWhile_LNil list.map_disc_iff llist.distinct(1) llist.map_disc_iff llist.map_sel(1) llist_of.simps(1) llist_of_inject lnull_def lnull_iterates ltakeWhile_eq_LNil_iff lzip.sel(1)
+        lzip_eq_LNil_conv)
+    apply (smt (z3) lappend_code(1) lappend_ltakeWhile_ldropWhile lconcat_LCons lhd_LCons lhd_LCons_ltl lhd_lzip list.sel(3) llist.disc(2) llist.map_disc_iff llist.map_sel(1) lnull_iterates ltl_llist_of ltl_lmap ltl_lzip ltl_simps(2)
+        lzip.disc(2) map_tl prod.simps(2))
+    done
+  subgoal for lxs i
+    apply (cases lxs; simp split: if_splits)
+    subgoal for x lxs'
+      apply (drule meta_spec[of _ lxs'])
+      apply (drule meta_spec[of _ "Suc i"])
+      apply simp
+      apply (subst the_enat_eSuc)
+      using llength_eq_infty_conv_lfinite apply blast
+      apply simp
+      apply (subst iterates.code)
+      apply simp
+      done
+    done
+  done
+
+
+lemma input_top_correctness:
   "wtraced (compile_dataflow (Logic (input_top (Cap i 1) inps)) :: (1 \<times> 1, 1 \<times> 1, 'b \<times> nat) op) ios \<Longrightarrow>
    lprefix ios (lmap (\<lambda> (n, t). VOut (1, 0) (n, t)) (lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps (iterates Suc i)))))"
   apply (drule wbisim_wtraced[OF compile_dataflow_input_top_input_op])
@@ -1693,20 +1748,29 @@ lemma
         apply (auto simp add: lset_lzip split: prod.splits)
         apply (metis (full_types) in_lset_conv_lnth ldropWhile_eq_LNil_iff llist.distinct(1))
         done
-      subgoal premises prems
+      subgoal premises prems for op' io' op'' x xs inps' a b
         using prems(2-) apply -
-        apply (subst lhd_concat_ldropWhile_alt)
-          apply (simp add: lfinite_ltakeWhile)
-          apply (rule disjI2)
-        apply (clarsimp simp add: lconcat_correct lset_lzip split: prod.splits)
-              apply (metis in_lset_conv_lnth in_lset_ldropWhileD list.distinct(1) llist.set_intros(1))
-        apply (clarsimp simp add: lconcat_correct lset_lzip split: prod.splits)
-         apply (metis in_lset_conv_lnth in_lset_ldropWhileD list.distinct(1) llist.set_intros(1))
-
-    
-
-
-        find_theorems lfinite ltakeWhile
+        apply (subst lhd_lconcat_lmap_zip)
+        apply simp_all
+        apply (meson ldropWhile_LCons_lfinite_ltakeWhile)
+        done
+      subgoal for op' io' op'' x xs inps' a b
+        apply (intro conjI[rotated] exI)
+         apply assumption
+        apply simp
+        subgoal premises prems
+          using prems(2) apply -
+          apply (rule llist.map_cong)
+           apply simp_all
+          apply (rule ltl_lconcat_lmap_zip)
+           apply simp_all
+        apply (meson ldropWhile_LCons_lfinite_ltakeWhile)
+          done
+        done
+      done
+    done
+  done
+        find_theorems lmap name: cong
 
   find_theorems Coinductive_List_Auxiliary.lconcat Coinductive_List.lconcat
 
