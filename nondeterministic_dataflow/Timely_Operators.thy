@@ -599,7 +599,7 @@ definition "propagate_pointstamps summary conf cbs = (
 abbreviation "init_subgraph summary \<equiv>
   trace (STR ''Initializing subgraph'') \<lparr> pt_tr = the (propagate_pointstamps summary empty_conf (concat (map (\<lambda> nid. map (\<lambda> p. (Loc nid (Src p), 0, 1)) enum_class.enum) enum_class.enum))),
    lo_pt = [],
-   edges = (\<lambda> l1. [l2 \<leftarrow> enum_location_inst.enum_location. \<not> is_empty_antichain (summary l1 l2) ]),
+   edges = (\<lambda> l1. [l2 \<leftarrow> enum_class.enum. \<not> is_empty_antichain (summary l1 l2) \<and> is_Src (port l1) \<and> is_Trg (port l2) ]),
    summ = summary \<rparr>"
 
 (* Inspired by timely/src/dataflow/operators/generic/builder_rc.rs:29 and timely/src/progress/operate.rs:63 *)
@@ -1061,6 +1061,35 @@ lemma step_input_op_Out_intro[intro]:
   apply (auto split: llist.splits)
   done
 
+lemma step_input_op_not_Tau[simp]:
+  "\<not> step Tau (input_op n inps) op"
+  apply (subst input_op.code)
+  apply (auto split: llist.splits list.splits dest: ldropWhile_LConsD)
+  done
+
+lemma step_input_op_not_Inp[simp]:
+  "\<not> step (Inp p x) (input_op n inps) op"
+  apply (subst input_op.code)
+  apply (auto split: llist.splits list.splits dest: ldropWhile_LConsD)
+  done
+
+lemma wstep_input_op_simp[simp]:
+  "io \<noteq> Tau \<Longrightarrow>
+   wstep io (input_op n inps) op = step io (input_op n inps) op"
+  unfolding wstep_def
+  apply (cases io; simp)
+  using converse_rtranclpE apply fastforce
+  subgoal
+    apply (rule iffI)
+    subgoal
+      apply clarsimp
+      apply (metis converse_rtranclpE step_input_op_elim step_input_op_not_Tau)
+      done
+    subgoal
+      by auto
+    done
+  done
+
 lemma dataflow_writes_extract_progress_from_push:
   "g = (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) \<Longrightarrow>
    dataflow_op sg
@@ -1325,8 +1354,35 @@ lemma dataflow_op_change_multiplicities:
     done
   done
 
+lemma input_op_LCons_Nil:
+  "input_op i (LCons [] lxs) = input_op (Suc i) lxs"
+  apply (cases "llength (ltakeWhile ((=) []) lxs) \<noteq> \<infinity>")
+  subgoal
+  apply (subst (1 2) input_op.code)
+  apply (simp split: llist.splits list.splits)
+  apply (subst (1 2) the_enat_eSuc)
+     apply simp_all
+    done
+  subgoal
+  apply (subst (1 2) input_op.code)
+    apply (simp split: llist.splits list.splits)
+    apply (meson ldropWhile_LCons_lfinite_ltakeWhile llength_eq_infty_conv_lfinite)
+    done
+  done
 
-lemma
+lemma input_op_LNil:
+  "input_op i LNil = \<oslash>"
+  apply (subst input_op.code)
+  apply simp
+  done
+
+lemma dataflow_op_end_op:
+  "dataflow_op sg \<oslash> = \<oslash>"
+  apply (subst dataflow_op.code)
+  apply simp
+  done
+
+lemma dataflow_op_input_top_input_op:
   "edges sg = (\<lambda> _. []) \<Longrightarrow>
    dataflow_op sg (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (input_top (Cap i (1 :: 1)) inps)) \<approx>
    map_op (\<lambda> p. (nid, p)) (\<lambda> p. (nid, p)) (input_op i inps)"
@@ -1376,35 +1432,22 @@ proof (coinduction arbitrary: inps i sg rule: wbisim_coinduct)
     subgoal 
       apply (cases inps; simp)
       subgoal for x lxs
-   apply (intro exI conjI)
+        apply (intro exI conjI)
+        apply (subst input_op_LCons_Nil)
          apply (rule rtranclp.intros(1))
           apply (rule wbcr_base)
           apply (rule exI)
           apply (rule exI)
-          apply (rule exI[of _ sg])
+          apply (rule exI[of _ "sg\<lparr> lo_pt := (lo_pt sg) @ extract_progress nid (edges sg) \<lparr>cons = [], inte = [(1, i, - 1), (1, Suc i, 1)], prod = []\<rparr> \<rparr>"])
           apply (intro conjI[rotated])
       defer
           apply (rule refl)+
-        apply simp_all
-        apply (subst (2) input_top.code)
-        apply (simp add: comp_def split: if_splits)
-        sorry
+         apply simp_all
+        done
       done
     subgoal
-      apply (intro exI conjI)
-         apply (rule rtranclp.intros(1))
-      apply (rule wbcr_base)
-        apply (rule exI)
-          apply (rule exI)
-          apply (rule exI)
-      apply (intro conjI[rotated])
-        apply assumption
-      apply simp
-      apply (subst input_top.code)
-      apply simp
-      apply (subst (1 2) dataflow_op.code)
-      apply simp
-      sorry
+      apply (auto simp add: dataflow_op_end_op input_op_LNil)
+      done
     subgoal   
       apply (rule FalseE)
       apply (subst (asm) input_top.code)
@@ -1495,6 +1538,188 @@ next
     done
 qed
 
+(* FIXME: move me *)
+lemma is_empty_antichain_simp[simp]:
+  "is_empty_antichain {}\<^sub>A"
+  apply transfer
+  apply (auto simp add: Set.is_empty_def)
+  done
+lemma is_empty_antichain_empty_list[simp]:
+  "is_empty_antichain (antichain_from_list [])"
+  apply transfer
+  apply (auto simp add: Set.is_empty_def)
+  done
+lemma is_empty_antichain_not_empty_list[simp]:
+  "\<not> is_empty_antichain (antichain_from_list [a])"
+  apply transfer
+  apply (auto simp add: Set.is_empty_def)
+  done
+
+lemma compile_dataflow_tree_aux_Logic_simp[simp]:
+  "compile_dataflow_tree_aux n (Logic op) = (n + 1, \<lambda> l1 l2. 
+    if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
+    then frontier (abs_zmultiset (mset [0], {#})) 
+    else frontier {#}\<^sub>z, map_op (case_option (Inl n) (\<lambda> p. Inr (n, p))) (case_option (Inl n) (\<lambda> p. Inr (n, p))) op)"
+  apply auto
+  done
+
+lemma compile_dataflow_tree_aux_wellformed:
+  "compile_dataflow_tree_aux n op = (n', s, op') \<Longrightarrow>
+   \<not> has_zero_cyc s \<and> no_self_loop_checker s \<and> implementation_graph_checker (weights_to_graph_fun (remove_non_zero_weights s))"
+  oops
+(*   apply (induct op arbitrary: s)
+  subgoal for op s
+    apply simp
+    apply safe
+    subgoal
+      apply hypsubst_thin
+    unfolding compile_dataflow_tree_def Let_def weights_to_graph_fun_def no_self_loop_checker_def implementation_graph_checker_def enum_location_def enum_num1_def enum_port_def 
+        apply (clarsimp split: if_splits)
+ *)
+
+lemma compile_dataflow_tree_Logic:
+  "compile_dataflow_tree (Logic op) = 
+  (\<lambda> l1 l2. 
+    if 1 = node l1 \<and> (1 :: 1) = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
+    then frontier (abs_zmultiset (mset [0], {#})) 
+    else frontier {#}\<^sub>z, map_op (case_option (Inl 1) (\<lambda> p. Inr (1, p))) (case_option (Inl 1) (\<lambda> p :: 1. Inr (1, p))) op)"
+  unfolding compile_dataflow_tree_def
+  apply (simp only: Let_def compile_dataflow_tree_aux.simps prod.case)
+  apply (subst (7) if_P)
+   apply eval
+  apply simp
+  done
+
+(* FIXME: move me *)
+lemma wbisim_refl_alt:
+  "op = op' \<Longrightarrow> wbisim op op'"
+  using wbisim_refl by auto
+
+lemma compile_dataflow_input_top_input_op:
+  "(compile_dataflow (Logic (input_top (Cap i 1) inps)) :: (1 \<times> 1, 1 \<times> 1, 'b \<times> nat) op) \<approx> map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (input_op i inps)"
+  unfolding compile_dataflow_def Let_def
+  apply (simp split: prod.splits)
+  apply (intro conjI allI impI)
+  subgoal for su op
+    using dataflow_op_input_top_input_op[where sg="init_subgraph su", simplified, where i=i and inps=inps] apply -
+    apply (drule meta_mp)
+    subgoal
+      unfolding compile_dataflow_tree_def Let_def 
+      apply (simp split: if_splits)
+      subgoal
+        unfolding compile_dataflow_tree_def Let_def weights_to_graph_fun_def no_self_loop_checker_def implementation_graph_checker_def enum_location_def enum_num1_def enum_port_def 
+        apply (clarsimp split: if_splits)
+        done
+      subgoal
+        unfolding compile_dataflow_tree_def Let_def weights_to_graph_fun_def no_self_loop_checker_def implementation_graph_checker_def enum_location_def enum_num1_def enum_port_def 
+        apply (clarsimp split: if_splits)
+        done
+      done
+    subgoal premises prems
+      apply (rule wbisim_trans[rotated])
+      apply (rule prems(2))
+      apply (rule wbisim_refl_alt)
+      apply (rule arg_cong2[where f=dataflow_op])
+      subgoal
+        using prems(1) apply -
+        apply (clarsimp simp add: compile_dataflow_tree_Logic)
+        subgoal premises
+              apply (rule ext)+
+        unfolding enum_location_def enum_num1_def enum_port_def 
+        apply (auto simp add: compile_dataflow_tree_Logic split: if_splits)
+        done
+      done
+    subgoal
+        using prems(1) apply -
+        apply (clarsimp simp add: compile_dataflow_tree_Logic)
+        done
+      done
+    done
+  done
+
+lemma lhd_concat_ldropWhile:
+  "lfinite (ltakeWhile ((=) []) lxs) \<Longrightarrow>
+   \<exists> xs lxs'. ldropWhile ((=) []) lxs = LCons (x # xs) lxs' \<Longrightarrow>
+   lhd (lconcat lxs) = x"
+  apply (induct "ltakeWhile ((=) []) lxs"  arbitrary: lxs rule: lfinite_induct)
+  subgoal
+  apply (simp add: lconcat_correct split: prod.splits)
+      apply (smt (z3) ldropWhile_LNil ldropWhile_simps(2) lhd_LCons lhd_lconcat llist.map_disc_iff llist.map_sel(1) llist_of.simps(2) lnull_def not_lnull_conv)
+    done
+  subgoal for lxs
+    apply (cases lxs; simp split: if_splits)
+    done
+  done
+
+lemma lhd_concat_ldropWhile_alt:
+  "lfinite (ltakeWhile ((=) []) lxs) \<Longrightarrow>
+   \<not> lnull (ldropWhile ((=) []) lxs) \<Longrightarrow>
+   lhd (lconcat lxs) = hd (lhd (ldropWhile ((=) []) lxs))"
+ apply (induct "ltakeWhile ((=) []) lxs"  arbitrary: lxs rule: lfinite_induct)
+  subgoal
+  apply (simp add: lconcat_correct split: prod.splits)
+    apply (smt (z3) Coinductive_List_Auxiliary.lconcat_eq_LNil Coinductive_List_Auxiliary.lconcat_simps(1) lconcat_correct lhd_concat_ldropWhile lhd_ldropWhile list.collapse llist.collapse(2) lnull_imp_lfinite lnull_ldropWhile lset_LNil
+        lset_eq_empty ltakeWhile_eq_LNil_iff)
+    done
+  subgoal for lxs
+    apply (cases lxs; simp split: if_splits)
+    done
+  done
+
+lemma
+  "wtraced (compile_dataflow (Logic (input_top (Cap i 1) inps)) :: (1 \<times> 1, 1 \<times> 1, 'b \<times> nat) op) ios \<Longrightarrow>
+   lprefix ios (lmap (\<lambda> (n, t). VOut (1, 0) (n, t)) (lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps (iterates Suc i)))))"
+  apply (drule wbisim_wtraced[OF compile_dataflow_input_top_input_op])
+  apply (coinduction arbitrary: ios inps i)
+  subgoal for ios inps i
+    apply (cases ios)
+    subgoal
+      by simp
+    subgoal for io ios'
+      apply simp
+      apply (erule wtraced.cases)
+       apply simp_all
+      apply hypsubst_thin
+      apply (elim wstep_map_op_elim)
+      apply (subst (asm) wstep_input_op_simp)
+       apply force
+      apply (elim step_input_op_elim)
+      apply (cases io; simp)
+      apply hypsubst_thin
+      apply safe
+      subgoal premises prems
+        using prems(2-) apply -
+        unfolding lnull_def
+        apply (auto simp add: lset_lzip split: prod.splits)
+        apply (metis (full_types) in_lset_conv_lnth ldropWhile_eq_LNil_iff llist.distinct(1))
+        done
+      subgoal premises prems
+        using prems(2-) apply -
+        apply (subst lhd_concat_ldropWhile_alt)
+          apply (simp add: lfinite_ltakeWhile)
+          apply (rule disjI2)
+        apply (clarsimp simp add: lconcat_correct lset_lzip split: prod.splits)
+              apply (metis in_lset_conv_lnth in_lset_ldropWhileD list.distinct(1) llist.set_intros(1))
+        apply (clarsimp simp add: lconcat_correct lset_lzip split: prod.splits)
+         apply (metis in_lset_conv_lnth in_lset_ldropWhileD list.distinct(1) llist.set_intros(1))
+
+    
+
+
+        find_theorems lfinite ltakeWhile
+
+  find_theorems Coinductive_List_Auxiliary.lconcat Coinductive_List.lconcat
+
+end
+      
+
+      using prems(1)[unfolded compile_dataflow_tree_def Let_def, simplified]
+
+        unfolding compile_dataflow_tree_def Let_def weights_to_graph_fun_def no_self_loop_checker_def implementation_graph_checker_def enum_location_def enum_num1_def enum_port_def 
+        apply simp
+
+
+        find_theorems enum_location_inst.enum_location
 
 end
 
