@@ -3,7 +3,8 @@ theory Zero_Cyc_Check
     (* "Vespa_Lib.Graph"
     "Dataplane.Antichain_Aux"
     "Dataplane.Executable_Aux" *)
-    "Collections.Collections"
+(*     "Collections.Collections"
+ *)
     "DFS_Framework.Cyc_Check"
     "Executable" 
    Progress_Tracking.Graph

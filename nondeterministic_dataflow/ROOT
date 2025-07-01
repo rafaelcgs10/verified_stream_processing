@@ -9,6 +9,7 @@ session Nondeterministic_Dataflow = Coinductive +
     Defaults
     Operator
     BNA_Operators
+    CSet_LList_Impl
     "table_1/B1"
     "table_1/B2"
     "table_1/B3"
@@ -66,5 +67,4 @@ session Nondeterministic_Dataflow = Coinductive +
     Lifted_Table_1
     Lifted_Table_2
     Lifted_Table_3
-    CSet_LList_Impl
     Eval

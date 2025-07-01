@@ -1,22 +1,20 @@
-session Stream_Processing = Coinductive +
+session Nondeterministic_Dataflow in nondeterministic_dataflow = Coinductive +
   options [timeout = 600]
-  directories
-    "operators"
-    "examples"
   theories
-    Utils
-    Sum_Order
-    Antichain
-    Linear_Temporal_Logic_on_Llists
-    Llists_Processors
-    Watermarked_Stream
-    Eq_Op
-    "operators/Flatten_Op"
-    "operators/Map_Op"
-    "operators/Union_Op"
-    "operators/Incr_Op"
-    "operators/Batch_Op"
-    "operators/Incr_Batch_Op"
-    "examples/Multi_Hist_Op"
-    "examples/Join_Op"
+    "Operator"
+    "BNA_Operators"
+    "Cset_Setup"
+    "Defaults"
+    "CSet_LList_Impl"
+    "Coinductive_List_Auxiliary"
+
+session Dataplane in dataplane = Nondeterministic_Dataflow + 
+  options [timeout = 6000]
+  sessions
+    DFS_Framework
+    Progress_Tracking
+  theories
+    Progress_Tracking.Propagate
+    Progress_Tracking.Auxiliary
+    DFS_Framework.Cyc_Check
 

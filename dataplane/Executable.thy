@@ -1,5 +1,3 @@
-
-
 theory Executable
 
 imports Complex_Main

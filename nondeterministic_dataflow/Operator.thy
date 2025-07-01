@@ -1732,7 +1732,7 @@ coinductive wfinished where
 | "wfinished op \<Longrightarrow> wfinished (Silent op)"
 
 coinductive wtraced where
-  Nil: "wtraced op LNil"
+  Nil: "wfinished op \<Longrightarrow> wtraced op LNil"
 | Step: "wstep (io_of_vio vio) op op' \<Longrightarrow> wtraced op' lxs \<Longrightarrow> wtraced op (LCons vio lxs)"
 
 inductive_cases wtraced_LNilE[elim!]: "wtraced op LNil"
@@ -2211,6 +2211,38 @@ lemma wtraced_outputs:
    apply (metis VIO.set_cases(2) io_of_vio.simps(2) wstep_Out_outputs wtraced_StepE)
   by (meson subsetD wstep_inputs_outputs wtraced_StepE)
 
+lemma wfinished_map_op:
+  \<open>inj_on f (inputs op) \<Longrightarrow> inj_on g (outputs op) \<Longrightarrow> wfinished (map_op f g op) \<longleftrightarrow> wfinished op\<close>
+  apply (rule iffI)
+  subgoal
+    apply (coinduction arbitrary: op pred: wfinished)
+    subgoal for op
+      apply (cases op; simp)
+      subgoal by (erule wfinished.cases; simp)
+      subgoal by (erule wfinished.cases; simp)
+      subgoal 
+        apply (erule wfinished.cases; simp)
+        apply (smt (verit, ccfv_SIG) cimage_eqI cin.rep_eq inj_on_def op.set(3,7) op.set_intros(4,9))
+        done
+      subgoal by (erule wfinished.cases; simp)
+      done
+    done
+  subgoal
+    apply (coinduction arbitrary: op pred: wfinished)
+    subgoal for op
+      apply (cases op; simp)
+      subgoal by (erule wfinished.cases; simp)
+      subgoal by (erule wfinished.cases; simp)
+      subgoal 
+        apply (erule wfinished.cases; simp)
+        apply (smt (verit) UN_I imageE inj_on_def)
+        done
+      subgoal 
+        by (erule wfinished.cases; auto)
+      done
+    done
+  done
+
 lemma wtraced_map_op:
   \<open>inj_on f (inputs op) \<Longrightarrow> inj_on g (outputs op) \<Longrightarrow>
   wtraced (map_op f g op) lxs \<longleftrightarrow> (\<exists>lys. wtraced op lys \<and> lxs = lmap (map_VIO f g id) lys)\<close>
@@ -2221,6 +2253,8 @@ lemma wtraced_map_op:
       apply (coinduction arbitrary: op lxs pred: wtraced)
       subgoal for op lxs
         apply (erule wtraced.cases; simp; hypsubst_thin)
+        subgoal 
+          using wfinished_map_op by fast
         subgoal for vio _ op' lxs
           apply (erule wstep_map_op_elim; hypsubst_thin)
           subgoal for io' op''
@@ -2240,9 +2274,9 @@ lemma wtraced_map_op:
         done
       done
     subgoal
-    apply (auto simp: llist.map_comp VIO.map_comp o_def op.set_map f_the_inv_into_f
-      intro!: trans[OF llist.map_cong llist.map_ident, symmetric] trans[OF VIO.map_cong VIO.map_ident]
-      dest: wtraced_inputs wtraced_outputs)
+      apply (auto simp: llist.map_comp VIO.map_comp o_def op.set_map f_the_inv_into_f
+          intro!: trans[OF llist.map_cong llist.map_ident, symmetric] trans[OF VIO.map_cong VIO.map_ident]
+          dest: wtraced_inputs wtraced_outputs)
       done
     done
   subgoal
@@ -2250,7 +2284,11 @@ lemma wtraced_map_op:
     subgoal for lys
       apply (coinduction arbitrary: op lxs lys pred: wtraced)
       apply (erule wtraced.cases; simp)
-      by (metis (no_types, opaque_lifting) inj_on_subset io_of_vio_map_VIO wstep_inputs_outputs wstep_map_op)
+      subgoal 
+        using wfinished_map_op by fast
+      subgoal
+        by (metis (no_types, opaque_lifting) inj_on_subset io_of_vio_map_VIO wstep_inputs_outputs wstep_map_op)
+      done
     done
   done
 
