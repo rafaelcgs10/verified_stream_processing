@@ -3,12 +3,7 @@ theory BNA_Operators
 
 imports
   Operator
-  "HOL-Library.Debug"
 begin
-
-instantiation num0 :: countable begin
-instance proof qed (auto simp: inj_def Rep_num0_inject intro!: exI[of _ Rep_num0])
-end
 
 section \<open>comp_op: Compositions\<close>
 datatype (discs_sels) ('ip1, 'ip2, 'op1, 'op2, 'd) comp_op_aux =

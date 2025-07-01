@@ -2,6 +2,7 @@ theory History
 
 imports
  "BNA_Operators"
+ Numeral_Auxiliary
 begin
 
 section \<open>History model\<close>
@@ -179,11 +180,6 @@ lemma step_twobuf_op_elim:
 
 abbreviation \<open>f_op \<equiv> (dup_op \<parallel> suc_op \<bullet> dup_op) \<bullet> \<V> \<bullet> twobuf_op \<bullet> \<C>\<close>
 abbreviation \<open>f'_op \<equiv> (dup_op \<parallel> suc_op \<bullet> dup_op) \<bullet> \<V> \<bullet> \<I> \<bullet> \<C>\<close>
-
-simproc_setup num1_eq (\<open>x :: 1\<close>) =
-  \<open>K (K (fn ct =>
-    if Thm.term_of ct aconv @{term \<open>1 :: 1\<close>} then NONE
-    else SOME (mk_meta_eq @{thm num1_eq1})))\<close>
 
 lemma history_equiv_f_f':
   \<open>f_op \<equiv>\<^sub>h f'_op\<close>

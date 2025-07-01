@@ -1,7 +1,8 @@
 text \<open>defaultss setup\<close>
 
 theory Defaults
-  imports "HOL-Library.Numeral_Type"
+  imports
+    "HOL-Library.Numeral_Type"
 begin
 
 class defaults = fixes defaults :: "'a set"

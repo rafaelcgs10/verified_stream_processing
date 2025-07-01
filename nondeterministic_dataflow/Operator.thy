@@ -11,6 +11,7 @@ imports
   "HOL-Library.Simps_Case_Conv"
   "Cset_Setup"
   Coinductive_List_Auxiliary
+  Numeral_Auxiliary
 begin
 
 (* FIXME: move me to utils file *)
@@ -20,7 +21,6 @@ lemma case_sum_invert_Inl[simp]:
 lemma case_sum_invert_Inr[simp]:
   "case_sum Inr Inl p' = Inr p \<longleftrightarrow> p' = Inl p"
   by (cases p'; auto)
-
 
 section\<open>Channels\<close>
 
@@ -649,6 +649,10 @@ lemma wbisim_refl:
   apply (auto simp: wsim_def wstep_def)
   apply (metis (no_types, lifting) Nitpick.rtranclp_unfold estep.elims relcompp_apply sup2I1)
   done
+
+lemma wbisim_refl_alt:
+  "op = op' \<Longrightarrow> wbisim op op'"
+  using wbisim_refl by auto
 
 lemma wbisim_sym:
   "op1 \<approx> op2 \<Longrightarrow> op2 \<approx> op1"

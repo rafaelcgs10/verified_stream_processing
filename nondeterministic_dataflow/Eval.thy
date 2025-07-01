@@ -9,10 +9,6 @@ fun show_VIO where
   "show_VIO showI showO show (VOut p x) = STR ''Out '' + showO p + STR '' '' + show x"
 | "show_VIO showI showO show (VInp p x) = STR ''Inp '' + showI p + STR '' '' + show x"
 
-definition show_1 where "show_1 (x :: 1) = STR ''1''"
-definition show_11 where "show_11 = show_sum show_1 show_1"
-definition show_2 where "show_2 (x :: 2) = (if x = 1 then STR ''1'' else STR ''2'')"
-
 fun eval' :: "nat \<Rightarrow> ('i, 'o, 'd :: {countable}) op \<Rightarrow> (('i, 'o, 'd) VIO list \<times> ('i, 'o, 'd) op) cset"  where
   "eval' 0 op = {|([], op)|}"
 | "eval' (Suc n) (Write op p x) = cimage (\<lambda>(t, op). (VOut p x # t, op)) (eval' n op)"

@@ -313,12 +313,6 @@ lemma merge_op'_merge_op_id_op:
   using merge_op'_merge_op_id_op_gen[of \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close> \<open>\<lambda>_. []\<close>]
   by simp
 
-(* TODO move *)
-simproc_setup num1_eq (\<open>x :: 1\<close>) =
-  \<open>K (K (fn ct =>
-    if Thm.term_of ct aconv @{term \<open>1 :: 1\<close>} then NONE
-    else SOME (mk_meta_eq @{thm num1_eq1})))\<close>
-
 lemma wstep_Inp_Inl_Inl:
   assumes \<open>wstep (Inp (Inl (Inl 1)) (Suc 0)) (map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) \<I> (\<V> :: (1 + 1, 1, nat) op)) (merge_op' (\<lambda>_. []) (\<lambda>_. []))))) op\<close>
   obtains \<open>op = map_op assoc id (map_op projl projr (comp_op Some (\<lambda>_. []) (comp_op (\<lambda>_. None) (\<lambda>_. []) (id_op (BENQ 1 1 (\<lambda>_. []))) \<V>) (merge_op' (\<lambda>_. []) (\<lambda>_. []))))\<close>

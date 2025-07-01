@@ -1,0 +1,408 @@
+theory Timely_Infrastructure
+
+imports
+  Nondeterministic_Dataflow.Operator
+  Nondeterministic_Dataflow.BNA_Operators
+  Progress_Tracking.Propagate
+  Nondeterministic_Dataflow.Eval
+  "HOL-Library.While_Combinator"
+  "../propagation_extras/Executable"
+  Zero_Cyc_Check 
+  Locations
+  Operators_Utils
+begin 
+
+(*
+  TODO:
+  Correctness of max_top
+  Correctness of dataflow compilation
+  Loops
+  collatz_op
+  Correctness of collatz_op
+  unordered_input_top
+  wcc_op: https://timelydataflow.github.io/differential-dataflow/chapter_4/chapter_4_1.html
+  Correctness of wcc_op
+  Scopes (change timestamp type, maybe not now)
+  Type inference for locations (if it is not so hard)
+  Nominal wiring (if it is not so hard)
+  Provide operator builders
+*)
+
+definition "DEBUG = False"
+
+definition "trace = (if DEBUG then Debug.tracing else (\<lambda> x y. y))"
+
+lemma trace_simp[simp]:
+  "trace x = id"
+  by (auto simp add: trace_def)
+
+(* Inspired by timely/src/progress/change_batch.rs:12 *)
+type_synonym 'a change_batch = "'a list"
+
+(* Inspired by timely/src/progress/subgraph.rs:237 *)
+record ('id, 'p, 't) subgraph =
+  pt_tr :: "(('id, 'p) location, 't) configuration"
+  (* We consider local_pointstamp and final_pointstamp as the same thing in this non-distributed version *)
+  lo_pt :: "(('id, 'p) location \<times> 't \<times> int) change_batch"
+  edges :: "('id, 'p) location \<Rightarrow> ('id, 'p) location list"
+  summ :: "('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> 't antichain"
+
+datatype ('id, 'p, 's, 'd) dataflow_tree = 
+  "apply": Logic "('p option, 'p option, 's + 'd) op"
+  | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "('id, 'p, 's, 'd) dataflow_tree" "('id, 'p, 's, 'd) dataflow_tree"
+
+fun compile_dataflow_tree_aux :: "'id :: {minus, plus, one, ord} \<Rightarrow> ('id, 'p, 's, 'd) dataflow_tree \<Rightarrow>
+    'id \<times> (('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> nat antichain) \<times> ('id + 'id \<times> 'p, 'id + 'id \<times> 'p, 's + 'd) op" where
+  "compile_dataflow_tree_aux n (Logic op) = (n + 1,
+    (\<lambda> l1 l2. 
+    if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
+    then frontier (abs_zmultiset (mset [0], {#})) 
+    else frontier {#}\<^sub>z),
+    map_op (case_option (Inl n) (\<lambda> p. Inr (n, p))) (case_option (Inl n) (\<lambda> p. Inr (n, p))) op)"
+| "compile_dataflow_tree_aux n (Comp wire dt1 dt2) = (
+    let (n', summary1, op1) = compile_dataflow_tree_aux n dt1 in
+    let (n'', summary2, op2) = compile_dataflow_tree_aux n' dt2 in
+    (n'', \<lambda> l1 l2. 
+     if node l1 \<ge> n \<and> node l1 < n' \<and> node l2 \<ge> n' \<and> is_Src (port l1) \<and> is_Trg (port l2)
+     then (case wire (node l1 - n, idp (port l1)) of 
+             None \<Rightarrow> frontier {#}\<^sub>z 
+           | Some (offset, q) \<Rightarrow> (if node l2 = n' + offset \<and> q = idp (port l2) then frontier (abs_zmultiset (mset [0], {#})) else frontier {#}\<^sub>z )) 
+     else summary1 l1 l2 + summary2 l1 l2,
+     map_op (case_sum id id) (case_sum id id)
+     (comp_op (case_sum (\<lambda> _. None) ((case_option None (Some o Inr)) o (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (n' + offset, q)))) (\<lambda> _. []) op1 op2))
+   )"
+
+(* value  "(fst o snd) (compile_dataflow_tree_aux (0 :: 4)
+       (Comp [ (1, 0) \<mapsto> (3, 0) ]
+         (Comp (\<lambda> l. None) (Logic \<oslash>) (Logic \<oslash>))
+         (Comp (\<lambda> l. None) (Logic \<oslash>) (Logic \<oslash>))))
+      (Loc 1 (Src 1)) (Loc 3 (Trg (1 :: 1)))" *)
+
+definition "compile_dataflow_tree df = (
+  let (_, s, op) = compile_dataflow_tree_aux 0 df in
+  if \<not> has_zero_cyc s \<and>
+     no_self_loop_checker s \<and>
+     implementation_graph_checker (weights_to_graph_fun (remove_non_zero_weights s))
+  then (s, op)
+  else Code.abort (STR ''Control plane could not be build'') (\<lambda> _. (\<lambda> _ _. frontier {#}\<^sub>z, \<oslash>)))"
+
+abbreviation "df_ex1 \<equiv> (Comp [ (1, 0) \<mapsto> (1, 0) ]
+         (Comp (\<lambda> l. None) (Logic \<oslash>) (Logic \<oslash>))
+         (Comp (\<lambda> l. None) (Logic \<oslash>) (Logic \<oslash>))) :: (4, 4, unit, nat) dataflow_tree"
+
+(* value "fst (compile_dataflow_tree
+       df_ex1)
+       (Loc 1 (Src 0)) (Loc 3 (Trg 0))"
+ *)
+
+lemma compile_dataflow_tree_aux_same_loc:
+  "(n'', summar, op) = compile_dataflow_tree_aux n df \<Longrightarrow>
+   summar loc loc = {}\<^sub>A"
+  apply (induct df arbitrary: n n'' op summar)
+  subgoal for l n n' summar
+    by (cases loc; simp add: frontier_empty_zmset split: port.splits if_splits)
+  subgoal for wire dt1 dt2 n n'' summar
+    apply (cases "compile_dataflow_tree_aux n dt1")
+    subgoal for n' summar'
+      apply (cases "compile_dataflow_tree_aux n' dt2")
+      subgoal for n''' summar''
+        apply (drule meta_spec[of _ n])
+        apply (drule meta_spec[of _ n'])
+        apply (drule meta_spec[of _ n'])
+        apply (drule meta_spec[of _ n''])
+        apply (drule meta_spec)
+        apply (drule meta_spec[of _ summar'])
+        apply (drule meta_spec)
+        apply (drule meta_spec[of _ summar''])
+        apply (drule meta_mp)
+        apply simp
+        apply (drule meta_mp)
+        apply simp
+        apply (simp split: if_splits)
+        apply safe
+        subgoal
+          by (auto 0 0 simp add: frontier_empty_zmset port.case_eq_if split: if_splits option.splits)
+        done
+      done
+    done
+  done
+
+lemma enum_dataflow_topology_compile_dataflow[simp]:
+  "enum_dataflow_topology (fst (compile_dataflow_tree df)) (+)"
+  apply standard
+  apply simp_all
+  subgoal
+    unfolding compile_dataflow_tree_def Let_def
+    apply (cases "compile_dataflow_tree_aux 0 df"; simp)
+    using compile_dataflow_tree_aux_same_loc eq_snd_iff frontier_empty_zmset apply metis
+    done
+  subgoal for loc xs s
+    unfolding compile_dataflow_tree_def Let_def
+    apply (cases "compile_dataflow_tree_aux 0 df")
+    apply (simp add: no_self_loop_checker_is_graph_checker split: if_splits)
+    subgoal
+      apply (rule decide_graph_construction[where t=0, simplified, rotated])
+      apply assumption+
+      done
+    subgoal
+      apply (rule empty_graph_no_zero_cyc)
+      apply assumption+
+      apply simp_all
+      apply standard
+      apply simp_all
+      using frontier_empty_zmset apply blast
+      done
+    done
+  done
+
+global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "fst (compile_dataflow_tree df)" "(+)"
+  for df
+  defines take_step' = "enum_dataflow_topology.take_step (fst (compile_dataflow_tree df)) (+)"
+    and after_summary = "dataflow_topology.after_summary (+) :: nat zmultiset \<Rightarrow> nat antichain \<Rightarrow> nat zmultiset"
+  by simp
+
+definition take_step_locale where
+  "take_step_locale df = take_step' df (<)"
+
+fun take_step where
+  "take_step summary (CM loc t delta) c =
+  (let c_pointstamps_old = c_pts c loc; c_pointstamps_new = (c_pts c)(loc := update_zmultiset (c_pts c loc) t delta)
+   in c\<lparr>c_pts := c_pointstamps_new, c_work := (c_work c)(loc := c_work c loc + frontier_change_code c_pointstamps_old (c_pointstamps_new loc))\<rparr>)"
+| "take_step summary PR c =
+   (let (t, loc) = mymin_code (t_loc_pairs c); c_implications_old = c_imp c loc; c_implications_new = (c_imp c)(loc := c_imp c loc + {#t' \<in>#\<^sub>z c_work c loc. t' = t#});
+    c_worklist_removed_loc = map_entry loc (filter_zmset (\<lambda>t'. t' \<noteq> t)) (c_work c)
+    in c\<lparr>c_work := \<lambda>loc'. c_worklist_removed_loc loc' + after_summary (frontier_change_code c_implications_old (c_implications_new loc)) (summary loc loc'),
+        c_imp := c_implications_new\<rparr>)"
+
+definition "propagate_all_locale summary df c0 = (while_option (Not o (worklist_is_empty summary))
+                                           (take_step_locale df PR) c0)"
+
+declare dataflow_topology_from_tree.take_step.simps[of _ "((<) :: nat \<Rightarrow> _ \<Rightarrow> _)",  folded take_step_locale_def mymin_code_def, code]
+
+abbreviation empty_conf where
+  "empty_conf \<equiv> \<lparr>c_work = (\<lambda> _.  {#}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
+
+definition "propagate_all summary c0 = (while_option (Not o (worklist_is_empty summary))
+                                        (take_step summary PR) c0)"
+
+lemma take_step_fast_code[simp]:
+  "take_step_locale df x = take_step (fst (compile_dataflow_tree df)) x"
+  unfolding take_step_locale_def
+  apply (cases x)
+  apply (auto simp add: fun_eq_iff mymin_code_def)
+  done
+
+lemma propagate_all_locale_eq_propagate_all:
+  "propagate_all_locale (fst (compile_dataflow_tree df)) df c = propagate_all (fst (compile_dataflow_tree df)) c"
+  unfolding propagate_all_locale_def Let_def propagate_all_def by (auto split: prod.splits)
+
+abbreviation "show_frontier x \<equiv> let f = Max_antichain x in if f = 42 then STR ''{}'' else STR ''{ '' + show_nat (Max_antichain x) + STR '' }''" 
+
+abbreviation "print_frontier x \<equiv> trace ((STR ''Frontier: '') + show_frontier x)" 
+
+abbreviation "show_frontiers impf \<equiv> show_list (show_prod show_loc show_frontier) (map (\<lambda> l. (l, frontier (impf l))) enum_location_inst.enum_location)"
+
+(* Inspired by timely/src/progress/subgraph.rs:453 *)
+(* First migrate all change batches to the worklist, then call propagate_all_locale *)
+definition "change_multiplicities summary xs conf = fold (\<lambda> (l, t, m) c. take_step summary (CM l t m) c) xs conf"
+
+definition "propagate_pointstamps summary conf cbs = (
+  let conf' = change_multiplicities summary cbs conf in
+  let conf'' = propagate_all summary conf' in trace (STR ''New frontiers: '' + show_frontiers (c_imp (the conf''))) conf'')"
+
+abbreviation "init_subgraph summary \<equiv>
+   \<lparr> pt_tr = the (propagate_pointstamps summary empty_conf (concat (map (\<lambda> nid. map (\<lambda> p. (Loc nid (Src p), 0, 1)) enum_class.enum) enum_class.enum))),
+   lo_pt = [],
+   edges = (\<lambda> l1. [l2 \<leftarrow> enum_class.enum. \<not> is_empty_antichain (summary l1 l2) \<and> is_Src (port l1) \<and> is_Trg (port l2) ]),
+   summ = summary \<rparr>"
+
+(* Inspired by timely/src/dataflow/operators/generic/builder_rc.rs:29 and timely/src/progress/operate.rs:63 *)
+(* This is the shared that the operator exposes to the subgraph *)
+record ('p, 't) shared_state =
+  cons :: "('p \<times> 't \<times> int) change_batch"
+  inte :: "('p \<times> 't \<times> int) change_batch"
+  prod :: "('p \<times> 't \<times> int) change_batch"
+
+(* Inspired by timely/src/progress/subgraph.rs:759 *)
+definition extract_progress where
+  "extract_progress nid edg st =
+    map (\<lambda> (p, t, m). (Loc nid (Trg p), t, -m)) (cons st) @ 
+    map (\<lambda> (p, t, m). (Loc nid (Src p), t, m)) (inte st) @
+    concat (map (\<lambda> (p, t, m). map (\<lambda> l. (l, t, m)) (edg (Loc nid (Src p)))) (prod st))"
+
+(* Inspired by timely/src/dataflow/operators/capability.rs:62 *)
+datatype ('p, 't) capability = Cap (time: 't) (out: 'p)
+
+corec dataflow_op where
+  "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
+     Read (Inl nid) f \<Rightarrow> (case propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg) of
+         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr> in
+         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr imp_fron)))))
+   | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x)))
+   | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
+   | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
+   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> lo_pt := lo_pt sg @ extract_progress nid (edges sg) st \<rparr>) op')
+   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) (choices op))"
+
+lemma propagate_all_terminates[simp]:
+  "propagate_all a b \<noteq> None"
+  sorry
+
+lemma change_multiplicities_terminates[simp]:
+  "propagate_pointstamps summary conf cbs \<noteq> None"
+  apply (induct cbs arbitrary: conf) 
+  apply (auto simp add: propagate_pointstamps_def)
+  done
+
+lemma step_dataflow_op_elim:
+  assumes "step io (dataflow_op sg op) op'"
+  obtains
+    nid p op'' x where "io = Inp (nid, p) x" "op' = dataflow_op sg op''" "step (Inp (Inr (nid, p)) (Inr x)) op op''"
+  | nid p op'' x where "io = Out (nid, p) x" "op' = dataflow_op sg op''" "step (Out (Inr (nid, p)) (Inr x)) op op''"
+  | op'' where "io = Tau" "op' = dataflow_op sg op''" "step Tau op op''"
+  | nid op'' st where "io = Tau" "op' = dataflow_op (sg\<lparr> lo_pt := lo_pt sg @ extract_progress nid (edges sg) st \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
+  | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr>)"
+    "imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p)))" "op' = dataflow_op sg' op''" "step (Inp (Inl nid) (Inl (Inr imp_fron))) op op''"
+  | op'' p p' where "op' = \<oslash>" "op = Write op'' (Inl p) (Inr p')"
+  | op'' p p' where "op' = \<oslash>" "op = Write op'' (Inr p) (Inl p')"
+  using assms apply -
+  apply atomize_elim
+  apply (subst (asm) dataflow_op.code)
+  apply (simp split: if_splits)
+  apply (elim stepChoiceE)
+  subgoal for op'
+    apply (auto del: disjCI split: op.splits sum.splits option.splits)
+    apply fastforce+
+    done
+  done
+
+lemma step_Tau_dataflow_op_Out_Inl_intro[intro]:
+  "step (Out (Inl nid) (Inl (Inl st))) op op' \<Longrightarrow>
+   sg' = sg\<lparr> lo_pt := lo_pt sg @ extract_progress nid (edges sg) st \<rparr> \<Longrightarrow>
+   step Tau (dataflow_op sg op) (dataflow_op sg' op')"
+  apply (subst dataflow_op.code)
+  apply (force elim: step_choicesE split: sum.splits option.splits)
+  done
+
+lemma step_Tau_dataflow_op_Inp_Inl_intro[intro]:
+  "step (Inp (Inl nid) (Inl (Inr imp_fron))) op op' \<Longrightarrow>
+   conf' = the (propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg)) \<Longrightarrow>
+   sg' = sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr> \<Longrightarrow>
+   imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) \<Longrightarrow>
+   step Tau (dataflow_op sg op) (dataflow_op sg' op')"
+  apply (subst dataflow_op.code)
+  apply (fastforce elim: step_choicesE split: sum.splits option.splits)
+  done
+
+lemma step_Tau_dataflow_op_Tau_intro[intro]:
+  "step Tau op op' \<Longrightarrow>
+   step Tau (dataflow_op sg op) (dataflow_op sg op')"
+  apply (subst dataflow_op.code)
+  apply (fastforce elim: step_choicesE split: sum.splits option.splits)
+  done
+
+lemma step_Out_dataflow_op_Out_Inr_intro[intro!]:
+  "step (Out (Inr (nid, p)) (Inr x)) op op' \<Longrightarrow>
+   step (Out (nid, p) x) (dataflow_op sg op) (dataflow_op sg op')"
+  apply (subst dataflow_op.code)
+  apply (fastforce elim: step_choicesE split: sum.splits option.splits)
+  done
+
+lemma step_Inp_dataflow_op_Inp_Inr_intro[intro!]:
+  "step (Inp (Inr (nid, p)) (Inr x)) op op' \<Longrightarrow>
+   step (Inp (nid, p) x) (dataflow_op sg op) (dataflow_op sg op')"
+  apply (subst dataflow_op.code)
+  apply (fastforce elim: step_choicesE split: sum.splits option.splits)
+  done
+
+lemma dataflow_op_end_op:
+  "dataflow_op sg \<oslash> = \<oslash>"
+  apply (subst dataflow_op.code)
+  apply simp
+  done
+
+fun steps where
+  "steps [] = (=)"
+| "steps (io # ios) = step io OO steps ios"
+
+lemma steps_append[simp]:
+  "steps (xs @ ys) = steps xs OO steps ys"
+  by (induct xs arbitrary: ys) auto
+
+lemma step_refl[simp]:
+  "step io OO (=) = step io"
+  by auto
+
+thm step_map_op[no_vars]
+
+lemma steps_map_op[intro!]:
+  "steps xs op op' \<Longrightarrow> map (map_IO f g id) xs = xs' \<Longrightarrow>
+   f = f' \<Longrightarrow>
+   g = g' \<Longrightarrow>
+   steps xs' (map_op f g op) (map_op f' g' op')"
+  by (induct xs' arbitrary: op op' xs)
+    (force simp add: relcompp_apply)+
+
+lemma steps_intro[intro]:
+  "step x op op' \<Longrightarrow>
+   steps xs op' op'' \<Longrightarrow>
+   ys = x # xs \<Longrightarrow>
+   steps ys op op''"
+  apply auto
+  done
+
+lemma steps_Tau_dataflow_op_Out_Inl_intro[intro]:
+  "steps (map (\<lambda> st. Out (Inl nid) (Inl (Inl st))) xs) op op' \<Longrightarrow>
+   sg' = sg\<lparr> lo_pt := lo_pt sg @ concat (map (\<lambda> st. (extract_progress nid (edges sg) st)) xs) \<rparr> \<Longrightarrow>
+   n = length xs \<Longrightarrow>
+   (step Tau ^^ n) (dataflow_op sg op) (dataflow_op sg' op')"
+  apply (induct xs arbitrary: op' sg op op' sg' n rule: rev_induct)
+  subgoal for op' conf' sg
+    by simp
+  subgoal for a xs op' sg op sg'
+    apply simp
+    apply (simp add: relcompp_apply)
+    apply safe
+    apply hypsubst_thin
+    apply (drule meta_spec)+
+    apply (drule meta_mp)
+    apply assumption
+    apply (drule meta_mp)
+    apply (rule refl)
+    apply fastforce
+    done
+  done
+
+definition "compile_dataflow dt = (let (summary, op) = compile_dataflow_tree dt in
+                                    let sg = init_subgraph summary in
+                                    dataflow_op sg op)"
+
+(* Should this be non-deterministic? (e.g. non-deterministically send events and capabilities updates) *)
+(* Inspired by timely/src/dataflow/channels/pushers/counter.rs:25 and timely/src/dataflow/channels/mod.rs:49 *)
+(* writes maybe could support multiple different ports, then this one also would *)
+abbreviation "push op p batch \<equiv> 
+  writes op (trace (STR ''Pushing data!'') Some p) (map (\<lambda> (x, c). Inr (x, time c)) batch)"
+
+abbreviation "drop_cap c op \<equiv>
+  Write op None (trace (String.implode (''Dropping cap!'')) Inl (Inl \<lparr> cons = [], inte = [(out c, time c, -1)], prod = [] \<rparr>))"
+
+abbreviation "drop_caps cs op \<equiv>
+  Write op None (trace (String.implode (''Dropping caps!'')) Inl (Inl \<lparr> cons = [], inte = map (\<lambda> c. (out c, time c, -1)) cs, prod = [] \<rparr>))"
+
+abbreviation "delayed_cap c t \<equiv>
+  (Cap (time c + abs t) (out c),
+  \<lambda> op. Write op None 
+     (Inl (Inl \<lparr> cons = [],
+            inte = [(out c, time c, -1), (out c, time c + abs t, 1)],
+            prod = [] \<rparr>)))"
+
+(* The minted capability must depend on the internal wiring *)
+abbreviation "pull i f \<equiv> (Read ((trace (STR ''Reading data'') Some) i)
+  (\<lambda> x. case x of
+    (Inr (d, t)) \<Rightarrow> Write (f (d, Cap t 0)) None (Inl (Inl \<lparr>  cons = [(i, t, 1)], inte = [(i, t, 1)], prod = [] \<rparr>))))"
+
+abbreviation
+  "less_than_frontier ft t \<equiv> (\<not> is_empty_antichain (filter_antichain (\<lambda> f. t < f) ft))"
+
+
+end

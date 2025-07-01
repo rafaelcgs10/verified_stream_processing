@@ -311,7 +311,7 @@ lemma in_weights_in_weights_to_graph_fun:
   using assms apply (clarsimp split: if_splits)
   subgoal apply (subst  List.member_def )
     apply (subst Enum.Collect_code[symmetric])
-    apply (metis is_empty_antichain_def Set.is_empty_def mem_Collect_eq memb_imp_not_empty set_antichain2)
+    apply (metis Set.is_empty_def ex_in_conv is_empty_antichain.rep_eq mem_Collect_eq member_antichain.rep_eq)
     done
   done
 
@@ -481,7 +481,7 @@ lemma graph_checker_correct: "graph_checker weights \<Longrightarrow> Graph.grap
     subgoal by (simp add: add_mono_thms_linordered_semiring(1))
     subgoal
       apply (subst (asm) all_code[symmetric])
-      apply (metis is_empty_antichain_def Set.is_empty_def empty_antichain_def set_antichain_inverse)
+      apply (metis Set.is_empty_def empty_antichain.abs_eq is_empty_antichain.rep_eq set_antichain_inverse)
       done
     done
   done
@@ -559,12 +559,12 @@ lemma exists_graph: "(\<forall> x .distinct (f x)) \<Longrightarrow> \<exists>G 
       apply (subst List.List.list.rel_eq)
       apply (rule exI[where x="fun_to_rel f"])
       apply (rule Relation.relcomp.relcompI [where b="set \<circ> f"])
-      apply (rule fun_relI)
+       apply (rule fun_relI)
       subgoal for a1 a2
         apply (subst IdD[where b=a2])
-        apply simp
+         apply simp
         apply (rule Relation.relcomp.relcompI[where b="f a2"])
-        apply force
+         apply force
         apply (simp add: br_def)
         done
       subgoal 
@@ -577,7 +577,7 @@ lemma exists_graph: "(\<forall> x .distinct (f x)) \<Longrightarrow> \<exists>G 
         apply (rule exI[where x="UNIV"])
         apply (subst List.List.list.rel_eq)
         apply (rule Relation.relcomp.relcompI [where b="Enum.enum"])
-        apply simp
+         apply simp
         apply (simp add: br_def Enum.enum_class.UNIV_enum Enum.enum_class.enum_distinct)
         done
       using Param_Tool.param(3) apply blast
@@ -587,5 +587,47 @@ lemma exists_graph: "(\<forall> x .distinct (f x)) \<Longrightarrow> \<exists>G 
 
 abbreviation "zero_cycle_checker \<equiv> acyclic o fun_to_rel o weights_to_graph_fun o remove_non_zero_weights"
 
+
+
+lemma decide_graph_construction:
+  assumes "\<not> cyc_checker_codeT \<lparr>gi_V = \<lambda>x. True, gi_E = weights_to_graph_fun (remove_non_zero_weights summary), gi_V0 = enum_class.enum\<rparr>"
+    and "graph.path summary loc loc xs" and "xs \<noteq> []"
+    and "graph_checker summary"
+    and "implementation_graph_checker (weights_to_graph_fun (remove_non_zero_weights summary))"
+  shows "t < t + foldr (+) (map (\<lambda>(s, l, t). l) xs) 0"
+proof -
+  from assms have G: "Graph.graph summary" 
+    using graph_checker_correct by blast
+  from assms obtain G Rm where E: "((graph_from_weights summary), G) \<in> \<langle>Rm, Id\<rangle> g_impl_rel_ext" 
+    using exists_graph implementation_graph_checker_correct by blast
+  with assms have D: "Digraph.graph G"
+    using Digraph.graph_def using_enum_is_digraph by blast
+  from assms have F: "finite ((g_E G)\<^sup>* `` g_V0 G)" 
+    using using_enum_is_finite E by blast
+  with assms G D F E have A: "acyclic (g_E G \<inter> (g_E G)\<^sup>* `` g_V0 G \<times> UNIV)"
+    using cyc_checker_codeT_correct[of G _ Rm] by blast
+  with assms E G show ?thesis
+    using acyclic_no_zero_cycle[unfolded graph_enum_def] by fast
+qed
+
+lemma empty_graph_no_zero_cyc:
+  "graph.path summary loc loc xs \<Longrightarrow>
+   summary = (\<lambda>_ _. frontier {#}\<^sub>z)  \<Longrightarrow>
+   Graph.graph summary \<Longrightarrow>
+   xs \<noteq> [] \<Longrightarrow>
+   0 < foldr (+) (map (\<lambda>(s, l, t). l) xs) 0"
+  apply (induct xs rule: rev_induct)
+   apply simp
+  subgoal for x xs'
+    apply (simp split: prod.splits)
+    apply (cases x)
+    apply simp
+    apply (erule graph.path_AppendE)
+     apply assumption
+    using frontier_empty_zmset mem_antichain_nonempty apply blast
+    done
+  done
+
+abbreviation "has_zero_cyc s \<equiv> cyc_checker_codeT (graph_from_weights s)"
 
 end

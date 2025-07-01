@@ -6,6 +6,7 @@ imports Complex_Main
   "HOL-Library.Product_Lexorder"
   "HOL.List"
    Progress_Tracking.Propagate
+  "../dataplane/Locations"
 begin
 
 declare [[typedef_overloaded]]
@@ -30,48 +31,12 @@ abbreviation frontier_change_code :: "'t :: order zmultiset
   "frontier_change_code M0 M1 \<equiv>
   zmultiset_of_antichain (frontier M1) - zmultiset_of_antichain (frontier M0)"
 
-definition t_loc_linord :: "('t \<Rightarrow> 't \<Rightarrow> bool) \<Rightarrow> ('t \<times> 'loc :: linorder ) \<Rightarrow> ('t \<times> 'loc) \<Rightarrow> bool" where
-  "t_loc_linord t_less p1 p2 = (case (p1, p2) of ((t1, l1), (t2, l2)) \<Rightarrow>
-    (t_less t1 t2) \<or> (t1 = t2 \<and> l1 \<le> l2))"
-
-lemma linorder_t_loc_linord:
-  assumes H1: "class.linorder (\<lambda>t u. less_t t u \<or> t = u) less_t"
-  shows "class.linorder (t_loc_linord less_t) (\<lambda>t u. t_loc_linord less_t t u \<and> t \<noteq> u)"
-proof -
-  from H1 interpret A: linorder "(\<lambda>t u. less_t t u \<or> t = u)" less_t by auto
-  show ?thesis 
-  apply unfold_locales
-  subgoal  by (smt (z3) A.dual_order.asym Pair_inject case_prodE t_loc_linord_def verit_la_disequality)
-  subgoal by (simp add: case_prodI2 t_loc_linord_def)
-  subgoal by (smt (z3) A.order.strict_trans1 case_prodE order_trans prod.simps(2) t_loc_linord_def)
-  subgoal using \<open>\<And>y x. (t_loc_linord less_t x y \<and> x \<noteq> y) = (t_loc_linord less_t x y \<and> \<not> t_loc_linord less_t y x)\<close> by blast
-  subgoal by (smt (verit, best) A.antisym_conv3 case_prodI case_prodI2 nle_le t_loc_linord_def)
-  done
-qed
-
-definition mymin :: "('t \<Rightarrow> 't \<Rightarrow> bool) => ('t \<times> 'loc :: linorder) set \<Rightarrow> ('t \<times> 'loc)"
-  where "mymin t_less = linorder.Min (t_loc_linord t_less)"
-
-lemma linorderMin:
-  assumes "class.linorder (\<lambda>t u. less_t t u \<or> t = u) less_t"
-  shows "mymin less_t (set (x # xs)) = fold (\<lambda>a b. if t_loc_linord less_t a b then a else b) xs x"
-proof -
-  interpret B: linorder "t_loc_linord less_t" "\<lambda>t u. t_loc_linord less_t t u \<and> t \<noteq> u"
-    by (rule linorder_t_loc_linord[OF assms])
-  have H2: "B.Min (insert x (set xs)) = fold B.min xs x" by (metis B.Min.set_eq_fold list.simps(15))
-  have H3: "B.min = (\<lambda>a b. if t_loc_linord less_t a b then a else b)" using B.min_def by blast
-  show ?thesis
-    unfolding mymin_def
-    by (auto simp: H2 H3)
-qed
-
 definition t_loc_pairs :: "('loc :: enum, 't) configuration \<Rightarrow> ('t \<times> 'loc) set" where
   "t_loc_pairs c = (\<Union>x \<in> set enum_class.enum. (Set.image (\<lambda>t. (t, x)) (set_zmset (c_work c x))))"
 
 export_code t_loc_pairs in SML
 
-definition is_empty_antichain :: "('sum::order) antichain \<Rightarrow> bool" where
-  "is_empty_antichain A = Set.is_empty (set_antichain A)"
+lift_definition is_empty_antichain :: "'a :: order antichain \<Rightarrow> bool" is "Set.is_empty".
 
 locale enum_dataflow_topology = dataflow_topology summary results_in 
   for summary :: "'loc \<Rightarrow> 'loc :: {linorder, enum} \<Rightarrow> 'sum :: {order, monoid_add} antichain" 
@@ -207,6 +172,133 @@ lift_definition antichain_from_list :: "'sum :: {order, monoid_add} list \<Right
   "\<lambda>A. set (filter (\<lambda> x . (list_all ((\<le>) x) A)) A)"
   apply (subst list_all_def set_filter)
   apply (simp add: basic_trans_rules(24) incomparable_def list.pred_set)
+  done
+
+declare zmultiset_of_antichain_def[code]
+
+lemma antichain_sum_empty[simp]:
+  "A + {}\<^sub>A = A"
+  apply transfer
+  apply simp
+  apply (smt (verit, ccfv_threshold) in_minimal_antichain incomparable_def order_class.order_eq_iff order_less_imp_not_eq subset_iff)
+  done
+
+lift_definition zequal :: "'a zmultiset \<Rightarrow> 'a zmultiset \<Rightarrow> bool" is
+  "\<lambda> (M, N) (P, Q). (M-N) = (P-Q) \<and> (N-M) = (Q-P)"
+  apply (auto simp: equiv_zmset_def)
+  apply (metis (full_types) Multiset.diff_right_commute add_diff_cancel_right')
+  apply (metis Multiset.diff_right_commute add_diff_cancel_left')
+  apply (metis add_diff_cancel_right' cancel_ab_semigroup_add_class.diff_right_commute)
+  by (metis Multiset.diff_right_commute add_diff_cancel_left')
+
+lemma is_empty_antichain_simp[simp]:
+  "is_empty_antichain {}\<^sub>A"
+  apply transfer
+  apply (auto simp add: Set.is_empty_def)
+  done
+lemma is_empty_antichain_empty_list[simp]:
+  "is_empty_antichain (antichain_from_list [])"
+  apply transfer
+  apply (auto simp add: Set.is_empty_def)
+  done
+lemma is_empty_antichain_not_empty_list[simp]:
+  "\<not> is_empty_antichain (antichain_from_list [a])"
+  apply transfer
+  apply (auto simp add: Set.is_empty_def)
+  done
+
+definition "reachable_locations summary \<equiv> { loc . \<exists> loc' .
+     \<not> is_empty_antichain (summary loc loc') \<or> \<not> is_empty_antichain (summary loc' loc) }"
+
+definition worklist_is_empty where
+  "worklist_is_empty summary c = Set.Ball (reachable_locations summary) (\<lambda> loc. zequal (c_work c loc) {#}\<^sub>z)"
+
+lemma set_zmset_code[code]:
+  "set_zmset (abs_zmultiset x) = (case x of (A, B) \<Rightarrow> set_mset (A - B) \<union> set_mset (B - A))"
+  unfolding set_zmset_def
+  by transfer (auto simp: set_mset_def)
+
+lemma frontier_code[code]:
+  "set_antichain (frontier x) = minimal_antichain {t \<in> set_zmset x. 0 < zcount x t}"
+  by transfer' (auto intro!: arg_cong[of _ _ minimal_antichain] zcount_inI)
+
+lift_definition Max_antichain :: "nat antichain \<Rightarrow> nat" is "\<lambda> x. if Set.is_empty x then 42 else Max x" .
+
+
+(* FIXME: move me *)
+lemma arg_cong3:
+  "a = b \<Longrightarrow> c = d \<Longrightarrow> e = g \<Longrightarrow> f a c e = f b d g"
+  by fast
+
+lemma update_zmultiset_simps[simp]:
+  "update_zmultiset A x 0 = A"
+  "update_zmultiset A x (int (Suc n)) = {# x #}\<^sub>z + update_zmultiset A x (int n)"
+  "update_zmultiset A x (- (int (Suc n))) = update_zmultiset A x (- (int n)) - {# x #}\<^sub>z"
+  subgoal
+    apply transfer
+    apply (auto simp add: equiv_zmset_def)
+    done
+  subgoal
+    apply transfer
+    apply (clarsimp simp add: equiv_zmset_def split: if_splits)
+    apply (metis nat_int of_nat_Suc replicate_mset_Suc)
+    done
+  subgoal
+    apply transfer
+    apply (clarsimp simp add: equiv_zmset_def split: if_splits)
+    apply (metis Suc_as_int replicate_mset_Suc)
+    done
+  done
+
+lemma update_zmultiset_simps_more[simp]:
+  "update_zmultiset A x (int n) = A + zmset_of (replicate_mset n x)"
+  "update_zmultiset A x (- (int n)) = A - zmset_of (replicate_mset n x)"
+  subgoal
+    apply (induct n)
+    apply simp_all
+    apply (metis Groups.add_ac(2) add_zmset_add_single int_ops(2,5) plus_1_eq_Suc update_zmultiset_simps(2))
+    done
+  subgoal
+    apply (induct n)
+    apply simp_all
+    apply (metis ab_group_add_class.ab_diff_conv_add_uminus arith_simps(49) diff_add_eq_diff_diff_swap int_Suc union_add_left_zmset
+        update_zmultiset_simps(3))
+    done
+  done
+
+lemma update_zmultiset_replicate:
+  "update_zmultiset A x (m :: int) =
+  (if m < 0 then A - zmset_of (mset (replicate (nat (abs m)) x)) else A + zmset_of (mset (replicate (nat m) x)))"
+  apply (cases m)
+  apply clarsimp+
+  apply (metis add_uminus_conv_diff int_Suc is_num_normalize(8) nat_int update_zmultiset_simps_more(2))
+  done
+
+lemma update_zmultiset_comm:
+  "update_zmultiset (update_zmultiset A x m) y n = update_zmultiset (update_zmultiset A y n) x m"
+  apply (cases m; cases n)
+  apply (clarsimp simp add: update_zmultiset_replicate)+
+  apply (simp add: add.commute)
+  done
+
+lemma update_zmultiset_plus_pos:
+  "A + update_zmultiset B x (int m) = B + update_zmultiset A x (int m)"
+  by simp
+lemma update_zmultiset_plus_neg:
+  "A + update_zmultiset B x (- (int m)) = (A + B) - update_zmultiset {#}\<^sub>z x (int m)"
+  apply simp
+  using add_diff_eq apply blast
+  done
+
+lemma update_zmultiset_plus[simp]:
+  "update_zmultiset (update_zmultiset A t n) t m = update_zmultiset A t (n + m)"
+  apply transfer
+  apply (clarsimp simp add:  nat_add_distrib replicate_mset_plus equiv_zmset_def split: if_splits)
+  subgoal by (metis ab_group_add_class.ab_diff_conv_add_uminus diff_add_cancel less_imp_le nat_add_distrib neg_0_le_iff_le not_le replicate_mset_plus)
+  subgoal by (smt (verit, del_insts) nat_add_distrib replicate_mset_plus)
+  subgoal by (smt (verit, ccfv_threshold) add.commute add.left_commute nat_add_distrib replicate_mset_plus) 
+  subgoal by (smt (verit, ccfv_threshold) nat_add_distrib replicate_mset_plus)
+  subgoal by (smt (verit, best) nat_add_distrib replicate_mset_plus) 
   done
 
 end

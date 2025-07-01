@@ -1,12 +1,12 @@
 theory CSet_LList_Impl
   imports Cset_Setup
-   "Coinductive.Coinductive_List"
-   "HOL-Library.BNF_Corec"
-   "HOL-Library.Debug"
-   "HOL-Library.Simps_Case_Conv"
-   "HOL-Library.Code_Test"
-   "HOL-Library.Code_Cardinality"
-   "HOL-Library.Debug"
+    "Coinductive.Coinductive_List"
+    "HOL-Library.BNF_Corec"
+    "HOL-Library.Debug"
+    "HOL-Library.Simps_Case_Conv"
+    "HOL-Library.Code_Test"
+    "HOL-Library.Code_Cardinality"
+    Debug_Utils
 begin
 
 lemma countable_lset[simp]: "countable (lset xs)"
@@ -94,8 +94,8 @@ end
 instantiation num0 :: cenum begin
 definition cenum_num0 :: "0 llist" where "cenum_num0 = lmap Abs_num0 cenum"
 instance by standard
-  (auto simp: cenum_num0_def UNIV_cenum[symmetric] cenum_distinct image_iff inj_on_def
-     Abs_num0_inject Rep_num0_inverse intro!: exI[of _ "Rep_num0 _"])
+    (auto simp: cenum_num0_def UNIV_cenum[symmetric] cenum_distinct image_iff inj_on_def
+      Abs_num0_inject Rep_num0_inverse intro!: exI[of _ "Rep_num0 _"])
 end
 instantiation num1 :: cenum begin
 definition cenum_num1 :: "1 llist" where "cenum_num1 = llist_of [1]"
@@ -104,14 +104,14 @@ end
 instantiation bit0 :: ("{finite}") cenum begin
 definition cenum_bit0 :: "'a bit0 llist" where "cenum_bit0 = llist_of (map (Abs_bit0' \<circ> int) (upt 0 (CARD('a bit0))))"
 instance by standard
-  (use Rep_bit0[where 'a='a] in \<open>auto simp: cenum_bit0_def image_iff distinct_map inj_on_def
+    (use Rep_bit0[where 'a='a] in \<open>auto simp: cenum_bit0_def image_iff distinct_map inj_on_def
      nat_less_iff Abs_bit0'_def Abs_bit0_inject Rep_bit0_inverse
      intro!: bexI[of _ "nat (Rep_bit0 (_ :: 'a bit0))"]\<close>)
 end
 instantiation bit1 :: ("{finite}") cenum begin
 definition cenum_bit1 :: "'a bit1 llist" where "cenum_bit1 = llist_of (map (Abs_bit1' \<circ> int) (upt 0 (CARD('a bit1))))"
 instance by standard
-  (use Rep_bit1[where 'a='a] in \<open>auto simp: cenum_bit1_def image_iff distinct_map inj_on_def
+    (use Rep_bit1[where 'a='a] in \<open>auto simp: cenum_bit1_def image_iff distinct_map inj_on_def
      nat_less_iff Abs_bit1'_def Abs_bit1_inject Rep_bit1_inverse simp del: upt.simps
      intro!: bexI[of _ "nat (Rep_bit1 (_ :: 'a bit1))"]\<close>)
 end
@@ -130,7 +130,7 @@ simps_of_case linterleave_simps[simp]: linterleave.code[unfolded prod.case]
 lemma linterleave_LNil[simp]:
   "linterleave LNil ys = ys"
   "linterleave ys LNil = ys"
-   apply (cases ys; auto)+
+  apply (cases ys; auto)+
   done
 
 lemma linterleave_LCons1[simp]:
@@ -138,13 +138,13 @@ lemma linterleave_LCons1[simp]:
   apply (coinduction arbitrary: x xs ys rule: llist.coinduct_upto)
   subgoal for x xs ys
     apply (intro impI context_conjI)
-      apply (cases ys)
-       apply auto [2]
+    apply (cases ys)
+    apply auto [2]
     apply (simp only: )
-     apply (cases ys)
-      apply auto[2]
+    apply (cases ys)
+    apply auto[2]
     apply (cases xs; cases ys)
-       apply (auto intro: llist.cong_intros)
+    apply (auto intro: llist.cong_intros)
     apply (metis (mono_tags, lifting) llist.cong_LCons llist.cong_base)
     done
   done
@@ -155,11 +155,11 @@ lemma lset_linterleave1:
   apply (induct "linterleave xs ys" arbitrary: xs ys rule: lset_induct)
   subgoal for xs' xs ys 
     apply (cases xs)
-       apply auto
+    apply auto
     done
   subgoal for x' xs' xs ys
     apply (cases xs)
-     apply auto
+    apply auto
     done
   done
 
@@ -167,10 +167,10 @@ lemma lset_linterleave2:
   "x \<in> lset xs \<Longrightarrow>
    x \<in> lset (linterleave xs ys)"
   apply (induct "xs" arbitrary: ys rule: lset_induct)
-   apply auto
+  apply auto
   subgoal for x' xs ys
     apply (cases ys)
-     apply (auto split: llist.splits)
+    apply (auto split: llist.splits)
     done
   done
 
@@ -180,11 +180,11 @@ lemma lset_linterleave3:
   apply (induct "ys" arbitrary: xs rule: lset_induct)
   subgoal for xs' xs
     apply (cases xs)
-     apply auto
+    apply auto
     done
   subgoal for x' xs' xs
     apply (cases xs)
-     apply (auto split: llist.splits)
+    apply (auto split: llist.splits)
     done
   done
 
@@ -196,14 +196,14 @@ lemma ldistinct_linterleave: "ldistinct xs \<Longrightarrow> ldistinct ys \<Long
   apply (coinduction arbitrary: xs ys)
   subgoal for xs ys
     apply (cases xs; cases ys)
-       apply (force intro!: linterleave_LCons1[symmetric])+
+    apply (force intro!: linterleave_LCons1[symmetric])+
     done
   done
 
 instantiation sum :: (cenum, cenum) cenum begin
 definition cenum_sum :: "('a + 'b) llist" where "cenum_sum = linterleave (lmap Inl cenum) (lmap Inr cenum)"
 instance apply standard
-   apply (auto simp: cenum_sum_def image_iff UNIV_cenum[symmetric] cenum_distinct intro!: ldistinct_linterleave)
+  apply (auto simp: cenum_sum_def image_iff UNIV_cenum[symmetric] cenum_distinct intro!: ldistinct_linterleave)
   apply (meson obj_sumE)
   done
 end
@@ -221,7 +221,7 @@ lemma lmerge_LCons_LCons[simp]: "lmerge (LCons (LCons x xs) xss) = LCons x (lint
   by (subst (1) lmerge.code; auto)
 lemma lmerge_LCons[simp]: "lmerge (LCons xs xss) = linterleave xs (lmerge xss)"
   apply (coinduction arbitrary: xs xss rule: llist.coinduct_upto)
-    apply (intro impI context_conjI)
+  apply (intro impI context_conjI)
   subgoal for xs xss
     by (cases xs) auto
   subgoal for xs xss
@@ -246,10 +246,10 @@ lemma linfinite_coinduct_upto:
   assumes "X xs" "(\<And>ys. X ys \<Longrightarrow> \<exists>xs x. ys = LCons x xs \<and> linfinite_cong X xs)"
   shows "linfinite xs"
   apply (rule linfinite.coinduct[of "linfinite_cong X"])
-   apply (rule linfinite_cong.intros(1), rule assms(1))
+  apply (rule linfinite_cong.intros(1), rule assms(1))
   subgoal for xs
     apply (induct xs rule: linfinite_cong.induct)
-      apply (auto dest!: assms(2) elim: linfinite.cases)
+    apply (auto dest!: assms(2) elim: linfinite.cases)
     done
   done
 
@@ -260,7 +260,7 @@ lemma linfinite_linterleaveL: "linfinite xs \<Longrightarrow> linfinite (linterl
   apply (coinduction arbitrary: xs ys rule: linfinite_coinduct_upto)
   subgoal for xs ys
     apply (cases xs; cases ys)
-       apply (auto intro: linfinite_cong.intros)
+    apply (auto intro: linfinite_cong.intros)
     done
   done
 
@@ -268,7 +268,7 @@ lemma linfinite_linterleaveR: "linfinite ys \<Longrightarrow> linfinite (linterl
   apply (coinduction arbitrary: xs ys rule: linfinite_coinduct_upto)
   subgoal for xs ys
     apply (cases xs; cases ys)
-       apply (auto intro: linfinite_cong.intros)
+    apply (auto intro: linfinite_cong.intros)
     done
   done
 
@@ -286,16 +286,16 @@ lemma linfinite_eq_llength: "linfinite xs \<longleftrightarrow> llength xs = \<i
 
 lemma llength_linterleave[simp]: "llength (linterleave xs ys) = llength xs + llength ys"
   apply (cases "linfinite xs"; cases "linfinite ys")
-     apply (metis linfinite_eq_llength linfinite_linterleaveL plus_enat_simps(3))
-    apply (metis linfinite_eq_llength linfinite_linterleaveL plus_enat_simps(2))
-   apply (metis linfinite_eq_llength linfinite_linterleaveR plus_enat_simps(3))
+  apply (metis linfinite_eq_llength linfinite_linterleaveL plus_enat_simps(3))
+  apply (metis linfinite_eq_llength linfinite_linterleaveL plus_enat_simps(2))
+  apply (metis linfinite_eq_llength linfinite_linterleaveR plus_enat_simps(3))
   apply (simp add: linfinite_eq_not_lfinite)
   apply (induct xs arbitrary: ys rule: lfinite_induct)
-   apply (auto simp: lnull_def neq_LNil_conv)
+  apply (auto simp: lnull_def neq_LNil_conv)
   subgoal premises prems for ys xs'
     using prems(3,1,2)
     apply (induct ys arbitrary: xs' rule: lfinite_induct)
-     apply (auto simp: lnull_def neq_LNil_conv add.commute iadd_Suc_right)
+    apply (auto simp: lnull_def neq_LNil_conv add.commute iadd_Suc_right)
     done
   done
 
@@ -334,9 +334,9 @@ lemma in_lset_lmergeD: "x \<in> lset (lmerge xss) \<Longrightarrow> x \<in> (\<U
         apply hypsubst_thin
         subgoal for zs zss
           apply (cases "lnth (linterleave (lmerge zss) (ltl zs)) m \<in> lset (ltl zs)")
-           apply (metis in_lset_ltlD insert_subset llist.simps(19) lset_ldropWhile_subset)
+          apply (metis in_lset_ltlD insert_subset llist.simps(19) lset_ldropWhile_subset)
           apply (drule lnth_linterleave_swap)
-           apply (auto simp: Suc_ile_eq)
+          apply (auto simp: Suc_ile_eq)
           apply (metis in_lset_ldropWhileD llist.set_intros(2))
           done
         done
@@ -387,7 +387,7 @@ lemma countable_ex_llist: "countable A \<Longrightarrow> \<exists>xs. lset xs = 
 
 context includes cset.lifting begin
 lift_definition wit_cset :: "'a cset \<Rightarrow> 'a llist" is
-   "\<lambda>A. SOME xs. lset xs = A" .
+  "\<lambda>A. SOME xs. lset xs = A" .
 
 lemma lset_wit_cset: "lset (wit_cset A) = rcset A"
   by transfer (auto dest: someI_ex[OF countable_ex_llist])
@@ -435,7 +435,7 @@ lemma cUnion_code[code]: "cUnion (cset_of_llist xss) = cset_llist_merge (cset_ll
   unfolding cUnion_def cset_llist_merge_def cset_llist_of_def cset_of_llist_def
   using abs_cset_llist_inverse[of "lmap wit_cset xss", THEN arg_cong[of _ _ lset], simplified llist.set_map]
   apply (auto simp: cin.rep_eq set_eq_iff image_iff lset_wit_cset)
-   apply metis+
+  apply metis+
   done
 
 code_thms cUnion
@@ -452,12 +452,12 @@ definition force_cset' :: "('a \<Rightarrow> String.literal) \<Rightarrow> nat \
 
 definition "force_cset f n xs = force_cset' f n xs cempty"
 
-lemma
-  force_cset_code[code]: "force_cset' f n (cset_of_llist xs) ys =
+lemma force_cset_code[code]: 
+  "force_cset' f n (cset_of_llist xs) ys =
     (if n = 0 \<or> lnull xs then cUn (cset_of_llist xs) ys else Debug.tracing (f (lhd xs)) (force_cset' f (n - 1) (cset_of_llist (ltl xs)) (cinsert (lhd xs) ys)))"
   unfolding force_cset'_def
   apply (induct n arbitrary: xs ys)
-   apply simp_all
+  apply simp_all
   subgoal premises IH for n xs ys
     apply (cases xs; simp_all add: Let_def cset_of_llist_def)
     apply (subst cinsert.abs_eq[symmetric])
@@ -473,38 +473,6 @@ trace = Debug.Trace.trace
 code_printing constant Debug.tracing \<rightharpoonup> (Haskell) "Debug.trace"
 
 export_code force_cset in Haskell
-
-fun print_nat where
-  "print_nat 0 = ''0''"
-| "print_nat (Suc 0) = ''1''"
-| "print_nat (Suc (Suc 0)) = ''2''"
-| "print_nat (Suc (Suc (Suc 0))) = ''3''"
-| "print_nat (Suc (Suc (Suc (Suc 0)))) = ''4''"
-| "print_nat (Suc (Suc (Suc (Suc (Suc 0))))) = ''5''"
-| "print_nat (Suc (Suc (Suc (Suc (Suc (Suc 0)))))) = ''6''"
-| "print_nat (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))) = ''7''"
-| "print_nat (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))) = ''8''"
-| "print_nat (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))) = ''9''"
-| "print_nat n = print_nat (n div 10) @ print_nat (n mod 10)"
-
-definition show_nat where
-  "show_nat x = String.implode (print_nat x)"
-
-definition "enclose s = STR ''('' + s + STR '')''"
-find_consts "char list \<Rightarrow> String.literal"
-definition show_prod where
-  "show_prod show1 show2 x = enclose (show1 (fst x) + STR '','' + show2 (snd x))"
-fun show_sum where
-  "show_sum show1 show2 (Inl x) = STR ''Inl '' + show1 x"
-| "show_sum show1 show2 (Inr x) = STR ''Inr '' + show2 x"
-fun show_bool where
-  "show_bool True = STR ''T''"
-| "show_bool False = STR ''F''"
-fun show_list0 where
-  "show_list0 show [] = STR ''''"
-| "show_list0 show [x] = show x"
-| "show_list0 show (x # y # z) = show x + STR '','' + show_list0 show (y # z)"
-definition "show_list show xs = enclose (show_list0 show xs)"
 
 instantiation bool :: defaults begin
 definition defaults_bool :: "bool set" where "defaults_bool = {}"
@@ -523,25 +491,25 @@ inductive ldistinct_cong for X where
 
 lemma ldistinct_coinduct_strong[consumes 1, case_names ldistinct, case_conclusion ldistinct lhd ltl, coinduct pred: ldistinct]: 
   assumes "X xs"
-   "(\<And>xs. X xs \<Longrightarrow>
+    "(\<And>xs. X xs \<Longrightarrow>
        \<not> lnull xs \<Longrightarrow>
        lhd xs \<notin> lset (ltl xs) \<and> ldistinct_cong X (ltl xs))"
   shows "ldistinct xs"
   apply (rule ldistinct_coinduct[where X="ldistinct_cong X"])
-   apply (rule ldistinct_cong.intros(1))
-   apply (rule assms(1))
+  apply (rule ldistinct_cong.intros(1))
+  apply (rule assms(1))
   subgoal for xs
     apply (induct xs rule: ldistinct_cong.induct)
-      apply (auto dest: assms(2)) []
+    apply (auto dest: assms(2)) []
     subgoal for lxs lys
       apply (cases lys; cases lxs)
-       apply auto
+      apply auto
       apply (metis Int_insert_left_if0 ldistinct_cong.intros(3) linterleave_LCons1
           lset_LCons)+
       done
     subgoal for lxs lys
       apply (cases lxs)
-       apply auto
+      apply auto
       using ldistinct_lhdD apply blast
       using ldistinct_ltlI apply blast
       using ldistinct_cong.intros(2) apply blast
@@ -552,8 +520,8 @@ lemma ldistinct_coinduct_strong[consumes 1, case_names ldistinct, case_conclusio
 
 lemma ldistinct_lmerge:
   assumes "\<forall>i j. i < j \<longrightarrow> j < llength lxs \<longrightarrow> lset (lnth lxs i) \<inter> lset (lnth lxs j) = {}"
-  and "\<forall>xs \<in> lset lxs. ldistinct xs"
-shows "ldistinct (lmerge lxs)"
+    and "\<forall>xs \<in> lset lxs. ldistinct xs"
+  shows "ldistinct (lmerge lxs)"
   using assms
 proof (coinduction arbitrary: lxs)
   case (ldistinct lxs)
@@ -564,7 +532,7 @@ proof (coinduction arbitrary: lxs)
       apply (auto split: llist.splits)
       subgoal for xs lxs' lxs''
         apply (cases "lnull xs")
-         apply (metis ldropWhile_eq_LNil_iff lhd_LCons lhd_ldropWhile llist.simps(3))
+        apply (metis ldropWhile_eq_LNil_iff lhd_LCons lhd_ldropWhile llist.simps(3))
         apply (subgoal_tac "lxs = lappend (ltakeWhile lnull lxs) (ldropWhile lnull lxs)")
         subgoal
           apply (subgoal_tac "lfinite (ltakeWhile lnull lxs)")
@@ -581,7 +549,7 @@ proof (coinduction arbitrary: lxs)
               apply (subst (asm) in_lset_conv_lnth)
               apply (erule exE conjE)+
               subgoal for k
-              apply (rule exI[of _ "the_enat (llength (ltakeWhile lnull lxs))"])
+                apply (rule exI[of _ "the_enat (llength (ltakeWhile lnull lxs))"])
                 apply (rule exI[of _ "the_enat (llength (ltakeWhile lnull lxs)) + Suc k"])
                 apply auto
                 apply (smt (verit, del_insts) add_Suc_right add_diff_cancel_left'
@@ -608,7 +576,7 @@ proof (coinduction arbitrary: lxs)
           apply auto
           subgoal for x lxs''
             apply (cases "lnull xs")
-             apply (metis ldropWhile_eq_LNil_iff lhd_LCons lhd_ldropWhile llist.simps(3))
+            apply (metis ldropWhile_eq_LNil_iff lhd_LCons lhd_ldropWhile llist.simps(3))
             apply (subgoal_tac "lxs = lappend (ltakeWhile lnull lxs) (ldropWhile lnull lxs)")
             subgoal
               apply (subgoal_tac "lfinite (ltakeWhile lnull lxs)")
@@ -629,10 +597,10 @@ proof (coinduction arbitrary: lxs)
                     apply (rule exI[of _ "the_enat (llength (ltakeWhile lnull lxs))"])
                     apply (rule exI[of _ "the_enat (llength (ltakeWhile lnull lxs)) + Suc k"])
                     apply auto
-                      apply (smt (verit, del_insts) add_Suc_right add_diff_cancel_left'
+                    apply (smt (verit, del_insts) add_Suc_right add_diff_cancel_left'
                         ldropn_Suc_LCons ldropn_lappend2 linorder_not_less llength_ltakeWhile_le
                         lnull_ldropn order_trans)
-                     apply (metis ldropWhile_eq_ldrop ldrop_eq_LConsD lhd_LCons
+                    apply (metis ldropWhile_eq_ldrop ldrop_eq_LConsD lhd_LCons
                         lhd_ldrop)
                     apply (metis add_Suc_right add_diff_cancel_left' eq_LConsD le_add1
                         lfinite_llength_enat llist.disc(2) lnth_lappend2 lnth_ltl
@@ -652,7 +620,7 @@ proof (coinduction arbitrary: lxs)
           subgoal
             apply (subgoal_tac "lfinite (ltakeWhile lnull lxs)")
             subgoal
-          apply (drule spec2[of _ "Suc (the_enat (llength (ltakeWhile lnull lxs))) + i" "Suc (the_enat (llength (ltakeWhile lnull lxs))) + j"])
+              apply (drule spec2[of _ "Suc (the_enat (llength (ltakeWhile lnull lxs))) + i" "Suc (the_enat (llength (ltakeWhile lnull lxs))) + j"])
               apply auto
               apply (smt (verit, ccfv_SIG) Extended_Nat.eSuc_mono eSuc_enat
                   enat_less_enat_plusI2 enat_the_enat llength_LCons
@@ -661,8 +629,8 @@ proof (coinduction arbitrary: lxs)
                   enat_ord_simps(2) enat_the_enat llength_eq_infty_conv_lfinite
                   lnth_Suc_LCons lnth_lappend not_add_less1)
               done
-          by (metis lappend_inf ldropWhile_eq_ldrop ldrop_eq_LConsD order_less_irrefl) 
-        by (metis lappend_ltakeWhile_ldropWhile)
+            by (metis lappend_inf ldropWhile_eq_ldrop ldrop_eq_LConsD order_less_irrefl) 
+          by (metis lappend_ltakeWhile_ldropWhile)
         subgoal by (metis in_lset_ldropWhileD insert_iff llist.simps(19))
         done
       done
@@ -673,9 +641,9 @@ qed
 instantiation prod :: (cenum, cenum) cenum begin
 definition cenum_prod :: "('a \<times> 'b) llist" where "cenum_prod = lmerge (lmap (\<lambda> x. lmap (Pair x) cenum) cenum)"
 instance by standard
- (auto simp: cenum_prod_def image_iff inj_on_def order_less_subst2 UNIV_cenum[symmetric] cenum_distinct
-     intro!: ldistinct_linterleave ldistinct_lmerge
-     dest!: cenum_distinct[unfolded ldistinct_conv_lnth, rule_format, THEN notE, rotated -1])
+    (auto simp: cenum_prod_def image_iff inj_on_def order_less_subst2 UNIV_cenum[symmetric] cenum_distinct
+      intro!: ldistinct_linterleave ldistinct_lmerge
+      dest!: cenum_distinct[unfolded ldistinct_conv_lnth, rule_format, THEN notE, rotated -1])
 end
 
 
