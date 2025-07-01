@@ -3,17 +3,14 @@ theory Zero_Cyc_Check
     (* "Vespa_Lib.Graph"
     "Dataplane.Antichain_Aux"
     "Dataplane.Executable_Aux" *)
-(*     "Collections.Collections"
+    (*     "Collections.Collections"
  *)
     "DFS_Framework.Cyc_Check"
-    "Executable" 
-   Progress_Tracking.Graph
-   Progress_Tracking.Auxiliary
+    Propagation_Extras.Executable
+    Progress_Tracking.Graph
+    Progress_Tracking.Auxiliary
 
 begin
-
-
-
 
 (* Zero cycle checking and it correctness proof *)
 

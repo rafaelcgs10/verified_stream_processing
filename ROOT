@@ -7,12 +7,15 @@ session Nondeterministic_Dataflow in nondeterministic_dataflow = Coinductive +
     "Defaults"
     "CSet_LList_Impl"
     "Coinductive_List_Auxiliary"
+    "Eval"
 
 session Propagation_Extras in propagation_extras = Progress_Tracking +
   options [timeout = 6000]
   theories
     Progress_Tracking.Propagate
     Progress_Tracking.Auxiliary
+    Executable
+    Termination
 
 session Dataplane in dataplane = Nondeterministic_Dataflow + 
   options [timeout = 6000]
@@ -21,3 +24,5 @@ session Dataplane in dataplane = Nondeterministic_Dataflow +
     Propagation_Extras
   theories
     DFS_Framework.Cyc_Check
+    Propagation_Extras.Executable
+    Propagation_Extras.Termination
