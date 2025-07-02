@@ -692,13 +692,27 @@ lemma ltl_lconcat_lmap_zip:
 
 lemma input_top_correctness:
   "wtraced (compile_dataflow (Logic (input_top (Cap i 1) inps)) :: (1 \<times> 1, 1 \<times> 1, 'b \<times> nat) op) ios \<Longrightarrow>
-   lprefix ios (lmap (\<lambda> (n, t). VOut (1, 0) (n, t)) (lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps (iterates Suc i)))))"
+   ios = (lmap (\<lambda> (n, t). VOut (1, 0) (n, t)) (lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps (iterates Suc i)))))"
   apply (drule wbisim_wtraced[OF compile_dataflow_input_top_input_op])
   apply (coinduction arbitrary: ios inps i)
   subgoal for ios inps i
     apply (cases ios)
     subgoal
-      by simp
+      apply (erule wtraced.cases)
+      apply simp_all
+      apply (subst (asm) wfinished_map_op)
+      apply simp_all
+      apply (erule wfinished.cases)
+      subgoal for ops
+       apply (clarsimp simp add: input_op.code lnull_def split: llist.splits list.splits prod.splits)
+        apply (metis (full_types) ldropWhile_eq_LNil_iff lset_lzipD1)
+        apply (metis (full_types) ldropWhile_LConsD)
+        done
+      subgoal for op
+       apply (clarsimp simp add: input_op.code lnull_def split: llist.splits list.splits prod.splits)
+        apply (metis (full_types) ldropWhile_LConsD)
+        done
+      done
     subgoal for io ios'
       apply simp
       apply (erule wtraced.cases)
