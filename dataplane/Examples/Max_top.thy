@@ -5,7 +5,7 @@ imports
   Input_top
 begin 
 
-abbreviation "maxs ft buf \<equiv> [(n, c) \<leftarrow> buf. ft (time c) \<and> n = Max (set (map fst ((filter (\<lambda> (n' :: nat, c'). time c = time c') buf))))]"
+abbreviation "maxs buf \<equiv> [(n, c) \<leftarrow> buf. n = Max (set (map fst ((filter (\<lambda> (n' :: nat, c'). time c = time c') buf))))]"
 
 corec max_top' where
   "max_top' buf = choice2
@@ -15,8 +15,11 @@ corec max_top' where
       let ft = frontier (impf (0 :: 1)) in
       if print_frontier ft  is_empty_antichain ft 
       then trace (STR ''Empty frontier'') \<oslash> 
-      else let result = trace (STR ''Non empty frontier'') (maxs (less_than_frontier ft) buf) in
-      push (drop_caps (map snd result) (max_top' [(n, c) \<leftarrow> buf. \<not> less_than_frontier ft (time c)])) (0 :: 1) result
+      else let below = [(n, c) \<leftarrow> buf. less_than_frontier ft (time c)] in
+      let result = trace (STR ''Non empty frontier'') (maxs below) in
+      push 
+      (Write (max_top' [(n, c) \<leftarrow> buf. \<not> less_than_frontier ft (time c)]) None (Inl (Inl \<lparr> cons = [], inte = map (\<lambda> c. (out c, time c, -1)) (map snd below), prod = map (\<lambda> c. (out c, time c, 1)) (map snd result) \<rparr>)))
+      (0 :: 1) result
     else
       \<oslash>))
    (pull (1 :: 1) (\<lambda> x. max_top' (buf @ [x])))"
@@ -29,9 +32,9 @@ lemma step_max'_top_elim:
 | x where  "io = Inp None (Inr x)" "op = \<oslash>"
 | st impf ft where "io = Inp None (Inl (Inr impf))" "ft = frontier (impf (0 :: 1))"
   "is_empty_antichain ft" "op = \<oslash>"
-| st impf ft result where "io = Inp None (Inl (Inr impf))" "ft = frontier (impf (0 :: 1))"
-  "\<not> is_empty_antichain ft" "result = maxs (less_than_frontier ft) buf"
-  "op = push (drop_caps (map snd result) (max_top' [(n, c) \<leftarrow> buf. \<not> less_than_frontier ft (time c)])) 0 result"
+| st impf ft below result where "io = Inp None (Inl (Inr impf))" "ft = frontier (impf (0 :: 1))"
+  "\<not> is_empty_antichain ft" "below = [(n, c) \<leftarrow> buf. less_than_frontier ft (time c)]" "result = maxs below"
+  "op = push (Write (max_top' [(n, c) \<leftarrow> buf. \<not> less_than_frontier ft (time c)]) None (Inl (Inl \<lparr> cons = [], inte = map (\<lambda> c. (out c, time c, -1)) (map snd below), prod = map (\<lambda> c. (out c, time c, 1)) (map snd result)\<rparr>)) ) 0 result"
 | x t n where "io = Inp (Some 0) (Inr (n, t))"
  "op = Write (max_top' (buf @ [(n, Cap t 1)])) None (Inl (Inl \<lparr> cons = [(1, t, 1)], inte = [(1, t, 1)], prod = [] \<rparr>))"
 | x where "io = Inp (Some 0) (Inl x)" "op = \<oslash>"
@@ -42,15 +45,16 @@ lemma step_max'_top_elim:
   subgoal for p x
     apply (cases p; cases x; simp)
     subgoal for p
-      apply (cases p; simp)
-      subgoal
-        apply auto
-
-      apply (elim stepChoiceE disjE; simp)
-      apply (elim disjE; simp; hypsubst_thin)
-      subgoal           
-      apply (elim stepReadE disjE; simp; hypsubst_thin)
-        
+      by (cases p; fastforce)
+    subgoal for p
+      by (cases p; fastforce)
+    subgoal for p
+      by (cases p; fastforce)
+    subgoal for p
+      by (cases p; fastforce)
+    done
+   apply auto
+  done
 
 abbreviation "max_top \<equiv> max_top' []"
 
@@ -88,8 +92,14 @@ abbreviation "m_top buf \<equiv>  map_op (case_option (Inl (1 :: 2)) (\<lambda> 
 
 abbreviation "inp_m_top i inps buf1 buf2 \<equiv> map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0 :: 2, 1 :: 1) \<mapsto> Inr (1, 1)] buf1 (inp_top (Cap i 1) inps) (m_top buf2))"
 
+
+
+lemma wbcr_trans:
+  "\<W> R x y \<Longrightarrow> \<W> R y z \<Longrightarrow> \<W> R x z"
+  sorry
+
 lemma
-  \<open>xs @@- ys @@- lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps1 (iterates Suc i))) =
+  \<open>ys @@- xs @@- lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps1 (iterates Suc i))) =
    lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps2 (iterates Suc j))) \<Longrightarrow>
    inrbufs1 = buf1 (Inr (1, 1)) \<Longrightarrow>
    \<forall> x \<in> set inrbufs1. is_Inr x \<Longrightarrow>
@@ -102,7 +112,65 @@ proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: 
   case SIM1
   then show ?case
     apply -
-    apply (elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp; hypsubst_thin)
+    apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin)
+    subgoal for op'' io' op''a p op1' q io'a op''b xa xs
+      apply (cases inps1; simp)
+      subgoal for xs inps1'
+        apply (cases xs; simp)
+        subgoal for n xs'
+          apply hypsubst_thin
+          apply (rule exI)
+          apply (rule conjI)
+           apply (rule rtranclp.intros(1))
+          apply (rule wbcr_trans[rotated])
+          apply (rule wbcr_base)
+          apply (rule exI[of _ "LCons xs' inps1'"])
+          apply (rule exI[of _ "inps2"])
+          apply (rule exI[of _ "BENQ (Inr (1, 1)) (Inr (n, i)) buf1"])
+          apply (rule exI[of _ "buf2"])
+          apply (rule exI[of _ "i"])
+          apply (rule exI[of _ "j"])
+          apply (rule exI[of _ "sg\<lparr> lo_pt := (lo_pt sg) @ extract_progress 0 (edges sg) \<lparr>cons = [], inte = [], prod = [(1, i, 1)]\<rparr> \<rparr>"])
+          apply simp
+          apply (intro conjI)
+            apply (rule refl)
+          subgoal
+            apply (drule sym)
+            apply simp
+            subgoal premises prems
+              apply (rule arg_cong2[where f=lshift])
+               apply simp_all
+          apply (rule arg_cong2[where f=lshift])
+               apply (simp_all add: lconcat_correct)
+              apply (subst (1 2) iterates.code)
+              apply simp
+              done
+            done
+          subgoal
+          apply (rule wbcr_bisim)
 
+          done
+        done
+      done
+
+
+
+              find_theorems Coinductive_List_Auxiliary.lconcat name: cor
+
+
+end
+            apply (subst (1 2) dataflow_op.code)
+            apply (auto simp add: extract_progress_def split: if_splits option.splits)
+            done
+          subgoal
+            apply simp
+            apply (rule box_equals) 
+            defer
+            apply (rule dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1", simplified])
+            apply (rule refl)
+            apply (rule dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1", simplified])
+            apply (rule refl)
+            apply (clarsimp simp add: extract_progress_def split: option.splits)
+            done
 
 end
