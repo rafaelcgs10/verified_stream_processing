@@ -460,7 +460,8 @@ abbreviation "delayed_cap c t \<equiv>
 (* The minted capability must depend on the internal wiring *)
 abbreviation "pull i f \<equiv> (Read ((trace (STR ''Reading data'') Some) i)
   (\<lambda> x. case x of
-    (Inr (d, t)) \<Rightarrow> Write (f (d, Cap t 0)) None (Inl (Inl \<lparr>  cons = [(i, t, 1)], inte = [(i, t, 1)], prod = [] \<rparr>))))"
+    (Inr (d, t)) \<Rightarrow> Write (f (d, Cap t 0)) None (Inl (Inl \<lparr>  cons = [(i, t, 1)], inte = [(i, t, 1)], prod = [] \<rparr>))
+   | _ \<Rightarrow> \<oslash>))"
 
 abbreviation
   "less_than_frontier ft t \<equiv> (\<not> is_empty_antichain (filter_antichain (\<lambda> f. t < f) ft))"

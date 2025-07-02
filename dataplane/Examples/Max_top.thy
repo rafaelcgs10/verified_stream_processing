@@ -10,14 +10,47 @@ abbreviation "maxs ft buf \<equiv> [(n, c) \<leftarrow> buf. ft (time c) \<and> 
 corec max_top' where
   "max_top' buf = choice2
    (Read (trace (STR ''Reading frontier'') None) (\<lambda> st.
-    let impf = projr (projl st) in
-    let ft = frontier (impf (0 :: 1)) in
-    if print_frontier ft  is_empty_antichain ft 
-    then trace (STR ''Empty frontier'') \<oslash> 
-    else 
-    let result = trace (STR ''Non empty frontier'') (maxs (less_than_frontier ft) buf) in
-    push (drop_caps (map snd result) (max_top' [(n, c) \<leftarrow> buf. \<not> less_than_frontier ft (time c)])) 0 result))
-   (pull (0 :: 1) (\<lambda> x. max_top' (buf @ [x])))"
+    if is_Inl st \<and> is_Inr (projl st)
+    then let impf = projr (projl st) in
+      let ft = frontier (impf (0 :: 1)) in
+      if print_frontier ft  is_empty_antichain ft 
+      then trace (STR ''Empty frontier'') \<oslash> 
+      else let result = trace (STR ''Non empty frontier'') (maxs (less_than_frontier ft) buf) in
+      push (drop_caps (map snd result) (max_top' [(n, c) \<leftarrow> buf. \<not> less_than_frontier ft (time c)])) (0 :: 1) result
+    else
+      \<oslash>))
+   (pull (1 :: 1) (\<lambda> x. max_top' (buf @ [x])))"
+
+
+lemma step_max'_top_elim:
+  assumes "step io (max_top' buf) op"
+  obtains
+  x where  "io = Inp None (Inl (Inl x))" "op = \<oslash>"
+| x where  "io = Inp None (Inr x)" "op = \<oslash>"
+| st impf ft where "io = Inp None (Inl (Inr impf))" "ft = frontier (impf (0 :: 1))"
+  "is_empty_antichain ft" "op = \<oslash>"
+| st impf ft result where "io = Inp None (Inl (Inr impf))" "ft = frontier (impf (0 :: 1))"
+  "\<not> is_empty_antichain ft" "result = maxs (less_than_frontier ft) buf"
+  "op = push (drop_caps (map snd result) (max_top' [(n, c) \<leftarrow> buf. \<not> less_than_frontier ft (time c)])) 0 result"
+| x t n where "io = Inp (Some 0) (Inr (n, t))"
+ "op = Write (max_top' (buf @ [(n, Cap t 1)])) None (Inl (Inl \<lparr> cons = [(1, t, 1)], inte = [(1, t, 1)], prod = [] \<rparr>))"
+| x where "io = Inp (Some 0) (Inl x)" "op = \<oslash>"
+  using assms apply -
+  apply atomize_elim
+  apply (subst (asm) max_top'.code)
+  apply (cases io; simp split: option.splits sum.splits if_splits)
+  subgoal for p x
+    apply (cases p; cases x; simp)
+    subgoal for p
+      apply (cases p; simp)
+      subgoal
+        apply auto
+
+      apply (elim stepChoiceE disjE; simp)
+      apply (elim disjE; simp; hypsubst_thin)
+      subgoal           
+      apply (elim stepReadE disjE; simp; hypsubst_thin)
+        
 
 abbreviation "max_top \<equiv> max_top' []"
 
@@ -62,6 +95,7 @@ lemma
    \<forall> x \<in> set inrbufs1. is_Inr x \<Longrightarrow>
    xs = map projr inrbufs1 \<Longrightarrow>
    ys = map (\<lambda> (n, c). (n, time c)) buf2 \<Longrightarrow>
+   edges sg = (\<lambda> l. if node l = 0 \<and> port l = Src 1 then [Loc 1 (Trg 0)] else []) \<Longrightarrow>
    dataflow_op sg (inp_m_top i inps1 buf1 buf2) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (max_op j inps2)\<close>
 proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: wbisim_coinduct)
