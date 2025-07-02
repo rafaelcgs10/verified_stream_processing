@@ -10,6 +10,7 @@ imports
   Zero_Cyc_Check 
   Locations
   Operators_Utils
+  Utils
 begin 
 
 (*
@@ -373,11 +374,71 @@ lemma steps_Tau_dataflow_op_Out_Inl_intro[intro]:
     done
   done
 
+
+lemma dataflow_writes_extract_progress_from_push:
+  "g = (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) \<Longrightarrow>
+   dataflow_op sg
+     (map_op f g
+       (writes (Write op None (Inl (Inl \<lparr>cons = cs, inte = is, prod = ps\<rparr>))) (Some p) xs)) =
+    dataflow_op (sg\<lparr>lo_pt := (lo_pt sg) @ extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr> \<rparr>)
+     (map_op f g
+       (writes (Write op None (Inl (Inl \<lparr>cons = [], inte = [], prod = []\<rparr>))) (Some p) xs))"
+  apply (induct xs arbitrary: ps "is" cs)
+  subgoal 
+    apply simp
+    apply (subst (1 2) dataflow_op.code)
+    apply (auto simp add: extract_progress_def split: if_splits option.splits)
+    done
+  subgoal for a xs' 
+    apply (subst (1 2) writes.code)
+    apply simp
+    apply (subst (1 2) dataflow_op.code)
+    apply (simp add: extract_progress_def split: option.splits sum.splits)
+    done
+  done
+
+lemma dataflow_extract_progress_from_push:
+  "dataflow_op sg
+     ((Write op (Inl nid) (Inl (Inl \<lparr>cons = cs, inte = is, prod = ps\<rparr>)))) =
+    dataflow_op (sg\<lparr>lo_pt := (lo_pt sg) @ extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr> \<rparr>)
+     ((Write op (Inl nid) (Inl (Inl \<lparr>cons = [], inte = [], prod = []\<rparr>))))"
+  apply (subst (1 2) dataflow_op.code)
+  apply (auto simp add: extract_progress_def split: if_splits option.splits)
+  done
+
+lemma dataflow_op_simps[simp]:
+  "\<not> is_Read (dataflow_op sg op)"
+  "\<not> is_Write (dataflow_op sg op)"
+  "\<not> is_Silent (dataflow_op sg op)"
+  "is_Choice (dataflow_op sg op)"
+  by (subst dataflow_op.code; simp)+
+
 definition "compile_dataflow dt = (let (summary, op) = compile_dataflow_tree dt in
                                     let sg = init_subgraph summary in
                                     dataflow_op sg op)"
 
-(* Should this be non-deterministic? (e.g. non-deterministically send events and capabilities updates) *)
+
+lemma compile_dataflow_tree_aux_Logic_simp[simp]:
+  "compile_dataflow_tree_aux n (Logic op) = (n + 1, \<lambda> l1 l2. 
+    if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
+    then frontier (abs_zmultiset (mset [0], {#})) 
+    else frontier {#}\<^sub>z, map_op (case_option (Inl n) (\<lambda> p. Inr (n, p))) (case_option (Inl n) (\<lambda> p. Inr (n, p))) op)"
+  apply auto
+  done
+
+lemma compile_dataflow_tree_Logic:
+  "compile_dataflow_tree (Logic op) = 
+  (\<lambda> l1 l2. 
+    if 1 = node l1 \<and> (1 :: 1) = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
+    then frontier (abs_zmultiset (mset [0], {#})) 
+    else frontier {#}\<^sub>z, map_op (case_option (Inl 1) (\<lambda> p. Inr (1, p))) (case_option (Inl 1) (\<lambda> p :: 1. Inr (1, p))) op)"
+  unfolding compile_dataflow_tree_def
+  apply (simp only: Let_def compile_dataflow_tree_aux.simps prod.case)
+  apply (subst (7) if_P)
+  apply eval
+  apply simp
+  done
+
 (* Inspired by timely/src/dataflow/channels/pushers/counter.rs:25 and timely/src/dataflow/channels/mod.rs:49 *)
 (* writes maybe could support multiple different ports, then this one also would *)
 abbreviation "push op p batch \<equiv> 
@@ -404,5 +465,141 @@ abbreviation "pull i f \<equiv> (Read ((trace (STR ''Reading data'') Some) i)
 abbreviation
   "less_than_frontier ft t \<equiv> (\<not> is_empty_antichain (filter_antichain (\<lambda> f. t < f) ft))"
 
+
+lemma change_multiplicities_append:
+  "change_multiplicities su (xs @ ys) = (\<lambda> c. change_multiplicities su ys (change_multiplicities su xs c))"
+  unfolding change_multiplicities_def 
+  apply (rule ext)
+  apply simp
+  done
+
+lemma change_multiplicities_append_comp:
+  "change_multiplicities su (xs @ ys) = change_multiplicities su ys o change_multiplicities su xs"
+  unfolding change_multiplicities_def
+  apply simp
+  done
+
+lemma take_step_comm:
+  "(take_step su (CM l2 t2 m2) \<circ>\<circ>\<circ> take_step) su (CM l1 t1 m1) = (take_step su (CM l1 t1 m1) \<circ>\<circ>\<circ> take_step) su (CM l2 t2 m2)"
+  apply (rule ext)
+  apply (auto simp add: fun_upd_twist update_zmultiset_comm)
+  done
+
+lemma take_step_plus[simp]:
+  "take_step su (CM l t m) (take_step su (CM l t n) c) = take_step su (CM l t (m + n)) c"
+  by (cases c; auto simp add: add.commute)
+
+lemma change_multiplicitie_rev[simp]:
+  "change_multiplicities su (rev xs) c = change_multiplicities su xs c"
+  unfolding change_multiplicities_def
+  apply (subst fold_rev)
+  apply (clarsimp simp add: take_step_comm)+
+  done
+
+lemma change_multiplicities_comm:
+  "change_multiplicities su (xs @ ys) c = change_multiplicities su (ys @ xs) c"
+  unfolding change_multiplicities_def
+  by (metis (mono_tags, lifting) change_multiplicitie_rev change_multiplicities_append change_multiplicities_def rev_append)
+
+lemma change_multiplicities_simps[simp]:
+  "change_multiplicities su [] c = c"
+  "change_multiplicities su ((l, t, m) # xs) c = change_multiplicities su xs (take_step summary (CM l t m) c)"
+  unfolding change_multiplicities_def by simp+
+
+lemma change_multiplicities_simp_alt:
+  "change_multiplicities su ((l, t, m) # xs) c = take_step su (CM l t m) (change_multiplicities su xs c)"
+proof -
+  have "change_multiplicities su ((l, t, m) # xs) c = change_multiplicities su (rev ((l, t, m) # xs)) c" using change_multiplicitie_rev by metis
+  also have "\<dots> = take_step su (CM l t m) (change_multiplicities su (rev xs) c)" by (simp add: change_multiplicities_def foldr_conv_fold)
+  ultimately show ?thesis by (metis change_multiplicitie_rev)
+qed
+
+lemma change_multiplicities_same_pointstamps_aux:
+  "(\<forall> x \<in> set xs. \<forall> y \<in> set xs. fst x = fst y \<and> (fst o snd) x = (fst o snd) y) \<Longrightarrow>
+   change_multiplicities su xs c = fold (\<lambda> m c. take_step su (CM ((fst o hd) xs) ((fst o snd o hd) xs) m) c) (map (snd o snd) xs) c"
+  unfolding change_multiplicities_def
+  apply (induct xs arbitrary: c)
+  apply simp
+  subgoal premises prems for a xs c
+    using prems(2-) apply -
+    apply (cases a; clarsimp)
+    subgoal using prems(1) by (smt (verit) List.fold_cong fold_map fun_comp_eq_conv list.sel(1) list.set_cases list.set_intros(1))
+    done
+  done
+
+lemma change_multiplicities_same_pointstamps:
+  "(\<forall> x \<in> set xs. \<forall> y \<in> set xs. fst x = l \<and> (fst o snd) x = t) \<Longrightarrow>
+   m = sum_list (map (snd o snd) xs) \<Longrightarrow>
+   change_multiplicities su xs c = take_step su (CM l t m) c"
+  apply (induct xs arbitrary: c m)
+  apply simp
+  subgoal premises prems for x xs c m
+    using prems(2-) apply -
+    apply hypsubst_thin
+    apply (cases x)
+    subgoal for l t m
+      apply (simp only: change_multiplicities_simp_alt)
+      apply (subst prems(1))
+      apply force
+      apply (rule refl)
+      apply clarsimp
+      apply (intro conjI impI)
+      subgoal by (metis (no_types) group_cancel.sub1 uminus_add_add_uminus update_zmultiset_comm update_zmultiset_plus)
+      subgoal
+        by blast 
+      done
+    done
+  done
+
+lemma dataflow_op_change_multiplicities:
+  "change_multiplicities (summ sg) (lo_pt sg) (pt_tr sg) = change_multiplicities (summ sg') (lo_pt sg') (pt_tr sg') \<Longrightarrow>
+   summ sg = summ sg' \<Longrightarrow>
+   pt_tr sg = pt_tr sg' \<Longrightarrow>
+   edges sg = edges sg' \<Longrightarrow>
+   dataflow_op sg op = dataflow_op sg' op"
+  apply (coinduction arbitrary: sg sg' op rule: op.coinduct_upto)
+  subgoal for sg sg' op
+    apply simp
+    apply (subst (3 4) dataflow_op.code)
+    apply (simp add: rel_set_image split: sum.splits option.splits op.splits)
+    apply (rule rel_set_reflI)
+    apply (auto 0 0 simp add: rel_set_image split: sum.splits option.splits op.splits)
+    subgoal for f nid c c'
+      apply (subgoal_tac "c = c'")
+      subgoal
+        apply (rule op.cong_Silent)
+        apply (rule op.cong_base)
+        apply (rule exI[of _ "sg\<lparr>pt_tr := c, lo_pt := []\<rparr>"])
+        apply (rule exI[of _ "sg'\<lparr>pt_tr := c', lo_pt := []\<rparr>"])
+        apply (intro conjI exI)
+        apply (rule refl)+
+        apply simp_all
+        done
+      subgoal
+        unfolding propagate_pointstamps_def Let_def
+        apply simp
+        done
+      done
+    subgoal
+      by (force intro: op.cong_Read op.cong_base)
+    subgoal
+      apply (rule op.cong_Silent)
+      apply (rule op.cong_base)
+      apply (intro conjI exI)
+      apply (rule refl)+
+      apply (simp_all add: change_multiplicities_append)
+      done
+    subgoal
+      by (simp add: op.cong_intros(2))
+    subgoal
+      by (simp add: op.cong_intros(2))
+    subgoal
+      by (simp add: op.cong_intros(2))
+    subgoal
+      by (force intro: op.cong_Write op.cong_base)
+    subgoal
+      by (force intro: op.cong_Silent op.cong_base)
+    done
+  done
 
 end

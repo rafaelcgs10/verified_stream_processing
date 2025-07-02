@@ -45,4 +45,30 @@ abbreviation "ex9 \<equiv> Comp [ (0, 0) \<mapsto> (1, 0), (1, 0) \<mapsto> (0, 
 
 abbreviation "ex10 \<equiv> Comp [ (0 :: 6, 0) \<mapsto> (1, 0), (1, 0) \<mapsto> (0, 0) ] ex4 ex9"
 
-abbreviation "upd_max S t n \<equiv> (case S t of None \<Rightarrow> S(t \<mapsto> n) | Some n' \<Rightarrow> S(t \<mapsto> max n n'))"
+corec max_op :: "nat \<Rightarrow> _ buf llist \<Rightarrow> (1, 1, _ \<times> nat) op" where
+  "max_op n inps = (case ldropWhile ((=) []) inps of
+     LNil \<Rightarrow> \<oslash>
+   | LCons xs lxs \<Rightarrow> Write (max_op (n + the_enat (llength (ltakeWhile ((=) []) inps))) (LCons xs lxs)) 1 (Max (set xs), n + the_enat (llength (ltakeWhile ((=) []) inps))))"
+
+abbreviation "inp_top c inps \<equiv> map_op (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, (p :: 1)))) (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, (p :: 1)))) (input_top c inps)"
+abbreviation "m_top buf \<equiv>  map_op (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, (p :: 1)))) (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, (p :: 1)))) (max_top' buf)"
+
+abbreviation "inp_m_top i inps buf1 buf2 \<equiv> map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0 :: 2, 1 :: 1) \<mapsto> Inr (1, 1)] buf1 (inp_top (Cap i 1) inps) (m_top buf2))"
+
+lemma
+  \<open>xs @@- ys @@- lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps1 (iterates Suc i))) =
+   lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps2 (iterates Suc j))) \<Longrightarrow>
+   inrbufs1 = buf1 (Inr (1, 1)) \<Longrightarrow>
+   \<forall> x \<in> set inrbufs1. is_Inr x \<Longrightarrow>
+   xs = map projr inrbufs1 \<Longrightarrow>
+   ys = map (\<lambda> (n, c). (n, time c)) buf2 \<Longrightarrow>
+   dataflow_op sg (inp_m_top i inps1 buf1 buf2) \<approx>
+   map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (max_op j inps2)\<close>
+proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: wbisim_coinduct)
+  case SIM1
+  then show ?case
+    apply -
+    apply (elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp; hypsubst_thin)
+
+
+end

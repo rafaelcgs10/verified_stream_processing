@@ -1,10 +1,6 @@
 theory Executable
 
-imports Complex_Main
-  "HOL-Library.Linear_Temporal_Logic_on_Streams"
-  "HOL-Library.Multiset"
-  "HOL-Library.Product_Lexorder"
-  "HOL.List"
+imports 
    Progress_Tracking.Propagate
   "../dataplane/Locations"
 begin
@@ -148,6 +144,8 @@ lemma PR_next:
   done
 
 
+end
+
 declare zmultiset_of_antichain_def[code]
 
 lemma set_zmset_code[code]:
@@ -158,8 +156,6 @@ lemma set_zmset_code[code]:
 lemma frontier_code[code]:
   "set_antichain (frontier x) = minimal_antichain {t \<in> set_zmset x. 0 < zcount x t}"
   by transfer' (auto intro!: arg_cong[of _ _ minimal_antichain] zcount_inI)
-
-end
 
 lemma frontier_empty_zmset: "frontier {#}\<^sub>z = {}\<^sub>A"
   by transfer' (auto simp: minimal_antichain_def)
@@ -213,22 +209,7 @@ definition "reachable_locations summary \<equiv> { loc . \<exists> loc' .
 definition worklist_is_empty where
   "worklist_is_empty summary c = Set.Ball (reachable_locations summary) (\<lambda> loc. zequal (c_work c loc) {#}\<^sub>z)"
 
-lemma set_zmset_code[code]:
-  "set_zmset (abs_zmultiset x) = (case x of (A, B) \<Rightarrow> set_mset (A - B) \<union> set_mset (B - A))"
-  unfolding set_zmset_def
-  by transfer (auto simp: set_mset_def)
-
-lemma frontier_code[code]:
-  "set_antichain (frontier x) = minimal_antichain {t \<in> set_zmset x. 0 < zcount x t}"
-  by transfer' (auto intro!: arg_cong[of _ _ minimal_antichain] zcount_inI)
-
 lift_definition Max_antichain :: "nat antichain \<Rightarrow> nat" is "\<lambda> x. if Set.is_empty x then 42 else Max x" .
-
-
-(* FIXME: move me *)
-lemma arg_cong3:
-  "a = b \<Longrightarrow> c = d \<Longrightarrow> e = g \<Longrightarrow> f a c e = f b d g"
-  by fast
 
 lemma update_zmultiset_simps[simp]:
   "update_zmultiset A x 0 = A"
