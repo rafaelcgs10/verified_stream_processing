@@ -11,7 +11,7 @@ corec input_top where
     LNil \<Rightarrow> drop_cap c \<oslash>
   | LCons xs lxs \<Rightarrow>
      push 
-     (Write (input_top (Cap (time c + 1) (out c)) lxs) (trace (STR ''Managing caps'') None) (Inl (Inl \<lparr> cons = [], inte = [(out c, time c, -1), (out c, time c + 1, 1)], prod = if xs = [] then [] else [(out c, time c, length xs)]\<rparr>)))
+     (Write (input_top (Cap (time c + 1) (out c)) lxs) (trace (STR ''Managing caps'') None) (Inl (Inl \<lparr> cons = [], inte = [(out c, time c, -1), (out c, time c + 1, 1)], prod = case xs of [] => [] | _ \<Rightarrow> [(out c, time c, length xs)]\<rparr>)))
       (1 :: 1) (map (\<lambda> x. (x, c)) xs))"
 
 lemma step_input_top_elim:
@@ -305,7 +305,8 @@ next
       apply (rule relpowp_imp_rtranclp) 
       apply (rule steps_Tau_dataflow_op_Out_Inl_intro[where nid=nid and sg=sg and xs="map (\<lambda> t. \<lparr> cons = [], inte = [(1, t, -1), (1, Suc t, 1)], prod = [] \<rparr>) ([i..< i + (the_enat (llength (ltakeWhile ((=) []) inps)))])" ])
       apply (rule steps_map_op)
-      apply simp
+           apply simp
+      defer
       apply (rule ldropWhile_steps_input_top[where  c="Cap i 1", simplified])
       apply (meson ldropWhile_LCons_lfinite_ltakeWhile)
       apply simp

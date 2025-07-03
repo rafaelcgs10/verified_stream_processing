@@ -337,11 +337,11 @@ lemma step_refl[simp]:
 thm step_map_op[no_vars]
 
 lemma steps_map_op[intro!]:
-  "steps xs op op' \<Longrightarrow> map (map_IO f g id) xs = xs' \<Longrightarrow>
-   f = f' \<Longrightarrow>
-   g = g' \<Longrightarrow>
-   steps xs' (map_op f g op) (map_op f' g' op')"
-  by (induct xs' arbitrary: op op' xs)
+  "op'' = map_op f g op' \<Longrightarrow> 
+   map (map_IO f g id) xs = xs' \<Longrightarrow>
+   steps xs op op' \<Longrightarrow>
+   steps xs' (map_op f g op) op''"
+  by (induct xs' arbitrary: op op' op'' xs)
     (force simp add: relcompp_apply)+
 
 lemma steps_intro[intro]:
@@ -412,6 +412,21 @@ lemma dataflow_op_simps[simp]:
   "\<not> is_Silent (dataflow_op sg op)"
   "is_Choice (dataflow_op sg op)"
   by (subst dataflow_op.code; simp)+
+
+lemma un_Choice_dataflow_op_simp[simp]:
+  "un_Choice (dataflow_op sg op) = ((\<lambda>op. case op of
+        Read (Inl nid) f \<Rightarrow>
+          (case propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg) of
+          Some conf' \<Rightarrow> let sg' = sg\<lparr>pt_tr := conf', lo_pt := []\<rparr>; imp_fron = \<lambda>p. c_imp (pt_tr sg') (Loc nid (Trg p)) in Silent (dataflow_op sg' (f (Inl (Inr imp_fron)))))
+        | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda>x. dataflow_op sg (f (Inr x)))
+        | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr>lo_pt := lo_pt sg @ extract_progress nid (edges sg) st\<rparr>) op')
+        | Write op' (Inl nid) (Inl (Inr b)) \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_. \<oslash>)
+        | Write op' (Inl nid) (Inr b) \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_. \<oslash>)
+        | Write op' (Inr (nid, p)) (Inl aa) \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_. \<oslash>)
+        | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x | Choice cset \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_. \<oslash>)
+        | Silent op' \<Rightarrow> Silent (dataflow_op sg op')) |`|
+  choices op)"
+  by (simp add: dataflow_op.code)
 
 definition "compile_dataflow dt = (let (summary, op) = compile_dataflow_tree dt in
                                     let sg = init_subgraph summary in
@@ -561,7 +576,6 @@ lemma dataflow_op_change_multiplicities:
   apply (coinduction arbitrary: sg sg' op rule: op.coinduct_upto)
   subgoal for sg sg' op
     apply simp
-    apply (subst (3 4) dataflow_op.code)
     apply (simp add: rel_set_image split: sum.splits option.splits op.splits)
     apply (rule rel_set_reflI)
     apply (auto 0 0 simp add: rel_set_image split: sum.splits option.splits op.splits)
