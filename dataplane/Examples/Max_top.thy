@@ -102,6 +102,8 @@ find_theorems "\<W>"
 
 term bisim_cong
 
+term monotone
+
 inductive wbisim_cong_alt for R where
   wbc_base[intro]:  "R x y \<Longrightarrow> wbisim_cong_alt R x y"
 | wbc_bisim:  "wbisim x y \<Longrightarrow> wbisim_cong_alt R x y"
@@ -110,12 +112,27 @@ inductive wbisim_cong_alt for R where
 | wbc_Read:"x1 = y1 \<Longrightarrow> rel_fun (=) (wbisim_cong_alt R) x2 y2 \<Longrightarrow> wbisim_cong_alt R (Read x1 x2) (Read y1 y2)"
 | wbc_Write: "wbisim_cong_alt R x1 y1 \<Longrightarrow> wbisim_cong_alt R (Write x1 x2 x3) (Write y1 x2 x3)"
 | wbc_Silent: "wbisim_cong_alt R x1 y1 \<Longrightarrow> wbisim_cong_alt R (Silent x1) (Silent y1)"
-| wbc_bisim_cong: "bisim_cong R x y \<Longrightarrow> wbisim_cong_alt R x y"
+| wbc_bisim_trans:"x ~ y \<Longrightarrow> wbisim_cong_alt R y z \<Longrightarrow> wbisim_cong_alt R x z"
+
 
 lemma wbisim_cong_alt_disj:
   "(wbisim_cong_alt R x y \<or> wbisim x y) = wbisim_cong_alt R x y"
   by (auto intro: wbc_bisim)
 
+find_theorems Choice step
+
+lemma step_bisim:
+  "step io op1 op \<Longrightarrow>
+   op1 ~ op2 \<Longrightarrow>
+   \<exists> op'. step io op2 op' \<and> op' ~ op"
+  sorry
+(*   apply (induct op1 op arbitrary: op2 pred: step)
+  subgoal for p x f op2
+    apply (cases op2; simp; hypsubst_thin)
+    subgoal for f'
+      term sim
+
+ *)
 
 lemma wbisim_coinduct_upto[consumes 1, case_names BISIM]:
   "R op1 op2 \<Longrightarrow>
@@ -143,40 +160,26 @@ lemma wbisim_coinduct_upto[consumes 1, case_names BISIM]:
       by (auto intro!: step_wstep[OF SW])
     subgoal for op1 op2
       by (auto intro: wsim_SilentI)
-    subgoal for op1 op2
-      oops
+    subgoal for x y z
+      unfolding wsim_def
+      apply auto
+      subgoal for io op1'
+        apply (erule bisim.cases)
+        subgoal for op1 op2
+          apply hypsubst_thin
+          apply (metis simE wbisim_cong_alt.intros(8))
+          done
+        done
+      subgoal for io op1'
+        apply (drule spec2, drule mp, assumption)
+        
 
-inductive converges where
-  ceq[intro]: "op1 = op2 \<Longrightarrow> converges op1 op2"
-| cstep: "(\<And>io. step io op1 op1' \<Longrightarrow> step io op2 op2' \<Longrightarrow> converges op1' op2') \<Longrightarrow> converges op1 op2"
+        using step_bisim 
 
 
-lemma
-  "converges 
-   (dataflow_op sg
-     (map_op (case_sum id id) (case_sum id id)
-       (comp_op [Inr (0 :: 2, 1 :: 1) \<mapsto> Inr (1 :: 2, 1)] (BENQ (Inr (1, 1)) (Inr (n, i)) buf1)
-         (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1)))
-           (writes (Write (input_top (Cap (Suc i) 1) inps1') None (Inl (Inl \<lparr>cons = [], inte = [(1, i, - 1), (1, Suc i, 1)], prod = [(1, i, 1 + int (length xs))]\<rparr>))) (Some 1) (map (\<lambda>x. Inr (x, i)) xs)))
-         (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (max_top' buf2)))))
-    (dataflow_op (sg\<lparr>lo_pt := lo_pt sg @ extract_progress 0 (\<lambda>l. if node l = 0 \<and> port l = Src 1 then [Loc 1 (Trg 0)] else []) \<lparr>cons = [], inte = [], prod = [(1, i, 1)]\<rparr>\<rparr>)
-     (map_op (case_sum id id) (case_sum id id)
-       (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BENQ (Inr (1, 1)) (Inr (n, i)) buf1) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (input_top (Cap i 1) (LCons xs inps1')))
-         (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (max_top' buf2)))))"
-  apply (cases xs)
-  subgoal
-    apply simp
-  apply (rule cstep)
-  subgoal for io
-    apply (cases io)
-    defer
-    subgoal for p x
-      apply (cases p; simp)
-      apply (erule step_dataflow_op_elim)
-      apply (elim step_map_op_elim conjE step_comp_op_elim; simp; hypsubst_thin)
-      subgoal for a nid pa op1' xa
-        apply hypsubst_thin
-        oops
+lemma aux3:
+  "monotone S R F \<Longrightarrow> S x y \<Longrightarrow> \<W> R x y"
+  sorry
 
 lemma aux2:
   "step io op1 (Write opf (Inl nid) (Inl (Inl st))) \<Longrightarrow>
@@ -202,34 +205,6 @@ lemma steps_writes:
    apply (force simp add: writes_Cons_simp)+
   done
 
-lemma
-  "dataflow_op sg
-     (map_op (case_sum id id) (case_sum id id)
-       (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
-         (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1)))
-           (writes (Write op1 None (Inl (Inl \<lparr>cons = cs, inte = is, prod = ps\<rparr>))) (Some 1) (map (\<lambda>x. Inr (x, i)) xs)))
-         (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) op2))) =
-    dataflow_op (sg\<lparr>lo_pt := lo_pt sg @ extract_progress 0 (\<lambda>l. if node l = 0 \<and> port l = Src 1 then [Loc 1 (Trg 0)] else []) \<lparr>cons = cs, inte = is, prod = ps\<rparr>\<rparr>)
-     (map_op (case_sum id id) (case_sum id id)
-       (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
-         (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1)))
-           (writes
-             (Write op1 None
-               (Inl (Inl \<lparr>cons = [], inte = [], prod = []\<rparr>)))
-             (Some 1) (map ((\<lambda>(x, c). Inr (x, time c)) \<circ> (\<lambda>x. (x, Cap i 1))) xs)))
-         (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) op2)))"
-  apply (induct xs arbitrary: ps "is" cs)
-  subgoal 
-    apply simp
-    apply (subst (1 2) dataflow_op.code)
-    apply (auto 0 0 simp del: cfilter_eq simp add: extract_progress_def split: op.splits if_splits option.splits)
-    subgoal for p f
-      apply (cases p; auto split: option.splits)
-      subgoal for p x
-        apply (rule cimage_eqI[simplified, of _ _ "Read (Inl p) f"])
-         apply simp_all
-        subgoal
-          oops
 
 lemma
   \<open>ys @@- xs @@- lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps1 (iterates Suc i))) =
@@ -254,7 +229,8 @@ proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: 
           apply hypsubst_thin
           apply (rule exI)
           apply (rule conjI)
-           apply (rule rtranclp.intros(1))
+          apply (rule rtranclp.intros(1))
+          apply (rule aux3[where S=bisim and F=id, simplified])
           apply (rule wbcr_base)
           apply (rule exI[of _ "LCons xs' inps1'"])
           apply (rule exI[of _ "inps2"])
@@ -277,36 +253,45 @@ proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: 
               apply simp
               done
             done
-          subgoal premises
+          subgoal premises prems1
             apply (cases xs')
             subgoal
               apply simp
-            apply (coinduction rule: op.coinduct_upto)
-            apply simp
-            apply (rule rel_setI)
-            subgoal for op
-              apply (auto 0 0 split: op.splits)
-              subgoal for p f
-                apply (cases p; simp split: option.splits sum.splits)
-                subgoal for p' pttr
-                  apply hypsubst_thin
-                  apply (rule bexI[of _ "Read (Inl p') f"])
-                   apply simp
-                  subgoal
-                    apply auto
-        apply (rule op.cong_Silent)
-                    apply (rule op.cong_base)
-                    apply auto
-                    subgoal for pttr'
-                      apply (drule Read_in_choices_step[simplified, where x="Inl (Inr (\<lambda>p. c_imp pttr (Loc p' (Trg 1))))"])
-                      apply (elim exE step_map_op_elim step_comp_op_elim conjE step_max'_top_elim; simp; hypsubst_thin)
-                      subgoal for x io' op'' p 
-                        by auto
-                      subgoal for x io' op'' p op2' io'a op''a
-                        apply (drule sym[of _ "f (Inl (Inr (\<lambda>p. c_imp pttr (Loc 1 (Trg 1)))))"])
-                        apply simp
-                        apply (subst (2) comp_op_code)
-                        apply simp
+              apply (coinduction rule: op.coinduct_upto)
+              apply simp
+              apply (rule rel_setI)
+              subgoal for op
+                apply (auto 0 0 split: op.splits)
+                subgoal for p f
+                  apply (cases p; simp split: option.splits sum.splits)
+                  subgoal for p' pttr
+                    apply hypsubst_thin
+                    apply (rule bexI[of _ "Read (Inl p') f"])
+                     apply simp
+                    subgoal
+                      apply auto
+                      apply (rule op.cong_Silent)
+                      apply (rule op.cong_base)
+                      apply auto
+                      subgoal for pttr'
+                        apply (drule Read_in_choices_step[simplified, where x="Inl (Inr (\<lambda>p. c_imp pttr (Loc p' (Trg 1))))"])
+                        apply (elim exE step_map_op_elim step_comp_op_elim conjE step_max'_top_elim; simp; hypsubst_thin)
+                        subgoal for x io' op'' p 
+                          by auto
+                        subgoal for x io' op'' p op2' io'a op''a
+                          apply (drule sym[of _ "f (Inl (Inr (\<lambda>p. c_imp pttr (Loc 1 (Trg 1)))))"])
+                          apply (simp add: extract_progress_def)
+                          subgoal premises prems2
+                          apply (subst (2) comp_op_code)
+                            apply simp
+                            apply (subst (1 2) dataflow_op.code)
+                            apply simp
+                            apply safe
+                            subgoal
+
+
+
+
 
 end
                         apply (cases x; simp)
