@@ -152,160 +152,288 @@ lemma wbisim_coinduct_upto[consumes 1, case_names BISIM]:
         apply auto
         oops
 
-lemma
-  "((~) OO R OO (~)) op1 op2 \<longleftrightarrow> (\<exists> op1' op2'. op1 ~ op1' \<and> R op1' op2' \<and> op2 ~ op2')"
-  apply (intro iffI)
-  subgoal
-    using bisim_sym by blast
-  subgoal
-    using bisim_sym by blast
+definition sim_set (\<open>_ \<leadsto>[_] _\<close> [80, 80, 80] 80)
+where
+  "P \<leadsto>[Rel] Q \<equiv> \<forall>io Q'. step io Q Q' \<longrightarrow> (\<exists>P'. step io P P' \<and> (P', Q') \<in> Rel)"
+
+definition wsim_set (\<open>_ \<leadsto>\<^sup>^<_> _\<close> [80, 80, 80] 80)
+where
+  "P \<leadsto>\<^sup>^<Rel> Q \<equiv> \<forall>io Q'. step io Q Q' \<longrightarrow> (\<exists>P'. wstep io P P' \<and> (P', Q') \<in> Rel)"
+
+lemma rel2_in_rel[simp]:
+  "in_rel = rel2p"
+  unfolding rel2p_def by force
+
+lemma in_p2_rel_simp[simp]:
+  "(op1, op2) \<in> p2rel X \<longleftrightarrow> X op1 op2"
+  by (metis case_prodI mem_Collect_eq p2relD p2rel_def)
+
+lemma wsim_set_wsim:
+  "P \<leadsto>\<^sup>^<p2rel R> Q \<longleftrightarrow> wsim (conversep R) Q P"
+  unfolding wsim_def wsim_set_def
+  apply auto
   done
 
-lemma X[consumes 1, case_names cSim cSym]:
-  fixes op1 op2 R
-  assumes "R op1 op2"
-  "\<And>op1 op2. R op1 op2 \<Longrightarrow> wsim R op1 op2"
-  "\<And>op1 op2. R op1 op2 \<Longrightarrow> R op2 op1"
-shows "op1 \<approx> op2"
-  using assms apply -
-  apply (rule wbisim_coinduct_upto)
-   apply assumption
-  apply (intro conjI)
-   apply (metis wbisim_cong.intros(1) wsim_def)
-  apply (metis wbisim_cong.intros(1) wsim_def)
+lemma sim_set_sim:
+  "P \<leadsto>[p2rel R] Q \<longleftrightarrow> sim (conversep R) Q P"
+  unfolding sim_def sim_set_def
+  apply auto
   done
+
+lemma bisim_converse[simp]:
+  "(~)\<inverse>\<inverse> = (~)"
+  using bisim_sym by blast
+
+lemma wbisim_converse[simp]:
+  "(\<approx>)\<inverse>\<inverse> = (\<approx>)"
+  using wbisim_sym by blast
+
+lemma p2rel_relcompp:
+  "p2rel (R1 OO R2) = p2rel R1 O p2rel R2"
+  by force
+
+
+lemma wsim_set_wsim_ex:
+  "P \<leadsto>\<^sup>^<((p2rel (\<approx>)) O (p2rel X) O (p2rel (~)))> Q \<longleftrightarrow> wsim ((~) OO (conversep X) OO (\<approx>)) Q P"
+  using wsim_set_wsim[where P=P and Q=Q and R="(\<approx>) OO X OO (~)", simplified]
+  by (simp add: p2rel_relcompp relcompp_assoc converse_relcompp)
 
 lemma strongAppend:
-  assumes PSimQ: "wsim Rel Q P"
-  and     QSimR: "sim Rel' R Q"
-  and     Trans: "Rel' OO Rel \<le> Rel''"
-shows "wsim Rel'' R P"
+  assumes PSimQ: "P \<leadsto>\<^sup>^<Rel> Q"
+  and     QSimR: "Q \<leadsto>[Rel'] R"
+  and     Trans: "Rel O Rel' \<subseteq> Rel''"
+  shows "P \<leadsto>\<^sup>^<Rel''> R"
  using assms
-  unfolding wsim_def sim_def
+  unfolding wsim_set_def sim_set_def
   apply blast
   done
 
-lemma weakBisimulationE:
-  assumes "P \<approx> Q"
-  shows "wsim (\<approx>) P Q"
-  and   "Q \<approx> P"
-using assms
-  apply (meson wbisim.cases wbisim_sym)+
+lemma weakSimE:
+  assumes "P \<leadsto>\<^sup>^<Rel> Q"
+  and     "step io Q Q'"
+
+  obtains P' where "wstep io P P'" and "(P', Q') \<in> Rel"
+  using assms apply -
+  apply atomize_elim
+  apply (auto simp add: wsim_set_def)
   done
 
 lemma weakSimI[case_names Sim]:
-  assumes "\<And>io Q'. step io Q Q' \<Longrightarrow> \<exists>P'. wstep io P P' \<and> Rel Q' P'"
-  shows "wsim Rel Q P"
-  using assms unfolding wsim_def by blast
+  assumes "\<And>io Q'. step io Q Q' \<Longrightarrow> \<exists>P'. wstep io P P' \<and> (P', Q') \<in> Rel"
 
+  shows "P \<leadsto>\<^sup>^<Rel> Q"
+using assms
+by(auto simp add: wsim_set_def)
 
-lemma weakSimE:
-  assumes "wsim Rel Q P"
-  and     "step io Q Q'"
-
-  obtains P' where "wstep io P P'" and "Rel Q' P'"
+lemma weakBisimWeakCoinduct[consumes 1, case_names cSim cSym]:
+  assumes "(P, Q) \<in> X"
+  and     "\<And>P Q. (P, Q) \<in> X \<Longrightarrow> P \<leadsto>\<^sup>^<X> Q"
+  and     "\<And>P Q. (P, Q) \<in> X \<Longrightarrow> (Q, P) \<in> X"
+shows "P \<approx> Q"
   using assms apply -
-  apply atomize_elim
-  apply (auto simp add: wsim_def)
+  apply (rule wbisim.coinduct)
+   apply assumption
+  apply (metis (no_types, lifting) wsim_def wsim_set_def)
   done
 
-lemma simE2:
-  assumes "Rel Q P"
-  and     "wstep io Q Q'"
-  and     Sim: "\<And>R S. Rel S R \<Longrightarrow> wsim Rel S R"
-  obtains P' where "wstep io P P'" and "Rel Q' P'"
-  sorry
+thm wbisim_wstep
+
+lemma
+  "(\<And>R S. (R, S) \<in> Rel \<Longrightarrow> R \<leadsto>\<^sup>^<Rel> S) \<Longrightarrow>
+   (\<And>R S. (R, S) \<in> (converse Rel) \<Longrightarrow> R \<leadsto>\<^sup>^<converse Rel> S)"
+  apply (auto simp add: wsim_set_def wstep_def)
+  oops
+
+
+lemma
+  "(\<And>R S. (R, S) \<in> Rel \<Longrightarrow> R \<leadsto>\<^sup>^<Rel> S) \<Longrightarrow> wbisimulation (rel2p Rel)"
+  apply (auto simp add: wsim_def wsim_set_def rel2p_def)
+  oops
+
+lemma rel2p_converse_simp:
+  "rel2p (Rel\<inverse>) = conversep (rel2p Rel)"
+  unfolding rel2p_def by force
+
+lemma wbisim_wstep_Tau_stronger:
+  assumes "wsimulation_canonical R"
+    and "R op1 op2"
+    and "(step Tau)\<^sup>*\<^sup>* op1 op1'"
+  shows "\<exists>op2'. wstep Tau op2 op2' \<and> R op1' op2'"
+  using assms(3,2)
+proof (induct op1 arbitrary: op2 rule: converse_rtranclp_induct)
+  case (step op1 op1'')
+  with assms(1) obtain op2'' where "wstep Tau op2 op2''" "R op1'' op2''"
+    unfolding wsim_def by (metis wsimulation_canonical_def)
+  moreover from step(3)[OF \<open>R op1'' op2''\<close>] obtain op2' where "wstep Tau op2'' op2'" "R op1' op2'"
+    by blast
+  ultimately show ?case by (auto intro!: exI[of _ op2'])
+qed force
+
+lemma wbisim_wstep_stronger:
+  assumes "wsimulation_canonical R"
+    and "R op1 op2"
+    and "wstep io op1 op1'"
+  obtains op2' where "wstep io op2 op2'" and "R op1' op2'"
+proof -
+  from assms(3) obtain opi opj where \<open>(step Tau)\<^sup>*\<^sup>* op1 opi\<close> \<open>estep io opi opj\<close> \<open>(step Tau)\<^sup>*\<^sup>* opj op1'\<close> unfolding wstep_def by blast
+  moreover from assms(1,2) obtain \<open>wsim R op1 op2\<close> unfolding wsim_def by (simp add: that wsim_correct)
+  ultimately have \<open>\<exists>op2'. wstep io op2 op2' \<and> R op1' op2'\<close> using assms(2)
+  proof (induct op1 arbitrary: op2 rule: converse_rtranclp_induct)
+    case base
+    show ?case
+    proof (cases "io = Tau \<and> opi = opj")
+      case True
+      with base(2,3,4) show ?thesis
+        using wbisim_wstep_Tau_stronger[OF assms(1), of opi op2 op1'] by auto
+    next
+      case False
+      with base obtain opj' where H1: \<open>wstep io op2 opj'\<close> \<open>R opj opj'\<close> unfolding wsim_def by (cases io) force+
+      with assms(1) have \<open>wsim R opj opj'\<close> unfolding wsim_def by (simp add: wsimulation_canonical_def)
+      with base(2) H1(2) have \<open>\<exists>op2'. (step Tau)\<^sup>*\<^sup>* opj' op2' \<and> R op1' op2'\<close>
+        using wbisim_wstep_Tau_stronger[OF assms(1), of opj opj' op1'] by auto
+      with \<open>wstep io op2 opj'\<close> show ?thesis unfolding wstep_def
+        by (smt (verit, best) relcompp_apply rtranclp_trans)
+    qed
+  next
+    case (step op1 opk)
+    from step(1) obtain opk' where "(step Tau)\<^sup>*\<^sup>* op2 opk'" "R opk opk'"
+      by (auto dest!: step(6)[unfolded wsim_def, rule_format])
+    with step(3)[of opk'] step(4,5) assms(1) show ?case unfolding wstep_def
+      by (smt (verit, ccfv_SIG) estep.elims transitive_closurep_trans'(2) wsim_correct wstep_def wstep_steps_Tau wstep_trans'(1,2))
+  qed
+  then show ?thesis using that by force
+qed
+
 
 lemma wsimTransitive:
-  assumes "Rel Q P"
-    and     "wsim Rel' R Q"
-    and     "Rel' OO Rel \<le> Rel''"
-    and     "\<And>S T. Rel T S \<Longrightarrow> wsim Rel T S"
-  shows "wsim Rel'' R P"
+  assumes "(P, Q) \<in> Rel"
+  and     "Q \<leadsto>\<^sup>^<Rel'> R"
+  and     "Rel O Rel' \<subseteq> Rel''"
+  and     "\<And>S T. (S, T) \<in> Rel \<Longrightarrow> S \<leadsto>\<^sup>^<Rel> T"
+  shows "P \<leadsto>\<^sup>^<Rel''> R"
 proof(induct rule: weakSimI)
   case(Sim io R')
   thus ?case using assms
     apply(drule_tac Q=R in weakSimE, auto)
-    by(drule_tac Q=Q in simE2, auto)
+    subgoal for Q'
+      apply (rule wbisim_wstep_stronger[rotated, of "rel2p (converse Rel)" Q P io Q', unfolded rel2p_def, simplified])
+         apply assumption+
+       apply blast
+      apply (auto simp add: wsim_set_def  wsimulation_canonical_def wstep_def wsim_def)
+      done
+    done
 qed
 
+lemma p2rel_converse[simp]:
+  "(p2rel R)\<inverse> = p2rel (conversep R)"
+  by auto
 
-lemma
-  assumes p: "X Q P"
- and rSim: "(\<And>Q P. X Q P \<Longrightarrow> wsim ((\<approx>) OO X OO (~)) Q P)"
- and rSym: "(\<And>Q P. X Q P \<Longrightarrow> X Q P)"
+lemma weakBisimWeakUpto[case_names cSim cSym, consumes 1]:
+  assumes p: "(P, Q) \<in> X"
+  and rSim: "\<And>P Q. (P, Q) \<in> X \<Longrightarrow> P \<leadsto>\<^sup>^<((p2rel (\<approx>)) O X O (p2rel (~)))> Q"
+  and rSym: "\<And> P Q. (P, Q) \<in> X \<Longrightarrow> (Q, P) \<in> X"
   shows "P \<approx> Q"
 proof -
-  let ?X = "(\<approx>) OO X OO (\<approx>)"
-  let ?Y = "(\<approx>) OO X OO (~)"
-  from assms have "?X Q P" by (metis relcompp_apply wbisim_refl)
-  thus ?thesis
-  proof (coinduction arbitrary: Q P rule: X)
-    case(cSim Q P)
+  let ?X = "p2rel (\<approx>) O X O p2rel (\<approx>)"
+  let ?Y = "p2rel (\<approx>) O X O p2rel (~)"
+  from \<open>(P, Q) \<in> X\<close> have "(P, Q) \<in> ?X" by (metis in_p2_rel_simp relcomp.intros wbisim_refl)
+thus ?thesis
+  proof(coinduct rule: weakBisimWeakCoinduct)
+    case(cSim P Q)
     {
       fix P P' Q' Q
-    assume "P \<approx> P'" and "X P' Q'" and "Q' \<approx> Q"
-    from \<open>X P' Q'\<close> have "?Y P' Q'" by (metis bisim_refl relcompp_apply wbisim_refl_alt)
-    moreover from \<open>Q' \<approx> Q\<close> have "wsim (\<approx>) Q' Q" by (meson wbisim.cases)
-    moreover have "?Y OO (\<approx>) \<le> ?X" 
-      by (smt (z3) bisim_wbisim predicate2I_obj relcompp.inducts relcompp_assoc relcompp_mono
-          wbisim_trans)
-     moreover {
-       fix Q P
-        assume "?Y Q P"
-        then obtain P' Q' where "Q \<approx> Q'" and "X Q' P'" and "P' ~ P" by auto
-        from \<open>X Q' P'\<close> have "wsim ?Y Q' P'"  by(rule rSim)
-        moreover from \<open>P' ~ P\<close> have "sim (~) P' P" by (meson bisim.cases)
-        moreover have "?Y OO (~) \<le> ?Y" using bisim_trans by blast
-        ultimately have "wsim (?Y) Q P'" 
-          apply -
-          apply (rule strongAppend)
-          apply assumption
-          
-
-end
-        moreover note \<open>P \<approx> P'\<close>
-        moreover have "(\<approx>) OO ?Y \<le> ?Y" using wbisim_trans by blast
-        ultimately have "wsim ?Y P Q"
-          by (metis wbisimulation_wbisim wsimTransitive)
-      }
-      ultimately have "wsim ?X P' Q" 
-        by (smt (verit, ccfv_SIG) wsimTransitive)
-      moreover note \<open>P \<approx> P'\<close>
-      moreover have "(\<approx>) OO ?X \<le> ?X"
-        by (metis (no_types, opaque_lifting) predicate2I_obj relcompp.inducts relcompp_assoc relcompp_mono
+      assume "P \<approx> P'" and "(P', Q') \<in> X" and "Q' \<approx> Q"
+      from \<open>(P', Q') \<in> X\<close> have "(P', Q') \<in> ?Y" using bisim_refl wbisim_refl_alt by fastforce
+      moreover from \<open>Q' \<approx> Q\<close> have "Q' \<leadsto>\<^sup>^<(p2rel (\<approx>))> Q" by (metis wbisim.cases wbisim_converse wsim_set_wsim)
+      moreover have "?Y O (p2rel (\<approx>)) \<subseteq> ?X" 
+        by (smt (verit, ccfv_threshold) bisim_wbisim in_p2_rel_simp relcomp.cases relcomp.relcompI subrelI
             wbisim_trans)
-      ultimately have "wsim ?X P Q" by (metis wbisimulation_wbisim wsimTransitive)
+      moreover {
+        fix P Q
+        assume "(P, Q) \<in> ?Y"
+        then obtain P' Q' where "P \<approx> P'" and "(P', Q') \<in> X" and "Q' ~ Q" by auto
+        from \<open>(P', Q') \<in> X\<close> have "P' \<leadsto>\<^sup>^<?Y> Q'" by(rule rSim)
+        moreover from \<open>Q' ~ Q\<close> have "Q' \<leadsto>[p2rel (~)] Q" by (simp add: bisim.simps sim_set_sim)
+        moreover have "?Y O p2rel (~) \<subseteq> ?Y" by (smt (z3) O_assoc bisim_trans in_p2_rel_simp relcomp.inducts relcomp_mono subrelI)
+        ultimately have "P' \<leadsto>\<^sup>^<?Y> Q" by(rule strongAppend)
+        moreover note \<open>P \<approx> P'\<close>
+        moreover have "(p2rel (\<approx>)) O ?Y \<subseteq> ?Y" using wbisim_trans by fastforce
+        ultimately have "P \<leadsto>\<^sup>^<?Y> Q" 
+          apply -
+          apply (rule wsimTransitive)
+             prefer 3
+             apply assumption
+            apply simp_all
+           apply (metis wbisim.cases wbisim_converse wsim_set_wsim)+
+          done
+      }
+      ultimately have "P' \<leadsto>\<^sup>^<?X> Q" 
+        using wsimTransitive by meson
+      moreover note \<open>P \<approx> P'\<close>
+      moreover have "(p2rel (\<approx>)) O ?X \<subseteq> ?X" using wbisim_trans by fastforce
+      ultimately have "P \<leadsto>\<^sup>^<?X> Q"
+        by (smt (verit, ccfv_SIG) \<open>(P', Q') \<in> X\<close> \<open>(p2rel (\<approx>) O X O p2rel (~)) O p2rel (\<approx>) \<subseteq> p2rel (\<approx>) O X O p2rel (\<approx>)\<close>
+            \<open>Q' \<leadsto>\<^sup>^<p2rel (\<approx>)> Q\<close> \<open>\<And>Qc Pc. (Pc, Qc) \<in> p2rel (\<approx>) O X O p2rel (~) \<Longrightarrow> Pc \<leadsto>\<^sup>^<(p2rel (\<approx>) O X O p2rel (~))> Qc\<close>
+            bisim_refl in_p2_rel_simp relcomp.simps wsimTransitive)
     }
-    with \<open>?X P Q\<close> show ?case by auto
+    with \<open>(P, Q) \<in> ?X\<close> show ?case by auto
   next
     case(cSym P Q)
     thus ?case 
       apply auto
-      by (metis assms(3) relcompp.intros wbisim'_alt wbisim'_sym)
+      apply (metis assms(3) in_p2_rel_simp relcomp.intros wbisim_sym)
+      done
   qed
 qed
 
+lemma weakBisimUpto[case_names cSim cSym, consumes 1]:
+  assumes p: "(P, Q) \<in> X"
+  and rSim: "\<And>R S. (R, S) \<in> X \<Longrightarrow> R \<leadsto>\<^sup>^<(p2rel (\<approx>) O (X \<union> p2rel (\<approx>)) O p2rel (~))> S"
+  and rSym: "\<And>R S. (R, S) \<in> X \<Longrightarrow> (S, R) \<in> X"
+  shows "P \<approx> Q"
+proof -
+  from p have "(P, Q) \<in> X \<union> p2rel (\<approx>)" by simp
+  thus ?thesis
+    apply(coinduct rule: weakBisimWeakUpto)
+     apply(auto dest: rSim rSym)
+    unfolding wsim_set_def
+    apply (metis (no_types, opaque_lifting) UnI1 bisim_refl in_p2_rel_simp inf_sup_aci(5) p2rel_relcompp relcomppI wbisim_refl wbisim_sym wbisim_wstep_alt)
+    using wbisim_sym apply blast
+    done
+qed
 
+lemma weakBisimWeakUptoBisim[case_names cSim cSym, consumes 1]:
+  assumes p: "R op1 op2"
+  and rSim: "\<And>op1 op2. R op1 op2 \<Longrightarrow> wsim ((~) OO conversep R OO (\<approx>)) op1 op2"
+   and rSym: "\<And>op1 op2. R op1 op2 \<Longrightarrow> R op2 op1"
+  shows "op1 \<approx> op2"
+  apply (rule weakBisimWeakUpto[where X="p2rel R"])
+  using assms(1) apply fastforce
+  apply (simp flip: p2rel_relcompp)
+   apply (subst wsim_set_wsim)
+  using assms apply (auto simp add: converse_relcompp relcompp_assoc)
+  done
 
-end
+lemma lambda_disj_conversep[simp]:
+  "(\<lambda>a b. R a b \<or> a \<approx> b)\<inverse>\<inverse> = (\<lambda>a b. R b a \<or> a \<approx> b)"
+  using wbisim_sym by auto
 
-
-lemma aux2:
-  "step io op1 (Write opf (Inl nid) (Inl (Inl st))) \<Longrightarrow>
-   step io op2 (Write opf (Inl nid) (Inl (Inl \<lparr>cons = [], inte = [], prod = []\<rparr>))) \<Longrightarrow>
-   dataflow_op sg op1 = dataflow_op (sg\<lparr> lo_pt := lo_pt sg @ extract_progress nid (edges sg) st \<rparr>) op2"
-  apply (coinduction arbitrary: op1 op2 rule: op.coinduct_upto)
-  apply simp
-  subgoal for op1 op2
-    apply (subst (3 4) dataflow_op.code)
-    apply (simp add: rel_set_image split: sum.splits option.splits op.splits)
-    apply (rule rel_setI)
-    subgoal for op
-(*       apply (auto 0 0 simp add: rel_set_image split: sum.splits option.splits op.splits)
-      subgoal for f p opp
-        apply hypsubst_thin *)
-        oops
+lemma weakBisimUptoBisim[case_names SIM1 SIM2, consumes 1]:
+  assumes p: "R op1 op2"
+  and rSim: "\<And>op1 op2. R op1 op2 \<Longrightarrow> wsim ((~) OO (\<lambda> op1 op2. R op1 op2 \<or> op1 \<approx> op2) OO (\<approx>)) op1 op2"
+   and rSym: "\<And>op1 op2. R op1 op2 \<Longrightarrow> R op2 op1"
+  shows "op1 \<approx> op2"
+proof -
+  from p have "R op1 op2 \<or> op1 \<approx> op2" by simp
+  thus ?thesis
+    apply(coinduct rule: weakBisimWeakUptoBisim)
+     apply(auto dest: rSim rSym)
+    using assms(2)
+      apply (smt (z3) assms(3) predicate2D predicate2I_obj relcompp_mono wsim_mono)
+  apply (smt (verit, del_insts) bisim_refl eq_OO predicate2D predicate2I_obj relcompp_mono wbisim.cases wbisim_refl wsim_mono)
+  using wbisim_sym apply blast
+  done
+qed
 
 (* FIXME: move me *)
 lemma steps_writes:
@@ -326,10 +454,12 @@ lemma
    edges sg = (\<lambda> l. if node l = 0 \<and> port l = Src 1 then [Loc 1 (Trg 0)] else []) \<Longrightarrow>
    dataflow_op sg (inp_m_top i inps1 buf1 buf2) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (max_op j inps2)\<close>
-proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: wbisim_coinduct)
+proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: weakBisimUptoBisim)
   case SIM1
   then show ?case
     apply -
+    unfolding wsim_def
+    apply safe
     apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin)
     subgoal for op'' io' op''a p op1' q io'a op''b xa xs
       apply (cases inps1; simp)
@@ -339,9 +469,10 @@ proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: 
           apply hypsubst_thin
           apply (rule exI)
           apply (rule conjI)
-          apply (rule rtranclp.intros(1))
-          apply (rule aux3[where S=bisim and F=id, simplified])
-          apply (rule wbcr_base)
+           apply (rule rtranclp.intros(1))
+          apply (intro relcomppI)
+            defer
+          apply (rule disjI1)
           apply (rule exI[of _ "LCons xs' inps1'"])
           apply (rule exI[of _ "inps2"])
           apply (rule exI[of _ "BENQ (Inr (1, 1)) (Inr (n, i)) buf1"])
@@ -363,6 +494,8 @@ proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: 
               apply simp
               done
             done
+             apply (rule refl)+
+          apply (rule wbisim_refl)
           subgoal premises prems1
             apply (cases xs')
             subgoal
