@@ -112,12 +112,13 @@ inductive wbisim_cong_alt for R where
 | wbc_Read:"x1 = y1 \<Longrightarrow> rel_fun (=) (wbisim_cong_alt R) x2 y2 \<Longrightarrow> wbisim_cong_alt R (Read x1 x2) (Read y1 y2)"
 | wbc_Write: "wbisim_cong_alt R x1 y1 \<Longrightarrow> wbisim_cong_alt R (Write x1 x2 x3) (Write y1 x2 x3)"
 | wbc_Silent: "wbisim_cong_alt R x1 y1 \<Longrightarrow> wbisim_cong_alt R (Silent x1) (Silent y1)"
-| wbc_bisim_trans:"x ~ y \<Longrightarrow> wbisim_cong_alt R y z \<Longrightarrow> wbisim_cong_alt R x z"
+| wbc_bisim_trans:"((~) OO R) op1 op2 \<Longrightarrow> wbisim_cong_alt R op1 op2"
 
 
 lemma wbisim_cong_alt_disj:
   "(wbisim_cong_alt R x y \<or> wbisim x y) = wbisim_cong_alt R x y"
   by (auto intro: wbc_bisim)
+
 
 lemma wbisim_coinduct_upto[consumes 1, case_names BISIM]:
   "R op1 op2 \<Longrightarrow>
@@ -145,22 +146,11 @@ lemma wbisim_coinduct_upto[consumes 1, case_names BISIM]:
       by (auto intro!: step_wstep[OF SW])
     subgoal for op1 op2
       by (auto intro: wsim_SilentI)
-    subgoal for x y z
-      unfolding wsim_def
-      apply auto
-      subgoal for io op1'
-        apply (erule bisim.cases)
-        subgoal for op1 op2
-          apply hypsubst_thin
-          apply (metis simE wbisim_cong_alt.intros(8))
-          done
-        done
-      subgoal for io op1'
-        apply (drule spec2, drule mp, assumption)
+    subgoal for op1 op2
+      apply (subgoal_tac "bisimulation ((~) OO R)")
+      subgoal
+        apply auto
         oops
-
-        find_theorems  wbisimulation
-
 
 lemma
   "((~) OO R OO (~)) op1 op2 \<longleftrightarrow> (\<exists> op1' op2'. op1 ~ op1' \<and> R op1' op2' \<and> op2 ~ op2')"
