@@ -538,104 +538,97 @@ lemma wsim_set_def_converse_wbisim_cong:
   apply (metis converse.cases in_p2_rel_simp rel2p_def wbisim_cong.wbc_base wbisim_cong.wbc_sym)
   done
 
+term symclp
+
+find_theorems symclp conversep
+
+lemma wsim_set_def_disjI:
+  "P \<leadsto>\<^sup>^<Y> Q \<or> P \<leadsto>\<^sup>^<X> Q \<Longrightarrow> P \<leadsto>\<^sup>^<(Y \<union> X)> Q"
+  unfolding wsim_set_def
+   apply blast
+  done
+
 lemma weakBisimWeakUpto[case_names cSim cSym, consumes 1]:
   assumes p: "(P, Q) \<in> X"
-  and rSim: "\<And>P Q. (P, Q) \<in> X \<Longrightarrow> P \<leadsto>\<^sup>^<((p2rel (\<approx>)) O X O (p2rel (~)))> Q"
-  and rSym: "\<And> P Q. (P, Q) \<in> X \<Longrightarrow> Q \<leadsto>\<^sup>^<((p2rel (\<approx>)) O X O (p2rel (~)))> P"
+    and rSim: "\<And>P Q. (P, Q) \<in> X \<Longrightarrow> P \<leadsto>\<^sup>^<((p2rel (\<approx>)) O X O (p2rel (~)))> Q"
+    and rSym: "\<And> P Q. (P, Q) \<in> X \<Longrightarrow> Q \<leadsto>\<^sup>^<((p2rel (\<approx>)) O converse X O (p2rel (~)))> P"
   shows "P \<approx> Q"
 proof -
   let ?X = "p2rel (\<approx>) O X O p2rel (\<approx>)"
   let ?Y = "p2rel (\<approx>) O X O p2rel (~)"
-  from \<open>(P, Q) \<in> X\<close> have "(P, Q) \<in> ?X" by (metis in_p2_rel_simp relcomp.intros wbisim_refl)
-thus ?thesis
+  from \<open>(P, Q) \<in> X\<close> have "(P, Q) \<in> (?X \<union> converse ?X)" by (metis UnI1 in_p2_rel_simp relcomp.relcompI wbisim_refl)
+  thus ?thesis
   proof(coinduct rule: weakBisimWeakCoinduct)
     case(cSim P Q)
     thus ?case 
       apply safe
-      apply simp
-      apply (frule wbisim_wsim_setD[of  P])
-      apply (frule wbisim_wsim_setD[of _ Q])
-      apply safe
-      subgoal for P' Q'
-      apply (rule weakBisimWeakUpto_rSim[rotated, OF _ rSim])
-        apply assumption+
-      apply (intro relcompI)
        apply simp_all
-      apply (rule bisim_refl)
+      subgoal for P' Q'
+        apply (frule wbisim_wsim_setD[of  P])
+        apply (frule wbisim_wsim_setD[of _ Q])
+        apply safe
+        apply (rule wsim_set_def_disjI)
+        apply (rule disjI1)
+        apply (rule weakBisimWeakUpto_rSim[rotated, OF _ rSim])
+          apply assumption+
+        apply (intro relcompI)
+          apply simp_all
+        apply (rule bisim_refl)
+        done
+      subgoal for Q' P'
+        apply (frule wbisim_wsim_setD[of  P'])
+        apply (frule wbisim_wsim_setD[of _ Q'])
+        apply safe
+        apply (rule wsim_set_def_disjI)
+        apply (rule disjI2)
+        apply (simp add: converse_relcomp O_assoc)
+        apply (rule weakBisimWeakUpto_rSim[rotated])
+          apply assumption+
+         defer
+         apply (intro relcompI)
+           apply simp_all
+        using wbisim_sym apply blast
+         apply (rule bisim_refl)
+        using rSym apply blast
         done
       done
   next
     case(cSym P Q)
     thus ?case 
-      using rSym apply -
+      apply -
       apply safe
-      apply simp
+       apply simp_all
       subgoal for P' Q'
-      apply (frule wbisim_wsim_setD[of  P])
-      apply (frule wbisim_wsim_setD[of _ Q])
+        apply (frule wbisim_wsim_setD[of  P])
+        apply (frule wbisim_wsim_setD[of _ Q])
         apply safe
-        subgoal
-          apply (rule wsimTransitive[of _ _  "p2rel (\<approx>) O converse X"])
-             apply (intro relcompI)
-          apply simp
-            apply (subst wbisim_sym)
-               apply simp
-          apply simp
-             apply simp
-            apply assumption
-          subgoal
-           
-
-
-end
-             defer
-             apply assumption+
-          apply (metis (no_types, opaque_lifting) assms(2) p2relD relcomp.cases weakBisimWeakUpto_rSim_aux)
-          apply (intro relcompI)
-           apply simp
-             apply assumption+
-            apply simp
-           defer
-           apply simp
-           apply (rule bisim_refl)
-          
-
-
-
-
-        apply (rule wsim_set_def_converse_wbisim_cong)
-        apply (simp add: converse_relcomp)
-
-
-        find_theorems converse relcomp
-
-        apply (subst (asm) wsim_set_def)
-        apply (subst wsim_set_def)
-        unfolding p2rel_def
-        apply safe
-
-
-
-end
-        apply (subgoal_tac "(P, Q') \<in> p2rel (\<approx>) O X")
-        defer
-         apply auto[1]
-
-
-        apply (drule rSym[of P Q'])
-        apply (drule wsimTransitive[rotated, where Rel="p2rel (\<approx>)", of _ _ _ "(p2rel (\<approx>) O X O p2rel (\<approx>))" Q])
+        apply (rule wsim_set_def_disjI)
+        apply (simp add: converse_relcomp O_assoc)
+        apply (rule disjI2)
+        apply (rule weakBisimWeakUpto_rSim[rotated])
+          apply assumption+
+         defer
+         apply (intro relcompI)
            apply simp_all
-        using wbisim_refl apply fastforce
-        apply (metis wbisim.cases wbisim_converse wsim_set_wsim)
         using wbisim_sym apply blast
-        unfolding wsim_set_def
+         apply (rule bisim_refl)
+        using rSym apply blast
+        done
+      subgoal for Q' P'
+        apply (frule wbisim_wsim_setD[of  P'])
+        apply (frule wbisim_wsim_setD[of _ Q'])
         apply safe
-
-
-
-
-end
-      apply (metis assms(3) in_p2_rel_simp relcomp.intros wbisim_sym)
+        apply (rule wsim_set_def_disjI)
+        apply (simp add: converse_relcomp O_assoc)
+        apply (rule disjI1)
+        apply (rule weakBisimWeakUpto_rSim[rotated])
+          apply assumption+
+         defer
+         apply (intro relcompI)
+           apply simp_all
+         apply (rule bisim_refl)
+        using rSim apply blast
+        done
       done
   qed
 qed
@@ -643,7 +636,7 @@ qed
 lemma weakBisimUpto[case_names cSim cSym, consumes 1]:
   assumes p: "(P, Q) \<in> X"
   and rSim: "\<And>R S. (R, S) \<in> X \<Longrightarrow> R \<leadsto>\<^sup>^<(p2rel (\<approx>) O (X \<union> p2rel (\<approx>)) O p2rel (~))> S"
-  and rSym: "\<And>R S. (R, S) \<in> X \<Longrightarrow> (S, R) \<in> X"
+  and rSym: "\<And>R S. (R, S) \<in> X \<Longrightarrow> S \<leadsto>\<^sup>^<(p2rel (\<approx>) O (converse X \<union> p2rel (\<approx>)) O p2rel (~))> R"
   shows "P \<approx> Q"
 proof -
   from p have "(P, Q) \<in> X \<union> p2rel (\<approx>)" by simp
@@ -651,24 +644,38 @@ proof -
     apply(coinduct rule: weakBisimWeakUpto)
      apply(auto dest: rSim rSym)
     unfolding wsim_set_def
-    apply (metis (no_types, opaque_lifting) UnI1 bisim_refl in_p2_rel_simp inf_sup_aci(5) p2rel_relcompp relcomppI wbisim_refl wbisim_sym wbisim_wstep_alt)
-    using wbisim_sym apply blast
+      apply (metis (no_types, opaque_lifting) UnI1 bisim_refl in_p2_rel_simp inf_sup_aci(5) p2rel_relcompp relcomppI wbisim_refl wbisim_sym wbisim_wstep_alt)
+    apply (metis rSym converse_add_simps(3) p2rel_converse wbisim_converse weakSimE)
+    apply (smt (verit, ccfv_SIG) UnI2 bisim_refl converse_iff in_p2_rel_simp relcomp.relcompI wbisim_refl wbisim_wstep_alt)
     done
 qed
 
-lemma weakBisimWeakUptoBisim[case_names cSim cSym, consumes 1]:
+thm weakBisimWeakUpto[where X="p2rel R", unfolded wsim_set_wsim p2rel_relcompp, no_vars]
+
+lemma
+  "(P, Q) \<in> p2rel R \<Longrightarrow>
+(\<And>P Q. (P, Q) \<in> p2rel R \<Longrightarrow> P \<leadsto>\<^sup>^<(p2rel (\<approx>) O p2rel R O p2rel (~))> Q) \<Longrightarrow>
+(\<And>P Q. (P, Q) \<in> p2rel R \<Longrightarrow> Q \<leadsto>\<^sup>^<(p2rel (\<approx>) O (p2rel R)\<inverse> O p2rel (~))> P) \<Longrightarrow> P \<approx> Q"
+  apply (simp_all add: wsim_set_wsim flip: p2rel_relcompp)
+  apply (simp add: converse_relcompp relcompp_assoc)
+  oops
+
+  find_theorems " (_  OO _)" name: assoc
+
+lemma weakBisimWeakUptoBisim[case_names SIM1 SIM2, consumes 1]:
   assumes p: "R op1 op2"
-  and rSim: "\<And>op1 op2. R op1 op2 \<Longrightarrow> wsim ((~) OO conversep R OO (\<approx>)) op1 op2"
-   and rSym: "\<And>op1 op2. R op1 op2 \<Longrightarrow> R op2 op1"
-  shows "op1 \<approx> op2"
+  and rSim: "\<And>op1 op2. R op1 op2 \<Longrightarrow> wsim ((~) OO R\<inverse>\<inverse> OO (\<approx>)) op2 op1"
+   and rSym: "\<And>op1 op2. R op1 op2 \<Longrightarrow> wsim ((~) OO R OO (\<approx>)) op1 op2"
+ shows "op1 \<approx> op2"
   apply (rule weakBisimWeakUpto[where X="p2rel R"])
   using assms(1) apply fastforce
-  apply (simp flip: p2rel_relcompp)
-   apply (subst wsim_set_wsim)
-  using assms apply (auto simp add: converse_relcompp relcompp_assoc)
+  apply (simp_all add: wsim_set_wsim flip: p2rel_relcompp)
+  apply (simp_all add: converse_relcompp relcompp_assoc)
+   apply (rule rSim) 
+  apply assumption
+   apply (rule rSym) 
+  apply assumption
   done
-
-
 
 lemma lambda_disj_conversep[simp]:
   "(\<lambda>a b. R a b \<or> a \<approx> b)\<inverse>\<inverse> = (\<lambda>a b. R b a \<or> a \<approx> b)"
@@ -687,30 +694,21 @@ proof -
     using assms(2)
       apply (smt (z3) assms(3) predicate2D predicate2I_obj relcompp_mono wsim_mono)
   apply (smt (verit, del_insts) bisim_refl eq_OO predicate2D predicate2I_obj relcompp_mono wbisim.cases wbisim_refl wsim_mono)
-  using wbisim_sym apply blast
-  done
-qed
+    oops
+
 
 lemma weakBisimUptoBisimSym[case_names SIM1, consumes 1]:
   assumes p: "R op1 op2"
   and rSim: "\<And>op1 op2. symclp R op1 op2 \<Longrightarrow> wsim ((~) OO (\<lambda> op1 op2. symclp R op1 op2 \<or> op1 \<approx> op2) OO (\<approx>)) op1 op2"
   shows "op1 \<approx> op2"
-  apply (rule weakBisimUptoBisim[where R="symclp R"])
-  using p apply (auto dest: rSim )[2]
-  apply (metis symclpE symclpI(1,2))
-  done
+  oops
 
 lemma weakBisimUptoBisimSym_split[case_names SIM1, consumes 1]:
   assumes p: "R op1 op2"
   and SIM1: "\<And>op1 op2. R op1 op2 \<Longrightarrow> wsim ((~) OO (\<lambda> op1 op2. symclp R op1 op2 \<or> op1 \<approx> op2) OO (\<approx>)) op1 op2"
   and SIM2: "\<And>op1 op2. R op2 op1 \<Longrightarrow> wsim ((~) OO (\<lambda> op1 op2. symclp R op1 op2 \<or> op1 \<approx> op2) OO (\<approx>)) op1 op2"
   shows "op1 \<approx> op2"
-  apply (rule weakBisimUptoBisimSym[where R=R])
-  using assms apply auto
-  unfolding symclp_def
-  apply auto
-  done
-
+  oops
 
 (* FIXME: move me *)
 lemma steps_writes:
@@ -731,8 +729,8 @@ lemma
    edges sg = (\<lambda> l. if node l = 0 \<and> port l = Src 1 then [Loc 1 (Trg 0)] else []) \<Longrightarrow>
    dataflow_op sg (inp_m_top i inps1 buf1 buf2) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (max_op j inps2)\<close>
-proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: weakBisimUptoBisim)
-  case SIM1
+proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: weakBisimWeakUptoBisim)
+  case SIM2
   then show ?case
     apply -
     unfolding wsim_def
@@ -749,7 +747,6 @@ proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: 
            apply (rule rtranclp.intros(1))
           apply (intro relcomppI)
             defer
-          apply (rule disjI1)
           apply (rule exI[of _ "LCons xs' inps1'"])
           apply (rule exI[of _ "inps2"])
           apply (rule exI[of _ "BENQ (Inr (1, 1)) (Inr (n, i)) buf1"])
@@ -774,6 +771,10 @@ proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: 
              apply (rule refl)+
           apply (rule wbisim_refl)
           subgoal premises prems1
+            sorry
+          done
+        done
+      done(* 
             apply (cases xs')
             subgoal
               apply simp
@@ -807,7 +808,7 @@ proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: 
                             apply (subst (1 2) dataflow_op.code)
                             apply simp
                             apply safe
-                            subgoal
+                            subgoal *)
 
 
 
