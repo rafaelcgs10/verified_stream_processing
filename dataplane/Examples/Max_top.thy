@@ -443,6 +443,10 @@ lemma
   "(P', Q') \<in> p2rel (\<approx>) O X O p2rel (~) \<Longrightarrow> Q' \<leadsto>\<^sup>^<p2rel (\<approx>)> Q \<Longrightarrow> P' \<leadsto>\<^sup>^<(p2rel (\<approx>) O X O p2rel (\<approx>))> Q"
   oops
 
+lemma wbisim_wsim_setD:
+  "Q' \<approx> Q \<Longrightarrow> Q' \<leadsto>\<^sup>^<(p2rel (\<approx>))> Q \<and> Q \<leadsto>\<^sup>^<(p2rel (\<approx>))> Q'"
+  by (simp add: wbisim.simps wsim_set_wsim)
+
 lemma weakBisimWeakUpto[case_names cSim cSym, consumes 1]:
   assumes p: "(P, Q) \<in> X"
   and rSim: "\<And>P Q. (P, Q) \<in> X \<Longrightarrow> P \<leadsto>\<^sup>^<((p2rel (\<approx>)) O X O (p2rel (~)))> Q"
@@ -455,11 +459,32 @@ proof -
 thus ?thesis
   proof(coinduct rule: weakBisimWeakCoinduct)
     case(cSim P Q)
+    thus ?case 
+      apply -
+      apply safe
+      apply simp
+      subgoal for P' Q'
+        apply (drule wbisim_wsim_setD[where Q=Q])
+        apply safe
+
+        apply (rule wsim_set_wbisim_l[rotated])
+        apply assumption
+        apply (rule wsimTransitive[rotated])
+           apply (rule weakBisimWeakUpto_rSim[where X="(p2rel (\<approx>)) O X"])
+              prefer 7
+              apply assumption+
+            apply (rule bisim_refl)
+        
+           
+
+        thm weakBisimWeakUpto_rSim
+
+end
     {
       fix P P' Q' Q
       assume "P \<approx> P'" and "(P', Q') \<in> X" and "Q' \<approx> Q"
       from \<open>(P', Q') \<in> X\<close> have "(P', Q') \<in> ?Y" using bisim_refl wbisim_refl_alt by fastforce
-      moreover from \<open>Q' \<approx> Q\<close> have "Q' \<leadsto>\<^sup>^<(p2rel (\<approx>))> Q" by (metis wbisim.cases wbisim_converse wsim_set_wsim)
+      moreover from \<open>Q' \<approx> Q\<close> have "Q' \<leadsto>\<^sup>^<(p2rel (\<approx>))> Q" using wbisim_wsim_setD by fast
       moreover have "?Y O (p2rel (\<approx>)) \<subseteq> ?X" using wbisim_absorb_bisim by fast
       ultimately have "P' \<leadsto>\<^sup>^<?X> Q" 
         using wsimTransitive by (smt (verit, ccfv_threshold) rSim p2relD relcompEpair weakBisimWeakUpto_rSim)
