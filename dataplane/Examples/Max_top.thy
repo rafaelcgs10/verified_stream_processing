@@ -414,6 +414,8 @@ lemma weakBisimWeakUptoBisim[case_names cSim cSym, consumes 1]:
   using assms apply (auto simp add: converse_relcompp relcompp_assoc)
   done
 
+
+
 lemma lambda_disj_conversep[simp]:
   "(\<lambda>a b. R a b \<or> a \<approx> b)\<inverse>\<inverse> = (\<lambda>a b. R b a \<or> a \<approx> b)"
   using wbisim_sym by auto
@@ -434,6 +436,27 @@ proof -
   using wbisim_sym apply blast
   done
 qed
+
+lemma weakBisimUptoBisimSym[case_names SIM1, consumes 1]:
+  assumes p: "R op1 op2"
+  and rSim: "\<And>op1 op2. symclp R op1 op2 \<Longrightarrow> wsim ((~) OO (\<lambda> op1 op2. symclp R op1 op2 \<or> op1 \<approx> op2) OO (\<approx>)) op1 op2"
+  shows "op1 \<approx> op2"
+  apply (rule weakBisimUptoBisim[where R="symclp R"])
+  using p apply (auto dest: rSim )[2]
+  apply (metis symclpE symclpI(1,2))
+  done
+
+lemma weakBisimUptoBisimSym_split[case_names SIM1, consumes 1]:
+  assumes p: "R op1 op2"
+  and SIM1: "\<And>op1 op2. R op1 op2 \<Longrightarrow> wsim ((~) OO (\<lambda> op1 op2. symclp R op1 op2 \<or> op1 \<approx> op2) OO (\<approx>)) op1 op2"
+  and SIM2: "\<And>op1 op2. R op2 op1 \<Longrightarrow> wsim ((~) OO (\<lambda> op1 op2. symclp R op1 op2 \<or> op1 \<approx> op2) OO (\<approx>)) op1 op2"
+  shows "op1 \<approx> op2"
+  apply (rule weakBisimUptoBisimSym[where R=R])
+  using assms apply auto
+  unfolding symclp_def
+  apply auto
+  done
+
 
 (* FIXME: move me *)
 lemma steps_writes:
