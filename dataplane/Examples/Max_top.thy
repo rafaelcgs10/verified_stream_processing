@@ -227,16 +227,14 @@ by(auto simp add: wsim_set_def)
 
 lemma weakBisimWeakCoinduct[consumes 1, case_names cSim cSym]:
   assumes "(P, Q) \<in> X"
-  and     "\<And>P Q. (P, Q) \<in> X \<Longrightarrow> P \<leadsto>\<^sup>^<X> Q"
-  and     "\<And>P Q. (P, Q) \<in> X \<Longrightarrow> (Q, P) \<in> X"
-shows "P \<approx> Q"
+    and     "\<And>P Q. (P, Q) \<in> X \<Longrightarrow> P \<leadsto>\<^sup>^<X> Q"
+    and     "\<And>P Q. (P, Q) \<in> X \<Longrightarrow> Q \<leadsto>\<^sup>^<X> P"
+  shows "P \<approx> Q"
   using assms apply -
-  apply (rule wbisim.coinduct)
+  apply (rule wbisim_coinduct_upto)
    apply assumption
-  apply (metis (no_types, lifting) wsim_def wsim_set_def)
+  apply (metis (no_types, lifting) wbisim_cong.intros(1,4) weakSimE wsim_def)
   done
-
-thm wbisim_wstep
 
 lemma
   "(\<And>R S. (R, S) \<in> Rel \<Longrightarrow> R \<leadsto>\<^sup>^<Rel> S) \<Longrightarrow>
@@ -328,10 +326,127 @@ lemma p2rel_converse[simp]:
   "(p2rel R)\<inverse> = p2rel (conversep R)"
   by auto
 
+lemma weakBisimWeakUpto_rSim:
+  assumes eq1: "P \<approx> P'" 
+    and eq2: "Q' ~ Q"
+    and inn: "(P', Q') \<in> X" 
+    and rSim: "\<And>P Q. (P, Q) \<in> X \<Longrightarrow> P \<leadsto>\<^sup>^<((p2rel (\<approx>)) O X O (p2rel (~)))> Q"
+  shows "P \<leadsto>\<^sup>^<(p2rel (\<approx>) O X O p2rel (~))> Q"
+proof -
+  let ?X = "p2rel (\<approx>) O X O p2rel (\<approx>)"
+  let ?Y = "p2rel (\<approx>) O X O p2rel (~)"
+  show ?thesis
+  proof -
+    have "?Y O (p2rel (\<approx>)) \<subseteq> ?X" 
+      by (smt (verit, ccfv_threshold) bisim_wbisim in_p2_rel_simp relcomp.cases relcomp.relcompI subrelI
+          wbisim_trans)
+    moreover {
+      fix P Q
+      assume "(P, Q) \<in> ?Y"
+      then obtain P' Q' where "P \<approx> P'" and "(P', Q') \<in> X" and "Q' ~ Q" by auto
+      from \<open>(P', Q') \<in> X\<close> have "P' \<leadsto>\<^sup>^<?Y> Q'" by(rule rSim)
+      moreover from \<open>Q' ~ Q\<close> have "Q' \<leadsto>[p2rel (~)] Q" by (simp add: bisim.simps sim_set_sim)
+      moreover have "?Y O p2rel (~) \<subseteq> ?Y" by (smt (z3) O_assoc bisim_trans in_p2_rel_simp relcomp.inducts relcomp_mono subrelI)
+      ultimately have "P' \<leadsto>\<^sup>^<?Y> Q" by(rule strongAppend)
+      moreover note \<open>P \<approx> P'\<close>
+      moreover have "(p2rel (\<approx>)) O ?Y \<subseteq> ?Y" using wbisim_trans by fastforce
+      ultimately have "P \<leadsto>\<^sup>^<?Y> Q" 
+        apply -
+        apply (rule wsimTransitive)
+           prefer 3
+           apply assumption
+          apply simp_all
+        apply (metis wbisim.cases wbisim_converse wsim_set_wsim)+
+        done
+    }
+    ultimately show ?thesis 
+      using assms(1,2,3) by (simp add: relcomp.intros)
+  qed
+qed
+
+lemma wsim_set_wbisim_l:
+  assumes "P' \<leadsto>\<^sup>^<(p2rel (\<approx>) O X)> Q" 
+    and p: "P \<approx> P'" 
+  shows "P \<leadsto>\<^sup>^<(p2rel (\<approx>) O X)> Q"
+proof -
+  let ?Y = "p2rel (\<approx>) O X"
+  show ?thesis
+  proof -
+    have "(p2rel (\<approx>)) O ?Y \<subseteq> ?Y" using wbisim_trans by fastforce
+    then show ?thesis 
+      using assms apply -
+      apply (rule wsimTransitive)
+         prefer 3
+         apply assumption
+        apply simp_all
+      apply (metis wbisim.cases wbisim_converse wsim_set_wsim)+
+      done
+  qed
+qed
+
+lemma sim_set_bisim_r:
+  assumes "P \<leadsto>[(X O p2rel (~))] Q" 
+    and p: "Q ~ Q'" 
+  shows "P \<leadsto>[(X O p2rel (~))] Q'"
+proof -
+  let ?Y = "X O p2rel (~)"
+  show ?thesis
+  proof -
+    have "?Y O (p2rel (~)) \<subseteq> ?Y" using bisim_trans by fastforce
+    then show ?thesis 
+      using assms by (smt (verit, ccfv_threshold) basic_trans_rules(24) bisim.simps bisim_refl in_p2_rel_simp relcomp.intros sim_def sim_set_def subrelI)
+  qed
+qed
+
+lemma simWeakSim:
+  assumes "P \<leadsto>[Rel] Q"
+  shows "P \<leadsto>\<^sup>^<Rel> Q"
+using assms
+  apply(rule_tac weakSimI, auto)
+  apply (meson sim_set_def step_wstep)
+  done
+
+lemma wsim_set_bisim_r:
+  assumes "P \<leadsto>[(X O p2rel (~))] Q" 
+    and p: "Q ~ Q'" 
+  shows "P \<leadsto>\<^sup>^<(X O p2rel (\<approx>))> Q'"
+  using assms apply -
+  apply (rule simWeakSim)
+  apply (drule sim_set_bisim_r)
+   apply assumption
+  apply (smt (verit, ccfv_threshold) bisim_wbisim in_p2_rel_simp relcomp.simps sim_set_def) 
+  done
+
+lemma wsim_set_wbisim_r:
+  assumes "P \<leadsto>\<^sup>^<(p2rel (\<approx>) O X O p2rel (\<approx>))> Q" 
+    and p: "Q \<approx> Q'" 
+  shows "P \<leadsto>\<^sup>^<(p2rel (\<approx>) O X O p2rel (\<approx>))> Q'"
+proof -
+  let ?X = "p2rel (\<approx>) O X O p2rel (\<approx>)"
+  show ?thesis
+  proof -
+    have "(p2rel (\<approx>)) O ?X \<subseteq> ?X" using wbisim_trans by fastforce
+    then show ?thesis 
+      using assms apply -
+      apply (rule wsimTransitive)
+         prefer 3
+         apply assumption
+        apply simp_all
+        apply (rule wbisim_refl)
+      oops
+
+lemma wbisim_absorb_bisim:
+  "(X O p2rel (~)) O p2rel (\<approx>) \<subseteq> X O p2rel (\<approx>)"
+  by (smt (verit) bisim_wbisim in_p2_rel_simp relcomp.simps relcompE subset_iff wbisim_trans)
+
+lemma
+  "(P', Q') \<in> p2rel (\<approx>) O X O p2rel (~) \<Longrightarrow> Q' \<leadsto>\<^sup>^<p2rel (\<approx>)> Q \<Longrightarrow> P' \<leadsto>\<^sup>^<(p2rel (\<approx>) O X O p2rel (\<approx>))> Q"
+  oops
+
 lemma weakBisimWeakUpto[case_names cSim cSym, consumes 1]:
   assumes p: "(P, Q) \<in> X"
   and rSim: "\<And>P Q. (P, Q) \<in> X \<Longrightarrow> P \<leadsto>\<^sup>^<((p2rel (\<approx>)) O X O (p2rel (~)))> Q"
-  and rSym: "\<And> P Q. (P, Q) \<in> X \<Longrightarrow> (Q, P) \<in> X"
+  and rSym: "\<And> P Q. (P, Q) \<in> X \<Longrightarrow> Q \<leadsto>\<^sup>^<X> P"
   shows "P \<approx> Q"
 proof -
   let ?X = "p2rel (\<approx>) O X O p2rel (\<approx>)"
@@ -345,42 +460,48 @@ thus ?thesis
       assume "P \<approx> P'" and "(P', Q') \<in> X" and "Q' \<approx> Q"
       from \<open>(P', Q') \<in> X\<close> have "(P', Q') \<in> ?Y" using bisim_refl wbisim_refl_alt by fastforce
       moreover from \<open>Q' \<approx> Q\<close> have "Q' \<leadsto>\<^sup>^<(p2rel (\<approx>))> Q" by (metis wbisim.cases wbisim_converse wsim_set_wsim)
-      moreover have "?Y O (p2rel (\<approx>)) \<subseteq> ?X" 
-        by (smt (verit, ccfv_threshold) bisim_wbisim in_p2_rel_simp relcomp.cases relcomp.relcompI subrelI
-            wbisim_trans)
-      moreover {
-        fix P Q
-        assume "(P, Q) \<in> ?Y"
-        then obtain P' Q' where "P \<approx> P'" and "(P', Q') \<in> X" and "Q' ~ Q" by auto
-        from \<open>(P', Q') \<in> X\<close> have "P' \<leadsto>\<^sup>^<?Y> Q'" by(rule rSim)
-        moreover from \<open>Q' ~ Q\<close> have "Q' \<leadsto>[p2rel (~)] Q" by (simp add: bisim.simps sim_set_sim)
-        moreover have "?Y O p2rel (~) \<subseteq> ?Y" by (smt (z3) O_assoc bisim_trans in_p2_rel_simp relcomp.inducts relcomp_mono subrelI)
-        ultimately have "P' \<leadsto>\<^sup>^<?Y> Q" by(rule strongAppend)
-        moreover note \<open>P \<approx> P'\<close>
-        moreover have "(p2rel (\<approx>)) O ?Y \<subseteq> ?Y" using wbisim_trans by fastforce
-        ultimately have "P \<leadsto>\<^sup>^<?Y> Q" 
-          apply -
-          apply (rule wsimTransitive)
-             prefer 3
-             apply assumption
-            apply simp_all
-           apply (metis wbisim.cases wbisim_converse wsim_set_wsim)+
-          done
-      }
+      moreover have "?Y O (p2rel (\<approx>)) \<subseteq> ?X" using wbisim_absorb_bisim by fast
       ultimately have "P' \<leadsto>\<^sup>^<?X> Q" 
-        using wsimTransitive by meson
+        using wsimTransitive by (smt (verit, ccfv_threshold) rSim p2relD relcompEpair weakBisimWeakUpto_rSim)
       moreover note \<open>P \<approx> P'\<close>
       moreover have "(p2rel (\<approx>)) O ?X \<subseteq> ?X" using wbisim_trans by fastforce
       ultimately have "P \<leadsto>\<^sup>^<?X> Q"
-        by (smt (verit, ccfv_SIG) \<open>(P', Q') \<in> X\<close> \<open>(p2rel (\<approx>) O X O p2rel (~)) O p2rel (\<approx>) \<subseteq> p2rel (\<approx>) O X O p2rel (\<approx>)\<close>
-            \<open>Q' \<leadsto>\<^sup>^<p2rel (\<approx>)> Q\<close> \<open>\<And>Qc Pc. (Pc, Qc) \<in> p2rel (\<approx>) O X O p2rel (~) \<Longrightarrow> Pc \<leadsto>\<^sup>^<(p2rel (\<approx>) O X O p2rel (~))> Qc\<close>
-            bisim_refl in_p2_rel_simp relcomp.simps wsimTransitive)
+        using wsim_set_wbisim_l by blast
     }
     with \<open>(P, Q) \<in> ?X\<close> show ?case by auto
   next
     case(cSym P Q)
     thus ?case 
-      apply auto
+      apply -
+      apply safe
+      apply simp
+      subgoal for P' Q'
+        apply (drule rSym)
+
+        apply (rule wsimTransitive)
+ 
+
+
+
+end
+        apply (subgoal_tac "(P, Q') \<in> p2rel (\<approx>) O X")
+        defer
+         apply auto[1]
+
+
+        apply (drule rSym[of P Q'])
+        apply (drule wsimTransitive[rotated, where Rel="p2rel (\<approx>)", of _ _ _ "(p2rel (\<approx>) O X O p2rel (\<approx>))" Q])
+           apply simp_all
+        using wbisim_refl apply fastforce
+        apply (metis wbisim.cases wbisim_converse wsim_set_wsim)
+        using wbisim_sym apply blast
+        unfolding wsim_set_def
+        apply safe
+
+
+
+
+end
       apply (metis assms(3) in_p2_rel_simp relcomp.intros wbisim_sym)
       done
   qed
