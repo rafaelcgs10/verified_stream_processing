@@ -230,14 +230,14 @@ term "p2rel (wbisim_cong X)"
 lemma weakBisimWeakCoinduct[consumes 1, case_names cSim cSym]:
   assumes "(P, Q) \<in> X"
     and     "\<And>P Q. (P, Q) \<in> X \<Longrightarrow> P \<leadsto>\<^sup>^<X> Q"
-    and     "\<And>P Q. (P, Q) \<in> X \<Longrightarrow> Q \<leadsto>\<^sup>^<(p2rel (wbisim_cong (rel2p X)))> P"
+    and     "\<And>P Q. (P, Q) \<in> X \<Longrightarrow> Q \<leadsto>\<^sup>^<X> P"
   shows "P \<approx> Q"
   using assms apply -
   apply (rule wbisim_coinduct_upto)
    apply assumption
   apply (intro conjI)
-   apply (metis (mono_tags, lifting) conversep_wbc pred_equals_eq2 rel2p_def rel2p_inv(1) wsim_set_wsim)
-  apply (metis (mono_tags, lifting) conversep_wbc predicate2I rel2pD rel2p_inv(2) rev_predicate2D wbisim_cong.intros(1) wsim_conversep_mono wsim_set_wsim)
+(*    apply (metis (mono_tags, lifting) conversep_wbc pred_equals_eq2 rel2p_def rel2p_inv(1) wsim_set_wsim)
+ *)  apply (metis (mono_tags, lifting) conversep_wbc predicate2I rel2pD rel2p_inv(2) rev_predicate2D wbisim_cong.intros(1) wsim_conversep_mono wsim_set_wsim)+
   done
 
 lemma
@@ -473,11 +473,34 @@ lemma weakBisimWeakUpto_rSim_aux:
   shows "P \<leadsto>\<^sup>^<(p2rel (\<approx>) O X O p2rel (~))> Q"
   using assms wsim_set_wbisim_bisim_r_l by blast
 
+
+lemma weakBisimWeakUpto_rSym_aux:
+  assumes eq1: "P ~ P'" 
+    and eq2: "Q' \<approx> Q"
+    and inn: "(P', Q') \<in> X" 
+    and rSym: "\<And>P Q. (P, Q) \<in> X \<Longrightarrow> Q \<leadsto>\<^sup>^<((p2rel (\<approx>)) O X O (p2rel (~)))> P"
+  shows "Q \<leadsto>\<^sup>^<(p2rel (\<approx>) O X O p2rel (~))> P"
+  using assms wsim_set_wbisim_bisim_r_l bisim_sym wbisim_sym by blast
+
 lemma weakBisimWeakUpto_rSim:
   "(P', Q') \<in> p2rel (\<approx>) O X O p2rel (~) \<Longrightarrow>
    Q' \<leadsto>\<^sup>^<p2rel (\<approx>)> Q \<Longrightarrow>
    (\<And>P Q. (P, Q) \<in> X \<Longrightarrow> P \<leadsto>\<^sup>^<(p2rel (\<approx>) O X O p2rel (~))> Q) \<Longrightarrow>
    P' \<leadsto>\<^sup>^<(p2rel (\<approx>) O X O p2rel (\<approx>))> Q"
+  apply (subgoal_tac "(p2rel (\<approx>) O X O p2rel (~)) O p2rel (\<approx>) \<subseteq> p2rel (\<approx>) O X O p2rel (\<approx>)")
+  apply (smt (verit, ccfv_threshold) in_p2_rel_simp relcomp.cases wsimTransitive wsim_set_wbisim_bisim_r_l)
+  using wbisim_absorb_bisim_l apply fastforce
+  done
+
+lemma weakBisimWeakUpto_rSim:
+  "(P', Q') \<in> p2rel (\<approx>) O X O p2rel (~) \<Longrightarrow>
+   P' \<leadsto>\<^sup>^<p2rel (\<approx>)> P \<Longrightarrow>
+   (\<And>P Q. (P, Q) \<in> X \<Longrightarrow> Q \<leadsto>\<^sup>^<((p2rel (\<approx>)) O X O (p2rel (~)))> P) \<Longrightarrow>
+   Q \<leadsto>\<^sup>^<(p2rel (\<approx>) O X O p2rel (\<approx>))> P'"
+  apply (subgoal_tac "(p2rel (\<approx>) O X O p2rel (~)) O p2rel (\<approx>) \<subseteq> p2rel (\<approx>) O X O p2rel (\<approx>)")
+  oops
+(* 
+  oops
   apply (subgoal_tac "(p2rel (\<approx>) O X O p2rel (~)) O p2rel (\<approx>) \<subseteq> p2rel (\<approx>) O X O p2rel (\<approx>)")
    apply (rule wsimTransitive)
       prefer 3
@@ -487,12 +510,13 @@ lemma weakBisimWeakUpto_rSim:
     apply safe
     apply simp
     subgoal for P'' Q'' S' T'
-      apply (rule weakBisimWeakUpto_rSim_aux)
-         apply assumption+
-      done
-    done
-  using wbisim_absorb_bisim_l apply fastforce
-  done
+      apply (rule weakBisimWeakUpto_rSym_aux)
+      apply (subst bisim_sym)
+      apply assumption+
+      apply (subst wbisim_sym)
+      apply assumption+
+      apply simp_all *)
+
 
 lemma weakBisimWeakUpto_rSym:
   assumes rSym: "(\<And>P Q. (P, Q) \<in> X \<Longrightarrow> Q \<leadsto>\<^sup>^<(p2rel (~) O X O p2rel (\<approx>))> P)"
@@ -506,6 +530,13 @@ lemma weakBisimWeakUpto_rSym:
      prefer 2
   apply (rule wsim_set_bisim_r)
   oops
+
+lemma wsim_set_def_converse_wbisim_cong:
+  "P \<leadsto>\<^sup>^<converse X> Q \<Longrightarrow> P \<leadsto>\<^sup>^<p2rel (wbisim_cong (rel2p X))> Q"
+  unfolding wsim_set_def
+  apply safe
+  apply (metis converse.cases in_p2_rel_simp rel2p_def wbisim_cong.wbc_base wbisim_cong.wbc_sym)
+  done
 
 lemma weakBisimWeakUpto[case_names cSim cSym, consumes 1]:
   assumes p: "(P, Q) \<in> X"
@@ -543,6 +574,41 @@ thus ?thesis
       apply (frule wbisim_wsim_setD[of  P])
       apply (frule wbisim_wsim_setD[of _ Q])
         apply safe
+        subgoal
+          apply (rule wsimTransitive[of _ _  "p2rel (\<approx>) O converse X"])
+             apply (intro relcompI)
+          apply simp
+            apply (subst wbisim_sym)
+               apply simp
+          apply simp
+             apply simp
+            apply assumption
+          subgoal
+           
+
+
+end
+             defer
+             apply assumption+
+          apply (metis (no_types, opaque_lifting) assms(2) p2relD relcomp.cases weakBisimWeakUpto_rSim_aux)
+          apply (intro relcompI)
+           apply simp
+             apply assumption+
+            apply simp
+           defer
+           apply simp
+           apply (rule bisim_refl)
+          
+
+
+
+
+        apply (rule wsim_set_def_converse_wbisim_cong)
+        apply (simp add: converse_relcomp)
+
+
+        find_theorems converse relcomp
+
         apply (subst (asm) wsim_set_def)
         apply (subst wsim_set_def)
         unfolding p2rel_def
