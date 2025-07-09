@@ -719,6 +719,79 @@ lemma steps_writes:
   done
 
 
+abbreviation "updated_frontiers sg op' \<equiv>
+   (\<lambda> io. case io of
+     Out (Inl nid) (Inl (Inl st)) \<Rightarrow> 
+      let sg' = (sg\<lparr> lo_pt := lo_pt sg @ extract_progress nid (edges sg) st \<rparr>) in 
+      (case propagate_pointstamps (summ sg') (pt_tr sg') (lo_pt sg') of
+         Some conf' \<Rightarrow> let c_imps = c_imp conf' in
+      (frontier ` c_imps ` UNIV, op')))"
+
+lemma cfilter_eq_forall_eq:
+  "cfilter F C = cfilter F C' \<longleftrightarrow>
+   (\<forall> c. F c \<longrightarrow> c |\<in>| C \<longleftrightarrow> c |\<in>| C')"
+  by auto
+
+abbreviation "is_state_update \<equiv> (\<lambda> io. case io of Out (Inl nid) (Inl (Inl st)) \<Rightarrow> True | _ \<Rightarrow> False)"
+
+lemma
+  "summ sg = summ sg' \<Longrightarrow>
+   edges sg = edges sg' \<Longrightarrow>
+   (\<And>io opf. \<not> is_state_update io \<Longrightarrow> step io op opf \<longleftrightarrow> step io op' opf) \<Longrightarrow>
+   (\<And>io opf. is_state_update io \<Longrightarrow> step io op opf \<longleftrightarrow> step io op' opf) \<Longrightarrow>
+   dataflow_op sg op ~ dataflow_op sg' op'"
+proof (coinduction arbitrary: op op' rule: bisim_coinduct)
+  case (SIM1 io op1' op op')
+  then show ?case 
+    apply -
+    apply (elim step_dataflow_op_elim; simp; hypsubst_thin)
+    subgoal for nid p opf x
+      apply (rule exI[of _ "(dataflow_op sg' opf)"])
+      apply (intro conjI b_base)
+      subgoal 
+        apply clarsimp
+        apply (smt (verit, best) IO.simps(4,6) Read_in_choices_step cin.rep_eq member_filter o_def op.case(1) step_choicesE)
+        done
+      subgoal
+        apply (intro conjI exI)
+           apply (rule refl)+
+        subgoal premises prems
+          apply (safe; simp; hypsubst_thin?)
+          subgoal for p f op''
+            apply (cases op''; simp split: sum.splits option.splits)
+            apply (rule image_eqI[rotated])
+             apply clarsimp
+             apply (intro conjI)
+              apply assumption+
+            apply simp_all
+             apply (auto split: option.splits)
+            subgoal for A st conf1 conf2 l
+              using prems(1,2,4-) apply -
+             apply simp
+              apply hypsubst_thin
+              apply (subgoal_tac "frontier ` range (c_imp conf1) = frontier ` range (c_imp conf2)")
+               apply blast
+              unfolding Let_def
+             apply (auto simp add: Countable_Set_Type.cset.map_comp split: option.splits)
+              subgoal for oppp
+
+
+
+                thm cimage.rep_eq
+
+        find_theorems "(_ :: _ set) = _ \<longleftrightarrow> _"
+
+end
+next
+  case SIM2
+  then show ?case sorry
+qed
+
+  find_theorems bisim choices
+
+
+
+
 lemma
   \<open>ys @@- xs @@- lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps1 (iterates Suc i))) =
    lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps2 (iterates Suc j))) \<Longrightarrow>
