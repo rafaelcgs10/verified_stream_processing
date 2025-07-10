@@ -734,63 +734,40 @@ lemma cfilter_eq_forall_eq:
 
 abbreviation "is_state_update \<equiv> (\<lambda> io. case io of Out (Inl nid) (Inl (Inl st)) \<Rightarrow> True | _ \<Rightarrow> False)"
 
-lemma
-  "summ sg = summ sg' \<Longrightarrow>
+lemma dataflow_op_bisim_cong:
+  "op ~ op' \<Longrightarrow>
+   dataflow_op sg op ~ dataflow_op sg op'"
+  sorry
+
+lemma dataflow_op_bisim_cong_with_change_multiplicities:
+  "op ~ op' \<Longrightarrow>
+   change_multiplicities (summ sg) (lo_pt sg) (pt_tr sg) = change_multiplicities (summ sg') (lo_pt sg') (pt_tr sg') \<Longrightarrow>
+   summ sg = summ sg' \<Longrightarrow>
+   pt_tr sg = pt_tr sg' \<Longrightarrow>
    edges sg = edges sg' \<Longrightarrow>
-   (\<And>io opf. \<not> is_state_update io \<Longrightarrow> step io op opf \<longleftrightarrow> step io op' opf) \<Longrightarrow>
-   (\<And>io opf. is_state_update io \<Longrightarrow> step io op opf \<longleftrightarrow> step io op' opf) \<Longrightarrow>
    dataflow_op sg op ~ dataflow_op sg' op'"
-proof (coinduction arbitrary: op op' rule: bisim_coinduct)
-  case (SIM1 io op1' op op')
-  then show ?case 
-    apply -
-    apply (elim step_dataflow_op_elim; simp; hypsubst_thin)
-    subgoal for nid p opf x
-      apply (rule exI[of _ "(dataflow_op sg' opf)"])
-      apply (intro conjI b_base)
-      subgoal 
-        apply clarsimp
-        apply (smt (verit, best) IO.simps(4,6) Read_in_choices_step cin.rep_eq member_filter o_def op.case(1) step_choicesE)
-        done
-      subgoal
-        apply (intro conjI exI)
-           apply (rule refl)+
-        subgoal premises prems
-          apply (safe; simp; hypsubst_thin?)
-          subgoal for p f op''
-            apply (cases op''; simp split: sum.splits option.splits)
-            apply (rule image_eqI[rotated])
-             apply clarsimp
-             apply (intro conjI)
-              apply assumption+
-            apply simp_all
-             apply (auto split: option.splits)
-            subgoal for A st conf1 conf2 l
-              using prems(1,2,4-) apply -
-             apply simp
-              apply hypsubst_thin
-              apply (subgoal_tac "frontier ` range (c_imp conf1) = frontier ` range (c_imp conf2)")
-               apply blast
-              unfolding Let_def
-             apply (auto simp add: Countable_Set_Type.cset.map_comp split: option.splits)
-              subgoal for oppp
+  by (metis dataflow_op_bisim_cong dataflow_op_change_multiplicities)
 
+abbreviation "is_bisim_cong f \<equiv> (\<forall> op op'. op ~ op' \<longrightarrow> f op ~ f op')"
 
+lemma
+  "is_bisim_cong f \<Longrightarrow>
+   is_bisim_cong f' \<Longrightarrow>
+   op ~ op' \<Longrightarrow>
+   f (Write op p xs) ~ f' (Write op' p xs)"
+  apply (coinduction rule: bisim_coinduct_upto'')
+  subgoal for io op1'
+    apply (erule bisim.cases)
+    subgoal for op1 op2
+      apply (auto simp add: sim_def)
+      oops
 
-                thm cimage.rep_eq
-
-        find_theorems "(_ :: _ set) = _ \<longleftrightarrow> _"
-
-end
-next
-  case SIM2
-  then show ?case sorry
-qed
-
-  find_theorems bisim choices
-
-
-
+(* FIXME: move me *)
+lemma map_op_writes[simp]:
+  "map_op f1 f2 (writes op p xs) = writes (map_op f1 f2 op) (f2 p) xs"
+  apply (induct xs)
+   apply (simp_all add: writes_Cons_simp)
+  done
 
 lemma
   \<open>ys @@- xs @@- lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps1 (iterates Suc i))) =
@@ -844,6 +821,40 @@ proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: 
              apply (rule refl)+
           apply (rule wbisim_refl)
           subgoal premises prems1
+            apply (subst (2) input_top.code)
+            apply simp
+
+            term sub_op
+
+            find_theorems sub_op
+
+            apply (coinduction rule: bisim_coinduct_upto'')
+            subgoal for io op1'
+              apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin)
+                         apply (cases xs'; auto simp add: writes_Cons_simp)[1]
+                        apply (cases xs'; auto simp add: writes_Cons_simp)[1]
+              subgoal for op'' io' op''a p x op1'
+                         apply (cases xs'; auto simp add: writes_Cons_simp)[1]
+                apply hypsubst_thin
+                apply (intro conjI[rotated] exI)
+            apply (rule bc_base)
+                 apply (intro conjI[rotated])
+                apply (rule refl)
+                
+
+lemma choices_choices_simp[simp]:
+  "choices (Choice (choices op)) = choices op"
+  sorry
+
+lemma bisim_Choice_choices:
+  "op ~ Choice (choices op)"
+  apply (rule choices_Choice_bisim)
+  apply (simp only: choices_choices_simp)
+  done
+
+
+
+end
             sorry
           done
         done
