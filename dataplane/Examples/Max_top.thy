@@ -12,7 +12,7 @@ corec max_top' where
    (Read (trace (STR ''Reading frontier'') None) (\<lambda> st.
     if is_Inl st \<and> is_Inr (projl st)
     then let impf = projr (projl st) in
-      let ft = frontier (impf (0 :: 1)) in
+      let ft = impf (0 :: 1) in
       if print_frontier ft  is_empty_antichain ft 
       then trace (STR ''Empty frontier'') \<oslash> 
       else let below = [(n, c) \<leftarrow> buf. less_than_frontier ft (time c)] in
@@ -30,9 +30,9 @@ lemma step_max'_top_elim:
   obtains
   x where  "io = Inp None (Inl (Inl x))" "op = \<oslash>"
 | x where  "io = Inp None (Inr x)" "op = \<oslash>"
-| impf ft where "io = Inp None (Inl (Inr impf))" "ft = frontier (impf (0 :: 1))"
+| impf ft where "io = Inp None (Inl (Inr impf))" "ft = impf (0 :: 1)"
   "is_empty_antichain ft" "op = \<oslash>"
-| impf ft below result where "io = Inp None (Inl (Inr impf))" "ft = frontier (impf (0 :: 1))"
+| impf ft below result where "io = Inp None (Inl (Inr impf))" "ft = impf (0 :: 1)"
   "\<not> is_empty_antichain ft" "below = [(n, c) \<leftarrow> buf. less_than_frontier ft (time c)]" "result = maxs below"
   "op = push (Write (max_top' [(n, c) \<leftarrow> buf. \<not> less_than_frontier ft (time c)]) None (Inl (Inl \<lparr> cons = [], inte = map (\<lambda> c. (out c, time c, -1)) (map snd below), prod = map (\<lambda> c. (out c, time c, 1)) (map snd result)\<rparr>)) ) 0 result"
 | x t n where "io = Inp (Some 0) (Inr (n, t))"
@@ -119,39 +119,6 @@ lemma wbisim_cong_alt_disj:
   "(wbisim_cong_alt R x y \<or> wbisim x y) = wbisim_cong_alt R x y"
   by (auto intro: wbc_bisim)
 
-
-lemma wbisim_coinduct_upto[consumes 1, case_names BISIM]:
-  "R op1 op2 \<Longrightarrow>
-   (\<And>s t. R s t \<Longrightarrow> wsim (wbisim_cong_alt R) s t \<and> wsim (wbisim_cong_alt R) t s) \<Longrightarrow>
-   op1 \<approx> op2"
-  apply (rule wbisim.coinduct[where X="wbisim_cong_alt R", unfolded wbisim_cong_alt_disj, of op1 op2])
-  subgoal
-    by (auto intro: wbc_bisim)
-  subgoal premises prems for s' t'
-    using prems(3) apply -
-    apply (induct s' t' rule: wbisim_cong_alt.induct)
-    subgoal for op1 op2
-      by (drule prems(2)) auto
-    subgoal for op1 op2
-      using wsim_mono[of wbisim "wbisim_cong_alt R"]
-      apply (auto simp: le_fun_def wbc_bisim elim: wbisim.cases)
-      done
-    subgoal for op1 op2
-      by (auto simp: wsim_def wstep_def)
-    subgoal for op1 op2
-      by fastforce
-    subgoal for p q f g
-      by (auto simp: rel_fun_def intro!: step_wstep[OF SR])
-    subgoal for op1 op2 p x
-      by (auto intro!: step_wstep[OF SW])
-    subgoal for op1 op2
-      by (auto intro: wsim_SilentI)
-    subgoal for op1 op2
-      apply (subgoal_tac "bisimulation ((~) OO R)")
-      subgoal
-        apply auto
-        oops
-
 definition sim_set (\<open>_ \<leadsto>[_] _\<close> [80, 80, 80] 80)
 where
   "P \<leadsto>[Rel] Q \<equiv> \<forall>io Q'. step io Q Q' \<longrightarrow> (\<exists>P'. step io P P' \<and> (P', Q') \<in> Rel)"
@@ -236,8 +203,7 @@ lemma weakBisimWeakCoinduct[consumes 1, case_names cSim cSym]:
   apply (rule wbisim_coinduct_upto)
    apply assumption
   apply (intro conjI)
-(*    apply (metis (mono_tags, lifting) conversep_wbc pred_equals_eq2 rel2p_def rel2p_inv(1) wsim_set_wsim)
- *)  apply (metis (mono_tags, lifting) conversep_wbc predicate2I rel2pD rel2p_inv(2) rev_predicate2D wbisim_cong.intros(1) wsim_conversep_mono wsim_set_wsim)+
+  apply (metis (mono_tags, lifting) conversep_wbc predicate2I rel2pD rel2p_inv(2) rev_predicate2D wbisim_cong.intros(1) wsim_conversep_mono wsim_set_wsim)+
   done
 
 lemma
@@ -718,35 +684,12 @@ lemma steps_writes:
    apply (force simp add: writes_Cons_simp)+
   done
 
-
-abbreviation "updated_frontiers sg op' \<equiv>
-   (\<lambda> io. case io of
-     Out (Inl nid) (Inl (Inl st)) \<Rightarrow> 
-      let sg' = (sg\<lparr> lo_pt := lo_pt sg @ extract_progress nid (edges sg) st \<rparr>) in 
-      (case propagate_pointstamps (summ sg') (pt_tr sg') (lo_pt sg') of
-         Some conf' \<Rightarrow> let c_imps = c_imp conf' in
-      (frontier ` c_imps ` UNIV, op')))"
-
 lemma cfilter_eq_forall_eq:
   "cfilter F C = cfilter F C' \<longleftrightarrow>
    (\<forall> c. F c \<longrightarrow> c |\<in>| C \<longleftrightarrow> c |\<in>| C')"
   by auto
 
-abbreviation "is_state_update \<equiv> (\<lambda> io. case io of Out (Inl nid) (Inl (Inl st)) \<Rightarrow> True | _ \<Rightarrow> False)"
 
-lemma dataflow_op_bisim_cong:
-  "op ~ op' \<Longrightarrow>
-   dataflow_op sg op ~ dataflow_op sg op'"
-  sorry
-
-lemma dataflow_op_bisim_cong_with_change_multiplicities:
-  "op ~ op' \<Longrightarrow>
-   change_multiplicities (summ sg) (lo_pt sg) (pt_tr sg) = change_multiplicities (summ sg') (lo_pt sg') (pt_tr sg') \<Longrightarrow>
-   summ sg = summ sg' \<Longrightarrow>
-   pt_tr sg = pt_tr sg' \<Longrightarrow>
-   edges sg = edges sg' \<Longrightarrow>
-   dataflow_op sg op ~ dataflow_op sg' op'"
-  by (metis dataflow_op_bisim_cong dataflow_op_change_multiplicities)
 
 abbreviation "is_bisim_cong f \<equiv> (\<forall> op op'. op ~ op' \<longrightarrow> f op ~ f op')"
 
@@ -768,6 +711,109 @@ lemma map_op_writes[simp]:
   apply (induct xs)
    apply (simp_all add: writes_Cons_simp)
   done
+
+lemma bisim_step_elim:
+  "op1 ~ op2 \<Longrightarrow>
+   step io op1 op1' \<Longrightarrow>
+   \<exists> op2'. step io op2 op2' \<and> op1' ~ op2'"
+  by (meson bisim.simps sim_def)
+
+fun extract_update where
+  "extract_update (Write op (Inl nid) (Inl (Inl st))) = (Write op (Inl nid) (Inl (Inl \<lparr> cons = [], inte = [], prod = [] \<rparr>)), st)"
+| "extract_update op = (op, \<lparr> cons = [], inte = [], prod = [] \<rparr>)"
+
+
+definition subst_op where
+  "subst_op op1 op2 op3 = Choice (cUn (cDiff (choices op1) (choices op2)) (choices op3))"
+
+
+lemma step_subst_op_intro_1[intro]:
+  "step io op1 op \<Longrightarrow>
+   \<not> step io op2 op \<Longrightarrow>
+   step io (subst_op op1 op2 op3) op"
+  unfolding subst_op_def
+  apply (induct io op1 op arbitrary: op3 op2 pred: step)
+     apply auto[3]
+  subgoal for op ops io op' op3 op2
+    apply (drule meta_spec[of _ end_op])
+    apply (drule meta_spec)
+    apply (drule meta_mp)
+     apply assumption
+    apply simp
+    apply (smt (verit, ccfv_threshold) SC cDiff_iff cUN_I cUnI1 cin.rep_eq stepChoiceE)
+    done
+  done
+
+lemma step_subst_op_intro_2[intro]:
+  "step io op3 op \<Longrightarrow>
+   step io (subst_op op1 op2 op3) op"
+  unfolding subst_op_def
+  apply (induct io op3 op arbitrary: op1 op2 pred: step)
+     apply auto[2]
+   apply force
+  subgoal for op ops io op' op1 op2
+    apply (drule meta_spec[of _ end_op])+
+    apply force
+    done
+  done
+
+lemma step_subst_op_elim[elim]:
+  assumes "step io (subst_op op1 op2 op3) op"
+  obtains "step io op1 op" "\<not> is_Inp io \<longrightarrow> \<not> step io op2 op"
+  | "step io op3 op"
+  | "step io op1 op" "is_Inp io"
+  using assms apply atomize_elim
+  unfolding subst_op_def
+  apply (erule step.cases; simp del: cin.rep_eq)
+  subgoal for op'' ops io' op'
+  apply (clarsimp del: disjCI simp add: cDiff_iff[simplified] simp del: cin.rep_eq)
+    apply (elim disjE conjE)
+    subgoal
+      apply hypsubst_thin
+      apply (intro conjI disjI1)
+      subgoal
+        by (cases op''; auto)
+      apply safe
+      subgoal premises prems
+        using prems(5,4,1,3,2) apply -
+        apply (induct io' op2 op' pred: step)
+           apply (auto del: disjCI simp del: cin.rep_eq)
+          apply simp_all
+          apply (cases op''; auto)[1]
+                    apply (cases op''; auto)[1]
+        done
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (rule disjI2)
+      apply (cases op''; auto)
+      done
+    done
+  done
+    
+lemma aux:
+  "step (Out (Inl nid) (Inl (Inl st))) op op' \<Longrightarrow>
+   dataflow_op sg op ~ dataflow_op (sg\<lparr> lo_pt := lo_pt sg @ extract_progress nid (edges sg) st \<rparr>) (subst_op op (Write op' (Inl nid) (Inl (Inl st))) (Write op' (Inl nid) (Inl (Inl \<lparr> cons = [], inte = [], prod = [] \<rparr>))))"
+proof (coinduction arbitrary: sg op rule: bisim_coinduct)
+  case SIM1
+  then show ?case 
+    apply -
+    apply (elim step_dataflow_op_elim; simp; hypsubst_thin)
+    subgoal for nida p op'' x
+      apply (intro exI conjI)
+       apply force
+      apply (rule b_base)
+           apply (intro exI conjI)
+      apply (rule refl)
+
+end
+next
+  case SIM2
+  then show ?case sorry
+qed
+
+
+  sorry
 
 lemma
   \<open>ys @@- xs @@- lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps1 (iterates Suc i))) =
@@ -820,26 +866,50 @@ proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: 
             done
              apply (rule refl)+
           apply (rule wbisim_refl)
-          subgoal premises prems1
+          subgoal
             apply (subst (2) input_top.code)
-            apply simp
+            apply (simp add: comp_def)
+            apply (cases xs'; simp)
+            subgoal
+              apply (rule bisim_trans)
+               apply (rule aux[where nid=0 and st="\<lparr>cons = [], inte = [], prod = [(1, i, 1)]\<rparr>", of _ _ "map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (input_top (Cap (Suc i) 1) inps1')"])
+                apply simp_all
+                prefer 3
+              apply (rule bisim_refl)
+               apply auto
 
-            term sub_op
 
-            find_theorems sub_op
+              find_theorems choices map_op
 
+
+end
+
+            find_theorems choices comp_op
+
+end
             apply (coinduction rule: bisim_coinduct_upto'')
             subgoal for io op1'
               apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin)
                          apply (cases xs'; auto simp add: writes_Cons_simp)[1]
                         apply (cases xs'; auto simp add: writes_Cons_simp)[1]
               subgoal for op'' io' op''a p x op1'
-                         apply (cases xs'; auto simp add: writes_Cons_simp)[1]
+                apply (subst (asm) writes.code)
+                apply (simp split: list.splits)
+                 apply force
+                apply auto
                 apply hypsubst_thin
-                apply (intro conjI[rotated] exI)
-            apply (rule bc_base)
-                 apply (intro conjI[rotated])
-                apply (rule refl)
+                apply (intro conjI exI)
+                 apply (rule step_Tau_dataflow_op_Tau_intro)
+                 apply (rule step_map_op)
+                  apply (rule step_Tau_comp_op_L)
+                     apply (simp add: writes_Cons_simp)
+                     apply (rule SW)
+                defer
+                    apply (rule refl)+
+                  apply simp_all
+                apply (intro conjI bc_base)
+
+                find_theorems comp_op step Tau
                 
 
 lemma choices_choices_simp[simp]:

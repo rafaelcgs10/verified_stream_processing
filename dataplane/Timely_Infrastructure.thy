@@ -231,6 +231,8 @@ definition extract_progress where
     map (\<lambda> (p, t, m). (Loc nid (Src p), t, m)) (inte st) @
     concat (map (\<lambda> (p, t, m). map (\<lambda> l. (l, t, m)) (edg (Loc nid (Src p)))) (prod st))"
 
+term "((o) frontier) ` imp_fron"
+
 (* Inspired by timely/src/dataflow/operators/capability.rs:62 *)
 datatype ('p, 't) capability = Cap (time: 't) (out: 'p)
 
@@ -238,7 +240,7 @@ corec dataflow_op where
   "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
      Read (Inl nid) f \<Rightarrow> (case propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg) of
          Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr> in
-         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr imp_fron)))))
+         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron))))))
    | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x)))
    | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
    | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
@@ -263,7 +265,7 @@ lemma step_dataflow_op_elim:
   | op'' where "io = Tau" "op' = dataflow_op sg op''" "step Tau op op''"
   | nid op'' st where "io = Tau" "op' = dataflow_op (sg\<lparr> lo_pt := lo_pt sg @ extract_progress nid (edges sg) st \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
   | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr>)"
-    "imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p)))" "op' = dataflow_op sg' op''" "step (Inp (Inl nid) (Inl (Inr imp_fron))) op op''"
+    "imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p)))" "op' = dataflow_op sg' op''" "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op''"
   | op'' p p' where "op' = \<oslash>" "op = Write op'' (Inl p) (Inr p')"
   | op'' p p' where "op' = \<oslash>" "op = Write op'' (Inr p) (Inl p')"
   using assms apply -
@@ -286,7 +288,7 @@ lemma step_Tau_dataflow_op_Out_Inl_intro[intro]:
   done
 
 lemma step_Tau_dataflow_op_Inp_Inl_intro[intro]:
-  "step (Inp (Inl nid) (Inl (Inr imp_fron))) op op' \<Longrightarrow>
+  "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op' \<Longrightarrow>
    conf' = the (propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg)) \<Longrightarrow>
    sg' = sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr> \<Longrightarrow>
    imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) \<Longrightarrow>
@@ -417,7 +419,7 @@ lemma un_Choice_dataflow_op_simp[simp]:
   "un_Choice (dataflow_op sg op) = ((\<lambda>op. case op of
         Read (Inl nid) f \<Rightarrow>
           (case propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg) of
-          Some conf' \<Rightarrow> let sg' = sg\<lparr>pt_tr := conf', lo_pt := []\<rparr>; imp_fron = \<lambda>p. c_imp (pt_tr sg') (Loc nid (Trg p)) in Silent (dataflow_op sg' (f (Inl (Inr imp_fron)))))
+          Some conf' \<Rightarrow> let sg' = sg\<lparr>pt_tr := conf', lo_pt := []\<rparr>; imp_fron = \<lambda>p. c_imp (pt_tr sg') (Loc nid (Trg p)) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron))))))
         | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda>x. dataflow_op sg (f (Inr x)))
         | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr>lo_pt := lo_pt sg @ extract_progress nid (edges sg) st\<rparr>) op')
         | Write op' (Inl nid) (Inl (Inr b)) \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_. \<oslash>)
