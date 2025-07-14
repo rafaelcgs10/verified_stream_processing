@@ -724,197 +724,253 @@ fun extract_update where
 
 abbreviation "no_Choice op \<equiv> is_Read op \<or> is_Write op \<or> is_Silent op"
 
-corec subst_op where
-  "subst_op x_op y_op op = Choice (cimage (\<lambda> op.
-     if op = x_op 
-     then y_op 
-     else case op of 
-       Write op' p x \<Rightarrow> Write (subst_op x_op y_op op') p x
-     | Read p f \<Rightarrow> Read p (\<lambda> x. (subst_op x_op y_op (f x)))
-     | Silent op' \<Rightarrow> Silent (subst_op x_op y_op op')) (choices op))"
+corec subst_Out_op where
+  "subst_Out_op p x y op = Choice (cimage (\<lambda> op.
+      case op of 
+       Write op' p' x' \<Rightarrow> (if p = p' \<and> x = x' then Write op' p y else Write (subst_Out_op p x y op') p' x')
+     | Read p' f \<Rightarrow> Read p' (\<lambda> x'. (subst_Out_op p x y (f x')))
+     | Silent op' \<Rightarrow> Silent (subst_Out_op p x y op')) (choices op))"
 
-lemma step_subst_op_Tau_intro[intro]:
-  "step io op op' \<Longrightarrow>
-   io = Tau \<Longrightarrow>
-   x_op = Silent op' \<Longrightarrow>
-   step io' y_op y_op' \<Longrightarrow>
-   step io' (subst_op x_op y_op op) y_op'"
-  apply (induct io op op' pred: step)
-     apply (simp_all; hypsubst_thin; simp)
-  subgoal 
-    by force
-  subgoal 
-    apply (subst subst_op.code)
+lemma subst_Out_op_cases_simp[simp]:
+  "\<not> is_Read (subst_Out_op p x y op)"
+  "\<not> is_Write (subst_Out_op p x y op)"
+  "\<not> is_Silent (subst_Out_op p x y op)"
+  "is_Choice (subst_Out_op p x y op)"
+  by (subst subst_Out_op.code; simp)+
+
+
+lemma step_subst_op_Tau_intro[intro!]:
+  "step Tau op op' \<Longrightarrow>
+   step Tau (subst_Out_op p x y op) (subst_Out_op p x y op')"
+  apply (erule step_choicesE; simp del: cin.rep_eq)
+    apply (subst subst_Out_op.code)
+  apply force
+  done
+
+lemma step_subst_op_Inp_intro[intro!]:
+  "step (Inp p' x') op op' \<Longrightarrow>
+   step (Inp p' x') (subst_Out_op p x y op) (subst_Out_op p x y op')"
+  apply (erule step_choicesE; simp del: cin.rep_eq)
+    apply (subst subst_Out_op.code)
+  apply force
+  done
+
+lemma step_subst_op_Out_intro1[intro]:
+  "step (Out p x) op op' \<Longrightarrow>
+   step (Out p y) (subst_Out_op p x y op) op'"
+  apply (erule step_choicesE; simp del: cin.rep_eq)
+    apply (subst subst_Out_op.code)
     apply force
-    done
-  subgoal 
-    apply (subst subst_op.code)
-    apply simp
-    apply (smt (verit, ccfv_SIG) IO.distinct(5) IO.simps(5) cUN_I cimageI cin.rep_eq step.intros(4) step_choicesE) 
-    done
   done
 
-lemma step_subst_op_Out_intro[intro]:
-  "step io op op' \<Longrightarrow>
-   io = Out p x \<Longrightarrow>
-   x_op = Write op' p x \<Longrightarrow>
-   step io' y_op y_op' \<Longrightarrow>
-   step io' (subst_op x_op y_op op) y_op'"
-  apply (induct io op op' pred: step)
-     apply (simp_all; hypsubst_thin; simp)
-  subgoal 
-    apply (subst subst_op.code)
-    apply force
-    done
-  subgoal
-    by force
-  subgoal 
-    apply (subst subst_op.code)
-    apply simp
-    apply (smt (verit, ccfv_SIG) IO.distinct(5) IO.inject(2) IO.simps(4) cUN_I cimageI cin.rep_eq step.intros(4) step_choicesE)
-    done
+lemma step_subst_op_Out_intro2[intro]:
+  "step (Out p' x') op op' \<Longrightarrow>
+   x \<noteq> x' \<or> p \<noteq> p' \<Longrightarrow>
+   step (Out p' x') (subst_Out_op p x y op) (subst_Out_op p x y op')"
+  apply (erule step_choicesE; simp del: cin.rep_eq)
+    apply (subst subst_Out_op.code)
+  apply force
   done
 
-inductive sub_choice for op where
-  [intro]: "sub_choice op op"
-| [intro]: "sub_choice op op' \<Longrightarrow> op' |\<in>| ops \<Longrightarrow> sub_choice op (Choice ops)"
-
-lemma no_Choice_sub_choice:
-  "sub_choice nc_op op \<Longrightarrow>
-   step io nc_op op' \<Longrightarrow>
-   no_Choice nc_op \<Longrightarrow>
-   step io op op'"
-  by (induct op pred: sub_choice) auto
-
-lemma sub_choice_trans:
-  "sub_choice op1 op2 \<Longrightarrow>
-   sub_choice op2 op3 \<Longrightarrow>
-   sub_choice op1 op3"
-  apply (induct op2 arbitrary: op3 pred: sub_choice)
-   apply auto[1]
-  apply (smt (verit, del_insts) cin.rep_eq sub_choice.induct sub_choice.intros(2))
-  done
-
-lemma choices_sub_choices_elim[elim]:
-  assumes  "op' |\<in>| choices op"
-  obtains "no_Choice op'" "sub_choice op' op"
-  using assms apply atomize_elim
-  unfolding choices_def
-  apply (clarsimp simp del: cin.rep_eq)
-  subgoal premises prems for n
-    using prems(2-) apply -
-    apply (induct n arbitrary: op op')
-    subgoal for op op'
-      by (cases op; auto)
-    subgoal for n op op'
-      apply (cases op; auto simp del: cin.rep_eq; hypsubst_thin)
-      done
-    done
-  done
-
-lemma step_Write_sub_choice_intro[intro]:
-  "step io op op' \<Longrightarrow> io = Out p x \<Longrightarrow> sub_choice (Write op' p x) op"
-  by (induct io op op' pred: step) auto
-
-lemma step_Read_sub_choice_intro[intro]:
-  "step io op op' \<Longrightarrow> io = Inp p x \<Longrightarrow> \<exists> f. sub_choice (Read p f) op \<and> f x = op'"
-  by (induct io op op' pred: step) force+
-
-lemma step_Silent_sub_choice_intro[intro]:
-  "step io op op' \<Longrightarrow> io = Tau \<Longrightarrow> sub_choice (Silent op') op"
-  by (induct io op op' pred: step) auto
-
-lemma step_subst_op_no_subst_intro[intro]:
-  "step io op op' \<Longrightarrow>
-   no_Choice op \<Longrightarrow>
-   op \<noteq> x_op \<Longrightarrow>
-   step io (subst_op x_op y_op op) (subst_op x_op y_op op')"
-  apply (induct io op op' pred: step)
-  subgoal
-    apply (subst subst_op.code)
-    apply simp
-    apply blast
-    done
-  subgoal
-    apply (subst subst_op.code)
-    apply simp
-    apply blast
-    done
-  subgoal
-    apply (subst subst_op.code)
-    apply simp
-    apply blast
-    done
-  subgoal 
-    by simp
-  done
 
 lemma step_subst_op_elim[elim]:
-  assumes "step io (subst_op x_op y_op op) op'"
-  obtains "step io y_op op'" "sub_choice x_op op" "no_Choice x_op"
-  | op'' op''' where "step io op''' op''" "op' = subst_op x_op y_op op''" "sub_choice op''' op" "no_Choice op'''" "op''' \<noteq> x_op"
+  assumes "step io (subst_Out_op p x y op) op'"
+  obtains 
+    op'' where "step io op op''" "io = Tau" "op' = subst_Out_op p x y op''"
+  | p' x' op'' where "step io op op''" "io = Inp p' x'" "op' = subst_Out_op p x y op''"
+  | p' x' op'' where "step io op op''" "io = Out p' x'" "p \<noteq> p' \<or> x \<noteq> x'" "op' = subst_Out_op p x y op''"
+  | p' x' op'' io' where "step io' op op''" "io' = Out p x" "io = Out p y" "p = p'" "x = x'" "op' = op''"
   using assms apply atomize_elim
-  apply (subst (asm) subst_op.code)
-  apply (erule step.cases; simp del: cin.rep_eq)
-  subgoal for op'' ops io' op'
-    apply (clarsimp del: disjCI simp add: cDiff_iff[simplified] simp del: cin.rep_eq split: if_splits; hypsubst_thin)
-    subgoal
-      by (metis choices_sub_choices_elim)
-    subgoal for x
-       apply (erule choices_sub_choices_elim)
-      apply (cases x; force)
+  apply (subst (asm) subst_Out_op.code)
+  apply (erule step_choicesE)
+  subgoal for p' f x 
+    apply (clarsimp simp del: cin.rep_eq; hypsubst_thin?)
+    subgoal for op'
+      by (cases op'; force split: if_splits)
+    done
+  subgoal for p' x'
+    apply (simp del: de_Morgan_conj cin.rep_eq; hypsubst_thin?)
+    apply (elim cBexE)
+    subgoal for op''
+      by (cases op''; simp del: de_Morgan_conj cin.rep_eq split: if_splits; force)
+    done
+  subgoal
+    apply (clarsimp simp del: cin.rep_eq; hypsubst_thin?)
+    subgoal for op'
+      apply (cases op'; simp del: de_Morgan_conj cin.rep_eq split: if_splits)
+       apply force+
       done
     done
   done
-    
+
+coinductive io_ev_inv for io where
+  [intro]: "step io op' op \<Longrightarrow> io_ev_inv io op"
+| [intro]: "(\<And> io' op'. io \<noteq> io' \<Longrightarrow> step io' op op' \<Longrightarrow> io_ev_inv io op') \<Longrightarrow> step io op op' \<Longrightarrow> io_ev_inv io op"
+
+lemma io_ev_map_op:
+  "io_ev_inv io op \<Longrightarrow> map_IO f g id io = io' \<Longrightarrow> io_ev_inv io' (map_op f g op)"
+  apply (coinduction arbitrary: op)
+  subgoal for op
+    apply simp
+    apply (erule io_ev_inv.cases; simp)
+     apply blast
+    apply (rule disjI2)
+    apply (intro conjI[rotated] impI exI allI)
+    apply blast
+    apply (metis step_map_op_elim)
+    done
+  done
+
+lemma io_ev_Out_Inl_comp_op:
+  "io_ev_inv (Out p x) op1 \<Longrightarrow>
+   p \<notin> dom wire \<Longrightarrow>
+   io_ev_inv (Out (Inl p) x) (comp_op wire buf op1 op2)"
+  apply (coinduction arbitrary: buf op1 op2)
+  subgoal for buf op1 op2
+    apply simp
+    apply (erule io_ev_inv.cases; simp)
+    subgoal 
+      by blast
+    subgoal
+    apply (rule disjI2)
+    apply (intro conjI[rotated] impI exI allI)
+     apply blast
+    apply (elim step_comp_op_elim; simp; hypsubst_thin; simp)
+           apply force
+          apply force
+         apply force
+        apply force
+    subgoal
+      by blast
+      apply force
+    apply force
+    apply force
+    done
+  done
+  done
+
 lemma aux:
-  "step (Out (Inl nid) (Inl (Inl st))) op op' \<Longrightarrow>
-   x_op = Write op' (Inl nid) (Inl (Inl st)) \<Longrightarrow>
-   y_op = Write op' (Inl nid) (Inl (Inl \<lparr> cons = [], inte = [], prod = [] \<rparr>)) \<Longrightarrow>
+  "io_ev_inv (Out (Inl nid) (Inl (Inl st))) op \<Longrightarrow>
+   p = Inl nid \<Longrightarrow>
+   x = Inl (Inl st) \<Longrightarrow>
+   y = Inl (Inl \<lparr> cons = [], inte = [], prod = [] \<rparr>) \<Longrightarrow>
    dataflow_op sg op ~
-   dataflow_op (sg\<lparr> lo_pt := lo_pt sg @ extract_progress nid (edges sg) st \<rparr>) (subst_op x_op y_op op)"
-proof (coinduction arbitrary: sg op op' rule: bisim_coinduct)
+   dataflow_op (sg\<lparr> lo_pt := lo_pt sg @ extract_progress nid (edges sg) st \<rparr>) (subst_Out_op p x y op)"
+proof (coinduction arbitrary: sg op rule: bisim_coinduct)
   case SIM1
   then show ?case 
-    apply -
+    apply -                
     apply (elim step_dataflow_op_elim; simp)
     subgoal for nida p op'' x
+      apply (intro exI conjI[rotated])
+       apply (rule b_base)
+       apply (intro exI conjI)
+         apply (rule refl)+
+       apply hypsubst_thin
+      subgoal 
+        apply (erule io_ev_inv.cases; simp)
+         apply force+
+        done
+      subgoal
+        by blast
+      done
+    subgoal
+      apply (intro exI conjI[rotated])
+       apply (rule b_base)
+       apply (intro exI conjI)
+         apply (rule refl)+
+       apply hypsubst_thin
+      subgoal 
+        apply (erule io_ev_inv.cases; simp)
+         apply force+
+        done
+      subgoal
+        by blast
+      done
+    subgoal
+      apply (intro exI conjI[rotated])
+       apply (rule b_base)
+       apply (intro exI conjI)
+         apply (rule refl)+
+       apply hypsubst_thin
+      subgoal 
+        apply (erule io_ev_inv.cases; simp)
+         apply force+
+        done
+      subgoal
+        by blast
+      done
+    subgoal for nid' op'' st'
+      apply hypsubst_thin
+      apply (cases "nid = nid' \<and> st = st'")
+      subgoal
+        apply (elim conjE; hypsubst_thin)
+        apply (rule exI[of _ "dataflow_op (sg\<lparr>lo_pt := lo_pt sg @ extract_progress nid' (edges sg) st'\<rparr>) op''"])
+        apply (intro exI conjI)
+         apply (rule step_Tau_dataflow_op_Out_Inl_intro[where st="\<lparr> cons = [], inte = [], prod = [] \<rparr>" and nid=nid'])
+          apply (rule step_subst_op_Out_intro1)
+          apply assumption
+        apply (subst (4) extract_progress_def)
+         apply simp
+        apply force
+        done
+      subgoal
+        apply (intro exI conjI)
+        apply blast
+        apply (rule b_base)
+        apply (intro conjI exI)
+          apply (rule refl)+
+         defer
+        apply force
+        apply (rule dataflow_op_change_multiplicities)
+           apply simp_all
+        apply (metis (no_types, lifting) change_multiplicities_append change_multiplicities_comm)
+        done
+      done
+    subgoal
+      apply hypsubst_thin
+          sorry
+        subgoal
+          by blast
+        subgoal
+          by blast
+        subgoal
+          by blast
+        done
+    next
+
+find_theorems dataflow_op step Inr Inl Tau
+
+end
+
+       apply (rule b_base)
+       apply (intro conjI exI)
+         defer
+         apply (rule refl)
+        defer
+
+
+        
+
+
+end
+
+    subgoal for nid' op'' st'
+      apply hypsubst_thin
+      apply (cases "nid = nid' \<and> st = st'")
+      subgoal
+        apply (elim conjE)
+        apply hypsubst_thin
       apply (intro exI conjI[rotated])
       apply (rule b_base)
            apply (intro exI conjI)
          apply (rule refl)+
-       apply hypsubst_thin
-       defer
-      subgoal
-        apply (rule step_Inp_dataflow_op_Inp_Inr_intro)
-        apply (rule no_Choice_sub_choice)
-        apply (rule step_Write_sub_choice_intro)
-
-        find_theorems sub_choice step
-
-          apply (rule step_subst_op_no_subst_intro)
-        apply assumption
-
-      apply hypsubst_thin
-           apply blast
-      apply hypsubst_thin
-
-      find_theorems no_Choice step
-
-end
-       apply force
-      apply (rule b_base)
-           apply (intro exI conjI)
-      apply (rule refl)
-
-end
-next
-  case SIM2
-  then show ?case sorry
-qed
+        subgoal 
+          by blast
+        
+   
 
 
-  sorry
 
 lemma
   \<open>ys @@- xs @@- lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps1 (iterates Suc i))) =
@@ -973,8 +1029,24 @@ proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: 
             apply (cases xs'; simp)
             subgoal
               apply (rule bisim_trans)
-               apply (rule aux[where nid=0 and st="\<lparr>cons = [], inte = [], prod = [(1, i, 1)]\<rparr>", of _ _ "map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (input_top (Cap (Suc i) 1) inps1')"])
-                apply simp_all
+               apply (rule aux[where nid=0 and st="\<lparr>cons = [], inte = [(1, i, - 1), (1, Suc i, 1)], prod = [(1, i, 1)]\<rparr>", of _ _ "map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (input_top (Cap (Suc i) 1) inps1')"])                
+              subgoal premises prems
+                apply (rule io_ev_map_op)
+                 apply (rule io_ev_Out_Inl_comp_op)
+                apply (rule io_ev_inv.intros(1)[rotated])
+                   apply (rule SW)
+                apply auto
+                done
+              apply simp
+              apply simp
+              apply simp
+              apply simp
+              apply simp
+              apply simp
+
+
+              find_theorems step comp_op Out
+
                 prefer 3
               apply (rule bisim_refl)
                apply auto

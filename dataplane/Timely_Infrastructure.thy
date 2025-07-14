@@ -245,7 +245,7 @@ corec dataflow_op where
    | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
    | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
    | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> lo_pt := lo_pt sg @ extract_progress nid (edges sg) st \<rparr>) op')
-   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) (choices op))"
+   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. Silent \<oslash>)) (choices op))"
 
 lemma propagate_all_terminates[simp]:
   "propagate_all a b \<noteq> None"
@@ -266,8 +266,9 @@ lemma step_dataflow_op_elim:
   | nid op'' st where "io = Tau" "op' = dataflow_op (sg\<lparr> lo_pt := lo_pt sg @ extract_progress nid (edges sg) st \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
   | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr>)"
     "imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p)))" "op' = dataflow_op sg' op''" "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op''"
-  | op'' p p' where "op' = \<oslash>" "op = Write op'' (Inl p) (Inr p')"
-  | op'' p p' where "op' = \<oslash>" "op = Write op'' (Inr p) (Inl p')"
+  | op'' p x where "io = Tau" "op' = \<oslash>" "step (Out (Inl p) (Inr x)) op op''"
+  | op'' p x where "io = Tau" "op' = \<oslash>" "step (Out (Inl p) (Inl (Inr x))) op op''"
+  | op'' p x where "io = Tau" "op' = \<oslash>" "step (Out (Inr p) (Inl x)) op op''"
   using assms apply -
   apply atomize_elim
   apply (subst (asm) dataflow_op.code)
@@ -275,7 +276,7 @@ lemma step_dataflow_op_elim:
   apply (elim stepChoiceE)
   subgoal for op'
     apply (auto del: disjCI split: op.splits sum.splits option.splits)
-    apply fastforce+
+           apply fastforce+
     done
   done
 
@@ -307,6 +308,27 @@ lemma step_Tau_dataflow_op_Tau_intro[intro]:
 lemma step_Out_dataflow_op_Out_Inr_intro[intro!]:
   "step (Out (Inr (nid, p)) (Inr x)) op op' \<Longrightarrow>
    step (Out (nid, p) x) (dataflow_op sg op) (dataflow_op sg op')"
+  apply (subst dataflow_op.code)
+  apply (fastforce elim: step_choicesE split: sum.splits option.splits)
+  done
+
+lemma step_Out_dataflow_op_Out_Inl_Inr_intro[intro!]:
+  "step (Out (Inl p) (Inr x)) op op' \<Longrightarrow>
+   step Tau (dataflow_op sg op) \<oslash>"
+  apply (subst dataflow_op.code)
+  apply (fastforce elim: step_choicesE split: sum.splits option.splits)
+  done
+
+lemma step_Out_dataflow_op_Out_Inl_Inl_Inr_intro[intro!]:
+  "step (Out (Inl p) (Inr (Inl x))) op op' \<Longrightarrow>
+   step Tau (dataflow_op sg op) \<oslash>"
+  apply (subst dataflow_op.code)
+  apply (fastforce elim: step_choicesE split: sum.splits option.splits)
+  done
+
+lemma step_Out_dataflow_op_Out_Inr_Inl_intro[intro!]:
+  "step (Out (Inr p) (Inl x)) op op' \<Longrightarrow>
+   step Tau (dataflow_op sg op) \<oslash>"
   apply (subst dataflow_op.code)
   apply (fastforce elim: step_choicesE split: sum.splits option.splits)
   done

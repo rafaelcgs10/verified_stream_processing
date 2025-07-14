@@ -266,22 +266,6 @@ proof (coinduction arbitrary: inps i sg rule: wbisim_coinduct)
     subgoal
       apply (auto simp add: dataflow_op_end_op input_op_LNil)
       done
-    subgoal   
-      apply (rule FalseE)
-      apply (subst (asm) input_top.code)
-      apply (simp split: llist.splits)
-      subgoal for xs lxs
-        apply (cases xs; simp add: writes_Cons_simp)
-        done
-      done
-    subgoal   
-      apply (rule FalseE)
-      apply (subst (asm) input_top.code)
-      apply (simp split: llist.splits)
-      subgoal for xs lxs
-        apply (cases xs; simp add: writes_Cons_simp)
-        done
-      done
     done
 next
   case SIM2
