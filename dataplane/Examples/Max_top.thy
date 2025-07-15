@@ -881,8 +881,7 @@ lemma propagate_pointstamps_append:
   done
 
 lemma aux:
-  "io_ev_inv (Out (Inl nid) (Inl (Inl \<lparr>cons = cs @ cs', inte = is @ is', prod = ps @ ps'\<rparr>))) op \<Longrightarrow>
-    \<forall>loc\<in>fst ` set (extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr>).
+  " \<forall>loc\<in>fst ` set (extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr>).
        (frontier \<circ>\<circ> c_imp) (the (propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg))) loc =
        (frontier \<circ>\<circ> c_imp) (the (propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg @ extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr>))) loc \<Longrightarrow>
     dataflow_op sg op ~
@@ -900,11 +899,8 @@ proof (coinduction arbitrary: sg op rule: bisim_coinduct)
          apply (rule refl)+
        apply hypsubst_thin
       subgoal 
-        apply (erule io_ev_inv.cases; simp)
          apply force+
         done
-      subgoal
-        by blast
       subgoal
         by blast
       done
@@ -915,12 +911,9 @@ proof (coinduction arbitrary: sg op rule: bisim_coinduct)
          apply (rule refl)+
        apply hypsubst_thin
       subgoal 
-        apply (erule io_ev_inv.cases; simp)
          apply force+
         done
       subgoal
-        by blast
-     subgoal
         by blast
       done
     subgoal
@@ -930,12 +923,9 @@ proof (coinduction arbitrary: sg op rule: bisim_coinduct)
          apply (rule refl)+
        apply hypsubst_thin
       subgoal 
-        apply (erule io_ev_inv.cases; simp)
          apply force+
         done
       subgoal
-        by blast
-     subgoal
         by blast
       done
     subgoal for nid' op'' st'
@@ -965,8 +955,7 @@ proof (coinduction arbitrary: sg op rule: bisim_coinduct)
         apply (rule b_base)
         apply (intro conjI exI)
           apply (rule refl)+
-         defer
-          apply force
+        defer
         subgoal
           apply simp
           apply (intro allI impI)
@@ -999,7 +988,6 @@ proof (coinduction arbitrary: sg op rule: bisim_coinduct)
           apply simp_all
         apply (rule dataflow_op_propagate_pointstamps)
             apply simp_all
-         apply force
         using propagate_pointstamps_append apply force
         done
       done
@@ -1072,189 +1060,9 @@ proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: 
             apply (cases xs'; simp)
             subgoal 
               apply (rule bisim_trans)
-              apply (rule aux[where ps="[(1, i, 1)]" and ?is="[]" and cs="[]" and cs="[]" and ?is'="[]" and ?cs'="[]" and ?ps'="[]" and nid="0", simplified])
-              subgoal
-                apply (rule io_ev_map_op)
-                 apply (rule io_ev_Out_Inl_comp_op)
-                apply (rule io_ev_inv.intros(1)[rotated])
-                   apply (rule SW)
-                apply auto
-                done
+              apply (rule aux[where ps="[(1, i, 1)]" and ?is="[]" and cs="[]" and cs="[]" and ?is'="[(1, i, - 1), (1, Suc i, 1)]" and ?cs'="[]" and ?ps'="[]" and nid="0", simplified])
               subgoal sorry
               apply simp
               apply (rule bisim_dataflow_op_cong)
-
-
-
-              apply simp
-              apply simp
-              apply simp
-              apply simp
-              apply simp
-
-
-              find_theorems step comp_op Out
-
-                prefer 3
-              apply (rule bisim_refl)
-               apply auto
-
-
-              find_theorems choices map_op
-
-
-end
-
-            find_theorems choices comp_op
-
-end
-            apply (coinduction rule: bisim_coinduct_upto'')
-            subgoal for io op1'
-              apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin)
-                         apply (cases xs'; auto simp add: writes_Cons_simp)[1]
-                        apply (cases xs'; auto simp add: writes_Cons_simp)[1]
-              subgoal for op'' io' op''a p x op1'
-                apply (subst (asm) writes.code)
-                apply (simp split: list.splits)
-                 apply force
-                apply auto
-                apply hypsubst_thin
-                apply (intro conjI exI)
-                 apply (rule step_Tau_dataflow_op_Tau_intro)
-                 apply (rule step_map_op)
-                  apply (rule step_Tau_comp_op_L)
-                     apply (simp add: writes_Cons_simp)
-                     apply (rule SW)
-                defer
-                    apply (rule refl)+
-                  apply simp_all
-                apply (intro conjI bc_base)
-
-                find_theorems comp_op step Tau
-                
-
-lemma choices_choices_simp[simp]:
-  "choices (Choice (choices op)) = choices op"
-  sorry
-
-lemma bisim_Choice_choices:
-  "op ~ Choice (choices op)"
-  apply (rule choices_Choice_bisim)
-  apply (simp only: choices_choices_simp)
-  done
-
-
-
-end
-            sorry
-          done
-        done
-      done(* 
-            apply (cases xs')
-            subgoal
-              apply simp
-              apply (coinduction rule: op.coinduct_upto)
-              apply simp
-              apply (rule rel_setI)
-              subgoal for op
-                apply (auto 0 0 split: op.splits)
-                subgoal for p f
-                  apply (cases p; simp split: option.splits sum.splits)
-                  subgoal for p' pttr
-                    apply hypsubst_thin
-                    apply (rule bexI[of _ "Read (Inl p') f"])
-                     apply simp
-                    subgoal
-                      apply auto
-                      apply (rule op.cong_Silent)
-                      apply (rule op.cong_base)
-                      apply auto
-                      subgoal for pttr'
-                        apply (drule Read_in_choices_step[simplified, where x="Inl (Inr (\<lambda>p. c_imp pttr (Loc p' (Trg 1))))"])
-                        apply (elim exE step_map_op_elim step_comp_op_elim conjE step_max'_top_elim; simp; hypsubst_thin)
-                        subgoal for x io' op'' p 
-                          by auto
-                        subgoal for x io' op'' p op2' io'a op''a
-                          apply (drule sym[of _ "f (Inl (Inr (\<lambda>p. c_imp pttr (Loc 1 (Trg 1)))))"])
-                          apply (simp add: extract_progress_def)
-                          subgoal premises prems2
-                          apply (subst (2) comp_op_code)
-                            apply simp
-                            apply (subst (1 2) dataflow_op.code)
-                            apply simp
-                            apply safe
-                            subgoal *)
-
-
-
-
-
-end
-                        apply (cases x; simp)
-                        subgoal for a
-                        apply (cases a; simp)
-                          subgoal
-                            apply hypsubst_thin
-                            apply (subgoal_tac "c_imp pttr (Loc 1 (Trg 1)) = c_imp pttr' (Loc 1 (Trg 1))")
-                            subgoal
-                            apply auto
-
-                            apply (cases io; simp split: option.splits)
-
-                      find_theorems choices step
-
-
-end
-    done
-  subgoal for a xs' 
-    apply (subst (1 2) writes.code)
-    apply simp
-    apply (subst (1 2) dataflow_op.code)
-    apply (simp add: extract_progress_def split: option.splits sum.splits)
-    done
-  done
-
-end
-              apply (subst ( ) aux)
-              apply (simp add: extract_progress_def)
-              apply (rule dataflow_op_change_multiplicities)
-              apply simp_all
-
-end
-              apply (smt (verit, del_insts) Cons_eq_appendI append.left_neutral change_multiplicities_append change_multiplicities_comm)
-              done
-            subgoal
-              apply (subst (1 2) aux)
-              
-
-              find_theorems dataflow_op change_multiplicities
-
-
-
-          apply (rule wbcr_bisim)
-
-          done
-        done
-      done
-
-
-
-              find_theorems Coinductive_List_Auxiliary.lconcat name: cor
-
-
-end
-            apply (subst (1 2) dataflow_op.code)
-            apply (auto simp add: extract_progress_def split: if_splits option.splits)
-            done
-          subgoal
-            apply simp
-            apply (rule box_equals) 
-            defer
-            apply (rule dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1", simplified])
-            apply (rule refl)
-            apply (rule dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1", simplified])
-            apply (rule refl)
-            apply (clarsimp simp add: extract_progress_def split: option.splits)
-            done
 
 end
