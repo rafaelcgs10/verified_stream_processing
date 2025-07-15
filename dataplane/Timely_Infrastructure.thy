@@ -312,21 +312,28 @@ lemma step_Out_dataflow_op_Out_Inr_intro[intro!]:
   apply (fastforce elim: step_choicesE split: sum.splits option.splits)
   done
 
-lemma step_Out_dataflow_op_Out_Inl_Inr_intro[intro!]:
+lemma step_Out_dataflow_op_Out_Inl_Inr_intro[intro]:
   "step (Out (Inl p) (Inr x)) op op' \<Longrightarrow>
    step Tau (dataflow_op sg op) \<oslash>"
   apply (subst dataflow_op.code)
   apply (fastforce elim: step_choicesE split: sum.splits option.splits)
   done
 
-lemma step_Out_dataflow_op_Out_Inl_Inl_Inr_intro[intro!]:
+lemma step_Out_dataflow_op_Out_Inl_Inr_Inl_intro[intro]:
   "step (Out (Inl p) (Inr (Inl x))) op op' \<Longrightarrow>
    step Tau (dataflow_op sg op) \<oslash>"
   apply (subst dataflow_op.code)
   apply (fastforce elim: step_choicesE split: sum.splits option.splits)
   done
 
-lemma step_Out_dataflow_op_Out_Inr_Inl_intro[intro!]:
+lemma step_Out_dataflow_op_Out_Inl_Inl_Inr_intro[intro]:
+  "step (Out (Inl p) (Inl (Inr x))) op op' \<Longrightarrow>
+   step Tau (dataflow_op sg op) \<oslash>"
+  apply (subst dataflow_op.code)
+  apply (fastforce elim: step_choicesE split: sum.splits option.splits)
+  done
+
+lemma step_Out_dataflow_op_Out_Inr_Inl_intro[intro]:
   "step (Out (Inr p) (Inl x)) op op' \<Longrightarrow>
    step Tau (dataflow_op sg op) \<oslash>"
   apply (subst dataflow_op.code)
@@ -444,10 +451,10 @@ lemma un_Choice_dataflow_op_simp[simp]:
           Some conf' \<Rightarrow> let sg' = sg\<lparr>pt_tr := conf', lo_pt := []\<rparr>; imp_fron = \<lambda>p. c_imp (pt_tr sg') (Loc nid (Trg p)) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron))))))
         | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda>x. dataflow_op sg (f (Inr x)))
         | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr>lo_pt := lo_pt sg @ extract_progress nid (edges sg) st\<rparr>) op')
-        | Write op' (Inl nid) (Inl (Inr b)) \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_. \<oslash>)
-        | Write op' (Inl nid) (Inr b) \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_. \<oslash>)
-        | Write op' (Inr (nid, p)) (Inl aa) \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_. \<oslash>)
-        | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x | Choice cset \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_. \<oslash>)
+        | Write op' (Inl nid) (Inl (Inr b)) \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_. Silent \<oslash>)
+        | Write op' (Inl nid) (Inr b) \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_. Silent \<oslash>)
+        | Write op' (Inr (nid, p)) (Inl aa) \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_. Silent \<oslash>)
+        | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x | Choice cset \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_. Silent \<oslash>)
         | Silent op' \<Rightarrow> Silent (dataflow_op sg op')) |`|
   choices op)"
   by (simp add: dataflow_op.code)
@@ -640,5 +647,18 @@ lemma dataflow_op_change_multiplicities:
       by (force intro: op.cong_Silent op.cong_base)
     done
   done
+
+lemma bisim_dataflow_op_cong:
+  "op ~ op' \<Longrightarrow>
+  dataflow_op sg op ~ dataflow_op sg op'"
+  sorry
+
+lemma dataflow_op_propagate_pointstamps:
+  "propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg) = Some conf \<Longrightarrow>
+   propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg @ extract_progress nid (edges sg) st) = Some conf' \<Longrightarrow>
+   (\<forall>loc\<in>fst ` set (extract_progress nid (edges sg) st). (frontier o c_imp conf) loc = (frontier o c_imp conf') loc) \<Longrightarrow>
+   dataflow_op (sg\<lparr>pt_tr := conf', lo_pt := []\<rparr>) op =
+   dataflow_op (sg\<lparr>pt_tr := conf, lo_pt := extract_progress nid (edges sg) st\<rparr>) op"
+  sorry
 
 end

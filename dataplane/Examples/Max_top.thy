@@ -849,13 +849,45 @@ lemma io_ev_Out_Inl_comp_op:
   done
   done
 
+(* FIXME: move me *)
+lemma dataflow_op_extract_progress_append:
+  "dataflow_op (sg\<lparr>lo_pt := lo_pt sg @ extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr> @ extract_progress nid (edges sg) \<lparr>cons = cs', inte = is', prod = ps'\<rparr>\<rparr>) op =
+   dataflow_op (sg\<lparr>lo_pt := lo_pt sg @ extract_progress nid (edges sg) \<lparr>cons = cs @ cs', inte = is @ is', prod = ps @ ps'\<rparr>\<rparr>) op"
+  apply (rule dataflow_op_change_multiplicities)
+     apply simp_all
+  unfolding extract_progress_def
+  apply simp
+  apply (smt (verit, del_insts) change_multiplicities_append change_multiplicities_comm)
+  done
+
+lemma propagate_pointstamps_append:
+  "propagate_pointstamps summary conf cbs1 = Some conf' \<Longrightarrow>
+   propagate_pointstamps summary conf' cbs2 = propagate_pointstamps summary conf (cbs1 @ cbs2)"
+  apply (induct cbs2 arbitrary: cbs1 conf conf' rule: rev_induct) 
+  subgoal for cbs1 conf conf'
+    unfolding propagate_pointstamps_def change_multiplicities_def propagate_all_def
+    apply simp
+    apply (metis (no_types, lifting) while_option_stop while_option_unfold)
+    done
+  subgoal for a cbs2 cbs1 conf conf'
+    apply (drule meta_spec)+
+    apply (drule meta_mp)
+    apply assumption
+    unfolding propagate_pointstamps_def Let_def
+    apply (simp; hypsubst_thin?)
+    apply (subst change_multiplicities_append_comp)
+    apply simp
+    sorry
+  done
+
 lemma aux:
-  "io_ev_inv (Out (Inl nid) (Inl (Inl st))) op \<Longrightarrow>
-   p = Inl nid \<Longrightarrow>
-   x = Inl (Inl st) \<Longrightarrow>
-   y = Inl (Inl \<lparr> cons = [], inte = [], prod = [] \<rparr>) \<Longrightarrow>
-   dataflow_op sg op ~
-   dataflow_op (sg\<lparr> lo_pt := lo_pt sg @ extract_progress nid (edges sg) st \<rparr>) (subst_Out_op p x y op)"
+  "io_ev_inv (Out (Inl nid) (Inl (Inl \<lparr>cons = cs @ cs', inte = is @ is', prod = ps @ ps'\<rparr>))) op \<Longrightarrow>
+    \<forall>loc\<in>fst ` set (extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr>).
+       (frontier \<circ>\<circ> c_imp) (the (propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg))) loc =
+       (frontier \<circ>\<circ> c_imp) (the (propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg @ extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr>))) loc \<Longrightarrow>
+    dataflow_op sg op ~
+    dataflow_op (sg\<lparr>lo_pt := lo_pt sg @ extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr>\<rparr>)
+     (subst_Out_op (Inl nid) (Inl (Inl \<lparr>cons = cs @ cs', inte = is @ is', prod = ps @ ps'\<rparr>)) (Inl (Inl \<lparr>cons = cs', inte = is', prod = ps'\<rparr>)) op)"
 proof (coinduction arbitrary: sg op rule: bisim_coinduct)
   case SIM1
   then show ?case 
@@ -873,17 +905,6 @@ proof (coinduction arbitrary: sg op rule: bisim_coinduct)
         done
       subgoal
         by blast
-      done
-    subgoal
-      apply (intro exI conjI[rotated])
-       apply (rule b_base)
-       apply (intro exI conjI)
-         apply (rule refl)+
-       apply hypsubst_thin
-      subgoal 
-        apply (erule io_ev_inv.cases; simp)
-         apply force+
-        done
       subgoal
         by blast
       done
@@ -898,21 +919,45 @@ proof (coinduction arbitrary: sg op rule: bisim_coinduct)
          apply force+
         done
       subgoal
+        by blast
+     subgoal
+        by blast
+      done
+    subgoal
+      apply (intro exI conjI[rotated])
+       apply (rule b_base)
+       apply (intro exI conjI)
+         apply (rule refl)+
+       apply hypsubst_thin
+      subgoal 
+        apply (erule io_ev_inv.cases; simp)
+         apply force+
+        done
+      subgoal
+        by blast
+     subgoal
         by blast
       done
     subgoal for nid' op'' st'
       apply hypsubst_thin
-      apply (cases "nid = nid' \<and> st = st'")
+      apply (cases "nid' = nid \<and> st' = \<lparr>cons = cs @ cs', inte = is @ is', prod = ps @ ps'\<rparr>")
       subgoal
         apply (elim conjE; hypsubst_thin)
-        apply (rule exI[of _ "dataflow_op (sg\<lparr>lo_pt := lo_pt sg @ extract_progress nid' (edges sg) st'\<rparr>) op''"])
         apply (intro exI conjI)
-         apply (rule step_Tau_dataflow_op_Out_Inl_intro[where st="\<lparr> cons = [], inte = [], prod = [] \<rparr>" and nid=nid'])
+         apply (rule step_Tau_dataflow_op_Out_Inl_intro[where nid=nid])
           apply (rule step_subst_op_Out_intro1)
           apply assumption
-        apply (subst (4) extract_progress_def)
-         apply simp
-        apply force
+         apply (rule refl)
+        apply simp
+        apply (subgoal_tac 
+    "(dataflow_op (sg\<lparr>lo_pt := lo_pt sg @ extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr> @ extract_progress nid (edges sg) \<lparr>cons = cs', inte = is', prod = ps'\<rparr>\<rparr>) op'') =
+     (dataflow_op (sg\<lparr>lo_pt := lo_pt sg @ extract_progress nid (edges sg) \<lparr>cons = cs @ cs', inte = is @ is', prod = ps @ ps'\<rparr>\<rparr>) op'')")
+         apply force
+        apply (rule dataflow_op_change_multiplicities)
+           apply simp_all
+        unfolding extract_progress_def
+        apply simp
+        apply (smt (verit, del_insts) change_multiplicities_append change_multiplicities_comm)
         done
       subgoal
         apply (intro exI conjI)
@@ -921,56 +966,54 @@ proof (coinduction arbitrary: sg op rule: bisim_coinduct)
         apply (intro conjI exI)
           apply (rule refl)+
          defer
-        apply force
+          apply force
+        subgoal
+          apply simp
+          apply (intro allI impI)
+          subgoal for loc
+            subgoal sorry
+            done
+          done
+        apply simp
         apply (rule dataflow_op_change_multiplicities)
            apply simp_all
         apply (metis (no_types, lifting) change_multiplicities_append change_multiplicities_comm)
         done
       done
-    subgoal
+    subgoal for nid' op'' imp_fron sg'
+      apply (simp_all split: option.splits)
       apply hypsubst_thin
-          sorry
-        subgoal
-          by blast
-        subgoal
-          by blast
-        subgoal
-          by blast
-        done
-    next
-
-find_theorems dataflow_op step Inr Inl Tau
-
-end
-
-       apply (rule b_base)
-       apply (intro conjI exI)
-         defer
-         apply (rule refl)
-        defer
-
-
-        
-
-
-end
-
-    subgoal for nid' op'' st'
-      apply hypsubst_thin
-      apply (cases "nid = nid' \<and> st = st'")
-      subgoal
-        apply (elim conjE)
-        apply hypsubst_thin
-      apply (intro exI conjI[rotated])
-      apply (rule b_base)
-           apply (intro exI conjI)
+      apply (intro exI conjI)
+        apply (rule step_Tau_dataflow_op_Inp_Inl_intro)
+          apply (rule step_subst_op_Inp_intro)
+      apply assumption
          apply (rule refl)+
-        subgoal 
-          by blast
-        
-   
-
-
+      subgoal for conf
+        apply simp
+        sorry
+      subgoal for conf
+        apply simp
+        apply (rule b_base)
+        apply (intro conjI exI)
+         apply (rule refl)+
+          apply simp_all
+        apply (rule dataflow_op_propagate_pointstamps)
+            apply simp_all
+         apply force
+        using propagate_pointstamps_append apply force
+        done
+      done
+    subgoal
+      by blast
+    subgoal
+      by blast
+    subgoal
+      by blast
+    done
+next
+  case SIM2
+  then show ?case sorry
+qed
 
 lemma
   \<open>ys @@- xs @@- lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps1 (iterates Suc i))) =
@@ -1027,17 +1070,22 @@ proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: 
             apply (subst (2) input_top.code)
             apply (simp add: comp_def)
             apply (cases xs'; simp)
-            subgoal
+            subgoal 
               apply (rule bisim_trans)
-               apply (rule aux[where nid=0 and st="\<lparr>cons = [], inte = [(1, i, - 1), (1, Suc i, 1)], prod = [(1, i, 1)]\<rparr>", of _ _ "map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (input_top (Cap (Suc i) 1) inps1')"])                
-              subgoal premises prems
+              apply (rule aux[where ps="[(1, i, 1)]" and ?is="[]" and cs="[]" and cs="[]" and ?is'="[]" and ?cs'="[]" and ?ps'="[]" and nid="0", simplified])
+              subgoal
                 apply (rule io_ev_map_op)
                  apply (rule io_ev_Out_Inl_comp_op)
                 apply (rule io_ev_inv.intros(1)[rotated])
                    apply (rule SW)
                 apply auto
                 done
+              subgoal sorry
               apply simp
+              apply (rule bisim_dataflow_op_cong)
+
+
+
               apply simp
               apply simp
               apply simp
