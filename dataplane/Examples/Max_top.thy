@@ -860,9 +860,15 @@ lemma dataflow_op_extract_progress_append:
   apply (smt (verit, del_insts) change_multiplicities_append change_multiplicities_comm)
   done
 
+lemma propagate_pointstamps_comm:
+  "propagate_pointstamps summary conf (cbs1 @ cbs2) = propagate_pointstamps summary conf (cbs2 @ cbs1)"
+    unfolding propagate_pointstamps_def Let_def
+    by (simp add: change_multiplicities_comm)
+
+
 lemma propagate_pointstamps_append:
   "propagate_pointstamps summary conf cbs1 = Some conf' \<Longrightarrow>
-   propagate_pointstamps summary conf' cbs2 = propagate_pointstamps summary conf (cbs1 @ cbs2)"
+   propagate_pointstamps summary conf (cbs1 @ cbs2) = propagate_pointstamps summary conf' cbs2"
   apply (induct cbs2 arbitrary: cbs1 conf conf' rule: rev_induct) 
   subgoal for cbs1 conf conf'
     unfolding propagate_pointstamps_def change_multiplicities_def propagate_all_def
@@ -880,10 +886,29 @@ lemma propagate_pointstamps_append:
     sorry
   done
 
+lemma
+  "(frontier \<circ>\<circ> c_imp) (the (propagate_pointstamps summary conf A)) =
+   (frontier \<circ>\<circ> c_imp) (the (propagate_pointstamps summary conf B)) \<Longrightarrow>
+   (frontier \<circ>\<circ> c_imp) (the (propagate_pointstamps summary conf (A @ C))) =
+   (frontier \<circ>\<circ> c_imp) (the (propagate_pointstamps summary conf (B @ C)))"
+  apply (induct C arbitrary: A B conf)
+  subgoal
+    by simp
+  subgoal for x xs A B conf
+    apply (drule meta_spec[of _ "A @ [x]"])
+    apply (drule meta_spec[of _ "B @ [x]"])
+    apply (drule meta_spec[of _ conf])
+    apply (drule meta_mp)
+    apply (subst (1 2) propagate_pointstamps_append)
+       defer
+       defer
+    apply (rule refl)
+      apply simp
+    oops
+
 lemma aux:
-  " \<forall>loc\<in>fst ` set (extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr>).
-       (frontier \<circ>\<circ> c_imp) (the (propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg))) loc =
-       (frontier \<circ>\<circ> c_imp) (the (propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg @ extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr>))) loc \<Longrightarrow>
+  "(frontier \<circ>\<circ> c_imp) (the (propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg))) =
+   (frontier \<circ>\<circ> c_imp) (the (propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg @ extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr>))) \<Longrightarrow>
     dataflow_op sg op ~
     dataflow_op (sg\<lparr>lo_pt := lo_pt sg @ extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr>\<rparr>)
      (subst_Out_op (Inl nid) (Inl (Inl \<lparr>cons = cs @ cs', inte = is @ is', prod = ps @ ps'\<rparr>)) (Inl (Inl \<lparr>cons = cs', inte = is', prod = ps'\<rparr>)) op)"
@@ -956,11 +981,19 @@ proof (coinduction arbitrary: sg op rule: bisim_coinduct)
         apply (intro conjI exI)
           apply (rule refl)+
         defer
-        subgoal
+        subgoal 
           apply simp
-          apply (intro allI impI)
-          subgoal for loc
-            subgoal sorry
+          oops
+(* 
+end
+              apply (subst propagate_pointstamps_append[symmetric])
+              defer
+
+            term minimal_antichain
+
+              find_theorems frontier c_imp
+              
+              sorry
             done
           done
         apply simp
@@ -1002,6 +1035,7 @@ next
   case SIM2
   then show ?case sorry
 qed
+ *)
 
 lemma
   \<open>ys @@- xs @@- lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps1 (iterates Suc i))) =
@@ -1020,6 +1054,7 @@ proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: 
     unfolding wsim_def
     apply safe
     apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin)
+
     subgoal for op'' io' op''a p op1' q io'a op''b xa xs
       apply (cases inps1; simp)
       subgoal for xs inps1'
@@ -1066,3 +1101,27 @@ proof (coinduction arbitrary: inps1 inps2 buf1 buf2 inrbufs1 xs ys i j sg rule: 
               apply (rule bisim_dataflow_op_cong)
 
 end
+    subgoal for io op1' op'' io' op''a p x op2' io'a op''b t n
+          apply (rule exI)
+          apply (rule conjI)
+           apply (rule rtranclp.intros(1))
+          apply (intro relcomppI)
+            defer
+          apply (rule exI[of _ "inps1"])
+          apply (rule exI[of _ "inps2"])
+          apply (rule exI[of _ "BTL (Inr (1, 1)) buf1"])
+          apply (rule exI[of _ "buf2 @ [(n, Cap t 1)]"])
+          apply (rule exI[of _ "i"])
+        apply (rule exI[of _ "j"])
+        apply (rule exI[of _ "sg\<lparr> lo_pt := (lo_pt sg) @ extract_progress 1 (edges sg) \<lparr>cons = [(1, t, 1)], inte = [(1, t, 1)], prod = []\<rparr> \<rparr>"])
+      apply (intro conjI exI)
+            apply (rule refl)+
+      subgoal sorry
+      subgoal
+        unfolding BTL_def
+        by simp (meson in_set_tlD)
+      subgoal 
+        by simp
+       apply (rule wbisim_refl)
+      
+
