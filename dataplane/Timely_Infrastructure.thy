@@ -383,6 +383,22 @@ lemma steps_intro[intro]:
   apply auto
   done
 
+lemma steps_intro_alt[intro]:
+  "steps xs op op' \<Longrightarrow>
+   step x op' op'' \<Longrightarrow>
+   ys = xs @ [x] \<Longrightarrow>
+   steps ys op op''"
+  apply auto
+  done
+
+lemma steps_append_intro[intro]:
+  "steps xs op op' \<Longrightarrow>
+   steps ys op' op'' \<Longrightarrow>
+   zs = xs @ ys \<Longrightarrow>
+   steps zs op op''"
+  apply auto
+  done
+
 lemma steps_Tau_dataflow_op_Out_Inl_intro[intro]:
   "steps (map (\<lambda> st. Out (Inl nid) (Inl (Inl st))) xs) op op' \<Longrightarrow>
    sg' = sg\<lparr> lo_pt := lo_pt sg @ concat (map (\<lambda> st. (extract_progress nid (edges sg) st)) xs) \<rparr> \<Longrightarrow>
@@ -405,6 +421,13 @@ lemma steps_Tau_dataflow_op_Out_Inl_intro[intro]:
     done
   done
 
+lemma steps_Tau_dataflow_op_Tau_intro[intro]:
+  "steps (replicate n Tau) op op' \<Longrightarrow>
+   (step Tau ^^ n) (dataflow_op sg op) (dataflow_op sg op')"
+  apply (induct n arbitrary: op op' sg)
+   apply clarsimp+
+  apply (metis (no_types, lifting) relcompp_apply relpowp_commute step_Tau_dataflow_op_Tau_intro)
+  done
 
 lemma dataflow_writes_extract_progress_from_push:
   "g = (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) \<Longrightarrow>

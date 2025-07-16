@@ -1037,6 +1037,13 @@ next
 qed
  *)
 
+lemma aux:
+  "op ~ subst_Out_op (Inl nid) (Inl (Inl \<lparr>cons = cs @ cs', inte = is @ is', prod = ps @ ps'\<rparr>)) (Inl (Inl \<lparr>cons = cs', inte = is', prod = ps'\<rparr>)) op' \<Longrightarrow>
+   dataflow_op sg op ~
+   dataflow_op (sg\<lparr>lo_pt := lo_pt sg @ extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr>\<rparr>)
+     (subst_Out_op (Inl nid) (Inl (Inl \<lparr>cons = cs @ cs', inte = is @ is', prod = ps @ ps'\<rparr>)) (Inl (Inl \<lparr>cons = cs', inte = is', prod = ps'\<rparr>)) op')"
+  sorry
+
 lemma
   \<open>ys @@- xs @@- lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps1 (iterates Suc i))) =
    lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps2 (iterates Suc j))) \<Longrightarrow>
