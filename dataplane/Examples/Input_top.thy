@@ -309,10 +309,6 @@ proof (coinduction arbitrary: inps1 inps2 i j buf1 buf2 ints prds sg rule: weakB
         oops
  *)
 
-fun input_list where
-  "input_list t [] = []"
-| "input_list t (xs # xss) = (map (\<lambda> x. (x, t)) xs) @ input_list (t + 1) xss"
-
 
 
 lemma ldropWhile_lshift:
@@ -323,10 +319,38 @@ lemma ldropWhile_lshift:
    apply auto
   done
 
+thm lconcat_eq_LCons_conv[of "llist_of (map llist_of ys)", unfolded lconcat_llist_of llist_of_eq_LCons_conv, simplified, no_vars]
+
+lemma concat_eq_Cons_conv:
+  "concat ys = x # xs = (\<exists>xs' xss' xss''. ys = xss' @ (x # xs') # xss'' \<and> xs = xs' @ concat xss'' \<and> set xss' \<subseteq> {xs. xs = []})"
+  apply (induct ys)
+  apply simp
+  apply simp
+  subgoal for y ys
+    apply safe
+    subgoal
+      apply simp
+      apply (metis append_Cons insert_subsetI list.simps(15) singletonI)
+      done
+    subgoal
+      apply simp
+      apply (metis append_Cons basic_trans_rules(31) concat.simps(2) concat_append concat_eq_Nil_conv empty_iff lists.cases lists_empty self_append_conv2)
+      done
+    subgoal
+      apply simp
+      apply (metis append_Nil list.simps(14) list_Cons_eq_append_cases subset_insertI)
+      done
+    subgoal
+      apply simp
+      apply (smt (verit, ccfv_threshold) append_eq_Cons_conv list_tail_coinc set_empty2 set_subset_Cons subset_singleton_iff)
+      done
+    done
+  done
+
 
 lemma dataflow_op_input_top_input_op:
   "edges sg = (\<lambda> _. []) \<Longrightarrow>
-   (\<forall> p. input_list (t p) (xs p) = outpu os p) \<Longrightarrow>
+   (\<forall> p. outpu os p = concat (map (\<lambda> (ys, t). map (\<lambda> x. (x, t)) ys) (zip (xs p) ([t p..<t p + length (xs p)])))) \<Longrightarrow>
    dataflow_op sg (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (input_top (os\<lparr> stash := (\<lambda> p. t p + length (xs p)) \<rparr>) inps)) \<approx>
    map_op (\<lambda> p. (nid, p)) (\<lambda> p. (nid, p)) (input_op t (\<lambda> p. xs p @@- inps p ))"
 proof (coinduction arbitrary: inps t rule: weakBisimWeakUptoBisimCong)
@@ -342,24 +366,26 @@ proof (coinduction arbitrary: inps t rule: weakBisimWeakUptoBisimCong)
         subgoal for y t'
           apply hypsubst_thin
           apply (drule spec[of _ p])
-          apply simp
+          apply (simp add: concat_eq_Cons_conv)
+          apply safe
+          subgoal for xs' xss' xss''
+            apply hypsubst_thin
       apply (intro exI conjI)
        apply (rule step_wstep)
        apply (rule step_map_op)
-          apply (rule step_input_op_Out_intro2[where p=p and x=y])
-             apply (subst ldropWhile_lshift)
+              apply (rule step_input_op_Out_intro2[where p=p and x=y and xs="map fst xs'" and lxs="map (\<lambda> xs. map fst xs) xss'' @@- inps p"])
+            apply simp_all
                defer
-               defer
-          defer
-             apply assumption
-            apply simp
-            defer
+              apply simp
+              defer
             apply (intro relcomppI)
           defer
       apply (rule wb_upto_b_base)
       apply (intro exI conjI[rotated])
           defer
                   apply (rule refl)+
+            try0
+
               defer
           defer
 
