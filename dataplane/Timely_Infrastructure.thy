@@ -11,6 +11,7 @@ imports
   Locations
   Operators_Utils
   Utils
+  "HOL-Library.Finite_Map"
 begin 
 
 (*
@@ -639,8 +640,28 @@ lemma dataflow_op_propagate_pointstamps:
   sorry
 
 
+term "Cap"
 
+record ('p, 's, 'd, 't) operator_state =
+  consu :: "('p \<times> 't \<times> int) list"
+  inter :: "('p \<times> 't \<times> int) list"
+  produ :: "('p \<times> 't \<times> int) list"
+  outpu :: "'p \<Rightarrow> ('d \<times> 't) list"
+  front :: "'p \<Rightarrow> 't antichain"
+  capab :: "'p \<Rightarrow> 't list"
+  stash :: 's
 
+abbreviation "deactivate_port os p \<equiv> fold (\<lambda> t os. os\<lparr> inter := inter os @ [(p, t, -1)] \<rparr>) (capab os p) (os\<lparr> capab := (capab os)(p := []) \<rparr>)"
+
+abbreviation "obtain_cap os t p \<equiv> (if t \<in> set (capab os p) then (os\<lparr> capab := (capab os)(p := remove1 t (capab os p)), inter := inter os @ [(p, t, -1)] \<rparr>, Some (Cap t p)) else (os, None))"
+
+abbreviation "delay_cap os cap incr \<equiv> (os\<lparr> capab := (capab os)( out cap := capab os (out cap) @ [(time cap + incr)]) \<rparr>)"
+
+abbreviation "keep_cap os cap \<equiv> (os\<lparr> capab := (capab os)( out cap := capab os (out cap) @ [(time cap)]) \<rparr>)"
+
+abbreviation "produce os cap batch \<equiv> os\<lparr> outpu := (outpu os)(out cap := outpu os (out cap) @ map (\<lambda> x. (x, time cap)) batch), produ := produ os @ [(out cap, time cap, length batch)] \<rparr>"
+
+abbreviation "get_output os p \<equiv> (case outpu os p of [] \<Rightarrow> (os, None) | x # xs \<Rightarrow> (os\<lparr> outpu := (outpu os)(p := xs ) \<rparr>, Some x))"
 
 
 end
