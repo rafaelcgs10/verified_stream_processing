@@ -234,7 +234,7 @@ definition extract_progress where
 term "((o) frontier) ` imp_fron"
 
 (* Inspired by timely/src/dataflow/operators/capability.rs:62 *)
-datatype ('p, 't) capability = Cap (time: 't) (out: 'p)
+datatype ('p, 't) capability = Cap (time: "'t :: plus") (out: 'p)
 
 corec dataflow_op where
   "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
@@ -351,52 +351,6 @@ lemma dataflow_op_end_op:
   "dataflow_op sg \<oslash> = \<oslash>"
   apply (subst dataflow_op.code)
   apply simp
-  done
-
-fun steps where
-  "steps [] = (=)"
-| "steps (io # ios) = step io OO steps ios"
-
-lemma steps_append[simp]:
-  "steps (xs @ ys) = steps xs OO steps ys"
-  by (induct xs arbitrary: ys) auto
-
-lemma step_refl[simp]:
-  "step io OO (=) = step io"
-  by auto
-
-thm step_map_op[no_vars]
-
-lemma steps_map_op[intro!]:
-  "op'' = map_op f g op' \<Longrightarrow> 
-   map (map_IO f g id) xs = xs' \<Longrightarrow>
-   steps xs op op' \<Longrightarrow>
-   steps xs' (map_op f g op) op''"
-  by (induct xs' arbitrary: op op' op'' xs)
-    (force simp add: relcompp_apply)+
-
-lemma steps_intro[intro]:
-  "step x op op' \<Longrightarrow>
-   steps xs op' op'' \<Longrightarrow>
-   ys = x # xs \<Longrightarrow>
-   steps ys op op''"
-  apply auto
-  done
-
-lemma steps_intro_alt[intro]:
-  "steps xs op op' \<Longrightarrow>
-   step x op' op'' \<Longrightarrow>
-   ys = xs @ [x] \<Longrightarrow>
-   steps ys op op''"
-  apply auto
-  done
-
-lemma steps_append_intro[intro]:
-  "steps xs op op' \<Longrightarrow>
-   steps ys op' op'' \<Longrightarrow>
-   zs = xs @ ys \<Longrightarrow>
-   steps zs op op''"
-  apply auto
   done
 
 lemma steps_Tau_dataflow_op_Out_Inl_intro[intro]:
@@ -683,5 +637,10 @@ lemma dataflow_op_propagate_pointstamps:
    dataflow_op (sg\<lparr>pt_tr := conf', lo_pt := []\<rparr>) op =
    dataflow_op (sg\<lparr>pt_tr := conf, lo_pt := extract_progress nid (edges sg) st\<rparr>) op"
   sorry
+
+
+
+
+
 
 end

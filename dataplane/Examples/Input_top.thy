@@ -235,15 +235,16 @@ proof (coinduction arbitrary: inps i sg rule: wbisim_coinduct)
             apply (auto simp add: extract_progress_def split: if_splits option.splits)
             done
           subgoal
-            apply simp
+            sorry
+(*             apply simp
             apply (rule box_equals) 
             defer
             apply (rule dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1", simplified])
             apply (rule refl)
             apply (rule dataflow_writes_extract_progress_from_push[symmetric, where p="1 :: 1", simplified])
             apply (rule refl)
-            apply (clarsimp simp add: extract_progress_def split: option.splits)
-            done
+            apply (clarsimp simp add: extract_progress_def split: option.splits) 
+            done*)
           done
         done
       done
@@ -302,8 +303,9 @@ next
       apply (rule exI[of _ "sg\<lparr> lo_pt := (lo_pt sg) @ extract_progress nid (edges sg) \<lparr>cons = [], inte = concat (map (\<lambda> t. [(1, t, -1), (1, Suc t, 1)]) [i..< i + (the_enat (llength (ltakeWhile ((=) []) inps)))]), prod = [(1, i, 1)]\<rparr> \<rparr>"])
       apply (intro conjI)
       apply simp
-      apply (clarsimp simp add: extract_progress_def split: option.splits)
-      apply (subst dataflow_writes_extract_progress_from_push[where p="1 :: 1", simplified])
+         apply (clarsimp simp add: extract_progress_def split: option.splits)
+      oops
+(*       apply (subst dataflow_writes_extract_progress_from_push[where p="1 :: 1", simplified])
       apply (rule refl)
       apply (clarsimp simp add: extract_progress_def split: option.splits)
       apply simp_all
@@ -339,7 +341,7 @@ next
         done
       done
     done
-qed
+qed *)
 
 lemma compile_dataflow_input_top_input_op:
   "(compile_dataflow (Logic (input_top (Cap i 1) inps)) :: (1 \<times> 1, 1 \<times> 1, 'b \<times> nat) op) \<approx> map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (input_op i inps)"
@@ -347,6 +349,7 @@ lemma compile_dataflow_input_top_input_op:
   apply (simp split: prod.splits)
   apply (intro conjI allI impI)
   subgoal for su op
+    oops(* 
     using dataflow_op_input_top_input_op[where sg="init_subgraph su", simplified, where i=i and inps=inps] apply -
     apply (drule meta_mp)
     subgoal
@@ -379,11 +382,12 @@ lemma compile_dataflow_input_top_input_op:
         done
       done
     done
-  done
+  done *)
 
 lemma input_top_correctness:
   "wtraced (compile_dataflow (Logic (input_top (Cap i 1) inps)) :: (1 \<times> 1, 1 \<times> 1, 'b \<times> nat) op) ios \<Longrightarrow>
    ios = (lmap (\<lambda> (n, t). VOut (1, 0) (n, t)) (lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps (iterates Suc i)))))"
+  oops(* 
   apply (drule wbisim_wtraced[OF compile_dataflow_input_top_input_op])
   apply (coinduction arbitrary: ios inps i)
   subgoal for ios inps i
@@ -443,23 +447,22 @@ lemma input_top_correctness:
         done
       done
     done
-  done
+  done *)
 
 corec nd_input_top where
   "nd_input_top c ints prds inps = choice2 
   (case inps of
-    LNil \<Rightarrow> Write \<oslash> None (Inl (Inl \<lparr> cons = [], inte = ints, prod = prds @ [(out c, time c, -1)]\<rparr>))
-  | LCons [] lxs \<Rightarrow> Silent (nd_input_top (Cap (time c + 1) (out c)) (ints @ [(out c, time c, -1), (out c, time c + 1, 1)]) prds lxs)
-  | LCons (x # xs) lxs \<Rightarrow> Write (nd_input_top c ints (prds @ [(out c, time c, 1)]) (LCons xs lxs)) (Some (1 :: 1)) (Inr (x, time c)))
+    LNil \<Rightarrow> Write \<oslash> None (Inl (Inl \<lparr> cons = [], inte = ints, prod = prds @ [(1, time c, -1)]\<rparr>))
+  | LCons xs lxs \<Rightarrow> push (Silent (nd_input_top (Cap (time c + 1) (1 :: 1)) (ints @ [(1, time c, -1), (1, time c + 1, 1)]) (prds @ [(1, time c, length xs)]) lxs)) (1 :: 1) (map (\<lambda> x. (x, c)) xs))
   (Write (nd_input_top c [] [] inps) None (Inl (Inl \<lparr> cons = [], inte = ints, prod = prds\<rparr>)))"
 
 lemma step_nd_input_top_elim:
   assumes "step io (nd_input_top c ints prds inps) op'"
   obtains
     x xs lxs where "io = Out (Some 1) (Inr (x, time c))" "inps = LCons (x # xs) lxs"
-    "op' = nd_input_top c ints (prds @ [(out c, time c, 1)]) (LCons xs lxs)"
-  | lxs where "io = Tau" "inps = LCons [] lxs" "op' = nd_input_top (Cap (time c + 1) (out c)) (ints @ [(out c, time c, -1), (out c, time c + 1, 1)]) prds (ltl inps)"
-  | "io = Out None (Inl (Inl \<lparr> cons = [], inte = ints, prod = prds @ [(out c, time c, -1)]\<rparr>))" "inps = LNil" "op' = \<oslash>"
+    "op' = push (Silent (nd_input_top (Cap (time c + 1) 1) (ints @ [(1, time c, -1), (1, time c + 1, 1)]) (prds @ [(1, time c, length (x # xs))]) lxs)) (1 :: 1) (map (\<lambda> x. (x, c)) xs)"
+  | lxs where "io = Tau" "inps = LCons [] lxs" "op' = nd_input_top (Cap (time c + 1) 1) (ints @ [(1, time c, -1), (1, time c + 1, 1)]) (prds @ [(1, time c, 0)]) lxs"
+  | "io = Out None (Inl (Inl \<lparr> cons = [], inte = ints, prod = prds @ [(1, time c, -1)]\<rparr>))" "inps = LNil" "op' = \<oslash>"
   | "io = Out None (Inl (Inl \<lparr> cons = [], inte = ints, prod = prds\<rparr>))" "op' = nd_input_top c [] [] inps"
   using assms apply -
   apply atomize_elim
@@ -474,30 +477,30 @@ lemma step_nd_input_top_elim:
       subgoal
         by auto
       subgoal
-        by (auto simp add: comp_def)
+        by (auto simp add: comp_def writes_Cons_simp)
       done
     subgoal
       apply (cases xs; simp)
-       apply auto
-      done
+      by (auto simp add: comp_def writes_Cons_simp)
     subgoal
       apply (cases xs; simp)
-       apply auto
-      done
+      by (auto simp add: comp_def writes_Cons_simp)
     done
   done
 
+
 lemma step_nd_input_top_Out_Some_intro[intro!]:
   "inps = LCons (x # xs) inps' \<Longrightarrow>
-   op = nd_input_top c ints (prds @ [(out c, time c, 1)]) (LCons xs inps') \<Longrightarrow>
-   step (Out (Some 1) (Inr (x, time c))) (nd_input_top c ints prds inps) op"
+   op = push (Silent (nd_input_top (Cap (time c + 1) 1) (ints @ [(1, time c, -1), (1, time c + 1, 1)]) (prds @ [(1, time c, int (length (x # xs)))]) inps')) (1 :: 1) (map (\<lambda> x. (x, c)) xs) \<Longrightarrow>
+   io = Out (Some 1) (Inr (x, time c)) \<Longrightarrow>
+   step io (nd_input_top c ints prds inps) op"
   apply (subst nd_input_top.code)
   apply (auto simp add: comp_def)
   done
 
 lemma step_nd_input_top_Tau_intro[intro!]:
   "inps = LCons [] inps' \<Longrightarrow> 
-   op = nd_input_top (Cap (time c + 1) (out c)) (ints @ [(out c, time c, -1), (out c, time c + 1, 1)]) prds inps' \<Longrightarrow>
+   op = nd_input_top (Cap (time c + 1) 1) (ints @ [(1, time c, -1), (1, time c + 1, 1)]) (prds @ [(1, time c, 0)]) inps' \<Longrightarrow>
    step Tau (nd_input_top c ints prds inps) op"
   apply (subst nd_input_top.code)
   apply (auto simp add: comp_def)
@@ -514,12 +517,12 @@ lemma step_nd_input_top_Out_None_intro[intro]:
 lemma step_nd_input_top_Out_None_end_intro[intro]:
   "op = \<oslash> \<Longrightarrow>
    inps = LNil \<Longrightarrow>
-   step (Out None (Inl (Inl \<lparr> cons = [], inte = ints, prod = prds @ [(out c, time c, -1)]\<rparr>))) (nd_input_top c ints prds inps) op"
+   step (Out None (Inl (Inl \<lparr> cons = [], inte = ints, prod = prds @ [(1, time c, -1)]\<rparr>))) (nd_input_top c ints prds inps) op"
   apply (subst nd_input_top.code)
   apply (auto simp add: comp_def)
   done
 
-
+(* 
 lemma ldropWhile_steps_nd_input_top:
   "lfinite (ltakeWhile ((=) []) inps) \<Longrightarrow>
    ldropWhile ((=) []) inps = LCons (x # xs) inps' \<Longrightarrow>
@@ -562,23 +565,242 @@ lemma ldropWhile_steps_nd_input_top:
         done
       done
     done
+  done *)
+
+(* FIXME: move me *)
+lemma input_op_LCons_write_simp:
+  "input_op i (LCons xs lxs) = writes (input_op (Suc i) lxs) 1 (map (\<lambda> x. (x, i)) xs)"
+  apply (induct xs arbitrary: i lxs)
+  apply (simp add: input_op_LCons_Nil)
+  subgoal for x xs i lxs
+    apply (simp add: writes_Cons_simp)
+    apply (subst input_op.code)
+    apply simp
+    done
   done
 
+lemma bisim_writes_cong:
+  "op1 ~ op2 \<Longrightarrow>
+   writes op1 p xs ~ writes op2 p xs"
+  sorry
+
+lemma wbisim_writes_cong:
+  "op1 \<approx> op2 \<Longrightarrow>
+   writes op1 p xs \<approx> writes op2 p xs"
+  sorry
+
+lemma wbisim_Silent_cong:
+  "op1 \<approx> op2 \<Longrightarrow>
+   Silent op1 \<approx> op2"
+  sorry
+
+lemma step_bisim:
+  "(\<forall> io op'. step io op1 op' \<longleftrightarrow> step io op2 op') \<Longrightarrow>
+   op1 ~ op2"
+  sorry
+
+lemma Choice_singleton_bisim_alt:
+  "op1 ~ op2 \<Longrightarrow>
+   Choice {|op1|} ~ op2"
+  sorry
+
+lemma dataflow_op_wbisim_cong:
+  "op1 \<approx> op2 \<Longrightarrow>
+   dataflow_op sg op1 \<approx> dataflow_op sg op2"
+  sorry
+
+lemma dataflow_writes_comm:
+  "dataflow_op sg (writes op (Inr p) (map (\<lambda> x. Inr (f x)) xs)) ~ writes (dataflow_op sg op) p (map f xs)"
+  sorry
+
+lemma dataflow_Silent_comm:
+  "dataflow_op sg (Silent op) ~ Silent (dataflow_op sg op)"
+  sorry
+
+abbreviation "inp_top c ints prds inps \<equiv> map_op (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, (p :: 1)))) (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, (p :: 1)))) (nd_input_top c ints prds inps)"
+abbreviation "id_top buf \<equiv> map_op (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, (p :: 1)))) (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, (p :: 1)))) (id_op buf)"
+
+term "\<UU>"
+
+lemma dataflow_op_nd_input_top_input_op:
+  "inrbufs1 = buf1 (Inr (1, 1)) \<Longrightarrow>
+   \<forall> x \<in> set inrbufs1. is_Inr x \<Longrightarrow>
+   inrbufs2 = buf2 (Some 1) \<Longrightarrow>
+   \<forall> x \<in> set inrbufs2. is_Inr x \<Longrightarrow>
+   xs = map projr inrbufs1 \<Longrightarrow>
+   ys = map projr inrbufs2 \<Longrightarrow>
+   ys @@- xs @@- lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps2 (iterates Suc i))) =
+   lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps1 (iterates Suc j))) \<Longrightarrow>
+   edges sg = (\<lambda> _. []) \<Longrightarrow>
+   dataflow_op sg ((map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0 :: 2, 1 :: 1) \<mapsto> Inr (1, 1)] buf1 (inp_top (Cap i (1 :: 1)) ints prds inps2) (id_top buf2)))) \<approx>
+   dataflow_op sg (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, p))) (case_option (Inl 1) (\<lambda>p. Inr (1, p))) (nd_input_top (Cap j (1 :: 1)) ints prds inps1))"
+proof (coinduction arbitrary: inps1 inps2 i j buf1 buf2 ints prds sg rule: weakBisimWeakUptoBisimCong)
+  case SIM1
+  then show ?case 
+    apply -
+    unfolding wsim_def
+    apply safe
+    subgoal for io op1'
+      apply (elim step_map_op_elim step_dataflow_op_elim step_nd_input_top_elim step_comp_op_elim step_id_op_cases conjE; simp split: if_splits option.splits; hypsubst_thin)
+      defer
+      subgoal for op'' io' op''a p op1' q io'a op''b xa xs lxs
+       apply (intro exI conjI)
+         apply force
+    apply (simp add: comp_def)
+        apply (intro relcomppI)
+        defer
+
+
+end
 lemma dataflow_op_nd_input_top_input_op:
   "edges sg = (\<lambda> _. []) \<Longrightarrow>
    dataflow_op sg (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (nd_input_top (Cap i (1 :: 1)) ints prds inps)) \<approx>
    map_op (\<lambda> p. (nid, p)) (\<lambda> p. (nid, p)) (input_op i inps)"
-proof (coinduction arbitrary: inps i ints prds sg rule: wbisim_coinduct)
+proof (coinduction arbitrary: inps i ints prds sg rule: weakBisimWeakUptoBisimCong)
   case SIM1
   then show ?case 
     apply -
-    apply -
+    unfolding wsim_def
+    apply safe
+    subgoal for io op1'
     apply (elim step_map_op_elim step_dataflow_op_elim step_nd_input_top_elim conjE; simp; hypsubst_thin)
-    subgoal
+    subgoal for nida op'' io' op''a xa xs lxs
       apply (intro exI conjI)
        apply (rule step_wstep)
-       apply fastforce
-      apply (rule wbcr_base)
+       apply (rule step_map_op)
+       apply (rule step_input_op_Out_intro)
+        apply (rule refl)+
+      apply simp
+      apply (simp add: comp_def)
+      apply (intro relcomppI)
+        defer
+        apply (rule wb_upto_b_writes)
+        apply (rule wb_upto_b_Silent)
+      apply (rule wb_upto_b_base)
+        apply (rule exI[of _ lxs])
+      apply (rule exI[of _ "Suc i"])
+      apply (rule exI[of _ "ints @ [(1, i, - 1), (1, Suc i, 1)]"])
+      apply (rule exI[of _ "prds @ [(1, i, 1 + int (length xs))]"])
+      apply (intro exI conjI[rotated])
+            apply assumption
+           apply (rule refl)+
+       apply (simp add: input_op_LCons_write_simp)
+      apply (rule wbisim_writes_cong)
+      apply (rule wbisim_Silent_cong)
+       apply (rule wbisim_refl)
+      apply (rule bisim_trans)
+      apply (rule dataflow_writes_comm)
+      apply (rule bisim_writes_cong)
+      apply (rule dataflow_Silent_comm)
+      done
+
+         apply (rule bisim_refl)
+
+
+          apply (rule dataflow_op_wbisim_cong[where sg=sg])
+         apply (rule wbisim_map_op[where f="case_option (Inl nid) (\<lambda>p. Inr (nid, 1))"])
+          apply assumption       
+          apply assumption
+
+
+      defer
+          defer
+        apply (rule wb_upto_b_writes)
+        apply (rule wb_upto_b_Silent)
+        apply (rule wb_upto_b_base)
+      apply (rule exI[of _ lxs])
+      apply (rule exI[of _ "Suc i"])
+      apply (rule exI[of _ "ints @ [(1, i, - 1), (1, Suc i, 1)]"])
+      apply (rule exI[of _ "prds @ [(1, i, 1 + int (length xs))]"])
+      apply (intro exI conjI[rotated])
+            apply assumption
+         apply (rule refl)+
+       apply (simp add: input_op_LCons_write_simp)
+       apply (rule wbisim_writes_cong)
+      apply (rule wbisim_Silent_cong)
+       apply (rule wbisim_refl)
+      subgoal premises
+        apply (induct xs)
+        subgoal
+          apply simp
+          apply (subst dataflow_op.code)
+          apply simp
+          using Choice_singleton_bisim apply blast
+          done
+        subgoal for x xs'
+          apply (simp add: writes_Cons_simp)
+          apply (subst dataflow_op.code)
+          apply simp
+          apply (rule Choice_singleton_bisim_alt)
+          sledgehammer
+          
+       
+
+
+          find_theorems writes Cons
+
+
+
+end
+
+      apply (rule step_bisim)
+      apply safe
+      subgoal
+    apply (elim step_map_op_elim step_dataflow_op_elim step_nd_input_top_elim conjE; simp; hypsubst_thin)
+        sledgehammer
+
+      find_theorems writes bisim
+
+          defer
+          defer
+          apply (rule bisim_refl)
+      defer
+      apply auto[1]
+
+
+
+
+      find_theorems Choice bisim
+
+         apply (rule bisim_refl)
+        apply (rule bc_Choice)
+      unfolding rel_cset_def
+        apply simp
+      apply (rule rel_setI; simp; hypsubst_thin?)
+
+      thm rel_setI
+
+      find_theorems rel_cset name: I
+
+
+      defer
+      apply (rule wbisim_refl)
+      subgoal
+        apply (rule wb_upto_b_Sim)
+        subgoal
+      unfolding sim_def
+       apply auto
+
+      find_theorems steps name: elim
+
+      apply (rule wb_upto_b_base)
+      apply (intro exI conjI[rotated])
+        apply assumption
+       apply (rule refl)+
+
+      term wbisim_cong
+
+      apply simp
+
+
+       apply (rule refl)
+
+      find_theorems writes map_op
+
+      apply (subst (2) nd_input_top.code)
+      apply (auto split: list.splits)
+
+end
       apply force
       done
     subgoal
