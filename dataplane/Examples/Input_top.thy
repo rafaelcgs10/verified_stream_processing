@@ -493,11 +493,10 @@ proof (coinduction arbitrary: inps t os xs rule: weakBisimWeakUptoBisimCong)
               subgoal
                 apply auto
                 subgoal
-                  apply (simp add: zip_append2 )
-                  apply (subst map_eq_append_conv)
+                  
                   
 
-                find_theorems "_ @ _ = _ @ _" name: conv
+                find_theorems "concat (map _ _) = _"
 
 
 
