@@ -347,6 +347,40 @@ lemma concat_eq_Cons_conv:
     done
   done
 
+lemma ldropWhile_LCons:
+  "ldropWhile P lxs = LCons y lys = (\<exists> zs. lxs = zs @@- LCons y lys \<and> (\<forall> z \<in> set zs. P z) \<and> \<not> P y)"
+  apply (intro iffI)
+  subgoal
+    apply (subgoal_tac "lfinite (ltakeWhile P lxs)")
+    subgoal
+      apply rotate_tac
+      apply (induct "ltakeWhile P lxs" arbitrary: lxs rule: lfinite_induct)
+      subgoal
+        by (metis dropWhile.simps(1) dropWhile_eq_Nil_conv lappend_code(1) lappend_ltakeWhile_ldropWhile llist.collapse(1) llist.sel(1) llist.simps(3) lshift.simps(1) ltakeWhile_eq_LNil_iff)
+      subgoal for lxs
+        apply (cases lxs; clarsimp split: if_splits)
+        apply (metis lshift.simps(2) set_ConsD)
+        done
+      done
+    subgoal
+      using lfinite_ltakeWhile by fastforce
+    done
+  subgoal
+    apply (elim conjE exE)
+    subgoal for zs
+      apply (induct zs arbitrary: lxs)
+      apply auto
+      done
+    done
+  done
+
+(* FIXME: move me *)
+lemma lshift_assoc:
+  "xs @@- ys @@- lxs = (xs @ ys) @@- lxs"
+  apply (induct xs arbitrary: ys)
+   apply auto
+  done
+
 
 lemma dataflow_op_input_top_input_op:
   "edges sg = (\<lambda> _. []) \<Longrightarrow>
@@ -369,11 +403,25 @@ proof (coinduction arbitrary: inps t rule: weakBisimWeakUptoBisimCong)
           apply (simp add: concat_eq_Cons_conv)
           apply safe
           subgoal for xs' xss' xss''
-            apply hypsubst_thin
       apply (intro exI conjI)
        apply (rule step_wstep)
        apply (rule step_map_op)
-              apply (rule step_input_op_Out_intro2[where p=p and x=y and xs="map fst xs'" and lxs="map (\<lambda> xs. map fst xs) xss'' @@- inps p"])
+              apply (rule step_input_op_Out_intro2[where p=p and x=y and xs="map fst xs'" and lxs="map (map fst) xss'' @@- inps p"])
+               apply (subst ldropWhile_LCons)
+               apply simp
+            apply (rule exI[of _ "map (map fst) xss'"])
+            subgoal
+              apply auto
+              apply (subst lshift_simps(2)[symmetric])
+              apply (auto simp only: lshift_assoc)
+              apply (rule arg_cong2[where f=lshift])
+               apply simp_all
+         sledgehammer[timeout = 100, provers = e cvc5 verit vampire z3]
+
+            find_theorems map Cons
+
+
+end
             apply simp_all
                defer
               apply simp
