@@ -84,48 +84,6 @@ lemma wstep_input_op_simp[simp]:
   done
 
 
-(* 
-lemma compile_dataflow_input_top_input_op:
-  "(compile_dataflow (Logic (input_top (Cap i 1) inps)) :: (1 \<times> 1, 1 \<times> 1, 'b \<times> nat) op) \<approx> map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (input_op i inps)"
-  unfolding compile_dataflow_def Let_def
-  apply (simp split: prod.splits)
-  apply (intro conjI allI impI)
-  subgoal for su op
-    oops
-    using dataflow_op_input_top_input_op[where sg="init_subgraph su", simplified, where i=i and inps=inps] apply -
-    apply (drule meta_mp)
-    subgoal
-      unfolding compile_dataflow_tree_def Let_def 
-      apply (simp split: if_splits)
-      subgoal
-        unfolding compile_dataflow_tree_def Let_def weights_to_graph_fun_def no_self_loop_checker_def implementation_graph_checker_def enum_location_def enum_num1_def enum_port_def 
-        by (clarsimp split: if_splits)
-      subgoal
-        unfolding compile_dataflow_tree_def Let_def weights_to_graph_fun_def no_self_loop_checker_def implementation_graph_checker_def enum_location_def enum_num1_def enum_port_def 
-        by (clarsimp split: if_splits)
-      done
-    subgoal premises prems
-      apply (rule wbisim_trans[rotated])
-      apply (rule prems(2))
-      apply (rule wbisim_refl_alt)
-      apply (rule arg_cong2[where f=dataflow_op])
-      subgoal
-        using prems(1) apply -
-        apply (clarsimp simp add: compile_dataflow_tree_Logic)
-        subgoal premises
-          apply (rule ext)+
-          unfolding enum_location_def enum_num1_def enum_port_def 
-          apply (auto simp add: compile_dataflow_tree_Logic split: if_splits)
-          done
-        done
-      subgoal
-        using prems(1) apply -
-        apply (clarsimp simp add: compile_dataflow_tree_Logic)
-        done
-      done
-    done
-  done *)
-
 lemma input_top_correctness:
   "wtraced (compile_dataflow (Logic (input_top (Cap i 1) inps)) :: (1 \<times> 1, 1 \<times> 1, 'b \<times> nat) op) ios \<Longrightarrow>
    ios = (lmap (\<lambda> (n, t). VOut (1, 0) (n, t)) (lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps (iterates Suc i)))))"
@@ -178,68 +136,121 @@ lemma step_input_top_elim:
   done
 
 
-(* 
+
 lemma step_input_top_Out_Some_intro[intro!]:
-  "inps = LCons (x # xs) inps' \<Longrightarrow>
-   op = push (Silent (input_top (Cap (time c + 1) 1) (ints @ [(1, time c, -1), (1, time c + 1, 1)]) (prds @ [(1, time c, int (length (x # xs)))]) inps')) (1 :: 1) (map (\<lambda> x. (x, c)) xs) \<Longrightarrow>
-   io = Out (Some 1) (Inr (x, time c)) \<Longrightarrow>
-   step io (input_top c ints prds inps) op"
+  "outpu os p = x # xs \<Longrightarrow>
+   op = input_top (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) caps inps \<Longrightarrow>
+   p \<notin> defaults \<Longrightarrow>
+   step (Out (Some p) (Inr x)) (input_top os caps inps) op"
   apply (subst input_top.code)
-  apply (auto simp add: comp_def)
+  apply simp
+  apply fastforce
   done
 
-lemma step_input_top_Tau_intro[intro!]:
-  "inps = LCons [] inps' \<Longrightarrow> 
-   op = input_top (Cap (time c + 1) 1) (ints @ [(1, time c, -1), (1, time c + 1, 1)]) (prds @ [(1, time c, 0)]) inps' \<Longrightarrow>
-   step Tau (input_top c ints prds inps) op"
+lemma step_input_top_Out_None_intro[intro!]:
+  "(os', st) = obtain_progress os \<Longrightarrow>
+   op = input_top os' caps inps \<Longrightarrow>
+   p \<notin> defaults \<Longrightarrow>
+   step (Out None (Inl (Inl st))) (input_top os caps inps) op"
   apply (subst input_top.code)
-  apply (auto simp add: comp_def)
+  apply simp
+  apply fast
   done
 
-lemma step_input_top_Out_None_intro[intro]:
-  "op = input_top c [] [] inps \<Longrightarrow>
-   step (Out None (Inl (Inl \<lparr> cons = [], inte = ints, prod = prds\<rparr>))) (input_top c ints prds inps) op"
+lemma step_input_top_Tau_intro1[intro]:
+  "inps p = LCons batch lxs \<Longrightarrow>
+   lxs \<noteq> LNil \<Longrightarrow>
+   cap = Cap (caps p) p  \<Longrightarrow>
+   os' = produce os cap batch \<Longrightarrow>
+   os'' = delay_cap os' cap 1 \<Longrightarrow>
+   op = input_top os'' (caps( p := caps p + 1)) (inps(p := lxs)) \<Longrightarrow>
+   p \<notin> defaults \<Longrightarrow>
+   step Tau (input_top os caps inps) op"
+  apply hypsubst_thin
   apply (subst input_top.code)
-  apply (auto simp add: comp_def)
+  apply simp
+  apply fastforce
   done
 
-
-lemma step_input_top_Out_None_end_intro[intro]:
-  "op = \<oslash> \<Longrightarrow>
-   inps = LNil \<Longrightarrow>
-   step (Out None (Inl (Inl \<lparr> cons = [], inte = ints, prod = prds @ [(1, time c, -1)]\<rparr>))) (input_top c ints prds inps) op"
+lemma step_input_top_Tau_intro2[intro]:
+  "inps p = LCons batch LNil \<Longrightarrow>
+   cap = Cap (caps p) p  \<Longrightarrow>
+   os' = produce os cap batch \<Longrightarrow>
+   os'' = drop_cap os' cap \<Longrightarrow>
+   op = input_top os'' (caps( p := caps p + 1)) (inps(p := LNil)) \<Longrightarrow>
+   p \<notin> defaults \<Longrightarrow>
+   step Tau (input_top os caps inps) op"
+  apply hypsubst_thin
   apply (subst input_top.code)
-  apply (auto simp add: comp_def)
+  apply simp
+  apply fastforce
   done
- *)
-(* 
+
 lemma ldropWhile_steps_input_top:
-  "lfinite (ltakeWhile ((=) []) inps) \<Longrightarrow>
-   ldropWhile ((=) []) inps = LCons (x # xs) inps' \<Longrightarrow>
-   ints' = concat (map (\<lambda> t. [(out c, t, -1), (out c, Suc t, 1)]) [time c..<time c + the_enat (llength (ltakeWhile ((=) []) inps))]) \<Longrightarrow>
-   steps (replicate (the_enat (llength (ltakeWhile ((=) []) inps))) Tau)
-  (input_top c ints prds inps) (input_top (Cap (time c + the_enat (llength (ltakeWhile ((=) []) inps))) (out c)) (ints @ ints') prds (LCons (x # xs) inps'))"
-  apply (induct "ltakeWhile ((=) []) inps"  arbitrary: c inps ints ints' rule: lfinite_induct)
+  "lfinite (ltakeWhile ((=) []) (inps p)) \<Longrightarrow>
+   ldropWhile ((=) []) (inps p) = LCons (x # xs) inps' \<Longrightarrow>
+   offset = the_enat (llength (ltakeWhile ((=) []) (inps p))) \<Longrightarrow>
+   ints = concat (map (\<lambda> t. [(p, t, -1), (p, Suc t, 1)]) [caps p..<caps p + offset]) \<Longrightarrow>
+   prods = concat (map (\<lambda> t. [(p, t, 0)]) [caps p..<caps p + offset]) \<Longrightarrow>
+   p \<notin> defaults \<Longrightarrow>
+   steps (replicate offset Tau)
+   (input_top os caps inps) (input_top (os\<lparr> inter := inter os @ ints, produ := produ os @ prods \<rparr>) (caps(p := caps p + offset)) (inps(p := LCons (x # xs) inps')))"
+  apply (induct "ltakeWhile ((=) []) (inps p)"  arbitrary: inps ints prods caps offset rule: lfinite_induct)
   subgoal for inps c
-    apply (cases "ltakeWhile ((=) []) inps"; simp; hypsubst_thin)
-    apply (metis ldropWhile_simps(1,2) ltakeWhile_simps(2) neq_LNil_conv)
+    apply (cases "ltakeWhile ((=) []) (inps p)"; simp; hypsubst_thin)
+    apply (metis fun_upd_triv ldropWhile_simps(1,2) ltakeWhile_simps(2) neq_LNil_conv)
     done
-  subgoal premises prems for inps c ints ints'
+  subgoal premises prems for inps ints prods caps offset
     using prems(1,2,4-) apply -
-    apply (cases inps; simp split: if_splits; hypsubst)
+    apply (cases "inps p"; simp flip: upt.upt_Suc split: if_splits; hypsubst)
     subgoal for z lxs
       apply (rule steps_intro[where xs="replicate (the_enat (llength (ltakeWhile ((=) []) lxs))) Tau"])
-      apply (rule step_input_top_Tau_intro)
-         apply (rule refl)+
+        apply (rule step_input_top_Tau_intro1)
+              apply assumption
+      apply force
+            apply (rule refl)+
+      apply assumption
       defer
       subgoal
         apply simp
         apply (metis (no_types, lifting) llength_ltakeWhile_eq_infinity replicate.simps(2) the_enat_eSuc)
         done
       subgoal
-        apply (subst (1 2) the_enat_eSuc)
+        apply (subst (asm) (1 2) the_enat_eSuc)
         using llength_eq_infty_conv_lfinite apply blast
-        apply (rule steps_append_intro)
+        using llength_eq_infty_conv_lfinite apply blast
+        apply (cases offset; simp flip: upt.upt_Suc)
+        subgoal for offset'
+        apply (subst (1 2 3) the_enat_eSuc)
+          using llength_eq_infty_conv_lfinite apply blast
+        using llength_eq_infty_conv_lfinite apply blast
+        apply (simp flip: upt.upt_Suc)
+        using prems(3)[where offset="offset'" and inps="inps(p := lxs)" and caps="caps(p := Suc (caps p))"] apply -
+        apply (simp flip: upt.upt_Suc)
+        apply (drule meta_spec)+
+        apply (drule meta_mp)
+         apply (rule refl)
+        apply (drule meta_mp)
+         apply (rule refl)
+        apply hypsubst_thin
+        apply (rule steps_intro)
+          apply (rule step_input_top_Tau_intro1[where p=p])
+        
+
+end
+                apply (rule refl)
+               defer
+               apply (rule refl)+
+            defer
+            apply assumption
+        
+           
+
+
+        find_theorems steps step
+
+
+end
           apply (rule prems(3))
             apply force
         apply simp
@@ -372,16 +383,12 @@ lemma ltakeWhile_lfshift:
   done
 
 
-find_theorems zipf
-
 definition "input_invar t xs outp = (\<forall> p. outp p = concat (map (\<lambda> (xs, t). map (\<lambda> x. (x, t)) xs) (zip (xs p) ([t p..< t p + length (xs p)]))))"
 
 lemma upt_append_length:
   "xs @ y # ys = [a..<b] \<Longrightarrow>
    y = length xs + a"
   by (metis Groups.add_ac(2) diff_add_inverse length_upt nat_le_iff_add upt_eq_lel_conv)
-
-(* input_invar (t(p := dataflow_topology_from_tree.followed_by (t p) (the_enat (llength (ltakeWhile ((=) []) (xs p @@- inps p)))))) (xs(p := ys # map fst zs)) (outpu (os\<lparr>outpu := (outpu os)(p := xs')\<rparr>)) *)
 
 lemma input_invar_elim:
   "input_invar t buf outp \<Longrightarrow>
@@ -591,215 +598,13 @@ proof (coinduction arbitrary: inps caps os xs sg rule: weakBisimWeakUptoBisimCon
         done
       done
     done
-
-
-end
-  defer
-  apply assumption
-  apply simp
-  apply (intro conjI)
-  apply (rule refl)+
-  apply (drule spec[of _ p])
-  apply (simp add: lconcat_correct)
-
-
-
-find_theorems Coinductive_List.lconcat ltakeWhile
-
-
-
-
-
-end
-  apply simp
-  apply (simp add: comp_def)
-  apply (intro relcomppI)
-  defer
-  apply (rule wb_upto_b_writes)
-  apply (rule wb_upto_b_Silent)
-  apply (rule wb_upto_b_base)
-  apply (rule exI[of _ lxs])
-  apply (rule exI[of _ "Suc i"])
-  apply (rule exI[of _ "ints @ [(1, i, - 1), (1, Suc i, 1)]"])
-  apply (rule exI[of _ "prds @ [(1, i, 1 + int (length xs))]"])
-  apply (intro exI conjI[rotated])
-  apply assumption
-  apply (rule refl)+
-  apply (simp add: input_op_LCons_write_simp)
-  apply (rule wbisim_writes_cong)
-  apply (rule wbisim_Silent_cong)
-  apply (rule wbisim_refl)
-  apply (rule bisim_trans)
-  apply (rule dataflow_writes_comm)
-  apply (rule bisim_writes_cong)
-  apply (rule dataflow_Silent_comm)
-  done
-
-  apply (rule bisim_refl)
-
-
-  apply (rule dataflow_op_wbisim_cong[where sg=sg])
-  apply (rule wbisim_map_op[where f="case_option (Inl nid) (\<lambda>p. Inr (nid, 1))"])
-  apply assumption       
-  apply assumption
-
-
-  defer
-  defer
-  apply (rule wb_upto_b_writes)
-  apply (rule wb_upto_b_Silent)
-  apply (rule wb_upto_b_base)
-  apply (rule exI[of _ lxs])
-  apply (rule exI[of _ "Suc i"])
-  apply (rule exI[of _ "ints @ [(1, i, - 1), (1, Suc i, 1)]"])
-  apply (rule exI[of _ "prds @ [(1, i, 1 + int (length xs))]"])
-  apply (intro exI conjI[rotated])
-  apply assumption
-  apply (rule refl)+
-  apply (simp add: input_op_LCons_write_simp)
-  apply (rule wbisim_writes_cong)
-  apply (rule wbisim_Silent_cong)
-  apply (rule wbisim_refl)
-  subgoal premises
-    apply (induct xs)
-    subgoal
-      apply simp
-      apply (subst dataflow_op.code)
-      apply simp
-      using Choice_singleton_bisim apply blast
-      done
-    subgoal for x xs'
-      apply (simp add: writes_Cons_simp)
-      apply (subst dataflow_op.code)
-      apply simp
-      apply (rule Choice_singleton_bisim_alt)
-      sledgehammer
-
-
-
-
-      find_theorems writes Cons
-
-
-
-end
-
-  apply (rule step_bisim)
-  apply safe
-  subgoal
-    apply (elim step_map_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp; hypsubst_thin)
-    sledgehammer
-
-    find_theorems writes bisim
-
-    defer
-    defer
-    apply (rule bisim_refl)
-    defer
-    apply auto[1]
-
-
-
-
-    find_theorems Choice bisim
-
-    apply (rule bisim_refl)
-    apply (rule bc_Choice)
-    unfolding rel_cset_def
-    apply simp
-    apply (rule rel_setI; simp; hypsubst_thin?)
-
-    thm rel_setI
-
-    find_theorems rel_cset name: I
-
-
-    defer
-    apply (rule wbisim_refl)
-    subgoal
-      apply (rule wb_upto_b_Sim)
-      subgoal
-        unfolding sim_def
-        apply auto
-
-        find_theorems steps name: elim
-
-        apply (rule wb_upto_b_base)
-        apply (intro exI conjI[rotated])
-        apply assumption
-        apply (rule refl)+
-
-        term wbisim_cong
-
-        apply simp
-
-
-        apply (rule refl)
-
-        find_theorems writes map_op
-
-        apply (subst (2) input_top.code)
-        apply (auto split: list.splits)
-
-end
-  apply force
-  done
-  subgoal
-    apply (intro exI conjI[rotated])
-    apply (rule wbcr_base)
-    apply (intro conjI exI)
-    apply (rule refl)+
-    apply (simp_all add: input_op_LCons_Nil)
-    done
-  subgoal for nida op'' io' op''a
-    apply (simp add: input_op_LNil)
-    using dataflow_op_end_op apply blast
-    done
-  subgoal
-    apply (intro exI conjI[rotated])
-    apply (rule wbcr_base)
-    apply (intro conjI exI)
-    apply (rule refl)+
-    apply simp_all
-    done
-  done
 next
   case SIM2
   then show ?case 
     apply -
-    apply (elim step_map_op_elim step_input_op_elim conjE; simp; hypsubst_thin)
-    subgoal for io' op'' x xs inps'
-      apply (intro exI conjI[rotated])
-      apply (intro conjI wbcr_base)
-      apply (rule exI)
-      apply (rule exI)
-      apply (rule exI[of _ "ints @ concat (map (\<lambda> t. [(1, t, -1), (1, Suc t, 1)]) [ i..<i + the_enat (llength (ltakeWhile ((=) []) inps))])"]) 
-      apply (rule exI[of _ "prds @ [(1, dataflow_topology_from_tree.followed_by i (the_enat (llength (ltakeWhile ((=) []) inps))), 1)]"])
-      apply (intro exI conjI[rotated])
-      apply assumption
-      apply (rule refl)+
-      unfolding wstep_def
-      apply simp
-      apply (rule relcomppI)
-      apply (rule relpowp_imp_rtranclp) 
-      apply (rule steps_Tau_dataflow_op_Tau_intro[where sg=sg])
-      apply (rule steps_map_op)
-      apply (rule refl)+
-      defer
-      apply (rule ldropWhile_steps_input_top[where  c="Cap i 1", simplified])
-      apply (meson ldropWhile_LCons_lfinite_ltakeWhile)
-      apply assumption+
-      apply (rule refl)+
-      apply (rule relcomppI[rotated])
-      apply (rule rtranclp.intros(1))
-      apply (rule step_Out_dataflow_op_Out_Inr_intro)
-      apply (rule step_map_op[where f="case_option (Inl nid) (\<lambda>p. Inr (nid, 1))" and g="case_option (Inl nid) (\<lambda>p. Inr (nid, 1))"])
-      apply simp_all
-      apply (rule step_input_top_Out_Some_intro)
-      apply (rule refl)+
-      apply simp_all
-      done
-    done
-qed
+    unfolding wsim_def
+    apply safe
+      apply (elim step_map_op_elim step_input_op_elim conjE; simp split: list.splits if_splits; hypsubst_thin)
+
 
 end
