@@ -389,9 +389,65 @@ lemma ltakeWhile_lfshift:
   done
 
 
+find_theorems zipf
+
+definition "input_invar t xs outp = (\<forall> p. outp p = concat (map (\<lambda> (xs, t). map (\<lambda> x. (x, t)) xs) (zip (xs p) ([t p..< t p + length (xs p)]))))"
+
+lemma upt_append_length:
+  "xs @ y # ys = [a..<b] \<Longrightarrow>
+   y = length xs + a"
+  by (metis Groups.add_ac(2) diff_add_inverse length_upt nat_le_iff_add upt_eq_lel_conv)
+
+(* input_invar (t(p := dataflow_topology_from_tree.followed_by (t p) (the_enat (llength (ltakeWhile ((=) []) (xs p @@- inps p)))))) (xs(p := ys # map fst zs)) (outpu (os\<lparr>outpu := (outpu os)(p := xs')\<rparr>)) *)
+
+lemma input_invar_elim:
+  "input_invar t buf outp \<Longrightarrow>
+   outp p = (y, t') # xs \<Longrightarrow>
+   \<exists> l ys zs. (\<forall> x \<in> set l. fst x = []) \<and> t' = t p + length l \<and>
+   buf p = map fst (l @ (y # ys, t') # zs) \<and>
+   [t p..< (t p) + (length (buf p))] = map snd (l @ (y # ys, t') # zs) \<and> input_invar (t(p := t p + length l)) (buf( p := ys # map fst zs)) (outp(p := xs))"
+  unfolding input_invar_def
+  apply (simp add: concat_eq_Cons_conv map_eq_append_conv del: upt_Suc)
+  apply safe
+  apply (subst (asm) zip_eq_conv)
+   apply (simp del: upt_Suc)
+  apply (elim conjE)
+  apply (drule sym[of _ "buf p"])
+  apply hypsubst_thin
+  subgoal for xs' xss' xss'' l l' a b zs z zsa
+    apply (rule exI[of _ l])
+    apply (intro conjI ballI)
+    subgoal for x
+      apply (cases x)
+      subgoal for xs t''
+        apply (drule bspec[of _ _ "map (\<lambda> x. (x, t'')) xs"])
+         apply auto
+        done
+      done
+    subgoal
+      apply (simp del: upt_Suc)
+      apply (drule upt_append_length)
+      apply simp
+      done
+    subgoal
+      apply (rule exI[of _ zsa])
+      apply (rule exI[of _ zs])
+      apply (auto simp del: upt_Suc)
+      apply (subst upt_conv_Cons)
+       apply (auto simp del: upt_Suc)
+      subgoal
+        apply (drule upt_append_length)
+        apply simp
+        done
+      subgoal
+        by (metis (no_types, lifting) dataflow_topology_from_tree.followed_by_summary diff_add_inverse le_Suc_ex length_map length_upt upt_eq_lel_conv zip_map_fst_snd)
+      done
+    done
+  done
+
 lemma dataflow_op_input_top_input_op:
   "edges sg = (\<lambda> _. []) \<Longrightarrow>
-   (\<forall> p. outpu os p = concat (map (\<lambda> (xs, t). map (\<lambda> x. (x, t)) xs) (zip (xs p) ([t p..< t p + length (xs p)])))) \<Longrightarrow>
+   input_invar t xs (outpu os) \<Longrightarrow>
    dataflow_op sg (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (input_top (os\<lparr> stash := (\<lambda> p. t p + length (xs p)) \<rparr>) inps)) \<approx>
    map_op (\<lambda> p. (nid, p)) (\<lambda> p. (nid, p)) (input_op t (\<lambda> p. xs p @@- inps p ))"
 proof (coinduction arbitrary: inps t os xs rule: weakBisimWeakUptoBisimCong)
@@ -401,19 +457,16 @@ proof (coinduction arbitrary: inps t os xs rule: weakBisimWeakUptoBisimCong)
     unfolding wsim_def
     apply safe
     subgoal for io op1'
-    apply (elim step_map_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: list.splits; hypsubst_thin)
+    apply (elim step_map_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: list.splits if_splits; hypsubst_thin)
       subgoal for nida p op'' x io' op''a os' xs'
         apply (cases x)
         subgoal premises prems for y t'
           using prems apply -
           apply hypsubst_thin
-          apply (drule spec[of _ p])
-          apply (simp add: concat_eq_Cons_conv map_eq_append_conv)
-          apply safe
-          subgoal for xs'' xss' xss'' l l' a b zs z zsa
-              apply (subst (asm) zip_eq_conv)
-             apply simp
-            apply (elim conjE)
+          apply (drule input_invar_elim)
+          apply assumption
+          apply (elim exE conjE)
+          subgoal for l ys zs
       apply (intro exI conjI)
        apply (rule step_wstep)
        apply (rule step_map_op)
@@ -424,29 +477,11 @@ proof (coinduction arbitrary: inps t os xs rule: weakBisimWeakUptoBisimCong)
                apply (auto simp add: comp_def split: prod.splits)
               apply (subst lshift_simps(2)[symmetric])
               apply (auto simp only: lshift_assoc)
-              apply (rule arg_cong2[where f=lshift, rotated])
-            apply (rule refl)
-               apply (drule sym[of _ "xs p"])
-              apply auto
-                             apply (drule sym[of _ "xs p"])
-            apply simp
-            apply (subst ltakeWhile_lfshift[where x="y # zsa"])
+            apply (subst ltakeWhile_lfshift[where x="y # ys"])
                apply simp_all
              apply (subst takeWhile_append2)
               apply force
              apply (auto split: prod.splits)
-            subgoal premises prems2
-              using prems2(4)[symmetric] apply -
-              apply (simp flip: dataflow_topology_from_tree.followed_by_summary)
-              apply (subst (asm) upt_add_eq_append)
-               apply simp
-              apply (simp only: append_assoc)
-              apply (subst (asm) append_eq_append_conv)
-               apply (rule disjI1)
-               apply simp
-              apply auto
-              apply (smt (z3) dataflow_topology_from_tree.le_plus(1) le_neq_implies_less list_append_eq_Cons_cases list_tail_coinc not_add_less1 upt_eq_Cons_conv upt_eq_Nil_conv)
-              done
             subgoal
               apply (intro relcomppI)
                 defer
@@ -456,8 +491,8 @@ proof (coinduction arbitrary: inps t os xs rule: weakBisimWeakUptoBisimCong)
                apply (rule bisim_refl)
                 apply (rule exI[of _ "inps"]) 
                 apply (rule exI[of _ "t(p := dataflow_topology_from_tree.followed_by (t p) (the_enat (llength (ltakeWhile ((=) []) (xs p @@- inps p)))))"])
-              apply (rule exI[of _ "os\<lparr> outpu := (outpu os)(p := map (\<lambda>x. (x, t')) zsa @ concat (map (\<lambda>(xs, t). map (\<lambda>x. (x, t)) xs) zs)) \<rparr>"])
-              apply (rule exI[of _ "xs(p := zsa # map fst zs)"])
+              apply (rule exI[of _ "os\<lparr> outpu := (outpu os)(p := xs') \<rparr>"])
+              apply (rule exI[of _ "xs(p := ys # map fst zs)"])
                 apply (intro exI conjI[rotated])
                 prefer 2
               subgoal
@@ -470,8 +505,6 @@ proof (coinduction arbitrary: inps t os xs rule: weakBisimWeakUptoBisimCong)
                 done
               defer
               subgoal
-                apply (subgoal_tac "\<forall>x\<in>set l. fst x = []")
-                subgoal
                 apply (rule arg_cong2[where f=dataflow_op])
                  apply simp_all
                 apply (rule arg_cong3[where f=map_op])
@@ -479,8 +512,28 @@ proof (coinduction arbitrary: inps t os xs rule: weakBisimWeakUptoBisimCong)
                 apply (rule arg_cong2[where f=input_top])
                  apply simp_all
                 apply (cases os; simp)
-               apply (rule ext)
+               apply (intro conjI ext)
                 apply auto
+            apply (subst ltakeWhile_lfshift[where x="y # ys"])
+               apply simp_all
+             apply (subst takeWhile_append2)
+              apply force
+             apply (auto split: prod.splits)                  
+                done
+              subgoal
+            apply (subst ltakeWhile_lfshift[where x="y # ys"])
+                  apply simp_all
+            apply (subst takeWhile_append2)
+                 apply force
+                apply auto
+                done
+              done
+            done
+          done
+        done
+
+
+end
                 apply (drule sym[of _ "xs p"])
                   apply auto
         apply (subst ltakeWhile_lfshift[where x="y # zsa"])
