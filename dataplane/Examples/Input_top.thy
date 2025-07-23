@@ -136,64 +136,47 @@ abbreviation "send_progress op st \<equiv> Write op None (Inl (Inl st))"
 
 abbreviation "obtain_progress os \<equiv> (os\<lparr> consu := [], inter := [], produ := [] \<rparr>, \<lparr> cons = consu os, inte = inter os, prod = produ os\<rparr>)"
 
+abbreviation "drop_cap os cap \<equiv> (os\<lparr> inter := inter os @ [(out cap, time cap, -1)] \<rparr>)"
 
 corec input_top where
-  "input_top os inps = 
-   choice2 
-     (Choice (cimage (\<lambda> p. 
-     choice2
-       (case inps p of
-         LNil \<Rightarrow> Silent (input_top (deactivate_port os p) inps)
-       | LCons batch lxs \<Rightarrow> (let last_t = stash os p in 
-                             case obtain_cap os last_t p of
-                               (_, None) \<Rightarrow> Silent \<oslash>
-                             | (os', Some cap) \<Rightarrow>
-                                let os'' = produce os' cap batch in
-                                let os''' = delay_cap os'' cap 1 in
-                                Silent (input_top (os'''\<lparr> stash := (stash os)(p := last_t + 1) \<rparr>) (inps(p := lxs)))))
-       (case get_output os p of
-         (os', None) \<Rightarrow> Silent (input_top os' inps)
-       | (os', Some x) \<Rightarrow> send_output (input_top os' inps) p x)
-     ) c\<UU>))
+  "input_top os caps inps = 
+   choice3
+     (Choice (cimage (\<lambda> p. case inps p of
+          LCons batch lxs \<Rightarrow> (let cap = Cap (caps p) p  in 
+                              let os' = produce os cap batch in
+                              let os'' = if lxs = LNil then drop_cap os' cap else delay_cap os' cap 1 in
+                              Silent (input_top os'' (caps( p := caps p + 1)) (inps(p := lxs)))))
+     (cfilter (\<lambda> p. inps p \<noteq> LNil) c\<UU>)))
+     (Choice (cimage (\<lambda> p. (case outpu os p of
+         x # xs \<Rightarrow> send_output (input_top (os\<lparr> outpu := (outpu os)(p := xs ) \<rparr>) caps inps) p x)) 
+     (cfilter (\<lambda> p. outpu os p \<noteq> []) c\<UU>)))
     (let (os', st) = obtain_progress os in
-     send_progress (input_top os' inps) st)"
+     send_progress (input_top os' caps inps) st)"
 
-thm step_id_op_cases
 
 lemma step_input_top_elim:
-  assumes "step io (input_top os inps) op'"
+  assumes "step io (input_top os caps inps) op'"
   obtains
-    batch lxs p last_t os' os'' os''' cap where "io = Tau" "inps p = LCons batch lxs" "last_t = stash os p"
-    "obtain_cap os last_t p = (os', Some cap)" "os'' = produce os' cap batch"
-    "os''' = delay_cap os'' cap 1" "op' = input_top (os'''\<lparr> stash := (stash os)(p := last_t + 1) \<rparr>) (inps(p := lxs))" "p \<notin> defaults"
-  | batch lxs p last_t os' where "io = Tau" "inps p = LCons batch lxs" "last_t = stash os p"
-    "obtain_cap os last_t p = (os', None)" "op' = \<oslash>" "p \<notin> defaults"
-  | p where "io = Tau" "inps p = LNil" "op' = input_top (deactivate_port os p) inps" "p \<notin> defaults"
-  | p os' where "io = Tau" "get_output os p = (os', None)" "op' = input_top os' inps" "p \<notin> defaults"
-  | p os' x where "io = Out (Some p) (Inr x)" "get_output os p = (os', Some x)"
-    "op' = input_top os' inps" "p \<notin> defaults"
+    batch lxs p cap os' os'' where "io = Tau" "inps p = LCons batch lxs" 
+    "cap = Cap (caps p) p" "os' = produce os cap batch" 
+    "os'' = (if lxs = LNil then drop_cap os' cap else delay_cap os' cap 1)"
+    "op' = input_top os'' (caps( p := caps p + 1)) (inps(p := lxs))" "p \<notin> defaults"
+  | x xs p where "io = Out (Some p) (Inr x)" "outpu os p = x # xs"
+    "op'= input_top (os\<lparr> outpu := (outpu os)(p := xs ) \<rparr>) caps inps" "p \<notin> defaults"
   | os' st where "io = Out None (Inl (Inl st))" "obtain_progress os = (os', st)"
-    "op' = input_top os' inps"
+    "op'= input_top os' caps inps"
   using assms apply -
   apply atomize_elim
   apply (subst (asm) input_top.code)
   apply (cases io)
   subgoal
-    by (auto split: llist.splits prod.splits option.splits)
+    by (auto split: llist.splits prod.splits option.splits list.splits)
   subgoal
-    by (auto split: llist.splits prod.splits option.splits)
+    by (force split: llist.splits prod.splits option.splits list.splits)
   subgoal
-    apply (clarsimp simp flip: cin.rep_eq del: disjCI split: llist.splits prod.splits option.splits if_splits; hypsubst_thin?)
-    apply (elim disjE)
-    subgoal
-      apply (clarsimp simp flip: cin.rep_eq del: disjCI split: llist.splits prod.splits option.splits if_splits; hypsubst_thin?)
-           apply force+
-      done
-    subgoal
-      apply (auto simp flip: cin.rep_eq del: disjCI split: llist.splits prod.splits option.splits if_splits; hypsubst_thin?)
-      done
-    done
+    by (fastforce simp flip: cin.rep_eq del: disjCI split: llist.splits prod.splits option.splits if_splits list.splits; hypsubst_thin?)
   done
+
 
 (* 
 lemma step_input_top_Out_Some_intro[intro!]:
@@ -454,10 +437,10 @@ lemma input_invar_extend[intro]:
 
 lemma dataflow_op_input_top_input_op:
   "edges sg = (\<lambda> _. []) \<Longrightarrow>
-   input_invar t xs (outpu os) \<Longrightarrow>
-   dataflow_op sg (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (input_top (os\<lparr> stash := (\<lambda> p. t p + length (xs p)), capab := (\<lambda> p. [t p + length (xs p)]) \<rparr>) inps)) \<approx>
-   map_op (\<lambda> p. (nid, p)) (\<lambda> p. (nid, p)) (input_op t (\<lambda> p. xs p @@- inps p ))"
-proof (coinduction arbitrary: inps t os xs rule: weakBisimWeakUptoBisimCong)
+   input_invar caps xs (outpu os) \<Longrightarrow>
+   dataflow_op sg (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (input_top os (\<lambda> p. caps p + length (xs p)) inps)) \<approx>
+   map_op (\<lambda> p. (nid, p)) (\<lambda> p. (nid, p)) (input_op caps (\<lambda> p. xs p @@- inps p ))"
+proof (coinduction arbitrary: inps caps os xs sg rule: weakBisimWeakUptoBisimCong)
   case SIM1
   then show ?case 
     apply -
@@ -465,7 +448,7 @@ proof (coinduction arbitrary: inps t os xs rule: weakBisimWeakUptoBisimCong)
     apply safe
     subgoal for io op1'
       apply (elim step_map_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: list.splits if_splits; hypsubst_thin)
-      subgoal for nida p op'' x io' op''a os' xs'
+      subgoal for nida p op'' x io' op''a xs
         apply (cases x)
         subgoal premises prems for y t'
           using prems apply -
@@ -497,147 +480,117 @@ proof (coinduction arbitrary: inps t os xs rule: weakBisimWeakUptoBisimCong)
                 apply (rule wbisim_refl)
                apply (rule bisim_refl)
               apply (rule exI[of _ "inps"]) 
-              apply (rule exI[of _ "t(p := dataflow_topology_from_tree.followed_by (t p) (the_enat (llength (ltakeWhile ((=) []) (xs p @@- inps p)))))"])
-              apply (rule exI[of _ "os\<lparr> outpu := (outpu os)(p := xs'), capab := \<lambda>p. [t p + length l] \<rparr>"])
-              apply (rule exI[of _ "xs(p := ys # map fst zs)"])
+              apply (rule exI[of _ ])
+              apply (rule exI[of _ "os\<lparr> outpu := (outpu os)(p := xs) \<rparr>"])
               apply (intro exI conjI[rotated])
-                prefer 2
-              subgoal
-                apply (rule arg_cong3[where f=map_op])
-                  apply simp_all
-                apply (rule arg_cong2[where f=input_op])
+                apply simp
+               apply simp_all
+               apply (rule arg_cong3[where f=map_op])
                  apply simp_all
-                apply (rule ext)
-                apply auto
-                done
-               defer
-              subgoal
-                apply (rule arg_cong2[where f=dataflow_op])
-                 apply simp_all
-                apply (rule arg_cong3[where f=map_op])
-                  apply simp_all
-                apply (rule arg_cong2[where f=input_top])
-                 apply simp_all
-                apply (cases os; simp)
-                apply (intro conjI ext)
-                apply auto
+               apply (rule arg_cong2[where f=input_op])
                 apply (subst ltakeWhile_lfshift[where x="y # ys"])
                   apply simp_all
                 apply (subst takeWhile_append2)
                  apply force
-                 apply (auto split: prod.splits)   
-                 apply (subst ltakeWhile_lfshift[where x="y # ys"])
-                  apply simp_all
-                apply (subst takeWhile_append2)
-                 apply force
-                 apply (auto split: prod.splits)   
-                      done
-              subgoal
-                apply (subst ltakeWhile_lfshift[where x="y # ys"])
-                  apply simp_all
-                apply (subst takeWhile_append2)
-                 apply force
-                apply auto
-                done
+                apply (auto split: prod.splits)   
+              apply (rule arg_cong2[where f=dataflow_op])
+               apply simp_all
+              apply (rule arg_cong3[where f=map_op])
+                apply simp_all
+              apply (rule arg_cong3[where f=input_top])
+                apply simp_all
+              apply (cases os; simp)
+              apply (intro conjI ext)
+              apply auto
               done
             done
           done
         done
-      subgoal for op'' io' op''a batch lxs p last_t os' os'' os'''
-        apply (intro conjI exI)
+      subgoal for op'' io' op''a batch lxs p cap os' os''
+        apply (intro exI conjI)
          apply force
-      apply (intro relcomppI)
-                apply (rule bisim_refl)
-                apply (rule wb_upto_b_base)
-                defer
-         apply (rule wbisim_refl)
-        apply simp
-              apply (rule exI[of _ "inps(p := lxs)"]) 
-              apply (rule exI[of _ "t"])
-        apply (rule exI[of _ "os\<lparr> inter := inter os @ [(p, dataflow_topology_from_tree.followed_by (t p) (length (xs p)), - 1), (p, Suc (dataflow_topology_from_tree.followed_by (t p) (length (xs p))), 1)],
-        produ := produ os @ [(p, dataflow_topology_from_tree.followed_by (t p) (length (xs p)), int (length batch))], 
-        capab := _,
-        outpu := (outpu os)(p := outpu os p @ map (\<lambda>x. (x, dataflow_topology_from_tree.followed_by (t p) (length (xs p)))) batch) \<rparr>"])
-              apply (rule exI[of _ "xs( p := xs p @ [batch] )"])
+        apply (intro relcomppI)
+          defer
+          apply (rule wb_upto_b_base)
+          defer
+          apply (rule wbisim_refl)
+         apply (rule bisim_refl)
+        apply (rule exI[of _ "inps(p := LNil)"])
+        apply (rule exI[of _ "caps"])
+        apply (rule exI[of _ "os\<lparr> outpu := (outpu os)(p := outpu os p @ _), produ := _, inter := _ \<rparr>"])
+        apply (rule exI[of _ "xs( p := xs p @ [batch])"])
         apply (intro exI conjI[rotated])
-          prefer 3
-        apply simp
-          apply (rule arg_cong2[where f=dataflow_op])
-        apply simp
-           apply (rule arg_cong3[where f=map_op])
-            apply simp
-            apply simp
-                apply (rule arg_cong2[where f=input_top])
-           apply (cases os; simp)
-           apply (intro conjI ext)
-            apply simp_all
-        subgoal
-          by blast
-        subgoal
+          apply simp
+          apply (rule input_invar_extend[where batch=batch])
+          apply assumption               
+         apply simp_all
+         apply (rule arg_cong3[where f=map_op])
+           apply simp_all
+         apply (rule arg_cong2[where f=input_op])
+          apply simp_all
+         apply (rule ext)
+         apply clarsimp
+         apply (metis shift_LNil snoc_shift)
+        apply (rule arg_cong2[where f=dataflow_op])
+         apply simp_all
         apply (rule arg_cong3[where f=map_op])
           apply simp_all
-        apply (rule arg_cong2[where f=input_op])
-        apply simp_all
+        apply (rule arg_cong3[where f=input_top])
+          apply simp_all
+        apply (cases os; simp)
         apply auto
-          done
         done
-      subgoal for op'' io' op''a p
-                apply (intro conjI exI)
+      subgoal for op'' io' op''a batch lxs p cap os' os''
+        apply (intro exI conjI)
          apply force
-      apply (intro relcomppI)
-                apply (rule bisim_refl)
-                apply (rule wb_upto_b_base)
-                defer
-         apply (rule wbisim_refl)
-                   apply (rule exI[of _ "inps"]) 
-              apply (rule exI[of _ "t"])
-              apply (rule exI[of _ "os\<lparr>stash := _, capab := (capab os)(p := [] ),
-         inter := operator_state.inter os @ [(p, dataflow_topology_from_tree.followed_by (t p) (length (xs p)), - 1)]\<rparr>"])
-              apply (rule exI[of _ "xs"])
-        apply simp
-      apply (rule arg_cong2[where f=dataflow_op])
-        apply simp
-           apply (rule arg_cong3[where f=map_op])
-            apply simp
-            apply simp
-        apply (rule arg_cong2[where f=input_top])
-                   apply (cases os; simp)
-
-
-end
-  apply (drule sym[of _ "xs p"])
-  apply auto
-  apply (subst ltakeWhile_lfshift[where x="y # zsa"])
-  apply (auto simp add: takeWhile_map takeWhile_tail comp_def)
-  apply (metis (mono_tags, lifting) takeWhile_eq_all_conv)
-  done
-  subgoal
-    by auto
-  done
-  subgoal
-    apply auto
-    subgoal
-
-
-
-      find_theorems "concat (map _ _) = _"
-
-
-
-
-      defer
-      apply (intro allI)
-      apply (rule refl)
-      defer
-      subgoal premises prems3
-        using prems(3) prems3(6)[symmetric] apply -
-        apply (rule bisim_dataflow_op_cong)
-        apply (rule bisim_map_op)
-
-
-
-        find_theorems bisim name: refl
-
+        apply (intro relcomppI)
+          defer
+          apply (rule wb_upto_b_base)
+          defer
+          apply (rule wbisim_refl)
+         apply (rule bisim_refl)
+        apply (rule exI[of _ "inps(p := lxs)"])
+        apply (rule exI[of _ "caps"])
+        apply (rule exI[of _ "os\<lparr> outpu := (outpu os)(p := outpu os p @ _), produ := _, inter := _ \<rparr>"])
+        apply (rule exI[of _ "xs( p := xs p @ [batch])"])
+        apply (intro exI conjI[rotated])
+          apply simp
+          apply (rule input_invar_extend[where batch=batch])
+          apply assumption               
+         apply simp_all
+         apply (rule arg_cong3[where f=map_op])
+           apply simp_all
+         apply (rule arg_cong2[where f=input_op])
+          apply simp_all
+         apply (rule ext)
+         apply clarsimp
+        apply (rule arg_cong2[where f=dataflow_op])
+         apply simp_all
+        apply (rule arg_cong3[where f=map_op])
+          apply simp_all
+        apply (rule arg_cong3[where f=input_top])
+          apply simp_all
+        apply (cases os; simp)
+        apply auto
+        done
+      subgoal for nida op'' st io' op''a
+     apply (intro exI conjI)
+         apply force
+        apply (intro relcomppI)
+          defer
+          apply (rule wb_upto_b_base)
+          defer
+          apply (rule wbisim_refl)
+         apply (rule bisim_refl)
+                apply (intro exI conjI[rotated])
+           defer
+        defer
+          apply (rule refl)
+          apply auto[1]
+         apply auto
+        done
+      done
+    done
 
 
 end

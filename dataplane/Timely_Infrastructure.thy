@@ -468,9 +468,6 @@ lemma compile_dataflow_tree_Logic:
 abbreviation "push op p batch \<equiv> 
   writes op (trace (STR ''Pushing data!'') Some p) (map (\<lambda> (x, c). Inr (x, time c)) batch)"
 
-abbreviation "drop_cap c op \<equiv>
-  Write op None (trace (String.implode (''Dropping cap!'')) Inl (Inl \<lparr> cons = [], inte = [(out c, time c, -1)], prod = [] \<rparr>))"
-
 abbreviation "drop_caps cs op \<equiv>
   Write op None (trace (String.implode (''Dropping caps!'')) Inl (Inl \<lparr> cons = [], inte = map (\<lambda> c. (out c, time c, -1)) cs, prod = [] \<rparr>))"
 
@@ -642,26 +639,16 @@ lemma dataflow_op_propagate_pointstamps:
 
 term "Cap"
 
-record ('p, 's, 'd, 't) operator_state =
+record ('p, 'd, 't) operator_state =
   consu :: "('p \<times> 't \<times> int) list"
   inter :: "('p \<times> 't \<times> int) list"
   produ :: "('p \<times> 't \<times> int) list"
   outpu :: "'p \<Rightarrow> ('d \<times> 't) list"
   front :: "'p \<Rightarrow> 't antichain"
-  capab :: "'p \<Rightarrow> 't list"
-  stash :: 's
 
-abbreviation "deactivate_port os p \<equiv> fold (\<lambda> t os. os\<lparr> inter := inter os @ [(p, t, -1)] \<rparr>) (capab os p) (os\<lparr> capab := (capab os)(p := []) \<rparr>)"
-
-abbreviation "obtain_cap os t p \<equiv> (if t \<in> set (capab os p) then (os\<lparr> capab := (capab os)(p := remove1 t (capab os p)), inter := inter os @ [(p, t, -1)] \<rparr>, Some (Cap t p)) else (os, None))"
-
-abbreviation "delay_cap os cap incr \<equiv> (os\<lparr> capab := (capab os)( out cap := capab os (out cap) @ [(time cap + incr)]), inter := inter os @ [(out cap, time cap + incr, 1)] \<rparr>)"
-
-abbreviation "keep_cap os cap \<equiv> (os\<lparr> capab := (capab os)( out cap := capab os (out cap) @ [(time cap)]) \<rparr>)"
+abbreviation "delay_cap os cap incr \<equiv> (os\<lparr> inter := inter os @ [(out cap, time cap + incr, 1)] \<rparr>)"
 
 abbreviation "produce os cap batch \<equiv> os\<lparr> outpu := (outpu os)(out cap := outpu os (out cap) @ map (\<lambda> x. (x, time cap)) batch), produ := produ os @ [(out cap, time cap, length batch)] \<rparr>"
-
-abbreviation "get_output os p \<equiv> (case outpu os p of [] \<Rightarrow> (os, None) | x # xs \<Rightarrow> (os\<lparr> outpu := (outpu os)(p := xs ) \<rparr>, Some x))"
 
 
 end
