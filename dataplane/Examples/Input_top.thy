@@ -16,12 +16,12 @@ corec input_op where
 lemma step_input_op_elim:
   assumes "step io (input_op n inps) op"
   obtains p x xs lxs where "io = Out p (x, n p + the_enat (llength (ltakeWhile ((=) []) (inps p))))" "ldropWhile ((=) []) (inps p) = LCons (x # xs) lxs"
-   "op = input_op (n (p := n p + the_enat (llength (ltakeWhile ((=) []) (inps p))))) (inps(p := LCons xs lxs))" "p \<notin> defaults"
+    "op = input_op (n (p := n p + the_enat (llength (ltakeWhile ((=) []) (inps p))))) (inps(p := LCons xs lxs))" "p \<notin> defaults"
   using assms apply -
   apply atomize_elim
   apply (subst (asm) input_op.code)
   apply (clarsimp split: llist.splits list.splits)
-  apply (metis (full_types) ldropWhile_LConsD)
+   apply (metis (full_types) ldropWhile_LConsD)
   apply auto
   done
 
@@ -324,7 +324,7 @@ thm lconcat_eq_LCons_conv[of "llist_of (map llist_of ys)", unfolded lconcat_llis
 lemma concat_eq_Cons_conv:
   "concat ys = x # xs = (\<exists>xs' xss' xss''. ys = xss' @ (x # xs') # xss'' \<and> xs = xs' @ concat xss'' \<and> (\<forall> x \<in> set xss'. x = []))"
   apply (induct ys)
-  apply simp
+   apply simp
   apply simp
   subgoal for y ys
     apply safe
@@ -369,7 +369,7 @@ lemma ldropWhile_LCons:
     apply (elim conjE exE)
     subgoal for zs
       apply (induct zs arbitrary: lxs)
-      apply auto
+       apply auto
       done
     done
   done
@@ -445,10 +445,17 @@ lemma input_invar_elim:
     done
   done
 
+lemma input_invar_extend[intro]:
+  "input_invar t buf outp \<Longrightarrow>
+   input_invar t (buf(p := buf p @ [batch])) (outp(p := outp p @ map (\<lambda>os. (os, (t p) + (length (buf p)))) batch))"
+  unfolding input_invar_def
+  apply auto
+  done
+
 lemma dataflow_op_input_top_input_op:
   "edges sg = (\<lambda> _. []) \<Longrightarrow>
    input_invar t xs (outpu os) \<Longrightarrow>
-   dataflow_op sg (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (input_top (os\<lparr> stash := (\<lambda> p. t p + length (xs p)) \<rparr>) inps)) \<approx>
+   dataflow_op sg (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (input_top (os\<lparr> stash := (\<lambda> p. t p + length (xs p)), capab := (\<lambda> p. [t p + length (xs p)]) \<rparr>) inps)) \<approx>
    map_op (\<lambda> p. (nid, p)) (\<lambda> p. (nid, p)) (input_op t (\<lambda> p. xs p @@- inps p ))"
 proof (coinduction arbitrary: inps t os xs rule: weakBisimWeakUptoBisimCong)
   case SIM1
@@ -457,27 +464,27 @@ proof (coinduction arbitrary: inps t os xs rule: weakBisimWeakUptoBisimCong)
     unfolding wsim_def
     apply safe
     subgoal for io op1'
-    apply (elim step_map_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: list.splits if_splits; hypsubst_thin)
+      apply (elim step_map_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: list.splits if_splits; hypsubst_thin)
       subgoal for nida p op'' x io' op''a os' xs'
         apply (cases x)
         subgoal premises prems for y t'
           using prems apply -
           apply hypsubst_thin
           apply (drule input_invar_elim)
-          apply assumption
+           apply assumption
           apply (elim exE conjE)
           subgoal for l ys zs
-      apply (intro exI conjI)
-       apply (rule step_wstep)
-       apply (rule step_map_op)
+            apply (intro exI conjI)
+             apply (rule step_wstep)
+             apply (rule step_map_op)
               apply (rule step_input_op_Out_intro2[where p=p and x=y])
                apply (subst ldropWhile_LCons)
                apply simp
-              apply (rule exI[of _ "map fst l"])
+               apply (rule exI[of _ "map fst l"])
                apply (auto simp add: comp_def split: prod.splits)
               apply (subst lshift_simps(2)[symmetric])
               apply (auto simp only: lshift_assoc)
-            apply (subst ltakeWhile_lfshift[where x="y # ys"])
+             apply (subst ltakeWhile_lfshift[where x="y # ys"])
                apply simp_all
              apply (subst takeWhile_append2)
               apply force
@@ -487,13 +494,13 @@ proof (coinduction arbitrary: inps t os xs rule: weakBisimWeakUptoBisimCong)
                 defer
                 apply (rule wb_upto_b_base)
                 defer
-              apply (rule wbisim_refl)
+                apply (rule wbisim_refl)
                apply (rule bisim_refl)
-                apply (rule exI[of _ "inps"]) 
-                apply (rule exI[of _ "t(p := dataflow_topology_from_tree.followed_by (t p) (the_enat (llength (ltakeWhile ((=) []) (xs p @@- inps p)))))"])
-              apply (rule exI[of _ "os\<lparr> outpu := (outpu os)(p := xs') \<rparr>"])
+              apply (rule exI[of _ "inps"]) 
+              apply (rule exI[of _ "t(p := dataflow_topology_from_tree.followed_by (t p) (the_enat (llength (ltakeWhile ((=) []) (xs p @@- inps p)))))"])
+              apply (rule exI[of _ "os\<lparr> outpu := (outpu os)(p := xs'), capab := \<lambda>p. [t p + length l] \<rparr>"])
               apply (rule exI[of _ "xs(p := ys # map fst zs)"])
-                apply (intro exI conjI[rotated])
+              apply (intro exI conjI[rotated])
                 prefer 2
               subgoal
                 apply (rule arg_cong3[where f=map_op])
@@ -503,7 +510,7 @@ proof (coinduction arbitrary: inps t os xs rule: weakBisimWeakUptoBisimCong)
                 apply (rule ext)
                 apply auto
                 done
-              defer
+               defer
               subgoal
                 apply (rule arg_cong2[where f=dataflow_op])
                  apply simp_all
@@ -512,18 +519,23 @@ proof (coinduction arbitrary: inps t os xs rule: weakBisimWeakUptoBisimCong)
                 apply (rule arg_cong2[where f=input_top])
                  apply simp_all
                 apply (cases os; simp)
-               apply (intro conjI ext)
+                apply (intro conjI ext)
                 apply auto
-            apply (subst ltakeWhile_lfshift[where x="y # ys"])
-               apply simp_all
-             apply (subst takeWhile_append2)
-              apply force
-             apply (auto split: prod.splits)                  
-                done
-              subgoal
-            apply (subst ltakeWhile_lfshift[where x="y # ys"])
+                apply (subst ltakeWhile_lfshift[where x="y # ys"])
                   apply simp_all
-            apply (subst takeWhile_append2)
+                apply (subst takeWhile_append2)
+                 apply force
+                 apply (auto split: prod.splits)   
+                 apply (subst ltakeWhile_lfshift[where x="y # ys"])
+                  apply simp_all
+                apply (subst takeWhile_append2)
+                 apply force
+                 apply (auto split: prod.splits)   
+                      done
+              subgoal
+                apply (subst ltakeWhile_lfshift[where x="y # ys"])
+                  apply simp_all
+                apply (subst takeWhile_append2)
                  apply force
                 apply auto
                 done
@@ -531,214 +543,273 @@ proof (coinduction arbitrary: inps t os xs rule: weakBisimWeakUptoBisimCong)
             done
           done
         done
-
-
-end
-                apply (drule sym[of _ "xs p"])
-                  apply auto
-        apply (subst ltakeWhile_lfshift[where x="y # zsa"])
-                    apply (auto simp add: takeWhile_map takeWhile_tail comp_def)
-                  apply (metis (mono_tags, lifting) takeWhile_eq_all_conv)
-                  done
-                subgoal
-                  by auto
-                done
-              subgoal
-                apply auto
-                subgoal
-                  
-                  
-
-                find_theorems "concat (map _ _) = _"
-
-
-
-
-                defer
-                apply (intro allI)
-                apply (rule refl)
-               defer
-              subgoal premises prems3
-                using prems(3) prems3(6)[symmetric] apply -
-                apply (rule bisim_dataflow_op_cong)
-                apply (rule bisim_map_op)
-
-
-
-              find_theorems bisim name: refl
-              
-
-
-end
-      defer
-           apply assumption
-              apply simp
-          apply (intro conjI)
-               apply (rule refl)+
-              apply (drule spec[of _ p])
-              apply (simp add: lconcat_correct)
-
-
-
-          find_theorems Coinductive_List.lconcat ltakeWhile
-
-
-
-
-
-end
-      apply simp
-      apply (simp add: comp_def)
+      subgoal for op'' io' op''a batch lxs p last_t os' os'' os'''
+        apply (intro conjI exI)
+         apply force
       apply (intro relcomppI)
-        defer
-        apply (rule wb_upto_b_writes)
-        apply (rule wb_upto_b_Silent)
-      apply (rule wb_upto_b_base)
-        apply (rule exI[of _ lxs])
-      apply (rule exI[of _ "Suc i"])
-      apply (rule exI[of _ "ints @ [(1, i, - 1), (1, Suc i, 1)]"])
-      apply (rule exI[of _ "prds @ [(1, i, 1 + int (length xs))]"])
-      apply (intro exI conjI[rotated])
-            apply assumption
-           apply (rule refl)+
-       apply (simp add: input_op_LCons_write_simp)
-      apply (rule wbisim_writes_cong)
-      apply (rule wbisim_Silent_cong)
-       apply (rule wbisim_refl)
-      apply (rule bisim_trans)
-      apply (rule dataflow_writes_comm)
-      apply (rule bisim_writes_cong)
-      apply (rule dataflow_Silent_comm)
-      done
-
-         apply (rule bisim_refl)
-
-
-          apply (rule dataflow_op_wbisim_cong[where sg=sg])
-         apply (rule wbisim_map_op[where f="case_option (Inl nid) (\<lambda>p. Inr (nid, 1))"])
-          apply assumption       
-          apply assumption
-
-
-      defer
-          defer
-        apply (rule wb_upto_b_writes)
-        apply (rule wb_upto_b_Silent)
-        apply (rule wb_upto_b_base)
-      apply (rule exI[of _ lxs])
-      apply (rule exI[of _ "Suc i"])
-      apply (rule exI[of _ "ints @ [(1, i, - 1), (1, Suc i, 1)]"])
-      apply (rule exI[of _ "prds @ [(1, i, 1 + int (length xs))]"])
-      apply (intro exI conjI[rotated])
-            apply assumption
-         apply (rule refl)+
-       apply (simp add: input_op_LCons_write_simp)
-       apply (rule wbisim_writes_cong)
-      apply (rule wbisim_Silent_cong)
-       apply (rule wbisim_refl)
-      subgoal premises
-        apply (induct xs)
-        subgoal
-          apply simp
-          apply (subst dataflow_op.code)
-          apply simp
-          using Choice_singleton_bisim apply blast
-          done
-        subgoal for x xs'
-          apply (simp add: writes_Cons_simp)
-          apply (subst dataflow_op.code)
-          apply simp
-          apply (rule Choice_singleton_bisim_alt)
-          sledgehammer
-          
-       
-
-
-          find_theorems writes Cons
-
-
-
-end
-
-      apply (rule step_bisim)
-      apply safe
-      subgoal
-    apply (elim step_map_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp; hypsubst_thin)
-        sledgehammer
-
-      find_theorems writes bisim
-
-          defer
-          defer
-          apply (rule bisim_refl)
-      defer
-      apply auto[1]
-
-
-
-
-      find_theorems Choice bisim
-
-         apply (rule bisim_refl)
-        apply (rule bc_Choice)
-      unfolding rel_cset_def
+                apply (rule bisim_refl)
+                apply (rule wb_upto_b_base)
+                defer
+         apply (rule wbisim_refl)
         apply simp
-      apply (rule rel_setI; simp; hypsubst_thin?)
+              apply (rule exI[of _ "inps(p := lxs)"]) 
+              apply (rule exI[of _ "t"])
+        apply (rule exI[of _ "os\<lparr> inter := inter os @ [(p, dataflow_topology_from_tree.followed_by (t p) (length (xs p)), - 1), (p, Suc (dataflow_topology_from_tree.followed_by (t p) (length (xs p))), 1)],
+        produ := produ os @ [(p, dataflow_topology_from_tree.followed_by (t p) (length (xs p)), int (length batch))], 
+        capab := _,
+        outpu := (outpu os)(p := outpu os p @ map (\<lambda>x. (x, dataflow_topology_from_tree.followed_by (t p) (length (xs p)))) batch) \<rparr>"])
+              apply (rule exI[of _ "xs( p := xs p @ [batch] )"])
+        apply (intro exI conjI[rotated])
+          prefer 3
+        apply simp
+          apply (rule arg_cong2[where f=dataflow_op])
+        apply simp
+           apply (rule arg_cong3[where f=map_op])
+            apply simp
+            apply simp
+                apply (rule arg_cong2[where f=input_top])
+           apply (cases os; simp)
+           apply (intro conjI ext)
+            apply simp_all
+        subgoal
+          by blast
+        subgoal
+        apply (rule arg_cong3[where f=map_op])
+          apply simp_all
+        apply (rule arg_cong2[where f=input_op])
+        apply simp_all
+        apply auto
+          done
+        done
+      subgoal for op'' io' op''a p
+                apply (intro conjI exI)
+         apply force
+      apply (intro relcomppI)
+                apply (rule bisim_refl)
+                apply (rule wb_upto_b_base)
+                defer
+         apply (rule wbisim_refl)
+                   apply (rule exI[of _ "inps"]) 
+              apply (rule exI[of _ "t"])
+              apply (rule exI[of _ "os\<lparr>stash := _, capab := (capab os)(p := [] ),
+         inter := operator_state.inter os @ [(p, dataflow_topology_from_tree.followed_by (t p) (length (xs p)), - 1)]\<rparr>"])
+              apply (rule exI[of _ "xs"])
+        apply simp
+      apply (rule arg_cong2[where f=dataflow_op])
+        apply simp
+           apply (rule arg_cong3[where f=map_op])
+            apply simp
+            apply simp
+        apply (rule arg_cong2[where f=input_top])
+                   apply (cases os; simp)
 
-      thm rel_setI
 
-      find_theorems rel_cset name: I
+end
+  apply (drule sym[of _ "xs p"])
+  apply auto
+  apply (subst ltakeWhile_lfshift[where x="y # zsa"])
+  apply (auto simp add: takeWhile_map takeWhile_tail comp_def)
+  apply (metis (mono_tags, lifting) takeWhile_eq_all_conv)
+  done
+  subgoal
+    by auto
+  done
+  subgoal
+    apply auto
+    subgoal
+
+
+
+      find_theorems "concat (map _ _) = _"
+
+
 
 
       defer
-      apply (rule wbisim_refl)
-      subgoal
-        apply (rule wb_upto_b_Sim)
-        subgoal
-      unfolding sim_def
-       apply auto
-
-      find_theorems steps name: elim
-
-      apply (rule wb_upto_b_base)
-      apply (intro exI conjI[rotated])
-        apply assumption
-       apply (rule refl)+
-
-      term wbisim_cong
-
-      apply simp
+      apply (intro allI)
+      apply (rule refl)
+      defer
+      subgoal premises prems3
+        using prems(3) prems3(6)[symmetric] apply -
+        apply (rule bisim_dataflow_op_cong)
+        apply (rule bisim_map_op)
 
 
-       apply (rule refl)
 
-      find_theorems writes map_op
+        find_theorems bisim name: refl
 
-      apply (subst (2) input_top.code)
-      apply (auto split: list.splits)
+
 
 end
-      apply force
-      done
+  defer
+  apply assumption
+  apply simp
+  apply (intro conjI)
+  apply (rule refl)+
+  apply (drule spec[of _ p])
+  apply (simp add: lconcat_correct)
+
+
+
+find_theorems Coinductive_List.lconcat ltakeWhile
+
+
+
+
+
+end
+  apply simp
+  apply (simp add: comp_def)
+  apply (intro relcomppI)
+  defer
+  apply (rule wb_upto_b_writes)
+  apply (rule wb_upto_b_Silent)
+  apply (rule wb_upto_b_base)
+  apply (rule exI[of _ lxs])
+  apply (rule exI[of _ "Suc i"])
+  apply (rule exI[of _ "ints @ [(1, i, - 1), (1, Suc i, 1)]"])
+  apply (rule exI[of _ "prds @ [(1, i, 1 + int (length xs))]"])
+  apply (intro exI conjI[rotated])
+  apply assumption
+  apply (rule refl)+
+  apply (simp add: input_op_LCons_write_simp)
+  apply (rule wbisim_writes_cong)
+  apply (rule wbisim_Silent_cong)
+  apply (rule wbisim_refl)
+  apply (rule bisim_trans)
+  apply (rule dataflow_writes_comm)
+  apply (rule bisim_writes_cong)
+  apply (rule dataflow_Silent_comm)
+  done
+
+  apply (rule bisim_refl)
+
+
+  apply (rule dataflow_op_wbisim_cong[where sg=sg])
+  apply (rule wbisim_map_op[where f="case_option (Inl nid) (\<lambda>p. Inr (nid, 1))"])
+  apply assumption       
+  apply assumption
+
+
+  defer
+  defer
+  apply (rule wb_upto_b_writes)
+  apply (rule wb_upto_b_Silent)
+  apply (rule wb_upto_b_base)
+  apply (rule exI[of _ lxs])
+  apply (rule exI[of _ "Suc i"])
+  apply (rule exI[of _ "ints @ [(1, i, - 1), (1, Suc i, 1)]"])
+  apply (rule exI[of _ "prds @ [(1, i, 1 + int (length xs))]"])
+  apply (intro exI conjI[rotated])
+  apply assumption
+  apply (rule refl)+
+  apply (simp add: input_op_LCons_write_simp)
+  apply (rule wbisim_writes_cong)
+  apply (rule wbisim_Silent_cong)
+  apply (rule wbisim_refl)
+  subgoal premises
+    apply (induct xs)
     subgoal
-      apply (intro exI conjI[rotated])
-       apply (rule wbcr_base)
-       apply (intro conjI exI)
-         apply (rule refl)+
-       apply (simp_all add: input_op_LCons_Nil)
+      apply simp
+      apply (subst dataflow_op.code)
+      apply simp
+      using Choice_singleton_bisim apply blast
       done
-    subgoal for nida op'' io' op''a
-      apply (simp add: input_op_LNil)
-      using dataflow_op_end_op apply blast
-      done
+    subgoal for x xs'
+      apply (simp add: writes_Cons_simp)
+      apply (subst dataflow_op.code)
+      apply simp
+      apply (rule Choice_singleton_bisim_alt)
+      sledgehammer
+
+
+
+
+      find_theorems writes Cons
+
+
+
+end
+
+  apply (rule step_bisim)
+  apply safe
+  subgoal
+    apply (elim step_map_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp; hypsubst_thin)
+    sledgehammer
+
+    find_theorems writes bisim
+
+    defer
+    defer
+    apply (rule bisim_refl)
+    defer
+    apply auto[1]
+
+
+
+
+    find_theorems Choice bisim
+
+    apply (rule bisim_refl)
+    apply (rule bc_Choice)
+    unfolding rel_cset_def
+    apply simp
+    apply (rule rel_setI; simp; hypsubst_thin?)
+
+    thm rel_setI
+
+    find_theorems rel_cset name: I
+
+
+    defer
+    apply (rule wbisim_refl)
     subgoal
-      apply (intro exI conjI[rotated])
-       apply (rule wbcr_base)
-       apply (intro conjI exI)
-         apply (rule refl)+
-       apply simp_all
-      done
+      apply (rule wb_upto_b_Sim)
+      subgoal
+        unfolding sim_def
+        apply auto
+
+        find_theorems steps name: elim
+
+        apply (rule wb_upto_b_base)
+        apply (intro exI conjI[rotated])
+        apply assumption
+        apply (rule refl)+
+
+        term wbisim_cong
+
+        apply simp
+
+
+        apply (rule refl)
+
+        find_theorems writes map_op
+
+        apply (subst (2) input_top.code)
+        apply (auto split: list.splits)
+
+end
+  apply force
+  done
+  subgoal
+    apply (intro exI conjI[rotated])
+    apply (rule wbcr_base)
+    apply (intro conjI exI)
+    apply (rule refl)+
+    apply (simp_all add: input_op_LCons_Nil)
     done
+  subgoal for nida op'' io' op''a
+    apply (simp add: input_op_LNil)
+    using dataflow_op_end_op apply blast
+    done
+  subgoal
+    apply (intro exI conjI[rotated])
+    apply (rule wbcr_base)
+    apply (intro conjI exI)
+    apply (rule refl)+
+    apply simp_all
+    done
+  done
 next
   case SIM2
   then show ?case 
@@ -746,26 +817,26 @@ next
     apply (elim step_map_op_elim step_input_op_elim conjE; simp; hypsubst_thin)
     subgoal for io' op'' x xs inps'
       apply (intro exI conjI[rotated])
-       apply (intro conjI wbcr_base)
-       apply (rule exI)
+      apply (intro conjI wbcr_base)
       apply (rule exI)
-       apply (rule exI[of _ "ints @ concat (map (\<lambda> t. [(1, t, -1), (1, Suc t, 1)]) [ i..<i + the_enat (llength (ltakeWhile ((=) []) inps))])"]) 
+      apply (rule exI)
+      apply (rule exI[of _ "ints @ concat (map (\<lambda> t. [(1, t, -1), (1, Suc t, 1)]) [ i..<i + the_enat (llength (ltakeWhile ((=) []) inps))])"]) 
       apply (rule exI[of _ "prds @ [(1, dataflow_topology_from_tree.followed_by i (the_enat (llength (ltakeWhile ((=) []) inps))), 1)]"])
       apply (intro exI conjI[rotated])
       apply assumption
-        apply (rule refl)+
+      apply (rule refl)+
       unfolding wstep_def
       apply simp
       apply (rule relcomppI)
       apply (rule relpowp_imp_rtranclp) 
       apply (rule steps_Tau_dataflow_op_Tau_intro[where sg=sg])
-         apply (rule steps_map_op)
-         apply (rule refl)+
+      apply (rule steps_map_op)
+      apply (rule refl)+
       defer
       apply (rule ldropWhile_steps_input_top[where  c="Cap i 1", simplified])
-            apply (meson ldropWhile_LCons_lfinite_ltakeWhile)
+      apply (meson ldropWhile_LCons_lfinite_ltakeWhile)
       apply assumption+
-           apply (rule refl)+
+      apply (rule refl)+
       apply (rule relcomppI[rotated])
       apply (rule rtranclp.intros(1))
       apply (rule step_Out_dataflow_op_Out_Inr_intro)
@@ -773,7 +844,7 @@ next
       apply simp_all
       apply (rule step_input_top_Out_Some_intro)
       apply (rule refl)+
-       apply simp_all
+      apply simp_all
       done
     done
 qed

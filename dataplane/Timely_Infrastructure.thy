@@ -655,7 +655,7 @@ abbreviation "deactivate_port os p \<equiv> fold (\<lambda> t os. os\<lparr> int
 
 abbreviation "obtain_cap os t p \<equiv> (if t \<in> set (capab os p) then (os\<lparr> capab := (capab os)(p := remove1 t (capab os p)), inter := inter os @ [(p, t, -1)] \<rparr>, Some (Cap t p)) else (os, None))"
 
-abbreviation "delay_cap os cap incr \<equiv> (os\<lparr> capab := (capab os)( out cap := capab os (out cap) @ [(time cap + incr)]) \<rparr>)"
+abbreviation "delay_cap os cap incr \<equiv> (os\<lparr> capab := (capab os)( out cap := capab os (out cap) @ [(time cap + incr)]), inter := inter os @ [(out cap, time cap + incr, 1)] \<rparr>)"
 
 abbreviation "keep_cap os cap \<equiv> (os\<lparr> capab := (capab os)( out cap := capab os (out cap) @ [(time cap)]) \<rparr>)"
 
