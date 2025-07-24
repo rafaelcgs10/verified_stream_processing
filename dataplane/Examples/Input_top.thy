@@ -188,86 +188,55 @@ lemma step_input_top_Tau_intro2[intro]:
 
 lemma ldropWhile_steps_input_top:
   "lfinite (ltakeWhile ((=) []) (inps p)) \<Longrightarrow>
-   ldropWhile ((=) []) (inps p) = LCons (x # xs) inps' \<Longrightarrow>
+   ldropWhile ((=) []) (inps p) = LCons (x # xs) lxs \<Longrightarrow>
    offset = the_enat (llength (ltakeWhile ((=) []) (inps p))) \<Longrightarrow>
    ints = concat (map (\<lambda> t. [(p, t, -1), (p, Suc t, 1)]) [caps p..<caps p + offset]) \<Longrightarrow>
    prods = concat (map (\<lambda> t. [(p, t, 0)]) [caps p..<caps p + offset]) \<Longrightarrow>
    p \<notin> defaults \<Longrightarrow>
+   os' = os\<lparr> inter := inter os @ ints, produ := produ os @ prods \<rparr> \<Longrightarrow>
+   caps' = caps(p := caps p + offset) \<Longrightarrow>
+   inps'= inps(p := LCons (x # xs) lxs) \<Longrightarrow>
    steps (replicate offset Tau)
-   (input_top os caps inps) (input_top (os\<lparr> inter := inter os @ ints, produ := produ os @ prods \<rparr>) (caps(p := caps p + offset)) (inps(p := LCons (x # xs) inps')))"
-  apply (induct "ltakeWhile ((=) []) (inps p)"  arbitrary: inps ints prods caps offset rule: lfinite_induct)
+   (input_top os caps inps) (input_top os' caps' inps')"
+  apply (induct "ltakeWhile ((=) []) (inps p)"  arbitrary: inps ints prods caps offset os os' caps' inps' rule: lfinite_induct)
   subgoal for inps c
     apply (cases "ltakeWhile ((=) []) (inps p)"; simp; hypsubst_thin)
     apply (metis fun_upd_triv ldropWhile_simps(1,2) ltakeWhile_simps(2) neq_LNil_conv)
     done
-  subgoal premises prems for inps ints prods caps offset
+  subgoal premises prems for inps ints prods caps offset os os' caps' inps'
     using prems(1,2,4-) apply -
-    apply (cases "inps p"; simp flip: upt.upt_Suc split: if_splits; hypsubst)
-    subgoal for z lxs
-      apply (rule steps_intro[where xs="replicate (the_enat (llength (ltakeWhile ((=) []) lxs))) Tau"])
-        apply (rule step_input_top_Tau_intro1)
-              apply assumption
-      apply force
-            apply (rule refl)+
-      apply assumption
-      defer
-      subgoal
-        apply simp
-        apply (metis (no_types, lifting) llength_ltakeWhile_eq_infinity replicate.simps(2) the_enat_eSuc)
-        done
-      subgoal
-        apply (subst (asm) (1 2) the_enat_eSuc)
-        using llength_eq_infty_conv_lfinite apply blast
-        using llength_eq_infty_conv_lfinite apply blast
-        apply (cases offset; simp flip: upt.upt_Suc)
-        subgoal for offset'
-        apply (subst (1 2 3) the_enat_eSuc)
-          using llength_eq_infty_conv_lfinite apply blast
-        using llength_eq_infty_conv_lfinite apply blast
-        apply (simp flip: upt.upt_Suc)
-        using prems(3)[where offset="offset'" and inps="inps(p := lxs)" and caps="caps(p := Suc (caps p))"] apply -
-        apply (simp flip: upt.upt_Suc)
-        apply (drule meta_spec)+
-        apply (drule meta_mp)
-         apply (rule refl)
-        apply (drule meta_mp)
-         apply (rule refl)
-        apply hypsubst_thin
-        apply (rule steps_intro)
-          apply (rule step_input_top_Tau_intro1[where p=p])
-        
-
-end
-                apply (rule refl)
-               defer
-               apply (rule refl)+
-            defer
-            apply assumption
-        
-           
-
-
-        find_theorems steps step
-
-
-end
-          apply (rule prems(3))
-            apply force
-        apply simp
-        apply (rule refl)+
-         defer
+    apply (cases "inps p"; simp flip: upt.upt_Suc split: if_splits; hypsubst?)
+    subgoal for x lxs
+      apply (subst (1 2 3 4) the_enat_eSuc)
+      using llength_eq_infty_conv_lfinite apply blast
+      using llength_eq_infty_conv_lfinite apply blast
+      apply (subst (asm) (1 2) the_enat_eSuc)
+      using llength_eq_infty_conv_lfinite apply blast
+      using llength_eq_infty_conv_lfinite apply blast
+      apply (simp flip: upt.upt_Suc)
+      apply (cases offset; simp flip: upt.upt_Suc)
+      subgoal for offset'
+        apply (rule relcomppI)
+         apply (rule step_input_top_Tau_intro1)
+               apply assumption
+              apply force
+             apply (rule refl)+
+         apply assumption
+        apply (simp del: upt.upt_Suc)
+        apply (rule prems(3))
+                apply simp
+               apply simp
+              apply simp
+             apply (rule refl)+
+           apply assumption
+          defer
+          apply simp
          apply simp
-        apply (simp del: upt_Suc)
-        apply (rule arg_cong3[where f="input_top (Cap (Suc (dataflow_topology_from_tree.followed_by (time c) (the_enat (llength (ltakeWhile ((=) []) lxs))))) (out c))"])
-          apply simp_all
-        apply (intro impI)
-        apply (subst (2) upt_conv_Cons)
-         apply auto
+        apply (cases os; auto simp flip: upt.upt_Suc simp add: upt_conv_Cons)
         done
       done
     done
-  done *)
-
+  done
 
 (* 
 abbreviation "inp_top c ints prds inps \<equiv> map_op (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, (p :: 1)))) (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, (p :: 1)))) (input_top c ints prds inps)"
@@ -604,7 +573,12 @@ next
     apply -
     unfolding wsim_def
     apply safe
-      apply (elim step_map_op_elim step_input_op_elim conjE; simp split: list.splits if_splits; hypsubst_thin)
+    apply (elim step_map_op_elim step_input_op_elim conjE; simp split: list.splits if_splits; hypsubst_thin)
+    apply (intro conjI exI)
+    unfolding wstep_def
+    apply (intro relcomppI)
+
+    find_theorems steps
 
 
 end
