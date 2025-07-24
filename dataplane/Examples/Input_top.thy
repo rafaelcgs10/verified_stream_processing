@@ -186,6 +186,23 @@ lemma step_input_top_Tau_intro2[intro]:
   apply fastforce
   done
 
+lemma step_input_top_Tau_intro3[intro]:
+  "inps p = LCons batch lxs \<Longrightarrow>
+   cap = Cap (caps p) p  \<Longrightarrow>
+   os' = produce os cap batch \<Longrightarrow>
+   os'' = (if lxs = LNil then drop_cap os' cap else delay_cap os' cap 1) \<Longrightarrow>
+   op = input_top os'' (caps( p := caps p + 1)) (inps(p := lxs)) \<Longrightarrow>
+   p \<notin> defaults \<Longrightarrow>
+   step Tau (input_top os caps inps) op"
+  apply (cases lxs)
+   apply (rule step_input_top_Tau_intro2)
+        apply simp_all
+  apply force
+     apply (rule step_input_top_Tau_intro1)
+        apply simp_all
+  apply force
+  done
+
 lemma ldropWhile_steps_input_top:
   "lfinite (ltakeWhile ((=) []) (inps p)) \<Longrightarrow>
    ldropWhile ((=) []) (inps p) = LCons (x # xs) lxs \<Longrightarrow>
@@ -282,7 +299,12 @@ lemma ldropWhile_lshift:
    apply auto
   done
 
-thm lconcat_eq_LCons_conv[of "llist_of (map llist_of ys)", unfolded lconcat_llist_of llist_of_eq_LCons_conv, simplified, no_vars]
+lemma ldropWhile_lshift2:
+  "\<forall> x \<in> set xs. P x \<Longrightarrow>
+   ldropWhile P (xs @@- lxs) = ldropWhile P lxs"
+  apply (induct xs)
+   apply auto
+  done
 
 lemma concat_eq_Cons_conv:
   "concat ys = x # xs = (\<exists>xs' xss' xss''. ys = xss' @ (x # xs') # xss'' \<and> xs = xs' @ concat xss'' \<and> (\<forall> x \<in> set xss'. x = []))"
@@ -410,6 +432,32 @@ lemma input_invar_extend[intro]:
   unfolding input_invar_def
   apply auto
   done
+
+lemma input_invar_cong:
+  "input_invar t' buf' op' \<Longrightarrow>
+   t = t' \<Longrightarrow> buf = buf' \<Longrightarrow> op = op' \<Longrightarrow>
+   input_invar t buf op"
+  by simp
+
+(* FIXME: move me *)
+lemma ltakeWhile_lshift:
+  "\<forall> x \<in> set xs. P x \<Longrightarrow>
+   ltakeWhile P (xs @@- lxs) = xs @@- ltakeWhile P lxs"
+  apply (induct xs)
+   apply auto
+  done
+lemma llenght_lshift[simp]:
+  "llength (xs @@- lxs) = length xs + llength lxs"
+  apply (induct xs)
+  using enat_0 apply fastforce
+  apply clarsimp
+  apply (metis eSuc_enat iadd_Suc)
+  done
+
+(* FIXME: move me *)
+lemma bisim_refl_alt:
+  "op = op' \<Longrightarrow> bisim op op'"
+  using bisim_refl by auto
 
 lemma dataflow_op_input_top_input_op:
   "edges sg = (\<lambda> _. []) \<Longrightarrow>
@@ -560,8 +608,8 @@ proof (coinduction arbitrary: inps caps os xs sg rule: weakBisimWeakUptoBisimCon
          apply (rule bisim_refl)
                 apply (intro exI conjI[rotated])
            defer
-        defer
-          apply (rule refl)
+           defer
+           apply (rule refl)
           apply auto[1]
          apply auto
         done
@@ -574,11 +622,200 @@ next
     unfolding wsim_def
     apply safe
     apply (elim step_map_op_elim step_input_op_elim conjE; simp split: list.splits if_splits; hypsubst_thin)
-    apply (intro conjI exI)
-    unfolding wstep_def
-    apply (intro relcomppI)
-
-    find_theorems steps
-
+    subgoal for io op1' io' op'' p x xs' lxs
+      apply (cases "\<forall> x \<in> set (xs p). x = []")
+      subgoal
+        apply (subst (asm) ldropWhile_lshift2)
+         apply fast
+        apply (subgoal_tac "outpu os p = []")
+         defer
+        subgoal
+          unfolding input_invar_def
+          apply clarsimp
+          apply (meson in_set_zipE)
+          done
+        apply simp
+        apply (intro conjI exI)
+        unfolding wstep_def
+         apply (intro relcomppI)
+           apply (rule rtranclp.intros(2))
+            apply (rule relpowp_imp_rtranclp) 
+            apply (rule steps_Tau_dataflow_op_Tau_intro)
+            apply (rule steps_map_op)
+              apply (rule refl)+
+             defer
+             apply (rule ldropWhile_steps_input_top)
+                     defer
+                     defer
+                     apply (rule refl)+
+                  apply assumption
+                 apply (rule refl)+
+              apply simp
+              apply (rule step_Tau_dataflow_op_Tau_intro)
+              apply (rule step_map_op)
+               apply (rule step_input_top_Tau_intro3[where p=p])
+                    apply simp
+                   apply (rule refl)+
+               apply assumption
+              apply simp
+             defer
+             apply force
+            defer
+            apply simp
+           apply (metis lfinite_ltakeWhile llist.disc(2) lnull_ldropWhile)
+          apply assumption
+         apply (simp only: estep.simps)
+         apply (rule step_Out_dataflow_op_Out_Inr_intro)
+         apply (rule step_map_op)
+          apply (rule step_input_top_Out_Some_intro[where p=p])
+            apply simp
+           apply (rule refl)
+          apply assumption
+         apply simp
+         apply (subst ltakeWhile_lshift)
+          apply force
+         apply (subgoal_tac "lfinite ((ltakeWhile ((=) []) (inps p)))")
+          apply (metis length_list_of llenght_lshift plus_enat_simps(1) the_enat.simps)
+         apply (metis lfinite_ltakeWhile llist.disc(2) lnull_ldropWhile)
+        apply (intro relcomppI)
+          defer
+          apply (rule wb_upto_b_sym)
+          apply (rule wb_upto_b_base)
+          defer
+          defer
+          defer
+          apply (rule exI[of _ "inps(p := lxs)"])
+          apply (rule exI)
+          apply (rule exI[of _ ])
+          apply (rule exI[of _ "xs(p :=[xs'])"])
+          apply (intro conjI[rotated] exI)
+             defer
+             apply assumption
+            apply (rule refl)+
+          defer
+          apply (rule bisim_map_op)
+          apply (rule bisim_refl_alt)
+          apply (rule arg_cong2[where f=input_op])
+           apply (rule refl)
+          apply force
+         defer
+         apply (rule wbisim_dataflow_op_cong)
+         apply (rule wbisim_map_op)
+         apply (rule wbisim_refl_alt)
+         apply (rule arg_cong3[where f=input_top])
+           apply (rule refl)
+          apply simp_all
+        subgoal
+          apply (rule ext)
+          apply auto
+          apply (subst ltakeWhile_lshift)
+           apply force
+          apply (subgoal_tac "lfinite ((ltakeWhile ((=) []) (inps p)))")
+           apply (metis length_list_of llenght_lshift plus_enat_simps(1) the_enat.simps)
+          apply (metis lfinite_ltakeWhile llist.disc(2) lnull_ldropWhile)
+          done
+        subgoal
+          unfolding input_invar_def
+          apply auto
+          apply (subst ltakeWhile_lshift)
+           apply force
+          apply (subgoal_tac "lfinite ((ltakeWhile ((=) []) (inps p)))")
+           apply (metis length_list_of llenght_lshift plus_enat_simps(1) the_enat.simps)
+          apply (metis lfinite_ltakeWhile llist.disc(2) lnull_ldropWhile)
+          done
+        done
+      subgoal
+        apply (cases "outpu os p")
+        subgoal
+          apply (rule FalseE)
+          apply (auto simp add: input_invar_def split: prod.splits)[1]
+          apply (metis diff_add_inverse in_set_impl_in_set_zip1 length_upt)
+          done
+        subgoal for ox os
+          apply (cases ox)
+          apply (drule input_invar_elim[where p=p])
+           apply simp
+          apply (elim conjE exE)
+          subgoal for x n l ys zs
+            apply hypsubst
+            apply (intro conjI exI)
+             apply (rule step_wstep)
+             apply (rule step_Out_dataflow_op_Out_Inr_intro)
+             apply (rule step_map_op)
+              apply (rule step_input_top_Out_Some_intro[where p=p])
+                apply assumption
+               apply (rule refl)
+              apply assumption
+             apply clarsimp
+             apply (intro conjI)
+            subgoal
+              apply (subst (asm) ldropWhile_lshift[where x="x # ys"])
+                apply simp
+               apply fast
+              apply (subst (asm) dropWhile_append2)
+               apply force
+              apply simp
+              done
+            subgoal
+              apply (subst ltakeWhile_lfshift[where x="x # ys"])          
+                apply simp_all
+              apply (subst takeWhile_append2)
+               apply force
+              apply simp
+              done
+            apply (intro relcomppI)
+            defer
+              apply (rule wb_upto_b_sym)
+              apply (rule wb_upto_b_base)
+              apply (intro conjI[rotated] exI)
+                 apply (rule input_invar_cong)
+                    apply assumption
+                   apply (rule refl)+
+                 defer
+                 apply assumption
+            apply (rule refl)+
+               apply (rule wbisim_dataflow_op_cong)
+               apply (rule wbisim_map_op)
+               apply (rule wbisim_refl_alt)
+               apply (rule arg_cong3[where f=input_top])
+                 apply (rule refl)+
+               apply force
+                 apply (rule refl)+
+             apply simp_all
+            apply (subst ltakeWhile_lfshift[where x="x # ys"])
+              apply force
+             apply simp_all
+            apply (subst takeWhile_append2)
+             apply force
+            apply simp
+            apply (rule bisim_map_op)
+            apply (rule bisim_refl_alt)
+   apply (rule arg_cong2[where f=input_op])
+            apply force
+            apply (rule ext)
+            apply auto
+            subgoal
+   apply (subst (asm) ldropWhile_lshift[where x="x # ys"])
+                apply simp
+               apply fast
+              apply (subst (asm) dropWhile_append2)
+               apply force
+              apply simp
+              done
+            subgoal
+   apply (subst (asm) ldropWhile_lshift[where x="x # ys"])
+                apply simp
+               apply fast
+              apply (subst (asm) dropWhile_append2)
+               apply force
+              apply simp
+              done
+            done
+          done
+        done
+      done
+    done
+qed
 
 end
+ 

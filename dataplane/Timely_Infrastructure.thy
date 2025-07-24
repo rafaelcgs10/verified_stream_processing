@@ -384,6 +384,14 @@ lemma steps_Tau_dataflow_op_Tau_intro[intro]:
   apply (metis (no_types, lifting) relcompp_apply relpowp_commute step_Tau_dataflow_op_Tau_intro)
   done
 
+lemma step_Taus_dataflow_op_Taus_intro[intro]:
+  "(step Tau)\<^sup>*\<^sup>* op op' \<Longrightarrow>
+   (step Tau)\<^sup>*\<^sup>*  (dataflow_op sg op) (dataflow_op sg op')"
+  apply (induct op' rule: rtranclp_induct)
+   apply force
+  apply (meson rtranclp.intros(2) step_Tau_dataflow_op_Tau_intro)
+  done
+
 lemma dataflow_writes_extract_progress_from_push:
   "g = (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) \<Longrightarrow>
    dataflow_op sg
@@ -628,16 +636,11 @@ lemma bisim_dataflow_op_cong:
   dataflow_op sg op ~ dataflow_op sg op'"
   sorry
 
-lemma dataflow_op_propagate_pointstamps:
-  "propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg) = Some conf \<Longrightarrow>
-   propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg @ extract_progress nid (edges sg) st) = Some conf' \<Longrightarrow>
-   (\<forall>loc\<in>fst ` set (extract_progress nid (edges sg) st). (frontier o c_imp conf) loc = (frontier o c_imp conf') loc) \<Longrightarrow>
-   dataflow_op (sg\<lparr>pt_tr := conf', lo_pt := []\<rparr>) op =
-   dataflow_op (sg\<lparr>pt_tr := conf, lo_pt := extract_progress nid (edges sg) st\<rparr>) op"
+lemma wbisim_dataflow_op_cong:
+  "op \<approx> op' \<Longrightarrow>
+  dataflow_op sg op \<approx> dataflow_op sg op'"
   sorry
 
-
-term "Cap"
 
 record ('p, 'd, 't) operator_state =
   consu :: "('p \<times> 't \<times> int) list"
@@ -646,7 +649,7 @@ record ('p, 'd, 't) operator_state =
   outpu :: "'p \<Rightarrow> ('d \<times> 't) list"
   front :: "'p \<Rightarrow> 't antichain"
 
-abbreviation "delay_cap os cap incr \<equiv> (os\<lparr> inter := inter os @ [(out cap, time cap + incr, 1)] \<rparr>)"
+abbreviation "delay_cap os cap incr \<equiv> (os\<lparr> inter := inter os @ [(out cap, time cap, -1), (out cap, time cap + incr, 1)] \<rparr>)"
 
 abbreviation "produce os cap batch \<equiv> os\<lparr> outpu := (outpu os)(out cap := outpu os (out cap) @ map (\<lambda> x. (x, time cap)) batch), produ := produ os @ [(out cap, time cap, length batch)] \<rparr>"
 
