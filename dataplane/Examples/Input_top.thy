@@ -83,6 +83,8 @@ lemma wstep_input_op_simp[simp]:
     done
   done
 
+term The
+find_theorems "The _ = _"
 
 lemma input_top_correctness:
   "wtraced (compile_dataflow (Logic (input_top (Cap i 1) inps)) :: (1 \<times> 1, 1 \<times> 1, 'b \<times> nat) op) ios \<Longrightarrow>
@@ -197,8 +199,8 @@ lemma step_input_top_Tau_intro3[intro]:
   apply (cases lxs)
    apply (rule step_input_top_Tau_intro2)
         apply simp_all
-  apply force
-     apply (rule step_input_top_Tau_intro1)
+   apply force
+  apply (rule step_input_top_Tau_intro1)
         apply simp_all
   apply force
   done
@@ -507,8 +509,8 @@ proof (coinduction arbitrary: inps caps os xs sg rule: weakBisimWeakUptoBisimCon
               apply (rule exI[of _ ])
               apply (rule exI[of _ "os\<lparr> outpu := (outpu os)(p := xs) \<rparr>"])
               apply (intro exI conjI[rotated])
-                apply simp
-               apply simp_all
+                 apply simp
+                apply simp_all
                apply (rule arg_cong3[where f=map_op])
                  apply simp_all
                apply (rule arg_cong2[where f=input_op])
@@ -544,10 +546,10 @@ proof (coinduction arbitrary: inps caps os xs sg rule: weakBisimWeakUptoBisimCon
         apply (rule exI[of _ "os\<lparr> outpu := (outpu os)(p := outpu os p @ _), produ := _, inter := _ \<rparr>"])
         apply (rule exI[of _ "xs( p := xs p @ [batch])"])
         apply (intro exI conjI[rotated])
-          apply simp
-          apply (rule input_invar_extend[where batch=batch])
-          apply assumption               
-         apply simp_all
+           apply simp
+           apply (rule input_invar_extend[where batch=batch])
+           apply assumption               
+          apply simp_all
          apply (rule arg_cong3[where f=map_op])
            apply simp_all
          apply (rule arg_cong2[where f=input_op])
@@ -578,10 +580,10 @@ proof (coinduction arbitrary: inps caps os xs sg rule: weakBisimWeakUptoBisimCon
         apply (rule exI[of _ "os\<lparr> outpu := (outpu os)(p := outpu os p @ _), produ := _, inter := _ \<rparr>"])
         apply (rule exI[of _ "xs( p := xs p @ [batch])"])
         apply (intro exI conjI[rotated])
-          apply simp
-          apply (rule input_invar_extend[where batch=batch])
-          apply assumption               
-         apply simp_all
+           apply simp
+           apply (rule input_invar_extend[where batch=batch])
+           apply assumption               
+          apply simp_all
          apply (rule arg_cong3[where f=map_op])
            apply simp_all
          apply (rule arg_cong2[where f=input_op])
@@ -598,7 +600,7 @@ proof (coinduction arbitrary: inps caps os xs sg rule: weakBisimWeakUptoBisimCon
         apply auto
         done
       subgoal for nida op'' st io' op''a
-     apply (intro exI conjI)
+        apply (intro exI conjI)
          apply force
         apply (intro relcomppI)
           defer
@@ -606,7 +608,7 @@ proof (coinduction arbitrary: inps caps os xs sg rule: weakBisimWeakUptoBisimCon
           defer
           apply (rule wbisim_refl)
          apply (rule bisim_refl)
-                apply (intro exI conjI[rotated])
+        apply (intro exI conjI[rotated])
            defer
            defer
            apply (rule refl)
@@ -764,7 +766,7 @@ next
               apply simp
               done
             apply (intro relcomppI)
-            defer
+              defer
               apply (rule wb_upto_b_sym)
               apply (rule wb_upto_b_base)
               apply (intro conjI[rotated] exI)
@@ -773,14 +775,14 @@ next
                    apply (rule refl)+
                  defer
                  apply assumption
-            apply (rule refl)+
-               apply (rule wbisim_dataflow_op_cong)
-               apply (rule wbisim_map_op)
-               apply (rule wbisim_refl_alt)
-               apply (rule arg_cong3[where f=input_top])
-                 apply (rule refl)+
+                apply (rule refl)+
+              apply (rule wbisim_dataflow_op_cong)
+              apply (rule wbisim_map_op)
+              apply (rule wbisim_refl_alt)
+              apply (rule arg_cong3[where f=input_top])
+                apply (rule refl)+
                apply force
-                 apply (rule refl)+
+              apply (rule refl)+
              apply simp_all
             apply (subst ltakeWhile_lfshift[where x="x # ys"])
               apply force
@@ -790,12 +792,12 @@ next
             apply simp
             apply (rule bisim_map_op)
             apply (rule bisim_refl_alt)
-   apply (rule arg_cong2[where f=input_op])
-            apply force
+            apply (rule arg_cong2[where f=input_op])
+             apply force
             apply (rule ext)
             apply auto
             subgoal
-   apply (subst (asm) ldropWhile_lshift[where x="x # ys"])
+              apply (subst (asm) ldropWhile_lshift[where x="x # ys"])
                 apply simp
                apply fast
               apply (subst (asm) dropWhile_append2)
@@ -803,7 +805,7 @@ next
               apply simp
               done
             subgoal
-   apply (subst (asm) ldropWhile_lshift[where x="x # ys"])
+              apply (subst (asm) ldropWhile_lshift[where x="x # ys"])
                 apply simp
                apply fast
               apply (subst (asm) dropWhile_append2)
@@ -818,4 +820,3 @@ next
 qed
 
 end
- 
