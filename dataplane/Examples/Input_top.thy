@@ -386,7 +386,7 @@ lemma upt_append_length:
 lemma input_invar_elim:
   "input_invar t buf outp \<Longrightarrow>
    outp p = (y, t') # xs \<Longrightarrow>
-   \<exists> l ys zs. (\<forall> x \<in> set l. fst x = []) \<and> t' = t p + length l \<and>
+   \<exists> l ys zs. (\<forall> x \<in> fst ` set l. x = []) \<and> t' = t p + length l \<and>
    buf p = map fst (l @ (y # ys, t') # zs) \<and>
    [t p..< (t p) + (length (buf p))] = map snd (l @ (y # ys, t') # zs) \<and> input_invar (t(p := t p + length l)) (buf( p := ys # map fst zs)) (outp(p := xs))"
   unfolding input_invar_def
