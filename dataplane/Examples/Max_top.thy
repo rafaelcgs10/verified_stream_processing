@@ -19,6 +19,74 @@ find_theorems is_Inl
 
 abbreviation "mint_cap os p t \<equiv> os\<lparr> inter := inter os @ [(p, t, 1)] \<rparr>"
 
+corec max_top_aux where
+  "max_top_aux os buf ts = choice5
+   (Read None (\<lambda> st. if is_Inl st \<and> is_Inr (projl st) then max_top_aux (os\<lparr> front := projr (projl st) \<rparr>) buf ts else \<oslash>))
+   (let below_ts = [t \<leftarrow> ts. less_than_frontier (front os 0) t] in
+    let above_ts = [t \<leftarrow> ts. \<not> less_than_frontier (front os 0) t] in
+    let batches = map (\<lambda> t. (buf t, t)) below_ts in
+    let os' = foldl (\<lambda> os (x, t). produce os (Cap t 0) [x]) os batches in
+    let os'' = foldl drop_cap os' (map (\<lambda> t. Cap t 1) below_ts) in
+    let buf' = foldl (\<lambda> s cap. buf(cap := [])) buf below_ts in
+    Silent (max_top_aux os'' buf' above_ts))
+   (Read (Some 0)
+    (\<lambda> x. if is_Inl x then \<oslash> else
+     let (x, t) = projr x in
+     let (ts', os') = (if t\<in> set ts then (ts, os) else (ts @ [t], mint_cap os 0 t)) in
+     let buf' = buf(t := (x, t) # (buf t)) in
+     max_top_aux os' buf' ts'))
+    ((case outpu os 0 of
+         [] \<Rightarrow> Silent (max_top_aux os buf ts)
+       |  (x, t) # xs \<Rightarrow> send_output (max_top_aux (os\<lparr> outpu := (outpu os)(0 := xs ) \<rparr>) buf ts) 0 (Max (set x))))
+    (let (os', st) = obtain_progress os in
+     send_progress (max_top_aux os' buf ts) st)"
+
+
+lemma step_max_top_aux_elim:
+  assumes "step io (max_top_aux os buf caps) op"
+  obtains
+    st where "io = Inp None st" "\<not> is_Inl st \<or> (is_Inl st \<and> \<not> is_Inr (projl st))" "op = \<oslash>" 
+  | st where "io = Inp None st" "is_Inl st" "is_Inr (projl st)" "op = max_top_aux (os\<lparr> front := projr (projl st) \<rparr>) buf caps" 
+  | above_caps below_caps batches os' os'' buf' where "io = Tau" "below_caps = [cap \<leftarrow> caps. less_than_frontier (front os 0) (time cap)]"
+    "above_caps = [cap \<leftarrow> caps. \<not> less_than_frontier (front os 0) (time cap)]"
+    "batches = map (\<lambda> cap. (buf cap, cap)) below_caps"
+    "os' = foldl (\<lambda> os (m, cap). produce os cap [m]) os batches"
+    "os'' = foldl drop_cap os' below_caps"
+    "buf' = foldl (\<lambda> s cap. buf(cap := [])) buf below_caps"
+    "op = max_top_aux os'' buf' above_caps"
+  | x where "io = Inp (Some 0) x" "isl x" "op = \<oslash>"
+  | x n t caps' os' buf' where "io = Inp (Some 0) x" "\<not> isl x" "(n, t) = projr x"
+    "(caps', os') = (if Cap t 0 \<in> set caps then (caps, os) else (caps @ [Cap t 0], mint_cap os 0 t))"
+    "buf' = buf((Cap t 0) := n # (buf (Cap t 0)))" "op = max_top_aux os' buf' caps'"
+  | "io = Tau" "outpu os 0 = []" "op = max_top_aux os buf caps"
+  | x xs t where "io = Out (Some 0) (Inr (Max (set x), t))" "outpu os 0 = (x, t) # xs"
+    "op = max_top_aux (os\<lparr> outpu := (outpu os)(0 := xs ) \<rparr>) buf caps"
+  | os' st where "io = Out None (Inl (Inl st))" "obtain_progress os = (os', st)"
+    "op = max_top_aux os' buf caps"
+  using assms apply -
+  apply atomize_elim
+  apply (subst (asm) max_top_aux.code)
+  apply (cases io)
+  subgoal for p x
+    apply simp
+    apply (cases p; simp; hypsubst_thin)
+    subgoal
+      by (auto del: disjCI split: if_splits list.splits sum.splits; hypsubst_thin?)
+    subgoal
+      by (cases x; force split: if_splits list.splits sum.splits; hypsubst_thin?)
+    done
+  subgoal for p x
+    apply simp
+    apply (cases p; simp; hypsubst_thin)
+    subgoal
+      by (auto del: disjCI split: if_splits list.splits sum.splits; hypsubst_thin?)
+    subgoal
+      by (cases x; auto split: if_splits list.splits sum.splits; hypsubst_thin?)
+    done
+  subgoal
+    by (fastforce split: if_splits list.splits)
+  done
+
 corec max_top' where
   "max_top' os buf caps = choice5
    (Read None (\<lambda> st. if is_Inl st \<and> is_Inr (projl st) then max_top' (os\<lparr> front := projr (projl st) \<rparr>) buf caps else \<oslash>))
@@ -175,7 +243,7 @@ lemma wstep_max_op_simp[simp]:
   done
 
 abbreviation "inp_top os caps inps \<equiv> map_op (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (input_top os caps inps)"
-abbreviation "m_top os buf caps \<equiv>  map_op (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (max_top' os buf caps)"
+abbreviation "m_top os buf caps \<equiv>  map_op (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (max_top_aux os buf caps)"
 
 abbreviation "inp_m_top os1 caps1 inps buf1 os2 buf2 caps2 \<equiv>
    map_op (case_sum id id) (case_sum id id)
@@ -229,33 +297,45 @@ lemma map_in_setD:
    f x \<in> set ys"
   by force
 
+no_notation shiftr  (infixl \<open>>>\<close> 55)
+
+
+
 lemma
-  \<open>input_invar (\<lambda> p. n p + length (xs1 p) + length (xs2 p) + length (xs3 p)) xs4 (outpu os1) \<Longrightarrow>
-   input_invar (\<lambda> p. n p + length (xs1 p) + length (xs2 p)) xs3 (map projr o buf1 o Inr o Pair 1) \<Longrightarrow>
+  \<open>input_invar n xs (\<lambda> p. concat (map (\<lambda> (xs, t). (map (\<lambda> x. (x, t))) xs) (outpu os2 p)) @ buf2l p @ (map projr o buf1 o Inr o Pair 1) p @ outpu os1 p) \<Longrightarrow>
    buf2l = fold (\<lambda> cap f. f(out cap := f (out cap) @ map (\<lambda> x. (x, time cap)) (buf2 cap))) caps2 (\<lambda> p. []) \<Longrightarrow>
-   input_invar (\<lambda> p. n p + length (xs1 p)) xs2 buf2l \<Longrightarrow>
-   input_invar n (\<lambda> p. map (\<lambda> xs. case xs of [] \<Rightarrow> [] | xs \<Rightarrow> [Max (set xs)]) (xs1 p)) (outpu os2) \<Longrightarrow>
-   dataflow_op sg (inp_m_top os1 (\<lambda> p. n p + length (xs1 p) + length (xs2 p) + length (xs3 p) + length (xs4 p)) inps buf1 os2 buf2 caps2) \<approx>
-   map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (max_op n (\<lambda> p. xs1 p @@- xs2 p @@- xs3 p @@- xs4 p @@- inps p))\<close>
-proof (coinduction arbitrary: os1 os2 n caps2 xs1 xs2 xs3 xs4 buf1 buf2 buf2l inps  sg rule: weakBisimWeakUptoBisimCong)
+   dataflow_op sg (inp_m_top os1 (\<lambda> p. n p + length (xs p)) inps buf1 os2 buf2 caps2) \<approx>
+   map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (max_op n (\<lambda> p. xs p @@- inps p))\<close>
+proof (coinduction arbitrary: os1 os2 n caps2 xs buf1 buf2 buf2l inps sg rule: weakBisimWeakUptoBisimCong)
   case SIM1
   then show ?case
     apply -
     unfolding wsim_def
     apply safe
-    apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits option.splits add: map_upd_upds_conv_if; hypsubst_thin)
-    subgoal for io op1' nid op'' x io' op''a pa op2' io'a op''b xs
-      apply (cases x; hypsubst_thin)
-      apply (drule input_invar_elim[where buf="\<lambda>p. map (case_list [] (\<lambda>a list. [Max (insert a (set list))])) (xs1 1)"])
-       apply assumption
-      apply safe
-      apply (clarsimp simp add: map_eq_append_conv split: list.splits)
-      subgoal for l zs la zsa x xs'
+    apply (elim step_max_top_aux_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits option.splits add: map_upd_upds_conv_if; hypsubst_thin)
+    subgoal for io op1' nid op'' io' op''a pa op2' io'a op''b xb xsa t
+      apply (drule input_invar_elim)
+      try0
+
+      find_theorems input_invar name: elim
+end
         apply (intro conjI exI)
          apply (rule step_wstep)
          apply (rule step_map_op)
           apply (rule step_max_op_Out_intro2[where p=0])
-            apply (subst ldropWhile_lshift[where x="x # xs'"])
+            apply (subst ldropWhile_lshift)
+              defer
+              defer
+              defer
+              defer
+                  apply (simp add: defaults_num1_def)
+             apply simp
+
+        find_theorems "dropWhile" Cons
+
+
+
+end
               apply simp
              apply simp
             apply (subst dropWhile_append2)
@@ -423,32 +503,14 @@ proof (coinduction arbitrary: os1 os2 n caps2 xs1 xs2 xs3 xs4 buf1 buf2 buf2l in
            defer
            apply (rule wbisim_refl)
     apply (rule wb_upto_b_base)
-          apply (rule exI[of _ "os1\<lparr> outpu := (outpu os1)(1 := xs) \<rparr>"])
-          apply (rule exI[of _ "os2"])
-          apply (rule exI)
-          apply (rule exI)
-          apply (rule exI)
-          apply (rule exI)
-          apply (rule exI[of _ "xs3(1 := xs3 1 @ (map fst l) @ [a # ys])"])
-          apply (rule exI[of _ "xs4(1 := map fst zs)"])
-          apply (rule exI[of _ "BENQ (Inr (1, 1))
-                    (Inr (a, dataflow_topology_from_tree.followed_by
-                              (dataflow_topology_from_tree.followed_by (dataflow_topology_from_tree.followed_by (dataflow_topology_from_tree.followed_by (n 1) (length (xs1 1))) (length (xs2 1))) (length (xs3 1))) (length l)))
-                    buf1"])
-          apply (rule exI)
-          apply (rule exI[of _ inps])
-      apply (intro exI[of _ sg] conjI)
+          apply (intro conjI exI)
+      defer
            apply simp
-           defer
-           apply (rule arg_cong3[where f=map_op])
-             apply simp_all
-           apply (rule arg_cong2[where f=max_op])
-          apply force
-      apply (rule ext)
-         apply (simp flip: lshift_assoc)
-      subgoal premises prems
-        using prems(9) apply -
-
+          defer
+      defer
+          apply assumption+
+        apply simp_all
+      defer
 
 end
 
