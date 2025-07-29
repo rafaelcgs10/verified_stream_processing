@@ -435,6 +435,15 @@ lemma input_invar_extend[intro]:
   apply auto
   done
 
+lemma input_invar_Cons[intro]:
+  "input_invar t (buf(p := [] # buf')) outp \<Longrightarrow>
+   input_invar (t(p := Suc (t p))) (buf(p := buf')) outp"
+  unfolding input_invar_def
+  apply (simp del: upt.upt_Suc)
+  apply (subst upt_conv_Cons)
+   apply simp_all
+  done
+
 lemma input_invar_cong:
   "input_invar t' buf' op' \<Longrightarrow>
    t = t' \<Longrightarrow> buf = buf' \<Longrightarrow> op = op' \<Longrightarrow>
