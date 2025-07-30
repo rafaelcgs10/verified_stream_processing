@@ -26,43 +26,43 @@ corec max_top_aux where
     let above_ts = [t \<leftarrow> ts. \<not> less_than_frontier (front os 0) t] in
     let batches = map (\<lambda> t. (buf t, t)) below_ts in
     let os' = foldl (\<lambda> os (x, t). produce os (Cap t 0) [x]) os batches in
-    let os'' = foldl drop_cap os' (map (\<lambda> t. Cap t 0) below_ts) in
-    let buf' = foldl (\<lambda> s t. buf(t := [])) buf below_ts in
+    let os'' = foldl drop_cap os' (map (\<lambda> t. Cap t 1) below_ts) in
+    let buf' = foldl (\<lambda> s cap. buf(cap := [])) buf below_ts in
     Silent (max_top_aux os'' buf' above_ts))
    (Read (Some 0)
-    (\<lambda> v. if is_Inl v then \<oslash> else
-     let (x, t) = projr v in
+    (\<lambda> x. if is_Inl x then \<oslash> else
+     let (x, t) = projr x in
      let (ts', os') = (if t\<in> set ts then (ts, os) else (ts @ [t], mint_cap os 0 t)) in
-     let buf' = buf(t := x # (buf t)) in
+     let buf' = buf(t := (x, t) # (buf t)) in
      max_top_aux os' buf' ts'))
     ((case outpu os 0 of
          [] \<Rightarrow> Silent (max_top_aux os buf ts)
-       |  (x, t) # xs \<Rightarrow> send_output (max_top_aux (os\<lparr> outpu := (outpu os)(0 := xs ) \<rparr>) buf ts) 0 (Max (set x), t)))
+       |  (x, t) # xs \<Rightarrow> send_output (max_top_aux (os\<lparr> outpu := (outpu os)(0 := xs ) \<rparr>) buf ts) 0 (Max (set x))))
     (let (os', st) = obtain_progress os in
      send_progress (max_top_aux os' buf ts) st)"
 
 
 lemma step_max_top_aux_elim:
-  assumes "step io (max_top_aux os buf ts) op"
+  assumes "step io (max_top_aux os buf caps) op"
   obtains
     st where "io = Inp None st" "\<not> is_Inl st \<or> (is_Inl st \<and> \<not> is_Inr (projl st))" "op = \<oslash>" 
-   | st where "io = Inp None st" "is_Inl st" "is_Inr (projl st)" "op = max_top_aux (os\<lparr> front := projr (projl st) \<rparr>) buf ts" 
-  | above_ts below_ts batches os' os'' buf' where "io = Tau" "below_ts = [t \<leftarrow> ts. less_than_frontier (front os 0) t]"
-    "above_ts = [t \<leftarrow> ts. \<not> less_than_frontier (front os 0) t]"
-    "batches = map (\<lambda> t. (buf t, t)) below_ts"
-    "os' = foldl (\<lambda> os (x, t). produce os (Cap t 0) [x]) os batches"
-    "os'' = foldl drop_cap os' (map (\<lambda> t. Cap t 0) below_ts)"
-    "buf' = foldl (\<lambda> s t. buf(t := [])) buf below_ts"
-    "op = max_top_aux os'' buf' above_ts"
+  | st where "io = Inp None st" "is_Inl st" "is_Inr (projl st)" "op = max_top_aux (os\<lparr> front := projr (projl st) \<rparr>) buf caps" 
+  | above_caps below_caps batches os' os'' buf' where "io = Tau" "below_caps = [cap \<leftarrow> caps. less_than_frontier (front os 0) (time cap)]"
+    "above_caps = [cap \<leftarrow> caps. \<not> less_than_frontier (front os 0) (time cap)]"
+    "batches = map (\<lambda> cap. (buf cap, cap)) below_caps"
+    "os' = foldl (\<lambda> os (m, cap). produce os cap [m]) os batches"
+    "os'' = foldl drop_cap os' below_caps"
+    "buf' = foldl (\<lambda> s cap. buf(cap := [])) buf below_caps"
+    "op = max_top_aux os'' buf' above_caps"
   | x where "io = Inp (Some 0) x" "isl x" "op = \<oslash>"
-  | x v t ts' os' buf' where "io = Inp (Some 0) v" "\<not> isl v" "(x, t) = projr v"
-    "(ts', os') = (if t\<in> set ts then (ts, os) else (ts @ [t], mint_cap os 0 t))"
-    "buf' = buf(t := x # (buf t))" "op = max_top_aux os' buf' ts'"
-  | "io = Tau" "outpu os 0 = []" "op = max_top_aux os buf ts"
-  | x xs t where "io = Out (Some 0) (Inr ((Max (set x)), t))" "outpu os 0 = (x, t) # xs"
-    "op = max_top_aux (os\<lparr> outpu := (outpu os)(0 := xs ) \<rparr>) buf ts"
+  | x n t caps' os' buf' where "io = Inp (Some 0) x" "\<not> isl x" "(n, t) = projr x"
+    "(caps', os') = (if Cap t 0 \<in> set caps then (caps, os) else (caps @ [Cap t 0], mint_cap os 0 t))"
+    "buf' = buf((Cap t 0) := n # (buf (Cap t 0)))" "op = max_top_aux os' buf' caps'"
+  | "io = Tau" "outpu os 0 = []" "op = max_top_aux os buf caps"
+  | x xs t where "io = Out (Some 0) (Inr (Max (set x), t))" "outpu os 0 = (x, t) # xs"
+    "op = max_top_aux (os\<lparr> outpu := (outpu os)(0 := xs ) \<rparr>) buf caps"
   | os' st where "io = Out None (Inl (Inl st))" "obtain_progress os = (os', st)"
-    "op = max_top_aux os' buf ts" 
+    "op = max_top_aux os' buf caps"
   using assms apply -
   apply atomize_elim
   apply (subst (asm) max_top_aux.code)
@@ -243,7 +243,7 @@ lemma wstep_max_op_simp[simp]:
   done
 
 abbreviation "inp_top os caps inps \<equiv> map_op (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (input_top os caps inps)"
-abbreviation "m_top os buf ts \<equiv>  map_op (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (max_top_aux os buf ts)"
+abbreviation "m_top os buf caps \<equiv>  map_op (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (max_top_aux os buf caps)"
 
 abbreviation "inp_m_top os1 caps1 inps buf1 os2 buf2 caps2 \<equiv>
    map_op (case_sum id id) (case_sum id id)
@@ -303,18 +303,19 @@ no_notation shiftr  (infixl \<open>>>\<close> 55)
 
 lemma
   \<open>input_invar n xs (\<lambda> p. concat (map (\<lambda> (xs, t). (map (\<lambda> x. (x, t))) xs) (outpu os2 p)) @ buf2l p @ (map projr o buf1 o Inr o Pair 1) p @ outpu os1 p) \<Longrightarrow>
-   buf2l = fold (\<lambda> t f. f(0 := f 0 @ map (\<lambda> x. (x, t)) (buf2 t))) ts (\<lambda> p. []) \<Longrightarrow>
-   dataflow_op sg (inp_m_top os1 (\<lambda> p. n p + length (xs p)) inps buf1 os2 buf2 ts) \<approx>
+   buf2l = fold (\<lambda> cap f. f(out cap := f (out cap) @ map (\<lambda> x. (x, time cap)) (buf2 cap))) caps2 (\<lambda> p. []) \<Longrightarrow>
+   dataflow_op sg (inp_m_top os1 (\<lambda> p. n p + length (xs p)) inps buf1 os2 buf2 caps2) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (max_op n (\<lambda> p. xs p @@- inps p))\<close>
-proof (coinduction arbitrary: os1 os2 n ts xs buf1 buf2 buf2l inps sg rule: weakBisimWeakUptoBisimCong)
+proof (coinduction arbitrary: os1 os2 n caps2 xs buf1 buf2 buf2l inps sg rule: weakBisimWeakUptoBisimCong)
   case SIM1
   then show ?case
     apply -
     unfolding wsim_def
     apply safe
     apply (elim step_max_top_aux_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits option.splits add: map_upd_upds_conv_if; hypsubst_thin)
-    subgoal for io op1' nid op'' io' op''a pa op2' io'a op''b xb xs' t
+    subgoal for io op1' nid op'' io' op''a pa op2' io'a op''b xb xsa t
       apply (drule input_invar_elim)
+      try0
 
       find_theorems input_invar name: elim
 end
