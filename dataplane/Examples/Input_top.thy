@@ -3,6 +3,7 @@ theory Input_top
 imports
   "../Timely_Infrastructure"
   "../Utils"
+  "Source_op"
 begin 
 
 corec input_op where
@@ -83,7 +84,8 @@ lemma wstep_input_op_simp[simp]:
     done
   done
 
-term The
+print_classes
+
 find_theorems "The _ = _"
 
 lemma input_top_correctness:
@@ -827,5 +829,138 @@ next
       done
     done
 qed
+
+find_consts name: lconcat
+
+lemma dataflow_op_input_top_source_op:
+  "(\<forall> p. xs p = outpu os p) \<Longrightarrow>
+   dataflow_op sg (map_op (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) (input_top os (\<lambda> p. n p) inps)) \<approx>
+   map_op (\<lambda> p. (nid, p)) (\<lambda> p. (nid, p)) (source_op (\<lambda> p. xs p @@- lconcat (lmap (\<lambda> (xs, t). map (\<lambda> x. (x, t)) xs) (lzip (inps p) (iterates ((+) 1) (n p))))))"
+proof (coinduction arbitrary: inps n  os xs sg rule: weakBisimWeakUptoBisimCong)
+  case SIM1
+  then show ?case 
+    apply -
+    unfolding wsim_def
+    apply safe
+    subgoal for io op1'
+      apply (elim step_map_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: list.splits if_splits; hypsubst_thin)
+      subgoal for nida p op'' x io' op''a xs'
+        apply (intro conjI exI)
+         apply (rule step_wstep)
+        apply (rule step_map_op)
+          apply (rule step_source_op_Out_intro[where p=p])
+            apply simp
+           apply (rule refl)
+          apply simp_all
+     apply (intro relcomppI)
+                defer
+                apply (rule wb_upto_b_base)
+                defer
+                apply (rule wbisim_refl)
+         apply (rule bisim_refl)
+                  apply (rule exI[of _ "inps"]) 
+              apply (rule exI[of _ ])
+        apply (rule exI[of _ "os\<lparr> outpu := (outpu os)(p := xs') \<rparr>"])
+        apply (intro exI conjI[rotated])
+          apply force
+         apply simp_all
+        apply (rule arg_cong3[where f=map_op])
+        apply simp_all
+        apply (rule arg_cong[where f=source_op])
+        apply force
+        done
+      subgoal for op'' io' op''a batch lxs p cap os' os''
+        apply (intro exI conjI)
+         apply force
+        apply (intro relcomppI)
+          defer
+          apply (rule wb_upto_b_base)
+          defer
+          apply (rule wbisim_refl)
+         apply (rule bisim_refl)
+        apply (rule exI[of _ "inps(p := LNil)"])
+        apply (rule exI)
+        apply (rule exI[of _ "os\<lparr> outpu := (outpu os)(p := outpu os p @ _), produ := _, inter := _ \<rparr>"])
+        apply (intro exI conjI[rotated])
+          apply fast
+        defer
+                apply (rule arg_cong2[where f=dataflow_op])
+        apply simp_all
+        apply (rule arg_cong3[where f=map_op])
+           apply simp_all
+         apply (rule arg_cong[where f=source_op])
+        apply (rule ext)
+        apply simp
+        apply (subst iterates.code)
+        apply clarsimp
+        apply (metis lshift_assoc shift_LNil)
+        done
+      subgoal for op'' io' op''a batch lxs p cap os' os''
+   apply (intro exI conjI)
+         apply force
+        apply (intro relcomppI)
+          defer
+          apply (rule wb_upto_b_base)
+          defer
+          apply (rule wbisim_refl)
+         apply (rule bisim_refl)
+  apply (rule exI[of _ "inps(p := lxs)"])
+        apply (rule exI)
+        apply (rule exI[of _ "os\<lparr> outpu := (outpu os)(p := outpu os p @ _), produ := _, inter := _ \<rparr>"])
+        apply (intro exI conjI[rotated])
+          apply fast
+        defer
+                apply (rule arg_cong2[where f=dataflow_op])
+        apply simp_all
+        apply (rule arg_cong3[where f=map_op])
+           apply simp_all
+         apply (rule arg_cong[where f=source_op])
+        apply (rule ext)
+        apply simp
+        apply (subst iterates.code)
+        apply clarsimp
+        apply (metis lshift_assoc)
+        done
+      subgoal
+        apply (intro exI conjI)
+         apply force
+        apply (intro relcomppI)
+          defer
+          apply (rule wb_upto_b_base)
+          defer
+          apply (rule wbisim_refl)
+         apply (rule bisim_refl)
+        apply (intro exI conjI[rotated])
+           defer
+           defer
+           apply (rule refl)
+          apply auto[1]
+        apply auto
+        done
+      done
+    done
+next
+  case SIM2
+  then show ?case 
+    apply -
+    unfolding wsim_def
+    apply safe
+    apply (elim step_map_op_elim step_source_op_elim conjE; simp split: list.splits if_splits; hypsubst_thin)
+    subgoal for o op1' io' op'' p x lxs
+      apply (cases "outpu os p")
+      subgoal
+        apply simp
+        apply (intro exI conjI)
+                unfolding wstep_def
+         apply (intro relcomppI)
+           apply (rule rtranclp.intros(2))
+            apply (rule relpowp_imp_rtranclp) 
+            apply (rule steps_Tau_dataflow_op_Tau_intro)
+            apply (rule steps_map_op)
+              apply (rule refl)+
+             defer
+             apply (rule ldropWhile_steps_input_top[where p=p])
+                oops
+
 
 end

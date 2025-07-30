@@ -229,20 +229,24 @@ lemma map_in_setD:
    f x \<in> set ys"
   by force
 
+term lzip
+
+term iterates
+
 lemma
-  \<open>input_invar (\<lambda> p. n p + length (xs1 p) + length (xs2 p) + length (xs3 p)) xs4 (outpu os1) \<Longrightarrow>
-   input_invar (\<lambda> p. n p + length (xs1 p) + length (xs2 p)) xs3 (map projr o buf1 o Inr o Pair 1) \<Longrightarrow>
+  \<open>input_invar (\<lambda> p. n p + length (xs1 p)) xs (\<lambda> p. outpu os2 p @ buf2l p @ (map projr o buf1 o Inr o Pair 1) p @ outpu os1 p) \<Longrightarrow>
    buf2l = fold (\<lambda> cap f. f(out cap := f (out cap) @ map (\<lambda> x. (x, time cap)) (buf2 cap))) caps2 (\<lambda> p. []) \<Longrightarrow>
-   input_invar (\<lambda> p. n p + length (xs1 p)) xs2 buf2l \<Longrightarrow>
-   input_invar n (\<lambda> p. map (\<lambda> xs. case xs of [] \<Rightarrow> [] | xs \<Rightarrow> [Max (set xs)]) (xs1 p)) (outpu os2) \<Longrightarrow>
-   dataflow_op sg (inp_m_top os1 (\<lambda> p. n p + length (xs1 p) + length (xs2 p) + length (xs3 p) + length (xs4 p)) inps buf1 os2 buf2 caps2) \<approx>
-   map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (max_op n (\<lambda> p. xs1 p @@- xs2 p @@- xs3 p @@- xs4 p @@- inps p))\<close>
-proof (coinduction arbitrary: os1 os2 n caps2 xs1 xs2 xs3 xs4 buf1 buf2 buf2l inps  sg rule: weakBisimWeakUptoBisimCong)
+   (\<forall> x \<in> set (xs 0). length x = 1) \<Longrightarrow>
+   dataflow_op sg (inp_m_top os1 (\<lambda> p. n p + length (xs p)) inps buf1 os2 buf2 caps2) \<approx>
+   map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (max_op n (\<lambda> p. xs p @@- inps p))\<close>
+proof (coinduction arbitrary: os1 os2 n caps2 xs1  buf1 buf2 buf2l inps  sg rule: weakBisimWeakUptoBisimCong)
   case SIM1
   then show ?case
     apply -
     unfolding wsim_def
     apply safe
+
+end
     apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits option.splits add: map_upd_upds_conv_if; hypsubst_thin)
     subgoal for io op1' nid op'' x io' op''a pa op2' io'a op''b xs
       apply (cases x; hypsubst_thin)
