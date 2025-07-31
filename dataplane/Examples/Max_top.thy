@@ -5,10 +5,6 @@ imports
   Input_top
 begin 
 
-
-
-definition "maxs buf = [(n, c) \<leftarrow> buf. n = Max (set (map fst ((filter (\<lambda> (n' :: nat, c'). time c = time c') buf))))]"
-
 (* FIXME: move me *)
 abbreviation "choice5 op1 op2 op3 op4 op5 \<equiv> choice3 (choice2 op1 op2) (choice2 op3 op4) op5"
 
@@ -33,7 +29,7 @@ corec max_top' where
     (\<lambda> x. if is_Inl x then \<oslash> else
      let (n, t) = projr x in
      let (caps', os') = (if Cap t 0 \<in> set caps then (caps, os) else (caps @ [Cap t 0], mint_cap os 0 t)) in
-     let buf' = buf((Cap t 0) := n # (buf (Cap t 0))) in
+     let buf' = BENQ (Cap t 0) n buf in
      max_top' os' buf' caps'))
     ((case outpu os 0 of
          [] \<Rightarrow> Silent (max_top' os buf caps)
@@ -56,7 +52,7 @@ lemma step_max'_top_elim:
   | x where "io = Inp (Some 0) x" "is_Inl x" "op = \<oslash>"
   | x n t caps' os' buf' where "io = Inp (Some 0) x" "\<not> is_Inl x" "(n, t) = projr x"
     "(caps', os') = (if Cap t 0 \<in> set caps then (caps, os) else (caps @ [Cap t 0], mint_cap os 0 t))"
-    "buf' = buf((Cap t 0) := n # (buf (Cap t 0)))" "op = max_top' os' buf' caps'"
+    "buf' = BENQ (Cap t 0) n buf" "op = max_top' os' buf' caps'"
   | "io = Tau" "outpu os 0 = []" "op = max_top' os buf caps"
   | x xs where "io = Out (Some 0) (Inr x)" "outpu os 0 = x # xs"
     "op = max_top' (os\<lparr> outpu := (outpu os)(0 := xs ) \<rparr>) buf caps"
@@ -229,25 +225,111 @@ lemma map_in_setD:
    f x \<in> set ys"
   by force
 
-term lzip
+(* FIXME: move me *)
+definition
+  buf_dom :: "('a \<Rightarrow> 'b buf) \<Rightarrow> 'a set" where
+  "buf_dom m = {a. m a \<noteq> []}"
+no_notation shiftr  (infixl \<open>>>\<close> 55)
+
+definition "list_to_buf xs = (\<lambda> t. map fst (filter (\<lambda> (x, t'). t' = t) xs))"
+
+lemma list_to_buf_empty[simp]:
+  "list_to_buf [] = (\<lambda>  _. [])"
+  unfolding list_to_buf_def by auto
+
+definition "update_caps caps xs = (fold (\<lambda> (x, t) caps. if Cap t (0 :: 1) \<in> set caps then caps else (caps @ [Cap t 0])) xs caps)"
+
+lemma update_caps_empty[simp]:
+  "update_caps caps [] = caps"
+  unfolding update_caps_def by auto
+
+definition "max_from_caps_buf caps buf = map (\<lambda> cap. (Max (set (buf cap)), time cap)) caps"
+
+definition "max_from_buf caps buf xs = (let caps' = update_caps caps xs in
+                                         let buf' = list_to_buf xs o time in max_from_caps_buf caps' (buf' >> buf))"
+
+lemma update_caps_new_cap:
+  "snd ` set xs = {t} \<Longrightarrow>
+   Cap t (0 :: 1) \<notin> set caps \<Longrightarrow>
+   update_caps caps xs = caps @ [Cap t 0]"
+  unfolding update_caps_def
+  apply (induct xs arbitrary: caps t rule: rev_induct)
+   apply clarsimp
+  subgoal for a xs caps
+    apply (cases a; fastforce)
+    done
+  done
+
+lemma update_caps_append[simp]:
+  "update_caps caps (ys @ xs) = update_caps (update_caps caps ys) xs"
+  unfolding update_caps_def
+  apply auto
+  done
+
+lemma set_update_caps[simp]:
+  "set (update_caps caps xs) = set caps \<union> (\<lambda> t. Cap t 0) ` snd ` set xs"
+  unfolding update_caps_def
+   apply (induct xs arbitrary: caps rule: rev_induct)
+   apply clarsimp
+  apply force
+  done
+
+
+lemma list_to_buf_append[simp]:
+  "list_to_buf (ys @ xs) = list_to_buf xs >> list_to_buf ys"
+  unfolding list_to_buf_def BULK_BENQ_def
+  apply (rule ext)
+  apply auto
+  done
+
+lemma max_from_buf_append[simp]:
+  "max_from_buf caps buf (ys @ xs) = max_from_buf (update_caps caps ys) ((list_to_buf ys o time) >> buf) xs"
+  unfolding max_from_buf_def Let_def 
+  apply (clarsimp simp flip: Un_assoc)
+  apply (metis BULK_BENQ_bulk_benq fun_comp_eq_conv)
+  done
+
+lemma max_from_buf_empty[simp]:
+  "max_from_buf caps buf [] = max_from_caps_buf caps buf"
+  unfolding max_from_buf_def max_from_caps_buf_def update_caps_def list_to_buf_def
+  apply auto
+  done
+
+lemma max_from_buf_move_all:
+  "max_from_buf caps buf xs = max_from_buf ((update_caps caps xs)) ((list_to_buf xs o time) >> buf) []" 
+  by (metis append.right_neutral max_from_buf_append)
+
+lemma max_from_caps_buf_append[simp]:
+  "set caps1 \<inter> set caps2 = {} \<Longrightarrow>
+   max_from_caps_buf (caps1 @ caps2) buf = max_from_caps_buf caps1 buf @ max_from_caps_buf caps2 buf"
+  unfolding max_from_caps_buf_def by auto
+
+lemma max_from_caps_buf_BULK_BENQ_empty:
+  "buf_dom buf1 \<inter> set caps = {} \<Longrightarrow>
+   max_from_caps_buf caps (buf1 >> buf2) = max_from_caps_buf caps buf2"
+  unfolding max_from_caps_buf_def BULK_BENQ_def buf_dom_def apply clarsimp
+  apply (metis (mono_tags, lifting) List.set_empty disjoint_iff mem_Collect_eq monoid.right_neutral sup_bot.monoid_axioms)
+  done
 
 lemma
-  \<open>xs 0 = outpu os2 0 @ buf2l 0 @ (map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0 \<Longrightarrow>
-   buf2l = fold (\<lambda> cap f. f(out cap := f (out cap) @ map (\<lambda> x. (x, time cap)) (buf2 cap))) caps2 (\<lambda> p. []) \<Longrightarrow>
-   (\<forall> (x, t) \<in> set (xs 0).  \<not> (\<exists> y. (y, t) \<in> set (remove1 (x, t) (xs 0)))) \<Longrightarrow>
+  \<open>xs 0 = outpu os2 0 \<Longrightarrow>
+   ys 0 = max_from_buf caps buf2 ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0) \<Longrightarrow>
    (\<forall> x \<in> set (buf1 (Inr (1, 0))). is_Inr x) \<Longrightarrow>
-   dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps2) \<approx>
-   map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
-proof (coinduction arbitrary: xs n os1 os2 caps2 buf1 buf2 buf2l inps sg rule: weakBisimWeakUptoBisimCong)
+   (\<forall> t \<in> snd ` set ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0). t < n 0) \<Longrightarrow>
+   (\<forall> t \<in> time ` set caps. t < n 0) \<Longrightarrow>
+   set caps = buf_dom buf2 \<Longrightarrow>
+   dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
+   map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
+proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg rule: weakBisimWeakUptoBisimCong)
   case SIM1
   then show ?case
     apply -
     unfolding wsim_def
     apply (intro allI conjI impI)
     subgoal premises prems for io op1'
-      using prems(4-) apply -
+      using prems(7-) apply -
     apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin?)
-      subgoal for nida op'' x io' op''a pa op2' io'a op''b xs'
+      subgoal for nid op'' x io' op''a pa op2' io'a op''b xs'
         using prems(1,2) apply -
         apply (intro conjI exI)
          apply (rule step_wstep)
@@ -263,88 +345,26 @@ proof (coinduction arbitrary: xs n os1 os2 caps2 buf1 buf2 buf2l inps sg rule: w
            apply (rule wbisim_refl)
           apply (rule wb_upto_b_base)
         apply simp
-        apply (rule exI[of _ "xs(1 := xs' @ fold (\<lambda>cap f. f(1 := f 1 @ map (\<lambda>x. (x, time cap)) (buf2 cap))) caps2 (\<lambda>p. []) 1 @ map projr (buf1 (Inr (1, 1))) @ outpu os1 1)"])
-          apply (rule exI)
-          apply (rule exI[of _ os1])
-          apply (rule exI[of _ "os2\<lparr> outpu := (outpu os2)(1 := xs') \<rparr>"])
-          apply (rule exI[of _ caps2])
-          apply (rule exI[of _ buf1])
-          apply (rule exI[of _ buf2])
-          apply (rule exI[of _ inps])
-          apply (intro exI[of _ sg] conjI)
-           apply simp_all
+        apply (intro conjI exI)
+            apply (rule refl)+
+        defer
+            apply (rule refl)+
+        using prems(3) apply simp
+        using prems(4) apply simp
+        using prems(5) apply simp
+        using prems(6) apply simp
                apply (rule arg_cong3[where f=map_op])
                  apply simp_all
         apply (rule arg_cong[where f=source_op])
          apply (rule ext)
-         apply (simp_all)
-        using prems(3) apply -
-        apply (auto split: prod.splits if_splits)
+        apply (simp_all add: comp_def)
         done
-      subgoal for op'' io' op''a p op1' q io'a op''b xa xs'
-        using prems(1,2) apply -
-        apply (intro conjI exI)
-         apply force
-          apply (intro relcomppI)
-            apply (rule bisim_refl)
-           defer
-           apply (rule wbisim_refl)
-          apply (rule wb_upto_b_base)
-        apply simp
-        apply (rule exI[of _ "xs"])
-          apply (rule exI)
-          apply (rule exI[of _ "os1\<lparr> outpu := (outpu os1)(1 := xs') \<rparr>"])
-          apply (rule exI[of _ os2])
-        apply (rule exI[of _ caps2])
-          apply (rule exI[of _ "BENQ (Inr (1, 1)) (Inr xa) buf1"])
-          apply (rule exI[of _ buf2])
-          apply (rule exI[of _ inps])
-          apply (intro exI[of _ sg] conjI)
-           apply simp_all
-         apply (rule arg_cong2[where f=dataflow_op])
-        apply simp_all
-               apply (rule arg_cong3[where f=map_op])
-           apply simp_all
-               apply (rule arg_cong4[where f=comp_op])
-           apply simp_all
-               apply (rule arg_cong3[where f=map_op])
-           apply simp_all
-         apply (rule arg_cong3[where f=input_top])
-           apply simp_all
-        apply force
-        using prems(3) apply -
-        apply (auto split: prod.splits if_splits)
-        done
-      subgoal for op'' io' op''a p x op2' io'a op''b xa
-        using prems(1,2) apply -
-        apply (rule FalseE)
-        apply (cases "buf1 (Inr (1, 1))"; simp add: BHD_def split: sum.splits)
-        subgoal for a
-          by (cases a; simp)
-        done
-      subgoal for op'' io' op''a p x op2' io'a op''b xa n t caps'
-        using prems(1,2) apply -
-        apply (intro conjI exI)
-         apply force
-          apply (intro relcomppI)
-            apply (rule bisim_refl)
-           defer
-           apply (rule wbisim_refl)
-          apply (rule wb_upto_b_base)
-        apply simp
-        apply (rule exI[of _ "xs"])
-          apply (rule exI)
-          apply (rule exI[of _ "os1"])
-          apply (rule exI[of _ "os2"])
-        apply (rule exI[of _ caps2])
-          apply (rule exI[of _ "BTL (Inr (1, 1)) buf1"])
-        sorry
-             prefer 3
+      prefer 6
       subgoal for op'' io' op''a op1' io'a op''b batch lxs cap os' os''
-        using prems(1,2) apply -
         apply (cases batch)
         defer
         subgoal for b batch'
+        using prems(1,2) apply -
         apply (intro exI conjI)
          apply (subst iterates.code)
            apply (simp flip: snoc_shift)
@@ -354,14 +374,77 @@ proof (coinduction arbitrary: xs n os1 os2 caps2 buf1 buf2 buf2l inps sg rule: w
            defer
            apply (rule wbisim_refl)
           apply (rule wb_upto_b_base)
-        apply (rule exI[of _ "xs(1 := xs 1 @ [(Max (insert b (set batch')), n 1)])"])
           apply (intro conjI exI)
               apply (rule refl)+
-             apply simp
-          apply simp
+           apply simp
+        defer
+              apply (rule refl)+
+        using prems(3) apply simp
+        subgoal
+        using prems(4) apply simp
+        apply auto
+        apply (meson Un_iff image_eqI less_Suc_eq)
+        done
+      using prems(5) apply force
+      using prems(6) apply simp
+               apply (rule arg_cong3[where f=map_op])
+                 apply simp_all
+        apply (rule arg_cong[where f=source_op])
+         apply (rule ext)
+        apply simp_all
+        apply (rule arg_cong2[where f=lshift])
+        apply (simp_all flip: snoc_shift)
+      apply (rule arg_cong2[where f=lshift])
+        using prems(4,5,6) apply (simp_all flip: snoc_shift)
+        apply hypsubst_thin
+        apply (subst max_from_buf_move_all)
+        apply simp
+        apply (subst (1) max_from_buf_move_all)
+        apply simp
+        apply (subst (5) update_caps_new_cap[where t="n 1"])
+          apply force
+        subgoal
+          apply (simp flip: update_caps_append)
+          apply force
+          done
+        apply simp
+        apply (subst max_from_caps_buf_append)
+         apply force
+        apply (subst (3) max_from_caps_buf_def)
+        apply (clarsimp simp add: comp_def)
+        apply (intro conjI)
+        apply (simp flip: BULK_BENQ_assoc)
+        apply (subst (2) max_from_caps_buf_BULK_BENQ_empty)
+        subgoal
+          unfolding buf_dom_def list_to_buf_def
+          by (auto; force)
+         apply simp
+        subgoal
+          unfolding list_to_buf_def BULK_BENQ_def
+          apply clarsimp
+          apply (rule arg_cong[where f=Max])
+          apply (rule arg_cong2[where f=insert])
+           apply simp
+          apply (subgoal_tac "buf2 (Cap (n 1) 1) = [] \<and> {x \<in> projr ` set (buf1 (Inr (1, 1))). case x of (x, t') \<Rightarrow> t' = n 1} = {} \<and> {x \<in> set (outpu os1 1). case x of (x, t') \<Rightarrow> t' = n 1} = {}")
+           apply clarsimp
+           apply fast
+          unfolding buf_dom_def
+          apply auto
+          done
+        done
+
+        find_theorems 
+
+end
+        apply (rule arg_cong2[where f=max_from_caps_buf])
+          apply simp_all
+        subgoal
+          unfolding list_to_buf_def
+          apply (rule ext)
+          apply auto
 
 
-          find_theorems lshift LCons
+          find_theorems update_caps Nil
 
 
 
