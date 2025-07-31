@@ -53,8 +53,8 @@ lemma step_max'_top_elim:
     "os'' = foldl drop_cap os' below_caps"
     "buf' = foldl (\<lambda> s cap. buf(cap := [])) buf below_caps"
     "op = max_top' os'' buf' above_caps"
-  | x where "io = Inp (Some 0) x" "isl x" "op = \<oslash>"
-  | x n t caps' os' buf' where "io = Inp (Some 0) x" "\<not> isl x" "(n, t) = projr x"
+  | x where "io = Inp (Some 0) x" "is_Inl x" "op = \<oslash>"
+  | x n t caps' os' buf' where "io = Inp (Some 0) x" "\<not> is_Inl x" "(n, t) = projr x"
     "(caps', os') = (if Cap t 0 \<in> set caps then (caps, os) else (caps @ [Cap t 0], mint_cap os 0 t))"
     "buf' = buf((Cap t 0) := n # (buf (Cap t 0)))" "op = max_top' os' buf' caps'"
   | "io = Tau" "outpu os 0 = []" "op = max_top' os buf caps"
@@ -231,453 +231,154 @@ lemma map_in_setD:
 
 term lzip
 
-term iterates
-
 lemma
-  \<open>input_invar (\<lambda> p. n p + length (xs1 p)) xs (\<lambda> p. outpu os2 p @ buf2l p @ (map projr o buf1 o Inr o Pair 1) p @ outpu os1 p) \<Longrightarrow>
+  \<open>xs 0 = outpu os2 0 @ buf2l 0 @ (map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0 \<Longrightarrow>
    buf2l = fold (\<lambda> cap f. f(out cap := f (out cap) @ map (\<lambda> x. (x, time cap)) (buf2 cap))) caps2 (\<lambda> p. []) \<Longrightarrow>
-   (\<forall> x \<in> set (xs 0). length x = 1) \<Longrightarrow>
-   dataflow_op sg (inp_m_top os1 (\<lambda> p. n p + length (xs p)) inps buf1 os2 buf2 caps2) \<approx>
-   map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (max_op n (\<lambda> p. xs p @@- inps p))\<close>
-proof (coinduction arbitrary: os1 os2 n caps2 xs1  buf1 buf2 buf2l inps  sg rule: weakBisimWeakUptoBisimCong)
+   (\<forall> (x, t) \<in> set (xs 0).  \<not> (\<exists> y. (y, t) \<in> set (remove1 (x, t) (xs 0)))) \<Longrightarrow>
+   (\<forall> x \<in> set (buf1 (Inr (1, 0))). is_Inr x) \<Longrightarrow>
+   dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps2) \<approx>
+   map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
+proof (coinduction arbitrary: xs n os1 os2 caps2 buf1 buf2 buf2l inps sg rule: weakBisimWeakUptoBisimCong)
   case SIM1
   then show ?case
     apply -
     unfolding wsim_def
-    apply safe
-
-end
-    apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits option.splits add: map_upd_upds_conv_if; hypsubst_thin)
-    subgoal for io op1' nid op'' x io' op''a pa op2' io'a op''b xs
-      apply (cases x; hypsubst_thin)
-      apply (drule input_invar_elim[where buf="\<lambda>p. map (case_list [] (\<lambda>a list. [Max (insert a (set list))])) (xs1 1)"])
-       apply assumption
-      apply safe
-      apply (clarsimp simp add: map_eq_append_conv split: list.splits)
-      subgoal for l zs la zsa x xs'
+    apply (intro allI conjI impI)
+    subgoal premises prems for io op1'
+      using prems(4-) apply -
+    apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin?)
+      subgoal for nida op'' x io' op''a pa op2' io'a op''b xs'
+        using prems(1,2) apply -
         apply (intro conjI exI)
          apply (rule step_wstep)
          apply (rule step_map_op)
-          apply (rule step_max_op_Out_intro2[where p=0])
-            apply (subst ldropWhile_lshift[where x="x # xs'"])
-              apply simp
-             apply simp
-            apply (subst dropWhile_append2)
-        subgoal premises prems for x
-          using prems(1,7,11) apply -
-          apply (drule map_in_setD)
-           apply assumption
-          apply (auto split: list.splits)
-          done
+          apply (rule step_source_op_Out_intro[where p=0])
             apply simp
-           apply simp
+           apply (rule refl)
           apply (simp add: defaults_num1_def)
          apply simp
-         apply (subst ltakeWhile_lfshift[where x="x # xs'"])
-           apply simp
-          apply simp
-         apply simp
-         apply (subst takeWhile_append2)
-        subgoal premises prems for x
-          using prems(1,7,11) apply -
-          apply (drule map_in_setD)
-           apply assumption
-          apply (auto split: list.splits)
-          done
-         apply simp
-         apply (metis (no_types, lifting) length_map)
-        subgoal
           apply (intro relcomppI)
             apply (rule bisim_refl)
            defer
            apply (rule wbisim_refl)
-          apply simp
           apply (rule wb_upto_b_base)
-          apply simp
+        apply simp
+        apply (rule exI[of _ "xs(1 := xs' @ fold (\<lambda>cap f. f(1 := f 1 @ map (\<lambda>x. (x, time cap)) (buf2 cap))) caps2 (\<lambda>p. []) 1 @ map projr (buf1 (Inr (1, 1))) @ outpu os1 1)"])
+          apply (rule exI)
           apply (rule exI[of _ os1])
-          apply (rule exI[of _ "os2\<lparr> outpu := (outpu os2)(1 := xs) \<rparr>"])
-          apply (rule exI[of _ "n(1 := Suc (dataflow_topology_from_tree.followed_by (n 1) (the_enat (llength (ltakeWhile ((=) []) ((la @ (x # xs') # zsa) @@- xs2 1 @@- xs3 1 @@- xs4 1 @@- inps 1))))))"])
+          apply (rule exI[of _ "os2\<lparr> outpu := (outpu os2)(1 := xs') \<rparr>"])
           apply (rule exI[of _ caps2])
-          apply (rule exI[of _ "xs1(1 := zsa)"])
-          apply (rule exI[of _ xs2])
-          apply (rule exI[of _ xs3])
-          apply (rule exI[of _ xs4])
           apply (rule exI[of _ buf1])
           apply (rule exI[of _ buf2])
           apply (rule exI[of _ inps])
           apply (intro exI[of _ sg] conjI)
-          apply simp_all
-          subgoal
-               apply (rule arg_cong2[where f=dataflow_op])
-                apply (rule refl)+
+           apply simp_all
                apply (rule arg_cong3[where f=map_op])
                  apply simp_all
-               apply (rule arg_cong4[where f=comp_op])
-                  apply simp_all
-               apply (rule arg_cong3[where f=map_op])
-                 apply simp_all
-               apply (rule arg_cong3[where f=input_top])
-                 apply simp_all
-               apply (rule ext)
-            apply simp_all
-            apply (subst ltakeWhile_lfshift[where x="x # xs'"])
-                apply simp_all
-   apply (subst takeWhile_append2)
-        subgoal 
-          apply (drule map_in_setD)
-           apply assumption
-          apply (auto split: list.splits)
-          done
-        apply simp
-        done
-      subgoal
-        apply (rule arg_cong3[where f=map_op])
-          apply simp_all
-        apply (rule arg_cong2[where f=max_op])
+        apply (rule arg_cong[where f=source_op])
          apply (rule ext)
-         apply simp_all
-        apply force
+         apply (simp_all)
+        using prems(3) apply -
+        apply (auto split: prod.splits if_splits)
         done
-      subgoal
-        apply simp_all
-        apply (subst ltakeWhile_lfshift[where x="x # xs'"])
-          apply simp_all
-        apply (subst takeWhile_append2)
-        subgoal 
-          apply (drule map_in_setD)
-           apply assumption
-          apply (auto split: list.splits)
-          done
-        apply simp
-        subgoal
-          apply (rule input_invar_cong)
-             apply assumption
-            apply simp_all
-          apply (rule ext)
-          apply auto
-          done
-        done
-      subgoal
-        apply (rule input_invar_cong[where ?buf'=xs3])
-           apply assumption
-          apply simp_all
-        apply (rule ext)
-        apply auto
-        apply (subst ltakeWhile_lfshift[where x="x # xs'"])
-          apply simp_all
-        apply (subst takeWhile_append2)
-        subgoal 
-          apply (drule map_in_setD)
-           apply assumption
-          apply (auto split: list.splits)
-          done
-        apply simp
-        done
- subgoal
-        apply (rule input_invar_cong[where ?buf'=xs2])
-           apply assumption
-          apply simp_all
-   apply (rule ext)
-   apply auto
- apply (subst ltakeWhile_lfshift[where x="x # xs'"])
-          apply simp_all
-        apply (subst takeWhile_append2)
-        subgoal 
-          apply (drule map_in_setD)
-           apply assumption
-          apply (auto split: list.splits)
-          done
-        apply simp
-        done
-      subgoal premises prems2
-        using prems2(1,2,6,7,9,10-) apply -
-        apply (drule input_invar_Cons)
-        apply simp
-  apply (rule input_invar_cong)
-           apply assumption
-          apply auto
-        apply (rule ext)
-        apply auto
-         apply (subst ltakeWhile_lfshift[where x="x # xs'"])
-          apply simp_all
-        apply (subst takeWhile_append2)
-        subgoal 
-          apply (drule map_in_setD)
-           apply assumption
-          apply (auto split: list.splits)
-          done
-        apply auto
-        apply (metis length_map)
-        done
-      done
-    done
-  done
-  subgoal for io op1' op'' io' op''a p op1'a q io'a op''b xa xs
-    apply (cases xa; hypsubst_thin)
-    apply (drule input_invar_elim)
-     apply assumption
-    apply safe
-    apply simp
-    subgoal for a l ys zs
-      apply (rule exI[of _ "map_op (Pair 1) (Pair 1) (max_op n (\<lambda>p. xs1 1 @@- xs2 1 @@- (xs3 1 @ (map fst l @ [(a # ys)])) @@- map fst zs @@- inps 1))"])
-      apply (intro conjI exI)
-        apply (simp add: lshift_assoc)
-    apply (intro relcomppI)
+      subgoal for op'' io' op''a p op1' q io'a op''b xa xs'
+        using prems(1,2) apply -
+        apply (intro conjI exI)
+         apply force
+          apply (intro relcomppI)
             apply (rule bisim_refl)
            defer
            apply (rule wbisim_refl)
-    apply (rule wb_upto_b_base)
-          apply (rule exI[of _ "os1\<lparr> outpu := (outpu os1)(1 := xs) \<rparr>"])
-          apply (rule exI[of _ "os2"])
+          apply (rule wb_upto_b_base)
+        apply simp
+        apply (rule exI[of _ "xs"])
           apply (rule exI)
-          apply (rule exI)
-          apply (rule exI)
-          apply (rule exI)
-          apply (rule exI[of _ "xs3(1 := xs3 1 @ (map fst l) @ [a # ys])"])
-          apply (rule exI[of _ "xs4(1 := map fst zs)"])
-          apply (rule exI[of _ "BENQ (Inr (1, 1))
-                    (Inr (a, dataflow_topology_from_tree.followed_by
-                              (dataflow_topology_from_tree.followed_by (dataflow_topology_from_tree.followed_by (dataflow_topology_from_tree.followed_by (n 1) (length (xs1 1))) (length (xs2 1))) (length (xs3 1))) (length l)))
-                    buf1"])
-          apply (rule exI)
+          apply (rule exI[of _ "os1\<lparr> outpu := (outpu os1)(1 := xs') \<rparr>"])
+          apply (rule exI[of _ os2])
+        apply (rule exI[of _ caps2])
+          apply (rule exI[of _ "BENQ (Inr (1, 1)) (Inr xa) buf1"])
+          apply (rule exI[of _ buf2])
           apply (rule exI[of _ inps])
-      apply (intro exI[of _ sg] conjI)
-           apply simp
-           defer
-           apply (rule arg_cong3[where f=map_op])
-             apply simp_all
-           apply (rule arg_cong2[where f=max_op])
-          apply force
-      apply (rule ext)
-         apply (simp flip: lshift_assoc)
-      subgoal premises prems
-        using prems(9) apply -
-
-
-end
-
-           apply (rule refl)+
-    subgoal
-        apply (rule input_invar_cong[where ?buf'=xs4])
-           apply assumption
-          apply simp_all
-   apply (rule ext)
-   apply auto
-
-
-        find_theorems input_invar name: eli
-
-end
-
-
-        apply (subst ltakeWhile_lfshift[where x="x # xs'"])
-                apply simp_all
-        apply (subst takeWhile_append2)
-        subgoal 
-          using prems apply -
-          apply (drule map_in_setD)
-           apply assumption
-          apply (auto split: list.splits)
-          done
-        apply simp
-        done
-        subgoal
-          using prems(4) apply -
- apply (rule input_invar_cong)
-             apply assumption
-            apply simp_all
-           apply (rule ext)
-           apply auto
-        apply (subst ltakeWhile_lfshift[where x="x # xs'"])
-                apply simp_all
-        apply (subst takeWhile_append2)
-        subgoal 
-          using prems apply -
-          apply (drule map_in_setD)
-           apply assumption
-          apply (auto split: list.splits)
-          done
-        apply simp
-        done
-      subgoal
-          using prems(5) apply -
-          apply (rule input_invar_cong)
-             apply assumption
-            apply simp_all
-           apply (rule ext)
-           apply auto
-        apply (subst ltakeWhile_lfshift[where x="x # xs'"])
-                apply simp_all
-        apply (subst takeWhile_append2)
-        subgoal 
-          using prems apply -
-          apply (drule map_in_setD)
-           apply assumption
-          apply (auto split: list.splits)
-          done
-        apply simp
-        done
-    subgoal
-          using prems(9,2) apply -
-         
-          find_theorems "concat _ = concat _"
-
-end
-          apply (rule exI[of _ os1])
-            apply (rule exI[of _ "os2\<lparr> outpu := (outpu os2)(1 := xs) \<rparr>"])
-            apply (rule exI[of _ "n(0 := Suc (dataflow_topology_from_tree.followed_by (n 0) (the_enat (llength (ltakeWhile ((=) []) ((la @ (x # xs') # zsa) @@- xs2 1 @@- xs3 1 @@- xs4 1 @@- inps 1))))))"])
-            apply (rule exI[of _ caps2])
-          apply (rule exI[of _ "xs1( 0 := zsa)"])
-          apply (rule exI[of _ "xs2"])
-          apply (rule exI[of _ "xs3"])
-          apply (rule exI[of _ "xs4"])
-            apply (rule exI[of _ "buf1"])
-            apply (rule exI[of _ "buf2"])
-          apply (rule exI[of _ "inps"])
-            apply (intro exI[of _ sg] conjI)
-                 apply (rule refl)+
-                 apply simp
-          subgoal
-               apply (rule input_invar_cong)
-          using prems(3) apply assumption 
-                 defer
-            apply (rule refl)+
-          apply (rule ext)
-          apply auto
-        apply (subst ltakeWhile_lfshift[where x="x # xs'"])
-            apply simp_all
-                   apply (subst takeWhile_append2)
-          using prems(1,7) apply -
-          using
-            \<open>\<And>xb. map (case_list [] (\<lambda>a list. [Max (insert a (set list))])) la = map fst l \<Longrightarrow> map (case_list [] (\<lambda>a list. [Max (insert a (set list))])) zsa = map fst zs \<Longrightarrow> input_invar (\<lambda>p. Suc (dataflow_topology_from_tree.followed_by (dataflow_topology_from_tree.followed_by (dataflow_topology_from_tree.followed_by (n 1) (dataflow_topology_from_tree.followed_by (length la) (length zsa))) (length (xs2 1))) (length (xs3 1)))) xs4 (outpu os1) \<Longrightarrow> input_invar (\<lambda>p. Suc (dataflow_topology_from_tree.followed_by (dataflow_topology_from_tree.followed_by (n 1) (dataflow_topology_from_tree.followed_by (length la) (length zsa))) (length (xs2 1)))) xs3 ((map projr \<circ> buf1 \<circ> Inr \<circ>\<circ> Pair) 1) \<Longrightarrow> input_invar (\<lambda>p. Suc (dataflow_topology_from_tree.followed_by (n 1) (dataflow_topology_from_tree.followed_by (length la) (length zsa)))) xs2 (fold (\<lambda>cap f. f(1 := f 1 @ map (\<lambda>x. (x, time cap)) (buf2 cap))) caps2 (\<lambda>p. [])) \<Longrightarrow> outpu os2 1 = (Max (insert x (set xs')), dataflow_topology_from_tree.followed_by (n 1) (length l)) # xs \<Longrightarrow> \<forall>x\<in>set l. fst x = [] \<Longrightarrow> [n 1..< dataflow_topology_from_tree.followed_by (n 1) (dataflow_topology_from_tree.followed_by (length la) (length zsa))] @ [dataflow_topology_from_tree.followed_by (n 1) (dataflow_topology_from_tree.followed_by (length la) (length zsa))] = map snd l @ dataflow_topology_from_tree.followed_by (n 1) (length l) # map snd zs \<Longrightarrow> input_invar (n(1 := dataflow_topology_from_tree.followed_by (n 1) (length l))) ((\<lambda>p. map fst l @ [Max (insert x (set xs'))] # map fst zs) (1 := [] # map fst zs)) ((outpu os2)(1 := xs)) \<Longrightarrow> xs1 1 = la @ (x # xs') # zsa \<Longrightarrow> xb \<in> set la \<Longrightarrow> [] = xb\<close>
-            prems(10,2,3,4,5,6,8,9) apply blast
-          apply simp
-          done
-        subgoal
-               apply (rule input_invar_cong)
-          using prems(4) apply assumption 
-          apply (rule ext)
-          apply auto
-  apply (subst ltakeWhile_lfshift[where x="x # xs'"])
-            apply simp_all
-                   apply (subst takeWhile_append2)
-          using prems(1,7) apply -
-          using
-            \<open>\<And>xb. map (case_list [] (\<lambda>a list. [Max (insert a (set list))])) la = map fst l \<Longrightarrow> map (case_list [] (\<lambda>a list. [Max (insert a (set list))])) zsa = map fst zs \<Longrightarrow> input_invar (\<lambda>p. Suc (dataflow_topology_from_tree.followed_by (dataflow_topology_from_tree.followed_by (dataflow_topology_from_tree.followed_by (n 1) (dataflow_topology_from_tree.followed_by (length la) (length zsa))) (length (xs2 1))) (length (xs3 1)))) xs4 (outpu os1) \<Longrightarrow> input_invar (\<lambda>p. Suc (dataflow_topology_from_tree.followed_by (dataflow_topology_from_tree.followed_by (n 1) (dataflow_topology_from_tree.followed_by (length la) (length zsa))) (length (xs2 1)))) xs3 ((map projr \<circ> buf1 \<circ> Inr \<circ>\<circ> Pair) 1) \<Longrightarrow> input_invar (\<lambda>p. Suc (dataflow_topology_from_tree.followed_by (n 1) (dataflow_topology_from_tree.followed_by (length la) (length zsa)))) xs2 (fold (\<lambda>cap f. f(1 := f 1 @ map (\<lambda>x. (x, time cap)) (buf2 cap))) caps2 (\<lambda>p. [])) \<Longrightarrow> outpu os2 1 = (Max (insert x (set xs')), dataflow_topology_from_tree.followed_by (n 1) (length l)) # xs \<Longrightarrow> \<forall>x\<in>set l. fst x = [] \<Longrightarrow> [n 1..< dataflow_topology_from_tree.followed_by (n 1) (dataflow_topology_from_tree.followed_by (length la) (length zsa))] @ [dataflow_topology_from_tree.followed_by (n 1) (dataflow_topology_from_tree.followed_by (length la) (length zsa))] = map snd l @ dataflow_topology_from_tree.followed_by (n 1) (length l) # map snd zs \<Longrightarrow> input_invar (n(1 := dataflow_topology_from_tree.followed_by (n 1) (length l))) ((\<lambda>p. map fst l @ [Max (insert x (set xs'))] # map fst zs) (1 := [] # map fst zs)) ((outpu os2)(1 := xs)) \<Longrightarrow> xs1 1 = la @ (x # xs') # zsa \<Longrightarrow> xb \<in> set la \<Longrightarrow> [] = xb\<close>
-            prems(10,2,3,4,5,6,8,9) apply blast
-          apply simp
-          done
+          apply (intro exI[of _ sg] conjI)
            apply simp_all
-        prefer 3
-        subgoal
-          apply (rule wbisim_map_op)
-          apply (rule wbisim_refl_alt)
-          apply (rule arg_cong2[where f=max_op])
-           apply auto
-          apply (rule ext)
-          apply auto
-
-        find_theorems map_op wbisim
-
-
-        find_theorems input_invar
-
-end
-                apply (rule wb_upto_b_base)
-                defer
-                apply (rule wbisim_refl)
-               apply (rule bisim_refl)
-
-
-          find_theorems takeWhile append
-
-         thm map_eq_append_conv
-
-end
-             apply force
-            apply simp
-           apply simp
-          apply (simp add: defaults_num1_def)
-         apply simp
-         apply (intro conjI)
-        
-
-      thm input_invar_elim
-
-      find_theorems  defaults 
-
-
-    defer
-  (*   subgoal for op'' io' op''a p op1' q io'a op''b xa xs
-      apply (cases inps1; simp)
-      subgoal for xs inps1'
-        apply (cases xs; simp)
-        subgoal for n xs'
-          apply hypsubst_thin
-          apply (rule exI)
-          apply (rule conjI)
-           apply (rule rtranclp.intros(1))
+         apply (rule arg_cong2[where f=dataflow_op])
+        apply simp_all
+               apply (rule arg_cong3[where f=map_op])
+           apply simp_all
+               apply (rule arg_cong4[where f=comp_op])
+           apply simp_all
+               apply (rule arg_cong3[where f=map_op])
+           apply simp_all
+         apply (rule arg_cong3[where f=input_top])
+           apply simp_all
+        apply force
+        using prems(3) apply -
+        apply (auto split: prod.splits if_splits)
+        done
+      subgoal for op'' io' op''a p x op2' io'a op''b xa
+        using prems(1,2) apply -
+        apply (rule FalseE)
+        apply (cases "buf1 (Inr (1, 1))"; simp add: BHD_def split: sum.splits)
+        subgoal for a
+          by (cases a; simp)
+        done
+      subgoal for op'' io' op''a p x op2' io'a op''b xa n t caps'
+        using prems(1,2) apply -
+        apply (intro conjI exI)
+         apply force
           apply (intro relcomppI)
-            defer
-          apply (rule exI[of _ "LCons xs' inps1'"])
-          apply (rule exI[of _ "inps2"])
-          apply (rule exI[of _ "BENQ (Inr (1, 1)) (Inr (n, i)) buf1"])
-          apply (rule exI[of _ "buf2"])
-          apply (rule exI[of _ "i"])
-          apply (rule exI[of _ "j"])
-          apply (rule exI[of _ "sg\<lparr> lo_pt := (lo_pt sg) @ extract_progress 0 (edges sg) \<lparr>cons = [], inte = [], prod = [(1, i, 1)]\<rparr> \<rparr>"])
-          apply simp
-          apply (intro conjI[rotated])
-          subgoal
-            apply (drule sym)
-            apply simp
-            subgoal premises prems
-              apply (rule arg_cong2[where f=lshift])
-               apply simp_all
-              apply (rule arg_cong2[where f=lshift])
-               apply (simp_all add: lconcat_correct)
-              apply (subst (1 2) iterates.code)
-              apply simp
-              done
-            done
-             apply (rule refl)+
-          apply (rule wbisim_refl)
-          subgoal
-            apply (subst (2) input_top.code)
-            apply (simp add: comp_def)
-            apply (cases xs'; simp)
-            subgoal 
-              apply (rule bisim_trans)
-              apply (rule aux[where ps="[(1, i, 1)]" and ?is="[]" and cs="[]" and cs="[]" and ?is'="[(1, i, - 1), (1, Suc i, 1)]" and ?cs'="[]" and ?ps'="[]" and nid="0", simplified])
- *)
-
-
-    subgoal for io op1' op'' io' op''a p x op2' io'a op''b t n
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+        apply simp
+        apply (rule exI[of _ "xs"])
           apply (rule exI)
-          apply (rule conjI)
-           apply (rule rtranclp.intros(1))
-          apply (intro relcomppI)
-            defer
-          apply (rule exI[of _ "inps1"])
-          apply (rule exI[of _ "inps2"])
+          apply (rule exI[of _ "os1"])
+          apply (rule exI[of _ "os2"])
+        apply (rule exI[of _ caps2])
           apply (rule exI[of _ "BTL (Inr (1, 1)) buf1"])
-          apply (rule exI[of _ "buf2 @ [(n, Cap t 1)]"])
-          apply (rule exI[of _ "i"])
-        apply (rule exI[of _ "j"])
-        apply (rule exI[of _ "sg\<lparr> lo_pt := (lo_pt sg) @ extract_progress 1 (edges sg) \<lparr>cons = [(1, t, 1)], inte = [(1, t, 1)], prod = []\<rparr> \<rparr>"])
-      apply (intro conjI exI)
-            apply (rule refl)+
-      subgoal sorry
-      subgoal
-        unfolding BTL_def
-        by simp (meson in_set_tlD)
-      subgoal 
-        by simp
-       apply (rule wbisim_refl)
-      sorry
-    prefer 5
-    subgoal for io op1' nid op'' imp_fron sg' io' op''a p op2' io'a op''b ft below result
-         apply (rule exI)
-          apply (rule conjI)
+        sorry
+             prefer 3
+      subgoal for op'' io' op''a op1' io'a op''b batch lxs cap os' os''
+        using prems(1,2) apply -
+        apply (cases batch)
+        defer
+        subgoal for b batch'
+        apply (intro exI conjI)
+         apply (subst iterates.code)
+           apply (simp flip: snoc_shift)
+           apply (rule rtranclp.intros(1))
+     apply (intro relcomppI)
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+        apply (rule exI[of _ "xs(1 := xs 1 @ [(Max (insert b (set batch')), n 1)])"])
+          apply (intro conjI exI)
+              apply (rule refl)+
+             apply simp
+          apply simp
 
 
+          find_theorems lshift LCons
+
+
+
+end
+        apply (intro conjI exI)
+         apply force
+          apply (intro relcomppI)
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+        apply simp
+        apply (rule exI[of _ "xs"])
+          apply (rule exI)
+          apply (rule exI[of _ os1])
+        apply (rule exI[of _ os2])
+
+        thm step_comp_op_elim
+
+end

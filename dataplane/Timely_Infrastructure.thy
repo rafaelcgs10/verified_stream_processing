@@ -246,7 +246,7 @@ corec dataflow_op where
    | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
    | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
    | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> lo_pt := lo_pt sg @ extract_progress nid (edges sg) st \<rparr>) op')
-   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. Silent \<oslash>)) (choices op))"
+   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) (choices op))"
 
 lemma propagate_all_terminates[simp]:
   "propagate_all a b \<noteq> None"
@@ -258,6 +258,9 @@ lemma change_multiplicities_terminates[simp]:
   apply (auto simp add: propagate_pointstamps_def)
   done
 
+term "a \<or> b"
+term xor
+
 lemma step_dataflow_op_elim:
   assumes "step io (dataflow_op sg op) op'"
   obtains
@@ -267,9 +270,9 @@ lemma step_dataflow_op_elim:
   | nid op'' st where "io = Tau" "op' = dataflow_op (sg\<lparr> lo_pt := lo_pt sg @ extract_progress nid (edges sg) st \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
   | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr>)"
     "imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p)))" "op' = dataflow_op sg' op''" "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op''"
-  | op'' p x where "io = Tau" "op' = \<oslash>" "step (Out (Inl p) (Inr x)) op op''"
+(*   | op'' p x where "io = Tau" "op' = \<oslash>" "step (Out (Inl p) (Inr x)) op op''"
   | op'' p x where "io = Tau" "op' = \<oslash>" "step (Out (Inl p) (Inl (Inr x))) op op''"
-  | op'' p x where "io = Tau" "op' = \<oslash>" "step (Out (Inr p) (Inl x)) op op''"
+  | op'' p x where "io = Tau" "op' = \<oslash>" "step (Out (Inr p) (Inl x)) op op''" *)
   using assms apply -
   apply atomize_elim
   apply (subst (asm) dataflow_op.code)
@@ -313,33 +316,33 @@ lemma step_Out_dataflow_op_Out_Inr_intro[intro!]:
   apply (fastforce elim: step_choicesE split: sum.splits option.splits)
   done
 
-lemma step_Out_dataflow_op_Out_Inl_Inr_intro[intro]:
+(* lemma step_Out_dataflow_op_Out_Inl_Inr_intro[intro]:
   "step (Out (Inl p) (Inr x)) op op' \<Longrightarrow>
    step Tau (dataflow_op sg op) \<oslash>"
   apply (subst dataflow_op.code)
   apply (fastforce elim: step_choicesE split: sum.splits option.splits)
-  done
-
+  done *)
+(* 
 lemma step_Out_dataflow_op_Out_Inl_Inr_Inl_intro[intro]:
   "step (Out (Inl p) (Inr (Inl x))) op op' \<Longrightarrow>
    step Tau (dataflow_op sg op) \<oslash>"
   apply (subst dataflow_op.code)
   apply (fastforce elim: step_choicesE split: sum.splits option.splits)
   done
-
-lemma step_Out_dataflow_op_Out_Inl_Inl_Inr_intro[intro]:
+ *)
+(* lemma step_Out_dataflow_op_Out_Inl_Inl_Inr_intro[intro]:
   "step (Out (Inl p) (Inl (Inr x))) op op' \<Longrightarrow>
    step Tau (dataflow_op sg op) \<oslash>"
   apply (subst dataflow_op.code)
   apply (fastforce elim: step_choicesE split: sum.splits option.splits)
   done
-
-lemma step_Out_dataflow_op_Out_Inr_Inl_intro[intro]:
+ *)
+(* lemma step_Out_dataflow_op_Out_Inr_Inl_intro[intro]:
   "step (Out (Inr p) (Inl x)) op op' \<Longrightarrow>
    step Tau (dataflow_op sg op) \<oslash>"
   apply (subst dataflow_op.code)
   apply (fastforce elim: step_choicesE split: sum.splits option.splits)
-  done
+  done *)
 
 lemma step_Inp_dataflow_op_Inp_Inr_intro[intro!]:
   "step (Inp (Inr (nid, p)) (Inr x)) op op' \<Longrightarrow>
@@ -437,10 +440,10 @@ lemma un_Choice_dataflow_op_simp[simp]:
           Some conf' \<Rightarrow> let sg' = sg\<lparr>pt_tr := conf', lo_pt := []\<rparr>; imp_fron = \<lambda>p. c_imp (pt_tr sg') (Loc nid (Trg p)) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron))))))
         | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda>x. dataflow_op sg (f (Inr x)))
         | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr>lo_pt := lo_pt sg @ extract_progress nid (edges sg) st\<rparr>) op')
-        | Write op' (Inl nid) (Inl (Inr b)) \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_. Silent \<oslash>)
-        | Write op' (Inl nid) (Inr b) \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_. Silent \<oslash>)
-        | Write op' (Inr (nid, p)) (Inl aa) \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_. Silent \<oslash>)
-        | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x | Choice cset \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_. Silent \<oslash>)
+        | Write op' (Inl nid) (Inl (Inr b)) \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_.  \<oslash>)
+        | Write op' (Inl nid) (Inr b) \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_.  \<oslash>)
+        | Write op' (Inr (nid, p)) (Inl aa) \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_.  \<oslash>)
+        | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x | Choice cset \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_.  \<oslash>)
         | Silent op' \<Rightarrow> Silent (dataflow_op sg op')) |`|
   choices op)"
   by (simp add: dataflow_op.code)
@@ -652,6 +655,8 @@ record ('p, 'd, 't) operator_state =
 abbreviation "delay_cap os cap incr \<equiv> (os\<lparr> inter := inter os @ [(out cap, time cap, -1), (out cap, time cap + incr, 1)] \<rparr>)"
 
 abbreviation "produce os cap batch \<equiv> os\<lparr> outpu := (outpu os)(out cap := outpu os (out cap) @ map (\<lambda> x. (x, time cap)) batch), produ := produ os @ [(out cap, time cap, length batch)] \<rparr>"
+
+abbreviation "consume os p t len \<equiv> os\<lparr> consu := consu os @ [(p, t, len)] \<rparr>"
 
 
 end
