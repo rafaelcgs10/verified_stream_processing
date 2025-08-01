@@ -479,9 +479,6 @@ lemma compile_dataflow_tree_Logic:
 abbreviation "push op p batch \<equiv> 
   writes op (trace (STR ''Pushing data!'') Some p) (map (\<lambda> (x, c). Inr (x, time c)) batch)"
 
-abbreviation "drop_caps cs op \<equiv>
-  Write op None (trace (String.implode (''Dropping caps!'')) Inl (Inl \<lparr> cons = [], inte = map (\<lambda> c. (out c, time c, -1)) cs, prod = [] \<rparr>))"
-
 abbreviation "delayed_cap c t \<equiv>
   (Cap (time c + abs t) (out c),
   \<lambda> op. Write op None 
@@ -495,8 +492,8 @@ abbreviation "pull i f \<equiv> (Read ((trace (STR ''Reading data'') Some) i)
     (Inr (d, t)) \<Rightarrow> Write (f (d, Cap t 0)) None (Inl (Inl \<lparr>  cons = [(i, t, 1)], inte = [(i, t, 1)], prod = [] \<rparr>))
    | _ \<Rightarrow> \<oslash>))"
 
-abbreviation
-  "less_than_frontier ft t \<equiv> (\<not> is_empty_antichain (filter_antichain (\<lambda> f. t < f) ft))"
+definition
+  "less_than_frontier ft t = (\<not> is_empty_antichain (filter_antichain (\<lambda> f. t < f) ft))"
 
 
 lemma change_multiplicities_append:
