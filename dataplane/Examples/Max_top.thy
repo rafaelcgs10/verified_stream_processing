@@ -213,8 +213,7 @@ lemma propagate_pointstamps_append:
     apply (simp; hypsubst_thin?)
     apply (subst change_multiplicities_append_comp)
     apply simp
-    sorry
-  done
+    oops
 
 (* edges sg = (\<lambda> l. if node l = 0 \<and> port l = Src 1 then [Loc 1 (Trg 0)] else []) \<Longrightarrow> *)
 
@@ -344,6 +343,67 @@ lemma not_less_than_frontier_mono[intro]:
   apply (metis (no_types, lifting) Set.is_empty_def dual_order.strict_trans empty_iff ex_min_if_finite finite_filter member_filter)
   done
 
+lemma zequal_equal[simp]:
+  "zequal A B \<longleftrightarrow> A = B"
+  apply safe
+  subgoal
+  apply transfer
+    apply (auto simp: equiv_zmset_def)
+    subgoal for a b aa ba
+      apply transfer
+    
+      find_theorems "equiv_zmset _ _"
+      
+      find_theorems "(?A :: _ multiset) - _ = _"
+ 
+term take_step_locale
+term take_step
+term take_step'
+term enum_dataflow_topology.take_step
+
+find_theorems take_step_locale
+
+lemma take_step_PR_p_preserves_inv_imps_work_sum:
+  "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by ((take_step summary PR ^^ k) c)"
+  sorry
+
+lemma take_step_PR_p_preserves_inv_implications_nonneg:
+  "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg ((take_step summary PR ^^ k) c)"
+  sorry
+
+lemma
+  "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
+   reachable_locations summary = UNIV \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
+   propagate_all summary c = Some c' \<Longrightarrow>
+   (t \<in>\<^sub>A frontier (c_imp c' loc)) = (t \<in>\<^sub>A dataflow_topology.implied_frontier_alt summary dataflow_topology_from_tree.followed_by c' loc)"
+  unfolding propagate_all_def worklist_is_empty_def
+  apply (drule while_option_stop2)
+  apply (rule Propagate.dataflow_topology.implication_frontier_iff_implied_frontier_alt_vacant)
+     apply simp_all
+  using take_step_PR_p_preserves_inv_imps_work_sum apply force
+  using take_step_PR_p_preserves_inv_implications_nonneg apply force
+  apply (rule Propagate.dataflow_topology.empty_worklists_vacant_to)
+   apply simp_all
+  done
+
+    thm Propagate.dataflow_topology.empty_worklists_vacant_to
+
+    find_consts name: worklists_vacant_to
+
+  find_theorems "_ \<Longrightarrow> dataflow_topology.inv_imps_work_sum _ _  _"
+  
+
+  thm Propagate.dataflow_topology_from_tree.implication_frontier_iff_implied_frontier_alt_vacant[no_vars]
+
+  find_theorems name: implication_frontier_iff_implied_frontier_alt_vacant
+
+end
 lemma
   \<open>xs 0 = outpu os2 0 \<Longrightarrow>
    ys 0 = max_from_buf caps buf2 ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0) \<Longrightarrow>
@@ -574,5 +634,40 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg rule: weakB
           apply (smt (verit, best) disjointI imageE mem_Collect_eq)
           done
         done
+      prefer 9
+      subgoal for nid op'' imp_fron sg' io' op''a p op2' io'a op''b
+        using prems(1,2) apply -
+        apply (intro exI conjI[rotated])
+         apply (intro relcomppI)
+           apply (rule bisim_refl)
+          defer
+          apply (rule wbisim_refl)
+         defer
+         apply (rule wb_upto_b_base)
+         apply (intro conjI exI)
+                   apply (rule refl)+
+        using prems(3) apply simp
+        using prems(4) apply simp
+        using prems(5) apply simp
+        using prems(6) apply simp
+        subgoal
+          using prems(7) apply (auto simp add: less_than_frontier_def split: option.splits)
+
+          find_theorems name: implication_frontier_iff_implied_frontier_alt_vacant
+
+          thm dataflow_topology_from_tree.PR_next[where less_t="(<)", simplified]
+
+          find_theorems name: PR_next
+
+          sorry
+        subgoal
+        using prems(8) apply (auto simp add: less_than_frontier_def split: option.splits)
+        sorry
+      subgoal
+        using prems(9) apply (auto simp add: less_than_frontier_def split: option.splits)
+        sorry
+      apply (simp add: comp_def)
+      done
+
 
 end
