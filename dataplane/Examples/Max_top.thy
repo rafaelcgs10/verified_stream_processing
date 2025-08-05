@@ -349,19 +349,9 @@ lemma zequal_equal[simp]:
   subgoal
   apply transfer
     apply (auto simp: equiv_zmset_def)
-    subgoal for a b aa ba
+    subgoal for A B A' B'
       apply transfer
-    
-      find_theorems "equiv_zmset _ _"
-      
-      find_theorems "(?A :: _ multiset) - _ = _"
- 
-term take_step_locale
-term take_step
-term take_step'
-term enum_dataflow_topology.take_step
-
-find_theorems take_step_locale
+      oops
 
 lemma take_step_PR_p_preserves_inv_imps_work_sum:
   "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
@@ -390,20 +380,9 @@ lemma
   using take_step_PR_p_preserves_inv_implications_nonneg apply force
   apply (rule Propagate.dataflow_topology.empty_worklists_vacant_to)
    apply simp_all
-  done
+  oops
 
-    thm Propagate.dataflow_topology.empty_worklists_vacant_to
-
-    find_consts name: worklists_vacant_to
-
-  find_theorems "_ \<Longrightarrow> dataflow_topology.inv_imps_work_sum _ _  _"
-  
-
-  thm Propagate.dataflow_topology_from_tree.implication_frontier_iff_implied_frontier_alt_vacant[no_vars]
-
-  find_theorems name: implication_frontier_iff_implied_frontier_alt_vacant
-
-end
+ 
 lemma
   \<open>xs 0 = outpu os2 0 \<Longrightarrow>
    ys 0 = max_from_buf caps buf2 ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0) \<Longrightarrow>
@@ -412,8 +391,8 @@ lemma
    (\<forall> t \<in> time ` set caps. t < n 0) \<Longrightarrow>
    set caps = buf_dom buf2 \<Longrightarrow>
    (\<forall> t \<in> snd ` set ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0). \<not> less_than_frontier (front os2 1) t) \<Longrightarrow>
+   (\<forall> t. t  \<in>\<^sub>A (frontier (c_imp (pt_tr sg) (Loc 1 (Trg 0)))) \<longrightarrow> \<not> less_than_frontier (front os2 1) t) \<Longrightarrow>
    \<not> less_than_frontier (front os2 1) (n 0) \<Longrightarrow>
-   filter (\<lambda>cap. less_than_frontier (front os2 1) (time cap)) caps @ filter (\<lambda>cap. \<not> less_than_frontier (front os2 1) (time cap)) caps = caps \<Longrightarrow>
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
 proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg rule: weakBisimWeakUptoBisimCong)
@@ -425,146 +404,32 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg rule: weakB
     subgoal premises prems for io op1'
       using prems(10-) apply -
       apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin?)
-      subgoal for nid op'' x io' op''a pa op2' io'a op''b xs'
-        using prems(1,2) apply -
-        apply (intro conjI exI)
-         apply (rule step_wstep)
-         apply (rule step_map_op)
-          apply (rule step_source_op_Out_intro[where p=0])
-            apply simp
-           apply (rule refl)
-          apply (simp add: defaults_num1_def)
-         apply simp
-        apply (intro relcomppI)
-          apply (rule bisim_refl)
+      prefer 12
+      subgoal for nid op'' imp_fron sg' io' op''a p op2' io'a op''b
+      using prems(1,2) apply -
+        apply (intro exI conjI[rotated])
+         apply (intro relcomppI)
+           apply (rule bisim_refl)
+          defer
+          apply (rule wbisim_refl)
          defer
-         apply (rule wbisim_refl)
-        apply (rule wb_upto_b_base)
-        apply simp
-        apply (intro conjI exI)
-                  apply (rule refl)+
-                 defer
-                 apply (rule refl)+
+         apply (rule wb_upto_b_base)
+         apply (intro conjI exI)
+                   apply (rule refl)+
         using prems(3) apply simp
         using prems(4) apply simp
         using prems(5) apply simp
         using prems(6) apply simp
-        using prems(7) apply simp
-        using prems(8) apply simp
-        using prems(9) apply simp
-        apply (rule arg_cong3[where f=map_op])
-          apply simp_all
-        apply (rule arg_cong[where f=source_op])
-        apply (rule ext)
-        apply (simp_all add: comp_def)
-        done
-                prefer 6
-      subgoal for op'' io' op''a op1' io'a op''b batch lxs cap os' os''
-        apply (cases batch)
         subgoal
-          using prems(1,2) apply -
-          apply (intro exI conjI)
-           apply (subst iterates.code)
-           apply (simp flip: snoc_shift)
-           apply (rule rtranclp.intros(1))
-          apply (intro relcomppI)
-            apply (rule bisim_refl)
-           defer
-           apply (rule wbisim_refl)
-          apply (rule wb_upto_b_base)
-          apply (intro conjI exI)
-                    apply (rule refl)+
-                   apply simp_all
-                 apply (rule arg_cong3[where f=map_op])
-                   apply simp_all
-                 apply (rule arg_cong[where f=source_op])
-                 apply (rule ext)
-                 apply (simp_all add: comp_def)
-          using prems(3) apply simp
-          subgoal
-            using prems(4) apply simp
-            apply auto
-            apply (meson Un_iff image_eqI less_Suc_eq)
-            done
-          using prems(5) apply force
-          using prems(6) apply simp
-          using prems(7) apply simp
-          using prems(8)  not_less_than_frontier_mono apply auto
-          using prems(9) apply simp
-          done
-        subgoal for b batch'
-          using prems(1,2) apply -
-          apply (intro exI conjI)
-           apply (subst iterates.code)
-           apply (simp flip: snoc_shift)
-           apply (rule rtranclp.intros(1))
-          apply (intro relcomppI)
-            apply (rule bisim_refl)
-           defer
-           apply (rule wbisim_refl)
-          apply (rule wb_upto_b_base)
-          apply (intro conjI exI)
-                    apply (rule refl)+
-                   apply simp
-                   defer
-                   apply (rule refl)+
-          using prems(3) apply simp
-          subgoal
-            using prems(4) apply simp
-            apply auto
-            apply (meson Un_iff image_eqI less_Suc_eq)
-            done
-          using prems(5) apply force
-          using prems(6) apply simp
-          subgoal 
-            using prems(7, 8) 
-            unfolding less_than_frontier_def
-            apply auto
-            done
-          using prems(8) not_less_than_frontier_mono apply force
-          using prems(9) apply simp
-          apply (rule arg_cong3[where f=map_op])
-            apply simp_all
-          apply (rule arg_cong[where f=source_op])
-          apply (rule ext)
-          apply simp_all
-          apply (rule arg_cong2[where f=lshift])
-           apply (simp_all flip: snoc_shift)
-          apply (rule arg_cong2[where f=lshift])
-          using prems(4,5,6,7) apply (simp_all flip: snoc_shift)
-          apply hypsubst_thin
-          apply (subst max_from_buf_move_all)
-          apply simp
-          apply (subst (1) max_from_buf_move_all)
-          apply simp
-          apply (subst (5) update_caps_new_cap[where t="n 1"])
-            apply force
-          subgoal
-            by (auto simp flip: update_caps_append)
-          apply simp
-          apply (subst (3) max_from_caps_buf_def)
-          apply (clarsimp simp add: comp_def)
-          apply (intro conjI)
-           apply (simp flip: BULK_BENQ_assoc)
-           apply (subst (2) max_from_caps_buf_BULK_BENQ_empty)
-          subgoal
-            unfolding buf_dom_def list_to_buf_def
-            by (auto; force)
-           apply simp
-          subgoal
-            unfolding list_to_buf_def BULK_BENQ_def
-            apply clarsimp
-            apply (rule arg_cong[where f=Max])
-            apply (rule arg_cong2[where f=insert])
-             apply simp
-            apply (subgoal_tac "buf2 (Cap (n 1) 1) = [] \<and> {x \<in> projr ` set (buf1 (Inr (1, 1))). case x of (x, t') \<Rightarrow> t' = n 1} = {} \<and> {x \<in> set (outpu os1 1). case x of (x, t') \<Rightarrow> t' = n 1} = {}")
-             apply clarsimp
-             apply fast
-            unfolding buf_dom_def
-            apply auto
-            done
-          done
-        done
+          apply (simp split: option.splits)
+          apply (intro allI impI)
+          subgoal for c' t
+            using prems(7) apply -
+
+end
+          using prems(7) apply (auto simp add: less_than_frontier_def split: option.splits)
+
+end
                prefer 6
       subgoal for op'' io' op''a op2' io'a op''b above_caps below_caps batch os' os'' buf'
         using prems(1,2) apply -
@@ -587,7 +452,6 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg rule: weakB
           done
            apply (simp add: prems(7))
         using prems(8) apply simp
-        using prems(9) apply simp
         apply (rule rtranclp_intros_1)
         apply (rule arg_cong3[where f=map_op])
           apply simp_all
