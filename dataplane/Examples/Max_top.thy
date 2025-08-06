@@ -17,11 +17,12 @@ abbreviation "produces os batch \<equiv> os\<lparr> outpu := (\<lambda> p. outpu
 abbreviation "drop_caps os caps \<equiv> (os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps \<rparr>)"
 
 
+
 corec max_top' where
   "max_top' os buf caps = choice5
    (Read None (\<lambda> st. if is_Inl st \<and> is_Inr (projl st) then max_top' (os\<lparr> front := projr (projl st) \<rparr>) buf caps else \<oslash>))
-   (let below_caps = [cap \<leftarrow> caps. less_than_frontier (front os 0) (time cap)] in
-    let above_caps = [cap \<leftarrow> caps. \<not> less_than_frontier (front os 0) (time cap)] in
+   (let below_caps = [cap \<leftarrow> caps. time_below_frontier (time cap) (front os 0)] in
+    let above_caps = [cap \<leftarrow> caps. \<not> time_below_frontier (time cap) (front os 0)] in
     let batch = map (\<lambda> cap. (Max (set (buf cap)), cap)) below_caps in
     let os' = produces os batch in
     let os'' = drop_caps os' below_caps in
@@ -32,7 +33,7 @@ corec max_top' where
      let (n, t) = projr x in
      let (caps', os') = (if Cap t 0 \<in> set caps then (caps, os) else (caps @ [Cap t 0], mint_cap os 0 t)) in
      let buf' = BENQ (Cap t 0) n buf in
-     max_top' os' buf' caps'))
+     max_top' os' buf' (sort_key time caps')))
     ((case outpu os 0 of
          [] \<Rightarrow> Silent (max_top' os buf caps)
        |  x # xs \<Rightarrow> send_output (max_top' (os\<lparr> outpu := (outpu os)(0 := xs ) \<rparr>) buf caps) 0 x))
@@ -44,8 +45,8 @@ lemma step_max'_top_elim:
   obtains
     st where "io = Inp None st" "\<not> is_Inl st \<or> (is_Inl st \<and> \<not> is_Inr (projl st))" "op = \<oslash>" 
   | st where "io = Inp None st" "is_Inl st" "is_Inr (projl st)" "op = max_top' (os\<lparr> front := projr (projl st) \<rparr>) buf caps" 
-  | above_caps below_caps batch os' os'' buf' where "io = Tau" "below_caps = [cap \<leftarrow> caps. less_than_frontier (front os 0) (time cap)]"
-    "above_caps = [cap \<leftarrow> caps. \<not> less_than_frontier (front os 0) (time cap)]"
+  | above_caps below_caps batch os' os'' buf' where "io = Tau" "below_caps = [cap \<leftarrow> caps. time_below_frontier (time cap) (front os 0)]"
+    "above_caps = [cap \<leftarrow> caps. \<not> time_below_frontier (time cap) (front os 0)]"
     "batch = map (\<lambda> cap. (Max (set (buf cap)), cap)) below_caps"
     "os' = produces os batch"
     "os'' = drop_caps os' below_caps"
@@ -54,7 +55,7 @@ lemma step_max'_top_elim:
   | x where "io = Inp (Some 0) x" "is_Inl x" "op = \<oslash>"
   | x n t caps' os' buf' where "io = Inp (Some 0) x" "\<not> is_Inl x" "(n, t) = projr x"
     "(caps', os') = (if Cap t 0 \<in> set caps then (caps, os) else (caps @ [Cap t 0], mint_cap os 0 t))"
-    "buf' = BENQ (Cap t 0) n buf" "op = max_top' os' buf' caps'"
+    "buf' = BENQ (Cap t 0) n buf" "op = max_top' os' buf' (sort_key time caps')"
   | "io = Tau" "outpu os 0 = []" "op = max_top' os buf caps"
   | x xs where "io = Out (Some 0) (Inr x)" "outpu os 0 = x # xs"
     "op = max_top' (os\<lparr> outpu := (outpu os)(0 := xs ) \<rparr>) buf caps"
@@ -217,7 +218,7 @@ lemma propagate_pointstamps_append:
 
 (* edges sg = (\<lambda> l. if node l = 0 \<and> port l = Src 1 then [Loc 1 (Trg 0)] else []) \<Longrightarrow> *)
 
-term "map (\<lambda> xs. case xs of [] \<Rightarrow> [] | xs \<Rightarrow> [Max (set xs)])"
+    term "map (\<lambda> xs. case xs of [] \<Rightarrow> [] | xs \<Rightarrow> [Max (set xs)])"
 
 (* FIXME: move me *)
 lemma map_in_setD:
@@ -238,18 +239,39 @@ lemma list_to_buf_empty[simp]:
   "list_to_buf [] = (\<lambda>  _. [])"
   unfolding list_to_buf_def by auto
 
-definition "update_caps caps xs = (fold (\<lambda> (x, t) caps. if Cap t (0 :: 1) \<in> set caps then caps else (caps @ [Cap t 0])) xs caps)"
+fun rmdups where
+  "rmdups S [] = []"
+| "rmdups S (x # xs) = (if x \<in> S then rmdups S xs else x # (rmdups (insert x S) xs))"
 
-lemma update_caps_empty[simp]:
-  "update_caps caps [] = caps"
-  unfolding update_caps_def by auto
+
+lemma set_rmdups:
+  "set (rmdups S xs) = set xs - S"
+  by (induct xs arbitrary: S) auto
+
+lemma rmdups_rmdups[simp]:
+  "rmdups S1 (rmdups S2 xs) = rmdups (S1 \<union> S2) xs"
+  by (induct xs arbitrary: S1 S2) (auto simp add: insert_absorb)
+
+lemma rmdups_append[simp]:
+  "rmdups S (xs @ ys) = rmdups S xs @ rmdups (S \<union> set xs) ys"
+  by (induct xs arbitrary: S ys) (auto simp add: insert_absorb)
+
+lemma rmdups_cong:
+  "A \<inter> set xs = B \<inter> set xs \<Longrightarrow>
+   rmdups A xs = rmdups B xs"
+  apply (induct xs arbitrary: A B)
+   apply simp
+  apply (smt (verit, best) Diff_Diff_Int Diff_iff Int_insert_left_if1 insert_absorb inter_eq_subsetI list.inject list.set(2) list.set_intros(1) rmdups.simps(2) set_subset_Cons)
+  done
+
+abbreviation "update_caps caps xs \<equiv> caps @ rmdups (set caps) (map (\<lambda> (x, t). Cap t 0) xs)"
 
 definition "max_from_caps_buf caps buf = map (\<lambda> cap. (Max (set (buf cap)), time cap)) caps"
 
-definition "max_from_buf caps buf xs = (let caps' = update_caps caps xs in
+abbreviation "max_from_buf caps buf xs \<equiv> (let caps' = update_caps caps xs in
                                          let buf' = list_to_buf xs o time in max_from_caps_buf caps' (buf' >> buf))"
 
-lemma update_caps_new_cap:
+(* lemma update_caps_new_cap:
   "snd ` set xs = {t} \<Longrightarrow>
    Cap t (0 :: 1) \<notin> set caps \<Longrightarrow>
    update_caps caps xs = caps @ [Cap t 0]"
@@ -259,31 +281,22 @@ lemma update_caps_new_cap:
   subgoal for a xs caps
     apply (cases a; fastforce)
     done
-  done
+  done *)
 
 lemma update_caps_append[simp]:                
   "update_caps caps (ys @ xs) = update_caps (update_caps caps ys) xs"
-  unfolding update_caps_def
-  apply auto
-  done
+  oops
 
 lemma update_caps_append2:
   "snd ` set xs \<inter> time ` set caps1 = {} \<Longrightarrow>
    caps = caps1 @ caps2 \<Longrightarrow>
    update_caps caps xs = caps1 @ update_caps caps2 xs"
-  unfolding update_caps_def apply hypsubst_thin
+  oops
+    (*  apply hypsubst_thin
   apply (induct xs arbitrary: caps1 caps2)
    apply (auto simp add: rev_image_eqI)
   done
-
-lemma set_update_caps[simp]:
-  "set (update_caps caps xs) = set caps \<union> (\<lambda> t. Cap t 0) ` snd ` set xs"
-  unfolding update_caps_def
-  apply (induct xs arbitrary: caps rule: rev_induct)
-   apply clarsimp
-  apply force
-  done
-
+ *)
 
 lemma list_to_buf_append[simp]:
   "list_to_buf (ys @ xs) = list_to_buf xs >> list_to_buf ys"
@@ -294,31 +307,26 @@ lemma list_to_buf_append[simp]:
 
 lemma max_from_buf_append[simp]:
   "max_from_buf caps buf (ys @ xs) = max_from_buf (update_caps caps ys) ((list_to_buf ys o time) >> buf) xs"
-  unfolding max_from_buf_def Let_def 
-  apply (clarsimp simp flip: Un_assoc)
-  apply (metis BULK_BENQ_bulk_benq fun_comp_eq_conv)
-  done
+  unfolding  Let_def 
+  oops
+    (*   apply (metis BULK_BENQ_bulk_benq fun_comp_eq_conv)
+  done *)
 
-lemma max_from_buf_empty[simp]:
-  "max_from_buf caps buf [] = max_from_caps_buf caps buf"
-  unfolding max_from_buf_def max_from_caps_buf_def update_caps_def list_to_buf_def
-  apply auto
-  done
-
+(* 
 lemma max_from_buf_move_all:
   "max_from_buf caps buf xs = max_from_buf ((update_caps caps xs)) ((list_to_buf xs o time) >> buf) []" 
-  by (metis append.right_neutral max_from_buf_append)
+  by (metis append.right_neutral max_from_buf_append) *)
 
-lemma max_from_caps_buf_append[simp]:
+lemma max_from_caps_buf_append:
   "max_from_caps_buf (caps1 @ caps2) buf = max_from_caps_buf caps1 buf @ max_from_caps_buf caps2 buf"
-  unfolding max_from_caps_buf_def by auto
+  unfolding max_from_caps_buf_def by auto 
 
-lemma max_from_caps_buf_BULK_BENQ_empty:
+(* lemma max_from_caps_buf_BULK_BENQ_empty:
   "buf_dom buf1 \<inter> set caps = {} \<Longrightarrow>
    max_from_caps_buf caps (buf1 >> buf2) = max_from_caps_buf caps buf2"
   unfolding max_from_caps_buf_def BULK_BENQ_def buf_dom_def apply clarsimp
   apply (metis (mono_tags, lifting) List.set_empty disjoint_iff mem_Collect_eq monoid.right_neutral sup_bot.monoid_axioms)
-  done
+  done *)
 
 
 (* FIXME: move me *)
@@ -326,17 +334,11 @@ lemma rtranclp_intros_1:
   "a = b \<Longrightarrow> r\<^sup>*\<^sup>* a b"
   by auto
 
-lemma max_from_caps_buf_cong:
-  "(\<forall> cap \<in> set caps. buf1 cap = buf2 cap) \<Longrightarrow>
-   max_from_caps_buf caps buf1 = max_from_caps_buf caps buf2"
-  unfolding max_from_caps_buf_def
-  apply auto
-  done
 
-lemma not_less_than_frontier_mono[intro]:
+lemma not_time_below_frontier_mono[intro]:
   "t < t' \<Longrightarrow>
-   \<not> less_than_frontier f t \<Longrightarrow> \<not> less_than_frontier f t'"
-  unfolding less_than_frontier_def
+   \<not> time_below_frontier t f \<Longrightarrow> \<not> time_below_frontier t' f"
+  unfolding time_below_frontier_def
   apply simp
   apply transfer
   apply clarsimp
@@ -347,7 +349,7 @@ lemma zequal_equal[simp]:
   "zequal A B \<longleftrightarrow> A = B"
   apply safe
   subgoal
-  apply transfer
+    apply transfer
     apply (auto simp: equiv_zmset_def)
     subgoal for A B A' B'
       apply transfer
@@ -357,13 +359,13 @@ lemma take_step_PR_p_preserves_inv_imps_work_sum:
   "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by ((take_step summary PR ^^ k) c)"
-  sorry
+  oops
 
 lemma take_step_PR_p_preserves_inv_implications_nonneg:
   "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg ((take_step summary PR ^^ k) c)"
-  sorry
+  oops
 
 lemma
   "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
@@ -376,37 +378,119 @@ lemma
   apply (drule while_option_stop2)
   apply (rule Propagate.dataflow_topology.implication_frontier_iff_implied_frontier_alt_vacant)
      apply simp_all
-  using take_step_PR_p_preserves_inv_imps_work_sum apply force
+    (*   using take_step_PR_p_preserves_inv_imps_work_sum apply force
   using take_step_PR_p_preserves_inv_implications_nonneg apply force
   apply (rule Propagate.dataflow_topology.empty_worklists_vacant_to)
-   apply simp_all
+   apply simp_all *)
   oops
 
- 
+
+lemma propagate_all_preserves_c_pts:
+  "propagate_all (summ sg) c = Some c' \<Longrightarrow>
+   c_pts c' = c_pts c"
+  sorry
+
+lemma c_pts_change_multiplicities_cong:
+  "c_pts c loc = c_pts c' loc \<Longrightarrow>
+   c_pts (change_multiplicities su cbs c) loc = c_pts (change_multiplicities su cbs c') loc"
+  sorry
+
+lemma is_empty_antichain_filter_antichain[simp]:
+  "is_empty_antichain (filter_antichain P A) \<longleftrightarrow> (\<forall> a. a \<in>\<^sub>A A \<longrightarrow> \<not> P a)"
+  apply transfer
+  apply (metis Set.is_empty_def emptyE equals0I member_filter)
+  done
+
+lemma sorted_caps_append:
+  "sorted (map time caps) \<Longrightarrow>
+   caps = filter (\<lambda>cap. time_below_frontier (time cap) f) caps @ filter (\<lambda>cap. \<not> time_below_frontier (time cap) f) caps"
+  unfolding time_below_frontier_def
+  apply simp
+  apply (induct caps)
+   apply simp_all
+  subgoal for cap caps
+    by (smt (verit, ccfv_threshold) append_eq_append_conv2 append_same_eq filter_id_conv order_le_less_trans same_append_eq)
+  done
+
+
+definition
+  "frontier_below_eq_frontier ft1 ft2 = (\<forall> t2. t2 \<in>\<^sub>A ft2 \<longrightarrow> \<not> (\<exists> t1. t1 \<in>\<^sub>A ft1 \<and> t2 \<le> t1))"
+
+lemma time_below_frontier_iff:
+  "time_below_frontier t f \<longleftrightarrow> (\<exists> t'. t' \<in>\<^sub>A f \<and> t < t')"
+  unfolding time_below_frontier_def
+  apply auto
+  done
+
+(*  lemma frontier_below_eq_frontier_not_time_below_frontier:
+  "time_below_frontier t f1 \<Longrightarrow>
+   frontier_below_eq_frontier f1 f2 \<Longrightarrow>
+   \<not> time_below_frontier t f2 \<Longrightarrow>
+   False"
+  unfolding frontier_below_eq_frontier_def time_below_frontier_iff by force 
+ *)
+lemma in_M_not_time_below_frontier:
+  "0 < zcount M t \<Longrightarrow>
+   \<not> time_below_frontier t (frontier M)"
+  apply (auto simp add: time_below_frontier_iff)
+  apply (drule dataflow_topology_from_tree.in_frontier_least)
+  apply (drule spec[of _ t])
+  apply (drule mp)
+   apply auto
+  done
+
+
+lemma c_pts_change_multiplicities:
+  "c_pts (change_multiplicities su xs c) = fold (\<lambda> (l, t, d) M. M(l := update_zmultiset (M l) t d)) xs (c_pts c)"
+  unfolding change_multiplicities_def
+  apply (induct xs arbitrary: c)
+   apply (simp_all split: prod.splits)
+  done
+
+lemma in_frontier_iff:
+  "t \<in>\<^sub>A frontier M \<longleftrightarrow> ((\<forall> t'. zcount M t' > 0 \<longrightarrow> \<not> t' < t) \<and> zcount M t > 0)"
+  by (metis dataflow_topology_from_tree.in_frontier_least dataflow_topology_from_tree.obtain_elem_frontier le_less member_frontier_pos_zmset)
+
+lemma
+  "time_below_frontier t f1 \<Longrightarrow>
+   frontier_below_eq_frontier f1 f2\<Longrightarrow>
+   \<not> t \<in>\<^sub>A f2"
+  by (auto simp add:  in_frontier_iff time_below_frontier_iff frontier_below_eq_frontier_def dest: order_less_imp_le)
+
+lemma time_below_frontier_frontier_below_eq_frontier:
+  "time_below_frontier t f \<Longrightarrow>
+   frontier_below_eq_frontier f (frontier M) \<Longrightarrow>
+   zcount M t \<le> 0"
+  apply (clarsimp simp add: in_frontier_iff time_below_frontier_iff frontier_below_eq_frontier_def)
+  apply (smt (verit, ccfv_SIG) dual_order.strict_iff_order order_trans_rules(23) order_zmset_exists_foundation')
+  done
+
 lemma
   \<open>xs 0 = outpu os2 0 \<Longrightarrow>
    ys 0 = max_from_buf caps buf2 ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0) \<Longrightarrow>
    (\<forall> x \<in> set (buf1 (Inr (1, 0))). is_Inr x) \<Longrightarrow>
-   (\<forall> t \<in> snd ` set ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0). t < n 0) \<Longrightarrow>
-   (\<forall> t \<in> time ` set caps. t < n 0) \<Longrightarrow>
-   set caps = buf_dom buf2 \<Longrightarrow>
-   (\<forall> t \<in> snd ` set ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0). \<not> less_than_frontier (front os2 1) t) \<Longrightarrow>
-   (\<forall> t. t  \<in>\<^sub>A (frontier (c_imp (pt_tr sg) (Loc 1 (Trg 0)))) \<longrightarrow> \<not> less_than_frontier (front os2 1) t) \<Longrightarrow>
-   \<not> less_than_frontier (front os2 1) (n 0) \<Longrightarrow>
+   sorted (map time caps) \<Longrightarrow>
+   obtain_progress os1 = (a, st1) \<Longrightarrow>
+   obtain_progress os2 = (b, st2) \<Longrightarrow>
+   sg' = sg\<lparr> lo_pt := lo_pt sg @ extract_progress 0 (edges sg) st1 @ extract_progress 1 (edges sg) st2 \<rparr> \<Longrightarrow>
+   c = change_multiplicities (summ sg') (lo_pt sg') (pt_tr sg') \<Longrightarrow>
+   c_pts c (Loc 1 (Trg 0)) = zmset_of (mset (map snd ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0))) \<Longrightarrow>
+   c_pts c (Loc 0 (Src 0)) = {# n 0 #}\<^sub>z \<Longrightarrow>
+   frontier_below_eq_frontier (front os2 0) (frontier (c_pts c (Loc 1 (Trg 0)) + c_pts c (Loc 0 (Src 0)))) \<Longrightarrow>
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
-proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg rule: weakBisimWeakUptoBisimCong)
+proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c st1 st2 rule: weakBisimWeakUptoBisimCong)
   case SIM1
   then show ?case
     apply -
     unfolding wsim_def
     apply (intro allI conjI impI)
     subgoal premises prems for io op1'
-      using prems(10-) apply -
+      using prems(12-) apply -
       apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin?)
-      prefer 12
+                 prefer 12
       subgoal for nid op'' imp_fron sg' io' op''a p op2' io'a op''b
-      using prems(1,2) apply -
+        using prems(1,2) apply -
         apply (intro exI conjI[rotated])
          apply (intro relcomppI)
            apply (rule bisim_refl)
@@ -415,22 +499,32 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg rule: weakB
          defer
          apply (rule wb_upto_b_base)
          apply (intro conjI exI)
-                   apply (rule refl)+
+                 apply (rule refl)+
         using prems(3) apply simp
         using prems(4) apply simp
-        using prems(5) apply simp
-        using prems(6) apply simp
         subgoal
-          apply (simp split: option.splits)
-          apply (intro allI impI)
-          subgoal for c' t
-            using prems(7) apply -
-
-end
-          using prems(7) apply (auto simp add: less_than_frontier_def split: option.splits)
-
-end
-               prefer 6
+          using prems(5,6,7,8) prems(9)[symmetric] apply -
+          apply (auto simp add: propagate_pointstamps_def change_multiplicities_append_comp split: option.splits; hypsubst_thin?)
+          subgoal for c'
+            apply (drule propagate_all_preserves_c_pts)
+            apply (rule c_pts_change_multiplicities_cong)
+            apply (rule c_pts_change_multiplicities_cong)
+            apply simp
+            done
+          done
+        subgoal
+          using prems(10)[symmetric] apply -
+          apply (auto simp add: propagate_pointstamps_def change_multiplicities_append_comp split: option.splits; hypsubst_thin?)
+          apply (drule propagate_all_preserves_c_pts)
+          apply (smt (verit, ccfv_threshold) SIM1(7,8) c_pts_change_multiplicities_cong change_multiplicities_append prems(5,6) prod.simps(1) subgraph.simps(1,2,4,7) subgraph.surjective)
+          done
+        subgoal
+          apply simp
+          using prems(11) apply -
+          sorry
+        apply (simp add: comp_def)
+        done
+                prefer 8
       subgoal for op'' io' op''a op2' io'a op''b above_caps below_caps batch os' os'' buf'
         using prems(1,2) apply -
         apply (intro exI conjI[rotated])
@@ -441,97 +535,171 @@ end
          defer
          apply (rule wb_upto_b_base)
          apply (intro conjI exI)
-                   apply (rule refl)+
+                 apply (rule refl)+
         using prems(3) apply simp
-        using prems(4) apply simp
-        using prems(5) apply force
         subgoal
-          using prems(6) apply -
-          unfolding buf_dom_def
-          apply auto
-          done
-           apply (simp add: prems(7))
-        using prems(8) apply simp
-        apply (rule rtranclp_intros_1)
-        apply (rule arg_cong3[where f=map_op])
-          apply simp_all
-        apply (rule arg_cong[where f=source_op])
-        apply (rule ext)
-        apply (simp_all add: lshift_assoc)
-        apply (rule arg_cong2[where f=lshift])
-         apply simp_all
-        apply (subst max_from_buf_move_all)
-        apply simp
-        apply (subst max_from_buf_move_all)
-        apply (simp flip: update_caps_append)
-        apply (subgoal_tac 
-            "update_caps caps (map projr (buf1 (Inr (1, 1))) @ outpu os1 1) =
-        filter (\<lambda>cap. less_than_frontier (front os2 1) (time cap)) caps @
-        update_caps (filter (\<lambda>cap. \<not> less_than_frontier (front os2 1) (time cap)) caps) (map projr (buf1 (Inr (1, 1))) @ outpu os1 1)")
+          using prems(4) sorted_filter by blast
         subgoal
           apply simp
-          apply (rule arg_cong2[where f=append])
-          subgoal
-            apply (subst max_from_caps_buf_BULK_BENQ_empty)
-            subgoal 
-              using prems(6,7) apply -
-              unfolding buf_dom_def less_than_frontier_def list_to_buf_def
-              apply auto
-               apply (smt (verit, best) UnCI case_prod_beta filter_empty_conv image_eqI)
-              apply (smt (verit, ccfv_SIG) Un_iff filter_empty_conv image_Un image_set map_in_setD split_def)
-              done
-            apply (subst max_from_caps_buf_def)
-            apply simp
-            done
-          subgoal
-            using prems(7) apply -
-            apply (rule max_from_caps_buf_cong)
-            apply (auto simp add: BULK_BENQ_bulk_benq split: sum.splits prod.splits)
-            done
-          done
+          using prems(5,6,7,8) prems(9)[symmetric] apply -
+          apply (simp add: change_multiplicities_append_comp)
+          apply hypsubst_thin
+          sorry
+          apply simp
         subgoal
-          using prems(9)[symmetric] apply -
-          apply (rule update_caps_append2)
-           apply simp_all
-          using prems(7) apply -
-          apply clarsimp
-          apply (smt (verit, best) disjointI imageE mem_Collect_eq)
-          done
-        done
-      prefer 9
-      subgoal for nid op'' imp_fron sg' io' op''a p op2' io'a op''b
-        using prems(1,2) apply -
-        apply (intro exI conjI[rotated])
-         apply (intro relcomppI)
-           apply (rule bisim_refl)
-          defer
-          apply (rule wbisim_refl)
-         defer
-         apply (rule wb_upto_b_base)
-         apply (intro conjI exI)
-                   apply (rule refl)+
-        using prems(3) apply simp
-        using prems(4) apply simp
-        using prems(5) apply simp
-        using prems(6) apply simp
-        subgoal
-          using prems(7) apply (auto simp add: less_than_frontier_def split: option.splits)
-
-          find_theorems name: implication_frontier_iff_implied_frontier_alt_vacant
-
-          thm dataflow_topology_from_tree.PR_next[where less_t="(<)", simplified]
-
-          find_theorems name: PR_next
-
+          using prems(10)[symmetric] apply -
+          apply (auto simp add: change_multiplicities_append_comp split: option.splits; hypsubst_thin?)
           sorry
         subgoal
-        using prems(8) apply (auto simp add: less_than_frontier_def split: option.splits)
-        sorry
-      subgoal
-        using prems(9) apply (auto simp add: less_than_frontier_def split: option.splits)
-        sorry
-      apply (simp add: comp_def)
-      done
+          apply simp
+          using prems(11)
+          sorry
+        subgoal
+          apply simp
+          apply (rule rtranclp_intros_1)
+          apply (rule arg_cong3[where f=map_op])
+            apply simp_all
+          apply (rule arg_cong[where f=source_op])
+          apply (rule ext)
+          apply (simp_all add: lshift_assoc)
+          apply (rule arg_cong2[where f=lshift])
+           apply simp_all
+          subgoal premises
+            apply (subst max_from_caps_buf_append)
+            apply (subst (2) max_from_caps_buf_append)
+            apply (simp flip: append_assoc)
+            apply (rule arg_cong2[where f=append])
+            subgoal
+              apply (subgoal_tac "caps = filter (\<lambda>cap. time_below_frontier (time cap) (front os2 1)) caps @ filter (\<lambda>cap. \<not> time_below_frontier (time cap) (front os2 1)) caps")
+              subgoal
+                unfolding max_from_caps_buf_def
+                apply (simp add: map_eq_append_conv)
+                apply (intro exI conjI)
+                  apply assumption
+                 apply auto
+                subgoal premises prems2 for cap
+                  using prems2(2,3) apply -
+                  apply (subgoal_tac "(list_to_buf (outpu os1 1) >> list_to_buf (map projr (buf1 (Inr (1, 1)))) \<circ> time) cap = []")
+                  subgoal
+                    by simp
+                  subgoal
+                    apply (drule time_below_frontier_frontier_below_eq_frontier)
+                    using prems(11) apply simp
+                    using prems(9) apply simp
+                    apply (auto simp add: list_to_buf_def filter_empty_conv)
+                    subgoal
+                      by (smt (verit, ccfv_threshold) bot_nat_0.extremum_unique count_image_mset_ge_count count_mset_0_iff of_nat_le_0_iff prems(10) prod.sel(2) semiring_1_class.of_nat_0 zcount_single zero_one)
+                    subgoal
+                      by (smt (verit, ccfv_threshold) SIM1(10) add.commute add_sign_intros(1) arith_simps(62) bot_nat_0.extremum count_image_mset_ge_count count_mset_0_iff le_antisym not_less of_nat_0_le_iff of_nat_le_0_iff snd_conv verit_comp_simplify(28)
+                          zcount_add_zmset zcount_empty zero_one)
+                    done
+                  done
+                subgoal
+                  by (simp add: BULK_BENQ_def)
+                done
+                subgoal
+                  using SIM1(4) sorted_caps_append by blast
+                done
+                subgoal
+                  unfolding max_from_caps_buf_def
+                  apply (auto simp add: comp_def)  
+                  apply (rule arg_cong2[where f=append])
+                  subgoal
+                    apply (rule List.List.list.map_cong)
+                    apply auto
+                    subgoal
+                      apply (rule rmdups_cong)
+                      apply (auto split: prod.splits sum.splits)
+                      apply (drule time_below_frontier_frontier_below_eq_frontier)
+                    using prems(11) apply simp
+                    using prems(9) apply simp
+                    apply (auto simp add: list_to_buf_def filter_empty_conv)
+                    apply (smt (verit, del_insts) SIM1(10) bot_nat_0.extremum_uniqueI count_image_mset_ge_count count_mset_0_iff of_nat_0_le_iff of_nat_le_0_iff snd_conv zcount_single zero_one)
+                    done
+                  subgoal for cap
+                      apply (rule arg_cong[where f=Max])
+                    apply (auto 0 0 simp add: set_rmdups list_to_buf_def filter_empty_conv BULK_BENQ_def split: sum.splits prod.splits; hypsubst_thin)
+                    subgoal for yt x y t
+                      apply (rule image_eqI[of _ _ "(x, t)"])
+                       apply simp
+                      apply auto
+                            apply (drule time_below_frontier_frontier_below_eq_frontier)
+                    using prems(11) apply simp
+                    using prems(9) apply simp
+                    apply (auto simp add: list_to_buf_def filter_empty_conv)
+                    apply (smt (verit) SIM1(10) bot_nat_0.extremum_uniqueI count_image_mset_ge_count count_mset_0_iff of_nat_0_le_iff of_nat_le_0_iff prod.sel(2) zcount_single zero_one)
+                    done
+                  done
+                done
+              subgoal
+                    apply (rule List.List.list.map_cong)
+                    apply auto
+                subgoal
+                      apply (rule rmdups_cong)
+                      apply (auto split: prod.splits sum.splits)
+                      apply (drule time_below_frontier_frontier_below_eq_frontier)
+                    using prems(11) apply simp
+                    using prems(9) apply simp
+                    apply (auto simp add: list_to_buf_def filter_empty_conv)
+                    apply (smt (verit, best) SIM1(10) count_image_mset_ge_count count_mset_gt_0 linorder_not_le of_nat_0_le_iff of_nat_le_0_iff snd_conv zcount_single zero_one)
+                    done
+                  subgoal for cap
+                      apply (rule arg_cong[where f=Max])
+                    apply (auto 0 0 simp add: set_rmdups list_to_buf_def filter_empty_conv BULK_BENQ_def split: sum.splits prod.splits; hypsubst_thin)
+                    subgoal for a t x
+                      apply (rule image_eqI[of _ _ "(x, t)"])
+                       apply simp
+                      apply auto
+                            apply (drule time_below_frontier_frontier_below_eq_frontier)
+                    using prems(11) apply simp
+                    using prems(9) apply simp
+                    apply (auto simp add: list_to_buf_def filter_empty_conv)
+                    apply (smt (verit) SIM1(10) bot_nat_0.extremum_uniqueI count_image_mset_ge_count count_mset_0_iff of_nat_0_le_iff of_nat_le_0_iff prod.sel(2) zcount_single zero_one)
+                    done
+                  done
+                done
+              done
+            done
+          done
+        done
 
+end
+                      sorry
+                    subgoal for cap
+                      apply (subgoal_tac "\<not> (time_below_frontier (time cap) (front os2 1))")
+                      subgoal
+                        by (auto simp add: time_below_frontier_def comp_def BULK_BENQ_def set_rmdups split: sum.splits prod.splits)
+                      subgoal
+                        apply (auto simp add: set_rmdups split: sum.splits prod.splits; hypsubst_thin)
+
+
+                        find_theorems set rmdups
+
+end
+  apply (drule frontier_below_eq_frontier_not_time_below_frontier)
+  using prems(12) apply simp
+  subgoal
+    apply (auto simp add: time_below_frontier_iff)
+    using prems(5,6,7,8,9) apply hypsubst_thin
+    apply clarsimp
+    apply hypsubst_thin
+    apply (auto simp add: in_frontier_iff)
+    apply (drule spec[of _ "time cap"])
+    apply (drule mp)
+    subgoal premises prems2
+      using prems2(2,4) apply -
+      apply (simp add:  count_image_mset)
+
+      find_theorems sum vimage
+
+      find_theorems "count (image_mset _ _)" 
+
+
+end
+  subgoal
+    apply (simp add: c_pts_change_multiplicities)
+
+
+    find_theorems "filter _ _ = []"
 
 end

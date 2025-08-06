@@ -493,8 +493,7 @@ abbreviation "pull i f \<equiv> (Read ((trace (STR ''Reading data'') Some) i)
    | _ \<Rightarrow> \<oslash>))"
 
 definition
-  "less_than_frontier ft t = (\<not> is_empty_antichain (filter_antichain (\<lambda> f. t < f) ft))"
-
+  "time_below_frontier t ft = (\<not> is_empty_antichain (filter_antichain (\<lambda> f. t < f) ft))"
 
 lemma change_multiplicities_append:
   "change_multiplicities su (xs @ ys) = (\<lambda> c. change_multiplicities su ys (change_multiplicities su xs c))"
