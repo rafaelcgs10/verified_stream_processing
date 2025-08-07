@@ -345,6 +345,7 @@ lemma not_time_below_frontier_mono[intro]:
   apply (metis (no_types, lifting) Set.is_empty_def dual_order.strict_trans empty_iff ex_min_if_finite finite_filter member_filter)
   done
 
+
 lemma zequal_equal[simp]:
   "zequal A B \<longleftrightarrow> A = B"
   apply safe
@@ -352,47 +353,205 @@ lemma zequal_equal[simp]:
     apply transfer
     apply (auto simp: equiv_zmset_def)
     subgoal for A B A' B'
-      apply transfer
-      oops
+      apply (simp add: multiset_eq_iff)
+      apply (smt (verit, ccfv_threshold) add_diff_cancel_left diff_add_inverse diff_add_inverse2 diff_cancel2 diff_diff_cancel diff_diff_left diff_is_0_eq diff_le_self nat_le_linear ordered_cancel_comm_monoid_diff_class.add_diff_inverse)
+      done
+    done
+  subgoal
+    apply transfer
+    apply auto
+    done
+  done
+
+
+lemma take_step_enum_dataflow_topology_take_step:
+  "enum_dataflow_topology su dataflow_topology_from_tree.followed_by \<Longrightarrow>
+   take_step su = enum_dataflow_topology.take_step su dataflow_topology_from_tree.followed_by (<)"
+  apply (rule ext)+
+  subgoal for S c
+    apply (cases S; hypsubst_thin)
+    apply (simp add: Executable.enum_dataflow_topology.take_step.simps)
+      apply (subst Executable.enum_dataflow_topology.take_step.simps(2))
+       apply assumption
+    apply (simp add: after_summary_def mymin_code_def)
+    done
+  done
 
 lemma take_step_PR_p_preserves_inv_imps_work_sum:
   "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
-   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by ((take_step summary PR ^^ k) c)"
-  oops
+   \<exists>t loc. t \<in>#\<^sub>z c_work c loc \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by ((take_step summary PR) c)"
+  apply (frule Executable.enum_dataflow_topology.PR_next[where less_t="(<)", simplified, unfolded enum_dataflow_topology_def])
+     apply assumption+
+  subgoal 
+    apply standard
+        apply auto
+    done
+   apply assumption
+  apply (elim exE)
+  subgoal for t loc loc' t'
+    apply (subst take_step_enum_dataflow_topology_take_step)
+     apply (simp add: enum_dataflow_topology_def)
+    apply (rule Propagate.dataflow_topology.p_preserves_inv_imps_work_sum[where loc=loc and t=t'])
+      apply assumption+
+    done
+  done
 
-lemma take_step_PR_p_preserves_inv_implications_nonneg:
+lemma propagate_all_preserves_inv_imps_work_sum:
+  "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
+   propagate_all summary c = Some c' \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c'"
+  unfolding propagate_all_def
+  subgoal
+  apply (drule while_option_rule[rotated])
+  defer
+  apply (rule take_step_PR_p_preserves_inv_imps_work_sum)
+         apply assumption+
+    subgoal
+      unfolding worklist_is_empty_def by force
+     apply auto
+    done
+  done
+
+lemma take_step_PR_p_preserves_inv:
   "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
-   dataflow_topology_from_tree.inv_implications_nonneg ((take_step summary PR ^^ k) c)"
-  oops
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
+   \<exists>t loc. t \<in>#\<^sub>z c_work c loc \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg ((take_step summary PR) c) \<and>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg ((take_step summary PR) c) \<and>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by ((take_step summary PR) c)"
+  apply (frule Executable.enum_dataflow_topology.PR_next[where less_t="(<)", simplified, unfolded enum_dataflow_topology_def])
+     apply assumption+
+  subgoal 
+    apply standard
+        apply auto
+    done
+   apply assumption
+  apply (elim exE)
+  subgoal for t loc loc' t'
+    apply (subst (1 2) take_step_enum_dataflow_topology_take_step)
+     apply (simp add: enum_dataflow_topology_def)
+    apply (intro conjI)
+     apply (rule Propagate.dataflow_topology.p_preserves_inv_implications_nonneg)
+        apply assumption+
+    apply (rule Propagate.dataflow_topology.iiws_imp_iipwn)
+     apply assumption+
+    apply (subst take_step_enum_dataflow_topology_take_step[symmetric])
+     apply (simp add: enum_dataflow_topology_def)
+    apply (rule take_step_PR_p_preserves_inv_imps_work_sum)
+      apply assumption+
+     apply auto[1]
+    apply (rule take_step_PR_p_preserves_inv_imps_work_sum)
+      apply assumption+
+    apply auto
+    done
+  done
 
-lemma
-  "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
+lemma propagate_all_preserves_inv:
+  "propagate_all summary c = Some c' \<Longrightarrow>
+   dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg c' \<and>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c' \<and>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c'"
+  unfolding propagate_all_def
+  subgoal
+  apply (drule while_option_rule[rotated])
+      defer
+      apply (rule take_step_PR_p_preserves_inv)
+          apply assumption+
+         apply simp_all
+    subgoal
+      unfolding worklist_is_empty_def 
+      apply clarsimp
+      apply blast
+      done
+    done
+  done
+
+lemma propagate_all_frontier_c_imp_correctness_aux:
+  "propagate_all summary c = Some c' \<Longrightarrow>
+   dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
    reachable_locations summary = UNIV \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
-   propagate_all summary c = Some c' \<Longrightarrow>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
    (t \<in>\<^sub>A frontier (c_imp c' loc)) = (t \<in>\<^sub>A dataflow_topology.implied_frontier_alt summary dataflow_topology_from_tree.followed_by c' loc)"
+  apply (frule propagate_all_preserves_inv)
+  apply assumption+
   unfolding propagate_all_def worklist_is_empty_def
-  apply (drule while_option_stop2)
+  apply (frule while_option_stop2)
   apply (rule Propagate.dataflow_topology.implication_frontier_iff_implied_frontier_alt_vacant)
      apply simp_all
-    (*   using take_step_PR_p_preserves_inv_imps_work_sum apply force
-  using take_step_PR_p_preserves_inv_implications_nonneg apply force
-  apply (rule Propagate.dataflow_topology.empty_worklists_vacant_to)
-   apply simp_all *)
-  oops
+ apply (rule Propagate.dataflow_topology.empty_worklists_vacant_to)
+   apply auto
+  done
+
+lemma propagate_all_frontier_c_imp_correctness:
+  "propagate_all summary c = Some c' \<Longrightarrow>
+   dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
+   reachable_locations summary = UNIV \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
+   frontier (c_imp c' loc) = dataflow_topology.implied_frontier_alt summary dataflow_topology_from_tree.followed_by c' loc"
+  using propagate_all_frontier_c_imp_correctness_aux by (metis dataflow_topology.antichain_eqI)
+
+
+lemma take_step_PR_preserves_c_pts[simp]:
+  "c_pts (take_step summary PR c) = c_pts c"
+  by (simp_all split: prod.splits if_splits)
 
 
 lemma propagate_all_preserves_c_pts:
-  "propagate_all (summ sg) c = Some c' \<Longrightarrow>
-   c_pts c' = c_pts c"
-  sorry
+ assumes "propagate_all summary c = Some c'"
+ shows "c_pts c' = c_pts c"
+  apply (rule while_option_rule[rotated, OF assms[unfolded propagate_all_def comp_def]])
+   apply simp
+  apply (simp only: take_step_PR_preserves_c_pts)
+  done
 
 lemma c_pts_change_multiplicities_cong:
   "c_pts c loc = c_pts c' loc \<Longrightarrow>
    c_pts (change_multiplicities su cbs c) loc = c_pts (change_multiplicities su cbs c') loc"
+  apply (induct cbs arbitrary: c c')
+   apply simp
+  subgoal premises prems for a cbs c c'
+    using prems(2-) apply -
+    apply (cases a)
+    apply (auto split: prod.splits simp add: change_multiplicities_simp_alt)
+    using prems(1) apply metis+
+    done
+  done
+
+lemma propagate_pointstamps_correctness:
+  "propagate_pointstamps summary c cbs = Some c' \<Longrightarrow>
+   dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
+   reachable_locations summary = UNIV \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
+   frontier (c_imp c' loc) = dataflow_topology.implied_frontier_alt summary dataflow_topology_from_tree.followed_by (change_multiplicities summary cbs c) loc"
+  unfolding propagate_pointstamps_def
+  apply simp
+  apply (frule propagate_all_frontier_c_imp_correctness[where loc=loc])
+       apply assumption+
+  prefer 4
+  subgoal
+    apply simp
+    apply (subgoal_tac "c_pts c' = c_pts (change_multiplicities summary cbs c)" )
+    apply (subst (1 2) Propagate.dataflow_topology.implied_frontier_alt_def)
+      apply assumption
+     apply simp
+    apply (rule propagate_all_preserves_c_pts)
+    apply assumption
+    done
   sorry
 
 lemma is_empty_antichain_filter_antichain[simp]:
@@ -466,6 +625,43 @@ lemma time_below_frontier_frontier_below_eq_frontier:
   done
 
 lemma
+  "frontier_below_eq_frontier 
+   (frontier (c_imp c (Loc 1 (Trg 1))))
+   (frontier (c_pts c (Loc 1 (Trg 1)) + M + c_pts c (Loc 0 (Src 1)) + M'))"
+  oops
+
+
+lemma UNIV_location[simp]:
+  "(UNIV :: ('a :: enum, 'b :: enum) location set) = (\<lambda> (n, p). Loc n p) ` (UNIV \<times> UNIV)"
+  apply (auto split: prod.splits)
+  apply (metis UNIV_I location.exhaust pair_imageI)
+  done
+
+lemma UNIV_port[simp]:
+  "(UNIV :: ('a :: enum) port set) = Trg ` UNIV \<union> Src ` UNIV"
+  apply auto
+  using port.exhaust_sel apply blast
+  done
+
+lemma UNIV_Numerals[simp]:
+  "(UNIV :: 1 set) = {1}"
+  "(UNIV :: 2 set) = {1, 2}"
+   apply auto
+  subgoal for x
+    apply (cases x)
+    apply auto
+    subgoal for z
+      apply (cases z)
+       apply auto
+      subgoal for n
+        apply (cases n)
+        apply auto
+        done
+      done
+    done
+  done
+
+lemma
   \<open>xs 0 = outpu os2 0 \<Longrightarrow>
    ys 0 = max_from_buf caps buf2 ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0) \<Longrightarrow>
    (\<forall> x \<in> set (buf1 (Inr (1, 0))). is_Inr x) \<Longrightarrow>
@@ -477,6 +673,8 @@ lemma
    c_pts c (Loc 1 (Trg 0)) = zmset_of (mset (map snd ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0))) \<Longrightarrow>
    c_pts c (Loc 0 (Src 0)) = {# n 0 #}\<^sub>z \<Longrightarrow>
    frontier_below_eq_frontier (front os2 0) (frontier (c_pts c (Loc 1 (Trg 0)) + c_pts c (Loc 0 (Src 0)))) \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum (summ sg) dataflow_topology_from_tree.followed_by (pt_tr sg) \<Longrightarrow>
+   summ sg = (\<lambda> l1 l2. if l1 = Loc 0 (Src 0) \<and> l2 = Loc 1 (Trg 0) then frontier {# 0 #}\<^sub>z else {}\<^sub>A) \<Longrightarrow>
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
 proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c st1 st2 rule: weakBisimWeakUptoBisimCong)
@@ -486,7 +684,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
     unfolding wsim_def
     apply (intro allI conjI impI)
     subgoal premises prems for io op1'
-      using prems(12-) apply -
+      using prems(14-) apply -
       apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin?)
                  prefer 12
       subgoal for nid op'' imp_fron sg' io' op''a p op2' io'a op''b
@@ -506,11 +704,11 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           using prems(5,6,7,8) prems(9)[symmetric] apply -
           apply (auto simp add: propagate_pointstamps_def change_multiplicities_append_comp split: option.splits; hypsubst_thin?)
           subgoal for c'
-            apply (drule propagate_all_preserves_c_pts)
+             apply (drule propagate_all_preserves_c_pts)
             apply (rule c_pts_change_multiplicities_cong)
             apply (rule c_pts_change_multiplicities_cong)
             apply simp
-            done
+            done 
           done
         subgoal
           using prems(10)[symmetric] apply -
@@ -521,6 +719,41 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
         subgoal
           apply simp
           using prems(11) apply -
+          apply (auto split: option.splits)
+          apply (subst propagate_pointstamps_correctness)
+                apply assumption
+          subgoal sorry
+          subgoal sorry
+          subgoal sorry
+          subgoal sorry
+          subgoal sorry
+          apply (subst dataflow_topology.implied_frontier_alt_def)
+          subgoal sorry
+          apply simp
+
+          find_theorems  "enum_class.enum :: _ port list" name: def
+
+end
+
+          find_theorems "UNIV :: (_, _) location set"
+
+          subgoal for c'
+            using prems(12,13) apply -
+            apply (subst (asm) dataflow_topology.inv_imps_work_sum_def)
+            subgoal sorry
+            apply (drule spec[of _ "Loc 1 (Trg 1)"])
+            apply simp
+
+            find_theorems name: UNIV_def
+
+            unfolding frontier_below_eq_frontier_def in_frontier_iff
+            apply (intro conjI allI impI)
+            subgoal for t2
+              apply (elim conjE)
+
+              find_theorems frontier name: iff
+
+end
           sorry
         apply (simp add: comp_def)
         done
@@ -662,44 +895,5 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
             done
           done
         done
-
-end
-                      sorry
-                    subgoal for cap
-                      apply (subgoal_tac "\<not> (time_below_frontier (time cap) (front os2 1))")
-                      subgoal
-                        by (auto simp add: time_below_frontier_def comp_def BULK_BENQ_def set_rmdups split: sum.splits prod.splits)
-                      subgoal
-                        apply (auto simp add: set_rmdups split: sum.splits prod.splits; hypsubst_thin)
-
-
-                        find_theorems set rmdups
-
-end
-  apply (drule frontier_below_eq_frontier_not_time_below_frontier)
-  using prems(12) apply simp
-  subgoal
-    apply (auto simp add: time_below_frontier_iff)
-    using prems(5,6,7,8,9) apply hypsubst_thin
-    apply clarsimp
-    apply hypsubst_thin
-    apply (auto simp add: in_frontier_iff)
-    apply (drule spec[of _ "time cap"])
-    apply (drule mp)
-    subgoal premises prems2
-      using prems2(2,4) apply -
-      apply (simp add:  count_image_mset)
-
-      find_theorems sum vimage
-
-      find_theorems "count (image_mset _ _)" 
-
-
-end
-  subgoal
-    apply (simp add: c_pts_change_multiplicities)
-
-
-    find_theorems "filter _ _ = []"
 
 end
