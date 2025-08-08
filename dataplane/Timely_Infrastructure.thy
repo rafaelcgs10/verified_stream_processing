@@ -163,6 +163,8 @@ global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "fst (
     and after_summary = "dataflow_topology.after_summary (+) :: nat zmultiset \<Rightarrow> nat antichain \<Rightarrow> nat zmultiset"
   by simp
 
+notation dataflow_topology_from_tree.followed_by (infixl \<open>-+-\<close> 65)
+
 definition take_step_locale where
   "take_step_locale df = take_step' df (<)"
 
@@ -650,7 +652,7 @@ record ('p, 'd, 't) operator_state =
 
 abbreviation "delay_cap os cap incr \<equiv> (os\<lparr> inter := inter os @ [(out cap, time cap, -1), (out cap, time cap + incr, 1)] \<rparr>)"
 
-abbreviation "produce os cap batch \<equiv> os\<lparr> outpu := (outpu os)(out cap := outpu os (out cap) @ map (\<lambda> x. (x, time cap)) batch), produ := produ os @ [(out cap, time cap, length batch)] \<rparr>"
+definition "produce os cap batch = (if batch = [] then os else os\<lparr> outpu := (outpu os)(out cap := outpu os (out cap) @ map (\<lambda> x. (x, time cap)) batch), produ := produ os @ [(out cap, time cap, length batch)] \<rparr>)"
 
 abbreviation "consume os p t len \<equiv> os\<lparr> consu := consu os @ [(p, t, len)] \<rparr>"
 

@@ -398,21 +398,92 @@ lemma take_step_PR_p_preserves_inv_imps_work_sum:
     done
   done
 
-lemma propagate_all_preserves_inv_imps_work_sum:
+lemma take_step_CM_p_preserves_inv_imps_work_sum:
   "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
-   propagate_all summary c = Some c' \<Longrightarrow>
+   d \<noteq> 0 \<Longrightarrow>
+   \<exists>t'. t' \<in>\<^sub>A frontier (c_imp c loc) \<and> t' \<le> t \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by ((take_step summary (CM loc t d)) c)"
+  apply (frule Executable.enum_dataflow_topology.CM_next[where delta=d, simplified, unfolded enum_dataflow_topology_def])
+    apply assumption+
+  apply (elim exE)
+    apply (subst take_step_enum_dataflow_topology_take_step)
+   apply (simp add: enum_dataflow_topology_def)
+  apply (rule Propagate.dataflow_topology.cm_preserves_inv_imps_work_sum)
+    apply assumption+
+  done
+
+lemma take_step_CM_p_preserves_inv:
+  "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
+   d \<noteq> 0 \<Longrightarrow>
+   \<exists>t'. t' \<in>\<^sub>A frontier (c_imp c loc) \<and> t' \<le> t \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg ((take_step summary (CM loc t d)) c) \<and>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg ((take_step summary (CM loc t d)) c) \<and>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by ((take_step summary (CM loc t d)) c)"
+  apply (frule Executable.enum_dataflow_topology.CM_next[where delta=d, simplified, unfolded enum_dataflow_topology_def])
+    apply assumption+
+  apply (elim exE)
+    apply (subst (1 2) take_step_enum_dataflow_topology_take_step)
+     apply (simp add: enum_dataflow_topology_def)
+  apply (intro conjI)
+    apply (rule Propagate.dataflow_topology.cm_preserves_inv_implications_nonneg)
+  apply assumption+
+    apply (rule Propagate.dataflow_topology.iiws_imp_iipwn)
+    apply assumption+
+    apply (subst take_step_enum_dataflow_topology_take_step[symmetric])
+     apply (simp add: enum_dataflow_topology_def)
+    apply (rule take_step_CM_p_preserves_inv_imps_work_sum)
+      apply assumption+
+     apply auto[1]
+    apply (rule take_step_CM_p_preserves_inv_imps_work_sum)
+      apply assumption+
+    apply auto
+  done
+
+lemma change_multiplicities_preserves_inv:
+  "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
+   (\<forall> d \<in> snd ` snd ` set xs. d \<noteq> 0) \<Longrightarrow>
+   (\<forall> (l, t, d) \<in> set xs. \<exists>t'. t' \<in>\<^sub>A frontier (c_imp c l) \<and> t' \<le> t) \<Longrightarrow>
+   change_multiplicities summary xs c = c' \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg c' \<and>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c' \<and>
    dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c'"
-  unfolding propagate_all_def
-  subgoal
-  apply (drule while_option_rule[rotated])
-  defer
-  apply (rule take_step_PR_p_preserves_inv_imps_work_sum)
-         apply assumption+
-    subgoal
-      unfolding worklist_is_empty_def by force
+  apply (induct xs arbitrary: c c')
+   apply simp
+  subgoal premises prems for a xs c c'
+    using prems(2-) apply -
+    apply (simp split: prod.splits)
+    subgoal for l b t' d t
+    apply (subst (asm) change_multiplicities_simps(2)[where summary=summary])
+    apply (frule take_step_CM_p_preserves_inv[where loc=l and t=t'])
+           apply assumption+
+       apply force
+      apply (elim conjE)
+    using prems(1) apply -
+  apply (drule meta_spec)+
+  apply (drule meta_mp)
+     apply assumption
+  apply (drule meta_mp)
+     apply assumption
+    back
+  apply (drule meta_mp)
+  apply assumption
+  apply (drule meta_mp)
+   apply blast
+  apply (drule meta_mp)
+    apply simp
+    apply (drule meta_mp)
+    apply fastforce
+    apply (drule meta_mp)
      apply auto
     done
+  done
   done
 
 lemma take_step_PR_p_preserves_inv:
@@ -537,6 +608,8 @@ lemma propagate_pointstamps_correctness:
    dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
    dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
+   (\<forall> d \<in> snd ` snd ` set cbs. d \<noteq> 0) \<Longrightarrow>
+   (\<forall> (l, t, d) \<in> set cbs. \<exists>t'. t' \<in>\<^sub>A frontier (c_imp c l) \<and> t' \<le> t) \<Longrightarrow>
    frontier (c_imp c' loc) = dataflow_topology.implied_frontier_alt summary dataflow_topology_from_tree.followed_by (change_multiplicities summary cbs c) loc"
   unfolding propagate_pointstamps_def
   apply simp
@@ -552,7 +625,8 @@ lemma propagate_pointstamps_correctness:
     apply (rule propagate_all_preserves_c_pts)
     apply assumption
     done
-  sorry
+  using change_multiplicities_preserves_inv apply fastforce+
+  done
 
 lemma is_empty_antichain_filter_antichain[simp]:
   "is_empty_antichain (filter_antichain P A) \<longleftrightarrow> (\<forall> a. a \<in>\<^sub>A A \<longrightarrow> \<not> P a)"
@@ -687,8 +761,6 @@ lemma graph_my_sum:
   apply simp
   done
 
-(* FIXME: move me *)
-notation dataflow_topology_from_tree.followed_by (infixl \<open>-+-\<close> 65)
 
 lemma dataflow_topology_my_summ[simp]:
   "dataflow_topology my_summ (-+-)"
@@ -781,96 +853,6 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
     subgoal premises prems for io op1'
       using prems(14-) apply -
       apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin?)
-                 prefer 12
-      subgoal for nid op'' imp_fron sg' io' op''a p op2' io'a op''b
-        using prems(1,2) apply -
-        apply (intro exI conjI[rotated])
-         apply (intro relcomppI)
-           apply (rule bisim_refl)
-          defer
-          apply (rule wbisim_refl)
-         defer
-         apply (rule wb_upto_b_base)
-         apply (intro conjI exI)
-                 apply (rule refl)+
-        using prems(3) apply simp
-        using prems(4) apply simp
-        subgoal
-          using prems(5,6,7,8) prems(9)[symmetric] apply -
-          apply (auto simp add: propagate_pointstamps_def change_multiplicities_append_comp split: option.splits; hypsubst_thin?)
-          subgoal for c'
-             apply (drule propagate_all_preserves_c_pts)
-            apply (rule c_pts_change_multiplicities_cong)
-            apply (rule c_pts_change_multiplicities_cong)
-            apply simp
-            done 
-          done
-        subgoal
-          using prems(10)[symmetric] apply -
-          apply (auto simp add: propagate_pointstamps_def change_multiplicities_append_comp split: option.splits; hypsubst_thin?)
-          apply (drule propagate_all_preserves_c_pts)
-          apply (smt (verit, ccfv_threshold) SIM1(7,8) c_pts_change_multiplicities_cong change_multiplicities_append prems(5,6) prod.simps(1) subgraph.simps(1,2,4,7) subgraph.surjective)
-          done
-        subgoal
-          apply simp
-          using prems(11) apply -
-          apply (auto split: option.splits)
-          apply (subst propagate_pointstamps_correctness)
-                apply assumption
-          using prems(13) apply simp
-          subgoal sorry
-          subgoal sorry
-          subgoal sorry
-          subgoal sorry
-          apply (subst dataflow_topology.implied_frontier_alt_def)
-          using prems(13) apply simp
-          apply simp
-          apply (subgoal_tac "graph.path_weight (summ sg) = my_summ")
-           defer
-          subgoal
-            by (simp only: prems(13) path_weight_my_summ_simps)
-          apply (simp add: my_summ_def)
-          apply (subst (1 2 3) dataflow_topology.after_summary_empty_summary[where summary=my_summ])
-          apply simp
-          apply simp
-
-          thm after_summary_zero_antichain
-
-          find_theorems "dataflow_topology.after_summary _ _ _ = _" 
-
-          value[simp] "my_summ (Loc 0 (Src 1)) (Loc 1 (Trg 1))"
-
-          term "graph.path_weight (summ sg) (Loc 1 (Src 1)) (Loc 1 (Trg 1))"
-          term "Graph.graph.path_weightp"
-
-          find_consts name: path_weightp
-
-          find_theorems  "graph.path_weight _ _ _ = _"
-
-end
-
-          find_theorems "UNIV :: (_, _) location set"
-
-          subgoal for c'
-            using prems(12,13) apply -
-            apply (subst (asm) dataflow_topology.inv_imps_work_sum_def)
-            subgoal sorry
-            apply (drule spec[of _ "Loc 1 (Trg 1)"])
-            apply simp
-
-            find_theorems name: UNIV_def
-
-            unfolding frontier_below_eq_frontier_def in_frontier_iff
-            apply (intro conjI allI impI)
-            subgoal for t2
-              apply (elim conjE)
-
-              find_theorems frontier name: iff
-
-end
-          sorry
-        apply (simp add: comp_def)
-        done
                 prefer 8
       subgoal for op'' io' op''a op2' io'a op''b above_caps below_caps batch os' os'' buf'
         using prems(1,2) apply -
@@ -901,6 +883,8 @@ end
           apply simp
           using prems(11)
           sorry
+        subgoal sorry
+        using prems(13) apply simp
         subgoal
           apply simp
           apply (rule rtranclp_intros_1)
@@ -1009,5 +993,97 @@ end
             done
           done
         done
+                prefer 11
+      subgoal for nid op'' imp_fron sg' io' op''a p op2' io'a op''b
+        using prems(1,2) apply -
+        apply (intro exI conjI[rotated])
+         apply (intro relcomppI)
+           apply (rule bisim_refl)
+          defer
+          apply (rule wbisim_refl)
+         defer
+         apply (rule wb_upto_b_base)
+         apply (intro conjI exI)
+                 apply (rule refl)+
+        using prems(3) apply simp
+        using prems(4) apply simp
+        subgoal
+          using prems(5,6,7,8) prems(9)[symmetric] apply -
+          apply (auto simp add: propagate_pointstamps_def change_multiplicities_append_comp split: option.splits; hypsubst_thin?)
+          subgoal for c'
+             apply (drule propagate_all_preserves_c_pts)
+            apply (rule c_pts_change_multiplicities_cong)
+            apply (rule c_pts_change_multiplicities_cong)
+            apply simp
+            done 
+          done
+        subgoal
+          using prems(10)[symmetric] apply -
+          apply (auto simp add: propagate_pointstamps_def change_multiplicities_append_comp split: option.splits; hypsubst_thin?)
+          apply (drule propagate_all_preserves_c_pts)
+          apply (smt (verit, ccfv_threshold) SIM1(7,8) c_pts_change_multiplicities_cong change_multiplicities_append prems(5,6) prod.simps(1) subgraph.simps(1,2,4,7) subgraph.surjective)
+          done
+        subgoal
+          apply simp
+          using prems(11) apply -
+          apply (auto split: option.splits)
+          apply (subst propagate_pointstamps_correctness)
+                apply assumption
+          using prems(13) apply simp
+          subgoal sorry
+          subgoal sorry
+          subgoal sorry
+          subgoal sorry
+          subgoal sorry
+          subgoal sorry
+          apply (subst dataflow_topology.implied_frontier_alt_def)
+          using prems(13) apply simp
+          apply simp
+          apply (subgoal_tac "graph.path_weight (summ sg) = my_summ")
+           defer
+          subgoal
+            by (simp only: prems(13) path_weight_my_summ_simps)
+          apply (simp add: my_summ_def)
+          apply (subst (1 2 3) dataflow_topology.after_summary_empty_summary[where summary=my_summ])
+          apply simp
+          apply simp
+
+          thm after_summary_zero_antichain
+
+          find_theorems "dataflow_topology.after_summary _ _ _ = _" 
+
+
+          term "graph.path_weight (summ sg) (Loc 1 (Src 1)) (Loc 1 (Trg 1))"
+          term "Graph.graph.path_weightp"
+
+          find_consts name: path_weightp
+
+          find_theorems  "graph.path_weight _ _ _ = _"
+
+end
+
+          find_theorems "UNIV :: (_, _) location set"
+
+          subgoal for c'
+            using prems(12,13) apply -
+            apply (subst (asm) dataflow_topology.inv_imps_work_sum_def)
+            subgoal sorry
+            apply (drule spec[of _ "Loc 1 (Trg 1)"])
+            apply simp
+
+            find_theorems name: UNIV_def
+
+            unfolding frontier_below_eq_frontier_def in_frontier_iff
+            apply (intro conjI allI impI)
+            subgoal for t2
+              apply (elim conjE)
+
+              find_theorems frontier name: iff
+
+end
+          sorry
+        apply (simp add: comp_def)
+        done
+
 
 end

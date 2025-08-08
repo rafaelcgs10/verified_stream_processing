@@ -214,7 +214,7 @@ lemma ldropWhile_steps_input_top:
    ints = concat (map (\<lambda> t. [(p, t, -1), (p, Suc t, 1)]) [caps p..<caps p + offset]) \<Longrightarrow>
    prods = concat (map (\<lambda> t. [(p, t, 0)]) [caps p..<caps p + offset]) \<Longrightarrow>
    p \<notin> defaults \<Longrightarrow>
-   os' = os\<lparr> inter := inter os @ ints, produ := produ os @ prods \<rparr> \<Longrightarrow>
+   os' = os\<lparr> inter := inter os @ ints \<rparr> \<Longrightarrow>
    caps' = caps(p := caps p + offset) \<Longrightarrow>
    inps'= inps(p := LCons (x # xs) lxs) \<Longrightarrow>
    steps (replicate offset Tau)
@@ -228,7 +228,7 @@ lemma ldropWhile_steps_input_top:
     using prems(1,2,4-) apply -
     apply (cases "inps p"; simp flip: upt.upt_Suc split: if_splits; hypsubst?)
     subgoal for x lxs
-      apply (subst (1 2 3 4) the_enat_eSuc)
+      apply (subst (1 2 3) the_enat_eSuc)
       using llength_eq_infty_conv_lfinite apply blast
       using llength_eq_infty_conv_lfinite apply blast
       apply (subst (asm) (1 2) the_enat_eSuc)
@@ -253,7 +253,7 @@ lemma ldropWhile_steps_input_top:
           defer
           apply simp
          apply simp
-        apply (cases os; auto simp flip: upt.upt_Suc simp add: upt_conv_Cons)
+        apply (cases os; auto simp flip: upt.upt_Suc simp add: upt_conv_Cons produce_def)
         done
       done
     done
@@ -575,8 +575,9 @@ proof (coinduction arbitrary: inps caps os xs sg rule: weakBisimWeakUptoBisimCon
         apply (rule arg_cong3[where f=input_top])
           apply simp_all
         apply (cases os; simp)
-        apply auto
-        done
+         apply (auto simp add: produce_def)
+        oops
+  (*       done
       subgoal for op'' io' op''a batch lxs p cap os' os''
         apply (intro exI conjI)
          apply force
@@ -829,6 +830,7 @@ next
       done
     done
 qed
+ *)
 
 find_consts name: lconcat
 
@@ -888,6 +890,7 @@ proof (coinduction arbitrary: inps n  os xs sg rule: weakBisimWeakUptoBisimCong)
         apply simp_all
         apply (rule arg_cong3[where f=map_op])
            apply simp_all
+        oops(* 
          apply (rule arg_cong[where f=source_op])
         apply (rule ext)
         apply simp
@@ -960,7 +963,7 @@ next
               apply (rule refl)+
              defer
              apply (rule ldropWhile_steps_input_top[where p=p])
-                oops
+                oops *)
 
 
 end
