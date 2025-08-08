@@ -645,7 +645,7 @@ lemma UNIV_port[simp]:
 
 lemma UNIV_Numerals[simp]:
   "(UNIV :: 1 set) = {1}"
-  "(UNIV :: 2 set) = {1, 2}"
+  "(UNIV :: 2 set) = {0, 1}"
    apply auto
   subgoal for x
     apply (cases x)
@@ -661,6 +661,101 @@ lemma UNIV_Numerals[simp]:
     done
   done
 
+definition "my_summ = (\<lambda> l1 l2.
+   if l1 = Loc (0 :: 2) (Src (0 :: 1)) \<and> l2 = Loc (1 :: 2)  (Trg (0 :: 1)) 
+   then antichain {0}
+   else if l1 = Loc 0 (Trg 0) \<and> l2 = Loc 0 (Src 0)
+   then antichain {0} 
+   else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 0)
+   then antichain {0 :: nat}
+   else {}\<^sub>A)"
+
+lemma my_summ_same[simp]:
+  "my_summ loc loc = {}\<^sub>A"
+  apply (cases loc)
+  subgoal for n p
+    apply (cases p)
+     apply (simp_all add: my_summ_def)
+    done
+  done
+
+lemma graph_my_sum:
+  "Graph.graph my_summ"
+  apply standard
+    apply force
+   apply force
+  apply simp
+  done
+
+(* FIXME: move me *)
+notation dataflow_topology_from_tree.followed_by (infixl \<open>-+-\<close> 65)
+
+lemma dataflow_topology_my_summ[simp]:
+  "dataflow_topology my_summ (-+-)"
+  apply standard
+       apply simp
+      apply simp
+     apply simp
+    apply simp_all
+  subgoal for loc xs s
+    apply (cases loc)
+    subgoal for n p
+      apply (cases p; cases n; simp)
+      subgoal for z
+        apply (cases z; simp)
+        subgoal for n
+          apply (cases n; simp; hypsubst_thin)
+          subgoal
+            apply (erule Graph.graph.path.cases[of my_summ, OF graph_my_sum]; simp)
+            apply clarsimp
+            apply (metis (mono_tags, lifting) location.inject mem_antichain_nonempty my_summ_def my_summ_same one_neq_zero zero_one)     
+            done
+          subgoal
+            apply (erule Graph.graph.path.cases[of my_summ, OF graph_my_sum]; simp)
+            apply clarsimp
+            apply (smt (verit, best) graph.path.cases graph_my_sum location.inject mem_antichain_nonempty my_summ_def one_neq_zero port.simps(4))
+            done
+          done
+        done
+      subgoal for z
+        apply (cases z; simp)
+        subgoal for n
+          apply (cases n; simp; hypsubst_thin)
+          subgoal
+            apply (erule Graph.graph.path.cases[of my_summ, OF graph_my_sum]; simp)
+            apply clarsimp
+            apply (metis (no_types, lifting) graph.path.cases graph_my_sum location.inject mem_antichain_nonempty my_summ_def my_summ_same one_neq_zero)
+            done
+          subgoal
+            apply (erule Graph.graph.path.cases[of my_summ, OF graph_my_sum]; simp)
+            apply clarsimp
+            apply (smt (verit, best) graph.path.cases graph_my_sum location.inject mem_antichain_nonempty my_summ_def one_neq_zero port.simps(4))
+            done
+          done
+        done
+      done
+    done
+  done
+
+
+lemma after_summary_zero_antichain[simp]:
+  "dataflow_topology.after_summary (-+-) M (antichain { 0 }) = M"
+  apply (subst dataflow_topology.after_summary_def[where summary=my_summ])
+  apply simp
+  apply (subst antichain_inverse)
+   apply (auto simp add: incomparable_def)
+  done
+
+lemma frontier_idempotent[simp]:
+  "frontier (zmset_of (mset_set (set_antichain (frontier M)))) = frontier M"
+  apply transfer
+  apply simp
+  done
+
+lemma path_weight_my_summ_simps[simp]:
+  "graph.path_weight my_summ = my_summ"
+  sorry
+
 lemma
   \<open>xs 0 = outpu os2 0 \<Longrightarrow>
    ys 0 = max_from_buf caps buf2 ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0) \<Longrightarrow>
@@ -674,7 +769,7 @@ lemma
    c_pts c (Loc 0 (Src 0)) = {# n 0 #}\<^sub>z \<Longrightarrow>
    frontier_below_eq_frontier (front os2 0) (frontier (c_pts c (Loc 1 (Trg 0)) + c_pts c (Loc 0 (Src 0)))) \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum (summ sg) dataflow_topology_from_tree.followed_by (pt_tr sg) \<Longrightarrow>
-   summ sg = (\<lambda> l1 l2. if l1 = Loc 0 (Src 0) \<and> l2 = Loc 1 (Trg 0) then frontier {# 0 #}\<^sub>z else {}\<^sub>A) \<Longrightarrow>
+   summ sg = my_summ \<Longrightarrow>
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
 proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c st1 st2 rule: weakBisimWeakUptoBisimCong)
@@ -722,16 +817,35 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           apply (auto split: option.splits)
           apply (subst propagate_pointstamps_correctness)
                 apply assumption
-          subgoal sorry
+          using prems(13) apply simp
           subgoal sorry
           subgoal sorry
           subgoal sorry
           subgoal sorry
           apply (subst dataflow_topology.implied_frontier_alt_def)
-          subgoal sorry
+          using prems(13) apply simp
+          apply simp
+          apply (subgoal_tac "graph.path_weight (summ sg) = my_summ")
+           defer
+          subgoal
+            by (simp only: prems(13) path_weight_my_summ_simps)
+          apply (simp add: my_summ_def)
+          apply (subst (1 2 3) dataflow_topology.after_summary_empty_summary[where summary=my_summ])
+          apply simp
           apply simp
 
-          find_theorems  "enum_class.enum :: _ port list" name: def
+          thm after_summary_zero_antichain
+
+          find_theorems "dataflow_topology.after_summary _ _ _ = _" 
+
+          value[simp] "my_summ (Loc 0 (Src 1)) (Loc 1 (Trg 1))"
+
+          term "graph.path_weight (summ sg) (Loc 1 (Src 1)) (Loc 1 (Trg 1))"
+          term "Graph.graph.path_weightp"
+
+          find_consts name: path_weightp
+
+          find_theorems  "graph.path_weight _ _ _ = _"
 
 end
 
