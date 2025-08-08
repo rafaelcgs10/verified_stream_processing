@@ -16,8 +16,6 @@ abbreviation "produces os batch \<equiv> os\<lparr> outpu := (\<lambda> p. outpu
 
 abbreviation "drop_caps os caps \<equiv> (os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps \<rparr>)"
 
-
-
 corec max_top' where
   "max_top' os buf caps = choice5
    (Read None (\<lambda> st. if is_Inl st \<and> is_Inr (projl st) then max_top' (os\<lparr> front := projr (projl st) \<rparr>) buf caps else \<oslash>))
@@ -647,7 +645,10 @@ lemma sorted_caps_append:
 
 
 definition
-  "frontier_below_eq_frontier ft1 ft2 = (\<forall> t2. t2 \<in>\<^sub>A ft2 \<longrightarrow> \<not> (\<exists> t1. t1 \<in>\<^sub>A ft1 \<and> t2 \<le> t1))"
+  "frontier_below_eq_frontier ft1 ft2 = ((\<forall> t1. t1 \<in>\<^sub>A ft1 \<longrightarrow> \<not> (\<exists> t2. t2 \<in>\<^sub>A ft2 \<and> t2 \<le> t1)) \<and> (\<forall> t2. t2 \<in>\<^sub>A ft2 \<longrightarrow> \<not> (\<exists> t1. t1 \<in>\<^sub>A ft2 \<and> t2 \<le> t1)))"
+
+
+find_theorems frontier dataflow_topology.next_propagate'
 
 lemma time_below_frontier_iff:
   "time_below_frontier t f \<longleftrightarrow> (\<exists> t'. t' \<in>\<^sub>A f \<and> t < t')"
@@ -655,13 +656,7 @@ lemma time_below_frontier_iff:
   apply auto
   done
 
-(*  lemma frontier_below_eq_frontier_not_time_below_frontier:
-  "time_below_frontier t f1 \<Longrightarrow>
-   frontier_below_eq_frontier f1 f2 \<Longrightarrow>
-   \<not> time_below_frontier t f2 \<Longrightarrow>
-   False"
-  unfolding frontier_below_eq_frontier_def time_below_frontier_iff by force 
- *)
+
 lemma in_M_not_time_below_frontier:
   "0 < zcount M t \<Longrightarrow>
    \<not> time_below_frontier t (frontier M)"
@@ -672,12 +667,44 @@ lemma in_M_not_time_below_frontier:
    apply auto
   done
 
+fun zmset where
+  "zmset [] = {#}\<^sub>z"
+| "zmset ((x, d) # xs) = update_zmultiset (zmset xs) x d"
+
+lemma update_zmultiset_plus[simp]:
+  "update_zmultiset (A + B) x n = update_zmultiset A x n + B"
+  apply transfer
+  apply (auto simp: equiv_zmset_def)
+  subgoal for A B A' B'
+    apply (auto simp add: multiset_eq_iff split: if_splits)
+    done
+  done
+
+lemma update_zmultiset_plus_comm:
+  "update_zmultiset A x n + B = A + update_zmultiset B x n"
+  apply transfer
+  apply (auto simp: equiv_zmset_def)
+  subgoal for A B A' B'
+    apply (auto simp add: multiset_eq_iff split: if_splits)
+    done
+  done
+
+lemma zmset_append[simp]:
+  "zmset (xs @ ys) = zmset xs + zmset ys"
+  apply (induct xs arbitrary: ys)
+   apply auto
+  done
+
 
 lemma c_pts_change_multiplicities:
-  "c_pts (change_multiplicities su xs c) = fold (\<lambda> (l, t, d) M. M(l := update_zmultiset (M l) t d)) xs (c_pts c)"
-  unfolding change_multiplicities_def
+  "c_pts (change_multiplicities su xs c) = (\<lambda> l. c_pts c l + zmset (map snd (filter (\<lambda> (l', t, d). l = l') xs)))"
   apply (induct xs arbitrary: c)
-   apply (simp_all split: prod.splits)
+   apply simp
+  subgoal for x xs c
+    apply (rule ext)+
+    apply (cases x)
+    apply (auto split: if_splits prod.splits simp add: change_multiplicities_simp_alt update_zmultiset_plus_comm) 
+    done
   done
 
 lemma in_frontier_iff:
@@ -697,13 +724,6 @@ lemma time_below_frontier_frontier_below_eq_frontier:
   apply (clarsimp simp add: in_frontier_iff time_below_frontier_iff frontier_below_eq_frontier_def)
   apply (smt (verit, ccfv_SIG) dual_order.strict_iff_order order_trans_rules(23) order_zmset_exists_foundation')
   done
-
-lemma
-  "frontier_below_eq_frontier 
-   (frontier (c_imp c (Loc 1 (Trg 1))))
-   (frontier (c_pts c (Loc 1 (Trg 1)) + M + c_pts c (Loc 0 (Src 1)) + M'))"
-  oops
-
 
 lemma UNIV_location[simp]:
   "(UNIV :: ('a :: enum, 'b :: enum) location set) = (\<lambda> (n, p). Loc n p) ` (UNIV \<times> UNIV)"
@@ -824,9 +844,17 @@ lemma frontier_idempotent[simp]:
   apply simp
   done
 
+lemma frontier_below_eq_frontier_trans:
+  "frontier_below_eq_frontier f1 f2 \<Longrightarrow>
+   frontier_below_eq_frontier f2 f3 \<Longrightarrow>
+   frontier_below_eq_frontier f1 f3"
+  unfolding frontier_below_eq_frontier_def by blast
+
 lemma path_weight_my_summ_simps[simp]:
   "graph.path_weight my_summ = my_summ"
   sorry
+
+find_theorems change_multiplicities c_pts
 
 lemma
   \<open>xs 0 = outpu os2 0 \<Longrightarrow>
@@ -1027,6 +1055,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           apply simp
           using prems(11) apply -
           apply (auto split: option.splits)
+          subgoal for c'
           apply (subst propagate_pointstamps_correctness)
                 apply assumption
           using prems(13) apply simp
@@ -1047,6 +1076,17 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           apply (subst (1 2 3) dataflow_topology.after_summary_empty_summary[where summary=my_summ])
           apply simp
           apply simp
+          unfolding propagate_pointstamps_def Let_def
+          apply simp
+          apply (subst propagate_all_preserves_c_pts[symmetric])
+           apply assumption
+          unfolding extract_progress_def
+          apply simp
+
+          find_theorems propagate_all c_pts
+
+          apply (rule frontier_below_eq_frontier_trans[rotated])
+          apply (subst (1 2) c_pts_change_multiplicities)
 
           thm after_summary_zero_antichain
 
