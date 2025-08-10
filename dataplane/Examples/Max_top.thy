@@ -645,7 +645,7 @@ lemma sorted_caps_append:
 
 
 definition
-  "frontier_below_eq_frontier ft1 ft2 = ((\<forall> t1. t1 \<in>\<^sub>A ft1 \<longrightarrow> \<not> (\<exists> t2. t2 \<in>\<^sub>A ft2 \<and> t2 \<le> t1)) \<and> (\<forall> t2. t2 \<in>\<^sub>A ft2 \<longrightarrow> \<not> (\<exists> t1. t1 \<in>\<^sub>A ft2 \<and> t2 \<le> t1)))"
+  "frontier_below_eq_frontier ft1 ft2 = ((\<forall> t2. t2 \<in>\<^sub>A ft2 \<longrightarrow> \<not> (\<exists> t1. t1 \<in>\<^sub>A ft2 \<and> t2 \<le> t1)))"
 
 
 find_theorems frontier dataflow_topology.next_propagate'
@@ -854,8 +854,31 @@ lemma path_weight_my_summ_simps[simp]:
   "graph.path_weight my_summ = my_summ"
   sorry
 
-find_theorems change_multiplicities c_pts
 
+lemma frontier_nat_plus:
+  "\<forall> (t :: nat). t \<in>#\<^sub>z M \<longrightarrow> \<not> (\<exists> t'. t' \<in>#\<^sub>z N \<longrightarrow> t < t') \<Longrightarrow> frontier (M + N) = frontier N"
+  apply transfer
+  apply safe
+  subgoal
+    by (metis comm_monoid_add_class.add_0 gt_ex zmultiset_nonemptyE)
+  subgoal
+    by (metis add.commute group_cancel.rule0 gt_ex zmultiset_nonemptyE)
+  done
+
+lemma
+  "\<forall> t. t \<in>#\<^sub>z (zmset (map snd (filter (\<lambda>(l', t, d). l = l') xs))) \<longrightarrow> \<not> (\<exists> t'. t' \<in>#\<^sub>z (c_pts c l) \<and> t < t') \<Longrightarrow> 
+   frontier_below_eq_frontier (frontier (c_pts c l)) (frontier (c_pts (change_multiplicities su xs c) l))"
+  apply (simp add: c_pts_change_multiplicities)
+  unfolding frontier_below_eq_frontier_def
+  apply auto
+  subgoal for t2 t1
+    apply transfer
+    apply auto
+    oops
+
+  find_theorems change_multiplicities  zmset
+
+end
 lemma
   \<open>xs 0 = outpu os2 0 \<Longrightarrow>
    ys 0 = max_from_buf caps buf2 ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0) \<Longrightarrow>
@@ -1080,6 +1103,10 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           apply simp
           apply (subst propagate_all_preserves_c_pts[symmetric])
            apply assumption
+
+
+          find_theorems "frontier (_ + _) = _"
+
           unfolding extract_progress_def
           apply simp
 
