@@ -790,7 +790,7 @@ lemma my_summ_same[simp]:
     done
   done
 
-lemma graph_my_sum:
+lemma graph_my_sum[simp]:
   "Graph.graph my_summ"
   apply standard
     apply force
@@ -867,6 +867,155 @@ lemma frontier_below_eq_frontier_trans:
    frontier_below_eq_frontier f1 f3"
   unfolding frontier_below_eq_frontier_def by blast
  *)
+
+definition "my_summ' = (\<lambda> l1 l2.
+   if l1 = Loc (0 :: 2) (Src (0 :: 1)) \<and> l2 = Loc (1 :: 2)  (Trg (0 :: 1)) 
+   then frontier (abs_zmultiset (mset [0 :: nat], {#}))
+   else if l1 = Loc 0 (Trg 0) \<and> l2 = Loc 0 (Src 0)
+   then frontier (abs_zmultiset (mset [0], {#}))
+   else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 0)
+   then frontier (abs_zmultiset (mset [0], {#}))
+   else {}\<^sub>A)"
+
+abbreviation "nxt_l su l \<equiv> {l'. \<not> is_empty_antichain (su l l')}"
+
+abbreviation "conn su l V \<equiv> \<Union> ((\<lambda> l'. (\<lambda> w. (l, w, l')) ` (set_antichain (su l l'))) ` V)"
+
+value "conn my_summ' (Loc (0 :: 2) (Src (0 :: 1))) (nxt_l my_summ' (Loc (0 :: 2) (Src (0 :: 1))))"
+
+(* 
+function all_paths where
+ "all_paths su V (l :: 'loc :: enum) = 
+  (let N = nxt_l su l - V in
+    if N = {}
+    then {[]}
+    else let C = conn su l N in
+    (\<lambda> (l, w, l'). [(l, w, l')]) ` C \<union> \<Union> ((\<lambda> (l, w, l'). ((Cons (l, w, l')) ` (all_paths su (insert l V) l'))) ` C))"
+     apply auto
+  done
+termination
+  apply (relation "measure (\<lambda> (su, V, l :: 'loc :: enum). card (UNIV - nxt_l su l - V))")
+  oops
+ *)
+
+lemma sum_weights_foldr:
+  "Graph.graph.sum_weights (map (\<lambda>(s, l, t). l) xs) + x = foldr (+) (map (\<lambda>(s, l, t). l) xs) x"
+  apply (induct xs arbitrary: x rule: rev_induct)
+   apply auto
+  by (metis (full_types) add.assoc)
+
+lemma antichain_singletonD[dest]:
+  "t \<in>\<^sub>A antichain {x} \<Longrightarrow>
+   t = x"
+  apply (subst (asm) member_antichain.abs_eq)
+   apply (auto simp add: incomparable_def eq_onp_def)
+  done
+
+lemma t_in_my_summD[dest]:
+  "t \<in>\<^sub>A my_summ l l' \<Longrightarrow>
+   t = 0"
+  apply (cases l; cases l'; simp)
+  subgoal for n p n' p'
+    apply (cases n; cases p; cases p'; simp)
+  subgoal for z
+      apply (cases z; simp)
+      subgoal for n
+        apply (cases n; simp)
+        subgoal
+          unfolding my_summ_def
+          apply (simp split: if_splits)
+          using mem_antichain_nonempty apply blast
+          done
+        subgoal
+          unfolding my_summ_def
+          apply (simp split: if_splits)
+          using mem_antichain_nonempty apply blast
+          done
+        done
+      done
+    subgoal for z
+      apply (cases z; simp)
+      subgoal for n
+        apply (cases n; simp)
+        subgoal
+          unfolding my_summ_def
+          apply (simp split: if_splits)
+           apply blast
+          using mem_antichain_nonempty apply blast
+          done
+        subgoal
+          unfolding my_summ_def
+          apply (simp split: if_splits)
+           apply blast
+          using mem_antichain_nonempty apply blast
+          done
+        done
+      done
+  subgoal for z
+      apply (cases z; simp)
+      subgoal for n
+        apply (cases n; simp)
+        subgoal
+          unfolding my_summ_def
+          apply (simp split: if_splits)
+           apply blast
+          using mem_antichain_nonempty apply blast
+          done
+        subgoal
+          unfolding my_summ_def
+          apply (simp split: if_splits)
+          using mem_antichain_nonempty apply blast
+          done
+        done
+      done
+  subgoal for z
+      apply (cases z; simp)
+      subgoal for n
+        apply (cases n; simp)
+        subgoal
+          unfolding my_summ_def
+          apply (simp split: if_splits)
+          using mem_antichain_nonempty apply blast
+          done
+        subgoal
+          unfolding my_summ_def
+          apply (simp split: if_splits)
+          using mem_antichain_nonempty apply blast
+          done
+        done
+      done
+    done
+  done
+
+lemma path_my_summ_sum_path_weights_zeroD:
+  "graph.path my_summ l1 l2 xs \<Longrightarrow>
+   graph.sum_path_weights xs = 0"
+  apply (induct xs arbitrary: l1 l2 rule: rev_induct)
+   apply simp_all
+  subgoal for x xs l1 l2
+    apply (auto split: prod.splits)
+    subgoal for l b l'
+      apply (erule Graph.graph.path_AppendE[OF graph_my_sum])
+      apply (drule meta_spec)+
+      apply (drule meta_mp)
+       apply assumption
+      apply auto
+      done
+    done
+  done
+
+lemma
+  "finite A \<Longrightarrow>
+   A = minimal_antichain (Collect (graph.path_weightp my_summ l1 l2)) \<Longrightarrow>
+   t \<in> A \<Longrightarrow>
+   t = 0"
+  apply (induct A arbitrary: l1 l2 rule: finite_induct)
+   apply (simp_all add: minimal_antichain_def)
+  subgoal for x A l1 l2
+    apply auto
+    oops
+
+
 lemma path_weight_my_summ_simps[simp]:
   "graph.path_weight my_summ = (\<lambda> l1 l2. if l1 = Loc (0 :: 2) (Src (0 :: 1)) \<and> l2 = Loc (1 :: 2)  (Trg (0 :: 1)) 
    then antichain {0}
@@ -883,8 +1032,130 @@ lemma path_weight_my_summ_simps[simp]:
    else if l1 = l2
    then antichain {0}
    else {}\<^sub>A)"
-  sorry
+  apply (subst Graph.graph.path_weight_def)
+  subgoal
+      apply auto
+    done
+  subgoal
+    apply (simp add: map_fun_def comp_def)
+    apply (rule ext)+
+    subgoal for l1 l2
+      apply (rule Propagate.dataflow_topology.antichain_eqI[OF dataflow_topology_my_summ])
+        apply (rule iffI)
+      subgoal for t
+        apply (subst (asm) Antichain.member_antichain.abs_eq[unfolded incomparable_def])
+        subgoal
+          unfolding graph.path_weightp_def[OF graph_my_sum] minimal_antichain_def
+          apply (auto simp add: eq_onp_same_args finite_nat_set_iff_bounded_le)
+          apply (meson linorder_le_less_linear)
+          done
+        subgoal 
+          apply (subst (asm) Antichain.in_minimal_antichain)
+          apply (elim conjE)
+          apply (cases "l1 = Loc 0 (Src 1) \<and> l2 = Loc 1 (Trg 1)")
+          subgoal
+            apply simp
+            apply (subst Antichain.member_antichain.abs_eq[unfolded incomparable_def])
+             apply (simp add: eq_onp_same_args)
+            apply simp
+            apply (elim conjE)
+            apply (drule Graph.graph.path_weightp_ex_path[OF graph_my_sum])
+            apply simp
+            apply (elim exE conjE)
+            subgoal for xs
+              apply hypsubst_thin
+              unfolding graph.path_weightp_def[OF graph_my_sum] 
+              apply (drule spec[of _ "dataflow_topology_from_tree.sum_weights (map (\<lambda>(s, l, t). l) xs)"])
+              apply (simp split: prod.splits)
+              apply hypsubst_thin
+              apply (erule Graph.graph.path.cases[OF graph_my_sum])
+               apply auto
+              apply (metis path_my_summ_sum_path_weights_zeroD t_in_my_summD)
+              done
+            done
 
+              oops
+              
+
+              find_theorems graph.path_weightp dataflow_topology_from_tree.sum_weights
+
+end
+              apply (simp split: prod.splits)
+
+
+              find_theorems  dataflow_topology_from_tree.sum_weights
+
+end
+                apply (cases xs; simp split: prod.splits)
+                subgoal
+                  by blast
+                subgoal
+                  unfolding graph.path_weightp_def[OF graph_my_sum] minimal_antichain_def
+                  apply auto
+                  using Graph.graph.path.simps[OF graph_my_sum]
+
+
+                  find_theorems graph.path name: simp
+
+
+            thm Graph.graph.path_weightp_ex_path[OF graph_my_sum]
+
+            find_theorems "graph.path_weightp _ _ _ _ \<Longrightarrow> _"
+
+end
+            apply auto
+            apply (subst Antichain.member_antichain.abs_eq[unfolded incomparable_def])
+             apply (simp add: eq_onp_same_args)
+            apply simp
+            apply (cases t; simp)
+            apply (rule ccontr)
+            apply auto
+            subgoal for xs
+              apply (drule spec[of _ "dataflow_topology_from_tree.sum_weights (map (\<lambda>(s, l, t). l) xs)"])
+              apply auto
+              apply hypsubst_thin
+              apply (erule Graph.graph.path.cases[OF graph_my_sum])
+               apply auto
+              
+
+              thm Graph.graph.path.cases[OF graph_my_sum]
+
+              find_theorems "graph.path _ _ _ _" name: cases
+
+
+end
+      apply (cases l1; cases l2; simp)
+      subgoal for n p n' p'
+        apply (cases p; cases p'; auto; hypsubst_thin)
+        subgoal
+          apply (rule arg_cong[where f=antichain])
+          apply auto
+          using graph.path_weight_conv_path[OF graph_my_sum] 
+           apply (meson \<open>Graph.graph my_summ\<close> graph.path_weight_refl neq0_conv)
+          apply (metis \<open>Graph.graph my_summ\<close> graph.path0 remove_non_zero_sum_path_weights_zero remove_non_zero_weights_is_graph)
+          done
+        subgoal
+          apply (rule arg_cong[where f=antichain])
+          apply auto
+          using graph.path_weight_conv_path[OF graph_my_sum] 
+
+
+          thm  graph.path_weight_conv_path[OF graph_my_sum]
+
+          using Graph.graph.path.simps[OF graph_my_sum] 
+
+          find_theorems "dataflow_topology_from_tree.sum_weights _ = _"
+          
+          thm Graph.graph.path.simps[OF graph_my_sum]
+
+        thm graph.path_weightp_def[OF graph_my_sum]
+        thm graph.path_weightp_def
+
+        find_theorems "graph.path ?a _ _ _ = _"
+
+
+
+end
 
 lemma frontier_nat_plus:
   "\<forall> (t :: nat). t \<in>#\<^sub>z M \<longrightarrow> \<not> (\<exists> t'. t' \<in>#\<^sub>z N \<and> t < t') \<Longrightarrow> frontier (M + N) = frontier N"
