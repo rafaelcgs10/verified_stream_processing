@@ -887,6 +887,10 @@ lemma frontier_below_eq_frontier_refl[simp]:
   apply blast
   done
 
+lemma frontier_below_eq_frontier_refl_alt[simp]:
+  "f1 = f2 \<Longrightarrow> frontier_below_eq_frontier f1 f2"
+  by simp
+
 lemma frontier_below_eq_frontier_antisym:
   "frontier_below_eq_frontier f1 f2 \<Longrightarrow>
    frontier_below_eq_frontier f2 f1 \<Longrightarrow>
@@ -1284,9 +1288,115 @@ lemma path_weight_my_summ_simps[simp]:
   done
 
 (* FIXME: move me *)
+lemma concat_map_empty_tripple[simp]:
+  "concat (map (\<lambda>(l', t, d). []) xs) = []"
+  by simp
 lemma concat_map_empty[simp]:
   "concat (map (\<lambda>x. []) xs) = []"
   by simp
+
+lemma map_filter_different[simp]:
+  "l1 \<noteq> l2 \<Longrightarrow>
+   filter (\<lambda>(l', t, d). l2 = l') (map (\<lambda>(p, y). (l1, y)) xs) = []"
+  by (induct xs) auto
+
+lemma map_filter_different_tripple[simp]:
+  "l1 \<noteq> l2 \<Longrightarrow>
+   filter (\<lambda>(l', t, d). l2 = l') (map (\<lambda>(p, t, m). (l1, t, - m)) xs) = []"
+  by (induct xs) auto
+
+
+lemma frontier_zmset_of_add:
+  "finite M \<Longrightarrow> finite N \<Longrightarrow>
+   frontier (zmset_of (mset_set M + mset_set N)) = frontier (zmset_of (mset_set (M \<union> N)))"
+  oops
+(*   apply (induct M arbitrary: N rule: finite_induct)
+   apply simp_all
+  subgoal for x F N
+    subgoal
+    apply (subst Multiset.mset_set.insert_remove)
+       apply simp_all
+      apply (drule meta_spec[of _ "N - {x}"])
+      apply simp
+      apply (drule sym)
+     sledgehammer[timeout = 100, provers = e cvc5 verit vampire z3]
+
+
+    find_theorems mset_set "_ - _"
+     *)
+
+
+lemma frontier_below_eq_frontier_plus[simp]:
+  "frontier_below_eq_frontier
+  (frontier (zmset_of (mset_set (set_antichain (frontier M))) + zmset_of (mset_set (set_antichain (frontier N)))))
+  (frontier (N + M))"
+  unfolding frontier_below_eq_frontier_def
+  apply safe
+  subgoal for tMN
+    apply (cases "(\<exists> t. t \<le> tMN \<and> t \<in>\<^sub>A frontier M \<and> (\<forall> t'. t' \<in>\<^sub>A frontier N \<longrightarrow> \<not> t' < t)) \<or> (\<exists> t. t \<le> tMN \<and> t \<in>\<^sub>A frontier N \<and> (\<forall> t'. t' \<in>\<^sub>A frontier M \<longrightarrow> \<not> t' < t))")
+    subgoal
+      apply (elim disjE conjE exE)
+      subgoal for t
+        apply (rule exI[of _ t])
+        apply (intro conjI)
+        subgoal
+          by (smt (verit, ccfv_threshold) dataflow_topology_from_tree.mem_zmset_frontier frontier_idempotent in_frontier_iff not_in_iff_zmset zcount_union)
+        subgoal
+          by order
+        done
+      subgoal for t
+        apply (rule exI[of _ t])
+        apply (intro conjI)
+        subgoal
+          by (smt (verit, ccfv_threshold) dataflow_topology_from_tree.mem_zmset_frontier frontier_idempotent in_frontier_iff not_in_iff_zmset zcount_union)
+        subgoal
+          by order
+        done
+      done
+    subgoal
+      apply (rule ccontr)
+      apply auto
+      apply (smt (verit, best) dataflow_topology_from_tree.frontier_unionD dataflow_topology_from_tree.obtain_frontier_elem dual_order.strict_trans1 frontier_comparable_False order_less_imp_le)
+      done
+    done
+  done
+
+lemma frontier_below_eq_frontier_plus_neg[simp]:
+  "(\<forall> t. zcount M t \<le> 0) \<Longrightarrow>
+   frontier_below_eq_frontier (frontier N) (frontier (N + M))"
+  unfolding frontier_below_eq_frontier_def
+  apply safe
+  apply (meson dataflow_topology_from_tree.frontier_unionD dataflow_topology_from_tree.obtain_frontier_elem order.strict_iff_not)
+  done
+
+lemma frontier_below_eq_frontier_plus_neg_alt[simp]:
+  "(\<forall> t. zcount N t \<le> 0) \<Longrightarrow>
+   frontier_below_eq_frontier (frontier M) (frontier (N + M))"
+  by (simp add: add.commute)
+
+  declare [[show_types]]
+
+lemma frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus[simp]:
+  "frontier_below_eq_frontier (frontier N) (frontier M) \<Longrightarrow>
+   frontier_below_eq_frontier (frontier N) (frontier (N + M))"
+  unfolding frontier_below_eq_frontier_def
+  apply safe
+  apply (metis dataflow_topology_from_tree.frontier_unionD dataflow_topology_from_tree.obtain_elem_frontier dual_order.trans)
+  done
+
+lemma zcount_zmset:
+  "zcount (zmset xs) t = sum_list (map snd (filter (\<lambda> (t', x). t = t') xs))"
+  by (induct xs) (auto simp add: zcount_update_zmultiset)
+
+
+
+lemma zcount_zmset_filter_neg[simp]:
+  "(\<forall> (p, t, m) \<in> set xs. m \<ge> 0) \<Longrightarrow>
+   zcount (zmset (map snd (filter (\<lambda>(l', t, d). l = l') (map (\<lambda>(p, t, m). (l, t, - m)) xs)))) t \<le> 0"
+  apply (auto simp add: zcount_zmset)
+  apply (induct xs )
+   apply auto
+  done
 
 lemma
   \<open>xs 0 = outpu os2 0 \<Longrightarrow>
@@ -1527,104 +1637,64 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           apply (subgoal_tac "c_pts c' (Loc 0 (Trg 1)) = {#}\<^sub>z \<and> consu os1 = []")
           subgoal
             apply (auto 0 0)
+              apply (drule propagate_all_preserves_c_pts)
+            apply (simp add: c_pts_change_multiplicities)
+            apply (rule frontier_below_eq_frontier_trans)
+             apply (rule frontier_below_eq_frontier_plus)
+            subgoal premises
+                  apply (subgoal_tac "\<forall> (p, t, m) \<in> set (consu os2). m \<ge> 0")
+                  subgoal
+                    apply (simp flip: Groups.semigroup_add_class.add.assoc)
+                    apply (subst (6) Groups.add_ac(2)[symmetric])
+                    apply (rule frontier_below_eq_frontier_trans)
+                     apply (rule frontier_below_eq_frontier_plus_neg_alt)
+                     apply (intro allI)
+                     apply (rule zcount_zmset_filter_neg[where l="Loc (1 :: 2) (Trg (1 :: 1))"])
+                     apply assumption
+                    apply (rule frontier_below_eq_frontier_trans[rotated])
+                    apply (rule frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus)
+                     apply (rule frontier_below_eq_frontier_refl_alt)
+                    apply (rule refl)
+                    apply (rule frontier_below_eq_frontier_refl_alt)
+                    apply (rule refl)
+
+                    apply (rule frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus[where M="zmset (map snd (filter (\<lambda>(l' :: (2, 1) location, t, d). Loc 0 (Src 1) = l') (map (\<lambda>(p, y). (Loc 0 (Src 1), y)) (operator_state.inter os1)))) + zmset (map snd (filter (\<lambda>(l'::(2, 1) location, t::nat, d::int). Loc 1 (Trg 1) = l') (map (\<lambda>(p::1, t::nat, m::int). (Loc 1 (Trg 1), t, - m)) (consu os2)))) + zmset (map (snd :: (2, 1) location \<times> nat \<times> int \<Rightarrow> nat \<times> int) (concat (map (\<lambda>(p, t, m). [(Loc 1 (Trg 1), t, m)]) (produ os1))))"])
+                    subgoal
+                        apply (rule frontier_below_eq_frontier_refl_alt)
+                        apply (rule arg_cong[where f=frontier])
+                      apply simp
+
+end
+                        done
+                      subgoal
+                        sledgehammer
+
+
+                subgoal sorry
+                subgoal
+ 
+              sorry
+            subgoal
+              by simp
+
+end
             apply (subst frontier_add)
             subgoal
               apply simp
               apply (drule propagate_all_preserves_c_pts)
               apply (simp add: c_pts_change_multiplicities)
-              find_theorems change_multiplicities c_pts
-
-end
               sorry
             subgoal
               by simp
             subgoal
+              apply simp
               apply (simp add: Groups.semigroup_add_class.add.assoc)
               apply (subst frontier_add_alt)
               subgoal
-                sorry
-              subgoal
-                apply simp
-                sorry
-              subgoal
-                apply simp
-                done
-              done
-            done
-
-              find_theorems "(_ :: _ ) + _"  name: comm
-
-              using prems(5,6,7,8,9,10,11) 
-
-
-              find_theorems c_pts change_multiplicities
-     
-            thm dataflow_topology.after_summary_empty_summary[OF dataflow_topology_my_summ]
-end
-  apply (simp add: my_summ_def)
-  apply (subst (1 2 3) dataflow_topology.after_summary_empty_summary[where summary=my_summ])
-  apply simp
-  apply simp
-  unfolding propagate_pointstamps_def Let_def
-  apply simp
-  apply (subst propagate_all_preserves_c_pts[symmetric])
-  apply assumption
-
+              apply (drule propagate_all_preserves_c_pts)
+                apply (simp add:  c_pts_change_multiplicities)
+                subgoal premises prems2
+   
 
 end
-  apply (subst frontier_nat_plus)
-  subgoal
-    apply safe
-
-
-
-end
-find_theorems "frontier (_ + _) = _"
-
-  unfolding extract_progress_def
-  apply simp
-
-  find_theorems propagate_all c_pts
-
-  apply (rule frontier_below_eq_frontier_trans[rotated])
-  apply (subst (1 2) c_pts_change_multiplicities)
-
-  thm after_summary_zero_antichain
-
-  find_theorems "dataflow_topology.after_summary _ _ _ = _" 
-
-
-  term "graph.path_weight (summ sg) (Loc 1 (Src 1)) (Loc 1 (Trg 1))"
-  term "Graph.graph.path_weightp"
-
-  find_consts name: path_weightp
-
-  find_theorems  "graph.path_weight _ _ _ = _"
-
-end
-
-find_theorems "UNIV :: (_, _) location set"
-
-  subgoal for c'
-    using prems(12,13) apply -
-    apply (subst (asm) dataflow_topology.inv_imps_work_sum_def)
-    subgoal sorry
-    apply (drule spec[of _ "Loc 1 (Trg 1)"])
-    apply simp
-
-    find_theorems name: UNIV_def
-
-    unfolding frontier_below_eq_frontier_def in_frontier_iff
-    apply (intro conjI allI impI)
-    subgoal for t2
-      apply (elim conjE)
-
-      find_theorems frontier name: iff
-
-end
-  sorry
-  apply (simp add: comp_def)
-  done
-
-
-end
+         
