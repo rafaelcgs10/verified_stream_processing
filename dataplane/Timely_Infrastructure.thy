@@ -654,7 +654,7 @@ abbreviation "delay_cap os cap incr \<equiv> (os\<lparr> inter := inter os @ [(o
 
 definition "produce os cap batch = (if batch = [] then os else os\<lparr> outpu := (outpu os)(out cap := outpu os (out cap) @ map (\<lambda> x. (x, time cap)) batch), produ := produ os @ [(out cap, time cap, length batch)] \<rparr>)"
 
-abbreviation "consume os p t len \<equiv> os\<lparr> consu := consu os @ [(p, t, len)] \<rparr>"
+abbreviation "consume os p t len \<equiv> (if len = 0 then os else os\<lparr> consu := consu os @ [(p, t, len)] \<rparr>)"
 
 
 end
