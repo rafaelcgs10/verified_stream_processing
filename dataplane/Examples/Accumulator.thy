@@ -4,7 +4,6 @@ imports
   Nondeterministic_Dataflow.BNA_Operators
 begin
 
-(*
 (* In-order operator: we assume the input data are in batches of increasing timestamps. *)
 
 corec accumulator_op where
@@ -142,10 +141,10 @@ lemma accumulator_op_completeness:
 lemma accumulator_op_correctness:
   \<open>wtraced (accumulator_op f g P n ins acc) vios \<longleftrightarrow> accumulates f g P n ins acc vios\<close>
   using accumulator_op_soundness accumulator_op_completeness by meson
-*)
 
+(*
 (* TODO move *)
-datatype ('t, 'd) event = Data (time: 't) (data: 'd) | Watermark (time: \<open>'t :: order\<close>)
+datatype ('t :: order, 'd) event = Data (time: 't) (data: 'd) | Watermark (time: 't)
 
 lemma ldropWhile_Watermark:
   assumes \<open>ldropWhile (Not \<circ> is_Data) lxs = LCons (Watermark ts) lxs'\<close>
@@ -159,7 +158,7 @@ next
   then show ?thesis using assms by simp
 qed
 
-(* Out-of-order operator: we interpret the time in an event as the difference since the last seen watermark. *)
+(* WIP Out-of-order operator: we interpret the time in an event as the difference since the last seen watermark. *)
 
 corec accumulator_op where
   \<open>accumulator_op f g wm ins acc = Choice (cimage (\<lambda>p. case ldropWhile (Not \<circ> is_Data) (ins p) of
@@ -319,5 +318,7 @@ lemma accumulator_op_completeness:
 lemma accumulator_op_correctness:
   \<open>wtraced (accumulator_op f g wm ins acc) vios \<longleftrightarrow> accumulates f g wm ins acc vios\<close>
   using accumulator_op_soundness accumulator_op_completeness by meson
+
+*)
 
 end
