@@ -49,26 +49,26 @@ record ('id, 'p, 't) subgraph =
   edges :: "('id, 'p) location \<Rightarrow> ('id, 'p) location list"
   summ :: "('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> 't antichain"
 
-datatype ('id, 'p, 's, 'd) dataflow_tree = 
+datatype ('id, 'p, 's, 'd, 't) dataflow_tree = 
   "apply": Logic "('p option, 'p option, 's + 'd) op"
-  | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "('id, 'p, 's, 'd) dataflow_tree" "('id, 'p, 's, 'd) dataflow_tree"
+  | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "'t antichain" "('id, 'p, 's, 'd, 't) dataflow_tree" "('id, 'p, 's, 'd, 't) dataflow_tree"
 
-fun compile_dataflow_tree_aux :: "'id :: {minus, plus, one, ord} \<Rightarrow> ('id, 'p, 's, 'd) dataflow_tree \<Rightarrow>
-    'id \<times> (('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> nat antichain) \<times> ('id + 'id \<times> 'p, 'id + 'id \<times> 'p, 's + 'd) op" where
+fun compile_dataflow_tree_aux :: "'id :: {minus, plus, one, ord} \<Rightarrow> ('id, 'p, 's, 'd, 't :: {zero, order}) dataflow_tree \<Rightarrow>
+    'id \<times> (('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> 't antichain) \<times> ('id + 'id \<times> 'p, 'id + 'id \<times> 'p, 's + 'd) op" where
   "compile_dataflow_tree_aux n (Logic op) = (n + 1,
     (\<lambda> l1 l2. 
     if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
     then frontier (abs_zmultiset (mset [0], {#})) 
     else frontier {#}\<^sub>z),
     map_op (case_option (Inl n) (\<lambda> p. Inr (n, p))) (case_option (Inl n) (\<lambda> p. Inr (n, p))) op)"
-| "compile_dataflow_tree_aux n (Comp wire dt1 dt2) = (
+| "compile_dataflow_tree_aux n (Comp wire su dt1 dt2) = (
     let (n', summary1, op1) = compile_dataflow_tree_aux n dt1 in
     let (n'', summary2, op2) = compile_dataflow_tree_aux n' dt2 in
     (n'', \<lambda> l1 l2. 
      if node l1 \<ge> n \<and> node l1 < n' \<and> node l2 \<ge> n' \<and> is_Src (port l1) \<and> is_Trg (port l2)
      then (case wire (node l1 - n, idp (port l1)) of 
              None \<Rightarrow> frontier {#}\<^sub>z 
-           | Some (offset, q) \<Rightarrow> (if node l2 = n' + offset \<and> q = idp (port l2) then frontier (abs_zmultiset (mset [0], {#})) else frontier {#}\<^sub>z )) 
+           | Some (offset, q) \<Rightarrow> (if node l2 = n' + offset \<and> q = idp (port l2) then su else frontier {#}\<^sub>z )) 
      else summary1 l1 l2 + summary2 l1 l2,
      map_op (case_sum id id) (case_sum id id)
      (comp_op (case_sum (\<lambda> _. None) ((case_option None (Some o Inr)) o (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (n' + offset, q)))) (\<lambda> _. []) op1 op2))
@@ -88,9 +88,9 @@ definition "compile_dataflow_tree df = (
   then (s, op)
   else Code.abort (STR ''Control plane could not be build'') (\<lambda> _. (\<lambda> _ _. frontier {#}\<^sub>z, \<oslash>)))"
 
-abbreviation "df_ex1 \<equiv> (Comp [ (1, 0) \<mapsto> (1, 0) ]
-         (Comp (\<lambda> l. None) (Logic \<oslash>) (Logic \<oslash>))
-         (Comp (\<lambda> l. None) (Logic \<oslash>) (Logic \<oslash>))) :: (4, 4, unit, nat) dataflow_tree"
+abbreviation "df_ex1 \<equiv> (Comp [ (1, 0) \<mapsto> (1, 0) ] (frontier {#0#}\<^sub>z)
+         (Comp (\<lambda> l. None) (frontier {#0#}\<^sub>z) (Logic \<oslash>) (Logic \<oslash>))
+         (Comp (\<lambda> l. None) (frontier {#0#}\<^sub>z) (Logic \<oslash>) (Logic \<oslash>))) :: (4, 4, unit, nat, nat) dataflow_tree"
 
 (* value "fst (compile_dataflow_tree
        df_ex1)
@@ -101,9 +101,9 @@ lemma compile_dataflow_tree_aux_same_loc:
   "(n'', summar, op) = compile_dataflow_tree_aux n df \<Longrightarrow>
    summar loc loc = {}\<^sub>A"
   apply (induct df arbitrary: n n'' op summar)
-  subgoal for l n n' summar
+  subgoal
     by (cases loc; simp add: frontier_empty_zmset split: port.splits if_splits)
-  subgoal for wire dt1 dt2 n n'' summar
+  subgoal for wire _ dt1 dt2 n n''
     apply (cases "compile_dataflow_tree_aux n dt1")
     subgoal for n' summar'
       apply (cases "compile_dataflow_tree_aux n' dt2")
@@ -130,15 +130,15 @@ lemma compile_dataflow_tree_aux_same_loc:
   done
 
 lemma enum_dataflow_topology_compile_dataflow[simp]:
-  "enum_dataflow_topology (fst (compile_dataflow_tree df)) (+)"
+  "enum_dataflow_topology (fst (compile_dataflow_tree (df :: (_, _, _, _, 't :: {canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le}) dataflow_tree))) (+)"
   apply standard
-  apply simp_all
+       apply (simp_all add: add_mono_thms_linordered_semiring(1) Groups.add_ac(1))
   subgoal
     unfolding compile_dataflow_tree_def Let_def
     apply (cases "compile_dataflow_tree_aux 0 df"; simp)
-    using compile_dataflow_tree_aux_same_loc eq_snd_iff frontier_empty_zmset apply metis
+    using compile_dataflow_tree_aux_same_loc frontier_empty_zmset apply metis
     done
-  subgoal for loc xs s
+  subgoal
     unfolding compile_dataflow_tree_def Let_def
     apply (cases "compile_dataflow_tree_aux 0 df")
     apply (simp add: no_self_loop_checker_is_graph_checker split: if_splits)
@@ -151,16 +151,15 @@ lemma enum_dataflow_topology_compile_dataflow[simp]:
       apply assumption+
       apply simp_all
       apply standard
-      apply simp_all
-      using frontier_empty_zmset apply blast
+        apply (simp_all add: add_mono_thms_linordered_semiring(1) frontier_empty_zmset)
       done
     done
   done
 
-global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "fst (compile_dataflow_tree df)" "(+)"
+global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "fst (compile_dataflow_tree (df :: (_, _, _, _, 't :: {canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le}) dataflow_tree))" "(+)"
   for df
   defines take_step' = "enum_dataflow_topology.take_step (fst (compile_dataflow_tree df)) (+)"
-    and after_summary = "dataflow_topology.after_summary (+) :: nat zmultiset \<Rightarrow> nat antichain \<Rightarrow> nat zmultiset"
+    and after_summary = "dataflow_topology.after_summary (+) :: 't zmultiset \<Rightarrow> 't antichain \<Rightarrow> 't zmultiset"
   by simp
 
 notation dataflow_topology_from_tree.followed_by (infixl \<open>-+-\<close> 65)
@@ -181,7 +180,7 @@ fun take_step where
 definition "propagate_all_locale summary df c0 = (while_option (Not o (worklist_is_empty summary))
                                            (take_step_locale df PR) c0)"
 
-declare dataflow_topology_from_tree.take_step.simps[of _ "((<) :: nat \<Rightarrow> _ \<Rightarrow> _)",  folded take_step_locale_def mymin_code_def, code]
+declare dataflow_topology_from_tree.take_step.simps[of _ "((<) :: 't :: {canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le} \<Rightarrow> _ \<Rightarrow> _)",  folded take_step_locale_def mymin_code_def, code]
 
 abbreviation empty_conf where
   "empty_conf \<equiv> \<lparr>c_work = (\<lambda> _.  {#}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
@@ -210,9 +209,7 @@ abbreviation "show_frontiers impf \<equiv> show_list (show_prod show_loc show_fr
 (* First migrate all change batches to the worklist, then call propagate_all_locale *)
 definition "change_multiplicities summary xs conf = fold (\<lambda> (l, t, m) c. take_step summary (CM l t m) c) xs conf"
 
-definition "propagate_pointstamps summary conf cbs = (
-  let conf' = change_multiplicities summary cbs conf in
-  let conf'' = propagate_all summary conf' in trace (STR ''New frontiers: '' + show_frontiers (c_imp (the conf''))) conf'')"
+definition "propagate_pointstamps summary conf cbs = propagate_all summary (change_multiplicities summary cbs conf)"
 
 abbreviation "init_subgraph summary \<equiv>
    \<lparr> pt_tr = the (propagate_pointstamps summary empty_conf (concat (map (\<lambda> nid. map (\<lambda> p. (Loc nid (Src p), 0, 1)) enum_class.enum) enum_class.enum))),
@@ -463,6 +460,7 @@ lemma compile_dataflow_tree_aux_Logic_simp[simp]:
   apply auto
   done
 
+(*
 lemma compile_dataflow_tree_Logic:
   "compile_dataflow_tree (Logic op) = 
   (\<lambda> l1 l2. 
@@ -475,6 +473,7 @@ lemma compile_dataflow_tree_Logic:
   apply eval
   apply simp
   done
+*)
 
 (* Inspired by timely/src/dataflow/channels/pushers/counter.rs:25 and timely/src/dataflow/channels/mod.rs:49 *)
 (* writes maybe could support multiple different ports, then this one also would *)

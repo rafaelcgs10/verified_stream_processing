@@ -194,7 +194,7 @@ lemma dataflow_op_extract_progress_append:
 
 lemma propagate_pointstamps_comm:
   "propagate_pointstamps summary conf (cbs1 @ cbs2) = propagate_pointstamps summary conf (cbs2 @ cbs1)"
-  unfolding propagate_pointstamps_def Let_def
+  unfolding propagate_pointstamps_def
   by (simp add: change_multiplicities_comm)
 
 lemma propagate_pointstamps_append:
@@ -210,8 +210,7 @@ lemma propagate_pointstamps_append:
     apply (drule meta_spec)+
     apply (drule meta_mp)
      apply assumption
-    unfolding propagate_pointstamps_def Let_def
-    apply (simp; hypsubst_thin?)
+    unfolding propagate_pointstamps_def
     apply (subst change_multiplicities_append_comp)
     apply simp
     oops
@@ -887,7 +886,7 @@ lemma dataflow_topology_my_summ[simp]:
 
 
 lemma after_summary_zero_antichain[simp]:
-  "dataflow_topology.after_summary (-+-) M (antichain { 0 }) = M"
+  "dataflow_topology.after_summary (-+-) M (antichain { 0 :: nat }) = M"
   apply (subst dataflow_topology.after_summary_def[where summary=my_summ])
    apply simp
   apply (subst antichain_inverse)
@@ -1779,7 +1778,6 @@ apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_
               using prems(13) apply -
               apply (simp add: dataflow_topology.after_summary_empty_summary[OF dataflow_topology_my_summ])
               unfolding propagate_pointstamps_def Let_def
-              apply simp
               apply (subst (1 2 3) propagate_all_preserves_c_pts[symmetric])
                  apply assumption+
               using prems(5,6,7,8,14) apply simp

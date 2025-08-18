@@ -208,7 +208,7 @@ proof -
     by (auto simp: H2 H3)
 qed
 
-definition mymin_code :: "(nat \<times> ('a :: linorder, 'b  :: linorder) location) set \<Rightarrow> (nat \<times> ('a, 'b) location)" 
+definition mymin_code :: "('t :: linorder \<times> ('a :: linorder, 'b  :: linorder) location) set \<Rightarrow> ('t \<times> ('a, 'b) location)"
   where [code del]: "mymin_code = mymin (<)"
 
 lemma mymin_code[code]: "mymin_code (set (x # xs)) = fold (\<lambda>a b. if t_loc_linord (<) a b then a else b) xs x"
