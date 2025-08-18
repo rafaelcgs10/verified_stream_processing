@@ -1544,15 +1544,20 @@ lemma
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
 proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c st1 st2 rule: weakBisimWeakUptoBisimCong)
   case SIM1
-  then show ?case
+  show ?case (is "wsim ((~) OO \<U> ?R OO (\<approx>)) ?op1 ?op2")
+  proof -
+    define R where "R = ?R"
+    from SIM1 show ?thesis unfolding R_def[symmetric]
     apply -
     unfolding wsim_def
     apply (intro allI conjI impI)
     subgoal premises prems for io op1'
       using prems(25-) apply -
-      apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin?)
+apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin?)      apply simp_all
                  prefer 8
-      subgoal for op'' io' op''a op2' io'a op''b above_caps below_caps batch os' os'' buf'
+      subgoal 
+        unfolding R_def
+        apply simp
         using prems(1,2) apply -
         apply (intro exI conjI[rotated])
          apply (intro relcomppI)
@@ -1720,7 +1725,9 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           done
         done
                 prefer 11
-      subgoal for nid op'' imp_fron sg' io' op''a p op2' io'a op''b
+      subgoal 
+        unfolding R_def
+        apply simp
         using prems(1,2) apply -
         apply (intro exI conjI[rotated])
          apply (intro relcomppI)
@@ -1849,7 +1856,9 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           apply (simp add: comp_def)
           done
         defer
-        subgoal for op'' io' op''a p op1' q io'a op''b x' xs'
+        subgoal 
+          unfolding R_def
+          apply simp
         using prems(1,2) apply -
         apply (intro exI conjI[rotated])
          apply (intro relcomppI)
@@ -1932,7 +1941,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           apply simp
           done
         done
-      subgoal for op'' io' op''a p x op2' io'a op''b x'
+      subgoal 
         using prems(3) apply -
         apply (rule FalseE)
         unfolding BHD_def
@@ -1942,7 +1951,13 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
          apply (auto split: sum.splits)
         apply (cases "hd (buf1 (Inr (1, 1)))"; simp)
         done
-      subgoal for op'' io' op''a p x op2' io'a op''b xa n t caps'
+      sorry
+    done
+
+(*
+      subgoal 
+        unfolding R_def 
+        apply simp
      using prems(1,2,3) apply -
         apply (intro exI conjI[rotated])
          apply (intro relcomppI)
@@ -1966,7 +1981,20 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           apply (auto simp add: comp_def filter_empty_conv c_pts_change_multiplicities)
           subgoal premises prems2
             using prems2(9) apply -
-
+ *)
+qed
+next
+  case SIM2
+  show ?case (is "wsim ((~) OO \<U> ?R OO (\<approx>)) ?op1 ?op2")
+  proof -
+    define R where "R = ?R"
+    from SIM2 show ?thesis unfolding R_def[symmetric]
+    apply -
+    unfolding wsim_def
+    apply (intro allI conjI impI)
+    subgoal premises prems for io op1'
+      using prems(25-) apply -
+      apply (elim step_source_op_elim step_map_op_elim step_comp_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin?)      apply simp_all
 
 
 end
