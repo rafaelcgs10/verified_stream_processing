@@ -551,11 +551,15 @@ lemma propagate_all_frontier_c_imp_correctness_aux:
    dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
    dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
-   (t \<in>\<^sub>A frontier (c_imp c' loc)) = (t \<in>\<^sub>A dataflow_topology.implied_frontier_alt summary dataflow_topology_from_tree.followed_by c' loc)"
+   (t \<in>\<^sub>A frontier (c_imp c' loc)) = (t \<in>\<^sub>A dataflow_topology.implied_frontier_alt summary dataflow_topology_from_tree.followed_by c' loc) \<and>
+   dataflow_topology_from_tree.inv_implications_nonneg c' \<and>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c' \<and>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c'"
   apply (frule propagate_all_preserves_inv)
       apply assumption+
   unfolding propagate_all_def worklist_is_empty_def
   apply (frule while_option_stop2)
+  apply (intro conjI)
   apply (rule Propagate.dataflow_topology.implication_frontier_iff_implied_frontier_alt_vacant)
      apply simp_all
   apply (rule Propagate.dataflow_topology.empty_worklists_vacant_to)
@@ -569,7 +573,10 @@ lemma propagate_all_frontier_c_imp_correctness:
    dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
    dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
-   frontier (c_imp c' loc) = dataflow_topology.implied_frontier_alt summary dataflow_topology_from_tree.followed_by c' loc"
+   frontier (c_imp c' loc) = dataflow_topology.implied_frontier_alt summary dataflow_topology_from_tree.followed_by c' loc \<and>
+   dataflow_topology_from_tree.inv_implications_nonneg c' \<and>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c' \<and>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c'"
   using propagate_all_frontier_c_imp_correctness_aux by (metis dataflow_topology.antichain_eqI)
 
 
@@ -626,6 +633,25 @@ lemma propagate_pointstamps_correctness:
     apply (rule propagate_all_preserves_c_pts)
     apply assumption
     done
+  using change_multiplicities_preserves_inv apply fastforce+
+  done
+
+lemma propagate_pointstamps_preserve_inv:
+  "propagate_pointstamps summary c cbs = Some c' \<Longrightarrow>
+   dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
+   reachable_locations summary = UNIV \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
+   (\<forall> d \<in> snd ` snd ` set cbs. d \<noteq> 0) \<Longrightarrow>
+   (\<forall> (l, t, d) \<in> set cbs. \<exists>t'. t' \<in>\<^sub>A frontier (c_imp c l) \<and> t' \<le> t) \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg c' \<and>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c' \<and>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c'"
+  unfolding propagate_pointstamps_def
+  apply simp
+  apply (frule propagate_all_frontier_c_imp_correctness)
+       apply assumption+
   using change_multiplicities_preserves_inv apply fastforce+
   done
 
@@ -1429,6 +1455,64 @@ lemma frontier_update_zmultiset_keep2[simp]:
   apply fastforce
   done
 
+lemma reachable_locations_my_summ[simp]:
+  "reachable_locations my_summ = UNIV"
+  unfolding reachable_locations_def
+  apply auto
+  subgoal for x loc'
+    apply (cases x; simp)
+    subgoal for x1 x2
+      apply (cases x1; simp)
+      subgoal for z
+        apply (cases z; simp)
+        subgoal for n
+          apply (cases n; simp)
+          apply (metis (full_types) num1_eq1 port.set_cases port.set_sel(1,2))
+          apply (metis (full_types) num1_eq1 port.exhaust)
+          done
+        done
+      done
+    done
+  subgoal for x loc'
+    apply (cases x; simp)
+    subgoal for x1 x2
+      apply (cases x1; simp)
+      subgoal for z
+        apply (cases z; simp)
+        subgoal for n
+          apply (cases n; simp)
+          apply (metis (full_types) num1_eq1 port.set_cases port.set_sel(1,2))
+          apply (metis (full_types) num1_eq1 port.exhaust)
+          done
+        done
+      done
+    done
+  subgoal
+    apply (rule exI[of _ "Loc 0 (Trg 1)"])
+    apply (auto simp add: is_empty_antichain.rep_eq Set.is_empty_def)
+    apply (metis dataflow_topology_from_tree.empty_antichain empty_antichain.rep_eq empty_antichain_def in_sigletonI my_summ_def set_antichain_inject zero_one)
+    done
+  subgoal
+    apply (rule exI[of _ "Loc 0 (Src 1)"])
+    apply (auto simp add: is_empty_antichain.rep_eq Set.is_empty_def)
+    apply (metis dataflow_topology_from_tree.empty_antichain empty_antichain.rep_eq empty_antichain_def in_sigletonI my_summ_def set_antichain_inject zero_one)
+    done
+  subgoal
+    apply (rule exI[of _ "Loc 1 (Trg 1)"])
+    apply (auto simp add: is_empty_antichain.rep_eq Set.is_empty_def)
+    apply (metis dataflow_topology_from_tree.empty_antichain empty_antichain.rep_eq empty_antichain_def in_sigletonI my_summ_def set_antichain_inject zero_one)
+    done
+  subgoal
+    apply (rule exI[of _ "Loc 1 (Src 1)"])
+    apply (auto simp add: is_empty_antichain.rep_eq Set.is_empty_def)
+    apply (metis dataflow_topology_from_tree.empty_antichain empty_antichain.rep_eq empty_antichain_def in_sigletonI my_summ_def set_antichain_inject zero_one)
+    done
+  done
+
+definition "changes_bellow_impl chgs impls = (\<forall>(l, t, d)\<in>set chgs. \<exists>t'. t' \<in>\<^sub>A frontier (impls l) \<and> t' \<le> t)"
+
+definition "changes_non_zero chgs = (\<forall>d\<in>snd ` snd ` set chgs. d \<noteq> 0)"
+
 lemma
   \<open>xs 0 = outpu os2 0 \<Longrightarrow>
    ys 0 = max_from_buf caps buf2 ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0) \<Longrightarrow>
@@ -1449,6 +1533,11 @@ lemma
    consu os1 = [] \<Longrightarrow>
    frontier_below_eq_frontier (frontier (zmset (map snd (produ os1)))) (frontier (zmset (map snd (inter os1)))) \<Longrightarrow>
    frontier_below_eq_frontier (frontier (c_pts (change_multiplicities (summ sg) (lo_pt sg) (pt_tr sg)) (Loc 0 (Src 0)) + c_pts (change_multiplicities (summ sg) (lo_pt sg) (pt_tr sg)) (Loc 1 (Trg 0)))) (frontier (zmset (map snd (produ os1)))) \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum (summ sg) (-+-) (pt_tr sg) \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg (pt_tr sg) \<Longrightarrow>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg (pt_tr sg) \<Longrightarrow>
+   changes_bellow_impl (lo_pt sg) (c_imp (pt_tr sg)) \<Longrightarrow>
+   changes_non_zero (lo_pt sg) \<Longrightarrow>
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
 proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c st1 st2 rule: weakBisimWeakUptoBisimCong)
@@ -1458,7 +1547,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
     unfolding wsim_def
     apply (intro allI conjI impI)
     subgoal premises prems for io op1'
-      using prems(20-) apply -
+      using prems(25-) apply -
       apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin?)
                  prefer 8
       subgoal for op'' io' op''a op2' io'a op''b above_caps below_caps batch os' os'' buf'
@@ -1515,6 +1604,11 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
         using prems(17) apply simp
         using prems(18) apply simp
         using prems(19) apply simp
+        using prems(20) apply simp
+        using prems(21) apply simp
+        using prems(22) apply simp
+        using prems(23) apply simp
+        using prems(24) apply simp
         subgoal
           apply simp
           apply (rule rtranclp_intros_1)
@@ -1662,15 +1756,13 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
                     apply assumption
             using prems(13) apply simp
             subgoal premises
-              unfolding reachable_locations_def
               using prems(13) apply simp
-
-end
-            subgoal sorry
-            subgoal sorry
-            subgoal sorry
-            subgoal sorry
-            subgoal sorry
+              done
+            using prems(20) apply simp
+            using prems(21) apply simp
+            using prems(22) apply simp
+            using prems(24)[unfolded changes_non_zero_def] apply simp
+            using prems(23)[unfolded changes_bellow_impl_def] apply simp
             subgoal
               apply (subst dataflow_topology.implied_frontier_alt_def)
               using prems(13) apply simp
@@ -1724,9 +1816,38 @@ end
                 done
               done
             done
-
-
-
+          subgoal
+            using prems(13) prems(20-24)[unfolded changes_bellow_impl_def changes_non_zero_def] by (auto split: option.splits dest!: propagate_pointstamps_preserve_inv)
+            subgoal
+            using prems(13) prems(20-24)[unfolded changes_bellow_impl_def changes_non_zero_def] by (auto split: option.splits dest!: propagate_pointstamps_preserve_inv)
+          subgoal
+            using prems(14) by (auto split: option.splits)
+        using prems(15) apply simp
+        subgoal
+          using prems(5,6,7,8,14,16) 
+          apply simp
+          apply (auto 0 0 simp add: extract_progress_def propagate_pointstamps_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits dest!: propagate_all_preserves_c_pts; hypsubst_thin?)
+          done
+        using prems(17) apply simp
+        using prems(18) apply simp
+        subgoal
+        using prems(19) apply simp
+          apply (auto 0 0 simp add: extract_progress_def propagate_pointstamps_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits dest!: propagate_all_preserves_c_pts; hypsubst_thin?)
+        done
+          subgoal
+            using prems(13) prems(20-24)[unfolded changes_bellow_impl_def changes_non_zero_def] by (auto split: option.splits dest!: propagate_pointstamps_preserve_inv)
+          subgoal
+            using prems(13) prems(20-24)[unfolded changes_bellow_impl_def changes_non_zero_def] by (auto split: option.splits dest!: propagate_pointstamps_preserve_inv)
+          subgoal
+            using prems(13) prems(20-24)[unfolded changes_bellow_impl_def changes_non_zero_def] by (auto split: option.splits dest!: propagate_pointstamps_preserve_inv)
+          subgoal
+            using prems(13) prems(20-24) by (auto simp add: changes_bellow_impl_def changes_non_zero_def split: option.splits dest!: propagate_pointstamps_preserve_inv)
+          subgoal
+            using prems(13) prems(20-24) by (auto simp add: changes_bellow_impl_def changes_non_zero_def split: option.splits dest!: propagate_pointstamps_preserve_inv)
+          apply (simp add: comp_def)
+          done
+        prefer 2
+        subgoal for op'' io' op''a p op1' q io'a op''b x' xs'
 
 
 end
