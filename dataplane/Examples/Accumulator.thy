@@ -142,10 +142,11 @@ lemma accumulator_op_correctness:
   \<open>wtraced (accumulator_op f g P n ins acc) vios \<longleftrightarrow> accumulates f g P n ins acc vios\<close>
   using accumulator_op_soundness accumulator_op_completeness by meson
 
-(*
+
 (* TODO move *)
 datatype ('t :: order, 'd) event = Data (time: 't) (data: 'd) | Watermark (time: 't)
 
+(*
 lemma ldropWhile_Watermark:
   assumes \<open>ldropWhile (Not \<circ> is_Data) lxs = LCons (Watermark ts) lxs'\<close>
   shows \<open>False\<close>

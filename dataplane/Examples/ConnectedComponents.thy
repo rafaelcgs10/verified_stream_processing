@@ -4,6 +4,7 @@ imports
   Accumulator
   Input_top
   Dataplane.Timely_Infrastructure
+  Dataplane.MyProduct_Instances
 begin
 
 context
@@ -33,20 +34,6 @@ lemma is_ccs_Uniq:
 
 end
 
-instantiation prod :: (plus, plus) plus
-begin
-fun plus_prod :: \<open>'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> 'a \<times> 'b\<close> where
-  \<open>(x, y) + (u, v) = (x + u, y + v)\<close>
-instance ..
-end
-
-instantiation prod :: (zero, zero) zero
-begin
-definition zero_prod :: \<open>'a \<times> 'b\<close> where
-  \<open>0 = (0, 0)\<close>
-instance ..
-end
-
 abbreviation cc_spec where
   \<open>cc_spec \<equiv> accumulator_op (\<lambda>_. (\<union>)) (\<lambda>_. The \<circ> is_ccs) (\<lambda>_. (=) {}) (\<lambda>_. 0)\<close>
 
@@ -54,27 +41,24 @@ abbreviation cc_spec where
 abbreviation "mint_cap os p t \<equiv> os\<lparr> inter := inter os @ [(p, t, 1)] \<rparr>"
 abbreviation "produces os batch \<equiv> os\<lparr> outpu := (\<lambda> p. outpu os p @ map (\<lambda> (x, cap). (x, time cap)) (filter (\<lambda> (x, cap). out cap = p) batch)), produ := produ os @ map (\<lambda> (x, cap). (out cap, time cap, 1)) batch \<rparr>"
 
-(*
-(* Why use the Silent constructor? Is it to make it easier to reason later about the different possible steps? *)
-corec ooo_input_top where
-  \<open>ooo_input_top os caps inps = choice3
-  (Choice (cimage (\<lambda>p. case inps p of
+corec input_top' where
+  \<open>input_top' os n ins = choice3
+  (Choice (cimage (\<lambda>p. case ins p of
     LCons (Data ts d) lxs \<Rightarrow>
-      let cap = Cap (caps p) p;
+      let cap = Cap (n p) p;
           os' = if lxs = LNil then drop_cap os cap else delay_cap os cap ts;
           os'' = produce os' (Cap (time cap + ts) p) [d]
-      in Silent (ooo_input_top os'' caps (inps(p := lxs)))
+      in Silent (input_top' os'' n (ins(p := lxs)))
   | LCons (Watermark ts) lxs \<Rightarrow>
-      let cap = Cap (caps p) p;
+      let cap = Cap (n p) p;
           os' = if lxs = LNil then drop_cap os cap else delay_cap os cap ts
-      in Silent (ooo_input_top os' (caps(p := caps p + ts)) (inps(p := lxs))))
-    (cfilter (\<lambda>p. inps p \<noteq> LNil) c\<UU>)))
+      in Silent (input_top' os' (n(p := n p + ts)) (ins(p := lxs))))
+    (cfilter (\<lambda>p. ins p \<noteq> LNil) c\<UU>)))
   (Choice (cimage (\<lambda>p. case outpu os p of
-    x # xs \<Rightarrow> send_output (ooo_input_top (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) caps inps) p x)
+    x # xs \<Rightarrow> send_output (input_top' (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) n ins) p x)
     (cfilter (\<lambda>p. outpu os p \<noteq> []) c\<UU>)))
   (let (os', st) = obtain_progress os
-  in send_progress (ooo_input_top os' caps inps) st)\<close>
-*)
+  in send_progress (input_top' os' n ins) st)\<close>
 
 abbreviation \<open>choice4 op1 op2 op3 op4 \<equiv> choice2 (choice3 op1 op2 op3) op4\<close>
 abbreviation \<open>choice5 op1 op2 op3 op4 op5 \<equiv> choice2 (choice4 op1 op2 op3 op4) op5\<close>
@@ -87,7 +71,7 @@ corec plus01_op where
     Inr (d, ts) \<Rightarrow>
       let cap = Cap ts p;
           os' = consume os p ts 1;
-          os'' = produce os' (Cap (time cap + (0, 1)) p) [d]
+          os'' = produce os' (Cap (time cap + MyPair 0 1) p) [d]
       in plus01_op os''
   | _ \<Rightarrow> \<oslash>)) c\<UU>))
   (Choice (cimage (\<lambda>p. case outpu os p of
@@ -98,7 +82,7 @@ corec plus01_op where
 
 lemma step_plus01_op_Inp_elim:
   assumes \<open>step io (plus01_op os) op\<close>
-  obtains p d ts where \<open>io = Inp (Some p) (Inr (d, ts))\<close> \<open>op = plus01_op (produce (consume os p ts 1) (Cap (ts + (0, 1)) p) [d])\<close>
+  obtains p d ts where \<open>io = Inp (Some p) (Inr (d, ts))\<close> \<open>op = plus01_op (produce (consume os p ts 1) (Cap (ts + MyPair 0 1) p) [d])\<close>
   | p x where \<open>io = Inp (Some p) (Inl x)\<close> \<open>op = \<oslash>\<close>
   | p x xs where \<open>io = Out (Some p) (Inr x)\<close> \<open>outpu os p = x # xs\<close> \<open>op = plus01_op (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>)\<close>
   | os' st where \<open>io = Out None (Inl (Inl st))\<close> \<open>obtain_progress os = (os', st)\<close> \<open>op = plus01_op os'\<close>
@@ -164,11 +148,42 @@ corec label_prop_op where
 abbreviation inp_op where
   \<open>inp_op os n ins \<equiv>
   map_op (case_option (Inl (0 :: 2)) (\<lambda>p. Inr (0, p))) (case_option (Inl (0 :: 2)) (\<lambda>p. Inr (0, p)))
-  (input_top os n ins)\<close>
+  (input_top' os n ins)\<close>
 
 abbreviation plus_op where
   \<open>plus_op os \<equiv>
   map_op (case_option (Inl (1 :: 2)) (\<lambda>p. Inr (1, p))) (case_option (Inl (1 :: 2)) (\<lambda>p. Inr (1, p)))
   (plus01_op os)\<close>
+
+abbreviation inp_plus_op where
+  \<open>inp_plus_op os1 n ins buf1 os2 \<equiv>
+  map_op (case_sum id id) (case_sum id id)
+  (comp_op [Inr (0 :: 2, 0 :: 1) \<mapsto> Inr (1 :: 2, 0 :: 1)] buf1 (inp_op os1 n ins)
+    (plus_op os2))\<close>
+
+abbreviation inp_plus_edges where
+  \<open>inp_plus_edges \<equiv> (\<lambda>l. if l = Loc (0 :: 2) (Src (0 :: 1)) then [Loc (1 :: 2) (Trg (0 :: 1))] else [])\<close>
+
+abbreviation inp_plus_summary where
+  \<open>inp_plus_summary \<equiv> (\<lambda>l1 l2.
+   if l1 = Loc (0 :: 2) (Src (0 :: 1)) \<and> l2 = Loc (1 :: 2)  (Trg (0 :: 1))
+   then frontier {#0 :: (nat, nat) myprod#}\<^sub>z
+   else if l1 = Loc 0 (Trg 0) \<and> l2 = Loc 0 (Src 0)
+   then frontier {#0#}\<^sub>z
+   else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 0)
+   then frontier {#0#}\<^sub>z
+   else {}\<^sub>A)\<close>
+
+lemma
+  \<open>edges sg = inp_plus_edges \<Longrightarrow>
+  summ sg = inp_plus_summary \<Longrightarrow>
+  dataflow_op sg (inp_plus_op os1 n ins buf1 os2)
+  \<approx> map_op (\<lambda>p. (1, p)) (\<lambda>p. (1, p)) (source_op ins')\<close>
+  oops
+
+abbreviation label_op where
+  \<open>label_op os caps buf1 E buf2 label \<equiv>
+  map_op (case_option (Inl (1 :: 3)) (\<lambda>p. Inr (1, p))) (case_option (Inl (1 :: 3)) (\<lambda>p. Inr (1, p)))
+  (label_prop_op os caps buf1 E buf2 label)\<close>
 
 end
