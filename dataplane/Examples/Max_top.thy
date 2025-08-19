@@ -3,6 +3,7 @@ theory Max_top
 imports
   "../Timely_Infrastructure"
   Input_top
+  "../AntichainOrder"
 begin 
 
 (* FIXME: move me *)
@@ -673,19 +674,11 @@ lemma sorted_caps_append:
     by (smt (verit, ccfv_threshold) append_eq_append_conv2 append_same_eq filter_id_conv order_le_less_trans same_append_eq)
   done
 
-
-definition
-  "frontier_below_eq_frontier ft1 ft2 = ((\<forall> t2. t2 \<in>\<^sub>A ft2 \<longrightarrow> (\<exists> t1. t1 \<in>\<^sub>A ft1 \<and> t1 \<le> t2)))"
-
-
-find_theorems frontier dataflow_topology.next_propagate'
-
 lemma time_below_frontier_iff:
   "time_below_frontier t f \<longleftrightarrow> (\<exists> t'. t' \<in>\<^sub>A f \<and> t < t')"
   unfolding time_below_frontier_def
   apply auto
   done
-
 
 lemma in_M_not_time_below_frontier:
   "0 < zcount M t \<Longrightarrow>
@@ -745,29 +738,12 @@ lemma c_pts_change_multiplicities_cong_stronger:
   apply simp
   done
 
-lemma in_frontier_iff:
-  "t \<in>\<^sub>A frontier M \<longleftrightarrow> ((\<forall> t'. zcount M t' > 0 \<longrightarrow> \<not> t' < t) \<and> zcount M t > 0)"
-  by (metis dataflow_topology_from_tree.in_frontier_least dataflow_topology_from_tree.obtain_elem_frontier le_less member_frontier_pos_zmset)
-
-lemma
-  "time_below_frontier t f1 \<Longrightarrow>
-   frontier_below_eq_frontier f1 f2 \<Longrightarrow>
-   \<not> t \<in>\<^sub>A f2"
-  apply (simp add: time_below_frontier_iff frontier_below_eq_frontier_def)
-  apply (rule notI)
-  apply (drule spec, drule mp, assumption)
-  apply auto
-  apply transfer
-  unfolding incomparable_def
-  apply auto
-  apply (metis basic_trans_rules(20,21))
-  done
 
 lemma time_below_frontier_frontier_below_eq_frontier:
   "time_below_frontier t f \<Longrightarrow>
-   frontier_below_eq_frontier f (frontier M) \<Longrightarrow>
+   f \<le> (frontier M) \<Longrightarrow>
    zcount M t \<le> 0"
-  apply (simp add: time_below_frontier_iff frontier_below_eq_frontier_def)
+  apply (simp add: time_below_frontier_iff less_eq_antichain_def)
   apply (rule ccontr)
   apply (simp add: not_le)
   apply (erule Timely_Infrastructure.dataflow_topology_from_tree.obtain_elem_frontier)
@@ -893,102 +869,6 @@ lemma after_summary_zero_antichain[simp]:
    apply (auto simp add: incomparable_def)
   done
 
-lemma frontier_idempotent[simp]:
-  "frontier (zmset_of (mset_set (set_antichain (frontier M)))) = frontier M"
-  apply transfer
-  apply simp
-  done
-lemma frontier_below_eq_frontier_trans:
-  "frontier_below_eq_frontier f1 f2 \<Longrightarrow>
-   frontier_below_eq_frontier f2 f3 \<Longrightarrow>
-   frontier_below_eq_frontier f1 f3"
-  unfolding frontier_below_eq_frontier_def 
-  apply clarsimp
-  apply force
-  done
-
-lemma frontier_below_eq_frontier_refl[simp]:
-  "frontier_below_eq_frontier f f"
-  unfolding frontier_below_eq_frontier_def 
-  apply clarsimp
-  apply blast
-  done
-
-lemma frontier_below_eq_frontier_refl_alt[simp]:
-  "f1 = f2 \<Longrightarrow> frontier_below_eq_frontier f1 f2"
-  by simp
-
-lemma frontier_below_eq_frontier_antisym:
-  "frontier_below_eq_frontier f1 f2 \<Longrightarrow>
-   frontier_below_eq_frontier f2 f1 \<Longrightarrow>
-   f1 = f2"
-  unfolding frontier_below_eq_frontier_def member_antichain.rep_eq
-  apply transfer
-  unfolding incomparable_def
-  apply clarsimp
-  apply (smt (verit, best) basic_trans_rules(18,23,24) subsetI)
-  done
-
-lemma frontier_add:
-  "frontier_below_eq_frontier (frontier N) (frontier M) \<Longrightarrow>
-   (\<forall> t. t \<in>#\<^sub>z M \<longrightarrow> zcount M t > 0) \<Longrightarrow>
-   frontier (M + N) = frontier N"
-  unfolding frontier_below_eq_frontier_def member_antichain.rep_eq
-  apply transfer
-  apply auto
-  unfolding incomparable_def minimal_antichain_def
-  subgoal
-    apply (auto 0 0)
-    subgoal
-      by (smt (verit, best) order_le_imp_less_or_eq order_less_le_trans order_zmset_exists_foundation zcount_eq_zero_iff)
-    subgoal 
-      by (metis add.right_neutral add_mono_thms_linordered_field(2) add_pos_pos not_in_iff_zmset)
-    done
-  subgoal
-    apply (auto 0 0)
-    subgoal
-      by (smt (verit, best) order_le_imp_less_or_eq order_less_le_trans order_zmset_exists_foundation zcount_eq_zero_iff)
-    subgoal 
-      by (smt (verit, best) order_le_less_trans order_zmset_exists_foundation)
-    done
-  done
-
-lemma frontier_add_alt:
-  "frontier_below_eq_frontier (frontier M) (frontier N) \<Longrightarrow>
-   (\<forall> t. t \<in>#\<^sub>z N \<longrightarrow> zcount N t > 0) \<Longrightarrow>
-   frontier (M + N) = frontier M"
-  unfolding frontier_below_eq_frontier_def member_antichain.rep_eq
-  apply transfer
-  apply auto
-  unfolding incomparable_def minimal_antichain_def
-  subgoal
-    apply (auto 0 0)
-    subgoal
-      by (smt (verit, best) order_le_imp_less_or_eq order_less_le_trans order_zmset_exists_foundation zcount_eq_zero_iff)
-    subgoal 
-      by (metis add.right_neutral add_pos_pos not_in_iff_zmset)
-    done
-  subgoal
-    apply (auto 0 0)
-    subgoal
-      by (smt (verit, best) order_le_imp_less_or_eq order_less_le_trans order_zmset_exists_foundation zcount_eq_zero_iff)
-    subgoal 
-      by (smt (verit, best) order_le_less_trans order_zmset_exists_foundation)
-    done
-  done
-
-lemma frontier_add_cong:
-  "frontier_below_eq_frontier (frontier N) (frontier N') \<Longrightarrow>
-   (\<forall> t. t \<in>#\<^sub>z N \<longrightarrow> zcount N t > 0) \<Longrightarrow>
-   (\<forall> t. t \<in>#\<^sub>z N' \<longrightarrow> zcount N' t > 0) \<Longrightarrow>
-   frontier_below_eq_frontier (frontier (M + N)) (frontier (M + N'))"
-  unfolding frontier_below_eq_frontier_def 
-  apply auto
-  apply (drule Timely_Infrastructure.dataflow_topology_from_tree.frontier_unionD)
-  apply (auto 0 0)
-  subgoal
-    by (metis Groups.add_ac(2) add_less_zeroD dataflow_topology_from_tree.obtain_frontier_elem less_add_same_cancel1 linorder_less_linear not_in_iff_zmset order_less_asym zcount_union)
-  oops
 
 definition "my_summ' = (\<lambda> l1 l2.
    if l1 = Loc (0 :: 2) (Src (0 :: 1)) \<and> l2 = Loc (1 :: 2)  (Trg (0 :: 1)) 
@@ -1332,92 +1212,6 @@ lemma map_filter_different_tripple[simp]:
    filter (\<lambda>(l', t, d). l2 = l') (map (\<lambda>(p, t, m). (l1, t, - m)) xs) = []"
   by (induct xs) auto
 
-
-lemma frontier_zmset_of_add:
-  "finite M \<Longrightarrow> finite N \<Longrightarrow>
-   frontier (zmset_of (mset_set M + mset_set N)) = frontier (zmset_of (mset_set (M \<union> N)))"
-  oops
-    (*   apply (induct M arbitrary: N rule: finite_induct)
-   apply simp_all
-  subgoal for x F N
-    subgoal
-    apply (subst Multiset.mset_set.insert_remove)
-       apply simp_all
-      apply (drule meta_spec[of _ "N - {x}"])
-      apply simp
-      apply (drule sym)
-     sledgehammer[timeout = 100, provers = e cvc5 verit vampire z3]
-
-
-    find_theorems mset_set "_ - _"
-     *)
-
-
-lemma frontier_below_eq_frontier_plus[simp]:
-  "frontier_below_eq_frontier
-  (frontier (zmset_of (mset_set (set_antichain (frontier M))) + zmset_of (mset_set (set_antichain (frontier N)))))
-  (frontier (N + M))"
-  unfolding frontier_below_eq_frontier_def
-  apply safe
-  subgoal for tMN
-    apply (cases "(\<exists> t. t \<le> tMN \<and> t \<in>\<^sub>A frontier M \<and> (\<forall> t'. t' \<in>\<^sub>A frontier N \<longrightarrow> \<not> t' < t)) \<or> (\<exists> t. t \<le> tMN \<and> t \<in>\<^sub>A frontier N \<and> (\<forall> t'. t' \<in>\<^sub>A frontier M \<longrightarrow> \<not> t' < t))")
-    subgoal
-      apply (elim disjE conjE exE)
-      subgoal for t
-        apply (rule exI[of _ t])
-        apply (intro conjI)
-        subgoal
-          by (smt (verit, ccfv_threshold) dataflow_topology_from_tree.mem_zmset_frontier frontier_idempotent in_frontier_iff not_in_iff_zmset zcount_union)
-        subgoal
-          by order
-        done
-      subgoal for t
-        apply (rule exI[of _ t])
-        apply (intro conjI)
-        subgoal
-          by (smt (verit, ccfv_threshold) dataflow_topology_from_tree.mem_zmset_frontier frontier_idempotent in_frontier_iff not_in_iff_zmset zcount_union)
-        subgoal
-          by order
-        done
-      done
-    subgoal
-      apply (rule ccontr)
-      apply auto
-      apply (smt (verit, best) dataflow_topology_from_tree.frontier_unionD dataflow_topology_from_tree.obtain_frontier_elem dual_order.strict_trans1 frontier_comparable_False order_less_imp_le)
-      done
-    done
-  done
-
-lemma frontier_below_eq_frontier_plus_neg[simp]:
-  "(\<forall> t. zcount M t \<le> 0) \<Longrightarrow>
-   frontier_below_eq_frontier (frontier N) (frontier (N + M))"
-  unfolding frontier_below_eq_frontier_def
-  apply safe
-  apply (meson dataflow_topology_from_tree.frontier_unionD dataflow_topology_from_tree.obtain_frontier_elem order.strict_iff_not)
-  done
-
-lemma frontier_below_eq_frontier_plus_neg_alt[simp]:
-  "(\<forall> t. zcount N t \<le> 0) \<Longrightarrow>
-   frontier_below_eq_frontier (frontier M) (frontier (N + M))"
-  by (simp add: add.commute)
-
-lemma frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus[simp]:
-  "frontier_below_eq_frontier (frontier N) (frontier M) \<Longrightarrow>
-   frontier_below_eq_frontier (frontier N) (frontier (N + M))"
-  unfolding frontier_below_eq_frontier_def
-  apply safe
-  apply (metis dataflow_topology_from_tree.frontier_unionD dataflow_topology_from_tree.obtain_elem_frontier dual_order.trans)
-  done
-
-lemma frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus_gen[simp]:
-  "frontier_below_eq_frontier (frontier N) (frontier M) \<Longrightarrow>
-   frontier_below_eq_frontier (frontier C) (frontier N) \<Longrightarrow>
-   frontier_below_eq_frontier (frontier C) (frontier (N + M))"
-  unfolding frontier_below_eq_frontier_def
-  apply safe
-  apply (metis dataflow_topology_from_tree.frontier_unionD dataflow_topology_from_tree.obtain_elem_frontier dual_order.trans)
-  done
-
 lemma zcount_zmset:
   "zcount (zmset xs) t = sum_list (map snd (filter (\<lambda> (t', x). t = t') xs))"
   by (induct xs) (auto simp add: zcount_update_zmultiset)
@@ -1537,15 +1331,15 @@ lemma
    c = change_multiplicities (summ sg') (lo_pt sg') (pt_tr sg') \<Longrightarrow>
    c_pts c (Loc 1 (Trg 0)) = zmset_of (mset (map snd ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0))) \<Longrightarrow>
    c_pts c (Loc 0 (Src 0)) = {# n 0 #}\<^sub>z \<Longrightarrow>
-   frontier_below_eq_frontier (front os2 0) (frontier (c_pts c (Loc 1 (Trg 0)) + c_pts c (Loc 0 (Src 0)))) \<Longrightarrow>
+   (front os2 0) \<le> (frontier (c_pts c (Loc 1 (Trg 0)) + c_pts c (Loc 0 (Src 0)))) \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum (summ sg) dataflow_topology_from_tree.followed_by (pt_tr sg) \<Longrightarrow>
    summ sg = my_summ \<Longrightarrow>
    edges sg = (\<lambda> l. if l = Loc 0 (Src 1) then [Loc 1 (Trg 1)] else []) \<Longrightarrow>
    (\<forall> (p, t, m) \<in> set (consu os2). m \<ge> 0) \<Longrightarrow>
    c_pts c (Loc 0 (Trg 1)) = {#}\<^sub>z \<Longrightarrow>
    consu os1 = [] \<Longrightarrow>
-   frontier_below_eq_frontier (frontier (zmset (map snd (produ os1)))) (frontier (zmset (map snd (inter os1)))) \<Longrightarrow>
-   frontier_below_eq_frontier (frontier (c_pts (change_multiplicities (summ sg) (lo_pt sg) (pt_tr sg)) (Loc 0 (Src 0)) + c_pts (change_multiplicities (summ sg) (lo_pt sg) (pt_tr sg)) (Loc 1 (Trg 0)))) (frontier (zmset (map snd (produ os1)))) \<Longrightarrow>
+   frontier (zmset (map snd (produ os1))) \<le> frontier (zmset (map snd (inter os1))) \<Longrightarrow>
+   (frontier (c_pts (change_multiplicities (summ sg) (lo_pt sg) (pt_tr sg)) (Loc 0 (Src 0)) + c_pts (change_multiplicities (summ sg) (lo_pt sg) (pt_tr sg)) (Loc 1 (Trg 0)))) \<le> (frontier (zmset (map snd (produ os1)))) \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum (summ sg) (-+-) (pt_tr sg) \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg (pt_tr sg) \<Longrightarrow>
    dataflow_topology_from_tree.inv_imp_plus_work_nonneg (pt_tr sg) \<Longrightarrow>
@@ -1604,7 +1398,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           subgoal
             apply simp
             using prems(5,6,7,8,14) apply simp
-            apply (rule frontier_below_eq_frontier_trans)
+            apply (rule Orderings.preorder_class.order_trans)
             apply (rule prems(11)[simplified])
             apply simp
             apply hypsubst_thin
@@ -1800,10 +1594,10 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
                   apply (auto 0 0)
                   apply (drule propagate_all_preserves_c_pts)
                   apply (simp add: c_pts_change_multiplicities)
-                  apply (rule frontier_below_eq_frontier_trans)
+                  apply (rule Orderings.preorder_class.order_trans)
                   apply (rule frontier_below_eq_frontier_plus)
                   subgoal premises
-                    apply (rule frontier_below_eq_frontier_trans)
+                    apply (rule Orderings.preorder_class.order_trans)
                     apply (rule frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus[where M="zmset (map snd (filter (\<lambda>(l'::(2, 1) location, t::nat, d::int). Loc 0 (Src 1) = l') (map (\<lambda>(p::1, y::nat \<times> int). (Loc 0 (Src 1), y)) (operator_state.inter os1)))) + zmset (map snd (concat (map (\<lambda>(p::1, t::nat, m::int). [(Loc 1 (Trg 1), t, m)]) (produ os1))))"])
                     subgoal
                       apply (subst (4) Groups.add_ac(2))
@@ -1817,12 +1611,12 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
                         apply (auto 0 0 simp add: Groups.add_ac(2) extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
                         done
                       done
-                    apply (rule frontier_below_eq_frontier_trans)
+                    apply (rule Orderings.preorder_class.order_trans)
                     apply (rule frontier_below_eq_frontier_plus_neg_alt)
                     apply (intro allI)
                     apply (rule zcount_zmset_filter_neg[where l="Loc (1 :: 2) (Trg (1 :: 1))"])
                     using prems(15) apply blast
-                    apply (rule frontier_below_eq_frontier_refl_alt)
+                    apply (rule Orderings.preorder_class.eq_refl)
                     apply (rule arg_cong[where f=frontier])
                     apply simp
                     done
@@ -1895,7 +1689,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           subgoal
             apply simp
             using prems(5,6,7,8,14) apply simp
-            apply (rule frontier_below_eq_frontier_trans)
+            apply (rule Orderings.preorder_class.order_trans)
             apply (rule prems(11)[simplified])
             apply simp
             done
@@ -2010,15 +1804,14 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           subgoal
             apply simp
             using prems(5,6,7,8,14) apply simp
-            apply (rule frontier_below_eq_frontier_trans)
+            apply (rule Orderings.preorder_class.order_trans)
              apply (rule prems(11)[simplified])
             apply simp
             apply hypsubst_thin
             apply (auto simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-            
-
-
-end
+            apply (subgoal_tac "\<forall> t'. zcount (update_zmultiset {#}\<^sub>z t (- 1)) t' \<le> 0")
+            using frontier_below_eq_frontier_plus_neg apply (smt (verit, ccfv_SIG) Max_top.update_zmultiset_plus arith_simps(50) update_zmultiset_plus_comm)
+            apply (auto simp add: zcount_update_zmultiset)
             done
           subgoal
             using prems(12) by simp
@@ -2039,7 +1832,65 @@ end
           using prems(23) apply simp
           using prems(24) apply simp
           subgoal
+            apply simp
+            apply (rule rtranclp_intros_1)
+            apply (rule arg_cong3[where f=map_op])
+            apply simp_all
+            apply (rule arg_cong[where f=source_op])
+            apply (rule ext)
+            apply (simp_all add: lshift_assoc)
+            apply (rule arg_cong2[where f=lshift])
+             apply simp_all
+            subgoal 
+              apply (subst max_from_caps_buf_append)
+              apply (subst (2) max_from_caps_buf_append)
+              apply (rule arg_cong2[where f=append])
+              subgoal
+                apply (rule arg_cong2[where f=max_from_caps_buf])
+                using prems(4) apply (simp add: sort_key_id_if_sorted)
+                apply (simp add: comp_def list_to_buf_def BTL_def BHD_def BENQ_def BULK_BENQ_def)
+                apply (rule ext)+
+                apply (auto simp add: map_eq_Cons_conv)
+                apply (rule exI[of _ t])
+                apply (intro conjI exI[of _ "filter (\<lambda>(x, t'). t' = t) (map projr (tl (buf1 (Inr (1, 1)))))"])
+                  apply auto
+                apply (smt (verit, best) case_prod_conv filter.simps(2) list.collapse list.simps(9))
+                subgoal for t'
+                  apply (cases t')
+                  apply auto
+                apply (smt (verit, best) case_prod_conv filter.simps(2) list.collapse list.simps(9))
+                  done
+                done
+              subgoal
+                apply (rule arg_cong2[where f=max_from_caps_buf])
+                subgoal
+                 apply (simp add: comp_def list_to_buf_def BTL_def BHD_def BENQ_def BULK_BENQ_def flip: rmdups_append)
+                  apply (rule arg_cong2[where f=append])
+                  subgoal
+                    apply (cases "buf1 (Inr (1, 1))"; simp split: prod.splits)
+                    done
+                  subgoal
+                    apply (cases "buf1 (Inr (1, 1))"; simp split: prod.splits)
+                apply (rule rmdups_cong)
+                    apply (auto split: prod.splits)
+                    done
+                  done
+                subgoal
+                  apply (rule ext)+
+                    apply (cases "buf1 (Inr (1, 1))"; simp split: prod.splits)
+                  apply (auto 0 0 simp add: comp_def list_to_buf_def BTL_def BHD_def BENQ_def BULK_BENQ_def split: if_splits)
+                  apply (metis (full_types) capability.exhaust capability.sel(1) num1_eq1) 
+                  done
+                done
+              done
+            done
+          done
 
+                find_theorems rmdups name: cong
+
+
+                find_theorems BTL BENQ BULK_BENQ
+ 
 
 end
 qed
@@ -2067,7 +1918,7 @@ end
   subgoal
     apply simp
     using prems(5,6,7,8,14) apply simp
-    apply (rule frontier_below_eq_frontier_trans)
+    apply (rule Orderings.preorder_class.order_trans)
     apply (rule prems(11)[simplified])
     apply simp
     done
