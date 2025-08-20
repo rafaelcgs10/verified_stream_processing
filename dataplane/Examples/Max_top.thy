@@ -1320,6 +1320,33 @@ lemma zmset_of_remove1_mset:
   by (smt (verit, del_insts) Groups.add_ac(2,3) Multiset.multi_member_split add_cancel_right_left add_mset_diff_bothsides add_uminus_conv_diff diff_empty eq_iff_diff_eq_0 numeral_nat(7) of_nat_0_eq_iff of_nat_eq_1_iff
       union_mset_add_mset_left update_zmultiset_simps(1,3) zmset_of_add_mset zmset_of_plus)
 
+(* FIXME: move me *)
+lemma sort_key_append:
+  assumes "\<And>x y. x \<in> set xs \<Longrightarrow> y \<in> set ys \<Longrightarrow> k x \<le> k y"
+  and "inj_on k (set xs \<union> set ys)"
+  shows   "sort_key k (xs @ ys) = sort_key k xs @ sort_key k ys"
+  using assms apply -
+  apply (rule properties_for_sort_key)
+    apply simp_all
+  subgoal
+    apply (rule arg_cong2[where f=append])
+    subgoal
+      apply safe
+      apply (smt (verit, best) filter_cong sort_key_stable)
+      apply (smt (verit, best) filter_cong sort_key_stable)
+      done
+    subgoal
+      apply safe
+      apply (smt (verit, best) filter_cong sort_key_stable)
+      apply (smt (verit, best) filter_cong sort_key_stable)
+      done
+    done
+  subgoal
+    by (metis (mono_tags, lifting) map_append set_sort sorted_sort_key sorted_wrt_append sorted_wrt_map)
+  done
+
+find_consts name: sorted name: w
+
 lemma
   \<open>xs 0 = outpu os2 0 \<Longrightarrow>
    ys 0 = max_from_buf caps buf2 ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0) \<Longrightarrow>
@@ -1345,6 +1372,8 @@ lemma
    dataflow_topology_from_tree.inv_imp_plus_work_nonneg (pt_tr sg) \<Longrightarrow>
    changes_bellow_impl (lo_pt sg) (c_imp (pt_tr sg)) \<Longrightarrow>
    changes_non_zero (lo_pt sg) \<Longrightarrow>
+   (\<forall> (x, t) \<in> projr ` set (buf1 (Inr (1, 1))) \<union> set (outpu os1 0). \<forall> t' p. Cap t' p \<in> set caps \<longrightarrow> t' \<le> t) \<Longrightarrow>
+   sorted_wrt (\<lambda> (_, x) (_, y). x \<le> y) ((map projr (buf1 (Inr (1, 1)))) @ (outpu os1 0)) \<Longrightarrow>
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
 proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c st1 st2 rule: weakBisimWeakUptoBisimCong)
@@ -1357,7 +1386,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
       unfolding wsim_def
       apply (intro allI conjI impI)
       subgoal premises prems for io op1'
-        using prems(25-) apply -
+        using prems(27-) apply -
         apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin?)
         apply simp_all
         prefer 8
@@ -1422,6 +1451,8 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           using prems(22) apply simp
           using prems(23) apply simp
           using prems(24) apply simp
+          using prems(25) apply simp
+          using prems(26) apply simp
           subgoal
             apply simp
             apply (rule rtranclp_intros_1)
@@ -1578,6 +1609,8 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
               using prems(22) apply simp
               using prems(24)[unfolded changes_non_zero_def] apply simp
               using prems(23)[unfolded changes_bellow_impl_def] apply simp
+              using prems(25) apply simp
+              using prems(26) apply simp
               subgoal
                 apply (subst dataflow_topology.implied_frontier_alt_def)
                 using prems(13) apply simp
@@ -1658,10 +1691,12 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
             using prems(13) prems(20-24) by (auto simp add: changes_bellow_impl_def changes_non_zero_def split: option.splits dest!: propagate_pointstamps_preserve_inv)
           subgoal
             using prems(13) prems(20-24) by (auto simp add: changes_bellow_impl_def changes_non_zero_def split: option.splits dest!: propagate_pointstamps_preserve_inv)
+          using prems(25) apply simp
+          using prems(26) apply simp
           apply (simp add: comp_def)
           done
         defer
-        subgoal 
+        subgoal for x xs
           unfolding R_def
           apply simp
           using prems(1,2) apply -
@@ -1710,6 +1745,16 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           using prems(22) apply simp
           using prems(23) apply simp
           using prems(24) apply simp
+          subgoal
+            using prems(25)
+            unfolding BENQ_def
+            apply auto
+            done
+          subgoal 
+            using prems(26)
+            unfolding BENQ_def
+            apply (auto simp add: List.linorder_class.sorted_append)
+            done
           subgoal
             apply (rule rtranclp_intros_1)
             apply (rule arg_cong3[where f=map_op])
@@ -1832,6 +1877,21 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           using prems(23) apply simp
           using prems(24) apply simp
           subgoal
+            unfolding BTL_def
+            using prems(25) apply clarsimp
+            apply (metis (no_types, lifting) image_iff in_set_tlD)
+            done
+          subgoal 
+            using prems(26)
+            unfolding BENQ_def BHD_def BTL_def
+            apply (auto simp add: sorted_wrt_append sorted_map comp_def map_tl sorted_tl List.linorder_class.sorted_append)
+            sledgehammer
+
+            find_theorems "sorted (map _ _) = _"
+
+end
+            done
+          subgoal
             apply simp
             apply (rule rtranclp_intros_1)
             apply (rule arg_cong3[where f=map_op])
@@ -1885,6 +1945,161 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
               done
             done
           done
+  subgoal for n t
+          unfolding R_def 
+          apply simp
+          using prems(1,2,3) apply -
+          apply (intro exI conjI[rotated])
+          apply (intro relcomppI)
+          apply (rule bisim_refl)
+          defer
+          apply (rule wbisim_refl)
+          defer
+          apply (rule wb_upto_b_base)
+          apply (intro conjI exI)
+          apply (rule refl)+
+          apply (metis BTL_access list.set_sel(2) zero_one)
+          subgoal
+            using prems(4) sorted_filter by auto
+          subgoal
+            apply simp
+            using prems(5,6,7,8, 14) prems(9) apply -
+            apply (simp add: change_multiplicities_append_comp comp_def)
+            apply (elim conjE)
+            apply hypsubst_thin
+            unfolding extract_progress_def
+            apply (auto simp add: comp_def filter_empty_conv c_pts_change_multiplicities)
+            subgoal premises prems2
+              using prems2(1,2) prems2(9,3)[symmetric] apply -
+              unfolding BTL_def
+              apply auto
+              apply (subst mset_tl)
+               apply fast
+              apply simp
+              apply (subst image_mset_remove1_mset_if)
+              apply (simp split: if_splits)
+              apply (subst zmset_of_remove1_mset)
+               apply simp
+              apply simp
+              apply (metis BHD_def add_cancel_right_right snd_conv update_zmultiset_plus_comm)
+              done
+            done
+          subgoal
+            using prems(5,6,7,8,14) prems(10)[symmetric]  apply -
+            apply (auto simp add: change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+            unfolding extract_progress_def
+            apply (simp add: comp_def)
+            done
+          subgoal
+            apply simp
+            using prems(5,6,7,8,14) apply simp
+            apply (rule Orderings.preorder_class.order_trans)
+             apply (rule prems(11)[simplified])
+            apply simp
+            apply hypsubst_thin
+            apply (auto simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+            apply (subgoal_tac "\<forall> t'. zcount (update_zmultiset {#}\<^sub>z t (- 1)) t' \<le> 0")
+            using frontier_below_eq_frontier_plus_neg apply (smt (verit, ccfv_SIG) Max_top.update_zmultiset_plus arith_simps(50) update_zmultiset_plus_comm)
+            apply (auto simp add: zcount_update_zmultiset)
+            done
+          subgoal
+            using prems(12) by simp
+          using prems(13) apply simp
+          using prems(14) apply simp
+          using prems(15) apply simp
+          subgoal
+            using prems(5,6,7,8,14,16) 
+            apply simp
+            apply (auto 0 0 simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+            done
+          using prems(17) apply simp
+          using prems(18) apply simp
+          using prems(19) apply simp
+          using prems(20) apply simp
+          using prems(21) apply simp
+          using prems(22) apply simp
+          using prems(23) apply simp
+          using prems(24) apply simp
+          subgoal premises prems2
+            using prems2(1,2,4,7) prems2(3)[symmetric] prems(25) prems(4) apply -
+            unfolding BTL_def BHD_def
+            apply (cases "buf1 (Inr (1, 1))"; simp)
+            apply (auto 0 0 split: prod.splits sum.splits)
+
+
+end
+            done
+          subgoal
+            apply simp
+            apply (rule rtranclp_intros_1)
+            apply (rule arg_cong3[where f=map_op])
+            apply simp_all
+            apply (rule arg_cong[where f=source_op])
+            apply (rule ext)
+            apply (simp_all add: lshift_assoc)
+            apply (rule arg_cong2[where f=lshift])
+             apply simp_all
+            subgoal 
+              apply (rule arg_cong2[where f=max_from_caps_buf])
+              subgoal
+                    apply (cases "buf1 (Inr (1, 1))"; simp split: prod.splits)
+                  apply (auto 0 0 simp add: comp_def list_to_buf_def BTL_def BHD_def BENQ_def BULK_BENQ_def split: if_splits)
+                apply (subgoal_tac "\<forall> t' \<in> time ` set caps. t \<ge> t' ")
+                subgoal
+                  apply (subst sort_key_append)
+                    apply force
+                   apply simp
+                  apply (smt (verit, best) capability.exhaust capability.sel(1) image_iff inj_on_def num1_eq1)
+                  apply simp
+                  using prems(4) apply (metis sort_key_id_if_sorted)
+                  done
+                subgoal
+                 
+
+
+                find_theorems "sort_key _ (_ @ _)"
+
+
+end
+                using prems(4) apply (simp add: sort_key_id_if_sorted)
+                apply (simp add: comp_def list_to_buf_def BTL_def BHD_def BENQ_def BULK_BENQ_def)
+                apply (rule ext)+
+                apply (auto simp add: map_eq_Cons_conv)
+                apply (rule exI[of _ t])
+                apply (intro conjI exI[of _ "filter (\<lambda>(x, t'). t' = t) (map projr (tl (buf1 (Inr (1, 1)))))"])
+                  apply auto
+                apply (smt (verit, best) case_prod_conv filter.simps(2) list.collapse list.simps(9))
+                subgoal for t'
+                  apply (cases t')
+                  apply auto
+                apply (smt (verit, best) case_prod_conv filter.simps(2) list.collapse list.simps(9))
+                  done
+                done
+              subgoal
+                apply (rule arg_cong2[where f=max_from_caps_buf])
+                subgoal
+                 apply (simp add: comp_def list_to_buf_def BTL_def BHD_def BENQ_def BULK_BENQ_def flip: rmdups_append)
+                  apply (rule arg_cong2[where f=append])
+                  subgoal
+                    apply (cases "buf1 (Inr (1, 1))"; simp split: prod.splits)
+                    done
+                  subgoal
+                    apply (cases "buf1 (Inr (1, 1))"; simp split: prod.splits)
+                apply (rule rmdups_cong)
+                    apply (auto split: prod.splits)
+                    done
+                  done
+                subgoal
+                  apply (rule ext)+
+                    apply (cases "buf1 (Inr (1, 1))"; simp split: prod.splits)
+                  apply (auto 0 0 simp add: comp_def list_to_buf_def BTL_def BHD_def BENQ_def BULK_BENQ_def split: if_splits)
+                  apply (metis (full_types) capability.exhaust capability.sel(1) num1_eq1) 
+                  done
+                done
+              done
+            done
+          done
+
 
                 find_theorems rmdups name: cong
 
