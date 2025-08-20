@@ -142,23 +142,7 @@ lemma accumulator_op_correctness:
   \<open>wtraced (accumulator_op f g P n ins acc) vios \<longleftrightarrow> accumulates f g P n ins acc vios\<close>
   using accumulator_op_soundness accumulator_op_completeness by meson
 
-
-(* TODO move *)
-datatype ('t :: order, 'd) event = Data (time: 't) (data: 'd) | Watermark (time: 't)
-
 (*
-lemma ldropWhile_Watermark:
-  assumes \<open>ldropWhile (Not \<circ> is_Data) lxs = LCons (Watermark ts) lxs'\<close>
-  shows \<open>False\<close>
-proof (cases \<open>\<exists>x \<in> lset lxs. \<not> (Not \<circ> is_Data) x\<close>)
-  case True
-  hence \<open>\<not> (Not \<circ> is_Data) (lhd (ldropWhile (Not \<circ> is_Data) lxs))\<close> by (rule lhd_ldropWhile)
-  then show ?thesis using assms by simp
-next
-  case False
-  then show ?thesis using assms by simp
-qed
-
 (* WIP Out-of-order operator: we interpret the time in an event as the difference since the last seen watermark. *)
 
 corec accumulator_op where
@@ -177,7 +161,7 @@ lemma no_step_accumulator_op_Inp:
   using assms
   apply (subst (asm) accumulator_op.code)
   apply (auto split: llist.splits event.splits)
-  using ldropWhile_Watermark by auto
+  using ldropWhile_LConsD by auto
 
 lemma no_step_accumulator_op_Tau:
   assumes \<open>step io (accumulator_op f g wm ins acc) op\<close>
@@ -186,7 +170,7 @@ lemma no_step_accumulator_op_Tau:
   using assms
   apply (subst (asm) accumulator_op.code)
   apply (auto split: llist.splits event.splits)
-  using ldropWhile_Watermark by auto
+  using ldropWhile_LConsD by auto
 
 lemma step_accumulator_op_Out:
   assumes \<open>step io (accumulator_op f g wm ins acc) op\<close>
@@ -199,7 +183,7 @@ lemma step_accumulator_op_Out:
   using assms
   apply (subst (asm) accumulator_op.code)
   apply (auto split: llist.splits event.splits)
-  using ldropWhile_Watermark by fastforce
+  using ldropWhile_LConsD by fastforce
 
 lemma step_accumulator_op_elim:
   assumes \<open>step io (accumulator_op f g wm ins acc) op\<close>
@@ -211,7 +195,7 @@ lemma step_accumulator_op_elim:
   using assms
   apply (subst (asm) accumulator_op.code)
   apply (auto split: llist.splits event.splits)
-  using ldropWhile_Watermark by fastforce
+  using ldropWhile_LConsD by fastforce
 
 lemma step_accumulator_op_Write:
   \<open>wm' = wm(p := wm p + foldl (+) 0 (list_of (lmap time (ltakeWhile (Not \<circ> is_Data) (ins p))))) \<Longrightarrow>
@@ -262,7 +246,7 @@ lemma wfinished_accumulator_op_ins:
         apply (rule step_accumulator_op_Write)
               apply (simp_all add: \<UU>_def)
           done
-        using ldropWhile_Watermark by auto
+        using ldropWhile_LConsD by auto
       done
     done
   subgoal
