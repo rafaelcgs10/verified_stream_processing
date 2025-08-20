@@ -1884,12 +1884,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           subgoal 
             using prems(26)
             unfolding BENQ_def BHD_def BTL_def
-            apply (auto simp add: sorted_wrt_append sorted_map comp_def map_tl sorted_tl List.linorder_class.sorted_append)
-            sledgehammer
-
-            find_theorems "sorted (map _ _) = _"
-
-end
+                    apply (cases "buf1 (Inr (1, 1))"; simp split: prod.splits)
             done
           subgoal
             apply simp
@@ -2021,13 +2016,22 @@ end
           using prems(23) apply simp
           using prems(24) apply simp
           subgoal premises prems2
-            using prems2(1,2,4,7) prems2(3)[symmetric] prems(25) prems(4) apply -
+            using prems2(1,2,4,7) prems2(3)[symmetric] prems(25) prems(26) prems(4) apply -
             unfolding BTL_def BHD_def
             apply (cases "buf1 (Inr (1, 1))"; simp)
-            apply (auto 0 0 split: prod.splits sum.splits)
-
-
-end
+            apply (auto 0 0 simp add: sorted_wrt_append split: prod.splits sum.splits)
+            subgoal for a xs a' t' x'
+              apply (cases a; cases x'; simp)
+              apply (meson is_Inr.simps(2))
+              apply (meson UnI1 image_iff sum.sel(2))  
+              done
+          subgoal for a xs a' t' 
+            by (metis UnCI)
+          done
+   subgoal 
+            using prems(26)
+            unfolding BENQ_def BHD_def BTL_def
+                    apply (cases "buf1 (Inr (1, 1))"; simp split: prod.splits)
             done
           subgoal
             apply simp
@@ -2054,8 +2058,31 @@ end
                   using prems(4) apply (metis sort_key_id_if_sorted)
                   done
                 subgoal
-                 
-
+                  using prems(25) apply -
+                  apply (drule spec[of _ "(n, t)"])
+                  apply (drule mp)
+                   apply simp_all
+                  subgoal premises prems2
+                    using prems2(8) apply -
+                    apply (intro ballI impI)
+                    subgoal for t'
+                    apply (drule spec[of _ "time t'"])
+                      apply (drule mp)
+                      apply (metis (full_types) capability.exhaust capability.sel(1) num1_eq1)
+                      apply simp
+                      done
+                    done
+                  done
+                done
+              subgoal
+                apply (rule ext)+
+            unfolding BENQ_def BHD_def BTL_def BULK_BENQ_def list_to_buf_def
+                    apply (cases "buf1 (Inr (1, 1))"; simp split: prod.splits)
+            apply (metis (full_types) capability.exhaust capability.sel(1) num1_eq1)
+            done
+          done
+        done
+      done
 
                 find_theorems "sort_key _ (_ @ _)"
 
