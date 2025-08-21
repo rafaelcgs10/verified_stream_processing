@@ -66,6 +66,11 @@ instance antichain :: (order) order
   apply (smt (verit, best) basic_trans_rules(18,23,24) subsetI)
   done
 
+lemma empty_antichain_top[simp]:
+  "A \<le> {}\<^sub>A"
+  unfolding less_eq_antichain_def
+  using mem_antichain_nonempty by blast
+
 lemma frontier_add:
   "(frontier N) \<le> (frontier M) \<Longrightarrow>
    (\<forall> t. t \<in>#\<^sub>z M \<longrightarrow> zcount M t > 0) \<Longrightarrow>
@@ -183,10 +188,23 @@ lemma frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus[simp]:
 lemma frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus_gen[simp]:
   "(frontier N) \<le> (frontier M) \<Longrightarrow>
    (frontier C) \<le> (frontier N) \<Longrightarrow>
-   (frontier C) \<le> (frontier (N + M))"
+   frontier C \<le> frontier (N + M)"
   unfolding less_eq_antichain_def
   apply safe
   apply (metis trivial_dataflow_topology_interpretation.frontier_unionD trivial_dataflow_topology_interpretation.obtain_elem_frontier dual_order.trans)
   done
+
+
+lemma frontier_below_eq_frontier_plus_pos[simp]:
+  "(\<forall> t. zcount M t \<ge> 0) \<Longrightarrow>
+   frontier (N + M) \<le> frontier N"
+  unfolding less_eq_antichain_def
+  by (metis add.commute less_add_same_cancel1 member_frontier_pos_zmset order_le_less_trans trivial_dataflow_topology_interpretation.obtain_frontier_elem zcount_union)
+
+lemma frontier_add_zmset:
+  "frontier M \<le> frontier N \<Longrightarrow>
+   frontier (add_zmset x M) \<le> frontier N"
+  using frontier_below_eq_frontier_plus_pos
+  by (metis add_zmset_add_single dual_order.refl dual_order.trans zcount_single zero_less_one_class.zero_le_one)
 
 end
