@@ -1345,8 +1345,9 @@ lemma sort_key_append:
     by (metis (mono_tags, lifting) map_append set_sort sorted_sort_key sorted_wrt_append sorted_wrt_map)
   done
 
-find_consts name: sorted name: w
+definition "input_cap inps n = (if \<exists> x. inps 0 = LCons x LNil then {#}\<^sub>z else {# n 0 #}\<^sub>z)"
 
+end
 lemma
   \<open>xs 0 = outpu os2 0 \<Longrightarrow>
    ys 0 = max_from_buf caps buf2 ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0) \<Longrightarrow>
@@ -1357,7 +1358,7 @@ lemma
    sg' = sg\<lparr> lo_pt := lo_pt sg @ extract_progress 0 (edges sg) st1 @ extract_progress 1 (edges sg) st2 \<rparr> \<Longrightarrow>
    c = change_multiplicities (summ sg') (lo_pt sg') (pt_tr sg') \<Longrightarrow>
    c_pts c (Loc 1 (Trg 0)) = zmset_of (mset (map snd ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0))) \<Longrightarrow>
-   c_pts c (Loc 0 (Src 0)) = {# n 0 #}\<^sub>z \<Longrightarrow>
+   c_pts c (Loc 0 (Src 0)) = (if \<exists> x. inps 0 = LCons x LNil then {#}\<^sub>z else {# n 0 #}\<^sub>z) \<Longrightarrow>
    (front os2 0) \<le> (frontier (c_pts c (Loc 1 (Trg 0)) + c_pts c (Loc 0 (Src 0)))) \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum (summ sg) dataflow_topology_from_tree.followed_by (pt_tr sg) \<Longrightarrow>
    summ sg = my_summ \<Longrightarrow>
