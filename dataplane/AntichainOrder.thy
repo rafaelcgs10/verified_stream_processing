@@ -172,6 +172,14 @@ lemma frontier_below_eq_frontier_plus_neg[simp]:
   apply (meson trivial_dataflow_topology_interpretation.frontier_unionD trivial_dataflow_topology_interpretation.obtain_frontier_elem order.strict_iff_not)
   done
 
+lemma frontier_below_eq_frontier_minus[simp]:
+  "(\<forall> t. zcount M t \<ge> 0) \<Longrightarrow>
+   (frontier N) \<le> (frontier (N - M))"
+  unfolding less_eq_antichain_def
+  apply safe
+  apply (smt (verit, ccfv_SIG) dataflow_topology.obtain_elem_frontier member_frontier_pos_zmset trivial_dataflow_topology_interpretation.dataflow_topology_axioms zcount_diff)
+  done
+
 lemma frontier_below_eq_frontier_plus_neg_alt[simp]:
   "(\<forall> t. zcount N t \<le> 0) \<Longrightarrow>
    (frontier M) \<le> (frontier (N + M))"
