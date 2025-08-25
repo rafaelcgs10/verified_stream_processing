@@ -1373,7 +1373,10 @@ lemma
    c_pts c (Loc 0 (Trg 1)) = {#}\<^sub>z \<Longrightarrow>
    consu os1 = [] \<Longrightarrow>
    frontier (zmset (map snd (produ os1))) \<le> frontier (zmset (map snd (inter os1))) \<Longrightarrow>
-   frontier (c_pts c (Loc 1 (Trg 0)) + c_pts c (Loc 0 (Src 0))) \<le> (frontier (zmset (map snd (produ os1)))) \<Longrightarrow>
+   frontier
+     (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) +
+      (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg)))))
+    \<le> frontier (zmset (map snd (concat (map (\<lambda>(p, t, m). [(Loc 1 (Trg 1), t, m)]) (produ os1))))) \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum (summ sg) (-+-) (pt_tr sg) \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg (pt_tr sg) \<Longrightarrow>
    dataflow_topology_from_tree.inv_imp_plus_work_nonneg (pt_tr sg) \<Longrightarrow>
@@ -1661,11 +1664,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
                         apply simp
                         done
                       subgoal
-                        using prems(5,6,7,8,14,16,19,10,9) apply -
-                        apply (auto 0 0 simp add: input_cap_def Groups.add_ac(2) extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: if_splits option.splits; hypsubst_thin?)
-                        sledgehammer
-
-end
+                        using prems(19) apply simp
                         done
                       done
                     apply (rule Orderings.preorder_class.order_trans)
@@ -2251,9 +2250,9 @@ end
           subgoal premises prems2
             using prems(19) apply -
             apply (auto 0 0 simp add: update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-                 sledgehammer[timeout = 100, provers = e cvc5 verit vampire z3]
+            sledgehammer
 
-            find_theorems "frontier (_ + _) = _" 
+            find_theorems "_ \<le> frontier (_ + _)" 
 
 end
           using prems(20) apply simp
