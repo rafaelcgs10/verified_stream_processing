@@ -207,4 +207,62 @@ lemma frontier_add_zmset:
   using frontier_below_eq_frontier_plus_pos
   by (metis add_zmset_add_single dual_order.refl dual_order.trans zcount_single zero_less_one_class.zero_le_one)
 
+
+(*
+\<forall>t. 0 < zcount (c_pts (pt_tr sg) (Loc 1 (Trg 1))) t + zcount (zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg)))) t + zcount (zmset (map snd (produ os1))) t +
+            zcount (zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (map (\<lambda>(p, t, m). (Loc 1 (Trg 1), t, - m)) (consu os2))))) t +
+            (if n 1 = t then zcount {#}\<^sub>z t + 1 else zcount {#}\<^sub>z t) \<longrightarrow>
+        t \<le> n 1 \<Longrightarrow>
+    frontier
+     (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) +
+      (zmset (map snd (produ os1)) + (zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (map (\<lambda>(p, t, m). (Loc 1 (Trg 1), t, - m)) (consu os2)))) + {#n 1#}\<^sub>z)))
+    \<le> frontier (zmset_of {#n 1. x \<in># mset batch'#})
+*)
+
+lemma frontier_le_add_singleton:
+  "(\<forall>t'. zcount A t' > 0 \<longrightarrow> t' \<le> t) \<Longrightarrow>
+   (zcount A t \<ge> 0) \<Longrightarrow>
+   frontier (A + {#t#}\<^sub>z) \<le> antichain {t}"
+  unfolding less_eq_antichain_def
+  apply auto
+  subgoal for t2
+    apply (subgoal_tac "t2 = t")
+    subgoal premises prems
+      using prems(1,3-) apply -
+      apply simp
+      apply hypsubst_thin
+      apply (cases "\<exists> t'. 0 < zcount A t'")
+      subgoal
+        by (metis add_pos_pos order.trans trivial_dataflow_topology_interpretation.obtain_frontier_elem zcount_add_zmset zero_less_one)
+      subgoal
+        by (metis add.commute add.right_neutral nless_le prems(2) trivial_dataflow_topology_interpretation.obtain_frontier_elem zcount_add_zmset zero_less_one)
+      done
+    subgoal
+      by (metis finite.emptyI finite.insertI in_antichain_minimal_antichain minimal_antichain_singleton singleton_iff)
+    done
+  done
+
+
+(*
+    frontier
+     (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg))) +
+      (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg)))))
+    \<le> frontier (zmset (map snd (produ os1))) \<Longrightarrow>
+    batch \<noteq> [] \<Longrightarrow>
+    frontier
+     (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg))) +
+      (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg)))))
+    \<le> frontier (zmset (map snd (produ os1)) + zmset_of {#n 1. x \<in># mset batch#})
+
+*)
+
+lemma frontier_le_add:
+  "frontier C \<le> frontier A \<Longrightarrow>
+   frontier C \<le> frontier B \<Longrightarrow>
+   frontier C \<le> frontier (A + B)"
+  unfolding less_eq_antichain_def
+  apply auto
+  by (metis order.trans trivial_dataflow_topology_interpretation.frontier_unionD trivial_dataflow_topology_interpretation.obtain_elem_frontier)
+
+
 end
