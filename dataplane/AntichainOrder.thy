@@ -274,6 +274,11 @@ lemma frontier_linorder:
     by (metis Min_le finite_zcount_pos linorder_not_le mem_Collect_eq)
   done
 
+lemma frontier_singleton:
+  "frontier {#x#}\<^sub>z = antichain {x}"
+  by (smt (verit, ccfv_threshold) add_0 finite.emptyI finite_insert frontier_le_add_singleton in_antichain_minimal_antichain less_eq_antichain_def member_frontier_pos_zmset minimal_antichain_singleton order_antisym_conv
+      order_less_le singleton_iff zcount_empty zcount_single)
+
 
 
 end
