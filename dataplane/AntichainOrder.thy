@@ -251,19 +251,6 @@ lemma frontier_le_add_singleton:
   done
 
 
-(*
-    frontier
-     (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg))) +
-      (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg)))))
-    \<le> frontier (zmset (map snd (produ os1))) \<Longrightarrow>
-    batch \<noteq> [] \<Longrightarrow>
-    frontier
-     (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg))) +
-      (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg)))))
-    \<le> frontier (zmset (map snd (produ os1)) + zmset_of {#n 1. x \<in># mset batch#})
-
-*)
-
 lemma frontier_le_add:
   "frontier C \<le> frontier A \<Longrightarrow>
    frontier C \<le> frontier B \<Longrightarrow>
@@ -271,6 +258,22 @@ lemma frontier_le_add:
   unfolding less_eq_antichain_def
   apply auto
   by (metis order.trans trivial_dataflow_topology_interpretation.frontier_unionD trivial_dataflow_topology_interpretation.obtain_elem_frontier)
+
+
+lemma frontier_linorder:
+  "frontier (A :: ('a :: linorder) zmultiset) = (if {t. zcount A t > 0} = {} then {}\<^sub>A else antichain {Min {t. zcount A t > 0}})"
+  apply (auto split: if_splits simp add: empty_antichain_def minimal_antichain_def frontier.abs_eq)
+  apply (rule arg_cong[where f=antichain])
+  apply safe
+    apply simp_all
+  subgoal
+    by (metis Min_eqI finite_zcount_pos mem_Collect_eq verit_comp_simplify1(3))
+  subgoal
+    using \<open>\<And>xa x. 0 < zcount A x \<Longrightarrow> 0 < zcount A xa \<Longrightarrow> \<forall>y. 0 < zcount A y \<longrightarrow> \<not> y < xa \<Longrightarrow> xa = Min {t. 0 < zcount A t}\<close> order_zmset_exists_foundation by blast
+  subgoal
+    by (metis Min_le finite_zcount_pos linorder_not_le mem_Collect_eq)
+  done
+
 
 
 end
