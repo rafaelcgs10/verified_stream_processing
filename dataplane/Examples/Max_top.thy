@@ -2237,6 +2237,10 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
               apply hypsubst_thin
               apply (auto 0 0 simp flip: Int.Suc_nat_eq_nat_zadd1 simp add: input_cap_def update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
               apply (subst (1 2) add_zmset_add_single)
+              apply (simp only: flip: add.assoc)
+         
+
+end
               apply (subgoal_tac "c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) +
          (zmset (map snd (produ os1)) + (zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (map (\<lambda>(p, t, m). (Loc (1 :: 2) (Trg (1 :: 1)), t, - m)) (consu os2)))) + zmset_of {#n 1. x \<in># mset batch'#})) +
          {#n 1#}\<^sub>z = 
@@ -2246,55 +2250,11 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
               subgoal
                 apply (simp only: )
                 apply (subst (2) frontier_add_alt)
-                unfolding below_n_def
-                subgoal premises prems2
-                  using prems2(7) apply -
-                  apply (cases batch')
-                  subgoal
-                    unfolding less_eq_antichain_def
-                    apply auto
-                    using mem_antichain_nonempty apply blast
-                    done
-                  subgoal for x batch''
-                    apply simp
-                    apply hypsubst_thin
-                    apply (subgoal_tac "frontier (add_zmset (n 1) (zmset_of {#n 1. x \<in># mset batch''#})) = antichain {n 1}")
-                    subgoal
-                      apply simp
-                      apply (subst (1) add_zmset_add_single)
-                      apply (rule frontier_le_add_singleton)
-                       apply auto
-                      subgoal for t'
-                        using prems2(9,10) apply -
-                        apply (drule sum_gt_zeroD)
-                        apply (elim disjE)
+                subgoal
+                  sorry
                         subgoal
-                          apply (drule sum_gt_zeroD)
-                          apply (elim disjE)  
-                          subgoal
-                            by blast
-                          subgoal
-                            by blast
-                          done
-                          apply (drule sum_gt_zeroD)
-                          apply (elim disjE)  
-                          subgoal
-                            by blast
-                          subgoal premises prems3
-                            using prems3(8) apply -
-                            sorry
-                          done
-                        subgoal
-                          using prems2(9,10,11,12,13) apply -
-  by (smt (verit, best) prems2(8) zcount_union zcount_zmset_of_nonneg)
-  done
-                    subgoal premises
-                      apply (auto simp add: Antichain.frontier.abs_eq minimal_antichain_def)
-                      apply (simp add: image_iff)
-                      done
-                    done
-                  done
-                 apply simp
+                          apply safe
+                          by (meson zcount_zmset_of_nonneg zmset_elem_nonneg)
                 apply (rule Orderings.preorder_class.eq_refl)
                 apply simp
                 apply (rule arg_cong[where f=frontier])
@@ -2328,9 +2288,13 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
             apply (auto 0 0 simp add: update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
             done
           subgoal premises prems2
-            using prems(19) apply -
-            apply (auto 0 0 simp add: update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-            
+            using prems(5,6,7,8,14,16,19,27,10) prems2(2) apply -
+            apply (auto 0 0 simp add: input_cap_def update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+            subgoal premises prems3
+              using prems3(3,4,7) apply -
+              apply (rule frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus_gen[rotated])
+              apply force
+              
 
             find_theorems "_ \<le> frontier (_ + _)" 
 
