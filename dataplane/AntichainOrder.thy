@@ -285,5 +285,38 @@ lemma frontier_le_zmset_of[simp]:
   using frontier_le_add apply fastforce+
   done
 
+(*
+frontier
+     (add_zmset (n 1)
+       (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + zmset (map snd (produ os1)) +
+        zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (map (\<lambda>(p, t, m). (Loc 1 (Trg 1), t, - m)) (consu os2))))))
+    \<le> frontier {#n 1#}\<^sub>z \<Longrightarrow>
+    frontier
+     (add_zmset (n 1)
+       (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + zmset (map snd (produ os1)) +
+        zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (map (\<lambda>(p, t, m). (Loc 1 (Trg 1), t, - m)) (consu os2))))))
+    \<le> frontier
+        (add_zmset (n 1)
+          (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) +
+           (zmset (map snd (produ os1)) + (zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (map (\<lambda>(p, t, m). (Loc 1 (Trg 1), t, - m)) (consu os2)))) + zmset_of {#n 1. x \<in># mset batch'#}))))
+
+*)
+
+
+lemma frontie_add_zmset_add:
+  "frontier (add_zmset t A) \<le> frontier {#t#}\<^sub>z \<Longrightarrow>
+   frontier (add_zmset t A) \<le> frontier (add_zmset t A + zmset_of {#t. x \<in># mset xs#})"
+  apply (induct xs)
+   apply auto
+  using frontier_le_add apply fastforce
+  done
+
+lemma frontier_le_singletonD:
+  "frontier A \<le> frontier {#t#}\<^sub>z \<Longrightarrow>
+   A \<noteq> {#}\<^sub>z \<and> (\<exists> x. zcount A x > 0 \<longrightarrow> x \<le> t)"
+  unfolding less_eq_antichain_def
+  apply auto
+  apply (metis mem_antichain_nonempty trivial_dataflow_topology_interpretation.obtain_elem_frontier zcount_single zero_less_one)
+  done
 
 end
