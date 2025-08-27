@@ -279,6 +279,11 @@ lemma frontier_singleton:
   by (smt (verit, ccfv_threshold) add_0 finite.emptyI finite_insert frontier_le_add_singleton in_antichain_minimal_antichain less_eq_antichain_def member_frontier_pos_zmset minimal_antichain_singleton order_antisym_conv
       order_less_le singleton_iff zcount_empty zcount_single)
 
+lemma frontier_le_zmset_of[simp]:
+  "frontier {#t#}\<^sub>z \<le> frontier (zmset_of {#t. x \<in># mset xs#})"
+  apply (induct xs)
+  using frontier_le_add apply fastforce+
+  done
 
 
 end
