@@ -2614,8 +2614,11 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
             apply (auto 0 0 simp add: input_cap_def produce_def update_zmultiset_replicate extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
             subgoal
               apply (subst (1 2) add_zmset_add_single)
-              subgoal 
+              subgoal
                 apply (subst add_empty_zmultiset)
+
+
+end
                 apply (subst diff_add_eq)
                 apply (rule frontier_le_minus_gen)         
                  apply simp_all
