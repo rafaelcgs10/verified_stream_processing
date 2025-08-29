@@ -319,4 +319,33 @@ lemma frontier_le_singletonD:
   apply (metis mem_antichain_nonempty trivial_dataflow_topology_interpretation.obtain_elem_frontier zcount_single zero_less_one)
   done
 
+lemma frontier_le_singletons:
+  "t \<le> t' \<Longrightarrow>
+   frontier {#t#}\<^sub>z \<le> frontier {#t'#}\<^sub>z"
+  by (metis (no_types, opaque_lifting) frontier_le_singletonD less_eq_antichain_def member_frontier_pos_zmset nless_le zcount_single)
+
+lemma frontier_add_le:
+  "frontier B \<le> frontier C \<Longrightarrow>
+   frontier (A + B) \<le> frontier B \<Longrightarrow>
+   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
+   frontier (A + B) \<le> frontier (A + C)"
+  unfolding less_eq_antichain_def
+  apply auto
+  apply (smt (verit, ccfv_threshold) order.trans trivial_dataflow_topology_interpretation.frontier_unionD trivial_dataflow_topology_interpretation.obtain_elem_frontier zcount_union)
+  done
+
+
+lemma add_empty_zmultiset[simp]:
+  "A + {#}\<^sub>z = A"
+  "{#}\<^sub>z + A = A"
+   apply auto
+  done
+
+lemma frontier_le_minus_gen:
+  "frontier A \<le> frontier B \<Longrightarrow>
+   (\<forall> t. zcount C t \<ge> 0) \<Longrightarrow>
+   frontier A \<le> frontier (B - C)"
+  by (meson dual_order.trans frontier_below_eq_frontier_minus)
+
+
 end
