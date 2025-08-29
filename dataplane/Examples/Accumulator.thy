@@ -19,16 +19,14 @@ lemma no_step_accumulator_op_Inp:
     and \<open>io = Inp p x\<close>
   obtains False
   using assms
-  apply (subst (asm) accumulator_op.code)
-  by (auto split: llist.splits)
+  by (subst (asm) accumulator_op.code) (auto split: llist.splits)
 
 lemma no_step_accumulator_op_Tau:
   assumes \<open>step io (accumulator_op f g P n ins acc) op\<close>
     and \<open>io = Tau\<close>
   obtains False
   using assms
-  apply (subst (asm) accumulator_op.code)
-  by (auto split: llist.splits)
+  by (subst (asm) accumulator_op.code) (auto split: llist.splits)
 
 lemma step_accumulator_op_Out:
   assumes \<open>step io (accumulator_op f g P n ins acc) op\<close>
@@ -38,8 +36,7 @@ lemma step_accumulator_op_Out:
     \<open>p \<notin> defaults\<close>
   apply atomize_elim
   using assms
-  apply (subst (asm) accumulator_op.code)
-  by (auto split: llist.splits)
+  by (subst (asm) accumulator_op.code) (auto split: llist.splits)
 
 lemma step_accumulator_op_elim:
   assumes \<open>step io (accumulator_op f g P n ins acc) op\<close>
@@ -48,8 +45,7 @@ lemma step_accumulator_op_elim:
     \<open>p \<notin> defaults\<close>
   apply atomize_elim
   using assms
-  apply (subst (asm) accumulator_op.code)
-  by (auto split: llist.splits)
+  by (subst (asm) accumulator_op.code) (auto split: llist.splits)
 
 lemma step_accumulator_op_Write:
   \<open>ldropWhile (P p) (ins p) = LCons x' lxs \<Longrightarrow> x = ((g p) (acc' p), n p + the_enat (llength (ltakeWhile (P p) (ins p)))) \<Longrightarrow>
@@ -73,31 +69,31 @@ lemma wstep_step_accumulator_op:
 
 lemma wfinished_accumulator_op_ins:
   \<open>wfinished (accumulator_op f g P n ins acc) \<longleftrightarrow> (\<forall>p \<in> \<UU>. ldropWhile (P p) (ins p) = LNil)\<close>
-  apply (rule iffI)
-  subgoal
-    apply (erule contrapos_pp)
-    apply simp
-    apply (erule bexE)
-    subgoal for p
-      apply (cases \<open>ldropWhile (P p) (ins p)\<close>; simp)
-      subgoal for x lxs
-        apply (subgoal_tac \<open>step (io_of_vio (VOut p ((g p) ((f p) (acc p) x), n p + the_enat (llength (ltakeWhile (P p) (ins p))))))
+proof
+  assume \<open>wfinished (accumulator_op f g P n ins acc)\<close>
+  thus \<open>\<forall>p \<in> \<UU>. ldropWhile (P p) (ins p) = LNil\<close>
+  proof (rule contrapos_pp)
+    assume \<open>\<not> (\<forall>p\<in>\<UU>. ldropWhile (P p) (ins p) = LNil)\<close>
+    hence \<open>\<exists>p\<in>\<UU>. ldropWhile (P p) (ins p) \<noteq> LNil\<close>
+      by blast
+    then obtain p where \<open>p \<in> \<UU>\<close> \<open>ldropWhile (P p) (ins p) \<noteq> LNil\<close>
+      by blast
+    then obtain x lxs where \<open>ldropWhile (P p) (ins p) = LCons x lxs\<close>
+      using llist.exhaust_sel by blast
+    hence \<open>step (io_of_vio (VOut p ((g p) ((f p) (acc p) x), n p + the_enat (llength (ltakeWhile (P p) (ins p))))))
   (accumulator_op f g P n ins acc)
-  (accumulator_op f g P (n(p := n p + the_enat (llength (ltakeWhile (P p) (ins p))))) (ins(p := lxs)) (acc(p := (f p) (acc p) x)))\<close>)
-         apply (erule step_not_wfinished)
-        apply (rule step_accumulator_op_Write)
-              apply (simp_all add: \<UU>_def)
-        done
-      done
-    done
-  subgoal
-    apply (subgoal_tac \<open>accumulator_op f g P n ins acc = \<oslash>\<close>)
-     apply (drule arg_cong[of _ _ wfinished])
-     apply simp
-    apply (subst accumulator_op.code)
-    apply fastforce
-    done
-  done
+  (accumulator_op f g P (n(p := n p + the_enat (llength (ltakeWhile (P p) (ins p))))) (ins(p := lxs)) (acc(p := (f p) (acc p) x)))\<close>
+      using step_accumulator_op_Write \<UU>_E \<open>p \<in> \<UU>\<close> fun_upd_same io_of_vio.simps(2) by metis
+    thus \<open>\<not> wfinished (accumulator_op f g P n ins acc)\<close>
+      by (rule step_not_wfinished)
+  qed
+next
+  assume \<open>\<forall>p \<in> \<UU>. ldropWhile (P p) (ins p) = LNil\<close>
+  hence \<open>accumulator_op f g P n ins acc = \<oslash>\<close>
+    by (subst accumulator_op.code, fastforce)
+  thus \<open>wfinished (accumulator_op f g P n ins acc)\<close>
+    using arg_cong[where ?f=wfinished] by fastforce
+qed
 
 coinductive accumulates for f g P where
   \<open>\<forall>p \<in> \<UU>. ldropWhile (P p) (ins p) = LNil \<Longrightarrow> accumulates f g P n ins acc LNil\<close>
@@ -107,36 +103,56 @@ coinductive accumulates for f g P where
   accumulates f g P n ins acc (LCons (VOut p ((g p) (acc' p), n' p)) vios)\<close>
 
 lemma accumulator_op_soundness:
-  \<open>wtraced (accumulator_op f g P n ins acc) vios \<Longrightarrow> accumulates f g P n ins acc vios\<close>
-  apply (coinduction arbitrary: n ins acc vios)
-  apply (erule wtraced.cases; hypsubst_thin; simp)
-  subgoal
-    using wfinished_accumulator_op_ins accumulates.intros(1) by fast
-  subgoal for n ins acc vio op vios
-    apply (simp add: wstep_step_accumulator_op)
-    apply (erule step_accumulator_op_elim)
-    subgoal for p _ x' lxs
-      apply (rule exI[of _ p])
-      apply (intro exI[of _ x'] conjI)
-        apply (metis io_of_vio.simps(2) io_of_vio_inverse)
-       apply auto
-      done
-    done
-  done
+  assumes \<open>wtraced (accumulator_op f g P n ins acc) vios\<close>
+  shows \<open>accumulates f g P n ins acc vios\<close>
+  using assms
+proof (coinduction arbitrary: n ins acc vios)
+  case accumulates
+  then show ?case
+  proof (cases rule: wtraced.cases)
+    case Nil
+    hence \<open>\<forall>p \<in> \<UU>. ldropWhile (P p) (ins p) = LNil\<close>
+      using wfinished_accumulator_op_ins by blast
+    thus ?thesis
+      using Nil accumulates.intros(1) by blast
+  next
+    case (Step vio op' lxs)
+    hence \<open>step (io_of_vio vio) (accumulator_op f g P n ins acc) op'\<close>
+      by (simp add: wstep_step_accumulator_op)
+    then obtain p x x' lxs' where \<open>io_of_vio vio = Out p x\<close> \<open>op' = accumulator_op f g P (n(p := n p + the_enat (llength (ltakeWhile (P p) (ins p))))) (ins(p := lxs')) (acc(p := (f p) (acc p) x'))\<close>
+    \<open>ldropWhile (P p) (ins p) = LCons x' lxs'\<close> \<open>x = ((g p) ((f p) (acc p) x'), n p + the_enat (llength (ltakeWhile (P p) (ins p))))\<close>
+    \<open>p \<notin> defaults\<close>
+      using step_accumulator_op_elim by (smt (verit, ccfv_threshold))
+    moreover have \<open>vio = VOut p x\<close>
+      using \<open>io_of_vio vio = Out p x\<close> io_of_vio.simps(2) io_of_vio_inverse by metis
+    ultimately show ?thesis
+      using accumulates Step by simp
+  qed
+qed
 
 lemma accumulator_op_completeness:
-  \<open>accumulates f g P n ins acc vios \<Longrightarrow> wtraced (accumulator_op f g P n ins acc) vios\<close>
-  apply (coinduction arbitrary: n ins acc vios)
-  apply (erule accumulates.cases; hypsubst_thin; simp)
-  subgoal
-    using wfinished_accumulator_op_ins by fast
-  subgoal for p ins x lxs n acc
-    apply (intro exI[of _ \<open>accumulator_op f g P (n(p := n p + the_enat (llength (ltakeWhile (P p) (ins p))))) (ins(p := lxs)) (acc(p := (f p) (acc p) x))\<close>] conjI disjI1)
-     apply (simp add: wstep_step_accumulator_op)
-     apply (rule step_accumulator_op_Write)
-           apply auto
-    done
-  done
+  assumes \<open>accumulates f g P n ins acc vios\<close>
+  shows \<open>wtraced (accumulator_op f g P n ins acc) vios\<close>
+  using assms
+proof (coinduction arbitrary: n ins acc vios)
+  case wtraced
+  then show ?case
+  proof (cases rule: accumulates.cases)
+    case 1
+    hence \<open>wfinished (accumulator_op f g P n ins acc)\<close>
+      using wfinished_accumulator_op_ins by blast
+    then show ?thesis
+      using 1 by blast
+  next
+    case (2 p x lxs n' acc' vios)
+    hence \<open>wstep (io_of_vio (VOut p ((g p) ((f p) (acc p) x), n p + the_enat (llength (ltakeWhile (P p) (ins p))))))
+  (accumulator_op f g P n ins acc)
+  (accumulator_op f g P (n(p := n p + the_enat (llength (ltakeWhile (P p) (ins p))))) (ins(p := lxs)) (acc(p := (f p) (acc p) x)))\<close>
+      using step_accumulator_op_Write fun_upd_same io_of_vio.simps(2) step_wstep by metis
+    then show ?thesis
+      using 2 by auto
+  qed
+qed
 
 lemma accumulator_op_correctness:
   \<open>wtraced (accumulator_op f g P n ins acc) vios \<longleftrightarrow> accumulates f g P n ins acc vios\<close>

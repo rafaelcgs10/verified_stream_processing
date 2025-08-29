@@ -49,14 +49,12 @@ lemma step_ooo_input_top_elim:
 lemma step_ooo_input_top_Write_Some[intro]:
   \<open>outpu os p = x # xs \<Longrightarrow> op = ooo_input_top (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) n ins \<Longrightarrow> p \<notin> defaults \<Longrightarrow>
   step (Out (Some p) (Inr x)) (ooo_input_top os n ins) op\<close>
-  apply (subst ooo_input_top.code)
-  by force
+  by (subst ooo_input_top.code) force
 
 lemma step_ooo_input_top_Write_None[intro]:
   \<open>(os', st) = obtain_progress os \<Longrightarrow> op = ooo_input_top os' n ins \<Longrightarrow> p \<notin> defaults \<Longrightarrow>
   step (Out None (Inl (Inl st))) (ooo_input_top os n ins) op\<close>
-  apply (subst ooo_input_top.code)
-  by auto
+  by (subst ooo_input_top.code) auto
 
 lemma step_ooo_input_top_Silent[intro]:
   \<open>ldropWhile (Not \<circ> is_Data) (ins p) = LCons (Data ts d) lxs \<Longrightarrow>
@@ -65,9 +63,7 @@ lemma step_ooo_input_top_Silent[intro]:
   os' = (if ldropWhile (Not \<circ> is_Data) lxs = LNil then drop_cap os cap else delay_cap os cap ts) \<Longrightarrow>
   os'' = produce os' (Cap (capability.time cap + ts) p) [d] \<Longrightarrow> op = ooo_input_top os'' n' (ins(p := lxs)) \<Longrightarrow>
   p \<notin> defaults \<Longrightarrow> step Tau (ooo_input_top os n ins) op\<close>
-  apply (subst ooo_input_top.code)
-  apply simp
-  by fastforce
+  by (subst ooo_input_top.code) fastforce
 
 corec events_to_pairs where
   \<open>events_to_pairs n lxs = (case ldropWhile (Not \<circ> is_Data) lxs of
@@ -169,8 +165,8 @@ proof (coinduction arbitrary: sg os1 n ins rule: wbisim_coinduct_upto'')
 next
   case SIM2
   then show ?case
-    apply (elim step_map_op_elim step_source_op_elim conjE; simp; hypsubst_thin?)
-    subgoal for _ _ x lxs
+    apply (elim step_map_op_elim step_source_op_elim conjE; simp; hypsubst_thin?; simp)
+    subgoal for x lxs
       apply (cases \<open>outpu os1 0\<close>; simp)
       subgoal
         apply (erule event_to_Data)

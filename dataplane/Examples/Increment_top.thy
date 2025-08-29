@@ -58,14 +58,12 @@ lemma step_increment_top_Read_R[intro]:
 lemma step_increment_top_Write_Some[intro]:
   \<open>outpu os p = x # xs \<Longrightarrow> op = increment_top incr (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) \<Longrightarrow> p \<notin> defaults \<Longrightarrow>
   step (Out (Some p) (Inr x)) (increment_top incr os) op\<close>
-  apply (subst increment_top.code)
-  by force
+  by (subst increment_top.code) force
 
 lemma step_increment_top_Write_None[intro]:
   \<open>(os', st) = obtain_progress os \<Longrightarrow> op = increment_top incr os' \<Longrightarrow>
   step (Out None (Inl (Inl st))) (increment_top incr os) op\<close>
-  apply (subst increment_top.code)
-  by auto
+  by (subst increment_top.code) auto
 
 abbreviation inp_op where
   \<open>inp_op os n ins \<equiv>
@@ -107,16 +105,16 @@ lemma
 proof (coinduction arbitrary: sg os1 n ins buf1 os2 xs ys rule: wbisim_coinduct_upto'')
   case SIM1
   then show ?case
-    apply (elim step_dataflow_op_elim step_map_op_elim step_comp_op_elim step_ooo_input_top_elim step_increment_top_elim conjE; simp split: if_splits; hypsubst_thin?)
-    subgoal for _ _ x
+    apply (elim step_dataflow_op_elim step_map_op_elim step_comp_op_elim step_ooo_input_top_elim step_increment_top_elim conjE; simp split: if_splits; hypsubst_thin?; simp)
+    subgoal
       apply (intro exI conjI[rotated])
        apply (rule wbc_base)
        apply blast
       apply (rule step_wstep)
-      apply (rule step_map_op[where ?io=\<open>Out 0 x\<close>])
+      apply (rule step_map_op)
        apply (auto simp add: fun_eq_iff)
       done
-    subgoal for _ _ _ _ _ _ _ _ x xs'
+    subgoal for x xs'
       apply (intro exI conjI)
        apply (rule rtranclp.intros(1))
       apply (rule wbc_base)
@@ -128,7 +126,7 @@ proof (coinduction arbitrary: sg os1 n ins buf1 os2 xs ys rule: wbisim_coinduct_
       apply (rule exI[of _ os2])
       apply auto
       done
-    subgoal for _ _ _ _ _ _ _ _ d ts
+    subgoal for d ts
       apply (intro exI conjI)
        apply (rule rtranclp.intros(1))
       apply (rule wbc_base)
@@ -161,7 +159,7 @@ proof (coinduction arbitrary: sg os1 n ins buf1 os2 xs ys rule: wbisim_coinduct_
       using list.set_sel(1) is_Inr.simps(2)
       apply (metis (no_types, opaque_lifting))
       done
-    subgoal for _ _ _ _ _ _ ts d lxs
+    subgoal for ts d lxs
       apply (intro exI conjI)
        apply (rule rtranclp.intros(1))
       apply (rule wbc_base)
@@ -183,7 +181,7 @@ proof (coinduction arbitrary: sg os1 n ins buf1 os2 xs ys rule: wbisim_coinduct_
       apply (subst events_to_pairs.code)
       apply (simp flip: append_assoc)
       done
-    subgoal for _ _ _ _ _ _ ts d lxs
+    subgoal for ts d lxs
       apply (intro exI conjI)
        apply (rule rtranclp.intros(1))
       apply (rule wbc_base)
@@ -239,8 +237,8 @@ proof (coinduction arbitrary: sg os1 n ins buf1 os2 xs ys rule: wbisim_coinduct_
 next
   case SIM2
   then show ?case
-    apply (elim step_map_op_elim step_source_op_elim conjE; simp; hypsubst_thin?)
-    subgoal for _ _ x lxs
+    apply (elim step_map_op_elim step_source_op_elim conjE; simp; hypsubst_thin?; simp)
+    subgoal for x lxs
       apply (cases \<open>outpu os2 0\<close>; simp)
       subgoal
         apply (cases \<open>buf1 (Inr (1, 1))\<close>; simp)
