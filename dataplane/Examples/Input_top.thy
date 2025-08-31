@@ -89,7 +89,7 @@ print_classes
 find_theorems "The _ = _"
 
 lemma input_top_correctness:
-  "wtraced (compile_dataflow (Logic (input_top (Cap i 1) inps)) :: (1 \<times> 1, 1 \<times> 1, 'b \<times> nat) op) ios \<Longrightarrow>
+  "wtraced (compile_dataflow (Logic (input_top (Cap i 1) inps) (\<lambda>_ _. frontier {#0#}\<^sub>z)) :: (1 \<times> 1, 1 \<times> 1, 'b \<times> nat) op) ios \<Longrightarrow>
    ios = (lmap (\<lambda> (n, t). VOut (1, 0) (n, t)) (lconcat (lmap (\<lambda> (xs, t). map (\<lambda> n. (n, t)) xs) (lzip inps (iterates Suc i)))))"
   oops
 

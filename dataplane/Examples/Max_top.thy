@@ -380,7 +380,7 @@ lemma zequal_equal[simp]:
 
 lemma take_step_enum_dataflow_topology_take_step:
   "enum_dataflow_topology su dataflow_topology_from_tree.followed_by \<Longrightarrow>
-   take_step su = enum_dataflow_topology.take_step su dataflow_topology_from_tree.followed_by (<)"
+   take_step su = enum_dataflow_topology.take_step su dataflow_topology_from_tree.followed_by cless"
   apply (rule ext)+
   subgoal for S c
     apply (cases S; hypsubst_thin)
@@ -391,18 +391,23 @@ lemma take_step_enum_dataflow_topology_take_step:
     done
   done
 
+lemma nat_cless_less:
+  \<open>(cless :: nat \<Rightarrow> nat \<Rightarrow> bool) = (<) \<close>
+  by (simp add: ID_code ccompare_nat_def ord_defs(2))
+
+lemma nat_less_less_eq:
+  \<open>(\<lambda>(t :: nat) u. t < u \<or> t = u) = (\<le>)\<close>
+  using nat_less_le by auto
+
 lemma take_step_PR_p_preserves_inv_imps_work_sum:
   "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
-   \<exists>t loc. t \<in>#\<^sub>z c_work c loc \<Longrightarrow>
+   \<exists>(t :: nat) loc. t \<in>#\<^sub>z c_work c loc \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by ((take_step summary PR) c)"
-  apply (frule Executable.enum_dataflow_topology.PR_next[where less_t="(<)", simplified, unfolded enum_dataflow_topology_def])
-     apply assumption+
-  subgoal 
-    apply standard
-        apply auto
-    done
-   apply assumption
+  apply (frule Executable.enum_dataflow_topology.PR_next[where less_t=cless, simplified, unfolded enum_dataflow_topology_def])
+     apply assumption
+    apply (simp add: nat_cless_less nat_less_less_eq linorder_class.linorder_axioms)
+   apply (simp add: nat_cless_less)
   apply (elim exE)
   subgoal for t loc loc' t'
     apply (subst take_step_enum_dataflow_topology_take_step)
@@ -505,17 +510,14 @@ lemma take_step_PR_p_preserves_inv:
    dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
    dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
-   \<exists>t loc. t \<in>#\<^sub>z c_work c loc \<Longrightarrow>
+   \<exists>(t :: nat) loc. t \<in>#\<^sub>z c_work c loc \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg ((take_step summary PR) c) \<and>
    dataflow_topology_from_tree.inv_imp_plus_work_nonneg ((take_step summary PR) c) \<and>
    dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by ((take_step summary PR) c)"
-  apply (frule Executable.enum_dataflow_topology.PR_next[where less_t="(<)", simplified, unfolded enum_dataflow_topology_def])
-     apply assumption+
-  subgoal 
-    apply standard
-        apply auto
-    done
-   apply assumption
+  apply (frule Executable.enum_dataflow_topology.PR_next[where less_t=cless, simplified, unfolded enum_dataflow_topology_def])
+     apply assumption
+    apply (simp add: nat_cless_less nat_less_less_eq linorder_class.linorder_axioms)
+   apply (simp add: nat_cless_less)
   apply (elim exE)
   subgoal for t loc loc' t'
     apply (subst (1 2) take_step_enum_dataflow_topology_take_step)
@@ -537,7 +539,7 @@ lemma take_step_PR_p_preserves_inv:
   done
 
 lemma propagate_all_preserves_inv:
-  "propagate_all summary c = Some c' \<Longrightarrow>
+  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> nat antichain) c = Some c' \<Longrightarrow>
    dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
    dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
@@ -567,7 +569,7 @@ lemma propagate_all_frontier_c_imp_correctness_aux:
    dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
    dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
-   (t \<in>\<^sub>A frontier (c_imp c' loc)) = (t \<in>\<^sub>A dataflow_topology.implied_frontier_alt summary dataflow_topology_from_tree.followed_by c' loc) \<and>
+   ((t :: nat) \<in>\<^sub>A frontier (c_imp c' loc)) = (t \<in>\<^sub>A dataflow_topology.implied_frontier_alt summary dataflow_topology_from_tree.followed_by c' loc) \<and>
    dataflow_topology_from_tree.inv_implications_nonneg c' \<and>
    dataflow_topology_from_tree.inv_imp_plus_work_nonneg c' \<and>
    dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c'"
@@ -583,7 +585,7 @@ lemma propagate_all_frontier_c_imp_correctness_aux:
   done
 
 lemma propagate_all_frontier_c_imp_correctness:
-  "propagate_all summary c = Some c' \<Longrightarrow>
+  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> nat antichain) c = Some c' \<Longrightarrow>
    dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
    reachable_locations summary = UNIV \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
@@ -633,7 +635,7 @@ lemma propagate_pointstamps_correctness:
    dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
    dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
    (\<forall> d \<in> snd ` snd ` set cbs. d \<noteq> 0) \<Longrightarrow>
-   (\<forall> (l, t, d) \<in> set cbs. \<exists>t'. t' \<in>\<^sub>A frontier (c_imp c l) \<and> t' \<le> t) \<Longrightarrow>
+   (\<forall> (l, t :: nat, d) \<in> set cbs. \<exists>t'. t' \<in>\<^sub>A frontier (c_imp c l) \<and> t' \<le> t) \<Longrightarrow>
    frontier (c_imp c' loc) = dataflow_topology.implied_frontier_alt summary dataflow_topology_from_tree.followed_by (change_multiplicities summary cbs c) loc"
   unfolding propagate_pointstamps_def
   apply simp
@@ -660,7 +662,7 @@ lemma propagate_pointstamps_preserve_inv:
    dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
    dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
    (\<forall> d \<in> snd ` snd ` set cbs. d \<noteq> 0) \<Longrightarrow>
-   (\<forall> (l, t, d) \<in> set cbs. \<exists>t'. t' \<in>\<^sub>A frontier (c_imp c l) \<and> t' \<le> t) \<Longrightarrow>
+   (\<forall> (l, t :: nat, d) \<in> set cbs. \<exists>t'. t' \<in>\<^sub>A frontier (c_imp c l) \<and> t' \<le> t) \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg c' \<and>
    dataflow_topology_from_tree.inv_imp_plus_work_nonneg c' \<and>
    dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c'"

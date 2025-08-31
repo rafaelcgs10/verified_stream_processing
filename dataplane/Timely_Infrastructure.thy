@@ -7,11 +7,12 @@ imports
   Nondeterministic_Dataflow.Eval
   "HOL-Library.While_Combinator"
   "../propagation_extras/Executable"
-  Zero_Cyc_Check 
+  Zero_Cyc_Check
   Locations
   Operators_Utils
   Utils
   "HOL-Library.Finite_Map"
+  Containers.Collection_Order
 begin 
 
 (*
@@ -50,25 +51,25 @@ record ('id, 'p, 't) subgraph =
   summ :: "('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> 't antichain"
 
 datatype ('id, 'p, 's, 'd, 't) dataflow_tree = 
-  "apply": Logic "('p option, 'p option, 's + 'd) op"
-  | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "'t antichain" "('id, 'p, 's, 'd, 't) dataflow_tree" "('id, 'p, 's, 'd, 't) dataflow_tree"
+  "apply": Logic "('p option, 'p option, 's + 'd) op" "'p port \<Rightarrow> 'p port \<Rightarrow> 't antichain"
+  | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "('id, 'p, 's, 'd, 't) dataflow_tree" "('id, 'p, 's, 'd, 't) dataflow_tree"
 
 fun compile_dataflow_tree_aux :: "'id :: {minus, plus, one, ord} \<Rightarrow> ('id, 'p, 's, 'd, 't :: {zero, order}) dataflow_tree \<Rightarrow>
     'id \<times> (('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> 't antichain) \<times> ('id + 'id \<times> 'p, 'id + 'id \<times> 'p, 's + 'd) op" where
-  "compile_dataflow_tree_aux n (Logic op) = (n + 1,
+  "compile_dataflow_tree_aux n (Logic op su) = (n + 1,
     (\<lambda> l1 l2. 
     if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
-    then frontier (abs_zmultiset (mset [0], {#})) 
+    then su (port l1) (port l2)
     else frontier {#}\<^sub>z),
     map_op (case_option (Inl n) (\<lambda> p. Inr (n, p))) (case_option (Inl n) (\<lambda> p. Inr (n, p))) op)"
-| "compile_dataflow_tree_aux n (Comp wire su dt1 dt2) = (
+| "compile_dataflow_tree_aux n (Comp wire dt1 dt2) = (
     let (n', summary1, op1) = compile_dataflow_tree_aux n dt1 in
     let (n'', summary2, op2) = compile_dataflow_tree_aux n' dt2 in
     (n'', \<lambda> l1 l2. 
      if node l1 \<ge> n \<and> node l1 < n' \<and> node l2 \<ge> n' \<and> is_Src (port l1) \<and> is_Trg (port l2)
      then (case wire (node l1 - n, idp (port l1)) of 
              None \<Rightarrow> frontier {#}\<^sub>z 
-           | Some (offset, q) \<Rightarrow> (if node l2 = n' + offset \<and> q = idp (port l2) then su else frontier {#}\<^sub>z )) 
+           | Some (offset, q) \<Rightarrow> (if node l2 = n' + offset \<and> q = idp (port l2) then frontier (abs_zmultiset (mset [0], {#})) else frontier {#}\<^sub>z )) 
      else summary1 l1 l2 + summary2 l1 l2,
      map_op (case_sum id id) (case_sum id id)
      (comp_op (case_sum (\<lambda> _. None) ((case_option None (Some o Inr)) o (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (n' + offset, q)))) (\<lambda> _. []) op1 op2))
@@ -88,9 +89,9 @@ definition "compile_dataflow_tree df = (
   then (s, op)
   else Code.abort (STR ''Control plane could not be build'') (\<lambda> _. (\<lambda> _ _. frontier {#}\<^sub>z, \<oslash>)))"
 
-abbreviation "df_ex1 \<equiv> (Comp [ (1, 0) \<mapsto> (1, 0) ] (frontier {#0#}\<^sub>z)
-         (Comp (\<lambda> l. None) (frontier {#0#}\<^sub>z) (Logic \<oslash>) (Logic \<oslash>))
-         (Comp (\<lambda> l. None) (frontier {#0#}\<^sub>z) (Logic \<oslash>) (Logic \<oslash>))) :: (4, 4, unit, nat, nat) dataflow_tree"
+abbreviation "df_ex1 \<equiv> (Comp [ (1, 0) \<mapsto> (1, 0) ]
+         (Comp (\<lambda> l. None) (Logic \<oslash> (\<lambda>_ _. frontier {#0#}\<^sub>z)) (Logic \<oslash> (\<lambda>_ _. frontier {#0#}\<^sub>z)))
+         (Comp (\<lambda> l. None) (Logic \<oslash> (\<lambda>_ _. frontier {#0#}\<^sub>z)) (Logic \<oslash> (\<lambda>_ _. frontier {#0#}\<^sub>z)))) :: (4, 4, unit, nat, nat) dataflow_tree"
 
 (* value "fst (compile_dataflow_tree
        df_ex1)
@@ -103,7 +104,7 @@ lemma compile_dataflow_tree_aux_same_loc:
   apply (induct df arbitrary: n n'' op summar)
   subgoal
     by (cases loc; simp add: frontier_empty_zmset split: port.splits if_splits)
-  subgoal for wire _ dt1 dt2 n n''
+  subgoal for wire dt1 dt2 n n''
     apply (cases "compile_dataflow_tree_aux n dt1")
     subgoal for n' summar'
       apply (cases "compile_dataflow_tree_aux n' dt2")
@@ -130,7 +131,7 @@ lemma compile_dataflow_tree_aux_same_loc:
   done
 
 lemma enum_dataflow_topology_compile_dataflow[simp]:
-  "enum_dataflow_topology (fst (compile_dataflow_tree (df :: (_, _, _, _, 't :: {canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le}) dataflow_tree))) (+)"
+  "enum_dataflow_topology (fst (compile_dataflow_tree (df :: (_, _, _, _, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le}) dataflow_tree))) (+)"
   apply standard
        apply (simp_all add: add_mono_thms_linordered_semiring(1) Groups.add_ac(1))
   subgoal
@@ -156,7 +157,7 @@ lemma enum_dataflow_topology_compile_dataflow[simp]:
     done
   done
 
-global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "fst (compile_dataflow_tree (df :: (_, _, _, _, 't :: {canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le}) dataflow_tree))" "(+)"
+global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "fst (compile_dataflow_tree (df :: (_, _, _, _, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le}) dataflow_tree))" "(+)"
   for df
   defines take_step' = "enum_dataflow_topology.take_step (fst (compile_dataflow_tree df)) (+)"
     and after_summary = "dataflow_topology.after_summary (+) :: 't zmultiset \<Rightarrow> 't antichain \<Rightarrow> 't zmultiset"
@@ -165,7 +166,7 @@ global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "fst (
 notation dataflow_topology_from_tree.followed_by (infixl \<open>-+-\<close> 65)
 
 definition take_step_locale where
-  "take_step_locale df = take_step' df (<)"
+  "take_step_locale df = take_step' df cless"
 
 fun take_step where
   "take_step summary (CM loc t delta) c =
@@ -180,7 +181,7 @@ fun take_step where
 definition "propagate_all_locale summary df c0 = (while_option (Not o (worklist_is_empty summary))
                                            (take_step_locale df PR) c0)"
 
-declare dataflow_topology_from_tree.take_step.simps[of _ "((<) :: 't :: {canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le} \<Rightarrow> _ \<Rightarrow> _)",  folded take_step_locale_def mymin_code_def, code]
+declare dataflow_topology_from_tree.take_step.simps[of _ "(cless :: 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le} \<Rightarrow> _ \<Rightarrow> _)",  folded take_step_locale_def mymin_code_def, code]
 
 abbreviation empty_conf where
   "empty_conf \<equiv> \<lparr>c_work = (\<lambda> _.  {#}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
@@ -451,21 +452,20 @@ definition "compile_dataflow dt = (let (summary, op) = compile_dataflow_tree dt 
                                     let sg = init_subgraph summary in
                                     dataflow_op sg op)"
 
-
+(*
 lemma compile_dataflow_tree_aux_Logic_simp[simp]:
-  "compile_dataflow_tree_aux n (Logic op) = (n + 1, \<lambda> l1 l2. 
+  "compile_dataflow_tree_aux n (Logic op su) = (n + 1, \<lambda> l1 l2. 
     if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
-    then frontier (abs_zmultiset (mset [0], {#})) 
+    then su (port l1) (port l2)
     else frontier {#}\<^sub>z, map_op (case_option (Inl n) (\<lambda> p. Inr (n, p))) (case_option (Inl n) (\<lambda> p. Inr (n, p))) op)"
   apply auto
   done
 
-(*
 lemma compile_dataflow_tree_Logic:
-  "compile_dataflow_tree (Logic op) = 
+  "compile_dataflow_tree (Logic op su) = 
   (\<lambda> l1 l2. 
     if 1 = node l1 \<and> (1 :: 1) = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
-    then frontier (abs_zmultiset (mset [0], {#})) 
+    then su (port l1) (port l2)
     else frontier {#}\<^sub>z, map_op (case_option (Inl 1) (\<lambda> p. Inr (1, p))) (case_option (Inl 1) (\<lambda> p :: 1. Inr (1, p))) op)"
   unfolding compile_dataflow_tree_def
   apply (simp only: Let_def compile_dataflow_tree_aux.simps prod.case)

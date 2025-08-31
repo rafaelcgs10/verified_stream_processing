@@ -4,6 +4,7 @@ imports
   Main
   Nondeterministic_Dataflow.Numeral_Auxiliary
   "Collections.HashCode"
+  Containers.Collection_Order
 begin 
 
 (* Inspired by timely/src/progress/mod.rs:61 *)
@@ -208,14 +209,20 @@ proof -
     by (auto simp: H2 H3)
 qed
 
-definition mymin_code :: "('t :: linorder \<times> ('a :: linorder, 'b  :: linorder) location) set \<Rightarrow> ('t \<times> ('a, 'b) location)"
-  where [code del]: "mymin_code = mymin (<)"
+definition mymin_code :: "('t :: ccompare \<times> 'loc :: linorder) set \<Rightarrow> ('t \<times> 'loc)"
+  where [code del]: "mymin_code = mymin cless"
 
-lemma mymin_code[code]: "mymin_code (set (x # xs)) = fold (\<lambda>a b. if t_loc_linord (<) a b then a else b) xs x"
+lemma mymin_code[code]: "mymin_code (set ((x :: 't :: ccompare \<times> 'loc :: linorder) # xs)) = (case ID CCOMPARE('t) of
+  None \<Rightarrow> Code.abort (STR ''mymin_code: ccompare = None'') (\<lambda>_. mymin_code (set (x # xs)))
+| Some c \<Rightarrow> fold (\<lambda>a b. if t_loc_linord (lt_of_comp c) a b then a else b) xs x)"
   unfolding mymin_code_def
-  apply (rule linorderMin)
-  apply unfold_locales
-  apply auto
+  apply (cases \<open>ID (CCOMPARE('t))\<close>; simp)
+  apply (rule linorderMin[simplified])
+  apply (frule ID_ccompare)
+  apply (erule arg_cong2[where ?f=class.linorder, THEN iffD1, rotated 2])
+   apply (auto simp add: le_of_comp_def lt_of_comp_def fun_eq_iff split: order.splits)
+   apply (meson ID_ccompare' comparator.nEq_neq_conv)
+  apply (simp add: ID_code ccompare comparator.comp_same)
   done
 
 fun print_2 where
