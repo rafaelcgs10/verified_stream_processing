@@ -334,6 +334,17 @@ lemma frontier_add_le:
   apply (smt (verit, ccfv_threshold) order.trans trivial_dataflow_topology_interpretation.frontier_unionD trivial_dataflow_topology_interpretation.obtain_elem_frontier zcount_union)
   done
 
+lemma frontier_add_le_gen:
+  "frontier B \<le> frontier C \<Longrightarrow>
+   frontier (A + B) \<le> frontier B \<Longrightarrow>
+   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
+   frontier A \<le> frontier A' \<Longrightarrow>
+   frontier (A + B) \<le> frontier (A' + C)"
+  unfolding less_eq_antichain_def
+  apply auto
+  apply (smt (verit, ccfv_threshold) dual_order.trans frontier_below_eq_frontier_plus_pos less_eq_antichain_def trivial_dataflow_topology_interpretation.frontier_unionD
+      trivial_dataflow_topology_interpretation.obtain_frontier_elem)
+  done
 
 lemma add_empty_zmultiset[simp]:
   "A + {#}\<^sub>z = A"
@@ -347,5 +358,33 @@ lemma frontier_le_minus_gen:
    frontier A \<le> frontier (B - C)"
   by (meson dual_order.trans frontier_below_eq_frontier_minus)
 
+lemma frontier_add_le_alt:
+  "frontier A \<le> frontier C \<Longrightarrow>
+   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
+   frontier B \<le> frontier C \<Longrightarrow>
+   frontier (A + B) \<le> frontier C"
+  using frontier_below_eq_frontier_plus_pos order_trans by blast
+
+lemma in_frontier_addD:
+  "t \<in>\<^sub>A frontier (M + N) \<Longrightarrow> (0 < zcount M t \<and> (\<exists> t'. t' \<in>\<^sub>A frontier M \<and> t' \<le> t)) \<or> 0 < zcount N t  \<and> (\<exists> t'. t' \<in>\<^sub>A frontier N \<and> t' \<le> t)"
+  by (metis dataflow_topology.frontier_unionD dataflow_topology.obtain_frontier_elem trivial_dataflow_topology_interpretation.dataflow_topology_axioms)
+
+lemma in_frontier_in_frontier_add:
+  "t \<in>\<^sub>A frontier A \<Longrightarrow>
+   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
+   \<exists>t'. t' \<in>\<^sub>A frontier (A + B) \<and> t' \<le> t"
+  using frontier_below_eq_frontier_plus_pos less_eq_antichain_def by blast
+
+
+
+lemma frontier_add_le_alt2:
+  "frontier (A + {#t#}\<^sub>z) \<le> frontier {#t#}\<^sub>z \<Longrightarrow>
+   t \<le> t' \<Longrightarrow>
+   zcount A t' \<ge> 0 \<Longrightarrow>
+   frontier (A + {#t'#}\<^sub>z) \<le> frontier {#t'#}\<^sub>z"
+  unfolding less_eq_antichain_def
+  apply auto
+  apply (metis dual_order.irrefl dual_order.strict_trans2 member_frontier_pos_zmset trivial_dataflow_topology_interpretation.obtain_elem_frontier zcount_add_zmset zcount_single zless_add1_eq)
+  done
 
 end
