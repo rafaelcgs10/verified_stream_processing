@@ -3,6 +3,7 @@ theory AntichainOrder
 imports
   Progress_Tracking.Antichain
   Progress_Tracking.Propagate
+  Progress_Tracking.Exchange
 begin 
 
 lemma trivial_graph[simp]:
@@ -386,5 +387,58 @@ lemma frontier_add_le_alt2:
   apply auto
   apply (metis dual_order.irrefl dual_order.strict_trans2 member_frontier_pos_zmset trivial_dataflow_topology_interpretation.obtain_elem_frontier zcount_add_zmset zcount_single zless_add1_eq)
   done
+
+
+lemma
+  "justified A B \<Longrightarrow>
+   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
+   frontier (A - B) \<le> frontier A"
+  unfolding less_eq_antichain_def justified_def
+  apply auto
+  subgoal for t
+    apply (cases "zcount B t > 0")
+    subgoal
+      using order_class.elem_order_zmset_exists_foundation[of t B] apply -
+      apply (drule meta_mp)
+       apply (meson pos_zcount_in_zmset)
+      apply (elim conjE bexE)
+      subgoal for s
+        apply (drule spec[of _ s], drule mp)
+         apply (metis nless_le zcount_ne_zero_iff)
+        apply (elim disjE)
+        subgoal
+          unfolding supported_def in_frontier_iff
+          apply auto
+          subgoal for s
+            by (metis nless_le zcount_ne_zero_iff)
+          done
+        subgoal
+          apply (elim exE conjE)
+          by (meson dual_order.strict_trans1 in_frontier_iff)
+        subgoal
+          by (smt (verit, ccfv_threshold) in_frontier_iff order_le_imp_less_or_eq zcount_diff)
+        done
+      done
+    subgoal
+      apply (subgoal_tac "zcount B t = 0")
+      subgoal
+        apply simp
+        by (metis diff_add_cancel in_frontier_addD nless_le) 
+      subgoal
+        by (metis nless_le)
+      done
+    done
+  done
+
+end
+
+          subgoal for u
+            apply (drule spec[of _ u])
+            apply auto
+
+        find_theorems "?t \<in>\<^sub>A frontier ?A"
+
+
+
 
 end
