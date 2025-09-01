@@ -2703,29 +2703,29 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
          {#n 1#}\<^sub>z)")
               subgoal
                 apply (simp only: )
-              apply (rule frontier_add_le_alt)
-                apply (rule frontier_add_le_alt2[where t="n 0"])
+                apply (rule frontier_add_le_alt)
+                  apply (rule frontier_add_le_alt2[where t="n 0"])
+                    apply simp
+                   apply simp
+                subgoal premises prems2
+                  using prems2(9) prems2(14)[symmetric] apply -
                   apply simp
-               apply simp
-           subgoal premises prems2
-                using prems2(9) prems2(14)[symmetric] apply -
-                apply simp
+                  done
+                 apply simp_all
+                apply (subst add_zmset_add_single)
+                subgoal premises
+                  by (metis (no_types, lifting) Groups.add_ac(2) dual_order.trans frontier_below_eq_frontier_plus_pos frontier_le_singletons le_add2 semiring_norm(174) zcount_zmset_of_nonneg)
                 done
-               apply simp_all
-              apply (subst add_zmset_add_single)
-              subgoal premises
-                by (metis (no_types, lifting) Groups.add_ac(2) dual_order.trans frontier_below_eq_frontier_plus_pos frontier_le_singletons le_add2 semiring_norm(174) zcount_zmset_of_nonneg)
+              subgoal
+                by simp
               done
-            subgoal
-              by simp
             done
-          done
-        subgoal
+          subgoal
             using prems(27,29) prems(5,6,7,8,14,16,10,18) prems(9)[symmetric] apply -
             apply (auto 0 0 simp add: produce_def input_cap_def update_zmultiset_replicate extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
             subgoal premises prems2
               using prems2(7) apply -
-      apply (rule Orderings.preorder_class.order_trans)
+              apply (rule Orderings.preorder_class.order_trans)
                apply assumption
               apply (meson frontier_le_singletons le_Suc_eq not_less_eq_eq)
               done
@@ -2739,195 +2739,117 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
             done
           subgoal
             using prems(30) by auto
-            apply (simp add: comp_def)
-            apply (rule rtranclp_intros_1)
-            apply (rule arg_cong3[where f=map_op])
-              apply simp_all
-            apply (rule arg_cong[where f=source_op])
-            apply (rule ext)
-            apply (subst iterates.code)
-            apply simp
-            apply (cases batch)
-             apply (simp_all add: lshift_assoc)
-             apply (rule arg_cong2[where f=lshift])
-              apply simp_all
-            subgoal
-              unfolding max_from_caps_buf_def map_is_Nil_conv append_is_Nil_conv produce_def
-              by simp
-
-                find_theorems "frontier (_ + _) \<le> _"
-
-end
-  apply (simp add: input_cap_def)
-  using prems(29) apply force
-  subgoal
-    using prems(30) 
-    apply (auto 0 0 simp add: input_cap_def update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: prod.splits if_splits option.splits; hypsubst_thin?)
-    apply fastforce+
-    done
-  subgoal
-    using prems(30,29,31) by auto
-  subgoal
-    apply (simp add: comp_def)
-    apply (rule rtranclp_intros_1)
-    apply (rule arg_cong3[where f=map_op])
-    apply simp_all
-    apply (rule arg_cong[where f=source_op])
-    apply (rule ext)
-    apply (subst iterates.code)
-    apply simp
-    apply (cases batch)
-    apply (simp_all add: lshift_assoc)
-    apply (rule arg_cong2[where f=lshift])
-    apply simp_all
-    subgoal
-      unfolding max_from_caps_buf_def map_is_Nil_conv append_is_Nil_conv produce_def
-      by simp
-    subgoal premises prems2 for a list
-      using prems2(2,5,6) prems(29,30) apply -
-      apply (simp flip: lshift_assoc)
-      apply (rule arg_cong2[where f=lshift])
-      apply simp
-      apply (subgoal_tac "rmdups (set caps \<union> (\<lambda>x. case projr x of (x, t) \<Rightarrow> Cap t 1) ` set (buf1 (Inr (1, 1)))) (map (\<lambda>(x, t). Cap t 1) (outpu (produce os1 (Cap (n 1) 1) (a # list)) 1)) = rmdups (set caps \<union> (\<lambda>x. case projr x of (x, t) \<Rightarrow> Cap t 1) ` set (buf1 (Inr (1, 1)))) (map (\<lambda>(x, t). Cap t 1) (outpu os1 1)) @ [Cap (n 0) 1]")
-      subgoal
-        apply (auto simp add:  max_from_caps_buf_append list_to_buf_def simp flip: snoc_shift lshift_assoc split: if_splits)
-        apply (rule arg_cong2[where f=append])
-        subgoal
-          unfolding outpu_produce
-          apply (auto split: if_splits)
-          subgoal for x
-            apply (cases x)
-            apply auto
-            subgoal for a
-              apply (drule spec[of _ a])
-              apply (drule spec[of _ "n 0"])
-              back
-              apply (elim conjE)
-              apply (drule mp)
-              apply force
-              apply auto
-              done
-            done
-          subgoal
-            unfolding max_from_caps_buf_def BULK_BENQ_def
-            apply (rule List.List.list.map_cong)
-            apply auto
-            apply (rule Lattices_Big.linorder_class.Max_eq_if)
-            subgoal
-              by (auto split: if_splits)
-            subgoal
-              by (auto split: if_splits)
-            subgoal
-              apply (clarsimp split: if_splits)
-              apply fast+
-              done
-            subgoal
-              apply (auto 0 0 simp add: set_rmdups split: if_splits)
-              apply (metis capability.exhaust capability.sel(1) num1_eq1)+
-              done
-            done
-          done
-        apply (rule arg_cong2[where f=append])
-        subgoal
-          unfolding outpu_produce
-          apply (auto split: if_splits)
-          subgoal for x
-            apply (cases x)
-            apply auto
-            subgoal for a
-              apply (drule spec[of _ a])
-              apply (drule spec[of _ "n 0"])
-              back
-              apply (elim conjE)
-              apply (drule mp)
-              apply force
-              apply auto
-              done
-            done
-          subgoal
-            unfolding max_from_caps_buf_def BULK_BENQ_def
-            apply (rule List.List.list.map_cong)
-            apply auto
-            apply (rule Lattices_Big.linorder_class.Max_eq_if)
-            subgoal
-              by (auto split: if_splits)
-            subgoal
-              by (auto split: if_splits)
-            subgoal
-              apply (clarsimp split: if_splits)
-              apply fast+
-              done
-            subgoal for z
-              apply (cases z)
-              apply (auto 0 0 simp add: set_rmdups split: if_splits)
-              done
-            done
-          done
-        apply (rule arg_cong2[where f=append])
-        subgoal
-          unfolding outpu_produce
-          apply (auto split: if_splits)
-          subgoal for x
-            apply (cases x)
-            apply auto
-            subgoal for a
-              apply (drule spec[of _ a])
-              apply (drule spec[of _ "n 0"])
-              back
-              apply (elim conjE)
-              apply (drule mp)
-              apply force
-              apply auto
-              done
-            done
-          subgoal
-            unfolding max_from_caps_buf_def BULK_BENQ_def
-            apply (rule List.List.list.map_cong)
-            apply auto
-            apply (rule Lattices_Big.linorder_class.Max_eq_if)
-            subgoal
-              by (auto split: if_splits)
-            subgoal
-              by (auto split: if_splits)
-            subgoal
-              apply (clarsimp split: if_splits)
-              apply fast+
-              done
-            subgoal for z
-              apply (cases z)
-              apply (auto 0 0 simp add: set_rmdups split: if_splits)
-              done
-            done
-          done
-        subgoal premises prems3
-          unfolding max_from_caps_buf_def produce_def BULK_BENQ_def
-          apply auto
-          apply (rule Lattices_Big.linorder_class.Max_eq_if)
-          apply auto
-          subgoal
-            using prems(31) by auto
-          subgoal 
-            by (metis image_iff nless_le prems3(5))
-          subgoal
-            using prems3(5) by blast
-          done
-        done
-      subgoal
-        unfolding produce_def 
-        apply (auto split: sum.splits)
-        subgoal for x
-          apply (cases x; auto simp add: comp_def)
-          using image_iff apply fastforce
-          done
-        subgoal
           apply (simp add: comp_def)
-          apply (rule rmdups_NilI)
-          apply auto
+          apply (rule rtranclp_intros_1)
+          apply (rule arg_cong3[where f=map_op])
+            apply simp_all
+          apply (rule arg_cong[where f=source_op])
+          apply (rule ext)
+          apply (subst iterates.code)
+          apply simp
+          apply (cases batch)
+           apply (simp_all add: lshift_assoc)
+           apply (rule arg_cong2[where f=lshift])
+            apply simp_all
+          subgoal
+            unfolding max_from_caps_buf_def map_is_Nil_conv append_is_Nil_conv produce_def
+            by simp
+          subgoal premises prems2 for a list
+            using prems2(2,7,6) prems(28,29) apply -
+            apply (simp flip: lshift_assoc)
+            apply (rule arg_cong2[where f=lshift])
+             apply simp
+            apply (subgoal_tac "\<not> Cap (n 1) 1 \<in> set caps")
+            subgoal
+              unfolding produce_def
+              apply (simp only: max_from_caps_buf_append list_to_buf_def flip: singleton_lshift snoc_shift lshift_assoc split: if_splits)
+              apply simp
+              apply (simp only: max_from_caps_buf_append list_to_buf_def flip: singleton_lshift snoc_shift lshift_assoc split: if_splits)
+              apply safe
+              subgoal for x
+                apply (rule FalseE)
+                apply (cases x; auto split: sum.splits)
+                apply (metis image_iff less_not_refl sum.sel(2))
+                done
+              subgoal for x
+                apply (rule FalseE)
+                apply (auto split: sum.splits)
+                done
+              subgoal
+                apply (rule arg_cong2[where f=lshift])
+                subgoal
+                  unfolding max_from_caps_buf_def BULK_BENQ_def 
+                  apply (rule List.List.list.map_cong)
+                   apply auto
+                  apply (rule Lattices_Big.linorder_class.Max_eq_if)
+                  subgoal
+                    by (auto split: if_splits)
+                  subgoal
+                    by (auto split: if_splits)
+                  subgoal for z
+                    by (auto split: prod.splits sum.splits if_splits)
+                  subgoal for z
+                    apply (auto split: prod.splits sum.splits if_splits)
+                     apply (metis prems(28) capability.exhaust capability.sel(1) verit_comp_simplify(1) zero_one)+
+                    done
+                  done
+                subgoal
+                  apply (rule arg_cong2[where f=lshift])
+                  subgoal
+                    unfolding max_from_caps_buf_def BULK_BENQ_def 
+                    apply (rule List.List.list.map_cong)
+                     apply auto
+                    apply (rule Lattices_Big.linorder_class.Max_eq_if)
+                    subgoal
+                      by (auto split: if_splits)
+                    subgoal
+                      by (auto split: if_splits)
+                    subgoal for z
+                      by (auto split: prod.splits sum.splits if_splits)
+                    subgoal for z
+                      apply (cases z)
+                      apply (auto simp add: set_rmdups split: prod.splits sum.splits if_splits)
+                      done
+                    done
+                  subgoal
+                    apply (rule arg_cong2[where f=lshift])
+                    subgoal
+                      unfolding max_from_caps_buf_def BULK_BENQ_def 
+                      apply (rule List.List.list.map_cong)
+                       apply (auto simp add: set_rmdups split: if_splits)
+                      done
+                    subgoal
+                      unfolding max_from_caps_buf_def BULK_BENQ_def 
+                      apply auto
+                       apply (rule Lattices_Big.linorder_class.Max_eq_if)
+                      subgoal
+                        by (auto split: if_splits)
+                      subgoal
+                        by (auto split: if_splits)
+                      subgoal
+                        apply (clarsimp split: if_splits)
+                        apply fast+
+                        done
+                      subgoal
+                        using prems(30) apply -
+                        apply (auto 0 0 simp add: set_rmdups split: if_splits)
+                          apply fast+
+                        done
+                      subgoal
+                        using prems(30) apply -
+                        apply (auto 0 0 simp add: set_rmdups split: if_splits)
+                        apply (subst rmdups_insert_NilI)
+                         apply auto
+                        done
+                      done
+                    done
+                  done
+                done
+              done
+            subgoal
+              by auto
+            done
           done
-        done
-      done
-    done
-  done
 
 
 
