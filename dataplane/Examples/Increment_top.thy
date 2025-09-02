@@ -37,23 +37,31 @@ lemma step_increment_top_elim:
   done
 
 lemma step_increment_top_Read_L[intro]:
-  \<open>op = \<oslash> \<Longrightarrow> p \<notin> defaults \<Longrightarrow> step (Inp (Some p) (Inl x)) (increment_top incr os) op\<close>
-  using Read_in_choices_step[where ?p=\<open>Some p\<close> and ?op=\<open>increment_top incr os\<close> and ?f=\<open>\<lambda>x. case x of Inr (d, ts) \<Rightarrow> increment_top incr (produce (consume os p ts 1) (Cap (ts + incr p) p) [d]) | _ \<Rightarrow> \<oslash>\<close> and ?x=\<open>Inl x\<close>]
-  apply -
-  apply (drule meta_mp)
-   apply (subst (2) increment_top.code)
-   apply simp_all
-  done
+  assumes \<open>op = \<oslash>\<close> \<open>p \<notin> defaults\<close>
+  shows \<open>step (Inp (Some p) (Inl x)) (increment_top incr os) op\<close>
+proof -
+  have \<open>Read (Some p) (\<lambda>x. case x of
+      Inl a \<Rightarrow> \<oslash>
+    | Inr (d, ts) \<Rightarrow> increment_top incr (produce (consume os p ts 1) (Cap (ts + incr p) p) [d]))
+  |\<in>| choices (increment_top incr os)\<close>
+    using assms by (subst (2) increment_top.code) auto
+  thus ?thesis
+    using assms Read_in_choices_step sum.simps(5) by (metis (no_types, lifting))
+qed
 
 lemma step_increment_top_Read_R[intro]:
-  \<open>os' = consume os p ts 1 \<Longrightarrow> os'' = produce os' (Cap (ts + incr p) p) [d] \<Longrightarrow> op = increment_top incr os'' \<Longrightarrow>
-  p \<notin> defaults \<Longrightarrow> step (Inp (Some p) (Inr (d, ts))) (increment_top incr os) op\<close>
-  using Read_in_choices_step[where ?p=\<open>Some p\<close> and ?op=\<open>increment_top incr os\<close> and ?f=\<open>\<lambda>x. case x of Inr (d, ts) \<Rightarrow> increment_top incr (produce (consume os p ts 1) (Cap (ts + incr p) p) [d]) | _ \<Rightarrow> \<oslash>\<close> and ?x=\<open>Inr (d, ts)\<close>]
-  apply -
-  apply (drule meta_mp)
-   apply (subst (2) increment_top.code)
-   apply simp_all
-  done
+  assumes \<open>os' = consume os p ts 1\<close> \<open>os'' = produce os' (Cap (ts + incr p) p) [d]\<close> \<open>op = increment_top incr os''\<close>
+    \<open>p \<notin> defaults\<close>
+  shows \<open>step (Inp (Some p) (Inr (d, ts))) (increment_top incr os) op\<close>
+proof -
+  have \<open>Read (Some p) (\<lambda>x. case x of
+      Inl a \<Rightarrow> \<oslash>
+    | Inr (d, ts) \<Rightarrow> increment_top incr (produce (consume os p ts 1) (Cap (ts + incr p) p) [d]))
+  |\<in>| choices (increment_top incr os)\<close>
+    using assms by (subst (2) increment_top.code) auto
+  thus ?thesis
+    using assms Read_in_choices_step[where ?f=\<open>\<lambda>x. case x of Inr (d, ts) \<Rightarrow> increment_top incr (produce (consume os p ts 1) (Cap (ts + incr p) p) [d]) | _ \<Rightarrow> \<oslash>\<close> and ?x=\<open>Inr (d, ts)\<close>] by auto
+qed
 
 lemma step_increment_top_Write_Some[intro]:
   \<open>outpu os p = x # xs \<Longrightarrow> op = increment_top incr (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) \<Longrightarrow> p \<notin> defaults \<Longrightarrow>
@@ -87,7 +95,7 @@ abbreviation inp_incr_edges where
 abbreviation inp_incr_summary where
   \<open>inp_incr_summary \<equiv> (\<lambda>l1 l2.
    if l1 = Loc (0 :: 2) (Src (0 :: 1)) \<and> l2 = Loc (1 :: 2)  (Trg (0 :: 1))
-   then frontier {#0 :: (nat, nat) myprod#}\<^sub>z
+   then frontier {#0#}\<^sub>z
    else if l1 = Loc 0 (Trg 0) \<and> l2 = Loc 0 (Src 0)
    then frontier {#0#}\<^sub>z
    else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 0)
@@ -96,7 +104,7 @@ abbreviation inp_incr_summary where
 
 lemma
   \<open>summ sg = inp_incr_summary \<Longrightarrow>
-  (xs :: 1 \<Rightarrow> (_ \<times> (nat, nat) myprod) list) 0 = outpu os2 0 \<Longrightarrow>
+  xs 0 = outpu os2 0 \<Longrightarrow>
   ys 0 = map projr (buf1 (Inr (1, 0))) @ outpu os1 0 \<Longrightarrow>
   \<forall>x \<in> set (buf1 (Inr (1, 0))). is_Inr x \<Longrightarrow>
   dataflow_op sg (inp_incr_op os1 n ins buf1 incr os2)

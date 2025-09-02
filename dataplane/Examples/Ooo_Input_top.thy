@@ -103,7 +103,7 @@ lemma event_to_Data:
   obtains ts d lxs'' n' where \<open>ldropWhile (Not \<circ> is_Data) lxs = LCons (Data ts d) lxs''\<close>
     \<open>n' = foldl (+) n (list_of (lmap event.time (ltakeWhile (Not \<circ> is_Data) lxs'')))\<close>
     \<open>x = (d, n' + ts)\<close> \<open>lxs' = events_to_pairs n' lxs''\<close>
-proof (atomize_elim)
+proof atomize_elim
   have \<open>(case ldropWhile (Not \<circ> is_Data) lxs of
     LNil \<Rightarrow> LNil
   | LCons (Data ts d) lxs \<Rightarrow>
@@ -125,7 +125,7 @@ abbreviation ooo_inp_op where
 abbreviation ooo_inp_summary where
   \<open>ooo_inp_summary \<equiv> (\<lambda>l1 l2.
    if l1 = Loc (0 :: 1) (Trg (0 :: 1)) \<and> l2 = Loc (0 :: 1)  (Src (0 :: 1))
-   then frontier {#0 :: nat#}\<^sub>z
+   then frontier {#0#}\<^sub>z
    else {}\<^sub>A)\<close>
 
 lemma
