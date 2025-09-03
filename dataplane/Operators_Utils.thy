@@ -684,8 +684,8 @@ inductive wbisim_upto_bisim_cong ("\<U>") for R  where
 | wb_upto_b_sym[intro]:  "\<U> R op2 op1 \<Longrightarrow> \<U> R op1 op2"
 | wb_upto_b_Write[intro]: "\<U> R op1 op2 \<Longrightarrow> \<U> R (Write op1 p x) (Write op2 p x)"
 | wb_upto_b_Sim:"sim (\<U> R) op1 op2 \<Longrightarrow> sim (\<U> R) op2 op1 \<Longrightarrow> \<U> R op1 op2"
-| wb_upto_b_writes[intro]: "\<U> R op1 op2 \<Longrightarrow> \<U> R (writes op1 p x) (writes op2 p x)"
-| wb_upto_b_Silent[intro]: "\<U> R op1 op2 \<Longrightarrow> \<U> R (Silent op1) (Silent op2)"
+(* | wb_upto_b_writes[intro]: "\<U> R op1 op2 \<Longrightarrow> \<U> R (writes op1 p x) (writes op2 p x)"
+| wb_upto_b_Silent[intro]: "\<U> R op1 op2 \<Longrightarrow> \<U> R (Silent op1) (Silent op2)" *)
 
 term bisim_cong
 
@@ -742,8 +742,6 @@ lemma weakBisimWeakUptoBisimCong[case_names SIM1 SIM2, consumes 1]:
         apply (metis bisim_refl conversep_iff relcompp_apply step_wstep wbisim_refl wbisim_upto_bisim_cong.intros(2))
         done
       done
-    subgoal sorry
-    subgoal sorry
     done
   done
 
