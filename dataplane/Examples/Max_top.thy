@@ -1413,8 +1413,7 @@ lemma
    (\<forall> (p, t, m) \<in> set (consu os2). m \<ge> 0) \<Longrightarrow>
    c_pts c (Loc 0 (Trg 1)) = {#}\<^sub>z \<Longrightarrow>
    consu os1 = [] \<Longrightarrow>
-   frontier (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg))))) \<le>
-    frontier (zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (map (\<lambda>(p, y). (Loc 0 (Src 1), y)) (operator_state.inter os1)))) + zmset (map snd (concat (map (\<lambda>(p, t, m). [(Loc 1 (Trg 1), t, m)]) (produ os1))))) \<Longrightarrow>
+   True \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum (summ sg) (-+-) (pt_tr sg) \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg (pt_tr sg) \<Longrightarrow>
    dataflow_topology_from_tree.inv_imp_plus_work_nonneg (pt_tr sg) \<Longrightarrow>
@@ -1428,6 +1427,10 @@ lemma
    (\<forall> t' p. Cap t' p \<in> set caps \<longrightarrow> t' < n 0) \<Longrightarrow>
    (\<forall> (x, t) \<in> projr ` set (buf1 (Inr (1, 1))) \<union> set (outpu os1 0). t < n 0) \<Longrightarrow>
    (\<forall> t\<ge>n 0. buf2 (Cap t 1) = []) \<Longrightarrow>
+   justified (c_pts (pt_tr sg) (Loc 1 (Trg 0)) + c_pts (pt_tr sg) (Loc 0 (Src 0))) (zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg)))) \<Longrightarrow>
+   justified (c_pts (pt_tr sg) (Loc 1 (Trg 0)) + c_pts (pt_tr sg) (Loc 0 (Src 0))) (zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg)))) \<Longrightarrow>
+   justified (c_pts (pt_tr sg) (Loc 1 (Trg 0)) + c_pts (pt_tr sg) (Loc 0 (Src 0))) (zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (map (\<lambda>(p, y). (Loc 0 (Src 1), y)) (inter os1))))) \<Longrightarrow>
+   justified (c_pts (pt_tr sg) (Loc 1 (Trg 0)) + c_pts (pt_tr sg) (Loc 0 (Src 0))) (zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (map (\<lambda>(p, y). (Loc 0 (Src 1), y)) (produ os1))))) \<Longrightarrow>
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
 proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c st1 st2 rule: weakBisimWeakUptoBisimCong)
@@ -1440,7 +1443,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
       unfolding wsim_def
       apply (intro allI conjI impI)
       subgoal premises prems for io op1'
-        using prems(31-) apply -
+        using prems(35) apply -
         apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin?)
                    apply simp_all
                    prefer 8
@@ -1517,6 +1520,14 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           using prems(28) apply simp
           using prems(29) apply simp
           using prems(30) apply simp
+          subgoal
+            using prems(31) prems(5,6,7,8,14,16)  by (auto 0 0 simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+          subgoal
+            using prems(32) prems(5,6,7,8,14,16)  by (auto 0 0 simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+          subgoal
+            using prems(33) prems(5,6,7,8,14,16)  by (auto 0 0 simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+          subgoal
+            using prems(34) prems(5,6,7,8,14,16)  by (auto 0 0 simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
           subgoal
             apply simp
             apply (rule rtranclp_intros_1)
@@ -1700,13 +1711,27 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
                   apply (rule Orderings.preorder_class.order_trans)
                    apply (rule frontier_below_eq_frontier_plus)
                   subgoal premises prems2
-
-                    find_theorems "_ \<le> frontier _"
-
-                    apply (rule Orderings.preorder_class.order_trans)
+           (*          apply (rule Orderings.preorder_class.order_trans)
                      apply (rule frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus[where M="zmset (map snd (filter (\<lambda>(l'::(2, 1) location, t::nat, d::int). Loc 0 (Src 1) = l') (map (\<lambda>(p::1, y::nat \<times> int). (Loc 0 (Src 1), y)) (operator_state.inter os1)))) + zmset (map snd (concat (map (\<lambda>(p::1, t::nat, m::int). [(Loc 1 (Trg 1), t, m)]) (produ os1))))"])
-                    subgoal
-                      using prems(18) by simp
+                    subgoal *)
+                      using prems(31,32,33,34,5,6,7,8,14) apply simp
+                      apply (auto 0 0 simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+                      apply (rule Orderings.preorder_class.order_trans)
+                      apply (rule froniter_add_justified[where B="zmset (map snd (filter (\<lambda>(l'::(2, 1) location, t::nat, d::int). Loc 0 (Src 1) = l') (map (\<lambda>(p::1, y::nat \<times> int). (Loc 0 (Src 1), y)) (operator_state.inter os1)))) + zmset (map snd (concat (map (\<lambda>(p::1, t::nat, m::int). [(Loc 1 (Trg 1), t, m)]) (produ os1))))"])
+                      subgoal
+                        apply (subst map_snd_filter)+
+                        apply (subgoal_tac 
+                    "c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg)))) =
+                     c_pts (pt_tr sg) (Loc 1 (Trg 1)) + (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg))))")
+                        subgoal
+                          apply (simp only: )
+
+                          using justified_add_msg_delta
+
+                      find_theorems "justified _ (_ + _)"
+
+
+end
                     apply (rule Orderings.preorder_class.order_trans)
                      apply (rule frontier_below_eq_frontier_plus_neg_alt)
                      apply (intro allI)
