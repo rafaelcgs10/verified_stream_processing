@@ -218,6 +218,7 @@ abbreviation "init_subgraph summary \<equiv>
    edges = (\<lambda> l1. [l2 \<leftarrow> enum_class.enum. \<not> is_empty_antichain (summary l1 l2) \<and> is_Src (port l1) \<and> is_Trg (port l2) ]),
    summ = summary \<rparr>"
 
+
 (* Inspired by timely/src/dataflow/operators/generic/builder_rc.rs:29 and timely/src/progress/operate.rs:63 *)
 (* This is the shared that the operator exposes to the subgraph *)
 record ('p, 't) shared_state =
@@ -494,7 +495,7 @@ abbreviation "pull i f \<equiv> (Read ((trace (STR ''Reading data'') Some) i)
    | _ \<Rightarrow> \<oslash>))"
 
 definition
-  "time_below_frontier t ft = (\<not> is_empty_antichain (filter_antichain (\<lambda> f. t < f) ft))"
+  "frontier_less_equal ft t = (\<not> is_empty_antichain (filter_antichain (\<lambda> f. f \<le> t) ft))"
 
 lemma change_multiplicities_append:
   "change_multiplicities su (xs @ ys) = (\<lambda> c. change_multiplicities su ys (change_multiplicities su xs c))"
@@ -630,17 +631,6 @@ lemma dataflow_op_change_multiplicities:
       by (force intro: op.cong_Silent op.cong_base)
     done
   done
-
-lemma bisim_dataflow_op_cong:
-  "op ~ op' \<Longrightarrow>
-  dataflow_op sg op ~ dataflow_op sg op'"
-  sorry
-
-lemma wbisim_dataflow_op_cong:
-  "op \<approx> op' \<Longrightarrow>
-  dataflow_op sg op \<approx> dataflow_op sg op'"
-  sorry
-
 
 record ('p, 'd, 't) operator_state =
   consu :: "('p \<times> 't \<times> int) list"

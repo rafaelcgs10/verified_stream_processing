@@ -20,8 +20,8 @@ abbreviation "drop_caps os caps \<equiv> (os\<lparr> inter := inter os @ map (\<
 corec max_top' where
   "max_top' os buf caps = choice5
    (Read None (\<lambda> st. if is_Inl st \<and> is_Inr (projl st) then max_top' (os\<lparr> front := projr (projl st) \<rparr>) buf caps else \<oslash>))
-   (let below_caps = [cap \<leftarrow> caps. time_below_frontier (time cap) (front os 0)] in
-    let above_caps = [cap \<leftarrow> caps. \<not> time_below_frontier (time cap) (front os 0)] in
+   (let below_caps = [cap \<leftarrow> caps. \<not> frontier_less_equal (front os 0) (time cap) ] in
+    let above_caps = [cap \<leftarrow> caps. frontier_less_equal (front os 0) (time cap) ] in
     let batch = map (\<lambda> cap. (Max (set (buf cap)), cap)) below_caps in
     let os' = produces os batch in
     let os'' = drop_caps os' below_caps in
@@ -45,8 +45,8 @@ lemma step_max'_top_elim:
   obtains
     st where "io = Inp None st" "\<not> is_Inl st \<or> (is_Inl st \<and> \<not> is_Inr (projl st))" "op = \<oslash>" 
   | st where "io = Inp None st" "is_Inl st" "is_Inr (projl st)" "op = max_top' (os\<lparr> front := projr (projl st) \<rparr>) buf caps" 
-  | above_caps below_caps batch os' os'' buf' where "io = Tau" "below_caps = [cap \<leftarrow> caps. time_below_frontier (time cap) (front os 0)]"
-    "above_caps = [cap \<leftarrow> caps. \<not> time_below_frontier (time cap) (front os 0)]"
+  | above_caps below_caps batch os' os'' buf' where "io = Tau" "below_caps = [cap \<leftarrow> caps. \<not> frontier_less_equal (front os 0) (time cap)]"
+    "above_caps = [cap \<leftarrow> caps. frontier_less_equal (front os 0) (time cap)]"
     "batch = map (\<lambda> cap. (Max (set (buf cap)), cap)) below_caps"
     "os' = produces os batch"
     "os'' = drop_caps os' below_caps"
@@ -348,16 +348,6 @@ lemma rtranclp_intros_1:
   "a = b \<Longrightarrow> r\<^sup>*\<^sup>* a b"
   by auto
 
-
-lemma not_time_below_frontier_mono[intro]:
-  "t < t' \<Longrightarrow>
-   \<not> time_below_frontier t f \<Longrightarrow> \<not> time_below_frontier t' f"
-  unfolding time_below_frontier_def
-  apply simp
-  apply transfer
-  apply clarsimp
-  apply (metis (no_types, lifting) Set.is_empty_def dual_order.strict_trans empty_iff ex_min_if_finite finite_filter member_filter)
-  done
 
 
 lemma zequal_equal[simp]:
@@ -681,30 +671,21 @@ lemma is_empty_antichain_filter_antichain[simp]:
 
 lemma sorted_caps_append:
   "sorted (map time caps) \<Longrightarrow>
-   caps = filter (\<lambda>cap. time_below_frontier (time cap) f) caps @ filter (\<lambda>cap. \<not> time_below_frontier (time cap) f) caps"
-  unfolding time_below_frontier_def
+   caps = filter (\<lambda>cap. \<not> frontier_less_equal f (time cap)) caps @ filter (\<lambda>cap. frontier_less_equal f (time cap)) caps"
+  unfolding frontier_less_equal_def
   apply simp
   apply (induct caps)
    apply simp_all
   subgoal for cap caps
-    by (smt (verit, ccfv_threshold) append_eq_append_conv2 append_same_eq filter_id_conv order_le_less_trans same_append_eq)
+    by (metis (mono_tags, lifting) basic_trans_rules(23) filter_id_conv self_append_conv2)
   done
 
-lemma time_below_frontier_iff:
-  "time_below_frontier t f \<longleftrightarrow> (\<exists> t'. t' \<in>\<^sub>A f \<and> t < t')"
-  unfolding time_below_frontier_def
+lemma frontier_less_equal_iff:
+  "frontier_less_equal f t \<longleftrightarrow> (\<exists> t'. t' \<in>\<^sub>A f \<and> t' \<le> t)"
+  unfolding frontier_less_equal_def
   apply auto
   done
 
-lemma in_M_not_time_below_frontier:
-  "0 < zcount M t \<Longrightarrow>
-   \<not> time_below_frontier t (frontier M)"
-  apply (auto simp add: time_below_frontier_iff)
-  apply (drule dataflow_topology_from_tree.in_frontier_least)
-  apply (drule spec[of _ t])
-  apply (drule mp)
-   apply auto
-  done
 
 fun zmset where
   "zmset [] = {#}\<^sub>z"
@@ -755,21 +736,17 @@ lemma c_pts_change_multiplicities_cong_stronger:
   done
 
 
-lemma time_below_frontier_frontier_below_eq_frontier:
-  "time_below_frontier t f \<Longrightarrow>
+lemma frontier_less_equal_frontier_below_eq_frontier:
+  "\<not> frontier_less_equal f t \<Longrightarrow>
    f \<le> (frontier M) \<Longrightarrow>
    zcount M t \<le> 0"
-  apply (simp add: time_below_frontier_iff less_eq_antichain_def)
+   apply (simp add: frontier_less_equal_iff less_eq_antichain_def)
   apply (rule ccontr)
   apply (simp add: not_le)
   apply (erule Timely_Infrastructure.dataflow_topology_from_tree.obtain_elem_frontier)
   apply (elim conjE)
   apply (drule spec, drule mp, assumption)
   apply auto
-  apply transfer
-  unfolding incomparable_def
-  apply auto
-  apply (metis basic_trans_rules(20,21))
   done
 
 lemma UNIV_location[simp]:
@@ -895,11 +872,48 @@ definition "my_summ' = (\<lambda> l1 l2.
    then frontier (abs_zmultiset (mset [0], {#}))
    else {}\<^sub>A)"
 
+
+(* abbreviation "cbs1 \<equiv> concat (map (\<lambda> nid. map (\<lambda> p. (Loc (nid :: 2) (Src (p :: 1)), 0, 1)) enum_class.enum) enum_class.enum)"
+
+abbreviation "c1 \<equiv> the (propagate_pointstamps my_summ' empty_conf cbs1)"
+
+value "c_imp c1 (Loc 1 (Trg 1))"
+
+abbreviation "cbs2 \<equiv> ([(Loc 1 (Trg 1), 0, -1)]) :: ((2, 1) location \<times> _ \<times> _) buf"
+
+abbreviation "c2 \<equiv> the (propagate_pointstamps my_summ' c1 cbs2)"
+
+value "c_imp c2 (Loc 1 (Trg 1))"
+
+abbreviation "cbs3 \<equiv> ([(Loc 1 (Trg 1), 0, 1)]) :: ((2, 1) location \<times> _ \<times> _) buf"
+
+abbreviation "c3 \<equiv> the (propagate_pointstamps my_summ' c2 cbs3)"
+
+value "frontier (c_imp c3 (Loc 1 (Trg 1)))"
+
+abbreviation "cbs4 \<equiv> ([(Loc 0 (Src 1), 0, -1)]) :: ((2, 1) location \<times> _ \<times> _) buf"
+
+abbreviation "c4 \<equiv> the (propagate_pointstamps my_summ' c3 cbs4)"
+
+value "frontier (c_imp c4 (Loc 1 (Trg 1)))"
+
+value "conn my_summ' (Loc (0 :: 2) (Src (0 :: 1))) (nxt_l my_summ' (Loc (0 :: 2) (Src (0 :: 1))))"
+
+abbreviation "cbs2b \<equiv> ([(Loc 1 (Trg 1), 0, 1)]) :: ((2, 1) location \<times> _ \<times> _) buf"
+
+abbreviation "c2b \<equiv> the (propagate_pointstamps my_summ' c1 cbs2b)"
+
+abbreviation "cbs3b \<equiv> ([(Loc 0 (Src 1), 0, -1)]) :: ((2, 1) location \<times> _ \<times> _) buf"
+
+abbreviation "c3b \<equiv> the (propagate_pointstamps my_summ' c2b cbs3b)"
+
+value [GHC] "frontier (c_imp c3b (Loc 1 (Trg 1)))"  *)
+
+
 abbreviation "nxt_l su l \<equiv> {l'. \<not> is_empty_antichain (su l l')}"
 
 abbreviation "conn su l V \<equiv> \<Union> ((\<lambda> l'. (\<lambda> w. (l, w, l')) ` (set_antichain (su l l'))) ` V)"
 
-value "conn my_summ' (Loc (0 :: 2) (Src (0 :: 1))) (nxt_l my_summ' (Loc (0 :: 2) (Src (0 :: 1))))"
 
 (* 
 function all_paths where
@@ -1261,6 +1275,13 @@ lemma map_snd_filter[simp]:
    map snd xs"
   by (induct xs) auto
 
+lemma map_snd_filter_neg[simp]:
+  "zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (map (\<lambda>(p, t, m). (Loc 1 (Trg 1), t, - m)) xs))) = {#}\<^sub>z - zmset (map snd xs)"
+  apply (induct xs)
+   apply (auto simp add: update_zmultiset_replicate)
+  apply (metis diff_add_zmset semiring_norm(57))
+  done
+
 lemma frontier_update_zmultiset_keep1[simp]:
   "zcount A x > 0 \<Longrightarrow> zcount A x + m > 0 \<Longrightarrow> frontier (update_zmultiset A x m) = frontier A"
   apply transfer
@@ -1410,7 +1431,7 @@ lemma
    dataflow_topology.inv_imps_work_sum (summ sg) dataflow_topology_from_tree.followed_by (pt_tr sg) \<Longrightarrow>
    summ sg = my_summ \<Longrightarrow>
    edges sg = (\<lambda> l. if l = Loc 0 (Src 1) then [Loc 1 (Trg 1)] else []) \<Longrightarrow>
-   (\<forall> (p, t, m) \<in> set (consu os2). m \<ge> 0) \<Longrightarrow>
+   (\<forall>t. 0 \<le> zcount (zmset (map snd (consu os2))) t) \<Longrightarrow>
    c_pts c (Loc 0 (Trg 1)) = {#}\<^sub>z \<Longrightarrow>
    consu os1 = [] \<Longrightarrow>
    True \<Longrightarrow>
@@ -1427,8 +1448,10 @@ lemma
    (\<forall> t' p. Cap t' p \<in> set caps \<longrightarrow> t' < n 0) \<Longrightarrow>
    (\<forall> (x, t) \<in> projr ` set (buf1 (Inr (1, 1))) \<union> set (outpu os1 0). t < n 0) \<Longrightarrow>
    (\<forall> t\<ge>n 0. buf2 (Cap t 1) = []) \<Longrightarrow>
-   justified (c_pts (pt_tr sg) (Loc 1 (Trg 0)) + c_pts (pt_tr sg) (Loc 0 (Src 0))) (zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg)))) \<Longrightarrow>
-   justified (c_pts (pt_tr sg) (Loc 0 (Src 0))) (zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg)))) \<Longrightarrow>
+   frontier (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg)))) \<le>
+   frontier (zmset (map snd (produ os1))) \<Longrightarrow>
+   frontier (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg)))) \<le>
+   frontier (zmset (map snd (inter os1))) \<Longrightarrow>
    justified (c_pts (pt_tr sg) (Loc 0 (Src 0))) (zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (map (\<lambda>(p, y). (Loc 0 (Src 1), y)) (inter os1))))) \<Longrightarrow>
    justified (c_pts (pt_tr sg) (Loc 1 (Trg 0)) + c_pts (pt_tr sg) (Loc 0 (Src 0))) (zmset (map snd (concat (map (\<lambda>(p, t, m). [(Loc 1 (Trg 1), t, m)]) (produ os1))))) \<Longrightarrow>
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
@@ -1544,7 +1567,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
               apply (simp flip: append_assoc)
               apply (rule arg_cong2[where f=append])
               subgoal
-                apply (subgoal_tac "caps = filter (\<lambda>cap. time_below_frontier (time cap) (front os2 1)) caps @ filter (\<lambda>cap. \<not> time_below_frontier (time cap) (front os2 1)) caps")
+                apply (subgoal_tac "caps = filter (\<lambda>cap. \<not>  frontier_less_equal (front os2 1) (time cap) ) caps @ filter (\<lambda>cap. frontier_less_equal (front os2 1) (time cap) ) caps")
                 subgoal
                   unfolding max_from_caps_buf_def
                   apply (simp add: map_eq_append_conv)
@@ -1557,7 +1580,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
                     subgoal
                       by simp
                     subgoal
-                      apply (drule time_below_frontier_frontier_below_eq_frontier)
+                      apply (drule frontier_less_equal_frontier_below_eq_frontier)
                       using prems(11) apply simp
                       using prems(9) apply simp
                       apply (auto simp add: list_to_buf_def filter_empty_conv)
@@ -1588,7 +1611,8 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
                   subgoal
                     apply (rule rmdups_cong)
                     apply (auto split: prod.splits sum.splits)
-                    apply (drule time_below_frontier_frontier_below_eq_frontier)
+                    apply (rule ccontr)
+                    apply (drule frontier_less_equal_frontier_below_eq_frontier)
                     using prems(11) apply simp
                     using prems(9) apply simp
                     apply (auto simp add: list_to_buf_def filter_empty_conv)
@@ -1602,7 +1626,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
                       apply (rule image_eqI[of _ _ "(x, t)"])
                        apply simp
                       apply auto
-                      apply (drule time_below_frontier_frontier_below_eq_frontier)
+                      apply (drule frontier_less_equal_frontier_below_eq_frontier)
                       using prems(11) apply simp
                       using prems(9) apply simp
                       apply (auto simp add: list_to_buf_def filter_empty_conv)
@@ -1617,7 +1641,8 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
                   subgoal
                     apply (rule rmdups_cong)
                     apply (auto split: prod.splits sum.splits)
-                    apply (drule time_below_frontier_frontier_below_eq_frontier)
+                    apply (rule ccontr)
+                    apply (drule frontier_less_equal_frontier_below_eq_frontier)
                     using prems(11) apply simp
                     using prems(9) apply simp
                     apply (auto simp add: list_to_buf_def filter_empty_conv)
@@ -1631,7 +1656,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
                       apply (rule image_eqI[of _ _ "(x, t)"])
                        apply simp
                       apply auto
-                      apply (drule time_below_frontier_frontier_below_eq_frontier)
+                      apply (drule frontier_less_equal_frontier_below_eq_frontier)
                       using prems(11) apply simp
                       using prems(9) apply simp
                       apply (auto simp add: list_to_buf_def filter_empty_conv)
@@ -1716,20 +1741,30 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
                     subgoal *)
                       using prems(31,32,33,34,5,6,7,8,14) apply simp
                       apply (auto 0 0 simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-                      apply (rule Orderings.preorder_class.order_trans)
-                      apply (rule froniter_add_justified[where B="zmset (map snd (filter (\<lambda>(l'::(2, 1) location, t::nat, d::int). Loc 0 (Src 1) = l') (map (\<lambda>(p::1, y::nat \<times> int). (Loc 0 (Src 1), y)) (operator_state.inter os1)))) + zmset (map snd (concat (map (\<lambda>(p::1, t::nat, m::int). [(Loc 1 (Trg 1), t, m)]) (produ os1))))"])
+                      apply (subgoal_tac 
+                    "c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + zmset (map snd (produ os1)) - zmset (map snd (consu os2)) +
+                     (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg))) + zmset (map snd (operator_state.inter os1))) =
+                     c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg)))) +
+                     zmset (map snd (produ os1)) + zmset (map snd (operator_state.inter os1)) - zmset (map snd (consu os2))")
+                      defer
                       subgoal
-                        apply (subst map_snd_filter)+
-                        apply (subgoal_tac 
-                    "c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg)))) =
-                     c_pts (pt_tr sg) (Loc 1 (Trg 1)) + (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg))))")
+                        by auto
+                      subgoal premises prems3
+                        apply (simp add: prems3(6))
+                        apply (rule frontier_le_minus_gen[rotated])
                         subgoal
-                          apply (simp only: )
+                          using prems(15) by auto
+                        subgoal
+                          using prems3(1,2) apply -
 
-                          using justified_add_msg_delta
 
-                      find_theorems "justified _ (_ + _)"
+                          find_theorems "frontier (_ + _) \<le> _"
 
+                          apply (rule frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus_gen[rotated])
+                           apply (rule frontier_add_delay_or_drop)
+                          apply assumption
+
+                          find_theorems "_ \<le> frontier (_ + _)"
 
 end
                     apply (rule Orderings.preorder_class.order_trans)

@@ -463,60 +463,15 @@ lemma froniter_add_justified:
     done
   done
 
-lemma
-  assumes "justified C M1"
-    and   "justified C M2"
-    and   "\<forall>t. 0 \<le> zcount C t"
-  shows   "justified C (M1+M2)"
- apply (rule justified_leastI)
-  apply (intro allI impI)
-  subgoal for t
-    apply (cases "0 < zcount M1 t") (* symmetric cases *)
-    subgoal
-      apply (drule assms(1)[unfolded justified_alt supported_strong_def, rule_format])
-      apply (elim disj3_split)
-      subgoal
-        apply (elim exE conjE)
-        apply (drule order_zmset_exists_foundation_neg)
-        apply (elim exE conjE)
-        subgoal for s s' (* anything less than s' is 0 in M1 *)
-          apply (cases "zcount (M1 + M2) s' < 0")
-          subgoal
-            apply (rule disjI1)
-            apply (auto intro!: exI[of _ s'] simp: nonpos_upto_def supported_strong_def) []
-            done
-          subgoal
-            apply (subst (asm) not_less)
-            apply (cases "0 < zcount M2 s'")
-             prefer 2
-            subgoal by auto (* trivial contradiction *)
-            subgoal
-              apply (drule assms(2)[unfolded justified_alt supported_strong_def, rule_format])
-              apply (elim disj3_split)
-              subgoal
-                apply (rule disjI1)
-                apply (elim exE)
-                subgoal for s''
-                  by (auto intro!: exI[of _ s''] simp: nonpos_upto_def supported_strong_def add_nonpos_neg)
-                done
-              subgoal
-                apply (rule disjI2, rule disjI1)
-                apply (elim exE conjE)
-                subgoal for s''
-                  using assms(3) by (auto simp: add_nonneg_pos intro!: exI[of _ s''])
-                done
-              subgoal
-                by (metis add.right_neutral add_strict_increasing2 assms(3) less_add_same_cancel1 order.strict_trans1 pos_add_strict zcount_union)
-              done
-            done
-          done
-        done
-      subgoal
-        by blast
-      subgoal
-        apply simp
-        oops
+definition "delay_or_drop A B = (\<forall> t. zcount B t > 0 \<longrightarrow> (\<exists> t'. zcount A t' > 0 \<and> t' \<le> t))"
 
-        thm justified_add_msg_delta
+lemma frontier_add_delay_or_drop:
+  "delay_or_drop A B \<Longrightarrow>
+   frontier A \<le> frontier (A + B)"
+  unfolding less_eq_antichain_def delay_or_drop_def
+  apply safe
+  by (metis dual_order.trans in_frontier_addD trivial_dataflow_topology_interpretation.obtain_frontier_elem)
+
+    
 
 end
