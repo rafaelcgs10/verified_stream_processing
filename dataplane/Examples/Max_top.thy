@@ -1428,9 +1428,9 @@ lemma
    (\<forall> (x, t) \<in> projr ` set (buf1 (Inr (1, 1))) \<union> set (outpu os1 0). t < n 0) \<Longrightarrow>
    (\<forall> t\<ge>n 0. buf2 (Cap t 1) = []) \<Longrightarrow>
    justified (c_pts (pt_tr sg) (Loc 1 (Trg 0)) + c_pts (pt_tr sg) (Loc 0 (Src 0))) (zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg)))) \<Longrightarrow>
-   justified (c_pts (pt_tr sg) (Loc 1 (Trg 0)) + c_pts (pt_tr sg) (Loc 0 (Src 0))) (zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg)))) \<Longrightarrow>
-   justified (c_pts (pt_tr sg) (Loc 1 (Trg 0)) + c_pts (pt_tr sg) (Loc 0 (Src 0))) (zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (map (\<lambda>(p, y). (Loc 0 (Src 1), y)) (inter os1))))) \<Longrightarrow>
-   justified (c_pts (pt_tr sg) (Loc 1 (Trg 0)) + c_pts (pt_tr sg) (Loc 0 (Src 0))) (zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (map (\<lambda>(p, y). (Loc 0 (Src 1), y)) (produ os1))))) \<Longrightarrow>
+   justified (c_pts (pt_tr sg) (Loc 0 (Src 0))) (zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg)))) \<Longrightarrow>
+   justified (c_pts (pt_tr sg) (Loc 0 (Src 0))) (zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (map (\<lambda>(p, y). (Loc 0 (Src 1), y)) (inter os1))))) \<Longrightarrow>
+   justified (c_pts (pt_tr sg) (Loc 1 (Trg 0)) + c_pts (pt_tr sg) (Loc 0 (Src 0))) (zmset (map snd (concat (map (\<lambda>(p, t, m). [(Loc 1 (Trg 1), t, m)]) (produ os1))))) \<Longrightarrow>
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
 proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c st1 st2 rule: weakBisimWeakUptoBisimCong)
