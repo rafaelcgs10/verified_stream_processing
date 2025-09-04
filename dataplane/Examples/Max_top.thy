@@ -2023,34 +2023,27 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
             done
           subgoal
             apply simp
-            using prems(26) prems(5,6,7,8,14,16,10) prems(9)[symmetric] 
+            using prems(26) prems(5,6,7,8,14,16,10,9)
             unfolding BENQ_def BHD_def BTL_def input_cap_def
             apply (cases "buf1 (Inr (1, 1))"; simp split: prod.splits)
             apply (auto 0 0 simp del: neg_minus_single simp add: update_zmultiset_replicate extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
             subgoal premises prems2
-              using prems2(6) apply -
+              using prems2(4,6) apply -
               apply (subst add_zmset_add_single)
               apply (subst add_zmset_add_single)
               apply (subst (asm) add_zmset_add_single)
-              apply (rule Orderings.preorder_class.order_trans[rotated])
-               apply assumption
               apply (subgoal_tac
    "c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + zmset (map snd (produ os1)) - (zmset (map snd (consu os2)) + {#t#}\<^sub>z) + {#n 1#}\<^sub>z =
-    (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + zmset (map snd (produ os1)) - zmset (map snd (consu os2)) + {#n 1#}\<^sub>z) - {#t#}\<^sub>z")
+    c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + zmset (map snd (produ os1)) - zmset (map snd (consu os2)) + {#n 1#}\<^sub>z - {#t#}\<^sub>z")
               defer
               subgoal
-                by auto
+                by (metis diff_add_zmset uminus_add_add_uminus)
               subgoal
                 apply (simp only: )
-                apply (rule froniter_minus_justified)
-
-                find_theorems "frontier (_ + _) \<le> _"
-
-              thm frontier_below_eq_frontier_plus_pos
-              find_theorems "add_zmset" "_ + _"
-
-end
-            apply (metis (lifting) arith_extra_simps(5) frontier_below_eq_frontier_plus_pos union_add_left_zmset zcount_zmset_of_nonneg)
+                apply auto
+                apply (metis add.commute add_zmset_add_single frontier_below_eq_frontier_plus_pos zcount_zmset_of_nonneg)
+                done
+              done
             done
           subgoal
             apply simp
@@ -2068,6 +2061,8 @@ end
             unfolding BENQ_def
             apply auto
             done
+          using prems(31) apply simp
+          using prems(32) apply simp
           subgoal
             apply simp
             apply (rule rtranclp_intros_1)
@@ -2145,7 +2140,7 @@ end
             apply (elim conjE)
             apply hypsubst_thin
             unfolding extract_progress_def
-            apply (auto simp add: comp_def filter_empty_conv c_pts_change_multiplicities)
+            apply (auto simp add: update_zmultiset_replicate comp_def filter_empty_conv c_pts_change_multiplicities)
             subgoal premises prems2
               using prems2(1,2) prems2(9,3)[symmetric] apply -
               unfolding BTL_def
@@ -2158,7 +2153,8 @@ end
               apply (subst zmset_of_remove1_mset)
                apply simp
               apply simp
-              apply (metis BHD_def add_cancel_right_right snd_conv update_zmultiset_plus_comm)
+                  apply (cases "buf1 (Inr (1, 1))"; simp split: prod.splits)
+            apply (auto simp add: BHD_def update_zmultiset_replicate comp_def filter_empty_conv c_pts_change_multiplicities)
               done
             done
           subgoal
@@ -2185,9 +2181,14 @@ end
           using prems(14) apply simp
           using prems(15) apply simp
           subgoal
+            using prems(5,6,7,8,14,16,15) 
+            apply simp
+            apply (auto 0 0 simp add: zcount_update_zmultiset extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+            done
+          subgoal
             using prems(5,6,7,8,14,16) 
             apply simp
-            apply (auto 0 0 simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+            apply (auto 0 0 simp add: zcount_update_zmultiset extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
             done
           using prems(17) apply simp
           using prems(18) apply simp
@@ -2216,11 +2217,27 @@ end
             done
           subgoal
             apply simp
-            using prems(26) prems(5,6,7,8,14,16,10,9) 
+            using prems(26) prems(5,6,7,8,14,16,10,9)
             unfolding BENQ_def BHD_def BTL_def input_cap_def
             apply (cases "buf1 (Inr (1, 1))"; simp split: prod.splits)
-            apply (auto 0 0 simp add: update_zmultiset_replicate extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+            apply (auto 0 0 simp del: neg_minus_single simp add: update_zmultiset_replicate extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+            subgoal premises prems2
+              using prems2(4,6) apply -
+              apply (subst add_zmset_add_single)
+              apply (subst add_zmset_add_single)
+              apply (subst (asm) add_zmset_add_single)
+              apply (subgoal_tac
+   "c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + zmset (map snd (produ os1)) - (zmset (map snd (consu os2)) + {#t#}\<^sub>z) =
+    c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + zmset (map snd (produ os1)) - (zmset (map snd (consu os2))) - {#t#}\<^sub>z")
+               defer
+              subgoal
+                using diff_add_zmset by blast
+              subgoal
+                apply (simp only: )
+                apply auto
             apply (metis (lifting) add.commute add_zmset_add_single frontier_below_eq_frontier_plus_pos zcount_zmset_of_nonneg)
+                done
+              done
             done
           subgoal
             apply simp
@@ -2244,6 +2261,8 @@ end
             apply (cases "buf1 (Inr (1, 1))"; auto 0 0 split: prod.splits)
             apply auto
             done
+          using prems(31) apply simp
+          using prems(32) apply simp
           subgoal
             apply simp
             apply (rule rtranclp_intros_1)
@@ -2311,13 +2330,12 @@ end
           using prems(4) apply simp
           subgoal
             apply simp
-            using prems(5,6,7,8, 14) prems(9) apply -
+            using prems(5,6,7,8, 14) prems(9)[symmetric] apply -
             apply (simp add: change_multiplicities_append_comp comp_def)
             apply (elim conjE)
             apply hypsubst_thin
             unfolding extract_progress_def
-            apply (auto simp add: comp_def filter_empty_conv c_pts_change_multiplicities produce_def dest!: propagate_all_preserves_c_pts)
-            apply (smt (verit, best) add.commute group_cancel.add1 zmset_of_plus)
+            apply (auto simp flip: add.assoc simp add: zmset_of_plus comp_def filter_empty_conv c_pts_change_multiplicities produce_def dest!: propagate_all_preserves_c_pts)
             done
           subgoal
             using prems(5,6,7,8,14) prems(10)  apply -
@@ -2378,44 +2396,7 @@ end
             apply (auto 0 0 simp add: produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
             done
           subgoal
-            using prems(17) by (auto 0 0 simp add: produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-          subgoal
-            using prems(18) apply -
-            apply (auto 0 0 simp add: update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-            subgoal
-              apply (rule Orderings.preorder_class.order_trans)
-               apply assumption
-              apply (rule Orderings.preorder_class.order_trans)
-               apply (rule frontier_le_minus_gen[where C="{#n 1#}\<^sub>z"])
-                apply (rule Orderings.preorder_class.eq_refl)
-                apply (rule refl)
-               apply simp_all
-              apply (rule Orderings.preorder_class.eq_refl)
-              apply (rule arg_cong[where f=frontier])
-              apply auto
-              done
-            subgoal 
-              using prems(5,6,7,8,14,16,19,27,10, 9)  apply -
-              apply (auto 0 0 simp add: input_cap_def update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-              apply (subst (2) add.assoc[symmetric])
-              apply (rule frontier_le_add)
-              subgoal
-                apply (rule Orderings.preorder_class.order_trans)
-                 apply (rule frontier_le_minus_gen[where C="{#n 1#}\<^sub>z"])
-                  apply assumption
-                 apply simp_all
-                apply (rule Orderings.preorder_class.eq_refl)
-                apply (rule arg_cong[where f=frontier])
-                apply auto
-                done
-              subgoal
-                apply (rule Orderings.preorder_class.order_trans)
-                 apply assumption
-                back
-                using frontier_le_zmset_of apply blast
-                done
-              done
-            done
+            using prems(17) by (auto 0 0 simp add: produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)         
           using prems(19) apply simp
           using prems(20) apply simp
           using prems(21) apply simp
@@ -2443,6 +2424,12 @@ end
             done
           subgoal
             using prems(29,28,30) by auto
+          subgoal
+            using prems(31) apply -
+            apply (auto 0 0 simp add: input_cap_def update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: prod.splits if_splits option.splits; hypsubst_thin?)
+
+
+end
           subgoal
             apply (simp add: comp_def)
             apply (rule rtranclp_intros_1)
