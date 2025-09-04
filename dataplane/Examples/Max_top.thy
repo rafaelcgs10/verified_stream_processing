@@ -2026,13 +2026,28 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
             using prems(26) prems(5,6,7,8,14,16,10) prems(9)[symmetric] 
             unfolding BENQ_def BHD_def BTL_def input_cap_def
             apply (cases "buf1 (Inr (1, 1))"; simp split: prod.splits)
-            apply (auto 0 0 simp add: update_zmultiset_replicate extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-            apply (subgoal_tac "t \<le> n 0")
-            subgoal
+            apply (auto 0 0 simp del: neg_minus_single simp add: update_zmultiset_replicate extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+            subgoal premises prems2
+              using prems2(6) apply -
+              apply (subst add_zmset_add_single)
+              apply (subst add_zmset_add_single)
+              apply (subst (asm) add_zmset_add_single)
+              apply (rule Orderings.preorder_class.order_trans[rotated])
+               apply assumption
+              apply (subgoal_tac
+   "c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + zmset (map snd (produ os1)) - (zmset (map snd (consu os2)) + {#t#}\<^sub>z) + {#n 1#}\<^sub>z =
+    (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + zmset (map snd (produ os1)) - zmset (map snd (consu os2)) + {#n 1#}\<^sub>z) - {#t#}\<^sub>z")
+              defer
+              subgoal
+                by auto
+              subgoal
+                apply (simp only: )
+                apply (rule froniter_minus_justified)
 
+                find_theorems "frontier (_ + _) \<le> _"
 
-
-            thm frontier_below_eq_frontier_plus_pos zcount_zmset_of_nonneg
+              thm frontier_below_eq_frontier_plus_pos
+              find_theorems "add_zmset" "_ + _"
 
 end
             apply (metis (lifting) arith_extra_simps(5) frontier_below_eq_frontier_plus_pos union_add_left_zmset zcount_zmset_of_nonneg)
