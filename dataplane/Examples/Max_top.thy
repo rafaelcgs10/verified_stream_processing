@@ -2427,7 +2427,11 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           subgoal
             using prems(31) apply -
             apply (auto 0 0 simp add: input_cap_def update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: prod.splits if_splits option.splits; hypsubst_thin?)
+            apply (subgoal_tac "\<forall> t. zcount (zmset (map snd (produ os1))) t > 0 \<longrightarrow> t < n 0")
+            subgoal
+              
 
+            find_theorems "produ os1"
 
 end
           subgoal
