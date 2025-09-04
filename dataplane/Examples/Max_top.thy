@@ -1418,7 +1418,14 @@ definition "below_n A n = (\<forall> t. zcount A t > 0 \<longrightarrow> t \<le>
 
 lemma neg_minus_single[simp]:
   "- A - {#x#}\<^sub>z = - add_zmset x A"
- by (metis arith_simps(56) diff_add_zmset_swap minus_diff_eq)
+  by (metis arith_simps(56) diff_add_zmset_swap minus_diff_eq)
+
+lemma zmultiset_move_add_other_side:
+  "(A :: _ zmultiset) + B = C \<longleftrightarrow> A = C - B"
+  apply (simp add: zmultiset_eq_iff)
+  apply auto
+  apply (smt (verit))
+  done
 
 lemma
   \<open>xs 0 = outpu os2 0 \<Longrightarrow>
@@ -2427,15 +2434,11 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           subgoal
             using prems(31) apply -
             apply (auto 0 0 simp add: input_cap_def update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: prod.splits if_splits option.splits; hypsubst_thin?)
-            apply (subgoal_tac "\<forall> t. zcount (zmset (map snd (produ os1))) t > 0 \<longrightarrow> t < n 0")
             subgoal
-              apply (cases "batch"; simp)
-              apply (subst add_zmset_add_single)
+              apply (subgoal_tac "\<forall> t. zcount (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg))))) t > 0 \<longrightarrow> t \<le> n 1")
+              subgoal
+                sledgehammer
 
-
-              
-
-            find_theorems "produ os1"
 
 end
           subgoal
