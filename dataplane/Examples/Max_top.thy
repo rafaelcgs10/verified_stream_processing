@@ -871,33 +871,45 @@ definition "my_summ' = (\<lambda> l1 l2.
    else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 0)
    then frontier (abs_zmultiset (mset [0], {#}))
    else {}\<^sub>A)"
-
-
-(* abbreviation "cbs1 \<equiv> concat (map (\<lambda> nid. map (\<lambda> p. (Loc (nid :: 2) (Src (p :: 1)), 0, 1)) enum_class.enum) enum_class.enum)"
+(* 
+ (*Initial state: only initial capability at source ports *)
+abbreviation "cbs1 \<equiv> concat (map (\<lambda> nid. map (\<lambda> p. (Loc (nid :: 2) (Src (p :: 1)), 0, 1)) enum_class.enum) enum_class.enum)"
 
 abbreviation "c1 \<equiv> the (propagate_pointstamps my_summ' empty_conf cbs1)"
 
+(* Implications at Trg of op2: abs_zmultiset (mset [0], mset []) *)
 value "c_imp c1 (Loc 1 (Trg 1))"
 
+(* op2 consumes some message *)
 abbreviation "cbs2 \<equiv> ([(Loc 1 (Trg 1), 0, -1)]) :: ((2, 1) location \<times> _ \<times> _) buf"
 
 abbreviation "c2 \<equiv> the (propagate_pointstamps my_summ' c1 cbs2)"
 
+(* Implications at Trg of op2 is the same: abs_zmultiset (mset [0], mset []) *)
 value "c_imp c2 (Loc 1 (Trg 1))"
+(* But pts at Trg of op2 is now negative: abs_zmultiset (mset [], mset [0]) *)
+value "c_pts c2 (Loc 1 (Trg 1))"
 
+value "c_pts c2 (Loc 1 (Trg 1)) + c_pts c2 (Loc 0 (Src 1))"
+
+(* op1 finally informs about the message that was already consumed by op2 *)
 abbreviation "cbs3 \<equiv> ([(Loc 1 (Trg 1), 0, 1)]) :: ((2, 1) location \<times> _ \<times> _) buf"
 
 abbreviation "c3 \<equiv> the (propagate_pointstamps my_summ' c2 cbs3)"
 
-value "frontier (c_imp c3 (Loc 1 (Trg 1)))"
+(* Implications at Trg of op2 is still the same: abs_zmultiset (mset [0], mset []) *)
+value "(c_imp c3 (Loc 1 (Trg 1)))"
 
+(* op1 drops its initial capability *)
 abbreviation "cbs4 \<equiv> ([(Loc 0 (Src 1), 0, -1)]) :: ((2, 1) location \<times> _ \<times> _) buf"
 
 abbreviation "c4 \<equiv> the (propagate_pointstamps my_summ' c3 cbs4)"
 
-value "frontier (c_imp c4 (Loc 1 (Trg 1)))"
+(* Implications at Trg of op2 is now empty (mset [0], mset [0]) *)
+value "(c_imp c4 (Loc 1 (Trg 1)))"
 
-value "conn my_summ' (Loc (0 :: 2) (Src (0 :: 1))) (nxt_l my_summ' (Loc (0 :: 2) (Src (0 :: 1))))"
+
+value "conn my_summ' (Loc (0 :: 2) (Src (0 :: 1))) (nxt_l my_summ' (Loc (0 :: 2) (Src (0 :: 1))))" 
 
 abbreviation "cbs2b \<equiv> ([(Loc 1 (Trg 1), 0, 1)]) :: ((2, 1) location \<times> _ \<times> _) buf"
 
@@ -1353,6 +1365,14 @@ lemma reachable_locations_my_summ[simp]:
 
 definition "changes_below_impl chgs impls = (\<forall>(l, t, d)\<in>set chgs. \<exists>t'. t' \<in>\<^sub>A frontier (impls l) \<and> t' \<le> t)"
 
+lemma changes_below_impl_unionI:
+  "changes_below_impl cgs1 impls \<Longrightarrow>
+   changes_below_impl cgs2 impls \<Longrightarrow>
+   set cgs3 \<subseteq> set cgs1 \<union> set cgs2 \<Longrightarrow>
+   changes_below_impl cgs3 impls"
+  unfolding changes_below_impl_def
+  by blast
+
 definition "changes_non_zero chgs = (\<forall>d\<in>snd ` snd ` set chgs. d \<noteq> 0)"
 
 lemma mset_tl:
@@ -1560,22 +1580,17 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
             using prems(32) prems(5,6,7,8,14,16)  by (auto 0 0 simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
           subgoal
             using prems(33) prems(5,6,7,8,14,16)  by (auto 0 0 simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-          subgoal
-            using prems(34) prems(5,6,7,8,14,16,17) apply -
-            apply (auto 0 0 simp add: frontier_less_equal_iff changes_below_impl_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-            subgoal
-            apply (drule bspec)
-               apply force+
-              done
-                       subgoal
-            apply (drule bspec)
-               apply force+
-                         done
-                       subgoal
-                         sledgehammer
+          subgoal premises prems2
+            apply (rule changes_below_impl_unionI[OF prems(22) prems(34)])
+            using prems(5,6,7,14) apply -
+            apply (auto 0 0 simp add: frontier_less_equal_iff changes_below_impl_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: prod.splits option.splits; hypsubst_thin?)
+                apply (metis (lifting) pair_imageI split_conv)
+            apply force
+            subgoal for x 
+              apply (rule image_eqI[of _ _ "(0, time x, 1)"])
+               apply auto
+              
 
-             find_theorems frontier_less_equal name: iff
-      
 end
           subgoal
             apply simp
