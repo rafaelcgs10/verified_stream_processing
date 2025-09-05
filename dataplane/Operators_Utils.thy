@@ -2,6 +2,7 @@ theory Operators_Utils
 
 imports
   Nondeterministic_Dataflow.Operator
+  DataplaneUtils
 begin 
 
 corec writes where
