@@ -1463,6 +1463,8 @@ lemma
    frontier (zmset (map snd (produ os1))) \<Longrightarrow>
    frontier (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg))))) \<le>
    frontier (zmset (map snd (inter os1))) \<Longrightarrow>
+   changes_below_impl (extract_progress 0 (edges sg) st1) (c_imp (pt_tr sg)) \<Longrightarrow>
+   changes_below_impl (extract_progress 0 (edges sg) st2) (c_imp (pt_tr sg)) \<Longrightarrow>
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
 proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c st1 st2 rule: weakBisimWeakUptoBisimCong)
@@ -1475,7 +1477,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
       unfolding wsim_def
       apply (intro allI conjI impI)
       subgoal premises prems for io op1'
-        using prems(33) apply -
+        using prems(35) apply -
         apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin?)
                    apply simp_all
                    prefer 8
@@ -1556,6 +1558,25 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
             using prems(31) prems(5,6,7,8,14,16)  by (auto 0 0 simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
           subgoal
             using prems(32) prems(5,6,7,8,14,16)  by (auto 0 0 simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+          subgoal
+            using prems(33) prems(5,6,7,8,14,16)  by (auto 0 0 simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+          subgoal
+            using prems(34) prems(5,6,7,8,14,16,17) apply -
+            apply (auto 0 0 simp add: frontier_less_equal_iff changes_below_impl_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+            subgoal
+            apply (drule bspec)
+               apply force+
+              done
+                       subgoal
+            apply (drule bspec)
+               apply force+
+                         done
+                       subgoal
+                         sledgehammer
+
+             find_theorems frontier_less_equal name: iff
+      
+end
           subgoal
             apply simp
             apply (rule rtranclp_intros_1)
@@ -2434,13 +2455,20 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           subgoal
             using prems(31) apply -
             apply (auto 0 0 simp add: input_cap_def update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: prod.splits if_splits option.splits; hypsubst_thin?)
-            subgoal
-              apply (subgoal_tac "\<forall> t. zcount (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg))))) t > 0 \<longrightarrow> t \<le> n 1")
-              subgoal
-                sledgehammer
-
-
-end
+            apply (rule frontier_le_add)
+             apply assumption
+            using prems(5,6,7,8,14,16,19,27,10,9) apply -
+            apply (auto 0 0 simp add: input_cap_def update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: prod.splits if_splits option.splits; hypsubst_thin?)
+      apply (rule Orderings.preorder_class.order_trans)
+               apply assumption
+            back
+            apply auto
+            done
+          subgoal
+            using prems(32) apply -
+            apply (auto 0 0 simp add: input_cap_def update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: prod.splits if_splits option.splits; hypsubst_thin?)
+            apply (smt (verit) Signed_Multiset.multi_member_split add_zmset_remove_trivial basic_trans_rules(23) frontier_add_zmset order_refl)
+            done
           subgoal
             apply (simp add: comp_def)
             apply (rule rtranclp_intros_1)
@@ -2626,7 +2654,7 @@ end
             apply hypsubst_thin
             unfolding extract_progress_def
             apply (auto simp add: comp_def filter_empty_conv c_pts_change_multiplicities produce_def dest!: propagate_all_preserves_c_pts)
-            apply (smt (verit, best) add.commute group_cancel.add1 zmset_of_plus)
+            apply (smt (verit, ccfv_SIG) add.commute group_cancel.add2 group_cancel.sub1 zmset_of_plus)
             done
           subgoal
             using prems(5,6,7,8,14) prems(10)[symmetric]  apply -
@@ -2643,15 +2671,9 @@ end
                apply (rule prems(11)[simplified])
               apply simp
               apply (auto 0 0 simp flip: Multiset.union_assoc simp add: input_cap_def below_n_def update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-              apply (simp only: flip: add.assoc)
-              apply (subst (1 2) add_zmset_add_single)
-              subgoal premises prems2
-                using prems2(8,9) apply -
-                apply (rule frontier_add_le)
-                  apply (rule frontier_le_singletons)
-                  apply simp_all
+              apply (smt (z3) add_zmset_add_single basic_trans_rules(23) frontier_below_eq_frontier_plus_pos frontier_le_add frontier_le_singletons group_cancel.sub1 plus_1_eq_Suc trivial_dataflow_topology_interpretation.le_plus(2)
+                  zcount_single)
                 done
-              done
             subgoal for x batch'
               using prems(5,6,7,8,14,26,10) prems(9)[symmetric] apply simp
               apply (rule Orderings.preorder_class.order_trans)
@@ -2660,14 +2682,19 @@ end
               apply (auto 0 0 simp flip: Int.Suc_nat_eq_nat_zadd1 simp add: input_cap_def update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
               apply (simp only: flip: add.assoc)
               apply (subst (1 2 3) add_zmset_add_single)
-              apply (subst (7) add.assoc)
-              apply (subst (7) add.assoc)
+              apply (subgoal_tac "frontier {#n 1#}\<^sub>z \<le> frontier (zmset_of {#n 1. x \<in># mset batch'#} + {#n 1#}\<^sub>z + {#Suc (n 1)#}\<^sub>z)")
               subgoal premises prems2
-                using prems2(8,9) apply -
-                apply (rule frontier_add_le)
-                  apply (metis Suc_eq_plus1_left add.commute arith_extra_simps(6) frontie_add_zmset_add frontier_le_add frontier_le_singletons trivial_dataflow_topology_interpretation.le_plus(2))
-                 apply simp_all
+                using prems2(8,9,11) apply -
+                apply (rule Orderings.preorder_class.order_trans)
+                 apply (rule frontier_add_le)
+                   apply assumption
+                  apply simp_all
+                apply (rule Orderings.preorder_class.eq_refl)
+            apply (rule arg_cong[where f=frontier])
+                apply auto
                 done
+              subgoal
+                by (metis Suc_eq_plus1_left add.commute arith_extra_simps(6) frontie_add_zmset_add frontier_le_add frontier_le_singletons trivial_dataflow_topology_interpretation.le_plus(2))
               done
             done
           subgoal
@@ -2682,53 +2709,6 @@ end
             done
           subgoal
             using prems(17) by (auto 0 0 simp add: produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-          subgoal
-            using  prems(18) apply -
-            using prems(5,6,7,8,14,16,19,27,10, 9)  apply -
-            apply (auto 0 0 simp add: input_cap_def produce_def update_zmultiset_replicate extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-            subgoal
-              apply (subst add_zmset_add_single)
-              apply (rule frontier_le_add)
-              subgoal
-                apply (rule Orderings.preorder_class.order_trans)
-                 apply (rule frontier_le_minus_gen[where C="{#n 1#}\<^sub>z"])
-                  apply assumption
-                 apply simp_all
-                apply (rule Orderings.preorder_class.eq_refl)
-                apply (rule arg_cong[where f=frontier])
-                apply auto
-                done
-              subgoal
-                apply (rule Orderings.preorder_class.order_trans)
-                 apply assumption
-                back
-                apply (meson frontier_le_singletons lessI nat_less_le)
-                done
-              done
-            subgoal
-              subgoal
-                apply (subst add_zmset_add_single)
-                apply (subst (2) add.assoc[symmetric])
-                apply (subst (3) add.assoc)
-                apply (rule frontier_le_add)
-                subgoal
-                  apply (rule Orderings.preorder_class.order_trans)
-                   apply (rule frontier_le_minus_gen[where C="{#n 1#}\<^sub>z"])
-                    apply assumption
-                   apply simp_all
-                  apply (rule Orderings.preorder_class.eq_refl)
-                  apply (rule arg_cong[where f=frontier])
-                  apply auto
-                  done
-                subgoal
-                  apply (rule Orderings.preorder_class.order_trans)
-                   apply assumption
-                  back
-                  apply (metis frontier_le_add frontier_le_singletons frontier_le_zmset_of lessI nat_less_le)
-                  done
-                done
-              done
-            done
           using prems(19) apply simp
           using prems(20) apply simp
           using prems(21) apply simp
@@ -2753,12 +2733,18 @@ end
               apply (subst add_zmset_add_single)
               apply (subst (asm) add_zmset_add_single)
               apply (simp only: flip: add.assoc)
+              apply (rule Orderings.preorder_class.order_trans[rotated])
               apply (rule frontier_add_le_alt2[where t="n 0"])
                 apply simp
                apply simp
               subgoal premises prems2
-                using prems2(9) prems2(14)[symmetric] apply -
+                using prems2(9) prems2(13)[symmetric] apply -
                 apply simp
+                done
+              subgoal
+                apply (rule Orderings.preorder_class.eq_refl)
+              apply (rule arg_cong[where f=frontier])
+                apply auto
                 done
               done
             subgoal
@@ -2768,33 +2754,27 @@ end
               apply (subst (asm) add_zmset_add_single)
               apply (subst add_empty_zmultiset)
               apply hypsubst_thin
-              apply (subgoal_tac "c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + zmset (map snd (produ os1)) + zmset_of {#n 1. x \<in># mset list#} +
-         zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (map (\<lambda>(p, t, m). (Loc (1 :: 2) (Trg (1 :: 1)), t, - m)) (consu os2)))) +
-         {#n 1#}\<^sub>z +
-         {#Suc (n 1)#}\<^sub>z = 
-         (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + zmset (map snd (produ os1)) +
-         zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (map (\<lambda>(p, t, m). (Loc (1 :: 2) (Trg (1 :: 1)), t, - m)) (consu os2)))) + {#Suc (n 1)#}\<^sub>z) +
-         (zmset_of {#n 1. x \<in># mset list#} +           
-         {#n 1#}\<^sub>z)")
+              subgoal for x batch'
+      apply (subgoal_tac "frontier (zmset_of {#n 1. x \<in># mset batch'#} + {#Suc (n 1)#}\<^sub>z) \<le> frontier {#Suc (n 1)#}\<^sub>z")
+                subgoal
+              apply (rule Orderings.preorder_class.order_trans[rotated])
+                  apply (rule frontier_add_le_alt[rotated 2])
+                  apply assumption
+                    apply (rule Orderings.preorder_class.order_trans)
+                     apply assumption
+                    apply simp_all
+                  apply (simp add: frontier_le_singletons)
               subgoal
-                apply (simp only: )
-                apply (rule frontier_add_le_alt)
-                  apply (rule frontier_add_le_alt2[where t="n 0"])
-                    apply simp
-                   apply simp
-                subgoal premises prems2
-                  using prems2(9) prems2(14)[symmetric] apply -
-                  apply simp
-                  done
-                 apply simp_all
-                apply (subst add_zmset_add_single)
-                subgoal premises
-                  by (metis (no_types, lifting) Groups.add_ac(2) dual_order.trans frontier_below_eq_frontier_plus_pos frontier_le_singletons le_add2 semiring_norm(174) zcount_zmset_of_nonneg)
+                apply (rule Orderings.preorder_class.eq_refl)
+              apply (rule arg_cong[where f=frontier])
+                apply auto
                 done
-              subgoal
-                by simp
               done
+            subgoal
+              by (metis (no_types, lifting) Groups.add_ac(2) frontier_below_eq_frontier_plus_pos semiring_norm(174) zcount_zmset_of_nonneg)
             done
+          done
+        done
           subgoal
             using prems(27,29) prems(5,6,7,8,14,16,10,18) prems(9)[symmetric] apply -
             apply (auto 0 0 simp add: produce_def input_cap_def update_zmultiset_replicate extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
@@ -2814,6 +2794,31 @@ end
             done
           subgoal
             using prems(30) by auto
+subgoal
+            using prems(31) apply -
+            apply (auto 0 0 simp add: input_cap_def update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: prod.splits if_splits option.splits; hypsubst_thin?)
+            apply (rule frontier_le_add)
+             apply assumption
+            using prems(5,6,7,8,14,16,19,27,10,9) apply -
+            apply (auto 0 0 simp add: input_cap_def update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: prod.splits if_splits option.splits; hypsubst_thin?)
+      apply (rule Orderings.preorder_class.order_trans)
+               apply assumption
+            back
+            apply auto
+            done
+          subgoal
+            using prems(32) apply -
+            apply (auto 0 0 simp add: input_cap_def update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: prod.splits if_splits option.splits; hypsubst_thin?)
+            apply (subst (1) add_zmset_add_single)
+            apply (rule frontier_le_add)
+             apply (smt (verit, ccfv_SIG) basic_trans_rules(23) diff_single_eq_union_zmset frontier_add_zmset order_refl)
+            using prems(5,6,7,8,14,16,19,27,10,9) apply -
+            apply (auto 0 0 simp add: input_cap_def update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: prod.splits if_splits option.splits; hypsubst_thin?)
+      apply (rule Orderings.preorder_class.order_trans)
+               apply assumption
+            back
+            apply (metis frontier_le_singletons le_add2 plus_1_eq_Suc)
+            done
           apply (simp add: comp_def)
           apply (rule rtranclp_intros_1)
           apply (rule arg_cong3[where f=map_op])
@@ -2948,8 +2953,7 @@ end
             apply (elim conjE)
             apply hypsubst_thin
             unfolding extract_progress_def
-            apply (auto simp add: comp_def filter_empty_conv c_pts_change_multiplicities produce_def dest!: propagate_all_preserves_c_pts)
-            apply (smt (verit, best) add.commute group_cancel.add1 zmset_of_plus)
+            apply (auto simp add: diff_add_eq comp_def filter_empty_conv c_pts_change_multiplicities produce_def dest!: propagate_all_preserves_c_pts)
             done
           subgoal
             using prems(5,6,7,8,14) prems(10)[symmetric]  apply -
@@ -2980,6 +2984,32 @@ end
             apply (auto 0 0 simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
             done
           using prems(17) apply simp
+          using prems(19) apply simp
+          using prems(20) apply simp
+            using prems(21) apply simp
+            subgoal
+              using prems(22) apply (simp add: changes_below_impl_def)
+              apply (auto 0 0 simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+                 apply fastforce
+              sledgehammer
+
+end
+          using prems(23) apply simp
+          subgoal premises prems2
+            using prems2(2,5) prems(24,25,26,10,5,6,7,8,14,16,10,4,29,28) prems(9)[symmetric] apply -
+            apply (auto 0 0 simp add: input_cap_def update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: if_splits option.splits; hypsubst_thin?)
+            using nat_less_le apply blast
+            done
+          subgoal
+            using prems(27,28,29,25) 
+            apply (auto 0 0 simp add: sorted_wrt_append input_cap_def update_zmultiset_replicate produce_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: if_splits prod.splits option.splits; hypsubst_thin?)
+              apply (smt (verit, best) case_prod_conv le_refl sorted_wrt_map_mono sorted_wrt_true)
+             apply (meson nat_less_le)
+            apply (metis imageI nat_less_le)
+            done
+          subgoal
+
+
           subgoal premises prems2
             using prems(14,18,15) apply simp
             apply (auto 0 0 simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
