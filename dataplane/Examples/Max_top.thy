@@ -1363,14 +1363,14 @@ lemma reachable_locations_my_summ[simp]:
     done
   done
 
-definition "changes_below_impl chgs impls = (\<forall>(l, t, d)\<in>set chgs. \<exists>t'. t' \<in>\<^sub>A frontier (impls l) \<and> t' \<le> t)"
+definition "changes_above_impl chgs impls = (\<forall>(l, t, d)\<in>set chgs. \<exists>t'. t' \<in>\<^sub>A frontier (impls l) \<and> t' \<le> t)"
 
-lemma changes_below_impl_unionI:
-  "changes_below_impl cgs1 impls \<Longrightarrow>
-   changes_below_impl cgs2 impls \<Longrightarrow>
+lemma changes_above_impl_unionI:
+  "changes_above_impl cgs1 impls \<Longrightarrow>
+   changes_above_impl cgs2 impls \<Longrightarrow>
    set cgs3 \<subseteq> set cgs1 \<union> set cgs2 \<Longrightarrow>
-   changes_below_impl cgs3 impls"
-  unfolding changes_below_impl_def
+   changes_above_impl cgs3 impls"
+  unfolding changes_above_impl_def
   by blast
 
 definition "changes_non_zero chgs = (\<forall>d\<in>snd ` snd ` set chgs. d \<noteq> 0)"
@@ -1469,7 +1469,7 @@ lemma
    dataflow_topology.inv_imps_work_sum (summ sg) (-+-) (pt_tr sg) \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg (pt_tr sg) \<Longrightarrow>
    dataflow_topology_from_tree.inv_imp_plus_work_nonneg (pt_tr sg) \<Longrightarrow>
-   changes_below_impl (lo_pt sg) (c_imp (pt_tr sg)) \<Longrightarrow>
+   changes_above_impl (lo_pt sg) (c_imp (pt_tr sg)) \<Longrightarrow>
    changes_non_zero (lo_pt sg) \<Longrightarrow>
    (\<forall> (x, t) \<in> projr ` set (buf1 (Inr (1, 1))) \<union> set (outpu os1 0). \<forall> t' p. Cap t' p \<in> set caps \<longrightarrow> t' \<le> t) \<Longrightarrow>
    sorted_wrt (\<lambda> (_, x) (_, y). x \<le> y) ((map projr (buf1 (Inr (1, 1)))) @ (outpu os1 0)) \<Longrightarrow>
@@ -1483,8 +1483,9 @@ lemma
    frontier (zmset (map snd (produ os1))) \<Longrightarrow>
    frontier (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg))))) \<le>
    frontier (zmset (map snd (inter os1))) \<Longrightarrow>
-   changes_below_impl (extract_progress 0 (edges sg) st1) (c_imp (pt_tr sg)) \<Longrightarrow>
-   changes_below_impl (extract_progress 0 (edges sg) st2) (c_imp (pt_tr sg)) \<Longrightarrow>
+   changes_above_impl (extract_progress 0 (edges sg) st1) (c_imp (pt_tr sg)) \<Longrightarrow>
+   changes_above_impl (extract_progress 0 (edges sg) st2) (c_imp (pt_tr sg)) \<Longrightarrow>
+   c_pts c (Loc 1 (Src 0)) = zmset_of (mset (map time caps)) \<Longrightarrow>
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
 proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c st1 st2 rule: weakBisimWeakUptoBisimCong)
@@ -1497,7 +1498,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
       unfolding wsim_def
       apply (intro allI conjI impI)
       subgoal premises prems for io op1'
-        using prems(35) apply -
+        using prems(36) apply -
         apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin?)
                    apply simp_all
                    prefer 8
@@ -1581,15 +1582,23 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
           subgoal
             using prems(33) prems(5,6,7,8,14,16)  by (auto 0 0 simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
           subgoal premises prems2
-            apply (rule changes_below_impl_unionI[OF prems(22) prems(34)])
-            using prems(5,6,7,14) apply -
-            apply (auto 0 0 simp add: frontier_less_equal_iff changes_below_impl_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: prod.splits option.splits; hypsubst_thin?)
+            apply simp
+            apply (rule changes_above_impl_unionI[OF prems(22) prems(34)])
+            using prems(5,6,7,14,8) prems(35)[symmetric] apply -
+            apply (auto 0 0 simp add: frontier_less_equal_iff changes_above_impl_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: prod.splits option.splits; hypsubst_thin?)
                 apply (metis (lifting) pair_imageI split_conv)
             apply force
             subgoal for x 
-              apply (rule image_eqI[of _ _ "(0, time x, 1)"])
-               apply auto
-              
+              apply (subgoal_tac "(1, time x, -1) \<in> set (operator_state.inter os2)")
+              subgoal
+                apply (rule image_eqI[rotated])
+                 apply auto
+                done
+              subgoal
+                apply (subgoal_tac "(Loc 0 (Src 1), time x, - 1) \<in>#\<^sub>z zmset (map (\<lambda>x. snd (case x of (p, x) \<Rightarrow> (Loc 1 (Src 1), x))) (operator_state.inter os2))")
+end
+
+end
 
 end
           subgoal
@@ -1755,7 +1764,7 @@ end
               using prems(20) apply simp
               using prems(21) apply simp
               using prems(23)[unfolded changes_non_zero_def] apply simp
-              using prems(22)[unfolded changes_below_impl_def] apply simp
+              using prems(22)[unfolded changes_above_impl_def] apply simp
               using prems(25) apply simp
               using prems(26) apply simp
               subgoal
@@ -1811,9 +1820,9 @@ end
               done
             done
           subgoal
-            using prems(13) prems(19-24)[unfolded changes_below_impl_def changes_non_zero_def] by (auto split: option.splits dest!: propagate_pointstamps_preserve_inv)
+            using prems(13) prems(19-24)[unfolded changes_above_impl_def changes_non_zero_def] by (auto split: option.splits dest!: propagate_pointstamps_preserve_inv)
           subgoal
-            using prems(13) prems(20-24)[unfolded changes_below_impl_def changes_non_zero_def] by (auto split: option.splits dest!: propagate_pointstamps_preserve_inv)
+            using prems(13) prems(20-24)[unfolded changes_above_impl_def changes_non_zero_def] by (auto split: option.splits dest!: propagate_pointstamps_preserve_inv)
           subgoal
             using prems(14) by (auto split: option.splits)
           using prems(15) apply simp
@@ -1824,15 +1833,15 @@ end
             done
           using prems(17) apply simp
           subgoal
-            using prems(13) prems(19-24)[unfolded changes_below_impl_def changes_non_zero_def] by (auto split: option.splits dest!: propagate_pointstamps_preserve_inv)
+            using prems(13) prems(19-24)[unfolded changes_above_impl_def changes_non_zero_def] by (auto split: option.splits dest!: propagate_pointstamps_preserve_inv)
           subgoal
-            using prems(13) prems(19-24)[unfolded changes_below_impl_def changes_non_zero_def] by (auto split: option.splits dest!: propagate_pointstamps_preserve_inv)
+            using prems(13) prems(19-24)[unfolded changes_above_impl_def changes_non_zero_def] by (auto split: option.splits dest!: propagate_pointstamps_preserve_inv)
           subgoal
-            using prems(13) prems(19-24)[unfolded changes_below_impl_def changes_non_zero_def] by (auto split: option.splits dest!: propagate_pointstamps_preserve_inv)
+            using prems(13) prems(19-24)[unfolded changes_above_impl_def changes_non_zero_def] by (auto split: option.splits dest!: propagate_pointstamps_preserve_inv)
           subgoal
-            using prems(13) prems(19-24) by (auto simp add: changes_below_impl_def changes_non_zero_def split: option.splits dest!: propagate_pointstamps_preserve_inv)
+            using prems(13) prems(19-24) by (auto simp add: changes_above_impl_def changes_non_zero_def split: option.splits dest!: propagate_pointstamps_preserve_inv)
           subgoal
-            using prems(13) prems(19-24) by (auto simp add: changes_below_impl_def changes_non_zero_def split: option.splits dest!: propagate_pointstamps_preserve_inv)
+            using prems(13) prems(19-24) by (auto simp add: changes_above_impl_def changes_non_zero_def split: option.splits dest!: propagate_pointstamps_preserve_inv)
           using prems(24) apply simp
           using prems(25) apply simp
           subgoal premises
@@ -3003,7 +3012,7 @@ subgoal
           using prems(20) apply simp
             using prems(21) apply simp
             subgoal
-              using prems(22) apply (simp add: changes_below_impl_def)
+              using prems(22) apply (simp add: changes_above_impl_def)
               apply (auto 0 0 simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
                  apply fastforce
               sledgehammer
