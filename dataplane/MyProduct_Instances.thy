@@ -389,9 +389,11 @@ end
 instantiation myprod :: (canonically_ordered_monoid_add, canonically_ordered_monoid_add) canonically_ordered_monoid_add
 begin
 instance
-  apply standard
-  apply (simp add: le_iff_add less_eq_myprod_def)
-  using myprod.exhaust_sel myprod.sel(1,2) plus_myprod_def by metis
+proof
+  fix a b :: \<open>('a, 'b) myprod\<close>
+  show \<open>a \<le> b \<longleftrightarrow> (\<exists>c. b = a + c)\<close>
+    by (simp add: le_iff_add less_eq_myprod_def) (metis myprod.exhaust_sel myprod.sel(1,2) plus_myprod_def)
+qed
 end
 
 end

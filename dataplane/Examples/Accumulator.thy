@@ -15,26 +15,22 @@ corec accumulator_op where
     (cfilter (\<lambda>p. ldropWhile (P p) (ins p) \<noteq> LNil) c\<UU>))\<close>
 
 lemma no_step_accumulator_op_Inp:
-  assumes \<open>step io (accumulator_op f g P n ins acc) op\<close>
-    and \<open>io = Inp p x\<close>
+  assumes \<open>step io (accumulator_op f g P n ins acc) op\<close> \<open>io = Inp p x\<close>
   obtains False
   using assms
   by (subst (asm) accumulator_op.code) (auto split: llist.splits)
 
 lemma no_step_accumulator_op_Tau:
-  assumes \<open>step io (accumulator_op f g P n ins acc) op\<close>
-    and \<open>io = Tau\<close>
+  assumes \<open>step io (accumulator_op f g P n ins acc) op\<close> \<open>io = Tau\<close>
   obtains False
   using assms
   by (subst (asm) accumulator_op.code) (auto split: llist.splits)
 
 lemma step_accumulator_op_Out:
-  assumes \<open>step io (accumulator_op f g P n ins acc) op\<close>
-    and \<open>io = Out p x\<close>
+  assumes \<open>step io (accumulator_op f g P n ins acc) op\<close> \<open>io = Out p x\<close>
   obtains x' lxs where \<open>op = accumulator_op f g P (n(p := n p + the_enat (llength (ltakeWhile (P p) (ins p))))) (ins(p := lxs)) (acc(p := (f p) (acc p) x'))\<close>
     \<open>ldropWhile (P p) (ins p) = LCons x' lxs\<close> \<open>x = ((g p) ((f p) (acc p) x'), n p + the_enat (llength (ltakeWhile (P p) (ins p))))\<close>
     \<open>p \<notin> defaults\<close>
-  apply atomize_elim
   using assms
   by (subst (asm) accumulator_op.code) (auto split: llist.splits)
 
@@ -43,29 +39,35 @@ lemma step_accumulator_op_elim:
   obtains p x x' lxs where \<open>io = Out p x\<close> \<open>op = accumulator_op f g P (n(p := n p + the_enat (llength (ltakeWhile (P p) (ins p))))) (ins(p := lxs)) (acc(p := (f p) (acc p) x'))\<close>
     \<open>ldropWhile (P p) (ins p) = LCons x' lxs\<close> \<open>x = ((g p) ((f p) (acc p) x'), n p + the_enat (llength (ltakeWhile (P p) (ins p))))\<close>
     \<open>p \<notin> defaults\<close>
-  apply atomize_elim
   using assms
   by (subst (asm) accumulator_op.code) (auto split: llist.splits)
 
 lemma step_accumulator_op_Write:
-  \<open>ldropWhile (P p) (ins p) = LCons x' lxs \<Longrightarrow> x = ((g p) (acc' p), n p + the_enat (llength (ltakeWhile (P p) (ins p)))) \<Longrightarrow>
-  p \<notin> defaults \<Longrightarrow> n' = n(p := n p + the_enat (llength (ltakeWhile (P p) (ins p)))) \<Longrightarrow>
-  ins' = ins(p := lxs) \<Longrightarrow> acc' = acc(p := (f p) (acc p) x') \<Longrightarrow> io = Out p x \<Longrightarrow>
-  step io (accumulator_op f g P n ins acc) (accumulator_op f g P n' ins' acc')\<close>
-  apply (subst accumulator_op.code)
-  unfolding Let_def
-  apply (rule SC)
-   apply (rule cimage_eqI[rotated])
-    apply force+
-  done
+  assumes \<open>ldropWhile (P p) (ins p) = LCons x' lxs\<close> \<open>x = ((g p) (acc' p), n p + the_enat (llength (ltakeWhile (P p) (ins p))))\<close>
+    \<open>p \<notin> defaults\<close> \<open>n' = n(p := n p + the_enat (llength (ltakeWhile (P p) (ins p))))\<close>
+    \<open>ins' = ins(p := lxs)\<close> \<open>acc' = acc(p := (f p) (acc p) x')\<close> \<open>io = Out p x\<close>
+  shows \<open>step io (accumulator_op f g P n ins acc) (accumulator_op f g P n' ins' acc')\<close>
+proof -
+  have \<open>Write (accumulator_op f g P n' ins' acc') p x |\<in>| choices (accumulator_op f g P n ins acc)\<close>
+    using assms by (subst (2) accumulator_op.code) (auto intro: bexI[of _ p])
+  thus ?thesis
+    using assms Write_in_choices_step by auto
+qed
 
 lemma wstep_step_accumulator_op:
-  \<open>io \<noteq> Tau \<Longrightarrow> wstep io (accumulator_op f g P n ins acc) op = step io (accumulator_op f g P n ins acc) op\<close>
-  unfolding wstep_def
-  apply (cases io; simp)
-   apply (metis converse_rtranclpE no_step_accumulator_op_Inp no_step_accumulator_op_Tau relcompp.cases)
-  by (smt (verit, ccfv_threshold) converse_rtranclpE no_step_accumulator_op_Tau reflclp_tranclp relcompp_apply step_accumulator_op_elim
-      sup2CI)
+  assumes \<open>io \<noteq> Tau\<close>
+  shows \<open>wstep io (accumulator_op f g P n ins acc) op = step io (accumulator_op f g P n ins acc) op\<close>
+proof (cases io)
+  case (Inp x11 x12)
+  then show ?thesis
+    by (metis converse_rtranclpE estep.simps(2) no_step_accumulator_op_Inp no_step_accumulator_op_Tau pick_middlep
+        wstep_def)
+next
+  case (Out x21 x22)
+  then show ?thesis
+    by (smt (verit, best) converse_rtranclpE estep.simps(3) no_step_accumulator_op_Tau pick_middlep step_accumulator_op_Out
+        step_wstep wstep_def)
+qed (simp add: assms)
 
 lemma wfinished_accumulator_op_ins:
   \<open>wfinished (accumulator_op f g P n ins acc) \<longleftrightarrow> (\<forall>p \<in> \<UU>. ldropWhile (P p) (ins p) = LNil)\<close>
@@ -114,7 +116,7 @@ proof (coinduction arbitrary: n ins acc vios)
     hence \<open>\<forall>p \<in> \<UU>. ldropWhile (P p) (ins p) = LNil\<close>
       using wfinished_accumulator_op_ins by blast
     thus ?thesis
-      using Nil accumulates.intros(1) by blast
+      using Nil by blast
   next
     case (Step vio op' lxs)
     hence \<open>step (io_of_vio vio) (accumulator_op f g P n ins acc) op'\<close>

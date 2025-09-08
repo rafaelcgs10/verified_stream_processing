@@ -43,62 +43,63 @@ abbreviation \<open>choice7 op1 op2 op3 op4 op5 op6 op7 \<equiv> choice2 (choice
 abbreviation "mint_cap os p t \<equiv> os\<lparr> inter := inter os @ [(p, t, 1)] \<rparr>"
 abbreviation "produces os batch \<equiv> os\<lparr> outpu := (\<lambda> p. outpu os p @ map (\<lambda> (x, cap). (x, capability.time cap)) (filter (\<lambda> (x, cap). out cap = p) batch)), produ := produ os @ map (\<lambda> (x, cap). (out cap, capability.time cap, 1)) batch \<rparr>"
 
-declare [[unify_search_bound = 100]]
+definition update_graph where
+  \<open>update_graph E s d t =
+  (let f = (\<lambda>E' t'. let g = case_option (\<lambda>_. []) id (E' t') in E'(t' := Some (g(s := g s @ [d], d := g d @ [s]))))
+  in foldl f E [t ..<Max (dom E)])\<close>
 
+definition update_labels where
+  \<open>update_labels E label = undefined\<close>
+
+definition labels_to_ccs where
+  \<open>labels_to_ccs vertices label = undefined\<close>
+
+(* declare [[unify_search_bound = 100]] *)
 corec label_prop_op where
-  \<open>label_prop_op os caps buf1 E buf2 label = choice7
-  (Read None (\<lambda>st. case st of Inl (Inr f) \<Rightarrow> label_prop_op (os\<lparr> front := f \<rparr>) caps buf1 E buf2 label | _ \<Rightarrow> \<oslash>))
-  (Read (Some (1 :: 2)) (\<lambda>x. case x of
+  \<open>label_prop_op os caps E label = choice7
+  (Read None (\<lambda>st. case st of Inl (Inr f) \<Rightarrow> label_prop_op (os\<lparr>front := f\<rparr>) caps E label | _ \<Rightarrow> \<oslash>))
+  (Read (Some (0 :: 2)) (\<lambda>x. case x of
     Inr ((s, d), ts) \<Rightarrow>
+      let cap = Cap ts 0;
+          (caps', os') = if cap \<in> set caps then (caps, os) else (caps @ [cap], mint_cap os 0 ts);
+          os'' = consume os' 0 ts 1;
+          t = myfst ts;
+          E' = update_graph E s d t;
+          (a, b) = (min s d, max s d);
+          (label', batch) = if label b > a then (label(b := a), map (\<lambda>v. ((v, a), cap)) (filter (\<lambda>v. label v > a) (the (E' t) b))) else (label, []);
+          os''' = produces os'' batch
+     in label_prop_op os''' caps' E' label'
+  | _ \<Rightarrow> \<oslash>))
+  (Read (Some (1 :: 2)) (\<lambda>x. case x of
+    Inr ((n, x), ts) \<Rightarrow>
       let cap = Cap ts 1;
           (caps', os') = if cap \<in> set caps then (caps, os) else (caps @ [cap], mint_cap os 1 ts);
           os'' = consume os' 1 ts 1;
-          buf1' = buf1(ts := buf1 ts @ [(s, d), (d, s)])
-     in label_prop_op os'' (sort_key capability.time caps') buf1' E buf2 label
+          t = myfst ts;
+          label' = undefined
+    in label_prop_op os'' caps' E label'
   | _ \<Rightarrow> \<oslash>))
-  (Read (Some (2 :: 2)) (\<lambda>x. case x of
-    Inr ((n, x), ts) \<Rightarrow>
-      let cap = Cap ts 2;
-          (caps', os') = if cap \<in> set caps then (caps, os) else (caps @ [cap], mint_cap os 2 ts);
-          os'' = consume os' 1 ts 1;
-          buf2' = buf2(ts := buf2 ts @ [(n, x)])
-    in label_prop_op os'' (sort_key capability.time caps') buf1 E buf2' label
-  | _ \<Rightarrow> \<oslash>))
-  (case [cap \<leftarrow> caps. time_below_frontier (capability.time cap) (front os 1) \<and> out cap = 1] of
-    [] \<Rightarrow> Silent (label_prop_op os caps buf1 E buf2 label)
-  | cap # caps' \<Rightarrow>
-      let ts = capability.time cap;
-          buf1' = buf1(ts := []);
-          E' = E @ buf1 ts;
-          vertices = remdups (map fst E' @ map snd E');
-          neighbors = (\<lambda>x. remdups [snd e. e \<leftarrow> E', fst e = x]);
-          batch = [((n, label v), cap). v \<leftarrow> vertices, n \<leftarrow> neighbors v];
-          os' = produces os batch;
-          os'' = drop_cap os' cap
-      in Silent (label_prop_op os'' caps' buf1' E' buf2 label))
-  (case [cap \<leftarrow> caps. time_below_frontier (capability.time cap) (front os 2) \<and> out cap = 2] of
-    [] \<Rightarrow> Silent (label_prop_op os caps buf1 E buf2 label)
-  | cap # caps' \<Rightarrow>
-      let ts = capability.time cap;
-          buf2' = buf2(ts := []);
-          vertices = remdups (map fst E @ map snd E);
-          neighbors = (\<lambda>x. remdups [snd e. e \<leftarrow> E, fst e = x]);
-          min_label = (\<lambda>n. Min (set [x. (n, x) \<leftarrow> buf2 ts]));
-          updated_vertices = [v. v \<leftarrow> vertices, min_label v < label v];
-          label' = foldl (\<lambda>f v. f(v := min_label v)) label updated_vertices;
-          batch = [((n, label' v), cap). v \<leftarrow> updated_vertices, n \<leftarrow> neighbors v];
-          os' = produces os batch;
-          os'' = drop_cap os' cap
-      in Silent (label_prop_op os'' caps' buf1 E buf2' label'))
+  undefined
+  undefined
   (Choice (cimage (\<lambda>p. case outpu os p of
-    x # xs \<Rightarrow> send_output (label_prop_op (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) caps buf1 E buf2 label) p x)
+    x # xs \<Rightarrow> send_output (label_prop_op (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) caps E label) p x)
     (cfilter (\<lambda>p. outpu os p \<noteq> []) c\<UU>)))
   (let (os', st) = obtain_progress os
-  in send_progress (label_prop_op os' caps buf1 E buf2 label) st)\<close>
+  in send_progress (label_prop_op os' caps E label) st)\<close>
+
+abbreviation inp_op' where
+  \<open>inp_op' os n ins \<equiv>
+  map_op (case_option (Inl (0 :: 3)) (\<lambda>p. Inr (0, p))) (case_option (Inl (0 :: 3)) (\<lambda>p. Inr (0, p)))
+  (ooo_input_top os n ins)\<close>
 
 abbreviation label_op where
-  \<open>label_op os caps buf1 E buf2 label \<equiv>
+  \<open>label_op os caps E label \<equiv>
   map_op (case_option (Inl (1 :: 3)) (\<lambda>p. Inr (1, p))) (case_option (Inl (1 :: 3)) (\<lambda>p. Inr (1, p)))
-  (label_prop_op os caps buf1 E buf2 label)\<close>
+  (label_prop_op os caps E label)\<close>
+
+abbreviation incr_op' where
+  \<open>incr_op' incr os \<equiv>
+  map_op (case_option (Inl (2 :: 3)) (\<lambda>p. Inr (1, p))) (case_option (Inl (2 :: 3)) (\<lambda>p. Inr (2, p)))
+  (increment_top incr os)\<close>
 
 end
