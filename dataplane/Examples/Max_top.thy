@@ -1484,8 +1484,8 @@ lemma
    frontier (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg))))) \<le>
    frontier (zmset (map snd (inter os1))) \<Longrightarrow>
    changes_above_impl (extract_progress 0 (edges sg) st1) (c_imp (pt_tr sg)) \<Longrightarrow>
-   changes_above_impl (extract_progress 0 (edges sg) st2) (c_imp (pt_tr sg)) \<Longrightarrow>
-   c_pts c (Loc 1 (Src 0)) = zmset_of (mset (map time caps)) \<Longrightarrow>
+   changes_above_impl (extract_progress 1 (edges sg) st2) (c_imp (pt_tr sg)) \<Longrightarrow>
+   set_zmset (c_pts c (Loc 1 (Src 0))) = set (map time caps) \<Longrightarrow>
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
 proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c st1 st2 rule: weakBisimWeakUptoBisimCong)
@@ -1583,19 +1583,43 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
             using prems(33) prems(5,6,7,8,14,16)  by (auto 0 0 simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
           subgoal premises prems2
             apply simp
-            apply (rule changes_above_impl_unionI[OF prems(22) prems(34)])
-            using prems(5,6,7,14,8) prems(35)[symmetric] apply -
+            using prems(5,6,7,14,8,22,34) prems(35)[symmetric] apply -
             apply (auto 0 0 simp add: frontier_less_equal_iff changes_above_impl_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: prod.splits option.splits; hypsubst_thin?)
-                apply (metis (lifting) pair_imageI split_conv)
-            apply force
-            subgoal for x 
-              apply (subgoal_tac "(1, time x, -1) \<in> set (operator_state.inter os2)")
-              subgoal
-                apply (rule image_eqI[rotated])
-                 apply auto
-                done
-              subgoal
-                apply (subgoal_tac "(Loc 0 (Src 1), time x, - 1) \<in>#\<^sub>z zmset (map (\<lambda>x. snd (case x of (p, x) \<Rightarrow> (Loc 1 (Src 1), x))) (operator_state.inter os2))")
+            subgoal 
+            apply (drule bspec)
+               apply blast
+              apply auto
+              done
+                     subgoal 
+            apply (drule bspec)
+                        apply blast
+                       apply auto
+                       done
+                     subgoal for x
+                       apply (cases "(Loc 1 (Src 1), time x, 1) \<in> set (lo_pt sg)")
+                       subgoal
+                         by fast
+                       apply (drule bspec[of _ _ "(Loc 1 (Src 1), time x, 1)"])
+                         apply simp_all
+                       apply (rule disjI2)
+                       apply (rule image_eqI[of _ _ "(1, time x, 1)"])
+                        apply force
+                       
+
+
+
+end
+
+
+
+                       apply (drule arg_cong[where f=set_zmset])
+                       
+                       find_theorems image "_ \<in> _"
+
+                       find_consts "_ zmultiset \<Rightarrow> _ set"
+     
+
+
 end
 
 end
