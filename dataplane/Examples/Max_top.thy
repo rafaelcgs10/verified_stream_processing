@@ -681,9 +681,9 @@ lemma sorted_caps_append:
   done
 
 lemma frontier_less_equal_iff:
-  "frontier_less_equal f t \<longleftrightarrow> (\<exists> t'. t' \<in>\<^sub>A f \<and> t' \<le> t)"
-  unfolding frontier_less_equal_def
-  apply auto
+  "frontier_less_equal f t \<longleftrightarrow> f \<le> frontier {#t#}\<^sub>z"
+  unfolding frontier_less_equal_def less_eq_antichain_def
+  apply (auto simp add: in_frontier_iff)
   done
 
 
@@ -755,7 +755,7 @@ lemma frontier_less_equal_frontier_below_eq_frontier:
   apply (elim conjE)
   apply (drule spec, drule mp, assumption)
   apply auto
-  done
+  oops
 
 lemma UNIV_location[simp]:
   "(UNIV :: ('a :: enum, 'b :: enum) location set) = (\<lambda> (n, p). Loc n p) ` (UNIV \<times> UNIV)"
@@ -1458,43 +1458,42 @@ lemma zmultiset_move_add_other_side:
 term dataflow_topology.implied_frontier_alt
 
 lemma
-  \<open>xs 0 = outpu os2 0 \<Longrightarrow>
+  \<open>summ sg = my_summ \<Longrightarrow>
+   edges sg = (\<lambda> l. if l = Loc 0 (Src 1) then [Loc 1 (Trg 1)] else []) \<Longrightarrow>
+   consu os1 = [] \<Longrightarrow>
+   xs 0 = outpu os2 0 \<Longrightarrow>
    ys 0 = max_from_buf caps buf2 ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0) \<Longrightarrow>
    (\<forall> x \<in> set (buf1 (Inr (1, 0))). is_Inr x) \<Longrightarrow>
    sorted (map time caps) \<Longrightarrow>
+   (\<forall>t. 0 \<le> zcount (zmset (map snd (consu os2))) t) \<Longrightarrow>
+
    obtain_progress os1 = (a, st1) \<Longrightarrow>
    obtain_progress os2 = (b, st2) \<Longrightarrow>
    sg' = sg\<lparr> lo_pt := lo_pt sg @ extract_progress 0 (edges sg) st1 @ extract_progress 1 (edges sg) st2 \<rparr> \<Longrightarrow>
    c = change_multiplicities (summ sg') (lo_pt sg') (pt_tr sg') \<Longrightarrow>
    c_pts c (Loc 1 (Trg 0)) = zmset_of (mset (map snd ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0))) \<Longrightarrow>
    c_pts c (Loc 0 (Src 0)) = input_cap inps n \<Longrightarrow>
-   front os2 0 \<le> frontier (c_imp c (Loc 1 (Trg 0))) \<Longrightarrow>
-   dataflow_topology.inv_imps_work_sum (summ sg) dataflow_topology_from_tree.followed_by (pt_tr sg) \<Longrightarrow>
-   summ sg = my_summ \<Longrightarrow>
-   edges sg = (\<lambda> l. if l = Loc 0 (Src 1) then [Loc 1 (Trg 1)] else []) \<Longrightarrow>
-   (\<forall>t. 0 \<le> zcount (zmset (map snd (consu os2))) t) \<Longrightarrow>
    c_pts c (Loc 0 (Trg 1)) = {#}\<^sub>z \<Longrightarrow>
-   consu os1 = [] \<Longrightarrow>
-   True \<Longrightarrow>
+
+   front os2 0 \<le> frontier (c_imp (pt_tr sg) (Loc 1 (Trg 0))) \<Longrightarrow>
+   frontier (c_imp (pt_tr sg) (Loc 1 (Trg 0))) \<le> dataflow_topology.implied_frontier_alt my_summ (+) (pt_tr sg) (Loc 1 (Trg 0)) \<Longrightarrow>
+   dataflow_topology.implied_frontier_alt my_summ (+) (pt_tr sg) (Loc 1 (Trg 0)) \<le> dataflow_topology.implied_frontier_alt my_summ (+) c (Loc 1 (Trg 0)) \<Longrightarrow>
+   dataflow_topology.implied_frontier_alt my_summ (+) c (Loc 1 (Trg 0)) \<le> frontier (input_cap inps n) \<Longrightarrow>
+
+   (\<forall> (x, t) \<in> projr ` set (buf1 (Inr (1, 1))) \<union> set (outpu os1 0). frontier_less_equal (front os2 0) t) \<Longrightarrow>
+
+   dataflow_topology.inv_imps_work_sum (summ sg) dataflow_topology_from_tree.followed_by (pt_tr sg) \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum (summ sg) (-+-) (pt_tr sg) \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg (pt_tr sg) \<Longrightarrow>
    dataflow_topology_from_tree.inv_imp_plus_work_nonneg (pt_tr sg) \<Longrightarrow>
-   changes_above_impl (lo_pt sg) (c_imp (pt_tr sg)) \<Longrightarrow>
-   changes_non_zero (lo_pt sg) \<Longrightarrow>
-   (\<forall> (x, t) \<in> projr ` set (buf1 (Inr (1, 1))) \<union> set (outpu os1 0). \<forall> t' p. Cap t' p \<in> set caps \<longrightarrow> t' \<le> t) \<Longrightarrow>
+   changes_above_impl (lo_pt sg @ extract_progress 0 (edges sg) st1 @ extract_progress 1 (edges sg) st2) (c_imp (pt_tr sg)) \<Longrightarrow>
+   changes_non_zero (lo_pt sg @ extract_progress 0 (edges sg) st1 @ extract_progress 1 (edges sg) st2) \<Longrightarrow>
+
    sorted_wrt (\<lambda> (_, x) (_, y). x \<le> y) ((map projr (buf1 (Inr (1, 1)))) @ (outpu os1 0)) \<Longrightarrow>
-   frontier (c_pts c (Loc 1 (Trg 0)) + c_pts c (Loc 0 (Src 0))) \<le> frontier (input_cap inps n) \<Longrightarrow>
-   frontier (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) +
-   (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg))))) \<le> frontier (input_cap inps n) \<Longrightarrow>
    (\<forall> t' p. Cap t' p \<in> set caps \<longrightarrow> t' < n 0) \<Longrightarrow>
    (\<forall> (x, t) \<in> projr ` set (buf1 (Inr (1, 1))) \<union> set (outpu os1 0). t < n 0) \<Longrightarrow>
    (\<forall> t\<ge>n 0. buf2 (Cap t 1) = []) \<Longrightarrow>
-   frontier (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg))))) \<le>
-   frontier (zmset (map snd (produ os1))) \<Longrightarrow>
-   frontier (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 1 (Trg 1) = l') (lo_pt sg))) + (c_pts (pt_tr sg) (Loc 0 (Src 1)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') (lo_pt sg))))) \<le>
-   frontier (zmset (map snd (inter os1))) \<Longrightarrow>
-   frontier (c_imp c (Loc 1 (Trg 0))) \<le> dataflow_topology.implied_frontier_alt my_summ (+) c (Loc 1 (Trg 0)) \<Longrightarrow>
-   dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
+    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
 proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c st1 st2 rule: weakBisimWeakUptoBisimCong)
   case SIM1
@@ -1604,11 +1603,22 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
               apply (rule arg_cong2[where f=append])
               subgoal
                 apply (subgoal_tac "caps = filter (\<lambda>cap. \<not>  frontier_less_equal (front os2 1) (time cap) ) caps @ filter (\<lambda>cap. frontier_less_equal (front os2 1) (time cap) ) caps")
-                subgoal
-                  unfolding max_from_caps_buf_def
-                  apply (simp add: map_eq_append_conv)
-                  apply (intro exI conjI)
-                    apply assumption
+                subgoal premises prems2
+                  apply (subst prems2(1))
+                  apply (subst max_from_caps_buf_append)
+                  apply (rule arg_cong2[where f=append])
+                  subgoal
+                    unfolding max_from_caps_buf_def
+                    apply (rule map_cong)
+                     apply (rule refl)
+                    apply simp
+                    apply (rule Max_eq_if)
+                       apply simp_all
+                    unfolding frontier_less_equal_iff
+                    using prems(33,11,5,6,7,8,14,16,10,9)
+
+                    find_theorems "Max _ = Max _"
+     
                    apply auto
                   subgoal premises prems2 for cap
                     using prems2(2,3) apply -
@@ -1620,8 +1630,8 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
                       apply (subgoal_tac "\<not> frontier_less_equal (dataflow_topology.implied_frontier_alt my_summ trivial_dataflow_topology_interpretation.followed_by c (Loc 1 (Trg 0))) (time cap)")
                       subgoal premises prems3
                         using prems3(3,5) apply -
-                        apply (subst (asm)  dataflow_topology.implied_frontier_alt_def)
-                        apply simp
+                        apply (subst (asm) (1 2) dataflow_topology.implied_frontier_alt_def)
+                        apply simp_all
                         using prems(5,6,7,8,14,16,10,9) apply -
                         unfolding list_to_buf_def 
                         apply (auto simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def filter_empty_conv)
@@ -1629,10 +1639,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
                         subgoal
                         unfolding frontier_less_equal_iff
                         apply auto
-                        apply (drule spec[of _ "time cap"])
-                        apply (drule mp)
-                        apply simp_all
-
+                
                         find_theorems "_ \<in>\<^sub>A _"
 
 
