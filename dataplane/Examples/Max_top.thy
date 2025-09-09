@@ -1473,7 +1473,7 @@ lemma
    c = change_multiplicities (summ sg') (lo_pt sg') (pt_tr sg') \<Longrightarrow>
    c_pts c (Loc 1 (Trg 0)) = zmset_of (mset (map snd ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0))) \<Longrightarrow>
    c_pts c (Loc 0 (Src 0)) = input_cap inps n \<Longrightarrow>
-   c_pts c (Loc 0 (Trg 1)) = {#}\<^sub>z \<Longrightarrow>
+   c_pts (pt_tr sg) (Loc 0 (Trg 1)) = {#}\<^sub>z \<Longrightarrow>
 
    front os2 0 \<le> frontier (c_imp (pt_tr sg) (Loc 1 (Trg 0))) \<Longrightarrow>
    frontier (c_imp (pt_tr sg) (Loc 1 (Trg 0))) \<le> dataflow_topology.implied_frontier_alt my_summ (+) (pt_tr sg) (Loc 1 (Trg 0)) \<Longrightarrow>
@@ -1505,7 +1505,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
       unfolding wsim_def
       apply (intro allI conjI impI)
       subgoal premises prems for io op1'
-        using prems(34) apply -
+        using prems(31) apply -
         apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin?)
                    apply simp_all
                    prefer 8
@@ -1522,7 +1522,42 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c s
            apply (rule wb_upto_b_base)
            apply (intro conjI exI)
                               apply (rule refl)+
-          using prems(3) apply simp
+          subgoal using prems(1) by simp
+          subgoal using prems(2) by simp
+          subgoal using prems(3) by simp
+          apply (rule refl)+
+          subgoal using prems(6) by simp
+          subgoal using prems(7) apply -
+            using sorted_filter by blast
+          subgoal using prems(8) by simp
+          subgoal using prems(9,2,3,9,10,11,12,13) 
+            by (auto simp add: extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+          subgoal using prems(10,9,2,3,9,10,11,12,13,14)
+            by (auto simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+          subgoal using prems(10,9,2,3,9,10,11,12,13,15)
+            by (auto simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+            subgoal using prems(16)
+            by (auto simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+    subgoal using prems(17)
+      by (auto simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+    subgoal using prems(18) apply -
+      apply simp
+    apply (auto simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+    apply (subst (1 2) dataflow_topology.implied_frontier_alt_def)
+    apply simp_all
+    apply (subst (asm) (1 2) dataflow_topology.implied_frontier_alt_def)
+    apply simp_all
+    apply (auto simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+    apply (rule Orderings.preorder_class.order_trans)
+    apply assumption
+    apply (rule frontier_below_eq_frontier_plus)
+    find_theorems  change_multiplicities 
+
+end
+          subgoal using prems(10) by simp
+          subgoal using prems(2) by simp
+          subgoal using prems(2) by simp
+
           subgoal
             using prems(4) sorted_filter by blast
           subgoal
