@@ -46,10 +46,11 @@ abbreviation "produces os batch \<equiv> os\<lparr> outpu := (\<lambda> p. outpu
 definition update_graph where
   \<open>update_graph E s d t =
   (let f = (\<lambda>E' t'. let g = case_option (\<lambda>_. []) id (E' t') in E'(t' := Some (g(s := g s @ [d], d := g d @ [s]))))
-  in foldl f E [t ..<Max (dom E)])\<close>
+  in foldl f E [t..<Max (dom E)])\<close>
 
-definition update_labels where
-  \<open>update_labels E label = undefined\<close>
+definition update_label where
+  \<open>update_label label a b t n =
+  (let f = (\<lambda>label' t'. label'(t' := (label' t')(b := min (label' t' b) a))) in foldl f label [t..<n])\<close>
 
 definition labels_to_ccs where
   \<open>labels_to_ccs vertices label = undefined\<close>
@@ -66,7 +67,10 @@ corec label_prop_op where
           t = myfst ts;
           E' = update_graph E s d t;
           (a, b) = (min s d, max s d);
-          (label', batch) = if label b > a then (label(b := a), map (\<lambda>v. ((v, a), cap)) (filter (\<lambda>v. label v > a) (the (E' t) b))) else (label, []);
+          label' = update_label label a b t (Max (dom E));
+          batch = if label t b > a
+            then map (\<lambda>v. ((v, a), cap)) (filter (\<lambda>v. label t v > a) (the (E' t) b))
+            else [];
           os''' = produces os'' batch
      in label_prop_op os''' caps' E' label'
   | _ \<Rightarrow> \<oslash>))
