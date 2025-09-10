@@ -376,6 +376,12 @@ lemma in_frontier_in_frontier_add:
    \<exists>t'. t' \<in>\<^sub>A frontier (A + B) \<and> t' \<le> t"
   using frontier_below_eq_frontier_plus_pos less_eq_antichain_def by blast
 
+lemma in_frontier_in_frontier_add_alt:
+  "t' \<in>\<^sub>A frontier A \<Longrightarrow>
+   t' \<le> t \<Longrightarrow>
+   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
+   \<exists>t'. t' \<in>\<^sub>A frontier (A + B) \<and> t' \<le> t"
+  using in_frontier_in_frontier_add order_trans by blast
 
 
 lemma frontier_add_le_alt2:
