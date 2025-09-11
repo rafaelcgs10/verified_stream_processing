@@ -260,7 +260,6 @@ lemma frontier_le_add:
   apply auto
   by (metis order.trans trivial_dataflow_topology_interpretation.frontier_unionD trivial_dataflow_topology_interpretation.obtain_elem_frontier)
 
-
 lemma frontier_linorder:
   "frontier (A :: ('a :: linorder) zmultiset) = (if {t. zcount A t > 0} = {} then {}\<^sub>A else antichain {Min {t. zcount A t > 0}})"
   apply (auto split: if_splits simp add: empty_antichain_def minimal_antichain_def frontier.abs_eq)
@@ -478,6 +477,9 @@ lemma frontier_add_delay_or_drop:
   apply safe
   by (metis dual_order.trans in_frontier_addD trivial_dataflow_topology_interpretation.obtain_frontier_elem)
 
+
+
+end
     
 
 end

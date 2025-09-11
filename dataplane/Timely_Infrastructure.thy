@@ -45,8 +45,6 @@ type_synonym 'a change_batch = "'a list"
 (* Inspired by timely/src/progress/subgraph.rs:237 *)
 record ('id, 'p, 't) subgraph =
   pt_tr :: "(('id, 'p) location, 't) configuration"
-  (* We consider local_pointstamp and final_pointstamp as the same thing in this non-distributed version *)
-  lo_pt :: "(('id, 'p) location \<times> 't \<times> int) change_batch"
   edges :: "('id, 'p) location \<Rightarrow> ('id, 'p) location list"
   summ :: "('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> 't antichain"
 
@@ -214,7 +212,6 @@ definition "propagate_pointstamps summary conf cbs = propagate_all summary (chan
 
 abbreviation "init_subgraph summary \<equiv>
    \<lparr> pt_tr = the (propagate_pointstamps summary empty_conf (concat (map (\<lambda> nid. map (\<lambda> p. (Loc nid (Src p), 0, 1)) enum_class.enum) enum_class.enum))),
-   lo_pt = [],
    edges = (\<lambda> l1. [l2 \<leftarrow> enum_class.enum. \<not> is_empty_antichain (summary l1 l2) \<and> is_Src (port l1) \<and> is_Trg (port l2) ]),
    summ = summary \<rparr>"
 
@@ -240,13 +237,13 @@ datatype ('p, 't) capability = Cap (time: "'t :: plus") (out: 'p)
 
 corec dataflow_op where
   "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
-     Read (Inl nid) f \<Rightarrow> (case propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg) of
-         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr> in
+     Read (Inl nid) f \<Rightarrow> (case propagate_all (summ sg) (pt_tr sg) of
+         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf' \<rparr> in
          let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron))))))
    | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x)))
    | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
    | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
-   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> lo_pt := lo_pt sg @ extract_progress nid (edges sg) st \<rparr>) op')
+   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> pt_tr := (change_multiplicities (summ sg) (extract_progress nid (edges sg) st) (pt_tr sg)) \<rparr>) op')
    | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) (choices op))"
 
 lemma propagate_all_terminates[simp]:
@@ -259,21 +256,15 @@ lemma change_multiplicities_terminates[simp]:
   apply (auto simp add: propagate_pointstamps_def)
   done
 
-term "a \<or> b"
-term xor
-
 lemma step_dataflow_op_elim:
   assumes "step io (dataflow_op sg op) op'"
   obtains
     nid p op'' x where "io = Inp (nid, p) x" "op' = dataflow_op sg op''" "step (Inp (Inr (nid, p)) (Inr x)) op op''"
   | nid p op'' x where "io = Out (nid, p) x" "op' = dataflow_op sg op''" "step (Out (Inr (nid, p)) (Inr x)) op op''"
   | op'' where "io = Tau" "op' = dataflow_op sg op''" "step Tau op op''"
-  | nid op'' st where "io = Tau" "op' = dataflow_op (sg\<lparr> lo_pt := lo_pt sg @ extract_progress nid (edges sg) st \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
-  | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr>)"
+  | nid op'' st where "io = Tau" "op' = dataflow_op (sg\<lparr> pt_tr := (change_multiplicities (summ sg) (extract_progress nid (edges sg) st) (pt_tr sg)) \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
+  | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_all (summ sg) (pt_tr sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf' \<rparr>)"
     "imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p)))" "op' = dataflow_op sg' op''" "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op''"
-(*   | op'' p x where "io = Tau" "op' = \<oslash>" "step (Out (Inl p) (Inr x)) op op''"
-  | op'' p x where "io = Tau" "op' = \<oslash>" "step (Out (Inl p) (Inl (Inr x))) op op''"
-  | op'' p x where "io = Tau" "op' = \<oslash>" "step (Out (Inr p) (Inl x)) op op''" *)
   using assms apply -
   apply atomize_elim
   apply (subst (asm) dataflow_op.code)
@@ -285,23 +276,24 @@ lemma step_dataflow_op_elim:
     done
   done
 
-lemma step_Tau_dataflow_op_Out_Inl_intro[intro]:
-  "step (Out (Inl nid) (Inl (Inl st))) op op' \<Longrightarrow>
-   sg' = sg\<lparr> lo_pt := lo_pt sg @ extract_progress nid (edges sg) st \<rparr> \<Longrightarrow>
-   step Tau (dataflow_op sg op) (dataflow_op sg' op')"
-  apply (subst dataflow_op.code)
-  apply (force elim: step_choicesE split: sum.splits option.splits)
-  done
-
 lemma step_Tau_dataflow_op_Inp_Inl_intro[intro]:
   "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op' \<Longrightarrow>
-   conf' = the (propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg)) \<Longrightarrow>
-   sg' = sg\<lparr> pt_tr := conf', lo_pt := [] \<rparr> \<Longrightarrow>
+   conf' = the (propagate_all(summ sg) (pt_tr sg)) \<Longrightarrow>
+   sg' = sg\<lparr> pt_tr := conf' \<rparr> \<Longrightarrow>
    imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) \<Longrightarrow>
    step Tau (dataflow_op sg op) (dataflow_op sg' op')"
   apply (subst dataflow_op.code)
   apply (fastforce elim: step_choicesE split: sum.splits option.splits)
   done
+
+lemma step_Tau_dataflow_op_Out_Inl_intro[intro]:
+  "step (Out (Inl nid) (Inl (Inl st))) op op' \<Longrightarrow>
+   sg' = sg\<lparr> pt_tr := (change_multiplicities (summ sg) (extract_progress nid (edges sg) st) (pt_tr sg)) \<rparr> \<Longrightarrow>
+   step Tau (dataflow_op sg op) (dataflow_op sg' op')"
+  apply (subst dataflow_op.code)
+  apply (force elim: step_choicesE split: sum.splits option.splits)
+  done
+
 
 lemma step_Tau_dataflow_op_Tau_intro[intro]:
   "step Tau op op' \<Longrightarrow>
@@ -358,6 +350,7 @@ lemma dataflow_op_end_op:
   apply simp
   done
 
+(*
 lemma steps_Tau_dataflow_op_Out_Inl_intro[intro]:
   "steps (map (\<lambda> st. Out (Inl nid) (Inl (Inl st))) xs) op op' \<Longrightarrow>
    sg' = sg\<lparr> lo_pt := lo_pt sg @ concat (map (\<lambda> st. (extract_progress nid (edges sg) st)) xs) \<rparr> \<Longrightarrow>
@@ -379,6 +372,7 @@ lemma steps_Tau_dataflow_op_Out_Inl_intro[intro]:
     apply fastforce
     done
   done
+*)
 
 lemma steps_Tau_dataflow_op_Tau_intro[intro]:
   "steps (replicate n Tau) op op' \<Longrightarrow>
@@ -395,7 +389,7 @@ lemma step_Taus_dataflow_op_Taus_intro[intro]:
    apply force
   apply (meson rtranclp.intros(2) step_Tau_dataflow_op_Tau_intro)
   done
-
+(* 
 lemma dataflow_writes_extract_progress_from_push:
   "g = (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) \<Longrightarrow>
    dataflow_op sg
@@ -416,8 +410,8 @@ lemma dataflow_writes_extract_progress_from_push:
     apply (subst (1 2) dataflow_op.code)
     apply (simp add: extract_progress_def split: option.splits sum.splits)
     done
-  done
-
+  done *)
+(* 
 lemma dataflow_extract_progress_from_push:
   "dataflow_op sg
      ((Write op (Inl nid) (Inl (Inl \<lparr>cons = cs, inte = is, prod = ps\<rparr>)))) =
@@ -425,7 +419,7 @@ lemma dataflow_extract_progress_from_push:
      ((Write op (Inl nid) (Inl (Inl \<lparr>cons = [], inte = [], prod = []\<rparr>))))"
   apply (subst (1 2) dataflow_op.code)
   apply (auto simp add: extract_progress_def split: if_splits option.splits)
-  done
+  done *)
 
 lemma dataflow_op_simps[simp]:
   "\<not> is_Read (dataflow_op sg op)"
@@ -434,7 +428,7 @@ lemma dataflow_op_simps[simp]:
   "is_Choice (dataflow_op sg op)"
   by (subst dataflow_op.code; simp)+
 
-lemma un_Choice_dataflow_op_simp[simp]:
+(* lemma un_Choice_dataflow_op_simp[simp]:
   "un_Choice (dataflow_op sg op) = ((\<lambda>op. case op of
         Read (Inl nid) f \<Rightarrow>
           (case propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg) of
@@ -448,7 +442,7 @@ lemma un_Choice_dataflow_op_simp[simp]:
         | Silent op' \<Rightarrow> Silent (dataflow_op sg op')) |`|
   choices op)"
   by (simp add: dataflow_op.code)
-
+ *)
 definition "compile_dataflow dt = (let (summary, op) = compile_dataflow_tree dt in
                                     let sg = init_subgraph summary in
                                     dataflow_op sg op)"
@@ -582,7 +576,7 @@ lemma change_multiplicities_same_pointstamps:
       done
     done
   done
-
+(* 
 lemma dataflow_op_change_multiplicities:
   "change_multiplicities (summ sg) (lo_pt sg) (pt_tr sg) = change_multiplicities (summ sg') (lo_pt sg') (pt_tr sg') \<Longrightarrow>
    summ sg = summ sg' \<Longrightarrow>
@@ -631,7 +625,7 @@ lemma dataflow_op_change_multiplicities:
     subgoal
       by (force intro: op.cong_Silent op.cong_base)
     done
-  done
+  done *)
 
 record ('p, 'd, 't) operator_state =
   consu :: "('p \<times> 't \<times> int) list"
