@@ -1402,15 +1402,15 @@ lemma reachable_locations_my_summ[simp]:
     done
   done
 
-definition "changes_above_impl chgs impls = (\<forall>(l, t, d)\<in>set chgs. \<exists>t'. t' \<in>\<^sub>A frontier (impls l) \<and> t' \<le> t)"
+definition "changes_above_impl impls chgs = (\<forall>(l, t, d)\<in>set chgs. \<exists>t'. t' \<in>\<^sub>A frontier (impls l) \<and> t' \<le> t)"
 
-lemma changes_above_impl_unionI:
+(* lemma changes_above_impl_unionI:
   "changes_above_impl cgs1 impls \<Longrightarrow>
    changes_above_impl cgs2 impls \<Longrightarrow>
    set cgs3 \<subseteq> set cgs1 \<union> set cgs2 \<Longrightarrow>
    changes_above_impl cgs3 impls"
   unfolding changes_above_impl_def
-  by blast
+  by blast *)
 
 definition "changes_non_zero chgs = (\<forall>d\<in>snd ` snd ` set chgs. d \<noteq> 0)"
 
@@ -1535,7 +1535,7 @@ lemma
    dataflow_topology.inv_imps_work_sum (summ sg) (-+-) (pt_tr sg) \<Longrightarrow>
    dataflow_topology.inv_implications_nonneg (pt_tr sg) \<Longrightarrow>
    dataflow_topology.inv_imp_plus_work_nonneg (pt_tr sg) \<Longrightarrow>
-   changes_above_impl (lo_pt sg @ extract_progress 0 (edges sg) st1 @ extract_progress 1 (edges sg) st2) (c_imp (pt_tr sg)) \<Longrightarrow>
+   changes_above_impl (c_imp (pt_tr sg)) (lo_pt sg @ extract_progress 0 (edges sg) st1 @ extract_progress 1 (edges sg) st2)  \<Longrightarrow>
    changes_non_zero (lo_pt sg @ extract_progress 0 (edges sg) st1 @ extract_progress 1 (edges sg) st2) \<Longrightarrow>
 
    sorted_wrt (\<lambda> (_, x) (_, y). x \<le> y) ((map projr (buf1 (Inr (1, 1)))) @ (outpu os1 0)) \<Longrightarrow>
@@ -1545,7 +1545,7 @@ lemma
    c_pts c (Loc 1 (Src 0)) = zmset_of (mset (map time caps)) \<Longrightarrow>
    frontier (c_imp (pt_tr sg) (Loc 1 (Src 0))) \<le> dataflow_topology.implied_frontier_alt my_summ (+) (pt_tr sg) (Loc 1 (Src 0)) \<Longrightarrow>
    frontier (c_imp (pt_tr sg) (Loc 0 (Src 0))) \<le> dataflow_topology.implied_frontier_alt my_summ (+) (pt_tr sg) (Loc 0 (Src 0)) \<Longrightarrow>
-   dataflow_topology.implied_frontier_alt my_summ (+) (pt_tr sg) (Loc 0 (Src 0)) \<le> dataflow_topology.implied_frontier_alt my_summ (+) (change_multiplicities (summ sg) (lo_pt sg) (pt_tr sg)) (Loc 0 (Src 0)) \<Longrightarrow>
+   changes_above_impl (c_imp (pt_tr sg)) (extract_progress 0 (edges sg) st1 @ extract_progress 1 (edges sg) st2)  \<Longrightarrow>
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
 proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg sg' a b c st1 st2 rule: weakBisimWeakUptoBisimCong)
