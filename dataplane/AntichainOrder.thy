@@ -253,9 +253,9 @@ lemma frontier_le_add_singleton:
 
 
 lemma frontier_le_add:
-  "frontier C \<le> frontier A \<Longrightarrow>
-   frontier C \<le> frontier B \<Longrightarrow>
-   frontier C \<le> frontier (A + B)"
+  "C \<le> frontier A \<Longrightarrow>
+   C \<le> frontier B \<Longrightarrow>
+   C \<le> frontier (A + B)"
   unfolding less_eq_antichain_def
   apply auto
   by (metis order.trans trivial_dataflow_topology_interpretation.frontier_unionD trivial_dataflow_topology_interpretation.obtain_elem_frontier)
