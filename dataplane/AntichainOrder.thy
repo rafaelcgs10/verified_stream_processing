@@ -493,6 +493,14 @@ lemma
     subgoal for t'
       oops
 
-
+lemma frontier_add_le_alt3:
+  "frontier B \<le> frontier C \<Longrightarrow>
+   (\<forall> t. zcount A t \<ge> 0) \<Longrightarrow>
+   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
+   frontier (A + B) \<le> frontier (A + C)"
+  unfolding less_eq_antichain_def
+  apply auto
+  apply (metis add.commute frontier_add_le frontier_below_eq_frontier_plus_pos less_eq_antichain_def)
+  done
 
 end

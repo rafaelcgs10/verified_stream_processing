@@ -1703,7 +1703,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
           subgoal 
             apply safe
             subgoal for l
-              using prems(1,10,9,2,3,9,10,11,13,14,21) prems(12,15) apply -
+              using prems(1,10,9,2,3,9,10,11,14,21) prems(15) apply -
               apply (drule spec[of _ l])+
             apply (subst (asm) (1 2) dataflow_topology.implied_frontier_alt_def)
                 apply simp
@@ -1715,11 +1715,15 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
               subgoal
                 apply (auto 0 0 simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
                 subgoal premises prems2
-                  using prems2(10) apply -
+                  using prems2(8) apply -
                   apply (subgoal_tac "frontier (zmset_of (mset_set (set_antichain (frontier (zmset_of (time `# mset caps)))))) \<le>
    frontier (zmset_of (mset_set (set_antichain (frontier (zmset_of (time `# mset caps) + zmset (map (\<lambda>x. (time x, - 1)) (filter (\<lambda>cap. \<not> frontier_less_equal (front os2 1) (time cap)) caps)))))))")
                   subgoal
-                    
+                    apply (subst (asm) (2 5) add.commute)
+                    apply (subst (3 7) add.commute)
+                    apply (simp flip: add.assoc)
+
+
 
 
 end
