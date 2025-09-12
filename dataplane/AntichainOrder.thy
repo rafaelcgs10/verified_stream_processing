@@ -477,9 +477,22 @@ lemma frontier_add_delay_or_drop:
   apply safe
   by (metis dual_order.trans in_frontier_addD trivial_dataflow_topology_interpretation.obtain_frontier_elem)
 
+lemma
+  "frontier (A + C') \<le> frontier (B + C') \<Longrightarrow>
+   frontier C' \<le> frontier C \<Longrightarrow>
+   (\<forall> t. zcount A t \<ge> 0) \<Longrightarrow>
+   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
+   (\<forall> t. zcount C t \<ge> 0) \<Longrightarrow>
+   (\<forall> t. zcount C' t \<ge> 0) \<Longrightarrow>
+   frontier (A + C) \<le> frontier (B + C)"
+  unfolding less_eq_antichain_def
+  apply safe
+  subgoal for t
+    apply (drule in_frontier_addD)
+    apply safe
+    subgoal for t'
+      oops
 
 
-end
-    
 
 end
