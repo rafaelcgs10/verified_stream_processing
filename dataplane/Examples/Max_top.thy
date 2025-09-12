@@ -1716,12 +1716,9 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                 apply (auto 0 0 simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
                 subgoal premises prems2
                   using prems2(10) apply -
-
-
                   apply (subgoal_tac "frontier (zmset_of (mset_set (set_antichain (frontier (zmset_of (time `# mset caps)))))) \<le>
    frontier (zmset_of (mset_set (set_antichain (frontier (zmset_of (time `# mset caps) + zmset (map (\<lambda>x. (time x, - 1)) (filter (\<lambda>cap. \<not> frontier_less_equal (front os2 1) (time cap)) caps)))))))")
                   subgoal
-                    using prems(20)
                     
 
 
