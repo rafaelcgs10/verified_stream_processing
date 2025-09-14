@@ -3,7 +3,6 @@ theory AntichainOrder
 imports
   Progress_Tracking.Antichain
   Progress_Tracking.Propagate
-  Progress_Tracking.Exchange
 begin 
 
 lemma trivial_graph[simp]:
@@ -346,6 +345,17 @@ lemma frontier_add_le_gen:
       trivial_dataflow_topology_interpretation.obtain_frontier_elem)
   done
 
+lemma frontier_add_add_le:
+  "frontier B \<le> frontier B' \<Longrightarrow>
+   frontier A \<le> frontier A' \<Longrightarrow>
+   (\<forall> t. zcount A t \<ge> 0) \<Longrightarrow>
+   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
+   frontier (A + B) \<le> frontier (A' + B')"
+  unfolding less_eq_antichain_def
+  apply auto
+  apply (smt (z3) add.commute frontier_below_eq_frontier_plus_pos less_eq_antichain_def order_trans trivial_dataflow_topology_interpretation.frontier_unionD trivial_dataflow_topology_interpretation.obtain_elem_frontier)
+  done
+
 lemma add_empty_zmultiset[simp]:
   "A + {#}\<^sub>z = A"
   "{#}\<^sub>z + A = A"
@@ -393,7 +403,7 @@ lemma frontier_add_le_alt2:
   apply (metis dual_order.irrefl dual_order.strict_trans2 member_frontier_pos_zmset trivial_dataflow_topology_interpretation.obtain_elem_frontier zcount_add_zmset zcount_single zless_add1_eq)
   done
 
-
+(* 
 lemma froniter_minus_justified:
   "justified A B \<Longrightarrow>
    (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
@@ -433,8 +443,8 @@ lemma froniter_minus_justified:
         by (metis nless_le)
       done
     done
-  done
-
+  done *)
+(* 
 lemma froniter_add_justified:
   "justified A B \<Longrightarrow>
    (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
@@ -466,32 +476,7 @@ lemma froniter_add_justified:
         done
       done
     done
-  done
-
-definition "delay_or_drop A B = (\<forall> t. zcount B t > 0 \<longrightarrow> (\<exists> t'. zcount A t' > 0 \<and> t' \<le> t))"
-
-lemma frontier_add_delay_or_drop:
-  "delay_or_drop A B \<Longrightarrow>
-   frontier A \<le> frontier (A + B)"
-  unfolding less_eq_antichain_def delay_or_drop_def
-  apply safe
-  by (metis dual_order.trans in_frontier_addD trivial_dataflow_topology_interpretation.obtain_frontier_elem)
-
-lemma
-  "frontier (A + C') \<le> frontier (B + C') \<Longrightarrow>
-   frontier C' \<le> frontier C \<Longrightarrow>
-   (\<forall> t. zcount A t \<ge> 0) \<Longrightarrow>
-   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
-   (\<forall> t. zcount C t \<ge> 0) \<Longrightarrow>
-   (\<forall> t. zcount C' t \<ge> 0) \<Longrightarrow>
-   frontier (A + C) \<le> frontier (B + C)"
-  unfolding less_eq_antichain_def
-  apply safe
-  subgoal for t
-    apply (drule in_frontier_addD)
-    apply safe
-    subgoal for t'
-      oops
+  done *)
 
 lemma frontier_add_le_alt3:
   "frontier B \<le> frontier C \<Longrightarrow>
@@ -502,5 +487,18 @@ lemma frontier_add_le_alt3:
   apply auto
   apply (metis add.commute frontier_add_le frontier_below_eq_frontier_plus_pos less_eq_antichain_def)
   done
+
+lemma frontier_le_remove_l:
+  "frontier A \<le> frontier C \<Longrightarrow>
+   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
+   frontier (A + B) \<le> frontier C"
+  unfolding less_eq_antichain_def
+  using in_frontier_in_frontier_add_alt by blast
+
+
+lemma zmset_of_mset_set_ge_zero[simp]:
+  "zcount (zmset_of (mset_set (set_antichain (frontier A)))) t \<ge> 0"
+  by (meson zcount_zmset_of_nonneg)
+
 
 end
