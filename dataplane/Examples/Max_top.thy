@@ -1704,25 +1704,35 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
             apply safe
             subgoal for l
               using prems(1,10,9,2,3,9,10,11,14,21) prems(15) apply -
-              apply (drule spec[of _ l])+
+              apply (drule spec[of _ l])
             apply (subst (asm) (1 2) dataflow_topology.implied_frontier_alt_def)
                 apply simp
               apply (subst  (1 2) dataflow_topology.implied_frontier_alt_def)
                apply simp
+              using prems(21) apply -
+              apply (drule spec[of _ "Loc 1 (Trg 1)"])
+            apply (subst (asm) (1 2) dataflow_topology.implied_frontier_alt_def)
+                apply simp
             apply (simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits if_splits; hypsubst_thin?)
               subgoal
                 by (auto 0 0 simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
               subgoal
                 apply (auto 0 0 simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
                 subgoal premises prems2
-                  using prems2(8) apply -
-                  apply (subgoal_tac "frontier (zmset_of (mset_set (set_antichain (frontier (zmset_of (time `# mset caps)))))) \<le>
-   frontier (zmset_of (mset_set (set_antichain (frontier (zmset_of (time `# mset caps) + zmset (map (\<lambda>x. (time x, - 1)) (filter (\<lambda>cap. \<not> frontier_less_equal (front os2 1) (time cap)) caps)))))))")
+                  using prems2(5) apply -
                   subgoal
-                    apply (subst (asm) (2 5) add.commute)
                     apply (subst (3 7) add.commute)
                     apply (simp flip: add.assoc)
+                    apply (simp_all add: Groups.add_ac(2) frontier_add_le_alt3)
+                    done
+                  done
+                done
+              done
+            done
+          subgoal
+  
 
+                    find_theorems "frontier (_ + _) \<le> frontier (_ + _)"
 
 
 
