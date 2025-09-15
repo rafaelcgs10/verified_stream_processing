@@ -1531,15 +1531,6 @@ lemma le_frontier_frontier_less_equal:
   done
 
 lemma
-  "F \<le> frontier (zmset A) \<Longrightarrow>
-   \<forall> t \<in> fst ` set A. frontier_less_equal F t"
-  unfolding frontier_less_equal_def less_eq_antichain_def
-  apply auto
-  subgoal for t x
-    oops
-
-
-lemma
   \<open>summ sg = my_summ \<Longrightarrow>
    edges sg = (\<lambda> l. if l = Loc 0 (Src 1) then [Loc 1 (Trg 1)] else []) \<Longrightarrow>
    consu os1 = [] \<Longrightarrow>
@@ -2271,7 +2262,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                   unfolding dataflow_topology_implied_frontier_alt_my_summ
                   apply (simp add: ac_simps)
    apply (rule le_frontier_frontier_less_equal)
-                  
+                  sledgehammer
 
                   apply (erule order_trans[rotated])
                   apply (intro frontier_le_add)
