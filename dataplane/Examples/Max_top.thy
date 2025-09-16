@@ -1526,6 +1526,16 @@ lemma frontier_less_equal_add_frontier_le:
     by (metis add_diff_cancel order.refl order_trans_rules(23) trivial_dataflow_topology_interpretation.in_frontier_diff)
   done
 
+lemma frontier_less_equal_add_frontier_le_alt:
+  "\<forall> t \<in>#\<^sub>z X. frontier_less_equal (frontier A) t \<Longrightarrow>
+   frontier A \<le> frontier B \<Longrightarrow>
+   frontier A \<le> frontier (B + X)"
+  unfolding frontier_less_equal_def less_eq_antichain_def
+  apply auto
+  subgoal for t
+    by (metis add_diff_cancel order_trans_rules(23) trivial_dataflow_topology_interpretation.in_frontier_diff)
+  done
+
 lemma in_zmset_filter:
   "t \<in>#\<^sub>z zmset (map snd (filter (\<lambda>(l', t, d). l = l') A)) \<Longrightarrow> \<exists>m. (l, t, m) \<in> set A \<and> m \<noteq> 0"
   apply (induct A)
@@ -1543,7 +1553,7 @@ lemma in_zmset_add_cases:
   by (metis add_cancel_right_left not_in_iff_zmset zcount_union)
 
 
-lemma
+lemma frontier_less_equal_change_multiplicities:
   "(\<forall> (l, t, m) \<in> set A. frontier_less_equal (dataflow_topology.implied_frontier_alt my_summ (+) (pt_tr sg) l) t) \<Longrightarrow>
    (\<forall> l. dataflow_topology.implied_frontier_alt my_summ (+) (pt_tr sg) l \<le> dataflow_topology.implied_frontier_alt my_summ (+) (change_multiplicities my_summ A (pt_tr sg)) l)"
   unfolding dataflow_topology_implied_frontier_alt_my_summ extract_progress_def
@@ -1554,10 +1564,10 @@ lemma
     apply auto
     subgoal for t
       apply (subgoal_tac "\<exists> m. (Loc 0 (Trg 1), t, m) \<in> set A")
-      apply (elim exE)
+       apply (elim exE)
       subgoal for m
-      apply (drule bspec[of _ _ "(Loc 0 (Trg 1), t, m)"])
-        apply simp
+        apply (drule bspec[of _ _ "(Loc 0 (Trg 1), t, m)"])
+         apply simp
         apply simp
         done
       subgoal premises prems
@@ -1565,33 +1575,220 @@ lemma
       done
     done
   subgoal
-    apply (rule order.trans)
-    apply (rule frontier_less_equal_add_frontier_le[where X="zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') A)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Trg 1) = l') A))"])
+    apply (rule frontier_le_add)
+     apply simp_all
     subgoal
-      apply auto
+      apply (rule frontier_less_equal_add_frontier_le_alt)
+       apply auto
       subgoal for t
-        apply (subgoal_tac "\<exists> m. (Loc 0 (Src 1), t, m) \<in> set A \<or> (Loc 0 (Trg 1), t, m) \<in> set A")
-        subgoal
-          apply (elim exE disjE)
-          subgoal
-            by auto
-          subgoal for m
-   apply (drule bspec[of _ _ "(Loc 0 (Trg 1), t, m)"])
-             apply simp
-            apply simp
-            apply (auto simp add: frontier_less_equal_def)
-            apply (smt (verit, del_insts) add_diff_cancel_left' frontier_below_eq_frontier_minus frontier_idempotent less_eq_antichain_def nat_le_iff_add trans_le_add1 zcount_zmset_of_nonneg)
-            done
+        apply (subgoal_tac "\<exists> m. (Loc 0 (Src 1), t, m) \<in> set A")
+         apply (elim exE)
+        subgoal for m
+          apply (drule bspec[of _ _ "(Loc 0 (Src 1), t, m)"])
+           apply simp
+          apply simp
+          unfolding frontier_less_equal_def
           done
         subgoal premises prems
-          using prems(2) apply -
-          apply (drule in_zmset_add_cases)
-          apply (elim disjE)
-          using in_zmset_filter in_zmset_add_cases apply fast+
-          done
+          using prems(2) in_zmset_filter by fast
         done
+      subgoal
+        by (metis (no_types, lifting) frontier_below_eq_frontier_plus_pos frontier_idempotent zmset_of_mset_set_ge_zero)
       done
-    subgoal premises
+    subgoal
+      apply (rule frontier_less_equal_add_frontier_le_alt)
+       apply auto
+      subgoal for t
+        apply (subgoal_tac "\<exists> m. (Loc 0 (Trg 1), t, m) \<in> set A")
+         apply (elim exE)
+        subgoal for m
+          apply (drule bspec[of _ _ "(Loc 0 (Trg 1), t, m)"])
+           apply simp
+          apply simp
+          unfolding frontier_less_equal_def
+          apply auto
+          apply (smt (verit, del_insts) Groups.add_ac(2) frontier_idempotent in_frontier_in_frontier_add le_trans zcount_zmset_of_nonneg)
+          done
+        subgoal premises prems
+          using prems(2) in_zmset_filter by fast
+        done
+      subgoal
+        by (metis (no_types, lifting) add_diff_cancel_left' frontier_below_eq_frontier_minus frontier_idempotent zcount_zmset_of_nonneg)
+      done
+    done
+  subgoal
+    apply (rule frontier_le_add)
+     apply simp_all
+    subgoal
+      apply (rule frontier_less_equal_add_frontier_le_alt)
+       apply auto
+      subgoal for t
+        apply (subgoal_tac "\<exists> m. (Loc 0 (Src 1), t, m) \<in> set A")
+         apply (elim exE)
+        subgoal for m
+          apply (drule bspec[of _ _ "(Loc 0 (Src 1), t, m)"])
+           apply simp
+          apply simp
+          apply (rule frontier_less_equal_le_trans)
+           apply assumption
+          apply (smt (verit, ccfv_threshold) Groups.add_ac(1) frontier_below_eq_frontier_plus_pos zcount_union zcount_zmset_of_nonneg)
+          done
+        subgoal premises prems
+          using prems(2) in_zmset_filter by fast
+        done
+      subgoal
+        by (simp add: frontier_le_remove_l zero_compare_simps(3))
+      done
+    subgoal
+    apply (rule frontier_le_add)
+       apply simp_all
+      subgoal
+      apply (rule frontier_less_equal_add_frontier_le_alt)
+       apply auto
+      subgoal for t
+ apply (subgoal_tac "\<exists> m. (Loc 0 (Trg 1), t, m) \<in> set A")
+         apply (elim exE)
+        subgoal for m
+          apply (drule bspec[of _ _ "(Loc 0 (Trg 1), t, m)"])
+           apply simp
+          apply simp
+        apply (rule frontier_less_equal_le_trans)
+           apply assumption
+          apply (smt (verit, best) add_diff_cancel_left' cancel_ab_semigroup_add_class.diff_right_commute diff_add_cancel dual_order.trans frontier_below_eq_frontier_minus frontier_idempotent zcount_zmset_of_nonneg)
+          done
+        subgoal premises prems
+          using prems(2) in_zmset_filter by fast
+        done
+      subgoal premises
+        by (smt (verit) Groups.add_ac(2) frontier_below_eq_frontier_plus_pos frontier_idempotent order_trans_rules(23) zcount_zmset_of_nonneg zmset_of_plus)
+      done
+    apply (rule frontier_le_add)
+     apply simp_all
+    subgoal
+   apply (rule frontier_less_equal_add_frontier_le_alt)
+       apply auto
+      subgoal for t
+ apply (subgoal_tac "\<exists> m. (Loc 1 (Src 1), t, m) \<in> set A")
+         apply (elim exE)
+        subgoal for m
+          apply (drule bspec[of _ _ "(Loc 1 (Src 1), t, m)"])
+           apply simp
+          apply simp
+             done
+        subgoal premises prems
+          using prems(2) in_zmset_filter by fast
+        done
+      subgoal premises
+        by (smt (verit) Groups.add_ac(2) frontier_below_eq_frontier_plus_pos frontier_idempotent order_trans_rules(23) zcount_zmset_of_nonneg zmset_of_plus)
+      done
+ apply (rule frontier_less_equal_add_frontier_le_alt)
+       apply auto
+      subgoal for t
+ apply (subgoal_tac "\<exists> m. (Loc 1 (Trg 1), t, m) \<in> set A")
+         apply (elim exE)
+        subgoal for m
+          apply (drule bspec[of _ _ "(Loc 1 (Trg 1), t, m)"])
+           apply simp
+          apply simp
+        apply (rule frontier_less_equal_le_trans)
+           apply assumption
+          apply (smt (verit, best) add_diff_cancel_left' cancel_ab_semigroup_add_class.diff_right_commute diff_add_cancel dual_order.trans frontier_below_eq_frontier_minus frontier_idempotent zcount_zmset_of_nonneg)
+          done
+        subgoal premises prems
+          using prems(2) in_zmset_filter by fast
+        done
+   subgoal premises
+     by (smt (verit) Groups.add_ac(2) frontier_below_eq_frontier_plus_pos frontier_idempotent order_trans_rules(23) zcount_zmset_of_nonneg)
+   done
+  done
+  subgoal
+    apply (rule frontier_le_add)
+     apply simp_all
+    subgoal
+      apply (rule frontier_less_equal_add_frontier_le_alt)
+       apply auto
+      subgoal for t
+        apply (subgoal_tac "\<exists> m. (Loc 0 (Src 1), t, m) \<in> set A")
+         apply (elim exE)
+        subgoal for m
+          apply (drule bspec[of _ _ "(Loc 0 (Src 1), t, m)"])
+           apply simp
+          apply simp
+          apply (rule frontier_less_equal_le_trans)
+           apply assumption
+          apply (smt (verit, ccfv_threshold) Groups.add_ac(1) frontier_below_eq_frontier_plus_pos zcount_union zcount_zmset_of_nonneg)
+          done
+        subgoal premises prems
+          using prems(2) in_zmset_filter by fast
+        done
+      subgoal
+        by (simp add: frontier_le_remove_l zero_compare_simps(3))
+      done
+    subgoal
+    apply (rule frontier_le_add)
+       apply simp_all
+      subgoal
+      apply (rule frontier_less_equal_add_frontier_le_alt)
+       apply auto
+      subgoal for t
+ apply (subgoal_tac "\<exists> m. (Loc 0 (Trg 1), t, m) \<in> set A")
+         apply (elim exE)
+        subgoal for m
+          apply (drule bspec[of _ _ "(Loc 0 (Trg 1), t, m)"])
+           apply simp
+          apply simp
+        apply (rule frontier_less_equal_le_trans)
+           apply assumption
+          apply (smt (verit, best) add_diff_cancel_left' cancel_ab_semigroup_add_class.diff_right_commute diff_add_cancel dual_order.trans frontier_below_eq_frontier_minus frontier_idempotent zcount_zmset_of_nonneg)
+          done
+        subgoal premises prems
+          using prems(2) in_zmset_filter by fast
+        done
+      subgoal premises
+        by (smt (verit) Groups.add_ac(2) frontier_below_eq_frontier_plus_pos frontier_idempotent order_trans_rules(23) zcount_zmset_of_nonneg zmset_of_plus)
+      done
+    subgoal
+ apply (rule frontier_less_equal_add_frontier_le_alt)
+       apply auto
+      subgoal for t
+ apply (subgoal_tac "\<exists> m. (Loc 1 (Trg 1), t, m) \<in> set A")
+         apply (elim exE)
+        subgoal for m
+          apply (drule bspec[of _ _ "(Loc 1 (Trg 1), t, m)"])
+           apply simp
+          apply simp
+         done
+        subgoal premises prems
+          using prems(2) in_zmset_filter by fast
+        done
+   subgoal premises
+     by (smt (verit) Groups.add_ac(2) frontier_below_eq_frontier_plus_pos frontier_idempotent order_trans_rules(23) zcount_zmset_of_nonneg)
+   done
+  done
+  done
+  done
+
+
+end
+          done
+        subgoal premises prems
+          using prems(2) in_zmset_filter by fast
+
+
+
+          find_theorems "_ \<in>\<^sub>A frontier _"
+
+
+end
+        subgoal premises prems
+
+end
+          using prems(2) in_zmset_filter by fast
+        done
+      subgoal
+        by (metis (no_types, lifting) frontier_below_eq_frontier_plus_pos frontier_idempotent zmset_of_mset_set_ge_zero)
+      done
+
         
 
 end
