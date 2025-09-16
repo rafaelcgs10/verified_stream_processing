@@ -698,21 +698,6 @@ lemma sorted_caps_append:
     by (metis (mono_tags, lifting) basic_trans_rules(23) filter_id_conv self_append_conv2)
   done
 
-lemma frontier_less_equal_iff:
-  "frontier_less_equal f t \<longleftrightarrow> f \<le> frontier {#t#}\<^sub>z"
-  unfolding frontier_less_equal_def less_eq_antichain_def
-  apply (auto simp add: in_frontier_iff)
-  done
-
-lemma frontier_less_equal_le_trans:
-  "frontier_less_equal f1 t \<Longrightarrow>
-   f2 \<le> f1 \<Longrightarrow> 
-   frontier_less_equal f2 t"
-  unfolding frontier_less_equal_iff
-  apply (rule Orderings.preorder_class.order_trans)
-   apply assumption+
-  done
-
 fun zmset where
   "zmset [] = {#}\<^sub>z"
 | "zmset ((x, d) # xs) = update_zmultiset (zmset xs) x d"
@@ -752,20 +737,6 @@ lemma c_pts_change_multiplicities_cong_stronger:
   apply (subst (1 2) c_pts_change_multiplicities)
   apply simp
   done
-
-
-lemma frontier_less_equal_frontier_below_eq_frontier:
-  "\<not> frontier_less_equal f t \<Longrightarrow>
-   f \<le> (frontier M) \<Longrightarrow>
-   zcount M t \<le> 0"
-  apply (simp add: frontier_less_equal_iff less_eq_antichain_def)
-  apply (rule ccontr)
-  apply (simp add: not_le)
-  apply (erule Timely_Infrastructure.dataflow_topology_from_tree.obtain_elem_frontier)
-  apply (elim conjE)
-  apply (drule spec, drule mp, assumption)
-  apply auto
-  oops
 
 lemma UNIV_location[simp]:
   "(UNIV :: ('a :: enum, 'b :: enum) location set) = (\<lambda> (n, p). Loc n p) ` (UNIV \<times> UNIV)"
@@ -1519,6 +1490,21 @@ lemma dataflow_topology_implied_frontier_alt_my_summ:
    apply simp_all
   done
 
+lemma frontier_less_equal_iff:
+  "frontier_less_equal f t \<longleftrightarrow> f \<le> frontier {#t#}\<^sub>z"
+  unfolding frontier_less_equal_def less_eq_antichain_def
+  apply (auto simp add: in_frontier_iff)
+  done
+
+lemma frontier_less_equal_le_trans:
+  "frontier_less_equal f1 t \<Longrightarrow>
+   f2 \<le> f1 \<Longrightarrow> 
+   frontier_less_equal f2 t"
+  unfolding frontier_less_equal_iff
+  apply (rule Orderings.preorder_class.order_trans)
+   apply assumption+
+  done
+
 lemma le_frontier_frontier_less_equal:
   "\<forall> t \<in> fst ` set A. frontier_less_equal F t \<Longrightarrow>
    F \<le> frontier (zmset A)"
@@ -1530,6 +1516,85 @@ lemma le_frontier_frontier_less_equal:
     by (smt (verit, del_insts) case_prod_beta filter_empty_conv list.map(1) sum_list_simps(1))
   done
 
+
+lemma frontier_less_equal_add_frontier_le:
+  "\<forall> t \<in>#\<^sub>z X. frontier_less_equal (frontier A) t \<Longrightarrow>
+   frontier A \<le> frontier (A + X)"
+  unfolding frontier_less_equal_def less_eq_antichain_def
+  apply auto
+  subgoal for t
+    by (metis add_diff_cancel order.refl order_trans_rules(23) trivial_dataflow_topology_interpretation.in_frontier_diff)
+  done
+
+lemma in_zmset_filter:
+  "t \<in>#\<^sub>z zmset (map snd (filter (\<lambda>(l', t, d). l = l') A)) \<Longrightarrow> \<exists>m. (l, t, m) \<in> set A \<and> m \<noteq> 0"
+  apply (induct A)
+  apply simp
+  apply (clarsimp split: if_splits prod.splits)
+  subgoal
+    by (smt (verit, ccfv_SIG) not_in_iff_zmset zcount_update_zmultiset)
+  subgoal
+    by (smt (verit, ccfv_SIG) not_in_iff_zmset zcount_update_zmultiset)
+  done
+
+lemma in_zmset_add_cases:
+  "t \<in>#\<^sub>z A + B \<Longrightarrow>
+   t \<in>#\<^sub>z A \<or> t \<in>#\<^sub>z B"
+  by (metis add_cancel_right_left not_in_iff_zmset zcount_union)
+
+
+lemma
+  "(\<forall> (l, t, m) \<in> set A. frontier_less_equal (dataflow_topology.implied_frontier_alt my_summ (+) (pt_tr sg) l) t) \<Longrightarrow>
+   (\<forall> l. dataflow_topology.implied_frontier_alt my_summ (+) (pt_tr sg) l \<le> dataflow_topology.implied_frontier_alt my_summ (+) (change_multiplicities my_summ A (pt_tr sg)) l)"
+  unfolding dataflow_topology_implied_frontier_alt_my_summ extract_progress_def
+  apply (simp add: change_multiplicities_append_comp c_pts_change_multiplicities comp_def)
+  apply (intro conjI impI allI; simp?; hypsubst)
+  subgoal
+    apply (rule frontier_less_equal_add_frontier_le)
+    apply auto
+    subgoal for t
+      apply (subgoal_tac "\<exists> m. (Loc 0 (Trg 1), t, m) \<in> set A")
+      apply (elim exE)
+      subgoal for m
+      apply (drule bspec[of _ _ "(Loc 0 (Trg 1), t, m)"])
+        apply simp
+        apply simp
+        done
+      subgoal premises prems
+        using prems(2) in_zmset_filter by fast
+      done
+    done
+  subgoal
+    apply (rule order.trans)
+    apply (rule frontier_less_equal_add_frontier_le[where X="zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Src 1) = l') A)) + zmset (map snd (filter (\<lambda>(l', t, d). Loc 0 (Trg 1) = l') A))"])
+    subgoal
+      apply auto
+      subgoal for t
+        apply (subgoal_tac "\<exists> m. (Loc 0 (Src 1), t, m) \<in> set A \<or> (Loc 0 (Trg 1), t, m) \<in> set A")
+        subgoal
+          apply (elim exE disjE)
+          subgoal
+            by auto
+          subgoal for m
+   apply (drule bspec[of _ _ "(Loc 0 (Trg 1), t, m)"])
+             apply simp
+            apply simp
+            apply (auto simp add: frontier_less_equal_def)
+            apply (smt (verit, del_insts) add_diff_cancel_left' frontier_below_eq_frontier_minus frontier_idempotent less_eq_antichain_def nat_le_iff_add trans_le_add1 zcount_zmset_of_nonneg)
+            done
+          done
+        subgoal premises prems
+          using prems(2) apply -
+          apply (drule in_zmset_add_cases)
+          apply (elim disjE)
+          using in_zmset_filter in_zmset_add_cases apply fast+
+          done
+        done
+      done
+    subgoal premises
+        
+
+end
 lemma
   \<open>summ sg = my_summ \<Longrightarrow>
    edges sg = (\<lambda> l. if l = Loc 0 (Src 1) then [Loc 1 (Trg 1)] else []) \<Longrightarrow>
