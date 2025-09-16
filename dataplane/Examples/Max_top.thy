@@ -1373,7 +1373,15 @@ lemma reachable_locations_my_summ[simp]:
     done
   done
 
-definition "changes_above_impl f chgs = (\<forall>(l, t, d)\<in>set chgs. frontier_less_equal (f l) t)"
+term "dataflow_topology.implied_frontier_alt my_summ (+)"
+
+definition "changes_above_impl pts chgs = (\<forall>(l, t, d)\<in>set chgs. frontier_less_equal (dataflow_topology.implied_frontier_alt my_summ (+) pts l) t)"
+
+inductive safe_changes for su fr where
+  "safe_changes su fr c []"
+| "(\<forall> xs ys zs. ws = xs @ ys @ zs \<longrightarrow> safe_changes su fr (change_multiplicities su ys c) (xs @ zs)) \<Longrightarrow>
+   ws \<noteq> [] \<Longrightarrow> changes_above_impl c ws \<Longrightarrow> safe_changes su fr c ws"
+
 
 (* lemma changes_above_impl_unionI:
   "changes_above_impl cgs1 impls \<Longrightarrow>
@@ -1564,10 +1572,10 @@ lemma frontier_less_equal_change_multiplicities:
     apply auto
     subgoal for t
       apply (subgoal_tac "\<exists> m. (Loc 0 (Trg 1), t, m) \<in> set A")
-      apply (elim exE)
+       apply (elim exE)
       subgoal for m
         apply (drule bspec[of _ _ "(Loc 0 (Trg 1), t, m)"])
-        apply simp
+         apply simp
         apply simp
         done
       subgoal premises prems
@@ -1576,16 +1584,16 @@ lemma frontier_less_equal_change_multiplicities:
     done
   subgoal
     apply (rule frontier_le_add)
-    apply simp_all
+     apply simp_all
     subgoal
       apply (rule frontier_less_equal_add_frontier_le_alt)
-      apply auto
+       apply auto
       subgoal for t
         apply (subgoal_tac "\<exists> m. (Loc 0 (Src 1), t, m) \<in> set A")
-        apply (elim exE)
+         apply (elim exE)
         subgoal for m
           apply (drule bspec[of _ _ "(Loc 0 (Src 1), t, m)"])
-          apply simp
+           apply simp
           apply simp
           unfolding frontier_less_equal_def
           done
@@ -1597,13 +1605,13 @@ lemma frontier_less_equal_change_multiplicities:
       done
     subgoal
       apply (rule frontier_less_equal_add_frontier_le_alt)
-      apply auto
+       apply auto
       subgoal for t
         apply (subgoal_tac "\<exists> m. (Loc 0 (Trg 1), t, m) \<in> set A")
-        apply (elim exE)
+         apply (elim exE)
         subgoal for m
           apply (drule bspec[of _ _ "(Loc 0 (Trg 1), t, m)"])
-          apply simp
+           apply simp
           apply simp
           unfolding frontier_less_equal_def
           apply auto
@@ -1618,19 +1626,19 @@ lemma frontier_less_equal_change_multiplicities:
     done
   subgoal
     apply (rule frontier_le_add)
-    apply simp_all
+     apply simp_all
     subgoal
       apply (rule frontier_less_equal_add_frontier_le_alt)
-      apply auto
+       apply auto
       subgoal for t
         apply (subgoal_tac "\<exists> m. (Loc 0 (Src 1), t, m) \<in> set A")
-        apply (elim exE)
+         apply (elim exE)
         subgoal for m
           apply (drule bspec[of _ _ "(Loc 0 (Src 1), t, m)"])
-          apply simp
+           apply simp
           apply simp
           apply (rule frontier_less_equal_le_trans)
-          apply assumption
+           apply assumption
           apply (smt (verit, ccfv_threshold) Groups.add_ac(1) frontier_below_eq_frontier_plus_pos zcount_union zcount_zmset_of_nonneg)
           done
         subgoal premises prems
@@ -1641,19 +1649,19 @@ lemma frontier_less_equal_change_multiplicities:
       done
     subgoal
       apply (rule frontier_le_add)
-      apply simp_all
+       apply simp_all
       subgoal
         apply (rule frontier_less_equal_add_frontier_le_alt)
-        apply auto
+         apply auto
         subgoal for t
           apply (subgoal_tac "\<exists> m. (Loc 0 (Trg 1), t, m) \<in> set A")
-          apply (elim exE)
+           apply (elim exE)
           subgoal for m
             apply (drule bspec[of _ _ "(Loc 0 (Trg 1), t, m)"])
-            apply simp
+             apply simp
             apply simp
             apply (rule frontier_less_equal_le_trans)
-            apply assumption
+             apply assumption
             apply (smt (verit, best) add_diff_cancel_left' cancel_ab_semigroup_add_class.diff_right_commute diff_add_cancel dual_order.trans frontier_below_eq_frontier_minus frontier_idempotent zcount_zmset_of_nonneg)
             done
           subgoal premises prems
@@ -1663,16 +1671,16 @@ lemma frontier_less_equal_change_multiplicities:
           by (smt (verit) Groups.add_ac(2) frontier_below_eq_frontier_plus_pos frontier_idempotent order_trans_rules(23) zcount_zmset_of_nonneg zmset_of_plus)
         done
       apply (rule frontier_le_add)
-      apply simp_all
+       apply simp_all
       subgoal
         apply (rule frontier_less_equal_add_frontier_le_alt)
-        apply auto
+         apply auto
         subgoal for t
           apply (subgoal_tac "\<exists> m. (Loc 1 (Src 1), t, m) \<in> set A")
-          apply (elim exE)
+           apply (elim exE)
           subgoal for m
             apply (drule bspec[of _ _ "(Loc 1 (Src 1), t, m)"])
-            apply simp
+             apply simp
             apply simp
             done
           subgoal premises prems
@@ -1682,16 +1690,16 @@ lemma frontier_less_equal_change_multiplicities:
           by (smt (verit) Groups.add_ac(2) frontier_below_eq_frontier_plus_pos frontier_idempotent order_trans_rules(23) zcount_zmset_of_nonneg zmset_of_plus)
         done
       apply (rule frontier_less_equal_add_frontier_le_alt)
-      apply auto
+       apply auto
       subgoal for t
         apply (subgoal_tac "\<exists> m. (Loc 1 (Trg 1), t, m) \<in> set A")
-        apply (elim exE)
+         apply (elim exE)
         subgoal for m
           apply (drule bspec[of _ _ "(Loc 1 (Trg 1), t, m)"])
-          apply simp
+           apply simp
           apply simp
           apply (rule frontier_less_equal_le_trans)
-          apply assumption
+           apply assumption
           apply (smt (verit, best) add_diff_cancel_left' cancel_ab_semigroup_add_class.diff_right_commute diff_add_cancel dual_order.trans frontier_below_eq_frontier_minus frontier_idempotent zcount_zmset_of_nonneg)
           done
         subgoal premises prems
@@ -1703,19 +1711,19 @@ lemma frontier_less_equal_change_multiplicities:
     done
   subgoal
     apply (rule frontier_le_add)
-    apply simp_all
+     apply simp_all
     subgoal
       apply (rule frontier_less_equal_add_frontier_le_alt)
-      apply auto
+       apply auto
       subgoal for t
         apply (subgoal_tac "\<exists> m. (Loc 0 (Src 1), t, m) \<in> set A")
-        apply (elim exE)
+         apply (elim exE)
         subgoal for m
           apply (drule bspec[of _ _ "(Loc 0 (Src 1), t, m)"])
-          apply simp
+           apply simp
           apply simp
           apply (rule frontier_less_equal_le_trans)
-          apply assumption
+           apply assumption
           apply (smt (verit, ccfv_threshold) Groups.add_ac(1) frontier_below_eq_frontier_plus_pos zcount_union zcount_zmset_of_nonneg)
           done
         subgoal premises prems
@@ -1726,19 +1734,19 @@ lemma frontier_less_equal_change_multiplicities:
       done
     subgoal
       apply (rule frontier_le_add)
-      apply simp_all
+       apply simp_all
       subgoal
         apply (rule frontier_less_equal_add_frontier_le_alt)
-        apply auto
+         apply auto
         subgoal for t
           apply (subgoal_tac "\<exists> m. (Loc 0 (Trg 1), t, m) \<in> set A")
-          apply (elim exE)
+           apply (elim exE)
           subgoal for m
             apply (drule bspec[of _ _ "(Loc 0 (Trg 1), t, m)"])
-            apply simp
+             apply simp
             apply simp
             apply (rule frontier_less_equal_le_trans)
-            apply assumption
+             apply assumption
             apply (smt (verit, best) add_diff_cancel_left' cancel_ab_semigroup_add_class.diff_right_commute diff_add_cancel dual_order.trans frontier_below_eq_frontier_minus frontier_idempotent zcount_zmset_of_nonneg)
             done
           subgoal premises prems
@@ -1749,13 +1757,13 @@ lemma frontier_less_equal_change_multiplicities:
         done
       subgoal
         apply (rule frontier_less_equal_add_frontier_le_alt)
-        apply auto
+         apply auto
         subgoal for t
           apply (subgoal_tac "\<exists> m. (Loc 1 (Trg 1), t, m) \<in> set A")
-          apply (elim exE)
+           apply (elim exE)
           subgoal for m
             apply (drule bspec[of _ _ "(Loc 1 (Trg 1), t, m)"])
-            apply simp
+             apply simp
             apply simp
             done
           subgoal premises prems
@@ -1779,14 +1787,21 @@ lemma frontier_less_equal_change_multiplicities_alt:
    (\<forall> t\<ge>n 0. buf2 (Cap t 1) = []) \<Longrightarrow>
 *)
 
-lemma changes_above_impl_extend:
+(* lemma changes_above_impl_extend:
   "changes_above_impl F A \<Longrightarrow>
    changes_above_impl F B \<Longrightarrow>
    set C = set (A @ B) \<Longrightarrow>
    changes_above_impl F C"
   unfolding changes_above_impl_def
   apply auto
-  done
+  done *)
+
+(* lemma changes_above_impl_le_trans:
+  "changes_above_impl F2 C \<Longrightarrow>
+   F1 \<le> F2 \<Longrightarrow>
+   changes_above_impl F1 C"
+  unfolding changes_above_impl_def
+  using frontier_less_equal_le_trans le_funD by fastforce *)
 
 lemma frontier_less_equal_zcount_pos:
   " 0 < zcount A x \<Longrightarrow>
@@ -1800,6 +1815,17 @@ lemma propagate_all_implied_frontier_alt:
   apply (rule ext)+
   apply (auto 0 0 simp add: dataflow_topology_implied_frontier_alt_my_summ propagate_pointstamps_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def dest!: propagate_all_preserves_c_pts split: option.splits; hypsubst_thin?)
   done
+
+lemma
+  "changes_above_impl (dataflow_topology.implied_frontier_alt my_summ (+) (change_multiplicities my_summ xs A)) ys \<Longrightarrow>
+   changes_above_impl (dataflow_topology.implied_frontier_alt my_summ (+) A) (xs @ ys)"
+  unfolding changes_above_impl_def
+  apply auto
+  subgoal  for l t m 
+    apply (simp add: dataflow_topology_implied_frontier_alt_my_summ propagate_pointstamps_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+    oops
+
+    find_theorems "change_multiplicities _ _ (change_multiplicities _ _ _)"
 
 lemma
   \<open>summ sg = my_summ \<Longrightarrow>
@@ -1828,7 +1854,9 @@ lemma
    dataflow_topology.inv_implications_nonneg (pt_tr sg) \<Longrightarrow>
    dataflow_topology.inv_imp_plus_work_nonneg (pt_tr sg) \<Longrightarrow>
    changes_non_zero (extract_progress 0 (edges sg) st1 @ extract_progress 1 (edges sg) st2) \<Longrightarrow>
-   changes_above_impl (dataflow_topology.implied_frontier_alt my_summ (+) (pt_tr sg)) (extract_progress 0 (edges sg) st1 @ extract_progress 1 (edges sg) st2) \<Longrightarrow>
+   changes_above_impl (pt_tr sg) (extract_progress 0 (edges sg) st1 @ extract_progress 1 (edges sg) st2) \<Longrightarrow>
+   changes_above_impl (change_multiplicities (summ sg) (extract_progress 1 (edges sg) st2) (pt_tr sg)) (extract_progress 0 (edges sg) st1) \<Longrightarrow>
+   changes_above_impl (change_multiplicities (summ sg) (extract_progress 0 (edges sg) st1) (pt_tr sg)) (extract_progress 1 (edges sg) st2) \<Longrightarrow>
 
    sorted_wrt (\<lambda> (_, x) (_, y). x \<le> y) ((map projr (buf1 (Inr (1, 1)))) @ (outpu os1 0)) \<Longrightarrow>
 
@@ -1844,7 +1872,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
       unfolding wsim_def
       apply (intro allI conjI impI)
       subgoal premises prems for io op1'
-        using prems(25) apply -
+        using prems(27) apply -
         apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin?)
         apply simp_all
         prefer 8
@@ -1891,51 +1919,62 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
               apply (drule spec2[of _ a b])
               apply (elim conjE)
               apply (drule mp)
-               apply blast
+              apply blast
               by (auto 0 0 simp add: frontier_less_equal_def  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
             done
           subgoal using prems(19) by simp
           subgoal using prems(20) by simp
           subgoal using prems(21) by simp
           subgoal using prems(1,2,3,9,10,11,12,13,14,15,22) apply -
-                apply auto
+            apply auto
             unfolding changes_non_zero_def extract_progress_def comp_def
             apply (auto simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
             apply force
             done
           subgoal using prems(2,9,10,23,11) prems(15)[symmetric] apply -
-       unfolding  extract_progress_def comp_def
+            unfolding  extract_progress_def comp_def
             apply (auto simp add: dataflow_topology_implied_frontier_alt_my_summ extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-       apply (rule changes_above_impl_extend[where B="map (\<lambda>x. (Loc 1 (Src 1), time x, - 1)) (filter (\<lambda>cap. \<not> frontier_less_equal (front os2 1) (time cap)) caps)"])
-       apply assumption
-        apply simp_all
-       subgoal premises prems2
-         apply (auto simp add: changes_above_impl_def dataflow_topology_implied_frontier_alt_my_summ extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-         subgoal for t
-           using prems2(5) apply -
-           apply (drule zmset_of_eq_add[simplified])
-            apply fast
-           apply (elim disjE)
-           subgoal
-             using frontier_less_equal_zcount_pos  
-             by (smt (verit) Groups.add_ac(3) frontier_below_eq_frontier_plus_pos frontier_idempotent frontier_less_equal_le_trans zcount_zmset_of_nonneg zmset_of_plus)
-           subgoal
-             using prems2(4) apply -     
-             apply (subgoal_tac "\<exists> m.(Loc 1 (Src 1), time t, m) \<in> (\<lambda>(p, y). (Loc 1 (Src 1), y)) ` set (operator_state.inter os2)")
-             subgoal
-             apply (auto simp add: changes_above_impl_def  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-             apply (drule bspec[of _ _ "(Loc 1 (Src 1), time t, _)"])
-              apply simp
+            apply (rule changes_above_impl_extend[where B="map (\<lambda>x. (Loc 1 (Src 1), time x, - 1)) (filter (\<lambda>cap. \<not> frontier_less_equal (front os2 1) (time cap)) caps)"])
+            apply assumption
+            apply simp_all
+            subgoal premises prems2
+              apply (auto simp add: changes_above_impl_def dataflow_topology_implied_frontier_alt_my_summ extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+              subgoal for t
+                using prems2(5) apply -
+                apply (drule zmset_of_eq_add[simplified])
                 apply fast
-         apply (auto simp add: changes_above_impl_def dataflow_topology_implied_frontier_alt_my_summ extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-               done
-             subgoal
-               by (meson pair_imageI zcount_gt_0_in_set_2)
-             done
-           done
-         done
-       done
-          subgoal using prems(24) by simp
+                apply (elim disjE)
+                subgoal
+                  using frontier_less_equal_zcount_pos  
+                  by (smt (verit) Groups.add_ac(3) frontier_below_eq_frontier_plus_pos frontier_idempotent frontier_less_equal_le_trans zcount_zmset_of_nonneg zmset_of_plus)
+                subgoal
+                  using prems2(4) apply -     
+                  apply (subgoal_tac "\<exists> m.(Loc 1 (Src 1), time t, m) \<in> (\<lambda>(p, y). (Loc 1 (Src 1), y)) ` set (operator_state.inter os2)")
+                  subgoal
+                    apply (auto simp add: changes_above_impl_def  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+                    apply (drule bspec[of _ _ "(Loc 1 (Src 1), time t, _)"])
+                    apply simp
+                    apply fast
+                    apply (auto simp add: changes_above_impl_def dataflow_topology_implied_frontier_alt_my_summ extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+                    done
+                  subgoal
+                    by (meson pair_imageI zcount_gt_0_in_set_2)
+                  done
+                done
+              done
+            done
+          subgoal
+            using prems(2,9,10,24,11) prems(15)[symmetric] apply -
+            unfolding  extract_progress_def comp_def
+            apply (auto simp add: dataflow_topology_implied_frontier_alt_my_summ extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+            apply (rule changes_above_impl_le_trans)
+            apply assumption
+
+            find_theorems changes_above_impl
+
+
+
+end
           subgoal
             apply simp
             apply (rule rtranclp_intros_1)
@@ -1991,8 +2030,8 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                             using prems(11) apply simp
                             apply (rule order.trans)
                             using prems(17) apply -
-                             apply (drule spec)
-                             apply assumption
+                            apply (drule spec)
+                            apply assumption
                             using prems(1) apply simp
                             apply (rule frontier_less_equal_change_multiplicities_alt)
                             using prems(23)[unfolded changes_above_impl_def] apply blast
@@ -2011,8 +2050,8 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                             using prems(11) apply simp
                             apply (rule order.trans)
                             using prems(17) apply -
-                             apply (drule spec)
-                             apply assumption
+                            apply (drule spec)
+                            apply assumption
                             using prems(1) apply simp
                             apply (rule frontier_less_equal_change_multiplicities_alt)
                             using prems(23)[unfolded changes_above_impl_def] apply blast
@@ -2040,8 +2079,8 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                             using prems(11) apply simp
                             apply (rule order.trans)
                             using prems(17) apply -
-                             apply (drule spec)
-                             apply assumption
+                            apply (drule spec)
+                            apply assumption
                             using prems(1) apply simp
                             apply (rule frontier_less_equal_change_multiplicities_alt)
                             using prems(23)[unfolded changes_above_impl_def] apply blast
@@ -2059,8 +2098,8 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                             using prems(11) apply simp
                             apply (rule order.trans)
                             using prems(17) apply -
-                             apply (drule spec)
-                             apply assumption
+                            apply (drule spec)
+                            apply assumption
                             using prems(1) apply simp
                             apply (rule frontier_less_equal_change_multiplicities_alt)
                             using prems(23)[unfolded changes_above_impl_def] apply blast
@@ -2095,44 +2134,44 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                       done
                     subgoal
                       apply safe
-subgoal for a b c
-                            using prems(18) apply -
-                            apply (drule spec[of _ "(a, b)"])
-                            apply (drule mp)
-                            apply force                            
-                            apply (auto split: prod.splits)
-                            apply (rule frontier_less_equal_le_trans)
-                            apply assumption
-                            apply (rule order.trans)
-                            using prems(16) apply simp
-                            using prems(11) apply simp
-                            apply (rule order.trans)
-                            using prems(17) apply -
-                             apply (drule spec)
-                             apply assumption
-                            using prems(1) apply simp
-                            apply (rule frontier_less_equal_change_multiplicities_alt)
-                            using prems(23)[unfolded changes_above_impl_def] apply blast
-                            done
-                          subgoal for a b
-                            using prems(18) apply -
-                            apply (drule spec[of _ "(a, b)"])
-                            apply (drule mp)
-                            apply force                            
-                            apply (auto split: prod.splits)
-                            apply (rule frontier_less_equal_le_trans)
-                            apply assumption
-                            apply (rule order.trans)
-                            using prems(16) apply simp
-                            using prems(11) apply simp
-                            apply (rule order.trans)
-                            using prems(17) apply -
-                             apply (drule spec)
-                             apply assumption
-                            using prems(1) apply simp
-                            apply (rule frontier_less_equal_change_multiplicities_alt)
-                            using prems(23)[unfolded changes_above_impl_def] apply blast
-                            done
+                      subgoal for a b c
+                        using prems(18) apply -
+                        apply (drule spec[of _ "(a, b)"])
+                        apply (drule mp)
+                        apply force                            
+                        apply (auto split: prod.splits)
+                        apply (rule frontier_less_equal_le_trans)
+                        apply assumption
+                        apply (rule order.trans)
+                        using prems(16) apply simp
+                        using prems(11) apply simp
+                        apply (rule order.trans)
+                        using prems(17) apply -
+                        apply (drule spec)
+                        apply assumption
+                        using prems(1) apply simp
+                        apply (rule frontier_less_equal_change_multiplicities_alt)
+                        using prems(23)[unfolded changes_above_impl_def] apply blast
+                        done
+                      subgoal for a b
+                        using prems(18) apply -
+                        apply (drule spec[of _ "(a, b)"])
+                        apply (drule mp)
+                        apply force                            
+                        apply (auto split: prod.splits)
+                        apply (rule frontier_less_equal_le_trans)
+                        apply assumption
+                        apply (rule order.trans)
+                        using prems(16) apply simp
+                        using prems(11) apply simp
+                        apply (rule order.trans)
+                        using prems(17) apply -
+                        apply (drule spec)
+                        apply assumption
+                        using prems(1) apply simp
+                        apply (rule frontier_less_equal_change_multiplicities_alt)
+                        using prems(23)[unfolded changes_above_impl_def] apply blast
+                        done
                       done
                     done
                   subgoal
@@ -2145,44 +2184,44 @@ subgoal for a b c
                       done
                     subgoal
                       apply safe
-subgoal for a b c
-                            using prems(18) apply -
-                            apply (drule spec[of _ "(a, b)"])
-                            apply (drule mp)
-                            apply force                            
-                            apply (auto split: prod.splits)
-                            apply (rule frontier_less_equal_le_trans)
-                            apply assumption
-                            apply (rule order.trans)
-                            using prems(16) apply simp
-                            using prems(11) apply simp
-                            apply (rule order.trans)
-                            using prems(17) apply -
-                             apply (drule spec)
-                             apply assumption
-                            using prems(1) apply simp
-                            apply (rule frontier_less_equal_change_multiplicities_alt)
-                            using prems(23)[unfolded changes_above_impl_def] apply blast
-                            done
-                          subgoal for a b
-                            using prems(18) apply -
-                            apply (drule spec[of _ "(a, b)"])
-                            apply (drule mp)
-                            apply force                            
-                            apply (auto split: prod.splits)
-                            apply (rule frontier_less_equal_le_trans)
-                            apply assumption
-                            apply (rule order.trans)
-                            using prems(16) apply simp
-                            using prems(11) apply simp
-                            apply (rule order.trans)
-                            using prems(17) apply -
-                             apply (drule spec)
-                             apply assumption
-                            using prems(1) apply simp
-                            apply (rule frontier_less_equal_change_multiplicities_alt)
-                            using prems(23)[unfolded changes_above_impl_def] apply blast
-                            done
+                      subgoal for a b c
+                        using prems(18) apply -
+                        apply (drule spec[of _ "(a, b)"])
+                        apply (drule mp)
+                        apply force                            
+                        apply (auto split: prod.splits)
+                        apply (rule frontier_less_equal_le_trans)
+                        apply assumption
+                        apply (rule order.trans)
+                        using prems(16) apply simp
+                        using prems(11) apply simp
+                        apply (rule order.trans)
+                        using prems(17) apply -
+                        apply (drule spec)
+                        apply assumption
+                        using prems(1) apply simp
+                        apply (rule frontier_less_equal_change_multiplicities_alt)
+                        using prems(23)[unfolded changes_above_impl_def] apply blast
+                        done
+                      subgoal for a b
+                        using prems(18) apply -
+                        apply (drule spec[of _ "(a, b)"])
+                        apply (drule mp)
+                        apply force                            
+                        apply (auto split: prod.splits)
+                        apply (rule frontier_less_equal_le_trans)
+                        apply assumption
+                        apply (rule order.trans)
+                        using prems(16) apply simp
+                        using prems(11) apply simp
+                        apply (rule order.trans)
+                        using prems(17) apply -
+                        apply (drule spec)
+                        apply assumption
+                        using prems(1) apply simp
+                        apply (rule frontier_less_equal_change_multiplicities_alt)
+                        using prems(23)[unfolded changes_above_impl_def] apply blast
+                        done
                       done
                     done
                   done
@@ -2197,44 +2236,44 @@ subgoal for a b c
                       done
                     subgoal
                       apply safe
-subgoal for a b c
-                            using prems(18) apply -
-                            apply (drule spec[of _ "(a, b)"])
-                            apply (drule mp)
-                            apply force                            
-                            apply (auto split: prod.splits)
-                            apply (rule frontier_less_equal_le_trans)
-                            apply assumption
-                            apply (rule order.trans)
-                            using prems(16) apply simp
-                            using prems(11) apply simp
-                            apply (rule order.trans)
-                            using prems(17) apply -
-                             apply (drule spec)
-                             apply assumption
-                            using prems(1) apply simp
-                            apply (rule frontier_less_equal_change_multiplicities_alt)
-                            using prems(23)[unfolded changes_above_impl_def] apply blast
-                            done
-                          subgoal for a b
-                            using prems(18) apply -
-                            apply (drule spec[of _ "(a, b)"])
-                            apply (drule mp)
-                            apply force                            
-                            apply (auto split: prod.splits)
-                            apply (rule frontier_less_equal_le_trans)
-                            apply assumption
-                            apply (rule order.trans)
-                            using prems(16) apply simp
-                            using prems(11) apply simp
-                            apply (rule order.trans)
-                            using prems(17) apply -
-                             apply (drule spec)
-                             apply assumption
-                            using prems(1) apply simp
-                            apply (rule frontier_less_equal_change_multiplicities_alt)
-                            using prems(23)[unfolded changes_above_impl_def] apply blast
-                            done
+                      subgoal for a b c
+                        using prems(18) apply -
+                        apply (drule spec[of _ "(a, b)"])
+                        apply (drule mp)
+                        apply force                            
+                        apply (auto split: prod.splits)
+                        apply (rule frontier_less_equal_le_trans)
+                        apply assumption
+                        apply (rule order.trans)
+                        using prems(16) apply simp
+                        using prems(11) apply simp
+                        apply (rule order.trans)
+                        using prems(17) apply -
+                        apply (drule spec)
+                        apply assumption
+                        using prems(1) apply simp
+                        apply (rule frontier_less_equal_change_multiplicities_alt)
+                        using prems(23)[unfolded changes_above_impl_def] apply blast
+                        done
+                      subgoal for a b
+                        using prems(18) apply -
+                        apply (drule spec[of _ "(a, b)"])
+                        apply (drule mp)
+                        apply force                            
+                        apply (auto split: prod.splits)
+                        apply (rule frontier_less_equal_le_trans)
+                        apply assumption
+                        apply (rule order.trans)
+                        using prems(16) apply simp
+                        using prems(11) apply simp
+                        apply (rule order.trans)
+                        using prems(17) apply -
+                        apply (drule spec)
+                        apply assumption
+                        using prems(1) apply simp
+                        apply (rule frontier_less_equal_change_multiplicities_alt)
+                        using prems(23)[unfolded changes_above_impl_def] apply blast
+                        done
                       done
                     done
                   subgoal
@@ -2245,44 +2284,44 @@ subgoal for a b c
                       done
                     subgoal
                       apply safe
-subgoal for a b c
-                            using prems(18) apply -
-                            apply (drule spec[of _ "(a, b)"])
-                            apply (drule mp)
-                            apply force                            
-                            apply (auto split: prod.splits)
-                            apply (rule frontier_less_equal_le_trans)
-                            apply assumption
-                            apply (rule order.trans)
-                            using prems(16) apply simp
-                            using prems(11) apply simp
-                            apply (rule order.trans)
-                            using prems(17) apply -
-                             apply (drule spec)
-                             apply assumption
-                            using prems(1) apply simp
-                            apply (rule frontier_less_equal_change_multiplicities_alt)
-                            using prems(23)[unfolded changes_above_impl_def] apply blast
-                            done
-                          subgoal for a b
-                            using prems(18) apply -
-                            apply (drule spec[of _ "(a, b)"])
-                            apply (drule mp)
-                            apply force                            
-                            apply (auto split: prod.splits)
-                            apply (rule frontier_less_equal_le_trans)
-                            apply assumption
-                            apply (rule order.trans)
-                            using prems(16) apply simp
-                            using prems(11) apply simp
-                            apply (rule order.trans)
-                            using prems(17) apply -
-                             apply (drule spec)
-                             apply assumption
-                            using prems(1) apply simp
-                            apply (rule frontier_less_equal_change_multiplicities_alt)
-                            using prems(23)[unfolded changes_above_impl_def] apply blast
-                            done
+                      subgoal for a b c
+                        using prems(18) apply -
+                        apply (drule spec[of _ "(a, b)"])
+                        apply (drule mp)
+                        apply force                            
+                        apply (auto split: prod.splits)
+                        apply (rule frontier_less_equal_le_trans)
+                        apply assumption
+                        apply (rule order.trans)
+                        using prems(16) apply simp
+                        using prems(11) apply simp
+                        apply (rule order.trans)
+                        using prems(17) apply -
+                        apply (drule spec)
+                        apply assumption
+                        using prems(1) apply simp
+                        apply (rule frontier_less_equal_change_multiplicities_alt)
+                        using prems(23)[unfolded changes_above_impl_def] apply blast
+                        done
+                      subgoal for a b
+                        using prems(18) apply -
+                        apply (drule spec[of _ "(a, b)"])
+                        apply (drule mp)
+                        apply force                            
+                        apply (auto split: prod.splits)
+                        apply (rule frontier_less_equal_le_trans)
+                        apply assumption
+                        apply (rule order.trans)
+                        using prems(16) apply simp
+                        using prems(11) apply simp
+                        apply (rule order.trans)
+                        using prems(17) apply -
+                        apply (drule spec)
+                        apply assumption
+                        using prems(1) apply simp
+                        apply (rule frontier_less_equal_change_multiplicities_alt)
+                        using prems(23)[unfolded changes_above_impl_def] apply blast
+                        done
                       done
                     done
                   done
@@ -2334,25 +2373,25 @@ subgoal for a b c
           subgoal using prems(1,2,3,9,10,11,12,19) apply -
             apply (cases "propagate_all (summ sg) (pt_tr sg)"; simp)
             subgoal for c
-            apply (drule propagate_all_frontier_c_imp_correctness[])
-              using prems(19-) by auto
-         done
-          subgoal using prems(1,2,3,9,10,11,12,19) apply -
-            apply (cases "propagate_all (summ sg) (pt_tr sg)"; simp)
-            subgoal for c
-            apply (drule propagate_all_frontier_c_imp_correctness[])
+              apply (drule propagate_all_frontier_c_imp_correctness[])
               using prems(19-) by auto
             done
           subgoal using prems(1,2,3,9,10,11,12,19) apply -
             apply (cases "propagate_all (summ sg) (pt_tr sg)"; simp)
             subgoal for c
-            apply (drule propagate_all_frontier_c_imp_correctness[])
+              apply (drule propagate_all_frontier_c_imp_correctness[])
               using prems(19-) by auto
             done
           subgoal using prems(1,2,3,9,10,11,12,19) apply -
             apply (cases "propagate_all (summ sg) (pt_tr sg)"; simp)
             subgoal for c
-            apply (drule propagate_all_frontier_c_imp_correctness[])
+              apply (drule propagate_all_frontier_c_imp_correctness[])
+              using prems(19-) by auto
+            done
+          subgoal using prems(1,2,3,9,10,11,12,19) apply -
+            apply (cases "propagate_all (summ sg) (pt_tr sg)"; simp)
+            subgoal for c
+              apply (drule propagate_all_frontier_c_imp_correctness[])
               using prems(19-) by auto
             done
           subgoal 
@@ -2446,86 +2485,103 @@ subgoal for a b c
                   apply simp
                   apply (intro frontier_le_add)
                   apply (smt (verit, ccfv_threshold) add.commute frontier_below_eq_frontier_plus_pos frontier_idempotent frontier_le_remove_l zcount_union zcount_zmset_of_nonneg)
-                  using prems(31) apply -
-                  unfolding dataflow_topology_implied_frontier_alt_my_summ
-                  apply (simp add: ac_simps)
-                  apply (rule le_frontier_frontier_less_equal)
-                  apply simp
-                  apply (smt (verit, del_insts) prems(8) add.commute frontier_below_eq_frontier_plus_pos frontier_idempotent frontier_le_minus_gen zcount_zmset_of_nonneg zmset_of_plus)
-                  done
-                subgoal
-                  apply (auto 0 0 simp flip: add.assoc simp add: dataflow_topology_implied_frontier_alt_my_summ extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-                  apply (rule frontier_add_le_gen)
-                  apply simp_all
-                  using frontier_below_eq_frontier_minus prems(8) apply blast
-                  apply (smt (verit, del_insts) Groups.add_ac(2) frontier_below_eq_frontier_minus frontier_idempotent zcount_zmset_of_nonneg zmset_of_plus zmultiset_move_add_other_side)
-                  done
-                done
+                  sorry
+                sorry
               done
-            done           
-          subgoal using prems(18) apply -
-            apply (auto simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-            subgoal for l
-              using prems(1,2,9,10,11) apply -
-              apply (drule spec[of _ l])
+            done
+          subgoal sorry
+          subgoal sorry
+          subgoal sorry
+          subgoal sorry
+          subgoal sorry
+          subgoal 
+            using prems(2,23) apply -
+            apply (auto 0 0 simp flip: add.assoc simp add: dataflow_topology_implied_frontier_alt_my_summ extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+
+            find_theorems changes_above_impl 
+
+
+end
+  using prems(31) apply -
+  unfolding dataflow_topology_implied_frontier_alt_my_summ
+  apply (simp add: ac_simps)
+  apply (rule le_frontier_frontier_less_equal)
+  apply simp
+  apply (smt (verit, del_insts) prems(8) add.commute frontier_below_eq_frontier_plus_pos frontier_idempotent frontier_le_minus_gen zcount_zmset_of_nonneg zmset_of_plus)
+  done
+  subgoal
+    apply (auto 0 0 simp flip: add.assoc simp add: dataflow_topology_implied_frontier_alt_my_summ extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+    apply (rule frontier_add_le_gen)
+    apply simp_all
+    using frontier_below_eq_frontier_minus prems(8) apply blast
+    apply (smt (verit, del_insts) Groups.add_ac(2) frontier_below_eq_frontier_minus frontier_idempotent zcount_zmset_of_nonneg zmset_of_plus zmultiset_move_add_other_side)
+    done
+  done
+  done
+  done           
+  subgoal using prems(18) apply -
+    apply (auto simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+    subgoal for l
+      using prems(1,2,9,10,11) apply -
+      apply (drule spec[of _ l])
+      unfolding dataflow_topology_implied_frontier_alt_my_summ
+      apply simp
+      apply (intro allI impI conjI)
+      subgoal
+        by (auto 0 0 simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+      subgoal
+        by (auto 0 0 simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+      subgoal
+        by (auto 0 0 simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+      subgoal
+        by (auto 0 0 simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+      subgoal
+        by (auto 0 0 simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+      subgoal 
+        apply (auto 0 0 simp add: add.assoc simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+        subgoal premises prems2
+          apply (intro frontier_le_add)
+          apply simp_all
+          subgoal
+            apply (intro frontier_le_add)
+            subgoal
+              by (metis frontier_below_eq_frontier_plus_pos frontier_idempotent zcount_zmset_of_nonneg zmset_of_plus)
+            subgoal
+              using prems(33) apply -
               unfolding dataflow_topology_implied_frontier_alt_my_summ
-              apply simp
-              apply (intro allI impI conjI)
-              subgoal
-                by (auto 0 0 simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-              subgoal
-                by (auto 0 0 simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-              subgoal
-                by (auto 0 0 simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-              subgoal
-                by (auto 0 0 simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-              subgoal
-                by (auto 0 0 simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-              subgoal 
-                apply (auto 0 0 simp add: add.assoc simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-                subgoal premises prems2
-                  apply (intro frontier_le_add)
-                  apply simp_all
-                  subgoal
-                    apply (intro frontier_le_add)
-                    subgoal
-                      by (metis frontier_below_eq_frontier_plus_pos frontier_idempotent zcount_zmset_of_nonneg zmset_of_plus)
-                    subgoal
-                      using prems(33) apply -
-                      unfolding dataflow_topology_implied_frontier_alt_my_summ
-                      apply (simp add: ac_simps)
-                      apply (rule le_frontier_frontier_less_equal)
-                      sledgehammer
+              apply (simp add: ac_simps)
+              apply (rule le_frontier_frontier_less_equal)
+              sledgehammer
 
-                      apply (erule order_trans[rotated])
-                      apply (intro frontier_le_add)
-                      apply (simp_all add: ac_simps)
-                      apply (simp add: frontier_le_remove_l)
-                      apply (smt (z3) frontier_idempotent frontier_le_remove_l group_cancel.add2 verit_eq_simplify(6) zcount_union zmset_of_mset_set_ge_zero)
-                      done
-                    done
-                  subgoal
-                    using prems(2,9,14,11) apply -
-                    apply (auto 0 0 simp add: add.assoc simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-                    done
-                  subgoal
-                    apply (intro frontier_le_add)
-                    subgoal
-                      using prems(31) apply -
-                      unfolding dataflow_topology_implied_frontier_alt_my_summ
-                      apply (simp add: ac_simps)
-                      sledgehammer
+              apply (erule order_trans[rotated])
+              apply (intro frontier_le_add)
+              apply (simp_all add: ac_simps)
+              apply (simp add: frontier_le_remove_l)
+              apply (smt (z3) frontier_idempotent frontier_le_remove_l group_cancel.add2 verit_eq_simplify(6) zcount_union zmset_of_mset_set_ge_zero)
+              done
+            done
+          subgoal
+            using prems(2,9,14,11) apply -
+            apply (auto 0 0 simp add: add.assoc simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+            done
+          subgoal
+            apply (intro frontier_le_add)
+            subgoal
+              using prems(31) apply -
+              unfolding dataflow_topology_implied_frontier_alt_my_summ
+              apply (simp add: ac_simps)
+              sledgehammer
 
 
-                      done
-                    apply simp_all
-                    subgoal
-                      using prems(33) by auto
-                    done
-                  done
+              done
+            apply simp_all
+            subgoal
+              using prems(33) by auto
+            done
+          done
 
 
-                thm frontier_add_add_le
+        thm frontier_add_add_le
 
 end
   apply (rule frontier_add_add_le)
