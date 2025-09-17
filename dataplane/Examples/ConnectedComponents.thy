@@ -40,9 +40,7 @@ abbreviation \<open>choice5 op1 op2 op3 op4 op5 \<equiv> choice2 (choice4 op1 op
 abbreviation \<open>choice6 op1 op2 op3 op4 op5 op6 \<equiv> choice2 (choice5 op1 op2 op3 op4 op5) op6\<close>
 abbreviation \<open>choice7 op1 op2 op3 op4 op5 op6 op7 \<equiv> choice2 (choice6 op1 op2 op3 op4 op5 op6) op7\<close>
 
-abbreviation "mint_cap os p t \<equiv> os\<lparr> inter := inter os @ [(p, t, 1)] \<rparr>"
 abbreviation "produces os batch \<equiv> os\<lparr> outpu := (\<lambda> p. outpu os p @ map (\<lambda> (x, cap). (x, capability.time cap)) (filter (\<lambda> (x, cap). out cap = p) batch)), produ := produ os @ map (\<lambda> (x, cap). (out cap, capability.time cap, 1)) batch \<rparr>"
-abbreviation "drop_caps os caps \<equiv> (os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, capability.time cap, -1)) caps \<rparr>)"
 
 abbreviation \<open>mint os caps p t \<equiv> let cap = Cap t p in
   if cap \<in> set caps then (caps, os) else (caps @ [cap], mint_cap os p t)\<close>
@@ -56,12 +54,12 @@ definition update_label where
   \<open>update_label label a b t n =
   foldl (\<lambda>label' t'. label'(t' := (label' t')(b := min (label' t' b) a))) label [t ..< n]\<close>
 
-primrec remdups_sel where
-  \<open>remdups_sel s [] = []\<close>
-| \<open>remdups_sel s (x # xs) = (if s x \<in> s ` set xs then remdups_sel s xs else x # remdups_sel s xs)\<close>
+primrec remdups_f where
+  \<open>remdups_f f [] = []\<close>
+| \<open>remdups_f f (x # xs) = (if f x \<in> f ` set xs then remdups_f f xs else x # remdups_f f xs)\<close>
 
-lemma remdups_sel_id:
-  \<open>remdups_sel id xs = remdups xs\<close>
+lemma remdups_f_id:
+  \<open>remdups_f id xs = remdups xs\<close>
   by (induction xs) simp_all
 
 (* declare [[unify_search_bound = 100]] *)
@@ -97,7 +95,7 @@ corec label_prop_op where
   | _ \<Rightarrow> \<oslash>))
   (let below_caps = [cap \<leftarrow> caps. \<not> frontier_less_equal (front os 1) (capability.time cap)];
        above_caps = [cap \<leftarrow> caps. frontier_less_equal (front os 1) (capability.time cap)];
-       output_caps = remdups_sel (myfst \<circ> capability.time) below_caps;
+       output_caps = remdups_f (myfst \<circ> capability.time) below_caps;
        batch = concat (map (\<lambda>cap. let t = myfst (capability.time cap) in map (\<lambda>v. ((v, label t v), cap)) (filter (\<lambda>v. the (E t) v \<noteq> []) undefined)) output_caps);
        os' = produces os batch;
        os'' = drop_caps os' below_caps
