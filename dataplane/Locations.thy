@@ -101,6 +101,13 @@ instance port :: (order) order
     done
   done
 
+instance port :: (linorder) linorder
+  apply standard
+  subgoal for x y
+    apply (cases x; cases y)
+    apply (auto intro!: antisym elim: less_eq_port.cases)
+    done
+  done
 
 instantiation location :: (linorder, linorder) linorder
 begin
