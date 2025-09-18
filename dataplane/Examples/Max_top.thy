@@ -1902,6 +1902,38 @@ lemma changes_above_impl_change_multiplicities_lt:
     by auto
   done
 
+lemma changes_above_impl_change_multiplicities:
+  "changes_above_impl c A \<Longrightarrow>
+   (\<forall> l \<in> fst ` set B. dataflow_topology.implied_frontier_alt my_summ (+) (change_multiplicities my_summ A c) l \<le> frontier (zmset (map snd B))) \<Longrightarrow>
+   changes_above_impl (change_multiplicities my_summ B c) A"
+  unfolding changes_above_impl_def
+  apply safe
+  apply (drule bspec)
+   apply blast
+  apply simp
+  apply (rule frontier_less_equal_le_trans)
+   apply assumption
+  oops
+(*   sledgehammer
+
+  find_theorems frontier_less_equal 
+end
+  unfolding  dataflow_topology_implied_frontier_alt_my_summ changes_above_impl_def
+  apply (simp split: prod.splits)
+  apply (intro impI allI ballI conjI; simp?; (elim exE)?; hypsubst_thin?)
+  subgoal for x y a b
+    apply (drule bspec)
+     apply simp
+    apply simp
+    apply (simp add: c_pts_change_multiplicities)
+    unfolding frontier_less_equal_iff
+    apply (rule order.trans[rotated])
+     apply assumption
+    subgoal premises prems
+     *)
+    
+    find_theorems frontier_less_equal name: iff
+
 
 (*  lemma changes_above_impl_le_trans:
   "changes_above_impl F2 C \<Longrightarrow>
@@ -2951,27 +2983,58 @@ subgoal premises
               unfolding extract_progress_def input_cap_def
               apply auto
               apply hypsubst_thin
-                apply (auto 0 0 simp add: add.assoc dataflow_topology_implied_frontier_alt_my_summ update_zmultiset_replicate c_pts_change_multiplicities)
+              apply (auto 0 0 simp add: add.assoc dataflow_topology_implied_frontier_alt_my_summ update_zmultiset_replicate c_pts_change_multiplicities)
+              apply (subgoal_tac 
+  "change_multiplicities my_summ
+       (map (\<lambda>(p, t, m). (Loc 0 (Trg 1), t, - m)) (consu os1) @
+        map (\<lambda>(p, y). (Loc 0 (Src 1), y)) (operator_state.inter os1) @ (Loc 0 (Src 1), n 1, - 1) # (Loc 0 (Src 1), Suc (n 1), 1) # concat (map (\<lambda>(p, t, m). [(Loc 1 (Trg 1), t, m)]) (produ os1)) @ [(Loc 1 (Trg 1), n 1, int (length batch))])
+       (pt_tr sg) = 
+   change_multiplicities my_summ [(Loc 0 (Src 1), n 1, - 1), (Loc 0 (Src 1), Suc (n 1), 1),(Loc 1 (Trg 1), n 1, int (length batch))] (change_multiplicities my_summ (map (\<lambda>(p, t, m). (Loc 0 (Trg 1), t, - m)) (consu os1) @ map (\<lambda>(p, y). (Loc 0 (Src 1), y)) (operator_state.inter os1) @ concat (map (\<lambda>(p, t, m). [(Loc 1 (Trg 1), t, m)]) (produ os1))) (pt_tr sg))")
+              subgoal
+                apply simp
+         
+
+              find_theorems  changes_above_impl change_multiplicities
+
+end
               apply (rule changes_above_impl_le_implied_frontier)
                apply assumption
                 apply (auto 0 0 simp add: add.assoc dataflow_topology_implied_frontier_alt_my_summ update_zmultiset_replicate c_pts_change_multiplicities)
               subgoal premises prems3
                 apply (subst prems3(7)[symmetric])
                 apply simp
+                using prems3(2) apply -
+                apply (cases batch; simp) 
+                apply (subst (2) add_zmset_add_single)
+                apply (rule frontier_le_remove_left)
+                 apply simp
+                 apply (subgoal_tac "frontier {#n 1#}\<^sub>z = antichain {n 1}")
+                    subgoal
+                      apply simp
+                      apply (subst antichain_inverse)
+                       apply (simp_all add: incomparable_def)
+                      apply (subst (1 2) add_zmset_add_single)
+
+        
+
+
+end
                 apply (subgoal_tac "frontier (zmset_of (mset_set (set_antichain (frontier {#Suc (n 1)#}\<^sub>z))) + zmset_of (mset_set (set_antichain (frontier (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + (zmset (map snd (produ os1)) + zmset_of {#n 1. x \<in># mset batch#})))))) =
                 frontier (zmset_of (mset_set (set_antichain (frontier (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + (zmset (map snd (produ os1)) + zmset_of {#n 1. x \<in># mset batch#}))))))")
                 subgoal
                   apply simp
                   subgoal premises prems4
-                    using prems3(2) apply -
-                    apply (cases batch; simp) 
-              apply (subst (1) add_zmset_add_single)
+         
                     apply (subst (3 5) add.commute)
                     subgoal premises
-                   
-                        find_theorems "_ \<in>\<^sub>A  _" "_ \<or> _"
+                      apply (rule frontier_le_add)
+                      subgoal
+                        apply simp
+                        apply (subst (1) add_zmset_add_single)
 
+                        find_theorems "_ \<le> frontier (_ + _)"
 
+                        
 
 end
                     apply (subgoal_tac "frontier {#n 1#}\<^sub>z = antichain {n 1}")

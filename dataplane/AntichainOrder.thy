@@ -501,5 +501,12 @@ lemma zmset_of_mset_set_ge_zero[simp]:
   by (meson zcount_zmset_of_nonneg)
 
 
+lemma frontier_le_remove_left:
+  "frontier B \<le> frontier C \<Longrightarrow>
+   (\<forall> x. zcount A x \<ge> 0) \<Longrightarrow>
+   frontier (A + B) \<le> frontier C"
+  unfolding less_eq_antichain_def
+  by (metis add.commute in_frontier_in_frontier_add_alt)
+
 
 end
