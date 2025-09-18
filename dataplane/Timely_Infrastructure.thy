@@ -499,6 +499,10 @@ lemma change_multiplicities_append:
   apply simp
   done
 
+lemma change_multiplicities_append_alt:
+  "change_multiplicities su (xs @ ys) c = change_multiplicities su ys (change_multiplicities su xs c)"
+  using change_multiplicities_append by metis
+
 lemma change_multiplicities_append_comp:
   "change_multiplicities su (xs @ ys) = change_multiplicities su ys o change_multiplicities su xs"
   unfolding change_multiplicities_def

@@ -2976,9 +2976,8 @@ subgoal premises
             using prems2(2) apply -
             unfolding produce_def
             apply auto
-            defer
             subgoal
-              using prems(1,2,9,10,25,11,14) prems(13) apply -
+              using prems(1,2,3,9,10,25,11,14) prems(13) apply -
               apply simp
               unfolding extract_progress_def input_cap_def
               apply auto
@@ -2986,15 +2985,42 @@ subgoal premises
               apply (auto 0 0 simp add: add.assoc dataflow_topology_implied_frontier_alt_my_summ update_zmultiset_replicate c_pts_change_multiplicities)
               apply (subgoal_tac 
   "change_multiplicities my_summ
-       (map (\<lambda>(p, t, m). (Loc 0 (Trg 1), t, - m)) (consu os1) @
-        map (\<lambda>(p, y). (Loc 0 (Src 1), y)) (operator_state.inter os1) @ (Loc 0 (Src 1), n 1, - 1) # (Loc 0 (Src 1), Suc (n 1), 1) # concat (map (\<lambda>(p, t, m). [(Loc 1 (Trg 1), t, m)]) (produ os1)) @ [(Loc 1 (Trg 1), n 1, int (length batch))])
+       (map (\<lambda>(p, y). (Loc 0 (Src 1), y)) (operator_state.inter os1) @ (Loc 0 (Src 1), n 1, - 1) # (Loc 0 (Src 1), Suc (n 1), 1) # concat (map (\<lambda>(p, t, m). [(Loc 1 (Trg 1), t, m)]) (produ os1)))
        (pt_tr sg) = 
-   change_multiplicities my_summ [(Loc 0 (Src 1), n 1, - 1), (Loc 0 (Src 1), Suc (n 1), 1),(Loc 1 (Trg 1), n 1, int (length batch))] (change_multiplicities my_summ (map (\<lambda>(p, t, m). (Loc 0 (Trg 1), t, - m)) (consu os1) @ map (\<lambda>(p, y). (Loc 0 (Src 1), y)) (operator_state.inter os1) @ concat (map (\<lambda>(p, t, m). [(Loc 1 (Trg 1), t, m)]) (produ os1))) (pt_tr sg))")
-              subgoal
-                apply simp
-         
+   change_multiplicities my_summ [(Loc 0 (Src 1), n 1, - 1), (Loc 0 (Src 1), Suc (n 1), 1)] (change_multiplicities my_summ (map (\<lambda>(p, y). (Loc 0 (Src 1), y)) (operator_state.inter os1) @ concat (map (\<lambda>(p, t, m). [(Loc 1 (Trg 1), t, m)]) (produ os1))) (pt_tr sg))")
+              defer
+              subgoal premises
+                apply (simp flip: change_multiplicities_append_alt)
+                apply (rule fun_cong[where x="(pt_tr sg)"])
+                apply (rule change_multiplicities_appen_cong)
+                apply (rule ext)
+                using change_multiplicities_comm 
+                sorry
+              subgoal premises prems3
+                apply (simp add: prems3(8))
+                using prems3(5) apply -
+                apply (cases "")
 
-              find_theorems  changes_above_impl change_multiplicities
+end
+                unfolding changes_above_impl_def
+                apply (simp split: prod.splits)
+                apply (intro ballI impI conjI allI; simp)
+                apply (elim disjE exE)
+                subgoal for x l t a
+                  apply (drule bspec)
+                   apply blast
+                  apply auto
+                  apply hypsubst_thin
+                  apply (rule frontier_less_equal_le_trans)
+                   apply assumption
+                  using prems(2,3,9,10,11) prems3(1) prems(13)[symmetric] apply -
+                apply (auto 0 0 simp add: ac_simps extract_progress_def input_cap_def add.assoc dataflow_topology_implied_frontier_alt_my_summ update_zmultiset_replicate c_pts_change_multiplicities)
+
+                  
+
+                  find_theorems frontier_less_equal change_multiplicities
+
+                thm changes_above_impl_le_implied_frontier
 
 end
               apply (rule changes_above_impl_le_implied_frontier)
