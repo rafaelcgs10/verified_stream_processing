@@ -2263,6 +2263,7 @@ lemma
 
    sorted_wrt (\<lambda> (_, x) (_, y). x \<le> y) ((map projr (buf1 (Inr (1, 1)))) @ (outpu os1 0)) \<Longrightarrow>
 
+   (\<forall> t \<in> fst ` snd ` set (extract_progress 0 (edges sg) st1 @ extract_progress 1 (edges sg) st2). t \<le> n 1) \<Longrightarrow>
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
 proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 st2 rule: weakBisimWeakUptoBisimCong)
@@ -2275,7 +2276,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
       unfolding wsim_def
       apply (intro allI conjI impI)
       subgoal premises prems for io op1'
-        using prems(27) apply -
+        using prems(28) apply -
         apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin?)
         apply simp_all
         prefer 8
@@ -2411,6 +2412,8 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
             done
           subgoal
             using prems(26) by simp
+          subgoal
+            using prems(27) sorry 
           subgoal
             apply simp
             apply (rule rtranclp_intros_1)
@@ -2900,6 +2903,8 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
           subgoal
             using prems(26) by simp
           subgoal
+            using prems(27) sorry 
+          subgoal
             apply (rule rtranclp_intros_1)
             apply (rule arg_cong3[where f=map_op])
             apply simp
@@ -2998,6 +3003,8 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
             by (auto simp add: extract_progress_def changes_above_impl_def)
           subgoal 
             using prems(26) by simp
+          subgoal
+            using prems(27) sorry 
           subgoal
             apply (rule rtranclp_intros_1)
             apply (rule arg_cong3[where f=map_op])
@@ -3250,27 +3257,79 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
               subgoal premises prems3
                 apply (simp add: prems3(8))
                 using prems3(5) apply -
-                    subgoal
-                      unfolding changes_above_impl_def
-                      apply (simp split: prod.splits)
-                      apply (intro ballI impI conjI allI; simp)
-                      apply (elim disjE exE)
-                      subgoal for x l t a
-                        apply auto
-                        apply hypsubst_thin
+                subgoal
+                  unfolding changes_above_impl_def
+                  apply (simp split: prod.splits)
+                  apply (intro ballI impI conjI allI; simp)
+                  apply (elim disjE exE)
+                  subgoal for x l t a
+                    apply auto
+                    apply hypsubst_thin
+                    apply (drule bspec)
+                     apply blast
+                    apply simp
                         apply (cases "t < n 1")
                         subgoal
-                          apply (drule bspec)
-                           apply blast
-                          apply simp
-                          sorry
-                        subgoal
-                          apply (drule bspec)
-                           apply blast
-                          apply simp
+                          apply (rule frontier_less_equal_le_change_multiplicities_implied_frontier)
+                           apply assumption
+                          apply auto
+                          done
+                        subgoal for m
                           unfolding Orderings.linorder_class.not_less_iff_gr_or_eq
+                          apply (elim disjE)
+                          subgoal
+                            apply (rule FalseE)
+                            using prems(1,2,3,9,10,25,11,14,27) prems2(2) apply -
+                            unfolding extract_progress_def input_cap_def 
+                            apply (drule spec[of _ t])
+                            apply (drule mp)
+                            subgoal
+                              apply auto
+                              apply (rule image_eqI[rotated])
+                              apply (rule image_eqI[rotated])
+                                apply simp
+                                apply blast
+                               apply auto
+                              done
+                            apply auto
+                            done
+                          subgoal
+                            apply hypsubst_thin
+                            using prems(8,12,11,22)
 
-                          find_theorems  frontier_less_equal "_ < _"
+
+end
+                            apply (auto 0 0 simp add: add.assoc dataflow_topology_implied_frontier_alt_my_summ update_zmultiset_replicate c_pts_change_multiplicities)
+                 
+
+end
+                            using prems(1,2,3,9,10,25,11,14,27) prems2(2) apply -
+                            apply (drule spec[of _ "Loc 1 (Trg 1)"])
+                            apply (drule mp)
+                             apply simp
+                            unfolding extract_progress_def input_cap_def
+                            apply (auto 0 0 simp add: add.assoc dataflow_topology_implied_frontier_alt_my_summ update_zmultiset_replicate c_pts_change_multiplicities)
+                            subgoal premises prems4
+                              using prems4(2,3,11,1) apply -
+                              unfolding frontier_less_equal_iff2  less_eq_antichain_def
+                              apply (drule spec[of _ "n 1"])
+                              apply (drule mp)
+                              subgoal premises
+                                unfolding in_frontier_iff
+                                apply auto
+                                done
+                              subgoal
+                                apply safe
+                                subgoal for t1 t2
+                                  apply (subgoal_tac "t1 \<le> t2 \<and> t1 \<le> n 1")
+                                  subgoal
+                                    
+
+                              find_theorems "_ \<in>\<^sub>A frontier _"
+
+
+
+                          find_theorems  frontier_less_equal "_ \<le> _"
 
                 find_theorems "change_multiplicities _ _ ?c = ?c"
 
