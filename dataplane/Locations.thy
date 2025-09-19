@@ -240,4 +240,14 @@ definition show_port where
 definition show_loc where
   "show_loc x = STR ''node: '' + print_2 (node x) + STR '', port: '' + show_port (port x)"
 
+
+lemma loc_2_1_cases:
+  "l = Loc (0 :: 2) (Trg (1 :: 1)) \<or> l = Loc 0 (Src 1) \<or> l = Loc 1 (Src 1) \<or> l = Loc 1 (Trg 1)"
+  apply (cases l; simp)
+  subgoal for nid p
+    apply (cases nid; cases p; simp)
+     apply (smt (verit, ccfv_SIG) of_int_0 of_int_1)+
+    done
+  done
+
 end
