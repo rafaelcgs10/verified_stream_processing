@@ -11,7 +11,6 @@ imports
   Locations
   Operators_Utils
   DataplaneUtils
-  "HOL-Library.Finite_Map"
   Containers.Collection_Order
 begin 
 
