@@ -14,6 +14,8 @@ imports
   "HOL-Library.Finite_Map"
   Containers.Collection_Order
 begin 
+declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]  neg_filter_zmset_neg_zmset[simp del]
+
 
 (*
   TODO:

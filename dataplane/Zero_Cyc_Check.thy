@@ -11,6 +11,8 @@ theory Zero_Cyc_Check
     Progress_Tracking.Auxiliary
 
 begin
+declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]  neg_filter_zmset_neg_zmset[simp del]
+
 
 (* Zero cycle checking and it correctness proof *)
 

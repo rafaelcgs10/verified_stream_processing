@@ -4,6 +4,8 @@ imports
    Progress_Tracking.Propagate
   "../dataplane/Locations"
 begin
+declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]  neg_filter_zmset_neg_zmset[simp del]
+
 
 declare [[typedef_overloaded]]
 

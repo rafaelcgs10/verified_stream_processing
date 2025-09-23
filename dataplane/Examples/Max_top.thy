@@ -1259,7 +1259,7 @@ lemma zcount_zmset:
 
 
 
-lemma zcount_zmset_filter_neg[simp]:
+lemma zcount_zmset_filter_neg:
   "(\<forall> (p, t, m) \<in> set xs. m \<ge> 0) \<Longrightarrow>
    zcount (zmset (map snd (filter (\<lambda>(l', t, d). l = l') (map (\<lambda>(p, t, m). (l, t, - m)) xs)))) t \<le> 0"
   apply (auto simp add: zcount_zmset)
@@ -1304,14 +1304,14 @@ lemma map_snd_filter_neg[simp]:
   apply (metis diff_add_zmset semiring_norm(57))
   done
 
-lemma frontier_update_zmultiset_keep1[simp]:
+lemma frontier_update_zmultiset_keep1:
   "zcount A x > 0 \<Longrightarrow> zcount A x + m > 0 \<Longrightarrow> frontier (update_zmultiset A x m) = frontier A"
   apply transfer
   unfolding minimal_antichain_def
   apply (auto simp add: zcount_update_zmultiset dest: less_imp_not_eq2)
   done
 
-lemma frontier_update_zmultiset_keep2[simp]:
+lemma frontier_update_zmultiset_keep2:
   "zcount A x \<le> 0 \<Longrightarrow> zcount A x + m \<le> 0 \<Longrightarrow> frontier (update_zmultiset A x m) = frontier A"
   apply transfer
   unfolding minimal_antichain_def
@@ -1555,7 +1555,7 @@ lemma in_zmset_filter:
   "t \<in>#\<^sub>z zmset (map snd (filter (\<lambda>(l', t, d). l = l') A)) \<Longrightarrow> \<exists>m. (l, t, m) \<in> set A \<and> m \<noteq> 0"
   apply (induct A)
    apply simp
-  apply (clarsimp split: if_splits prod.splits)
+  apply (clarsimp  split: if_splits prod.splits)
   subgoal
     by (smt (verit, ccfv_SIG) not_in_iff_zmset zcount_update_zmultiset)
   subgoal
@@ -1814,7 +1814,7 @@ lemma changes_above_impl_le_implied_frontier:
     using frontier_less_equal_le_trans by fastforce
   done
 
-lemma c_pts_change_multiplicities_gt_location[simp]:
+lemma c_pts_change_multiplicities_gt_location:
   "(\<forall> l' \<in> fst ` set B. l < l') \<Longrightarrow>
    c_pts (change_multiplicities my_summ B c) l = c_pts c l"
   apply (induct B arbitrary: c)
@@ -1826,7 +1826,7 @@ lemma c_pts_change_multiplicities_gt_location[simp]:
     done
   done
 
-lemma c_pts_change_multiplicities_diff_location[simp]:
+lemma c_pts_change_multiplicities_diff_location:
   "(\<forall> l' \<in> fst ` set B. l \<noteq> l') \<Longrightarrow>
    c_pts (change_multiplicities my_summ B c) l = c_pts c l"
   apply (induct B arbitrary: c)
@@ -1850,6 +1850,10 @@ lemma l0_eq_l1[simp]:
   apply (cases p; cases p'; simp)
   done
 
+declare BAPPEND_BTL[simp del]
+
+find_theorems "if ?buf2.1 ?p1 = [] then BTL ?p1 ?buf1.1 >> ?buf2.1 else ?buf1.1 >> BTL ?p1 ?buf2.1"
+
 lemma changes_above_impl_change_multiplicities_lt:
   "changes_above_impl c A \<Longrightarrow>
    (\<forall> l \<in> fst ` set A. \<forall> l' \<in> fst ` set B. l < l') \<Longrightarrow>
@@ -1858,7 +1862,7 @@ lemma changes_above_impl_change_multiplicities_lt:
   apply (simp split: prod.splits)
   apply (intro impI allI ballI conjI; simp?; hypsubst_thin?)
   subgoal 
-    by force
+    using c_pts_change_multiplicities_gt_location by force
   subgoal
     apply (drule bspec)
      apply simp
@@ -1946,6 +1950,13 @@ lemma frontier_less_equal_add_gt:
     done
   done
 
+
+lemma frontier_less_equal_iff2:
+  "frontier_less_equal f t \<longleftrightarrow> (\<exists> t'. t' \<in>\<^sub>A f \<and> t' \<le> t)"
+  unfolding frontier_less_equal_def
+  apply (auto simp add: in_frontier_iff)
+  done
+
 lemma frontier_less_equal_addI:
   "frontier_less_equal (frontier A) t \<or> frontier_less_equal (frontier B) t \<Longrightarrow>
    (\<forall> t. zcount A t \<ge> 0) \<Longrightarrow>
@@ -1957,17 +1968,68 @@ lemma frontier_less_equal_addI:
   using frontier_le_remove_left apply blast
   done
 
-lemma frontier_less_equal_iff2:
-  "frontier_less_equal f t \<longleftrightarrow> (\<exists> t'. t' \<in>\<^sub>A f \<and> t' \<le> t)"
-  unfolding frontier_less_equal_def
-  apply (auto simp add: in_frontier_iff)
-  done
 
 lemma frontier_less_equal_add_cases:
   "frontier_less_equal (frontier (A + B)) t \<Longrightarrow>
    frontier_less_equal (frontier A) t \<or> frontier_less_equal (frontier B) t"
   unfolding frontier_less_equal_iff2
   using in_frontier_addD order_trans_rules(23) by blast
+
+
+lemma in_frontier_subseteq:
+  "t \<in>\<^sub>A frontier A \<Longrightarrow>
+   A \<subseteq>#\<^sub>z B \<Longrightarrow>
+   \<exists> t'. t' \<le> t \<and> t' \<in>\<^sub>A frontier B"
+  by (meson dataflow_topology_from_tree.obtain_elem_frontier dual_order.strict_trans1 member_frontier_pos_zmset zmset_subset_eq_zcount)
+
+
+lemma in_frontier_filter_zmset:
+  "t' \<in>\<^sub>A frontier A \<Longrightarrow>
+   A = filter_zmset (\<lambda> x. x \<le> t) B \<Longrightarrow>
+   t' \<le> t \<Longrightarrow>
+   t' \<in>\<^sub>A frontier B"
+  apply transfer
+  unfolding minimal_antichain_def
+  apply (auto split: if_splits)
+  done
+
+
+lemma in_frontier_add_filter_zmset:
+  "t' \<in>\<^sub>A frontier (A + filter_zmset (\<lambda> x. x \<le> t) B) \<Longrightarrow>
+   t' \<le> t \<Longrightarrow>
+   t' \<in>\<^sub>A frontier (A + B)"
+   apply transfer'
+  unfolding minimal_antichain_def
+  apply (auto split: if_splits)
+  done
+
+(* 
+here
+lemma
+  "zmset (filter P A) = {#x \<in>#\<^sub>z zmset xs. P x#}"
+
+lemma
+  "zmset (filter X A) =
+   {#x \<in>#\<^sub>z zmset A. x \<le> t#}"
+  apply (induct B)
+   apply (auto split: prod.splits)
+ *)
+
+
+
+
+lemma frontier_less_equal_add_gt_filter:
+  "frontier_less_equal (frontier (c_pts (change_multiplicities my_summ (filter (\<lambda> (l, x, m). x \<le> t) B) c) l)) t \<Longrightarrow>
+   frontier_less_equal (frontier (c_pts (change_multiplicities my_summ B c) l)) t"
+  unfolding frontier_less_equal_iff2 c_pts_change_multiplicities
+  apply safe
+  subgoal for t'
+    apply (rule exI[of _ t'])
+    apply simp
+    apply (rule in_frontier_add_filter_zmset[rotated])
+     apply assumption
+    oops
+
 
 lemma frontier_less_equal_le_change_multiplicities_implied_frontier:
   "frontier_less_equal (dataflow_topology.implied_frontier_alt my_summ trivial_dataflow_topology_interpretation.followed_by c l) t \<Longrightarrow>
@@ -2054,6 +2116,11 @@ lemma frontier_less_equal_le_change_multiplicities_implied_frontier:
   done
   done
 
+lemma frontier_less_equal_filter_le_change_multiplicities_implied_frontier:
+  "frontier_less_equal (dataflow_topology.implied_frontier_alt my_summ trivial_dataflow_topology_interpretation.followed_by (change_multiplicities my_summ (filter (\<lambda> (l, x, m). x \<le> t) A) c) l) t \<Longrightarrow>
+    frontier_less_equal (dataflow_topology.implied_frontier_alt my_summ trivial_dataflow_topology_interpretation.followed_by (change_multiplicities my_summ A c) l) t"
+  oops
+
 
 lemma changes_above_impl_change_multiplicities_lt_2:
   "changes_above_impl c A \<Longrightarrow>
@@ -2119,6 +2186,7 @@ lemma changes_above_impl_change_multiplicities_lt_2:
       using frontier_less_equal_add_gt apply auto
       done
     subgoal
+      using [[simp_trace_new mode=full]]
       apply (intro frontier_less_equal_addI; simp)
       apply (rule disjI2)
       apply (intro frontier_less_equal_addI; simp)
@@ -2219,7 +2287,8 @@ lemma propagate_all_implied_frontier_alt:
 
 lemma temp:
   "change_multiplicities my_summ A c = c' \<Longrightarrow>
-   (\<forall> l'. l' \<le> l \<longrightarrow> (\<exists> l''. l'' \<le> l \<and> frontier (c_pts c l') = frontier (c_pts c' l''))) \<Longrightarrow>
+   (\<forall> t m l'. (l', t, m) \<in> set A \<longrightarrow> l' \<le> l \<longrightarrow> zcount (c_pts c l') t > 0 \<longrightarrow> zcount (c_pts c' l') t \<le> 0 \<longrightarrow> (\<exists> l''. l'' \<le> l \<and> zcount (c_pts c' l'') t > 0)) \<Longrightarrow>
+   (\<forall> t m l'. (l', t, m) \<in> set A \<longrightarrow> l' \<le> l \<longrightarrow> zcount (c_pts c l') t \<le> 0 \<longrightarrow> zcount (c_pts c' l') t > 0 \<longrightarrow> (\<exists> l'' t'. l'' \<le> l \<and> zcount (c_pts c' l'') t' > 0 \<and> t' \<le> t)) \<Longrightarrow>
    dataflow_topology.implied_frontier_alt my_summ trivial_dataflow_topology_interpretation.followed_by c' l = 
    dataflow_topology.implied_frontier_alt my_summ trivial_dataflow_topology_interpretation.followed_by c l"
   sorry
@@ -2328,7 +2397,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
           subgoal using prems(10,9,2,3,9,10,11,12,13,14)
             by (auto simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
           subgoal using prems(10,9,2,3,9,10,11,12,13,14,15) apply -
-            apply (auto simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+            apply (clarsimp simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
             subgoal premises
               apply (induct caps)
               apply auto
@@ -2337,15 +2406,8 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
             done
           subgoal using prems(16) by (auto simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
           subgoal using prems(17) by (auto simp add:  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-          subgoal using prems(1,10,9,2,3,9,10,11,12,13,14,15,18) apply -
-            apply (auto simp add: dataflow_topology_implied_frontier_alt_my_summ extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-            subgoal for a b
-              apply (drule spec2[of _ a b])
-              apply (elim conjE)
-              apply (drule mp)
-              apply blast
-              by (auto 0 0 simp add: frontier_less_equal_def  extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-            done
+          subgoal using prems(1,10,9,2,3,9,10,11,12,13,14,15,18)
+            by (clarsimp simp del:  simp add: dataflow_topology_implied_frontier_alt_my_summ extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
           subgoal using prems(19) by simp
           subgoal using prems(20) by simp
           subgoal using prems(21) by simp
@@ -2824,11 +2886,8 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
               using prems(19-) apply simp_all 
               done
             done
-          subgoal using prems(1,2,3,9,10,11,12,18) apply -
-            apply (auto simp add: dataflow_topology_implied_frontier_alt_my_summ propagate_pointstamps_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def dest!: propagate_all_preserves_c_pts split: option.splits; hypsubst_thin?)
-            apply (drule spec)+
-            apply blast
-            done
+          subgoal using prems(1,2,3,9,10,11,12,18)
+            by (clarsimp simp add: dataflow_topology_implied_frontier_alt_my_summ propagate_pointstamps_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def dest!: propagate_all_preserves_c_pts split: option.splits; hypsubst_thin?)
           subgoal using prems(1,2,3,9,10,11,12,19) apply -
             apply (cases "propagate_all (summ sg) (pt_tr sg)"; simp)
             subgoal for c
@@ -3298,6 +3357,8 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                           unfolding Orderings.linorder_class.not_less_iff_gr_or_eq
                           apply (elim disjE)
                           subgoal
+                            find_consts name: zmset name: fron
+
                             apply (rule FalseE)
                             using prems(1,2,3,9,10,25,11,14,27) prems2(2) apply -
                             unfolding extract_progress_def input_cap_def 
@@ -3314,18 +3375,39 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                             apply auto
                             done
                           subgoal
-                            apply hypsubst_thin
+                            apply hypsubst
                             apply (subst temp)
                               apply (rule refl)
+                              defer
                             defer
                             apply assumption
-                            apply auto
-                            subgoal for l
+                            apply safe
+                            subgoal premises prems5 for t' m l
+                              using prems5(1,3-) apply -
                               using loc_2_1_cases[where l=l] apply -
-                              apply (elim disjE; simp)
+                              apply (elim disjE conjE; simp)
                               subgoal
-                                apply (rule exI[of _ l])
-                                apply auto
+                                apply safe
+                                subgoal
+                                apply (rule exI[of _ "Loc 1 (Trg 1)"])
+                                  apply (simp add: c_pts_change_multiplicities)
+                                  sorry
+                                subgoal 
+                                  sorry
+                                done
+                              done
+                            subgoal for t' m l
+                              using loc_2_1_cases[where l=l] apply -
+                              apply (elim disjE conjE; simp)
+                              apply safe
+                              subgoal
+                                by (simp add: zcount_update_zmultiset c_pts_change_multiplicities)
+                              subgoal
+
+unbundle lattice_syntax
+
+
+end
                                 apply (rule arg_cong[where f=frontier])
                                 apply (subst (2) c_pts_change_multiplicities_gt_location)
                                  apply auto
