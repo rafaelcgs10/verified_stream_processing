@@ -32,8 +32,7 @@ lemma step_increment_top_elim:
   using assms
   apply (subst (asm) increment_top.code)
   apply (cases io)
-    apply (auto split: sum.splits list.splits)
-    apply blast+
+    apply (auto 0 5 split: sum.splits list.splits)
   done
 
 lemma step_increment_top_Read_L[intro]:
