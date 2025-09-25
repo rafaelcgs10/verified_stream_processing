@@ -2438,7 +2438,7 @@ lemma
    ys 0 = max_from_buf caps buf2 ((map projr o buf1 o Inr o Pair 1) 0 @ outpu os1 0) \<Longrightarrow>
    (\<forall> x \<in> set (buf1 (Inr (1, 0))). is_Inr x) \<Longrightarrow>
    sorted (map time caps) \<Longrightarrow>
-   (\<forall>t \<in> snd ` snd ` set (consu os2). t \<ge> 0) \<Longrightarrow>
+   (\<forall>m \<in> snd ` snd ` set (consu os2). m \<ge> 0) \<Longrightarrow>
 
    obtain_progress os1 = (a, st1) \<Longrightarrow>
    obtain_progress os2 = (b, st2) \<Longrightarrow>
@@ -2461,9 +2461,8 @@ lemma
    changes_above_impl (change_multiplicities (summ sg) (extract_progress 1 (edges sg) st2) (pt_tr sg)) (extract_progress 0 (edges sg) st1) \<Longrightarrow>
    changes_above_impl (change_multiplicities (summ sg) (extract_progress 0 (edges sg) st1) (pt_tr sg)) (extract_progress 1 (edges sg) st2) \<Longrightarrow>
 
-   sorted_wrt (\<lambda> (_, x) (_, y). x \<le> y) ((map projr (buf1 (Inr (1, 1)))) @ (outpu os1 0)) \<Longrightarrow>
-
-   (\<forall> t \<in> fst ` snd ` set (extract_progress 0 (edges sg) st1 @ extract_progress 1 (edges sg) st2). t \<le> n 1) \<Longrightarrow>
+   (\<forall>m \<in> snd ` snd ` set (inter os2). m = 1 \<or> m = - 1) \<Longrightarrow>
+   distinct caps \<Longrightarrow>
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
 proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 st2 rule: weakBisimWeakUptoBisimCong)
@@ -2604,7 +2603,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
               done
             done
           subgoal
-            using prems(26) by simp
+            using prems(26) by auto
           subgoal
             using prems(27) sorry 
           subgoal
@@ -3485,11 +3484,22 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                         done
                       done
                     done
-                          
+                  subgoal for x l t m
+                    apply auto
+                    apply hypsubst_thin
+                    apply (drule bspec)
+                     apply blast
+                    apply simp      
+                    apply (cases "m < 0")
+                    subgoal
+                    apply (rule frontier_less_equal_implied_frontier[of _ "Loc 1 (Src 1)"])
+                     apply (simp_all add: c_pts_change_multiplicities)
+                      using prems(1,2,15,11,9,10) apply -
+                      unfolding extract_progress_def input_cap_def changes_non_zero_def
+                     apply (auto simp add: c_pts_change_multiplicities)
+                      apply hypsubst_thin
 
-                            apply (induct "consu os2" arbitrary: os2)
-                             apply auto
-                            
+
 
 end
 
