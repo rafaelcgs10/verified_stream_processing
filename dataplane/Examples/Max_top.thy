@@ -2291,8 +2291,50 @@ lemma temp:
    (\<forall> t m l'. (l', t, m) \<in> set A \<longrightarrow> l' \<le> l \<longrightarrow> zcount (c_pts c l') t \<le> 0 \<longrightarrow> zcount (c_pts c' l') t > 0 \<longrightarrow> (\<exists> l'' t'. l'' \<le> l \<and> zcount (c_pts c' l'') t' > 0 \<and> t' \<le> t)) \<Longrightarrow>
    dataflow_topology.implied_frontier_alt my_summ trivial_dataflow_topology_interpretation.followed_by c' l = 
    dataflow_topology.implied_frontier_alt my_summ trivial_dataflow_topology_interpretation.followed_by c l"
-  sorry
+  oops
 
+lemma
+  "\<exists>t'. t' \<in>\<^sub>A frontier A \<and> t' \<le> t \<Longrightarrow>
+   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
+   \<exists>t'. t' \<in>\<^sub>A frontier (A + B) \<and> t' \<le> t"
+  apply safe
+  subgoal for t'
+    apply (cases "\<exists>t''. t'' \<in>\<^sub>A frontier B \<and> t'' \<le> t'")
+    subgoal
+      apply safe
+      subgoal for t''
+      apply (rule exI[of _ t''])
+      apply auto
+        
+
+end
+    apply transfer'
+    unfolding minimal_antichain_def
+    apply auto
+    subgoal for B t' A t
+      apply (rule exI[of _ t'])
+      apply auto
+      using add_sign_intros(1) apply blast
+
+end
+
+lemma
+  "frontier_less_equal (frontier (c_pts c l')) t \<Longrightarrow>
+   l' < l \<Longrightarrow>
+   frontier_less_equal
+   (dataflow_topology.implied_frontier_alt my_summ trivial_dataflow_topology_interpretation.followed_by c l) t"
+  unfolding dataflow_topology_implied_frontier_alt_my_summ frontier_less_equal_iff2
+  apply (clarsimp simp del: set_antichain1 set_antichain2 strictD_simp mset_set.infinite)
+  apply (intro conjI impI; simp?; hypsubst_thin?)
+  subgoal
+    using loc_2_1_cases[where l=l'] apply -
+    apply (auto simp add: less_port_def)
+    using l0_lt_l1 less_imp_not_less apply blast+
+    done
+  subgoal for t'
+    using loc_2_1_cases[where l=l'] apply -
+    apply (auto simp add: less_port_def; hypsubst_thin?)
+    
 
 (* lemma
   "dataflow_topology.implied_frontier_alt my_summ trivial_dataflow_topology_interpretation.followed_by c =
@@ -3404,7 +3446,6 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                                 by (simp add: zcount_update_zmultiset c_pts_change_multiplicities)
                               subgoal
 
-unbundle lattice_syntax
 
 
 end

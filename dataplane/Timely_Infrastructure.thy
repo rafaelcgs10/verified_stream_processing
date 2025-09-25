@@ -13,8 +13,9 @@ imports
   DataplaneUtils
   Containers.Collection_Order
 begin 
-declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]  neg_filter_zmset_neg_zmset[simp del]
 
+declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
+  neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 
 (*
   TODO:
@@ -179,8 +180,6 @@ fun take_step where
 
 definition "propagate_all_locale summary df c0 = (while_option (Not o (worklist_is_empty summary))
                                            (take_step_locale df PR) c0)"
-
-declare dataflow_topology_from_tree.take_step.simps[of _ "(cless :: 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le} \<Rightarrow> _ \<Rightarrow> _)",  folded take_step_locale_def mymin_code_def, code]
 
 abbreviation empty_conf where
   "empty_conf \<equiv> \<lparr>c_work = (\<lambda> _.  {#}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
