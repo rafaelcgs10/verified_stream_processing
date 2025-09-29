@@ -3506,9 +3506,15 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                         apply (drule mp)
                          apply fast
                         apply simp
-                        apply (rule zcount_gt_0_zmulset_diff)
+                        unfolding zmultiset_eq_iff
+                        apply (drule spec[of _ t])
+                        apply (subgoal_tac "zcount (zmset (map snd (operator_state.inter os2))) t = -1")
+                        subgoal
+                          by simp
+                        subgoal
+                          sledgehammer
 
-                        find_theorems "_ < zcount _ _"
+                        find_theorems "(_ :: _ zmultiset) = _ \<longleftrightarrow> _" zcount
 
 end
 
