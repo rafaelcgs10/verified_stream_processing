@@ -516,19 +516,6 @@ lemma fronteier_lt_add_ex:
   "t' \<in>\<^sub>A frontier A \<Longrightarrow> t' \<le> t \<Longrightarrow>
    (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
    \<exists>t'. t' \<in>\<^sub>A frontier (A + B) \<and> t' \<le> t"
-  apply safe
-  subgoal for t'
-    apply (cases "\<exists>t''. t'' \<in>\<^sub>A frontier B \<and> t'' \<le> t'")
-    subgoal
-      apply safe
-      subgoal for t''
-        using in_frontier_in_frontier_add_alt by blast
-      done
-    subgoal
-      apply auto
-      using in_frontier_in_frontier_add_alt by blast
-    done
-  done
-
+  using in_frontier_in_frontier_add_alt by blast
 
 end
