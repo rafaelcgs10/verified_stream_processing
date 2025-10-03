@@ -3492,27 +3492,28 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                     apply simp      
                     apply (cases "m < 0")
                     subgoal
-                      apply (rule frontier_less_equal_implied_frontier[of _ "Loc 1 (Src 1)"])
-                      using prems(2,15,11,9,10,26,27) apply -
-                      unfolding extract_progress_def input_cap_def
-                      apply (auto 0 0 simp add: add.assoc dataflow_topology_implied_frontier_alt_my_summ update_zmultiset_replicate c_pts_change_multiplicities)
-                      apply hypsubst_thin
-                      apply (subgoal_tac "zcount (c_pts (pt_tr sg) (Loc 1 (Src 1))) t > 0")
+                      apply (cases "zcount (zmset (map snd (operator_state.inter os2))) t = -1")
                       subgoal
-                        unfolding frontier_less_equal_iff2
-                        by (meson trivial_dataflow_topology_interpretation.obtain_elem_frontier)
-                      subgoal
-                        apply (drule spec)
-                        apply (drule mp)
-                         apply fast
-                        apply simp
-                        unfolding zmultiset_eq_iff
-                        apply (drule spec[of _ t])
-                        apply (subgoal_tac "zcount (zmset (map snd (operator_state.inter os2))) t = -1")
+                        apply (rule frontier_less_equal_implied_frontier[of _ "Loc 1 (Src 1)"])
+                        using prems(2,15,11,9,10,26,27) apply -
+                        unfolding extract_progress_def input_cap_def
+                         apply (auto 0 0 simp add: add.assoc dataflow_topology_implied_frontier_alt_my_summ update_zmultiset_replicate c_pts_change_multiplicities)
+                        apply hypsubst_thin
+                        apply (subgoal_tac "zcount (c_pts (pt_tr sg) (Loc 1 (Src 1))) t > 0")
                         subgoal
-                          by simp
+                          unfolding frontier_less_equal_iff2
+                          by (meson trivial_dataflow_topology_interpretation.obtain_elem_frontier)
                         subgoal
-                          sledgehammer
+                          apply (drule spec)
+                          apply (drule mp)
+                           apply fast
+                          apply simp
+                          unfolding zmultiset_eq_iff
+                          apply (drule spec[of _ t])
+                          apply simp
+                          done
+                        done
+
 
                         find_theorems "(_ :: _ zmultiset) = _ \<longleftrightarrow> _" zcount
 
