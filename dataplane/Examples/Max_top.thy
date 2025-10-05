@@ -2461,8 +2461,6 @@ lemma
    changes_above_impl (change_multiplicities (summ sg) (extract_progress 1 (edges sg) st2) (pt_tr sg)) (extract_progress 0 (edges sg) st1) \<Longrightarrow>
    changes_above_impl (change_multiplicities (summ sg) (extract_progress 0 (edges sg) st1) (pt_tr sg)) (extract_progress 1 (edges sg) st2) \<Longrightarrow>
 
-   (\<forall>m \<in> snd ` snd ` set (inter os2). m = 1 \<or> m = - 1) \<Longrightarrow>
-   distinct caps \<Longrightarrow>
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
 proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 st2 rule: weakBisimWeakUptoBisimCong)
@@ -2475,7 +2473,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
       unfolding wsim_def
       apply (intro allI conjI impI)
       subgoal premises prems for io op1'
-        using prems(28) apply -
+        using prems(26) apply -
         apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin?)
         apply simp_all
         prefer 8
@@ -2602,10 +2600,6 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                 done
               done
             done
-          subgoal
-            using prems(26) by auto
-          subgoal
-            using prems(27) sorry 
           subgoal
             apply simp
             apply (rule rtranclp_intros_1)
@@ -3090,10 +3084,6 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
               done
             done
           subgoal
-            using prems(26) by simp
-          subgoal
-            using prems(27) sorry 
-          subgoal
             apply (rule rtranclp_intros_1)
             apply (rule arg_cong3[where f=map_op])
             apply simp
@@ -3190,10 +3180,6 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
             using prems(1,2,9,10,24) by (auto simp add: extract_progress_def)
           subgoal premises
             by (auto simp add: extract_progress_def changes_above_impl_def)
-          subgoal 
-            using prems(26) by simp
-          subgoal
-            using prems(27) sorry 
           subgoal
             apply (rule rtranclp_intros_1)
             apply (rule arg_cong3[where f=map_op])
@@ -3490,12 +3476,11 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                     apply (drule bspec)
                      apply blast
                     apply simp      
-                    apply (cases "m < 0")
                     subgoal
-                      apply (cases "zcount (zmset (map snd (operator_state.inter os2))) t = -1")
+                      apply (cases "zcount (zmset (map snd (operator_state.inter os2))) t < 0")
                       subgoal
                         apply (rule frontier_less_equal_implied_frontier[of _ "Loc 1 (Src 1)"])
-                        using prems(2,15,11,9,10,26,27) apply -
+                        using prems(2,15,11,9,10) apply -
                         unfolding extract_progress_def input_cap_def
                          apply (auto 0 0 simp add: add.assoc dataflow_topology_implied_frontier_alt_my_summ update_zmultiset_replicate c_pts_change_multiplicities)
                         apply hypsubst_thin
@@ -3504,15 +3489,13 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                           unfolding frontier_less_equal_iff2
                           by (meson trivial_dataflow_topology_interpretation.obtain_elem_frontier)
                         subgoal
-                          apply (drule spec)
-                          apply (drule mp)
-                           apply fast
-                          apply simp
                           unfolding zmultiset_eq_iff
                           apply (drule spec[of _ t])
                           apply simp
                           done
                         done
+                      subgoal
+                        unfolding not_less
 
 
                         find_theorems "(_ :: _ zmultiset) = _ \<longleftrightarrow> _" zcount
@@ -3532,96 +3515,5 @@ end
                             
 
 
-                          find_theorems sum_mset zcount
-
-apply
-
-
-end
-                        unfolding zmultiset_eq_iff
-                        apply (drule spec[of _ t])
-                        
-
-
-                      find_theorems zcount zmset
-
-
-
-end
-
-
-
-    unfolding Orderings.linorder_class.not_less_iff_gr_or_eq
-    apply (elim disjE)
-    subgoal
-      find_consts name: zmset name: fron
-
-      apply (rule FalseE)
-      using prems(1,2,3,9,10,25,11,14,27) prems2(2) apply -
-      unfolding extract_progress_def input_cap_def 
-      apply (drule spec[of _ t])
-      apply (drule mp)
-      subgoal
-        apply auto
-        apply (rule image_eqI[rotated])
-        apply (rule image_eqI[rotated])
-        apply simp
-        apply blast
-        apply auto
-        done
-      apply auto
-      done
-    subgoal
-      apply hypsubst
-      apply (subst temp)
-      apply (rule refl)
-      defer
-      defer
-      apply assumption
-      apply safe
-      subgoal premises prems5 for t' m l
-        using prems5(1,3-) apply -
-        using loc_2_1_cases[where l=l] apply -
-        apply (elim disjE conjE; simp)
-        subgoal
-          apply safe
-          subgoal
-            apply (rule exI[of _ "Loc 1 (Trg 1)"])
-            apply (simp add: c_pts_change_multiplicities)
-            sorry
-          subgoal 
-            sorry
-          done
-        done
-      subgoal for t' m l
-        using loc_2_1_cases[where l=l] apply -
-        apply (elim disjE conjE; simp)
-        apply safe
-        subgoal
-          by (simp add: zcount_update_zmultiset c_pts_change_multiplicities)
-        subgoal
-
-
-
-end
-  apply (rule arg_cong[where f=frontier])
-  apply (subst (2) c_pts_change_multiplicities_gt_location)
-  apply auto
-  apply (simp add: less_port_def)
-  done
-  subgoal
-    apply (rule exI[of _ "Loc 1 (Trg 1)"])
-    apply auto
-    apply (rule arg_cong[where f=frontier])
-    apply (subst (2) c_pts_change_multiplicities_diff_location)
-    apply auto
-    apply (simp add: less_port_def)
-
-
-    find_theorems change_multiplicities c_pts
-
-
-    using prems(8,12,11,22)
-
-
+     
 end
