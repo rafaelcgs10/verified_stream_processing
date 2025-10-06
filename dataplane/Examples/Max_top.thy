@@ -3630,8 +3630,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                   done
                 done
               done
-
-subgoal
+            subgoal
               using prems(1,2,3,9,10,25,11,14) prems(13) apply -
               apply simp
               unfolding extract_progress_def input_cap_def
@@ -3643,7 +3642,7 @@ subgoal
        (map (\<lambda>(p, y). (Loc 0 (Src 1), y)) (operator_state.inter os1) @ (Loc 0 (Src 1), n 1, - 1) # (Loc 0 (Src 1), Suc (n 1), 1) # concat (map (\<lambda>(p, t, m). [(Loc 1 (Trg 1), t, m)]) (produ os1)))
        (pt_tr sg) = 
    change_multiplicities my_summ [(Loc 0 (Src 1), n 1, - 1), (Loc 0 (Src 1), Suc (n 1), 1)] (change_multiplicities my_summ (map (\<lambda>(p, y). (Loc 0 (Src 1), y)) (operator_state.inter os1) @ concat (map (\<lambda>(p, t, m). [(Loc 1 (Trg 1), t, m)]) (produ os1))) (pt_tr sg))")
-               defer
+              defer
               subgoal premises
                 apply (simp flip: change_multiplicities_append_alt)
                 apply (rule fun_cong[where x="(pt_tr sg)"])
@@ -3663,7 +3662,7 @@ subgoal
                     apply auto
                     apply hypsubst_thin
                     apply (rule frontier_less_equal_implied_frontier[of _ "Loc 1 (Trg 1)"])
-                     apply (simp_all add: c_pts_change_multiplicities)
+                    apply (simp_all add: c_pts_change_multiplicities)
                     subgoal premises prems4 for m
                       using prems4(3) apply -
                       using prems(1,2,12,11,9,10,22) apply -
@@ -3684,13 +3683,13 @@ subgoal
                         done
                       subgoal
                         apply (rule zcount_gt_0_zmulset_diff[where B="zmset (map snd (consu os2))" and C="zmset_of ({#snd (projr x). x \<in># mset (buf1 (Inr (1, 1)))#} + snd `# mset (outpu os1 1))"])
-                          apply (simp add: add_diff_eq)
-                         apply simp_all
+                        apply (simp add: add_diff_eq)
+                        apply simp_all
                         subgoal premises prems5
                           using prems5(1,5) apply -
                           apply (rule zcount_zmset_gt_0[where m=m])
-                            apply force
-                           apply simp_all
+                          apply force
+                          apply simp_all
                           using prems(8) apply force
                           using prems(8) apply auto
                           done
@@ -3706,7 +3705,7 @@ subgoal
                         apply (rule frontier_less_equal_implied_frontier[of _ "Loc 1 (Src 1)"])
                         using prems(2,15,11,9,10) apply -
                         unfolding extract_progress_def input_cap_def
-                         apply (auto 0 0 simp add: add.assoc dataflow_topology_implied_frontier_alt_my_summ update_zmultiset_replicate c_pts_change_multiplicities)
+                        apply (auto 0 0 simp add: add.assoc dataflow_topology_implied_frontier_alt_my_summ update_zmultiset_replicate c_pts_change_multiplicities)
                         apply hypsubst_thin
                         apply (subgoal_tac "zcount (c_pts (pt_tr sg) (Loc 1 (Src 1))) t > 0")
                         subgoal
@@ -3724,9 +3723,9 @@ subgoal
                         apply (drule spec[of _ t])+
                         apply (drule spec)
                         apply (drule mp)
-                         apply simp
+                        apply simp
                         apply (drule mp)
-                         apply simp
+                        apply simp
                         apply auto
                         subgoal
                           using prems(1,2,9,10,11,15) apply -
@@ -3738,7 +3737,7 @@ subgoal
                             apply (rule frontier_less_equal_implied_frontier[of _ "Loc 1 (Src 1)"])
                             using prems(2,15,11,9,10) apply -
                             unfolding extract_progress_def input_cap_def
-                             apply (auto 0 0 simp add: add.assoc dataflow_topology_implied_frontier_alt_my_summ update_zmultiset_replicate c_pts_change_multiplicities)
+                            apply (auto 0 0 simp add: add.assoc dataflow_topology_implied_frontier_alt_my_summ update_zmultiset_replicate c_pts_change_multiplicities)
                             apply hypsubst_thin
                             subgoal
                               unfolding frontier_less_equal_iff2
@@ -3749,7 +3748,7 @@ subgoal
                           done
                         subgoal for m'
                           apply (rule frontier_less_equal_implied_frontier[of _ "Loc 1 (Trg 1)"])
-                           apply (simp_all add: c_pts_change_multiplicities)
+                          apply (simp_all add: c_pts_change_multiplicities)
                           subgoal premises prems4
                             using prems4(6) apply -
                             using prems(1,2,12,11,9,10,22) apply -
@@ -3770,12 +3769,12 @@ subgoal
                               done
                             subgoal
                               apply (rule zcount_gt_0_zmulset_diff[where B="zmset (map snd (consu os2))" and C="zmset_of ({#snd (projr x). x \<in># mset (buf1 (Inr (1, 1)))#} + snd `# mset (outpu os1 1))"])
-                                apply (simp add: add_diff_eq)
-                               apply simp_all
+                              apply (simp add: add_diff_eq)
+                              apply simp_all
                               subgoal
                                 apply (rule zcount_zmset_gt_0[where m=m'])
-                                  apply force
-                                 apply simp_all
+                                apply force
+                                apply simp_all
                                 using prems(8) apply force
                                 using prems(8) apply auto
                                 done
@@ -3796,7 +3795,7 @@ subgoal
             done
 
 
-            find_theorems "_ < _ \<Longrightarrow> _ \<le> _"
+          find_theorems "_ < _ \<Longrightarrow> _ \<le> _"
 
 end
 
