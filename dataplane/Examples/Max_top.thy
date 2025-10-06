@@ -2462,7 +2462,6 @@ lemma
    changes_above_impl (change_multiplicities (summ sg) (extract_progress 0 (edges sg) st1) (pt_tr sg)) (extract_progress 1 (edges sg) st2) \<Longrightarrow>
 
    (\<forall> t m. (1, t, m) \<in> set (inter os2) \<longrightarrow> 0 \<le> zcount (zmset (map snd (inter os2))) t \<longrightarrow> zcount (c_pts (pt_tr sg) (Loc 1 (Src 1))) t = 0 \<longrightarrow> (\<exists> m. (1, t, m) \<in> set (consu os2))) \<Longrightarrow>
-
    (\<forall> t. zcount (c_pts (pt_tr sg) (Loc 1 (Src 1))) t \<ge> 0) \<Longrightarrow>
 
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
