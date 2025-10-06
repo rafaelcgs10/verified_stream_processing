@@ -3632,6 +3632,171 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                 done
               done
 
+subgoal
+              using prems(1,2,3,9,10,25,11,14) prems(13) apply -
+              apply simp
+              unfolding extract_progress_def input_cap_def
+              apply auto
+              apply hypsubst_thin
+              apply (auto 0 0 simp add: add.assoc dataflow_topology_implied_frontier_alt_my_summ update_zmultiset_replicate c_pts_change_multiplicities)
+              apply (subgoal_tac 
+                  "change_multiplicities my_summ
+       (map (\<lambda>(p, y). (Loc 0 (Src 1), y)) (operator_state.inter os1) @ (Loc 0 (Src 1), n 1, - 1) # (Loc 0 (Src 1), Suc (n 1), 1) # concat (map (\<lambda>(p, t, m). [(Loc 1 (Trg 1), t, m)]) (produ os1)))
+       (pt_tr sg) = 
+   change_multiplicities my_summ [(Loc 0 (Src 1), n 1, - 1), (Loc 0 (Src 1), Suc (n 1), 1)] (change_multiplicities my_summ (map (\<lambda>(p, y). (Loc 0 (Src 1), y)) (operator_state.inter os1) @ concat (map (\<lambda>(p, t, m). [(Loc 1 (Trg 1), t, m)]) (produ os1))) (pt_tr sg))")
+               defer
+              subgoal premises
+                apply (simp flip: change_multiplicities_append_alt)
+                apply (rule fun_cong[where x="(pt_tr sg)"])
+                apply (rule change_multiplicities_appen_cong)
+                apply (rule ext)
+                using change_multiplicities_comm 
+                apply (metis (no_types, lifting) append_Cons empty_append_eq_id)
+                done
+              subgoal premises prems3
+                using prems3(5) prems3(9) apply -
+                subgoal
+                  unfolding changes_above_impl_def
+                  apply (simp split: prod.splits)
+                  apply (intro ballI impI conjI allI; simp)
+                  apply (elim disjE exE)
+                  subgoal for x l t a
+                    apply auto
+                    apply hypsubst_thin
+                    apply (rule frontier_less_equal_implied_frontier[of _ "Loc 1 (Trg 1)"])
+                     apply (simp_all add: c_pts_change_multiplicities)
+                    subgoal premises prems4 for m
+                      using prems4(3) apply -
+                      using prems(1,2,12,11,9,10,22) apply -
+                      unfolding extract_progress_def input_cap_def changes_non_zero_def
+                      apply (auto simp add: c_pts_change_multiplicities)
+                      apply hypsubst_thin
+                      apply (subgoal_tac "zcount (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (produ os1))) t > 0")
+                      subgoal
+                        unfolding frontier_less_equal_iff2
+                        apply (subgoal_tac "\<forall> t. zcount (zmset_of {#n 1. x \<in># mset batch#}) t \<ge> 0")
+                        subgoal
+                          apply (erule trivial_dataflow_topology_interpretation.obtain_elem_frontier)
+                          apply auto
+                          apply (smt (verit, best) Groups.add_ac(1) in_frontier_in_frontier_add_alt zcount_zmset_of_nonneg)
+                          done
+                        subgoal
+                          by auto
+                        done
+                      subgoal
+                        apply (rule zcount_gt_0_zmulset_diff[where B="zmset (map snd (consu os2))" and C="zmset_of ({#snd (projr x). x \<in># mset (buf1 (Inr (1, 1)))#} + snd `# mset (outpu os1 1))"])
+                          apply (simp add: add_diff_eq)
+                         apply simp_all
+                        subgoal premises prems5
+                          using prems5(1,5) apply -
+                          apply (rule zcount_zmset_gt_0[where m=m])
+                            apply force
+                           apply simp_all
+                          using prems(8) apply force
+                          using prems(8) apply auto
+                          done
+                        done
+                      done
+                    done
+                  subgoal for x l t m
+                    apply auto
+                    apply hypsubst_thin    
+                    subgoal
+                      apply (cases "zcount (zmset (map snd (operator_state.inter os2))) t < 0")
+                      subgoal
+                        apply (rule frontier_less_equal_implied_frontier[of _ "Loc 1 (Src 1)"])
+                        using prems(2,15,11,9,10) apply -
+                        unfolding extract_progress_def input_cap_def
+                         apply (auto 0 0 simp add: add.assoc dataflow_topology_implied_frontier_alt_my_summ update_zmultiset_replicate c_pts_change_multiplicities)
+                        apply hypsubst_thin
+                        apply (subgoal_tac "zcount (c_pts (pt_tr sg) (Loc 1 (Src 1))) t > 0")
+                        subgoal
+                          unfolding frontier_less_equal_iff2
+                          by (meson trivial_dataflow_topology_interpretation.obtain_elem_frontier)
+                        subgoal
+                          unfolding zmultiset_eq_iff
+                          apply (drule spec[of _ t])
+                          apply simp
+                          done
+                        done
+                      subgoal
+                        unfolding not_less
+                        using prems(26,27) apply -
+                        apply (drule spec[of _ t])+
+                        apply (drule spec)
+                        apply (drule mp)
+                         apply simp
+                        apply (drule mp)
+                         apply simp
+                        apply auto
+                        subgoal
+                          using prems(1,2,9,10,11,15) apply -
+                          unfolding extract_progress_def
+                          apply (auto 0 0 simp add: c_pts_change_multiplicities)
+                          apply hypsubst_thin
+                          apply (subgoal_tac "0 < zcount (c_pts (pt_tr sg) (Loc 1 (Src 1))) t")
+                          subgoal
+                            apply (rule frontier_less_equal_implied_frontier[of _ "Loc 1 (Src 1)"])
+                            using prems(2,15,11,9,10) apply -
+                            unfolding extract_progress_def input_cap_def
+                             apply (auto 0 0 simp add: add.assoc dataflow_topology_implied_frontier_alt_my_summ update_zmultiset_replicate c_pts_change_multiplicities)
+                            apply hypsubst_thin
+                            subgoal
+                              unfolding frontier_less_equal_iff2
+                              by (meson trivial_dataflow_topology_interpretation.obtain_elem_frontier)
+                            done
+                          subgoal
+                            by (meson prems(27) zmset_elem_nonneg)
+                          done
+                        subgoal for m'
+                          apply (rule frontier_less_equal_implied_frontier[of _ "Loc 1 (Trg 1)"])
+                           apply (simp_all add: c_pts_change_multiplicities)
+                          subgoal premises prems4
+                            using prems4(6) apply -
+                            using prems(1,2,12,11,9,10,22) apply -
+                            unfolding extract_progress_def input_cap_def changes_non_zero_def
+                            apply (auto simp add: c_pts_change_multiplicities)
+                            apply hypsubst_thin
+                            apply (subgoal_tac "zcount (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (produ os1))) t > 0")
+                            subgoal
+                              unfolding frontier_less_equal_iff2
+                              apply (subgoal_tac "\<forall> t. zcount (zmset_of {#n 1. x \<in># mset batch#}) t \<ge> 0")
+                              subgoal
+                                apply (erule trivial_dataflow_topology_interpretation.obtain_elem_frontier)
+                                apply auto
+                                apply (smt (verit, best) Groups.add_ac(1) in_frontier_in_frontier_add_alt zcount_zmset_of_nonneg)
+                                done
+                              subgoal
+                                by auto
+                              done
+                            subgoal
+                              apply (rule zcount_gt_0_zmulset_diff[where B="zmset (map snd (consu os2))" and C="zmset_of ({#snd (projr x). x \<in># mset (buf1 (Inr (1, 1)))#} + snd `# mset (outpu os1 1))"])
+                                apply (simp add: add_diff_eq)
+                               apply simp_all
+                              subgoal
+                                apply (rule zcount_zmset_gt_0[where m=m'])
+                                  apply force
+                                 apply simp_all
+                                using prems(8) apply force
+                                using prems(8) apply auto
+                                done
+                              done
+                            done
+                          subgoal
+                            apply (rule order.strict_implies_order)
+                            apply auto
+                            using less_eq_port.simps(3,4) less_port_def apply blast
+                            done
+                          done
+                        done
+                      done
+                    done
+                  done
+                done
+              done
+            done
+
+
             find_theorems "_ < _ \<Longrightarrow> _ \<le> _"
 
 end
