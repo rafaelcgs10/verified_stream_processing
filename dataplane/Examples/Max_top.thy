@@ -1289,6 +1289,28 @@ lemma zmset_map_one_zmset_of:
    apply (auto simp add: zcount_update_zmultiset zcount_zmset zmultiset_eq_iff)
   done
 
+lemma zmset_map_minus_one_zmset_of:
+  "zmset (map (\<lambda>cap. (time cap, -1)) caps) = - zmset_of (mset (map time caps))"
+  apply (induct caps)
+   apply (auto simp add: zcount_update_zmultiset zcount_zmset zmultiset_eq_iff)
+  done
+
+lemma zmset_of_replicate_mset[simp]:
+  "zmset_of (replicate_mset n (g a)) = Auxiliary.image_zmset g (zmset_of (replicate_mset n a))"
+  apply (induct n)
+  apply (auto simp add: zmultiset_eq_iff zcount_image_zmset update_zmultiset_replicate split: if_splits)
+  done
+
+lemma zmset_map:
+  "zmset (map (map_prod g id) xs) = image_zmset g (zmset xs)"
+  apply (induct xs)
+  apply (simp_all add: map_prod_def split_beta)
+  subgoal for x xs
+    apply (cases x)
+    apply (auto simp add: update_zmultiset_replicate)
+    done
+  done
+
 lemma zmset_of_eq_add:
   "zmset_of (mset (map time caps)) = A + B \<Longrightarrow>
    time x \<in> time ` set caps \<Longrightarrow> zcount A (time x) > 0 \<or> zcount B (time x) > 0"
@@ -2461,7 +2483,7 @@ lemma
    changes_above_impl (change_multiplicities (summ sg) (extract_progress 1 (edges sg) st2) (pt_tr sg)) (extract_progress 0 (edges sg) st1) \<Longrightarrow>
    changes_above_impl (change_multiplicities (summ sg) (extract_progress 0 (edges sg) st1) (pt_tr sg)) (extract_progress 1 (edges sg) st2) \<Longrightarrow>
 
-   (\<forall> t m. (1, t, m) \<in> set (inter os2) \<longrightarrow> 0 \<le> zcount (zmset (map snd (inter os2))) t \<longrightarrow> zcount (c_pts (pt_tr sg) (Loc 1 (Src 1))) t = 0 \<longrightarrow> (\<exists> m. (1, t, m) \<in> set (consu os2))) \<Longrightarrow>
+   (\<forall> t m. (1, t, m) \<in> set (inter os2) \<longrightarrow> 0 \<le> zcount (zmset (map snd (inter os2))) t \<longrightarrow>  (\<exists> m. (1, t, m) \<in> set (consu os2))) \<Longrightarrow>
    (\<forall> t. zcount (c_pts (pt_tr sg) (Loc 1 (Src 1))) t \<ge> 0) \<Longrightarrow>
 
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
@@ -2629,18 +2651,37 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
               apply hypsubst_thin
               subgoal for x
                 apply (drule spec[of _ "time x"])+
-                apply simp
                 apply (drule mp)
                 subgoal premises prems2
-                  using prems2(5,9) apply -
-                  apply (induct caps)
-                   apply (auto split: if_splits)
-                  using zcount_gt_0_in_set_2 apply force+
+                  using prems2(3,4,5) apply -
+                  unfolding comp_def
+                  apply (simp add: zmset_map_minus_one_zmset_of count_image_mset)
+                  apply (subgoal_tac "int (count (mset caps) x) \<le> zcount (zmset (map snd (operator_state.inter os2))) (time x)")
+                  subgoal
+                    by (smt (z3) count_mset_0_iff int_zle_neg zcount_gt_0_in_set_2)
+                  subgoal
+                    apply (erule order.trans[rotated])
+                    apply (rule member_le_sum)
+                      apply auto
+                    done
                   done
-                apply auto
+                apply (drule mp)
+                subgoal
+                  unfolding comp_def
+                  apply (simp add: zmset_map_minus_one_zmset_of count_image_mset)
+ apply (subgoal_tac "int (count (mset caps) x) \<le> zcount (zmset (map snd (operator_state.inter os2))) (time x)")
+                  subgoal
+                    by (smt (z3) count_mset_0_iff int_zle_neg zcount_gt_0_in_set_2)
+                  subgoal
+                    apply (erule order.trans[rotated])
+                    apply (rule member_le_sum)
+                      apply auto
+                    done
+                  done
+                   apply assumption
+                  done
                 done
               done
-            done
           subgoal
             using prems(27) by simp
           subgoal
@@ -3128,13 +3169,8 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
             done
           subgoal
             apply simp
-            apply (cases "propagate_all (summ sg) (pt_tr sg)"; simp)
-            subgoal for c
-              apply auto
-              apply (drule propagate_all_preserves_c_pts)
               using prems(26) apply auto
               done
-            done
           subgoal
             apply simp
             apply (cases "propagate_all (summ sg) (pt_tr sg)"; simp)
@@ -3572,25 +3608,6 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                         apply (drule mp)
                          apply simp
                         apply auto
-                        subgoal
-                          using prems(1,2,9,10,11,15) apply -
-                          unfolding extract_progress_def
-                          apply (auto 0 0 simp add: c_pts_change_multiplicities)
-                          apply hypsubst_thin
-                          apply (subgoal_tac "0 < zcount (c_pts (pt_tr sg) (Loc 1 (Src 1))) t")
-                          subgoal
-                            apply (rule frontier_less_equal_implied_frontier[of _ "Loc 1 (Src 1)"])
-                            using prems(2,15,11,9,10) apply -
-                            unfolding extract_progress_def input_cap_def
-                             apply (auto 0 0 simp add: add.assoc dataflow_topology_implied_frontier_alt_my_summ update_zmultiset_replicate c_pts_change_multiplicities)
-                            apply hypsubst_thin
-                            subgoal
-                              unfolding frontier_less_equal_iff2
-                              by (meson trivial_dataflow_topology_interpretation.obtain_elem_frontier)
-                            done
-                          subgoal
-                            by (meson prems(27) zmset_elem_nonneg)
-                          done
                         subgoal for m'
                           apply (rule frontier_less_equal_implied_frontier[of _ "Loc 1 (Trg 1)"])
                            apply (simp_all add: c_pts_change_multiplicities)
@@ -3727,25 +3744,6 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                         apply (drule mp)
                         apply simp
                         apply auto
-                        subgoal
-                          using prems(1,2,9,10,11,15) apply -
-                          unfolding extract_progress_def
-                          apply (auto 0 0 simp add: c_pts_change_multiplicities)
-                          apply hypsubst_thin
-                          apply (subgoal_tac "0 < zcount (c_pts (pt_tr sg) (Loc 1 (Src 1))) t")
-                          subgoal
-                            apply (rule frontier_less_equal_implied_frontier[of _ "Loc 1 (Src 1)"])
-                            using prems(2,15,11,9,10) apply -
-                            unfolding extract_progress_def input_cap_def
-                            apply (auto 0 0 simp add: add.assoc dataflow_topology_implied_frontier_alt_my_summ update_zmultiset_replicate c_pts_change_multiplicities)
-                            apply hypsubst_thin
-                            subgoal
-                              unfolding frontier_less_equal_iff2
-                              by (meson trivial_dataflow_topology_interpretation.obtain_elem_frontier)
-                            done
-                          subgoal
-                            by (meson prems(27) zmset_elem_nonneg)
-                          done
                         subgoal for m'
                           apply (rule frontier_less_equal_implied_frontier[of _ "Loc 1 (Trg 1)"])
                           apply (simp_all add: c_pts_change_multiplicities)
@@ -3793,6 +3791,8 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                 done
               done
             done
+
+
 
 
           find_theorems "_ < _ \<Longrightarrow> _ \<le> _"
