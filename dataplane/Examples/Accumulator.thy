@@ -75,17 +75,13 @@ proof
   assume \<open>wfinished (accumulator_op f g P n ins acc)\<close>
   thus \<open>\<forall>p \<in> \<UU>. ldropWhile (P p) (ins p) = LNil\<close>
   proof (rule contrapos_pp)
-    assume \<open>\<not> (\<forall>p\<in>\<UU>. ldropWhile (P p) (ins p) = LNil)\<close>
-    hence \<open>\<exists>p\<in>\<UU>. ldropWhile (P p) (ins p) \<noteq> LNil\<close>
-      by blast
-    then obtain p where \<open>p \<in> \<UU>\<close> \<open>ldropWhile (P p) (ins p) \<noteq> LNil\<close>
-      by blast
-    then obtain x lxs where \<open>ldropWhile (P p) (ins p) = LCons x lxs\<close>
+    assume \<open>\<not> (\<forall>p \<in> \<UU>. ldropWhile (P p) (ins p) = LNil)\<close>
+    then obtain p x lxs where \<open>p \<in> \<UU>\<close> \<open>ldropWhile (P p) (ins p) = LCons x lxs\<close>
       using llist.exhaust_sel by blast
     hence \<open>step (io_of_vio (VOut p ((g p) ((f p) (acc p) x), n p + the_enat (llength (ltakeWhile (P p) (ins p))))))
   (accumulator_op f g P n ins acc)
   (accumulator_op f g P (n(p := n p + the_enat (llength (ltakeWhile (P p) (ins p))))) (ins(p := lxs)) (acc(p := (f p) (acc p) x)))\<close>
-      using step_accumulator_op_Write \<UU>_E \<open>p \<in> \<UU>\<close> fun_upd_same io_of_vio.simps(2) by metis
+      using step_accumulator_op_Write \<UU>_E fun_upd_same io_of_vio.simps(2) by metis
     thus \<open>\<not> wfinished (accumulator_op f g P n ins acc)\<close>
       by (rule step_not_wfinished)
   qed
