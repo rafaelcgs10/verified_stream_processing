@@ -65,16 +65,13 @@ function group_by where
 
 definition update_graph where
   \<open>update_graph G s d t tis =
-  (let f = unions_with (@) (map (the \<circ> G) tis);
-       g = remdups \<circ> f(s := f s @ [d], d := f d @ [s])
-  in G(t \<mapsto> g))\<close>
+  (let f = if is_Nil tis then (\<lambda>_. []) else unions_with List.union (map (the \<circ> G) tis)
+  in G(t \<mapsto> f(s := List.insert d (f s), d := List.insert s (f d))))\<close>
 
-(* TODO fix the definition.  I think the updates require linorder for correctness, because the goal
-is to determine the minimum label.
-*)
-definition update_label where
-  \<open>update_label label a b t n =
-  foldl (\<lambda>label' t'. label'(t' := (label' t')(b := min (label' t' b) a))) label [t ..< n]\<close>
+definition update_label :: \<open>('a \<Rightarrow> 'b :: linorder \<Rightarrow> 'b) \<Rightarrow> 'b \<Rightarrow> 'b \<Rightarrow> 'a \<Rightarrow> 'a list \<Rightarrow> 'a \<Rightarrow> 'b \<Rightarrow> 'b\<close> where
+  \<open>update_label label a b t tis =
+  (let f = if is_Nil tis then id else unions_with min (map label tis)
+  in label(t := (label t)(b := min (f b) a)))\<close>
 
 primrec remdups_f where
   \<open>remdups_f f [] = []\<close>
@@ -85,21 +82,21 @@ lemma remdups_f_id:
   by (induction xs) simp_all
 
 corec label_prop_op where
-  \<open>label_prop_op os caps G vs label = choice6
-  (Read None (\<lambda>st. case st of Inl (Inr f) \<Rightarrow> label_prop_op (os\<lparr>front := f\<rparr>) caps G vs label | _ \<Rightarrow> \<oslash>))
+  \<open>label_prop_op os caps tis G vs label = choice6
+  (Read None (\<lambda>st. case st of Inl (Inr f) \<Rightarrow> label_prop_op (os\<lparr>front := f\<rparr>) caps tis G vs label | _ \<Rightarrow> \<oslash>))
   (Read (Some (0 :: 2)) (\<lambda>x. case x of
     Inr (Inl (s, d), t) \<Rightarrow>
       let (caps', os') = mint os caps 0 t;
           os'' = consume os' 0 t 1;
           t1 = myfst t;
-          G' = update_graph G s d t1 (filter ((\<le>) t1) (map (myfst \<circ> time) caps));
+          G' = update_graph G s d t1 (filter ((\<le>) t1) tis);
           (a, b) = (min s d, max s d);
-          label' = update_label label a b t1 (Max (dom G) + 1);
+          label' = update_label label a b t1 (filter ((\<le>) t1) tis);
           batch = if label t1 b > a
             then map (\<lambda>v. (Inl (v, a), Cap t 0)) (filter (\<lambda>v. label t1 v > a) (the (G' t1) b))
             else [];
           os''' = produces os'' batch
-     in label_prop_op os''' caps' G' (remdups (vs @ [s, d])) label'
+     in label_prop_op os''' caps' (List.insert t1 tis) G' (List.union [s, d] vs) label'
   | _ \<Rightarrow> \<oslash>))
   (Read (Some (1 :: 2)) (\<lambda>x. case x of
     Inr (Inl (n, x), t) \<Rightarrow>
@@ -107,12 +104,12 @@ corec label_prop_op where
           (caps'', os'') = mint os' caps' 1 t;
           os''' = consume os'' 1 t 1;
           t1 = myfst t;
-          label' = update_label label x n t1 (Max (dom G) + 1);
+          label' = update_label label x n t1 (filter ((\<le>) t1) tis);
           batch = if label t1 n > x
             then map (\<lambda>v. (Inl (v, x), Cap t 0)) (filter (\<lambda>v. label t1 v > x) (the (G t1) n))
             else [];
           os'''' = produces os''' batch
-    in label_prop_op os'''' caps' G vs label'
+    in label_prop_op os'''' caps'' tis G vs label'
   | _ \<Rightarrow> \<oslash>))
   (let below_caps = [cap \<leftarrow> caps. \<not> frontier_less_equal (front os 1) (time cap)];
        above_caps = [cap \<leftarrow> caps. frontier_less_equal (front os 1) (time cap)];
@@ -121,12 +118,12 @@ corec label_prop_op where
         (Inr (group_by (\<lambda>v u. label t v = label t u) vs), cap)) output_caps;
        os' = produces os batch;
        os'' = drop_caps os' below_caps
-  in Silent (label_prop_op os'' above_caps G vs label))
+  in Silent (label_prop_op os'' above_caps tis G vs label))
   (Choice (cimage (\<lambda>p. case outpu os p of
-    x # xs \<Rightarrow> send_output (label_prop_op (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) caps G vs label) p x)
+    x # xs \<Rightarrow> send_output (label_prop_op (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) caps tis G vs label) p x)
     (cfilter (\<lambda>p. outpu os p \<noteq> []) c\<UU>)))
   (let (os', st) = obtain_progress os
-  in send_progress (label_prop_op os' caps G vs label) st)\<close>
+  in send_progress (label_prop_op os' caps tis G vs label) st)\<close>
 
 abbreviation inp_op' where
   \<open>inp_op' os n ins \<equiv>
@@ -134,9 +131,9 @@ abbreviation inp_op' where
   (ooo_input_top os n ins)\<close>
 
 abbreviation label_op where
-  \<open>label_op os caps G vs label \<equiv>
+  \<open>label_op os caps tis G vs label \<equiv>
   map_op (case_option (Inl (1 :: 3)) (\<lambda>p. Inr (1, p))) (case_option (Inl (1 :: 3)) (\<lambda>p. Inr (1, p)))
-  (label_prop_op os caps G vs label)\<close>
+  (label_prop_op os caps tis G vs label)\<close>
 
 abbreviation incr_op' where
   \<open>incr_op' incr os \<equiv>
