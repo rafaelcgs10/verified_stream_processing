@@ -1,7 +1,6 @@
 theory Ooo_Input_top
 
 imports
-  Dataplane.Timely_Infrastructure
   Dataplane.Watermarked_Stream
   Source_op
 begin
@@ -140,9 +139,9 @@ next
       using LCons fun_upd_same fun_upd_upd by (metis (no_types, lifting))
     moreover have \<open>step Tau (ooo_input_top os caps ins) (ooo_input_top os1 caps1 (ins(p := ltl (ins p))))\<close>
     proof -
-      let ?A = \<open>antichain (insert wm (set (map capability.time (filter (\<lambda>cap. out cap = p) caps))))\<close>
-      let ?dropped_caps = \<open>filter (\<lambda>cap. \<not> frontier_less_equal ?A (capability.time cap) \<and> out cap = p) caps\<close>
-      let ?other_caps = \<open>filter (\<lambda>cap. frontier_less_equal ?A (capability.time cap) \<or> out cap = p) caps\<close>
+      let ?A = \<open>antichain (insert wm (set (map time (filter (\<lambda>cap. out cap = p) caps))))\<close>
+      let ?dropped_caps = \<open>filter (\<lambda>cap. \<not> frontier_less_equal ?A (time cap) \<and> out cap = p) caps\<close>
+      let ?other_caps = \<open>filter (\<lambda>cap. frontier_less_equal ?A (time cap) \<or> out cap = p) caps\<close>
       let ?os' = \<open>drop_caps os ?dropped_caps\<close>
       have \<open>os1 = (if ltl (ins p) \<noteq> LNil \<and> frontier_less_equal ?A wm then mint_cap ?os' p wm else ?os')\<close>
         using 2 by (auto simp add: os1_caps1_def split_pairs)
