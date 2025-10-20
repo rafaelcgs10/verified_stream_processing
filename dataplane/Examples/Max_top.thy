@@ -1841,6 +1841,14 @@ lemma changes_above_impl_extend:
   apply auto
   done 
 
+lemma changes_above_impl_elim:
+  assumes  "changes_above_impl F (A @ B)"
+  obtains "changes_above_impl F A \<and> changes_above_impl F B"
+  using assms  apply atomize_elim
+  unfolding changes_above_impl_def
+  apply auto
+  done 
+
 lemma changes_above_impl_le_implied_frontier:
   "changes_above_impl F2 A \<Longrightarrow>
    (\<forall> l \<in> fst ` set A. dataflow_topology.implied_frontier_alt my_summ (+) F1 l \<le> dataflow_topology.implied_frontier_alt my_summ (+) F2 l) \<Longrightarrow>
@@ -1851,6 +1859,7 @@ lemma changes_above_impl_le_implied_frontier:
   subgoal for pt l t
     using frontier_less_equal_le_trans by fastforce
   done
+
 
 lemma c_pts_change_multiplicities_gt_location:
   "(\<forall> l' \<in> fst ` set B. l < l') \<Longrightarrow>
@@ -2426,6 +2435,21 @@ lemma zcount_gt_0_zmulset_diff:
   apply clarsimp
   apply (smt (verit, ccfv_threshold))
   done
+
+
+lemma changes_above_impl_le:
+  "changes_above_impl F (map (\<lambda>(p, y). (l, y)) xs) \<Longrightarrow>
+   dataflow_topology.implied_frontier_alt my_summ (+) F l \<le> frontier (zmset (map snd xs))"
+  apply (rule le_frontier_frontier_less_equal)
+  unfolding changes_above_impl_def by auto
+
+
+lemma zcount_zmset_ge_zero:
+  "\<forall>x. x \<in> snd ` snd ` set xs \<longrightarrow> 0 \<le> x \<Longrightarrow> \<forall>t. 0 \<le> zcount (zmset (map snd xs)) t"
+  apply (induct xs)
+  apply (auto 0 0 simp add: zcount_update_zmultiset)
+  done
+
 
 (* lemma
   "dataflow_topology.implied_frontier_alt my_summ trivial_dataflow_topology_interpretation.followed_by c =
@@ -3239,7 +3263,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
               apply (rule Orderings.preorder_class.order_trans)
                apply assumption
               subgoal premises prems2
-                using prems(1,2,9,10,11,12,13,14) prems(15)[symmetric] apply -
+                using prems(1,2,9,10,11,12,13,14,23) prems(15)[symmetric] apply -
                 unfolding dataflow_topology_implied_frontier_alt_my_summ
                 apply simp
                 apply (intro allI impI conjI)
@@ -3261,10 +3285,35 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                    apply simp
                    apply (intro frontier_le_add)
                     apply (smt (verit, ccfv_threshold) add.commute frontier_below_eq_frontier_plus_pos frontier_idempotent frontier_le_remove_l zcount_union zcount_zmset_of_nonneg)
-                  sorry
-                sorry
+                  subgoal
+                    apply (elim changes_above_impl_elim conjE)
+                    apply (rule le_frontier_frontier_less_equal)
+                    unfolding changes_above_impl_def
+                    apply (auto 0 0 simp add: dataflow_topology_implied_frontier_alt_my_summ split_beta)
+                    apply (smt (z3) Groups.add_ac(2) group_cancel.add2 split_pairs2)
+                    done
+                  subgoal
+                    apply simp
+                    apply (rule frontier_le_minus_gen)
+                     apply (simp add: frontier_le_remove_left)   
+                    subgoal premises
+                      using prems(8) zcount_zmset_ge_zero by blast
+                    done
+                  done
+                subgoal
+                  apply (auto 0 0 simp flip: add.assoc simp add: dataflow_topology_implied_frontier_alt_my_summ extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
+                  apply (intro frontier_le_add)
+                  apply (meson frontier_below_eq_frontier_plus_pos frontier_le_remove_l zcount_zmset_of_nonneg)
+                  apply (metis (no_types, lifting) add.commute frontier_below_eq_frontier_plus_pos frontier_le_remove_l zcount_zmset_of_nonneg)
+                  apply simp
+                            apply (rule frontier_le_minus_gen)
+                     apply (simp add: frontier_le_remove_left)   
+                    subgoal premises
+                      using prems(8) zcount_zmset_ge_zero by blast
+                    done
+                  done
+                done
               done
-            done
           subgoal sorry
           subgoal sorry
           subgoal sorry
