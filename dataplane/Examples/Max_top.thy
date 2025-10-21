@@ -2529,6 +2529,10 @@ lemma
    (\<forall> t m. (1, t, m) \<in> set (inter os2) \<longrightarrow> 0 \<le> zcount (zmset (map snd (inter os2))) t \<longrightarrow>  (\<exists> m. (1, t, m) \<in> set (consu os2))) \<Longrightarrow>
    (\<forall> t. zcount (c_pts (pt_tr sg) (Loc 1 (Src 1))) t \<ge> 0) \<Longrightarrow>
 
+   (\<forall> cap \<in> set caps. time cap < n 0) \<Longrightarrow>
+   (\<forall> (x, t) \<in> projr ` set (buf1 (Inr (1, 1))) \<union> set (outpu os1 0). t < n 0) \<Longrightarrow>
+   (\<forall> t\<ge>n 0. buf2 (Cap t 1) = []) \<Longrightarrow>
+
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
 proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 st2 rule: weakBisimWeakUptoBisimCong)
@@ -2541,7 +2545,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
       unfolding wsim_def
       apply (intro allI conjI impI)
       subgoal premises prems for io op1'
-        using prems(28) apply -
+        using prems(31) apply -
         apply (elim step_max'_top_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim step_input_top_elim conjE; simp split: if_splits; hypsubst_thin?)
                    apply simp_all
                    prefer 8
@@ -2727,6 +2731,12 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
             done
           subgoal
             using prems(27) by simp
+          subgoal
+            using prems(28) by auto
+          subgoal
+            using prems(29) by simp
+          subgoal
+            using prems(30) by simp
           subgoal
             apply simp
             apply (rule rtranclp_intros_1)
@@ -3224,6 +3234,12 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
               done
             done
           subgoal
+            using prems(28) by simp
+          subgoal
+            using prems(29) by simp
+          subgoal
+            using prems(30) by simp
+          subgoal
             apply (rule rtranclp_intros_1)
             apply (rule arg_cong3[where f=map_op])
               apply simp
@@ -3484,6 +3500,12 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
             using prems(1,2,27,15,11,9,10) apply -
             apply (auto simp add: extract_progress_def c_pts_change_multiplicities)
             done
+          subgoal
+            using prems(28) by simp
+          subgoal
+            using prems(29) by simp
+          subgoal
+            using prems(30) by simp
           subgoal
             apply (rule rtranclp_intros_1)
             apply (rule arg_cong3[where f=map_op])
@@ -4327,6 +4349,12 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
           subgoal
             using prems(27) by simp
           subgoal
+            using prems(28) by auto
+          subgoal
+            using prems(29) by auto
+          subgoal
+            using prems(30) by simp
+          subgoal
             apply (rule rtranclp_intros_1)
             apply (rule arg_cong3[where f=map_op])
               apply simp
@@ -4353,40 +4381,77 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                apply simp_all
               unfolding outpu_produce
               subgoal premises prems3
-                unfolding max_from_caps_buf_def map_append append_assoc 
-                find_theorems map remdups
-
+                unfolding max_from_caps_buf_append
+                apply (simp only: list.simps list_to_buf_def)
+                unfolding max_from_caps_buf_def map_append append_assoc
                 apply (intro arg_cong2[where f=append])
                 subgoal
-                  unfolding list_to_buf_def
+                  using prems(28) apply -
+                  unfolding list_to_buf_def BULK_BENQ_def
                   apply auto
+                  done
+                subgoal
+                  apply (auto 0 0)
                   apply (rule Max_eq_if)
-                     apply auto
-                  using prems
-                find_theorems rmdups
-
-              apply auto
+                  using prems(6,28,29) apply -
+                  unfolding list_to_buf_def BULK_BENQ_def
+                  apply (auto simp add: split_beta split: sum.splits)
+                  subgoal for x'
+                    apply (cases x'; simp)
+                     apply fastforce
+                    subgoal for a
+                      apply (cases a)
+                      apply (auto simp add: split_beta split: sum.splits; hypsubst_thin)
+                      subgoal for a
+                        apply (rule bexI[of _ a])
+                        using image_iff apply fastforce+
+                        done
+                      done
+                    done
+                  subgoal for x' a
+                    apply (cases x'; simp)
+                     apply fastforce
+                    using prems(6,28,29,30) apply -
+                  unfolding list_to_buf_def BULK_BENQ_def
+                  apply (auto simp add: split_beta split: sum.splits)       
+                  using image_iff apply fastforce
+                  done
+                done
               subgoal
-                unfolding max_from_caps_buf_def
-                apply auto
-                subgoal for a
-                  apply (cases a; simp)
-                  apply (rule Max_eq_if)
-                     apply auto
-                  apply hypsubst_thin
-           
-
-                
-
-                find_theorems "Max _ = Max _"
-
+                    using prems(6,28,29,30) apply -
+                    unfolding rmdups_append BULK_BENQ_def
+                    apply (rule sym)
+                apply (auto simp add: comp_def split_beta split: sum.splits; hypsubst_thin?)
+                         apply (metis (no_types, opaque_lifting) imageI less_irrefl_nat prod.exhaust snd_conv)
+                apply (metis (no_types, opaque_lifting) less_irrefl_nat)
+                apply (metis (no_types, opaque_lifting) less_irrefl_nat)
+                apply (metis (no_types, opaque_lifting) less_irrefl_nat)
+                    subgoal
+                      apply (rule Max_eq_if)
+                         apply simp_all
+                      subgoal
+                apply (auto simp add: comp_def split_beta split: sum.splits; hypsubst_thin?)
+                         apply (metis (lifting) image_iff)
+                        apply blast
+                        done
+                      subgoal
+                        apply (auto simp add: comp_def split_beta split: sum.splits; hypsubst_thin?)
+                        apply blast
+                        done
+                      done
+                    subgoal
+                      apply (rule rmdups_NilI)
+                      apply auto
+                      done
+                    done
+                  done
                 done
               done
-            subgoal
-              by (auto simp add: comp_def)
             done
 
-          find_theorems "_ < _ \<Longrightarrow> _ \<le> _"
+                      find_theorems rmdups Nil
+
+
 
 end
 
