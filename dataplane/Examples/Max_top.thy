@@ -4343,7 +4343,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
               apply (rule arg_cong2[where f=max_from_caps_buf])
                apply (auto simp add: produce_def comp_def)
               done
-            subgoal for t x
+            subgoal for x xs
               apply (rule arg_cong[where f=source_op])
               apply (rule ext)
               apply (rule arg_cong2[where f=lshift])
@@ -4352,23 +4352,29 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
               apply (rule arg_cong2[where f=lshift])
                apply simp_all
               unfolding outpu_produce
+              subgoal premises prems3
+                unfolding max_from_caps_buf_def map_append append_assoc 
+                find_theorems map remdups
+
+                apply (intro arg_cong2[where f=append])
+                subgoal
+                  unfolding list_to_buf_def
+                  apply auto
+                  apply (rule Max_eq_if)
+                     apply auto
+                  using prems
+                find_theorems rmdups
+
               apply auto
               subgoal
-                unfolding produce_def list_to_buf_def comp_def BULK_BENQ_def max_from_caps_buf_def
-                   apply simp_all
-                apply (auto simp add: split_beta split: prod.splits if_splits sum.splits)
+                unfolding max_from_caps_buf_def
+                apply auto
                 subgoal for a
                   apply (cases a; simp)
                   apply (rule Max_eq_if)
                      apply auto
                   apply hypsubst_thin
-                  apply (rule bexI[of _ t])
-                    apply auto
-                   apply (rule image_eqI[rotated])
-                    apply simp_all
-                  apply (intro conjI)
-                   apply (rule image_eqI[rotated])
-                  apply auto
+           
 
                 
 
