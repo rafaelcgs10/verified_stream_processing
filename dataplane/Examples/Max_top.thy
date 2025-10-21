@@ -4322,9 +4322,63 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                 done
               done
             done
+          subgoal
+            using prems(26) by simp
+          subgoal
+            using prems(27) by simp
+          subgoal
+            apply (rule rtranclp_intros_1)
+            apply (rule arg_cong3[where f=map_op])
+              apply simp
+             apply simp_all
+            apply (subst iterates.code)
+            apply (auto split: list.splits)
+            subgoal
+              apply (rule arg_cong[where f=source_op])
+              apply (rule ext)
+              apply (rule arg_cong2[where f=lshift])
+               apply simp
+              apply (rule arg_cong2[where f=lshift])
+               apply simp_all
+              apply (rule arg_cong2[where f=max_from_caps_buf])
+               apply (auto simp add: produce_def comp_def)
+              done
+            subgoal for t x
+              apply (rule arg_cong[where f=source_op])
+              apply (rule ext)
+              apply (rule arg_cong2[where f=lshift])
+               apply simp
+              apply (simp add: comp_def flip: snoc_shift)
+              apply (rule arg_cong2[where f=lshift])
+               apply simp_all
+              unfolding outpu_produce
+              apply auto
+              subgoal
+                unfolding produce_def list_to_buf_def comp_def BULK_BENQ_def max_from_caps_buf_def
+                   apply simp_all
+                apply (auto simp add: split_beta split: prod.splits if_splits sum.splits)
+                subgoal for a
+                  apply (cases a; simp)
+                  apply (rule Max_eq_if)
+                     apply auto
+                  apply hypsubst_thin
+                  apply (rule bexI[of _ t])
+                    apply auto
+                   apply (rule image_eqI[rotated])
+                    apply simp_all
+                  apply (intro conjI)
+                   apply (rule image_eqI[rotated])
+                  apply auto
 
+                
 
+                find_theorems "Max _ = Max _"
 
+                done
+              done
+            subgoal
+              by (auto simp add: comp_def)
+            done
 
           find_theorems "_ < _ \<Longrightarrow> _ \<le> _"
 
