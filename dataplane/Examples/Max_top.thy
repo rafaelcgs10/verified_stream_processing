@@ -4844,43 +4844,129 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                 done
               done
             done
+          subgoal premises prems2
+            using prems(1,2,3,8,9,10,11,12,14,25) using prems2(1,2,3) apply -
+            unfolding changes_above_impl_def extract_progress_def
+            apply (auto 0 0 simp add: dataflow_topology_implied_frontier_alt_my_summ propagate_pointstamps_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def dest!: propagate_all_preserves_c_pts split: option.splits; hypsubst_thin?)
+            subgoal
+              apply (subgoal_tac "zcount (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (produ os1))) t > 0")
+              subgoal
+                apply (subgoal_tac 
+                    "frontier_less_equal (frontier (zmset_of (mset_set (set_antichain (frontier (c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (produ os1)))))))) t")
+                subgoal
+                  by (meson frontier_less_equal_addI zcount_zmset_of_nonneg)
+                subgoal
+                  by (simp add: frontier_less_equal_zcount_pos)
+                done
+              subgoal
+                unfolding BHD_def
+                apply (cases "buf1 (Inr (1, 1))"; simp)
+                subgoal for a as
+                  apply (cases a; simp)
+                  apply (simp add: zmultiset_eq_iff)
+                  apply (drule spec[of _ t])                
+                  apply auto
+                  apply (smt (z3) not_int_zless_negative zcount_zmset_ge_zero)
+                  done
+                done
+              done
+            subgoal
+              apply (drule bspec)
+               apply auto
+              done
+            subgoal
+              apply (drule bspec)
+               apply auto
+              done
+            done
+          subgoal
+            using prems(1,2,3,9,10,11,12,26) by auto
+          subgoal
+            using prems(1,2,3,9,10,11,12,27) by auto
+          subgoal
+            using prems(1,2,3,9,10,11,12,28) by simp
+          subgoal
+            using prems(29) apply -
+            unfolding BTL_def
+            apply (auto simp add: split_beta)
+            subgoal for a b x
+              apply (drule spec[of _ a])
+              apply (drule spec[of _ b])
+              apply (elim conjE)
+              apply (drule mp)
+               apply (rule image_eqI[rotated])
+                apply (drule in_set_tlD)
+                apply assumption
+               apply auto
+              done
+            done
+          subgoal
+            using prems(28,30) apply -
+            unfolding BENQ_def BHD_def
+            apply auto
+            done
+          subgoal
+            using prems(31) by auto
+          subgoal
+            apply (rule rtranclp_intros_1)
+            apply (rule arg_cong3[where f=map_op])
+              apply simp
+             apply simp
+            apply (rule arg_cong[where f=source_op])
+            apply (rule ext)
+            apply (rule arg_cong2[where f=lshift])
+             apply simp
+            apply (rule arg_cong2[where f=lshift])
+             apply simp_all
+            subgoal
+              unfolding max_from_caps_buf_def BENQ_def BTL_def comp_def list_to_buf_def BULK_BENQ_def BHD_def
+              apply (auto simp add: split_beta)
+              subgoal
+                apply (cases "buf1 (Inr (1, 1))"; simp)
+                apply (rule map_cong)
+                using prems(7) apply (simp add: sort_key_id_if_sorted)
+                apply auto
+                 apply (rule Max_eq_if)
+                    apply simp_all
+                subgoal
+                  apply (auto simp add:  split_beta split: sum.splits; hypsubst_thin?)
+                  apply (metis fstE verit_comp_simplify(2))
+                  done
+                subgoal
+                  apply (auto simp add:  split_beta split: sum.splits; hypsubst_thin?)
+                  apply (smt (verit, del_insts) Pair_inject Un_iff imageI mem_Collect_eq surjective_pairing verit_comp_simplify(2))
+                  done
+                subgoal
+                  apply (rule Max_eq_if)
+                     apply simp_all
+                  subgoal
+                    apply (auto simp add:  split_beta split: sum.splits; hypsubst_thin?)
+                    apply (metis (full_types) capability.exhaust capability.sel(1) num1_eq1 snd_conv)
+                    done
+                  subgoal
+                    by (auto simp add:  split_beta split: sum.splits; hypsubst_thin?)
+                  done
+                done
+              subgoal
+                apply (cases "buf1 (Inr (1, 1))"; simp)
+                apply auto
+                subgoal
+                  by (metis (no_types, opaque_lifting))
+                subgoal
+                  apply (rule map_cong)
+                   apply (auto simp add: insert_absorb)
+                  apply (metis (no_types, opaque_lifting))
+                  done
+                subgoal 
+                  by (metis snd_conv)
+                done
+              done
+            done
+          done
 
+        find_theorems finite insert
 
-
-
-
-          find_theorems frontier_less_equal "_ \<or> _"
-
-
-end
-  subgoal
-    using prems(1,2,3,9,10,11,12,25) by simp
-  subgoal
-    using prems(1,2,3,9,10,11,12,26) by simp
-  subgoal
-    using prems(1,2,3,9,10,11,12,27) by simp
-  subgoal
-    using prems(1,2,3,9,10,11,12,28) by simp
-  subgoal
-    using prems(1,2,3,9,10,11,12,29) by auto
-  subgoal
-    using prems(1,2,3,9,10,11,12,30) by simp
-
-
-
-end
-
-
-  apply (auto  split: prod.splits)
-  apply (drule spec[of _ t])
-  apply (drule bspec)
-  apply blast
-  apply (auto simp flip: sum_image_mset_sum_map)
-  apply (subgoal_tac "m > 0")
-  subgoal
-    apply (induct "consu os2" arbitrary: os2)
-    apply (auto simp flip: sum_image_mset_sum_map)
-
+        find_theorems "Max _ = Max _"
 
 
 
