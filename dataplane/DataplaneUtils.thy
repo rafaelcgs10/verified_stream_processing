@@ -8,6 +8,8 @@ imports
   Locations
 begin 
 
+abbreviation "isr x \<equiv> \<not> (isl x)"
+
 lemma ldropWhile_LConsD:
   "ldropWhile P lxs = LCons x lxs' \<Longrightarrow>
    \<not> P x"
@@ -27,6 +29,7 @@ lemma rel_set_image:
   unfolding rel_set_def
   apply auto
   done
+
 lemma rel_set_reflI:
   "(\<And>x. x \<in> A \<Longrightarrow> R x x) \<Longrightarrow> rel_set R A A"
   unfolding rel_set_def

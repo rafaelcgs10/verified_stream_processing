@@ -257,6 +257,12 @@ lemma update_zmultiset_replicate:
   apply (metis add_uminus_conv_diff int_Suc is_num_normalize(8) nat_int update_zmultiset_simps_more(2))
   done
 
+lemma update_zmultiset_singleton:
+  "update_zmultiset {#}\<^sub>z t (- 1) = - {# t #}\<^sub>z"
+   "update_zmultiset {#}\<^sub>z t' (1) = {# t' #}\<^sub>z"
+  by (simp add: update_zmultiset_replicate)+
+
+
 lemma update_zmultiset_comm:
   "update_zmultiset (update_zmultiset A x m) y n = update_zmultiset (update_zmultiset A y n) x m"
   apply (cases m; cases n)
