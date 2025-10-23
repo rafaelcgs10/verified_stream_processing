@@ -6761,6 +6761,44 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
           done
         done
       done
+  qed
+  next
+    case SIM2
+  show ?case (is "wsim ((~) OO \<U> ?R OO (\<approx>)) ?op1 ?op2")
+  proof -
+    define R where "R = ?R"
+    from SIM2 show ?thesis unfolding R_def[symmetric]
+      apply -
+      unfolding wsim_def
+      apply (intro allI conjI impI)
+      subgoal premises prems for io op1'
+        using prems(34) apply -
+        apply (elim step_map_op_elim step_source_op_elim conjE; simp split: if_splits; hypsubst_thin?)
+        apply simp_all
+        subgoal for x lxs
+          apply (cases "xs 1")
+          defer
+          subgoal for a as
+            apply clarsimp
+          using prems(4,5) apply -
+            apply hypsubst_thin
+          apply (intro exI conjI[rotated])
+           apply (intro relcomppI)
+             apply (rule bisim_refl)
+            defer
+            apply (rule wbisim_refl)
+             apply (rule step_wstep)
+            apply (rule step_Out_dataflow_op_Out_Inr_intro)
+             apply (rule step_map_op)
+              apply (rule step_comp_op_R_Out)
+              apply (rule step_map_op)
+
+
+            find_theorems step max_top' Out
+
+             apply (rule step_source_op_Out_intro[where p=0])
+               apply (rule refl)
+              apply (auto simp add: comp_def defaults_num1_def)
 
 
 end
