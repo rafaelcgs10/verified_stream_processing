@@ -836,4 +836,9 @@ lemma step_nd_writes_elim:
   done *)
   oops
 
+lemma SR'[intro]:
+  "y = (f xa) \<Longrightarrow>
+   step (Inp p xa) (Read p f) y"
+  by auto
+
 end
