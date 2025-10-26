@@ -389,6 +389,25 @@ lemma step_Taus_dataflow_op_Taus_intro[intro]:
    apply force
   apply (meson rtranclp.intros(2) step_Tau_dataflow_op_Tau_intro)
   done
+
+
+lemma step_tau_pow_dataflow_op[intro]:
+  "(step Tau ^^ n) op op' \<Longrightarrow>
+   (step Tau ^^ n) (dataflow_op sg op) (dataflow_op sg op')"
+  by (induct n arbitrary:  op') auto
+
+lemma step_tay_pow_map_op[intro]:
+  "(step Tau ^^ n) op op' \<Longrightarrow> (step Tau ^^ n) (map_op f g op) (map_op f g op')"
+  apply (induct n arbitrary: op op')
+   apply simp_all
+  subgoal for n op op'
+    apply (elim relcomppE)
+    apply (intro relcomppI)
+     apply blast
+    apply auto
+    done
+  done
+
 (* 
 lemma dataflow_writes_extract_progress_from_push:
   "g = (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) \<Longrightarrow>

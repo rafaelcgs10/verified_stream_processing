@@ -206,6 +206,29 @@ lemma step_input_top_Tau_intro3[intro]:
   apply force
   done
 
+lemma steps_input_top_Out[intro]:
+  "p \<notin> defaults \<Longrightarrow>
+   os' = (os\<lparr> outpu := (outpu os)(p := []) \<rparr>) \<Longrightarrow>
+   xs = outpu os p \<Longrightarrow>
+   steps (map (\<lambda> e. Out (Some p) (Inr e)) xs) (input_top os n inps) (input_top os' n inps)"
+  apply (induct "outpu os p" arbitrary: os os' xs)
+   apply (simp add: fun_upd_idem)
+  subgoal premises prems for a x os os' xs
+    using prems(2,3,5) apply -
+    apply (drule sym)
+    apply simp
+    apply (intro relcomppI[rotated])
+    apply (rule prems(1))
+        apply simp_all
+    prefer 4
+     apply (rule step_input_top_Out_Some_intro)
+       apply assumption
+      apply simp_all
+    using prems(4) apply simp_all
+    done
+  done
+
+(* 
 lemma ldropWhile_steps_input_top:
   "lfinite (ltakeWhile ((=) []) (inps p)) \<Longrightarrow>
    ldropWhile ((=) []) (inps p) = LCons (x # xs) lxs \<Longrightarrow>
@@ -257,7 +280,7 @@ lemma ldropWhile_steps_input_top:
       done
     done
   done
-
+ *)
 (* 
 abbreviation "inp_top c ints prds inps \<equiv> map_op (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, (p :: 1)))) (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, (p :: 1)))) (input_top c ints prds inps)"
 abbreviation "id_top buf \<equiv> map_op (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, (p :: 1)))) (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, (p :: 1)))) (id_op buf)"

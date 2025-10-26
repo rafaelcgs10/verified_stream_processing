@@ -6910,6 +6910,68 @@ next
               using prems(1,19) by auto
             subgoal
               using prems(1,2,9,10,22) by (force simp add: changes_non_zero_def dataflow_topology_implied_frontier_alt_my_summ propagate_pointstamps_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def dest!: propagate_all_preserves_c_pts split: option.splits; hypsubst_thin?)
+            subgoal premises prems2
+              using prems(1,2,9,10,23) by (force simp add: changes_above_impl_def dataflow_topology_implied_frontier_alt_my_summ propagate_pointstamps_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def dest!: propagate_all_preserves_c_pts split: option.splits; hypsubst_thin?)
+            subgoal premises prems2
+              using prems(1,2,9,10,24) by (force simp add: changes_above_impl_def dataflow_topology_implied_frontier_alt_my_summ propagate_pointstamps_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def dest!: propagate_all_preserves_c_pts split: option.splits; hypsubst_thin?)
+            subgoal premises prems2
+              using prems(1,2,3,9,10,25) by (auto simp add: changes_above_impl_def dataflow_topology_implied_frontier_alt_my_summ propagate_pointstamps_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def dest!: propagate_all_preserves_c_pts split: option.splits; hypsubst_thin?)
+            subgoal
+              using prems(26) by auto
+            subgoal
+              using prems(28) by auto
+            subgoal
+              using prems(29) by auto
+            subgoal
+              using prems(31) by auto
+            subgoal
+              using prems(32) by auto
+            subgoal
+              using prems(33) by auto
+            done
+          subgoal
+            apply simp
+            apply (cases "ys 1")
+            defer
+            subgoal for y ys'
+              using prems(5) apply -
+              apply clarsimp
+              apply hypsubst_thin
+              subgoal premises prems2
+              apply (intro exI conjI[rotated])
+               apply (intro relcomppI)
+                 apply (rule bisim_refl)
+                defer
+                apply (rule wbisim_refl)
+              apply (rule wstep_trans(1))
+                  apply (rule relpowp_imp_rtranclp[where n="length (outpu os1 0) + length (buf1 (Inr (1, 1))) + length (outpu os1 0) + 2"]) 
+                apply (simp only: relpowp_add)
+                  apply (intro relcomppI)
+                     apply (rule step_tau_pow_dataflow_op)
+                apply simp
+                     apply (rule step_tay_pow_map_op)
+                     apply (rule step_tau_pow_steps_intro[where xs="map Inr (outpu os1 0)"])
+                        apply (rule steps_map_op)
+                          apply (rule refl)+
+                         apply (simp_all add: comp_def)
+                       defer
+                apply (rule steps_input_top_Out[where p=1])
+                         apply (simp add: defaults_num1_def)
+                       apply (rule refl)+
+                     apply simp_all
 
+
+
+                find_theorems steps input_top
+
+                apply (rule steps_Tau_dataflow_op_Tau_intro)
+                apply simp
+                     apply (rule steps_map_op[where xs="replicate (length (outpu os1 1)) Tau"])
+                       apply (rule refl)+
+                      apply simp
+
+                find_theorems steps
+
+                oops
 
 end

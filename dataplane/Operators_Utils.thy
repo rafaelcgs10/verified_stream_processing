@@ -131,20 +131,28 @@ lemma steps_intro[intro]:
   apply auto
   done
 
-lemma steps_intro_alt[intro]:
-  "steps xs op op' \<Longrightarrow>
-   step x op' op'' \<Longrightarrow>
-   ys = xs @ [x] \<Longrightarrow>
-   steps ys op op''"
-  apply auto
-  done
-
-lemma steps_append_intro[intro]:
-  "steps xs op op' \<Longrightarrow>
-   steps ys op' op'' \<Longrightarrow>
-   zs = xs @ ys \<Longrightarrow>
-   steps zs op op''"
-  apply auto
+lemma step_tau_pow_steps_intro[intro]:
+  "steps (map (\<lambda> x. Out p x) xs) op1 op1' \<Longrightarrow>
+   n = length xs \<Longrightarrow>
+   wire p = Some q \<Longrightarrow>
+   op = comp_op wire ((\<lambda> p'. (if q = p' then xs else [])) >> buf) op1' op2 \<Longrightarrow>
+   (step Tau ^^ n) (comp_op wire buf op1 op2) op"
+  apply hypsubst_thin
+  apply (induct xs arbitrary: op1 op1' rule: rev_induct)
+   apply simp_all
+  subgoal for a as op1 op1'
+    apply (elim relcomppE)
+    subgoal premises prems for op 
+      apply (intro relcomppI)
+       apply (rule prems(1))
+      using prems(3) apply assumption
+      using prems(2,4) apply -
+      apply (rule step_Tau_comp_op_L)
+         apply simp_all
+      apply (rule ext)
+      apply (auto simp add: BENQ_def)
+      done
+    done
   done
 
 definition sim_set (\<open>_ \<leadsto>[_] _\<close> [80, 80, 80] 80)
@@ -751,8 +759,7 @@ lemma steps_writes:
   "ios = map (Out p) xs \<Longrightarrow>
    steps ios (writes op p xs) op"
   apply (induct ios arbitrary: xs)
-   apply (force simp add: writes_Cons_simp)+
-  done
+  oops
 
 lemma cfilter_eq_forall_eq:
   "cfilter F C = cfilter F C' \<longleftrightarrow>
