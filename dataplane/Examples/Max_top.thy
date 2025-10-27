@@ -17,7 +17,7 @@ abbreviation "produces os batch \<equiv> os\<lparr> outpu := (\<lambda> p. outpu
 
 abbreviation "drop_caps os caps \<equiv> (os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps \<rparr>)"
 
-term cempty
+find_consts name: insert name: sort
 
 corec max_top' where
   "max_top' os buf caps = choice5
@@ -32,10 +32,10 @@ corec max_top' where
    (Read (Some 0)
     (\<lambda> x. if isl x then \<oslash> else
      let (n, t) = projr x in
-     let (caps', os') = (if Cap t 0 \<in> set caps then (caps, os) else (caps @ [Cap t 0], mint_cap os 0 t)) in
+     let (caps', os') = (if Cap t 0 \<in> set caps then (caps, os) else (insort_key time (Cap t 0) caps, mint_cap os 0 t)) in
      let os'' = consume os' 1 t 1 in
      let buf' = BENQ (Cap t 0) n buf in
-     max_top' os'' buf' (sort_key time caps')))
+     max_top' os'' buf' caps'))
     ( ((case outpu os 0 of
          [] \<Rightarrow> Choice {||}
        |  x # xs \<Rightarrow> (send_output (max_top' (os\<lparr> outpu := (outpu os)(0 := xs ) \<rparr>) buf caps) 0 x))))
@@ -56,9 +56,9 @@ lemma step_max'_top_elim:
     "op = max_top' os'' buf' above_caps"
   | x where "io = Inp (Some 0) x" "isl x" "op = \<oslash>"
   | x n t caps' os' os'' buf' where "io = Inp (Some 0) x" "\<not> isl x" "(n, t) = projr x"
-    "(caps', os') = (if Cap t 0 \<in> set caps then (caps, os) else (caps @ [Cap t 0], mint_cap os 0 t))"
+    "(caps', os') = (if Cap t 0 \<in> set caps then (caps, os) else (insort_key time (Cap t 0) caps, mint_cap os 0 t))"
     "os'' = consume os' 1 t 1"
-    "buf' = BENQ (Cap t 0) n buf" "op = max_top' os'' buf' (sort_key time caps')"
+    "buf' = BENQ (Cap t 0) n buf" "op = max_top' os'' buf' caps'"
   | x xs where "io = Out (Some 0) (Inr x)" "outpu os 0 = x # xs"
     "op = max_top' (os\<lparr> outpu := (outpu os)(0 := xs ) \<rparr>) buf caps"
   | os' st where "io = Out None (Inl (Inl st))" "obtain_progress os = (os', st)"
@@ -96,8 +96,8 @@ lemma step_max_top'_Out_intro[intro!]:
   done
 
 lemma step_max_top'_Inp_Some_intro[intro!]:
-  "op = max_top' os'' buf' (sort_key time caps') \<Longrightarrow>
-   (caps', os') = (if Cap t 0 \<in> set caps then (caps, os) else (caps @ [Cap t 0], mint_cap os 0 t)) \<Longrightarrow>
+  "op = max_top' os'' buf' caps' \<Longrightarrow>
+   (caps', os') = (if Cap t 0 \<in> set caps then (caps, os) else (insort_key time (Cap t 0) caps, mint_cap os 0 t)) \<Longrightarrow>
    os'' = consume os' 1 t 1 \<Longrightarrow>
    \<not> isl x \<Longrightarrow>
    (n, t) = projr x \<Longrightarrow>
@@ -137,16 +137,17 @@ lemma step_max_top'_Inp_Some_intro[intro!]:
   done
 
 
+
 lemma steps_max_top'_Inp_Some_intro[intro]:
   "\<forall> x \<in> set xs. isr x \<Longrightarrow>
-   (caps', os') = fold (\<lambda> t (caps, os). if Cap t 0 \<in> set caps then (caps, os) else (caps @ [Cap t 0], mint_cap os 0 t)) (map (snd o projr) xs) (caps, os) \<Longrightarrow>
+   (caps', os') = fold (\<lambda> t (caps, os). if Cap t 0 \<in> set caps then (caps, os) else (insort_key time (Cap t 0) caps, mint_cap os 0 t)) (map (snd o projr) xs) (caps, os) \<Longrightarrow>
    os'' = fold (\<lambda> t os. consume os 1 t 1) (map (snd o projr) xs) os' \<Longrightarrow>
    buf' = fold (\<lambda> (n, t) buf. BENQ (Cap t 0) n buf) (map projr xs) buf \<Longrightarrow>
-   op = max_top' os'' buf' (sort_key time caps') \<Longrightarrow>
+   op = max_top' os'' buf' caps' \<Longrightarrow>
+   sorted (map time caps) \<Longrightarrow>
    steps (map (\<lambda> e. Inp (Some 0) e) xs) (max_top' os buf caps) op"
   apply (induct xs arbitrary: os os' os'' buf buf' caps caps' op rule: rev_induct)
-  subgoal for os os' buf caps caps'
-    apply simp
+  subgoal for os os' os'' buf buf' caps caps' op
     by (simp add: sort_key_id_if_sorted)
   subgoal premises prems for a xs os os' os'' buf buf' caps caps' op
     using prems(2-) apply -
@@ -154,42 +155,38 @@ lemma steps_max_top'_Inp_Some_intro[intro]:
     subgoal for p
       apply (cases p; simp)
       subgoal for n t
-        apply (cases "Cap t 0 \<in> set caps")
+        apply (auto 0 0 split: sum.splits prod.splits if_splits)
         subgoal
-          apply (auto 0 0 split: sum.splits prod.splits)
           apply hypsubst_thin
           apply (intro relcomppI)
            apply (rule prems(1))
-          apply simp
-          defer
+                apply simp
+               defer
                apply (rule refl)+
-          apply force
-     apply (rule step_max_top'_Inp_Some_intro)
+            apply force
+           apply (rule step_max_top'_Inp_Some_intro)
                 apply simp_all
-          apply auto
-
-    apply (rule arg_cong3[where f=max_top'])
-             apply (simp_all add: sort_key_id_if_sorted)
-          
-
-
-end
-        subgoal
-          apply (auto 0 0 split: sum.splits)
-          apply hypsubst_thin
-          apply (intro relcomppI[rotated])
+          done
+        subgoal for caps''' os'''
+          apply (intro relcomppI)
            apply (rule prems(1))
-          apply simp
-          defer
-          apply (rule refl)+
-          defer
-    defer
-             apply (rule step_max_top'_Inp_Some_intro[where t=t])
-          apply (rule refl)+
-                 apply simp_all
-  
-
-end
+                apply simp
+               defer
+               apply (rule refl)+
+            apply blast
+           apply (rule step_max_top'_Inp_Some_intro[where t=t])
+                apply (rule refl)+
+               apply simp_all
+          apply hypsubst_thin
+          subgoal premises
+            apply (induct xs arbitrary: os''' rule: rev_induct)
+             apply auto
+            done
+          done
+        done
+      done
+    done
+  done
 
 lemma step_max_top'_Tau_output[intro]:
   "below_caps = [cap \<leftarrow> caps. \<not> frontier_less_equal (front os 0) (time cap)] \<Longrightarrow>
@@ -2585,6 +2582,12 @@ lemma in_frontier_zmset_of_snd_mset:
   apply (rule in_frontier_zcount)
   apply auto
   done
+
+lemma sorried:
+  "\<forall> (a :: (1, nat) capability) \<in> set xs. time a \<le> time x \<Longrightarrow>
+   sorted (map time xs) \<Longrightarrow>
+   insort_key time x xs = xs @ [x]"
+  sorry
 
 
 (* lemma
@@ -5109,30 +5112,34 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
               apply (auto simp add: split_beta)
               subgoal
                 apply (cases "buf1 (Inr (1, 1))"; simp)
-                apply (rule map_cong)
-                using prems(7) apply (simp add: sort_key_id_if_sorted)
-                apply auto
-                apply (rule Max_eq_if)
-                apply simp_all
-                subgoal
-                  apply (auto simp add:  split_beta split: sum.splits; hypsubst_thin?)
-                  apply (metis fstE verit_comp_simplify(2))
+                subgoal for a as
+                  apply (cases a)
+                  apply simp_all
+                  apply (rule Max_eq_if)
+                  apply simp_all
+                  subgoal
+                    by (auto simp add:  split_beta split: sum.splits; hypsubst_thin?)
+                  subgoal
+                    apply auto
+                    apply (metis (mono_tags, lifting) Un_iff img_fst mem_Collect_eq nle_le split_pairs2)
+                    done
                   done
-                subgoal
-                  apply (auto simp add:  split_beta split: sum.splits; hypsubst_thin?)
-                  apply (smt (verit, del_insts) Pair_inject Un_iff imageI mem_Collect_eq surjective_pairing verit_comp_simplify(2))
-                  done
-                subgoal
+                done
+      subgoal
+                apply (cases "buf1 (Inr (1, 1))"; simp)
+                subgoal for a as
+                  apply (cases a)
+                  apply simp_all
                   apply (rule Max_eq_if)
                   apply simp_all
                   subgoal
                     apply (auto simp add:  split_beta split: sum.splits; hypsubst_thin?)
-                    apply (metis (full_types) capability.exhaust capability.sel(1) num1_eq1 snd_conv)
+                    apply (metis (full_types) capability.exhaust capability.sel(1) num1_eq1)
                     done
                   subgoal
-                    by (auto simp add:  split_beta split: sum.splits; hypsubst_thin?)
+                    by auto
+                    done
                   done
-                done
               subgoal
                 apply (cases "buf1 (Inr (1, 1))"; simp)
                 apply auto
@@ -5583,7 +5590,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
             apply (meson in_set_tlD)
             done
           subgoal using prems(7) 
-            using sorted_sort_key by blast
+            by (meson sorted_insort_key)
           subgoal using prems(8) by simp
           subgoal 
             using prems(9,2,3,9,10,11,12) apply -
@@ -5875,7 +5882,9 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
             apply (cases "buf1 (Inr (1, 1))")
             apply (auto simp add: split_beta)
             subgoal for a as
-              by (cases a; simp)
+              apply (cases a; simp)
+              apply (metis capability.sel(1) insert_iff set_insort_key)
+              done
             done
           subgoal
             using prems(29) apply -
@@ -5893,11 +5902,18 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
               done
             done
           subgoal
-            using prems(4,28,30) apply -
-            apply clarsimp
-            apply (metis BENQ_diff_access SIM1(4)
-                \<open>buf1 (Inr (1, 1)) \<noteq> [] \<Longrightarrow> isr (BHD (Inr (1, 1)) buf1) \<Longrightarrow> (n', t) = projr (BHD (Inr (1, 1)) buf1) \<Longrightarrow> Cap t 1 \<notin> set caps \<Longrightarrow> xs 0 = outpu os2 0 \<Longrightarrow> ys 0 = max_from_buf caps buf2 ((map projr \<circ> buf1 \<circ> Inr \<circ>\<circ> Pair) 1 0 @ outpu os1 0) \<Longrightarrow> \<forall>cap. cap \<in> set (sort_key time (caps @ [Cap t 1])) \<longrightarrow> time cap < n 1\<close>
-                capability.sel(1) in_set_conv_decomp_first prems(5) set_sort verit_comp_simplify(3))
+            using prems(4,28,29,30) apply -
+            unfolding BENQ_def BHD_def
+            apply (cases "buf1 (Inr (1, 1))")
+             apply (auto simp add: split_beta split: if_splits)
+             apply (metis prod.sel(2))
+            subgoal for a as
+              apply (cases a; simp)
+              subgoal for p
+                apply (cases p)
+                apply auto
+                done
+              done
             done
           subgoal
             using prems(31) by auto
@@ -5905,7 +5921,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
             using prems2(1,2,3,4) prems(32,33) apply -
             unfolding BTL_def BHD_def
             apply (cases "buf1 (Inr (1, 1))")
-            apply (auto dest: in_set_tlD)
+             apply (auto simp add: set_insort_key dest: in_set_tlD)
             apply (metis (no_types, lifting) UnCI image_iff snd_conv)+
             done
           subgoal premises prems2
@@ -5934,34 +5950,26 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                   apply (cases a; simp)
                   done
                 subgoal for a as
-                  apply (cases a; simp)
+                  apply (cases a; simp add: set_insort_key)
                   subgoal premises prems2
                     subgoal
                       apply (subgoal_tac 
-                          "map (\<lambda>cap. (Max (set (if cap = Cap t 1 then buf2 (Cap t 1) @ [n'] else buf2 cap) \<union> (fst ` {x \<in> projr ` set as. snd x = time cap} \<union> fst ` {x \<in> set (outpu os1 1). snd x = time cap})), time cap))
-     (sort_key time (caps @ [Cap t 1])) = 
-   map (\<lambda>cap. (Max (set (buf2 cap) \<union> (fst ` {x. (x = (n', t) \<or> x \<in> projr ` set as) \<and> snd x = time cap} \<union> fst ` {x \<in> set (outpu os1 1). snd x = time cap})), time cap)) caps @
+                          "map (\<lambda>cap. (Max (set (if cap = Cap t 1 then buf2 (Cap t 1) @ [n'] else buf2 cap) \<union> (fst ` {x \<in> projr ` set as. snd x = time cap} \<union> fst ` {x \<in> set (outpu os1 1). snd x = time cap})),
+                 time cap))  (insort_key time (Cap t 1) caps) = 
+  map (\<lambda>cap. (Max (set (buf2 cap) \<union> (fst ` {x. (x = (n', t) \<or> x \<in> projr ` set as) \<and> snd x = time cap} \<union> fst ` {x \<in> set (outpu os1 1). snd x = time cap})), time cap)) caps @
     [(Max (set (buf2 (Cap t 1)) \<union> (fst ` {x. (x = (n', t) \<or> x \<in> projr ` set as) \<and> snd x = t} \<union> fst ` {x \<in> set (outpu os1 1). snd x = t})), t)]")
                       subgoal
-                        apply auto
-                        subgoal
-                          by (metis (mono_tags, lifting) sndE)
+                        apply (auto simp add: )
+                        subgoal 
+                          by (metis (no_types, opaque_lifting) prod.sel(2))
                         subgoal
                           by (metis (mono_tags, lifting) sndE)
                         done
                       subgoal
                         apply auto
-                        apply (subgoal_tac "\<forall> cap \<in> set caps. time cap \<le> t")
+                        apply (subgoal_tac "insort_key time (Cap t 1) caps = caps @ [Cap t 1]")
                         subgoal
-                          apply (subst sort_key_append)
-                          apply force
                           apply (auto 0 0)
-                          apply (metis (mono_tags, opaque_lifting) capability.exhaust capability.sel(1) injI num1_eq1 subset_UNIV subset_inj_on)
-                          apply (metis capability.exhaust capability.sel(1) num1_eq1)
-                          subgoal
-                            apply (rule map_cong)
-                            apply (auto simp add: insert_absorb)
-                            using prems(7) sort_key_id_if_sorted apply blast
                             subgoal
                               apply (rule Max_eq_if)
                               apply simp_all
@@ -5975,7 +5983,6 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                               apply auto
                               apply (metis capability.exhaust capability.sel(1) num1_eq1)
                               done
-                            done
                           subgoal
                             apply (rule Max_eq_if)
                             apply simp_all
@@ -5989,8 +5996,17 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                             done
                           done
                         subgoal
-                          using prems2(4-) prems(32) apply -
+                          apply (subgoal_tac "\<forall> cap \<in> set caps. time cap \<le> t")
+                          subgoal
+                          using prems(7,32) apply -
                           apply auto
+                          apply (rule sorried)
+                           apply auto
+                          done
+                        subgoal
+                          using prems2(4-) prems(7,32) apply -
+                          apply auto
+                          done
                           done
                         done
                       done
@@ -6000,7 +6016,6 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
               done
             done
           done
-
         subgoal for batch
           unfolding R_def
           apply simp
@@ -6975,7 +6990,7 @@ next
                 defer
                 apply (rule wbisim_refl)
               apply (rule wstep_trans(1))
-                  apply (rule relpowp_imp_rtranclp[where n="length (outpu os1 0) + length (buf1 (Inr (1, 1))) + length (outpu os1 0) + 2"]) 
+                  apply (rule relpowp_imp_rtranclp[where n="length (outpu os1 0) + length (buf1 (Inr (1, 1))) + length (outpu os1 0) + 1 + 1"]) 
                 apply (simp only: relpowp_add)
                   apply (intro relcomppI)
                      apply (rule step_tau_pow_dataflow_op)
@@ -6997,18 +7012,38 @@ next
                           apply (rule refl)+
                           apply (simp_all add: comp_def)
                 defer
+                apply (rule steps_max_top'_Inp_Some_intro[where xs="buf1 (Inr (1, 0))"])
+                using prems(6) apply simp
+                           defer
+                           apply (rule refl)+
+                using prems(7) apply simp
+                subgoal
+                  by (auto simp add: BULK_BENQ_def)
+                subgoal
+                  by (auto simp add: BULK_BENQ_def)
+                apply (rule step_tau_pow_dataflow_op)
+                     apply (rule step_tau_pow_map_op)
+                apply (rule step_tau_Inp_pow_comp_op_steps_intro[where xs="map Inr (outpu os1 1)"])
+                        apply (rule steps_map_op)
+                          apply (rule refl)+
+                           apply (simp_all add: comp_def)
+                       defer
+                apply (rule steps_max_top'_Inp_Some_intro[where xs="map Inr (outpu os1 1)"])
+                using prems(6) apply simp
+                defer
+                           apply (rule refl)+
+                using prems(7) apply simp
+                subgoal
+                  by (auto simp add: BULK_BENQ_def)
+                subgoal
+                  by (auto simp add: BULK_BENQ_def)
+                      apply (simp_all add: eq_OO)
 
 
-                find_theorems step map_op
 
-                apply (rule steps_Tau_dataflow_op_Tau_intro)
-                apply simp
-                     apply (rule steps_map_op[where xs="replicate (length (outpu os1 1)) Tau"])
-                       apply (rule refl)+
-                      apply simp
+                  find_theorems "(=) OO _"
 
-                find_theorems steps
 
-                oops
+
 
 end
