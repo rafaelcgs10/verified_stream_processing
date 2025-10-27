@@ -396,7 +396,7 @@ lemma step_tau_pow_dataflow_op[intro]:
    (step Tau ^^ n) (dataflow_op sg op) (dataflow_op sg op')"
   by (induct n arbitrary:  op') auto
 
-lemma step_tay_pow_map_op[intro]:
+lemma step_tau_pow_map_op[intro]:
   "(step Tau ^^ n) op op' \<Longrightarrow> (step Tau ^^ n) (map_op f g op) (map_op f g op')"
   apply (induct n arbitrary: op op')
    apply simp_all

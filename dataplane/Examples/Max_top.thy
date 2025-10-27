@@ -137,6 +137,60 @@ lemma step_max_top'_Inp_Some_intro[intro!]:
   done
 
 
+lemma steps_max_top'_Inp_Some_intro[intro]:
+  "\<forall> x \<in> set xs. isr x \<Longrightarrow>
+   (caps', os') = fold (\<lambda> t (caps, os). if Cap t 0 \<in> set caps then (caps, os) else (caps @ [Cap t 0], mint_cap os 0 t)) (map (snd o projr) xs) (caps, os) \<Longrightarrow>
+   os'' = fold (\<lambda> t os. consume os 1 t 1) (map (snd o projr) xs) os' \<Longrightarrow>
+   buf' = fold (\<lambda> (n, t) buf. BENQ (Cap t 0) n buf) (map projr xs) buf \<Longrightarrow>
+   op = max_top' os'' buf' (sort_key time caps') \<Longrightarrow>
+   steps (map (\<lambda> e. Inp (Some 0) e) xs) (max_top' os buf caps) op"
+  apply (induct xs arbitrary: os os' os'' buf buf' caps caps' op rule: rev_induct)
+  subgoal for os os' buf caps caps'
+    apply simp
+    by (simp add: sort_key_id_if_sorted)
+  subgoal premises prems for a xs os os' os'' buf buf' caps caps' op
+    using prems(2-) apply -
+    apply (cases a; simp)
+    subgoal for p
+      apply (cases p; simp)
+      subgoal for n t
+        apply (cases "Cap t 0 \<in> set caps")
+        subgoal
+          apply (auto 0 0 split: sum.splits prod.splits)
+          apply hypsubst_thin
+          apply (intro relcomppI)
+           apply (rule prems(1))
+          apply simp
+          defer
+               apply (rule refl)+
+          apply force
+     apply (rule step_max_top'_Inp_Some_intro)
+                apply simp_all
+          apply auto
+
+    apply (rule arg_cong3[where f=max_top'])
+             apply (simp_all add: sort_key_id_if_sorted)
+          
+
+
+end
+        subgoal
+          apply (auto 0 0 split: sum.splits)
+          apply hypsubst_thin
+          apply (intro relcomppI[rotated])
+           apply (rule prems(1))
+          apply simp
+          defer
+          apply (rule refl)+
+          defer
+    defer
+             apply (rule step_max_top'_Inp_Some_intro[where t=t])
+          apply (rule refl)+
+                 apply simp_all
+  
+
+end
+
 lemma step_max_top'_Tau_output[intro]:
   "below_caps = [cap \<leftarrow> caps. \<not> frontier_less_equal (front os 0) (time cap)] \<Longrightarrow>
    above_caps = [cap \<leftarrow> caps. frontier_less_equal (front os 0) (time cap)] \<Longrightarrow>
@@ -149,10 +203,6 @@ lemma step_max_top'_Tau_output[intro]:
   apply (subst max_top'.code)
   apply (auto split: list.splits if_splits sum.splits)
   done
-
-(*
-| st where "io = Inp None st" "isl st" "isr (projl st)" "op = max_top' (os\<lparr> front := projr (projl st) \<rparr>) buf caps" 
-*)
 
 lemma step_max_top'Inp_None[intro!]:
   "isl st \<Longrightarrow>
@@ -178,6 +228,9 @@ lemma step_max_top'Inp_None[intro!]:
     apply force
     done
   done
+
+find_theorems Inp max_top'
+
 
 (* 
   abbreviation "max_top \<equiv> max_top' []"
@@ -283,28 +336,6 @@ lemma propagate_pointstamps_comm:
   "propagate_pointstamps summary conf (cbs1 @ cbs2) = propagate_pointstamps summary conf (cbs2 @ cbs1)"
   unfolding propagate_pointstamps_def
   by (simp add: change_multiplicities_comm)
-
-lemma propagate_pointstamps_append:
-  "propagate_pointstamps summary conf cbs1 = Some conf' \<Longrightarrow>
-   propagate_pointstamps summary conf (cbs1 @ cbs2) = propagate_pointstamps summary conf' cbs2"
-  apply (induct cbs2 arbitrary: cbs1 conf conf' rule: rev_induct) 
-  subgoal for cbs1 conf conf'
-    unfolding propagate_pointstamps_def change_multiplicities_def propagate_all_def
-    apply simp
-    apply (metis (no_types, lifting) while_option_stop while_option_unfold)
-    done
-  subgoal for a cbs2 cbs1 conf conf'
-    apply (drule meta_spec)+
-    apply (drule meta_mp)
-    apply assumption
-    unfolding propagate_pointstamps_def
-    apply (subst change_multiplicities_append_comp)
-    apply simp
-    oops
-
-(* edges sg = (\<lambda> l. if node l = 0 \<and> port l = Src 1 then [Loc 1 (Trg 0)] else []) \<Longrightarrow> *)
-
-    term "map (\<lambda> xs. case xs of [] \<Rightarrow> [] | xs \<Rightarrow> [Max (set xs)])"
 
 (* FIXME: move me *)
 lemma map_in_setD:
@@ -6949,8 +6980,8 @@ next
                   apply (intro relcomppI)
                      apply (rule step_tau_pow_dataflow_op)
                 apply simp
-                     apply (rule step_tay_pow_map_op)
-                     apply (rule step_tau_pow_steps_intro[where xs="map Inr (outpu os1 0)"])
+                     apply (rule step_tau_pow_map_op)
+                     apply (rule step_tau_Out_pow_comp_op_steps_intro[where xs="map Inr (outpu os1 0)"])
                         apply (rule steps_map_op)
                           apply (rule refl)+
                          apply (simp_all add: comp_def)
@@ -6959,10 +6990,16 @@ next
                          apply (simp add: defaults_num1_def)
                        apply (rule refl)+
                      apply simp_all
+                    apply (rule step_tau_pow_dataflow_op)
+                     apply (rule step_tau_pow_map_op)
+                apply (rule step_tau_Inp_pow_comp_op_steps_intro[where xs="buf1 (Inr (1, 1))" ])
+                        apply (rule steps_map_op)
+                          apply (rule refl)+
+                          apply (simp_all add: comp_def)
+                defer
 
 
-
-                find_theorems steps input_top
+                find_theorems step map_op
 
                 apply (rule steps_Tau_dataflow_op_Tau_intro)
                 apply simp
