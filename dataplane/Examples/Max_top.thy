@@ -226,8 +226,13 @@ lemma step_max_top'Inp_None[intro!]:
     done
   done
 
-find_theorems Inp max_top'
-
+lemma step_max_top'_Out_None[intro!]:
+  "obtain_progress os = (os', st) \<Longrightarrow>
+   op = max_top' os' buf caps \<Longrightarrow>
+   step (Out None (Inl (Inl st))) (max_top' os buf caps) op"
+  apply (subst max_top'.code)
+  apply (auto split: list.splits if_splits sum.splits)
+  done
 
 (* 
   abbreviation "max_top \<equiv> max_top' []"
@@ -2583,11 +2588,12 @@ lemma in_frontier_zmset_of_snd_mset:
   apply auto
   done
 
-lemma sorried:
-  "\<forall> (a :: (1, nat) capability) \<in> set xs. time a \<le> time x \<Longrightarrow>
-   sorted (map time xs) \<Longrightarrow>
-   insort_key time x xs = xs @ [x]"
-  sorry
+lemma insort_key_last:
+  "\<forall> a \<in> set xs. f a \<le> f x \<Longrightarrow>
+   sorted (map f xs) \<Longrightarrow>
+   f x \<notin> f ` set xs \<Longrightarrow>
+   insort_key f x xs = xs @ [x]"
+  by (induct xs) auto
 
 
 (* lemma
@@ -2615,6 +2621,14 @@ lemma sorried:
 
     find_theorems c_pts change_multiplicities
  *)
+
+lemma outpu_fold[simp]:
+  "outpu (fold (\<lambda>t os. os\<lparr>consu := A\<rparr>) xs s) = outpu s"
+  "outpu (fold (\<lambda>t os. os\<lparr>inter := B\<rparr>) xs s) = outpu s"
+  "outpu (fold (\<lambda>t os. os\<lparr>produ := C\<rparr>) xs s) = outpu s"
+  apply (induct xs arbitrary: s )
+  apply auto
+  done
 
 lemma
   \<open>summ sg = my_summ \<Longrightarrow>
@@ -6000,8 +6014,11 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
                           subgoal
                           using prems(7,32) apply -
                           apply auto
-                          apply (rule sorried)
-                           apply auto
+                          apply (rule insort_key_last)
+                          using prems2(1) apply auto
+                          subgoal for x
+                            apply (cases x; simp)
+                            done
                           done
                         subgoal
                           using prems2(4-) prems(7,32) apply -
@@ -6893,7 +6910,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
         done
       done
   qed
-next
+next 
   case SIM2
   show ?case (is "wsim ((~) OO \<U> ?R OO (\<approx>)) ?op1 ?op2")
   proof -
@@ -6990,7 +7007,7 @@ next
                 defer
                 apply (rule wbisim_refl)
               apply (rule wstep_trans(1))
-                  apply (rule relpowp_imp_rtranclp[where n="length (outpu os1 0) + length (buf1 (Inr (1, 1))) + length (outpu os1 0) + 1 + 1"]) 
+                  apply (rule relpowp_imp_rtranclp[where n="length (outpu os1 0) + length (buf1 (Inr (1, 1))) + length (outpu os1 0) + 1 + 1 + 1 + 1"]) 
                 apply (simp only: relpowp_add)
                   apply (intro relcomppI)
                      apply (rule step_tau_pow_dataflow_op)
@@ -6999,49 +7016,124 @@ next
                      apply (rule step_tau_Out_pow_comp_op_steps_intro[where xs="map Inr (outpu os1 0)"])
                         apply (rule steps_map_op)
                           apply (rule refl)+
-                         apply (simp_all add: comp_def)
                        defer
                 apply (rule steps_input_top_Out[where p=1])
                          apply (simp add: defaults_num1_def)
-                       apply (rule refl)+
-                     apply simp_all
+                            apply (rule refl)+
+                apply simp
+                         apply simp
+                       apply (rule refl)+                         
                     apply (rule step_tau_pow_dataflow_op)
                      apply (rule step_tau_pow_map_op)
                 apply (rule step_tau_Inp_pow_comp_op_steps_intro[where xs="buf1 (Inr (1, 1))" ])
                         apply (rule steps_map_op)
-                          apply (rule refl)+
-                          apply (simp_all add: comp_def)
-                defer
+                              apply (rule refl)+
+                             defer
                 apply (rule steps_max_top'_Inp_Some_intro[where xs="buf1 (Inr (1, 0))"])
                 using prems(6) apply simp
                            defer
                            apply (rule refl)+
                 using prems(7) apply simp
+                             apply simp
+                apply simp
                 subgoal
                   by (auto simp add: BULK_BENQ_def)
                 subgoal
                   by (auto simp add: BULK_BENQ_def)
+                           apply (rule refl)+
                 apply (rule step_tau_pow_dataflow_op)
                      apply (rule step_tau_pow_map_op)
                 apply (rule step_tau_Inp_pow_comp_op_steps_intro[where xs="map Inr (outpu os1 1)"])
                         apply (rule steps_map_op)
-                          apply (rule refl)+
-                           apply (simp_all add: comp_def)
-                       defer
+                               apply (rule refl)+
+                defer
                 apply (rule steps_max_top'_Inp_Some_intro[where xs="map Inr (outpu os1 1)"])
                 using prems(6) apply simp
                 defer
                            apply (rule refl)+
-                using prems(7) apply simp
+                defer
+                apply simp
+                apply simp
                 subgoal
                   by (auto simp add: BULK_BENQ_def)
                 subgoal
                   by (auto simp add: BULK_BENQ_def)
+                           apply (rule refl)+
+                      apply (simp add: eq_OO)
+                apply (rule step_Tau_dataflow_op_Out_Inl_intro[where nid=0, rotated])
+                      apply (rule refl)
+                     apply (rule step_map_op)
+                apply (rule step_comp_op_L_Out)
+                     apply (rule step_map_op)
+                           apply (rule step_input_top_Out_None_intro[where p="1 :: 1"])
+                      apply (rule refl)+
+                           apply (simp add: defaults_num1_def)
+                             apply simp
+                            apply simp
+                           apply (rule refl)+
+                         apply simp
+                      apply (simp add: eq_OO)
+                     apply (rule step_Tau_dataflow_op_Out_Inl_intro[where nid=1, rotated])
+                      apply (rule refl)
+                     apply (rule step_map_op)
+                apply (rule step_comp_op_R_Out)
+                     apply (rule step_map_op)
+                         apply (rule step_max_top'_Out_None)
+                          apply simp
+                         apply (rule refl)+
                       apply (simp_all add: eq_OO)
+                apply (rule step_Tau_dataflow_op_Inp_Inl_intro)
+                     apply (rule step_map_op)
+                apply (rule step_comp_op_R_Inp)
+                     apply (rule step_map_op)
+                             apply (rule step_max_top'Inp_None)
+                defer
+                defer
+                               apply (rule refl)+
+                                 apply simp_all
+                       apply simp
+                apply (rule step_Tau_dataflow_op_Tau_intro)
+                     apply (rule step_map_op)
+                apply (rule step_comp_op_R_Tau)
+                     apply (rule step_map_op)
+                           apply (rule step_max_top'_Tau_output)
+                                 apply (rule refl)+
+                apply simp
+                                 apply (rule refl)+
+                apply simp
+            apply (rule step_Out_dataflow_op_Out_Inr_intro)
+            apply (rule step_map_op)
+            apply (rule step_comp_op_R_Out)
+            apply (rule step_map_op)
+                 apply (rule step_max_top'_Out_intro)
+                  apply (rule refl)+
+            apply (rule sym)
+                             defer
+                             apply simp
+                            apply (rule refl)+
+                          apply simp_all
+                    defer
+                    apply (rule prod.collapse)
+                   apply (rule prod.collapse)
+                  defer
+                using prems(1,2,4) apply -
+                apply (simp add: extract_progress_def comp_def)
+
+                find_theorems outpu
+
+                thm fun_upd_other
 
 
+end
+                find_theorems fun_upd fold
 
-                  find_theorems "(=) OO _"
+                apply (rule refl)
+                   defer
+                    defer
+                    defer
+
+
+                  find_theorems max_top' step None
 
 
 
