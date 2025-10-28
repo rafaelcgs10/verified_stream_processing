@@ -706,7 +706,6 @@ lemma propagate_all_frontier_c_imp_correctness:
    dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c'"
   using propagate_all_frontier_c_imp_correctness_aux by (metis dataflow_topology.antichain_eqI)
 
-
 lemma take_step_PR_preserves_c_pts[simp]:
   "c_pts (take_step summary PR c) = c_pts c"
   by (simp_all split: prod.splits if_splits)
@@ -718,6 +717,24 @@ lemma propagate_all_preserves_c_pts:
   apply (rule while_option_rule[rotated, OF assms[unfolded propagate_all_def comp_def]])
   apply simp
   apply (simp only: take_step_PR_preserves_c_pts)
+  done
+
+lemma propagate_all_frontier_c_imp_correctness_alt:
+  "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
+   reachable_locations summary = UNIV \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
+   dataflow_topology summary trivial_dataflow_topology_interpretation.followed_by \<Longrightarrow>
+   frontier (c_imp (the (propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> nat antichain) c)) loc) = dataflow_topology.implied_frontier_alt summary dataflow_topology_from_tree.followed_by c loc"
+  apply (cases "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> nat antichain) c"; simp)
+  apply (frule propagate_all_frontier_c_imp_correctness[where loc=loc])
+       apply assumption+
+  apply auto
+  apply (subst (1 2) Propagate.dataflow_topology.implied_frontier_alt_def)
+   apply assumption
+  apply (subst propagate_all_preserves_c_pts)
+   apply auto
   done
 
 lemma c_pts_change_multiplicities_cong:
@@ -1403,13 +1420,13 @@ lemma zcount_zmset_filter_neg:
   done
 
 lemma zmset_map_one_zmset_of:
-  "zmset (map (\<lambda>cap. (time cap, 1)) caps) = zmset_of (mset (map time caps))"
+  "zmset (map (\<lambda>cap. (f cap, 1)) caps) = zmset_of (mset (map f caps))"
   apply (induct caps)
   apply (auto simp add: zcount_update_zmultiset zcount_zmset zmultiset_eq_iff)
   done
 
 lemma zmset_map_minus_one_zmset_of:
-  "zmset (map (\<lambda>cap. (time cap, -1)) caps) = - zmset_of (mset (map time caps))"
+  "zmset (map (\<lambda>cap. (f cap, -1)) caps) = - zmset_of (mset (map f caps))"
   apply (induct caps)
   apply (auto simp add: zcount_update_zmultiset zcount_zmset zmultiset_eq_iff)
   done
@@ -2596,6 +2613,53 @@ lemma insort_key_last:
   by (induct xs) auto
 
 
+lemma sorted_rmdups[intro]:
+  "sorted xs \<Longrightarrow>
+   sorted (rmdups A xs)"
+  by (induct xs arbitrary: A) auto
+
+lemma sorted_map_rmdups[intro]:
+  "sorted (map f xs) \<Longrightarrow> sorted (map f (rmdups A xs))"
+  apply (induct xs arbitrary: A)
+   apply auto
+  done
+
+lemma fst_fold_rmdups:
+  "sorted (map time caps) \<Longrightarrow>
+   sorted xs \<Longrightarrow>
+   (\<forall> t \<in> time ` set caps. \<forall> t' \<in> set xs. t \<le> t') \<Longrightarrow>
+   fst ((fold (\<lambda>t (caps, os). if Cap t (1 :: 1) \<in> set caps then (caps, os) else (insort_key time (Cap t 0) caps, f os t))) xs (caps, os)) = caps @ rmdups (set caps) (map (\<lambda> t. Cap t 1) xs)"
+  apply (induct xs arbitrary: os caps rule: rev_induct)
+   apply simp_all
+  subgoal premises prems for x xs' os' caps'
+    using prems(1)[symmetric] prems(2-) apply -
+    apply (auto simp add: sorted_wrt_append split_beta split: if_splits)
+    apply (drule meta_spec)+
+    apply (drule meta_mp)
+    apply assumption
+    apply (drule meta_mp)
+     apply simp_all
+    apply (subst insort_key_last)
+       apply simp_all
+      apply force
+    subgoal
+      apply (auto simp add: sorted_append)
+      subgoal premises prems2
+        using prems2(3) sorted_map_rmdups 
+        by (metis (no_types, lifting) capability.sel(1) sorted_map sorted_wrt_map_mono)
+      done
+    subgoal
+      apply auto
+      apply (metis (full_types) capability.exhaust capability.sel(1) num1_eq1)
+      done
+    done
+  done
+
+lemma set_fold_caps[simp]:
+  "set (fold (\<lambda>(n, t) buf. buf(Cap t 1 := buf (Cap t 1) @ [n])) xs buf x) = set (buf x) \<union> fst ` {y \<in> set xs. Cap (snd y) 1 = x}"
+  by (induct xs arbitrary: buf) (auto split: if_splits)
+
+
 (* lemma
   "dataflow_topology.implied_frontier_alt my_summ trivial_dataflow_topology_interpretation.followed_by c =
    dataflow_topology.implied_frontier_alt my_summ trivial_dataflow_topology_interpretation.followed_by c' \<Longrightarrow>
@@ -2623,12 +2687,37 @@ lemma insort_key_last:
  *)
 
 lemma outpu_fold[simp]:
-  "outpu (fold (\<lambda>t os. os\<lparr>consu := A\<rparr>) xs s) = outpu s"
-  "outpu (fold (\<lambda>t os. os\<lparr>inter := B\<rparr>) xs s) = outpu s"
-  "outpu (fold (\<lambda>t os. os\<lparr>produ := C\<rparr>) xs s) = outpu s"
-  apply (induct xs arbitrary: s )
+  "outpu (fold (\<lambda>t os. os\<lparr>consu := A t os\<rparr>) xs s) = outpu s"
+  "outpu (fold (\<lambda>t os. os\<lparr>inter := B t os\<rparr>) xs s) = outpu s"
+  "outpu (fold (\<lambda>t os. os\<lparr>produ := C t os\<rparr>) xs s) = outpu s"
+  apply (induct xs arbitrary: s)
   apply auto
   done
+
+lemma outpu_fold_snd[simp]:
+  "outpu (snd (fold (\<lambda>t (caps, os). if Cap t 1 \<in> set caps then (caps, os) else (insort_key time (Cap t 0) caps, mint_cap os 0 t)) xs (caps, os))) =
+   outpu os"
+  apply (induct xs arbitrary: os caps)
+   apply auto
+  done
+
+lemma consu_fold_snd[simp]:
+  "consu (snd (fold (\<lambda>t (caps, os). if Cap t 1 \<in> set caps then (caps, os) else (insort_key time (Cap t 0) caps, mint_cap os 0 t)) xs (caps, os))) =
+   consu os"
+  apply (induct xs arbitrary: os caps)
+   apply auto
+  done
+
+lemma produ_fold_snd[simp]:
+  "produ (snd (fold (\<lambda>t (caps, os). if Cap t 1 \<in> set caps then (caps, os) else (insort_key time (Cap t 0) caps, mint_cap os 0 t)) xs (caps, os))) =
+   produ os"
+  apply (induct xs arbitrary: os caps)
+   apply auto
+  done
+
+lemma consu_fold[simp]:
+  "consu (fold (\<lambda>t os. os\<lparr>consu := consu os @ [(1, t, 1)]\<rparr>) xs os) = consu os @ map (\<lambda> t. (1, t, 1)) xs"
+  by (induct xs arbitrary: os) auto
 
 lemma
   \<open>summ sg = my_summ \<Longrightarrow>
@@ -2676,7 +2765,7 @@ lemma
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
 proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 st2 rule: weakBisimWeakUptoBisimCong)
-  case SIM1
+(*  case SIM1
   show ?case (is "wsim ((~) OO \<U> ?R OO (\<approx>)) ?op1 ?op2")
   proof -
     define R where "R = ?R"
@@ -6910,7 +6999,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
         done
       done
   qed
-next 
+next *)
   case SIM2
   show ?case (is "wsim ((~) OO \<U> ?R OO (\<approx>)) ?op1 ?op2")
   proof -
@@ -7116,16 +7205,134 @@ next
                     apply (rule prod.collapse)
                    apply (rule prod.collapse)
                   defer
-                using prems(1,2,4) apply -
-                apply (simp add: extract_progress_def comp_def)
+                apply (clarsimp simp add: extract_progress_def comp_def)
+                using prems(4) prems2(2) apply -
+                  apply simp
+                  apply (rule sym)
+                apply (subst (1 2 3 4) fst_fold_rmdups)
+                using prems apply simp
+                subgoal
+                  using prems(33) by (clarsimp simp add: sorted_append comp_def)
+                subgoal
+                  using prems(32) apply -
+                  apply auto
+                  apply (metis eq_snd_iff map_in_setD set_map)
+                  done
+                subgoal
+                  using prems(7, 32, 33) apply -
+                  apply (auto simp add: sorted_append comp_def)
+                  apply (smt (verit, del_insts) Un_iff eq_snd_iff image_iff prod.simps(2))
+                  done
+                subgoal
+                  using prems(33) by (clarsimp simp add: sorted_append comp_def)
+                subgoal
+                  using prems(7, 32, 33) apply -
+                  apply (auto simp add: comp_def sorted_append)
+                  apply (smt (verit, del_insts) Un_iff eq_snd_iff image_iff prod.simps(2))
+                  done
+                subgoal
+                  using prems(7) by simp
+                subgoal
+                  using prems(33) by (clarsimp simp add: sorted_append comp_def)
+                subgoal
+                  using prems(32) apply -
+                  apply auto
+                  apply (metis eq_snd_iff map_in_setD set_map)
+                  done
+                apply (subst filter_True)
+                   prefer 2
+                   apply (subst prems2(4))
+                subgoal
+                  unfolding max_from_caps_buf_def BENQ_def BULK_BENQ_def list_to_buf_def
+                  apply (rule map_cong)
+                   apply (auto simp add: comp_def split_beta split: sum.splits)
+                  subgoal
+                  apply (rule arg_cong2[where f=rmdups])
+                  apply auto
+                    done
+                  subgoal for x
+                    apply (cases x; simp)
+                    apply (rule Max_eq_if)
+                       apply (auto simp add: image_iff)
+                    done
+                  subgoal for x
+                    using prems(6) apply -
+                    apply (cases x; simp)
+                    apply force
+                    apply (rule Max_eq_if)
+                       apply (auto simp add: image_iff)
+                    done
+                  subgoal for a x
+                    apply (rule Max_eq_if)
+                       apply (auto simp add: image_iff)
+                    done
+                  done
+                subgoal
+                  using prems(1,2,3,6,14,9,10,11,13) prems(12)[symmetric] apply -
+                  apply simp
+                  apply (subst propagate_all_frontier_c_imp_correctness_alt)
+                  apply simp_all
+                     prefer 4
+                  subgoal
+                    apply (clarsimp simp add: comp_def extract_progress_def dataflow_topology_implied_frontier_alt_my_summ c_pts_change_multiplicities)
+                    apply hypsubst_thin
+                    apply (subgoal_tac 
+                        "zmset (map (\<lambda>x. (snd (projr x), - 1)) (buf1 (Inr (1, 1)))) + zmset (map (\<lambda>x. (snd x, - 1)) (outpu os1 1)) =
+    - (zmset_of ({#snd (projr x). x \<in># mset (buf1 (Inr (1, 1)))#} + snd `# mset (outpu os1 1)))")
+                    subgoal
+                      unfolding input_cap_def frontier_less_equal_iff2
+                      using prems(28,29) apply -
+                      apply clarsimp
+                      apply (auto simp add: frontier_singleton split: if_splits dest!: antichain_singletonD)
+                      using mem_antichain_nonempty apply blast
+                      using mem_antichain_nonempty apply blast
+                      using mem_antichain_nonempty apply blast
+                      subgoal for x
+                        apply (cases x; simp)
+                         apply force
+                        subgoal for b
+                          apply (cases b; simp)
+                          apply (drule spec2)
+                          apply (elim conjE)
+                          apply (drule mp)
+                           apply (rule image_eqI[rotated])
+                            apply auto
+                          done
+                        done
+                      subgoal for a b
+                        apply (drule spec2)
+                        apply (elim conjE)
+                        apply (drule mp)
+                         back
+                         apply auto
+                        done
+                      done
+                    subgoal premises prems3
+                      by (auto simp add: zmset_of_plus zmset_map_minus_one_zmset_of zmset_map_one_zmset_of )
+                    done
+                  subgoal
+                    sorry
+                  subgoal
+                    sorry
+                  subgoal
+                    sorry
+                  done
 
-                find_theorems outpu
+                      find_theorems zmset map
 
-                thm fun_upd_other
+                          
 
+                find_theorems "Max _ = Max _"
 
 end
-                find_theorems fun_upd fold
+                using prems2(4)[symmetric, unfolded max_from_caps_buf_def]
+
+                find_theorems x
+               
+
+                find_theorems filter Cons
+end
+             
 
                 apply (rule refl)
                    defer
