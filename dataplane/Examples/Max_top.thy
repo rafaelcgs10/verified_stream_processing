@@ -7967,7 +7967,41 @@ next *)
                   subgoal
                     apply (subst (1 2 3 4) fst_fold_rmdups)
 
-
+                using prems apply simp
+                subgoal
+                  using prems(33) by (clarsimp simp add: sorted_append comp_def)
+                subgoal
+                  using prems(32) apply -
+                  apply auto
+                  apply (metis eq_snd_iff map_in_setD set_map)
+                  done
+                subgoal
+                  using prems(7, 32, 33) apply -
+                  apply (auto simp add: sorted_append comp_def)
+                  apply (smt (verit, del_insts) Un_iff eq_snd_iff image_iff prod.simps(2))
+                  done
+                subgoal
+                  using prems(33) by (clarsimp simp add: sorted_append comp_def)
+                subgoal
+                  using prems(7, 32, 33) apply -
+                  apply (auto simp add: comp_def sorted_append)
+                  apply (smt (verit, del_insts) Un_iff eq_snd_iff image_iff prod.simps(2))
+                  done
+                subgoal
+                  using prems(7) by simp
+                subgoal
+                  using prems(33) by (clarsimp simp add: sorted_append comp_def)
+                subgoal
+                  using prems(32) apply -
+                  apply auto
+                  apply (metis eq_snd_iff map_in_setD set_map)
+                  done
+                using prems(7,32, 33) apply -
+                apply (auto simp add: comp_def sorted_append intro!: sorted_filter sorted_map_rmdups)
+                  apply fastforce
+                apply (metis (no_types, opaque_lifting) imageI prod.sel(2) surj_pair)
+                done
+                  subgoal
                     sorry
                   subgoal
                     sorry
