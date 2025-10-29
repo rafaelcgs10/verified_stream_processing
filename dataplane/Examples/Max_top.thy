@@ -9073,13 +9073,15 @@ subgoal
                 done
                                   apply (simp_all add: BULK_BENQ_def)
               subgoal
+                apply (subst (1 2 3 4) fst_fold_rmdups)
+
+
                 sorry
               subgoal
                 sorry
               subgoal
                 sorry
               subgoal
-                thm conjI
 
 
 
