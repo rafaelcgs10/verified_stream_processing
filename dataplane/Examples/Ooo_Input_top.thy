@@ -13,17 +13,19 @@ abbreviation "drop_cap os cap \<equiv> (os\<lparr> inter := inter os @ [(out cap
 abbreviation "drop_caps os caps \<equiv> (os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps \<rparr>)"
 abbreviation "mint_cap os p t \<equiv> os\<lparr> inter := inter os @ [(p, t, 1)] \<rparr>"
 
+(* The list of capabilities caps is never augmented (i.e., no capability is every acquired) in this
+operator, so when it is instantiated it should be give all capabalities it will ever need upfront. *)
 corec ooo_input_top where
   \<open>ooo_input_top os caps ins = choice3
   (Choice (cimage (\<lambda>p. case ins p of
     LCons (Data t d) lxs \<Rightarrow> Silent (ooo_input_top (produce os (Cap t p) [d]) caps (ins(p := lxs)))
   | LCons (Watermark wm) lxs \<Rightarrow>
-      let A = antichain (insert wm (set (map time (filter (\<lambda>cap. out cap = p) caps))));
-          dropped_caps = [cap \<leftarrow> caps. \<not> frontier_less_equal A (time cap) \<and> out cap = p];
-          other_caps = [cap \<leftarrow> caps. frontier_less_equal A (time cap) \<or> out cap = p];
+      let A = antichain (insert wm (set (caps p)));
+          dropped_caps = map (\<lambda>t. Cap t p) (filter (Not \<circ> frontier_less_equal A) (caps p));
+          caps' = caps(p := filter (frontier_less_equal A) (caps p));
           os' = drop_caps os dropped_caps;
           os'' = if lxs \<noteq> LNil \<and> frontier_less_equal A wm then mint_cap os' p wm else os'
-      in Silent (ooo_input_top os'' other_caps (ins(p := lxs))))
+      in Silent (ooo_input_top os'' caps' (ins(p := lxs))))
     (cfilter (\<lambda>p. ins p \<noteq> LNil) c\<UU>)))
   (Choice (cimage (\<lambda>p. case outpu os p of
     x # xs \<Rightarrow> send_output (ooo_input_top (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) caps ins) p x)
@@ -35,13 +37,13 @@ lemma step_ooo_input_top_elim:
   assumes \<open>step io (ooo_input_top os caps ins) op\<close>
   obtains p t d lxs where \<open>io = Tau\<close> \<open>ins p = LCons (Data t d) lxs\<close>
     \<open>op = ooo_input_top (produce os (Cap t p) [d]) caps (ins(p := lxs))\<close> \<open>p \<notin> defaults\<close>
-  | p wm lxs A dropped_caps other_caps os' os'' where \<open>io = Tau\<close> \<open>ins p = LCons (Watermark wm) lxs\<close>
-    \<open>A = antichain (insert wm (set (map time (filter (\<lambda>cap. out cap = p) caps))))\<close>
-    \<open>dropped_caps = [cap \<leftarrow> caps. \<not> frontier_less_equal A (time cap) \<and> out cap = p]\<close>
-    \<open>other_caps = [cap \<leftarrow> caps. frontier_less_equal A (time cap) \<or> out cap = p]\<close>
+  | p wm lxs A dropped_caps caps' os' os'' where \<open>io = Tau\<close> \<open>ins p = LCons (Watermark wm) lxs\<close>
+    \<open>A = antichain (insert wm (set (caps p)))\<close>
+    \<open>dropped_caps = map (\<lambda>t. Cap t p) (filter (Not \<circ> frontier_less_equal A) (caps p))\<close>
+    \<open>caps' = caps(p := filter (frontier_less_equal A) (caps p))\<close>
     \<open>os' = drop_caps os dropped_caps\<close>
     \<open>os'' = (if lxs \<noteq> LNil \<and> frontier_less_equal A wm then mint_cap os' p wm else os')\<close>
-    \<open>op = ooo_input_top os'' other_caps (ins(p := lxs))\<close> \<open>p \<notin> defaults\<close>
+    \<open>op = ooo_input_top os'' caps' (ins(p := lxs))\<close> \<open>p \<notin> defaults\<close>
   | p x xs where \<open>io = Out (Some p) (Inr x)\<close> \<open>outpu os p = x # xs\<close>
     \<open>op = ooo_input_top (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) caps ins\<close> \<open>p \<notin> defaults\<close>
   | os' st where \<open>io = Out None (Inl (Inl st))\<close> \<open>(os', st) = obtain_progress os\<close> \<open>op = ooo_input_top os' caps ins\<close>
@@ -69,12 +71,12 @@ lemma step_ooo_input_top_Silent_Data[intro]:
 
 lemma step_ooo_input_top_Silent_Watermark[intro]:
   \<open>ins p = LCons (Watermark wm) lxs \<Longrightarrow>
-  A = antichain (insert wm (set (map time (filter (\<lambda>cap. out cap = p) caps)))) \<Longrightarrow>
-  dropped_caps = [cap \<leftarrow> caps. \<not> frontier_less_equal A (time cap) \<and> out cap = p] \<Longrightarrow>
-  other_caps = [cap \<leftarrow> caps. frontier_less_equal A (time cap) \<or> out cap = p] \<Longrightarrow>
+  A = antichain (insert wm (set (caps p))) \<Longrightarrow>
+  dropped_caps = map (\<lambda>t. Cap t p) (filter (Not \<circ> frontier_less_equal A) (caps p)) \<Longrightarrow>
+  caps' = caps(p := filter (frontier_less_equal A) (caps p)) \<Longrightarrow>
   os' = drop_caps os dropped_caps \<Longrightarrow>
   os'' = (if lxs \<noteq> LNil \<and> frontier_less_equal A wm then mint_cap os' p wm else os') \<Longrightarrow>
-  op = ooo_input_top os'' other_caps (ins(p := lxs)) \<Longrightarrow> p \<notin> defaults \<Longrightarrow>
+  op = ooo_input_top os'' caps' (ins(p := lxs)) \<Longrightarrow> p \<notin> defaults \<Longrightarrow>
   step Tau (ooo_input_top os caps ins) op\<close>
   by (subst ooo_input_top.code) (fastforce intro: bexI[of _ p])
 
@@ -89,12 +91,12 @@ lemma foldl_id2:
 
 abbreviation ooo_input_os_caps_Watermark where
   \<open>ooo_input_os_caps_Watermark p wm os caps \<equiv>
-  (let A = antichain (insert wm (set (map time (filter (\<lambda>cap. out cap = p) caps))));
-       dropped_caps = [cap \<leftarrow> caps. \<not> frontier_less_equal A (time cap) \<and> out cap = p];
-       other_caps = [cap \<leftarrow> caps. frontier_less_equal A (time cap) \<or> out cap = p];
+  (let A = antichain (insert wm (set (caps p)));
+       dropped_caps = map (\<lambda>t. Cap t p) (filter (Not \<circ> frontier_less_equal A) (caps p));
+       caps' = caps(p := filter (frontier_less_equal A) (caps p));
        os' = drop_caps os dropped_caps;
        os'' = if frontier_less_equal A wm then mint_cap os' p wm else os'
-  in (os'', other_caps))\<close>
+  in (os'', caps'))\<close>
 
 lemma step_Taus_ooo_input_top:
   \<open>lfinite (ltakeWhile (Not \<circ> is_Data) (ins p)) \<Longrightarrow>
@@ -139,14 +141,14 @@ next
       using LCons fun_upd_same fun_upd_upd by (metis (no_types, lifting))
     moreover have \<open>step Tau (ooo_input_top os caps ins) (ooo_input_top os1 caps1 (ins(p := ltl (ins p))))\<close>
     proof -
-      let ?A = \<open>antichain (insert wm (set (map time (filter (\<lambda>cap. out cap = p) caps))))\<close>
-      let ?dropped_caps = \<open>filter (\<lambda>cap. \<not> frontier_less_equal ?A (time cap) \<and> out cap = p) caps\<close>
-      let ?other_caps = \<open>filter (\<lambda>cap. frontier_less_equal ?A (time cap) \<or> out cap = p) caps\<close>
+      let ?A = \<open>antichain (insert wm (set (caps p)))\<close>
+      let ?dropped_caps = \<open>map (\<lambda>t. Cap t p) (filter (Not \<circ> frontier_less_equal ?A) (caps p))\<close>
+      let ?caps' = \<open>caps(p := filter (frontier_less_equal ?A) (caps p))\<close>
       let ?os' = \<open>drop_caps os ?dropped_caps\<close>
       have \<open>os1 = (if ltl (ins p) \<noteq> LNil \<and> frontier_less_equal ?A wm then mint_cap ?os' p wm else ?os')\<close>
         using 2 by (auto simp add: os1_caps1_def split_pairs)
       thus ?thesis
-        using step_ooo_input_top_Silent_Watermark[of ins p wm \<open>ltl (ins p)\<close> ?A caps ?dropped_caps ?other_caps ?os' os os1 \<open>ooo_input_top os1 caps1 (ins(p := ltl (ins p)))\<close>]
+        using step_ooo_input_top_Silent_Watermark[of ins p wm \<open>ltl (ins p)\<close> ?A caps ?dropped_caps ?caps' ?os' os os1 \<open>ooo_input_top os1 caps1 (ins(p := ltl (ins p)))\<close>]
           LCons(8) 1 by (auto simp add: os1_caps1_def)
     qed
     ultimately show ?thesis
