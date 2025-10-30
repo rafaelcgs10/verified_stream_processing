@@ -32,6 +32,7 @@ lemma is_ccs_Uniq:
 
 end
 
+(* cc_spec assumes the input is in order. *)
 abbreviation cc_spec where
   \<open>cc_spec \<equiv> accumulator_op (\<lambda>_. (\<union>)) (\<lambda>_. The \<circ> is_ccs) (\<lambda>_. (=) {}) (\<lambda>_. 0)\<close>
 
@@ -41,7 +42,6 @@ abbreviation \<open>choice5 op1 op2 op3 op4 op5 \<equiv> choice2 (choice4 op1 op
 abbreviation \<open>choice6 op1 op2 op3 op4 op5 op6 \<equiv> choice2 (choice5 op1 op2 op3 op4 op5) op6\<close>
 abbreviation \<open>choice7 op1 op2 op3 op4 op5 op6 op7 \<equiv> choice2 (choice6 op1 op2 op3 op4 op5 op6) op7\<close>
 abbreviation "produces os batch \<equiv> os\<lparr> outpu := (\<lambda> p. outpu os p @ map (\<lambda> (x, cap). (x, time cap)) (filter (\<lambda> (x, cap). out cap = p) batch)), produ := produ os @ map (\<lambda> (x, cap). (out cap, time cap, 1)) batch \<rparr>"
-abbreviation \<open>mint os caps p t \<equiv> if t \<in> set (caps p) then (caps, os) else (caps(p := caps p @ [t]), mint_cap os p t)\<close>
 
 definition union_with where
   \<open>union_with f g h x = f (g x) (h x)\<close>
@@ -59,24 +59,67 @@ function group_by where
 | \<open>group_by f (x # xs) = (let (ys, zs) = list_span (f x) xs in (x # ys) # (group_by f zs))\<close>
   by auto (meson list.exhaust)
 
-definition neighbors where
-  \<open>neighbors G t tis = (if is_Nil tis then G t else unions_with List.union (map G tis))\<close>
-
-definition update_label :: \<open>('a \<Rightarrow> 'b :: linorder \<Rightarrow> 'b) \<Rightarrow> 'b \<Rightarrow> 'b \<Rightarrow> 'a \<Rightarrow> 'a list \<Rightarrow> 'a \<Rightarrow> 'b \<Rightarrow> 'b\<close> where
-  \<open>update_label label a b t tis =
-  (let f = if is_Nil tis then label t else unions_with min (map label tis)
-  in label(t := f(b := min (f b) a)))\<close>
-
 primrec remdups_f where
   \<open>remdups_f f [] = []\<close>
 | \<open>remdups_f f (x # xs) = (if f x \<in> f ` set xs then remdups_f f xs else x # remdups_f f xs)\<close>
 
-lemma remdups_f_id:
+lemma remdups_f_remdups:
   \<open>remdups_f id xs = remdups xs\<close>
   by (induction xs) simp_all
 
+lemma remdups_f_subset:
+  \<open>set (remdups_f f xs) \<subseteq> set xs\<close>
+  by (induction xs) auto
+
+lemma distinct_remdups_f:
+  \<open>distinct (remdups_f f xs)\<close>
+proof (induction xs)
+  case (Cons a xs)
+  then show ?case
+    using remdups_f_subset by fastforce
+qed simp
+
+lemma distinct_map_remdups_f:
+  \<open>distinct (map f (remdups_f f xs))\<close>
+proof (induction xs)
+  case (Cons a xs)
+  then show ?case
+    using remdups_f_subset by fastforce
+qed simp
+
+lemma distinct_remdups_f_id:
+  \<open>distinct (map f xs) \<Longrightarrow> remdups_f f xs = xs\<close>
+  by (induction xs) simp_all
+
+lemma remdups_f_id_iff_distinct[simp]:
+  \<open>remdups_f f xs = xs \<longleftrightarrow> distinct (map f xs)\<close>
+  by (metis distinct_map_remdups_f distinct_remdups_f_id)
+
+definition insort_union where
+  \<open>insort_union = fold insort_insert\<close>
+
+lemma set_insort_union[simp]:
+  \<open>set (insort_union xs ys) = set xs \<union> set ys\<close>
+  by (induction xs arbitrary: ys) (simp_all add: insort_union_def set_insort_insert)
+
+lemma distinct_insort_union[simp]:
+  \<open>distinct (insort_union xs ys) \<longleftrightarrow> distinct ys\<close>
+  by (induction xs arbitrary: ys)
+    (simp_all add: insort_union_def distinct_insort insort_insert_key_def)
+
+lemma sorted_insort_union:
+  \<open>sorted ys \<Longrightarrow> sorted (insort_union xs ys)\<close>
+  by (induction xs) (simp_all add: insort_union_def fold_invariant sorted_insort_insert)
+
+definition neighbors where
+  \<open>neighbors G t tis = (if is_Nil tis then G t else unions_with List.union (map G tis))\<close>
+
+definition update_label :: \<open>('t \<Rightarrow> 'v :: linorder \<Rightarrow> 'v) \<Rightarrow> 'v \<Rightarrow> 'v \<Rightarrow> 't \<Rightarrow> 't list \<Rightarrow> 't \<Rightarrow> 'v \<Rightarrow> 'v\<close> where
+  \<open>update_label label a b t tis =
+  (let f = if is_Nil tis then label t else unions_with min (map label tis)
+  in label(t := f(b := min (f b) a)))\<close>
+
 (* TODO Define proper condition for outputting (check frontier and convergence of the label propagation. *)
-(* TODO Add sorting where necessary to ensure deterministic outputs? *)
 declare [[unify_search_bound = 420]]
 corec label_prop_op where
   \<open>label_prop_op os caps tis G vs label = choice6
@@ -94,7 +137,7 @@ corec label_prop_op where
             then map (\<lambda>v. (Inr (v, a), Cap t 0)) (filter (\<lambda>v. label t1 v > a) bs)
             else [];
           os''' = produces os'' batch
-     in label_prop_op os''' caps' (List.insert t1 tis) G' (List.union [s, d] vs) label'
+     in label_prop_op os''' caps' (List.insert t1 tis) G' (insort_union [s, d] vs) label'
   | _ \<Rightarrow> \<oslash>))
   (Read (Some (1 :: 2)) (\<lambda>x. case x of
     Inr (Inr (n, x), t) \<Rightarrow>
@@ -112,7 +155,7 @@ corec label_prop_op where
   | _ \<Rightarrow> \<oslash>))
   (let dropped_caps = map (\<lambda>t. Cap t 0) (filter (Not \<circ> frontier_less_equal (front os 0)) (caps 0));
        caps' = caps(0 := filter (frontier_less_equal (front os 0)) (caps 0));
-       output_caps = remdups_f (myfst \<circ> time) dropped_caps;
+       output_caps = sort_key (myfst \<circ> time) (remdups_f (myfst \<circ> time) dropped_caps);
        batch = map (\<lambda>cap. let t = myfst (time cap) in
         (Inl (group_by (\<lambda>v u. label t v = label t u) vs), cap)) output_caps;
        os' = produces os batch;
@@ -139,4 +182,44 @@ abbreviation incr_op' where
   map_op (case_option (Inl (2 :: 3)) (\<lambda>p. Inr (1, p))) (case_option (Inl (2 :: 3)) (\<lambda>p. Inr (2, p)))
   (increment_top incr os)\<close>
 
+abbreviation label_incr_op where
+  \<open>label_incr_op os1 caps tis G vs label buf incr os2 \<equiv>
+  map_op (case_sum id id) (case_sum id id)
+  (comp_op [Inr (1 :: 3, 1 :: 2) \<mapsto> Inr (2 :: 3, 0 :: 2)] buf (label_op os1 caps tis G vs label)
+    (incr_op' incr os2))\<close>
+
+abbreviation label_incr_loop_op where
+  \<open>label_incr_loop_op os1 caps tis G vs label buf1 incr os2 buf2 \<equiv>
+  (loop_op [Inr (2 :: 3, 1 :: 2) \<mapsto> Inr (1 :: 3, 0 :: 2)] buf2 (label_incr_op os1 caps tis G vs label buf1 incr os2))\<close>
+
+abbreviation cc_op where
+  \<open>cc_op os1 caps1 ins os2 caps2 tis G vs label buf1 incr os3 buf2 buf3 \<equiv>
+  map_op (case_sum id id) (case_sum id id)
+  (comp_op [Inr (0 :: 3, 0 :: 2) \<mapsto> Inr (1 :: 3, 0 :: 2)] buf3 (inp_op' os1 caps1 ins)
+    (label_incr_loop_op os2 caps2 tis G vs label buf1 incr os3 buf2))\<close>
+
+abbreviation cc_edges where
+  \<open>cc_edges \<equiv> (\<lambda>l.
+  if l = Loc (0 :: 3) (Src (0 :: 2)) then [Loc (1 :: 3) (Trg (0 :: 2))]
+  else if l = Loc 1 (Src 1) then [Loc 2 (Trg 0)]
+  else if l = Loc 2 (Src 0) then [Loc 1 (Trg 1)]
+  else [])\<close>
+
+abbreviation cc_summary where
+  \<open>cc_summary \<equiv> (\<lambda>l1 l2.
+  if l1 = Loc (0 :: 3) (Trg (0 :: 2)) \<and> l2 = Loc (0 :: 3) (Src (0 :: 2))
+  then antichain {0}
+  else if l1 = Loc 0 (Src 0) \<and> l2 = Loc 1 (Trg 0)
+  then antichain {0}
+  else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 0)
+  then antichain {0}
+  else if l1 = Loc 1 (Trg 1) \<and> l2 = Loc 1 (Src 1)
+  then antichain {0}
+  else if l1 = Loc 1 (Src 1) \<and> l2 = Loc 2 (Trg 0)
+  then antichain {0}
+  else if l1 = Loc 2 (Trg 0) \<and> l2 = Loc 2 (Src 0)
+  then antichain {0}
+  else if l1 = Loc 2 (Src 0) \<and> l2 = Loc 1 (Trg 1)
+  then antichain {0}
+  else {}\<^sub>A)\<close>
 end
