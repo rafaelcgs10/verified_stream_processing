@@ -719,6 +719,11 @@ lemma propagate_all_preserves_c_pts:
   apply (simp only: take_step_PR_preserves_c_pts)
   done
 
+lemma propagate_all_preserves_c_pts_alt:
+  "c_pts (the (propagate_all summary c)) = c_pts c"
+  using propagate_all_preserves_c_pts by force
+
+
 lemma propagate_all_frontier_c_imp_correctness_alt:
   "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
    reachable_locations summary = UNIV \<Longrightarrow>
@@ -2655,36 +2660,55 @@ lemma fst_fold_rmdups:
     done
   done
 
+lemma fold_rmdups:
+  "sorted (map time caps) \<Longrightarrow>
+   sorted xs \<Longrightarrow>
+   (\<forall> t \<in> time ` set caps. \<forall> t' \<in> set xs. t \<le> t') \<Longrightarrow>
+   (fold (\<lambda>t (caps, os). if Cap t 1 \<in> set caps then (caps, os) else (insort_key time (Cap t 0) caps, mint_cap os 0 t)) xs (caps, os)) =
+   (caps @ rmdups (set caps) (map (\<lambda> t. Cap t (1 :: 1)) xs), os\<lparr> inter := inter os @ map (\<lambda> t. (0, t, 1)) (rmdups (time ` set caps) xs) \<rparr>)"
+  apply (induct xs arbitrary: os caps )
+   apply simp
+  subgoal premises prems for x xs' os' caps'
+    apply (cases "Cap x 1 \<in> set caps'")
+    subgoal
+      using prems(1)[symmetric] prems(2-) apply -
+      apply (drule meta_spec[of _ caps'])
+      apply (drule meta_spec[of _ os'])
+      apply (drule meta_mp)
+       apply assumption
+      apply (drule meta_mp)
+       apply (simp add: sorted_append)
+      apply (drule meta_mp)
+       apply force
+      apply simp
+      apply (auto simp add: image_iff order_antisym sorted_append split_beta insort_key_last)
+      done
+    subgoal
+      using prems(1)[symmetric] prems(2-) apply -
+      apply (drule meta_spec[of _ "caps' @ [Cap x 1]"])
+      apply (drule meta_spec[of _ "os'\<lparr> inter := inter os' @ [(0, x, 1)]\<rparr>"])
+      apply (drule meta_mp)
+       apply (simp add: sorted_append_bigger)
+      apply (drule meta_mp)
+       apply (simp add: sorted_append)
+      apply (drule meta_mp)
+       apply force
+      apply (auto simp add: image_iff order_antisym sorted_append split_beta insort_key_last)
+      apply (metis capability.exhaust capability.sel(1) num1_eq1)
+      done
+    done
+  done
+
+lemma map_time_rmdups:
+  "map time (rmdups A (map (\<lambda>x. Cap (f x) (1 :: 1)) xs)) = rmdups (time ` A) (map f xs)"
+  apply (induct xs arbitrary: A)
+  apply (auto simp add: rev_image_eqI)
+   apply (metis capability.exhaust capability.sel(1) num1_eq1)
+  done
+
 lemma set_fold_caps[simp]:
   "set (fold (\<lambda>(n, t) buf. buf(Cap t 1 := buf (Cap t 1) @ [n])) xs buf x) = set (buf x) \<union> fst ` {y \<in> set xs. Cap (snd y) 1 = x}"
   by (induct xs arbitrary: buf) (auto split: if_splits)
-
-
-(* lemma
-  "dataflow_topology.implied_frontier_alt my_summ trivial_dataflow_topology_interpretation.followed_by c =
-   dataflow_topology.implied_frontier_alt my_summ trivial_dataflow_topology_interpretation.followed_by c' \<Longrightarrow>
-   dataflow_topology.implied_frontier_alt my_summ trivial_dataflow_topology_interpretation.followed_by
-       (change_multiplicities my_summ xs c) =
-   dataflow_topology.implied_frontier_alt my_summ trivial_dataflow_topology_interpretation.followed_by
-       (change_multiplicities my_summ xs c')"
-  apply (rule ext)+
-  unfolding dataflow_topology_implied_frontier_alt_my_summ
-  apply (clarsimp  simp add: c_pts_change_multiplicities split: if_splits)
-  apply (intro ballI impI conjI)
-  subgoal
-    by blast
-  subgoal
-    by blast
-  subgoal
-    by auto
-  subgoal
-    apply simp
-    apply hypsubst_thin
-    subgoal
-      sledgehammer
-
-    find_theorems c_pts change_multiplicities
- *)
 
 lemma outpu_fold[simp]:
   "outpu (fold (\<lambda>t os. os\<lparr>consu := A t os\<rparr>) xs s) = outpu s"
@@ -2740,6 +2764,16 @@ lemma inter_fold_consu[simp]:
   "inter (fold (\<lambda>t os. os\<lparr>consu := consu os @ [(1, t, 1)]\<rparr>) xs os) = inter os"
   by (induct xs arbitrary: os) auto
 
+thm filter_mset_False
+
+lemma filter_mset_False_alt:
+  "(\<forall> y \<in># M. \<not> P y) \<Longrightarrow> {#y \<in># M. P y#} = {#}"
+  using filter_mset_empty_conv by blast
+
+lemma filter_mset_True_alt:
+  "(\<forall> y \<in># M. P y) \<Longrightarrow> {#y \<in># M. P y#} = M"
+  by (simp add: Multiset.filter_mset_cong)
+
 lemma
   \<open>summ sg = my_summ \<Longrightarrow>
    edges sg = (\<lambda> l. if l = Loc 0 (Src 1) then [Loc 1 (Trg 1)] else []) \<Longrightarrow>
@@ -2786,7 +2820,7 @@ lemma
    dataflow_op sg (inp_m_top os1 (\<lambda> p. n p) inps buf1 os2 buf2 caps) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. xs p @@- ys p @@- lconcat (lmap (\<lambda> (xs, t). case xs of [] \<Rightarrow> [] | _ \<Rightarrow> [(Max (set xs), t)]) (lzip (inps p) (iterates ((+) 1) (n p))))))\<close>
 proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 st2 rule: weakBisimWeakUptoBisimCong)
-  (*  case SIM1
+(*  case SIM1
   show ?case (is "wsim ((~) OO \<U> ?R OO (\<approx>)) ?op1 ?op2")
   proof -
     define R where "R = ?R"
@@ -7021,7 +7055,7 @@ proof (coinduction arbitrary: xs ys os1 os2 n caps buf1 buf2 inps sg a b c st1 s
       done
   qed
 next *)
-  case SIM2
+  case SIM2 
   show ?case (is "wsim ((~) OO \<U> ?R OO (\<approx>)) ?op1 ?op2")
   proof -
     define R where "R = ?R"
@@ -7603,7 +7637,7 @@ next *)
                   apply (rule wb_upto_b_sym)
                   apply (rule wb_upto_b_base)
                   apply simp
-                  apply (intro conjI exI; (rule refl)?; (simp add: prems)?)
+                  apply (intro conjI exI; (rule refl)?; (simp add: comp_def prems)?)
                   subgoal
                     apply (rule arg_cong3[where f=map_op])
                       apply (simp_all add: comp_def)
@@ -8001,14 +8035,153 @@ next *)
                   apply fastforce
                 apply (metis (no_types, opaque_lifting) imageI prod.sel(2) surj_pair)
                 done
-                  subgoal
-                    sorry
-                  subgoal
-                    sorry
-                  subgoal
-                    sorry
-                  subgoal
+              subgoal premises prems2
+                using prems(1,2,9,10,11,12,13,14,15) apply -
+                apply (auto simp add: propagate_pointstamps_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def dest!: propagate_all_preserves_c_pts split: option.splits; hypsubst_thin?)                  
+                apply (subst propagate_all_preserves_c_pts)
+                apply simp
+                apply (auto simp add: zmset_of_plus zmset_map_minus_one_zmset_of zmset_map_one_zmset_of propagate_pointstamps_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def dest!: propagate_all_preserves_c_pts split: option.splits; hypsubst_thin?)                  
+                done
+              subgoal premises prems2
+                using prems(1,2,9,10,11,12,13,14,15) apply -
+                apply (auto simp add: propagate_pointstamps_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def dest!: propagate_all_preserves_c_pts split: option.splits; hypsubst_thin?)                  
+                apply (subst propagate_all_preserves_c_pts)
+                apply simp
+                apply (auto simp add: input_cap_def zmset_of_plus zmset_map_minus_one_zmset_of zmset_map_one_zmset_of propagate_pointstamps_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def dest!: propagate_all_preserves_c_pts split: option.splits; hypsubst_thin?)                  
+                done
+              subgoal premises prems2
+                using prems(1,2,3,9,10,11,12,13,14,15,16) apply -
+                apply (auto simp add: propagate_pointstamps_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def dest!: propagate_all_preserves_c_pts split: option.splits; hypsubst_thin?)                  
+                apply (subst propagate_all_preserves_c_pts)
+                apply simp
+                apply (auto simp add: input_cap_def zmset_of_plus zmset_map_minus_one_zmset_of zmset_map_one_zmset_of propagate_pointstamps_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def dest!: propagate_all_preserves_c_pts split: option.splits; hypsubst_thin?)                  
+                done
+              subgoal premises
+      using prems(1,2,3,9,10,11,15) apply -
+                apply (auto simp add: propagate_pointstamps_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def dest!: propagate_all_preserves_c_pts split: option.splits if_splits; hypsubst?)                  
+                        apply (subst filter_mset_False_alt)
+                        subgoal premises prems4
+                          sorry
+                        subgoal
+                        apply (subst filter_True)
+                        subgoal premises prems4
+                          sorry
+                          subgoal
+                          apply (auto simp add: comp_def)
+                          apply (subst propagate_all_preserves_c_pts_alt)
+                           apply hypsubst_thin
+                apply (auto simp add: propagate_pointstamps_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def dest!: propagate_all_preserves_c_pts split: option.splits if_splits; hypsubst?)                  
+                          apply (subst zmset_map_minus_one_zmset_of)
+                            apply (subst (1 2 3 4 5 6) fold_rmdups)
+                                  prefer 7
+                            subgoal
+                              apply (auto simp add:  comp_def simp flip: add.assoc)
+                              apply (simp add: map_time_rmdups zmset_of_plus zmset_map_one_zmset_of flip: mset_map)
+                              done
+using prems apply simp
+                subgoal
+                  using prems(33) by (clarsimp simp add: sorted_append comp_def)
+                subgoal
+                  using prems(32) apply -
+                  apply auto
+                  subgoal for t x
+                    apply (cases x; cases t; simp)
+                    using prems(6) apply fastforce
+                    using image_iff apply fastforce
+                    done
+                  done
+                subgoal
+                  using prems(7, 32, 33) apply -
+                  apply (auto simp add: sorted_append comp_def)
+                  apply (smt (verit, del_insts) Un_iff eq_snd_iff image_iff prod.simps(2))
+                  done
+                subgoal
+                  using prems(33) by (clarsimp simp add: sorted_append comp_def)
+                subgoal
+                  using prems(7, 32, 33) apply -
+                  apply (auto simp add: comp_def sorted_append)
+                  apply (smt (verit, del_insts) Un_iff eq_snd_iff image_iff prod.simps(2))
+                  done
+                done
+              done
+            done
+          subgoal premises
+            sorry
+          subgoal premises
+            sorry
+          subgoal premises
+            sorry
+          subgoal premises
+            sorry
+          subgoal premises
+            unfolding extract_progress_def comp_def
+            apply simp
+            sorry
+          subgoal premises
+            unfolding extract_progress_def comp_def 
+            apply simp
+            sorry
+          subgoal premises
+            unfolding extract_progress_def comp_def changes_above_impl_def
+            by simp
+          subgoal premises
+            unfolding extract_progress_def comp_def changes_above_impl_def
+            sorry
+          subgoal premises
+            apply auto
+            sorry
+          subgoal premises
+            using prems(6,27,32) apply -
+            apply (auto simp add: extract_progress_def propagate_all_preserves_c_pts_alt c_pts_change_multiplicities)
+            apply (subst (1 2 3) fold_rmdups)
+                  prefer 3
+            subgoal
+              apply auto
+              subgoal for t x
+                apply (cases t; cases x; simp)
+                 apply fastforce
+                apply force
+                done
+              done
+            sorry
+          subgoal premises
+            using prems(28) apply -
+                            apply (auto simp add: extract_progress_def propagate_all_preserves_c_pts_alt c_pts_change_multiplicities)
+            subgoal for cap
+              sorry
+            done
+          subgoal premises
+            using prems(30) apply -
+            apply simp
+            sorry
+          done
+        subgoal
+          apply (subst fold_rmdups)
+             prefer 4
+          subgoal
+            unfolding comp_def
+            apply (auto simp add: comp_def sorted_append)
+            using prems(7) apply blast
+             apply (rule sorted_map_rmdups)
+            using prems(6,33,32) apply -
+             apply (auto simp add: comp_def sorted_append)
+            subgoal for t x
+              apply (cases t; cases x; simp)
+               apply fastforce
+              using image_iff apply fastforce
+              done
+            done
+        using prems(6,7,33,32) apply (auto simp add: sorted_append)
+  subgoal for t x
+              apply (cases t; cases x; simp)
+               apply fastforce
+              using image_iff apply fastforce
+              done
+            done
+          done
+        done
 
 
+            find_theorems sorted caps
 
 end
