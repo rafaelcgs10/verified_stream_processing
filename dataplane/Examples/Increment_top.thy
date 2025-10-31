@@ -83,9 +83,9 @@ abbreviation incr_op where
   (increment_top incr os)\<close>
 
 abbreviation inp_incr_op where
-  \<open>inp_incr_op os1 caps ins buf1 incr os2 \<equiv>
+  \<open>inp_incr_op os1 caps ins buf incr os2 \<equiv>
   map_op (case_sum id id) (case_sum id id)
-  (comp_op [Inr (0 :: 2, 0 :: 1) \<mapsto> Inr (1 :: 2, 0 :: 1)] buf1 (inp_op os1 caps ins)
+  (comp_op [Inr (0 :: 2, 0 :: 1) \<mapsto> Inr (1 :: 2, 0 :: 1)] buf (inp_op os1 caps ins)
     (incr_op incr os2))\<close>
 
 abbreviation inp_incr_edges where
@@ -93,23 +93,23 @@ abbreviation inp_incr_edges where
 
 abbreviation inp_incr_summary where
   \<open>inp_incr_summary \<equiv> (\<lambda>l1 l2.
-   if l1 = Loc (0 :: 2) (Src (0 :: 1)) \<and> l2 = Loc (1 :: 2)  (Trg (0 :: 1))
-   then frontier {#0#}\<^sub>z
-   else if l1 = Loc 0 (Trg 0) \<and> l2 = Loc 0 (Src 0)
-   then frontier {#0#}\<^sub>z
-   else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 0)
-   then frontier {#0#}\<^sub>z
-   else {}\<^sub>A)\<close>
+  if l1 = Loc (0 :: 2) (Src (0 :: 1)) \<and> l2 = Loc (1 :: 2) (Trg (0 :: 1))
+  then antichain {0}
+  else if l1 = Loc 0 (Trg 0) \<and> l2 = Loc 0 (Src 0)
+  then antichain {0}
+  else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 0)
+  then antichain {0}
+  else {}\<^sub>A)\<close>
 
 lemma
   \<open>summ sg = inp_incr_summary \<Longrightarrow>
   xs 0 = outpu os2 0 \<Longrightarrow>
-  ys 0 = map projr (buf1 (Inr (1, 0))) @ outpu os1 0 \<Longrightarrow>
-  \<forall>x \<in> set (buf1 (Inr (1, 0))). is_Inr x \<Longrightarrow>
-  dataflow_op sg (inp_incr_op os1 caps ins buf1 incr os2)
+  ys 0 = map projr (buf (Inr (1, 0))) @ outpu os1 0 \<Longrightarrow>
+  \<forall>x \<in> set (buf (Inr (1, 0))). is_Inr x \<Longrightarrow>
+  dataflow_op sg (inp_incr_op os1 caps ins buf incr os2)
   \<approx> map_op (\<lambda>p. (1, p)) (\<lambda>p. (1, p))
     (source_op ((\<lambda>p. xs p @@- lmap (\<lambda>(d, t). (d, t + incr p)) (ys p @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (d, t)) (lfilter is_Data (ins p))))))\<close>
-proof (coinduction arbitrary: sg os1 caps ins buf1 os2 xs ys rule: wbisim_coinduct_upto'')
+proof (coinduction arbitrary: sg os1 caps ins buf os2 xs ys rule: wbisim_coinduct_upto'')
   case SIM1
   then show ?case
     apply (elim step_dataflow_op_elim step_map_op_elim step_comp_op_elim step_ooo_input_top_elim step_increment_top_elim conjE; simp split: if_splits; hypsubst_thin?; simp)
@@ -129,7 +129,7 @@ proof (coinduction arbitrary: sg os1 caps ins buf1 os2 xs ys rule: wbisim_coindu
       apply (rule exI[of _ \<open>os1\<lparr>outpu := (outpu os1)(0 := xs')\<rparr>\<close>])
       apply (rule exI[of _ caps])
       apply (rule exI[of _ ins])
-      apply (rule exI[of _ \<open>BENQ (Inr (1, 0)) (Inr x) buf1\<close>])
+      apply (rule exI[of _ \<open>BENQ (Inr (1, 0)) (Inr x) buf\<close>])
       apply (rule exI[of _ os2])
       apply auto
       done
@@ -141,7 +141,7 @@ proof (coinduction arbitrary: sg os1 caps ins buf1 os2 xs ys rule: wbisim_coindu
       apply (rule exI[of _ os1])
       apply (rule exI[of _ caps])
       apply (rule exI[of _ ins])
-      apply (rule exI[of _ \<open>BTL (Inr (1, 0)) buf1\<close>])
+      apply (rule exI[of _ \<open>BTL (Inr (1, 0)) buf\<close>])
       apply (rule exI[of _ \<open>produce (consume os2 0 t 1) (Cap (t + incr 0) 0) [d]\<close>])
       apply simp
       apply (rule exI[of _ \<open>BENQ 0 (d, t + incr 0) xs\<close>])
@@ -152,7 +152,7 @@ proof (coinduction arbitrary: sg os1 caps ins buf1 os2 xs ys rule: wbisim_coindu
       apply (simp add: fun_eq_iff)
       apply (rule arg_cong[where ?f=\<open>\<lambda>x. outpu os2 1 @@- x\<close>])
       apply (simp add: lmap_eq_LCons_conv)
-      apply (rule exI[of _ \<open>(tl (map projr (buf1 (Inr (1, 0)))) @ outpu os1 0) @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (d, t)) (lfilter is_Data (ins 0))\<close>])
+      apply (rule exI[of _ \<open>(tl (map projr (buf (Inr (1, 0)))) @ outpu os1 0) @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (d, t)) (lfilter is_Data (ins 0))\<close>])
       apply simp
       apply (subst lshift.simps(2)[symmetric])
       apply (subst append_Cons[symmetric])
@@ -172,7 +172,7 @@ proof (coinduction arbitrary: sg os1 caps ins buf1 os2 xs ys rule: wbisim_coindu
       apply (rule exI[of _ \<open>produce os1 (Cap t 0) [d]\<close>])
       apply (rule exI[of _ caps])
       apply (rule exI[of _ \<open>ins(0 := lxs)\<close>])
-      apply (rule exI[of _ buf1])
+      apply (rule exI[of _ buf])
       apply (rule exI[of _ os2])
       apply simp
       apply (rule exI[of _ xs])
@@ -205,13 +205,37 @@ proof (coinduction arbitrary: sg os1 caps ins buf1 os2 xs ys rule: wbisim_coindu
       apply (intro exI conjI)
        apply (rule rtranclp.intros(1))
       apply (rule wbc_base)
+      apply (intro exI conjI)
+           apply (rule refl)
+          apply auto
+      done
+    subgoal
+      apply (intro exI conjI)
+       apply (rule rtranclp.intros(1))
+      apply (rule wbc_base)
+      apply (intro exI conjI)
+           apply (rule refl)
+          apply auto
+      done
+    subgoal
+      apply (intro exI conjI)
+       apply (rule rtranclp.intros(1))
+      apply (rule wbc_base)
+      apply (intro exI conjI)
+           apply (rule refl)
+          apply auto
+      done
+    subgoal
+      apply (intro exI conjI)
+       apply (rule rtranclp.intros(1))
+      apply (rule wbc_base)
       apply (rule exI[of _ \<open>sg\<lparr>pt_tr := change_multiplicities inp_incr_summary
   (extract_progress 1 (edges sg) \<lparr>cons = consu os2, inte = operator_state.inter os2, prod = produ os2\<rparr>)
   (pt_tr sg)\<rparr>\<close>])
       apply (rule exI[of _ os1])
       apply (rule exI[of _ caps])
       apply (rule exI[of _ ins])
-      apply (rule exI[of _ buf1])
+      apply (rule exI[of _ buf])
       apply (rule exI[of _ \<open>fst (obtain_progress os2)\<close>])
       apply auto
       done
@@ -225,7 +249,7 @@ proof (coinduction arbitrary: sg os1 caps ins buf1 os2 xs ys rule: wbisim_coindu
       apply (rule exI[of _ \<open>fst (obtain_progress os1)\<close>])
       apply (rule exI[of _ caps])
       apply (rule exI[of _ ins])
-      apply (rule exI[of _ buf1])
+      apply (rule exI[of _ buf])
       apply (rule exI[of _ os2])
       apply auto
       done
@@ -237,7 +261,7 @@ next
     subgoal for x lxs
       apply (cases x; cases \<open>outpu os2 0\<close>; simp)
       subgoal for d t
-        apply (cases \<open>buf1 (Inr (1, 1))\<close>; simp)
+        apply (cases \<open>buf (Inr (1, 1))\<close>; simp)
         subgoal
           apply (cases \<open>outpu os1 0\<close>; simp)
           subgoal
@@ -346,7 +370,7 @@ next
               apply (rule exI[of _ os1])
               apply (rule exI[of _ caps])
               apply (rule exI[of _ ins])
-              apply (rule exI[of _ \<open>BTL (Inr (1, 1)) buf1\<close>])
+              apply (rule exI[of _ \<open>BTL (Inr (1, 1)) buf\<close>])
               apply (rule exI[of _ \<open>os2\<lparr>consu := consu os2 @ [(1, t', 1)], produ := produ os2 @ [(1, t, 1)],
                           outpu := (outpu os2)(1 := [])\<rparr>\<close>])
               apply simp
