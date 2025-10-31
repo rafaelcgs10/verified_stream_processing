@@ -11898,14 +11898,48 @@ subgoal
                     prefer 7
                     subgoal
                       unfolding BENQ_def
-                    apply (auto simp add: extract_progress_def propagate_all_preserves_c_pts_alt c_pts_change_multiplicities)
-                      sorry
-                    sorry
+                      apply (auto simp add: extract_progress_def propagate_all_preserves_c_pts_alt c_pts_change_multiplicities)
+                      apply (intro fold_Cap_eq_Nil)
+                        apply simp_all
+                       apply fast+
+                      done
+ using prems apply simp
+                        subgoal
+                          using prems(33) by (clarsimp simp add: sorted_append comp_def)
+
+subgoal
+                          using prems(7, 32, 33) apply -
+                          apply (auto simp add: sorted_append comp_def)
+                          apply (smt (verit, del_insts) Un_iff eq_snd_iff image_iff prod.simps(2))
+                          done
+subgoal
+                          using prems(7, 32, 33) apply -
+                          apply (auto simp add: sorted_append comp_def)
+                          apply (smt (verit, del_insts) Un_iff eq_snd_iff image_iff prod.simps(2))
+                          done
+                        subgoal
+                          using prems(33) by (clarsimp simp add: sorted_append comp_def)
+                        subgoal
+                          using prems(7, 32, 33) apply -
+                          apply (auto simp add: comp_def sorted_append)
+                          apply (smt (verit, del_insts) Un_iff eq_snd_iff image_iff prod.simps(2))
+                          done
+                        done
                   subgoal premises prems5 for t
                     using prems5(1,2,3) apply -
-                      unfolding BENQ_def
+                    unfolding BENQ_def
+      apply (intro fold_Cap_eq_Nil)
+                        apply simp_all
                     apply (auto 0 0 simp flip: add.assoc simp add: changes_above_impl_def changes_non_zero_def dataflow_topology_implied_frontier_alt_my_summ extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def split: option.splits; hypsubst_thin?)
-
+                    subgoal for t'
+                      apply (cases t'; simp)
+                      using prems(6) apply force+
+                      done
+                    subgoal
+                      by fastforce
+                    done
+                  done
+                done
 
                       find_theorems c_imp propagate_all the
 
@@ -11940,7 +11974,7 @@ end
               done
             subgoal
 
-
+ 
 
             find_theorems sorted caps
 
