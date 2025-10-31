@@ -11940,13 +11940,6 @@ subgoal
                     done
                   done
                 done
-
-                      find_theorems c_imp propagate_all the
-
-
-end
-                    sorry
-                  done
                 subgoal
                   apply (subst fold_rmdups)
                      prefer 4
