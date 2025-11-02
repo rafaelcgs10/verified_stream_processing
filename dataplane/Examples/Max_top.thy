@@ -7145,7 +7145,26 @@ next *)
           subgoal
             apply simp
             apply (cases "ys 1")
-             defer
+            subgoal
+              using prems(5) apply -
+              apply (clarsimp simp add: lconcat_correct lconcat_eq_LCons_conv lnull_def)
+              subgoal premises prems2 for xs' xss' xss''
+                apply (intro exI conjI[rotated])
+                 apply (intro relcomppI)
+                   apply (rule bisim_refl)
+                  defer
+                  apply (rule wbisim_refl)
+                 apply (rule wstep_trans(1))
+                  apply (rule relpowp_imp_rtranclp[where n="length xss' + 1 + the_enat (llength (LCons x xs')) + the_enat (llength (LCons x xs')) + 1 + 1 + 1 + 1"])
+                  apply (simp only: relpowp_add)
+                  apply (intro relcomppI)
+                         apply (rule step_tau_pow_dataflow_op)
+                        apply (rule step_tau_pow_map_op)
+                       
+                find_theorems steps comp_op
+
+
+end
             subgoal for y ys'
               using prems(5) apply -
               apply clarsimp

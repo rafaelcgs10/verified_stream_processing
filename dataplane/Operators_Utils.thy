@@ -188,6 +188,27 @@ lemma step_tau_Inp_pow_comp_op_steps_intro[intro]:
     done
   done
 
+
+lemma step_taus_L_pow_comp_op_steps_intro[intro]:
+  "(step Tau ^^ n) op1 op1' \<Longrightarrow>
+   op = (comp_op wire buf op1' op2) \<Longrightarrow>
+   (step Tau ^^ n) (comp_op wire buf op1 op2) op"
+  apply hypsubst_thin
+  apply (induct n arbitrary: op1 op1')
+   apply simp_all
+  apply force
+  done
+
+lemma step_taus_R_pow_comp_op_steps_intro[intro]:
+  "(step Tau ^^ n) op2 op2' \<Longrightarrow>
+   op = (comp_op wire buf op1 op2') \<Longrightarrow>
+   (step Tau ^^ n) (comp_op wire buf op1 op2) op"
+  apply hypsubst_thin
+  apply (induct n arbitrary: op2 op2')
+   apply simp_all
+  apply force
+  done
+
 definition sim_set (\<open>_ \<leadsto>[_] _\<close> [80, 80, 80] 80)
   where
     "P \<leadsto>[Rel] Q \<equiv> \<forall>io Q'. step io Q Q' \<longrightarrow> (\<exists>P'. step io P P' \<and> (P', Q') \<in> Rel)"

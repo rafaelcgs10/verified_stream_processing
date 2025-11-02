@@ -228,6 +228,75 @@ lemma steps_input_top_Out[intro]:
     done
   done
 
+term "Power.power.power os "
+term " delay_cap os cap 1"
+
+find_consts "nat \<Rightarrow> _ list"
+
+find_consts "nat \<Rightarrow> nat" name: pred
+
+find_theorems name: less_induct
+
+thm less_induct
+
+lemma pred_induct:
+  "P 0 \<Longrightarrow> (\<And>nat. P (Nat.nat.pred nat) \<Longrightarrow> P nat) \<Longrightarrow> P n"
+  apply (induct n)
+   apply auto
+  done
+
+
+lemma relpowpp_commute:
+  "step Tau ^^ n OO step Tau =  step Tau OO step Tau ^^ n"
+  using relpowp_commute by metis
+
+lemma step_pow_input_top_Tau[intro]:
+  "p \<notin> defaults \<Longrightarrow>
+   llength (inps p) > n \<Longrightarrow>
+   (\<forall> xs \<in> lset (ltake n (inps p)). xs = []) \<Longrightarrow>
+   os' = os\<lparr> inter := inter os @ concat ([[(p, t', -1), (p, t' + 1, 1)] .t' \<leftarrow> [cap p..< cap p + n]]) \<rparr> \<Longrightarrow>
+   op = input_top os' (cap(p := cap p + n)) (inps(p := ldropn n (inps p))) \<Longrightarrow>
+   (step Tau ^^ n) (input_top os cap inps) op"
+  apply (induct n arbitrary: os os' cap inps op)
+   apply simp
+  subgoal premises prems for n os os' cap inps op
+    apply (cases "inps p"; simp)
+    subgoal
+      apply (rule FalseE)
+      using prems(2-) apply -
+      using enat_0_iff(2) apply force
+      done
+    subgoal for x lxs
+      using prems(2-) apply -
+      apply hypsubst_thin
+      apply (subst relpowpp_commute)
+      apply simp
+      apply (rule relcomppI)
+       apply (rule step_input_top_Tau_intro1[where p=p and batch=x])
+             apply assumption
+            apply simp_all
+      using enat_0_iff(1) apply force
+      apply (rule prems(1))
+          apply simp_all
+      using Suc_ile_eq apply blast
+       apply (metis (no_types, opaque_lifting) eSuc_enat_iff lset_intros(2) ltake_eSuc_LCons)      
+      apply (auto simp add: produce_def)
+      subgoal
+        using upt_conv_Cons by force
+      subgoal
+        apply (cases os)
+        apply clarsimp
+        apply (metis eSuc_enat lset_intros(1) ltake_eSuc_LCons)
+        done
+      subgoal
+        apply (cases os)
+        apply clarsimp
+        apply (metis eSuc_enat lset_intros(1) ltake_eSuc_LCons)
+        done
+      done
+    done
+  done
+
 (* 
 lemma ldropWhile_steps_input_top:
   "lfinite (ltakeWhile ((=) []) (inps p)) \<Longrightarrow>
