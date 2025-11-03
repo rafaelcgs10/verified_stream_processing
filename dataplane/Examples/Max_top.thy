@@ -2420,38 +2420,6 @@ lemma changes_above_impl_change_multiplicities_lt_2:
   done
 
 
-lemma changes_above_impl_change_multiplicities:
-  "changes_above_impl c A \<Longrightarrow>
-   (\<forall> l \<in> fst ` set B. dataflow_topology.implied_frontier_alt my_summ (+) (change_multiplicities my_summ A c) l \<le> frontier (zmset (map snd B))) \<Longrightarrow>
-   changes_above_impl (change_multiplicities my_summ B c) A"
-  unfolding changes_above_impl_def
-  apply safe
-  apply (drule bspec)
-   apply blast
-  apply simp
-  apply (rule frontier_less_equal_le_trans)
-   apply assumption
-  oops
-    (*   sledgehammer
-
-  find_theorems frontier_less_equal 
-end
-  unfolding  dataflow_topology_implied_frontier_alt_my_summ changes_above_impl_def
-  apply (simp split: prod.splits)
-  apply (intro impI allI ballI conjI; simp?; (elim exE)?; hypsubst_thin?)
-  subgoal for x y a b
-    apply (drule bspec)
-     apply simp
-    apply simp
-    apply (simp add: c_pts_change_multiplicities)
-    unfolding frontier_less_equal_iff
-    apply (rule order.trans[rotated])
-     apply assumption
-    subgoal premises prems
-     *)
-
-  find_theorems frontier_less_equal name: iff
-
 
 (*  lemma changes_above_impl_le_trans:
   "changes_above_impl F2 C \<Longrightarrow>
@@ -2779,6 +2747,51 @@ lemma fold_Cap_eq_Nil:
    (\<forall> t' \<in> snd ` set xs. t' \<noteq> t) \<Longrightarrow>
    fold (\<lambda>(n, t) buf. buf(Cap t p := buf (Cap t p) @ [n])) xs buf (Cap t p) = []"
   by (induct xs arbitrary: buf) auto
+
+
+lemma lconcat_lshit[simp]:
+  "lconcat (xs @@- lxs) = (concat xs) @@- lconcat lxs"
+  by (induct xs arbitrary: lxs) (auto simp add: lshift_assoc)
+
+lemma lappend_to_lshift:
+  "lfinite xs \<Longrightarrow>
+   \<exists> xs'. lappend xs lxs  = xs' @@- lxs \<and> xs = llist_of xs'"
+  by (metis lappend_llist_of llist_of_list_of)
+
+lemma lmap_lshift_conv:
+  "lmap f lxs = ys @@- lys \<longleftrightarrow> (\<exists> zs lzs. lxs = zs @@- lzs \<and> map f zs = ys \<and> lmap f lzs = lys)"
+  apply (induct ys arbitrary: lys lxs)
+   apply simp
+  subgoal for a ys lys lxs
+    apply simp
+    apply (cases lxs)
+    apply force
+    apply simp
+    apply auto
+     apply hypsubst_thin
+    apply (metis list.map(2) lshift.simps(2))
+    apply auto
+    done
+  done
+
+lemma lzip_lshift_conv:
+  "lzip lxs lys = zs @@- lzs \<longleftrightarrow> (\<exists> xs ys lxs' lys'. zs = zip xs ys \<and> lzs = lzip lxs' lys' \<and> lxs = xs @@- lxs' \<and> lys = ys @@- lys' \<and> length xs = length ys)"
+  apply (induct zs arbitrary: lxs lys lzs rule: rev_induct)
+  subgoal for lxs lys lzs
+    by force
+  subgoal for a zs lxs lys lzs
+    apply simp
+    apply (cases lxs; cases lys; hypsubst_thin?)
+    apply (auto simp add: LNil_eq_shift_iff; hypsubst_thin?)
+    apply (simp_all add: LNil_eq_shift_iff; hypsubst_thin?)
+     apply (simp add: LNil_eq_shift_iff; hypsubst_thin?)
+    oops
+
+
+lemma filter_False_False:
+  "\<forall>x\<in>set xs. P x \<Longrightarrow> filter (\<lambda> x. \<not> P x) xs = []"
+  by auto
+
 
 lemma
   \<open>summ sg = my_summ \<Longrightarrow>
@@ -7146,7 +7159,6 @@ next *)
             apply simp
             apply (cases "ys 1")
             subgoal
-              using prems(5) apply -
               apply (clarsimp simp add: lconcat_correct lconcat_eq_LCons_conv lnull_def)
               subgoal premises prems2 for xs' xss' xss''
                 apply (intro exI conjI[rotated])
@@ -7159,11 +7171,167 @@ next *)
                   apply (simp only: relpowp_add)
                   apply (intro relcomppI)
                          apply (rule step_tau_pow_dataflow_op)
-                        apply (rule step_tau_pow_map_op)
-                       
-                find_theorems steps comp_op
+                         apply (rule step_tau_pow_map_op)
+                         apply (rule step_taus_L_pow_comp_op_steps_intro)
+                          apply (rule step_tau_pow_map_op)
+                          apply (rule step_pow_input_top_Tau[where p=1])
+                              apply (simp add: defaults_num1_def)
+                             defer
+                             defer
+                             apply (rule refl)+
+                          apply (simp add: eq_OO)
+                          apply (rule step_Tau_dataflow_op_Tau_intro)
+                          apply (rule step_map_op)
+                           apply (rule step_comp_op_L_Tau)
+                             apply (rule step_map_op)
+                              apply (rule step_input_top_Tau_intro3[where p=1 and batch="map fst (list_of (LCons x xs'))" and lxs="lmap (list_of o lmap fst) xss''"])
+                                   apply simp
+                                   defer
+                                   apply (rule refl)+
+                               apply (simp add: defaults_num1_def)
+                              apply simp
+                             apply (rule refl)+
+                           apply simp
+                          apply (rule step_tau_pow_dataflow_op)
+                          apply (rule step_tau_pow_map_op)
+                          apply (rule step_tau_Out_pow_comp_op_steps_intro[where xs="map Inr (list_of ((LCons x xs')))"])
+                             apply (rule steps_map_op)
+                               apply (rule refl)+
+                              defer
+                              apply (rule steps_input_top_Out[where p=1])
+                                apply (simp add: defaults_num1_def)
+                               apply (rule refl)+
+                             apply simp
+                             defer
+                             apply simp
+                            apply (rule refl)+
+                           apply (rule step_tau_pow_dataflow_op)
+                           apply (rule step_tau_pow_map_op)
+                           apply (rule step_tau_Inp_pow_comp_op_steps_intro[where xs="map Inr (list_of ((LCons x xs')))" ])
+                                apply (rule steps_map_op)
+                                  apply (rule refl)+
+                                 defer
+                                 apply (rule steps_max_top'_Inp_Some_intro[where xs="map Inr (list_of ((LCons x xs')))"])
+                                    apply simp
+                                    apply (rule prod.collapse)
+                                    apply (rule refl)+
+                                 defer
+                                 defer
+                                 apply simp
+                                defer
+                                defer
+                                apply (rule refl)+
+                               apply (simp only: relpowp_1)
+                               apply (rule step_Tau_dataflow_op_Out_Inl_intro[where nid=0, rotated])
+                                apply (rule refl)
+                               apply (rule step_map_op)
+                                apply (rule step_comp_op_L_Out)
+                                   apply (rule step_map_op)
+                                    apply (rule step_input_top_Out_None_intro[where p="1 :: 1"])
+                                    apply (rule refl)+
+                                    apply (simp add: defaults_num1_def)
+                                   apply simp
+                                  apply simp
+                                 apply (rule refl)+
+                               apply simp
+                              apply (simp only: relpowp_1)
+                              apply (rule step_Tau_dataflow_op_Out_Inl_intro[where nid=1, rotated])
+                               apply (rule refl)
+                              apply (rule step_map_op)
+                               apply (rule step_comp_op_R_Out)
+                                 apply (rule step_map_op)
+                                  apply (rule step_max_top'_Out_None)
+                                   apply simp
+                                  apply (rule refl)+
+                                 apply simp
+                                apply (rule refl)+
+                              apply simp
+                             apply (simp only: relpowp_1)
+                             apply (rule step_Tau_dataflow_op_Inp_Inl_intro)
+                                apply (rule step_map_op)
+                                 apply (rule step_comp_op_R_Inp)
+                                    apply (rule step_map_op)
+                                    apply (rule step_max_top'Inp_None)
+                                    defer
+                                    defer
+                                    apply (rule refl)+
+                                    apply simp
+                                    apply simp
+                                    apply (rule refl)+
+                                  apply simp
+                                 apply (rule refl)+
+                              apply (simp only: relpowp_1)
+                              apply (rule step_Tau_dataflow_op_Tau_intro)
+                              apply (rule step_map_op)
+                               apply (rule step_comp_op_R_Tau)
+                                 apply (rule step_map_op)
+                                  apply (rule step_max_top'_Tau_output)
+                                    apply (rule refl)+
+                                 apply simp
+                                apply (rule refl)+
+                              apply simp
+                             apply (rule step_Out_dataflow_op_Out_Inr_intro)
+                             apply (rule step_map_op)
+                              apply (rule step_comp_op_R_Out)
+                                apply (rule step_map_op)
+                                 apply (rule step_max_top'_Out_intro)
+                                  apply (rule refl)+
+                                 defer
+                                 apply simp
+                                apply (rule refl)+
+                              apply simp
+                subgoal
+                  unfolding R_def
+                  apply simp
+                  apply (subst (1 2 3 4 5 6 7 8 9 10) propagate_all_frontier_c_imp_correctness_alt)
+                              apply (simp_all add: prems(1,2,3))
+                        apply (tactic \<open>Tactic.distinct_subgoals_tac\<close>)
+                  subgoal
+                    sorry
+                  subgoal
+                    sorry
+                  subgoal
+                    apply safe
+                    subgoal
+                      apply (subst (1 2 3) filter_False_False)
+                      prefer 3
+                        apply (subst filter_True)
+                      apply simp_all
+                        apply (tactic \<open>Tactic.distinct_subgoals_tac\<close>)
+                        defer
+                      subgoal sorry
+
+                      subgoal 
+                        using [[show_types, show_consts]]
+                        sorry
+                      subgoal
+                        using [[show_types, show_consts]]
+                        
+                        using
+                          \<open>lmap (\<lambda>z. list_of (lmap fst z)) xss'' = LNil \<Longrightarrow> \<forall>xa\<in>set (fst (fold (\<lambda>t (caps, os). if Cap t 1 \<in> set caps then (caps, os) else (insort_key time (Cap t 0) caps, mint_cap os 0 t)) (map (snd \<circ> projr \<circ> Inr) (list_of (LCons x xs'))) (caps, os2))). frontier_less_equal (dataflow_topology.implied_frontier_alt my_summ trivial_dataflow_topology_interpretation.followed_by (change_multiplicities my_summ (extract_progress 1 (\<lambda>l. if l = Loc 0 (Src 1) then [Loc 1 (Trg 1)] else []) \<lparr>cons = consu os2 @ map (((\<lambda>t. (1, t, 1)) \<circ>\<circ>\<circ> (\<circ>)) (snd \<circ> projr) Inr) (list_of (LCons x xs')), inte = operator_state.inter (snd (fold (\<lambda>t (caps, os). if Cap t 1 \<in> set caps then (caps, os) else (insort_key time (Cap t 0) caps, mint_cap os 0 t)) (map (snd \<circ> projr \<circ> Inr) (list_of (LCons x xs'))) (caps, os2))), prod = produ (fold (\<lambda>t os. os\<lparr>consu := consu os @ [(1, t, 1)]\<rparr>) (map (snd \<circ> projr \<circ> Inr) (list_of (LCons x xs'))) (snd (fold (\<lambda>t (caps, os). if Cap t 1 \<in> set caps then (caps, os) else (insort_key time (Cap t 0) caps, mint_cap os 0 t)) (map (snd \<circ> projr \<circ> Inr) (list_of (LCons x xs'))) (caps, os2))))\<rparr>) (change_multiplicities my_summ (extract_progress 0 (\<lambda>l. if l = Loc 0 (Src 1) then [Loc 1 (Trg 1)] else []) \<lparr>cons = consu (produce (os1\<lparr>inter := operator_state.inter os1 @ concat (map (\<lambda>t'. [(1, t', - 1), (1, Suc t', 1)]) [n 1..< trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss')])\<rparr>) (Cap (trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss')) 1) (map fst (list_of (LCons x xs')))), inte = operator_state.inter (produce (os1\<lparr>inter := operator_state.inter os1 @ concat (map (\<lambda>t'. [(1, t', - 1), (1, Suc t', 1)]) [n 1..< trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss')])\<rparr>) (Cap (trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss')) 1) (map fst (list_of (LCons x xs')))) @ [(1, trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss'), - 1)], prod = produ (produce (os1\<lparr>inter := operator_state.inter os1 @ concat (map (\<lambda>t'. [(1, t', - 1), (1, Suc t', 1)]) [n 1..< trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss')])\<rparr>) (Cap (trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss')) 1) (map fst (list_of (LCons x xs'))))\<rparr>) (pt_tr sg))) (Loc 1 (Trg 1))) (time xa)\<close>
+                        .
+
+                    
 
 
+end
+                  apply (rule wb_upto_b_sym)
+                  apply (rule wb_upto_b_base)
+                      apply (intro conjI exI; (rule refl)?; (simp add: comp_def prems)?)
+              
+
+end
+                subgoal
+                  using prems2(5) apply -
+                  apply (subst (asm) lappend_llist_of)
+                  apply (subst (asm) lmap_lshift_conv)
+                  apply auto
+                  apply hypsubst_thin
+               apply (subst (asm) lmap_lshift_conv)
+                  apply auto
+                  
+
+            
 end
             subgoal for y ys'
               using prems(5) apply -
