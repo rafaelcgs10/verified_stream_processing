@@ -7284,7 +7284,7 @@ next *)
                   unfolding R_def
                   apply simp
                   apply (subst (1 2 3 4 5 6 7 8 9 10) propagate_all_frontier_c_imp_correctness_alt)
-                              apply (simp_all add: prems(1,2,3))
+                              apply (simp_all add: prems(1,2,3) flip: change_multiplicities_append_alt)
                         apply (tactic \<open>Tactic.distinct_subgoals_tac\<close>)
                   subgoal
                     sorry
@@ -7296,12 +7296,102 @@ next *)
                       apply (subst (1 2 3) filter_False_False)
                       prefer 3
                         apply (subst filter_True)
-                      apply simp_all
+                      unfolding comp_def
+                         apply (simp_all flip: change_multiplicities_append_alt)
+                      apply (tactic \<open>ALLGOALS (CONVERSION Thm.eta_conversion)\<close> )
                         apply (tactic \<open>Tactic.distinct_subgoals_tac\<close>)
                         defer
                       subgoal sorry
+                      subgoal
+
+
+end
+                       apply (tactic \<open>Tactic.distinct_subgoals_tac\<close>)
+                      apply (tactic  \<open>Goal.norm_hhf_tac \<^context> 1\<close>)
+                       apply (tactic \<open>Tactic.distinct_subgoals_tac\<close>)
+
 
                       subgoal 
+                        using [[ML_print_depth=10000]]
+                        apply (tactic \<open>Subgoal.FOCUS (fn focus => let val _ = @{print} (#concl focus |> Thm.term_of) in all_tac end) \<^context> 1\<close> )
+                        using [[show_types, show_consts]]
+                        sorry
+
+                      subgoal
+                    using [[ML_print_depth=10000]]
+                        apply (tactic \<open>Subgoal.FOCUS (fn focus => let val _ = @{print} (#concl focus |> Thm.term_of) in all_tac end) \<^context> 1\<close> )
+
+  using [[show_types, show_consts]]
+
+                        oops
+
+                        print_methods
+
+lemma
+  "lmap (\<lambda>z. list_of (lmap fst z)) xss'' = LNil \<Longrightarrow>
+    \<forall>xa\<in>set (fst (fold (\<lambda>t (caps, os). if Cap t (1 :: 1) \<in> set caps then (caps, os) else (insort_key time (Cap t 0) caps, mint_cap os 0 t)) (map snd (list_of (LCons x xs'))) (caps, os2))).
+       frontier_less_equal
+        (dataflow_topology.implied_frontier_alt my_summ trivial_dataflow_topology_interpretation.followed_by
+          (change_multiplicities my_summ
+            (extract_progress 0 (\<lambda>l. if l = Loc 0 (Src 1) then [Loc 1 (Trg 1)] else [])
+              \<lparr>cons =
+                 consu
+                  (produce (os1\<lparr>inter := operator_state.inter os1 @ concat (map (\<lambda>t'. [(1, t', - 1), (1, Suc t', 1)]) [n 1..<trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss')])\<rparr>)
+                    (Cap (trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss')) 1) (map fst (list_of (LCons x xs')))),
+                 inte =
+                   operator_state.inter
+                    (produce (os1\<lparr>inter := operator_state.inter os1 @ concat (map (\<lambda>t'. [(1, t', - 1), (1, Suc t', 1)]) [n 1..<trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss')])\<rparr>)
+                      (Cap (trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss')) 1) (map fst (list_of (LCons x xs')))) @
+                   [(1, trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss'), - 1)],
+                 prod =
+                   produ
+                    (produce (os1\<lparr>inter := operator_state.inter os1 @ concat (map (\<lambda>t'. [(1, t', - 1), (1, Suc t', 1)]) [n 1..<trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss')])\<rparr>)
+                      (Cap (trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss')) 1) (map fst (list_of (LCons x xs'))))\<rparr> @
+             extract_progress 1 (\<lambda>l. if l = Loc 0 (Src 1) then [Loc 1 (Trg 1)] else [])
+              \<lparr>cons = consu os2 @ map (\<lambda>x. (1, snd x, 1)) (list_of (LCons x xs')),
+                 inte = operator_state.inter (snd (fold (\<lambda>t (caps, os). if Cap t 1 \<in> set caps then (caps, os) else (insort_key time (Cap t 0) caps, mint_cap os 0 t)) (map snd (list_of (LCons x xs'))) (caps, os2))),
+                 prod =
+                   produ
+                    (fold (\<lambda>t os. os\<lparr>consu := consu os @ [(1, t, 1)]\<rparr>) (map snd (list_of (LCons x xs')))
+                      (snd (fold (\<lambda>t (caps, os). if Cap t 1 \<in> set caps then (caps, os) else (insort_key time (Cap t 0) caps, mint_cap os 0 t)) (map snd (list_of (LCons x xs'))) (caps, os2))))\<rparr>)
+            (pt_tr sg))
+          (Loc 1 (Trg 1)))
+        (time xa)"
+"lmap (\<lambda>z. list_of (lmap fst z)) xss'' = LNil \<Longrightarrow>
+  \<forall>xa\<in>set (fst (fold (\<lambda>t (caps, os). if Cap t (1 :: 1) \<in> set caps then (caps, os) else (insort_key time (Cap t 0) caps, mint_cap os 0 t)) (map snd (list_of (LCons x xs'))) (caps, os2))).
+       frontier_less_equal
+        (dataflow_topology.implied_frontier_alt my_summ trivial_dataflow_topology_interpretation.followed_by
+          (change_multiplicities my_summ
+            (extract_progress 0 (\<lambda>l. if l = Loc 0 (Src 1) then [Loc 1 (Trg 1)] else [])
+              \<lparr>cons =
+                 consu
+                  (produce (os1\<lparr>inter := operator_state.inter os1 @ concat (map (\<lambda>t'. [(1, t', - 1), (1, Suc t', 1)]) [n 1..<trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss')])\<rparr>)
+                    (Cap (trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss')) 1) (map fst (list_of (LCons x xs')))),
+                 inte =
+                   operator_state.inter
+                    (produce (os1\<lparr>inter := operator_state.inter os1 @ concat (map (\<lambda>t'. [(1, t', - 1), (1, Suc t', 1)]) [n 1..<trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss')])\<rparr>)
+                      (Cap (trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss')) 1) (map fst (list_of (LCons x xs')))) @
+                   [(1, trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss'), - 1)],
+                 prod =
+                   produ
+                    (produce (os1\<lparr>inter := operator_state.inter os1 @ concat (map (\<lambda>t'. [(1, t', - 1), (1, Suc t', 1)]) [n 1..<trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss')])\<rparr>)
+                      (Cap (trivial_dataflow_topology_interpretation.followed_by (n 1) (length xss')) 1) (map fst (list_of (LCons x xs'))))\<rparr> @
+             extract_progress 1 (\<lambda>l. if l = Loc 0 (Src 1) then [Loc 1 (Trg 1)] else [])
+              \<lparr>cons = consu os2 @ map (\<lambda>x. (1, snd x, 1)) (list_of (LCons x xs')),
+                 inte = operator_state.inter (snd (fold (\<lambda>t (caps, os). if Cap t 1 \<in> set caps then (caps, os) else (insort_key time (Cap t 0) caps, mint_cap os 0 t)) (map snd (list_of (LCons x xs'))) (caps, os2))),
+                 prod =
+                   produ
+                    (fold (\<lambda>t os. os\<lparr>consu := consu os @ [(1, t, 1)]\<rparr>) (map snd (list_of (LCons x xs')))
+                      (snd (fold (\<lambda>t (caps, os). if Cap t 1 \<in> set caps then (caps, os) else (insort_key time (Cap t 0) caps, mint_cap os 0 t)) (map snd (list_of (LCons x xs'))) (caps, os2))))\<rparr>)
+            (pt_tr sg))
+          (Loc 1 (Trg 1)))
+        (time xa)"
+   apply -
+  using [[show_types, show_consts]]
+   apply (tactic \<open>Tactic.distinct_subgoals_tac\<close>)
+
+
+
                         using [[show_types, show_consts]]
                         sorry
                       subgoal
