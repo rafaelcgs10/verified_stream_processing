@@ -9,10 +9,7 @@ begin
 corec increment_top where
   \<open>increment_top incr os = choice3
   (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda>x. case x of
-    Inr (d, t) \<Rightarrow>
-      let os' = consume os p t 1;
-          os'' = produce os' (Cap (t + incr p) p) [d]
-      in increment_top incr os''
+    Inr (d, t) \<Rightarrow> increment_top incr (produce (consume os p t 1) (Cap (t + incr p) p) [d])
   | _ \<Rightarrow> \<oslash>)) c\<UU>))
   (Choice (cimage (\<lambda>p. case outpu os p of
     x # xs \<Rightarrow> send_output (increment_top incr (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>)) p x)
@@ -49,8 +46,7 @@ proof -
 qed
 
 lemma step_increment_top_Read_R[intro]:
-  assumes \<open>os' = consume os p t 1\<close> \<open>os'' = produce os' (Cap (t + incr p) p) [d]\<close>
-    \<open>op = increment_top incr os''\<close> \<open>p \<notin> defaults\<close>
+  assumes \<open>op = increment_top incr (produce (consume os p t 1) (Cap (t + incr p) p) [d])\<close> \<open>p \<notin> defaults\<close>
   shows \<open>step (Inp (Some p) (Inr (d, t))) (increment_top incr os) op\<close>
 proof -
   have \<open>Read (Some p) (\<lambda>x. case x of
@@ -59,7 +55,7 @@ proof -
   |\<in>| choices (increment_top incr os)\<close>
     using assms by (subst (2) increment_top.code) auto
   thus ?thesis
-    using assms Read_in_choices_step[where ?f=\<open>\<lambda>x. case x of Inr (d, t) \<Rightarrow> increment_top incr (produce (consume os p t 1) (Cap (t + incr p) p) [d]) | _ \<Rightarrow> \<oslash>\<close> and ?x=\<open>Inr (d, t)\<close>] by auto
+    using assms Read_in_choices_step[where f=\<open>\<lambda>x. case x of Inr (d, t) \<Rightarrow> increment_top incr (produce (consume os p t 1) (Cap (t + incr p) p) [d]) | _ \<Rightarrow> \<oslash>\<close> and x=\<open>Inr (d, t)\<close>] by auto
 qed
 
 lemma step_increment_top_Write_Some[intro]:
@@ -103,13 +99,12 @@ abbreviation inp_incr_summary where
 
 lemma
   \<open>summ sg = inp_incr_summary \<Longrightarrow>
-  xs 0 = outpu os2 0 \<Longrightarrow>
-  ys 0 = map projr (buf (Inr (1, 0))) @ outpu os1 0 \<Longrightarrow>
   \<forall>x \<in> set (buf (Inr (1, 0))). is_Inr x \<Longrightarrow>
   dataflow_op sg (inp_incr_op os1 caps ins buf incr os2)
-  \<approx> map_op (\<lambda>p. (1, p)) (\<lambda>p. (1, p))
-    (source_op ((\<lambda>p. xs p @@- lmap (\<lambda>(d, t). (d, t + incr p)) (ys p @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (d, t)) (lfilter is_Data (ins p))))))\<close>
-proof (coinduction arbitrary: sg os1 caps ins buf os2 xs ys rule: wbisim_coinduct_upto'')
+  \<approx> map_op (\<lambda>(p :: 1). (1, p)) (\<lambda>p. (1, p))
+    (source_op ((\<lambda>p. outpu os2 p @@- lmap (\<lambda>(d, t). (d, t + incr p))
+      ((map projr (buf (Inr (1, 0))) @ outpu os1 p) @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (d, t)) (lfilter is_Data (ins p))))))\<close>
+proof (coinduction arbitrary: sg os1 caps ins buf os2 rule: wbisim_coinduct_upto'')
   case SIM1
   then show ?case
     apply (elim step_dataflow_op_elim step_map_op_elim step_comp_op_elim step_ooo_input_top_elim step_increment_top_elim conjE; simp split: if_splits; hypsubst_thin?; simp)
@@ -118,19 +113,13 @@ proof (coinduction arbitrary: sg os1 caps ins buf os2 xs ys rule: wbisim_coinduc
        apply (rule wbc_base)
        apply blast
       apply (rule step_wstep)
-      apply (rule step_map_op)
-       apply (auto simp add: fun_eq_iff)
+      apply (auto simp add: fun_eq_iff)
       done
-    subgoal for x xs'
+    subgoal
       apply (intro exI conjI)
        apply (rule rtranclp.intros(1))
       apply (rule wbc_base)
-      apply (rule exI[of _ sg])
-      apply (rule exI[of _ \<open>os1\<lparr>outpu := (outpu os1)(0 := xs')\<rparr>\<close>])
-      apply (rule exI[of _ caps])
-      apply (rule exI[of _ ins])
-      apply (rule exI[of _ \<open>BENQ (Inr (1, 0)) (Inr x) buf\<close>])
-      apply (rule exI[of _ os2])
+      apply (intro exI)
       apply auto
       done
     subgoal for d t
@@ -143,14 +132,11 @@ proof (coinduction arbitrary: sg os1 caps ins buf os2 xs ys rule: wbisim_coinduc
       apply (rule exI[of _ ins])
       apply (rule exI[of _ \<open>BTL (Inr (1, 0)) buf\<close>])
       apply (rule exI[of _ \<open>produce (consume os2 0 t 1) (Cap (t + incr 0) 0) [d]\<close>])
-      apply simp
-      apply (rule exI[of _ \<open>BENQ 0 (d, t + incr 0) xs\<close>])
-      apply (rule exI[of _ \<open>BTL 0 ys\<close>])
       apply (simp add: produce_def BTL_def map_tl in_set_tlD)
-      apply (rule arg_cong[where ?f=\<open>map_op (Pair 1) (Pair 1)\<close>])
-      apply (rule arg_cong[where ?f=source_op])
+      apply (rule arg_cong[where f=\<open>map_op (Pair 1) (Pair 1)\<close>])
+      apply (rule arg_cong[where f=source_op])
       apply (simp add: fun_eq_iff)
-      apply (rule arg_cong[where ?f=\<open>\<lambda>x. outpu os2 1 @@- x\<close>])
+      apply (rule arg_cong[where f=\<open>\<lambda>x. outpu os2 1 @@- x\<close>])
       apply (simp add: lmap_eq_LCons_conv)
       apply (rule exI[of _ \<open>(tl (map projr (buf (Inr (1, 0)))) @ outpu os1 0) @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (d, t)) (lfilter is_Data (ins 0))\<close>])
       apply simp
@@ -160,97 +146,75 @@ proof (coinduction arbitrary: sg os1 caps ins buf os2 xs ys rule: wbisim_coinduc
           list.sel(2) map_tl not_Cons_self2 sum.sel(2))
       done
     subgoal
-      apply (unfold BHD_def)
-      using list.set_sel(1) is_Inr.simps(2)
+      using BHD_def list.set_sel(1) is_Inr.simps(2)
       apply (metis (no_types, opaque_lifting))
       done
-    subgoal for t d lxs
+    subgoal
       apply (intro exI conjI)
        apply (rule rtranclp.intros(1))
       apply (rule wbc_base)
-      apply (rule exI[of _ sg])
-      apply (rule exI[of _ \<open>produce os1 (Cap t 0) [d]\<close>])
-      apply (rule exI[of _ caps])
-      apply (rule exI[of _ \<open>ins(0 := lxs)\<close>])
-      apply (rule exI[of _ buf])
-      apply (rule exI[of _ os2])
-      apply simp
-      apply (rule exI[of _ xs])
-      apply (rule exI[of _ \<open>\<lambda>_. ys 0 @ [(d, t)]\<close>])
-      apply (simp add: produce_def)
-      apply (rule arg_cong[where ?f=\<open>map_op (Pair 1) (Pair 1)\<close>])
-      apply (rule arg_cong[where ?f=source_op])
-      apply (simp add: fun_eq_iff)
-      apply (rule arg_cong[where ?f=\<open>\<lambda>x. outpu os2 1 @@- x\<close>])
-      apply (rule arg_cong[where ?f=\<open>lmap (\<lambda>(d, t). (d, t -+- incr 1))\<close>])
-      apply (simp flip: append_assoc)
+      apply (intro exI)
+      apply (auto simp add: lnull_def produce_def simp flip: snoc_shift)
+      done
+    subgoal
+      apply (intro exI conjI)
+       apply (rule rtranclp.intros(1))
+      apply (rule wbc_base)
+      apply (intro exI)
+      apply (auto simp add: produce_def simp flip: append_assoc)
       done
     subgoal
       apply (intro exI conjI)
        apply (rule rtranclp.intros(1))
       apply (rule wbc_base)
       apply (intro exI conjI)
-           apply (rule refl)
-          apply auto
+         apply (rule refl)
+        apply auto
       done
     subgoal
       apply (intro exI conjI)
        apply (rule rtranclp.intros(1))
       apply (rule wbc_base)
       apply (intro exI conjI)
-           apply (rule refl)
-          apply auto
+         apply (rule refl)
+        apply auto
       done
     subgoal
       apply (intro exI conjI)
        apply (rule rtranclp.intros(1))
       apply (rule wbc_base)
       apply (intro exI conjI)
-           apply (rule refl)
-          apply auto
+         apply (rule refl)
+        apply auto
       done
     subgoal
       apply (intro exI conjI)
        apply (rule rtranclp.intros(1))
       apply (rule wbc_base)
       apply (intro exI conjI)
-           apply (rule refl)
-          apply auto
+         apply (rule refl)
+        apply auto
       done
     subgoal
       apply (intro exI conjI)
        apply (rule rtranclp.intros(1))
       apply (rule wbc_base)
       apply (intro exI conjI)
-           apply (rule refl)
-          apply auto
+         apply (rule refl)
+        apply auto
       done
     subgoal
       apply (intro exI conjI)
        apply (rule rtranclp.intros(1))
       apply (rule wbc_base)
-      apply (rule exI[of _ \<open>sg\<lparr>pt_tr := change_multiplicities inp_incr_summary
-  (extract_progress 1 (edges sg) \<lparr>cons = consu os2, inte = operator_state.inter os2, prod = produ os2\<rparr>)
-  (pt_tr sg)\<rparr>\<close>])
-      apply (rule exI[of _ os1])
-      apply (rule exI[of _ caps])
-      apply (rule exI[of _ ins])
-      apply (rule exI[of _ buf])
-      apply (rule exI[of _ \<open>fst (obtain_progress os2)\<close>])
+      apply (intro exI)
       apply auto
       done
     subgoal
       apply (intro exI conjI)
        apply (rule rtranclp.intros(1))
       apply (rule wbc_base)
-      apply (rule exI[of _ \<open>sg\<lparr>pt_tr := change_multiplicities inp_incr_summary
-  (extract_progress 0 (edges sg) \<lparr>cons = consu os1, inte = operator_state.inter os1, prod = produ os1\<rparr>)
-  (pt_tr sg)\<rparr>\<close>])
-      apply (rule exI[of _ \<open>fst (obtain_progress os1)\<close>])
-      apply (rule exI[of _ caps])
-      apply (rule exI[of _ ins])
-      apply (rule exI[of _ buf])
-      apply (rule exI[of _ os2])
+      apply (intro exI)
       apply auto
       done
     done
@@ -278,8 +242,8 @@ next
                     apply (rule step_star_map_op)
                     apply (rule step_comp_op_L_Tau_start)
                     apply (rule step_star_map_op)
-                    apply (rule step_Taus_ooo_input_top)
-                         apply (simp_all add: split_pairs snd_foldl)
+                    apply (rule step_Taus_ooo_input_top[where p=1])
+                          apply (simp_all add: split_pairs snd_foldl)
                 using lfinite_ltakeWhile apply fastforce
                     apply (subgoal_tac \<open>ldropWhile (Not \<circ> is_Data) (ins 0) = LCons (Data t' d) (ltl (ldropWhile (Not \<circ> is_Data) (ins 0)))\<close>)
                      apply fastforce
@@ -291,13 +255,13 @@ next
                        apply (rule step_map_op)
                         apply (rule step_ooo_input_top_Write_Some)
                           apply (simp_all add: produce_def)
-                   apply (drule outpu_fst_foldl_ooo_input_os_caps_Watermark_Nil[where ?os=os1])
+                   apply (drule outpu_snd_foldl_ooo_input_os_caps_Watermark_Nil[where os=os1])
                    apply fastforce
                   apply (rule step_map_op)
                    apply (rule step_Tau_comp_op_R)
                         apply (rule step_map_op)
                          apply (rule step_increment_top_Read_R)
-                            apply simp_all
+                          apply simp_all
                   apply simp
                  apply (rule step_Out_dataflow_op_Out_Inr_intro)
                  apply (rule step_map_op)
@@ -307,7 +271,7 @@ next
                        apply (simp_all add: produce_def)
                 apply (rule wbc_base)
                 apply (intro exI conjI)
-                     apply (auto intro!: arg_cong[where ?f=\<open>map_op (Pair 1) (Pair 1)\<close>] arg_cong[where ?f=source_op] arg_cong[where ?f=\<open>lmap (\<lambda>z. case z of (d, t) \<Rightarrow> (d, t -+- incr 1))\<close>] simp add: fun_eq_iff)
+                   apply (auto intro!: arg_cong[where f=\<open>map_op (Pair 1) (Pair 1)\<close>] arg_cong[where f=source_op] arg_cong[where f=\<open>lmap (\<lambda>z. case z of (d, t) \<Rightarrow> (d, t -+- incr 1))\<close>] simp add: fun_eq_iff)
                 using ltl_lfilter ext comp_apply ltl_lmap ltl_simps(2) apply (metis (lifting))
                 done
               done
@@ -331,7 +295,7 @@ next
                  apply (rule step_Tau_comp_op_R)
                       apply (rule step_map_op)
                        apply (rule step_increment_top_Read_R)
-                          apply simp_all
+                        apply simp_all
                 apply simp
                apply (rule step_Out_dataflow_op_Out_Inr_intro)
                apply (rule step_map_op)
@@ -341,7 +305,7 @@ next
                      apply (simp_all add: produce_def)
               apply (rule wbc_base)
               apply (intro exI conjI)
-                   apply (auto intro!: arg_cong[where ?f=\<open>map_op (Pair 1) (Pair 1)\<close>] arg_cong[where ?f=source_op])
+                 apply (auto intro!: arg_cong[where f=\<open>map_op (Pair 1) (Pair 1)\<close>] arg_cong[where f=source_op])
               done
             done
           done
@@ -357,7 +321,7 @@ next
                  apply (rule step_Tau_comp_op_R)
                       apply (rule step_map_op)
                        apply (rule step_increment_top_Read_R)
-                          apply (simp_all add: BHD_def)
+                        apply (simp_all add: BHD_def)
                 apply simp
                apply (rule step_Out_dataflow_op_Out_Inr_intro)
                apply (rule step_map_op)
@@ -373,11 +337,7 @@ next
               apply (rule exI[of _ \<open>BTL (Inr (1, 1)) buf\<close>])
               apply (rule exI[of _ \<open>os2\<lparr>consu := consu os2 @ [(1, t', 1)], produ := produ os2 @ [(1, t, 1)],
                           outpu := (outpu os2)(1 := [])\<rparr>\<close>])
-              apply simp
-              apply (rule exI[of _ xs])
-              apply (rule exI[of _ \<open>\<lambda>_. map projr xs' @ outpu os1 0\<close>])
-              apply (intro conjI)
-                 apply (auto intro!: arg_cong[where ?f=\<open>map_op (Pair 1) (Pair 1)\<close>] arg_cong[where ?f=source_op] simp add: BTL_def)
+              apply (auto intro!: arg_cong[where f=\<open>map_op (Pair 1) (Pair 1)\<close>] arg_cong[where f=source_op] simp add: BTL_def)
               done
             done
           done
@@ -393,7 +353,7 @@ next
                apply simp_all
         apply (rule wbc_base)
         apply (intro exI conjI)
-             apply (auto intro!: arg_cong[where ?f=\<open>map_op (Pair 1) (Pair 1)\<close>] arg_cong[where ?f=source_op])
+           apply (auto intro!: arg_cong[where f=\<open>map_op (Pair 1) (Pair 1)\<close>] arg_cong[where f=source_op])
         done
       done
     done
