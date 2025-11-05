@@ -2871,6 +2871,14 @@ lemma rmdups_NilD:
   by (induct xs arbitrary: S) (auto split: if_splits)
 
 
+lemma zmset_map_snd_concat:
+  "zmset (map snd (concat (map (\<lambda>t'. [(1, t', - 1), (1, Suc t', 1)]) xs))) =
+   - zmset (map (\<lambda> t. (t, 1)) xs) + zmset (map (\<lambda> t. (Suc t, 1)) xs)"
+  apply (induct xs rule: rev_induct)
+   apply simp_all
+  apply (smt (verit, del_insts) Executable.update_zmultiset_plus ab_group_add_class.ab_diff_conv_add_uminus diff_add_eq_diff_diff_swap right_minus_eq update_zmultiset_plus_comm)
+  done
+
 lemma
   \<open>summ sg = my_summ \<Longrightarrow>
    edges sg = (\<lambda> l. if l = Loc 0 (Src 1) then [Loc 1 (Trg 1)] else []) \<Longrightarrow>
@@ -7455,16 +7463,27 @@ next *)
                   unfolding comp_def produce_def max_from_caps_buf_def
                   by (auto simp add: comp_def lshift_ltake_ldrop dest!: rmdups_NilD)
                 subgoal
-                  apply (subst (1 2 3 4 5 6) fold_rmdups; simp?)
-                        apply simp_all
-                        apply (tactic \<open>Tactic.distinct_subgoals_tac\<close>)
-                     prefer 4
+                  apply (subgoal_tac "set caps = {}")
+                  defer
                   subgoal
-                    apply (subst (1 2 3 4) filter_True; simp?)
-                        apply (simp_all add: comp_def flip: change_multiplicities_append_alt)
-                        apply simp_all
+                 using prems(4) prems2(2) apply simp
+                      using prems(5) prems2(3,6,7,8) apply -
+                      unfolding comp_def produce_def max_from_caps_buf_def BENQ_def
+                      apply (auto simp add: map_eq_Cons_conv comp_def lshift_ltake_ldrop dest!: rmdups_NilD)
+                      done
+                    subgoal
+                  apply (subst (1 2 3 4 5 6) fold_rmdups; simp?)
                         apply (tactic \<open>Tactic.distinct_subgoals_tac\<close>)
-                        prefer 5
+                      defer
+                  subgoal
+                    using prems(1,2) apply -
+                        apply (simp add: comp_def flip: change_multiplicities_append_alt)
+                  apply (subst (1 2) propagate_all_frontier_c_imp_correctness_alt)
+                        apply simp_all
+                      prefer 3
+                    subgoal
+                    apply (subst (1 2) filter_True; simp?)
+                        prefer 3
                     subgoal
                       using prems(4) prems2(2) apply simp
                       using prems(5) prems2(3,6,7,8) apply -
@@ -7503,7 +7522,25 @@ next *)
                         apply (metis Diff_empty empty_set list.map_disc_iff list.simps(15) rmdups_insert_NilI set_rmdups)
                         done
                       done
+                    subgoal
+                      apply (intro impI)
+                      using prems(1,2,3,9,10,11,12,14,13) prems2(1,2,3) apply -
+                      apply (auto 0 0 simp add: zmset_map_snd_concat zmset_map_one_zmset_of zmset_map_minus_one_zmset_of produce_def dataflow_topology_implied_frontier_alt_my_summ propagate_pointstamps_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def dest!: propagate_all_preserves_c_pts split: option.splits; hypsubst_thin?)
+                      apply (simp flip: add.assoc)
+                      apply (simp add: add.assoc)
+                      apply (cases zs)
+                      subgoal
+                        unfolding input_cap_def
+                        apply simp
+                        apply (subst (asm) (3) if_not_P)
+                        subgoal
+                          using prems2(6) by force
+                        subgoal
+                          apply simp
 
+                        find_theorems inps
+
+                    find_theorems zmset map snd
                     
 
 
