@@ -2809,9 +2809,66 @@ lemma lzip_lshift_D:
     done
   done
 
+lemma lconcat_eq_LCons_conv:
+  "(lconcat xss = LCons x xs) =
+   (\<exists>xs' xss' xss''. xss = xss' @@- (LCons (x # xs') xss'') \<and> xs = xs' @@- (lconcat xss'') \<and> set xss' \<subseteq> {xs. xs = []})"
+  apply (subst lconcat_correct)
+  apply (subst lconcat_eq_LCons_conv)
+  apply (rule iffI)
+  subgoal
+    apply (elim exE conjE)
+    subgoal for xs' xss' xss''
+      apply (auto simp add: lmap_lshift_conv lappend_llist_of lmap_eq_LCons_conv)
+      apply hypsubst_thin
+      subgoal for zs ys ys'
+        apply (rule exI[of _ "list_of xs'"])
+        apply (rule exI[of _ "zs"])
+        apply (rule exI[of _ "ys'"])
+        apply (intro conjI)
+        subgoal
+          apply (rule arg_cong2[where f=lshift])
+           apply simp
+          apply (metis list_of_llist_of llist_of_eq_LCons_conv)
+          done
+        subgoal
+          by (metis lappend_llist_of lconcat_correct lfinite_code(2) lfinite_llist_of llist_of_list_of)
+        subgoal
+          by auto
+        done
+      done
+    done
+  subgoal
+    apply (elim exE conjE)
+    subgoal for xs' xss' xss''
+      apply hypsubst_thin
+      apply (rule exI[of _ "llist_of xs'"])
+      apply (rule exI[of _ "map llist_of xss'"])
+      apply (rule exI[of _ "lmap llist_of xss''"])
+      apply (auto simp add: lappend_llist_of lconcat_correct)
+      apply (metis llist.simps(13) llist_of.simps(2) lmap_lshift_conv)
+      done
+    done
+  done
+
+lemma lshift_ltake_ldrop:
+  "lys = xs @@- lxs \<longleftrightarrow> (xs = list_of (ltake (length xs) lys) \<and> lxs = ldrop (length xs) lys)"
+  apply (induct xs arbitrary: lxs)
+   apply (simp add: enat_0)
+   apply blast
+  subgoal for a xs lxs
+    apply (auto simp add: ldrop_enat ldropn_lshift ltake_lshift simp flip: eSuc_enat)
+    apply (metis eSuc_enat_iff enat.simps(3) enat_ord_simps(4) lappend_llist_of lappend_ltake_ldrop lfinite_ltake llist_of_list_of lshift_simps(2))
+    done
+  done
+
+
 lemma filter_False_False:
   "\<forall>x\<in>set xs. P x \<Longrightarrow> filter (\<lambda> x. \<not> P x) xs = []"
   by auto
+
+lemma rmdups_NilD:
+  "rmdups S xs = [] \<Longrightarrow> set xs \<subseteq> S"
+  by (induct xs arbitrary: S) (auto split: if_splits)
 
 
 lemma
@@ -7180,15 +7237,18 @@ next *)
             apply simp
             apply (cases "ys 1")
             subgoal
-              apply (clarsimp simp add: lconcat_correct lconcat_eq_LCons_conv lnull_def)
-              subgoal premises prems2 for xs' xss' xss''
+              apply (auto simp add: lconcat_eq_LCons_conv lmap_lshift_conv lmap_eq_LCons_conv lnull_def split: list.splits)
+              subgoal
+                apply (rule FalseE)
+                by (meson list.exhaust)
+              subgoal premises prems2 for zs batch t xs''
                 apply (intro exI conjI[rotated])
                  apply (intro relcomppI)
                    apply (rule bisim_refl)
                   defer
                   apply (rule wbisim_refl)
                  apply (rule wstep_trans(1))
-                  apply (rule relpowp_imp_rtranclp[where n="length xss' + 1 + the_enat (llength (LCons x xs')) + the_enat (llength (LCons x xs')) + 1 + 1 + 1 + 1"])
+                  apply (rule relpowp_imp_rtranclp[where n="length zs + 1 + length batch + length batch + 1 + 1 + 1 + 1"])
                   apply (simp only: relpowp_add)
                   apply (intro relcomppI)
                          apply (rule step_tau_pow_dataflow_op)
@@ -7205,7 +7265,7 @@ next *)
                           apply (rule step_map_op)
                            apply (rule step_comp_op_L_Tau)
                              apply (rule step_map_op)
-                              apply (rule step_input_top_Tau_intro3[where p=1 and batch="map fst (list_of (LCons x xs'))" and lxs="lmap (list_of o lmap fst) xss''"])
+                              apply (rule step_input_top_Tau_intro3[where p=1 and batch=batch and lxs="lmap fst xs''"])
                                    apply simp
                                    defer
                                    apply (rule refl)+
@@ -7215,7 +7275,7 @@ next *)
                            apply simp
                           apply (rule step_tau_pow_dataflow_op)
                           apply (rule step_tau_pow_map_op)
-                          apply (rule step_tau_Out_pow_comp_op_steps_intro[where xs="map Inr (list_of ((LCons x xs')))"])
+                          apply (rule step_tau_Out_pow_comp_op_steps_intro[where xs="map Inr (map (\<lambda> x. (x, t)) batch)"])
                              apply (rule steps_map_op)
                                apply (rule refl)+
                               defer
@@ -7223,16 +7283,15 @@ next *)
                                 apply (simp add: defaults_num1_def)
                                apply (rule refl)+
                              apply simp
-                             defer
                              apply simp
                             apply (rule refl)+
                            apply (rule step_tau_pow_dataflow_op)
                            apply (rule step_tau_pow_map_op)
-                           apply (rule step_tau_Inp_pow_comp_op_steps_intro[where xs="map Inr (list_of ((LCons x xs')))" ])
+                           apply (rule step_tau_Inp_pow_comp_op_steps_intro[where xs="map Inr (map (\<lambda> x. (x, t)) batch)" ])
                                 apply (rule steps_map_op)
                                   apply (rule refl)+
                                  defer
-                                 apply (rule steps_max_top'_Inp_Some_intro[where xs="map Inr (list_of ((LCons x xs')))"])
+                                 apply (rule steps_max_top'_Inp_Some_intro[where xs="map Inr (map (\<lambda> x. (x, t)) batch)"])
                                     apply simp
                                     apply (rule prod.collapse)
                                     apply (rule refl)+
@@ -7295,7 +7354,7 @@ next *)
                              apply (rule step_map_op)
                               apply (rule step_comp_op_R_Out)
                                 apply (rule step_map_op)
-                                 apply (rule step_max_top'_Out_intro)
+                                 apply (rule step_max_top'_Out_intro[where xs=Nil])
                                   apply (rule refl)+
                                  defer
                                  apply simp
@@ -7315,53 +7374,41 @@ next *)
                     apply safe
                     subgoal
                       apply (subst (1 2 3) filter_False_False)
-                      prefer 3
+                        prefer 3
                         apply (subst filter_True)
                       unfolding comp_def
                          apply (simp_all flip: change_multiplicities_append_alt)
-                      apply (tactic \<open>ALLGOALS (CONVERSION Thm.eta_conversion)\<close> )
-                        apply (tactic \<open>Tactic.distinct_subgoals_tac\<close>)
-                        defer
+                      apply simp_all
+                         apply (tactic \<open>Tactic.distinct_subgoals_tac\<close>)
+                       defer
                       subgoal sorry
                       subgoal
                         sorry
                       done
                     subgoal
                       apply (subst (1 2 3) filter_False_False)
-                      prefer 3
+                        prefer 3
                         apply (subst filter_True)
                       unfolding comp_def
                          apply (simp_all flip: change_multiplicities_append_alt)
-                      apply (tactic \<open>ALLGOALS (CONVERSION Thm.eta_conversion)\<close> )
-                        apply (tactic \<open>Tactic.distinct_subgoals_tac\<close>)
-                        defer
+                      apply simp_all
+                         apply (tactic \<open>Tactic.distinct_subgoals_tac\<close>)
+                       defer
                       subgoal sorry
                       subgoal
                         sorry
                       done
                     done
                   done
-                apply simp_all
+                            apply simp_all
                 subgoal
-                  using prems2(4,5) apply -
-                  apply (subst (asm) lappend_llist_of)
-                  apply (subst (asm) lmap_lshift_conv)
-                  apply safe
-                  apply hypsubst_thin
-               apply (subst (asm) lmap_lshift_conv)
-                  apply safe
+                  using prems2(5,6) apply -
                   apply (drule lzip_lshift_D)
                   apply safe
                   apply (auto simp add: lnull_def)
                   done
                 subgoal
-                  using prems2(4,5) apply -
-                  apply (subst (asm) lappend_llist_of)
-                  apply (subst (asm) lmap_lshift_conv)
-                  apply safe
-                  apply hypsubst_thin
-               apply (subst (asm) lmap_lshift_conv)
-                  apply safe
+                  using prems2(5,6) apply -
                   apply (drule lzip_lshift_D)
                   apply safe
                   apply (auto simp add: split_beta lnull_def split: list.splits llist.splits)
@@ -7370,45 +7417,108 @@ next *)
                   apply (metis in_set_impl_in_set_zip1 list.exhaust split_pairs2)
                   done
                 subgoal
-                  using prems2(4,5) apply -
-                  apply (subst (asm) lappend_llist_of)
-                  apply (subst (asm) lmap_lshift_conv)
-                  apply safe
-               apply (subst (asm) lmap_lshift_conv)
-                  apply safe
-                  apply (simp add: llist.map_comp lmap_eq_LCons_conv)
-                  apply safe
-                  apply (drule sym[of "LCons x xs'"])
-                  apply (auto simp add: lzip_eq_LCons_conv split_beta lnull_def subset_eq image_iff llist_of_eq_LCons_conv)
-                  subgoal for zsa a b xs'a xs'aa
-                    apply (cases a; clarsimp)
-                    apply hypsubst_thin
+                  using prems2(5,6,7,8) apply -
+                  apply (drule lzip_lshift_D)
+                  apply (auto simp add: )
+                  apply hypsubst_thin
+                  apply (drule sym[of "LCons (batch, t) xs''"])
+                  apply (auto simp add: lzip_eq_LCons_conv)
+                  apply (subst ldropn_lshift)
+                   apply simp_all
+                  apply (subst lmap_fst_lzip_conv_ltake)
+                  apply (subst ltake_all)
+                   apply simp_all
+                  apply (clarsimp simp add: lshift_ltake_ldrop)
+                  subgoal for ys xs' ys'
+                    apply (subgoal_tac "llength ys' = infinity")
+                     apply simp_all
+                    subgoal premises prems3
+                      using prems3(7) by (metis enat.simps(2) gen_llength_code(2) gen_llength_def idiff_infinity llength_iterates llength_ldrop plus_eq_infty_iff_enat)
+                    done
+                  done
+                subgoal
+                  using prems(5) prems2(3,6,7,8) apply -
+                  unfolding comp_def produce_def max_from_caps_buf_def
+                  apply (auto simp add: comp_def lshift_ltake_ldrop dest!: rmdups_NilD)
+                  subgoal premises prems3
+                    using prems3(6) apply -
+                    apply (drule sym)
+                    apply (clarsimp simp add: lzip_eq_LCons_conv ldrop_iterates)
+                    apply (metis funpow_Suc_conv lhd_LCons lhd_iterates numeral_nat(7) plus_1_eq_Suc)
+                    done
+                  done
+                using prems(7) apply simp
+                subgoal
+                  unfolding BULK_BENQ_def by auto
+                subgoal
+                  using prems(5) prems2(3,6,7,8) apply -
+                  unfolding comp_def produce_def max_from_caps_buf_def
+                  by (auto simp add: comp_def lshift_ltake_ldrop dest!: rmdups_NilD)
+                subgoal
+                  apply (subst (1 2 3 4 5 6) fold_rmdups; simp?)
+                        apply simp_all
+                        apply (tactic \<open>Tactic.distinct_subgoals_tac\<close>)
+                     prefer 4
+                  subgoal
+                    apply (subst (1 2 3 4) filter_True; simp?)
+                        apply (simp_all add: comp_def flip: change_multiplicities_append_alt)
+                        apply simp_all
+                        apply (tactic \<open>Tactic.distinct_subgoals_tac\<close>)
+                        prefer 5
+                    subgoal
+                      using prems(4) prems2(2) apply simp
+                      using prems(5) prems2(3,6,7,8) apply -
+                      unfolding comp_def produce_def max_from_caps_buf_def BENQ_def
+                      apply (auto simp add: map_eq_Cons_conv comp_def lshift_ltake_ldrop dest!: rmdups_NilD)
+                      apply hypsubst_thin
+                      apply (rule exI[of _ "Cap _ _"])
+                      apply simp
+                      apply (intro conjI[rotated])
+                        apply (rule refl)+
+                      subgoal premises
+                        apply (subgoal_tac "buf2 (Cap t 1) = []")
+                        subgoal
+                          apply (rule Max_eq_if)
+                             apply auto
+                          done
+                        subgoal
+                          using prems(30) apply -
+                          apply (drule spec[of _ t])
+                          apply (drule mp)
+                          subgoal
+                            using prems2(6) apply -
+                            apply (auto simp add: lshift_ltake_ldrop)
+                            apply (drule sym)
+                            back
+                            apply (auto simp add: lzip_eq_LCons_conv)
+                            apply (metis basic_trans_rules(31) llist.set_intros(1) lset_iterates_Suc_ge' lset_ldrop_subset numeral_nat(7) plus_1_eq_Suc)
+                            done
+                          apply simp
+                          done
+                        done
+                      subgoal premises
+                        using prems2(7) apply -
+                        apply (induct batch)
+                         apply auto
+                        apply (metis Diff_empty empty_set list.map_disc_iff list.simps(15) rmdups_insert_NilI set_rmdups)
+                        done
+                      done
 
-(* Something is wrong with the goal, inps doest not have the max yet   *)
-                    find_theorems lshift Nil
+                    
+
+
+
+                  find_theorems caps sorted
+
+
+
+        
 
 end
-                  apply (drule lzip_lshift_D)
-                  apply safe
-                  apply (auto simp add: split_beta lnull_def split: list.splits llist.splits)
-                  apply (subst ldropn_lshift)
-                   apply simp
-                  apply (simp add: llist.map_comp lmap_eq_LCons_conv)
-                    apply (drule sym[of _ "lzip _ _"])
-                    apply (auto simp add: lzip_eq_LCons_conv)
-                    subgoal for a list xs ys xs'b ys'
-                      apply (cases x; simp)
-
-                    find_theorems LCons lzip
+             
 
 
-                  
-                  find_theorems "lzip _ _ = LCons _ _"
-
-                  find_theorems set zip "_ \<in> _" 
-                  
-
-            
+(* next case *)            
 end
             subgoal for y ys'
               using prems(5) apply -
