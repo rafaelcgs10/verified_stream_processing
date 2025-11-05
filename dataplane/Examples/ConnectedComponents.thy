@@ -54,15 +54,16 @@ primrec list_span where
   \<open>list_span _ [] = ([], [])\<close>
 | \<open>list_span P (x # xs) = (let (ys, zs) = list_span P xs in if P x then (x # ys, zs) else ([], xs))\<close>
 
-lemma list_span_length_le[termination_simp]:
+lemma list_span_length_le:
   \<open>(ys, zs) = list_span P xs \<Longrightarrow> length ys \<le> length xs\<close>
   \<open>(ys, zs) = list_span P xs \<Longrightarrow> length zs \<le> length xs\<close>
   by (induction xs arbitrary: ys zs) (auto split: if_splits prod.splits)
 
-fun group_by where
+function group_by where
   \<open>group_by _ [] = []\<close>
 | \<open>group_by f (x # xs) = (let (ys, zs) = list_span (f x) xs in (x # ys) # (group_by f zs))\<close>
-
+  by pat_completeness auto
+termination by (lexicographic_order simp add: list_span_length_le)
 (*
 primrec remdups_f where
   \<open>remdups_f f [] = []\<close>
@@ -125,17 +126,18 @@ definition update_label :: \<open>('t \<Rightarrow> 'v :: linorder \<Rightarrow>
   (let f = if is_Nil tis then label t else unions_with min (map label tis)
   in label(t := f(b := min (f b) a)))\<close>
 
-(* TODO Check minting of capabilities, on proper ports. *)
-(* TODO Finish definition when checking the frontiers (before outputting). *)
-declare [[unify_search_bound = 420]]
+(* Note: I assume that the timestamps of data read on port "Some 0" are of the form "MyPair t1 0",
+i.e., the second component is assumed to be always 0. *)
+declare [[unify_search_bound = 100]]
 corec label_prop_op where
   \<open>label_prop_op os caps tis G vs label = choice6
   (Read None (\<lambda>st. case st of Inl (Inr f) \<Rightarrow> label_prop_op (os\<lparr>front := f\<rparr>) caps tis G vs label | _ \<Rightarrow> \<oslash>))
   (Read (Some (0 :: 2)) (\<lambda>x. case x of
     Inr (Inr (s, d), t) \<Rightarrow>
       let t1 = myfst t;
-          t' = MyPair t1 0;
-          (caps', os') = if t1 \<in> set (map myfst (caps (0 :: 1))) then (caps, os) else (caps(0 := caps 0 @ [t']), mint_cap os 0 t');
+          (caps', os') = if t \<in> set caps
+            then (caps, os)
+            else (insort_insert_key myfst t caps, mint_cap (mint_cap os 0 t) 1 t);
           os'' = consume os' 0 t 1;
           G' = G(t1 := (G t1)(s := List.insert d (G t1 s), d := List.insert s (G t1 d)));
           (a, b) = (min s d, max s d);
@@ -159,14 +161,13 @@ corec label_prop_op where
           os'' = produces os' batch
     in label_prop_op os'' caps tis G vs label'
   | _ \<Rightarrow> \<oslash>))
-  (let A = front os 0 + front os 1;
-       dropped_caps = map (\<lambda>t. Cap t 0) (filter undefined (caps 0));
-       caps' = caps(0 := filter undefined (caps 0));
-       output_caps = sort_key (myfst \<circ> time) dropped_caps;
-       batch = map (\<lambda>cap. let t = myfst (time cap) in
-        (Inl (group_by (\<lambda>v u. label t v = label t u) vs), cap)) output_caps;
+  (let P = \<lambda>t. \<forall>n. \<not> frontier_less_equal (front os 0 + front os 1) (MyPair (myfst t) n);
+       output_caps = filter P caps;
+       caps' = filter (Not \<circ> P) caps;
+       batch = map (\<lambda>cap. let t1 = myfst (time cap) in
+        (Inl (group_by (\<lambda>v u. label t1 v = label t1 u) vs), cap)) (map (\<lambda>t. Cap t 0) output_caps);
        os' = produces os batch;
-       os'' = drop_caps os' dropped_caps
+       os'' = drop_caps os' (map (\<lambda>t. Cap t 0) output_caps @ map (\<lambda>t. Cap t 1) output_caps)
   in Silent (label_prop_op os'' caps' tis G vs label))
   (Choice (cimage (\<lambda>p. case outpu os p of
     x # xs \<Rightarrow> send_output (label_prop_op (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) caps tis G vs label) p x)
@@ -206,10 +207,10 @@ abbreviation label_incr_loop_op where
   (loop_op [Inr (2 :: 3, 1 :: 2) \<mapsto> Inr (1 :: 3, 0 :: 2)] buf2 (label_incr_op os1 caps tis G vs label buf1 incr os2))\<close>
 
 abbreviation cc_op where
-  \<open>cc_op os1 caps1 ins os2 caps2 tis G vs label buf1 incr os3 buf2 buf3 \<equiv>
+  \<open>cc_op os1 caps1 ins buf1 os2 caps2 tis G vs label buf2 incr os3 buf3 \<equiv>
   map_op (case_sum id id) (case_sum id id)
-  (comp_op [Inr (0 :: 3, 0 :: 2) \<mapsto> Inr (1 :: 3, 0 :: 2)] buf3 (inp_op' os1 caps1 ins)
-    (label_incr_loop_op os2 caps2 tis G vs label buf1 incr os3 buf2))\<close>
+  (comp_op [Inr (0 :: 3, 0 :: 2) \<mapsto> Inr (1 :: 3, 0 :: 2)] buf1 (inp_op' os1 caps1 ins)
+    (label_incr_loop_op os2 caps2 tis G vs label buf2 incr os3 buf3))\<close>
 
 abbreviation cc_edges where
   \<open>cc_edges \<equiv> (\<lambda>l.
@@ -240,4 +241,16 @@ abbreviation cc_summary where
   else if l1 = Loc 2 (Src 0) \<and> l2 = Loc 1 (Trg 1)
   then antichain {MyPair 0 1}
   else {}\<^sub>A)\<close>
+
+lemma
+  \<open>edges sg = cc_edges \<Longrightarrow>
+  summ sg = cc_summary \<Longrightarrow>
+  \<forall>x \<in> lset (ins 0). (case x of Data t d \<Rightarrow> mysnd t = 0 \<and> is_Inr d | Watermark wm \<Rightarrow> mysnd wm = 0) \<Longrightarrow>
+  monotone (ins 0) WM \<Longrightarrow>
+  \<forall>x \<in> set (buf1 (Inr (1, 0))) \<union> set (buf2 (Inr (2, 0))) \<union> set (buf3 ((Inr (1, 0)))). is_Inr x \<and> is_Inr (fst (projr x)) \<Longrightarrow>
+  sorted (map myfst caps2) \<Longrightarrow>
+  dataflow_op sg (cc_op os1 caps1 ins buf1 os2 caps2 tis G vs label buf2 incr os3 buf3)
+  \<approx> map_op (Pair 1) (Pair 1) (source_op ins')\<close>
+  oops
+
 end
