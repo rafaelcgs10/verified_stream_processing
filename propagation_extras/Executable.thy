@@ -259,9 +259,13 @@ lemma update_zmultiset_replicate:
 
 lemma update_zmultiset_singleton:
   "update_zmultiset {#}\<^sub>z t (- 1) = - {# t #}\<^sub>z"
-   "update_zmultiset {#}\<^sub>z t' (1) = {# t' #}\<^sub>z"
+  "update_zmultiset {#}\<^sub>z t' (1) = {# t' #}\<^sub>z"
   by (simp add: update_zmultiset_replicate)+
 
+lemma update_zmultiset_one:
+  "update_zmultiset A t (- 1) = A - {# t #}\<^sub>z"
+  "update_zmultiset A t' (1) = A + {# t' #}\<^sub>z"
+  by (simp add: update_zmultiset_replicate)+
 
 lemma update_zmultiset_comm:
   "update_zmultiset (update_zmultiset A x m) y n = update_zmultiset (update_zmultiset A y n) x m"

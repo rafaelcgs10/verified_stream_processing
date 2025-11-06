@@ -2879,6 +2879,33 @@ lemma zmset_map_snd_concat:
   apply (smt (verit, del_insts) Executable.update_zmultiset_plus ab_group_add_class.ab_diff_conv_add_uminus diff_add_eq_diff_diff_swap right_minus_eq update_zmultiset_plus_comm)
   done
 
+lemma zmset_of_image_mset:
+  "zmset_of (f `# mset_set A) = image_zmset f (zmset_of (mset_set A))"
+  unfolding zmultiset_eq_iff
+  apply (clarsimp simp add: count_image_mset zcount_image_zmset)
+  apply (metis (no_types, lifting) Collect_cong Int_def mem_zmset_of)
+  done
+
+
+lemma zmset_of_Suc_minus:
+  "zmset_of (Suc `# mset_set {n..n + m}) - zmset_of (mset_set {n..n + m}) + {#n#}\<^sub>z =
+   {#Suc (n + m)#}\<^sub>z"
+  unfolding zmultiset_eq_iff
+  apply (auto simp add:  count_mset_set_finite_iff vimage_Suc_insert_Suc count_image_mset)
+  apply (subst Int_absorb2)
+   apply clarsimp
+  apply (metis card_1_singleton_iff list_decode.cases order_antisym vimage_Suc_insert_Suc vimage_empty zero_order(1))
+  done
+
+lemma zmset_of_Suc_minus_empty:
+  "zmset_of (Suc `# mset_set {n..<n + m}) - zmset_of (mset_set {n..n + m}) + {#n#}\<^sub>z = {#}\<^sub>z"
+  unfolding zmultiset_eq_iff
+  apply (auto simp add:  count_mset_set_finite_iff vimage_Suc_insert_Suc count_image_mset)
+  apply (subst Int_absorb2)
+   apply clarsimp
+  apply (metis card_1_singleton_iff list_decode.cases order_antisym vimage_Suc_insert_Suc vimage_empty zero_order(1))
+  done
+
 lemma
   \<open>summ sg = my_summ \<Longrightarrow>
    edges sg = (\<lambda> l. if l = Loc 0 (Src 1) then [Loc 1 (Trg 1)] else []) \<Longrightarrow>
@@ -7528,31 +7555,198 @@ next *)
                       apply (auto 0 0 simp add: zmset_map_snd_concat zmset_map_one_zmset_of zmset_map_minus_one_zmset_of produce_def dataflow_topology_implied_frontier_alt_my_summ propagate_pointstamps_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def dest!: propagate_all_preserves_c_pts split: option.splits; hypsubst_thin?)
                       apply (simp flip: add.assoc)
                       apply (simp add: add.assoc)
-                      apply (cases zs)
+                      unfolding input_cap_def
+                      apply simp
+                      apply (subst (asm) (2 3) if_not_P)
                       subgoal
-                        unfolding input_cap_def
-                        apply simp
-                        apply (subst (asm) (3) if_not_P)
-                        subgoal
-                          using prems2(6) by force
+                        using prems2(6) by (metis llist.distinct(2) lshift.elims lzip_eq_LNil_conv)
+                      subgoal
+                        using prems2(6) by (metis llist.distinct(2) lshift.elims lzip_eq_LNil_conv)
+                      subgoal
+                        apply (simp add: update_zmultiset_one zmset_of_image_mset flip: add.assoc)
+                        apply (subst (asm) add_zmset_commute)
+                        apply (subst (asm) (1 2 3) add_zmset_add_single)
+                        apply (subgoal_tac "
+Auxiliary.image_zmset Suc (zmset_of (mset_set {n 1..<trivial_dataflow_topology_interpretation.followed_by (n 1) (length zs)})) -
+                (zmset_of (mset_set {n 1..<trivial_dataflow_topology_interpretation.followed_by (n 1) (length zs)}) + {#trivial_dataflow_topology_interpretation.followed_by (n 1) (length zs)#}\<^sub>z) +
+                {#Suc (trivial_dataflow_topology_interpretation.followed_by (n 1) (length zs))#}\<^sub>z +
+                {#n 1#}\<^sub>z =
+Auxiliary.image_zmset Suc (zmset_of (mset_set {n 1..trivial_dataflow_topology_interpretation.followed_by (n 1) (length zs)})) -
+                (zmset_of (mset_set {n 1..trivial_dataflow_topology_interpretation.followed_by (n 1) (length zs)})) +
+                {#n 1#}\<^sub>z")
+                         defer 
+                        subgoal premises
+                          apply (simp flip: atLeastLessThanSuc_atLeastAtMost)
+                          apply (subst (1 2) atLeastLessThanSuc)
+                          apply auto
+                          done
                         subgoal
                           apply simp
+                          apply (subgoal_tac "
+add_zmset (n 1)
+                 (Auxiliary.image_zmset Suc (zmset_of (mset_set {n 1..trivial_dataflow_topology_interpretation.followed_by (n 1) (length zs)})) -
+                  zmset_of (mset_set {n 1..trivial_dataflow_topology_interpretation.followed_by (n 1) (length zs)})) =
+{#Suc (trivial_dataflow_topology_interpretation.followed_by (n 1) (length zs))#}\<^sub>z")
+                           defer
+                          subgoal premises
+                            apply (subst add_zmset_add_single)
+                            apply (simp only: zmset_of_Suc_minus flip: zmset_of_image_mset)
+                            done
+                          apply simp
+                          apply (subgoal_tac "
+c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (produ os1)) +
+                Auxiliary.image_zmset (trivial_dataflow_topology_interpretation.followed_by (n 1)) (Auxiliary.image_zmset length (zmset_of (replicate_mset (length batch) zs))) +
+                (- zmset (map snd (consu os2)) - zmset_of {#t. x \<in># mset batch#}) = {#}\<^sub>z")
+                          subgoal
+                            apply simp
+                            unfolding frontier_less_equal_iff2
+                            apply (auto simp add: frontier_singleton dest!: antichain_singletonD)
+                            subgoal premises prems5
+                              using prems5(15) prems2(6) apply -
+                              apply (auto simp add: Suc_le_eq lzip_eq_LCons_conv dest!: lzip_lshift_D)
+                              apply hypsubst_thin
+                              apply (auto simp add: lshift_ltake_ldrop)
+                              apply (drule sym[of "LCons (batch, t) xs''"])
+                              apply (auto simp add: lzip_eq_LCons_conv ldrop_iterates dest!: lzip_lshift_D)
+                              apply hypsubst_thin
+                              subgoal premises prems6 for ys xs' ys'
+                                using prems6(1,5) apply -
+                                apply (subst (asm) iterates)
+                                apply auto
+                                apply (metis One_nat_def funpow_Suc_conv less_irrefl_nat plus_1_eq_Suc)
+                                done
+                              done
+                            done
+                          subgoal premises prems5
+                            using prems2(6) apply -
+                            apply (auto simp add: Suc_le_eq lzip_eq_LCons_conv dest!: lzip_lshift_D)
+                            apply hypsubst_thin
+                            apply (auto simp add: lshift_ltake_ldrop)
+                            apply (drule sym[of "LCons (batch, t) xs''"])
+                            apply (auto simp add: lzip_eq_LCons_conv ldrop_iterates dest!: lzip_lshift_D)
+                            apply hypsubst_thin
+                            apply (subst (asm) (2) iterates)
+                            apply auto
+                            apply hypsubst_thin
+                            subgoal premises prems6 for ys xs'
+                              apply (auto simp flip: zmset_of_replicate_mset)
+                              apply (subgoal_tac "min (length (list_of (ltake (enat (length ys)) (inps 1)))) (length ys) = length ys")
+                              subgoal
+                                apply (simp del: zmset_of_replicate_mset add: image_mset_const_eq)
+                                apply (subgoal_tac "c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (produ os1)) - zmset (map snd (consu os2)) = {#}\<^sub>z")
+                                subgoal
+                                  apply (clarsimp simp del: zmset_of_replicate_mset)
+                                  using Suc_funpow numeral_nat(7) plus_1_eq_Suc apply presburger
+                                  done
+                                subgoal premises prems6
+                                  using prems(1,2,5,9,10,11,12) prems2(3) apply -
+                                  unfolding max_from_caps_buf_def extract_progress_def
+                                  apply (auto simp add: zmultiset_move_add_other_side c_pts_change_multiplicities dest!: rmdups_NilD)
+                                  done
+                                done
+                              subgoal
+                                by (simp add: prems6(1))
+                              done
+                            done
+                          done
+                        done
+                      done
 
-                        find_theorems inps
-
-                    find_theorems zmset map snd
-                    
-
-
-
-                  find_theorems caps sorted
-
-
-
-        
-
-end
-             
+subgoal
+                      apply (intro impI)
+                      using prems(1,2,3,9,10,11,12,14,13) prems2(1,2,3) apply -
+                      apply (auto 0 0 simp add: zmset_map_snd_concat zmset_map_one_zmset_of zmset_map_minus_one_zmset_of produce_def dataflow_topology_implied_frontier_alt_my_summ propagate_pointstamps_def extract_progress_def change_multiplicities_append_comp c_pts_change_multiplicities comp_def dest!: propagate_all_preserves_c_pts split: option.splits; hypsubst_thin?)
+                      apply (simp flip: add.assoc)
+                      apply (simp add: add.assoc)
+                      unfolding input_cap_def
+                      apply simp
+                      apply (subst (asm) (2 3) if_not_P)
+                      subgoal
+                        using prems2(6) by (metis llist.distinct(2) lshift.elims lzip_eq_LNil_conv)
+                      subgoal
+                        using prems2(6) by (metis llist.distinct(2) lshift.elims lzip_eq_LNil_conv)
+                      subgoal
+                        apply (simp add: update_zmultiset_one zmset_of_image_mset flip: add.assoc)
+                        apply (subst (asm) (1 2 3) add_zmset_add_single)
+                        apply (subgoal_tac "
+Auxiliary.image_zmset Suc (zmset_of (mset_set {n 1..<trivial_dataflow_topology_interpretation.followed_by (n 1) (length zs)})) -
+                (zmset_of (mset_set {n 1..<trivial_dataflow_topology_interpretation.followed_by (n 1) (length zs)}) + {#trivial_dataflow_topology_interpretation.followed_by (n 1) (length zs)#}\<^sub>z) +
+                {#n 1#}\<^sub>z =
+Auxiliary.image_zmset Suc (zmset_of (mset_set {n 1..<trivial_dataflow_topology_interpretation.followed_by (n 1) (length zs)})) -
+                (zmset_of (mset_set {n 1..trivial_dataflow_topology_interpretation.followed_by (n 1) (length zs)})) +
+                {#n 1#}\<^sub>z")
+                         defer 
+                        subgoal premises
+                          apply (simp flip: atLeastLessThanSuc_atLeastAtMost)
+                          apply (subst (1) atLeastLessThanSuc)
+                          apply auto
+                          done
+                        subgoal
+                          apply (simp only: )
+                          apply (subgoal_tac "
+Auxiliary.image_zmset Suc (zmset_of (mset_set {n 1..<trivial_dataflow_topology_interpretation.followed_by (n 1) (length zs)})) -
+                zmset_of (mset_set {n 1..trivial_dataflow_topology_interpretation.followed_by (n 1) (length zs)}) +
+                {#n 1#}\<^sub>z =
+{#}\<^sub>z")
+                           defer
+                          subgoal premises
+                            by (simp only: zmset_of_Suc_minus_empty flip: zmset_of_image_mset)
+                          apply simp
+                          apply (subgoal_tac "
+c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (produ os1)) +
+                Auxiliary.image_zmset (trivial_dataflow_topology_interpretation.followed_by (n 1)) (Auxiliary.image_zmset length (zmset_of (replicate_mset (length batch) zs))) +
+                (- zmset (map snd (consu os2)) - zmset_of {#t. x \<in># mset batch#}) = {#}\<^sub>z")
+                          subgoal
+                            apply simp
+                            unfolding frontier_less_equal_iff2
+                                using mem_antichain_nonempty apply blast
+                                done
+                          subgoal premises prems5
+                            using prems2(6) apply -
+                            apply (auto simp add: Suc_le_eq lzip_eq_LCons_conv dest!: lzip_lshift_D)
+                            apply hypsubst_thin
+                            apply (auto simp add: lshift_ltake_ldrop)
+                            apply (drule sym[of "LCons (batch, t) xs''"])
+                            apply (auto simp add: lzip_eq_LCons_conv ldrop_iterates dest!: lzip_lshift_D)
+                            apply hypsubst_thin
+                            apply (subst (asm) (2) iterates)
+                            apply auto
+                            apply hypsubst_thin
+                            subgoal premises prems6 for ys xs'
+                              apply (auto simp flip: zmset_of_replicate_mset)
+                              apply (subgoal_tac "min (length (list_of (ltake (enat (length ys)) (inps 1)))) (length ys) = length ys")
+                              subgoal
+                                apply (simp del: zmset_of_replicate_mset add: image_mset_const_eq)
+                                apply (subgoal_tac "c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (produ os1)) - zmset (map snd (consu os2)) = {#}\<^sub>z")
+                                subgoal
+                                  apply (clarsimp simp del: zmset_of_replicate_mset)
+                                  using Suc_funpow numeral_nat(7) plus_1_eq_Suc apply presburger
+                                  done
+                                subgoal premises prems6
+                                  using prems(1,2,5,9,10,11,12) prems2(3) apply -
+                                  unfolding max_from_caps_buf_def extract_progress_def
+                                  apply (auto simp add: zmultiset_move_add_other_side c_pts_change_multiplicities dest!: rmdups_NilD)
+                                  done
+                                done
+                              subgoal
+                                by (simp add: prems6(1))
+                              done
+                            done
+                          done
+                        done
+                      done
+                    done
+                  subgoal
+                    sorry
+                  subgoal
+                    sorry
+                  done
+                subgoal
+                  sorry
+                done
+              done
+            done
+          done
 
 
 (* next case *)            
