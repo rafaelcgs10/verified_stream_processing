@@ -8483,8 +8483,12 @@ c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (produ os1)) +
                       done
                     done
                   done
-                subgoal
-                  sorry
+                subgoal premises
+                  unfolding comp_def
+                  apply simp
+                  apply (induct batch)
+                   apply auto
+                  done
                 done
               done
             done
