@@ -2910,6 +2910,14 @@ lemma zmset_of_Suc_minus_empty:
   apply (metis card_1_singleton_iff list_decode.cases order_antisym vimage_Suc_insert_Suc vimage_empty zero_order(1))
   done
 
+
+lemma add_zmset_zmset_map_Suc_minus:
+  "add_zmset n (zmset (map (\<lambda>t. (Suc t, 1)) [n..< n + m]) - zmset (map (\<lambda>t. (t, 1)) [n..< n + m])) = {#n + m#}\<^sub>z"
+  apply (induct m arbitrary: n)
+   apply simp_all
+  apply (metis (no_types, lifting) Groups.add_ac(2) diff_add_zmset_swap eq_diff_eq update_zmultiset_singleton(2))
+  done
+
 lemma
   \<open>summ sg = my_summ \<Longrightarrow>
    edges sg = (\<lambda> l. if l = Loc 0 (Src 1) then [Loc 1 (Trg 1)] else []) \<Longrightarrow>
@@ -8268,7 +8276,61 @@ c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (produ os1)) +
                               done
                             done
                           done
-                        subgoal sorry
+                        subgoal
+                          apply (rule wb_upto_b_sym)
+                          apply (rule wb_upto_b_base)
+                          apply (intro conjI exI; (rule refl)?; (simp add: comp_def prems)?)
+                          subgoal
+                            apply (rule arg_cong3[where f=map_op])
+                              apply (simp_all add: comp_def)
+                            apply (rule arg_cong[where f=source_op])
+                            apply (rule ext)+
+                            apply (clarsimp simp add: comp_def)
+                            subgoal premises prems3
+                              using prems(4,5,6) prems2(2,3) prems3(1) apply -
+                              apply (subst (1 2) drop_all)
+                                apply (simp_all add: BULK_BENQ_def)
+                              unfolding max_from_caps_buf_def
+                                apply (auto dest!: rmdups_NilD split: list.splits)
+                              apply (metis all_not_in_conv lmap_eq_LNil lset_LNil)
+                              done
+                            done
+                          subgoal
+                            using prems(4,5,6) prems2(2,3) apply -
+                            unfolding max_from_caps_buf_def
+                            apply (auto simp add: BULK_BENQ_def comp_def dest!: rmdups_NilD)
+                            done
+                          subgoal
+                            using prems(1,2,3,4,5,6,9,10,11,12) prems2(2,3,6) apply -
+                            unfolding max_from_caps_buf_def extract_progress_def produce_def
+                            apply (auto simp add: propagate_all_preserves_c_pts_alt c_pts_change_multiplicities BULK_BENQ_def comp_def simp flip: zmset_of_replicate_mset dest!: rmdups_NilD)
+                            apply hypsubst_thin
+                            apply (auto simp add: Suc_le_eq lzip_eq_LCons_conv dest!: lzip_lshift_D)
+                            apply hypsubst_thin
+                            apply (auto simp add: lshift_ltake_ldrop)
+                            apply (drule sym[of "LCons (batch, t) xs''"])
+                            apply (auto simp add: lzip_eq_LCons_conv ldrop_iterates dest!: lzip_lshift_D)
+                            apply hypsubst_thin
+                            apply (subst (asm) (2) iterates)
+                            apply auto
+                            apply (auto simp add: image_mset_const_eq Suc_funpow Groups.add_ac zmset_map_minus_one_zmset_of propagate_all_preserves_c_pts_alt c_pts_change_multiplicities BULK_BENQ_def comp_def simp flip: zmset_of_replicate_mset dest!: rmdups_NilD)
+                            apply hypsubst_thin
+                            subgoal for ys xs'
+                              by (metis (no_types, lifting) Groups.add_ac(2) One_nat_def Suc_funpow arith_extra_simps(12) group_cancel.sub1 more_arith_simps(4) plus_1_eq_Suc uminus_add_conv_diff_mset)
+                            done
+                          subgoal
+                            using prems(1,2,3,4,5,6,9,10,11,12,13) prems2(2,3,6) apply -
+                            unfolding max_from_caps_buf_def extract_progress_def produce_def input_cap_def
+                            apply (subst (asm) (2) if_not_P)
+                            subgoal 
+                              using prems2(6) 
+                              by (metis LNil_eq_shift_iff llist.distinct(2) lzip_simps(1) zero_one)
+                            subgoal
+                              by (auto simp add: add_zmset_zmset_map_Suc_minus image_mset_const_eq update_zmultiset_one zmset_map_snd_concat propagate_all_preserves_c_pts_alt c_pts_change_multiplicities BULK_BENQ_def comp_def simp flip: add.assoc zmset_of_replicate_mset dest!: rmdups_NilD split: if_splits)
+                              done
+
+end
+                          sorry
                         done
                       done
                     subgoal sorry
