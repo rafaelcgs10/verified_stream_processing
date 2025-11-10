@@ -2922,7 +2922,7 @@ lemma add_zmset_zmset_map_Suc_minus:
   apply (metis (no_types, lifting) Groups.add_ac(2) diff_add_zmset_swap eq_diff_eq update_zmultiset_singleton(2))
   done
 
-lemma
+lemma dataflow_op_inp_m_top_source_op_aux:
   \<open>summ sg = my_summ \<Longrightarrow>
    edges sg = (\<lambda> l. if l = Loc 0 (Src 1) then [Loc 1 (Trg 1)] else []) \<Longrightarrow>
    consu os1 = [] \<Longrightarrow>
@@ -14877,7 +14877,7 @@ c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (produ os1)) +
         done
       done
   qed
-
+qed
 
 
 
