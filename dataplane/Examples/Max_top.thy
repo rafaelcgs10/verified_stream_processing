@@ -14899,10 +14899,10 @@ abbreviation "init_subgraph' summary cgs \<equiv>
    edges = (\<lambda> l1. [l2 \<leftarrow> enum_class.enum. \<not> is_empty_antichain (summary l1 l2) \<and> is_Src (port l1) \<and> is_Trg (port l2) ]),
    summ = summary \<rparr>"
 
-abbreviation "my_sg \<equiv> init_subgraph' my_summ [(Loc 0 (Src 0), 0, 1)]"
+abbreviation "my_sg inps \<equiv> init_subgraph' my_summ (if inps = LNil then [] else [(Loc 0 (Src 0), 0, 1)])"
 
-abbreviation "os1 \<equiv> init_op_state (\<lambda> p. frontier (c_imp (pt_tr my_sg) (Loc 0 (Trg p))))"
-abbreviation "os2 \<equiv> init_op_state (\<lambda> p. frontier (c_imp (pt_tr my_sg) (Loc 1 (Trg p))))"
+abbreviation "os1 inps \<equiv> init_op_state (\<lambda> p. frontier (c_imp (pt_tr (my_sg inps)) (Loc 0 (Trg p))))"
+abbreviation "os2 inps \<equiv> init_op_state (\<lambda> p. frontier (c_imp (pt_tr (my_sg inps)) (Loc 1 (Trg p))))"
 
 abbreviation "st1 \<equiv> \<lparr>cons = [], inte = [], prod = []\<rparr>"
 abbreviation "st2 \<equiv> \<lparr>cons = [], inte = [], prod = []\<rparr>"
@@ -14910,20 +14910,16 @@ abbreviation "st2 \<equiv> \<lparr>cons = [], inte = [], prod = []\<rparr>"
 find_theorems change_multiplicities Cons
 
 thm dataflow_op_inp_m_top_source_op_aux
-[where inps=inps and n="\<lambda> _. 0" and caps=Nil and xs="\<lambda> _. []" and ys="\<lambda> _. []", of my_sg os1 os2 "\<lambda> _. []" "\<lambda> _. []" os1 st1 os2 st2,
- unfolded max_from_caps_buf_def extract_progress_def changes_non_zero_def changes_above_impl_def change_multiplicities_simp_alt propagate_all_preserves_c_pts_alt, simplified]
+[where inps=inps and n="\<lambda> _. 0" and caps=Nil and xs="\<lambda> _. []" and ys="\<lambda> _. []", of "my_sg inps" "os1 inps" "os2 inps" "\<lambda> _. []" "\<lambda> _. []" "os1 inps" st1 "os2 inps" st2,
+ unfolded max_from_caps_buf_def extract_progress_def changes_non_zero_def changes_above_impl_def change_multiplicities_simp_alt propagate_all_preserves_c_pts_alt, simplified, no_vars]
+
 
 find_theorems c_pts the
 
 term "compile_dataflow_tree_aux n "
 
-lemma compile_dataflow_tree_aux_Logic_simp[simp]:
-  "compile_dataflow_tree_aux n (Logic op su) = (n + 1, \<lambda> l1 l2. 
-    if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
-    then su (port l1) (port l2)
-    else frontier {#}\<^sub>z, map_op (case_option (Inl n) (\<lambda> p. Inr (n, p))) (case_option (Inl n) (\<lambda> p. Inr (n, p))) op)"
-  apply auto
-  done
+
+thm compile_dataflow_tree_aux.simps(2)[where wire="[(0, 1) \<mapsto> (1, 1)]" and n=0, unfolded Let_def, no_vars]
 
 lemma compile_dataflow_tree_Logic:
   "compile_dataflow_tree (Logic op default_internal_summary) = 
@@ -14939,29 +14935,358 @@ lemma compile_dataflow_tree_Logic:
   done
 
 
-(* 
 
-lemma compile_dataflow_tree_aux_Logic_simp[simp]:
-  "compile_dataflow_tree_aux n (Logic op) = (n + 1, \<lambda> l1 l2.
-    if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2)
-    then frontier (abs_zmultiset (mset [0], {#}))
-    else frontier {#}\<^sub>z, map_op (case_option (Inl n) (\<lambda> p. Inr (n, p))) (case_option (Inl n) (\<lambda> p. Inr (n, p))) op)"
+lemma propagate_all_empty_conf[simp]:
+  "the (propagate_all my_summ empty_conf) = empty_conf"
+  unfolding propagate_all_def comp_def
+  by (simp add: while_option_unfold worklist_is_empty_def)
+
+lemma zmultiset_of_antichain_empty[simp]:
+  "zmultiset_of_antichain {}\<^sub>A = {#}\<^sub>z"
+  apply transfer
+  unfolding equiv_zmset_def
   apply auto
   done
 
-lemma compile_dataflow_tree_Logic:
-  "compile_dataflow_tree (Logic op) =
-  (\<lambda> l1 l2.
-    if 1 = node l1 \<and> (1 :: 1) = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2)
-    then frontier (abs_zmultiset (mset [0], {#}))
-    else frontier {#}\<^sub>z, map_op (case_option (Inl 1) (\<lambda> p. Inr (1, p))) (case_option (Inl 1) (\<lambda> p :: 1. Inr (1, p))) op)"
-  unfolding compile_dataflow_tree_def
-  apply (simp only: Let_def compile_dataflow_tree_aux.simps prod.case)
-  apply (subst (7) if_P)
-  apply eval
- apply simp
+lemma change_multiplicities_empty_conf[simp]:
+  "change_multiplicities my_summ [(Loc 0 (Src 1), 0, 1)] empty_conf =
+   \<lparr>c_work = (\<lambda> l. if l = Loc 0 (Src 1) then {# 0 #}\<^sub>z else {#}\<^sub>z), c_pts = (\<lambda> l. if l = Loc 0 (Src 1) then {# 0 #}\<^sub>z else {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
+  unfolding change_multiplicities_def
+  apply auto
+  subgoal
+    apply (rule ext)+
+    apply clarsimp
+    apply transfer'
+    unfolding update_zmultiset_singleton frontier_singleton
+    apply auto
+    done
+ subgoal
+    apply (rule ext)+
+    apply clarsimp
+    apply transfer'
+    unfolding update_zmultiset_singleton frontier_singleton
+    apply auto
+    done
   done
- *)
-  find_theorems sorted caps
+
+lemma my_summ_code[code]:
+  "my_summ = my_summ'"
+  unfolding my_summ_def my_summ'_def
+  apply (rule ext)+
+  subgoal for l1 l2
+    apply simp
+    apply (subst (1 2 3 4 5 6) zmultiset_of_antichain.abs_eq[symmetric, where x="{0}", simplified])
+    subgoal
+      unfolding incomparable_def eq_onp_def
+      by auto[1]
+      apply (metis dataflow_topology_from_tree.zmset_of_lemma frontier_idempotent frontier_singleton)
+    done
+  done
+
+
+
+lemma c_imp_the_propagate_all_my_summ:
+  "c_imp (the (propagate_all my_summ \<lparr>c_work = (\<lambda> l. if l = Loc 0 (Src 1) then {# 0 #}\<^sub>z else {#}\<^sub>z), c_pts = (\<lambda> l. if l = Loc 0 (Src 1) then {# 0 #}\<^sub>z else {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>)) =
+   (\<lambda> l. if l = Loc 1 (Trg 1) \<or> l = Loc 1 (Src 1) \<or> l = Loc 0 (Src 1) then {# 0 #}\<^sub>z else {#}\<^sub>z)"
+  apply (rule ext)
+  subgoal for l
+    using loc_2_1_cases[where l=l] apply -
+    apply (elim disjE; hypsubst_thin?)
+    subgoal
+      apply simp
+      unfolding zequal_equal[symmetric]
+      apply eval
+      done
+    subgoal
+      apply simp
+      unfolding zequal_equal[symmetric]
+      apply eval
+      done
+    subgoal
+      apply simp
+      unfolding zequal_equal[symmetric]
+      apply eval
+      done
+    subgoal
+      apply simp
+      unfolding zequal_equal[symmetric]
+      apply eval
+      done
+    done
+  done
+
+lemma c_work_the_propagate_all_my_summ:
+  "c_work (the (propagate_all my_summ \<lparr>c_work = (\<lambda> l. if l = Loc 0 (Src 1) then {# 0 #}\<^sub>z else {#}\<^sub>z), c_pts = (\<lambda> l. if l = Loc 0 (Src 1) then {# 0 #}\<^sub>z else {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>)) =
+   (\<lambda> l. {#}\<^sub>z)"
+ apply (rule ext)
+  subgoal for l
+    using loc_2_1_cases[where l=l] apply -
+    apply (elim disjE; hypsubst_thin?)
+    subgoal
+      unfolding zequal_equal[symmetric]
+      apply eval
+      done
+    subgoal
+      unfolding zequal_equal[symmetric]
+      apply eval
+      done
+    subgoal
+      unfolding zequal_equal[symmetric]
+      apply eval
+      done
+    subgoal
+      unfolding zequal_equal[symmetric]
+      apply eval
+      done
+    done
+  done
+
+         
+abbreviation "op1 inps \<equiv> Logic (input_top (os1 (inps 1)) (\<lambda> _. 0) inps) default_internal_summary"
+abbreviation "op2 inps \<equiv> Logic (max_top' (os2 (inps 1)) (\<lambda> _. []) []) default_internal_summary"
+
+abbreviation "opf inps \<equiv> snd (compile_dataflow_tree (Comp [(0, 1) \<mapsto> (0, 1)] (op1 inps) (op2 inps)))"
+
+lemma dataflow_op_inp_m_top_source_op:
+ "dataflow_op (my_sg (inps 1)) (opf inps) \<approx>
+  map_op (\<lambda>p :: 1. (1, 1)) (\<lambda>p :: 1. (1, 1)) (source_op
+   (\<lambda>p. Coinductive_List_Auxiliary.lconcat
+         (lmap (\<lambda>z. case z of (xs, t) \<Rightarrow> case xs of [] \<Rightarrow> [] | a # list \<Rightarrow> [(Max (set xs), t)])
+           (lzip (inps 1) (iterates (trivial_dataflow_topology_interpretation.followed_by (Suc 0)) 0)))))"
+  unfolding compile_dataflow_tree_def Let_def
+  apply (simp only: implementation_graph_checker_correct weights_to_graph_fun_def Let_def compile_dataflow_tree_aux.simps prod.case)
+  apply (subst (22) if_P)
+   apply simp_all
+  subgoal
+    by eval
+  subgoal
+    unfolding comp_def
+    apply (intro conjI impI)
+    subgoal
+      using dataflow_op_inp_m_top_source_op_aux
+        [where inps=inps and n="\<lambda> _. 0" and caps=Nil and xs="\<lambda> _. []" and ys="\<lambda> _. []", of "my_sg (inps 1)" "os1 (inps 1)" "os2 (inps 1)" "\<lambda> _. []" "\<lambda> _. []" "os1 (inps 1)" st1 "os2 (inps 1)" st2,
+          unfolded max_from_caps_buf_def extract_progress_def changes_non_zero_def changes_above_impl_def change_multiplicities_simp_alt propagate_all_preserves_c_pts_alt, simplified] apply -
+      apply (simp add: propagate_all_preserves_c_pts_alt)
+      apply (drule meta_spec)
+      apply (drule meta_mp)
+      subgoal premises
+        apply (subgoal_tac "\<not> is_empty_antichain (antichain {0 :: nat})")
+        subgoal
+          unfolding my_summ_def  enum_location_def enum_port_def enum_num1_def
+          apply (rule ext)
+          apply clarsimp
+          unfolding enum_location_def  Numeral_Type.enum_bit0_def Abs_bit0'_def one_bit0_def zero_bit0_def zero_bit0_def
+          apply clarsimp
+          apply (metis one_bit0_def rel_simps(93) zero_bit0_def)
+          done
+        subgoal
+          unfolding is_empty_antichain.rep_eq Set.is_empty_def
+          apply (subst antichain.antichain_inverse)
+           apply (auto simp add: incomparable_def)
+          done
+        done
+      apply (drule meta_mp)
+       apply (rule refl)
+      apply (drule meta_mp)
+      unfolding input_cap_def
+       apply simp
+      apply (drule meta_mp)
+       defer
+       apply (drule meta_mp)
+        defer
+        apply (drule meta_mp)
+         defer
+         apply (drule meta_mp)
+          defer
+      subgoal
+        apply (rule wbisim_trans[rotated])
+         apply assumption
+        subgoal premises
+          apply (rule wbisim_refl_alt)
+          apply (rule arg_cong2[where f=dataflow_op])
+           apply simp_all
+          subgoal
+            subgoal
+              apply (subgoal_tac "\<not> is_empty_antichain (antichain {0 :: nat})")
+              subgoal
+                unfolding my_summ_def  enum_location_def enum_port_def enum_num1_def
+                apply (rule ext)
+                apply clarsimp
+                unfolding enum_location_def  Numeral_Type.enum_bit0_def Abs_bit0'_def one_bit0_def zero_bit0_def zero_bit0_def
+                apply clarsimp
+                apply (metis one_bit0_def rel_simps(93) zero_bit0_def)
+                done
+              subgoal
+                unfolding is_empty_antichain.rep_eq Set.is_empty_def
+                apply (subst antichain.antichain_inverse)
+                 apply (auto simp add: incomparable_def)
+                done
+              done
+            done
+          subgoal
+            apply (rule arg_cong3[where f=map_op])
+              apply simp_all
+            apply (rule arg_cong4[where f=comp_op])
+               apply simp_all
+            apply (rule ext)+
+            apply (auto split: sum.splits)
+            done
+          done
+        done
+      subgoal 
+        unfolding dataflow_topology_implied_frontier_alt_my_summ
+        by auto
+      subgoal
+        apply (subst dataflow_topology.inv_imps_work_sum_def)
+         apply auto
+        done
+      subgoal
+        apply (subst trivial_dataflow_topology_interpretation.inv_implications_nonneg_def)
+        apply auto      
+        done
+      subgoal
+        apply (subst trivial_dataflow_topology_interpretation.inv_imp_plus_work_nonneg_def)
+        apply auto
+        done
+      done
+    subgoal
+      using dataflow_op_inp_m_top_source_op_aux
+        [where inps=inps and n="\<lambda> _. 0" and caps=Nil and xs="\<lambda> _. []" and ys="\<lambda> _. []", of "my_sg (inps 1)" "os1 (inps 1)" "os2 (inps 1)" "\<lambda> _. []" "\<lambda> _. []" "os1 (inps 1)" st1 "os2 (inps 1)" st2,
+          unfolded max_from_caps_buf_def extract_progress_def changes_non_zero_def changes_above_impl_def change_multiplicities_simp_alt propagate_all_preserves_c_pts_alt, simplified] apply -
+      apply (simp add: propagate_all_preserves_c_pts_alt)
+      apply (drule meta_spec)
+      apply (drule meta_mp)
+      subgoal premises
+        apply (subgoal_tac "\<not> is_empty_antichain (antichain {0 :: nat})")
+        subgoal
+          unfolding my_summ_def  enum_location_def enum_port_def enum_num1_def
+          apply (rule ext)
+          apply clarsimp
+          unfolding enum_location_def  Numeral_Type.enum_bit0_def Abs_bit0'_def one_bit0_def zero_bit0_def zero_bit0_def
+          apply clarsimp
+          apply (metis one_bit0_def rel_simps(93) zero_bit0_def)
+          done
+        subgoal
+          unfolding is_empty_antichain.rep_eq Set.is_empty_def
+          apply (subst antichain.antichain_inverse)
+           apply (auto simp add: incomparable_def)
+          done
+        done
+      unfolding c_pts_change_multiplicities
+      apply (drule meta_mp)
+       apply (rule refl)
+      apply (drule meta_mp)
+      unfolding input_cap_def
+       apply (simp add: update_zmultiset_singleton(2))
+      apply (drule meta_mp)
+       defer
+       apply (drule meta_mp)
+        defer
+        apply (drule meta_mp)
+         defer
+         apply (drule meta_mp)
+          defer
+      subgoal
+        apply (rule wbisim_trans[rotated])
+         apply assumption
+        subgoal premises
+          apply (rule wbisim_refl_alt)
+          apply (rule arg_cong2[where f=dataflow_op])
+           apply simp_all
+          subgoal
+            subgoal
+              apply (subgoal_tac "\<not> is_empty_antichain (antichain {0 :: nat})")
+              subgoal
+                unfolding my_summ_def  enum_location_def enum_port_def enum_num1_def
+                apply (rule ext)
+                apply clarsimp
+                unfolding enum_location_def  Numeral_Type.enum_bit0_def Abs_bit0'_def one_bit0_def zero_bit0_def zero_bit0_def
+                apply clarsimp
+                apply (metis one_bit0_def rel_simps(93) zero_bit0_def)
+                done
+              subgoal
+                unfolding is_empty_antichain.rep_eq Set.is_empty_def
+                apply (subst antichain.antichain_inverse)
+                 apply (auto simp add: incomparable_def)
+                done
+              done
+            done
+          subgoal
+            apply (rule arg_cong3[where f=map_op])
+              apply simp_all
+            apply (rule arg_cong4[where f=comp_op])
+               apply simp_all
+            apply (rule ext)+
+            apply (auto split: sum.splits)
+            done
+          done
+        done
+      subgoal 
+        apply (subst propagate_all_frontier_c_imp_correctness_alt)
+           apply auto
+        subgoal
+          apply (subst trivial_dataflow_topology_interpretation.inv_implications_nonneg_def)
+          apply auto      
+          done
+        subgoal
+          apply (subst trivial_dataflow_topology_interpretation.inv_imp_plus_work_nonneg_def)
+          apply auto
+          done
+        subgoal
+          apply (subst dataflow_topology.inv_imps_work_sum_def)
+           apply auto
+          apply transfer'
+          unfolding update_zmultiset_singleton frontier_singleton
+          apply auto
+          done
+        unfolding dataflow_topology_implied_frontier_alt_my_summ propagate_all_preserves_c_pts_alt
+        apply auto
+        done
+      subgoal
+        apply (subst dataflow_topology.inv_imps_work_sum_def)
+        unfolding dataflow_topology_implied_frontier_alt_my_summ propagate_all_preserves_c_pts_alt c_imp_the_propagate_all_my_summ c_work_the_propagate_all_my_summ 
+         apply auto
+        subgoal premises
+          unfolding my_summ_def
+          apply auto
+          unfolding frontier_singleton
+          apply (subst antichain_inverse)
+          unfolding incomparable_def
+           apply auto
+          done
+        subgoal premises
+          unfolding my_summ_def
+          apply auto
+          unfolding frontier_singleton
+          apply (subst antichain_inverse)
+          unfolding incomparable_def
+           apply auto
+          done
+        subgoal premises
+          unfolding my_summ_def
+          apply auto
+          unfolding frontier_singleton
+          apply (subst antichain_inverse)
+          unfolding incomparable_def
+           apply auto
+          done
+        subgoal 
+          unfolding my_summ_def
+          by auto
+        done
+      subgoal
+        apply (subst trivial_dataflow_topology_interpretation.inv_implications_nonneg_def)
+        apply auto      
+        unfolding dataflow_topology_implied_frontier_alt_my_summ propagate_all_preserves_c_pts_alt c_imp_the_propagate_all_my_summ c_work_the_propagate_all_my_summ 
+        apply auto
+        done
+      subgoal
+        apply (subst trivial_dataflow_topology_interpretation.inv_imp_plus_work_nonneg_def)
+        unfolding dataflow_topology_implied_frontier_alt_my_summ propagate_all_preserves_c_pts_alt c_imp_the_propagate_all_my_summ c_work_the_propagate_all_my_summ 
+        apply auto
+        done
+      done
+    done
+  done
 
 end
