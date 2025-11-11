@@ -36,13 +36,15 @@ lemma step_increment_top_Read_R[intro]:
   assumes \<open>op = increment_top incr (produce (consume os p t 1) (Cap (t + incr p) p) [d])\<close> \<open>p \<notin> defaults\<close>
   shows \<open>step (Inp (Some p) (Inr (d, t))) (increment_top incr os) op\<close>
 proof -
-  have \<open>Read (Some p) (\<lambda>x. case x of
-      Inl a \<Rightarrow> \<oslash>
-    | Inr (d, t) \<Rightarrow> increment_top incr (produce (consume os p t 1) (Cap (t + incr p) p) [d]))
-  |\<in>| choices (increment_top incr os)\<close>
-    using assms by (subst (2) increment_top.code) auto
-  thus ?thesis
-    using assms Read_in_choices_step[where f=\<open>\<lambda>x. case x of Inr (d, t) \<Rightarrow> increment_top incr (produce (consume os p t 1) (Cap (t + incr p) p) [d]) | _ \<Rightarrow> \<oslash>\<close> and x=\<open>Inr (d, t)\<close>] by auto
+  let ?f = \<open>\<lambda>x. case x of
+      Inr (d, t) \<Rightarrow> increment_top incr (produce (consume os p t 1) (Cap (t + incr p) p) [d])
+    | Inl _ \<Rightarrow> \<oslash>\<close>
+  have \<open>Read (Some p) ?f |\<in>| choices (increment_top incr os)\<close>
+    using assms(2) by (subst (2) increment_top.code) auto
+  moreover have \<open>op = ?f (Inr (d, t))\<close>
+    using assms(1) by simp
+  ultimately show ?thesis
+    by blast
 qed
 
 lemma step_increment_top_Write_Some[intro]:
