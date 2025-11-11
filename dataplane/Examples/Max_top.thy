@@ -14879,8 +14879,89 @@ c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (produ os1)) +
   qed
 qed
 
+find_consts " ('p, 'd, 't) operator_state"
+
+abbreviation init_op_state where
+"init_op_state ft \<equiv> \<lparr> consu = [],
+   inter = [],
+   produ = [],
+   outpu = (\<lambda> _. []),
+   front = ft \<rparr>"
 
 
+abbreviation init_conf where
+  "init_conf summary cgs \<equiv> the (propagate_all summary (change_multiplicities summary cgs \<lparr>c_work = (\<lambda> _.  {#}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>))"
+
+abbreviation "default_internal_summary \<equiv> (\<lambda> _ _. frontier (abs_zmultiset (mset [0 :: nat], {#})))"
+
+abbreviation "init_subgraph' summary cgs \<equiv>
+   \<lparr> pt_tr = init_conf summary cgs,
+   edges = (\<lambda> l1. [l2 \<leftarrow> enum_class.enum. \<not> is_empty_antichain (summary l1 l2) \<and> is_Src (port l1) \<and> is_Trg (port l2) ]),
+   summ = summary \<rparr>"
+
+abbreviation "my_sg \<equiv> init_subgraph' my_summ [(Loc 0 (Src 0), 0, 1)]"
+
+abbreviation "os1 \<equiv> init_op_state (\<lambda> p. frontier (c_imp (pt_tr my_sg) (Loc 0 (Trg p))))"
+abbreviation "os2 \<equiv> init_op_state (\<lambda> p. frontier (c_imp (pt_tr my_sg) (Loc 1 (Trg p))))"
+
+abbreviation "st1 \<equiv> \<lparr>cons = [], inte = [], prod = []\<rparr>"
+abbreviation "st2 \<equiv> \<lparr>cons = [], inte = [], prod = []\<rparr>"
+
+find_theorems change_multiplicities Cons
+
+thm dataflow_op_inp_m_top_source_op_aux
+[where inps=inps and n="\<lambda> _. 0" and caps=Nil and xs="\<lambda> _. []" and ys="\<lambda> _. []", of my_sg os1 os2 "\<lambda> _. []" "\<lambda> _. []" os1 st1 os2 st2,
+ unfolded max_from_caps_buf_def extract_progress_def changes_non_zero_def changes_above_impl_def change_multiplicities_simp_alt propagate_all_preserves_c_pts_alt, simplified]
+
+find_theorems c_pts the
+
+term "compile_dataflow_tree_aux n "
+
+lemma compile_dataflow_tree_aux_Logic_simp[simp]:
+  "compile_dataflow_tree_aux n (Logic op su) = (n + 1, \<lambda> l1 l2. 
+    if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
+    then su (port l1) (port l2)
+    else frontier {#}\<^sub>z, map_op (case_option (Inl n) (\<lambda> p. Inr (n, p))) (case_option (Inl n) (\<lambda> p. Inr (n, p))) op)"
+  apply auto
+  done
+
+lemma compile_dataflow_tree_Logic:
+  "compile_dataflow_tree (Logic op default_internal_summary) = 
+  (\<lambda> l1 l2. 
+    if 1 = node l1 \<and> (1 :: 1) = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
+    then default_internal_summary (port l1) (port l2)
+    else frontier {#}\<^sub>z, map_op (case_option (Inl 1) (\<lambda> p. Inr (1, p))) (case_option (Inl 1) (\<lambda> p :: 1. Inr (1, p))) op)"
+  unfolding compile_dataflow_tree_def 
+  apply (simp only: implementation_graph_checker_correct weights_to_graph_fun_def Let_def compile_dataflow_tree_aux.simps prod.case)
+  apply (subst (7) if_P)
+   apply simp_all
+  apply eval
+  done
+
+
+(* 
+
+lemma compile_dataflow_tree_aux_Logic_simp[simp]:
+  "compile_dataflow_tree_aux n (Logic op) = (n + 1, \<lambda> l1 l2.
+    if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2)
+    then frontier (abs_zmultiset (mset [0], {#}))
+    else frontier {#}\<^sub>z, map_op (case_option (Inl n) (\<lambda> p. Inr (n, p))) (case_option (Inl n) (\<lambda> p. Inr (n, p))) op)"
+  apply auto
+  done
+
+lemma compile_dataflow_tree_Logic:
+  "compile_dataflow_tree (Logic op) =
+  (\<lambda> l1 l2.
+    if 1 = node l1 \<and> (1 :: 1) = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2)
+    then frontier (abs_zmultiset (mset [0], {#}))
+    else frontier {#}\<^sub>z, map_op (case_option (Inl 1) (\<lambda> p. Inr (1, p))) (case_option (Inl 1) (\<lambda> p :: 1. Inr (1, p))) op)"
+  unfolding compile_dataflow_tree_def
+  apply (simp only: Let_def compile_dataflow_tree_aux.simps prod.case)
+  apply (subst (7) if_P)
+  apply eval
+ apply simp
+  done
+ *)
   find_theorems sorted caps
 
 end
