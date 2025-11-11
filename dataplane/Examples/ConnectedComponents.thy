@@ -175,6 +175,130 @@ corec label_prop_op where
   (let (os', st) = obtain_progress os
   in send_progress (label_prop_op os' caps tis G vs label) st)\<close>
 
+lemma label_prop_op_elim:
+  assumes \<open>step io (label_prop_op os caps tis G vs label) op\<close>
+  obtains st where \<open>io = Inp None st\<close> \<open>is_Inr st \<or> is_Inl st \<and> is_Inl (projl st)\<close> \<open>op = \<oslash>\<close>
+  | f where \<open>io = Inp None (Inl (Inr f))\<close> \<open>op = label_prop_op (os\<lparr>front := f\<rparr>) caps tis G vs label\<close>
+  | x where \<open>io = Inp (Some 0) x\<close> \<open>is_Inl x \<or> is_Inr x \<and> is_Inl (fst (projr x))\<close> \<open>op = \<oslash>\<close>
+  | s d t t1 caps' os' os'' G' a b label' bs batch os''' where \<open>io = Inp (Some 0) (Inr (Inr (s, d), t))\<close>
+    \<open>t1 = myfst t\<close> \<open>(caps', os') = (if t \<in> set caps
+            then (caps, os)
+            else (insort_insert_key myfst t caps, mint_cap (mint_cap os 0 t) 1 t))\<close>
+    \<open>os'' = consume os' 0 t 1\<close> \<open>G' = G(t1 := (G t1)(s := List.insert d (G t1 s), d := List.insert s (G t1 d)))\<close>
+    \<open>(a, b) = (min s d, max s d)\<close> \<open>label' = update_label label a b t1 (filter ((\<le>) t1) tis)\<close>
+    \<open>bs = neighbors G' t1 (filter ((\<le>) t1) tis) b\<close> \<open>batch = (if label t1 b > a
+            then map (\<lambda>v. (Inr (v, a), Cap t 1)) (filter (\<lambda>v. label t1 v > a) bs)
+            else [])\<close>
+    \<open>os''' = produces os'' batch\<close> \<open>op = label_prop_op os''' caps' (List.insert t1 tis) G' (insort_union [s, d] vs) label'\<close>
+  | x where \<open>io = Inp (Some 1) x\<close> \<open>is_Inl x \<or> is_Inr x \<and> is_Inl (fst (projr x))\<close> \<open>op = \<oslash>\<close>
+  | n x t os' t1 label' ns batch os'' where \<open>io = Inp (Some 1) (Inr (Inr (n, x), t))\<close>
+    \<open>os' = consume os 1 t 1\<close> \<open>t1 = myfst t\<close> \<open>label' = update_label label x n t1 (filter ((\<le>) t1) tis)\<close>
+    \<open>ns = neighbors G t1 (filter ((\<le>) t1) tis) n\<close> \<open>batch = (if label t1 n > x
+            then map (\<lambda>v. (Inr (v, x), Cap t 1)) (filter (\<lambda>v. label t1 v > x) ns)
+            else [])\<close>
+    \<open>os'' = produces os' batch\<close> \<open>op = label_prop_op os'' caps tis G vs label'\<close>
+  | P output_caps caps' batch os' os'' where \<open>io = Tau\<close>
+    \<open>P = (\<lambda>t. \<forall>n. \<not> frontier_less_equal (front os 0 + front os 1) (MyPair (myfst t) n))\<close>
+    \<open>output_caps = filter P caps\<close> \<open>caps' = filter (Not \<circ> P) caps\<close>
+    \<open>batch = map (\<lambda>cap. let t1 = myfst (time cap) in
+        (Inl (group_by (\<lambda>v u. label t1 v = label t1 u) vs), cap)) (map (\<lambda>t. Cap t 0) output_caps)\<close>
+    \<open>os' = produces os batch\<close> \<open>os'' = drop_caps os' (map (\<lambda>t. Cap t 0) output_caps @ map (\<lambda>t. Cap t 1) output_caps)\<close>
+    \<open>op = label_prop_op os'' caps' tis G vs label\<close>
+  | p x xs where \<open>io = Out (Some p) (Inr x)\<close> \<open>outpu os p = x # xs\<close>
+    \<open>op = label_prop_op (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) caps tis G vs label\<close> \<open>p \<notin> defaults\<close>
+  | os' st where \<open>io = Out None (Inl (Inl st))\<close> \<open>(os', st) = obtain_progress os\<close> \<open>op = label_prop_op os' caps tis G vs label\<close>
+  oops
+
+lemma step_label_prop_op_Read_None[intro]:
+  \<open>io = Inp None (Inl (Inr f)) \<Longrightarrow> op = label_prop_op (os\<lparr>front := f\<rparr>) caps tis G vs label \<Longrightarrow>
+  step io (label_prop_op os caps tis G vs label) op\<close>
+  by (subst label_prop_op.code) fastforce
+
+lemma step_label_prop_op_Read_Some0[intro]:
+  assumes \<open>io = Inp (Some 0) (Inr (Inr (s, d), t))\<close> \<open>t1 = myfst t\<close> \<open>(caps', os') = (if t \<in> set caps
+            then (caps, os)
+            else (insort_insert_key myfst t caps, mint_cap (mint_cap os 0 t) 1 t))\<close>
+    \<open>os'' = consume os' 0 t 1\<close> \<open>G' = G(t1 := (G t1)(s := List.insert d (G t1 s), d := List.insert s (G t1 d)))\<close>
+    \<open>(a, b) = (min s d, max s d)\<close> \<open>label' = update_label label a b t1 (filter ((\<le>) t1) tis)\<close>
+    \<open>bs = neighbors G' t1 (filter ((\<le>) t1) tis) b\<close> \<open>batch = (if label t1 b > a
+            then map (\<lambda>v. (Inr (v, a), Cap t 1)) (filter (\<lambda>v. label t1 v > a) bs)
+            else [])\<close>
+    \<open>os''' = produces os'' batch\<close> \<open>op = label_prop_op os''' caps' (List.insert t1 tis) G' (insort_union [s, d] vs) label'\<close>
+  shows \<open>step io (label_prop_op os caps tis G vs label) op\<close>
+proof -
+  let ?f = \<open>\<lambda>x. case x of
+    Inr (Inr (s, d), t) \<Rightarrow>
+      let t1 = myfst t;
+          (caps', os') = if t \<in> set caps
+            then (caps, os)
+            else (insort_insert_key myfst t caps, mint_cap (mint_cap os 0 t) 1 t);
+          os'' = consume os' 0 t 1;
+          G' = G(t1 := (G t1)(s := List.insert d (G t1 s), d := List.insert s (G t1 d)));
+          (a, b) = (min s d, max s d);
+          label' = update_label label a b t1 (filter ((\<le>) t1) tis);
+          bs = neighbors G' t1 (filter ((\<le>) t1) tis) b;
+          batch = if label t1 b > a
+            then map (\<lambda>v. (Inr (v, a), Cap t 1)) (filter (\<lambda>v. label t1 v > a) bs)
+            else [];
+          os''' = produces os'' batch
+     in label_prop_op os''' caps' (List.insert t1 tis) G' (insort_union [s, d] vs) label'
+  | _ \<Rightarrow> \<oslash>\<close>
+  have \<open>Read (Some 0) ?f |\<in>| choices (label_prop_op os caps tis G vs label)\<close>
+    by (subst (2) label_prop_op.code) force
+  moreover have \<open>op = ?f (Inr (Inr (s, d), t))\<close>
+      using assms(2-) by (auto split: prod.splits)
+  ultimately show ?thesis
+    using assms(1) by blast
+qed
+
+lemma step_label_prop_op_Read_Some1[intro]:
+  assumes \<open>io = Inp (Some 1) (Inr (Inr (n, x), t))\<close> \<open>os' = consume os 1 t 1\<close> \<open>t1 = myfst t\<close>
+    \<open>label' = update_label label x n t1 (filter ((\<le>) t1) tis)\<close>
+    \<open>ns = neighbors G t1 (filter ((\<le>) t1) tis) n\<close> \<open>batch = (if label t1 n > x
+            then map (\<lambda>v. (Inr (v, x), Cap t 1)) (filter (\<lambda>v. label t1 v > x) ns)
+            else [])\<close>
+    \<open>os'' = produces os' batch\<close> \<open>op = label_prop_op os'' caps tis G vs label'\<close>
+  shows \<open>step io (label_prop_op os caps tis G vs label) op\<close>
+proof -
+  let ?f = \<open>\<lambda>x. case x of
+    Inr (Inr (n, x), t) \<Rightarrow>
+      let os' = consume os 1 t 1;
+          t1 = myfst t;
+          label' = update_label label x n t1 (filter ((\<le>) t1) tis);
+          ns = neighbors G t1 (filter ((\<le>) t1) tis) n;
+          batch = if label t1 n > x
+            then map (\<lambda>v. (Inr (v, x), Cap t 1)) (filter (\<lambda>v. label t1 v > x) ns)
+            else [];
+          os'' = produces os' batch
+    in label_prop_op os'' caps tis G vs label'
+  | _ \<Rightarrow> \<oslash>\<close>
+  have \<open>Read (Some 1) ?f |\<in>| choices (label_prop_op os caps tis G vs label)\<close>
+    by (subst (2) label_prop_op.code) force
+  thus ?thesis
+    using assms Read_in_choices_step[where f=\<open>?f\<close> and x=\<open>Inr (Inr (n, x), t)\<close>] by fastforce
+qed
+
+lemma step_label_prop_op_Write_Some[intro]:
+  \<open>outpu os p = x # xs \<Longrightarrow> op = label_prop_op (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) caps tis G vs label \<Longrightarrow>
+  p \<notin> defaults \<Longrightarrow>
+  step (Out (Some p) (Inr x)) (label_prop_op os caps tis G vs label) op\<close>
+  by (subst label_prop_op.code) force
+
+lemma step_label_prop_op_Write_None[intro]:
+  \<open>(os', st) = obtain_progress os \<Longrightarrow> op = label_prop_op os' caps tis G vs label \<Longrightarrow>
+  step (Out None (Inl (Inl st))) (label_prop_op os caps tis G vs label) op\<close>
+  by (subst label_prop_op.code) auto
+
+lemma step_label_prop_op_Silent[intro]:
+  \<open>io = Tau \<Longrightarrow> P = (\<lambda>t. \<forall>n. \<not> frontier_less_equal (front os 0 + front os 1) (MyPair (myfst t) n)) \<Longrightarrow>
+  output_caps = filter P caps \<Longrightarrow> caps' = filter (Not \<circ> P) caps \<Longrightarrow>
+  batch = map (\<lambda>cap. let t1 = myfst (time cap) in
+        (Inl (group_by (\<lambda>v u. label t1 v = label t1 u) vs), cap)) (map (\<lambda>t. Cap t 0) output_caps) \<Longrightarrow>
+  os' = produces os batch \<Longrightarrow> os'' = drop_caps os' (map (\<lambda>t. Cap t 0) output_caps @ map (\<lambda>t. Cap t 1) output_caps) \<Longrightarrow>
+  op = label_prop_op os'' caps' tis G vs label \<Longrightarrow>
+  step io (label_prop_op os caps tis G vs label) op\<close>
+  by (subst label_prop_op.code) auto
+
 abbreviation inp_op' where
   \<open>inp_op' os caps ins \<equiv>
   map_op (case_option (Inl (0 :: 3)) (\<lambda>p. Inr (0, p))) (case_option (Inl (0 :: 3)) (\<lambda>p. Inr (0, p)))
@@ -246,6 +370,7 @@ lemma
   \<open>edges sg = cc_edges \<Longrightarrow>
   summ sg = cc_summary \<Longrightarrow>
   \<forall>x \<in> lset (ins 0). (case x of Data t d \<Rightarrow> mysnd t = 0 \<and> is_Inr d | Watermark wm \<Rightarrow> mysnd wm = 0) \<Longrightarrow>
+  ins 1 = LNil \<Longrightarrow>
   monotone (ins 0) WM \<Longrightarrow>
   \<forall>x \<in> set (buf1 (Inr (1, 0))) \<union> set (buf2 (Inr (2, 0))) \<union> set (buf3 ((Inr (1, 0)))). is_Inr x \<and> is_Inr (fst (projr x)) \<Longrightarrow>
   sorted (map myfst caps2) \<Longrightarrow>
