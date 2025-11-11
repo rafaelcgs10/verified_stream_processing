@@ -32,19 +32,6 @@ lemma step_increment_top_elim:
     apply (auto 0 5 split: sum.splits list.splits)
   done
 
-lemma step_increment_top_Read_L[intro]:
-  assumes \<open>op = \<oslash>\<close> \<open>p \<notin> defaults\<close>
-  shows \<open>step (Inp (Some p) (Inl x)) (increment_top incr os) op\<close>
-proof -
-  have \<open>Read (Some p) (\<lambda>x. case x of
-      Inl a \<Rightarrow> \<oslash>
-    | Inr (d, t) \<Rightarrow> increment_top incr (produce (consume os p t 1) (Cap (t + incr p) p) [d]))
-  |\<in>| choices (increment_top incr os)\<close>
-    using assms by (subst (2) increment_top.code) auto
-  thus ?thesis
-    using assms Read_in_choices_step sum.simps(5) by (metis (no_types, lifting))
-qed
-
 lemma step_increment_top_Read_R[intro]:
   assumes \<open>op = increment_top incr (produce (consume os p t 1) (Cap (t + incr p) p) [d])\<close> \<open>p \<notin> defaults\<close>
   shows \<open>step (Inp (Some p) (Inr (d, t))) (increment_top incr os) op\<close>
