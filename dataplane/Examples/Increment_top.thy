@@ -25,12 +25,7 @@ lemma step_increment_top_elim:
   | p x xs where \<open>io = Out (Some p) (Inr x)\<close> \<open>outpu os p = x # xs\<close>
     \<open>op = increment_top incr (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>)\<close> \<open>p \<notin> defaults\<close>
   | os' st where \<open>io = Out None (Inl (Inl st))\<close> \<open>obtain_progress os = (os', st)\<close> \<open>op = increment_top incr os'\<close>
-  apply atomize_elim
-  using assms
-  apply (subst (asm) increment_top.code)
-  apply (cases io)
-    apply (auto 0 5 split: sum.splits list.splits)
-  done
+  using assms by (subst (asm) increment_top.code) (auto split: sum.splits list.splits)
 
 lemma step_increment_top_Read_R[intro]:
   assumes \<open>op = increment_top incr (produce (consume os p t 1) (Cap (t + incr p) p) [d])\<close> \<open>p \<notin> defaults\<close>
