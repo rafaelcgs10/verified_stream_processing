@@ -350,30 +350,6 @@ lemma dataflow_op_end_op:
   apply simp
   done
 
-(*
-lemma steps_Tau_dataflow_op_Out_Inl_intro[intro]:
-  "steps (map (\<lambda> st. Out (Inl nid) (Inl (Inl st))) xs) op op' \<Longrightarrow>
-   sg' = sg\<lparr> lo_pt := lo_pt sg @ concat (map (\<lambda> st. (extract_progress nid (edges sg) st)) xs) \<rparr> \<Longrightarrow>
-   n = length xs \<Longrightarrow>
-   (step Tau ^^ n) (dataflow_op sg op) (dataflow_op sg' op')"
-  apply (induct xs arbitrary: op' sg op op' sg' n rule: rev_induct)
-  subgoal for op' conf' sg
-    by simp
-  subgoal for a xs op' sg op sg'
-    apply simp
-    apply (simp add: relcompp_apply)
-    apply safe
-    apply hypsubst_thin
-    apply (drule meta_spec)+
-    apply (drule meta_mp)
-    apply assumption
-    apply (drule meta_mp)
-    apply (rule refl)
-    apply fastforce
-    done
-  done
-*)
-
 lemma steps_Tau_dataflow_op_Tau_intro[intro]:
   "steps (replicate n Tau) op op' \<Longrightarrow>
    (step Tau ^^ n) (dataflow_op sg op) (dataflow_op sg op')"
@@ -465,29 +441,6 @@ lemma dataflow_op_simps[simp]:
 definition "compile_dataflow dt = (let (summary, op) = compile_dataflow_tree dt in
                                     let sg = init_subgraph summary in
                                     dataflow_op sg op)"
-
-(*
-lemma compile_dataflow_tree_aux_Logic_simp[simp]:
-  "compile_dataflow_tree_aux n (Logic op su) = (n + 1, \<lambda> l1 l2. 
-    if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
-    then su (port l1) (port l2)
-    else frontier {#}\<^sub>z, map_op (case_option (Inl n) (\<lambda> p. Inr (n, p))) (case_option (Inl n) (\<lambda> p. Inr (n, p))) op)"
-  apply auto
-  done
-
-lemma compile_dataflow_tree_Logic:
-  "compile_dataflow_tree (Logic op su) = 
-  (\<lambda> l1 l2. 
-    if 1 = node l1 \<and> (1 :: 1) = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
-    then su (port l1) (port l2)
-    else frontier {#}\<^sub>z, map_op (case_option (Inl 1) (\<lambda> p. Inr (1, p))) (case_option (Inl 1) (\<lambda> p :: 1. Inr (1, p))) op)"
-  unfolding compile_dataflow_tree_def
-  apply (simp only: Let_def compile_dataflow_tree_aux.simps prod.case)
-  apply (subst (7) if_P)
-  apply eval
-  apply simp
-  done
-*)
 
 (* Inspired by timely/src/dataflow/channels/pushers/counter.rs:25 and timely/src/dataflow/channels/mod.rs:49 *)
 (* writes maybe could support multiple different ports, then this one also would *)
@@ -599,56 +552,6 @@ lemma change_multiplicities_same_pointstamps:
       done
     done
   done
-(* 
-lemma dataflow_op_change_multiplicities:
-  "change_multiplicities (summ sg) (lo_pt sg) (pt_tr sg) = change_multiplicities (summ sg') (lo_pt sg') (pt_tr sg') \<Longrightarrow>
-   summ sg = summ sg' \<Longrightarrow>
-   pt_tr sg = pt_tr sg' \<Longrightarrow>
-   edges sg = edges sg' \<Longrightarrow>
-   dataflow_op sg op = dataflow_op sg' op"
-  apply (coinduction arbitrary: sg sg' op rule: op.coinduct_upto)
-  subgoal for sg sg' op
-    apply simp
-    apply (simp add: rel_set_image split: sum.splits option.splits op.splits)
-    apply (rule rel_set_reflI)
-    apply (auto 0 0 simp add: rel_set_image split: sum.splits option.splits op.splits)
-    subgoal for f nid c c'
-      apply (subgoal_tac "c = c'")
-      subgoal
-        apply (rule op.cong_Silent)
-        apply (rule op.cong_base)
-        apply (rule exI[of _ "sg\<lparr>pt_tr := c, lo_pt := []\<rparr>"])
-        apply (rule exI[of _ "sg'\<lparr>pt_tr := c', lo_pt := []\<rparr>"])
-        apply (intro conjI exI)
-        apply (rule refl)+
-        apply simp_all
-        done
-      subgoal
-        unfolding propagate_pointstamps_def Let_def
-        apply simp
-        done
-      done
-    subgoal
-      by (force intro: op.cong_Read op.cong_base)
-    subgoal
-      apply (rule op.cong_Silent)
-      apply (rule op.cong_base)
-      apply (intro conjI exI)
-      apply (rule refl)+
-      apply (simp_all add: change_multiplicities_append)
-      done
-    subgoal
-      by (simp add: op.cong_intros(2))
-    subgoal
-      by (simp add: op.cong_intros(2))
-    subgoal
-      by (simp add: op.cong_intros(2))
-    subgoal
-      by (force intro: op.cong_Write op.cong_base)
-    subgoal
-      by (force intro: op.cong_Silent op.cong_base)
-    done
-  done *)
 
 record ('p, 'd, 't) operator_state =
   consu :: "('p \<times> 't \<times> int) list"
@@ -662,6 +565,44 @@ abbreviation "delay_cap os cap incr \<equiv> (os\<lparr> inter := inter os @ [(o
 definition "produce os cap batch = (if batch = [] then os else os\<lparr> outpu := (outpu os)(out cap := outpu os (out cap) @ map (\<lambda> x. (x, time cap)) batch), produ := produ os @ [(out cap, time cap, length batch)] \<rparr>)"
 
 abbreviation "consume os p t len \<equiv> (if len = 0 then os else os\<lparr> consu := consu os @ [(p, t, len)] \<rparr>)"
+
+abbreviation "choice5 op1 op2 op3 op4 op5 \<equiv> choice3 (choice2 op1 op2) (choice2 op3 op4) op5"
+
+abbreviation "mint_cap os p t \<equiv> os\<lparr> inter := inter os @ [(p, t, 1)] \<rparr>"
+
+abbreviation "produces os batch \<equiv> os\<lparr> outpu := (\<lambda> p. outpu os p @ map (\<lambda> (x, cap). (x, time cap)) (filter (\<lambda> (x, cap). out cap = p) batch)), produ := produ os @ map (\<lambda> (x, cap). (out cap, time cap, 1)) batch \<rparr>"
+
+abbreviation "drop_caps os caps \<equiv> (os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps \<rparr>)"
+
+abbreviation "send_output op p x \<equiv> Write op (Some p) (Inr x)"
+abbreviation "send_progress op st \<equiv> Write op None (Inl (Inl st))"
+
+abbreviation "obtain_progress os \<equiv> (os\<lparr> consu := [], inter := [], produ := [] \<rparr>, \<lparr> cons = consu os, inte = inter os, prod = produ os\<rparr>)"
+
+abbreviation "drop_cap os cap \<equiv> (os\<lparr> inter := inter os @ [(out cap, time cap, -1)] \<rparr>)"
+
+(* corec notifier_op where
+  "notifier_op os caps = choice5
+   (Read None (\<lambda> st. if isl st \<and> isr (projl st) then max_top' (os\<lparr> front := projr (projl st) \<rparr>) buf caps else \<oslash>))
+   (let below_caps = [cap \<leftarrow> caps. \<not> frontier_less_equal (front os 0) (time cap) ] in
+    let above_caps = [cap \<leftarrow> caps. frontier_less_equal (front os 0) (time cap) ] in
+    let batch = map (\<lambda> cap. (Max (set (buf cap)), cap)) below_caps in
+    let os' = produces os batch in
+    let os'' = drop_caps os' below_caps in
+    let buf' = (\<lambda> cap. if cap \<in> set below_caps then [] else buf cap) in
+    Silent (max_top' os'' buf' above_caps))
+   (Read (Some 0)
+    (\<lambda> x. if isl x then \<oslash> else
+     let (n, t) = projr x in
+     let (caps', os') = (if Cap t 0 \<in> set caps then (caps, os) else (insort_key time (Cap t 0) caps, mint_cap os 0 t)) in
+     let os'' = consume os' 1 t 1 in
+     let buf' = BENQ (Cap t 0) n buf in
+     max_top' os'' buf' caps'))
+    ( ((case outpu os 0 of
+         [] \<Rightarrow> Choice {||}
+       |  x # xs \<Rightarrow> (send_output (max_top' (os\<lparr> outpu := (outpu os)(0 := xs ) \<rparr>) buf caps) 0 x))))
+    (let (os', st) = obtain_progress os in
+     send_progress (max_top' os' buf caps) st)" *)
 
 
 end
