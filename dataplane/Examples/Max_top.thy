@@ -283,44 +283,6 @@ lemma list_to_buf_empty[simp]:
   "list_to_buf [] = (\<lambda>  _. [])"
   unfolding list_to_buf_def by auto
 
-fun rmdups where
-  "rmdups S [] = []"
-| "rmdups S (x # xs) = (if x \<in> S then rmdups S xs else x # (rmdups (insert x S) xs))"
-
-lemma set_rmdups[simp]:
-  "set (rmdups S xs) = set xs - S"
-  by (induct xs arbitrary: S) auto
-
-lemma rmdups_rmdups[simp]:
-  "rmdups S1 (rmdups S2 xs) = rmdups (S1 \<union> S2) xs"
-  by (induct xs arbitrary: S1 S2) (auto simp add: insert_absorb)
-
-lemma rmdups_append[simp]:
-  "rmdups S (xs @ ys) = rmdups S xs @ rmdups (S \<union> set xs) ys"
-  by (induct xs arbitrary: S ys) (auto simp add: insert_absorb)
-
-lemma rmdups_cong:
-  "A \<inter> set xs = B \<inter> set xs \<Longrightarrow>
-   rmdups A xs = rmdups B xs"
-  apply (induct xs arbitrary: A B)
-   apply simp
-  apply (smt (verit, best) Diff_Diff_Int Diff_iff Int_insert_left_if1 insert_absorb inter_eq_subsetI list.inject list.set(2) list.set_intros(1) rmdups.simps(2) set_subset_Cons)
-  done
-
-lemma rmdups_NilI:
-  "(set xs \<subseteq> A \<and> xs \<noteq> []) \<or> xs = [] \<Longrightarrow>
-   rmdups A xs = []"
-  apply (induct xs arbitrary: A)
-   apply simp_all
-  done
-
-lemma rmdups_insert_NilI:
-  "(set xs = {a} \<and> xs \<noteq> []) \<or> xs = [] \<Longrightarrow>
-   rmdups (insert a A) xs = []"
-  apply (induct xs arbitrary: A)
-   apply auto
-  done
-
 abbreviation "update_caps caps xs \<equiv> caps @ rmdups (set caps) (map (\<lambda> (x, t). Cap t 0) xs)"
 
 definition "max_from_caps_buf caps buf = map (\<lambda> cap. (Max (set (buf cap)), time cap)) caps"
@@ -2111,7 +2073,7 @@ lemma fold_rmdups:
       apply (drule meta_mp)
        apply force
       apply (auto simp add: image_iff order_antisym sorted_append split_beta insort_key_last)
-      apply (metis capability.exhaust capability.sel(1) num1_eq1)
+       apply (metis capability.exhaust capability.sel(1) num1_eq1)
       done
     done
   done

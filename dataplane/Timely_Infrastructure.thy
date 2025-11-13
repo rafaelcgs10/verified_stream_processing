@@ -309,34 +309,6 @@ lemma step_Out_dataflow_op_Out_Inr_intro[intro!]:
   apply (fastforce elim: step_choicesE split: sum.splits option.splits)
   done
 
-(* lemma step_Out_dataflow_op_Out_Inl_Inr_intro[intro]:
-  "step (Out (Inl p) (Inr x)) op op' \<Longrightarrow>
-   step Tau (dataflow_op sg op) \<oslash>"
-  apply (subst dataflow_op.code)
-  apply (fastforce elim: step_choicesE split: sum.splits option.splits)
-  done *)
-(* 
-lemma step_Out_dataflow_op_Out_Inl_Inr_Inl_intro[intro]:
-  "step (Out (Inl p) (Inr (Inl x))) op op' \<Longrightarrow>
-   step Tau (dataflow_op sg op) \<oslash>"
-  apply (subst dataflow_op.code)
-  apply (fastforce elim: step_choicesE split: sum.splits option.splits)
-  done
- *)
-(* lemma step_Out_dataflow_op_Out_Inl_Inl_Inr_intro[intro]:
-  "step (Out (Inl p) (Inl (Inr x))) op op' \<Longrightarrow>
-   step Tau (dataflow_op sg op) \<oslash>"
-  apply (subst dataflow_op.code)
-  apply (fastforce elim: step_choicesE split: sum.splits option.splits)
-  done
- *)
-(* lemma step_Out_dataflow_op_Out_Inr_Inl_intro[intro]:
-  "step (Out (Inr p) (Inl x)) op op' \<Longrightarrow>
-   step Tau (dataflow_op sg op) \<oslash>"
-  apply (subst dataflow_op.code)
-  apply (fastforce elim: step_choicesE split: sum.splits option.splits)
-  done *)
-
 lemma step_Inp_dataflow_op_Inp_Inr_intro[intro!]:
   "step (Inp (Inr (nid, p)) (Inr x)) op op' \<Longrightarrow>
    step (Inp (nid, p) x) (dataflow_op sg op) (dataflow_op sg op')"
@@ -384,38 +356,6 @@ lemma step_tau_pow_map_op[intro]:
     done
   done
 
-(* 
-lemma dataflow_writes_extract_progress_from_push:
-  "g = (case_option (Inl nid) (\<lambda>p. Inr (nid, p))) \<Longrightarrow>
-   dataflow_op sg
-     (map_op f g
-       (writes (Write op None (Inl (Inl \<lparr>cons = cs, inte = is, prod = ps\<rparr>))) (Some p) xs)) =
-    dataflow_op (sg\<lparr>lo_pt := (lo_pt sg) @ extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr> \<rparr>)
-     (map_op f g
-       (writes (Write op None (Inl (Inl \<lparr>cons = [], inte = [], prod = []\<rparr>))) (Some p) xs))"
-  apply (induct xs arbitrary: ps "is" cs)
-  subgoal 
-    apply simp
-    apply (subst (1 2) dataflow_op.code)
-    apply (auto simp add: extract_progress_def split: if_splits option.splits)
-    done
-  subgoal for a xs' 
-    apply (subst (1 2) writes.code)
-    apply simp
-    apply (subst (1 2) dataflow_op.code)
-    apply (simp add: extract_progress_def split: option.splits sum.splits)
-    done
-  done *)
-(* 
-lemma dataflow_extract_progress_from_push:
-  "dataflow_op sg
-     ((Write op (Inl nid) (Inl (Inl \<lparr>cons = cs, inte = is, prod = ps\<rparr>)))) =
-    dataflow_op (sg\<lparr>lo_pt := (lo_pt sg) @ extract_progress nid (edges sg) \<lparr>cons = cs, inte = is, prod = ps\<rparr> \<rparr>)
-     ((Write op (Inl nid) (Inl (Inl \<lparr>cons = [], inte = [], prod = []\<rparr>))))"
-  apply (subst (1 2) dataflow_op.code)
-  apply (auto simp add: extract_progress_def split: if_splits option.splits)
-  done *)
-
 lemma dataflow_op_simps[simp]:
   "\<not> is_Read (dataflow_op sg op)"
   "\<not> is_Write (dataflow_op sg op)"
@@ -423,21 +363,6 @@ lemma dataflow_op_simps[simp]:
   "is_Choice (dataflow_op sg op)"
   by (subst dataflow_op.code; simp)+
 
-(* lemma un_Choice_dataflow_op_simp[simp]:
-  "un_Choice (dataflow_op sg op) = ((\<lambda>op. case op of
-        Read (Inl nid) f \<Rightarrow>
-          (case propagate_pointstamps (summ sg) (pt_tr sg) (lo_pt sg) of
-          Some conf' \<Rightarrow> let sg' = sg\<lparr>pt_tr := conf', lo_pt := []\<rparr>; imp_fron = \<lambda>p. c_imp (pt_tr sg') (Loc nid (Trg p)) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron))))))
-        | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda>x. dataflow_op sg (f (Inr x)))
-        | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr>lo_pt := lo_pt sg @ extract_progress nid (edges sg) st\<rparr>) op')
-        | Write op' (Inl nid) (Inl (Inr b)) \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_.  \<oslash>)
-        | Write op' (Inl nid) (Inr b) \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_.  \<oslash>)
-        | Write op' (Inr (nid, p)) (Inl aa) \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_.  \<oslash>)
-        | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x | Choice cset \<Rightarrow> Code.abort STR ''Operator in dataflow_op breaks contract'' (\<lambda>_.  \<oslash>)
-        | Silent op' \<Rightarrow> Silent (dataflow_op sg op')) |`|
-  choices op)"
-  by (simp add: dataflow_op.code)
- *)
 definition "compile_dataflow dt = (let (summary, op) = compile_dataflow_tree dt in
                                     let sg = init_subgraph summary in
                                     dataflow_op sg op)"
@@ -557,8 +482,10 @@ record ('p, 'd, 't) operator_state =
   consu :: "('p \<times> 't \<times> int) list"
   inter :: "('p \<times> 't \<times> int) list"
   produ :: "('p \<times> 't \<times> int) list"
+  input :: "'p \<Rightarrow> ('d \<times> 't) list"
   outpu :: "'p \<Rightarrow> ('d \<times> 't) list"
   front :: "'p \<Rightarrow> 't antichain"
+  ocaps :: "'p \<Rightarrow> 't list"
 
 abbreviation "delay_cap os cap incr \<equiv> (os\<lparr> inter := inter os @ [(out cap, time cap, -1), (out cap, time cap + incr, 1)] \<rparr>)"
 
@@ -566,9 +493,13 @@ definition "produce os cap batch = (if batch = [] then os else os\<lparr> outpu 
 
 abbreviation "consume os p t len \<equiv> (if len = 0 then os else os\<lparr> consu := consu os @ [(p, t, len)] \<rparr>)"
 
+abbreviation "choice4 op1 op2 op3 op4 \<equiv> choice2 (choice2 op1 op2) (choice2 op3 op4)"
+
 abbreviation "choice5 op1 op2 op3 op4 op5 \<equiv> choice3 (choice2 op1 op2) (choice2 op3 op4) op5"
 
 abbreviation "mint_cap os p t \<equiv> os\<lparr> inter := inter os @ [(p, t, 1)] \<rparr>"
+abbreviation \<open>mint os caps p t \<equiv> if t \<in> set (caps p) then (caps, os) else (caps(p := caps p @ [t]), mint_cap os p t)\<close>
+
 
 abbreviation "produces os batch \<equiv> os\<lparr> outpu := (\<lambda> p. outpu os p @ map (\<lambda> (x, cap). (x, time cap)) (filter (\<lambda> (x, cap). out cap = p) batch)), produ := produ os @ map (\<lambda> (x, cap). (out cap, time cap, 1)) batch \<rparr>"
 
@@ -579,7 +510,45 @@ abbreviation "send_progress op st \<equiv> Write op None (Inl (Inl st))"
 
 abbreviation "obtain_progress os \<equiv> (os\<lparr> consu := [], inter := [], produ := [] \<rparr>, \<lparr> cons = consu os, inte = inter os, prod = produ os\<rparr>)"
 
-abbreviation "drop_cap os cap \<equiv> (os\<lparr> inter := inter os @ [(out cap, time cap, -1)] \<rparr>)"
+fun remove_last where
+  "remove_last x [] = []"
+| "remove_last x xs = (if last xs = x then butlast xs else remove_last x (butlast xs) @ [last xs])"
+
+abbreviation "drop_cap os cap \<equiv> os\<lparr> inter := inter os @ [(out cap, time cap, -1)], ocaps := (ocaps os) ((out cap) := remove_last (time cap) (ocaps os (out cap))) \<rparr>"
+
+abbreviation "add_cap os p t \<equiv> os\<lparr> inter := inter os @ [(p, t, 1)], ocaps := (ocaps os) (p := ocaps os p @ [t])  \<rparr>"
+
+abbreviation "consumes os p t d \<equiv> add_cap (os\<lparr> consu := consu os @ [(p, t, 1)], input := BENQ p (d, t) (input os) \<rparr>) p t"
+
+
+fun rmdups where
+  "rmdups S [] = []"
+| "rmdups S (x # xs) = (if x \<in> S then rmdups S xs else x # (rmdups (insert x S) xs))"
+
+corec builder_op where
+  \<open>builder_op os logic = choice5
+  (Choice (cimage (\<lambda> os. Silent (builder_op os logic)) (logic os)))
+  (Choice (cimage (\<lambda>p. case outpu os p of
+    x # xs \<Rightarrow> send_output (builder_op (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) logic) p x)
+    (cfilter (\<lambda>p. outpu os p \<noteq> []) c\<UU>)))
+  (let (os', st) = obtain_progress os
+  in send_progress (builder_op os' logic) st)
+  (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op (os\<lparr> front := projr (projl st) \<rparr>) logic else \<oslash>))
+  (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow> \<oslash> | Inr (d, t) \<Rightarrow> builder_op (consumes os p t d) logic)) c\<UU>))\<close>
+
+definition notifier_op where
+  "notifier_op os logic = builder_op os 
+   (\<lambda> os. logic os (filter (\<lambda> cap. \<not> frontier_less_equal (front os (out cap)) (time cap))
+    (concat (map (\<lambda>p. map (\<lambda> t. Cap t p) (ocaps os p)) (list_of (cenum_class.cenum))))))"
+
+
+
+definition batch_op where
+  "batch_op os logic = notifier_op os 
+   (\<lambda> os caps.
+    let batch = map (\<lambda> cap. (input os (out cap))) (rmdups {} caps) in
+    {| undefined |})"
+
 
 (* corec notifier_op where
   "notifier_op os caps = choice5
@@ -603,6 +572,41 @@ abbreviation "drop_cap os cap \<equiv> (os\<lparr> inter := inter os @ [(out cap
        |  x # xs \<Rightarrow> (send_output (max_top' (os\<lparr> outpu := (outpu os)(0 := xs ) \<rparr>) buf caps) 0 x))))
     (let (os', st) = obtain_progress os in
      send_progress (max_top' os' buf caps) st)" *)
+
+
+lemma set_rmdups[simp]:
+  "set (rmdups S xs) = set xs - S"
+  by (induct xs arbitrary: S) auto
+
+lemma rmdups_rmdups[simp]:
+  "rmdups S1 (rmdups S2 xs) = rmdups (S1 \<union> S2) xs"
+  by (induct xs arbitrary: S1 S2) (auto simp add: insert_absorb)
+
+lemma rmdups_append[simp]:
+  "rmdups S (xs @ ys) = rmdups S xs @ rmdups (S \<union> set xs) ys"
+  by (induct xs arbitrary: S ys) (auto simp add: insert_absorb)
+
+lemma rmdups_cong:
+  "A \<inter> set xs = B \<inter> set xs \<Longrightarrow>
+   rmdups A xs = rmdups B xs"
+  apply (induct xs arbitrary: A B)
+   apply simp
+  apply (smt (verit, best) Diff_Diff_Int Diff_iff Int_insert_left_if1 insert_absorb inter_eq_subsetI list.inject list.set(2) list.set_intros(1) rmdups.simps(2) set_subset_Cons)
+  done
+
+lemma rmdups_NilI:
+  "(set xs \<subseteq> A \<and> xs \<noteq> []) \<or> xs = [] \<Longrightarrow>
+   rmdups A xs = []"
+  apply (induct xs arbitrary: A)
+   apply simp_all
+  done
+
+lemma rmdups_insert_NilI:
+  "(set xs = {a} \<and> xs \<noteq> []) \<or> xs = [] \<Longrightarrow>
+   rmdups (insert a A) xs = []"
+  apply (induct xs arbitrary: A)
+   apply auto
+  done
 
 
 end

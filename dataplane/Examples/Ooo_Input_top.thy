@@ -5,16 +5,6 @@ imports
   Source_op
 begin
 
-(* TODO move *)
-abbreviation "send_output op p x \<equiv> Write op (Some p) (Inr x)"
-abbreviation "send_progress op st \<equiv> Write op None (Inl (Inl st))"
-abbreviation "obtain_progress os \<equiv> (os\<lparr> consu := [], inter := [], produ := [] \<rparr>, \<lparr> cons = consu os, inte = inter os, prod = produ os\<rparr>)"
-abbreviation "drop_cap os cap \<equiv> (os\<lparr> inter := inter os @ [(out cap, time cap, -1)] \<rparr>)"
-abbreviation "drop_caps os caps \<equiv> (os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps \<rparr>)"
-abbreviation "mint_cap os p t \<equiv> os\<lparr> inter := inter os @ [(p, t, 1)] \<rparr>"
-
-abbreviation \<open>mint os caps p t \<equiv> if t \<in> set (caps p) then (caps, os) else (caps(p := caps p @ [t]), mint_cap os p t)\<close>
-
 corec ooo_input_top where
   \<open>ooo_input_top os caps ins = choice3
   (Choice (cimage (\<lambda>p. case ins p of
