@@ -527,6 +527,13 @@ record ('p, 'd, 't) operator_state =
   front :: "'p \<Rightarrow> 't antichain"
   ocaps :: "'p \<Rightarrow> 't list"
 
+record ('p, 'd, 'd1, 't) operator_state_ty = "('p, 'd, 't) operator_state" +
+  en1 :: "'d1 \<Rightarrow> 'd" de1 :: "'d \<Rightarrow> 'd1"
+record ('p, 'd, 'd1, 'd2, 't) operator_state_ty2 = "('p, 'd, 'd1, 't) operator_state_ty" +
+  en2 :: "'d2 \<Rightarrow> 'd" de2 :: "'d \<Rightarrow> 'd2"
+record ('p, 'd, 'd1, 'd2, 'd3, 't) operator_state_ty3 = "('p, 'd, 'd1, 'd1, 't) operator_state_ty2" +
+  en3 :: "'d3 \<Rightarrow> 'd" de3 :: "'d \<Rightarrow> 'd3"
+
 abbreviation "delay_cap os cap incr \<equiv> (os\<lparr> inter := inter os @ [(out cap, time cap, -1), (out cap, time cap + incr, 1)] \<rparr>)"
 
 definition "produce os cap batch = (if batch = [] then os else os\<lparr> outpu := (outpu os)(out cap := outpu os (out cap) @ map (\<lambda> x. (x, time cap)) batch), produ := produ os @ [(out cap, time cap, length batch)] \<rparr>)"
@@ -562,21 +569,19 @@ abbreviation "add_cap os p t \<equiv> os\<lparr> inter := inter os @ [(p, t, 1)]
 
 abbreviation "consumes os p t d \<equiv> add_cap (os\<lparr> consu := consu os @ [(p, t, 1)], input := BENQ p (d, t) (input os) \<rparr>) p t"
 
-
-
 corec builder_op where
-  \<open>builder_op ips ops fips fops os logic = choice5
-  (Choice (cimage (\<lambda> os. Silent (builder_op ips ops fips fops os logic)) (logic os)))
+  \<open>builder_op ips ops os logic = choice5
+  (Choice (cimage (\<lambda> os. Silent (builder_op ips ops os logic)) (logic os)))
   (Choice (cimage (\<lambda>p. case outpu os p of
-    x # xs \<Rightarrow> send_output (builder_op ips ops fips fops (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) logic) p x)
+    x # xs \<Rightarrow> send_output (builder_op ips ops (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) logic) p x)
     (cfilter (\<lambda>p. outpu os p \<noteq> []) ops)))
   (let (os', st) = obtain_progress os
-  in send_progress (builder_op ips ops fips fops os' logic) st)
-  (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op ips ops fips fops (os\<lparr> front := projr (projl st) \<rparr>) logic else \<oslash>))
-  (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow> \<oslash> | Inr (d, t) \<Rightarrow> builder_op ips ops fips fops (consumes os p t d) logic)) ips))\<close>
+  in send_progress (builder_op ips ops os' logic) st)
+  (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op ips ops (os\<lparr> front := projr (projl st) \<rparr>) logic else \<oslash>))
+  (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow> \<oslash> | Inr (d, t) \<Rightarrow> builder_op ips ops (consumes os p t d) logic)) ips))\<close>
 
 definition notifier_op where
-  "notifier_op ips ops fips fops os logic = builder_op ips ops fips fops os 
+  "notifier_op ips ops os logic = builder_op ips ops os 
    (\<lambda> os. logic os (\<lambda> p. filter (\<lambda> t. \<not> frontier_less_equal (front os p) t) (ocaps os p)))"
 
 
