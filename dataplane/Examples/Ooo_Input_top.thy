@@ -10,7 +10,7 @@ corec ooo_input_top where
   (Choice (cimage (\<lambda>p. case ins p of
     LCons (Data t d) lxs \<Rightarrow>
       let (caps', os') = if lnull lxs
-        then (caps(p := []), drop_caps os (map (\<lambda>t. Cap t p) (caps p)))
+        then (caps(p := []), drop_caps_old os (map (\<lambda>t. Cap t p) (caps p)))
         else (caps, os)
       in Silent (ooo_input_top (produce os' (Cap t p) [d]) caps' (ins(p := lxs)))
   | LCons (Watermark wm) lxs \<Rightarrow>
@@ -19,7 +19,7 @@ corec ooo_input_top where
           dropped_caps = map (\<lambda>t. Cap t p)
             (filter (if lnull lxs then \<top> else Not \<circ> frontier_less_equal A) (caps' p));
           caps'' = caps'(p := filter (if lnull lxs then \<bottom> else frontier_less_equal A) (caps' p));
-          os'' = drop_caps os' dropped_caps
+          os'' = drop_caps_old os' dropped_caps
       in Silent (ooo_input_top os'' caps'' (ins(p := lxs))))
     (cfilter (\<lambda>p. ins p \<noteq> LNil) c\<UU>)))
   (Choice (cimage (\<lambda>p. case outpu os p of
@@ -31,14 +31,14 @@ corec ooo_input_top where
 lemma step_ooo_input_top_elim:
   assumes \<open>step io (ooo_input_top os caps ins) op\<close>
   obtains p t d lxs caps' os' where \<open>io = Tau\<close> \<open>ins p = LCons (Data t d) lxs\<close>
-    \<open>(caps', os') = (if lnull lxs then (caps(p := []), drop_caps os (map (\<lambda>t. Cap t p) (caps p)))
+    \<open>(caps', os') = (if lnull lxs then (caps(p := []), drop_caps_old os (map (\<lambda>t. Cap t p) (caps p)))
       else (caps, os))\<close>
     \<open>op = ooo_input_top (produce os' (Cap t p) [d]) caps' (ins(p := lxs))\<close> \<open>p \<notin> defaults\<close>
   | p wm lxs caps' os' A dropped_caps caps'' os'' where \<open>io = Tau\<close> \<open>ins p = LCons (Watermark wm) lxs\<close>
     \<open>(caps', os') = mint os caps p wm\<close> \<open>A = antichain (minimal_antichain (set (caps' p)))\<close>
     \<open>dropped_caps = map (\<lambda>t. Cap t p) (filter (if lnull lxs then \<top> else Not \<circ> frontier_less_equal A) (caps' p))\<close>
     \<open>caps'' = caps'(p := filter (if lnull lxs then \<bottom> else frontier_less_equal A) (caps' p))\<close>
-    \<open>os'' = drop_caps os' dropped_caps\<close>
+    \<open>os'' = drop_caps_old os' dropped_caps\<close>
     \<open>op = ooo_input_top os'' caps'' (ins(p := lxs))\<close> \<open>p \<notin> defaults\<close>
   | p x xs where \<open>io = Out (Some p) (Inr x)\<close> \<open>outpu os p = x # xs\<close>
     \<open>op = ooo_input_top (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) caps ins\<close> \<open>p \<notin> defaults\<close>
@@ -63,7 +63,7 @@ lemma step_ooo_input_top_Write_None[intro]:
 
 lemma step_ooo_input_top_Silent_Data[intro]:
   \<open>ins p = LCons (Data t d) lxs \<Longrightarrow>
-  (caps', os') = (if lnull lxs then (caps(p := []), drop_caps os (map (\<lambda>t. Cap t p) (caps p))) else (caps, os)) \<Longrightarrow>
+  (caps', os') = (if lnull lxs then (caps(p := []), drop_caps_old os (map (\<lambda>t. Cap t p) (caps p))) else (caps, os)) \<Longrightarrow>
   op = ooo_input_top (produce os' (Cap t p) [d]) caps' (ins(p := lxs)) \<Longrightarrow> p \<notin> defaults \<Longrightarrow>
   step Tau (ooo_input_top os caps ins) op\<close>
   by (subst ooo_input_top.code) fastforce
@@ -74,7 +74,7 @@ lemma step_ooo_input_top_Silent_Watermark[intro]:
   A = antichain (minimal_antichain (set (caps' p))) \<Longrightarrow>
   dropped_caps = map (\<lambda>t. Cap t p) (filter (if lnull lxs then \<top> else Not \<circ> frontier_less_equal A) (caps' p)) \<Longrightarrow>
   caps'' = caps'(p := filter (if lnull lxs then \<bottom> else frontier_less_equal A) (caps' p)) \<Longrightarrow>
-  os'' = drop_caps os' dropped_caps \<Longrightarrow> op = ooo_input_top os'' caps'' (ins(p := lxs)) \<Longrightarrow> p \<notin> defaults \<Longrightarrow>
+  os'' = drop_caps_old os' dropped_caps \<Longrightarrow> op = ooo_input_top os'' caps'' (ins(p := lxs)) \<Longrightarrow> p \<notin> defaults \<Longrightarrow>
   step Tau (ooo_input_top os caps ins) op\<close>
   by (subst ooo_input_top.code) (fastforce intro: bexI[of _ p])
 
@@ -89,7 +89,7 @@ abbreviation ooo_input_os_caps_Watermark where
        A = antichain (minimal_antichain (set (caps' p)));
        dropped_caps = map (\<lambda>t. Cap t p) (filter (Not \<circ> frontier_less_equal A) (caps' p));
        caps'' = caps'(p := filter (frontier_less_equal A) (caps' p));
-       os'' = drop_caps os' dropped_caps
+       os'' = drop_caps_old os' dropped_caps
   in (caps'', os''))\<close>
 
 lemma step_Taus_ooo_input_top:
@@ -97,7 +97,7 @@ lemma step_Taus_ooo_input_top:
   ldropWhile (Not \<circ> is_Data) (ins p) = LCons (Data t d) lxs \<Longrightarrow>
   (caps', os') = foldl (\<lambda>(caps, os) wm. ooo_input_os_caps_Watermark p wm os caps)
     (caps, os) (list_of (lmap event.time (ltakeWhile (Not \<circ> is_Data) (ins p)))) \<Longrightarrow>
-  (caps'', os'') = (if lnull lxs then (caps'(p := []), drop_caps os' (map (\<lambda>t. Cap t p) (caps' p))) else (caps', os')) \<Longrightarrow>
+  (caps'', os'') = (if lnull lxs then (caps'(p := []), drop_caps_old os' (map (\<lambda>t. Cap t p) (caps' p))) else (caps', os')) \<Longrightarrow>
   os''' = produce os'' (Cap t p) [d] \<Longrightarrow> op = ooo_input_top os''' caps'' (ins(p := lxs)) \<Longrightarrow> p \<notin> defaults \<Longrightarrow>
   (step Tau)\<^sup>*\<^sup>* (ooo_input_top os caps ins) op\<close>
 proof (induction \<open>ltakeWhile (Not \<circ> is_Data) (ins p)\<close> arbitrary: ins os caps rule: lfinite_induct)
@@ -137,7 +137,7 @@ next
     have \<open>caps1 = caps'(p := filter (if lnull (ltl (ins p)) then \<bottom> else frontier_less_equal ?A) (caps' p))\<close>
       using caps1_os1_def caps'_os'_def ltl_ins_Data eq_LConsD ldropWhile_LNil lnull_def prod.simps(1,2)
       by (smt (verit, best))
-    moreover have \<open>os1 = drop_caps os' ?dropped_caps\<close>
+    moreover have \<open>os1 = drop_caps_old os' ?dropped_caps\<close>
       using caps1_os1_def caps'_os'_def ltl_ins_Data eq_LConsD ldropWhile_LNil lnull_def
         operator_state.fold_congs(2) prod.case_eq_if prod.sel(1) snd_eqD
       by (smt (verit))

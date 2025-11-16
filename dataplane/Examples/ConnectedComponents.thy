@@ -166,7 +166,7 @@ corec label_prop_op where
        batch = map (\<lambda>cap. let t1 = myfst (time cap) in
         (Inl (group_by (\<lambda>v u. label t1 v = label t1 u) vs), cap)) (map (\<lambda>t. Cap t 0) output_caps);
        os' = produces os batch;
-       os'' = drop_caps os' (map (\<lambda>t. Cap t 0) output_caps @ map (\<lambda>t. Cap t 1) output_caps)
+       os'' = drop_caps_old os' (map (\<lambda>t. Cap t 0) output_caps @ map (\<lambda>t. Cap t 1) output_caps)
   in Silent (label_prop_op os'' caps' tis G vs label))
   (Choice (cimage (\<lambda>p. case outpu os p of
     x # xs \<Rightarrow> send_output (label_prop_op (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) caps tis G vs label) p x)
@@ -214,7 +214,7 @@ lemma label_prop_op_elim:
     \<open>output_caps = filter P caps\<close> \<open>caps' = filter (Not \<circ> P) caps\<close>
     \<open>batch = map (\<lambda>cap. let t1 = myfst (time cap) in
         (Inl (group_by (\<lambda>v u. label t1 v = label t1 u) vs), cap)) (map (\<lambda>t. Cap t 0) output_caps)\<close>
-    \<open>os' = produces os batch\<close> \<open>os'' = drop_caps os' (map (\<lambda>t. Cap t 0) output_caps @ map (\<lambda>t. Cap t 1) output_caps)\<close>
+    \<open>os' = produces os batch\<close> \<open>os'' = drop_caps_old os' (map (\<lambda>t. Cap t 0) output_caps @ map (\<lambda>t. Cap t 1) output_caps)\<close>
     \<open>op = label_prop_op os'' caps' tis G vs label\<close>
   | (Write_Some) p x xs where \<open>io = Out (Some p) (Inr x)\<close> \<open>outpu os p = x # xs\<close>
     \<open>op = label_prop_op (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) caps tis G vs label\<close> \<open>p \<notin> defaults\<close>
@@ -318,7 +318,7 @@ next
   let ?batch = \<open>map (\<lambda>cap. let t1 = myfst (time cap) in
         (Inl (group_by (\<lambda>v u. label t1 v = label t1 u) vs), cap)) (map (\<lambda>t. Cap t 0) ?output_caps)\<close>
   let ?os' = \<open>produces os ?batch\<close>
-  let ?os'' = \<open>drop_caps ?os' (map (\<lambda>t. Cap t 0) ?output_caps @ map (\<lambda>t. Cap t 1) ?output_caps)\<close>
+  let ?os'' = \<open>drop_caps_old ?os' (map (\<lambda>t. Cap t 0) ?output_caps @ map (\<lambda>t. Cap t 1) ?output_caps)\<close>
   have \<open>op = label_prop_op ?os'' ?caps' tis G vs label\<close>
     using assms Tau by (subst (asm) label_prop_op.code) (auto split: list.splits)
   thus ?thesis
@@ -411,7 +411,7 @@ lemma step_label_prop_op_Silent[intro]:
   output_caps = filter P caps \<Longrightarrow> caps' = filter (Not \<circ> P) caps \<Longrightarrow>
   batch = map (\<lambda>cap. let t1 = myfst (time cap) in
         (Inl (group_by (\<lambda>v u. label t1 v = label t1 u) vs), cap)) (map (\<lambda>t. Cap t 0) output_caps) \<Longrightarrow>
-  os' = produces os batch \<Longrightarrow> os'' = drop_caps os' (map (\<lambda>t. Cap t 0) output_caps @ map (\<lambda>t. Cap t 1) output_caps) \<Longrightarrow>
+  os' = produces os batch \<Longrightarrow> os'' = drop_caps_old os' (map (\<lambda>t. Cap t 0) output_caps @ map (\<lambda>t. Cap t 1) output_caps) \<Longrightarrow>
   op = label_prop_op os'' caps' tis G vs label \<Longrightarrow>
   step io (label_prop_op os caps tis G vs label) op\<close>
   by (subst label_prop_op.code) auto

@@ -13,7 +13,7 @@ corec max_top' where
     let above_caps = [cap \<leftarrow> caps. frontier_less_equal (front os 0) (time cap) ] in
     let batch = map (\<lambda> cap. (Max (set (buf cap)), cap)) below_caps in
     let os' = produces os batch in
-    let os'' = drop_caps os' below_caps in
+    let os'' = drop_caps_old os' below_caps in
     let buf' = (\<lambda> cap. if cap \<in> set below_caps then [] else buf cap) in
     Silent (max_top' os'' buf' above_caps))
    (Read (Some 0)
@@ -38,7 +38,7 @@ lemma step_max'_top_elim:
     "above_caps = [cap \<leftarrow> caps. frontier_less_equal (front os 0) (time cap)]"
     "batch = map (\<lambda> cap. (Max (set (buf cap)), cap)) below_caps"
     "os' = produces os batch"
-    "os'' = drop_caps os' below_caps"
+    "os'' = drop_caps_old os' below_caps"
     "buf' = (\<lambda> cap. if cap \<in> set below_caps then [] else buf cap)"
     "op = max_top' os'' buf' above_caps"
   | x where "io = Inp (Some 0) x" "isl x" "op = \<oslash>"
@@ -180,7 +180,7 @@ lemma step_max_top'_Tau_output[intro]:
    above_caps = [cap \<leftarrow> caps. frontier_less_equal (front os 0) (time cap)] \<Longrightarrow>
    batch = map (\<lambda> cap. (Max (set (buf cap)), cap)) below_caps \<Longrightarrow>
    os' = produces os batch \<Longrightarrow>
-   os'' = drop_caps os' below_caps \<Longrightarrow>
+   os'' = drop_caps_old os' below_caps \<Longrightarrow>
    buf' = (\<lambda> cap. if cap \<in> set below_caps then [] else buf cap) \<Longrightarrow>
    op = max_top' os'' buf' above_caps \<Longrightarrow>
    step Tau (max_top' os buf caps) op"

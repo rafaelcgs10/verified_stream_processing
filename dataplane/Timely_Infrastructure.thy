@@ -33,6 +33,46 @@ declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   Provide operator builders
 *)
 
+
+(* FIXME: move me *)
+fun rmdups where
+  "rmdups S [] = []"
+| "rmdups S (x # xs) = (if x \<in> S then rmdups S xs else x # (rmdups (insert x S) xs))"
+
+lemma set_rmdups[simp]:
+  "set (rmdups S xs) = set xs - S"
+  by (induct xs arbitrary: S) auto
+
+lemma rmdups_rmdups[simp]:
+  "rmdups S1 (rmdups S2 xs) = rmdups (S1 \<union> S2) xs"
+  by (induct xs arbitrary: S1 S2) (auto simp add: insert_absorb)
+
+lemma rmdups_append[simp]:
+  "rmdups S (xs @ ys) = rmdups S xs @ rmdups (S \<union> set xs) ys"
+  by (induct xs arbitrary: S ys) (auto simp add: insert_absorb)
+
+lemma rmdups_cong:
+  "A \<inter> set xs = B \<inter> set xs \<Longrightarrow>
+   rmdups A xs = rmdups B xs"
+  apply (induct xs arbitrary: A B)
+   apply simp
+  apply (smt (verit, best) Diff_Diff_Int Diff_iff Int_insert_left_if1 insert_absorb inter_eq_subsetI list.inject list.set(2) list.set_intros(1) rmdups.simps(2) set_subset_Cons)
+  done
+
+lemma rmdups_NilI:
+  "(set xs \<subseteq> A \<and> xs \<noteq> []) \<or> xs = [] \<Longrightarrow>
+   rmdups A xs = []"
+  apply (induct xs arbitrary: A)
+   apply simp_all
+  done
+
+lemma rmdups_insert_NilI:
+  "(set xs = {a} \<and> xs \<noteq> []) \<or> xs = [] \<Longrightarrow>
+   rmdups (insert a A) xs = []"
+  apply (induct xs arbitrary: A)
+   apply auto
+  done
+
 definition "DEBUG = False"
 
 definition "trace = (if DEBUG then Debug.tracing else (\<lambda> x y. y))"
@@ -480,7 +520,7 @@ lemma change_multiplicities_same_pointstamps:
 
 record ('p, 'd, 't) operator_state =
   consu :: "('p \<times> 't \<times> int) list"
-  inter :: "('p \<times> 't \<times> int) list"
+  inter :: "('p \<times> 't \<times> int) list"              
   produ :: "('p \<times> 't \<times> int) list"
   input :: "'p \<Rightarrow> ('d \<times> 't) list"
   outpu :: "'p \<Rightarrow> ('d \<times> 't) list"
@@ -503,7 +543,7 @@ abbreviation \<open>mint os caps p t \<equiv> if t \<in> set (caps p) then (caps
 
 abbreviation "produces os batch \<equiv> os\<lparr> outpu := (\<lambda> p. outpu os p @ map (\<lambda> (x, cap). (x, time cap)) (filter (\<lambda> (x, cap). out cap = p) batch)), produ := produ os @ map (\<lambda> (x, cap). (out cap, time cap, 1)) batch \<rparr>"
 
-abbreviation "drop_caps os caps \<equiv> (os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps \<rparr>)"
+abbreviation "drop_caps_old os caps \<equiv> (os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps \<rparr>)"
 
 abbreviation "send_output op p x \<equiv> Write op (Some p) (Inr x)"
 abbreviation "send_progress op st \<equiv> Write op None (Inl (Inl st))"
@@ -516,97 +556,28 @@ fun remove_last where
 
 abbreviation "drop_cap os cap \<equiv> os\<lparr> inter := inter os @ [(out cap, time cap, -1)], ocaps := (ocaps os) ((out cap) := remove_last (time cap) (ocaps os (out cap))) \<rparr>"
 
+abbreviation "drop_caps os caps \<equiv> os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps, ocaps := (\<lambda> p. ocaps os p) \<rparr>"
+
 abbreviation "add_cap os p t \<equiv> os\<lparr> inter := inter os @ [(p, t, 1)], ocaps := (ocaps os) (p := ocaps os p @ [t])  \<rparr>"
 
 abbreviation "consumes os p t d \<equiv> add_cap (os\<lparr> consu := consu os @ [(p, t, 1)], input := BENQ p (d, t) (input os) \<rparr>) p t"
 
 
-fun rmdups where
-  "rmdups S [] = []"
-| "rmdups S (x # xs) = (if x \<in> S then rmdups S xs else x # (rmdups (insert x S) xs))"
 
 corec builder_op where
-  \<open>builder_op os logic = choice5
-  (Choice (cimage (\<lambda> os. Silent (builder_op os logic)) (logic os)))
+  \<open>builder_op ips ops fips fops os logic = choice5
+  (Choice (cimage (\<lambda> os. Silent (builder_op ips ops fips fops os logic)) (logic os)))
   (Choice (cimage (\<lambda>p. case outpu os p of
-    x # xs \<Rightarrow> send_output (builder_op (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) logic) p x)
-    (cfilter (\<lambda>p. outpu os p \<noteq> []) c\<UU>)))
+    x # xs \<Rightarrow> send_output (builder_op ips ops fips fops (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) logic) p x)
+    (cfilter (\<lambda>p. outpu os p \<noteq> []) ops)))
   (let (os', st) = obtain_progress os
-  in send_progress (builder_op os' logic) st)
-  (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op (os\<lparr> front := projr (projl st) \<rparr>) logic else \<oslash>))
-  (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow> \<oslash> | Inr (d, t) \<Rightarrow> builder_op (consumes os p t d) logic)) c\<UU>))\<close>
+  in send_progress (builder_op ips ops fips fops os' logic) st)
+  (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op ips ops fips fops (os\<lparr> front := projr (projl st) \<rparr>) logic else \<oslash>))
+  (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow> \<oslash> | Inr (d, t) \<Rightarrow> builder_op ips ops fips fops (consumes os p t d) logic)) ips))\<close>
 
 definition notifier_op where
-  "notifier_op os logic = builder_op os 
-   (\<lambda> os. logic os (filter (\<lambda> cap. \<not> frontier_less_equal (front os (out cap)) (time cap))
-    (concat (map (\<lambda>p. map (\<lambda> t. Cap t p) (ocaps os p)) (list_of (cenum_class.cenum))))))"
-
-
-
-definition batch_op where
-  "batch_op os logic = notifier_op os 
-   (\<lambda> os caps.
-    let batch = map (\<lambda> cap. (input os (out cap))) (rmdups {} caps) in
-    {| undefined |})"
-
-
-(* corec notifier_op where
-  "notifier_op os caps = choice5
-   (Read None (\<lambda> st. if isl st \<and> isr (projl st) then max_top' (os\<lparr> front := projr (projl st) \<rparr>) buf caps else \<oslash>))
-   (let below_caps = [cap \<leftarrow> caps. \<not> frontier_less_equal (front os 0) (time cap) ] in
-    let above_caps = [cap \<leftarrow> caps. frontier_less_equal (front os 0) (time cap) ] in
-    let batch = map (\<lambda> cap. (Max (set (buf cap)), cap)) below_caps in
-    let os' = produces os batch in
-    let os'' = drop_caps os' below_caps in
-    let buf' = (\<lambda> cap. if cap \<in> set below_caps then [] else buf cap) in
-    Silent (max_top' os'' buf' above_caps))
-   (Read (Some 0)
-    (\<lambda> x. if isl x then \<oslash> else
-     let (n, t) = projr x in
-     let (caps', os') = (if Cap t 0 \<in> set caps then (caps, os) else (insort_key time (Cap t 0) caps, mint_cap os 0 t)) in
-     let os'' = consume os' 1 t 1 in
-     let buf' = BENQ (Cap t 0) n buf in
-     max_top' os'' buf' caps'))
-    ( ((case outpu os 0 of
-         [] \<Rightarrow> Choice {||}
-       |  x # xs \<Rightarrow> (send_output (max_top' (os\<lparr> outpu := (outpu os)(0 := xs ) \<rparr>) buf caps) 0 x))))
-    (let (os', st) = obtain_progress os in
-     send_progress (max_top' os' buf caps) st)" *)
-
-
-lemma set_rmdups[simp]:
-  "set (rmdups S xs) = set xs - S"
-  by (induct xs arbitrary: S) auto
-
-lemma rmdups_rmdups[simp]:
-  "rmdups S1 (rmdups S2 xs) = rmdups (S1 \<union> S2) xs"
-  by (induct xs arbitrary: S1 S2) (auto simp add: insert_absorb)
-
-lemma rmdups_append[simp]:
-  "rmdups S (xs @ ys) = rmdups S xs @ rmdups (S \<union> set xs) ys"
-  by (induct xs arbitrary: S ys) (auto simp add: insert_absorb)
-
-lemma rmdups_cong:
-  "A \<inter> set xs = B \<inter> set xs \<Longrightarrow>
-   rmdups A xs = rmdups B xs"
-  apply (induct xs arbitrary: A B)
-   apply simp
-  apply (smt (verit, best) Diff_Diff_Int Diff_iff Int_insert_left_if1 insert_absorb inter_eq_subsetI list.inject list.set(2) list.set_intros(1) rmdups.simps(2) set_subset_Cons)
-  done
-
-lemma rmdups_NilI:
-  "(set xs \<subseteq> A \<and> xs \<noteq> []) \<or> xs = [] \<Longrightarrow>
-   rmdups A xs = []"
-  apply (induct xs arbitrary: A)
-   apply simp_all
-  done
-
-lemma rmdups_insert_NilI:
-  "(set xs = {a} \<and> xs \<noteq> []) \<or> xs = [] \<Longrightarrow>
-   rmdups (insert a A) xs = []"
-  apply (induct xs arbitrary: A)
-   apply auto
-  done
+  "notifier_op ips ops fips fops os logic = builder_op ips ops fips fops os 
+   (\<lambda> os. logic os (\<lambda> p. filter (\<lambda> t. \<not> frontier_less_equal (front os p) t) (ocaps os p)))"
 
 
 end

@@ -5,13 +5,23 @@ imports
   Source_op
 begin
 
-record ('p, 'd, 't) input_state = "('p, 'd, 't) operator_state" + inps:: "'p \<Rightarrow> ('t, 'd) event llist"
+definition batch_op where
+  "batch_op ips ops os comb logic = notifier_op ips ops os 
+   (\<lambda> os compl_caps.
+    let comb_caps = comb compl_caps in
+    let compl_batches = (\<lambda> p t. map fst (filter (\<lambda> (d, t'). t' = t \<and> t \<in> set (comb_caps p)) (input os p))) in
+    let os = os\<lparr> input := (\<lambda> p. filter (\<lambda> (d, t). t \<notin> set (comb_caps p)) (input os p)) \<rparr> in
+    let outs_drops = logic compl_batches comb_caps in
+    cimage (\<lambda> (outs, drops). drop_caps (produces os outs) drops) outs_drops)"
 
-corec ooo_input_op where
-  "ooo_input_op os = builder_op os (\<lambda> os. (cimage (\<lambda>p. case inps os p of
-    LCons (Data t d) lxs \<Rightarrow> produce (os\<lparr> inps := (inps os)(p := lxs) \<rparr>) (Cap t p) [d]
-  | LCons (Drop t) lxs \<Rightarrow> drop_cap (os\<lparr> inps := (inps os)(p := lxs) \<rparr>) (Cap t p)
-  | LCons (Mint t) lxs \<Rightarrow> mint_cap (os\<lparr> inps := (inps os)(p := lxs) \<rparr>) p t)
-    (cfilter (\<lambda>p. ocaps os p \<noteq> []) c\<UU>)))"
+definition max_op where
+  "max_op os = batch_op {|(1 :: 1)|} {|(1 :: 1)|} os id 
+   (\<lambda> compl_batches caps. {| (map (\<lambda> t. (Max (set (compl_batches 1 t)), Cap t 1)) (caps 1), map (\<lambda> t. Cap t 1) (caps 1)) |})"
+
+definition diff_op where
+  "diff_op os f = batch_op {|(1 :: 2), 2|} {|1|} os 
+   (\<lambda> compl_caps p. if p = 1 then filter (\<lambda> t. t \<in> set (compl_caps 2)) (compl_caps 1) else filter (\<lambda> t. t \<in> set (compl_caps 1)) (compl_caps 2))
+   (\<lambda> compl_batches caps. {| (map (\<lambda> t. (mset (compl_batches 1 t), Cap t 1)) (caps 1), map (\<lambda> t. Cap t 1) (caps 1) @ map (\<lambda> t. Cap t 2) (caps 2)) |})"
+
 
 end
