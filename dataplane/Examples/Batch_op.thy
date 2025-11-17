@@ -2,7 +2,7 @@ theory Batch_op
 
 imports
   Dataplane.Timely_Stream
-  Source_op
+  Dataplane.Timely_Infrastructure
 begin
 
 definition batch_op where
@@ -18,11 +18,9 @@ definition max_op where
   "max_op os = batch_op {|(1 :: 1)|} {|(1 :: 1)|} id os
    (\<lambda> compl_batches caps. {| (map (\<lambda> t. (Max (set (compl_batches 1 t)), Cap t 1)) (rmdups {} (caps 1)), map (\<lambda> t. Cap t 1) (caps 1)) |})"
 
-term lfilter
-
 definition batch_fun_op where
   "batch_fun_op os f = batch_op {|(1 :: 1)|} {|(1 :: 1)|} id os
-   (\<lambda> compl_batches caps. {| (map (\<lambda> t. (f (compl_batches 1 t), Cap t 1)) (rmdups {} (caps 1)), map (\<lambda> t. Cap t 1) (caps 1)) |})"
+   (\<lambda> compl_batches caps. {| (concat (map (\<lambda> t. map (\<lambda> x. (x, Cap t 1)) (f (compl_batches 1 t))) (rmdups {} (caps 1))), map (\<lambda> t. Cap t 1) (caps 1)) |})"
 
 
 definition diff_op where
@@ -32,9 +30,6 @@ definition diff_op where
    (\<lambda> compl_batches caps. 
    {| (map (\<lambda> t. (mset (compl_batches 1 t) - mset (compl_batches 2 t), Cap t 1)) (rmdups {} (caps 1)),
        map (\<lambda> t. Cap t 1) (caps 1) @ map (\<lambda> t. Cap t 2) (caps 2)) |})"
-
-
-
 
 definition batch_ty2_op where
   "batch_ty2_op ips ops comb os logic = notifier_op ips ops os 
