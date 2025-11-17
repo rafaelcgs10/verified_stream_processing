@@ -91,7 +91,7 @@ record ('id, 'p, 't) subgraph =
   summ :: "('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> 't antichain"
 
 datatype ('id, 'p, 's, 'd, 't) dataflow_tree = 
-  "apply": Logic "('p option, 'p option, 's + 'd) op" "'p port \<Rightarrow> 'p port \<Rightarrow> 't antichain"
+  "apply": Logic "('p option, 'p option, 's + 'd) op" "'p port \<Rightarrow> 'p port \<Rightarrow> 't list"
   | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "('id, 'p, 's, 'd, 't) dataflow_tree" "('id, 'p, 's, 'd, 't) dataflow_tree"
 
 fun compile_dataflow_tree_aux :: "'id :: {minus, plus, one, ord} \<Rightarrow> ('id, 'p, 's, 'd, 't :: {zero, order}) dataflow_tree \<Rightarrow>
@@ -99,7 +99,7 @@ fun compile_dataflow_tree_aux :: "'id :: {minus, plus, one, ord} \<Rightarrow> (
   "compile_dataflow_tree_aux n (Logic op su) = (n + 1,
     (\<lambda> l1 l2. 
     if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
-    then su (port l1) (port l2)
+    then frontier (abs_zmultiset (mset (su (port l1) (port l2)), {#}))
     else frontier {#}\<^sub>z),
     map_op (case_option (Inl n) (\<lambda> p. Inr (n, p))) (case_option (Inl n) (\<lambda> p. Inr (n, p))) op)"
 | "compile_dataflow_tree_aux n (Comp wire dt1 dt2) = (
@@ -130,8 +130,8 @@ definition "compile_dataflow_tree df = (
   else Code.abort (STR ''Control plane could not be build'') (\<lambda> _. (\<lambda> _ _. frontier {#}\<^sub>z, \<oslash>)))"
 
 abbreviation "df_ex1 \<equiv> (Comp [ (1, 0) \<mapsto> (1, 0) ]
-         (Comp (\<lambda> l. None) (Logic \<oslash> (\<lambda>_ _. frontier {#0#}\<^sub>z)) (Logic \<oslash> (\<lambda>_ _. frontier {#0#}\<^sub>z)))
-         (Comp (\<lambda> l. None) (Logic \<oslash> (\<lambda>_ _. frontier {#0#}\<^sub>z)) (Logic \<oslash> (\<lambda>_ _. frontier {#0#}\<^sub>z)))) :: (4, 4, unit, nat, nat) dataflow_tree"
+         (Comp (\<lambda> l. None) (Logic \<oslash> (\<lambda>_ _. [0])) (Logic \<oslash> (\<lambda>_ _. [0])))
+         (Comp (\<lambda> l. None) (Logic \<oslash> (\<lambda>_ _. [0])) (Logic \<oslash> (\<lambda>_ _. [0])))) :: (4, 4, unit, nat, nat) dataflow_tree"
 
 (* value "fst (compile_dataflow_tree
        df_ex1)
@@ -524,8 +524,8 @@ lemma change_multiplicities_same_pointstamps:
     done
   done
 
-
 record ('p, 'd, 't) operator_state =
+  summa :: "'p \<Rightarrow> 'p \<Rightarrow> 't list"
   consu :: "('p \<times> 't \<times> int) list"
   inter :: "('p \<times> 't \<times> int) list"              
   produ :: "('p \<times> 't \<times> int) list"
@@ -533,13 +533,16 @@ record ('p, 'd, 't) operator_state =
   outpu :: "'p \<Rightarrow> ('d \<times> 't) list"
   front :: "'p \<Rightarrow> 't antichain"
   ocaps :: "'p \<Rightarrow> 't list"
-  summa :: "'p \<Rightarrow> 'p \<Rightarrow> 't antichain"
+
 
 record ('p, 'd, 'd1, 't) operator_state_ty = "('p, 'd, 't) operator_state" +
   en1 :: "'d1 \<Rightarrow> 'd" de1 :: "'d \<Rightarrow> 'd1"
+
+print_theorems
+
 record ('p, 'd, 'd1, 'd2, 't) operator_state_ty2 = "('p, 'd, 'd1, 't) operator_state_ty" +
   en2 :: "'d2 \<Rightarrow> 'd" de2 :: "'d \<Rightarrow> 'd2"
-record ('p, 'd, 'd1, 'd2, 'd3, 't) operator_state_ty3 = "('p, 'd, 'd1, 'd1, 't) operator_state_ty2" +
+record ('p, 'd, 'd1, 'd2, 'd3, 't) operator_state_ty3 = "('p, 'd, 'd1, 'd2, 't) operator_state_ty2" +
   en3 :: "'d3 \<Rightarrow> 'd" de3 :: "'d \<Rightarrow> 'd3"
 
 abbreviation "delay_cap os cap incr \<equiv> (os\<lparr> inter := inter os @ [(out cap, time cap, -1), (out cap, time cap + incr, 1)] \<rparr>)"
@@ -579,12 +582,11 @@ abbreviation "drop_caps os caps \<equiv> os\<lparr> inter := inter os @ map (\<l
 
 abbreviation "add_cap os p t \<equiv> os\<lparr> inter := inter os @ [(p, t, 1)], ocaps := (ocaps os) (p := ocaps os p @ [t])  \<rparr>"
 
+abbreviation "add_caps os caps \<equiv> os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, 1)) caps, ocaps := (\<lambda> p. ocaps os p @ map time (filter (\<lambda> cap. out cap = p) caps))  \<rparr>"
 
-find_consts 
-
-value "1 -+- (Suc 0)"
-
-abbreviation "consumes os p t d \<equiv> add_cap (os\<lparr> consu := consu os @ [(p, t, 1)], input := BENQ p (d, t) (input os) \<rparr>) p t"
+abbreviation "consumes os p t d \<equiv> 
+  (\<lambda> caps. add_caps (os\<lparr> consu := consu os @ [(p, t, 1)], input := BENQ p (d, t) (input os) \<rparr>) caps) |`|
+  (cset_of_llist (llist_of (transpose (map (\<lambda> p'. map (\<lambda> t'. Cap (t -+- t') p') (summa os p p')) enum_class.enum))))"
 
 corec builder_op where
   \<open>builder_op ips ops os logic = choice5
@@ -595,7 +597,7 @@ corec builder_op where
   (let (os', st) = obtain_progress os
   in send_progress (builder_op ips ops os' logic) st)
   (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op ips ops (os\<lparr> front := projr (projl st) \<rparr>) logic else \<oslash>))
-  (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow> \<oslash> | Inr (d, t) \<Rightarrow> builder_op ips ops (consumes os p t d) logic)) ips))\<close>
+  (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow> \<oslash> | Inr (d, t) \<Rightarrow> Choice (cimage (\<lambda> os. builder_op ips ops os logic) (consumes os p t d)))) ips))\<close>
 
 definition notifier_op where
   "notifier_op ips ops os logic = builder_op ips ops os 

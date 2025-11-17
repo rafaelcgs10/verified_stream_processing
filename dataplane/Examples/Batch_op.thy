@@ -18,6 +18,12 @@ definition max_op where
   "max_op os = batch_op {|(1 :: 1)|} {|(1 :: 1)|} id os
    (\<lambda> compl_batches caps. {| (map (\<lambda> t. (Max (set (compl_batches 1 t)), Cap t 1)) (rmdups {} (caps 1)), map (\<lambda> t. Cap t 1) (caps 1)) |})"
 
+term lfilter
+
+definition batch_fun_op where
+  "batch_fun_op os f = batch_op {|(1 :: 1)|} {|(1 :: 1)|} id os
+   (\<lambda> compl_batches caps. {| (map (\<lambda> t. (f (compl_batches 1 t), Cap t 1)) (rmdups {} (caps 1)), map (\<lambda> t. Cap t 1) (caps 1)) |})"
+
 
 definition diff_op where
   "diff_op os = batch_op {|(1 :: 2), 2|} {|1|} 
@@ -26,6 +32,8 @@ definition diff_op where
    (\<lambda> compl_batches caps. 
    {| (map (\<lambda> t. (mset (compl_batches 1 t) - mset (compl_batches 2 t), Cap t 1)) (rmdups {} (caps 1)),
        map (\<lambda> t. Cap t 1) (caps 1) @ map (\<lambda> t. Cap t 2) (caps 2)) |})"
+
+
 
 
 definition batch_ty2_op where
