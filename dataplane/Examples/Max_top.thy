@@ -835,9 +835,8 @@ lemma dataflow_topology_my_summ[simp]:
     done
   done
 
-
 lemma after_summary_zero_antichain[simp]:
-  "dataflow_topology.after_summary (-+-) M (antichain { 0 :: nat }) = M"
+  "M -++- (antichain { 0 :: nat }) = M"
   apply (subst dataflow_topology.after_summary_def[where summary=my_summ])
    apply simp
   apply (subst antichain_inverse)
@@ -14353,7 +14352,6 @@ abbreviation init_op_state where
    produ = [],
    outpu = (\<lambda> _. []),
    front = ft \<rparr>"
-
 
 abbreviation init_conf where
   "init_conf summary cgs \<equiv> the (propagate_all summary (change_multiplicities summary cgs \<lparr>c_work = (\<lambda> _.  {#}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>))"

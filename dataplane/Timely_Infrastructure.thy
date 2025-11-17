@@ -204,6 +204,12 @@ global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "fst (
   by simp
 
 notation dataflow_topology_from_tree.followed_by (infixl \<open>-+-\<close> 65)
+notation dataflow_topology_from_tree.after_summary (infixl \<open>+++\<close> 65)
+
+abbreviation AF where
+  "AF \<equiv> dataflow_topology.after_summary (-+-)"
+
+notation "AF" (infixl \<open>-++-\<close> 65)
 
 definition take_step_locale where
   "take_step_locale df = take_step' df cless"
@@ -518,6 +524,7 @@ lemma change_multiplicities_same_pointstamps:
     done
   done
 
+
 record ('p, 'd, 't) operator_state =
   consu :: "('p \<times> 't \<times> int) list"
   inter :: "('p \<times> 't \<times> int) list"              
@@ -526,6 +533,7 @@ record ('p, 'd, 't) operator_state =
   outpu :: "'p \<Rightarrow> ('d \<times> 't) list"
   front :: "'p \<Rightarrow> 't antichain"
   ocaps :: "'p \<Rightarrow> 't list"
+  summa :: "'p \<Rightarrow> 'p \<Rightarrow> 't antichain"
 
 record ('p, 'd, 'd1, 't) operator_state_ty = "('p, 'd, 't) operator_state" +
   en1 :: "'d1 \<Rightarrow> 'd" de1 :: "'d \<Rightarrow> 'd1"
@@ -561,11 +569,20 @@ fun remove_last where
   "remove_last x [] = []"
 | "remove_last x xs = (if last xs = x then butlast xs else remove_last x (butlast xs) @ [last xs])"
 
+fun list_diff where
+  "list_diff ys [] = ys"
+| "list_diff ys (x # xs) = list_diff (remove_last x ys) xs"
+
 abbreviation "drop_cap os cap \<equiv> os\<lparr> inter := inter os @ [(out cap, time cap, -1)], ocaps := (ocaps os) ((out cap) := remove_last (time cap) (ocaps os (out cap))) \<rparr>"
 
-abbreviation "drop_caps os caps \<equiv> os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps, ocaps := (\<lambda> p. ocaps os p) \<rparr>"
+abbreviation "drop_caps os caps \<equiv> os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps, ocaps := (\<lambda> p. list_diff (ocaps os p) (map time (filter (\<lambda> cap. out cap = p) caps))) \<rparr>"
 
 abbreviation "add_cap os p t \<equiv> os\<lparr> inter := inter os @ [(p, t, 1)], ocaps := (ocaps os) (p := ocaps os p @ [t])  \<rparr>"
+
+
+find_consts 
+
+value "1 -+- (Suc 0)"
 
 abbreviation "consumes os p t d \<equiv> add_cap (os\<lparr> consu := consu os @ [(p, t, 1)], input := BENQ p (d, t) (input os) \<rparr>) p t"
 
