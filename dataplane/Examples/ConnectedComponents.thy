@@ -37,11 +37,8 @@ abbreviation cc_spec where
   \<open>cc_spec \<equiv> accumulator_op (\<lambda>_. (\<union>)) (\<lambda>_. The \<circ> is_ccs) (\<lambda>_. (=) {}) (\<lambda>_. 0)\<close>
 
 (* TODO move *)
-abbreviation \<open>choice4 op1 op2 op3 op4 \<equiv> choice2 (choice3 op1 op2 op3) op4\<close>
-abbreviation \<open>choice5 op1 op2 op3 op4 op5 \<equiv> choice2 (choice4 op1 op2 op3 op4) op5\<close>
 abbreviation \<open>choice6 op1 op2 op3 op4 op5 op6 \<equiv> choice2 (choice5 op1 op2 op3 op4 op5) op6\<close>
 abbreviation \<open>choice7 op1 op2 op3 op4 op5 op6 op7 \<equiv> choice2 (choice6 op1 op2 op3 op4 op5 op6) op7\<close>
-abbreviation "produces os batch \<equiv> os\<lparr> outpu := (\<lambda> p. outpu os p @ map (\<lambda> (x, cap). (x, time cap)) (filter (\<lambda> (x, cap). out cap = p) batch)), produ := produ os @ map (\<lambda> (x, cap). (out cap, time cap, 1)) batch \<rparr>"
 
 definition union_with where
   \<open>union_with f g h x = f (g x) (h x)\<close>
@@ -426,10 +423,10 @@ abbreviation label_op where
   map_op (case_option (Inl (1 :: 3)) (\<lambda>p. Inr (1, p))) (case_option (Inl (1 :: 3)) (\<lambda>p. Inr (1, p)))
   (label_prop_op os caps tis G vs label)\<close>
 
-abbreviation incr_op' where
-  \<open>incr_op' incr os \<equiv>
+abbreviation incr_op1 where
+  \<open>incr_op1 os \<equiv>
   map_op (case_option (Inl (2 :: 3)) (\<lambda>p. Inr (2, p))) (case_option (Inl (2 :: 3)) (\<lambda>p. Inr (2, p)))
-  (increment_top incr os)\<close>
+  (increment_top (\<lambda>_. MyPair 0 1) os)\<close>
 
 (* Issue: I would like to consider the input and increment operators with only 1 input port and 1
 output port, however this is not possible here because the numeral type 2 for ports is the same for
@@ -438,20 +435,20 @@ ports occurs inside the shared_state type, which occurs inside the type of data 
 and this is a dead type parameter. *)
 
 abbreviation label_incr_op where
-  \<open>label_incr_op os1 caps tis G vs label buf incr os2 \<equiv>
+  \<open>label_incr_op os1 caps tis G vs label buf os2 \<equiv>
   map_op (case_sum id id) (case_sum id id)
   (comp_op [Inr (1 :: 3, 1 :: 2) \<mapsto> Inr (2 :: 3, 0 :: 2)] buf (label_op os1 caps tis G vs label)
-    (incr_op' incr os2))\<close>
+    (incr_op1 os2))\<close>
 
 abbreviation label_incr_loop_op where
-  \<open>label_incr_loop_op os1 caps tis G vs label buf1 incr os2 buf2 \<equiv>
-  (loop_op [Inr (2 :: 3, 1 :: 2) \<mapsto> Inr (1 :: 3, 0 :: 2)] buf2 (label_incr_op os1 caps tis G vs label buf1 incr os2))\<close>
+  \<open>label_incr_loop_op os1 caps tis G vs label buf1 os2 buf2 \<equiv>
+  (loop_op [Inr (2 :: 3, 1 :: 2) \<mapsto> Inr (1 :: 3, 0 :: 2)] buf2 (label_incr_op os1 caps tis G vs label buf1 os2))\<close>
 
 abbreviation cc_op where
-  \<open>cc_op os1 caps1 ins buf1 os2 caps2 tis G vs label buf2 incr os3 buf3 \<equiv>
+  \<open>cc_op os1 caps1 ins buf1 os2 caps2 tis G vs label buf2 os3 buf3 \<equiv>
   map_op (case_sum id id) (case_sum id id)
   (comp_op [Inr (0 :: 3, 0 :: 2) \<mapsto> Inr (1 :: 3, 0 :: 2)] buf1 (inp_op' os1 caps1 ins)
-    (label_incr_loop_op os2 caps2 tis G vs label buf2 incr os3 buf3))\<close>
+    (label_incr_loop_op os2 caps2 tis G vs label buf2 os3 buf3))\<close>
 
 abbreviation cc_edges where
   \<open>cc_edges \<equiv> (\<lambda>l.
@@ -478,9 +475,9 @@ abbreviation cc_summary where
   else if l1 = Loc 1 (Src 1) \<and> l2 = Loc 2 (Trg 0)
   then antichain {0}
   else if l1 = Loc 2 (Trg 0) \<and> l2 = Loc 2 (Src 0)
-  then antichain {0}
-  else if l1 = Loc 2 (Src 0) \<and> l2 = Loc 1 (Trg 1)
   then antichain {MyPair 0 1}
+  else if l1 = Loc 2 (Src 0) \<and> l2 = Loc 1 (Trg 1)
+  then antichain {0}
   else {}\<^sub>A)\<close>
 
 lemma
@@ -491,7 +488,7 @@ lemma
   monotone (ins 0) WM \<Longrightarrow>
   \<forall>x \<in> set (buf1 (Inr (1, 0))) \<union> set (buf2 (Inr (2, 0))) \<union> set (buf3 ((Inr (1, 0)))). is_Inr x \<and> is_Inr (fst (projr x)) \<Longrightarrow>
   sorted (map myfst caps2) \<Longrightarrow>
-  dataflow_op sg (cc_op os1 caps1 ins buf1 os2 caps2 tis G vs label buf2 incr os3 buf3)
+  dataflow_op sg (cc_op os1 caps1 ins buf1 os2 caps2 tis G vs label buf2 os3 buf3)
   \<approx> map_op (Pair 1) (Pair 1) (source_op ins')\<close>
   oops
 
