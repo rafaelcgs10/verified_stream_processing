@@ -14,10 +14,6 @@ definition batch_op where
     let outs_drops = logic compl_batches comb_caps in
     cimage (\<lambda> (outs, drops). drop_caps (produces os (map (\<lambda> (d, cap). (en2 os d, cap)) outs)) drops) outs_drops)"
 
-definition max_op where
-  "max_op os = batch_op {|(1 :: 1)|} {|(1 :: 1)|} id os
-   (\<lambda> compl_batches caps. {| (map (\<lambda> t. (Max (set (compl_batches 1 t)), Cap t 1)) (rmdups {} (caps 1)), map (\<lambda> t. Cap t 1) (caps 1)) |})"
-
 definition batch_fun_op where
   "batch_fun_op os f = batch_op {|(1 :: 1)|} {|(1 :: 1)|} id os
    (\<lambda> compl_batches caps. {| (concat (map (\<lambda> t. map (\<lambda> x. (x, Cap t 1)) (f (compl_batches 1 t))) (rmdups {} (caps 1))), map (\<lambda> t. Cap t 1) (caps 1)) |})"

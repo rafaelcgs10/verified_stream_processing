@@ -29,11 +29,70 @@ abbreviation "t1 \<equiv> MyPair (Suc 0) (0 :: nat)"
 abbreviation "t2 \<equiv> MyPair (0 :: nat) (Suc 0)"
 abbreviation "t3 \<equiv> MyPair (Suc 0) (Suc 0)"
 
-value \<open>list_of (lconcat (batch_fun_spec 
- (\<lambda> b. [Max (set b)]) (llist_of [Mint t1, Mint t2, Mint t3, Data t3 42, Drop t3, Data t2 7, Data t1 (-2), Data t2 (-1), Data t1 (- 3), Drop t1, Drop t2]) [] [] :: (int \<times> _) buf llist))\<close>
+abbreviation "inps1 \<equiv> llist_of [Data 0 0, Data (0 :: nat) (42 :: nat), Data 1 43]"
+
+abbreviation "inps2 \<equiv> llist_of [Mint t1, Mint t2, Mint t3, Data t3 42, Drop t3, Data t2 7, Data t1 (-2 :: int), Data t2 (-1), Data t1 (- 3), Drop t1, Drop t2]"
+
+value \<open>list_of (lconcat (batch_fun_spec (\<lambda> b. [Max (set b)]) inps1 [] []))\<close>
+value \<open>list_of (lconcat (batch_fun_spec (\<lambda> b. [Max (set b)]) inps2 [] []))\<close>
+
+abbreviation init_input_state where
+"init_input_state su inps \<equiv> \<lparr> 
+   summar = su,
+   consu = [],
+   inter = [],
+   produ = [],
+   input = (\<lambda> _. []),
+   outpu = (\<lambda> _. []),
+   front = undefined,
+   ocaps = (\<lambda> _. [0]),
+   initia = False,
+   en1 = Inl,
+   de1 = projl,
+   es = inps
+   \<rparr>"
+abbreviation "l1 inps \<equiv> Logic (ooo_input_op {|1|} (init_input_state default_internal_summary inps)) default_internal_summary"
+
+abbreviation init_operator_state_ty2 where
+"init_operator_state_ty2 su \<equiv> \<lparr> 
+   summar = su,
+   consu = [],
+   inter = [],
+   produ = [],
+   input = (\<lambda> _. []),
+   outpu = (\<lambda> _. []),
+   front = undefined,
+   ocaps = (\<lambda> _. [0]),
+   initia = False,
+   en1 = Inl,
+   de1 = projl,
+   en2 = Inr,
+   de2 = projr
+   \<rparr>"
+abbreviation "l2 \<equiv> Logic (batch_fun_op (init_operator_state_ty2 default_internal_summary) (\<lambda> b. if b = [] then [] else [Max (set b)])) default_internal_summary"
+
+abbreviation "dt \<equiv> compile_dataflow (Comp [(0, 1) \<mapsto> (0, 1)] (l1 (\<lambda> _. inps1)) l2) :: (1 \<times> 1, 1 \<times> 1, (nat + nat) \<times> nat) op"
+
+lemma one_minus[code]:
+  "(1 :: 1) - x = 1"
+  by auto
+lemma one_plus[code]:
+  "(1 :: 1) + x = 1"
+  by auto
+
+definition "my_test = approx_in 23 [VOut (1, 1) (Inr 42, 0), VOut (1, 1) (Inr 43, 1)] dt"
+
+
+value [GHC] "my_test"
+
+
+(* export_code my_test in Haskell 
+  module_name Test
+ *)
 
 abbreviation "inp_op os \<equiv> map_op (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (ooo_input_op {|1|} os)"
 abbreviation "bt_op os f \<equiv> map_op (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (batch_fun_op os f)"
+
 abbreviation "inp_bt_op os1 cbuf os2 f \<equiv>
    map_op (case_sum id id) (case_sum id id)
    (comp_op [Inr (0 :: 2, 0 :: 1) \<mapsto> Inr (1 :: 2, 0 :: 1)] cbuf (inp_op (os1\<lparr> en1 := Inl \<rparr>)) (bt_op (os2\<lparr> de1 := projl, en2 := Inr \<rparr>) f))"

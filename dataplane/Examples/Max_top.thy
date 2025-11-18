@@ -14344,20 +14344,6 @@ c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (produ os1)) +
   qed
 qed
 
-find_consts " ('p, 'd, 't) operator_state"
-
-abbreviation init_op_state where
-"init_op_state ft \<equiv> \<lparr> consu = [],
-   inter = [],
-   produ = [],
-   outpu = (\<lambda> _. []),
-   front = ft \<rparr>"
-
-abbreviation init_conf where
-  "init_conf summary cgs \<equiv> the (propagate_all summary (change_multiplicities summary cgs \<lparr>c_work = (\<lambda> _.  {#}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>))"
-
-abbreviation "default_internal_summary \<equiv> (\<lambda> _ _. frontier (abs_zmultiset (mset [0 :: nat], {#})))"
-
 abbreviation "init_subgraph' summary cgs \<equiv>
    \<lparr> pt_tr = init_conf summary cgs,
    edges = (\<lambda> l1. [l2 \<leftarrow> enum_class.enum. \<not> is_empty_antichain (summary l1 l2) \<and> is_Src (port l1) \<and> is_Trg (port l2) ]),

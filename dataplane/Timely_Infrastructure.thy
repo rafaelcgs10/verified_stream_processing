@@ -256,11 +256,11 @@ definition "change_multiplicities summary xs conf = fold (\<lambda> (l, t, m) c.
 
 definition "propagate_pointstamps summary conf cbs = propagate_all summary (change_multiplicities summary cbs conf)"
 
-abbreviation "init_subgraph summary \<equiv>
+(* abbreviation "init_subgraph summary \<equiv>
    \<lparr> pt_tr = the (propagate_pointstamps summary empty_conf (concat (map (\<lambda> nid. map (\<lambda> p. (Loc nid (Src p), 0, 1)) enum_class.enum) enum_class.enum))),
    edges = (\<lambda> l1. [l2 \<leftarrow> enum_class.enum. \<not> is_empty_antichain (summary l1 l2) \<and> is_Src (port l1) \<and> is_Trg (port l2) ]),
    summ = summary \<rparr>"
-
+ *)
 
 (* Inspired by timely/src/dataflow/operators/generic/builder_rc.rs:29 and timely/src/progress/operate.rs:63 *)
 (* This is the shared that the operator exposes to the subgraph *)
@@ -409,10 +409,6 @@ lemma dataflow_op_simps[simp]:
   "is_Choice (dataflow_op sg op)"
   by (subst dataflow_op.code; simp)+
 
-definition "compile_dataflow dt = (let (summary, op) = compile_dataflow_tree dt in
-                                    let sg = init_subgraph summary in
-                                    dataflow_op sg op)"
-
 (* Inspired by timely/src/dataflow/channels/pushers/counter.rs:25 and timely/src/dataflow/channels/mod.rs:49 *)
 (* writes maybe could support multiple different ports, then this one also would *)
 abbreviation "push op p batch \<equiv> 
@@ -525,7 +521,7 @@ lemma change_multiplicities_same_pointstamps:
   done
 
 record ('p, 'd, 't) operator_state =
-  summa :: "'p \<Rightarrow> 'p \<Rightarrow> 't list"
+  summar :: "'p \<Rightarrow> 'p \<Rightarrow> 't list"
   consu :: "('p \<times> 't \<times> int) list"
   inter :: "('p \<times> 't \<times> int) list"              
   produ :: "('p \<times> 't \<times> int) list"
@@ -533,17 +529,41 @@ record ('p, 'd, 't) operator_state =
   outpu :: "'p \<Rightarrow> ('d \<times> 't) list"
   front :: "'p \<Rightarrow> 't antichain"
   ocaps :: "'p \<Rightarrow> 't list"
+  initia :: bool
 
+abbreviation "default_internal_summary \<equiv> (\<lambda> p1 p2. if p1 = p2 then [\<bottom>] else [])"
+
+abbreviation init_op_state where
+"init_op_state su \<equiv> \<lparr> 
+   summar = su,
+   consu = [],
+   inter = [],
+   produ = [],
+   input = (\<lambda> _. []),
+   outpu = (\<lambda> _. []),
+   front = undefined,
+   ocaps = (\<lambda> _. []),
+   initia = False
+   \<rparr>"
+
+abbreviation init_conf where
+  "init_conf summary cgs \<equiv> the (propagate_all summary (change_multiplicities summary cgs \<lparr>c_work = (\<lambda> _.  {#}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>))"
 
 record ('p, 'd, 'd1, 't) operator_state_ty = "('p, 'd, 't) operator_state" +
   en1 :: "'d1 \<Rightarrow> 'd" de1 :: "'d \<Rightarrow> 'd1"
-
-print_theorems
-
 record ('p, 'd, 'd1, 'd2, 't) operator_state_ty2 = "('p, 'd, 'd1, 't) operator_state_ty" +
   en2 :: "'d2 \<Rightarrow> 'd" de2 :: "'d \<Rightarrow> 'd2"
 record ('p, 'd, 'd1, 'd2, 'd3, 't) operator_state_ty3 = "('p, 'd, 'd1, 'd2, 't) operator_state_ty2" +
   en3 :: "'d3 \<Rightarrow> 'd" de3 :: "'d \<Rightarrow> 'd3"
+
+abbreviation "init_subgraph summary cgs \<equiv>
+   \<lparr> pt_tr = init_conf summary cgs,
+   edges = (\<lambda> l1. [l2 \<leftarrow> Enum.enum. \<not> is_empty_antichain (summary l1 l2) \<and> is_Src (port l1) \<and> is_Trg (port l2) ]),
+   summ = summary \<rparr>"
+
+definition "compile_dataflow dt = (let (summary, op) = compile_dataflow_tree dt in
+                                   let sg = init_subgraph summary (map (\<lambda> (nid, p). (Loc nid (Src p), bot, 1)) (List.product Enum.enum Enum.enum)) in
+                                    dataflow_op sg op)"
 
 abbreviation "delay_cap os cap incr \<equiv> (os\<lparr> inter := inter os @ [(out cap, time cap, -1), (out cap, time cap + incr, 1)] \<rparr>)"
 
@@ -586,10 +606,12 @@ abbreviation "add_caps os caps \<equiv> os\<lparr> inter := inter os @ map (\<la
 
 abbreviation "consumes os p t d \<equiv> 
   (\<lambda> caps. add_caps (os\<lparr> consu := consu os @ [(p, t, 1)], input := BENQ p (d, t) (input os) \<rparr>) caps) |`|
-  (cset_of_llist (llist_of (transpose (map (\<lambda> p'. map (\<lambda> t'. Cap (t -+- t') p') (summa os p p')) enum_class.enum))))"
+  (cset_of_llist (llist_of (transpose (map (\<lambda> p'. map (\<lambda> t'. Cap (t -+- t') p') (summar os p p')) enum_class.enum))))"
 
 corec builder_op where
-  \<open>builder_op ips ops os logic = choice5
+  \<open>builder_op ips ops os logic =
+  (if initia os then
+  choice5
   (Choice (cimage (\<lambda> os. Silent (builder_op ips ops os logic)) (logic os)))
   (Choice (cimage (\<lambda>p. case outpu os p of
     x # xs \<Rightarrow> send_output (builder_op ips ops (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) logic) p x)
@@ -597,7 +619,9 @@ corec builder_op where
   (let (os', st) = obtain_progress os
   in send_progress (builder_op ips ops os' logic) st)
   (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op ips ops (os\<lparr> front := projr (projl st) \<rparr>) logic else \<oslash>))
-  (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow> \<oslash> | Inr (d, t) \<Rightarrow> Choice (cimage (\<lambda> os. builder_op ips ops os logic) (consumes os p t d)))) ips))\<close>
+  (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow> \<oslash> | Inr (d, t) \<Rightarrow> Choice (cimage (\<lambda> os. builder_op ips ops os logic) (consumes os p t d)))) ips))
+  else
+  (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op ips ops (os\<lparr> front := projr (projl st), initia := True \<rparr>) logic else \<oslash>)))\<close>
 
 definition notifier_op where
   "notifier_op ips ops os logic = builder_op ips ops os 
