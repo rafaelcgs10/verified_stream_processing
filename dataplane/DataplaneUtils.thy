@@ -120,4 +120,13 @@ lemma ltl_lconcat_lmap_zip:
     done
   done
 
+fun to_zmset where
+  "to_zmset [] = {#}\<^sub>z"
+| "to_zmset (x # xs) = to_zmset xs + {# x #}\<^sub>z"
+
+lemma to_zmset_correct[code]:
+  "zmset_of (mset xs) = to_zmset xs"
+  by (induct xs) auto
+
+
 end

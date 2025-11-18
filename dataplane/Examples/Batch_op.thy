@@ -22,7 +22,6 @@ definition batch_fun_op where
   "batch_fun_op os f = batch_op {|(1 :: 1)|} {|(1 :: 1)|} id os
    (\<lambda> compl_batches caps. {| (concat (map (\<lambda> t. map (\<lambda> x. (x, Cap t 1)) (f (compl_batches 1 t))) (rmdups {} (caps 1))), map (\<lambda> t. Cap t 1) (caps 1)) |})"
 
-
 definition diff_op where
   "diff_op os = batch_op {|(1 :: 2), 2|} {|1|} 
    (\<lambda> compl_caps p. if p = 1 then filter (\<lambda> t. t \<in> set (compl_caps 2)) (compl_caps 1) else filter (\<lambda> t. t \<in> set (compl_caps 1)) (compl_caps 2))
