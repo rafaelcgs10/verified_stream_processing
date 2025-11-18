@@ -30,7 +30,7 @@ abbreviation "t2 \<equiv> MyPair (0 :: nat) (Suc 0)"
 abbreviation "t3 \<equiv> MyPair (Suc 0) (Suc 0)"
 
 value \<open>list_of (lconcat (batch_fun_spec 
- (\<lambda> b. [Max (set b)]) (llist_of [Mint t1, Mint t2, Mint t3, Data t3 42, Data t2 7, Data t1 (-2), Data t2 (-1), Data t1 (- 3), Drop t3, Drop t1, Drop t2]) [] [] :: (int \<times> _) buf llist))\<close>
+ (\<lambda> b. [Max (set b)]) (llist_of [Mint t1, Mint t2, Mint t3, Data t3 42, Drop t3, Data t2 7, Data t1 (-2), Data t2 (-1), Data t1 (- 3), Drop t1, Drop t2]) [] [] :: (int \<times> _) buf llist))\<close>
 
 abbreviation "inp_op os \<equiv> map_op (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (ooo_input_op {|1|} os)"
 abbreviation "bt_op os f \<equiv> map_op (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (batch_fun_op os f)"
