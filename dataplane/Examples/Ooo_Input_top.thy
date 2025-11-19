@@ -139,7 +139,7 @@ next
       by (smt (verit, best))
     moreover have \<open>os1 = drop_caps_old os' ?dropped_caps\<close>
       using caps1_os1_def caps'_os'_def ltl_ins_Data eq_LConsD ldropWhile_LNil lnull_def
-        operator_state.fold_congs(2) prod.case_eq_if prod.sel(1) snd_eqD
+        operator_state.fold_congs(3) prod.case_eq_if prod.sel(1) snd_eqD
       by (smt (verit))
     ultimately show ?thesis
       using LCons(9) ins_wm(2) caps'_os'_def by blast
