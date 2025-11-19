@@ -14349,10 +14349,25 @@ abbreviation "init_subgraph' summary cgs \<equiv>
    edges = (\<lambda> l1. [l2 \<leftarrow> enum_class.enum. \<not> is_empty_antichain (summary l1 l2) \<and> is_Src (port l1) \<and> is_Trg (port l2) ]),
    summ = summary \<rparr>"
 
+abbreviation init_op_state' where
+"init_op_state' fr su \<equiv> \<lparr> 
+   summar = su,
+   consu = [],
+   inter = [],
+   produ = [],
+   input = (\<lambda> _. []),
+   outpu = (\<lambda> _. []),
+   front = fr,
+   ocaps = (\<lambda> _. []),
+   initia = False
+   \<rparr>"
+
 abbreviation "my_sg inps \<equiv> init_subgraph' my_summ (if inps = LNil then [] else [(Loc 0 (Src 0), 0, 1)])"
 
-abbreviation "os1 inps \<equiv> init_op_state (\<lambda> p. frontier (c_imp (pt_tr (my_sg inps)) (Loc 0 (Trg p))))"
-abbreviation "os2 inps \<equiv> init_op_state (\<lambda> p. frontier (c_imp (pt_tr (my_sg inps)) (Loc 1 (Trg p))))"
+abbreviation "default_internal_summary' \<equiv> (\<lambda> p1 p2. if p1 = p2 then [0 :: nat] else [])"
+
+abbreviation "os1 inps \<equiv> init_op_state' (\<lambda> p. frontier (c_imp (pt_tr (my_sg inps)) (Loc 0 (Trg p)))) default_internal_summary'"
+abbreviation "os2 inps \<equiv> init_op_state' (\<lambda> p. frontier (c_imp (pt_tr (my_sg inps)) (Loc 1 (Trg p)))) default_internal_summary'"
 
 abbreviation "st1 \<equiv> \<lparr>cons = [], inte = [], prod = []\<rparr>"
 abbreviation "st2 \<equiv> \<lparr>cons = [], inte = [], prod = []\<rparr>"
@@ -14462,9 +14477,11 @@ lemma c_work_the_propagate_all_my_summ:
     done
   done
 
+
          
-abbreviation "op1 inps \<equiv> Logic (input_top (os1 (inps 1)) (\<lambda> _. 0) inps) default_internal_summary"
-abbreviation "op2 inps \<equiv> Logic (max_top' (os2 (inps 1)) (\<lambda> _. []) []) default_internal_summary"
+abbreviation "op1 inps \<equiv> Logic (input_top (os1 (inps 1)) (\<lambda> _. 0) inps) default_internal_summary'"
+abbreviation "op2 inps \<equiv> Logic (max_top' (os2 (inps 1)) (\<lambda> _. []) []) default_internal_summary'"
+
 
 abbreviation "opf inps \<equiv> snd (compile_dataflow_tree (Comp [(0, 1) \<mapsto> (0, 1)] (op1 inps) (op2 inps)))"
 
@@ -14476,7 +14493,7 @@ lemma dataflow_op_inp_m_top_source_op:
            (lzip (inps 1) (iterates (trivial_dataflow_topology_interpretation.followed_by (Suc 0)) 0)))))"
   unfolding compile_dataflow_tree_def Let_def
   apply (simp only: implementation_graph_checker_correct weights_to_graph_fun_def Let_def compile_dataflow_tree_aux.simps prod.case)
-  apply (subst (22) if_P)
+  apply (subst (32) if_P)
    apply simp_all
   subgoal
     by eval

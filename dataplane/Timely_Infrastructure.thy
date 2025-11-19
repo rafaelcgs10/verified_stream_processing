@@ -73,7 +73,7 @@ lemma rmdups_insert_NilI:
    apply auto
   done
 
-definition "DEBUG = False"
+definition "DEBUG = True"
 
 definition "trace = (if DEBUG then Debug.tracing else (\<lambda> x y. y))"
 
