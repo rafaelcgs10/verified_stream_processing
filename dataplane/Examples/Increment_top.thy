@@ -81,7 +81,7 @@ abbreviation inp_incr_summary where
   then antichain {0}
   else {}\<^sub>A)\<close>
 
-lemma
+lemma ooo_input_top_increment_top_source_op:
   \<open>summ sg = inp_incr_summary incr \<Longrightarrow>
   \<forall>x \<in> set (buf (Inr (1, 0))). is_Inr x \<Longrightarrow>
   dataflow_op sg (inp_incr_op os1 caps ins buf incr os2)
@@ -342,5 +342,12 @@ next
       done
     done
 qed
+
+record ('p, 'd, 'd1, 't) increment_state = \<open>('p, 'd, 'd1, 't) operator_state_ty\<close> + incr :: \<open>'p \<Rightarrow> 't\<close>
+
+definition increment_op :: \<open>_ \<Rightarrow> _ \<Rightarrow> (_, _, _, _) increment_state \<Rightarrow> _\<close> where
+  \<open>increment_op ips ops os = builder_op ips ops os
+  (\<lambda>os. (\<lambda>p. case input os p of (d, t) # xs \<Rightarrow> produce (os\<lparr>input := (input os)(p := xs)\<rparr>) (Cap (t + incr os p) p) [d])
+    |`| cfilter (\<lambda>p. input os p \<noteq> []) ops)\<close>
 
 end
