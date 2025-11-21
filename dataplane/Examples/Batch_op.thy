@@ -5,6 +5,10 @@ imports
   Dataplane.Timely_Infrastructure
 begin
 
+term "show_list show_nat"
+
+term trace
+
 definition batch_op where
   "batch_op ips ops comb os logic = notifier_op ips ops os 
    (\<lambda> os compl_caps.

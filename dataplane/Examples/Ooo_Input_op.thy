@@ -9,10 +9,10 @@ record ('p, 'd, 'd1, 't) input_state = "('p, 'd, 'd1, 't) operator_state_ty" + e
 
 definition ooo_input_op where
   "ooo_input_op ops os = builder_op {||} ops os (\<lambda> os. (cimage (\<lambda>p. case es os p of
-    LNil \<Rightarrow> drop_caps os (map (\<lambda> t. Cap t p) (ocaps os p))
+    LNil \<Rightarrow> trace (STR ''Droping all'') (drop_caps os (map (\<lambda> t. Cap t p) (ocaps os p)))
   | LCons (Data t d) lxs \<Rightarrow> produce (os\<lparr> es := (es os)(p := lxs) \<rparr>) (Cap t p) [en1 os d]
   | LCons (Drop t) lxs \<Rightarrow> drop_cap (os\<lparr> es := (es os)(p := lxs) \<rparr>) (Cap t p)
-  | LCons (Mint t) lxs \<Rightarrow> mint_cap (os\<lparr> es := (es os)(p := lxs) \<rparr>) p t)
+  | LCons (Mint t) lxs \<Rightarrow> add_cap (os\<lparr> es := (es os)(p := lxs) \<rparr>) p t)
     (cfilter (\<lambda>p. ocaps os p \<noteq> []) ops)))"
 
 record ('p, 'd, 'd1, 'd2, 't) input_state2 = "('p, 'd, 'd1, 'd2, 't) operator_state_ty2" + 
