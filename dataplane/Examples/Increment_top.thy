@@ -1,6 +1,7 @@
 theory Increment_top
 
 imports
+  Ooo_Input_op
   Ooo_Input_top
   Dataplane.MyProduct_Instances
   Source_op
@@ -345,9 +346,11 @@ qed
 
 record ('p, 'd, 'd1, 't) increment_state = \<open>('p, 'd, 'd1, 't) operator_state_ty\<close> + incr :: \<open>'p \<Rightarrow> 't\<close>
 
-definition increment_op :: \<open>_ \<Rightarrow> _ \<Rightarrow> (_, _, _, _) increment_state \<Rightarrow> _\<close> where
+definition increment_op where
   \<open>increment_op ips ops os = builder_op ips ops os
-  (\<lambda>os. (\<lambda>p. case input os p of (d, t) # xs \<Rightarrow> produce (os\<lparr>input := (input os)(p := xs)\<rparr>) (Cap (t + incr os p) p) [d])
+  (\<lambda>os. (\<lambda>p. case input os p of (d, t) # xs \<Rightarrow>
+    let cap = Cap (t + incr os p) p
+    in drop_cap (produce (os\<lparr>input := (input os)(p := xs)\<rparr>) cap [d]) cap)
     |`| cfilter (\<lambda>p. input os p \<noteq> []) ops)\<close>
 
 end

@@ -164,7 +164,7 @@ abbreviation ooo_inp_summary where
   then antichain {0}
   else {}\<^sub>A)\<close>
 
-lemma
+lemma ooo_input_top_source_op:
   \<open>summ sg = ooo_inp_summary \<Longrightarrow>
   dataflow_op sg (ooo_inp_op os caps ins)
   \<approx> map_op (\<lambda>(p :: 1). (0, p)) (\<lambda>p. (0, p))
