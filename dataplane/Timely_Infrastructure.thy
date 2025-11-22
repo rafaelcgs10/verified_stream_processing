@@ -90,6 +90,7 @@ record ('id, 'p, 't) subgraph =
   pt_tr :: "(('id, 'p) location, 't) configuration"
   edges :: "('id, 'p) location \<Rightarrow> ('id, 'p) location list"
   summ :: "('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> 't antichain"
+  upfro :: "'id \<Rightarrow> bool"
 
 datatype ('id, 'p, 's, 'd, 't) dataflow_tree = 
   "apply": Logic "('p option, 'p option, 's + 'd) op" "'p port \<Rightarrow> 'p port \<Rightarrow> 't list"
@@ -282,16 +283,39 @@ term "((o) frontier) ` imp_fron"
 (* Inspired by timely/src/dataflow/operators/capability.rs:62 *)
 datatype ('p, 't) capability = Cap (time: "'t :: plus") (out: 'p)
 
+abbreviation "nop sg op \<equiv> (case op of Read (Inl nid) f \<Rightarrow> upfro sg nid | _ \<Rightarrow> True)"
+
+term upfro
+
 corec dataflow_op where
   "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
-     Read (Inl nid) f \<Rightarrow> (case trace (STR ''Propagate all'') (propagate_all (summ sg) (pt_tr sg)) of
-         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf' \<rparr> in
+     Read (Inl nid) f \<Rightarrow> (case propagate_all (summ sg) (pt_tr sg) of
+         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
          let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron))))))
    | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x)))
    | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
    | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
-   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> pt_tr := trace (STR ''Change multiplicies'') (change_multiplicities (summ sg) (extract_progress nid (edges sg) st) (pt_tr sg)) \<rparr>) op')
-   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) (choices op))"
+   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ sg) (extract_progress nid (edges sg) st) (pt_tr sg) \<rparr>) op')
+   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) (cfilter (nop sg) (choices op)))"
+
+
+lemma dataflow_op_code[code]:
+  "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
+     Read (Inl nid) f \<Rightarrow> trace (STR ''Reading from frontier at nid: '' + print_2 nid) (case propagate_all (summ sg) (pt_tr sg) of
+         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
+         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron))))))
+   | Read (Inr (nid, p)) f \<Rightarrow>  (Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x))))
+   | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> trace (STR ''Writing out frontier at location: '' + show_loc (Loc nid (Src p))) (Write (dataflow_op sg op') (nid, p) x)     
+   | Silent op' \<Rightarrow> trace (STR ''Some silent step'') Silent (dataflow_op sg op')
+   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow>
+      trace (STR ''Reading progress at nid: '' + print_2 nid + STR '' cgs sizes: ('' + show_nat (length (cons st)) + STR '', '' + show_nat (length (inte st))  + STR '', '' + show_nat (length (prod st)) + STR '')''
+   ) (Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr :=change_multiplicities (summ sg) (extract_progress nid (edges sg) st) (pt_tr sg) \<rparr>) op'))
+   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) (cfilter (nop sg) (choices op)))"
+  apply (simp only: trace_simp id_def)
+  apply (subst dataflow_op.code[symmetric])
+  apply auto
+  done
+
 
 lemma propagate_all_terminates[simp]:
   "propagate_all a b \<noteq> None"
@@ -309,8 +333,8 @@ lemma step_dataflow_op_elim:
     nid p op'' x where "io = Inp (nid, p) x" "op' = dataflow_op sg op''" "step (Inp (Inr (nid, p)) (Inr x)) op op''"
   | nid p op'' x where "io = Out (nid, p) x" "op' = dataflow_op sg op''" "step (Out (Inr (nid, p)) (Inr x)) op op''"
   | op'' where "io = Tau" "op' = dataflow_op sg op''" "step Tau op op''"
-  | nid op'' st where "io = Tau" "op' = dataflow_op (sg\<lparr> pt_tr := (change_multiplicities (summ sg) (extract_progress nid (edges sg) st) (pt_tr sg)) \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
-  | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_all (summ sg) (pt_tr sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf' \<rparr>)"
+  | nid op'' st where "io = Tau" "op' = dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (edges sg) st) (pt_tr sg)) \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
+  | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_all (summ sg) (pt_tr sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr>)" "upfro sg nid"
     "imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p)))" "op' = dataflow_op sg' op''" "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op''"
   using assms apply -
   apply atomize_elim
@@ -326,7 +350,8 @@ lemma step_dataflow_op_elim:
 lemma step_Tau_dataflow_op_Inp_Inl_intro[intro]:
   "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op' \<Longrightarrow>
    conf' = the (propagate_all(summ sg) (pt_tr sg)) \<Longrightarrow>
-   sg' = sg\<lparr> pt_tr := conf' \<rparr> \<Longrightarrow>
+   upfro sg nid \<Longrightarrow>
+   sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> \<Longrightarrow>
    imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) \<Longrightarrow>
    step Tau (dataflow_op sg op) (dataflow_op sg' op')"
   apply (subst dataflow_op.code)
@@ -335,7 +360,7 @@ lemma step_Tau_dataflow_op_Inp_Inl_intro[intro]:
 
 lemma step_Tau_dataflow_op_Out_Inl_intro[intro]:
   "step (Out (Inl nid) (Inl (Inl st))) op op' \<Longrightarrow>
-   sg' = sg\<lparr> pt_tr := (change_multiplicities (summ sg) (extract_progress nid (edges sg) st) (pt_tr sg)) \<rparr> \<Longrightarrow>
+   sg' = sg\<lparr> upfro := (\<lambda> _. True), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (edges sg) st) (pt_tr sg)) \<rparr> \<Longrightarrow>
    step Tau (dataflow_op sg op) (dataflow_op sg' op')"
   apply (subst dataflow_op.code)
   apply (force elim: step_choicesE split: sum.splits option.splits)
@@ -531,6 +556,7 @@ record ('p, 'd, 't) operator_state =
   front :: "'p \<Rightarrow> 't antichain"
   ocaps :: "'p \<Rightarrow> 't list"
   initia :: bool
+  nfron :: bool
 
 abbreviation "default_internal_summary \<equiv> (\<lambda> p1 p2. if p1 = p2 then [\<bottom>] else [])"
 
@@ -544,7 +570,8 @@ abbreviation init_op_state where
    outpu = (\<lambda> _. []),
    front = undefined,
    ocaps = (\<lambda> _. []),
-   initia = False
+   initia = False,
+   nfron = False
    \<rparr>"
 
 abbreviation "init_c_pts summary cgs \<equiv> change_multiplicities summary cgs \<lparr>c_work = (\<lambda> _.  {#}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
@@ -562,7 +589,7 @@ record ('p, 'd, 'd1, 'd2, 'd3, 't) operator_state_ty3 = "('p, 'd, 'd1, 'd2, 't) 
 abbreviation "init_subgraph summary cgs \<equiv>
    \<lparr> pt_tr = init_conf summary cgs,
    edges = (\<lambda> l1. [l2 \<leftarrow> Enum.enum. \<not> is_empty_antichain (summary l1 l2) \<and> is_Src (port l1) \<and> is_Trg (port l2) ]),
-   summ = summary \<rparr>"
+   summ = summary, upfro = (\<lambda> _. True) \<rparr>"
 
 term show_frontiers
 
@@ -615,43 +642,57 @@ abbreviation "consumes os p t d \<equiv>
   (cset_of_llist (llist_of (transpose (map (\<lambda> p'. map (\<lambda> t'. Cap (t -+- t') p') (summar os p p')) enum_class.enum))))"
 
 corec builder_op where
-  \<open>builder_op ips ops os logic =
+  \<open>builder_op fb ips ops os logic =
   (if initia os then
   choice5
-  (Choice (cimage (\<lambda> os. Silent (builder_op ips ops os logic)) (logic os)))
+  (Choice (cimage (\<lambda> os. Silent (builder_op fb ips ops os logic)) (logic os)))
   (Choice (cimage (\<lambda>p. case outpu os p of
-    x # xs \<Rightarrow> send_output (builder_op ips ops (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) logic) p x)
+    x # xs \<Rightarrow> send_output (builder_op fb ips ops (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) logic) p x)
     (cfilter (\<lambda>p. outpu os p \<noteq> []) ops)))
-  (let (os', st) = obtain_progress os
-  in send_progress (builder_op ips ops os' logic) st)
-  (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op ips ops (os\<lparr> front := projr (projl st) \<rparr>) logic else \<oslash>))
-  (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow> \<oslash> | Inr (d, t) \<Rightarrow> Choice (cimage (\<lambda> os. builder_op ips ops os logic) (consumes os p t d)))) ips))
+  (if consu os \<noteq> [] \<or> inter os \<noteq> [] \<or> produ os \<noteq> []
+   then
+   let (os', st) = obtain_progress os
+   in send_progress (builder_op fb ips ops os' logic) st
+   else \<oslash>)
+  (if fb then
+   Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op fb ips ops (os\<lparr> front := projr (projl st), nfron := True \<rparr>) logic else \<oslash>)
+   else \<oslash>)
+  (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow> \<oslash> | Inr (d, t) \<Rightarrow> Choice (cimage (\<lambda> os. builder_op fb ips ops os logic) (consumes os p t d)))) ips))
   else
-  (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op ips ops (os\<lparr> front := projr (projl st), initia := True \<rparr>) logic else \<oslash>)))\<close>
+  (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op fb ips ops (os\<lparr> front := projr (projl st), initia := True, nfron := True \<rparr>) logic else \<oslash>)))\<close>
 
 lemma builder_op_code[code]:
-  "builder_op ips ops os logic =
+  "builder_op fb ips ops os logic =
   (if initia os then
   Choice {|
-  (trace (STR ''Fooo'') (Choice (cimage (\<lambda> os. Silent (builder_op ips ops os logic)) (logic os)))),
+  (trace (STR ''Builder: User logic'') (Choice (cimage (\<lambda> os. Silent (builder_op fb ips ops os logic)) (logic os)))),
   (Choice (cimage (\<lambda>p. case outpu os p of
-    x # xs \<Rightarrow> send_output (builder_op ips ops (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) logic) p x)
+    x # xs \<Rightarrow> trace (STR ''Builder: outputing at port: '' + print_2 p) (send_output (builder_op fb ips ops (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) logic) p x))
     (cfilter (\<lambda>p. outpu os p \<noteq> []) ops))),
-  (let (os', st) = obtain_progress os
-  in send_progress (builder_op ips ops os' logic) st),
-  (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op ips ops (os\<lparr> front := projr (projl st) \<rparr>) logic else \<oslash>)),
-  (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow> \<oslash> | Inr (d, t) \<Rightarrow> Choice (cimage (\<lambda> os. builder_op ips ops os logic) (consumes os p t d)))) ips))
+  (if consu os \<noteq> [] \<or> inter os \<noteq> [] \<or> produ os \<noteq> []
+   then
+   let (os', st) = obtain_progress os
+   in (send_progress (builder_op fb ips ops os' logic) st)
+   else \<oslash>),
+   (if fb then
+    trace (STR ''Builder: Reading frontier'') (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op fb ips ops (os\<lparr> front := projr (projl st), nfron := True \<rparr>) logic else \<oslash>))
+    else \<oslash>
+    ),  
+(Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow> \<oslash> | Inr (d, t) \<Rightarrow> (trace (STR ''Reading data at port: '' + print_2 p) Choice (cimage (\<lambda> os. builder_op fb ips ops os logic) (consumes os p t d))))) ips))
  |}
   else
-  (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op ips ops (os\<lparr> front := projr (projl st), initia := True \<rparr>) logic else \<oslash>)))"
+  (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op fb ips ops (os\<lparr> front := projr (projl st), initia := True, nfron := True \<rparr>) logic else \<oslash>)))"
   sorry
 
 
 term show_frontiers
 
 definition notifier_op where
-  "notifier_op ips ops os logic = builder_op ips ops os 
-   (\<lambda> os. logic os (\<lambda> p. filter (\<lambda> t. trace (STR ''Frontier: '' + show_frontier (front os p)) (\<not> frontier_less_equal (front os p) t)) (ocaps os p)))"
+  "notifier_op ips ops os logic = (builder_op True ips ops (os\<lparr> nfron := False \<rparr>) 
+   (\<lambda> os.
+    if nfron os then
+    logic (os\<lparr> nfron := False \<rparr>) (\<lambda> p. filter (\<lambda> t. trace (STR ''Notifier op: Frontier: '' + show_frontier (front os p)) (\<not> frontier_less_equal (front os p) t)) (ocaps os p))
+    else {||}))"
 
 
 

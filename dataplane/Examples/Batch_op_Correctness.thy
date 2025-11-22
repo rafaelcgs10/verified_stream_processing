@@ -33,7 +33,7 @@ abbreviation "t3 \<equiv> MyPair (Suc 0) (Suc 0)"
 
 term DEBUG
 
-abbreviation "inps1 \<equiv> llist_of [Data (0 :: nat) (0 :: nat)]"
+abbreviation "inps1 \<equiv> llist_of [Data (0 :: nat) (0 :: nat), Data 0 42, Mint 1, Drop 0, Data 1 43]"
 
 abbreviation "inps2 \<equiv> llist_of [Mint t1, Mint t2, Mint t3, Data t3 10, Drop t3, Data t2 7, Data t1 (-2 :: int), Data t2 (-1), Data t1 (- 3), Drop t1, Drop t2]"
 
@@ -52,6 +52,7 @@ abbreviation init_input_state where
    front = undefined,
    ocaps = (\<lambda> _. [\<bottom>]),
    initia = False,
+   nfron = False,
    en1 = Inl,
    de1 = projl,
    es = inps
@@ -69,6 +70,7 @@ abbreviation init_operator_state_ty2 where
    front = undefined,
    ocaps = (\<lambda> _. [\<bottom>]),
    initia = False,
+   nfron = False,
    en1 = Inl,
    de1 = projl,
    en2 = Inr,
@@ -206,16 +208,14 @@ fun fast_eval' :: "nat \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> ('i, 'o, 'd
 definition "fast_eval n m op = (cfilter ((\<noteq>) []) (cimage fst ((fast_eval' n m m op))))"
 
 
-definition "my_fast_eval = cimage (map (\<lambda> (d, t). (projr d, t)) o  map vdata) (fast_eval 1 20 dt)"
-
+definition "my_fast_eval = csetid (cimage (map (\<lambda> (d, t). (projr d, t)) o map vdata) (fast_eval 1 100 dt))"
 
 term DEBUG
 
 value [GHC] my_fast_eval
 
 
-
-
+end
 
 
 definition safe_cthe_elem where "safe_cthe_elem C = (if C = {||} then None else Some (cthe_elem C))"
