@@ -2,6 +2,7 @@ theory MyProduct_Instances
 
 imports
   Containers.Collection_Order
+  "HOL-Library.Countable"
 begin
 
 datatype ('a, 'b) myprod = MyPair (myfst: 'a) (mysnd: 'b)
@@ -395,5 +396,15 @@ proof
     by (simp add: le_iff_add less_eq_myprod_def) (metis myprod.exhaust_sel myprod.sel(1,2) plus_myprod_def)
 qed
 end
+
+find_consts "(_, _) myprod" "_ \<times> _" 
+
+definition "to_prod p = (case p of MyPair p1 p2 \<Rightarrow> (p1, p2))"
+definition "from_prod p = (case p of (p1, p2) \<Rightarrow> MyPair p1 p2)"
+
+instance myprod :: (countable, countable) countable
+  apply (rule countable_classI [of "(\<lambda>(x, y). (prod_encode) (to_nat x, to_nat y)) o to_prod"])
+  apply  (auto simp add: to_prod_def split: myprod.splits)
+  done
 
 end

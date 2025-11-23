@@ -27,15 +27,14 @@ partial_function (llist) batch_fun_spec where
 
 declare batch_fun_spec.simps[code]
 
+abbreviation "t0 \<equiv> \<bottom>"
 abbreviation "t1 \<equiv> MyPair (Suc 0) (0 :: nat)"
 abbreviation "t2 \<equiv> MyPair (0 :: nat) (Suc 0)"
 abbreviation "t3 \<equiv> MyPair (Suc 0) (Suc 0)"
 
-term DEBUG
-
 abbreviation "inps1 \<equiv> llist_of [Mint 1, Data 1 44, Data 1 6, Data (0 :: nat) (0 :: nat), Data 0 42, Drop 0, Data 1 43]"
 
-abbreviation "inps2 \<equiv> llist_of [Mint t1, Mint t2, Mint t3, Data t3 10, Drop t3, Data t2 7, Data t1 (-2 :: int), Data t2 (-1), Data t1 (- 3), Drop t1, Drop t2]"
+abbreviation "inps2 \<equiv> llist_of [Mint t1, Mint t2, Mint t3, Drop t0, Data t3 10, Drop t3, Data t2 7, Data t1 (2 :: nat), Data t2 (Suc 0), Data t1 3, Drop t1, Drop t2]"
 
 abbreviation \<open>r1 \<equiv> lconcat (batch_fun_spec (\<lambda> b. [Max (set b)]) inps1 [] [\<bottom>])\<close>
 
@@ -82,9 +81,12 @@ abbreviation init_operator_state_ty2 where
    \<rparr>"
 abbreviation "l2 \<equiv> Logic (batch_fun_op (init_operator_state_ty2 default_internal_summary) (\<lambda> b. if b = [] then [] else [Max (set b)])) default_internal_summary"
 
-abbreviation "main_dt \<equiv> Comp [(0, 1) \<mapsto> (0, 1)] (l1 (\<lambda> _. inps1)) l2"
+abbreviation "test_dt1 \<equiv> Comp [(0, 1) \<mapsto> (0, 1)] (l1 (\<lambda> _. inps1)) l2"
+abbreviation "test_dt2 \<equiv> Comp [(0, 1) \<mapsto> (0, 1)] (l1 (\<lambda> _. inps2)) l2"
 
-abbreviation "dt \<equiv> compile_dataflow main_dt :: (2 \<times> 1, 2 \<times> 1, (nat + nat) \<times> nat) op"
+abbreviation "test_op1 \<equiv> compile_dataflow test_dt1 :: (2 \<times> 1, 2 \<times> 1, (nat + nat) \<times> nat) op"
+abbreviation "test_op2 \<equiv> compile_dataflow test_dt2 :: (2 \<times> 1, 2 \<times> 1, _) op"
+
 
 lemma one_minus[code]:
   "(1 :: 1) - x = 1"
@@ -107,17 +109,6 @@ friend_of_corec lappend where
   subgoal by (cases xs; cases lys; simp)
   subgoal by transfer_prover
   done
-
-
-(* definition "my_eval = compress_cfilter ((\<noteq>) [])(eval 18 dt)"
-value [GHC] "my_eval"  *)
- 
-definition "my_check = approx_in 20 [VOut (1, 1) (Inr 4, 1), VOut (1, 1) (Inr 10, 0)] dt"
-(* 
-definition "my_check = approx_in 24 [VOut (1, 1) (Inr 0, 0)] dt" *)
-(* 
-value [GHC] "my_check"
- *)
 
 declare csome_elem_def[code del]
 declare cthe_elem_def[code del]
@@ -187,24 +178,6 @@ code_printing
   | constant csome_elem \<rightharpoonup>
     (Haskell) "Cset.chd"
 
-fun fast_eval' :: "nat \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> ('i, 'o, 'd :: {countable}) op \<Rightarrow> (('i, 'o, 'd) VIO list \<times> ('i, 'o, 'd) op) cset"  where
-  "fast_eval' 0 m i op = {|([], op)|}"
-| "fast_eval' n m 0 op = {||}"
-| "fast_eval' (Suc n) m i (Write op p x) = (cimage (\<lambda>(t, op). (VOut p x # t, op)) (fast_eval' n m m op))"
-| "fast_eval' (Suc n) m i (Read p f) = (cUnion (cimage (\<lambda>x. cimage (\<lambda>(t, op). (VInp p x # t, op)) (fast_eval' n m m (f x))) (cUNIV :: 'd cset)))"
-| "fast_eval' n m (Suc i) (Silent op) = (cimage (\<lambda>(t, op). (t, op)) (fast_eval' n m i op))"
-| "fast_eval' n m (Suc i) (Choice ops) = (
-  if ops = {||} then {|([], \<oslash>)|} else
- (let ops' = (cUnion (cimage (fast_eval' n m i) ops)) in ops'))"
-
-definition "fast_eval n m op = (cfilter ((\<noteq>) []) (cimage fst ((fast_eval' n m m op))))"
-
-
-definition "my_fast_eval = csome_elem (cimage (map (\<lambda> (d, t). (projr d, t)) o map vdata) (fast_eval 3 100 dt))"
-
-
-value [GHC] my_fast_eval
-
 fun wsteps_at :: "('i, 'o, 'd :: countable) op \<Rightarrow> _" where
   "wsteps_at (Write op p x) n = {|(VOut p x, op)|}"
 | "wsteps_at (Read p f) n = cimage (\<lambda>x. (VInp p x, f x)) (cUNIV :: 'd cset)"
@@ -262,60 +235,30 @@ corec trace_exec where
    else LNil)"
 
 
-value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec dt)"
+value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op1)"
 value r1
 
-end
+instantiation myprod :: (cenum, cenum) cenum begin
+definition cenum_myprod :: "('a, 'b) myprod llist" where "cenum_myprod = lmerge (lmap (\<lambda> x. lmap (MyPair x) cenum) cenum)"
+instance
+  apply standard
+  unfolding cenum_myprod_def from_prod_def lset_lmap
+  apply (auto simp: cenum_prod_def image_iff inj_on_def order_less_subst2 UNIV_cenum[symmetric] cenum_distinct
+      intro!: ldistinct_linterleave ldistinct_lmerge
+      dest!: cenum_distinct[unfolded ldistinct_conv_lnth, rule_format, THEN notE, rotated -1] split: myprod.splits)
+  subgoal for x
+    apply (cases x)
+    apply auto
+    done
+  done
 
+value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op2)"
+value r2
 
-lemma foo[partial_function_mono]:
-  "Fun.monotone (flatf_ord None) option_ord
-          (\<lambda>produce.
-              let ops' = the |`| cfilter ((\<noteq>) None) (produce |`| ops) in if ops' = {||} then None else Some (csome_elem ops'))"
-  unfolding Let_def
-  apply (rule Fun.monotoneI)
-  apply (clarsimp split: if_splits)
-  apply(intro conjI impI)
-   apply (smt (verit, del_insts) cimage.rep_eq cset.map_cong empty_iff flat_ord_def fun_ord_def image_eqI member_filter)
-  subgoal for x y
-    apply (rule flat_ordI)
-    apply simp
-    subgoal premises
-      apply transfer
-      oops
-
-      find_consts "'a set \<Rightarrow> 'a" name: some
-
-      find_theorems some_elem
-
-
-
-partial_function (option) produce where
-  "produce op = (case op of
-     Write op p x \<Rightarrow> Some ((VOut p x), op)
-   | Read p f \<Rightarrow> Some ((VInp p undefined), f undefined)
-   | Silent op \<Rightarrow> produce op
-   | Choice ops \<Rightarrow> let ops' = cimage the (cfilter ((\<noteq>) None) (cimage produce ops)) in
-    (if ops' = {||} then None else Some (f ops')))"
+print_classes
 
 end
 
-fun in_traces where
-  "in_traces 0 op i = []"
-| "in_traces (Suc n) op i = (case steps_exec i op of None \<Rightarrow> [] | Some (io, op') \<Rightarrow> io # in_traces n op' i)"
-
-definition "my_fast_check3 = in_traces 1 dt 10"
-
-(* 
-value [GHC] "my_fast_check3"
-
- *)
-
-
-  export_code safe_cthe_elem in Haskell 
-  module_name Test26
-
-end
 
 
 abbreviation "inp_op os \<equiv> map_op (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (ooo_input_op {|1|} os)"
@@ -351,7 +294,7 @@ assumes
   \<open>(a, st1) = obtain_progress os1\<close>   
   \<open>(b, st2) = obtain_progress os2\<close>
   \<open>cgs = extract_progress 0 (edges sg) st1 @ extract_progress 1 (edges sg) st2\<close>
-  \<open>sg = subgraph_inv main_dt cgs c\<close>
+  \<open>sg = subgraph_inv test_dt1 cgs c\<close>
   \<open>c' = pt_tr sg\<close>
   and
   c_pts_inv:

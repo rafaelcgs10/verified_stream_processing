@@ -596,7 +596,7 @@ term show_frontiers
 definition "compile_dataflow dt = (let (summary, op) = compile_dataflow_tree dt in
                                    let sg = init_subgraph summary (map (\<lambda> (nid, p). (Loc nid (Src p), bot, 1)) (List.product Enum.enum Enum.enum)) in
                                    let f = c_imp (pt_tr sg) in 
-                                   trace (STR ''Initial frontiers: '' + show_frontiers f) (dataflow_op sg op))"
+                                   dataflow_op sg op)"
 
 abbreviation "delay_cap os cap incr \<equiv> (os\<lparr> inter := inter os @ [(out cap, time cap, -1), (out cap, time cap + incr, 1)] \<rparr>)"
 
@@ -688,7 +688,7 @@ definition notifier_op where
   "notifier_op ips ops os logic = (builder_op True ips ops (os\<lparr> nfron := False \<rparr>) 
    (\<lambda> os.
     if nfron os then
-    logic (os\<lparr> nfron := False \<rparr>) (\<lambda> p. filter (\<lambda> t. trace (STR ''Notifier op: Frontier: '' + show_frontier (front os p)) (\<not> frontier_less_equal (front os p) t)) (ocaps os p))
+    logic (os\<lparr> nfron := False \<rparr>) (\<lambda> p. filter (\<lambda> t. \<not> frontier_less_equal (front os p) t) (ocaps os p))
     else {||}))"
 
 
