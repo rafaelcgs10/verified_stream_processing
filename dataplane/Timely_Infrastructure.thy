@@ -682,10 +682,7 @@ lemma builder_op_code[code]:
  |}
   else
   (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op fb ips ops (os\<lparr> front := projr (projl st), initia := True, nfron := True \<rparr>) logic else \<oslash>)))"
-  sorry
-
-
-term show_frontiers
+  oops
 
 definition notifier_op where
   "notifier_op ips ops os logic = (builder_op True ips ops (os\<lparr> nfron := False \<rparr>) 
@@ -699,6 +696,8 @@ definition notifier_op where
 
 context includes cset.lifting begin
 lift_definition cthe_elem :: "'m cset \<Rightarrow> 'm" is Set.the_elem .
+lift_definition csome_elem :: "'m cset \<Rightarrow> 'm" is some_elem .
+lift_definition ccard :: "'m cset \<Rightarrow> nat" is card .
 end
 
 

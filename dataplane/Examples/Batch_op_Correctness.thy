@@ -33,13 +33,17 @@ abbreviation "t3 \<equiv> MyPair (Suc 0) (Suc 0)"
 
 term DEBUG
 
-abbreviation "inps1 \<equiv> llist_of [Data (0 :: nat) (0 :: nat), Data 0 42, Mint 1, Drop 0, Data 1 43]"
+abbreviation "inps1 \<equiv> llist_of [Mint 1, Data 1 44, Data 1 6, Data (0 :: nat) (0 :: nat), Data 0 42, Drop 0, Data 1 43]"
 
 abbreviation "inps2 \<equiv> llist_of [Mint t1, Mint t2, Mint t3, Data t3 10, Drop t3, Data t2 7, Data t1 (-2 :: int), Data t2 (-1), Data t1 (- 3), Drop t1, Drop t2]"
 
-value \<open>list_of (lconcat (batch_fun_spec (\<lambda> b. [Max (set b)]) inps1 [] []))\<close>
+abbreviation \<open>r1 \<equiv> lconcat (batch_fun_spec (\<lambda> b. [Max (set b)]) inps1 [] [\<bottom>])\<close>
 
-value \<open>list_of (lconcat (batch_fun_spec (\<lambda> b. [Max (set b)]) inps2 [] []))\<close>
+value r1
+
+abbreviation \<open>r2 \<equiv> lconcat (batch_fun_spec (\<lambda> b. [Max (set b)]) inps2 [] [\<bottom>])\<close>
+
+value r2
 
 abbreviation init_input_state where
 "init_input_state su inps \<equiv> \<lparr> 
@@ -115,21 +119,8 @@ definition "my_check = approx_in 24 [VOut (1, 1) (Inr 0, 0)] dt" *)
 value [GHC] "my_check"
  *)
 
-definition "rmdup_traces xs = xs"
-
-abbreviation "flat_choices ops \<equiv> cUnion (cimage choices ops)"
-
-abbreviation "is_Visible x \<equiv> is_Write x \<or> is_Read x"
-
-context includes cset.lifting begin
-lift_definition ccard :: "'m cset \<Rightarrow> nat" is card .
-end
-
-lemma ccard_code[code]:
-  "ccard (cset_of_llist xs) = the_enat (llength xs)"
-  sorry
-
-abbreviation "optm ops \<equiv> let ops' = (cfilter (is_Visible o snd) ops) in if ccard ops' > 0 then ops' else ops"
+declare csome_elem_def[code del]
+declare cthe_elem_def[code del]
 
 code_printing
   type_constructor llist \<rightharpoonup>
@@ -171,14 +162,16 @@ code_printing
   | constant llist_of \<rightharpoonup>
     (Haskell) "id"
 
-definition "csetid (xs :: 'm cset) = xs"
+definition "csingleton (xs :: 'm cset) = xs"
 
 code_printing code_module "Cset" \<rightharpoonup> (Haskell)
-  \<open>module Cset (foo, Cset (..) ) where
+  \<open>module Cset (csingleton, chd, Cset (..) ) where
 newtype Cset a = Cset [a];
 
-foo (Cset []) = Cset [];
-foo (Cset xs) = Cset [Prelude.head xs];
+csingleton (Cset []) = Cset [];
+csingleton (Cset xs) = Cset [Prelude.head xs];
+
+chd (Cset xs) = Prelude.head xs;
 
 \<close> 
 
@@ -187,13 +180,12 @@ code_printing
     (Haskell) "Cset.Cset _"
   | constant cset_of_llist \<rightharpoonup>
     (Haskell) "Cset.Cset"
-  | constant csetid \<rightharpoonup>
-    (Haskell) "Cset.foo"
-
-term choice5
-lemma choice5_code[code]:
-  "choice5 op1 op2 op3 op4 op5 = Choice {||}"
-  sorry
+  | constant csingleton \<rightharpoonup>
+    (Haskell) "Cset.csingleton"
+  | constant cthe_elem \<rightharpoonup>
+    (Haskell) "Cset.chd"
+  | constant csome_elem \<rightharpoonup>
+    (Haskell) "Cset.chd"
 
 fun fast_eval' :: "nat \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> ('i, 'o, 'd :: {countable}) op \<Rightarrow> (('i, 'o, 'd) VIO list \<times> ('i, 'o, 'd) op) cset"  where
   "fast_eval' 0 m i op = {|([], op)|}"
@@ -203,46 +195,114 @@ fun fast_eval' :: "nat \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> ('i, 'o, 'd
 | "fast_eval' n m (Suc i) (Silent op) = (cimage (\<lambda>(t, op). (t, op)) (fast_eval' n m i op))"
 | "fast_eval' n m (Suc i) (Choice ops) = (
   if ops = {||} then {|([], \<oslash>)|} else
- (let ops' = (cUnion (cimage (fast_eval' n m i) ops)) in if ops' = {||} then {||} else ops'))"
+ (let ops' = (cUnion (cimage (fast_eval' n m i) ops)) in ops'))"
 
 definition "fast_eval n m op = (cfilter ((\<noteq>) []) (cimage fst ((fast_eval' n m m op))))"
 
 
-definition "my_fast_eval = csetid (cimage (map (\<lambda> (d, t). (projr d, t)) o map vdata) (fast_eval 1 100 dt))"
+definition "my_fast_eval = csome_elem (cimage (map (\<lambda> (d, t). (projr d, t)) o map vdata) (fast_eval 3 100 dt))"
 
-term DEBUG
 
 value [GHC] my_fast_eval
 
+fun wsteps_at :: "('i, 'o, 'd :: countable) op \<Rightarrow> _" where
+  "wsteps_at (Write op p x) n = {|(VOut p x, op)|}"
+| "wsteps_at (Read p f) n = cimage (\<lambda>x. (VInp p x, f x)) (cUNIV :: 'd cset)"
+| "wsteps_at (Silent op) (Suc n) = wsteps_at op n"
+| "wsteps_at (Choice ops) (Suc n) = cUnion (cimage (\<lambda> op. wsteps_at op n) ops)"
+| "wsteps_at op 0 = {||}"
+
+definition "wsteps_exec op = cUnion (cimage (wsteps_at op) cUNIV)"
+
+lemma wsteps_exec_Write[simp]: "wsteps_exec (Write op p x) = {|(VOut p x, op)|}"
+  unfolding wsteps_exec_def by (auto simp: cset_eq_iff)
+
+lemma wsteps_exec_Read[simp]: "wsteps_exec (Read p f) = cimage (\<lambda>x. (VInp p x, f x)) (cUNIV :: _ cset)"
+  unfolding wsteps_exec_def by (auto simp: cset_eq_iff)
+
+lemma wsteps_exec_Silent[simp]:
+  "wsteps_exec (Silent op) = wsteps_exec op"
+  unfolding wsteps_exec_def
+  apply safe
+  subgoal premises prems for a b n
+    using prems(2-) apply -
+    apply (induct "Silent op" n arbitrary: op rule: wsteps_at.induct)
+     apply auto
+    done
+  subgoal for a b n
+    apply (simp add: wsteps_exec_def)
+    apply (rule exI[of _ "Suc n"])
+    apply auto
+    done
+  done
+
+lemma wsteps_exec_Choice[simp]:
+  "wsteps_exec (Choice ops) = cUnion (wsteps_exec |`| ops)"
+  unfolding wsteps_exec_def
+  apply safe
+  subgoal premises prems for a b n
+    using prems(2-) apply -
+    apply (induct "Choice ops" n arbitrary: ops rule: wsteps_at.induct)
+     apply auto
+    done
+  subgoal for a b x n
+    apply (simp add: wsteps_exec_def)
+    apply (rule exI[of _ "Suc n"])
+    apply auto
+    done
+  done
+
+declare wsteps_exec_def[code del]
+lemmas wsteps_exec_code[code] = wsteps_exec_Read wsteps_exec_Write wsteps_exec_Silent wsteps_exec_Choice
+ 
+
+corec trace_exec where
+  "trace_exec op = (let ops = wsteps_exec op in
+   if \<not> cis_empty ops then let (io, op') = csome_elem ops in LCons io (trace_exec op')
+   else LNil)"
+
+
+value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec dt)"
+value r1
 
 end
 
 
-definition safe_cthe_elem where "safe_cthe_elem C = (if C = {||} then None else Some (cthe_elem C))"
+lemma foo[partial_function_mono]:
+  "Fun.monotone (flatf_ord None) option_ord
+          (\<lambda>produce.
+              let ops' = the |`| cfilter ((\<noteq>) None) (produce |`| ops) in if ops' = {||} then None else Some (csome_elem ops'))"
+  unfolding Let_def
+  apply (rule Fun.monotoneI)
+  apply (clarsimp split: if_splits)
+  apply(intro conjI impI)
+   apply (smt (verit, del_insts) cimage.rep_eq cset.map_cong empty_iff flat_ord_def fun_ord_def image_eqI member_filter)
+  subgoal for x y
+    apply (rule flat_ordI)
+    apply simp
+    subgoal premises
+      apply transfer
+      oops
+
+      find_consts "'a set \<Rightarrow> 'a" name: some
+
+      find_theorems some_elem
 
 
-lemma safe_cthe_elem_code[code]:
-  "safe_cthe_elem (cset_of_llist xs) = Some (lhd xs)"
-  sorry
 
-(* lemma cthe_elem_code[code]:
-  "cthe_elem (cset_of_llist xs) = Set.the_elem (lset xs)"
-  apply transfer
-  apply auto
-  done *)
+partial_function (option) produce where
+  "produce op = (case op of
+     Write op p x \<Rightarrow> Some ((VOut p x), op)
+   | Read p f \<Rightarrow> Some ((VInp p undefined), f undefined)
+   | Silent op \<Rightarrow> produce op
+   | Choice ops \<Rightarrow> let ops' = cimage the (cfilter ((\<noteq>) None) (cimage produce ops)) in
+    (if ops' = {||} then None else Some (f ops')))"
 
-fun hd_in_traces where
-  "hd_in_traces n (Write op p x) = (Some ((VOut p x), op))"
-| "hd_in_traces n (Read p f) = (Some ((VInp p undefined), f undefined))"
-| "hd_in_traces (Suc n) (Silent op) = hd_in_traces n op"
-| "hd_in_traces (Suc n) (Choice ops) = 
-  (let ops' = cimage the (cfilter ((\<noteq>) None) (cimage (hd_in_traces n) ops)) in
-  (if ops' = {||} then None else safe_cthe_elem ops'))"
-| "hd_in_traces 0 op = None"
+end
 
 fun in_traces where
   "in_traces 0 op i = []"
-| "in_traces (Suc n) op i = (case hd_in_traces i op of None \<Rightarrow> [] | Some (io, op') \<Rightarrow> io # in_traces n op' i)"
+| "in_traces (Suc n) op i = (case steps_exec i op of None \<Rightarrow> [] | Some (io, op') \<Rightarrow> io # in_traces n op' i)"
 
 definition "my_fast_check3 = in_traces 1 dt 10"
 
