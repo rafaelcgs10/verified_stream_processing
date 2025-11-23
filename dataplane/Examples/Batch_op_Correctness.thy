@@ -34,7 +34,9 @@ abbreviation "t3 \<equiv> MyPair (Suc 0) (Suc 0)"
 
 abbreviation "inps1 \<equiv> llist_of [Mint 1, Data 1 44, Data 1 6, Data (0 :: nat) (0 :: nat), Data 0 42, Drop 0, Data 1 43]"
 
-abbreviation "inps2 \<equiv> llist_of [Mint t1, Mint t2, Mint t3, Drop t0, Data t3 10, Drop t3, Data t2 7, Data t1 (2 :: nat), Data t2 (Suc 0), Data t1 3, Drop t1, Drop t2]"
+abbreviation "inps2 \<equiv> 
+ llist_of [Mint t1, Mint t2, Mint t3, Drop t0, Data t3 10,
+ Drop t3, Data t2 7, Data t1 (2 :: nat), Data t2 (Suc 0), Data t1 3, Drop t1, Drop t2]"
 
 abbreviation \<open>r1 \<equiv> lconcat (batch_fun_spec (\<lambda> b. [Max (set b)]) inps1 [] [\<bottom>])\<close>
 
@@ -96,10 +98,17 @@ lemma one_plus[code]:
   by auto
 
 partial_function (llist) lrmdups_aux where
-  "lrmdups_aux f S lxs = (case lxs of LNil \<Rightarrow> LNil | LCons x lxs \<Rightarrow> (if f x \<in> S then lrmdups_aux f S lxs else LCons x (lrmdups_aux f (insert (f x) S) lxs)))"
+  "lrmdups_aux S lxs = (case lxs of LNil \<Rightarrow> LNil | LCons x lxs \<Rightarrow> (if x \<in> S then lrmdups_aux S lxs else LCons x (lrmdups_aux (insert x S) lxs)))"
 declare lrmdups_aux.simps[code]
 
-definition "lrmdups f = lrmdups_aux f {}"
+definition "lrmdups = lrmdups_aux {}"
+
+definition "crmdups (C :: _ cset) = C"
+declare crmdups_def[code del]
+
+lemma crmdups_code[code]:
+  "crmdups (cset_of_llist xs) = cset_of_llist (lrmdups xs)"
+  oops
 
 definition "compress_cfilter P xs = cfilter P xs"
 
@@ -140,6 +149,8 @@ code_printing
     (Haskell) "Prelude.tail"
   | constant tl \<rightharpoonup>
     (Haskell) "Prelude.tail"
+  | constant last \<rightharpoonup>
+    (Haskell) "Prelude.last"
   | constant lzip \<rightharpoonup>
     (Haskell) "zip"
   | constant llist.lnull \<rightharpoonup>
@@ -154,21 +165,43 @@ code_printing
     (Haskell) "id"
 
 definition "csingleton (xs :: 'm cset) = xs"
+declare csingleton_def[code del]
+
+definition "cnub (C :: (_ :: equal) cset) = C"
+declare cnub_def[code del]
+
+definition "ctake (n :: nat) (C :: (_ :: equal) cset) = C"
+declare ctake_def[code del]
+
 
 code_printing code_module "Cset" \<rightharpoonup> (Haskell)
-  \<open>module Cset (csingleton, chd, Cset (..) ) where
+\<open>
+module Cset (csingleton, chd, Cset (..), Nat (..), cnub, clast, ctake, safe_nth) where
+import qualified Data.List;
+
 newtype Cset a = Cset [a];
+newtype Nat = Nat Integer;
 
 csingleton (Cset []) = Cset [];
 csingleton (Cset xs) = Cset [Prelude.head xs];
 
 chd (Cset xs) = Prelude.head xs;
+clast (Cset xs) = Prelude.last xs;
 
+cnub (Cset xs) = Cset (Data.List.nub xs);
+
+safe_nth xs n = xs !! ((mod (Prelude.fromInteger n) (length  xs)));
+
+ctake (Nat n) (Cset xs) = Cset (Prelude.take (Prelude.fromInteger n) xs);
 \<close> 
 
 code_printing
   type_constructor cset \<rightharpoonup>
     (Haskell) "Cset.Cset _"
+  | type_constructor nat \<rightharpoonup>
+    (Haskell) "Cset.Nat"
+  | constant Nat \<rightharpoonup>
+    (Haskell) "Cset.Nat"
   | constant cset_of_llist \<rightharpoonup>
     (Haskell) "Cset.Cset"
   | constant csingleton \<rightharpoonup>
@@ -176,7 +209,11 @@ code_printing
   | constant cthe_elem \<rightharpoonup>
     (Haskell) "Cset.chd"
   | constant csome_elem \<rightharpoonup>
-    (Haskell) "Cset.chd"
+    (Haskell) "Cset.clast"
+  | constant cnub \<rightharpoonup>
+    (Haskell) "Cset.cnub"
+  | constant ctake \<rightharpoonup>
+    (Haskell) "Cset.ctake"
 
 fun wsteps_at :: "('i, 'o, 'd :: countable) op \<Rightarrow> _" where
   "wsteps_at (Write op p x) n = {|(VOut p x, op)|}"
@@ -227,16 +264,19 @@ lemma wsteps_exec_Choice[simp]:
 
 declare wsteps_exec_def[code del]
 lemmas wsteps_exec_code[code] = wsteps_exec_Read wsteps_exec_Write wsteps_exec_Silent wsteps_exec_Choice
- 
+
+
+term clast
 
 corec trace_exec where
   "trace_exec op = (let ops = wsteps_exec op in
-   if \<not> cis_empty ops then let (io, op') = csome_elem ops in LCons io (trace_exec op')
+   if \<not> cis_empty ops then let (io, op') = csome_elem (ctake 20 ops) in LCons io (trace_exec op')
    else LNil)"
 
 
 value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op1)"
 value r1
+
 
 instantiation myprod :: (cenum, cenum) cenum begin
 definition cenum_myprod :: "('a, 'b) myprod llist" where "cenum_myprod = lmerge (lmap (\<lambda> x. lmap (MyPair x) cenum) cenum)"
@@ -255,7 +295,6 @@ instance
 value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op2)"
 value r2
 
-print_classes
 
 end
 
