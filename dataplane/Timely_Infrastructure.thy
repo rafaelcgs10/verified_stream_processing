@@ -592,6 +592,19 @@ fun remove_last where
   "remove_last x [] = []"
 | "remove_last x xs = (if last xs = x then butlast xs else remove_last x (butlast xs) @ [last xs])"
 
+lemma mset_remove_last:
+  \<open>mset (remove_last x xs) = mset xs - {#x#}\<close>
+proof (induction x xs rule: remove_last.induct)
+  case 1
+  thus ?case
+    by simp
+next
+  case 2
+  thus ?case
+    using add_diff_cancel_right' append_butlast_last_id diff_union_single_conv2 list.simps(3) mset.simps(1,2)
+      mset_append mset_right_cancel_elem remove_1_mset_id_iff_notin remove_last.elims by (smt (verit))
+qed
+
 fun list_diff where
   "list_diff ys [] = ys"
 | "list_diff ys (x # xs) = list_diff (remove_last x ys) xs"
