@@ -305,7 +305,7 @@ lemma dataflow_op_code[code]:
          Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
          let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron))))))
    | Read (Inr (nid, p)) f \<Rightarrow>  (Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x))))
-   | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> trace (STR ''Writing out frontier at location: '' + show_loc (Loc nid (Src p))) (Write (dataflow_op sg op') (nid, p) x)     
+   | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> trace (STR ''Writing out data at location: '' + show_loc (Loc nid (Src p))) (Write (dataflow_op sg op') (nid, p) x)     
    | Silent op' \<Rightarrow> trace (STR ''Some silent step'') Silent (dataflow_op sg op')
    | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow>
       trace (STR ''Reading progress at nid: '' + print_2 nid + STR '' cgs sizes: ('' + show_nat (length (cons st)) + STR '', '' + show_nat (length (inte st))  + STR '', '' + show_nat (length (prod st)) + STR '')''
@@ -685,7 +685,7 @@ lemma builder_op_code[code]:
   oops
 
 definition notifier_op where
-  "notifier_op ips ops os logic = (builder_op True ips ops (os\<lparr> nfron := False \<rparr>) 
+  "notifier_op ips ops os logic = (builder_op True ips ops os 
    (\<lambda> os.
     if nfron os then
     logic (os\<lparr> nfron := False \<rparr>) (\<lambda> p. filter (\<lambda> t. \<not> frontier_less_equal (front os p) t) (ocaps os p))

@@ -16,10 +16,10 @@ partial_function (llist) batch_fun_spec where
     let compl_batches = (\<lambda> t. map fst ((filter (\<lambda> (d, t'). t' = t)) buf)) in
     let outs =  map (\<lambda> t. map (\<lambda> x. (x, t)) (f (compl_batches t))) (rmdups {} (map snd buf)) in
     llist_of outs)
-  | LCons (Data t (d :: 'd1)) lxs' \<Rightarrow> batch_fun_spec f lxs' (buf @ [(d, t)]) caps
+  | LCons (Data t (d :: 'd1)) lxs' \<Rightarrow> batch_fun_spec f lxs' ((d, t) # buf) caps
   | LCons (Mint t) lxs' \<Rightarrow> batch_fun_spec f lxs' buf (caps @ [t])
   | LCons (Drop t) lxs' \<Rightarrow> (
-    let below_caps = filter (\<lambda> t. \<not> frontier_less_equal (frontier (zmset_of (mset caps - {# t #}))) t) caps in
+    let below_caps = filter (\<lambda> t. \<not> frontier_less_equal (frontier (zmset_of (mset caps - {# t #}))) t) (rmdups {} (map snd buf)) in
     let compl_batches = (\<lambda> t. map fst (filter (\<lambda> (d, t'). t' = t \<and> t' \<in> set below_caps) buf)) in
     let outs = concat (map (\<lambda> t. map (\<lambda> x. (x, t)) (f (compl_batches t))) (filter (\<lambda> t. t \<in> set below_caps) (rmdups {} (map snd buf)))) in
     let buf' = filter (\<lambda> (d, t). t \<notin> set below_caps) buf in
@@ -27,16 +27,15 @@ partial_function (llist) batch_fun_spec where
 
 declare batch_fun_spec.simps[code]
 
-abbreviation "t0 \<equiv> \<bottom>"
-abbreviation "t1 \<equiv> MyPair (Suc 0) (0 :: nat)"
-abbreviation "t2 \<equiv> MyPair (0 :: nat) (Suc 0)"
-abbreviation "t3 \<equiv> MyPair (Suc 0) (Suc 0)"
+definition "t0 \<equiv> \<bottom>"
+definition "t_1_0 \<equiv> MyPair (Suc 0) (0 :: nat)"
+definition "t_0_1 \<equiv> MyPair (0 :: nat) (Suc 0)"
+definition "t_1_1 \<equiv> MyPair (Suc 0) (Suc 0)"
 
 abbreviation "inps1 \<equiv> llist_of [Mint 1, Data 1 44, Data 1 6, Data (0 :: nat) (0 :: nat), Data 0 42, Drop 0, Data 1 43]"
 
 abbreviation "inps2 \<equiv> 
- llist_of [Mint t1, Mint t2, Mint t3, Drop t0, Data t3 10,
- Drop t3, Data t2 7, Data t1 (2 :: nat), Data t2 (Suc 0), Data t1 3, Drop t1, Drop t2]"
+ llist_of [Mint t_1_0, Mint t_0_1, Mint t_1_1, Drop t0, Data t_1_1 10, Drop t_1_1, Data t_0_1 7, Data t_1_0 (3 :: nat), Drop t_1_0, Drop t_0_1]"
 
 abbreviation \<open>r1 \<equiv> lconcat (batch_fun_spec (\<lambda> b. [Max (set b)]) inps1 [] [\<bottom>])\<close>
 
@@ -98,17 +97,17 @@ lemma one_plus[code]:
   by auto
 
 partial_function (llist) lrmdups_aux where
-  "lrmdups_aux S lxs = (case lxs of LNil \<Rightarrow> LNil | LCons x lxs \<Rightarrow> (if x \<in> S then lrmdups_aux S lxs else LCons x (lrmdups_aux (insert x S) lxs)))"
+  "lrmdups_aux f S lxs = (case lxs of LNil \<Rightarrow> LNil | LCons x lxs \<Rightarrow> (if f x \<in> S then lrmdups_aux f S lxs else LCons x (lrmdups_aux f (insert (f x) S) lxs)))"
 declare lrmdups_aux.simps[code]
 
-definition "lrmdups = lrmdups_aux {}"
+definition "lrmdups f = lrmdups_aux f {}"
 
-definition "crmdups (C :: _ cset) = C"
+definition "crmdups (f :: 'a \<Rightarrow> 'b) (C :: 'a cset) = C"
 declare crmdups_def[code del]
 
 lemma crmdups_code[code]:
-  "crmdups (cset_of_llist xs) = cset_of_llist (lrmdups xs)"
-  oops
+  "crmdups f (cset_of_llist xs) = cset_of_llist (lrmdups f xs)"
+  sorry
 
 definition "compress_cfilter P xs = cfilter P xs"
 
@@ -122,47 +121,6 @@ friend_of_corec lappend where
 declare csome_elem_def[code del]
 declare cthe_elem_def[code del]
 
-code_printing
-  type_constructor llist \<rightharpoonup>
-    (Haskell) "![(_)]"
-  | constant LNil \<rightharpoonup>
-    (Haskell) "[]"
-  | constant LCons \<rightharpoonup>
-    (Haskell) infix 5 ":"
-  | class_instance llist :: equal \<rightharpoonup>
-    (Haskell) -
-  | constant "HOL.equal :: 'a llist \<Rightarrow> 'a llist \<Rightarrow> bool" \<rightharpoonup>
-    (Haskell) infix 4 "=="
-  | constant "lappend" \<rightharpoonup>
-    (Haskell) infixr 5 "++"
-  | constant lmap \<rightharpoonup>
-    (Haskell) "map"
-  | constant lfilter \<rightharpoonup>
-    (Haskell) "filter"
-  | constant lconcat \<rightharpoonup>
-    (Haskell) "Prelude.concat"
-  | constant lhd \<rightharpoonup>
-    (Haskell) "Prelude.head"
-  | constant hd \<rightharpoonup>
-    (Haskell) "Prelude.head"
-  | constant ltl \<rightharpoonup>
-    (Haskell) "Prelude.tail"
-  | constant tl \<rightharpoonup>
-    (Haskell) "Prelude.tail"
-  | constant last \<rightharpoonup>
-    (Haskell) "Prelude.last"
-  | constant lzip \<rightharpoonup>
-    (Haskell) "zip"
-  | constant llist.lnull \<rightharpoonup>
-    (Haskell) "null"
-  | constant ltakeWhile \<rightharpoonup>
-    (Haskell) "takeWhile"
-  | constant ldropWhile \<rightharpoonup>
-    (Haskell) "dropWhile"
-  | constant llist_all \<rightharpoonup>
-    (Haskell) "all"
-  | constant llist_of \<rightharpoonup>
-    (Haskell) "id"
 
 definition "csingleton (xs :: 'm cset) = xs"
 declare csingleton_def[code del]
@@ -214,6 +172,48 @@ code_printing
     (Haskell) "Cset.cnub"
   | constant ctake \<rightharpoonup>
     (Haskell) "Cset.ctake"
+  | type_constructor llist \<rightharpoonup>
+    (Haskell) "![(_)]"
+  | constant LNil \<rightharpoonup>
+    (Haskell) "[]"
+  | constant LCons \<rightharpoonup>
+    (Haskell) infix 3 ":"
+  | class_instance llist :: equal \<rightharpoonup>
+    (Haskell) -
+  | constant "HOL.equal :: 'a llist \<Rightarrow> 'a llist \<Rightarrow> bool" \<rightharpoonup>
+    (Haskell) infix 4 "=="
+  | constant "lappend" \<rightharpoonup>
+    (Haskell) infixr 5 "++"
+  | constant lmap \<rightharpoonup>
+    (Haskell) "map"
+  | constant lfilter \<rightharpoonup>
+    (Haskell) "filter"
+  | constant lconcat \<rightharpoonup>
+    (Haskell) "Prelude.concat"
+  | constant lmerge \<rightharpoonup>
+    (Haskell) "Prelude.concat"
+  | constant lhd \<rightharpoonup>
+    (Haskell) "Prelude.head"
+  | constant hd \<rightharpoonup>
+    (Haskell) "Prelude.head"
+  | constant ltl \<rightharpoonup>
+    (Haskell) "Prelude.tail"
+  | constant tl \<rightharpoonup>
+    (Haskell) "Prelude.tail"
+  | constant last \<rightharpoonup>
+    (Haskell) "Prelude.last"
+  | constant lzip \<rightharpoonup>
+    (Haskell) "zip"
+  | constant llist.lnull \<rightharpoonup>
+    (Haskell) "null"
+  | constant ltakeWhile \<rightharpoonup>
+    (Haskell) "takeWhile"
+  | constant ldropWhile \<rightharpoonup>
+    (Haskell) "dropWhile"
+  | constant llist_all \<rightharpoonup>
+    (Haskell) "all"
+  | constant llist_of \<rightharpoonup>
+    (Haskell) "id"
 
 fun wsteps_at :: "('i, 'o, 'd :: countable) op \<Rightarrow> _" where
   "wsteps_at (Write op p x) n = {|(VOut p x, op)|}"
@@ -266,16 +266,16 @@ declare wsteps_exec_def[code del]
 lemmas wsteps_exec_code[code] = wsteps_exec_Read wsteps_exec_Write wsteps_exec_Silent wsteps_exec_Choice
 
 
-term clast
-
 corec trace_exec where
-  "trace_exec op = (let ops = wsteps_exec op in
-   if \<not> cis_empty ops then let (io, op') = csome_elem (ctake 20 ops) in LCons io (trace_exec op')
+  "trace_exec op = (let ops = wsteps_exec op in                      
+   if \<not> cis_empty ops then let (io, op') = cthe_elem ops in LCons io (trace_exec op')
    else LNil)"
 
 
 value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op1)"
 value r1
+
+value [GHC] "crmdups id {|Suc 0, Suc 0|}"
 
 
 instantiation myprod :: (cenum, cenum) cenum begin
@@ -291,11 +291,36 @@ instance
     apply auto
     done
   done
+end
 
 value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op2)"
+
+term DEBUG
+
+term 
+"llist_of [Mint t_1_0, Mint t_0_1, Mint t_1_1, Drop t0, 
+ Data t_1_1 10, Drop t_1_1, Data t_0_1 7, Data t_1_0 (3 :: nat), Drop t_1_0, Drop t_0_1]"
+
 value r2
 
+fun check_prefix where
+  "check_prefix [] op = True"
+| "check_prefix (io # ios) op = 
+  (let ios_ops = cfilter (\<lambda> (io', op). io = io') (wsteps_exec op) in
+   if ios_ops = {||} then False
+   else True |\<in>| (cimage (check_prefix ios) (cimage snd ios_ops)))"
 
+value [GHC] "check_prefix [VOut (1, 1) (Inr 10, MyPair 1 1)] test_op2"
+value [GHC] "check_prefix [VOut (1, 1) (Inr 7, MyPair 0 1)] test_op2"
+
+
+
+(*
+value [GHC] "approx_in 150 [VOut (1, 1) (Inr 10, MyPair 1 1)] test_op2"
+ *)
+thm cUnion_code
+
+term cUn
 end
 
 
