@@ -11,53 +11,64 @@ begin
 
 
 partial_function (llist) batch_fun_spec where
- "batch_fun_spec f lxs buf caps = (case lxs of
+ "batch_fun_spec f buf caps lxs = (case lxs of
     LNil \<Rightarrow> (
     let compl_batches = (\<lambda> t. map fst ((filter (\<lambda> (d, t'). t' = t)) buf)) in
     let outs =  map (\<lambda> t. map (\<lambda> x. (x, t)) (f (compl_batches t))) (rmdups {} (map snd buf)) in
     llist_of outs)
-  | LCons (Data t (d :: 'd1)) lxs' \<Rightarrow> batch_fun_spec f lxs' ((d, t) # buf) caps
-  | LCons (Mint t) lxs' \<Rightarrow> batch_fun_spec f lxs' buf (caps @ [t])
+  | LCons (Data t (d :: 'd1)) lxs' \<Rightarrow> batch_fun_spec f ((d, t) # buf) caps lxs'
+  | LCons (Mint t) lxs' \<Rightarrow> batch_fun_spec f buf (caps @ [t]) lxs'
   | LCons (Drop t) lxs' \<Rightarrow> (
     let below_caps = filter (\<lambda> t'. \<not> frontier_less_equal (frontier (zmset_of (mset caps - {# t #}))) t') (rmdups {} (map snd buf)) in
     let compl_batches = (\<lambda> t. map fst (filter (\<lambda> (d, t'). t' = t \<and> t' \<in> set below_caps) buf)) in
     let outs = concat (map (\<lambda> t. map (\<lambda> x. (x, t)) (f (compl_batches t))) (filter (\<lambda> t. t \<in> set below_caps) (rmdups {} (map snd buf)))) in
     let buf' = filter (\<lambda> (d, t). t \<notin> set below_caps) buf in
-    LCons outs (batch_fun_spec f lxs' buf' (remove1 t caps))))"
+    LCons outs (batch_fun_spec f buf' (remove1 t caps) lxs')))"
 
 fun foo where
  "foo f lxs buf caps = (case lxs of
-    [] \<Rightarrow> ([], buf, caps)
-  | (Data t (d :: 'd1)) # lxs' \<Rightarrow> foo f lxs' ((d, t) # buf) caps
-  | (Mint t) # lxs' \<Rightarrow> foo f lxs' buf (caps @ [t])
-  | (Drop t) # lxs' \<Rightarrow> (
-    let below_caps = filter (\<lambda> t'. \<not> frontier_less_equal (frontier (zmset_of (mset caps - {# t #}))) t') (rmdups {} (map snd buf)) in
+    [] \<Rightarrow> (
+    let below_caps = filter (\<lambda> t'. \<not> frontier_less_equal (frontier (zmset_of (mset caps))) t') (rmdups {} (map snd buf)) in
     let compl_batches = (\<lambda> t. map fst (filter (\<lambda> (d, t'). t' = t \<and> t' \<in> set below_caps) buf)) in
     let outs = concat (map (\<lambda> t. map (\<lambda> x. (x, t)) (f (compl_batches t))) (filter (\<lambda> t. t \<in> set below_caps) (rmdups {} (map snd buf)))) in
     let buf' = filter (\<lambda> (d, t). t \<notin> set below_caps) buf in
-    let (outs', buf'', caps'') = foo f lxs' buf' (remove1 t caps) in
-    (outs @ outs', buf'', caps'')))"
+    (outs, buf', caps))
+  | (Data t (d :: 'd1)) # lxs' \<Rightarrow> foo f lxs' ((d, t) # buf) caps
+  | (Mint t) # lxs' \<Rightarrow> foo f lxs' buf (caps @ [t])
+  | (Drop t) # lxs' \<Rightarrow> foo f lxs' buf (remove1 t caps))"
 
 term batch_fun_spec
 
 declare batch_fun_spec.simps[code]
 
+find_consts "_ llist" "_ cset"
+
+value "cset_of_llist (llist_of [0..<3])"
+
+abbreviation "list_nats n m \<equiv> map nat [int n..int m]"
+
+
 (* filter cUNIV to not have empty outputs*)
 corec spec_op where
-  "spec_op (f :: 'a list \<Rightarrow> 'b list) lxs buf caps outp = choice2
+  "spec_op m (f :: 'a list \<Rightarrow> 'b list) lxs buf caps outp = choice2
    (Choice ((cimage (\<lambda> n. 
      let (outs, buf', caps') = foo f (ltaken n lxs) buf caps in
-     (case outp @ outs of x # xs \<Rightarrow> (Write (spec_op f (ldropn n lxs) buf' caps' xs) 1 x))) (
+     (case outp @ outs of x # xs \<Rightarrow> (Write (spec_op m f (ldropn n lxs) buf' caps' xs) 1 x))) (
       cfilter (\<lambda> n. fst (foo f (ltaken n lxs) buf caps) \<noteq> [])
-      (cUNIV :: nat cset)))))
+      (cset_of_llist (llist_of (list_nats 0 m)))))))
     (case outp of 
        [] \<Rightarrow> \<oslash>
-     | x # xs \<Rightarrow> Write (spec_op f lxs buf caps xs) 1 x)"
+     | x # xs \<Rightarrow> Write (spec_op m f lxs buf caps xs) 1 x)"
 
-corec nd_source_op where
-  "nd_source_op inps = choice2
-   (source_op inps)
-   (Choice (cimage undefined (cUNIV :: nat cset)))"
+corec traces_op where
+  "traces_op (S :: ('p :: {countable,defaults} \<Rightarrow> ('d :: cenum) llist) set) =
+   (Choice (cimage 
+   (\<lambda> p. let hds = acset ((\<lambda> f. lhd (f p)) ` S) in Choice (cimage (\<lambda> x. Write (traces_op ((\<lambda> f. f(p := ltl (f p))) ` {f \<in> S. lhd (f p) = x})) p x) hds))
+   c\<UU>))"
+
+lemma acset_code[code]:
+  "acset S = cset_of_llist (lfilter (\<lambda> x. x \<in> S) cenum)"
+  unfolding cset_of_llist_def map_fun_def o_apply id_apply using UNIV_cenum by auto
 
 definition "t0 \<equiv> \<bottom>"
 definition "t_1_0 \<equiv> MyPair (Suc 0) (0 :: nat)"
@@ -66,18 +77,32 @@ definition "t_1_1 \<equiv> MyPair (Suc 0) (Suc 0)"
 
 abbreviation "inps1 \<equiv> llist_of [Mint 1, Data 1 44, Data 1 6, Data (0 :: nat) (0 :: nat), Data 0 42, Drop 0, Data 1 43]"
 
-abbreviation "inps2 \<equiv> 
- llist_of [Mint t_1_0, Mint t_0_1, Mint t_1_1, Drop t0, Data t_1_1 10, Drop t_1_1, Data t_0_1 7, Data t_1_0 (3 :: nat), Drop t_1_0, Drop t_0_1]"
+abbreviation "list_inps2 \<equiv> [Mint t_1_0, Mint t_0_1, Mint t_1_1, Drop t0, Data t_1_1 10, Drop t_1_1, Data t_0_1 7, Data t_1_0 (3 :: nat), Drop t_1_0, Drop t_0_1]"
 
-abbreviation \<open>r1 \<equiv> lconcat (batch_fun_spec (\<lambda> b. [Max (set b)]) inps1 [] [\<bottom>])\<close>
+abbreviation "list_inps2' \<equiv> [Mint t_1_0, Mint t_0_1, Mint t_1_1, Data t_1_1 10, Data t_0_1 7, Data t_1_0 (3 :: nat), Drop t0, Drop t_1_1, Drop t_1_0, Drop t_0_1]"
+
+value "[frontier {# t0, t_1_1, t_1_0, t_0_1 #}\<^sub>z, frontier {# t_1_1, t_1_0, t_0_1 #}\<^sub>z, frontier {# t_1_0, t_0_1 #}\<^sub>z, frontier {# t_0_1 #}\<^sub>z, frontier {#}\<^sub>z] "
+value "[frontier {# t0, t_1_1, t_1_0, t_0_1 #}\<^sub>z, frontier {# t_1_0, t_0_1 #}\<^sub>z, frontier {# t_0_1 #}\<^sub>z, frontier {#}\<^sub>z] "
+value "[frontier {# t0, t_1_1, t_1_0, t_0_1 #}\<^sub>z, frontier {# t_0_1 #}\<^sub>z, frontier {#}\<^sub>z] "
+value "[frontier {# t0, t_1_1, t_1_0, t_0_1 #}\<^sub>z, frontier {#}\<^sub>z] "
+
+abbreviation "inps2 \<equiv> llist_of list_inps2"
+abbreviation "inps2' \<equiv> llist_of list_inps2'"
+
+abbreviation \<open>r1 \<equiv> lconcat (batch_fun_spec (\<lambda> b. [Max (set b)]) [] [\<bottom>] inps1)\<close>
 
 value r1
 
-abbreviation \<open>r2 \<equiv> lconcat (batch_fun_spec (\<lambda> b. [Max (set b)]) inps2 [] [\<bottom>])\<close>
+abbreviation \<open>r2 \<equiv> lconcat (batch_fun_spec (\<lambda> b. [Max (set b)]) [] [\<bottom>] inps2)\<close>
 
 value r2
 
-abbreviation "spec_op_test \<equiv> (spec_op (\<lambda> b. [Max (set b)]) inps2 [] [\<bottom>] []) :: (1, 1, nat \<times> (nat, nat) myprod) op"
+abbreviation \<open>r2' \<equiv> lconcat (batch_fun_spec (\<lambda> b. [Max (set b)]) [] [\<bottom>] inps2')\<close>
+
+value r2'
+
+abbreviation "spec_op_test \<equiv> (spec_op (length list_inps2) (\<lambda> b. [Max (set b)]) inps2 [] [\<bottom>] []) :: (1, 1, nat \<times> (nat, nat) myprod) op"
+
 
 abbreviation init_input_state where
 "init_input_state su inps \<equiv> \<lparr> 
@@ -352,8 +377,6 @@ value [GHC] my_test
 
 
 
-value [GHC] "ltaken 2 (trace_exec spec_op_test)"
-
 value "frontier {# t_1_1, t_0_1, t_1_0 #}\<^sub>z"
 
 term DEBUG
@@ -382,12 +405,21 @@ value [GHC] "check_prefix [VOut (1, 1) (Inr 7, MyPair 0 1)] test_op2"
 
 
 
+value [GHC] "trace_exec spec_op_test"
+
+value [GHC]  "trace_exec nd_source_op_test"
+
+print_classes
+
+
 value [GHC] "check_prefix [VOut 1 (7, MyPair 0 1)] spec_op_test"
-
-
 value [GHC] "check_prefix [VOut 1 (3, MyPair 1 0)] spec_op_test"
+value [GHC] "check_prefix [VOut 1 (10, MyPair 1 1)] spec_op_test"
 
-value [GHC] "check_prefix [VOut 1 (10, MyPair 1 )] spec_op_test"
+
+value [GHC] "check_prefix [VOut 1 (7, MyPair 0 1)] nd_source_op_test"
+value [GHC] "check_prefix [VOut 1 (3, MyPair 1 0)] nd_source_op_test"
+value [GHC] "check_prefix [VOut 1 (10, MyPair 1 1)] nd_source_op_test"
 
 
 (* 
