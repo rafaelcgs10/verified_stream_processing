@@ -77,9 +77,8 @@ definition "t_1_1 \<equiv> MyPair (Suc 0) (Suc 0)"
 
 abbreviation "inps1 \<equiv> llist_of [Mint 1, Data 1 44, Data 1 6, Data (0 :: nat) (0 :: nat), Data 0 42, Drop 0, Data 1 43]"
 
-abbreviation "list_inps2 \<equiv> [Mint t_1_0, Mint t_0_1, Mint t_1_1, Drop t0, Data t_1_1 10, Drop t_1_1, Data t_0_1 7, Data t_1_0 (3 :: nat), Drop t_1_0, Drop t_0_1]"
-
-abbreviation "list_inps2' \<equiv> [Mint t_1_0, Mint t_0_1, Mint t_1_1, Data t_1_1 10, Data t_0_1 7, Data t_1_0 (3 :: nat), Drop t0, Drop t_1_1, Drop t_1_0, Drop t_0_1]"
+abbreviation "list_inps2 \<equiv> 
+ [Mint t_1_0, Mint t_0_1, Mint t_1_1, Drop t0, Data t_1_1 10, Drop t_1_1, Data t_0_1 7, Data t_1_0 (3 :: nat), Drop t_1_0, Drop t_0_1]"
 
 value "[frontier {# t0, t_1_1, t_1_0, t_0_1 #}\<^sub>z, frontier {# t_1_1, t_1_0, t_0_1 #}\<^sub>z, frontier {# t_1_0, t_0_1 #}\<^sub>z, frontier {# t_0_1 #}\<^sub>z, frontier {#}\<^sub>z] "
 value "[frontier {# t0, t_1_1, t_1_0, t_0_1 #}\<^sub>z, frontier {# t_1_0, t_0_1 #}\<^sub>z, frontier {# t_0_1 #}\<^sub>z, frontier {#}\<^sub>z] "
@@ -87,7 +86,6 @@ value "[frontier {# t0, t_1_1, t_1_0, t_0_1 #}\<^sub>z, frontier {# t_0_1 #}\<^s
 value "[frontier {# t0, t_1_1, t_1_0, t_0_1 #}\<^sub>z, frontier {#}\<^sub>z] "
 
 abbreviation "inps2 \<equiv> llist_of list_inps2"
-abbreviation "inps2' \<equiv> llist_of list_inps2'"
 
 abbreviation \<open>r1 \<equiv> lconcat (batch_fun_spec (\<lambda> b. [Max (set b)]) [] [\<bottom>] inps1)\<close>
 
@@ -97,11 +95,44 @@ abbreviation \<open>r2 \<equiv> lconcat (batch_fun_spec (\<lambda> b. [Max (set 
 
 value r2
 
-abbreviation \<open>r2' \<equiv> lconcat (batch_fun_spec (\<lambda> b. [Max (set b)]) [] [\<bottom>] inps2')\<close>
-
-value r2'
 
 abbreviation "spec_op_test \<equiv> (spec_op (length list_inps2) (\<lambda> b. [Max (set b)]) inps2 [] [\<bottom>] []) :: (1, 1, nat \<times> (nat, nat) myprod) op"
+
+coinductive batch_op_traces for f where                                                                         
+  bt_Data[intro!]: "batch_op_traces f n (buf @ [(d, t)]) caps lxs outs \<Longrightarrow> batch_op_traces f (Suc n) buf caps (LCons (Data t d) lxs) outs"
+| bt_Mint[intro!]: "batch_op_traces f n buf (t # caps) lxs outs \<Longrightarrow> batch_op_traces f (Suc n) buf caps (LCons (Mint t) lxs) outs"
+| bt_Drop[intro!]: "batch_op_traces f n buf (remove1 t caps) lxs outs \<Longrightarrow> batch_op_traces f (Suc n) buf caps (LCons (Drop t) lxs) outs"
+| bt_Out[intro!]: "batch_op_traces f n buf' caps inps outs \<Longrightarrow>
+  below_caps = filter (\<lambda> t. \<not> frontier_less_equal (frontier (to_zmset caps)) (t :: 't :: order)) (rmdups {} (map snd buf)) \<Longrightarrow>
+  compl_batches = (\<lambda> t. map fst (filter (\<lambda> (d, t'). t' = t \<and> t \<in> set compl_caps) buf)) \<Longrightarrow>
+  buf' = filter (\<lambda> (d, t). t \<notin> set below_caps) buf \<Longrightarrow>
+  outs' = concat (map (\<lambda> t. map (\<lambda> x. (x, t)) (f (compl_batches t))) (filter (\<lambda> t. t \<in> set below_caps) (rmdups {} (map snd buf)))) \<Longrightarrow>
+  outs' \<noteq> [] \<Longrightarrow>
+  outs'' = outs' @@- outs \<Longrightarrow>
+  batch_op_traces f 0 buf caps inps outs''"
+| bt_LNil[intro!]: "batch_op_traces f m [] [] LNil LNil"
+
+term batch_op_traces
+
+lemma
+  "batch_op_traces (\<lambda> b. [Max (set b)]) (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))) [] [t0] inps2 (LCons (10, MyPair 1 1) (LCons (7, MyPair 0 1) (LCons (3, MyPair 1 0) LNil)))"
+  apply (simp only: llist_of.simps)
+  apply rule
+  apply rule
+  apply rule
+  apply rule
+  apply rule
+  apply rule
+  apply rule
+  apply rule
+  apply rule
+  apply rule
+    apply (rule bt_Out[where n=0 and compl_caps="[t_1_1, t_0_1, t_1_0]" and outs=LNil, rotated])
+         apply (rule refl)+
+  apply code_simp+
+  apply (rule bt_LNil)
+  done
+
 
 
 abbreviation init_input_state where

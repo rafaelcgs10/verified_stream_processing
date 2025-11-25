@@ -15,7 +15,6 @@ definition batch_op where
    (\<lambda> os compl_caps.
     let comb_caps = comb compl_caps in
     let compl_batches = (\<lambda> p t. map (de1 os o fst) (filter (\<lambda> (d, t'). t' = t \<and> t \<in> set (comb_caps p)) (input os p))) in
-    let sorted_ts = (\<lambda> p. map from_prod (sort (map to_prod (rmdups {} (map snd (filter (\<lambda> (d, t). t \<in> set (comb_caps p)) (input os p))))))) in
     let ts = (\<lambda> p. rmdups {} (map snd (filter (\<lambda> (d, t). t \<in> set (comb_caps p)) (input os p)))) in
     let os = os\<lparr> input := (\<lambda> p. filter (\<lambda> (d, t). t \<notin> set (comb_caps p)) (input os p)) \<rparr> in
     let outs_drops = logic compl_batches ts comb_caps in
