@@ -407,4 +407,5 @@ instance myprod :: (countable, countable) countable
   apply  (auto simp add: to_prod_def split: myprod.splits)
   done
 
+
 end

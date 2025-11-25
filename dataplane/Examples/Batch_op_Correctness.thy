@@ -19,13 +19,45 @@ partial_function (llist) batch_fun_spec where
   | LCons (Data t (d :: 'd1)) lxs' \<Rightarrow> batch_fun_spec f lxs' ((d, t) # buf) caps
   | LCons (Mint t) lxs' \<Rightarrow> batch_fun_spec f lxs' buf (caps @ [t])
   | LCons (Drop t) lxs' \<Rightarrow> (
-    let below_caps = filter (\<lambda> t. \<not> frontier_less_equal (frontier (zmset_of (mset caps - {# t #}))) t) (rmdups {} (map snd buf)) in
+    let below_caps = filter (\<lambda> t'. \<not> frontier_less_equal (frontier (zmset_of (mset caps - {# t #}))) t') (rmdups {} (map snd buf)) in
     let compl_batches = (\<lambda> t. map fst (filter (\<lambda> (d, t'). t' = t \<and> t' \<in> set below_caps) buf)) in
     let outs = concat (map (\<lambda> t. map (\<lambda> x. (x, t)) (f (compl_batches t))) (filter (\<lambda> t. t \<in> set below_caps) (rmdups {} (map snd buf)))) in
     let buf' = filter (\<lambda> (d, t). t \<notin> set below_caps) buf in
-    LCons outs (batch_fun_spec f lxs' buf' (remove_last t caps))))"
+    LCons outs (batch_fun_spec f lxs' buf' (remove1 t caps))))"
+
+fun foo where
+ "foo f lxs buf caps = (case lxs of
+    [] \<Rightarrow> ([], buf, caps)
+  | (Data t (d :: 'd1)) # lxs' \<Rightarrow> foo f lxs' ((d, t) # buf) caps
+  | (Mint t) # lxs' \<Rightarrow> foo f lxs' buf (caps @ [t])
+  | (Drop t) # lxs' \<Rightarrow> (
+    let below_caps = filter (\<lambda> t'. \<not> frontier_less_equal (frontier (zmset_of (mset caps - {# t #}))) t') (rmdups {} (map snd buf)) in
+    let compl_batches = (\<lambda> t. map fst (filter (\<lambda> (d, t'). t' = t \<and> t' \<in> set below_caps) buf)) in
+    let outs = concat (map (\<lambda> t. map (\<lambda> x. (x, t)) (f (compl_batches t))) (filter (\<lambda> t. t \<in> set below_caps) (rmdups {} (map snd buf)))) in
+    let buf' = filter (\<lambda> (d, t). t \<notin> set below_caps) buf in
+    let (outs', buf'', caps'') = foo f lxs' buf' (remove1 t caps) in
+    (outs @ outs', buf'', caps'')))"
+
+term batch_fun_spec
 
 declare batch_fun_spec.simps[code]
+
+(* filter cUNIV to not have empty outputs*)
+corec spec_op where
+  "spec_op (f :: 'a list \<Rightarrow> 'b list) lxs buf caps outp = choice2
+   (Choice ((cimage (\<lambda> n. 
+     let (outs, buf', caps') = foo f (ltaken n lxs) buf caps in
+     (case outp @ outs of x # xs \<Rightarrow> (Write (spec_op f (ldropn n lxs) buf' caps' xs) 1 x))) (
+      cfilter (\<lambda> n. fst (foo f (ltaken n lxs) buf caps) \<noteq> [])
+      (cUNIV :: nat cset)))))
+    (case outp of 
+       [] \<Rightarrow> \<oslash>
+     | x # xs \<Rightarrow> Write (spec_op f lxs buf caps xs) 1 x)"
+
+corec nd_source_op where
+  "nd_source_op inps = choice2
+   (source_op inps)
+   (Choice (cimage undefined (cUNIV :: nat cset)))"
 
 definition "t0 \<equiv> \<bottom>"
 definition "t_1_0 \<equiv> MyPair (Suc 0) (0 :: nat)"
@@ -44,6 +76,8 @@ value r1
 abbreviation \<open>r2 \<equiv> lconcat (batch_fun_spec (\<lambda> b. [Max (set b)]) inps2 [] [\<bottom>])\<close>
 
 value r2
+
+abbreviation "spec_op_test \<equiv> (spec_op (\<lambda> b. [Max (set b)]) inps2 [] [\<bottom>] []) :: (1, 1, nat \<times> (nat, nat) myprod) op"
 
 abbreviation init_input_state where
 "init_input_state su inps \<equiv> \<lparr> 
@@ -81,11 +115,14 @@ abbreviation init_operator_state_ty2 where
    de2 = projr
    \<rparr>"
 abbreviation "l2 \<equiv> Logic (batch_fun_op (init_operator_state_ty2 default_internal_summary) (\<lambda> b. if b = [] then [] else [Max (set b)])) default_internal_summary"
-
+(* 
 abbreviation "test_dt1 \<equiv> Comp [(0, 1) \<mapsto> (0, 1)] (l1 (\<lambda> _. inps1)) l2"
+ *)
 abbreviation "test_dt2 \<equiv> Comp [(0, 1) \<mapsto> (0, 1)] (l1 (\<lambda> _. inps2)) l2"
 
-abbreviation "test_op1 \<equiv> compile_dataflow test_dt1 :: (2 \<times> 1, 2 \<times> 1, (nat + nat) \<times> nat) op"
+(* abbreviation "test_op1 \<equiv> compile_dataflow test_dt1 :: (2 \<times> 1, 2 \<times> 1, (nat + nat) \<times> nat) op"
+ *)
+
 abbreviation "test_op2 \<equiv> compile_dataflow test_dt2 :: (2 \<times> 1, 2 \<times> 1, _) op"
 
 
@@ -134,7 +171,7 @@ declare ctake_def[code del]
 
 code_printing code_module "Cset" \<rightharpoonup> (Haskell)
 \<open>
-module Cset (csingleton, chd, Cset (..), Nat (..), cnub, clast, ctake, safe_nth) where
+module Cset (csingleton, chd, Cset (..), Nat (..), cnub, clast, ctake, safe_nth, ndrop, ntake) where
 import qualified Data.List;
 
 newtype Cset a = Cset [a];
@@ -151,7 +188,13 @@ cnub (Cset xs) = Cset (Data.List.nub xs);
 safe_nth xs n = xs !! ((mod (Prelude.fromInteger n) (length  xs)));
 
 ctake (Nat n) (Cset xs) = Cset (Prelude.take (Prelude.fromInteger n) xs);
+
+ndrop (Nat n) xs = drop (Prelude.fromInteger n) xs;
+ntake (Nat n) xs = take (Prelude.fromInteger n) xs;
+
 \<close> 
+
+declare ltaken.simps[code del]
 
 code_printing
   type_constructor cset \<rightharpoonup>
@@ -186,6 +229,7 @@ code_printing
     (Haskell) infixr 5 "++"
   | constant lmap \<rightharpoonup>
     (Haskell) "map"
+
   | constant lfilter \<rightharpoonup>
     (Haskell) "filter"
   | constant lconcat \<rightharpoonup>
@@ -210,6 +254,12 @@ code_printing
     (Haskell) "takeWhile"
   | constant ldropWhile \<rightharpoonup>
     (Haskell) "dropWhile"
+  | constant ldropn \<rightharpoonup>
+    (Haskell) "Cset.ndrop"
+  | constant ldrop \<rightharpoonup>
+    (Haskell) "Cset.ndrop"
+  | constant ltaken \<rightharpoonup>
+    (Haskell) "Cset.ntake"
   | constant llist_all \<rightharpoonup>
     (Haskell) "all"
   | constant llist_of \<rightharpoonup>
@@ -272,7 +322,10 @@ corec trace_exec where
    else LNil)"
 
 
+term Set.the_elem
+(* 
 value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op1)"
+ *)
 value r1
 
 value [GHC] "crmdups id {|Suc 0, Suc 0|}"
@@ -293,31 +346,58 @@ instance
   done
 end
 
-value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op2)"
+definition "my_test = lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op2)"
+
+value [GHC] my_test
+
+
+
+value [GHC] "ltaken 2 (trace_exec spec_op_test)"
+
+value "frontier {# t_1_1, t_0_1, t_1_0 #}\<^sub>z"
 
 term DEBUG
 
-term 
-"llist_of [Mint t_1_0, Mint t_0_1, Mint t_1_1, Drop t0, 
- Data t_1_1 10, Drop t_1_1, Data t_0_1 7, Data t_1_0 (3 :: nat), Drop t_1_0, Drop t_0_1]"
 
-value r2
+value "\<not> frontier_less_equal (frontier {# t_1_0, t_1_1, t_0_1 #}\<^sub>z) t_1_0"
+
 
 fun check_prefix where
   "check_prefix [] op = True"
 | "check_prefix (io # ios) op = 
   (let ios_ops = cfilter (\<lambda> (io', op). io = io') (wsteps_exec op) in
    if ios_ops = {||} then False
-   else True |\<in>| (cimage (check_prefix ios) (cimage snd ios_ops)))"
+   else
+   True |\<in>| (cimage (check_prefix ios) (cimage snd ios_ops)))"
+
+
+term 
+"llist_of [Mint t_1_0, Mint t_0_1, Mint t_1_1, Drop t0, Data t_1_1 10, Drop t_1_1,
+ Data t_0_1 7, Data t_1_0 (3 :: nat), Drop t_1_0, Drop t_0_1]"
+
 
 value [GHC] "check_prefix [VOut (1, 1) (Inr 10, MyPair 1 1)] test_op2"
+
 value [GHC] "check_prefix [VOut (1, 1) (Inr 7, MyPair 0 1)] test_op2"
 
 
 
-(*
-value [GHC] "approx_in 150 [VOut (1, 1) (Inr 10, MyPair 1 1)] test_op2"
+value [GHC] "check_prefix [VOut 1 (7, MyPair 0 1)] spec_op_test"
+
+
+value [GHC] "check_prefix [VOut 1 (3, MyPair 1 0)] spec_op_test"
+
+value [GHC] "check_prefix [VOut 1 (10, MyPair 1 )] spec_op_test"
+
+
+(* 
+ value [GHC] "check_prefix [VOut (1, 1) (Inr 3, MyPair 1 0)] test_op2"
+ 
  *)
+(* 
+value [GHC] "approx_in 27 [VOut (1, 1) (Inr 3, MyPair 1 0)] test_op2"
+ *)
+
 thm cUnion_code
 
 term cUn

@@ -14,6 +14,20 @@ imports
   Containers.Collection_Order
 begin 
 
+
+(* FIXME: move mes*)
+instantiation antichain :: (equal) equal
+begin
+definition
+  "equal_antichain ft1 ft2 = (is_empty_antichain (filter_antichain (\<lambda> x. x \<notin>\<^sub>A ft2) ft1) \<and> is_empty_antichain (filter_antichain (\<lambda> x. x \<notin>\<^sub>A ft1) ft2))"
+instance 
+  apply standard
+  subgoal for f1 f2
+    apply transfer
+    sorry
+  done
+end
+
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 
@@ -73,7 +87,7 @@ lemma rmdups_insert_NilI:
    apply auto
   done
 
-definition "DEBUG = False"
+definition "DEBUG = True"
 
 definition "trace = (if DEBUG then Debug.tracing else (\<lambda> x y. y))"
 
@@ -655,7 +669,7 @@ corec builder_op where
    in send_progress (builder_op fb ips ops os' logic) st
    else \<oslash>)
   (if fb then
-   Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op fb ips ops (os\<lparr> front := projr (projl st), nfron := True \<rparr>) logic else \<oslash>)
+   Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op fb ips ops (os\<lparr> front := projr (projl st), nfron := \<not> (\<exists> p. ((projr (projl st)) p) = front os p) \<rparr>) logic else \<oslash>)
    else \<oslash>)
   (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow> \<oslash> | Inr (d, t) \<Rightarrow> Choice (cimage (\<lambda> os. builder_op fb ips ops os logic) (consumes os p t d)))) ips))
   else
