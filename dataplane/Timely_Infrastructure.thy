@@ -592,7 +592,7 @@ fun remove_last where
   "remove_last x [] = []"
 | "remove_last x xs = (if last xs = x then butlast xs else remove_last x (butlast xs) @ [last xs])"
 
-lemma mset_remove_last:
+lemma mset_remove_last[simp]:
   \<open>mset (remove_last x xs) = mset xs - {#x#}\<close>
 proof (induction x xs rule: remove_last.induct)
   case 1
@@ -608,6 +608,14 @@ qed
 fun list_diff where
   "list_diff ys [] = ys"
 | "list_diff ys (x # xs) = list_diff (remove_last x ys) xs"
+
+lemma mset_list_diff[simp]:
+  \<open>mset (list_diff ys xs) = mset ys - mset xs\<close>
+  by (induction ys xs rule: list_diff.induct) simp_all
+
+lemma list_diff_Nil[simp]:
+  \<open>list_diff xs xs = []\<close>
+  using mset_list_diff Multiset.diff_cancel mset_zero_iff by metis
 
 abbreviation "drop_cap os cap \<equiv> os\<lparr> inter := inter os @ [(out cap, time cap, -1)], ocaps := (ocaps os) ((out cap) := remove_last (time cap) (ocaps os (out cap))) \<rparr>"
 
@@ -647,22 +655,6 @@ lemma step_builder_op_elim:
   | (write_state) os' st where \<open>initia os\<close> \<open>io = Out None (Inl (Inl st))\<close> \<open>(os', st) = obtain_progress os\<close> \<open>op = builder_op ips ops os' logic\<close>
   | (write_data) p x xs where \<open>initia os\<close> \<open>io = Out (Some p) (Inr x)\<close> \<open>p |\<in>| ops\<close> \<open>outpu os p = x # xs\<close> \<open>op = builder_op ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic\<close>
   | (silent) os' where \<open>initia os\<close> \<open>io = Tau\<close> \<open>os' |\<in>| logic os\<close> \<open>op = builder_op ips ops os' logic\<close>
-(*
-  apply atomize_elim
-  using assms
-  apply (subst (asm) builder_op.code)
-  apply (cases io)
-    apply (auto split: list.splits if_splits sum.splits simp add: is_Inl_def is_Inr_def)
-        apply blast
-       apply blast
-  subgoal for f
-    apply (subgoal_tac \<open>os\<lparr>front := f\<rparr> = os\<lparr>front := f, initia := True\<rparr>\<close>)
-     apply metis
-    apply simp
-    done
-     apply blast+
-  done
-*)
 proof (cases io)
   case (Inp p x)
   show ?thesis
