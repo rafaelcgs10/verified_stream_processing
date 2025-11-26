@@ -643,7 +643,7 @@ lemma step_builder_op_elim:
   obtains (read_end_None) x where \<open>io = Inp None x\<close> \<open>is_Inr x \<or> is_Inl x \<and> is_Inl (projl x)\<close> \<open>op = \<oslash>\<close>
   | (read_frontier) f where \<open>io = Inp None (Inl (Inr f))\<close> \<open>op = builder_op ips ops (os\<lparr>front := f, initia := True\<rparr>) logic\<close>
   | (read_end_Some) p x where \<open>initia os\<close> \<open>io = Inp (Some p) x\<close> \<open>p |\<in>| ips\<close> \<open>is_Inl x\<close> \<open>op = \<oslash>\<close>
-  | (read_data) p d t where \<open>initia os\<close> \<open>io = Inp (Some p) (Inr (d, t))\<close> \<open>p |\<in>| ips\<close> \<open>op = Choice (cimage (\<lambda>os. builder_op ips ops os logic) (consumes os p t d))\<close>
+  | (read_data) p d t where \<open>initia os\<close> \<open>io = Inp (Some p) (Inr (d, t))\<close> \<open>p |\<in>| ips\<close> \<open>op = builder_op ips ops (consumes os p t d) logic\<close>
   | (write_state) os' st where \<open>initia os\<close> \<open>io = Out None (Inl (Inl st))\<close> \<open>(os', st) = obtain_progress os\<close> \<open>op = builder_op ips ops os' logic\<close>
   | (write_data) p x xs where \<open>initia os\<close> \<open>io = Out (Some p) (Inr x)\<close> \<open>p |\<in>| ops\<close> \<open>outpu os p = x # xs\<close> \<open>op = builder_op ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic\<close>
   | (silent) os' where \<open>initia os\<close> \<open>io = Tau\<close> \<open>os' |\<in>| logic os\<close> \<open>op = builder_op ips ops os' logic\<close>
@@ -702,7 +702,7 @@ proof (cases io)
         using read_end_Some Inp Some initialized unexpected by blast
     next
       case data
-      hence \<open>p' |\<in>| ips \<and> op = Choice (cimage (\<lambda>os. builder_op ips ops os logic) (consumes os p' t d))\<close>
+      hence \<open>p' |\<in>| ips \<and> op = builder_op ips ops (consumes os p' t d) logic\<close>
         using assms Inp Some by (subst (asm) builder_op.code) (auto split: if_splits list.splits)
       thus ?thesis
         using read_data Inp Some initialized data by blast
@@ -762,10 +762,10 @@ qed
 
 lemma step_builder_op_Read_Some[intro]:
   assumes \<open>initia os\<close> \<open>io = Inp (Some p) (Inr (d, t))\<close> \<open>p |\<in>| ips\<close>
-    \<open>op = Choice (cimage (\<lambda>os. builder_op ips ops os logic) (consumes os p t d))\<close>
+    \<open>op = builder_op ips ops (consumes os p t d) logic\<close>
   shows \<open>step io (builder_op ips ops os logic) op\<close>
 proof -
-  let ?f = \<open>\<lambda>x. case x of Inr (d, t) \<Rightarrow> Choice (cimage (\<lambda> os. builder_op ips ops os logic) (consumes os p t d)) | Inl _ \<Rightarrow> \<oslash>\<close>
+  let ?f = \<open>\<lambda>x. case x of Inr (d, t) \<Rightarrow> builder_op ips ops (consumes os p t d) logic | Inl _ \<Rightarrow> \<oslash>\<close>
   have \<open>Read (Some p) ?f |\<in>| choices (builder_op ips ops os logic)\<close>
     using assms by (subst (2) builder_op.code) fastforce
   moreover have \<open>?f (Inr (d, t)) = op\<close>
