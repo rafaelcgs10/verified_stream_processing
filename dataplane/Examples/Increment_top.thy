@@ -77,9 +77,9 @@ abbreviation inp_incr_summary where
   if l1 = Loc (0 :: 2) (Src (0 :: 1)) \<and> l2 = Loc (1 :: 2) (Trg (0 :: 1))
   then antichain {0}
   else if l1 = Loc 0 (Trg 0) \<and> l2 = Loc 0 (Src 0)
-  then antichain {incr 0}
-  else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 0)
   then antichain {0}
+  else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 0)
+  then antichain {incr 0}
   else {}\<^sub>A)\<close>
 
 lemma ooo_input_top_increment_top_source_op:
