@@ -7,6 +7,7 @@ imports
   Batch_op
   "../MyProduct_Instances"
   "../AntichainOrder"
+   Dataplane.LList_Haskell_Setup
 begin
 
 
@@ -37,16 +38,7 @@ fun foo where
   | (Mint t) # lxs' \<Rightarrow> foo f lxs' buf (caps @ [t])
   | (Drop t) # lxs' \<Rightarrow> foo f lxs' buf (remove1 t caps))"
 
-term batch_fun_spec
-
 declare batch_fun_spec.simps[code]
-
-find_consts "_ llist" "_ cset"
-
-value "cset_of_llist (llist_of [0..<3])"
-
-abbreviation "list_nats n m \<equiv> map nat [int n..int m]"
-
 
 (* filter cUNIV to not have empty outputs*)
 corec spec_op where
@@ -55,20 +47,10 @@ corec spec_op where
      let (outs, buf', caps') = foo f (ltaken n lxs) buf caps in
      (case outp @ outs of x # xs \<Rightarrow> (Write (spec_op m f (ldropn n lxs) buf' caps' xs) 1 x))) (
       cfilter (\<lambda> n. fst (foo f (ltaken n lxs) buf caps) \<noteq> [])
-      (cset_of_llist (llist_of (list_nats 0 m)))))))
+      (cset_of_llist (llist_of ([0..< Suc m])))))))
     (case outp of 
        [] \<Rightarrow> \<oslash>
      | x # xs \<Rightarrow> Write (spec_op m f lxs buf caps xs) 1 x)"
-
-corec traces_op where
-  "traces_op (S :: ('p :: {countable,defaults} \<Rightarrow> ('d :: cenum) llist) set) =
-   (Choice (cimage 
-   (\<lambda> p. let hds = acset ((\<lambda> f. lhd (f p)) ` S) in Choice (cimage (\<lambda> x. Write (traces_op ((\<lambda> f. f(p := ltl (f p))) ` {f \<in> S. lhd (f p) = x})) p x) hds))
-   c\<UU>))"
-
-lemma acset_code[code]:
-  "acset S = cset_of_llist (lfilter (\<lambda> x. x \<in> S) cenum)"
-  unfolding cset_of_llist_def map_fun_def o_apply id_apply using UNIV_cenum by auto
 
 definition "t0 \<equiv> \<bottom>"
 definition "t_1_0 \<equiv> MyPair (Suc 0) (0 :: nat)"
@@ -88,13 +70,10 @@ value "[frontier {# t0, t_1_1, t_1_0, t_0_1 #}\<^sub>z, frontier {#}\<^sub>z] "
 abbreviation "inps2 \<equiv> llist_of list_inps2"
 
 abbreviation \<open>r1 \<equiv> lconcat (batch_fun_spec (\<lambda> b. [Max (set b)]) [] [\<bottom>] inps1)\<close>
-
 value r1
 
 abbreviation \<open>r2 \<equiv> lconcat (batch_fun_spec (\<lambda> b. [Max (set b)]) [] [\<bottom>] inps2)\<close>
-
 value r2
-
 
 abbreviation "spec_op_test \<equiv> (spec_op (length list_inps2) (\<lambda> b. [Max (set b)]) inps2 [] [\<bottom>] []) :: (1, 1, nat \<times> (nat, nat) myprod) op"
 
@@ -102,19 +81,18 @@ coinductive batch_op_traces for f where
   bt_Data[intro!]: "batch_op_traces f n (buf @ [(d, t)]) caps lxs outs \<Longrightarrow> batch_op_traces f (Suc n) buf caps (LCons (Data t d) lxs) outs"
 | bt_Mint[intro!]: "batch_op_traces f n buf (t # caps) lxs outs \<Longrightarrow> batch_op_traces f (Suc n) buf caps (LCons (Mint t) lxs) outs"
 | bt_Drop[intro!]: "batch_op_traces f n buf (remove1 t caps) lxs outs \<Longrightarrow> batch_op_traces f (Suc n) buf caps (LCons (Drop t) lxs) outs"
-| bt_Out[intro!]: "batch_op_traces f n buf' caps inps outs \<Longrightarrow>
-  below_caps = filter (\<lambda> t. \<not> frontier_less_equal (frontier (to_zmset caps)) (t :: 't :: order)) (rmdups {} (map snd buf)) \<Longrightarrow>
-  compl_batches = (\<lambda> t. map fst (filter (\<lambda> (d, t'). t' = t \<and> t \<in> set compl_caps) buf)) \<Longrightarrow>
-  buf' = filter (\<lambda> (d, t). t \<notin> set below_caps) buf \<Longrightarrow>
-  outs' = concat (map (\<lambda> t. map (\<lambda> x. (x, t)) (f (compl_batches t))) (filter (\<lambda> t. t \<in> set below_caps) (rmdups {} (map snd buf)))) \<Longrightarrow>
-  outs' \<noteq> [] \<Longrightarrow>
-  outs'' = outs' @@- outs \<Longrightarrow>
-  batch_op_traces f 0 buf caps inps outs''"
+| bt_Out[intro!]: "batch_op_traces f n (unread_buf @ read_buf') caps inps next_outs \<Longrightarrow>
+  below_caps = filter (\<lambda> t. \<not> frontier_less_equal (frontier (to_zmset caps)) (t :: 't :: order)) (rmdups {} (map snd read_buf)) \<Longrightarrow>
+  buf = unread_buf @ read_buf \<Longrightarrow>
+  compl_batches = (\<lambda> t. map fst (filter (\<lambda> (d, t'). t' = t \<and> t \<in> set compl_caps) read_buf)) \<Longrightarrow>
+  read_buf' = filter (\<lambda> (d, t). t \<notin> set below_caps) read_buf \<Longrightarrow>
+  new_outs = concat (map (\<lambda> t. map (\<lambda> x. (x, t)) (f (compl_batches t))) (filter (\<lambda> t. t \<in> set below_caps) (rmdups {} (map snd read_buf)))) \<Longrightarrow>
+  new_outs \<noteq> [] \<Longrightarrow>
+  outs = new_outs @@- next_outs \<Longrightarrow>
+  batch_op_traces f 0 buf caps inps outs"
 | bt_LNil[intro!]: "batch_op_traces f m [] [] LNil LNil"
 
-term batch_op_traces
-
-lemma
+lemma batch_op_traces_test_1:
   "batch_op_traces (\<lambda> b. [Max (set b)]) (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))) [] [t0] inps2 (LCons (10, MyPair 1 1) (LCons (7, MyPair 0 1) (LCons (3, MyPair 1 0) LNil)))"
   apply (simp only: llist_of.simps)
   apply rule
@@ -127,13 +105,59 @@ lemma
   apply rule
   apply rule
   apply rule
-    apply (rule bt_Out[where n=0 and compl_caps="[t_1_1, t_0_1, t_1_0]" and outs=LNil, rotated])
+    apply (rule bt_Out[where n=0 and unread_buf=Nil and compl_caps="[t_1_1, t_0_1, t_1_0]" and next_outs=LNil, rotated])
          apply (rule refl)+
-  apply code_simp+
+        apply simp
+         apply (rule refl)+
+    apply code_simp+
   apply (rule bt_LNil)
   done
 
+lemma batch_op_traces_test_2:
+  "batch_op_traces (\<lambda> b. [Max (set b)]) (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))) [] [t0] inps2 (LCons (3, MyPair 1 0) (LCons (10, MyPair 1 1) (LCons (7, MyPair 0 1) LNil)))"
+  apply (simp only: llist_of.simps)
+  apply rule
+  apply rule
+  apply rule
+  apply rule
+  apply rule
+  apply rule
+  apply rule
+  apply rule
+  apply rule
+  apply (rule bt_Out[where n="Suc 0" and unread_buf=Nil  and compl_caps="[t_1_1, t_1_0]" and new_outs="[(3, MyPair 1 0)]", rotated])
+         apply (rule refl)+
+        apply simp
+         apply (rule refl)+
+     apply code_simp
+    apply simp
+   defer
+   apply rule
+   apply (rule bt_Out[where n="0" and unread_buf=Nil and compl_caps="[t_1_1, t_1_0, t_0_1]"  and next_outs=LNil, rotated])
+         apply (rule refl)+
+     apply code_simp
+    apply (rule refl)+
+   apply code_simp
+   apply rule
+  apply code_simp
+  done
 
+term "[Mint t_1_0, Mint t_0_1, Mint t_1_1, Drop t0, Data t_1_1 10, Drop t_1_1, Data t_0_1 7, Data t_1_0 (3 :: nat), Drop t_1_0, Drop t_0_1]"
+
+lemma batch_op_traces_test_3:
+  "batch_op_traces (\<lambda> b. [Max (set b)]) (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))) [] [t0] inps2 (LCons (7, MyPair 0 1) (LCons (10, MyPair 1 1) (LCons (3, MyPair 1 0) LNil)))"
+  apply (simp only: llist_of.simps)
+  apply rule
+  apply rule
+  apply rule
+  apply rule
+  apply rule
+  apply rule
+  apply rule
+  apply rule
+  apply rule
+  apply rule
+  oops
 
 abbreviation init_input_state where
 "init_input_state su inps \<equiv> \<lparr> 
@@ -171,211 +195,10 @@ abbreviation init_operator_state_ty2 where
    de2 = projr
    \<rparr>"
 abbreviation "l2 \<equiv> Logic (batch_fun_op (init_operator_state_ty2 default_internal_summary) (\<lambda> b. if b = [] then [] else [Max (set b)])) default_internal_summary"
-(* 
-abbreviation "test_dt1 \<equiv> Comp [(0, 1) \<mapsto> (0, 1)] (l1 (\<lambda> _. inps1)) l2"
- *)
+
 abbreviation "test_dt2 \<equiv> Comp [(0, 1) \<mapsto> (0, 1)] (l1 (\<lambda> _. inps2)) l2"
 
-(* abbreviation "test_op1 \<equiv> compile_dataflow test_dt1 :: (2 \<times> 1, 2 \<times> 1, (nat + nat) \<times> nat) op"
- *)
-
 abbreviation "test_op2 \<equiv> compile_dataflow test_dt2 :: (2 \<times> 1, 2 \<times> 1, _) op"
-
-
-lemma one_minus[code]:
-  "(1 :: 1) - x = 1"
-  by auto
-lemma one_plus[code]:
-  "(1 :: 1) + x = 1"
-  by auto
-
-partial_function (llist) lrmdups_aux where
-  "lrmdups_aux f S lxs = (case lxs of LNil \<Rightarrow> LNil | LCons x lxs \<Rightarrow> (if f x \<in> S then lrmdups_aux f S lxs else LCons x (lrmdups_aux f (insert (f x) S) lxs)))"
-declare lrmdups_aux.simps[code]
-
-definition "lrmdups f = lrmdups_aux f {}"
-
-definition "crmdups (f :: 'a \<Rightarrow> 'b) (C :: 'a cset) = C"
-declare crmdups_def[code del]
-
-lemma crmdups_code[code]:
-  "crmdups f (cset_of_llist xs) = cset_of_llist (lrmdups f xs)"
-  sorry
-
-definition "compress_cfilter P xs = cfilter P xs"
-
-friend_of_corec lappend where
-  "lappend xs lys = (case xs of LNil \<Rightarrow> (case lys of LNil \<Rightarrow> LNil | LCons x xs \<Rightarrow> LCons x xs)
-    | LCons x xs \<Rightarrow> LCons x (lappend xs lys))"
-  subgoal by (cases xs; cases lys; simp)
-  subgoal by transfer_prover
-  done
-
-declare csome_elem_def[code del]
-declare cthe_elem_def[code del]
-
-
-definition "csingleton (xs :: 'm cset) = xs"
-declare csingleton_def[code del]
-
-definition "cnub (C :: (_ :: equal) cset) = C"
-declare cnub_def[code del]
-
-definition "ctake (n :: nat) (C :: (_ :: equal) cset) = C"
-declare ctake_def[code del]
-
-
-code_printing code_module "Cset" \<rightharpoonup> (Haskell)
-\<open>
-module Cset (csingleton, chd, Cset (..), Nat (..), cnub, clast, ctake, safe_nth, ndrop, ntake) where
-import qualified Data.List;
-
-newtype Cset a = Cset [a];
-newtype Nat = Nat Integer;
-
-csingleton (Cset []) = Cset [];
-csingleton (Cset xs) = Cset [Prelude.head xs];
-
-chd (Cset xs) = Prelude.head xs;
-clast (Cset xs) = Prelude.last xs;
-
-cnub (Cset xs) = Cset (Data.List.nub xs);
-
-safe_nth xs n = xs !! ((mod (Prelude.fromInteger n) (length  xs)));
-
-ctake (Nat n) (Cset xs) = Cset (Prelude.take (Prelude.fromInteger n) xs);
-
-ndrop (Nat n) xs = drop (Prelude.fromInteger n) xs;
-ntake (Nat n) xs = take (Prelude.fromInteger n) xs;
-
-\<close> 
-
-declare ltaken.simps[code del]
-
-code_printing
-  type_constructor cset \<rightharpoonup>
-    (Haskell) "Cset.Cset _"
-  | type_constructor nat \<rightharpoonup>
-    (Haskell) "Cset.Nat"
-  | constant Nat \<rightharpoonup>
-    (Haskell) "Cset.Nat"
-  | constant cset_of_llist \<rightharpoonup>
-    (Haskell) "Cset.Cset"
-  | constant csingleton \<rightharpoonup>
-    (Haskell) "Cset.csingleton"
-  | constant cthe_elem \<rightharpoonup>
-    (Haskell) "Cset.chd"
-  | constant csome_elem \<rightharpoonup>
-    (Haskell) "Cset.clast"
-  | constant cnub \<rightharpoonup>
-    (Haskell) "Cset.cnub"
-  | constant ctake \<rightharpoonup>
-    (Haskell) "Cset.ctake"
-  | type_constructor llist \<rightharpoonup>
-    (Haskell) "![(_)]"
-  | constant LNil \<rightharpoonup>
-    (Haskell) "[]"
-  | constant LCons \<rightharpoonup>
-    (Haskell) infix 3 ":"
-  | class_instance llist :: equal \<rightharpoonup>
-    (Haskell) -
-  | constant "HOL.equal :: 'a llist \<Rightarrow> 'a llist \<Rightarrow> bool" \<rightharpoonup>
-    (Haskell) infix 4 "=="
-  | constant "lappend" \<rightharpoonup>
-    (Haskell) infixr 5 "++"
-  | constant lmap \<rightharpoonup>
-    (Haskell) "map"
-
-  | constant lfilter \<rightharpoonup>
-    (Haskell) "filter"
-  | constant lconcat \<rightharpoonup>
-    (Haskell) "Prelude.concat"
-  | constant lmerge \<rightharpoonup>
-    (Haskell) "Prelude.concat"
-  | constant lhd \<rightharpoonup>
-    (Haskell) "Prelude.head"
-  | constant hd \<rightharpoonup>
-    (Haskell) "Prelude.head"
-  | constant ltl \<rightharpoonup>
-    (Haskell) "Prelude.tail"
-  | constant tl \<rightharpoonup>
-    (Haskell) "Prelude.tail"
-  | constant last \<rightharpoonup>
-    (Haskell) "Prelude.last"
-  | constant lzip \<rightharpoonup>
-    (Haskell) "zip"
-  | constant llist.lnull \<rightharpoonup>
-    (Haskell) "null"
-  | constant ltakeWhile \<rightharpoonup>
-    (Haskell) "takeWhile"
-  | constant ldropWhile \<rightharpoonup>
-    (Haskell) "dropWhile"
-  | constant ldropn \<rightharpoonup>
-    (Haskell) "Cset.ndrop"
-  | constant ldrop \<rightharpoonup>
-    (Haskell) "Cset.ndrop"
-  | constant ltaken \<rightharpoonup>
-    (Haskell) "Cset.ntake"
-  | constant llist_all \<rightharpoonup>
-    (Haskell) "all"
-  | constant llist_of \<rightharpoonup>
-    (Haskell) "id"
-
-fun wsteps_at :: "('i, 'o, 'd :: countable) op \<Rightarrow> _" where
-  "wsteps_at (Write op p x) n = {|(VOut p x, op)|}"
-| "wsteps_at (Read p f) n = cimage (\<lambda>x. (VInp p x, f x)) (cUNIV :: 'd cset)"
-| "wsteps_at (Silent op) (Suc n) = wsteps_at op n"
-| "wsteps_at (Choice ops) (Suc n) = cUnion (cimage (\<lambda> op. wsteps_at op n) ops)"
-| "wsteps_at op 0 = {||}"
-
-definition "wsteps_exec op = cUnion (cimage (wsteps_at op) cUNIV)"
-
-lemma wsteps_exec_Write[simp]: "wsteps_exec (Write op p x) = {|(VOut p x, op)|}"
-  unfolding wsteps_exec_def by (auto simp: cset_eq_iff)
-
-lemma wsteps_exec_Read[simp]: "wsteps_exec (Read p f) = cimage (\<lambda>x. (VInp p x, f x)) (cUNIV :: _ cset)"
-  unfolding wsteps_exec_def by (auto simp: cset_eq_iff)
-
-lemma wsteps_exec_Silent[simp]:
-  "wsteps_exec (Silent op) = wsteps_exec op"
-  unfolding wsteps_exec_def
-  apply safe
-  subgoal premises prems for a b n
-    using prems(2-) apply -
-    apply (induct "Silent op" n arbitrary: op rule: wsteps_at.induct)
-     apply auto
-    done
-  subgoal for a b n
-    apply (simp add: wsteps_exec_def)
-    apply (rule exI[of _ "Suc n"])
-    apply auto
-    done
-  done
-
-lemma wsteps_exec_Choice[simp]:
-  "wsteps_exec (Choice ops) = cUnion (wsteps_exec |`| ops)"
-  unfolding wsteps_exec_def
-  apply safe
-  subgoal premises prems for a b n
-    using prems(2-) apply -
-    apply (induct "Choice ops" n arbitrary: ops rule: wsteps_at.induct)
-     apply auto
-    done
-  subgoal for a b x n
-    apply (simp add: wsteps_exec_def)
-    apply (rule exI[of _ "Suc n"])
-    apply auto
-    done
-  done
-
-declare wsteps_exec_def[code del]
-lemmas wsteps_exec_code[code] = wsteps_exec_Read wsteps_exec_Write wsteps_exec_Silent wsteps_exec_Choice
-
-
-corec trace_exec where
-  "trace_exec op = (let ops = wsteps_exec op in                      
-   if \<not> cis_empty ops then let (io, op') = cthe_elem ops in LCons io (trace_exec op')
-   else LNil)"
 
 
 term Set.the_elem
@@ -387,26 +210,9 @@ value r1
 value [GHC] "crmdups id {|Suc 0, Suc 0|}"
 
 
-instantiation myprod :: (cenum, cenum) cenum begin
-definition cenum_myprod :: "('a, 'b) myprod llist" where "cenum_myprod = lmerge (lmap (\<lambda> x. lmap (MyPair x) cenum) cenum)"
-instance
-  apply standard
-  unfolding cenum_myprod_def from_prod_def lset_lmap
-  apply (auto simp: cenum_prod_def image_iff inj_on_def order_less_subst2 UNIV_cenum[symmetric] cenum_distinct
-      intro!: ldistinct_linterleave ldistinct_lmerge
-      dest!: cenum_distinct[unfolded ldistinct_conv_lnth, rule_format, THEN notE, rotated -1] split: myprod.splits)
-  subgoal for x
-    apply (cases x)
-    apply auto
-    done
-  done
-end
-
 definition "my_test = lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op2)"
 
 value [GHC] my_test
-
-
 
 value "frontier {# t_1_1, t_0_1, t_1_0 #}\<^sub>z"
 
@@ -434,11 +240,7 @@ value [GHC] "check_prefix [VOut (1, 1) (Inr 10, MyPair 1 1)] test_op2"
 
 value [GHC] "check_prefix [VOut (1, 1) (Inr 7, MyPair 0 1)] test_op2"
 
-
-
 value [GHC] "trace_exec spec_op_test"
-
-value [GHC]  "trace_exec nd_source_op_test"
 
 print_classes
 
@@ -446,11 +248,6 @@ print_classes
 value [GHC] "check_prefix [VOut 1 (7, MyPair 0 1)] spec_op_test"
 value [GHC] "check_prefix [VOut 1 (3, MyPair 1 0)] spec_op_test"
 value [GHC] "check_prefix [VOut 1 (10, MyPair 1 1)] spec_op_test"
-
-
-value [GHC] "check_prefix [VOut 1 (7, MyPair 0 1)] nd_source_op_test"
-value [GHC] "check_prefix [VOut 1 (3, MyPair 1 0)] nd_source_op_test"
-value [GHC] "check_prefix [VOut 1 (10, MyPair 1 1)] nd_source_op_test"
 
 
 (* 

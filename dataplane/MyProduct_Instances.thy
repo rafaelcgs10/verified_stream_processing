@@ -3,6 +3,7 @@ theory MyProduct_Instances
 imports
   Containers.Collection_Order
   "HOL-Library.Countable"
+  Nondeterministic_Dataflow.CSet_LList_Impl
 begin
 
 datatype ('a, 'b) myprod = MyPair (myfst: 'a) (mysnd: 'b)
@@ -407,5 +408,19 @@ instance myprod :: (countable, countable) countable
   apply  (auto simp add: to_prod_def split: myprod.splits)
   done
 
+instantiation myprod :: (cenum, cenum) cenum begin
+definition cenum_myprod :: "('a, 'b) myprod llist" where "cenum_myprod = lmerge (lmap (\<lambda> x. lmap (MyPair x) cenum) cenum)"
+instance
+  apply standard
+  unfolding cenum_myprod_def from_prod_def lset_lmap
+  apply (auto simp: cenum_prod_def image_iff inj_on_def order_less_subst2 UNIV_cenum[symmetric] cenum_distinct
+      intro!: ldistinct_linterleave ldistinct_lmerge
+      dest!: cenum_distinct[unfolded ldistinct_conv_lnth, rule_format, THEN notE, rotated -1] split: myprod.splits)
+  subgoal for x
+    apply (cases x)
+    apply auto
+    done
+  done
+end
 
 end
