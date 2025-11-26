@@ -7,7 +7,7 @@ begin
 
 record ('p, 'd, 'd1, 't) input_state = "('p, 'd, 'd1, 't) operator_state_ty" + es:: "'p \<Rightarrow> ('t, 'd1) event llist"
 
-abbreviation \<open>ooo_input_op_logic ops os \<equiv> cimage (\<lambda>p. case es os p of
+definition \<open>ooo_input_op_logic ops os = cimage (\<lambda>p. case es os p of
     LNil \<Rightarrow> drop_caps os (map (\<lambda>t. Cap t p) (ocaps os p))
   | LCons (Data t d) lxs \<Rightarrow> produce (os\<lparr>es := (es os)(p := lxs)\<rparr>) (Cap t p) [en1 os d]
   | LCons (Drop t) lxs \<Rightarrow> drop_cap (os\<lparr>es := (es os)(p := lxs)\<rparr>) (Cap t p)
@@ -195,7 +195,7 @@ proof (induction \<open>ltakeWhile (Not \<circ> is_Data) (es os p)\<close> arbit
   moreover from this have \<open>ocaps os p \<noteq> []\<close>
     using LNil(2,6) monotone.cases by force
   ultimately have \<open>os'' |\<in>| ooo_input_op_logic ops os\<close>
-    using LNil(2,3,7,8) by force
+    using LNil(2,3,7,8) ooo_input_op_logic_def by force
   thus ?case
     using LNil(4,5,9) step_builder_op_Silent ooo_input_op_def by blast
 next
@@ -206,6 +206,7 @@ next
   have ocaps_not_empty: \<open>ocaps os p \<noteq> []\<close>
     using LCons(8) head_es(3) monotone.cases by force
   hence \<open>?os1 |\<in>| ooo_input_op_logic ops os\<close>
+    unfolding ooo_input_op_logic_def
     using LCons(5) head_es(1,3) cin_cimage_cfilter event.case_eq_if input_state.fold_congs(12)
       llist.case(2) operator_state.unfold_congs(3,8) by (smt (verit))
   hence \<open>step Tau op (ooo_input_op ops ?os1)\<close>
@@ -276,7 +277,7 @@ lemma ooo_input_op_source_op:
   dataflow_op sg (ooo_inp_op os)
   \<approx> map_op (\<lambda>(p :: 1). (0, p)) (\<lambda>p. (0, p))
     (source_op (\<lambda>p. outpu os p @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (d, t)) (lfilter is_Data (es os p))))\<close>
-  unfolding ooo_input_op_def
+  unfolding ooo_input_op_def ooo_input_op_logic_def
 proof (coinduction arbitrary: sg os rule: wbisim_coinduct_upto'')
   case SIM1
   then show ?case
@@ -353,7 +354,10 @@ next
             apply (rule step_Taus_dataflow_op_Taus_intro)
             apply (rule step_star_map_op)
             apply (rule step_Taus_ooo_input_op_Drop_Mint[where p=1 and os=os and ops=\<open>{|1|}\<close>])
-                    apply (simp_all add: ooo_input_op_def)
+                    apply simp_all
+            apply (unfold ooo_input_op_def)
+            apply (unfold ooo_input_op_logic_def)
+            apply simp
            apply (rule step_Out_dataflow_op_Out_Inr_intro)
            apply (rule step_map_op)
             apply (rule step_builder_op_Write_Some[where p=1])
