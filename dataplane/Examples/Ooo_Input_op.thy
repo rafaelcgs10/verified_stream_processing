@@ -353,10 +353,9 @@ next
            apply (rule wstep_trans(1))
             apply (rule step_Taus_dataflow_op_Taus_intro)
             apply (rule step_star_map_op)
-            apply (rule step_Taus_ooo_input_op_Drop_Mint[where p=1 and os=os and ops=\<open>{|1|}\<close>])
+            apply (rule step_Taus_ooo_input_op_Drop_Mint[where ops=\<open>{|1|}\<close>])
                     apply simp_all
-            apply (unfold ooo_input_op_def)
-            apply (unfold ooo_input_op_logic_def)
+            apply (unfold ooo_input_op_def ooo_input_op_logic_def)
             apply simp
            apply (rule step_Out_dataflow_op_Out_Inr_intro)
            apply (rule step_map_op)
@@ -392,7 +391,6 @@ next
            apply (smt (verit, best))
           apply simp
           done
-        using event.case apply simp
            apply (drule en1_foldl_ooo_input_os_Drop_Mint_es_update[where p=1 and xs=\<open>list_of (ltakeWhile (Not \<circ> is_Data) (es os 0))\<close> and lxs=\<open>ltl (ldropWhile (Not \<circ> is_Data) (es os 1))\<close>])
         using set_list_of ltakeWhile_all comp_apply lset_ltakeWhileD ltakeWhile_cong zero_one
              apply (smt (verit, best))
