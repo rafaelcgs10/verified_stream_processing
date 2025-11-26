@@ -49,6 +49,13 @@ declare cnub_def[code del]
 definition "ctake (n :: nat) (C :: (_ :: equal) cset) = C"
 declare ctake_def[code del]
 
+find_theorems ccard
+
+declare ccard_def[code del]
+
+lemma ccard_code[code]:
+  "ccard (cset_of_llist xs) = length (list_of xs)"
+  sorry
 
 code_printing code_module "Cset" \<rightharpoonup> (Haskell)
 \<open>
@@ -115,8 +122,6 @@ code_printing
     (Haskell) "filter"
   | constant lconcat \<rightharpoonup>
     (Haskell) "Prelude.concat"
-  | constant lmerge \<rightharpoonup>
-    (Haskell) "Prelude.concat"
   | constant lhd \<rightharpoonup>
     (Haskell) "Prelude.head"
   | constant hd \<rightharpoonup>
@@ -145,7 +150,8 @@ code_printing
     (Haskell) "all"
   | constant llist_of \<rightharpoonup>
     (Haskell) "id"
-
+(*   | constant lmerge \<rightharpoonup>
+    (Haskell) "Prelude.concat" *)
 
 
 fun wsteps_at :: "('i, 'o, 'd :: countable) op \<Rightarrow> _" where
@@ -208,5 +214,12 @@ lemma acset_code[code]:
   "acset S = cset_of_llist (lfilter (\<lambda> x. x \<in> S) cenum)"
   unfolding cset_of_llist_def map_fun_def o_apply id_apply using UNIV_cenum by auto
 
+fun check_prefix where
+  "check_prefix [] op = True"
+| "check_prefix (io # ios) op = 
+  (let ios_ops = cfilter (\<lambda> (io', op). io = io') (wsteps_exec op) in
+   if ios_ops = {||} then False
+   else
+   True |\<in>| (cimage (check_prefix ios) (cimage snd ios_ops)))"
 
 end

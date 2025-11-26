@@ -194,7 +194,7 @@ abbreviation init_operator_state_ty2 where
    en2 = Inr,
    de2 = projr
    \<rparr>"
-abbreviation "l2 \<equiv> Logic (batch_fun_op (init_operator_state_ty2 default_internal_summary) (\<lambda> b. if b = [] then [] else [Max (set b)])) default_internal_summary"
+abbreviation "l2 \<equiv> Logic (batch_fun_op (init_operator_state_ty2 default_internal_summary) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)])) default_internal_summary"
 
 abbreviation "test_dt2 \<equiv> Comp [(0, 1) \<mapsto> (0, 1)] (l1 (\<lambda> _. inps2)) l2"
 
@@ -218,45 +218,38 @@ value "frontier {# t_1_1, t_0_1, t_1_0 #}\<^sub>z"
 
 term DEBUG
 
+definition "looping = check_prefix [VOut (1, 1) (Inr 3, MyPair 1 0)] test_op2"
 
-value "\<not> frontier_less_equal (frontier {# t_1_0, t_1_1, t_0_1 #}\<^sub>z) t_1_0"
-
-
-fun check_prefix where
-  "check_prefix [] op = True"
-| "check_prefix (io # ios) op = 
-  (let ios_ops = cfilter (\<lambda> (io', op). io = io') (wsteps_exec op) in
-   if ios_ops = {||} then False
-   else
-   True |\<in>| (cimage (check_prefix ios) (cimage snd ios_ops)))"
-
-
-term 
-"llist_of [Mint t_1_0, Mint t_0_1, Mint t_1_1, Drop t0, Data t_1_1 10, Drop t_1_1,
- Data t_0_1 7, Data t_1_0 (3 :: nat), Drop t_1_0, Drop t_0_1]"
-
-
+ (* 
 value [GHC] "check_prefix [VOut (1, 1) (Inr 10, MyPair 1 1)] test_op2"
+ *)
 
 value [GHC] "check_prefix [VOut (1, 1) (Inr 7, MyPair 0 1)] test_op2"
+(* 
+value [GHC] "check_prefix [VOut (1, 1) (Inr 3, MyPair 1 0)] test_op2"
+ *)
 
 value [GHC] "trace_exec spec_op_test"
 
 print_classes
 
-
+(* 
 value [GHC] "check_prefix [VOut 1 (7, MyPair 0 1)] spec_op_test"
 value [GHC] "check_prefix [VOut 1 (3, MyPair 1 0)] spec_op_test"
 value [GHC] "check_prefix [VOut 1 (10, MyPair 1 1)] spec_op_test"
 
-
+ *)
+export_code looping in Haskell module_name Test12
 (* 
  value [GHC] "check_prefix [VOut (1, 1) (Inr 3, MyPair 1 0)] test_op2"
- 
  *)
-(* 
-value [GHC] "approx_in 27 [VOut (1, 1) (Inr 3, MyPair 1 0)] test_op2"
- *)
+
+
+
+value [GHC] "approx_in 30 [VOut (1, 1) (Inr 3, MyPair 1 0)] test_op2"
+
+
+term DEBUG
 
 thm cUnion_code
 
