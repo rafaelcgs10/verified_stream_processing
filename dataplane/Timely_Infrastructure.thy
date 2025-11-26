@@ -87,7 +87,7 @@ lemma rmdups_insert_NilI:
    apply auto
   done
 
-definition "DEBUG = True"
+definition "DEBUG = False"
 
 definition "trace = (if DEBUG then Debug.tracing else (\<lambda> x y. y))"
 
@@ -651,9 +651,7 @@ abbreviation "add_cap os p t \<equiv> os\<lparr> inter := inter os @ [(p, t, 1)]
 
 abbreviation "add_caps os caps \<equiv> os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, 1)) caps, ocaps := (\<lambda> p. ocaps os p @ map time (filter (\<lambda> cap. out cap = p) caps))  \<rparr>"
 
-abbreviation "consumes os p t d \<equiv> 
-  (\<lambda> caps. add_caps (os\<lparr> consu := consu os @ [(p, t, 1)], input := BENQ p (d, t) (input os) \<rparr>) caps) |`|
-  (cset_of_llist (llist_of (transpose (map (\<lambda> p'. map (\<lambda> t'. Cap (t -+- t') p') (summar os p p')) enum_class.enum))))"
+abbreviation "consumes os p t d \<equiv> add_caps (os\<lparr> consu := consu os @ [(p, t, 1)], input := BENQ p (d, t) (input os) \<rparr>) (concat (map (\<lambda> p'. map (\<lambda> t'. Cap (t -+- t') p') (summar os p p')) enum_class.enum))"
 
 corec builder_op where
   \<open>builder_op fb ips ops os logic =
@@ -671,32 +669,9 @@ corec builder_op where
   (if fb then
    Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op fb ips ops (os\<lparr> front := projr (projl st), nfron := \<not> (\<exists> p. ((projr (projl st)) p) = front os p) \<rparr>) logic else \<oslash>)
    else \<oslash>)
-  (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow> \<oslash> | Inr (d, t) \<Rightarrow> Choice (cimage (\<lambda> os. builder_op fb ips ops os logic) (consumes os p t d)))) ips))
+  (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow> \<oslash> | Inr (d, t) \<Rightarrow> builder_op fb ips ops (consumes os p t d) logic)) ips))
   else
   (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op fb ips ops (os\<lparr> front := projr (projl st), initia := True, nfron := True \<rparr>) logic else \<oslash>)))\<close>
-
-lemma builder_op_code[code]:
-  "builder_op fb ips ops os logic =
-  (if initia os then
-  Choice {|
-  (trace (STR ''Builder: User logic'') (Choice (cimage (\<lambda> os. Silent (builder_op fb ips ops os logic)) (logic os)))),
-  (Choice (cimage (\<lambda>p. case outpu os p of
-    x # xs \<Rightarrow> trace (STR ''Builder: outputing at port: '' + print_2 p) (send_output (builder_op fb ips ops (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) logic) p x))
-    (cfilter (\<lambda>p. outpu os p \<noteq> []) ops))),
-  (if consu os \<noteq> [] \<or> inter os \<noteq> [] \<or> produ os \<noteq> []
-   then
-   let (os', st) = obtain_progress os
-   in (send_progress (builder_op fb ips ops os' logic) st)
-   else \<oslash>),
-   (if fb then
-    trace (STR ''Builder: Reading frontier'') (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op fb ips ops (os\<lparr> front := projr (projl st), nfron := True \<rparr>) logic else \<oslash>))
-    else \<oslash>
-    ),  
-(Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow> \<oslash> | Inr (d, t) \<Rightarrow> (trace (STR ''Reading data at port: '' + print_2 p) Choice (cimage (\<lambda> os. builder_op fb ips ops os logic) (consumes os p t d))))) ips))
- |}
-  else
-  (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op fb ips ops (os\<lparr> front := projr (projl st), initia := True, nfron := True \<rparr>) logic else \<oslash>)))"
-  oops
 
 definition notifier_op where
   "notifier_op ips ops os logic = (builder_op True ips ops os 
@@ -704,9 +679,6 @@ definition notifier_op where
     if nfron os then
     logic (os\<lparr> nfron := False \<rparr>) (\<lambda> p. filter (\<lambda> t. \<not> frontier_less_equal (front os p) t) (ocaps os p))
     else {||}))"
-
-
-
 
 context includes cset.lifting begin
 lift_definition cthe_elem :: "'m cset \<Rightarrow> 'm" is Set.the_elem .
