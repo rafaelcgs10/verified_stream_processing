@@ -50,7 +50,7 @@ lemma no_step_source_op_Inp[simp]:
   apply (auto split: llist.splits)
   done
 
-lemma wstep_step_traces_op[simp]:
+lemma wstep_step_source_op[simp]:
   "io \<noteq> Tau \<Longrightarrow> wstep io (source_op inps) op' = step io (source_op inps) op'"
  apply (rule iffI)
   subgoal
@@ -98,7 +98,7 @@ lemma wtraces_source_op_correctness:
           unfolding wfinished_no_wstep
           apply simp
           apply hypsubst_thin
-          apply (subst (asm) wstep_step_traces_op)
+          apply (subst (asm) wstep_step_source_op)
            apply auto
           apply (rule ccontr)
           subgoal for p
@@ -116,7 +116,7 @@ lemma wtraces_source_op_correctness:
           done
         subgoal for vio op op' lxs
           apply hypsubst_thin
-          apply (subst (asm) wstep_step_traces_op)
+          apply (subst (asm) wstep_step_source_op)
            apply auto
           apply (elim step_source_op_elim)
           apply (cases vio)
