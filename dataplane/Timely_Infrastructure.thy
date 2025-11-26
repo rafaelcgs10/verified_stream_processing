@@ -604,9 +604,7 @@ abbreviation "add_cap os p t \<equiv> os\<lparr> inter := inter os @ [(p, t, 1)]
 
 abbreviation "add_caps os caps \<equiv> os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, 1)) caps, ocaps := (\<lambda> p. ocaps os p @ map time (filter (\<lambda> cap. out cap = p) caps))  \<rparr>"
 
-abbreviation "consumes os p t d \<equiv> 
-  (\<lambda> caps. add_caps (os\<lparr> consu := consu os @ [(p, t, 1)], input := BENQ p (d, t) (input os) \<rparr>) caps) |`|
-  (cset_of_llist (llist_of (transpose (map (\<lambda> p'. map (\<lambda> t'. Cap (t -+- t') p') (summar os p p')) enum_class.enum))))"
+abbreviation "consumes os p t d \<equiv> add_caps (os\<lparr> consu := consu os @ [(p, t, 1)], input := BENQ p (d, t) (input os) \<rparr>) (concat (map (\<lambda> p'. map (\<lambda> t'. Cap (t -+- t') p') (summar os p p')) enum_class.enum))"
 
 corec builder_op where
   \<open>builder_op ips ops os logic =
@@ -619,7 +617,7 @@ corec builder_op where
   (let (os', st) = obtain_progress os
   in send_progress (builder_op ips ops os' logic) st)
   (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op ips ops (os\<lparr> front := projr (projl st) \<rparr>) logic else \<oslash>))
-  (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow> \<oslash> | Inr (d, t) \<Rightarrow> Choice (cimage (\<lambda> os. builder_op ips ops os logic) (consumes os p t d)))) ips))
+  (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow> \<oslash> | Inr (d, t) \<Rightarrow>  builder_op ips ops (consumes os p t d) logic)) ips))
   else
   (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op ips ops (os\<lparr> front := projr (projl st), initia := True \<rparr>) logic else \<oslash>)))\<close>
 
