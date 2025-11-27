@@ -44,48 +44,56 @@ lemma sorted_insort_union:
   \<open>sorted ys \<Longrightarrow> sorted (insort_union xs ys)\<close>
   by (induction xs) (simp_all add: insort_union_def fold_invariant sorted_insort_insert)
 
+record ('d, 'v :: linorder, 't1, 't2) label_propagation_state = \<open>(2, 'd, 'v \<times> 'v, 'v list list, ('t1, 't2) myprod) operator_state_ty2\<close> +
+  timestamps :: \<open>'t1 list\<close> graph :: \<open>'t1 \<Rightarrow> 'v \<Rightarrow> 'v list\<close> vertices :: \<open>'t1 \<Rightarrow> 'v list\<close> label :: \<open>'t1 \<Rightarrow> 'v \<Rightarrow> 'v\<close>
+
 definition neighbors where
-  \<open>neighbors G t ts = (if is_Nil ts then G t else unions_with List.union (map G ts))\<close>
+  \<open>neighbors os t =
+  (let ts = filter ((\<le>) t) (timestamps os)
+  in if is_Nil ts then graph os t else unions_with List.union (map (graph os) ts))\<close>
 
-definition update_label :: \<open>('t \<Rightarrow> 'v :: linorder \<Rightarrow> 'v) \<Rightarrow> 'v \<Rightarrow> 'v \<Rightarrow> 't \<Rightarrow> 't list \<Rightarrow> 't \<Rightarrow> 'v \<Rightarrow> 'v\<close> where
-  \<open>update_label label l v t ts =
-  (let f = if is_Nil ts then label t else unions_with min (map label ts)
-  in label(t := f(v := min (f v) l)))\<close>
-
-record ('d, 'v, 't1, 't2) label_propagation_state = \<open>(2, 'd, 'v \<times> 'v, 'v list list, ('t1, 't2) myprod) operator_state_ty2\<close> +
-  ts :: \<open>'t1 list\<close> G :: \<open>'t1 \<Rightarrow> 'v \<Rightarrow> 'v list\<close> vs :: \<open>'t1 \<Rightarrow> 'v list\<close> label :: \<open>'t1 \<Rightarrow> 'v \<Rightarrow> 'v\<close>  
+definition update_label where
+  \<open>update_label os l v t =
+  (let ts = filter ((\<le>) t) (timestamps os);
+       f = if is_Nil ts then label os t else unions_with min (map (label os) ts)
+  in (label os)(t := f(v := min (f v) l)))\<close>
 
 definition label_propagation_op_logic where
-  \<open>label_propagation_op_logic os = {|
-  (case input os 0 of (d, t) # xs \<Rightarrow>
-    let (u, v) = de1 os d;
+  \<open>label_propagation_op_logic os = cUn (cUn (cUn
+  (case input os 0 of
+    [] \<Rightarrow> {||}
+  | (d, t) # xs \<Rightarrow>
+    let (v1, v2) = de1 os d;
         t1 = myfst t;
-        (w, l) = if label os t1 u > label os t1 v then (u, label os t1 v) else (v, label os t1 u);
-        os' = os\<lparr>input := (input os)(0 := xs), ts := List.insert t1 (ts os),
-  G := (G os)(t1 := (G os t1)(u := List.insert v (G os t1 u), v := List.insert u (G os t1 v))),
-  vs := (vs os)(t1 := insort_union [u, v] (vs os t1)),
-  label := update_label (label os) l w t1 (filter ((\<le>) t1) (ts os))\<rparr>;
-        ws = neighbors (G os') t1 (filter ((\<le>) t1) (ts os)) w;
-        batch = if label os t1 w > l
-          then map (\<lambda>v. (en1 os (v, l), Cap t 1)) (filter (\<lambda>v. label os t1 v > l) ws)
+        (v, l) = if label os t1 v1 > label os t1 v2 then (v1, label os t1 v2) else (v2, label os t1 v1);
+        os' = os\<lparr>input := (input os)(0 := xs), timestamps := List.insert t1 (timestamps os),
+  graph := (graph os)(t1 := (graph os t1)(v1 := List.insert v2 (graph os t1 v1), v2 := List.insert v1 (graph os t1 v2))),
+  vertices := (vertices os)(t1 := insort_union [v1, v2] (vertices os t1)),
+  label := update_label os l v t1\<rparr>;
+        vs = neighbors os' t1 v;
+        batch = if label os t1 v > l
+          then map (\<lambda>v'. (en1 os (v', l), Cap t 1)) (filter (\<lambda>v'. label os t1 v' > l) vs)
           else []
-     in produces os' batch),
-  (case input os 1 of (d, t) # xs \<Rightarrow>
+     in {|produces os' batch|})
+  (case input os 1 of
+    [] \<Rightarrow> {||}
+  | (d, t) # xs \<Rightarrow>
     let (v, l) = de1 os d;
         t1 = myfst t;
-        os' = os\<lparr>input := (input os)(1 := xs), label := update_label (label os) l v t1 (filter ((\<le>) t1) (ts os))\<rparr>;
-        ws = neighbors (G os) t1 (filter ((\<le>) t1) (ts os)) v;
+        os' = os\<lparr>input := (input os)(1 := xs), label := update_label os l v t1\<rparr>;
+        vs = neighbors os t1 v;
         batch = if label os t1 v > l
-          then map (\<lambda>v. (en1 os (v, l), Cap t 1)) (filter (\<lambda>v. label os t1 v > l) ws)
+          then map (\<lambda>v'. (en1 os (v', l), Cap t 1)) (filter (\<lambda>v'. label os t1 v' > l) vs)
           else []
-    in produces os' batch),
-  (let dropped_times = filter (Not \<circ> frontier_less_equal (front os 0)) (ocaps os 0)
-   in drop_caps os (map (\<lambda>t. Cap t 0) dropped_times @ map (\<lambda>t. Cap t 1) dropped_times)),
+    in {|produces os' batch|}))
+  undefined)
   (let P = \<lambda>t. \<forall>n. \<not> frontier_less_equal (front os 0 + front os 1) (MyPair (myfst t) n);
        output_times = filter P (ocaps os 0);
        batch = map (\<lambda>t. let cap = Cap t 0; t1 = myfst t in
-        (en2 os (group_by (\<lambda>u v. label os t1 u = label os t1 v) (vs os t1)), cap)) output_times
-   in drop_caps (produces os batch) (map (\<lambda>t. Cap t 0) output_times @ map (\<lambda>t. Cap t 1) output_times))
-  |}\<close>
+        (en2 os (group_by (\<lambda>v1 v2. label os t1 v1 = label os t1 v2) (vertices os t1)), cap)) output_times
+   in {|drop_caps (produces os batch) (map (\<lambda>t. Cap t 0) output_times @ map (\<lambda>t. Cap t 1) output_times)|})\<close>
+
+definition label_propagation_op where
+  \<open>label_propagation_op os = builder_op cUNIV cUNIV os label_propagation_op_logic\<close>
 
 end
