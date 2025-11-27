@@ -77,11 +77,66 @@ value r2
 
 abbreviation "spec_op_test \<equiv> (spec_op (length list_inps2) (\<lambda> b. [Max (set b)]) inps2 [] [\<bottom>] []) :: (1, 1, nat \<times> (nat, nat) myprod) op"
 
-coinductive batch_op_traces for f where                                                                         
-  bt_Data[intro!]: "batch_op_traces f n (buf @ [(d, t)]) caps lxs outs \<Longrightarrow> batch_op_traces f (Suc n) buf caps (LCons (Data t d) lxs) outs"
-| bt_Mint[intro!]: "batch_op_traces f n buf (t # caps) lxs outs \<Longrightarrow> batch_op_traces f (Suc n) buf caps (LCons (Mint t) lxs) outs"
-| bt_Drop[intro!]: "batch_op_traces f n buf (remove1 t caps) lxs outs \<Longrightarrow> batch_op_traces f (Suc n) buf caps (LCons (Drop t) lxs) outs"
-| bt_Out[intro!]: "batch_op_traces f n (unread_buf @ read_buf') caps inps next_outs \<Longrightarrow>
+term summ
+
+record ('nid, 'p, 't, 'd) timely_state =
+  ecaps :: "('nid, 'p) location \<Rightarrow> 't zmultiset"
+  icaps :: "('nid, 'p) location \<Rightarrow> 't zmultiset"
+  cbufs :: "'nid \<Rightarrow> 'p \<Rightarrow> ('d \<times> 't) buf"
+  opinp :: "'nid \<Rightarrow> 'p \<Rightarrow> ('d \<times> 't) buf"
+  opfun :: "'nid \<Rightarrow> ('p \<Rightarrow> 't antichain) \<Rightarrow> ('p \<Rightarrow> ('d \<times> 't) buf) \<Rightarrow> ('p \<Rightarrow> ('d \<times> 't) buf)"
+
+definition caps_report_action where
+  "caps_report_action ts ts' = 
+  (\<exists> l. ts' = ts\<lparr>ecaps := (ecaps ts)(l := ecaps ts l + icaps ts l), icaps := (icaps ts)(l := {#}\<^sub>z) \<rparr>)"
+
+find_consts " _ zmultiset" "_ antichain"
+
+term "(-++-)"
+
+find_consts name: result
+
+definition consumes_action where
+  "consumes_action summary ts ts' = (\<exists> nid pfx sfx icaps' icaps''.
+   (\<forall> p. pfx p @ sfx p = cbufs ts nid p) \<and>
+   icaps' = (\<lambda> l. case l of Loc nid' (Trg p) \<Rightarrow> if nid = nid' then to_zmset (map snd (pfx p)) else {#}\<^sub>z | _ \<Rightarrow> {#}\<^sub>z) \<and>
+   icaps'' = (\<lambda> l l'. case (l, l) of (Loc nid' (Trg p'), Loc nid'' (Src p'')) \<Rightarrow> if nid = nid' then to_zmset (map snd (pfx p')) else {#}\<^sub>z | _ \<Rightarrow> {#}\<^sub>z) \<and>
+   ts' = ts\<lparr> 
+     cbufs := (cbufs ts)(nid := \<lambda> p. sfx p),
+     opinp := (opinp ts)(nid := \<lambda> p. opinp ts nid p @ sfx p),
+     icaps := (\<lambda> l. icaps ts l - icaps' l)
+    \<rparr>)"
+
+definition operator_action where
+  "operator_action ts ts' = 
+  (\<exists> nid prfbuf sfxbuf ys prfbuf' caps_cgs.
+    (\<forall> p. prfbuf p @ sfxbuf p = cbufs ts nid p) \<and>
+    ts' = ts\<lparr> 
+     cbufs := (cbufs ts)(nid := (\<lambda> p. prfbuf' p @ sfxbuf p)),
+     icaps := (icaps ts)(\<lambda> p. undefined) \<rparr>)"
+
+
+
+definition timely_silent_action where
+  "timely_silent_action ts ts' = (caps_report_action ts ts')"
+
+coinductive timely_trace where                                                                         
+  tt_silent[intro]: 
+  "timely_trace summa f n ts' \<Longrightarrow> timely_silent_action ts ts' \<Longrightarrow> timely_trace summa f (Suc n) ts"
+
+
+(* | tt_Mint[intro!]: 
+  "timely_trace sid summa R n bufs (caps(Loc sid (Src p) := caps (Loc sid (Src p)) + {# t #}\<^sub>z)) (inps(p := lxs)) outs \<Longrightarrow> 
+   inps p = LCons (Mint t) lxs \<Longrightarrow>
+   timely_trace sid summa R (Suc n) buf caps inps outs"
+| tt_Drop[intro!]: 
+  "timely_trace sid summa R n bufs (caps(Loc sid (Src p) := caps (Loc sid (Src p)) - {# t #}\<^sub>z)) (inps(p := lxs)) outs \<Longrightarrow> 
+   inps p = LCons (Drop t) lxs \<Longrightarrow>
+   timely_trace sid summa R (Suc n) buf caps inps outs" *)
+
+(*
+| tt_Drop[intro!]: "timely_trace f n buf (remove1 t caps) lxs outs \<Longrightarrow> timely_trace f (Suc n) buf caps (LCons (Drop t) lxs) outs"
+| tt_Out[intro!]: "timely_trace f n (unread_buf @ read_buf') caps inps next_outs \<Longrightarrow>
   below_caps = filter (\<lambda> t. \<not> frontier_less_equal (frontier (to_zmset caps)) (t :: 't :: order)) (rmdups {} (map snd read_buf)) \<Longrightarrow>
   buf = unread_buf @ read_buf \<Longrightarrow>
   compl_batches = (\<lambda> t. map fst (filter (\<lambda> (d, t'). t' = t \<and> t \<in> set compl_caps) read_buf)) \<Longrightarrow>
@@ -89,11 +144,13 @@ coinductive batch_op_traces for f where
   new_outs = concat (map (\<lambda> t. map (\<lambda> x. (x, t)) (f (compl_batches t))) (filter (\<lambda> t. t \<in> set below_caps) (rmdups {} (map snd read_buf)))) \<Longrightarrow>
   new_outs \<noteq> [] \<Longrightarrow>
   outs = new_outs @@- next_outs \<Longrightarrow>
-  batch_op_traces f 0 buf caps inps outs"
-| bt_LNil[intro!]: "batch_op_traces f m [] [] LNil LNil"
+  timely_trace f 0 buf caps inps outs"
+| tt_LNil[intro!]: "timely_trace f m [] [] LNil LNil" *)
 
-lemma batch_op_traces_test_1:
-  "batch_op_traces (\<lambda> b. [Max (set b)]) (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))) [] [t0] inps2 (LCons (10, MyPair 1 1) (LCons (7, MyPair 0 1) (LCons (3, MyPair 1 0) LNil)))"
+end
+
+lemma timely_trace_test_1:
+  "timely_trace (\<lambda> b. [Max (set b)]) (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))) [] [t0] inps2 (LCons (10, MyPair 1 1) (LCons (7, MyPair 0 1) (LCons (3, MyPair 1 0) LNil)))"
   apply (simp only: llist_of.simps)
   apply rule
   apply rule
@@ -105,16 +162,16 @@ lemma batch_op_traces_test_1:
   apply rule
   apply rule
   apply rule
-    apply (rule bt_Out[where n=0 and unread_buf=Nil and compl_caps="[t_1_1, t_0_1, t_1_0]" and next_outs=LNil, rotated])
+    apply (rule tt_Out[where n=0 and unread_buf=Nil and compl_caps="[t_1_1, t_0_1, t_1_0]" and next_outs=LNil, rotated])
          apply (rule refl)+
         apply simp
          apply (rule refl)+
     apply code_simp+
-  apply (rule bt_LNil)
+  apply (rule tt_LNil)
   done
 
-lemma batch_op_traces_test_2:
-  "batch_op_traces (\<lambda> b. [Max (set b)]) (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))) [] [t0] inps2 (LCons (3, MyPair 1 0) (LCons (10, MyPair 1 1) (LCons (7, MyPair 0 1) LNil)))"
+lemma timely_trace_test_2:
+  "timely_trace (\<lambda> b. [Max (set b)]) (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))) [] [t0] inps2 (LCons (3, MyPair 1 0) (LCons (10, MyPair 1 1) (LCons (7, MyPair 0 1) LNil)))"
   apply (simp only: llist_of.simps)
   apply rule
   apply rule
@@ -125,7 +182,7 @@ lemma batch_op_traces_test_2:
   apply rule
   apply rule
   apply rule
-  apply (rule bt_Out[where n="Suc 0" and unread_buf=Nil  and compl_caps="[t_1_1, t_1_0]" and new_outs="[(3, MyPair 1 0)]", rotated])
+  apply (rule tt_Out[where n="Suc 0" and unread_buf=Nil  and compl_caps="[t_1_1, t_1_0]" and new_outs="[(3, MyPair 1 0)]", rotated])
          apply (rule refl)+
         apply simp
          apply (rule refl)+
@@ -133,7 +190,7 @@ lemma batch_op_traces_test_2:
     apply simp
    defer
    apply rule
-   apply (rule bt_Out[where n="0" and unread_buf=Nil and compl_caps="[t_1_1, t_1_0, t_0_1]"  and next_outs=LNil, rotated])
+   apply (rule tt_Out[where n="0" and unread_buf=Nil and compl_caps="[t_1_1, t_1_0, t_0_1]"  and next_outs=LNil, rotated])
          apply (rule refl)+
      apply code_simp
     apply (rule refl)+
@@ -144,8 +201,8 @@ lemma batch_op_traces_test_2:
 
 term "[Mint t_1_0, Mint t_0_1, Mint t_1_1, Drop t0, Data t_1_1 10, Drop t_1_1, Data t_0_1 7, Data t_1_0 (3 :: nat), Drop t_1_0, Drop t_0_1]"
 
-lemma batch_op_traces_test_3:
-  "batch_op_traces (\<lambda> b. [Max (set b)]) (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))) [] [t0] inps2 (LCons (7, MyPair 0 1) (LCons (10, MyPair 1 1) (LCons (3, MyPair 1 0) LNil)))"
+lemma timely_trace_test_3:
+  "timely_trace (\<lambda> b. [Max (set b)]) (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))) [] [t0] inps2 (LCons (7, MyPair 0 1) (LCons (10, MyPair 1 1) (LCons (3, MyPair 1 0) LNil)))"
   apply (simp only: llist_of.simps)
   apply rule
   apply rule
@@ -239,8 +296,9 @@ value [GHC] "check_prefix [VOut 1 (3, MyPair 1 0)] spec_op_test"
 value [GHC] "check_prefix [VOut 1 (10, MyPair 1 1)] spec_op_test"
 
  *)
-export_code looping in Haskell module_name Test12
-(* 
+
+
+(*
  value [GHC] "check_prefix [VOut (1, 1) (Inr 3, MyPair 1 0)] test_op2"
  *)
 
@@ -259,11 +317,11 @@ end
 
 
 abbreviation "inp_op os \<equiv> map_op (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (ooo_input_op {|1|} os)"
-abbreviation "bt_op os f \<equiv> map_op (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (batch_fun_op os f)"
+abbreviation "tt_op os f \<equiv> map_op (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (batch_fun_op os f)"
 
-abbreviation "inp_bt_op os1 cbuf os2 f \<equiv>
+abbreviation "inp_tt_op os1 cbuf os2 f \<equiv>
    map_op (case_sum id id) (case_sum id id)
-   (comp_op [Inr (0 :: 2, 0 :: 1) \<mapsto> Inr (1 :: 2, 0 :: 1)] cbuf (inp_op (os1\<lparr> en1 := Inl \<rparr>)) (bt_op (os2\<lparr> de1 := projl, en2 := Inr \<rparr>) f))"
+   (comp_op [Inr (0 :: 2, 0 :: 1) \<mapsto> Inr (1 :: 2, 0 :: 1)] cbuf (inp_op (os1\<lparr> en1 := Inl \<rparr>)) (tt_op (os2\<lparr> de1 := projl, en2 := Inr \<rparr>) f))"
 
 
 definition \<open>subgraph_inv dtt cgs c = (let (su, _) = compile_dataflow_tree dtt in
@@ -275,7 +333,7 @@ definition \<open>subgraph_inv dtt cgs c = (let (su, _) = compile_dataflow_tree 
 
 term "[Inr (0 :: 2, 0 :: 1) \<mapsto> Inr (1 :: 2, 0 :: 1)]"
 
-lemma dataflow_op_inp_bt_op_wbisim_source_op_aux:
+lemma dataflow_op_inp_tt_op_wbisim_source_op_aux:
   fixes lxs :: \<open>('t :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
   and f :: \<open>'d1 buf \<Rightarrow> 'd2 buf\<close>
   and os1 :: \<open>(1, 'd1 + 'd2, 'd1, 't) input_state\<close>
@@ -304,7 +362,7 @@ assumes
   \<open>front os2 1 \<le> frontier (c_imp c (Loc 1 (Trg 0)))\<close>
 
 shows 
-  \<open>dataflow_op sg (inp_bt_op os1 (\<lambda> p. case p of Inl x \<Rightarrow> [] | Inr x \<Rightarrow> map (\<lambda> (d, t). Inr (Inl d, t)) cbuf) os2 f) \<approx>
+  \<open>dataflow_op sg (inp_tt_op os1 (\<lambda> p. case p of Inl x \<Rightarrow> [] | Inr x \<Rightarrow> map (\<lambda> (d, t). Inr (Inl d, t)) cbuf) os2 f) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. outpu os2 1 @@- lmap (\<lambda> (d, t). (Inr d, t)) (lconcat (batch_fun_spec f lxs buf caps))))\<close>
 
   term "ocaps os1 1"
