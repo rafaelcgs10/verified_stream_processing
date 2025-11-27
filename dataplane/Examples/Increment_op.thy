@@ -15,11 +15,7 @@ definition increment_op_logic where
     (cfilter (\<lambda>p. input os p \<noteq> []) ops)\<close>
 
 definition increment_op where
-  \<open>increment_op ips ops os = builder_op ips ops os
-  (\<lambda>os. (\<lambda>p. case input os p of (d, t) # xs \<Rightarrow>
-    let cap = Cap (t + incr os p) p
-    in drop_cap (produce (os\<lparr>input := (input os)(p := xs)\<rparr>) cap [d]) cap)
-    |`| cfilter (\<lambda>p. input os p \<noteq> []) ops)\<close>
+  \<open>increment_op ips ops os = builder_op ips ops os (increment_op_logic ops)\<close>
 
 abbreviation ooo_inp_op where
   \<open>ooo_inp_op os \<equiv>
