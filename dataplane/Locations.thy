@@ -250,4 +250,20 @@ lemma loc_2_1_cases:
     done
   done
 
+lemma location_UNIV[simp]:
+  "(UNIV :: ('nid, 'p) location set) =
+   (\<lambda> (nid, p). Loc nid (Trg p)) ` (UNIV \<times> UNIV) \<union>
+   (\<lambda> (nid, p). Loc nid (Src p)) ` (UNIV \<times> UNIV)"
+  apply (clarsimp split: location.splits)
+  apply (smt (verit, del_insts) UNIV_eq_I UnCI location.exhaust old.prod.case port.exhaust_sel rangeI)
+  done
+
+lemma UNIV_simps[simp]:
+  "(UNIV :: 1 set) = {0}"
+  "(UNIV :: 2 set) = {0, 1}"
+  "(UNIV :: 3 set) = {0, 1, 2}"
+  by code_simp+
+
+
+
 end

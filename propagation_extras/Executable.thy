@@ -166,10 +166,21 @@ lemma frontier_empty_zmset: "frontier {#}\<^sub>z = {}\<^sub>A"
   by (cases op; cases p) (auto simp: summary_def frontier_empty_zmset)
  *)
 
-lift_definition antichain_from_list :: "'sum :: {order, monoid_add} list \<Rightarrow> 'sum antichain" is
-  "\<lambda>A. set (filter (\<lambda> x . (list_all ((\<le>) x) A)) A)"
+lemma incomparable_set_list[simp]:
+  "incomparable {x \<in> set (xs :: 'sum :: {order, monoid_add} list). list_all ((\<le>) x) xs}"
   apply (subst list_all_def set_filter)
   apply (simp add: basic_trans_rules(24) incomparable_def list.pred_set)
+  done
+
+lift_definition antichain_from_list :: "'sum :: {order, monoid_add} list \<Rightarrow> 'sum antichain" is
+  "\<lambda>A. set (filter (\<lambda> x . (list_all ((\<le>) x) A)) A)"
+  apply simp
+  done
+
+lemma antichain_from_list_antichain:
+  "antichain_from_list xs = antichain {x \<in> set xs. list_all ((\<le>) x) xs}"
+  unfolding antichain_from_list_def
+  apply clarsimp
   done
 
 declare zmultiset_of_antichain_def[code]
@@ -293,5 +304,53 @@ lemma update_zmultiset_plus[simp]:
   subgoal by (smt (verit, ccfv_threshold) nat_add_distrib replicate_mset_plus)
   subgoal by (smt (verit, best) nat_add_distrib replicate_mset_plus) 
   done
+
+
+lemma antichain_not_empty:
+  "finite A \<Longrightarrow> incomparable A \<Longrightarrow> antichain A = {}\<^sub>A \<longleftrightarrow> A = {}"
+  unfolding empty_antichain_def
+  apply safe
+  apply (subst (asm) antichain.antichain_inject)
+    apply auto
+  done
+
+lemma antichain_from_list_is_empty:
+  "antichain_from_list (xs :: 'sum :: {order, monoid_add} list) = {}\<^sub>A \<longleftrightarrow> filter (\<lambda>x. list_all ((\<le>) x) xs) xs = []"
+  unfolding antichain_from_list_def 
+  apply (auto simp add: empty_antichain_def)
+  apply (subst (asm) antichain_not_empty[unfolded empty_antichain_def])
+    apply auto
+  apply (rule ccontr)
+  apply (cases xs)
+  apply (auto split: if_splits)
+  apply (smt (verit, best) empty_Collect_eq filter_empty_conv)
+  done
+
+lemma set_antichain_antichain_from_list[simp]:
+  "set_antichain (antichain_from_list xs) = {x \<in> set xs. list_all ((\<le>) x) xs}"
+  unfolding antichain_from_list_def 
+  apply simp
+    apply (subst antichain_inverse)
+   apply auto
+  done
+
+
+lemma zequal_equal:
+  "zequal A B \<longleftrightarrow> A = B"
+  apply safe
+  subgoal
+    apply transfer
+    apply (auto simp: equiv_zmset_def)
+    subgoal for A B A' B'
+      apply (simp add: multiset_eq_iff)
+      apply (smt (verit, ccfv_threshold) add_diff_cancel_left diff_add_inverse diff_add_inverse2 diff_cancel2 diff_diff_cancel diff_diff_left diff_is_0_eq diff_le_self nat_le_linear ordered_cancel_comm_monoid_diff_class.add_diff_inverse)
+      done
+    done
+  subgoal
+    apply transfer
+    apply auto
+    done
+  done
+
 
 end

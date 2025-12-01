@@ -355,24 +355,6 @@ lemma rtranclp_intros_1:
 
 
 
-lemma zequal_equal[simp]:
-  "zequal A B \<longleftrightarrow> A = B"
-  apply safe
-  subgoal
-    apply transfer
-    apply (auto simp: equiv_zmset_def)
-    subgoal for A B A' B'
-      apply (simp add: multiset_eq_iff)
-      apply (smt (verit, ccfv_threshold) add_diff_cancel_left diff_add_inverse diff_add_inverse2 diff_cancel2 diff_diff_cancel diff_diff_left diff_is_0_eq diff_le_self nat_le_linear ordered_cancel_comm_monoid_diff_class.add_diff_inverse)
-      done
-    done
-  subgoal
-    apply transfer
-    apply auto
-    done
-  done
-
-
 lemma take_step_enum_dataflow_topology_take_step:
   "enum_dataflow_topology su dataflow_topology_from_tree.followed_by \<Longrightarrow>
    take_step su = enum_dataflow_topology.take_step su dataflow_topology_from_tree.followed_by cless"
