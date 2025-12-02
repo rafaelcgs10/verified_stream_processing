@@ -124,9 +124,91 @@ fun to_zmset where
   "to_zmset [] = {#}\<^sub>z"
 | "to_zmset (x # xs) = to_zmset xs + {# x #}\<^sub>z"
 
-lemma to_zmset_correct[code]:
+lemma to_zmset_correct[code,simp]:
   "zmset_of (mset xs) = to_zmset xs"
   by (induct xs) auto
 
+lemma neg_neg_multiset:
+  "- (A :: _ zmultiset) - B = - (A + B)"
+  by (metis add.commute diff_minus_eq_add minus_diff_eq)
+
+lemma add_zmset_neg:
+  "add_zmset a (- M) = (add_zmset a {#}\<^sub>z) - M"
+  by simp
+
+lemma add_zmset_neg_add_zmset_if:
+  "add_zmset a (- (add_zmset b M)) = (if a = b then - M else - (add_zmset b (M - {# a #}\<^sub>z)))"
+  apply (auto split: if_splits)
+   apply (metis add_zmset_diff_bothsides add_zmset_neg verit_minus_simplify(3))
+  apply (metis arith_simps(56) diff_add_zmset_swap minus_diff_eq)
+  done
+
+lemma add_zmset_to_zmset:
+  "add_zmset x (to_zmset xs) = to_zmset (x # xs)"
+  by auto
+
+lemma add_zmset_minus_to_zmset_if:
+  "add_zmset x (- to_zmset xs) = (if x \<in> set xs then - to_zmset (remove1 x xs) else - to_zmset xs + {# x #}\<^sub>z)"
+  apply (induct xs)
+  apply (auto simp add: add_zmset_neg_add_zmset_if)
+  apply (metis add_zmset_neg minus_diff_eq verit_eq_simplify(25))
+  done
+
+lemma set_antichain_antichain_singleton[simp]:
+  "set_antichain (antichain {a}) = {a}"
+  apply (subst antichain_inverse)
+  apply (auto simp: incomparable_def)
+  done
+
+
+instantiation zmultiset :: (equal) equal
+begin
+definition
+  "equal_zmultiset A B = zequal A B"
+instance 
+  apply standard
+  subgoal for f1 f2
+    unfolding equal_zmultiset_def zequal_equal
+    apply auto
+    done
+  done
+end
+
+definition "antichain_equal A1 A2 = (is_empty_antichain (filter_antichain (\<lambda> x. x \<notin>\<^sub>A A2) A1) \<and> is_empty_antichain (filter_antichain (\<lambda> x. x \<notin>\<^sub>A A1) A2))"
+
+lemma equal_antichain_equal:
+  "antichain_equal A1 A2 \<longleftrightarrow> A1 = A2"
+  unfolding antichain_equal_def
+  apply auto
+  apply (metis Set.is_empty_def ac_eq_iff filter_antichain.rep_eq is_empty_antichain.rep_eq member_antichain.rep_eq member_filter)
+   apply (metis (lifting) ac_eq_iff filter_antichain.rep_eq is_empty_antichain_simp mem_antichain_nonempty member_antichain.rep_eq member_filter)+
+  done
+
+instantiation antichain :: (type) equal
+begin
+definition
+  "equal_antichain = antichain_equal"
+instance 
+  apply standard
+  subgoal for f1 f2
+    sorry
+  done
+end
+
+lemma antichain_empty:
+  "antichain {} = {}\<^sub>A"
+  unfolding empty_antichain_def
+  by auto
+
+lemma frontier_negs[simp]:
+  "frontier (- {# a #}\<^sub>z ) = {}\<^sub>A"
+  "frontier (- {# a, b #}\<^sub>z ) = {}\<^sub>A"
+  "frontier (- {# a, b, c #}\<^sub>z ) = {}\<^sub>A"
+  "frontier (- {# a, b, c, d #}\<^sub>z ) = {}\<^sub>A"
+  "frontier (- {# a, b, c, d, e #}\<^sub>z ) = {}\<^sub>A"
+  "frontier (- {# a  :: _ :: {equal,order}, b, c, d, e, f #}\<^sub>z ) = {}\<^sub>A"
+  unfolding frontier_def minimal_antichain_def
+  by (simp add: antichain_empty)+
+  
 
 end

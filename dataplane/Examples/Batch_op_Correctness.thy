@@ -8,8 +8,8 @@ imports
   "../MyProduct_Instances"
   "../AntichainOrder"
    Dataplane.LList_Haskell_Setup
+  Traces_op
 begin
-
 
 partial_function (llist) batch_fun_spec where
  "batch_fun_spec f buf caps lxs = (case lxs of
@@ -52,10 +52,14 @@ corec spec_op where
        [] \<Rightarrow> \<oslash>
      | x # xs \<Rightarrow> Write (spec_op m f lxs buf caps xs) 1 x)"
 
-definition "t0 \<equiv> \<bottom>"
-definition "t_1_0 \<equiv> MyPair (Suc 0) (0 :: nat)"
-definition "t_0_1 \<equiv> MyPair (0 :: nat) (Suc 0)"
-definition "t_1_1 \<equiv> MyPair (Suc 0) (Suc 0)"
+abbreviation "t0 \<equiv> MyPair (0 :: nat) (0 :: nat)"
+abbreviation "t_1_0 \<equiv> MyPair (Suc 0) (0 :: nat)"
+abbreviation "t_0_1 \<equiv> MyPair (0 :: nat) (Suc 0)"
+abbreviation "t_1_1 \<equiv> MyPair (Suc 0) (Suc 0)"
+
+lemma t0_is_bot[simp]:
+  "\<bottom> = MyPair (0 :: nat) (0 :: nat)"
+  by (simp add: bot_myprod_def bot_nat_def)
 
 abbreviation "inps1 \<equiv> llist_of [Mint 1, Data 1 44, Data 1 6, Data (0 :: nat) (0 :: nat), Data 0 42, Drop 0, Data 1 43]"
 
@@ -77,130 +81,453 @@ value r2
 
 abbreviation "spec_op_test \<equiv> (spec_op (length list_inps2) (\<lambda> b. [Max (set b)]) inps2 [] [\<bottom>] []) :: (1, 1, nat \<times> (nat, nat) myprod) op"
 
-record ('nid, 'p, 't, 'd) timely_state =
+
+record ('nid, 'p, 't, 'd) dataplane_state =
   ecaps :: "('nid, 'p) location \<Rightarrow> 't zmultiset"
   icaps :: "('nid, 'p) location \<Rightarrow> 't zmultiset"
   cbufs :: "'nid \<Rightarrow> 'p \<Rightarrow> ('d \<times> 't) buf"
+  obufs :: "'nid \<Rightarrow> 'p \<Rightarrow> ('d \<times> 't) buf"
+  ibufs :: "'nid \<Rightarrow> 'p \<Rightarrow> ('d \<times> 't) buf"
+  logcs :: "'nid \<Rightarrow> (('p \<Rightarrow> 't antichain) \<Rightarrow> ('p \<Rightarrow> ('d \<times> 't) buf) \<Rightarrow> ('p \<Rightarrow> 't zmultiset) \<Rightarrow>
+                    ('p \<Rightarrow> ('d \<times> 't) buf) \<times> ('p \<Rightarrow> ('d \<times> 't) buf) \<times> ('p \<Rightarrow> 't zmultiset)) stream"
 
-(*   opact :: "('nid, 'p) location \<Rightarrow> 'p \<Rightarrow> ('p \<Rightarrow> 't antichain) \<Rightarrow> ('d \<times> 't) option"
- *)
-(* 
-definition source_op_action where
-  "source_op_act inps p f = (case inps p of LCons (Data t d) lxs \<Rightarrow> Some (d, t))"
- *)
+abbreviation "init_dataplane_state lgc \<equiv> \<lparr>
+  ecaps = (\<lambda> l. case l of Loc nid (Src p) \<Rightarrow> {# \<bottom> #}\<^sub>z | _ \<Rightarrow> {#}\<^sub>z),
+  icaps = (\<lambda> _. {#}\<^sub>z),
+  cbufs = (\<lambda> _ _. []),
+  obufs = (\<lambda> _ _. []),
+  ibufs = (\<lambda> _ _. []),
+  logcs = lgc
+ \<rparr>"
 
 definition caps_report_action where
-  "caps_report_action ts ts' = 
-  (\<exists> l. ts' = ts\<lparr>ecaps := (ecaps ts)(l := ecaps ts l + icaps ts l), icaps := (icaps ts)(l := {#}\<^sub>z) \<rparr>)"
+  "caps_report_action ds ds' = 
+  (\<exists> l. ds' = ds\<lparr>ecaps := (ecaps ds)(l := ecaps ds l + icaps ds l), icaps := (icaps ds)(l := {#}\<^sub>z) \<rparr>)"
 
-definition operator_action where
-  "operator_action ts ts' = 
-  (\<exists> nid prfbuf sfxbuf ys prfbuf' caps_cgs.
-    (\<forall> p. prfbuf p @ sfxbuf p = cbufs ts nid p) \<and>
-    ts' = ts\<lparr> 
-     cbufs := (cbufs ts)(nid := (\<lambda> p. prfbuf' p @ sfxbuf p)),
-     icaps := (icaps ts)(\<lambda> p. undefined) \<rparr>)"
+definition consumes_action where
+  "consumes_action summary ds ds' = (\<exists> nid pfx sfx icaps' icaps''.
+   (\<forall> p. pfx p @ sfx p = cbufs ds nid p) \<and>
+   icaps' = (\<lambda> l. case l of Loc nid' (Trg p) \<Rightarrow> if nid = nid' then to_zmset (map snd (pfx p)) else {#}\<^sub>z | _ \<Rightarrow> {#}\<^sub>z) \<and>
+   icaps'' = (\<lambda> l'. sum (\<lambda> l. icaps' l -++- (summary l l')) UNIV) \<and>
+   ds' = ds\<lparr> 
+     cbufs := (cbufs ds)(nid := \<lambda> p. sfx p),
+     ibufs := (ibufs ds)(nid := \<lambda> p. ibufs ds nid p @ pfx p),
+     icaps := (\<lambda> l. icaps ds l - icaps' l + icaps'' l)
+    \<rparr>)"
+
+definition implied_frontier where
+  "implied_frontier summary caps loc = 
+  frontier (\<Sum>loc'\<in>UNIV. after_summary (dataflow_topology.zmset_frontier (caps loc')) (dataflow_topology.path_summary summary loc' loc))"
+declare implied_frontier_def[code del]
+
+definition "sound_output outs caps  =(\<forall> p t d. (d, t) \<in> set (outs p) \<longrightarrow> zcount (caps p) t > 0)"
+
+definition "caps_to_location_Src nid caps l = (case l of Loc nid' (Src p) \<Rightarrow> if nid' = nid then caps p else {#}\<^sub>z | _ \<Rightarrow> {#}\<^sub>z)"
+
+lemma caps_to_location_Src_add_simp[simp]:
+  "caps_to_location_Src nid M1 l + caps_to_location_Src nid M2 l = 
+   caps_to_location_Src nid (\<lambda> p. M1 p + M2 p) l"
+  unfolding caps_to_location_Src_def
+  by (auto split: location.splits port.splits)
+
+lemma caps_to_location_Src_diff_location[simp]:
+  "nid \<noteq> node l \<Longrightarrow> caps_to_location_Src nid M l = {#}\<^sub>z"
+  unfolding caps_to_location_Src_def
+  by (auto split: location.splits port.splits)
 
 
+definition "outputs_to_internal_channels summary nid outs nid' p' =
+  (concat (map (\<lambda> p. if summary (Loc nid (Src p)) (Loc nid' (Trg p')) \<noteq> {}\<^sub>A then outs p else []) Enum.enum))"
 
-definition timely_silent_action where
-  "timely_silent_action ts ts' = (caps_report_action ts ts')"
-
-coinductive timely_trace where                                                                         
-  tt_silent[intro]: 
-  "timely_trace summa f n ts' \<Longrightarrow> timely_silent_action ts ts' \<Longrightarrow> timely_trace summa f (Suc n) ts"
-
-
-(* | tt_Mint[intro!]: 
-  "timely_trace sid summa R n bufs (caps(Loc sid (Src p) := caps (Loc sid (Src p)) + {# t #}\<^sub>z)) (inps(p := lxs)) outs \<Longrightarrow> 
-   inps p = LCons (Mint t) lxs \<Longrightarrow>
-   timely_trace sid summa R (Suc n) buf caps inps outs"
-| tt_Drop[intro!]: 
-  "timely_trace sid summa R n bufs (caps(Loc sid (Src p) := caps (Loc sid (Src p)) - {# t #}\<^sub>z)) (inps(p := lxs)) outs \<Longrightarrow> 
-   inps p = LCons (Drop t) lxs \<Longrightarrow>
-   timely_trace sid summa R (Suc n) buf caps inps outs" *)
-
-(*
-| tt_Drop[intro!]: "timely_trace f n buf (remove1 t caps) lxs outs \<Longrightarrow> timely_trace f (Suc n) buf caps (LCons (Drop t) lxs) outs"
-| tt_Out[intro!]: "timely_trace f n (unread_buf @ read_buf') caps inps next_outs \<Longrightarrow>
-  below_caps = filter (\<lambda> t. \<not> frontier_less_equal (frontier (to_zmset caps)) (t :: 't :: order)) (rmdups {} (map snd read_buf)) \<Longrightarrow>
-  buf = unread_buf @ read_buf \<Longrightarrow>
-  compl_batches = (\<lambda> t. map fst (filter (\<lambda> (d, t'). t' = t \<and> t \<in> set compl_caps) read_buf)) \<Longrightarrow>
-  read_buf' = filter (\<lambda> (d, t). t \<notin> set below_caps) read_buf \<Longrightarrow>
-  new_outs = concat (map (\<lambda> t. map (\<lambda> x. (x, t)) (f (compl_batches t))) (filter (\<lambda> t. t \<in> set below_caps) (rmdups {} (map snd read_buf)))) \<Longrightarrow>
-  new_outs \<noteq> [] \<Longrightarrow>
-  outs = new_outs @@- next_outs \<Longrightarrow>
-  timely_trace f 0 buf caps inps outs"
-| tt_LNil[intro!]: "timely_trace f m [] [] LNil LNil" *)
-
-end
-
-lemma timely_trace_test_1:
-  "timely_trace (\<lambda> b. [Max (set b)]) (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))) [] [t0] inps2 (LCons (10, MyPair 1 1) (LCons (7, MyPair 0 1) (LCons (3, MyPair 1 0) LNil)))"
-  apply (simp only: llist_of.simps)
-  apply rule
-  apply rule
-  apply rule
-  apply rule
-  apply rule
-  apply rule
-  apply rule
-  apply rule
-  apply rule
-  apply rule
-    apply (rule tt_Out[where n=0 and unread_buf=Nil and compl_caps="[t_1_1, t_0_1, t_1_0]" and next_outs=LNil, rotated])
-         apply (rule refl)+
-        apply simp
-         apply (rule refl)+
-    apply code_simp+
-  apply (rule tt_LNil)
+lemma outputs_to_internal_channels_empty_simp[simp]:
+  "outputs_to_internal_channels summary nid (\<lambda> _. []) = (\<lambda> _ _. [])"
+  unfolding outputs_to_internal_channels_def
+  apply force
   done
 
-lemma timely_trace_test_2:
-  "timely_trace (\<lambda> b. [Max (set b)]) (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))) [] [t0] inps2 (LCons (3, MyPair 1 0) (LCons (10, MyPair 1 1) (LCons (7, MyPair 0 1) LNil)))"
-  apply (simp only: llist_of.simps)
-  apply rule
-  apply rule
-  apply rule
-  apply rule
-  apply rule
-  apply rule
-  apply rule
-  apply rule
-  apply rule
-  apply (rule tt_Out[where n="Suc 0" and unread_buf=Nil  and compl_caps="[t_1_1, t_1_0]" and new_outs="[(3, MyPair 1 0)]", rotated])
-         apply (rule refl)+
-        apply simp
-         apply (rule refl)+
-     apply code_simp
+definition "outputs_to_visivle_channels summary nid outs nid' p' =
+  (if nid = nid' \<and> (\<forall> l. summary (Loc nid' (Src p')) l = {}\<^sub>A) then outs p' else [])"
+
+lemma outputs_to_visivle_channels_empty_simp[simp]:
+  "outputs_to_visivle_channels summary nid (\<lambda> _. []) = (\<lambda> _ _. [])"
+  unfolding outputs_to_visivle_channels_def
+  apply (rule ext)+
+  apply clarsimp
+  done
+
+
+
+definition produces_action where
+  "produces_action summary ds ds' = 
+  (\<exists> nid pfxbuf pfxbuf' sfxbuf outs  ccaps f imp_fron caps ccaps_l cbufs' obufs'.
+    f = shd (logcs ds nid) \<and>
+    (\<forall> p. pfxbuf p @ sfxbuf p = ibufs ds nid p) \<and>
+    caps = (\<lambda> p. icaps ds (Loc nid (Src p)) + ecaps ds (Loc nid (Src p))) \<and>
+    imp_fron = (\<lambda> p. implied_frontier summary (ecaps ds) (Loc nid (Trg p))) \<and>
+    (pfxbuf', outs, ccaps) = f imp_fron pfxbuf caps \<and> 
+    ccaps_l = caps_to_location_Src nid ccaps \<and>
+    cbufs' = outputs_to_internal_channels summary nid outs \<and>
+    obufs' = outputs_to_visivle_channels summary nid outs \<and>
+    sound_output outs caps \<and>
+    ds' = ds\<lparr> 
+     ibufs := (ibufs ds)(nid := (\<lambda> p. pfxbuf' p @ sfxbuf p)),
+     icaps := (\<lambda> l. icaps ds l + ccaps_l l),
+     cbufs := (\<lambda> nid p. cbufs ds nid p @ cbufs' nid p),
+     logcs := (logcs ds)(nid := stl (logcs ds nid)),
+     obufs := (\<lambda> nid p. obufs ds nid p @ obufs' nid p)
+     \<rparr>)"
+
+definition timely_action where
+  "timely_action summary ds ds' =
+  (caps_report_action ds ds' \<or> consumes_action summary ds ds' \<or> produces_action summary ds ds')"
+
+coinductive timely_trace for summary where                                                                         
+  tt_silent[intro!]: 
+  "timely_action summary ds ds' \<Longrightarrow> timely_trace summary n ds' outs \<Longrightarrow> timely_trace summary (Suc n) ds outs"
+| tt_visible[intro!]: 
+  "outs (nid, p) = LCons x lxs \<Longrightarrow>
+   outs' = outs((nid, p) := lxs) \<Longrightarrow>
+   ds' = ds\<lparr> obufs := \<lambda> nid' p'. if nid' = nid \<and> p' = p then xs else obufs ds nid' p' \<rparr> \<Longrightarrow>
+   obufs ds nid p = x #xs \<Longrightarrow> timely_trace summary n ds' outs' \<Longrightarrow> timely_trace summary 0 ds outs"
+| tt_stop[intro!]:
+  "timely_trace summary 0 ds outs"
+
+
+instantiation prod :: (defaults, type) defaults
+begin
+definition defaults_prod where "defaults_prod = defaults \<times> defaults"
+instance
+proof qed
+end
+
+primcorec input_stream where
+  "input_stream inps = SCons (\<lambda> imp_fron pfxbuf caps.
+  (pfxbuf,
+    \<lambda> p. case inps p of LCons (Data t d) lxs \<Rightarrow> [(d, t)] | _ \<Rightarrow> [],
+    \<lambda> p. case inps p of
+       LCons (Mint t) lxs \<Rightarrow> {# t #}\<^sub>z
+     | LCons (Drop t) lxs \<Rightarrow> - {# t #}\<^sub>z
+     | LCons _ _ \<Rightarrow> {#}\<^sub>z
+     | LNil \<Rightarrow> - caps p )
+   ) (input_stream (\<lambda> p. ltl (inps p)))"
+
+abbreviation "ds1 \<equiv> init_dataplane_state (\<lambda> (_ :: 1). (input_stream (\<lambda> _ :: 1. inps2)))"
+
+definition "my_max t pfxbuf = Max (set (map fst (filter (\<lambda> (d, t'). t = t') (pfxbuf 1))))"
+
+abbreviation "ds2 \<equiv> sconst (\<lambda> imp_fron pfxbuf caps.
+    let below_caps = filter_zmset (\<lambda> t'. \<not> frontier_less_equal (imp_fron 1) t') (caps 1) in
+    let ts = rmdups {} (map snd (filter (\<lambda> (d, t). t \<in>#\<^sub>z below_caps) (pfxbuf 1))) in  (
+    \<lambda> p. filter (\<lambda> (d, t). t \<notin>#\<^sub>z below_caps) (pfxbuf 1),
+    \<lambda> p. map (\<lambda> t. (my_max t pfxbuf, t)) ts,
+    \<lambda> p. - below_caps )
+   )"
+
+abbreviation "DS \<equiv> init_dataplane_state (\<lambda> (nid :: 2). if nid = 0 then input_stream (\<lambda> _ :: 1. inps2) else ds2)"
+
+definition "my_summ = (\<lambda> l1 l2.
+   if l1 = Loc (0 :: 2) (Src (0 :: 1)) \<and> l2 = Loc (1 :: 2)  (Trg (0 :: 1)) 
+   then antichain_from_list [\<bottom>]
+   else if l1 = Loc 0 (Trg 0) \<and> l2 = Loc 0 (Src 0)
+   then antichain_from_list [\<bottom>]
+   else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 0)
+   then antichain_from_list [\<bottom>]
+   else {}\<^sub>A)"
+
+
+lemma my_summ_simps[simp]:
+  "my_summ l l = {}\<^sub>A"
+  "my_summ (Loc 0 (Trg 1)) (Loc 0 (Src 1)) = antichain_from_list [\<bottom>]"
+  "my_summ (Loc 0 (Trg 1)) (Loc 1 (Trg 1)) = {}\<^sub>A"
+  "my_summ (Loc 0 (Trg 1)) (Loc 1 (Src 1)) = {}\<^sub>A"
+  "my_summ (Loc 0 (Src 1)) (Loc 1 (Trg 1)) = antichain_from_list [\<bottom>]"
+  "my_summ (Loc 1 (Trg 1)) (Loc 1 (Src 1)) = antichain_from_list [\<bottom>]"
+  unfolding my_summ_def
+       apply auto
+  done
+
+lemma path_weight_my_summ_simps[simp]:
+  "graph.path_weight my_summ l1 l2 = (
+   if l1 = Loc (0 :: 2) (Src (0 :: 1)) \<and> l2 = Loc (1 :: 2)  (Trg (0 :: 1)) 
+   then antichain_from_list [\<bottom>]
+   else if l1 = Loc 0 (Trg 0) \<and> l2 = Loc 0 (Src 0)
+   then antichain_from_list [\<bottom>]
+   else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 0)
+   then antichain_from_list [\<bottom>]
+   else if l1 = Loc 0 (Trg 0) \<and> l2 = Loc 1 (Trg 0)
+   then antichain_from_list [\<bottom>]
+   else if l1 = Loc 0 (Trg 0) \<and> l2 = Loc 1 (Src 0)
+   then antichain_from_list [\<bottom>]
+   else if l1 = Loc 0 (Src 0) \<and> l2 = Loc 1 (Src 0)
+   then antichain_from_list [\<bottom>]
+   else if l1 = l2
+   then antichain_from_list [\<bottom>]
+   else {}\<^sub>A)"
+  oops
+
+lemma implied_frontier_my_summ[simp]:
+  "implied_frontier my_summ caps (Loc 1 (Trg 1)) = 
+   frontier (dataflow_topology.zmset_frontier (caps (Loc 1 (Trg 1))) +
+   dataflow_topology.zmset_frontier (caps (Loc 0 (Src 1))) +
+   dataflow_topology.zmset_frontier (caps (Loc 0 (Trg 1))))"
+(*   unfolding implied_frontier_def
+  using loc_2_1_cases[where l=loc] apply -
+  apply (elim disjE)
+  subgoal
     apply simp
-   defer
-   apply rule
-   apply (rule tt_Out[where n="0" and unread_buf=Nil and compl_caps="[t_1_1, t_1_0, t_0_1]"  and next_outs=LNil, rotated])
-         apply (rule refl)+
-     apply code_simp
-    apply (rule refl)+
-   apply code_simp
-   apply rule
-  apply code_simp
+ *)
+  sorry
+
+
+abbreviation "my_14 \<equiv> Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))))))"
+
+lemma weird_singleton:
+  "{x. x = (a :: _ :: order) \<and> x \<le> a} = {a}"
+  by blast
+
+lemma
+  "timely_trace my_summ my_14 DS (\<lambda> (nid, p). if nid = 0 then LNil else LCons (10, MyPair 1 1) (LCons (7, MyPair 0 1) (LCons (3, MyPair 1 0) LNil)))"
+  apply (rule tt_silent)
+  unfolding timely_action_def
+   apply (rule disjI2)+
+  unfolding produces_action_def
+   apply (rule exI[of _ 0])
+   apply (rule exI[of _ "\<lambda> _. []"])
+   apply (rule exI[of _ "\<lambda> _. []"])
+   apply (rule exI[of _ "\<lambda> _. []"])
+   apply (rule exI[of _ "\<lambda> _. []"])
+   apply (rule exI[of _ "\<lambda> _. {# t_1_0 #}\<^sub>z"])
+   apply clarsimp
+  apply (simp add: sound_output_def)
+
+  apply (rule tt_silent)
+  unfolding timely_action_def
+   apply (rule disjI2)+
+  unfolding produces_action_def
+   apply (rule exI[of _ 0])
+   apply (rule exI[of _ "\<lambda> _. []"])
+   apply (rule exI[of _ "\<lambda> _. []"])
+   apply (rule exI[of _ "\<lambda> _. []"])
+   apply (rule exI[of _ "\<lambda> _. []"])
+   apply (rule exI[of _ "\<lambda> _. {# t_0_1 #}\<^sub>z"])
+  apply (simp add: sound_output_def)
+
+  apply (rule tt_silent)
+  unfolding timely_action_def
+   apply (rule disjI2)+
+  unfolding produces_action_def
+   apply (rule exI[of _ 0])
+   apply (rule exI[of _ "\<lambda> _. []"])
+   apply (rule exI[of _ "\<lambda> _. []"])
+   apply (rule exI[of _ "\<lambda> _. []"])
+   apply (rule exI[of _ "\<lambda> _. []"])
+   apply (rule exI[of _ "\<lambda> _. {# t_1_1 #}\<^sub>z"])
+    apply (simp add: sound_output_def)
+
+
+  apply (rule tt_silent)
+  unfolding timely_action_def
+   apply (rule disjI2)+
+  unfolding produces_action_def
+   apply (rule exI[of _ 0])
+   apply (rule exI[of _ "\<lambda> _. []"])
+   apply (rule exI[of _ "\<lambda> _. []"])
+   apply (rule exI[of _ "\<lambda> _. []"])
+   apply (rule exI[of _ "\<lambda> _. []"])
+   apply (rule exI[of _ "\<lambda> _. - {# t0 #}\<^sub>z"])
+  apply (simp add: sound_output_def)
+
+  apply (rule tt_silent)
+  unfolding timely_action_def
+   apply (rule disjI2)+
+  unfolding produces_action_def
+  apply (rule exI[of _ 0])
+   apply (intro exI conjI)
+            apply (rule refl)+
+           apply simp
+          apply (rule refl)+
+        apply simp
+       apply simp
+      apply (rule refl)+
+  subgoal
+    unfolding sound_output_def
+    apply simp
+    apply code_simp
+    done
+      apply (rule refl)+
+
+
+  apply (rule tt_silent)
+  unfolding timely_action_def
+   apply (rule disjI2)+
+  unfolding produces_action_def
+  apply (rule exI[of _ 0])
+   apply (intro exI conjI)
+            apply (rule refl)+
+           apply simp
+          apply (rule refl)+
+        apply simp
+       apply simp
+      apply (rule refl)+
+  subgoal
+    unfolding sound_output_def
+    apply simp
+    done
+   apply (rule refl)+
+  apply simp
+
+  apply (rule tt_silent)
+  unfolding timely_action_def
+   apply (rule disjI2)+
+  unfolding produces_action_def
+   apply (rule exI[of _ 0])
+   apply (intro exI conjI)
+            apply (rule refl)+
+           apply simp
+          apply (rule refl)+
+        apply simp
+       apply simp
+      apply (rule refl)+
+  subgoal
+    unfolding sound_output_def
+    apply simp
+    apply code_simp
+    done
+   apply (rule refl)+
+  apply simp
+
+  apply (rule tt_silent)
+ unfolding timely_action_def
+   apply (rule disjI2)+
+  unfolding produces_action_def
+   apply (rule exI[of _ 0])
+   apply (intro exI conjI)
+            apply (rule refl)+
+           apply simp
+          apply (rule refl)+
+        apply simp
+       apply simp
+      apply (rule refl)+
+  subgoal
+    unfolding sound_output_def
+    apply simp
+    apply code_simp
+    done
+   apply (rule refl)+
+  apply clarsimp
+
+ apply (rule tt_silent)
+ unfolding timely_action_def
+   apply (rule disjI2)+
+  unfolding produces_action_def
+   apply (rule exI[of _ 0])
+   apply (intro exI conjI)
+            apply (rule refl)+
+           apply simp
+          apply (rule refl)+
+        apply simp
+       apply simp
+      apply (rule refl)+
+  subgoal
+    unfolding sound_output_def
+    apply simp
+    done
+   apply (rule refl)+
+  apply clarsimp
+
+ apply (rule tt_silent)
+ unfolding timely_action_def
+   apply (rule disjI2)+
+  unfolding produces_action_def
+   apply (rule exI[of _ 0])
+   apply (intro exI conjI)
+            apply (rule refl)+
+           apply simp
+          apply (rule refl)+
+        apply simp
+       apply simp
+      apply (rule refl)+
+  subgoal
+    unfolding sound_output_def
+    apply simp
+    done
+   apply (rule refl)+
+  apply clarsimp
+
+ apply (rule tt_silent)
+  unfolding timely_action_def
+   apply (rule disjI1)
+  unfolding caps_report_action_def
+   apply (rule exI[of _ "Loc 0 (Src 1)"])
+   apply simp
+
+ apply (rule tt_silent)
+  unfolding timely_action_def
+   apply (rule disjI2)
+   apply (rule disjI1)
+  unfolding consumes_action_def
+   apply (rule exI[of _ 1])
+   apply (rule exI[of _ "\<lambda> _. [(10, t_1_1), (7, t_0_1), (3, t_1_0)]"])
+  apply (rule exI[of _ "\<lambda> _. []"])
+   apply (intro exI conjI)
+      apply (clarsimp simp add: outputs_to_internal_channels_def)
+      apply (intro conjI impI)
+  subgoal
+    unfolding antichain_from_list_antichain antichain_from_list_is_empty my_summ_def
+    apply simp
+    apply (subst (asm) antichain_not_empty)
+      apply (auto simp add: incomparable_def)
+    done
+  subgoal premises
+    by code_simp
+  apply (rule refl)+
+  apply simp
+
+ apply (rule tt_silent)
+  unfolding timely_action_def
+   apply (rule disjI1)
+  unfolding caps_report_action_def
+   apply (rule exI[of _ "Loc 1 (Trg 1)"])
+   apply (rule refl)
+  apply simp
+
+  apply (rule tt_silent)
+ unfolding timely_action_def
+  apply (rule disjI2)+
+  unfolding produces_action_def
+   apply (rule exI[of _ 1])
+   apply (rule exI[of _ "\<lambda> _. [(10, t_1_1), (7, t_0_1), (3, t_1_0)]"])
+   apply (rule exI[of _ "\<lambda> _. []"])
+   apply (rule exI[of _ "\<lambda> _. []"])
+   apply (rule exI[of _ "\<lambda> _. [(10, t_1_1), (7, t_0_1), (3, t_1_0)]"])
+   apply (rule exI[of _ "\<lambda> _. - {# t_1_1, t_0_1, t_1_0, t0 #}\<^sub>z"])
+   apply (intro exI conjI)
+            apply (rule refl)+
+           apply simp
+          apply (rule refl)+
+  subgoal
+    apply (simp only: prod_eq_iff)
+    subgoal
+      apply simp
+      apply (simp add: weird_singleton)
+      apply code_simp
+      done
+    done
+              apply (rule refl)+
+  subgoal
+    unfolding sound_output_def my_summ_def
+    apply (auto simp add: weird_singleton split: location.splits)
+    done
+              apply (rule refl)+
+  apply simp
+  apply (rule tt_visible[where p=1 and nid=1])
+      apply simp
+  apply (rule refl)+
+  apply (simp add: outputs_to_visivle_channels_def my_summ_def)
+  apply (rule tt_stop)
   done
 
 term "[Mint t_1_0, Mint t_0_1, Mint t_1_1, Drop t0, Data t_1_1 10, Drop t_1_1, Data t_0_1 7, Data t_1_0 (3 :: nat), Drop t_1_0, Drop t_0_1]"
-
-lemma timely_trace_test_3:
-  "timely_trace (\<lambda> b. [Max (set b)]) (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))) [] [t0] inps2 (LCons (7, MyPair 0 1) (LCons (10, MyPair 1 1) (LCons (3, MyPair 1 0) LNil)))"
-  apply (simp only: llist_of.simps)
-  apply rule
-  apply rule
-  apply rule
-  apply rule
-  apply rule
-  apply rule
-  apply rule
-  apply rule
-  apply rule
-  apply rule
-  oops
 
 abbreviation init_input_state where
 "init_input_state su inps \<equiv> \<lparr> 
@@ -253,9 +580,10 @@ value r1
 value [GHC] "crmdups id {|Suc 0, Suc 0|}"
 
 
-definition "my_test = lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op2)"
+definition "my_test =  (trace_exec test_op2)"
 
 value [GHC] my_test
+
 
 value "frontier {# t_1_1, t_0_1, t_1_0 #}\<^sub>z"
 

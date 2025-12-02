@@ -22,19 +22,6 @@ lift_definition ccard :: "'m cset \<Rightarrow> nat" is card .
 end
 
 
-(* FIXME: move mes*)
-instantiation antichain :: (equal) equal
-begin
-definition
-  "equal_antichain ft1 ft2 = (is_empty_antichain (filter_antichain (\<lambda> x. x \<notin>\<^sub>A ft2) ft1) \<and> is_empty_antichain (filter_antichain (\<lambda> x. x \<notin>\<^sub>A ft1) ft2))"
-instance 
-  apply standard
-  subgoal for f1 f2
-    apply transfer
-    sorry
-  done
-end
-
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 
@@ -233,6 +220,15 @@ abbreviation AF where
   "AF \<equiv> dataflow_topology.after_summary (-+-)"
 
 notation "AF" (infixl \<open>-++-\<close> 65)
+
+lemma AF_empty[simp]:
+  "A -++- {}\<^sub>A = {#}\<^sub>z"
+  by (metis after_summary_def dataflow_topology_from_tree.after_summary_empty_summary)
+
+lemma AP_simp[simp]:
+  "M -++- S = (\<Sum>s \<in> set_antichain S. image_zmset (\<lambda>t. t -+- s) M)"
+  by (metis after_summary_def dataflow_topology_from_tree.after_summary_def)
+
 
 definition take_step_locale where
   "take_step_locale df = take_step' df cless"
