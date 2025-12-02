@@ -1,8 +1,8 @@
 theory Input_top
 
 imports
-  "../Timely_Infrastructure"
-  "Source_op"
+  "../Timely_Infrastructure_Old"
+  "Source_op_Old"
 begin 
 
 corec input_op where

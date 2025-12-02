@@ -1,7 +1,7 @@
 theory Label_Propagation
 
 imports
-  Dataplane.Timely_Infrastructure
+  Dataplane.Timely_Infrastructure_Old
   Dataplane.Timely_Stream
   Dataplane.MyProduct_Instances
 begin

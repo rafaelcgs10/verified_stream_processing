@@ -2,7 +2,6 @@ theory Batch_op_Correctness
 
 imports
   Dataplane.Timely_Stream
-  Source_op
   Ooo_Input_op
   Batch_op
   "../MyProduct_Instances"
@@ -152,9 +151,9 @@ definition "fast_approx_in n m pfx op =
   (\<not> cis_empty (cfilter (\<lambda>xs. Sublist.prefix pfx xs) (cimage fst (fast_eval' n m m op))))"
 
 definition "my_fast_check = fast_approx_in 3 14 [VOut (1, 1) (Inr 4, 1), VOut (1, 1) (Inr 10, 0), VOut (1, 1) (Inr 11, 2)] dt"
-
+(* 
 value [GHC] "my_fast_check" 
-
+ *)
 
 (* export_code my_test in Haskell 
   module_name Test

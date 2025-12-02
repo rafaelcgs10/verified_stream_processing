@@ -1,7 +1,7 @@
 theory Max_top
 
 imports
-  "../Timely_Infrastructure"
+  "../Timely_Infrastructure_Old"
   Input_top
   "../AntichainOrder"
 begin 
