@@ -209,6 +209,37 @@ lemma frontier_negs[simp]:
   "frontier (- {# a  :: _ :: {equal,order}, b, c, d, e, f #}\<^sub>z ) = {}\<^sub>A"
   unfolding frontier_def minimal_antichain_def
   by (simp add: antichain_empty)+
-  
+
+
+lemma weird_singleton:
+  "{x. x = (a :: _ :: order) \<and> x \<le> a} = {a}"
+  by blast
+
+lift_definition del_zmset :: "'a \<Rightarrow> 'a zmultiset \<Rightarrow> 'a zmultiset" is
+  "\<lambda>x (Mp, Mn). (Mp, add_mset x Mn)"
+  by (auto simp: equiv_zmset_def)
+
+lemma zcount_del_zmset[simp]:
+  "zcount (del_zmset b A) a = (if b = a then zcount A a - 1 else zcount A a)"
+  by transfer auto
+
+lemma uminus_add_zmset: "- add_zmset z M = del_zmset z (- M)"
+  by (auto simp: zmultiset_eq_iff)
+
+lemma add_del_zmset: "add_zmset x (del_zmset y M) = (if x = y then M else del_zmset y (add_zmset x M))"
+  by (auto simp: zmultiset_eq_iff)
+
+lemma del_zmset_commute[simp]:
+  "del_zmset a (del_zmset b M) = del_zmset b (del_zmset a M)"
+  by (auto simp: zmultiset_eq_iff)
+
+lemma zmset_in_add_zmset[simp]:
+  "a \<in>#\<^sub>z add_zmset b M \<longleftrightarrow> a \<noteq> b \<and> a \<in>#\<^sub>z M \<or> a = b \<and> zcount M a \<noteq> -1"
+  apply transfer
+  apply auto
+  done
+
+
+
 
 end

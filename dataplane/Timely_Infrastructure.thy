@@ -473,6 +473,14 @@ definition
   "frontier_less_equal ft t = (\<not> is_empty_antichain (filter_antichain (\<lambda> f. f \<le> t) ft))"
 
 
+lemma frontier_less_equal_empty_antichain[simp]:
+  "\<not> frontier_less_equal {}\<^sub>A A"
+  unfolding frontier_less_equal_def
+  apply transfer
+  unfolding Set.filter_def Set.is_empty_def
+  apply simp
+  done
+
 lemma change_multiplicities_append:
   "change_multiplicities su (xs @ ys) = (\<lambda> c. change_multiplicities su ys (change_multiplicities su xs c))"
   unfolding change_multiplicities_def 

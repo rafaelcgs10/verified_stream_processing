@@ -278,12 +278,7 @@ lemma implied_frontier_my_summ[simp]:
  *)
   sorry
 
-
 abbreviation "my_14 \<equiv> Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))))))"
-
-lemma weird_singleton:
-  "{x. x = (a :: _ :: order) \<and> x \<le> a} = {a}"
-  by blast
 
 lemma
   "timely_trace my_summ my_14 DS (\<lambda> (nid, p). if nid = 0 then LNil else LCons (10, MyPair 1 1) (LCons (7, MyPair 0 1) (LCons (3, MyPair 1 0) LNil)))"
@@ -508,9 +503,8 @@ lemma
   subgoal
     apply (simp only: prod_eq_iff)
     subgoal
-      apply simp
-      apply (simp add: weird_singleton)
-      apply code_simp
+      apply (simp add: neg_neg_multiset caps_to_location_Src_def)
+      apply (simp add: my_max_def caps_to_location_Src_def uminus_add_zmset add_del_zmset weird_singleton)
       done
     done
               apply (rule refl)+
