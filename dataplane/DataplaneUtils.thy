@@ -240,6 +240,12 @@ lemma zmset_in_add_zmset[simp]:
   done
 
 
+instantiation prod :: (defaults, type) defaults
+begin
+definition defaults_prod where "defaults_prod = defaults \<times> defaults"
+instance
+proof qed
+end
 
 
 end

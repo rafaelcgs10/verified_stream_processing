@@ -90,12 +90,12 @@ record ('nid, 'p, 't, 'd) dataplane_state =
   logcs :: "'nid \<Rightarrow> (('p \<Rightarrow> 't antichain) \<Rightarrow> ('p \<Rightarrow> ('d \<times> 't) buf) \<Rightarrow> ('p \<Rightarrow> 't zmultiset) \<Rightarrow>
                     ('p \<Rightarrow> ('d \<times> 't) buf) \<times> ('p \<Rightarrow> ('d \<times> 't) buf) \<times> ('p \<Rightarrow> 't zmultiset)) stream"
 
-abbreviation "init_dataplane_state lgc \<equiv> \<lparr>
-  ecaps = (\<lambda> l. case l of Loc nid (Src p) \<Rightarrow> {# \<bottom> #}\<^sub>z | _ \<Rightarrow> {#}\<^sub>z),
-  icaps = (\<lambda> _. {#}\<^sub>z),
-  cbufs = (\<lambda> _ _. []),
-  obufs = (\<lambda> _ _. []),
-  ibufs = (\<lambda> _ _. []),
+abbreviation "dataplane_state ec ic cb ob ib lgc \<equiv> \<lparr>
+  ecaps = ec,
+  icaps = ic,
+  cbufs = cb,
+  obufs = ob,
+  ibufs = ib,
   logcs = lgc
  \<rparr>"
 
@@ -119,7 +119,7 @@ definition implied_frontier where
   frontier (\<Sum>loc'\<in>UNIV. after_summary (dataflow_topology.zmset_frontier (caps loc')) (dataflow_topology.path_summary summary loc' loc))"
 declare implied_frontier_def[code del]
 
-definition "sound_output outs caps  =(\<forall> p t d. (d, t) \<in> set (outs p) \<longrightarrow> zcount (caps p) t > 0)"
+definition "sound_output outs caps = (\<forall> p t d. (d, t) \<in> set (outs p) \<longrightarrow> zcount (caps p) t > 0)"
 
 definition "caps_to_location_Src nid caps l = (case l of Loc nid' (Src p) \<Rightarrow> if nid' = nid then caps p else {#}\<^sub>z | _ \<Rightarrow> {#}\<^sub>z)"
 
@@ -144,12 +144,12 @@ lemma outputs_to_internal_channels_empty_simp[simp]:
   apply force
   done
 
-definition "outputs_to_visivle_channels summary nid outs nid' p' =
+definition "outputs_to_visible_channels summary nid outs nid' p' =
   (if nid = nid' \<and> (\<forall> l. summary (Loc nid' (Src p')) l = {}\<^sub>A) then outs p' else [])"
 
-lemma outputs_to_visivle_channels_empty_simp[simp]:
-  "outputs_to_visivle_channels summary nid (\<lambda> _. []) = (\<lambda> _ _. [])"
-  unfolding outputs_to_visivle_channels_def
+lemma outputs_to_visible_channels_empty_simp[simp]:
+  "outputs_to_visible_channels summary nid (\<lambda> _. []) = (\<lambda> _ _. [])"
+  unfolding outputs_to_visible_channels_def
   apply (rule ext)+
   apply clarsimp
   done
@@ -166,7 +166,7 @@ definition produces_action where
     (pfxbuf', outs, ccaps) = f imp_fron pfxbuf caps \<and> 
     ccaps_l = caps_to_location_Src nid ccaps \<and>
     cbufs' = outputs_to_internal_channels summary nid outs \<and>
-    obufs' = outputs_to_visivle_channels summary nid outs \<and>
+    obufs' = outputs_to_visible_channels summary nid outs \<and>
     sound_output outs caps \<and>
     ds' = ds\<lparr> 
      ibufs := (ibufs ds)(nid := (\<lambda> p. pfxbuf' p @ sfxbuf p)),
@@ -187,20 +187,12 @@ coinductive timely_trace for summary where
   "outs (nid, p) = LCons x lxs \<Longrightarrow>
    outs' = outs((nid, p) := lxs) \<Longrightarrow>
    ds' = ds\<lparr> obufs := \<lambda> nid' p'. if nid' = nid \<and> p' = p then xs else obufs ds nid' p' \<rparr> \<Longrightarrow>
-   obufs ds nid p = x #xs \<Longrightarrow> timely_trace summary n ds' outs' \<Longrightarrow> timely_trace summary 0 ds outs"
+   obufs ds nid p = x # xs \<Longrightarrow> timely_trace summary n ds' outs' \<Longrightarrow> timely_trace summary 0 ds outs"
 | tt_stop[intro!]:
-  "timely_trace summary 0 ds outs"
+  "(\<forall> nid p. obufs ds nid p = []) \<Longrightarrow>timely_trace summary 0 ds outs"
 
-
-instantiation prod :: (defaults, type) defaults
-begin
-definition defaults_prod where "defaults_prod = defaults \<times> defaults"
-instance
-proof qed
-end
-
-primcorec input_stream where
-  "input_stream inps = SCons (\<lambda> imp_fron pfxbuf caps.
+primcorec lgc_input where
+  "lgc_input inps = SCons (\<lambda> imp_fron pfxbuf caps.
   (pfxbuf,
     \<lambda> p. case inps p of LCons (Data t d) lxs \<Rightarrow> [(d, t)] | _ \<Rightarrow> [],
     \<lambda> p. case inps p of
@@ -208,13 +200,11 @@ primcorec input_stream where
      | LCons (Drop t) lxs \<Rightarrow> - {# t #}\<^sub>z
      | LCons _ _ \<Rightarrow> {#}\<^sub>z
      | LNil \<Rightarrow> - caps p )
-   ) (input_stream (\<lambda> p. ltl (inps p)))"
-
-abbreviation "ds1 \<equiv> init_dataplane_state (\<lambda> (_ :: 1). (input_stream (\<lambda> _ :: 1. inps2)))"
+   ) (lgc_input (\<lambda> p. ltl (inps p)))"
 
 definition "my_max t pfxbuf = Max (set (map fst (filter (\<lambda> (d, t'). t = t') (pfxbuf 1))))"
 
-abbreviation "ds2 \<equiv> sconst (\<lambda> imp_fron pfxbuf caps.
+abbreviation "lgc_max \<equiv> sconst (\<lambda> imp_fron pfxbuf caps.
     let below_caps = filter_zmset (\<lambda> t'. \<not> frontier_less_equal (imp_fron 1) t') (caps 1) in
     let ts = rmdups {} (map snd (filter (\<lambda> (d, t). t \<in>#\<^sub>z below_caps) (pfxbuf 1))) in  (
     \<lambda> p. filter (\<lambda> (d, t). t \<notin>#\<^sub>z below_caps) (pfxbuf 1),
@@ -222,7 +212,7 @@ abbreviation "ds2 \<equiv> sconst (\<lambda> imp_fron pfxbuf caps.
     \<lambda> p. - below_caps )
    )"
 
-abbreviation "DS \<equiv> init_dataplane_state (\<lambda> (nid :: 2). if nid = 0 then input_stream (\<lambda> _ :: 1. inps2) else ds2)"
+abbreviation "DS \<equiv> dataplane_state (\<lambda> l. case l of Loc nid (Src p) \<Rightarrow> {# \<bottom> #}\<^sub>z | _ \<Rightarrow> {#}\<^sub>z) (\<lambda> _. {#}\<^sub>z) (\<lambda> _ _. []) (\<lambda> _ _. []) (\<lambda> _ _. []) (\<lambda> (nid :: 2). if nid = 0 then lgc_input (\<lambda> _ :: 1. inps2) else lgc_max)"
 
 definition "my_summ = (\<lambda> l1 l2.
    if l1 = Loc (0 :: 2) (Src (0 :: 1)) \<and> l2 = Loc (1 :: 2)  (Trg (0 :: 1)) 
@@ -516,9 +506,60 @@ lemma
   apply (rule tt_visible[where p=1 and nid=1])
       apply simp
   apply (rule refl)+
-  apply (simp add: outputs_to_visivle_channels_def my_summ_def)
+   apply (simp add: outputs_to_visible_channels_def my_summ_def)
+
+  apply (rule tt_visible[where p=1 and nid=1])
+      apply simp
+  apply (rule refl)+
+   apply (simp add: outputs_to_visible_channels_def my_summ_def)
+
+  apply (rule tt_visible[where p=1 and nid=1])
+      apply simp
+  apply (rule refl)+
+   apply (simp add: outputs_to_visible_channels_def my_summ_def)
+
   apply (rule tt_stop)
+  apply (intro impI allI conjI)
+  apply simp
+  apply (intro impI allI conjI)
+  defer
+      apply (auto simp add: antichain_from_list_antichain weird_singleton outputs_to_visible_channels_def my_summ_def)[1]
+  apply (metis empty_antichain.rep_eq insert_not_empty set_antichain_antichain_singleton)
+      apply (auto simp add: antichain_from_list_antichain weird_singleton outputs_to_visible_channels_def my_summ_def)[1]
+  apply (metis empty_antichain.rep_eq insert_not_empty set_antichain_antichain_singleton)
+      apply (auto simp add: outputs_to_visible_channels_def antichain_from_list_antichain weird_singleton my_summ_def)
+  apply (metis empty_antichain.rep_eq insert_not_empty set_antichain_antichain_singleton)
   done
+
+lemma
+  assumes \<open>(x, t) \<in> lset (outs (1, 1))\<close>
+  and \<open>SM = dataplane_state ec ic cb ob ib (\<lambda> (nid :: 2). if nid = 0 then lgc_input (\<lambda> _ :: 1. inps) else lgc_max)\<close>
+  and \<open>ob = (\<lambda> nid p. if nid = 1 \<and> p = 1 then ob1 else [])\<close>
+  and \<open>timely_trace my_summ n SM outs\<close>
+obtains \<open>x \<in> (Data t) -` lset (map (\<lambda> (d, t). Data t d) (ib 1 1) @@- map (\<lambda> (d, t). Data t d) (cb 1 1) @@- inps)\<close> | \<open>(x, t) \<in> set ob1\<close>
+  using assms apply -
+  apply hypsubst_thin
+  apply atomize_elim
+    apply (induct "outs (1, 1)" rule: lset_induct)
+  subgoal for lxs
+    apply (drule sym)
+      apply simp
+      apply (induct n)
+      apply simp_all
+    subgoal
+      apply (erule timely_trace.cases)
+        apply simp_all
+      subgoal for outsa nid xa lxsa outs' ds' xs ds n
+        apply hypsubst_thin
+        apply (rule disjI2)+
+        apply (metis (mono_tags, lifting) dataplane_state.simps(4) list.distinct(1) list.set_intros(1) llist.inject)
+        done
+      subgoal for ds outs'
+        apply hypsubst_thin
+
+  find_theorems lset lnth
+
+end
 
 term "[Mint t_1_0, Mint t_0_1, Mint t_1_1, Drop t0, Data t_1_1 10, Drop t_1_1, Data t_0_1 7, Data t_1_0 (3 :: nat), Drop t_1_0, Drop t_0_1]"
 
