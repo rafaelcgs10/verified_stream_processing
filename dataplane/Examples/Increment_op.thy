@@ -1,9 +1,9 @@
 theory Increment_op
 
 imports
-  Ooo_Input_op
+  Ooo_Input_op_Old
   Dataplane.MyProduct_Instances
-  Source_op
+  Source_op_Old
 begin
 
 record ('p, 'd, 'd1, 't) increment_state = \<open>('p, 'd, 'd1, 't) operator_state_ty\<close> + incr :: \<open>'p \<Rightarrow> 't\<close>
@@ -50,7 +50,7 @@ abbreviation inp_incr_summary where
 lemma ooo_input_op_increment_op_source_op:
   \<open>summ sg = inp_incr_summary (incr os2 0) \<Longrightarrow>
   initia os1 \<Longrightarrow> en1 os1 = id \<Longrightarrow>
-  monotone (es os1 0) (mset (ocaps os1 0)) \<Longrightarrow>
+  timely_monotone (es os1 0) (mset (ocaps os1 0)) \<Longrightarrow>
   initia os2 \<Longrightarrow> en1 os2 = id \<Longrightarrow>
   \<forall>x \<in> set (buf (Inr (1, 0))). is_Inr x \<Longrightarrow>
   dataflow_op sg (inp_incr_op os1 buf os2)
@@ -100,28 +100,28 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
        apply (rule rtranclp.intros(1))
       apply (rule wbc_base)
       apply (intro exI)
-      apply (auto elim: monotone.cases simp add: list.map_ident_strong)
+      apply (auto elim: timely_monotone.cases simp add: list.map_ident_strong)
       done
     subgoal
       apply (intro exI conjI)
        apply (rule rtranclp.intros(1))
       apply (rule wbc_base)
       apply (intro exI)
-      apply (auto elim: monotone.cases simp add: produce_def simp flip: snoc_shift)
+      apply (auto elim: timely_monotone.cases simp add: produce_def simp flip: snoc_shift)
       done
     subgoal
       apply (intro exI conjI)
        apply (rule rtranclp.intros(1))
       apply (rule wbc_base)
       apply (intro exI)
-      apply (auto elim: monotone.cases)
+      apply (auto elim: timely_monotone.cases)
       done
     subgoal
       apply (intro exI conjI)
        apply (rule rtranclp.intros(1))
       apply (rule wbc_base)
       apply (intro exI)
-      apply (auto elim: monotone.cases)
+      apply (auto elim: timely_monotone.cases)
       done
     subgoal
       apply (intro exI conjI)

@@ -14,6 +14,14 @@ imports
   Containers.Collection_Order
 begin 
 
+
+context includes cset.lifting begin
+lift_definition cthe_elem :: "'m cset \<Rightarrow> 'm" is Set.the_elem .
+lift_definition csome_elem :: "'m cset \<Rightarrow> 'm" is some_elem .
+lift_definition ccard :: "'m cset \<Rightarrow> nat" is card .
+end
+
+
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 
@@ -73,9 +81,10 @@ lemma rmdups_insert_NilI:
    apply auto
   done
 
-definition "DEBUG = True"
+definition "DEBUG = False"
 
 definition "trace = (if DEBUG then Debug.tracing else (\<lambda> x y. y))"
+
 
 lemma trace_simp[simp]:
   "trace x = id"
@@ -89,6 +98,7 @@ record ('id, 'p, 't) subgraph =
   pt_tr :: "(('id, 'p) location, 't) configuration"
   edges :: "('id, 'p) location \<Rightarrow> ('id, 'p) location list"
   summ :: "('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> 't antichain"
+  upfro :: "'id \<Rightarrow> bool"
 
 datatype ('id, 'p, 's, 'd, 't) dataflow_tree = 
   "apply": Logic "('p option, 'p option, 's + 'd) op" "'p port \<Rightarrow> 'p port \<Rightarrow> 't list"
@@ -211,6 +221,15 @@ abbreviation AF where
 
 notation "AF" (infixl \<open>-++-\<close> 65)
 
+lemma AF_empty[simp]:
+  "A -++- {}\<^sub>A = {#}\<^sub>z"
+  by (metis after_summary_def dataflow_topology_from_tree.after_summary_empty_summary)
+
+lemma AP_simp[simp]:
+  "M -++- S = (\<Sum>s \<in> set_antichain S. image_zmset (\<lambda>t. t -+- s) M)"
+  by (metis after_summary_def dataflow_topology_from_tree.after_summary_def)
+
+
 definition take_step_locale where
   "take_step_locale df = take_step' df cless"
 
@@ -281,16 +300,38 @@ term "((o) frontier) ` imp_fron"
 (* Inspired by timely/src/dataflow/operators/capability.rs:62 *)
 datatype ('p, 't) capability = Cap (time: "'t :: plus") (out: 'p)
 
+abbreviation "nop sg op \<equiv> (case op of Read (Inl nid) f \<Rightarrow> upfro sg nid | _ \<Rightarrow> True)"
+
+term upfro
+
 corec dataflow_op where
   "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
      Read (Inl nid) f \<Rightarrow> (case propagate_all (summ sg) (pt_tr sg) of
-         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf' \<rparr> in
+         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
          let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron))))))
    | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x)))
    | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
    | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
-   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> pt_tr := (change_multiplicities (summ sg) (extract_progress nid (edges sg) st) (pt_tr sg)) \<rparr>) op')
-   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) (choices op))"
+   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ sg) (extract_progress nid (edges sg) st) (pt_tr sg) \<rparr>) op')
+   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) (let C = cfilter (nop sg) (choices op) in if ccard C > 4 then C else C))"
+
+lemma dataflow_op_code[code]:
+  "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
+     Read (Inl nid) f \<Rightarrow> trace (STR ''Reading from frontier at nid: '' + print_2 nid) (case propagate_all (summ sg) (pt_tr sg) of
+         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
+         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron))))))
+   | Read (Inr (nid, p)) f \<Rightarrow>  (Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x))))
+   | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> trace (STR ''Writing out data at location: '' + show_loc (Loc nid (Src p))) (Write (dataflow_op sg op') (nid, p) x)     
+   | Silent op' \<Rightarrow> trace (STR ''Some silent step'') Silent (dataflow_op sg op')
+   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow>
+      trace (STR ''Reading progress at nid: '' + print_2 nid + STR '' cgs sizes: ('' + show_nat (length (cons st)) + STR '', '' + show_nat (length (inte st))  + STR '', '' + show_nat (length (prod st)) + STR '')''
+   ) (Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr :=change_multiplicities (summ sg) (extract_progress nid (edges sg) st) (pt_tr sg) \<rparr>) op'))
+   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) 
+ (let C = cfilter (nop sg) (choices op) in if ccard C > 4 then trace (STR ''choices size: '' + show_nat (ccard C)) C else C))"
+  apply (simp only: trace_simp id_def)
+  apply (subst dataflow_op.code[symmetric])
+  apply auto
+  done
 
 lemma propagate_all_terminates[simp]:
   "propagate_all a b \<noteq> None"
@@ -302,14 +343,15 @@ lemma change_multiplicities_terminates[simp]:
   apply (auto simp add: propagate_pointstamps_def)
   done
 
+(* FIXME: Update this for the new optimizations *)
 lemma step_dataflow_op_elim:
   assumes "step io (dataflow_op sg op) op'"
   obtains
     nid p op'' x where "io = Inp (nid, p) x" "op' = dataflow_op sg op''" "step (Inp (Inr (nid, p)) (Inr x)) op op''"
   | nid p op'' x where "io = Out (nid, p) x" "op' = dataflow_op sg op''" "step (Out (Inr (nid, p)) (Inr x)) op op''"
   | op'' where "io = Tau" "op' = dataflow_op sg op''" "step Tau op op''"
-  | nid op'' st where "io = Tau" "op' = dataflow_op (sg\<lparr> pt_tr := (change_multiplicities (summ sg) (extract_progress nid (edges sg) st) (pt_tr sg)) \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
-  | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_all (summ sg) (pt_tr sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf' \<rparr>)"
+  | nid op'' st where "io = Tau" "op' = dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (edges sg) st) (pt_tr sg)) \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
+  | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_all (summ sg) (pt_tr sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr>)" "upfro sg nid"
     "imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p)))" "op' = dataflow_op sg' op''" "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op''"
   using assms apply -
   apply atomize_elim
@@ -325,7 +367,8 @@ lemma step_dataflow_op_elim:
 lemma step_Tau_dataflow_op_Inp_Inl_intro[intro]:
   "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op' \<Longrightarrow>
    conf' = the (propagate_all(summ sg) (pt_tr sg)) \<Longrightarrow>
-   sg' = sg\<lparr> pt_tr := conf' \<rparr> \<Longrightarrow>
+   upfro sg nid \<Longrightarrow>
+   sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> \<Longrightarrow>
    imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) \<Longrightarrow>
    step Tau (dataflow_op sg op) (dataflow_op sg' op')"
   apply (subst dataflow_op.code)
@@ -334,7 +377,7 @@ lemma step_Tau_dataflow_op_Inp_Inl_intro[intro]:
 
 lemma step_Tau_dataflow_op_Out_Inl_intro[intro]:
   "step (Out (Inl nid) (Inl (Inl st))) op op' \<Longrightarrow>
-   sg' = sg\<lparr> pt_tr := (change_multiplicities (summ sg) (extract_progress nid (edges sg) st) (pt_tr sg)) \<rparr> \<Longrightarrow>
+   sg' = sg\<lparr> upfro := (\<lambda> _. True), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (edges sg) st) (pt_tr sg)) \<rparr> \<Longrightarrow>
    step Tau (dataflow_op sg op) (dataflow_op sg' op')"
   apply (subst dataflow_op.code)
   apply (force elim: step_choicesE split: sum.splits option.splits)
@@ -430,6 +473,14 @@ abbreviation "pull i f \<equiv> (Read ((trace (STR ''Reading data'') Some) i)
 definition
   "frontier_less_equal ft t = (\<not> is_empty_antichain (filter_antichain (\<lambda> f. f \<le> t) ft))"
 
+
+lemma frontier_less_equal_empty_antichain[simp]:
+  "\<not> frontier_less_equal {}\<^sub>A A"
+  unfolding frontier_less_equal_def
+  apply transfer
+  unfolding Set.filter_def Set.is_empty_def
+  apply simp
+  done
 
 lemma change_multiplicities_append:
   "change_multiplicities su (xs @ ys) = (\<lambda> c. change_multiplicities su ys (change_multiplicities su xs c))"
@@ -530,6 +581,7 @@ record ('p, 'd, 't) operator_state =
   front :: "'p \<Rightarrow> 't antichain"
   ocaps :: "'p \<Rightarrow> 't list"
   initia :: bool
+  nfron :: bool
 
 abbreviation "default_internal_summary \<equiv> (\<lambda> p1 p2. if p1 = p2 then [\<bottom>] else [])"
 
@@ -543,11 +595,14 @@ abbreviation init_op_state where
    outpu = (\<lambda> _. []),
    front = undefined,
    ocaps = (\<lambda> _. []),
-   initia = False
+   initia = False,
+   nfron = False
    \<rparr>"
 
+abbreviation "init_c_pts summary cgs \<equiv> change_multiplicities summary cgs \<lparr>c_work = (\<lambda> _.  {#}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
+
 abbreviation init_conf where
-  "init_conf summary cgs \<equiv> the (propagate_all summary (change_multiplicities summary cgs \<lparr>c_work = (\<lambda> _.  {#}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>))"
+  "init_conf summary cgs \<equiv> the (propagate_all summary (init_c_pts summary cgs))"
 
 record ('p, 'd, 'd1, 't) operator_state_ty = "('p, 'd, 't) operator_state" +
   en1 :: "'d1 \<Rightarrow> 'd" de1 :: "'d \<Rightarrow> 'd1"
@@ -559,11 +614,14 @@ record ('p, 'd, 'd1, 'd2, 'd3, 't) operator_state_ty3 = "('p, 'd, 'd1, 'd2, 't) 
 abbreviation "init_subgraph summary cgs \<equiv>
    \<lparr> pt_tr = init_conf summary cgs,
    edges = (\<lambda> l1. [l2 \<leftarrow> Enum.enum. \<not> is_empty_antichain (summary l1 l2) \<and> is_Src (port l1) \<and> is_Trg (port l2) ]),
-   summ = summary \<rparr>"
+   summ = summary, upfro = (\<lambda> _. True) \<rparr>"
+
+term show_frontiers
 
 definition "compile_dataflow dt = (let (summary, op) = compile_dataflow_tree dt in
                                    let sg = init_subgraph summary (map (\<lambda> (nid, p). (Loc nid (Src p), bot, 1)) (List.product Enum.enum Enum.enum)) in
-                                    dataflow_op sg op)"
+                                   let f = c_imp (pt_tr sg) in 
+                                   dataflow_op sg op)"
 
 abbreviation "delay_cap os cap incr \<equiv> (os\<lparr> inter := inter os @ [(out cap, time cap, -1), (out cap, time cap + incr, 1)] \<rparr>)"
 
@@ -628,163 +686,36 @@ abbreviation "add_caps os caps \<equiv> os\<lparr> inter := inter os @ map (\<la
 abbreviation "consumes os p t d \<equiv> add_caps (os\<lparr> consu := consu os @ [(p, t, 1)], input := BENQ p (d, t) (input os) \<rparr>) (concat (map (\<lambda> p'. map (\<lambda> t'. Cap (t -+- t') p') (summar os p p')) enum_class.enum))"
 
 corec builder_op where
-  \<open>builder_op ips ops os logic =
+  \<open>builder_op fb ips ops os logic =
   (if initia os then
-  choice5
-  (Choice (cimage (\<lambda> os. Silent (builder_op ips ops os logic)) (logic os)))
+  (choice5
+  (if (\<forall> p. ocaps os p = []) \<and> (\<forall> p. front os p = frontier {#}\<^sub>z) then
+   \<oslash>
+   else
+   (Choice (cimage (\<lambda> os. Silent (builder_op fb ips ops os logic)) (logic os)))
+   )
   (Choice (cimage (\<lambda>p. case outpu os p of
-    x # xs \<Rightarrow> send_output (builder_op ips ops (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) logic) p x)
+    x # xs \<Rightarrow> send_output (builder_op fb ips ops (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) logic) p x)
     (cfilter (\<lambda>p. outpu os p \<noteq> []) ops)))
-  (let (os', st) = obtain_progress os
-  in send_progress (builder_op ips ops os' logic) st)
-  (Read None (\<lambda>x. case x of Inl (Inr f) \<Rightarrow> builder_op ips ops (os\<lparr>front := f\<rparr>) logic | _ \<Rightarrow> \<oslash>))
-  (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow> \<oslash> | Inr (d, t) \<Rightarrow> builder_op ips ops (consumes os p t d) logic)) ips))
-  else
-  (Read None (\<lambda>x. case x of Inl (Inr f) \<Rightarrow> builder_op ips ops (os\<lparr>front := f, initia := True\<rparr>) logic | _ \<Rightarrow> \<oslash>)))\<close>
-
-lemma initia_True_update:
-  \<open>initia os \<Longrightarrow> os\<lparr>front := f, initia := True\<rparr> = os\<lparr>front := f\<rparr>\<close>
-  by force
-
-lemma step_builder_op_elim:
-  assumes \<open>step io (builder_op ips ops os logic) op\<close>
-  obtains (read_end_None) x where \<open>io = Inp None x\<close> \<open>is_Inr x \<or> is_Inl x \<and> is_Inl (projl x)\<close> \<open>op = \<oslash>\<close>
-  | (read_frontier) f where \<open>io = Inp None (Inl (Inr f))\<close> \<open>op = builder_op ips ops (os\<lparr>front := f, initia := True\<rparr>) logic\<close>
-  | (read_end_Some) p x where \<open>initia os\<close> \<open>io = Inp (Some p) x\<close> \<open>p |\<in>| ips\<close> \<open>is_Inl x\<close> \<open>op = \<oslash>\<close>
-  | (read_data) p d t where \<open>initia os\<close> \<open>io = Inp (Some p) (Inr (d, t))\<close> \<open>p |\<in>| ips\<close> \<open>op = builder_op ips ops (consumes os p t d) logic\<close>
-  | (write_state) os' st where \<open>initia os\<close> \<open>io = Out None (Inl (Inl st))\<close> \<open>(os', st) = obtain_progress os\<close> \<open>op = builder_op ips ops os' logic\<close>
-  | (write_data) p x xs where \<open>initia os\<close> \<open>io = Out (Some p) (Inr x)\<close> \<open>p |\<in>| ops\<close> \<open>outpu os p = x # xs\<close> \<open>op = builder_op ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic\<close>
-  | (silent) os' where \<open>initia os\<close> \<open>io = Tau\<close> \<open>os' |\<in>| logic os\<close> \<open>op = builder_op ips ops os' logic\<close>
-proof (cases io)
-  case (Inp p x)
-  show ?thesis
-  proof (cases p)
-    case None
-    consider (unexpected) \<open>is_Inr x \<or> is_Inl x \<and> is_Inl (projl x)\<close> | (frontier) f where \<open>x = Inl (Inr f)\<close>
-      by (metis is_Inl.simps(1) is_Inr.simps(1) sum.sel(1) sumE)
-    thus ?thesis
-    proof cases
-      case unexpected
-      hence \<open>op = \<oslash>\<close>
-        using assms Inp None by (subst (asm) builder_op.code)
-          (auto simp add: is_Inl_def is_Inr_def split: if_splits list.splits sum.splits)
-      thus ?thesis
-        using read_end_None Inp None unexpected by blast
-    next
-      case frontier
-      have \<open>op = builder_op ips ops (os\<lparr>front := f, initia := True\<rparr>) logic\<close>
-        using assms Inp None frontier by (subst (asm) builder_op.code)
-          (auto split: if_splits list.splits dest!: initia_True_update[of _ f])
-      thus ?thesis
-        using read_frontier Inp None frontier by blast
-    qed
-  next
-    case (Some p')
-    hence initialized: \<open>initia os\<close>
-      using assms Inp by (subst (asm) builder_op.code) (auto split: if_splits)
-    consider (unexpected) \<open>is_Inl x\<close> | (data) d t where \<open>x = Inr (d, t)\<close>
-      by (metis is_Inl.simps(1) obj_sumE surj_pair)
-    thus ?thesis
-    proof cases
-      case unexpected
-      hence \<open>p' |\<in>| ips \<and> op = \<oslash>\<close>
-        using assms Inp Some by (subst (asm) builder_op.code)
-          (auto split: if_splits list.splits sum.splits)
-      thus ?thesis
-        using read_end_Some Inp Some initialized unexpected by blast
-    next
-      case data
-      hence \<open>p' |\<in>| ips \<and> op = builder_op ips ops (consumes os p' t d) logic\<close>
-        using assms Inp Some by (subst (asm) builder_op.code) (auto split: if_splits list.splits)
-      thus ?thesis
-        using read_data Inp Some initialized data by blast
-    qed
-  qed
-next
-  case (Out p x)
-  hence initialized: \<open>initia os\<close>
-    using assms Out by (subst (asm) builder_op.code) (auto split: if_splits)
-  show ?thesis
-  proof (cases p)
-    case None
-    obtain os' st where os'_st: \<open>(os', st) = obtain_progress os\<close> by blast
-    hence \<open>x = Inl (Inl st) \<and> op = builder_op ips ops os' logic\<close>
-      using assms Out None by (subst (asm) builder_op.code)
-        (auto simp add: initialized split: list.splits)
-    thus ?thesis
-      using write_state Out initialized None os'_st by blast
-  next
-    case (Some p')
-    then obtain x' xs where x'_xs: \<open>x = Inr x'\<close> \<open>outpu os p' = x' # xs\<close>
-      using assms Out by (subst (asm) builder_op.code) (auto simp add: initialized split: list.splits)
-    have \<open>p' |\<in>| ops \<and> op = builder_op ips ops (os\<lparr>outpu := (outpu os)(p' := xs)\<rparr>) logic\<close>
-      using assms Out Some x'_xs by (subst (asm) builder_op.code) (auto simp add: initialized split: list.splits)
-    thus ?thesis
-      using write_data Out initialized Some x'_xs by blast
-  qed
-next
-  case Tau
-  hence initialized: \<open>initia os\<close>
-    using assms by (subst (asm) builder_op.code) (auto split: if_splits)
-  moreover obtain os' where \<open>os' |\<in>| logic os\<close> \<open>op = builder_op ips ops os' logic\<close>
-  proof -
-    have \<open>Silent op |\<in>| choices (builder_op ips ops os logic)\<close>
-      using Tau assms step_choicesE by blast
-    thus ?thesis
-      using that by (subst (asm) builder_op.code) (auto simp add: initialized neq_Nil_conv)
-  qed
-  ultimately show ?thesis
-    using silent Tau by blast
-qed
-
-lemma step_builder_op_Read_None[intro]:
-  assumes \<open>io = Inp None (Inl (Inr f))\<close> \<open>op = builder_op ips ops (os\<lparr>front := f, initia := True\<rparr>) logic\<close>
-  shows \<open>step io (builder_op ips ops os logic) op\<close>
-proof -
-  let ?g = \<open>\<lambda>x. case x of Inl (Inr f) \<Rightarrow> builder_op ips ops (os\<lparr>front := f, initia := True\<rparr>) logic | _ \<Rightarrow> \<oslash>\<close>
-  have \<open>initia os \<Longrightarrow> (\<lambda>f. builder_op ips ops (os\<lparr>front := f, initia := True\<rparr>) logic) = (\<lambda>f. builder_op ips ops (os\<lparr>front := f\<rparr>) logic)\<close>
-    using initia_True_update by metis
-  hence \<open>Read None ?g |\<in>| choices (builder_op ips ops os logic)\<close>
-    by (subst (2) builder_op.code) force
-  moreover have \<open>?g (Inl (Inr f)) = op\<close>
-    using assms(2) by simp
-  ultimately show ?thesis
-    using assms(1) by blast
-qed
-
-lemma step_builder_op_Read_Some[intro]:
-  assumes \<open>initia os\<close> \<open>io = Inp (Some p) (Inr (d, t))\<close> \<open>p |\<in>| ips\<close>
-    \<open>op = builder_op ips ops (consumes os p t d) logic\<close>
-  shows \<open>step io (builder_op ips ops os logic) op\<close>
-proof -
-  let ?f = \<open>\<lambda>x. case x of Inr (d, t) \<Rightarrow> builder_op ips ops (consumes os p t d) logic | Inl _ \<Rightarrow> \<oslash>\<close>
-  have \<open>Read (Some p) ?f |\<in>| choices (builder_op ips ops os logic)\<close>
-    using assms by (subst (2) builder_op.code) fastforce
-  moreover have \<open>?f (Inr (d, t)) = op\<close>
-    using assms(4) by simp
-  ultimately show ?thesis
-    using assms(2) by blast
-qed
-
-lemma step_builder_op_Write_None[intro]:
-  \<open>initia os \<Longrightarrow> io = Out None (Inl (Inl st)) \<Longrightarrow> (os', st) = obtain_progress os \<Longrightarrow>
-  op = builder_op ips ops os' logic \<Longrightarrow> step io (builder_op ips ops os logic) op\<close>
-  by (subst builder_op.code) auto
-
-lemma step_builder_op_Write_Some[intro]:
-  \<open>initia os \<Longrightarrow> io = Out (Some p) (Inr x) \<Longrightarrow> p |\<in>| ops \<Longrightarrow> outpu os p = x # xs \<Longrightarrow>
-  op = builder_op ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic \<Longrightarrow>
-  step io (builder_op ips ops os logic) op\<close>
-  by (subst builder_op.code) force
-
-lemma step_builder_op_Silent[intro]:
-  \<open>initia os \<Longrightarrow> io = Tau \<Longrightarrow> os' |\<in>| logic os \<Longrightarrow> op = builder_op ips ops os' logic \<Longrightarrow>
-  step io (builder_op ips ops os logic) op\<close>
-  by (subst builder_op.code) fastforce
+  (if consu os \<noteq> [] \<or> inter os \<noteq> [] \<or> produ os \<noteq> []
+   then
+   let (os', st) = obtain_progress os
+   in send_progress (builder_op fb ips ops os' logic) st
+   else \<oslash>)
+  (if fb then
+   Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op fb ips ops (os\<lparr> front := projr (projl st), nfron := \<not> (\<exists> p. ((projr (projl st)) p) = front os p) \<rparr>) logic else Code.abort (STR ''Builder_op breaks contract'') (\<lambda> _. \<oslash>))
+   else \<oslash>)
+  (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow>  Code.abort (STR ''Builder_op breaks contract'') (\<lambda> _. \<oslash>)
+  | Inr (d, t) \<Rightarrow> builder_op fb ips ops (consumes os p t d) logic)) ips))
+  )else
+  (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op fb ips ops (os\<lparr> front := projr (projl st), initia := True, nfron := True \<rparr>) logic else Code.abort (STR ''Builder_op breaks contract'') (\<lambda> _. \<oslash>))))\<close>
 
 definition notifier_op where
-  "notifier_op ips ops os logic = builder_op ips ops os 
-   (\<lambda> os. logic os (\<lambda> p. filter (\<lambda> t. \<not> frontier_less_equal (front os p) t) (ocaps os p)))"
+  "notifier_op ips ops os logic = (builder_op True ips ops (os\<lparr> nfron := False \<rparr>) 
+   (\<lambda> os.
+    if nfron os then
+    logic (os\<lparr> nfron := False \<rparr>) (\<lambda> p. filter (\<lambda> t. \<not> frontier_less_equal (front os p) t) (ocaps os p))
+    else {||}))"
 
 
 end

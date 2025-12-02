@@ -355,24 +355,6 @@ lemma rtranclp_intros_1:
 
 
 
-lemma zequal_equal[simp]:
-  "zequal A B \<longleftrightarrow> A = B"
-  apply safe
-  subgoal
-    apply transfer
-    apply (auto simp: equiv_zmset_def)
-    subgoal for A B A' B'
-      apply (simp add: multiset_eq_iff)
-      apply (smt (verit, ccfv_threshold) add_diff_cancel_left diff_add_inverse diff_add_inverse2 diff_cancel2 diff_diff_cancel diff_diff_left diff_is_0_eq diff_le_self nat_le_linear ordered_cancel_comm_monoid_diff_class.add_diff_inverse)
-      done
-    done
-  subgoal
-    apply transfer
-    apply auto
-    done
-  done
-
-
 lemma take_step_enum_dataflow_topology_take_step:
   "enum_dataflow_topology su dataflow_topology_from_tree.followed_by \<Longrightarrow>
    take_step su = enum_dataflow_topology.take_step su dataflow_topology_from_tree.followed_by cless"
@@ -734,7 +716,7 @@ lemma c_pts_change_multiplicities:
 lemma UNIV_location[simp]:
   "(UNIV :: ('a :: enum, 'b :: enum) location set) = (\<lambda> (n, p). Loc n p) ` (UNIV \<times> UNIV)"
   apply (auto split: prod.splits)
-  apply (metis UNIV_I location.exhaust pair_imageI)
+  apply (metis UNIV_I UNIV_Times_UNIV UnE location_UNIV)  
   done
 
 lemma UNIV_port[simp]:
@@ -746,20 +728,7 @@ lemma UNIV_port[simp]:
 lemma UNIV_Numerals[simp]:
   "(UNIV :: 1 set) = {1}"
   "(UNIV :: 2 set) = {0, 1}"
-   apply auto
-  subgoal for x
-    apply (cases x)
-    apply auto
-    subgoal for z
-      apply (cases z)
-       apply auto
-      subgoal for n
-        apply (cases n)
-         apply auto
-        done
-      done
-    done
-  done
+  by auto
 
 definition "my_summ = (\<lambda> l1 l2.
    if l1 = Loc (0 :: 2) (Src (0 :: 1)) \<and> l2 = Loc (1 :: 2)  (Trg (0 :: 1)) 
@@ -1316,13 +1285,13 @@ lemma reachable_locations_my_summ[simp]:
     apply (metis dataflow_topology_from_tree.empty_antichain empty_antichain.rep_eq empty_antichain_def in_sigletonI my_summ_def set_antichain_inject zero_one)
     done
   subgoal
-    apply (rule exI[of _ "Loc 0 (Src 1)"])
+    apply (rule exI[of _ "Loc 1 (Trg 1)"])
     apply (auto simp add: is_empty_antichain.rep_eq Set.is_empty_def)
     apply (metis dataflow_topology_from_tree.empty_antichain empty_antichain.rep_eq empty_antichain_def in_sigletonI my_summ_def set_antichain_inject zero_one)
     done
   subgoal
-    apply (rule exI[of _ "Loc 1 (Trg 1)"])
-    apply (auto simp add: is_empty_antichain.rep_eq Set.is_empty_def)
+    apply (rule exI[of _ "Loc 0 (Src 1)"])
+    apply (auto simp add:  is_empty_antichain.rep_eq Set.is_empty_def)
     apply (metis dataflow_topology_from_tree.empty_antichain empty_antichain.rep_eq empty_antichain_def in_sigletonI my_summ_def set_antichain_inject zero_one)
     done
   subgoal
@@ -1526,7 +1495,7 @@ lemma frontier_less_equal_change_multiplicities:
           apply simp
           apply (rule frontier_less_equal_le_trans)
            apply assumption
-          apply (smt (verit, ccfv_threshold) Groups.add_ac(1) frontier_below_eq_frontier_plus_pos zcount_union zcount_zmset_of_nonneg)
+          apply (smt (z3) Groups.add_ac(2) dual_order.refl frontier_le_remove_left group_cancel.add2 zmset_of_mset_set_ge_zero)
           done
         subgoal premises prems
           using prems(2) in_zmset_filter by fast
@@ -1552,7 +1521,7 @@ lemma frontier_less_equal_change_multiplicities:
             apply (smt (verit, best) add_diff_cancel_left' cancel_ab_semigroup_add_class.diff_right_commute diff_add_cancel dual_order.trans frontier_below_eq_frontier_minus frontier_idempotent zcount_zmset_of_nonneg)
             done
           subgoal premises prems
-            using prems(2) in_zmset_filter by fast
+            using prems in_zmset_filter by fast
           done
         subgoal premises
           by (smt (verit) Groups.add_ac(2) frontier_below_eq_frontier_plus_pos frontier_idempotent order_trans_rules(23) zcount_zmset_of_nonneg zmset_of_plus)

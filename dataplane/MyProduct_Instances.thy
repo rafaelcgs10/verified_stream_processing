@@ -2,6 +2,8 @@ theory MyProduct_Instances
 
 imports
   Containers.Collection_Order
+  "HOL-Library.Countable"
+  Nondeterministic_Dataflow.CSet_LList_Impl
 begin
 
 datatype ('a, 'b) myprod = MyPair (myfst: 'a) (mysnd: 'b)
@@ -394,6 +396,31 @@ proof
   show \<open>a \<le> b \<longleftrightarrow> (\<exists>c. b = a + c)\<close>
     by (simp add: le_iff_add less_eq_myprod_def) (metis myprod.exhaust_sel myprod.sel(1,2) plus_myprod_def)
 qed
+end
+
+find_consts "(_, _) myprod" "_ \<times> _" 
+
+definition "to_prod p = (case p of MyPair p1 p2 \<Rightarrow> (p1, p2))"
+definition "from_prod p = (case p of (p1, p2) \<Rightarrow> MyPair p1 p2)"
+
+instance myprod :: (countable, countable) countable
+  apply (rule countable_classI [of "(\<lambda>(x, y). (prod_encode) (to_nat x, to_nat y)) o to_prod"])
+  apply  (auto simp add: to_prod_def split: myprod.splits)
+  done
+
+instantiation myprod :: (cenum, cenum) cenum begin
+definition cenum_myprod :: "('a, 'b) myprod llist" where "cenum_myprod = lmerge (lmap (\<lambda> x. lmap (MyPair x) cenum) cenum)"
+instance
+  apply standard
+  unfolding cenum_myprod_def from_prod_def lset_lmap
+  apply (auto simp: cenum_prod_def image_iff inj_on_def order_less_subst2 UNIV_cenum[symmetric] cenum_distinct
+      intro!: ldistinct_linterleave ldistinct_lmerge
+      dest!: cenum_distinct[unfolded ldistinct_conv_lnth, rule_format, THEN notE, rotated -1] split: myprod.splits)
+  subgoal for x
+    apply (cases x)
+    apply auto
+    done
+  done
 end
 
 end

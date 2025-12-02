@@ -35,7 +35,6 @@ global_interpretation trivial_dataflow_topology_interpretation:
 definition
   "frontier_below_eq_frontier ft1 ft2 = ((\<forall> t2. t2 \<in>\<^sub>A ft2 \<longrightarrow> (\<exists> t1. t1 \<in>\<^sub>A ft1 \<and> t1 \<le> t2)))"
 
-
 instantiation antichain :: (_) ord
 begin
 
@@ -517,5 +516,6 @@ lemma fronteier_lt_add_ex:
    (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
    \<exists>t'. t' \<in>\<^sub>A frontier (A + B) \<and> t' \<le> t"
   using in_frontier_in_frontier_add_alt by blast
+
 
 end
