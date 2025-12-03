@@ -11,7 +11,6 @@ imports
   Source_op
 begin
 
-
 abbreviation "t0 \<equiv> MyPair (0 :: nat) (0 :: nat)"
 abbreviation "t_1_0 \<equiv> MyPair (Suc 0) (0 :: nat)"
 abbreviation "t_0_1 \<equiv> MyPair (0 :: nat) (Suc 0)"
@@ -71,7 +70,6 @@ value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x
 
 find_theorems cUn name: code
 
-
 value [GHC] "trace_exec set_op_test"
 
 value "frontier {# t_1_1, t_0_1, t_1_0 #}\<^sub>z"
@@ -86,55 +84,18 @@ abbreviation "Max_spec inps \<equiv>
   cimage (\<lambda> t. (1 :: 1, Max (set (list_of (lmap (\<lambda> ev. case ev of Data _ d \<Rightarrow> d) (lfilter (\<lambda> ev. case ev of Data t' d \<Rightarrow> t = t' | _ \<Rightarrow> False) inps)))), t))
   (timestamps inps)"
 
-value [GHC] "(Max_spec inps2)"
-
 value [GHC] "trace_exec (set_op (Max_spec inps2) {||} (\<oslash> :: (1, _, _) op))"
 
 value [GHC] "check_prefix [VOut 1 (3, MyPair 1 0)] (set_op (Max_spec inps2) {||} (\<oslash> :: (1, _, _) op))"
 
 value [GHC] "check_prefix [VOut (1, 1) (Inr 3, MyPair 1 0)] set_op_test"
 
-
-end
- (* 
-value [GHC] "check_prefix [VOut (1, 1) (Inr 10, MyPair 1 1)] test_op2"
- *)
-
 value [GHC] "check_prefix [VOut (1, 1) (Inr 7, MyPair 0 1)] test_op2"
-(* 
-value [GHC] "check_prefix [VOut (1, 1) (Inr 3, MyPair 1 0)] test_op2"
- *)
-
-
-
-(* 
-value [GHC] "check_prefix [VOut 1 (7, MyPair 0 1)] spec_op_test"
-value [GHC] "check_prefix [VOut 1 (3, MyPair 1 0)] spec_op_test"
-value [GHC] "check_prefix [VOut 1 (10, MyPair 1 1)] spec_op_test"
-
- *)
-
-
-(*
- value [GHC] "check_prefix [VOut (1, 1) (Inr 3, MyPair 1 0)] test_op2"
- *)
-
-
-
-(* value [GHC] "approx_in 30 [VOut (1, 1) (Inr 3, MyPair 1 0)] test_op2"
-
- *)
-
-
 
 lemma
-  "set_op S S' test_op2 \<approx> set_op (cUn S A) S' \<oslash>"
+  "set_op {||} {||} test_op2 \<approx> set_op (cimage (\<lambda> (p, x, t). ((2, p), Inr x, t)) (Max_spec inps2)) {||} \<oslash>"
   oops
 
-lemma
-  "set_op {||} {||} test_op2 \<approx> set_op A {||} \<oslash>"
-
-end
 
 abbreviation "inp_op os \<equiv> map_op (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (ooo_input_op {|1|} os)"
 abbreviation "tt_op os f \<equiv> map_op (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (batch_fun_op os f)"
@@ -147,11 +108,8 @@ abbreviation "inp_tt_op os1 cbuf os2 f \<equiv>
 definition \<open>subgraph_inv dtt cgs c = (let (su, _) = compile_dataflow_tree dtt in
  \<lparr> pt_tr = change_multiplicities su cgs c,
    edges = (\<lambda> l1. [l2 \<leftarrow> Enum.enum. \<not> is_empty_antichain (su l1 l2) \<and> is_Src (port l1) \<and> is_Trg (port l2) ]),
-   summ = su \<rparr>)\<close>
-
-
-
-term "[Inr (0 :: 2, 0 :: 1) \<mapsto> Inr (1 :: 2, 0 :: 1)]"
+   summ = su,
+   upfro = undefined \<rparr>)\<close>
 
 lemma dataflow_op_inp_tt_op_wbisim_source_op_aux:
   fixes lxs :: \<open>('t :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
