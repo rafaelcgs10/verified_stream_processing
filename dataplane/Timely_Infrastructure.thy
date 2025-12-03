@@ -14,7 +14,6 @@ imports
   Containers.Collection_Order
 begin 
 
-
 context includes cset.lifting begin
 lift_definition cthe_elem :: "'m cset \<Rightarrow> 'm" is Set.the_elem .
 lift_definition csome_elem :: "'m cset \<Rightarrow> 'm" is some_elem .

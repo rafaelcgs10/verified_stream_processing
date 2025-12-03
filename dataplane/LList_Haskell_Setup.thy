@@ -18,6 +18,12 @@ partial_function (llist) lrmdups_aux where
   "lrmdups_aux f S lxs = (case lxs of LNil \<Rightarrow> LNil | LCons x lxs \<Rightarrow> (if f x \<in> S then lrmdups_aux f S lxs else LCons x (lrmdups_aux f (insert (f x) S) lxs)))"
 declare lrmdups_aux.simps[code]
 
+
+lemma cminus_code[code]:
+  "(cset_of_llist xs) - (cset_of_llist ys) = cset_of_llist (lfilter (\<lambda> x. x \<notin> lset ys) xs)"
+  by (auto simp add: cset_of_llist.rep_eq)
+
+
 definition "lrmdups f = lrmdups_aux f {}"
 
 definition "crmdups (f :: 'a \<Rightarrow> 'b) (C :: 'a cset) = C"
@@ -25,7 +31,7 @@ declare crmdups_def[code del]
 
 lemma crmdups_code[code]:
   "crmdups f (cset_of_llist xs) = cset_of_llist (lrmdups f xs)"
-  sorry
+  oops
 
 definition "compress_cfilter P xs = cfilter P xs"
 
