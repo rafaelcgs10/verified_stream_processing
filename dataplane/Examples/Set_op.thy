@@ -223,10 +223,8 @@ lemma set_spec_op_trace_alt_ldistinct:
     done
   done
 
-lemma
-  "set_spec_op_trace S S' ios \<longleftrightarrow> set_spec_op_trace_alt S S' ios"
-  apply (rule iffI)
-  subgoal
+lemma set_spec_op_trace_soundness:
+  "set_spec_op_trace S S' ios \<Longrightarrow> set_spec_op_trace_alt S S' ios"
       apply (coinduction arbitrary: S S' ios)
     subgoal for S S' ios
       unfolding set_spec_op_trace_def
@@ -243,33 +241,18 @@ lemma
         done
       done
     done
-  subgoal
+
+lemma set_spec_op_trace_completeness:
+  "set_spec_op_trace_alt S S' ios \<Longrightarrow> \<exists> ios'. set_spec_op_trace S S' ios' \<and> lset ios \<subseteq> lset ios'"
     unfolding set_spec_op_trace_def
-    apply (intro conjI)     
-    subgoal
     apply (erule set_spec_op_trace_alt.cases)
       subgoal
-        by auto
-      subgoal for p x Sa S'a lxs
-      apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
-        apply (intro conjI)
-        subgoal
-          using set_spec_op_trace_alt_no_repeat by fast
-        subgoal
-          using set_spec_op_trace_alt_ldistinct by auto
+        apply clarsimp
+        apply (metis bot.extremum cDiff_cempty cempty_is_cimage cis_empty_code(1) cis_empty_def double_cDiff emptyE ldistinct_LNil_code llist.set(1))
         done
-      done
-    subgoal
-      using set_spec_op_trace_alt_no_VInp by (metis is_VInp_def)
-    subgoal
-      apply (auto del: disjCI simp add: cin_code split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
-      subgoal for x
-        using set_spec_op_trace_alt_in_cDiff by blast
-      subgoal for p x
-
-        find_theorems cset_of_llist wit_cset
-
-
+      subgoal for p x Sa S'a lxs
+        apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
+        oops
 
 lemma
   "wtraced (set_spec_op S S') vios \<longleftrightarrow> set_spec_op_trace S S' vios"
@@ -324,9 +307,7 @@ lemma
           apply (cases vio; simp; hypsubst_thin)
           apply (erule step_set_spec_op_elim; simp)
               apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
-
-
-end
+          oops
 
 definition "trace_set S S' ios ios' =
   (ldistinct ios' \<and> (\<forall> vio \<in> lset ios. \<not> is_VInp vio) \<and>
@@ -391,21 +372,7 @@ lemma
           apply hypsubst_thin
           apply (cases vio; simp; hypsubst_thin)
           subgoal sorry
-          subgoal for p x
-            apply (intro conjI)
-            subgoal
-              apply safe
-              apply (subgoal_tac "op' = \<oslash>")
-              subgoal
-                by (metis cemptyE empty_iff lset_LNil wfinished.intros(1) wfinished_no_wstep wtraced.cases)
-              subgoal
-                unfolding wstep_def
-                apply clarsimp
-                sorry
-              done
-            subgoal
-              apply (rule ldistinct_cong.intros(1))
-              oops
+          oops
 
 lemma
   "wtraced op vios \<Longrightarrow>
