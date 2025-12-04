@@ -3,7 +3,14 @@ theory Set_op
 imports
   Nondeterministic_Dataflow.Operator
   Nondeterministic_Dataflow.CSet_LList_Impl
+  "../Timely_Infrastructure"
 begin
+
+lemma cset_induct[consumes 1, case_names find step]:
+  "x |\<in>| A \<Longrightarrow> P {|x|} \<Longrightarrow> (\<And>x' A. x |\<in>| A \<Longrightarrow> x \<noteq> x' \<Longrightarrow> P A \<Longrightarrow> P (cinsert x' A)) \<Longrightarrow> P A"
+  apply (rule cset.acset_induct[of ])
+  apply simp
+  oops
 
 corec set_op :: "('a \<times> 'b) cset \<Rightarrow> ('a \<times> 'b) cset \<Rightarrow> ('c, 'a, 'b) op \<Rightarrow> ('c, 'a, 'b) op" where
   "set_op S S' op = choice2
@@ -99,14 +106,306 @@ lemma wstep_Out_set_op[intro]:
      apply auto
   done
 
-find_consts "_ llist \<Rightarrow> _ cset"
+
+corec set_spec_op :: "('a \<times> 'b) cset \<Rightarrow> ('a \<times> 'b) cset \<Rightarrow> ('a, 'a, 'b) op"  where
+  "set_spec_op S S' = 
+  (Choice (cimage (\<lambda> (p, x). Write (set_spec_op S (cinsert (p, x) S')) p x) (S - S')))"
+
+lemma step_set_spec_op_elim:
+  assumes "step io (set_spec_op S S') op'"
+  obtains p x where "io = Out p x" "(p, x) |\<in>| S" "\<not> (p, x) |\<in>| S'"
+    "op' = set_spec_op S (cinsert (p, x) S')"
+  using assms apply -
+  apply atomize_elim
+  apply (subst (asm) set_spec_op.code)
+  apply (auto del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
+  done
+
+lemma step_set_spec_op_intro_Out[intro!]:
+  "io = Out p x \<Longrightarrow>
+   (p, x) |\<in>| S \<Longrightarrow>
+   \<not> (p, x) |\<in>| S' \<Longrightarrow>
+   op' = set_spec_op S (cinsert (p, x) S') \<Longrightarrow>
+   step io (set_spec_op S S') op'"
+  apply (subst set_spec_op.code)
+  apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
+  apply fast
+  done
+
+lemma set_spec_op_no_Tau_step[simp]:
+  "\<not> step Tau (set_spec_op S S') op'"
+  apply (subst set_spec_op.code)
+  apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
+  done
+
+lemma set_spec_op_no_Inp_step[simp]:
+  "\<not> step (Inp p x) (set_spec_op S S') op'"
+  apply (subst set_spec_op.code)
+  apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
+  done
+
+
+lemma wstep_set_spec_op_eq_step[simp]:
+  "io \<noteq> Tau \<Longrightarrow>
+   wstep io (set_spec_op S S') op' = step io (set_spec_op S S') op'"
+  unfolding wstep_def
+  apply (cases io; simp)
+  using converse_rtranclpE apply fastforce
+  apply (smt (verit, ccfv_threshold) converse_rtranclpE relcompp_apply rtranclp_reflclp_absorb set_spec_op_no_Tau_step step_set_spec_op_elim sup2CI)
+  done
+
+lemma set_op_bisim_set_spec_op:
+  "set_op S S' \<oslash> ~ set_spec_op S S'"
+  apply (coinduction arbitrary: S S' rule: bisim_coinduct_upto'')
+  subgoal for io op1'
+    apply (elim step_set_op_elim)
+      apply simp_all
+      apply (metis (mono_tags, lifting) bc_base cin.rep_eq step_set_spec_op_intro_Out)
+    done
+  subgoal for io op1'
+    apply (elim step_set_spec_op_elim)
+    apply simp
+    apply (metis (mono_tags, lifting) bc_base cin.rep_eq step_set_op_intro_Out)
+    done
+  done
+
+definition "set_spec_op_trace S S' ios =
+  (ldistinct ios \<and> (\<forall> vio \<in> lset ios. \<not> is_VInp vio) \<and>
+  (cset_of_llist ios = cimage (\<lambda> (p, x). VOut p x) (S - S')))"
+
+coinductive set_spec_op_trace_alt where
+  "S - S' = {||} \<Longrightarrow> set_spec_op_trace_alt S S' LNil"
+|  "(p, x) |\<in>| S - S' \<Longrightarrow>
+   set_spec_op_trace_alt S (cinsert (p, x) S') lxs \<Longrightarrow>
+   set_spec_op_trace_alt S S' (LCons (VOut p x) lxs)"
+
+lemma set_spec_op_trace_alt_no_repeat:
+  "VOut p x \<in> lset lxs \<Longrightarrow> set_spec_op_trace_alt S S' lxs \<Longrightarrow> (p, x) |\<in>| S' \<Longrightarrow> False"
+  apply (induct lxs arbitrary: S S' rule: lset_induct)
+  subgoal for lxs
+    by (metis VIO.inject(2) cDiffD2 llist.inject llist.simps(3) set_spec_op_trace_alt.cases)
+  subgoal
+    by (metis cinsertCI llist.distinct(1) llist.inject set_spec_op_trace_alt.cases)
+  done
+
+
+
+lemma set_spec_op_trace_alt_no_VInp:
+  "VInp p x \<in> lset lxs \<Longrightarrow> set_spec_op_trace_alt S S' lxs \<Longrightarrow> False"
+  apply (induct lxs arbitrary: S S' rule: lset_induct)
+  subgoal for lxs
+    using set_spec_op_trace_alt.cases by auto
+  subgoal
+    by (metis llist.distinct(1) llist.inject set_spec_op_trace_alt.cases)
+  done
+
+
+lemma set_spec_op_trace_alt_in_cDiff:
+  "x \<in> lset ios \<Longrightarrow> set_spec_op_trace_alt S S' ios \<Longrightarrow> x |\<in>| ((\<lambda>(x, y). VOut x y) |`| cDiff S S')"
+  apply (induct ios arbitrary: S S' rule: lset_induct)
+  subgoal for lxs
+    by (metis (no_types, lifting) case_prod_conv cimage_eqI llist.distinct(1) llist.inject set_spec_op_trace_alt.cases)
+  subgoal
+    by (smt (verit, ccfv_threshold) cDiff_cinsert cimage_cinsert cinsert_cDiff cinsert_iff llist.distinct(1) llist.inject set_spec_op_trace_alt.simps)
+  done
+
+lemma set_spec_op_trace_alt_ldistinct:
+  "set_spec_op_trace_alt S S' lxs \<Longrightarrow> ldistinct lxs"
+  apply (coinduction arbitrary: S S' lxs)
+  subgoal for S S' lxs
+    apply (erule set_spec_op_trace_alt.cases)
+    subgoal
+      by simp
+    subgoal
+     apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
+      apply (metis (lifting) cinsertI1 ldistinct_cong.intros(1) set_spec_op_trace_alt_no_repeat)
+      done
+    done
+  done
 
 lemma
-  " wtraced (set_op S S' op) vios"
+  "set_spec_op_trace S S' ios \<longleftrightarrow> set_spec_op_trace_alt S S' ios"
+  apply (rule iffI)
+  subgoal
+      apply (coinduction arbitrary: S S' ios)
+    subgoal for S S' ios
+      unfolding set_spec_op_trace_def
+      apply (cases ios)
+      subgoal
+      apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
+        apply (metis bot_cset.rep_eq cDiffI cemptyE cimageI cset_of_llist.abs_eq cset_of_llist.rep_eq lset_LNil wit_cset_inverse)
+        done
+      subgoal for x lxs'
+        apply (cases x; simp)
+      apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
+        apply (smt (verit) VIO.discI(2) VIO.disc_eq_case(2) VIO.inject(2) cDiffD2 cDiff_cinsert cDiff_cinsert2 cDiff_cinsert_absorb case_prodE2 case_prod_conv cimageE cimage_cinsert cin_code cinsertCI
+            cinsert_absorb cinsert_cDiff cinsert_code)
+        done
+      done
+    done
+  subgoal
+    unfolding set_spec_op_trace_def
+    apply (intro conjI)     
+    subgoal
+    apply (erule set_spec_op_trace_alt.cases)
+      subgoal
+        by auto
+      subgoal for p x Sa S'a lxs
+      apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
+        apply (intro conjI)
+        subgoal
+          using set_spec_op_trace_alt_no_repeat by fast
+        subgoal
+          using set_spec_op_trace_alt_ldistinct by auto
+        done
+      done
+    subgoal
+      using set_spec_op_trace_alt_no_VInp by (metis is_VInp_def)
+    subgoal
+      apply (auto del: disjCI simp add: cin_code split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
+      subgoal for x
+        using set_spec_op_trace_alt_in_cDiff by blast
+      subgoal for p x
 
+        find_theorems cset_of_llist wit_cset
+
+
+
+lemma
+  "wtraced (set_spec_op S S') vios \<longleftrightarrow> set_spec_op_trace S S' vios"
+  apply (rule iffI)
+  subgoal
+    unfolding set_spec_op_trace_def
+    apply (intro conjI)
+    subgoal
+      apply (coinduction arbitrary: S S' vios)
+      subgoal for S S'
+        apply (erule wtraced.cases)
+        subgoal
+          by clarsimp
+        subgoal for vio op op' lxs
+          apply clarsimp
+          apply hypsubst_thin
+          apply (cases vio; simp; hypsubst_thin)
+          apply (erule step_set_spec_op_elim; simp)
+          apply hypsubst_thin
+          subgoal for a x p
+            apply (intro conjI)
+            subgoal
+              apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
+              sorry
+            subgoal
+              apply (rule ldistinct_cong.intros(1))
+              by blast
+            done
+          done
+        done
+      done
+    subgoal
+  apply (erule wtraced.cases)
+        subgoal
+          by clarsimp
+        subgoal for vio op op' lxs
+          apply clarsimp
+          apply hypsubst_thin
+          apply (cases vio; simp; hypsubst_thin)
+          apply (erule step_set_spec_op_elim; simp)
+          apply hypsubst_thin
+          sorry
+        done
+      subgoal
+  apply (erule wtraced.cases)
+        subgoal
+          by (metis bot_cset.rep_eq cDiff_iff cimage_cempty cset_of_llist.abs_eq cset_of_llist.rep_eq ex_cin_conv io_of_vio.simps(2) lset_LNil step_not_wfinished step_set_spec_op_intro_Out surj_pair
+              wit_cset_inverse)
+        subgoal for vio op op' lxs
+          apply clarsimp
+          apply hypsubst_thin
+          apply (cases vio; simp; hypsubst_thin)
+          apply (erule step_set_spec_op_elim; simp)
+              apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
 
 
 end
+
+definition "trace_set S S' ios ios' =
+  (ldistinct ios' \<and> (\<forall> vio \<in> lset ios. \<not> is_VInp vio) \<and>
+  ((cUn (cimage (\<lambda> io. case io of VOut p x \<Rightarrow> (p, x)) (cset_of_llist ios)) S) - S' =
+  cimage (\<lambda> io. case io of VOut p x \<Rightarrow> (p, x)) (cset_of_llist ios')))"
+
+lemma wstep_set_op_elim:
+  assumes "wstep (Out p x) (set_op S S' op) op'"
+  obtains vios op2 where
+   "wsteps vios op op2" "\<forall> io \<in> set vios. \<not> is_VInp io"
+   "op' = set_op (cUn S (cimage (\<lambda> io. case io of VOut p x \<Rightarrow> (p, x)) (cset_of_llist (llist_of vios)))) (cinsert (p, x) S') op2"
+  sorry
+
+lemma not_step_set_op:
+  "(p, x) |\<in>| S' \<Longrightarrow>
+   \<not> step (Out p x) (set_op S S' op) op'"
+  oops
+
+lemma wsteps_never_produces_vio:
+  "(\<forall> op' vios. wsteps vios op op' \<longrightarrow> vio \<notin> set vios) \<Longrightarrow> wtraced op vios \<Longrightarrow> vio \<notin> lset vios"
+  oops
+
+
+lemma
+  "wtraced op ios \<Longrightarrow>
+   wtraced (set_op S S' op) ios' \<Longrightarrow>
+   trace_set S S' ios ios'"
+   unfolding trace_set_def
+    apply (intro conjI)
+    subgoal
+apply (coinduction arbitrary: ios ios' S S' op)
+      subgoal for ios ios' S S' op
+        apply (erule wtraced.cases)
+        back
+        subgoal
+          by clarsimp
+        subgoal for vio op'' op' lxs
+          apply clarsimp
+          apply hypsubst_thin
+          apply (cases vio; simp; hypsubst_thin)
+          subgoal sorry
+          subgoal for p x
+            apply (intro conjI)
+            subgoal
+              oops
+
+
+lemma
+  "wtraced (set_op S S' \<oslash>) ios \<longleftrightarrow> set_op_trace S S' ios"
+  apply (rule iffI)
+  subgoal
+    unfolding set_op_trace_def
+    apply (intro conjI)
+    subgoal
+      apply (coinduction arbitrary: ios S S')
+      subgoal for ios S S'
+        apply (erule wtraced.cases)
+        subgoal
+          by simp
+        subgoal for vio op op' lxs
+          apply clarsimp
+          apply hypsubst_thin
+          apply (cases vio; simp; hypsubst_thin)
+          subgoal sorry
+          subgoal for p x
+            apply (intro conjI)
+            subgoal
+              apply safe
+              apply (subgoal_tac "op' = \<oslash>")
+              subgoal
+                by (metis cemptyE empty_iff lset_LNil wfinished.intros(1) wfinished_no_wstep wtraced.cases)
+              subgoal
+                unfolding wstep_def
+                apply clarsimp
+                sorry
+              done
+            subgoal
+              apply (rule ldistinct_cong.intros(1))
+              oops
 
 lemma
   "wtraced op vios \<Longrightarrow>
