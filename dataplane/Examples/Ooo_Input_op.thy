@@ -120,6 +120,77 @@ next
   ultimately show ?case using Cons(1) by blast
 qed
 
+lemma step_Taus_ooo_input_op_Drop_Mint:
+  \<open>lfinite (ltakeWhile (Not \<circ> is_Data) (es os p)) \<Longrightarrow>
+  ldropWhile (Not \<circ> is_Data) (es os p) = LCons (Data t d) lxs \<Longrightarrow> p |\<in>| ops \<Longrightarrow>
+  op = ooo_input_op ops os \<Longrightarrow> initia os \<Longrightarrow> timely_monotone (es os p) (mset (ocaps os p)) \<Longrightarrow>
+  os' = foldl (ooo_input_os_Drop_Mint p) (os\<lparr>es := (es os)(p := lxs)\<rparr>) (list_of (ltakeWhile (Not \<circ> is_Data) (es os p))) \<Longrightarrow>
+  os'' = produce os' (Cap t p) [en1 os' d] \<Longrightarrow> op' = ooo_input_op ops os'' \<Longrightarrow>
+  (step Tau)\<^sup>*\<^sup>* op op'\<close>
+  unfolding ooo_input_op_def
+proof (induction \<open>ltakeWhile (Not \<circ> is_Data) (es os p)\<close> arbitrary: os op rule: lfinite_induct)
+  case LNil
+  have \<open>ldropWhile (Not \<circ> is_Data) (es os p) = es os p\<close> using LNil(1) ldropWhile_LCons
+      ldropWhile_LNil llist.sel(1) lnull_def ltakeWhile_eq_LNil_iff neq_LNil_conv by metis
+  moreover from this have ocaps_not_empty: \<open>ocaps os p \<noteq> []\<close> using LNil(2,6) timely_monotone.cases
+    by force
+  ultimately have \<open>os'' |\<in>| ooo_input_op_logic ops os\<close> using LNil(2,3,7,8) ooo_input_op_logic_def
+    by force
+  thus ?case
+    using LNil(4,5,9) ocaps_not_empty step_builder_op_Silent ooo_input_op_def by blast
+next
+  case LCons
+  obtain e where lhd_es: \<open>\<not> is_Data e\<close> \<open>lhd (es os p) = e\<close> \<open>es os p = LCons e (ltl (es os p))\<close>
+    using LCons(2) by fastforce
+  let ?os1 = \<open>ooo_input_os_Drop_Mint p (os\<lparr>es := (es os)(p := ltl (es os p))\<rparr>) e\<close>
+  have ocaps_not_empty: \<open>ocaps os p \<noteq> []\<close> using LCons(8) lhd_es(3) timely_monotone.cases by force
+  hence \<open>?os1 |\<in>| ooo_input_op_logic ops os\<close> unfolding ooo_input_op_logic_def ooo_input_os_Drop_Mint_def
+    using LCons(5) lhd_es(1,3) event.case_eq_if llist.case(2) cin_cimage_cfilter input_state.fold_congs(13)
+      operator_state.unfold_congs(3,8) by (smt (verit))
+  hence \<open>step Tau op (ooo_input_op ops ?os1)\<close>
+    using LCons(6,7) ocaps_not_empty step_builder_op_Silent ooo_input_op_def by blast
+  moreover have \<open>(step Tau)\<^sup>*\<^sup>* (ooo_input_op ops ?os1) op'\<close>
+  proof -
+    have es_os1: \<open>es ?os1 p = ltl (es os p)\<close> using lhd_es(1)
+      by (auto simp add: ooo_input_os_Drop_Mint_def split: event.splits)
+    hence \<open>ltl (ltakeWhile (Not \<circ> is_Data) (es os p)) = ltakeWhile (Not \<circ> is_Data) (es ?os1 p)\<close>
+      using LCons(2) lnull_ltakeWhile ltakeWhile.simps(4) by force
+    moreover from this have \<open>ldropWhile (Not \<circ> is_Data) (es ?os1 p) = LCons (Data t d) lxs\<close>
+      using LCons(2,4) es_os1 ldropWhile_simps(2) lhd_LCons_ltl ltakeWhile.disc(1) by metis
+    moreover have \<open>initia ?os1\<close> using LCons(7) lhd_es(1)
+      by (auto simp add: ooo_input_os_Drop_Mint_def split: event.splits)
+    moreover have \<open>timely_monotone (es ?os1 p) (mset (ocaps ?os1 p))\<close>
+    proof (cases e)
+      case Data
+      thus ?thesis using lhd_es(1) by simp
+    next
+      case (Drop t')
+      hence \<open>ocaps (ooo_input_os_Drop_Mint p (os\<lparr>es := (es os)(p := ltl (es os p))\<rparr>) e) p = remove_last t' (ocaps os p)\<close>
+        by (simp add: ooo_input_os_Drop_Mint_def)
+      thus ?thesis using Drop LCons(8) ocaps_not_empty lhd_es(3) es_os1 timely_monotone.cases
+          mset_remove_last event.distinct(2,5) event.inject(2) llist.simps(1) mset_zero_iff
+        by (smt (verit, ccfv_threshold))
+    next
+      case (Mint t')
+      hence \<open>ocaps (ooo_input_os_Drop_Mint p (os\<lparr>es := (es os)(p := ltl (es os p))\<rparr>) e) p = ocaps os p @ [t']\<close>
+        by (simp add: ooo_input_os_Drop_Mint_def)
+      thus ?thesis using Mint LCons(8) lhd_es(3) es_os1 timely_monotone.cases by fastforce
+    qed
+    moreover have \<open>os' = foldl (ooo_input_os_Drop_Mint p) (?os1\<lparr>es := (es ?os1)(p := lxs)\<rparr>) (list_of (ltakeWhile (Not \<circ> is_Data) (es ?os1 p)))\<close>
+    proof -
+      have \<open>list_of (ltakeWhile (Not \<circ> is_Data) (es os p)) = e # list_of (ltakeWhile (Not \<circ> is_Data) (es ?os1 p))\<close>
+        using LCons(1) lhd_es es_os1 ltakeWhile.ctr(2) not_lnull_conv by fastforce
+      hence \<open>os' = foldl (ooo_input_os_Drop_Mint p) (ooo_input_os_Drop_Mint p (os\<lparr>es := (es os)(p := lxs)\<rparr>) e) (list_of (ltakeWhile (Not \<circ> is_Data) (es ?os1 p)))\<close>
+        using LCons(9) by (simp split: event.splits)
+      moreover have \<open>ooo_input_os_Drop_Mint p (os\<lparr>es := (es os)(p := lxs)\<rparr>) e = ?os1\<lparr>es := (es ?os1)(p := lxs)\<rparr>\<close>
+        using lhd_es(1) by (auto simp add: ooo_input_os_Drop_Mint_def split: event.splits)
+      ultimately show ?thesis by simp
+    qed
+    ultimately show ?thesis using LCons(3,5,10,11) ooo_input_op_def by blast
+  qed
+  ultimately show ?case by (rule transitive_closurep_trans'(6))
+qed
+
 (* record ('p, 'd, 'd1, 'd2, 'd3, 't) input_state_ty3 = "('p, 'd, 'd1, 'd2, 't) input_state2" +  es3:: "('t, 'd3) event llist"
 
 definition ooo_input_ty3_op where
