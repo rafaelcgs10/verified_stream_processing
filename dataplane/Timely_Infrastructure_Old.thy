@@ -90,8 +90,10 @@ record ('id, 'p, 't) subgraph =
   edges :: "('id, 'p) location \<Rightarrow> ('id, 'p) location list"
   summ :: "('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> 't antichain"
 
+term loop_op
+
 datatype ('id, 'p, 's, 'd, 't) dataflow_tree = 
-  "apply": Logic "('p option, 'p option, 's + 'd) op" "'p port \<Rightarrow> 'p port \<Rightarrow> 't list"
+    Logic "('p option, 'p option, 's + 'd) op" "'p port \<Rightarrow> 'p port \<Rightarrow> 't list"
   | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "('id, 'p, 's, 'd, 't) dataflow_tree" "('id, 'p, 's, 'd, 't) dataflow_tree"
 
 fun compile_dataflow_tree_aux :: "'id :: {minus, plus, one, ord} \<Rightarrow> ('id, 'p, 's, 'd, 't :: {zero, order}) dataflow_tree \<Rightarrow>
@@ -109,7 +111,7 @@ fun compile_dataflow_tree_aux :: "'id :: {minus, plus, one, ord} \<Rightarrow> (
      if node l1 \<ge> n \<and> node l1 < n' \<and> node l2 \<ge> n' \<and> is_Src (port l1) \<and> is_Trg (port l2)
      then (case wire (node l1 - n, idp (port l1)) of 
              None \<Rightarrow> frontier {#}\<^sub>z 
-           | Some (offset, q) \<Rightarrow> (if node l2 = n' + offset \<and> q = idp (port l2) then frontier (abs_zmultiset (mset [0], {#})) else frontier {#}\<^sub>z )) 
+           | Some (offset, q) \<Rightarrow> (if node l2 = n' + offset \<and> q = idp (port l2) then frontier (abs_zmultiset (mset [0], {#})) else frontier {#}\<^sub>z)) 
      else summary1 l1 l2 + summary2 l1 l2,
      map_op (case_sum id id) (case_sum id id)
      (comp_op (case_sum (\<lambda> _. None) ((case_option None (Some o Inr)) o (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (n' + offset, q)))) (\<lambda> _. []) op1 op2))

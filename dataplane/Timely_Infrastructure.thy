@@ -308,7 +308,6 @@ corec dataflow_op where
      Read (Inl nid) f \<Rightarrow> (case propagate_all (summ sg) (pt_tr sg) of
          Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
          let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron))))))
-   | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x)))
    | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
    | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
    | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ sg) (extract_progress nid (edges sg) st) (pt_tr sg) \<rparr>) op')
@@ -319,7 +318,6 @@ lemma dataflow_op_code[code]:
      Read (Inl nid) f \<Rightarrow> trace (STR ''Reading from frontier at nid: '' + print_2 nid) (case propagate_all (summ sg) (pt_tr sg) of
          Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
          let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron))))))
-   | Read (Inr (nid, p)) f \<Rightarrow>  (Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x))))
    | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> trace (STR ''Writing out data at location: '' + show_loc (Loc nid (Src p))) (Write (dataflow_op sg op') (nid, p) x)     
    | Silent op' \<Rightarrow> trace (STR ''Some silent step'') Silent (dataflow_op sg op')
    | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow>
@@ -397,13 +395,13 @@ lemma step_Out_dataflow_op_Out_Inr_intro[intro!]:
   apply (fastforce elim: step_choicesE split: sum.splits option.splits)
   done
 
-lemma step_Inp_dataflow_op_Inp_Inr_intro[intro!]:
+(* lemma step_Inp_dataflow_op_Inp_Inr_intro[intro!]:
   "step (Inp (Inr (nid, p)) (Inr x)) op op' \<Longrightarrow>
    step (Inp (nid, p) x) (dataflow_op sg op) (dataflow_op sg op')"
   apply (subst dataflow_op.code)
   apply (fastforce elim: step_choicesE split: sum.splits option.splits)
   done
-
+ *)
 lemma dataflow_op_end_op:
   "dataflow_op sg \<oslash> = \<oslash>"
   apply (subst dataflow_op.code)
@@ -582,7 +580,7 @@ record ('p, 'd, 't) operator_state =
   initia :: bool
   nfron :: bool
 
-abbreviation "default_internal_summary \<equiv> (\<lambda> p1 p2. if p1 = p2 then [\<bottom>] else [])"
+abbreviation "default_internal_summary \<equiv> (\<lambda> p1 p2. [\<bottom>])"
 
 abbreviation init_op_state where
 "init_op_state su \<equiv> \<lparr> 
@@ -686,12 +684,11 @@ abbreviation "consumes os p t d \<equiv> add_caps (os\<lparr> consu := consu os 
 
 corec builder_op where
   \<open>builder_op fb ips ops os logic =
-  (if initia os then
+  (if initia os \<or> \<not> fb then
   (choice5
-  (if (\<forall> p. ocaps os p = []) \<and> (\<forall> p. front os p = frontier {#}\<^sub>z) then
-   \<oslash>
-   else
-   (Choice (cimage (\<lambda> os. Silent (builder_op fb ips ops os logic)) (logic os)))
+  (if \<exists> p. ocaps os p \<noteq> [] then
+    Choice (cimage (\<lambda> os. Silent (builder_op fb ips ops os logic)) (logic os))
+   else \<oslash>
    )
   (Choice (cimage (\<lambda>p. case outpu os p of
     x # xs \<Rightarrow> send_output (builder_op fb ips ops (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) logic) p x)
