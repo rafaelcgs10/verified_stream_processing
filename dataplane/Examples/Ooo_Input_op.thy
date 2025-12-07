@@ -37,8 +37,88 @@ definition ooo_input_ty2_op where
    input_ty_fun es2_update es2 os p))
     (cfilter (\<lambda>p. ocaps os p \<noteq> []) {| 1, 2|})))"
 
+definition ooo_input_os_Drop_Mint where
+  \<open>ooo_input_os_Drop_Mint p os e = (case e of
+    Drop t \<Rightarrow> drop_cap os (Cap t p)
+  | Mint t \<Rightarrow> add_cap os p t)\<close>
 
+lemma foldl_ooo_input_os_Drop_Mint:
+  assumes \<open>\<forall>e \<in> set xs. \<not> is_Data e\<close> \<open>os' = foldl (ooo_input_os_Drop_Mint p) (os\<lparr>es := (es os)(p := lxs)\<rparr>) xs\<close>
+  shows \<open>initia os \<Longrightarrow> initia os'\<close> \<open>outpu os p = ys \<Longrightarrow> outpu os' p = ys\<close> \<open>en1 os = f \<Longrightarrow> en1 os' = f\<close> \<open>es os' p = lxs\<close>
+  using assms
+proof (induction xs arbitrary: os)
+  case (Cons x xs)
+  fix os
+  assume H1: \<open>\<forall>e \<in> set (x # xs). \<not> is_Data e\<close>
+    and H2: \<open>os' = foldl (ooo_input_os_Drop_Mint p) (os\<lparr>es := (es os)(p := lxs)\<rparr>) (x # xs)\<close>
+  let ?os = \<open>ooo_input_os_Drop_Mint p os x\<close>
+  have \<open>ooo_input_os_Drop_Mint p (os\<lparr>es := (es os)(p := lxs)\<rparr>) x = ?os\<lparr>es := (es ?os)(p := lxs)\<rparr>\<close>
+    using H1 by (cases x) (simp_all add: ooo_input_os_Drop_Mint_def)
+  hence os'_alt: \<open>os' = foldl (ooo_input_os_Drop_Mint p) (?os\<lparr>es := (es ?os)(p := lxs)\<rparr>) xs\<close>
+    using H2 by (simp add: fun_upd_def)
+  {
+    assume \<open>initia os\<close>
+    hence \<open>initia ?os\<close> using H1 by (cases x; simp add: ooo_input_os_Drop_Mint_def)
+    thus \<open>initia os'\<close> using Cons(1) H1 os'_alt by fastforce
+  next
+    assume \<open>outpu os p = ys\<close>
+    hence \<open>outpu ?os p = ys\<close> using H1 by (cases x; simp add: ooo_input_os_Drop_Mint_def)
+    thus \<open>outpu os' p = ys\<close> using Cons(2) H1 os'_alt by fastforce
+  next
+    assume \<open>en1 os = f\<close>
+    hence \<open>en1 ?os = f\<close> using H1 by (cases x; simp add: ooo_input_os_Drop_Mint_def)
+    thus \<open>en1 os' = f\<close> using Cons(3) H1 os'_alt by fastforce
+  next
+    show \<open>es os' p = lxs\<close> using Cons(4) H1 os'_alt by fastforce
+  }
+qed simp_all
 
+lemma monotone_foldl_ooo_input_os_Drop_Mint:
+  \<open>lfinite (ltakeWhile (Not \<circ> is_Data) (es os p)) \<Longrightarrow> ldropWhile (Not \<circ> is_Data) (es os p) = LCons e lxs \<Longrightarrow>
+  timely_monotone (es os p) (mset (ocaps os p)) \<Longrightarrow>
+  os' = foldl (ooo_input_os_Drop_Mint p) (os\<lparr>es := (es os)(p := lxs)\<rparr>) (list_of (ltakeWhile (Not \<circ> is_Data) (es os p))) \<Longrightarrow>
+  timely_monotone lxs (mset (ocaps os' p))\<close>
+proof (induction \<open>list_of (ltakeWhile (Not \<circ> is_Data) (es os p))\<close> arbitrary: os)
+  case Nil
+  have \<open>os' = os\<lparr>es := (es os)(p := lxs)\<rparr>\<close> using Nil(1,5) foldl.simps(1) by metis
+  hence \<open>ocaps os' p = ocaps os p\<close> by simp
+  moreover have \<open>es os p = LCons e lxs\<close> using Nil(1-3) ldropWhile_LCons ldropWhile_simps(1)
+      llist.exhaust_sel llist_of.simps(1) llist_of_list_of ltakeWhile_eq_LNil_iff by metis
+  moreover have \<open>is_Data e\<close> using Nil(3) ldropWhile_LConsD by fastforce
+  ultimately show ?case using Nil(4) timely_monotone.cases by force
+next
+  case (Cons x xs)
+  have \<open>\<not> lnull (es os p)\<close> using Cons(4) eq_LConsD ldropWhile_LNil llist.collapse(1) by metis
+  hence lhd_LCons_ltl_es: \<open>LCons (lhd (es os p)) (ltl (es os p)) = es os p\<close> by (rule lhd_LCons_ltl)
+  have lhd_es: \<open>\<not> is_Data x\<close> \<open>lhd (es os p) = x\<close> using Cons(2,3) comp_apply eq_LConsD llist_of.simps(2)
+      llist_of_list_of ltakeWhile.ctr(1) ltakeWhile.sel(1) by (metis (no_types, opaque_lifting))+
+  let ?os = \<open>ooo_input_os_Drop_Mint p (os\<lparr>es := (es os)(p := ltl (es os p))\<rparr>) x\<close>
+  have \<open>xs = list_of (ltakeWhile (Not \<circ> is_Data) (es ?os p))\<close> using Cons(2,3) lhd_es(1)
+    by (cases x; simp add: ooo_input_os_Drop_Mint_def; metis lhd_es list.sel(3) ltl_ltakeWhile tl_list_of)
+  moreover have \<open>lfinite (ltakeWhile (Not \<circ> is_Data) (es ?os p))\<close> using Cons(3) lhd_es
+    by (cases x; simp add: ooo_input_os_Drop_Mint_def)
+      (metis lfinite_ltl ltl_ltakeWhile event.disc(2), metis lfinite_ltl ltl_ltakeWhile event.disc(3))
+  moreover have \<open>ldropWhile (Not \<circ> is_Data) (es ?os p) = LCons e lxs\<close> using Cons(4) lhd_LCons_ltl_es
+      lhd_es ldropWhile_simps(2) by (cases x; simp add: ooo_input_os_Drop_Mint_def; metis)
+  moreover have \<open>timely_monotone (es ?os p) (mset (ocaps ?os p))\<close>
+    using Cons(5) lhd_LCons_ltl_es lhd_es timely_monotone.cases mset_remove_last
+    by (cases x; simp add: ooo_input_os_Drop_Mint_def; fastforce)
+  moreover have \<open>os' = foldl (ooo_input_os_Drop_Mint p) (?os\<lparr>es := (es ?os)(p := lxs)\<rparr>) (list_of (ltakeWhile (Not \<circ> is_Data) (es ?os p)))\<close>
+  proof -
+    have \<open>os' = foldl (ooo_input_os_Drop_Mint p) (os\<lparr>es := (es os)(p := lxs)\<rparr>) (list_of (ltakeWhile (Not \<circ> is_Data) (LCons x (ltl (es os p)))))\<close>
+      using Cons(6) lhd_LCons_ltl_es lhd_es(2) by simp
+    also have \<open>\<dots> = foldl (ooo_input_os_Drop_Mint p) (os\<lparr>es := (es os)(p := lxs)\<rparr>) (list_of (LCons x (ltakeWhile (Not \<circ> is_Data) (ltl (es os p)))))\<close>
+      using lhd_es(1) by simp
+    also have \<open>\<dots> = foldl (ooo_input_os_Drop_Mint p) (os\<lparr>es := (es os)(p := lxs)\<rparr>) (x # list_of (ltakeWhile (Not \<circ> is_Data) (ltl (es os p))))\<close>
+      using Cons(3) list_of_LCons_conv lfinite_ltl lhd_es comp_apply event.disc(2) ltl_ltakeWhile
+      by (smt (z3))
+    also have \<open>\<dots> = foldl (ooo_input_os_Drop_Mint p) (ooo_input_os_Drop_Mint p (os\<lparr>es := (es os)(p := lxs)\<rparr>) x) (list_of (ltakeWhile (Not \<circ> is_Data) (ltl (es os p))))\<close>
+      by (simp add: ooo_input_os_Drop_Mint_def)
+    finally show ?thesis using lhd_es(1)
+      by (auto intro: arg_cong[where f=\<open>\<lambda>os. foldl _ os _\<close>] simp add: ooo_input_os_Drop_Mint_def split: event.splits)
+  qed
+  ultimately show ?case using Cons(1) by blast
+qed
 
 (* record ('p, 'd, 'd1, 'd2, 'd3, 't) input_state_ty3 = "('p, 'd, 'd1, 'd2, 't) input_state2" +  es3:: "('t, 'd3) event llist"
 

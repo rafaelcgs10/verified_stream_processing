@@ -22,7 +22,7 @@ corec sync_op where
      | LCons (p, x) lxs \<Rightarrow> 
        if (p, x) \<in> set buf then Write (sync_op op (remove1 (p, x) buf) lxs) p x else \<oslash>)"
 
-lemma step_sync_op_elim:
+(* lemma step_sync_op_elim:
   assumes "step io (sync_op op buf vios) op'"
   obtains p x lxs where "io = Out p x" "vios = LCons (p, x) lxs"
     "op' = sync_op op (remove1 (p, x) buf) lxs" "(p, x) \<in> set buf"
@@ -34,7 +34,7 @@ lemma step_sync_op_elim:
   apply (auto del: disjCI split: op.splits simp flip: cin.rep_eq split: if_splits llist.splits; hypsubst_thin?)
           apply fastforce+  
   done
-
+ *)
 
 
 

@@ -46,7 +46,7 @@ abbreviation init_operator_state_ty2 where
    input = (\<lambda> _. []),
    outpu = (\<lambda> _. []),
    front = undefined,
-   ocaps = (\<lambda> _. [\<bottom>]),
+   ocaps = (\<lambda> _. []),
    initia = False,
    nfron = False,
    en1 = Inl,
@@ -78,6 +78,14 @@ abbreviation "Max_spec inps \<equiv>
   (timestamps inps)"
 
 value [GHC] "check_prefix [VOut (1, 1) (Inr 7, MyPair 0 1)] test_op2"
+
+
+definition "r = check_prefix [VOut (1, 1) (Inr 10, MyPair 1 1)] test_op2"
+(* 
+value [GHC] r *)
+
+export_code r in Haskell module_name Test6
+ 
 
 lemma
   "set_op {||} {||} test_op2 \<approx> set_op (cimage (\<lambda> (p, x, t). ((2, p), Inr x, t)) (Max_spec inps2)) {||} \<oslash>"

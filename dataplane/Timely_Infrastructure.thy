@@ -80,7 +80,7 @@ lemma rmdups_insert_NilI:
    apply auto
   done
 
-definition "DEBUG = False"
+definition "DEBUG = True"
 
 definition "trace = (if DEBUG then Debug.tracing else (\<lambda> x y. y))"
 
@@ -684,27 +684,97 @@ abbreviation "consumes os p t d \<equiv> add_caps (os\<lparr> consu := consu os 
 
 corec builder_op where
   \<open>builder_op fb ips ops os logic =
-  (if initia os \<or> \<not> fb then
-  (choice5
-  (if \<exists> p. ocaps os p \<noteq> [] then
-    Choice (cimage (\<lambda> os. Silent (builder_op fb ips ops os logic)) (logic os))
-   else \<oslash>
-   )
-  (Choice (cimage (\<lambda>p. case outpu os p of
-    x # xs \<Rightarrow> send_output (builder_op fb ips ops (os\<lparr> outpu := (outpu os)(p := xs) \<rparr>) logic) p x)
-    (cfilter (\<lambda>p. outpu os p \<noteq> []) ops)))
-  (if consu os \<noteq> [] \<or> inter os \<noteq> [] \<or> produ os \<noteq> []
-   then
-   let (os', st) = obtain_progress os
-   in send_progress (builder_op fb ips ops os' logic) st
-   else \<oslash>)
-  (if fb then
-   Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op fb ips ops (os\<lparr> front := projr (projl st), nfron := \<not> (\<exists> p. ((projr (projl st)) p) = front os p) \<rparr>) logic else Code.abort (STR ''Builder_op breaks contract'') (\<lambda> _. \<oslash>))
-   else \<oslash>)
-  (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda> x. case x of Inl _ \<Rightarrow>  Code.abort (STR ''Builder_op breaks contract'') (\<lambda> _. \<oslash>)
-  | Inr (d, t) \<Rightarrow> builder_op fb ips ops (consumes os p t d) logic)) ips))
-  )else
-  (Read None (\<lambda> st. if isl st \<and> isr (projl st) then builder_op fb ips ops (os\<lparr> front := projr (projl st), initia := True, nfron := True \<rparr>) logic else Code.abort (STR ''Builder_op breaks contract'') (\<lambda> _. \<oslash>))))\<close>
+  (if initia os then choice5
+    (Choice (cimage (\<lambda>p. case outpu os p of
+      x # xs \<Rightarrow> send_output (builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic) p x)
+      (cfilter (\<lambda>p. outpu os p \<noteq> []) ops)))
+    (if consu os \<noteq> [] \<or> inter os \<noteq> [] \<or> produ os \<noteq> [] then
+      let (os', st) = obtain_progress os in send_progress (builder_op fb ips ops os' logic) st
+    else \<oslash>)
+    (if fb then Read None (\<lambda>x. case x of
+      Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f, nfron := \<forall>p. f p \<noteq> front os p\<rparr>) logic
+    | _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda>_. \<oslash>))
+     else \<oslash>)
+    (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda>x. case x of
+      Inr (d, t) \<Rightarrow> builder_op fb ips ops (consumes os p t d) logic
+    | Inl _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda> _. \<oslash>))) ips))
+     (if (\<not> fb \<and> (\<exists> p. ocaps os p \<noteq> [])) \<or> (fb \<and> (\<exists> p. filter (\<lambda> t. \<not> frontier_less_equal (front os p) t) (ocaps os p) \<noteq> [])) then
+      Choice (cimage (\<lambda> os. Silent (builder_op fb ips ops os logic)) (logic os))
+     else \<oslash>
+     )
+  else Read None (\<lambda>x. case x of
+    Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := True\<rparr>) logic
+  | _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda>_. \<oslash>)))\<close>
+(* 
+lemma step_builder_op_Read_None1[intro]:
+  assumes \<open>io = Inp None (Inl (Inr f))\<close> \<open>\<not> initia os\<close>
+    \<open>op = builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := True\<rparr>) logic\<close>
+  shows \<open>step io (builder_op fb ips ops os logic) op\<close>
+proof -
+  let ?g = \<open>\<lambda>x. case x of Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := True\<rparr>) logic | _ \<Rightarrow> \<oslash>\<close>
+  have \<open>Read None ?g |\<in>| choices (builder_op fb ips ops os logic)\<close>
+    using assms(2) by (subst (2) builder_op.code) force
+  moreover have \<open>?g (Inl (Inr f)) = op\<close>
+    using assms(3) by simp
+  ultimately show ?thesis
+    using assms(1) by blast
+qed
+
+lemma step_builder_op_Read_None2[intro]:
+  assumes \<open>io = Inp None (Inl (Inr f))\<close> \<open>initia os\<close>
+    \<open>op = builder_op True ips ops (os\<lparr>front := f, nfron := \<forall>p. f p \<noteq> front os p\<rparr>) logic\<close>
+  shows \<open>step io (builder_op True ips ops os logic) op\<close>
+proof -
+  let ?g = \<open>\<lambda>x. case x of Inl (Inr f) \<Rightarrow> builder_op True ips ops (os\<lparr>front := f, nfron := \<forall>p. f p \<noteq> front os p\<rparr>) logic | _ \<Rightarrow> \<oslash>\<close>
+  have \<open>Read None ?g |\<in>| choices (builder_op True ips ops os logic)\<close>
+    using assms(2) by (subst (2) builder_op.code) force
+  moreover have \<open>?g (Inl (Inr f)) = op\<close>
+    using assms(3) by simp
+  ultimately show ?thesis
+    using assms(1) by blast
+qed
+
+lemma step_builder_op_Read_Some[intro]:
+  assumes \<open>io = Inp (Some p) (Inr (d, t))\<close> \<open>initia os\<close> \<open>p |\<in>| ips\<close>
+    \<open>op = builder_op fb ips ops (consumes os p t d) logic\<close>
+  shows \<open>step io (builder_op fb ips ops os logic) op\<close>
+proof -
+  let ?f = \<open>\<lambda>x. case x of Inr (d, t) \<Rightarrow> builder_op fb ips ops (consumes os p t d) logic | Inl _ \<Rightarrow> \<oslash>\<close>
+  have \<open>Read (Some p) ?f |\<in>| choices (builder_op fb ips ops os logic)\<close>
+    using assms(2,3) by (subst (2) builder_op.code) fastforce
+  moreover have \<open>?f (Inr (d, t)) = op\<close>
+    using assms(4) by simp
+  ultimately show ?thesis
+    using assms(1) by blast
+qed
+
+lemma step_builder_op_Write_None[intro]:
+  \<open>io = Out None (Inl (Inl st)) \<Longrightarrow> initia os \<Longrightarrow> consu os \<noteq> [] \<or> inter os \<noteq> [] \<or> produ os \<noteq> [] \<Longrightarrow>
+  (os', st) = obtain_progress os \<Longrightarrow> op = builder_op fb ips ops os' logic \<Longrightarrow>
+  step io (builder_op fb ips ops os logic) op\<close>
+  by (subst builder_op.code) auto
+
+lemma step_builder_op_Write_Some[intro]:
+  assumes \<open>io = Out (Some p) (Inr x)\<close> \<open>initia os\<close> \<open>p |\<in>| ops\<close> \<open>outpu os p = x # xs\<close>
+    \<open>op = builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic\<close>
+  shows \<open>step io (builder_op fb ips ops os logic) op\<close>
+  using assms
+proof -
+  have \<open>send_output op p x |\<in>| choices (builder_op fb ips ops os logic)\<close>
+    using assms(2-) by (subst builder_op.code) force
+  thus ?thesis using assms(1) by blast
+qed
+
+lemma step_builder_op_Silent[intro]:
+  assumes \<open>io = Tau\<close> \<open>initia os\<close> \<open>ocaps os p \<noteq> []\<close> \<open>os' |\<in>| logic os\<close>
+    \<open>op = builder_op fb ips ops os' logic\<close>
+  shows \<open>step io (builder_op fb ips ops os logic) op\<close>
+proof -
+  have \<open>Silent op |\<in>| choices (builder_op fb ips ops os logic)\<close> using assms(2-)
+    by (subst builder_op.code) auto
+  thus ?thesis using assms(1) by blast
+qed
+ *)
 
 definition notifier_op where
   "notifier_op ips ops os logic = (builder_op True ips ops (os\<lparr> nfron := False \<rparr>) 

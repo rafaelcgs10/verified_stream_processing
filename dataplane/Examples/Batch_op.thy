@@ -14,7 +14,7 @@ definition batch_op where
   "batch_op ips ops comb os logic = notifier_op ips ops os 
    (\<lambda> os compl_caps.
     let comb_caps = comb compl_caps in
-    if (\<forall> p. comb_caps p = []) then {||} else
+    if (\<forall> p. comb_caps p = []) then trace (STR ''No capabilities'') {||} else
     let compl_batches = (\<lambda> p t. map (de1 os o fst) (filter (\<lambda> (d, t'). t' = t \<and> t \<in> set (comb_caps p)) (input os p))) in
     let ts = (\<lambda> p. rmdups {} (map snd (filter (\<lambda> (d, t). t \<in> set (comb_caps p)) (input os p)))) in
     let os = os\<lparr> input := (\<lambda> p. filter (\<lambda> (d, t). t \<notin> set (comb_caps p)) (input os p)) \<rparr> in
