@@ -19,7 +19,9 @@ definition batch_op where
     let ts = (\<lambda> p. rmdups {} (map snd (filter (\<lambda> (d, t). t \<in> set (comb_caps p)) (input os p)))) in
     let os = os\<lparr> input := (\<lambda> p. filter (\<lambda> (d, t). t \<notin> set (comb_caps p)) (input os p)) \<rparr> in
     let outs_drops = logic compl_batches ts comb_caps in
-    cimage (\<lambda> (outs, drops). drop_caps (produces os (map (\<lambda> (d, cap). (en2 os d, cap)) outs)) drops) outs_drops)"
+    cimage (\<lambda> (outs, drops). 
+    trace (STR ''outs: '' + show_nat (length outs) + STR '' , drops: '' + show_nat (length drops))
+    (drop_caps (produces os (map (\<lambda> (d, cap). (en2 os d, cap)) outs)) drops)) outs_drops)"
 
 
 definition batch_fun_op where

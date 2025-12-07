@@ -71,21 +71,25 @@ term DEBUG
 
 find_theorems Max fold
 
+term test_op2
+
 abbreviation "timestamps inps \<equiv> cset_of_llist (lmap (\<lambda> ev. case ev of Data t d \<Rightarrow> t) (lfilter is_Data inps))"
 
 abbreviation "Max_spec inps \<equiv> 
   cimage (\<lambda> t. (1 :: 1, Max (set (list_of (lmap (\<lambda> ev. case ev of Data _ d \<Rightarrow> d) (lfilter (\<lambda> ev. case ev of Data t' d \<Rightarrow> t = t' | _ \<Rightarrow> False) inps)))), t))
   (timestamps inps)"
 
-value [GHC] "check_prefix [VOut (1, 1) (Inr 7, MyPair 0 1)] test_op2"
+value [GHC] "check_prefix 100 [((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1)),((1, 1), (Inr 3, MyPair 1 0))] test_op2"
+value [GHC] "check_prefix 100 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] test_op2"
+value [GHC] "check_prefix 100 [((1, 1), (Inr 3, MyPair 1 0)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1))] test_op2"
 
 
-definition "r = check_prefix [VOut (1, 1) (Inr 10, MyPair 1 1)] test_op2"
-(* 
-value [GHC] r *)
 
-export_code r in Haskell module_name Test6
- 
+definition "r = find_output_at test_op2 ((1, 1), (Inr 10, MyPair 1 1)) 100"
+
+value [GHC] r 
+
+
 
 lemma
   "set_op {||} {||} test_op2 \<approx> set_op (cimage (\<lambda> (p, x, t). ((2, p), Inr x, t)) (Max_spec inps2)) {||} \<oslash>"
