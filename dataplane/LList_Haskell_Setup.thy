@@ -15,7 +15,9 @@ lemma one_plus[code]:
   by auto
 
 partial_function (llist) lrmdups_aux where
-  "lrmdups_aux f S lxs = (case lxs of LNil \<Rightarrow> LNil | LCons x lxs \<Rightarrow> (if f x \<in> S then lrmdups_aux f S lxs else LCons x (lrmdups_aux f (insert (f x) S) lxs)))"
+  "lrmdups_aux f S lxs = 
+ (case lxs of LNil \<Rightarrow> LNil |
+ LCons x lxs \<Rightarrow> (if f x \<in> S then lrmdups_aux f S lxs else LCons x (lrmdups_aux f (insert (f x) S) lxs)))"
 declare lrmdups_aux.simps[code]
 
 
@@ -26,12 +28,12 @@ lemma cminus_code[code]:
 
 definition "lrmdups f = lrmdups_aux f {}"
 
-definition "crmdups (f :: 'a \<Rightarrow> 'b) (C :: 'a cset) = C"
+definition "crmdups (f :: 'a \<Rightarrow> ('b :: equal)) (C :: 'a cset) = C"
 declare crmdups_def[code del]
 
 lemma crmdups_code[code]:
   "crmdups f (cset_of_llist xs) = cset_of_llist (lrmdups f xs)"
-  oops
+  sorry
 
 definition "compress_cfilter P xs = cfilter P xs"
 
@@ -62,6 +64,8 @@ declare ccard_def[code del]
 lemma ccard_code[code]:
   "ccard (cset_of_llist xs) = length (list_of xs)"
   sorry
+
+term lrmdups
 
 code_printing code_module "Cset" \<rightharpoonup> (Haskell)
 \<open>
@@ -159,10 +163,17 @@ code_printing
 (*   | constant lmerge \<rightharpoonup>
     (Haskell) "Prelude.concat" *)
 
+term lrmdups
 
-fun wsteps_at :: "('i, 'o, 'd :: countable) op \<Rightarrow> _" where
+term crmdups
+
+find_consts name: f
+
+thm cUnion_code
+
+fun wsteps_at where
   "wsteps_at (Write op p x) n = {|(VOut p x, op)|}"
-| "wsteps_at (Read p f) n = cimage (\<lambda>x. (VInp p x, f x)) (cUNIV :: 'd cset)"
+| "wsteps_at (Read p f) n = Code.abort (STR ''wsteps_at should not read'') undefined"
 | "wsteps_at (Silent op) (Suc n) = wsteps_at op n"
 | "wsteps_at (Choice ops) (Suc n) = cUnion (cimage (\<lambda> op. wsteps_at op n) ops)"
 | "wsteps_at op 0 = {||}"
@@ -172,7 +183,7 @@ definition "wsteps_exec op = cUnion (cimage (wsteps_at op) cUNIV)"
 lemma wsteps_exec_Write[simp]: "wsteps_exec (Write op p x) = {|(VOut p x, op)|}"
   unfolding wsteps_exec_def by (auto simp: cset_eq_iff)
 
-lemma wsteps_exec_Read[simp]: "wsteps_exec (Read p f) = cimage (\<lambda>x. (VInp p x, f x)) (cUNIV :: _ cset)"
+lemma wsteps_exec_Read[simp]: "wsteps_exec (Read p f) = Code.abort (STR ''wsteps_at should not read'') undefined"
   unfolding wsteps_exec_def by (auto simp: cset_eq_iff)
 
 lemma wsteps_exec_Silent[simp]:
@@ -193,7 +204,7 @@ lemma wsteps_exec_Silent[simp]:
 
 lemma wsteps_exec_Choice[simp]:
   "wsteps_exec (Choice ops) = cUnion (wsteps_exec |`| ops)"
-  unfolding wsteps_exec_def
+   unfolding wsteps_exec_def
   apply safe
   subgoal premises prems for a b n
     using prems(2-) apply -
@@ -205,7 +216,8 @@ lemma wsteps_exec_Choice[simp]:
     apply (rule exI[of _ "Suc n"])
     apply auto
     done
-  done
+  done 
+
 
 declare wsteps_exec_def[code del]
 lemmas wsteps_exec_code[code] = wsteps_exec_Read wsteps_exec_Write wsteps_exec_Silent wsteps_exec_Choice
@@ -220,12 +232,25 @@ lemma acset_code[code]:
   "acset S = cset_of_llist (lfilter (\<lambda> x. x \<in> S) cenum)"
   unfolding cset_of_llist_def map_fun_def o_apply id_apply using UNIV_cenum by auto
 
+term ccard
+
+fun find_output_at where
+  "find_output_at (Write op p x) (p', x') n = (if p' = p \<and> x' = x then Some op else None)"
+| "find_output_at (Read p f) x n = Code.abort (STR ''steps_of should not read'') undefined"
+| "find_output_at (Silent op) x (Suc n) = find_output_at op x n"
+| "find_output_at (Choice ops) x (Suc n) = (
+   let ops' = cfilter (Not o is_None) (cimage (\<lambda> op. find_output_at op x n) ops) in
+   (if ops' = {||} then None else cthe_elem ops'))"
+| "find_output_at op x _ = None"
+
 fun check_prefix where
-  "check_prefix [] op = True"
-| "check_prefix (io # ios) op = 
-  (let ios_ops = cfilter (\<lambda> (io', op). io = io') (wsteps_exec op) in
-   if ios_ops = {||} then False
-   else
-   True |\<in>| (cimage (check_prefix ios) (cimage snd ios_ops)))"
+  "check_prefix n [] op = True"
+| "check_prefix n (io # ios) op = 
+  (case find_output_at op io n of
+     None \<Rightarrow> False
+   | Some op \<Rightarrow> check_prefix n ios op)"
+
+
+
 
 end

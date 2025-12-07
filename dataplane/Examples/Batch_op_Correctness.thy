@@ -7,7 +7,6 @@ imports
   "../MyProduct_Instances"
   "../AntichainOrder"
    Dataplane.LList_Haskell_Setup
-  Set_op
   Source_op
 begin
 
@@ -47,7 +46,7 @@ abbreviation init_operator_state_ty2 where
    input = (\<lambda> _. []),
    outpu = (\<lambda> _. []),
    front = undefined,
-   ocaps = (\<lambda> _. [\<bottom>]),
+   ocaps = (\<lambda> _. []),
    initia = False,
    nfron = False,
    en1 = Inl,
@@ -61,16 +60,10 @@ abbreviation "test_dt2 \<equiv> Comp [(0, 1) \<mapsto> (0, 1)] (l1 (\<lambda> _.
 
 abbreviation "test_op2 \<equiv> compile_dataflow test_dt2 :: (2 \<times> 1, 2 \<times> 1, _) op"
 
-abbreviation "set_op_test \<equiv> set_op {||} {||} test_op2"
 
-
-(* 
-value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op1)"
- *)
+value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op2)"
 
 find_theorems cUn name: code
-
-value [GHC] "trace_exec set_op_test"
 
 value "frontier {# t_1_1, t_0_1, t_1_0 #}\<^sub>z"
 
@@ -78,19 +71,25 @@ term DEBUG
 
 find_theorems Max fold
 
+term test_op2
+
 abbreviation "timestamps inps \<equiv> cset_of_llist (lmap (\<lambda> ev. case ev of Data t d \<Rightarrow> t) (lfilter is_Data inps))"
 
 abbreviation "Max_spec inps \<equiv> 
   cimage (\<lambda> t. (1 :: 1, Max (set (list_of (lmap (\<lambda> ev. case ev of Data _ d \<Rightarrow> d) (lfilter (\<lambda> ev. case ev of Data t' d \<Rightarrow> t = t' | _ \<Rightarrow> False) inps)))), t))
   (timestamps inps)"
 
-value [GHC] "trace_exec (set_op (Max_spec inps2) {||} (\<oslash> :: (1, _, _) op))"
+value [GHC] "check_prefix 100 [((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1)),((1, 1), (Inr 3, MyPair 1 0))] test_op2"
+value [GHC] "check_prefix 100 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] test_op2"
+value [GHC] "check_prefix 100 [((1, 1), (Inr 3, MyPair 1 0)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1))] test_op2"
 
-value [GHC] "check_prefix [VOut 1 (3, MyPair 1 0)] (set_op (Max_spec inps2) {||} (\<oslash> :: (1, _, _) op))"
 
-value [GHC] "check_prefix [VOut (1, 1) (Inr 3, MyPair 1 0)] set_op_test"
 
-value [GHC] "check_prefix [VOut (1, 1) (Inr 7, MyPair 0 1)] test_op2"
+definition "r = find_output_at test_op2 ((1, 1), (Inr 10, MyPair 1 1)) 100"
+
+value [GHC] r 
+
+
 
 lemma
   "set_op {||} {||} test_op2 \<approx> set_op (cimage (\<lambda> (p, x, t). ((2, p), Inr x, t)) (Max_spec inps2)) {||} \<oslash>"
