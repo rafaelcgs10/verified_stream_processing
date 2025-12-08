@@ -23,7 +23,7 @@ abbreviation init_input_state where
    outpu = (\<lambda> _. []),
    front = Code.abort (STR ''Frontier of op1 not initialized'') (\<lambda> _ _. antichain_from_list []),
    ocaps = (\<lambda> _. [\<bottom>]),
-   initia = True,
+   initia = False,
    nfron = False,
    en1 = id,
    de1 = id,
@@ -40,7 +40,7 @@ abbreviation init_operator_state_ty2 where
    outpu = (\<lambda> _. []),
    front = Code.abort (STR ''Frontier of op2 not initialized'') (\<lambda> _ _. antichain_from_list []),
    ocaps = (\<lambda> _. []),
-   initia = True,
+   initia = False,
    nfron = False,
    en1 = id,
    de1 = id,
@@ -78,11 +78,11 @@ definition "my_summ = (\<lambda> l1 l2.
 
 abbreviation \<open>sg \<equiv> init_subgraph my_summ (map (\<lambda> (nid, p). (Loc nid (Src p), bot, 1)) (List.product Enum.enum Enum.enum))\<close>
 
-abbreviation "dt \<equiv> (dataflow_op sg op) :: (unit, 2 \<times> 1, (nat \<times> nat) \<times> nat) op"
+abbreviation "dt \<equiv> (dataflow_op sg op) :: (2 \<times> 1, 2 \<times> 1, (nat \<times> nat) \<times> nat) op"
 
 term DEBUG
 
-definition "r = trace_exec dt"
+definition "r = (trace_exec dt :: (2 \<times> 1, 2 \<times> 1, (nat \<times> nat) \<times> nat) VIO llist)"
 
 value [GHC] r
 

@@ -687,7 +687,7 @@ abbreviation "consumes os p t d \<equiv> add_caps (os\<lparr> consu := consu os 
 corec builder_op where
   \<open>builder_op fb ips ops os logic =
   (if initia os then choice5
-    (if \<exists>p. ocaps os p \<noteq> [] \<or> front os p \<noteq> frontier {#}\<^sub>z then
+    (if \<exists>p. ocaps os p \<noteq> [] then
       Choice (cimage (\<lambda>os. Silent (builder_op fb ips ops os logic)) (logic os))
     else \<oslash>)
     (Choice (cimage (\<lambda>p. case outpu os p of
@@ -722,7 +722,7 @@ lemma step_builder_op_elim:
     \<open>op = builder_op fb ips ops os' logic\<close>
   | (write_data) p x xs where \<open>io = Out (Some p) (Inr x)\<close> \<open>initia os\<close> \<open>p |\<in>| ops\<close> \<open>outpu os p = x # xs\<close>
     \<open>op = builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic\<close>
-  | (silent) os' where \<open>io = Tau\<close> \<open>initia os\<close> \<open>\<exists>p. ocaps os p \<noteq> [] \<or> front os p \<noteq> frontier {#}\<^sub>z\<close>
+  | (silent) os' where \<open>io = Tau\<close> \<open>initia os\<close> \<open>\<exists>p. ocaps os p \<noteq> []\<close>
     \<open>os' |\<in>| logic os\<close> \<open>op = builder_op fb ips ops os' logic\<close>
 proof (cases io)
   case (Inp p x)
@@ -794,7 +794,7 @@ next
 next
   case Tau
   hence initialized: \<open>initia os\<close> using assms by (subst (asm) builder_op.code) (auto split: if_splits)
-  moreover from this have \<open>\<exists>p. ocaps os p \<noteq> [] \<or> front os p \<noteq> frontier {#}\<^sub>z\<close> using Tau assms
+  moreover from this have \<open>\<exists>p. ocaps os p \<noteq> []\<close> using Tau assms
     by (subst (asm) builder_op.code) (auto split: if_splits list.splits)
   moreover obtain os' where \<open>os' |\<in>| logic os\<close> \<open>op = builder_op fb ips ops os' logic\<close>
   proof -
@@ -859,7 +859,7 @@ proof -
 qed
 
 lemma step_builder_op_Silent[intro]:
-  assumes \<open>io = Tau\<close> \<open>initia os\<close> \<open>ocaps os p \<noteq> [] \<or> front os p \<noteq> frontier {#}\<^sub>z\<close> \<open>os' |\<in>| logic os\<close>
+  assumes \<open>io = Tau\<close> \<open>initia os\<close> \<open>ocaps os p \<noteq> []\<close> \<open>os' |\<in>| logic os\<close>
     \<open>op = builder_op fb ips ops os' logic\<close>
   shows \<open>step io (builder_op fb ips ops os logic) op\<close>
 proof -
