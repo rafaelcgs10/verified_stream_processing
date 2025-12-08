@@ -91,7 +91,7 @@ definition label_propagation_op_logic where
        output_times = filter P (ocaps os 0);
        batch = map (\<lambda>t. let cap = Cap t 0; t1 = myfst t in
         (en2 os (group_by (\<lambda>v1 v2. label os t1 v1 = label os t1 v2) (vertices os t1)), cap)) output_times
-   in {|drop_caps (produces os batch) (map (\<lambda>t. Cap t 0) output_times @ map (\<lambda>t. Cap t 1) output_times)|})\<close>
+   in {|drop_caps (produces os batch) (map (\<lambda>t. Cap t 0) output_times @ map (\<lambda>t. Cap t 1) (filter P (ocaps os 1)))|})\<close>
 
 definition label_propagation_op where
   \<open>label_propagation_op os = builder_op cUNIV cUNIV os label_propagation_op_logic\<close>
