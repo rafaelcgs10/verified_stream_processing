@@ -341,6 +341,25 @@ lemma set_spec_op_trace_eq_set_spec_op_trace_alt:
   "set_spec_op_trace S S' ios \<longleftrightarrow> set_spec_op_trace_alt S S' ios"
   using set_spec_op_trace_completeness set_spec_op_trace_soundness by blast
 
+lemma wfinished_set_spec_op:
+  "wfinished (set_spec_op S S') \<Longrightarrow> csubset_eq S S'"
+  apply (clarsimp del: disjCI simp flip: cin.rep_eq simp add: less_eq_cset.rep_eq subset_minus_empty cinfinite_def enat_0_iff minus_cset.rep_eq split: op.splits if_splits; hypsubst_thin?)
+  apply (rule ccontr)
+  using step_set_spec_op_intro_Out[of _ _ _S S', rotated] apply -
+  apply (drule meta_spec)+
+  apply (drule meta_mp)
+   apply assumption
+  apply (drule meta_mp)
+   apply assumption
+  apply (drule meta_mp)
+   apply (rule refl)
+  apply (drule meta_mp)
+   apply (rule refl)
+  unfolding wfinished_no_wstep
+  apply auto
+  apply (metis IO.simps(8) vio_of_io_inverse)
+  done
+
 lemma wtraced_set_spec_op_soundness:
   "wtraced (set_spec_op S S') ios \<Longrightarrow> set_spec_op_trace S S' ios"
   unfolding set_spec_op_trace_eq_set_spec_op_trace_alt
@@ -348,11 +367,7 @@ lemma wtraced_set_spec_op_soundness:
   subgoal for ios S S'
         apply (erule wtraced.cases)
     subgoal for op
-      apply simp
-      apply hypsubst_thin
-      unfolding wfinished_no_wstep
-      apply simp
-      sorry
+      using wfinished_set_spec_op by auto
     subgoal for vio op op' lxs
       apply (clarsimp del: disjCI simp flip: cin.rep_eq simp add: less_eq_cset.rep_eq subset_minus_empty cinfinite_def enat_0_iff minus_cset.rep_eq split: op.splits if_splits; hypsubst_thin?)
       apply (cases vio; simp)
@@ -383,57 +398,38 @@ lemma wtraced_set_spec_op_completeness:
     done
   done
 
-definition "trace_set S S' ios ios' =
-  (ldistinct ios' \<and> (\<forall> vio \<in> lset ios. \<not> is_VInp vio) \<and>
-  ((cUn (cimage (\<lambda> io. case io of VOut p x \<Rightarrow> (p, x)) (cset_of_llist ios)) S) - S' =
-  cimage (\<lambda> io. case io of VOut p x \<Rightarrow> (p, x)) (cset_of_llist ios')))"
+lemma wtraced_set_spec_op_correctness:
+  "wtraced (set_spec_op S S') ios \<longleftrightarrow> set_spec_op_trace S S' ios"
+  using wtraced_set_spec_op_completeness wtraced_set_spec_op_soundness by force
 
-lemma wstep_set_op_elim:
-  assumes "wstep (Out p x) (set_op S S' op) op'"
-  obtains vios op2 where
-   "wsteps vios op op2" "\<forall> io \<in> set vios. \<not> is_VInp io"
-   "op' = set_op (cUn S (cimage (\<lambda> io. case io of VOut p x \<Rightarrow> (p, x)) (cset_of_llist (llist_of vios)))) (cinsert (p, x) S') op2"
-  oops
+lemma set_op_wbisim_set_spec_op_wtraces_gen:
+  "set_op S S' op \<approx> set_spec_op S S' \<Longrightarrow>
+   wtraces (set_op S S' op) = {ios. set_spec_op_trace S S' ios}"
+  unfolding wtraces_def using wbisim_sym wbisim_wtraced wtraced_set_spec_op_correctness by blast
 
-lemma not_step_set_op:
-  "(p, x) |\<in>| S' \<Longrightarrow>
-   \<not> step (Out p x) (set_op S S' op) op'"
-  oops
-
-lemma wsteps_never_produces_vio:
-  "(\<forall> op' vios. wsteps vios op op' \<longrightarrow> vio \<notin> set vios) \<Longrightarrow> wtraced op vios \<Longrightarrow> vio \<notin> lset vios"
-  oops
-
+lemma set_op_wbisim_set_spec_op_wtraces:
+  "set_op {||} {||} op \<approx> set_spec_op S {||} \<Longrightarrow>
+   wtraces (set_op {||} {||} op) = {ios. ldistinct ios \<and> (cset_of_llist ios \<le> cimage (\<lambda> (p, x). VOut p x) S) \<and> llength ios = eccard S}"
+  by (smt (verit) Collect_cong cDiff_cempty set_spec_op_trace_def wbisim_wtraces wtraced_set_spec_op_correctness wtraces_def)
 
 lemma
-  "wtraced op ios \<Longrightarrow>
-   wtraced (set_op S S' op) ios' \<Longrightarrow>
-   trace_set S S' ios ios'"
-   unfolding trace_set_def
-    apply (intro conjI)
-    subgoal
-apply (coinduction arbitrary: ios ios' S S' op)
-      subgoal for ios ios' S S' op
-        apply (erule wtraced.cases)
-        back
-        subgoal
-          by clarsimp
-        subgoal for vio op'' op' lxs
-          apply clarsimp
-          apply hypsubst_thin
-          apply (cases vio; simp; hypsubst_thin)
-          subgoal sorry
-          subgoal for p x
-            apply (intro conjI)
-            subgoal
-              oops
-
-
-(* lemma
-  "wtraces (set_op op) = (wtraces op)"
+  "set_op {||} {||} op \<approx> set_spec_op S {||} \<Longrightarrow>
+   wtraced op ios \<Longrightarrow>
+   VOut p x \<in> lset ios \<Longrightarrow>
+   (p, x) |\<in>| S"
+  apply (frule wbisim_wtraces)
+  apply (subst (asm) set_op_wbisim_set_spec_op_wtraces)
+   apply assumption
   unfolding wtraces_def
-  apply auto
-  subgoal for vios
-    oops
- *)
+
+  find_theorems wtraces wbisim
+
+  oops
+
+lemma
+  "set_op {||} {||} op \<approx> set_spec_op S {||} \<Longrightarrow>
+   (p, x) |\<in>| S \<Longrightarrow>
+   \<exists> ios. wtraced op ios \<and> VOut p x \<in> lset ios"
+  oops
+
 end
