@@ -169,9 +169,13 @@ lemma set_op_bisim_set_spec_op:
     done
   done
 
+lemma
+  "set_op {||} {||} op \<approx> set_spec_op S {||}"
+  oops
+
+
 definition "set_spec_op_trace S S' ios =
-  (ldistinct ios \<and> (\<forall> vio \<in> lset ios. \<not> is_VInp vio) \<and>
-  (cset_of_llist ios = cimage (\<lambda> (p, x). VOut p x) (S - S')))"
+  (ldistinct ios \<and> (cset_of_llist ios \<le> cimage (\<lambda> (p, x). VOut p x) (S - S')))"
 
 coinductive set_spec_op_trace_alt where
   "S - S' = {||} \<Longrightarrow> set_spec_op_trace_alt S S' LNil"

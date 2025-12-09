@@ -7,14 +7,12 @@ begin
 
 record ('p, 'd, 'd1, 't) increment_state = \<open>('p, 'd, 'd1, 't) operator_state_ty\<close> + incr :: \<open>'p \<Rightarrow> 't\<close>
 
-definition increment_op_logic where
-  \<open>increment_op_logic ops os = cimage (\<lambda>p. case input os p of (d, t) # xs \<Rightarrow>
-    let cap = Cap (t + incr os p) p
-    in drop_cap (produce (os\<lparr>input := (input os)(p := xs)\<rparr>) cap [en1 os d]) cap)
-    (cfilter (\<lambda>p. input os p \<noteq> []) ops)\<close>
-
-definition increment_op where
-  \<open>increment_op ips ops os = builder_op False ips ops os (increment_op_logic ops)\<close>
-
+definition \<open>increment_op ip op inc os = builder_op False {|ip|} {|op|} os (\<lambda> os. {|
+      let result = map (\<lambda> (d, t). (d, t + inc)) (input os ip) in
+      let os =  trace (STR ''producing from incr op'') (produces os (map (\<lambda> (d, t). (d, Cap t op)) result)) in
+      let os = drop_caps os (concat (map (\<lambda> p. map (\<lambda> t. Cap t p) (ocaps os p)) Enum.enum)) in
+      os\<lparr> input := (\<lambda> p. []) \<rparr>
+    |}
+   )\<close>
 
 end

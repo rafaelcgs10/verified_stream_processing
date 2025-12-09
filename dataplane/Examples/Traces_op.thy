@@ -8,8 +8,12 @@ begin
 corec traces_op where
   "traces_op (S :: ('p :: {countable,defaults} \<Rightarrow> ('d :: cenum) llist) set) =
    (Choice (cimage 
-   (\<lambda> p. let hds = acset ((\<lambda> f. lhd (f p)) ` (Set.filter (\<lambda> f. f p \<noteq> LNil) S)) in Choice (cimage (\<lambda> x. Write (traces_op ((\<lambda> f. f(p := ltl (f p))) ` {f \<in> S. lhd (f p) = x})) p x) hds))
+   (\<lambda> p. let hds = acset ((\<lambda> f. lhd (f p)) ` 
+   (Set.filter (\<lambda> f. f p \<noteq> LNil) S)) in 
+   Choice (cimage (\<lambda> x. Write (traces_op ((\<lambda> f. f(p := ltl (f p))) ` {f \<in> S. lhd (f p) = x})) p x) hds))
    c\<UU>))"
+
+term "traces_op { f.  (\<forall> p. ldistinct (f p) \<and> lset (f p) \<subseteq> S) }"
 
 lemma step_traces_op_elim:
   assumes "step io (traces_op S) op"
