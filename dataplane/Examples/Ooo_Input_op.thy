@@ -2,7 +2,7 @@ theory Ooo_Input_op
 
 imports
   Dataplane.Timely_Stream
-  "../Timely_Infrastructure"
+  Source_op
 begin
 
 record ('p, 'd, 'd1, 't) input_state = "('p, 'd, 'd1, 't) operator_state_ty" + es:: "'p \<Rightarrow> ('t, 'd1) event llist"
@@ -44,7 +44,8 @@ definition ooo_input_os_Drop_Mint where
 
 lemma foldl_ooo_input_os_Drop_Mint:
   assumes \<open>\<forall>e \<in> set xs. \<not> is_Data e\<close> \<open>os' = foldl (ooo_input_os_Drop_Mint p) (os\<lparr>es := (es os)(p := lxs)\<rparr>) xs\<close>
-  shows \<open>initia os \<Longrightarrow> initia os'\<close> \<open>outpu os p = ys \<Longrightarrow> outpu os' p = ys\<close> \<open>en1 os = f \<Longrightarrow> en1 os' = f\<close> \<open>es os' p = lxs\<close>
+  shows \<open>initia os \<Longrightarrow> initia os'\<close> \<open>outpu os' = outpu os\<close> \<open>p' \<noteq> p \<Longrightarrow> ocaps os' p' = ocaps os p'\<close>
+    \<open>en1 os' = en1 os\<close> \<open>es os' = (es os)(p := lxs)\<close>
   using assms
 proof (induction xs arbitrary: os)
   case (Cons x xs)
@@ -61,15 +62,18 @@ proof (induction xs arbitrary: os)
     hence \<open>initia ?os\<close> using H1 by (cases x; simp add: ooo_input_os_Drop_Mint_def)
     thus \<open>initia os'\<close> using Cons(1) H1 os'_alt by fastforce
   next
-    assume \<open>outpu os p = ys\<close>
-    hence \<open>outpu ?os p = ys\<close> using H1 by (cases x; simp add: ooo_input_os_Drop_Mint_def)
-    thus \<open>outpu os' p = ys\<close> using Cons(2) H1 os'_alt by fastforce
+    have \<open>outpu ?os = outpu os\<close> using H1 by (cases x; simp add: ooo_input_os_Drop_Mint_def)
+    thus \<open>outpu os' = outpu os\<close> using Cons(2) H1 os'_alt by fastforce
   next
-    assume \<open>en1 os = f\<close>
-    hence \<open>en1 ?os = f\<close> using H1 by (cases x; simp add: ooo_input_os_Drop_Mint_def)
-    thus \<open>en1 os' = f\<close> using Cons(3) H1 os'_alt by fastforce
+    assume p': \<open>p' \<noteq> p\<close>
+    hence \<open>ocaps ?os p' = ocaps os p'\<close> using H1 by (cases x; simp add: ooo_input_os_Drop_Mint_def)
+    thus \<open>ocaps os' p' = ocaps os p'\<close> using Cons(3) H1 os'_alt p' by fastforce
   next
-    show \<open>es os' p = lxs\<close> using Cons(4) H1 os'_alt by fastforce
+    have \<open>en1 ?os = en1 os\<close> using H1 by (cases x; simp add: ooo_input_os_Drop_Mint_def)
+    thus \<open>en1 os' = en1 os\<close> using Cons(4) H1 os'_alt by fastforce
+  next
+    have \<open>(es ?os)(p := lxs) = (es os)(p := lxs)\<close> using H1 by (cases x; simp add: ooo_input_os_Drop_Mint_def)
+    thus \<open>es os' = (es os)(p := lxs)\<close> using Cons(5) H1 os'_alt by fastforce
   }
 qed simp_all
 
@@ -189,6 +193,172 @@ next
     ultimately show ?thesis using LCons(3,5,10,11) ooo_input_op_def by blast
   qed
   ultimately show ?case by (rule transitive_closurep_trans'(6))
+qed
+
+abbreviation ooo_inp_op where
+  \<open>ooo_inp_op os \<equiv>
+  map_op (case_option (Inl (0 :: 1)) (\<lambda>p. Inr (0 :: 1, p))) (case_option (Inl (0 :: 1)) (\<lambda>p. Inr (0 :: 1, p)))
+  (ooo_input_op c\<UU> os)\<close>
+
+lemma ooo_input_op_source_op:
+  \<open>initia os \<Longrightarrow> en1 os = f \<Longrightarrow> inj f \<Longrightarrow> \<forall>p. timely_monotone (es os p) (mset (ocaps os p)) \<Longrightarrow>
+  dataflow_op sg (ooo_inp_op os) \<approx> map_op (\<lambda>p. (0, p)) (\<lambda>p. (0, p))
+    (source_op (\<lambda>p. outpu os p @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os p))))\<close>
+  unfolding ooo_input_op_def ooo_input_op_logic_def
+proof (coinduction arbitrary: sg os rule: wbisim_coinduct_upto'')
+  case SIM1
+  then show ?case
+    apply (elim step_dataflow_op_elim step_map_op_elim step_builder_op_elim conjE; simp; hypsubst_thin?; simp)
+    subgoal
+      apply (intro exI conjI)
+       apply (rule step_wstep)
+       apply (rule step_map_op)
+        apply (rule step_source_op_Out_intro)
+          apply (simp_all add: \<UU>_def)
+      apply (rule wbc_base)
+      apply (intro exI conjI)
+          apply (rule refl)
+         apply (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op])
+      done
+    subgoal
+      apply (intro exI conjI)
+       apply (rule rtranclp.intros(1))
+      apply (rule wbc_base)
+      apply (intro exI conjI)
+          apply (rule refl)
+         apply (auto 0 0 intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] arg_cong[where f=\<open>lshift _\<close>] simp add: produce_def fun_eq_iff simp del: mset_list_diff split: llist.splits event.splits)
+      subgoal for p _ p'
+        apply (cases \<open>p = p'\<close>; simp?)
+        apply (rule timely_monotone.LNil)
+        done
+      subgoal for p
+        apply (drule spec[of _ p])
+        using timely_monotone.cases apply auto
+        done
+      subgoal for p
+        apply (drule spec[of _ p])
+        using timely_monotone.cases apply auto
+        done
+      subgoal for p
+        apply (drule spec[of _ p])
+        using timely_monotone.cases apply auto
+        done
+      done
+    subgoal
+      apply (intro exI conjI)
+       apply (rule rtranclp.intros(1))
+      apply (rule wbc_base)
+      apply (intro exI conjI)
+          apply (rule refl)
+         apply auto
+      done
+    done
+next
+  case SIM2
+  then show ?case
+    apply (elim step_map_op_elim step_source_op_elim conjE; simp; hypsubst_thin?; simp)
+    subgoal for p x lxs
+      apply (cases x; cases \<open>outpu os p\<close>; simp)
+      subgoal for d t
+        apply (subgoal_tac \<open>\<exists>d'. en1 os d' = d\<close>)
+         apply (elim exE conjE)
+        subgoal for d'
+          apply (subgoal_tac \<open>\<not> lnull (ldropWhile (Not \<circ> is_Data) (es os p))
+  \<and> lhd (ldropWhile (Not \<circ> is_Data) (es os p)) = Data t d'
+  \<and> lfinite (ltakeWhile (Not \<circ> is_Data) (es os p))
+  \<and> initia (foldl (ooo_input_os_Drop_Mint p) (os\<lparr>es := (es os)(p := ltl (ldropWhile (Not \<circ> is_Data) (es os p)))\<rparr>) (list_of (ltakeWhile (Not \<circ> is_Data) (es os p))))
+  \<and> outpu (foldl (ooo_input_os_Drop_Mint p) (os\<lparr>es := (es os)(p := ltl (ldropWhile (Not \<circ> is_Data) (es os p)))\<rparr>) (list_of (ltakeWhile (Not \<circ> is_Data) (es os p)))) = outpu os
+  \<and> (\<forall>p' \<noteq> p. ocaps (foldl (ooo_input_os_Drop_Mint p) (os\<lparr>es := (es os)(p := ltl (ldropWhile (Not \<circ> is_Data) (es os p)))\<rparr>) (list_of (ltakeWhile (Not \<circ> is_Data) (es os p)))) p' = ocaps os p')
+  \<and> en1 (foldl (ooo_input_os_Drop_Mint p) (os\<lparr>es := (es os)(p := ltl (ldropWhile (Not \<circ> is_Data) (es os p)))\<rparr>) (list_of (ltakeWhile (Not \<circ> is_Data) (es os p)))) = f
+  \<and> es (foldl (ooo_input_os_Drop_Mint p) (os\<lparr>es := (es os)(p := ltl (ldropWhile (Not \<circ> is_Data) (es os p)))\<rparr>) (list_of (ltakeWhile (Not \<circ> is_Data) (es os p)))) = (es os)(p := ltl (ldropWhile (Not \<circ> is_Data) (es os p)))\<close>)
+           apply (elim conjE)
+          subgoal
+            apply (intro exI conjI)
+             apply (rule wstep_trans(1))
+              apply (rule step_Taus_dataflow_op_Taus_intro)
+              apply (rule step_star_map_op)
+              apply (rule step_Taus_ooo_input_op_Drop_Mint[where p=p and t=t and d=d' and lxs=\<open>ltl (ldropWhile (Not \<circ> is_Data) (es os p))\<close> and ops=c\<UU>])
+                      apply simp_all
+            using  lmap_eq_LCons_conv llist.collapse(2) llist.disc(2) lnull_ldropWhile lnull_lfilter
+                apply (smt (verit, best))
+               apply (unfold ooo_input_op_def ooo_input_op_logic_def)
+               apply simp
+              apply blast
+             apply (rule step_Out_dataflow_op_Out_Inr_intro)
+             apply (rule step_map_op)
+              apply (rule step_builder_op_Write_Some[where p=p])
+                  apply (simp_all add: produce_def)
+             apply simp
+            apply (rule wbc_base)
+            apply (intro exI conjI)
+                apply (rule refl)
+            subgoal
+              apply (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] simp add: fun_eq_iff)
+              apply (subgoal_tac \<open>lxs = lmap (\<lambda>z. case z of Data t d \<Rightarrow> (en1 os d, t)) (ltl (lfilter is_Data (es os p)))\<close>)
+              subgoal
+                apply (auto intro!: arg_cong[where f=\<open>lmap _\<close>] simp add: ltl_lfilter)
+                done
+              apply (drule arg_cong[where f=ltl])
+              apply simp
+              done
+              apply simp
+             apply simp
+            apply (rule allI)
+            subgoal for p'
+              apply (cases \<open>p = p'\<close>; simp)
+              apply (rule monotone_foldl_ooo_input_os_Drop_Mint[where e=\<open>Data t d'\<close>])
+                 apply simp_all
+              apply (metis lhd_LCons_ltl lnull_ldropWhile)
+              done
+            done
+          apply (subgoal_tac \<open>\<forall>e \<in> set (list_of (ltakeWhile (Not \<circ> is_Data) (es os p))). \<not> is_Data e\<close>)
+          subgoal
+            apply (intro conjI)
+            using lfilter_eq_LCons llist.map(1) lnull_def not_lnull_conv apply (metis (lifting))
+            using event.case_eq_if event.collapse(1) injD ldropWhile_LConsD lfilter_eq_LCons lhd_LCons lmap_eq_LCons_conv o_apply prod.simps(1) apply (smt (z3))
+            using lfinite_ltakeWhile llist.disc(2) llist.map_disc_iff lnull_lfilter o_apply apply (metis (mono_tags, lifting))
+                apply (rule foldl_ooo_input_os_Drop_Mint(1))
+                  apply assumption
+                 apply (rule refl)
+                apply assumption
+               apply (rule foldl_ooo_input_os_Drop_Mint(2))
+                apply assumption
+               apply (rule refl)
+              apply (intro allI impI)
+              apply (rule foldl_ooo_input_os_Drop_Mint(3))
+                apply assumption
+               apply (rule refl)
+              apply assumption
+             apply (subgoal_tac \<open>en1 (foldl (ooo_input_os_Drop_Mint p) (os\<lparr>es := (es os)(p := ltl (ldropWhile (Not \<circ> is_Data) (es os p)))\<rparr>) (list_of (ltakeWhile (Not \<circ> is_Data) (es os p)))) = en1 os\<close>)
+              apply blast
+             apply (rule foldl_ooo_input_os_Drop_Mint(4))
+              apply assumption
+             apply (rule refl)
+            apply (rule foldl_ooo_input_os_Drop_Mint(5))
+             apply assumption
+            apply (rule refl)
+            done
+          using comp_apply eq_LConsD ldropWhile_eq_LNil_iff lfilter_eq_LCons lfinite_ltakeWhile lmap_eq_LCons_conv lset_ltakeWhileD set_list_of
+            zero_one apply (smt (verit, ccfv_threshold))
+          done
+        using lfilter_eq_LConsD lmap_eq_LCons_conv event.case_eq_if prod.inject
+        apply (smt (verit, best))
+        done
+      subgoal
+        apply (intro exI conjI)
+         apply (rule step_wstep)
+         apply (rule step_Out_dataflow_op_Out_Inr_intro)
+         apply (rule step_map_op)
+          apply (rule step_builder_op_Write_Some)
+              apply simp_all
+         apply simp
+        apply (rule wbc_base)
+        apply (intro exI conjI)
+            apply (rule refl)
+           apply (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op])
+        done
+      done
+    done
 qed
 
 (* record ('p, 'd, 'd1, 'd2, 'd3, 't) input_state_ty3 = "('p, 'd, 'd1, 'd2, 't) input_state2" +  es3:: "('t, 'd3) event llist"
