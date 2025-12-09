@@ -232,16 +232,18 @@ lemma acset_code[code]:
   "acset S = cset_of_llist (lfilter (\<lambda> x. x \<in> S) cenum)"
   unfolding cset_of_llist_def map_fun_def o_apply id_apply using UNIV_cenum by auto
 
-term ccard
+definition "flat_choices ops = cUnion (cimage choices ops)"
 
 fun find_output_at where
   "find_output_at (Write op p x) (p', x') n = (if p' = p \<and> x' = x then Some op else None)"
 | "find_output_at (Read p f) x n = Code.abort (STR ''steps_of should not read'') undefined"
 | "find_output_at (Silent op) x (Suc n) = find_output_at op x n"
 | "find_output_at (Choice ops) x (Suc n) = (
-   let ops' = cfilter (Not o is_None) (cimage (\<lambda> op. find_output_at op x n) ops) in
+   let ops' = cfilter (Not o is_None) (cimage (\<lambda> op. find_output_at op x n) (flat_choices ops)) in
    (if ops' = {||} then None else cthe_elem ops'))"
-| "find_output_at op x _ = None"
+| "find_output_at op x _ = Code.abort (STR ''steps_of out of gas'') undefined"
+
+thm cimage_code
 
 fun check_prefix where
   "check_prefix n [] op = True"
@@ -249,8 +251,6 @@ fun check_prefix where
   (case find_output_at op io n of
      None \<Rightarrow> False
    | Some op \<Rightarrow> check_prefix n ios op)"
-
-
 
 
 end

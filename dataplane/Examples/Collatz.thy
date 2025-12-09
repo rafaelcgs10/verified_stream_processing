@@ -101,7 +101,7 @@ abbreviation "g4 inps \<equiv>
    comp_op_map (comp_op [Inr (nid4, p0) \<mapsto> Inr (nid0, p0)] (\<lambda> _. []) (inp_op nid4 inps) g3)"
 
 abbreviation "inps0 \<equiv> (\<lambda> p. llist_of []) :: 'a \<Rightarrow> (nat, nat \<times> nat) event llist"
-abbreviation "inps1 \<equiv> \<lambda> p. llist_of [Data (0 :: nat) (5 :: nat, 5 :: nat)]"
+abbreviation "inps1 \<equiv> \<lambda> p. llist_of [Data (0 :: nat) (4 :: nat, 4 :: nat), Data 0 (2, 2)]"
 
 abbreviation "op \<equiv> g4 inps1"
 
@@ -136,14 +136,16 @@ term DEBUG
 
 value [GHC] r
 
-value [GHC] "p0"
-value [GHC] "p1"
-(* 
-value [GHC] "check_prefix 30 [((nid2, p0), ((1, 1), 0))] dt"
 
- *)
+value [GHC] "check_prefix 500 [((nid2, p0), ((2, 1), 0))] dt"
+definition "r2 = check_prefix 150 [((nid2, p0), ((4, 1), 1))] dt"
+
+value [GHC] r2
+
+thm cUn_code
+
 (* 
- export_code r in Haskell module_name Test6
+ export_code r2 in Haskell module_name Test10
  *)
 
 

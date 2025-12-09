@@ -173,12 +173,13 @@ lemma
   "set_op {||} {||} op \<approx> set_spec_op S {||}"
   oops
 
+abbreviation "eccard S \<equiv> (if cinfinite S then infinity else ccard S)"
 
 definition "set_spec_op_trace S S' ios =
-  (ldistinct ios \<and> (cset_of_llist ios \<le> cimage (\<lambda> (p, x). VOut p x) (S - S')))"
+  (ldistinct ios \<and> (cset_of_llist ios \<le> cimage (\<lambda> (p, x). VOut p x) (S - S')) \<and> llength ios = eccard (S - S'))"
 
 coinductive set_spec_op_trace_alt where
-  "S - S' = {||} \<Longrightarrow> set_spec_op_trace_alt S S' LNil"
+  "S - S' = {||} \<Longrightarrow>set_spec_op_trace_alt S S' LNil"
 |  "(p, x) |\<in>| S - S' \<Longrightarrow>
    set_spec_op_trace_alt S (cinsert (p, x) S') lxs \<Longrightarrow>
    set_spec_op_trace_alt S S' (LCons (VOut p x) lxs)"
@@ -191,8 +192,6 @@ lemma set_spec_op_trace_alt_no_repeat:
   subgoal
     by (metis cinsertCI llist.distinct(1) llist.inject set_spec_op_trace_alt.cases)
   done
-
-
 
 lemma set_spec_op_trace_alt_no_VInp:
   "VInp p x \<in> lset lxs \<Longrightarrow> set_spec_op_trace_alt S S' lxs \<Longrightarrow> False"
@@ -227,91 +226,162 @@ lemma set_spec_op_trace_alt_ldistinct:
     done
   done
 
-lemma set_spec_op_trace_soundness:
-  "set_spec_op_trace S S' ios \<Longrightarrow> set_spec_op_trace_alt S S' ios"
-      apply (coinduction arbitrary: S S' ios)
-    subgoal for S S' ios
-      unfolding set_spec_op_trace_def
-      apply (cases ios)
+lemma set_spec_op_trace_alt_card:
+  "set_spec_op_trace_alt S S' lxs \<Longrightarrow>
+   llength lxs = eccard (S - S')"
+  apply (coinduction arbitrary: lxs S S' rule: enat_coinduct)
+  subgoal for lxs S S'
+    apply (erule set_spec_op_trace_alt.cases)
+    subgoal
+      by (clarsimp del: disjCI simp flip: cin.rep_eq simp add: less_eq_cset.rep_eq subset_minus_empty cinfinite_def enat_0_iff minus_cset.rep_eq split: op.splits if_splits; hypsubst_thin?)
+    subgoal
+      apply hypsubst_thin
+      apply (clarsimp del: disjCI simp flip: cin.rep_eq simp add: less_eq_cset.rep_eq subset_minus_empty cinfinite_def enat_0_iff minus_cset.rep_eq split: op.splits if_splits; hypsubst_thin?)
+      apply (intro conjI impI)
       subgoal
-      apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
-        apply (metis bot_cset.rep_eq cDiffI cemptyE cimageI cset_of_llist.abs_eq cset_of_llist.rep_eq lset_LNil wit_cset_inverse)
+        by auto
+      subgoal
+        apply (intro exI conjI disjI1)
+           apply (rule refl)+
+          prefer 3
+          apply assumption
+         apply (clarsimp del: disjCI simp flip: cin.rep_eq simp add: ccard.rep_eq minus_cset_def less_eq_cset.rep_eq subset_minus_empty cinfinite_def enat_0_iff minus_cset.rep_eq split: op.splits if_splits; hypsubst_thin?)+
         done
-      subgoal for x lxs'
-        apply (cases x; simp)
-      apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
-        apply (smt (verit) VIO.discI(2) VIO.disc_eq_case(2) VIO.inject(2) cDiffD2 cDiff_cinsert cDiff_cinsert2 cDiff_cinsert_absorb case_prodE2 case_prod_conv cimageE cimage_cinsert cin_code cinsertCI
-            cinsert_absorb cinsert_cDiff cinsert_code)
+      subgoal
+        apply (intro exI conjI disjI1)
+          apply (rule refl)+
+         defer
+         apply assumption
+        apply (clarsimp del: disjCI simp flip: cin.rep_eq simp add: ccard.rep_eq minus_cset_def less_eq_cset.rep_eq subset_minus_empty cinfinite_def enat_0_iff minus_cset.rep_eq split: op.splits if_splits; hypsubst_thin?)+
         done
       done
     done
+  done
 
-lemma set_spec_op_trace_completeness:
-  "set_spec_op_trace_alt S S' ios \<Longrightarrow> \<exists> ios'. set_spec_op_trace S S' ios' \<and> lset ios \<subseteq> lset ios'"
-    unfolding set_spec_op_trace_def
-    apply (erule set_spec_op_trace_alt.cases)
-      subgoal
-        apply clarsimp
-        apply (metis bot.extremum cDiff_cempty cempty_is_cimage cis_empty_code(1) cis_empty_def double_cDiff emptyE ldistinct_LNil_code llist.set(1))
-        done
-      subgoal for p x Sa S'a lxs
-        apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
-        oops
 
-lemma
-  "wtraced (set_spec_op S S') vios \<longleftrightarrow> set_spec_op_trace S S' vios"
-  apply (rule iffI)
-  subgoal
+lemma set_spec_op_trace_soundness:
+  "set_spec_op_trace S S' ios \<Longrightarrow> set_spec_op_trace_alt S S' ios"
+  apply (coinduction arbitrary: S S' ios)
+  subgoal for S S' ios
     unfolding set_spec_op_trace_def
-    apply (intro conjI)
+    apply (cases ios)
     subgoal
-      apply (coinduction arbitrary: S S' vios)
-      subgoal for S S'
-        apply (erule wtraced.cases)
+      apply (clarsimp del: disjCI simp flip: cin.rep_eq simp add: cinfinite_def enat_0_iff minus_cset.rep_eq split: op.splits if_splits; hypsubst_thin?)
+      done
+    subgoal for x lxs'
+      apply (cases x; simp)
+       apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
+       apply (metis VIO.simps(3) case_prod_conv cimageE cinsert_code cinsert_csubset surj_pair)
+      apply (intro conjI)
+      subgoal
+        apply (clarsimp del: disjCI simp add: cinfinite_def simp flip: cinsert_code cin.rep_eq split: if_splits)
         subgoal
-          by clarsimp
-        subgoal for vio op op' lxs
-          apply clarsimp
-          apply hypsubst_thin
-          apply (cases vio; simp; hypsubst_thin)
-          apply (erule step_set_spec_op_elim; simp)
-          apply hypsubst_thin
-          subgoal for a x p
-            apply (intro conjI)
-            subgoal
-              apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
-              sorry
-            subgoal
-              apply (rule ldistinct_cong.intros(1))
-              by blast
-            done
+          by (metis cinsert.rep_eq finite_Diff_insert minus_cset.rep_eq)
+        subgoal
+          by (smt (verit, ccfv_threshold) cDiff_cinsert2 cimage_cinsert cin_code cinsert_cDiff cinsert_cDiff_if csubset_cinsert infinity_eq_eSuc_iff prod.simps(2))
+        done
+      subgoal
+        apply (clarsimp del: disjCI simp add: ccard_def cinfinite_def simp flip: cinsert_code cin.rep_eq split: if_splits)
+        subgoal
+          apply (intro conjI disjI1)
+          using cDiff_cinsert cin_code cin_mono
+           apply (smt (verit, ccfv_SIG) cinsert_cDiff_single csubset_cinsert prod.simps(2) rev_cimage_eqI subset_cimage_iff)
+          apply (clarsimp del: disjCI simp add: ccard_def minus_cset_def cinfinite_def simp flip: cinsert_code cin.rep_eq split: if_splits)
+          using eSuc_enat_iff apply fastforce
+          done
+        subgoal
+          apply (simp add: minus_cset.rep_eq)
           done
         done
       done
+    done
+  done
+
+lemma set_spec_op_trace_completeness:
+  "set_spec_op_trace_alt S S' ios \<Longrightarrow> set_spec_op_trace S S' ios"
+  unfolding set_spec_op_trace_def
+  apply (erule set_spec_op_trace_alt.cases)
+  subgoal
+    apply (clarsimp simp flip: cinfinite_def cin.rep_eq)
+    apply (intro conjI)
+    apply (metis bot.extremum bot_cset.rep_eq cDiff_cempty cinfinite.rep_eq double_cDiff finite.intros(1))
+    apply (metis bot.extremum cis_empty_code(1) cis_empty_def)
+    using enat_0_iff(2) apply auto
+    done
+  subgoal for p x Sa S'a lxs
+    apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
+    apply (intro conjI disjI1)
     subgoal
-  apply (erule wtraced.cases)
-        subgoal
-          by clarsimp
-        subgoal for vio op op' lxs
-          apply clarsimp
-          apply hypsubst_thin
-          apply (cases vio; simp; hypsubst_thin)
-          apply (erule step_set_spec_op_elim; simp)
-          apply hypsubst_thin
-          sorry
-        done
+      apply (meson cinsertI1 set_spec_op_trace_alt_no_repeat)
+    using set_spec_op_trace_alt_ldistinct apply blast
+    apply (clarsimp del: disjCI simp flip: cinsert_code cin.rep_eq)
+    apply (intro conjI impI)
+     apply (metis cDiffI cimageI old.prod.case)
+      apply (metis (no_types, opaque_lifting) cDiff_iff cin_code cinsert_code cinsert_csubset csubsetI set_spec_op_trace_alt.intros(2) set_spec_op_trace_alt_in_cDiff)
+    subgoal
+      using set_spec_op_trace_alt_card
+      by (metis cDiffI llength_LCons set_spec_op_trace_alt.intros(2))
+    done
+    subgoal
+    apply (intro conjI disjI1 impI)
       subgoal
-  apply (erule wtraced.cases)
-        subgoal
-          by (metis bot_cset.rep_eq cDiff_iff cimage_cempty cset_of_llist.abs_eq cset_of_llist.rep_eq ex_cin_conv io_of_vio.simps(2) lset_LNil step_not_wfinished step_set_spec_op_intro_Out surj_pair
-              wit_cset_inverse)
-        subgoal for vio op op' lxs
-          apply clarsimp
-          apply hypsubst_thin
-          apply (cases vio; simp; hypsubst_thin)
-          apply (erule step_set_spec_op_elim; simp)
-              apply (clarsimp del: disjCI split: op.splits simp flip: cin.rep_eq; hypsubst_thin?)
-          oops
+        by (meson cinsertI1 set_spec_op_trace_alt_no_repeat)
+      subgoal
+    using set_spec_op_trace_alt_ldistinct by blast
+  subgoal
+    by (metis cDiff_iff cin_code csubsetI set_spec_op_trace_alt.intros(2) set_spec_op_trace_alt_in_cDiff)
+    subgoal
+      using set_spec_op_trace_alt_card
+      by (metis cDiffI llength_LCons set_spec_op_trace_alt.intros(2))
+    done
+  done
+  done
+
+lemma set_spec_op_trace_eq_set_spec_op_trace_alt:
+  "set_spec_op_trace S S' ios \<longleftrightarrow> set_spec_op_trace_alt S S' ios"
+  using set_spec_op_trace_completeness set_spec_op_trace_soundness by blast
+
+lemma wtraced_set_spec_op_soundness:
+  "wtraced (set_spec_op S S') ios \<Longrightarrow> set_spec_op_trace S S' ios"
+  unfolding set_spec_op_trace_eq_set_spec_op_trace_alt
+  apply (coinduction arbitrary: ios S S')
+  subgoal for ios S S'
+        apply (erule wtraced.cases)
+    subgoal for op
+      apply simp
+      apply hypsubst_thin
+      unfolding wfinished_no_wstep
+      apply simp
+      sorry
+    subgoal for vio op op' lxs
+      apply (clarsimp del: disjCI simp flip: cin.rep_eq simp add: less_eq_cset.rep_eq subset_minus_empty cinfinite_def enat_0_iff minus_cset.rep_eq split: op.splits if_splits; hypsubst_thin?)
+      apply (cases vio; simp)
+      apply (elim step_set_spec_op_elim)
+      apply (clarsimp del: disjCI simp flip: cin.rep_eq simp add: less_eq_cset.rep_eq subset_minus_empty cinfinite_def enat_0_iff minus_cset.rep_eq split: op.splits if_splits; hypsubst_thin?)
+      done
+    done
+  done
+
+lemma wtraced_set_spec_op_completeness:
+  "set_spec_op_trace S S' ios \<Longrightarrow> wtraced (set_spec_op S S') ios"
+  unfolding set_spec_op_trace_eq_set_spec_op_trace_alt
+  apply (coinduction arbitrary: ios S S')
+  subgoal for ios S S'
+        apply (erule set_spec_op_trace_alt.cases)
+    subgoal for S S'
+      apply simp
+      unfolding wfinished_no_wstep
+      apply clarsimp
+      apply (elim step_set_spec_op_elim)
+      apply clarsimp
+      apply (meson basic_trans_rules(31) less_eq_cset.rep_eq)
+      done
+    subgoal for p x S S' lxs
+      apply (clarsimp del: disjCI simp flip: cin.rep_eq simp add: less_eq_cset.rep_eq subset_minus_empty cinfinite_def enat_0_iff minus_cset.rep_eq split: op.splits if_splits; hypsubst_thin?)
+      apply force
+      done
+    done
+  done
 
 definition "trace_set S S' ios ios' =
   (ldistinct ios' \<and> (\<forall> vio \<in> lset ios. \<not> is_VInp vio) \<and>
@@ -323,7 +393,7 @@ lemma wstep_set_op_elim:
   obtains vios op2 where
    "wsteps vios op op2" "\<forall> io \<in> set vios. \<not> is_VInp io"
    "op' = set_op (cUn S (cimage (\<lambda> io. case io of VOut p x \<Rightarrow> (p, x)) (cset_of_llist (llist_of vios)))) (cinsert (p, x) S') op2"
-  sorry
+  oops
 
 lemma not_step_set_op:
   "(p, x) |\<in>| S' \<Longrightarrow>
@@ -357,68 +427,6 @@ apply (coinduction arbitrary: ios ios' S S' op)
             apply (intro conjI)
             subgoal
               oops
-
-
-lemma
-  "wtraced (set_op S S' \<oslash>) ios \<longleftrightarrow> set_op_trace S S' ios"
-  apply (rule iffI)
-  subgoal
-    unfolding set_op_trace_def
-    apply (intro conjI)
-    subgoal
-      apply (coinduction arbitrary: ios S S')
-      subgoal for ios S S'
-        apply (erule wtraced.cases)
-        subgoal
-          by simp
-        subgoal for vio op op' lxs
-          apply clarsimp
-          apply hypsubst_thin
-          apply (cases vio; simp; hypsubst_thin)
-          subgoal sorry
-          oops
-
-lemma
-  "wtraced op vios \<Longrightarrow>
-   (\<forall> vio \<in> lset vios. \<not> is_VInp vio \<and> \<not> vio |\<in>| cimage (\<lambda> (p, x). VOut p x) S') \<Longrightarrow>
-   cset_of_llist vios = cimage (\<lambda> (p, x). VOut p x) S' \<Longrightarrow>
-   wtraced (set_op S S' op) vios"
-  apply (coinduction arbitrary: vios op S S')
-  subgoal for vios
-    apply (erule wtraced.cases)
-    subgoal for op
-      apply simp
-      sorry
-    subgoal for vio opa op' lxs
-      apply clarsimp
-      apply (cases vio; simp)
-      subgoal for p x
-        apply hypsubst_thin
-        apply (intro conjI exI)
-         apply (rule wstep_Out_set_op)
-           apply assumption
-          apply force
-         apply (rule refl)
-        apply (intro conjI exI disjI1)
-          apply (rule refl)
-         apply simp_all
-        apply (auto 0 0)
-        apply (drule spec)
-        apply (elim conjE)
-        apply (drule mp)
-        apply (rule refl)
-        apply (drule mp)
-         apply assumption
-          apply simp_all
-        
-        
-
-end
-      apply (intro exI conjI)
-      apply (rule wtraced.Step[rotated, of "set_op _ _ _" _ vio'])
-        apply simp_all
-      apply (cases vio'; simp)
-      apply hypsubst_thin
 
 
 (* lemma

@@ -18,8 +18,13 @@ context includes cset.lifting begin
 lift_definition cthe_elem :: "'m cset \<Rightarrow> 'm" is Set.the_elem .
 lift_definition csome_elem :: "'m cset \<Rightarrow> 'm" is some_elem .
 lift_definition ccard :: "'m cset \<Rightarrow> nat" is card .
+lift_definition cinfinite :: "'m cset \<Rightarrow> bool" is Finite_Set.infinite.
 end
 
+lemma ccard_eq_0_iff[simp]:
+  "(ccard A = 0) = (A = {||} \<or> cinfinite A)"
+  unfolding ccard_def cinfinite_def
+  by fastforce
 
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
@@ -80,7 +85,7 @@ lemma rmdups_insert_NilI:
    apply auto
   done
 
-definition "DEBUG = True"
+definition "DEBUG = False"
 
 definition "trace = (if DEBUG then Debug.tracing else (\<lambda> x y. y))"
 
@@ -312,7 +317,7 @@ corec dataflow_op where
    | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
    | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
    | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ sg) (extract_progress nid (edges sg) st) (pt_tr sg) \<rparr>) op')
-   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) (let C = cfilter (nop sg) (choices op) in if ccard C > 4 then C else C))"
+   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) (let C = cfilter (nop sg) (choices op) in C))"
 
 lemma dataflow_op_code[code]:
   "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
@@ -326,7 +331,7 @@ lemma dataflow_op_code[code]:
       trace (STR ''Reading progress at nid: '' + print_2 nid + STR '' cgs sizes: ('' + show_nat (length (cons st)) + STR '', '' + show_nat (length (inte st))  + STR '', '' + show_nat (length (prod st)) + STR '')''
    ) (Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr :=change_multiplicities (summ sg) (extract_progress nid (edges sg) st) (pt_tr sg) \<rparr>) op'))
    | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) 
- (let C = cfilter (nop sg) (choices op) in if ccard C > 4 then trace (STR ''choices size: '' + show_nat (ccard C)) C else C))"
+ (let C = cfilter (nop sg) (choices op) in C))"
   apply (simp only: trace_simp id_def)
   apply (subst dataflow_op.code[symmetric])
   apply auto
@@ -693,9 +698,6 @@ corec builder_op where
     (Choice (cimage (\<lambda>p. case outpu os p of
       x # xs \<Rightarrow> send_output (builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic) p x)
       (cfilter (\<lambda>p. outpu os p \<noteq> []) ops)))
-    (if consu os \<noteq> [] \<or> inter os \<noteq> [] \<or> produ os \<noteq> [] then
-      let (os', st) = obtain_progress os in send_progress (builder_op fb ips ops os' logic) st
-    else \<oslash>)
     (if fb then Read None (\<lambda>x. case x of
       Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f, nfron := \<forall>p. f p \<noteq> front os p\<rparr>) logic
     | _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda>_. \<oslash>))
@@ -703,6 +705,9 @@ corec builder_op where
     (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda>x. case x of
       Inr (d, t) \<Rightarrow> builder_op fb ips ops (consumes os p t d) logic
     | Inl _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda> _. \<oslash>))) ips))
+    (if consu os \<noteq> [] \<or> inter os \<noteq> [] \<or> produ os \<noteq> [] then
+      let (os', st) = obtain_progress os in send_progress (builder_op fb ips ops os' logic) st
+    else \<oslash>)
   else Read None (\<lambda>x. case x of
     Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := True\<rparr>) logic
   | _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda>_. \<oslash>)))\<close>

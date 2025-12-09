@@ -85,9 +85,6 @@ value [GHC] "check_prefix 100 [((1, 1), (Inr 3, MyPair 1 0)), ((1, 1), (Inr 10, 
 
 
 
-definition "r = find_output_at test_op2 ((1, 1), (Inr 10, MyPair 1 1)) 100"
-
-value [GHC] r 
 
 
 
