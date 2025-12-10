@@ -26,6 +26,15 @@ lemma ccard_eq_0_iff[simp]:
   unfolding ccard_def cinfinite_def
   by fastforce
 
+
+lemma cset_of_llist_llist_of_append[simp]:
+  "cset_of_llist (llist_of (xs @ ys)) = cUn (cset_of_llist (llist_of xs)) (cset_of_llist (llist_of ys))"
+  unfolding cset_of_llist_def
+         apply (clarsimp simp flip: cin.rep_eq)
+  apply (subst sup_cset.abs_eq)
+  apply (simp_all add: countable_finite eq_onp_same_args)
+  done
+
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 

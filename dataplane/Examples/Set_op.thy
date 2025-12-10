@@ -104,8 +104,157 @@ lemma wstep_Out_set_op[intro]:
      apply auto
   done
 
+lemma step_taus_set_op_elim:
+  assumes "(step Tau)\<^sup>*\<^sup>* (set_op S S' op) op'"
+  obtains op'' xs where "wsteps (map (\<lambda> (p, x). VOut p x) xs) op op''"
+    "op' = set_op (cUn (cset_of_llist (llist_of xs)) S) S' op''"
+  using assms apply -
+  apply atomize_elim
+  apply (induction "set_op S S' op" arbitrary: S S' op rule: converse_rtranclp_induct)
+  subgoal for S S' op
+    apply (rule exI[of _ "[]"])
+    apply (rule exI[of _ "op"])
+    apply (clarsimp simp flip: cin.rep_eq)
+    apply (metis boolean_algebra_cancel.sup0 cis_empty_code(1) eq_cempty_cis_empty(1) inf_sup_aci(5))
+    done
+  subgoal for op'' S S' op
+    apply (elim step_set_op_elim; clarsimp simp flip: cin.rep_eq)
+    subgoal for op'''
+      apply (drule meta_spec)+
+      apply (drule meta_mp)
+       apply (rule refl)
+      apply (clarsimp simp flip: cin.rep_eq)
+      apply (smt (verit, best) converse_rtranclp_into_rtranclp relcompp_apply wstep_trans_tau_1 wsteps.elims)
+      done
+    subgoal for p x op''a
+      apply (drule meta_spec)+
+      apply (drule meta_mp)
+       apply (rule refl)
+      apply (auto simp flip: cin.rep_eq)
+      subgoal for xs op'''
+        apply (rule exI[of _ "(p, x) # xs"])
+        apply (intro conjI exI)
+         defer
+         apply (clarsimp simp flip: cin.rep_eq)
+         apply (rule arg_cong3[where f=set_op])
+           apply (metis cUn_cinsert_left cinsert_code)
+          apply (rule refl)+
+        apply auto
+        done
+      done
+    done
+  done
+
+lemma wstep_set_op_elim:
+  assumes "wstep io (set_op S S' op) op'"
+  obtains op'' op''' xs ys p x where "io = Out p x"
+    "wsteps (map (\<lambda> (p, x). VOut p x) xs) op op''" "(p, x) |\<in>| (cUn (cset_of_llist (llist_of xs)) S) - S'"
+    "wsteps (map (\<lambda> (p, x). VOut p x) ys) op'' op'''" 
+    "op' = set_op (cUn (cset_of_llist (llist_of (xs @ ys))) S) (cinsert (p, x) S') op'''"
+  | op'' op''' xs ys where "io = Tau"
+    "wsteps (map (\<lambda> (p, x). VOut p x) xs) op op''"
+    "wsteps (map (\<lambda> (p, x). VOut p x) ys) op'' op'''" 
+    "op' = set_op (cUn (cset_of_llist (llist_of (xs @ ys))) S) S' op'''"
+  using assms apply -
+  apply atomize_elim
+  unfolding wstep_def
+  apply (elim relcomppE)
+  subgoal for op1 op2
+    apply (erule step_taus_set_op_elim)
+    apply (clarsimp del: disjCI simp flip: cin.rep_eq)
+    apply (cases io; clarsimp del: disjCI simp flip: cin.rep_eq)
+    using step_set_op_elim apply blast
+    subgoal for op'' xs p x
+      apply (elim step_set_op_elim; clarsimp simp flip: cin.rep_eq)
+      apply hypsubst_thin
+      apply (erule step_taus_set_op_elim)
+      apply (clarsimp simp flip: cin.rep_eq)
+      subgoal for op''' ys
+        apply (rule exI[of _ xs])
+        apply (rule exI[of _ op''])
+        apply (intro conjI)
+          apply assumption+
+        apply (rule exI[of _ ys])
+        apply (rule exI[of _ op'''])
+        apply (intro conjI)
+         apply assumption+
+        apply (rule arg_cong3[where f=set_op])
+          apply blast
+         apply auto
+        done
+      done
+    subgoal for op'' xs
+      apply (elim disjE)
+      subgoal
+        apply (elim step_set_op_elim; clarsimp simp flip: cin.rep_eq)
+        subgoal for op'''
+          apply hypsubst_thin
+          apply (erule step_taus_set_op_elim)
+          subgoal for op'''' ys
+            apply (rule exI[of _ xs])
+            apply (rule exI[of _ op''])
+            apply (intro conjI)
+             apply assumption+
+            apply (rule exI[of _ ys])
+            apply (rule exI[of _ op''''])
+            apply (intro conjI)
+            subgoal
+              sorry
+            apply hypsubst_thin
+            apply (rule arg_cong3[where f=set_op])
+              apply blast
+             apply auto
+            done
+          done
+        subgoal for p x op'''
+          apply hypsubst_thin
+          apply (erule step_taus_set_op_elim)
+          subgoal for op'''' ys
+            apply (rule exI[of _ "xs"])
+            apply (rule exI[of _ op''])
+            apply (intro conjI)
+             apply assumption+
+            apply hypsubst_thin
+            apply (rule exI[of _ "(p, x) # ys"])
+            apply (rule exI[of _ op''''])
+            apply (intro conjI)
+             apply simp
+             apply blast
+            apply (rule arg_cong3[where f=set_op])
+              apply simp
+            subgoal premises
+              by (metis (mono_tags, lifting) boolean_algebra_cancel.sup1 boolean_algebra_cancel.sup2 cUn_cinsert_left cinsert_code)
+             apply auto
+            done
+          done
+        done
+      subgoal
+        apply hypsubst_thin
+        apply (erule step_taus_set_op_elim)
+        subgoal for op'''' ys
+          apply (rule exI[of _ "xs"])
+          apply (rule exI[of _ op''])
+          apply (intro conjI)
+           apply assumption+
+          apply (rule exI[of _ "ys"])
+          apply (rule exI[of _ op''''])
+          apply (intro conjI)
+           apply assumption+
+          apply hypsubst_thin
+          apply (rule arg_cong3[where f=set_op])
+            apply blast
+           apply auto
+          done
+        done
+      done
+    done
+  done
+
+
 coinductive set_op_trace where
-  "S - S' = {||} \<Longrightarrow> wfinished op \<Longrightarrow> set_op_trace S S' op LNil"
+  "S - S' = {||} \<Longrightarrow> 
+  (\<forall> op' p x. wstep (Out p x) op op' \<longrightarrow> set_op_trace (cinsert (p, x) S) S' op' LNil) \<Longrightarrow>
+   set_op_trace S S' op LNil"
 |  "wstep (Out p' x') op op' \<Longrightarrow>
     S2 = cinsert (p', x') S1 \<Longrightarrow>
     (p, x) |\<in>| S2 - S' \<Longrightarrow>
@@ -388,11 +537,66 @@ lemma set_op_trace_soundness:
     done
   done
 
+lemma set_op_trace_completeness:
+  "VOut p x \<in> lset ios \<Longrightarrow>
+   wtraced op ios \<Longrightarrow>
+   (\<forall> vio \<in> lset ios. \<not> is_VInp vio) \<Longrightarrow>
+   \<not> (p, x) |\<in>| S' \<Longrightarrow>
+   (\<exists> ios'. set_op_trace S S' op ios' \<and> VOut p x \<in> lset ios')"
+  apply (induct ios arbitrary: S S' op rule: lset_induct)
+  subgoal for xs S S' op
+    apply (erule wtraced.cases; simp flip: cin.rep_eq; hypsubst_thin)
+    subgoal for vio op' op''
+      apply simp
+      apply (intro exI conjI)
+       apply (rule set_op_trace.intros(2)[where p=p and x=x])
+          apply assumption
+         apply (rule refl)+
+        apply fastforce
+      sorry
+    done
+  subgoal for vio xs S S' op
+    apply (erule wtraced.cases; simp flip: cin.rep_eq; hypsubst_thin)
+    apply (cases vio; simp flip: cin.rep_eq; hypsubst_thin)
+    subgoal for op' p' x'
+    apply (intro exI conjI)
+     apply (rule set_op_trace.intros(2)[where p=p and x=x])
+      apply assumption
+    apply (rule refl)+
+        defer
+      oops
 
 
 lemma wtraced_set_op_trace:
   "wtraced (set_op S S' op) ios \<longleftrightarrow> set_op_trace S S' op ios"
-  sorry
+  apply (rule iffI)
+  subgoal 
+    apply (coinduction arbitrary: S S' op ios)
+    subgoal for S S' op ios
+      apply (erule wtraced.cases; simp flip: cin.rep_eq; hypsubst_thin)
+      subgoal
+        apply (intro conjI impI allI)
+        subgoal sorry
+        subgoal for op' p x
+          sorry
+        done
+      subgoal for vio op' op'' lxs
+        apply (cases vio; simp flip: cin.rep_eq)
+        subgoal sorry
+        subgoal for p x
+          apply (elim wstep_set_op_elim; simp flip: cin.rep_eq)
+          subgoal for op'' op''' xs ys p'
+            apply hypsubst_thin
+            apply (elim disjE conjE)
+            subgoal
+          apply (rule disjI1)
+          apply (intro exI conjI)
+                defer
+                defer
+                apply (rule disjI1)
+              
+
+          find_theorems step set_op
 
 corec set_spec_op :: "('a \<times> 'b) cset \<Rightarrow> ('a \<times> 'b) cset \<Rightarrow> ('a, 'a, 'b) op"  where
   "set_spec_op S S' = 
