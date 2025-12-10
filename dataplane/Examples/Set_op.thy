@@ -4,13 +4,11 @@ imports
   Nondeterministic_Dataflow.Operator
   Nondeterministic_Dataflow.CSet_LList_Impl
   "../Timely_Infrastructure"
+  "../LList_Haskell_Setup"
 begin
 
-lemma cset_induct[consumes 1, case_names find step]:
-  "x |\<in>| A \<Longrightarrow> P {|x|} \<Longrightarrow> (\<And>x' A. x |\<in>| A \<Longrightarrow> x \<noteq> x' \<Longrightarrow> P A \<Longrightarrow> P (cinsert x' A)) \<Longrightarrow> P A"
-  apply (rule cset.acset_induct[of ])
-  apply simp
-  oops
+
+abbreviation "eccard S \<equiv> (if cinfinite S then infinity else ccard S)"
 
 corec set_op :: "('a \<times> 'b) cset \<Rightarrow> ('a \<times> 'b) cset \<Rightarrow> ('c, 'a, 'b) op \<Rightarrow> ('c, 'a, 'b) op" where
   "set_op S S' op = choice2
@@ -106,6 +104,295 @@ lemma wstep_Out_set_op[intro]:
      apply auto
   done
 
+coinductive set_op_trace where
+  "S - S' = {||} \<Longrightarrow> wfinished op \<Longrightarrow> set_op_trace S S' op LNil"
+|  "wstep (Out p' x') op op' \<Longrightarrow>
+    S2 = cinsert (p', x') S1 \<Longrightarrow>
+    (p, x) |\<in>| S2 - S' \<Longrightarrow>
+    set_op_trace S2 (cinsert (p, x) S') op' lxs \<Longrightarrow>
+    set_op_trace S1 S' op (LCons (VOut p x) lxs)"
+|  "(p, x) |\<in>| S - S' \<Longrightarrow>
+    set_op_trace S (cinsert (p, x) S') op lxs \<Longrightarrow>
+    set_op_trace S S' op (LCons (VOut p x) lxs)"
+
+lemma wstep_exec_VOut_sound:
+  "(VOut p x, op') |\<in>| wsteps_exec op \<Longrightarrow>
+   wstep (Out p x) op op'"
+  unfolding wsteps_exec_def
+  apply (clarsimp del: disjCI simp flip: cin.rep_eq simp add: less_eq_cset.rep_eq subset_minus_empty cinfinite_def enat_0_iff minus_cset.rep_eq split: op.splits if_splits; hypsubst_thin?)+
+  subgoal premises prems for n
+    using prems(2-) apply -
+    apply (induct n arbitrary: op op')
+    subgoal for op op'
+      apply (cases op; (auto simp flip: cin.rep_eq))
+      done
+    subgoal for n op op'
+      apply (cases op; (auto simp flip: cin.rep_eq))
+      apply (metis WSC io_of_vio.simps(2))
+      done
+    done
+  done
+
+lemma wstep_exec_VInp_sound:
+  "(VInp p x, op') |\<in>| wsteps_exec op \<Longrightarrow>
+   wstep (Inp p x) op op'"
+  unfolding wsteps_exec_def
+  apply (clarsimp del: disjCI simp flip: cin.rep_eq simp add: less_eq_cset.rep_eq subset_minus_empty cinfinite_def enat_0_iff minus_cset.rep_eq split: op.splits if_splits; hypsubst_thin?)+
+  subgoal premises prems for n
+    using prems(2-) apply -
+    apply (induct n arbitrary: op op')
+    subgoal for op op'
+      apply (cases op; (auto simp flip: cin.rep_eq))
+      done
+    subgoal for n op op'
+      apply (cases op; (auto simp flip: cin.rep_eq))
+      apply (metis WSC io_of_vio.simps(1))      
+      done
+    done
+  done
+
+lemma step_exec_VOut_completeness:
+  "step io op op' \<Longrightarrow>
+   io = Out p x \<Longrightarrow>
+   (VOut p x, op') |\<in>| wsteps_exec op"
+  apply (induct op' rule: step.induct)
+     apply (simp_all add: wsteps_exec_def flip: cin.rep_eq)
+   apply simp
+  subgoal for op ops io op'
+    apply safe
+    subgoal for n
+      apply (rule cBexI[of _ "Suc n"])
+       apply auto
+      done
+    done
+  done
+
+lemma step_exec_VInp_completeness:
+  "step io op op' \<Longrightarrow>
+   io = Inp p x \<Longrightarrow>
+   \<exists> f. (VInp p undefined, f undefined) |\<in>| wsteps_exec op"
+  apply (induct op' rule: step.induct)
+     apply (simp_all add: wsteps_exec_def flip: cin.rep_eq)
+   apply simp
+  apply fast
+  subgoal for op ops io op'
+    apply safe
+    subgoal for f n
+      apply (rule exI[of _ f])
+      apply (rule cBexI[of _ "Suc n"])
+       apply auto
+      done
+    done
+  done
+
+lemma step_Tau_exec_completeness:
+  "step io op op' \<Longrightarrow>
+   io = Tau \<Longrightarrow>
+   (vio, op'') |\<in>| wsteps_exec op' \<Longrightarrow>
+   (vio, op'') |\<in>| wsteps_exec op"
+  unfolding wsteps_exec_def
+  apply (induct op' rule: step.induct)
+     apply (auto simp add: simp flip: cin.rep_eq )
+  subgoal for op n
+    apply (rule cBexI[of _ "Suc n"])
+     apply auto
+    done
+  subgoal for op ops op' n n'
+    apply (rule cBexI[of _ "Suc n"])
+     apply auto
+    done
+  done
+
+lemma wstep_exec_VOut_completeness:
+  "wstep (Out p x) op op' \<Longrightarrow>
+   \<exists> op'. (VOut p x, op') |\<in>| wsteps_exec op"
+  unfolding wstep_def
+  apply (simp flip: cin.rep_eq)
+  apply (elim relcomppE)
+  subgoal premises prems for op' op''
+    using prems(1,2) apply -
+    apply (drule step_exec_VOut_completeness)
+     apply (rule refl)
+    unfolding wsteps_exec_def
+    apply (induct op rule: converse_rtranclp_induct)
+    subgoal
+      by (auto simp add: wsteps_exec_def simp flip: cin.rep_eq)
+    subgoal for op1 op2
+      apply (drule meta_mp)
+       apply assumption
+      apply safe
+      apply (drule step_Tau_exec_completeness)
+        apply simp
+      unfolding wsteps_exec_def
+       apply simp
+       apply fast
+      apply (auto del: disjCI simp flip: cin.rep_eq simp add: less_eq_cset.rep_eq subset_minus_empty cinfinite_def enat_0_iff minus_cset.rep_eq split: op.splits if_splits)[1]
+      done
+    done
+  done
+
+lemma wstep_exec_VInp_completeness:
+  "wstep (Inp p x) op op' \<Longrightarrow>
+  \<exists> f. (VInp p undefined, f undefined) |\<in>| wsteps_exec op"
+  unfolding wstep_def
+  apply (simp flip: cin.rep_eq)
+  apply (elim relcomppE)
+  subgoal premises prems for op' op''
+    using prems(1,2) apply -
+    apply (drule step_exec_VInp_completeness)
+     apply (rule refl)
+    unfolding wsteps_exec_def
+    apply (induct op rule: converse_rtranclp_induct)
+    subgoal
+      by (auto simp add: wsteps_exec_def simp flip: cin.rep_eq)
+    subgoal for op1 op2
+      apply (drule meta_mp)
+       apply assumption
+      apply safe
+      apply (drule step_Tau_exec_completeness)
+        apply simp
+      unfolding wsteps_exec_def
+       apply simp
+       apply fast
+      apply (auto del: disjCI simp flip: cin.rep_eq simp add: less_eq_cset.rep_eq subset_minus_empty cinfinite_def enat_0_iff minus_cset.rep_eq split: op.splits if_splits)[1]
+      done
+    done
+  done
+
+lemma wfinished_cis_empty_wsteps_exec:
+  "wfinished op \<Longrightarrow> cis_empty (wsteps_exec op)"
+  unfolding cis_empty_def wfinished_no_wstep
+  apply (auto del: disjCI simp flip: cin.rep_eq simp add: less_eq_cset.rep_eq subset_minus_empty cinfinite_def enat_0_iff minus_cset.rep_eq split: op.splits if_splits; hypsubst_thin?)+
+  subgoal for vio op'
+    apply (cases vio)
+    subgoal
+      apply hypsubst_thin
+      apply (drule wstep_exec_VInp_sound)
+      apply (metis io_of_vio.simps(1))
+      done
+    subgoal
+      apply hypsubst_thin
+      apply (drule wstep_exec_VOut_sound)
+      apply (metis io_of_vio.simps(2))
+      done
+    done
+  done
+
+lemma wtraced_trace_exec:
+  "wtraced op (trace_exec op)"
+  apply (coinduction arbitrary: op)
+  subgoal for op
+    apply simp
+    apply (cases "wfinished op")
+    subgoal
+      apply simp
+      apply (rule disjI1)
+      apply (subst trace_exec.code)
+      apply (clarsimp split: prod.splits)
+      using wfinished_cis_empty_wsteps_exec apply fast
+      done
+    subgoal
+      unfolding wfinished_no_wstep
+      apply simp
+      apply (subst trace_exec.code)
+      apply (clarsimp split: prod.splits)
+      subgoal for vio a vio' op'
+        apply (cases vio')
+        subgoal for p x
+          unfolding csome_elem_def some_elem_def
+          apply (clarsimp del: disjCI simp flip: cin.rep_eq ; hypsubst_thin?)
+          apply (intro exI conjI[rotated] disjI1)
+            apply (rule refl)
+          subgoal
+            apply (cases vio; simp; hypsubst_thin?)
+            subgoal
+              apply (drule wstep_exec_VInp_completeness)
+              apply (elim exE)
+              apply (rule wstep_exec_VInp_sound)
+              apply (rule some_eq_imp[where P="\<lambda> x. x |\<in>| wsteps_exec op"])
+               apply auto
+              done
+            subgoal
+              apply (drule wstep_exec_VOut_completeness)
+              apply (elim exE)
+              apply (rule wstep_exec_VInp_sound)
+              apply (rule some_eq_imp[where P="\<lambda> x. x |\<in>| wsteps_exec op"])
+               apply auto
+              done
+            done
+          subgoal
+            apply (cases vio; simp; hypsubst_thin?)
+             apply (metis all_not_cin_conv cis_empty_def wstep_exec_VInp_completeness)
+            apply (metis all_not_cin_conv cis_empty_def wstep_exec_VOut_completeness)
+            done
+          done
+        subgoal for p x
+          unfolding csome_elem_def some_elem_def
+          apply (clarsimp del: disjCI simp flip: cin.rep_eq ; hypsubst_thin?)
+          apply (intro exI conjI[rotated] disjI1)
+            apply (rule refl)
+          subgoal
+            apply (cases vio; simp; hypsubst_thin?)
+            subgoal
+              apply (drule wstep_exec_VInp_completeness)
+              apply (elim exE)
+              apply (rule wstep_exec_VOut_sound)
+              apply (rule some_eq_imp[where P="\<lambda> x. x |\<in>| wsteps_exec op"])
+               apply auto
+              done
+            subgoal
+              apply (drule wstep_exec_VOut_completeness)
+              apply (elim exE)
+              apply (rule wstep_exec_VOut_sound)
+              apply (rule some_eq_imp[where P="\<lambda> x. x |\<in>| wsteps_exec op"])
+               apply auto
+              done
+            done
+          subgoal
+            apply (cases vio; simp; hypsubst_thin?)
+             apply (metis all_not_cin_conv cis_empty_def wstep_exec_VInp_completeness)
+            apply (metis all_not_cin_conv cis_empty_def wstep_exec_VOut_completeness)
+            done
+          done
+        done
+      done
+    done
+  done
+
+lemma set_op_trace_soundness:
+  "VOut p x \<in> lset ios \<Longrightarrow>
+   set_op_trace S S' op ios \<Longrightarrow>
+   \<not> (p, x) |\<in>| (S - S') \<Longrightarrow>
+   (\<exists> ios'. wtraced op ios' \<and> VOut p x \<in> lset ios')"
+  apply (induct ios arbitrary: S S' op rule: lset_induct)
+  subgoal for xs S S'
+    apply (erule set_op_trace.cases; simp)
+    apply (clarsimp del: disjCI simp flip: cin.rep_eq simp add: less_eq_cset.rep_eq subset_minus_empty cinfinite_def enat_0_iff minus_cset.rep_eq split: op.splits if_splits; hypsubst_thin?)+
+    subgoal for op'
+      using wtraced_trace_exec[of op'] apply -
+      apply (intro exI conjI)
+       apply (rule wtraced.Step[of "VOut p x"])
+        apply simp
+       apply auto
+      done
+    done
+  subgoal for x xs S S' op'
+    apply (erule set_op_trace.cases; simp; hypsubst)
+    subgoal for p' x' op op'' S2 S1 pa xa S''
+      apply (clarsimp del: disjCI simp flip: cin.rep_eq simp add: less_eq_cset.rep_eq subset_minus_empty cinfinite_def enat_0_iff minus_cset.rep_eq split: op.splits if_splits; hypsubst_thin?)+
+      apply (metis wtraced_trace_exec cinsert_iff io_of_vio.simps(2) lset_intros(1,2) prod.simps(1) wtraced.intros(2))
+      done
+    subgoal for pa xa S S' op''
+      apply (clarsimp del: disjCI simp flip: cin.rep_eq simp add: less_eq_cset.rep_eq subset_minus_empty cinfinite_def enat_0_iff minus_cset.rep_eq split: op.splits if_splits; hypsubst_thin?)+
+      done
+    done
+  done
+
+
+
+lemma wtraced_set_op_trace:
+  "wtraced (set_op S S' op) ios \<longleftrightarrow> set_op_trace S S' op ios"
+  sorry
 
 corec set_spec_op :: "('a \<times> 'b) cset \<Rightarrow> ('a \<times> 'b) cset \<Rightarrow> ('a, 'a, 'b) op"  where
   "set_spec_op S S' = 
@@ -169,19 +456,12 @@ lemma set_op_bisim_set_spec_op:
     done
   done
 
-lemma
-  "set_op {||} {||} op \<approx> set_spec_op S {||}"
-  oops
-
-abbreviation "eccard S \<equiv> (if cinfinite S then infinity else ccard S)"
-
 definition "set_spec_op_trace S S' ios =
   (ldistinct ios \<and> (cset_of_llist ios \<le> cimage (\<lambda> (p, x). VOut p x) (S - S')) \<and> llength ios = eccard (S - S'))"
 
 coinductive set_spec_op_trace_alt where
   "S - S' = {||} \<Longrightarrow>set_spec_op_trace_alt S S' LNil"
-|  "(p, x) |\<in>| S - S' \<Longrightarrow>
-   set_spec_op_trace_alt S (cinsert (p, x) S') lxs \<Longrightarrow>
+|  "(p, x) |\<in>| S - S' \<Longrightarrow> set_spec_op_trace_alt S (cinsert (p, x) S') lxs \<Longrightarrow>
    set_spec_op_trace_alt S S' (LCons (VOut p x) lxs)"
 
 lemma set_spec_op_trace_alt_no_repeat:

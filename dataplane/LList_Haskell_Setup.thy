@@ -108,7 +108,7 @@ code_printing
   | constant cthe_elem \<rightharpoonup>
     (Haskell) "Cset.chd"
   | constant csome_elem \<rightharpoonup>
-    (Haskell) "Cset.clast"
+    (Haskell) "Cset.chd"
   | constant cnub \<rightharpoonup>
     (Haskell) "Cset.cnub"
   | constant ctake \<rightharpoonup>
@@ -173,7 +173,7 @@ thm cUnion_code
 
 fun wsteps_at where
   "wsteps_at (Write op p x) n = {|(VOut p x, op)|}"
-| "wsteps_at (Read p f) n = Code.abort (STR ''wsteps_at should not read'') undefined"
+| "wsteps_at (Read p f) n = {|(VInp p (Code.abort (STR ''wsteps_at should not read'') (\<lambda> _. undefined)), f undefined)|}"
 | "wsteps_at (Silent op) (Suc n) = wsteps_at op n"
 | "wsteps_at (Choice ops) (Suc n) = cUnion (cimage (\<lambda> op. wsteps_at op n) ops)"
 | "wsteps_at op 0 = {||}"
@@ -183,7 +183,7 @@ definition "wsteps_exec op = cUnion (cimage (wsteps_at op) cUNIV)"
 lemma wsteps_exec_Write[simp]: "wsteps_exec (Write op p x) = {|(VOut p x, op)|}"
   unfolding wsteps_exec_def by (auto simp: cset_eq_iff)
 
-lemma wsteps_exec_Read[simp]: "wsteps_exec (Read p f) = Code.abort (STR ''wsteps_at should not read'') undefined"
+lemma wsteps_exec_Read[simp]: "wsteps_exec (Read p f) = {|(VInp p (Code.abort (STR ''wsteps_at should not read'') (\<lambda> _. undefined)), f undefined)|}"
   unfolding wsteps_exec_def by (auto simp: cset_eq_iff)
 
 lemma wsteps_exec_Silent[simp]:
@@ -225,7 +225,7 @@ lemmas wsteps_exec_code[code] = wsteps_exec_Read wsteps_exec_Write wsteps_exec_S
 
 corec trace_exec where
   "trace_exec op = (let ops = wsteps_exec op in                      
-   if \<not> cis_empty ops then let (io, op') = cthe_elem ops in LCons io (trace_exec op')
+   if \<not> cis_empty ops then let (io, op') = csome_elem ops in LCons io (trace_exec op')
    else LNil)"
 
 lemma acset_code[code]:
