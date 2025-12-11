@@ -195,6 +195,7 @@ next
   ultimately show ?case by (rule transitive_closurep_trans'(6))
 qed
 
+(*
 abbreviation ooo_inp_op where
   \<open>ooo_inp_op os \<equiv>
   map_op (case_option (Inl (0 :: 1)) (\<lambda>p. Inr (0 :: 1, p))) (case_option (Inl (0 :: 1)) (\<lambda>p. Inr (0 :: 1, p)))
@@ -360,6 +361,7 @@ next
       done
     done
 qed
+*)
 
 lemma ooo_input_op_source_op:
   defines \<open>invariant os f \<equiv> initia os \<and> en1 os = f \<and> inj f \<and> (\<forall>p. timely_monotone (es os p) (mset (ocaps os p)))\<close>
@@ -504,11 +506,64 @@ next
           and lxs :: "('b \<times> 'c) llist"
       proof (cases \<open>outpu os p\<close>)
         case Nil
-        then obtain d' where \<open>f d' = d\<close>
+        then obtain d' where d': \<open>f d' = d\<close>
           using d_t_lxs append.simps(1) event.case_eq_if lfilter_eq_LConsD lfilter_eq_LNil llist.map(1)
             llist.map_disc_iff llist_of.simps(1) lmap_eq_LCons_conv lnull_lfilter not_lnull_conv
             prod.simps(1) shift_LNil singleton_lshift snoc_shift by (smt (verit, ccfv_threshold))
-        show ?thesis sorry
+        have not_Data: \<open>\<forall>e \<in> set (list_of (ltakeWhile (Not \<circ> is_Data) (es os p))). \<not> is_Data e\<close>
+          using that(2) Nil lfinite_ltakeWhile llist.disc(2) llist.map_disc_iff lnull_lfilter
+            lset_ltakeWhileD lshift_simps(1) o_apply set_list_of by (metis (mono_tags, lifting))
+        have not_lnull: \<open>\<not> lnull (ldropWhile (Not \<circ> is_Data) (es os p))\<close> using that(2) Nil by force
+        hence lhd_t_d': \<open>lhd (ldropWhile (Not \<circ> is_Data) (es os p)) = Data t d'\<close>
+          using that(1,2) d' event.case_eq_if event.collapse(1) inj_eq lhd_LCons lhd_lfilter
+            llist.set_intros(1) lmap_eq_LCons_conv local.Nil lset_lfilter lshift_simps(1)
+            mem_Collect_eq prod.simps(1) unfolding invariant_def by (smt (verit, best))
+        hence ldropWhile_LCons_t_d': \<open>ldropWhile (Not \<circ> is_Data) (es os p) = LCons (Data t d') (ltl (ldropWhile (Not \<circ> is_Data) (es os p)))\<close>
+          using not_lnull lhd_LCons_ltl by metis
+        have lfinite: \<open>lfinite (ltakeWhile (Not \<circ> is_Data) (es os p))\<close>
+          using lfinite_ltakeWhile lnull_ldropWhile not_lnull by metis
+        let ?os' = \<open>foldl (ooo_input_os_Drop_Mint p)
+  (os\<lparr>es := (es os)(p := ltl (ldropWhile (Not \<circ> is_Data) (es os p)))\<rparr>)
+  (list_of (ltakeWhile (Not \<circ> is_Data) (es os p)))\<close>
+        let ?os'' = \<open>?os'\<lparr>produ := produ ?os' @ [(p, t, 1)], outpu := (outpu os)(p := [])\<rparr>\<close>
+        have initialized: \<open>initia ?os'\<close> using foldl_ooo_input_os_Drop_Mint(1) that(1) not_Data
+          unfolding invariant_def by fast
+        have outpu_os': \<open>outpu ?os' = outpu os\<close> using foldl_ooo_input_os_Drop_Mint(2) not_Data by metis
+        have ocaps_os': \<open>\<forall>p' \<noteq> p. ocaps ?os' p' = ocaps os p'\<close>
+          using foldl_ooo_input_os_Drop_Mint(3) not_Data by fast
+        have en1_os': \<open>en1 ?os' = en1 os\<close> using foldl_ooo_input_os_Drop_Mint(4) not_Data by metis
+        have es_os': \<open>es ?os' = (es os)(p := ltl (ldropWhile (Not \<circ> is_Data) (es os p)))\<close>
+          using foldl_ooo_input_os_Drop_Mint(5) not_Data by metis
+        have wstep: \<open>wstep (Out (1, p) (d, t)) (dataflow_op sg (my_ooo_input_op os)) (dataflow_op sg (my_ooo_input_op ?os''))\<close> (is \<open>wstep _ _ ?op2'\<close>)
+        proof -
+          have \<open>(step Tau)\<^sup>*\<^sup>* (ooo_input_op c\<UU> os) (ooo_input_op c\<UU> (produce ?os' (Cap t p) [d]))\<close>
+            using that(1,3) d' lfinite ldropWhile_LCons_t_d' en1_os' step_Taus_ooo_input_op_Drop_Mint[where os=os]
+            unfolding invariant_def by auto
+          hence step_Taus: \<open>(step Tau)\<^sup>*\<^sup>* (dataflow_op sg (my_ooo_input_op os)) (dataflow_op sg (my_ooo_input_op (produce ?os' (Cap t p) [d])))\<close>
+            using step_Taus_dataflow_op_Taus_intro unfolding my_ooo_input_op_def by blast
+          have \<open>step (Out (Some p) (Inr (d, t))) (ooo_input_op c\<UU> (produce ?os' (Cap t p) [d])) (ooo_input_op c\<UU> ?os'')\<close>
+            using that(3) Nil initialized outpu_os' step_builder_op_Write_Some
+            unfolding ooo_input_op_def produce_def by auto
+          hence step_Out: \<open>step (Out (1, p) (d, t)) (dataflow_op sg (my_ooo_input_op (produce ?os' (Cap t p) [d]))) ?op2'\<close>
+            unfolding my_ooo_input_op_def by fastforce
+          show ?thesis using step_Taus step_Out wstep_trans(1) by meson
+        qed
+        have \<open>timely_monotone (es ?os'' p') (mset (ocaps ?os'' p'))\<close> for p'
+        proof (cases \<open>p' = p\<close>)
+          case True
+          then show ?thesis using monotone_foldl_ooo_input_os_Drop_Mint that(1) lfinite
+              ldropWhile_LCons_t_d' es_os' unfolding invariant_def by fastforce
+        next
+          case False
+          then show ?thesis using that(1) es_os' ocaps_os' unfolding invariant_def by simp
+        qed
+        hence invariant: \<open>invariant ?os'' f\<close>
+          using that(1) initialized en1_os' unfolding invariant_def by simp
+        have my_source_op: \<open>my_source_op ?os'' f =
+  map_op (Pair 1) (Pair 1) (source_op ((\<lambda>p. outpu os p @@- lmap (\<lambda>z. case z of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os p)))(p := lxs)))\<close>
+          using that(2) Nil es_os' unfolding unfold my_source_op_def
+          by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] dest!: arg_cong[where f=ltl and y=\<open>LCons _ lxs\<close>] simp add: ltl_lfilter)
+        show ?thesis using wstep invariant my_source_op unfolding R_def by (force intro!: wbc_base)
       next
         case (Cons x xs)
         hence x_d_t: \<open>x = (d, t)\<close> using that(2) by simp
@@ -517,8 +572,9 @@ next
           using that(1,3) Cons x_d_t step_builder_op_Write_Some unfolding invariant_def ooo_input_op_def by auto
         hence \<open>wstep (Out (1, p) (d, t)) (dataflow_op sg (my_ooo_input_op os)) (dataflow_op sg (my_ooo_input_op ?os'))\<close>
           using step_Out_dataflow_op_Out_Inr_intro unfolding my_ooo_input_op_def by force
-        moreover have \<open>map_op (Pair 1) (Pair 1) (source_op ((\<lambda>p. outpu os p @@- lmap (\<lambda>z. case z of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os p)))(p := lxs)))
-  = my_source_op ?os' f\<close> using that(2) Cons unfolding my_source_op_def
+        moreover have \<open>my_source_op ?os' f =
+  map_op (Pair 1) (Pair 1) (source_op ((\<lambda>p. outpu os p @@- lmap (\<lambda>z. case z of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os p)))(p := lxs)))\<close>
+          using that(2) Cons unfolding my_source_op_def
           by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] simp add: fun_eq_iff)
         ultimately show ?thesis using that(1) unfolding R_def invariant_def by (force intro!: wbc_base)
       qed
@@ -526,7 +582,7 @@ next
         by (auto elim !: step_map_op_elim step_source_op_elim simp add: my_source_op_def)
     qed
   qed
-  oops
+qed
 
 (* record ('p, 'd, 'd1, 'd2, 'd3, 't) input_state_ty3 = "('p, 'd, 'd1, 'd2, 't) input_state2" +  es3:: "('t, 'd3) event llist"
 
