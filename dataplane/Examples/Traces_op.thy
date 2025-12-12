@@ -196,9 +196,108 @@ thm set_spec_op_trace_eq_set_spec_op_trace_alt
 thm set_op_bisim_set_spec_op
 
 
+lemma cinfiniteD:
+  "cinfinite (f |`| A) \<Longrightarrow> cinfinite A"
+  unfolding cinfinite_def
+  by (auto del: disjCI simp flip: cin.rep_eq; hypsubst_thin?)
+
 lemma
-  "wtraced (traces_op { f.  (\<forall> p. ldistinct (f p) \<and> lset (f p) \<subseteq> S - S') }) ios \<Longrightarrow>
-   "
+  "(\<forall> x p. (p, x) |\<in>| S \<longrightarrow> p \<notin> defaults) \<Longrightarrow>
+   set_spec_op S S' ~
+   traces_op { f. (\<forall> p. \<exists> ios. lmap (\<lambda> x. VOut p x) (f p) = ios \<and> set_spec_op_trace S S' ios) }"
+  unfolding set_spec_op_trace_eq_set_spec_op_trace_alt
+  apply (coinduction arbitrary: S S' rule: bisim_coinduct_upto'')
+  subgoal for io op1' S S'
+    apply (erule step_set_spec_op_elim)
+    apply (clarsimp simp flip: cin.rep_eq split: if_splits; hypsubst_thin?)
+    subgoal for p x
+      apply (intro exI conjI)
+      apply (rule step_traces_op_intro)
+            apply (rule refl)+
+           defer
+           apply simp
+          apply (rule refl)+
+       apply (rule bc_base)
+      subgoal
+      apply (intro exI conjI)
+          apply (rule refl)+
+      apply (rule arg_cong[where f=traces_op])
+        subgoal
+          apply (simp only: image_Collect)
+          apply (rule Collect_eqI)
+          apply (intro allI impI iffI)
+          subgoal for f' p'
+            apply (auto del: disjCI simp flip: cin.rep_eq split: if_splits; hypsubst_thin?)
+            apply (smt (verit, del_insts) VIO.inject(2) cDiff_iff cempty_not_cinsert cinsert_absorb lhd_LCons llist.expand llist.map(1) llist.map_sel(1) llist.simps(2,2) ltl_lmap ltl_simps(2) not_lnull_conv
+                not_lnull_conv set_spec_op_trace_alt.cases)
+            subgoal for f''
+              apply (cases "f'' p'")
+              subgoal
+                apply (drule spec[of _ p'])
+                by (erule set_spec_op_trace_alt.cases; auto; hypsubst_thin?)
+              subgoal for y lys
+                apply simp
+                apply (rule set_spec_op_trace_alt.intros(2))
+                subgoal
+                  sorry
+                subgoal
+                  
+
+end
+            apply (metis cDiff_iff llist.sel(2) lmap_eq_LNil set_spec_op_trace_alt.cases)
+            done
+          subgoal for f
+            apply (clarsimp del: disjCI simp flip: cin.rep_eq split: if_splits; hypsubst_thin?)
+            apply (rule exI[of _ "(\<lambda> p'. if p = p' then LCons x (f p) else f p')"])
+            apply auto
+            apply (rule set_spec_op_trace_alt.intros(2))
+            sledgehammer
+
+            find_theorems set_spec_op_trace_alt set_spec_op_trace
+
+
+end
+            apply (metis eq_LConsD)
+            done
+          done
+        subgoal
+          by blast
+        done
+      subgoal
+        apply simp
+        apply (rule image_eqI[rotated])
+         apply simp
+        apply (intro conjI allI)
+
+
+
+end
+        apply (auto del: disjCI simp flip: cin.rep_eq intro!: ldistinct_ltlI split: if_splits; hypsubst_thin?)
+        subgoal for f e
+  apply (drule spec[of _ p])
+            back
+            apply (auto del: disjCI simp flip: cin.rep_eq intro!: ldistinct_ltlI simp add: split: if_splits; hypsubst_thin?)
+        
+
+end
+          apply (cases "f p")
+          subgoal 
+                    apply (auto del: disjCI simp flip: cin.rep_eq intro!: ldistinct_ltlI split: if_splits; hypsubst?)
+                    apply (metis ccard_eq_0_iff csubset_cempty enat_0_iff(1) ex_cin_conv)
+            done
+          subgoal for y lys
+        apply (drule spec[of _ p])
+            back
+            apply (auto del: disjCI simp flip: cin.rep_eq intro!: ldistinct_ltlI simp add: split: if_splits; hypsubst_thin?)
+
+            find_theorems cset_of_llist LNil
+
+
+
+    find_theorems traces_op Out
+
+
+
 
 
 end

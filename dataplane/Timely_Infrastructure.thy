@@ -21,6 +21,7 @@ lift_definition ccard :: "'m cset \<Rightarrow> nat" is card .
 lift_definition cinfinite :: "'m cset \<Rightarrow> bool" is Finite_Set.infinite.
 end
 
+
 lemma ccard_eq_0_iff[simp]:
   "(ccard A = 0) = (A = {||} \<or> cinfinite A)"
   unfolding ccard_def cinfinite_def
