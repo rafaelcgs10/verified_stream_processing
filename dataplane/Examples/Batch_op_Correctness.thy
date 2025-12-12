@@ -8,6 +8,7 @@ imports
   "../AntichainOrder"
    Dataplane.LList_Haskell_Setup
   Source_op
+  Set_op
 begin
 
 abbreviation "t0 \<equiv> MyPair (0 :: nat) (0 :: nat)"
@@ -54,9 +55,9 @@ abbreviation init_operator_state_ty2 where
    en2 = Inr,
    de2 = projr
    \<rparr>"
-abbreviation "l2 \<equiv> Logic (batch_fun_op (init_operator_state_ty2 default_internal_summary) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)])) default_internal_summary"
+abbreviation "l2 f \<equiv> Logic (batch_fun_op (init_operator_state_ty2 default_internal_summary) f) default_internal_summary"
 
-abbreviation "test_dt2 \<equiv> Comp [(0, 1) \<mapsto> (0, 1)] (l1 (\<lambda> _. inps2)) l2"
+abbreviation "test_dt2 \<equiv> Comp [(0, 1) \<mapsto> (0, 1)] (l1 (\<lambda> _. inps2)) (l2 (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
 
 abbreviation "test_op2 \<equiv> compile_dataflow test_dt2 :: (2 \<times> 1, 2 \<times> 1, _) op"
 
@@ -84,13 +85,6 @@ value [GHC] "check_prefix 100 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, 
 value [GHC] "check_prefix 100 [((1, 1), (Inr 3, MyPair 1 0)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1))] test_op2"
 
 
-
-
-
-
-lemma
-  "set_op {||} {||} test_op2 \<approx> set_op (cimage (\<lambda> (p, x, t). ((2, p), Inr x, t)) (Max_spec inps2)) {||} \<oslash>"
-  oops
 
 
 abbreviation "inp_op os \<equiv> map_op (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (ooo_input_op {|1|} os)"
@@ -139,6 +133,23 @@ shows
   \<open>dataflow_op sg (inp_tt_op os1 (\<lambda> p. case p of Inl x \<Rightarrow> [] | Inr x \<Rightarrow> map (\<lambda> (d, t). Inr (Inl d, t)) cbuf) os2 f) \<approx>
    map_op (\<lambda> p. (1, p)) (\<lambda> p. (1, p)) (source_op (\<lambda> p. outpu os2 1 @@- lmap (\<lambda> (d, t). (Inr d, t)) (lconcat (batch_fun_spec f lxs buf caps))))\<close>
 
-  term "ocaps os1 1"
+  oops
+
+
+abbreviation "G inps f \<equiv> (compile_dataflow (Comp [(0, 1) \<mapsto> (0, 1)] (l1 inps) (l2 f)))"
+
+abbreviation "coll inps t \<equiv> list_of (lmap (\<lambda> e. case e of Data t d \<Rightarrow> d) (lfilter (\<lambda> e. case e of Data t' d \<Rightarrow> t = t' | _ \<Rightarrow> False) inps))"
+
+abbreviation "ts inps \<equiv> cimage (\<lambda> e. case e of Data t d \<Rightarrow> t) (cfilter is_Data (cset_of_llist inps))"
+
+lemma
+  fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
+   and f :: \<open>'d1 list \<Rightarrow> 'd2 list\<close>
+   and S :: \<open>((2 \<times> 1) \<times> ('d1 + 'd2) \<times> 't) cset\<close>
+ assumes \<open>S = cUnion (cimage (\<lambda> t. (cset_of_llist o llist_of) (map (\<lambda> x. ((2, 1), (Inr x, t))) (f (coll (inps 1) t)))) (ts (inps 1)))\<close>
+  shows \<open>set_op {||} {||} (G inps f) \<approx> set_spec_op S {||}\<close>
+
+
+
 
 end
