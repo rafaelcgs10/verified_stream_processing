@@ -84,8 +84,7 @@ abbreviation "G_op os1 cbuf os2 f \<equiv>
 definition "c_pts_inv c caps = (\<forall> l. c_pts c l = caps l)"
 definition "Src_caps_inv caps oss = (\<forall> nid p. caps (Loc nid (Src p)) = zmset_of (mset (ocaps (oss nid) p)))"
 definition "Trg_caps_inv caps bufs = (\<forall> nid p. caps (Loc nid (Trg p)) = zmset_of (mset (map snd (bufs nid p))))"
-definition "progress_inv eds oss = concat (map (\<lambda> nid. extract_progress nid eds (snd (obtain_progress (oss nid)))) Enum.enum)"
-definition "cgs_inv su cgs c = change_multiplicities su cgs c"
+definition "extract_prog eds oss = concat (map (\<lambda> nid. extract_progress nid eds (snd (obtain_progress (oss nid)))) Enum.enum)"
 definition "front_inv oss c = (\<forall> nid p. front (oss nid) 1 \<le> frontier (c_imp c (Loc nid (Trg p))))"
 definition "imp_front_inv su c = (\<forall> l. frontier (c_imp c l) \<le> dataflow_topology.implied_frontier_alt su (+) c l)"
 definition "buf_imp_front_inv su c T nid p = (\<forall> t \<in> T. frontier_less_equal (dataflow_topology.implied_frontier_alt su (+) c (Loc nid (Trg p))) t)"
@@ -96,6 +95,27 @@ definition "propagation_inv su c =
    dataflow_topology.inv_implications_nonneg c \<and>
    dataflow_topology.inv_imp_plus_work_nonneg c)"
 
+definition "compress_changes cgs = (
+   let loc_ts = remdups (map (\<lambda> (l, t, m). (l, t)) cgs) in map (\<lambda> (l, t). (l, t, sum_list (map (snd o snd) (filter (\<lambda> (l', t', m'). l' = l \<and> t' = t) cgs)))) loc_ts)"
+
+lemma
+  "change_multiplicities su (compress_changes cgs) = change_multiplicities su cgs"
+  apply (rule ext)
+  subgoal for c
+  apply (induct cgs arbitrary: c)
+  subgoal
+    unfolding compress_changes_def
+    apply simp
+    done
+  subgoal for a cgs c
+    apply (cases a)
+    subgoal for l t m
+    apply (auto 0 0 simp add: comp_def change_multiplicities_simp_alt compress_changes_def split: if_splits)
+      oops
+
+      term operator_state.extend
+
+      find_theorems operator_state.extend 
 
 lemma correctness_gen:
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
@@ -122,8 +142,8 @@ lemma correctness_gen:
     C_PTS_INV:
     \<open>Src_caps_inv caps oss\<close>
     \<open>Trg_caps_inv caps bufs\<close>
-    \<open>cgs = progress_inv (edges sg) oss\<close>
-    \<open>c' = cgs_inv my_summ cgs c\<close>
+    \<open>cgs = extract_prog (edges sg) oss\<close>
+    \<open>c' = change_multiplicities my_summ cgs c\<close>
     \<open>c_pts_inv c' caps\<close>
     \<open>buf_imp_front_inv my_summ c (snd ` set buf) 1 0\<close>
     and
