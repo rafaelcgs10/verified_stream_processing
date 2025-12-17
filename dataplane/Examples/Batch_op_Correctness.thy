@@ -79,23 +79,33 @@ abbreviation "tt_op os f \<equiv> map_op (case_option (Inl (1 :: 2)) (\<lambda> 
 abbreviation "G_op f ip_state os2 cbuf \<equiv>
    dataflow_tree_to_operator (G f (ip_state :: (1, 'd1 + 'd2, 'd1, _) input_state) (os2 :: (1, 'd1 + 'd2, 'd1, 'd2, _) operator_state_ty2) cbuf)"
 
-(* abbreviation "G_op os1 cbuf os2 f \<equiv>
-   map_op (case_sum id id) (case_sum id id)
-   (comp_op [Inr (0 :: 2, 0 :: 1) \<mapsto> Inr (1 :: 2, 0 :: 1)] cbuf (inp_op (os1\<lparr> en1 := Inl \<rparr>)) (tt_op (os2\<lparr> de1 := projl, en2 := Inr \<rparr>) f))"
- *)
 definition "c_pts_inv c caps = (\<forall> l. c_pts c l = caps l)"
 definition "Src_caps_inv caps oss = (\<forall> nid p. caps (Loc nid (Src p)) = zmset_of (mset (ocaps (oss nid) p)))"
 definition "Trg_caps_inv caps bufs = (\<forall> nid p. caps (Loc nid (Trg p)) = zmset_of (mset (map snd (bufs nid p))))"
 definition "extract_prog eds oss = concat (map (\<lambda> nid. extract_progress nid eds (snd (obtain_progress (oss nid)))) Enum.enum)"
 definition "front_inv oss c = (\<forall> nid p. front (oss nid) p \<le> frontier (c_imp c (Loc nid (Trg p))))"
-definition "imp_front_inv su c = (\<forall> l. frontier (c_imp c l) \<le> dataflow_topology.implied_frontier_alt su (+) c l)"
-definition "buf_imp_front_inv su c T nid p = (\<forall> t \<in> T. frontier_less_equal (dataflow_topology.implied_frontier_alt su (+) c (Loc nid (Trg p))) t)"
-definition "changes_above_impl_inv su c cgs = (\<forall>(l, t, d)\<in>set cgs. frontier_less_equal (dataflow_topology.implied_frontier_alt su (+) c l) t)"
-definition "changes_non_zero_inv cgs = (\<forall>d\<in>snd ` snd ` set cgs. d \<noteq> 0)"
+definition "imp_front_inv su c = (\<forall> l. frontier (c_imp c l) \<le> ifrontier su (+) c l)"
+definition "buf_imp_front_inv su c T nid p = (\<forall> t \<in> T. frontier_less_equal (ifrontier su (+) c (Loc nid (Trg p))) t)"
+
 definition "propagation_inv su c = 
   (dataflow_topology.inv_imps_work_sum su (-+-) c \<and>
    dataflow_topology.inv_implications_nonneg c \<and>
    dataflow_topology.inv_imp_plus_work_nonneg c)"
+
+definition "changes_non_zero_inv cgs = (\<forall>d\<in>snd ` snd ` set cgs. d \<noteq> 0)"
+definition "changes_above_impl_inv su c cgs = 
+  ((\<forall>(l, t, d)\<in>set cgs. frontier_less_equal (ifrontier su (+) c l) t) \<and>
+   (\<forall> l' \<in> fst ` set cgs. let (cgs_l, cgs') = partition (\<lambda> (l, t, d). l' = l) cgs in
+                         (\<forall> (l, t, d) \<in> set cgs'. frontier_less_equal (ifrontier su (+) (change_multiplicities su cgs_l c) l) t)))"
+
+abbreviation "su_test a b \<equiv> dataflow_tree_to_graph (
+    Comp [(0, 0) \<mapsto> (1, 1), (1, 0) \<mapsto> (0, 0)] (\<lambda> _. []) 
+    (Comp [(0, 0) \<mapsto> (0, 0)] (\<lambda> _. []) (Logic (\<oslash> :: (_, _, unit + unit) op) (\<lambda> _ _. [0 :: nat])) (Logic \<oslash> (\<lambda> _ _. [0 :: nat])))
+    (Comp [(0 :: 4, 0 :: 2) \<mapsto> (0, 0)] (\<lambda> _. []) (Logic \<oslash> (\<lambda> _ _. [0 :: nat])) (Logic \<oslash> (\<lambda> _ _. [0 :: nat])))
+    ) a b"
+
+definition buff_from_graph where
+  "buff_from_graph su nid p = Set.the_elem { (nid', p'). su (Loc nid' (Src p')) (Loc nid (Trg p)) \<noteq> {}\<^sub>A}"
 
 lemma correctness_gen:
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>

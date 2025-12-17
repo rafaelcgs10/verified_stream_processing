@@ -116,7 +116,7 @@ record ('id, 'p, 't) subgraph =
 
 datatype ('id, 'p, 's, 'd, 't) dataflow_tree = 
   "apply": Logic "('p option, 'p option, 's + 'd) op" "'p port \<Rightarrow> 'p port \<Rightarrow> 't list"
-  | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "'p + 'p \<times> 't \<Rightarrow> ('s + 'd) buf" "('id, 'p, 's, 'd, 't) dataflow_tree" "('id, 'p, 's, 'd, 't) dataflow_tree"
+  | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "'id + 'id \<times> 'p \<Rightarrow> ('s + 'd) buf" "('id, 'p, 's, 'd, 't) dataflow_tree" "('id, 'p, 's, 'd, 't) dataflow_tree"
 
 fun dataflow_tree_to_operator_aux where
   "dataflow_tree_to_operator_aux n (Logic op su) = (n + 1,
@@ -127,14 +127,13 @@ fun dataflow_tree_to_operator_aux where
     (n'', map_op (case_sum id id) (case_sum id id)
      (comp_op (case_sum (\<lambda> _. None) ((case_option None (Some o Inr)) o (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (n' + offset, q)))) buf op1 op2))
    )"
-definition "dataflow_tree_to_operator op = snd (dataflow_tree_to_operator_aux 0 op)"
 
 fun dataflow_tree_to_graph_aux where
   "dataflow_tree_to_graph_aux n (Logic op su) = (n + 1,
     (\<lambda> l1 l2. 
     if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
-    then frontier (abs_zmultiset (mset (su (port l1) (port l2)), {#}))
-    else frontier {#}\<^sub>z))"
+    then antichain_from_list (su (port l1) (port l2))
+    else antichain_from_list []))"
 | "dataflow_tree_to_graph_aux n (Comp wire buf dt1 dt2) = (
     let (n', summary1) = dataflow_tree_to_graph_aux n dt1 in
     let (n'', summary2) = dataflow_tree_to_graph_aux n' dt2 in
@@ -142,7 +141,7 @@ fun dataflow_tree_to_graph_aux where
      if node l1 \<ge> n \<and> node l1 < n' \<and> node l2 \<ge> n' \<and> is_Src (port l1) \<and> is_Trg (port l2)
      then (case wire (node l1 - n, idp (port l1)) of 
              None \<Rightarrow> frontier {#}\<^sub>z 
-           | Some (offset, q) \<Rightarrow> (if node l2 = n' + offset \<and> q = idp (port l2) then frontier (abs_zmultiset (mset [0], {#})) else frontier {#}\<^sub>z )) 
+           | Some (offset, q) \<Rightarrow> (if node l2 = n' + offset \<and> q = idp (port l2) then antichain_from_list [0] else antichain_from_list [])) 
      else summary1 l1 l2 + summary2 l1 l2)
    )"
 
@@ -159,7 +158,7 @@ lemma compile_dataflow_tree_aux_same_loc:
    summar loc loc = {}\<^sub>A"
   apply (induct df arbitrary: n n'' summar)
   subgoal
-    by (cases loc; simp add: frontier_empty_zmset split: port.splits if_splits)
+    by (cases loc; simp add: antichain_from_list_is_empty frontier_empty_zmset split: port.splits if_splits)
   subgoal for x1 x2 df1 df2 n n'' summar
     apply (cases "dataflow_tree_to_graph_aux n df1")
     subgoal for n' summar'
@@ -219,6 +218,8 @@ abbreviation AF where
   "AF \<equiv> dataflow_topology.after_summary (-+-)"
 
 notation "AF" (infixl \<open>-++-\<close> 65)
+
+abbreviation "ifrontier \<equiv> dataflow_topology.implied_frontier_alt"
 
 lemma AF_empty[simp]:
   "A -++- {}\<^sub>A = {#}\<^sub>z"
