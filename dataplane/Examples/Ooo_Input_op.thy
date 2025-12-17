@@ -55,6 +55,7 @@ proof (induction xs arbitrary: os)
   let ?os = \<open>ooo_input_os_Drop_Mint p os x\<close>
   have \<open>ooo_input_os_Drop_Mint p (os\<lparr>es := (es os)(p := lxs)\<rparr>) x = ?os\<lparr>es := (es ?os)(p := lxs)\<rparr>\<close>
     using H1 by (cases x) (simp_all add: ooo_input_os_Drop_Mint_def)
+  (* Why is this faster than ";simp" ? *)
   hence os'_alt: \<open>os' = foldl (ooo_input_os_Drop_Mint p) (?os\<lparr>es := (es ?os)(p := lxs)\<rparr>) xs\<close>
     using H2 by (simp add: fun_upd_def)
   {

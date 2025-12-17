@@ -19,6 +19,10 @@ abbreviation inp_incr_summary where
   then antichain {inc}
   else {}\<^sub>A)\<close>
 
+(* Experiment with Eisbach. *)
+method sim_cases uses defs elims =
+  ((unfold defs)?, elim conjE elims, (auto; fail), fold defs; hypsubst_thin?)
+
 lemma ooo_input_op_increment_op_source_op:
   defines \<open>invariant f os1 buf os2 \<equiv> initia os1 \<and> en1 os1 = f \<and> inj f \<and> timely_monotone (es os1 1) (mset (ocaps os1 1))
   \<and> initia os2 \<and> (\<forall>x \<in> set (buf (Inr (1, 1))). is_Inr x)\<close>
@@ -45,87 +49,94 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
       unfolding invariant_def by blast+
     show ?thesis
     proof -
-      have "\<exists>op2'. wstep (Out (1, 1) (a, b)) (my_source_op f inc os1 buf os2) op2' \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf (my_ooo_input_op os1) (my_increment_op inc (os2\<lparr>outpu := (outpu os2)(1 := xs)\<rparr>))))) op2'"
+      have "\<exists>op2'. wstep (Out (1, 1) (d, t)) (my_source_op f inc os1 buf os2) op2'
+  \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op os1) (my_increment_op inc (os2\<lparr>outpu := (outpu os2)(1 := xs)\<rparr>))))) op2'"
+      (is \<open>\<exists>_. _ \<and> wbisim_cong _ (dataflow_op _ (map_op _ _ (comp_op _ _ _ (my_increment_op _ ?os2')))) _\<close>)
         if "invariant f os1 buf os2"
-          and "initia os2"
-          and "outpu os2 1 = (a, b) # xs"
-        for a :: 'b
-          and b :: 'c
+          and "outpu os2 1 = (d, t) # xs"
+        for d :: 'b
+          and t :: 'c
           and xs :: "('b \<times> 'c) buf"
-        using that sorry
-      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2' \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BENQ (Inr (1, 1)) (Inr (a, b)) buf) (my_ooo_input_op (os1\<lparr>outpu := (outpu os1)(1 := xs)\<rparr>)) (my_increment_op inc os2)))) op2'"
+        term ?os2'
+      proof -
+        have \<open>step (Out 1 (d, t))
+  (source_op ((\<lambda>(p :: 1). outpu os2 1 @@- lmap (\<lambda>(d, t). (d, t + inc))
+      ((input os2 1 @ map projr (buf (Inr (1, 1))) @ outpu os1 1) @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os1 1))))))
+  (source_op ((\<lambda>(p :: 1). outpu ?os2' 1 @@- lmap (\<lambda>(d, t). (d, t + inc))
+      ((input ?os2' 1 @ map projr (buf (Inr (1, 1))) @ outpu os1 1) @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os1 1))))))\<close>
+          using that(2) step_source_op_Out_intro defaults_num1_def by force
+        hence \<open>wstep (Out (1, 1) (d, t)) (my_source_op f inc os1 buf os2) (my_source_op f inc os1 buf ?os2')\<close>
+          using my_source_op_def by auto
+        thus ?thesis using that(1) unfolding R_def invariant_def by (fastforce intro!: wbc_base)
+      qed
+      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2'
+  \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BENQ (Inr (1, 1)) (Inr (d, t)) buf)
+    (my_ooo_input_op (os1\<lparr>outpu := (outpu os1)(1 := xs)\<rparr>)) (my_increment_op inc os2)))) op2'"
+      (is \<open>\<exists>_. _ \<and> wbisim_cong _ (dataflow_op _ (map_op _ _ (comp_op _ ?buf' (my_ooo_input_op ?os1') _))) _\<close>)
         if "invariant f os1 buf os2"
-          and "initia os1"
-          and "outpu os1 1 = (a, b) # xs"
-        for a :: 'b
-          and b :: 'c
+          and "outpu os1 1 = (d, t) # xs"
+        for d :: 'b
+          and t :: 'c
           and xs :: "('b \<times> 'c) buf"
-        using that sorry
-      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2' \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BTL (Inr (1, 1)) buf) (my_ooo_input_op os1) \<oslash>))) op2'"
+      proof -
+        have \<open>my_source_op f inc os1 buf os2 = my_source_op f inc ?os1' ?buf' os2\<close>
+          using that(2) unfolding my_source_op_def by simp
+        thus ?thesis using that(1) unfolding R_def invariant_def by (fastforce intro!: wbc_base)
+      qed
+      moreover have False
         if "invariant f os1 buf os2"
           and "buf (Inr (1, 1)) \<noteq> []"
-          and "initia os2"
           and "is_Inl (BHD (Inr (1, 1)) buf)"
-        using that sorry
-      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2' \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BTL (Inr (1, 1)) buf) (my_ooo_input_op os1) (my_increment_op inc (os2\<lparr>consu := consu os2 @ [(1, t, 1)], input := BENQ 1 (d, t) (input os2), inter := operator_state.inter os2 @ map (\<lambda>cap. (1, capability.time cap, 1)) (concat (map (\<lambda>p'. map (\<lambda>t'. Cap (t -+- t') 1) (summar os2 1 1)) enum_class.enum)), ocaps := \<lambda>p. ocaps os2 1 @ map capability.time (concat (map (\<lambda>p'. map (\<lambda>t'. Cap (t -+- t') 1) (summar os2 1 1)) enum_class.enum))\<rparr>))))) op2'"
+        using that sum.exhaust is_Inl.simps(2) is_Inr.simps(2) hd_in_set unfolding invariant_def BHD_def
+        by (metis (no_types, opaque_lifting))
+      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2'
+  \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BTL (Inr (1, 1)) buf)
+    (my_ooo_input_op os1) (my_increment_op inc (consumes os2 1 t d))))) op2'"
         if "invariant f os1 buf os2"
           and "buf (Inr (1, 1)) \<noteq> []"
-          and "initia os2"
           and "Inr (d, t) = BHD (Inr (1, 1)) buf"
         for d :: 'b
           and t :: 'c
         using that sorry
-      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2' \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf (my_ooo_input_op os') (my_increment_op inc os2)))) op2'"
+      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2'
+  \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+  (my_ooo_input_op os1') (my_increment_op inc os2)))) op2'"
         if "invariant f os1 buf os2"
-          and "initia os1"
           and "ocaps os1 1 \<noteq> []"
-          and "os' \<in> rcset (ooo_input_op_logic {|1|} os1)"
-        for os' :: "(1, 'b, 'a, 'c, 'd) input_state_scheme"
+          and "os1' |\<in>| ooo_input_op_logic {|1|} os1"
+        for os1' :: "(1, 'b, 'a, 'c, 'd) input_state_scheme"
         using that sorry
-      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2' \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf (my_ooo_input_op os1) (my_increment_op inc os')))) op2'"
+      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2'
+  \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+  (my_ooo_input_op os1) (my_increment_op inc os2')))) op2'"
         if "invariant f os1 buf os2"
-          and "initia os2"
           and "ocaps os2 1 \<noteq> []"
-          and "os' \<in> rcset (increment_op_logic 1 1 inc os2)"
-        for os' :: "(1, 'b, 'a, 'c, 'd) input_state_scheme"
+          and "os2' |\<in>| increment_op_logic 1 1 inc os2"
+        for os2' :: "(1, 'b, 'a, 'c, 'd) input_state_scheme"
         using that sorry
-      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2' \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 1 (edges sg) \<lparr>cons = consu os2, inte = operator_state.inter os2, prod = produ os2\<rparr>) (pt_tr sg)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf (my_ooo_input_op os1) (my_increment_op inc (os2\<lparr>consu := [], inter := [], produ := []\<rparr>))))) op2'"
+      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2'
+  \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 1 (edges sg) \<lparr>cons = consu os2, inte = inter os2, prod = produ os2\<rparr>) (pt_tr sg)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op os1) (my_increment_op inc (os2\<lparr>consu := [], inter := [], produ := []\<rparr>))))) op2'"
+      (is \<open>_ (dataflow_op ?sg')\<close>)
         if "invariant f os1 buf os2"
-          and "initia os2"
-          and "operator_state.inter os2 \<noteq> []"
-        using that sorry
-      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2' \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 1 (edges sg) \<lparr>cons = consu os2, inte = operator_state.inter os2, prod = produ os2\<rparr>) (pt_tr sg)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf (my_ooo_input_op os1) (my_increment_op inc (os2\<lparr>consu := [], inter := [], produ := []\<rparr>))))) op2'"
+          and "consu os2 \<noteq> [] \<or> inter os2 \<noteq> [] \<or> produ os2 \<noteq> []"
+        using that unfolding R_def invariant_def my_source_op_def by (fastforce intro!: wbc_base)
+      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2'
+  \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 0 (edges sg) \<lparr>cons = consu os1, inte = inter os1, prod = produ os1\<rparr>) (pt_tr sg)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+  (my_ooo_input_op (os1\<lparr>consu := [], inter := [], produ := []\<rparr>)) (my_increment_op inc os2)))) op2'"
         if "invariant f os1 buf os2"
-          and "initia os2"
-          and "consu os2 \<noteq> []"
-        using that sorry
-      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2' \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 1 (edges sg) \<lparr>cons = consu os2, inte = operator_state.inter os2, prod = produ os2\<rparr>) (pt_tr sg)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf (my_ooo_input_op os1) (my_increment_op inc (os2\<lparr>consu := [], inter := [], produ := []\<rparr>))))) op2'"
-        if "invariant f os1 buf os2"
-          and "initia os2"
-          and "produ os2 \<noteq> []"
-        using that sorry
-      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2' \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 0 (edges sg) \<lparr>cons = consu os1, inte = operator_state.inter os1, prod = produ os1\<rparr>) (pt_tr sg)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf (my_ooo_input_op (os1\<lparr>consu := [], inter := [], produ := []\<rparr>)) (my_increment_op inc os2)))) op2'"
-        if "invariant f os1 buf os2"
-          and "initia os1"
-          and "operator_state.inter os1 \<noteq> []"
-        using that sorry
-      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2' \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 0 (edges sg) \<lparr>cons = consu os1, inte = operator_state.inter os1, prod = produ os1\<rparr>) (pt_tr sg)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf (my_ooo_input_op (os1\<lparr>consu := [], inter := [], produ := []\<rparr>)) (my_increment_op inc os2)))) op2'"
-        if "invariant f os1 buf os2"
-          and "initia os1"
-          and "consu os1 \<noteq> []"
-        using that sorry
-      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2' \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 0 (edges sg) \<lparr>cons = consu os1, inte = operator_state.inter os1, prod = produ os1\<rparr>) (pt_tr sg)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf (my_ooo_input_op (os1\<lparr>consu := [], inter := [], produ := []\<rparr>)) (my_increment_op inc os2)))) op2'"
-        if "invariant f os1 buf os2"
-          and "initia os1"
-          and "produ os1 \<noteq> []"
-        using that sorry
-      note sim_cases = calculation this
+          and "consu os1 \<noteq> [] \<or> inter os1 \<noteq> [] \<or> produ os1 \<noteq> []"
+      (is \<open>_ (dataflow_op ?sg')\<close>)
+        using that unfolding R_def invariant_def my_source_op_def by (fastforce intro!: wbc_base)
+      note * = calculation this
       show ?thesis
+end
         using SIM1 unfolding R_def[symmetric]
-        apply (unfold my_ooo_input_op_def ooo_input_op_def my_increment_op_def increment_op_def)
-        by (elim step_dataflow_op_elim step_map_op_elim step_comp_op_elim step_builder_op_elim conjE, simp_all; hypsubst_thin)
-         (auto intro: invariant_initia sim_cases simp flip: my_ooo_input_op_def ooo_input_op_def my_increment_op_def increment_op_def)
-      qed
+        apply -
+        apply (sim_cases defs: my_ooo_input_op_def ooo_input_op_def my_increment_op_def increment_op_def elims: step_dataflow_op_elim step_map_op_elim step_comp_op_elim step_builder_op_elim)
+        using * apply (auto intro: invariant_initia simp flip: my_ooo_input_op_def)
+        done
 end
     subgoal
       apply (intro exI conjI)
