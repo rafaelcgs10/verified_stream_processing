@@ -138,7 +138,7 @@ value [GHC] r
 
 
 value [GHC] "check_prefix 500 [((nid2, p0), ((2, 1), 0))] dt"
-definition "r2 = check_prefix 150 [((nid2, p0), ((4, 1), 1))] dt"
+definition "r2 = check_prefix 250 [((nid2, p0), ((4, 1), 1))] dt"
 
 value [GHC] r2
 
