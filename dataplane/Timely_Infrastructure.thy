@@ -116,16 +116,16 @@ record ('id, 'p, 't) subgraph =
 
 datatype ('id, 'p, 's, 'd, 't) dataflow_tree = 
   "apply": Logic "('p option, 'p option, 's + 'd) op" "'p port \<Rightarrow> 'p port \<Rightarrow> 't list"
-  | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "('id, 'p, 's, 'd, 't) dataflow_tree" "('id, 'p, 's, 'd, 't) dataflow_tree"
+  | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "'p + 'p \<times> 't \<Rightarrow> ('s + 'd) buf" "('id, 'p, 's, 'd, 't) dataflow_tree" "('id, 'p, 's, 'd, 't) dataflow_tree"
 
 fun dataflow_tree_to_operator_aux where
   "dataflow_tree_to_operator_aux n (Logic op su) = (n + 1,
     map_op (case_option (Inl n) (\<lambda> p. Inr (n, p))) (case_option (Inl n) (\<lambda> p. Inr (n, p))) op)"
-| "dataflow_tree_to_operator_aux n (Comp wire dt1 dt2) = (
+| "dataflow_tree_to_operator_aux n (Comp wire buf dt1 dt2) = (
     let (n', op1) = dataflow_tree_to_operator_aux n dt1 in
     let (n'', op2) = dataflow_tree_to_operator_aux n' dt2 in
     (n'', map_op (case_sum id id) (case_sum id id)
-     (comp_op (case_sum (\<lambda> _. None) ((case_option None (Some o Inr)) o (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (n' + offset, q)))) (\<lambda> _. []) op1 op2))
+     (comp_op (case_sum (\<lambda> _. None) ((case_option None (Some o Inr)) o (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (n' + offset, q)))) buf op1 op2))
    )"
 definition "dataflow_tree_to_operator op = snd (dataflow_tree_to_operator_aux 0 op)"
 
@@ -135,7 +135,7 @@ fun dataflow_tree_to_graph_aux where
     if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
     then frontier (abs_zmultiset (mset (su (port l1) (port l2)), {#}))
     else frontier {#}\<^sub>z))"
-| "dataflow_tree_to_graph_aux n (Comp wire dt1 dt2) = (
+| "dataflow_tree_to_graph_aux n (Comp wire buf dt1 dt2) = (
     let (n', summary1) = dataflow_tree_to_graph_aux n dt1 in
     let (n'', summary2) = dataflow_tree_to_graph_aux n' dt2 in
     (n'', \<lambda> l1 l2. 
@@ -154,17 +154,13 @@ definition "dataflow_tree_to_graph df = (
   then s
   else Code.abort (STR ''Control plane could not be build'') (\<lambda> _. (\<lambda> _ _. frontier {#}\<^sub>z)))"
 
-abbreviation "df_ex1 \<equiv> (Comp [ (1, 0) \<mapsto> (1, 0) ]
-         (Comp (\<lambda> l. None) (Logic \<oslash> (\<lambda>_ _. [0])) (Logic \<oslash> (\<lambda>_ _. [0])))
-         (Comp (\<lambda> l. None) (Logic \<oslash> (\<lambda>_ _. [0])) (Logic \<oslash> (\<lambda>_ _. [0])))) :: (4, 4, unit, nat, nat) dataflow_tree"
-
 lemma compile_dataflow_tree_aux_same_loc:
   "(n'', summar) = dataflow_tree_to_graph_aux n df \<Longrightarrow>
    summar loc loc = {}\<^sub>A"
   apply (induct df arbitrary: n n'' summar)
   subgoal
     by (cases loc; simp add: frontier_empty_zmset split: port.splits if_splits)
-  subgoal for x1 df1 df2 n n'' summar
+  subgoal for x1 x2 df1 df2 n n'' summar
     apply (cases "dataflow_tree_to_graph_aux n df1")
     subgoal for n' summar'
       apply (cases "dataflow_tree_to_graph_aux n' df2")
