@@ -55,6 +55,7 @@ proof (induction xs arbitrary: os)
   let ?os = \<open>ooo_input_os_Drop_Mint p os x\<close>
   have \<open>ooo_input_os_Drop_Mint p (os\<lparr>es := (es os)(p := lxs)\<rparr>) x = ?os\<lparr>es := (es ?os)(p := lxs)\<rparr>\<close>
     using H1 by (cases x) (simp_all add: ooo_input_os_Drop_Mint_def)
+  (* Why is this faster than ";simp" ? *)
   hence os'_alt: \<open>os' = foldl (ooo_input_os_Drop_Mint p) (?os\<lparr>es := (es ?os)(p := lxs)\<rparr>) xs\<close>
     using H2 by (simp add: fun_upd_def)
   {
@@ -396,7 +397,7 @@ proof (coinduction arbitrary: sg os rule: wbisim_coinduct_upto'')
   (source_op (\<lambda>p. outpu ?os' p @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es ?os' p))))\<close>
           using that(2,3) step_source_op_Out_intro by force
         hence \<open>wstep (Out (1, p) (d, t)) (my_source_op os f) (my_source_op ?os' f)\<close>
-          using step_map_op my_source_op_def by auto
+          using my_source_op_def by auto
         thus ?thesis using that(1) unfolding R_def invariant_def by (force intro!: wbc_base)
       qed
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op os f) op2'
@@ -514,7 +515,7 @@ next
           using that(2) Nil lfinite_ltakeWhile llist.disc(2) llist.map_disc_iff lnull_lfilter
             lset_ltakeWhileD lshift_simps(1) o_apply set_list_of by (metis (mono_tags, lifting))
         have not_lnull: \<open>\<not> lnull (ldropWhile (Not \<circ> is_Data) (es os p))\<close> using that(2) Nil by force
-        hence lhd_t_d': \<open>lhd (ldropWhile (Not \<circ> is_Data) (es os p)) = Data t d'\<close>
+        hence \<open>lhd (ldropWhile (Not \<circ> is_Data) (es os p)) = Data t d'\<close>
           using that(1,2) d' event.case_eq_if event.collapse(1) inj_eq lhd_LCons lhd_lfilter
             llist.set_intros(1) lmap_eq_LCons_conv local.Nil lset_lfilter lshift_simps(1)
             mem_Collect_eq prod.simps(1) unfolding invariant_def by (smt (verit, best))
