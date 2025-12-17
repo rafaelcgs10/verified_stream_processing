@@ -184,14 +184,17 @@ lemma equal_antichain_equal:
    apply (metis (lifting) ac_eq_iff filter_antichain.rep_eq is_empty_antichain_simp mem_antichain_nonempty member_antichain.rep_eq member_filter)+
   done
 
-instantiation antichain :: (type) equal
+instantiation antichain :: (order) equal
 begin
 definition
   "equal_antichain = antichain_equal"
 instance 
   apply standard
   subgoal for f1 f2
-    sorry
+    unfolding equal_antichain_def
+    apply (subst equal_antichain_equal)
+    apply auto
+    done
   done
 end
 

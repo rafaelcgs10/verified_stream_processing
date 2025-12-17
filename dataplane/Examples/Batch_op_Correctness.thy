@@ -95,28 +95,6 @@ definition "propagation_inv su c =
    dataflow_topology.inv_implications_nonneg c \<and>
    dataflow_topology.inv_imp_plus_work_nonneg c)"
 
-definition "compress_changes cgs = (
-   let loc_ts = remdups (map (\<lambda> (l, t, m). (l, t)) cgs) in map (\<lambda> (l, t). (l, t, sum_list (map (snd o snd) (filter (\<lambda> (l', t', m'). l' = l \<and> t' = t) cgs)))) loc_ts)"
-
-lemma
-  "change_multiplicities su (compress_changes cgs) = change_multiplicities su cgs"
-  apply (rule ext)
-  subgoal for c
-  apply (induct cgs arbitrary: c)
-  subgoal
-    unfolding compress_changes_def
-    apply simp
-    done
-  subgoal for a cgs c
-    apply (cases a)
-    subgoal for l t m
-    apply (auto 0 0 simp add: comp_def change_multiplicities_simp_alt compress_changes_def split: if_splits)
-      oops
-
-      term operator_state.extend
-
-      find_theorems operator_state.extend 
-
 lemma correctness_gen:
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
     and f :: \<open>'d1 buf \<Rightarrow> 'd2 buf\<close>

@@ -33,7 +33,7 @@ declare crmdups_def[code del]
 
 lemma crmdups_code[code]:
   "crmdups f (cset_of_llist xs) = cset_of_llist (lrmdups f xs)"
-  sorry
+  oops
 
 definition "compress_cfilter P xs = cfilter P xs"
 
@@ -63,7 +63,7 @@ declare ccard_def[code del]
 
 lemma ccard_code[code]:
   "ccard (cset_of_llist xs) = length (list_of xs)"
-  sorry
+  oops
 
 term lrmdups
 

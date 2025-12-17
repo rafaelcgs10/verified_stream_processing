@@ -239,63 +239,7 @@ lemma
                 apply simp
                 apply (rule set_spec_op_trace_alt.intros(2))
                 subgoal
-                  sorry
-                subgoal
-                  
-
-end
-            apply (metis cDiff_iff llist.sel(2) lmap_eq_LNil set_spec_op_trace_alt.cases)
-            done
-          subgoal for f
-            apply (clarsimp del: disjCI simp flip: cin.rep_eq split: if_splits; hypsubst_thin?)
-            apply (rule exI[of _ "(\<lambda> p'. if p = p' then LCons x (f p) else f p')"])
-            apply auto
-            apply (rule set_spec_op_trace_alt.intros(2))
-            sledgehammer
-
-            find_theorems set_spec_op_trace_alt set_spec_op_trace
-
-
-end
-            apply (metis eq_LConsD)
-            done
-          done
-        subgoal
-          by blast
-        done
-      subgoal
-        apply simp
-        apply (rule image_eqI[rotated])
-         apply simp
-        apply (intro conjI allI)
-
-
-
-end
-        apply (auto del: disjCI simp flip: cin.rep_eq intro!: ldistinct_ltlI split: if_splits; hypsubst_thin?)
-        subgoal for f e
-  apply (drule spec[of _ p])
-            back
-            apply (auto del: disjCI simp flip: cin.rep_eq intro!: ldistinct_ltlI simp add: split: if_splits; hypsubst_thin?)
-        
-
-end
-          apply (cases "f p")
-          subgoal 
-                    apply (auto del: disjCI simp flip: cin.rep_eq intro!: ldistinct_ltlI split: if_splits; hypsubst?)
-                    apply (metis ccard_eq_0_iff csubset_cempty enat_0_iff(1) ex_cin_conv)
-            done
-          subgoal for y lys
-        apply (drule spec[of _ p])
-            back
-            apply (auto del: disjCI simp flip: cin.rep_eq intro!: ldistinct_ltlI simp add: split: if_splits; hypsubst_thin?)
-
-            find_theorems cset_of_llist LNil
-
-
-
-    find_theorems traces_op Out
-
+                  oops
 
 
 
