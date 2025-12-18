@@ -107,7 +107,7 @@ abbreviation "su_test a b \<equiv> dataflow_tree_to_graph (
 
 
 definition Src_from_Trg where
-  "Src_from_Trg su nid p = Set.the_elem { (nid', p'). su (Loc nid' (Src p')) (Loc nid (Trg p)) \<noteq> {}\<^sub>A}"
+  "Src_from_Trg su nid p = Set.the_elem {(nid', p'). su (Loc nid' (Src p')) (Loc nid (Trg p)) \<noteq> {}\<^sub>A}"
 
 lemma correctness_gen:
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
@@ -131,6 +131,7 @@ lemma correctness_gen:
     \<open>outchns = (\<lambda> (nid, p). let (nid', p') = Src_from_Trg (summ sg) nid p in outpu (oss nid') p')\<close>
     \<open>inpchns = (\<lambda> (nid, p). outpu (oss nid) p)\<close>
     \<open>chns = outchns >> cbufs >> inpchns\<close>
+    \<open>\<forall> x \<in> fst ` set (chns (0, 0)). isl x\<close>
     and
     C_PTS_INV:
     \<open>Src_caps_inv caps oss\<close>
@@ -151,15 +152,16 @@ lemma correctness_gen:
     PROP_INV:
     \<open>propagation_inv (summ sg) c\<close>
     and
-    INP_STREAM_IN:
+    INP_STREAM_INV:
     \<open>timely_input_stream (inps 0) C\<close>
     \<open>zmset_of C = caps (Loc 0 (Src 0))\<close>
+    and SPEC_INV:
+    \<open>S = cUnion (cimage 
+      (\<lambda> t. (cset_of_llist o llist_of) (map (\<lambda> x. ((2, 1), (Inr x, t))) (f (coll ((map (\<lambda> (x, t). Data t (projl x)) (chns (0, 0))) @@- (inps 1)) t))))
+      (cUn (ts (inps 1)) (cset_of_llist (llist_of (map snd (chns (0, 0)))))))\<close>
   shows 
     \<open>set_op S D (dataflow_op sg (G_op f ip_state bt_state cbufs)) \<approx> set_spec_op (cUn S S') D\<close>
-  term "edges sg"
-  term "\<lambda> (nid, p). let (nid', p') = Src_from_Trg (summ sg) nid p in outpu (oss nid') p'"
-  term BULK_BENQ
-  find_consts "_ zmultiset" "_ multiset"
+
 
   oops
 
