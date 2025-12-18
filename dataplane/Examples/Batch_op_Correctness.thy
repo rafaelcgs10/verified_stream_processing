@@ -112,11 +112,12 @@ definition Src_from_Trg where
 lemma correctness_gen:
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
     and f :: \<open>'d1 buf \<Rightarrow> 'd2 buf\<close>
-    and oss :: \<open>2 \<Rightarrow> (1, 'd1 + 'd2, 't) operator_state\<close>
     and ip_state :: \<open>(1, 'd1 + 'd2, 'd1, 't) input_state\<close>
     and bt_state :: \<open>(1, 'd1 + 'd2, 'd1, 'd2, 't) operator_state_ty2\<close>
+    and oss :: \<open>2 \<Rightarrow> (1, 'd1 + 'd2, 't) operator_state\<close>
     and chns :: \<open>2 \<times> 1 \<Rightarrow> (('d1 + 'd2) \<times> 't) list\<close>
     and sg :: \<open>(2, 1, 't) subgraph\<close>
+    and caps :: \<open>(2, 1) location \<Rightarrow> 't zmultiset\<close>
   assumes
     SUBGRAPH_INV:
     \<open>c = pt_tr sg\<close>
@@ -129,7 +130,7 @@ lemma correctness_gen:
     and
     BUFS_INV: 
     \<open>outchns = (\<lambda> (nid, p). let (nid', p') = Src_from_Trg (summ sg) nid p in outpu (oss nid') p')\<close>
-    \<open>inpchns = (\<lambda> (nid, p). outpu (oss nid) p)\<close>
+    \<open>inpchns = (\<lambda> (nid, p). input (oss nid) p)\<close>
     \<open>chns = outchns >> cbufs >> inpchns\<close>
     \<open>\<forall> x \<in> fst ` set (chns (0, 0)). isl x\<close>
     and
@@ -155,15 +156,39 @@ lemma correctness_gen:
     INP_STREAM_INV:
     \<open>timely_input_stream (inps 0) C\<close>
     \<open>zmset_of C = caps (Loc 0 (Src 0))\<close>
-    and SPEC_INV:
-    \<open>S = cUnion (cimage 
+    and S_INV:
+    \<open>SP = cUnion (cimage 
       (\<lambda> t. (cset_of_llist o llist_of) (map (\<lambda> x. ((2, 1), (Inr x, t))) (f (coll ((map (\<lambda> (x, t). Data t (projl x)) (chns (0, 0))) @@- (inps 1)) t))))
       (cUn (ts (inps 1)) (cset_of_llist (llist_of (map snd (chns (0, 0)))))))\<close>
+    \<open>SO = cset_of_llist (llist_of (outpu (os 1) 0))\<close>
   shows 
-    \<open>set_op S D (dataflow_op sg (G_op f ip_state bt_state cbufs)) \<approx> set_spec_op (cUn S S') D\<close>
+    \<open>set_op S D (dataflow_op sg (G_op f ip_state bt_state cbufs)) \<approx> set_spec_op (cUn (cUn S SO) SP) D\<close>
+  using assms apply -
+proof (coinduction arbitrary: sg c ip_state bt_state oss chns cbufs outchns inpchns caps C inps SP SO S D rule: weakBisimWeakUptoBisimCong)
+   case SIM1
+  show ?case (is "wsim ((~) OO \<U> ?R OO (\<approx>)) ?op1 ?op2")
+  proof -
+    define R where "R = ?R"
+    from SIM1 show ?thesis unfolding R_def[symmetric]
+      apply -
+      unfolding wsim_def
+      apply (intro allI conjI impI)
+   subgoal premises prems for io op1'
+     using prems(25) apply -
+     unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def 
+     apply simp
+        apply (elim step_builder_op_elim step_set_op_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim conjE; simp split: prod.splits if_splits sum.splits flip: cin.rep_eq; hypsubst_thin?)
+     prefer 6
+     unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def 
 
 
-  oops
+      oops
+end
+next
+  case SIM2
+  then show ?case sorry
+qed
+
 
 
 
