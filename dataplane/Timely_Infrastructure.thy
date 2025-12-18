@@ -116,18 +116,21 @@ record ('id, 'p, 't) subgraph =
 
 datatype ('id, 'p, 's, 'd, 't) dataflow_tree = 
   "apply": Logic "('p option, 'p option, 's + 'd) op" "'p port \<Rightarrow> 'p port \<Rightarrow> 't list"
-  | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "'id + 'id \<times> 'p \<Rightarrow> ('s + 'd) buf" "('id, 'p, 's, 'd, 't) dataflow_tree" "('id, 'p, 's, 'd, 't) dataflow_tree"
+  | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "('id, 'p, 's, 'd, 't) dataflow_tree" "('id, 'p, 's, 'd, 't) dataflow_tree"
 
 fun dataflow_tree_to_operator_aux where
-  "dataflow_tree_to_operator_aux n (Logic op su) = (n + 1,
+  "dataflow_tree_to_operator_aux n chns (Logic op su) = (n + 1,
     map_op (case_option (Inl n) (\<lambda> p. Inr (n, p))) (case_option (Inl n) (\<lambda> p. Inr (n, p))) op)"
-| "dataflow_tree_to_operator_aux n (Comp wire buf dt1 dt2) = (
-    let (n', op1) = dataflow_tree_to_operator_aux n dt1 in
-    let (n'', op2) = dataflow_tree_to_operator_aux n' dt2 in
+| "dataflow_tree_to_operator_aux n chns (Comp wire dt1 dt2) = (
+    let (n', op1) = dataflow_tree_to_operator_aux n chns dt1 in
+    let (n'', op2) = dataflow_tree_to_operator_aux n' chns dt2 in
     (n'', map_op (case_sum id id) (case_sum id id)
-     (comp_op (case_sum (\<lambda> _. None) ((case_option None (Some o Inr)) o (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (n' + offset, q)))) buf op1 op2))
+     (comp_op 
+      (case_sum (\<lambda> _. None) ((case_option None (Some o Inr)) o (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (n' + offset, q))))
+      ((\<lambda> p. case p of Inl x \<Rightarrow> [] | Inr x \<Rightarrow> map (\<lambda> (d, t). Inr (d, t)) (chns x)))
+       op1 op2))
    )"
-definition "dataflow_tree_to_operator df = snd (dataflow_tree_to_operator_aux 0 df)"
+definition "dataflow_tree_to_operator chns df = snd (dataflow_tree_to_operator_aux 0 chns df)"
 
 fun dataflow_tree_to_graph_aux where
   "dataflow_tree_to_graph_aux n (Logic op su) = (n + 1,
@@ -135,7 +138,7 @@ fun dataflow_tree_to_graph_aux where
     if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
     then antichain_from_list (su (port l1) (port l2))
     else antichain_from_list []))"
-| "dataflow_tree_to_graph_aux n (Comp wire buf dt1 dt2) = (
+| "dataflow_tree_to_graph_aux n (Comp wire dt1 dt2) = (
     let (n', summary1) = dataflow_tree_to_graph_aux n dt1 in
     let (n'', summary2) = dataflow_tree_to_graph_aux n' dt2 in
     (n'', \<lambda> l1 l2. 
@@ -146,11 +149,18 @@ fun dataflow_tree_to_graph_aux where
      else summary1 l1 l2 + summary2 l1 l2)
    )"
 
-definition "dataflow_tree_to_graph df = (
+
+fun nodes_count where
+  "nodes_count (Logic op su) = 1"
+| "nodes_count (Comp wire dt1 dt2) = nodes_count dt1 + nodes_count dt2"
+
+
+definition "dataflow_tree_to_graph (df :: ('id :: {minus,one,plus,zero,ord,enum,hashable}, _, _, _, _) dataflow_tree) = (
   let (_, s) = dataflow_tree_to_graph_aux 0 df in
   if \<not> has_zero_cyc s \<and>
      no_self_loop_checker s \<and>
-     implementation_graph_checker (weights_to_graph_fun (remove_non_zero_weights s))
+     implementation_graph_checker (weights_to_graph_fun (remove_non_zero_weights s)) \<and>
+     CARD ('id) = nodes_count df
   then s
   else Code.abort (STR ''Control plane could not be build'') (\<lambda> _. (\<lambda> _ _. frontier {#}\<^sub>z)))"
 
@@ -160,7 +170,7 @@ lemma compile_dataflow_tree_aux_same_loc:
   apply (induct df arbitrary: n n'' summar)
   subgoal
     by (cases loc; simp add: antichain_from_list_is_empty frontier_empty_zmset split: port.splits if_splits)
-  subgoal for x1 x2 df1 df2 n n'' summar
+  subgoal for x1 df1 df2 n n'' summar
     apply (cases "dataflow_tree_to_graph_aux n df1")
     subgoal for n' summar'
       apply (cases "dataflow_tree_to_graph_aux n' df2")
@@ -612,13 +622,15 @@ record ('p, 'd, 'd1, 'd2, 't) operator_state_ty2 = "('p, 'd, 'd1, 't) operator_s
 record ('p, 'd, 'd1, 'd2, 'd3, 't) operator_state_ty3 = "('p, 'd, 'd1, 'd2, 't) operator_state_ty2" +
   en3 :: "'d3 \<Rightarrow> 'd" de3 :: "'d \<Rightarrow> 'd3"
 
-abbreviation "init_subgraph summary cgs \<equiv>
+definition "graph_to_edges summary = (\<lambda> l1. [l2 \<leftarrow> Enum.enum. \<not> is_empty_antichain (summary l1 l2) \<and> is_Src (port l1) \<and> is_Trg (port l2) ])"
+
+definition "init_subgraph summary cgs =
    \<lparr> pt_tr = init_conf summary cgs,
-   edges = (\<lambda> l1. [l2 \<leftarrow> Enum.enum. \<not> is_empty_antichain (summary l1 l2) \<and> is_Src (port l1) \<and> is_Trg (port l2) ]),
+   edges = graph_to_edges summary,
    summ = summary, upfro = (\<lambda> _. True) \<rparr>"
 
-definition "compile_dataflow dt = (let summary = dataflow_tree_to_graph dt in
-                                    let op = dataflow_tree_to_operator dt in
+definition "compile_dataflow chns dt = (let summary = dataflow_tree_to_graph dt in
+                                    let op = dataflow_tree_to_operator chns dt in
                                     let sg = init_subgraph summary (map (\<lambda> (nid, p). (Loc nid (Src p), bot, 1)) (List.product Enum.enum Enum.enum)) in
                                     dataflow_op sg op)"
 
