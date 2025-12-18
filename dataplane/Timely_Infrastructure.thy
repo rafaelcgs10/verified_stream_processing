@@ -127,6 +127,7 @@ fun dataflow_tree_to_operator_aux where
     (n'', map_op (case_sum id id) (case_sum id id)
      (comp_op (case_sum (\<lambda> _. None) ((case_option None (Some o Inr)) o (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (n' + offset, q)))) buf op1 op2))
    )"
+definition "dataflow_tree_to_operator df = snd (dataflow_tree_to_operator_aux 0 df)"
 
 fun dataflow_tree_to_graph_aux where
   "dataflow_tree_to_graph_aux n (Logic op su) = (n + 1,
