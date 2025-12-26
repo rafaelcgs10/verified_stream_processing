@@ -101,7 +101,7 @@ definition "trace = (if DEBUG then Debug.tracing else (\<lambda> x y. y))"
 
 
 lemma trace_simp[simp]:
-  "trace x = id"
+  "trace x r = r"
   by (auto simp add: trace_def)
 
 (* Inspired by timely/src/progress/change_batch.rs:12 *)
@@ -634,28 +634,28 @@ definition "compile_dataflow chns dt = (let summary = dataflow_tree_to_graph dt 
                                     let sg = init_subgraph summary (map (\<lambda> (nid, p). (Loc nid (Src p), bot, 1)) (List.product Enum.enum Enum.enum)) in
                                     dataflow_op sg op)"
 
-abbreviation "delay_cap os cap incr \<equiv> (os\<lparr> inter := inter os @ [(out cap, time cap, -1), (out cap, time cap + incr, 1)] \<rparr>)"
+definition "delay_cap os cap incr = (os\<lparr> inter := inter os @ [(out cap, time cap, -1), (out cap, time cap + incr, 1)] \<rparr>)"
 
 definition "produce os cap batch = (if batch = [] then os else os\<lparr> outpu := (outpu os)(out cap := outpu os (out cap) @ map (\<lambda> x. (x, time cap)) batch), produ := produ os @ [(out cap, time cap, length batch)] \<rparr>)"
 
-abbreviation "consume os p t len \<equiv> (if len = 0 then os else os\<lparr> consu := consu os @ [(p, t, len)] \<rparr>)"
+definition "consume os p t len = (if len = 0 then os else os\<lparr> consu := consu os @ [(p, t, len)] \<rparr>)"
 
 abbreviation "choice4 op1 op2 op3 op4 \<equiv> choice2 (choice2 op1 op2) (choice2 op3 op4)"
 
 abbreviation "choice5 op1 op2 op3 op4 op5 \<equiv> choice3 (choice2 op1 op2) (choice2 op3 op4) op5"
 
-abbreviation "mint_cap os p t \<equiv> os\<lparr> inter := inter os @ [(p, t, 1)] \<rparr>"
-abbreviation \<open>mint os caps p t \<equiv> if t \<in> set (caps p) then (caps, os) else (caps(p := caps p @ [t]), mint_cap os p t)\<close>
+definition "mint_cap os p t = os\<lparr> inter := inter os @ [(p, t, 1)] \<rparr>"
+definition \<open>mint os caps p t = (if t \<in> set (caps p) then (caps, os) else (caps(p := caps p @ [t]), mint_cap os p t))\<close>
 
 
-abbreviation "produces os batch \<equiv> os\<lparr> outpu := (\<lambda> p. outpu os p @ map (\<lambda> (x, cap). (x, time cap)) (filter (\<lambda> (x, cap). out cap = p) batch)), produ := produ os @ map (\<lambda> (x, cap). (out cap, time cap, 1)) batch \<rparr>"
+definition "produces os batch = os\<lparr> outpu := (\<lambda> p. outpu os p @ map (\<lambda> (x, cap). (x, time cap)) (filter (\<lambda> (x, cap). out cap = p) batch)), produ := produ os @ map (\<lambda> (x, cap). (out cap, time cap, 1)) batch \<rparr>"
 
 abbreviation "drop_caps_old os caps \<equiv> (os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps \<rparr>)"
 
 abbreviation "send_output op p x \<equiv> Write op (Some p) (Inr x)"
 abbreviation "send_progress op st \<equiv> Write op None (Inl (Inl st))"
 
-abbreviation "obtain_progress os \<equiv> (os\<lparr> consu := [], inter := [], produ := [] \<rparr>, \<lparr> cons = consu os, inte = inter os, prod = produ os\<rparr>)"
+definition "obtain_progress os = (os\<lparr> consu := [], inter := [], produ := [] \<rparr>, \<lparr> cons = consu os, inte = inter os, prod = produ os\<rparr>)"
 
 fun remove_last where
   "remove_last x [] = []"
@@ -686,15 +686,17 @@ lemma list_diff_Nil[simp]:
   \<open>list_diff xs xs = []\<close>
   using mset_list_diff Multiset.diff_cancel mset_zero_iff by metis
 
-abbreviation "drop_cap os cap \<equiv> os\<lparr> inter := inter os @ [(out cap, time cap, -1)], ocaps := (ocaps os) ((out cap) := remove_last (time cap) (ocaps os (out cap))) \<rparr>"
+definition "drop_cap os cap = os\<lparr> inter := inter os @ [(out cap, time cap, -1)], ocaps := (ocaps os) ((out cap) := remove_last (time cap) (ocaps os (out cap))) \<rparr>"
 
-abbreviation "drop_caps os caps \<equiv> os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps, ocaps := (\<lambda> p. list_diff (ocaps os p) (map time (filter (\<lambda> cap. out cap = p) caps))) \<rparr>"
+definition "drop_caps os caps = os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps, ocaps := (\<lambda> p. list_diff (ocaps os p) (map time (filter (\<lambda> cap. out cap = p) caps))) \<rparr>"
 
-abbreviation "add_cap os p t \<equiv> os\<lparr> inter := inter os @ [(p, t, 1)], ocaps := (ocaps os) (p := ocaps os p @ [t])  \<rparr>"
+definition "add_cap os p t = os\<lparr> inter := inter os @ [(p, t, 1)], ocaps := (ocaps os) (p := ocaps os p @ [t])  \<rparr>"
 
-abbreviation "add_caps os caps \<equiv> os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, 1)) caps, ocaps := (\<lambda> p. ocaps os p @ map time (filter (\<lambda> cap. out cap = p) caps))  \<rparr>"
+definition "add_caps os caps = os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, 1)) caps, ocaps := (\<lambda> p. ocaps os p @ map time (filter (\<lambda> cap. out cap = p) caps))  \<rparr>"
 
-abbreviation "consumes os p t d \<equiv> add_caps (os\<lparr> consu := consu os @ [(p, t, 1)], input := BENQ p (d, t) (input os) \<rparr>) (concat (map (\<lambda> p'. map (\<lambda> t'. Cap (t -+- t') p') (summar os p p')) enum_class.enum))"
+definition "consumes os p t d = add_caps (os\<lparr> consu := consu os @ [(p, t, 1)], input := BENQ p (d, t) (input os) \<rparr>) (concat (map (\<lambda> p'. map (\<lambda> t'. Cap (t -+- t') p') (summar os p p')) enum_class.enum))"
+
+definition "has_progress os = (consu os \<noteq> [] \<or> inter os \<noteq> [] \<or> produ os \<noteq> [])"
 
 corec builder_op where
   \<open>builder_op fb ips ops os logic =
@@ -712,7 +714,7 @@ corec builder_op where
     (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda>x. case x of
       Inr (d, t) \<Rightarrow> builder_op fb ips ops (consumes os p t d) logic
     | Inl _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda> _. \<oslash>))) ips))
-    (if consu os \<noteq> [] \<or> inter os \<noteq> [] \<or> produ os \<noteq> [] then
+    (if has_progress os then
       let (os', st) = obtain_progress os in send_progress (builder_op fb ips ops os' logic) st
     else \<oslash>)
   else Read None (\<lambda>x. case x of
@@ -730,7 +732,7 @@ lemma step_builder_op_elim:
   | (read_data) p d t where \<open>io = Inp (Some p) (Inr (d, t))\<close> \<open>initia os\<close> \<open>p |\<in>| ips\<close>
     \<open>op = builder_op fb ips ops (consumes os p t d) logic\<close>
   | (write_state) os' st where \<open>io = Out None (Inl (Inl st))\<close> \<open>initia os\<close>
-    \<open>consu os \<noteq> [] \<or> inter os \<noteq> [] \<or> produ os \<noteq> []\<close> \<open>(os', st) = obtain_progress os\<close>
+    \<open>has_progress os\<close> \<open>(os', st) = obtain_progress os\<close>
     \<open>op = builder_op fb ips ops os' logic\<close>
   | (write_data) p x xs where \<open>io = Out (Some p) (Inr x)\<close> \<open>initia os\<close> \<open>p |\<in>| ops\<close> \<open>outpu os p = x # xs\<close>
     \<open>op = builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic\<close>
@@ -747,7 +749,7 @@ proof (cases io)
     proof cases
       case unexpected
       hence \<open>op = \<oslash>\<close> using assms Inp None
-        by (subst (asm) builder_op.code) (auto 0 0 split: if_splits list.splits sum.splits)
+        by (subst (asm) builder_op.code) (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def split: if_splits list.splits sum.splits)
       thus ?thesis using read_end_None Inp None unexpected by blast
     next
       case frontier
@@ -755,7 +757,7 @@ proof (cases io)
       proof (cases \<open>initia os\<close>)
         case True
         hence \<open>fb \<and> op = builder_op fb ips ops (os\<lparr>front := f, nfron := \<forall>p. f p \<noteq> front os p\<rparr>) logic\<close>
-          using assms Inp None frontier by (subst (asm) builder_op.code) (auto 0 0 split: if_splits list.splits)
+          using assms Inp None frontier by (subst (asm) builder_op.code) (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def  split: if_splits list.splits)
         thus ?thesis using read_frontier2 Inp None frontier True by blast
       next
         case False
@@ -773,12 +775,12 @@ proof (cases io)
     proof cases
       case unexpected
       hence \<open>p' |\<in>| ips \<and> op = \<oslash>\<close> using assms Inp Some by (subst (asm) builder_op.code)
-          (auto 0 0 simp add: initialized split: if_splits list.splits sum.splits)
+          (auto 0 0 simp add: initialized drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def  split: if_splits list.splits sum.splits)
       thus ?thesis using read_end_Some Inp Some initialized unexpected by blast
     next
       case data
       hence \<open>p' |\<in>| ips \<and> op = builder_op fb ips ops (consumes os p' t d) logic\<close> using assms Inp Some
-        by (subst (asm) builder_op.code) (auto 0 0 simp add: initialized split: if_splits list.splits)
+        by (subst (asm) builder_op.code) (auto 0 0 simp add: initialized drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def  split: if_splits list.splits)
       thus ?thesis using read_data Inp Some initialized data by blast
     qed
   qed
@@ -788,31 +790,31 @@ next
   show ?thesis
   proof (cases p)
     case None
-    hence progress: \<open>consu os \<noteq> [] \<or> inter os \<noteq> [] \<or> produ os \<noteq> []\<close> using assms Out
-      by (subst (asm) builder_op.code) (auto 0 0 simp add: initialized split: if_splits list.splits)
-    obtain os' st where os'_st: \<open>(os', st) = obtain_progress os\<close> by blast
+    hence progress: \<open>has_progress os\<close> using assms Out
+      by (subst (asm) builder_op.code) (auto 0 0 simp add: initialized  split: if_splits list.splits)
+    obtain os' st where os'_st: \<open>(os', st) = obtain_progress os\<close> unfolding obtain_progress_def by blast
     hence \<open>x = Inl (Inl st) \<and> op = builder_op fb ips ops os' logic\<close> using assms Out None progress
-      by (subst (asm) builder_op.code) (auto 0 0 simp add: initialized split: if_splits list.splits)
+      by (subst (asm) builder_op.code) (auto 0 0 simp add: initialized drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def  split: if_splits list.splits)
     thus ?thesis using write_state Out initialized None progress os'_st by blast
   next
     case (Some p')
     then obtain x' xs where x'_xs: \<open>x = Inr x'\<close> \<open>outpu os p' = x' # xs\<close> using assms Out
-      by (subst (asm) builder_op.code) (auto 0 0 simp add: initialized split: if_splits list.splits)
+      by (subst (asm) builder_op.code) (auto 0 0 simp add: initialized drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def  split: if_splits list.splits)
     have \<open>p' |\<in>| ops \<and> op = builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p' := xs)\<rparr>) logic\<close>
       using assms Out Some x'_xs by (subst (asm) builder_op.code)
-        (auto 0 0 simp add: initialized split: if_splits list.splits)
+        (auto 0 0 simp add: initialized drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def  split: if_splits list.splits)
     thus ?thesis using write_data Out initialized Some x'_xs by blast
   qed
 next
   case Tau
   hence initialized: \<open>initia os\<close> using assms by (subst (asm) builder_op.code) (auto split: if_splits)
   moreover from this have \<open>\<exists>p. ocaps os p \<noteq> []\<close> using Tau assms
-    by (subst (asm) builder_op.code) (auto split: if_splits list.splits)
+    by (subst (asm) builder_op.code) (auto split: if_splits list.splits simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def )
   moreover obtain os' where \<open>os' |\<in>| logic os\<close> \<open>op = builder_op fb ips ops os' logic\<close>
   proof -
     have \<open>Silent op |\<in>| choices (builder_op fb ips ops os logic)\<close> using Tau assms step_choicesE by blast
     thus ?thesis using that
-      by (subst (asm) builder_op.code) (auto 0 0 simp add: initialized neq_Nil_conv split: if_splits)
+      by (subst (asm) builder_op.code) (auto 0 0 simp add: initialized neq_Nil_conv drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def  split: if_splits)
   qed
   ultimately show ?thesis using silent Tau by blast
 qed
@@ -854,7 +856,7 @@ proof -
 qed
 
 lemma step_builder_op_Write_None[intro]:
-  \<open>io = Out None (Inl (Inl st)) \<Longrightarrow> initia os \<Longrightarrow> consu os \<noteq> [] \<or> inter os \<noteq> [] \<or> produ os \<noteq> [] \<Longrightarrow>
+  \<open>io = Out None (Inl (Inl st)) \<Longrightarrow> initia os \<Longrightarrow> has_progress os \<Longrightarrow>
   (os', st) = obtain_progress os \<Longrightarrow> op = builder_op fb ips ops os' logic \<Longrightarrow>
   step io (builder_op fb ips ops os logic) op\<close>
   by (subst builder_op.code) auto
