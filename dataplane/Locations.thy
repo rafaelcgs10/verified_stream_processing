@@ -264,6 +264,8 @@ lemma UNIV_simps[simp]:
   "(UNIV :: 3 set) = {0, 1, 2}"
   by code_simp+
 
-
+lemma enum_class2[simp]:
+  "enum_class.enum = [0 :: 2, 1]"
+  by code_simp
 
 end

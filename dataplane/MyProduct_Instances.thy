@@ -398,8 +398,6 @@ proof
 qed
 end
 
-find_consts "(_, _) myprod" "_ \<times> _" 
-
 definition "to_prod p = (case p of MyPair p1 p2 \<Rightarrow> (p1, p2))"
 definition "from_prod p = (case p of (p1, p2) \<Rightarrow> MyPair p1 p2)"
 

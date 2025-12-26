@@ -183,13 +183,42 @@ lemma antichain_from_list_antichain:
   apply clarsimp
   done
 
+lemma weird_singleton:
+  "{x. x = (a :: _ :: order) \<and> x \<le> a} = {a}"
+  by blast
+
+lemma antichain_from_list_singleton:
+  "antichain_from_list [a] = antichain {a}"
+  unfolding antichain_from_list_def
+  by (simp add: weird_singleton)
+
+lemma antichain_from_list_empty:
+  "antichain_from_list [] = antichain {}"
+  unfolding antichain_from_list_def
+  by (simp add: weird_singleton)
+
+lemma empty_is_empty_antichain[simp]:
+  "is_empty_antichain (antichain {})"
+  by (metis Set.is_empty_def empty_antichain.abs_eq empty_antichain.rep_eq is_empty_antichain.rep_eq)
+
+lemma not_in_empty[simp]:
+  "a \<in>\<^sub>A {}\<^sub>A \<Longrightarrow> False"
+  using mem_antichain_nonempty by blast
+
 declare zmultiset_of_antichain_def[code]
 
 lemma antichain_sum_empty[simp]:
   "A + {}\<^sub>A = A"
   apply transfer
   apply simp
-  apply (smt (verit, ccfv_threshold) in_minimal_antichain incomparable_def order_class.order_eq_iff order_less_imp_not_eq subset_iff)
+   apply (smt (verit, ccfv_threshold) in_minimal_antichain incomparable_def order_class.order_eq_iff order_less_imp_not_eq subset_iff)
+  done
+
+lemma antichain_sum_empty_2[simp]:
+  "{}\<^sub>A + A = A"
+  apply transfer
+  apply simp
+   apply (smt (verit, ccfv_threshold) in_minimal_antichain incomparable_def order_class.order_eq_iff order_less_imp_not_eq subset_iff)
   done
 
 lift_definition zequal :: "'a zmultiset \<Rightarrow> 'a zmultiset \<Rightarrow> bool" is

@@ -115,7 +115,7 @@ record ('id, 'p, 't) subgraph =
   upfro :: "'id \<Rightarrow> bool"
 
 datatype ('id, 'p, 's, 'd, 't) dataflow_tree = 
-  "apply": Logic "('p option, 'p option, 's + 'd) op" "'p port \<Rightarrow> 'p port \<Rightarrow> 't list"
+  "apply": Logic "('p option, 'p option, 's + 'd) op" "'p \<Rightarrow> 'p \<Rightarrow> 't list"
   | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "('id, 'p, 's, 'd, 't) dataflow_tree" "('id, 'p, 's, 'd, 't) dataflow_tree"
 
 fun dataflow_tree_to_operator_aux where
@@ -136,7 +136,7 @@ fun dataflow_tree_to_graph_aux where
   "dataflow_tree_to_graph_aux n (Logic op su) = (n + 1,
     (\<lambda> l1 l2. 
     if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
-    then antichain_from_list (su (port l1) (port l2))
+    then antichain_from_list (su (idp (port l1)) (idp (port l2)))
     else antichain_from_list []))"
 | "dataflow_tree_to_graph_aux n (Comp wire dt1 dt2) = (
     let (n', summary1) = dataflow_tree_to_graph_aux n dt1 in
@@ -190,7 +190,7 @@ lemma compile_dataflow_tree_aux_same_loc:
   done
 
 lemma enum_dataflow_topology_compile_dataflow[simp]:
-  "enum_dataflow_topology (dataflow_tree_to_graph (df :: (_, _, _, _, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le}) dataflow_tree)) (+)"
+  "enum_dataflow_topology (dataflow_tree_to_graph (df :: (_, _, _, _, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) dataflow_tree)) (+)"
   apply standard
        apply (simp_all add: add_mono_thms_linordered_semiring(1) Groups.add_ac(1))
   subgoal
@@ -216,7 +216,7 @@ lemma enum_dataflow_topology_compile_dataflow[simp]:
     done
   done
 
- global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "dataflow_tree_to_graph (df :: (_, _, _, _, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le}) dataflow_tree)" "(+)"
+ global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "dataflow_tree_to_graph (df :: (_, _, _, _, 't :: {bot,ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le}) dataflow_tree)" "(+)"
   for df
   defines take_step' = "enum_dataflow_topology.take_step (dataflow_tree_to_graph df) (+)"
     and after_summary = "dataflow_topology.after_summary (+) :: 't zmultiset \<Rightarrow> 't antichain \<Rightarrow> 't zmultiset"
@@ -594,7 +594,7 @@ record ('p, 'd, 't) operator_state =
   initia :: bool
   nfron :: bool
 
-abbreviation "default_internal_summary \<equiv> (\<lambda> p1 p2. if p1 = p2 then [\<bottom>] else [])"
+definition "default_internal_summary = (\<lambda> p1 p2. if p1 = p2 then [0] else [])"
 
 abbreviation init_op_state where
 "init_op_state su \<equiv> \<lparr> 
@@ -859,7 +859,7 @@ lemma step_builder_op_Write_None[intro]:
   \<open>io = Out None (Inl (Inl st)) \<Longrightarrow> initia os \<Longrightarrow> has_progress os \<Longrightarrow>
   (os', st) = obtain_progress os \<Longrightarrow> op = builder_op fb ips ops os' logic \<Longrightarrow>
   step io (builder_op fb ips ops os logic) op\<close>
-  by (subst builder_op.code) auto
+  by (subst builder_op.code) (auto simp add: has_progress_def obtain_progress_def)
 
 lemma step_builder_op_Write_Some[intro]:
   assumes \<open>io = Out (Some p) (Inr x)\<close> \<open>initia os\<close> \<open>p |\<in>| ops\<close> \<open>outpu os p = x # xs\<close>

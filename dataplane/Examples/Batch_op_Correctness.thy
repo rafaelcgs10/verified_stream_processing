@@ -33,7 +33,7 @@ abbreviation init_input_state where
    input = (\<lambda> _. []),
    outpu = (\<lambda> _. []),
    front = undefined,
-   ocaps = (\<lambda> _. [\<bottom>]),
+   ocaps = (\<lambda> _. [0]),
    initia = False,
    nfron = False,
    en1 = Inl,
@@ -106,6 +106,81 @@ abbreviation "su_test a b \<equiv> dataflow_tree_to_graph (
     (Comp [(0 :: 4, 0 :: 2) \<mapsto> (0, 0)] (Logic \<oslash> (\<lambda> _ _. [0 :: nat])) (Logic \<oslash> (\<lambda> _ _. [0 :: nat])))
     ) a b"
 
+definition "my_summ = (\<lambda> l1 l2.
+   if l1 = Loc (0 :: 2) (Src (0 :: 1)) \<and> l2 = Loc (1 :: 2)  (Trg (0 :: 1)) 
+   then antichain_from_list [0]
+   else if l1 = Loc 0 (Trg 0) \<and> l2 = Loc 0 (Src 0)
+   then antichain_from_list [0]
+   else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 0)
+   then antichain_from_list [0]
+   else {}\<^sub>A)"
+
+term remove_non_zero_weights
+
+lemma weights_to_graph_fun_to_next[simp]:
+  "weights_to_graph_fun
+           (\<lambda>l1 l2.
+               remove_non_zero_weights (If (0 \<le> node l1 \<and> node l1 < 1 \<and> 1 \<le> node l2 \<and> is_Src (port l1) \<and> Locations.is_Trg (port l2)))
+                (case [(0, 1) \<mapsto> (0, 1)] (node l1 - 0, idp (port l1)) of None \<Rightarrow> frontier {#}\<^sub>z
+                 | Some (offset, q) \<Rightarrow> if node l2 = 1 + offset \<and> q = idp (port l2) then antichain_from_list [0] else antichain_from_list [])
+                ((if node l1 = 0 \<and> node l2 = (0 :: 2) \<and> Locations.is_Trg (port l1) \<and> is_Src (port l2) then antichain_from_list [0] else antichain_from_list []) +
+                 (if 1 = node l1 \<and> 1 = node l2 \<and> Locations.is_Trg (port l1) \<and> is_Src (port l2) then antichain_from_list [0] else antichain_from_list []))) = 
+   (\<lambda> l. 
+     if l = Loc (0 :: 2) (Src (1 :: 1)) then [Loc 1 (Trg 1)] else
+     if l = Loc 0 (Trg 0) then [Loc 0 (Src 0)] else
+     if l = Loc 1 (Trg 0) then [Loc 1 (Src (0 :: 1))] else 
+     [])"
+  apply (rule ext)
+  unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def 
+  subgoal for l
+    using loc_2_1_cases[where l=l] apply -
+    apply (elim disjE; hypsubst_thin)
+      apply (auto 0 0 simp add: antichain_empty set_antichain1 antichain_from_list_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
+    using not_in_empty apply blast+
+       apply code_simp
+    using not_in_empty apply blast+
+    done
+  done
+
+lemma dataflow_tree_to_graph_to_my_summ[simp]:
+  "dataflow_tree_to_graph (Comp [(0, 1) \<mapsto> (0, 1)] (l1 os1) (l2 os2 f)) = (my_summ :: (2, 1) location \<Rightarrow> (2, 1) location \<Rightarrow> _ antichain)"
+  unfolding dataflow_tree_to_graph_def Let_def default_internal_summary_def
+  apply (simp only: split: prod.splits)
+  apply (intro allI impI)
+  apply (subst (5) if_P)
+  subgoal
+    apply auto
+    subgoal premises prems
+      using prems(3) apply -
+      apply (auto simp add: enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
+      apply code_simp
+      apply eval
+      done
+    subgoal premises
+      unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def no_self_loop_checker_def
+      by (auto simp add: antichain_empty antichain_from_list_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
+    subgoal premises
+      unfolding implementation_graph_checker_def
+      unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def no_self_loop_checker_def
+      by (auto simp add: antichain_empty antichain_from_list_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
+    done
+  subgoal premises prems
+    using prems(1) apply -
+    apply clarsimp
+    subgoal premises
+      unfolding my_summ_def
+      apply (rule ext)+
+      subgoal for l1 l2
+        using loc_2_1_cases[where l=l1] apply -
+        using loc_2_1_cases[where l=l2] apply -
+        apply (elim disjE; hypsubst_thin)
+                       apply (auto 0 0 simp add: antichain_empty antichain_from_list_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
+        apply (rule FalseE)
+        apply code_simp
+        done
+      done
+    done
+  done
 
 definition Src_from_Trg where
   "Src_from_Trg su nid p = Set.the_elem {(nid', p'). su (Loc nid' (Src p')) (Loc nid (Trg p)) \<noteq> {}\<^sub>A}"
@@ -165,7 +240,7 @@ lemma correctness_gen:
   shows 
     \<open>set_op S D (dataflow_op sg (G_op f ip_state bt_state cbufs)) \<approx> set_spec_op (cUn (cUn S SO) SP) D\<close>
   using assms apply -
-proof (coinduction arbitrary: sg c ip_state bt_state oss chns cbufs outchns inpchns caps C inps SP SO S D rule: weakBisimWeakUptoBisimCong)
+proof (coinduction arbitrary: sg c ip_state bt_state oss chns cbufs bufs outchns inpchns caps C inps SP SO S D rule: weakBisimWeakUptoBisimCong)
   case SIM1
   show ?case (is "wsim ((~) OO \<U> ?R OO (\<approx>)) ?op1 ?op2")
   proof -
@@ -178,7 +253,44 @@ proof (coinduction arbitrary: sg c ip_state bt_state oss chns cbufs outchns inpc
         for a :: "2"
           and aa :: "'d1 + 'd2"
           and ba :: 't
-        using that sorry
+        using that 
+        apply -
+        apply (intro exI conjI relcomppI)
+         apply (rule step_set_spec_op_intro_Out)
+            apply (rule refl)
+           apply simp
+        apply simp
+         apply (rule refl)
+          apply (rule bisim_refl)
+        defer
+          apply (rule wbisim_refl)
+        apply (rule wb_upto_b_base)
+        unfolding R_def
+        apply (intro exI conjI[rotated]; (rule refl)?)
+                         apply (simp_all only: SIM1 dataflow_tree_to_graph_to_my_summ)
+                        defer
+        using SIM1(21) apply simp
+        using SIM1(1,20) apply simp
+                      defer
+                      defer
+        defer
+        using SIM1(1,16) apply simp
+        using SIM1(1,15) apply simp
+
+
+        find_theorems C
+
+end
+
+                        apply (rule arg_cong[where f="cUnion"])
+                        apply (rule arg_cong2[where f="cimage"])
+                         apply (rule ext)+
+        apply (simp split: prod.splits)
+         apply (rule refl)
+
+
+
+end
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op (case_sum (\<lambda>_. None) ((case_option None (Some \<circ> Inr) \<circ>\<circ> case_prod) (\<lambda>nid p. case if nid = 0 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (1 + offset, q)))) (case_sum (\<lambda>x. []) (BENQ (1, 1) (Inr (a, b)) (\<lambda>x. map Inr (cbufs x)))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (builder_op False {||} {|1|} (ip_state\<lparr>outpu := (outpu ip_state)(1 := xs)\<rparr>) (ooo_input_op_logic {|1|}))) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (builder_op True {|1|} {|1|} (bt_state\<lparr>nfron := False\<rparr>) (\<lambda>os. if nfron os then if filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1) = [] then trace STR ''No capabilities'' {||} else let compl_batches = \<lambda>p t. map (de1 (os\<lparr>nfron := False\<rparr>) \<circ> fst) (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)); ts = \<lambda>p. rmdups {} (map snd (filter (\<lambda>(d, t). t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p))); osa = os\<lparr>nfron := False, input := \<lambda>p. filter (\<lambda>(d, t). t \<notin> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)\<rparr> in Let {|(concat (map (\<lambda>t. map (\<lambda>x. (x, Cap t 1)) (f (compl_batches 1 t))) (ts 1)), map (\<lambda>t. Cap t 1) (filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1)))|} ((|`|) (\<lambda>(outs, drops). trace (STR ''outs: '' + show_nat (length outs) + STR '' , drops: '' + show_nat (length drops)) (drop_caps (produces osa (map (\<lambda>(d, y). (en2 osa d, y)) outs)) drops))) else {||}))))))) op2'"
         if "initia ip_state"
           and "outpu ip_state 1 = (a, b) # xs"

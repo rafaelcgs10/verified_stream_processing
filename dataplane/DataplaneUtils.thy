@@ -214,9 +214,6 @@ lemma frontier_negs[simp]:
   by (simp add: antichain_empty)+
 
 
-lemma weird_singleton:
-  "{x. x = (a :: _ :: order) \<and> x \<le> a} = {a}"
-  by blast
 
 lift_definition del_zmset :: "'a \<Rightarrow> 'a zmultiset \<Rightarrow> 'a zmultiset" is
   "\<lambda>x (Mp, Mn). (Mp, add_mset x Mn)"
