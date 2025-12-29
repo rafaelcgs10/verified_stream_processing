@@ -23,6 +23,10 @@ lemma arg_cong4:
   "a = b \<Longrightarrow> c = d \<Longrightarrow> e = g \<Longrightarrow> h = i \<Longrightarrow> f a c e h  = f b d g i"
   by fast
 
+lemma arg_cong5:
+  "a = b \<Longrightarrow> c = d \<Longrightarrow> e = g \<Longrightarrow> h = i \<Longrightarrow> j = k \<Longrightarrow> f a c e h j  = f b d g i k"
+  by fast
+
 lemma rel_set_image:
   "rel_set R (f ` A) B \<longleftrightarrow> rel_set (\<lambda> x. R (f x)) A B"
   "rel_set S A (g ` B) \<longleftrightarrow> rel_set (\<lambda> x y. S x (g y)) A B"

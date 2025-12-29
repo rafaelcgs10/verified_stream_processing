@@ -13,6 +13,8 @@ imports
 begin
 no_notation shiftr  (infixl \<open>>>\<close> 55)
 
+declare cin.rep_eq[simp del]
+
 section \<open>Example\<close>
 
 abbreviation "t0 \<equiv> MyPair (0 :: nat) (0 :: nat)"
@@ -143,7 +145,7 @@ lemma weights_to_graph_fun_to_next[simp]:
   done
 
 lemma dataflow_tree_to_graph_to_my_summ[simp]:
-  "dataflow_tree_to_graph (Comp [(0, 1) \<mapsto> (0, 1)] (l1 os1) (l2 os2 f)) = (my_summ :: (2, 1) location \<Rightarrow> (2, 1) location \<Rightarrow> _ antichain)"
+  "dataflow_tree_to_graph (Comp [(0, 1) \<mapsto> (0, 1)] (Logic op1 default_internal_summary) (Logic op2 default_internal_summary)) = (my_summ :: (2, 1) location \<Rightarrow> (2, 1) location \<Rightarrow> _ antichain)"
   unfolding dataflow_tree_to_graph_def Let_def default_internal_summary_def
   apply (simp only: split: prod.splits)
   apply (intro allI impI)
@@ -183,7 +185,11 @@ lemma dataflow_tree_to_graph_to_my_summ[simp]:
   done
 
 definition Src_from_Trg where
-  "Src_from_Trg su nid p = Set.the_elem {(nid', p'). su (Loc nid' (Src p')) (Loc nid (Trg p)) \<noteq> {}\<^sub>A}"
+  "Src_from_Trg su nid p = {(nid', p'). su (Loc nid' (Src p')) (Loc nid (Trg p)) \<noteq> {}\<^sub>A}"
+
+definition "outputs_at_target su oss = (\<lambda> (nid, p). let S = Src_from_Trg su nid p in if S = {} then [] else let (nid', p') = Set.the_elem S in outpu (oss nid') p')"
+
+definition "all_isl l = (\<forall> x \<in> fst ` set l. isl x)"
 
 lemma correctness_gen:
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
@@ -205,10 +211,10 @@ lemma correctness_gen:
     \<open>bt_state = operator_state.extend (oss 1) \<lparr>en1 = Inl, de1 = projl, en2 = Inr, de2 = projr\<rparr>\<close>
     and
     BUFS_INV: 
-    \<open>outchns = (\<lambda> (nid, p). let (nid', p') = Src_from_Trg (summ sg) nid p in outpu (oss nid') p')\<close>
+    \<open>outchns = outputs_at_target (summ sg) oss\<close>
     \<open>inpchns = (\<lambda> (nid, p). input (oss nid) p)\<close>
     \<open>chns = outchns >> cbufs >> inpchns\<close>
-    \<open>\<forall> x \<in> fst ` set (chns (0, 0)). isl x\<close>
+    \<open>all_isl (chns (0, 0))\<close>
     and
     C_PTS_INV:
     \<open>Src_caps_inv caps oss\<close>
@@ -240,7 +246,7 @@ lemma correctness_gen:
   shows 
     \<open>set_op S D (dataflow_op sg (G_op f ip_state bt_state cbufs)) \<approx> set_spec_op (cUn (cUn S SO) SP) D\<close>
   using assms apply -
-proof (coinduction arbitrary: sg c ip_state bt_state oss chns cbufs bufs outchns inpchns caps C inps SP SO S D rule: weakBisimWeakUptoBisimCong)
+proof (coinduction arbitrary: sg c c' cgs os ip_state bt_state oss chns cbufs bufs outchns inpchns caps C inps SP SO S D rule: weakBisimWeakUptoBisimCong)
   case SIM1
   show ?case (is "wsim ((~) OO \<U> ?R OO (\<approx>)) ?op1 ?op2")
   proof -
@@ -266,7 +272,82 @@ proof (coinduction arbitrary: sg c ip_state bt_state oss chns cbufs bufs outchns
           apply (rule wbisim_refl)
         apply (rule wb_upto_b_base)
         unfolding R_def
-        apply (intro exI conjI[rotated]; (rule refl)?)
+        apply (intro exI conjI)
+        apply (rule arg_cong3[where f=set_op])
+        apply (rule refl)
+                            apply (rule refl)
+        apply (rule arg_cong2[where f=dataflow_op])
+                            apply (rule refl)
+        unfolding  dataflow_tree_to_operator_def
+        apply simp
+        apply (rule arg_cong3[where f=map_op])
+                            apply (rule refl)
+         apply (rule refl)
+        apply (rule arg_cong4[where f=comp_op])
+         apply (rule refl)
+                            apply (rule refl)
+        apply (rule arg_cong3[where f=map_op])
+         apply (rule refl)
+                            apply (rule refl)
+        unfolding ooo_input_op_def
+         apply (rule refl)
+        apply (rule arg_cong3[where f=map_op])
+         apply (rule refl)
+         apply (rule refl)
+        unfolding batch_op_def batch_op_logic_def notifier_op_def
+        apply (rule arg_cong5[where f=builder_op])
+         apply (rule refl)
+         apply (rule refl)
+         apply (rule refl)
+                            apply (rule refl)
+        apply (rule ext)+
+        apply simp
+                            apply (rule refl)+
+                            apply (simp add: SIM1)
+        defer
+                            apply (simp add: SIM1)
+                            apply (simp add: SIM1)
+                            apply (simp add: SIM1)
+                           apply (rule refl)+
+        subgoal
+          using SIM1(7,8,9,2)
+          by (auto simp add: all_isl_def Src_from_Trg_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
+        using SIM1(10) apply blast
+        using SIM1(11) apply blast
+                     apply (rule refl)+
+        using SIM1 apply force
+        using SIM1 apply force
+        using SIM1 apply force
+        using SIM1 apply force
+        using SIM1 apply force
+        using SIM1 apply force
+        using SIM1 apply force
+        using SIM1 apply force
+        using SIM1 apply force
+        using SIM1 apply force
+        using SIM1 apply force
+        using SIM1 apply force
+        done
+
+        find_theorems edges
+
+
+end
+        using SIM1(1,12,13,14) apply -
+        apply simp
+        apply hypsubst_thin
+
+
+        find_theorems c
+
+        defer
+                            defer
+                            defer
+                            defer
+                            defer
+        defer
+
+
                          apply (simp_all only: SIM1 dataflow_tree_to_graph_to_my_summ)
                         defer
         using SIM1(21) apply simp
@@ -276,9 +357,9 @@ proof (coinduction arbitrary: sg c ip_state bt_state oss chns cbufs bufs outchns
         defer
         using SIM1(1,16) apply simp
         using SIM1(1,15) apply simp
+        using SIM1(22) apply simp
 
-
-        find_theorems C
+        find_theorems graph_to_edges
 
 end
 
