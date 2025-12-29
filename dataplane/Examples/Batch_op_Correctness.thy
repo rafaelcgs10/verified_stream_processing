@@ -191,6 +191,10 @@ definition "outputs_at_target su oss = (\<lambda> (nid, p). let S = Src_from_Trg
 
 definition "all_isl l = (\<forall> x \<in> fst ` set l. isl x)"
 
+definition "INVAR plane_state tracker_state = 
+   (\<exists> oss :: 'nid \<Rightarrow> ('p, 'd, 't) operator_state.
+    True)"
+
 lemma correctness_gen:
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
     and f :: \<open>'d1 buf \<Rightarrow> 'd2 buf\<close>
@@ -273,37 +277,21 @@ proof (coinduction arbitrary: sg c c' cgs os ip_state bt_state oss chns cbufs bu
              defer
              apply (rule wbisim_refl)
             apply (rule wb_upto_b_base)
-            unfolding R_def
+            unfolding R_def[simplified]
             apply (intro exI conjI)
-            unfolding wsim_def OP1_def dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
+            unfolding wsim_def dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
                                 apply simp
                                 apply (simp only: trace_simp)
-                                apply (rule refl)+
-                            apply (simp add: SIM1)
-        defer
                             apply (simp add: SIM1)
                             apply (simp add: SIM1)
                             apply (simp add: SIM1)
-                           apply (rule refl)+
+                            apply (simp add: SIM1)
         subgoal
           using SIM1(7,8,9,2)
           by (auto simp add: all_isl_def Src_from_Trg_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
         using SIM1(10) apply blast
         using SIM1(11) apply blast
-                     apply (rule refl)+
-        using SIM1 apply force
-        using SIM1 apply force
-        using SIM1 apply force
-        using SIM1 apply force
-        using SIM1 apply force
-        using SIM1 apply force
-        using SIM1 apply force
-        using SIM1 apply force
-        using SIM1 apply force
-        using SIM1 apply force
-        using SIM1 apply force
-        using SIM1 apply force
-        using SIM1 apply force
+        using SIM1 apply force+
         done
 
         find_theorems edges
