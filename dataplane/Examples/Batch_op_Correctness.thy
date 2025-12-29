@@ -252,57 +252,33 @@ proof (coinduction arbitrary: sg c c' cgs os ip_state bt_state oss chns cbufs bu
   proof -
     define R where "R = ?R"
     show ?thesis 
-    proof -
-      have "\<exists>op2'. step (Out (a, 1) (aa, ba)) (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S (cinsert ((a, 1), aa, ba) D) (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op (case_sum (\<lambda>_. None) ((case_option None (Some \<circ> Inr) \<circ>\<circ> case_prod) (\<lambda>nid p. case if nid = 0 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (1 + offset, q)))) (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (builder_op False {||} {|1|} ip_state (ooo_input_op_logic {|1|}))) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (builder_op True {|1|} {|1|} (bt_state\<lparr>nfron := False\<rparr>) (\<lambda>os. if nfron os then if filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1) = [] then trace STR ''No capabilities'' {||} else let compl_batches = \<lambda>p t. map (de1 (os\<lparr>nfron := False\<rparr>) \<circ> fst) (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)); ts = \<lambda>p. rmdups {} (map snd (filter (\<lambda>(d, t). t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p))); osa = os\<lparr>nfron := False, input := \<lambda>p. filter (\<lambda>(d, t). t \<notin> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)\<rparr> in Let {|(concat (map (\<lambda>t. map (\<lambda>x. (x, Cap t 1)) (f (compl_batches 1 t))) (ts 1)), map (\<lambda>t. Cap t 1) (filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1)))|} ((|`|) (\<lambda>(outs, drops). trace (STR ''outs: '' + show_nat (length outs) + STR '' , drops: '' + show_nat (length drops)) (drop_caps (produces osa (map (\<lambda>(d, y). (en2 osa d, y)) outs)) drops))) else {||}))))))) op2'"
-        if "((a, 1), aa, ba) |\<in>| S"
-          and "\<not> ((a, 1), aa, ba) |\<in>| D"
-        for a :: "2"
-          and aa :: "'d1 + 'd2"
-          and ba :: 't
-        using that 
         apply -
-        apply (intro exI conjI relcomppI)
-         apply (rule step_set_spec_op_intro_Out)
-            apply (rule refl)
-           apply simp
-        apply simp
-         apply (rule refl)
-          apply (rule bisim_refl)
-        defer
-          apply (rule wbisim_refl)
-        apply (rule wb_upto_b_base)
-        unfolding R_def
-        apply (intro exI conjI)
-        apply (rule arg_cong3[where f=set_op])
-        apply (rule refl)
-                            apply (rule refl)
-        apply (rule arg_cong2[where f=dataflow_op])
-                            apply (rule refl)
-        unfolding  dataflow_tree_to_operator_def
-        apply simp
-        apply (rule arg_cong3[where f=map_op])
-                            apply (rule refl)
-         apply (rule refl)
-        apply (rule arg_cong4[where f=comp_op])
-         apply (rule refl)
-                            apply (rule refl)
-        apply (rule arg_cong3[where f=map_op])
-         apply (rule refl)
-                            apply (rule refl)
-        unfolding ooo_input_op_def
-         apply (rule refl)
-        apply (rule arg_cong3[where f=map_op])
-         apply (rule refl)
-         apply (rule refl)
-        unfolding batch_op_def batch_op_logic_def notifier_op_def
-        apply (rule arg_cong5[where f=builder_op])
-         apply (rule refl)
-         apply (rule refl)
-         apply (rule refl)
-                            apply (rule refl)
-        apply (rule ext)+
-        apply simp
-                            apply (rule refl)+
+        unfolding R_def[symmetric]
+        subgoal premises prems2
+          unfolding wsim_def dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
+          apply simp
+          apply (simp only: trace_simp)
+          apply (intro allI conjI impI)
+          apply (elim step_builder_op_elim step_set_op_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim conjE ; 
+              clarsimp simp only: IO.simps ; hypsubst_thin ? ; clarsimp simp flip: cin.rep_eq split: option.splits sum.splits prod.splits if_splits ; hypsubst_thin?)
+          subgoal 
+            apply -
+            apply (intro exI conjI relcomppI)
+               apply (rule step_set_spec_op_intro_Out)
+                  apply (rule refl)
+                 apply simp
+                apply simp
+               apply (rule refl)
+              apply (rule bisim_refl)
+             defer
+             apply (rule wbisim_refl)
+            apply (rule wb_upto_b_base)
+            unfolding R_def
+            apply (intro exI conjI)
+            unfolding wsim_def OP1_def dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
+                                apply simp
+                                apply (simp only: trace_simp)
+                                apply (rule refl)+
                             apply (simp add: SIM1)
         defer
                             apply (simp add: SIM1)
@@ -315,6 +291,7 @@ proof (coinduction arbitrary: sg c c' cgs os ip_state bt_state oss chns cbufs bu
         using SIM1(10) apply blast
         using SIM1(11) apply blast
                      apply (rule refl)+
+        using SIM1 apply force
         using SIM1 apply force
         using SIM1 apply force
         using SIM1 apply force
