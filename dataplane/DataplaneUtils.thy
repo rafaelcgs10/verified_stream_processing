@@ -27,6 +27,21 @@ lemma arg_cong5:
   "a = b \<Longrightarrow> c = d \<Longrightarrow> e = g \<Longrightarrow> h = i \<Longrightarrow> j = k \<Longrightarrow> f a c e h j  = f b d g i k"
   by fast
 
+lemma lmap_lshift[simp]:
+  "lmap f (xs @@- lxs) = map f xs @@- lmap f lxs"
+  by (metis lappend_llist_of lmap_lappend_distrib lmap_llist_of)
+
+lemma lfinite_lshift[simp]:
+  "lfinite (xs @@- lxs) = lfinite lxs"
+  by (metis lappend_llist_of lfinite_lappend lfinite_llist_of)
+
+lemma list_of_lshift:
+  "lfinite lxs \<Longrightarrow>
+   list_of (xs @@- lxs) = xs @ list_of lxs"
+  apply (induct xs arbitrary: lxs)
+   apply (simp_all add: list_of_LCons_conv split: if_splits)
+  done
+
 lemma rel_set_image:
   "rel_set R (f ` A) B \<longleftrightarrow> rel_set (\<lambda> x. R (f x)) A B"
   "rel_set S A (g ` B) \<longleftrightarrow> rel_set (\<lambda> x y. S x (g y)) A B"

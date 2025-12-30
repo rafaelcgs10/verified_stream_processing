@@ -696,6 +696,12 @@ definition "add_caps os caps = os\<lparr> inter := inter os @ map (\<lambda> cap
 
 definition "consumes os p t d = add_caps (os\<lparr> consu := consu os @ [(p, t, 1)], input := BENQ p (d, t) (input os) \<rparr>) (concat (map (\<lambda> p'. map (\<lambda> t'. Cap (t -+- t') p') (summar os p p')) enum_class.enum))"
 
+lemma outpu_consumes[simp]:
+  "outpu (consumes os p t d) p' = outpu os p'"
+  unfolding consumes_def BENQ_def add_caps_def
+  by (auto simp add: operator_state.defs)
+
+
 definition "has_progress os = (consu os \<noteq> [] \<or> inter os \<noteq> [] \<or> produ os \<noteq> [])"
 
 corec builder_op where
