@@ -22,20 +22,18 @@ inductive ev_drops for t where
 | "ev_drops t n lxs \<Longrightarrow> time x \<noteq> t \<Longrightarrow> ev_drops t n (LCons x lxs)"
 
 coinductive timely_productive where
-  "lfinite lxs \<Longrightarrow> timely_productive lxs"
-| "\<lbrakk>\<not> lfinite lxs; timely_productive lxs\<rbrakk> \<Longrightarrow> timely_productive (LCons (Data t d) lxs)"
-| "\<lbrakk>\<not> lfinite lxs; timely_productive lxs; ev_drops t 1 lxs \<rbrakk> \<Longrightarrow> timely_productive (LCons (Mint t) lxs)"
-| "\<lbrakk>\<not> lfinite lxs; timely_productive lxs \<rbrakk> \<Longrightarrow> timely_productive (LCons (Drop t) lxs)"
+  "lfinite lxs \<Longrightarrow> timely_productive lxs C"
+| "\<lbrakk>\<not> lfinite lxs; timely_productive lxs C\<rbrakk> \<Longrightarrow> timely_productive (LCons (Data t d) lxs) C"
+| "\<lbrakk>\<not> lfinite lxs; timely_productive lxs (C + {# t #}); \<forall> u \<le> t. ev_drops u (count (C + {# t #}) u) lxs \<rbrakk> \<Longrightarrow> timely_productive (LCons (Mint t) lxs) C"
+| "\<lbrakk>\<not> lfinite lxs; timely_productive lxs (C - {# t #})\<rbrakk> \<Longrightarrow> timely_productive (LCons (Drop t) lxs) C"
 
 definition "timely_input_stream lxs C =
- (timely_monotone lxs C \<and> (\<forall> t. ev_drops t (count C t) lxs) \<and> timely_productive lxs)"
-
-
+ (timely_monotone lxs C \<and> (\<forall> t. ev_drops t (count C t) lxs) \<and> timely_productive lxs C)"
 
 lemma
   "Data t d \<in> lset lxs \<Longrightarrow> 
    timely_input_stream lxs C \<Longrightarrow> 
-   lfinite (lfilter (case_event (\<lambda>t' d. t = t') (\<lambda>ta. False) (\<lambda>ta. False)) lxs)"
+   lfinite (lfilter (case_event (\<lambda>t' d. t = t') \<bottom> \<bottom>) lxs)"
   apply (induct lxs rule: lset_induct)
   subgoal for lxs
     unfolding timely_input_stream_def

@@ -55,6 +55,17 @@ lemma rel_set_reflI:
   apply auto
   done
 
+lemma BAPPEND_BENQ_BHD'[simp]:
+  "buf1 p \<noteq> [] \<Longrightarrow> BHD p buf1 = x \<Longrightarrow> (BTL p buf1) >> (BENQ p x buf2) = buf1 >> buf2"
+  unfolding BULK_BENQ_def BTL_def BENQ_def BHD_def by force
+
+lemma BHD_map[simp]:
+  "buf p \<noteq> [] \<Longrightarrow>
+   BHD p (\<lambda>x. map f (buf x)) = f (BHD p buf)"
+  unfolding BHD_def
+  apply (auto simp add: hd_map)
+  done
+  
 
 lemma lhd_concat_ldropWhile:
   "lfinite (ltakeWhile ((=) []) lxs) \<Longrightarrow>
@@ -154,6 +165,11 @@ lemma neg_neg_multiset:
 lemma add_zmset_neg:
   "add_zmset a (- M) = (add_zmset a {#}\<^sub>z) - M"
   by simp
+
+lemma to_zmset_append[simp]:
+  "to_zmset (xs @ ys) = to_zmset xs + to_zmset ys"
+  by (induct xs arbitrary: ys rule: to_zmset.induct)
+    auto
 
 lemma add_zmset_neg_add_zmset_if:
   "add_zmset a (- (add_zmset b M)) = (if a = b then - M else - (add_zmset b (M - {# a #}\<^sub>z)))"

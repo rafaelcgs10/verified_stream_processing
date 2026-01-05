@@ -207,7 +207,7 @@ lemma inputs_at_target_consumes[simp]:
 
 definition "all_isl l = (\<forall> x \<in> fst ` set l. isl x)"
 
-definition "dataplane_tracker_inv os cbufs sg Pcaps = 
+definition "dataplane_tracker_inv os cbufs sg = 
    (\<exists> c c' cgs chns caps.
      c = pt_tr sg \<and>
      cgs = extract_prog (edges sg) os \<and>
@@ -221,8 +221,23 @@ definition "dataplane_tracker_inv os cbufs sg Pcaps =
      imp_front_inv (summ sg) c \<and>
      chnls_imp_front_inv (summ sg) c chns \<and>
      changes_non_zero_inv cgs \<and>
-     propagation_inv (summ sg) c \<and>
-     Pcaps caps)"
+     propagation_inv (summ sg) c)"
+
+
+lemma
+  "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
+   dataplane_tracker_inv (os(nid := consumes (os nid) p t d)) (BTL (nid, p) cbufs) sg"
+  unfolding dataplane_tracker_inv_def
+  apply (elim conjE exE)
+  apply simp
+  apply hypsubst_thin
+  subgoal for c c' cgs chns caps
+    apply (rule exI[of _ "(\<lambda> l. case l of Loc nid' (Src p') \<Rightarrow> if nid' = nid \<and> p' = p then _ else caps l)"])
+    apply (intro conjI)
+  unfolding Src_caps_inv_def consumes_def add_caps_def
+  oops
+
+  term mset
 
 lemma correctness_gen:
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
@@ -246,7 +261,7 @@ lemma correctness_gen:
     \<open>chns = outputs_at_target (summ sg) os >> cbufs >> inputs_at_target os\<close>
     and
     DT_INV:
-    \<open>dataplane_tracker_inv os cbufs sg Pcaps\<close>
+    \<open>dataplane_tracker_inv os cbufs sg\<close>
     and S_INV:
     \<open>SP = cUnion (cimage 
       (\<lambda> t. (cset_of_llist o llist_of) (map (\<lambda> x. ((2, 1), (Inr x, t))) (f (coll ((map (\<lambda> (x, t). Data t (projl x)) (chns (1, 0))) @@- (inps 1)) t))))
@@ -254,11 +269,11 @@ lemma correctness_gen:
     \<open>SO = cset_of_llist (llist_of (map (\<lambda> x. ((2, 1), x)) (outpu (os 1) 0)))\<close>
     and
     INP_STREAM_INV:
-    \<open>Pcaps = (\<lambda> caps. timely_input_stream (inps 0) C \<and> zmset_of C = caps (Loc 0 (Src 0)))\<close>
+    \<open>timely_input_stream (inps 0) (mset (ocaps (os 0) 0))\<close>
   shows 
     \<open>set_op S D (dataflow_op sg (G_op f ip_state bt_state cbufs)) \<approx> set_spec_op (cUn (cUn S SO) SP) D\<close>
   using assms apply -
-proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D C Pcaps rule: weakBisimWeakUptoBisimCong)
+proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D rule: weakBisimWeakUptoBisimCong)
   case SIM1
   show ?case (is "wsim ((~) OO \<U> ?R OO (\<approx>)) ?op1 ?op2")
   proof -
@@ -288,8 +303,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           unfolding R_def[simplified]
           apply (intro exI conjI)
           unfolding wsim_def dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
-                 apply simp
-                 apply (simp only: trace_simp)
+                 apply (simp cong: if_cong)
                  apply (simp add: SIM1)
                 apply (simp add: SIM1)
                apply (simp add: SIM1)
@@ -300,10 +314,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           using SIM1 apply fastforce+
           done
                  defer
-        defer
         subgoal for d t
-      apply (cases "cbufs (1, 1)"; simp add: BHD_def BTL_def)
-      subgoal for a as
           apply (intro exI conjI relcomppI)
           apply (rule rtranclp.intros(1))
             apply (rule bisim_refl)
@@ -319,29 +330,19 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           apply (rule exI[of _ D])
           apply (intro conjI)
   unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
-       apply simp
-       apply (simp only: trace_simp)
   subgoal
-    apply (simp add: comp_op_def if_distrib SIM1 consumes_def add_caps_def BTL_def enum_num1_def operator_state.defs(3) fun_upd_def)
-    using list.sel(3)[of a as] apply presburger
-    done
-  subgoal 
-    using SIM1(6,8,9) apply -
-    apply (simp add: comp_op_def if_distrib SIM1 consumes_def add_caps_def BTL_def enum_num1_def operator_state.defs(3) fun_upd_def flip: BULK_BENQ_assoc)
-    
-
-end
+    by (simp cong: if_cong add: map_tl comp_op_def if_distrib SIM1 consumes_def add_caps_def BTL_def enum_num1_def operator_state.defs fun_upd_def)
+  subgoal
+    apply (simp only: cUn_assoc BULK_BENQ_assoc)
     apply (rule arg_cong2[where f=set_spec_op])
      apply simp_all
     using SIM1(6,8,9) apply -
     apply (simp only: cUn_assoc)
     apply (rule arg_cong2[where f= cUn])
      apply simp_all
-    subgoal premises
       apply (rule arg_cong2[where f= cUn])
        apply simp_all
       apply (rule arg_cong2[where f= cUn])
-      subgoal
         apply (rule arg_cong[where f= cUnion])
         apply (rule arg_cong2[where f=cimage])
          apply simp_all
@@ -361,16 +362,6 @@ end
         apply (rule map_cong)
          apply simp_all
         apply (simp flip: BULK_BENQ_assoc)
-
-        find_theorems BTL BULK_BENQ
-
-        unfolding consumes_def add_caps_def BULK_BENQ_def BTL_def inputs_at_target_def prems2(3,4)
-        apply simp
-
-        find_theorems a
-
-end
-        done
       subgoal
         apply (rule arg_cong[where f= cUnion])
         apply (rule arg_cong2[where f=cimage])
@@ -393,7 +384,28 @@ end
         unfolding consumes_def add_caps_def BULK_BENQ_def BTL_def
          apply simp
         unfolding consumes_def add_caps_def BULK_BENQ_def BTL_def
-        apply simp
+         apply (simp add: BHD_def hd_map)
+        unfolding consumes_def add_caps_def BULK_BENQ_def BTL_def BENQ_def
+      apply (rule arg_cong2[where f= cUn])
+         apply simp_all
+        apply (cases "cbufs (1, 1)")
+          apply (auto simp flip: cinsert_code)
+        done
+      done
+    apply (simp_all add: SIM1)
+    subgoal
+            using SIM1
+            by (auto simp add: inputs_at_target_def BENQ_def BTL_def all_isl_def Src_from_Trg_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
+          subgoal premises prems2
+            using SIM1(7,10) apply -
+            apply auto
+            apply hypsubst_thin
+
+          find_theorems Pcaps
+
+
+end
+
         done
       done
     done
