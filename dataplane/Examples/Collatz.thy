@@ -27,6 +27,7 @@ abbreviation init_input_state where
    nfron = False,
    en1 = id,
    de1 = id,
+   is_en1 = \<top>,
    es = inps
    \<rparr>"
 
@@ -58,8 +59,10 @@ abbreviation init_operator_state_ty2 where
    nfron = False,
    en1 = id,
    de1 = id,
+   is_en1 = \<top>,
    en2 = id,
-   de2 = id
+   de2 = id,
+   is_en2 = \<top>
    \<rparr>"
 
 definition "nid0 = 0"

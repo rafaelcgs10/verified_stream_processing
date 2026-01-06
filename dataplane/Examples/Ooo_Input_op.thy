@@ -151,7 +151,8 @@ next
   have ocaps_not_empty: \<open>ocaps os p \<noteq> []\<close> using LCons(8) lhd_es(3) timely_monotone.cases by force
   hence \<open>?os1 |\<in>| ooo_input_op_logic ops os\<close> unfolding ooo_input_op_logic_def ooo_input_os_Drop_Mint_def
     using LCons(5) lhd_es(1,3) event.case_eq_if llist.case(2) cin_cimage_cfilter input_state.fold_congs(13)
-      operator_state.unfold_congs(3,8) by (smt (verit))
+      operator_state.unfold_congs
+    by (smt (verit, ccfv_SIG) input_state.fold_congs(14))
   hence \<open>step Tau op (ooo_input_op ops ?os1)\<close>
     using LCons(6,7) ocaps_not_empty step_builder_op_Silent ooo_input_op_def by blast
   moreover have \<open>(step Tau)\<^sup>*\<^sup>* (ooo_input_op ops ?os1) op'\<close>

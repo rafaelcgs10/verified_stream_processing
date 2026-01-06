@@ -116,6 +116,7 @@ abbreviation init_input_state where
    nfron = False,
    en1 = Inl,
    de1 = projl,
+   is_en1 = \<top>,
    es = inps
    \<rparr>"
 abbreviation init_operator_state_ty2 where
@@ -132,8 +133,10 @@ abbreviation init_operator_state_ty2 where
    nfron = False,
    en1 = Inl,
    de1 = projl,
+   is_en1 = \<top>,
    en2 = Inr,
-   de2 = projr
+   de2 = projr,
+   is_en2 = \<top>
    \<rparr>"
 
 
@@ -205,7 +208,8 @@ lemma inputs_at_target_consumes[simp]:
   unfolding inputs_at_target_def consumes_def add_caps_def BENQ_def
   by (auto split: if_splits)
 
-definition "all_isl l = (\<forall> x \<in> fst ` set l. isl x)"
+definition "ty1_check os bufs = (\<forall> p. (\<forall> x \<in> fst ` set (input os p) \<union> fst ` set (bufs p) \<union> fst ` set (outpu os p). is_en1 os x))"
+definition "ty2_check os bufs = (\<forall> p. (\<forall> x \<in> fst ` set (input os p) \<union> fst ` set (bufs p). is_en1 os x) \<and> (\<forall> x \<in> fst ` set (outpu os p). is_en2 os x))"
 
 definition "dataplane_tracker_inv os cbufs sg = 
    (\<exists> c c' cgs chns caps.
@@ -237,7 +241,7 @@ lemma
   unfolding Src_caps_inv_def consumes_def add_caps_def
   oops
 
-  term mset
+  term curry
 
 lemma correctness_gen:
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
@@ -253,9 +257,10 @@ lemma correctness_gen:
     \<open>edges sg = graph_to_edges (summ sg)\<close>
     and
     OP_STATE_INV: 
-    \<open>ip_state = operator_state.extend (os 0) \<lparr>en1 = Inl, de1 = projl, es = inps\<rparr>\<close>
-    \<open>bt_state = operator_state.extend (os 1) \<lparr>en1 = Inl, de1 = projl, en2 = Inr, de2 = projr\<rparr>\<close>
-    \<open>all_isl (chns (0, 0))\<close>
+    \<open>ip_state = operator_state.extend (os 0) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl, es = inps\<rparr>\<close>
+    \<open>bt_state = operator_state.extend (os 1) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr\<rparr>\<close>
+    \<open>ty1_check ip_state (curry cbufs 0)\<close>
+    \<open>ty2_check bt_state (curry cbufs 1)\<close>
     and
     BUFS_INV: 
     \<open>chns = outputs_at_target (summ sg) os >> cbufs >> inputs_at_target os\<close>
@@ -310,7 +315,12 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               apply (simp add: SIM1)
           subgoal
             using SIM1
-            by (auto simp add: all_isl_def Src_from_Trg_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
+            unfolding ty1_check_def
+            by (auto simp add:  Src_from_Trg_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
+          subgoal
+            using SIM1
+            unfolding ty2_check_def
+            by (auto simp add:  Src_from_Trg_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
           using SIM1 apply fastforce+
           done
                  defer
@@ -336,7 +346,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
     apply (simp only: cUn_assoc BULK_BENQ_assoc)
     apply (rule arg_cong2[where f=set_spec_op])
      apply simp_all
-    using SIM1(6,8,9) apply -
+    using SIM1 apply -
     apply (simp only: cUn_assoc)
     apply (rule arg_cong2[where f= cUn])
      apply simp_all
@@ -393,15 +403,18 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
         done
       done
     apply (simp_all add: SIM1)
-    subgoal
+          subgoal
             using SIM1
-            by (auto simp add: inputs_at_target_def BENQ_def BTL_def all_isl_def Src_from_Trg_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
-          subgoal premises prems2
-            using SIM1(7,10) apply -
-            apply auto
-            apply hypsubst_thin
+            unfolding ty1_check_def
+            by (auto simp add: BTL_def BHD_def  Src_from_Trg_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
+          subgoal
+            using SIM1(4,6,7)
+            unfolding ty2_check_def
+            apply (clarsimp simp add: operator_state.defs fun_upd_def BTL_def BHD_def Src_from_Trg_def consumes_def add_caps_def BENQ_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
+            apply (meson UnCI img_fst in_fst_imageE list.set_sel(2))
+            done
 
-          find_theorems Pcaps
+          find_theorems 
 
 
 end
