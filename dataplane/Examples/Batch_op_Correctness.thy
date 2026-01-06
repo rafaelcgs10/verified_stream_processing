@@ -165,8 +165,8 @@ abbreviation "G_op f ip_state os2 chns \<equiv>
    dataflow_tree_to_operator chns (G f (ip_state :: (1, 'd1 + 'd2, 'd1, _) input_state) (os2 :: (1, 'd1 + 'd2, 'd1, 'd2, _) operator_state_ty2))"
 
 definition "c_pts_inv c caps = (\<forall> l. c_pts c l = caps l)"
-definition "Src_caps_inv caps os = (\<forall> nid p. caps (Loc nid (Src p)) = zmset_of (mset (ocaps (os nid) p)))"
-definition "Trg_caps_inv caps bufs = (\<forall> nid p. caps (Loc nid (Trg p)) = zmset_of (mset (map snd (bufs (nid, p)))))"
+definition "Src_caps_inv caps os = (\<forall> nid p. caps (Loc nid (Src p)) = to_zmset (ocaps (os nid) p))"
+definition "Trg_caps_inv caps bufs = (\<forall> nid p. caps (Loc nid (Trg p)) = to_zmset (map snd (bufs (nid, p))))"
 definition "extract_prog eds os = concat (map (\<lambda> nid. extract_progress nid eds (snd (obtain_progress (os nid)))) Enum.enum)"
 definition "front_inv os c = (\<forall> nid p. front (os nid) p \<le> frontier (c_imp c (Loc nid (Trg p))))"
 definition "imp_front_inv su c = (\<forall> l. frontier (c_imp c l) \<le> ifrontier su (+) c l)"
@@ -228,20 +228,85 @@ definition "dataplane_tracker_inv os cbufs sg =
      propagation_inv (summ sg) c)"
 
 
+lemma concat_map_time_filter_out[simp]:
+  "distinct ps \<Longrightarrow> p \<in> set ps \<Longrightarrow> concat (map (\<lambda>x. map time (filter (\<lambda>x. out x = p) (map (\<lambda>t'. Cap (t -+- t') x) (xs x)))) ps) = map ((-+-) t) (xs p)"
+  apply (induct ps)
+   apply simp
+  subgoal premises prems for p' ps'
+    apply (cases "p = p'")
+    subgoal
+      apply hypsubst_thin
+      apply (clarsimp simp add: comp_def filter_empty_conv)
+      using prems(2) apply -
+      apply (subgoal_tac "distinct (p' # ps')")
+      subgoal
+        by (meson distinct.simps(2))
+      subgoal
+        using prems(2) enum_class.enum_distinct by force
+      done
+    subgoal
+      using prems apply -
+      apply auto
+      done
+    done
+  done
+
+
 lemma
   "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
-   dataplane_tracker_inv (os(nid := consumes (os nid) p t d)) (BTL (nid, p) cbufs) sg"
+   cbufs (nid, p) = (d, t) # xs \<Longrightarrow>
+   dataplane_tracker_inv (os(nid := consumes (os nid) p (t :: 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) d)) (BTL (nid, p) cbufs) sg"
   unfolding dataplane_tracker_inv_def
   apply (elim conjE exE)
   apply simp
   apply hypsubst_thin
   subgoal for c c' cgs chns caps
-    apply (rule exI[of _ "(\<lambda> l. case l of Loc nid' (Src p') \<Rightarrow> if nid' = nid \<and> p' = p then _ else caps l)"])
+    apply (rule exI[of _ 
+    "(\<lambda> l. case l of 
+        Loc nid' (Src p') \<Rightarrow> if nid' = nid then caps l + to_zmset (map (\<lambda> t'. t + t') (summar (os nid) p p')) else caps l 
+     | Loc nid' (Trg p') \<Rightarrow> if nid' = nid \<and> p = p' then caps l - {# t #}\<^sub>z else caps l)"])
     apply (intro conjI)
-  unfolding Src_caps_inv_def consumes_def add_caps_def
-  oops
+    subgoal premises prems
+      using prems(2) apply -
+      unfolding Src_caps_inv_def consumes_def add_caps_def to_zmset_correct
+      apply (auto 0 0 simp add: filter_empty_conv)
+      apply (auto 0 0 simp add:  comp_def  simp flip:  to_zmset_correct)
+      subgoal premises prems2 for p''
+        apply (simp flip: Multiset.mset_filter mset_map add: map_concat filter_concat comp_def)        
+        apply (rule arg_cong[where f=mset])
+        apply (subst concat_map_time_filter_out)
+        using enum_class.enum_distinct apply (auto simp add: enum_class.enum_UNIV)
+        done
+      done
+    subgoal premises prems
+      using prems(1,3) apply -
+      unfolding Trg_caps_inv_def BTL_def
+      apply (auto simp add: map_tl)
+      done
+   subgoal premises prems
+     using prems(4) apply -       
+     unfolding c_pts_inv_def
+     apply (auto 0 0 split: location.splits port.splits simp add: c_pts_change_multiplicities)
+     subgoal
+       apply (subgoal_tac "zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog (edges sg) (os(nid := consumes (os nid) p t d))))) = zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog (edges sg) os))) - {#t#}\<^sub>z")
+       subgoal
+         by auto
+       subgoal premises
+         unfolding extract_prog_def obtain_progress_def extract_progress_def 
+       apply (clarsimp simp add: filter_concat comp_def split_beta split: if_splits prod.splits)
 
-  term curry
+
+         find_theorems filter 
+
+       unfolding add_caps_def
+       
+      find_theorems consu
+
+      find_theorems "image_mset _ _ = image_mset _ _"
+
+    oops
+
+declare if_cong[cong]
 
 lemma correctness_gen:
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
@@ -289,7 +354,6 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
       subgoal premises prems2
         unfolding wsim_def dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
         apply simp
-        apply (simp only: trace_simp)
         apply (intro allI conjI impI)
         apply (elim step_builder_op_elim step_set_op_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim conjE ; 
             clarsimp simp only: IO.simps ; hypsubst_thin ? ; clarsimp simp flip: cin.rep_eq split: option.splits sum.splits prod.splits if_splits ; hypsubst_thin?)
@@ -308,7 +372,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           unfolding R_def[simplified]
           apply (intro exI conjI)
           unfolding wsim_def dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
-                 apply (simp cong: if_cong)
+                 apply simp
                  apply (simp add: SIM1)
                 apply (simp add: SIM1)
                apply (simp add: SIM1)
@@ -323,15 +387,15 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             by (auto simp add:  Src_from_Trg_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
           using SIM1 apply fastforce+
           done
-                 defer
+                defer
         subgoal for d t
           apply (intro exI conjI relcomppI)
-          apply (rule rtranclp.intros(1))
+             apply (rule rtranclp.intros(1))
             apply (rule bisim_refl)
-          defer
+           defer
            apply (rule wbisim_refl)
           apply (rule wb_upto_b_base)
-        unfolding R_def[simplified]
+          unfolding R_def[simplified]
           apply (rule exI[of _ "os(1 := consumes (os 1) 1 t d)"])
           apply (rule exI[of _ sg])
           apply (rule exI[of _ "BTL (1, 1) cbufs"])
@@ -339,70 +403,12 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           apply (rule exI[of _ S])
           apply (rule exI[of _ D])
           apply (intro conjI)
-  unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
-  subgoal
-    by (simp cong: if_cong add: map_tl comp_op_def if_distrib SIM1 consumes_def add_caps_def BTL_def enum_num1_def operator_state.defs fun_upd_def)
-  subgoal
-    apply (simp only: cUn_assoc BULK_BENQ_assoc)
-    apply (rule arg_cong2[where f=set_spec_op])
-     apply simp_all
-    using SIM1 apply -
-    apply (simp only: cUn_assoc)
-    apply (rule arg_cong2[where f= cUn])
-     apply simp_all
-      apply (rule arg_cong2[where f= cUn])
-       apply simp_all
-      apply (rule arg_cong2[where f= cUn])
-        apply (rule arg_cong[where f= cUnion])
-        apply (rule arg_cong2[where f=cimage])
-         apply simp_all
-        apply (rule ext)+
-        apply (rule arg_cong[where f=cset_of_llist])
-        apply (rule arg_cong[where f=llist_of])
-        apply (rule map_cong)
-         apply simp_all
-        apply (rule arg_cong[where f=f])
-        apply (rule arg_cong[where f=list_of])
-        apply (rule arg_cong2[where f=lshift])
-         apply simp_all
-        apply (rule map_cong)
-         apply simp_all
-        apply (rule filter_cong)
-         apply simp_all
-        apply (rule map_cong)
-         apply simp_all
-        apply (simp flip: BULK_BENQ_assoc)
-      subgoal
-        apply (rule arg_cong[where f= cUnion])
-        apply (rule arg_cong2[where f=cimage])
-         apply (rule ext)+
-         apply (rule arg_cong[where f=cset_of_llist])
-         apply (rule arg_cong[where f=llist_of])
-         apply (rule map_cong)
-          apply simp_all
-         apply (rule arg_cong[where f=f])
-         apply (rule arg_cong[where f=list_of])
-         apply (rule arg_cong2[where f=lshift])
-          apply simp_all
-         apply (rule map_cong)
-          apply simp_all
-         apply (rule filter_cong)
-          apply simp_all
-         apply (rule map_cong)
-          apply simp_all
-         apply (simp flip: BULK_BENQ_assoc)
-        unfolding consumes_def add_caps_def BULK_BENQ_def BTL_def
-         apply simp
-        unfolding consumes_def add_caps_def BULK_BENQ_def BTL_def
-         apply (simp add: BHD_def hd_map)
-        unfolding consumes_def add_caps_def BULK_BENQ_def BTL_def BENQ_def
-      apply (rule arg_cong2[where f= cUn])
-         apply simp_all
-        apply (cases "cbufs (1, 1)")
-          apply (auto simp flip: cinsert_code)
-        done
-      done
-    apply (simp_all add: SIM1)
+          unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
+          subgoal
+            by (simp add: map_tl comp_op_def if_distrib SIM1 consumes_def add_caps_def BTL_def enum_num1_def operator_state.defs fun_upd_def)
+          subgoal
+            by (simp add: cUn_assoc SIM1  flip:BULK_BENQ_assoc cinsert_code)
+               apply (simp_all add: SIM1)
           subgoal
             using SIM1
             unfolding ty1_check_def
@@ -413,17 +419,19 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             apply (clarsimp simp add: operator_state.defs fun_upd_def BTL_def BHD_def Src_from_Trg_def consumes_def add_caps_def BENQ_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
             apply (meson UnCI img_fst in_fst_imageE list.set_sel(2))
             done
+          subgoal
+
 
           find_theorems 
 
 
 end
 
-        done
-      done
-    done
+  done
+  done
+  done
 
-        find_theorems BULK_BENQ name: ass
+find_theorems BULK_BENQ name: ass
 
 end
   using SIM1(1,12,13,14) apply -

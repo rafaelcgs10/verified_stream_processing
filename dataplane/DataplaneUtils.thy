@@ -158,6 +158,7 @@ lemma to_zmset_correct[code,simp]:
   "zmset_of (mset xs) = to_zmset xs"
   by (induct xs) auto
 
+
 lemma neg_neg_multiset:
   "- (A :: _ zmultiset) - B = - (A + B)"
   by (metis add.commute diff_minus_eq_add minus_diff_eq)
@@ -182,6 +183,19 @@ lemma add_zmset_to_zmset:
   "add_zmset x (to_zmset xs) = to_zmset (x # xs)"
   by auto
 
+lemma to_zmset_tl[simp]:
+  "xs \<noteq> [] \<Longrightarrow>
+   to_zmset (tl xs) = to_zmset xs - {# hd xs #}\<^sub>z"
+  by (induct xs)
+    auto
+
+
+lemma to_zmset_empty[simp]:
+  "to_zmset xs = {#}\<^sub>z \<longleftrightarrow> xs = []"
+  apply (induct xs)
+   apply (simp_all flip: to_zmset_correct)
+  by (metis add_zmset_to_zmset list.simps(2) mset_pos_empty mset_zero_iff to_zmset_correct zmset_of_inverse)
+  
 lemma add_zmset_minus_to_zmset_if:
   "add_zmset x (- to_zmset xs) = (if x \<in> set xs then - to_zmset (remove1 x xs) else - to_zmset xs + {# x #}\<^sub>z)"
   apply (induct xs)
@@ -281,6 +295,8 @@ definition defaults_prod where "defaults_prod = defaults \<times> defaults"
 instance
 proof qed
 end
+
+
 
 
 end

@@ -268,4 +268,12 @@ lemma enum_class2[simp]:
   "enum_class.enum = [0 :: 2, 1]"
   by code_simp
 
+lemma enum_not_Nil[simp]:
+  "enum_class.enum \<noteq> []"
+  apply safe
+  apply (drule arg_cong[where f=set])
+  apply (simp only: enum_class.enum_UNIV list.set(1))
+  apply simp
+  done
+
 end

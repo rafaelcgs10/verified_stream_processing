@@ -896,4 +896,46 @@ definition notifier_op where
     else {||}))"
 
 
+
+
+fun zmset where
+  "zmset [] = {#}\<^sub>z"
+| "zmset ((x, d) # xs) = update_zmultiset (zmset xs) x d"
+
+lemma update_zmultiset_plus[simp]:
+  "update_zmultiset (A + B) x n = update_zmultiset A x n + B"
+  apply transfer
+  apply (auto simp: equiv_zmset_def)
+  subgoal for A B A' B'
+    apply (auto simp add: multiset_eq_iff split: if_splits)
+    done
+  done
+
+
+lemma zmset_append[simp]:
+  "zmset (xs @ ys) = zmset xs + zmset ys"
+  apply (induct xs arbitrary: ys)
+   apply auto
+  done
+
+lemma update_zmultiset_plus_comm:
+  "update_zmultiset A x n + B = A + update_zmultiset B x n"
+  apply transfer
+  apply (auto simp: equiv_zmset_def)
+  subgoal for A B A' B'
+    apply (auto simp add: multiset_eq_iff split: if_splits)
+    done
+  done
+
+lemma c_pts_change_multiplicities:
+  "c_pts (change_multiplicities su xs c) = (\<lambda> l. c_pts c l + zmset (map snd (filter (\<lambda> (l', t, d). l = l') xs)))"
+  apply (induct xs arbitrary: c)
+   apply simp
+  subgoal for x xs c
+    apply (rule ext)+
+    apply (cases x)
+    apply (auto split: if_splits prod.splits simp add: change_multiplicities_simp_alt update_zmultiset_plus_comm) 
+    done
+  done
+
 end
