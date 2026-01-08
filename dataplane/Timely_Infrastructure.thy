@@ -110,7 +110,7 @@ type_synonym 'a change_batch = "'a list"
 (* Inspired by timely/src/progress/subgraph.rs:237 *)
 record ('id, 'p, 't) subgraph =
   pt_tr :: "(('id, 'p) location, 't) configuration"
-  edges :: "('id, 'p) location \<Rightarrow> ('id, 'p) location list"
+  edges :: "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) list"
   summ :: "('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> 't antichain"
   upfro :: "'id \<Rightarrow> bool"
 
@@ -286,12 +286,6 @@ definition "change_multiplicities summary xs conf = fold (\<lambda> (l, t, m) c.
 
 definition "propagate_pointstamps summary conf cbs = propagate_all summary (change_multiplicities summary cbs conf)"
 
-(* abbreviation "init_subgraph summary \<equiv>
-   \<lparr> pt_tr = the (propagate_pointstamps summary empty_conf (concat (map (\<lambda> nid. map (\<lambda> p. (Loc nid (Src p), 0, 1)) enum_class.enum) enum_class.enum))),
-   edges = (\<lambda> l1. [l2 \<leftarrow> enum_class.enum. \<not> is_empty_antichain (summary l1 l2) \<and> is_Src (port l1) \<and> is_Trg (port l2) ]),
-   summ = summary \<rparr>"
- *)
-
 (* Inspired by timely/src/dataflow/operators/generic/builder_rc.rs:29 and timely/src/progress/operate.rs:63 *)
 (* This is the shared that the operator exposes to the subgraph *)
 record ('p, 't) shared_state =
@@ -304,7 +298,7 @@ definition extract_progress where
   "extract_progress nid edg st =
     map (\<lambda> (p, t, m). (Loc nid (Trg p), t, -m)) (cons st) @ 
     map (\<lambda> (p, t, m). (Loc nid (Src p), t, m)) (inte st) @
-    concat (map (\<lambda> (p, t, m). map (\<lambda> l. (l, t, m)) (edg (Loc nid (Src p)))) (prod st))"
+    concat (map (\<lambda> (p, t, m). map (\<lambda> (nid', p'). (Loc nid' (Trg p'), t, m)) (edg (nid, p))) (prod st))"
 
 term "((o) frontier) ` imp_fron"
 
@@ -622,7 +616,7 @@ record ('p, 'd, 'd1, 'd2, 't) operator_state_ty2 = "('p, 'd, 'd1, 't) operator_s
 record ('p, 'd, 'd1, 'd2, 'd3, 't) operator_state_ty3 = "('p, 'd, 'd1, 'd2, 't) operator_state_ty2" +
   en3 :: "'d3 \<Rightarrow> 'd" de3 :: "'d \<Rightarrow> 'd3" is_en3 :: "'d \<Rightarrow> bool"
 
-definition "graph_to_edges summary = (\<lambda> l1. [l2 \<leftarrow> Enum.enum. \<not> is_empty_antichain (summary l1 l2) \<and> is_Src (port l1) \<and> is_Trg (port l2) ])"
+definition "graph_to_edges summary = (\<lambda> (nid, p). [(nid', p') \<leftarrow> Enum.enum. \<not> is_empty_antichain (summary (Loc nid (Src p)) (Loc nid' (Trg p'))) ])"
 
 definition "init_subgraph summary cgs =
    \<lparr> pt_tr = init_conf summary cgs,
@@ -911,12 +905,15 @@ lemma update_zmultiset_plus[simp]:
     done
   done
 
-
 lemma zmset_append[simp]:
   "zmset (xs @ ys) = zmset xs + zmset ys"
   apply (induct xs arbitrary: ys)
    apply auto
   done
+
+lemma zmset_concat:
+  "zmset (concat xs) = sum_list (map zmset xs)"
+  by (induct xs) auto
 
 lemma update_zmultiset_plus_comm:
   "update_zmultiset A x n + B = A + update_zmultiset B x n"
@@ -925,6 +922,51 @@ lemma update_zmultiset_plus_comm:
   subgoal for A B A' B'
     apply (auto simp add: multiset_eq_iff split: if_splits)
     done
+  done
+
+lemma zmset_map_neg[simp]:
+  "zmset (map (\<lambda> (t, m). (t, - m)) xs) = - zmset xs"
+  apply (induct xs)
+   apply clarsimp+
+  apply (metis Executable.update_zmultiset_plus add_eq_0_iff update_zmultiset_plus_comm update_zmultiset_simps(1))
+  done
+
+lemma zmset_map_alt[simp]:
+  "zmset (map (\<lambda>x. (fst (snd x), snd (snd x))) xs) = zmset (map snd xs)"
+  apply (induct xs)
+   apply clarsimp+
+  done
+
+lemma zmset_neg_alt[simp]:
+  "zmset (map (\<lambda>x. (fst (snd x), - snd (snd x))) xs) = - zmset (map snd xs)"
+  apply (induct xs)
+   apply clarsimp+
+  apply (metis Executable.update_zmultiset_plus add_eq_0_iff update_zmultiset_plus_comm update_zmultiset_simps(1))
+  done
+
+
+lemma sum_sum_product:
+  "(\<Sum>x\<in>A. \<Sum>y\<in>B. f x y) = (\<Sum>x\<in>A \<times> B. f (fst x) (snd x))"
+   by (metis (mono_tags, lifting) case_prod_unfold sum.cartesian_product sum.cong)
+
+lemma filter_if_const[simp]:
+  "filter (\<lambda>x. p = fst x) (if P p then xs else []) =
+   filter (\<lambda>x. p = fst x \<and> P p) xs"
+  by auto
+
+lemma sum_if:
+  "finite S \<Longrightarrow>
+   Collect f \<subseteq> S \<Longrightarrow>
+   sum Z (Collect f) = sum (\<lambda> x. if f x then Z x else 0) S"
+  apply (subst Groups_Big.comm_monoid_add_class.sum.inter_filter[symmetric])
+   apply assumption
+  apply (metis basic_trans_rules(31) mem_Collect_eq)
+  done
+
+lemma sum_list_zmset:
+  "(\<Sum>x\<leftarrow>xs. zmset (f x)) = (zmset (concat (map f xs)))"
+  apply (induct xs)
+  apply auto
   done
 
 lemma c_pts_change_multiplicities:
@@ -937,5 +979,75 @@ lemma c_pts_change_multiplicities:
     apply (auto split: if_splits prod.splits simp add: change_multiplicities_simp_alt update_zmultiset_plus_comm) 
     done
   done
+
+lemma zmset_emptyI:
+  "xs = [] \<Longrightarrow> zmset xs = {#}\<^sub>z"
+  by auto
+
+
+lemma concat_map_time_filter_out[simp]:
+  "distinct ps \<Longrightarrow> p \<in> set ps \<Longrightarrow> concat (map (\<lambda>x. map time (filter (\<lambda>x. out x = p) (map (\<lambda>t'. Cap (t -+- t') x) (xs x)))) ps) = map ((-+-) t) (xs p)"
+  apply (induct ps)
+   apply simp
+  subgoal premises prems for p' ps'
+    apply (cases "p = p'")
+    subgoal
+      apply hypsubst_thin
+      apply (clarsimp simp add: comp_def filter_empty_conv)
+      using prems(2) apply -
+      subgoal
+        by (meson distinct.simps(2))
+      done
+    subgoal
+      using prems apply -
+      apply auto
+      done
+    done
+  done
+
+lemma zmset_map_filter_aux[simp]:
+  "finite S \<Longrightarrow> 
+   nid \<in> S \<Longrightarrow>
+  (\<Sum>x\<in>S. zmset (map snd (filter (\<lambda>xa. nid = x) (filter (\<lambda>xa. p = fst xa) (xs x))))) = zmset (map snd (filter (\<lambda>x. p = fst x) (xs nid)))"
+  apply (induct S rule: finite_induct)
+   apply auto
+  subgoal
+    apply (rule comm_monoid_add_class.sum.neutral)
+    apply clarsimp
+    apply (rule zmset_emptyI)
+    apply (auto simp add: filter_empty_conv)
+    done
+  subgoal
+    by (metis (mono_tags, lifting) arith_extra_simps(12) diff_zero filter_False list.map(1) zmset.simps(1))
+  done
+
+lemma sum_zmset_neg[simp]:
+  "(\<Sum>x\<in>S. - zmset (xs x)) = - (\<Sum>x\<in>S. zmset (xs x))"
+  by (metis (mono_tags, lifting) add_eq_0_iff sum.distrib sum.not_neutral_contains_not_neutral)
+
+
+lemma zmset_map_filter[simp]:
+  "finite S \<Longrightarrow>
+   nid \<in> S \<Longrightarrow>
+   (\<Sum>x\<in>S. zmset (map snd ((filter (\<lambda>xa. nid = x \<and> p = fst xa) (xs x))))) = 
+   zmset (map snd (filter (\<lambda>x. p = fst x) (xs nid)))"
+  apply (subst conj.commute)
+   apply (clarsimp simp add: simp flip: filter_filter)+
+  done
+
+lemma zmset_map_one[simp]:
+  "zmset (map (\<lambda> x. (f x, 1)) xs) = to_zmset (map f xs)"
+  apply (induction xs) 
+   apply clarsimp+
+  using update_zmultiset_one(2) apply fastforce
+  done
+lemma zmset_map_minus_one[simp]:
+  "zmset (map (\<lambda> x. (f x, -1)) xs) = - to_zmset (map f xs)"
+  apply (induction xs) 
+   apply clarsimp+
+  apply (metis add_zmset_add_single neg_neg_multiset update_zmultiset_one(1))
+  done
+
+find_theorems zmset to_zmset
 
 end

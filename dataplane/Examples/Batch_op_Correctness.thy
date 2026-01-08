@@ -172,6 +172,7 @@ definition "front_inv os c = (\<forall> nid p. front (os nid) p \<le> frontier (
 definition "imp_front_inv su c = (\<forall> l. frontier (c_imp c l) \<le> ifrontier su (+) c l)"
 definition "chnls_imp_front_inv su c chns = (\<forall> nid p. \<forall> t \<in> snd ` set (chns (nid, p)). frontier_less_equal (ifrontier su (+) c (Loc nid (Trg p))) t)"
 
+
 definition "propagation_inv su c = 
   (dataflow_topology.inv_imps_work_sum su (-+-) c \<and>
    dataflow_topology.inv_implications_nonneg c \<and>
@@ -225,32 +226,97 @@ definition "dataplane_tracker_inv os cbufs sg =
      imp_front_inv (summ sg) c \<and>
      chnls_imp_front_inv (summ sg) c chns \<and>
      changes_non_zero_inv cgs \<and>
-     propagation_inv (summ sg) c)"
+     propagation_inv (summ sg) c \<and>
+     changes_above_impl_inv (summ sg) c cgs)"
 
-
-lemma concat_map_time_filter_out[simp]:
-  "distinct ps \<Longrightarrow> p \<in> set ps \<Longrightarrow> concat (map (\<lambda>x. map time (filter (\<lambda>x. out x = p) (map (\<lambda>t'. Cap (t -+- t') x) (xs x)))) ps) = map ((-+-) t) (xs p)"
-  apply (induct ps)
-   apply simp
-  subgoal premises prems for p' ps'
-    apply (cases "p = p'")
-    subgoal
-      apply hypsubst_thin
-      apply (clarsimp simp add: comp_def filter_empty_conv)
-      using prems(2) apply -
-      apply (subgoal_tac "distinct (p' # ps')")
-      subgoal
-        by (meson distinct.simps(2))
-      subgoal
-        using prems(2) enum_class.enum_distinct by force
-      done
-    subgoal
-      using prems apply -
-      apply auto
-      done
-    done
+lemma sum_list_zmset_emptyI[intro]:
+  "(\<forall> nid \<in> set nids. xs nid = []) \<Longrightarrow>
+   (\<Sum>x\<leftarrow>nids. zmset (map snd (xs x))) = {#}\<^sub>z"
+  apply (induct nids)
+   apply auto
   done
 
+lemma sum_list_filter[simp]:
+  "distinct nids \<Longrightarrow>
+   nid \<in> set nids \<Longrightarrow>
+   g [] = {#}\<^sub>z \<Longrightarrow>
+   (\<Sum>x\<leftarrow>nids. g (map f (filter (\<lambda>xa. nid = x) (xs x)))) = g (map f (xs nid))"
+  apply (induct nids)
+   apply clarsimp+
+  apply (elim disjE)
+  subgoal for nids' 
+    by (smt (verit, best) List.empty_filter_conv filter_id_conv group_cancel.rule0 list.simps(8) sum.not_neutral_contains_not_neutral sum_list_distinct_conv_sum_set)
+  subgoal for nid' nids'
+    by (metis (mono_tags, lifting) add_cancel_right_left filter_empty_conv list.map(1))
+  done
+
+lemma zmset_map_filter_Trg_extract_prog:
+  "zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog (edges sg) os))) = 
+   (\<Sum>x\<in>UNIV. \<Sum>xa\<leftarrow>produ (os x). zmset (map (\<lambda>x. snd xa) (filter (\<lambda>x. nid = fst x \<and> p = snd x) (edges sg (x, fst xa)))))
+     - zmset (map snd (filter (((=) (p :: 'p :: enum)) o fst) (consu (os nid)))) "
+  unfolding extract_prog_def extract_progress_def obtain_progress_def
+  apply (simp add: zmset_concat map_concat filter_concat comp_def filter_map split_beta split: prod.splits)
+  apply (subst (1) monoid_add_class.sum_list_distinct_conv_sum_set)
+   apply (simp_all add:  comm_monoid_add_class.sum.distrib enum_class.enum_distinct enum_class.enum_UNIV)
+  done
+
+lemma filter_loc_Trg_extract_prof_consumes_diff_nids[simp]:
+  "nid \<noteq> nid' \<Longrightarrow>
+   filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (extract_prog (edges sg) (os(nid := consumes (os nid) p t d))) =
+   filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (extract_prog (edges sg) os)"
+  unfolding extract_prog_def extract_progress_def obtain_progress_def consumes_def add_caps_def
+  apply (simp add: zmset_concat map_concat filter_concat comp_def filter_map split_beta split: prod.splits)
+  apply (rule arg_cong[where f=concat])
+  apply (rule map_cong)
+   apply auto
+  done
+
+lemma filter_loc_Src_extract_prof_consumes_diff_nids[simp]:
+  "nid \<noteq> nid' \<Longrightarrow>
+   filter (\<lambda>(l', t, d). Loc nid' (Src p') = l') (extract_prog (edges sg) (os(nid := consumes (os nid) p t d))) =
+   filter (\<lambda>(l', t, d). Loc nid' (Src p') = l') (extract_prog (edges sg) os)"
+  unfolding extract_prog_def extract_progress_def obtain_progress_def consumes_def add_caps_def
+  apply (simp add: zmset_concat map_concat filter_concat comp_def filter_map split_beta split: prod.splits)
+  apply (rule arg_cong[where f=concat])
+  apply (rule map_cong)
+   apply auto
+  done
+
+lemma filter_loc_extract_prof_consumes_diff_ports[simp]:
+  "p \<noteq> p' \<Longrightarrow>
+   filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (extract_prog (edges sg) (os(nid := consumes (os nid) p t d))) =
+   filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (extract_prog (edges sg) os)"
+  unfolding extract_prog_def extract_progress_def obtain_progress_def consumes_def add_caps_def
+  apply (simp add: zmset_concat map_concat filter_concat comp_def filter_map split_beta split: prod.splits)
+  apply (rule arg_cong[where f=concat])
+  apply (rule map_cong)
+   apply auto
+  done
+
+lemma consu_consumes[simp]:
+  "consu (consumes os p t d) = consu os @ [(p, t, 1)]"
+  unfolding consumes_def BENQ_def add_caps_def
+  apply auto
+  done
+lemma produ_consumes[simp]:
+  "produ (consumes os p t d) = produ os"
+  unfolding consumes_def BENQ_def add_caps_def
+  by auto
+lemma inter_consumes[simp]:
+  "inter (consumes os p t d) = inter os @ concat (map (\<lambda> p'. map (\<lambda> t'. (p', t + t', 1)) (summar os p p')) enum_class.enum)"
+  unfolding consumes_def BENQ_def add_caps_def
+  by (auto simp add: map_concat comp_def)
+
+lemma zmset_map_filter_Src_extract_prog[simp]:
+  "zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Src p) = l') (extract_prog (edges sg) os))) = 
+   zmset (map snd (filter (((=) (p :: 'p :: enum)) o fst) (inter (os nid)))) "
+  unfolding extract_prog_def extract_progress_def obtain_progress_def consumes_def add_caps_def
+  apply (simp add: zmset_concat map_concat filter_concat comp_def filter_map split_beta split: prod.splits)
+  apply (subst conj.commute)
+  apply (simp flip: filter_filter)
+  apply (subst sum_list_filter)
+  using enum_class.enum_distinct apply (auto simp add: enum_class.enum_UNIV)
+  done
 
 lemma
   "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
@@ -288,21 +354,33 @@ lemma
      unfolding c_pts_inv_def
      apply (auto 0 0 split: location.splits port.splits simp add: c_pts_change_multiplicities)
      subgoal
-       apply (subgoal_tac "zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog (edges sg) (os(nid := consumes (os nid) p t d))))) = zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog (edges sg) os))) - {#t#}\<^sub>z")
+       apply (subgoal_tac
+  "zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog (edges sg) (os(nid := consumes (os nid) p t d))))) =
+   zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog (edges sg) os))) - {#t#}\<^sub>z")
        subgoal
          by auto
        subgoal premises
-         unfolding extract_prog_def obtain_progress_def extract_progress_def 
-       apply (clarsimp simp add: filter_concat comp_def split_beta split: if_splits prod.splits)
-
-
-         find_theorems filter 
-
-       unfolding add_caps_def
-       
-      find_theorems consu
-
-      find_theorems "image_mset _ _ = image_mset _ _"
+         apply (auto cong: if_cong simp add: if_distrib zmset_map_filter_Trg_extract_prog comp_def)
+         apply (rule arg_cong2[where f=minus])
+          apply (simp_all add: update_zmultiset_singleton(2))
+          apply metis
+         done
+       done
+     subgoal for nid'
+       apply (drule spec[of _ "Loc nid (Src nid')"])
+       apply (drule sym)
+       apply simp
+       subgoal premises
+         apply (simp add: zmset_concat map_concat filter_concat comp_def filter_map split_beta split: prod.splits)
+         apply (subst sum_list_filter)
+         using enum_class.enum_distinct apply (auto simp add: enum_class.enum_UNIV)
+         done
+       done
+     subgoal for nid' p'
+         apply (clarsimp cong: if_cong simp add: if_distrib  comp_def)
+       apply (metis (no_types, lifting) ext comp_apply zmset_map_filter_Src_extract_prog)
+       done
+     done
 
     oops
 
@@ -420,9 +498,9 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             apply (meson UnCI img_fst in_fst_imageE list.set_sel(2))
             done
           subgoal
+            using SIM1(8)
 
-
-          find_theorems 
+          find_theorems dataplane_tracker_inv
 
 
 end
