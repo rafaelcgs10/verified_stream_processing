@@ -229,26 +229,7 @@ definition "dataplane_tracker_inv os cbufs sg =
      propagation_inv (summ sg) c \<and>
      changes_above_impl_inv (summ sg) c cgs)"
 
-lemma sum_list_zmset_emptyI[intro]:
-  "(\<forall> nid \<in> set nids. xs nid = []) \<Longrightarrow>
-   (\<Sum>x\<leftarrow>nids. zmset (map snd (xs x))) = {#}\<^sub>z"
-  apply (induct nids)
-   apply auto
-  done
 
-lemma sum_list_filter[simp]:
-  "distinct nids \<Longrightarrow>
-   nid \<in> set nids \<Longrightarrow>
-   g [] = {#}\<^sub>z \<Longrightarrow>
-   (\<Sum>x\<leftarrow>nids. g (map f (filter (\<lambda>xa. nid = x) (xs x)))) = g (map f (xs nid))"
-  apply (induct nids)
-   apply clarsimp+
-  apply (elim disjE)
-  subgoal for nids' 
-    by (smt (verit, best) List.empty_filter_conv filter_id_conv group_cancel.rule0 list.simps(8) sum.not_neutral_contains_not_neutral sum_list_distinct_conv_sum_set)
-  subgoal for nid' nids'
-    by (metis (mono_tags, lifting) add_cancel_right_left filter_empty_conv list.map(1))
-  done
 
 lemma zmset_map_filter_Trg_extract_prog:
   "zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog (edges sg) os))) = 
@@ -293,20 +274,6 @@ lemma filter_loc_extract_prof_consumes_diff_ports[simp]:
    apply auto
   done
 
-lemma consu_consumes[simp]:
-  "consu (consumes os p t d) = consu os @ [(p, t, 1)]"
-  unfolding consumes_def BENQ_def add_caps_def
-  apply auto
-  done
-lemma produ_consumes[simp]:
-  "produ (consumes os p t d) = produ os"
-  unfolding consumes_def BENQ_def add_caps_def
-  by auto
-lemma inter_consumes[simp]:
-  "inter (consumes os p t d) = inter os @ concat (map (\<lambda> p'. map (\<lambda> t'. (p', t + t', 1)) (summar os p p')) enum_class.enum)"
-  unfolding consumes_def BENQ_def add_caps_def
-  by (auto simp add: map_concat comp_def)
-
 lemma zmset_map_filter_Src_extract_prog[simp]:
   "zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Src p) = l') (extract_prog (edges sg) os))) = 
    zmset (map snd (filter (((=) (p :: 'p :: enum)) o fst) (inter (os nid)))) "
@@ -316,6 +283,16 @@ lemma zmset_map_filter_Src_extract_prog[simp]:
   apply (simp flip: filter_filter)
   apply (subst sum_list_filter)
   using enum_class.enum_distinct apply (auto simp add: enum_class.enum_UNIV)
+  done
+
+lemma set_extract_prog_consumesD:
+  "(l, t', m) \<in> set (extract_prog (edges sg) (os(nid := consumes (os nid) p t d))) \<Longrightarrow>
+   (l, t', m) \<in> set (extract_prog (edges sg) os) \<or>
+   (l = Loc nid (Trg p) \<and> t = t' \<and> m = -1) \<or>
+   (\<exists> p' t''. t'' \<in> set (summar (os nid) p p') \<and> l = Loc nid (Src p') \<and> t' = t + t'' \<and> m = 1)"
+  unfolding extract_prog_def obtain_progress_def consumes_def extract_progress_def add_caps_def
+  apply (auto del: disjCI simp add: image_iff split_beta if_distrib enum_class.enum_UNIV split: prod.splits if_splits)
+  apply (smt (verit, del_insts) image_iff split_pairs2)+
   done
 
 lemma
@@ -381,8 +358,41 @@ lemma
        apply (metis (no_types, lifting) ext comp_apply zmset_map_filter_Src_extract_prog)
        done
      done
+   subgoal premises prems
+     using prems(5) unfolding front_inv_def by auto
+   subgoal premises prems
+     using prems(1,7) apply -
+     apply (simp flip: BULK_BENQ_assoc)
+     apply (subst BAPPEND_BENQ_BHD')
+     apply (simp_all add: BHD_def)
+     done
+   subgoal premises prems
+     using prems(8) apply -
+     unfolding changes_non_zero_inv_def extract_prog_def consumes_def obtain_progress_def extract_progress_def
+     apply (clarsimp simp add: enum_class.enum_UNIV split_beta split: prod.splits)
+     apply force
+     done
+   subgoal premises prems
+     using prems(10) apply -
+     unfolding changes_above_impl_inv_def
+     apply (clarsimp simp add: c_pts_change_multiplicities split: prod.splits)
+     apply (intro conjI impI allI ballI; clarsimp)
+     subgoal for l t' m
+       apply (drule set_extract_prog_consumesD)
+       apply (elim disjE exE conjE)
+       subgoal
+         by blast
+       subgoal
+         using prems(1) apply -
+         apply hypsubst_thin
+         find_theorems cbufs
 
-    oops
+
+     find_theorems set enum_class.enum
+
+
+       oops
+end
 
 declare if_cong[cong]
 
@@ -497,8 +507,10 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             apply (clarsimp simp add: operator_state.defs fun_upd_def BTL_def BHD_def Src_from_Trg_def consumes_def add_caps_def BENQ_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
             apply (meson UnCI img_fst in_fst_imageE list.set_sel(2))
             done
-          subgoal
-            using SIM1(8)
+          subgoal premises
+            using SIM1(8) apply -
+            unfolding dataplane_tracker_inv_def apply auto
+
 
           find_theorems dataplane_tracker_inv
 

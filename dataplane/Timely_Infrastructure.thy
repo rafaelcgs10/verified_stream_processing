@@ -1048,6 +1048,61 @@ lemma zmset_map_minus_one[simp]:
   apply (metis add_zmset_add_single neg_neg_multiset update_zmultiset_one(1))
   done
 
-find_theorems zmset to_zmset
+
+lemma sum_list_zmset_emptyI[intro]:
+  "(\<forall> nid \<in> set nids. xs nid = []) \<Longrightarrow>
+   (\<Sum>x\<leftarrow>nids. zmset (map snd (xs x))) = {#}\<^sub>z"
+  apply (induct nids)
+   apply auto
+  done
+
+lemma sum_list_filter[simp]:
+  "distinct nids \<Longrightarrow>
+   nid \<in> set nids \<Longrightarrow>
+   g [] = {#}\<^sub>z \<Longrightarrow>
+   (\<Sum>x\<leftarrow>nids. g (map f (filter (\<lambda>xa. nid = x) (xs x)))) = g (map f (xs nid))"
+  apply (induct nids)
+   apply clarsimp+
+  apply (elim disjE)
+  subgoal for nids' 
+    by (smt (verit, best) List.empty_filter_conv filter_id_conv group_cancel.rule0 list.simps(8) sum.not_neutral_contains_not_neutral sum_list_distinct_conv_sum_set)
+  subgoal for nid' nids'
+    by (metis (mono_tags, lifting) add_cancel_right_left filter_empty_conv list.map(1))
+  done
+
+
+lemma consu_consumes[simp]:
+  "consu (consumes os p t d) = consu os @ [(p, t, 1)]"
+  unfolding consumes_def BENQ_def add_caps_def
+  apply auto
+  done
+lemma produ_consumes[simp]:
+  "produ (consumes os p t d) = produ os"
+  unfolding consumes_def BENQ_def add_caps_def
+  by auto
+lemma inter_consumes[simp]:
+  "inter (consumes os p t d) = inter os @ concat (map (\<lambda> p'. map (\<lambda> t'. (p', t + t', 1)) (summar os p p')) enum_class.enum)"
+  unfolding consumes_def BENQ_def add_caps_def
+  by (auto simp add: map_concat comp_def)
+lemma front_consumes[simp]:
+  "front (consumes (os nid) p t d) p' = front (os nid) p'"
+  unfolding consumes_def add_caps_def
+  apply auto
+  done
+lemma consu_add_caps[simp]:
+  "consu (add_caps os caps) = consu os"
+  unfolding add_caps_def
+  apply auto
+  done
+lemma inter_add_caps[simp]:
+  "inter (add_caps os caps) = inter os @ map (\<lambda>cap. (out cap, time cap, 1)) caps"
+  unfolding add_caps_def
+  apply auto
+  done
+lemma produ_add_caps[simp]:
+  "produ (add_caps os caps) = produ os"
+  unfolding add_caps_def
+  apply auto
+  done
 
 end
