@@ -7,6 +7,7 @@ imports
   Nondeterministic_Dataflow.Eval
   "HOL-Library.While_Combinator"
   "../propagation_extras/Executable"
+  "../propagation_extras/Termination"
   Zero_Cyc_Check
   Locations
   Operators_Utils
@@ -339,7 +340,16 @@ lemma dataflow_op_code[code]:
   done
 
 lemma propagate_all_terminates[simp]:
-  "propagate_all a b \<noteq> None"
+  "propagate_all su c \<noteq> None"
+  unfolding propagate_all_def
+  apply simp
+  apply (rule measure_while_option_Some[])
+    apply simp_all
+  term "\<lambda> c c'. dataflow_topology.neg_order su (-+-) c <  dataflow_topology.neg_order su (-+-) c'"
+  thm dataflow_topology.propagation_termination[where summary=su and results_in="(+)" and c=c]
+  find_theorems "_ \<Longrightarrow> wf _" "(<)"
+  find_theorems while_option name: Some
+  find_theorems name: propagation_termination
   sorry
 
 lemma change_multiplicities_terminates[simp]:
