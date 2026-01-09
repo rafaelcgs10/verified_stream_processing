@@ -159,6 +159,10 @@ lemma to_zmset_correct[code,simp]:
   by (induct xs) auto
 
 
+lemma to_zmset_nenneg:
+  "zcount (to_zmset xs) t \<ge> 0"
+  by (metis to_zmset_correct zcount_zmset_of_nonneg)
+
 lemma neg_neg_multiset:
   "- (A :: _ zmultiset) - B = - (A + B)"
   by (metis add.commute diff_minus_eq_add minus_diff_eq)

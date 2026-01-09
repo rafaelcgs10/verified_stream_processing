@@ -943,6 +943,26 @@ lemma zmset_neg_alt[simp]:
   apply (metis Executable.update_zmultiset_plus add_eq_0_iff update_zmultiset_plus_comm update_zmultiset_simps(1))
   done
 
+lemma zcount_zmset_ge_0I:
+  "(\<forall> (x, m) \<in> set xs. 0 \<le> m) \<Longrightarrow>
+   zcount (zmset xs) t \<ge> 0"
+  by (induct xs) 
+   (auto simp add: zcount_update_zmultiset)
+
+lemma zcount_zmset_gt_0I:
+  "(\<forall> (x, m) \<in> set xs. 0 \<le> m) \<Longrightarrow>
+   (t, m) \<in> set xs \<Longrightarrow>
+   0 < m \<Longrightarrow>
+   zcount (zmset xs) t > 0"
+  apply (induct xs) 
+  apply (clarsimp simp add: zcount_update_zmultiset split: prod.splits)+
+  apply (smt (verit, best) case_prodI2 zcount_zmset_ge_0I)
+  done
+
+lemma zmset_replicate[simp]:
+  "zmset (replicate n (x, m)) = update_zmultiset {#}\<^sub>z x (n * m)"
+  by (induct n)
+   (auto simp add: Groups.add_ac(2) distrib_right)
 
 lemma sum_sum_product:
   "(\<Sum>x\<in>A. \<Sum>y\<in>B. f x y) = (\<Sum>x\<in>A \<times> B. f (fst x) (snd x))"
