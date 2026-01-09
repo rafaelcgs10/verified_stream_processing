@@ -218,7 +218,7 @@ definition "dataplane_tracker_inv os cbufs sg =
      cgs = extract_prog (edges sg) os \<and>
      chns = outputs_at_target (summ sg) os >> cbufs >> inputs_at_target os \<and>
      Src_caps_inv caps os \<and>
-     Trg_caps_inv caps cbufs \<and>
+     Trg_caps_inv caps chns \<and>
      cgs = extract_prog (edges sg) os \<and>
      c' = change_multiplicities (summ sg) cgs c \<and>
      c_pts_inv c' caps \<and>
@@ -298,6 +298,7 @@ lemma set_extract_prog_consumesD:
 lemma
   "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
    cbufs (nid, p) = (d, t) # xs \<Longrightarrow>
+   dataflow_topology (summ sg) (-+-) \<Longrightarrow>
    dataplane_tracker_inv (os(nid := consumes (os nid) p (t :: 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) d)) (BTL (nid, p) cbufs) sg"
   unfolding dataplane_tracker_inv_def
   apply (elim conjE exE)
@@ -305,12 +306,12 @@ lemma
   apply hypsubst_thin
   subgoal for c c' cgs chns caps
     apply (rule exI[of _ 
-    "(\<lambda> l. case l of 
+          "(\<lambda> l. case l of 
         Loc nid' (Src p') \<Rightarrow> if nid' = nid then caps l + to_zmset (map (\<lambda> t'. t + t') (summar (os nid) p p')) else caps l 
      | Loc nid' (Trg p') \<Rightarrow> if nid' = nid \<and> p = p' then caps l - {# t #}\<^sub>z else caps l)"])
     apply (intro conjI)
     subgoal premises prems
-      using prems(2) apply -
+      using prems(3) apply -
       unfolding Src_caps_inv_def consumes_def add_caps_def to_zmset_correct
       apply (auto 0 0 simp add: filter_empty_conv)
       apply (auto 0 0 simp add:  comp_def  simp flip:  to_zmset_correct)
@@ -322,76 +323,125 @@ lemma
         done
       done
     subgoal premises prems
-      using prems(1,3) apply -
+      using prems(1,4) apply -
       unfolding Trg_caps_inv_def BTL_def
       apply (auto simp add: map_tl)
-      done
-   subgoal premises prems
-     using prems(4) apply -       
-     unfolding c_pts_inv_def
-     apply (auto 0 0 split: location.splits port.splits simp add: c_pts_change_multiplicities)
-     subgoal
-       apply (subgoal_tac
-  "zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog (edges sg) (os(nid := consumes (os nid) p t d))))) =
+      sorry
+    subgoal premises prems
+      using prems(5) apply -       
+      unfolding c_pts_inv_def
+      apply (auto 0 0 split: location.splits port.splits simp add: c_pts_change_multiplicities)
+      subgoal
+        apply (subgoal_tac
+            "zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog (edges sg) (os(nid := consumes (os nid) p t d))))) =
    zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog (edges sg) os))) - {#t#}\<^sub>z")
-       subgoal
-         by auto
-       subgoal premises
-         apply (auto cong: if_cong simp add: if_distrib zmset_map_filter_Trg_extract_prog comp_def)
-         apply (rule arg_cong2[where f=minus])
-          apply (simp_all add: update_zmultiset_singleton(2))
+        subgoal
+          by auto
+        subgoal premises
+          apply (auto cong: if_cong simp add: if_distrib zmset_map_filter_Trg_extract_prog comp_def)
+          apply (rule arg_cong2[where f=minus])
+           apply (simp_all add: update_zmultiset_singleton(2))
           apply metis
-         done
-       done
-     subgoal for nid'
-       apply (drule spec[of _ "Loc nid (Src nid')"])
-       apply (drule sym)
-       apply simp
-       subgoal premises
-         apply (simp add: zmset_concat map_concat filter_concat comp_def filter_map split_beta split: prod.splits)
-         apply (subst sum_list_filter)
-         using enum_class.enum_distinct apply (auto simp add: enum_class.enum_UNIV)
-         done
-       done
-     subgoal for nid' p'
-         apply (clarsimp cong: if_cong simp add: if_distrib  comp_def)
-       apply (metis (no_types, lifting) ext comp_apply zmset_map_filter_Src_extract_prog)
-       done
-     done
-   subgoal premises prems
-     using prems(5) unfolding front_inv_def by auto
-   subgoal premises prems
-     using prems(1,7) apply -
-     apply (simp flip: BULK_BENQ_assoc)
-     apply (subst BAPPEND_BENQ_BHD')
-     apply (simp_all add: BHD_def)
-     done
-   subgoal premises prems
-     using prems(8) apply -
-     unfolding changes_non_zero_inv_def extract_prog_def consumes_def obtain_progress_def extract_progress_def
-     apply (clarsimp simp add: enum_class.enum_UNIV split_beta split: prod.splits)
-     apply force
-     done
-   subgoal premises prems
-     using prems(10) apply -
-     unfolding changes_above_impl_inv_def
-     apply (clarsimp simp add: c_pts_change_multiplicities split: prod.splits)
-     apply (intro conjI impI allI ballI; clarsimp)
-     subgoal for l t' m
-       apply (drule set_extract_prog_consumesD)
-       apply (elim disjE exE conjE)
-       subgoal
-         by blast
-       subgoal
-         using prems(1) apply -
-         apply hypsubst_thin
-         find_theorems cbufs
+          done
+        done
+      subgoal for nid'
+        apply (drule spec[of _ "Loc nid (Src nid')"])
+        apply (drule sym)
+        apply simp
+        subgoal premises
+          apply (simp add: zmset_concat map_concat filter_concat comp_def filter_map split_beta split: prod.splits)
+          apply (subst sum_list_filter)
+          using enum_class.enum_distinct apply (auto simp add: enum_class.enum_UNIV)
+          done
+        done
+      subgoal for nid' p'
+        apply (clarsimp cong: if_cong simp add: if_distrib  comp_def)
+        apply (metis (no_types, lifting) ext comp_apply zmset_map_filter_Src_extract_prog)
+        done
+      done
+    subgoal premises prems
+      using prems(6) unfolding front_inv_def by auto
+    subgoal premises prems
+      using prems(1,8) apply -
+      apply (simp flip: BULK_BENQ_assoc)
+      apply (subst BAPPEND_BENQ_BHD')
+        apply (simp_all add: BHD_def)
+      done
+    subgoal premises prems
+      using prems(9) apply -
+      unfolding changes_non_zero_inv_def extract_prog_def consumes_def obtain_progress_def extract_progress_def
+      apply (clarsimp simp add: enum_class.enum_UNIV split_beta split: prod.splits)
+      apply force
+      done
+    subgoal premises prems
+      using prems(11) apply -
+      unfolding changes_above_impl_inv_def
+      apply (clarsimp simp add: c_pts_change_multiplicities split: prod.splits)
+      apply (intro conjI impI allI ballI; clarsimp)
+      subgoal for l t' m
+        apply (drule set_extract_prog_consumesD)
+        apply (elim disjE exE conjE)
+        subgoal
+          by blast
+        subgoal
+          using prems(1,8) apply -
+          apply hypsubst_thin
+          unfolding chnls_imp_front_inv_def
+          apply (drule spec[of _ nid])
+          apply (drule spec[of _ p])
+          apply (drule bspec[of _ _ t'])
+          subgoal
+            unfolding BULK_BENQ_def
+            by simp
+          subgoal
+            by blast
+          done
+        subgoal for p' t''
+          using prems(1,4) apply -
+          unfolding Trg_caps_inv_def
+          apply (drule spec[of _ nid])
+          apply (drule spec[of _ p])
+          using prems(5) apply -
+          unfolding c_pts_inv_def
+          apply (drule spec[of _ "Loc nid (Trg p)"])
+          apply (simp add: c_pts_change_multiplicities)
+          apply hypsubst_thin
+          subgoal premises prems2
+            using prems2(3,6) prems(1) apply -
+            unfolding extract_prog_def obtain_progress_def extract_progress_def
+            apply simp
+            apply (rule frontier_less_equal_ifrontierI[where l="Loc nid (Trg p)"])
+            using prems(2) apply assumption
+            subgoal sorry
+            apply (simp add: BULK_BENQ_def zmset_concat map_concat filter_concat comp_def filter_map split_beta split: prod.splits)
 
 
-     find_theorems set enum_class.enum
+            find_theorems frontier_less_equal
 
 
-       oops
+          find_theorems change_multiplicities c_pts
+
+
+end
+          apply (drule bspec[of _ _ t])
+          subgoal
+            unfolding BULK_BENQ_def
+            by simp
+          subgoal
+            apply (subgoal_tac "frontier_less_equal (ifrontier (summ sg) (-+-) (pt_tr sg) (Loc nid (Src p'))) t")
+            defer
+            subgoal
+              try0
+
+     
+
+          find_theorems frontier_less_equal
+
+
+          find_theorems set enum_class.enum
+
+
+          oops
 end
 
 declare if_cong[cong]

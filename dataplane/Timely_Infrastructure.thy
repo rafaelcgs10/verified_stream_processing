@@ -13,6 +13,7 @@ imports
   Operators_Utils
   DataplaneUtils
   Containers.Collection_Order
+  AntichainOrder
 begin 
 
 context includes cset.lifting begin
@@ -484,18 +485,6 @@ abbreviation "pull i f \<equiv> (Read ((trace (STR ''Reading data'') Some) i)
   (\<lambda> x. case x of
     (Inr (d, t)) \<Rightarrow> Write (f (d, Cap t 0)) None (Inl (Inl \<lparr>  cons = [(i, t, 1)], inte = [(i, t, 1)], prod = [] \<rparr>))
    | _ \<Rightarrow> \<oslash>))"
-
-definition
-  "frontier_less_equal ft t = (\<not> is_empty_antichain (filter_antichain (\<lambda> f. f \<le> t) ft))"
-
-
-lemma frontier_less_equal_empty_antichain[simp]:
-  "\<not> frontier_less_equal {}\<^sub>A A"
-  unfolding frontier_less_equal_def
-  apply transfer
-  unfolding Set.filter_def Set.is_empty_def
-  apply simp
-  done
 
 lemma change_multiplicities_append:
   "change_multiplicities su (xs @ ys) = (\<lambda> c. change_multiplicities su ys (change_multiplicities su xs c))"
@@ -1114,5 +1103,24 @@ lemma produ_add_caps[simp]:
   unfolding add_caps_def
   apply auto
   done
+
+lemma frontier_less_equal_ifrontierI:
+  "dataflow_topology su (-+-) \<Longrightarrow>
+   t' \<in>\<^sub>A graph.path_weight su l l' \<Longrightarrow>
+   zcount (c_pts c l) t > 0 \<Longrightarrow>
+   frontier_less_equal (ifrontier su (-+-) c l') (t + t')"
+  apply (subst Propagate.dataflow_topology.implied_frontier_alt_def)
+  apply assumption
+  apply (rule frontier_less_equal_sumI[where l=l])
+     apply simp_all
+    apply (simp add: sum_nonneg zcount_sum)
+    apply (rule frontier_less_equal_sumI[of _ _ t'])
+     apply simp_all
+  using member_antichain.rep_eq apply blast
+  unfolding frontier_less_equal_iff2
+  apply (meson dataflow_topology_from_tree.obtain_elem_zmset_frontier dataflow_topology_from_tree.results_in_mono(1) frontier_less_equal_iff2 frontier_less_equal_trans frontier_less_equal_zcount_pos
+         pos_zcount_image_zmset zcount_zmset_of_nonneg)
+  done
+
 
 end

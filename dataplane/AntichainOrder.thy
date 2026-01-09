@@ -3,6 +3,7 @@ theory AntichainOrder
 imports
   Progress_Tracking.Antichain
   Progress_Tracking.Propagate
+  "../propagation_extras/Executable"
 begin 
 
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
@@ -487,5 +488,100 @@ lemma fronteier_lt_add_ex:
    \<exists>t'. t' \<in>\<^sub>A frontier (A + B) \<and> t' \<le> t"
   using in_frontier_in_frontier_add_alt by blast
 
+
+definition
+  "frontier_less_equal ft t = (\<not> is_empty_antichain (filter_antichain (\<lambda> f. f \<le> t) ft))"
+
+lemma frontier_less_equal_empty_antichain[simp]:
+  "\<not> frontier_less_equal {}\<^sub>A A"
+  unfolding frontier_less_equal_def
+  apply transfer
+  unfolding Set.filter_def Set.is_empty_def
+  apply simp
+  done
+
+
+lemma frontier_less_equal_iff:
+  "frontier_less_equal f t \<longleftrightarrow> f \<le> frontier {#t#}\<^sub>z"
+  unfolding frontier_less_equal_def less_eq_antichain_def
+  apply (auto simp add: in_frontier_iff)
+  subgoal
+    unfolding is_empty_antichain_def Set.is_empty_def
+    apply clarsimp
+    apply (metis equals0I filter_antichain.rep_eq member_filter set_antichain1)
+    done
+  subgoal
+    unfolding is_empty_antichain_def Set.is_empty_def
+    apply clarsimp
+    apply (metis empty_iff filter_antichain.rep_eq member_antichain.rep_eq member_filter)
+    done
+  done
+
+lemma frontier_less_equal_le_trans:
+  "frontier_less_equal f1 t \<Longrightarrow>
+   f2 \<le> f1 \<Longrightarrow> 
+   frontier_less_equal f2 t"
+  unfolding frontier_less_equal_iff
+  apply (rule Orderings.preorder_class.order_trans)
+   apply assumption+
+  done
+
+lemma frontier_less_equal_trans:
+  "frontier_less_equal A t' \<Longrightarrow>
+   t' \<le> t \<Longrightarrow> 
+   frontier_less_equal A t"
+  unfolding frontier_less_equal_iff
+  by (meson frontier_le_singletons order_trans_rules(23))
+
+
+lemma frontier_less_equal_iff2:
+  "frontier_less_equal f t \<longleftrightarrow> (\<exists> t'. t' \<in>\<^sub>A f \<and> t' \<le> t)"
+  unfolding frontier_less_equal_def
+  apply (auto simp add: in_frontier_iff)
+  subgoal
+    unfolding is_empty_antichain_def Set.is_empty_def
+    apply clarsimp
+    apply (metis equals0I filter_antichain.rep_eq member_filter set_antichain1)
+    done
+  subgoal
+    unfolding is_empty_antichain_def Set.is_empty_def
+    apply clarsimp
+    apply (metis empty_iff filter_antichain.rep_eq member_antichain.rep_eq member_filter)
+    done
+  done
+
+lemma frontier_less_equal_addI:
+  "frontier_less_equal (frontier A) t \<or> frontier_less_equal (frontier B) t \<Longrightarrow>
+   (\<forall> t. zcount A t \<ge> 0) \<Longrightarrow>
+   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
+   frontier_less_equal (frontier (A + B)) t"
+  unfolding frontier_less_equal_iff
+  apply safe
+  using frontier_le_remove_l apply blast
+  using frontier_le_remove_left apply blast
+  done
+
+lemma frontier_less_equal_add_cases:
+  "frontier_less_equal (frontier (A + B)) t \<Longrightarrow>
+   frontier_less_equal (frontier A) t \<or> frontier_less_equal (frontier B) t"
+  unfolding frontier_less_equal_iff2
+  using in_frontier_addD order_trans_rules(23) by blast
+
+lemma frontier_less_equal_zcount_pos:
+  " 0 < zcount A x \<Longrightarrow>
+    frontier_less_equal (frontier A) x"
+  unfolding frontier_less_equal_iff
+  by (metis dual_order.irrefl less_eq_antichain_def member_frontier_pos_zmset trivial_dataflow_topology_interpretation.obtain_elem_frontier zcount_single)
+
+term "dataflow_topology.implied_frontier_alt su (+) c l"
+
+lemma frontier_less_equal_sumI:
+  "finite S \<Longrightarrow>
+   (\<forall> l \<in> S. \<forall> t. zcount (f l) t \<ge> 0) \<Longrightarrow>
+   l \<in> S \<Longrightarrow>
+   frontier_less_equal (frontier (f l)) t \<Longrightarrow>
+   frontier_less_equal (frontier (\<Sum>loc\<in>S. f loc)) t"
+  by (induct S rule: finite_induct)
+   (auto simp add: frontier_less_equal_addI sum_nonneg zcount_sum)
 
 end
