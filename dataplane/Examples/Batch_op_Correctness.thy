@@ -326,6 +326,9 @@ lemma
       using prems(1,4) apply -
       unfolding Trg_caps_inv_def BTL_def
       apply (auto simp add: map_tl)
+
+
+end
       sorry
     subgoal premises prems
       using prems(5) apply -       
