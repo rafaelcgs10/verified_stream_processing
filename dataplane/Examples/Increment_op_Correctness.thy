@@ -19,9 +19,16 @@ abbreviation inp_incr_summary where
   then antichain {inc}
   else {}\<^sub>A)\<close>
 
+(*
 (* Experiment with Eisbach. *)
 method sim_cases uses defs elims =
   ((unfold defs)?, elim conjE elims, (auto; fail), fold defs; hypsubst_thin?)
+*)
+
+(* TODO Move. *)
+lemma lshift_append_lshift:
+  \<open>xs @@- (ys @ zs) @@- lxs = (xs @ ys) @@- zs @@- lxs\<close>
+  by (metis lappend_assoc lappend_llist_of lappend_llist_of_llist_of)
 
 lemma ooo_input_op_increment_op_source_op:
   defines \<open>invariant f os1 buf os2 \<equiv> initia os1 \<and> en1 os1 = f \<and> inj f \<and> timely_monotone (es os1 1) (mset (ocaps os1 1))
@@ -58,7 +65,6 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
         for d :: 'b
           and t :: 'c
           and xs :: "('b \<times> 'c) buf"
-        term ?os2'
       proof -
         have \<open>step (Out 1 (d, t))
   (source_op ((\<lambda>(p :: 1). outpu os2 1 @@- lmap (\<lambda>(d, t). (d, t + inc))
@@ -93,12 +99,29 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2'
   \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BTL (Inr (1, 1)) buf)
     (my_ooo_input_op os1) (my_increment_op inc (consumes os2 1 t d))))) op2'"
+      (is \<open>\<exists>_. _ \<and> wbisim_cong _ (dataflow_op _ (map_op _ _ (comp_op _ ?buf' _ (my_increment_op _ ?os2')))) _\<close>)
         if "invariant f os1 buf os2"
           and "buf (Inr (1, 1)) \<noteq> []"
           and "Inr (d, t) = BHD (Inr (1, 1)) buf"
         for d :: 'b
           and t :: 'c
-        using that sorry
+      proof -
+        have \<open>map ((\<lambda>(d, t). (d, t + inc)) \<circ> projr) (buf (Inr (1, 1))) =
+  (d, t + inc) # map ((\<lambda>(d, t). (d, t + inc)) \<circ> projr) (BTL (Inr (1, 1)) buf (Inr (1, 1)))\<close>
+          using that BHD_def BTL_access hd_Cons_tl hd_map list.map_disc_iff map_tl o_apply split_conv sum.sel(2)
+          unfolding invariant_def by (smt (verit, best))
+        hence \<open>my_source_op f inc os1 buf os2 = my_source_op f inc os1 ?buf' ?os2'\<close>
+          unfolding my_source_op_def
+          by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] arg_cong[where f=\<open>lshift _\<close>] arg_cong[where f=\<open>\<lambda>x. lshift x _\<close>] simp add: fun_eq_iff consumes_def add_caps_def)
+        moreover have \<open>invariant f os1 ?buf' ?os2'\<close>
+        proof -
+          have \<open>initia ?os2'\<close> using that(1) unfolding invariant_def consumes_def add_caps_def by simp
+          moreover have \<open>\<forall>x \<in> set (?buf' (Inr (1, 1))). is_Inr x\<close>
+            using that(1,2) BTL_access list.exhaust_sel list.set_intros(2) unfolding invariant_def by metis
+          ultimately show ?thesis using that(1) unfolding invariant_def by blast
+        qed
+        ultimately show ?thesis unfolding R_def by blast
+      qed
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2'
   \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
   (my_ooo_input_op os1') (my_increment_op inc os2)))) op2'"
@@ -106,7 +129,13 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
           and "ocaps os1 1 \<noteq> []"
           and "os1' |\<in>| ooo_input_op_logic {|1|} os1"
         for os1' :: "(1, 'b, 'a, 'c, 'd) input_state_scheme"
-        using that sorry
+      proof (cases \<open>es os1 1\<close>)
+        case LNil
+        then show ?thesis sorry
+      next
+        case (LCons x21 x22)
+        then show ?thesis sorry
+      qed
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2'
   \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
   (my_ooo_input_op os1) (my_increment_op inc os2')))) op2'"
@@ -114,125 +143,42 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
           and "ocaps os2 1 \<noteq> []"
           and "os2' |\<in>| increment_op_logic 1 1 inc os2"
         for os2' :: "(1, 'b, 'a, 'c, 'd) input_state_scheme"
-        using that sorry
+      proof -
+        have outpu_os2': \<open>outpu os2' 1 = outpu os2 1 @ map (\<lambda>(d, t). (d, t + inc)) (input os2 1)\<close>
+          using that(3) unfolding increment_op_logic_def drop_caps_def produces_def by (simp split: prod.splits)
+        have input_os2': \<open>input os2' 1 = []\<close>
+          using that(3) unfolding increment_op_logic_def by simp
+        have \<open>my_source_op f inc os1 buf os2 = my_source_op f inc os1 buf os2'\<close>
+          unfolding my_source_op_def
+          by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] simp add: fun_eq_iff lshift_append_lshift outpu_os2' input_os2')
+        moreover have \<open>invariant f os1 buf os2'\<close>
+          using that(1,3) unfolding invariant_def increment_op_logic_def drop_caps_def produces_def by simp
+        ultimately show ?thesis unfolding R_def by blast
+      qed
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2'
   \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 1 (edges sg) \<lparr>cons = consu os2, inte = inter os2, prod = produ os2\<rparr>) (pt_tr sg)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
     (my_ooo_input_op os1) (my_increment_op inc (os2\<lparr>consu := [], inter := [], produ := []\<rparr>))))) op2'"
       (is \<open>_ (dataflow_op ?sg')\<close>)
         if "invariant f os1 buf os2"
-          and "consu os2 \<noteq> [] \<or> inter os2 \<noteq> [] \<or> produ os2 \<noteq> []"
+          and "has_progress os2"
         using that unfolding R_def invariant_def my_source_op_def by (fastforce intro!: wbc_base)
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2'
   \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 0 (edges sg) \<lparr>cons = consu os1, inte = inter os1, prod = produ os1\<rparr>) (pt_tr sg)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
   (my_ooo_input_op (os1\<lparr>consu := [], inter := [], produ := []\<rparr>)) (my_increment_op inc os2)))) op2'"
         if "invariant f os1 buf os2"
-          and "consu os1 \<noteq> [] \<or> inter os1 \<noteq> [] \<or> produ os1 \<noteq> []"
-      (is \<open>_ (dataflow_op ?sg')\<close>)
+          and "has_progress os1"
         using that unfolding R_def invariant_def my_source_op_def by (fastforce intro!: wbc_base)
       note * = calculation this
       show ?thesis
-end
         using SIM1 unfolding R_def[symmetric]
+        sorry
+(*
         apply -
         apply (sim_cases defs: my_ooo_input_op_def ooo_input_op_def my_increment_op_def increment_op_def elims: step_dataflow_op_elim step_map_op_elim step_comp_op_elim step_builder_op_elim)
         using * apply (auto intro: invariant_initia simp flip: my_ooo_input_op_def)
         done
+*)
 end
-    subgoal
-      apply (intro exI conjI)
-       apply (rule step_wstep)
-       apply (rule step_map_op)
-        apply (rule step_source_op_Out_intro)
-          apply (simp_all add: defaults_num1_def)
-      apply (rule wbc_base)
-      apply (intro exI conjI)
-              apply (rule refl)
-             apply (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] simp add: fun_eq_iff)
-      done
-    subgoal
-      apply (intro exI conjI)
-       apply (rule rtranclp.intros(1))
-      apply (rule wbc_base)
-      apply (intro exI)
-      apply auto
-      done
-    subgoal
-      using BHD_def is_Inl.simps(2) is_Inr.simps(2) list.set_sel(1) sumE
-      by (metis (no_types, opaque_lifting))
-    subgoal for d t
-      apply (intro exI conjI)
-       apply (rule rtranclp.intros(1))
-      apply (rule wbc_base)
-      apply (rule exI[of _ sg])
-      apply (rule exI[of _ os1])
-      apply (rule exI[of _ \<open>BTL (Inr (1, 0)) buf\<close>])
-      apply (rule exI[of _ \<open>consumes os2 0 t d\<close>])
-      apply (auto intro!: arg_cong[where f=\<open>map_op _ _ \<close>] arg_cong[where f=source_op] arg_cong[where f=\<open>lshift _\<close>] arg_cong[where f=\<open>lmap _\<close>] arg_cong[where f=\<open>\<lambda>x. lshift x _\<close>] simp add: produce_def BTL_def map_tl in_set_tlD fun_eq_iff)
-      using hd_Cons_tl hd_map BHD_def list.inj_map_strong list.sel(2) list.simps(14) map_tl memb_imp_not_empty not_Cons_self sum.sel(2)
-      apply (smt (verit, best))
-      done
-    subgoal
-      apply (intro exI conjI)
-       apply (rule rtranclp.intros(1))
-      apply (rule wbc_base)
-      apply (intro exI)
-      apply (auto elim: timely_monotone.cases simp add: list.map_ident_strong)
-      done
-    subgoal
-      apply (intro exI conjI)
-       apply (rule rtranclp.intros(1))
-      apply (rule wbc_base)
-      apply (intro exI)
-      apply (auto elim: timely_monotone.cases simp add: produce_def simp flip: snoc_shift)
-      done
-    subgoal
-      apply (intro exI conjI)
-       apply (rule rtranclp.intros(1))
-      apply (rule wbc_base)
-      apply (intro exI)
-      apply (auto elim: timely_monotone.cases)
-      done
-    subgoal
-      apply (intro exI conjI)
-       apply (rule rtranclp.intros(1))
-      apply (rule wbc_base)
-      apply (intro exI)
-      apply (auto elim: timely_monotone.cases)
-      done
-    subgoal
-      apply (intro exI conjI)
-       apply (rule rtranclp.intros(1))
-      apply (rule wbc_base)
-      apply (intro exI conjI)
-              apply (rule refl)
-             apply (auto simp add: produce_def fun_eq_iff split: list.splits)
-      done
-    subgoal
-      apply (intro exI conjI)
-       apply (rule rtranclp.intros(1))
-      apply (rule wbc_base)
-      apply (intro exI conjI)
-              apply (rule refl)
-             apply (auto simp add: fun_eq_iff)
-      done
-    subgoal
-      apply (intro exI conjI)
-       apply (rule rtranclp.intros(1))
-      apply (rule wbc_base)
-      apply (intro exI conjI)
-              apply (rule refl)
-             apply simp_all
-      done
-    subgoal
-      apply (intro exI conjI[rotated, OF wbc_base])
-       apply auto
-      done
-    subgoal
-      apply (intro exI conjI[rotated, OF wbc_base])
-       apply (auto simp add: fun_eq_iff)
-      done
-    done
-next
   case SIM2
   then show ?case
     apply (elim step_map_op_elim step_source_op_elim conjE; simp; hypsubst_thin?; simp)
