@@ -584,4 +584,24 @@ lemma frontier_less_equal_sumI:
   by (induct S rule: finite_induct)
    (auto simp add: frontier_less_equal_addI sum_nonneg zcount_sum)
 
+lemma frontier_less_equal_subset_sumI:
+  "finite S \<Longrightarrow>
+   (\<forall> l \<in> S. \<forall> t. zcount (f l) t \<ge> 0) \<Longrightarrow>
+   S' \<subseteq> S \<Longrightarrow>
+   frontier_less_equal (frontier (\<Sum>loc\<in>S'. f loc)) t \<Longrightarrow>
+   frontier_less_equal (frontier (\<Sum>loc\<in>S. f loc)) t"
+  apply (induct S arbitrary:S' rule: finite_induct)
+  apply (clarsimp simp add: frontier_less_equal_addI sum_nonneg zcount_sum)+
+  apply (smt (verit, del_insts) Set.set_insert frontier_less_equal_addI frontier_less_equal_add_cases insert_subset rev_finite_subset subset_insert sum.insert_if sum_nonneg
+      zcount_sum)
+  done
+
+lemma in_frontierI:
+  "zcount M t > 0 \<Longrightarrow>
+   (\<forall> t'. zcount M t' > 0 \<longrightarrow> \<not> t > t') \<Longrightarrow>
+   t \<in>\<^sub>A frontier M"
+  apply transfer
+  apply (auto simp add: minimal_antichain_def)
+  done
+
 end

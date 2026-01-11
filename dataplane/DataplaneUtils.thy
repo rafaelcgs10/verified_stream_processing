@@ -207,6 +207,12 @@ lemma add_zmset_minus_to_zmset_if:
   apply (metis add_zmset_neg minus_diff_eq verit_eq_simplify(25))
   done
 
+
+lemma zcount_to_zmset:
+  "zcount (to_zmset xs) = count_list xs"
+  by (induct xs)
+   auto
+
 lemma set_antichain_antichain_singleton[simp]:
   "set_antichain (antichain {a}) = {a}"
   apply (subst antichain_inverse)

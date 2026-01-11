@@ -949,6 +949,17 @@ lemma zcount_zmset_ge_0I:
   by (induct xs) 
    (auto simp add: zcount_update_zmultiset)
 
+lemma gt_0_zcount_msetD:
+  "0 < zcount (zmset (map snd (filter ((=) p \<circ> fst) xs))) t \<Longrightarrow>
+   \<exists> m. (p, t, m) \<in> set xs \<and> 0 < m"
+  apply (induct xs)
+  apply (auto simp add: zcount_update_zmultiset  split: if_splits)
+  subgoal for x xs'
+    apply (cases "0 < zcount (zmset (map snd (filter ((=) p \<circ> fst) xs'))) t")
+     apply auto
+    done
+  done
+
 lemma zcount_zmset_gt_0I:
   "(\<forall> (x, m) \<in> set xs. 0 \<le> m) \<Longrightarrow>
    (t, m) \<in> set xs \<Longrightarrow>
@@ -1124,23 +1135,49 @@ lemma produ_add_caps[simp]:
   apply auto
   done
 
+lemma set_zmset_zmset_of_mset_set[simp]:
+  "finite S \<Longrightarrow>
+   set_zmset (zmset_of (mset_set S)) = S"
+  unfolding set_zmset_def
+  by clarsimp
+
 lemma frontier_less_equal_ifrontierI:
   "dataflow_topology su (-+-) \<Longrightarrow>
    t' \<in>\<^sub>A graph.path_weight su l l' \<Longrightarrow>
-   zcount (c_pts c l) t > 0 \<Longrightarrow>
+   frontier_less_equal (frontier (c_pts c l)) t \<Longrightarrow>
    frontier_less_equal (ifrontier su (-+-) c l') (t + t')"
   apply (subst Propagate.dataflow_topology.implied_frontier_alt_def)
   apply assumption
   apply (rule frontier_less_equal_sumI[where l=l])
      apply simp_all
-    apply (simp add: sum_nonneg zcount_sum)
+   apply (simp add: sum_nonneg zcount_sum)
     apply (rule frontier_less_equal_sumI[of _ _ t'])
      apply simp_all
   using member_antichain.rep_eq apply blast
   unfolding frontier_less_equal_iff2
-  apply (meson dataflow_topology_from_tree.obtain_elem_zmset_frontier dataflow_topology_from_tree.results_in_mono(1) frontier_less_equal_iff2 frontier_less_equal_trans frontier_less_equal_zcount_pos
-         pos_zcount_image_zmset zcount_zmset_of_nonneg)
+  apply clarsimp
+  subgoal for t''
+      apply (rule exI[of _ "t'' + t'"])
+    apply clarsimp
+    apply (rule in_frontierI)
+     apply auto
+    apply (metis frontier_idempotent in_frontier_iff pos_zcount_image_zmset zmset_of_mset_set_ge_zero)
+    apply (metis (no_types, lifting) add_less_cancel_right dataflow_topology_from_tree.in_frontier_least frontier_idempotent pos_image_zmset_obtain_pre zmset_of_mset_set_ge_zero)
+    done
   done
 
+
+
+lemma
+  "dataflow_topology su (-+-) \<Longrightarrow>
+   frontier_less_equal (ifrontier su (-+-) c l) t \<Longrightarrow>
+   t' \<in>\<^sub>A graph.path_weight su l l' \<Longrightarrow>
+   frontier_less_equal (ifrontier su (-+-) c l') (t -+- t')"
+  apply (subst Propagate.dataflow_topology.implied_frontier_alt_def)
+  apply assumption
+  apply (subst (asm) Propagate.dataflow_topology.implied_frontier_alt_def)
+   apply assumption
+  apply simp
+  oops
 
 end
