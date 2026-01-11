@@ -178,7 +178,7 @@ lemma lset_ldropn_conv_lnth: "lset (ldropn i lxs) = lnth lxs ` {k. k \<ge> i \<a
       lnth_ltl mem_Collect_eq not_less_eq_eq not_less_zero)
   done
 
-lemma
+lemma timely_input_stream_Data_expires:
   "Data t d \<in> lset lxs \<Longrightarrow> 
    timely_input_stream lxs C \<Longrightarrow> 
    lfinite (lfilter (\<lambda>e. time e = t) lxs)"
