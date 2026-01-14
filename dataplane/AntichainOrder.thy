@@ -353,6 +353,16 @@ lemma in_frontier_addD:
   "t \<in>\<^sub>A frontier (M + N) \<Longrightarrow> (0 < zcount M t \<and> (\<exists> t'. t' \<in>\<^sub>A frontier M \<and> t' \<le> t)) \<or> 0 < zcount N t  \<and> (\<exists> t'. t' \<in>\<^sub>A frontier N \<and> t' \<le> t)"
   by (metis dataflow_topology.frontier_unionD dataflow_topology.obtain_frontier_elem trivial_dataflow_topology_interpretation.dataflow_topology_axioms)
 
+lemma in_frontier_addD_alt:
+  "t \<in>\<^sub>A frontier (M + N) \<Longrightarrow>
+  (\<forall> x. zcount M x \<ge> 0) \<Longrightarrow>
+  (\<forall> x. zcount N x \<ge> 0) \<Longrightarrow>
+   (t \<in>\<^sub>A frontier M \<and> (\<forall> t'. zcount N t' > 0 \<longrightarrow> \<not> t' < t)) \<or> (t \<in>\<^sub>A frontier N \<and> (\<forall> t'. zcount M t' > 0 \<longrightarrow> \<not> t' < t))"
+  apply transfer'
+  apply (auto simp add: minimal_antichain_def)
+  using add_strict_increasing add_strict_increasing2 apply blast+
+  done
+
 lemma in_frontier_in_frontier_add:
   "t \<in>\<^sub>A frontier A \<Longrightarrow>
    (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
@@ -584,6 +594,16 @@ lemma frontier_less_equal_sumI:
   by (induct S rule: finite_induct)
    (auto simp add: frontier_less_equal_addI sum_nonneg zcount_sum)
 
+lemma frontier_less_equal_sumE:
+  "frontier_less_equal (frontier (\<Sum>loc\<in>S. f loc)) t \<Longrightarrow>
+   finite S \<Longrightarrow>
+   \<exists> l\<in>S. frontier_less_equal (frontier (f l)) t"
+  apply rotate_tac
+  apply (induct S rule: finite_induct)
+  apply (auto simp add: frontier_less_equal_addI sum_nonneg zcount_sum)
+  using frontier_less_equal_add_cases apply blast
+  done
+
 lemma frontier_less_equal_subset_sumI:
   "finite S \<Longrightarrow>
    (\<forall> l \<in> S. \<forall> t. zcount (f l) t \<ge> 0) \<Longrightarrow>
@@ -603,5 +623,88 @@ lemma in_frontierI:
   apply transfer
   apply (auto simp add: minimal_antichain_def)
   done
+
+lemma frontier_sum_le:
+  "finite S \<Longrightarrow>
+   (\<forall> loc\<in>S. frontier (f loc) \<le> frontier (f' loc)) \<Longrightarrow>
+   (\<forall> l \<in> S. \<forall> t. zcount (f l) t \<ge> 0) \<Longrightarrow>
+   frontier (\<Sum>loc\<in>S. f loc) \<le> frontier (\<Sum>loc\<in>S. f' loc)"
+  apply (induct S rule: finite_induct)
+   apply simp_all
+  apply clarsimp
+  apply (simp add: frontier_add_add_le sum_nonneg zcount_sum)
+  done
+
+lemma int_sum_disj:
+  "0 \<le> x \<Longrightarrow>
+   0 \<le> y \<Longrightarrow>
+   (0 :: int) < x + y \<longleftrightarrow> 0 < x \<or> 0 < y"
+  by linarith
+
+lemma in_frontier_sumI1[intro]:
+  "x \<in>\<^sub>A frontier M \<Longrightarrow>
+   (\<forall> y. zcount N y > 0 \<longrightarrow> \<not> y < x) \<Longrightarrow>
+   (\<forall> x. zcount M x \<ge> 0) \<Longrightarrow>
+   (\<forall> x. zcount N x \<ge> 0) \<Longrightarrow>
+   x \<in>\<^sub>A frontier (M + N)"
+  by (auto del: disjE simp add: int_sum_disj member_antichain.rep_eq minimal_antichain_def frontier.rep_eq)
+lemma in_frontier_sumI2[intro]:
+  "x \<in>\<^sub>A frontier N \<Longrightarrow>
+   (\<forall> y. zcount M y > 0 \<longrightarrow> \<not> y < x) \<Longrightarrow>
+   (\<forall> x. zcount M x \<ge> 0) \<Longrightarrow>
+   (\<forall> x. zcount N x \<ge> 0) \<Longrightarrow>
+   x \<in>\<^sub>A frontier (M + N)"
+  by (auto del: disjE simp add: int_sum_disj member_antichain.rep_eq minimal_antichain_def frontier.rep_eq)
+
+
+lemma frontier_sum_eq:
+  "finite S \<Longrightarrow>
+   (\<forall> loc\<in>S. frontier (f loc) = frontier (f' loc)) \<Longrightarrow>
+   (\<forall> l \<in> S. \<forall> t. zcount (f l) t \<ge> 0) \<Longrightarrow>
+   (\<forall> l \<in> S. \<forall> t. zcount (f' l) t \<ge> 0) \<Longrightarrow>
+   frontier (\<Sum>loc\<in>S. f loc) = frontier (\<Sum>loc\<in>S. f' loc)"
+  apply (induct S rule: finite_induct)
+   apply simp_all
+  apply auto
+  subgoal for x F
+    apply (auto simp add:  sum_nonneg zcount_sum ac_eq_iff)
+    subgoal for xx
+      apply (drule in_frontier_addD_alt)
+      apply (simp_all add: sum_nonneg zcount_sum)
+      apply auto
+      subgoal
+       apply (rule in_frontier_sumI1)
+      apply (simp_all add: sum_nonneg zcount_sum)
+        apply (metis in_frontier_iff order_le_less_trans trivial_dataflow_topology_interpretation.obtain_frontier_elem zcount_sum)
+        done
+      subgoal
+       apply (rule in_frontier_sumI2)
+      apply (simp_all add: sum_nonneg zcount_sum)
+        apply (metis in_frontier_iff order_le_less_trans trivial_dataflow_topology_interpretation.obtain_frontier_elem)
+        done
+      done
+    subgoal for xx
+      apply (drule in_frontier_addD_alt)
+      apply (simp_all add: sum_nonneg zcount_sum)
+      apply auto
+      subgoal
+       apply (rule in_frontier_sumI1)
+      apply (simp_all add: sum_nonneg zcount_sum)
+        apply (metis in_frontier_iff order_le_less_trans trivial_dataflow_topology_interpretation.obtain_frontier_elem zcount_sum)
+        done
+      subgoal
+       apply (rule in_frontier_sumI2)
+      apply (simp_all add: sum_nonneg zcount_sum)
+        apply (metis in_frontier_iff order_le_less_trans trivial_dataflow_topology_interpretation.obtain_frontier_elem)
+        done
+      done
+    done
+  done
+
+lemma
+  "frontier A = frontier B \<Longrightarrow>
+   frontier (M + A) = frontier (M + B)"
+  oops
+
 
 end
