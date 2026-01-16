@@ -547,6 +547,12 @@ lemma zcount_sum_list_alt:
   by (induct xs)
     auto
 
+lemma zcount_zmset_const_diff_0I:
+  "t \<noteq> t' \<Longrightarrow>
+   zcount (zmset (map (\<lambda>x. (t', c)) xs)) t = 0"
+  by (induct xs)
+   (auto simp add: zcount_update_zmultiset)
+
 
 lemma in_extract_prog_cases:
   "Trg_caps_inv caps buf \<Longrightarrow>
@@ -556,13 +562,12 @@ lemma in_extract_prog_cases:
    (\<forall> nid. \<forall> (p, t, m) \<in> set (consu (os nid)). 0 < m) \<Longrightarrow>
    (\<forall> nid. \<forall> (p, t, m) \<in> set (produ (os nid)). 0 < m) \<Longrightarrow>
    (\<forall> nid. \<forall> (p, t, m) \<in> set (inter (os nid)). 0 \<noteq> m) \<Longrightarrow>
-   (\<exists> nid p m. (p, t, m) \<in> set (consu (os nid)) \<and> l = Loc nid (Trg p) \<and> (zcount (c_pts c l) t > 0 \<or> (\<exists> nid' p' a. (nid, p) \<in> set (ed (nid', p')) \<and> a \<in> set (produ (os nid'))))) \<or>
-   (\<exists> nid p . l = Loc nid (Src p) \<and> (p, t, m) \<in> set (inter (os nid))) \<or>
-   (\<exists> nid p m. (p, t, m) \<in> set (produ (os nid)) \<and> l = Loc nid (Trg p) \<and> zcount (c_pts c l) t > 0 \<or> (\<exists> nid' p' a. (nid, p) \<in> set (ed (nid', p')) \<and> a \<in> set (produ (os nid'))))"
+   (\<exists> nid p m'. (p, t, m') \<in> set (consu (os nid)) \<and> m = -m' \<and> l = Loc nid (Trg p) \<and> (zcount (c_pts c l) t > 0 \<or> (\<exists> nid' p' m'. (nid, p) \<in> set (ed (nid', p')) \<and> (p', t, m') \<in> set (produ (os nid'))))) \<or>
+   (\<exists> nid p . C2 \<and> l = Loc nid (Src p) \<and> (p, t, m) \<in> set (inter (os nid))) \<or>
+   (\<exists> nid p m. C3 \<and> (p, t, m) \<in> set (produ (os nid)) \<and> l = Loc nid (Trg p) \<and> zcount (c_pts c l) t > 0 \<or> (\<exists> nid' p' a. (nid, p) \<in> set (ed (nid', p')) \<and> a \<in> set (produ (os nid'))))"
   apply (subst (asm) (2) extract_prog_def)
   apply (auto del: disjCI simp add: image_iff enum_class.enum_UNIV extract_progress_def split_beta obtain_progress_def)
   subgoal for nid p m'
-    apply (rule disjI1)
     unfolding Trg_caps_inv_def c_pts_inv_def
     apply (drule spec[of _ l])
     apply (drule spec[of _ nid])
@@ -596,45 +601,31 @@ lemma in_extract_prog_cases:
           apply (simp add: zcount_sum)
           apply (drule sum_pos_ex_elem_pos)
           apply clarsimp
-          subgoal premises prems2 for nid'
-            using prems2(1,2,4) apply -
-            apply (rule conjI)
-             apply (rule exI[of _ m'])
-            apply simp
-            apply (rule disjI2)
-            apply (rule exI[of _ nid'])
+          subgoal for nid'
             apply (clarsimp simp add: sum_list_zmset zmset_concat )
             unfolding comp_def zcount_sum_list_alt 
             apply (clarsimp simp add: zcount_sum_list_alt comp_def sum_list_zmset zmset_concat )
             apply (drule sum_list_pos_ex_elem_pos)
             apply clarsimp
-            subgoal for p' b c
+            subgoal for p' t' c
+              apply (rule exI[of _ nid'])
+              apply (rule exI[of _ p'])
               apply (intro conjI)
-               apply (rule exI[of _ p'])
-               apply (smt (verit, del_insts) List.empty_filter_conv list.simps(8) prod.exhaust_sel zcount_empty zmset.simps(1))
-              apply auto
+              apply (smt (verit) List.empty_filter_conv list.simps(8) surjective_pairing zcount_empty zmset.simps(1))+
+                done
               done
             done
           done
         done
-      done
     subgoal
       by (simp add: to_zmset_nenneg)
     done
-  subgoal for nid p nid' p'
-    apply (rule disjI2)
-    unfolding Trg_caps_inv_def c_pts_inv_def
-    apply (drule spec[of _ l])
-    apply (drule spec[of _ nid'])
-    apply (drule spec[of _ p'])
-    apply (simp add: c_pts_change_multiplicities extract_prog_def extract_progress_def zmset_concat map_concat filter_concat comp_def filter_map split_beta obtain_progress_def)
-    apply (subst (asm) (1) monoid_add_class.sum_list_distinct_conv_sum_set)
-     apply (simp_all add:  comm_monoid_add_class.sum.distrib enum_class.enum_distinct enum_class.enum_UNIV)
-    apply (subst (asm) Groups.ab_group_add_class.ab_diff_conv_add_uminus)
-    apply (subst (asm) comm_monoid_add_class.sum.distrib)
-    apply simp
+  subgoal
+    sorry
+  subgoal
     sorry
   done
+
 
 
 lemma
@@ -796,6 +787,8 @@ lemma
           apply (drule set_extract_prog_consumesD)
           apply (elim disjE exE conjE)
           subgoal
+            apply (cases "graph.path_weight (summ sg) l l' = {}\<^sub>A")
+            subgoal
             apply (drule bspec[of _ _ "(l', t'', m')"])
              apply assumption
             apply clarsimp
@@ -813,8 +806,6 @@ lemma
             apply (drule bspec[of _ _ "(_, t)"])
             apply (auto simp add: BULK_BENQ_def)[1]
             apply simp
-            apply (cases "graph.path_weight (summ sg) l l' = {}\<^sub>A")
-            subgoal
               apply (subst ifrontier_change_multiplicities_no_path)
               apply assumption
               subgoal
@@ -828,6 +819,96 @@ lemma
             apply (cases "node l = nid")
             subgoal
               apply hypsubst_thin
+              apply (drule bspec[of _ _ "(l', t'', m')"])
+               apply assumption
+              apply simp
+              apply (drule bspec[of _ _ "(l', t'', m')"])
+               apply assumption
+              apply (drule spec[of _ "l"])
+              apply (drule spec[of _ "t'"])
+              apply simp
+              apply (drule mp)
+               apply blast
+
+              using frontier_less_equal_ifrontierE[where t=t]
+
+
+              find_theorems t
+
+
+end
+              apply (drule in_extract_prog_cases[OF prems(4) prems(3) prems(5), where t=t''])
+              subgoal sorry
+              subgoal sorry
+              subgoal sorry
+              apply (elim disjE conjE exE)
+              subgoal
+                sorry
+              subgoal for nid p'' ma nid' p' m''
+                apply hypsubst
+                apply (drule bspec[of _ _ "(l', t'', -ma)"])
+                subgoal premises prems2
+                  using prems2(5) apply -
+                  unfolding extract_prog_def extract_progress_def obtain_progress_def
+                  apply (auto simp add:  image_iff split_beta)
+                  apply (rule bexI[of _ nid])
+                   apply (rule disjI1)
+                   apply (rule bexI[rotated])
+                    apply assumption
+                  apply simp
+                  using prems2(9,6) apply -
+                   apply (simp_all add: enum_class.enum_UNIV)
+                  done
+                apply simp
+                  apply (cases "l = Loc nid' (Src p')")
+                  subgoal
+                    apply hypsubst_thin
+                    apply simp
+                    sorry
+                  subgoal
+                apply (drule bspec[of _ _ "(l, t', m)"])
+                 apply assumption
+                  apply (drule spec[of _ "Loc nid' (Src p')"])
+                  apply simp
+                apply (drule spec[of _ "t''"])
+                apply (drule mp)
+                subgoal premises prems2
+                  using prems2(4) apply -
+                  unfolding extract_prog_def extract_progress_def obtain_progress_def
+                  apply (auto simp add:enum_class.enum_UNIV image_iff split_beta)
+                  sorry
+                subgoal
+                  find_theorems l
+
+                  apply simp
+
+                  find_theorems enum_class.enum set
+
+end
+                  apply (rule exI)
+                  apply (rule bexI[of _ nid])
+                   apply (rule disjI1)
+                  apply simp
+                   apply (rule bexI[rotated])
+                    apply assumption
+                  apply simp
+                  using prems2(8) apply -
+                  apply (simp_all add: enum_class.enum_UNIV)
+                  done
+                apply simp
+
+                  find_theorems set enum_class.enum
+
+
+end
+             apply assumption
+            apply clarsimp
+   
+
+
+
+end
+
               apply (subst (asm) (2) extract_prog_def)
               apply (auto 0 0 simp add: image_iff enum_class.enum_UNIV extract_progress_def split_beta obtain_progress_def)
               subgoal for l' p' m''
