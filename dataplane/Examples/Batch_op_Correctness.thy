@@ -816,24 +816,46 @@ lemma
                 using prems(2) by force
               apply assumption
               done
-            apply (cases "node l = nid")
+            apply (cases "l = Loc nid (Trg p)")
             subgoal
-              apply hypsubst_thin
+              apply hypsubst
               apply (drule bspec[of _ _ "(l', t'', m')"])
                apply assumption
               apply simp
-              apply (drule bspec[of _ _ "(l', t'', m')"])
+              apply (drule bspec[of _ _ "(Loc nid (Trg p), t', m)"])
                apply assumption
-              apply (drule spec[of _ "l"])
-              apply (drule spec[of _ "t'"])
+              apply simp
+              apply (drule spec[of _ "l'"])
+              apply (drule spec[of _ "t''"])
               apply simp
               apply (drule mp)
                apply blast
+              apply (drule frontier_less_equal_ifrontierE)
+              subgoal
+                using prems(2) by force
+              apply clarsimp
+              subgoal for l3 s t3
+              apply (drule frontier_less_equal_ifrontierE)
+              subgoal
+                using prems(2) by force
+              apply clarsimp
+              subgoal for l4 s' t4
+                apply (cases "l4 = l3 \<and> l4 = Loc nid (Trg p)")
+                subgoal
+                  apply clarsimp
+                  apply hypsubst_thin
+                  apply (subst (asm) (1 2) frontier_less_equal_iff2)
+                  apply clarsimp
+                  subgoal for t5 t6
+                    apply (cases "t5 = t6 \<and> t5 = t")
+                    subgoal
+                      apply clarsimp
+                      apply hypsubst_thin
+                      using prems(1)
 
-              using frontier_less_equal_ifrontierE[where t=t]
+                  find_theorems t
 
-
-              find_theorems t
+                  apply hypsubst
 
 
 end
