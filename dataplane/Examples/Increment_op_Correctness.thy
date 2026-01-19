@@ -19,11 +19,9 @@ abbreviation inp_incr_summary where
   then antichain {inc}
   else {}\<^sub>A)\<close>
 
-(*
 (* Experiment with Eisbach. *)
-method sim_cases uses defs elims =
-  ((unfold defs)?, elim conjE elims, (auto; fail), fold defs; hypsubst_thin?)
-*)
+method sim_cases uses defs elims intros =
+  ((unfold defs)?, elim conjE elims; simp only: IO.simps; hypsubst_thin?; auto intro: intros simp flip: defs)
 
 (* TODO Move. *)
 lemma lshift_append_lshift:
@@ -59,7 +57,7 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
       have "\<exists>op2'. wstep (Out (1, 1) (d, t)) (my_source_op f inc os1 buf os2) op2'
   \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
     (my_ooo_input_op os1) (my_increment_op inc (os2\<lparr>outpu := (outpu os2)(1 := xs)\<rparr>))))) op2'"
-      (is \<open>\<exists>_. _ \<and> wbisim_cong _ (dataflow_op _ (map_op _ _ (comp_op _ _ _ (my_increment_op _ ?os2')))) _\<close>)
+        (is \<open>\<exists>_. _ \<and> wbisim_cong _ (dataflow_op _ (map_op _ _ (comp_op _ _ _ (my_increment_op _ ?os2')))) _\<close>)
         if "invariant f os1 buf os2"
           and "outpu os2 1 = (d, t) # xs"
         for d :: 'b
@@ -79,7 +77,7 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2'
   \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BENQ (Inr (1, 1)) (Inr (d, t)) buf)
     (my_ooo_input_op (os1\<lparr>outpu := (outpu os1)(1 := xs)\<rparr>)) (my_increment_op inc os2)))) op2'"
-      (is \<open>\<exists>_. _ \<and> wbisim_cong _ (dataflow_op _ (map_op _ _ (comp_op _ ?buf' (my_ooo_input_op ?os1') _))) _\<close>)
+        (is \<open>\<exists>_. _ \<and> wbisim_cong _ (dataflow_op _ (map_op _ _ (comp_op _ ?buf' (my_ooo_input_op ?os1') _))) _\<close>)
         if "invariant f os1 buf os2"
           and "outpu os1 1 = (d, t) # xs"
         for d :: 'b
@@ -90,7 +88,9 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
           using that(2) unfolding my_source_op_def by simp
         thus ?thesis using that(1) unfolding R_def invariant_def by (fastforce intro!: wbc_base)
       qed
-      moreover have False
+      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2'
+  \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BTL (Inr (1, 1)) buf)
+    (my_ooo_input_op os1) \<oslash>))) op2'"
         if "invariant f os1 buf os2"
           and "buf (Inr (1, 1)) \<noteq> []"
           and "is_Inl (BHD (Inr (1, 1)) buf)"
@@ -99,7 +99,7 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2'
   \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BTL (Inr (1, 1)) buf)
     (my_ooo_input_op os1) (my_increment_op inc (consumes os2 1 t d))))) op2'"
-      (is \<open>\<exists>_. _ \<and> wbisim_cong _ (dataflow_op _ (map_op _ _ (comp_op _ ?buf' _ (my_increment_op _ ?os2')))) _\<close>)
+        (is \<open>\<exists>_. _ \<and> wbisim_cong _ (dataflow_op _ (map_op _ _ (comp_op _ ?buf' _ (my_increment_op _ ?os2')))) _\<close>)
         if "invariant f os1 buf os2"
           and "buf (Inr (1, 1)) \<noteq> []"
           and "Inr (d, t) = BHD (Inr (1, 1)) buf"
@@ -129,12 +129,14 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
           and "ocaps os1 1 \<noteq> []"
           and "os1' |\<in>| ooo_input_op_logic {|1|} os1"
         for os1' :: "(1, 'b, 'a, 'c, 'd) input_state_scheme"
-      proof (cases \<open>es os1 1\<close>)
-        case LNil
-        then show ?thesis sorry
-      next
-        case (LCons x21 x22)
-        then show ?thesis sorry
+      proof -
+        have \<open>my_source_op f inc os1 buf os2 = my_source_op f inc os1' buf os2\<close>
+          using that(1,3) unfolding invariant_def my_source_op_def ooo_input_op_logic_def produce_def
+            drop_cap_def add_cap_def by (auto simp flip: snoc_shift split: llist.splits)
+        moreover have \<open>invariant f os1' buf os2\<close>
+          using that(1,3) timely_monotone.cases unfolding invariant_def ooo_input_op_logic_def
+            produce_def drop_cap_def add_cap_def by (auto split: llist.splits)
+        ultimately show ?thesis unfolding R_def by blast
       qed
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2'
   \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
@@ -156,28 +158,94 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
         ultimately show ?thesis unfolding R_def by blast
       qed
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2'
-  \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 1 (edges sg) \<lparr>cons = consu os2, inte = inter os2, prod = produ os2\<rparr>) (pt_tr sg)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
-    (my_ooo_input_op os1) (my_increment_op inc (os2\<lparr>consu := [], inter := [], produ := []\<rparr>))))) op2'"
-      (is \<open>_ (dataflow_op ?sg')\<close>)
+  \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 1 (edges sg) st) (pt_tr sg)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op os1) (my_increment_op inc os2')))) op2'"
+        (is \<open>_ (dataflow_op ?sg')\<close>)
         if "invariant f os1 buf os2"
           and "has_progress os2"
-        using that unfolding R_def invariant_def my_source_op_def by (fastforce intro!: wbc_base)
+          and "(os2', st) = obtain_progress os2"
+        for st :: "(1, 'c) shared_state"
+          and os2' :: "(1, 'b, 'a, 'c, 'd) input_state_scheme"
+        using that unfolding R_def invariant_def my_source_op_def obtain_progress_def
+        by (fastforce intro!: wbc_base)
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2'
-  \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 0 (edges sg) \<lparr>cons = consu os1, inte = inter os1, prod = produ os1\<rparr>) (pt_tr sg)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
-  (my_ooo_input_op (os1\<lparr>consu := [], inter := [], produ := []\<rparr>)) (my_increment_op inc os2)))) op2'"
+  \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 0 (edges sg) st) (pt_tr sg)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+  (my_ooo_input_op os1') (my_increment_op inc os2)))) op2'"
         if "invariant f os1 buf os2"
           and "has_progress os1"
-        using that unfolding R_def invariant_def my_source_op_def by (fastforce intro!: wbc_base)
+          and "(os1', st) = obtain_progress os1"
+        for st :: "(1, 'c) shared_state"
+          and os1' :: "(1, 'b, 'a, 'c, 'd) input_state_scheme"
+        using that unfolding R_def invariant_def my_source_op_def obtain_progress_def
+        by (fastforce intro!: wbc_base)
       note * = calculation this
+      show ?thesis using SIM1 unfolding R_def[symmetric]
+        by - (sim_cases defs: my_ooo_input_op_def ooo_input_op_def my_increment_op_def increment_op_def elims: step_dataflow_op_elim step_map_op_elim step_comp_op_elim step_builder_op_elim intros: invariant_initia *)
+    qed
+  qed
+next
+  case SIM2
+  show ?case (is \<open>\<exists>_. _ \<and> wbisim_cong ?R _ _\<close>)
+  proof -
+    define R where \<open>R = ?R\<close>
+    have "\<exists>op2'. wstep (Out (1, 1) (d, t)) (dataflow_op sg (map_op (case_sum id id) (case_sum id id)
+    (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf (my_ooo_input_op os1) (my_increment_op inc os2)))) op2'
+  \<and> wbisim_cong R op2' (map_op (\<lambda>(p :: 1). (1, 1)) (\<lambda>p. (1, 1)) (source_op ((\<lambda>(p :: 1). LCons (d, t) lxs)(1 := lxs))))"
+      if "invariant f os1 buf os2"
+        and "outpu os2 1 @@- lmap (\<lambda>(d, t). (d, t + inc)) ((input os2 1 @ map projr (buf (Inr (1, 1))) @ outpu os1 1)
+  @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os1 1))) = LCons (d, t) lxs"
+      for d :: 'b
+        and t :: 'c
+        and lxs :: "('b \<times> 'c) llist"
+    proof (cases \<open>outpu os2 1\<close>)
+      case Nil
       show ?thesis
-        using SIM1 unfolding R_def[symmetric]
-        sorry
-(*
-        apply -
-        apply (sim_cases defs: my_ooo_input_op_def ooo_input_op_def my_increment_op_def increment_op_def elims: step_dataflow_op_elim step_map_op_elim step_comp_op_elim step_builder_op_elim)
-        using * apply (auto intro: invariant_initia simp flip: my_ooo_input_op_def)
+      proof (cases \<open>input os2 1\<close>)
+        case Nil
+        show ?thesis
+        proof (cases \<open>buf (Inr (1, 1))\<close>)
+          case Nil
+          show ?thesis
+          proof (cases \<open>outpu os1 1\<close>)
+            case Nil
+            then show ?thesis sorry
+          next
+            case (Cons x xs)
+            then show ?thesis sorry
+          qed
+        next
+          case (Cons x xs)
+          then show ?thesis sorry
+        qed
+      next
+        case (Cons x xs)
+        then show ?thesis sorry
+      qed
+    next
+      case (Cons x xs)
+      then show ?thesis
+        unfolding my_increment_op_def increment_op_def
+                apply (intro exI conjI)
+         apply (rule step_wstep)
+         apply (rule step_Out_dataflow_op_Out_Inr_intro)
+         apply (rule step_map_op)
+          apply (rule step_comp_op_R_Out)
+            apply (rule step_map_op)
+             apply (rule step_builder_op_Write_Some)
+                 apply simp_all
+        using that(1) unfolding invariant_def apply blast
+        using that(2) apply simp
+        apply (unfold R_def)
+        apply (rule wbc_base)
+        apply (intro exI conjI)
+          apply (simp flip: increment_op_def my_increment_op_def)
+         apply (unfold my_source_op_def)
+        using that unfolding invariant_def
+               apply (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] simp add: fun_eq_iff)
         done
-*)
+    qed
+    thus ?thesis using SIM2 unfolding R_def[symmetric]
+      by (sim_cases defs: my_source_op_def elims: step_map_op_elim step_source_op_elim; hypsubst_thin?)
 end
   case SIM2
   then show ?case
