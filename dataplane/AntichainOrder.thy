@@ -635,6 +635,72 @@ lemma frontier_sum_le:
   apply (simp add: frontier_add_add_le sum_nonneg zcount_sum)
   done
 
+lemma frontier_lt_minus_add:
+  "(\<forall> t. zcount A t \<ge> 0) \<Longrightarrow>
+   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
+   frontier A \<le> frontier (C - B) \<Longrightarrow> frontier (B + A) \<le> frontier C"
+  unfolding less_eq_antichain_def
+  apply auto
+  apply transfer'
+  unfolding incomparable_def minimal_antichain_def
+  apply auto
+  apply (smt (z3) dual_order.strict_trans2 in_frontier_iff nless_le trivial_dataflow_topology_interpretation.obtain_elem_frontier)
+  done
+
+lemma frontier_sum_le_alt:
+  "finite S \<Longrightarrow>
+   S' \<subseteq> S \<Longrightarrow>
+   (\<forall> l \<in> S. \<forall> t. zcount (f l) t \<ge> 0) \<Longrightarrow>
+   frontier (\<Sum>loc\<in>S. f loc) \<le> frontier (\<Sum>loc\<in>S'. f loc)"
+    apply (induct S arbitrary: S' rule: finite_induct)
+   apply simp_all
+  apply (clarsimp simp add: subset_insert_iff split: if_splits)
+  subgoal for x F S'
+    apply (drule meta_spec)+
+    apply (drule meta_mp)
+     apply assumption
+    apply (subst (asm) sum_diff)
+      apply simp_all
+     apply (meson infinite_remove infinite_super)
+    apply (rule frontier_lt_minus_add)
+    apply (simp_all add: sum_nonneg zcount_sum)
+    done
+  subgoal for x F S'
+    by (meson frontier_le_remove_left)
+  done
+
+lemma frontier_lt_subseq:
+  "N \<subseteq>#\<^sub>z M \<Longrightarrow>
+   frontier M \<le> frontier N"
+  unfolding less_eq_antichain_def
+  apply clarsimp
+  apply transfer'
+  unfolding incomparable_def minimal_antichain_def
+  apply (metis (no_types, lifting) ext frontier.rep_eq in_frontier_iff member_antichain.rep_eq minimal_antichain_def order.strict_trans2 subseteq_zmset_def
+      trivial_dataflow_topology_interpretation.obtain_elem_frontier)
+  done
+
+
+
+lemma frontier_sum_le_alt2:
+  "finite S \<Longrightarrow>
+   S' \<subseteq> S \<Longrightarrow>
+   (\<forall> l \<in> S. \<forall> t. f' l \<subseteq>#\<^sub>z f l) \<Longrightarrow>
+   frontier (\<Sum>loc\<in>S. f loc) \<le> frontier (\<Sum>loc\<in>S. f' loc)"
+    apply (induct S arbitrary: S' rule: finite_induct)
+   apply simp_all
+  apply (clarsimp simp add: subset_insert_iff split: if_splits)
+  subgoal for x F S'
+    apply (drule meta_spec)+
+    apply (drule meta_mp)
+     apply assumption
+    using frontier_lt_subseq 
+    apply (metis subset_zmset.add_mono trivial_dataflow_topology_interpretation.sum_mono_subseteq)
+    done
+  subgoal for x F S'
+    by (simp add: frontier_lt_subseq subset_zmset.add_mono trivial_dataflow_topology_interpretation.sum_mono_subseteq)
+  done
+
 lemma int_sum_disj:
   "0 \<le> x \<Longrightarrow>
    0 \<le> y \<Longrightarrow>
@@ -700,11 +766,5 @@ lemma frontier_sum_eq:
       done
     done
   done
-
-lemma
-  "frontier A = frontier B \<Longrightarrow>
-   frontier (M + A) = frontier (M + B)"
-  oops
-
 
 end

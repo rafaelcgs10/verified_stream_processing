@@ -182,13 +182,58 @@ definition "changes_non_zero_inv cgs = (\<forall>d\<in>snd ` snd ` set cgs. d \<
 definition "changes_above_impl_inv su c cgs = 
   ((\<forall>(l, t, d)\<in>set cgs. frontier_less_equal (ifrontier su (+) c l) t))"
 
-term "snd o obtain_progress"
 
+lemma
+  "graph.path_weight su l' l \<noteq> {}\<^sub>A \<Longrightarrow>
+   dataflow_topology su (+) \<Longrightarrow>
+   ifrontier su (+) c l \<le> ifrontier su (+) c l'"
+  apply (subst (1 2) Propagate.dataflow_topology.implied_frontier_alt_def)
+   apply assumption
+  apply (rule frontier_sum_le_alt2)
+  apply simp_all
+  apply auto
+  subgoal for l''
+    unfolding subseteq_zmset_def
+    apply auto
+    subgoal for t
+        apply (subgoal_tac "graph.path_weight su l'' l \<le> graph.path_weight su l'' l' + graph.path_weight su l' l")
+
+
+      find_consts "_ antichain \<Rightarrow> _ antichain"
+
+
+end
+  subgoal
+    apply (intro allI)
+    apply (rule frontier_sum_le_alt)
+      apply simp_all
+    subgoal for loc'
+      apply (intro ballI)
+      subgoal for s
+        apply (drule spec[of _ loc'])
+        apply (drule mp)
+        using set_antichain1 apply blast
+        apply (rule frontier_le_image)
+          apply simp_all
+        done
+      done
+    done
+  subgoal
+    by (simp add: sum_nonneg zcount_sum)
+  done
+
+  find_theorems ifrontier "(\<le>)"
+
+
+end
 definition "extract_progress_inv su ed os c = 
  (\<forall> nid nid'.
    nid \<noteq> nid' \<longrightarrow>
-   (\<forall>(l, t, d)\<in>set (extract_progress nid ed ((snd o obtain_progress) (os nid))).
+   (\<forall>(l, t, m)\<in>set (extract_progress nid ed ((snd o obtain_progress) (os nid))).
    frontier_less_equal (ifrontier su (+) (change_multiplicities su (extract_progress nid' ed ((snd o obtain_progress) (os nid'))) c) l) t))"
+
+definition "ifrontier_extract_progress_inv su ed os c =
+  (\<forall> l. ifrontier su (+) c)"
 
 abbreviation "su_test a b \<equiv> dataflow_tree_to_graph (
     Comp [(0, 0) \<mapsto> (1, 1), (1, 0) \<mapsto> (0, 0)] 
@@ -515,7 +560,7 @@ lemma ifrontier_change_multiplicities_filter:
     done
   done
 
-lemma aux:
+lemma gt_0_cases:
   "0 \<le> (a :: int) + (c - b) \<Longrightarrow>
    0 < b \<Longrightarrow>
    0 < a \<or> 0 < c"
@@ -593,7 +638,7 @@ lemma in_extract_prog_cases:
       apply (subgoal_tac "0 < zcount (c_pts c (Loc nid (Trg p))) t \<or> 0 < zcount (\<Sum>x\<in>UNIV. \<Sum>xa\<leftarrow>produ (os x). zmset (map (\<lambda>x. snd xa) (filter (\<lambda>x. nid = fst x \<and> p = snd x) (ed (x, fst xa))))) t")
        defer
       subgoal
-        apply (rule aux)
+        apply (rule gt_0_cases)
          apply simp_all
         apply (drule spec[of _ nid])
         apply (rule zcount_zmset_gt0I)
@@ -627,23 +672,30 @@ lemma in_extract_prog_cases:
     subgoal
       by (simp add: to_zmset_nenneg)
     done
-  subgoal
-    sorry
-  subgoal
-    sorry
-  done
-
+  oops
 
 lemma set_extract_progressD:
   "(l, t, m) \<in> set (extract_progress nid ed (snd (obtain_progress (consumes (os nid) p t' d)))) \<Longrightarrow>
    (l, t, m) \<in> set (extract_progress nid ed (snd (obtain_progress (os nid)))) \<or> 
-   (\<exists> m'. l = Loc nid (Trg p) \<and> m = -m' \<and> t = t') \<or>
+   (\<exists> m'. l = Loc nid (Trg p) \<and> m = -1 \<and> t = t' \<and> ((\<forall> p'. \<forall> s \<in> set (summar (os nid) p p'). (Loc nid (Src p'), t + s, 1) \<in> set (extract_progress nid ed (snd (obtain_progress (consumes (os nid) p t' d))))))) \<or>
    (\<exists> t' p' s. l = Loc nid (Src p') \<and> t = t' + s \<and> s \<in> set (summar (os nid) p p'))"
   unfolding extract_progress_def obtain_progress_def
-  apply (auto simp add: split_beta image_iff)
+  apply (auto simp add: split_beta image_iff enum_class.enum_UNIV)
   done
 
-
+lemma
+  "c' = c\<lparr> c_pts := (c_pts c)(l' := c_pts c l' - {# t #}\<^sub>z, l'' := c_pts c l'' + {# t + s #}\<^sub>z) \<rparr> \<Longrightarrow>
+   s \<in>\<^sub>A graph.path_weight su l' l'' \<Longrightarrow>
+   l' \<noteq> l'' \<Longrightarrow>
+   graph.path_weight su l'' l \<noteq> {}\<^sub>A \<Longrightarrow>
+   dataflow_topology su (-+-) \<Longrightarrow>
+   ifrontier su (-+-) c' l = ifrontier su (-+-) c l"
+  apply (subst (1 2) Propagate.dataflow_topology.implied_frontier_alt_def)
+   apply assumption
+  apply (subst ac_eq_iff)
+  apply auto
+  subgoal for t'
+    oops
 
 lemma
   "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
@@ -799,8 +851,6 @@ lemma
       done
     subgoal premises prems
       using prems(12) apply -
-      apply (subgoal_tac "changes_above_impl_inv (summ sg) (pt_tr sg) (extract_prog (edges sg) (os(nid := consumes (os nid) p t d)))")
-      subgoal
       unfolding extract_progress_inv_def
       apply (auto 0 0 simp add: split_beta)
       subgoal for nid' l t' m
@@ -815,8 +865,14 @@ lemma
           apply assumption
           apply simp
           done
-        subgoal for m'
-        unfolding changes_above_impl_inv_def
+        subgoal 
+        apply (elim disjE exE conjE)
+          apply hypsubst_thin
+
+
+
+end
+          unfolding changes_above_impl_inv_def
         apply (drule bspec[of _ _ "(Loc nid (Trg p), t, -1)"])
         subgoal premises
         apply (subst extract_prog_def)
@@ -826,8 +882,8 @@ lemma
         apply (auto simp add: split_beta enum_class.enum_UNIV obtain_progress_def image_iff)
           done
         apply simp
-          apply hypsubst_thin
-
+        subgoal
+    
           find_theorems nid'
 
 end
