@@ -105,8 +105,7 @@ lemma path_end_inversion_2: "Graph.graph weights \<Longrightarrow> graph.path we
 
 lemma remove_non_zero_weights_only_zero: "(0::'a::{monoid_add,order}) \<in>\<^sub>A weights l1 l2 \<Longrightarrow> (0::'a) \<in>\<^sub>A remove_non_zero_weights weights l1 l2"
   unfolding antichain_from_list_def
-  by (smt (verit) antichain_from_list.rep_eq antichain_from_list_def filter.simps(2)
-      list.set_intros(1) list_all_simps(1) list_all_simps(2) order_mono_setup.refl set_antichain1)
+  by (smt (verit, best) antichain_from_list.rep_eq antichain_from_list_def antichain_from_list_is_empty filter.simps(1,2) is_empty_antichain_empty_list is_empty_antichain_not_empty_list list.set_intros(1) member_antichain.rep_eq)
 
 lemma remove_non_zero_weights_preserves_zero_path:
   assumes G: "Graph.graph weights"
@@ -286,7 +285,7 @@ proof -
   then obtain b where H3: "(gi_E f, b) \<in> Id \<rightarrow> br set distinct" and H4: "(b, g_E G) \<in> br (\<lambda>succs. {(u, v). v \<in> succs u}) (\<lambda>_. True)" 
     by blast
   with assms show ?thesis
-    by (metis IdI List.member_def fun_relD in_br_conv mem_Collect_eq prod.simps(2))
+    by (metis List.member_iff fun_relE1 in_br_conv mem_Collect_eq old.prod.case)
 qed
 
 lemma g_V0_complete:
@@ -311,12 +310,7 @@ lemma in_weights_in_weights_to_graph_fun:
   assumes "l \<in>\<^sub>A  (weights::'a::{enum,hashable,linorder} \<Rightarrow> 'a \<Rightarrow> 'b::ordered_ab_semigroup_monoid_add_imp_le antichain) l1 l2" 
   shows "List.member (weights_to_graph_fun (weights) l1) l2"
   unfolding weights_to_graph_fun_def
-  using assms apply (clarsimp split: if_splits)
-  subgoal apply (subst  List.member_def )
-    apply (subst Enum.Collect_code[symmetric])
-    apply (metis Set.is_empty_def ex_in_conv is_empty_antichain.rep_eq mem_Collect_eq member_antichain.rep_eq)
-    done
-  done
+  using assms by (auto simp add: is_empty_antichain.rep_eq  mem_Collect_eq member_antichain.rep_eq enum_class.enum_UNIV split: if_splits)
 
 lemma weights_in_G:
   assumes R: "((graph_from_weights weights), G) \<in> \<langle>Rm, Id\<rangle>g_impl_rel_ext"
@@ -472,7 +466,7 @@ definition graph_checker :: "('a::{enum,hashable,linorder} \<Rightarrow> 'a \<Ri
 
 lemma no_self_loop_checker_is_graph_checker:
   "no_self_loop_checker = graph_checker"
-  unfolding no_self_loop_checker_def graph_checker_def is_empty_antichain_def Set.is_empty_def
+  unfolding no_self_loop_checker_def graph_checker_def is_empty_antichain_def Set.is_empty_iff
   apply (auto simp add: enum_UNIV)
   done
 
@@ -484,7 +478,7 @@ lemma graph_checker_correct: "graph_checker weights \<Longrightarrow> Graph.grap
     subgoal by (simp add: add_mono_thms_linordered_semiring(1))
     subgoal
       apply (subst (asm) all_code[symmetric])
-      apply (metis Set.is_empty_def empty_antichain.abs_eq is_empty_antichain.rep_eq set_antichain_inverse)
+      apply (metis Set.is_empty_iff empty_antichain.abs_eq is_empty_antichain.rep_eq set_antichain_inverse)
       done
     done
   done

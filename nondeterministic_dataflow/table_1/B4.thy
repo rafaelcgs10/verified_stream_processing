@@ -180,7 +180,7 @@ lemma id_id_gen:
              apply simp
              apply (rule step_wstep)
              apply (rule SC)
-              apply (simp add: Set.filter_def)
+              apply (simp add: )
               apply (rule disjI2)
               apply simp
               apply (rule image_eqI)
@@ -216,7 +216,7 @@ lemma id_id_gen:
              apply (rule disjI2)
              apply simp
              apply (rule image_eqI[rotated])
-              apply (simp add: Set.filter_def)
+              apply (simp add: )
               apply (intro conjI)
                apply (rule disjI1)
                apply blast+
@@ -228,7 +228,7 @@ lemma id_id_gen:
             apply simp
             apply (rule disjI2)
             apply (rule image_eqI[rotated])
-             apply (simp add: Set.filter_def)
+             apply (simp add: )
              apply (intro conjI)
               apply (rule disjI2)
               apply (intro exI[of _ p] conjI)
@@ -258,7 +258,7 @@ lemma id_id_gen:
               apply (rule disjI1)
               apply simp
               apply (rule image_eqI[rotated])
-               apply (simp add: Set.filter_def)
+               apply (simp add: )
                apply (rule disjI2)
                apply (intro exI conjI)
                  apply (auto simp add: )

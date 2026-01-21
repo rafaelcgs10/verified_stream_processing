@@ -87,7 +87,8 @@ lemma  shift_LCons_Cons:
 
 lemma lnull_shift[simp]:
   "lnull (xs @@- lxs) = (List.null xs \<and> lnull lxs)"
-  by (metis eq_Nil_null llist.discI(2) lshift.elims lshift.simps(1))
+   by (metis LNil_eq_shift_iff List.null_iff lnull_def)
+
 
 corecursive lconcat where
   "lconcat xss = (if \<forall>xs \<in> lset xss. xs = [] then LNil else case xss of LNil \<Rightarrow> LNil
@@ -230,12 +231,12 @@ lemma lconcat_lmap_LNil:
 lemma lconcat_correct:
   "lconcat lxs = Coinductive_List.lconcat (lmap llist_of lxs)"
   apply (rule lconcat_unique[THEN sym, THEN fun_cong])
-  apply (simp add:  eq_Nil_null split: list.splits llist.splits)
+  apply (simp add:   split: list.splits llist.splits)
   apply (simp add: lconcat_lmap_LNil )
   apply (intro allI impI)
   subgoal
     using lappend_llist_of
-    by (smt (verit, best) eq_Nil_null lappend_code(1) lconcat_lmap_LNil llist_of.simps(1) null_rec(1))
+    by blast
   done
 
 end

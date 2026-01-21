@@ -547,7 +547,8 @@ lemma change_multiplicities_same_pointstamps_aux:
   subgoal premises prems for a xs c
     using prems(2-) apply -
     apply (cases a; clarsimp)
-    subgoal using prems(1) by (smt (verit) List.fold_cong fold_map fun_comp_eq_conv list.sel(1) list.set_cases list.set_intros(1))
+    subgoal using prems(1)
+      by (smt (verit) List.fold_cong List.fold_simps(1) fun_comp_eq_conv hd_in_set list.simps(8))
     done
   done
 

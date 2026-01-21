@@ -199,7 +199,9 @@ lemma antichain_from_list_empty:
 
 lemma empty_is_empty_antichain[simp]:
   "is_empty_antichain (antichain {})"
-  by (metis Set.is_empty_def empty_antichain.abs_eq empty_antichain.rep_eq is_empty_antichain.rep_eq)
+  by (metis Set.is_empty_iff empty_antichain.rep_eq empty_antichain_def is_empty_antichain.rep_eq)
+
+
 
 lemma not_in_empty[simp]:
   "a \<in>\<^sub>A {}\<^sub>A \<Longrightarrow> False"
@@ -232,17 +234,17 @@ lift_definition zequal :: "'a zmultiset \<Rightarrow> 'a zmultiset \<Rightarrow>
 lemma is_empty_antichain_simp[simp]:
   "is_empty_antichain {}\<^sub>A"
   apply transfer
-  apply (auto simp add: Set.is_empty_def)
+  apply (auto simp add: Set.is_empty_iff)
   done
 lemma is_empty_antichain_empty_list[simp]:
   "is_empty_antichain (antichain_from_list [])"
   apply transfer
-  apply (auto simp add: Set.is_empty_def)
+  apply (auto simp add: Set.is_empty_iff)
   done
 lemma is_empty_antichain_not_empty_list[simp]:
   "\<not> is_empty_antichain (antichain_from_list [a])"
   apply transfer
-  apply (auto simp add: Set.is_empty_def)
+  apply (auto simp add: Set.is_empty_iff)
   done
 
 definition "reachable_locations summary \<equiv> { loc . \<exists> loc' .

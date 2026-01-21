@@ -238,10 +238,8 @@ definition "antichain_equal A1 A2 = (is_empty_antichain (filter_antichain (\<lam
 lemma equal_antichain_equal:
   "antichain_equal A1 A2 \<longleftrightarrow> A1 = A2"
   unfolding antichain_equal_def
-  apply auto
-  apply (metis Set.is_empty_def ac_eq_iff filter_antichain.rep_eq is_empty_antichain.rep_eq member_antichain.rep_eq member_filter)
-   apply (metis (lifting) ac_eq_iff filter_antichain.rep_eq is_empty_antichain_simp mem_antichain_nonempty member_antichain.rep_eq member_filter)+
-  done
+  by(auto simp add: Set.is_empty_iff ac_eq_iff filter_antichain.rep_eq is_empty_antichain.rep_eq member_antichain.rep_eq filter_antichain.rep_eq member_antichain.rep_eq)
+
 
 instantiation antichain :: (order) equal
 begin

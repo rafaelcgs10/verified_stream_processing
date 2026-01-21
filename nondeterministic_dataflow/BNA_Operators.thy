@@ -489,7 +489,7 @@ lemma step_comp_op_R[intro]:
   apply (induct io op2 op2' arbitrary: op1 buf rule: step.induct)
   subgoal for p x f op1 buf
     apply (subst (1) comp_op_code)
-    unfolding cfilter_def Set.filter_def
+    unfolding cfilter_def 
     apply (clarsimp split: IO.splits option.splits intro: step.intros)
     subgoal
       apply (rule SC)
@@ -507,7 +507,7 @@ lemma step_comp_op_R[intro]:
     done
   subgoal for q x op op1 buf
     apply (subst (1) comp_op_code)
-    unfolding cfilter_def Set.filter_def
+    unfolding cfilter_def 
     apply (clarsimp split: IO.splits option.splits intro: step.intros)
     apply (rule SC)
      apply (rule cUnI2)
@@ -525,10 +525,6 @@ lemma step_comp_op_R[intro]:
     apply auto
     apply (subst (1) comp_op_code)
     apply auto
-    apply (rule SC[rotated])
-     apply (rule ST)
-    apply auto
-    apply force
     done
   subgoal for op ops l op' op1 buf
     apply (erule step_choicesE)
@@ -541,7 +537,7 @@ lemma step_comp_op_R[intro]:
        apply simp
        apply (rule image_eqI[of "Read (Inr p) (\<lambda>x. comp_op wire buf op1 (f x))" _ "Read p f"])
         apply simp
-      unfolding cfilter_def Set.filter_def
+      unfolding cfilter_def 
        apply auto
       done
     subgoal for p x
@@ -553,7 +549,7 @@ lemma step_comp_op_R[intro]:
        apply simp
        apply (rule image_eqI[of _ _ "Write op' p x"])
         apply simp
-      unfolding cfilter_def Set.filter_def
+      unfolding cfilter_def 
        apply auto
       done
     subgoal
@@ -969,7 +965,7 @@ lemma bisim_comp_op_cong:
       subgoal for op ops l op' buf op1 op2 op1'
         apply auto
         apply (subst (asm) (5) comp_op_code)
-        apply (simp add: Set.filter_def ranI image_iff bex_Un split: option.splits)
+        apply (simp add:  ranI image_iff bex_Un split: option.splits)
         apply (elim exE bexE disjE)
         subgoal for op'
           apply (cases op')
@@ -985,7 +981,7 @@ lemma bisim_comp_op_cong:
                  apply (subst comp_op_code)
                  apply simp
                  apply (rule SC)
-                  apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                  apply (simp add:  ranI image_iff bex_Un)
                   apply hypsubst_thin
                   apply (rule disjI1)
                   apply (rule bexI[of _ "Read p f'"])
@@ -1001,7 +997,7 @@ lemma bisim_comp_op_cong:
               done
             done
           subgoal for op1'' p x
-            apply (simp add: Set.filter_def ranI image_iff bex_Un split: option.splits)
+            apply (simp add:  ranI image_iff bex_Un split: option.splits)
             subgoal
               apply hypsubst_thin
               apply (drule bisim_choices_Write)
@@ -1011,7 +1007,7 @@ lemma bisim_comp_op_cong:
                apply (subst comp_op_code)
                apply simp
                apply (rule SC)
-                apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                apply (simp add:  ranI image_iff bex_Un)
                 apply (rule disjI1)
                 apply (erule bexI[rotated])
                 apply simp
@@ -1028,7 +1024,7 @@ lemma bisim_comp_op_cong:
                apply (subst comp_op_code)
                apply simp
                apply (rule SC)
-                apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                apply (simp add:  ranI image_iff bex_Un)
                 apply (rule disjI1)
                 apply (erule bexI[rotated])
                 apply simp
@@ -1048,7 +1044,7 @@ lemma bisim_comp_op_cong:
              apply (subst comp_op_code)
              apply simp
              apply (rule SC)
-              apply (simp add: Set.filter_def ranI image_iff bex_Un)
+              apply (simp add:  ranI image_iff bex_Un)
               apply (rule disjI1)
               apply (erule bexI[rotated])
               apply simp
@@ -1072,7 +1068,7 @@ lemma bisim_comp_op_cong:
                  apply (subst comp_op_code)
                  apply simp
                  apply (rule SC)
-                  apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                  apply (simp add:  ranI image_iff bex_Un)
                   apply hypsubst_thin
                   apply (rule disjI2)
                   apply force
@@ -1096,7 +1092,7 @@ lemma bisim_comp_op_cong:
                  apply (subst comp_op_code)
                  apply simp
                  apply (rule SC)
-                  apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                  apply (simp add:  ranI image_iff bex_Un)
                   apply (rule disjI2)
                   apply (intro exI conjI)
                     apply blast
@@ -1117,7 +1113,7 @@ lemma bisim_comp_op_cong:
                  apply (subst comp_op_code)
                  apply simp
                  apply (rule SC)
-                  apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                  apply (simp add:  ranI image_iff bex_Un)
                   apply (rule disjI2)
                   apply (intro exI conjI)
                     apply blast
@@ -1142,7 +1138,7 @@ lemma bisim_comp_op_cong:
                apply (subst comp_op_code)
                apply simp
                apply (rule SC)
-                apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                apply (simp add:  ranI image_iff bex_Un)
                 apply (rule disjI2)
                 apply (intro exI conjI)
                   apply simp_all
@@ -1164,7 +1160,7 @@ lemma bisim_comp_op_cong:
              apply (subst comp_op_code)
              apply simp
              apply (rule SC)
-              apply (simp add: Set.filter_def ranI image_iff bex_Un)
+              apply (simp add:  ranI image_iff bex_Un)
               apply (rule disjI2)
               apply (intro exI conjI)
                 apply simp_all
@@ -1183,7 +1179,7 @@ lemma bisim_comp_op_cong:
       subgoal for op ops l op' buf op1' op2' op1 op2
         apply auto
         apply (subst (asm) (5) comp_op_code)
-        apply (simp add: Set.filter_def ranI image_iff bex_Un split: option.splits)
+        apply (simp add:  ranI image_iff bex_Un split: option.splits)
         apply (elim exE bexE disjE)
         subgoal for op'
           apply (cases op')
@@ -1200,7 +1196,7 @@ lemma bisim_comp_op_cong:
                  apply (subst comp_op_code)
                  apply simp
                  apply (rule SC)
-                  apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                  apply (simp add:  ranI image_iff bex_Un)
                   apply hypsubst_thin
                   apply (rule disjI1)
                   apply (rule bexI[of _ "Read p f'"])
@@ -1213,7 +1209,7 @@ lemma bisim_comp_op_cong:
               done
             done
           subgoal for op1'' p x
-            apply (simp add: Set.filter_def ranI image_iff bex_Un split: option.splits)
+            apply (simp add:  ranI image_iff bex_Un split: option.splits)
             subgoal
               apply hypsubst_thin
               apply (subst (asm) (5) bisim_sym)
@@ -1224,7 +1220,7 @@ lemma bisim_comp_op_cong:
                apply (subst comp_op_code)
                apply simp
                apply (rule SC)
-                apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                apply (simp add:  ranI image_iff bex_Un)
                 apply (rule disjI1)
                 apply (erule bexI[rotated])
                 apply simp
@@ -1243,7 +1239,7 @@ lemma bisim_comp_op_cong:
                apply (subst comp_op_code)
                apply simp
                apply (rule SC)
-                apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                apply (simp add:  ranI image_iff bex_Un)
                 apply (rule disjI1)
                 apply (erule bexI[rotated])
                 apply simp_all
@@ -1269,7 +1265,7 @@ lemma bisim_comp_op_cong:
              apply (subst comp_op_code)
              apply simp
              apply (rule SC)
-              apply (simp add: Set.filter_def ranI image_iff bex_Un)
+              apply (simp add:  ranI image_iff bex_Un)
               apply (rule disjI1)
               apply (erule bexI[rotated])
               apply simp_all
@@ -1296,7 +1292,7 @@ lemma bisim_comp_op_cong:
              apply (subst comp_op_code)
              apply simp
              apply (rule SC)
-              apply (simp add: Set.filter_def ranI image_iff bex_Un)
+              apply (simp add:  ranI image_iff bex_Un)
               apply (rule disjI2)
               apply force
              apply simp_all
@@ -1321,7 +1317,7 @@ lemma bisim_comp_op_cong:
                apply (subst comp_op_code)
                apply simp
                apply (rule SC)
-                apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                apply (simp add:  ranI image_iff bex_Un)
                 apply (rule disjI2)
                 apply force
                apply simp_all
@@ -1343,7 +1339,7 @@ lemma bisim_comp_op_cong:
                apply (subst comp_op_code)
                apply simp
                apply (rule SC)
-                apply (simp add: Set.filter_def ranI image_iff bex_Un)
+                apply (simp add:  ranI image_iff bex_Un)
                 apply (rule disjI2)
                 apply force
                apply simp_all
@@ -1484,7 +1480,7 @@ lemma wbisim_comp_op_cong:
       subgoal for op ops io op' buf op1 op2 op1' op2'
         apply auto
         apply (subst (asm) (5) comp_op_code)
-        apply (simp add: Set.filter_def ranI image_iff bex_Un split: option.splits)
+        apply (simp add:  ranI image_iff bex_Un split: option.splits)
         apply (elim exE bexE disjE)
         subgoal for op'
           apply (cases op')
@@ -1688,7 +1684,7 @@ lemma wbisim_comp_op_cong:
       subgoal for op ops io op' buf op1' op2' op1 op2
         apply auto
         apply (subst (asm) (5) comp_op_code)
-        apply (simp add: Set.filter_def ranI image_iff bex_Un split: option.splits)
+        apply (simp add:  ranI image_iff bex_Un split: option.splits)
         apply (elim exE bexE disjE)
         subgoal for op'
           apply simp
@@ -1909,7 +1905,7 @@ lemma loop_op_simps[simp]:
    | Write op' p x \<Rightarrow> (case wire p of None \<Rightarrow> Write (loop_op wire buf op') p x | Some q \<Rightarrow> Silent (loop_op wire (BENQ q x buf) op'))
    | Silent op' \<Rightarrow> Silent (loop_op wire buf op')
    ) (sound_reads wire buf (choices (Choice ops))))"
-  by (subst loop_op.code, (auto simp add: image_iff Set.filter_def split: option.splits if_splits))+
+  by (subst loop_op.code, (auto simp add: image_iff  split: option.splits if_splits))+
 
 lemma loop_op_not_Read[simp]:
   "\<not> is_Read (loop_op wire buf op)"
@@ -4113,7 +4109,7 @@ lemma step_transp_op_Out:
    apply (subst (asm) transp_op_code)
    apply simp
   apply (subst (asm) (3) transp_op_code)
-  apply (simp add: Set.filter_def \<UU>_def split: sum.splits)
+  apply (simp add:  \<UU>_def split: sum.splits)
    apply (smt (z3) IO.inject(2) IO.simps(4) Inl_inject Un_iff defaults_sum_def image_iff mem_Collect_eq stepReadE stepWriteE sum.case_eq_if sum.collapse(2) sum.simps(4))
   apply (smt (z3) IO.inject(2) IO.simps(4) UnI1 defaults_sum_def image_iff isl_def mem_Collect_eq stepReadE stepWriteE sum.case_eq_if sum.sel(1) sum.sel(2) sum.simps(4))
   done
@@ -4146,7 +4142,7 @@ lemma step_transp_op_cases:
     done
   subgoal for p x
     apply (subst (asm) transp_op_code)
-    apply (auto simp add: Set.filter_def \<UU>_def split: sum.splits)
+    apply (auto simp add:  \<UU>_def split: sum.splits)
            apply (metis case_sum_defaults obj_sumE old.sum.simps)+
     done
   subgoal
@@ -5218,7 +5214,6 @@ lemma acopy_op_code:
     apply auto
     done
   subgoal
-    unfolding Set.filter_def
     apply (rule image_eqI[rotated])
      apply simp
      apply (rule disjI2)

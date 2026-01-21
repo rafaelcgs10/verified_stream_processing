@@ -26,7 +26,8 @@ section \<open>cset lifts\<close>
 context includes cset.lifting begin
 lift_definition cUNIV :: "'m :: countable cset" is UNIV by auto
 lift_definition cproduct :: "'a cset \<Rightarrow> 'b cset \<Rightarrow> ('a \<times> 'b) cset" is "(\<times>)" by auto
-lift_definition cfilter :: "('a \<Rightarrow> bool) \<Rightarrow> 'a cset \<Rightarrow> 'a cset" is Set.filter by (simp add: Set.filter_def)
+lift_definition cfilter :: "('a \<Rightarrow> bool) \<Rightarrow> 'a cset \<Rightarrow> 'a cset" is Set.filter
+  by (simp add: )
 lift_definition c\<UU> :: "('m :: {countable, defaults}) cset" is "\<UU>" by auto
 
 end
@@ -43,8 +44,7 @@ lemma cfilter_eq[simp]:
 
 lemma cin_cfilter[simp]:
   "x |\<in>| cfilter P A \<longleftrightarrow> x |\<in>| A \<and> P x"
-  by (metis cfilter.rep_eq cin.rep_eq member_filter)
-
+  by (simp add: cin.rep_eq)
 
 lemma cin_cimage_cfilter[simp]:
   "x |\<in>| cimage f (cfilter P A) \<longleftrightarrow> (\<exists> y. y |\<in>| A \<and> P y \<and> x = f y)"

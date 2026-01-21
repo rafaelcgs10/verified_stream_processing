@@ -506,7 +506,7 @@ lemma frontier_less_equal_empty_antichain[simp]:
   "\<not> frontier_less_equal {}\<^sub>A A"
   unfolding frontier_less_equal_def
   apply transfer
-  unfolding Set.filter_def Set.is_empty_def
+  unfolding Set.filter_eq Set.is_empty_iff
   apply simp
   done
 
@@ -516,14 +516,14 @@ lemma frontier_less_equal_iff:
   unfolding frontier_less_equal_def less_eq_antichain_def
   apply (auto simp add: in_frontier_iff)
   subgoal
-    unfolding is_empty_antichain_def Set.is_empty_def
+    unfolding is_empty_antichain_def Set.is_empty_iff
     apply clarsimp
-    apply (metis equals0I filter_antichain.rep_eq member_filter set_antichain1)
+    apply (simp add: filter_antichain.rep_eq member_antichain.rep_eq)
     done
   subgoal
-    unfolding is_empty_antichain_def Set.is_empty_def
+    unfolding is_empty_antichain_def Set.is_empty_iff
     apply clarsimp
-    apply (metis empty_iff filter_antichain.rep_eq member_antichain.rep_eq member_filter)
+    apply (simp add: filter_antichain.rep_eq member_antichain.rep_eq)
     done
   done
 
@@ -549,14 +549,14 @@ lemma frontier_less_equal_iff2:
   unfolding frontier_less_equal_def
   apply (auto simp add: in_frontier_iff)
   subgoal
-    unfolding is_empty_antichain_def Set.is_empty_def
+    unfolding is_empty_antichain_def Set.is_empty_iff
     apply clarsimp
-    apply (metis equals0I filter_antichain.rep_eq member_filter set_antichain1)
+    apply (simp add: filter_antichain.rep_eq member_antichain.rep_eq)
     done
   subgoal
-    unfolding is_empty_antichain_def Set.is_empty_def
+    unfolding is_empty_antichain_def Set.is_empty_iff
     apply clarsimp
-    apply (metis empty_iff filter_antichain.rep_eq member_antichain.rep_eq member_filter)
+    apply (simp add: filter_antichain.rep_eq member_antichain.rep_eq)
     done
   done
 
