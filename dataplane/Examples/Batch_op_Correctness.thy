@@ -846,7 +846,13 @@ lemma
   apply (subst (1 2) dataflow_topology.implied_frontier_alt_def)
    apply assumption
   apply (subst (1 2) comm_monoid_add_class.sum.subset_diff[where B="{la,lb}"])
-apply simp_all
+    apply simp_all
+  oops
+
+lemma
+  "A' = A - a \<Longrightarrow>
+   frontier (zmset_of (mset_set (set_antichain (frontier A))) + zmset_of (mset_set (set_antichain (frontier B)))) = frontier (zmset_of (mset_set (set_antichain (frontier A'))) + zmset_of (mset_set (set_antichain (frontier B'))))"
+
   apply (rule arg_cong[where f=frontier])
   apply simp
   subgoal premises prems
