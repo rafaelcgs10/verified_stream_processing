@@ -182,58 +182,12 @@ definition "changes_non_zero_inv cgs = (\<forall>d\<in>snd ` snd ` set cgs. d \<
 definition "changes_above_impl_inv su c cgs = 
   ((\<forall>(l, t, d)\<in>set cgs. frontier_less_equal (ifrontier su (+) c l) t))"
 
-
-lemma
-  "graph.path_weight su l' l \<noteq> {}\<^sub>A \<Longrightarrow>
-   dataflow_topology su (+) \<Longrightarrow>
-   ifrontier su (+) c l \<le> ifrontier su (+) c l'"
-  apply (subst (1 2) Propagate.dataflow_topology.implied_frontier_alt_def)
-   apply assumption
-  apply (rule frontier_sum_le_alt2)
-  apply simp_all
-  apply auto
-  subgoal for l''
-    unfolding subseteq_zmset_def
-    apply auto
-    subgoal for t
-        apply (subgoal_tac "graph.path_weight su l'' l \<le> graph.path_weight su l'' l' + graph.path_weight su l' l")
-
-
-      find_consts "_ antichain \<Rightarrow> _ antichain"
-
-
-end
-  subgoal
-    apply (intro allI)
-    apply (rule frontier_sum_le_alt)
-      apply simp_all
-    subgoal for loc'
-      apply (intro ballI)
-      subgoal for s
-        apply (drule spec[of _ loc'])
-        apply (drule mp)
-        using set_antichain1 apply blast
-        apply (rule frontier_le_image)
-          apply simp_all
-        done
-      done
-    done
-  subgoal
-    by (simp add: sum_nonneg zcount_sum)
-  done
-
-  find_theorems ifrontier "(\<le>)"
-
-
-end
-definition "extract_progress_inv su ed os c = 
+ definition "extract_progress_inv su ed os c = 
  (\<forall> nid nid'.
    nid \<noteq> nid' \<longrightarrow>
    (\<forall>(l, t, m)\<in>set (extract_progress nid ed ((snd o obtain_progress) (os nid))).
    frontier_less_equal (ifrontier su (+) (change_multiplicities su (extract_progress nid' ed ((snd o obtain_progress) (os nid'))) c) l) t))"
 
-definition "ifrontier_extract_progress_inv su ed os c =
-  (\<forall> l. ifrontier su (+) c)"
 
 abbreviation "su_test a b \<equiv> dataflow_tree_to_graph (
     Comp [(0, 0) \<mapsto> (1, 1), (1, 0) \<mapsto> (0, 0)] 
@@ -279,9 +233,7 @@ definition "dataplane_tracker_inv os cbufs sg =
      changes_non_zero_inv cgs \<and>
      propagation_inv (summ sg) c \<and>
      changes_above_impl_inv (summ sg) c cgs \<and>
-     extract_progress_inv (summ sg) (edges sg) os c)"
-
-
+     (\<forall> nid. changes_above_impl_inv (summ sg) (change_multiplicities (summ sg) (extract_progress nid (edges sg) (snd (obtain_progress (os nid)))) c) (minus_list_mset cgs (extract_progress nid (edges sg) (snd (obtain_progress (os nid)))))))"
 
 lemma zmset_map_filter_Trg_extract_prog:
   "zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog (edges sg) os))) = 
@@ -697,6 +649,13 @@ lemma
   subgoal for t'
     oops
 
+
+
+  lemma sorried1:
+  "set (minus_list_mset (concat xs) x) =
+   set (concat (remove1 x xs))"
+    sorry
+
 lemma
   "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
    cbufs (nid, p) = (d, t) # xs \<Longrightarrow>
@@ -850,6 +809,56 @@ lemma
         done
       done
     subgoal premises prems
+      apply auto
+      subgoal 
+        unfolding changes_above_impl_inv_def extract_prog_def
+        apply clarsimp
+        apply (subst (asm) sorried1)
+        apply simp_all
+        apply (subst (asm) set_remove1_eq)
+         apply (simp add: distinct_map enum_class.enum_distinct enum_class.enum_UNIV)
+        subgoal sorry
+        subgoal for l t' m
+          apply (elim bexE)
+          apply simp
+          apply (elim conjE)
+         apply (simp add: image_iff distinct_map enum_class.enum_distinct enum_class.enum_UNIV)
+          apply (elim exE)
+          apply simp
+          apply hypsubst_thin
+          apply (simp split: if_splits)
+          subgoal for nid'
+            using prems(12) apply -
+            apply (drule spec[of _ nid'])
+            unfolding changes_above_impl_inv_def
+            apply (drule bspec)
+            oops
+
+            term "dataflow_topology.after_summary (+)"
+
+lemma
+  "c' = c\<lparr> c_pts := ((c_pts c)(la := (c_pts c la) - A, lb := (c_pts c lb) + B)) \<rparr> \<Longrightarrow>
+   B = dataflow_topology.after_summary (+) A (graph.path_weight su la lb) \<Longrightarrow>
+   dataflow_topology su (-+-) \<Longrightarrow>
+   la \<noteq> lb \<Longrightarrow>
+    graph.path_weight su la l = graph.path_weight su la lb + graph.path_weight su lb l \<Longrightarrow>
+   ifrontier su (-+-) c' l = ifrontier su (-+-) c l"
+  apply (subst (1 2) dataflow_topology.implied_frontier_alt_def)
+   apply assumption
+  apply (subst (1 2) comm_monoid_add_class.sum.subset_diff[where B="{la,lb}"])
+apply simp_all
+  apply (rule arg_cong[where f=frontier])
+  apply simp
+  subgoal premises prems
+    apply (auto simp add: zcount_sum zcount_image_zmset plus_antichain.rep_eq minimal_antichain_def)
+
+        find_theorems "minimal_antichain (_ \<union> _)"
+
+        apply auto
+        oops
+
+
+
       using prems(12) apply -
       unfolding extract_progress_inv_def
       apply (auto 0 0 simp add: split_beta)
