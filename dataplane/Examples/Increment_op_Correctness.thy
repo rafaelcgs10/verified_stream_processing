@@ -115,8 +115,7 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
           using that BHD_def BTL_access hd_Cons_tl hd_map list.map_disc_iff map_tl o_apply split_conv sum.sel(2)
           unfolding invariant_def by (smt (verit, best))
         hence \<open>my_source_op f inc os1 buf os2 = my_source_op f inc os1 ?buf' ?os2'\<close>
-          unfolding my_source_op_def
-          by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] arg_cong[where f=\<open>lshift _\<close>] arg_cong[where f=\<open>\<lambda>x. lshift x _\<close>] simp add: fun_eq_iff consumes_def add_caps_def)
+          unfolding my_source_op_def consumes_def add_caps_def by simp
         moreover have \<open>invariant f os1 ?buf' ?os2'\<close>
         proof -
           have \<open>initia ?os2'\<close> using that(1) unfolding invariant_def consumes_def add_caps_def by simp
@@ -155,8 +154,7 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
         have input_os2': \<open>input os2' 1 = []\<close>
           using that(3) unfolding increment_op_logic_def by simp
         have \<open>my_source_op f inc os1 buf os2 = my_source_op f inc os1 buf os2'\<close>
-          unfolding my_source_op_def
-          by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] simp add: fun_eq_iff lshift_append_lshift outpu_os2' input_os2')
+          using outpu_os2' input_os2' unfolding my_source_op_def by (simp add: lshift_append_lshift)
         moreover have \<open>invariant f os1 buf os2'\<close>
           using that(1,3) unfolding invariant_def increment_op_logic_def drop_caps_def produces_def by simp
         ultimately show ?thesis unfolding R_def by blast
@@ -212,15 +210,180 @@ next
           show ?thesis
           proof (cases \<open>outpu os1 1\<close>)
             case outpu_os1_Nil: Nil
-            show ?thesis sorry
+            let ?lxs' = \<open>ltl (ldropWhile (Not \<circ> is_Data) (es os1 1))\<close>
+            obtain t' d' where t'_d': \<open>ldropWhile (Not \<circ> is_Data) (es os1 1) = LCons (Data t' d') ?lxs'\<close>
+              \<open>t' + inc = t\<close> \<open>f d' = d\<close>
+            proof -
+              have \<open>lmap (\<lambda>(d, t). (d, t + inc)) (lmap (\<lambda>x. case x of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os1 1)))
+  = LCons (d, t) lxs\<close> using source_llist outpu_os2_Nil input_os2_Nil buf_Nil outpu_os1_Nil by simp
+              then obtain t' where t': \<open>lmap (\<lambda>x. case x of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os1 1))
+  = LCons (d, t') (ltl (lmap (\<lambda>x. case x of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os1 1))))\<close> \<open>t' + inc = t\<close>
+                using lmap_eq_LCons_conv case_prod_Pair_iden case_prod_conv llist.sel(3) prod.simps(1)
+                  split_cong by (smt (verit, ccfv_threshold))
+              then obtain d' where d': \<open>lfilter is_Data (es os1 1) = LCons (Data t' d') (ltl (lfilter is_Data (es os1 1)))\<close> \<open>f d' = d\<close>
+                using lmap_eq_LCons_conv event.case fun_comp_eq_conv is_Data_def ldropWhile_LConsD
+                  lfilter_eq_LCons llist.sel(3) prod.simps(1) lfilter_eq_LConsD
+                by (smt (verit, ccfv_threshold))
+              thus ?thesis using that t'(2) d'(2) lfilter_eq_LCons llist.sel(3) by metis
+            qed
+            have lfinite_not_Data: \<open>lfinite (ltakeWhile (Not \<circ> is_Data) (es os1 1))\<close>
+              using t'_d'(1) lfinite_ltakeWhile by fastforce
+            let ?xs = \<open>list_of (ltakeWhile (Not \<circ> is_Data) (es os1 1))\<close>
+            have set_not_Data: \<open>\<forall>e \<in> set ?xs. \<not> is_Data e\<close>
+              using lfinite_not_Data set_list_of lset_ltakeWhileD trimono_spec_defs(3) by metis
+            let ?os1_1 = \<open>foldl (ooo_input_os_Drop_Mint 1) (os1\<lparr>es := (es os1)(1 := ?lxs')\<rparr>) ?xs\<close>
+            have en1_os1_1: \<open>en1 ?os1_1 = f\<close> using that(1) foldl_ooo_input_os_Drop_Mint(4)[OF set_not_Data]
+              unfolding invariant_def by fast
+            let ?os1_2 = \<open>produce ?os1_1 (Cap t' 1) [f d']\<close>
+            have \<open>(step Tau)\<^sup>*\<^sup>* (ooo_input_op {|1 :: 1|} os1) (ooo_input_op {|1 :: 1|} ?os1_2)\<close>
+              using that(1) step_Taus_ooo_input_op_Drop_Mint[OF lfinite_not_Data t'_d'(1)] en1_os1_1
+              unfolding invariant_def by simp
+            hence step_Taus: \<open>(step Tau)\<^sup>*\<^sup>*
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op os1) (my_increment_op inc os2))))
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op ?os1_2) (my_increment_op inc os2))))\<close>
+              unfolding my_ooo_input_op_def by fast
+            have initia_os1_2: \<open>initia ?os1_2\<close> using that(1) foldl_ooo_input_os_Drop_Mint(1)[OF set_not_Data]
+              unfolding invariant_def produce_def by fastforce
+            have outpu_os1_2: \<open>outpu ?os1_2 1 = [(d, t')]\<close>
+              using outpu_os1_Nil t'_d'(3) foldl_ooo_input_os_Drop_Mint(2)[OF set_not_Data, where os'=\<open>?os1_1\<close>]
+              unfolding produce_def by simp
+            have es_os1_2: \<open>es ?os1_2 1 = ?lxs'\<close>
+              using foldl_ooo_input_os_Drop_Mint(5)[OF set_not_Data, where os'=\<open>?os1_1\<close>]
+              unfolding produce_def by simp
+            have timely_monotone_os1_2: \<open>timely_monotone ?lxs' (mset (ocaps ?os1_2 1))\<close>
+              using that(1) monotone_foldl_ooo_input_os_Drop_Mint[OF lfinite_not_Data t'_d'(1)]
+              unfolding invariant_def produce_def by simp
+            let ?os1_3 = \<open>?os1_2\<lparr>outpu := (outpu ?os1_2)(1 := [])\<rparr>\<close>
+            have step_Tau_1: \<open>step Tau
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op ?os1_2) (my_increment_op inc os2))))
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BENQ (Inr (1, 1)) (Inr (d, t')) buf)
+    (my_ooo_input_op ?os1_3) (my_increment_op inc os2))))\<close>
+              using initia_os1_2 outpu_os1_2 unfolding my_ooo_input_op_def ooo_input_op_def
+              by (auto intro!: step_Tau_dataflow_op_Tau_intro)
+            let ?os2_1 = \<open>consumes os2 1 t' d\<close>
+            have step_Tau_2: \<open>step Tau
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BENQ (Inr (1, 1)) (Inr (d, t')) buf)
+    (my_ooo_input_op ?os1_3) (my_increment_op inc os2))))
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op ?os1_3) (my_increment_op inc ?os2_1))))\<close>
+              using that(1) buf_Nil unfolding invariant_def my_increment_op_def increment_op_def
+              by (auto intro!: step_Tau_dataflow_op_Tau_intro)
+            obtain os2_2 where os2_2: \<open>os2_2 |\<in>| increment_op_logic 1 1 inc ?os2_1\<close>
+              unfolding increment_op_logic_def by blast
+            hence initia_os2_2: \<open>initia os2_2\<close> using that(1) unfolding invariant_def increment_op_logic_def
+                consumes_def add_caps_def drop_caps_def produces_def by simp
+            have input_os2_2: \<open>input os2_2 1 = []\<close> using os2_2 unfolding increment_op_logic_def by simp
+            have outpu_os2_2: \<open>outpu os2_2 1 = [(d, t)]\<close>
+              using outpu_os2_Nil input_os2_Nil os2_2 t'_d'(2) unfolding increment_op_logic_def
+                consumes_def add_caps_def drop_caps_def produces_def by (simp split: prod.splits)
+            have \<open>step Tau (my_increment_op inc ?os2_1) (my_increment_op inc os2_2)\<close>
+              using that(1) Cons os2_2 unfolding invariant_def my_increment_op_def increment_op_def
+                (* consumes_def add_caps_def *)
+              apply -
+              apply (rule step_map_op)
+               apply (rule step_builder_op_Silent)
+                   apply simp_all
+                (* Do I need to add "input os2 1 \<noteq> [] \<Longrightarrow> ocaps os2 1 \<noteq> []" to the invariant? *)
+              sorry
+            hence step_Tau_3: \<open>step Tau
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op ?os1_3) (my_increment_op inc ?os2_1))))
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op ?os1_3) (my_increment_op inc os2_2))))\<close> by auto
+            let ?os2_3 = \<open>os2_2\<lparr>outpu := (outpu os2_2)(1 := [])\<rparr>\<close>
+            have \<open>step (Out (Inr (1, 1)) (Inr (d, t))) (my_increment_op inc os2_2) (my_increment_op inc ?os2_3)\<close>
+              using that outpu_os2_Nil input_os2_Nil Cons t'_d'(2) initia_os2_2 outpu_os2_2
+              unfolding invariant_def my_increment_op_def increment_op_def by auto
+            hence \<open>step (Out (1, 1) (d, t))
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op ?os1_3) (my_increment_op inc os2_2))))
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op ?os1_3) (my_increment_op inc ?os2_3))))\<close> by auto
+            hence \<open>wstep (Out (1, 1) (d, t))
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op os1) (my_increment_op inc os2))))
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op ?os1_3) (my_increment_op inc ?os2_3))))\<close>
+              using step_Taus step_Tau_1 step_Tau_2 step_Tau_3 step_tau_step_io_wstep wstep_trans'(1)
+                wstep_trans_tau_1 by meson
+            moreover have \<open>map_op (\<lambda>(p :: 1). (1, 1)) (\<lambda>(p :: 1). (1, 1)) (source_op ((\<lambda>(p :: 1). LCons (d, t) lxs)(1 := lxs)))
+  = my_source_op f inc ?os1_3 buf ?os2_3\<close>
+              using that(2) outpu_os2_Nil input_os2_Nil buf_Nil outpu_os1_Nil input_os2_2 es_os1_2
+              unfolding my_source_op_def
+              by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] dest: arg_cong[where f=ltl] simp add: fun_eq_iff ltl_lfilter)
+            ultimately show ?thesis using that(1) initia_os1_2 en1_os1_1 es_os1_2 timely_monotone_os1_2
+                initia_os2_2 unfolding invariant_def R_def produce_def by (fastforce intro!: wbc_base)
           next
             case (Cons x xs)
-            show ?thesis sorry
+            then obtain t' where t': \<open>t' + inc = t\<close> \<open>x = (d, t')\<close>
+              using source_llist outpu_os2_Nil input_os2_Nil buf_Nil by (simp split: prod.splits)
+            let ?os1' = \<open>os1\<lparr>outpu := (outpu os1)(1 := xs)\<rparr>\<close>
+            have step_Tau_1: \<open>step Tau
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op os1) (my_increment_op inc os2))))
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BENQ (Inr (1, 1)) (Inr (d, t')) buf)
+    (my_ooo_input_op ?os1') (my_increment_op inc os2))))\<close>
+              using that(1) Cons t'(2) unfolding invariant_def my_ooo_input_op_def ooo_input_op_def
+              by (auto intro!: step_Tau_dataflow_op_Tau_intro)
+            let ?os2_1 = \<open>consumes os2 1 t' d\<close>
+            have step_Tau_2: \<open>step Tau
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BENQ (Inr (1, 1)) (Inr (d, t')) buf)
+    (my_ooo_input_op ?os1') (my_increment_op inc os2))))
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op ?os1') (my_increment_op inc ?os2_1))))\<close>
+              using that(1) buf_Nil unfolding invariant_def my_increment_op_def increment_op_def
+              by (auto intro!: step_Tau_dataflow_op_Tau_intro)
+            obtain os2_2 where os2_2: \<open>os2_2 |\<in>| increment_op_logic 1 1 inc ?os2_1\<close>
+              unfolding increment_op_logic_def by blast
+            hence initia_os2_2: \<open>initia os2_2\<close> using that(1) unfolding invariant_def increment_op_logic_def
+                consumes_def add_caps_def drop_caps_def produces_def by simp
+            have input_os2_2: \<open>input os2_2 1 = []\<close> using os2_2 unfolding increment_op_logic_def by simp
+            have outpu_os2_2: \<open>outpu os2_2 1 = [(d, t)]\<close>
+              using outpu_os2_Nil input_os2_Nil os2_2 t'(1) unfolding increment_op_logic_def
+                consumes_def add_caps_def drop_caps_def produces_def by (simp split: prod.splits)
+            have \<open>step Tau (my_increment_op inc ?os2_1) (my_increment_op inc os2_2)\<close>
+              using that(1) Cons os2_2 unfolding invariant_def my_increment_op_def increment_op_def
+                (* consumes_def add_caps_def *)
+              apply -
+              apply (rule step_map_op)
+               apply (rule step_builder_op_Silent)
+                   apply simp_all
+                (* Do I need to add "input os2 1 \<noteq> [] \<Longrightarrow> ocaps os2 1 \<noteq> []" to the invariant? *)
+              sorry
+            hence step_Tau_3: \<open>step Tau
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op ?os1') (my_increment_op inc ?os2_1))))
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op ?os1') (my_increment_op inc os2_2))))\<close> by auto
+            let ?os2_3 = \<open>os2_2\<lparr>outpu := (outpu os2_2)(1 := [])\<rparr>\<close>
+            have \<open>step (Out (Inr (1, 1)) (Inr (d, t))) (my_increment_op inc os2_2) (my_increment_op inc ?os2_3)\<close>
+              using that outpu_os2_Nil input_os2_Nil Cons t'(1) initia_os2_2 outpu_os2_2
+              unfolding invariant_def my_increment_op_def increment_op_def by auto
+            hence \<open>step (Out (1, 1) (d, t))
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op ?os1') (my_increment_op inc os2_2))))
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op ?os1') (my_increment_op inc ?os2_3))))\<close> by auto
+            hence \<open>wstep (Out (1, 1) (d, t))
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op os1) (my_increment_op inc os2))))
+  (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
+    (my_ooo_input_op ?os1') (my_increment_op inc ?os2_3))))\<close>
+              using step_Tau_1 step_Tau_2 step_Tau_3 by fast
+            moreover have \<open>map_op (\<lambda>(p :: 1). (1, 1)) (\<lambda>(p :: 1). (1, 1)) (source_op ((\<lambda>(p :: 1). LCons (d, t) lxs)(1 := lxs)))
+  = my_source_op f inc ?os1' buf ?os2_3\<close>
+              using that outpu_os2_Nil input_os2_Nil buf_Nil Cons input_os2_2 outpu_os2_2 unfolding invariant_def my_source_op_def BTL_def
+              by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op])
+            ultimately show ?thesis using that(1) initia_os2_2 unfolding invariant_def R_def
+              by (fastforce intro!: wbc_base)
           qed
         next
           case (Cons x xs)
-          obtain t' where t': \<open>t' + inc = t\<close> \<open>BHD (Inr (1, 1)) buf = Inr (d, t')\<close>
-            using inv source_llist outpu_os2_Nil input_os2_Nil Cons unfolding invariant_def BHD_def
+          then obtain t' where t': \<open>t' + inc = t\<close> \<open>BHD (Inr (1, 1)) buf = Inr (d, t')\<close>
+            using inv source_llist outpu_os2_Nil input_os2_Nil unfolding invariant_def BHD_def
             by (cases x; simp split: prod.splits)
           let ?os2_1 = \<open>consumes os2 1 t' d\<close>
           have step_Tau_1: \<open>step Tau
@@ -234,44 +397,44 @@ next
             unfolding increment_op_logic_def by blast
           hence initia_os2_2: \<open>initia os2_2\<close> using that(1) unfolding invariant_def increment_op_logic_def
               consumes_def add_caps_def drop_caps_def produces_def by simp
-        have input_os2_2: \<open>input os2_2 1 = []\<close> using os2_2 unfolding increment_op_logic_def by simp
-        have outpu_os2_2: \<open>outpu os2_2 1 = map (\<lambda>(d, t). (d, t + inc)) (input os2 1 @ [(d, t')])\<close>
-          using outpu_os2_Nil os2_2 unfolding increment_op_logic_def consumes_def add_caps_def
-            drop_caps_def produces_def by (simp split: prod.splits)
-        have \<open>step Tau (my_increment_op inc ?os2_1) (my_increment_op inc os2_2)\<close>
-          using that(1) Cons os2_2 unfolding invariant_def my_increment_op_def increment_op_def
-          apply -
-          apply (rule step_map_op)
-           apply (rule step_builder_op_Silent)
-               apply simp_all
-            (* Do I need to add "input os2 1 \<noteq> [] \<Longrightarrow> ocaps os2 1 \<noteq> []" to the invariant? *)
-          sorry
-        hence step_Tau_2: \<open>step Tau
+          have input_os2_2: \<open>input os2_2 1 = []\<close> using os2_2 unfolding increment_op_logic_def by simp
+          have outpu_os2_2: \<open>outpu os2_2 1 = [(d, t)]\<close>
+            using outpu_os2_Nil input_os2_Nil os2_2 t'(1) unfolding increment_op_logic_def
+              consumes_def add_caps_def drop_caps_def produces_def by (simp split: prod.splits)
+          have \<open>step Tau (my_increment_op inc ?os2_1) (my_increment_op inc os2_2)\<close>
+            using that(1) Cons os2_2 unfolding invariant_def my_increment_op_def increment_op_def
+            apply -
+            apply (rule step_map_op)
+             apply (rule step_builder_op_Silent)
+                 apply simp_all
+              (* Do I need to add "input os2 1 \<noteq> [] \<Longrightarrow> ocaps os2 1 \<noteq> []" to the invariant? *)
+            sorry
+          hence step_Tau_2: \<open>step Tau
   (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BTL (Inr (1, 1)) buf)
     (my_ooo_input_op os1) (my_increment_op inc ?os2_1))))
   (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BTL (Inr (1, 1)) buf)
     (my_ooo_input_op os1) (my_increment_op inc os2_2))))\<close> by auto
-        let ?os2_3 = \<open>os2_2\<lparr>outpu := (outpu os2_2)(1 := tl (outpu os2_2 1))\<rparr>\<close>
-        have \<open>step (Out (Inr (1, 1)) (Inr (d, t))) (my_increment_op inc os2_2) (my_increment_op inc ?os2_3)\<close>
-          using that outpu_os2_Nil input_os2_Nil Cons t'(1) initia_os2_2 outpu_os2_2
-          unfolding invariant_def my_increment_op_def increment_op_def by auto
-        hence \<open>step (Out (1, 1) (d, t))
+          let ?os2_3 = \<open>os2_2\<lparr>outpu := (outpu os2_2)(1 := [])\<rparr>\<close>
+          have \<open>step (Out (Inr (1, 1)) (Inr (d, t))) (my_increment_op inc os2_2) (my_increment_op inc ?os2_3)\<close>
+            using that outpu_os2_Nil input_os2_Nil Cons t'(1) initia_os2_2 outpu_os2_2
+            unfolding invariant_def my_increment_op_def increment_op_def by auto
+          hence \<open>step (Out (1, 1) (d, t))
   (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BTL (Inr (1, 1)) buf)
     (my_ooo_input_op os1) (my_increment_op inc os2_2))))
   (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BTL (Inr (1, 1)) buf)
     (my_ooo_input_op os1) (my_increment_op inc ?os2_3))))\<close> by auto
-        hence \<open>wstep (Out (1, 1) (d, t))
+          hence \<open>wstep (Out (1, 1) (d, t))
   (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
     (my_ooo_input_op os1) (my_increment_op inc os2))))
   (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] (BTL (Inr (1, 1)) buf)
     (my_ooo_input_op os1) (my_increment_op inc ?os2_3))))\<close>
-          using step_Tau_1 step_Tau_2 by fast
-        moreover have \<open>map_op (\<lambda>(p :: 1). (1, 1)) (\<lambda>(p :: 1). (1, 1)) (source_op ((\<lambda>(p :: 1). LCons (d, t) lxs)(1 := lxs)))
+            using step_Tau_1 step_Tau_2 by fast
+          moreover have \<open>map_op (\<lambda>(p :: 1). (1, 1)) (\<lambda>(p :: 1). (1, 1)) (source_op ((\<lambda>(p :: 1). LCons (d, t) lxs)(1 := lxs)))
   = my_source_op f inc os1 (BTL (Inr (1, 1)) buf) ?os2_3\<close>
-          using that outpu_os2_Nil input_os2_Nil Cons input_os2_2 outpu_os2_2 unfolding invariant_def my_source_op_def BTL_def
-          by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] simp add: fun_eq_iff)
-        ultimately show ?thesis using that(1) initia_os2_2 unfolding invariant_def R_def
-          by (fastforce intro!: wbc_base dest: in_set_tlD simp add: BTL_def)
+            using that outpu_os2_Nil input_os2_Nil Cons input_os2_2 outpu_os2_2 unfolding invariant_def my_source_op_def BTL_def
+            by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op])
+          ultimately show ?thesis using that(1) initia_os2_2 unfolding invariant_def R_def
+            by (fastforce intro!: wbc_base dest: in_set_tlD simp add: BTL_def)
         qed
       next
         case (Cons _ xs)
@@ -308,7 +471,7 @@ next
         have \<open>map_op (\<lambda>(p :: 1). (1, 1)) (\<lambda>(p :: 1). (1, 1)) (source_op ((\<lambda>(p :: 1). LCons (d, t) lxs)(1 := lxs)))
   = my_source_op f inc os1 buf ?os2''\<close>
           using that outpu_os2_Nil Cons input_os2' outpu_os2' unfolding invariant_def my_source_op_def
-          by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] simp add: fun_eq_iff append_append_lshift)
+          by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] simp add: append_append_lshift)
         thus ?thesis using that(1) initia_os2' step_Tau step_Out unfolding invariant_def R_def
           by (fastforce intro!: wbc_base)
       qed
@@ -324,248 +487,12 @@ next
       moreover have \<open>map_op (\<lambda>(p :: 1). (1, 1)) (\<lambda>(p :: 1). (1, 1)) (source_op ((\<lambda>(p :: 1). LCons (d, t) lxs)(1 := lxs)))
   = my_source_op f inc os1 buf ?os2'\<close>
         using that Cons unfolding invariant_def my_source_op_def
-        by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] simp add: fun_eq_iff)
+        by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op])
       ultimately show ?thesis using that(1) unfolding invariant_def R_def by (fastforce intro!: wbc_base)
     qed
     thus ?thesis using SIM2 unfolding R_def[symmetric]
       by (sim_cases defs: my_source_op_def elims: step_map_op_elim step_source_op_elim)
-end
-  case SIM2
-  then show ?case
-    apply (elim step_map_op_elim step_source_op_elim conjE; simp; hypsubst_thin?; simp)
-    subgoal for x
-      apply (cases x; cases \<open>outpu os2 0\<close>; simp)
-      subgoal for d t
-        apply (cases \<open>input os2 0\<close>; simp)
-        subgoal
-          apply (cases \<open>buf (Inr (1, 1))\<close>; simp)
-          subgoal
-            apply (cases \<open>outpu os1 0\<close>; simp)
-            subgoal
-              apply (subst (asm) lmap_eq_LCons_conv)
-              apply (elim exE conjE; hypsubst_thin)
-              subgoal for x lxs
-                apply (cases x; simp)
-                subgoal for t'
-                  apply (subgoal_tac \<open>ldropWhile (Not \<circ> is_Data) (es os1 0) = LCons (Data t' d) (ltl (ldropWhile (Not \<circ> is_Data) (es os1 0)))\<close>)
-                   apply (subgoal_tac \<open>lfinite (ltakeWhile (Not \<circ> is_Data) (es os1 0))\<close>)
-                    apply (subgoal_tac \<open>initia (foldl
-                   (\<lambda>os. case_event (\<lambda>a aa. undefined) (\<lambda>t. os\<lparr>inter := operator_state.inter os @ [(1, t, - 1)], ocaps := map_entry 1 (remove_last t) (ocaps os)\<rparr>)
-                           (add_cap os 1))
-                   (os1\<lparr>es := (es os1)(1 := ltl (ldropWhile (\<lambda>x. \<not> is_Data x) (es os1 1)))\<rparr>) (list_of (ltakeWhile (\<lambda>x. \<not> is_Data x) (es os1 1))))
-               \<close>)
-                     apply (subgoal_tac \<open>en1 (foldl
-                   (\<lambda>os. case_event (\<lambda>a aa. undefined) (\<lambda>t. os\<lparr>inter := operator_state.inter os @ [(1, t, - 1)], ocaps := map_entry 1 (remove_last t) (ocaps os)\<rparr>)
-                           (add_cap os 1))
-                   (os1\<lparr>es := (es os1)(1 := ltl (ldropWhile (\<lambda>x. \<not> is_Data x) (es os1 1)))\<rparr>) (list_of (ltakeWhile (\<lambda>x. \<not> is_Data x) (es os1 1))))
-               = id\<close>)
-                  subgoal
-                    apply (intro exI conjI)
-                     apply (rule wstep_trans(1))
-                      apply (rule step_Taus_dataflow_op_Taus_intro)
-                      apply (rule rtranclp.intros(2))
-                       apply (rule rtranclp.intros(2))
-                        apply (rule rtranclp.intros(2))
-                         apply (rule step_star_map_op)
-                         apply (rule step_comp_op_L_Tau_start)
-                         apply (rule step_star_map_op)
-                         apply (rule step_Taus_ooo_input_op_Drop_Mint[where ops=\<open>{|1|}\<close>])
-                                 apply simp_all
-                         apply (unfold ooo_input_op_def ooo_input_op_logic_def)
-                         apply simp
-                        apply (rule step_map_op)
-                         apply (rule step_Tau_comp_op_L)
-                            apply (rule step_map_op)
-                             apply (rule step_builder_op_Write_Some)
-                                 apply (simp_all add: produce_def)
-                         apply (drule outpu_foldl_ooo_input_os_Drop_Mint_es_update[where xs=\<open>list_of (ltakeWhile (Not \<circ> is_Data) (es os1 0))\<close> and lxs=\<open>ltl (ldropWhile (Not \<circ> is_Data) (es os1 0))\<close>])
-                    using set_list_of ltakeWhile_all comp_apply lset_ltakeWhileD ltakeWhile_cong zero_one
-                           apply (smt (verit, best))
-                          apply (rule refl)
-                         apply simp
-                         apply (subgoal_tac \<open>(ooo_input_os_Drop_Mint 1 :: (1, 'c, 'c, 'a, 'e) input_state_scheme \<Rightarrow> ('a, 'c) event \<Rightarrow> (1, 'c, 'c, 'a, 'e) input_state_scheme)
-  = (\<lambda>os. case_event (\<lambda>a aa. undefined) (\<lambda>t. os\<lparr>inter := operator_state.inter os @ [(1, t, - 1)], ocaps := map_entry 1 (remove_last t) (ocaps os)\<rparr>) (add_cap os 1))\<close>)
-                          apply simp
-                    using event.case apply simp
-                        apply simp
-                       apply (rule step_map_op)
-                        apply (rule step_Tau_comp_op_R)
-                             apply (rule step_map_op)
-                              apply (rule step_builder_op_Read_Some)
-                                 apply auto[11]
-                      apply (rule step_map_op)
-                       apply (rule step_comp_op_R_Tau)
-                         apply (rule step_map_op)
-                          apply (rule step_builder_op_Silent)
-                             apply auto[8]
-                     apply (rule step_Out_dataflow_op_Out_Inr_intro)
-                     apply (rule step_map_op)
-                      apply (rule step_comp_op_R_Out)
-                        apply (rule step_map_op)
-                         apply (rule step_builder_op_Write_Some)
-                             apply (simp_all add: produce_def)
-                     apply simp
-                    apply (rule wbc_base)
-                    apply (subgoal_tac \<open>es (foldl
-             (\<lambda>os. case_event (\<lambda>a aa. undefined) (\<lambda>t. os\<lparr>inter := operator_state.inter os @ [(1, t, - 1)], ocaps := map_entry 1 (remove_last t) (ocaps os)\<rparr>) (add_cap os 1))
-             (os1\<lparr>es := (es os1)(1 := ltl (ldropWhile (\<lambda>x. \<not> is_Data x) (es os1 1)))\<rparr>) (list_of (ltakeWhile (\<lambda>x. \<not> is_Data x) (es os1 1))))
-         1 = ltl (ldropWhile (\<lambda>x. \<not> is_Data x) (es os1 1))\<close>)
-                     apply (intro exI conjI)
-                             apply (rule refl)
-                            apply (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] arg_cong[where f=\<open>lmap _\<close>] simp add: fun_eq_iff)
-                    using ltl_lfilter ext comp_apply ltl_lmap ltl_simps(2) apply (metis (lifting))
-                     apply (rule monotone_ooo_input_os_Drop_Mint_es_update)
-                        apply simp
-                       apply simp
-                      apply assumption
-                     apply simp
-                    apply (rule es_foldl_ooo_input_os_Drop_Mint[where os=\<open>(os1\<lparr>es := (es os1)(1 := ltl (ldropWhile (\<lambda>x. \<not> is_Data x) (es os1 1)))\<rparr>)\<close> and xs=\<open>list_of (ltakeWhile (Not \<circ> is_Data) (es os1 0))\<close>])
-                      apply simp
-                    using set_list_of ltakeWhile_all comp_apply lset_ltakeWhileD ltakeWhile_cong zero_one
-                     apply (smt (verit, best))
-                    apply simp
-                    done
-                     apply (drule en1_foldl_ooo_input_os_Drop_Mint_es_update[where p=1 and xs=\<open>list_of (ltakeWhile (Not \<circ> is_Data) (es os1 0))\<close> and lxs=\<open>ltl (ldropWhile (Not \<circ> is_Data) (es os1 1))\<close>])
-                  using set_list_of ltakeWhile_all comp_apply lset_ltakeWhileD ltakeWhile_cong zero_one
-                       apply (smt (verit, best))
-                      apply (rule refl)
-                     apply (subgoal_tac \<open>(ooo_input_os_Drop_Mint 1 :: (1, 'c, 'c, 'a, 'e) input_state_scheme \<Rightarrow> ('a, 'c) event \<Rightarrow> (1, 'c, 'c, 'a, 'e) input_state_scheme)
-  = (\<lambda>os. case_event (\<lambda>a aa. undefined) (\<lambda>t. os\<lparr>inter := operator_state.inter os @ [(1, t, - 1)], ocaps := map_entry 1 (remove_last t) (ocaps os)\<rparr>) (add_cap os 1))\<close>)
-                      apply simp
-                  using event.case apply simp
-                    apply (drule initia_foldl_ooo_input_os_Drop_Mint_es_update[where p=1 and xs=\<open>list_of (ltakeWhile (Not \<circ> is_Data) (es os1 0))\<close> and lxs=\<open>ltl (ldropWhile (Not \<circ> is_Data) (es os1 1))\<close>])
-                  using set_list_of ltakeWhile_all comp_apply lset_ltakeWhileD ltakeWhile_cong zero_one
-                      apply (smt (verit, best))
-                     apply (rule refl)
-                    apply (subgoal_tac \<open>(ooo_input_os_Drop_Mint 1 :: (1, 'c, 'c, 'a, 'e) input_state_scheme \<Rightarrow> ('a, 'c) event \<Rightarrow> (1, 'c, 'c, 'a, 'e) input_state_scheme)
-  = (\<lambda>os. case_event (\<lambda>a aa. undefined) (\<lambda>t. os\<lparr>inter := operator_state.inter os @ [(1, t, - 1)], ocaps := map_entry 1 (remove_last t) (ocaps os)\<rparr>) (add_cap os 1))\<close>)
-                     apply simp
-                  using event.case apply simp
-                  using lfinite_ltakeWhile apply fastforce
-                  using lfilter_eq_LCons event.case_eq_if event.collapse(1) lfilter_eq_LConsD lmap_eq_LCons_conv
-                    ltl_simps(2) prod.sel(1,2) zero_one
-                  apply (smt (verit, ccfv_threshold))
-                  done
-                done
-              done
-            subgoal for x'
-              apply (erule conjE)
-              apply (cases x'; simp)
-              subgoal
-                apply (intro exI conjI)
-                 apply (rule wstep_trans(1))
-                  apply (rule rtranclp.intros(2))
-                   apply (rule rtranclp.intros(2))
-                    apply (rule rtranclp.intros(2))
-                     apply (rule rtranclp.intros(1))
-                    apply (rule step_Tau_dataflow_op_Tau_intro)
-                    apply (rule step_map_op)
-                     apply (rule step_Tau_comp_op_L)
-                        apply (rule step_map_op)
-                         apply (rule step_builder_op_Write_Some)
-                             apply auto[10]
-                   apply (rule step_Tau_dataflow_op_Tau_intro)
-                   apply (rule step_map_op)
-                    apply (rule step_Tau_comp_op_R)
-                         apply (rule step_map_op)
-                          apply (rule step_builder_op_Read_Some)
-                             apply auto[11]
-                  apply (rule step_Tau_dataflow_op_Tau_intro)
-                  apply (rule step_map_op)
-                   apply (rule step_comp_op_R_Tau)
-                     apply (rule step_map_op)
-                      apply (rule step_builder_op_Silent)
-                         apply auto[8]
-                 apply (rule step_Out_dataflow_op_Out_Inr_intro)
-                 apply (rule step_map_op)
-                  apply (rule step_comp_op_R_Out)
-                    apply (rule step_map_op)
-                     apply (rule step_builder_op_Write_Some)
-                         apply (simp_all add: produce_def)
-                 apply simp
-                apply (rule wbc_base)
-                apply (intro exI conjI)
-                        apply (rule refl)
-                       apply (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] simp add: fun_eq_iff)
-                done
-              done
-            done
-          subgoal for x'
-            apply (cases x'; simp)
-            subgoal for x'
-              apply (cases x'; simp)
-              subgoal
-                apply (intro exI conjI)
-                 apply (rule wstep_trans(1))
-                  apply (rule rtranclp.intros(2))
-                   apply (rule rtranclp.intros(2))
-                    apply (rule rtranclp.intros(1))
-                   apply (rule step_Tau_dataflow_op_Tau_intro)
-                   apply (rule step_map_op)
-                    apply (rule step_Tau_comp_op_R)
-                         apply (rule step_map_op)
-                          apply (rule step_builder_op_Read_Some)
-                             apply (auto simp add: BHD_def)[11]
-                  apply (rule step_Tau_dataflow_op_Tau_intro)
-                  apply (rule step_map_op)
-                   apply (rule step_comp_op_R_Tau)
-                     apply (rule step_map_op)
-                      apply (rule step_builder_op_Silent)
-                         apply auto[8]
-                 apply (rule step_Out_dataflow_op_Out_Inr_intro)
-                 apply (rule step_map_op)
-                  apply (rule step_comp_op_R_Out)
-                    apply (rule step_map_op)
-                     apply (rule step_builder_op_Write_Some)
-                         apply (simp_all add: produce_def)
-                 apply simp
-                apply (rule wbc_base)
-                apply (intro exI conjI)
-                        apply (rule refl)
-                       apply (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] simp add: fun_eq_iff BTL_def)
-                done
-              done
-            done
-          done
-        subgoal
-          apply (intro exI conjI)
-           apply (rule wstep_trans_base(1))
-            apply (rule step_Tau_dataflow_op_Tau_intro)
-            apply (rule step_map_op)
-             apply (rule step_comp_op_R_Tau)
-               apply (rule step_map_op)
-                apply (rule step_builder_op_Silent)
-                   apply auto[8]
-           apply (rule step_Out_dataflow_op_Out_Inr_intro)
-           apply (rule step_map_op)
-            apply (rule step_comp_op_R_Out)
-              apply (rule step_map_op)
-               apply (rule step_builder_op_Write_Some)
-                   apply (simp_all add: produce_def split: prod.splits)
-          apply simp
-          apply (rule wbc_base)
-          apply (intro exI conjI)
-                  apply (rule refl)
-                 apply (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] simp add: fun_eq_iff)
-          done
-        done
-      subgoal
-        apply (intro exI conjI)
-         apply (rule step_wstep)
-         apply (rule step_Out_dataflow_op_Out_Inr_intro)
-         apply (rule step_map_op)
-          apply (rule step_comp_op_R_Out)
-            apply (rule step_map_op)
-             apply (rule step_builder_op_Write_Some)
-                 apply simp_all
-         apply simp
-        apply (rule wbc_base)
-        apply (intro exI conjI)
-                apply (rule refl)
-               apply (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] simp add: fun_eq_iff)
-        done
-      done
-    done
+  qed
 qed
 
 end
