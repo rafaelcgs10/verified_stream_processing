@@ -167,7 +167,7 @@ abbreviation "G_op f ip_state os2 chns \<equiv>
 definition "c_pts_inv c caps = (\<forall> l. c_pts c l = caps l)"
 definition "Src_caps_inv caps os = (\<forall> nid p. caps (Loc nid (Src p)) = to_zmset (ocaps (os nid) p))"
 definition "Trg_caps_inv caps bufs = (\<forall> nid p. caps (Loc nid (Trg p)) = to_zmset (map snd (bufs (nid, p))))"
-definition "extract_prog eds os = concat (map (\<lambda> nid. extract_progress nid eds (snd (obtain_progress (os nid)))) Enum.enum)"
+definition "extract_prog xs eds os = concat (map (\<lambda> nid. extract_progress nid eds (snd (obtain_progress (os nid)))) xs)"
 definition "front_inv os c = (\<forall> nid p. front (os nid) p \<le> frontier (c_imp c (Loc nid (Trg p))))"
 definition "imp_front_inv su c = (\<forall> l. frontier (c_imp c l) \<le> ifrontier su (+) c l)"
 definition "chnls_imp_front_inv su c chns = (\<forall> nid p. \<forall> t \<in> snd ` set (chns (nid, p)). frontier_less_equal (ifrontier su (+) c (Loc nid (Trg p))) t)"
@@ -220,11 +220,10 @@ definition "ty2_check os bufs = (\<forall> p. (\<forall> x \<in> fst ` set (inpu
 definition "dataplane_tracker_inv os cbufs sg = 
    (\<exists> c c' cgs chns caps.
      c = pt_tr sg \<and>
-     cgs = extract_prog (edges sg) os \<and>
+     cgs = extract_prog Enum.enum (edges sg) os \<and>
      chns = outputs_at_target (summ sg) os >> cbufs \<and>
      Src_caps_inv caps os \<and>
      Trg_caps_inv caps chns \<and>
-     cgs = extract_prog (edges sg) os \<and>
      c' = change_multiplicities (summ sg) cgs c \<and>
      c_pts_inv c' caps \<and>
      front_inv os c \<and>
@@ -233,10 +232,10 @@ definition "dataplane_tracker_inv os cbufs sg =
      changes_non_zero_inv cgs \<and>
      propagation_inv (summ sg) c \<and>
      changes_above_impl_inv (summ sg) c cgs \<and>
-     (\<forall> nid. changes_above_impl_inv (summ sg) (change_multiplicities (summ sg) (extract_progress nid (edges sg) (snd (obtain_progress (os nid)))) c) (minus_list_mset cgs (extract_progress nid (edges sg) (snd (obtain_progress (os nid)))))))"
+     (\<forall> nid nid'. nid \<noteq> nid' \<longrightarrow> changes_above_impl_inv (summ sg) (change_multiplicities (summ sg) (extract_progress  nid (edges sg) (snd (obtain_progress (os nid)))) c) (extract_progress nid' (edges sg) (snd (obtain_progress (os nid'))))))"
 
 lemma zmset_map_filter_Trg_extract_prog:
-  "zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog (edges sg) os))) = 
+  "zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog Enum.enum (edges sg) os))) = 
    (\<Sum>x\<in>UNIV. \<Sum>xa\<leftarrow>produ (os x). zmset (map (\<lambda>x. snd xa) (filter (\<lambda>x. nid = fst x \<and> p = snd x) (edges sg (x, fst xa)))))
      - zmset (map snd (filter (((=) (p :: 'p :: enum)) o fst) (consu (os nid)))) "
   unfolding extract_prog_def extract_progress_def obtain_progress_def
@@ -247,8 +246,8 @@ lemma zmset_map_filter_Trg_extract_prog:
 
 lemma filter_loc_Trg_extract_prof_consumes_diff_nids[simp]:
   "nid \<noteq> nid' \<Longrightarrow>
-   filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (extract_prog (edges sg) (os(nid := consumes (os nid) p t d))) =
-   filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (extract_prog (edges sg) os)"
+   filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (extract_prog Enum.enum (edges sg) (os(nid := consumes (os nid) p t d))) =
+   filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (extract_prog Enum.enum (edges sg) os)"
   unfolding extract_prog_def extract_progress_def obtain_progress_def consumes_def add_caps_def
   apply (simp add: zmset_concat map_concat filter_concat comp_def filter_map split_beta split: prod.splits)
   apply (rule arg_cong[where f=concat])
@@ -258,8 +257,8 @@ lemma filter_loc_Trg_extract_prof_consumes_diff_nids[simp]:
 
 lemma filter_loc_Src_extract_prof_consumes_diff_nids[simp]:
   "nid \<noteq> nid' \<Longrightarrow>
-   filter (\<lambda>(l', t, d). Loc nid' (Src p') = l') (extract_prog (edges sg) (os(nid := consumes (os nid) p t d))) =
-   filter (\<lambda>(l', t, d). Loc nid' (Src p') = l') (extract_prog (edges sg) os)"
+   filter (\<lambda>(l', t, d). Loc nid' (Src p') = l') (extract_prog Enum.enum (edges sg) (os(nid := consumes (os nid) p t d))) =
+   filter (\<lambda>(l', t, d). Loc nid' (Src p') = l') (extract_prog Enum.enum (edges sg) os)"
   unfolding extract_prog_def extract_progress_def obtain_progress_def consumes_def add_caps_def
   apply (simp add: zmset_concat map_concat filter_concat comp_def filter_map split_beta split: prod.splits)
   apply (rule arg_cong[where f=concat])
@@ -269,8 +268,8 @@ lemma filter_loc_Src_extract_prof_consumes_diff_nids[simp]:
 
 lemma filter_loc_extract_prof_consumes_diff_ports[simp]:
   "p \<noteq> p' \<Longrightarrow>
-   filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (extract_prog (edges sg) (os(nid := consumes (os nid) p t d))) =
-   filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (extract_prog (edges sg) os)"
+   filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (extract_prog Enum.enum (edges sg) (os(nid := consumes (os nid) p t d))) =
+   filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (extract_prog Enum.enum (edges sg) os)"
   unfolding extract_prog_def extract_progress_def obtain_progress_def consumes_def add_caps_def
   apply (simp add: zmset_concat map_concat filter_concat comp_def filter_map split_beta split: prod.splits)
   apply (rule arg_cong[where f=concat])
@@ -279,7 +278,7 @@ lemma filter_loc_extract_prof_consumes_diff_ports[simp]:
   done
 
 lemma zmset_map_filter_Src_extract_prog[simp]:
-  "zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Src p) = l') (extract_prog (edges sg) os))) = 
+  "zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Src p) = l') (extract_prog Enum.enum (edges sg) os))) = 
    zmset (map snd (filter (((=) (p :: 'p :: enum)) o fst) (inter (os nid)))) "
   unfolding extract_prog_def extract_progress_def obtain_progress_def consumes_def add_caps_def
   apply (simp add: zmset_concat map_concat filter_concat comp_def filter_map split_beta split: prod.splits)
@@ -290,8 +289,8 @@ lemma zmset_map_filter_Src_extract_prog[simp]:
   done
 
 lemma set_extract_prog_consumesD:
-  "(l, t', m) \<in> set (extract_prog (edges sg) (os(nid := consumes (os nid) p t d))) \<Longrightarrow>
-   (l, t', m) \<in> set (extract_prog (edges sg) os) \<or>
+  "(l, t', m) \<in> set (extract_prog Enum.enum (edges sg) (os(nid := consumes (os nid) p t d))) \<Longrightarrow>
+   (l, t', m) \<in> set (extract_prog Enum.enum (edges sg) os) \<or>
    (l = Loc nid (Trg p) \<and> t = t' \<and> m = -1) \<or>
    (\<exists> p' t''. t'' \<in> set (summar (os nid) p p') \<and> l = Loc nid (Src p') \<and> t' = t + t'' \<and> m = 1)"
   unfolding extract_prog_def obtain_progress_def consumes_def extract_progress_def add_caps_def
@@ -323,7 +322,7 @@ lemma length_filter_one:
 
 lemma data_in_channel_justifies_c_pts:
   "Trg_caps_inv caps chnls \<Longrightarrow>
-   c_pts_inv (change_multiplicities su (extract_prog ed os) c) caps \<Longrightarrow> 
+   c_pts_inv (change_multiplicities su (extract_prog Enum.enum ed os) c) caps \<Longrightarrow> 
    t \<in> snd ` set (chnls (nid, p)) \<Longrightarrow>
    (\<forall> n. \<forall> (p, t, m) \<in> set (produ (os n)). m \<ge> 0) \<Longrightarrow>
    (\<forall> n. \<forall> (p, t, m) \<in> set (consu (os n)). m \<ge> 0) \<Longrightarrow>
@@ -402,26 +401,6 @@ lemma data_in_channel_justifies_c_pts:
     done
   done
 
-lemma
-  "dataflow_topology su (-+-) \<Longrightarrow>
-   frontier_less_equal (ifrontier su (-+-) c (Loc nid (Trg p))) t \<Longrightarrow>
-   ifrontier su (-+-) (change_multiplicities su (filter (\<lambda>(la, t, d). l = la) (extract_prog ed (os(nid := consumes (os nid) p t d)))) c) l' =
-   ifrontier su (-+-) (change_multiplicities su (filter (\<lambda>(la, t, d). l = la) (extract_prog ed os)) c) l'"
-  apply (rule ifrontier_eq_all_le)
-   apply simp_all
-  apply auto
-  subgoal for l' t'
-    apply (clarsimp simp add:  c_pts_change_multiplicities split_beta extract_prog_def zmset_concat map_concat filter_concat comp_def filter_map split: prod.splits)
-    apply (subst (1 2) conj.commute)
-    apply (simp flip: filter_filter)
-    apply (subst (1 2) Groups_List.monoid_add_class.sum_list_distinct_conv_sum_set)
-     apply (simp add: Enum.enum_class.enum_distinct)
-    apply (simp add: Enum.enum_class.enum_UNIV)
-    apply (simp add:   extract_progress_def obtain_progress_def   split_beta extract_prog_def zmset_concat map_concat filter_concat comp_def filter_map)
-    apply (simp add:  Groups_Big.comm_monoid_add_class.sum.distrib Groups_Big.sum_subtractf)
-    apply (simp cong: if_cong add: if_distrib[where f="inter"] if_distrib[where f="produ"] if_distrib[where f="consu"])
-    apply (simp add: sum_list_zmset zmset_concat)
-    oops
 
 (* 
   apply (clarsimp simp add: extract_prog_def extract_progress_def consumes_def c_pts_change_multiplicities split_beta Propagate.dataflow_topology.implied_frontier_alt_def)
@@ -429,8 +408,8 @@ lemma
 
 lemma filter_extract_prog_diff_nid:
   "node l \<noteq> nid \<Longrightarrow>
-   filter (\<lambda>(la, t, d). l = la) (extract_prog ed (os(nid := consumes (os nid) p t d))) = 
-   filter (\<lambda>(la, t, d). l = la) (extract_prog ed os)"
+   filter (\<lambda>(la, t, d). l = la) (extract_prog Enum.enum ed (os(nid := consumes (os nid) p t d))) = 
+   filter (\<lambda>(la, t, d). l = la) (extract_prog Enum.enum ed os)"
   unfolding extract_prog_def extract_progress_def 
   apply (simp add: filter_concat map_concat comp_def if_distrib filter_map)
   apply (rule arg_cong[where f=concat])
@@ -452,7 +431,7 @@ lemma filter_extract_prog_diff_nid:
 lemma ifrontier_change_multiplicities_no_path:
   "graph.path_weight su l l' = {}\<^sub>A \<Longrightarrow>
    dataflow_topology su (-+-) \<Longrightarrow>
-   ifrontier su (-+-) (change_multiplicities (summ sg) (filter (\<lambda>(la, t, d). l = la) (extract_prog ed os)) c) l'=
+   ifrontier su (-+-) (change_multiplicities (summ sg) (filter (\<lambda>(la, t, d). l = la) (extract_prog Enum.enum ed os)) c) l'=
    ifrontier su (-+-) c l'"
   apply (subst (1 2) Propagate.dataflow_topology.implied_frontier_alt_def)
    apply assumption
@@ -558,74 +537,6 @@ lemma zcount_zmset_const_diff_0I:
    (auto simp add: zcount_update_zmultiset)
 
 
-lemma in_extract_prog_cases:
-  "Trg_caps_inv caps buf \<Longrightarrow>
-   Src_caps_inv caps os \<Longrightarrow>
-   c_pts_inv (change_multiplicities su (extract_prog ed os) c) caps \<Longrightarrow>
-   (l, t, m) \<in> set (extract_prog ed os) \<Longrightarrow>
-   (\<forall> nid. \<forall> (p, t, m) \<in> set (consu (os nid)). 0 < m) \<Longrightarrow>
-   (\<forall> nid. \<forall> (p, t, m) \<in> set (produ (os nid)). 0 < m) \<Longrightarrow>
-   (\<forall> nid. \<forall> (p, t, m) \<in> set (inter (os nid)). 0 \<noteq> m) \<Longrightarrow>
-   (\<exists> nid p m'. (p, t, m') \<in> set (consu (os nid)) \<and> m = -m' \<and> l = Loc nid (Trg p) \<and> (zcount (c_pts c l) t > 0 \<or> (\<exists> nid' p' m'. (nid, p) \<in> set (ed (nid', p')) \<and> (p', t, m') \<in> set (produ (os nid'))))) \<or>
-   (\<exists> nid p . C2 \<and> l = Loc nid (Src p) \<and> (p, t, m) \<in> set (inter (os nid))) \<or>
-   (\<exists> nid p m. C3 \<and> (p, t, m) \<in> set (produ (os nid)) \<and> l = Loc nid (Trg p) \<and> zcount (c_pts c l) t > 0 \<or> (\<exists> nid' p' a. (nid, p) \<in> set (ed (nid', p')) \<and> a \<in> set (produ (os nid'))))"
-  apply (subst (asm) (2) extract_prog_def)
-  apply (auto del: disjCI simp add: image_iff enum_class.enum_UNIV extract_progress_def split_beta obtain_progress_def)
-  subgoal for nid p m'
-    unfolding Trg_caps_inv_def c_pts_inv_def
-    apply (drule spec[of _ l])
-    apply (drule spec[of _ nid])
-    apply (drule spec[of _ p])
-    apply (simp add: c_pts_change_multiplicities extract_prog_def extract_progress_def zmset_concat map_concat filter_concat comp_def filter_map split_beta obtain_progress_def)
-    apply (subst (asm) (1) monoid_add_class.sum_list_distinct_conv_sum_set)
-     apply (simp_all add:  comm_monoid_add_class.sum.distrib enum_class.enum_distinct enum_class.enum_UNIV)
-    apply (subst (asm) Groups.ab_group_add_class.ab_diff_conv_add_uminus)
-    apply (subst (asm) comm_monoid_add_class.sum.distrib)
-    apply simp
-    apply (subgoal_tac "zcount (c_pts c (Loc nid (Trg p)) +
-   ((\<Sum>x\<in>UNIV. \<Sum>xa\<leftarrow>produ (os x). zmset (map (\<lambda>x. snd xa) (filter (\<lambda>x. nid = fst x \<and> p = snd x) (ed (x, fst xa))))) - zmset (map snd (filter (\<lambda>x. p = fst x) (consu (os nid)))))) t \<ge> 0")
-    subgoal premises prems
-      using prems(2,5,10) apply -
-      apply clarsimp
-      apply (subgoal_tac "0 < zcount (c_pts c (Loc nid (Trg p))) t \<or> 0 < zcount (\<Sum>x\<in>UNIV. \<Sum>xa\<leftarrow>produ (os x). zmset (map (\<lambda>x. snd xa) (filter (\<lambda>x. nid = fst x \<and> p = snd x) (ed (x, fst xa))))) t")
-       defer
-      subgoal
-        apply (rule gt_0_cases)
-         apply simp_all
-        apply (drule spec[of _ nid])
-        apply (rule zcount_zmset_gt0I)
-         apply auto[1]
-        apply assumption
-        done
-      subgoal
-        apply (elim disjE)
-        subgoal
-          by auto
-        subgoal
-          apply (simp add: zcount_sum)
-          apply (drule sum_pos_ex_elem_pos)
-          apply clarsimp
-          subgoal for nid'
-            apply (clarsimp simp add: sum_list_zmset zmset_concat )
-            unfolding comp_def zcount_sum_list_alt 
-            apply (clarsimp simp add: zcount_sum_list_alt comp_def sum_list_zmset zmset_concat )
-            apply (drule sum_list_pos_ex_elem_pos)
-            apply clarsimp
-            subgoal for p' t' c
-              apply (rule exI[of _ nid'])
-              apply (rule exI[of _ p'])
-              apply (intro conjI)
-              apply (smt (verit) List.empty_filter_conv list.simps(8) surjective_pairing zcount_empty zmset.simps(1))+
-                done
-              done
-            done
-          done
-        done
-    subgoal
-      by (simp add: to_zmset_nenneg)
-    done
-  oops
-
 lemma set_extract_progressD:
   "(l, t, m) \<in> set (extract_progress nid ed (snd (obtain_progress (consumes (os nid) p t' d)))) \<Longrightarrow>
    (l, t, m) \<in> set (extract_progress nid ed (snd (obtain_progress (os nid)))) \<or> 
@@ -635,26 +546,6 @@ lemma set_extract_progressD:
   apply (auto simp add: split_beta image_iff enum_class.enum_UNIV)
   done
 
-lemma
-  "c' = c\<lparr> c_pts := (c_pts c)(l' := c_pts c l' - {# t #}\<^sub>z, l'' := c_pts c l'' + {# t + s #}\<^sub>z) \<rparr> \<Longrightarrow>
-   s \<in>\<^sub>A graph.path_weight su l' l'' \<Longrightarrow>
-   l' \<noteq> l'' \<Longrightarrow>
-   graph.path_weight su l'' l \<noteq> {}\<^sub>A \<Longrightarrow>
-   dataflow_topology su (-+-) \<Longrightarrow>
-   ifrontier su (-+-) c' l = ifrontier su (-+-) c l"
-  apply (subst (1 2) Propagate.dataflow_topology.implied_frontier_alt_def)
-   apply assumption
-  apply (subst ac_eq_iff)
-  apply auto
-  subgoal for t'
-    oops
-
-
-
-  lemma sorried1:
-  "set (minus_list_mset (concat xs) x) =
-   set (concat (remove1 x xs))"
-    sorry
 
 lemma
   "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
@@ -694,8 +585,8 @@ lemma
       apply (auto 0 0 split: location.splits port.splits simp add: c_pts_change_multiplicities)
       subgoal
         apply (subgoal_tac
-            "zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog (edges sg) (os(nid := consumes (os nid) p t d))))) =
-   zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog (edges sg) os))) - {#t#}\<^sub>z")
+            "zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog Enum.enum (edges sg) (os(nid := consumes (os nid) p t d))))) =
+   zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog Enum.enum (edges sg) os))) - {#t#}\<^sub>z")
         subgoal
           by auto
         subgoal premises
@@ -810,29 +701,45 @@ lemma
       done
     subgoal premises prems
       apply auto
-      subgoal 
+      subgoal  for nid'
+        apply (subgoal_tac "changes_above_impl_inv (summ sg) (pt_tr sg) (extract_prog enum_class.enum (edges sg) (os(nid := consumes (os nid) p t d)))")
+        subgoal
+          using prems(12) apply -
+          apply (drule spec[of _ nid])
+          apply (drule spec[of _ nid'])
+          apply simp
+
+          oops
+
+
+lemma
+  "changes_above_impl_inv su c (A @ xs @ ys) \<Longrightarrow>
+   changes_above_impl_inv su (change_multiplicities su xs c) A \<Longrightarrow>
+   changes_above_impl_inv su (change_multiplicities su (xs @ ys) c) A"
+  unfolding change_multiplicities_append_comp
+  apply simp
+
+  find_theorems changes_above_impl_inv
+
+
+end
+
+
         unfolding changes_above_impl_inv_def extract_prog_def
         apply clarsimp
-        apply (subst (asm) sorried1)
-        apply simp_all
         apply (subst (asm) set_remove1_eq)
-         apply (simp add: distinct_map enum_class.enum_distinct enum_class.enum_UNIV)
-        subgoal sorry
-        subgoal for l t' m
-          apply (elim bexE)
+         apply (auto simp add: distinct_map enum_class.enum_distinct enum_class.enum_UNIV)
+        subgoal for nid' l t' m
+          apply (drule spec[of _ nid])
           apply simp
-          apply (elim conjE)
-         apply (simp add: image_iff distinct_map enum_class.enum_distinct enum_class.enum_UNIV)
-          apply (elim exE)
-          apply simp
-          apply hypsubst_thin
-          apply (simp split: if_splits)
-          subgoal for nid'
-            using prems(12) apply -
-            apply (drule spec[of _ nid'])
-            unfolding changes_above_impl_inv_def
-            apply (drule bspec)
-            oops
+
+          using prems(11)
+
+          find_theorems cbufs
+            
+          find_theorems caps
+          
+          oops
 
             term mset_neg
 
@@ -862,6 +769,40 @@ lemma zmset_of_path_weight[simp]:
    zmset_of (mset_pos (A -++- graph.path_weight su la lb)) = A -++- graph.path_weight su la lb"
   by (simp add: dataflow_topology.mset_neg_after_summary mset_pos_as_neg)
 
+lemma frontier_plus_cong:
+  "frontier B = frontier C \<Longrightarrow>
+   (\<forall> t. zcount A t \<ge> 0) \<Longrightarrow>
+   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
+   (\<forall> t. zcount C t \<ge> 0) \<Longrightarrow>
+   frontier (A + B) = frontier (A + C)"
+  apply (auto simp add: frontier_def ac_eq_iff)
+  subgoal for t
+    apply (subst in_antichain_minimal_antichain)
+    apply (metis (mono_tags, lifting) finite_zcount_pos mem_Collect_eq rev_finite_subset subsetI zcount_union)
+    apply (subst (asm) in_antichain_minimal_antichain)
+     apply (metis (mono_tags, lifting) finite_zcount_pos mem_Collect_eq rev_finite_subset subsetI zcount_union)
+    unfolding in_minimal_antichain
+    apply auto
+    subgoal
+      by (metis int_sum_disj)
+    subgoal
+      by (smt (verit, ccfv_threshold) order_le_less_trans order_zmset_exists_foundation')
+    done
+  subgoal for t
+    apply (subst in_antichain_minimal_antichain)
+    apply (metis (mono_tags, lifting) finite_zcount_pos mem_Collect_eq rev_finite_subset subsetI zcount_union)
+    apply (subst (asm) in_antichain_minimal_antichain)
+     apply (metis (mono_tags, lifting) finite_zcount_pos mem_Collect_eq rev_finite_subset subsetI zcount_union)
+    unfolding in_minimal_antichain
+    apply auto
+    subgoal
+      by (metis int_sum_disj)
+    subgoal
+      by (smt (verit, ccfv_threshold) order_le_less_trans order_zmset_exists_foundation')
+    done
+  done
+
+
 
 
 lemma
@@ -880,20 +821,29 @@ lemma
    apply assumption
   apply (subst (1 2) comm_monoid_add_class.sum.subset_diff[where B="{la,lb}"])
     apply simp_all
-  apply (rule arg_cong[where f=frontier])
+  apply (rule frontier_plus_cong)
+     apply simp_all
+  defer
+     apply (meson dataflow_topology.mset_neg_after_summary mset_neg_empty_iff mset_neg_sum_set neg_zmset_pos)
+  apply (simp_all add: dataflow_topology.mset_neg_after_summary mset_neg_zcount_nonneg)
+
+  oops
+
+end
   apply (simp add: ac_simps zmset_of_plus  flip: AP_simp )
-  apply (subst Propagate.dataflow_topology.mset_neg_after_summary)
+   apply (subst Propagate.dataflow_topology.mset_neg_after_summary)
     apply assumption+
+   apply simp 
+  apply (drule spec[of _ "(zmset_of (mset_pos ((c_pts c la) - A)))"])
   apply (simp add: )
   apply (subst Propagate.dataflow_topology.after_summary_union[where summary=su])
    apply assumption
-  apply (drule spec[of _ A])
   apply simp
   apply (subst Propagate.dataflow_topology.after_summary_union[where summary=su, symmetric])
    apply assumption
   apply (subst (2) mset_pos_neg_partition[where M=A])
   apply (simp flip: zmset_of_plus)
-
+  
 
   thm Propagate.dataflow_topology.after_summary_union
 
