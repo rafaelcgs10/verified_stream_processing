@@ -834,56 +834,98 @@ lemma
             apply (drule bspec)
             oops
 
-            term "dataflow_topology.after_summary (+)"
+            term mset_neg
+
+lemma image_zmset_comp:
+ "Auxiliary.image_zmset g (Auxiliary.image_zmset f X) = (Auxiliary.image_zmset (g o f) X)"
+  apply transfer'
+  apply (auto simp add: equiv_zmset_def)
+  done
+
+lemma move_in_zmset:
+  "f o g = g o f \<Longrightarrow>
+   {#(f o g) t. t \<in>#\<^sub>z A#} + {#g t. t \<in>#\<^sub>z B#} = {#(f o g) t. t \<in>#\<^sub>z A - X#} + {#g t. t \<in>#\<^sub>z B + {#f t. t \<in>#\<^sub>z X#}#}"
+  unfolding zmultiset_eq_iff comp_def
+  apply (auto simp add: comp_def image_zmset_comp)
+  done
+
+(*
+    graph.path_weight su la l = graph.path_weight su la lb + graph.path_weight su lb l \<Longrightarrow>
+
+*)
+
+declare AP_simp[simp del]
+
+lemma zmset_of_path_weight[simp]:
+  "mset_neg A = {#} \<Longrightarrow>
+   dataflow_topology su (-+-) \<Longrightarrow>
+   zmset_of (mset_pos (A -++- graph.path_weight su la lb)) = A -++- graph.path_weight su la lb"
+  by (simp add: dataflow_topology.mset_neg_after_summary mset_pos_as_neg)
+
+
 
 lemma
   "c' = c\<lparr> c_pts := ((c_pts c)(la := (c_pts c la) - A, lb := (c_pts c lb) + B)) \<rparr> \<Longrightarrow>
    B = dataflow_topology.after_summary (+) A (graph.path_weight su la lb) \<Longrightarrow>
+   mset_neg (c_pts c lb) = {#} \<Longrightarrow>
+   mset_neg A = {#} \<Longrightarrow>
    dataflow_topology su (-+-) \<Longrightarrow>
+   (\<forall> A. A -++- graph.path_weight su la lb -++- graph.path_weight su lb l = A -++- graph.path_weight su la l) \<Longrightarrow>
    la \<noteq> lb \<Longrightarrow>
-    graph.path_weight su la l = graph.path_weight su la lb + graph.path_weight su lb l \<Longrightarrow>
    ifrontier su (-+-) c' l = ifrontier su (-+-) c l"
-  apply (subst (1 2) dataflow_topology.implied_frontier_alt_def)
+  apply (subst (1 2) Propagate.dataflow_topology.implied_frontier_implied_frontier_alt[symmetric])
+   apply assumption
+  apply simp
+  apply (subst (1 2) Propagate.dataflow_topology.implied_frontier_def)
    apply assumption
   apply (subst (1 2) comm_monoid_add_class.sum.subset_diff[where B="{la,lb}"])
     apply simp_all
+  apply (rule arg_cong[where f=frontier])
+  apply (simp add: ac_simps zmset_of_plus  flip: AP_simp )
+  apply (subst Propagate.dataflow_topology.mset_neg_after_summary)
+    apply assumption+
+  apply (simp add: )
+  apply (subst Propagate.dataflow_topology.after_summary_union[where summary=su])
+   apply assumption
+  apply (drule spec[of _ A])
+  apply simp
+  apply (subst Propagate.dataflow_topology.after_summary_union[where summary=su, symmetric])
+   apply assumption
+  apply (subst (2) mset_pos_neg_partition[where M=A])
+  apply (simp flip: zmset_of_plus)
+
+
+  thm Propagate.dataflow_topology.after_summary_union
+
   oops
 
 lemma
-  "A' = A - a \<Longrightarrow>
-   frontier (zmset_of (mset_set (set_antichain (frontier A))) + zmset_of (mset_set (set_antichain (frontier B)))) = frontier (zmset_of (mset_set (set_antichain (frontier A'))) + zmset_of (mset_set (set_antichain (frontier B'))))"
-
-  apply (rule arg_cong[where f=frontier])
-  apply simp
-  subgoal premises prems
-    apply (auto simp add: zcount_sum zcount_image_zmset plus_antichain.rep_eq minimal_antichain_def)
-
-        find_theorems "minimal_antichain (_ \<union> _)"
-
-        apply auto
-        oops
+  "dataflow_topology su (-+-) \<Longrightarrow>
+   A + B -++- F = A -++- F + B -++- F"
+  apply (subst Propagate.dataflow_topology.after_summary_union)
+  defer
 
 
+  find_theorems name: after_summary_union
 
-      using prems(12) apply -
-      unfolding extract_progress_inv_def
-      apply (auto 0 0 simp add: split_beta)
-      subgoal for nid' l t' m
-        apply (drule set_extract_progressD)
-        apply (elim disjE exE conjE)
-        subgoal
-          apply (drule spec[of _ nid])
-          apply (drule spec[of _ nid'])
-          apply (drule mp)
-           apply assumption
-          apply (drule bspec)
-          apply assumption
-          apply simp
-          done
-        subgoal 
-        apply (elim disjE exE conjE)
-          apply hypsubst_thin
 
+  apply (subst trivial_dataflow_topology_interpretation.after_summary_Sum_fun)
+  apply (simp add: trivial_dataflow_topology_interpretation.after_summary_union)
+
+  find_theorems "_ -++- _ = _"
+    
+
+    find_theorems mset_pos zmset_of mset_neg
+
+
+  term 
+
+  term mset_pos
+
+
+  oops
+
+  find_theorems name: implied_frontier_implied_frontier_alt
 
 
 end
