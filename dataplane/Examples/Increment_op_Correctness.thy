@@ -1,7 +1,7 @@
 theory Increment_op_Correctness
 
 imports
-  Ooo_Input_op
+  Ooo_Input_op_Correctness
   Increment_op
   "HOL-ex.Sketch_and_Explore"
 begin
