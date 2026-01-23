@@ -586,6 +586,13 @@ lemma frontier_less_equal_add_cases:
   unfolding frontier_less_equal_iff2
   using in_frontier_addD order_trans_rules(23) by blast
 
+lemma frontier_less_equal_add_cases_stronger:
+  "frontier_less_equal (frontier (A + B)) t \<Longrightarrow>
+   (\<exists> t'. (zcount A t' > 0 \<and> frontier_less_equal (frontier A) t \<or> zcount B t' > 0 \<and> frontier_less_equal (frontier B) t) \<and> t' \<le> t \<and> zcount A t' + zcount B t' > 0 \<and> t' \<in>\<^sub>A frontier (A + B))"
+  unfolding frontier_less_equal_iff2 in_frontier_iff
+  apply (auto del: )
+  by (smt (verit) order.trans order_zmset_exists_foundation')
+
 lemma frontier_less_equal_zcount_pos:
   " 0 < zcount A x \<Longrightarrow>
     frontier_less_equal (frontier A) x"
