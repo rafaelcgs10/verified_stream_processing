@@ -571,6 +571,15 @@ lemma frontier_less_equal_addI:
   using frontier_le_remove_left apply blast
   done
 
+lemma frontier_less_equal_addI1:
+  "frontier_less_equal (frontier A) t \<Longrightarrow>
+   (\<forall> t' \<le> t. zcount A t' > 0 \<longrightarrow> zcount A t' + zcount B t' > 0) \<Longrightarrow>
+   frontier_less_equal (frontier (A + B)) t"
+  unfolding frontier_less_equal_iff2
+  apply clarsimp
+  apply (metis (full_types) dual_order.trans in_frontier_iff trivial_dataflow_topology_interpretation.obtain_elem_frontier zcount_union)
+  done
+
 lemma frontier_less_equal_add_cases:
   "frontier_less_equal (frontier (A + B)) t \<Longrightarrow>
    frontier_less_equal (frontier A) t \<or> frontier_less_equal (frontier B) t"

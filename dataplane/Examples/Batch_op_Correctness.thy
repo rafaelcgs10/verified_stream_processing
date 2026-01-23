@@ -217,6 +217,8 @@ lemma inputs_at_target_consumes[simp]:
 definition "ty1_check os bufs = (\<forall> p. (\<forall> x \<in> fst ` set (input os p) \<union> fst ` set (bufs p) \<union> fst ` set (outpu os p). is_en1 os x))"
 definition "ty2_check os bufs = (\<forall> p. (\<forall> x \<in> fst ` set (input os p) \<union> fst ` set (bufs p). is_en1 os x) \<and> (\<forall> x \<in> fst ` set (outpu os p). is_en2 os x))"
 
+definition "produ_supported os c = (\<forall> nid p t m. (p, t, m) \<in> set (produ (os nid)) \<longrightarrow> (\<exists> t'. zcount (c_pts c (Loc nid (Src p))) t' > 0 \<and> t' \<le> t) \<or> (\<exists> m. (p, t, m) \<in> set (inter (os nid)) \<and> m > 0))"
+
 definition "dataplane_tracker_inv os cbufs sg = 
    (\<exists> c c' cgs chns caps.
      c = pt_tr sg \<and>
@@ -232,7 +234,10 @@ definition "dataplane_tracker_inv os cbufs sg =
      changes_non_zero_inv cgs \<and>
      propagation_inv (summ sg) c \<and>
      changes_above_impl_inv (summ sg) c cgs \<and>
-     (\<forall> nid nid'. nid \<noteq> nid' \<longrightarrow> changes_above_impl_inv (summ sg) (change_multiplicities (summ sg) (extract_progress  nid (edges sg) (snd (obtain_progress (os nid)))) c) (extract_progress nid' (edges sg) (snd (obtain_progress (os nid'))))))"
+     (\<forall> nid nid'. nid \<noteq> nid' \<longrightarrow> 
+     changes_above_impl_inv (summ sg) (change_multiplicities (summ sg) (extract_progress  nid (edges sg) (snd (obtain_progress (os nid)))) c)
+     (extract_progress nid' (edges sg) (snd (obtain_progress (os nid'))))) \<and>
+     produ_supported os c)"
 
 lemma zmset_map_filter_Trg_extract_prog:
   "zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog Enum.enum (edges sg) os))) = 
@@ -702,12 +707,144 @@ lemma
     subgoal premises prems
       apply auto
       subgoal  for nid'
-        apply (subgoal_tac "changes_above_impl_inv (summ sg) (pt_tr sg) (extract_prog enum_class.enum (edges sg) (os(nid := consumes (os nid) p t d)))")
-        subgoal
           using prems(12) apply -
-          apply (drule spec[of _ nid])
+                    apply (drule spec[of _ nid])
           apply (drule spec[of _ nid'])
           apply simp
+          unfolding changes_above_impl_inv_def
+          apply safe
+          subgoal for l' t' m
+            apply (drule bspec)
+            apply assumption
+            apply simp
+        apply (subgoal_tac "changes_above_impl_inv (summ sg) (pt_tr sg) (extract_prog enum_class.enum (edges sg) (os(nid := consumes (os nid) p t d)))")
+            subgoal
+          apply (subst (asm) changes_above_impl_inv_def)
+          apply (drule bspec[of _ _ "(Loc nid (Trg p), t, -1)"])
+          subgoal premises
+            unfolding extract_prog_def extract_progress_def obtain_progress_def consumes_def
+            by (auto simp add: split_beta enum_class.enum_UNIV)
+          apply simp
+          apply (drule frontier_less_equal_ifrontierE)
+          subgoal
+            using prems(2) by assumption
+          apply clarsimp
+          subgoal for l s t'
+            apply (cases "l = Loc nid (Trg p)")
+            subgoal
+              apply (drule Graph.graph.path_weight_conv_path[OF dataflow_topology.axioms(1)[OF prems(2)]])
+              apply clarsimp
+              subgoal for xs
+                apply (cases xs)
+                subgoal
+                  apply simp
+                  apply hypsubst_thin
+                  apply (drule empty_path_inversion)
+                  using dataflow_topology.axioms(1)[OF prems(2)] apply assumption
+                  apply hypsubst_thin
+                  apply (subst (asm) extract_progress_def)
+                  apply (clarsimp simp add: image_iff split_beta)
+                  apply (subst (asm) (2) obtain_progress_def)
+                  apply simp
+                  subgoal for p'
+                    using prems(5) apply -
+                    unfolding c_pts_inv_def
+                    apply (drule spec[of _ "Loc nid' (Src p')"])
+                    using prems(3) apply -
+                    unfolding Src_caps_inv_def
+                    apply (drule spec[of _ nid'])
+                    apply (drule spec[of _ p'])
+                    apply (simp add: c_pts_change_multiplicities)
+                    using prems(13) apply -
+                    unfolding produ_supported_def
+                    apply (drule spec[])+
+                    apply (drule mp)
+                     apply assumption
+                    apply (elim disjE)
+                    subgoal
+                      apply clarsimp
+                      subgoal for t''
+                        apply (rule frontier_less_equal_ifrontierI[OF prems(2), of 0, where l="Loc nid' (Src p')", simplified])
+                        subgoal
+                          sorry
+                        subgoal
+                          apply (simp add:  c_pts_change_multiplicities)
+                          apply (rule frontier_less_equal_addI)
+                          subgoal
+                            apply (rule disjI1)
+                            unfolding frontier_less_equal_iff2
+                            apply (meson frontier_less_equal_iff2 frontier_less_equal_trans frontier_less_equal_zcount_pos)
+                            done
+                          subgoal
+                            sorry
+                          subgoal premises prems2
+                            using prems2(1) apply -
+                            unfolding extract_progress_def obtain_progress_def
+                            apply (clarsimp simp add: image_iff split_beta)
+                            done
+                          done
+                        done
+                      done
+                    subgoal
+                      apply clarsimp
+                      subgoal for m'
+                        using prems(11) apply -
+                        unfolding changes_above_impl_inv_def
+                        apply (drule bspec[of _ _ "(Loc nid' (Src p'), t', m')" ])
+                         apply simp_all
+                        subgoal premises prems2
+                          using prems2(8) apply -
+                      unfolding extract_progress_def obtain_progress_def extract_prog_def
+                            apply (force simp add: image_iff split_beta enum_class.enum_UNIV)
+                      done
+          apply (drule frontier_less_equal_ifrontierE[where t=t'])
+          subgoal
+            using prems(2) by assumption
+          apply clarsimp
+          subgoal for l'' s' t'''
+                        apply (rule frontier_less_equal_ifrontierI[OF prems(2), of s', where l=l'', simplified])
+            subgoal
+              sorry
+            subgoal
+      apply (simp add:  c_pts_change_multiplicities)
+                          apply (rule frontier_less_equal_addI1)
+                          subgoal
+                            unfolding frontier_less_equal_iff2
+                            apply (meson frontier_less_equal_iff2 frontier_less_equal_trans frontier_less_equal_zcount_pos)
+                            done
+                          subgoal
+                            apply hypsubst_thin
+                          apply safe
+                          subgoal premises prems2 for ta
+                            using prems2(1,10-)
+                  unfolding extract_progress_def obtain_progress_def extract_prog_def
+                  apply (auto 0 0 simp add: image_iff split_beta enum_class.enum_UNIV)
+                  subgoal
+                 
+
+
+end
+                            sorry
+                          subgoal premises prems2
+                            using prems2(1) apply -
+                            unfolding extract_progress_def obtain_progress_def
+                            apply (clarsimp simp add: image_iff split_beta)
+                            done
+
+
+end
+
+                apply (drule Propagate.dataflow_topology.no_zero_cycle[OF prems(2), where loc="Loc nid (Trg p)" and xs=xs])
+                  apply simp_all
+
+              find_theorems dataflow_topology  Graph.graph
+
+              find_theorems graph.path_weight graph.path name: path_weight_conv_pat
+
+              thm Propagate.dataflow_topology.no_zero_cycle[OF prems(2), where loc=l]
+
+
+          find_theorems  0 name: Propagate name: zero
 
           oops
 
