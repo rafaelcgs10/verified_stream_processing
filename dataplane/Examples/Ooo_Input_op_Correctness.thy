@@ -159,129 +159,98 @@ next
   ultimately show ?case by (rule transitive_closurep_trans'(6))
 qed
 
+(* Experiment with Eisbach. *)
+method sim_cases uses defs elims intros =
+  ((unfold defs)?, elim conjE elims; simp only: IO.simps; hypsubst_thin?; auto intro: intros simp flip: defs)
+
 lemma ooo_input_op_source_op:
-  defines \<open>invariant os f \<equiv> initia os \<and> en1 os = f \<and> inj f \<and> (\<forall>p. timely_monotone (es os p) (mset (ocaps os p)))\<close>
+  defines \<open>invariant f os \<equiv> initia os \<and> en1 os = f \<and> inj f \<and> (\<forall>p. timely_monotone (es os p) (mset (ocaps os p)))\<close>
     and \<open>my_ooo_input_op os \<equiv> map_op
   (case_option (Inl (0 :: 1)) (\<lambda>p. Inr (0 :: 1, p))) (case_option (Inl (0 :: 1)) (\<lambda>p. Inr (0 :: 1, p)))
   (ooo_input_op c\<UU> os)\<close>
-    and \<open>my_source_op os f \<equiv> map_op (\<lambda>p. (0, p)) (\<lambda>p. (0, p))
+    and \<open>my_source_op f os \<equiv> map_op (\<lambda>p. (0, p)) (\<lambda>p. (0, p))
   (source_op (\<lambda>p. outpu os p @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os p))))\<close>
-  assumes \<open>invariant os f\<close>
-  shows \<open>dataflow_op sg (my_ooo_input_op os) \<approx> my_source_op os f\<close>
+  assumes \<open>invariant f os\<close>
+  shows \<open>dataflow_op sg (my_ooo_input_op os) \<approx> my_source_op f os\<close>
   using assms(4)
 proof (coinduction arbitrary: sg os rule: wbisim_coinduct_upto'')
   case SIM1
   show ?case (is \<open>\<exists>_. _ \<and> wbisim_cong ?R _ _\<close>)
   proof -
     define R where \<open>R = ?R\<close>
+    have invariant_initia: \<open>invariant f os \<Longrightarrow> initia os\<close> unfolding invariant_def by blast
     show ?thesis
     proof -
-      have "\<exists>op2'. wstep (Out (1, p) (d, t)) (my_source_op os f) op2'
+      have "\<exists>op2'. wstep (Out (1, p) (d, t)) (my_source_op f os) op2'
   \<and> wbisim_cong R (dataflow_op sg (my_ooo_input_op (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>))) op2'"
-        if "invariant os f"
+        if "invariant f os"
           and "outpu os p = (d, t) # xs"
           and "p \<notin> defaults"
-        for p :: 'a
+        for p :: 'c
           and d :: 'b
-          and t :: 'c
-          and xs :: "('b \<times> 'c) buf"
+          and t :: 'd
+          and xs :: "('b \<times> 'd) buf"
       proof -
         let ?os' = \<open>os\<lparr>outpu := (outpu os)(p := xs)\<rparr>\<close>
         have \<open>step (Out p (d, t))
   (source_op (\<lambda>p. outpu os p @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os p))))
   (source_op (\<lambda>p. outpu ?os' p @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es ?os' p))))\<close>
           using that(2,3) step_source_op_Out_intro by force
-        hence \<open>wstep (Out (1, p) (d, t)) (my_source_op os f) (my_source_op ?os' f)\<close>
+        hence \<open>wstep (Out (1, p) (d, t)) (my_source_op f os) (my_source_op f ?os')\<close>
           using my_source_op_def by auto
         thus ?thesis using that(1) unfolding R_def invariant_def by (force intro!: wbc_base)
       qed
-      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op os f) op2'
-  \<and> wbisim_cong R (dataflow_op sg (my_ooo_input_op (drop_caps os (map (\<lambda>t. Cap t p) (ocaps os p))))) op2'"
-        if "invariant os f"
-          and "es os p = LNil"
-          and "ocaps os p \<noteq> []"
-          and "p \<notin> defaults"
-        for p :: 'a
+      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f os) op2'
+  \<and> wbisim_cong R (dataflow_op sg (my_ooo_input_op os')) op2'"
+        if "invariant f os"
+          and os': "os' |\<in>| ooo_input_op_logic c\<UU> os"
+        for os' :: "('c, 'b, 'a, 'd, 'e) input_state_scheme"
       proof -
-        let ?os' = \<open>drop_caps os (map (\<lambda>t. Cap t p) (ocaps os p))\<close>
-        have \<open>timely_monotone (es ?os' p') (mset (ocaps ?os' p'))\<close> for p'
-        proof (cases \<open>p' = p\<close>)
-          case True
-          thus ?thesis using that(2) timely_monotone.LNil by (simp add: drop_caps_def)
+        have my_source_op_os': \<open>my_source_op f os = my_source_op f os'\<close>
+          using that unfolding invariant_def my_source_op_def ooo_input_op_logic_def drop_caps_def
+            produce_def drop_cap_def add_cap_def
+          by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] split: llist.splits event.splits)
+        consider (LNil) p where \<open>es os p = LNil\<close> \<open>os' = drop_caps os (map (\<lambda>t. Cap t p) (ocaps os p))\<close> \<open>p \<notin> defaults\<close> \<open>ocaps os p \<noteq> []\<close>
+          | (LCons_Data) p t d lxs where \<open>es os p = LCons (Data t d) lxs\<close> \<open>os' = produce (os\<lparr>es := (es os)(p := lxs)\<rparr>) (Cap t p) [en1 os d]\<close> \<open>p \<notin> defaults\<close> \<open>ocaps os p \<noteq> []\<close>
+          | (LCons_Drop) p t lxs where \<open>es os p = LCons (Drop t) lxs\<close> \<open>os' = drop_cap (os\<lparr>es := (es os)(p := lxs)\<rparr>) (Cap t p)\<close> \<open>p \<notin> defaults\<close> \<open>ocaps os p \<noteq> []\<close>
+          | (LCons_Mint) p t lxs where \<open>es os p = LCons (Mint t) lxs\<close> \<open>os' = add_cap (os\<lparr>es := (es os)(p := lxs)\<rparr>) p t\<close> \<open>p \<notin> defaults\<close> \<open>ocaps os p \<noteq> []\<close>
+          using os' unfolding ooo_input_op_logic_def by (auto split: llist.splits event.splits)
+        hence \<open>timely_monotone (es os' p') (mset (ocaps os' p'))\<close> for p'
+        proof cases
+          case LNil
+          show ?thesis
+          proof (cases \<open>p' = p\<close>)
+            case True
+            thus ?thesis using LNil timely_monotone.LNil unfolding drop_caps_def by simp
+          next
+            case False
+            thus ?thesis using that(1) LNil unfolding invariant_def drop_caps_def by simp
+          qed
         next
-          case False
-          thus ?thesis using that(1) unfolding invariant_def by (simp add: drop_caps_def)
+          case LCons_Data
+          thus ?thesis using that timely_monotone.cases unfolding invariant_def produce_def by force
+        next
+          case LCons_Drop
+          thus ?thesis using that timely_monotone.cases unfolding invariant_def drop_cap_def by force
+        next
+          case LCons_Mint
+          thus ?thesis using that timely_monotone.cases unfolding invariant_def add_cap_def by force
         qed
-        hence \<open>invariant ?os' f\<close> using that(1) unfolding invariant_def by (simp add: drop_caps_def)
-        moreover have \<open>my_source_op ?os' f = my_source_op os f\<close> unfolding my_source_op_def by (simp add: drop_caps_def)
-        ultimately show ?thesis unfolding R_def by (force intro!: wbc_base)
+        hence \<open>invariant f os'\<close> using that unfolding invariant_def ooo_input_op_logic_def drop_caps_def
+            produce_def drop_cap_def add_cap_def by (auto split: llist.splits event.splits)
+        thus ?thesis using my_source_op_os' unfolding R_def by blast
       qed
-      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op os f) op2'
-  \<and> wbisim_cong R (dataflow_op sg (my_ooo_input_op (produce (os\<lparr>es := (es os)(p := lxs)\<rparr>) (Cap t p) [en1 os d]))) op2'"
-        if "invariant os f"
-          and "ocaps os p \<noteq> []"
-          and "es os p = LCons (Data t d) lxs"
-          and "p \<notin> defaults"
-        for p :: 'a
-          and lxs :: "('c, 'd) event llist"
-          and t :: 'c
-          and d :: 'd
-      proof -
-        let ?os' = \<open>produce (os\<lparr>es := (es os)(p := lxs)\<rparr>) (Cap t p) [en1 os d]\<close>
-        have \<open>timely_monotone (es ?os' p') (mset (ocaps ?os' p'))\<close> for p'
-          using that(1-3) timely_monotone.cases unfolding invariant_def produce_def by force
-        hence \<open>invariant ?os' f\<close> using that(1) unfolding invariant_def produce_def by simp
-        moreover have \<open>my_source_op ?os' f = my_source_op os f\<close>
-          using that(1,3) unfolding invariant_def my_source_op_def produce_def
-          by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op])
-        ultimately show ?thesis unfolding R_def by (force intro!: wbc_base)
-      qed
-      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op os f) op2'
-  \<and> wbisim_cong R (dataflow_op sg (my_ooo_input_op (drop_cap (os\<lparr>es := (es os)(p := lxs)\<rparr>) (Cap t p)))) op2'"
-        if "invariant os f"
-          and "ocaps os p \<noteq> []"
-          and "es os p = LCons (Drop t) lxs"
-          and "p \<notin> defaults"
-        for p :: 'a
-          and lxs :: "('c, 'd) event llist"
-          and t :: 'c
-      proof -
-        let ?os' = \<open>drop_cap (os\<lparr>es := (es os)(p := lxs)\<rparr>) (Cap t p)\<close>
-        have \<open>timely_monotone (es ?os' p') (mset (ocaps ?os' p'))\<close> for p'
-          using that(1-3) timely_monotone.cases unfolding invariant_def drop_cap_def by force
-        hence \<open>invariant ?os' f\<close> using that(1) unfolding invariant_def drop_cap_def by simp
-        moreover have \<open>my_source_op ?os' f = my_source_op os f\<close>
-          using that(3) unfolding my_source_op_def drop_cap_def
-          by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op])
-        ultimately show ?thesis unfolding R_def by (force intro!: wbc_base)
-      qed
-      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op os f) op2'
-  \<and> wbisim_cong R (dataflow_op sg (my_ooo_input_op (add_cap (os\<lparr>es := (es os)(p := lxs)\<rparr>) p t))) op2'"
-        if "invariant os f"
-          and "ocaps os p \<noteq> []"
-          and "es os p = LCons (Mint t) lxs"
-          and "p \<notin> defaults"
-        for p :: 'a
-          and lxs :: "('c, 'd) event llist"
-          and t :: 'c
-      proof -
-        let ?os' = \<open>add_cap (os\<lparr>es := (es os)(p := lxs)\<rparr>) p t\<close>
-        have \<open>timely_monotone (es ?os' p') (mset (ocaps ?os' p'))\<close> for p'
-          using that(1-3) timely_monotone.cases unfolding invariant_def add_cap_def by force
-        hence \<open>invariant ?os' f\<close> using that(1) unfolding invariant_def add_cap_def by simp
-        moreover have \<open>my_source_op ?os' f = my_source_op os f\<close>
-          using that(3) unfolding my_source_op_def add_cap_def
-          by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op])
-        ultimately show ?thesis unfolding R_def by (force intro!: wbc_base)
-      qed
-      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op os f) op2'
-  \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 1 (edges sg) \<lparr>cons = consu os, inte = inter os, prod = produ os\<rparr>) (pt_tr sg)\<rparr>) (my_ooo_input_op (os\<lparr>consu := [], inter := [], produ := []\<rparr>))) op2'"
-        (is \<open>_ (dataflow_op ?sg' _)\<close>)
-        if "invariant os f"
+      moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f os) op2'
+  \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 1 (edges sg) st) (pt_tr sg)\<rparr>)
+    (my_ooo_input_op os')) op2'"
+        if "invariant f os"
           and "has_progress os"
-        using that unfolding R_def invariant_def my_source_op_def by (fastforce intro!: wbc_base exI[of _ ?sg'])
-      ultimately show ?thesis using SIM1 unfolding R_def[symmetric] add_cap_def drop_cap_def drop_caps_def obtain_progress_def produce_def
-        by (auto 0 0 elim !: step_dataflow_op_elim step_map_op_elim step_builder_op_elim simp add: add_cap_def drop_cap_def drop_caps_def obtain_progress_def produce_def invariant_def my_ooo_input_op_def ooo_input_op_def ooo_input_op_logic_def split: llist.splits event.splits)
+          and "(os', st) = obtain_progress os"
+        for st :: "('c, 'd) shared_state"
+          and os' :: "('c, 'b, 'a, 'd, 'e) input_state_scheme"
+        using that unfolding R_def invariant_def my_source_op_def obtain_progress_def by (fastforce intro!: wbc_base)
+      ultimately show ?thesis using SIM1 unfolding R_def[symmetric]
+        by - (sim_cases defs: my_ooo_input_op_def ooo_input_op_def elims: step_dataflow_op_elim step_map_op_elim step_builder_op_elim intros: invariant_initia)
     qed
   qed
 next
@@ -293,13 +262,13 @@ next
     proof -
       have "\<exists>op2'. wstep (Out (1, p) (d, t)) (dataflow_op sg (my_ooo_input_op os)) op2'
   \<and> wbisim_cong R op2' (map_op (Pair 1) (Pair 1) (source_op ((\<lambda>p. outpu os p @@- lmap (\<lambda>z. case z of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os p)))(p := lxs))))"
-        if "invariant os f"
+        if "invariant f os"
           and d_t_lxs: "outpu os p @@- lmap (\<lambda>z. case z of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os p)) = LCons (d, t) lxs"
           and "p \<notin> defaults"
-        for p :: 'a
+        for p :: 'c
           and d :: 'b
-          and t :: 'c
-          and lxs :: "('b \<times> 'c) llist"
+          and t :: 'd
+          and lxs :: "('b \<times> 'd) llist"
       proof (cases \<open>outpu os p\<close>)
         case Nil
         then obtain d' where d': \<open>f d' = d\<close>
@@ -353,9 +322,9 @@ next
           case False
           then show ?thesis using that(1) es_os' ocaps_os' unfolding invariant_def by simp
         qed
-        hence invariant: \<open>invariant ?os'' f\<close>
+        hence invariant: \<open>invariant f ?os''\<close>
           using that(1) initialized en1_os' unfolding invariant_def by simp
-        have my_source_op: \<open>my_source_op ?os'' f =
+        have my_source_op: \<open>my_source_op f ?os'' =
   map_op (Pair 1) (Pair 1) (source_op ((\<lambda>p. outpu os p @@- lmap (\<lambda>z. case z of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os p)))(p := lxs)))\<close>
           using that(2) Nil es_os' unfolding unfold my_source_op_def
           by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] dest!: arg_cong[where f=ltl and y=\<open>LCons _ lxs\<close>] simp add: ltl_lfilter)
@@ -368,14 +337,14 @@ next
           using that(1,3) Cons x_d_t step_builder_op_Write_Some unfolding invariant_def ooo_input_op_def by auto
         hence \<open>wstep (Out (1, p) (d, t)) (dataflow_op sg (my_ooo_input_op os)) (dataflow_op sg (my_ooo_input_op ?os'))\<close>
           using step_Out_dataflow_op_Out_Inr_intro unfolding my_ooo_input_op_def by force
-        moreover have \<open>my_source_op ?os' f =
+        moreover have \<open>my_source_op f ?os' =
   map_op (Pair 1) (Pair 1) (source_op ((\<lambda>p. outpu os p @@- lmap (\<lambda>z. case z of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os p)))(p := lxs)))\<close>
           using that(2) Cons unfolding my_source_op_def
           by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] simp add: fun_eq_iff)
         ultimately show ?thesis using that(1) unfolding R_def invariant_def by (force intro!: wbc_base)
       qed
       thus ?thesis using SIM2 unfolding R_def[symmetric]
-        by (auto elim !: step_map_op_elim step_source_op_elim simp add: my_source_op_def)
+        by (sim_cases defs: my_source_op_def elims: step_map_op_elim step_source_op_elim)
     qed
   qed
 qed
