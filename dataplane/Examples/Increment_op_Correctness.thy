@@ -18,10 +18,6 @@ abbreviation inp_incr_summary where
   then antichain {inc}
   else {}\<^sub>A)\<close>
 
-(* Experiment with Eisbach. *)
-method sim_cases uses defs elims intros =
-  ((unfold defs)?, elim conjE elims; simp only: IO.simps; hypsubst_thin?; auto intro: intros simp flip: defs)
-
 (* TODO Move. *)
 lemma lshift_append_lshift:
   \<open>xs @@- (ys @ zs) @@- lxs = (xs @ ys) @@- zs @@- lxs\<close>
