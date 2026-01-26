@@ -829,8 +829,7 @@ lemma propagate_pointstamps_preserve_inv:
 lemma is_empty_antichain_filter_antichain[simp]:
   "is_empty_antichain (filter_antichain P A) \<longleftrightarrow> (\<forall> a. a \<in>\<^sub>A A \<longrightarrow> \<not> P a)"
   apply transfer
-  apply (metis Set.is_empty_def emptyE equals0I member_filter)
-  done
+  by auto
 
 lemma sorted_caps_append:
   "sorted (map time caps) \<Longrightarrow>
@@ -1536,22 +1535,22 @@ lemma reachable_locations_my_summ[simp]:
     done
   subgoal
     apply (rule exI[of _ "Loc 0 (Trg 1)"])
-    apply (auto simp add: is_empty_antichain.rep_eq Set.is_empty_def)
+    apply (auto simp add: is_empty_antichain.rep_eq )
     apply (metis dataflow_topology_from_tree.empty_antichain empty_antichain.rep_eq empty_antichain_def in_sigletonI my_summ_def set_antichain_inject zero_one)
     done
   subgoal
     apply (rule exI[of _ "Loc 0 (Src 1)"])
-    apply (auto simp add: is_empty_antichain.rep_eq Set.is_empty_def)
+    apply (auto simp add: is_empty_antichain.rep_eq )
     apply (metis dataflow_topology_from_tree.empty_antichain empty_antichain.rep_eq empty_antichain_def in_sigletonI my_summ_def set_antichain_inject zero_one)
     done
   subgoal
     apply (rule exI[of _ "Loc 1 (Trg 1)"])
-    apply (auto simp add: is_empty_antichain.rep_eq Set.is_empty_def)
+    apply (auto simp add: is_empty_antichain.rep_eq )
     apply (metis dataflow_topology_from_tree.empty_antichain empty_antichain.rep_eq empty_antichain_def in_sigletonI my_summ_def set_antichain_inject zero_one)
     done
   subgoal
     apply (rule exI[of _ "Loc 1 (Src 1)"])
-    apply (auto simp add: is_empty_antichain.rep_eq Set.is_empty_def)
+    apply (auto simp add: is_empty_antichain.rep_eq )
     apply (metis dataflow_topology_from_tree.empty_antichain empty_antichain.rep_eq empty_antichain_def in_sigletonI my_summ_def set_antichain_inject zero_one)
     done
   done
@@ -7686,7 +7685,10 @@ c_pts (pt_tr sg) (Loc 1 (Trg 1)) + zmset (map snd (produ os1)) +
                               subgoal
                                 apply (elim disjE)
                                 subgoal
-                                  by (smt (verit, best) frontier_below_eq_frontier_plus_pos frontier_idempotent frontier_le_singletons frontier_less_equal_iff frontier_less_equal_zcount_pos le_add1 le_add_same_cancel2 linordered_nonzero_semiring_class.zero_le_one
+                                  sledgehammer
+
+end
+                                  by (smt (verit, best) frontier_below_eq_frontier_plus_pos frontier_idempotent frontier_le_singletons frontier_less_equal_iff frontier_less_equal_zcount_pos le_add1 le_add_same_cancel2 
                                       order.trans plus_1_eq_Suc prems3(6) zero_one zmset_of_mset_set_ge_zero)
                                 subgoal
                                   using prems3(5,6) apply -
@@ -15080,7 +15082,7 @@ lemma dataflow_op_inp_m_top_source_op:
           apply (metis one_bit0_def rel_simps(93) zero_bit0_def)
           done
         subgoal
-          unfolding is_empty_antichain.rep_eq Set.is_empty_def
+          unfolding is_empty_antichain.rep_eq 
           apply (subst antichain.antichain_inverse)
            apply (auto simp add: incomparable_def)
           done
@@ -15117,7 +15119,7 @@ lemma dataflow_op_inp_m_top_source_op:
                 apply (metis one_bit0_def rel_simps(93) zero_bit0_def)
                 done
               subgoal
-                unfolding is_empty_antichain.rep_eq Set.is_empty_def
+                unfolding is_empty_antichain.rep_eq 
                 apply (subst antichain.antichain_inverse)
                  apply (auto simp add: incomparable_def)
                 done
@@ -15167,7 +15169,7 @@ lemma dataflow_op_inp_m_top_source_op:
           apply (metis one_bit0_def rel_simps(93) zero_bit0_def)
           done
         subgoal
-          unfolding is_empty_antichain.rep_eq Set.is_empty_def
+          unfolding is_empty_antichain.rep_eq 
           apply (subst antichain.antichain_inverse)
            apply (auto simp add: incomparable_def)
           done
@@ -15205,7 +15207,7 @@ lemma dataflow_op_inp_m_top_source_op:
                 apply (metis one_bit0_def rel_simps(93) zero_bit0_def)
                 done
               subgoal
-                unfolding is_empty_antichain.rep_eq Set.is_empty_def
+                unfolding is_empty_antichain.rep_eq 
                 apply (subst antichain.antichain_inverse)
                  apply (auto simp add: incomparable_def)
                 done

@@ -2270,8 +2270,8 @@ lemma wtraced_map_op:
             apply (intro disjI1 exI[of _ lxs] conjI)
             using op.set_map wstep_inputs_outputs inj_on_subset wtraced_inputs wtraced_outputs
                apply (smt (verit, ccfv_threshold) VIO.map_cong f_the_inv_into_f llist.map_cong the_inv_into_f_f the_inv_into_into)
-              apply (meson subset_inj_on wstep_inputs_outputs)
-             apply (meson subset_inj_on wstep_inputs_outputs)
+              apply (meson inj_on_subset wstep_inputs_outputs)
+             apply (meson inj_on_subset wstep_inputs_outputs)
             apply assumption
             done
           done

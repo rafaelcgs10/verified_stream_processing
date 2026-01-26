@@ -192,17 +192,17 @@ lift_definition zequal :: "'a zmultiset \<Rightarrow> 'a zmultiset \<Rightarrow>
 lemma is_empty_antichain_simp[simp]:
   "is_empty_antichain {}\<^sub>A"
   apply transfer
-  apply (auto simp add: Set.is_empty_def)
+  apply (auto simp add: )
   done
 lemma is_empty_antichain_empty_list[simp]:
   "is_empty_antichain (antichain_from_list [])"
   apply transfer
-  apply (auto simp add: Set.is_empty_def)
+  apply (auto simp add: )
   done
 lemma is_empty_antichain_not_empty_list[simp]:
   "\<not> is_empty_antichain (antichain_from_list [a])"
   apply transfer
-  apply (auto simp add: Set.is_empty_def)
+  apply (auto simp add: )
   done
 
 definition "reachable_locations summary \<equiv> { loc . \<exists> loc' .

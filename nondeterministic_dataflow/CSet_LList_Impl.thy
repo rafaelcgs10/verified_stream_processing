@@ -359,7 +359,7 @@ lemma cUn_code[code]:
   unfolding sup_cset_def cset_of_llist_def by auto
 
 lemma cfilter_code[code]: "cfilter P (cset_of_llist xs) = cset_of_llist (lfilter P xs)"
-  unfolding cfilter_def cset_of_llist_def by (auto simp: Set.filter_def)
+  unfolding cfilter_def cset_of_llist_def by (auto simp: )
 
 lemma cimage_code[code]: "cimage f (cset_of_llist xs) = cset_of_llist (lmap f xs)"
   unfolding cimage_def cset_of_llist_def by auto
