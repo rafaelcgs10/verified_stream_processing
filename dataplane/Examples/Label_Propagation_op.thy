@@ -1,7 +1,7 @@
-theory Label_Propagation
+theory Label_Propagation_op
 
 imports
-  Dataplane.Timely_Infrastructure_Old
+  Dataplane.Timely_Infrastructure
   Dataplane.Timely_Stream
   Dataplane.MyProduct_Instances
 begin
@@ -58,6 +58,8 @@ definition update_label where
        f = if is_Nil ts then label os t else unions_with min (map (label os) ts)
   in (label os)(t := f(v := min (f v) l)))\<close>
 
+(* Note: I assume that the timestamps of data read on port 0 are of the form "MyPair t1 0", i.e.,
+the second component is assumed to be always 0. *)
 definition label_propagation_op_logic where
   \<open>label_propagation_op_logic os = cUn (cUn (cUn
   (case input os 0 of
@@ -94,6 +96,6 @@ definition label_propagation_op_logic where
    in {|drop_caps (produces os batch) (map (\<lambda>t. Cap t 0) output_times @ map (\<lambda>t. Cap t 1) (filter P (ocaps os 1)))|})\<close>
 
 definition label_propagation_op where
-  \<open>label_propagation_op os = builder_op cUNIV cUNIV os label_propagation_op_logic\<close>
+  \<open>label_propagation_op os = builder_op True cUNIV cUNIV os label_propagation_op_logic\<close>
 
 end
