@@ -793,9 +793,14 @@ lemma
                        apply simp
                       apply (rule frontier_less_equal_addI)
                         apply (rule disjI2)
-                      subgoal
+                      subgoal for s
+                        apply (rule frontier_less_equal_sumI)
+                           apply simp_all
+                        subgoal
+                          sorry
 
-                      find_theorems frontier_less_equal frontier
+                        
+                      find_theorems frontier_less_equal frontier sum
 
                   oops
 
