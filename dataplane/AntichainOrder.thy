@@ -610,6 +610,7 @@ lemma frontier_less_equal_sumI:
   by (induct S rule: finite_induct)
    (auto simp add: frontier_less_equal_addI sum_nonneg zcount_sum)
 
+
 lemma frontier_less_equal_sumE:
   "frontier_less_equal (frontier (\<Sum>loc\<in>S. f loc)) t \<Longrightarrow>
    finite S \<Longrightarrow>
