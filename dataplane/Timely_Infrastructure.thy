@@ -668,6 +668,10 @@ next
       mset_append mset_right_cancel_elem remove_1_mset_id_iff_notin remove_last.elims by (smt (verit))
 qed
 
+lemma set_remove_lastD:
+  \<open>y \<in> set (remove_last x xs) \<Longrightarrow> y \<in> set xs\<close>
+  using in_diffD mset_remove_last set_mset_mset by metis
+
 fun list_diff where
   "list_diff ys [] = ys"
 | "list_diff ys (x # xs) = list_diff (remove_last x ys) xs"
