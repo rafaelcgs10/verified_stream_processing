@@ -19,6 +19,10 @@ inductive_cases timely_monotone_LConsE[elim!]: "timely_monotone (LCons e lxs) C"
 
 definition "vacant t C = (\<forall>u \<le> t. count C u = 0)"
 
+lemma vacant_diff:
+  \<open>vacant t M \<Longrightarrow> vacant t (M - N)\<close>
+  unfolding vacant_def by simp
+
 inductive ev_drops for t where
   "lfinite lxs \<Longrightarrow> ev_drops t lxs C"
 | "vacant t C \<Longrightarrow> ev_drops t lxs C"
@@ -214,5 +218,9 @@ lemma timely_input_stream_Data_expires:
       done
     done
   done
+
+lemma timely_input_stream_LCons_not_empty:
+  \<open>timely_input_stream (LCons e lxs) C \<Longrightarrow> C \<noteq> {#}\<close>
+  unfolding timely_input_stream_def by force
 
 end

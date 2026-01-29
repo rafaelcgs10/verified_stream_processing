@@ -2,7 +2,6 @@ theory Increment_op
 
 imports
   Dataplane.Timely_Infrastructure
-  Dataplane.MyProduct_Instances
 begin
 
 definition \<open>increment_op_logic ip op inc = (\<lambda>os. {|
