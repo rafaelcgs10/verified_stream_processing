@@ -739,6 +739,15 @@ lemma in_frontier_sumI2[intro]:
    x \<in>\<^sub>A frontier (M + N)"
   by (auto del: disjE simp add: int_sum_disj member_antichain.rep_eq minimal_antichain_def frontier.rep_eq)
 
+lemma in_frontier_sum:
+  "t \<in>\<^sub>A frontier (M + N) \<Longrightarrow>
+   (\<forall> t. zcount N t \<ge> 0) \<Longrightarrow>
+   (\<forall> t. zcount M t \<ge> 0) \<Longrightarrow>
+   (zcount M t > 0 \<or> zcount N t > 0) \<and> (\<forall> t'. zcount N t' > 0 \<longrightarrow> \<not> t' < t) \<and> (\<forall> t'. zcount M t' > 0 \<longrightarrow> \<not> t' < t)"
+  apply transfer'
+  unfolding minimal_antichain_def
+  using int_sum_disj apply auto
+  done
 
 lemma frontier_sum_eq:
   "finite S \<Longrightarrow>

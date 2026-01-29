@@ -554,10 +554,16 @@ lemma set_extract_progressD:
 
 declare enum_class.enum_UNIV[simp] enum_class.enum_distinct[simp]
 
+find_consts "_ set \<Rightarrow> _ set" name: antich
 
 definition "graph_summar_edges_inv su ed os = (
   (\<forall> nid p p' t. t \<in> set (summar (os nid) p p') \<longrightarrow> t \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) (Loc nid (Src p'))) \<and>
-  (\<forall> nid nid' p p'. (nid, p) \<in> set (ed (nid', p')) \<longrightarrow> 0 \<in>\<^sub>A graph.path_weight su (Loc nid' (Src p')) (Loc nid (Trg p'))))"
+  (\<forall> nid nid' p p'. (nid, p) \<in> set (ed (nid', p')) \<longrightarrow> 0 \<in>\<^sub>A graph.path_weight su (Loc nid' (Src p')) (Loc nid (Trg p'))) \<and>
+  (\<forall> nid p l s. l \<noteq> (Loc nid (Trg p)) \<longrightarrow> (s \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) l \<longleftrightarrow> (\<exists> t' p'' s'. s = t' -+- s' \<and> t' \<in> set (summar (os nid) p p'') \<and> s' \<in>\<^sub>A graph.path_weight su (Loc nid (Src p'')) l))) \<and>
+  (\<forall> nid p l s. l \<noteq> (Loc nid (Src p)) \<longrightarrow> (s \<in>\<^sub>A graph.path_weight su (Loc nid (Src p)) l \<longleftrightarrow> (\<exists> nid' p'. (nid', p') \<in> set (ed (nid, p)) \<and> s \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p')) l))) \<and>
+  (\<forall> nid p p'. distinct (summar (os nid) p p')) \<and>
+  (\<forall> nid p p'. \<forall> t \<in> set (summar (os nid) p p'). \<not> (\<exists> t' \<in> set (summar (os nid) p p'). t' < t))
+  )"
 
 (* ======> FIXME: move me \<le>====== *)
 lemma zmset_map_snd_concat_sum:
@@ -570,7 +576,11 @@ lemma zmultiset_move_neg:
   "(A :: _ zmultiset) + B = C \<longleftrightarrow> A = C - B"
   by auto
 
-lemma zmset_filterextract_progress_consumes:
+lemma count_list_gt_0[simp]:
+  "0 < count_list xs x \<longleftrightarrow> x \<in> set xs"
+  by (induct xs) auto
+
+lemma zmset_filterextract_progress_Trg_consumes:
   "zmset (map snd (filter (\<lambda>x. Loc nid (Trg p) = fst x) (extract_progress nid (edges sg) (snd (obtain_progress (consumes (os nid) p t d)))))) = 
    zmset (map snd (filter (\<lambda>x. Loc nid (Trg p) = fst x) (extract_progress nid (edges sg) (snd (obtain_progress (os nid)))))) - {# t #}\<^sub>z"
   unfolding extract_progress_def obtain_progress_def
@@ -578,6 +588,10 @@ lemma zmset_filterextract_progress_consumes:
   apply (metis update_zmultiset_one(1))
   done
 
+lemma zmset_filterextract_progress_Src_consumes:
+  "zmset (map snd (filter (\<lambda>(l, _, _). Loc nid (Src p') = l) (extract_progress nid (edges sg) (snd (obtain_progress (consumes (os nid) p t d)))))) = 
+   zmset (map snd (filter (\<lambda>(l, _, _). Loc nid (Src p') = l) (extract_progress nid (edges sg) (snd (obtain_progress (os nid)))))) + to_zmset (map ((-+-) t) (summar (os nid) p p'))"
+  by (clarsimp simp add: extract_progress_def obtain_progress_def filter_concat filter_map map_concat comp_def zmset_concat)
 
 lemma sorried1:
   "frontier_less_equal (frontier (\<Sum>loc'\<in>insert x A. f loc' (frontier (g loc')))) t' \<Longrightarrow>
@@ -773,34 +787,134 @@ lemma
                  apply force
                 apply (drule frontier_less_equal_add_cases)
                 apply (elim disjE)
-                defer
+                 defer
                 subgoal
                   apply (clarsimp simp add: split_beta zmset_map_snd_concat_sum  comp_def filter_concat c_pts_change_multiplicities extract_prog_def)
                   apply (subst Propagate.dataflow_topology.implied_frontier_alt_def)
                   using prems(2) apply assumption
                   apply (rule frontier_less_equal_subset_sumI[of _ _ "{Loc nid (Trg p)} \<union> (\<lambda> p'. Loc nid (Src p')) ` {p'. summar (os nid) p p' \<noteq> []}"])
-                   apply simp_all
-                apply (metis (no_types) dataflow_topology_from_tree.after_summary_def dataflow_topology_from_tree.after_summary_zmset_of_nonneg)
-                apply force
+                     apply simp_all
+                    apply (metis (no_types) dataflow_topology_from_tree.after_summary_def dataflow_topology_from_tree.after_summary_zmset_of_nonneg)
+                   apply force
                   apply (clarsimp simp add: comm_monoid_add_class.sum.distrib split_beta zmset_map_snd_concat_sum  comp_def filter_concat c_pts_change_multiplicities extract_prog_def)
                   apply (subst (asm) frontier_less_equal_iff2)
                   apply clarsimp
                   subgoal for ft
-                  apply (cases "\<exists> s. s \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid' (Trg p')) \<and> ft = t -+- s")
+                    apply (cases "\<exists> s p'' t''. t'' \<in> set (summar (os nid) p p'') \<and> s \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Src p'')) (Loc nid' (Trg p')) \<and> ft = t -+- t'' -+- s")
                     subgoal
                       apply clarsimp
-                      apply (subst comm_monoid_add_class.sum.insert_remove)
-                       apply simp
-                      apply (rule frontier_less_equal_addI)
-                        apply (rule disjI2)
-                      subgoal for s
-                        apply (rule frontier_less_equal_sumI)
-                           apply simp_all
+                      subgoal for s p'' t''
+                        apply (subst (asm) comm_monoid_add_class.sum.insert_remove)
+                         apply simp_all
+                        apply (drule in_frontier_sum)
                         subgoal
-                          sorry
+                          apply (clarsimp simp add: zcount_sum)
+                          apply (rule sum_nonneg)
+                          apply (rule sum_nonneg)
+                          apply simp
+                          done
+                        subgoal
+                          apply (clarsimp simp add: zcount_sum)
+                          apply (rule sum_nonneg)
+                          apply simp
+                          done
+                        subgoal
+                          apply (elim conjE disjE)
+                          subgoal
+                            apply (subst comm_monoid_add_class.sum.insert_remove)
+                             apply simp
+                            apply (rule frontier_less_equal_addI)
+                            subgoal
+                              apply (rule disjI2)
+                              apply (rule frontier_less_equal_sumI[of _ _ "Loc nid (Src p'')"])
+                                 apply simp_all
+                              subgoal
+                                apply clarsimp
+                                apply (metis (no_types) AP_simp after_summary_def dataflow_topology_from_tree.after_summary_zmset_of_nonneg)
+                                done
+                               apply fastforce
+                              apply (rule frontier_less_equal_sumI[of _ _ s])
+                                 apply blast
+                                apply clarsimp
+                              using member_antichain.rep_eq apply blast
+                              apply (subst frontier_less_equal_iff2)
+                              apply (rule exI[of _ ft])
+                              apply simp
+                              apply (subst in_frontier_zmset_image)
+                               apply clarsimp
+                              apply (rule exI[of _ "t -+- t''"])
+                              apply simp
+                              apply (subst zmset_filterextract_progress_Src_consumes)
+                              apply (rule in_frontier_sumI2)
+                                 apply simp_all
+                              subgoal
+                                apply (rule in_frontier_sumI2)
+                                subgoal 
+                                  apply (clarsimp simp only: to_zmset_map in_frontier_iff)
+                                  apply (intro conjI)
+                                  subgoal
+                                    apply (subgoal_tac "\<not> (\<exists>t'\<in>set (summar (os nid) p p''). t' < t'')")
+                                    subgoal premises prems3
+                                      using prems3(4, 10) apply -
+                                      apply (auto simp flip: to_zmset_map simp add: zcount_to_zmset)
+                                      done
+                                    subgoal premises prems3
+                                      using prems(3) prems3(4) 
+                                      unfolding graph_summar_edges_inv_def
+                                      by auto
+                                    done
+                                  subgoal
+                                    by (auto simp flip: to_zmset_map simp add: zcount_to_zmset)
+                                  done
+                                subgoal
+                                  apply safe
+                                  subgoal premises prems2 for tt
+                                    using prems2(3,4,7,9,11-) apply -
+                                    apply (drule spec[of _ "tt -+- s"])
+                                    apply (drule mp)
+                                    subgoal
+                                      apply (simp add: zcount_sum)
+                                      apply (rule Timely_Infrastructure.dataflow_topology_from_tree.sum_pos[of _ _  "Loc nid (Src p'')"])
+                                         apply simp_all
+                                      subgoal
+                                      by (meson nonneg_zcount_image_zmset sum_nonneg zcount_zmset_of_nonneg)
+                                    subgoal
+                                      by (force simp add: image_iff)
+                                    subgoal
+                                      apply (rule Timely_Infrastructure.dataflow_topology_from_tree.sum_pos[of _ _ s])
+                                         apply simp_all
+                                      using prems2(5) member_antichain.rep_eq apply blast
+                                      using prems2(10) apply -
+                                      apply (rule pos_zcount_image_zmset)
+                                       apply simp_all
+                                      apply (subgoal_tac "\<forall> t. zcount (c_pts (pt_tr sg) (Loc nid (Src p''))) t \<ge> 0")
+                                      subgoal
+                                        apply (auto simp flip: member_antichain.rep_eq simp add: in_frontier_iff)                                        
+                                        subgoal for ft'
+                                          using prems2(7)
 
-                        
-                      find_theorems frontier_less_equal frontier sum
+
+
+end
+                                        subgoal
+                                          using add_strict_increasing2 by blast
+
+                                      find_theorems  "_ \<in>\<^sub>A frontier _ \<longleftrightarrow> _"
+
+                                subgoal
+
+                              apply (auto simp flip: to_zmset_map simp add: zcount_to_zmset)
+
+end
+                              sorry
+                            subgoal
+                              sorry
+                            subgoal
+                              by (meson to_zmset_nenneg)
+                              
+
+
+                      find_theorems "_ \<in>\<^sub>A (frontier (_ + _))"
 
                   oops
 
@@ -838,7 +952,7 @@ end
                   apply (rule frontier_less_equal_ifrontierI)
                   using prems(2) apply assumption
                   apply assumption
-                  apply (clarsimp simp add:  c_pts_change_multiplicities zmset_filterextract_progress_consumes)
+                  apply (clarsimp simp add:  c_pts_change_multiplicities zmset_filterextract_progress_Trg_consumes)
                   apply (subst group_add_class.add_diff_eq)
                   apply simp
                   subgoal premises prems2

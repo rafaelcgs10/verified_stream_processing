@@ -193,6 +193,9 @@ lemma to_zmset_tl[simp]:
   by (induct xs)
     auto
 
+lemma to_zmset_map:
+  "to_zmset (map f xs) = {#f x. x \<in>#\<^sub>z to_zmset xs#}"
+  by (induct xs) auto
 
 lemma to_zmset_empty[simp]:
   "to_zmset xs = {#}\<^sub>z \<longleftrightarrow> xs = []"
@@ -219,6 +222,13 @@ lemma set_antichain_antichain_singleton[simp]:
   apply (auto simp: incomparable_def)
   done
 
+lemma set_zmset_to_zmset[simp]:
+  "set_zmset (to_zmset xs) = set xs"
+  unfolding set_zmset_def
+  apply (induct xs)
+   apply simp_all
+  apply (smt (verit) Collect_cong insert_compr to_zmset_nenneg)
+  done
 
 instantiation zmultiset :: (equal) equal
 begin
