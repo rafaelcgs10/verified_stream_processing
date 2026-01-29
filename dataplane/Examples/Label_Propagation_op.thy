@@ -60,7 +60,7 @@ definition update_label where
 (* Note: I assume that the timestamps of data read on port 0 are of the form "MyPair t1 0", i.e.,
 the second component is assumed to be always 0. *)
 definition label_propagation_op_logic where
-  \<open>label_propagation_op_logic os = cUn (cUn (cUn
+  \<open>label_propagation_op_logic os = cUn (cUn
   (case input os 0 of
     [] \<Rightarrow> {||}
   | (d, t) # xs \<Rightarrow>
@@ -87,7 +87,6 @@ definition label_propagation_op_logic where
           then map (\<lambda>v'. (en1 os (v', l), Cap t 1)) (filter (\<lambda>v'. label os t1 v' > l) vs)
           else []
     in {|produces os' batch|}))
-  undefined)
   (let P = \<lambda>t. \<forall>n. \<not> frontier_less_equal (front os 0 + front os 1) (MyPair (myfst t) n);
        output_times = filter P (ocaps os 0);
        batch = map (\<lambda>t. let cap = Cap t 0; t1 = myfst t in
