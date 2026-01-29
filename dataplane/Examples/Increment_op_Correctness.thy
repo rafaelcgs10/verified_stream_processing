@@ -56,7 +56,7 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
       ((input os2 1 @ map projr (buf (Inr (1, 1))) @ outpu os1 1) @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os1 1))))))
   (source_op ((\<lambda>(p :: 1). outpu ?os2' 1 @@- lmap (\<lambda>(d, t). (d, t + inc))
       ((input ?os2' 1 @ map projr (buf (Inr (1, 1))) @ outpu os1 1) @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os1 1))))))\<close>
-          using that(2) step_source_op_Out_intro defaults_num1_def by force
+          using that(2) defaults_num1_def by auto
         hence \<open>wstep (Out (1, 1) (d, t)) (my_source_op f inc os1 buf os2) (my_source_op f inc os1 buf ?os2')\<close>
           using my_source_op_def by auto
         thus ?thesis using that(1) unfolding R_def invariant_def by (fastforce intro!: wbc_base)
@@ -113,11 +113,11 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
       proof -
         have \<open>my_source_op f inc os1 buf os2 = my_source_op f inc os1' buf os2\<close> using that(1,3)
           unfolding invariant_def timely_input_stream_def my_source_op_def ooo_input_op_logic_def
-            produce_def drop_cap_def add_cap_def by (auto simp flip: snoc_shift split: llist.splits)
+            produce_def drop_cap_def add_cap_def by (fastforce simp flip: snoc_shift split: llist.splits)
         moreover have \<open>invariant f inc os1' buf os2\<close> using that(1,3)
             timely_input_stream_ooo_input_op_logic[OF _ that(3)] unfolding invariant_def
             ooo_input_op_logic_def drop_caps_def produce_def drop_cap_def add_cap_def
-          by (auto split: llist.splits event.splits)
+          by (force split: llist.splits event.splits)
         ultimately show ?thesis unfolding R_def by blast
       qed
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2'

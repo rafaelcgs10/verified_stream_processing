@@ -278,7 +278,7 @@ proof (coinduction arbitrary: sg os rule: wbisim_coinduct_upto'')
         have \<open>step (Out p (d, t))
   (source_op (\<lambda>p. outpu os p @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os p))))
   (source_op (\<lambda>p. outpu ?os' p @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es ?os' p))))\<close>
-          using that(2,3) step_source_op_Out_intro by force
+          using that(2,3) by force
         hence \<open>wstep (Out (1, p) (d, t)) (my_source_op f os) (my_source_op f ?os')\<close>
           using my_source_op_def by auto
         thus ?thesis using that(1) unfolding R_def invariant_def by (force intro!: wbc_base)
@@ -292,11 +292,11 @@ proof (coinduction arbitrary: sg os rule: wbisim_coinduct_upto'')
         have my_source_op_os': \<open>my_source_op f os = my_source_op f os'\<close>
           using that unfolding invariant_def my_source_op_def ooo_input_op_logic_def drop_caps_def
             produce_def drop_cap_def add_cap_def
-          by (fastforce intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] split: llist.splits event.splits)
+          by (force intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] split: llist.splits event.splits)
         have \<open>timely_input_stream (es os' p') (mset (ocaps os' p'))\<close> for p'
           using timely_input_stream_ooo_input_op_logic that unfolding invariant_def by fast
         hence \<open>invariant f os'\<close> using that unfolding invariant_def ooo_input_op_logic_def drop_caps_def
-            produce_def drop_cap_def add_cap_def by (auto split: llist.splits event.splits)
+            produce_def drop_cap_def add_cap_def by (force split: llist.splits event.splits)
         thus ?thesis using my_source_op_os' unfolding R_def by blast
       qed
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f os) op2'
@@ -307,7 +307,7 @@ proof (coinduction arbitrary: sg os rule: wbisim_coinduct_upto'')
           and "(os', st) = obtain_progress os"
         for st :: "('c, 'd) shared_state"
           and os' :: "('c, 'b, 'a, 'd, 'e) input_state_scheme"
-        using that unfolding R_def invariant_def my_source_op_def obtain_progress_def by (fastforce intro!: wbc_base)
+        using that unfolding R_def invariant_def my_source_op_def obtain_progress_def by (force intro!: wbc_base)
       ultimately show ?thesis using SIM1 unfolding R_def[symmetric]
         by - (sim_cases defs: my_ooo_input_op_def ooo_input_op_def elims: step_dataflow_op_elim step_map_op_elim step_builder_op_elim intros: invariant_initia)
     qed
@@ -364,7 +364,7 @@ next
             using that(1,3) d' lfinite ldropWhile_LCons_t_d' en1_os' step_Taus_ooo_input_op_Drop_Mint[where os=os]
             unfolding invariant_def timely_input_stream_def by auto
           hence step_Taus: \<open>(step Tau)\<^sup>*\<^sup>* (dataflow_op sg (my_ooo_input_op os)) (dataflow_op sg (my_ooo_input_op (produce ?os' (Cap t p) [d])))\<close>
-            using step_Taus_dataflow_op_Taus_intro unfolding my_ooo_input_op_def by blast
+            unfolding my_ooo_input_op_def by blast
           have \<open>step (Out (Some p) (Inr (d, t))) (ooo_input_op c\<UU> (produce ?os' (Cap t p) [d])) (ooo_input_op c\<UU> ?os'')\<close>
             using that(3) Nil initialized outpu_os' step_builder_op_Write_Some
             unfolding ooo_input_op_def produce_def by auto
@@ -389,7 +389,7 @@ next
         have \<open>step (Out (Some p) (Inr (d, t))) (ooo_input_op c\<UU> os) (ooo_input_op c\<UU> ?os')\<close>
           using that(1,3) Cons x_d_t step_builder_op_Write_Some unfolding invariant_def ooo_input_op_def by auto
         hence \<open>wstep (Out (1, p) (d, t)) (dataflow_op sg (my_ooo_input_op os)) (dataflow_op sg (my_ooo_input_op ?os'))\<close>
-          using step_Out_dataflow_op_Out_Inr_intro unfolding my_ooo_input_op_def by force
+          unfolding my_ooo_input_op_def by force
         moreover have \<open>my_source_op f ?os' = map_op (Pair 1) (Pair 1)
   (source_op ((\<lambda>p. outpu os p @@- lmap (\<lambda>z. case z of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os p)))(p := lxs)))\<close>
           using that(2) Cons unfolding my_source_op_def
