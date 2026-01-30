@@ -739,14 +739,28 @@ lemma in_frontier_sumI2[intro]:
    x \<in>\<^sub>A frontier (M + N)"
   by (auto del: disjE simp add: int_sum_disj member_antichain.rep_eq minimal_antichain_def frontier.rep_eq)
 
-lemma in_frontier_sum:
-  "t \<in>\<^sub>A frontier (M + N) \<Longrightarrow>
-   (\<forall> t. zcount N t \<ge> 0) \<Longrightarrow>
-   (\<forall> t. zcount M t \<ge> 0) \<Longrightarrow>
-   (zcount M t > 0 \<or> zcount N t > 0) \<and> (\<forall> t'. zcount N t' > 0 \<longrightarrow> \<not> t' < t) \<and> (\<forall> t'. zcount M t' > 0 \<longrightarrow> \<not> t' < t)"
-  apply transfer'
-  unfolding minimal_antichain_def
-  using int_sum_disj apply auto
+
+
+lemma in_frontier_SumI:
+  "finite A \<Longrightarrow>
+   t \<in>\<^sub>A frontier (f a) \<Longrightarrow>
+   a \<in> A \<Longrightarrow>
+   (\<forall> x \<in> A. \<forall> t'. zcount (f x) t' \<ge> 0) \<Longrightarrow>
+   (\<forall> x \<in> A. \<forall> t'. x \<noteq> a \<longrightarrow> zcount (f x) t' > 0 \<longrightarrow> \<not> t' < t) \<Longrightarrow>
+   t \<in>\<^sub>A frontier (sum f A)"
+  apply (induct A rule: finite_induct)
+   apply simp_all
+  apply (auto simp add: sum_nonneg zcount_sum)
+  subgoal 
+    sledgehammer
+
+end
+  subgoal
+   apply (rule in_frontier_sumI1)
+       apply auto
+    apply (metis sum_pos_ex_elem_pos zcount_sum)
+    apply (simp add: sum_nonneg zcount_sum)
+    done
   done
 
 lemma frontier_sum_eq:
@@ -792,5 +806,31 @@ lemma frontier_sum_eq:
       done
     done
   done
+
+lemma in_frontier_SumD:
+  "t \<in>\<^sub>A frontier (\<Sum>loc\<in>A. f loc) \<Longrightarrow>
+   zcount (f a) t > 0 \<Longrightarrow>
+   (\<forall> loc \<in> A. \<forall> y. zcount (f loc) y \<ge> 0) \<Longrightarrow>
+   a \<in> A \<Longrightarrow>
+   t \<in>\<^sub>A frontier (f a)"
+    apply transfer
+    unfolding minimal_antichain_def
+    apply clarsimp
+    apply (smt (verit, ccfv_SIG) sum.infinite sum_nonneg_leq_bound zcount_sum)
+    done
+
+lemma in_frontier_Sum_all_not_lt:
+  "t \<in>\<^sub>A frontier (\<Sum>loc\<in>A. f loc) \<Longrightarrow>
+   (\<forall> loc \<in> A. \<forall> y. zcount (f loc) y \<ge> 0) \<Longrightarrow>
+   (\<forall> loc\<in>A. \<forall> t'. zcount (f loc) t' > 0 \<longrightarrow> \<not> t' < t)"
+    apply transfer'
+    unfolding minimal_antichain_def
+    apply clarsimp
+    apply (smt (verit, ccfv_SIG) sum.infinite sum_nonneg_leq_bound zcount_sum)
+    done
+
+lemma zcount_gt_0_in_frontierD:
+  "0 < zcount M t \<Longrightarrow> \<exists>s\<le>t. s \<in>\<^sub>A frontier M"
+  by (metis trivial_dataflow_topology_interpretation.obtain_elem_frontier)
 
 end
