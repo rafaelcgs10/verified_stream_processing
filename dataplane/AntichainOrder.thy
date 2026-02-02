@@ -739,30 +739,6 @@ lemma in_frontier_sumI2[intro]:
    x \<in>\<^sub>A frontier (M + N)"
   by (auto del: disjE simp add: int_sum_disj member_antichain.rep_eq minimal_antichain_def frontier.rep_eq)
 
-
-
-lemma in_frontier_SumI:
-  "finite A \<Longrightarrow>
-   t \<in>\<^sub>A frontier (f a) \<Longrightarrow>
-   a \<in> A \<Longrightarrow>
-   (\<forall> x \<in> A. \<forall> t'. zcount (f x) t' \<ge> 0) \<Longrightarrow>
-   (\<forall> x \<in> A. \<forall> t'. x \<noteq> a \<longrightarrow> zcount (f x) t' > 0 \<longrightarrow> \<not> t' < t) \<Longrightarrow>
-   t \<in>\<^sub>A frontier (sum f A)"
-  apply (induct A rule: finite_induct)
-   apply simp_all
-  apply (auto simp add: sum_nonneg zcount_sum)
-  subgoal 
-    sledgehammer
-
-end
-  subgoal
-   apply (rule in_frontier_sumI1)
-       apply auto
-    apply (metis sum_pos_ex_elem_pos zcount_sum)
-    apply (simp add: sum_nonneg zcount_sum)
-    done
-  done
-
 lemma frontier_sum_eq:
   "finite S \<Longrightarrow>
    (\<forall> loc\<in>S. frontier (f loc) = frontier (f' loc)) \<Longrightarrow>
@@ -832,5 +808,32 @@ lemma in_frontier_Sum_all_not_lt:
 lemma zcount_gt_0_in_frontierD:
   "0 < zcount M t \<Longrightarrow> \<exists>s\<le>t. s \<in>\<^sub>A frontier M"
   by (metis trivial_dataflow_topology_interpretation.obtain_elem_frontier)
+
+lemma in_frontier_SumI:
+  "finite A \<Longrightarrow>
+   t \<in>\<^sub>A frontier (f a) \<Longrightarrow>
+   a \<in> A \<Longrightarrow>
+   (\<forall> x \<in> A. \<forall> t'. zcount (f x) t' \<ge> 0) \<Longrightarrow>
+   (\<forall> x \<in> A. \<forall> t'. x \<noteq> a \<longrightarrow> zcount (f x) t' > 0 \<longrightarrow> \<not> t' < t) \<Longrightarrow>
+   t \<in>\<^sub>A frontier (sum f A)"
+  apply (induct A rule: finite_induct)
+   apply simp_all
+  apply (clarsimp simp add: sum_nonneg zcount_sum)
+  subgoal 
+    apply (elim disjE)
+    subgoal
+      apply hypsubst_thin
+      apply (rule in_frontier_sumI1)
+         apply auto
+       apply (metis sum_pos_ex_elem_pos zcount_sum)
+      apply (simp add: sum_nonneg zcount_sum)
+      done
+    subgoal
+      apply (rule in_frontier_sumI2)
+         apply auto
+      apply (simp add: sum_nonneg zcount_sum)
+      done
+    done
+  done
 
 end
