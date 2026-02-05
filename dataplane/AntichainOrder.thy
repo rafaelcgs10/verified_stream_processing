@@ -836,4 +836,27 @@ lemma in_frontier_SumI:
     done
   done
 
+
+lemma in_frontier_sumEx:
+  "t \<in>\<^sub>A frontier (sum f A) \<Longrightarrow>
+   finite A \<Longrightarrow>
+   (\<forall>x \<in> A. \<forall> t. zcount (f x) t \<ge> 0) \<Longrightarrow>
+   \<exists> x \<in> A. t \<in>\<^sub>A frontier (f x) \<and> (\<forall>a \<in> A. \<forall> t'. a \<noteq> x \<longrightarrow> zcount (f a) t' > 0 \<longrightarrow> \<not> t' < t)"
+  apply transfer'
+  unfolding minimal_antichain_def
+  apply (auto simp add: zcount_sum dest!: sum_pos_ex_elem_pos)
+  apply (rule bexI)
+  apply (intro conjI)
+     apply assumption
+    apply auto
+  subgoal for t f A M y
+    apply (drule spec[of _ y])
+    apply (drule mp)
+     apply (rule AntichainOrder.trivial_dataflow_topology_interpretation.sum_pos)
+        apply auto
+    done
+  subgoal
+    by (meson sum_pos2)
+  done
+
 end
