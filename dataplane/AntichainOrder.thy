@@ -841,7 +841,7 @@ lemma in_frontier_sumEx:
   "t \<in>\<^sub>A frontier (sum f A) \<Longrightarrow>
    finite A \<Longrightarrow>
    (\<forall>x \<in> A. \<forall> t. zcount (f x) t \<ge> 0) \<Longrightarrow>
-   \<exists> x \<in> A. t \<in>\<^sub>A frontier (f x) \<and> (\<forall>a \<in> A. \<forall> t'. a \<noteq> x \<longrightarrow> zcount (f a) t' > 0 \<longrightarrow> \<not> t' < t)"
+   \<exists> x \<in> A. t \<in>\<^sub>A frontier (f x) \<and> (\<forall>a \<in> A. \<forall> t'. zcount (f a) t' > 0 \<longrightarrow> \<not> t' < t)"
   apply transfer'
   unfolding minimal_antichain_def
   apply (auto simp add: zcount_sum dest!: sum_pos_ex_elem_pos)
@@ -857,6 +857,17 @@ lemma in_frontier_sumEx:
     done
   subgoal
     by (meson sum_pos2)
+  done
+
+
+lemma in_frontier_addEx:
+  "x \<in>\<^sub>A frontier A \<Longrightarrow>
+   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
+   \<exists> y \<le> x. y \<in>\<^sub>A frontier (A + B)"
+  apply transfer'
+  unfolding minimal_antichain_def
+  apply clarsimp
+  apply (smt (verit, del_insts) order_zmset_exists_foundation zcount_union)
   done
 
 end
