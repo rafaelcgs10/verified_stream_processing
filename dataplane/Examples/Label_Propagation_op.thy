@@ -75,7 +75,7 @@ definition label_propagation_op_logic where
         batch = if label os t1 v > l
           then map (\<lambda>v'. (en1 os (v', l), Cap t 1)) (filter (\<lambda>v'. label os t1 v' > l) vs)
           else []
-     in {|produces os' batch|})
+     in {|drop_cap (produces os' batch) (Cap t 1)|})
   (case input os 1 of
     [] \<Rightarrow> {||}
   | (d, t) # xs \<Rightarrow>
@@ -86,8 +86,8 @@ definition label_propagation_op_logic where
         batch = if label os t1 v > l
           then map (\<lambda>v'. (en1 os (v', l), Cap t 1)) (filter (\<lambda>v'. label os t1 v' > l) vs)
           else []
-    in {|produces os' batch|}))
-  (let P = \<lambda>t. \<forall>n. \<not> frontier_less_equal (front os 0 + front os 1) (MyPair (myfst t) n);
+    in {|drop_cap (produces os' batch) (Cap t 1)|}))
+  (let P = \<lambda>t. \<forall>n < length (vertices os (myfst t)). \<not> frontier_less_equal (front os 0 + front os 1) (MyPair (myfst t) n);
        output_times = filter P (ocaps os 0);
        batch = map (\<lambda>t. let cap = Cap t 0; t1 = myfst t in
         (en2 os (group_by (\<lambda>v1 v2. label os t1 v1 = label os t1 v2) (vertices os t1)), cap)) output_times
