@@ -5378,50 +5378,29 @@ lemma
                           subgoal
                             apply clarsimp
                             subgoal l for l ft3
-                                apply (simp add: zcount_sum)
-                                apply (drule sum_pos_ex_elem_pos)
-                                apply clarsimp
-                                subgoal for s'
-                                  apply (drule zcount_zimageD)
-                                  apply (clarsimp simp add: image_iff simp flip: member_antichain.rep_eq)
-                                  subgoal for ft4
-                                    apply (cases l; clarsimp)
-                                    apply (elim disjE exE)
-                                    subgoal for nid2 _ p2 
-                                      apply hypsubst_thin
-                                      apply (cases "nid2 = nid \<and> p2 = p")
-                                      subgoal
-                                        apply (simp add: zcount_sum c_pts_change_multiplicities zmset_filter_extract_progress_Trg_consumes_alt add_diff_eq )
+                              apply (simp add: zcount_sum)
+                              apply (drule sum_pos_ex_elem_pos)
+                              apply clarsimp
+                              subgoal for s'
+                                apply (drule zcount_zimageD)
+                                apply (clarsimp simp add: image_iff simp flip: member_antichain.rep_eq)
+                                subgoal for ft4
+                                  apply (cases l; clarsimp)
+                                  apply (elim disjE exE)
+                                  subgoal for nid2 _ p2 
+                                    apply hypsubst_thin
+                                    apply (cases "nid2 = nid \<and> p2 = p")
+                                    subgoal
+                                      apply (simp add: zcount_sum c_pts_change_multiplicities zmset_filter_extract_progress_Trg_consumes_alt add_diff_eq )
 
-                                        apply (drule in_frontier_minusD)
-                                         apply simp
-                                        apply clarsimp
-                                        subgoal for ft5
-                                          apply (drule bspec[of _ _ "Loc nid (Trg p)"])
-                                           apply fast
-                                          apply (drule spec[of _ "ft5 -+- s'"])
-                                          apply (drule mp)
-                                          subgoal
-                                            apply (rule dataflow_topology_from_tree.sum_pos)
-
-                                               apply (simp_all flip: member_antichain.rep_eq)
-                                            apply (rule pos_zcount_image_zmset)
-                                             apply clarsimp
-                                            apply clarsimp
-
-                                            apply (clarsimp simp add: c_pts_change_multiplicities zmset_filter_extract_progress_Trg_consumes_diff add_diff_eq simp flip: member_antichain.rep_eq)
-                                            done
-                                          subgoal
-                                            by (metis add_mono_thms_linordered_semiring(3) basic_trans_rules(21))
-                                          done
-                                        done
-                                      subgoal
-                                        apply (clarsimp simp add: c_pts_change_multiplicities zmset_filter_extract_progress_Trg_consumes_diff add_diff_eq simp flip: member_antichain.rep_eq)
-                                        apply (drule bspec[of _ _ "Loc nid2 (Trg p2)"])
+                                      apply (drule in_frontier_minusD)
+                                       apply simp
+                                      apply clarsimp
+                                      subgoal for ft5
+                                        apply (drule bspec[of _ _ "Loc nid (Trg p)"])
                                          apply fast
-                                        apply (drule spec[of _ "ft4 -+- s'"])
+                                        apply (drule spec[of _ "ft5 -+- s'"])
                                         apply (drule mp)
-                                         back
                                         subgoal
                                           apply (rule dataflow_topology_from_tree.sum_pos)
 
@@ -5433,237 +5412,257 @@ lemma
                                           apply (clarsimp simp add: c_pts_change_multiplicities zmset_filter_extract_progress_Trg_consumes_diff add_diff_eq simp flip: member_antichain.rep_eq)
                                           done
                                         subgoal
-                                          by auto
+                                          by (metis add_mono_thms_linordered_semiring(3) basic_trans_rules(21))
                                         done
                                       done
-                                    subgoal for nid2 _ p2 
-                                      apply hypsubst_thin
-
-
-                                      apply (cases "nid2 = nid")
+                                    subgoal
+                                      apply (clarsimp simp add: c_pts_change_multiplicities zmset_filter_extract_progress_Trg_consumes_diff add_diff_eq simp flip: member_antichain.rep_eq)
+                                      apply (drule bspec[of _ _ "Loc nid2 (Trg p2)"])
+                                       apply fast
+                                      apply (drule spec[of _ "ft4 -+- s'"])
+                                      apply (drule mp)
+                                       back
                                       subgoal
-                                        apply hypsubst_thin
-                                        apply (clarsimp simp add: zmset_filter_extract_progress_Src_consumes c_pts_change_multiplicities simp flip: add.assoc member_antichain.rep_eq)
-                                        apply (drule in_frontier_addD[where t=ft4])
-                                        apply (elim exE conjE disjE)
-                                        subgoal for t4
-                                          apply (drule bspec[of _ _ "Loc nid (Src p2)"])
-                                           apply fast
-                                          apply (drule spec[of _ "t4 -+- s'"])
-                                          apply (drule mp)
-                                          subgoal
-                                            apply (rule dataflow_topology_from_tree.sum_pos)
-                                               apply simp
-                                              apply (simp flip: member_antichain.rep_eq)
-                                            unfolding member_antichain.rep_eq[symmetric]
-                                             apply assumption
+                                        apply (rule dataflow_topology_from_tree.sum_pos)
 
-                                            apply (rule pos_zcount_image_zmset)
-                                             apply clarsimp
-                                            apply (clarsimp simp add: c_pts_change_multiplicities simp flip: member_antichain.rep_eq)
-                                            done
-                                          subgoal
-                                            by (meson add_mono_thms_linordered_semiring(3) basic_trans_rules(21))
+                                           apply (simp_all flip: member_antichain.rep_eq)
+                                        apply (rule pos_zcount_image_zmset)
+                                         apply clarsimp
+                                        apply clarsimp
+
+                                        apply (clarsimp simp add: c_pts_change_multiplicities zmset_filter_extract_progress_Trg_consumes_diff add_diff_eq simp flip: member_antichain.rep_eq)
+                                        done
+                                      subgoal
+                                        by auto
+                                      done
+                                    done
+                                  subgoal for nid2 _ p2 
+                                    apply hypsubst_thin
+
+
+                                    apply (cases "nid2 = nid")
+                                    subgoal
+                                      apply hypsubst_thin
+                                      apply (clarsimp simp add: zmset_filter_extract_progress_Src_consumes c_pts_change_multiplicities simp flip: add.assoc member_antichain.rep_eq)
+                                      apply (drule in_frontier_addD[where t=ft4])
+                                      apply (elim exE conjE disjE)
+                                      subgoal for t4
+                                        apply (drule bspec[of _ _ "Loc nid (Src p2)"])
+                                         apply fast
+                                        apply (drule spec[of _ "t4 -+- s'"])
+                                        apply (drule mp)
+                                        subgoal
+                                          apply (rule dataflow_topology_from_tree.sum_pos)
+                                             apply simp
+                                            apply (simp flip: member_antichain.rep_eq)
+                                          unfolding member_antichain.rep_eq[symmetric]
+                                           apply assumption
+
+                                          apply (rule pos_zcount_image_zmset)
+                                           apply clarsimp
+                                          apply (clarsimp simp add: c_pts_change_multiplicities simp flip: member_antichain.rep_eq)
                                           done
-                                        subgoal for ft2
-                                          apply clarsimp
-                                          subgoal for ft3
-                                            apply hypsubst_thin
+                                        subgoal
+                                          by (meson add_mono_thms_linordered_semiring(3) basic_trans_rules(21))
+                                        done
+                                      subgoal for ft2
+                                        apply clarsimp
+                                        subgoal for ft3
+                                          apply hypsubst_thin
 
-                                            apply (subgoal_tac "zcount (c_pts (pt_tr sg) (Loc nid (Trg p)) +
+                                          apply (subgoal_tac "zcount (c_pts (pt_tr sg) (Loc nid (Trg p)) +
                                  zmset (map snd (filter (\<lambda>(l', t, d). (Loc nid (Trg p)) = l') (extract_progress nid (edges sg) (snd (obtain_progress (os nid))))))) t > 0 \<or> zcount ((\<Sum>x\<in>UNIV - {nid}. \<Sum>xa\<leftarrow>produ (os x). zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (map (\<lambda>(nid', p'). (Loc nid' (Trg p'), snd xa)) (edges sg (x, fst xa))))))) t > 0")
+                                          subgoal
+                                            apply (elim disjE)
                                             subgoal
-                                              apply (elim disjE)
-                                              subgoal
-                                                apply (drule zcount_gt_0_in_frontierD)
+                                              apply (drule zcount_gt_0_in_frontierD)
+                                              apply clarsimp
+                                              subgoal for ft'
+                                                apply (drule graph.path_weight_elem_trans[rotated 2, of s' _ _ _ ft3 "Loc nid (Trg p)"])
+                                                subgoal
+                                                  apply (rule dataflow_topology.axioms(1))
+                                                  apply (rule prems(2))
+                                                  done
+                                                subgoal 
+                                                  using prems(3)
+                                                  unfolding graph_summar_edges_inv_def
+                                                  by metis
                                                 apply clarsimp
-                                                subgoal for ft'
-                                                  apply (drule graph.path_weight_elem_trans[rotated 2, of s' _ _ _ ft3 "Loc nid (Trg p)"])
+                                                subgoal for u
+                                                  apply (drule bspec[of _ _ "Loc nid (Trg p)"])
+                                                   apply (simp_all flip: member_antichain.rep_eq)
+                                                   apply fast
+                                                  apply (drule spec[of _ "ft' -+- u"])
+                                                  apply (drule mp)
                                                   subgoal
-                                                    apply (rule dataflow_topology.axioms(1))
-                                                    apply (rule prems(2))
+                                                    apply (rule dataflow_topology_from_tree.sum_pos)
+                                                       apply simp
+                                                      apply (simp flip: member_antichain.rep_eq)
+                                                    unfolding member_antichain.rep_eq[symmetric]
+                                                     apply assumption
+                                                    apply (rule pos_zcount_image_zmset)
+                                                     apply clarsimp
+                                                    apply (clarsimp simp flip: member_antichain.rep_eq)
                                                     done
                                                   subgoal 
-                                                    using prems(3)
-                                                    unfolding graph_summar_edges_inv_def
-                                                    by metis
-                                                  apply clarsimp
-                                                  subgoal for u
-                                                    apply (drule bspec[of _ _ "Loc nid (Trg p)"])
-                                                     apply (simp_all flip: member_antichain.rep_eq)
-                                                     apply fast
-                                                    apply (drule spec[of _ "ft' -+- u"])
-                                                    apply (drule mp)
-                                                    subgoal
-                                                      apply (rule dataflow_topology_from_tree.sum_pos)
-                                                         apply simp
-                                                        apply (simp flip: member_antichain.rep_eq)
-                                                      unfolding member_antichain.rep_eq[symmetric]
-                                                       apply assumption
-                                                      apply (rule pos_zcount_image_zmset)
-                                                       apply clarsimp
-                                                      apply (clarsimp simp flip: member_antichain.rep_eq)
-                                                      done
-                                                    subgoal 
-                                                      by (metis dataflow_topology_from_tree.plus_mono dual_order.strict_trans2 group_cancel.add1)
-                                                    done
+                                                    by (metis dataflow_topology_from_tree.plus_mono dual_order.strict_trans2 group_cancel.add1)
                                                   done
                                                 done
+                                              done
 
-                                              subgoal
-                                                apply (simp add: zcount_sum)
-                                                apply (drule sum_pos_ex_elem_pos)
-                                                apply (elim bexE)
-                                                subgoal for nid''
+                                            subgoal
+                                              apply (simp add: zcount_sum)
+                                              apply (drule sum_pos_ex_elem_pos)
+                                              apply (elim bexE)
+                                              subgoal for nid''
+                                                apply simp
+                                                apply (simp add: zcount_sum_list_alt comp_def filter_map split_beta zcount_zmset)
+                                                apply (subgoal_tac "\<exists> p2. \<exists> m >0. (p2, t, m) \<in> set (produ (os nid'')) \<and> (nid, p) \<in> set (edges sg (nid'', p2))")
+                                                subgoal
+                                                  apply (elim exE conjE)
+                                                  using prems(13) apply -
+                                                  apply (drule spec[of _ nid])
+                                                  apply (drule spec[of _ nid''])
                                                   apply simp
-                                                  apply (simp add: zcount_sum_list_alt comp_def filter_map split_beta zcount_zmset)
-                                                  apply (subgoal_tac "\<exists> p2. \<exists> m >0. (p2, t, m) \<in> set (produ (os nid'')) \<and> (nid, p) \<in> set (edges sg (nid'', p2))")
-                                                  subgoal
-                                                    apply (elim exE conjE)
-                                                    using prems(13) apply -
-                                                    apply (drule spec[of _ nid])
-                                                    apply (drule spec[of _ nid''])
+                                                  unfolding changes_above_impl_inv_def
+                                                  subgoal for p3 m'
+                                                    apply (drule bspec[of _ _ "(Loc nid (Trg p), t, m')"])
+                                                    subgoal
+                                                      apply (subst obtain_progress_def)
+                                                      apply (subst extract_progress_def)
+                                                      apply (auto simp add: image_iff split_beta )
+                                                      apply (rule bexI[rotated])
+                                                       apply assumption
+                                                      apply (rule bexI[rotated])
+                                                       apply auto
+                                                      done
                                                     apply simp
-                                                    unfolding changes_above_impl_inv_def
-                                                    subgoal for p3 m'
-                                                      apply (drule bspec[of _ _ "(Loc nid (Trg p), t, m')"])
+                                                    apply (drule frontier_less_equal_ifrontierE)
+                                                    using prems(2) apply assumption
+                                                    apply clarsimp
+                                                    unfolding frontier_less_equal_iff2
+                                                    apply clarsimp
+                                                    apply hypsubst_thin
+                                                    subgoal for l  s'''' t6 t6'
+                                                      apply (drule bspec[of _ _ l])
                                                       subgoal
-                                                        apply (subst obtain_progress_def)
-                                                        apply (subst extract_progress_def)
-                                                        apply (auto simp add: image_iff split_beta )
-                                                        apply (rule bexI[rotated])
-                                                         apply assumption
-                                                        apply (rule bexI[rotated])
-                                                         apply auto
-                                                        done
-                                                      apply simp
-                                                      apply (drule frontier_less_equal_ifrontierE)
-                                                      using prems(2) apply assumption
-                                                      apply clarsimp
-                                                      unfolding frontier_less_equal_iff2
-                                                      apply clarsimp
-                                                      apply hypsubst_thin
-                                                      subgoal for l  s'''' t6 t6'
-                                                        apply (drule bspec[of _ _ l])
-                                                        subgoal
-                                                          apply (cases l)
-                                                          apply simp
-                                                          subgoal for nn pp
-                                                            apply (cases pp)
-                                                             apply simp_all
-                                                             apply (metis (no_types, lifting) UNIV_I image_eqI prod.sel(1,2))+
-                                                            done
+                                                        apply (cases l)
+                                                        apply simp
+                                                        subgoal for nn pp
+                                                          apply (cases pp)
+                                                           apply simp_all
+                                                           apply (metis (no_types, lifting) UNIV_I image_eqI prod.sel(1,2))+
                                                           done
-                                                        apply (drule graph.path_weight_elem_trans[rotated , of s''''  _ _ _ ft3 "Loc nid (Src p2)"])
-                                                        subgoal 
-                                                          using prems(3)
-                                                          unfolding graph_summar_edges_inv_def
-                                                          by metis
+                                                        done
+                                                      apply (drule graph.path_weight_elem_trans[rotated , of s''''  _ _ _ ft3 "Loc nid (Src p2)"])
+                                                      subgoal 
+                                                        using prems(3)
+                                                        unfolding graph_summar_edges_inv_def
+                                                        by metis
+                                                      subgoal
+                                                        apply (rule dataflow_topology.axioms(1))
+                                                        apply (rule prems(2))
+                                                        done
+                                                      apply clarsimp
+                                                      subgoal for u
+                                                        apply (drule graph.path_weight_elem_trans[rotated, of u  _ _ _ s' "Loc nid' (Src p')"])
+                                                          apply assumption
                                                         subgoal
                                                           apply (rule dataflow_topology.axioms(1))
                                                           apply (rule prems(2))
                                                           done
                                                         apply clarsimp
-                                                        subgoal for u
-                                                          apply (drule graph.path_weight_elem_trans[rotated, of u  _ _ _ s' "Loc nid' (Src p')"])
-                                                            apply assumption
+                                                        subgoal for u'
+                                                          apply (drule spec[of _ "t6' -+- u'"])
+                                                          apply (drule mp)
                                                           subgoal
-                                                            apply (rule dataflow_topology.axioms(1))
-                                                            apply (rule prems(2))
+                                                            apply (rule dataflow_topology_from_tree.sum_pos)
+                                                               apply (simp_all flip: member_antichain.rep_eq)
+                                                            apply (rule pos_zcount_image_zmset)
+                                                             apply clarsimp
+                                                            apply (clarsimp simp add: c_pts_change_multiplicities simp flip: member_antichain.rep_eq)
                                                             done
-                                                          apply clarsimp
-                                                          subgoal for u'
-                                                            apply (drule spec[of _ "t6' -+- u'"])
-                                                            apply (drule mp)
-                                                            subgoal
-                                                              apply (rule dataflow_topology_from_tree.sum_pos)
-                                                                 apply (simp_all flip: member_antichain.rep_eq)
-                                                              apply (rule pos_zcount_image_zmset)
-                                                               apply clarsimp
-                                                              apply (clarsimp simp add: c_pts_change_multiplicities simp flip: member_antichain.rep_eq)
-                                                              done
-                                                            subgoal
-                                                              by (smt (verit, ccfv_threshold) add.commute add.left_commute add_le_cancel_left order_le_less_subst2)
-                                                            done
+                                                          subgoal
+                                                            by (smt (verit, ccfv_threshold) add.commute add.left_commute add_le_cancel_left order_le_less_subst2)
                                                           done
                                                         done
                                                       done
                                                     done
-                                                  subgoal
-                                                    apply (drule sum_list_pos_ex_elem_pos)
-                                                    apply (elim bexE)
-                                                    apply (drule sum_list_pos_ex_elem_pos)
-                                                    apply (elim bexE)
-                                                    apply auto
-                                                    apply blast
-                                                    done
+                                                  done
+                                                subgoal
+                                                  apply (drule sum_list_pos_ex_elem_pos)
+                                                  apply (elim bexE)
+                                                  apply (drule sum_list_pos_ex_elem_pos)
+                                                  apply (elim bexE)
+                                                  apply auto
+                                                  apply blast
                                                   done
                                                 done
                                               done
-                                            subgoal premises prems2
-                                              using prems(1,5,6) apply -
-                                              unfolding Trg_caps_inv_def
-                                              apply (drule spec[of _ nid])
-                                              apply (drule spec[of _ p])
-                                              unfolding c_pts_inv_def
-                                              apply (drule spec[of _ "Loc nid (Trg p)"])
-                                              apply (simp add: c_pts_change_multiplicities extract_prog_def filter_concat comp_def map_concat zmset_concat sum_list_distinct_conv_sum_set)
-                                              apply (subst (asm) comm_monoid_add_class.sum.subset_diff[of "{nid}"])
-                                                apply simp_all
-                                              apply (subst (asm) obtain_progress_def)
-                                              apply (subst (asm) extract_progress_def)
-                                              apply (simp add: split_beta c_pts_change_multiplicities extract_prog_def filter_concat comp_def map_concat zmset_concat sum_list_distinct_conv_sum_set)
-                                              apply (subgoal_tac
-                                                  "\<forall> t. zcount (((\<Sum>x\<in>UNIV - {nid}. \<Sum>xa\<leftarrow>produ (os x). zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (map (\<lambda>(nid', p'). (Loc nid' (Trg p'), snd xa)) (edges sg (x, fst xa)))))))) t \<ge> 0")
-                                              subgoal
-                                                unfolding zmultiset_eq_iff
-                                                apply (drule spec[of _ t])+
-                                                unfolding outputs_at_target_def BULK_BENQ_def
-                                                apply auto
-                                                 apply (metis to_zmset_nenneg)
-                                                apply (simp add: to_zmset_nenneg)
-                                                done
-                                              subgoal premises prems2
-                                                apply (subgoal_tac "\<forall> nid. \<forall> (l, t, m) \<in> set (produ (os nid)). m > 0")
-                                                subgoal
-                                                  apply (auto simp add: split_beta zcount_sum)
-                                                  apply (rule sum_ge_0I)
-                                                   apply simp
-                                                  apply (intro ballI)
-                                                  apply (simp add: split_beta zcount_sum filter_concat comp_def map_concat zmset_concat sum_list_distinct_conv_sum_set)
-                                                  apply (simp add: zcount_sum_list_alt comp_def)
-                                                  apply (rule ordered_comm_monoid_add_class.sum_list_nonneg)
-                                                  apply auto
-                                                  apply (drule spec)
-                                                  apply (drule bspec)
-                                                   apply assumption
-                                                  apply (simp add: zcount_zmset filter_concat filter_map split_beta comp_def)
-                                                  apply (metis (no_types, lifting) less_le_not_le sum_list_0 sum_list_mono)
-                                                  done
-                                                subgoal
-                                                  sorry
-                                                done
-                                              done 
                                             done
+                                          subgoal premises prems2
+                                            using prems(1,5,6) apply -
+                                            unfolding Trg_caps_inv_def
+                                            apply (drule spec[of _ nid])
+                                            apply (drule spec[of _ p])
+                                            unfolding c_pts_inv_def
+                                            apply (drule spec[of _ "Loc nid (Trg p)"])
+                                            apply (simp add: c_pts_change_multiplicities extract_prog_def filter_concat comp_def map_concat zmset_concat sum_list_distinct_conv_sum_set)
+                                            apply (subst (asm) comm_monoid_add_class.sum.subset_diff[of "{nid}"])
+                                              apply simp_all
+                                            apply (subst (asm) obtain_progress_def)
+                                            apply (subst (asm) extract_progress_def)
+                                            apply (simp add: split_beta c_pts_change_multiplicities extract_prog_def filter_concat comp_def map_concat zmset_concat sum_list_distinct_conv_sum_set)
+                                            apply (subgoal_tac
+                                                "\<forall> t. zcount (((\<Sum>x\<in>UNIV - {nid}. \<Sum>xa\<leftarrow>produ (os x). zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (map (\<lambda>(nid', p'). (Loc nid' (Trg p'), snd xa)) (edges sg (x, fst xa)))))))) t \<ge> 0")
+                                            subgoal
+                                              unfolding zmultiset_eq_iff
+                                              apply (drule spec[of _ t])+
+                                              unfolding outputs_at_target_def BULK_BENQ_def
+                                              apply auto
+                                               apply (metis to_zmset_nenneg)
+                                              apply (simp add: to_zmset_nenneg)
+                                              done
+                                            subgoal premises prems2
+                                              apply (subgoal_tac "\<forall> nid. \<forall> (l, t, m) \<in> set (produ (os nid)). m > 0")
+                                              subgoal
+                                                apply (auto simp add: split_beta zcount_sum)
+                                                apply (rule sum_ge_0I)
+                                                 apply simp
+                                                apply (intro ballI)
+                                                apply (simp add: split_beta zcount_sum filter_concat comp_def map_concat zmset_concat sum_list_distinct_conv_sum_set)
+                                                apply (simp add: zcount_sum_list_alt comp_def)
+                                                apply (rule ordered_comm_monoid_add_class.sum_list_nonneg)
+                                                apply auto
+                                                apply (drule spec)
+                                                apply (drule bspec)
+                                                 apply assumption
+                                                apply (simp add: zcount_zmset filter_concat filter_map split_beta comp_def)
+                                                apply (metis (no_types, lifting) less_le_not_le sum_list_0 sum_list_mono)
+                                                done
+                                              subgoal
+                                                sorry
+                                              done
+                                            done 
                                           done
+                                        done
+                                      done
+                                    subgoal
+                                      apply (clarsimp simp add: zmset_filter_extract_progress_Src_consumes_diff c_pts_change_multiplicities simp flip: add.assoc member_antichain.rep_eq)
+                                      apply (drule bspec[of _ _ "Loc nid2 (Src p2)"])
+                                       apply fast
+                                      apply (drule spec[of _ "ft4 -+- s'"])
+                                      apply (drule mp)
+                                       back
+                                      subgoal
+                                        apply (rule dataflow_topology_from_tree.sum_pos)
+                                           apply (simp_all flip: member_antichain.rep_eq)
+                                        apply (rule pos_zcount_image_zmset)
+                                         apply clarsimp
+                                        apply (clarsimp simp add: zmset_filter_extract_progress_Src_consumes_diff c_pts_change_multiplicities simp flip: member_antichain.rep_eq)
                                         done
                                       subgoal
-                                        apply (clarsimp simp add: zmset_filter_extract_progress_Src_consumes_diff c_pts_change_multiplicities simp flip: add.assoc member_antichain.rep_eq)
-                                        apply (drule bspec[of _ _ "Loc nid2 (Src p2)"])
-                                         apply fast
-                                        apply (drule spec[of _ "ft4 -+- s'"])
-                                        apply (drule mp)
-                                        back
-                                        subgoal
-                                          apply (rule dataflow_topology_from_tree.sum_pos)
-                                             apply (simp_all flip: member_antichain.rep_eq)
-                                          apply (rule pos_zcount_image_zmset)
-                                           apply clarsimp
-                                          apply (clarsimp simp add: zmset_filter_extract_progress_Src_consumes_diff c_pts_change_multiplicities simp flip: member_antichain.rep_eq)
-                                          done
-                                        subgoal
-                                          by auto
-                                        done
+                                        by auto
                                       done
                                     done
                                   done
@@ -5677,19 +5676,7 @@ lemma
                   done
                 done
               done
-
-
-
-
-                              find_theorems "0 < zcount (image_zmset _ _) _"
-
-
-end
-
-
-
-
-  defer
+            done
   subgoal for pa pb
     apply hypsubst_thin
     apply (cases pa; cases pb; simp; hypsubst_thin)
