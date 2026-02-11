@@ -240,10 +240,17 @@ notepad begin
                apply (rule step_builder_op_Read_Some)
                   apply simp_all
     by simp_all
+  finally have wstep_Tau_1: \<open>wstep Tau test_op (dataflow_op ?sg.2 (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
+  (logic_map 0 (ooo_input_op {|0|} ?os0.3))
+  (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (\<lambda>_. [])
+    (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (\<lambda>_. [])
+      (logic_map 1 (label_propagation_op ?os1.1))
+      (logic_map 2 (increment_op 0 0 ?inc ?os2))))))))\<close>
+    by simp
   let ?os1.2 = \<open>drop_cap (?os1.1\<lparr>input := (\<lambda>_. []), timestamps := [0],
   graph := (\<lambda>_ _. [])(0 := (\<lambda>_. [])(0 := [1], 1 := [0])), vertices := (\<lambda>_. [])(0 := [0, 1]),
   label := update_label ?os1.1 0 1 0\<rparr>) (Cap (MyPair 0 0) 1)\<close>
-  have \<open>step Tau (dataflow_op ?sg.2 (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
+  have step_Tau_1: \<open>step Tau (dataflow_op ?sg.2 (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
   (logic_map 0 (ooo_input_op {|0|} ?os0.3))
   (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (\<lambda>_. [])
     (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (\<lambda>_. [])
@@ -270,7 +277,7 @@ notepad begin
   let ?os0.4 = \<open>fst (obtain_progress ?os0.3)\<close>
   let ?st0 = \<open>snd (obtain_progress ?os0.3)\<close>
   let ?sg.3 = \<open>?sg.2\<lparr>upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ ?sg.2) (extract_progress 0 (edges ?sg.2) ?st0) (pt_tr ?sg.2)\<rparr>\<close>
-  have \<open>step Tau (dataflow_op ?sg.2 (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
+  have step_Tau_2: \<open>step Tau (dataflow_op ?sg.2 (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
   (logic_map 0 (ooo_input_op {|0|} ?os0.3))
   (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (\<lambda>_. [])
     (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (\<lambda>_. [])
@@ -285,15 +292,86 @@ notepad begin
     apply (rule step_Tau_dataflow_op_Out_Inl_intro)
      apply (rule step_map_op)
     apply (rule step_comp_op_L_Out)
+    apply (rule step_map_op)
+    apply (unfold ooo_input_op_def)
+    apply (rule step_builder_op_Write_None)
+              apply (simp_all add: drop_caps_def produce_def has_progress_def obtain_progress_def)
+    by simp
   let ?os1.3 = \<open>fst (obtain_progress ?os1.2)\<close>
   let ?st1 = \<open>snd (obtain_progress ?os1.2)\<close>
   let ?sg.4 = \<open>?sg.3\<lparr>upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ ?sg.3) (extract_progress 1 (edges ?sg.3) ?st1) (pt_tr ?sg.3)\<rparr>\<close>
+  have step_Tau_3: \<open>step Tau (dataflow_op ?sg.3 (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
+  (logic_map 0 (ooo_input_op {|0|} ?os0.4))
+  (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (\<lambda>_. [])
+    (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (\<lambda>_. [])
+      (logic_map 1 (label_propagation_op ?os1.2))
+      (logic_map 2 (increment_op 0 0 ?inc ?os2))))))))
+  (dataflow_op ?sg.4 (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
+    (logic_map 0 (ooo_input_op {|0|} ?os0.4))
+    (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (\<lambda>_. [])
+      (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (\<lambda>_. [])
+        (logic_map 1 (label_propagation_op ?os1.3))
+        (logic_map 2 (increment_op 0 0 ?inc ?os2))))))))\<close>
+    apply (rule step_Tau_dataflow_op_Out_Inl_intro)
+     apply (rule step_map_op)
+      apply (rule step_comp_op_R_Out)
+        apply (rule step_Out_loop_op)
+          apply (rule step_map_op)
+           apply (rule step_comp_op_L_Out)
+              apply (rule step_map_op)
+               apply (unfold label_propagation_op_def)
+               apply (rule step_builder_op_Write_None)
+                   apply (simp_all add: drop_cap_def consumes_def add_caps_def has_progress_def obtain_progress_def)
+    by simp
   let ?sg.5 = \<open>?sg.4\<lparr>pt_tr := the (propagate_all (summ ?sg.4) (pt_tr ?sg.4)), upfro := (upfro ?sg.4)(1 := False)\<rparr>\<close>
   let ?f1.1 = \<open>frontier \<circ> (\<lambda>p. c_imp (pt_tr ?sg.5) (Loc 1 (Trg p)))\<close>
+  let ?os1.4 = \<open>?os1.3\<lparr>front := ?f1.1, nfron := \<forall>p. ?f1.1 p \<noteq> front ?os1.3 p\<rparr>\<close>
+  have step_Tau_4: \<open>step Tau \<dots> (dataflow_op ?sg.5 (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
+  (logic_map 0 (ooo_input_op {|0|} ?os0.4))
+  (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (\<lambda>_. [])
+    (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (\<lambda>_. [])
+      (logic_map 1 (label_propagation_op ?os1.4))
+      (logic_map 2 (increment_op 0 0 ?inc ?os2))))))))\<close>
+    apply (rule step_Tau_dataflow_op_Inp_Inl_intro)
+        apply (rule step_map_op)
+         apply (rule step_comp_op_R_Inp)
+            apply (rule step_Inp_loop_op)
+             apply (rule step_map_op)
+              apply (rule step_comp_op_L_Inp)
+                apply (rule step_map_op)
+                 apply (unfold label_propagation_op_def)
+                 apply (rule step_builder_op_Read_None2[where f=\<open>?f1.1\<close>])
+                    apply (simp_all add: obtain_progress_def drop_cap_def consumes_def add_caps_def)
+    by simp
+  (* value [GHC] \<open>front ?os1.4 0 + front ?os1.4 1\<close> *)
+  (* RESULT "antichain {}" :: "(nat, nat) myprod antichain" *)
+  let ?os1.5 = \<open>drop_caps (produces ?os1.4 [(Inr [[0, 1]], Cap (MyPair 0 0) 0)]) [Cap (MyPair 0 0) 0, Cap (MyPair 0 0) 1]\<close>
+  have \<open>step Tau (dataflow_op ?sg.5 (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
+  (logic_map 0 (ooo_input_op {|0|} ?os0.4))
+  (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (\<lambda>_. [])
+    (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (\<lambda>_. [])
+      (logic_map 1 (label_propagation_op ?os1.4))
+      (logic_map 2 (increment_op 0 0 ?inc ?os2))))))))
+  (dataflow_op ?sg.5 (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
+    (logic_map 0 (ooo_input_op {|0|} ?os0.4))
+    (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (\<lambda>_. [])
+      (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (\<lambda>_. [])
+        (logic_map 1 (label_propagation_op ?os1.5))
+        (logic_map 2 (increment_op 0 0 ?inc ?os2))))))))\<close>
+    sorry
+(*
+  also have \<open>step (Out (1, 0) (Inr [[0, 1]], MyPair 0 0)) \<dots>
+    (dataflow_op ?sg.5 (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
+    (logic_map 0 (ooo_input_op {|0|} ?os0.4))
+    (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (\<lambda>_. [])
+      (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (\<lambda>_. [])
+        (logic_map 1 (label_propagation_op (?os1.5\<lparr>outpu := (outpu ?os1.5)(0 := [])\<rparr>)))
+        (logic_map 2 (increment_op 0 0 ?inc ?os2))))))))\<close>
+    sorry
+*)
 end
 
 end
-
 lemma ooo_input_op_label_propagation_op_increment_op_source_op:
   defines \<open>invariant inc os1 buf1 os2 buf2 os3 buf3 \<equiv> initia os1 \<and> timely_input_stream (es os1 0) (mset (ocaps os1 0))
   \<and> (\<forall>x \<in> set (buf1 (Inr (1, 0))) \<union> set (buf2 (Inr (2, 0))) \<union> set (buf3 (Inr (1, 1))). is_Inr x)
