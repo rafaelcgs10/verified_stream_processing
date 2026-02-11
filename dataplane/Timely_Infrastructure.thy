@@ -915,6 +915,20 @@ lemma zmset_append[simp]:
    apply auto
   done
 
+lemma minus_zmset:
+  "- zmset ys = zmset (map (\<lambda>(x, m). (x, - m)) ys)"
+  apply (induct ys rule: rev_induct)
+   apply clarsimp+
+  apply (smt (verit, del_insts) Executable.update_zmultiset_plus Timely_Infrastructure.update_zmultiset_plus add.commute add.inverse_distrib_swap add_cancel_left_left minus_unique)
+  done
+
+lemma zmset_minus:
+  "zmset xs - zmset ys = zmset (xs @ map (\<lambda> (x, m). (x, -m)) ys)"
+  apply (induct xs arbitrary: ys)
+   apply (clarsimp simp add: minus_zmset)+
+  apply (metis add_uminus_conv_diff minus_zmset)
+  done
+
 lemma zmset_concat:
   "zmset (concat xs) = sum_list (map zmset xs)"
   by (induct xs) auto
