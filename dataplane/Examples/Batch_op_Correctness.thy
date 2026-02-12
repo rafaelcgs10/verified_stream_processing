@@ -5884,7 +5884,12 @@ lemma
               apply (cases "nid' = nid''")
               subgoal
                 apply hypsubst_thin
-              using prems(13) apply -
+                using prems(14) apply -
+                unfolding produ_supported_def
+                apply (drule spec2, drule spec2, drule mp, assumption)
+                apply (elim disjE)
+                subgoal
+           using prems(13) apply -
               apply (drule spec[of _ nid])
               apply (drule spec[of _ nid''])
               apply simp
@@ -5899,6 +5904,9 @@ lemma
                 done
               subgoal
                 apply simp
+                apply (drule zcount_gt_0_in_frontierD)
+                apply clarsimp
+                subgoal for ft4
           apply (subst (asm) Propagate.dataflow_topology.implied_frontier_alt_def)
               using prems(2) apply assumption
               unfolding frontier_less_equal_iff2
@@ -5919,26 +5927,35 @@ lemma
                      apply clarsimp+
                     subgoal for ft2
                       apply hypsubst_thin
-                      apply (rule exI[of _ "ft2 -+- s"])
+                      apply (cases "nid3 = nid''")
+                      subgoal
+                        apply clarsimp
+                        apply hypsubst_thin
+                        apply (clarsimp simp add: filter_concat comp_def map_concat zmset_concat c_pts_change_multiplicities split_beta split: prod.splits)
+                        apply (subst (asm) (3) obtain_progress_def)
+                        apply (subst (asm) (3) extract_progress_def)
+                        apply (clarsimp simp add: filter_concat comp_def map_concat zmset_concat c_pts_change_multiplicities split_beta split: prod.splits)
+                      apply (rule exI[of _ "ft4"])
                       apply simp
                       apply (subst Propagate.dataflow_topology.implied_frontier_alt_def)
               using prems(2) apply assumption
-              apply (rule in_frontier_SumI[where a="Loc nid3 (Trg p3)"])
+              apply (rule in_frontier_SumI[where a="Loc nid (Trg p)"])
                   apply simp_all
               subgoal
-                apply (rule in_frontier_SumI[where a=s])
+                apply (rule in_frontier_SumI[where a=0])
                     apply simp_all
                 subgoal premises prems2
-                  using prems2(1,8-) apply -
-                    apply (subst in_frontier_zmset_image)
-                   apply clarsimp+
-                     apply (clarsimp simp add: filter_concat comp_def map_concat zmset_concat c_pts_change_multiplicities extract_progress_def obtain_progress_def split: prod.splits)
+                  using prems2(1,2,3,4,5,6,7,10-) apply -
+                     apply (clarsimp simp add: filter_concat comp_def map_concat zmset_concat c_pts_change_multiplicities extract_progress_def obtain_progress_def split_beta split: prod.splits)
+                  using prems(5,6) apply -
+                  unfolding Trg_caps_inv_def
+                  apply (drule spec2[of _ nid p])
+                  unfolding c_pts_inv_def
+                  apply (drule spec[of _ "Loc nid (Trg p)"])
+                  unfolding extract_prog_def
+                     apply (clarsimp simp add: sum_list_distinct_conv_sum_set filter_concat comp_def map_concat zmset_concat c_pts_change_multiplicities extract_progress_def obtain_progress_def split_beta split: prod.splits)
 
-                  find_theorems filter extract_progress Trg
-
-
-                    find_theorems "frontier (sum _ _)"
-
+                  find_theorems "sum" name: dis
 
 end
                       apply (rule frontier_less_equal_ifrontierI[of _ 0 "Loc nid (Trg p)", simplified])
