@@ -560,10 +560,15 @@ definition "graph_summar_edges_inv su ed os = (
   (\<forall> nid nid' p p'. (nid, p) \<in> set (ed (nid', p')) \<longrightarrow> 0 \<in>\<^sub>A graph.path_weight su (Loc nid' (Src p')) (Loc nid (Trg p))) \<and>
   (\<forall> nid p p'. distinct (summar (os nid) p p')) \<and>
   (\<forall> nid p p'. \<forall> t \<in> set (summar (os nid) p p'). \<not> (\<exists> t' \<in> set (summar (os nid) p p'). t' < t)) \<and>
-  (\<forall> s nid p l. s \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) l \<longrightarrow> (\<exists> t p' s'. t \<in> set (summar (os nid) p p') \<and> s' \<in>\<^sub>A graph.path_weight su (Loc nid (Src p')) l \<and> s = t -+- s'))
+  (\<forall> s nid p l. s \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) l \<longrightarrow> (\<exists> t p' s'. t \<in> set (summar (os nid) p p') \<and> s' \<in>\<^sub>A graph.path_weight su (Loc nid (Src p')) l \<and> s = t -+- s')) \<and>
+  (\<forall> nid p nid' p'. (nid, p) \<in> set (ed (nid', p')) \<longrightarrow> (\<forall> nid'' p''. nid'' \<noteq> nid' \<longrightarrow> (nid, p) \<notin> set (ed (nid'', p''))))
   )"
 
 (* ======> FIXME: move me \<le>====== *)
+
+lemma sum_eq_singleton:
+  "finite A \<Longrightarrow> f a = b \<Longrightarrow> a \<in> A \<Longrightarrow> (\<forall> c \<in> A. c \<noteq> a \<longrightarrow> f c = 0) \<Longrightarrow> sum f A = b"
+   by (metis Diff_iff dataflow_topology_from_tree.sum_singleton empty_subsetI insert_iff insert_subset sum.mono_neutral_right)
 lemma zcount_zmset_gt_0_set_Ex:
   "0 < zcount (zmset xs) x \<Longrightarrow> \<exists> m. (x, m) \<in> set xs \<and> m > 0"
   apply (induct xs)
@@ -5704,7 +5709,7 @@ lemma
                     subgoal
                       using prems(3) apply -
                       unfolding graph_summar_edges_inv_def
-                      by blast
+                      by auto
                     subgoal
                       apply (clarsimp simp add: c_pts_change_multiplicities zmset_filter_extract_progress_Src_consumes_diff)
                       using frontier_less_equal_zcount_pos apply blast
@@ -5762,6 +5767,68 @@ lemma
             apply (subst (asm) obtain_progress_def)
             apply (subst (asm) extract_progress_def)
             apply (clarsimp simp add: image_iff)
+              apply (cases "\<exists> p'. (nid, p) \<in> set (edges sg (nid', p'))")
+              subgoal
+            apply (subgoal_tac "zcount (c_pts (pt_tr sg) (Loc nid (Trg p)) + (\<Sum>x\<leftarrow>produ (os nid'). zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (map (\<lambda>(nid', p'). (Loc nid' (Trg p'), snd x)) (edges sg (nid', fst x))))))) t > 0")
+            subgoal
+              apply (drule zcount_gt_0_in_frontierD)
+              apply clarsimp
+              subgoal for ft
+                apply (rule frontier_less_equal_ifrontierI[of _ 0 "Loc nid (Trg p)", simplified])
+                using prems(2) apply assumption
+                subgoal
+      apply (rule Graph.graph.path_weight_refl)
+                  apply (rule dataflow_topology.axioms(1))
+                  using prems(2) apply assumption
+                  done
+                subgoal
+                     apply (clarsimp simp add: filter_concat comp_def map_concat zmset_concat c_pts_change_multiplicities extract_progress_def obtain_progress_def split_beta split: prod.splits)
+                  using frontier_less_equal_iff2 apply blast
+                  done
+                done
+              done
+            subgoal
+              using prems(1,5,6) apply -
+              unfolding Trg_caps_inv_def
+              apply (drule spec[of _ nid])
+              apply (drule spec[of _ p])
+              unfolding c_pts_inv_def
+              apply (drule spec[of _ "Loc nid (Trg p)"])
+              apply (simp add: c_pts_change_multiplicities extract_prog_def filter_concat comp_def map_concat zmset_concat sum_list_distinct_conv_sum_set)
+              apply (subst (asm) obtain_progress_def)
+              apply (subst (asm) extract_progress_def)
+              apply (simp add: comm_monoid_add_class.sum.distrib split_beta c_pts_change_multiplicities extract_prog_def filter_concat comp_def map_concat zmset_concat sum_list_distinct_conv_sum_set)
+                apply clarsimp
+                subgoal for p'          
+                  apply (subst (asm) (2) sum_eq_singleton[where a="nid'"])
+                      apply simp_all
+                  subgoal
+                    using prems(3) apply -
+                    unfolding graph_summar_edges_inv_def
+                    apply clarsimp
+                    apply (rule sum_list_zmset_emptyI)
+                    apply (clarsimp simp add: filter_empty_conv)
+                    apply fast
+                    done
+                  subgoal
+                    apply (subgoal_tac "zcount (\<Sum>x\<in>UNIV. zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (map (\<lambda>(p, t, m). (Loc x (Trg p), t, - m)) (consu (os x)))))) t \<le> 0")
+                    subgoal
+                    unfolding outputs_at_target_def Src_from_Trg_def BULK_BENQ_def zmultiset_eq_iff
+                    apply (drule spec[of _ t])+
+                    apply (clarsimp )
+                    apply (smt (verit, ccfv_SIG) to_zmset_nenneg)
+                    done
+                  subgoal
+                    apply (clarsimp simp add: zcount_sum)
+                    apply (rule sum_le_0I)
+                     apply simp_all
+                    apply (clarsimp simp add: zcount_zmset filter_map comp_def split_beta split: prod.splits)
+                    sorry
+                  done
+                done
+              done
+            done
+          subgoal
             apply (subgoal_tac "zcount (c_pts (pt_tr sg) (Loc nid (Trg p)) +
                                  zmset (map snd (filter (\<lambda>(l', t, d). (Loc nid (Trg p)) = l') (extract_progress nid (edges sg) (snd (obtain_progress (os nid))))))) t > 0 \<or> zcount ((\<Sum>x\<in>UNIV - {nid}. \<Sum>xa\<leftarrow>produ (os x). zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (map (\<lambda>(nid', p'). (Loc nid' (Trg p'), snd xa)) (edges sg (x, fst xa))))))) t > 0")
              defer
@@ -5915,6 +5982,7 @@ lemma
                 apply (drule in_frontier_sumEx)
                   apply simp_all
                 subgoal
+end
                   by (simp add: sum_nonneg zcount_sum)
                 apply clarsimp
                 apply (drule in_frontier_sumEx)
