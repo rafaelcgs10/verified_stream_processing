@@ -5953,7 +5953,7 @@ lemma
                   unfolding c_pts_inv_def
                   apply (drule spec[of _ "Loc nid (Trg p)"])
                   unfolding extract_prog_def
-                     apply (clarsimp simp add: sum_list_distinct_conv_sum_set filter_concat comp_def map_concat zmset_concat c_pts_change_multiplicities extract_progress_def obtain_progress_def split_beta split: prod.splits)
+                     apply (clarsimp simp add: comm_monoid_add_class.sum.distrib sum_list_distinct_conv_sum_set filter_concat comp_def map_concat zmset_concat c_pts_change_multiplicities extract_progress_def obtain_progress_def split_beta split: prod.splits)
 
                   find_theorems "sum" name: dis
 
