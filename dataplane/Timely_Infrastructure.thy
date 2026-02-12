@@ -375,9 +375,7 @@ lemma step_dataflow_op_elim:
   apply (simp split: if_splits)
   apply (elim stepChoiceE)
   subgoal for op'
-    apply (auto del: disjCI split: op.splits sum.splits option.splits)
-        apply fastforce+
-    done
+    by (auto del: disjCI split: op.splits sum.splits option.splits) (fastforce+)
   done
 
 lemma step_Tau_dataflow_op_Inp_Inl_intro[intro]:
