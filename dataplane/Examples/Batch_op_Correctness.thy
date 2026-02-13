@@ -5945,12 +5945,14 @@ lemma
         subgoal
           apply (subgoal_tac "\<exists> p2 nid''. nid'' \<noteq> nid \<and> (\<exists> m >0. (p2, t, m) \<in> set (produ (os nid'')) \<and> (nid, p) \<in> set (edges sg (nid'', p2)))")
           subgoal premises prems2
-            using prems2(1,3-) apply -
+            using prems2(1,2,4-) apply -
             apply clarsimp
             subgoal for p2 nid'' m
               apply (cases "nid' = nid''")
               subgoal
-                apply hypsubst_thin
+                by auto
+              subgoal
+
                 using prems(14) apply -
                 unfolding produ_supported_def
                 apply (drule spec2, drule spec2, drule mp, assumption)
@@ -5980,12 +5982,13 @@ lemma
               apply clarsimp
               subgoal for ft
                 apply (drule in_frontier_sumEx)
+                back
                   apply simp_all
                 subgoal
-end
-                  by (simp add: sum_nonneg zcount_sum)
+                  by (clarsimp simp add: sum_nonneg zcount_sum)
                 apply clarsimp
                 apply (drule in_frontier_sumEx)
+                back
                 apply simp_all
                   apply (clarsimp simp add: image_iff simp flip: member_antichain.rep_eq split: prod.splits)
                 subgoal for l s
