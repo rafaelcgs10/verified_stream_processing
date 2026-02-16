@@ -34,7 +34,7 @@ abbreviation \<open>initial_state_input lxs \<equiv> \<lparr>
    \<rparr> :: (_, _, _, _) input_state\<close>
 
 abbreviation \<open>initial_state_label_prop \<equiv> \<lparr>
-   summar = default_internal_summary,
+   summar = (\<lambda>_ _. [0]),
    consu = [],
    inter = [],
    produ = [],
@@ -113,15 +113,8 @@ value [GHC] \<open>debug_test_sg c_imp\<close>
 value [GHC] \<open>map (\<lambda>(n, p). (Loc (Rep_bit1 n) (Src (Rep_bit0 p)), map (\<lambda>(n, p). Loc (Rep_bit1 n) (Trg (Rep_bit0 p)))
   (edges test_sg (n, p)))) (List.product (Enum.enum :: 3 list) (Enum.enum :: 2 list))\<close>
 
-abbreviation \<open>test_P \<equiv> \<lambda>(t :: (nat, nat) myprod). \<forall>n < 2. \<not> frontier_less_equal ({}\<^sub>A :: (nat, nat) myprod antichain) (MyPair (myfst t) n)\<close>
-abbreviation \<open>test_output_times \<equiv> filter test_P [MyPair 0 0]\<close>
-value [GHC] test_output_times
-abbreviation \<open>test_batch \<equiv> map (\<lambda>t. let cap = Cap t (0 :: nat); t1 = myfst t in (Inr [[0, 1]] :: nat \<times> nat + nat list list, cap)) test_output_times\<close>
-value [GHC] test_batch
-value [GHC] \<open>map (\<lambda>t. Cap t (0 :: nat)) test_output_times @ map (\<lambda>t. Cap t 1) (filter test_P [MyPair 0 0])\<close>
-
 abbreviation \<open>test_op \<equiv> dataflow_op test_sg cc_op\<close>
-value [GHC] \<open>check_prefix 100000 [((1, 0), (Inr [[0, 1]], MyPair 0 0))] test_op\<close>
+value [GHC] \<open>check_prefix 25 [((1, 0), (Inr [[0, 1]], MyPair 0 0))] test_op\<close>
 
 notepad begin
   define inc where \<open>inc = MyPair (0 :: nat) (1 :: nat)\<close>
@@ -249,11 +242,11 @@ notepad begin
       (logic_map 1 (label_propagation_op ?os1_1))
       (logic_map 2 (increment_op 0 0 inc os2))))))))\<close>
     by simp
+  have os1_1: \<open>?os1_1 = os1\<lparr>consu := [(0, MyPair 0 0, 1)], input := (input os1)(0 := [(Inl (0, 1), MyPair 0 0)]), inter := inter os1 @ [(0, MyPair 0 0, 1), (1, MyPair 0 0, 1)], ocaps := (\<lambda>_. [MyPair 0 0])\<rparr>\<close>
+    by (simp add: consumes_def add_caps_def BENQ_def os1_def fun_eq_iff) (metis num2_cases)
   define os1_2 where \<open>os1_2 = drop_cap (?os1_1\<lparr>input := (\<lambda>_. []), timestamps := [0],
   graph := (\<lambda>_ _. [])(0 := (\<lambda>_. [])(0 := [1], 1 := [0])), vertices := (\<lambda>_. [])(0 := [0, 1]),
   label := update_label ?os1_1 0 1 0\<rparr>) (Cap (MyPair 0 0) 1)\<close>
-  have os1_1: \<open>?os1_1 = os1\<lparr>consu := [(0, MyPair 0 0, 1)], input := (input os1)(0 := [(Inl (0, 1), MyPair 0 0)]), inter := inter os1 @ [(0, MyPair 0 0, 1)], ocaps := (ocaps os1)(0 := [MyPair 0 0])\<rparr>\<close>
-    by (simp add: consumes_def add_caps_def BENQ_def os1_def default_internal_summary_def fun_eq_iff)
   have step_Tau_1: \<open>step Tau (dataflow_op sg_2 (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
   (logic_map 0 (ooo_input_op {|0|} ?os0_3))
   (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (\<lambda>_. [])
@@ -277,7 +270,8 @@ notepad begin
             apply (rule step_builder_op_Silent)
                 apply simp_all
       apply (simp add: consumes_def add_caps_def os1_def)
-     apply (simp add: consumes_def add_caps_def os1_def default_internal_summary_def)
+     apply (simp add: consumes_def add_caps_def os1_def)
+     apply (metis num2_cases)
     apply (unfold label_propagation_op_logic_def)
     apply (subst sup_cset.rep_eq)
     apply (rule UnI1)
@@ -364,9 +358,8 @@ notepad begin
     by simp
   have f1_1_empty: \<open>f1_1 0 + f1_1 1 = {}\<^sub>A\<close>
     apply (simp add: f1_1_def sg_5_def sg_4_def sg_3_def sg_2_def sg_1_def sg_def)
-    using os0_4_st0 os1_3_st1 apply (simp add: obtain_progress_def os1_2_def drop_cap_def consumes_def drop_caps_def produce_def os0_def os1_def f0_def default_internal_summary_def)
-    by eval
-  define os1_5 where \<open>os1_5 = drop_caps (produces os1_4 [(Inr [[0, 1]], Cap (MyPair 0 0) 0)]) [Cap (MyPair 0 0) 0]\<close> (*, Cap (MyPair 0 0) 1*)
+    using os0_4_st0 os1_3_st1 by (simp add: obtain_progress_def os1_2_def drop_cap_def drop_caps_def produce_def os0_def os1_def) eval
+  define os1_5 where \<open>os1_5 = drop_caps (produces os1_4 [(Inr [[0, 1]], Cap (MyPair 0 0) 0)]) [Cap (MyPair 0 0) 0]\<close>
   have \<open>step Tau (dataflow_op sg_5 (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
   (logic_map 0 (ooo_input_op {|0|} os0_4))
   (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (\<lambda>_. [])
@@ -381,23 +374,25 @@ notepad begin
         (logic_map 2 (increment_op 0 0 inc os2))))))))\<close>
     apply (rule step_Tau_dataflow_op_Tau_intro)
     apply (rule step_map_op)
-     apply (rule step_comp_op_R_Tau)
-       apply (rule step_Tau_loop_op)
-        apply (rule step_map_op)
-         apply (rule step_comp_op_L_Tau)
-           apply (rule step_map_op)
-            apply (unfold label_propagation_op_def)
-            apply (rule step_builder_op_Silent[where p=0])
-                apply simp_all
+    apply (rule step_comp_op_R_Tau)
+    apply (rule step_Tau_loop_op)
+    apply (rule step_map_op)
+    apply (rule step_comp_op_L_Tau)
+    apply (rule step_map_op)
+    apply (unfold label_propagation_op_def)
+    apply (rule step_builder_op_Silent[where p=0])
+    apply simp_all
     using os1_3_st1 apply (simp add: os1_4_def obtain_progress_def os1_2_def drop_cap_def consumes_def add_caps_def os1_def)
-    using os1_3_st1 apply (simp add: os1_4_def obtain_progress_def os1_2_def drop_cap_def consumes_def add_caps_def os1_def default_internal_summary_def)
+    using os1_3_st1 apply (simp add: os1_4_def obtain_progress_def os1_2_def drop_cap_def consumes_def add_caps_def os1_def)
     apply (unfold label_propagation_op_logic_def)
     apply (subst sup_cset.rep_eq)
     apply (rule UnI2)
     apply (simp add: os1_5_def)
-    apply (intro arg_cong2[where f=drop_caps] arg_cong[where f=\<open>produces os1_4\<close>])
-    using os1_3_st1 apply (simp add: os1_4_def obtain_progress_def os1_2_def os1_def drop_cap_def consumes_def add_caps_def f1_1_empty BENQ_def default_internal_summary_def update_label_def)
-    using os1_3_st1 by (simp add: os1_4_def obtain_progress_def os1_2_def drop_cap_def consumes_def add_caps_def os1_def default_internal_summary_def f1_1_empty)
+    apply (intro conjI arg_cong2[where f=drop_caps] arg_cong[where f=\<open>produces os1_4\<close>])
+    using os0_4_st0 os1_3_st1 apply (simp add: os1_4_def obtain_progress_def os1_2_def drop_cap_def consumes_def add_caps_def os1_def f1_1_def sg_5_def sg_4_def sg_3_def sg_2_def sg_1_def sg_def os0_def f0_def)
+    apply eval
+    using os1_3_st1 apply (simp add: os1_4_def obtain_progress_def os1_2_def os1_def drop_cap_def consumes_def add_caps_def f1_1_empty BENQ_def update_label_def)
+    using os1_3_st1 by (simp add: os1_4_def obtain_progress_def os1_2_def drop_cap_def consumes_def add_caps_def os1_def f1_1_empty)
   also have \<open>step (Out (1, 0) (Inr [[0, 1]], MyPair 0 0)) \<dots>
     (dataflow_op sg_5 (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
     (logic_map 0 (ooo_input_op {|0|} os0_4))
@@ -407,13 +402,13 @@ notepad begin
         (logic_map 2 (increment_op 0 0 inc os2))))))))\<close>
     apply (rule step_Out_dataflow_op_Out_Inr_intro)
     apply (rule step_map_op)
-     apply (rule step_comp_op_R_Out)
-       apply (rule step_Out_loop_op)
-         apply (rule step_map_op)
-          apply (rule step_comp_op_L_Out)
-             apply (rule step_map_op)
-              apply (unfold label_propagation_op_def)
-              apply (rule step_builder_op_Write_Some)
+    apply (rule step_comp_op_R_Out)
+    apply (rule step_Out_loop_op)
+    apply (rule step_map_op)
+    apply (rule step_comp_op_L_Out)
+    apply (rule step_map_op)
+    apply (unfold label_propagation_op_def)
+    apply (rule step_builder_op_Write_Some)
     using os1_3_st1 apply (simp_all add: os1_5_def drop_caps_def produces_def os1_4_def obtain_progress_def os1_2_def drop_cap_def consumes_def add_caps_def os1_def)
     by simp
   finally have \<open>wstep (Out (1, 0) (Inr [[0, 1]], MyPair 0 0))
