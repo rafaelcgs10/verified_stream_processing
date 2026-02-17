@@ -110,8 +110,8 @@ abbreviation \<open>debug_test_sg f \<equiv> map (\<lambda>(n, p). ((Loc (Rep_bi
 value [GHC] \<open>debug_test_sg c_work\<close>
 value [GHC] \<open>debug_test_sg c_pts\<close>
 value [GHC] \<open>debug_test_sg c_imp\<close>
-value [GHC] \<open>map (\<lambda>(n, p). (Loc (Rep_bit1 n) (Src (Rep_bit0 p)), map (\<lambda>(n, p). Loc (Rep_bit1 n) (Trg (Rep_bit0 p)))
-  (edges test_sg (n, p)))) (List.product (Enum.enum :: 3 list) (Enum.enum :: 2 list))\<close>
+value [GHC] \<open>map (\<lambda>(n, p). (Loc (Rep_bit1 n) (Src (Rep_bit0 p)), map_option (\<lambda>(n, p). Loc (Rep_bit1 n) (Trg (Rep_bit0 p)))
+  (nxt test_sg (n, p)))) (List.product (Enum.enum :: 3 list) (Enum.enum :: 2 list))\<close>
 
 abbreviation \<open>test_P \<equiv> \<lambda>(t :: (nat, nat) myprod). \<forall>n < 2. \<not> frontier_less_equal ({}\<^sub>A :: (nat, nat) myprod antichain) (MyPair (myfst t) n)\<close>
 abbreviation \<open>test_output_times \<equiv> filter test_P [MyPair 0 0]\<close>
@@ -276,7 +276,7 @@ notepad begin
     by (simp add: drop_cap_def produces_def neighbors_def BENQ_def insort_union_def insort_insert_key_def)
   let ?os0.4 = \<open>fst (obtain_progress ?os0.3)\<close>
   let ?st0 = \<open>snd (obtain_progress ?os0.3)\<close>
-  let ?sg.3 = \<open>?sg.2\<lparr>upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ ?sg.2) (extract_progress 0 (edges ?sg.2) ?st0) (pt_tr ?sg.2)\<rparr>\<close>
+  let ?sg.3 = \<open>?sg.2\<lparr>upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ ?sg.2) (extract_progress 0 (nxt ?sg.2) ?st0) (pt_tr ?sg.2)\<rparr>\<close>
   have step_Tau_2: \<open>step Tau (dataflow_op ?sg.2 (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
   (logic_map 0 (ooo_input_op {|0|} ?os0.3))
   (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (\<lambda>_. [])
@@ -299,7 +299,7 @@ notepad begin
     by simp
   let ?os1.3 = \<open>fst (obtain_progress ?os1.2)\<close>
   let ?st1 = \<open>snd (obtain_progress ?os1.2)\<close>
-  let ?sg.4 = \<open>?sg.3\<lparr>upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ ?sg.3) (extract_progress 1 (edges ?sg.3) ?st1) (pt_tr ?sg.3)\<rparr>\<close>
+  let ?sg.4 = \<open>?sg.3\<lparr>upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ ?sg.3) (extract_progress 1 (nxt ?sg.3) ?st1) (pt_tr ?sg.3)\<rparr>\<close>
   have step_Tau_3: \<open>step Tau (dataflow_op ?sg.3 (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
   (logic_map 0 (ooo_input_op {|0|} ?os0.4))
   (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (\<lambda>_. [])

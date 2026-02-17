@@ -300,7 +300,7 @@ proof (coinduction arbitrary: sg os rule: wbisim_coinduct_upto'')
         thus ?thesis using my_source_op_os' unfolding R_def by blast
       qed
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f os) op2'
-  \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 1 (edges sg) st) (pt_tr sg)\<rparr>)
+  \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 1 (nxt sg) st) (pt_tr sg)\<rparr>)
     (my_ooo_input_op os')) op2'"
         if "invariant f os"
           and "has_progress os"
