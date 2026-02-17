@@ -201,6 +201,12 @@ lemma empty_is_empty_antichain[simp]:
   "is_empty_antichain (antichain {})"
   by (metis Set.is_empty_iff empty_antichain.rep_eq empty_antichain_def is_empty_antichain.rep_eq)
 
+lemma is_empty_antichain_plus[simp]:
+  "is_empty_antichain (A + B) \<longleftrightarrow> is_empty_antichain A \<and> is_empty_antichain B"
+  apply transfer
+  apply (clarsimp simp add: minimal_antichain_def incomparable_def)
+  apply (metis Un_iff empty_iff ex_min_if_finite finite_Un)
+  done
 
 
 lemma not_in_empty[simp]:

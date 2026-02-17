@@ -20,82 +20,6 @@ abbreviation "t_1_0 \<equiv> MyPair (Suc 0) (0 :: nat)"
 abbreviation "t_0_1 \<equiv> MyPair (0 :: nat) (Suc 0)"
 abbreviation "t_1_1 \<equiv> MyPair (Suc 0) (Suc 0)"
 
-
-definition "my_summ = (\<lambda> l1 l2.
-   if l1 = Loc (0 :: 2) (Src (0 :: 1)) \<and> l2 = Loc (1 :: 2)  (Trg (0 :: 1)) 
-   then antichain_from_list [0]
-   else if l1 = Loc 0 (Trg 0) \<and> l2 = Loc 0 (Src 0)
-   then antichain_from_list [0]
-   else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 0)
-   then antichain_from_list [0]
-   else {}\<^sub>A)"
-
-lemma weights_to_graph_fun_to_next[simp]:
-  "weights_to_graph_fun
-           (\<lambda>l1 l2.
-               remove_non_zero_weights (If (0 \<le> node l1 \<and> node l1 < 1 \<and> 1 \<le> node l2 \<and> is_Src (port l1) \<and> Locations.is_Trg (port l2)))
-                (case [(0, 1) \<mapsto> (0, 1)] (node l1 - 0, idp (port l1)) of None \<Rightarrow> frontier {#}\<^sub>z
-                 | Some (offset, q) \<Rightarrow> if node l2 = 1 + offset \<and> q = idp (port l2) then antichain_from_list [0] else antichain_from_list [])
-                ((if node l1 = 0 \<and> node l2 = (0 :: 2) \<and> Locations.is_Trg (port l1) \<and> is_Src (port l2) then antichain_from_list [0] else antichain_from_list []) +
-                 (if 1 = node l1 \<and> 1 = node l2 \<and> Locations.is_Trg (port l1) \<and> is_Src (port l2) then antichain_from_list [0] else antichain_from_list []))) = 
-   (\<lambda> l. 
-     if l = Loc (0 :: 2) (Src (1 :: 1)) then [Loc 1 (Trg 1)] else
-     if l = Loc 0 (Trg 0) then [Loc 0 (Src 0)] else
-     if l = Loc 1 (Trg 0) then [Loc 1 (Src (0 :: 1))] else 
-     [])"
-  apply (rule ext)
-  unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def 
-  subgoal for l
-    using loc_2_1_cases[where l=l] apply -
-    apply (elim disjE; hypsubst_thin)
-       apply (auto 0 0 simp add: antichain_empty set_antichain1 antichain_from_list_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
-    using not_in_empty apply blast+
-      apply code_simp
-    using not_in_empty apply blast+
-    done
-  done
-
-
-lemma dataflow_tree_to_graph_to_my_summ[simp]:
-  "dataflow_tree_to_graph (Comp [(0, 1) \<mapsto> (0, 1)] (Logic op1 default_internal_summary) (Logic op2 default_internal_summary)) = (my_summ :: (2, 1) location \<Rightarrow> (2, 1) location \<Rightarrow> _ antichain)"
-  unfolding dataflow_tree_to_graph_def Let_def default_internal_summary_def
-  apply (simp only: split: prod.splits)
-  apply (intro allI impI)
-  apply (subst (5) if_P)
-  subgoal
-    apply auto
-    subgoal premises prems
-      using prems(3) apply -
-      apply (auto simp add: enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
-      apply code_simp
-      apply eval
-      done
-    subgoal premises
-      unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def no_self_loop_checker_def
-      by (auto simp add: antichain_empty antichain_from_list_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
-    subgoal premises
-      unfolding implementation_graph_checker_def
-      unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def no_self_loop_checker_def
-      by (auto simp add: antichain_empty antichain_from_list_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
-    done
-  subgoal premises prems
-    using prems(1) apply -
-    apply clarsimp
-    subgoal premises
-      unfolding my_summ_def
-      apply (rule ext)+
-      subgoal for l1 l2
-        using loc_2_1_cases[where l=l1] apply -
-        using loc_2_1_cases[where l=l2] apply -
-        apply (elim disjE; hypsubst_thin)
-                       apply (auto 0 0 simp add: antichain_empty antichain_from_list_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
-        apply (rule FalseE)
-        apply code_simp
-        done
-      done
-    done
-  done
-
 abbreviation "list_inps_test \<equiv> 
  [Mint t_1_0, Mint t_0_1, Mint t_1_1, Drop t0, Data t_1_1 10, Drop t_1_1, Data t_0_1 7, Data t_1_0 (3 :: nat), Drop t_1_0, Drop t_0_1]"
 abbreviation "inps_test \<equiv> llist_of list_inps_test"
@@ -138,8 +62,6 @@ abbreviation init_operator_state_ty2 where
    is_en2 = \<top>
    \<rparr>"
 
-
-
 abbreviation "l1 ip_state \<equiv> ((Logic (ooo_input_op {|1 :: 1|} ip_state) default_internal_summary) :: ('a, _, (_, 't) shared_state + (1 \<Rightarrow> 't antichain), 'c \<times> 't, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) dataflow_tree)"
 abbreviation "l2 os2 f \<equiv> Logic (batch_op os2 f) default_internal_summary"
 abbreviation "G f ip_state os2 \<equiv> Comp [(0 :: 2, 1) \<mapsto> (0, 1)] (l1 (ip_state :: (1, 'd1 + 'd2, 'd1, _) input_state)) (l2 (os2 :: (1, 'd1 + 'd2, 'd1, 'd2, _) operator_state_ty2) f)"
@@ -153,13 +75,79 @@ value [GHC] "check_prefix 100 [((1, 1), (Inr 3, MyPair 1 0)), ((1, 1), (Inr 10, 
 
 section \<open>Generalized Correctness\<close>
 
+definition "my_summ = (\<lambda> l1 l2.
+   if l1 = Loc (0 :: 2) (Src (0 :: 1)) \<and> l2 = Loc (1 :: 2)  (Trg (0 :: 1)) 
+   then antichain_from_list [0]
+   else if l1 = Loc 0 (Trg 0) \<and> l2 = Loc 0 (Src 0)
+   then antichain_from_list [0]
+   else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 0)
+   then antichain_from_list [0]
+   else {}\<^sub>A)"
 
-abbreviation "su_test a b \<equiv> dataflow_tree_to_graph (
-    Comp [(0, 0) \<mapsto> (1, 1), (1, 0) \<mapsto> (0, 0)] 
-    (Comp [(0, 0) \<mapsto> (0, 0)] (Logic (\<oslash> :: (_, _, unit + unit) op) (\<lambda> _ _. [0 :: nat])) (Logic \<oslash> (\<lambda> _ _. [0 :: nat])))
-    (Comp [(0 :: 4, 0 :: 2) \<mapsto> (0, 0)] (Logic \<oslash> (\<lambda> _ _. [0 :: nat])) (Logic \<oslash> (\<lambda> _ _. [0 :: nat])))
-    ) a b"
+lemma weights_to_graph_fun_to_next[simp]:
+  "weights_to_graph_fun
+           (\<lambda>l1 l2.
+               remove_non_zero_weights (If (0 \<le> node l1 \<and> node l1 < 1 \<and> 1 \<le> node l2 \<and> is_Src (port l1) \<and> Locations.is_Trg (port l2)))
+                (case [(0, 1) \<mapsto> (0, 1)] (node l1 - 0, idp (port l1)) of None \<Rightarrow> frontier {#}\<^sub>z
+                 | Some (offset, q) \<Rightarrow> if node l2 = 1 + offset \<and> q = idp (port l2) then antichain_from_list [0] else antichain_from_list [])
+                ((if node l1 = 0 \<and> node l2 = (0 :: 2) \<and> Locations.is_Trg (port l1) \<and> is_Src (port l2) then antichain_from_list [0] else antichain_from_list []) +
+                 (if 1 = node l1 \<and> 1 = node l2 \<and> Locations.is_Trg (port l1) \<and> is_Src (port l2) then antichain_from_list [0] else antichain_from_list []))) = 
+   (\<lambda> l. 
+     if l = Loc (0 :: 2) (Src (1 :: 1)) then [Loc 1 (Trg 1)] else
+     if l = Loc 0 (Trg 0) then [Loc 0 (Src 0)] else
+     if l = Loc 1 (Trg 0) then [Loc 1 (Src (0 :: 1))] else 
+     [])"
+  apply (rule ext)
+  unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def 
+  subgoal for l
+    using loc_2_1_cases[where l=l] apply -
+    apply (elim disjE; hypsubst_thin)
+       apply (auto 0 0 simp add: antichain_empty set_antichain1 antichain_from_list_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
+    using not_in_empty apply blast+
+      apply code_simp
+    using not_in_empty apply blast+
+    done
+  done
 
+lemma dataflow_tree_to_graph_to_my_summ[simp]:
+  "dataflow_tree_to_graph (Comp [(0, 1) \<mapsto> (0, 1)] (Logic op1 default_internal_summary) (Logic op2 default_internal_summary)) = (my_summ :: (2, 1) location \<Rightarrow> (2, 1) location \<Rightarrow> _ antichain)"
+  unfolding dataflow_tree_to_graph_def Let_def default_internal_summary_def
+  apply (simp only: split: prod.splits)
+  apply (intro allI impI)
+  apply (subst (5) if_P)
+  subgoal
+    apply auto
+    subgoal premises prems
+      using prems(3) apply -
+      apply (auto simp add: enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
+      apply code_simp
+      apply eval
+      done
+    subgoal premises
+      unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def no_self_loop_checker_def
+      by (auto simp add: antichain_empty antichain_from_list_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
+    subgoal premises
+      unfolding implementation_graph_checker_def
+      unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def no_self_loop_checker_def
+      by (auto simp add: antichain_empty antichain_from_list_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
+    done
+  subgoal premises prems
+    using prems(1) apply -
+    apply clarsimp
+    subgoal premises
+      unfolding my_summ_def
+      apply (rule ext)+
+      subgoal for l1 l2
+        using loc_2_1_cases[where l=l1] apply -
+        using loc_2_1_cases[where l=l2] apply -
+        apply (elim disjE; hypsubst_thin)
+                       apply (auto 0 0 simp add: antichain_empty antichain_from_list_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
+        apply (rule FalseE)
+        apply code_simp
+        done
+      done
+    done
+  done
 
 abbreviation "coll inps t \<equiv> list_of (lmap (\<lambda> e. case e of Data t d \<Rightarrow> d) (lfilter (\<lambda> e. case e of Data t' d \<Rightarrow> t = t' | _ \<Rightarrow> False) inps))"
 
@@ -170,28 +158,6 @@ abbreviation "tt_op os f \<equiv> map_op (case_option (Inl (1 :: 2)) (\<lambda> 
 
 abbreviation "G_op f ip_state os2 chns \<equiv>
    dataflow_tree_to_operator chns (G f (ip_state :: (1, 'd1 + 'd2, 'd1, _) input_state) (os2 :: (1, 'd1 + 'd2, 'd1, 'd2, _) operator_state_ty2))"
-
-
-lemma image_zmset_comp:
-  "Auxiliary.image_zmset g (Auxiliary.image_zmset f X) = (Auxiliary.image_zmset (g o f) X)"
-  apply transfer'
-  apply (auto simp add: equiv_zmset_def)
-  done
-
-lemma move_in_zmset:
-  "f o g = g o f \<Longrightarrow>
-   {#(f o g) t. t \<in>#\<^sub>z A#} + {#g t. t \<in>#\<^sub>z B#} = {#(f o g) t. t \<in>#\<^sub>z A - X#} + {#g t. t \<in>#\<^sub>z B + {#f t. t \<in>#\<^sub>z X#}#}"
-  unfolding zmultiset_eq_iff comp_def
-  apply (auto simp add: comp_def image_zmset_comp)
-  done
-
-declare AP_simp[simp del]
-
-lemma zmset_of_path_weight[simp]:
-  "mset_neg A = {#} \<Longrightarrow>
-   dataflow_topology su (-+-) \<Longrightarrow>
-   zmset_of (mset_pos (A -++- graph.path_weight su la lb)) = A -++- graph.path_weight su la lb"
-  by (simp add: dataflow_topology.mset_neg_after_summary mset_pos_as_neg)
 
 declare if_cong[cong]
 

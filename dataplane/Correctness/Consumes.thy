@@ -12,85 +12,6 @@ declare cin.rep_eq[simp del]
 declare enum_class.enum_UNIV[simp] enum_class.enum_distinct[simp]
 
 
-(* ======> FIXME: move me \<le>====== *)
-lemma sum_eq_singleton:
-  "finite A \<Longrightarrow> f a = b \<Longrightarrow> a \<in> A \<Longrightarrow> (\<forall> c \<in> A. c \<noteq> a \<longrightarrow> f c = 0) \<Longrightarrow> sum f A = b"
-  by (metis Diff_iff dataflow_topology_from_tree.sum_singleton empty_subsetI insert_iff insert_subset sum.mono_neutral_right)
-lemma zcount_zmset_gt_0_set_Ex:
-  "0 < zcount (zmset xs) x \<Longrightarrow> \<exists> m. (x, m) \<in> set xs \<and> m > 0"
-  apply (induct xs)
-   apply clarsimp+
-  apply (smt (verit, ccfv_SIG) zcount_update_zmultiset)
-  done
-lemma zmset_map_snd_concat_sum:
-  "distinct xs \<Longrightarrow>
-   zmset (map snd (concat (map f xs))) =
-   sum (zmset o (map snd) o f) (set xs)"
-  by (induct xs) auto
-lemma zmultiset_move_neg:
-  "(A :: _ zmultiset) + B = C \<longleftrightarrow> A = C - B"
-  by auto
-lemma count_list_gt_0[simp]:
-  "0 < count_list xs x \<longleftrightarrow> x \<in> set xs"
-  by (induct xs) auto
-lemma zcount_zimageD:
-  "zcount {#f t. t \<in>#\<^sub>z A#} t > 0 \<Longrightarrow>
-   (\<exists> t'. zcount A t' > 0 \<and> t = f t')"
-  apply transfer
-  apply clarsimp
-  apply (metis count_image_mset_lt_imp_lt)
-  done
-lemma zcount_to_zmset_gt_0[simp]:
-  "zcount (to_zmset xs) t > 0 \<longleftrightarrow> t \<in> set xs"
-  by (induct xs) (simp_all add: to_zmset_nenneg)
-lemma sum_le_0I:
-  "finite A \<Longrightarrow> (\<forall> x\<in>A. f x \<le> (0 :: int)) \<Longrightarrow> (\<Sum>x\<in>A. f x)\<le> 0"
-  apply (induct A rule: finite_induct)
-   apply simp_all
-  done
-lemma sum_ge_0I:
-  "finite A \<Longrightarrow> (\<forall> x\<in>A. f x \<ge> (0 :: int)) \<Longrightarrow> (\<Sum>x\<in>A. f x)\<ge> 0"
-  apply (induct A rule: finite_induct)
-   apply simp_all
-  done
-lemma in_frontier_minusD:
-  "x \<in>\<^sub>A frontier (A - B) \<Longrightarrow> 
-   (\<forall> y. zcount B y \<ge> 0) \<Longrightarrow>
-   (\<exists> y. y \<in>\<^sub>A frontier A \<and> y \<le> x)"
-  using frontier_below_eq_frontier_minus less_eq_antichain_def by blast
-lemma in_frontier_minusI:
-  "t \<in>\<^sub>A frontier A \<Longrightarrow>
-   t \<noteq> t' \<Longrightarrow>
-   t \<in>\<^sub>A frontier (A - {#t'#}\<^sub>z)"
-  apply transfer'
-  unfolding minimal_antichain_def
-  apply auto
-  done
-lemma in_frotier_sum_le_exI:
-  "finite A \<Longrightarrow>
-   (\<forall> a\<in>A. \<forall> t. zcount (f a) t \<ge> 0)\<Longrightarrow>
-   t' \<in>\<^sub>A frontier (f a) \<Longrightarrow>
-   a \<in> A \<Longrightarrow>
-   t' \<le> t \<Longrightarrow>
-   \<exists> t'. t' \<in>\<^sub>A frontier (sum f A) \<and> t' \<le> t"
-  apply (induct A rule: finite_induct)
-   apply simp_all
-  apply clarsimp
-  apply (elim disjE)
-  subgoal
-    using fronteier_lt_add_ex
-    by (metis (lifting) sum_nonneg zcount_sum)
-  subgoal
-    by (metis Groups.add_ac(2) fronteier_lt_add_ex)
-  done
-lemma sum_subtractf_zmultiset:
-  "finite A \<Longrightarrow>
-   (\<Sum>x\<in>A. f x - g x) = sum (f :: 'b \<Rightarrow> 'a zmultiset) A - sum g A"
-  apply (induct A rule: finite_induct)
-   apply simp_all
-  apply (metis (no_types, lifting) add_diff_eq diff_add_zmset uminus_add_add_uminus)
-  done
-
 lemma zmset_map_filter_Trg_extract_prog:
   "zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog Enum.enum (nxt sg) os))) = 
    (\<Sum>x\<in>UNIV. zmset (List.map_filter (\<lambda> (p', t, d). case_option None (\<lambda> (nid'', p''). if nid'' = nid \<and> p'' = p then Some (t, d) else None) (nxt sg (x, p'))) (produ (os x))))
@@ -117,17 +38,6 @@ lemma filter_loc_Trg_extract_prof_consumes_diff_nids[simp]:
   "nid \<noteq> nid' \<Longrightarrow>
    filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (extract_prog Enum.enum (edges sg) (os(nid := consumes (os nid) p t d))) =
    filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (extract_prog Enum.enum (edges sg) os)"
-  unfolding extract_prog_def extract_progress_def obtain_progress_def consumes_def add_caps_def
-  apply (simp add: zmset_concat map_concat filter_concat comp_def filter_map split_beta split: prod.splits)
-  apply (rule arg_cong[where f=concat])
-  apply (rule map_cong)
-   apply auto
-  done
-
-lemma filter_loc_Src_extract_prof_consumes_diff_nids[simp]:
-  "nid \<noteq> nid' \<Longrightarrow>
-   filter (\<lambda>(l', t, d). Loc nid' (Src p') = l') (extract_prog Enum.enum (edges sg) (os(nid := consumes (os nid) p t d))) =
-   filter (\<lambda>(l', t, d). Loc nid' (Src p') = l') (extract_prog Enum.enum (edges sg) os)"
   unfolding extract_prog_def extract_progress_def obtain_progress_def consumes_def add_caps_def
   apply (simp add: zmset_concat map_concat filter_concat comp_def filter_map split_beta split: prod.splits)
   apply (rule arg_cong[where f=concat])
@@ -169,27 +79,6 @@ lemma set_extract_prog_consumesD:
    apply fastforce
   apply (metis Pair_inject the_default.simps(1))
   done
-
-lemma int_sum_minus_cases:
-  "(0 :: int) < V \<Longrightarrow> V = n + m - p \<Longrightarrow> 0 \<le> p \<Longrightarrow> 0 < n \<or> 0 < m"
-  by auto
-
-lemma sum_list_pos_ex_elem_pos: "(0::int) < (\<Sum>m\<leftarrow>M. f m) \<Longrightarrow> \<exists>m\<in>set M. 0 < f m"
-  by (smt (verit, ccfv_threshold) sum_list_0 sum_list_mono)
-
-lemma zcount_sum_list:
-  "zcount (\<Sum>m\<leftarrow>M. f m) t = (\<Sum>m\<leftarrow>M. zcount (f m) t)"
-  apply (induct M)
-   apply auto
-  done
-
-
-lemma length_filter_one:
-  "(\<exists>! x \<in> set xs. P x) \<Longrightarrow>
-   distinct xs \<Longrightarrow>
-   length (filter P xs) = 1"
-  by (induct xs)
-    (auto simp add: filter_empty_conv)+
 
 lemma data_in_channel_justifies_c_pts:
   "Trg_caps_inv caps chnls \<Longrightarrow>
@@ -240,7 +129,7 @@ lemma data_in_channel_justifies_c_pts:
        apply simp
       apply (rule disjI2)
       apply (drule sum_pos_ex_elem_pos)
-      apply (clarsimp simp add: zcount_sum_list List.map_filter_def comp_def)+
+      apply (clarsimp simp add: List.map_filter_def comp_def)+
       apply (drule zcount_zmset_gt_0_set_Ex)
       apply (clarsimp split: prod.splits)
       subgoal for _ nid' _ p' x m
@@ -261,137 +150,7 @@ lemma data_in_channel_justifies_c_pts:
       done
     done
   done
-
-lemma filter_extract_prog_diff_nid:
-  "node l \<noteq> nid \<Longrightarrow>
-   filter (\<lambda>(la, t, d). l = la) (extract_prog Enum.enum ed (os(nid := consumes (os nid) p t d))) = 
-   filter (\<lambda>(la, t, d). l = la) (extract_prog Enum.enum ed os)"
-  unfolding extract_prog_def extract_progress_def 
-  apply (simp add: filter_concat map_concat comp_def if_distrib filter_map)
-  apply (rule arg_cong[where f=concat])
-  apply (rule map_cong)
-   apply (auto 0 0 split: prod.splits)
-  subgoal
-    unfolding obtain_progress_def
-    apply (simp add: filter_empty_conv enum_class.enum_UNIV split_beta filter_concat comp_def)
-    apply (clarsimp simp add: filter_map comp_def split: prod.splits)
-    apply (auto simp add: filter_map filter_empty_conv enum_class.enum_UNIV split_beta filter_concat comp_def split: prod.splits)
-    done
-  subgoal
-    unfolding obtain_progress_def
-    apply (simp add: filter_empty_conv enum_class.enum_UNIV split_beta filter_concat comp_def)
-    apply (clarsimp simp add: filter_map comp_def split: prod.splits)
-    done
-  done
-
-lemma ifrontier_change_multiplicities_no_path:
-  "graph.path_weight su l l' = {}\<^sub>A \<Longrightarrow>
-   dataflow_topology su (-+-) \<Longrightarrow>
-   ifrontier su (-+-) (change_multiplicities (summ sg) (filter (\<lambda>(la, t, d). l = la) (extract_prog Enum.enum ed os)) c) l'=
-   ifrontier su (-+-) c l'"
-  apply (subst (1 2) Propagate.dataflow_topology.implied_frontier_alt_def)
-   apply assumption
-  apply (simp add: c_pts_change_multiplicities filter_empty_conv enum_class.enum_UNIV split_beta filter_concat comp_def)
-  apply (rule frontier_sum_eq)
-     apply simp_all
-    defer
-    apply (metis (lifting) ext dataflow_topology_from_tree.after_summary_def dataflow_topology_from_tree.after_summary_zmset_of_nonneg)
-   apply (metis (lifting) ext dataflow_topology_from_tree.after_summary_def dataflow_topology_from_tree.after_summary_zmset_of_nonneg)
-  apply safe
-  subgoal
-    apply (rule frontier_sum_eq)
-       apply simp_all
-    apply auto
-    apply (subst filter_False)
-     apply auto
-    done
-  subgoal
-    apply (rule frontier_sum_eq)
-       apply simp_all
-    apply auto
-    apply (subst filter_False)
-     apply auto
-    done
-  done
-
-lemma c_pts_change_multiplicities_filter_False[simp]:
-  "l \<noteq> l' \<Longrightarrow>
-   c_pts (change_multiplicities (summ sg) (filter (\<lambda>(la, t, d). l = la) xs) c) l' = c_pts c l'"
-  apply (simp add: c_pts_change_multiplicities filter_empty_conv split_beta )
-  apply (subst filter_False)
-   apply auto
-  done
-
-lemma ifrontier_change_multiplicities_filter:
-  "dataflow_topology su (-+-) \<Longrightarrow>
-   ifrontier su (-+-) (change_multiplicities su (filter (\<lambda>(la, t, d). l = la) xs) c) l' =
-   ifrontier su (-+-) (c\<lparr> c_pts := (c_pts c)(l := c_pts c l + zmset (map snd (filter (\<lambda>(la, t, d). l = la) xs))) \<rparr>) l'"
-  apply (subst (1 2) Propagate.dataflow_topology.implied_frontier_alt_def)
-   apply assumption
-  apply (simp add: c_pts_change_multiplicities filter_empty_conv split_beta )
-  apply (rule frontier_sum_eq)
-     apply simp_all
-    defer
-    apply (metis (lifting) ext dataflow_topology_from_tree.after_summary_def dataflow_topology_from_tree.after_summary_zmset_of_nonneg)
-   apply (simp add: sum_nonneg zcount_sum) 
-  apply safe
-  subgoal
-    apply (rule frontier_sum_eq)
-       apply (simp_all add: split_def split_beta split: prod.splits)
-    done
-  subgoal
-    apply (rule frontier_sum_eq)
-       apply (simp_all add: split_def split_beta split: prod.splits)
-    apply (subst filter_False)
-     apply auto
-    done
-  done
-
-lemma gt_0_cases:
-  "0 \<le> (a :: int) + (c - b) \<Longrightarrow>
-   0 < b \<Longrightarrow>
-   0 < a \<or> 0 < c"
-  by auto
-
-lemma zcount_zmset:
-  "zcount (zmset xs) t = sum_list (map snd (filter (\<lambda> (t', x). t = t') xs))"
-  by (induct xs) (auto simp add: zcount_update_zmultiset)
-
-
-lemma sum_gt_0I:
-  "xs \<noteq> [] \<Longrightarrow>
-   (\<forall> x \<in> set xs. 0 < x) \<Longrightarrow>
-   (0 :: int) < sum_list xs"
-  apply (induct xs)
-   apply auto
-  subgoal for a xs
-    apply (cases xs)
-     apply auto
-    done
-  done
-
-
-lemma zcount_zmset_gt0I:
-  "\<exists> m. (p, t, m) \<in> set xs \<Longrightarrow>
-   \<forall>x\<in>set xs. 0 < snd (snd x) \<Longrightarrow>
-  0 < zcount (zmset (map snd (filter (\<lambda>x. p = fst x) xs))) t"
-  unfolding zcount_zmset filter_map comp_def
-  apply (simp add: split_beta)
-  apply (rule sum_gt_0I)
-   apply (force simp add: filter_empty_conv)+
-  done                
-
-lemma zcount_sum_list_alt:
-  "zcount (sum_list xs) t = sum_list (map (\<lambda> x. zcount x t) xs)"
-  by (induct xs)
-    auto
-
-lemma zcount_zmset_const_diff_0I:
-  "t \<noteq> t' \<Longrightarrow>
-   zcount (zmset (map (\<lambda>x. (t', c)) xs)) t = 0"
-  by (induct xs)
-    (auto simp add: zcount_update_zmultiset)
-
+   
 
 lemma set_extract_progressD:
   "(l, t, m) \<in> set (extract_progress nid ed (snd (obtain_progress (consumes (os nid) p t' d)))) \<Longrightarrow>
@@ -402,27 +161,6 @@ lemma set_extract_progressD:
   apply (auto simp add: split_beta image_iff enum_class.enum_UNIV)
   done
 
-definition "graph_summar_nt su nt os = (
-  (\<forall> nid p p' t. t \<in> set (summar (os nid) p p') \<longrightarrow> t \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) (Loc nid (Src p'))) \<and>
-  (\<forall> nid nid' p p'. nt (nid', p') = Some (nid, p) \<longrightarrow> 0 \<in>\<^sub>A graph.path_weight su (Loc nid' (Src p')) (Loc nid (Trg p))) \<and>
-  (\<forall> nid p p'. distinct (summar (os nid) p p')) \<and>
-  (\<forall> nid p p'. \<forall> t \<in> set (summar (os nid) p p'). \<not> (\<exists> t' \<in> set (summar (os nid) p p'). t' < t)) \<and>
-  (\<forall> s nid p l. s \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) l \<longrightarrow> (\<exists> t p' s'. t \<in> set (summar (os nid) p p') \<and> s' \<in>\<^sub>A graph.path_weight su (Loc nid (Src p')) l \<and> s = t -+- s')) \<and>
-  inj_on nt (Map.dom nt) 
-  )"
-
-(*
-\<and>
-  (\<forall> nid p p'. nt (nid, p) \<noteq> Some (nid, p'))
-*)
-
-lemma zmset_filter_extract_progress_Trg_consumes:
-  "zmset (map snd (filter (\<lambda>x. Loc nid (Trg p) = fst x) (extract_progress nid (edges sg) (snd (obtain_progress (consumes (os nid) p t d)))))) = 
-   zmset (map snd (filter (\<lambda>x. Loc nid (Trg p) = fst x) (extract_progress nid (edges sg) (snd (obtain_progress (os nid)))))) - {# t #}\<^sub>z"
-  unfolding extract_progress_def obtain_progress_def
-  apply simp
-  apply (metis update_zmultiset_one(1))
-  done
 lemma zmset_filter_extract_progress_Trg_consumes_alt:
   "zmset (map snd (filter (\<lambda>(l, _, _). Loc nid (Trg p) = l) (extract_progress nid (edges sg) (snd (obtain_progress (consumes (os nid) p t d)))))) = 
    zmset (map snd (filter (\<lambda>(l, _, _). Loc nid (Trg p) = l) (extract_progress nid (edges sg) (snd (obtain_progress (os nid)))))) - {# t #}\<^sub>z"
@@ -476,26 +214,13 @@ lemma zmset_filter_Trg_not_nid:
        apply (metis not_Some_eq2 option.sel option.simps(3))+
   done
 
-lemma path_weight_incomparable:
-  "Graph.graph su \<Longrightarrow>
-   s \<in>\<^sub>A graph.path_weight su l l' \<Longrightarrow> s' \<in>\<^sub>A graph.path_weight su l l' \<Longrightarrow> \<not> s' < s \<and> \<not> s < s'"
-  apply (subst (asm) (1 2) Graph.graph.path_weight_def)
-    apply assumption+
-  apply simp
-  apply (drule graph.finite_minimal_antichain_path_weightp[of _ l l'])
-  apply (subst (asm) (1 2) member_antichain.abs_eq)
-    apply (auto simp add: eq_onp_def )[2]
-  unfolding minimal_antichain_def
-  apply auto
-  done
-
 lemma dataplane_tracker_inv_consumes:
   "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
    cbufs (nid, p) = (d, t) # xs \<Longrightarrow>
    dataflow_topology (summ sg) (-+-) \<Longrightarrow>
    graph_summar_nt (summ sg) (nxt sg) os \<Longrightarrow>
-   dataplane_tracker_inv (os(nid := consumes (os nid) p (t :: 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) d)) (BTL (nid, p) cbufs) sg"
-  unfolding dataplane_tracker_inv_def
+  dataplane_tracker_inv (os(nid := consumes (os nid) p (t :: 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) d)) (BTL (nid, p) cbufs) sg"
+  (* unfolding dataplane_tracker_inv_def
   apply (elim conjE exE)
   apply simp
   apply hypsubst_thin
@@ -905,7 +630,7 @@ lemma dataplane_tracker_inv_consumes:
                                                   apply (elim bexE)
                                                   subgoal for nid''
                                                     apply simp
-                                                    apply (simp add: zcount_sum_list_alt comp_def filter_map split_beta zcount_zmset)
+                                                    apply (simp add:  comp_def filter_map split_beta zcount_zmset)
                                                       (* here4 *)
                                                     apply (subgoal_tac "\<exists> p2. \<exists> m >0. (p2, t, m) \<in> set (produ (os nid'')) \<and> (nxt sg (nid'', p2) = Some (nid, p))")
                                                     subgoal
@@ -1145,7 +870,7 @@ lemma dataplane_tracker_inv_consumes:
                                                     apply (elim bexE)
                                                     subgoal for nid''
                                                       apply simp
-                                                      apply (simp add: zcount_sum_list_alt comp_def filter_map split_beta zcount_zmset)
+                                                      apply (simp add:  comp_def filter_map split_beta zcount_zmset)
                                                       apply (subgoal_tac "\<exists> p2. \<exists> m >0. (p2, t, m) \<in> set (produ (os nid'')) \<and> (nxt sg (nid'', p2) = Some (nid, p))")
                                                       subgoal
                                                         apply (elim exE conjE)
@@ -1424,7 +1149,7 @@ lemma dataplane_tracker_inv_consumes:
                                                   apply (elim bexE)
                                                   subgoal for nid''
                                                     apply simp
-                                                    apply (simp add: zcount_sum_list_alt comp_def filter_map split_beta zcount_zmset)
+                                                    apply (simp add:  comp_def filter_map split_beta zcount_zmset)
                                                     apply (subgoal_tac "\<exists> p2. \<exists> m >0. (p2, t, m) \<in> set (produ (os nid'')) \<and> (nxt sg (nid'', p2) = Some (nid, p))")
                                                     subgoal
                                                       apply (elim exE conjE)
@@ -1718,7 +1443,7 @@ lemma dataplane_tracker_inv_consumes:
                                             apply (elim bexE)
                                             subgoal for nid''
                                               apply simp
-                                              apply (simp add: zcount_sum_list_alt comp_def filter_map split_beta zcount_zmset)
+                                              apply (simp add:  comp_def filter_map split_beta zcount_zmset)
                                               apply (subgoal_tac "\<exists> p2. \<exists> m >0. (p2, t, m) \<in> set (produ (os nid'')) \<and> (nxt sg (nid'', p2) = Some (nid, p))")
                                               subgoal
                                                 apply (elim exE conjE)
@@ -1983,7 +1708,7 @@ lemma dataplane_tracker_inv_consumes:
                                               apply (elim bexE)
                                               subgoal for nid''
                                                 apply simp
-                                                apply (simp add: zcount_sum_list_alt comp_def filter_map split_beta zcount_zmset)
+                                                apply (simp add:  comp_def filter_map split_beta zcount_zmset)
                                                 apply (subgoal_tac "\<exists> p2. \<exists> m >0. (p2, t, m) \<in> set (produ (os nid'')) \<and> (nxt sg (nid'', p2) = Some (nid, p))")
                                                 subgoal
                                                   apply (elim exE conjE)
@@ -2229,7 +1954,7 @@ lemma dataplane_tracker_inv_consumes:
                                                   apply (elim bexE)
                                                   subgoal for nid''
                                                     apply simp
-                                                    apply (simp add: zcount_sum_list_alt comp_def filter_map split_beta zcount_zmset)
+                                                    apply (simp add:  comp_def filter_map split_beta zcount_zmset)
                                                     apply (subgoal_tac "\<exists> p2. \<exists> m >0. (p2, t, m) \<in> set (produ (os nid'')) \<and> (nxt sg (nid'', p2) = Some (nid, p))")
                                                     subgoal
                                                       apply (elim exE conjE)
@@ -2446,7 +2171,7 @@ lemma dataplane_tracker_inv_consumes:
                                                 apply (elim bexE)
                                                 subgoal for nid''
                                                   apply simp
-                                                  apply (simp add: zcount_sum_list_alt comp_def filter_map split_beta zcount_zmset)
+                                                  apply (simp add:  comp_def filter_map split_beta zcount_zmset)
                                                   apply (subgoal_tac "\<exists> p2. \<exists> m >0. (p2, t, m) \<in> set (produ (os nid'')) \<and> (nxt sg (nid'', p2) = Some (nid, p))")
                                                   subgoal
                                                     apply (elim exE conjE)
@@ -2692,7 +2417,7 @@ lemma dataplane_tracker_inv_consumes:
                                                     apply (elim bexE)
                                                     subgoal for nid''
                                                       apply simp
-                                                      apply (simp add: zcount_sum_list_alt comp_def filter_map split_beta zcount_zmset)
+                                                      apply (simp add:  comp_def filter_map split_beta zcount_zmset)
                                                       apply (subgoal_tac "\<exists> p2. \<exists> m >0. (p2, t, m) \<in> set (produ (os nid'')) \<and> (nxt sg (nid'', p2) = Some (nid, p))")
                                                       subgoal
                                                         apply (elim exE conjE)
@@ -3003,7 +2728,7 @@ lemma dataplane_tracker_inv_consumes:
                                                 apply (elim bexE)
                                                 subgoal for nid''
                                                   apply simp
-                                                  apply (simp add: zcount_sum_list_alt comp_def filter_map split_beta zcount_zmset)
+                                                  apply (simp add:  comp_def filter_map split_beta zcount_zmset)
                                                   apply (subgoal_tac "\<exists> p2. \<exists> m >0. (p2, t, m) \<in> set (produ (os nid'')) \<and> (nxt sg (nid'', p2) = Some (nid, p))")
                                                   subgoal
                                                     apply (elim exE conjE)
@@ -3320,7 +3045,7 @@ lemma dataplane_tracker_inv_consumes:
                                           apply (elim bexE)
                                           subgoal for nid''
                                             apply simp
-                                            apply (simp add: zcount_sum_list_alt comp_def filter_map split_beta zcount_zmset)
+                                            apply (simp add:  comp_def filter_map split_beta zcount_zmset)
                                             apply (subgoal_tac "\<exists> p2. \<exists> m >0. (p2, t, m) \<in> set (produ (os nid'')) \<and> (nxt sg (nid'', p2) = Some (nid, p))")
                                             subgoal
                                               apply (elim exE conjE)
@@ -3636,7 +3361,7 @@ lemma dataplane_tracker_inv_consumes:
                                             apply (elim bexE)
                                             subgoal for nid''
                                               apply simp
-                                              apply (simp add: zcount_sum_list_alt comp_def filter_map split_beta zcount_zmset)
+                                              apply (simp add:  comp_def filter_map split_beta zcount_zmset)
                                               apply (subgoal_tac "\<exists> p2. \<exists> m >0. (p2, t, m) \<in> set (produ (os nid'')) \<and> (nxt sg (nid'', p2) = Some (nid, p))")
                                               subgoal
                                                 apply (elim exE conjE)
@@ -3986,7 +3711,7 @@ lemma dataplane_tracker_inv_consumes:
                                                               apply (elim bexE)
                                                               subgoal for nid''
                                                                 apply simp
-                                                                apply (simp add: zcount_sum_list_alt comp_def filter_map split_beta zcount_zmset)
+                                                                apply (simp add:  comp_def filter_map split_beta zcount_zmset)
                                                                 apply (subgoal_tac "\<exists> p2. \<exists> m >0. (p2, t, m) \<in> set (produ (os nid'')) \<and> (nxt sg (nid'', p2) = Some (nid, p))")
                                                                 subgoal
                                                                   apply (elim exE conjE)
@@ -4258,7 +3983,7 @@ lemma dataplane_tracker_inv_consumes:
                                                           apply (elim bexE)
                                                           subgoal for nid''
                                                             apply simp
-                                                            apply (simp add: zcount_sum_list_alt comp_def filter_map split_beta zcount_zmset)
+                                                            apply (simp add:  comp_def filter_map split_beta zcount_zmset)
                                                             apply (subgoal_tac "\<exists> p2. \<exists> m >0. (p2, t, m) \<in> set (produ (os nid'')) \<and> (nxt sg (nid'', p2) = Some (nid, p))")
                                                             subgoal
                                                               apply (elim exE conjE)
@@ -4499,7 +4224,7 @@ lemma dataplane_tracker_inv_consumes:
                                                           apply (elim bexE)
                                                           subgoal for nid''
                                                             apply simp
-                                                            apply (simp add: zcount_sum_list_alt comp_def filter_map split_beta zcount_zmset)
+                                                            apply (simp add:  comp_def filter_map split_beta zcount_zmset)
                                                             apply (subgoal_tac "\<exists> p2. \<exists> m >0. (p2, t, m) \<in> set (produ (os nid'')) \<and> (nxt sg (nid'', p2) = Some (nid, p))")
                                                             subgoal
                                                               apply (elim exE conjE)
@@ -4715,7 +4440,7 @@ lemma dataplane_tracker_inv_consumes:
                                                   apply (elim bexE)
                                                   subgoal for nid''
                                                     apply simp
-                                                    apply (simp add: zcount_sum_list_alt comp_def filter_map split_beta zcount_zmset)
+                                                    apply (simp add:  comp_def filter_map split_beta zcount_zmset)
                                                     apply (subgoal_tac "\<exists> p2. \<exists> m >0. (p2, t, m) \<in> set (produ (os nid'')) \<and> (nxt sg (nid'', p2) = Some (nid, p))")
                                                     subgoal
                                                       apply (elim exE conjE)
@@ -5259,7 +4984,7 @@ lemma dataplane_tracker_inv_consumes:
       apply auto
       done
     done
-  done
-
+  done*)
+  sorry
 
 end

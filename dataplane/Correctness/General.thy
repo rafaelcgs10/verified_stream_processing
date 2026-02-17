@@ -77,4 +77,98 @@ definition "dataplane_tracker_inv os cbufs sg =
      (produ_supported (summ sg) os c))"
 
 
+definition "graph_summar_nt su nt os = (
+  (\<forall> nid p p' t. t \<in> set (summar (os nid) p p') \<longrightarrow> t \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) (Loc nid (Src p'))) \<and>
+  (\<forall> nid nid' p p'. nt (nid', p') = Some (nid, p) \<longrightarrow> 0 \<in>\<^sub>A graph.path_weight su (Loc nid' (Src p')) (Loc nid (Trg p))) \<and>
+  (\<forall> nid p p'. distinct (summar (os nid) p p')) \<and>
+  (\<forall> nid p p'. \<forall> t \<in> set (summar (os nid) p p'). \<not> (\<exists> t' \<in> set (summar (os nid) p p'). t' < t)) \<and>
+  (\<forall> s nid p l. s \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) l \<longrightarrow> (\<exists> t p' s'. t \<in> set (summar (os nid) p p') \<and> s' \<in>\<^sub>A graph.path_weight su (Loc nid (Src p')) l \<and> s = t -+- s')) \<and>
+  inj_on nt (Map.dom nt) 
+  )"
+
+(* ======> FIXME: move me \<le>====== *)
+lemma sum_eq_singleton:
+  "finite A \<Longrightarrow> f a = b \<Longrightarrow> a \<in> A \<Longrightarrow> (\<forall> c \<in> A. c \<noteq> a \<longrightarrow> f c = 0) \<Longrightarrow> sum f A = b"
+  by (metis Diff_iff dataflow_topology_from_tree.sum_singleton empty_subsetI insert_iff insert_subset sum.mono_neutral_right)
+lemma zcount_zmset_gt_0_set_Ex:
+  "0 < zcount (zmset xs) x \<Longrightarrow> \<exists> m. (x, m) \<in> set xs \<and> m > 0"
+  apply (induct xs)
+   apply clarsimp+
+  apply (smt (verit, ccfv_SIG) zcount_update_zmultiset)
+  done
+lemma count_list_gt_0[simp]:
+  "0 < count_list xs x \<longleftrightarrow> x \<in> set xs"
+  by (induct xs) auto
+lemma zcount_zimageD:
+  "zcount {#f t. t \<in>#\<^sub>z A#} t > 0 \<Longrightarrow>
+   (\<exists> t'. zcount A t' > 0 \<and> t = f t')"
+  apply transfer
+  apply clarsimp
+  apply (metis count_image_mset_lt_imp_lt)
+  done
+lemma zcount_to_zmset_gt_0[simp]:
+  "zcount (to_zmset xs) t > 0 \<longleftrightarrow> t \<in> set xs"
+  by (induct xs) (simp_all add: to_zmset_nenneg)
+lemma sum_le_0I:
+  "finite A \<Longrightarrow> (\<forall> x\<in>A. f x \<le> (0 :: int)) \<Longrightarrow> (\<Sum>x\<in>A. f x)\<le> 0"
+  apply (induct A rule: finite_induct)
+   apply simp_all
+  done
+lemma in_frontier_minusD:
+  "x \<in>\<^sub>A frontier (A - B) \<Longrightarrow> 
+   (\<forall> y. zcount B y \<ge> 0) \<Longrightarrow>
+   (\<exists> y. y \<in>\<^sub>A frontier A \<and> y \<le> x)"
+  using frontier_below_eq_frontier_minus less_eq_antichain_def by blast
+lemma in_frontier_minusI:
+  "t \<in>\<^sub>A frontier A \<Longrightarrow>
+   t \<noteq> t' \<Longrightarrow>
+   t \<in>\<^sub>A frontier (A - {#t'#}\<^sub>z)"
+  apply transfer'
+  unfolding minimal_antichain_def
+  apply auto
+  done
+lemma in_frotier_sum_le_exI:
+  "finite A \<Longrightarrow>
+   (\<forall> a\<in>A. \<forall> t. zcount (f a) t \<ge> 0)\<Longrightarrow>
+   t' \<in>\<^sub>A frontier (f a) \<Longrightarrow>
+   a \<in> A \<Longrightarrow>
+   t' \<le> t \<Longrightarrow>
+   \<exists> t'. t' \<in>\<^sub>A frontier (sum f A) \<and> t' \<le> t"
+  apply (induct A rule: finite_induct)
+   apply simp_all
+  apply clarsimp
+  apply (elim disjE)
+  subgoal
+    using fronteier_lt_add_ex
+    by (metis (lifting) sum_nonneg zcount_sum)
+  subgoal
+    by (metis Groups.add_ac(2) fronteier_lt_add_ex)
+  done
+lemma sum_subtractf_zmultiset:
+  "finite A \<Longrightarrow>
+   (\<Sum>x\<in>A. f x - g x) = sum (f :: 'b \<Rightarrow> 'a zmultiset) A - sum g A"
+  apply (induct A rule: finite_induct)
+   apply simp_all
+  apply (metis (no_types, lifting) add_diff_eq diff_add_zmset uminus_add_add_uminus)
+  done
+lemma int_sum_minus_cases:
+  "(0 :: int) < V \<Longrightarrow> V = n + m - p \<Longrightarrow> 0 \<le> p \<Longrightarrow> 0 < n \<or> 0 < m"
+  by auto
+lemma sum_list_pos_ex_elem_pos: "(0::int) < (\<Sum>m\<leftarrow>M. f m) \<Longrightarrow> \<exists>m\<in>set M. 0 < f m"
+  by (smt (verit, ccfv_threshold) sum_list_0 sum_list_mono)
+lemma zcount_zmset:
+  "zcount (zmset xs) t = sum_list (map snd (filter (\<lambda> (t', x). t = t') xs))"
+  by (induct xs) (auto simp add: zcount_update_zmultiset)
+lemma sum_gt_0I:
+  "xs \<noteq> [] \<Longrightarrow>
+   (\<forall> x \<in> set xs. 0 < x) \<Longrightarrow>
+   (0 :: int) < sum_list xs"
+  apply (induct xs)
+   apply auto
+  subgoal for a xs
+    apply (cases xs)
+     apply auto
+    done
+  done      
+
 end

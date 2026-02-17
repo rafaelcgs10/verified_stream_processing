@@ -48,4 +48,6 @@ definition batch_ty2_op where
     cimage (\<lambda> (outs, drops). drop_caps (produces os (map (\<lambda> (d, cap). (en2 os d, cap)) outs)) drops) outs_drops)"
 
  *)
+
+
 end

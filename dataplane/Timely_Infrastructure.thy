@@ -156,7 +156,6 @@ fun nodes_count where
   "nodes_count (Logic op su) = 1"
 | "nodes_count (Comp wire dt1 dt2) = nodes_count dt1 + nodes_count dt2"
 
-
 definition "dataflow_tree_to_graph (df :: ('id :: {minus,one,plus,zero,ord,enum,hashable}, _, _, _, _) dataflow_tree) = (
   let (_, s) = dataflow_tree_to_graph_aux 0 df in
   if \<not> has_zero_cyc s \<and>
@@ -216,6 +215,42 @@ lemma enum_dataflow_topology_compile_dataflow[simp]:
         apply (simp_all add: add_mono_thms_linordered_semiring(1) frontier_empty_zmset)
       done
     done
+  done
+
+lemma is_empty_antichain_plus[simp]:
+  "is_empty_antichain B \<Longrightarrow>
+   antichain A + B = antichain A"
+  by (metis Set.is_empty_iff antichain_add_commute antichain_sum_empty_2 empty_antichain.abs_eq is_empty_antichain.rep_eq set_antichain_inverse)
+lemma is_empty_antichain_plus'[simp]:
+  "is_empty_antichain A \<Longrightarrow>
+   A + antichain B = antichain B"
+  by (metis Set.is_empty_iff antichain_sum_empty_2 empty_antichain.abs_eq is_empty_antichain.rep_eq set_antichain_inverse)
+lemma antichain_sum_eq[simp]:
+  "finite A \<Longrightarrow> incomparable A \<Longrightarrow>
+   antichain A + antichain A = antichain A"
+  apply (subst plus_antichain.abs_eq)
+  apply (clarsimp simp add:  eq_onp_def)+
+  apply (metis (no_types, lifting) basic_trans_rules(20) in_minimal_antichain incomparable_def order_antisym_conv subsetI)
+  done
+lemma incomparable_singleton[simp]:
+  "incomparable {a}"
+  unfolding incomparable_def by auto
+
+lemma dataflow_tree_to_graph_aux_Src_Trg_zero:
+  "dataflow_tree_to_graph_aux n dt = (m, su) \<Longrightarrow>
+   \<not> is_empty_antichain (su (Loc nid (Src p)) (Loc nid' (Trg p'))) \<Longrightarrow>
+    su (Loc nid (Src p)) (Loc nid' (Trg p')) = antichain {0}"
+  by (induct dt arbitrary: n m su)
+   (fastforce simp add:  antichain_from_list_singleton split: prod.splits if_splits option.splits)+
+ 
+lemma dataflow_tree_to_graph_Src_Trg_zero[simp]:
+  "dataflow_tree_to_graph dt = su \<Longrightarrow>
+   \<not> is_empty_antichain (su (Loc nid (Src p)) (Loc nid' (Trg p'))) \<Longrightarrow>
+   su (Loc nid (Src p)) (Loc nid' (Trg p')) = antichain {0}"
+  unfolding dataflow_tree_to_graph_def Let_def
+  apply (simp split: prod.splits if_splits)
+  using dataflow_tree_to_graph_aux_Src_Trg_zero apply fast
+  apply auto
   done
 
 global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "dataflow_tree_to_graph (df :: (_, _, _, _, 't :: {bot,ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le}) dataflow_tree)" "(+)"
@@ -614,9 +649,48 @@ record ('p, 'd, 'd1, 'd2, 't) operator_state_ty2 = "('p, 'd, 'd1, 't) operator_s
 record ('p, 'd, 'd1, 'd2, 'd3, 't) operator_state_ty3 = "('p, 'd, 'd1, 'd2, 't) operator_state_ty2" +
   en3 :: "'d3 \<Rightarrow> 'd" de3 :: "'d \<Rightarrow> 'd3" is_en3 :: "'d \<Rightarrow> bool"
 
-definition "graph_to_nxt summary = (\<lambda> (nid, p). find (\<lambda> (nid', p'). \<not> is_empty_antichain (summary (Loc nid (Src p)) (Loc nid' (Trg p')))) Enum.enum)"
+definition "graph_to_nxt summary = 
+  (let nt = (\<lambda> (nid, p). find (\<lambda> (nid', p'). \<not> is_empty_antichain (summary (Loc nid (Src p)) (Loc nid' (Trg p')))) Enum.enum) in
+   if inj_on nt (dom nt) then nt else Code.abort (STR ''Operator connections not injective'') (\<lambda> _ _. None))"
 
-find_consts "_ list \<Rightarrow> _ option" name: find
+lemma graph_to_nxt_inj_on[simp]:
+  "nt = graph_to_nxt summary \<Longrightarrow>
+   inj_on nt (dom nt)"
+  unfolding graph_to_nxt_def Let_def
+  by (auto split: if_splits)
+lemma zero_in_graph_path_weight[simp,intro]:
+  "nt = graph_to_nxt su \<Longrightarrow>
+   Graph.graph su \<Longrightarrow>
+   (\<forall> nid nid' p p'. \<not> is_empty_antichain (su (Loc nid (Src p)) (Loc nid' (Trg p'))) \<longrightarrow> su (Loc nid (Src p)) (Loc nid' (Trg p')) = antichain {0}) \<Longrightarrow>
+   nt (nid', p') = Some (nid, p) \<Longrightarrow>
+   0 \<in>\<^sub>A graph.path_weight su (Loc nid' (Src p')) (Loc nid (Trg p))"
+  unfolding graph_to_nxt_def Let_def
+  apply (subst graph.in_path_weight)
+   apply (clarsimp simp add: split: if_splits prod.splits)
+  apply hypsubst_thin
+  apply (drule spec2[of _ nid' nid])
+  apply (drule spec2[of _ p' p])
+  apply (subgoal_tac "su (Loc nid' (Src p')) (Loc nid (Trg p)) = antichain {0}")
+  subgoal
+    apply (auto simp add: minimal_antichain_def Graph.graph.path_weightp_def)
+    subgoal
+      apply (intro conjI exI)
+       apply (rule graph.path.intros(2))
+         apply assumption
+        apply (rule graph.path.intros(1))
+         apply assumption
+        apply (rule refl)
+       apply (simp add: member_antichain.rep_eq)
+      apply auto
+      done
+    subgoal for xs
+      using graph.sum_not_less_zero by blast
+    done
+  subgoal
+    apply (clarsimp simp add: member_antichain.rep_eq find_Some_iff split: if_splits prod.splits)
+    apply (metis surj_pair)
+    done
+  done
 
 definition "init_subgraph summary cgs =
    \<lparr> pt_tr = init_conf summary cgs,
