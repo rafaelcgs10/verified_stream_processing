@@ -5615,23 +5615,23 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
         subgoal 
           apply -
           apply (intro exI conjI relcomppI)
-          apply (rule step_set_spec_op_intro_Out)
-          apply (rule refl)
-          apply simp
-          apply simp
-          apply (rule refl)
-          apply (rule bisim_refl)
-          defer
-          apply (rule wbisim_refl)
+             apply (rule step_set_spec_op_intro_Out)
+                apply (rule refl)
+               apply simp
+              apply simp
+             apply (rule refl)
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
           apply (rule wb_upto_b_base)
           unfolding R_def[simplified]
           apply (intro exI conjI)
           unfolding wsim_def dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
-          apply simp
-          apply (simp add: SIM1)
-          apply (simp add: SIM1)
-          apply (simp add: SIM1)
-          apply (simp add: SIM1)
+                  apply simp
+                  apply (simp add: SIM1)
+                 apply (simp add: SIM1)
+                apply (simp add: SIM1)
+               apply (simp add: SIM1)
           subgoal
             using SIM1
             unfolding ty1_check_def
@@ -5642,13 +5642,13 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             by (fastforce simp add:  Src_from_Trg_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
           using SIM1 apply fastforce+
           done
-        defer
+                defer
         subgoal for d t
           apply (intro exI conjI relcomppI)
-          apply (rule rtranclp.intros(1))
-          apply (rule bisim_refl)
-          defer
-          apply (rule wbisim_refl)
+             apply (rule rtranclp.intros(1))
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
           apply (rule wb_upto_b_base)
           unfolding R_def[simplified]
           apply (rule exI[of _ "os(1 := consumes (os 1) 1 t d)"])
@@ -5664,7 +5664,10 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           subgoal
             by (simp add: cUn_assoc SIM1  flip:BULK_BENQ_assoc cinsert_code)
                 apply (simp_all add: SIM1)
-          subgoal sorry
+          subgoal premises temp
+            using SIM1(1,2,3)
+            unfolding graph_summar_nt_def consumes_def add_caps_def
+            by auto
           subgoal
             using SIM1
             unfolding ty1_check_def
@@ -5681,7 +5684,9 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                apply assumption
             using temp(2,4) apply (simp add: BHD_def )
             using SIM1(1) apply simp
-            subgoal sorry
+            subgoal
+              using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
+              by metis
             subgoal
               using SIM1(3) by force
             done
@@ -5689,57 +5694,8 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             using SIM1(12) by auto
           done
 
-            thm hd_Cons_tl
-
-            find_theorems timely_input_stream
-
-            find_theorems dataplane_tracker_inv
-
 
 end
-
-  done
-  done
-  done
-
-find_theorems BULK_BENQ name: ass
-
-end
-  using SIM1(1,12,13,14) apply -
-  apply simp
-  apply hypsubst_thin
-
-
-  find_theorems c
-
-  defer
-  defer
-  defer
-  defer
-  defer
-  defer
-
-
-  apply (simp_all only: SIM1 dataflow_tree_to_graph_to_my_summ)
-  defer
-  using SIM1(21) apply simp
-  using SIM1(1,20) apply simp
-  defer
-  defer
-  defer
-  using SIM1(1,16) apply simp
-  using SIM1(1,15) apply simp
-  using SIM1(22) apply simp
-
-  find_theorems graph_to_edges
-
-end
-
-  apply (rule arg_cong[where f="cUnion"])
-  apply (rule arg_cong2[where f="cimage"])
-  apply (rule ext)+
-  apply (simp split: prod.splits)
-  apply (rule refl)
 
 
 
