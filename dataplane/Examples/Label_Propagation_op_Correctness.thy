@@ -307,7 +307,6 @@ notepad begin
   define sg_4 where \<open>sg_4 = sg_3\<lparr>upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ sg_3) (extract_progress 1 (nxt sg_3) st1) (pt_tr sg_3)\<rparr>\<close>
   have step_Tau_3: \<open>step Tau (dataflow_op sg_3 (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
   (logic_map 0 (ooo_input_op {|0|} os0_4))
->>>>>>> d8b45666c1fc491a2ec3c3e05496d4d3d73e97e6
   (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (\<lambda>_. [])
     (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (\<lambda>_. [])
       (logic_map 1 (label_propagation_op os1_2))
