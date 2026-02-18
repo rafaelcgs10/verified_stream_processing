@@ -86,6 +86,26 @@ definition "graph_summar_nt su nt os = (
   inj_on nt (Map.dom nt) 
   )"
 
+lemma
+  assumes
+    \<open>summ sg = dataflow_tree_to_graph (dt :: ('a :: {enum,minus,one,plus,zero,hashable,linorder}, 'b :: {enum,hashable,linorder}, 'c, 'd, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) dataflow_tree)\<close>
+    \<open>nxt sg = graph_to_nxt (summ sg)\<close>
+  shows \<open>graph_summar_nt (summ sg) (nxt sg) os\<close>
+  using assms apply -
+  apply simp
+  unfolding graph_summar_nt_def
+  apply (intro conjI allI impI)
+       apply simp_all
+  defer
+  subgoal
+    apply (rule zero_in_graph_path_weight)
+       apply (rule refl)
+      apply (rule dataflow_topology.axioms(1))
+      apply (rule dataflow_topology_from_tree.dataflow_topology_axioms)
+    apply auto
+    done
+  oops
+
 (* ======> FIXME: move me \<le>====== *)
 lemma sum_eq_singleton:
   "finite A \<Longrightarrow> f a = b \<Longrightarrow> a \<in> A \<Longrightarrow> (\<forall> c \<in> A. c \<noteq> a \<longrightarrow> f c = 0) \<Longrightarrow> sum f A = b"
