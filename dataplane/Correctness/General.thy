@@ -78,17 +78,19 @@ definition "dataplane_tracker_inv os cbufs sg =
 
 
 definition "graph_summar_nt su nt os = (
-  (\<forall> nid p p' t. t \<in> set (summar (os nid) p p') \<longrightarrow> t \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) (Loc nid (Src p'))) \<and>
+  (\<forall> nid p p' t. t \<in> set (intsum (os nid) p p') \<longrightarrow> t \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) (Loc nid (Src p'))) \<and>
   (\<forall> nid nid' p p'. nt (nid', p') = Some (nid, p) \<longrightarrow> 0 \<in>\<^sub>A graph.path_weight su (Loc nid' (Src p')) (Loc nid (Trg p))) \<and>
-  (\<forall> nid p p'. distinct (summar (os nid) p p')) \<and>
-  (\<forall> nid p p'. \<forall> t \<in> set (summar (os nid) p p'). \<not> (\<exists> t' \<in> set (summar (os nid) p p'). t' < t)) \<and>
-  (\<forall> s nid p l. s \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) l \<longrightarrow> (\<exists> t p' s'. t \<in> set (summar (os nid) p p') \<and> s' \<in>\<^sub>A graph.path_weight su (Loc nid (Src p')) l \<and> s = t -+- s')) \<and>
+  (\<forall> nid p p'. distinct (intsum (os nid) p p')) \<and>
+  (\<forall> nid p p'. \<forall> t \<in> set (intsum (os nid) p p'). \<not> (\<exists> t' \<in> set (intsum (os nid) p p'). t' < t)) \<and>
+  (\<forall> s nid p l. s \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) l \<longrightarrow> (\<exists> t p' s'. t \<in> set (intsum (os nid) p p') \<and> s' \<in>\<^sub>A graph.path_weight su (Loc nid (Src p')) l \<and> s = t -+- s')) \<and>
   inj_on nt (Map.dom nt) 
   )"
 
 lemma
   assumes
-    \<open>summ sg = dataflow_tree_to_graph (dt :: ('a :: {enum,minus,one,plus,zero,hashable,linorder}, 'b :: {enum,hashable,linorder}, 'c, 'd, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) dataflow_tree)\<close>
+    \<open>raw_s = dataflow_tree_to_graph (dt :: ('a :: {enum,minus,one,plus,zero,hashable,linorder}, 'b :: {enum,hashable,linorder}, 'c, 'd, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) dataflow_tree)\<close>
+    \<open>summ sg = antichain_from_list oo raw_s\<close>
+    \<open>\<forall> n. intsum (os n) = (\<lambda> p1 p2. raw_s (Loc n (Trg p1)) (Loc n (Src p2)))\<close>
     \<open>nxt sg = graph_to_nxt (summ sg)\<close>
   shows \<open>graph_summar_nt (summ sg) (nxt sg) os\<close>
   using assms apply -
@@ -96,14 +98,25 @@ lemma
   unfolding graph_summar_nt_def
   apply (intro conjI allI impI)
        apply simp_all
-  defer
+  subgoal
+
+
+end
   subgoal
     apply (rule zero_in_graph_path_weight)
        apply (rule refl)
       apply (rule dataflow_topology.axioms(1))
       apply (rule dataflow_topology_from_tree.dataflow_topology_axioms)
-    apply auto
+     apply (auto simp add: comp_def)
+    apply (metis assms(2) dataflow_tree_to_graph_Src_Trg_zero) 
     done
+  subgoal
+    unfolding dataflow_tree_to_graph_def
+    by (auto simp add: comp_def split: if_splits prod.splits)
+  subgoal
+   unfolding dataflow_tree_to_graph_def
+    by (auto simp add: comp_def split: if_splits prod.splits)
+
   oops
 
 (* ======> FIXME: move me \<le>====== *)

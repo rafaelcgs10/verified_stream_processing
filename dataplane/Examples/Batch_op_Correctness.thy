@@ -26,7 +26,7 @@ abbreviation "inps_test \<equiv> llist_of list_inps_test"
 
 abbreviation init_input_state where
   "init_input_state su inps \<equiv> \<lparr> 
-   summar = su,
+   intsum = su,
    consu = [],
    inter = [],
    produ = [],
@@ -44,7 +44,7 @@ abbreviation init_input_state where
 
 abbreviation init_operator_state_ty2 where
   "init_operator_state_ty2 su \<equiv> \<lparr> 
-   summar = su,
+   intsum = su,
    consu = [],
    inter = [],
    produ = [],
@@ -81,17 +81,24 @@ definition "my_summ = (\<lambda> l1 l2.
    else if l1 = Loc 0 (Trg 0) \<and> l2 = Loc 0 (Src 0)
    then antichain_from_list [0]
    else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 0)
-   then antichain_from_list [0]
+   then antichain_from_list [0 :: _ :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}]
    else {}\<^sub>A)"
+
+
+lemma antichain_from_list_empty[simp]:
+  "antichain_from_list [] = {}\<^sub>A"
+  by (simp add: Executable.antichain_from_list_empty empty_antichain_def)
+
 
 lemma weights_to_graph_fun_to_next[simp]:
   "weights_to_graph_fun
            (\<lambda>l1 l2.
-               remove_non_zero_weights (If (0 \<le> node l1 \<and> node l1 < 1 \<and> 1 \<le> node l2 \<and> is_Src (port l1) \<and> Locations.is_Trg (port l2)))
-                (case [(0, 1) \<mapsto> (0, 1)] (node l1 - 0, idp (port l1)) of None \<Rightarrow> frontier {#}\<^sub>z
-                 | Some (offset, q) \<Rightarrow> if node l2 = 1 + offset \<and> q = idp (port l2) then antichain_from_list [0] else antichain_from_list [])
-                ((if node l1 = 0 \<and> node l2 = (0 :: 2) \<and> Locations.is_Trg (port l1) \<and> is_Src (port l2) then antichain_from_list [0] else antichain_from_list []) +
-                 (if 1 = node l1 \<and> 1 = node l2 \<and> Locations.is_Trg (port l1) \<and> is_Src (port l2) then antichain_from_list [0] else antichain_from_list []))) = 
+               (if 0 \<le> node l1 \<and> node l1 < 1 \<and> (1 :: 2) \<le> node l2 \<and> is_Src (port l1) \<and> Locations.is_Trg (port l2)
+                then If (0 \<in>\<^sub>A antichain_from_list (case [(0, 1) \<mapsto> (0, 1)] (node l1 - 0, idp (port l1)) of None \<Rightarrow> [] | Some (offset, q) \<Rightarrow> if node l2 = 1 + offset \<and> q = idp (port l2) then [0] else []))
+                else If (0 \<in>\<^sub>A antichain_from_list
+                                 ((if node l1 = 0 \<and> node l2 = 0 \<and> Locations.is_Trg (port l1) \<and> is_Src (port l2) then [0] else []) @
+                                  (if 1 = node l1 \<and> 1 = node l2 \<and> Locations.is_Trg (port l1) \<and> is_Src (port l2) then [0] else []))))
+                (antichain_from_list [0]) {}\<^sub>A) = 
    (\<lambda> l. 
      if l = Loc (0 :: 2) (Src (1 :: 1)) then [Loc 1 (Trg 1)] else
      if l = Loc 0 (Trg 0) then [Loc 0 (Src 0)] else
@@ -102,10 +109,10 @@ lemma weights_to_graph_fun_to_next[simp]:
   subgoal for l
     using loc_2_1_cases[where l=l] apply -
     apply (elim disjE; hypsubst_thin)
-       apply (auto 0 0 simp add: antichain_empty set_antichain1 antichain_from_list_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
-    using not_in_empty apply blast+
+       apply (auto 0 0 dest!: not_in_empty simp add: antichain_empty set_antichain1 enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
+    subgoal premises
       apply code_simp
-    using not_in_empty apply blast+
+      done
     done
   done
 
@@ -119,7 +126,7 @@ lemma dataflow_tree_to_graph_to_my_summ[simp]:
     apply auto
     subgoal premises prems
       using prems(3) apply -
-      apply (auto simp add: enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
+      apply (auto simp add: if_distrib enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: list.splits if_splits sum.splits option.splits sum.splits)
       apply code_simp
       apply eval
       done
@@ -229,12 +236,16 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                   apply simp
                   apply (simp add: SIM1)
                  apply (simp add: SIM1)
-                apply (simp add: SIM1)
+            apply (simp add: SIM1(1))
                apply (simp add: SIM1)
-          subgoal
+            subgoal premises temp
+            using SIM1(1,2,3)
+            unfolding graph_summar_nt_def consumes_def add_caps_def
+            by auto
+          subgoal premises
             using SIM1
             unfolding ty1_check_def
-            by (auto simp add:  Src_from_Trg_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
+            by (fastforce simp add:  Src_from_Trg_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
           subgoal
             using SIM1
             unfolding ty2_check_def
@@ -293,8 +304,6 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             using SIM1(12) by auto
           done
 
-
-end
 
 
 

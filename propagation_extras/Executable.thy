@@ -166,21 +166,11 @@ lemma frontier_empty_zmset: "frontier {#}\<^sub>z = {}\<^sub>A"
   by (cases op; cases p) (auto simp: summary_def frontier_empty_zmset)
  *)
 
-lemma incomparable_set_list[simp]:
-  "incomparable {x \<in> set (xs :: 'sum :: {order, monoid_add} list). list_all ((\<le>) x) xs}"
-  apply (subst list_all_def set_filter)
-  apply (simp add: basic_trans_rules(24) incomparable_def list.pred_set)
-  done
-
 lift_definition antichain_from_list :: "'sum :: {order, monoid_add} list \<Rightarrow> 'sum antichain" is
-  "\<lambda>A. set (filter (\<lambda> x . (list_all ((\<le>) x) A)) A)"
+  "\<lambda>A. set (filter (\<lambda> x . (\<forall> y \<in> set A - {x}. \<not> x < y \<and> \<not> y < x)) A)"
   apply simp
-  done
-
-lemma antichain_from_list_antichain:
-  "antichain_from_list xs = antichain {x \<in> set xs. list_all ((\<le>) x) xs}"
-  unfolding antichain_from_list_def
-  apply clarsimp
+  unfolding incomparable_def
+  apply auto
   done
 
 lemma weird_singleton:
@@ -190,12 +180,14 @@ lemma weird_singleton:
 lemma antichain_from_list_singleton:
   "antichain_from_list [a] = antichain {a}"
   unfolding antichain_from_list_def
-  by (simp add: weird_singleton)
+  apply (simp add: antichain_from_list_def weird_singleton)
+  apply (smt (verit, del_insts) Diff_cancel all_not_in_conv insert_subset mem_Collect_eq order_class.order_eq_iff subsetI)
+  done
 
 lemma antichain_from_list_empty:
   "antichain_from_list [] = antichain {}"
   unfolding antichain_from_list_def
-  by (simp add: weird_singleton)
+  by (simp add: )
 
 lemma empty_is_empty_antichain[simp]:
   "is_empty_antichain (antichain {})"
@@ -352,23 +344,23 @@ lemma antichain_not_empty:
   done
 
 lemma antichain_from_list_is_empty:
-  "antichain_from_list (xs :: 'sum :: {order, monoid_add} list) = {}\<^sub>A \<longleftrightarrow> filter (\<lambda>x. list_all ((\<le>) x) xs) xs = []"
+  "antichain_from_list (xs :: 'sum :: {order, monoid_add} list) = {}\<^sub>A \<longleftrightarrow> filter (\<lambda> x . (\<forall> y \<in> set xs - {x}. \<not> x < y \<and> \<not> y < x)) xs = []"
   unfolding antichain_from_list_def 
   apply (auto simp add: empty_antichain_def)
   apply (subst (asm) antichain_not_empty[unfolded empty_antichain_def])
     apply auto
   apply (rule ccontr)
   apply (cases xs)
-  apply (auto split: if_splits)
-  apply (smt (verit, best) empty_Collect_eq filter_empty_conv)
+     apply (auto simp add: filter_empty_conv incomparable_def split: if_splits)
+  apply (metis (mono_tags, lifting) Collect_empty_eq)
   done
 
 lemma set_antichain_antichain_from_list[simp]:
-  "set_antichain (antichain_from_list xs) = {x \<in> set xs. list_all ((\<le>) x) xs}"
+  "set_antichain (antichain_from_list xs) = {x \<in> set xs. \<forall> y \<in> set xs - {x}. \<not> x < y \<and> \<not> y < x}"
   unfolding antichain_from_list_def 
   apply simp
     apply (subst antichain_inverse)
-   apply auto
+   apply (auto simp add: incomparable_def)
   done
 
 

@@ -328,9 +328,9 @@ lemma in_remove_non_zero_weights_is_zero:
   using assms unfolding antichain_from_list_def apply (simp split: if_splits) 
   subgoal 
     apply (subst (asm) member_antichain.abs_eq)
-    subgoal using Collect_cong assms eq_onp_same_args finite.insertI
-        mem_Collect_eq antichain_from_list.rep_eq set_antichain set_antichain2 singletonD
-      by (smt (verit, ccfv_SIG) empty_iff filter.simps(1) filter.simps(2) list.set(1) list.simps(15))
+    subgoal using Collect_cong assms eq_onp_same_args
+        mem_Collect_eq antichain_from_list.rep_eq set_antichain singletonD
+      by (metis (no_types, lifting) ext Set.empty_def empty_set filter.simps(1,2) list.simps(15) singleton_conv)
     subgoal by force
     done
   apply (metis empty_antichain.abs_eq mem_antichain_nonempty)

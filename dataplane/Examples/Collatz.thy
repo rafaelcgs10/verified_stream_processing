@@ -15,7 +15,7 @@ begin
 
 abbreviation init_input_state where
 "init_input_state inps \<equiv> \<lparr> 
-   summar = default_internal_summary,
+   intsum = default_internal_summary,
    consu = [],
    inter = [],
    produ = [],
@@ -33,7 +33,7 @@ abbreviation init_input_state where
 
 abbreviation init_operator_state where
 "init_operator_state \<equiv> \<lparr> 
-   summar = default_internal_summary,
+   intsum = default_internal_summary,
    consu = [],
    inter = [],
    produ = [],
@@ -47,7 +47,7 @@ abbreviation init_operator_state where
 
 abbreviation init_operator_state_ty2 where
 "init_operator_state_ty2 \<equiv> \<lparr> 
-   summar = default_internal_summary,
+   intsum = default_internal_summary,
    consu = [],
    inter = [],
    produ = [],

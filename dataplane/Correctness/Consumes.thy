@@ -69,7 +69,7 @@ lemma set_extract_prog_consumesD:
   "(l, t', m) \<in> set (extract_prog Enum.enum (edges sg) (os(nid := consumes (os nid) p t d))) \<Longrightarrow>
    (l, t', m) \<in> set (extract_prog Enum.enum (edges sg) os) \<or>
    (l = Loc nid (Trg p) \<and> t = t' \<and> m = -1) \<or>
-   (\<exists> p' t''. t'' \<in> set (summar (os nid) p p') \<and> l = Loc nid (Src p') \<and> t' = t + t'' \<and> m = 1)"
+   (\<exists> p' t''. t'' \<in> set (intsum (os nid) p p') \<and> l = Loc nid (Src p') \<and> t' = t + t'' \<and> m = 1)"
   unfolding extract_prog_def obtain_progress_def consumes_def extract_progress_def add_caps_def
   apply (auto del: disjCI simp add: List.map_filter_def image_iff split_beta if_distrib split: option.splits prod.splits if_splits)
        apply fastforce
@@ -156,7 +156,7 @@ lemma set_extract_progressD:
   "(l, t, m) \<in> set (extract_progress nid ed (snd (obtain_progress (consumes (os nid) p t' d)))) \<Longrightarrow>
    (l, t, m) \<in> set (extract_progress nid ed (snd (obtain_progress (os nid)))) \<or> 
    (\<exists> m'. l = Loc nid (Trg p) \<and> m = -1 \<and> t = t') \<or>
-   (\<exists> p' s. l = Loc nid (Src p') \<and> m = 1 \<and> t = t' + s \<and> s \<in> set (summar (os nid) p p'))"
+   (\<exists> p' s. l = Loc nid (Src p') \<and> m = 1 \<and> t = t' + s \<and> s \<in> set (intsum (os nid) p p'))"
   unfolding extract_progress_def obtain_progress_def
   apply (auto simp add: split_beta image_iff enum_class.enum_UNIV)
   done
@@ -191,7 +191,7 @@ lemma zmset_filter_extract_progress_Trg_consumes_diff:
   done
 lemma zmset_filter_extract_progress_Src_consumes:
   "zmset (map snd (filter (\<lambda>(l, _, _). Loc nid (Src p') = l) (extract_progress nid (edges sg) (snd (obtain_progress (consumes (os nid) p t d)))))) = 
-   zmset (map snd (filter (\<lambda>(l, _, _). Loc nid (Src p') = l) (extract_progress nid (edges sg) (snd (obtain_progress (os nid)))))) + to_zmset (map ((-+-) t) (summar (os nid) p p'))"
+   zmset (map snd (filter (\<lambda>(l, _, _). Loc nid (Src p') = l) (extract_progress nid (edges sg) (snd (obtain_progress (os nid)))))) + to_zmset (map ((-+-) t) (intsum (os nid) p p'))"
   by (clarsimp simp add: extract_progress_def obtain_progress_def filter_concat filter_map map_concat comp_def zmset_concat)
 
 lemma zmset_filter_extract_progress_Src_consumes_diff:
@@ -227,7 +227,7 @@ lemma dataplane_tracker_inv_consumes:
   subgoal for c c' cgs chns caps
     apply (rule exI[of _ 
           "(\<lambda> l. case l of 
-        Loc nid' (Src p') \<Rightarrow> if nid' = nid then caps l + to_zmset (map (\<lambda> t'. t + t') (summar (os nid) p p')) else caps l 
+        Loc nid' (Src p') \<Rightarrow> if nid' = nid then caps l + to_zmset (map (\<lambda> t'. t + t') (intsum (os nid) p p')) else caps l 
      | Loc nid' (Trg p') \<Rightarrow> if nid' = nid \<and> p = p' then caps l - {# t #}\<^sub>z else caps l)"])
     apply (intro conjI)
     subgoal premises prems
@@ -464,7 +464,7 @@ lemma dataplane_tracker_inv_consumes:
                               subgoal
                                 apply hypsubst_thin
                                 apply (clarsimp simp flip: member_antichain.rep_eq)
-                                apply (subgoal_tac "\<exists> t p'' s'. t \<in> set (summar (os nid) p p'') \<and> s' \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Src p'')) (Loc nid' (Src p')) \<and> s = t -+- s'")
+                                apply (subgoal_tac "\<exists> t p'' s'. t \<in> set (intsum (os nid) p p'') \<and> s' \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Src p'')) (Loc nid' (Src p')) \<and> s = t -+- s'")
                                 subgoal
                                   apply clarsimp
                                   subgoal for t'' p'' s'
@@ -485,7 +485,7 @@ lemma dataplane_tracker_inv_consumes:
                                         apply (rule in_frontier_sumI2)
                                         subgoal
                                           apply (simp add: to_zmset_map)
-                                          apply (subgoal_tac "t'' \<in>\<^sub>A frontier (to_zmset (summar (os nid) p p''))")
+                                          apply (subgoal_tac "t'' \<in>\<^sub>A frontier (to_zmset (intsum (os nid) p p''))")
                                           subgoal
                                             using in_frontier_zmset_image
                                             by (smt (verit, ccfv_threshold) add_left_cancel canonically_ordered_monoid_add_class.lessE dataflow_topology_from_tree.followed_by_summary in_frontier_iff less_add_same_cancel1 pos_image_zmset_obtain_pre
@@ -2068,7 +2068,7 @@ lemma dataplane_tracker_inv_consumes:
                                 done
 
                               subgoal
-                                apply (drule in_frontier_addEx[where B="to_zmset (map ((-+-) t) (summar (os nid) p p3))"])
+                                apply (drule in_frontier_addEx[where B="to_zmset (map ((-+-) t) (intsum (os nid) p p3))"])
                                 apply clarsimp
                                 apply (meson to_zmset_nenneg)
                                 apply clarsimp
@@ -2864,7 +2864,7 @@ lemma dataplane_tracker_inv_consumes:
                       unfolding frontier_less_equal_iff2
                       apply clarsimp
                       subgoal for ft
-                        apply (cases "\<exists> s p'' t''. t'' \<in> set (summar (os nid) p p'') \<and>
+                        apply (cases "\<exists> s p'' t''. t'' \<in> set (intsum (os nid) p p'') \<and>
                              s \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Src p'')) (Loc nid' (Trg p')) \<and> ft = t -+- t'' -+- s")
                         subgoal
                           apply clarsimp
@@ -2889,7 +2889,7 @@ lemma dataplane_tracker_inv_consumes:
                                 apply simp_all
                                 subgoal
                                   apply (simp add: to_zmset_map)
-                                  apply (subgoal_tac "t'' \<in>\<^sub>A frontier (to_zmset (summar (os nid) p p''))")
+                                  apply (subgoal_tac "t'' \<in>\<^sub>A frontier (to_zmset (intsum (os nid) p p''))")
                                   subgoal
                                     using in_frontier_zmset_image
                                     by (smt (verit, ccfv_threshold) add_left_cancel canonically_ordered_monoid_add_class.lessE dataflow_topology_from_tree.followed_by_summary in_frontier_iff less_add_same_cancel1 pos_image_zmset_obtain_pre
@@ -3526,7 +3526,7 @@ lemma dataplane_tracker_inv_consumes:
                                   apply clarsimp
                                   apply hypsubst_thin
                                   apply (simp_all flip: member_antichain.rep_eq)
-                                  apply (subgoal_tac "\<exists> t p'' s'. t \<in> set (summar (os nid) p p'') \<and> s' \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Src p'')) (Loc nid' (Trg p')) \<and> s = t -+- s'")
+                                  apply (subgoal_tac "\<exists> t p'' s'. t \<in> set (intsum (os nid) p p'') \<and> s' \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Src p'')) (Loc nid' (Trg p')) \<and> s = t -+- s'")
                                   subgoal
                                     apply clarsimp
                                     subgoal for t'' p'' s'
@@ -4346,7 +4346,7 @@ lemma dataplane_tracker_inv_consumes:
                                 subgoal for ft2
                                   apply (cases "nid'' = nid")
                                   subgoal
-                                    apply (drule in_frontier_addEx[where B="to_zmset (map ((-+-) t) (summar (os nid) p p''))"])
+                                    apply (drule in_frontier_addEx[where B="to_zmset (map ((-+-) t) (intsum (os nid) p p''))"])
                                     apply simp
                                     apply (meson to_zmset_nenneg)
                                     apply clarsimp

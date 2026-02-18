@@ -17,7 +17,7 @@ lemma append_append_lshift:
 lemma ooo_input_op_increment_op_source_op:
   defines \<open>invariant f inc os1 buf os2 \<equiv> initia os1 \<and> en1 os1 = f
   \<and> timely_input_stream (es os1 1) (mset (ocaps os1 1)) \<and> (\<forall>x \<in> set (buf (Inr (1, 1))). is_Inr x)
-  \<and> initia os2 \<and> summar os2 1 1 = [inc] \<and> ocaps os2 1 = map (\<lambda>(_, t). t + inc) (input os2 1)\<close>
+  \<and> initia os2 \<and> intsum os2 1 1 = [inc] \<and> ocaps os2 1 = map (\<lambda>(_, t). t + inc) (input os2 1)\<close>
     and \<open>my_ooo_input_op os \<equiv> map_op
   (case_option (Inl (0 :: 2)) (\<lambda>(p :: 1). Inr (0 :: 2, 1))) (case_option (Inl (0 :: 2)) (\<lambda>(p :: 1). Inr (0 :: 2, 1)))
   (ooo_input_op {|1 :: 1|} os)\<close>
@@ -253,7 +253,7 @@ next
             have outpu_os2_2: \<open>outpu os2_2 1 = [(d, t)]\<close> using outpu_os2_Nil input_os2_Nil os2_2 t'_d'(2)
               unfolding increment_op_logic_def consumes_def add_caps_def drop_caps_def produces_def
               by (simp split: prod.splits)
-            have summar_os2_2: \<open>summar os2_2 1 1 = [inc]\<close> using that(1) os2_2 unfolding invariant_def
+            have summar_os2_2: \<open>intsum os2_2 1 1 = [inc]\<close> using that(1) os2_2 unfolding invariant_def
                 increment_op_logic_def consumes_def add_caps_def drop_caps_def produces_def by simp
             have ocaps_os2_2: \<open>ocaps os2_2 1 = []\<close> using os2_2 unfolding increment_op_logic_def
                 consumes_def add_caps_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def)
@@ -316,7 +316,7 @@ next
             have outpu_os2_2: \<open>outpu os2_2 1 = [(d, t)]\<close> using outpu_os2_Nil input_os2_Nil os2_2 t'(1)
               unfolding increment_op_logic_def consumes_def add_caps_def drop_caps_def produces_def
               by (simp split: prod.splits)
-            have summar_os2_2: \<open>summar os2_2 1 1 = [inc]\<close> using that(1) os2_2 unfolding invariant_def
+            have summar_os2_2: \<open>intsum os2_2 1 1 = [inc]\<close> using that(1) os2_2 unfolding invariant_def
                 increment_op_logic_def consumes_def add_caps_def drop_caps_def produces_def by simp
             have ocaps_os2_2: \<open>ocaps os2_2 1 = []\<close> using os2_2 unfolding increment_op_logic_def
                 consumes_def add_caps_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def)
@@ -373,7 +373,7 @@ next
           have outpu_os2_2: \<open>outpu os2_2 1 = [(d, t)]\<close> using outpu_os2_Nil input_os2_Nil os2_2 t'(1)
             unfolding increment_op_logic_def consumes_def add_caps_def drop_caps_def produces_def
             by (simp split: prod.splits)
-          have summar_os2_2: \<open>summar os2_2 1 1 = [inc]\<close> using that(1) os2_2 unfolding invariant_def
+          have summar_os2_2: \<open>intsum os2_2 1 1 = [inc]\<close> using that(1) os2_2 unfolding invariant_def
               increment_op_logic_def consumes_def add_caps_def drop_caps_def produces_def by simp
           have ocaps_os2_2: \<open>ocaps os2_2 1 = []\<close> using os2_2 unfolding increment_op_logic_def
               consumes_def add_caps_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def)
@@ -418,7 +418,7 @@ next
         have outpu_os2': \<open>outpu os2' 1 = map (\<lambda>(d, t). (d, t + inc)) (input os2 1)\<close>
           using outpu_os2_Nil os2' unfolding increment_op_logic_def drop_caps_def produces_def
           by (simp split: prod.splits)
-        have summar_os2': \<open>summar os2' 1 1 = [inc]\<close> using that(1) os2' unfolding invariant_def
+        have summar_os2': \<open>intsum os2' 1 1 = [inc]\<close> using that(1) os2' unfolding invariant_def
             increment_op_logic_def consumes_def add_caps_def drop_caps_def produces_def by simp
         have ocaps_os2': \<open>ocaps os2' 1 = []\<close> using os2' unfolding increment_op_logic_def
             consumes_def add_caps_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def)

@@ -17,7 +17,7 @@ proof (cases n)
 qed
 
 abbreviation \<open>initial_state_input lxs \<equiv> \<lparr>
-   summar = default_internal_summary,
+   intsum = default_internal_summary,
    consu = [],
    inter = [],
    produ = [],
@@ -34,7 +34,7 @@ abbreviation \<open>initial_state_input lxs \<equiv> \<lparr>
    \<rparr> :: (_, _, _, _) input_state\<close>
 
 abbreviation \<open>initial_state_label_prop \<equiv> \<lparr>
-   summar = (\<lambda>_ _. [0]),
+   intsum = (\<lambda>_ _. [0]),
    consu = [],
    inter = [],
    produ = [],
@@ -59,7 +59,7 @@ abbreviation \<open>initial_state_label_prop \<equiv> \<lparr>
 abbreviation \<open>increment_summary inc \<equiv> (\<lambda>p1 p2. if p1 = p2 then [inc] else [])\<close>
 
 abbreviation \<open>initial_state_increment inc \<equiv> \<lparr>
-   summar = increment_summary inc,
+   intsum = increment_summary inc,
    consu = [],
    inter = [],
    produ = [],
@@ -445,7 +445,7 @@ end
 lemma ooo_input_op_label_propagation_op_increment_op_source_op:
   defines \<open>invariant inc os1 buf1 os2 buf2 os3 buf3 \<equiv> initia os1 \<and> timely_input_stream (es os1 0) (mset (ocaps os1 0))
   \<and> (\<forall>x \<in> set (buf1 (Inr (1, 0))) \<union> set (buf2 (Inr (2, 0))) \<union> set (buf3 (Inr (1, 1))). is_Inr x)
-  \<and> initia os2 \<and> summar os2 = default_internal_summary \<and> initia os3 \<and> summar os3 0 0 = [inc] \<and> ocaps os3 0 = map (\<lambda>(_, t). t + inc) (input os2 0) \<and> inc > 0\<close>
+  \<and> initia os2 \<and> intsum os2 = default_internal_summary \<and> initia os3 \<and> intsum os3 0 0 = [inc] \<and> ocaps os3 0 = map (\<lambda>(_, t). t + inc) (input os2 0) \<and> inc > 0\<close>
     and \<open>my_ooo_input_op os \<equiv> map_op
   (case_option (Inl (0 :: 3)) (\<lambda>(p :: 2). Inr (0 :: 3, p))) (case_option (Inl (0 :: 3)) (\<lambda>(p :: 2). Inr (0 :: 3, p)))
   (ooo_input_op {|0 :: 2|} os)\<close>
