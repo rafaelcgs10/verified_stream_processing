@@ -270,6 +270,10 @@ lemma antichain_empty:
   unfolding empty_antichain_def
   by auto
 
+lemma antichain_from_list_empty_antichain[simp]:
+  "antichain_from_list [] = {}\<^sub>A"
+  by (simp add: Executable.antichain_from_list_empty antichain_empty)
+
 lemma frontier_negs[simp]:
   "frontier (- {# a #}\<^sub>z ) = {}\<^sub>A"
   "frontier (- {# a, b #}\<^sub>z ) = {}\<^sub>A"

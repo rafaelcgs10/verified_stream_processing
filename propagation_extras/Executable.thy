@@ -245,6 +245,14 @@ lemma is_empty_antichain_not_empty_list[simp]:
   apply (auto simp add: Set.is_empty_iff)
   done
 
+lemma in_antichain_from_listD:
+  "t \<in>\<^sub>A antichain_from_list xs \<Longrightarrow>
+   t \<in> set xs \<and> (\<forall> t' \<in> set xs. t \<noteq> t \<longrightarrow> \<not> t < t' \<and> \<not> t' < t)"
+  unfolding antichain_from_list_def
+  apply auto
+  apply (metis (lifting) ext Set.basic_monos(7) antichain_from_list.abs_eq antichain_from_list.rep_eq filter_is_subset set_antichain2 set_filter)
+  done
+
 definition "reachable_locations summary \<equiv> { loc . \<exists> loc' .
      \<not> is_empty_antichain (summary loc loc') \<or> \<not> is_empty_antichain (summary loc' loc) }"
 

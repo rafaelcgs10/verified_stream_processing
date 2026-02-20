@@ -331,7 +331,7 @@ lemma dataplane_tracker_inv_consumes:
           apply (elim disjE)
           subgoal
             using prems2(4,5) apply hypsubst_thin
-            apply (rule frontier_less_equal_ifrontierI[where l="Loc nid (Trg p)"])
+            apply (rule frontier_less_equal_ifrontierI_alt[where l="Loc nid (Trg p)"])
             using prems(2) apply blast
             subgoal
               using prems(3) prems2(3,2) apply -
@@ -363,7 +363,7 @@ lemma dataplane_tracker_inv_consumes:
                 subgoal
                   apply simp
                   using prems2(4,5) apply hypsubst_thin
-                  apply (rule frontier_less_equal_ifrontier_trans[of _ _ "Loc nid (Trg p)"])          
+                  apply (rule frontier_less_equal_ifrontier_trans_alt[of _ _ "Loc nid (Trg p)"])          
                   subgoal using prems(2) by assumption
                   subgoal
                     using prems(3) prems2(3,2) apply -
@@ -590,16 +590,23 @@ lemma dataplane_tracker_inv_consumes:
                                                   apply (drule zcount_gt_0_in_frontierD)
                                                   apply clarsimp
                                                   subgoal for ft'
-
-                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s'' _ _ _ t5 "Loc nid (Trg p)"])
+(* here7 *)
+                                                    apply (subgoal_tac "\<exists> t6\<le>t5. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p''))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t6
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s'' _ _ _ t6 "Loc nid (Trg p)"])
                                                     subgoal
                                                       apply (rule dataflow_topology.axioms(1))
                                                       apply (rule prems(2))
                                                       done
-                                                    subgoal 
-                                                      using prems(3)
-                                                      unfolding graph_summar_nt_def
-                                                      by metis
+                                                    apply simp
                                                     apply clarsimp
                                                     subgoal for u
                                                       apply (drule bspec[of _ _ "Loc nid (Trg p)"])
@@ -619,11 +626,12 @@ lemma dataplane_tracker_inv_consumes:
                                                         apply (clarsimp simp flip: member_antichain.rep_eq)
                                                         done
                                                       subgoal 
-                                                        by (metis dataflow_topology_from_tree.plus_mono dual_order.strict_trans2 group_cancel.add1)
-                                                      done
+                                                        using Groups.add_ac(2) add_less_imp_less_left add_mono_thms_linordered_field(4) group_cancel.add1
+                                                        by (metis add_less_cancel_left basic_trans_rules(21) dataflow_topology_from_tree.results_in_mono(2))
+                                                            done
                                                     done
                                                   done
-
+                                                done
                                                 subgoal
                                                   apply (simp add: zcount_sum)
                                                   apply (drule sum_pos_ex_elem_pos)
@@ -671,19 +679,27 @@ lemma dataplane_tracker_inv_consumes:
                                                               apply (metis (no_types, lifting) UNIV_I image_eqI prod.sel(1,2))+
                                                               done
                                                             done
-                                                          apply (drule graph.path_weight_elem_trans[rotated, of s'''  _ _ _ t5 "Loc nid (Src p'')"])
-                                                          subgoal 
-                                                            using prems(3)
-                                                            unfolding graph_summar_nt_def
-                                                            by metis
-                                                          subgoal
-                                                            apply (rule dataflow_topology.axioms(1))
-                                                            apply (rule prems(2))
-                                                            done
-                                                          apply clarsimp
-                                                          subgoal for u
-                                                            apply (drule graph.path_weight_elem_trans[rotated, of u  _ _ _ s'' "Loc nid' (Src p')"])
-                                                            apply assumption
+(* here8 *)
+                                                          apply (subgoal_tac "\<exists> t6\<le>t5. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p''))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t9
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s'' _ _ _ t9 "Loc nid (Trg p)"])
+                                                    subgoal
+                                                      apply (rule dataflow_topology.axioms(1))
+                                                      apply (rule prems(2))
+                                                      done
+                                                    apply simp
+                                                    apply clarsimp
+                                                    subgoal for u
+                                                      apply (drule graph.path_weight_elem_trans[rotated, of _ _ l _ u ])
+                                                      apply assumption
                                                             subgoal
                                                               apply (rule dataflow_topology.axioms(1))
                                                               apply (rule prems(2))
@@ -712,6 +728,7 @@ lemma dataplane_tracker_inv_consumes:
                                                           done
                                                         done
                                                       done
+                                                    done
                                                     subgoal
                                                       (* here2! *)
                                                       apply (clarsimp simp add: List.map_filter_def comp_def split: option.splits prod.splits)
@@ -831,17 +848,25 @@ lemma dataplane_tracker_inv_consumes:
                                                     apply (drule zcount_gt_0_in_frontierD)
                                                     apply clarsimp
                                                     subgoal for ft'
-                                                      apply (drule graph.path_weight_elem_trans[rotated 2, of s''' _ _ _ ft3 "Loc nid (Trg p)"])
-                                                      subgoal
-                                                        apply (rule dataflow_topology.axioms(1))
-                                                        apply (rule prems(2))
-                                                        done
+                                                      apply (subgoal_tac "\<exists> t6\<le>ft3. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p2))")
+                                                    defer
+                                                    subgoal
                                                       subgoal 
-                                                        using prems(3)
-                                                        unfolding graph_summar_nt_def
-                                                        by metis
-                                                      apply clarsimp
-                                                      subgoal for u
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t6
+
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of  s''' _ _  _ t6 _])
+                                                    subgoal
+                                                      apply (rule dataflow_topology.axioms(1))
+                                                      apply (rule prems(2))
+                                                      done
+                                                     apply assumption
+                                                    apply clarsimp
+                                                    subgoal for u
                                                         apply (drule bspec[of _ _ "Loc nid (Trg p)"])
                                                         apply (simp_all flip: member_antichain.rep_eq)
                                                         apply fast
@@ -859,11 +884,12 @@ lemma dataplane_tracker_inv_consumes:
                                                           apply (clarsimp simp flip: member_antichain.rep_eq)
                                                           done
                                                         subgoal
-                                                          by (metis dataflow_topology_from_tree.plus_mono dual_order.strict_trans2 group_cancel.add1)
+                                                          using Groups.add_ac(2) add_less_imp_less_left add_mono_thms_linordered_field(4) group_cancel.add1
+                                                        by (metis add_less_cancel_left basic_trans_rules(21) dataflow_topology_from_tree.results_in_mono(2))
                                                         done
                                                       done
                                                     done
-
+                                                  done
                                                   subgoal
                                                     apply (simp add: zcount_sum)
                                                     apply (drule sum_pos_ex_elem_pos)
@@ -908,16 +934,23 @@ lemma dataplane_tracker_inv_consumes:
                                                                 apply (metis (no_types, lifting) UNIV_I image_eqI prod.sel(1,2))+
                                                                 done
                                                               done
-                                                            apply (drule graph.path_weight_elem_trans[rotated , of s''''  _ _ _ ft3 "Loc nid (Src p2)"])
-                                                            subgoal 
-                                                              using prems(3)
-                                                              unfolding graph_summar_nt_def
-                                                              by metis
-                                                            subgoal
-                                                              apply (rule dataflow_topology.axioms(1))
-                                                              apply (rule prems(2))
-                                                              done
-                                                            apply clarsimp
+                                                            apply (subgoal_tac "\<exists> t6\<le>ft3. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p2))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t9
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of t9 _ _ _  ])
+                                                    subgoal
+                                                      apply (rule dataflow_topology.axioms(1))
+                                                      apply (rule prems(2))
+                                                      done
+                                                    apply simp
+                                                    apply clarsimp
                                                             subgoal for u
                                                               apply (drule graph.path_weight_elem_trans[rotated, of u  _ _ _ s''' "Loc nid' (Src p')"])
                                                               apply assumption
@@ -943,6 +976,7 @@ lemma dataplane_tracker_inv_consumes:
                                                             done
                                                           done
                                                         done
+                                                      done
                                                       subgoal
                                                         (* here2! *)
                                                         apply (clarsimp simp add: List.map_filter_def comp_def split: option.splits prod.splits)
@@ -1109,16 +1143,22 @@ lemma dataplane_tracker_inv_consumes:
                                                   apply (drule zcount_gt_0_in_frontierD)
                                                   apply clarsimp
                                                   subgoal for ft'
-                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s' _ _ _ ft3 "Loc nid (Trg p)"])
-
+                                                    apply (subgoal_tac "\<exists> t6\<le>ft3. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p2))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for u
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s' _ _ _ u "Loc nid (Trg p)"])
                                                     subgoal
                                                       apply (rule dataflow_topology.axioms(1))
                                                       apply (rule prems(2))
                                                       done
-                                                    subgoal 
-                                                      using prems(3)
-                                                      unfolding graph_summar_nt_def
-                                                      by metis
+                                                    apply simp
                                                     apply clarsimp
                                                     subgoal for u
                                                       apply (drule bspec[of _ _ "Loc nid (Trg p)"])
@@ -1138,11 +1178,12 @@ lemma dataplane_tracker_inv_consumes:
                                                         apply (clarsimp simp flip: member_antichain.rep_eq)
                                                         done
                                                       subgoal 
-                                                        by (metis dataflow_topology_from_tree.plus_mono dual_order.strict_trans2 group_cancel.add1)
+      using Groups.add_ac(2) add_less_imp_less_left add_mono_thms_linordered_field(4) group_cancel.add1
+                                                        by (metis add_less_cancel_left basic_trans_rules(21) dataflow_topology_from_tree.results_in_mono(2))
                                                       done
                                                     done
                                                   done
-
+                                                done
                                                 subgoal
                                                   apply (simp add: zcount_sum)
                                                   apply (drule sum_pos_ex_elem_pos)
@@ -1187,17 +1228,24 @@ lemma dataplane_tracker_inv_consumes:
                                                               apply (metis (no_types, lifting) UNIV_I image_eqI prod.sel(1,2))+
                                                               done
                                                             done
-                                                          apply (drule graph.path_weight_elem_trans[rotated , of s''''  _ _ _ ft3 "Loc nid (Src p2)"])
-                                                          subgoal 
-                                                            using prems(3)
-                                                            unfolding graph_summar_nt_def
-                                                            apply clarsimp
-                                                            done
-                                                          subgoal
-                                                            apply (rule dataflow_topology.axioms(1))
-                                                            apply (rule prems(2))
-                                                            done
-                                                          apply clarsimp
+(* here7b *)
+                                                          apply (subgoal_tac "\<exists> t6\<le>ft3. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p2))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t9
+                                                    apply (drule graph.path_weight_elem_trans[rotated , of s''''  _ _ _ t9])
+                                                    apply simp
+                                                    subgoal
+                                                      apply (rule dataflow_topology.axioms(1))
+                                                      apply (rule prems(2))
+                                                      done
+                                                    apply clarsimp
                                                           subgoal for u
                                                             apply (drule graph.path_weight_elem_trans[rotated, of u  _ _ _ s' "Loc nid' (Src p')"])
                                                             apply assumption
@@ -1223,6 +1271,7 @@ lemma dataplane_tracker_inv_consumes:
                                                           done
                                                         done
                                                       done
+                                                    done
                                                     subgoal
                                                       apply (clarsimp simp add: List.map_filter_def comp_def split: option.splits prod.splits)
                                                       apply (drule sum_list_pos_ex_elem_pos)
@@ -1403,8 +1452,17 @@ lemma dataplane_tracker_inv_consumes:
                                             apply (drule zcount_gt_0_in_frontierD)
                                             apply clarsimp
                                             subgoal for ft'
-                                              apply (drule graph.path_weight_elem_trans[rotated 2, of s' _ _ _ ft3 "Loc nid (Trg p)"])
-
+                                              apply (subgoal_tac "\<exists> t6\<le>ft3. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p4))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                  apply clarsimp
+                                                  subgoal for t7
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s' _ _ _ t7 "Loc nid (Trg p)"])
                                               subgoal
                                                 apply (rule dataflow_topology.axioms(1))
                                                 apply (rule prems(2))
@@ -1432,11 +1490,11 @@ lemma dataplane_tracker_inv_consumes:
                                                   apply (clarsimp simp flip: member_antichain.rep_eq)
                                                   done
                                                 subgoal 
-                                                  by (metis dataflow_topology_from_tree.plus_mono dual_order.strict_trans2 group_cancel.add1)
+                                                  by (smt (verit, ccfv_threshold) add.commute add.left_commute add_le_cancel_left order_le_less_subst2)
                                                 done
                                               done
                                             done
-
+                                          done
                                           subgoal
                                             apply (simp add: zcount_sum)
                                             apply (drule sum_pos_ex_elem_pos)
@@ -1486,11 +1544,18 @@ lemma dataplane_tracker_inv_consumes:
                                                         apply (metis (no_types, lifting) UNIV_I image_eqI prod.sel(1,2))+
                                                         done
                                                       done
-                                                    apply (drule graph.path_weight_elem_trans[rotated , of s''''  _ _ _ ft3 "Loc nid (Src p4)"])
-                                                    subgoal 
+                                                    apply (subgoal_tac "\<exists> t6\<le>ft3. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p4))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
                                                       using prems(3)
                                                       unfolding graph_summar_nt_def
-                                                      by metis
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t9
+                                                    apply (drule graph.path_weight_elem_trans[rotated , of s''''  _ _ _ t9])
+                                                    apply simp
                                                     subgoal
                                                       apply (rule dataflow_topology.axioms(1))
                                                       apply (rule prems(2))
@@ -1522,6 +1587,7 @@ lemma dataplane_tracker_inv_consumes:
                                                     done
                                                   done
                                                 done
+                                              done
                                               subgoal
                                                 (* here2! *)
                                                 apply (clarsimp simp add: List.map_filter_def comp_def split: option.splits prod.splits)
@@ -1669,18 +1735,24 @@ lemma dataplane_tracker_inv_consumes:
                                               apply (drule zcount_gt_0_in_frontierD)
                                               apply clarsimp
                                               subgoal for ft'
-
-                                                apply (drule graph.path_weight_elem_trans[rotated 2, of s'' _ _ _ t5 "Loc nid (Trg p)"])
-                                                subgoal
-                                                  apply (rule dataflow_topology.axioms(1))
-                                                  apply (rule prems(2))
-                                                  done
-                                                subgoal 
-                                                  using prems(3)
-                                                  unfolding graph_summar_nt_def
-                                                  by metis
-                                                apply clarsimp
-                                                subgoal for u
+                                                apply (subgoal_tac "\<exists> t6\<le>t5. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p3))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t9
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s''  _ _ _ t9])
+                                                    subgoal
+                                                      apply (rule dataflow_topology.axioms(1))
+                                                      apply (rule prems(2))
+                                                      done
+                                                    apply assumption
+                                                    apply clarsimp
+                                                          subgoal for u
                                                   apply (drule bspec[of _ _ "Loc nid (Trg p)"])
                                                   apply (simp_all flip: member_antichain.rep_eq)
                                                   apply fast
@@ -1697,11 +1769,11 @@ lemma dataplane_tracker_inv_consumes:
                                                     apply (clarsimp simp flip: member_antichain.rep_eq)
                                                     done
                                                   subgoal
-                                                    by (metis dataflow_topology_from_tree.plus_mono dual_order.strict_trans2 group_cancel.add1)
+                                                    by (smt (verit, ccfv_threshold) add.commute add.left_commute add_le_cancel_left order_le_less_subst2)
                                                   done
                                                 done
                                               done
-
+                                            done
                                             subgoal
                                               apply (simp add: zcount_sum)
                                               apply (drule sum_pos_ex_elem_pos)
@@ -1749,19 +1821,26 @@ lemma dataplane_tracker_inv_consumes:
                                                           apply (metis (no_types, lifting) UNIV_I image_eqI prod.sel(1,2))+
                                                           done
                                                         done
-                                                      apply (drule graph.path_weight_elem_trans[rotated, of s'''  _ _ _ t5 "Loc nid (Src p3)"])
+(* here7c *)
+                                                      apply (subgoal_tac "\<exists> t6\<le>t5. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p3))")
+                                                    defer
+                                                    subgoal
                                                       subgoal 
-                                                        using prems(3)
-                                                        unfolding graph_summar_nt_def
-                                                        apply clarsimp
-                                                        done
-                                                      subgoal
-                                                        apply (rule dataflow_topology.axioms(1))
-                                                        apply (rule prems(2))
-                                                        done
-                                                      apply clarsimp
-                                                      subgoal for u
-                                                        apply (drule graph.path_weight_elem_trans[rotated, of u  _ _ _ s'' "Loc nid' (Src p')"])
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t9
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s''  _ _ _ t9])
+                                                    subgoal
+                                                      apply (rule dataflow_topology.axioms(1))
+                                                      apply (rule prems(2))
+                                                      done
+                                                    apply assumption
+                                                    apply clarsimp
+                                                    subgoal for u
+                                                        apply (drule graph.path_weight_elem_trans[rotated, of s'''  _ _ _ u])
                                                         apply assumption
                                                         subgoal
                                                           apply (rule dataflow_topology.axioms(1))
@@ -1791,6 +1870,7 @@ lemma dataplane_tracker_inv_consumes:
                                                       done
                                                     done
                                                   done
+                                                done
                                                 subgoal
                                                   (* here2! *)
                                                   apply (clarsimp simp add: List.map_filter_def comp_def split: option.splits prod.splits)
@@ -1916,17 +1996,25 @@ lemma dataplane_tracker_inv_consumes:
                                                   apply (drule zcount_gt_0_in_frontierD)
                                                   apply clarsimp
                                                   subgoal for ft'
-                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s' _ _ _ ft3 "Loc nid (Trg p)"])
+                                                    apply (subgoal_tac "\<exists> t6\<le>ft3. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p2))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t9
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s'  _ _ _ t9])
                                                     subgoal
                                                       apply (rule dataflow_topology.axioms(1))
                                                       apply (rule prems(2))
                                                       done
-                                                    subgoal 
-                                                      using prems(3)
-                                                      unfolding graph_summar_nt_def
-                                                      by metis
+                                                    apply assumption
                                                     apply clarsimp
                                                     subgoal for u
+
                                                       apply (drule bspec[of _ _ "Loc nid (Trg p)"])
                                                       apply (simp_all flip: member_antichain.rep_eq)
                                                       apply fast
@@ -1943,11 +2031,11 @@ lemma dataplane_tracker_inv_consumes:
                                                         apply (clarsimp simp flip: member_antichain.rep_eq)
                                                         done
                                                       subgoal 
-                                                        by (metis dataflow_topology_from_tree.plus_mono dual_order.strict_trans2 group_cancel.add1)
+                                                        by (smt (verit, ccfv_threshold) add.commute add.left_commute add_le_cancel_left order_le_less_subst2)
                                                       done
                                                     done
                                                   done
-
+                                                done
                                                 subgoal
                                                   apply (simp add: zcount_sum)
                                                   apply (drule sum_pos_ex_elem_pos)
@@ -1993,25 +2081,32 @@ lemma dataplane_tracker_inv_consumes:
                                                               apply (metis (no_types, lifting) UNIV_I image_eqI prod.sel(1,2))+
                                                               done
                                                             done
-                                                          apply (drule graph.path_weight_elem_trans[rotated , of s''''  _ _ _ ft3 "Loc nid (Src p2)"])
-                                                          subgoal 
-                                                            using prems(3)
-                                                            unfolding graph_summar_nt_def
-                                                            by metis
+                                                          apply (subgoal_tac "\<exists> t6\<le>ft3. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p2))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t9
+                                                    apply (drule graph.path_weight_elem_trans[rotated , of s''''  _ _ _ t9])
+                                                    apply assumption
+                                                    subgoal
+                                                      apply (rule dataflow_topology.axioms(1))
+                                                      apply (rule prems(2))
+                                                      done
+                                                    apply clarsimp
+                                                    subgoal for u'
+                                                      apply (drule graph.path_weight_elem_trans[rotated 2, of s'  _ _ _ u'])
                                                           subgoal
                                                             apply (rule dataflow_topology.axioms(1))
                                                             apply (rule prems(2))
                                                             done
+                                                          apply assumption
                                                           apply clarsimp
-                                                          subgoal for u
-                                                            apply (drule graph.path_weight_elem_trans[rotated, of u  _ _ _ s' "Loc nid' (Src p')"])
-                                                            apply assumption
-                                                            subgoal
-                                                              apply (rule dataflow_topology.axioms(1))
-                                                              apply (rule prems(2))
-                                                              done
-                                                            apply clarsimp
-                                                            subgoal for u'
+                                                          subgoal for u'
                                                               apply (drule spec[of _ "t6' -+- u'"])
                                                               apply (drule mp)
                                                               subgoal
@@ -2028,6 +2123,7 @@ lemma dataplane_tracker_inv_consumes:
                                                           done
                                                         done
                                                       done
+                                                    done
                                                     subgoal
                                                       (* here2! *)
                                                       apply (clarsimp simp add: List.map_filter_def comp_def split: option.splits prod.splits)
@@ -2132,8 +2228,19 @@ lemma dataplane_tracker_inv_consumes:
                                                 apply (drule zcount_gt_0_in_frontierD)
                                                 apply clarsimp
                                                 subgoal for ft'
+                                                  apply (subgoal_tac "\<exists> t6\<le>t5. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p3))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t9
 
-                                                  apply (drule graph.path_weight_elem_trans[rotated 2, of s' _ _ _ t5 "Loc nid (Trg p)"])
+
+                                                  apply (drule graph.path_weight_elem_trans[rotated 2, of s' _ _ _ t9 "Loc nid (Trg p)"])
                                                   subgoal
                                                     apply (rule dataflow_topology.axioms(1))
                                                     apply (rule prems(2))
@@ -2159,12 +2266,13 @@ lemma dataplane_tracker_inv_consumes:
                                                       apply clarsimp
                                                       apply (clarsimp simp flip: member_antichain.rep_eq)
                                                       done
-                                                    subgoal
-                                                      by (metis add_mono_thms_linordered_semiring(3) dataflow_topology_from_tree.plus_mono dual_order.strict_trans1 dual_order.strict_trans2 group_cancel.add1)
-                                                    done
+                                                    subgoal premises temp
+                                                      using temp(3,6,7,9,10,12,14,16,19,20)
+                                                     by (metis (mono_tags, lifting) add_mono_thms_linordered_semiring(2,3) dataflow_topology_from_tree.followed_by_summary dual_order.strict_trans1 dual_order.strict_trans2)
+                                                      done
                                                   done
                                                 done
-
+                                              done
                                               subgoal
                                                 apply (simp add: zcount_sum)
                                                 apply (drule sum_pos_ex_elem_pos)
@@ -2212,18 +2320,26 @@ lemma dataplane_tracker_inv_consumes:
                                                             apply (metis (no_types, lifting) UNIV_I image_eqI prod.sel(1,2))+
                                                             done
                                                           done
-                                                        apply (drule graph.path_weight_elem_trans[rotated, of s'''  _ _ _ t5 "Loc nid (Src p3)"])
-                                                        subgoal 
-                                                          using prems(3)
-                                                          unfolding graph_summar_nt_def
-                                                          by metis
-                                                        subgoal
-                                                          apply (rule dataflow_topology.axioms(1))
-                                                          apply (rule prems(2))
-                                                          done
-                                                        apply clarsimp
+                                                   apply (subgoal_tac "\<exists> t6\<le>t5. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p3))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t9
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s'  _ _ _ t9])
+                                                    subgoal
+                                                      apply (rule dataflow_topology.axioms(1))
+                                                      apply (rule prems(2))
+                                                      done
+                                                    apply assumption
+                                                    apply clarsimp
+
                                                         subgoal for u
-                                                          apply (drule graph.path_weight_elem_trans[rotated, of u  _ _ _ s' "Loc nid' (Src p')"])
+                                                          apply (drule graph.path_weight_elem_trans[rotated, of s''' _ _ _ u])
                                                           apply assumption
                                                           subgoal
                                                             apply (rule dataflow_topology.axioms(1))
@@ -2253,6 +2369,7 @@ lemma dataplane_tracker_inv_consumes:
                                                         done
                                                       done
                                                     done
+                                                  done
                                                   subgoal
                                                     (* here2! *)
                                                     apply (clarsimp simp add: List.map_filter_def comp_def split: option.splits prod.splits)
@@ -2379,15 +2496,22 @@ lemma dataplane_tracker_inv_consumes:
                                                     apply (drule zcount_gt_0_in_frontierD)
                                                     apply clarsimp
                                                     subgoal for ft'
-                                                      apply (drule graph.path_weight_elem_trans[rotated 2, of s' _ _ _ ft3 "Loc nid (Trg p)"])
-                                                      subgoal
+                                                      apply (subgoal_tac "\<exists> t6\<le>ft3. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p2))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t9
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s'  _ _ _ t9])
+                                               subgoal
                                                         apply (rule dataflow_topology.axioms(1))
                                                         apply (rule prems(2))
-                                                        done
-                                                      subgoal 
-                                                        using prems(3)
-                                                        unfolding graph_summar_nt_def
-                                                        by metis
+                                                 done
+                                               apply assumption
                                                       apply clarsimp
                                                       subgoal for u
                                                         apply (drule bspec[of _ _ "Loc nid (Trg p)"])
@@ -2405,12 +2529,13 @@ lemma dataplane_tracker_inv_consumes:
                                                           apply clarsimp
                                                           apply (clarsimp simp flip: member_antichain.rep_eq)
                                                           done
-                                                        subgoal
-                                                          by (metis add_mono_thms_linordered_semiring(3) dataflow_topology_from_tree.plus_mono dual_order.strict_trans1 dual_order.strict_trans2 group_cancel.add1)
+                                                        subgoal premises temp
+                                                          using temp(3,6,7,10,12,14,16,20-)
+                                                          by (smt (verit, ccfv_SIG) add_mono_thms_linordered_semiring(2,3) dataflow_topology_from_tree.followed_by_summary dual_order.strict_trans1 dual_order.strict_trans2 temp(19))
                                                         done
                                                       done
                                                     done
-
+                                                  done
                                                   subgoal
                                                     apply (simp add: zcount_sum)
                                                     apply (drule sum_pos_ex_elem_pos)
@@ -2420,77 +2545,94 @@ lemma dataplane_tracker_inv_consumes:
                                                       apply (simp add:  comp_def filter_map split_beta zcount_zmset)
                                                       apply (subgoal_tac "\<exists> p2. \<exists> m >0. (p2, t, m) \<in> set (produ (os nid'')) \<and> (nxt sg (nid'', p2) = Some (nid, p))")
                                                       subgoal
-                                                        apply (elim exE conjE)
-                                                        using prems(13) apply -
-                                                        apply (drule spec[of _ nid])
-                                                        apply (drule spec[of _ nid''])
-                                                        apply simp
-                                                        unfolding changes_above_impl_inv_def
-                                                        subgoal for p3' m'
-                                                          apply (drule bspec[of _ _ "(Loc nid (Trg p), t, m')"])
-                                                          subgoal
-                                                            (* here4b *)
-                                                            apply (subst obtain_progress_def)
-                                                            apply (subst extract_progress_def)
-                                                            apply (auto simp add: set_map_filter image_iff split_beta )
-                                                            apply (rule bexI[rotated])
-                                                            apply (clarsimp split: option.splits)
-                                                            apply force
-                                                            apply (clarsimp split: option.splits)+
-                                                            done
+                                                    apply (elim exE conjE)
+                                                    using prems(13) apply -
+                                                    apply (drule spec[of _ nid])
+                                                    apply (drule spec[of _ nid''])
+                                                    apply simp
+                                                    unfolding changes_above_impl_inv_def
+                                                    subgoal for p3' m'
+                                                      apply (drule bspec[of _ _ "(Loc nid (Trg p), t, m')"])
+                                                      subgoal
+                                                        (* here4b *)
+                                                        apply (subst obtain_progress_def)
+                                                        apply (subst extract_progress_def)
+                                                        apply (auto simp add: set_map_filter image_iff split_beta )
+                                                        apply (rule bexI[rotated])
+                                                        apply (clarsimp split: option.splits)
+                                                        apply force
+                                                        apply (clarsimp split: option.splits)+
+                                                        done
+                                                      apply simp
+                                                      apply (drule frontier_less_equal_ifrontierE)
+                                                      using prems(2) apply assumption
+                                                      apply clarsimp
+                                                      unfolding frontier_less_equal_iff2
+                                                      apply clarsimp
+                                                      apply (subst (asm) (3) in_frontier_iff)
+                                                      apply clarsimp
+                                                      apply hypsubst_thin
+                                                      subgoal for l  s''' t6 t6'
+                                                        apply (drule bspec[of _ _ l])
+                                                        subgoal
+                                                          apply (cases l)
                                                           apply simp
-                                                          apply (drule frontier_less_equal_ifrontierE)
-                                                          using prems(2) apply assumption
+                                                          subgoal for nn pp
+                                                            apply (cases pp)
+                                                            apply simp_all
+                                                            apply (metis (no_types, lifting) UNIV_I image_eqI prod.sel(1,2))+
+                                                            done
+                                                          done
+                                                   apply (subgoal_tac "\<exists> t6\<le>ft3. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p2))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t9
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s'  _ _ _ t9])
+                                                    subgoal
+                                                      apply (rule dataflow_topology.axioms(1))
+                                                      apply (rule prems(2))
+                                                      done
+                                                    apply assumption
+                                                    apply clarsimp
+
+                                                        subgoal for u
+                                                          apply (drule graph.path_weight_elem_trans[rotated, of s''' _ _ _ u])
+                                                          apply assumption
+                                                          subgoal
+                                                            apply (rule dataflow_topology.axioms(1))
+                                                            apply (rule prems(2))
+                                                            done
                                                           apply clarsimp
-                                                          unfolding frontier_less_equal_iff2
-                                                          apply clarsimp
-                                                          apply hypsubst_thin
-                                                          subgoal for l  s'''' t6 t6'
-                                                            apply (drule bspec[of _ _ l])
-                                                            subgoal
-                                                              apply (cases l)
-                                                              apply simp
-                                                              subgoal for nn pp
-                                                                apply (cases pp)
-                                                                apply simp_all
-                                                                apply (metis (no_types, lifting) UNIV_I image_eqI prod.sel(1,2))+
-                                                                done
-                                                              done
-                                                            apply (drule graph.path_weight_elem_trans[rotated , of s''''  _ _ _ ft3 "Loc nid (Src p2)"])
-                                                            subgoal 
-                                                              using prems(3)
-                                                              unfolding graph_summar_nt_def
-                                                              by metis
-                                                            subgoal
-                                                              apply (rule dataflow_topology.axioms(1))
-                                                              apply (rule prems(2))
-                                                              done
+                                                          subgoal for u'
+                                                            apply (drule zcount_gt_0_in_frontierD)
                                                             apply clarsimp
-                                                            subgoal for u
-                                                              apply (drule graph.path_weight_elem_trans[rotated, of u  _ _ _ s' "Loc nid' (Src p')"])
-                                                              apply assumption
+                                                            subgoal for ft7
+                                                              apply (drule spec[of _ "ft7 -+- u'"])
+                                                              back
+                                                              apply (drule mp)
                                                               subgoal
-                                                                apply (rule dataflow_topology.axioms(1))
-                                                                apply (rule prems(2))
+                                                                apply (rule dataflow_topology_from_tree.sum_pos)
+                                                                apply (simp_all flip: member_antichain.rep_eq)
+                                                                apply (rule pos_zcount_image_zmset)
+                                                                apply clarsimp
+                                                                apply (clarsimp simp add: c_pts_change_multiplicities simp flip: member_antichain.rep_eq)
                                                                 done
-                                                              apply clarsimp
-                                                              subgoal for u'
-                                                                apply (drule spec[of _ "t6' -+- u'"])
-                                                                apply (drule mp)
-                                                                subgoal
-                                                                  apply (rule dataflow_topology_from_tree.sum_pos)
-                                                                  apply (simp_all flip: member_antichain.rep_eq)
-                                                                  apply (rule pos_zcount_image_zmset)
-                                                                  apply clarsimp
-                                                                  apply (clarsimp simp add: c_pts_change_multiplicities simp flip: member_antichain.rep_eq)
-                                                                  done
-                                                                subgoal
-                                                                  by (smt (verit, ccfv_threshold) add.commute add.left_commute add_le_cancel_left order_less_le_subst1 order_trans_rules(21,8))
-                                                                done
+                                                              subgoal
+                                                                by (smt (verit, ccfv_threshold) add_less_le_mono add_mono_thms_linordered_semiring(2) add_strict_right_mono antisym_conv2 dataflow_topology_from_tree.followed_by_summary dataflow_topology_from_tree.plus_mono dual_order.strict_trans2
+                                                                    nless_le)
                                                               done
                                                             done
                                                           done
                                                         done
+                                                      done
+                                                    done
+                                                  done
                                                       subgoal
                                                         (* here2! *)
                                                         apply (clarsimp simp add: List.map_filter_def comp_def split: option.splits prod.splits)
@@ -2690,7 +2832,17 @@ lemma dataplane_tracker_inv_consumes:
                                                 apply (drule zcount_gt_0_in_frontierD)
                                                 apply clarsimp
                                                 subgoal for ft'
-                                                  apply (drule graph.path_weight_elem_trans[rotated 2, of s' _ _ _ ft3 "Loc nid (Trg p)"])
+                                                  apply (subgoal_tac "\<exists> t6\<le>ft3. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p2))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t6
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s' _ _ _ t6 "Loc nid (Trg p)"])
                                                   subgoal
                                                     apply (rule dataflow_topology.axioms(1))
                                                     apply (rule prems(2))
@@ -2717,11 +2869,11 @@ lemma dataplane_tracker_inv_consumes:
                                                       apply (clarsimp simp flip: member_antichain.rep_eq)
                                                       done
                                                     subgoal 
-                                                      by (metis dataflow_topology_from_tree.plus_mono dual_order.strict_trans2 group_cancel.add1)
+                                                                by (smt (verit, ccfv_threshold) add.commute add.left_commute add_le_cancel_left order_le_less_subst2)
                                                     done
                                                   done
                                                 done
-
+                                              done
                                               subgoal
                                                 apply (simp add: zcount_sum)
                                                 apply (drule sum_pos_ex_elem_pos)
@@ -2755,8 +2907,10 @@ lemma dataplane_tracker_inv_consumes:
                                                       apply clarsimp
                                                       unfolding frontier_less_equal_iff2
                                                       apply clarsimp
+                                                      apply (subst (asm) (3) in_frontier_iff)
+                                                      apply clarsimp
                                                       apply hypsubst_thin
-                                                      subgoal for l  s'''' t6 t6'
+                                                      subgoal for l  s''' t6 t6'
                                                         apply (drule bspec[of _ _ l])
                                                         subgoal
                                                           apply (cases l)
@@ -2767,18 +2921,26 @@ lemma dataplane_tracker_inv_consumes:
                                                             apply (metis (no_types, lifting) UNIV_I image_eqI prod.sel(1,2))+
                                                             done
                                                           done
-                                                        apply (drule graph.path_weight_elem_trans[rotated , of s''''  _ _ _ ft3 "Loc nid (Src p2)"])
-                                                        subgoal 
-                                                          using prems(3)
-                                                          unfolding graph_summar_nt_def
-                                                          by metis
-                                                        subgoal
-                                                          apply (rule dataflow_topology.axioms(1))
-                                                          apply (rule prems(2))
-                                                          done
-                                                        apply clarsimp
+                                                   apply (subgoal_tac "\<exists> t6\<le>ft3. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p2))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t9
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s'  _ _ _ t9])
+                                                    subgoal
+                                                      apply (rule dataflow_topology.axioms(1))
+                                                      apply (rule prems(2))
+                                                      done
+                                                    apply assumption
+                                                    apply clarsimp
+
                                                         subgoal for u
-                                                          apply (drule graph.path_weight_elem_trans[rotated, of u  _ _ _ s' "Loc nid' (Src p')"])
+                                                          apply (drule graph.path_weight_elem_trans[rotated, of s''' _ _ _ u])
                                                           apply assumption
                                                           subgoal
                                                             apply (rule dataflow_topology.axioms(1))
@@ -2786,22 +2948,29 @@ lemma dataplane_tracker_inv_consumes:
                                                             done
                                                           apply clarsimp
                                                           subgoal for u'
-                                                            apply (drule spec[of _ "t6' -+- u'"])
-                                                            apply (drule mp)
-                                                            subgoal
-                                                              apply (rule dataflow_topology_from_tree.sum_pos)
-                                                              apply (simp_all flip: member_antichain.rep_eq)
-                                                              apply (rule pos_zcount_image_zmset)
-                                                              apply clarsimp
-                                                              apply (clarsimp simp add: c_pts_change_multiplicities simp flip: member_antichain.rep_eq)
+                                                            apply (drule zcount_gt_0_in_frontierD)
+                                                            apply clarsimp
+                                                            subgoal for ft7
+                                                              apply (drule spec[of _ "ft7 -+- u'"])
+                                                              back
+                                                              apply (drule mp)
+                                                              subgoal
+                                                                apply (rule dataflow_topology_from_tree.sum_pos)
+                                                                apply (simp_all flip: member_antichain.rep_eq)
+                                                                apply (rule pos_zcount_image_zmset)
+                                                                apply clarsimp
+                                                                apply (clarsimp simp add: c_pts_change_multiplicities simp flip: member_antichain.rep_eq)
+                                                                done
+                                                              subgoal
+                                                                by (smt (verit, ccfv_threshold) add_less_le_mono add_mono_thms_linordered_semiring(2) add_strict_right_mono antisym_conv2 dataflow_topology_from_tree.followed_by_summary dataflow_topology_from_tree.plus_mono dual_order.strict_trans2
+                                                                    nless_le)
                                                               done
-                                                            subgoal
-                                                              by (smt (verit, ccfv_threshold) add.commute add.left_commute add_le_cancel_left order_le_less_subst2)
                                                             done
                                                           done
                                                         done
                                                       done
                                                     done
+                                                  done
                                                   subgoal
                                                     (* here2! *)
                                                     apply (clarsimp simp add: List.map_filter_def comp_def split: option.splits prod.splits)
@@ -3013,18 +3182,25 @@ lemma dataplane_tracker_inv_consumes:
                                               done
                                             apply (drule bspec[of _ _ "Loc nid (Trg p)"])
                                             apply simp
-                                            apply fast
-                                            apply (drule graph.path_weight_elem_trans[rotated 2, of s' _ _ _ t2' "Loc nid (Trg p)"])
-                                            subgoal
-                                              apply (rule dataflow_topology.axioms(1))
-                                              apply (rule prems(2))
-                                              done
-                                            subgoal 
-                                              using prems(3)
-                                              unfolding graph_summar_nt_def
-                                              by metis
-                                            apply clarsimp
-                                            subgoal for u
+                                             apply fast
+                                            apply (subgoal_tac "\<exists> t6\<le>t2'. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p''))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t6
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s' _ _ _ t6 "Loc nid (Trg p)"])
+                                                    subgoal
+                                                      apply (rule dataflow_topology.axioms(1))
+                                                      apply (rule prems(2))
+                                                      done
+                                                    apply simp
+                                                    apply clarsimp
+                                                    subgoal for u
                                               apply (drule spec[of _ "ft' + u"])
                                               apply (drule mp)
                                               subgoal
@@ -3035,10 +3211,11 @@ lemma dataplane_tracker_inv_consumes:
                                                 apply (simp_all flip: member_antichain.rep_eq)
                                                 done
                                               subgoal
-                                                by (metis Groups.add_ac(2,3) add_le_less_mono add_less_imp_less_left)
+                                                          by (smt (verit, ccfv_threshold) add.commute add.left_commute add_le_cancel_left order_le_less_subst2)
                                               done
                                             done
                                           done
+done
                                         subgoal
                                           apply (simp add: zcount_sum)
                                           apply (drule sum_pos_ex_elem_pos)
@@ -3082,19 +3259,25 @@ lemma dataplane_tracker_inv_consumes:
                                                     apply safe
                                                     apply (metis (no_types) dataflow_topology_from_tree.after_summary_def dataflow_topology_from_tree.after_summary_zmset_of_nonneg)+
                                                     done
-                                                  apply (drule graph.path_weight_elem_trans[rotated 1, of s'' _ _ _ t2' "Loc nid (Src p'')"])
-                                                  subgoal
-                                                    using prems(3) apply -
-                                                    unfolding graph_summar_nt_def
+                                                  apply (subgoal_tac "\<exists> t6\<le>t2'. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p''))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
                                                     apply clarsimp
-                                                    done
-                                                  subgoal
-                                                    apply (rule dataflow_topology.axioms(1))
-                                                    apply (rule prems(2))
-                                                    done
-                                                  apply (elim exE conjE)
-                                                  subgoal for u
-                                                    apply (drule graph.path_weight_elem_trans[rotated, of u _ _ _ s'])
+                                                  subgoal for t9
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s'  _ _ _ t9])
+                                                    subgoal
+                                                      apply (rule dataflow_topology.axioms(1))
+                                                      apply (rule prems(2))
+                                                      done
+                                                     apply assumption
+                                                    apply clarsimp
+                                                    subgoal for u
+                                                      apply (drule graph.path_weight_elem_trans[rotated 1, of s'' _ _ _ u])
                                                     apply assumption
                                                     subgoal
                                                       apply (rule dataflow_topology.axioms(1))
@@ -3128,9 +3311,8 @@ lemma dataplane_tracker_inv_consumes:
                                                           apply (rule pos_zcount_image_zmset)
                                                           apply (simp_all flip: member_antichain.rep_eq)
                                                           done
-                                                        subgoal premises prems2
-                                                          using prems2(3,7,8,10,17,18,20,21,22,24,19)
-                                                            Groups.add_ac(2) add_le_cancel_left basic_trans_rules(21) dataflow_topology_from_tree.followed_by_summary
+                                                        subgoal 
+                                                          using  Groups.add_ac(2) add_le_cancel_left basic_trans_rules(21) dataflow_topology_from_tree.followed_by_summary
                                                             dataflow_topology_from_tree.plus_mono
                                                           by (smt (verit, ccfv_threshold) order_subst1)
                                                         done
@@ -3139,7 +3321,7 @@ lemma dataplane_tracker_inv_consumes:
                                                   done
                                                 done
                                               done
-
+                                            done
                                             subgoal
                                               (* here2! *)
                                               apply (clarsimp simp add: List.map_filter_def comp_def split: option.splits prod.splits)
@@ -3329,16 +3511,23 @@ lemma dataplane_tracker_inv_consumes:
                                                 done
                                               apply (drule bspec[of _ _ "Loc nid (Trg p)"])
                                               apply simp
-                                              apply fast
-                                              apply (drule graph.path_weight_elem_trans[rotated 2, of s' _ _ _ t2' "Loc nid (Trg p)"])
+                                               apply fast
+                                              apply (subgoal_tac "\<exists> t6\<le>t2'. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p'''))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t6
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s' _ _ _ t6 "Loc nid (Trg p)"])
                                               subgoal
                                                 apply (rule dataflow_topology.axioms(1))
                                                 apply (rule prems(2))
                                                 done
-                                              subgoal 
-                                                using prems(3)
-                                                unfolding graph_summar_nt_def
-                                                by metis
+                                              apply assumption
                                               apply clarsimp
                                               subgoal for u
                                                 apply (drule spec[of _ "ft' + u"])
@@ -3351,10 +3540,11 @@ lemma dataplane_tracker_inv_consumes:
                                                   apply (simp_all flip: member_antichain.rep_eq)
                                                   done
                                                 subgoal
-                                                  by (metis Groups.add_ac(2,3) add_le_less_mono add_less_imp_less_left)
-                                                done
+                                                          by (smt (verit, ccfv_threshold) add.commute add.left_commute add_le_cancel_left order_le_less_subst2)
+                                                        done
                                               done
                                             done
+                                          done
                                           subgoal
                                             apply (simp add: zcount_sum)
                                             apply (drule sum_pos_ex_elem_pos)
@@ -3364,97 +3554,103 @@ lemma dataplane_tracker_inv_consumes:
                                               apply (simp add:  comp_def filter_map split_beta zcount_zmset)
                                               apply (subgoal_tac "\<exists> p2. \<exists> m >0. (p2, t, m) \<in> set (produ (os nid'')) \<and> (nxt sg (nid'', p2) = Some (nid, p))")
                                               subgoal
-                                                apply (elim exE conjE)
-                                                using prems(13) apply -
-                                                apply (drule spec[of _ nid])
-                                                apply (drule spec[of _ nid''])
+                                              apply (elim exE conjE)
+                                              using prems(13) apply -
+                                              apply (drule spec[of _ nid])
+                                              apply (drule spec[of _ nid''])
+                                              apply simp
+                                              unfolding changes_above_impl_inv_def
+                                              subgoal for p3' m'
+                                                apply (drule bspec[of _ _ "(Loc nid (Trg p), t, m')"])
+                                                subgoal
+                                                  (* here4b *)
+                                                  apply (subst obtain_progress_def)
+                                                  apply (subst extract_progress_def)
+                                                  apply (auto simp add: set_map_filter image_iff split_beta )
+                                                  apply (rule bexI[rotated])
+                                                  apply (clarsimp split: option.splits)
+                                                  apply force
+                                                  apply (clarsimp split: option.splits)+
+                                                  done
                                                 apply simp
-                                                unfolding changes_above_impl_inv_def
-                                                subgoal for p3' m'
-                                                  apply (drule bspec[of _ _ "(Loc nid (Trg p), t, m')"])
+                                                apply (drule frontier_less_equal_ifrontierE)
+                                                using prems(2) apply assumption
+                                                apply clarsimp
+                                                unfolding frontier_less_equal_iff2
+                                                apply clarsimp
+                                                apply (subst (asm) (3) in_frontier_iff)
+                                                apply clarsimp
+                                                apply hypsubst_thin
+                                                subgoal for l  s'' t4 t4'
+                                                  apply (drule in_frontier_Sum_all_not_lt)
                                                   subgoal
-                                                    (* here4b *)
-                                                    apply (subst obtain_progress_def)
-                                                    apply (subst extract_progress_def)
-                                                    apply (auto simp add: set_map_filter image_iff split_beta )
-                                                    apply (rule bexI[rotated])
-                                                    apply (clarsimp split: option.splits)
-                                                    apply force
-                                                    apply (clarsimp split: option.splits)+
+                                                    apply (clarsimp simp add: image_iff)
+                                                    apply safe
+                                                    apply (metis (no_types) dataflow_topology_from_tree.after_summary_def dataflow_topology_from_tree.after_summary_zmset_of_nonneg)+
                                                     done
-                                                  apply simp
-                                                  apply (drule frontier_less_equal_ifrontierE)
-                                                  using prems(2) apply assumption
-                                                  apply clarsimp
-                                                  unfolding frontier_less_equal_iff2
-                                                  apply clarsimp
-                                                  apply (subst (asm) (3) in_frontier_iff)
-                                                  apply clarsimp
-                                                  apply hypsubst_thin
-                                                  subgoal for l  s'' t4 t4'
-                                                    apply (drule in_frontier_Sum_all_not_lt)
+                                                  apply (subgoal_tac "\<exists> t6\<le>t2'. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p'''))")
+                                                    defer
                                                     subgoal
-                                                      apply (clarsimp simp add: image_iff)
-                                                      apply safe
-                                                      apply (metis (no_types) dataflow_topology_from_tree.after_summary_def dataflow_topology_from_tree.after_summary_zmset_of_nonneg)+
-                                                      done
-                                                    apply (drule graph.path_weight_elem_trans[rotated 1, of s'' _ _ _ t2' "Loc nid (Src p''')"])
-                                                    subgoal
-                                                      using prems(3) apply -
+                                                      subgoal 
+                                                      using prems(3)
                                                       unfolding graph_summar_nt_def
-                                                      apply clarsimp
-                                                      done
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t9
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s'  _ _ _ t9])
                                                     subgoal
                                                       apply (rule dataflow_topology.axioms(1))
                                                       apply (rule prems(2))
                                                       done
-                                                    apply (elim exE conjE)
+                                                     apply assumption
+                                                    apply clarsimp
                                                     subgoal for u
-                                                      apply (drule graph.path_weight_elem_trans[rotated, of u _ _ _ s'])
-                                                      apply assumption
+                                                      apply (drule graph.path_weight_elem_trans[rotated 1, of s'' _ _ _ u])
+                                                    apply assumption
+                                                    subgoal
+                                                      apply (rule dataflow_topology.axioms(1))
+                                                      apply (rule prems(2))
+                                                      done
+                                                    apply (elim conjE exE)
+                                                    subgoal for u''
+                                                      apply (clarsimp simp add: filter_concat comp_def filter_map map_concat zmset_concat sum_list_distinct_conv_sum_set split_beta c_pts_change_multiplicities split: prod.splits)
+                                                      apply (drule bspec[of _ _ l])
+                                                      apply simp
                                                       subgoal
-                                                        apply (rule dataflow_topology.axioms(1))
-                                                        apply (rule prems(2))
-                                                        done
-                                                      apply (elim conjE exE)
-                                                      subgoal for u''
-                                                        apply (clarsimp simp add: filter_concat comp_def filter_map map_concat zmset_concat sum_list_distinct_conv_sum_set split_beta c_pts_change_multiplicities split: prod.splits)
-                                                        apply (drule bspec[of _ _ l])
+                                                        apply (cases l)
                                                         apply simp
+                                                        subgoal for nn pp
+                                                          apply (cases pp)
+                                                          apply simp_all
+                                                          apply (metis (no_types, lifting) UNIV_I image_eqI prod.sel(1,2))+
+                                                          done
+                                                        done
+                                                      apply (simp flip: zcount_union)
+                                                      apply (drule zcount_gt_0_in_frontierD[where t=t4'])
+                                                      apply clarsimp
+                                                      subgoal for ft'
+                                                        apply (drule spec[of _ "ft' + u''"])
+                                                        back
+                                                        apply (drule mp)
                                                         subgoal
-                                                          apply (cases l)
-                                                          apply simp
-                                                          subgoal for nn pp
-                                                            apply (cases pp)
-                                                            apply simp_all
-                                                            apply (metis (no_types, lifting) UNIV_I image_eqI prod.sel(1,2))+
-                                                            done
+                                                          apply (simp add: zcount_sum)
+                                                          apply (rule Timely_Infrastructure.dataflow_topology_from_tree.sum_pos[of _ _ "u''"])
+                                                          apply (simp_all flip: member_antichain.rep_eq)
+                                                          apply (rule pos_zcount_image_zmset)
+                                                          apply (simp_all flip: member_antichain.rep_eq)
                                                           done
-                                                        apply (simp flip: zcount_union)
-                                                        apply (drule zcount_gt_0_in_frontierD[where t=t4'])
-                                                        apply clarsimp
-                                                        subgoal for ft'
-                                                          apply (drule spec[of _ "ft' + u''"])
-                                                          back
-                                                          apply (drule mp)
-                                                          subgoal
-                                                            apply (simp add: zcount_sum)
-                                                            apply (rule Timely_Infrastructure.dataflow_topology_from_tree.sum_pos[of _ _ "u''"])
-                                                            apply (simp_all flip: member_antichain.rep_eq)
-                                                            apply (rule pos_zcount_image_zmset)
-                                                            apply (simp_all flip: member_antichain.rep_eq)
-                                                            done
-                                                          subgoal premises prems2
-                                                            using prems2(3,7,8,10,17,18,20,21,22,24,19)
-                                                              Groups.add_ac(2) add_le_cancel_left basic_trans_rules(21) dataflow_topology_from_tree.followed_by_summary
-                                                              dataflow_topology_from_tree.plus_mono
-                                                            by (smt (verit, ccfv_threshold) order_subst1 prems2(6))
-                                                          done
+                                                        subgoal 
+                                                          using  Groups.add_ac(2) add_le_cancel_left basic_trans_rules(21) dataflow_topology_from_tree.followed_by_summary
+                                                            dataflow_topology_from_tree.plus_mono
+                                                          by (smt (verit, ccfv_threshold) order_subst1)
                                                         done
                                                       done
                                                     done
                                                   done
                                                 done
+                                              done
+                                            done
                                               subgoal
                                                 (* here2! *)
                                                 apply (clarsimp simp add: List.map_filter_def comp_def split: option.splits prod.splits)
@@ -3679,16 +3875,24 @@ lemma dataplane_tracker_inv_consumes:
                                                               apply (drule zcount_gt_0_in_frontierD)
                                                               apply clarsimp
                                                               subgoal for ft'
-                                                                apply (drule graph.path_weight_elem_trans[rotated 2, of s2' _ _ _ t4 "Loc nid (Trg p)"])
-                                                                subgoal
-                                                                  apply (rule dataflow_topology.axioms(1))
-                                                                  apply (rule prems(2))
-                                                                  done
-                                                                subgoal 
-                                                                  using prems(3)
-                                                                  unfolding graph_summar_nt_def
-                                                                  by metis
-                                                                apply clarsimp
+
+                                                                apply (subgoal_tac "\<exists> t6\<le>t4. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p4))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t6
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s2' _ _ _ t6 "Loc nid (Trg p)"])
+                                                    subgoal
+                                                      apply (rule dataflow_topology.axioms(1))
+                                                      apply (rule prems(2))
+                                                      done
+                                                    apply simp
+                                                    apply clarsimp
                                                                 subgoal for u
                                                                   apply (drule bspec[of _ _ "u"])
                                                                   apply (simp_all flip: member_antichain.rep_eq)
@@ -3700,10 +3904,11 @@ lemma dataplane_tracker_inv_consumes:
                                                                     apply (clarsimp simp flip: member_antichain.rep_eq)
                                                                     done
                                                                   subgoal
-                                                                    by (metis basic_trans_rules(21) dataflow_topology.axioms(1) graph.plus_mono group_cancel.add1 prems(2))
+                                                          by (smt (verit, ccfv_threshold) add.commute add.left_commute add_le_cancel_left order_le_less_subst2)
                                                                   done
                                                                 done
                                                               done
+                                                            done
                                                             subgoal
 
                                                               apply (simp add: zcount_sum)
@@ -3752,18 +3957,26 @@ lemma dataplane_tracker_inv_consumes:
                                                                           apply (metis (no_types, lifting) UNIV_I image_eqI prod.sel(1,2))+
                                                                           done
                                                                         done
-                                                                      apply (drule graph.path_weight_elem_trans[rotated, of s''  _ _ _ t4 "Loc nid (Src p4)"])
-                                                                      subgoal 
-                                                                        using prems(3)
-                                                                        unfolding graph_summar_nt_def
-                                                                        by metis
-                                                                      subgoal
-                                                                        apply (rule dataflow_topology.axioms(1))
-                                                                        apply (rule prems(2))
-                                                                        done
-                                                                      apply clarsimp
-                                                                      subgoal for u
-                                                                        apply (drule graph.path_weight_elem_trans[rotated, of u  _ _ _ s2' "Loc nid' (Trg p')"])
+                                                                      apply (subgoal_tac "\<exists> t6\<le>t4. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p4))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t6
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of t6 _ _ _ s'' ])
+                                                    subgoal
+                                                      apply (rule dataflow_topology.axioms(1))
+                                                      apply (rule prems(2))
+                                                      done
+                                                    apply simp
+                                                    apply clarsimp
+                                                    subgoal for u
+
+                                                      apply (drule graph.path_weight_elem_trans[rotated, of u  _ _ _ s2'])
                                                                         apply assumption
                                                                         subgoal
                                                                           apply (rule dataflow_topology.axioms(1))
@@ -3785,14 +3998,15 @@ lemma dataplane_tracker_inv_consumes:
                                                                               apply (clarsimp simp add: c_pts_change_multiplicities simp flip: member_antichain.rep_eq)
                                                                               done
                                                                             subgoal premises prems2
-                                                                              using prems2(10,13,20,22,24,25,27) apply -
-                                                                              by (smt (verit, ccfv_SIG) add_mono_thms_linordered_semiring(3) dataflow_topology_from_tree.followed_by_summary dataflow_topology_from_tree.plus_mono dual_order.strict_trans2 dual_order.trans)
+                                                                              using prems2(4,9,13,21,23,24,26,27,10,13,24,29) apply -
+                                                                              by (smt (verit, ccfv_SIG) add_mono_thms_linordered_semiring(2,3) dataflow_topology_from_tree.followed_by_summary dual_order.strict_trans2 prems2(10,21,23,24,26,27,29))
                                                                             done
                                                                           done
                                                                         done
                                                                       done
                                                                     done
                                                                   done
+                                                                done
                                                                 subgoal
                                                                   (* here2! *)
                                                                   apply (clarsimp simp add: List.map_filter_def comp_def split: option.splits prod.splits)
@@ -3942,18 +4156,24 @@ lemma dataplane_tracker_inv_consumes:
                                                     apply clarsimp
                                                     apply hypsubst_thin
                                                     subgoal for ft5
-
-                                                      apply (drule graph.path_weight_elem_trans[rotated 2, of s'  _ _ _ ft5 "Loc nid (Trg p)"])
-                                                      subgoal
-                                                        apply (rule dataflow_topology.axioms(1))
-                                                        apply (rule prems(2))
-                                                        done
+                                                      apply (subgoal_tac "\<exists> t6\<le>ft5. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p'''))")
+                                                    defer
+                                                    subgoal
                                                       subgoal 
-                                                        using prems(3)
-                                                        unfolding graph_summar_nt_def
-                                                        by metis
-                                                      apply clarsimp
-                                                      subgoal for u
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t6
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s' _ _ _ t6 "Loc nid (Trg p)"])
+                                                    subgoal
+                                                      apply (rule dataflow_topology.axioms(1))
+                                                      apply (rule prems(2))
+                                                      done
+                                                    apply simp
+                                                    apply clarsimp
+                                                    subgoal for u
                                                         using premst apply -
                                                         apply (elim disjE)
                                                         subgoal
@@ -3973,7 +4193,7 @@ lemma dataplane_tracker_inv_consumes:
                                                               apply (clarsimp simp add: zmset_filter_extract_progress_Src_consumes_diff c_pts_change_multiplicities simp flip: member_antichain.rep_eq)
                                                               done
                                                             subgoal
-                                                              by (metis (lifting) ext basic_trans_rules(21) dataflow_topology.axioms(1) graph.plus_mono group_cancel.add1 prems(2))
+                                                          by (smt (verit, ccfv_threshold) add.commute add.left_commute add_le_cancel_left order_le_less_subst2)
                                                             done
                                                           done
 
@@ -4023,13 +4243,14 @@ lemma dataplane_tracker_inv_consumes:
                                                                       apply (metis (no_types, lifting) UNIV_I image_eqI prod.sel(1,2))+
                                                                       done
                                                                     done
-                                                                  apply (drule graph.path_weight_elem_trans[rotated, of s''])
+                                                                  apply (drule graph.path_weight_elem_trans[rotated , of s'' _ _ _  u])
                                                                   apply assumption
-                                                                  subgoal
-                                                                    apply (rule dataflow_topology.axioms(1))
-                                                                    apply (rule prems(2))
-                                                                    done
-                                                                  apply clarsimp
+  subgoal
+                                                      apply (rule dataflow_topology.axioms(1))
+                                                      apply (rule prems(2))
+    done
+  apply clarsimp 
+
                                                                   subgoal for u'
                                                                     apply (clarsimp simp add: image_iff c_pts_change_multiplicities)
                                                                     apply (drule spec[of _ "ft7 -+- u'"])
@@ -4042,8 +4263,7 @@ lemma dataplane_tracker_inv_consumes:
                                                                       apply clarsimp
                                                                       apply (clarsimp simp add: zmset_filter_extract_progress_Src_consumes_diff c_pts_change_multiplicities simp flip: member_antichain.rep_eq)
                                                                       done
-                                                                    subgoal premises prems2
-                                                                      using prems2(9,11,14,21,23,24)
+                                                                    subgoal 
                                                                       by (smt (verit, ccfv_threshold) add.assoc add.commute add_mono_thms_linordered_field(2) less_le order_less_le_subst2)
                                                                     done
                                                                   done
@@ -4069,6 +4289,7 @@ lemma dataplane_tracker_inv_consumes:
                                                   done
                                                 done
                                               done
+                                            done
                                             subgoal
                                               apply (drule bspec[of _ _ "Loc nid3 (Src p''')"])
                                               apply fast
@@ -4191,17 +4412,24 @@ lemma dataplane_tracker_inv_consumes:
                                                           apply (drule zcount_gt_0_in_frontierD)
                                                           apply clarsimp
                                                           subgoal for ft'
-                                                            apply (drule graph.path_weight_elem_trans[rotated 2, of s'  _ _ _ ft7 "Loc nid (Trg p)"])
-                                                            subgoal
-                                                              apply (rule dataflow_topology.axioms(1))
-                                                              apply (rule prems(2))
-                                                              done
-                                                            subgoal 
-                                                              using prems(3)
-                                                              unfolding graph_summar_nt_def
-                                                              by metis
-                                                            apply clarsimp
-                                                            subgoal for u
+                                                            apply (subgoal_tac "\<exists> t6\<le>ft7. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p3))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t6
+                                                    apply (drule graph.path_weight_elem_trans[rotated , of t6 _ _ _ s'])
+                                                    apply assumption
+                                                    subgoal
+                                                      apply (rule dataflow_topology.axioms(1))
+                                                      apply (rule prems(2))
+                                                      done
+                                                    apply clarsimp
+                                                    subgoal for u
                                                               apply (drule spec[of _ "ft' -+- u"])
                                                               back
                                                               apply (drule mp)
@@ -4213,11 +4441,11 @@ lemma dataplane_tracker_inv_consumes:
                                                                 apply (clarsimp simp add: zmset_filter_extract_progress_Src_consumes_diff c_pts_change_multiplicities simp flip: member_antichain.rep_eq)
                                                                 done
                                                               subgoal
-                                                                by (metis (lifting) ext basic_trans_rules(21) dataflow_topology.axioms(1) graph.plus_mono group_cancel.add1 prems(2))
+                                                          by (smt (verit, ccfv_threshold) add.commute add.left_commute add_le_cancel_left order_le_less_subst2)
                                                               done
                                                             done
                                                           done
-
+                                                        done
                                                         subgoal
                                                           apply (simp add: zcount_sum)
                                                           apply (drule sum_pos_ex_elem_pos)
@@ -4264,24 +4492,31 @@ lemma dataplane_tracker_inv_consumes:
                                                                       apply (metis (no_types, lifting) UNIV_I image_eqI prod.sel(1,2))+
                                                                       done
                                                                     done
-                                                                  apply (drule graph.path_weight_elem_trans[rotated, of s''' _ _ _ ft7 "Loc nid (Src p3)"])
-                                                                  subgoal 
-                                                                    using prems(3)
-                                                                    unfolding graph_summar_nt_def
-                                                                    by metis
+                                                                  apply (subgoal_tac "\<exists> t6\<le>ft7. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p3))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t6
+                                                    apply (drule graph.path_weight_elem_trans[rotated , of t6 _ _ _ s'])
+                                                    apply assumption
+                                                    subgoal
+                                                      apply (rule dataflow_topology.axioms(1))
+                                                      apply (rule prems(2))
+                                                      done
+                                                    apply clarsimp
+                                                    subgoal for u
+                                                                  apply (drule graph.path_weight_elem_trans[rotated, of s''' _ _ _ u])
+                                                      apply assumption
                                                                   subgoal
                                                                     apply (rule dataflow_topology.axioms(1))
                                                                     apply (rule prems(2))
                                                                     done
                                                                   apply clarsimp
-                                                                  subgoal for u
-                                                                    apply (drule graph.path_weight_elem_trans[rotated, of u])
-                                                                    apply assumption
-                                                                    subgoal
-                                                                      apply (rule dataflow_topology.axioms(1))
-                                                                      apply (rule prems(2))
-                                                                      done
-                                                                    apply clarsimp
                                                                     subgoal for u'
                                                                       apply (clarsimp simp add: image_iff c_pts_change_multiplicities)
                                                                       apply (drule spec[of _ "ft9 -+- u'"])
@@ -4294,15 +4529,14 @@ lemma dataplane_tracker_inv_consumes:
                                                                         apply clarsimp
                                                                         apply (clarsimp simp add: zmset_filter_extract_progress_Src_consumes_diff c_pts_change_multiplicities simp flip: member_antichain.rep_eq)
                                                                         done
-                                                                      subgoal premises prems2
-                                                                        using prems2(9,12,20,21,23,24)
+                                                                      subgoal
                                                                         by (smt (verit, ccfv_threshold) add.commute add.left_commute add_le_cancel_left order_le_less_subst2)
-
                                                                       done
                                                                     done
                                                                   done
                                                                 done
                                                               done
+                                                            done
                                                             subgoal
                                                               (* here2! *)
                                                               apply (clarsimp simp add: List.map_filter_def comp_def split: option.splits prod.splits)
@@ -4400,19 +4634,24 @@ lemma dataplane_tracker_inv_consumes:
                                                   apply (drule zcount_gt_0_in_frontierD)
                                                   apply clarsimp
                                                   subgoal for ft'
-                                                    thm graph.path_weight_elem_trans[rotated 2, of s' _ _ _ _ "Loc nid (Trg p)"]
-
-                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of s' _ _ _ ft6 "Loc nid (Trg p)"])
+                                                    apply (subgoal_tac "\<exists> t6\<le>ft6. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p''))")
+                                                     defer
                                                     subgoal
-                                                      apply (rule dataflow_topology.axioms(1))
-                                                      apply (rule prems(2))
+                                                      subgoal 
+                                                        using prems(3)
+                                                        unfolding graph_summar_nt_def
+                                                        by auto
                                                       done
-                                                    subgoal 
-                                                      using prems(3)
-                                                      unfolding graph_summar_nt_def
-                                                      by metis
                                                     apply clarsimp
-                                                    subgoal for u
+                                                    subgoal for t6
+                                                      apply (drule graph.path_weight_elem_trans[rotated 2, of s' _ _ _ t6])
+                                                      subgoal
+                                                        apply (rule dataflow_topology.axioms(1))
+                                                        apply (rule prems(2))
+                                                        done
+                                                      apply simp
+                                                      apply clarsimp
+                                                      subgoal for u
                                                       apply (drule bspec[of _ _ "Loc nid (Trg p)"])
                                                       apply (simp_all flip: member_antichain.rep_eq)
                                                       apply fast
@@ -4428,12 +4667,12 @@ lemma dataplane_tracker_inv_consumes:
                                                         apply (clarsimp simp flip: member_antichain.rep_eq)
                                                         done
                                                       subgoal premises prems2
-                                                        using prems2(3,7,9,10,12,14,17,18)
-                                                        by (metis add_mono_thms_linordered_semiring(3) dataflow_topology_from_tree.plus_mono dual_order.strict_trans1 dual_order.strict_trans2 group_cancel.add1)
-                                                      done
+                                                        using prems2(16,3,7,9,10,12,14,19-)
+                                                              by (smt (verit, ccfv_threshold) add_mono_thms_linordered_semiring(2,3) antisym_conv2 dataflow_topology_from_tree.followed_by_summary order.strict_trans)
+                                                        done
                                                     done
                                                   done
-
+                                                done
                                                 subgoal
                                                   apply (simp add: zcount_sum)
                                                   apply (drule sum_pos_ex_elem_pos)
@@ -4481,24 +4720,32 @@ lemma dataplane_tracker_inv_consumes:
                                                               apply (metis (no_types, lifting) UNIV_I image_eqI prod.sel(1,2))+
                                                               done
                                                             done
-                                                          apply (drule graph.path_weight_elem_trans[rotated, of s''  _ _ _ ft6 "Loc nid (Src p'')"])
-                                                          subgoal 
-                                                            using prems(3)
-                                                            unfolding graph_summar_nt_def
-                                                            by metis
+
+                                                          apply (subgoal_tac "\<exists> t6\<le>ft6. t6 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid (Trg p)) (Loc nid (Src p''))")
+                                                    defer
+                                                    subgoal
+                                                      subgoal 
+                                                      using prems(3)
+                                                      unfolding graph_summar_nt_def
+                                                      by auto
+                                                    done
+                                                    apply clarsimp
+                                                  subgoal for t6
+                                                    apply (drule graph.path_weight_elem_trans[rotated 2, of t6 _ _ _ s''])
+                                                    subgoal
+                                                      apply (rule dataflow_topology.axioms(1))
+                                                      apply (rule prems(2))
+                                                      done
+                                                    apply simp
+                                                    apply clarsimp
+                                                    subgoal for u
+                                                      apply (drule graph.path_weight_elem_trans[rotated, of u _ _ _ s'])
+                                                      apply assumption
                                                           subgoal
                                                             apply (rule dataflow_topology.axioms(1))
                                                             apply (rule prems(2))
                                                             done
                                                           apply clarsimp
-                                                          subgoal for u
-                                                            apply (drule graph.path_weight_elem_trans[rotated, of u  _ _ _ s' "Loc nid' (Trg p')"])
-                                                            apply assumption
-                                                            subgoal
-                                                              apply (rule dataflow_topology.axioms(1))
-                                                              apply (rule prems(2))
-                                                              done
-                                                            apply clarsimp
                                                             subgoal for u'
                                                               apply (drule spec[of _ "t5' -+- u'"])
                                                               back
@@ -4512,14 +4759,15 @@ lemma dataplane_tracker_inv_consumes:
                                                                 apply (clarsimp simp add: c_pts_change_multiplicities simp flip: member_antichain.rep_eq)
                                                                 apply (metis (lifting) in_frontierI zcount_union)
                                                                 done
-                                                              subgoal premises prems2
-                                                                using prems2(3,7,10,11,13,20,23,25,26)
-                                                                by (smt (verit, ccfv_SIG) add_le_cancel_left add_mono_thms_linordered_semiring(3) dataflow_topology_from_tree.followed_by_summary dual_order.strict_trans1 dual_order.strict_trans2 prems2(20,23,25,26))
+                                                              subgoal premises temp
+                                                                using temp(3,7,11,13,21,24,25,27-)
+                                                                         by (smt (verit, ccfv_SIG) add_mono_thms_linordered_semiring(2,3) dataflow_topology_from_tree.followed_by_summary dual_order.strict_trans1 dual_order.strict_trans2)
                                                               done
                                                             done
                                                           done
                                                         done
                                                       done
+                                                    done
                                                     subgoal
                                                       (* here2! *)
                                                       apply (clarsimp simp add: List.map_filter_def comp_def split: option.splits prod.splits)
@@ -4962,7 +5210,7 @@ lemma dataplane_tracker_inv_consumes:
                   using temp2 by auto
                 subgoal for t'' s
                   apply hypsubst_thin
-                  apply (rule frontier_less_equal_ifrontier_trans[of _ _ "Loc nid (Trg p)"])
+                  apply (rule frontier_less_equal_ifrontier_trans_alt[of _ _ "Loc nid (Trg p)"])
                   using prems(2) apply assumption
                   subgoal
                     using prems(3)

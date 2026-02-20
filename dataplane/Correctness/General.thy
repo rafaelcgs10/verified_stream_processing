@@ -78,7 +78,7 @@ definition "dataplane_tracker_inv os cbufs sg =
 
 
 definition "graph_summar_nt su nt os = (
-  (\<forall> nid p p' t. t \<in> set (intsum (os nid) p p') \<longrightarrow> t \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) (Loc nid (Src p'))) \<and>
+  (\<forall> nid p p' t. t \<in> set (intsum (os nid) p p') \<longrightarrow> (\<exists> t'\<le>t. t' \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) (Loc nid (Src p')))) \<and>
   (\<forall> nid nid' p p'. nt (nid', p') = Some (nid, p) \<longrightarrow> 0 \<in>\<^sub>A graph.path_weight su (Loc nid' (Src p')) (Loc nid (Trg p))) \<and>
   (\<forall> nid p p'. distinct (intsum (os nid) p p')) \<and>
   (\<forall> nid p p'. \<forall> t \<in> set (intsum (os nid) p p'). \<not> (\<exists> t' \<in> set (intsum (os nid) p p'). t' < t)) \<and>
@@ -98,10 +98,8 @@ lemma
   unfolding graph_summar_nt_def
   apply (intro conjI allI impI)
        apply simp_all
-  subgoal
-
-
-end
+  subgoal for nid p p' t
+    sorry
   subgoal
     apply (rule zero_in_graph_path_weight)
        apply (rule refl)
@@ -111,12 +109,6 @@ end
     apply (metis assms(2) dataflow_tree_to_graph_Src_Trg_zero) 
     done
   subgoal
-    unfolding dataflow_tree_to_graph_def
-    by (auto simp add: comp_def split: if_splits prod.splits)
-  subgoal
-   unfolding dataflow_tree_to_graph_def
-    by (auto simp add: comp_def split: if_splits prod.splits)
-
   oops
 
 (* ======> FIXME: move me \<le>====== *)
