@@ -3,6 +3,8 @@ theory Timely_Infrastructure_Dis
 imports
     "HOL-ex.Sketch_and_Explore" 
     Timely_Infrastructure
+    "Examples/Source_op"
+    "Examples/Set_op"
 begin
 
 subsection \<open>Extended extension (allows for communication)\<close>
@@ -116,15 +118,15 @@ datatype ('id, 'p, 's, 'd, 't, 'w :: enum) dataflow_dis_tree =
 fun dataflow_dis_tree_to_operator_aux :: "'w :: enum \<Rightarrow> 'a :: {plus, one, minus} \<Rightarrow> ('a \<times> 'b \<Rightarrow> ('c \<times> 'd) buf)
          \<Rightarrow> ('a, 'b, 'e, 'c \<times> 'd, 'f, 'w) dataflow_dis_tree
             \<Rightarrow> 'a \<times> ('a \<times> 'b \<Rightarrow> ('a \<times> 'b) option) \<times>
-               ('a + ('a \<times> 'b + 'a \<times> 'b), 'a + 'a \<times> 'b \<times> 'w,
+               ('a + ('a \<times> 'b + 'a \<times> 'b), 'a + 'w \<times> 'a \<times> 'b,
                 'e + 'c \<times> 'd) op" where
   "dataflow_dis_tree_to_operator_aux w n chns (Logic_Dis op su pact) = (n + 1, (\<lambda> _. None), 
-    map_op (case_option (Inl n) (case_sum (\<lambda> p. Inr (Inl (n, p))) (\<lambda> p. Inr (Inr (n, p))))) (case_option (Inl n) (\<lambda> p. Inr (n, p))) (exchange_op w pact op))"
+    map_op (case_option (Inl n) (case_sum (\<lambda> p. Inr (Inl (n, p))) (\<lambda> p. Inr (Inr (n, p))))) (case_option (Inl n) (\<lambda> (b,w). Inr (w,n,b))) (exchange_op w pact op))"
 | "dataflow_dis_tree_to_operator_aux w n chns (Comp_Dis wire dt1 dt2) = (
     let (n', f, op1) = dataflow_dis_tree_to_operator_aux w n chns dt1 in
     let (n'', f', op2) = dataflow_dis_tree_to_operator_aux w n' chns dt2 in
     (n'', Map.map_add wire (Map.map_add f f'), map_op (case_sum id id) (case_sum id id) 
-      (comp_op (case_sum (\<lambda> _. None) ((case_option None (Some o Inr o Inl)) o (\<lambda> (nid, p, w'). case (wire (nid - n, p), w = w') of (Some (offset, q), True) \<Rightarrow> Some (n' + offset, q) | _ \<Rightarrow> None)))
+      (comp_op (case_sum (\<lambda> _. None) ((case_option None (Some o Inr o Inl)) o (\<lambda> (w', nid, p). case (wire (nid - n, p), w = w') of (Some (offset, q), True) \<Rightarrow> Some (n' + offset, q) | _ \<Rightarrow> None)))
        ((\<lambda> p. case p of Inr (Inl x) \<Rightarrow> map (\<lambda> (d, t). Inr (d, t)) (chns x) | _ \<Rightarrow> [])) op1 op2)))"
 definition "dataflow_dis_tree_to_operator w chns df = snd (dataflow_dis_tree_to_operator_aux w 0 chns df)"
 
@@ -175,23 +177,19 @@ definition extract_progress_caps where
 (* maybe the type of exch should be (('id, 'p) location \<times> 't) exchange_conf_one instead*)
 corec dataflow_dis'_op :: "('id :: {enum, linorder}, 'p :: {enum, linorder}, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) subgraph 
   \<Rightarrow> (('id, 'p) location, 't) exchange_conf_one
-   \<Rightarrow> ('id + ('e \<times> 'f + 'e \<times> 'f) option, 'id + ('g \<times> 'h \<times> 'w) option, (('p, 't) shared_state + ('p \<Rightarrow> 't antichain)) + ((('id, 'p) location \<times> 't \<times> int) buf + 'j)) op
-      \<Rightarrow> (('e \<times> 'f + 'e \<times> 'f) option, ('g \<times> 'h \<times> 'w ) option, (('id, 'p) location \<times> 't \<times> int) buf + 'j) op" where
+   \<Rightarrow> ('id + ('e \<times> 'f + 'e \<times> 'f) option, 'id + ('w \<times> 'g \<times> 'h) option, (('p, 't) shared_state + ('p \<Rightarrow> 't antichain)) + ((('id, 'p) location \<times> 't \<times> int) buf + 'j)) op
+      \<Rightarrow> (('e \<times> 'f + 'e \<times> 'f) option, ('w \<times> 'g \<times> 'h) option, (('id, 'p) location \<times> 't \<times> int) buf + 'j) op" where
   "dataflow_dis'_op sg exch op = Choice (cimage (\<lambda> op. case op of 
      Read (Inl nid) f \<Rightarrow> (case propagate_all (summ sg) (pt_tr sg) of
          Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
          let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_dis'_op sg' exch (f (Inl (Inr (frontier o imp_fron))))))
-
    | Read (Inr (Some p)) f \<Rightarrow> Read (Some p) (\<lambda> x. case x of Inr x' \<Rightarrow> dataflow_dis'_op sg exch (f (Inr (Inr x'))) | Inl _ \<Rightarrow> \<oslash>)
    | Write op' (Inr (Some (nid, p, w))) (Inr (Inr x)) \<Rightarrow> Write (dataflow_dis'_op sg exch op') (Some (nid, p, w)) (Inr x)
    | Silent op' \<Rightarrow> Silent (dataflow_dis'_op sg exch op')
-
    | Write op' (Inr None) (Inr (Inl x)) \<Rightarrow> Write (dataflow_dis'_op sg (exch\<lparr> c_temp := [] \<rparr>) op') None (Inl x)
    | Read (Inr None) f \<Rightarrow> Read None (\<lambda> x. case x of Inl x' \<Rightarrow> dataflow_dis'_op 
         (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ sg) x' (pt_tr sg) \<rparr>) 
-        (exch\<lparr> c_glob := c_glob exch @ x' \<rparr>) (f (Inr x)) | Inr _ \<Rightarrow> \<oslash>)
-
-
+        (exch\<lparr> c_glob := c_glob exch @ x' \<rparr>) (f (Inr (Inl x'))) | Inr _ \<Rightarrow> \<oslash>)
    | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_dis'_op sg (exch\<lparr> c_temp := c_temp exch @ (extract_progress nid (edges sg) st) \<rparr>) op')
    | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)
 ) (let C = cUn (cfilter (nop sg) (choices op)) {| Read (Inr None) (\<lambda>_. op), Write op (Inr None) ((Inr o Inl) (c_temp exch)) |} in C))"
@@ -207,8 +205,8 @@ corec data_Inr_op :: "('ip, 'op, 'd1 + 'd3) op \<Rightarrow> ('ip, 'op, 'd1 + 'd
 
 definition dataflow_dis_op :: "('id :: {enum, linorder}, 'p :: {enum, linorder}, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) subgraph 
   \<Rightarrow> (('id, 'p) location, 't) exchange_conf_one
-   \<Rightarrow> ('id + 'e \<times> 'f + 'e \<times> 'f, 'id + 'g \<times> 'h \<times> 'w, (('p, 't) shared_state + ('p \<Rightarrow> 't antichain)) + 'j) op
-      \<Rightarrow> (('e \<times> 'f + 'e \<times> 'f) option, ('g \<times> 'h \<times> 'w ) option, (('id, 'p) location \<times> 't \<times> int) buf + 'j) op" where
+   \<Rightarrow> ('id + 'e \<times> 'f + 'e \<times> 'f, 'id + 'w \<times> 'h \<times> 'g, (('p, 't) shared_state + ('p \<Rightarrow> 't antichain)) + 'j) op
+      \<Rightarrow> (('e \<times> 'f + 'e \<times> 'f) option, ('w \<times> 'h \<times> 'g ) option, (('id, 'p) location \<times> 't \<times> int) buf + 'j) op" where
   "dataflow_dis_op sg exch op = dataflow_dis'_op sg exch (map_op (case_sum Inl (Inr o Some)) (case_sum Inl (Inr o Some)) (data_Inr_op op))"
 
 
@@ -256,6 +254,25 @@ lemma data_Inr_op_elim: "step io (data_Inr_op op) op' \<Longrightarrow> (\<exist
       done
     done
 
+lemma step_Inpdata_Inr_op_intro_1[intro!]: "step (Inp p (Inl x)) op op' \<Longrightarrow> step (Inp p (Inl x)) (data_Inr_op op) (data_Inr_op op')"
+  apply(subst data_Inr_op.code)
+  by (fastforce elim: step_choicesE split: sum.splits option.splits)
+
+lemma step_Inpdata_Inr_op_intro_2[intro!]: "step (Inp p (Inr x)) op op' \<Longrightarrow> step (Inp p (Inr (Inr x))) (data_Inr_op op) (data_Inr_op op')"
+  apply(subst data_Inr_op.code)
+  by (fastforce elim: step_choicesE split: sum.splits option.splits)
+
+lemma step_Inpdata_Out_op_intro_1[intro!]: "step (Out p (Inl x)) op op' \<Longrightarrow> step (Out p (Inl x)) (data_Inr_op op) (data_Inr_op op')"
+  apply(subst data_Inr_op.code)
+  by (fastforce elim: step_choicesE split: sum.splits option.splits)
+
+lemma step_Inpdata_Out_op_intro_2[intro!]: "step (Out p (Inr x)) op op' \<Longrightarrow> step (Out p (Inr (Inr x))) (data_Inr_op op) (data_Inr_op op')"
+  apply(subst data_Inr_op.code)
+  by (fastforce elim: step_choicesE split: sum.splits option.splits)
+
+lemma step_Inpdata_Tau_op_intro[intro!]: "step Tau op op' \<Longrightarrow> step Tau (data_Inr_op op) (data_Inr_op op')"
+  apply(subst data_Inr_op.code)
+  by (fastforce elim: step_choicesE split: sum.splits option.splits)
 
 lemma dataflow_dis'_op_code[code]:
   "dataflow_dis'_op sg exch op = Choice (cimage (\<lambda> op. case op of 
@@ -268,7 +285,7 @@ lemma dataflow_dis'_op_code[code]:
    | Write op' (Inr None) (Inr (Inl x)) \<Rightarrow> Write (dataflow_dis'_op sg (exch\<lparr> c_temp := [] \<rparr>) op') None (Inl x)
    | Read (Inr None) f \<Rightarrow> Read None (\<lambda> x. case x of Inl x' \<Rightarrow> dataflow_dis'_op 
         (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ sg) x' (pt_tr sg) \<rparr>) 
-        (exch\<lparr> c_glob := c_glob exch @ x' \<rparr>) (f (Inr x)) | Inr _ \<Rightarrow> \<oslash>)
+        (exch\<lparr> c_glob := c_glob exch @ x' \<rparr>) (f (Inr (Inl x'))) | Inr _ \<Rightarrow> \<oslash>)
    | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow>
       trace (STR ''Reading progress at nid: '' + print_2 nid + STR '' cgs sizes: ('' + show_nat (length (cons st)) + STR '', '' + show_nat (length (inte st))  + STR '', '' + show_nat (length (prod st)) + STR '')''
    ) (Silent (dataflow_dis'_op sg (exch\<lparr> c_temp := c_temp exch @ (extract_progress nid (edges sg) st) \<rparr>) op'))
@@ -378,6 +395,107 @@ lemma step_dataflow_dis'_op_elim:
   done
   done
 
+lemma step_Tau_dataflow_dis'_op_Tau_intro[intro]:
+  "step Tau op op' \<Longrightarrow>
+   step Tau (dataflow_dis'_op sg exch op) (dataflow_dis'_op sg exch op')"
+  apply (subst dataflow_dis'_op.code)
+  by (fastforce elim: step_choicesE)
+
+lemma step_Out_Some_dataflow_dis'_op_Out_intro[intro!]:
+  "step (Out (Inr (Some p)) (Inr (Inr x))) op op' \<Longrightarrow>
+   step (Out (Some p) (Inr x)) (dataflow_dis'_op sg exch op) (dataflow_dis'_op sg exch op')"
+  apply (subst dataflow_dis'_op.code)
+  by (fastforce elim: step_choicesE)
+
+lemma step_Out_None_dataflow_dis'_op_Out_intro1[intro]:
+  "step (Out (Inr None) (Inr (Inl x))) op op' \<Longrightarrow> exch' = (exch\<lparr> c_temp := [] \<rparr>) \<Longrightarrow>
+   step (Out None (Inl x)) (dataflow_dis'_op sg exch op) (dataflow_dis'_op sg exch' op')"
+  apply (subst dataflow_dis'_op.code)
+  by (fastforce elim: step_choicesE)
+
+lemma step_Out_None_dataflow_dis'_op_Out_intro2[intro]:
+  "x = c_temp exch \<Longrightarrow> exch' = (exch\<lparr> c_temp := [] \<rparr>) \<Longrightarrow>
+   step (Out None (Inl x)) (dataflow_dis'_op sg exch op) (dataflow_dis'_op sg exch' op)"
+  apply (subst dataflow_dis'_op.code)
+  by (fastforce elim: step_choicesE)
+
+lemma step_Inp_Some_dataflow_dis'_op_Inp_intro[intro!]:
+  "step (Inp (Inr (Some p)) (Inr (Inr x))) op op' \<Longrightarrow>
+   step (Inp (Some p) (Inr x)) (dataflow_dis'_op sg exch op) (dataflow_dis'_op sg exch op')"
+  apply(erule step_choicesE; simp add: cin.rep_eq[symmetric] del: cin.rep_eq)
+  subgoal for p' f
+    using Read_in_choices_step[of "Some p" "\<lambda> x. case x of Inr x' \<Rightarrow> dataflow_dis'_op sg exch (f (Inr (Inr x'))) | Inl _ \<Rightarrow> \<oslash>"  "dataflow_dis'_op sg exch op" "Inr x"]
+    apply simp
+    apply(drule impI)
+    apply(erule impE; simp add: cin.rep_eq[symmetric] del: cin.rep_eq)
+    apply (subst dataflow_dis'_op.code[of sg exch op])
+    by auto
+  done
+
+lemma step_Inp_None_dataflow_dis'_op_Inp_intro1[intro]:
+  "step (Inp (Inr None) (Inr (Inl x))) op op' \<Longrightarrow> sg' = (sg\<lparr> upfro := (\<lambda>_. True), pt_tr := change_multiplicities (summ sg) x (pt_tr sg) \<rparr>) \<Longrightarrow> exch' = (exch\<lparr> c_glob := c_glob exch @ x \<rparr>) \<Longrightarrow>
+   step (Inp None (Inl x)) (dataflow_dis'_op sg exch op) (dataflow_dis'_op sg' exch' op')"
+  apply(erule step_choicesE; simp add: cin.rep_eq[symmetric] del: cin.rep_eq)
+  subgoal for p' f
+    using Read_in_choices_step[of "None" "\<lambda> x. case x of Inl x' \<Rightarrow> dataflow_dis'_op (sg\<lparr> upfro := (\<lambda>_. True), pt_tr := change_multiplicities (summ sg) x' (pt_tr sg) \<rparr>) (exch\<lparr> c_glob := c_glob exch @ x' \<rparr>) (f (Inr (Inl x'))) | Inr _ \<Rightarrow> \<oslash>"  "dataflow_dis'_op sg exch op" "Inl x"]
+    apply simp
+    apply(drule impI)
+    apply(erule impE; simp add: cin.rep_eq[symmetric] del: cin.rep_eq)
+    apply (subst dataflow_dis'_op.code[of sg exch op])
+    by auto
+  done
+
+lemma step_Inp_None_dataflow_dis'_op_Inp_intro2[intro]:
+  "sg' = (sg\<lparr> upfro := (\<lambda>_. True), pt_tr := change_multiplicities (summ sg) x (pt_tr sg) \<rparr>) \<Longrightarrow> exch' = (exch\<lparr> c_glob := c_glob exch @ x \<rparr>) \<Longrightarrow>
+   step (Inp None (Inl x)) (dataflow_dis'_op sg exch op) (dataflow_dis'_op sg' exch' op)"
+  apply (subst dataflow_dis'_op.code)
+  by (fastforce elim: step_choicesE)
+
+lemma step_Tau_dataflow_dis'_op_Out_intro[intro]:
+  "step (Out (Inl p) (Inl (Inl st))) op op' \<Longrightarrow> exch' = (exch\<lparr> c_temp := c_temp exch @ (extract_progress p (edges sg) st) \<rparr>) \<Longrightarrow>
+   step Tau (dataflow_dis'_op sg exch op) (dataflow_dis'_op sg exch' op')"
+  apply (subst dataflow_dis'_op.code)
+  by (fastforce elim: step_choicesE)
+
+lemma step_Tau_dataflow_dis'_op_Inp_intro[intro]:
+  "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op' \<Longrightarrow>
+   conf' = the (propagate_all(summ sg) (pt_tr sg)) \<Longrightarrow>
+   upfro sg nid \<Longrightarrow>
+   sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> \<Longrightarrow>
+   imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) \<Longrightarrow>
+   step Tau (dataflow_dis'_op sg exch op) (dataflow_dis'_op sg' exch op')"
+  apply (subst dataflow_dis'_op.code)
+  by (fastforce elim: step_choicesE split: sum.splits option.splits)
+
+lemma steps_Tau_dataflow_dis'_op_Tau_intro[intro]:
+  "steps (replicate n Tau) op op' \<Longrightarrow>
+   (step Tau ^^ n) (dataflow_dis'_op sg exch op) (dataflow_dis'_op sg exch op')"
+  apply (induct n arbitrary: op op' sg)
+  apply clarsimp+
+  by (metis (no_types, lifting) relcompp_apply relpowp_commute step_Tau_dataflow_dis'_op_Tau_intro)
+
+lemma step_Taus_dataflow_dis'_op_Taus_intro[intro]:
+  "(step Tau)\<^sup>*\<^sup>* op op' \<Longrightarrow>
+   (step Tau)\<^sup>*\<^sup>*  (dataflow_dis'_op sg exch op) (dataflow_dis'_op sg exch op')"
+  apply (induct op' rule: rtranclp_induct)
+  apply force
+  by (meson rtranclp.intros(2) step_Tau_dataflow_dis'_op_Tau_intro)
+
+
+lemma step_tau_pow_dataflow_dis'_op[intro]:
+  "(step Tau ^^ n) op op' \<Longrightarrow>
+   (step Tau ^^ n) (dataflow_dis'_op sg exch op) (dataflow_dis'_op sg exch op')"
+  by (induct n arbitrary:  op') auto
+
+
+lemma dataflow_dis'_op_simps[simp]:
+  "\<not> is_Read (dataflow_dis'_op sg exch op)"
+  "\<not> is_Write (dataflow_dis'_op sg exch op)"
+  "\<not> is_Silent (dataflow_dis'_op sg exch op)"
+  "is_Choice (dataflow_dis'_op sg exch op)"
+  by (subst dataflow_dis'_op.code; simp)+
+
+
 lemma map_IO_elim :
   "map_IO f1 g1 h1 io1 = Inp p1 x1 \<Longrightarrow> (\<exists> p' x'. io1 = Inp p' x' \<and> f1 p' = p1 \<and> h1 x' = x1)"
   "map_IO f2 g2 h2 io2 = Out p2 x2 \<Longrightarrow> (\<exists> p' x'. io2 = Out p' x' \<and> g2 p' = p2 \<and> h2 x' = x2)"
@@ -394,7 +512,7 @@ lemma step_dataflow_dis_op_elim:
   | nid p op'' x where "io = Inp (Some (Inl (nid, p))) (Inr x)" "op' = dataflow_dis_op sg exch op''" "step (Inp (Inr (Inl (nid, p))) (Inr x)) op op''"
   | nid p op'' x where "io = Inp (Some (Inr (nid, p))) (Inl x)" "op' = \<oslash>"
   | nid p op'' x where "io = Inp (Some (Inl (nid, p))) (Inl x)" "op' = \<oslash>"
-  | nid p w op'' x where "io = Out (Some (nid, p, w)) (Inr x)" "op' = dataflow_dis_op sg exch op''" "step (Out (Inr (nid, p, w)) (Inr x)) op op''"
+  | nid p w op'' x where "io = Out (Some (w, nid, p)) (Inr x)" "op' = dataflow_dis_op sg exch op''" "step (Out (Inr (w, nid, p)) (Inr x)) op op''"
   | op'' where "io = Tau" "op' = dataflow_dis_op sg exch op''" "step Tau op op''"
   | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_all (summ sg) (pt_tr sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr>)" "upfro sg nid"
     "imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p)))" "op' = dataflow_dis_op sg' exch op''" "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op''"
@@ -426,34 +544,120 @@ lemma step_dataflow_dis_op_elim:
     by(auto simp add: comp_def dest!: map_IO_elim data_Inr_op_elim sym[of _ "map_IO _ _ _ _"] split: IO.splits sum.splits)
   done
 
+lemma step_Tau_dataflow_dis_op_Tau_intro[intro]:
+  "step Tau op op' \<Longrightarrow>
+   step Tau (dataflow_dis_op sg exch op) (dataflow_dis_op sg exch op')"
+  unfolding dataflow_dis_op_def
+  by auto
 
+lemma step_Out_Some_dataflow_dis_op_Out_intro[intro!]:
+  "step (Out (Inr p) (Inr x)) op op' \<Longrightarrow>
+   step (Out (Some p) (Inr x)) (dataflow_dis_op sg exch op) (dataflow_dis_op sg exch op')"
+  unfolding dataflow_dis_op_def
+  by auto
+
+lemma step_Out_None_dataflow_dis_op_Out_intro[intro!]:
+  "x = c_temp exch \<Longrightarrow> exch' = (exch\<lparr> c_temp := [] \<rparr>) \<Longrightarrow>
+   step (Out None (Inl x)) (dataflow_dis_op sg exch op) (dataflow_dis_op sg exch' op)"
+  unfolding dataflow_dis_op_def
+  by auto
+
+lemma step_Inp_Some_dataflow_dis_op_Inp_intro[intro!]:
+  "step (Inp (Inr p) (Inr x)) op op' \<Longrightarrow>
+   step (Inp (Some p) (Inr x)) (dataflow_dis_op sg exch op) (dataflow_dis_op sg exch op')"
+  unfolding dataflow_dis_op_def
+  by auto
+
+lemma step_Inp_None_dataflow_dis'_op_Inp_intro[intro!]:
+  "sg' = (sg\<lparr> upfro := (\<lambda>_. True), pt_tr := change_multiplicities (summ sg) x (pt_tr sg) \<rparr>) \<Longrightarrow> exch' = (exch\<lparr> c_glob := c_glob exch @ x \<rparr>) \<Longrightarrow>
+   step (Inp None (Inl x)) (dataflow_dis_op sg exch op) (dataflow_dis_op sg' exch' op)"
+  unfolding dataflow_dis_op_def
+  by auto
+  
+lemma step_Tau_dataflow_dis_op_Out_intro[intro]:
+  "step (Out (Inl p) (Inl (Inl st))) op op' \<Longrightarrow> exch' = (exch\<lparr> c_temp := c_temp exch @ (extract_progress p (edges sg) st) \<rparr>) \<Longrightarrow>
+   step Tau (dataflow_dis_op sg exch op) (dataflow_dis_op sg exch' op')"
+  unfolding dataflow_dis_op_def
+  by auto
+
+lemma step_Tau_dataflow_dis_op_Inp_intro[intro]:
+  "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op' \<Longrightarrow>
+   conf' = the (propagate_all(summ sg) (pt_tr sg)) \<Longrightarrow>
+   upfro sg nid \<Longrightarrow>
+   sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> \<Longrightarrow>
+   imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) \<Longrightarrow>
+   step Tau (dataflow_dis_op sg exch op) (dataflow_dis_op sg' exch op')"
+  unfolding dataflow_dis_op_def
+  by auto
+
+lemma steps_Tau_dataflow_dis_op_Tau_intro[intro]:
+  "steps (replicate n Tau) op op' \<Longrightarrow>
+   (step Tau ^^ n) (dataflow_dis_op sg exch op) (dataflow_dis_op sg exch op')"
+  apply (induct n arbitrary: op op' sg)
+  apply clarsimp+
+  by (metis (no_types, lifting) relcompp_apply relpowp_commute step_Tau_dataflow_dis_op_Tau_intro)
+
+lemma step_Taus_dataflow_dis_op_Taus_intro[intro]:
+  "(step Tau)\<^sup>*\<^sup>* op op' \<Longrightarrow>
+   (step Tau)\<^sup>*\<^sup>*  (dataflow_dis_op sg exch op) (dataflow_dis_op sg exch op')"
+  apply (induct op' rule: rtranclp_induct)
+  apply force
+  by (meson rtranclp.intros(2) step_Tau_dataflow_dis_op_Tau_intro)
+
+lemma step_tau_pow_dataflow_dis_op[intro]:
+  "(step Tau ^^ n) op op' \<Longrightarrow>
+   (step Tau ^^ n) (dataflow_dis_op sg exch op) (dataflow_dis_op sg exch op')"
+  by (induct n arbitrary:  op') auto
+
+lemma dataflow_dis_op_simps[simp]:
+  "\<not> is_Read (dataflow_dis_op sg exch op)"
+  "\<not> is_Write (dataflow_dis_op sg exch op)"
+  "\<not> is_Silent (dataflow_dis_op sg exch op)"
+  "is_Choice (dataflow_dis_op sg exch op)"
+  by (simp add: dataflow_dis_op_def)+
+
+definition "init_exchange_conf =
+   \<lparr> c_temp = [],
+     c_glob = [] \<rparr>"
+
+definition "compile_dataflow_dis w chns dt = (let summary = dataflow_dis_tree_to_graph dt in
+                                    let op = snd (dataflow_dis_tree_to_operator w chns dt) in
+                                    let sg = init_subgraph summary (map (\<lambda> (nid, p). (Loc nid (Src p), bot, 1)) (List.product Enum.enum Enum.enum)) in
+                                    dataflow_dis_op sg init_exchange_conf op)"
 
 (* 
 The options are for the external progress messages (the write does not need 'w sinc the message is broadcasted.
 In the paper (Verified progress tracking for TimelyDataflow) there the progress_messages need to, so can buf be a multiset
 *)
-record ('w :: enum, 'ip, 'op, 'd) conf =
-  msg :: "'w \<Rightarrow> 'ip \<Rightarrow> 'd multiset"
-  prog_msg :: "'w \<Rightarrow> 'w \<Rightarrow> 'd buf"
-  ops :: "'w \<Rightarrow> (('ip + 'ip) option, ('op \<times> 'w) option, 'd) op"
+record ('w :: enum, 'ip, 'op, 'd1, 'd2) conf =
+  msg :: "'w \<Rightarrow> 'ip \<Rightarrow> 'd2 multiset"
+  prog_msg :: "'w \<Rightarrow> 'w \<Rightarrow> 'd1 buf"
+  ops :: "'w \<Rightarrow> (('ip + 'ip) option, ('op \<times> 'w) option, 'd1 + 'd2) op"
   used_wire :: "'op \<rightharpoonup> 'ip"
 
-inductive step_dis :: "'w :: enum \<Rightarrow> ('ip, 'op, 'd) IO \<Rightarrow> ('w, 'ip, 'op, 'd) conf \<Rightarrow> ('w, 'ip, 'op, 'd) conf \<Rightarrow> bool" where
-  SDT: "step Tau (ops c w) op' \<Longrightarrow> c' = c\<lparr> ops := (ops c)(w := op') \<rparr> \<Longrightarrow> step_dis w Tau c c'"
-| SDTR: "step (Inp (Some (Inr p)) x) (ops c w) op' \<Longrightarrow> c' = (c\<lparr> ops := (ops c)(w' := op'), msg := (msg c)(w := (msg c w)(p := msg c w p - {# x #}))\<rparr>) \<Longrightarrow> 
-    \<exists>q. used_wire c q = Some p \<Longrightarrow> m \<in># msg c w p \<Longrightarrow> step_dis w Tau c c'"
-| SDTW: "step (Out (Some (q, w')) x) (ops c w) op' \<Longrightarrow> c' = (c\<lparr> ops := (ops c)(w := op'), msg := (msg c)(w := (msg c w)(p := msg c w' p + {# x #}))\<rparr>) \<Longrightarrow> 
-    used_wire c q = Some p \<Longrightarrow> w' \<noteq> w \<Longrightarrow> step_dis w Tau c c'"
-| SDR: "step (Inp (Some p) x) (ops c w) op' \<Longrightarrow> c' = (c \<lparr> ops := (ops c)(w := op') \<rparr>) \<Longrightarrow> p = Inl p' \<or> p = Inr p' \<Longrightarrow> \<forall>q. used_wire c q \<noteq> Some p' \<Longrightarrow> step_dis w (Inp p' x) c c'"
-| SDW: "step (Out (Some (q, w)) x) (ops c w) op' \<Longrightarrow> c' = (c \<lparr> ops := ((ops c)(w := op')) \<rparr>) \<Longrightarrow> used_wire c q = None \<Longrightarrow> step_dis w (Out q x) c c'"
-| SDTUR: "step (Inp None (hd (prog_msg c w' w))) (ops c w) op' \<Longrightarrow> c' = (c \<lparr> ops := (ops c)(w := op'), prog_msg := (prog_msg c)(w' := (prog_msg c w')(w := tl (prog_msg c w' w))) \<rparr>) \<Longrightarrow> step_dis w Tau c c'"
-| SDTUW: "step (Out None x) (ops c w) op' \<Longrightarrow> c' = (c \<lparr> ops := (ops c)(w := op'), prog_msg := (prog_msg c)(w := \<lambda> w'. prog_msg c w w' @ [x]) \<rparr>) \<Longrightarrow> step_dis w Tau c c'"
+definition init_conf where 
+  "init_conf chns dt =
+  \<lparr> msg = \<lambda> _ _. empty_mset,
+    prog_msg = \<lambda> _ _. [],
+    ops = \<lambda> w. compile_dataflow_dis w chns dt,
+    used_wire = \<lambda> _. None \<rparr>"
 
-inductive step_dis' :: "('ip, 'op, 'd) IO \<Rightarrow> ('w :: enum, 'ip, 'op, 'd) conf \<Rightarrow> ('w, 'ip, 'op, 'd) conf \<Rightarrow> bool" where
+
+inductive step_dis :: "'w :: enum \<Rightarrow> ('ip, 'op, 'd2) IO \<Rightarrow> ('w, 'ip, 'op, 'd1, 'd2) conf \<Rightarrow> ('w, 'ip, 'op, 'd1, 'd2) conf \<Rightarrow> bool" where
+  SDT: "step Tau (ops c w) op' \<Longrightarrow> c' = c\<lparr> ops := (ops c)(w := op') \<rparr> \<Longrightarrow> step_dis w Tau c c'"
+| SDTR: "step (Inp (Some (Inr p)) (Inr x)) (ops c w) op' \<Longrightarrow> c' = (c\<lparr> ops := (ops c)(w' := op'), msg := (msg c)(w := (msg c w)(p := msg c w p - {# x #}))\<rparr>) \<Longrightarrow> 
+    \<exists>q. used_wire c q = Some p \<Longrightarrow> m \<in># msg c w p \<Longrightarrow> step_dis w Tau c c'"
+| SDTW: "step (Out (Some (q, w')) (Inr x)) (ops c w) op' \<Longrightarrow> c' = (c\<lparr> ops := (ops c)(w := op'), msg := (msg c)(w := (msg c w)(p := msg c w' p + {# x #}))\<rparr>) \<Longrightarrow> 
+    used_wire c q = Some p \<Longrightarrow> w' \<noteq> w \<Longrightarrow> step_dis w Tau c c'"
+| SDR: "step (Inp (Some p) (Inr x)) (ops c w) op' \<Longrightarrow> c' = (c \<lparr> ops := (ops c)(w := op') \<rparr>) \<Longrightarrow> p = Inl p' \<or> p = Inr p' \<Longrightarrow> \<forall>q. used_wire c q \<noteq> Some p' \<Longrightarrow> step_dis w (Inp p' x) c c'"
+| SDW: "step (Out (Some (q, w)) (Inr x)) (ops c w) op' \<Longrightarrow> c' = (c \<lparr> ops := ((ops c)(w := op')) \<rparr>) \<Longrightarrow> used_wire c q = None \<Longrightarrow> step_dis w (Out q x) c c'"
+| SDTUR: "step (Inp None (Inl (hd (prog_msg c w' w)))) (ops c w) op' \<Longrightarrow> c' = (c \<lparr> ops := (ops c)(w := op'), prog_msg := (prog_msg c)(w' := (prog_msg c w')(w := tl (prog_msg c w' w))) \<rparr>) \<Longrightarrow> step_dis w Tau c c'"
+| SDTUW: "step (Out None (Inl x)) (ops c w) op' \<Longrightarrow> c' = (c \<lparr> ops := (ops c)(w := op'), prog_msg := (prog_msg c)(w := \<lambda> w'. prog_msg c w w' @ [x]) \<rparr>) \<Longrightarrow> step_dis w Tau c c'"
+
+inductive step_dis' :: "('ip, 'op, 'd2) IO \<Rightarrow> ('w :: enum, 'ip, 'op, 'd1, 'd2) conf \<Rightarrow> ('w, 'ip, 'op, 'd1, 'd2) conf \<Rightarrow> bool" where
   S: "step_dis w io c c' \<Longrightarrow> step_dis' io c c'"
 
-
-definition sim_dis :: "(('ip, 'op, 'd) op \<Rightarrow> ('w :: enum, 'ip, 'op, 'd) conf \<Rightarrow> bool) \<Rightarrow> ('ip, 'op, 'd) op \<Rightarrow> ('w, 'ip, 'op, 'd) conf \<Rightarrow> bool" where
+definition sim_dis :: "(('ip, 'op, 'd2) op \<Rightarrow> ('w :: enum, 'ip, 'op, 'd1, 'd2) conf \<Rightarrow> bool) \<Rightarrow> ('ip, 'op, 'd2) op \<Rightarrow> ('w, 'ip, 'op, 'd1, 'd2) conf \<Rightarrow> bool" where
   "sim_dis R op c = ((\<forall>io op'. step io op op' \<longrightarrow> (\<exists>c'. step_dis' io c c' \<and> R op' c')) \<and> (\<forall>io c'. step_dis' io c c' \<longrightarrow> (\<exists>op'. step io op op' \<and> R op' c')))"
 
 lemma sim_dis_mono[mono]: "R \<le> S \<Longrightarrow> sim_dis R \<le> sim_dis S"
@@ -508,5 +712,11 @@ lemma bisim_dis_coinduct_upto''[consumes 1, case_names SIM1 SIM2]:
   (\<And>op c io c'. R op c \<Longrightarrow> step_dis' io c c' \<Longrightarrow> \<exists>op'. step io op op' \<and> bisim_dis_cong R op' c') \<Longrightarrow>
    op ~d c"
   using bisim_dis_coinduct_upto' by (smt (verit, ccfv_SIG))
+
+(*set_op source_op *)
+
+definition op_rapper where
+  "op_rapper f_xs S S' op = set_op S S' (scomp_op (source_op f_xs) op)"
+
 
 end
