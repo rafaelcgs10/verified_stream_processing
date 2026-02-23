@@ -14,7 +14,7 @@ fun unions_with where
 
 primrec list_span where
   \<open>list_span _ [] = ([], [])\<close>
-| \<open>list_span P (x # xs) = (let (ys, zs) = list_span P xs in if P x then (x # ys, zs) else ([], xs))\<close>
+| \<open>list_span P (x # xs) = (if P x then let (ys, zs) = list_span P xs in (x # ys, zs) else ([], x # xs))\<close>
 
 lemma list_span_length_le:
   \<open>(ys, zs) = list_span P xs \<Longrightarrow> length ys \<le> length xs\<close>
@@ -23,7 +23,7 @@ lemma list_span_length_le:
 
 function group_by where
   \<open>group_by _ [] = []\<close>
-| \<open>group_by f (x # xs) = (let (ys, zs) = list_span (f x) xs in (x # ys) # (group_by f zs))\<close>
+| \<open>group_by f (x # xs) = (let (ys, zs) = list_span (f x) xs in (x # ys) # group_by f zs)\<close>
   by pat_completeness auto
 termination by (lexicographic_order simp add: list_span_length_le)
 
@@ -88,10 +88,10 @@ definition label_propagation_op_logic where
           else []
     in {|drop_cap (produces os' batch) (Cap t 1)|}))
   (let P = \<lambda>t. \<forall>n < length (vertices os (myfst t)). \<not> frontier_less_equal (front os 0 + front os 1) (MyPair (myfst t) n);
-       output_times = filter P (ocaps os 0);
-       batch = map (\<lambda>t. let cap = Cap t 0; t1 = myfst t in
-        (en2 os (group_by (\<lambda>v1 v2. label os t1 v1 = label os t1 v2) (vertices os t1)), cap)) output_times
-   in if batch = [] then {||} else {|drop_caps (produces os batch) (map (\<lambda>t. Cap t 0) output_times @ map (\<lambda>t. Cap t 1) (filter P (ocaps os 1)))|})\<close>
+       below_times = filter P (ocaps os 0);
+       batch = map (\<lambda>t. let cap = Cap (MyPair t 0) 0 in
+        (en2 os (group_by (\<lambda>v1 v2. label os t v1 = label os t v2) (vertices os t)), cap)) (remdups (map myfst below_times))
+   in if batch = [] then {||} else {|drop_caps (produces os batch) (map (\<lambda>t. Cap t 0) below_times @ map (\<lambda>t. Cap t 1) (filter P (ocaps os 1)))|})\<close>
 
 definition label_propagation_op where
   \<open>label_propagation_op os = builder_op True cUNIV cUNIV os label_propagation_op_logic\<close>
