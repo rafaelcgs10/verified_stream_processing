@@ -82,7 +82,9 @@ definition "graph_summar_nt su nt os = (
   (\<forall> nid nid' p p'. nt (nid', p') = Some (nid, p) \<longrightarrow> 0 \<in>\<^sub>A graph.path_weight su (Loc nid' (Src p')) (Loc nid (Trg p))) \<and>
   (\<forall> nid p p'. distinct (intsum (os nid) p p')) \<and>
   (\<forall> nid p p'. \<forall> t \<in> set (intsum (os nid) p p'). \<not> (\<exists> t' \<in> set (intsum (os nid) p p'). t' < t)) \<and>
-  (\<forall> s nid p l. s \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) l \<longrightarrow> (\<exists> t p' s'. t \<in> set (intsum (os nid) p p') \<and> s' \<in>\<^sub>A graph.path_weight su (Loc nid (Src p')) l \<and> s = t -+- s')) \<and>
+  (\<forall> s nid p l. 
+      s \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) l \<longrightarrow>
+      l \<noteq> Loc nid (Trg p) \<longrightarrow> (\<exists> t p' s'. t \<in> set (intsum (os nid) p p') \<and> s' \<in>\<^sub>A graph.path_weight su (Loc nid (Src p')) l \<and> s = t -+- s')) \<and>
   inj_on nt (Map.dom nt) 
   )"
 
@@ -99,7 +101,14 @@ lemma
   apply (intro conjI allI impI)
        apply simp_all
   subgoal for nid p p' t
-    sorry
+    unfolding comp_def
+    apply (rule sumarry_in_path_weight)
+    subgoal
+      by standard
+     apply assumption
+    subgoal
+      sorry
+    done
   subgoal
     apply (rule zero_in_graph_path_weight)
        apply (rule refl)
@@ -109,6 +118,11 @@ lemma
     apply (metis assms(2) dataflow_tree_to_graph_Src_Trg_zero) 
     done
   subgoal
+    sorry
+  subgoal
+    sorry
+  subgoal for s nid p l
+    apply hypsubst_thin
   oops
 
 (* ======> FIXME: move me \<le>====== *)

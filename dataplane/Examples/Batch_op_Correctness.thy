@@ -77,12 +77,12 @@ section \<open>Generalized Correctness\<close>
 
 definition "my_summ = (\<lambda> l1 l2.
    if l1 = Loc (0 :: 2) (Src (0 :: 1)) \<and> l2 = Loc (1 :: 2)  (Trg (0 :: 1)) 
-   then antichain_from_list [0]
+   then [0]
    else if l1 = Loc 0 (Trg 0) \<and> l2 = Loc 0 (Src 0)
-   then antichain_from_list [0]
+   then [0]
    else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 0)
-   then antichain_from_list [0 :: _ :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}]
-   else {}\<^sub>A)"
+   then [0 :: _ :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}]
+   else [])"
 
 
 lemma antichain_from_list_empty[simp]:
@@ -93,12 +93,15 @@ lemma antichain_from_list_empty[simp]:
 lemma weights_to_graph_fun_to_next[simp]:
   "weights_to_graph_fun
            (\<lambda>l1 l2.
-               (if 0 \<le> node l1 \<and> node l1 < 1 \<and> (1 :: 2) \<le> node l2 \<and> is_Src (port l1) \<and> Locations.is_Trg (port l2)
-                then If (0 \<in>\<^sub>A antichain_from_list (case [(0, 1) \<mapsto> (0, 1)] (node l1 - 0, idp (port l1)) of None \<Rightarrow> [] | Some (offset, q) \<Rightarrow> if node l2 = 1 + offset \<and> q = idp (port l2) then [0] else []))
-                else If (0 \<in>\<^sub>A antichain_from_list
-                                 ((if node l1 = 0 \<and> node l2 = 0 \<and> Locations.is_Trg (port l1) \<and> is_Src (port l2) then [0] else []) @
-                                  (if 1 = node l1 \<and> 1 = node l2 \<and> Locations.is_Trg (port l1) \<and> is_Src (port l2) then [0] else []))))
-                (antichain_from_list [0]) {}\<^sub>A) = 
+               if 0 \<in>\<^sub>A antichain_from_list
+                          (if 0 \<le> node l1 \<and> node l1 < 1 \<and> 0 \<le> node l2 \<and> node l2 < 1
+                           then if node l1 = 0 \<and> node l2 = 0 \<and> Locations.is_Trg (port l1) \<and> is_Src (port l2) then [0] else []
+                           else if 1 \<le> node l1 \<and> 1 \<le> node l2 then if 1 = node l1 \<and> 1 = node l2 \<and> Locations.is_Trg (port l1) \<and> is_Src (port l2) then [0] else []
+                                else if 0 \<le> node l1 \<and> node l1 < 1 \<and> 1 \<le> node l2 \<and> is_Src (port l1) \<and> Locations.is_Trg (port l2)
+                                     then case [(0, 1) \<mapsto> (0 :: 2, 1)] (node l1 - 0, idp (port l1)) of None \<Rightarrow> []
+                                          | Some (offset, q) \<Rightarrow> if node l2 = 1 + offset \<and> q = idp (port l2) then [0] else []
+                                     else [])
+               then antichain_from_list [0] else antichain_from_list []) = 
    (\<lambda> l. 
      if l = Loc (0 :: 2) (Src (1 :: 1)) then [Loc 1 (Trg 1)] else
      if l = Loc 0 (Trg 0) then [Loc 0 (Src 0)] else
@@ -109,16 +112,15 @@ lemma weights_to_graph_fun_to_next[simp]:
   subgoal for l
     using loc_2_1_cases[where l=l] apply -
     apply (elim disjE; hypsubst_thin)
-       apply (auto 0 0 dest!: not_in_empty simp add: antichain_empty set_antichain1 enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
-    subgoal premises
-      apply code_simp
-      done
+  unfolding enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def
+    apply auto
+    apply code_simp+
     done
   done
 
 lemma dataflow_tree_to_graph_to_my_summ[simp]:
-  "dataflow_tree_to_graph (Comp [(0, 1) \<mapsto> (0, 1)] (Logic op1 default_internal_summary) (Logic op2 default_internal_summary)) = (my_summ :: (2, 1) location \<Rightarrow> (2, 1) location \<Rightarrow> _ antichain)"
-  unfolding dataflow_tree_to_graph_def Let_def default_internal_summary_def
+  "dataflow_tree_to_graph (Comp [(0, 1) \<mapsto> (0, 1)] (Logic op1 default_internal_summary) (Logic op2 default_internal_summary)) = (my_summ :: (2, 1) location \<Rightarrow> (2, 1) location \<Rightarrow> _ list)"
+  unfolding dataflow_tree_to_graph_def Let_def default_internal_summary_def comp_def
   apply (simp only: split: prod.splits)
   apply (intro allI impI)
   apply (subst (5) if_P)
@@ -132,11 +134,27 @@ lemma dataflow_tree_to_graph_to_my_summ[simp]:
       done
     subgoal premises
       unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def no_self_loop_checker_def
-      by (auto simp add: antichain_empty antichain_from_list_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
+      by (auto simp add: antichain_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
     subgoal premises
       unfolding implementation_graph_checker_def
       unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def no_self_loop_checker_def
-      by (auto simp add: antichain_empty antichain_from_list_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
+      by (auto simp add: incomparable_def antichain_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
+ subgoal premises
+      unfolding implementation_graph_checker_def
+      unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def no_self_loop_checker_def
+      by (auto simp add: incomparable_def antichain_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
+ subgoal premises
+      unfolding implementation_graph_checker_def
+      unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def no_self_loop_checker_def
+      by (auto simp add: incomparable_def antichain_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
+ subgoal premises
+      unfolding implementation_graph_checker_def
+      unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def no_self_loop_checker_def
+      by (auto simp add: incomparable_def antichain_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
+ subgoal premises
+      unfolding implementation_graph_checker_def
+      unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def no_self_loop_checker_def
+      by (auto simp add: incomparable_def antichain_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
     done
   subgoal premises prems
     using prems(1) apply -
@@ -149,8 +167,7 @@ lemma dataflow_tree_to_graph_to_my_summ[simp]:
         using loc_2_1_cases[where l=l2] apply -
         apply (elim disjE; hypsubst_thin)
                        apply (auto 0 0 simp add: antichain_empty antichain_from_list_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
-        apply (rule FalseE)
-        apply code_simp
+        apply code_simp+
         done
       done
     done
@@ -178,7 +195,7 @@ lemma correctness_gen:
     and sg :: \<open>(2, 1, 't) subgraph\<close>
   assumes
     SUBGRAPH_INV:
-    \<open>summ sg = dataflow_tree_to_graph (G f ip_state bt_state)\<close>
+    \<open>summ sg = antichain_from_list oo dataflow_tree_to_graph (G f ip_state bt_state)\<close>
     \<open>nxt sg = graph_to_nxt (summ sg)\<close>
     \<open>graph_summar_nt (summ sg) (nxt sg) os\<close>
     and

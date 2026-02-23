@@ -139,15 +139,9 @@ definition "dataflow_tree_to_operator chns df = snd (dataflow_tree_to_operator_a
 
 fun dataflow_tree_to_graph_aux where
   "dataflow_tree_to_graph_aux n (Logic op su) = 
-    (if n < n + 1 then Some (n + 1) else None, (\<lambda> l1 l2. 
-    if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) 
-    then (let ints = su (idp (port l1)) (idp (port l2)) in if incomparable (set ints) \<and> distinct ints then ints else Code.abort (STR ''Invalid internal summary'') (\<lambda> _. []))
-    else []))"
+    (n+ 1, \<lambda> l1 l2. if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) then su (idp (port l1)) (idp (port l2)) else [])"
 | "dataflow_tree_to_graph_aux n (Comp wire dt1 dt2) = (
     let (n', summary1) = dataflow_tree_to_graph_aux n dt1 in
-    case n' of
-      None \<Rightarrow> (None, Code.abort (STR ''Operator type not big enough'') (\<lambda> _ _ _. []))
-    | Some n' \<Rightarrow>
     let (n'', summary2) = dataflow_tree_to_graph_aux n' dt2 in
         (n'', \<lambda> l1 l2. 
          if node l1 \<ge> n \<and> node l1 < n' \<and> node l2 \<ge> n \<and> node l2 < n' then summary1 l1 l2
@@ -162,7 +156,6 @@ fun dataflow_tree_to_graph_aux where
          )
    )"
 
-
 fun nodes_count where
   "nodes_count (Logic op su) = 1"
 | "nodes_count (Comp wire dt1 dt2) = nodes_count dt1 + nodes_count dt2"
@@ -174,7 +167,8 @@ definition "dataflow_tree_to_graph (df :: ('id :: {minus,one,plus,zero,ord,enum,
   if \<not> has_zero_cyc s \<and>
      no_self_loop_checker s \<and>
      implementation_graph_checker (weights_to_graph_fun (remove_non_zero_weights s)) \<and>
-     CARD ('id) = nodes_count df
+     CARD ('id) = nodes_count df \<and>
+     (\<forall> nid p1 p2. incomparable (set (ints nid p1 p2)) \<and> distinct (ints nid p1 p2))
   then raw_s
   else Code.abort (STR ''Control plane could not be build'') (\<lambda> _. ((\<lambda> _ _. []))))"
 
@@ -182,8 +176,8 @@ lemma compile_dataflow_tree_aux_same_loc:
   "(n'', intsum) = dataflow_tree_to_graph_aux n df \<Longrightarrow>
    intsum loc loc = []"
   apply (induct df arbitrary: n n'' intsum)
-  subgoal
-    by (cases loc; simp add: antichain_from_list_is_empty frontier_empty_zmset split: port.splits if_splits)
+  subgoal for x1 x2 n n'' intsum
+    by (cases loc; simp add: antichain_from_list_is_empty split: port.splits if_splits)
   subgoal for x1 df1 df2 n n'' intsum
     apply (clarsimp simp add: port.case_eq_if split: list.splits if_splits option.splits prod.splits; hypsubst_thin?)
     apply (metis list.simps(2))
@@ -331,7 +325,7 @@ lemma dataflow_tree_to_graph_aux_no_inp_to_other_operator_connection:
   done
 
 
-lemma dataflow_tree_to_graph_aux_incomparable_distinct:
+(* lemma dataflow_tree_to_graph_aux_incomparable_distinct:
   "dataflow_tree_to_graph_aux n dt = (m, su) \<Longrightarrow>
    incomparable (set (su l1 l2)) \<and> distinct (su l1 l2)"
   apply (induct dt arbitrary: n m su)
@@ -352,19 +346,19 @@ lemma dataflow_tree_to_graph_aux_incomparable_distinct:
         done
       done
     done
-  done
+  done *)
 
 lemma foldr_plus:
   "foldr (+) (map (\<lambda>(s, l, t). l) xs) ((a :: _ :: {monoid_add,ab_semigroup_add,order}) + b) = foldr (+) (map (\<lambda>(s, l, t). l) xs) b + a"
   by (induct xs arbitrary: a b)
    (auto simp add: Groups.add_ac)
 
-lemma dataflow_tree_to_graph_aux_increases:
-  "dataflow_tree_to_graph_aux (n :: 'id :: {minus,one,plus,zero,order}) dt = (Some m, su) \<Longrightarrow>
+(* lemma dataflow_tree_to_graph_aux_increases:
+  "dataflow_tree_to_graph_aux (n :: 'id :: {minus,one,plus,zero,order}) dt = (m, su) \<Longrightarrow>
    m > n"
   by (induct dt arbitrary: m su n)
-   (fastforce split: if_splits prod.splits option.splits)+
-
+   (fastforce split: if_splits prod.splits option.splits)+ *)
+(* 
 lemma dataflow_tree_to_graph_aux_lt_n:
   "dataflow_tree_to_graph_aux (n :: 'id :: {minus,one,plus,zero,order}) dt = (Some m, su) \<Longrightarrow>
    nid < n \<Longrightarrow>
@@ -394,8 +388,8 @@ lemma dataflow_tree_to_graph_aux_lt_n:
         using dataflow_tree_to_graph_aux_increases dual_order.strict_trans apply fastforce+
         done
       done
-    done
-
+    done *)
+(* 
 lemma dataflow_tree_to_graph_aux_gt_m:
   "dataflow_tree_to_graph_aux (n :: 'id :: {minus,one,plus,zero,order}) dt = (Some m, su) \<Longrightarrow>
    nid \<ge> m \<Longrightarrow>
@@ -431,72 +425,42 @@ lemma dataflow_tree_to_graph_aux_gt_m:
         done
       done
     done
+ *)
 
-definition "dataplane_graph su = (
-   (\<forall> l1 l2. incomparable (set (su l1 l2)) \<and> distinct (su l1 l2)) \<and>
-   (\<forall> nid1 nid2 p1 p2. su (Loc nid1 (Trg p1)) (Loc nid2 (Trg p2)) = [] \<and> su (Loc nid1 (Src p1)) (Loc nid2 (Src p2)) = []) \<and>
-   (\<forall> nid1 nid2 p1 p2. (\<forall> t \<in> set (su (Loc nid1 (Src p1)) (Loc nid2 (Trg p2))). t = 0) \<and>
-   (\<forall> nid1 nid2 p1 p2. nid1 \<noteq> nid2 \<longrightarrow> su (Loc nid1 (Trg p1)) (Loc nid2 (Src p2)) = []) \<and>
-   (\<forall> l. su l l = []))
-   )"
-
-lemma
-  assumes G: "dataflow_topology (antichain_from_list oo su) (+)"
+lemma  sumarry_in_path_weight:
+  assumes G: "Graph.graph (antichain_from_list oo su)"
   shows 
-  "t \<in> set (su l1 l2) \<Longrightarrow>
-   dataplane_graph su \<Longrightarrow>
-   (t :: _ :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) \<in>\<^sub>A graph.path_weight (\<lambda>x xa. antichain_from_list (su x xa)) l1 l2"
-  apply (subgoal_tac "Graph.graph (\<lambda>x xa. antichain_from_list (su x xa))")
-  subgoal premises prems
-    using prems(1,2) apply -
+    "t \<in> set (su l1 l2) \<Longrightarrow>
+   (\<forall> l1 l2. incomparable (set (su l1 l2))) \<Longrightarrow>
+   \<exists>t' \<le> t. (t' :: _ :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) \<in>\<^sub>A graph.path_weight (\<lambda>x xa. antichain_from_list (su x xa)) l1 l2"
   apply (subst Graph.graph.path_weight_def)
   subgoal
-    using prems(3) by auto
+    using G[unfolded comp_def] by auto
   subgoal
     apply simp
     apply (subst member_antichain.abs_eq)
      apply (clarsimp simp add: eq_onp_def)
      apply (rule graph.finite_minimal_antichain_path_weightp)
-    using prems(3) apply simp
-    unfolding minimal_antichain_def
-    apply safe
-    subgoal sorry
-    subgoal premises prems2 for t'
-      using prems2(4,3,2,1) apply -
-      apply (subst (asm) Graph.graph.path_weightp_def)
-      using prems(3) apply simp
-      apply clarsimp
-      subgoal for xs
-        apply hypsubst_thin
-        apply (induct xs arbitrary: l1 l2  rule: rev_induct)
-        subgoal
-          apply (erule graph.path.cases[OF prems(3)])
-           apply (auto simp add: dataplane_graph_def)
-          done
-        subgoal for x xs' l1 l2
-          apply (cases x)
-          apply clarsimp
-          apply hypsubst_thin
-          subgoal for la t' lb
-            apply (erule graph.path.cases[OF prems(3)]; simp; hypsubst_thin?)
-            subgoal for la' lb'
-              apply (cases l1; cases lb; cases la; simp)
-              subgoal for nid1 lp1 nid2 lp2 nid3 lp3
-                apply (cases lp1; cases lp2; cases lp3; simp; hypsubst_thin)
-                       apply (auto simp add: dataplane_graph_def)
-                subgoal for p1 p2 p3
-                  apply (cases "nid3 = nid2 \<and> nid1 = nid2")
-                  subgoal
-                    apply clarsimp
-                    apply hypsubst_thin
-                    oops
-
-
-lemma
-  "dataflow_tree_to_graph_aux (n :: _ :: {minus,one,plus,zero,linorder}) dt = (m, su) \<Longrightarrow>
-    t \<in> set (su l1 l2) \<Longrightarrow>
-    (t :: _ :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) \<in>\<^sub>A graph.path_weight (\<lambda>x xa. antichain_from_list (su x xa)) l1 l2"
-  oops
+    using G[unfolded comp_def] apply assumption
+    unfolding minimal_antichain_def Graph.graph.path_weightp_def[OF G, unfolded comp_def]
+    apply clarsimp
+    apply (subgoal_tac "graph.path (\<lambda>xa xaa. antichain_from_list (su xa xaa)) l1 l2 [(l1, t, l2)]")
+    subgoal
+      by (smt (verit) \<open>t \<in> set (su l1 l2) \<Longrightarrow> \<forall>l1 l2. incomparable (set (su l1 l2)) \<Longrightarrow> Graph.graph (\<lambda>x xa. antichain_from_list (su x xa))\<close> add_le_cancel_left graph.path.simps
+          graph.path_path_weight graph.path_weight_conv_path graph.sum_path_weights_append_singleton graph.sum_weights_append list_e_eq_lel(1) map_append
+          not_Cons_self)
+    subgoal
+      apply (rule graph.path.intros(2)[where xs=Nil, simplified])
+      using G[unfolded comp_def] apply assumption
+       apply (rule graph.path.intros(1))
+      using G[unfolded comp_def] apply assumption
+       apply simp_all
+      apply (rule in_antichain_from_list)
+      unfolding incomparable_def apply fastforce
+      apply assumption
+      done
+    done
+  done
 
 global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "antichain_from_list oo (dataflow_tree_to_graph (df :: (_, _, _, _, 't :: {bot,ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le}) dataflow_tree))" "(+)"
   for df
@@ -504,8 +468,176 @@ global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "antic
     and after_summary = "dataflow_topology.after_summary (+) :: 't zmultiset \<Rightarrow> 't antichain \<Rightarrow> 't zmultiset"
   by simp
 
+
+    thm  dataflow_topology_from_tree.dataflow_topology_axioms[unfolded comp_def] 
+
+
 notation dataflow_topology_from_tree.followed_by (infixl \<open>-+-\<close> 65)
 notation dataflow_topology_from_tree.after_summary (infixl \<open>+++\<close> 65)
+
+
+lemma in_empty_graph_False:
+  "(s :: _ :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) \<in>\<^sub>A graph.path_weight (\<lambda>x xa. {}\<^sub>A) l1 l2 \<Longrightarrow>
+    l1 \<noteq> l2 \<Longrightarrow> False"
+  apply(subgoal_tac "Graph.graph (\<lambda>x xa. {}\<^sub>A)")
+   apply (subst (asm) Graph.graph.path_weight_def)
+  apply assumption
+  subgoal
+  apply clarsimp
+  subgoal premises prems
+    using prems(1) apply -
+    unfolding Graph.graph.path_weightp_def[OF prems(3), unfolded comp_def]
+    apply (subst (asm) in_antichain_minimal_antichain)
+    subgoal
+      apply (rule rev_finite_subset[where B="{}"])
+       apply auto
+       apply (erule graph.path.cases[OF prems(3)])
+      using prems(2) mem_antichain_nonempty apply auto
+      done
+    subgoal
+      unfolding minimal_antichain_def
+      apply clarsimp
+      apply (erule graph.path.cases[OF prems(3)])
+      using prems(2) mem_antichain_nonempty apply auto
+      done
+    done
+  done
+  subgoal
+    apply standard
+    using dataflow_topology_from_tree.plus_mono apply auto
+    done
+  done
+
+lemma path_ConsE:
+  assumes G: "Graph.graph weights"
+  shows "graph.path weights l1 l3 ((l2, s, l2') # xs) \<Longrightarrow> (l1 = l2 \<Longrightarrow> graph.path weights l2' l3 xs \<Longrightarrow> s \<in>\<^sub>A weights l2 l2' \<Longrightarrow> P) \<Longrightarrow> P"
+  by (induct l1 l3 "((l2, s, l2') # xs)" arbitrary: xs rule: graph.path.induct[OF G, consumes 1])
+    (auto simp: append_eq_Cons_conv elim!: graph.path0E[OF G] intro: graph.path.intros[OF G])
+
+lemma mem_antichain_nonempty_alt[simp]: "s \<notin>\<^sub>A {}\<^sub>A"
+  using mem_antichain_nonempty by auto
+
+lemma path_ConsI[intro]:
+  assumes G: "Graph.graph weights"
+ shows "graph.path weights l2 l3 xs \<Longrightarrow> lbl \<in>\<^sub>A weights l1 l2 \<Longrightarrow> graph.path weights l1 l3 ((l1, lbl, l2) # xs)"
+  apply (induct l2 l3 xs arbitrary: rule: graph.path.induct[OF G, consumes 1])
+  subgoal for l1 l2
+    apply hypsubst_thin
+    apply (rule graph.path.intros(2)[OF G, where xs=Nil, simplified])
+     apply (rule graph.path.intros(1)[OF G])
+    apply simp_all
+    done
+  subgoal for l1a l2 xs lbla l3
+    by (auto simp flip: append.simps intro: graph.path.intros[OF G])
+  done
+
+lemma path_weight_Trg_decompose:
+  assumes G: "Graph.graph su"
+  shows "s \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) l \<Longrightarrow>
+   l \<noteq> Loc nid (Trg p) \<Longrightarrow>
+   (\<forall> nid1 nid2 p2 p1 . su (Loc nid1 (Trg p1)) (Loc nid2 (Trg p2)) = {}\<^sub>A) \<Longrightarrow>
+   (\<forall> nid1 nid2 p2 p1 . nid1 \<noteq> nid2 \<longrightarrow> su (Loc nid1 (Trg p1)) (Loc nid2 (Src p2)) = {}\<^sub>A) \<Longrightarrow>
+    \<exists>t p'.
+       t \<in>\<^sub>A (su (Loc nid (Trg p)) (Loc nid (Src p'))) \<and>
+       (\<exists>s'. s' \<in>\<^sub>A graph.path_weight su (Loc nid (Src p')) l \<and> s = t -+- s')"
+  apply (drule graph.path_weight_conv_path[OF G])
+  apply clarsimp
+  subgoal for xs
+    apply (rotate_tac 3)
+    apply (cases xs; hypsubst_thin?)
+    subgoal 
+      apply (erule graph.path.cases[OF G])
+       apply auto
+      done
+    subgoal for a xs
+      apply (cases a; simp; hypsubst_thin)
+      subgoal for l1 t' l2
+        apply (erule path_ConsE[OF G])
+        apply simp_all
+        apply hypsubst_thin
+        apply (cases l2; simp)
+        subgoal for nid2 lp2
+          apply (cases lp2; simp; hypsubst_thin)
+          subgoal for p2
+            apply (cases "nid = nid2")
+            subgoal
+              apply simp
+              apply hypsubst_thin
+              apply (rule exI[of _ t'])
+              apply (rule exI[of _ p2])
+              apply simp
+              apply (subst graph.path_weight_def[OF G])
+              apply simp
+              apply (subst member_antichain.abs_eq)
+               apply (simp add: eq_onp_def)
+               apply (rule  Graph.graph.finite_minimal_antichain_path_weightp[OF G])
+              unfolding minimal_antichain_def
+              apply clarsimp
+              apply (intro conjI)
+               apply (subst graph.path_weightp_def[OF G])
+               apply auto[1]
+              apply safe
+              subgoal for t''
+                apply (subst (asm) graph.path_weightp_def[OF G])
+                apply clarsimp
+                subgoal for ys
+                  apply (drule spec[of _ "(Loc nid2 (Trg p), t', Loc nid2 (Src p2)) # ys"])
+                  apply (drule mp)
+                   apply (rule path_ConsI[OF G])
+                    apply assumption+
+                  apply auto
+                  done
+                done
+              done
+            subgoal
+              by auto
+            done
+          done
+        done
+      done
+    done
+  done
+
+
+lemma graph_path_weight_Trg_Src:
+  assumes G: " Graph.graph (\<lambda>x xa. antichain_from_list (su x xa))"
+  shows "s \<in>\<^sub>A graph.path_weight (\<lambda>x xa. antichain_from_list (su x xa)) (Loc nid (Trg p)) l \<Longrightarrow>
+   l \<noteq> Loc nid (Trg p) \<Longrightarrow>
+   (m, su) = dataflow_tree_to_graph_aux n dt \<Longrightarrow>
+    \<exists>t p'.
+       t \<in> set (su (Loc nid (Trg p)) (Loc nid (Src p'))) \<and>
+       (\<exists>s'. s' \<in>\<^sub>A graph.path_weight (\<lambda>x xa. antichain_from_list (su x xa)) (Loc nid (Src p')) l \<and> s = t -+- s') "
+  apply (drule path_weight_Trg_decompose[OF G])
+     apply simp_all
+  apply (metis antichain_from_list_empty_antichain dataflow_tree_to_graph_aux_no_inp_and_out_connection
+      dataflow_tree_to_graph_aux_no_inp_to_other_operator_connection) 
+  apply (metis antichain_from_list_empty_antichain
+      dataflow_tree_to_graph_aux_no_inp_to_other_operator_connection) 
+  apply clarsimp
+  using in_antichain_from_listD apply blast
+  done
+
+
+lemma dataflow_tree_to_graph_Trg_decompose:
+  "(s :: _ :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) \<in>\<^sub>A graph.path_weight (\<lambda>x xa. antichain_from_list (su x xa)) (Loc nid (Trg p)) l \<Longrightarrow>
+   l \<noteq> Loc (nid :: _ :: {enum,minus,one,plus,zero,hashable,linorder}) (Trg (p :: _ :: {enum,hashable,linorder})) \<Longrightarrow>
+   su = dataflow_tree_to_graph dt \<Longrightarrow>
+    \<exists>t p'.
+       t \<in> set (su (Loc nid (Trg p)) (Loc nid (Src p'))) \<and>
+       (\<exists>s'. s' \<in>\<^sub>A graph.path_weight (\<lambda>x xa. antichain_from_list (su x xa)) (Loc nid (Src p')) l \<and> s = t -+- s') "
+  unfolding dataflow_tree_to_graph_def Let_def
+  apply (cases "dataflow_tree_to_graph_aux 0 dt"; simp only: prod.case simp_thms split: if_splits)
+  subgoal for n su'
+  apply (rule graph_path_weight_Trg_Src)
+       apply (rule dataflow_topology.axioms(1)[of _ "(+)"]; hypsubst_thin?)
+    using dataflow_topology_from_tree.dataflow_topology_axioms[unfolded comp_def, of dt, simplified] 
+       apply (simp add: dataflow_tree_to_graph_def)
+      apply assumption+
+    apply (erule sym)
+    done
+  subgoal 
+    by (auto dest: in_empty_graph_False split: prod.splits)
+  done
 
 abbreviation AF where
   "AF \<equiv> dataflow_topology.after_summary (-+-)"
