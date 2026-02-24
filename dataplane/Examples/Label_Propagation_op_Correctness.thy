@@ -74,7 +74,7 @@ abbreviation \<open>initial_state_increment inc \<equiv> \<lparr>
 abbreviation \<open>logic_map n \<equiv> map_op (case_option (Inl n) (\<lambda>p. Inr (n, p))) (case_option (Inl n) (\<lambda>p. Inr (n, p)))\<close>
 abbreviation \<open>comp_map \<equiv> map_op (case_sum id id) (case_sum id id)\<close>
 
-abbreviation \<open>op0 \<equiv> logic_map (0 :: 3) (ooo_input_op {|0 :: 2|} (initial_state_input (llist_of [Data \<bottom> (0, 1)])))\<close>
+abbreviation \<open>op0 \<equiv> logic_map (0 :: 3) (ooo_input_op {|0 :: 2|} (initial_state_input (llist_of [Data \<bottom> (0, 1), Data \<bottom> (2, 3)])))\<close>
 abbreviation \<open>op1 \<equiv> logic_map (1 :: 3) (label_propagation_op initial_state_label_prop)\<close>
 abbreviation \<open>op2 \<equiv> logic_map (2 :: 3) (increment_op (0 :: 2) 0 (MyPair 0 1) (initial_state_increment (MyPair 0 1)))\<close>
 abbreviation \<open>cc_op \<equiv> comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
@@ -105,6 +105,7 @@ definition \<open>my_summ = (\<lambda>l1 l2.
    else {}\<^sub>A)\<close>
 
 abbreviation \<open>test_sg \<equiv> init_subgraph my_summ [(Loc 0 (Src 0), \<bottom>, 1)]\<close>
+(*
 abbreviation \<open>debug_test_sg f \<equiv> map (\<lambda>(n, p). ((Loc (Rep_bit1 n) (Src (Rep_bit0 p))),
   f (pt_tr test_sg) (Loc n (Src p)))) (List.product Enum.enum Enum.enum)\<close>
 value [GHC] \<open>debug_test_sg c_work\<close>
@@ -112,9 +113,11 @@ value [GHC] \<open>debug_test_sg c_pts\<close>
 value [GHC] \<open>debug_test_sg c_imp\<close>
 value [GHC] \<open>map (\<lambda>(n, p). (Loc (Rep_bit1 n) (Src (Rep_bit0 p)), map_option (\<lambda>(n, p). Loc (Rep_bit1 n) (Trg (Rep_bit0 p)))
   (nxt test_sg (n, p)))) (List.product (Enum.enum :: 3 list) (Enum.enum :: 2 list))\<close>
+*)
 
 abbreviation \<open>test_op \<equiv> dataflow_op test_sg cc_op\<close>
-value [GHC] \<open>check_prefix 25 [((1, 0), (Inr [[0, 1]], MyPair 0 0))] test_op\<close>
+value [GHC] \<open>trace_exec test_op\<close>
+value [GHC] \<open>check_prefix 100 [((1, 0), (Inr [[0, 1], [2, 3]], MyPair 0 0))] test_op\<close>
 
 notepad begin
   define inc where \<open>inc = MyPair (0 :: nat) (1 :: nat)\<close>
