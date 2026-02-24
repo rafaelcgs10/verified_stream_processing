@@ -88,7 +88,7 @@ definition "graph_summar_nt su nt os = (
   inj_on nt (Map.dom nt) 
   )"
 
-lemma
+lemma graph_summar_nt:
   assumes
     \<open>raw_s = dataflow_tree_to_graph (dt :: ('a :: {enum,minus,one,plus,zero,hashable,linorder}, 'b :: {enum,hashable,linorder}, 'c, 'd, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) dataflow_tree)\<close>
     \<open>summ sg = antichain_from_list oo raw_s\<close>
@@ -102,12 +102,14 @@ lemma
        apply simp_all
   subgoal for nid p p' t
     unfolding comp_def
-    apply (rule sumarry_in_path_weight)
+    apply (rule summary_in_path_weight)
     subgoal
       by standard
      apply assumption
     subgoal
-      sorry
+      unfolding dataflow_tree_to_graph_def
+      apply (simp split: if_splits prod.splits)
+      done
     done
   subgoal
     apply (rule zero_in_graph_path_weight)
@@ -118,12 +120,18 @@ lemma
     apply (metis assms(2) dataflow_tree_to_graph_Src_Trg_zero) 
     done
   subgoal
-    sorry
-  subgoal
-    sorry
+      unfolding dataflow_tree_to_graph_def
+      apply (simp split: if_splits prod.splits)
+      done
+    subgoal
+      unfolding dataflow_tree_to_graph_def
+      apply (fastforce simp add:  incomparable_def split: if_splits prod.splits)
+      done
   subgoal for s nid p l
-    apply hypsubst_thin
-  oops
+    unfolding comp_def
+    using dataflow_tree_to_graph_Trg_decompose 
+    by blast
+  done
 
 (* ======> FIXME: move me \<le>====== *)
 lemma sum_eq_singleton:

@@ -120,56 +120,41 @@ lemma weights_to_graph_fun_to_next[simp]:
 
 lemma dataflow_tree_to_graph_to_my_summ[simp]:
   "dataflow_tree_to_graph (Comp [(0, 1) \<mapsto> (0, 1)] (Logic op1 default_internal_summary) (Logic op2 default_internal_summary)) = (my_summ :: (2, 1) location \<Rightarrow> (2, 1) location \<Rightarrow> _ list)"
-  unfolding dataflow_tree_to_graph_def Let_def default_internal_summary_def comp_def
-  apply (simp only: split: prod.splits)
-  apply (intro allI impI)
-  apply (subst (5) if_P)
+  unfolding dataflow_tree_to_graph_def Let_def default_internal_summary_def comp_def                                               
+  apply (simp only: split: if_splits prod.splits)
+  apply (intro allI impI conjI)
   subgoal
-    apply auto
-    subgoal premises prems
-      using prems(3) apply -
-      apply (auto simp add: if_distrib enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: list.splits if_splits sum.splits option.splits sum.splits)
-      apply code_simp
-      apply eval
-      done
-    subgoal premises
-      unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def no_self_loop_checker_def
-      by (auto simp add: antichain_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
-    subgoal premises
-      unfolding implementation_graph_checker_def
-      unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def no_self_loop_checker_def
-      by (auto simp add: incomparable_def antichain_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
- subgoal premises
-      unfolding implementation_graph_checker_def
-      unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def no_self_loop_checker_def
-      by (auto simp add: incomparable_def antichain_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
- subgoal premises
-      unfolding implementation_graph_checker_def
-      unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def no_self_loop_checker_def
-      by (auto simp add: incomparable_def antichain_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
- subgoal premises
-      unfolding implementation_graph_checker_def
-      unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def no_self_loop_checker_def
-      by (auto simp add: incomparable_def antichain_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
- subgoal premises
-      unfolding implementation_graph_checker_def
-      unfolding weights_to_graph_fun_def enum_location_def enum_num1_def Enum.enum_prod_def no_self_loop_checker_def
-      by (auto simp add: incomparable_def antichain_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
-    done
-  subgoal premises prems
-    using prems(1) apply -
     apply clarsimp
-    subgoal premises
-      unfolding my_summ_def
+    subgoal premises prems
       apply (rule ext)+
       subgoal for l1 l2
-        using loc_2_1_cases[where l=l1] apply -
-        using loc_2_1_cases[where l=l2] apply -
-        apply (elim disjE; hypsubst_thin)
-                       apply (auto 0 0 simp add: antichain_empty antichain_from_list_empty enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def split: sum.splits option.splits sum.splits)
-        apply code_simp+
+        apply (cases l1; cases l2)
+        apply simp
+        subgoal for nid1 lp1 nid2 lp2
+          apply (cases lp1; cases lp2; simp add: my_summ_def)
+          apply code_simp+
+          done
         done
       done
+    done
+  subgoal
+    apply (rule FalseE)
+    apply (auto; hypsubst_thin)
+    apply code_simp
+    subgoal
+      unfolding no_self_loop_checker_is_graph_checker graph_checker_def
+      by (clarsimp simp add: image_iff split_beta split: prod.splits if_splits port.splits)
+    apply code_simp
+    subgoal
+      by eval
+      subgoal for l1 l2
+        apply (cases l1; cases l2)
+        apply simp
+        subgoal for nid1 lp1 nid2 lp2
+          by (cases lp1; cases lp2; simp add: incomparable_def if_distrib split: if_splits)
+        done
+      subgoal for nid
+      by (clarsimp simp add: image_iff split_beta split: prod.splits if_splits port.splits)
     done
   done
 

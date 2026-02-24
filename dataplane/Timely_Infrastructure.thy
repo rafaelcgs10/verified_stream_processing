@@ -168,7 +168,8 @@ definition "dataflow_tree_to_graph (df :: ('id :: {minus,one,plus,zero,ord,enum,
      no_self_loop_checker s \<and>
      implementation_graph_checker (weights_to_graph_fun (remove_non_zero_weights s)) \<and>
      CARD ('id) = nodes_count df \<and>
-     (\<forall> nid p1 p2. incomparable (set (ints nid p1 p2)) \<and> distinct (ints nid p1 p2))
+     (\<forall> l1 l2. incomparable (set (raw_s l1 l2))) \<and>
+     (\<forall> nid p1 p2. distinct (ints nid p1 p2))
   then raw_s
   else Code.abort (STR ''Control plane could not be build'') (\<lambda> _. ((\<lambda> _ _. []))))"
 
@@ -427,7 +428,7 @@ lemma dataflow_tree_to_graph_aux_gt_m:
     done
  *)
 
-lemma  sumarry_in_path_weight:
+lemma  summary_in_path_weight:
   assumes G: "Graph.graph (antichain_from_list oo su)"
   shows 
     "t \<in> set (su l1 l2) \<Longrightarrow>
@@ -468,13 +469,8 @@ global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "antic
     and after_summary = "dataflow_topology.after_summary (+) :: 't zmultiset \<Rightarrow> 't antichain \<Rightarrow> 't zmultiset"
   by simp
 
-
-    thm  dataflow_topology_from_tree.dataflow_topology_axioms[unfolded comp_def] 
-
-
 notation dataflow_topology_from_tree.followed_by (infixl \<open>-+-\<close> 65)
 notation dataflow_topology_from_tree.after_summary (infixl \<open>+++\<close> 65)
-
 
 lemma in_empty_graph_False:
   "(s :: _ :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) \<in>\<^sub>A graph.path_weight (\<lambda>x xa. {}\<^sub>A) l1 l2 \<Longrightarrow>
