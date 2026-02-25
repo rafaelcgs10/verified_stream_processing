@@ -46,6 +46,19 @@ lemma outputs_at_target_consumes[simp]:
   apply (auto split: if_splits prod.splits)
   done
 
+lemma outputs_at_target_obtain_progress[simp]:
+  "outputs_at_target su (os(nid := fst (obtain_progress (os nid)))) = outputs_at_target su os"
+  unfolding outputs_at_target_def consumes_def Src_from_Trg_def add_caps_def
+  apply (rule ext)+
+  apply (auto split: if_splits prod.splits)
+  done
+
+lemma inputs_at_target_obtain_progress[simp]:
+  "inputs_at_target (os(nid := fst (obtain_progress (os nid)))) = inputs_at_target os"
+  unfolding inputs_at_target_def obtain_progress_def
+  apply (rule ext)+
+  apply (auto split: if_splits prod.splits)
+  done
 lemma inputs_at_target_consumes[simp]:
   "inputs_at_target (os(nid := consumes (os nid) p t d)) = BENQ (nid, p) (d, t) (inputs_at_target os)"
   unfolding inputs_at_target_def consumes_def add_caps_def BENQ_def

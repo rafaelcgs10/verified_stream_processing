@@ -1600,7 +1600,18 @@ lemma produ_add_caps[simp]:
   unfolding add_caps_def
   apply auto
   done
-
+lemma outpu_obtain_progress[simp]:
+  "outpu (fst (obtain_progress os)) = outpu os"
+  unfolding obtain_progress_def by simp
+lemma inter_obtain_progress[simp]:
+  "inter (fst (obtain_progress os)) = []"
+  unfolding obtain_progress_def by simp
+lemma produ_obtain_progress[simp]:
+  "produ (fst (obtain_progress os)) = []"
+  unfolding obtain_progress_def by simp
+lemma consu_obtain_progress[simp]:
+  "consu (fst (obtain_progress os)) = []"
+  unfolding obtain_progress_def by simp
 lemma set_zmset_zmset_of_mset_set[simp]:
   "finite S \<Longrightarrow>
    set_zmset (zmset_of (mset_set S)) = S"
@@ -1638,6 +1649,16 @@ lemma frontier_less_equal_ifrontierI_alt:
    frontier_less_equal (frontier (c_pts c l)) t \<Longrightarrow>
    frontier_less_equal (ifrontier su (-+-) c l') (t + t'')"
   by (meson add_left_mono frontier_less_equal_ifrontierI frontier_less_equal_trans)
+
+
+lemma frontier_less_equal_le_frontier:
+  "(\<forall> (l, t, m) \<in> set A. frontier_less_equal (f l) t) \<Longrightarrow>
+   f l \<le> frontier (zmset (map snd (filter (\<lambda>(l', t, d). l = l') A)))"
+  apply (induct A rule: rev_induct)
+   apply simp
+  apply (clarsimp split: prod.splits)
+  apply (smt (verit, del_insts) frontier_le_add frontier_less_equal_iff2 less_eq_antichain_def member_frontier_pos_zmset zcount_empty zcount_update_zmultiset)
+  done
 
 lemma in_frontier_zmset_image:
   "(\<forall> t. zcount M t \<ge> 0) \<Longrightarrow>
