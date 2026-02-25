@@ -3,8 +3,6 @@ theory Timely_Infrastructure_Dis
 imports
     "HOL-ex.Sketch_and_Explore" 
     Timely_Infrastructure
-    "Examples/Source_op"
-    "Examples/Set_op"
 begin
 
 subsection \<open>Extended extension (allows for communication)\<close>
@@ -63,53 +61,6 @@ lemma exchange_op_code[code]: "exchange_op worker pact op =
     unfolding image_def
     by fastforce
   done
-
-(*
-datatype (discs_sels) ('ip, 'op, 'd, 'w :: enum) exchange_op_aux =
-  exchange_Read_aux "'ip + 'ip" "'d \<Rightarrow> ('ip, 'op, 'd) op"
-  | exchange_Write_aux "('ip, 'op, 'd) op" "'op \<times> 'w" 'd
-  | exchange_Silent_aux "('ip, 'op, 'd) op"
-
-abbreviation eval_exchange_op_aux :: "(('ip, 'op, 'd) op \<Rightarrow> ('ip + 'ip, 'op \<times> 'w :: enum, 'd) op) \<Rightarrow> ('ip, 'op, 'd, 'w) exchange_op_aux \<Rightarrow> ('ip + 'ip, 'op \<times> 'w, 'd) op" where
-  "eval_exchange_op_aux c aux \<equiv> (case aux of
-    exchange_Read_aux p f \<Rightarrow> Read p (\<lambda> d. c (f d))
-  | exchange_Write_aux op q x \<Rightarrow> Write (c op) q x
-  | exchange_Silent_aux op \<Rightarrow> Silent (c op))"
-
-corec exchange_op :: "'w :: enum \<Rightarrow> ('w \<Rightarrow> 'op \<Rightarrow> 'd \<Rightarrow> 'w) \<Rightarrow> ('ip, 'op, 'd) op \<Rightarrow> ('ip + 'ip, 'op \<times> 'w, 'd) op" where
-  "exchange_op worker pact op =
-     Choice (cimage (eval_exchange_op_aux (exchange_op worker pact)) 
-      (cUnion (cimage (\<lambda> op. case op of
-     Read p f \<Rightarrow> cinsert (exchange_Read_aux (Inl p) f) (csingle (exchange_Read_aux (Inr p) f))
-     | Write op' p x \<Rightarrow> csingle (exchange_Write_aux op' (p, pact worker p x) x)
-     | Silent op' \<Rightarrow> csingle (exchange_Silent_aux op')
-     ) ((choices op)))))"
-
-subsection \<open>Basic simplification properties\<close>
-lemma exchange_op_code[code]: "exchange_op worker pact op =
-     Choice (cUnion (cimage (\<lambda> op. case op of
-     Read p f \<Rightarrow> cinsert (Read (Inl p) (\<lambda> d. (exchange_op worker pact (f d)))) (csingle (Read (Inr p) (\<lambda> d. (exchange_op worker pact (f d)))))
-     | Write op' p x \<Rightarrow> csingle (Write (exchange_op worker pact op') (p, pact worker p x) x)
-     | Silent op' \<Rightarrow> csingle (Silent (exchange_op worker pact op'))
-     ) ((choices op))))"
-  apply (subst exchange_op.code)
-  apply (unfold cimage_cUn op.inject)
-   apply (auto simp add: cset.map_comp o_def cimage_cUn intro!: arg_cong2[where f = cUn] cimage_cong
-      split: exchange_op_aux.splits op.splits option.splits)
-  subgoal for p f
-    unfolding image_def
-    by fastforce
-  subgoal for p f
-    unfolding image_def
-    by fastforce
-  subgoal for op p x
-    unfolding image_def
-    by fastforce
-  subgoal for op
-    unfolding image_def
-    by fastforce
-  done
-*)
 
 datatype ('id, 'p, 's, 'd, 't, 'w :: enum) dataflow_dis_tree = 
   "apply": Logic_Dis "('p option, 'p option, 's + 'd) op" "'p \<Rightarrow> 'p \<Rightarrow> 't list" "'w \<Rightarrow> 'p \<Rightarrow> ('s + 'd) \<Rightarrow> 'w"
@@ -632,7 +583,7 @@ In the paper (Verified progress tracking for TimelyDataflow) there the progress_
 record ('w :: enum, 'ip, 'op, 'd1, 'd2) conf =
   msg :: "'w \<Rightarrow> 'ip \<Rightarrow> 'd2 multiset"
   prog_msg :: "'w \<Rightarrow> 'w \<Rightarrow> 'd1 buf"
-  ops :: "'w \<Rightarrow> (('ip + 'ip) option, ('op \<times> 'w) option, 'd1 + 'd2) op"
+  ops :: "'w \<Rightarrow> (('ip + 'ip) option, ('w \<times> 'op) option, 'd1 + 'd2) op"
   used_wire :: "'op \<rightharpoonup> 'ip"
 
 definition init_conf where 
@@ -647,15 +598,21 @@ inductive step_dis :: "'w :: enum \<Rightarrow> ('ip, 'op, 'd2) IO \<Rightarrow>
   SDT: "step Tau (ops c w) op' \<Longrightarrow> c' = c\<lparr> ops := (ops c)(w := op') \<rparr> \<Longrightarrow> step_dis w Tau c c'"
 | SDTR: "step (Inp (Some (Inr p)) (Inr x)) (ops c w) op' \<Longrightarrow> c' = (c\<lparr> ops := (ops c)(w' := op'), msg := (msg c)(w := (msg c w)(p := msg c w p - {# x #}))\<rparr>) \<Longrightarrow> 
     \<exists>q. used_wire c q = Some p \<Longrightarrow> m \<in># msg c w p \<Longrightarrow> step_dis w Tau c c'"
-| SDTW: "step (Out (Some (q, w')) (Inr x)) (ops c w) op' \<Longrightarrow> c' = (c\<lparr> ops := (ops c)(w := op'), msg := (msg c)(w := (msg c w)(p := msg c w' p + {# x #}))\<rparr>) \<Longrightarrow> 
+| SDTW: "step (Out (Some (w', q')) (Inr x)) (ops c w) op' \<Longrightarrow> c' = (c\<lparr> ops := (ops c)(w := op'), msg := (msg c)(w := (msg c w)(p := msg c w' p + {# x #}))\<rparr>) \<Longrightarrow> 
     used_wire c q = Some p \<Longrightarrow> w' \<noteq> w \<Longrightarrow> step_dis w Tau c c'"
 | SDR: "step (Inp (Some p) (Inr x)) (ops c w) op' \<Longrightarrow> c' = (c \<lparr> ops := (ops c)(w := op') \<rparr>) \<Longrightarrow> p = Inl p' \<or> p = Inr p' \<Longrightarrow> \<forall>q. used_wire c q \<noteq> Some p' \<Longrightarrow> step_dis w (Inp p' x) c c'"
-| SDW: "step (Out (Some (q, w)) (Inr x)) (ops c w) op' \<Longrightarrow> c' = (c \<lparr> ops := ((ops c)(w := op')) \<rparr>) \<Longrightarrow> used_wire c q = None \<Longrightarrow> step_dis w (Out q x) c c'"
+| SDW: "step (Out (Some (w, q)) (Inr x)) (ops c w) op' \<Longrightarrow> c' = (c \<lparr> ops := ((ops c)(w := op')) \<rparr>) \<Longrightarrow> used_wire c q = None \<Longrightarrow> step_dis w (Out q x) c c'"
 | SDTUR: "step (Inp None (Inl (hd (prog_msg c w' w)))) (ops c w) op' \<Longrightarrow> c' = (c \<lparr> ops := (ops c)(w := op'), prog_msg := (prog_msg c)(w' := (prog_msg c w')(w := tl (prog_msg c w' w))) \<rparr>) \<Longrightarrow> step_dis w Tau c c'"
 | SDTUW: "step (Out None (Inl x)) (ops c w) op' \<Longrightarrow> c' = (c \<lparr> ops := (ops c)(w := op'), prog_msg := (prog_msg c)(w := \<lambda> w'. prog_msg c w w' @ [x]) \<rparr>) \<Longrightarrow> step_dis w Tau c c'"
 
+lemma step_dis_elim: "step_dis w io c c' \<Longrightarrow> undefined"
+  sorry
+
 inductive step_dis' :: "('ip, 'op, 'd2) IO \<Rightarrow> ('w :: enum, 'ip, 'op, 'd1, 'd2) conf \<Rightarrow> ('w, 'ip, 'op, 'd1, 'd2) conf \<Rightarrow> bool" where
   S: "step_dis w io c c' \<Longrightarrow> step_dis' io c c'"
+
+lemma step_dis'_elim : "step_dis' io c c' \<Longrightarrow> \<exists> w. step_dis w io c c'"
+  by (metis step_dis'.simps)
 
 definition sim_dis :: "(('ip, 'op, 'd2) op \<Rightarrow> ('w :: enum, 'ip, 'op, 'd1, 'd2) conf \<Rightarrow> bool) \<Rightarrow> ('ip, 'op, 'd2) op \<Rightarrow> ('w, 'ip, 'op, 'd1, 'd2) conf \<Rightarrow> bool" where
   "sim_dis R op c = ((\<forall>io op'. step io op op' \<longrightarrow> (\<exists>c'. step_dis' io c c' \<and> R op' c')) \<and> (\<forall>io c'. step_dis' io c c' \<longrightarrow> (\<exists>op'. step io op op' \<and> R op' c')))"
@@ -713,10 +670,7 @@ lemma bisim_dis_coinduct_upto''[consumes 1, case_names SIM1 SIM2]:
    op ~d c"
   using bisim_dis_coinduct_upto' by (smt (verit, ccfv_SIG))
 
-(*set_op source_op *)
 
-definition op_rapper where
-  "op_rapper f_xs S S' op = set_op S S' (scomp_op (source_op f_xs) op)"
 
 
 end
