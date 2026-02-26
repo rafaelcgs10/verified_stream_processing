@@ -870,4 +870,77 @@ lemma in_frontier_addEx:
   apply (smt (verit, del_insts) order_zmset_exists_foundation zcount_union)
   done
 
+
+lemma frontier_less_equal_frontier_sum_iff:
+  "finite A \<Longrightarrow>
+   (\<forall> a\<in>A. \<forall> t. zcount (f a) t \<ge> 0) \<Longrightarrow>
+   frontier_less_equal (frontier (sum f A)) t \<longleftrightarrow> (\<exists>a\<in>A. frontier_less_equal (frontier (f a)) t)"
+  apply (rule iffI)
+  subgoal
+    apply (induct A rule: finite_induct)
+     apply simp_all
+    using frontier_less_equal_add_cases apply blast
+    done
+  subgoal
+    apply clarsimp
+    subgoal for a
+    apply (induct A rule: finite_induct)
+     apply simp_all
+      apply (auto simp add: frontier_less_equal_addI sum_nonneg zcount_sum)
+      done
+    done
+  done
+
+
+lemma frontier_less_equal_add_frontier_le:
+  "\<forall> t \<in>#\<^sub>z X. frontier_less_equal (frontier A) t \<Longrightarrow>
+   frontier A \<le> frontier (A + X)"
+  unfolding frontier_less_equal_def less_eq_antichain_def
+  apply auto
+  subgoal for t
+    by (metis frontier_less_equal_def frontier_less_equal_iff2 in_frontier_addD pos_zcount_in_zmset)
+  done
+
+
+lemma frontier_less_equal_add_frontier_le_alt:
+  "\<forall> t \<in>#\<^sub>z X. frontier_less_equal (frontier A) t \<Longrightarrow>
+   frontier A \<le> frontier B \<Longrightarrow>
+   frontier A \<le> frontier (B + X)"
+  unfolding frontier_less_equal_def less_eq_antichain_def
+  apply auto
+  subgoal for t
+    by (metis antisym_conv1 frontier_comparable_False frontier_less_equal_add_cases_stronger frontier_less_equal_def frontier_less_equal_iff2 order_trans rel_simps(70) zcount_ne_zero_iff)
+  done
+
+lemma frontier_add_update_zmultiset_le:
+  "zcount A t + m > 0 \<Longrightarrow>
+   (frontier (A + update_zmultiset {#}\<^sub>z t m)) = frontier A + frontier {#t#}\<^sub>z"
+  apply transfer'
+  apply (auto simp add: zcount_update_zmultiset minimal_antichain_def)
+  subgoal for A m x y
+    by force
+  subgoal
+    by (metis basic_trans_rules(21) order_zmset_exists_foundation)
+  done
+
+lemma set_antichain_frontier_add_update_zmultiset_le:
+  "0 < zcount A t + m \<Longrightarrow>
+   \<not> frontier_less_equal (frontier A) t \<Longrightarrow>
+   set_antichain (frontier (A + update_zmultiset {#}\<^sub>z t m)) = {t' \<in> set_antichain (frontier A). \<not> t < t'} \<union> {t}"
+  unfolding frontier_less_equal_iff2
+  apply transfer'
+  subgoal for A t m
+  apply (auto simp add: zcount_update_zmultiset minimal_antichain_def )
+     apply (metis nless_le order_trans order_zmset_exists_foundation)
+    done
+  done
+
+lemma frontier_add_update_zmultiset_not_le:
+  "zcount A t + m \<le> 0 \<Longrightarrow>
+   m \<ge> 0 \<Longrightarrow>
+   frontier (A + update_zmultiset {#}\<^sub>z t m) = frontier A"
+  by transfer'
+   (force simp add: zcount_update_zmultiset minimal_antichain_def)
+
+
 end

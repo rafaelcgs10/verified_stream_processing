@@ -64,92 +64,113 @@ lemma frontier_sum_le_one:
   by (induct S  rule: finite_induct)
    (auto simp add: frontier_add_le_l frontier_add_le_r sum_nonneg zcount_sum)
 
+lemma frontier_sum_le_one_alt:
+  "finite S \<Longrightarrow>
+   (\<forall> l \<in> S - {l1}. frontier (f l) = frontier (g l)) \<Longrightarrow>
+   \<not> frontier (f l1) \<le> frontier (g l1) \<Longrightarrow>
+   l1 \<noteq> l2 \<Longrightarrow>
+   frontier (f l2) \<le> frontier (g l1) \<Longrightarrow>
+   (\<forall> l \<in> S. \<forall> t. zcount (f l) t \<ge> 0) \<Longrightarrow>
+   (\<forall> l \<in> S. \<forall> t. zcount (g l) t \<ge> 0) \<Longrightarrow>
+   frontier (\<Sum>loc\<in>S. f loc) \<le> frontier (\<Sum>loc\<in>S. g loc)"
+  oops
+
+lemma le_frontier_frontier_less_equal:
+  "\<forall> t \<in> fst ` set A. frontier_less_equal F t \<Longrightarrow>
+   F \<le> frontier (zmset A)"
+  unfolding frontier_less_equal_def less_eq_antichain_def
+  apply auto
+  subgoal for t
+    apply transfer
+    apply (auto simp add: zcount_zmset minimal_antichain_def)
+    by (smt (verit, del_insts) case_prod_beta filter_empty_conv list.map(1) sum_list_simps(1))
+  done
+
+lemma frontier_le_minus_gen2:
+  "X \<le> frontier B \<Longrightarrow>
+   (\<forall> t. zcount C t \<ge> 0) \<Longrightarrow>
+   X \<le> frontier (B - C)"
+  by (meson dual_order.trans frontier_below_eq_frontier_minus)
+
+lemma
+  "frontier X \<le> frontier A \<Longrightarrow>
+   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
+   (\<forall> t. zcount A t \<ge> 0) \<Longrightarrow>
+   (\<forall> t t'. zcount X t > 0\<longrightarrow> zcount B t' > 0 \<longrightarrow> \<not> t < t' \<and> \<not> t' < t) \<Longrightarrow>
+   (\<forall> t t'. zcount A t > 0 \<longrightarrow> zcount B t' > 0 \<longrightarrow> \<not> t < t' \<and> \<not> t' < t) \<Longrightarrow>
+   frontier X \<le> frontier (A + B)"
+  unfolding less_eq_antichain_def
+  apply transfer'
+  apply (auto simp add:  minimal_antichain_def)
+  oops
 
 lemma sorried:
   "finite S \<Longrightarrow>
-   S \<noteq> {} \<Longrightarrow>
-   frontier (\<Sum>loc\<in>S. f loc) \<le> x \<Longrightarrow>
-   (\<forall> l \<in> S. \<forall> t. zcount (f l) t \<ge> 0) \<Longrightarrow>
-   (\<exists> s \<in> S. frontier (f s) \<le> x)"
-  apply (cases "x = {}\<^sub>A")
-   apply simp
-  apply blast
+   (\<forall> a\<in>S. \<forall> t. zcount (f a) t \<ge> 0) \<Longrightarrow>
+   a \<in> S \<Longrightarrow>
+   ft \<in>\<^sub>A frontier (f a) \<Longrightarrow>
+   frontier_less_equal x ft \<Longrightarrow>
+   f a \<noteq> {#}\<^sub>z \<Longrightarrow>
+   (\<forall> a\<in>S. \<forall>b\<in>S. \<forall> t t'. zcount (f a) t > 0 \<longrightarrow> zcount (f b) t' > 0 \<longrightarrow> \<not> t < t' \<and> \<not> t' < t) \<Longrightarrow>
+   x \<le> frontier (sum f S)"
   apply (induct S rule: finite_induct)
    apply simp_all
-  subgoal
+  subgoal for x' F
     apply auto
+    subgoal 
+      apply hypsubst_thin
+      oops
+
+lemma sorried:
+  "finite S \<Longrightarrow>
+   finite S' \<Longrightarrow>
+   (\<forall> l \<in> S. \<forall> t. zcount (f l) t \<ge> 0) \<Longrightarrow>
+   (\<forall> l \<in> S'. \<forall> t. zcount (f l) t \<ge> 0) \<Longrightarrow>
+   (\<forall> l \<in> S. \<exists> l' \<in> S'. frontier (f l) \<le>  frontier (f l')) \<Longrightarrow>
+   frontier (\<Sum>loc\<in>S. f loc) \<le> frontier (\<Sum>loc\<in>S'. f loc)"
+  oops
+
+lemma frontier_le_image_gen:
+  "frontier M \<le> frontier M' \<Longrightarrow>
+   (\<forall> t. zcount M' t \<ge> 0) \<Longrightarrow>
+   (\<forall> t. zcount M t \<ge> 0) \<Longrightarrow>
+   s \<le> s' \<Longrightarrow>
+   frontier {#t -+- s. t \<in>#\<^sub>z M#} \<le> frontier {#t -+- s'. t \<in>#\<^sub>z M'#}"
   unfolding less_eq_antichain_def
-  apply auto
-  apply transfer
-  apply (auto simp add: minimal_antichain_def)
-  oops
-
-lemma frontier_less_equal_le_frontier_alt:
-  "(\<forall> (l, t, m) \<in> set A. frontier_less_equal (f l) t) \<Longrightarrow>
-   (\<exists> (l, t, m) \<in> set A. f l \<le> frontier (zmset (map snd (filter (\<lambda>(l', t, d). l = l') A))))"
-  apply (induct A rule: rev_induct)
-   apply simp
-  oops
-
-lemma frontier_less_equal_le_frontier:
-  "(\<forall> (l, t, m) \<in> set A. frontier_less_equal (f l) t) \<Longrightarrow>
-   f l \<le> frontier (zmset (map snd A))"
-  apply (induct A rule: rev_induct)
-   apply simp
-  apply (clarsimp split: prod.splits)
-  oops
-
-
-lemma frontier_less_equal_le_frontier:
-  "(\<forall> (l, t, m) \<in> set A. frontier_less_equal (f l) t) \<Longrightarrow>
-   f l \<le> frontier (zmset (map snd (filter (\<lambda>(l', t, d). loc' = l') A)))"
-  oops
-
-lemma frontier_less_equal_frontier_sum_iff:
-  "finite A \<Longrightarrow>
-   (\<forall> a\<in>A. \<forall> t. zcount (f a) t \<ge> 0) \<Longrightarrow>
-   frontier_less_equal (frontier (sum f A)) t \<longleftrightarrow> (\<exists>a\<in>A. frontier_less_equal (frontier (f a)) t)"
-  apply (rule iffI)
-  subgoal
-    apply (induct A rule: finite_induct)
-     apply simp_all
-    using frontier_less_equal_add_cases apply blast
-    done
-  subgoal
-    apply clarsimp
-    subgoal for a
-    apply (induct A rule: finite_induct)
-     apply simp_all
-      apply (auto simp add: frontier_less_equal_addI sum_nonneg zcount_sum)
-      done
-    done
+  apply clarsimp
+  apply (metis dataflow_topology_from_tree.results_in_mono_raw in_frontier_zmset_image)
   done
 
+lemma
+  "finite S \<Longrightarrow>
+   incomparable S \<Longrightarrow>
+   A = antichain S \<Longrightarrow>
+   ft \<in>#\<^sub>z (\<Sum>s\<in>S. {#t -+- s#}\<^sub>z) \<Longrightarrow> \<exists>s. s \<in>\<^sub>A A \<and> ft = t -+- s"
+  oops
 
+lemma sum_zmset:
+  "finite S \<Longrightarrow>
+   (\<Sum>s\<in>S. {#t -+- s#}\<^sub>z) = zmset_of (mset_set (((-+-) t) ` S))"
+  apply (induct S rule: finite_induct)
+   apply simp_all
+  subgoal for x S
+    by (metis (no_types, lifting) add_left_imp_eq finite_imageI imageE mset_set.insert zmset_of_add_mset)
+  done
 
+lemma frontier_le_subset[simp]:
+  "frontier A \<le> frontier (zmset_of (mset_set {t' \<in> set_antichain (frontier A). P t'}))"
+  unfolding less_eq_antichain_def
+  apply auto
+  apply transfer'
+  apply (auto simp add: minimal_antichain_def)
+  done
 
-lemma frontier_less_equal_le_frontier:
-  "(\<forall> (l, t, m) \<in> set A. f l \<le> frontier (zmset (map snd (filter (\<lambda>(l', t, d). l = l') A)))) \<Longrightarrow>
-   (\<forall> (l, t, m) \<in> set A. frontier_less_equal (f l) t)"
-  apply clarsimp
-  subgoal for l t m
-    apply (drule bspec)
-     apply assumption
-    apply simp
-    subgoal
-      apply (induct A rule: rev_induct)
-       apply simp_all
-      apply auto
-      subgoal
-        oops
-
-
-lemma frontier_less_equal_change_multiplicities:
+lemma frontier_less_equal_change_multiplicities_ge_0:
   assumes D: "dataflow_topology su (-+-)"
   shows 
-  "(\<forall> (l, t, m) \<in> set A. frontier_less_equal (ifrontier su (+) c l) t \<and> m \<ge> 0)  \<Longrightarrow>
+    "(\<forall> (l, t, m) \<in> set A. frontier_less_equal (ifrontier su (+) c l) t \<and> m \<ge> 0) \<Longrightarrow>
    ifrontier su (+) c l \<le> ifrontier su (+) (change_multiplicities su A c) l"
-    apply (induct A arbitrary: c l rule: rev_induct)
+  apply (induct A arbitrary: c l rule: rev_induct)
    apply simp
   subgoal premises prems for a A c l
     using prems(2-) apply -
@@ -157,10 +178,10 @@ lemma frontier_less_equal_change_multiplicities:
     subgoal for l2 t m
       apply hypsubst_thin
       apply (subst change_multiplicities_comm)
-    apply (subst change_multiplicities_append)
-    apply (rule order.trans[rotated])
-     apply (rule prems(1))
-     apply simp_all
+      apply (subst change_multiplicities_append)
+      apply (rule order.trans[rotated])
+       apply (rule prems(1))
+       apply simp_all
       subgoal
         apply clarsimp
         subgoal for l' t' m'
@@ -180,164 +201,194 @@ lemma frontier_less_equal_change_multiplicities:
           done
         done
       subgoal premises prems2
-        using prems2(2-) apply -
-        apply (drule frontier_less_equal_ifrontierE)
-        using D apply assumption
+        using prems2(2,3) apply -
+        unfolding Propagate.dataflow_topology.implied_frontier_alt_def[OF D]
+        apply (clarsimp simp add: c_pts_change_multiplicities comp_def)
+        apply (drule frontier_less_equal_sumE)
+         apply simp_all
         apply clarsimp
-        subgoal for l3 s' t'
-          apply hypsubst_thin
-             unfolding Propagate.dataflow_topology.implied_frontier_alt_def[OF D]
-             apply (clarsimp simp add: c_pts_change_multiplicities comp_def)
-             apply (subst (1) comm_monoid_add_class.sum.subset_diff[where B="{l2,l3}"])
+        apply (drule frontier_less_equal_sumE)
+         apply simp_all
+        apply clarsimp
+        subgoal for l3 s'
+          unfolding frontier_less_equal_iff2
+          apply clarsimp
+          subgoal for ft
+            apply (subst (asm) in_frontier_zmset_image)
              apply simp_all
-             apply (subst (3) comm_monoid_add_class.sum.subset_diff[where B="{l2,l3}"])
-               apply auto
-             subgoal
-               apply (rule frontier_add_add_le)
-                  apply (simp_all add: zcount_sum sum_nonneg)
-               subgoal
-                 apply (cases "l3 = l2")
-                 subgoal
-                   apply simp
-                 apply (rule frontier_sum_le)
-                     apply simp_all
-                   apply clarsimp
- apply (rule frontier_le_image)
-                     apply simp_all
-     apply (smt (verit, ccfv_threshold) Timely_Infrastructure.update_zmultiset_plus add.commute add_cancel_right_right dataflow_topology_from_tree.obtain_elem_frontier dataflow_topology_from_tree.result_in_geq
-                     frontier_less_equal_iff2 le_add_same_cancel1 less_eq_antichain_def member_frontier_pos_zmset zcount_update_zmultiset zero_compare_simps(3))
-                   done
-                 subgoal
-                   apply simp
-                   apply (cases "frontier_less_equal (frontier (c_pts c l2)) t'")
-                   subgoal
-                   apply (rule frontier_add_le_gen)
-                  apply (simp_all add: zcount_sum sum_nonneg)
-                    apply (metis dataflow_topology_from_tree.after_summary_def dataflow_topology_from_tree.after_summary_zmset_of_nonneg frontier_le_remove_left verit_comp_simplify(2))
-       apply (rule frontier_sum_le)
-                     apply simp_all
-                   apply clarsimp
-                   apply (rule frontier_le_image)
-                   apply simp_all
-                   apply (rule frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus)
-                     apply (smt (verit, del_insts) add.commute dataflow_topology_from_tree.result_in_geq frontier_less_equal_iff2 le_add_same_cancel1 less_eq_antichain_def member_frontier_pos_zmset zcount_empty zcount_update_zmultiset
-                         zero_compare_simps(3))
-                     done
-                   subgoal
-
-
-
-                   find_theorems "_ \<le> frontier (_ + _)"
-
-
-
-                 apply (subst (1) comm_monoid_add_class.sum.subset_diff[where B="{l2}"])
-                 apply simp_all
-
-
-end
-                 apply (rule frontier_sum_le)
-                   apply simp_all
-                 apply clarsimp
-                 apply (rule frontier_le_image)
-                   apply simp_all
-                 apply (smt (verit, ccfv_threshold) Timely_Infrastructure.update_zmultiset_plus add.commute add_cancel_right_right dataflow_topology_from_tree.obtain_elem_frontier dataflow_topology_from_tree.result_in_geq
-                     frontier_less_equal_iff2 le_add_same_cancel1 less_eq_antichain_def member_frontier_pos_zmset zcount_update_zmultiset zero_compare_simps(3))
-                 done
-               subgoal
-                 by (clarsimp simp add: zcount_sum sum_nonneg)
-                    subgoal
-                 by (clarsimp simp add: zcount_sum sum_nonneg)
-               done
-             subgoal
-               apply (rule frontier_add_add_le)
-                  apply (simp_all add: zcount_sum sum_nonneg)
-               subgoal
-
-
-             find_theorems "frontier (_ + _) \<le> _"
-
-end
-             apply (subst (1 2) filter.simps(1))
-             apply (cases "\<exists>s. s \<in>\<^sub>A graph.path_weight su l2 l")
-             subgoal
-               apply clarsimp 
-               subgoal for s''
-
-                 find_theorems "sum _ _ = sum _ (_ - _) + _"
-
-end
-                 apply (rule frontier_sum_le_one[of _ l3])
-                    apply simp_all
-                 subgoal
-                   apply (drule Graph.graph.path_weight_elem_trans[rotated])
-                     apply assumption
-                   subgoal
-                     apply (rule dataflow_topology.axioms(1))
-                     using D apply assumption
-                     done
-                   apply clarsimp
-                   subgoal for u
-                     apply (rule frontier_sum_le_one[of _ u])
-                        apply simp_all
-                     using member_antichain.rep_eq apply blast 
-
-
-                   find_theorems frontier "_ \<le> _" image_zmset
-
-             thm frontier_sum_le_one
-             thm frontier_sum_le
-
-             thm frontier_sum_le_one
-
-                find_theorems filter Nil
-
-end
-                apply (cases "l2 = l")
+            apply clarsimp
+            subgoal for ft'
+              apply hypsubst_thin
+              apply (cases "zcount (c_pts c l2) t + m > 0")
+              subgoal
+                apply (subst (1) comm_monoid_add_class.sum.subset_diff[where B="{l2,l3}"])
+                  apply simp_all
+                apply (subst (3) comm_monoid_add_class.sum.subset_diff[where B="{l2,l3}"])
+                  apply simp_all
+                apply (rule frontier_add_add_le)
+                   apply (simp_all add: zcount_sum sum_nonneg)
+                apply (cases "l2 = l3")
                 subgoal
                   apply simp
-                  apply hypsubst_thin
                   apply (rule frontier_sum_le)
-                    apply simp_all
+                    apply (simp_all add: zcount_sum sum_nonneg)
+                  apply clarsimp
+                  apply (rule frontier_le_image)
+                    apply (simp_all add: zcount_sum sum_nonneg)
                   subgoal
+                    by (smt (verit) D Timely_Infrastructure.update_zmultiset_plus add.commute add_empty_zmultiset(2) dataflow_topology.results_in_zero dataflow_topology_from_tree.results_in_mono_raw in_frontier_addD le_iff_add
+                        less_eq_antichain_def zcount_union zcount_update_zmultiset)
+                      (* slow but ok *)
+                  done
+                subgoal
+                  apply simp
+                  apply (cases "frontier_less_equal (frontier (c_pts c l2)) t")
+                  subgoal
+                    apply (rule frontier_add_add_le)
+                       apply (simp_all add: zcount_sum sum_nonneg)
                     apply (rule frontier_sum_le)
-                      apply simp_all
+                      apply (simp_all add: zcount_sum sum_nonneg)
                     apply clarsimp
-                    subgoal for s'
-
-
-
-end
-            apply (rule frontier_sum_le_one[of _ l])
-              apply simp_all
+                    apply (rule frontier_le_image)
+                      apply (simp_all add: zcount_sum sum_nonneg)
+                    apply (smt (verit, ccfv_threshold) frontier_below_eq_frontier_plus_pos frontier_less_equal_add_frontier_le_alt group_cancel.rule0 zcount_empty zcount_ne_zero_iff zcount_update_zmultiset)
+                    done
                   subgoal
+                    apply (subst set_antichain_frontier_add_update_zmultiset_le)
+                      apply simp_all
+                    apply (subst mset_set.insert)
+                      apply simp_all
+                    using frontier_less_equal_zcount_pos member_frontier_pos_zmset set_antichain1 apply blast
+                    apply (subst add_zmset_add_single)
+                    apply (simp only:  comm_monoid_add_class.sum.distrib)
+                    apply (subst add.assoc)
+                    apply (subst (7) add.commute)
+                    apply (simp flip: add.assoc)
+                    apply (rule frontier_less_equal_add_frontier_le_alt)
+                    subgoal
+                      apply auto
+                      subgoal for ft
+                        apply (rule frontier_less_equal_addI)
+                          apply (simp_all add: zcount_sum sum_nonneg)
+                        apply (rule disjI2)
+                        apply (subst frontier_less_equal_frontier_sum_iff)
+                          apply (simp_all add: zcount_sum sum_nonneg)
+                        apply (subgoal_tac "\<exists> s. s \<in>\<^sub>A graph.path_weight su l2 l \<and> ft = t -+- s")
+                        subgoal
+                          apply clarsimp
+                          subgoal for s''
+                            apply (clarsimp simp flip: member_antichain.rep_eq)
+                            apply (drule graph.path_weight_elem_trans[rotated, of s'])
+                              apply assumption
+                            subgoal
+                              apply (rule dataflow_topology.axioms(1))
+                              using D apply assumption
+                              done
+                            apply clarsimp
+                            subgoal for u
+                              apply (rule bexI[rotated])
+                               apply (clarsimp simp flip: member_antichain.rep_eq)
+                               apply assumption
+                              unfolding frontier_less_equal_iff2
+                              apply clarsimp
+                              apply (rule exI[of _ "ft' -+- u"])
+                              apply (auto simp add: in_frontier_zmset_image)
+                              apply (smt (verit, del_insts) Groups.add_ac(2) add_le_imp_le_right add_mono_thms_linordered_semiring(1) group_cancel.add2)
+                              done
+                            done
+                          done
+                        subgoal
+                          apply (subst (asm) sum_zmset)
+                           apply simp_all
+                          apply (clarsimp simp flip: member_antichain.rep_eq)
+                          done
+                        done
+                      done
+                    apply (rule frontier_add_add_le)
+                       apply (simp_all add: zcount_sum sum_nonneg)
+                    subgoal
+                      apply (rule frontier_sum_le)
+                        apply (simp_all add: zcount_sum sum_nonneg)
+                      apply clarsimp
+                      apply (rule frontier_le_image_gen)
+                         apply (simp_all add: zcount_sum sum_nonneg)
+                      done
+                    done
+                  done
+                done
+              subgoal
+                apply (rule frontier_sum_le)
+                  apply (simp_all add: zcount_sum sum_nonneg)
+                apply (rule frontier_sum_le)
+                  apply (simp_all add: zcount_sum sum_nonneg)
+                apply clarsimp
+                apply (rule frontier_le_image)
+                  apply (simp_all add: frontier_add_update_zmultiset_not_le zcount_sum sum_nonneg)
+                done
+              done
+            done
+          done
+        done
+      done
+    done
+  done
 
+lemma frontier_less_equal_change_multiplicities_lt_0:
+  assumes D: "dataflow_topology su (-+-)"
+  shows 
+    "(\<forall> (l, t, m) \<in> set A. m < 0) \<Longrightarrow>
+   ifrontier su (+) c l \<le> ifrontier su (+) (change_multiplicities su A c) l"
+apply (induct A arbitrary: c l rule: rev_induct)
+   apply simp
+  subgoal premises prems for a A c l
+    using prems(2-) apply -
+    apply clarsimp
+    subgoal for l2 t m
+      apply hypsubst_thin
+      apply (subst change_multiplicities_comm)
+      apply (subst change_multiplicities_append)
+      apply (rule order.trans[rotated])
+       apply (rule prems(1))
+       apply simp_all
+      subgoal premises prems2
+        using prems2(2-) apply -
+        unfolding Propagate.dataflow_topology.implied_frontier_alt_def[OF D]
+        apply (clarsimp simp add: c_pts_change_multiplicities comp_def)
+        apply (rule frontier_sum_le)
+          apply (simp_all add: zcount_sum sum_nonneg)
+                apply (rule frontier_sum_le)
+          apply (simp_all add: zcount_sum sum_nonneg)
+        apply clarsimp
+                apply (rule frontier_le_image)
+          apply (simp_all add: zcount_update_zmultiset frontier_add_update_zmultiset_not_le zcount_sum sum_nonneg)
+        done
+      done
+    done
+  done
 
-                    find_theorems name: frontier_sum_le
-
-
-            apply (rule ifrontier_le_all_le[OF D])
-        apply auto
-
-            apply (rule frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus)
-
-
-            find_theorems t
-
-
-          find_theorems "frontier _ \<le> frontier (sum _ _)"
-
-
-   apply assumption
-
-
-      find_theorems change_multiplicities append
-
-
-    oops
-
-
-
+lemma frontier_less_equal_change_multiplicities:
+  assumes D: "dataflow_topology su (-+-)"
+  shows 
+    "(\<forall> (l, t, m) \<in> set A. frontier_less_equal (ifrontier su (+) c l) t) \<Longrightarrow>
+   ifrontier su (+) c l \<le> ifrontier su (+) (change_multiplicities su A c) l"
+  apply (subgoal_tac "change_multiplicities su A c = change_multiplicities su (filter (\<lambda> (l, t, m). m < 0) A) (change_multiplicities su (filter (\<lambda> (l, t, m). m \<ge> 0) A) c)")
+  subgoal premises prems
+    apply (subst prems(2))
+    apply (rule order.trans)
+    apply (rule frontier_less_equal_change_multiplicities_ge_0[OF D, where A="filter (\<lambda>(l, t, m). m \<ge> 0) A"])
+    using prems(1)
+     apply simp
+    apply force
+    apply (rule order.trans)
+    apply (rule frontier_less_equal_change_multiplicities_lt_0[OF D, where A="filter (\<lambda>(l, t, m). m < 0) A"])
+     apply simp_all
+    done
+  subgoal premises prems
+    apply (induct A rule: rev_induct)
+     apply auto
+    apply (smt (verit, best) change_multiplicities_append change_multiplicities_comm)+
+    done
+  done
 
 lemma dataplane_tracker_inv_progress:
   "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
@@ -371,11 +422,13 @@ lemma dataplane_tracker_inv_progress:
         apply (drule spec[of _ l])
         apply (rule order.trans)
          apply assumption
-
-        using prems(11)
-
-end
-      sorry
+        apply (rule frontier_less_equal_change_multiplicities)
+        using prems(1) apply assumption
+        using prems(11) apply -
+        unfolding changes_above_impl_inv_def extract_prog_def
+        apply auto
+        done
+      done
     subgoal premises prems
       using prems(8) apply -  
       unfolding chnls_imp_front_inv_def
