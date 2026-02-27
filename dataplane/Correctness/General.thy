@@ -24,6 +24,10 @@ definition "change_deltas_inv os = (\<forall> nid p t d. ((p, t, d) \<in> set (c
 definition "changes_above_impl_inv su c cgs = 
   ((\<forall>(l, t, d)\<in>set cgs. frontier_less_equal (ifrontier su (+) c l) t))"
 
+lemma changes_above_impl_inv_empty[simp]:
+  "changes_above_impl_inv su c []"
+  unfolding changes_above_impl_inv_def by auto
+
 definition "extract_progress_inv su ed os c = 
  (\<forall> nid nid'.
    nid \<noteq> nid' \<longrightarrow>

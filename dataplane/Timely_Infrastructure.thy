@@ -1617,6 +1617,10 @@ lemma set_zmset_zmset_of_mset_set[simp]:
    set_zmset (zmset_of (mset_set S)) = S"
   unfolding set_zmset_def
   by clarsimp
+lemma extract_progress_obtain_progress_obtain_progress[simp]:
+  "extract_progress nid su (snd (obtain_progress (fst (obtain_progress (os nid))))) = []"
+  unfolding obtain_progress_def extract_progress_def
+  by auto
 
 lemma frontier_less_equal_ifrontierI:
   "dataflow_topology su (-+-) \<Longrightarrow>

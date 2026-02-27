@@ -370,7 +370,7 @@ lemma frontier_less_equal_change_multiplicities:
   assumes D: "dataflow_topology su (-+-)"
   shows 
     "(\<forall> (l, t, m) \<in> set A. frontier_less_equal (ifrontier su (+) c l) t) \<Longrightarrow>
-   ifrontier su (+) c l \<le> ifrontier su (+) (change_multiplicities su A c) l"
+     ifrontier su (+) c l \<le> ifrontier su (+) (change_multiplicities su A c) l"
   apply (subgoal_tac "change_multiplicities su A c = change_multiplicities su (filter (\<lambda> (l, t, m). m < 0) A) (change_multiplicities su (filter (\<lambda> (l, t, m). m \<ge> 0) A) c)")
   subgoal premises prems
     apply (subst prems(2))
@@ -443,9 +443,25 @@ lemma dataplane_tracker_inv_progress:
       sorry
     subgoal premises prems
       using prems(11,12) apply - 
+      sorry
+    subgoal premises prems
+      apply clarsimp
+      subgoal for nid2 nid3
+        apply (simp flip: change_multiplicities_append_alt)
+        using prems(12) apply -
+        apply (drule spec[of _ nid])
+        apply (drule spec[of _ nid3])
+        using prems(12) apply -
+        apply (drule spec[of _ nid])
+        apply (drule spec[of _ nid2])
+        find_theorems change_multiplicities append
+
+    oops
 
 
-      find_theorems c_imp change_multiplicities
+
+
+      find_theorems obtain_progress 
 
 
 end
