@@ -73,6 +73,11 @@ definition "ty2_check os bufs = (\<forall> p. (\<forall> x \<in> fst ` set (inpu
 
 definition "produ_supported su os c = (\<forall> nid p t m. (p, t, m) \<in> set (produ (os nid)) \<longrightarrow> (zcount (c_pts c (Loc nid (Src p))) t > 0 \<or> (\<exists>m'>0. (p, t, m') \<in> set (inter (os nid)))))"
 
+definition "extract_prog_changes_above_impl_inv su nt c os =
+   (\<forall> nid xs. distinct xs \<longrightarrow> (\<forall> nid' \<in> set xs. nid' \<noteq> nid) \<longrightarrow> 
+     changes_above_impl_inv su (change_multiplicities su (extract_prog xs nt os) c)
+     (extract_progress nid nt (snd (obtain_progress (os nid)))))"
+
 definition "dataplane_tracker_inv os cbufs sg = 
    (\<exists> c c' cgs chns caps.
      c = pt_tr sg \<and>
@@ -87,10 +92,7 @@ definition "dataplane_tracker_inv os cbufs sg =
      chnls_imp_front_inv (summ sg) c chns \<and>
      change_deltas_inv os \<and>
      propagation_inv (summ sg) c \<and>
-     changes_above_impl_inv (summ sg) c cgs \<and>
-     (\<forall> nid nid'. nid \<noteq> nid' \<longrightarrow> 
-     changes_above_impl_inv (summ sg) (change_multiplicities (summ sg) (extract_progress nid (nxt sg) (snd (obtain_progress (os nid)))) c)
-     (extract_progress nid' (nxt sg) (snd (obtain_progress (os nid'))))) \<and>
+     extract_prog_changes_above_impl_inv (summ sg) (nxt sg) c os  \<and>
      (produ_supported (summ sg) os c))"
 
 

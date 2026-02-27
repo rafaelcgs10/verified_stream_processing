@@ -213,6 +213,43 @@ lemma zmset_filter_Trg_not_nid:
        apply (metis not_Some_eq2 option.sel option.simps(3))+
   done
 
+lemma extract_prog_append[simp]:
+  "extract_prog (xs @ ys) nt os = extract_prog xs nt os @ extract_prog ys nt os"
+  unfolding extract_prog_def by auto
+
+lemma
+  "extract_prog_changes_above_impl_inv su nt c os \<Longrightarrow>
+   extract_prog_changes_above_impl_inv su nt c (os(nid := consumes (os nid) p t d))"
+  unfolding extract_prog_changes_above_impl_inv_def
+  apply (auto 0 0)
+  subgoal for xs
+    apply (induct xs arbitrary: c rule: rev_induct)
+    subgoal sorry
+    subgoal premises prems for nid2' xs c
+      using prems(2-) apply -
+      apply (auto 0 0)
+      apply (subst change_multiplicities_comm)
+      apply (subst change_multiplicities_append_alt)
+      apply (rule prems(1))
+        apply simp_all
+      apply clarsimp
+      subgoal premises prems2 for nid' ys
+        unfolding changes_above_impl_inv_def
+        apply auto
+        subgoal for l t m
+          unfolding extract_progress_def obtain_progress_def
+          apply auto
+          subgoal for p m'
+            apply hypsubst_thin
+
+
+          find_theorems ys
+
+      find_theorems change_multiplicities append
+
+
+end
+
 lemma dataplane_tracker_inv_consumes:
   "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
    cbufs (nid, p) = (d, t) # xs \<Longrightarrow>
@@ -288,8 +325,22 @@ lemma dataplane_tracker_inv_consumes:
       done
     subgoal premises prems
       using prems(12) apply -
+
+
+      apply (auto 0 0)
+      subgoal for xs
+        using prems(12)
+
+        apply (induct xs arbitrary:  rule: rev_induct)
+        subgoal sorry
+        subgoal for nid' xs
+          apply (auto 0 0)
+      using prems(11) apply -
       unfolding changes_above_impl_inv_def
       apply (clarsimp simp add: c_pts_change_multiplicities split: prod.splits)
+
+
+end
       subgoal for l t' m
         apply (drule set_extract_prog_consumesD)
         apply (elim disjE exE conjE)

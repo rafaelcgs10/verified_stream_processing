@@ -165,6 +165,27 @@ lemma frontier_le_subset[simp]:
   apply (auto simp add: minimal_antichain_def)
   done
 
+lemma extract_prog_obtain_progress_remove1:
+  "distinct xs \<Longrightarrow>
+   extract_prog xs su (os(nid := fst (obtain_progress (os nid)))) =
+   extract_prog (remove1 nid xs) su os"
+  unfolding extract_prog_def
+  apply simp
+  apply (induct xs)
+   apply simp
+  subgoal for nid' xs
+    apply clarsimp
+    apply hypsubst_thin
+    apply (drule sym)
+    apply simp
+    subgoal premises prems
+      using prems(1) apply -
+      apply (induct xs)
+       apply auto
+      done
+    done
+  done
+
 lemma frontier_less_equal_change_multiplicities_ge_0:
   assumes D: "dataflow_topology su (-+-)"
   shows 
@@ -425,6 +446,9 @@ lemma dataplane_tracker_inv_progress:
         apply (rule frontier_less_equal_change_multiplicities)
         using prems(1) apply assumption
         using prems(11) apply -
+        unfolding extract_prog_changes_above_impl_inv_def
+        apply (drule spec[of _ nid])
+        apply (drule spec[of _ "[]"])
         unfolding changes_above_impl_inv_def extract_prog_def
         apply auto
         done
@@ -442,26 +466,20 @@ lemma dataplane_tracker_inv_progress:
       using prems(10) apply - 
       sorry
     subgoal premises prems
-      using prems(11,12) apply - 
-      sorry
-    subgoal premises prems
+        unfolding extract_prog_changes_above_impl_inv_def
       apply clarsimp
-      subgoal for nid2 nid3
-        apply (simp flip: change_multiplicities_append_alt)
-        using prems(12) apply -
-        apply (drule spec[of _ nid])
-        apply (drule spec[of _ nid3])
-        using prems(12) apply -
-        apply (drule spec[of _ nid])
+      subgoal for nid2 xs
+        using prems(11) apply -
+        unfolding extract_prog_changes_above_impl_inv_def
         apply (drule spec[of _ nid2])
-        find_theorems change_multiplicities append
+        apply (drule spec[of _ "nid # remove1 nid xs"])
+        apply (simp add: extract_prog_obtain_progress_remove1)
+        unfolding extract_prog_def
+        apply (simp add: change_multiplicities_append_alt)
+        done
+      done
 
-    oops
 
-
-
-
-      find_theorems obtain_progress 
 
 
 end
