@@ -74,7 +74,7 @@ definition "ty2_check os bufs = (\<forall> p. (\<forall> x \<in> fst ` set (inpu
 definition "produ_supported su os c = (\<forall> nid p t m. (p, t, m) \<in> set (produ (os nid)) \<longrightarrow> (zcount (c_pts c (Loc nid (Src p))) t > 0 \<or> (\<exists>m'>0. (p, t, m') \<in> set (inter (os nid)))))"
 
 definition "extract_prog_changes_above_impl_inv su nt c os =
-   (\<forall> nid xs. distinct xs \<longrightarrow> (\<forall> nid' \<in> set xs. nid' \<noteq> nid) \<longrightarrow> 
+   (\<forall> nid xs. distinct xs \<longrightarrow> nid \<notin> set xs \<longrightarrow> 
      changes_above_impl_inv su (change_multiplicities su (extract_prog xs nt os) c)
      (extract_progress nid nt (snd (obtain_progress (os nid)))))"
 
