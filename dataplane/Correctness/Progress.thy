@@ -36,125 +36,11 @@ lemma change_multiplicities_extract_prog_extract_progress[simp]:
     done
   done
 
-
 lemma c_imp_change_multiplicities[simp]:
   "c_imp (change_multiplicities su xs c) = c_imp c"
   apply (induct xs arbitrary: c)
    apply simp
   apply (auto split: if_splits prod.splits simp add: change_multiplicities_simp_alt update_zmultiset_plus_comm) 
-  done
-
-lemma frontier_add_le_l:
-  "frontier A \<le> X \<Longrightarrow>
-   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
-   frontier (A + B) \<le> X"
-  using frontier_below_eq_frontier_plus_pos order_trans_rules(23) by blast
-lemma frontier_add_le_r:
-  "frontier B \<le> X \<Longrightarrow>
-   (\<forall> t. zcount A t \<ge> 0) \<Longrightarrow>
-   frontier (A + B) \<le> X"
-  using frontier_below_eq_frontier_plus_pos order_trans_rules(23) by (metis Groups.add_ac(2))
-
-lemma frontier_sum_le_one:
-  "finite S \<Longrightarrow>
-   loc \<in> S \<Longrightarrow>
-   frontier (f loc) \<le> X \<Longrightarrow>
-   (\<forall> l \<in> S. \<forall> t. zcount (f l) t \<ge> 0) \<Longrightarrow>
-   frontier (\<Sum>loc\<in>S. f loc) \<le> X"
-  by (induct S  rule: finite_induct)
-   (auto simp add: frontier_add_le_l frontier_add_le_r sum_nonneg zcount_sum)
-
-lemma frontier_sum_le_one_alt:
-  "finite S \<Longrightarrow>
-   (\<forall> l \<in> S - {l1}. frontier (f l) = frontier (g l)) \<Longrightarrow>
-   \<not> frontier (f l1) \<le> frontier (g l1) \<Longrightarrow>
-   l1 \<noteq> l2 \<Longrightarrow>
-   frontier (f l2) \<le> frontier (g l1) \<Longrightarrow>
-   (\<forall> l \<in> S. \<forall> t. zcount (f l) t \<ge> 0) \<Longrightarrow>
-   (\<forall> l \<in> S. \<forall> t. zcount (g l) t \<ge> 0) \<Longrightarrow>
-   frontier (\<Sum>loc\<in>S. f loc) \<le> frontier (\<Sum>loc\<in>S. g loc)"
-  oops
-
-lemma le_frontier_frontier_less_equal:
-  "\<forall> t \<in> fst ` set A. frontier_less_equal F t \<Longrightarrow>
-   F \<le> frontier (zmset A)"
-  unfolding frontier_less_equal_def less_eq_antichain_def
-  apply auto
-  subgoal for t
-    apply transfer
-    apply (auto simp add: zcount_zmset minimal_antichain_def)
-    by (smt (verit, del_insts) case_prod_beta filter_empty_conv list.map(1) sum_list_simps(1))
-  done
-
-lemma frontier_le_minus_gen2:
-  "X \<le> frontier B \<Longrightarrow>
-   (\<forall> t. zcount C t \<ge> 0) \<Longrightarrow>
-   X \<le> frontier (B - C)"
-  by (meson dual_order.trans frontier_below_eq_frontier_minus)
-
-lemma
-  "frontier X \<le> frontier A \<Longrightarrow>
-   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
-   (\<forall> t. zcount A t \<ge> 0) \<Longrightarrow>
-   (\<forall> t t'. zcount X t > 0\<longrightarrow> zcount B t' > 0 \<longrightarrow> \<not> t < t' \<and> \<not> t' < t) \<Longrightarrow>
-   (\<forall> t t'. zcount A t > 0 \<longrightarrow> zcount B t' > 0 \<longrightarrow> \<not> t < t' \<and> \<not> t' < t) \<Longrightarrow>
-   frontier X \<le> frontier (A + B)"
-  unfolding less_eq_antichain_def
-  apply transfer'
-  apply (auto simp add:  minimal_antichain_def)
-  oops
-
-lemma sorried:
-  "finite S \<Longrightarrow>
-   (\<forall> a\<in>S. \<forall> t. zcount (f a) t \<ge> 0) \<Longrightarrow>
-   a \<in> S \<Longrightarrow>
-   ft \<in>\<^sub>A frontier (f a) \<Longrightarrow>
-   frontier_less_equal x ft \<Longrightarrow>
-   f a \<noteq> {#}\<^sub>z \<Longrightarrow>
-   (\<forall> a\<in>S. \<forall>b\<in>S. \<forall> t t'. zcount (f a) t > 0 \<longrightarrow> zcount (f b) t' > 0 \<longrightarrow> \<not> t < t' \<and> \<not> t' < t) \<Longrightarrow>
-   x \<le> frontier (sum f S)"
-  apply (induct S rule: finite_induct)
-   apply simp_all
-  subgoal for x' F
-    apply auto
-    subgoal 
-      apply hypsubst_thin
-      oops
-
-lemma sorried:
-  "finite S \<Longrightarrow>
-   finite S' \<Longrightarrow>
-   (\<forall> l \<in> S. \<forall> t. zcount (f l) t \<ge> 0) \<Longrightarrow>
-   (\<forall> l \<in> S'. \<forall> t. zcount (f l) t \<ge> 0) \<Longrightarrow>
-   (\<forall> l \<in> S. \<exists> l' \<in> S'. frontier (f l) \<le>  frontier (f l')) \<Longrightarrow>
-   frontier (\<Sum>loc\<in>S. f loc) \<le> frontier (\<Sum>loc\<in>S'. f loc)"
-  oops
-
-lemma frontier_le_image_gen:
-  "frontier M \<le> frontier M' \<Longrightarrow>
-   (\<forall> t. zcount M' t \<ge> 0) \<Longrightarrow>
-   (\<forall> t. zcount M t \<ge> 0) \<Longrightarrow>
-   s \<le> s' \<Longrightarrow>
-   frontier {#t -+- s. t \<in>#\<^sub>z M#} \<le> frontier {#t -+- s'. t \<in>#\<^sub>z M'#}"
-  unfolding less_eq_antichain_def
-  apply clarsimp
-  apply (metis dataflow_topology_from_tree.results_in_mono_raw in_frontier_zmset_image)
-  done
-
-lemma
-  "finite S \<Longrightarrow>
-   incomparable S \<Longrightarrow>
-   A = antichain S \<Longrightarrow>
-   ft \<in>#\<^sub>z (\<Sum>s\<in>S. {#t -+- s#}\<^sub>z) \<Longrightarrow> \<exists>s. s \<in>\<^sub>A A \<and> ft = t -+- s"
-  oops
-
-lemma sum_zmset:
-  "finite S \<Longrightarrow>
-   (\<Sum>s\<in>S. {#t -+- s#}\<^sub>z) = zmset_of (mset_set (((-+-) t) ` S))"
-  apply (induct S rule: finite_induct)
-   apply simp_all
-  subgoal for x S
-    by (metis (no_types, lifting) add_left_imp_eq finite_imageI imageE mset_set.insert zmset_of_add_mset)
   done
 
 lemma frontier_le_subset[simp]:
@@ -465,10 +351,20 @@ lemma dataplane_tracker_inv_progress:
     subgoal premises prems
       using prems(10) apply - 
       sorry
+    defer
+    subgoal premises prems
+      using prems(12) apply -
+      unfolding produ_supported_def
+      apply (clarsimp del: disjCI simp add: c_pts_change_multiplicities)
+
+end
     subgoal premises prems
         unfolding extract_prog_changes_above_impl_inv_def
       apply clarsimp
-      subgoal for nid2 xs
+        subgoal for nid2 xs
+
+          find_theorems frontier sum
+
         using prems(11) apply -
         unfolding extract_prog_changes_above_impl_inv_def
         apply (drule spec[of _ nid2])

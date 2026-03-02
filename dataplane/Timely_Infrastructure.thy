@@ -635,6 +635,8 @@ lemma dataflow_tree_to_graph_Trg_decompose:
     by (auto dest: in_empty_graph_False split: prod.splits)
   done
 
+
+
 abbreviation AF where
   "AF \<equiv> dataflow_topology.after_summary (-+-)"
 
@@ -649,6 +651,7 @@ lemma AF_empty[simp]:
 lemma AP_simp[simp]:
   "M -++- S = (\<Sum>s \<in> set_antichain S. image_zmset (\<lambda>t. t -+- s) M)"
   by (metis after_summary_def dataflow_topology_from_tree.after_summary_def)
+
 
 
 definition take_step_locale where
