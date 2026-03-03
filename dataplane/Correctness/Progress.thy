@@ -51,27 +51,6 @@ lemma frontier_le_subset[simp]:
   apply (auto simp add: minimal_antichain_def)
   done
 
-lemma extract_prog_obtain_progress_remove1:
-  "distinct xs \<Longrightarrow>
-   extract_prog xs su (os(nid := fst (obtain_progress (os nid)))) =
-   extract_prog (remove1 nid xs) su os"
-  unfolding extract_prog_def
-  apply simp
-  apply (induct xs)
-   apply simp
-  subgoal for nid' xs
-    apply clarsimp
-    apply hypsubst_thin
-    apply (drule sym)
-    apply simp
-    subgoal premises prems
-      using prems(1) apply -
-      apply (induct xs)
-       apply auto
-      done
-    done
-  done
-
 lemma frontier_less_equal_change_multiplicities_ge_0:
   assumes D: "dataflow_topology su (-+-)"
   shows 
@@ -364,7 +343,7 @@ lemma dataplane_tracker_inv_progress:
         done
       done
 
-        find_theorems List.map_filter set
+        find_theorems obtain_progress fst
 
 end
     subgoal premises prems

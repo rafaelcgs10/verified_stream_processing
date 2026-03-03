@@ -149,7 +149,7 @@ lemma data_in_channel_justifies_c_pts:
       done
     done
   done
-   
+
 
 lemma set_extract_progressD:
   "(l, t, m) \<in> set (extract_progress nid ed (snd (obtain_progress (consumes (os nid) p t' d)))) \<Longrightarrow>
@@ -415,12 +415,12 @@ lemma frontier_less_equal_ifrontier_Trg_diff_nid:
           subgoal
             apply clarsimp
             subgoal for m'
-            using E apply -
-            unfolding extract_prog_changes_above_impl_inv_def
-            apply (drule spec[of _ nid])
-            apply (drule spec[of _ "[nid']"])
-            unfolding changes_above_impl_inv_def
-            apply clarsimp
+              using E apply -
+              unfolding extract_prog_changes_above_impl_inv_def
+              apply (drule spec[of _ nid])
+              apply (drule spec[of _ "[nid']"])
+              unfolding changes_above_impl_inv_def
+              apply clarsimp
               apply (drule bspec[of _ _ "(Loc nid (Src p'), t, m')"])
               subgoal
                 unfolding extract_progress_def obtain_progress_def
@@ -579,7 +579,7 @@ lemma frontier_filter_pos:
   done
 
 lemma pos_zcount_image_zmset_inj: 
- "0 < zcount M t \<Longrightarrow>inj f \<Longrightarrow>  0 < zcount (image_zmset f M) (f t)"
+  "0 < zcount M t \<Longrightarrow>inj f \<Longrightarrow>  0 < zcount (image_zmset f M) (f t)"
   apply transfer
   subgoal for M t f
     apply (induct M)
@@ -600,7 +600,7 @@ lemma in_frontier_zmset_imageD:
     subgoal for t'' t'
       apply (drule spec[of _ "t' -+- s"])
       apply (drule mp)
-      apply (rule pos_zcount_image_zmset_inj)
+       apply (rule pos_zcount_image_zmset_inj)
         apply auto
       done
     done
@@ -611,63 +611,9 @@ lemma frontier_less_equal_image_zmsetD:
    \<exists> t'. frontier_less_equal (frontier A) t' \<and>t' -+- s \<le> t"
   unfolding frontier_less_equal_iff2
   apply clarsimp
-      apply (drule in_frontier_zmset_imageD)
+  apply (drule in_frontier_zmset_imageD)
   apply auto
   done
-
-
-lemma sorried:
-  "dataflow_topology su (-+-) \<Longrightarrow>
-   frontier_less_equal (ifrontier su (-+-) c l) t \<Longrightarrow>
-   (\<forall> (l', t', m) \<in> set xs.
-     frontier_less_equal (frontier ((c_pts c l') -++- (graph.path_weight su l' l))) t \<longrightarrow>
-   (\<exists> l''.  frontier_less_equal (frontier ((c_pts c l'') + zmset (map snd (filter (\<lambda>(l', t, d). l'' = l') xs)) -++- graph.path_weight su l'' l)) t)) \<Longrightarrow>
-   frontier_less_equal (ifrontier su (-+-) (change_multiplicities su xs c) l) t"
-  oops
-  (* apply (subst Propagate.dataflow_topology.implied_frontier_alt_def)
-   apply assumption
-  apply (subst (asm) Propagate.dataflow_topology.implied_frontier_alt_def)
-   apply assumption
-  apply (rule frontier_less_equal_sumI_alt)
-      apply simp
-  apply assumption
-  subgoal
-    apply safe
-    subgoal for l'
-      apply (simp only: c_pts_change_multiplicities)
-
-end
-  apply (drule frontier_less_equal_sumE[where t=t])
-   apply simp
-  apply clarsimp
-  subgoal for l'
-      apply (cases "\<exists> t' m. (l', t', m) \<in> set xs")
-      subgoal
-        apply clarsimp
-        apply (drule bspec)
-         apply assumption
-        apply simp
-        apply (drule mp)
-        subgoal
-          apply (drule frontier_less_equal_sumE[where t=t])
-           apply simp
-          apply clarsimp
-          subgoal for s
-            apply (drule frontier_less_equal_image_zmsetD)
-            apply (subst (asm) frontier_less_equal_iff2)
-            apply clarsimp
-            subgoal for ft ft'
-              apply (rule frontier_less_equal_sumI)
-                 apply simp
-              oops *)
-
-
-lemma frontier_less_equal_change_multiplicities:
-  assumes D: "dataflow_topology su (-+-)"
-  shows 
-    "(\<forall> (l, t, m) \<in> set A. frontier_less_equal (ifrontier su (+) c l) t) \<Longrightarrow>
-     ifrontier su (+) c l \<le> ifrontier su (+) (change_multiplicities su A c) l"
-  sorry
 
 lemma
   assumes D: "dataflow_topology su (-+-)"
@@ -711,18 +657,110 @@ lemma
         done
       apply (drule meta_mp)
       subgoal
-        sorry
+        apply (subst extract_prog_obtain_progress_remove1)
+         apply simp_all
+        unfolding c_pts_inv_def
+        apply clarsimp
+        subgoal for l
+          apply (drule spec[of _ l])
+          apply (drule sym[of _ "caps l"])
+          apply simp
+          subgoal premises temp
+            apply (subst (2) extract_prog_def)
+            apply (auto simp add: change_multiplicities_append change_multiplicities_extract_prog_obtain_progress_remove1_append[where nid=nid'])
+            done
+          done
+        done
       apply (drule meta_mp)
       subgoal
-        sorry
+        apply (subst (2) extract_prog_def)
+        apply (clarsimp simp add: change_multiplicities_extract_prog_obtain_progress_remove1_append[where nid=nid'])
+        apply (metis (no_types, lifting) append_Nil2 change_multiplicities_append_alt change_multiplicities_extract_prog_obtain_progress_remove1_append extract_prog_append in_set_conv_decomp prems(5) remove1_split)
+        done
       apply simp
       apply (subst change_multiplicities_comm)
       apply (simp add: change_multiplicities_append_alt )
       done
     done
   subgoal for nid' xs
+    using E[unfolded extract_prog_changes_above_impl_inv_def, rule_format, of "xs" nid'] apply -
+    apply simp
+    apply (induct xs arbitrary: c os rule: rev_induct)
+    subgoal for c os
+      by simp
+    subgoal for nid2 xs c os
+      apply clarsimp
+      apply (drule meta_spec[of _ "change_multiplicities su (extract_prog [nid2] nt os) c"])
+      apply (drule meta_spec[of _ "os(nid2 := fst (obtain_progress (os nid2)) )"])
+   apply (drule meta_mp)
+      subgoal
+        unfolding produ_supported_def
+        apply (auto del: disjCI)
+        apply (drule spec2, drule spec, drule mp, rule exI, assumption)
+        apply (clarsimp del: disjCI simp add: c_pts_change_multiplicities)
+        apply (subst extract_prog_def)
+        apply (subst extract_progress_def)
+        apply (simp add: filter_map comp_def split_beta )
+        apply (subst filter_False)
+         apply (auto simp add: Misc.set_map_filter split: option.splits)
+        done
+apply (drule meta_mp)
+      subgoal
+        apply (subst extract_prog_obtain_progress_remove1)
+         apply simp_all
+        unfolding c_pts_inv_def
+        apply clarsimp
+        subgoal for l
+          apply (drule spec[of _ l])
+          apply (drule sym[of _ "caps l"])
+          apply simp
+          subgoal premises temp
+            apply (subst (2) extract_prog_def)
+            apply (auto simp add: change_multiplicities_append change_multiplicities_extract_prog_obtain_progress_remove1_append[where nid=nid2])
+            done
+          done
+        done
+      apply (drule meta_mp)
+      subgoal
+        apply (subst (2) extract_prog_def)
+        apply (clarsimp simp add: change_multiplicities_extract_prog_obtain_progress_remove1_append[where nid=nid2])
+        apply (smt (verit, ccfv_threshold) append_Cons change_multiplicities_append_alt change_multiplicities_comm change_multiplicities_extract_prog_obtain_progress_remove1_append distinct.simps(2) extract_prog_append
+            list.set_intros(1) remove1.simps(2) self_append_conv2)
+        done
+      apply simp
+      subgoal premises prems
+        using prems(10) apply -
+        apply (simp split: if_splits)
+        subgoal
+          apply hypsubst_thin
+          apply (subgoal_tac
+  "change_multiplicities su (extract_prog xs nt (os(nid2 := consumes (fst (obtain_progress (os nid2))) p t d))) (change_multiplicities su (extract_prog [nid2] nt os) c) =
+   change_multiplicities su (extract_prog xs nt (os(nid2 := consumes (os nid2) p t d)) @ extract_prog [nid2] nt (os(nid2 := consumes (os nid2) p t d))) c")
+           apply simp
+          subgoal premises temp
+            unfolding obtain_progress_def
+            apply simp
+            oops
 
-    find_theorems change_multiplicities append
+lemma
+  "nid \<notin> set xs \<Longrightarrow>
+   extract_prog xs nt (os(nid := F)) =
+   extract_prog xs nt os"
+  apply (induct xs)
+   apply auto
+  done
+
+
+            find_theorems xs
+
+          oops
+
+lemma
+  "consumes (fst (obtain_progress (os nid))) p t d = os nid"
+
+
+
+    find_theorems consumes 
 
         apply (elim disjE)
         subgoal for nid3

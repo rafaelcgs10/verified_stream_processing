@@ -237,4 +237,34 @@ lemma sum_gt_0I:
     done
   done      
 
+lemma extract_prog_obtain_progress_remove1:
+  "distinct xs \<Longrightarrow>
+   extract_prog xs su (os(nid := fst (obtain_progress (os nid)))) =
+   extract_prog (remove1 nid xs) su os"
+  unfolding extract_prog_def
+  apply simp
+  apply (induct xs)
+   apply simp
+  subgoal for nid' xs
+    apply clarsimp
+    apply hypsubst_thin
+    apply (drule sym)
+    apply simp
+    subgoal premises prems
+      using prems(1) apply -
+      apply (induct xs)
+       apply auto
+      done
+    done
+  done
+
+lemma change_multiplicities_extract_prog_obtain_progress_remove1_append:
+  "distinct xs \<Longrightarrow>
+   nid \<in> set xs \<Longrightarrow>
+   change_multiplicities su (extract_prog xs nt os) c =
+   change_multiplicities su (extract_progress nid nt (snd (obtain_progress (os nid))) @ extract_prog (remove1 nid xs) nt os) c"
+  apply (induct xs arbitrary: c)
+  apply (clarsimp simp add: extract_prog_def)+
+  apply (metis (no_types, lifting) change_multiplicities_append_alt change_multiplicities_comm)
+  done
 end
