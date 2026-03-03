@@ -733,13 +733,21 @@ apply (drule meta_mp)
         apply (simp split: if_splits)
         subgoal
           apply hypsubst_thin
-          apply (subgoal_tac
-  "change_multiplicities su (extract_prog xs nt (os(nid2 := consumes (fst (obtain_progress (os nid2))) p t d))) (change_multiplicities su (extract_prog [nid2] nt os) c) =
-   change_multiplicities su (extract_prog xs nt (os(nid2 := consumes (os nid2) p t d)) @ extract_prog [nid2] nt (os(nid2 := consumes (os nid2) p t d))) c")
-           apply simp
-          subgoal premises temp
-            unfolding obtain_progress_def
+            using prems(7,8) apply -
             apply simp
+            unfolding changes_above_impl_inv_def
+            apply safe
+            subgoal for l t' m
+              apply (drule bspec)
+               apply assumption
+              apply (simp flip: change_multiplicities_append_alt)
+              apply (subst (asm) change_multiplicities_comm)
+              apply (simp add: change_multiplicities_append_alt)
+              apply (subst (asm) extract_prog_def)
+
+              find_theorems ifrontier "_ \<le> _"
+
+
             oops
 
 lemma
