@@ -1702,6 +1702,38 @@ lemma frontier_less_equal_ifrontierE:
   done
 
 
+lemma frontier_add_le_l:
+  "frontier A \<le> X \<Longrightarrow>
+   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
+   frontier (A + B) \<le> X"
+  using frontier_below_eq_frontier_plus_pos order_trans_rules(23) by blast
+lemma frontier_add_le_r:
+  "frontier B \<le> X \<Longrightarrow>
+   (\<forall> t. zcount A t \<ge> 0) \<Longrightarrow>
+   frontier (A + B) \<le> X"
+  using frontier_below_eq_frontier_plus_pos order_trans_rules(23) by (metis Groups.add_ac(2))
+
+lemma frontier_le_image_gen:
+  "frontier M \<le> frontier M' \<Longrightarrow>
+   (\<forall> t. zcount M' t \<ge> 0) \<Longrightarrow>
+   (\<forall> t. zcount M t \<ge> 0) \<Longrightarrow>
+   s \<le> s' \<Longrightarrow>
+   frontier {#t -+- s. t \<in>#\<^sub>z M#} \<le> frontier {#t -+- s'. t \<in>#\<^sub>z M'#}"
+  unfolding less_eq_antichain_def
+  apply clarsimp
+  apply (metis dataflow_topology_from_tree.results_in_mono_raw in_frontier_zmset_image)
+  done
+
+lemma sum_zmset:
+  "finite S \<Longrightarrow>
+   (\<Sum>s\<in>S. {#t -+- s#}\<^sub>z) = zmset_of (mset_set (((-+-) t) ` S))"
+  apply (induct S rule: finite_induct)
+   apply simp_all
+  subgoal for x S
+    by (metis (no_types, lifting) add_left_imp_eq finite_imageI imageE mset_set.insert zmset_of_add_mset)
+  done
+
+
 lemma frontier_less_equal_ifrontier_trans:
   "dataflow_topology su (-+-) \<Longrightarrow>
    t' \<in>\<^sub>A graph.path_weight su l l' \<Longrightarrow>

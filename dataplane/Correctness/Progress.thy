@@ -356,6 +356,15 @@ lemma dataplane_tracker_inv_progress:
       using prems(12) apply -
       unfolding produ_supported_def
       apply (clarsimp del: disjCI simp add: c_pts_change_multiplicities)
+      subgoal for nid' p' t m
+        apply (subst extract_progress_def)
+        apply (simp add: filter_map comp_def split_beta )
+        apply (subst filter_False)
+        apply (auto simp add: Misc.set_map_filter split: option.splits)
+        done
+      done
+
+        find_theorems List.map_filter set
 
 end
     subgoal premises prems
