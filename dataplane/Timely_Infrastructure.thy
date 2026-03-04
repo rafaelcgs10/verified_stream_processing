@@ -1769,6 +1769,16 @@ lemma frontier_less_equal_ifrontier_trans_alt:
    frontier_less_equal (ifrontier su (-+-) c l') (t -+- t'')"
   by (meson add_le_cancel_left frontier_less_equal_ifrontier_trans frontier_less_equal_trans)
 
+
+lemma frontier_less_equal_ifrontier_trans_alt2:
+  "dataflow_topology su (-+-) \<Longrightarrow>
+   s \<in>\<^sub>A graph.path_weight su l l' \<Longrightarrow>
+   frontier_less_equal (ifrontier su (-+-) c l) t \<Longrightarrow>
+   t -+- s \<le> t' \<Longrightarrow>
+   frontier_less_equal (ifrontier su (-+-) c l') t'"
+  using frontier_less_equal_ifrontier_trans frontier_less_equal_trans by blast
+
+
 lemma frontier_le_image:
   "frontier M \<le> frontier M' \<Longrightarrow>
    (\<forall> t. zcount M' t \<ge> 0) \<Longrightarrow>

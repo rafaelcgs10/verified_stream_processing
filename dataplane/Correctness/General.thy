@@ -261,10 +261,13 @@ lemma extract_prog_obtain_progress_remove1:
 lemma change_multiplicities_extract_prog_obtain_progress_remove1_append:
   "distinct xs \<Longrightarrow>
    nid \<in> set xs \<Longrightarrow>
-   change_multiplicities su (extract_prog xs nt os) c =
-   change_multiplicities su (extract_progress nid nt (snd (obtain_progress (os nid))) @ extract_prog (remove1 nid xs) nt os) c"
+   change_multiplicities su (extract_prog xs nt os) =
+   change_multiplicities su (extract_progress nid nt (snd (obtain_progress (os nid))) @ extract_prog (remove1 nid xs) nt os)"
+  apply (rule ext)
+  subgoal for c
   apply (induct xs arbitrary: c)
   apply (clarsimp simp add: extract_prog_def)+
   apply (metis (no_types, lifting) change_multiplicities_append_alt change_multiplicities_comm)
+    done
   done
 end
