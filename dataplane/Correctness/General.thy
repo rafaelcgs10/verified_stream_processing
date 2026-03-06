@@ -185,6 +185,13 @@ lemma in_frontier_minusD:
    (\<forall> y. zcount B y \<ge> 0) \<Longrightarrow>
    (\<exists> y. y \<in>\<^sub>A frontier A \<and> y \<le> x)"
   using frontier_below_eq_frontier_minus less_eq_antichain_def by blast
+lemma in_frontier_minus_altD:
+  "x \<in>\<^sub>A frontier (A + B) \<Longrightarrow> 
+   (\<forall> y. zcount B y \<le> 0) \<Longrightarrow>
+   (\<exists> y. y \<in>\<^sub>A frontier A \<and> y \<le> x)"
+  using frontier_below_eq_frontier_minus less_eq_antichain_def
+  using frontier_below_eq_frontier_plus_neg by blast
+
 lemma in_frontier_minusI:
   "t \<in>\<^sub>A frontier A \<Longrightarrow>
    t \<noteq> t' \<Longrightarrow>

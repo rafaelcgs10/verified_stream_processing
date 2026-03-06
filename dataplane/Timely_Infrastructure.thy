@@ -1417,6 +1417,11 @@ lemma zcount_zmset_ge_0I:
    zcount (zmset xs) t \<ge> 0"
   by (induct xs) 
     (auto simp add: zcount_update_zmultiset)
+lemma zcount_zmset_le_0I:
+  "(\<forall> (x, m) \<in> set xs. 0 \<ge> m) \<Longrightarrow>
+   zcount (zmset xs) t \<le> 0"
+  by (induct xs) 
+    (auto simp add: zcount_update_zmultiset)
 
 lemma gt_0_zcount_msetD:
   "0 < zcount (zmset (map snd (filter ((=) p \<circ> fst) xs))) t \<Longrightarrow>
