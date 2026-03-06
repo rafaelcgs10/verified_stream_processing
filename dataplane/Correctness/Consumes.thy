@@ -1323,9 +1323,7 @@ lemma
         apply (rule frontier_less_equal_addI)
         subgoal
           apply (rule disjI2)
-          apply (subst (asm) frontier_less_equal_iff2)
-          apply clarsimp
-          subgoal for ft
+   
 
 
 end
