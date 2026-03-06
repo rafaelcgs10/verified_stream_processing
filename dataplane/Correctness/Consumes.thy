@@ -439,71 +439,7 @@ lemma
   using C PR P T G CA apply -
   unfolding extract_prog_changes_above_impl_inv_def
   apply (auto 0 0)
-  subgoal for xs
-    using E[unfolded extract_prog_changes_above_impl_inv_def, rule_format, of "xs" nid] apply -
-    apply simp
-    apply (induct xs arbitrary: c os rule: rev_induct)
-    subgoal for c os
-      apply simp
-      sorry
-    subgoal premises prems for nid' xs c os
-      using prems(2-) apply -
-      apply (auto 0 0)
-      using prems(1) apply -
-      apply simp
-      apply (drule meta_spec[of _ "os( nid' := fst (obtain_progress (os nid')) )"])
-      apply (drule meta_spec[of _ "change_multiplicities su (extract_prog [nid'] nt os) c"])
-      apply (drule meta_mp)
-      subgoal
-        unfolding produ_supported_def
-        apply (auto del: disjCI)
-        apply (drule spec2, drule spec, drule mp, rule exI, assumption)
-        apply (clarsimp del: disjCI simp add: c_pts_change_multiplicities)
-        apply (subst extract_progress_def)
-        apply (simp add: filter_map comp_def split_beta )
-        apply (subst filter_False)
-         apply (auto simp add: Misc.set_map_filter split: option.splits)
-        done
-      apply (drule meta_mp)
-      subgoal
-        apply (subst extract_prog_obtain_progress_remove1)
-         apply simp_all
-        unfolding c_pts_inv_def
-        apply clarsimp
-        subgoal for l
-          apply (drule spec[of _ l])
-          apply (drule sym[of _ "caps l"])
-          apply simp
-          subgoal premises temp
-            apply (subst (2) change_multiplicities_extract_prog_obtain_progress_remove1_append[where nid=nid'])
-              apply simp_all
-            apply (auto simp add: change_multiplicities_append)
-            done
-          done
-        done
-      apply (drule meta_mp)
-      subgoal
-        unfolding Trg_caps_inv_def
-        by auto
-      apply (drule meta_mp)
-      subgoal 
-        unfolding graph_summar_nt_def obtain_progress_def
-        by auto
-      apply (drule meta_mp)
-      subgoal
-        unfolding change_deltas_inv_def obtain_progress_def
-        by auto
-      apply (drule meta_mp)
-      subgoal
-        apply (subst (2) extract_prog_def)
-        apply (clarsimp simp add: change_multiplicities_extract_prog_obtain_progress_remove1_append[where nid=nid'])
-        apply (metis change_multiplicities_append change_multiplicities_comm)
-        done
-      apply simp
-      apply (subst change_multiplicities_comm)
-      apply (simp add: change_multiplicities_append_alt )
-      done
-    done
+  defer
   subgoal for nid' xs
     unfolding changes_above_impl_inv_def
     apply safe
@@ -1364,7 +1300,32 @@ lemma
         done
       done
     done
-  done
+  subgoal for xs
+    unfolding changes_above_impl_inv_def
+    apply safe
+    subgoal for l t' m
+      apply (cases "nid \<in> set xs"; simp?)
+      apply (drule set_extract_progressD)
+      apply clarsimp
+      apply (elim disjE conjE exE; simp?; hypsubst_thin?)
+      subgoal
+        using E[unfolded extract_prog_changes_above_impl_inv_def, rule_format, of "xs" nid, unfolded changes_above_impl_inv_def] apply -
+        apply simp
+        apply (drule bspec)
+         apply assumption
+        apply simp
+        done
+      subgoal
+        apply (subst Propagate.dataflow_topology.implied_frontier_alt_def[OF D])
+        apply (subst Groups_Big.comm_monoid_add_class.sum.subset_diff[where B="(\<lambda> (nid, p). Loc nid (Src p)) ` ((set xs - {nid}) \<times> UNIV) \<union> (\<lambda> (nid, p). Loc nid (Trg p)) ` ((set xs - {nid}) \<times> UNIV)"])
+          apply simp_all
+         apply fast
+        apply (rule frontier_less_equal_addI)
+        subgoal
+          apply (rule disjI2)
+          apply (subst (asm) frontier_less_equal_iff2)
+          apply clarsimp
+          subgoal for ft
 
 
 end
