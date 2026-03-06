@@ -321,6 +321,32 @@ lemma dataplane_tracker_inv_progress:
     subgoal premises prems
       using prems(8) apply -  
       unfolding chnls_imp_front_inv_def
+      apply clarsimp
+      apply (drule spec)+
+      apply (drule bspec)
+       apply assumption
+      apply simp
+      subgoal for nid' p' a t
+        using prems(4,5) apply -
+        unfolding Trg_caps_inv_def
+        apply (drule spec[of _ nid'])
+        apply (drule spec[of _ p'])
+        unfolding c_pts_inv_def
+        apply (drule spec[of _ "Loc nid' (Trg p')"])
+        apply simp
+
+        find_theorems outputs_at_target
+
+end
+      using prems(11)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format, where xs="[nid]", of nid' "(_, t, _)"] apply -
+
+end
+      apply (rule frontier_less_equal_le_trans)
+      apply assumption
+
+      find_theorems frontier_less_equal name: trans
+
+end
       sorry
     subgoal premises prems
       using prems(9) apply -  
