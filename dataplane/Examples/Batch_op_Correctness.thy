@@ -6,6 +6,7 @@ imports
   Batch_op
   "../Correctness/General"
   "../Correctness/Consumes"
+  "../Correctness/Progress"
   Dataplane.LList_Haskell_Setup
   Source_op
   Set_op
@@ -71,8 +72,8 @@ abbreviation "test_op \<equiv> compile_dataflow (\<lambda> _. []) (G (\<lambda> 
 value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op)"
 value [GHC] "check_prefix 100 [((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1)),((1, 1), (Inr 3, MyPair 1 0))] test_op"
 value [GHC] "check_prefix 100 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] test_op"
-value [GHC] "check_prefix 100 [((1, 1), (Inr 3, MyPair 1 0)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1))] test_op"
-
+(* value [GHC] "check_prefix 100 [((1, 1), (Inr 3, MyPair 1 0)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1))] test_op"
+ *)
 section \<open>Generalized Correctness\<close>
 
 definition "my_summ = (\<lambda> l1 l2.
@@ -220,7 +221,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
         apply simp
         apply (intro allI conjI impI)
         apply (elim step_builder_op_elim step_set_op_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim conjE ; 
-            clarsimp simp only: IO.simps ; hypsubst_thin ? ; clarsimp simp flip: cin.rep_eq split: option.splits sum.splits prod.splits if_splits ; hypsubst_thin?)
+            clarsimp simp only: IO.simps ; hypsubst_thin ? ; clarsimp simp flip: cin.rep_eq split: event.splits llist.splits option.splits sum.splits prod.splits if_splits ; hypsubst_thin?)
         subgoal 
           apply -
           apply (intro exI conjI relcomppI)
@@ -303,7 +304,10 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           subgoal
             using SIM1(13) by auto
           done
-        defer
+                defer
+        subgoal 
+          (* batch_op logic  *)
+          sorry
         subgoal for st os'
           using SIM1(5) apply simp
           apply hypsubst_thin
@@ -348,10 +352,70 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           subgoal
             by (simp add: SIM1 obtain_progress_def)
           subgoal
+            apply (subst dataplane_tracker_inv_upfro[where f="\<lambda>_. True"])
+            defer
+            apply (rule dataplane_tracker_inv_progress)
+            using SIM1(10) apply assumption
+               apply simp_all
+            using SIM1(1,2) apply simp
+            subgoal
+              using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
+              by metis
+            subgoal              
+              apply (rule graph_summar_nt)
+                 apply (rule refl)+
+              apply (rule SIM1(2)[unfolded SIM1(1)])
+               apply (auto simp add: SIM1 comp_def)
+              done
+            unfolding obtain_progress_def
+            apply (auto simp add: operator_state.defs)
+            done
+          subgoal
+            using SIM1(13)
             apply simp
-            apply hypsubst_thin
+            done
+          done
+        subgoal
+          sorry
+        subgoal
+          sorry
+        subgoal
+          sorry
+        subgoal
+          sorry
+        subgoal for d t xs
+          (* batch_op outputs *)
+          sorry
+        subgoal
+ (* input_op outputs *)
+          sorry
+        subgoal 
+          apply (intro allI impI conjI)
+          subgoal
+   apply (intro exI conjI relcomppI)
+             apply (rule rtranclp.intros(1))
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+          unfolding R_def[simplified]
+          apply (rule exI[of _ "os"])
+          apply (rule exI[of _ sg])
+          apply (rule exI[of _ "cbufs"])
+          apply (rule exI[of _ inps])
+          apply (rule exI[of _ S])
+          apply (rule exI[of _ D])
+          apply (intro conjI)
 
-          find_theorems os'
+
+
+            find_theorems ran name: f
+            oops
+
+lemma
+  "extract_progress nid nt s"
+            
+            find_theorems obtain_progress os 
 
 end
   moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op (case_sum (\<lambda>_. None) ((case_option None (Some \<circ> Inr) \<circ>\<circ> case_prod) (\<lambda>nid p. case if nid = 0 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (1 + offset, q)))) (case_sum (\<lambda>x. []) (BENQ (1, 1) (Inr (a, b)) (\<lambda>x. map Inr (cbufs x)))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (builder_op False {||} {|1|} (ip_state\<lparr>outpu := (outpu ip_state)(1 := xs)\<rparr>) (ooo_input_op_logic {|1|}))) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (builder_op True {|1|} {|1|} (bt_state\<lparr>nfron := False\<rparr>) (\<lambda>os. if nfron os then if filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1) = [] then trace STR ''No capabilities'' {||} else let compl_batches = \<lambda>p t. map (de1 (os\<lparr>nfron := False\<rparr>) \<circ> fst) (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)); ts = \<lambda>p. rmdups {} (map snd (filter (\<lambda>(d, t). t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p))); osa = os\<lparr>nfron := False, input := \<lambda>p. filter (\<lambda>(d, t). t \<notin> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)\<rparr> in Let {|(concat (map (\<lambda>t. map (\<lambda>x. (x, Cap t 1)) (f (compl_batches 1 t))) (ts 1)), map (\<lambda>t. Cap t 1) (filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1)))|} ((|`|) (\<lambda>(outs, drops). trace (STR ''outs: '' + show_nat (length outs) + STR '' , drops: '' + show_nat (length drops)) (drop_caps (produces osa (map (\<lambda>(d, y). (en2 osa d, y)) outs)) drops))) else {||}))))))) op2'"

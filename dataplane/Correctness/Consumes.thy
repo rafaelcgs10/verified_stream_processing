@@ -1748,7 +1748,7 @@ lemma dataplane_tracker_inv_consumes:
    cbufs (nid, p) = (d, t) # xs \<Longrightarrow>
    dataflow_topology (summ sg) (-+-) \<Longrightarrow>
    graph_summar_nt (summ sg) (nxt sg) os \<Longrightarrow>
-  dataplane_tracker_inv (os(nid := consumes (os nid) p (t :: 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) d)) (BTL (nid, p) cbufs) sg"
+   dataplane_tracker_inv (os(nid := consumes (os nid) p (t :: 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) d)) (BTL (nid, p) cbufs) sg"
   unfolding dataplane_tracker_inv_def
   apply (elim conjE exE)
   apply simp

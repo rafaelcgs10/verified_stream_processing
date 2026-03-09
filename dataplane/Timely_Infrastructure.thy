@@ -1162,7 +1162,7 @@ corec builder_op where
       x # xs \<Rightarrow> send_output (builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic) p x)
       (cfilter (\<lambda>p. outpu os p \<noteq> []) ops)))
     (if fb then Read None (\<lambda>x. case x of
-      Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f, nfron := \<forall>p. f p \<noteq> front os p\<rparr>) logic
+      Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f, nfron := \<exists>p. f p \<noteq> front os p\<rparr>) logic
     | _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda>_. \<oslash>))
      else \<oslash>)
     (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda>x. case x of
@@ -1181,7 +1181,7 @@ lemma step_builder_op_elim:
   | (read_frontier1) f where \<open>io = Inp None (Inl (Inr f))\<close> \<open>\<not> initia os\<close>
     \<open>op = builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := True\<rparr>) logic\<close>
   | (read_frontier2) f where \<open>io = Inp None (Inl (Inr f))\<close> \<open>initia os\<close> \<open>fb\<close>
-    \<open>op = builder_op fb ips ops (os\<lparr>front := f, nfron := \<forall>p. f p \<noteq> front os p\<rparr>) logic\<close>
+    \<open>op = builder_op fb ips ops (os\<lparr>front := f, nfron := \<exists>p. f p \<noteq> front os p\<rparr>) logic\<close>
   | (read_end_Some) p x where \<open>io = Inp (Some p) x\<close> \<open>initia os\<close> \<open>p |\<in>| ips\<close> \<open>is_Inl x\<close> \<open>op = \<oslash>\<close>
   | (read_data) p d t where \<open>io = Inp (Some p) (Inr (d, t))\<close> \<open>initia os\<close> \<open>p |\<in>| ips\<close>
     \<open>op = builder_op fb ips ops (consumes os p t d) logic\<close>
@@ -1210,7 +1210,7 @@ proof (cases io)
       show ?thesis
       proof (cases \<open>initia os\<close>)
         case True
-        hence \<open>fb \<and> op = builder_op fb ips ops (os\<lparr>front := f, nfron := \<forall>p. f p \<noteq> front os p\<rparr>) logic\<close>
+        hence \<open>fb \<and> op = builder_op fb ips ops (os\<lparr>front := f, nfron := \<exists>p. f p \<noteq> front os p\<rparr>) logic\<close>
           using assms Inp None frontier by (subst (asm) builder_op.code) (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def  split: if_splits list.splits)
         thus ?thesis using read_frontier2 Inp None frontier True by blast
       next
@@ -1287,10 +1287,10 @@ qed
 
 lemma step_builder_op_Read_None2[intro]:
   assumes \<open>io = Inp None (Inl (Inr f))\<close> \<open>initia os\<close> \<open>fb\<close>
-    \<open>op = builder_op fb ips ops (os\<lparr>front := f, nfron := \<forall>p. f p \<noteq> front os p\<rparr>) logic\<close>
+    \<open>op = builder_op fb ips ops (os\<lparr>front := f, nfron := \<exists>p. f p \<noteq> front os p\<rparr>) logic\<close>
   shows \<open>step io (builder_op fb ips ops os logic) op\<close>
 proof -
-  let ?g = \<open>\<lambda>x. case x of Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f, nfron := \<forall>p. f p \<noteq> front os p\<rparr>) logic | _ \<Rightarrow> \<oslash>\<close>
+  let ?g = \<open>\<lambda>x. case x of Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f, nfron := \<exists>p. f p \<noteq> front os p\<rparr>) logic | _ \<Rightarrow> \<oslash>\<close>
   have \<open>Read None ?g |\<in>| choices (builder_op fb ips ops os logic)\<close> using assms(2,3)
     by (subst (2) builder_op.code) force
   moreover have \<open>?g (Inl (Inr f)) = op\<close> using assms(4) by simp
@@ -1337,7 +1337,7 @@ proof -
 qed
 
 definition notifier_op where
-  "notifier_op ips ops os logic = (builder_op True ips ops (os\<lparr> nfron := False \<rparr>) 
+  "notifier_op ips ops os logic = (builder_op True ips ops os
    (\<lambda> os.
     if nfron os then
     logic (os\<lparr> nfron := False \<rparr>) (\<lambda> p. filter (\<lambda> t. \<not> frontier_less_equal (front os p) t) (ocaps os p))
@@ -1418,8 +1418,13 @@ lemma zcount_zmset_ge_0I:
   by (induct xs) 
     (auto simp add: zcount_update_zmultiset)
 lemma zcount_zmset_le_0I:
-  "(\<forall> (x, m) \<in> set xs. 0 \<ge> m) \<Longrightarrow>
+  "(\<forall> (x, m) \<in> set xs. x = t \<longrightarrow> 0 \<ge> m) \<Longrightarrow>
    zcount (zmset xs) t \<le> 0"
+  by (induct xs) 
+    (auto simp add: zcount_update_zmultiset)
+lemma zcount_zmset_eq_0I:
+  "(\<forall> (t', m) \<in> set xs. t' \<noteq> t) \<Longrightarrow>
+   zcount (zmset xs) t = 0"
   by (induct xs) 
     (auto simp add: zcount_update_zmultiset)
 
