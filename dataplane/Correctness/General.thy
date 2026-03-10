@@ -277,4 +277,14 @@ lemma change_multiplicities_extract_prog_obtain_progress_remove1_append:
   apply (metis (no_types, lifting) change_multiplicities_append_alt change_multiplicities_comm)
     done
   done
+
+
+(* FIXME: move me *)
+lemma cUnion_cUn_distrib[simp]:
+  "cUnion (cUn A B) = cUn (cUnion A) (cUnion B)"
+  apply transfer
+  apply auto
+  done
+
+
 end

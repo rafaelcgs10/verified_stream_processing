@@ -1634,6 +1634,11 @@ lemma extract_progress_obtain_progress_obtain_progress[simp]:
   "extract_progress nid su (snd (obtain_progress (fst (obtain_progress (os nid))))) = []"
   unfolding obtain_progress_def extract_progress_def
   by auto
+lemma intsum_consumes[simp]:
+  "intsum (consumes os p t d) = intsum os"
+  unfolding consumes_def add_caps_def
+  apply auto
+  done
 
 lemma frontier_less_equal_ifrontierI:
   "dataflow_topology su (-+-) \<Longrightarrow>
