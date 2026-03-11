@@ -249,6 +249,11 @@ lemma in_cset_from_list[simp]:
   unfolding cset_from_list_def
   apply (auto simp flip: cin.rep_eq)
   done
+lemma in_cimage_cset_from_list[simp]:
+  "x |\<in>| (f |`| (cset_from_list xs)) \<longleftrightarrow> x \<in> f ` set xs"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
 
 lemma outputs_at_target_my_summ:
   "outputs_at_target (antichain_from_list oo my_summ) os = (\<lambda> p. if p = (1, 0) then outpu (os 0) 0 else [])"
@@ -299,6 +304,12 @@ lemma cset_from_list_image_filter_cfilter:
   apply auto
   done
 
+lemma cimage_cfilter_clean:
+  "(\<forall> x. x |\<in>| S \<longrightarrow> Q x \<longleftrightarrow> P x) \<Longrightarrow>
+   (\<lambda>t. F t (Q t)) |`| cfilter P S =
+   ((\<lambda>t. F t True) |`| cfilter P S)"
+  apply auto
+  done
 
 lemma correctness_gen:
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
@@ -484,10 +495,46 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
          unfolding BULK_BENQ_def
          apply simp
          apply (simp add: split_beta cimage_cUn)
-         apply (subst (1) cset_from_list_image_filter_cfilter)
-         using cset_from_list_image_filter_cfilter
+         apply (subst (1) cimage_cfilter_clean; simp)
+         apply (subst (4) cUn_left_commute)
+          apply (subst (1) cUn_left_commute)
+         apply (simp flip: cUn_assoc)
+         apply (simp add:  cimage_cUnion comp_def Countable_Set_Type.cset.map_comp)
+         apply (rule arg_cong2[where f=cUn])
+         subgoal
+         apply (rule arg_cong2[where f=cUn])
+           subgoal
+         apply (rule arg_cong2[where f=cUn])
+             subgoal
+               apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
+               subgoal for dd t d
+                 apply (cases "frontier_less_equal (front (os 1) 1) t")
+                 subgoal
+                 apply (drule spec)
+                 apply (drule mp)
+                  apply (intro conjI)
+                   apply (rule bexI)
+                    apply (rule refl)
+                   apply assumption
+                  apply simp
+                   apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
 
-         find_theorems Set.filter image
+         find_theorems "_  |\<in>| _" cset_from_list
+
+         find_theorems "cUn (cUnion _) _ = _"
+
+
+
+         oops
+
+
+lemma
+  "f ` g ` h = (f o g) ` h"
+
+lemma
+  "cimage f (cimage g S) = (cimage (f o g) S)"
+
+         find_theorems image comp
 
 end
            apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
