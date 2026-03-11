@@ -311,6 +311,11 @@ lemma cimage_cfilter_clean:
   apply auto
   done
 
+lemma cset_cfilter_split:
+  "S = cUn (cfilter P S) (cfilter (Not o P) S)"
+  by auto
+
+
 lemma correctness_gen:
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
     and f :: \<open>'d1 buf \<Rightarrow> 'd2 buf\<close>
@@ -381,7 +386,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                   apply (simp add: SIM1)
                  apply (simp add: SIM1)
                 apply (simp add: SIM1(1))
-               apply (simp add: SIM1)
+                apply (simp add: SIM1)
           subgoal premises
             using SIM1
             unfolding ty1_check_def
@@ -392,7 +397,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             by (fastforce simp add:  Src_from_Trg_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
           using SIM1 apply fastforce+
           done
-                defer
+                 defer
         subgoal for d t
           apply (intro exI conjI relcomppI)
              apply (rule rtranclp.intros(1))
@@ -429,14 +434,14 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             apply (rule dataplane_tracker_inv_consumes[where xs="tl (cbufs (1, 1))"])
                apply assumption
             using temp(2,4) apply (simp add: BHD_def )
-            using SIM1(1,2) apply simp
             subgoal
-              using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
+              using SIM1(1,2) 
+              using  dataflow_topology_from_tree.dataflow_topology_axioms
               by metis
             subgoal              
               apply (rule graph_summar_nt)
                  apply (rule refl)+
-              apply (rule SIM1(2)[unfolded SIM1(1)])
+                apply (rule SIM1(2)[unfolded SIM1(1)])
                apply (auto simp add: SIM1 comp_def)
               done
             done
@@ -444,7 +449,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                 defer
         subgoal 
           (* batch_op logic  *)
-   apply (intro exI conjI relcomppI)
+          apply (intro exI conjI relcomppI)
              apply (rule rtranclp.intros(1))
             apply (rule bisim_refl)
            defer
@@ -472,56 +477,277 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           apply (rule exI[of _ S])
           apply (rule exI[of _ D])
           apply (intro conjI)
-       unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
-            apply (simp add: map_tl SIM1(3-) drop_caps_def produces_def comp_def split_beta comp_op_def if_distrib  consumes_def add_caps_def BTL_def enum_num1_def operator_state.defs fun_upd_def)
-              apply (rule arg_cong2[where f=set_spec_op])
-       subgoal premises temp
-       apply (simp add: SIM1(11,12,9))
-         apply (subst (1 2) cUn_assoc)
-               apply (rule arg_cong2[where f=cUn])
-         apply simp
-         apply (simp add: cimage_cUn if_distrib[where f=input] SIM1(1,2) outputs_at_target_my_summ inputs_at_target_def)
-         apply (subst (1) cUn_assoc)
-         apply (rule arg_cong2[where f=cUn])
-         apply simp
-         apply (subst coll_lshift)
-         subgoal sorry
-         apply (subst coll_lshift)
-         subgoal sorry
-         apply (subst coll_lshift)
-         subgoal sorry
-         apply (subst coll_lshift)
-         subgoal sorry
-         unfolding BULK_BENQ_def
-         apply simp
-         apply (simp add: split_beta cimage_cUn)
-         apply (subst (1) cimage_cfilter_clean; simp)
-         apply (subst (4) cUn_left_commute)
-          apply (subst (1) cUn_left_commute)
-         apply (simp flip: cUn_assoc)
-         apply (simp add:  cimage_cUnion comp_def Countable_Set_Type.cset.map_comp)
-         apply (rule arg_cong2[where f=cUn])
-         subgoal
-         apply (rule arg_cong2[where f=cUn])
-           subgoal
-         apply (rule arg_cong2[where f=cUn])
-             subgoal
-               apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
-               subgoal for dd t d
-                 apply (cases "frontier_less_equal (front (os 1) 1) t")
-                 subgoal
-                 apply (drule spec)
-                 apply (drule mp)
-                  apply (intro conjI)
-                   apply (rule bexI)
-                    apply (rule refl)
+          unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
+                  apply (simp add: map_tl SIM1(3-) drop_caps_def produces_def comp_def split_beta comp_op_def if_distrib  consumes_def add_caps_def BTL_def enum_num1_def operator_state.defs fun_upd_def)
+                 apply (rule arg_cong2[where f=set_spec_op])
+          subgoal premises temp
+            apply (simp add: SIM1(11,12,9))
+            apply (subst (1 2) cUn_assoc)
+            apply (rule arg_cong2[where f=cUn])
+             apply simp
+            apply (subgoal_tac "\<forall>x. x \<in> lset (inps 1) \<longrightarrow> is_Data x \<longrightarrow> frontier_less_equal (front (os 1) 1) (event.time x)")
+             defer
+            subgoal
+              apply safe       
+              subgoal for x
+                using timely_input_stream_frontier_less_equal[OF SIM1(13), rule_format, of x] apply simp
+                apply (cases x; clarsimp; hypsubst_thin?)
+                subgoal for t d
+                  using SIM1(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+                  apply safe
+                  unfolding front_inv_def imp_front_inv_def
+                  apply (drule spec[of _ 1])
+                  apply (drule spec[of _ 1])
+                  apply (drule spec[of _ "Loc 1 (Trg 1)"])
+                  apply (rule frontier_less_equal_le_trans[rotated])
+                   apply (rule order.trans)
+                    apply assumption
                    apply assumption
-                  apply simp
-                   apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
+                  subgoal for caps
+                    unfolding Src_caps_inv_def
+                    apply (drule spec[of _ 0])
+                    apply (drule spec[of _ 1])
+                    unfolding c_pts_inv_def
+                    apply (drule spec[of _ "Loc 0 (Src 1)"])
+                    apply simp
+                    apply (rule frontier_less_equal_ifrontier_from_Src[where s=0 and nid=0 and os=os and nt="subgraph.nxt sg", simplified])
+                    subgoal
+                      using SIM1(1,2) 
+                      using  dataflow_topology_from_tree.dataflow_topology_axioms
+                      by metis
+                      apply (drule sym[of _ "to_zmset (ocaps (os 0) 1)"])
+                      back
+                      apply (simp add: c_pts_change_multiplicities SIM1(1,2) comp_def  zmset_filter_extract_progress_Src_consumes_diff)
+                    subgoal 
+                      using graph_summar_nt[unfolded graph_summar_nt_def , OF _  SIM1(2)[unfolded SIM1(1)] , simplified, OF dataflow_tree_to_graph_to_my_summ[symmetric], where os=os] apply -
+                      apply (drule meta_mp)
+                      using SIM1(1,2,8) dataflow_tree_to_graph_to_my_summ apply fastforce 
+                      apply (drule meta_mp)
+                       apply (clarsimp simp add: SIM1(1,2,3) comp_def)
+                      apply (elim conjE)
+                      apply (clarsimp simp add: SIM1(1,2) comp_def)
+                      apply (drule spec2[of _ 1 0], drule mp)
+                       back
+                       apply simp_all
+                      subgoal premises
+                        unfolding graph_to_nxt_def
+                        apply auto
+                        subgoal
+                          unfolding my_summ_def inj_on_def
+                          apply clarsimp
+                          apply (smt (verit, best) case_prodD find_SomeD(1) is_empty_antichain_empty_list)
+                          done
+                        subgoal
+                          unfolding my_summ_def inj_on_def
+                          apply (auto simp add: enum_num1_def find_Some_iff split_beta Enum.enum_prod_def)
+                          done
+                        done
+                      done
+                    apply assumption
+                    done
+                  done
+                done
+              done
+            apply (subgoal_tac "\<forall> t \<in> snd ` set ((outputs_at_target (summ sg) os >> cbufs) (1, 1)). frontier_less_equal (front (os 1) 1) t")
+             defer
+            subgoal
+              apply safe
+              subgoal for _ a t
+                apply simp
+                using SIM1(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+                apply safe
+                unfolding front_inv_def imp_front_inv_def
+                apply (drule spec[of _ 1])
+                apply (drule spec[of _ 1])
+                apply (drule spec[of _ "Loc 1 (Trg 1)"])
+                unfolding chnls_imp_front_inv_def
+                apply (drule spec[of _ 1])
+                apply (drule spec[of _ 1])
+                apply (drule bspec[of _ _ t])
+                subgoal 
+                  by blast
+                apply (drule frontier_less_equal_le_trans)
+                 apply (rule order.trans[rotated])
+                  apply assumption+
+                done
+              done
+            apply (simp add: cimage_cUn if_distrib[where f=input] SIM1(1,2) outputs_at_target_my_summ inputs_at_target_def)
+            apply (subst (1) cUn_assoc)
+            apply (rule arg_cong2[where f=cUn])
+             apply simp
+            apply (subst coll_lshift)
+            subgoal using timely_input_stream_expires[OF SIM1(13)] by auto
+            apply (subst coll_lshift)
+            subgoal using timely_input_stream_expires[OF SIM1(13)] by auto
+            apply (subst coll_lshift)
+            subgoal using timely_input_stream_expires[OF SIM1(13)] by auto
+            apply (subst coll_lshift)
+            subgoal using timely_input_stream_expires[OF SIM1(13)] by auto
+            unfolding BULK_BENQ_def
+            apply simp
+            apply (simp add: split_beta cimage_cUn)
+            apply (subst (1) cimage_cfilter_clean; simp)
+            apply (subst (4) cUn_left_commute)
+            apply (subst (1) cUn_left_commute)
+            apply (simp flip: cUn_assoc)
+            apply (simp add:  cimage_cUnion comp_def Countable_Set_Type.cset.map_comp)
+            apply (rule arg_cong2[where f=cUn])
+            subgoal
+              apply (rule arg_cong2[where f=cUn])
+              subgoal
+                apply (rule arg_cong2[where f=cUn])
+                subgoal
+                  apply (subst (1) cset_cfilter_split[where P="\<lambda>(_, t). \<not> (t \<in> set (ocaps (os 1) 1) \<longrightarrow> frontier_less_equal (front (os 1) 1) t)"])
+                  apply (simp add: comp_def split_beta)
+                  apply (rule arg_cong2[where f=cUn])
+                  subgoal
+                    apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
+                    subgoal for dd t d
+                      apply (rule cBexI[of _ t])
+                       apply auto
+                      apply (subst (asm) (2 3) filter_False)
+                      subgoal
+                        by force
+                      subgoal
+                        by force
+                      apply simp
+                      unfolding coll_def
+                      apply (subst (asm) lfilter_False)
+                      subgoal
+                        by (auto split: event.splits)
+                      apply auto
+                      done
+                    subgoal for dd d t'
+                      apply (rule cBexI[of _ "(d, t')"])
+                       apply simp_all
+                      apply (subst (2 3) filter_False)
+                      subgoal
+                        by force
+                      subgoal
+                        by force
+                      unfolding coll_def
+                      apply (subst lfilter_False)
+                      subgoal
+                        by (auto split: event.splits)
+                      apply auto
+                      done
+                    done
+                  subgoal
+                    apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
+                    subgoal for dd t d
+                      apply (rule cBexI[of _ t])
+                       apply auto
+                      apply (smt (verit, best) filter_cong split_def)
+                      done
+                    subgoal for dd t d
+                      apply (rule cBexI[of _ t])
+                       apply auto                   
+                      apply (smt (verit, best) filter_cong split_def)
+                      done
+                    subgoal for dd d t
+                      apply (rule cBexI[of _ "(d, t)"])
+                       apply auto                   
+                      apply (smt (verit, best) filter_cong split_def)
+                      done
+                    subgoal for dd d t
+                      apply (rule cBexI[of _ "(d, t)"])
+                       apply auto                   
+                      apply (smt (verit, best) filter_cong split_def)
+                      done
+                    done
+                  done
+                subgoal
+                  apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
+                  subgoal for  t d
+                    apply (rule cBexI[of _ t])
+                     apply auto         
+                    apply (smt (verit, best) filter_cong split_def)
+                    done
+                  subgoal for  t d
+                    apply (rule cBexI[of _ t])
+                     apply auto         
+                    apply (smt (verit, best) filter_cong split_def)
+                    done
+                  done
+                done
+              subgoal
+                apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
+                subgoal for x  t d
+                  apply (rule cBexI[of _ "(x, t)"])
+                   apply auto         
+                  using filter_cong split_def apply (smt (verit, best) Un_iff snd_conv)
+                  done
+                subgoal for x  t d
+                  apply (rule cBexI[of _ "(x, t)"])
+                   apply auto         
+                  using filter_cong split_def apply (smt (verit, best) Un_iff snd_conv)
+                  done
+                done
+              done
+            subgoal
+              apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
+              subgoal for x  t d
+                apply (rule cBexI[of _ "(x, t)"])
+                 apply auto         
+                using filter_cong split_def apply (smt (verit, best) Un_iff snd_conv)
+                done
+              subgoal for x  t d
+                apply (rule cBexI[of _ "(x, t)"])
+                 apply auto         
+                using filter_cong split_def apply (smt (verit, best) Un_iff snd_conv)
+                done
+              done
+            done
+                 apply (simp_all add: SIM1(1,2,3))
 
-         find_theorems "_  |\<in>| _" cset_from_list
+          subgoal
+            using SIM1
+            unfolding ty1_check_def
+            by (auto simp add: BTL_def BHD_def  Src_from_Trg_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
+          subgoal
+            using SIM1(5,6,7)
+            unfolding ty2_check_def
+            apply (auto simp add: operator_state.defs comp_def fun_upd_def BTL_def BHD_def Src_from_Trg_def consumes_def add_caps_def BENQ_def my_summ_def BULK_BENQ_def outputs_at_target_def split: option.splits if_splits prod.splits)
+             apply (meson UnCI img_fst in_set_tlD)+
+            done
+          subgoal
+            by (simp add: SIM1(1,2,3,8))
+          subgoal premises temp
+            using SIM1(10) apply -
+            sorry
+          subgoal              
+            by (auto simp add: SIM1 comp_def)
+          done
 
-         find_theorems "cUn (cUnion _) _ = _"
+
+       find_theorems summ sg
+
+
+
+end
+                   apply (smt (verit, best) filter_cong split_def)
+                   done
+                 subgoal for  t d
+                   apply (rule cBexI[of _ t])
+                    apply auto         
+                   apply (smt (verit, best) filter_cong split_def)
+                   done
+                 done
+               done
+
+end
+                     by force
+                   subgoal
+                     by force
+                   apply simp
+                   unfolding coll_def
+                   apply (subst (asm) lfilter_False)
+                   subgoal
+                     by (auto split: event.splits)
+                   apply auto
+                   done
+
+                   find_theorems "frontier_less_equal" "_ \<le> _" name: trans
 
 
 

@@ -551,8 +551,7 @@ lemma dataplane_tracker_inv_progress:
                     apply force
                     done
                   subgoal
-                    apply (subst (asm) (2) extract_prog_def)
-                    apply simp
+                    apply (subst (asm) (1) extract_prog_def)
                     apply (rule frontier_less_equal_ifrontier_trans_alt2[OF prems(1), of 0 "Loc nid'' (Src p'')"])
                     subgoal 
                       using prems(2)[unfolded graph_summar_nt_def] by simp

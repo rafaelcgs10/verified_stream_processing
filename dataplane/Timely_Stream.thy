@@ -219,8 +219,95 @@ lemma timely_input_stream_Data_expires:
     done
   done
 
+lemma timely_input_stream_Drop_expires:
+  "Drop t \<in> lset lxs \<Longrightarrow> 
+   timely_input_stream lxs C \<Longrightarrow> 
+   lfinite (lfilter (\<lambda>e. time e = t) lxs)"
+  apply (cases "lfinite lxs")
+   apply simp
+  apply (simp add: in_lset_conv_lnth)
+  apply (erule exE conjE)+
+  subgoal for i
+  apply (frule timely_input_stream_ldrop)
+   apply assumption
+    apply (erule exE conjE)
+    subgoal for C'
+      apply (subst (asm) llist.collapse(2)[of "ldropn _ _", symmetric])
+       apply simp
+      apply (subst (asm) lhd_ldropn)
+       apply simp
+      apply (simp add: timely_input_stream_def)
+      apply (auto)
+      apply (drule spec, drule mp, assumption)
+      apply (drule ev_drops_not_in_lset)
+       apply (meson LConsDrop)
+      apply (erule exE)
+      subgoal for j
+        apply (cases j; simp)
+         apply blast
+        subgoal for j'
+        apply (drule spec[of _ t], drule mp, rule order_refl)
+        apply (simp add: lfinite_lfilter)
+        apply (rule finite_subset[of _ "{0 ..< i + j}"])
+           apply (auto simp: ldropn_ltl image_iff lset_ldropn_conv_lnth)
+          done
+        done
+      done
+    done
+  done
+
+lemma timely_input_stream_Mint_expires:
+  "Mint t \<in> lset lxs \<Longrightarrow> 
+   timely_input_stream lxs C \<Longrightarrow> 
+   lfinite (lfilter (\<lambda>e. time e = t) lxs)"
+  apply (cases "lfinite lxs")
+   apply simp
+  apply (simp add: in_lset_conv_lnth)
+  apply (erule exE conjE)+
+  subgoal for i
+    apply (frule timely_input_stream_ldrop)
+     apply assumption
+    apply (erule exE conjE)
+    subgoal for C'
+      apply (subst (asm) llist.collapse(2)[of "ldropn _ _", symmetric])
+       apply simp
+      apply (subst (asm) lhd_ldropn)
+       apply simp
+      apply (simp add: timely_input_stream_def)
+      apply (auto)
+      apply (drule spec, drule mp, assumption)
+      apply (drule ev_drops_not_in_lset)
+       apply (meson LConsMint)
+      apply (erule exE)
+      subgoal for t' j
+        apply (simp add: lfinite_lfilter)
+        apply (auto simp: ldropn_ltl image_iff lset_ldropn_conv_lnth)
+         apply (meson not_in_iff order_refl vacant_def)
+        apply (smt (verit, best) dual_order.order_iff_strict infinite_nat_iff_unbounded_le mem_Collect_eq)
+        done
+      done
+    done
+  done
+
 lemma timely_input_stream_LCons_not_empty:
   \<open>timely_input_stream (LCons e lxs) C \<Longrightarrow> C \<noteq> {#}\<close>
   unfolding timely_input_stream_def by force
+
+
+lemma timely_input_stream_expires:
+  "timely_input_stream lxs C \<Longrightarrow> 
+   lfinite (lfilter (\<lambda>e. time e = t) lxs)"
+  apply (cases "lfilter (\<lambda>e. time e = t) lxs")
+   apply simp_all
+  subgoal for e lxs'
+    apply (cases e; simp)
+    using timely_input_stream_Data_expires
+      apply (metis (mono_tags, lifting) event.sel(1) lfinite_code(2) llist.set_intros(1) lset_lfilter mem_Collect_eq)
+    using timely_input_stream_Drop_expires
+     apply (smt (verit, ccfv_SIG) event.sel(2) in_lset_lappend_iff lfilter_cong lfilter_eq_LConsD lfinite_code(2) llist.set_intros(1))      
+    using timely_input_stream_Mint_expires
+    apply (smt (verit, ccfv_SIG) event.sel(3) in_lset_lappend_iff lfilter_cong lfilter_eq_LConsD lfinite_code(2) llist.set_intros(1))
+    done
+  done
 
 end

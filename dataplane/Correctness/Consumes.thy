@@ -222,23 +222,6 @@ lemma zmset_filter_Trg_not_nid:
        apply (metis not_Some_eq2 option.sel option.simps(3))+
   done
 
-lemma extract_prog_append[simp]:
-  "extract_prog (xs @ ys) nt os = extract_prog xs nt os @ extract_prog ys nt os"
-  unfolding extract_prog_def by auto
-lemma extract_prog_Cons[simp]:
-  "extract_prog (x#xs) nt os = extract_progress x nt (snd (obtain_progress (os x))) @ extract_prog xs nt os"
-  unfolding extract_prog_def by auto
-lemma extract_prog_skip_update[simp]:
-  "nid \<notin> set xs \<Longrightarrow>
-   extract_prog xs nt (os(nid := A)) = extract_prog xs nt os"
-  unfolding extract_prog_def
-  apply (induct xs)
-   apply auto
-  done
-lemma extract_prog_empty[simp]:
-  "extract_prog [] nt os = []"
-  unfolding extract_prog_def by auto
-
 lemma t_in_buf_cases:
   "cbufs (nid, p) = (d, t) # xs \<Longrightarrow>
    Trg_caps_inv caps (outputs_at_target su os >> cbufs) \<Longrightarrow>

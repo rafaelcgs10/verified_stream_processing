@@ -287,4 +287,173 @@ lemma cUnion_cUn_distrib[simp]:
   done
 
 
+
+lemma frontier_zmset_of_remove1_mset[simp]:
+  "frontier (zmset_of (remove1_mset t C)) = frontier (zmset_of C - {# t #}\<^sub>z)"
+  apply transfer'
+  unfolding minimal_antichain_def
+  apply auto
+  done
+
+lemma time_monotone_frontier_less_equal:
+  "x \<in> lset inps \<Longrightarrow>
+   timely_monotone inps C \<Longrightarrow>
+   is_Data x \<Longrightarrow>
+   frontier_less_equal (frontier (zmset_of C)) (event.time x)"
+  unfolding  frontier_less_equal_iff2
+  apply (cases x; clarsimp; hypsubst_thin?)
+  subgoal for t d
+    apply (induct inps arbitrary: C rule: lset_induct)
+    subgoal
+      apply (erule timely_monotone.cases)
+         apply clarsimp+
+      apply (meson mem_zmset_of zcount_gt_0_in_frontierD zcount_zmset_of_nonneg zmset_elem_nonneg)
+      done
+    subgoal for x' xs C
+      apply (erule timely_monotone.cases; clarsimp; hypsubst_thin?)
+      subgoal for t'
+        apply (drule meta_spec)
+        apply (drule meta_mp)
+         apply assumption
+        apply clarsimp
+        using in_frontier_minusD apply fastforce
+        done
+      subgoal for t' t''
+        apply (drule meta_spec)
+        apply (drule meta_mp)
+         apply assumption
+        apply clarsimp
+        apply (smt (verit, del_insts) in_frontier_iff mem_zmset_of order_trans_rules(23) trivial_dataflow_topology_interpretation.obtain_elem_frontier zcount_add_zmset zcount_ne_zero_iff zcount_zmset_of_nonneg)
+        done
+      done
+    done
+  done
+
+lemma timely_input_stream_frontier_less_equal:
+  "timely_input_stream inps C \<Longrightarrow>
+   (\<forall> x. x \<in> lset inps \<longrightarrow> is_Data x \<longrightarrow> frontier_less_equal (frontier (zmset_of C)) (event.time x))"
+  unfolding timely_input_stream_def
+  using time_monotone_frontier_less_equal by blast
+
+
+
+lemma extract_prog_append[simp]:
+  "extract_prog (xs @ ys) nt os = extract_prog xs nt os @ extract_prog ys nt os"
+  unfolding extract_prog_def by auto
+lemma extract_prog_Cons[simp]:
+  "extract_prog (x#xs) nt os = extract_progress x nt (snd (obtain_progress (os x))) @ extract_prog xs nt os"
+  unfolding extract_prog_def by auto
+lemma extract_prog_skip_update[simp]:
+  "nid \<notin> set xs \<Longrightarrow>
+   extract_prog xs nt (os(nid := A)) = extract_prog xs nt os"
+  unfolding extract_prog_def
+  apply (induct xs)
+   apply auto
+  done
+lemma extract_prog_empty[simp]:
+  "extract_prog [] nt os = []"
+  unfolding extract_prog_def by auto
+
+
+lemma frontier_less_equal_ifrontier_from_Src:
+  assumes D: "dataflow_topology su (-+-)"
+  shows  "frontier_less_equal
+     (frontier (c_pts (change_multiplicities su (extract_progress nid nt (snd (obtain_progress (os nid)))) c) (Loc nid (Src p)))) t \<Longrightarrow>
+   s \<in>\<^sub>A graph.path_weight su (Loc nid (Src p)) l \<Longrightarrow>
+   extract_prog_changes_above_impl_inv su nt c os \<Longrightarrow>
+   frontier_less_equal (ifrontier su (-+-) c l) (t -+- s)"
+  apply (subst (asm) frontier_less_equal_iff2)
+  apply clarsimp
+  subgoal for t'
+    apply (simp add: c_pts_change_multiplicities)
+    apply (drule in_frontier_addD)
+    apply (elim disjE exE)
+    subgoal
+    apply clarsimp
+      apply (rule frontier_less_equal_ifrontierI[OF D, of s "Loc nid (Src p)", simplified])
+      apply assumption
+      unfolding frontier_less_equal_iff2
+      subgoal for t''
+        apply (rule exI[of _ t''])
+        apply auto
+        done
+      done
+    subgoal
+      apply clarsimp
+      apply (subst (asm) obtain_progress_def)
+      apply (subst (asm) extract_progress_def)
+      apply (clarsimp simp add: filter_map split_beta comp_def List.map_filter_def split: option.splits)
+      unfolding extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def
+      apply (drule spec[of _ nid])
+      apply (drule spec[of _ "[]"])
+      apply simp
+      apply (drule zcount_zmset_gt_0_set_Ex)
+      apply clarsimp
+      subgoal for t'' m
+        apply (drule bspec[of _ _ "(Loc nid (Src p), t', m)"])
+        subgoal
+          unfolding extract_progress_def obtain_progress_def
+          by (fastforce simp add: Misc.set_map_filter image_iff split_beta split: option.splits)
+        subgoal
+          apply simp
+          apply (rule frontier_less_equal_ifrontier_trans_alt2[OF D])
+            apply assumption+
+          apply auto
+          done
+        done
+      done
+    done
+  done
+
+
+lemma frontier_less_equal_ifrontier_from_Trg:
+  assumes D: "dataflow_topology su (-+-)"
+  shows  "frontier_less_equal
+     (frontier (c_pts (change_multiplicities su (extract_progress nid nt (snd (obtain_progress (os nid)))) c) (Loc nid (Trg p)))) t \<Longrightarrow>
+   s \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) l \<Longrightarrow>
+   extract_prog_changes_above_impl_inv su nt c os \<Longrightarrow>
+   frontier_less_equal (ifrontier su (-+-) c l) (t -+- s)"
+  apply (subst (asm) frontier_less_equal_iff2)
+  apply clarsimp
+  subgoal for t'
+    apply (simp add: c_pts_change_multiplicities)
+    apply (drule in_frontier_addD)
+    apply (elim disjE exE)
+    subgoal
+    apply clarsimp
+      apply (rule frontier_less_equal_ifrontierI[OF D, of s "Loc nid (Trg p)", simplified])
+      apply assumption
+      unfolding frontier_less_equal_iff2
+      subgoal for t''
+        apply (rule exI[of _ t''])
+        apply auto
+        done
+      done
+    subgoal
+      apply clarsimp
+      apply (subst (asm) obtain_progress_def)
+      apply (subst (asm) extract_progress_def)
+      apply (drule zcount_zmset_gt_0_set_Ex)
+      apply (clarsimp simp add: image_iff filter_map split_beta comp_def List.map_filter_def split: option.splits)
+      unfolding extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def
+      apply (drule spec[of _ nid])
+      apply (drule spec[of _ "[]"])
+      apply simp
+      apply clarsimp
+      subgoal for t'' m
+        apply (drule bspec[of _ _ "(Loc nid (Trg p), t', m)"])
+        subgoal
+          unfolding extract_progress_def obtain_progress_def
+          by (fastforce simp add: Misc.set_map_filter image_iff split_beta split: option.splits)
+        subgoal
+          apply simp
+          apply (rule frontier_less_equal_ifrontier_trans_alt2[OF D])
+            apply assumption+
+          apply auto
+          done
+        done
+      done
+    done
+  done
+
 end
