@@ -456,6 +456,15 @@ lemma map_IO_elim :
   apply(cases io3; simp)
   done
 
+lemma map_IO_intros :
+  "(\<exists> p' x'. io1 = Inp p' x' \<and> f1 p' = p1 \<and> h1 x' = x1) \<Longrightarrow> map_IO f1 g1 h1 io1 = Inp p1 x1"
+  "(\<exists> p' x'. io2 = Out p' x' \<and> g2 p' = p2 \<and> h2 x' = x2) \<Longrightarrow>map_IO f2 g2 h2 io2 = Out p2 x2"
+  "io3 = Tau \<Longrightarrow> map_IO f3 g3 h3 io3 = Tau"
+  apply(cases io1; simp)
+  apply(cases io2; simp)
+  apply(cases io3; simp)
+  done
+
 lemma step_dataflow_dis_op_elim:
   assumes "step io (dataflow_dis_op sg exch op) op'"
   obtains
