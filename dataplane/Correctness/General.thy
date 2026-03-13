@@ -35,13 +35,8 @@ definition "extract_progress_inv su ed os c =
    frontier_less_equal (ifrontier su (+) (change_multiplicities su (extract_progress nid' ed ((snd o obtain_progress) (os nid'))) c) l) t))"
 
 
-definition Src_from_Trg where
-  "Src_from_Trg su nid p = {(nid', p'). su (Loc nid' (Src p')) (Loc nid (Trg p)) \<noteq> {}\<^sub>A}"
-
 definition "outputs_at_target su os = (\<lambda> (nid, p). let S = Src_from_Trg su nid p in if S = {} then [] else let (nid', p') = Set.the_elem S in outpu (os nid') p')"
 definition "inputs_at_target os = (\<lambda> (nid, p). input (os nid) p)"
-
-
 
 lemma outputs_at_target_consumes[simp]:
   "outputs_at_target su (os(nid := consumes (os nid) p' t d)) = outputs_at_target su os"
@@ -98,14 +93,51 @@ definition "dataplane_tracker_inv os cbufs sg =
 
 definition "graph_summar_nt su nt os = (
   (\<forall> nid p p' t. t \<in> set (intsum (os nid) p p') \<longrightarrow> (\<exists> t'\<le>t. t' \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) (Loc nid (Src p')))) \<and>
-  (\<forall> nid nid' p p'. nt (nid', p') = Some (nid, p) \<longrightarrow> 0 \<in>\<^sub>A graph.path_weight su (Loc nid' (Src p')) (Loc nid (Trg p))) \<and>
+  (\<forall> nid nid' p p'. nt (nid', p') = Some (nid, p) \<longrightarrow> 0 \<in>\<^sub>A su (Loc nid' (Src p')) (Loc nid (Trg p))) \<and>
   (\<forall> nid p p'. distinct (intsum (os nid) p p')) \<and>
   (\<forall> nid p p'. \<forall> t \<in> set (intsum (os nid) p p'). \<not> (\<exists> t' \<in> set (intsum (os nid) p p'). t' < t)) \<and>
   (\<forall> s nid p l. 
       s \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) l \<longrightarrow>
       l \<noteq> Loc nid (Trg p) \<longrightarrow> (\<exists> t p' s'. t \<in> set (intsum (os nid) p p') \<and> s' \<in>\<^sub>A graph.path_weight su (Loc nid (Src p')) l \<and> s = t -+- s')) \<and>
-  inj_on nt (Map.dom nt) 
+  inj_on nt (Map.dom nt) \<and>
+  (\<forall> nid p. card (Src_from_Trg su nid p) \<le> 1) 
   )"
+
+
+lemma path_weight_direct_0path:
+  assumes G: "Graph.graph su"
+  shows "(0 :: 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) \<in>\<^sub>A su l1 l2 \<Longrightarrow>
+   0 \<in>\<^sub>A graph.path_weight su l1 l2"
+  apply (subst graph.path_weight_def[OF G])
+  apply clarsimp
+  apply (subst member_antichain.abs_eq)
+  apply (clarsimp simp add: eq_onp_def)
+   apply (rule graph.finite_minimal_antichain_path_weightp[OF G])
+  unfolding minimal_antichain_def
+  apply clarsimp
+    apply (subst graph.path_weightp_def[OF G])
+  apply clarsimp
+  apply (rule exI[of _ "[(l1, 0, l2)]"])
+  apply clarsimp
+  apply (rule graph.path.intros(2)[where xs=Nil, simplified, OF G])
+  apply (rule graph.path.intros(1)[OF G])
+  apply auto
+  done
+
+lemma in_antichain_singleton[simp]:
+  "x \<in>\<^sub>A antichain {x}"
+   by (metis ID.set_finite in_antichain_minimal_antichain insertI1 minimal_antichain_singleton)
+
+
+lemma Src_from_Trg_graph_to_nxt_inj_on:
+  "\<forall>nid p. Src_from_Trg su nid p = {} \<Longrightarrow>
+   inj_on (graph_to_nxt su) (dom (graph_to_nxt su) )"
+  unfolding graph_to_nxt_def inj_on_def
+  apply clarsimp
+    unfolding Src_from_Trg_def
+    apply clarsimp
+    apply (metis find_SomeD(1) split_conv)
+    done
 
 lemma graph_summar_nt:
   assumes
@@ -130,13 +162,12 @@ lemma graph_summar_nt:
       apply (simp split: if_splits prod.splits)
       done
     done
-  subgoal
-    apply (rule zero_in_graph_path_weight)
-       apply (rule refl)
-      apply (rule dataflow_topology.axioms(1))
-      apply (rule dataflow_topology_from_tree.dataflow_topology_axioms)
-     apply (auto simp add: comp_def)
-    apply (metis assms(2) dataflow_tree_to_graph_Src_Trg_zero) 
+  subgoal premises prems for nid nid' p p'
+    using prems(5) apply -
+    unfolding graph_to_nxt_def
+    apply (auto 0 0 simp add: comp_def dest!: find_SomeD(1)  split: if_splits prod.splits)
+     apply (drule dataflow_tree_to_graph_Src_Trg_zero[OF prems(2)[symmetric], unfolded prems(2) comp_def, simplified, of _ _ nid p])
+    apply simp
     done
   subgoal
       unfolding dataflow_tree_to_graph_def
@@ -150,7 +181,36 @@ lemma graph_summar_nt:
     unfolding comp_def
     using dataflow_tree_to_graph_Trg_decompose 
     by blast
+  subgoal premises prems
+    apply (rule Src_from_Trg_graph_to_nxt_inj_on)
+    unfolding Src_from_Trg_def
+    apply (auto simp add: comp_def dataflow_tree_to_graph_def split: if_splits prod.splits)
+    unfolding Src_from_Trg_def
+    apply auto
+    done
+  subgoal premises prems for nid p
+    unfolding Src_from_Trg_def
+    apply (auto simp add: comp_def dataflow_tree_to_graph_def split: if_splits prod.splits)
+    unfolding Src_from_Trg_def
+    apply auto
+    done
   done
+
+lemma card_leq_1_iff:
+  "finite {x. P x} \<Longrightarrow>
+   card {x. P x} \<le> 1 \<longleftrightarrow> (\<exists>! x. P x) \<or> (\<forall> x. \<not> P x)"
+  apply auto
+  subgoal for a b c
+    unfolding le_eq_less_or_eq
+    apply (rule ccontr)
+    apply (auto simp add: card_1_singleton_iff)
+    apply (metis mem_Collect_eq singletonD)
+    done
+  subgoal for x
+    unfolding le_eq_less_or_eq
+    by (auto 10 10 simp add: card_1_singleton_iff)
+  done
+
 
 (* ======> FIXME: move me \<le>====== *)
 lemma sum_eq_singleton:
@@ -452,6 +512,39 @@ lemma frontier_less_equal_ifrontier_from_Trg:
           apply auto
           done
         done
+      done
+    done
+  done
+
+(* FIXME: move me *)
+lemma to_zmset_concat:
+  "to_zmset (concat xs) = sum_list (map to_zmset xs)"
+  by (induct xs) auto
+lemma distinct_rmdups[simp]:
+  "distinct (rmdups A xs)"
+  by (induct xs arbitrary: A) auto
+lemma image_zmset_comp:
+  "image_zmset f (image_zmset g M) = image_zmset (f o g) M"
+  apply transfer
+  apply (auto simp add: equiv_zmset_def)
+  done
+lemma zcount_image_zmset_image_zmset[simp]:
+  "zcount (Auxiliary.image_zmset f (Auxiliary.image_zmset g (M t))) t = zcount {#f (g xa). xa \<in>#\<^sub>z M t#} t"
+  apply transfer
+  apply (auto simp add: split_beta)
+  done
+lemma image_zmset_sum_image_zmset:
+  "finite S \<Longrightarrow>
+  {#f x . x \<in>#\<^sub>z \<Sum>x\<in> S. {#g xa x. xa \<in>#\<^sub>z M x#}#} = (\<Sum>x\<in> S. {#f (g xa x). xa \<in>#\<^sub>z M x#})"
+  unfolding comp_def
+  apply (induct S  rule: finite_induct)
+   apply simp
+  subgoal for t S
+    unfolding zmultiset_eq_iff
+    apply (auto simp add: equiv_zmset_def split_beta zcount_sum)
+    subgoal premises for t'
+      apply transfer
+      apply (auto simp add: split_beta)
       done
     done
   done

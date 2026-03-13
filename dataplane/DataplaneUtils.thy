@@ -197,6 +197,10 @@ lemma to_zmset_map:
   "to_zmset (map f xs) = {#f x. x \<in>#\<^sub>z to_zmset xs#}"
   by (induct xs) auto
 
+lemma to_zmset_filter:
+  "to_zmset (filter P xs) = filter_zmset P (to_zmset xs)"
+  by (induct xs) auto
+
 lemma to_zmset_empty[simp]:
   "to_zmset xs = {#}\<^sub>z \<longleftrightarrow> xs = []"
   apply (induct xs)

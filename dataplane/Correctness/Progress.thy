@@ -521,7 +521,9 @@ lemma dataplane_tracker_inv_progress:
               subgoal
                 apply (rule frontier_less_equal_ifrontierI[OF prems(1), of 0 "Loc nid'' (Src p'')", simplified])
                 subgoal 
-                  using prems(2)[unfolded graph_summar_nt_def] by simp
+                  using prems(2)[unfolded graph_summar_nt_def] 
+                   path_weight_direct_0path[OF dataflow_topology.axioms(1)[OF prems(1)]]
+                  by simp
                 subgoal
                   apply (simp add: c_pts_change_multiplicities)
                   apply (subst filter_False)
@@ -554,7 +556,7 @@ lemma dataplane_tracker_inv_progress:
                     apply (subst (asm) (1) extract_prog_def)
                     apply (rule frontier_less_equal_ifrontier_trans_alt2[OF prems(1), of 0 "Loc nid'' (Src p'')"])
                     subgoal 
-                      using prems(2)[unfolded graph_summar_nt_def] by simp
+                      using prems(2)[unfolded graph_summar_nt_def] path_weight_direct_0path[OF dataflow_topology.axioms(1)[OF prems(1)]] by simp
                      apply assumption
                     apply simp
                     done

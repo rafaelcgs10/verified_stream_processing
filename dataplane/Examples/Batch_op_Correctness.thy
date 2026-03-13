@@ -7,6 +7,7 @@ imports
   "../Correctness/General"
   "../Correctness/Consumes"
   "../Correctness/Progress"
+  "../Correctness/Produces"
   Dataplane.LList_Haskell_Setup
   Source_op
   Set_op
@@ -315,6 +316,12 @@ lemma cset_cfilter_split:
   "S = cUn (cfilter P S) (cfilter (Not o P) S)"
   by auto
 
+(* FIXME: move me*)
+lemma image_zmset_id[simp]:
+  "image_zmset id M = M"
+  apply transfer
+  apply (auto simp add: equiv_zmset_def split_beta)
+  done
 
 lemma correctness_gen:
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
@@ -712,9 +719,109 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             done
           subgoal
             by (simp add: SIM1(1,2,3,8))
-          subgoal premises temp
-            using SIM1(10) apply -
-            sorry
+          subgoal premises temp            
+            apply (rule dataplane_tracker_inv_produces_drops[where su="summ sg" and nt="nxt sg"])
+                       apply simp_all
+            defer
+            subgoal
+              by (auto simp add: comp_def enum_num1_def)
+            subgoal
+              by (auto simp add: comp_def enum_num1_def)
+            subgoal
+              by (auto simp add: comp_def enum_num1_def)
+            subgoal
+              by (auto simp add: comp_def enum_num1_def)
+            subgoal
+              by (auto simp add: comp_def enum_num1_def)
+            subgoal 
+              apply (subgoal_tac "to_zmset (map snd (input (os 1) 1)) \<subseteq>#\<^sub>z to_zmset (ocaps (os 1) 1)")
+              subgoal
+              apply (cases "input (os 1) 1")
+              subgoal
+                apply simp
+                using temp(1)[unfolded SIM1(5), simplified]
+                 temp(4)[unfolded SIM1(5), simplified] apply -
+                apply (simp add: operator_state.defs)
+
+                
+
+                find_theorems operator_state.extend 
+
+end
+
+                using SIM1(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+                apply clarsimp
+                subgoal for caps
+                  unfolding Src_caps_inv_def
+                  apply (drule spec[of _ 1])
+                  apply (drule spec[of _ 1])
+
+
+                find_theorems input os
+
+end
+              apply (clarsimp simp add: map_replicate_const map_concat comp_def)
+              apply (auto simp add: split_beta to_zmset_filter to_zmset_map to_zmset_concat comp_def sum_list_distinct_conv_sum_set)
+              apply (auto simp add: subseteq_zmset_def)
+              subgoal for t
+                apply (simp add: zmset_concat sum_list_zmset comp_def monoid_add_class.sum_list_distinct_conv_sum_set split_beta)
+                apply (auto simp add: to_zmset_nenneg zcount_sum intro!: nonneg_zcount_image_zmset ordered_comm_monoid_add_class.sum_nonneg)
+                done
+              subgoal for t
+                apply (cases "\<exists>a. (a, t) \<in> set (input (os 1) 1) \<and> t \<in> set (ocaps (os 1) 1)")
+                subgoal
+                apply (simp add: zmset_concat sum_list_zmset comp_def monoid_add_class.sum_list_distinct_conv_sum_set split_beta)
+                apply (auto simp add: to_zmset_nenneg zcount_sum intro!: nonneg_zcount_image_zmset ordered_comm_monoid_add_class.sum_nonneg split: if_splits)
+                apply (subst comm_monoid_add_class.sum.subset_diff[where B="{t}"])
+                  apply simp_all
+                  apply (auto simp add: image_iff)
+                  apply (subst comm_monoid_add_class.sum.neutral)
+                  subgoal
+                    by auto
+                  apply auto
+
+                find_theorems "_ \<Longrightarrow> sum _ _ = 0" 
+
+                oops
+
+
+lemma "image_zmset (\<lambda> _. (x :: unit)) (M :: unit zmultiset) = (if M = {#}\<^sub>z then {#}\<^sub>z else {# x #}\<^sub>z)"
+  nitpick [eval = "image_zmset (\<lambda> _. x) M"]
+
+
+  find_consts "_ zmultiset \<Rightarrow> nat"
+
+                find_theorems image_zmset id
+
+
+                find_theorems "zcount "
+
+end
+                apply (auto simp add: zcount_image_zmset zcount_sum zcount_to_zmset )                
+
+                find_theorems "_ \<le> _ - _ \<longleftrightarrow>_"
+
+                oops
+
+  
+                     
+
+  find_theorems zcount to_zmset
+              find_theorems "_ \<Longrightarrow> 0 \<le> zcount (_) _"
+
+              oops
+
+
+
+end
+            subgoal sorry
+            subgoal sorry
+              subgoal              
+              apply (rule graph_summar_nt)
+                 apply (rule refl)+
+                apply (rule SIM1(2)[unfolded SIM1(1)])
+                 apply (auto simp add: SIM1 comp_def)
+                done
           subgoal              
             by (auto simp add: SIM1 comp_def)
           done

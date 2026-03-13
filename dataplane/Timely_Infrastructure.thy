@@ -160,6 +160,9 @@ fun nodes_count where
   "nodes_count (Logic op su) = 1"
 | "nodes_count (Comp wire dt1 dt2) = nodes_count dt1 + nodes_count dt2"
 
+definition Src_from_Trg where
+  "Src_from_Trg su nid p = {(nid', p'). su (Loc nid' (Src p')) (Loc nid (Trg p)) \<noteq> {}\<^sub>A}"
+
 definition "dataflow_tree_to_graph (df :: ('id :: {minus,one,plus,zero,ord,enum,hashable}, _, _, _, _) dataflow_tree) = (
   let (_, raw_s) = dataflow_tree_to_graph_aux 0 df in
   let s = antichain_from_list oo raw_s in
@@ -169,7 +172,8 @@ definition "dataflow_tree_to_graph (df :: ('id :: {minus,one,plus,zero,ord,enum,
      implementation_graph_checker (weights_to_graph_fun (remove_non_zero_weights s)) \<and>
      CARD ('id) = nodes_count df \<and>
      (\<forall> l1 l2. incomparable (set (raw_s l1 l2))) \<and>
-     (\<forall> nid p1 p2. distinct (ints nid p1 p2))
+     (\<forall> nid p1 p2. distinct (ints nid p1 p2)) \<and>
+     (\<forall> nid p. card (Src_from_Trg s nid p) \<le> 0)
   then raw_s
   else Code.abort (STR ''Control plane could not be build'') (\<lambda> _. ((\<lambda> _ _. []))))"
 
@@ -1025,15 +1029,17 @@ record ('p, 'd, 'd1, 'd2, 't) operator_state_ty2 = "('p, 'd, 'd1, 't) operator_s
 record ('p, 'd, 'd1, 'd2, 'd3, 't) operator_state_ty3 = "('p, 'd, 'd1, 'd2, 't) operator_state_ty2" +
   en3 :: "'d3 \<Rightarrow> 'd" de3 :: "'d \<Rightarrow> 'd3" is_en3 :: "'d \<Rightarrow> bool"
 
-definition "graph_to_nxt summary = 
-  (let nt = (\<lambda> (nid, p). find (\<lambda> (nid', p'). \<not> is_empty_antichain (summary (Loc nid (Src p)) (Loc nid' (Trg p')))) Enum.enum) in
-   if inj_on nt (dom nt) then nt else Code.abort (STR ''Operator connections not injective'') (\<lambda> _ _. None))"
+find_consts "_ set \<Rightarrow> _ option"
 
-lemma graph_to_nxt_inj_on[simp]:
+definition "graph_to_nxt summary = 
+  (\<lambda> (nid, p). find (\<lambda> (nid', p'). \<not> is_empty_antichain (summary (Loc nid (Src p)) (Loc nid' (Trg p')))) Enum.enum)"
+
+(* lemma graph_to_nxt_inj_on[simp]:
   "nt = graph_to_nxt summary \<Longrightarrow>
    inj_on nt (dom nt)"
   unfolding graph_to_nxt_def Let_def
-  by (auto split: if_splits)
+  by (auto split: if_splits) *)
+
 lemma zero_in_graph_path_weight[simp,intro]:
   "nt = graph_to_nxt su \<Longrightarrow>
    Graph.graph su \<Longrightarrow>

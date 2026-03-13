@@ -419,6 +419,7 @@ lemma frontier_less_equal_ifrontier_Trg_diff_nid:
               subgoal
                 using G
                 unfolding graph_summar_nt_def
+                using path_weight_direct_0path[OF dataflow_topology.axioms(1)[OF D]]
                 by auto
               apply (clarsimp simp add: filter_concat comp_def map_concat zmset_concat c_pts_change_multiplicities extract_progress_def obtain_progress_def split_beta split: prod.splits)
               apply (subst filter_False)
@@ -448,6 +449,7 @@ lemma frontier_less_equal_ifrontier_Trg_diff_nid:
                 subgoal
                   using G
                   unfolding graph_summar_nt_def
+                  using path_weight_direct_0path[OF dataflow_topology.axioms(1)[OF D]]
                   by clarsimp
                 subgoal
                   by (simp add: extract_prog_def)
@@ -529,7 +531,7 @@ lemma frontier_less_equal_ifrontier_Trg_diff_nid:
             using D apply assumption
             subgoal
               using G
-              unfolding graph_summar_nt_def
+              unfolding graph_summar_nt_def using path_weight_direct_0path[OF dataflow_topology.axioms(1)[OF D]]
               by clarsimp
             subgoal
               apply (clarsimp simp add:  zmset_filter_extract_progress_Src_consumes_diff c_pts_change_multiplicities map_concat split_beta image_iff filter_map comp_def filter_concat split: prod.splits)
@@ -555,7 +557,7 @@ lemma frontier_less_equal_ifrontier_Trg_diff_nid:
               using D apply assumption
               subgoal
                 using G
-                unfolding graph_summar_nt_def
+                unfolding graph_summar_nt_def using path_weight_direct_0path[OF dataflow_topology.axioms(1)[OF D]]
                 by clarsimp
               apply simp
               done
@@ -1254,6 +1256,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
             subgoal
               using G apply -
               unfolding graph_summar_nt_def
+              using path_weight_direct_0path[OF dataflow_topology.axioms(1)[OF D]]
               by auto
             subgoal
               apply (subst change_multiplicities_extract_prog_consumes)
@@ -1283,7 +1286,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
               apply (rule frontier_less_equal_ifrontier_trans[of _ 0 "Loc nid' (Src p')", simplified, OF D])
               subgoal
                 using G apply -
-                unfolding graph_summar_nt_def
+                unfolding graph_summar_nt_def using path_weight_direct_0path[OF dataflow_topology.axioms(1)[OF D]]
                 by auto
               subgoal
                 apply (subgoal_tac 
@@ -1301,7 +1304,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
                       apply (drule graph.path_weight_elem_trans[rotated 1, of _ _ _ _ 0 "Loc nid'' (Trg p'')"])
                       subgoal
                         using G apply -
-                        unfolding graph_summar_nt_def
+                        unfolding graph_summar_nt_def using path_weight_direct_0path[OF dataflow_topology.axioms(1)[OF D]]
                         by auto
                       subgoal
                         by (rule dataflow_topology.axioms(1)[OF D])
