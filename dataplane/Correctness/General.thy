@@ -5,6 +5,10 @@ imports
   Dataplane.Timely_Infrastructure
 begin
 
+(* FIXME: move me *)
+lemma is_empty_antichain_iff:
+  "is_empty_antichain A \<longleftrightarrow> A = {}\<^sub>A"
+  by (metis Timely_Infrastructure.is_empty_antichain_plus antichain_sum_empty_2 empty_antichain.abs_eq empty_is_empty_antichain)
 
 definition "c_pts_inv c caps = (\<forall> l. c_pts c l = caps l)"
 definition "Src_caps_inv caps os = (\<forall> nid p. caps (Loc nid (Src p)) = to_zmset (ocaps (os nid) p))"
@@ -35,19 +39,20 @@ definition "extract_progress_inv su ed os c =
    frontier_less_equal (ifrontier su (+) (change_multiplicities su (extract_progress nid' ed ((snd o obtain_progress) (os nid'))) c) l) t))"
 
 
-definition "outputs_at_target su os = (\<lambda> (nid, p). let S = Src_from_Trg su nid p in if S = {} then [] else let (nid', p') = Set.the_elem S in outpu (os nid') p')"
+definition "outputs_at_target su os = (\<lambda> (nid, p). let S = {(nid', p'). ((nid', p'), (nid, p)) \<in> op_conn su} in if S = {} then [] else let (nid', p') = Set.the_elem S in outpu (os nid') p')"
+
 definition "inputs_at_target os = (\<lambda> (nid, p). input (os nid) p)"
 
 lemma outputs_at_target_consumes[simp]:
   "outputs_at_target su (os(nid := consumes (os nid) p' t d)) = outputs_at_target su os"
-  unfolding outputs_at_target_def consumes_def Src_from_Trg_def add_caps_def
+  unfolding outputs_at_target_def consumes_def  add_caps_def
   apply (rule ext)+
   apply (auto split: if_splits prod.splits)
   done
 
 lemma outputs_at_target_obtain_progress[simp]:
   "outputs_at_target su (os(nid := fst (obtain_progress (os nid)))) = outputs_at_target su os"
-  unfolding outputs_at_target_def consumes_def Src_from_Trg_def add_caps_def
+  unfolding outputs_at_target_def consumes_def add_caps_def
   apply (rule ext)+
   apply (auto split: if_splits prod.splits)
   done
@@ -99,8 +104,9 @@ definition "graph_summar_nt su nt os = (
   (\<forall> s nid p l. 
       s \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) l \<longrightarrow>
       l \<noteq> Loc nid (Trg p) \<longrightarrow> (\<exists> t p' s'. t \<in> set (intsum (os nid) p p') \<and> s' \<in>\<^sub>A graph.path_weight su (Loc nid (Src p')) l \<and> s = t -+- s')) \<and>
-  inj_on nt (Map.dom nt) \<and>
-  (\<forall> nid p. card (Src_from_Trg su nid p) \<le> 1) 
+   inj_on nt (Map.dom nt) \<and>
+   single_valued (op_conn su) \<and>
+   single_valued  ((op_conn su)\<inverse>)
   )"
 
 
@@ -129,15 +135,28 @@ lemma in_antichain_singleton[simp]:
    by (metis ID.set_finite in_antichain_minimal_antichain insertI1 minimal_antichain_singleton)
 
 
-lemma Src_from_Trg_graph_to_nxt_inj_on:
-  "\<forall>nid p. Src_from_Trg su nid p = {} \<Longrightarrow>
-   inj_on (graph_to_nxt su) (dom (graph_to_nxt su) )"
-  unfolding graph_to_nxt_def inj_on_def
-  apply clarsimp
-    unfolding Src_from_Trg_def
-    apply clarsimp
-    apply (metis find_SomeD(1) split_conv)
+lemma find_SomeD':
+  "find P xs = Some x \<Longrightarrow> P x \<and> x\<in>set xs"
+  by (auto dest: find_SomeD)
+lemma find_SomeD'':
+  "Some x = find P xs \<Longrightarrow> P x \<and> x\<in>set xs"
+  using find_SomeD' by metis
+
+lemma single_valued_inv_to_nxt_inj_on:
+  "single_valued ((op_conn su)\<inverse>) \<Longrightarrow>
+   inj_on (graph_to_nxt su) (dom (graph_to_nxt su))"
+  unfolding graph_to_nxt_def inj_on_def op_conn_def
+  apply (clarsimp simp add: enum_class.enum_UNIV is_empty_antichain_iff dest!: find_SomeD' split: prod.splits)
+  subgoal for aa ba x1 x2 ac bc x1a x2a
+    apply (cases "find (\<lambda>(nid', p'). su (Loc x1 (Src x2)) (Loc nid' (Trg p')) \<noteq> {}\<^sub>A) enum_class.enum")
+    subgoal
+      by (auto simp add: enum_class.enum_UNIV is_empty_antichain_iff find_None_iff2 dest!: find_SomeD' split: prod.splits)
+    subgoal for a
+      apply (cases "find (\<lambda>(nid', p'). su (Loc x1a (Src x2a)) (Loc nid' (Trg p')) \<noteq> {}\<^sub>A) enum_class.enum")
+        apply (auto simp add: single_valued_def enum_class.enum_UNIV is_empty_antichain_iff dest!: find_SomeD' find_SomeD'' split: prod.splits)
+      done
     done
+  done
 
 lemma graph_summar_nt:
   assumes
@@ -150,7 +169,7 @@ lemma graph_summar_nt:
   apply simp
   unfolding graph_summar_nt_def
   apply (intro conjI allI impI)
-       apply simp_all
+         apply simp_all
   subgoal for nid p p' t
     unfolding comp_def
     apply (rule summary_in_path_weight)
@@ -166,33 +185,37 @@ lemma graph_summar_nt:
     using prems(5) apply -
     unfolding graph_to_nxt_def
     apply (auto 0 0 simp add: comp_def dest!: find_SomeD(1)  split: if_splits prod.splits)
-     apply (drule dataflow_tree_to_graph_Src_Trg_zero[OF prems(2)[symmetric], unfolded prems(2) comp_def, simplified, of _ _ nid p])
+    apply (drule dataflow_tree_to_graph_Src_Trg_zero[OF prems(2)[symmetric], unfolded prems(2) comp_def, simplified, of _ _ nid p])
     apply simp
     done
   subgoal
-      unfolding dataflow_tree_to_graph_def
-      apply (simp split: if_splits prod.splits)
-      done
-    subgoal
-      unfolding dataflow_tree_to_graph_def
-      apply (fastforce simp add:  incomparable_def split: if_splits prod.splits)
-      done
+    unfolding dataflow_tree_to_graph_def
+    apply (simp split: if_splits prod.splits)
+    done
+  subgoal
+    unfolding dataflow_tree_to_graph_def
+    apply (clarsimp simp add:  incomparable_def split: if_splits prod.splits)
+    apply fast
+    done
   subgoal for s nid p l
     unfolding comp_def
     using dataflow_tree_to_graph_Trg_decompose 
     by blast
   subgoal premises prems
-    apply (rule Src_from_Trg_graph_to_nxt_inj_on)
-    unfolding Src_from_Trg_def
+    apply (rule single_valued_inv_to_nxt_inj_on)
     apply (auto simp add: comp_def dataflow_tree_to_graph_def split: if_splits prod.splits)
-    unfolding Src_from_Trg_def
-    apply auto
+    unfolding op_conn_def
+           apply auto
     done
-  subgoal premises prems for nid p
-    unfolding Src_from_Trg_def
+  subgoal premises prems
     apply (auto simp add: comp_def dataflow_tree_to_graph_def split: if_splits prod.splits)
-    unfolding Src_from_Trg_def
-    apply auto
+    unfolding op_conn_def single_valued_def
+           apply auto
+    done
+  subgoal premises prems
+    apply (auto simp add: comp_def dataflow_tree_to_graph_def split: if_splits prod.splits)
+    unfolding op_conn_def single_valued_def
+           apply auto
     done
   done
 

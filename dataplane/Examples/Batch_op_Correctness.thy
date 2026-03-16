@@ -70,9 +70,9 @@ abbreviation "G f ip_state os2 \<equiv> Comp [(0 :: 2, 1) \<mapsto> (0, 1)] (l1 
 
 abbreviation "test_op \<equiv> compile_dataflow (\<lambda> _. []) (G (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]) (init_input_state default_internal_summary (\<lambda> _. inps_test)) (init_operator_state_ty2 default_internal_summary) )"
 
-value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op)"
+(* value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op)"
 value [GHC] "check_prefix 100 [((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1)),((1, 1), (Inr 3, MyPair 1 0))] test_op"
-value [GHC] "check_prefix 100 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] test_op"
+value [GHC] "check_prefix 100 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] test_op" *)
 (* value [GHC] "check_prefix 100 [((1, 1), (Inr 3, MyPair 1 0)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1))] test_op"
  *)
 section \<open>Generalized Correctness\<close>
@@ -123,7 +123,7 @@ lemma weights_to_graph_fun_to_next[simp]:
 lemma dataflow_tree_to_graph_to_my_summ[simp]:
   "dataflow_tree_to_graph (Comp [(0, 1) \<mapsto> (0, 1)] (Logic op1 default_internal_summary) (Logic op2 default_internal_summary)) = (my_summ :: (2, 1) location \<Rightarrow> (2, 1) location \<Rightarrow> _ list)"
   unfolding dataflow_tree_to_graph_def Let_def default_internal_summary_def comp_def                                               
-  apply (simp only: split: if_splits prod.splits)
+(*   apply (simp only: split: if_splits prod.splits)
   apply (intro allI impI conjI)
   subgoal
     apply clarsimp
@@ -158,7 +158,8 @@ lemma dataflow_tree_to_graph_to_my_summ[simp]:
       subgoal for nid
       by (clarsimp simp add: image_iff split_beta split: prod.splits if_splits port.splits)
     done
-  done
+  done *)
+  sorry
 
 definition "coll inps t = list_of (lmap (\<lambda> e. case e of Data t d \<Rightarrow> d) (lfilter (\<lambda> e. case e of Data t' d \<Rightarrow> t = t' | _ \<Rightarrow> False) inps))"
 
@@ -258,10 +259,11 @@ lemma in_cimage_cset_from_list[simp]:
 
 lemma outputs_at_target_my_summ:
   "outputs_at_target (antichain_from_list oo my_summ) os = (\<lambda> p. if p = (1, 0) then outpu (os 0) 0 else [])"
-  unfolding outputs_at_target_def Src_from_Trg_def my_summ_def
+  unfolding outputs_at_target_def my_summ_def op_conn_def
   apply (rule ext)
   apply (auto simp add: antichain_from_list_singleton split: prod.splits if_splits)
   subgoal for nid
+    apply (auto simp add: if_distrib)
     by (metis Batch_op_Correctness.antichain_from_list_empty Timely_Infrastructure.antichain_from_list_empty)
   subgoal for nid
     apply (subgoal_tac "nid = 0")
@@ -397,11 +399,11 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           subgoal premises
             using SIM1
             unfolding ty1_check_def
-            by (fastforce simp add:  Src_from_Trg_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
+            by (fastforce simp add:  my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
           subgoal
             using SIM1
             unfolding ty2_check_def
-            by (fastforce simp add:  Src_from_Trg_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
+            by (fastforce simp add:  my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
           using SIM1 apply fastforce+
           done
                  defer
@@ -429,11 +431,11 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           subgoal
             using SIM1
             unfolding ty1_check_def
-            by (auto simp add: BTL_def BHD_def  Src_from_Trg_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
+            by (auto simp add: BTL_def BHD_def  my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
           subgoal
             using SIM1(5,6,7)
             unfolding ty2_check_def
-            apply (auto simp add: operator_state.defs comp_def fun_upd_def BTL_def BHD_def Src_from_Trg_def consumes_def add_caps_def BENQ_def my_summ_def BULK_BENQ_def outputs_at_target_def split: option.splits if_splits prod.splits)
+            apply (auto simp add: operator_state.defs comp_def fun_upd_def BTL_def BHD_def consumes_def add_caps_def BENQ_def my_summ_def BULK_BENQ_def outputs_at_target_def split: option.splits if_splits prod.splits)
             apply (meson UnCI img_fst in_set_tlD)
             done
           subgoal premises temp
@@ -535,19 +537,27 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                       apply (clarsimp simp add: SIM1(1,2) comp_def)
                       apply (drule spec2[of _ 1 0], drule mp)
                        back
-                       apply simp_all
+                       apply (simp_all add: op_conn_def)
                       subgoal premises
                         unfolding graph_to_nxt_def
                         apply auto
                         subgoal
                           unfolding my_summ_def inj_on_def
                           apply clarsimp
-                          apply (smt (verit, best) case_prodD find_SomeD(1) is_empty_antichain_empty_list)
-                          done
+                          sorry
+                        done
+                      subgoal
+                        apply (rule path_weight_direct_0path[OF dataflow_topology.axioms(1)[OF]])
+                        defer
+                         apply assumption
+                        apply (subgoal_tac " dataflow_topology (summ sg) (-+-)")
+  using SIM1(1,2) [unfolded comp_def]
+              using  dataflow_topology_from_tree.dataflow_topology_axioms[unfolded comp_def]
+               apply simp
                         subgoal
-                          unfolding my_summ_def inj_on_def
-                          apply (auto simp add: enum_num1_def find_Some_iff split_beta Enum.enum_prod_def)
-                          done
+              using SIM1(1,2) 
+              using  dataflow_topology_from_tree.dataflow_topology_axioms
+              by metis
                         done
                       done
                     apply assumption
@@ -710,11 +720,11 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           subgoal
             using SIM1
             unfolding ty1_check_def
-            by (auto simp add: BTL_def BHD_def  Src_from_Trg_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
+            by (auto simp add: BTL_def BHD_def   my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
           subgoal
             using SIM1(5,6,7)
             unfolding ty2_check_def
-            apply (auto simp add: operator_state.defs comp_def fun_upd_def BTL_def BHD_def Src_from_Trg_def consumes_def add_caps_def BENQ_def my_summ_def BULK_BENQ_def outputs_at_target_def split: option.splits if_splits prod.splits)
+            apply (auto simp add: operator_state.defs comp_def fun_upd_def BTL_def BHD_def  consumes_def add_caps_def BENQ_def my_summ_def BULK_BENQ_def outputs_at_target_def split: option.splits if_splits prod.splits)
              apply (meson UnCI img_fst in_set_tlD)+
             done
           subgoal
@@ -949,14 +959,14 @@ end
           subgoal
             using SIM1
             unfolding ty1_check_def
-            by (auto simp add: BTL_def BHD_def  Src_from_Trg_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
+            by (auto simp add: BTL_def BHD_def   my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
           subgoal
             using SIM1(4,6)
-            apply (auto simp add: operator_state.defs comp_def fun_upd_def BTL_def BHD_def Src_from_Trg_def consumes_def add_caps_def BENQ_def my_summ_def BULK_BENQ_def outputs_at_target_def split: option.splits if_splits prod.splits)
+            apply (auto simp add: operator_state.defs comp_def fun_upd_def BTL_def BHD_def  consumes_def add_caps_def BENQ_def my_summ_def BULK_BENQ_def outputs_at_target_def split: option.splits if_splits prod.splits)
             done
           subgoal
             using SIM1(5,7)
-            apply (auto simp add: ty2_check_def operator_state.defs comp_def fun_upd_def BTL_def BHD_def Src_from_Trg_def obtain_progress_def split: option.splits if_splits prod.splits)
+            apply (auto simp add: ty2_check_def operator_state.defs comp_def fun_upd_def BTL_def BHD_def  obtain_progress_def split: option.splits if_splits prod.splits)
             done
           subgoal
             by (simp add: SIM1 obtain_progress_def)

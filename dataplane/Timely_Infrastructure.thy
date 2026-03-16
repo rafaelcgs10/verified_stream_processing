@@ -160,8 +160,8 @@ fun nodes_count where
   "nodes_count (Logic op su) = 1"
 | "nodes_count (Comp wire dt1 dt2) = nodes_count dt1 + nodes_count dt2"
 
-definition Src_from_Trg where
-  "Src_from_Trg su nid p = {(nid', p'). su (Loc nid' (Src p')) (Loc nid (Trg p)) \<noteq> {}\<^sub>A}"
+definition op_conn where
+  "op_conn su = {((nid, p), (nid', p')). su (Loc nid (Src p)) (Loc nid' (Trg p')) \<noteq> {}\<^sub>A}"
 
 definition "dataflow_tree_to_graph (df :: ('id :: {minus,one,plus,zero,ord,enum,hashable}, _, _, _, _) dataflow_tree) = (
   let (_, raw_s) = dataflow_tree_to_graph_aux 0 df in
@@ -173,7 +173,8 @@ definition "dataflow_tree_to_graph (df :: ('id :: {minus,one,plus,zero,ord,enum,
      CARD ('id) = nodes_count df \<and>
      (\<forall> l1 l2. incomparable (set (raw_s l1 l2))) \<and>
      (\<forall> nid p1 p2. distinct (ints nid p1 p2)) \<and>
-     (\<forall> nid p. card (Src_from_Trg s nid p) \<le> 0)
+     (single_valued (op_conn s)) \<and>
+     (single_valued ((op_conn s)\<inverse>))
   then raw_s
   else Code.abort (STR ''Control plane could not be build'') (\<lambda> _. ((\<lambda> _ _. []))))"
 

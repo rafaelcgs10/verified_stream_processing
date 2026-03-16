@@ -376,7 +376,7 @@ lemma frontier_less_equal_ifrontier_Trg_diff_nid:
           subgoal
             apply (subgoal_tac "zcount (\<Sum>x\<in>UNIV. zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (map (\<lambda>(p, t, m). (Loc x (Trg p), t, - m)) (consu (os x)))))) t \<le> 0")
             subgoal
-              unfolding outputs_at_target_def Src_from_Trg_def BULK_BENQ_def zmultiset_eq_iff
+              unfolding outputs_at_target_def BULK_BENQ_def zmultiset_eq_iff
               apply (drule spec[of _ t])+
               apply (clarsimp )
               apply (smt (verit, ccfv_SIG) to_zmset_nenneg)
