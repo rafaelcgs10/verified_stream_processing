@@ -329,6 +329,58 @@ lemma dataplane_tracker_inv_produces_drops:
         unfolding change_deltas_inv_def
         apply auto
         done
+      defer
+      subgoal premises prems
+        unfolding produ_consu_supported_def
+        apply (auto del: disjCI simp add: image_iff)
+        subgoal
+          using prems(15)[unfolded produ_consu_supported_def]
+          by blast
+        subgoal for p t m
+          using temp(2) apply -
+          apply (drule bspec)
+           apply assumption
+          apply (clarsimp del: disjCI simp add: image_iff)
+          apply (simp flip: zcount_to_zmset_gt_0)
+          using prems(8)[unfolded c_pts_inv_def, rule_format, of "Loc nid (Src p)", symmetric]
+            prems(6)[unfolded Src_caps_inv_def, rule_format, of nid p, symmetric] apply -
+          apply (clarsimp del: disjCI simp add: c_pts_change_multiplicities comp_def)
+          apply (subgoal_tac "0 < zcount (c_pts (pt_tr sg) (Loc nid (Src p))) t \<or> zcount (zmset (map snd (filter (\<lambda>x. p = fst x) (operator_state.inter (os nid))))) t > 0")
+          defer
+          subgoal
+            by linarith
+          apply (elim disjE)
+          subgoal
+            by blast
+          subgoal
+            apply (rule disjI2)
+            apply (metis (no_types, lifting) fun_comp_eq_conv gt_0_zcount_msetD)
+            done
+          done
+        subgoal for nid' p t m
+          using prems(15)[unfolded produ_consu_supported_def]
+          by blast
+        subgoal for p t m
+          using prems(15)[unfolded produ_consu_supported_def] apply -
+          apply clarsimp
+          apply (drule spec2, drule spec, drule mp, blast)
+          apply (simp add: zcount_sum  zmset_concat comp_def monoid_add_class.sum_list_distinct_conv_sum_set split_beta if_distrib[where f=produ])
+          apply (rule preorder_class.dual_order.strict_trans[rotated])
+           apply assumption
+          apply auto
+          apply (rule sum_strict_mono_ex1)
+            apply simp_all
+          subgoal
+            using temp(2) by (force intro!: zcount_zmset_ge_0I)
+          subgoal
+
+
+            find_theorems produs
+
+
+          find_theorems "_ \<Longrightarrow> sum _ _ < sum _ _"
+
+end
       subgoal premises prems
         unfolding extract_prog_changes_above_impl_inv_def
         apply (auto 0 0)
@@ -486,8 +538,33 @@ lemma dataplane_tracker_inv_produces_drops:
             apply (metis (no_types, lifting) change_multiplicities_append_alt change_multiplicities_comm)
             done
           done
+        subgoal for nid' xs
+          unfolding changes_above_impl_inv_def
+          apply safe
+          subgoal for l t m
+            apply (cases "nid \<in> set xs"; simp?)
+            subgoal
+              apply (subst (asm) obtain_progress_def)
+              apply (subst (asm) extract_progress_def)
+              apply (clarsimp simp add: image_iff split_beta Misc.set_map_filter split: option.splits; hypsubst_thin?)
+              subgoal for p' m
+                apply (cases "\<exists> p. t \<in># mset (drops p) \<and> graph_to_nxt (summ sg) (nid, p) = Some (nid', p')")
+                subgoal
+                  apply clarsimp
 
-          
+                  term "graph_to_nxt (summ sg)"
+
+
+              find_theorems List.map_filter set
+
+end
+            subgoal
+              using prems(14)[unfolded extract_prog_changes_above_impl_inv_def, rule_format, of "xs" nid', unfolded changes_above_impl_inv_def]
+        apply simp
+        apply (drule bspec)
+         apply assumption
+              apply auto
+              done
 
             find_theorems produs
 

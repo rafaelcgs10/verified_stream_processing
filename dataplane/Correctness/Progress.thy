@@ -142,7 +142,7 @@ lemma dataplane_tracker_inv_progress:
           subgoal
             apply clarsimp
             subgoal for nid'' p'' m
-              using prems(12)[unfolded produ_supported_def] apply -
+              using conjunct1[OF prems(12)[unfolded produ_consu_supported_def]] apply -
               apply (drule spec[of _ nid''])
               apply (drule spec[of _ p''])
               back
@@ -269,14 +269,33 @@ lemma dataplane_tracker_inv_progress:
       done
     subgoal premises prems
       using prems(12) apply -
-      unfolding produ_supported_def
+      unfolding produ_consu_supported_def
       apply (clarsimp del: disjCI simp add: c_pts_change_multiplicities)
-      subgoal for nid' p' t m
+      apply (intro allI conjI impI)
+      subgoal 
         apply (subst extract_progress_def)
         apply (simp add: filter_map comp_def split_beta )
         apply (subst filter_False)
          apply (auto simp add: Misc.set_map_filter split: option.splits)
         done
+      subgoal for nid' p t
+        apply (subst extract_progress_def)
+        apply (clarsimp del: disjCI simp add: filter_map comp_def split_beta )
+        apply (drule spec2, drule spec, drule mp, blast)
+        apply (clarsimp del: disjCI simp add: filter_map comp_def split_beta )
+        apply (rule exI[of _ nid'])
+        apply simp
+        subgoal for m nid'a p'
+
+
+        find_theorems nid'
+
+end
+        apply (subst filter_False)
+         apply (auto simp add: Misc.set_map_filter split: option.splits)
+        done
+
+
       done
     done
   done

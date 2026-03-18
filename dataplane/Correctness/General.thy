@@ -75,7 +75,10 @@ lemma inputs_at_target_consumes[simp]:
 definition "ty1_check os bufs = (\<forall> p. (\<forall> x \<in> fst ` set (input os p) \<union> fst ` set (bufs p) \<union> fst ` set (outpu os p). is_en1 os x))"
 definition "ty2_check os bufs = (\<forall> p. (\<forall> x \<in> fst ` set (input os p) \<union> fst ` set (bufs p). is_en1 os x) \<and> (\<forall> x \<in> fst ` set (outpu os p). is_en2 os x))"
 
-definition "produ_supported su os c = (\<forall> nid p t m. (p, t, m) \<in> set (produ (os nid)) \<longrightarrow> (zcount (c_pts c (Loc nid (Src p))) t > 0 \<or> (\<exists>m'>0. (p, t, m') \<in> set (inter (os nid)))))"
+definition "produ_consu_supported nt os c =
+    ((\<forall> nid p t m. (p, t, m) \<in> set (produ (os nid)) \<longrightarrow> (zcount (c_pts c (Loc nid (Src p))) t > 0 \<or> (\<exists>m'>0. (p, t, m') \<in> set (inter (os nid))))) \<and>
+     (\<forall> nid p t m. (p, t, m) \<in> set (consu (os nid)) \<longrightarrow>
+                   (zcount (c_pts c (Loc nid (Trg p)) + zmset (concat (map (\<lambda> (nid', p'). (map snd (filter (\<lambda> (p'', _, _). nt (nid', p'') = Some (nid, p) \<and> p' = p'') (produ (os nid'))))) Enum.enum))) t > 0)))"
 
 definition "extract_prog_changes_above_impl_inv su nt c os =
    (\<forall> nid xs. distinct xs \<longrightarrow> nid \<notin> set xs \<longrightarrow> 
@@ -97,7 +100,7 @@ definition "dataplane_tracker_inv os cbufs sg =
      change_deltas_inv os \<and>
      propagation_inv (summ sg) c \<and>
      extract_prog_changes_above_impl_inv (summ sg) (nxt sg) c os  \<and>
-     (produ_supported (summ sg) os c))"
+     (produ_consu_supported (nxt sg) os c))"
 
 
 definition "graph_summar_nt su nt os = (
@@ -696,8 +699,112 @@ lemma data_in_channel_justifies_c_pts:
     done
   done
 
+lemma plus_minus_gt:
+  "A + (B - C) > X \<Longrightarrow> C \<ge> (0 :: int) \<Longrightarrow>  A + B > X"
+  by force
 
-lemma set_extract_progressD:
+
+lemma data_in_channel_justifies_c_pts_alt:
+  "Trg_caps_inv caps chnls \<Longrightarrow>
+   c_pts_inv (change_multiplicities su (extract_prog Enum.enum nt os) c) caps \<Longrightarrow> 
+   t \<in> snd ` set (chnls (nid, p)) \<Longrightarrow>
+   (\<forall> n. \<forall> (p, t, m) \<in> set (produ (os n)). m \<ge> 0) \<Longrightarrow>
+   (\<forall> n. \<forall> (p, t, m) \<in> set (consu (os n)). m \<ge> 0) \<Longrightarrow>
+   inj_on nt (dom nt) \<Longrightarrow>
+   zcount (c_pts c (Loc nid (Trg p)) + zmset (concat (map (\<lambda> (nid', p'). (map snd (filter (\<lambda> (p'', _, _). nt (nid', p'') = Some (nid, p) \<and> p' = p'') (produ (os nid'))))) Enum.enum))) t > 0"
+  unfolding Trg_caps_inv_def
+  apply (drule spec[of _ nid])
+  apply (drule spec[of _ p])
+  unfolding c_pts_inv_def
+  apply (drule spec[of _ "Loc nid (Trg p)"])
+  apply (simp add: c_pts_change_multiplicities)
+  subgoal premises prems3
+    using prems3(1,6) apply -
+    unfolding extract_prog_def obtain_progress_def extract_progress_def
+    apply (simp add:  BULK_BENQ_def zmset_concat map_concat filter_concat comp_def filter_map split_beta split: prod.splits)
+    apply (subst (asm) (1) monoid_add_class.sum_list_distinct_conv_sum_set)
+     apply (simp_all)
+    apply (subst (asm) Groups.ab_group_add_class.ab_diff_conv_add_uminus)
+    apply (subst (asm) comm_monoid_add_class.sum.distrib)
+    apply (subgoal_tac 
+        "((\<Sum>x\<in>UNIV. zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (List.map_filter (\<lambda>(p, t, m). case nt (x, p) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) (produ (os x))))))) =
+  (\<Sum>x\<leftarrow>enum_class.enum. zmset (map snd (filter (\<lambda>(p'', ab). nt (fst x, p'') = Some (nid, p) \<and> snd x = p'') (produ (os (fst x))))))")
+    subgoal
+      apply (simp add: zmultiset_eq_iff)
+      apply (drule spec[of _ t])+
+      apply (simp add:  comp_def split_beta monoid_add_class.sum_list_distinct_conv_sum_set zcount_sum)
+      apply (subgoal_tac "zcount (to_zmset (map snd (chnls (nid, p)))) t > 0")
+      subgoal
+        apply (drule sym)
+        apply simp
+        apply (drule plus_minus_gt)
+        subgoal
+          apply (rule zcount_zmset_ge_0I)
+          using prems3  apply auto
+          done
+        subgoal
+          by auto
+        done
+      subgoal
+        apply (auto simp add: zcount_to_zmset)
+        done
+      done
+    subgoal premises prems4
+      apply (auto simp add: comp_def filter_map zcount_sum monoid_add_class.sum_list_distinct_conv_sum_set List.map_filter_def split_beta split: option.splits)
+      apply (cases "\<exists> nid' p'. nt (nid', p') = Some (nid, p)")
+      subgoal
+        apply clarsimp
+        subgoal for nid' p'
+          apply (subst comm_monoid_add_class.sum.subset_diff[of "{nid'}"])
+            apply simp_all
+          apply (subst comm_monoid_add_class.sum.neutral)
+          subgoal
+            apply (intro ballI)
+            apply (auto simp add: filter_empty_conv split: prod.splits intro!: zmset_emptyI)
+            using prems3(4)
+            apply (metis domI inj_on_contraD not_Some_eq2 prod.simps(1))
+            done
+          apply simp
+          apply (subst comm_monoid_add_class.sum.subset_diff[of "{(nid', p')}"])
+            apply simp_all
+          apply (subst comm_monoid_add_class.sum.neutral)
+          subgoal
+            apply (intro ballI)
+            apply (auto simp add: filter_empty_conv split: prod.splits intro!: zmset_emptyI)
+            using prems3(4)
+             apply (metis domI inj_on_contraD not_Some_eq2 prod.simps(1))+
+            done
+          apply simp
+          apply (rule arg_cong[where f=zmset])
+          apply (rule map_cong)
+          subgoal
+            apply (rule filter_cong)
+             apply auto
+            using prems3(4)
+            apply (metis domI inj_on_contraD not_Some_eq2 prod.simps(1))
+            done
+          apply auto
+          done
+        done
+      subgoal
+        apply (subst comm_monoid_add_class.sum.neutral)
+        subgoal
+          apply (intro ballI)
+          apply (auto simp add: filter_empty_conv split: prod.splits intro!: zmset_emptyI)
+          apply (metis not_Some_eq2)
+          done
+        apply (subst comm_monoid_add_class.sum.neutral)
+        subgoal
+          apply (intro ballI)
+          apply (auto simp add: filter_empty_conv split: prod.splits intro!: zmset_emptyI)
+          done
+        apply auto
+        done
+      done
+    done
+  done
+
+lemma set_extract_progress_consumesD:
   "(l, t, m) \<in> set (extract_progress nid ed (snd (obtain_progress (consumes (os nid) p t' d)))) \<Longrightarrow>
    (l, t, m) \<in> set (extract_progress nid ed (snd (obtain_progress (os nid)))) \<or> 
    (\<exists> m'. l = Loc nid (Trg p) \<and> m = -1 \<and> t = t') \<or>

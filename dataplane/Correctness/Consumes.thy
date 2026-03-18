@@ -18,7 +18,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
     and P: "c_pts_inv (change_multiplicities su (extract_prog enum_class.enum nt os) c) caps"
     and CA: "change_deltas_inv os"
     and G: "graph_summar_nt su nt os"
-    and PR: "produ_supported su os c"
+    and PR: "produ_consu_supported nt os c"
     and E: "extract_prog_changes_above_impl_inv su nt c os"
   shows 
     "extract_prog_changes_above_impl_inv su nt c (os(nid := consumes (os nid) p t d))"
@@ -31,6 +31,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
     apply safe
     subgoal for l t' m
       apply (cases "nid \<in> set xs"; simp?)
+      subgoal
        apply (cases "\<exists> s p'' t''. t'' \<in> set (intsum (os nid) p p'') \<and> s \<in>\<^sub>A graph.path_weight su (Loc nid (Src p'')) l \<and> t -+- t'' -+- s \<le> t'")
       subgoal
         apply clarsimp
@@ -560,8 +561,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
 
 
         subgoal for p' nid'' p''
-          using PR apply -
-          unfolding produ_supported_def
+          using conjunct1[OF PR[unfolded produ_consu_supported_def]] apply -
           apply (drule spec2, drule spec2, drule mp, assumption)
           apply (elim disjE)
           subgoal
@@ -878,6 +878,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
             done
           done
         done
+      done
       subgoal
         using E[unfolded extract_prog_changes_above_impl_inv_def, rule_format, of "xs" nid', unfolded changes_above_impl_inv_def] apply -
         apply simp
@@ -887,7 +888,10 @@ lemma extract_prog_changes_above_impl_inv_consumes:
         done
       done
     done
-  subgoal for xs
+  subgoal premises temp for xs
+    using temp(1)
+    conjunct1[OF temp(2)[unfolded produ_consu_supported_def]]
+    temp(3-) apply -
     using E[unfolded extract_prog_changes_above_impl_inv_def, rule_format, of "xs"] apply -
     apply simp
     apply (induct xs arbitrary: c os rule: rev_induct)
@@ -895,7 +899,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
       apply simp
       unfolding changes_above_impl_inv_def
       apply safe
-      apply (drule set_extract_progressD)
+      apply (drule set_extract_progress_consumesD)
       apply clarsimp
       apply (elim disjE conjE exE; simp?; hypsubst_thin?)
         apply fast
@@ -991,7 +995,6 @@ lemma extract_prog_changes_above_impl_inv_consumes:
       apply (drule meta_spec[of _ "change_multiplicities su (extract_prog [nid'] nt os) c"])
       apply (drule meta_mp)
       subgoal
-        unfolding produ_supported_def
         apply (auto del: disjCI)
         apply (drule spec2, drule spec, drule mp, rule exI, assumption)
         apply (clarsimp del: disjCI simp add: c_pts_change_multiplicities)
@@ -1122,13 +1125,44 @@ lemma dataplane_tracker_inv_consumes:
       done
     subgoal premises prems
       using prems(13) apply -
-      unfolding produ_supported_def
-      apply auto
-      done
-    done
+      unfolding produ_consu_supported_def
+      apply (intro conjI)
+      subgoal
+        apply clarsimp
+        apply fast
+        done
+      subgoal  
+        apply (auto del: disjCI split: if_splits; hypsubst_thin?)
+        subgoal
+          using data_in_channel_justifies_c_pts_alt[where nid=nid and t=t and p=p,OF prems(5) prems(6)] apply -
+          apply (drule meta_mp)
+          subgoal
+            using prems(1) unfolding BULK_BENQ_def
+            by clarsimp
+          apply (drule meta_mp)
+          subgoal 
+            using prems(10)[unfolded change_deltas_inv_def] by fastforce
+          apply (drule meta_mp)
+          subgoal using prems(10)[unfolded change_deltas_inv_def] by fastforce
+          apply (drule meta_mp)
+          subgoal
+            using prems(3)[unfolded graph_summar_nt_def] by auto
+          subgoal
+            apply (auto simp add: consumes_def)
+            apply (smt (verit) map_eq_conv produ_consumes split_def)
+            done
+          done
+        subgoal
+          apply (drule spec2, drule spec, drule mp, blast)
+          apply (smt (verit) map_eq_conv produ_consumes split_def)
+          done
+ subgoal
+          apply (drule spec2, drule spec, drule mp, blast)
+          apply (smt (verit) map_eq_conv produ_consumes split_def)
+   done
   done
-
-            find_theorems filter extract_progress
-
+  done
+  done
+  done
 
 end
