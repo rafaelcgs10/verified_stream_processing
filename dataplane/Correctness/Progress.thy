@@ -7,8 +7,10 @@ imports
   Dataplane.AntichainOrder
 begin
 
-declare cin.rep_eq[simp del]
-declare enum_class.enum_UNIV[simp] enum_class.enum_distinct[simp]
+(* FIXME: move me *)
+lemma lt_le_lt:
+  "(x :: int) < a + b \<Longrightarrow> b \<le> c \<Longrightarrow> x < a + c"
+  by simp
 
 lemma dataplane_tracker_inv_progress:
   "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
@@ -282,30 +284,91 @@ lemma dataplane_tracker_inv_progress:
         apply (subst extract_progress_def)
         apply (clarsimp del: disjCI simp add: filter_map comp_def split_beta )
         apply (drule spec2, drule spec, drule mp, blast)
-        apply (clarsimp del: disjCI simp add: filter_map comp_def split_beta )
-        apply (rule exI[of _ nid'])
-        apply simp
-        subgoal for m nid'a p'
+        unfolding obtain_progress_def
+         apply (clarsimp simp add: monoid_add_class.sum_list_distinct_conv_sum_set zmset_concat List.map_filter_def comp_def map_concat filter_map split_beta obtain_progress_def Misc.set_map_filter split: option.splits)
+        apply (simp add: add.assoc)
+        apply (rule lt_le_lt)
+         apply assumption
+        subgoal premises temp
+          apply (clarsimp simp add: zcount_sum if_distrib)
+          apply (subst (2) comm_monoid_add_class.sum.subset_diff[of "Pair nid ` fst ` set (produ (os nid))"])
+            apply simp_all
+          apply (subst add.commute)
+          apply (simp add: add.assoc)
+          apply (subst (2) add.commute)
+          apply (simp flip: add.assoc)
+          apply (rule ordered_comm_monoid_add_class.add_increasing2)
+          subgoal 
+            sorry
+          subgoal
+               apply (auto 0 0)
+          apply (subst (1) comm_monoid_add_class.sum.subset_diff[of "Pair nid ` fst ` set (produ (os nid))"])
+            apply simp_all
+            apply (rule ordered_ab_semigroup_add_class.add_mono)
+            subgoal
+              apply (rule ordered_comm_monoid_add_class.sum_le_included)
+                 apply (auto 0 0)
+              sorry
+            subgoal
+              using temp(2) apply -
+              apply (cases "\<exists> p' \<in> fst ` set (produ (os nid)).  subgraph.nxt sg (nid, p') = Some (nid', p)")
+              subgoal
+                apply clarsimp
+                subgoal for p'
 
-
-        find_theorems nid'
-
-end
-        apply (subst filter_False)
-         apply (auto simp add: Misc.set_map_filter split: option.splits)
+              apply (subst sum_eq_singleton[of _ _ "(nid, p')"])
+                      apply simp_all
+                    apply blast
+                  subgoal
+                    apply clarsimp
+                    apply (subst filter_False)
+                    subgoal
+                      apply clarsimp
+                      using prems(2)[unfolded graph_summar_nt_def]
+                      apply (metis domI inj_on_eq_iff prod.inject)
+                      done
+                    apply simp
+                    done
+                  subgoal
+              apply (rule preorder_class.eq_refl)
+              apply (rule arg_cong2[where f=zcount])
+              apply simp_all
+              apply (rule arg_cong[where f=zmset])
+               apply (rule map_cong)
+                apply (rule filter_cong)
+                 apply simp_all
+                apply (clarsimp split: prod.splits)
+                     apply (intro conjI iffI)
+                        apply fast
+                       apply simp_all
+                      apply blast
+                     apply (auto 0 0)
+                    using prems(2)[unfolded graph_summar_nt_def]
+                    apply (metis domI inj_on_eq_iff prod.inject)
+                    done
+                  done
+                done
+              subgoal
+                apply (subst (2) filter_False)
+                subgoal
+                  apply auto
+                  using prems(2)[unfolded graph_summar_nt_def]
+                  apply (metis fst_conv not_Some_eq2)
+                  done
+                subgoal
+                  apply simp
+                  apply (subst comm_monoid_add_class.sum.neutral)
+                  apply simp_all
+                apply (subst filter_False)
+                  apply auto
+                  done
+                done
+              done
+            done
+          done
         done
-
-
       done
     done
   done
-
-lemma dataplane_tracker_inv_upfro:
-  "sg = sg'\<lparr> upfro := f \<rparr> \<Longrightarrow>
-   dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv os cbufs sg'"
-  unfolding dataplane_tracker_inv_def
-  apply auto
-  done
-
 
 end

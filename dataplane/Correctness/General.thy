@@ -1418,5 +1418,18 @@ lemma change_multiplicities_preserves_inv:
     done
   done
 
+lemma filter_map_filter:
+  "(\<forall> x \<in> set xs. F x \<noteq> None \<longrightarrow> Q x \<and> (the (F x) = g x)) \<Longrightarrow>
+   (\<forall> x \<in> set xs. Q x \<longrightarrow> (F x) = Some (g x)) \<Longrightarrow>
+   filter P (List.map_filter F xs) = map g (filter (\<lambda>x. Q x \<and> P (g x)) xs)"
+  unfolding List.map_filter_def comp_def 
+  apply (subst (1) filter_map)
+  unfolding filter_filter comp_def
+  apply (rule map_cong)
+   apply (rule filter_cong)
+    apply simp_all
+   apply auto
+  done
+
 
 end

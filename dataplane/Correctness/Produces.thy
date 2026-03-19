@@ -364,23 +364,109 @@ lemma dataplane_tracker_inv_produces_drops:
           using prems(15)[unfolded produ_consu_supported_def] apply -
           apply clarsimp
           apply (drule spec2, drule spec, drule mp, blast)
-          apply (simp add: zcount_sum  zmset_concat comp_def monoid_add_class.sum_list_distinct_conv_sum_set split_beta if_distrib[where f=produ])
-          apply (rule preorder_class.dual_order.strict_trans[rotated])
-           apply assumption
-          apply auto
-          apply (rule sum_strict_mono_ex1)
-            apply simp_all
+          apply (simp add:  zmset_concat comp_def monoid_add_class.sum_list_distinct_conv_sum_set split_beta if_distrib[where f=produ])
+          apply (subgoal_tac "
+(\<Sum>x\<in>UNIV. zmset (map snd (filter (\<lambda>(p'', ab). graph_to_nxt (summ sg) (fst x, p'') = Some (nid, p) \<and> snd x = p'') (produ (os (fst x)))))) \<subseteq>#\<^sub>z
+(\<Sum>x\<in>UNIV.
+            zmset
+             (map snd
+               (filter (\<lambda>(p'', ab). graph_to_nxt (summ sg) (fst x, p'') = Some (nid, p) \<and> snd x = p'')
+                 (if fst x = nid
+                  then produ
+                        (os nid
+                         \<lparr>outpu := \<lambda>p. outpu (os nid) p @ oputs p, ocaps := \<lambda>p. list_diff (ocaps (os nid) p) (drops p), input := \<lambda>p. filter (\<lambda>(_, t). t \<notin> set (drops p)) (input (os nid) p),
+                            produ := produ (os nid) @ produs, inter := operator_state.inter (os nid) @ concat (map (\<lambda>p. map (\<lambda>os. (p, os, - 1)) (drops p)) enum_class.enum), nfron := V\<rparr>)
+                  else produ (os (fst x))))))
+          ")
           subgoal
-            using temp(2) by (force intro!: zcount_zmset_ge_0I)
+            by (smt (verit, best) zmset_subset_eq_zcount)
+          subgoal premises temp
+            unfolding subseteq_zmset_def
+            apply (clarsimp simp add: zcount_sum)
+            apply (rule ordered_comm_monoid_add_class.sum_le_included)
+               apply auto
+            subgoal
+              apply (rule ordered_comm_monoid_add_class.add_nonneg_nonneg)
+              subgoal
+                apply (rule zcount_zmset_ge_0I)
+                apply clarsimp
+                using prems(12)[unfolded change_deltas_inv_def] apply fastforce
+                done
+              subgoal
+                apply (rule zcount_zmset_ge_0I)
+                apply clarsimp
+                using prems(2) apply fastforce
+                done
+              done
+            subgoal 
+              apply (rule zcount_zmset_ge_0I)
+              apply clarsimp
+              using prems(12)[unfolded change_deltas_inv_def] apply fastforce
+              done
+            apply (intro exI impI conjI)
+               apply fast
+              apply simp_all
+            subgoal 
+              apply (rule zcount_zmset_ge_0I)
+              apply clarsimp
+              using prems(2) apply fastforce
+              done
+            done
+          done
+        subgoal for nid' p t m
+          using prems(15)[unfolded produ_consu_supported_def] apply -
+          apply clarsimp
+          apply (drule spec2, drule spec, drule mp, blast)          
+          apply (simp add:  zmset_concat comp_def monoid_add_class.sum_list_distinct_conv_sum_set split_beta if_distrib[where f=produ])
+          apply (subgoal_tac "
+(\<Sum>x\<in>UNIV. zmset (map snd (filter (\<lambda>(p'', ab). graph_to_nxt (summ sg) (fst x, p'') = Some (nid', p) \<and> snd x = p'') (produ (os (fst x)))))) \<subseteq>#\<^sub>z
+(\<Sum>x\<in>UNIV.
+            zmset
+             (map snd
+               (filter (\<lambda>(p'', ab). graph_to_nxt (summ sg) (fst x, p'') = Some (nid', p) \<and> snd x = p'')
+                 (if fst x = nid
+                  then produ
+                        (os nid
+                         \<lparr>outpu := \<lambda>p. outpu (os nid) p @ oputs p, ocaps := \<lambda>p. list_diff (ocaps (os nid) p) (drops p), input := \<lambda>p. filter (\<lambda>(_, t). t \<notin> set (drops p)) (input (os nid) p),
+                            produ := produ (os nid) @ produs, inter := operator_state.inter (os nid) @ concat (map (\<lambda>p. map (\<lambda>os. (p, os, - 1)) (drops p)) enum_class.enum), nfron := V\<rparr>)
+                  else produ (os (fst x))))))
+          ")
           subgoal
-
-
-            find_theorems produs
-
-
-          find_theorems "_ \<Longrightarrow> sum _ _ < sum _ _"
-
-end
+            by (smt (verit, best) zmset_subset_eq_zcount)
+  subgoal premises temp
+            unfolding subseteq_zmset_def
+            apply (clarsimp simp add: zcount_sum)
+            apply (rule ordered_comm_monoid_add_class.sum_le_included)
+               apply auto
+            subgoal
+              apply (rule ordered_comm_monoid_add_class.add_nonneg_nonneg)
+              subgoal
+                apply (rule zcount_zmset_ge_0I)
+                apply clarsimp
+                using prems(12)[unfolded change_deltas_inv_def] apply fastforce
+                done
+              subgoal
+                apply (rule zcount_zmset_ge_0I)
+                apply clarsimp
+                using prems(2) apply fastforce
+                done
+              done
+            subgoal 
+              apply (rule zcount_zmset_ge_0I)
+              apply clarsimp
+              using prems(12)[unfolded change_deltas_inv_def] apply fastforce
+              done
+            apply (intro exI impI conjI)
+               apply fast
+              apply simp_all
+            subgoal 
+              apply (rule zcount_zmset_ge_0I)
+              apply clarsimp
+              using prems(2) apply fastforce
+              done
+            done
+          done
+        done
       subgoal premises prems
         unfolding extract_prog_changes_above_impl_inv_def
         apply (auto 0 0)
@@ -548,6 +634,69 @@ end
               apply (subst (asm) extract_progress_def)
               apply (clarsimp simp add: image_iff split_beta Misc.set_map_filter split: option.splits; hypsubst_thin?)
               subgoal for p' m
+                apply (frule conjunct2[OF prems(15)[unfolded produ_consu_supported_def], rule_format])
+                apply (cases "\<exists> nid'' p''. graph_to_nxt (summ sg) (nid'', p'') = Some (nid', p')")
+                subgoal
+                  apply clarsimp
+                  subgoal for nid'' p''
+                    apply (cases "nid'' \<in> set xs")
+                    subgoal
+                      apply (rule frontier_less_equal_ifrontierI[OF D, of 0 "Loc nid' (Trg p')", simplified])
+                      subgoal
+                        sorry
+                      subgoal
+                        apply (cases "nid'' = nid")
+                        subgoal
+                          apply hypsubst_thin
+                        apply (subst change_multiplicities_extract_prog_obtain_progress_remove1_append[where nid=nid])
+                        apply simp_all
+                        apply (clarsimp simp add: c_pts_change_multiplicities obtain_progress_def extract_progress_def filter_map comp_def split_beta split: option.splits)
+                          apply (subst (3) filter_False)
+                          subgoal
+                            apply (auto simp add: obtain_progress_def Misc.set_map_filter extract_prog_def extract_progress_def split: option.splits)
+                            using temp(5)[unfolded graph_summar_nt_def]
+                            apply (metis (no_types, lifting) Pair_inject domI in_op_conn_graph_to_nxt_iff inj_on_eq_iff op_conn.simps)
+                            done
+                          apply (clarsimp simp add: monoid_add_class.sum_list_distinct_conv_sum_set split_beta zmset_concat comp_def)
+                          apply (subgoal_tac "
+ (\<Sum>x\<in>UNIV. zmset (map snd (filter (\<lambda>(p'', ab). graph_to_nxt (summ sg) (fst x, p'') = Some (nid', p') \<and> snd x = p'') (produ (os (fst x)))))) = 
+zmset
+          (map snd
+            (filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (List.map_filter (\<lambda>(p, t, m). case graph_to_nxt (summ sg) (nid, p) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) (produ (os nid)))))")
+                          defer
+                          subgoal
+                            apply (subst comm_monoid_add_class.sum.subset_diff[of "{(nid, p'')}"])
+                            apply simp_all
+                            apply (subst comm_monoid_add_class.sum.neutral)
+                            subgoal
+                              apply clarsimp
+                              using temp(5)[unfolded graph_summar_nt_def]
+                              apply (smt (verit, best) case_prodE domI filter_empty_conv inj_on_def list.map_disc_iff prod.inject zmset_emptyI)
+                              done
+                            apply simp
+                            apply (rule arg_cong[where f=zmset])
+                            apply (subst filter_map_filter[where g="\<lambda> (p'', t, m). (Loc nid' (Trg p''), t, m)"])
+                              defer
+                            defer
+                            apply (clarsimp simp add: comp_def split: prod.splits)
+                             apply (rule map_cong)
+                              apply (rule filter_cong)
+                               apply simp_all
+                              defer
+                            defer
+                            apply (auto 0 0 simp add: comp_def split: prod.splits option.splits)[1]
+                               defer
+                               apply (auto 0 0 simp add: comp_def split: prod.splits option.splits)[1]
+
+
+                          find_theorems map name: cong
+
+              
+                          find_theorems "filter _ (filter _ _)"
+
+                      find_theorems "filter _ (List.map_filter  _ _)"
+
+end
                 apply (cases "\<exists> p. t \<in># mset (drops p) \<and> graph_to_nxt (summ sg) (nid, p) = Some (nid', p')")
                 subgoal
                   apply clarsimp
