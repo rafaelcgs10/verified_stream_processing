@@ -660,7 +660,7 @@ lemma dataplane_tracker_inv_produces_drops:
                           apply (clarsimp simp add: monoid_add_class.sum_list_distinct_conv_sum_set split_beta zmset_concat comp_def)
                           apply (subgoal_tac "
  (\<Sum>x\<in>UNIV. zmset (map snd (filter (\<lambda>(p'', ab). graph_to_nxt (summ sg) (fst x, p'') = Some (nid', p') \<and> snd x = p'') (produ (os (fst x)))))) = 
-zmset
+  zmset
           (map snd
             (filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (List.map_filter (\<lambda>(p, t, m). case graph_to_nxt (summ sg) (nid, p) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) (produ (os nid)))))")
                           defer
@@ -674,9 +674,150 @@ zmset
                               apply (smt (verit, best) case_prodE domI filter_empty_conv inj_on_def list.map_disc_iff prod.inject zmset_emptyI)
                               done
                             apply simp
-                            apply (rule arg_cong[where f=zmset])
-                            apply (subst filter_map_filter[where g="\<lambda> (p'', t, m). (Loc nid' (Trg p''), t, m)"])
+                            apply (subst map_snd_filter_List_map_filter)
+                              apply assumption
+                            using temp(5)[unfolded graph_summar_nt_def] apply simp_all
+                            done
+                          subgoal
+                            apply simp
+                            apply (rule frontier_less_equal_zcount_pos)
+                            apply (simp flip: add.assoc)
+                            apply (rule ordered_comm_monoid_add_class.add_pos_nonneg)
+                             apply simp_all
+                            apply (rule zcount_zmset_ge_0I)
+                            apply (auto simp add:  Misc.set_map_filter split: option.splits)
+                            using temp(2) temp(5)[unfolded graph_summar_nt_def] apply (smt (verit) in_op_conn_graph_to_nxt_iff old.prod.case op_conn.simps)
+                            done
+                          done
+                        subgoal
+                        apply (subst change_multiplicities_extract_prog_obtain_progress_remove1_append[where nid=nid''])
+                        apply simp_all
+                        apply (clarsimp simp add: c_pts_change_multiplicities obtain_progress_def extract_progress_def filter_map comp_def split_beta split: option.splits)
+                          apply (subst (2) filter_False)
+                          subgoal
+                            apply (auto simp add: obtain_progress_def Misc.set_map_filter extract_prog_def extract_progress_def split: option.splits)
+                            using temp(5)[unfolded graph_summar_nt_def]
+                             apply (metis (no_types, lifting) domI in_op_conn_graph_to_nxt_iff inj_on_eq_iff op_conn.simps prod.simps(1))+
+                            done
+                          apply simp
+                          apply (clarsimp simp add: monoid_add_class.sum_list_distinct_conv_sum_set split_beta zmset_concat comp_def)
+                          apply (subst (asm) comm_monoid_add_class.sum.subset_diff[of "{(nid'', p'')}"])
+                            apply simp_all
+                            apply (subst (asm) comm_monoid_add_class.sum.neutral)
+                            subgoal
+                              apply clarsimp
+                              using temp(5)[unfolded graph_summar_nt_def]
+                              apply (smt (verit, best) case_prodE domI filter_empty_conv inj_on_def list.map_disc_iff prod.inject zmset_emptyI)
+                              done
+                            apply simp
+                            apply (subst map_snd_filter_List_map_filter)
+                              apply assumption
+                            using temp(5)[unfolded graph_summar_nt_def] apply simp
+                            apply (simp flip: zcount_union)
+                            apply (drule zcount_gt_0_in_frontierD)
+                            apply clarsimp
+                            apply (subst (2) filter_False)
+                            using frontier_less_equal_iff2 apply auto
+                            done
+                          done
+                        done
+                      subgoal
+                        apply (cases "nid'' = nid")
+                        subgoal
+                          by auto
+                        subgoal
+                      apply (subst change_multiplicities_extract_prog_updates[where nid=nid])
+                            apply assumption+
+                          apply (simp add: map_concat comp_def)
+                          apply (subgoal_tac "0 < zcount (c_pts (pt_tr sg) (Loc nid' (Trg p'))) t \<or> 0 < zcount (zmset (concat (map (\<lambda>(nid'a, p'a). map snd (filter (\<lambda>(p'', ab). graph_to_nxt (summ sg) (nid'a, p'') = Some (nid', p') \<and> p'a = p'') (produ (os nid'a)))) enum_class.enum))) t")
+                          defer
+                          subgoal
+                            by auto
+                          subgoal
+                            apply (elim disjE)
+                            subgoal
+                              apply (rule frontier_less_equal_ifrontierI[OF D, of 0 "Loc nid' (Trg p')", simplified])
+                              subgoal
+                                sorry
+                              subgoal
+                                apply (simp add: c_pts_change_multiplicities)
+                                apply (subst filter_False)
+                                subgoal
+                                  unfolding extract_progress_def obtain_progress_def extract_prog_def
+                                  apply (auto simp add:  Misc.set_map_filter split: option.splits)
+                                  using temp(5)[unfolded graph_summar_nt_def]
+                                   apply (metis (no_types, lifting) domI in_op_conn_graph_to_nxt_iff inj_on_eq_iff op_conn.simps prod.simps(1))+
+                                  done
+                                apply (subst filter_False)
+                                subgoal
+                                  unfolding extract_progress_def obtain_progress_def extract_prog_def
+                                  apply (auto simp add: Misc.set_map_filter split: option.splits)
+                                  using temp(5)[unfolded graph_summar_nt_def]
+                                  apply (metis (no_types, lifting) domI in_op_conn_graph_to_nxt_iff inj_on_eq_iff op_conn.simps prod.simps(1))
+                                  done
+                                subgoal
+                                  apply simp
+                                  apply (metis frontier_less_equal_zcount_pos)
+                                  done
+                                done
+                              done
+                            subgoal
+                              apply (clarsimp simp add: zcount_sum monoid_add_class.sum_list_distinct_conv_sum_set  comp_def zmset_concat split_beta)
+                              apply (subgoal_tac "\<exists> m. (p'', t, m) \<in> set (produ (os nid''))")
+                               defer
+                              subgoal
+                                apply (drule sum_pos_ex_elem_pos)
+                                apply clarsimp
+                                apply (drule zcount_zmset_gt_0_set_Ex)
+                                apply clarsimp
+                                using temp(5)[unfolded graph_summar_nt_def]
+                                apply (metis (mono_tags, lifting) domI fst_eqD inv_on_f_f snd_eqD)
+                                done
+                              subgoal
+                                apply clarsimp
+                                subgoal for m'
+                                  using prems(14)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format, of xs nid'' "(Loc nid' (Trg p'), t, m')"] apply -
+                                  apply simp
+                                  apply (drule meta_mp)
+                                  subgoal
+                                    unfolding obtain_progress_def extract_progress_def
+                                    apply (clarsimp del: disjCI simp add: Misc.set_map_filter image_iff split: option.splits)
+                                    apply (rule disjI2)+
+                                    apply (rule exI[of _ "p''"])
+                                    apply (intro conjI impI)
+                                    apply (rule exI[of _ "nid'"])
+                                    apply (rule exI[of _ "p'"])
+                                     apply (drule conjunct1[OF conjunct2[OF temp(5)[unfolded graph_summar_nt_def]], rule_format])
+                                     apply fastforce+
+                                    done
+                            
+
+
+                                  find_theorems frontier_less_equal name: trans
+
+
+                          find_theorems frontier Trg
+
+end
+                        apply (rule frontier_less_equal_change_multiplicities[OF D, where A="extract_progress nid' (graph_to_nxt (summ sg)) (snd (obtain_progress (os nid')))"])
+                        subgoal
+                          apply safe
+                          subgoal for l t' m
+                            using prems(14)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def split_beta, rule_format, simplified, of xs, rotated 2]
+
+                            find_theorems  frontier_less_equal "_ \<le> _" name: trans
+                      
+                            oops
+
+
+
+
+                            apply (subst filter_map_filter[where g="\<lambda> (p'', t, m). (Loc nid' (Trg p''), t, m)" and Q="\<lambda> (p, _, _). p = p''"])
                               defer
+                              apply (clarsimp simp add: split: option.splits)
+                            apply (intro conjI)
+
+end
                             defer
                             apply (clarsimp simp add: comp_def split: prod.splits)
                              apply (rule map_cong)

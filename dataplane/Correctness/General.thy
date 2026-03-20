@@ -975,6 +975,42 @@ lemma change_multiplicities_extract_progress_consumes:
     by (smt (verit, ccfv_SIG) change_multiplicities_append_alt change_multiplicities_simp_alt)
   done
 
+lemma change_multiplicities_extract_progress_updates:
+  "change_multiplicities su (extract_progress nid nt (snd (obtain_progress
+                  (os nid
+                   \<lparr>outpu := OP, ocaps := OC, input := IP, produ := produ (os nid) @ produs,
+                      inter := operator_state.inter (os nid) @ interr, nfron := V\<rparr>)))) = 
+   change_multiplicities su (extract_progress nid nt (snd (obtain_progress (os nid))) @
+   (List.map_filter (\<lambda>(p, t, m). case nt (nid, p) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) produs) @
+   map (\<lambda>(p, y). (Loc nid (Src p), y)) interr)"
+  apply (rule ext)
+  unfolding obtain_progress_def extract_progress_def
+  apply (clarsimp simp add: comp_def map_concat)
+  apply (smt (verit) change_multiplicities_append_alt change_multiplicities_comm)
+  done
+
+lemma change_multiplicities_extract_prog_updates:
+  "nid \<in> set xs \<Longrightarrow>
+   distinct xs \<Longrightarrow>
+   change_multiplicities su (extract_prog xs nt
+           (os(nid := os nid \<lparr>outpu := OP, ocaps := OC, input := IP, produ := produ (os nid) @ produs,
+                      inter := operator_state.inter (os nid) @ interr, nfron := V\<rparr>))) = 
+   change_multiplicities su (extract_prog xs nt os @
+   (List.map_filter (\<lambda>(p, t, m). case nt (nid, p) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) produs) @
+   map (\<lambda>(p, y). (Loc nid (Src p), y)) interr)"
+  apply (rule ext)
+  apply (subst (1) change_multiplicities_extract_prog_obtain_progress_remove1_append)
+    apply assumption+
+  apply (simp add: change_multiplicities_append_alt)
+  apply (subst (2) change_multiplicities_extract_prog_obtain_progress_remove1_append)
+    apply assumption+
+  apply (subst change_multiplicities_extract_progress_updates)
+  apply (simp add: change_multiplicities_append_alt)
+  apply (smt (verit) change_multiplicities_append_alt change_multiplicities_comm) 
+  done
+
+  find_theorems remove1 extract_prog
+
 lemma change_multiplicities_extract_prog_consumes:
   "nid \<in> set xs \<Longrightarrow>
    distinct xs \<Longrightarrow>
@@ -1431,5 +1467,16 @@ lemma filter_map_filter:
    apply auto
   done
 
+lemma map_snd_filter_List_map_filter:
+  "nt (nid, p'') = Some (nid', p') \<Longrightarrow>
+   inj_on nt (dom nt) \<Longrightarrow>
+   map snd (filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l')
+       (List.map_filter (\<lambda>(p, t, m). case nt (nid, p) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) xs)) =
+   map snd (filter (\<lambda>(p''a, ab). nt (nid, p''a) = Some (nid', p') \<and> p'' = p''a) xs)"
+  apply (induct xs)
+   apply simp
+  apply (clarsimp split: prod.splits option.splits)
+  using inj_on_contraD apply fastforce
+  done
 
 end
