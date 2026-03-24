@@ -331,10 +331,10 @@ lemma dataplane_tracker_inv_produces_drops:
         done
       defer
       subgoal premises prems
-        unfolding produ_consu_supported_def
+        unfolding produ_consu_inter_supported_def
         apply (auto del: disjCI simp add: image_iff)
         subgoal
-          using prems(15)[unfolded produ_consu_supported_def]
+          using prems(15)[unfolded produ_consu_inter_supported_def]
           by blast
         subgoal for p t m
           using temp(2) apply -
@@ -358,10 +358,10 @@ lemma dataplane_tracker_inv_produces_drops:
             done
           done
         subgoal for nid' p t m
-          using prems(15)[unfolded produ_consu_supported_def]
+          using prems(15)[unfolded produ_consu_inter_supported_def]
           by blast
         subgoal for p t m
-          using prems(15)[unfolded produ_consu_supported_def] apply -
+          using prems(15)[unfolded produ_consu_inter_supported_def] apply -
           apply clarsimp
           apply (drule spec2, drule spec, drule mp, blast)
           apply (simp add:  zmset_concat comp_def monoid_add_class.sum_list_distinct_conv_sum_set split_beta if_distrib[where f=produ])
@@ -414,7 +414,7 @@ lemma dataplane_tracker_inv_produces_drops:
             done
           done
         subgoal for nid' p t m
-          using prems(15)[unfolded produ_consu_supported_def] apply -
+          using prems(15)[unfolded produ_consu_inter_supported_def] apply -
           apply clarsimp
           apply (drule spec2, drule spec, drule mp, blast)          
           apply (simp add:  zmset_concat comp_def monoid_add_class.sum_list_distinct_conv_sum_set split_beta if_distrib[where f=produ])
@@ -467,7 +467,7 @@ lemma dataplane_tracker_inv_produces_drops:
             done
           done
         subgoal
-          using prems(15)[unfolded produ_consu_supported_def] apply -
+          using prems(15)[unfolded produ_consu_inter_supported_def] apply -
           apply clarsimp
           apply (drule spec2, drule spec, drule mp, blast)  
           apply auto
@@ -487,7 +487,7 @@ lemma dataplane_tracker_inv_produces_drops:
             subgoal
               apply (drule zcount_zmset_gt_0_set_Ex)
           apply (clarsimp del: disjCI)
-         using prems(15)[unfolded produ_consu_supported_def] apply -
+         using prems(15)[unfolded produ_consu_inter_supported_def] apply -
           apply (clarsimp del: disjCI)
           apply (drule spec2, drule spec, drule mp, blast)  
                    apply auto
@@ -505,7 +505,7 @@ lemma dataplane_tracker_inv_produces_drops:
        done
      done
    subgoal for nid' p t m
-         using prems(15)[unfolded produ_consu_supported_def] apply -
+         using prems(15)[unfolded produ_consu_inter_supported_def] apply -
           apply (clarsimp del: disjCI)
          apply (drule spec2, drule spec, drule mp, blast)  
          apply auto
@@ -678,7 +678,7 @@ lemma dataplane_tracker_inv_produces_drops:
               apply (subst (asm) extract_progress_def)
               apply (clarsimp simp add: image_iff split_beta Misc.set_map_filter split: option.splits; hypsubst_thin?)
               subgoal for p' m
-                apply (frule conjunct1[OF conjunct2[OF prems(15)[unfolded produ_consu_supported_def]], rule_format])
+                apply (frule conjunct1[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supported_def]], rule_format])
                 apply (cases "\<exists> nid'' p''. graph_to_nxt (summ sg) (nid'', p'') = Some (nid', p')")
                 subgoal
                   apply clarsimp
@@ -820,21 +820,42 @@ lemma dataplane_tracker_inv_produces_drops:
                               subgoal
                                 apply clarsimp
                                 subgoal for m'
-                                  apply (drule conjunct1[OF prems(15)[unfolded produ_consu_supported_def], rule_format])
+                                  thm prems(15)
+
+                                  apply (drule conjunct1[OF prems(15)[unfolded produ_consu_inter_supported_def], rule_format])
                                   apply (elim disjE)
                                   subgoal
-                                    sorry
+                                    apply (rule frontier_less_equal_ifrontierI[of _ 0 "Loc nid'' (Src p'')", simplified, OF D])
+                                        subgoal sorry
+                                        apply (simp add: change_multiplicities_append_alt)
+                                        apply (clarsimp simp add: c_pts_change_multiplicities)
+                                        apply (subst (2) filter_False)
+                                        subgoal
+                                          by (auto simp add: Misc.set_map_filter split: option.splits)
+                                        apply simp
+                                        apply (subst (1) filter_False)
+                                        subgoal
+                                          by (auto simp add: Misc.set_map_filter map_concat extract_prog_def extract_progress_def split_beta image_iff del: disjCI split: option.splits)
+                                        apply simp
+                                        using frontier_less_equal_trans frontier_less_equal_zcount_pos apply blast
+                                        done
                                   subgoal
                                     apply clarsimp
                                     subgoal for m''
-                                      apply (drule conjunct2[OF conjunct2[OF prems(15)[unfolded produ_consu_supported_def]], rule_format])
+(*
+ a timestamp pode estar no control plane e em algum buffer ao mesmo tempo?
+
+*)
+
+
+end
+                                      apply (drule conjunct2[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supported_def]], rule_format])
                                       apply clarsimp
                                       apply (elim disjE)
                                       subgoal for t'
                                         apply (rule frontier_less_equal_ifrontierI[of _ 0 "Loc nid'' (Src p'')", simplified, OF D])
                                         subgoal sorry
                                         apply (simp add: change_multiplicities_append_alt)
-                                        find_theorems change_multiplicities append
                                         apply (clarsimp simp add: c_pts_change_multiplicities)
                                         apply (subst (2) filter_False)
                                         subgoal

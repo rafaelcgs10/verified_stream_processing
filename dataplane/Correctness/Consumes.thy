@@ -18,7 +18,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
     and P: "c_pts_inv (change_multiplicities su (extract_prog enum_class.enum nt os) c) caps"
     and CA: "change_deltas_inv os"
     and G: "graph_summar_nt su nt os"
-    and PR: "produ_consu_supported nt os c"
+    and PR: "produ_consu_inter_supported nt os c"
     and E: "extract_prog_changes_above_impl_inv su nt c os"
   shows 
     "extract_prog_changes_above_impl_inv su nt c (os(nid := consumes (os nid) p t d))"
@@ -561,7 +561,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
 
 
         subgoal for p' nid'' p''
-          using conjunct1[OF PR[unfolded produ_consu_supported_def]] apply -
+          using conjunct1[OF PR[unfolded produ_consu_inter_supported_def]] apply -
           apply (drule spec2, drule spec2, drule mp, assumption)
           apply (elim disjE)
           subgoal
@@ -890,7 +890,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
     done
   subgoal premises temp for xs
     using temp(1)
-    conjunct1[OF temp(2)[unfolded produ_consu_supported_def]]
+    conjunct1[OF temp(2)[unfolded produ_consu_inter_supported_def]]
     temp(3-) apply -
     using E[unfolded extract_prog_changes_above_impl_inv_def, rule_format, of "xs"] apply -
     apply simp
@@ -1125,7 +1125,7 @@ lemma dataplane_tracker_inv_consumes:
       done
     subgoal premises prems
       using prems(13) apply -
-      unfolding produ_consu_supported_def
+      unfolding produ_consu_inter_supported_def
       apply (intro conjI)
       subgoal
         apply clarsimp
