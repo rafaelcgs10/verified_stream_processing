@@ -78,7 +78,8 @@ definition "ty2_check os bufs = (\<forall> p. (\<forall> x \<in> fst ` set (inpu
 definition "produ_consu_supported nt os c =
     ((\<forall> nid p t m. (p, t, m) \<in> set (produ (os nid)) \<longrightarrow> (zcount (c_pts c (Loc nid (Src p))) t > 0 \<or> (\<exists>m'>0. (p, t, m') \<in> set (inter (os nid))))) \<and>
      (\<forall> nid p t m. (p, t, m) \<in> set (consu (os nid)) \<longrightarrow>
-                   (zcount (c_pts c (Loc nid (Trg p)) + zmset (concat (map (\<lambda> (nid', p'). (map snd (filter (\<lambda> (p'', _, _). nt (nid', p'') = Some (nid, p) \<and> p' = p'') (produ (os nid'))))) Enum.enum))) t > 0)))"
+                   (zcount (c_pts c (Loc nid (Trg p)) + zmset (concat (map (\<lambda> (nid', p'). (map snd (filter (\<lambda> (p'', _, _). nt (nid', p'') = Some (nid, p) \<and> p' = p'') (produ (os nid'))))) Enum.enum))) t > 0)) \<and>
+     (\<forall> nid p t m. (p, t, m) \<in> set (inter (os nid)) \<longrightarrow> (\<exists> t'\<le>t. zcount (c_pts c (Loc nid (Src p))) t' > 0 \<or> (\<exists> t' p' s. \<exists>m'>0. (p', t', m') \<in> set (consu (os nid)) \<and> s \<in> set (intsum (os nid) p' p ) \<and> t = t' -+- s))))"
 
 definition "extract_prog_changes_above_impl_inv su nt c os =
    (\<forall> nid xs. distinct xs \<longrightarrow> nid \<notin> set xs \<longrightarrow> 

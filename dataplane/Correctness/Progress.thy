@@ -157,7 +157,7 @@ lemma dataplane_tracker_inv_progress:
                 apply (rule frontier_less_equal_ifrontierI[OF prems(1), of 0 "Loc nid'' (Src p'')", simplified])
                 subgoal 
                   using prems(2)[unfolded graph_summar_nt_def] 
-                   path_weight_direct_0path[OF dataflow_topology.axioms(1)[OF prems(1)]]
+                    path_weight_direct_0path[OF dataflow_topology.axioms(1)[OF prems(1)]]
                   by simp
                 subgoal
                   apply (simp add: c_pts_change_multiplicities)
@@ -285,86 +285,90 @@ lemma dataplane_tracker_inv_progress:
         apply (clarsimp del: disjCI simp add: filter_map comp_def split_beta )
         apply (drule spec2, drule spec, drule mp, blast)
         unfolding obtain_progress_def
-         apply (clarsimp simp add: monoid_add_class.sum_list_distinct_conv_sum_set zmset_concat List.map_filter_def comp_def map_concat filter_map split_beta obtain_progress_def Misc.set_map_filter split: option.splits)
+        apply (clarsimp simp add: monoid_add_class.sum_list_distinct_conv_sum_set zmset_concat List.map_filter_def comp_def map_concat filter_map split_beta obtain_progress_def Misc.set_map_filter split: option.splits)
         apply (simp add: add.assoc)
         apply (rule lt_le_lt)
          apply assumption
         subgoal premises temp
-          apply (clarsimp simp add: zcount_sum if_distrib)
-          apply (subst (2) comm_monoid_add_class.sum.subset_diff[of "Pair nid ` fst ` set (produ (os nid))"])
-            apply simp_all
-          apply (subst add.commute)
-          apply (simp add: add.assoc)
-          apply (subst (2) add.commute)
-          apply (simp flip: add.assoc)
-          apply (rule ordered_comm_monoid_add_class.add_increasing2)
-          subgoal 
-            sorry
+          apply (clarsimp simp add: zcount_sum)
+          apply (cases "\<exists> nid p'. subgraph.nxt sg (nid, p') = Some (nid', p)")
           subgoal
-               apply (auto 0 0)
-          apply (subst (1) comm_monoid_add_class.sum.subset_diff[of "Pair nid ` fst ` set (produ (os nid))"])
-            apply simp_all
-            apply (rule ordered_ab_semigroup_add_class.add_mono)
-            subgoal
-              apply (rule ordered_comm_monoid_add_class.sum_le_included)
-                 apply (auto 0 0)
-              sorry
-            subgoal
-              using temp(2) apply -
-              apply (cases "\<exists> p' \<in> fst ` set (produ (os nid)).  subgraph.nxt sg (nid, p') = Some (nid', p)")
-              subgoal
-                apply clarsimp
-                subgoal for p'
-
-              apply (subst sum_eq_singleton[of _ _ "(nid, p')"])
-                      apply simp_all
-                    apply blast
-                  subgoal
-                    apply clarsimp
-                    apply (subst filter_False)
-                    subgoal
-                      apply clarsimp
-                      using prems(2)[unfolded graph_summar_nt_def]
-                      apply (metis domI inj_on_eq_iff prod.inject)
-                      done
-                    apply simp
-                    done
-                  subgoal
-              apply (rule preorder_class.eq_refl)
-              apply (rule arg_cong2[where f=zcount])
-              apply simp_all
-              apply (rule arg_cong[where f=zmset])
-               apply (rule map_cong)
-                apply (rule filter_cong)
-                 apply simp_all
-                apply (clarsimp split: prod.splits)
-                     apply (intro conjI iffI)
-                        apply fast
-                       apply simp_all
-                      apply blast
-                     apply (auto 0 0)
-                    using prems(2)[unfolded graph_summar_nt_def]
-                    apply (metis domI inj_on_eq_iff prod.inject)
-                    done
+            apply clarsimp
+            subgoal for nid'' p''
+              apply (subst (1 2) comm_monoid_add_class.sum.subset_diff[of "{(nid'', p'')}"])
+                apply auto
+              subgoal 
+                apply (subgoal_tac "zmset (map snd (filter (\<lambda>(p''a, ab). subgraph.nxt sg (nid, p''a) = Some (nid', p) \<and> p'' = p''a) (produ (os nid)))) =
+  zmset
+          (map (\<lambda>x. snd (the (case subgraph.nxt sg (nid, fst x) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), fst (snd x), snd (snd x)))))
+            (filter (\<lambda>x. (\<exists>a b. subgraph.nxt sg (nid, fst x) = Some (a, b)) \<and> (\<forall>a b. subgraph.nxt sg (nid, fst x) = Some (a, b) \<longrightarrow> nid' = a \<and> p = b)) (produ (os nid))))")
+                 defer
+                subgoal
+                  apply (rule arg_cong[where f=zmset])
+                  apply (rule map_cong)
+                   apply (rule filter_cong)
+                    apply auto
+                  using prems(2)[unfolded graph_summar_nt_def]
+                  apply (metis domI inj_on_eq_iff prod.inject)
                   done
+                apply simp
+                apply (rule ordered_comm_monoid_add_class.sum_mono)
+                apply (auto simp add: linorder_class.not_le dest!: zcount_zmset_gt_0_set_Ex)
+                using prems(2)[unfolded graph_summar_nt_def]
+                apply (metis (mono_tags, lifting) domI inj_onD snd_conv)
                 done
               subgoal
-                apply (subst (2) filter_False)
+                apply (subst comm_monoid_add_class.sum.neutral)
                 subgoal
-                  apply auto
-                  using prems(2)[unfolded graph_summar_nt_def]
-                  apply (metis fst_conv not_Some_eq2)
+                  apply clarsimp
+                  subgoal
+                    apply (drule zmset_elem_nonneg)
+                     apply (auto intro!: zcount_zmset_ge_0I dest!: zcount_zmset_gt_0_set_Ex)
+                    using prems(9)[unfolded change_deltas_inv_def] apply force
+                    using prems(2)[unfolded graph_summar_nt_def]
+                     apply (metis domI inj_on_eq_iff prod.inject)+
+                    done
                   done
                 subgoal
-                  apply simp
-                  apply (subst comm_monoid_add_class.sum.neutral)
-                  apply simp_all
-                apply (subst filter_False)
-                  apply auto
+                  apply (auto simp add: zcount_sum intro!: ordered_comm_monoid_add_class.sum_nonneg ordered_comm_monoid_add_class.add_nonneg_nonneg zcount_zmset_ge_0I dest!: zcount_zmset_gt_0_set_Ex)
+                  using prems(9)[unfolded change_deltas_inv_def] apply force
+                  using prems(2)[unfolded graph_summar_nt_def]
+                   apply (metis domI inj_on_eq_iff prod.inject)+
                   done
                 done
               done
             done
+          subgoal
+            apply (subst filter_False)
+            subgoal
+              by clarsimp
+            subgoal
+              apply simp
+              apply (auto simp add: zcount_sum intro!: ordered_comm_monoid_add_class.sum_nonneg ordered_comm_monoid_add_class.add_nonneg_nonneg zcount_zmset_ge_0I dest!: zcount_zmset_gt_0_set_Ex)
+              done
+            done
+          done
+        done
+      subgoal for nid' p t
+        apply clarsimp
+        apply (drule spec2, drule spec, drule mp, blast)
+        apply clarsimp
+        subgoal premises temp for m t'
+          using temp(3-) apply -
+          apply (elim disjE)
+          subgoal
+            apply (rule exI)
+            apply (rule conjI)
+             apply assumption
+            apply (rule disjI1)
+            apply (rule ordered_comm_monoid_add_class.add_pos_nonneg)
+             apply simp_all
+            unfolding obtain_progress_def extract_progress_def
+            apply (auto simp add: zcount_sum Misc.set_map_filter intro!: ordered_comm_monoid_add_class.sum_nonneg ordered_comm_monoid_add_class.add_nonneg_nonneg zcount_zmset_ge_0I dest!: zcount_zmset_gt_0_set_Ex split: option.splits)
+            done
+          apply clarsimp
+          subgoal for t'' p' s m'
+            by auto
           done
         done
       done

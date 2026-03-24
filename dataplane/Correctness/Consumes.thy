@@ -1129,7 +1129,7 @@ lemma dataplane_tracker_inv_consumes:
       apply (intro conjI)
       subgoal
         apply clarsimp
-        apply fast
+        apply blast
         done
       subgoal  
         apply (auto del: disjCI split: if_splits; hypsubst_thin?)
@@ -1160,6 +1160,12 @@ lemma dataplane_tracker_inv_consumes:
           apply (drule spec2, drule spec, drule mp, blast)
           apply (smt (verit) map_eq_conv produ_consumes split_def)
    done
+  done
+  subgoal
+           apply clarsimp
+    apply (auto simp add: consumes_def)
+     apply fast
+    using zero_less_one apply blast
   done
   done
   done

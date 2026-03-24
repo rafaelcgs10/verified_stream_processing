@@ -466,7 +466,51 @@ lemma dataplane_tracker_inv_produces_drops:
               done
             done
           done
-        done
+        subgoal
+          using prems(15)[unfolded produ_consu_supported_def] apply -
+          apply clarsimp
+          apply (drule spec2, drule spec, drule mp, blast)  
+          apply auto
+          done
+        subgoal for p t
+          using temp(1)[rule_format, of p] prems(6)[unfolded Src_caps_inv_def, rule_format, of nid p, symmetric]
+            prems(8)[unfolded c_pts_inv_def, rule_format, of "Loc nid (Src p)", symmetric] apply -
+          apply (simp add: c_pts_change_multiplicities comp_def)
+          unfolding zmultiset_eq_iff
+          apply (drule spec[of _ t])+
+          apply (subgoal_tac "zcount (c_pts (pt_tr sg) (Loc nid (Src p))) t > 0 \<or> zcount (zmset (map snd (filter (\<lambda>x. p = fst x) (operator_state.inter (os nid))))) t > 0")
+          subgoal
+            apply (elim disjE)
+            subgoal
+          apply (rule exI[of _ t])
+              by simp
+            subgoal
+              apply (drule zcount_zmset_gt_0_set_Ex)
+          apply (clarsimp del: disjCI)
+         using prems(15)[unfolded produ_consu_supported_def] apply -
+          apply (clarsimp del: disjCI)
+          apply (drule spec2, drule spec, drule mp, blast)  
+                   apply auto
+         done
+       done
+     subgoal
+       apply (subgoal_tac "zcount (to_zmset (ocaps (os nid) p)) t > 0")
+       subgoal
+         by force
+       subgoal
+         apply (rule zmset_elem_nonneg)
+          apply force
+         using to_zmset_nenneg apply fast
+         done
+       done
+     done
+   subgoal for nid' p t m
+         using prems(15)[unfolded produ_consu_supported_def] apply -
+          apply (clarsimp del: disjCI)
+         apply (drule spec2, drule spec, drule mp, blast)  
+         apply auto
+         done
+       done
       subgoal premises prems
         unfolding extract_prog_changes_above_impl_inv_def
         apply (auto 0 0)
@@ -529,7 +573,7 @@ lemma dataplane_tracker_inv_produces_drops:
                     subgoal
                       by (simp add: frontier_less_equal_zcount_pos)
                     subgoal
-                      by force
+                      by fastforce
                     done
                   done
                 done
@@ -634,81 +678,7 @@ lemma dataplane_tracker_inv_produces_drops:
               apply (subst (asm) extract_progress_def)
               apply (clarsimp simp add: image_iff split_beta Misc.set_map_filter split: option.splits; hypsubst_thin?)
               subgoal for p' m
-                apply (cases "\<exists> p s. graph.path_weightp (summ sg) (Loc nid (Src p)) (Loc nid' (Trg p')) s")
-                subgoal
-                  apply clarsimp
-                  subgoal for p s
-                    apply (drule graph.path_weightp_ex_path[rotated])
-                    subgoal sorry
-                    apply clarsimp
-        apply (subst change_multiplicities_extract_prog_updates[where nid=nid])
-                            apply assumption+
-                                  using prems(14)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format, of xs nid' "(Loc nid' (Trg p'), t, m)", simplified] apply -
-                                  apply simp
-                                  apply (drule meta_mp)
-                                  subgoal
-                                    unfolding obtain_progress_def extract_progress_def
-                                    apply (clarsimp del: disjCI simp add: Misc.set_map_filter image_iff split: option.splits)
-                                    apply (rule disjI2)
-                                    apply (rule disjI1)
-                                    apply force
-                    subgoal for ps
-                      using temp(5)[unfolded graph_summar_nt_def]
-                      oops
-
-(*
-    dataflow_topology_from_tree.sum_weights (map (\<lambda>(s, l, t). l) ps) \<le> s \<Longrightarrow>
-    \<forall>x\<in>set ps. case x of (l1, s, l2) \<Rightarrow> s \<in>\<^sub>A summ sg l1 l2 \<Longrightarrow>
-*)
-
-lemma int_plus_disj:
-  "0 < (a :: int) + b \<Longrightarrow> 0 < a \<or> 0 < b"
-  by auto
-
-term extract_progress
-
-lemma
-  assumes G: "Graph.graph su"
-   and C: "produ_consu_supported (graph_to_nxt su) os c"
- shows "graph.path su (Loc nid (Src p)) (Loc nid' lp) ps \<Longrightarrow>
-    Loc nid (Src p) \<noteq> Loc nid' lp \<Longrightarrow>
-    (case lp of Trg p' \<Rightarrow> (p', t, m) \<in> set (consu (os nid')) | Src p' \<Rightarrow> (p', t, m) \<in> set (produ (os nid'))) \<Longrightarrow>
-    distinct ps \<Longrightarrow>
-    frontier_less_equal (ifrontier su (-+-) (change_multiplicities su (extract_progress nid (graph_to_nxt su) (snd (obtain_progress (os nid)))) c) (Loc nid' lp)) t \<Longrightarrow>
-    frontier_less_equal
-     (ifrontier su (-+-)
-       (change_multiplicities su (extract_progress nid (graph_to_nxt su) (snd (obtain_progress (os nid))) @
-         (map (\<lambda>(p, y). (Loc nid (Src p), y)) (concat (map (\<lambda>p. map (\<lambda>os. (p, os, - 1)) (drops p)) enum_class.enum))))
-         c)
-       (Loc nid' lp))
-     t"
-  apply (induct "Loc nid (Src p)" "Loc nid' lp" ps arbitrary: nid' lp m t rule: graph.path.induct[OF G, consumes 1])
-  subgoal for nid' lp m t
-    by clarsimp
-  subgoal for l2 xs lbl nid' lp m t
-    apply (cases lp)
-    subgoal for p'
-      apply clarsimp
-      apply hypsubst_thin
-      apply (drule conjunct2[OF C[unfolded produ_consu_supported_def], rule_format])
-      apply simp
-      apply (drule int_plus_disj)
-      apply (elim disjE)
-      subgoal sorry
-      subgoal
-            apply (subgoal_tac "\<exists> nid'' p''. l2 = Loc nid'' (Src p'')")
-         apply clarsimp
-        subgoal for nid'' p''
-          apply hypsubst_thin
-          apply (drule meta_spec[of _ nid''])
-          apply simp
-
-                find_theorems "0 < _ + _" "_ \<or> _"
-
-                find_consts name: path
-
-end
-                apply (frule conjunct2[OF prems(15)[unfolded produ_consu_supported_def], rule_format])
+                apply (frule conjunct1[OF conjunct2[OF prems(15)[unfolded produ_consu_supported_def]], rule_format])
                 apply (cases "\<exists> nid'' p''. graph_to_nxt (summ sg) (nid'', p'') = Some (nid', p')")
                 subgoal
                   apply clarsimp
@@ -857,6 +827,42 @@ end
                                   subgoal
                                     apply clarsimp
                                     subgoal for m''
+                                      apply (drule conjunct2[OF conjunct2[OF prems(15)[unfolded produ_consu_supported_def]], rule_format])
+                                      apply clarsimp
+                                      apply (elim disjE)
+                                      subgoal for t'
+                                        apply (rule frontier_less_equal_ifrontierI[of _ 0 "Loc nid'' (Src p'')", simplified, OF D])
+                                        subgoal sorry
+                                        apply (simp add: change_multiplicities_append_alt)
+                                        find_theorems change_multiplicities append
+                                        apply (clarsimp simp add: c_pts_change_multiplicities)
+                                        apply (subst (2) filter_False)
+                                        subgoal
+                                          by (auto simp add: Misc.set_map_filter split: option.splits)
+                                        apply simp
+                                        apply (subst (1) filter_False)
+                                        subgoal
+                                          by (auto simp add: Misc.set_map_filter map_concat extract_prog_def extract_progress_def split_beta image_iff del: disjCI split: option.splits)
+                                        apply simp
+                                        using frontier_less_equal_trans frontier_less_equal_zcount_pos apply blast
+                                        done
+                                      subgoal for t'
+                                        apply clarsimp
+
+
+
+                                        oops
+
+
+
+
+
+                                          find_theorems extract_prog remove1
+
+
+                                        find_theorems frontier_less_equal ifrontier
+
+end
 
                                   using prems(14)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format, of xs nid'' "(Loc nid'' (Src p''), t, m'')"] apply -
                                   apply simp
