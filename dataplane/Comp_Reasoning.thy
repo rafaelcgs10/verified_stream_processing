@@ -59,10 +59,7 @@ lemma "dataflow_op sg op = dataflow_op sg' op' \<Longrightarrow> sg = sg' \<and>
       apply(cases sg; cases sg'; simp)
       apply auto
       subgoal
-        sorry
-      sorry
-    sorry
-  sorry
+        oops
 
 
 lemma dataflow_tree_to_graph_aux_Comp: "dataflow_tree_to_graph_aux n dt1 = dataflow_tree_to_graph_aux n dt1' \<Longrightarrow>
@@ -71,64 +68,6 @@ lemma dataflow_tree_to_graph_aux_Comp: "dataflow_tree_to_graph_aux n dt1 = dataf
   apply auto
   by(cases "dataflow_tree_to_graph_aux n dt1'"; simp)
 
-lemma dataflow_tree_to_graph_nodes_eq: "dataflow_tree_to_graph dt1 = dataflow_tree_to_graph dt1' \<Longrightarrow>
-       nodes_count dt1 = nodes_count dt1'"
-  unfolding dataflow_tree_to_graph_def
-  sorry
-
-lemma dataflow_tree_to_graph_alt_def:  "dataflow_tree_to_graph (df :: ('id :: {minus,one,plus,zero,ord,enum,hashable}, _, _, _, _) dataflow_tree) = (
-  if \<not> has_zero_cyc (snd (dataflow_tree_to_graph_aux 0 df)) \<and>
-     no_self_loop_checker (snd (dataflow_tree_to_graph_aux 0 df)) \<and>
-     implementation_graph_checker (weights_to_graph_fun (remove_non_zero_weights (snd (dataflow_tree_to_graph_aux 0 df)))) \<and>
-     CARD ('id) = nodes_count df
-  then (snd (dataflow_tree_to_graph_aux 0 df))
-  else Code.abort (STR ''Control plane could not be build'') (\<lambda> _. (\<lambda> _ _. frontier {#}\<^sub>z)))"
-  unfolding dataflow_tree_to_graph_def
-  by(cases "dataflow_tree_to_graph_aux 0 df"; simp)
-
-lemma "remove_non_zero_weights s l1 l2 = remove_non_zero_weights s (f l1) (f l2)"
-  apply(cases "s l1 l2"; simp)
-  sorry
-
-lemma "bij f \<Longrightarrow> has_zero_cyc s \<Longrightarrow>
-       has_zero_cyc (\<lambda> x x'. s (f x) (f x'))"
-  sorry
-
-lemma "remove_non_zero_weights (snd (dataflow_tree_to_graph_aux n (Logic op su))) = remove_non_zero_weights (snd (dataflow_tree_to_graph_aux m (Logic op su)))"
-  sorry
-
-lemma "has_zero_cyc (snd (dataflow_tree_to_graph_aux n dt)) \<Longrightarrow>
-       has_zero_cyc (snd (dataflow_tree_to_graph_aux m dt))"
-  apply(induction dt)
-  subgoal for op su
-    unfolding cyc_checker_codeT_def
-    sorry
-  sorry
-
-lemma "has_zero_cyc (snd (dataflow_tree_to_graph_aux 0 dt1)) \<Longrightarrow>
-       has_zero_cyc (snd (dataflow_tree_to_graph_aux 0 (Comp buf dt1 dt2')))"
-  apply auto
-  apply(cases "dataflow_tree_to_graph_aux 0 dt1"; simp)
-  subgoal for n summ
-    apply(cases "dataflow_tree_to_graph_aux n dt2'"; simp)
-    subgoal for n' summ'
-      sorry
-    done
-  done
-
-lemma "dataflow_tree_to_graph dt1 = dataflow_tree_to_graph dt1' \<Longrightarrow>
-       dataflow_tree_to_graph dt2 = dataflow_tree_to_graph dt2' \<Longrightarrow>
-       dataflow_tree_to_graph (Comp buf dt1 dt2') = dataflow_tree_to_graph (Comp buf dt1' dt2')"
-  apply(subst dataflow_tree_to_graph_alt_def)
-  apply(simp only: nodes_count.simps)
-  apply auto
-  sorry
-
-lemma "dataflow_tree_to_graph_aux 0 dt1 = dataflow_tree_to_graph_aux 0 dt1' \<Longrightarrow>
-        nodes_count dt1 = nodes_count dt1' \<Longrightarrow>
-        dataflow_tree_to_graph (Comp buf dt1 dt2) = dataflow_tree_to_graph (Comp buf dt1' dt2)"
-  unfolding dataflow_tree_to_graph_def
-  sorry
 
 
 
@@ -171,37 +110,6 @@ next
     by(simp add: Groups.add_ac(1))
 qed
 
-(*function convert_to_nat where                              
-  "convert_to_nat (n :: 'a :: {minus,zero,enum,linorder,numeral,bot,top}) m = (if n = m then (0 :: nat) else Suc (convert_to_nat (n + 1) m))"
-  by auto
-termination
-  apply(rule local.termination)
-  apply(rule local.termination[of "{x. \<exists> n > \<bottom>. x = (n-1,n)}"]; simp?)
-  subgoal
-    apply(rule finite_acyclic_wf; simp?)
-    apply(subst acyclic_converse[symmetric])
-    apply(rule acyclicI_order[where f = id])
-    apply simp
-    sorry
-  sorry
-*)
-(*
-function convert_to_nat where
-  "convert_to_nat (n :: 'a :: {minus,zero,ord,numeral}) = (if n \<le> 0 then (0 :: nat) else Suc (convert_to_nat (n - 1)))"
-  by auto
-termination
-  apply(rule local.termination[of "{x. \<exists> n > 0. x = (n-1,n)}"]; simp?)
-  subgoal
-    apply(rule finite_acyclic_wf; simp?)
-    apply(subst acyclic_converse[symmetric])
-    apply(rule acyclicI_order[where f = id])
-    apply simp
-    apply(code_simp)
-    sorry
-  done
-*)
-print_classes
-
 lemma Rep_bit0_0: "0 \<le> Rep_bit0 x"
   using bit0.Rep_bit0
   by auto
@@ -228,12 +136,24 @@ lemma nodes_count_cut: "nodes_count dt = nodes_count_cut (tree_cut dt)"
 class tln = ord + one + plus +
   fixes to_nat :: "('a :: {one,plus,ord}) \<Rightarrow> nat"
   assumes ord_add: "CARD('a) > to_nat a + to_nat b \<Longrightarrow> (a :: 'a) \<le> a + b"
+  assumes ord_add_le: "CARD('a) > to_nat a + to_nat b \<Longrightarrow> 0 < to_nat b \<Longrightarrow> (a :: 'a) < a + b"
   assumes ord_add_leq: "to_nat ((a :: 'a) + b) \<le> to_nat a + to_nat b"
   assumes nodes_count_convert_aux: "CARD('a) > nodes_count_cut dt \<Longrightarrow> to_nat (nodes_count_cut dt :: 'a) = nodes_count_cut dt"
+  assumes one_def: "to_nat 1 = 1"
+  assumes to_nat_le: "x < y \<Longrightarrow> to_nat x < to_nat y"
 begin
 
 lemma nodes_count_convert: "CARD('a) > nodes_count dt \<Longrightarrow> to_nat (nodes_count dt :: 'a) = nodes_count dt"
   by(simp add: nodes_count_cut nodes_count_convert_aux)
+
+lemma ord_add_le_nodes: "CARD('a) > to_nat n + nodes_count dt \<Longrightarrow> (n :: 'a) < n + nodes_count dt"
+  apply(rule ord_add_le)
+  subgoal
+    by (simp add: nodes_count_convert)
+  subgoal
+    apply(simp add: nodes_count_convert)
+    by(induction dt; simp)
+  done
 
 end
 
@@ -257,6 +177,10 @@ instance
     apply(cases n; cases m; simp)
     by(simp add: bit0.of_int_eq Abs_bit0_inverse)
   subgoal for n m
+    apply(simp add: nat_int_comparison Rep_bit0_0 mod_pos_pos_trivial less_bit0_def)
+    unfolding Rep_bit0_add[symmetric, of n m]
+    by(cases n; cases m; simp)
+  subgoal for n m
     apply simp
     apply(cases n; cases m; simp add: bit0.of_int_eq Abs_bit0_inverse bit0.add_def nat_add_distrib[symmetric])
     by(simp add: zmod_le_nonneg_dividend nat_mono)
@@ -265,11 +189,20 @@ instance
     subgoal for dt1 dt2
       by(cases "nodes_count_cut dt1 :: 'a bit0"; cases "nodes_count_cut dt2 :: 'a bit0"; simp add: bit0.of_int_eq Abs_bit0_inverse bit0.add_def)
     done
+  subgoal
+    by(simp add: bit0.Rep_1)
+  subgoal for x y
+    apply(auto simp add: less_bit0_def)
+    by (metis Rep_bit0_0 order_le_imp_less_or_eq order_trans_rules(20))
   subgoal for n m
     apply(simp add: nat_int_comparison Rep_bit1_1 mod_pos_pos_trivial less_eq_bit1_def)
     unfolding Rep_bit1_add[symmetric, of n m]
     apply(cases n; cases m; simp)
     by(simp add: bit1.of_int_eq Abs_bit1_inverse)
+  subgoal for n m
+    apply(simp add: nat_int_comparison Rep_bit1_1 mod_pos_pos_trivial less_bit1_def)
+    unfolding Rep_bit1_add[symmetric, of n m]
+    by(cases n; cases m; simp)
   subgoal for n m
     apply simp
     apply(cases n; cases m; simp add: bit1.of_int_eq Abs_bit1_inverse bit1.add_def nat_add_distrib[symmetric])
@@ -279,27 +212,24 @@ instance
     subgoal for dt1 dt2
       by(cases "nodes_count_cut dt1 :: 'a bit1"; cases "nodes_count_cut dt2 :: 'a bit1"; simp add: bit1.of_int_eq Abs_bit1_inverse bit1.add_def)
     done
+  subgoal
+    by(simp add: bit1.Rep_1)
+  subgoal for x y
+    apply(auto simp add: less_bit1_def)
+    by (metis Rep_bit1_1 order_le_imp_less_or_eq order_trans_rules(20))
   done
 end
 
 
 
-lemma test: "(n :: _ :: {tln,preorder,group_add}) = undefined \<Longrightarrow> False"
+lemma test: "(n :: _ :: {tln,preorder,group_add, ab_semigroup_add,preorder,linorder}) = undefined \<Longrightarrow> False"
   sorry
 
 lemma "(n :: 4) = undefined \<Longrightarrow> False"
   by(rule test, simp)
 
 
-(*
 
-op = Silent (comp_op wire (BTL x11_ chns) op1 (x12_ (BHD x11_ chns)))
-op = Read (Inr x11_) (\<lambda>x. comp_op wire chns op1 (x12_ x))
-op = Write (comp_op wire chns op1 x21_) (Inr x22_) x23_
-op = Silent (comp_op wire chns op1 x4_)
-
-; auto?; fast?
-*)
 lemma comp_op_chns_inv_aux: "rel_fun (=)
         (\<lambda>op op'.
             \<exists>op1 op2 f f' f'' p p' p'' p''' x chns chns'.
@@ -309,14 +239,6 @@ lemma comp_op_chns_inv_aux: "rel_fun (=)
   unfolding rel_fun_def
   by fast
 
-lemma comp_op_chns_inv_aux': "rel_fun (=)
-        (\<lambda>op op'.
-            \<exists>op1 op2 f f' f'' p p' p'' p''' x chns chns'.
-               op = comp_op wire chns op1 op2 \<and> op' = comp_op wire chns' op1 op2 \<or>
-               cases op op' op1 op2 f f' f'' p p' p'' p''' x chns chns')
-        (\<lambda>x. comp_op wire chns (f'' x) (f' x)) (\<lambda>x. comp_op wire chns' (f'' x) (f' x))"
-  unfolding rel_fun_def
-  sorry
 
 inductive port_unused where
   "(\<forall> f. \<not> (Read p f |\<in>| choices op)) \<Longrightarrow> 
@@ -345,7 +267,8 @@ lemma comp_op_not_Silent[simp]:
   "\<not> is_Silent (comp_op wire buf op1 op2)"
   by (subst comp_op_code, simp)
 
-lemma comp_op_chns_invar: "(\<forall> p. p \<in> outputs op1 \<and> wire p \<noteq> None \<or> p \<in> inputs op2 \<and> (\<exists>p'. wire p' = Some p ) \<longrightarrow> chns p = chns' p) \<Longrightarrow>
+
+lemma comp_op_chns_invar: "(\<forall> p. p \<in> inputs op2 \<and> (\<exists>p'. wire p' = Some p ) \<longrightarrow> chns p = chns' p) \<Longrightarrow>
        comp_op wire chns op1 op2 =
        comp_op wire chns' op1 op2"
   apply(coinduction arbitrary: chns chns' op1 op2 rule: op.coinduct_upto)
@@ -362,18 +285,10 @@ lemma comp_op_chns_invar: "(\<forall> p. p \<in> outputs op1 \<and> wire p \<not
               op.cong_Silent rel_funI op.cong_base[of _ "comp_op _ _ _ _" "comp_op _ _ _ _"])
         subgoal
           apply(rule exI conjI refl)+
-          by (meson Read_in_choices_step cin.rep_eq step_inputs_outputs subset_iff)
-        subgoal
-          apply(rule exI conjI refl)+
-          by (meson Write_in_choices_step cin.rep_eq step_inputs_outputs subset_iff)
-        subgoal
-          apply(rule exI conjI refl allI impI)+
-          apply(auto simp: BENQ_def)
-          apply (meson Write_in_choices_step cin.rep_eq step_inputs_outputs subset_iff)+
-          done
-        subgoal
-          apply(rule exI conjI refl)+
-          by (meson Silent_in_choices_step cin.rep_eq step_inputs_outputs subset_iff)
+          apply(intro allI impI)
+          apply(drule spec, drule mp, assumption)
+          unfolding BENQ_def
+          by auto
         done
       by(auto intro!: rel_set_reflI simp add: eq_onp_def)
     subgoal
@@ -419,9 +334,123 @@ lemma comp_op_chns_invar: "(\<forall> p. p \<in> outputs op1 \<and> wire p \<not
 primrec used_ports where
   "used_ports _ _ (Logic op su) = {}"
 | "used_ports n chns (Comp wire dt1 dt2) = 
-   (image projr (outputs (snd (dataflow_tree_to_operator_aux n chns dt1))) \<inter> {(n',p). wire (n' - n,p) \<noteq> None}) \<union> 
-   (image projr (inputs (snd (dataflow_tree_to_operator_aux (fst (dataflow_tree_to_operator_aux n chns dt1)) chns dt2))) \<inter> {(n',p). \<exists>p'. wire p' = Some ((- fst (dataflow_tree_to_operator_aux n chns dt1)) + n' ,p)}) \<union> 
+   (image projr (Set.filter is_Inr (outputs (snd (dataflow_tree_to_operator_aux n chns dt1)))) \<inter> {(n',p). wire (n' - n,p) \<noteq> None}) \<union> 
+   (image projr (Set.filter is_Inr (inputs (snd (dataflow_tree_to_operator_aux (fst (dataflow_tree_to_operator_aux n chns dt1)) chns dt2)))) \<inter> {(n',p). \<exists> n'' p'. wire (n'' - n,p') = Some ((- fst (dataflow_tree_to_operator_aux n chns dt1)) + n' ,p)}) \<union> 
    used_ports n chns dt1 \<union> used_ports (fst (dataflow_tree_to_operator_aux n chns dt1)) chns dt2"
+
+primrec used_ports' where
+  "used_ports' _ (Logic op su) = {}"
+| "used_ports' n (Comp wire dt1 dt2) = 
+   {(n',p). wire (n' - n,p) \<noteq> None} \<union> {(n',p). \<exists> n'' p'. wire (n'' - n,p') = Some ((- fst (dataflow_tree_to_operator_aux n (\<lambda>_. []) dt1)) + n' ,p)} \<union> 
+   used_ports' n dt1 \<union> used_ports' (fst (dataflow_tree_to_operator_aux n (\<lambda>_. []) dt1)) dt2"
+
+lemma used_ports_sub: "used_ports (n :: 'n :: {minus,one,semigroup_add,ord,equal,uminus}) chns dt \<subseteq> used_ports' n dt"
+  apply(induction dt arbitrary: n)
+  subgoal
+    by simp
+  subgoal for wire dt1 dt2 n
+    by (fastforce simp add: fst_dtoa_def)
+  done
+
+
+
+lemma card_leq_nodes_count_help: "nodes_count dt1 -+- nodes_count dt2 -+- tln_class.to_nat (n :: 'a :: {tln,ab_semigroup_add}) < CARD('a) \<Longrightarrow> nodes_count dt2 -+- tln_class.to_nat (n + nodes_count dt1) < CARD('a)"
+  apply(rule dual_order.strict_trans2, assumption)
+  apply(rule order.trans, rule add_left_mono, rule tln_class.ord_add_leq)
+  using tln_class.nodes_count_convert
+  by (metis add.commute add.left_commute add_lessD1 eq_imp_le)
+
+lemma dtoa_outputs: "CARD('n) > nodes_count dt + tln_class.to_nat n \<Longrightarrow> Inr (n',p) \<in> outputs (snd (dataflow_tree_to_operator_aux (n :: 'n :: {one,ab_semigroup_add,zero,ord,equal,tln,preorder,group_add}) chns dt)) \<Longrightarrow> n' < (fst (dataflow_tree_to_operator_aux n chns dt))"
+proof (induction dt arbitrary: n)
+  case (Logic x1 x2)
+  then show ?case 
+    by(auto simp add: op.set_map tln_class.one_def intro!: tln_class.ord_add_le split: option.splits)
+next
+  fix wire :: "'n \<times> 'a \<Rightarrow> ('n \<times> 'a) option"
+    and dt1 :: "('n, 'a, 'b, 'c \<times> 'd, 'e) dataflow_tree"
+    and dt2 :: "('n, 'a, 'b, 'c \<times> 'd, 'e) dataflow_tree"
+    and n :: 'n
+  assume ind1: "\<And>n. nodes_count (dt1::('n, 'a, 'b, 'c \<times> 'd, 'e) dataflow_tree) -+- tln_class.to_nat n < CARD('n) \<Longrightarrow> Inr (n', p) \<in> outputs (snd (dataflow_tree_to_operator_aux n chns dt1)) \<Longrightarrow> n' < fst (dataflow_tree_to_operator_aux n chns dt1)"
+    and ind2: "\<And>n. nodes_count (dt2::('n, 'a, 'b, 'c \<times> 'd, 'e) dataflow_tree) -+- tln_class.to_nat n < CARD('n) \<Longrightarrow> Inr (n', p) \<in> outputs (snd (dataflow_tree_to_operator_aux n chns dt2)) \<Longrightarrow> n' < fst (dataflow_tree_to_operator_aux n chns dt2)"
+    and card: "nodes_count (Comp wire (dt1::('n, 'a, 'b, 'c \<times> 'd, 'e) dataflow_tree) dt2) -+- tln_class.to_nat n < CARD('n)"
+    and outputs: "Inr (n', p) \<in> outputs (snd (dataflow_tree_to_operator_aux n chns (Comp wire (dt1::('n, 'a, 'b, 'c \<times> 'd, 'e) dataflow_tree) dt2)))"
+  have H: "dataflow_tree_to_operator_aux n chns dt1 = (n1, op1) \<Longrightarrow> dataflow_tree_to_operator_aux n1 chns dt2 = (n2, op2) \<Longrightarrow> 
+        Inr (n', p) \<in> outputs op2 \<Longrightarrow> n' < fst (dataflow_tree_to_operator_aux (fst (dataflow_tree_to_operator_aux n chns dt1)) chns dt2)" for n1 n2 op1 op2
+    apply(rule ind2)
+    subgoal
+      unfolding fst_dtoa_def
+      by(rule card_leq_nodes_count_help[OF card[simplified]])
+    by auto
+  have card1: "nodes_count dt1 -+- tln_class.to_nat n < CARD('n)"
+    using card
+    by simp
+  show "n' < fst (dataflow_tree_to_operator_aux n chns (Comp wire (dt1::('n, 'a, 'b, 'c \<times> 'd, 'e) dataflow_tree) dt2))"
+    using outputs
+    apply(auto simp add: op.set_map fst_dtoa_def dest!: card_leq_nodes_count_help split: option.splits prod.splits)
+    subgoal for x1 x2 x1a x2a
+      apply(subgoal_tac "x1 \<le> x1a")
+      subgoal
+        using ind1[OF card1] order_trans_rules(22) by fastforce
+      subgoal
+        using card
+        apply simp
+        apply(drule arg_cong[where f = fst])+
+        apply(simp add: fst_dtoa_def)
+        using tln_class.ord_add[of "n + nodes_count dt1" "nodes_count dt2"] card_leq_nodes_count_help
+        by (metis add.commute add_lessD1 nodes_count_convert)
+      done
+    subgoal for x1 x2 x1a x2a
+      apply(frule H; assumption?)
+      by simp
+    done
+qed
+
+lemma dtoa_inputs: "CARD('n) > nodes_count dt + tln_class.to_nat n \<Longrightarrow> 
+      Inr (n',p) \<in> inputs (snd (dataflow_tree_to_operator_aux (n :: 'n :: {one,ab_semigroup_add,zero,ord,equal,tln,preorder,group_add}) chns dt)) \<Longrightarrow> n' < (fst (dataflow_tree_to_operator_aux n chns dt))"
+proof (induction dt arbitrary: n)
+  case (Logic x1 x2)
+  then show ?case 
+    by(auto simp add: op.set_map tln_class.one_def intro!: tln_class.ord_add_le split: option.splits)
+next
+  fix wire :: "'n \<times> 'a \<Rightarrow> ('n \<times> 'a) option"
+    and dt1 :: "('n, 'a, 'b, 'c \<times> 'd, 'e) dataflow_tree"
+    and dt2 :: "('n, 'a, 'b, 'c \<times> 'd, 'e) dataflow_tree"
+    and n :: 'n
+  assume ind1: "\<And>n. nodes_count (dt1::('n, 'a, 'b, 'c \<times> 'd, 'e) dataflow_tree) -+- tln_class.to_nat n < CARD('n) \<Longrightarrow> Inr (n', p) \<in> inputs (snd (dataflow_tree_to_operator_aux n chns dt1)) \<Longrightarrow> n' < fst (dataflow_tree_to_operator_aux n chns dt1)"
+    and ind2: "\<And>n. nodes_count (dt2::('n, 'a, 'b, 'c \<times> 'd, 'e) dataflow_tree) -+- tln_class.to_nat n < CARD('n) \<Longrightarrow> Inr (n', p) \<in> inputs (snd (dataflow_tree_to_operator_aux n chns dt2)) \<Longrightarrow> n' < fst (dataflow_tree_to_operator_aux n chns dt2)"
+    and card: "nodes_count (Comp wire (dt1::('n, 'a, 'b, 'c \<times> 'd, 'e) dataflow_tree) dt2) -+- tln_class.to_nat n < CARD('n)"
+    and inputs: "Inr (n', p) \<in> inputs (snd (dataflow_tree_to_operator_aux n chns (Comp wire (dt1::('n, 'a, 'b, 'c \<times> 'd, 'e) dataflow_tree) dt2)))"
+  have H: "dataflow_tree_to_operator_aux n chns dt1 = (n1, op1) \<Longrightarrow> dataflow_tree_to_operator_aux n1 chns dt2 = (n2, op2) \<Longrightarrow> 
+        Inr (n', p) \<in> inputs op2 \<Longrightarrow> n' < fst (dataflow_tree_to_operator_aux (fst (dataflow_tree_to_operator_aux n chns dt1)) chns dt2)" for n1 n2 op1 op2
+    apply(rule ind2)
+    subgoal
+      unfolding fst_dtoa_def
+      by(rule card_leq_nodes_count_help[OF card[simplified]])
+    by auto
+  have card1: "nodes_count dt1 -+- tln_class.to_nat n < CARD('n)"
+    using card
+    by simp
+  show "n' < fst (dataflow_tree_to_operator_aux n chns (Comp wire (dt1::('n, 'a, 'b, 'c \<times> 'd, 'e) dataflow_tree) dt2))"
+    using inputs
+    apply(auto simp add: op.set_map fst_dtoa_def dest!: card_leq_nodes_count_help split: option.splits prod.splits)
+    subgoal for x1 x2 x1a x2a
+      apply(subgoal_tac "x1 \<le> x1a")
+      subgoal
+        using ind1[OF card1] order_trans_rules(22) by fastforce
+      subgoal
+        using card
+        apply simp
+        apply(drule arg_cong[where f = fst])+
+        apply(simp add: fst_dtoa_def)
+        using tln_class.ord_add[of "n + nodes_count dt1" "nodes_count dt2"] card_leq_nodes_count_help
+        by (metis add.commute add_lessD1 nodes_count_convert)
+      done
+    subgoal for x1 x2 x1a x2a
+      apply(frule H; assumption?)
+      by simp
+    done
+qed
+
 
 (*
 primrec used_ports where
@@ -497,21 +526,18 @@ next
     apply(simp add: dtoa1_inv[symmetric] dtoa2_inv[symmetric] dtoa1 dtoa2)
     apply(rule arg_cong[where f = " map_op (case_sum id id) (case_sum id id)"])
     apply(rule comp_op_chns_invar)
-    apply(auto intro!: eq simp add: dtoa1 dtoa2 image_def split: sum.splits)
-         apply(fastforce intro!: eq simp add: dtoa1 dtoa2 image_def split: sum.splits)+
-       apply force
+    apply(auto intro!: eq simp add: dtoa1 dtoa2 image_def split: sum.splits; clarsimp split: option.splits)
+     apply force
     subgoal for a b p'
       apply(cases p'; simp)
       subgoal for p''
         apply(cases p''; simp)
         subgoal for aa bb
-          apply(cases "wire (aa - n, bb)"; simp)
-          subgoal for ab
-            apply(cases ab; simp)
-            apply(rule exI[where x = "aa - n"])
-            apply(rule exI[where x = "bb"])
-            by auto
-          done
+          apply(erule allE[where x = aa])
+          apply(erule allE[where x = bb]; simp)
+          apply(rule exI[where x = "aa"])
+          apply(rule exI[where x = "bb"])
+          by auto
         done
       done
     apply force
@@ -520,17 +546,20 @@ next
       subgoal for p''
         apply(cases p''; simp)
         subgoal for aa bb
-          apply(cases "wire (aa - n, bb)"; simp)
-          subgoal for ab
-            apply(cases ab; simp)
-            apply(rule exI[where x = "aa - n"])
-            apply(rule exI[where x = "bb"])
-            by auto
-          done
+          apply(erule allE[where x = aa])
+          apply(erule allE[where x = bb]; simp)
+          apply(rule exI[where x = "aa"])
+          apply(rule exI[where x = "bb"])
+          by auto
         done
       done
     done
 qed
+
+lemma dataflow_tree_to_operator_aux_chns_inv': "CARD('n) > nodes_count dt + tln_class.to_nat n \<Longrightarrow> \<forall> p. p \<in> used_ports' n dt \<longrightarrow> 
+  chns p = chns' p \<Longrightarrow> dataflow_tree_to_operator_aux (n :: 'n :: {one,semigroup_add,zero,ord,equal,tln,preorder,group_add}) chns dt = dataflow_tree_to_operator_aux n chns' dt"
+  using dataflow_tree_to_operator_aux_chns_inv used_ports_sub
+  by blast
 
 abbreviation chns_cut where
   "chns_cut n chns dt \<equiv> (\<lambda> p. if p \<in> used_ports n chns dt then chns p else [])"
@@ -541,53 +570,256 @@ lemma dataflow_tree_to_operator_aux_chns_cut: "CARD('n) > nodes_count dt + tln_c
   using dataflow_tree_to_operator_aux_chns_inv
   by fastforce
 
-(*
-primrec good_dt :: "('a \<times> 'b \<Rightarrow> ('a \<times> 'b) option) \<Rightarrow> ('a, 'b, 'c + 'd, 'e, 'f) dataflow_tree \<Rightarrow> bool" where
-"good_dt _ (Logic op _) = (\<forall> io op'. step io op op' \<longrightarrow> ((\<exists> p x. io = Inp (Some p) (Inr x))) \<or> (\<exists> x. io = Inp None (Inl (Inr x))) \<or> (\<exists> p x. io = Out (Some p) (Inr x)) \<or> (\<exists> x. io = Out None (Inl (Inl x))))" |
-"good_dt wire (Comp wire' dt1 dt2) = ((\<forall> x. wire x = None \<or> wire' x = None) \<and> (good_dt (wire ++ wire') dt1 \<and> good_dt (wire ++ wire') dt2))"
-*)
-primrec good_dt :: "('a, 'b, 'c + 'd, 'e, 'f) dataflow_tree \<Rightarrow> bool" where
-"good_dt (Logic op _) = (\<forall> io op'. step io op op' \<longrightarrow> ((\<exists> p x. io = Inp (Some p) (Inr x))) \<or> (\<exists> x. io = Inp None (Inl (Inr x))) \<or> (\<exists> p x. io = Out (Some p) (Inr x)) \<or> (\<exists> x. io = Out None (Inl (Inl x))))" |
-"good_dt (Comp _ dt1 dt2) = (good_dt dt1 \<and> good_dt dt2)"
+lemma nodes_count_less_help: "nodes_count dt1 -+- nodes_count dt2 -+- tln_class.to_nat n < CARD('n) \<Longrightarrow> n' < nodes_count dt1 + (n :: 'n :: {one,semigroup_add,zero,ord,equal,tln,preorder,group_add,ab_semigroup_add}) \<Longrightarrow> n' <nodes_count dt1 + nodes_count dt2 + n"
+  apply(rule order.strict_trans2, assumption)
+  apply(drule card_leq_nodes_count_help)
+  apply(subgoal_tac "n + nodes_count dt1 \<le> n + nodes_count dt1 + nodes_count dt2")
+  defer
+  subgoal
+    apply(rule tln_class.ord_add)
+    by(simp add: nodes_count_convert)
+  by (simp add: add.commute add.left_commute)
+
+
+lemma nodes_count_less_help': "nodes_count dt1 -+- nodes_count dt2 -+- tln_class.to_nat n < CARD('n) \<Longrightarrow> nodes_count dt1 + (n :: 'n :: {one,semigroup_add,zero,ord,equal,tln,preorder,group_add,ab_semigroup_add}) < nodes_count dt1 + nodes_count dt2 + n"
+  apply(subgoal_tac " nodes_count dt1 + n < nodes_count dt1 + n + nodes_count dt2")
+  subgoal
+    by (simp add: Groups.add_ac(2,3))
+  subgoal
+    apply(rule ord_add_le_nodes)
+    by (simp add: Groups.add_ac(2) card_leq_nodes_count_help)
+  done
+
+lemma dtoa_outputs_leq: "CARD('n) > nodes_count dt + tln_class.to_nat n \<Longrightarrow> Inr (n', p) \<in> outputs (snd (dataflow_tree_to_operator_aux (n :: 'n :: {preorder,minus,one,plus,tln,semigroup_add,equal,ab_semigroup_add}) chns dt)) \<Longrightarrow> n \<le> n'"
+  apply(induction dt arbitrary: n)
+  subgoal for op su n
+    by(auto simp add: op.set_map refl split: option.splits)
+  subgoal premises prems for wire dt1 dt2 n
+    using prems(3,4)
+    apply(auto simp add: op.set_map split: prod.splits)
+    subgoal for n1 p1 n2 p2
+      using prems(1)
+      by auto
+    subgoal for n1 p1 n2 p2
+      apply(rule order.trans[of _ n1])
+      subgoal
+        apply(drule arg_cong[where f = fst])+
+        apply(simp add: fst_dtoa_def)
+        by(auto intro!: tln_class.ord_add simp add: tln_class.nodes_count_convert)
+      subgoal
+        apply(rule prems(2))
+        apply(drule arg_cong[where f = fst])+
+        by(auto dest!: card_leq_nodes_count_help simp add: fst_dtoa_def)
+      done
+    done
+  done
+
+lemma dtoa_outputs_le: "CARD('n) > nodes_count dt + tln_class.to_nat n \<Longrightarrow> Inr (n', p) \<in> outputs (snd (dataflow_tree_to_operator_aux (n :: 'n :: {preorder,minus,one,plus,tln,semigroup_add,equal,ab_semigroup_add,group_add}) chns dt)) \<Longrightarrow> n' < nodes_count dt + n"
+  apply(induction dt arbitrary: n)
+  subgoal for op su n
+    apply(auto simp add: op.set_map refl split: option.splits)
+    by (metis One_nat_def add.commute less_add_one one_def ord_add_le plus_1_eq_Suc)
+  subgoal premises prems for wire dt1 dt2 n
+    using prems(3,4)
+    apply(auto simp add: op.set_map split: prod.splits option.splits)
+    subgoal premises premss for n1 p1 n2 p2
+      using prems(1)[of n, simplified premss(2) snd_conv] premss(1,4,5) prems(3)
+      by(auto dest!: nodes_count_less_help[rotated])
+    subgoal premises premss for n1 p1 n2 p2
+      apply(subgoal_tac "nodes_count dt2 -+- tln_class.to_nat n1 < CARD('n)")
+      defer
+      subgoal
+        using prems(3) premss(2)[symmetric,THEN arg_cong[where f = fst]]
+        by(auto intro: card_leq_nodes_count_help simp add: fst_dtoa_def)
+      using prems(2)[of n1, simplified premss(3) snd_conv] premss(1,4) 
+      apply auto
+      apply(rule order.strict_trans2, assumption)
+      using premss(2)[symmetric,THEN arg_cong[where f = fst]]
+      apply(simp add: fst_dtoa_def)
+      by (simp add: add.commute add.left_commute)
+    done
+  done
+
+
+lemma dtoa_inputs_leq: "CARD('n) > nodes_count dt + tln_class.to_nat n \<Longrightarrow> Inr (n', p) \<in> inputs (snd (dataflow_tree_to_operator_aux (n :: 'n :: {preorder,minus,one,plus,tln,semigroup_add,equal,ab_semigroup_add,group_add}) chns dt)) \<Longrightarrow> n \<le> n'"
+  apply(induction dt arbitrary: n)
+  subgoal for op su n
+    by(auto simp add: op.set_map refl split: option.splits)
+  subgoal premises prems for wire dt1 dt2 n
+    using prems(3,4)
+    apply(auto simp add: op.set_map split: prod.splits)
+    subgoal for n1 p1 n2 p2
+      using prems(1)
+      by auto
+    subgoal for n1 p1 n2 p2
+      apply(rule order.trans[of _ n1])
+      subgoal
+        apply(drule arg_cong[where f = fst])+
+        apply(simp add: fst_dtoa_def)
+        by(auto intro!: tln_class.ord_add simp add: tln_class.nodes_count_convert)
+      subgoal
+        apply(rule prems(2))
+        apply(drule arg_cong[where f = fst])+
+        by(auto dest!: card_leq_nodes_count_help simp add: fst_dtoa_def)
+      done
+    done
+  done
+
+
+
+lemma dtoa_inputs_le: "CARD('n) > nodes_count dt + tln_class.to_nat n \<Longrightarrow> Inr (n', p) \<in> inputs (snd (dataflow_tree_to_operator_aux (n :: 'n :: {preorder,minus,one,plus,tln,semigroup_add,equal,ab_semigroup_add,group_add}) chns dt)) \<Longrightarrow> n' < nodes_count dt + n"
+  apply(induction dt arbitrary: n)
+  subgoal for op su n
+    apply(auto simp add: op.set_map refl split: option.splits)
+    by (metis One_nat_def add.commute less_add_one one_def ord_add_le plus_1_eq_Suc)
+  subgoal premises prems for wire dt1 dt2 n
+    using prems(3,4)
+    apply(auto simp add: op.set_map split: prod.splits option.splits)
+    subgoal premises premss for n1 p1 n2 p2
+      using prems(1)[of n, simplified premss(2) snd_conv] premss(1,4) prems(3)
+      by(auto dest!: nodes_count_less_help[rotated])
+    subgoal premises premss for n1 p1 n2 p2
+      apply(subgoal_tac "nodes_count dt2 -+- tln_class.to_nat n1 < CARD('n)")
+      defer
+      subgoal
+        using prems(3) premss(2)[symmetric,THEN arg_cong[where f = fst]]
+        by(auto intro: card_leq_nodes_count_help simp add: fst_dtoa_def)
+      using prems(2)[of n1, simplified premss(3) snd_conv] premss(1,4) 
+      apply auto
+      apply(rule order.strict_trans2, assumption)
+      using premss(2)[symmetric,THEN arg_cong[where f = fst]]
+      apply(simp add: fst_dtoa_def)
+      by (simp add: add.commute add.left_commute)
+    done
+  done
+
+
+lemma dataflow_tree_to_operator_aux_chns_eq_larger: "CARD('n) > nodes_count dt + tln_class.to_nat n \<Longrightarrow> 
+  \<forall> n' p. n' \<ge> n \<longrightarrow> chns (n',p) = chns' (n',p) \<Longrightarrow>
+  dataflow_tree_to_operator_aux (n :: 'n :: {one,semigroup_add,zero,ord,equal,tln,preorder,group_add,ab_semigroup_add}) chns dt = 
+  dataflow_tree_to_operator_aux n chns' dt"
+  apply(rule dataflow_tree_to_operator_aux_chns_inv, assumption)
+  apply(safe)
+  subgoal for n' p
+    apply(induction dt arbitrary: n)
+    subgoal
+      by simp
+    subgoal premises prems for wire dt1 dt2 n
+      using prems(3,4,5)
+      apply auto
+      subgoal for x n'' p'
+        apply(cases x; simp)
+        apply hypsubst_thin
+        by(auto dest!: dtoa_outputs_leq[rotated])
+      subgoal for x n'' p'
+        apply(cases x; simp)
+        apply hypsubst_thin
+        apply(erule allE[where x = n'])+
+        apply(frule card_leq_nodes_count_help)
+        apply(auto simp add: fst_dtoa_def dest!: dtoa_inputs_leq[rotated])
+        apply(subgoal_tac "n \<le> n + nodes_count dt1"; simp?)
+        subgoal
+          by (meson dual_order.trans)
+        by(auto simp add: tln_class.nodes_count_convert intro: tln_class.ord_add)
+      subgoal
+        using prems(1)
+        by force
+      subgoal
+        apply(rule prems(2)[of "fst (dataflow_tree_to_operator_aux n chns dt1)"])
+        apply(auto simp add: fst_dtoa_def intro: card_leq_nodes_count_help)
+        subgoal for n'' p''
+          apply(erule allE[where x = n''])
+          apply(subgoal_tac "n \<le> n''"; simp?)
+          apply(subgoal_tac "n \<le> n + nodes_count dt1"; simp?)
+          subgoal
+            by (meson dual_order.trans)
+          by(auto simp add: tln_class.nodes_count_convert intro: tln_class.ord_add)
+        done
+      done
+    done
+  done
+
+
+
+lemma dataflow_tree_to_operator_aux_chns_eq_smaller: "CARD('n) > nodes_count dt + tln_class.to_nat n \<Longrightarrow> 
+  \<forall> n' p. n' < nodes_count dt + n \<longrightarrow> chns (n',p) = chns' (n',p) \<Longrightarrow>
+  dataflow_tree_to_operator_aux (n :: 'n :: {one,semigroup_add,zero,ord,equal,tln,preorder,group_add,ab_semigroup_add}) chns dt = 
+  dataflow_tree_to_operator_aux n chns' dt"
+  apply(rule dataflow_tree_to_operator_aux_chns_inv, assumption)
+  apply(safe)
+  subgoal for n' p
+    apply(induction dt arbitrary: n)
+    subgoal
+      by simp
+    subgoal premises prems for wire dt1 dt2 n
+      using prems(3,4,5) nodes_count_less_help[of dt1 dt2 n]
+      apply auto
+      subgoal for x n'' p'
+        apply(cases x; simp)
+        apply hypsubst_thin
+        by(drule dtoa_outputs_le[rotated]; simp?)
+      subgoal for x n'' p'
+        apply(cases x; simp)
+        apply hypsubst_thin
+        apply(erule allE[where x = n'])+
+        apply(frule card_leq_nodes_count_help)
+        apply(auto simp add: fst_dtoa_def dest!: dtoa_inputs_le[rotated])
+        apply(rule FalseE)
+        unfolding Metis.not_atomize
+        apply(subgoal_tac "n \<le> n + nodes_count dt1"; simp?)
+        subgoal
+          by (metis add.left_commute add.commute)
+        by(auto simp add: tln_class.nodes_count_convert intro: tln_class.ord_add)
+      subgoal
+        by(rule prems(1); simp)
+      subgoal
+        apply(rule prems(2)[of "fst (dataflow_tree_to_operator_aux n chns dt1)"])
+        apply(auto simp add: fst_dtoa_def intro: card_leq_nodes_count_help)
+        subgoal for n'' p''
+          apply(erule allE[where x = n''])
+          apply(erule impE; simp?)
+          by (simp add: add.commute add.left_commute)
+        done
+      done
+    done
+  done
+
+
 
 lemma "step io' op op' \<Longrightarrow> map_IO (case_option (Inl n) (\<lambda>p. Inr (n, p))) (case_option (Inl n) (\<lambda>p. Inr (n, p))) id io' = io \<Longrightarrow>
        step io (snd (dataflow_tree_to_operator_aux (n :: 'a :: {minus,one,semigroup_add,zero,ord,equal,tln,preorder}) chns (Logic op su))) 
               (snd (dataflow_tree_to_operator_aux n chns' (Logic op' su')))"
   by simp
 
-lemma "fst (dataflow_tree_to_operator_aux n chns dt1) = fst (dataflow_tree_to_operator_aux n chns' dt1) \<Longrightarrow>
-      step Tau (snd (dataflow_tree_to_operator_aux (n :: 'a :: {minus,one,semigroup_add,zero,ord,equal,tln,preorder}) chns (Comp wire dt1 dt2))) 
-              (snd (dataflow_tree_to_operator_aux n chns' (Comp wire dt1 dt2')))"
-  apply simp
-  apply(auto split: prod.splits)
-  apply(rule step_comp_op_L_Tau)
-  subgoal
-    sorry
-  subgoal
-    sorry
-sorry
+
 
 inductive step_dt where                        
-  SLogic: "step io (snd (dataflow_tree_to_operator_aux n chns (Logic op su))) (snd (dataflow_tree_to_operator_aux n chns (Logic op' su))) \<Longrightarrow> 
+  SLogic[intro]: "step io (snd (dataflow_tree_to_operator_aux n chns (Logic op su))) (snd (dataflow_tree_to_operator_aux n chns (Logic op' su))) \<Longrightarrow> 
     step_dt io n chns (Logic op su) chns (Logic op' su)"
-| SInpInl: "(step_dt (Inp (Inl p) x) n chns dt1 chns dt1' \<and> dt2 = dt2') \<or> (step_dt (Inp (Inl p) x) (fst (dataflow_tree_to_operator_aux n chns dt1)) chns dt2 chns dt2' \<and> dt1 = dt1') \<Longrightarrow>
+| SInpInl[intro]: "(step_dt (Inp (Inl p) x) n chns dt1 chns dt1' \<and> dt2 = dt2') \<or> (step_dt (Inp (Inl p) x) (fst (dataflow_tree_to_operator_aux n chns dt1)) chns dt2 chns dt2' \<and> dt1 = dt1') \<Longrightarrow>
     step_dt (Inp (Inl p) x) n chns (Comp wire dt1 dt2) chns (Comp wire dt1' dt2')"
-| SOutInl: "(step_dt (Out (Inl p) x) n chns dt1 chns dt1' \<and> dt2 = dt2') \<or> (step_dt (Out (Inl p) x) (fst (dataflow_tree_to_operator_aux n chns dt1)) chns dt2 chns dt2' \<and> dt1 = dt1') \<Longrightarrow>
+| SOutInl[intro]: "(step_dt (Out (Inl p) x) n chns dt1 chns dt1' \<and> dt2 = dt2') \<or> (step_dt (Out (Inl p) x) (fst (dataflow_tree_to_operator_aux n chns dt1)) chns dt2 chns dt2' \<and> dt1 = dt1') \<Longrightarrow>
     step_dt (Out (Inl p) x) n chns (Comp wire dt1 dt2) chns (Comp wire dt1' dt2')"
-| SInpInr: "(\<forall> p'. wire p' \<noteq> Some (n' - (fst (dataflow_tree_to_operator_aux n chns dt1)),p) \<and> step_dt (Inp (Inr (n',p)) x) (fst (dataflow_tree_to_operator_aux n chns dt1)) chns dt2 chns dt2' \<and> dt1 = dt1') \<or>
+| SInpInr[intro]: "(\<forall> p' n''. wire (n'' - n,p') \<noteq> Some (n' - (fst (dataflow_tree_to_operator_aux n chns dt1)),p) \<and> step_dt (Inp (Inr (n',p)) x) (fst (dataflow_tree_to_operator_aux n chns dt1)) chns dt2 chns dt2' \<and> dt1 = dt1') \<or>
     (step_dt (Inp (Inr (n',p)) x) n chns dt1 chns dt1' \<and> dt2 = dt2') \<Longrightarrow>
     step_dt (Inp (Inr (n',p)) x) n chns (Comp wire dt1 dt2) chns (Comp wire dt1' dt2')"
-| SOutInr: "(wire (n',p) = None \<and> step_dt (Out (Inr (n',p)) x) n chns dt1 chns dt1' \<and> dt2 = dt2') \<or>
-    (step_dt (Out (Inr (n',p)) x) n chns dt2 chns dt1' \<and> dt1 = dt1') \<Longrightarrow>
+| SOutInr[intro]: "(wire (n' - n,p) = None \<and> step_dt (Out (Inr (n',p)) x) n chns dt1 chns dt1' \<and> dt2 = dt2') \<or>
+    (step_dt (Out (Inr (n',p)) x) (fst (dataflow_tree_to_operator_aux n chns dt1)) chns dt2 chns dt2' \<and> dt1 = dt1') \<Longrightarrow>
     step_dt (Out (Inr (n',p)) x) n chns (Comp wire dt1 dt2) chns (Comp wire dt1' dt2')"
-| STau: "(step_dt Tau n chns dt1 chns' dt1' \<and> dt2 = dt2' ) \<or>
+| STau[intro]: "(step_dt Tau n chns dt1 chns' dt1' \<and> dt2 = dt2' ) \<or>
     (step_dt Tau (fst (dataflow_tree_to_operator_aux n chns dt1)) chns dt2 chns' dt2' \<and> dt1 = dt1') \<or>
-    (\<exists> p p' n' x. wire p' = Some (n' - (fst (dataflow_tree_to_operator_aux n chns dt1)),p) \<and> step_dt (Inp (Inr (n',p)) (Inr x)) (fst (dataflow_tree_to_operator_aux n chns dt1)) chns dt2 chns dt2' \<and> dt1 = dt1' \<and> chns' = BTL (n',p) chns \<and> chns (n',p) \<noteq> [] \<and> x = BHD (n',p) chns) \<or>
+    (\<exists> p p' n' n'' x. wire (n'' - n, p') = Some (n' - (fst (dataflow_tree_to_operator_aux n chns dt1)),p) \<and> step_dt (Inp (Inr (n',p)) (Inr x)) (fst (dataflow_tree_to_operator_aux n chns dt1)) chns dt2 chns dt2' \<and> dt1 = dt1' \<and> chns' = BTL (n',p) chns \<and> chns (n',p) \<noteq> [] \<and> x = BHD (n',p) chns) \<or>
     (\<exists> p p' n' n'' x. wire (n' - n,p) = Some (n'',p') \<and> step_dt (Out (Inr (n',p)) (Inr x)) n chns dt1 chns dt1' \<and> dt2 = dt2' \<and> chns' = BENQ (n'' + (fst (dataflow_tree_to_operator_aux n chns dt1)),p') x chns) \<Longrightarrow>
     step_dt Tau n chns (Comp wire dt1 dt2) chns' (Comp wire dt1' dt2')"
 
+lemma step_dt_same_chns_Inp: "step_dt (Inp p x) n chns dt chns' dt' \<Longrightarrow> chns = chns'"
+  apply(drule step_dt.cases)
+  by auto
 
-end
+lemma step_dt_same_chns_Out: "step_dt (Out p x) n chns dt chns' dt' \<Longrightarrow> chns = chns'"
+  apply(drule step_dt.cases)
+  by auto
+
 primrec chns_set where
   "chns_set io wire n chns (Logic op su) = (case io of
     Tau \<Rightarrow> {(chns, dt'). \<exists>dt' op'. step io op op' \<and> dt' = Logic op' su}
@@ -596,8 +828,951 @@ primrec chns_set where
   | Out p x \<Rightarrow> undefined)"
 | "chns_set io wire n chns (Comp _ op _) = undefined" 
 
+lemma dtoa_fst_chns_inv: "fst (dataflow_tree_to_operator_aux n chns dt) = fst (dataflow_tree_to_operator_aux n chns' dt)"
+  apply(induction dt arbitrary: n; simp)
+  apply(auto split: prod.splits)
+  by (metis eq_fst_iff)
 
 
+
+lemma used_ports_less: "CARD('a) > nodes_count dt + tln_class.to_nat n \<Longrightarrow> 
+      (n',p) \<in> used_ports (n :: 'a :: {minus,one,semigroup_add,zero,ord,equal,tln,preorder,group_add,ab_semigroup_add}) chns dt \<Longrightarrow> 
+      n' < fst (dataflow_tree_to_operator_aux n chns dt)"
+proof (induction dt arbitrary: n n')
+  case (Logic x1 x2)
+  then show ?case
+    by simp
+next
+  fix wire :: "'a \<times> 'b \<Rightarrow> ('a \<times> 'b) option"
+    and dt1 :: "('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree"
+    and dt2 :: "('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree"
+    and n :: 'a
+    and n' :: 'a
+  assume ind1: "\<And>n n'. nodes_count (dt1::('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree) -+- tln_class.to_nat n < CARD('a) \<Longrightarrow> (n', p) \<in> used_ports n chns dt1 \<Longrightarrow> n' < fst (dataflow_tree_to_operator_aux n chns dt1)"
+    and ind2: "\<And>n n'. nodes_count (dt2::('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree) -+- tln_class.to_nat n < CARD('a) \<Longrightarrow> (n', p) \<in> used_ports n chns dt2 \<Longrightarrow> n' < fst (dataflow_tree_to_operator_aux n chns dt2)"
+    and card: "nodes_count (Comp wire (dt1::('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree) dt2) -+- tln_class.to_nat n < CARD('a)"
+    and port: "(n', p) \<in> used_ports n chns (Comp wire (dt1::('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree) dt2)"
+  have card1: "nodes_count dt1 -+- tln_class.to_nat n < CARD('a)"
+    using card
+    by simp
+  have card2: "nodes_count dt2 -+- tln_class.to_nat (fst (dataflow_tree_to_operator_aux n chns dt1)) < CARD('a)"
+    using card 
+    by(simp add: fst_dtoa_def card_leq_nodes_count_help)
+  consider "\<exists>x a b. (n', p) = projr x \<and> x \<in> outputs (snd (dataflow_tree_to_operator_aux n chns dt1)) \<and> wire (n' - n, p) = Some (a, b) \<and> is_Inr x" |
+           "\<exists>x a b. (n', p) = projr x \<and> x \<in> inputs (snd (dataflow_tree_to_operator_aux (fst (dataflow_tree_to_operator_aux n chns dt1)) chns dt2)) \<and> wire (a, b) = Some (- fst (dataflow_tree_to_operator_aux n chns dt1) + n', p) \<and> is_Inr x" |
+           "(n', p) \<in> used_ports n chns dt1" |
+           "(n', p) \<in> used_ports (fst (dataflow_tree_to_operator_aux n chns dt1)) chns dt2"
+    using port
+    by fastforce
+  then show "n' < fst (dataflow_tree_to_operator_aux n chns (Comp wire (dt1::('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree) dt2))"
+  proof(cases)
+    case 1
+    show ?thesis
+      using 1 
+      apply(auto split: prod.splits)
+      subgoal for x x1 x2 x1a a b x2a
+        apply(cases x; simp)
+        using dtoa_outputs[of dt1 n n' p chns] card2[simplified]
+        apply simp
+        apply(drule arg_cong[where f = fst])+
+        apply(simp add: fst_dtoa_def)
+        apply auto
+        by (metis add.commute add_lessD1 card1 nodes_count_convert ord_add order_less_le_trans)
+      done
+  next
+    case 2
+    then show ?thesis
+      apply(auto split: prod.splits)
+      subgoal for x x1 x2 x1a a b x2a
+        apply(cases x; simp)
+        using dtoa_inputs[of dt2 "fst (dataflow_tree_to_operator_aux n chns dt1)" n' p chns,OF card2[simplified]]
+        by simp
+      done
+  next
+    case 3
+    show ?thesis
+      using ind1[OF card1 3]
+      apply(auto split: prod.splits simp add: fst_dtoa_def dest!: arg_cong[where f = fst])
+      using card
+      by (smt (verit) add.commute add_lessD1 int_ops(5) nat_int_comparison(2,3) nodes_count.simps(2) nodes_count_convert ord_add ord_add_leq order_less_le_trans)
+  next
+    case 4
+    show ?thesis
+      using ind2[OF card2 4]
+      by(auto split: prod.splits)
+  qed
+qed
+
+(*
+primrec good_dt :: "('a \<times> 'b \<Rightarrow> ('a \<times> 'b) option) \<Rightarrow> ('a, 'b, 'c + 'd, 'e, 'f) dataflow_tree \<Rightarrow> bool" where
+"good_dt wire (Comp wire' dt1 dt2) = ((\<forall> x. wire x = None \<or> wire' x = None) \<and> (good_dt (wire ++ wire') dt1 \<and> good_dt (wire ++ wire') dt2))"
+
+maybe add this  (\<forall>p n' p'. wire p = Some (n', p') \<longrightarrow> tln_class.to_nat(fst (dataflow_tree_to_operator_aux n (\<lambda>_. []) dt1)) + tln_class.to_nat(n') < CARD('a))
+*)
+primrec good_dt where
+"good_dt _ (Logic op _) = (\<forall> io op'. step io op op' \<longrightarrow> ((\<exists> p x. io = Inp (Some p) (Inr x))) \<or> (\<exists> x. io = Inp None (Inl x)) \<or> (\<exists> p x. io = Out (Some p) (Inr x)) \<or> (\<exists> x. io = Out None (Inl x)))" |
+"good_dt (n :: 'a :: {tln,minus,one,plus,uminus}) (Comp wire dt1 dt2) = 
+  ((\<forall> n' p n'' p'. wire (n' - n,p) = Some (n'', p') \<longrightarrow> ((n',p) \<notin> used_ports' n dt1 \<and> n \<le> n' \<and> n' < nodes_count dt1 + n \<and> n'' < nodes_count dt2)) \<and>
+  (\<forall> n'' n' p p'. wire (n'' - n, p') = Some (- fst (dataflow_tree_to_operator_aux n (\<lambda>_. []) dt1) + n',p) \<longrightarrow> (n',p) \<notin> used_ports' (fst (dataflow_tree_to_operator_aux n (\<lambda>_ . []) dt1)) dt2 \<and> nodes_count dt1 + n \<le> n' \<and> n' < nodes_count (Comp wire dt1 dt2) + n \<and> (\<forall> chns. Inr (n', p) \<notin> outputs (snd (dataflow_tree_to_operator_aux (fst (dataflow_tree_to_operator_aux n (\<lambda>_. []) dt1)) chns dt2)))) \<and> 
+    good_dt n dt1 \<and> good_dt (fst (dataflow_tree_to_operator_aux n (\<lambda>_. []) dt1)) dt2)"
+
+(*
+ wire (n'' - n, pa) = Some (n''', p) \<Longrightarrow>
+    step_dt (Out (Inr (n'', pa)) (Inr (a, b))) n chns dt1 chns dt1' \<Longrightarrow>
+    chns' = BENQ (n''' + (n + nodes_count dt1), p) (a, b) chns \<Longrightarrow>
+    p' = p \<Longrightarrow>
+    dataflow_tree_to_operator_aux n (BENQ (n''' + (n + nodes_count dt1), p) (a, b) chns) dt1' = (n1, p1) \<Longrightarrow>
+    dataflow_tree_to_operator_aux n1 (BENQ (n''' + (n + nodes_count dt1), p) (a, b) chns) dt2 = (n2, p2) \<Longrightarrow>
+    n' = n''' + (n + nodes_count dt1) \<Longrightarrow> Inr (n''' + (n + nodes_count dt1), p) \<in> outputs p2 \<Longrightarrow> False*)
+
+lemma used_ports'_less: "CARD('n) > nodes_count dt + tln_class.to_nat (n :: 'n :: {one,semigroup_add,zero,ord,equal,tln,preorder,group_add,ab_semigroup_add}) \<Longrightarrow> 
+        good_dt n dt \<Longrightarrow> (n',p) \<in> used_ports' n dt \<Longrightarrow> n' < nodes_count dt + n"
+  apply(induction dt arbitrary: n n')
+  subgoal for op su n n'
+    by simp
+  subgoal premises prems for wire dt1 dt2 n n'
+    using prems(3,4,5)
+    apply auto
+    subgoal for a b
+      using nodes_count_less_help
+      by blast
+    subgoal for a b
+      by blast
+    subgoal
+      by(auto intro: nodes_count_less_help dest!: prems(1)[rotated 2])
+    subgoal
+      by(auto dest!: prems(2)[rotated 2] simp add: fst_dtoa_def card_leq_nodes_count_help add.commute add.left_commute)
+    done
+  done
+
+lemma used_ports'_gt: "CARD('n) > nodes_count dt + tln_class.to_nat (n :: 'n :: {one,semigroup_add,zero,ord,equal,tln,preorder,group_add,ab_semigroup_add}) \<Longrightarrow> 
+        good_dt n dt \<Longrightarrow> (n',p) \<in> used_ports' n dt \<Longrightarrow> n \<le> n'"
+  apply(induction dt arbitrary: n n')
+  subgoal for op su n n'
+    by simp
+  subgoal premises prems for wire dt1 dt2 n n'
+    using prems(3,4,5)
+    apply auto
+    subgoal for n'' p'
+      by (meson order_le_less_trans order_less_imp_le order_less_le_trans)
+    subgoal
+      by(auto intro: nodes_count_less_help dest!: prems(1)[rotated 2])
+    subgoal
+      apply(auto dest!: prems(2)[rotated 2] simp add: fst_dtoa_def card_leq_nodes_count_help add.commute add.left_commute)
+      by (metis (no_types, lifting) add.assoc add_diff_cancel_left' add_diff_cancel_right' dual_order.trans
+          less_imp_diff_less nodes_count_convert ord_add)
+    done
+  done
+
+lemma good_dt_Inr_output: "good_dt (n :: 'a :: {tln,minus,minus,one,semigroup_add,equal,ord,uminus}) dt \<Longrightarrow> step (Out (Inr p) x) (snd (dataflow_tree_to_operator_aux n chns dt)) op \<Longrightarrow> is_Inr x"
+proof (induction dt arbitrary: n op)
+  fix x1 :: "('b option, 'b option, 'c + 'd \<times> 'e) op"
+    and x2 :: "'b \<Rightarrow> 'b \<Rightarrow> 'f buf"
+    and n :: 'a
+    and op :: "('a + 'a \<times> 'b, 'a + 'a \<times> 'b, 'c + 'd \<times> 'e) op"
+  assume good_dt: "good_dt n (Logic x1 x2::('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree)"
+    and step: "step (Out (Inr p) x) (snd (dataflow_tree_to_operator_aux n chns (Logic x1 (x2::'b \<Rightarrow> 'b \<Rightarrow> 'f buf)))) op"
+  show "is_Inr x"
+    using step good_dt
+    by(auto dest!: step_map_op_inv map_IO_elim )
+next
+  fix x1 :: "'a \<times> 'b \<Rightarrow> ('a \<times> 'b) option"
+    and dt1 :: "('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree"
+    and dt2 :: "('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree"
+    and n :: 'a
+    and op :: "('a + 'a \<times> 'b, 'a + 'a \<times> 'b, 'c + 'd \<times> 'e) op"
+    and wire :: "'a \<times> 'b \<Rightarrow> ('a \<times> 'b) option"
+  assume ind1: "\<And>n op. good_dt n (dt1::('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree) \<Longrightarrow> step (Out (Inr p) x) (snd (dataflow_tree_to_operator_aux n chns dt1)) op \<Longrightarrow> is_Inr x"
+    and ind2: "\<And>n op. good_dt n (dt2::('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree) \<Longrightarrow> step (Out (Inr p) x) (snd (dataflow_tree_to_operator_aux n chns dt2)) op \<Longrightarrow> is_Inr x"
+    and good_dt: "good_dt n (Comp x1 (dt1::('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree) dt2)"
+    and step: "step (Out (Inr p) x) (snd (dataflow_tree_to_operator_aux n chns (Comp x1 (dt1::('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree) dt2))) op"
+  show "is_Inr x"
+    using step
+    apply(auto dest!: step_map_op_inv map_IO_elim elim!: step_comp_op_elim split: prod.splits)
+    subgoal for n1 op1 n2 op2 op'
+      apply(rule ind2[of n1 op'])
+      subgoal
+        apply(drule arg_cong[where f = fst])+
+        using good_dt
+        apply simp
+        by(simp add: fst_dtoa_def)
+      by simp
+    subgoal for n1 op1 n2 op2 op'
+      apply(rule ind1[of n op'])
+      subgoal
+        apply(drule arg_cong[where f = fst])+
+        using good_dt
+        by(simp add: fst_dtoa_def)
+      by simp
+    done
+qed
+
+lemma good_dt_Inr_input: "good_dt (n :: 'a :: {tln,minus,minus,one,semigroup_add,equal,ord,uminus}) dt \<Longrightarrow> step (Inp (Inr p) x) (snd (dataflow_tree_to_operator_aux n chns dt)) op \<Longrightarrow> is_Inr x"
+proof (induction dt arbitrary: n op)
+  fix x1 :: "('b option, 'b option, 'c + 'd \<times> 'e) op"
+    and x2 :: "'b \<Rightarrow> 'b \<Rightarrow> 'f buf"
+    and n :: 'a
+    and op :: "('a + 'a \<times> 'b, 'a + 'a \<times> 'b, 'c + 'd \<times> 'e) op"
+  assume good_dt: "good_dt n (Logic x1 x2::('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree)"
+    and step: "step (Inp (Inr p) x) (snd (dataflow_tree_to_operator_aux n chns (Logic x1 (x2::'b \<Rightarrow> 'b \<Rightarrow> 'f buf)))) op"
+  show "is_Inr x"
+    using step good_dt
+    by(auto dest!: step_map_op_inv map_IO_elim )
+next
+  fix x1 :: "'a \<times> 'b \<Rightarrow> ('a \<times> 'b) option"
+    and dt1 :: "('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree"
+    and dt2 :: "('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree"
+    and n :: 'a
+    and op :: "('a + 'a \<times> 'b, 'a + 'a \<times> 'b, 'c + 'd \<times> 'e) op"
+    and wire :: "'a \<times> 'b \<Rightarrow> ('a \<times> 'b) option"
+  assume ind1: "\<And>n op. good_dt n (dt1::('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree) \<Longrightarrow> step (Inp (Inr p) x) (snd (dataflow_tree_to_operator_aux n chns dt1)) op \<Longrightarrow> is_Inr x"
+    and ind2: "\<And>n op. good_dt n (dt2::('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree) \<Longrightarrow> step (Inp (Inr p) x) (snd (dataflow_tree_to_operator_aux n chns dt2)) op \<Longrightarrow> is_Inr x"
+    and good_dt: "good_dt n (Comp x1 (dt1::('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree) dt2)"
+    and step: "step (Inp (Inr p) x) (snd (dataflow_tree_to_operator_aux n chns (Comp x1 (dt1::('a, 'b, 'c, 'd \<times> 'e, 'f) dataflow_tree) dt2))) op"
+  show "is_Inr x"
+    using step
+    apply(auto dest!: step_map_op_inv map_IO_elim elim!: step_comp_op_elim split: prod.splits)
+    subgoal for n1 op1 n2 op2 op'
+      apply(rule ind1[of  n op'])
+      subgoal
+        apply(drule arg_cong[where f = fst])+
+        using good_dt
+        by(simp add: fst_dtoa_def)
+      by simp
+    subgoal for n1 op1 n2 op2 op'
+      apply(rule ind2[of n1 op'])
+      subgoal
+        apply(drule arg_cong[where f = fst])+
+        using good_dt
+        by(simp add: fst_dtoa_def)
+      by simp
+    done
+qed
+
+lemma step_dt_eq_nodes_count:  "step_dt io n chns dt chns' dt' \<Longrightarrow> nodes_count dt = nodes_count dt'"
+  apply(induction dt arbitrary: io n dt' chns chns')
+  subgoal for op su io n dt' chns chns'
+    by(drule step_dt.cases; simp)
+  subgoal for wire dt1 dt2 io n dt' chns chns'
+    apply(drule step_dt.cases; simp)
+    by auto
+  done
+
+lemma step_dt_used_port_inv: "step_dt io (n :: 'n :: {minus,one,plus,uminus,semigroup_add,equal,ord}) chns dt chns' dt' \<Longrightarrow> used_ports' n' dt = used_ports' n' dt'"
+  apply(induction dt arbitrary: n n' dt' chns chns' io)
+  subgoal for op su n n' dt' chns chns' io
+    apply(subst (asm) step_dt.simps)
+    by auto
+  subgoal premises prems for wire dt1 dt2 n n' dt' chns chns' io
+    using prems(3)
+    apply(subst (asm) step_dt.simps)
+    apply(elim disjE exE conjE; simp; hypsubst_thin)
+    by(auto dest: prems(1) prems(2) simp add: fst_dtoa_def step_dt_eq_nodes_count)
+  done
+
+lemma step_dt_Inp_ord: " nodes_count dt -+- tln_class.to_nat n < CARD('n) \<Longrightarrow> 
+      step_dt (Inp (Inr (n', p)) x) (n :: 'n :: {minus,one,plus,uminus,group_add,equal,ord,tln,preorder,ab_semigroup_add}) chns dt chns' dt' \<Longrightarrow> 
+      n \<le> n' \<and> n' < nodes_count dt + n"
+  apply(induction dt arbitrary: n chns chns' dt')
+  subgoal for op su n chns chns' dt'
+    apply(subst (asm) step_dt.simps)
+    apply(auto dest!: map_IO_elim elim!: step_map_op_elim split: option.splits)
+    by (metis Groups.add_ac(2) less_numeral_extra(1) one_def ord_add_le plus_1_eq_Suc)
+  subgoal premises prems for wire dt1 dt2 n chns chns' dt'
+    using prems(3,4)
+    apply(subst (asm) step_dt.simps)
+    apply auto
+    subgoal for dt2'
+      apply(drule prems(2)[rotated])
+      subgoal
+        by (metis fst_dtoa_def card_leq_nodes_count_help)
+      apply(simp add: fst_dtoa_def)
+      apply(subgoal_tac "n < n + nodes_count dt1")
+      subgoal
+        by (meson dual_order.trans order_less_imp_le)
+      by(rule ord_add_le_nodes; simp)
+    subgoal for dt2'
+      apply(drule prems(2)[rotated])
+      subgoal
+        by (metis fst_dtoa_def card_leq_nodes_count_help)
+      by (simp add: add.commute add.left_commute fst_dtoa_def)
+    subgoal for dt1'
+      apply(drule prems(1)[rotated])
+      by(simp add: fst_dtoa_def)+
+    subgoal for dt1'
+      apply(drule prems(1)[rotated], simp)
+      apply(subgoal_tac "n + nodes_count dt1 < n + nodes_count dt1 + nodes_count dt2")
+      subgoal
+        by (metis nodes_count_less_help)
+      apply(rule tln_class.ord_add_le_nodes)
+      using card_leq_nodes_count_help by fastforce
+    done
+  done
+
+lemma step_dt_Out_ord: " nodes_count dt -+- tln_class.to_nat n < CARD('n) \<Longrightarrow> 
+      step_dt (Out (Inr (n', p)) x) (n :: 'n :: {minus,one,plus,uminus,group_add,equal,ord,tln,preorder,ab_semigroup_add}) chns dt chns' dt' \<Longrightarrow> 
+      n \<le> n' \<and> n' < nodes_count dt + n"
+  apply(induction dt arbitrary: n chns chns' dt')
+  subgoal for op su n chns chns' dt'
+    apply(subst (asm) step_dt.simps)
+    apply(auto dest!: map_IO_elim elim!: step_map_op_elim split: option.splits)
+    by (metis Groups.add_ac(2) less_numeral_extra(1) one_def ord_add_le plus_1_eq_Suc)
+  subgoal premises prems for wire dt1 dt2 n chns chns' dt'
+    using prems(3,4)
+    apply(subst (asm) step_dt.simps)
+    apply auto
+    subgoal for dt1'
+      apply(drule prems(1)[rotated])
+      by(simp add: fst_dtoa_def)+
+    subgoal for dt1'
+      apply(drule prems(1)[rotated], simp)
+      apply(subgoal_tac "n + nodes_count dt1 < n + nodes_count dt1 + nodes_count dt2")
+      subgoal
+        by (metis nodes_count_less_help)
+      apply(rule tln_class.ord_add_le_nodes)
+      using card_leq_nodes_count_help by fastforce
+    subgoal for dt2'
+      apply(drule prems(2)[rotated])
+      subgoal
+        by (metis fst_dtoa_def card_leq_nodes_count_help)
+      apply(simp add: fst_dtoa_def)
+      apply(subgoal_tac "n < n + nodes_count dt1")
+      subgoal
+        by (meson dual_order.trans order_less_imp_le)
+      by(rule ord_add_le_nodes; simp)
+    subgoal for dt2'
+      apply(drule prems(2)[rotated])
+      subgoal
+        by (metis fst_dtoa_def card_leq_nodes_count_help)
+      by (simp add: add.commute add.left_commute fst_dtoa_def)
+    done
+  done
+
+lemma step_dt_chns_inv: " nodes_count dt -+- tln_class.to_nat n < CARD('n) \<Longrightarrow> good_dt n dt \<Longrightarrow>
+      step_dt io (n :: 'n :: {minus,one,plus,uminus,group_add,equal,ord,tln,preorder,ab_semigroup_add}) chns dt chns' dt' \<Longrightarrow> 
+      \<forall>n' p. n' < n \<or> n' \<ge> nodes_count dt + n \<longrightarrow> chns (n',p) = chns'(n',p)"
+  apply(induction dt arbitrary: n dt' chns chns' io)
+  subgoal for op su n dt' chns chns' io
+    apply(subst (asm) step_dt.simps)
+    by auto
+  subgoal premises prems for wire dt1 dt2 n dt' chns chns' io
+    using prems(3,4,5)
+    apply(subst (asm) step_dt.simps)
+    apply(elim disjE exE conjE; simp; hypsubst_thin; frule step_dt_eq_nodes_count[symmetric])
+    subgoal for n' chns'' dt1a chns''' dt1' dt2a
+      apply(drule prems(1)[rotated 2]; simp?)
+      apply(drule nodes_count_less_help')
+      by (meson less_imp_le order_trans_rules(22))
+    subgoal for n' chns'' dt1a chns''' dt1' dt2a
+      apply(drule prems(2)[rotated 2]; (simp add: fst_dtoa_def)?)
+      subgoal
+        by(auto dest!: card_leq_nodes_count_help simp add: fst_dtoa_def)
+      apply safe
+      subgoal for n'' p
+        apply(subgoal_tac "n < n + nodes_count dt1")
+        subgoal
+          by (metis (no_types, lifting) fst_dtoa_def order_less_trans ord_add_le_nodes)
+        by(simp add: ord_add_le_nodes)
+      subgoal for n'' p
+        by (simp add: add.commute add.left_commute fst_dtoa_def)
+      done
+    subgoal for n1 chns1 dt1a chns1' dt1' dt2' p p' n' n'' x
+      apply(drule step_dt_Inp_ord[rotated])
+      subgoal
+        by (metis fst_dtoa_def card_leq_nodes_count_help)
+      apply safe
+      subgoal for n''' p'
+        apply(subgoal_tac "n' \<noteq> n'''")
+        subgoal
+          by(auto simp add: BTL_def)
+        apply(auto simp add: fst_dtoa_def)
+        apply(subgoal_tac "n < n + nodes_count dt1")
+         defer
+        subgoal
+          apply(rule tln_class.ord_add_le_nodes)
+          using card_leq_nodes_count_help by fastforce
+        apply(subgoal_tac "n + nodes_count dt1 < n + nodes_count dt1 + nodes_count dt2")
+         defer
+        subgoal
+          apply(rule tln_class.ord_add_le_nodes)
+          using card_leq_nodes_count_help by fastforce
+        by (metis basic_trans_rules(20,22))
+      subgoal for n''' p'
+        apply(subgoal_tac "n' \<noteq> n'''")
+        subgoal
+          by(auto simp add: BTL_def)
+        apply(auto simp add: fst_dtoa_def)
+        by (metis add.commute add.left_commute basic_trans_rules(22) less_irrefl)
+      done
+    subgoal for n1 chns1 dt1a chns1' dt1' dt2' p p' n' n'' x
+      apply(drule step_dt_Out_ord[rotated], simp)
+      apply safe
+      subgoal for n''' p''
+        apply(simp add: fst_dtoa_def)
+        apply(subgoal_tac "n'' + (n + nodes_count dt1) \<noteq> n'''")
+        subgoal
+          by(auto simp add: BENQ_def)
+        apply(auto simp add: fst_dtoa_def)
+        by (smt (verit) add.left_commute add_0_right add_eq_0_iff2 order.strict_trans1
+            order_less_asym)
+      subgoal for n''' p''
+        apply(simp add: fst_dtoa_def)
+        apply(subgoal_tac "n'' + (n + nodes_count dt1) \<noteq> n'''")
+        subgoal
+          by(auto simp add: BENQ_def)
+        apply(auto simp add: fst_dtoa_def)
+        by (smt (verit) add.left_commute add_0_right add_eq_0_iff2 order.strict_trans1
+            order_less_asym)
+      done
+    done
+  done
+
+(*These are almost copies of dtoa_inputs_le*)
+lemma inputs_dtoa_le: "nodes_count dt -+- tln_class.to_nat n < CARD('n) \<Longrightarrow>
+      n' < (n :: 'n :: {minus,one,plus,uminus,group_add,equal,ord,tln,preorder,ab_semigroup_add}) \<Longrightarrow> 
+      Inr (n', p) \<in> inputs (snd (dataflow_tree_to_operator_aux n chns dt)) \<Longrightarrow> False"
+  apply(induction dt arbitrary: n chns)
+  subgoal for op' su n chns
+    by(auto simp add: op.set_map split: option.splits)
+  subgoal premises prems for wire dt1 dt2 n chns
+    using prems(5)
+    apply(auto simp add: op.set_map split: prod.splits)
+    subgoal premises prems2 for n1 p1 n2 p2
+      using prems(1)[of n chns, simplified prems2(1) snd_conv] prems(3)[simplified] prems(4) prems2(3)
+      by simp
+    subgoal premises prems2 for n1 p1 n2 p2
+      using prems(2)[of n1 chns, simplified prems2(2) snd_conv] prems(3,4) prems2(1,3)
+      by (meson dtoa_inputs_leq less_le_not_le prems(5))
+    done
+  done
+
+lemma inputs_dtoa_leq: "nodes_count dt -+- tln_class.to_nat n < CARD('n) \<Longrightarrow>
+      n' \<ge> nodes_count dt + (n :: 'n :: {minus,one,plus,uminus,group_add,equal,ord,tln,preorder,ab_semigroup_add}) \<Longrightarrow> 
+      Inr (n', p) \<in> inputs (snd (dataflow_tree_to_operator_aux n chns dt)) \<Longrightarrow> False"
+  apply(induction dt arbitrary: n chns)
+  subgoal for op' su n chns
+    apply(auto simp add: op.set_map split: option.splits)
+    by (metis Suc_eq_plus1 add.commute less_le_not_le one_def ord_add_le semiring_norm(135))
+  subgoal premises prems for wire dt1 dt2 n chns
+    using prems(5)
+    apply(auto simp add: op.set_map split: prod.splits)
+    subgoal premises prems2 for n1 p1 n2 p2
+      using prems(1)[of n chns, simplified prems2(1) snd_conv] prems(3)[simplified] prems(4) prems2(3)
+      by (meson dtoa_inputs_le dual_order.strict_iff_not prems(3,5))
+    subgoal premises prems2 for n1 p1 n2 p2
+      using prems(2)[of n1 chns, simplified prems2(2) snd_conv] prems(3,4) prems2(1,3)
+      by (metis add.commute dtoa_inputs fst_dtoa_def less_le_not_le prems(5))
+    done
+  done
+
+
+
+lemma step_dt_inputs_chns_inv: "nodes_count dt -+- tln_class.to_nat n < CARD('n) \<Longrightarrow> step_dt Tau n chns dt chns' dt' \<Longrightarrow> good_dt n dt \<Longrightarrow>
+    Inr ((n' :: 'n :: {minus,one,plus,uminus,group_add,equal,ord,tln,preorder,ab_semigroup_add,linorder}), p) \<in> inputs (snd (dataflow_tree_to_operator_aux n chns' dt')) \<Longrightarrow> 
+    chns' (n', p) = chns (n', p)"
+  apply(induction dt arbitrary: n n' chns chns' dt')
+  subgoal for op' su n chns chns' dt'
+    apply(subst (asm) step_dt.simps)
+    by simp
+  subgoal premises prems for wire dt1 dt2 n n' chns chns' dt'
+    using prems(4)
+    apply(subst (asm) step_dt.simps)
+    apply auto
+    subgoal for dt''
+      apply(cases "n' \<ge> n \<and> nodes_count dt1 + n > n'")
+       defer
+      subgoal
+        apply(frule step_dt_chns_inv[rotated 2])
+        using prems(3,5) apply simp
+        using prems(3,5) apply simp
+        apply(erule allE[where x = n'])
+        apply(erule allE[where x = p])
+        by fastforce
+      apply(rule prems(1); simp?)
+      using prems(3) apply simp
+      using prems(5) apply simp
+      using prems(6)
+      apply(auto simp add: op.set_map split: prod.splits)
+      apply(auto simp add: ran_def split: sum.splits option.splits)
+      subgoal for n1 p1 n2 p2
+        using inputs_dtoa_le[of dt2 n1 n' p chns'] prems(3) fst_dtoa_def prems(5)
+        by (smt (verit) add.assoc add.commute add.left_commute add_lessD1 card_leq_nodes_count_help fst_conv inputs_dtoa_le
+            nodes_count.simps(2) ord_add_le_nodes snd_conv step_dt_eq_nodes_count)
+      done
+    subgoal for dt''
+      apply(cases "n' \<ge> nodes_count dt1 + n \<and> nodes_count dt1 + nodes_count dt2 + n > n'")
+       defer
+      subgoal
+        apply(frule step_dt_chns_inv[rotated 2])
+        using prems(3,5) apply (simp add: fst_dtoa_def card_leq_nodes_count_help)
+        using prems(3,5) apply (simp add: fst_dtoa_def)
+        apply(erule allE[where x = n'])
+        apply(erule allE[where x = p])
+        apply(simp add: fst_dtoa_def)
+        by (metis add.commute add.left_commute linorder_le_less_linear)
+      apply(rule prems(2); simp?)
+      using prems(3,5) apply (simp add: fst_dtoa_def card_leq_nodes_count_help)
+      using prems(3,5) apply (simp add: fst_dtoa_def)
+      using prems(6)
+      apply(auto simp add: op.set_map split: prod.splits)
+      apply(auto simp add: ran_def split: sum.splits option.splits)
+      subgoal for n1 p1 n2 p2
+        using inputs_dtoa_leq[of dt2 n1 n' p chns'] prems(3) fst_dtoa_def prems(5)
+        by (smt (verit) dataflow_topology_from_tree.followed_by_summary ex_least_nat_le inputs_dtoa_leq le_antisym
+            le_simps(1) linorder_neqE_nat nat_arith.add2 nodes_count.simps(2) snd_conv trans_less_add2)
+      using fst_dtoa_def
+      by (metis fst_conv snd_conv)
+    subgoal for dt2' pa p' n'' n''' a b
+      apply(cases "n'' = n' \<and> pa = p"; simp?)
+      defer
+      subgoal
+        by(auto simp add: BTL_def)
+      using prems(6)
+      apply(auto simp add: op.set_map ran_def split: sum.splits option.splits prod.splits)
+      subgoal for n1 p1 n2 p2
+        using prems(5)
+        apply auto
+        apply(erule allE[where x = n'''])
+        apply(erule allE[where x = n'''])
+        apply(erule allE[where x = n'])
+        apply(erule allE[where x = pa])
+        apply(erule allE[where x = pa])
+        apply(erule impE)
+        subgoal
+          unfolding fst_dtoa_def
+          by (metis add.commute add_uminus_conv_diff)
+        using inputs_dtoa_leq[of dt1 n n' p "(BTL (n', pa) chns)"] prems(3) fst_dtoa_def
+        by simp
+      subgoal for n1 p1 n2 p2
+        apply(erule allE[where x = "n'''"])
+        apply(erule allE[where x = p'])
+        apply(erule allE[where x = "n' - fst (dataflow_tree_to_operator_aux n chns dt1)"])
+        apply(erule allE[where x = pa])
+        apply(auto simp add: fst_dtoa_def)
+        by (metis add.commute diff_add_cancel fst_dtoa_def prod.sel(1))
+      done
+    subgoal for dt1' pa p' n'' n''' a b
+      apply(simp add: fst_dtoa_def)
+      apply(cases "n''' + (n + nodes_count dt1) = n' \<and> p' = p"; simp?)
+      defer
+      subgoal
+        by(auto simp add: BENQ_def)
+      using prems(6)
+      apply(auto simp add: op.set_map ran_def split: sum.splits option.splits prod.splits)
+      subgoal for n1 p1 n2 p2
+        apply(subgoal_tac "n''' + (n + nodes_count dt1) < nodes_count dt1 + n")
+        defer
+        subgoal
+          using dtoa_inputs_le[of dt1' n "n''' + (n + nodes_count dt1)" p "\<lambda>_ . []"] fst_dtoa_def prems(3)
+          apply -
+          apply(auto simp add: fst_dtoa_def step_dt_eq_nodes_count[symmetric])
+          by (smt (verit, best) Groups.add_ac(2) Nat.add_diff_assoc2 dataflow_topology_from_tree.le_plus(2) diff_add_inverse2
+              dtoa_inputs fst_dtoa_def less_imp_diff_less prod.sel(2) step_dt_eq_nodes_count)
+        apply(subgoal_tac "n + nodes_count dt1 \<le> n + nodes_count dt1 + n'''")
+         defer
+        subgoal
+          apply(rule tln_class.ord_add)
+          using prems(3,5)
+          apply auto
+          apply(erule allE[where x = n''])
+          apply(erule allE[where x = pa])
+          apply(erule allE[where x = n'''])
+          apply(erule allE[where x = n'''])
+          apply(erule impE)
+           apply auto[1]
+          by (smt (verit) Groups.add_ac(2) add_diff_inverse_nat card_leq_nodes_count_help le_antisym less_or_eq_imp_le
+              nat_add_left_cancel_le nat_neq_iff nodes_count_convert to_nat_le trans_le_add2)
+        by (simp add: add.commute)
+      subgoal for n1 p1 n2 p2
+        apply(erule allE[where x = "n''"])
+        apply(erule allE[where x = pa])
+        apply(erule allE[where x = "n'''"])
+        apply(erule allE[where x = p])
+        by (metis add.commute fst_dtoa_def prod.sel(1) step_dt_eq_nodes_count)
+      done
+    done
+  done
+
+
+lemma step_dtoa_elim: "step io (snd (dataflow_tree_to_operator_aux (n :: 'a :: {minus,one,semigroup_add,zero,ord,equal,tln,preorder,group_add,ab_semigroup_add,linorder}) chns (dt :: (_,_,_,_, 'g) dataflow_tree))) op' \<Longrightarrow>
+      nodes_count dt -+- tln_class.to_nat n < CARD('a) \<Longrightarrow>
+      good_dt n dt \<Longrightarrow>
+      \<exists> (dt' :: (_,_,_,_, 'g) dataflow_tree) chns'. step_dt io n chns dt chns' dt' \<and>
+       dataflow_tree_to_operator_aux n chns' dt' = (fst (dataflow_tree_to_operator_aux n chns dt), op')"
+proof (induction dt arbitrary: io n chns op')
+  case (Logic op su)
+  assume step: "step io (snd (dataflow_tree_to_operator_aux n chns (Logic op (su::'b \<Rightarrow> 'b \<Rightarrow> 'g buf)))) op'"
+    and dt_io: "nodes_count (Logic op su) -+- tln_class.to_nat n < CARD('a)"
+  show ?case
+    using step apply -
+    apply simp
+    apply(elim step_map_op_elim conjE)
+    by fastforce
+next
+  fix wire :: "'a \<times> 'b \<Rightarrow> ('a \<times> 'b) option"
+    and dt1 :: "('a, 'b, 'c, 'd \<times> 'e, 'g) dataflow_tree"
+    and dt2 :: "('a, 'b, 'c, 'd \<times> 'e, 'g) dataflow_tree"
+    and io :: "('a + 'a \<times> 'b, 'a + 'a \<times> 'b, 'c + 'd \<times> 'e) IO"
+    and n :: 'a
+    and chns :: "'a \<times> 'b \<Rightarrow> ('d \<times> 'e) buf"
+    and op' :: "('a + 'a \<times> 'b, 'a + 'a \<times> 'b, 'c + 'd \<times> 'e) op"
+  assume ind1:"\<And>io n chns op'. step io (snd (dataflow_tree_to_operator_aux n chns (dt1::('a, 'b, 'c, 'd \<times> 'e, 'g) dataflow_tree))) op' \<Longrightarrow> nodes_count dt1 -+- tln_class.to_nat n < CARD('a) \<Longrightarrow> good_dt n dt1 \<Longrightarrow> \<exists>dt' chns'. step_dt io n chns dt1 chns' dt' \<and> dataflow_tree_to_operator_aux n chns' dt' = (fst (dataflow_tree_to_operator_aux n chns dt1), op')"
+    and ind2: "\<And>io n chns op'. step io (snd (dataflow_tree_to_operator_aux n chns (dt2::('a, 'b, 'c, 'd \<times> 'e, 'g) dataflow_tree))) op' \<Longrightarrow> nodes_count dt2 -+- tln_class.to_nat n < CARD('a) \<Longrightarrow> good_dt n dt2 \<Longrightarrow> \<exists>dt' chns'. step_dt io n chns dt2 chns' dt' \<and> dataflow_tree_to_operator_aux n chns' dt' = (fst (dataflow_tree_to_operator_aux n chns dt2), op')"
+    and step: "step io (snd (dataflow_tree_to_operator_aux n chns (Comp wire (dt1::('a, 'b, 'c, 'd \<times> 'e, 'g) dataflow_tree) dt2))) op'"
+    and card: "nodes_count (Comp wire (dt1::('a, 'b, 'c, 'd \<times> 'e, 'g) dataflow_tree) dt2) -+- tln_class.to_nat n < CARD('a)"
+    and good_dt: "good_dt n (Comp wire dt1 dt2)"
+  obtain n1 op1 where dtoa1: "dataflow_tree_to_operator_aux n chns dt1 = (n1, op1)"
+    by force
+  have n1_def: "n1 = n + nodes_count dt1"
+    using dtoa1 fst_dtoa_def[of n chns dt1]
+    by auto
+  obtain n2 op2 where dtoa2: "\<And> chns. dataflow_tree_to_operator_aux n1 chns dt2 = (n2 chns, op2 chns)"
+    apply atomize_elim
+    apply(rule exI[where x = "\<lambda> chns. fst (dataflow_tree_to_operator_aux n1 chns dt2)"])
+    apply(rule exI[where x = "\<lambda> chns. snd (dataflow_tree_to_operator_aux n1 chns dt2)"])
+    by force
+  have good_dt1: "good_dt n dt1"
+    using good_dt
+    by simp
+  have good_dt2: "good_dt n1 dt2"
+    using good_dt dtoa1[THEN arg_cong[where f = fst], symmetric]
+    by(simp add: fst_dtoa_def)
+  have card1': "nodes_count dt1 < CARD('a)"
+    using card
+    by simp
+  have card1: "nodes_count dt1 -+- tln_class.to_nat n < CARD('a)"
+    using card
+    by simp
+  have card2: "nodes_count dt2 -+- tln_class.to_nat n1 < CARD('a)"
+    using card
+    apply(simp add: dtoa1[symmetric, THEN arg_cong[where f = fst], simplified fst_dtoa_def, simplified])
+    apply(rule dual_order.strict_trans2, assumption)
+    apply(rule order.trans, rule add_left_mono, rule ord_add_leq)
+    by(simp add: nodes_count_convert[OF card1'])
+  have BENQ_map: "(\<lambda>x. map Inr (BENQ p x' chns x)) = BENQ p (Inr x') (\<lambda>x. map Inr (chns x))" for p chns x'
+    apply(rule ext)
+    subgoal for x
+      unfolding BENQ_def
+      by simp
+    done
+  show "\<exists>dt' chns'. step_dt io n chns (Comp wire (dt1::('a, 'b, 'c, 'd \<times> 'e, 'g) dataflow_tree) dt2) chns' dt' \<and> dataflow_tree_to_operator_aux n chns' dt' = (fst (dataflow_tree_to_operator_aux n chns (Comp wire dt1 dt2)), op')"
+    using step
+    apply(simp add: dtoa1 dtoa2)
+    apply(elim step_map_op_elim conjE step_comp_op_elim; simp add: eq_commute[of _ op'] eq_commute[of _ io])
+    subgoal premises prems for io' op'' p x op1'
+      using ind1[of "Inp p x" n chns op1', simplified dtoa1 snd_conv, OF prems(5) card1 good_dt1]
+      apply(elim conjE exE)?
+      subgoal for dt' chns'
+        apply(rule exI[where x = "Comp wire dt' dt2"])
+        apply(rule exI[where x = "chns"])
+        apply(frule step_dt_same_chns_Inp; simp)
+        apply(rule conjI)
+        subgoal
+          by(cases p; auto)
+        by(simp add: dtoa2)
+      done
+    subgoal premises prems for io' op'' p x op2'
+      using ind2[of "Out p x" n1 chns op2', simplified dtoa2[of chns] snd_conv, OF prems(5) card2 good_dt2]
+      apply(elim conjE exE)
+      apply(frule step_dt_same_chns_Out; simp)
+      apply(drule sym[of chns])
+      subgoal for dt' chns'
+        apply(rule exI[where x = "Comp wire dt1 dt'"])
+        apply(rule exI[where x = "chns"])
+        by(cases p; auto simp add: dtoa1)
+      done
+    subgoal premises prems for io' op'' p x op1'
+      using ind1[of "Out p x" n chns op1', simplified dtoa1 snd_conv, OF prems(6) card1 good_dt1]
+      apply(elim conjE exE)
+      apply(frule step_dt_same_chns_Out; simp)
+      apply(drule sym[of chns])
+      subgoal for dt' chns'
+        apply(rule exI[where x = "Comp wire dt' dt2"])
+        apply(rule exI[where x = "chns"])
+        using prems(5)
+        apply(auto simp add: dtoa2 split: sum.splits)
+        apply(rule SOutInr)
+        apply auto
+        done
+      done
+    subgoal premises prems for io' op'' p x op2'
+      using ind2[of "Inp p x" n1 chns op2', simplified dtoa2[of chns] snd_conv, OF prems(6) card2 good_dt2]
+      apply(elim conjE exE)
+      apply(frule step_dt_same_chns_Inp; simp)
+      apply(drule sym[of chns])
+      subgoal for dt' chns'
+        apply(rule exI[where x = "Comp wire dt1 dt'"])
+        apply(rule exI[where x = "chns"])
+        using prems(5)
+        apply(cases p; auto simp add: dtoa1 ran_def split: sum.splits)
+        apply(rule SInpInr)
+        apply(rule disjI1)
+        apply(simp add: dtoa1)
+        apply safe
+        subgoal for a b p' n''
+          apply(erule allE[where x = n''])
+          apply(erule allE[where x = p'])
+          apply(auto split: option.splits)
+          by(simp add: group_add_class.add_diff_eq ab_semigroup_add_class.add.commute[of n1])
+        done
+      done
+    subgoal premises prems for io' op'' p x op1' q
+      using prems(5) prems(6)
+      apply(clarsimp split: sum.splits option.splits)
+      apply(subgoal_tac "\<exists> x'. x = Inr x'")
+      subgoal for a b ba ab
+        apply safe
+        subgoal for x' x''
+          using ind1[of "Out p x" n chns op1', OF prems(6)[simplified dtoa1[symmetric, THEN arg_cong[where f = snd], simplified]] card1 good_dt1]
+          apply safe
+          apply(frule step_dt_same_chns_Out; simp)
+          apply(drule sym[of chns])
+          subgoal for dt' chns'
+            apply(rule exI[where x = "Comp wire dt' dt2"])
+            apply(rule exI[where x = "BENQ (n1 + ab, ba) (x', x'') chns"])
+            apply(auto simp add: dtoa1 ran_def split: sum.splits)
+            subgoal
+              apply(rule STau)
+              apply(rule disjI2)
+              apply(rule disjI2)
+              apply(rule disjI2)
+              apply(rule exI[where x = b])
+              apply(rule exI[where x = ba])
+              apply(rule exI[where x = a])
+              apply(rule exI[where x = ab])
+              apply auto
+              apply(rule exI[where x = x'])
+              apply(rule exI[where x = x''])
+              by(auto simp add: dtoa1 ab_semigroup_add_class.add.commute)
+            apply(subgoal_tac "dataflow_tree_to_operator_aux n (BENQ (n1 + ab, ba) (x', x'') chns) dt' = dataflow_tree_to_operator_aux n chns dt'")
+            subgoal
+              apply(subgoal_tac "dataflow_tree_to_operator_aux n1 (BENQ (n1 + ab, ba) (x', x'') chns) dt2 = dataflow_tree_to_operator_aux n1 chns dt2")
+              subgoal
+                by(simp add: dtoa2 BENQ_map)
+              subgoal
+                apply(rule dataflow_tree_to_operator_aux_chns_inv'; (simp add: card2)?)
+                apply safe
+                subgoal for aa bb
+                  apply(cases "(aa,bb) = (n1 + ab, ba)")
+                  subgoal
+                    apply(safe)
+                    apply hypsubst_thin
+                    apply simp
+                    using good_dt
+                    apply simp
+                    apply safe
+                    apply(drule arg_cong[where f = fst])+
+                    apply simp
+                    apply(erule allE[where x = a])
+                    apply(erule allE[where x = a])
+                    apply(erule allE[where x = "n1 + ab"])
+                    apply(erule allE[where x = ba])+
+                    by(auto simp add: fst_dtoa_def n1_def)
+                  subgoal
+                    by(auto simp add: BENQ_def)
+                  done
+                done
+              done
+            subgoal
+              apply(subgoal_tac "nodes_count dt' -+- tln_class.to_nat n < CARD('a)")
+              subgoal
+                apply(rule dataflow_tree_to_operator_aux_chns_inv; simp?)
+                apply safe
+                apply(frule used_ports_less, assumption)
+                apply(drule arg_cong[where f = fst])
+                apply(simp add: fst_dtoa_def)
+                subgoal for aa bb
+                  apply(subgoal_tac "aa < n1 + ab")
+                  subgoal
+                    by (metis BENQ_diff_access less_imp_not_less prod.inject)
+                  apply(rule order.strict_trans2, assumption)
+                  apply(rule tln_class.ord_add)
+                  using card_leq_nodes_count_help[OF card[simplified]] apply -
+                  unfolding n1_def
+                  apply(subgoal_tac "ab < nodes_count dt2")
+                  defer
+                  subgoal
+                    using good_dt
+                    by auto
+                  apply(drule to_nat_le[of ab])
+                  by(simp add: tln_class.nodes_count_convert)
+                done
+              subgoal
+                by(simp add: step_dt_eq_nodes_count[symmetric] card1)
+              done
+            done
+          done
+        done
+      subgoal for n2 p2 p3 n3
+        apply(drule good_dt_Inr_output[OF good_dt1, of "(n2, p2)" x chns, simplified dtoa1 snd_conv])
+        by(auto simp add: is_Inr_def split: sum.splits)
+      done
+    subgoal premises prems for io' op'' p x op2'
+      using prems(5) prems(6) prems(7) prems(8)
+      apply(clarsimp simp add: ran_def split: sum.splits option.splits prod.splits)
+      subgoal for a aa b
+        apply(cases a; simp)
+        using ind2[of "Inp p x" n1 chns op2', simplified dtoa2[of chns] snd_conv, OF prems(6) card2 good_dt2] dtoa1 dtoa2
+        apply safe
+        subgoal for ab ba dt' chns'
+          apply(rule exI[where x = "Comp wire dt1 dt'"])
+          apply(rule exI[where x = "BTL (aa, b) chns"])
+          apply(rule conjI)
+          subgoal
+            apply(rule STau)
+            apply(rule disjI2)
+            apply(rule disjI2)
+            apply(rule disjI1)
+            apply(frule step_dt_same_chns_Inp; simp)
+            apply(drule sym[of chns])
+            apply(erule allE[where x = "ab"]; simp)
+            apply(erule allE[where x = "ba"]; simp)
+            apply safe
+            subgoal for ac bb
+            apply(rule exI[where x = b])
+            apply(rule exI[where x = ba])
+            apply(rule exI[where x = aa])
+            apply(rule conjI)
+            subgoal
+              apply(erule allE[where x = ac])
+              apply(erule allE[where x = bb]; simp)
+              apply(rule exI[where x = ab]; simp)
+              apply auto
+              by(simp add: group_add_class.add_diff_eq ab_semigroup_add_class.add.commute[of n1])
+            subgoal
+              apply(cases x; simp)
+              subgoal for x'
+                apply(cases x')
+                subgoal for x1 x2
+                  apply(rule exI[where x = x1])
+                  apply(rule exI[where x = x2])
+                  by auto
+                done
+              done
+            done
+          done
+        apply(frule step_dt_same_chns_Inp[symmetric])
+        apply simp
+        apply hypsubst_thin
+        apply(subgoal_tac "dataflow_tree_to_operator_aux n (BTL (aa, b) chns) dt1 = dataflow_tree_to_operator_aux n chns dt1")
+         defer
+        subgoal
+          apply(rule dataflow_tree_to_operator_aux_chns_inv', rule card1)
+          apply(erule allE[where x = ab]; simp)
+          apply(erule allE[where x = ba]; simp)
+          unfolding BTL_def
+          apply auto
+          apply hypsubst_thin
+          subgoal for a
+            apply(frule used_ports'_less[rotated 2])
+              apply(simp add: card1 good_dt1 n1_def)+
+            apply(drule used_ports'_gt[rotated 2])
+              apply(rule card1)
+             apply(rule good_dt1)
+            apply(subgoal_tac "a < nodes_count dt2")
+             defer
+            subgoal
+              using good_dt
+              by fastforce
+            by (metis add.commute card2 dual_order.strict_iff_not n1_def step_dt_Inp_ord)
+          done
+        apply(subgoal_tac "dataflow_tree_to_operator_aux n1 (BTL (aa, b) chns) dt' = dataflow_tree_to_operator_aux n1 chns dt'")
+         defer
+        subgoal
+          apply(rule dataflow_tree_to_operator_aux_chns_inv')
+          subgoal
+            using card2 step_dt_eq_nodes_count
+            by metis
+          apply(erule allE[where x = ab]; simp)
+          apply(erule allE[where x = ba]; simp)
+          unfolding BTL_def
+          apply auto
+          apply hypsubst_thin
+          subgoal for a
+            using good_dt
+          apply simp
+            apply safe
+            apply(erule allE[where x = ab])
+            apply(erule allE[where x = ab])
+            apply(erule allE[where x = "fst (dataflow_tree_to_operator_aux n (\<lambda>_. []) dt1) + a"])
+            apply(erule allE[where x = b])
+            apply(erule allE[where x = b])
+            by(simp add: step_dt_used_port_inv fst_dtoa_def n1_def)
+          done
+        apply simp
+        unfolding BTL_def
+        by (metis (mono_tags, lifting) fun_upd_def map_tl)
+      done
+    done
+    subgoal premises prems for io' op'' op1'
+      using prems(5) ind1[of Tau n chns op1', simplified dtoa1 snd_conv, OF prems(5) card1 good_dt1]
+      apply(elim conjE exE)
+      subgoal for dt' chns'
+        apply(rule exI[where x = "Comp wire dt' dt2"])
+        apply(rule exI[where x = "chns'"])
+        apply(rule conjI)
+        subgoal
+          apply(rule STau)
+          by(rule disjI1; simp)
+        apply auto
+        apply(subgoal_tac "dataflow_tree_to_operator_aux n1 chns' dt2 = dataflow_tree_to_operator_aux n1 chns dt2")
+         defer
+        subgoal
+          apply(auto dest!: step_dt_chns_inv[rotated 2] intro!: dataflow_tree_to_operator_aux_chns_eq_larger simp add: card1 card2 good_dt1)
+          by (metis n1_def add.commute)
+        apply(simp add: dtoa2[of chns])
+        apply(rule arg_cong[where f = "map_op _ _"])
+        apply(cases "chns = chns'"; simp?)
+        apply(rule comp_op_chns_invar)
+        apply(auto split: sum.splits)
+        subgoal for n' p y
+          apply(auto split: option.splits)
+          apply(drule step_dt_chns_inv[rotated 2])
+          apply(rule card1)
+          apply(rule good_dt1)
+          apply(erule allE[where x = n'])
+          apply(erule allE[where x = p])
+          using dtoa_inputs_leq[of dt2 n1 n' p chns', OF card2]
+          by (simp add: add.commute n1_def)
+        done
+      done
+    subgoal premises prems for io' op'' op2'
+      using prems(5) ind2[of Tau n1 chns op2', simplified dtoa2[of chns] snd_conv, OF prems(5) card2 good_dt2]
+      apply(elim conjE exE)
+      subgoal for dt' chns'
+        apply(rule exI[where x = "Comp wire dt1 dt'"])
+        apply(rule exI[where x = "chns'"])
+        apply(rule conjI)
+        subgoal
+          apply(rule STau)
+          apply(rule disjI2)
+          by(rule disjI1; simp add: dtoa1)
+        apply(auto simp add: dtoa2)
+        apply(subgoal_tac "dataflow_tree_to_operator_aux n chns' dt1 = dataflow_tree_to_operator_aux n chns dt1"; simp?)
+        subgoal premises prems
+          using prems
+          apply(simp add: dtoa1)
+          apply(rule arg_cong[where f = "map_op _ _"])
+          apply(cases "chns = chns'"; simp?)
+          apply(rule comp_op_chns_invar)
+          apply(auto split: sum.splits)
+          subgoal for n' p y
+            by(rule step_dt_inputs_chns_inv[of dt2 n1 chns chns' dt' _ p]; (simp add: card2 good_dt2)?)
+          done
+        subgoal
+          apply(rule dataflow_tree_to_operator_aux_chns_eq_smaller, rule card1)
+          apply(drule step_dt_chns_inv[rotated 2])
+          subgoal
+            using card
+            by(auto intro: card_leq_nodes_count_help simp add: n1_def)
+           apply(rule good_dt2)
+          by(auto simp add: n1_def add.commute)
+        done
+      done
+    done
+qed
+
+(*
 lemma "step io (snd (dataflow_tree_to_operator_aux (n :: 'a :: {minus,one,semigroup_add,zero,ord,equal,tln,preorder}) chns (dt :: (_,_,_,_, 'g) dataflow_tree))) op' \<Longrightarrow> 
       good_dt dt \<Longrightarrow>
       nodes_count dt -+- tln_class.to_nat n < CARD('a) \<Longrightarrow>
