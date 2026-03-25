@@ -1480,4 +1480,8 @@ lemma map_snd_filter_List_map_filter:
   using inj_on_contraD apply fastforce
   done
 
+lemma gt_0_plusD:
+  "0 < a + b \<Longrightarrow> 0 < a \<or> 0 < (b :: int)"
+  by auto
+
 end

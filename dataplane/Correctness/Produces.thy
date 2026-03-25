@@ -678,6 +678,121 @@ lemma dataplane_tracker_inv_produces_drops:
               apply (subst (asm) extract_progress_def)
               apply (clarsimp simp add: image_iff split_beta Misc.set_map_filter split: option.splits; hypsubst_thin?)
               subgoal for p' m
+                using prems(14)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format, of xs nid' "(Loc nid' (Trg p'), t, -m)"] apply -
+                apply simp
+                apply (drule meta_mp)
+                subgoal
+                  unfolding extract_progress_def obtain_progress_def
+                  apply simp
+                  apply force
+                  done
+                subgoal
+                  apply (drule frontier_less_equal_ifrontierE[OF _ D])
+                  apply clarsimp
+                  subgoal for l s t'
+                  apply (subst (asm) frontier_less_equal_iff2)
+                  apply (clarsimp simp add: c_pts_change_multiplicities)
+                    subgoal for ft
+                      apply hypsubst_thin
+                      apply (cases "\<exists> p. l = Loc nid (Src p)")
+                       apply clarsimp
+                      subgoal for p
+                        apply hypsubst_thin
+                        oops
+
+
+lemma
+  assumes P: "produ_consu_inter_supported (graph_to_nxt su) os c"
+  and G: "Graph.graph su"
+  shows "s \<in>\<^sub>A graph.path_weight su (Loc nid (Src p)) (Loc nid' (Trg p')) \<Longrightarrow>
+   (p', t, m) \<in> set (consu (os nid')) \<Longrightarrow>
+   t \<ge> ft -+- s \<Longrightarrow>
+   0 < zcount (c_pts c (Loc nid (Src p)) + zmset (map snd (filter ((=) p \<circ> fst) (operator_state.inter (os nid))))) ft \<Longrightarrow>
+   nid \<in> set xs \<Longrightarrow>
+   distinct xs \<Longrightarrow>
+   nid' \<notin> set xs \<Longrightarrow>
+   (\<exists> s l ft'. t \<ge> ft' -+- s \<and> l \<noteq> Loc nid (Src p) \<and> s \<in>\<^sub>A graph.path_weight (summ sg) l (Loc nid' (Trg p')) \<and> (zcount (c_pts (change_multiplicities su (extract_prog xs (graph_to_nxt su) os) c) l) ft' > 0))"
+  apply (drule graph.path_weight_conv_path[OF G])
+  apply clarsimp
+  subgoal for ps
+    apply hypsubst_thin
+    apply (rotate_tac 4)
+    apply (induct ps rule: rev_induct) 
+    subgoal
+      by (auto elim: graph.path0E[OF G])
+    subgoal for a ps'
+      apply (clarsimp split: prod.splits; hypsubst_thin)
+      subgoal for l1 s l2
+        apply (erule graph.path_AppendE[OF G])
+        apply clarsimp
+        apply hypsubst_thin
+        apply (drule conjunct1[OF conjunct2[OF P[unfolded produ_consu_inter_supported_def]], rule_format])
+        apply simp
+        apply (drule gt_0_plusD)
+        back
+        apply (elim disjE)
+        subgoal
+          apply (rule exI[of _ 0])
+          apply (rule exI[of _ "Loc nid' (Trg p')"])
+          apply (rule exI[of _ ft])
+          apply clarsimp
+          apply (intro conjI)
+          subgoal
+            by (meson add_increasing2 add_le_cancel_right assms(2) graph.le_plus(1) le_add_same_cancel1)
+          subgoal
+            sorry
+          subgoal
+            apply (clarsimp simp add: c_pts_change_multiplicities)
+            sorry
+          done
+        subgoal
+          apply (drule zcount_zmset_gt_0_set_Ex)
+          apply clarsimp
+          apply (drule conjunct1[OF P[unfolded produ_consu_inter_supported_def], rule_format])
+          subgoal for m' nid'' p''
+            apply (cases "nid'' = nid \<and> p'' = p")
+            subgoal
+              apply clarsimp
+              apply hypsubst_thin
+              apply (subgoal_tac "l1 = Loc nid (Src p) \<and> s = 0")
+              subgoal
+                apply clarsimp
+                apply hypsubst_thin
+
+  find_theorems "0 < zcount _ _ \<Longrightarrow> _" set
+
+
+end
+  apply (drule conjunct1[OF conjunct2[OF P[unfolded produ_consu_inter_supported_def]], rule_format])
+  apply simp
+  apply (drule gt_0_plusD)
+  apply (elim disjE)
+   apply simp
+  apply (drule zcount_zmset_gt_0_set_Ex)
+  apply (clarsimp del: disjCI)
+  apply (drule conjunct1[OF P[unfolded produ_consu_inter_supported_def], rule_format])
+  apply (elim disjE)
+  subgoal 
+    sorry
+  subgoal for m' nid' p'
+  apply (clarsimp del: disjCI)
+    subgoal for m''
+      apply (drule conjunct2[OF conjunct2[OF P[unfolded produ_consu_inter_supported_def]], rule_format])
+  apply (clarsimp del: disjCI)
+      apply (elim disjE)
+      subgoal
+        subgoal sorry
+        done
+      subgoal for t'
+        apply (clarsimp del: disjCI)
+
+
+
+        find_theorems "0 <  zcount (zmset _) _"
+
+
+
+end
                 apply (frule conjunct1[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supported_def]], rule_format])
                 apply (cases "\<exists> nid'' p''. graph_to_nxt (summ sg) (nid'', p'') = Some (nid', p')")
                 subgoal
@@ -820,8 +935,6 @@ lemma dataplane_tracker_inv_produces_drops:
                               subgoal
                                 apply clarsimp
                                 subgoal for m'
-                                  thm prems(15)
-
                                   apply (drule conjunct1[OF prems(15)[unfolded produ_consu_inter_supported_def], rule_format])
                                   apply (elim disjE)
                                   subgoal
@@ -842,13 +955,6 @@ lemma dataplane_tracker_inv_produces_drops:
                                   subgoal
                                     apply clarsimp
                                     subgoal for m''
-(*
- a timestamp pode estar no control plane e em algum buffer ao mesmo tempo?
-
-*)
-
-
-end
                                       apply (drule conjunct2[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supported_def]], rule_format])
                                       apply clarsimp
                                       apply (elim disjE)
@@ -869,7 +975,7 @@ end
                                         done
                                       subgoal for t'
                                         apply clarsimp
-
+                                        using prems(15)[unfolded produ_consu_inter_supported_def]
 
 
                                         oops
