@@ -113,7 +113,9 @@ definition "graph_summar_nt su nt os = (
       s \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) l \<longrightarrow>
       l \<noteq> Loc nid (Trg p) \<longrightarrow> (\<exists> t p' s'. t \<in> set (intsum (os nid) p p') \<and> s' \<in>\<^sub>A graph.path_weight su (Loc nid (Src p')) l \<and> s = t -+- s')) \<and>
    inj_on nt (Map.dom nt) \<and>
-   bi_unique (op_conn su)
+   bi_unique (op_conn su) \<and>
+   (\<forall> nid nid' p p'. su (Loc nid (Trg p)) (Loc nid' (Trg p')) = {}\<^sub>A) \<and>
+   (\<forall> nid nid' p p'. su (Loc nid (Src p)) (Loc nid' (Src p')) = {}\<^sub>A)
   )"
 
 
@@ -219,6 +221,10 @@ lemma graph_summar_nt:
     unfolding bi_unique_def
            apply auto
     done
+  subgoal
+    sorry
+  subgoal
+    sorry
   done
 
 (* ======> FIXME: move me \<le>====== *)
@@ -1483,5 +1489,55 @@ lemma map_snd_filter_List_map_filter:
 lemma gt_0_plusD:
   "0 < a + b \<Longrightarrow> 0 < a \<or> 0 < (b :: int)"
   by auto
+
+
+lemma find_Some_singleton:
+  "{x \<in> set xs . P x} = {x} \<Longrightarrow>
+   find P xs = Some x"
+  apply (induct xs)
+   apply simp_all
+  apply (auto 0 0 simp add:)
+   apply blast
+  apply (smt (verit, best) Collect_cong)
+  done
+
+lemma in_op_conn_graph_to_nxt_iff:
+  "bi_unique (op_conn su) \<Longrightarrow>
+   graph_to_nxt su (nid, p) = Some (nid', p') \<longleftrightarrow> op_conn su (nid, p) (nid', p')"
+  unfolding graph_to_nxt_def
+  apply (auto simp add: is_empty_antichain_iff split: prod.splits)
+  subgoal
+    apply (auto simp add: dest!: find_SomeD' split: prod.splits)
+    done
+  subgoal
+    apply (rule find_Some_singleton)
+    apply (auto simp add: bi_unique_def split: prod.splits)
+    done
+  done
+
+lemma graph_to_nxt_Some:
+  "graph_summar_nt su (graph_to_nxt su) os \<Longrightarrow>
+   s \<in>\<^sub>A su (Loc nid (Src p)) (Loc nid' (Trg p')) \<Longrightarrow>
+   graph_to_nxt su (nid, p) = Some (nid', p')"
+  unfolding graph_summar_nt_def
+  apply clarsimp
+  unfolding graph_to_nxt_def is_empty_antichain_iff
+  apply simp
+  apply (rule find_Some_singleton)
+  apply auto
+   apply (metis in_op_conn_graph_to_nxt_iff mem_antichain_nonempty_alt op_conn.simps option.simps(1) prod.inject)+
+  done
+
+lemma summary_SrcEx:
+  "graph_summar_nt su (graph_to_nxt su) os \<Longrightarrow>
+   s \<in>\<^sub>A su l (Loc nid' (Trg p')) \<Longrightarrow>
+   \<exists> nid p. l = Loc nid (Src p)"
+  unfolding graph_summar_nt_def
+  apply clarsimp
+  unfolding graph_to_nxt_def is_empty_antichain_iff
+  apply simp
+  apply (metis location.exhaust mem_antichain_nonempty port.exhaust)
+  done
+
 
 end
