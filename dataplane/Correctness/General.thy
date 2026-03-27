@@ -115,6 +115,7 @@ definition "graph_summar_nt su nt os = (
    inj_on nt (Map.dom nt) \<and>
    bi_unique (op_conn su) \<and>
    (\<forall> nid nid' p p'. su (Loc nid (Trg p)) (Loc nid' (Trg p')) = {}\<^sub>A) \<and>
+   (\<forall> nid nid' p p' t. t \<in>\<^sub>A su (Loc nid (Trg p)) (Loc nid' (Src p')) \<longrightarrow> nid' = nid \<and> t \<in> set (intsum (os nid) p p')) \<and>
    (\<forall> nid nid' p p'. su (Loc nid (Src p)) (Loc nid' (Src p')) = {}\<^sub>A)
   )"
 
@@ -221,6 +222,10 @@ lemma graph_summar_nt:
     unfolding bi_unique_def
            apply auto
     done
+  subgoal
+    sorry
+  subgoal
+    sorry
   subgoal
     sorry
   subgoal
@@ -1528,6 +1533,22 @@ lemma graph_to_nxt_Some:
    apply (metis in_op_conn_graph_to_nxt_iff mem_antichain_nonempty_alt op_conn.simps option.simps(1) prod.inject)+
   done
 
+lemma intsum_from_graph:
+  "graph_summar_nt su (graph_to_nxt su) os \<Longrightarrow>
+   s \<in>\<^sub>A su (Loc nid (Trg p)) (Loc nid' (Src p')) \<Longrightarrow>
+   nid = nid' \<and> s \<in> set (intsum (os nid) p p')"
+  unfolding graph_summar_nt_def
+  apply clarsimp
+  unfolding graph_to_nxt_def
+  apply fast
+  done
+
+lemma graph_to_nxt_Some_alt:
+  "graph_summar_nt su (graph_to_nxt su) os \<Longrightarrow>
+   su (Loc nid (Src p)) (Loc nid' (Trg p')) \<noteq> {}\<^sub>A \<Longrightarrow>
+   graph_to_nxt su (nid, p) = Some (nid', p')"
+  using graph_to_nxt_Some by (metis ac_eq_iff mem_antichain_nonempty)
+
 lemma summary_SrcEx:
   "graph_summar_nt su (graph_to_nxt su) os \<Longrightarrow>
    s \<in>\<^sub>A su l (Loc nid' (Trg p')) \<Longrightarrow>
@@ -1539,5 +1560,52 @@ lemma summary_SrcEx:
   apply (metis location.exhaust mem_antichain_nonempty port.exhaust)
   done
 
+lemma summary_TrgEx:
+  "graph_summar_nt su (graph_to_nxt su) os \<Longrightarrow>
+   s \<in>\<^sub>A su l (Loc nid' (Src p')) \<Longrightarrow>
+   \<exists> nid p. l = Loc nid (Trg p)"
+  unfolding graph_summar_nt_def
+  apply clarsimp
+  unfolding graph_to_nxt_def is_empty_antichain_iff
+  apply simp
+  apply (metis location.exhaust mem_antichain_nonempty port.exhaust)
+  done
+
+lemma graph_to_nxt_inj:
+  "graph_summar_nt su (graph_to_nxt su) os \<Longrightarrow>
+   graph_to_nxt su (nid1, p1) = Some (nid, p) \<Longrightarrow>
+   graph_to_nxt su (nid2, p2) = Some (nid, p) \<Longrightarrow>
+   nid1 = nid2 \<and> p1 = p2"
+  unfolding graph_summar_nt_def inj_on_def apply -
+  apply clarsimp
+  apply (drule sym)
+  apply simp
+  apply (drule bspec)
+  defer
+  apply (drule bspec)
+  defer
+  apply (drule mp)
+     apply assumption
+    apply clarsimp
+  subgoal
+    unfolding graph_to_nxt_def
+    apply clarsimp
+  apply metis
+    done
+  subgoal
+    unfolding graph_to_nxt_def
+    apply clarsimp
+  apply metis
+    done
+  done
+
+lemma graph_to_nxt_fun:
+  "graph_summar_nt su (graph_to_nxt su) os \<Longrightarrow>
+   graph_to_nxt su (nid, p) = Some (nid1, p1) \<Longrightarrow>
+   graph_to_nxt su (nid, p) = Some (nid2, p2) \<Longrightarrow>
+   nid1 = nid2 \<and> p1 = p2"
+  unfolding graph_summar_nt_def inj_on_def apply -
+  apply clarsimp
+  done
 
 end
