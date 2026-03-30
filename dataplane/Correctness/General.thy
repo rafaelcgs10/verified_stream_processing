@@ -222,15 +222,42 @@ lemma graph_summar_nt:
     unfolding bi_unique_def
            apply auto
     done
+  subgoal for nid nid' p p'
+    unfolding dataflow_tree_to_graph_def
+    apply (simp split: if_splits prod.splits)
+    subgoal premises prems for rs x2
+      apply (cases "nid = nid'")
+       subgoal
+         using dataflow_tree_to_graph_aux_no_inp_and_out_connection[OF prems(3)]
+         by (simp add: comp_def)
+      subgoal
+        using dataflow_tree_to_graph_aux_no_inp_to_other_operator_connection[OF prems(3)]
+        by fastforce
+      done
+    subgoal premises prems
+      using prems
+      by blast
+    done
+  subgoal for nid nid' p p' t
+    unfolding dataflow_tree_to_graph_def
+    apply (simp split: if_splits prod.splits)
+    using dataflow_tree_to_graph_aux_no_inp_to_other_operator_connection
+    apply (metis in_antichain_from_listD in_set_simps(3))
+    done
+  subgoal for nid nid' p p'
+    unfolding dataflow_tree_to_graph_def
+    apply (simp split: if_splits prod.splits)
+    using dataflow_tree_to_graph_aux_no_inp_to_other_operator_connection
+    apply (metis in_antichain_from_listD in_set_simps(3))
+    done
   subgoal
-    sorry
-  subgoal
-    sorry
-  subgoal
-    sorry
-  subgoal
-    sorry
-  done
+    unfolding dataflow_tree_to_graph_def
+    apply (simp split: if_splits prod.splits)
+    using dataflow_tree_to_graph_aux_no_out_to_inp_connection
+    apply (metis antichain_from_list_empty_antichain)+
+    done
+    done
+  
 
 (* ======> FIXME: move me \<le>====== *)
 lemma sum_eq_singleton:

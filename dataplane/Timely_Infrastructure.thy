@@ -42,23 +42,6 @@ lemma cset_of_llist_llist_of_append[simp]:
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 
-(*
-  TODO:
-  Correctness of max_top
-  Correctness of dataflow compilation
-  Loops
-  collatz_op
-  Correctness of collatz_op
-  unordered_input_top
-  wcc_op: https://timelydataflow.github.io/differential-dataflow/chapter_4/chapter_4_1.html
-  Correctness of wcc_op
-  Scopes (change timestamp type, maybe not now)
-  Type inference for locations (if it is not so hard)
-  Nominal wiring (if it is not so hard)
-  Provide operator builders
-*)
-
-
 (* FIXME: move me *)
 fun rmdups where
   "rmdups S [] = []"
@@ -137,6 +120,7 @@ fun dataflow_tree_to_operator_aux where
    )"
 definition "dataflow_tree_to_operator chns df = snd (dataflow_tree_to_operator_aux 0 chns df)"
 
+(* Recursive function that builds the graph for the progration algorithm *)
 fun dataflow_tree_to_graph_aux where
   "dataflow_tree_to_graph_aux n (Logic op su) = 
     (n+ 1, \<lambda> l1 l2. if n = node l1 \<and> n = node l2 \<and> is_Trg (port l1) \<and> is_Src (port l2) then su (idp (port l1)) (idp (port l2)) else [])"
@@ -163,7 +147,7 @@ fun nodes_count where
 fun op_conn where
   "op_conn su (nid, p) (nid', p') = (su (Loc nid (Src p)) (Loc nid' (Trg p')) \<noteq> {}\<^sub>A)"
 
-
+(* Builds the graph for the progration algorithm *)
 definition "dataflow_tree_to_graph (df :: ('id :: {minus,one,plus,zero,ord,enum,hashable}, _, _, _, _) dataflow_tree) = (
   let (_, raw_s) = dataflow_tree_to_graph_aux 0 df in
   let s = antichain_from_list oo raw_s in
@@ -330,6 +314,14 @@ lemma dataflow_tree_to_graph_aux_no_inp_to_other_operator_connection:
    apply (auto simp add: if_distrib split: if_splits prod.splits list.splits option.splits)
   done
 
+lemma dataflow_tree_to_graph_aux_no_out_to_inp_connection:
+  "dataflow_tree_to_graph_aux n dt = (m, su) \<Longrightarrow>
+   su (Loc nid (Src p)) (Loc nid' (Src p')) = []"
+  apply (induct dt arbitrary: n m su)
+   apply (auto simp add: if_distrib split: if_splits prod.splits list.splits option.splits)
+  done
+
+
 
 (* lemma dataflow_tree_to_graph_aux_incomparable_distinct:
   "dataflow_tree_to_graph_aux n dt = (m, su) \<Longrightarrow>
@@ -358,80 +350,6 @@ lemma foldr_plus:
   "foldr (+) (map (\<lambda>(s, l, t). l) xs) ((a :: _ :: {monoid_add,ab_semigroup_add,order}) + b) = foldr (+) (map (\<lambda>(s, l, t). l) xs) b + a"
   by (induct xs arbitrary: a b)
    (auto simp add: Groups.add_ac)
-
-(* lemma dataflow_tree_to_graph_aux_increases:
-  "dataflow_tree_to_graph_aux (n :: 'id :: {minus,one,plus,zero,order}) dt = (m, su) \<Longrightarrow>
-   m > n"
-  by (induct dt arbitrary: m su n)
-   (fastforce split: if_splits prod.splits option.splits)+ *)
-(* 
-lemma dataflow_tree_to_graph_aux_lt_n:
-  "dataflow_tree_to_graph_aux (n :: 'id :: {minus,one,plus,zero,order}) dt = (Some m, su) \<Longrightarrow>
-   nid < n \<Longrightarrow>
-   su (Loc nid lp) l = []"
-  apply (induct dt arbitrary: m su n l lp)
-  subgoal
-    by (cases l; (clarsimp split: if_splits))
-  subgoal premises prems for wire dt1 dt2 m su n l' lp'
-    using prems(3-) apply -
-    apply (cases lp', cases l'; simp)
-    subgoal for a nid' lp'
-      apply hypsubst_thin
-      apply (cases lp'; simp)
-      subgoal for p'
-    apply (clarsimp split: prod.splits list.splits option.splits)
-        apply (metis (no_types, lifting) dataflow_tree_to_graph_aux_no_inp_and_out_connection dataflow_tree_to_graph_aux_no_inp_to_other_operator_connection)
-        done
-      subgoal for p'
-    apply (auto 0 0 split: prod.splits list.splits option.splits)
-          using prems(1) apply (meson dataflow_tree_to_graph_aux_increases dual_order.strict_trans1 less_imp_triv)+
-          done
-        done
-    subgoal for a 
-      apply hypsubst_thin
-        using prems(2) apply -
-    apply (auto simp add: if_distrib split: if_splits prod.splits list.splits option.splits)
-        using dataflow_tree_to_graph_aux_increases dual_order.strict_trans apply fastforce+
-        done
-      done
-    done *)
-(* 
-lemma dataflow_tree_to_graph_aux_gt_m:
-  "dataflow_tree_to_graph_aux (n :: 'id :: {minus,one,plus,zero,order}) dt = (Some m, su) \<Longrightarrow>
-   nid \<ge> m \<Longrightarrow>
-   su (Loc nid lp) l = []"
-  apply (induct dt arbitrary: m su n l lp)
-  subgoal
-    by (cases l; (clarsimp split: if_splits))
-  subgoal premises prems for wire dt1 dt2 m su n l' lp'
-    using prems(3-) apply -
-    apply (cases lp', cases l'; simp)
-    subgoal for a nid' lp'
-      apply hypsubst_thin
-      apply (cases lp'; simp)
-      subgoal for p'
-    apply (clarsimp split: prod.splits list.splits option.splits)
-        apply (metis (no_types, lifting) dataflow_tree_to_graph_aux_no_inp_and_out_connection dataflow_tree_to_graph_aux_no_inp_to_other_operator_connection)
-        done
-      subgoal for p'
-    apply (auto 0 0 split: prod.splits list.splits option.splits)
-        using prems(2) apply fast
-        using prems(2) apply fast
-        using prems(2) apply fast
-        using prems(2) apply fast
-        apply (meson dataflow_tree_to_graph_aux_increases dual_order.strict_trans2 nless_le)
-        apply (meson dataflow_tree_to_graph_aux_increases dual_order.strict_trans2 nless_le)
-          done
-        done
-    subgoal for a 
-      apply hypsubst_thin
-        using prems(1,2) apply -
-    apply (auto simp add: if_distrib split: if_splits prod.splits list.splits option.splits)
-        using dataflow_tree_to_graph_aux_increases dual_order.strict_trans apply fastforce+
-        done
-      done
-    done
- *)
 
 lemma  summary_in_path_weight:
   assumes G: "Graph.graph (antichain_from_list oo su)"
@@ -725,6 +643,7 @@ abbreviation "nop sg op \<equiv> (case op of Read (Inl nid) f \<Rightarrow> upfr
 
 term upfro
 
+(* Connects the data plane with the control plane (wraps the operators inside the propagation algorithm)  *)
 corec dataflow_op where
   "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
      Read (Inl nid) f \<Rightarrow> (case propagate_all (summ sg) (pt_tr sg) of
@@ -758,13 +677,7 @@ lemma propagate_all_terminates[simp]:
   "propagate_all su c \<noteq> None"
   unfolding propagate_all_def
   apply simp
-  apply (rule measure_while_option_Some[])
-   apply simp_all
-  term "\<lambda> c c'. dataflow_topology.neg_order su (-+-) c <  dataflow_topology.neg_order su (-+-) c'"
-  thm dataflow_topology.propagation_termination[where summary=su and results_in="(+)" and c=c]
-  find_theorems "_ \<Longrightarrow> wf _" "(<)"
-  find_theorems while_option name: Some
-  find_theorems name: propagation_termination
+  thm measure_while_option_Some
   sorry
 
 lemma change_multiplicities_terminates[simp]:
@@ -1035,12 +948,6 @@ find_consts "_ set \<Rightarrow> _ option"
 definition "graph_to_nxt summary = 
   (\<lambda> (nid, p). find (\<lambda> (nid', p'). \<not> is_empty_antichain (summary (Loc nid (Src p)) (Loc nid' (Trg p')))) Enum.enum)"
 
-(* lemma graph_to_nxt_inj_on[simp]:
-  "nt = graph_to_nxt summary \<Longrightarrow>
-   inj_on nt (dom nt)"
-  unfolding graph_to_nxt_def Let_def
-  by (auto split: if_splits) *)
-
 lemma zero_in_graph_path_weight[simp,intro]:
   "nt = graph_to_nxt su \<Longrightarrow>
    Graph.graph su \<Longrightarrow>
@@ -1159,6 +1066,7 @@ lemma outpu_consumes[simp]:
 
 definition "has_progress os = (consu os \<noteq> [] \<or> inter os \<noteq> [] \<or> produ os \<noteq> [])"
 
+(* All timely operators are defined using this function. The logic is passed as argument. This is the only corec we need *)
 corec builder_op where
   \<open>builder_op fb ips ops os logic =
   (if initia os then choice5
