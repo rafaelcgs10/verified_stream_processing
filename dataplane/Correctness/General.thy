@@ -1392,18 +1392,6 @@ lemma frontier_less_equal_change_multiplicities:
     done
   done
 
-lemma take_step_enum_dataflow_topology_take_step:
-  "enum_dataflow_topology su dataflow_topology_from_tree.followed_by \<Longrightarrow>
-   take_step su = enum_dataflow_topology.take_step su dataflow_topology_from_tree.followed_by cless"
-  apply (rule ext)+
-  subgoal for S c
-    apply (cases S; hypsubst_thin)
-     apply (simp add: Executable.enum_dataflow_topology.take_step.simps)
-    apply (subst Executable.enum_dataflow_topology.take_step.simps(2))
-     apply assumption
-    apply (simp add: after_summary_def mymin_code_def)
-    done
-  done
 
 lemma take_step_CM_p_preserves_inv_imps_work_sum:
   "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>

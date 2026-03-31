@@ -314,6 +314,7 @@ lemma dataflow_tree_to_graph_aux_no_inp_to_other_operator_connection:
    apply (auto simp add: if_distrib split: if_splits prod.splits list.splits option.splits)
   done
 
+
 lemma dataflow_tree_to_graph_aux_no_out_to_inp_connection:
   "dataflow_tree_to_graph_aux n dt = (m, su) \<Longrightarrow>
    su (Loc nid (Src p)) (Loc nid' (Src p')) = []"
@@ -620,8 +621,6 @@ abbreviation "show_frontiers impf \<equiv> show_list (show_prod show_loc show_fr
 (* First migrate all change batches to the worklist, then call propagate_all_locale *)
 definition "change_multiplicities summary xs conf = fold (\<lambda> (l, t, m) c. take_step summary (CM l t m) c) xs conf"
 
-definition "propagate_pointstamps summary conf cbs = propagate_all summary (change_multiplicities summary cbs conf)"
-
 (* Inspired by timely/src/dataflow/operators/generic/builder_rc.rs:29 and timely/src/progress/operate.rs:63 *)
 (* This is the shared that the operator exposes to the subgraph *)
 record ('p, 't) shared_state =
@@ -648,7 +647,8 @@ corec dataflow_op where
   "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
      Read (Inl nid) f \<Rightarrow> (case propagate_all (summ sg) (pt_tr sg) of
          Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
-         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron))))))
+         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron)))))
+      | None \<Rightarrow> \<oslash>)
    | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x)))
    | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
    | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
@@ -659,7 +659,8 @@ lemma dataflow_op_code[code]:
   "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
      Read (Inl nid) f \<Rightarrow> trace (STR ''Reading from frontier at nid: '' + print_2 nid) (case propagate_all (summ sg) (pt_tr sg) of
          Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
-         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron))))))
+         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron)))))
+      | None \<Rightarrow> \<oslash>)
    | Read (Inr (nid, p)) f \<Rightarrow>  (Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x))))
    | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> trace (STR ''Writing out data at location: '' + show_loc (Loc nid (Src p))) (Write (dataflow_op sg op') (nid, p) x)     
    | Silent op' \<Rightarrow> trace (STR ''Some silent step'') Silent (dataflow_op sg op')
@@ -673,17 +674,298 @@ lemma dataflow_op_code[code]:
   apply auto
   done
 
-lemma propagate_all_terminates[simp]:
-  "propagate_all su c \<noteq> None"
+lemma class_linorder_lt_of_comp:
+  "ID ccompare = Some a \<Longrightarrow> class.linorder (\<lambda>t u. lt_of_comp a t u \<or> t = u) (lt_of_comp a)"
+  apply (frule ID_ccompare)
+  apply (erule arg_cong2[where ?f=class.linorder, THEN iffD1, rotated 2])
+   apply (auto simp add: le_of_comp_def lt_of_comp_def fun_eq_iff split: order.splits)
+   apply (meson ID_ccompare' comparator.nEq_neq_conv)
+  apply (simp add: ID_code ccompare comparator.comp_same)
+  done
+
+lemma mymin_code_in_worklist:
+  assumes "\<not> worklist_is_empty su c"
+  and "mymin_code (t_loc_pairs c) = (t :: 't :: {order, ccompare}, (loc :: 'loc :: {enum,linorder}))"
+  and "ID CCOMPARE('t) \<noteq> None"
+  shows "t \<in>#\<^sub>z c_work c loc"
+proof -
+  (* First establish that we have a linorder on t_loc_linord cless *)
+  have cless_linorder: "class.linorder (\<lambda>(t :: 't) u. cless t u \<or> t = u) cless"
+  proof -
+    from assms(3) obtain comp where comp: "ID CCOMPARE('t) = Some comp" by auto
+    have "class.linorder (\<lambda>(t :: 't) u. lt_of_comp comp t u \<or> t = u) (lt_of_comp comp)"
+      by (rule class_linorder_lt_of_comp[OF comp])
+    also have "lt_of_comp comp = cless"
+      using comp by simp
+    finally show ?thesis 
+      by assumption
+  qed
+  interpret tloc: linorder "t_loc_linord cless" "\<lambda>(t :: 't \<times> 'loc) u. t_loc_linord cless t u \<and> t \<noteq> u"
+    by (rule linorder_t_loc_linord[OF cless_linorder])
+  (* The set t_loc_pairs c is non-empty because worklist is not empty *)
+  have nonempty: "t_loc_pairs c \<noteq> {}"
+    using assms(1)
+    unfolding worklist_is_empty_def t_loc_pairs_def enum_class.enum_UNIV
+    by auto
+  (* The set is finite *)
+  have finite: "finite (t_loc_pairs c)"
+    by (auto simp: t_loc_pairs_def intro:)
+  
+  (* Min is in the set *)
+  have "(t, loc) \<in> t_loc_pairs c"
+    using assms(2)
+    unfolding mymin_code_def mymin_def
+    using tloc.Min_in[OF finite nonempty]
+    by simp
+  
+  then show ?thesis
+    unfolding t_loc_pairs_def set_zmset_def
+    by auto
+qed
+
+lemma mymin_code_is_minimum:
+  assumes "\<not> worklist_is_empty su c"
+  and "mymin_code (t_loc_pairs c) = (t :: 't :: {compare_order, ccompare}, (loc :: 'loc :: {enum,linorder}))"
+  and "t' \<in>#\<^sub>z c_work c loc'"
+  and "ID CCOMPARE('t) = Some compare"
+  shows "\<not> t' < t"
+proof -
+  (* First establish that we have a linorder on t_loc_linord cless *)
+  have cless_linorder: "class.linorder (\<lambda>(t :: 't) u. cless t u \<or> t = u) cless"
+  proof -
+    from assms(4) obtain comp where comp: "ID CCOMPARE('t) = Some comp" by auto
+    have "class.linorder (\<lambda>t u. lt_of_comp comp t u \<or> t = u) (lt_of_comp comp)"
+      by (rule class_linorder_lt_of_comp[OF comp])
+    also have "lt_of_comp comp = (cless :: 't \<Rightarrow> 't \<Rightarrow> bool)"
+      using comp by simp
+    finally show ?thesis by assumption
+  qed
+  interpret tloc: linorder "t_loc_linord (cless :: 't \<Rightarrow> 't \<Rightarrow> bool)" "\<lambda>t u. t_loc_linord cless t u \<and> t \<noteq> u"
+    by (rule linorder_t_loc_linord[OF cless_linorder])
+
+  (* The set t_loc_pairs c is non-empty because worklist is not empty *)
+  have nonempty: "t_loc_pairs c \<noteq> {}"
+    using assms(1)
+    unfolding worklist_is_empty_def t_loc_pairs_def enum_class.enum_UNIV
+    by auto
+
+  (* The set is finite *)
+  have finite: "finite (t_loc_pairs c)"
+    by (auto simp: t_loc_pairs_def)
+
+  (* (t', loc') is in the set *)
+  have t'_in: "(t', loc') \<in> t_loc_pairs c"
+    using assms(3) unfolding t_loc_pairs_def set_zmset_def
+    by (auto simp: enum_UNIV)
+
+  (* Min is <= all elements *)
+  have "t_loc_linord cless (t, loc) (t', loc')"
+    using assms(2) t'_in
+    unfolding mymin_code_def mymin_def
+    using tloc.Min_le[OF finite t'_in]
+    by simp
+
+  (* t_loc_linord orders by timestamp first, so cless t t' or t = t' *)
+  then have "cless t t' \<or> t = t'"
+    unfolding t_loc_linord_def
+    by (auto split: prod.splits)
+
+  (* cless = (<) for compare_order types, so cless t t' means t < t' *)
+  moreover have "(cless :: 't \<Rightarrow> 't \<Rightarrow> bool) = (<)"
+    using assms(4) ord_defs(2) by (simp add: compare_order_class.ord_defs)
+  ultimately show ?thesis
+    by auto
+qed
+
+lemma take_step_enum_dataflow_topology_take_step:
+  "enum_dataflow_topology su dataflow_topology_from_tree.followed_by \<Longrightarrow>
+   take_step su = enum_dataflow_topology.take_step su dataflow_topology_from_tree.followed_by cless"
+  apply (rule ext)+
+  subgoal for S c
+    apply (cases S; hypsubst_thin)
+     apply (simp add: Executable.enum_dataflow_topology.take_step.simps)
+    apply (subst Executable.enum_dataflow_topology.take_step.simps(2))
+     apply assumption
+    apply (simp add: after_summary_def mymin_code_def)
+    done
+  done
+
+lemma take_step_PR_p_preserves_inv_imps_work_sum:
+  "dataflow_topology summary (-+-) \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
+   ID CCOMPARE('t) = Some compare \<Longrightarrow>
+   \<exists>(t :: 't::  {compare,ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) loc. t \<in>#\<^sub>z c_work c loc \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by ((take_step summary PR) c)"
+  apply (frule Executable.enum_dataflow_topology.PR_next[where less_t=cless, simplified, unfolded enum_dataflow_topology_def])
+     apply assumption
+  subgoal
+  apply (rule class_linorder_lt_of_comp)
+    apply (simp add: linorder_class.linorder_axioms)
+    done
+   apply (clarsimp simp add: compare_order_class.ord_defs )
+  apply (elim exE)
+  subgoal for t loc loc' t'
+    apply (subst take_step_enum_dataflow_topology_take_step)
+     apply (simp add: enum_dataflow_topology_def)
+    apply (rule Propagate.dataflow_topology.p_preserves_inv_imps_work_sum[where loc=loc and t=t'])
+      apply assumption+
+    done
+  done
+
+lemma take_step_PR_p_preserves_inv_implications_nonneg:
+  "dataflow_topology su (-+-) \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
+   ID CCOMPARE('t) = Some compare \<Longrightarrow>
+   \<exists>(t :: 't::  {compare,ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) loc. t \<in>#\<^sub>z c_work c loc \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg (take_step su PR c)"
+  apply (frule Executable.enum_dataflow_topology.PR_next[where less_t=cless, simplified, unfolded enum_dataflow_topology_def])
+     apply assumption
+  subgoal
+  apply (rule class_linorder_lt_of_comp)
+    apply (simp add: linorder_class.linorder_axioms)
+    done
+     apply (clarsimp simp add: compare_order_class.ord_defs )
+  defer
+  apply (elim exE)
+    apply (subst take_step_enum_dataflow_topology_take_step)
+     apply (simp add: enum_dataflow_topology_def)
+  apply simp
+   apply (rule Propagate.dataflow_topology.p_preserves_inv_implications_nonneg[of _ _ c])
+         apply assumption+
+  done
+
+lemma take_step_PR_p_preserves_inv_implications_nonneg:
+  "dataflow_topology su (-+-) \<Longrightarrow>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
+   ID CCOMPARE('t) = Some compare \<Longrightarrow>
+   \<exists>(t :: 't::  {compare,ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) loc. t \<in>#\<^sub>z c_work c loc \<Longrightarrow>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg (take_step su PR c)"
+  apply (frule Executable.enum_dataflow_topology.PR_next[where less_t=cless, simplified, unfolded enum_dataflow_topology_def])
+     apply assumption
+  subgoal
+  apply (rule class_linorder_lt_of_comp)
+    apply (simp add: linorder_class.linorder_axioms)
+    done
+     apply (clarsimp simp add: compare_order_class.ord_defs )
+  apply (elim exE)
+    apply (subst take_step_enum_dataflow_topology_take_step)
+     apply (simp add: enum_dataflow_topology_def)
+  apply simp
+  oops
+
+lemma take_step_PR_p_preserves_inv:
+  "dataflow_topology summary (-+-) \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
+   \<exists>(t :: 't::  {compare,ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) loc. t \<in>#\<^sub>z c_work c loc \<Longrightarrow>
+   ID CCOMPARE('t) = Some compare \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg ((take_step summary PR) c) \<and>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg ((take_step summary PR) c) \<and>
+   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by ((take_step summary PR) c)"
+  apply (frule Executable.enum_dataflow_topology.PR_next[where less_t=cless, simplified, unfolded enum_dataflow_topology_def])
+  apply assumption
+  subgoal
+  apply (rule class_linorder_lt_of_comp)
+    apply (simp add: linorder_class.linorder_axioms)
+    done
+   apply (clarsimp simp add: compare_order_class.ord_defs )
+  apply (elim exE)
+  subgoal for t loc loc' t'
+    apply (subst (1 2) take_step_enum_dataflow_topology_take_step)
+     apply (simp add: enum_dataflow_topology_def)
+    apply (intro conjI)
+      apply (rule Propagate.dataflow_topology.p_preserves_inv_implications_nonneg)
+         apply assumption+
+     apply (rule Propagate.dataflow_topology.iiws_imp_iipwn)
+      apply assumption+
+     apply (subst take_step_enum_dataflow_topology_take_step[symmetric])
+      apply (simp add: enum_dataflow_topology_def)
+     apply (rule take_step_PR_p_preserves_inv_imps_work_sum)
+       apply assumption+
+     apply auto[1]
+    apply (rule take_step_PR_p_preserves_inv_imps_work_sum)
+      apply assumption+
+    apply auto
+    done
+  done
+
+lemma propagate_all_terminates:
+  assumes "dataflow_topology su (-+-)"
+    and "Propagate.dataflow_topology.inv_imps_work_sum su (-+-) c"
+    and "Propagate.dataflow_topology.inv_implications_nonneg (c :: ('loc :: {finite,ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot,enum,linorder}, 't :: {compare_order,compare,ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) configuration)"
+    and "ID CCOMPARE('t) = Some compare"
+    and "\<forall> loc. su loc loc = {}\<^sub>A"
+    and "dataflow_topology_from_tree.inv_imp_plus_work_nonneg c"
+  shows "propagate_all su c \<noteq> None"
   unfolding propagate_all_def
   apply simp
-  thm measure_while_option_Some
-  sorry
-
-lemma change_multiplicities_terminates[simp]:
-  "propagate_pointstamps summary conf cbs \<noteq> None"
-  apply (induct cbs arbitrary: conf) 
-   apply (auto simp add: propagate_pointstamps_def)
+  apply (rule wf_rel_while_option_Some[where
+        R = "inv_image {(x, y). x < y} (Termination.dataflow_topology.neg_order su dataflow_topology_from_tree.followed_by)" and
+        P = "\<lambda>c. Propagate.dataflow_topology.inv_imps_work_sum su dataflow_topology_from_tree.followed_by c \<and>
+             Propagate.dataflow_topology.inv_implications_nonneg c \<and> dataflow_topology_from_tree.inv_imp_plus_work_nonneg c"])
+     apply (rule wf_inv_image, rule wellorder_class.wf)
+  subgoal for s
+    apply (clarsimp simp: inv_image_def split: prod.splits)
+    apply (rule dataflow_topology.propagation_termination[OF assms(1)])
+      defer 
+      apply force
+     apply force
+    subgoal for t loc
+      apply (simp add: dataflow_topology.next_propagate'_def[OF assms(1)])
+      apply (rule exI[of _ loc])
+      apply (rule exI[of _ t])
+      apply (intro conjI impI)
+      subgoal
+        apply (rule mymin_code_in_worklist)
+          apply assumption+
+        using assms apply auto
+        done
+      subgoal
+        apply (intro allI impI)
+        apply (elim exE)
+        subgoal for t' loc
+        apply (rule mymin_code_is_minimum)
+           apply assumption+
+          using assms apply auto
+          done
+        done
+      subgoal
+        apply (cases s)
+        apply clarsimp
+        apply (rule ext)
+        apply (auto split: )
+         apply (subgoal_tac "su loc loc = {}\<^sub>A")
+        apply simp
+        using assms apply simp
+        apply (simp add: dataflow_topology_from_tree.after_summary_def dataflow_topology_from_tree.zmset_of_lemma)
+        done
+      done
+    done
+  subgoal
+    apply safe
+    subgoal
+      apply (rule take_step_PR_p_preserves_inv_imps_work_sum[OF assms(1)])
+        apply assumption+
+      using assms(4) apply simp
+      apply (metis trimono_spec_defs(3) worklist_is_empty_def zequal_equal zmultiset_nonemptyE)
+      done
+    subgoal
+      apply (rule take_step_PR_p_preserves_inv_implications_nonneg[OF assms(1)])
+         apply assumption+
+      using assms apply auto
+      apply (metis worklist_is_empty_def zequal_equal zmultiset_nonemptyE)
+      done
+    subgoal
+      apply (drule take_step_PR_p_preserves_inv[OF assms(1)])
+          apply assumption+
+      apply (metis trimono_spec_defs(3) worklist_is_empty_def zequal_equal zmultiset_nonemptyE)
+      using assms apply auto
+      done
+    done
+  using assms apply auto
   done
 
 (* FIXME: Update this for the new optimizations *)
@@ -709,7 +991,7 @@ lemma step_dataflow_op_elim:
 
 lemma step_Tau_dataflow_op_Inp_Inl_intro[intro]:
   "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op' \<Longrightarrow>
-   conf' = the (propagate_all(summ sg) (pt_tr sg)) \<Longrightarrow>
+   propagate_all(summ sg) (pt_tr sg) = Some conf' \<Longrightarrow>
    upfro sg nid \<Longrightarrow>
    sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> \<Longrightarrow>
    imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) \<Longrightarrow>
