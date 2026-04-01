@@ -727,6 +727,11 @@ lemma dataplane_tracker_inv_produces_drops:
           subgoal for l t m
             apply (cases "nid \<in> set xs"; simp?)
             subgoal
+              oops
+  
+
+end
+          (*   subgoal
               apply (subst (asm) obtain_progress_def)
               apply (subst (asm) extract_progress_def)
               apply (clarsimp simp add: image_iff split_beta Misc.set_map_filter split: option.splits; hypsubst_thin?)
@@ -760,8 +765,9 @@ lemma dataplane_tracker_inv_produces_drops:
                         oops
 
 
-  find_theorems "_ \<Longrightarrow> find _ _ = Some _"
 
+(* 
+Ignore this
 lemma
   assumes P: "produ_consu_inter_supported (graph_to_nxt su) os c"
     and G: "Graph.graph su"
@@ -952,11 +958,11 @@ lemma
                       sorry
                     subgoal
                       apply (drule conjunct1[OF conjunct2[OF P[unfolded produ_consu_inter_supported_def]], rule_format])
-
+ *)
 
 end
        
 
 
 
-end
+end *)

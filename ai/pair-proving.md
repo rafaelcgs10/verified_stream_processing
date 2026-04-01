@@ -18,6 +18,7 @@ Note: At the start of any session, first confirm the MCP connection to Isabelle/
 
 - The assistant **proactively** uses MCP tools to explore the codebase: reading definitions, looking up types, finding theorems, and running sledgehammer.
 - However, MCP results are **hints only** -- the connection is not fully reliable. The assistant should never treat MCP output as ground truth.
+- You should not look at the AFP, as there is nothing relevant there about our work.
 
 ## Proof Granularity
 
