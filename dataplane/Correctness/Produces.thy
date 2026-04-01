@@ -727,20 +727,12 @@ lemma dataplane_tracker_inv_produces_drops:
           subgoal for l t m
             apply (cases "nid \<in> set xs"; simp?)
             subgoal
-              oops
-  
-
-end
-          (*   subgoal
               apply (subst (asm) obtain_progress_def)
               apply (subst (asm) extract_progress_def)
               apply (clarsimp simp add: image_iff split_beta Misc.set_map_filter split: option.splits; hypsubst_thin?)
               subgoal for p' m
-              apply (subst change_multiplicities_extract_prog_updates[where nid=nid])
-                            apply assumption+
-
-(*                 apply (frule conjunct1[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supported_def]], rule_format])
- *)
+                apply (subst change_multiplicities_extract_prog_updates[where nid=nid])
+                  apply assumption+
                 using prems(14)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format, of xs nid' "(Loc nid' (Trg p'), t, -m)"] apply -
                 apply simp
                 apply (drule meta_mp)
@@ -761,14 +753,11 @@ end
                        apply clarsimp
                       subgoal for p
                         apply hypsubst_thin
-                        using temp
                         oops
 
 
 
-(* 
-Ignore this
-lemma
+lemma backtrack_consu_to_non_nid:
   assumes P: "produ_consu_inter_supported (graph_to_nxt su) os c"
     and G: "Graph.graph su"
     and C: "change_deltas_inv os"
@@ -780,7 +769,7 @@ lemma
    nid \<noteq> nid' \<Longrightarrow>
    distinct xs \<Longrightarrow>
    nid' \<notin> set xs \<Longrightarrow>
-   (\<exists> s l ft'. node l \<noteq> nid \<and> t \<ge> ft' -+- s \<and> s \<in>\<^sub>A graph.path_weight (summ sg) l (Loc nid' lp) \<and>
+   (\<exists> s l ft'. node l \<noteq> nid \<and> t \<ge> ft' -+- s \<and> s \<in>\<^sub>A graph.path_weight su l (Loc nid' lp) \<and>
    (zcount (c_pts (change_multiplicities su ((extract_prog xs (graph_to_nxt su) os) @ map (\<lambda>(p, y). (Loc nid (Src p), y)) (concat (map (\<lambda>p. map (\<lambda>os. (p, os, - 1)) (drops p)) enum_class.enum))) c) l) ft' > 0))"
   apply (drule graph.path_weight_conv_path[OF G])
   apply clarsimp
@@ -814,7 +803,8 @@ lemma
           apply (rule exI[of _ t])        
           apply (intro conjI)
             apply simp_all
-          subgoal sorry
+              subgoal 
+                by (rule Graph.graph.path_weight_refl[OF G])
           subgoal
             apply (clarsimp simp add: c_pts_change_multiplicities)
             apply (auto simp add: monoid_add_class.sum_list_distinct_conv_sum_set  zmset_concat map_concat filter_map filter_concat comp_def split_beta Misc.set_map_filter extract_prog_def extract_progress_def image_iff obtain_progress_def split: option.splits)
@@ -841,7 +831,7 @@ lemma
               apply (rule exI[of _ t])        
               apply (intro conjI)
                 apply simp_all
-              subgoal sorry
+              subgoal by (rule Graph.graph.path_weight_refl[OF G])
               subgoal
                 apply (clarsimp simp add: c_pts_change_multiplicities)
             apply (auto simp add: monoid_add_class.sum_list_distinct_conv_sum_set  zmset_concat map_concat filter_map filter_concat comp_def split_beta Misc.set_map_filter extract_prog_def extract_progress_def image_iff obtain_progress_def split: option.splits)
@@ -958,11 +948,42 @@ lemma
                       sorry
                     subgoal
                       apply (drule conjunct1[OF conjunct2[OF P[unfolded produ_consu_inter_supported_def]], rule_format])
- *)
+                      oops
+
+
+function find_timestamp where
+  "find_timestamp c su S (l :: 'loc :: {enum}) t =
+   (if \<exists> t'\<le>t. zcount (c_pts c l) t' > 0 
+    then {l} 
+    else
+    let L = {(l', t'). \<exists> s. s \<in>\<^sub>A su l' l \<and> t = t' -+- s \<and> l' \<notin> S} in \<Union> ((\<lambda> (l', t'). find_timestamp c su (insert l S) l' t') ` L))"
+  by auto
+termination
+
+
+lemma finite_visit_backtrack_consu_to_non_nid:
+  assumes P: "produ_consu_inter_supported (graph_to_nxt su) os c"
+    and G: "Graph.graph su"
+    and C: "change_deltas_inv os"
+    and GR: "graph_summar_nt su (graph_to_nxt su) os"
+  shows 
+ "(case lp of Trg p' \<Rightarrow> \<exists>m. (p' :: 'p :: {enum,linorder}, t, m) \<in> set (consu (os nid')) | Src p' \<Rightarrow> \<exists>m. (p', t, m) \<in> set (inter (os nid'))) \<Longrightarrow>
+   t \<ge> ft -+- s \<Longrightarrow>
+   nid \<in> set xs \<Longrightarrow>
+   nid \<noteq> nid' \<Longrightarrow>
+   distinct xs \<Longrightarrow>
+   nid' \<notin> set xs \<Longrightarrow>
+   (\<exists> s l ft'. (is_Src (port l) \<longrightarrow> node l \<noteq> nid) \<and> t \<ge> ft' -+- s \<and> s \<in>\<^sub>A graph.path_weight su l (Loc nid' lp) \<and>
+   (zcount (c_pts (change_multiplicities su ((extract_prog xs (graph_to_nxt su) os) @ map (\<lambda>(p, y). (Loc nid (Src p), y)) (concat (map (\<lambda>p. map (\<lambda>os. (p, os, - 1)) (drops p)) enum_class.enum))) c) l) ft' > 0))"
+
+
+
+  term "wf {}"
+
+  find_theorems wf "(<)"
+
 
 end
        
 
 
-
-end *)

@@ -8,6 +8,7 @@ Note: At the start of any session, first confirm the MCP connection to Isabelle/
 
 - **The user leads.** The user drives the proof direction and decides what to work on. The assistant suggests tactics, looks up definitions, and fills in details.
 - **The assistant does not work independently.** The goal is pair-proving, not delegation. The user wants to understand every proof step.
+- **Be critical.** Don't just agree with the user ideas and suggestions, try to think how the user could be wrong.
 
 ## Editing
 
@@ -29,6 +30,7 @@ Note: At the start of any session, first confirm the MCP connection to Isabelle/
 
 - The assistant can check proof state via MCP as a first pass.
 - The user does a **final verification in jEdit** for key steps. A proof is not considered done until the user confirms it in jEdit.
+- Be extra careful with proof methods like metis, blast, auto as the may not terminate.
 
 ## Tools
 

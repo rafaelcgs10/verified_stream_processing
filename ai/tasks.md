@@ -65,3 +65,96 @@ For each entry `(l, t, m)` from `extract_progress nid'`, use `produ_consu_inter_
 #### Remaining question
 
 The support from `produ_consu_inter_supported` is in terms of `c_pts c` (the base configuration, before any `change_multiplicities`). The goal requires `frontier_less_equal` with respect to `c_new` (after `change_multiplicities` with the full `extract_prog xs`). We need to verify that the supporting pointstamps at `nid'`'s locations survive the full `change_multiplicities` -- not just the additional drop/produ entries, but also the entries from all other operators in `xs`.
+
+#### Current proof state (line 755 of Produces.thy)
+
+After unfolding and decomposition, the goal at line 755 is:
+
+```
+frontier_less_equal 
+  (ifrontier (summ sg) (-+-) c_new (Loc nid' (Trg p'))) 
+  (t' -+- s)
+```
+
+with key assumptions:
+- `(p', t' -+- s, m) ∈ set (consu (os nid'))` -- a consumption entry of `nid'`
+- `s ∈_A graph.path_weight (summ sg) (Loc nid (Src p)) (Loc nid' (Trg p'))` -- a path from `nid`'s Src to `nid'`'s Trg
+- `ft ∈_A frontier (c_pts c (Loc nid (Src p)) + zmset(inter entries of nid for port p))` -- witness at `nid`'s Src port
+- `ft ≤ t'`
+
+The witness location `Loc nid (Src p)` is affected by drops. We need to find an alternative witness.
+
+#### Backtracking via `produ_consu_inter_supported`
+
+The three conjuncts of `produ_consu_inter_supported` form a backward chain through the graph:
+- `consu (os n) (p, t, m)` → support at `Loc n (Trg p)` in `c_pts c` + upstream `produ`
+- `produ (os n) (p, t, m)` → support at `Loc n (Src p)` in `c_pts c`, or by `inter (os n)`
+- `inter (os n) (p, t, m)` → support at `Loc n (Src p)` for `t' ≤ t` in `c_pts c`, or by `consu (os n)` + summary
+
+Starting from the consumption entry `(p', t' -+- s, m) ∈ set (consu (os nid'))`, this chain can be followed backwards:
+
+1. From `consu (os nid')` → support at `Loc nid' (Trg p')` in `c_pts c` + upstream `produ`. The location `Loc nid' (Trg p')` is safe (not `Loc nid (Src _)`). If support comes from `c_pts c` directly, we're done.
+2. If support comes from upstream `produ` of some `nid_up`: if `nid_up ≠ nid`, then `Loc nid_up (Src p_up)` is safe. Done.
+3. If `nid_up = nid`, we reach `Loc nid (Src p_up)` — this is affected by drops. We continue via conjunct 1 → conjunct 3 (inter) → conjunct 2 (consu of `nid`) → support at `Loc nid (Trg p_c)` + upstream `produ`.
+4. `Loc nid (Trg p_c)` is safe (drops only affect `Loc nid (Src _)`, not `Loc nid (Trg _)`). If support comes from `c_pts c` directly, we're done. Otherwise, upstream produ may route back to `Loc nid (Src _)`, and we recurse.
+
+Each full cycle (Src → inter → consu → upstream produ → Src) traces a non-trivial path backwards in the dataflow graph. Since the graph has no zero-weight cycles, the chain must eventually terminate at `c_pts c` at a location that is NOT `Loc nid (Src _)`.
+
+#### Proposed auxiliary lemma
+
+```isabelle
+lemma backtrack_to_non_Src_nid:
+  assumes "produ_consu_inter_supported nt os c"
+  and "dataflow_topology su (-+-)"
+  and "graph_summar_nt su nt os"
+  and "zcount (c_pts c (Loc nid (Src p))) t > 0 
+       ∨ (∃ m' > 0. (p, t, m') ∈ set (inter (os nid)))"
+  shows "∃ l t_base s_path. 
+           (∀ p'. l ≠ Loc nid (Src p')) ∧
+           zcount (c_pts c l) t_base > 0 ∧
+           s_path ∈_A graph.path_weight su l (Loc nid (Src p)) ∧
+           t_base -+- s_path ≤ t"
+```
+
+This says: any support at `Loc nid (Src p)` (direct or via inter) can be traced back to a location that is NOT one of `nid`'s `Src` ports. The proof would use induction on path length with the graph's acyclicity providing termination.
+
+#### How the auxiliary lemma completes the proof
+
+Given the proof state at line 755:
+1. Apply `backtrack_to_non_Src_nid` to find `l`, `t_base`, `s_path` with `l ≠ Loc nid (Src _)`.
+2. Compose `s_path` (from `l` to `Loc nid (Src p)`) with `s` (from `Loc nid (Src p)` to `Loc nid' (Trg p')`) to get a path from `l` to `Loc nid' (Trg p')`.
+3. Since `l ≠ Loc nid (Src _)`, the count `zcount (c_pts c l) t_base > 0` is preserved in `c_new` (drops only affect `Loc nid (Src _)` ports; at other locations, `c_pts c_new l ≥ c_pts c l` since only non-negative changes are applied).
+4. Use `frontier_less_equal_ifrontierI` with location `l`, timestamp `t_base`, and the composed path to conclude `frontier_less_equal (ifrontier su (-+-) c_new (Loc nid' (Trg p'))) (t_base -+- s_path -+- s)`.
+5. Since `t_base -+- s_path ≤ t'` (from the auxiliary lemma and `ft ≤ t'`) and `t' -+- s` is the target, we need `t_base -+- s_path -+- s ≤ t' -+- s`, which follows from monotonicity of `-+-`.
+
+#### Issues with the first attempt (`backtrack_consu_to_non_nid`, line 760)
+
+The first attempt at the auxiliary lemma (line 760 of `Produces.thy`) used induction on a specific path from `Loc nid (Src p)` to `Loc nid' lp`. This approach fails because:
+
+1. **Port jumping:** Conjunct 3 of `produ_consu_inter_supported` gives a consu entry `(p''', t''', _) ∈ consu (os nid)` with `intsum` summary from port `p'''` to port `p'`. But `p'''` might differ from the port `p''` on the induction path. The backward chain can jump to a different port than the one we're inducting over.
+
+2. **Recursion requires `nid' = nid`:** When backtracking reaches `Loc nid (Src p_up)`, the chain goes through `inter → consu` of `nid` itself. To recurse, we need to apply the lemma with the starting operator being `nid`. But the lemma assumed `nid ≠ nid'`, preventing this recursive call.
+
+#### Revised approach: lexicographic induction on `(t, S)`
+
+Instead of inducting on a path, we use well-founded induction on the pair `(t, S)` with lexicographic ordering `{(x,y). x < y} <*lex*> finite_psubset`:
+
+- **`t`** is the current timestamp. Each backward step through `inter → consu → upstream produ` may decrease `t` (when the intsum weight is positive).
+- **`S :: 'p set`** is the set of Src ports of `nid` that we are still "allowed to visit" at timestamp `t`. When backtracking visits `Loc nid (Src p')` at the same timestamp `t`, we remove `p'` from `S` and recurse with `(t, S - {p'})`.
+
+Well-foundedness: `wf_lex_prod[OF wf_less wf_finite_psubset]`.
+
+Termination argument:
+- If the backward step decreases `t` (intsum weight > 0): `(t', S') <_lex (t, S)` since `t' < t`.
+- If `t` stays the same (intsum weight = 0): we visit a new Src port `p'`, so `S - {p'} ⊂ S`, giving `(t, S - {p'}) <_lex (t, S)`.
+- If `t` stays the same and `p' ∉ S`: we've already visited this port at this timestamp, implying a zero-weight cycle — contradicting graph acyclicity.
+
+**Key design decisions:**
+
+1. The lemma should NOT assume `nid ≠ nid'`. The recursion needs to handle the case where the starting consu/inter entry is at `nid` itself (when backtracking from an upstream produ of `nid` reaches `consu (os nid)`).
+
+2. `S` appears as a parameter in the lemma. When `nid' = nid` and `lp = Src p'`, we need `p' ∈ S` as an assumption (so that `S - {p'} ⊂ S`). When `nid' ≠ nid`, `S` is irrelevant.
+
+3. The initial call uses `S = UNIV :: 'p set`, which is finite since `'p :: enum`.
+
+4. The conclusion uses `is_Src (port l) ⟶ node l ≠ nid` (not `node l ≠ nid`), because only `Loc nid (Src _)` ports are affected by drops. `Loc nid (Trg _)` ports are safe.
