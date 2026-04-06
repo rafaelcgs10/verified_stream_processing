@@ -733,6 +733,63 @@ lemma dataplane_tracker_inv_produces_drops:
               subgoal for p' m
                 apply (subst change_multiplicities_extract_prog_updates[where nid=nid])
                   apply assumption+
+                apply (cases "\<exists> l t' s. (node l = nid \<longrightarrow> is_Trg (port l)) \<and> t \<ge> t' -+- s \<and> s \<in>\<^sub>A graph.path_weight (summ sg) l (Loc nid' (Trg p')) \<and> frontier_less_equal (frontier (c_pts (change_multiplicities (summ sg) (extract_prog xs (graph_to_nxt (summ sg)) os) (pt_tr sg)) l)) t'")
+                subgoal
+                  apply clarsimp
+                  subgoal for l' t' s
+                    apply (cases "node l' = nid")
+                    subgoal
+                      apply simp
+                      apply (rule frontier_less_equal_trans[rotated])
+                      apply assumption
+                      apply (rule frontier_less_equal_ifrontierI[OF D, of s l'])
+                      apply assumption
+                      apply (clarsimp simp add: c_pts_change_multiplicities)
+                      apply (subst (3) filter_False)
+                      subgoal
+                        apply (cases l'; simp)
+                        apply (auto simp add: Misc.set_map_filter extract_prog_def extract_progress_def image_iff obtain_progress_def split: option.splits)
+                        done
+                      subgoal
+                        apply simp
+                        apply (subgoal_tac "\<forall> t. zcount (zmset (map snd (filter (\<lambda>(l'a, t, d). l' = l'a) (List.map_filter (\<lambda>(p, t, m). case graph_to_nxt (summ sg) (node l', p) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) produs)))) t \<ge> 0")
+                        subgoal
+                          by (metis (no_types, lifting) ab_semigroup_add_class.add_ac(1) frontier_below_eq_frontier_plus_pos frontier_less_equal_le_trans)
+                        subgoal
+                  apply (auto simp add: Misc.set_map_filter zcount_sum filter_empty_conv intro!: zcount_zmset_ge_0I zmset_emptyI ordered_comm_monoid_add_class.sum_nonneg split: option.splits)
+                          using prems(12)[unfolded change_deltas_inv_def]
+                          apply (metis graph_to_nxt_Some_alt old.prod.case temp(2,5) zle_add1_eq_le zless_add1_eq)
+                          done
+                        done
+                      done
+                    subgoal
+                      apply simp
+                      apply (rule frontier_less_equal_trans[rotated])
+                      apply assumption
+                      apply (rule frontier_less_equal_ifrontierI[OF D, of s l'])
+                      apply assumption
+                      apply (clarsimp simp add: c_pts_change_multiplicities)
+                      apply (subst (3) filter_False)
+                      subgoal
+                        apply (cases l'; simp)
+                        done
+                      subgoal 
+                        apply (subgoal_tac "\<forall> t. zcount (zmset (map snd (filter (\<lambda>(l'a, t, d). l' = l'a) (List.map_filter (\<lambda>(p, t, m). case graph_to_nxt (summ sg) (nid, p) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) produs)))) t \<ge> 0")
+                        subgoal
+                          apply simp
+                          apply (metis (no_types, lifting) ab_semigroup_add_class.add_ac(1) frontier_below_eq_frontier_plus_pos frontier_less_equal_le_trans)
+                          done
+                        subgoal
+                          apply (auto simp add: Misc.set_map_filter zcount_sum filter_empty_conv intro!: zcount_zmset_ge_0I zmset_emptyI ordered_comm_monoid_add_class.sum_nonneg split: option.splits)
+                          using prems(12)[unfolded change_deltas_inv_def]
+                          apply (metis graph_to_nxt_Some_alt old.prod.case temp(2,5) zle_add1_eq_le zless_add1_eq)
+                          done
+                        done
+                      done
+                    done
+                  done
+                subgoal
+                  apply auto
                 using prems(14)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format, of xs nid' "(Loc nid' (Trg p'), t, -m)"] apply -
                 apply simp
                 apply (drule meta_mp)
@@ -745,15 +802,58 @@ lemma dataplane_tracker_inv_produces_drops:
                   apply (drule frontier_less_equal_ifrontierE[OF _ D])
                   apply clarsimp
                   subgoal for l s t'
-                  apply (subst (asm) frontier_less_equal_iff2)
-                  apply (clarsimp simp add: c_pts_change_multiplicities)
-                    subgoal for ft
-                      apply hypsubst_thin
+                    apply hypsubst_thin
                       apply (cases "\<exists> p. l = Loc nid (Src p)")
                        apply clarsimp
                       subgoal for p
                         apply hypsubst_thin
                         oops
+
+
+
+function find_timestamp where
+  "find_timestamp c su S (l :: 'loc :: {enum}) t =
+   (if l \<in> S then {}
+    else if \<exists> t'\<le>t. zcount (c_pts c l) t' > 0 
+    then {l} 
+    else
+    let L = {(l', t'). \<exists> s. s \<in>\<^sub>A su l' l \<and> t = t' -+- s} in \<Union> ((\<lambda> (l', t'). find_timestamp c su (insert l S) l' t') ` L))"
+  by auto
+termination
+  apply (relation "measure (\<lambda>(c, su, S, l, t). card ((UNIV :: 'loc set) - S))")
+   apply simp
+  apply clarsimp
+  apply (rule diff_Suc_less)
+  apply (simp add: card_gt_0_iff)
+  apply blast
+  done
+
+lemma find_timestamp_sound:
+  assumes G: "Graph.graph su"
+  shows "l' \<in> find_timestamp c su S l t \<Longrightarrow>
+   (\<exists> s t'. s \<in>\<^sub>A graph.path_weight su l' l \<and> s -+- t' \<le> t \<and> zcount (c_pts c l') t' > 0)"
+  using assms
+  apply (induction c su S l t arbitrary: l' rule: find_timestamp.induct)
+  subgoal for c su S l t l'
+    apply (subst (asm) (2) find_timestamp.simps)
+    apply (split if_splits)
+    subgoal by simp
+    apply (split if_splits)
+    subgoal for t'
+      apply clarsimp
+      apply hypsubst_thin
+      subgoal
+        apply (rule exI[of _ 0])
+        apply (intro conjI)
+        apply (meson graph.path_weight_refl)
+        apply (rule exI[of _ t'])
+         apply simp
+        done
+      done
+    subgoal
+      apply clarsimp
+      subgoal for l'' t'' s_edge
+        oops
 
 
 
@@ -949,16 +1049,6 @@ lemma backtrack_consu_to_non_nid:
                     subgoal
                       apply (drule conjunct1[OF conjunct2[OF P[unfolded produ_consu_inter_supported_def]], rule_format])
                       oops
-
-
-function find_timestamp where
-  "find_timestamp c su S (l :: 'loc :: {enum}) t =
-   (if \<exists> t'\<le>t. zcount (c_pts c l) t' > 0 
-    then {l} 
-    else
-    let L = {(l', t'). \<exists> s. s \<in>\<^sub>A su l' l \<and> t = t' -+- s \<and> l' \<notin> S} in \<Union> ((\<lambda> (l', t'). find_timestamp c su (insert l S) l' t') ` L))"
-  by auto
-termination
 
 
 lemma finite_visit_backtrack_consu_to_non_nid:
