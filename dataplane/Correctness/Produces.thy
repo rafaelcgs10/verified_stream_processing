@@ -895,13 +895,6 @@ lemma dataplane_tracker_inv_produces_drops:
                                   subgoal
                                     apply clarsimp
                                     subgoal for m''
-(*
- a timestamp pode estar no control plane e em algum buffer ao mesmo tempo?
-
-*)
-
-
-end
                                       apply (drule conjunct2[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supported_def]], rule_format])
                                       apply clarsimp
                                       apply (elim disjE)
@@ -923,72 +916,7 @@ end
                                       subgoal for t'
                                         apply clarsimp
 
-
-
                                         oops
-
-
-
-
-
-                                          find_theorems extract_prog remove1
-
-
-                                        find_theorems frontier_less_equal ifrontier
-
-end
-
-                                  using prems(14)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format, of xs nid'' "(Loc nid'' (Src p''), t, m'')"] apply -
-                                  apply simp
-                                  apply (drule meta_mp)
-                                  subgoal
-                                    unfolding obtain_progress_def extract_progress_def
-                                    apply (clarsimp del: disjCI simp add: Misc.set_map_filter image_iff split: option.splits)
-                                    apply (rule disjI2)
-                                    apply (rule disjI1)
-                                    apply force
-                                    done
-                                  apply (drule frontier_less_equal_ifrontierE[OF _ D])
-                                  apply (clarsimp )
-                                  subgoal for l s t''
-                                    apply (cases "\<exists> p. l = Loc nid (Src p)")
-                                    subgoal
-                                      apply clarsimp
-                                      apply hypsubst_thin
-                                      subgoal for p3
-                                        apply (simp add: c_pts_change_multiplicities)
-
-
-                                  find_theorems ifrontier Src
-
-
-                                        using prems(1,6,8)[unfolded Src_caps_inv_def c_pts_inv_def extract_prog_def extract_progress_def]
-                                        find_theorems drops
-                                        
-
-end
-
-                                      apply (rule frontier_less_equal_ifrontierI[of _ s "Loc nid (Src p3)", simplified, OF D])
-                                        subgoal sorry
-                                        apply (simp add: c_pts_change_multiplicities comp_def)
-
-
-
-                                  find_theorems frontier_less_equal name: trans
-
-
-                          find_theorems frontier Trg
-
-end
-                        apply (rule frontier_less_equal_change_multiplicities[OF D, where A="extract_progress nid' (graph_to_nxt (summ sg)) (snd (obtain_progress (os nid')))"])
-                        subgoal
-                          apply safe
-                          subgoal for l t' m
-                            using prems(14)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def split_beta, rule_format, simplified, of xs, rotated 2]
-
-                            find_theorems  frontier_less_equal "_ \<le> _" name: trans
-                      
-                            oops
 
 
 
@@ -1249,9 +1177,6 @@ lemma finite_visit_backtrack_consu_to_non_nid:
 
 
 
-  term "wf {}"
-
-  find_theorems wf "(<)"
 
 
 end
