@@ -172,6 +172,65 @@ lemma sum_minus_zero:
    (\<Sum>x\<in>A. F x)"
   by auto
 
+
+
+function find_timestamp where
+  "find_timestamp su P T (l :: 'loc :: {enum}) t =
+   (if P l t then {l} else
+    if t \<in> set (T l) then let LT = {(l', t'). \<exists> s. s \<in>\<^sub>A su l' l \<and> t = t' -+- s} in \<Union> ((\<lambda> (l', t'). find_timestamp su P (T(l := filter ((\<noteq>) t) (T l))) l' t') ` LT)
+    else {})"
+  by auto
+termination
+  apply (relation "measure (\<lambda>(su, P, T, l, t). sum (\<lambda> l'. card (set (T l'))) UNIV)")
+   apply simp
+  apply (clarsimp split: if_split)
+  apply (rule sum_strict_mono_ex1)
+    apply (auto simp add: card_mono intro!: psubset_card_mono)
+  done
+
+declare find_timestamp.simps[simp del]
+
+definition "backtracks su P T = (\<forall> t l. t \<in> set (T l) \<longrightarrow> (\<exists> l' t' s. l \<noteq> l' \<and> s \<in>\<^sub>A su l' l \<and> t = t' -+- s \<and> t' \<in> set (T l')) \<or> P l t)"
+
+lemma find_timestamp:
+  "backtracks su P T \<Longrightarrow>
+   t \<in> set (T l) \<Longrightarrow>
+   \<exists> l'. l' \<in> find_timestamp su P T l t \<and> (\<exists> t' s. P l' t' \<and> t' -+- s \<le> t \<and> s \<in>\<^sub>A graph.path_weight su l' l)"
+  sorry
+(*   apply (induction su P T V l t arbitrary: rule: find_timestamp.induct)
+  subgoal for su P T V l t
+    apply (subst find_timestamp.simps)
+    apply (auto split: if_splits)
+    subgoal
+      apply (subst (asm) (2) backtracks_def)
+      apply (drule spec2, drule mp, assumption)
+      apply (auto split: if_splits)
+      apply (intro exI conjI)
+        apply assumption
+       apply (rule refl)
+      subgoal premises prems for l' t' s
+        using prems(2-) apply -
+        apply (rule prems(1))
+           apply (rule refl)
+        using prems apply blast
+          apply (rule refl)
+        subgoal
+        apply (auto 0 0 simp add: backtracks_def)
+        subgoal for t''
+          apply hypsubst_thin
+          apply (rule exI[of _ l'])
+          apply (intro conjI impI)
+           apply auto
+          apply (rule exI[of _ t'])
+          apply (rule exI[of _ s])
+          apply (intro conjI)
+            apply simp
+            apply simp
+          oops
+ *)
+
+
+
 lemma dataplane_tracker_inv_produces_drops:
   fixes drops :: "'p :: {enum,linorder} \<Rightarrow> 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} list"
   assumes D: "dataflow_topology (summ sg) (-+-)"
@@ -721,7 +780,7 @@ lemma dataplane_tracker_inv_produces_drops:
             apply (metis (no_types, lifting) change_multiplicities_append_alt change_multiplicities_comm)
             done
           done
-               subgoal for nid' xs
+        subgoal for nid' xs
           unfolding changes_above_impl_inv_def
           apply safe
           subgoal for l t m
@@ -915,56 +974,16 @@ lemma dataplane_tracker_inv_produces_drops:
                                         done
                                       subgoal for t'
                                         apply clarsimp
-
                                         oops
 
 
+        term Graph.graph.path
 
-function find_timestamp where
-  "find_timestamp c su S (l :: 'loc :: {enum}) t =
-   (if l \<in> S then {}
-    else if \<exists> t'\<le>t. zcount (c_pts c l) t' > 0 
-    then {l} 
-    else
-    let L = {(l', t'). \<exists> s. s \<in>\<^sub>A su l' l \<and> t = t' -+- s} in \<Union> ((\<lambda> (l', t'). find_timestamp c su (insert l S) l' t') ` L))"
-  by auto
-termination
-  apply (relation "measure (\<lambda>(c, su, S, l, t). card ((UNIV :: 'loc set) - S))")
-   apply simp
-  apply clarsimp
-  apply (rule diff_Suc_less)
-  apply (simp add: card_gt_0_iff)
-  apply blast
-  done
-
-lemma find_timestamp_sound:
-  assumes G: "Graph.graph su"
-  shows "l' \<in> find_timestamp c su S l t \<Longrightarrow>
-   (\<exists> s t'. s \<in>\<^sub>A graph.path_weight su l' l \<and> s -+- t' \<le> t \<and> zcount (c_pts c l') t' > 0)"
-  using assms
-  apply (induction c su S l t arbitrary: l' rule: find_timestamp.induct)
-  subgoal for c su S l t l'
-    apply (subst (asm) (2) find_timestamp.simps)
-    apply (split if_splits)
-    subgoal by simp
-    apply (split if_splits)
-    subgoal for t'
-      apply clarsimp
-      apply hypsubst_thin
-      subgoal
-        apply (rule exI[of _ 0])
-        apply (intro conjI)
-        apply (meson graph.path_weight_refl)
-        apply (rule exI[of _ t'])
-         apply simp
-        done
-      done
-    subgoal
-      apply clarsimp
-      subgoal for l'' t'' s_edge
-        oops
-
-
+lemma (in Graph.graph) foo:
+  "(\<forall> v \<in> (V :: 'vtx set). \<not> P v) \<Longrightarrow>
+   (\<forall> v \<in> (V :: 'vtx set). \<exists> xs. path w v xs) \<Longrightarrow>
+   \<exists> w' xs. P w' \<and> path w w' xs"
+  oops
 
 lemma backtrack_consu_to_non_nid:
   assumes P: "produ_consu_inter_supported (graph_to_nxt su) os c"
