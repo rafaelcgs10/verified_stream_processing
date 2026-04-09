@@ -790,6 +790,21 @@ lemma dataplane_tracker_inv_produces_drops:
               apply (subst (asm) extract_progress_def)
               apply (clarsimp simp add: image_iff split_beta Misc.set_map_filter split: option.splits; hypsubst_thin?)
               subgoal for p' m
+              
+                      oops
+                      term Graph.graph.path
+
+inductive paths for su where
+ "(\<forall> p' xs nid'' p''. Graph.graph.path su (Loc nid' (Src p')) (Loc nid (Trg p)) (xs @ [(Loc nid'' (Src p''), s, Loc nid (Trg p))])) \<Longrightarrow> paths su nid' nid p"
+
+(*
+idea: inductive predicate of all paths from srcs of nid to trg of nid'
+
+*)
+
+                  find_theorems frontier_less_equal ifrontier name: E
+
+end
                 apply (frule conjunct1[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supported_def]], rule_format])
                 apply (cases "\<exists> nid'' p''. graph_to_nxt (summ sg) (nid'', p'') = Some (nid', p')")
                 subgoal
