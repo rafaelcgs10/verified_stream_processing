@@ -236,6 +236,13 @@ inductive srcs_to_trg for P su where
 | step: "su (Loc snid' (Src sp)) (Loc nid (Trg p)) \<noteq> {}\<^sub>A \<Longrightarrow> snid' \<noteq> snid \<Longrightarrow>
   (\<forall> p' s. s \<in>\<^sub>A su (Loc snid' (Trg p')) (Loc snid' (Src sp)) \<longrightarrow> (\<forall> t' m'. t = t' -+- s \<longrightarrow> P snid' p' t' m' \<longrightarrow> srcs_to_trg P su snid snid' p' t' m')) \<Longrightarrow> srcs_to_trg P su snid nid p t m"
 
+thm graph.path_weight_refl
+
+lemma
+  "\<not> srcs_to_trg P su nid nid' p t m \<Longrightarrow>
+  (\<forall> p' s nid'' p''. s \<in>\<^sub>A graph.path_weight su (Loc nid (Src p')) (Loc nid'' (Trg p')) \<longrightarrow> \<not> (\<exists> t' m. t = t' -+- s))"
+  oops
+
 lemma dataplane_tracker_inv_produces_drops:
   fixes drops :: "'p :: {enum,linorder} \<Rightarrow> 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} list"
   assumes D: "dataflow_topology (summ sg) (-+-)"
