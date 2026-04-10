@@ -20,7 +20,8 @@ session Propagation_Extras in propagation_extras = Progress_Tracking +
     Termination *)
 
 session 
-Dataplane in dataplane = Nondeterministic_Dataflow + 
+
+Dataplane in dataplane = Nondeterministic_Dataflow +
   options [timeout = 6000]
   sessions
     DFS_Framework
