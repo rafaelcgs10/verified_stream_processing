@@ -238,6 +238,55 @@ inductive srcs_to_trg for P su where
 
 thm graph.path_weight_refl
 
+
+lemma graph_induct:
+  assumes G: "Graph.graph weights"
+  and "S \<inter> V = {}"
+  shows
+  "(\<forall> V. (\<forall> l' \<in> V. \<forall> l. weights l l' \<noteq> {}\<^sub>A \<longrightarrow> l \<in> S \<union> V) \<longrightarrow> P V) \<Longrightarrow>
+   (\<forall> V l l'. l \<notin> S \<union> V \<longrightarrow> l' \<in> V \<longrightarrow> weights l l' \<noteq> {}\<^sub>A \<longrightarrow> P (insert l V) \<longrightarrow> P V) \<Longrightarrow>
+   P V"
+  using assms(2) apply -
+  apply (induct "card (UNIV - V)" arbitrary:  V)
+  subgoal for V
+    apply (subgoal_tac "V = UNIV")
+    subgoal
+      by clarsimp
+    subgoal
+      by auto
+    done
+  subgoal for n V
+    apply (cases "(\<forall> l' \<in> V. \<forall> l. weights l l' \<noteq> {}\<^sub>A \<longrightarrow> l \<in> S \<union> V)")
+    subgoal
+      by metis
+    subgoal premises prems
+      using prems(6) apply -
+      apply clarsimp
+      subgoal for l' l
+        using prems(1,2) apply -
+        apply (drule meta_spec[of _ "insert l V"])
+        apply (drule meta_mp)
+         apply simp
+        apply (drule meta_mp)
+        using prems(3) apply fast
+        apply (drule meta_mp)
+        using prems(4) apply fast
+        apply (rule prems(4)[rule_format, of l])
+           apply (auto simp add: prems(5))
+        done
+      done
+    done
+  done
+
+lemma graph_induct':
+  assumes G: "Graph.graph weights"
+  and "S \<inter> V = {}"
+  shows
+  "(\<forall> V. (\<forall> l' \<in> V. \<forall> l. weights l l' \<noteq> {}\<^sub>A \<longrightarrow> l \<in> S \<union> V) \<longrightarrow> P V) \<Longrightarrow>
+   (\<forall> V l l'. l \<notin> S \<union> V \<longrightarrow> l' \<in> V \<longrightarrow> weights l l' \<noteq> {}\<^sub>A \<longrightarrow> P (insert l V) \<longrightarrow> P V) \<Longrightarrow>
+   P V"
+  oops
+
 lemma
   "\<not> srcs_to_trg P su nid nid' p t m \<Longrightarrow>
   (\<forall> p' s nid'' p''. s \<in>\<^sub>A graph.path_weight su (Loc nid (Src p')) (Loc nid'' (Trg p')) \<longrightarrow> \<not> (\<exists> t' m. t = t' -+- s))"
@@ -802,6 +851,117 @@ lemma dataplane_tracker_inv_produces_drops:
               apply (subst (asm) extract_progress_def)
               apply (clarsimp simp add: image_iff split_beta Misc.set_map_filter split: option.splits; hypsubst_thin?)
               subgoal for p' m
+
+     (*            thm wf_induct
+
+                term graph.path
+                
+                thm finite_subset_wf[of "UNIV :: ((_ :: enum, _ :: enum) location) set", unfolded split_beta, simplified]
+
+                find_theorems finite range
+
+                thm wf_induct[OF wf_lex_prod[of "{(l1, l2). graph.path_weigh (summ sg) l2 l3 \<longrightarrow> \<exists> xs.  graph.path (summ sg) l1 l2 xs \<and> xs \<noteq> []}" "r2 :: (nat \<times> _) set"]]
+
+                find_theorems wf finite
+
+                term graph.path
+                oops
+
+definition ""
+
+
+                apply (subst Propagate.dataflow_topology.implied_frontier_alt_def[OF D])
+
+ *)
+                subgoal
+                apply (subgoal_tac
+   "\<And> VV t' m.
+    (\<lambda> (nid, p). Loc nid (Src p)) `(set xs \<times> UNIV) \<union> {Loc nid (Trg p) | nid p. \<not> (\<exists> t'' \<le> t'. \<exists> m. (p, t'', m) \<in> set (consu (os nid))) } \<union> {Loc nid (Src p) | nid p. \<not> (\<exists> t'' \<le> t'. \<exists> m. (p, t'', m) \<in> set (produ (os nid))) } \<inter> VV = {} \<Longrightarrow>
+    distinct xs \<Longrightarrow>
+    nid \<in> set xs \<Longrightarrow>
+    (Loc nid' (Trg p')) \<in> VV \<Longrightarrow>
+    t' \<le> t \<Longrightarrow>
+    (\<exists> nid' p'. (Loc nid' (Trg p')) \<in> VV \<and>
+    (p', t', m) \<in> set (consu (os nid')) \<and>
+    frontier_less_equal
+     (ifrontier (summ sg) (-+-)
+       (change_multiplicities (summ sg)
+         (extract_prog xs (graph_to_nxt (summ sg))
+           (os(nid :=
+                 os nid
+                 \<lparr>outpu := \<lambda>p. outpu (os nid) p @ oputs p, ocaps := \<lambda>p. list_diff (ocaps (os nid) p) (drops p),
+                    input := \<lambda>p. filter (\<lambda>(_, t). t \<notin> set (drops p)) (input (os nid) p), produ := produ (os nid) @ produs,
+                    inter := operator_state.inter (os nid) @ concat (map (\<lambda>p. map (\<lambda>os. (p, os, - 1)) (drops p)) enum_class.enum), nfron := V\<rparr>)))
+         (pt_tr sg))
+       (Loc nid' (Trg p')))
+     t)")
+                  subgoal
+                    apply (drule meta_spec[of _ "{Loc nid' (Trg p')}"])
+                    apply fast
+                    done
+                  subgoal premises aux for VV t' m'
+                    using aux(1,2,3,4,5, 6, 9, 10)
+                    apply (induct VV rule: graph_induct[where S="(\<lambda> (nid, p). Loc nid (Src p)) `(set xs \<times> UNIV) \<union> {Loc nid (Trg p) | nid p. \<not> (\<exists> t'' \<le> t'. \<exists> m. (p, t'', m) \<in> set (consu (os nid))) } \<union> {Loc nid (Src p) | nid p. \<not> (\<exists> t'' \<le> t'. \<exists> m. (p, t'', m) \<in> set (produ (os nid))) }" , OF dataflow_topology.axioms(1)[OF D]])
+                    using aux(6) try0
+                  subgoal
+                    apply safe
+                    subgoal for V'
+                      apply (cases "\<exists> l' \<in> V'. \<exists> nidx \<in> set xs. \<exists> p. summ sg (Loc nidx (Src p)) l' \<noteq> {}\<^sub>A")
+                      subgoal
+                        apply clarsimp
+                        subgoal for l' nidx p
+                          apply (subgoal_tac "\<exists> nid'' p''. l' = Loc nid'' (Trg p'')")
+                          subgoal
+                            apply clarsimp
+                            subgoal for nid'' p''
+                              apply (rule exI[of _ nid''])
+                              apply (rule exI[of _ p''])
+                              apply clarsimp
+
+                using graph_induct
+
+
+
+                using prems(14)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def ] apply -
+
+                find_theorems ifrontier name: implied_frontier_alt_def
+
+
+                oops
+
+
+end
+
+    apply (cases "\<exists> l'. weights l' l \<noteq> {}\<^sub>A")
+    subgoal premises prems
+      using prems(4,1) apply -
+      apply clarsimp
+      done
+    subgoal premises prems
+      using prems(1,4) apply -
+      apply (drule spec[of _ UNIV])
+      apply (drule spec[of _ l])
+      sledgehammer
+
+end
+    using Graph.graph.path_weight_elem_trans[OF G]
+
+    find_theorems Graph.graph graph.path_weight
+
+   apply auto
+  subgoal premises prems for l' S'
+    using prems(1,3) apply -
+
+  oops
+
+lemma (in Graph.graph) foo:
+  "(\<forall> v \<in> (V :: 'vtx set). \<not> P v) \<Longrightarrow>
+   (\<forall> v \<in> (V :: 'vtx set). \<exists> xs. path w v xs) \<Longrightarrow>
+   \<exists> w' xs. P w' \<and> path w w' xs"
+  oops
+
+
+end
                 apply (cases "srcs_to_trg (\<lambda> nid p t m. (p, t, m) \<in> set (consu (os nid))) (summ sg) nid nid' p' t m")
                 subgoal premises aux
                   using aux(6,1,2,3,4,5) apply -
@@ -995,18 +1155,16 @@ lemma dataplane_tracker_inv_produces_drops:
                         sorry
                       done
                     done
+                  oops
 
-
-(* here *)
-
+lemma
+  "\<not> srcs_to_trg P su nid nid' p (t' -+- s) m \<Longrightarrow>
+    s1 \<in>\<^sub>A graph.path_weight su (Loc nid2 (Trg p2)) (Loc nid (Trg p)) \<Longrightarrow>
+    s2 \<in>\<^sub>A graph.path_weight su (Loc nid (Src p3)) (Loc nid2 (Trg p2)) \<Longrightarrow> s \<le> s1 -+- s2 \<Longrightarrow> P nid2 p2 t' m' \<Longrightarrow> t = t' -+- s \<Longrightarrow> False"
 
         term Graph.graph.path
 
-lemma (in Graph.graph) foo:
-  "(\<forall> v \<in> (V :: 'vtx set). \<not> P v) \<Longrightarrow>
-   (\<forall> v \<in> (V :: 'vtx set). \<exists> xs. path w v xs) \<Longrightarrow>
-   \<exists> w' xs. P w' \<and> path w w' xs"
-  oops
+
 
 lemma backtrack_consu_to_non_nid:
   assumes P: "produ_consu_inter_supported (graph_to_nxt su) os c"
