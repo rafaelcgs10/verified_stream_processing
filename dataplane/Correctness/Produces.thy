@@ -229,6 +229,11 @@ lemma find_timestamp:
           oops
  *)
 
+definition find_minimal where
+  "find_minimal xs t = {(p, t', m) \<in> set xs. t' \<le> t \<and> \<not> (\<exists> (_, t'', _) \<in> set xs. t'' < t')}"
+
+definition find_consu_minimals where 
+  "find_consu_minimals os t = \<Union> ((\<lambda> nid. (\<lambda> (p, t', m). (Loc nid (Trg p), t')) ` find_minimal (consu (os nid)) t) ` UNIV)"
 
 
 inductive srcs_to_trg for P su where
@@ -852,6 +857,11 @@ lemma dataplane_tracker_inv_produces_drops:
               apply (clarsimp simp add: image_iff split_beta Misc.set_map_filter split: option.splits; hypsubst_thin?)
               subgoal for p' m
 
+                term "{(l', t') \<in> find_consu_minimals os t. \<exists> s. s \<in>\<^sub>A graph.path_weight (summ sg) l' (Loc nid' (Trg p')) \<and> t' -+- s \<le> t}"
+
+
+end
+
      (*            thm wf_induct
 
                 term graph.path
@@ -897,6 +907,12 @@ definition ""
      t)")
                   subgoal
                     apply (drule meta_spec[of _ "{Loc nid' (Trg p')}"])
+                    apply (drule meta_spec[of _ t])
+                    apply (drule meta_spec[of _ m])
+                    apply clarsimp
+                    try0
+
+end
                     apply fast
                     done
                   subgoal premises aux for VV t' m'
