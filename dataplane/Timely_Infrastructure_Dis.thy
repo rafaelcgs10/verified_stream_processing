@@ -447,7 +447,7 @@ lemma dataflow_dis'_op_simps[simp]:
   by (subst dataflow_dis'_op.code; simp)+
 
 
-lemma map_IO_elim :
+lemma map_IO_elim[dest] :
   "map_IO f1 g1 h1 io1 = Inp p1 x1 \<Longrightarrow> (\<exists> p' x'. io1 = Inp p' x' \<and> f1 p' = p1 \<and> h1 x' = x1)"
   "map_IO f2 g2 h2 io2 = Out p2 x2 \<Longrightarrow> (\<exists> p' x'. io2 = Out p' x' \<and> g2 p' = p2 \<and> h2 x' = x2)"
   "map_IO f3 g3 h3 io3 = Tau \<Longrightarrow> io3 = Tau"

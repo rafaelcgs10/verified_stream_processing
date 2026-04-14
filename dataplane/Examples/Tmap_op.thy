@@ -4,13 +4,15 @@ imports
   Dataplane.Timely_Infrastructure
 begin
 
-definition \<open>tmap_op ip op os f = builder_op False {|ip|} {|op|} os (\<lambda> os. {|
+definition tmap_logic where
+  "tmap_logic ip op f os = {|
       let result = map (\<lambda> (d, t). (f (de1 os d), t)) (input os ip) in
       let os =  trace (STR ''producing from tmap op'') (produces os (map (\<lambda> (d, t). (en2 os d, Cap t op)) result)) in
       let os = drop_caps os (concat (map (\<lambda> p. map (\<lambda> t. Cap t p) (ocaps os p)) Enum.enum)) in
       os\<lparr> input := (\<lambda> p. []) \<rparr>
-    |}
-   )\<close>
+    |}"
+                                   
+definition \<open>tmap_op ip op os f = builder_op False {|ip|} {|op|} os (tmap_logic ip op f)\<close>
 
 lemma is_Inl_alt: "is_Inl x = (\<exists>x'. x = Inl x')"
   by(cases x; simp)
@@ -33,7 +35,7 @@ lemma step_tmap_op_elim:
              "op' = tmap_op ip op os' f"
   using assms
   apply -
-  unfolding tmap_op_def
+  unfolding tmap_op_def tmap_logic_def
   apply(drule step_builder_op_elim; (simp only: is_Inr_alt is_Inl_alt tmap_op_def[symmetric])?)
       apply (metis (lifting) is_Inl.simps(2) is_Inr.simps(2) reassoc.cases sum.sel(1))
      apply(blast)+
