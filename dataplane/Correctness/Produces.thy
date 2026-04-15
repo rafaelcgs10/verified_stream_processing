@@ -5,6 +5,7 @@ imports
   Dataplane.Timely_Stream
   Dataplane.MyProduct_Instances
   Dataplane.AntichainOrder
+  "HOL-Library.Product_Lexorder"
 begin
 
 declare cin.rep_eq[simp del]
@@ -291,6 +292,49 @@ lemma
   "\<not> srcs_to_trg P su nid nid' p t m \<Longrightarrow>
   (\<forall> p' s nid'' p''. s \<in>\<^sub>A graph.path_weight su (Loc nid (Src p')) (Loc nid'' (Trg p')) \<longrightarrow> \<not> (\<exists> t' m. t = t' -+- s))"
   oops
+
+context dataflow_topology
+begin
+
+definition zero_predecessors where
+"zero_predecessors t loc  = {loc'. (\<exists> s . s \<in>\<^sub>A summary loc' loc \<and> results_in t s = t)}"
+
+context 
+  fixes t :: "'t"
+begin 
+
+function weight' where
+"weight' loc = (1 :: nat) + (\<Sum> loc' \<in> zero_predecessors t loc . weight' loc')"
+  by auto
+termination
+  apply(relation "{(loc', loc) . \<exists> s . s \<in>\<^sub>A summary loc' loc \<and> results_in t s = t}")
+  subgoal
+    apply(rule Wellfounded.finite_acyclic_wf)
+     apply simp
+    unfolding acyclic_def
+    apply safe
+    subgoal premises self_loop for loc
+    proof -
+      have "(loc', loc) \<in> {(loc', loc). \<exists>s. s \<in>\<^sub>A summary loc' loc \<and> results_in t s = t}\<^sup>+ \<Longrightarrow>
+        \<exists>xs. path loc' loc xs \<and> xs \<noteq> [] \<and> results_in t (sum_weights (map (\<lambda>(s, l, t). l) xs)) = t" for loc'
+        apply (induct loc' rule: converse_trancl_induct)
+         apply auto []
+        apply (auto simp only: results_in_sum_path_weights_append elim: path)
+        apply(frule flow.path_singleton)
+        subgoal for y z xs s
+          apply(rule exI[where x = "(y, s, z) # xs"]; simp)
+          by (metis (lifting) Cons_eq_appendI empty_append_eq_id flow.path_trans followed_by_summary path_singleton)
+        done
+      from this[OF self_loop] show False using no_zero_cycle[OF _ _ refl, of loc _ t]
+        by force
+    qed
+    done
+  apply(auto simp add: zero_predecessors_def)
+  done
+end
+end
+
+
 
 lemma dataplane_tracker_inv_produces_drops:
   fixes drops :: "'p :: {enum,linorder} \<Rightarrow> 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} list"
@@ -851,6 +895,388 @@ lemma dataplane_tracker_inv_produces_drops:
               apply (subst (asm) extract_progress_def)
               apply (clarsimp simp add: image_iff split_beta Misc.set_map_filter split: option.splits; hypsubst_thin?)
               subgoal for p' m
+
+
+                apply(subgoal_tac "\<And> p'' t' m nid'' n n'. nid \<in> set xs \<Longrightarrow>
+    nid'' \<noteq> nid \<Longrightarrow>
+    distinct xs \<Longrightarrow>
+    nid'' \<notin> set xs \<Longrightarrow>
+    (p'', t', m) \<in> set (consu (os nid'')) \<Longrightarrow>
+    n' \<le> n \<Longrightarrow>
+    n' \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid'' (Trg p'')) (Loc nid' (Trg p')) \<Longrightarrow>
+    t = t' -+- n \<Longrightarrow>
+    frontier_less_equal
+     (ifrontier (summ sg) (-+-)
+       (change_multiplicities (summ sg)
+         (extract_prog xs (graph_to_nxt (summ sg))
+           (os(nid :=
+                 os nid
+                 \<lparr>outpu := \<lambda>p. outpu (os nid) p @ oputs p, ocaps := \<lambda>p. list_diff (ocaps (os nid) p) (drops p),
+                    input := \<lambda>p. filter (\<lambda>(_, t). t \<notin> set (drops p)) (input (os nid) p), produ := produ (os nid) @ produs,
+                    inter := operator_state.inter (os nid) @ concat (map (\<lambda>p. map (\<lambda>os. (p, os, - 1)) (drops p)) enum_class.enum), nfron := V\<rparr>)))
+         (pt_tr sg))
+       (Loc nid' (Trg p')))
+     t")
+                subgoal premises prems'
+                  apply(rule prems'(6)[of nid' p' t m 0 0, OF prems'(1-5)])
+                  apply simp
+                  apply(rule graph.path_weight_refl)
+                   apply (metis D dataflow_topology.axioms(1))
+                  by simp
+                subgoal premises prems' for p'' t' m' nid'' n n'
+                  using prems'(3-4,6-)
+                  apply -
+                  apply(induction "(card {t. t \<le> t' \<and> (\<exists> p m nid. (p, t, m) \<in> set (consu (os nid)))},Produces.dataflow_topology.weight' (summ sg) (-+-) t' (Loc nid'' (Trg p'')))" arbitrary: p'' t' m' nid'' n n' rule: less_induct)
+                  subgoal premises prems'' for p'' t' nid'' m' n n'
+                    using prems''(2-)
+                    apply -
+                apply (frule conjunct1[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supported_def]], rule_format])
+                apply (cases "\<exists> nid''' p'''. graph_to_nxt (summ sg) (nid''', p''') = Some (nid'', p'')")
+                subgoal
+                  apply clarsimp
+                  subgoal for nid''' p'''
+                    apply (cases "nid''' \<in> set xs")
+                    subgoal
+                                    apply(rule frontier_less_equal_trans[of _ "t' -+- n'"]; simp?)
+                      apply (rule frontier_less_equal_ifrontierI[OF D, of n' "Loc nid'' (Trg p'')", simplified])
+                      subgoal
+                        by simp
+                      subgoal
+                        apply (cases "nid''' = nid")
+                        subgoal
+                          apply hypsubst_thin
+                        apply (subst change_multiplicities_extract_prog_obtain_progress_remove1_append[where nid=nid])
+                        apply simp_all
+                        apply (clarsimp simp add: c_pts_change_multiplicities obtain_progress_def extract_progress_def filter_map comp_def split_beta split: option.splits)
+                          apply (subst (3) filter_False)
+                          subgoal
+                            apply (auto simp add: obtain_progress_def Misc.set_map_filter extract_prog_def extract_progress_def split: option.splits)
+                            using temp(5)[unfolded graph_summar_nt_def]
+                            apply (metis (no_types, lifting) Pair_inject domI in_op_conn_graph_to_nxt_iff inj_on_eq_iff op_conn.simps)
+                            done
+                          apply (clarsimp simp add: monoid_add_class.sum_list_distinct_conv_sum_set split_beta zmset_concat comp_def)
+
+                          
+                          apply (subgoal_tac "
+ (\<Sum>x\<in>UNIV. zmset (map snd (filter (\<lambda>(p''a, ab). graph_to_nxt (summ sg) (fst x, p''a) = Some (nid'', p'') \<and> snd x = p''a) (produ (os (fst x)))))) = 
+  zmset
+          (map snd
+            (filter (\<lambda>(l', t, d). Loc nid'' (Trg p'') = l') (List.map_filter (\<lambda>(p, t, m). case graph_to_nxt (summ sg) (nid, p) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) (produ (os nid)))))")
+
+                          defer
+                          subgoal
+                            apply (subst comm_monoid_add_class.sum.subset_diff[of "{(nid, p''')}"])
+                            apply simp_all
+                            apply (subst comm_monoid_add_class.sum.neutral)
+                            subgoal
+                              apply clarsimp
+                              using temp(5)[unfolded graph_summar_nt_def]
+                              apply (smt (verit, best) case_prodE domI filter_empty_conv inj_on_def list.map_disc_iff prod.inject zmset_emptyI)
+                              done
+                            apply simp
+                            apply (subst map_snd_filter_List_map_filter)
+                              apply assumption
+                            using temp(5)[unfolded graph_summar_nt_def] apply simp_all
+                            done
+                          subgoal
+                            apply simp
+                            apply (rule frontier_less_equal_zcount_pos)
+                            apply (simp flip: add.assoc)
+                            apply (rule ordered_comm_monoid_add_class.add_pos_nonneg)
+                             apply simp_all
+                            apply (rule zcount_zmset_ge_0I)
+                            apply (auto simp add:  Misc.set_map_filter split: option.splits)
+                            using temp(2) temp(5)[unfolded graph_summar_nt_def] apply (smt (verit) in_op_conn_graph_to_nxt_iff old.prod.case op_conn.simps)
+                            done
+                          done
+                        subgoal
+                        apply (subst change_multiplicities_extract_prog_obtain_progress_remove1_append[where nid=nid'''])
+                        apply simp_all
+                        apply (clarsimp simp add: c_pts_change_multiplicities obtain_progress_def extract_progress_def filter_map comp_def split_beta split: option.splits)
+                          apply (subst (2) filter_False)
+                          subgoal
+                            apply (auto simp add: obtain_progress_def Misc.set_map_filter extract_prog_def extract_progress_def split: option.splits)
+                            using temp(5)[unfolded graph_summar_nt_def]
+                             apply (metis (no_types, lifting) domI in_op_conn_graph_to_nxt_iff inj_on_eq_iff op_conn.simps prod.simps(1))+
+                            done
+                          apply simp
+                          apply (clarsimp simp add: monoid_add_class.sum_list_distinct_conv_sum_set split_beta zmset_concat comp_def)
+                          apply (subst (asm) comm_monoid_add_class.sum.subset_diff[of "{(nid''', p''')}"])
+                            apply simp_all
+                            apply (subst (asm) comm_monoid_add_class.sum.neutral)
+                            subgoal
+                              apply clarsimp
+                              using temp(5)[unfolded graph_summar_nt_def]
+                              apply (smt (verit, best) case_prodE domI filter_empty_conv inj_on_def list.map_disc_iff prod.inject zmset_emptyI)
+                              done
+                            apply simp
+                            apply (subst map_snd_filter_List_map_filter)
+                              apply assumption
+                            using temp(5)[unfolded graph_summar_nt_def] apply simp
+                            apply (simp flip: zcount_union)
+                            apply (drule zcount_gt_0_in_frontierD)
+                            apply clarsimp
+                            apply (subst (2) filter_False)
+                            using frontier_less_equal_iff2 apply auto
+                            done
+                          done
+                        done
+                      subgoal
+                        apply (cases "nid''' = nid")
+                        subgoal
+                          by auto
+                        subgoal
+                      apply (subst change_multiplicities_extract_prog_updates[where nid=nid])
+                            apply assumption+
+                          apply (simp add: map_concat comp_def)
+                          apply (subgoal_tac "0 < zcount (c_pts (pt_tr sg) (Loc nid'' (Trg p''))) t' \<or> 
+        0 < zcount (zmset (concat
+             (map (\<lambda>(nid', p'). map snd (filter (\<lambda>(p''a, ab). graph_to_nxt (summ sg) (nid', p''a) = Some (nid'', p'') \<and> p' = p''a) (produ (os nid'))))
+               enum_class.enum))) t'")
+                          defer
+                          subgoal
+                            by auto
+                          subgoal
+                            apply (elim disjE)
+                            subgoal
+                                    apply(rule frontier_less_equal_trans[of _ "t' -+- n'"]; simp?)
+                              apply (rule frontier_less_equal_ifrontierI[OF D, of n' "Loc nid'' (Trg p'')", simplified])
+                              subgoal
+                                by simp
+                              subgoal
+                                apply (simp add: c_pts_change_multiplicities)
+                                apply (subst filter_False)
+                                subgoal
+                                  unfolding extract_progress_def obtain_progress_def extract_prog_def
+                                  apply (auto simp add:  Misc.set_map_filter split: option.splits)
+                                  using temp(5)[unfolded graph_summar_nt_def]
+                                   apply (metis (no_types, lifting) domI in_op_conn_graph_to_nxt_iff inj_on_eq_iff op_conn.simps prod.simps(1))+
+                                  done
+                                apply (subst filter_False)
+                                subgoal
+                                  unfolding extract_progress_def obtain_progress_def extract_prog_def
+                                  apply (auto simp add: Misc.set_map_filter split: option.splits)
+                                  using temp(5)[unfolded graph_summar_nt_def]
+                                  apply (metis (no_types, lifting) domI in_op_conn_graph_to_nxt_iff inj_on_eq_iff op_conn.simps prod.simps(1))
+                                  done
+                                subgoal
+                                  apply simp
+                                  apply (metis frontier_less_equal_zcount_pos)
+                                  done
+                                done
+                              done
+                            subgoal
+                              apply (clarsimp simp add: zcount_sum monoid_add_class.sum_list_distinct_conv_sum_set  comp_def zmset_concat split_beta)
+                              apply (subgoal_tac "\<exists> m. (p''', t', m) \<in> set (produ (os nid'''))")
+                               defer
+                              subgoal
+                                apply (drule sum_pos_ex_elem_pos)
+                                apply clarsimp
+                                apply (drule zcount_zmset_gt_0_set_Ex)
+                                apply clarsimp
+                                using temp(5)[unfolded graph_summar_nt_def]
+                                apply (metis (mono_tags, lifting) domI fst_eqD inv_on_f_f snd_eqD)
+                                done
+                              subgoal
+                                apply clarsimp
+                                subgoal for m''
+                                  thm prems(15)
+
+                                  apply (drule conjunct1[OF prems(15)[unfolded produ_consu_inter_supported_def], rule_format])
+                                  apply (elim disjE)
+                                  subgoal
+                                    apply(rule frontier_less_equal_trans[of _ "t' -+- n'"]; simp?)
+                                    apply (rule frontier_less_equal_ifrontierI[of _ n' "Loc nid''' (Src p''')", simplified, OF D])
+                                    subgoal
+                                      (* maybe use zero_in_graph_path_weight*)
+                                      sorry
+                                        apply (simp add: change_multiplicities_append_alt)
+                                        apply (clarsimp simp add: c_pts_change_multiplicities)
+                                        apply (subst (2) filter_False)
+                                        subgoal
+                                          by (auto simp add: Misc.set_map_filter split: option.splits)
+                                        apply simp
+                                        apply (subst (1) filter_False)
+                                        subgoal
+                                          by (auto simp add: Misc.set_map_filter map_concat extract_prog_def extract_progress_def split_beta image_iff del: disjCI split: option.splits)
+                                        apply simp
+                                        using frontier_less_equal_trans frontier_less_equal_zcount_pos apply blast
+                                        done
+                                  subgoal
+                                    apply clarsimp
+                                    subgoal for m''
+apply (drule conjunct2[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supported_def]], rule_format])
+                                      apply clarsimp
+                                      apply (elim disjE)
+                                      subgoal for t'
+                                    apply(rule frontier_less_equal_trans[of _ "t' -+- n'"]; simp?)
+                                        apply (rule frontier_less_equal_ifrontierI[of _ n' "Loc nid''' (Src p''')", simplified, OF D])
+                                        subgoal 
+                                        (* maybe use zero_in_graph_path_weight*)
+                                          sorry
+                                        apply (simp add: change_multiplicities_append_alt)
+                                        apply (clarsimp simp add: c_pts_change_multiplicities)
+                                        apply (subst (2) filter_False)
+                                        subgoal
+                                          by (auto simp add: Misc.set_map_filter split: option.splits)
+                                        apply simp
+                                        apply (subst (1) filter_False)
+                                        subgoal
+                                          by (auto simp add: Misc.set_map_filter map_concat extract_prog_def extract_progress_def split_beta image_iff del: disjCI split: option.splits)
+                                        apply simp
+                                        using frontier_less_equal_trans frontier_less_equal_zcount_pos apply blast
+                                        using dataflow_topology_from_tree.results_in_mono_raw by blast
+                                      subgoal for t1
+                                        apply clarsimp
+                                        apply(drule sym[of t]; simp)
+                                        subgoal for t1' p1 s1 m1
+                                          apply(subgoal_tac "(card {t. t \<le> t1' \<and> (\<exists>p m nid. (p, t, m) \<in> set (consu (os nid)))}, dataflow_topology.weight' (summ sg) (-+-) t1' (Loc nid''' (Trg p1)))
+  < (card {t. t \<le> t' \<and> (\<exists>p m nid. (p, t, m) \<in> set (consu (os nid)))}, dataflow_topology.weight' (summ sg) (-+-) t' (Loc nid'' (Trg p'')))")
+                                           defer
+                                          subgoal
+                                            apply(cases "t' = t1'")
+                                            subgoal
+                                              apply simp
+                                              apply(subst (2) dataflow_topology.weight'.simps[OF D])
+                                              apply simp
+                                              unfolding dataflow_topology.zero_predecessors_def[OF D]
+(* use graph.path_weight instead of summ*)
+                                              apply(subgoal_tac "Loc nid''' (Trg p1) \<in> {loc'. \<exists>s. s \<in>\<^sub>A graph.path_weight (summ sg) loc' (Loc nid'' (Trg p'')) \<and> t1' -+- s = t1'}")
+                                               defer
+                                              subgoal
+                                                using GS(2)
+                                                apply -
+                                                apply(erule allE[where x = nid''])
+                                                apply(erule allE[where x = nid'''])
+                                                apply(erule allE[where x = p''])
+                                                apply(erule allE[where x = p'''])
+                                                apply simp
+                                                using GS(1)
+                                                apply -
+                                                apply(erule allE[where x = nid'''])
+                                                apply(erule allE[where x = p1])
+                                                apply(erule allE[where x = p'''])
+                                                apply(erule allE[where x = 0])
+                                                apply simp
+                                                sorry
+                                              sorry
+                                          apply simp
+                                          apply(rule disjI1)
+                                            apply(rule psubset_card_mono)
+                                            subgoal
+                                              apply(erule thin_rl)+
+                                              apply(rule finite_subset[of _ "{t. (\<exists>p m nid. (p, t, m) \<in> set (consu (os nid)))}"])
+                                              subgoal
+                                                by auto
+                                              apply(subgoal_tac "{t. \<exists>p m nid. (p, t, m) \<in> set (consu (os nid))} = {t. \<exists>nid p m. (p, t, m) \<in> set (consu (os nid))}")
+                                              defer
+                                              subgoal
+                                                by auto
+                                              apply simp
+                                              apply(erule thin_rl)
+                                              unfolding finite_Collect_bounded_ex[of "\<lambda>_.True" "\<lambda> t nid. \<exists>p m. (p, t, m) \<in> set (consu (os nid))", simplified]
+                                              apply safe
+                                              subgoal for nid
+                                                apply(subgoal_tac "{t. \<exists>p m. (p, t, m) \<in> set (consu (os nid))} = set (map (\<lambda>(_,t,_). t) (consu (os nid)))")
+                                                 defer
+                                                subgoal
+                                                  by force
+                                                by simp
+                                              done
+                                          subgoal
+                                            apply auto
+                                            subgoal
+                                              unfolding add.commute[of t1' s1]
+                                              by(rule add_increasing; simp)
+                                            subgoal
+                                              apply(subgoal_tac "t1' -+- s1 \<in> {t. t \<le> t1' -+- s1 \<and> (\<exists>p m nid. (p, t, m) \<in> set (consu (os nid)))}")
+                                               defer 
+                                              subgoal
+                                                by auto
+                                              apply(subgoal_tac "t1' -+- s1 \<notin> {t. t \<le> t1' \<and> (\<exists>p m nid. (p, t, m) \<in> set (consu (os nid)))}")
+                                               defer 
+                                              subgoal
+                                                apply(rule notI)
+                                                apply(subgoal_tac "t1' -+- s1 \<le> t1'")
+                                                 defer
+                                                subgoal
+                                                  apply(erule thin_rl[of " t1' -+- s1 \<in> {t. t \<le> t1' -+- s1 \<and> (\<exists>p m nid. (p, t, m) \<in> set (consu (os nid)))} "])
+(* weird stuff idk*)
+                                                  unfolding mem_Collect_eq
+                                                  apply(erule conjE)
+                                                  apply assumption
+                                                  done
+                                                apply auto
+                                                done
+                                              by simp
+                                            done
+                                          done
+                                          apply(subgoal_tac "n -+- s1 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid''' (Trg p1)) (Loc nid' (Trg p'))")
+                                           defer
+                                          subgoal
+                                            sorry
+                                          apply(subgoal_tac "t = t1' -+- (n -+- s1)")
+                                           defer
+                                          subgoal
+                                            by (metis Groups.add_ac(2) group_cancel.add1)
+
+                                        using prems''(1)[of t1' nid''' p1 m1 "n -+- s1"]
+                                        apply simp
+                      apply (subst (asm) change_multiplicities_extract_prog_updates[where nid=nid])
+                            apply assumption+
+                                        apply (simp add: map_concat comp_def)
+                                        done
+                                      done
+                                    done
+                                  done
+                                done
+                              done
+                            done
+                          done
+                        done
+                      done
+                    done
+                  done
+                sorry
+              done
+            done
+
+(*
+*)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
      (*            thm wf_induct
 
