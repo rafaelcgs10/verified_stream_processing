@@ -297,6 +297,51 @@ context dataflow_topology
 begin
 
 definition zero_predecessors where
+"zero_predecessors t loc  = {loc'. (\<exists> s . s \<in>\<^sub>A path_weight loc' loc \<and> loc \<noteq> loc' \<and> results_in t s = t)}"
+
+context 
+  fixes t :: "'t"
+begin 
+
+function weight' where
+"weight' loc = (1 :: nat) + (\<Sum> loc' \<in> zero_predecessors t loc . weight' loc')"
+  by auto
+termination
+  apply(relation "{(loc', loc) . \<exists> s . s \<in>\<^sub>A path_weight loc' loc \<and> loc \<noteq> loc' \<and> results_in t s = t}")
+  subgoal
+    apply(rule Wellfounded.finite_acyclic_wf)
+     apply simp
+    unfolding acyclic_def
+    apply safe
+    subgoal premises self_loop for loc
+    proof -
+      have "(loc', loc) \<in> {(loc', loc). \<exists>s. s \<in>\<^sub>A path_weight loc' loc \<and> loc \<noteq> loc' \<and> results_in t s = t}\<^sup>+ \<Longrightarrow>
+        \<exists>xs. path loc' loc xs \<and> xs \<noteq> [] \<and> results_in t (sum_weights (map (\<lambda>(s, l, t). l) xs)) = t" for loc'
+        apply (induct loc' rule: converse_trancl_induct)
+         apply auto []
+         apply (auto simp only: results_in_sum_path_weights_append elim: path)
+         apply(frule flow.path_weight_conv_path)
+        apply safe
+        subgoal for y s xs
+          apply(rule exI[where x = xs])
+          by(auto elim: flow.path0E)
+        subgoal for y z xs x
+          apply(auto dest!: flow.path_weight_conv_path)
+          subgoal for xs'
+            apply(rule exI[where x = "xs' @ xs"])
+            apply(auto intro: flow.path_trans)
+            by (metis (lifting) foldr_append followed_by_summary sum_weights_append)
+          done
+        done
+      from this[OF self_loop] show False using no_zero_cycle[OF _ _ refl, of loc _ t]
+        by force
+    qed
+    done
+  apply(auto simp add: zero_predecessors_def)
+  done
+
+(*
+definition zero_predecessors where
 "zero_predecessors t loc  = {loc'. (\<exists> s . s \<in>\<^sub>A summary loc' loc \<and> results_in t s = t)}"
 
 context 
@@ -331,9 +376,9 @@ termination
     done
   apply(auto simp add: zero_predecessors_def)
   done
+*)
 end
 end
-
 
 
 lemma dataplane_tracker_inv_produces_drops:
@@ -928,6 +973,11 @@ lemma dataplane_tracker_inv_produces_drops:
                   apply -
                   apply(induction "(card {t. t \<le> t' \<and> (\<exists> p m nid. (p, t, m) \<in> set (consu (os nid)))},Produces.dataflow_topology.weight' (summ sg) (-+-) t' (Loc nid'' (Trg p'')))" arbitrary: p'' t' m' nid'' n n' rule: less_induct)
                   subgoal premises prems'' for p'' t' nid'' m' n n'
+                      apply(subgoal_tac "Graph.graph (summ sg)")
+                       defer
+                      subgoal
+(* Graph.graph (summ sg) should probably be an assumption*)
+                        sorry
                     using prems''(2-)
                     apply -
                 apply (frule conjunct1[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supported_def]], rule_format])
@@ -1080,16 +1130,26 @@ lemma dataplane_tracker_inv_produces_drops:
                               subgoal
                                 apply clarsimp
                                 subgoal for m''
-                                  thm prems(15)
-
                                   apply (drule conjunct1[OF prems(15)[unfolded produ_consu_inter_supported_def], rule_format])
                                   apply (elim disjE)
                                   subgoal
-                                    apply(rule frontier_less_equal_trans[of _ "t' -+- n'"]; simp?)
-                                    apply (rule frontier_less_equal_ifrontierI[of _ n' "Loc nid''' (Src p''')", simplified, OF D])
+                                    apply(subgoal_tac "\<exists> n''. n'' \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid''' (Src p''')) (Loc nid' (Trg p')) \<and> n'' \<le> 0 + n'")
+                                    defer
                                     subgoal
-                                      (* maybe use zero_in_graph_path_weight*)
-                                      sorry
+                                      using GS(2)
+                                      apply -
+                                      apply(erule allE[where x = nid''])
+                                      apply(erule allE[where x = nid'''])
+                                      apply(erule allE[where x = p''])
+                                      apply(erule allE[where x = p'''])
+                                      apply(erule impE, assumption)
+                                      apply(drule path_weight_direct_0path[rotated], assumption)
+                                      apply(rule graph.path_weight_elem_trans)
+                                      by auto
+                                    apply(erule conjE exE)+
+                                    subgoal for n''
+                                    apply(rule frontier_less_equal_trans[of _ "t' -+- n''"]; simp?)
+                                    apply (rule frontier_less_equal_ifrontierI[of _ n'' "Loc nid''' (Src p''')", simplified, OF D], assumption)
                                         apply (simp add: change_multiplicities_append_alt)
                                         apply (clarsimp simp add: c_pts_change_multiplicities)
                                         apply (subst (2) filter_False)
@@ -1102,6 +1162,7 @@ lemma dataplane_tracker_inv_produces_drops:
                                         apply simp
                                         using frontier_less_equal_trans frontier_less_equal_zcount_pos apply blast
                                         done
+                                      done
                                   subgoal
                                     apply clarsimp
                                     subgoal for m''
@@ -1109,11 +1170,23 @@ apply (drule conjunct2[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supp
                                       apply clarsimp
                                       apply (elim disjE)
                                       subgoal for t'
-                                    apply(rule frontier_less_equal_trans[of _ "t' -+- n'"]; simp?)
-                                        apply (rule frontier_less_equal_ifrontierI[of _ n' "Loc nid''' (Src p''')", simplified, OF D])
-                                        subgoal 
-                                        (* maybe use zero_in_graph_path_weight*)
-                                          sorry
+                                    apply(subgoal_tac "\<exists> n''. n'' \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid''' (Src p''')) (Loc nid' (Trg p')) \<and> n'' \<le> 0 + n'")
+                                    defer
+                                    subgoal
+                                      using GS(2)
+                                      apply -
+                                      apply(erule allE[where x = nid''])
+                                      apply(erule allE[where x = nid'''])
+                                      apply(erule allE[where x = p''])
+                                      apply(erule allE[where x = p'''])
+                                      apply(erule impE, assumption)
+                                      apply(drule path_weight_direct_0path[rotated], assumption)
+                                      apply(rule graph.path_weight_elem_trans)
+                                      by auto
+                                    apply(erule conjE exE)+
+                                    subgoal for n''
+                                    apply(rule frontier_less_equal_trans[of _ "t' -+- n''"]; simp?)
+                                        apply (rule frontier_less_equal_ifrontierI[of _ n'' "Loc nid''' (Src p''')", simplified, OF D], assumption)
                                         apply (simp add: change_multiplicities_append_alt)
                                         apply (clarsimp simp add: c_pts_change_multiplicities)
                                         apply (subst (2) filter_False)
@@ -1125,7 +1198,9 @@ apply (drule conjunct2[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supp
                                           by (auto simp add: Misc.set_map_filter map_concat extract_prog_def extract_progress_def split_beta image_iff del: disjCI split: option.splits)
                                         apply simp
                                         using frontier_less_equal_trans frontier_less_equal_zcount_pos apply blast
-                                        using dataflow_topology_from_tree.results_in_mono_raw by blast
+                                        using dataflow_topology_from_tree.results_in_mono_raw
+                                        by fastforce
+                                      done
                                       subgoal for t1
                                         apply clarsimp
                                         apply(drule sym[of t]; simp)
@@ -1141,7 +1216,7 @@ apply (drule conjunct2[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supp
                                               apply simp
                                               unfolding dataflow_topology.zero_predecessors_def[OF D]
 (* use graph.path_weight instead of summ*)
-                                              apply(subgoal_tac "Loc nid''' (Trg p1) \<in> {loc'. \<exists>s. s \<in>\<^sub>A graph.path_weight (summ sg) loc' (Loc nid'' (Trg p'')) \<and> t1' -+- s = t1'}")
+                                              apply(subgoal_tac "Loc nid''' (Trg p1) \<in> {loc'. \<exists>s. s \<in>\<^sub>A graph.path_weight (summ sg) loc' (Loc nid'' (Trg p'')) \<and> Loc nid'' (Trg p'') \<noteq> Loc nid''' (Trg p1) \<and> t1' -+- s = t1'}")
                                                defer
                                               subgoal
                                                 using GS(2)
@@ -1150,7 +1225,6 @@ apply (drule conjunct2[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supp
                                                 apply(erule allE[where x = nid'''])
                                                 apply(erule allE[where x = p''])
                                                 apply(erule allE[where x = p'''])
-                                                apply simp
                                                 using GS(1)
                                                 apply -
                                                 apply(erule allE[where x = nid'''])
@@ -1158,8 +1232,20 @@ apply (drule conjunct2[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supp
                                                 apply(erule allE[where x = p'''])
                                                 apply(erule allE[where x = 0])
                                                 apply simp
-                                                sorry
-                                              sorry
+                                                apply(rule conjI)
+                                                subgoal
+                                                  using graph.path_weight_elem_trans[of "summ sg" 0 "Loc nid''' (Trg p1)" "Loc nid''' (Src p''')" 0
+                                                        "Loc nid'' (Trg p'')", simplified] 
+                                                  by(auto dest!: path_weight_direct_0path)
+                                                subgoal
+                                                  apply auto
+  (* should be a contradiction summ sg (Loc nid''' (Src p''')) (Loc nid''' (Trg p1))*)
+                                                  sorry
+                                                done
+                                              apply(rule le_imp_less_Suc)
+                                              apply(subst dataflow_topology_from_tree.sum_singleton[symmetric, where f = "dataflow_topology.weight' (summ sg) (-+-) t1'"])
+                                              apply(rule ordered_comm_monoid_add_class.sum_mono2)
+                                              by auto
                                           apply simp
                                           apply(rule disjI1)
                                             apply(rule psubset_card_mono)
@@ -1211,16 +1297,52 @@ apply (drule conjunct2[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supp
                                               by simp
                                             done
                                           done
-                                          apply(subgoal_tac "n -+- s1 \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid''' (Trg p1)) (Loc nid' (Trg p'))")
+                                          apply(subgoal_tac "\<exists>n'. n' \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid''' (Trg p1)) (Loc nid' (Trg p')) \<and> n' \<le> n -+- s1")
                                            defer
-                                          subgoal
-                                            sorry
+                                        subgoal
+
+                                                using GS(2)
+                                                apply -
+                                                apply(erule allE[where x = nid''])
+                                                apply(erule allE[where x = nid'''])
+                                                apply(erule allE[where x = p''])
+                                                apply(erule allE[where x = p'''])
+                                                using GS(1)
+                                                apply -
+                                                apply(erule allE[where x = nid'''])
+                                                apply(erule allE[where x = p1])
+                                                apply(erule allE[where x = p'''])
+                                                apply(erule allE[where x = s1])
+                                                apply simp
+                                                apply(drule path_weight_direct_0path[rotated], assumption)
+                                                apply(erule exE conjE)+
+                                                subgoal for s2'
+                                                apply(subgoal_tac "\<exists>t'. t' \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid''' (Trg p1)) (Loc nid'' (Trg p'')) \<and> t'\<le> s2' + 0")
+                                                   defer
+                                                  subgoal
+                                                    apply(rule graph.path_weight_elem_trans)
+                                                    apply blast+
+                                                    done
+                                                apply(erule exE conjE)+
+                                                subgoal for s2''
+                                                using graph.path_weight_elem_trans[of "summ sg" s2'' "Loc nid''' (Trg p1)" "Loc nid'' (Trg p'')" n' "Loc nid' (Trg p')"]
+                                                apply simp
+                                                apply(erule exE conjE)+
+                                                subgoal for n3
+                                                  apply(rule exI[where x = n3])
+                                                  apply simp
+                                                  apply(rule order.trans)
+                                                   apply assumption
+                                                  by (metis Groups.add_ac(2) add_mono basic_trans_rules(23))
+                                                done
+                                              done
+                                            done
                                           apply(subgoal_tac "t = t1' -+- (n -+- s1)")
                                            defer
                                           subgoal
                                             by (metis Groups.add_ac(2) group_cancel.add1)
-
-                                        using prems''(1)[of t1' nid''' p1 m1 "n -+- s1"]
+                                          apply(erule exE conjE)+
+                                        using prems''(1)[of t1' nid''' p1 m1 _ "n -+- s1"]
                                         apply simp
                       apply (subst (asm) change_multiplicities_extract_prog_updates[where nid=nid])
                             apply assumption+
