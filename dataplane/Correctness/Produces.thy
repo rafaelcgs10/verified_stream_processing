@@ -230,48 +230,95 @@ lemma find_timestamp:
  *)
 
 definition find_minimals where
-  "find_minimals xs t = {(p, t', m) \<in> set xs. t' \<le> t \<and> \<not> (\<exists> (p', t'', _) \<in> set xs. p' = p \<and> t'' < t')}"
+  "find_minimals A t = {(p, t', m) \<in> A. t' \<le> t \<and> \<not> (\<exists> (p', t'', _) \<in> A. p' = p \<and> t'' < t')}"
 
 definition find_consu_minimals where 
-  "find_consu_minimals A os t = \<Union> ((\<lambda> nid. (\<lambda> (p, t', m). ((nid, p), t')) ` find_minimals (consu (os nid)) t) ` A)"
+  "find_consu_minimals C t = \<Union> ((\<lambda> nid. (\<lambda> (p, t', m). ((nid, p), t')) ` find_minimals (set (C nid)) t) ` UNIV)"
 
 definition find_connected_consu_minimals where
-  "find_connected_consu_minimals A su os nid p t  = {((nid', p'), t') \<in> find_consu_minimals A os t. \<exists> s. s \<in>\<^sub>A graph.path_weight su (Loc nid' (Trg p')) (Loc nid (Trg p)) \<and> t' -+- s \<le> t}"
+  "find_connected_consu_minimals su C nid p t  = {((nid', p'), t') \<in> find_consu_minimals C t. \<exists> s. s \<in>\<^sub>A graph.path_weight su (Loc nid' (Trg p')) (Loc nid (Trg p)) \<and> t' -+- s \<le> t}"
 
 definition original_sinners where
-  "original_sinners su os snid sp tnid tp t = (
-  \<exists> m. (tp, t, m) \<in> set (consu (os tnid)) \<longrightarrow>
-  su (Loc snid (Src sp)) (Loc tnid (Trg tp)) \<noteq> {}\<^sub>A \<longrightarrow>
-  (\<forall> tp' s. s \<in>\<^sub>A su (Loc snid (Trg tp')) (Loc snid (Src sp)) \<longrightarrow> (\<forall> (tp'', t', m') \<in> set (consu (os snid)). tp'' = tp' \<and> \<not> t' -+- s \<le> t)))"
+  "original_sinners su C snid sp tnid tp t = (
+  \<forall> m. (tp, t, m) \<in> set (C tnid) \<longrightarrow>
+  su (Loc snid (Src sp)) (Loc tnid (Trg tp)) \<noteq> {}\<^sub>A \<and>
+  (\<exists> tp' s. s \<in>\<^sub>A su (Loc snid (Trg tp')) (Loc snid (Src sp)) \<and> (\<forall> (tp'', t', m') \<in> set (C snid). tp'' = tp' \<and> \<not> t' -+- s \<le> t)))"
 
 definition all_original_sinners where
- "all_original_sinners A su os nid p t = {((snid, sp), (tnid, tp), t'). ((tnid, tp), t') \<in> find_connected_consu_minimals A su os nid p t \<and> original_sinners su os snid sp tnid tp t'}"
+ "all_original_sinners R su C nid p t = {((snid, sp), (tnid, tp), t').
+  su (Loc snid (Src sp)) (Loc tnid (Trg tp)) \<noteq> {}\<^sub>A \<and> ((tnid, tp), t') \<in> find_connected_consu_minimals su C nid p t \<and>
+  (snid \<in> R \<or>
+  (tnid \<notin> R \<and> original_sinners su C snid sp tnid tp t'))}"
 
-(* 
+lemma find_minimals_ex:
+  "finite A \<Longrightarrow>
+   (p, (t :: _ :: order), m) \<in> A \<Longrightarrow>
+   \<exists> t' m'. (p, t', m') \<in> find_minimals A t"
+  apply (induct A arbitrary: t m rule: finite_psubset_induct)
+  unfolding find_minimals_def
+  apply (auto simp add: image_iff split_beta)
+  subgoal for A t m
+    apply (cases "\<exists> t' m'. (p, t', m') \<in> A \<and> t' < t")
+    subgoal
+      apply clarsimp
+      subgoal for t' m'
+      apply (drule meta_spec[of _ "A - {(p, t, m)}"])
+        apply (drule meta_spec[of _ t'])
+        apply (drule meta_spec[of _ m'])
+        apply (drule meta_mp)
+         apply blast
+        apply (drule meta_mp)
+         apply blast
+        apply clarsimp
+        apply (metis (no_types, lifting) basic_trans_rules(23,24) ext dual_order.strict_iff_order insertE insert_Diff prod.sel(1,2))
+        done
+      done
+    subgoal
+      by (metis eq_refl split_pairs)
+    done
+  done
+
+lemma find_connected_consu_minimals_ex:
+  "(p, t, m) \<in> set (C nid) \<Longrightarrow>
+   \<exists> t'. ((nid, p), t') \<in> find_connected_consu_minimals su C nid p t"
+  unfolding find_connected_consu_minimals_def find_consu_minimals_def
+  apply (clarsimp simp add: image_iff split_beta)
+  sorry
+
 lemma
-  "finite (find_connected_consu_minimals su os nid p t) \<Longrightarrow>
-   (\<forall> tp tnid t m. (tp, t, m) \<in> set (consu (os tnid)) \<longrightarrow> (\<exists> snid sp. su (Loc snid (Src sp)) (Loc tnid (Trg tp)) \<noteq> {}\<^sub>A)) \<Longrightarrow>
-   (p, t, m) \<in> set (consu (os nid)) \<Longrightarrow>
-   \<exists> snid sp tnid tp t'. ((snid, sp), (tnid, tp), t') \<in> all_original_sinners su os nid p t"
-  apply (induct "find_connected_consu_minimals su os nid p t" arbitrary: nid p t rule: finite_induct)
-  subgoal sorry
-  subgoal for x F nid p t
-    apply (drule spec2)
-    apply clarsimp
-    apply (drule mp)
-     apply blast
-    apply clarsimp
-    subgoal for snid sp
-      oops *)
-
-
-inductive srcs_to_trg for P su where
-  direct: "su (Loc snid (Src sp)) (Loc nid (Trg p)) \<noteq> {}\<^sub>A \<Longrightarrow> P nid p t m \<Longrightarrow> srcs_to_trg P su snid nid p t m"
-| step: "su (Loc snid' (Src sp)) (Loc nid (Trg p)) \<noteq> {}\<^sub>A \<Longrightarrow> snid' \<noteq> snid \<Longrightarrow>
-  (\<forall> p' s. s \<in>\<^sub>A su (Loc snid' (Trg p')) (Loc snid' (Src sp)) \<longrightarrow> (\<forall> t' m'. t = t' -+- s \<longrightarrow> P snid' p' t' m' \<longrightarrow> srcs_to_trg P su snid snid' p' t' m')) \<Longrightarrow> srcs_to_trg P su snid nid p t m"
-
-thm graph.path_weight_refl
-
+  "finite R \<Longrightarrow>
+   (\<forall> tp (tnid :: 'l :: enum) t m. (tp, t, m) \<in> set (C tnid) \<longrightarrow> (\<exists> snid sp. su (Loc snid (Src sp)) (Loc tnid (Trg tp)) \<noteq> {}\<^sub>A)) \<Longrightarrow>
+   (p, t, m) \<in> set (C nid) \<Longrightarrow>
+   nid \<notin> R \<Longrightarrow>
+   \<exists> snid sp tnid tp t'. ((snid, sp), (tnid, tp), t') \<in> all_original_sinners R su C nid p t"
+  apply (induct R arbitrary: nid p t rule: finite_induct)
+  subgoal for nid p t
+    apply simp
+    apply (subgoal_tac "finite (find_connected_consu_minimals su C nid p t)")
+    subgoal premises prems
+      using prems(3,1,2) apply -
+      apply (induct "find_connected_consu_minimals su C nid p t" arbitrary: nid p t rule: finite_psubset_induct)
+      subgoal premises prems2 for nid p t
+        using prems2 apply -
+        apply simp
+        apply (drule spec2)
+        apply (drule mp)
+         apply blast
+        apply clarsimp
+        subgoal for snid sp
+          unfolding all_original_sinners_def
+          apply clarsimp
+          apply (drule find_connected_consu_minimals_ex[where su=su])
+          apply clarsimp
+          subgoal for t'
+            apply (cases "original_sinners su C snid sp nid p t'")
+            subgoal
+              by blast
+            subgoal
+              apply (subst (asm) (2) original_sinners_def)
+              apply (clarsimp simp add: split_beta)
+              subgoal for m'
+    oops
 
 lemma graph_induct:
   assumes G: "Graph.graph weights"
@@ -885,7 +932,7 @@ lemma dataplane_tracker_inv_produces_drops:
               apply (subst (asm) extract_progress_def)
               apply (clarsimp simp add: image_iff split_beta Misc.set_map_filter split: option.splits; hypsubst_thin?)
               subgoal for p' m
-                apply (subgoal_tac "\<exists> snid sp tnid tp t'. ((snid, sp), (tnid, tp), t') \<in> all_original_sinners (UNIV - set xs) (summ sg) os nid' p' t")
+                apply (subgoal_tac "\<exists> snid sp tnid tp t'. ((snid, sp), (tnid, tp), t') \<in> all_original_sinners (set xs) (summ sg) (\<lambda> nid. consu (os nid)) nid' p' t")
                 subgoal
                   unfolding all_original_sinners_def find_connected_consu_minimals_def 
                   apply clarsimp
@@ -898,7 +945,7 @@ lemma dataplane_tracker_inv_produces_drops:
                     apply clarsimp
                     subgoal for m'
                       subgoal
-                        apply (cases "snid \<in> set xs")
+                        apply (elim disjE)
                         subgoal
                           apply (rule frontier_less_equal_ifrontierI[OF D, of 0 "Loc tnid (Trg tp)", simplified])
                           subgoal
@@ -911,11 +958,57 @@ lemma dataplane_tracker_inv_produces_drops:
                             sorry
                           done
                         subgoal
-                          apply (drule conjunct1[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supported_def]], rule_format, of tp])
+                          apply (elim conjE)
+                          apply (frule conjunct1[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supported_def]], rule_format, of tp])
                           apply simp
                           apply (drule gt_0_plusD)
                           apply (elim disjE)
                           subgoal 
+                            sorry
+                          subgoal
+                            apply (subgoal_tac "\<exists>  m. (sp, t', m) \<in> set (produ (os snid))")
+                            subgoal
+                              apply clarsimp
+                              apply (drule conjunct1[OF prems(15)[unfolded produ_consu_inter_supported_def], rule_format])
+                              apply (elim disjE)
+                              subgoal
+                                sorry
+                              subgoal
+                                apply clarsimp
+                                apply (drule conjunct2[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supported_def]], rule_format])
+                                apply clarsimp
+                              apply (elim disjE)
+                                subgoal
+                                  sorry
+                                subgoal for m' t''
+                                  apply clarsimp
+                                  apply hypsubst_thin
+                                  unfolding original_sinners_def
+                                  apply clarsimp
+                                  apply (drule mp)
+                                  apply blast
+                                  subgoal for t3 p'' s' m''
+                                    apply clarsimp
+                                    apply (drule spec[of _ p''])
+                                    apply (drule spec[of _ s'])
+                                    apply (drule mp)
+                                    subgoal sorry
+                                    apply auto
+                                    done
+                                  done
+                                done
+                              done
+                            subgoal
+                              sorry
+                            done
+                          done
+                        done
+                      done
+                    done
+                  done
+                subgoal
+                  unfolding all_original_sinners_def
+
 
                       find_theorems "0 < _ + _" "_ \<or> _"
 
