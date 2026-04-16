@@ -986,7 +986,24 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
         subgoal 
           (* propagate_all *)
           sorry
-        subgoal 
+        subgoal for x t xs
+          apply (intro exI conjI relcomppI)
+             apply (rule rtranclp.intros(1))
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+          unfolding R_def[simplified]
+          apply (rule exI[of _ "os(1 := (os 1)\<lparr> outpu := (\<lambda> _. xs) \<rparr> )"])
+          apply (rule exI[of _ "sg"])
+          apply (rule exI[of _ "BENQ (2, 1) (x, t) cbufs"])
+          apply (rule exI[of _ inps])
+          apply (rule exI[of _ S])
+          apply (rule exI[of _ D])
+          apply (intro conjI)
+
+
+end
           (* batch_op outputs *)
           sorry
         subgoal 
