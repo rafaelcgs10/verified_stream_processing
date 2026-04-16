@@ -895,7 +895,7 @@ lemma take_step_PR_p_preserves_inv:
 lemma propagate_all_terminates:
   assumes "dataflow_topology su (-+-)"
     and "Propagate.dataflow_topology.inv_imps_work_sum su (-+-) c"
-    and "Propagate.dataflow_topology.inv_implications_nonneg (c :: ('loc :: {finite,ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot,enum,linorder}, 't :: {compare_order,compare,ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) configuration)"
+    and "Propagate.dataflow_topology.inv_implications_nonneg (c :: ('loc :: {enum,linorder}, 't :: {compare_order,ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) configuration)"
     and "ID CCOMPARE('t) = Some compare"
     and "\<forall> loc. su loc loc = {}\<^sub>A"
     and "dataflow_topology_from_tree.inv_imp_plus_work_nonneg c"

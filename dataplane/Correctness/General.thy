@@ -1623,4 +1623,11 @@ lemma graph_to_nxt_fun:
   apply clarsimp
   done
 
+lemma dataplane_tracker_inv_upfro:
+  "sg = sg'\<lparr> upfro := f \<rparr> \<Longrightarrow>
+   dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv os cbufs sg'"
+  unfolding dataplane_tracker_inv_def
+  apply auto
+  done
+
 end
