@@ -155,9 +155,11 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
         for st :: "(1, 'c) shared_state"
           and os1' :: "(1, 'b, 'a, 'c, 'd) input_state_scheme"
         using that unfolding R_def invariant_def my_source_op_def obtain_progress_def by (fastforce intro!: wbc_base)
-      note * = calculation this
-      show ?thesis using SIM1 unfolding R_def[symmetric]
-        by - (sim_cases defs: my_ooo_input_op_def ooo_input_op_def my_increment_op_def increment_op_def elims: step_dataflow_op_elim step_map_op_elim step_comp_op_elim step_builder_op_elim intros: invariant_initia *)
+      ultimately show ?thesis unfolding R_def[symmetric]
+        by (sim_cases sim: SIM1
+            defs: my_ooo_input_op_def ooo_input_op_def my_increment_op_def increment_op_def
+            elims: step_dataflow_op_elim step_map_op_elim step_comp_op_elim step_builder_op_elim
+            intros: invariant_initia)
     qed
   qed
 next
@@ -461,8 +463,8 @@ next
         by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op])
       ultimately show ?thesis using that(1) unfolding invariant_def R_def by (fastforce intro!: wbc_base)
     qed
-    thus ?thesis using SIM2 unfolding R_def[symmetric]
-      by (sim_cases defs: my_source_op_def elims: step_map_op_elim step_source_op_elim)
+    thus ?thesis unfolding R_def[symmetric]
+      by (sim_cases sim: SIM2 defs: my_source_op_def elims: step_map_op_elim step_source_op_elim)
   qed
 qed
 
