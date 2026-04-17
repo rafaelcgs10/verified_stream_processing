@@ -243,13 +243,13 @@ next
 qed
 
 (* Experiment with Eisbach. *)
-method sim_cases uses defs elims intros =
-  ((unfold defs)?, elim conjE elims; simp only: IO.simps; hypsubst_thin?; auto intro: intros simp flip: defs)
+method sim_cases uses sim defs elims intros =
+  (use nothing in \<open>insert sim, (unfold defs)?, elim conjE elims; simp only: IO.simps; hypsubst_thin?; auto intro: intros method_facts simp flip: defs\<close>)
 
 lemma ooo_input_op_source_op:
   defines \<open>invariant f os \<equiv> initia os \<and> en1 os = f \<and> inj f \<and> (\<forall>p. timely_input_stream (es os p) (mset (ocaps os p)))\<close>
     and \<open>my_ooo_input_op os \<equiv> map_op
-  (case_option (Inl (0 :: 1)) (\<lambda>p. Inr (0 :: 1, p))) (case_option (Inl (0 :: 1)) (\<lambda>p. Inr (0 :: 1, p)))
+  (case_option (Inl (1 :: 1)) (\<lambda>p. Inr (1 :: 1, p))) (case_option (Inl (1 :: 1)) (\<lambda>p. Inr (1 :: 1, p)))
   (ooo_input_op c\<UU> os)\<close>
     and \<open>my_source_op f os \<equiv> map_op (\<lambda>p. (0, p)) (\<lambda>p. (0, p))
   (source_op (\<lambda>p. outpu os p @@- lmap (\<lambda>x. case x of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os p))))\<close>
@@ -308,8 +308,10 @@ proof (coinduction arbitrary: sg os rule: wbisim_coinduct_upto'')
         for st :: "('c, 'd) shared_state"
           and os' :: "('c, 'b, 'a, 'd, 'e) input_state_scheme"
         using that unfolding R_def invariant_def my_source_op_def obtain_progress_def by (force intro!: wbc_base)
-      ultimately show ?thesis using SIM1 unfolding R_def[symmetric]
-        by - (sim_cases defs: my_ooo_input_op_def ooo_input_op_def elims: step_dataflow_op_elim step_map_op_elim step_builder_op_elim intros: invariant_initia)
+      ultimately show ?thesis unfolding R_def[symmetric]
+        by (sim_cases sim: SIM1 defs: my_ooo_input_op_def ooo_input_op_def
+            elims: step_dataflow_op_elim step_map_op_elim step_builder_op_elim
+            intros: invariant_initia)
     qed
   qed
 next
@@ -396,8 +398,8 @@ next
           by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] simp add: fun_eq_iff)
         ultimately show ?thesis using that(1) unfolding R_def invariant_def by (force intro!: wbc_base)
       qed
-      thus ?thesis using SIM2 unfolding R_def[symmetric]
-        by (sim_cases defs: my_source_op_def elims: step_map_op_elim step_source_op_elim)
+      thus ?thesis unfolding R_def[symmetric]
+        by (sim_cases sim: SIM2 defs: my_source_op_def elims: step_map_op_elim step_source_op_elim)
     qed
   qed
 qed
