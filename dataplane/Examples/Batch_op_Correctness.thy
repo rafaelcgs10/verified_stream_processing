@@ -8,6 +8,7 @@ imports
   "../Correctness/Consumes"
   "../Correctness/Progress"
   "../Correctness/Produces"
+  "../Correctness/Outputs"
   Dataplane.LList_Haskell_Setup
   Source_op
   Set_op
@@ -218,6 +219,12 @@ declare if_cong[cong]
 
 definition "cset_from_list = cset_of_llist o llist_of"
 
+lemma cset_from_list_Cons[simp]:
+  "cset_from_list (x # xs) = cinsert x (cset_from_list xs)"
+  unfolding cset_from_list_def
+  apply (clarsimp simp flip: cin.rep_eq)
+  apply (metis cinsert_code)
+  done
 lemma cset_from_list_append[simp]:
   "cset_from_list (xs @ ys) = cUn (cset_from_list xs) (cset_from_list ys)"
   unfolding cset_from_list_def
@@ -327,6 +334,10 @@ lemma image_zmset_id[simp]:
   apply transfer
   apply (auto simp add: equiv_zmset_def split_beta)
   done
+lemma if_same[simp]:
+  "(if nid' = nid then f nid else f nid') = f nid'"
+  by simp
+
 
 lemma correctness_gen:
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
@@ -356,9 +367,9 @@ lemma correctness_gen:
     \<open>dataplane_tracker_inv os cbufs sg\<close>
     and S_INV:
     \<open>SP = cUnion (cimage 
-      (\<lambda> t. cset_from_list (map (\<lambda> x. ((2, 1), (Inr x, t))) (f (coll ((map (\<lambda> (x, t). Data t (projl x)) (chns (1, 1))) @@- (inps 1)) t))))
+      (\<lambda> t. cset_from_list (map (\<lambda> x. ((1, 1), (Inr x, t))) (f (coll ((map (\<lambda> (x, t). Data t (projl x)) (chns (1, 1))) @@- (inps 1)) t))))
       (cUn (ts (inps 1)) (cset_from_list (map snd (chns (1, 1))))))\<close>
-    \<open>SO = cset_from_list (map (\<lambda> x. ((2, 1), x)) (outpu (os 1) 1))\<close>
+    \<open>SO = cset_from_list (map (\<lambda> x. ((1, 1), x)) (outpu (os 1) 1))\<close>
     and
     INP_STREAM_INV:
     \<open>timely_input_stream (inps 1) (mset (ocaps (os 0) 1))\<close>
@@ -996,12 +1007,81 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           unfolding R_def[simplified]
           apply (rule exI[of _ "os(1 := (os 1)\<lparr> outpu := (\<lambda> _. xs) \<rparr> )"])
           apply (rule exI[of _ "sg"])
-          apply (rule exI[of _ "BENQ (2, 1) (x, t) cbufs"])
+          apply (rule exI[of _ cbufs])
           apply (rule exI[of _ inps])
-          apply (rule exI[of _ S])
+          apply (rule exI[of _ "cinsert ((1, 1), x, t) S"])
           apply (rule exI[of _ D])
           apply (intro conjI)
+                  apply (simp_all add: SIM1)
+          subgoal
+            unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
+            apply (simp add: map_tl SIM1(3-) comp_def split_beta comp_op_def if_distrib  enum_num1_def operator_state.defs fun_upd_def)
+            done
+          subgoal
+            apply (simp add: map_tl SIM1(2-) split_beta comp_op_def if_distrib  enum_num1_def operator_state.defs)
+            apply (rule arg_cong2[where f=set_spec_op])
+             apply simp_all
+            apply (rule arg_cong2[where f=cinsert])
+             apply simp_all
+            apply (rule arg_cong2[where f=cUn])
+             apply simp_all
+            apply (auto 0 0)
+            subgoal for X Y
+              apply (clarsimp simp add: image_iff split: event.splits)
+              apply (intro exI conjI)
+                 apply assumption
+                apply auto
+              apply (cases Y; simp)
+              apply (clarsimp simp add: BULK_BENQ_def SIM1(1) outputs_at_target_my_summ inputs_at_target_def image_iff split: event.splits)
+              done
+            subgoal for X Y Z
+              apply (clarsimp simp add: BULK_BENQ_def SIM1(1) outputs_at_target_my_summ inputs_at_target_def image_iff split: event.splits)
+              apply (metis UnCI snd_eqD)
+              done
+            subgoal for X Y
+              by (auto simp add: BULK_BENQ_def SIM1(1) outputs_at_target_my_summ inputs_at_target_def image_iff split: event.splits)
+            subgoal for X Y Z
+              apply (clarsimp simp add: BULK_BENQ_def SIM1(1) outputs_at_target_my_summ inputs_at_target_def image_iff split: event.splits)
+              apply (metis UnCI snd_eqD)
+              done
+            done
+          subgoal
+            using SIM1(6,4)
+            by (auto simp add: ty1_check_def  operator_state.defs split: sum.splits)
+          subgoal
+            using SIM1(7,5)
+            by (auto simp add: ty2_check_def  operator_state.defs split: sum.splits)
+          subgoal premises
+            using SIM1(10) apply -
+            apply (rule dataplane_tracker_inv_update_output)
+               apply assumption
+              apply simp_all
+            subgoal
+              by (simp add: my_summ_def SIM1)
+            subgoal
+              apply (rule graph_summar_nt)
+                 apply (rule refl)+
+                apply (rule SIM1(2)[unfolded SIM1(1)])
+               apply (auto simp add: SIM1 comp_def)
+              done
+            done
+          done
 
+              find_theorems my_summ
+
+            oops
+
+(*
+  assumes D: "dataflow_topology (summ sg) (-+-)"
+*)
+
+
+      thm map_concat
+
+          thm concat_cong
+
+      find_theorems c_pts 
+      
 
 end
           (* batch_op outputs *)

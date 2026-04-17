@@ -53,50 +53,6 @@ lemma graph_to_nxt_not_Ex_op_conn[simp]:
   apply (auto simp add: is_empty_antichain_iff find_None_iff dest!: find_SomeD' split: prod.splits)
   done
 
-lemma the_elem_bi_unique_op_conn:
-  "the_elem {(nid', p'). su (Loc nid' (Src p')) (Loc nid (Trg p)) \<noteq> {}\<^sub>A} = (nid', p') \<Longrightarrow>
-   su (Loc nid'' (Src p'')) (Loc nid (Trg p)) \<noteq> {}\<^sub>A \<Longrightarrow>
-   bi_unique (op_conn su) \<Longrightarrow>
-   nid' = nid'' \<and> p' = p''"
-  apply (subst (asm) the_elem_image_unique[where f=id, simplified, of _  "(nid'', p'')"])
-    apply blast
-  unfolding bi_unique_def
-   apply auto
-  done
-
-
-lemma outputs_at_target_outpu_if:
-  "bi_unique (op_conn su) \<Longrightarrow>
-   os' = os(nid := (os nid)\<lparr> outpu := X \<rparr>) \<Longrightarrow>
-   outputs_at_target su os' (nid', p') = 
-  (let S = {p. op_conn su (nid, p) (nid', p')} in if S \<noteq> {} then let p = the_elem S in X p else outputs_at_target su os (nid', p'))"
-  unfolding outputs_at_target_def
-  apply (auto split: prod.splits)
-  subgoal
-    apply (drule the_elem_bi_unique_op_conn)
-      apply assumption+
-    apply auto
-    done
-  subgoal for x2 a b x
-    apply (subst the_elem_image_unique[where f=id, simplified, of _ "b"])
-      apply fast
-    unfolding bi_unique_def
-     apply auto
-    apply (subst (asm) the_elem_image_unique[where f=id, simplified, of _  "(a, b)"])
-      apply blast
-     apply auto
-    done
-  subgoal for x2 a b x
-    apply (subst the_elem_image_unique[where f=id, simplified, of _ "x"])
-      apply fast
-    unfolding bi_unique_def
-     apply auto
-    apply (subst (asm) the_elem_image_unique[where f=id, simplified, of _  "(_, x)"])
-      apply blast
-     apply auto
-    done
-  done
-
 
 lemma sum_zmset_filter_graph_to_nxt:
   assumes GR: "graph_summar_nt su (graph_to_nxt su) os"
