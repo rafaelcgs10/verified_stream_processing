@@ -267,20 +267,17 @@ lemma in_cimage_cset_from_list[simp]:
   apply (auto simp flip: cin.rep_eq)
   done
 
-lemma outputs_at_target_my_summ:
+lemma outputs_at_target_my_summ[simp]:
   "outputs_at_target (antichain_from_list oo my_summ) os = (\<lambda> p. if p = (1, 0) then outpu (os 0) 0 else [])"
   unfolding outputs_at_target_def my_summ_def
   apply (rule ext)
   apply (auto simp add: antichain_from_list_singleton split: prod.splits if_splits)
   subgoal for nid
-    apply (auto simp add: if_distrib)
-    by (metis Batch_op_Correctness.antichain_from_list_empty Timely_Infrastructure.antichain_from_list_empty)
-  subgoal for nid
     apply (subgoal_tac "nid = 0")
      apply simp
     apply (subgoal_tac "{(nid' :: 2, p' :: 1). antichain_from_list (if nid' = 0 then [0] else []) \<noteq> {}\<^sub>A} = {(0, 1)}")
     subgoal
-      by (smt (verit, ccfv_SIG) Collect_cong Executable.antichain_from_list_empty antichain_from_list_singleton empty_antichain.abs_eq insert_compr mem_Collect_eq old.prod.case surj_pair
+      by (smt (verit, ccfv_threshold) Batch_op_Correctness.antichain_from_list_empty Collect_cong Pair_inject Timely_Infrastructure.antichain_from_list_empty antichain_from_list_singleton split_cong
           the_elem_eq)
     subgoal premises
       apply transfer
@@ -561,7 +558,6 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                         subgoal
                           unfolding my_summ_def inj_on_def
                           apply (auto simp add: antichain_from_list_singleton is_empty_antichain_iff split: prod.splits if_splits intro!: find_Some_singleton)
-                          apply (metis dataflow_topology_from_tree.set_antichain_0 empty_antichain.rep_eq insert_not_empty)
                           done
                         done
                       subgoal
@@ -1053,7 +1049,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             by (auto simp add: ty2_check_def  operator_state.defs split: sum.splits)
           subgoal premises
             using SIM1(10) apply -
-            apply (rule dataplane_tracker_inv_update_output)
+            apply (rule dataplane_tracker_inv_update_outputs_outside)
                apply assumption
               apply simp_all
             subgoal
@@ -1066,29 +1062,69 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               done
             done
           done
-
-              find_theorems my_summ
-
-            oops
-
-(*
-  assumes D: "dataflow_topology (summ sg) (-+-)"
-*)
-
-
-      thm map_concat
-
-          thm concat_cong
-
-      find_theorems c_pts 
-      
-
-end
-          (* batch_op outputs *)
-          sorry
-        subgoal 
-          (* input_op outputs *)
-          sorry
+        subgoal for x t xs
+          apply (intro exI conjI relcomppI)
+             apply (rule rtranclp.intros(1))
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+          unfolding R_def[simplified]
+          apply (rule exI[of _ "os(0 := (os 0)\<lparr> outpu := (\<lambda> _. xs) \<rparr>)"])
+          apply (rule exI[of _ "sg"])
+          apply (rule exI[of _ "BENQ (1, 1) (x, t) cbufs"])
+          apply (rule exI[of _ inps])
+          apply (rule exI[of _ "S"])
+          apply (rule exI[of _ D])
+          apply (intro conjI)
+                  apply (simp_all add: SIM1)
+   subgoal
+            unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
+            by (simp add: BENQ_def map_tl SIM1(2-) comp_def split_beta comp_op_def if_distrib  enum_num1_def operator_state.defs fun_upd_def)
+          subgoal
+            apply (simp add: map_tl SIM1(2-) split_beta comp_op_def if_distrib  enum_num1_def operator_state.defs)
+            apply (rule arg_cong2[where f=set_spec_op])
+             apply simp_all
+            apply (rule arg_cong2[where f=cUn])
+             apply simp_all
+            apply (cases "{(nid', p'). antichain_from_list (if nid' = (0 :: 2) then [0 :: 't] else []) \<noteq> {}\<^sub>A} = {}")
+            subgoal 
+              apply (rule FalseE)
+              apply (clarsimp simp add: if_distrib[of antichain_from_list])
+              apply (drule spec[of _ 2])
+              apply simp               
+              apply (auto 0 0 simp add:  my_summ_def antichain_from_list_singleton split: prod.splits)
+              done
+            subgoal
+                unfolding BENQ_def BULK_BENQ_def inputs_at_target_def outputs_at_target_def
+                apply (clarsimp simp add:  my_summ_def antichain_from_list_singleton split: prod.splits)
+                done
+              done
+          subgoal
+            using SIM1(6,4)
+            by (auto simp add: ty1_check_def BENQ_def operator_state.defs split: sum.splits)
+          subgoal
+            using SIM1(6,7,5,4) apply -
+            apply (auto simp add: ty1_check_def ty2_check_def BENQ_def operator_state.defs split: sum.splits)
+            done
+          subgoal premises temp
+            using SIM1(10) apply -
+            apply (rule dataplane_tracker_inv_update_outputs[where nid=0 and xs="[(x, t)]" and ys=xs and p=1])
+            apply assumption
+            using temp apply (simp add: operator_state.defs)
+            using temp apply simp
+            unfolding BENQ_def
+              apply simp
+            apply (simp add: SIM1 my_summ_def)
+            using mem_antichain_nonempty in_antichain_singleton apply force
+        subgoal
+              apply (rule graph_summar_nt)
+                 apply (rule refl)+
+                apply (rule SIM1(2)[unfolded SIM1(1)])
+               apply (auto simp add: SIM1 comp_def)
+          done
+        done
+      done
         subgoal 
           sorry
         done

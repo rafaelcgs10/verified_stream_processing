@@ -226,6 +226,11 @@ lemma set_antichain_antichain_singleton[simp]:
   apply (auto simp: incomparable_def)
   done
 
+
+lemma antichain_nonempty[simp]:
+  "antichain {A} \<noteq> {}\<^sub>A"
+  by (metis empty_antichain.rep_eq insert_not_empty set_antichain_antichain_singleton)
+
 lemma set_zmset_to_zmset[simp]:
   "set_zmset (to_zmset xs) = set xs"
   unfolding set_zmset_def
