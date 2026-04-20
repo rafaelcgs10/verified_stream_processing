@@ -39,6 +39,15 @@ lemma cset_of_llist_llist_of_append[simp]:
     apply (simp_all add: countable_finite eq_onp_same_args)
   done
 
+lemma in_cset_of_llist_llist_of[simp]:
+  "x |\<in>| cset_of_llist (llist_of xs) \<longleftrightarrow> x \<in> set xs"
+  using cin_code by force
+
+lemma csubset_eq_cset_of_llist:
+  "csubset_eq (cset_of_llist lxs) S \<longleftrightarrow> (\<forall> x \<in> lset lxs. x |\<in>| S)"
+  using cin_code by fastforce
+
+
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 

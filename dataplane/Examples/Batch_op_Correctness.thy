@@ -166,50 +166,6 @@ lemma dataflow_tree_to_graph_to_my_summ[simp]:
     done 
   done
 
-definition "coll inps t = list_of (lmap (\<lambda> e. case e of Data t d \<Rightarrow> d) (lfilter (\<lambda> e. case e of Data t' d \<Rightarrow> t = t' | _ \<Rightarrow> False) inps))"
-
-lemma coll_LNil[simp]:
-  "coll LNil t = []"
-  by (auto simp add: coll_def list_of_LCons_conv)
-lemma coll_LCons_Data:
-  "lfinite (lfilter (\<lambda>e. event.time e = t) inps) \<Longrightarrow>
-   coll (LCons (Data t' e) inps) t = (if t = t' then e # coll inps t else coll inps t)"
-  apply (auto simp add: coll_def list_of_LCons_conv)
-  apply (rule FalseE)
-  apply (subgoal_tac "llength (lfilter (\<lambda>e. event.time e = t') inps) \<ge> llength (lfilter (\<lambda>x. case x of Data t'a d \<Rightarrow> t' = t'a | _ \<Rightarrow> False) inps)")
-  subgoal
-    by (metis basic_trans_rules(24) enat_ord_simps(3) llength_eq_infty_conv_lfinite)
-  subgoal premises
-    apply(induct inps)
-      apply (auto intro: order_trans split: event.splits)
-     apply (smt (verit, best) basic_trans_rules(7) eSuc_ile_mono ile_eSuc lfilter_cong)+
-    done
-  done
-lemma coll_LCons_Drop[simp]:
-  "coll (LCons (Drop t') inps) t = coll inps t"
-  by (auto simp add: coll_def list_of_LCons_conv)
-lemma coll_LCons_Mint[simp]:
-  "coll (LCons (Mint t') inps) t = coll inps t"
-  by (auto simp add: coll_def list_of_LCons_conv)
-
-lemma coll_append[simp]:
-  "coll (llist_of (xs @ ys)) t = coll (llist_of xs) t @ coll (llist_of ys) t"
-  apply (simp add: coll_def)
-  done
-
-lemma coll_lshift:
-  "lfinite (lfilter (\<lambda>e. event.time e = t) inps) \<Longrightarrow>
-   coll (xs @@- inps) t = coll (llist_of xs) t @ coll inps t"
-  apply (induct xs arbitrary: inps rule: rev_induct)
-   apply (simp add: coll_def)
-  subgoal for x xs inps
-    apply (cases x)
-      apply (auto simp add: coll_LCons_Data split: event.splits)
-    done
-  done
-
-definition "ts inps = cimage (\<lambda> e. case e of Data t d \<Rightarrow> t) (cfilter is_Data (cset_of_llist inps))"
-
 abbreviation "inp_op os \<equiv> map_op (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (ooo_input_op {|1|} os)"
 abbreviation "tt_op os f \<equiv> map_op (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (batch_op os f)"
 
@@ -218,55 +174,6 @@ abbreviation "G_op f ip_state os2 chns \<equiv>
 
 declare if_cong[cong]
 
-definition "cset_from_list = cset_of_llist o llist_of"
-
-lemma cset_from_list_Cons[simp]:
-  "cset_from_list (x # xs) = cinsert x (cset_from_list xs)"
-  unfolding cset_from_list_def
-  apply (clarsimp simp flip: cin.rep_eq)
-  apply (metis cinsert_code)
-  done
-lemma cset_from_list_append[simp]:
-  "cset_from_list (xs @ ys) = cUn (cset_from_list xs) (cset_from_list ys)"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma cset_from_list_map[simp]:
-  "cset_from_list (map f xs) = (f |`| (cset_from_list xs))"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma cset_from_list_concat[simp]:
-  "cset_from_list (concat xs) = cUnion (cset_from_list |`| (cset_from_list xs))"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  apply (meson in_cset_of_llist_llist_of rev_cBexI)
-  done
-lemma cset_from_list_rmdups[simp]:
-  "cset_from_list (rmdups {} xs) = cset_from_list xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma cset_from_list_filter[simp]:
-  "cset_from_list (filter p xs) = cfilter p (cset_from_list xs)"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma rcset_cset_from_list[simp]:
-  "rcset (cset_from_list xs) = set xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma in_cset_from_list[simp]:
-  "x |\<in>| (cset_from_list xs) \<longleftrightarrow> x \<in> set xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma in_cimage_cset_from_list[simp]:
-  "x |\<in>| (f |`| (cset_from_list xs)) \<longleftrightarrow> x \<in> f ` set xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
 
 lemma outputs_at_target_my_summ[simp]:
   "outputs_at_target (antichain_from_list oo my_summ) os = (\<lambda> p. if p = (1, 0) then outpu (os 0) 0 else [])"
@@ -1333,9 +1240,63 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           done
         subgoal
           (* input_op logic *)
-          sorry
+          apply (intro conjI impI allI)
+          subgoal
+            (* LNIl *)
+            sorry
+          subgoal
+            (* Data *)
+            sorry
+          subgoal
+            (* Drop *)
+            sorry
+          subgoal for M lxs t
+  apply (intro exI conjI relcomppI)
+             apply (rule rtranclp.intros(1))
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+          unfolding R_def[simplified]
+          apply (rule exI[of _ "os(0 := (os 0)\<lparr> ocaps := (\<lambda> _. ocaps (os 0) 1 @ [t]), inter := inter (os 0) @ [(1, t, 1)] \<rparr> )"])
+          apply (rule exI[of _ "sg"])
+          apply (rule exI[of _ cbufs])
+          apply (rule exI[of _ "\<lambda> _. lxs"])
+          apply (rule exI[of _ "S"])
+          apply (rule exI[of _ D])
+          apply (intro conjI)
+               apply (simp_all add: SIM1)
+          subgoal
+            unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def add_cap_def BTL_def BHD_def
+            by (simp add: map_tl SIM1(2-) comp_def split_beta comp_op_def if_distrib  enum_num1_def operator_state.defs fun_upd_def)
+
+          subgoal
+           unfolding inputs_at_target_def
+           apply (clarsimp simp add: BULK_BENQ_def  )
+            apply (rule arg_cong2[where f=set_spec_op])
+             apply simp_all
+            apply (rule arg_cong2[where f=cUn])
+            apply simp_all
+           unfolding operator_state.defs
+           apply simp
+           apply (subst (1 2 3 4) coll_lshift)
+           apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
+           apply simp
+           apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
+           apply simp
+           done
+
+
+           find_theorems ts 
+
+
+
+end
+            (* Mint *)
+            sorry
         done
       done
+    done
   qed
 next
   case SIM2

@@ -20,7 +20,7 @@ lemma propagate_all_preserves_c_pts:
   done
 
 lemma propagate_all_preserves_inv:
-  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> 't::  {compare,ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) c = Some c' \<Longrightarrow>
+  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> 't:: {ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) c = Some c' \<Longrightarrow>
    dataflow_topology summary (-+-) \<Longrightarrow>
    ID CCOMPARE('t) = Some compare \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
@@ -45,7 +45,7 @@ lemma propagate_all_preserves_inv:
   done
 
 lemma propagate_all_frontier_c_imp_correctness_aux:
-  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> 't::  {compare,ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) c = Some c' \<Longrightarrow>
+  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> 't:: {ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) c = Some c' \<Longrightarrow>
    dataflow_topology summary (-+-) \<Longrightarrow>
    ID CCOMPARE('t) = Some compare \<Longrightarrow>
    reachable_locations summary = UNIV \<Longrightarrow>
@@ -68,7 +68,7 @@ lemma propagate_all_frontier_c_imp_correctness_aux:
   done
 
 lemma propagate_all_frontier_c_imp_correctness_aux2:
-  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> 't::  {compare,ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) c = Some c' \<Longrightarrow>
+  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> 't:: {ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) c = Some c' \<Longrightarrow>
    dataflow_topology summary (-+-) \<Longrightarrow>
    ID CCOMPARE('t) = Some compare \<Longrightarrow>
    reachable_locations summary = UNIV \<Longrightarrow>
@@ -82,7 +82,7 @@ lemma propagate_all_frontier_c_imp_correctness_aux2:
   using propagate_all_frontier_c_imp_correctness_aux by (metis dataflow_topology.antichain_eqI)
 
 lemma propagate_all_preserves_ifrontier:
-  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> 't::  {compare,ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) c = Some c' \<Longrightarrow>
+  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> 't:: {ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) c = Some c' \<Longrightarrow>
    dataflow_topology summary (-+-) \<Longrightarrow>
    ifrontier summary (-+-) c' loc = ifrontier summary (-+-) c loc"
   apply (subst (1 2) Propagate.dataflow_topology.implied_frontier_alt_def)
@@ -91,7 +91,7 @@ lemma propagate_all_preserves_ifrontier:
   done
 
 lemma propagate_all_frontier_c_imp_correctness:
-  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> 't::  {compare,ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) c = Some c' \<Longrightarrow>
+  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> 't:: {ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) c = Some c' \<Longrightarrow>
    dataflow_topology summary (-+-) \<Longrightarrow>
    ID CCOMPARE('t) = Some compare \<Longrightarrow>
    reachable_locations summary = UNIV \<Longrightarrow>
@@ -145,7 +145,7 @@ lemma dataplane_tracker_inv_front_update:
   assumes D: "dataflow_topology (summ sg) (-+-)"
   and T: "ID CCOMPARE('t) = Some compare"
   and R: "reachable_locations (summ sg) = UNIV"
-  shows  "propagate_all ((summ sg) :: _ \<Rightarrow> _ \<Rightarrow> 't::  {compare,ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) (pt_tr sg) = Some c \<Longrightarrow>
+  shows  "propagate_all ((summ sg) :: _ \<Rightarrow> _ \<Rightarrow> 't:: {ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) (pt_tr sg) = Some c \<Longrightarrow>
    graph_summar_nt (summ sg) (nxt sg) os \<Longrightarrow>
    dataplane_tracker_inv os cbufs sg \<Longrightarrow>
    dataplane_tracker_inv (map_entry nid (front_update (\<lambda>_. frontier \<circ> (\<lambda>p. c_imp c (Loc nid (Trg p))))) os) cbufs (sg\<lparr>pt_tr := c\<rparr>)"
