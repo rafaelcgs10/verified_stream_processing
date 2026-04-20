@@ -1623,13 +1623,47 @@ lemma graph_to_nxt_fun:
   apply clarsimp
   done
 
-lemma dataplane_tracker_inv_upfro:
+lemma dataplane_tracker_inv_clean:
   "sg = sg'\<lparr> upfro := f \<rparr> \<Longrightarrow>
-   dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv os cbufs sg'"
-  unfolding dataplane_tracker_inv_def
-  apply auto
+   (\<forall> nid. intsum (os nid) = intsum (os' nid) \<and> ocaps (os nid) = ocaps (os' nid) \<and> 
+   consu (os nid) = consu (os' nid) \<and> inter (os nid) = inter (os' nid) \<and>
+   produ (os nid) = produ (os' nid) \<and> input (os nid) = input (os' nid) \<and>
+   outpu (os nid) = outpu (os' nid) \<and> front (os nid) = front (os' nid)) \<Longrightarrow>
+   dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv os' cbufs sg'"
+  unfolding dataplane_tracker_inv_def 
+  apply clarsimp
+  apply (rule iffI)
+  subgoal
+    apply clarsimp
+    subgoal for caps
+      apply (rule exI[of _ caps])
+      apply hypsubst_thin
+      unfolding propagation_inv_def BULK_BENQ_def  Src_caps_inv_def Trg_caps_inv_def produ_consu_inter_supported_def extract_prog_changes_above_impl_inv_def change_deltas_inv_def front_inv_def c_pts_inv_def chnls_imp_front_inv_def
+      apply (auto simp add: obtain_progress_def outputs_at_target_def extract_prog_def extract_progress_def split: prod.splits)
+      subgoal
+        by (metis (lifting) Un_iff snd_eqD)
+      subgoal premises prems for nid p a b aa ba uu_ uua_
+        apply (rule prems(7)[rule_format, of "(a, b)", simplified])
+        using prems(1,16,17,18) apply auto
+        done
+      done
+    done
+  subgoal
+    apply clarsimp
+    subgoal for caps
+      apply (rule exI[of _ caps])
+      apply hypsubst_thin
+     unfolding propagation_inv_def BULK_BENQ_def  Src_caps_inv_def Trg_caps_inv_def produ_consu_inter_supported_def extract_prog_changes_above_impl_inv_def change_deltas_inv_def front_inv_def c_pts_inv_def chnls_imp_front_inv_def
+      apply (auto simp add: obtain_progress_def outputs_at_target_def extract_prog_def extract_progress_def split: prod.splits)
+     subgoal
+        by (metis (lifting) Un_iff snd_eqD)
+      subgoal premises prems for nid p a b aa ba uu_ uua_
+        apply (rule prems(7)[rule_format, of "(a, b)", simplified])
+        using prems(1,16,17,18) apply auto
+        done
+      done
+    done
   done
-
 
 lemma the_elem_bi_unique_op_conn:
   "the_elem {(nid', p'). su (Loc nid' (Src p')) (Loc nid (Trg p)) \<noteq> {}\<^sub>A} = (nid', p') \<Longrightarrow>
