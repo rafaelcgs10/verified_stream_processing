@@ -1623,4 +1623,217 @@ lemma graph_to_nxt_fun:
   apply clarsimp
   done
 
+lemma dataplane_tracker_inv_clean:
+  "sg = sg'\<lparr> upfro := f \<rparr> \<Longrightarrow>
+   (\<forall> nid. intsum (os nid) = intsum (os' nid) \<and> ocaps (os nid) = ocaps (os' nid) \<and> 
+   consu (os nid) = consu (os' nid) \<and> inter (os nid) = inter (os' nid) \<and>
+   produ (os nid) = produ (os' nid) \<and> input (os nid) = input (os' nid) \<and>
+   outpu (os nid) = outpu (os' nid) \<and> front (os nid) = front (os' nid)) \<Longrightarrow>
+   dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv os' cbufs sg'"
+  unfolding dataplane_tracker_inv_def 
+  apply clarsimp
+  apply (rule iffI)
+  subgoal
+    apply clarsimp
+    subgoal for caps
+      apply (rule exI[of _ caps])
+      apply hypsubst_thin
+      unfolding propagation_inv_def BULK_BENQ_def  Src_caps_inv_def Trg_caps_inv_def produ_consu_inter_supported_def extract_prog_changes_above_impl_inv_def change_deltas_inv_def front_inv_def c_pts_inv_def chnls_imp_front_inv_def
+      apply (auto simp add: obtain_progress_def outputs_at_target_def extract_prog_def extract_progress_def split: prod.splits)
+      subgoal
+        by (metis (lifting) Un_iff snd_eqD)
+      subgoal premises prems for nid p a b aa ba uu_ uua_
+        apply (rule prems(7)[rule_format, of "(a, b)", simplified])
+        using prems(1,16,17,18) apply auto
+        done
+      done
+    done
+  subgoal
+    apply clarsimp
+    subgoal for caps
+      apply (rule exI[of _ caps])
+      apply hypsubst_thin
+     unfolding propagation_inv_def BULK_BENQ_def  Src_caps_inv_def Trg_caps_inv_def produ_consu_inter_supported_def extract_prog_changes_above_impl_inv_def change_deltas_inv_def front_inv_def c_pts_inv_def chnls_imp_front_inv_def
+      apply (auto simp add: obtain_progress_def outputs_at_target_def extract_prog_def extract_progress_def split: prod.splits)
+     subgoal
+        by (metis (lifting) Un_iff snd_eqD)
+      subgoal premises prems for nid p a b aa ba uu_ uua_
+        apply (rule prems(7)[rule_format, of "(a, b)", simplified])
+        using prems(1,16,17,18) apply auto
+        done
+      done
+    done
+  done
+
+lemma the_elem_bi_unique_op_conn:
+  "the_elem {(nid', p'). su (Loc nid' (Src p')) (Loc nid (Trg p)) \<noteq> {}\<^sub>A} = (nid', p') \<Longrightarrow>
+   su (Loc nid'' (Src p'')) (Loc nid (Trg p)) \<noteq> {}\<^sub>A \<Longrightarrow>
+   bi_unique (op_conn su) \<Longrightarrow>
+   nid' = nid'' \<and> p' = p''"
+  apply (subst (asm) the_elem_image_unique[where f=id, simplified, of _  "(nid'', p'')"])
+    apply blast
+  unfolding bi_unique_def
+   apply auto
+  done
+
+
+lemma outputs_at_target_outpu_if:
+  "bi_unique (op_conn su) \<Longrightarrow>
+   os' = os(nid := (os nid)\<lparr> outpu := X \<rparr>) \<Longrightarrow>
+   outputs_at_target su os' (nid', p') = 
+  (let S = {p. op_conn su (nid, p) (nid', p')} in if S \<noteq> {} then let p = the_elem S in X p else outputs_at_target su os (nid', p'))"
+  unfolding outputs_at_target_def
+  apply (auto split: prod.splits)
+  subgoal
+    apply (drule the_elem_bi_unique_op_conn)
+      apply assumption+
+    apply auto
+    done
+  subgoal for x2 a b x
+    apply (subst the_elem_image_unique[where f=id, simplified, of _ "b"])
+      apply fast
+    unfolding bi_unique_def
+     apply auto
+    apply (subst (asm) the_elem_image_unique[where f=id, simplified, of _  "(a, b)"])
+      apply blast
+     apply auto
+    done
+  subgoal for x2 a b x
+    apply (subst the_elem_image_unique[where f=id, simplified, of _ "x"])
+      apply fast
+    unfolding bi_unique_def
+     apply auto
+    apply (subst (asm) the_elem_image_unique[where f=id, simplified, of _  "(_, x)"])
+      apply blast
+     apply auto
+    done
+  done
+
+
+definition "ts inps = cimage (\<lambda> e. case e of Data t d \<Rightarrow> t) (cfilter is_Data (cset_of_llist inps))"
+
+
+definition "coll inps t = list_of (lmap (\<lambda> e. case e of Data t d \<Rightarrow> d) (lfilter (\<lambda> e. case e of Data t' d \<Rightarrow> t = t' | _ \<Rightarrow> False) inps))"
+
+lemma coll_LNil[simp]:
+  "coll LNil t = []"
+  by (auto simp add: coll_def list_of_LCons_conv)
+lemma coll_LCons_Data:
+  "lfinite (lfilter (\<lambda>e. event.time e = t) inps) \<Longrightarrow>
+   coll (LCons (Data t' e) inps) t = (if t = t' then e # coll inps t else coll inps t)"
+  apply (auto simp add: coll_def list_of_LCons_conv)
+  apply (rule FalseE)
+  apply (subgoal_tac "llength (lfilter (\<lambda>e. event.time e = t') inps) \<ge> llength (lfilter (\<lambda>x. case x of Data t'a d \<Rightarrow> t' = t'a | _ \<Rightarrow> False) inps)")
+  subgoal
+    by (metis basic_trans_rules(24) enat_ord_simps(3) llength_eq_infty_conv_lfinite)
+  subgoal premises
+    apply(induct inps)
+      apply (auto intro: order_trans split: event.splits)
+     apply (smt (verit, best) basic_trans_rules(7) eSuc_ile_mono ile_eSuc lfilter_cong)+
+    done
+  done
+lemma coll_LCons_Drop[simp]:
+  "coll (LCons (Drop t') inps) t = coll inps t"
+  by (auto simp add: coll_def list_of_LCons_conv)
+lemma coll_LCons_Mint[simp]:
+  "coll (LCons (Mint t') inps) t = coll inps t"
+  by (auto simp add: coll_def list_of_LCons_conv)
+
+lemma coll_append[simp]:
+  "coll (llist_of (xs @ ys)) t = coll (llist_of xs) t @ coll (llist_of ys) t"
+  apply (simp add: coll_def)
+  done
+
+lemma coll_lshift:
+  "lfinite (lfilter (\<lambda>e. event.time e = t) inps) \<Longrightarrow>
+   coll (xs @@- inps) t = coll (llist_of xs) t @ coll inps t"
+  apply (induct xs arbitrary: inps rule: rev_induct)
+   apply (simp add: coll_def)
+  subgoal for x xs inps
+    apply (cases x)
+      apply (auto simp add: coll_LCons_Data split: event.splits)
+    done
+  done
+
+definition "cset_from_list = cset_of_llist o llist_of"
+
+lemma cset_from_list_Cons[simp]:
+  "cset_from_list (x # xs) = cinsert x (cset_from_list xs)"
+  unfolding cset_from_list_def
+  apply (clarsimp simp flip: cin.rep_eq)
+  apply (metis cinsert_code)
+  done
+lemma cset_from_list_append[simp]:
+  "cset_from_list (xs @ ys) = cUn (cset_from_list xs) (cset_from_list ys)"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma cset_from_list_map[simp]:
+  "cset_from_list (map f xs) = (f |`| (cset_from_list xs))"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma cset_from_list_concat[simp]:
+  "cset_from_list (concat xs) = cUnion (cset_from_list |`| (cset_from_list xs))"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  apply (meson in_cset_of_llist_llist_of rev_cBexI)
+  done
+lemma cset_from_list_rmdups[simp]:
+  "cset_from_list (rmdups {} xs) = cset_from_list xs"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma cset_from_list_filter[simp]:
+  "cset_from_list (filter p xs) = cfilter p (cset_from_list xs)"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma rcset_cset_from_list[simp]:
+  "rcset (cset_from_list xs) = set xs"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma in_cset_from_list[simp]:
+  "x |\<in>| (cset_from_list xs) \<longleftrightarrow> x \<in> set xs"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma in_cimage_cset_from_list[simp]:
+  "x |\<in>| (f |`| (cset_from_list xs)) \<longleftrightarrow> x \<in> f ` set xs"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+
+
+lemma ts_Mint[simp]:
+  "ts (LCons (Mint t) inps) = ts inps"
+  unfolding  ts_def
+  apply (auto split: event.splits)
+   apply (metis cinsertE cinsert_code event.inject(1) event.simps(4,6))
+  apply (metis cinsert_code cinsert_iff event.inject(1) event.simps(4,6))
+  done
+
+lemma ts_Data[simp]:
+  "ts (LCons (Data t d) inps) = cinsert t (ts inps)"
+  unfolding  ts_def
+  apply (auto split: event.splits)
+    apply (metis cinsertE cinsert_code event.disc(1) event.inject(1))
+  apply (metis cinsert_code cinsert_iff event.inject(1) event.simps(4,7))
+  apply (metis cinsert_code cinsert_iff event.inject(1) event.simps(4,7))
+  done
+
+lemma ts_Drop[simp]:
+  "ts (LCons (Drop t) inps) = ts inps"
+  unfolding  ts_def
+  apply (auto split: event.splits)
+   apply (metis cinsertE cinsert_code event.inject(1) event.simps(4,6))
+  apply (metis cinsert_code cinsert_iff event.inject(1) event.simps(5,7))
+  done
+
+lemma ts_LNil[simp]:
+  "ts LNil = {||}"
+  unfolding  ts_def
+  by (auto simp add: cset_of_llist.rep_eq split: event.splits)
+
 end

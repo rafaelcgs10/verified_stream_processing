@@ -8,6 +8,8 @@ imports
   "../Correctness/Consumes"
   "../Correctness/Progress"
   "../Correctness/Produces"
+  "../Correctness/Outputs"
+  "../Correctness/Propagates"
   Dataplane.LList_Haskell_Setup
   Source_op
   Set_op
@@ -70,10 +72,10 @@ abbreviation "G f ip_state os2 \<equiv> Comp [(0 :: 2, 1) \<mapsto> (0, 1)] (l1 
 
 abbreviation "test_op \<equiv> compile_dataflow (\<lambda> _. []) (G (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]) (init_input_state default_internal_summary (\<lambda> _. inps_test)) (init_operator_state_ty2 default_internal_summary) )"
 
-value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op)"
+(* value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op)"
 value [GHC] "check_prefix 100 [((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1)),((1, 1), (Inr 3, MyPair 1 0))] test_op"
-value [GHC] "check_prefix 100 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] test_op"
-(* value [GHC] "check_prefix 100 [((1, 1), (Inr 3, MyPair 1 0)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1))] test_op"
+value [GHC] "check_prefix 100 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] test_op" *)
+  (* value [GHC] "check_prefix 100 [((1, 1), (Inr 3, MyPair 1 0)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1))] test_op"
  *)
 section \<open>Generalized Correctness\<close>
 
@@ -114,9 +116,9 @@ lemma weights_to_graph_fun_to_next[simp]:
   subgoal for l
     using loc_2_1_cases[where l=l] apply -
     apply (elim disjE; hypsubst_thin)
-  unfolding enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def
-    apply auto
-    apply code_simp+
+    unfolding enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def
+       apply auto
+      apply code_simp+
     done
   done
 
@@ -134,7 +136,7 @@ lemma dataflow_tree_to_graph_to_my_summ[simp]:
         apply simp
         subgoal for nid1 lp1 nid2 lp2
           apply (cases lp1; cases lp2; simp add: my_summ_def)
-          apply code_simp+
+           apply code_simp+
           done
         done
       done
@@ -142,71 +144,27 @@ lemma dataflow_tree_to_graph_to_my_summ[simp]:
   subgoal
     apply (rule FalseE)
     apply (auto; hypsubst_thin)
-    apply code_simp
+         apply code_simp
     subgoal
       unfolding no_self_loop_checker_is_graph_checker graph_checker_def
       by (clarsimp simp add: image_iff split_beta split: prod.splits if_splits port.splits)
-    apply code_simp
+       apply code_simp
     subgoal
       by eval
-      subgoal for l1 l2
-        apply (cases l1; cases l2)
-        apply simp
-        subgoal for nid1 lp1 nid2 lp2
-          by (cases lp1; cases lp2; simp add: incomparable_def if_distrib split: if_splits)
-        done
-      subgoal for nid
-        by (clarsimp simp add: image_iff split_beta split: prod.splits if_splits port.splits)
-      subgoal 
-        unfolding bi_unique_def
-        apply (clarsimp simp add: image_iff split_beta split: prod.splits if_splits port.splits)
-    done
-  done 
+    subgoal for l1 l2
+      apply (cases l1; cases l2)
+      apply simp
+      subgoal for nid1 lp1 nid2 lp2
+        by (cases lp1; cases lp2; simp add: incomparable_def if_distrib split: if_splits)
+      done
+    subgoal for nid
+      by (clarsimp simp add: image_iff split_beta split: prod.splits if_splits port.splits)
+    subgoal 
+      unfolding bi_unique_def
+      apply (clarsimp simp add: image_iff split_beta split: prod.splits if_splits port.splits)
+      done
+    done 
   done
-
-definition "coll inps t = list_of (lmap (\<lambda> e. case e of Data t d \<Rightarrow> d) (lfilter (\<lambda> e. case e of Data t' d \<Rightarrow> t = t' | _ \<Rightarrow> False) inps))"
-
-lemma coll_LNil[simp]:
-  "coll LNil t = []"
-  by (auto simp add: coll_def list_of_LCons_conv)
-lemma coll_LCons_Data:
-  "lfinite (lfilter (\<lambda>e. event.time e = t) inps) \<Longrightarrow>
-   coll (LCons (Data t' e) inps) t = (if t = t' then e # coll inps t else coll inps t)"
-   apply (auto simp add: coll_def list_of_LCons_conv)
-  apply (rule FalseE)
-  apply (subgoal_tac "llength (lfilter (\<lambda>e. event.time e = t') inps) \<ge> llength (lfilter (\<lambda>x. case x of Data t'a d \<Rightarrow> t' = t'a | _ \<Rightarrow> False) inps)")
-  subgoal
-    by (metis basic_trans_rules(24) enat_ord_simps(3) llength_eq_infty_conv_lfinite)
-  subgoal premises
-    apply(induct inps)
-    apply (auto intro: order_trans split: event.splits)
-     apply (smt (verit, best) basic_trans_rules(7) eSuc_ile_mono ile_eSuc lfilter_cong)+
-    done
-  done
-lemma coll_LCons_Drop[simp]:
-  "coll (LCons (Drop t') inps) t = coll inps t"
-  by (auto simp add: coll_def list_of_LCons_conv)
-lemma coll_LCons_Mint[simp]:
-  "coll (LCons (Mint t') inps) t = coll inps t"
-  by (auto simp add: coll_def list_of_LCons_conv)
-
-lemma coll_append[simp]:
-  "coll (llist_of (xs @ ys)) t = coll (llist_of xs) t @ coll (llist_of ys) t"
-   apply (simp add: coll_def)
-  done
-
-lemma coll_lshift:
-  "lfinite (lfilter (\<lambda>e. event.time e = t) inps) \<Longrightarrow>
-   coll (xs @@- inps) t = coll (llist_of xs) t @ coll inps t"
-  apply (induct xs arbitrary: inps rule: rev_induct)
-   apply (simp add: coll_def)
-  subgoal for x xs inps
-    apply (cases x)
-   apply (auto simp add: coll_LCons_Data split: event.splits)
-    done
-  done
-
-definition "ts inps = cimage (\<lambda> e. case e of Data t d \<Rightarrow> t) (cfilter is_Data (cset_of_llist inps))"
 
 abbreviation "inp_op os \<equiv> map_op (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (case_option (Inl (0 :: 2)) (\<lambda> p. Inr (0, p))) (ooo_input_op {|1|} os)"
 abbreviation "tt_op os f \<equiv> map_op (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (case_option (Inl (1 :: 2)) (\<lambda> p. Inr (1, p))) (batch_op os f)"
@@ -216,64 +174,18 @@ abbreviation "G_op f ip_state os2 chns \<equiv>
 
 declare if_cong[cong]
 
-definition "cset_from_list = cset_of_llist o llist_of"
 
-lemma cset_from_list_append[simp]:
-  "cset_from_list (xs @ ys) = cUn (cset_from_list xs) (cset_from_list ys)"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma cset_from_list_map[simp]:
-  "cset_from_list (map f xs) = (f |`| (cset_from_list xs))"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma cset_from_list_concat[simp]:
-  "cset_from_list (concat xs) = cUnion (cset_from_list |`| (cset_from_list xs))"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  apply (meson in_cset_of_llist_llist_of rev_cBexI)
-  done
-lemma cset_from_list_rmdups[simp]:
-  "cset_from_list (rmdups {} xs) = cset_from_list xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma cset_from_list_filter[simp]:
-  "cset_from_list (filter p xs) = cfilter p (cset_from_list xs)"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma rcset_cset_from_list[simp]:
-  "rcset (cset_from_list xs) = set xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma in_cset_from_list[simp]:
-  "x |\<in>| (cset_from_list xs) \<longleftrightarrow> x \<in> set xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma in_cimage_cset_from_list[simp]:
-  "x |\<in>| (f |`| (cset_from_list xs)) \<longleftrightarrow> x \<in> f ` set xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-
-lemma outputs_at_target_my_summ:
+lemma outputs_at_target_my_summ[simp]:
   "outputs_at_target (antichain_from_list oo my_summ) os = (\<lambda> p. if p = (1, 0) then outpu (os 0) 0 else [])"
   unfolding outputs_at_target_def my_summ_def
   apply (rule ext)
   apply (auto simp add: antichain_from_list_singleton split: prod.splits if_splits)
   subgoal for nid
-    apply (auto simp add: if_distrib)
-    by (metis Batch_op_Correctness.antichain_from_list_empty Timely_Infrastructure.antichain_from_list_empty)
-  subgoal for nid
     apply (subgoal_tac "nid = 0")
      apply simp
     apply (subgoal_tac "{(nid' :: 2, p' :: 1). antichain_from_list (if nid' = 0 then [0] else []) \<noteq> {}\<^sub>A} = {(0, 1)}")
     subgoal
-      by (smt (verit, ccfv_SIG) Collect_cong Executable.antichain_from_list_empty antichain_from_list_singleton empty_antichain.abs_eq insert_compr mem_Collect_eq old.prod.case surj_pair
+      by (smt (verit, ccfv_threshold) Batch_op_Correctness.antichain_from_list_empty Collect_cong Pair_inject Timely_Infrastructure.antichain_from_list_empty antichain_from_list_singleton split_cong
           the_elem_eq)
     subgoal premises
       apply transfer
@@ -327,9 +239,13 @@ lemma image_zmset_id[simp]:
   apply transfer
   apply (auto simp add: equiv_zmset_def split_beta)
   done
+lemma if_same[simp]:
+  "(if nid' = nid then f nid else f nid') = f nid'"
+  by simp
+
 
 lemma correctness_gen:
-  fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
+  fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
     and f :: \<open>'d1 buf \<Rightarrow> 'd2 buf\<close>
     and ip_state :: \<open>(1, 'd1 + 'd2, 'd1, 't) input_state\<close>
     and bt_state :: \<open>(1, 'd1 + 'd2, 'd1, 'd2, 't) operator_state_ty2\<close>
@@ -356,15 +272,18 @@ lemma correctness_gen:
     \<open>dataplane_tracker_inv os cbufs sg\<close>
     and S_INV:
     \<open>SP = cUnion (cimage 
-      (\<lambda> t. cset_from_list (map (\<lambda> x. ((2, 1), (Inr x, t))) (f (coll ((map (\<lambda> (x, t). Data t (projl x)) (chns (1, 1))) @@- (inps 1)) t))))
+      (\<lambda> t. cset_from_list (map (\<lambda> x. ((1, 1), (Inr x, t))) (f (coll ((map (\<lambda> (x, t). Data t (projl x)) (chns (1, 1))) @@- (inps 1)) t))))
       (cUn (ts (inps 1)) (cset_from_list (map snd (chns (1, 1))))))\<close>
-    \<open>SO = cset_from_list (map (\<lambda> x. ((2, 1), x)) (outpu (os 1) 1))\<close>
+    \<open>SO = cset_from_list (map (\<lambda> x. ((1, 1), x)) (outpu (os 1) 1))\<close>
     and
     INP_STREAM_INV:
     \<open>timely_input_stream (inps 1) (mset (ocaps (os 0) 1))\<close>
+    and
+    TIMESTAMP_COMPARE:
+    "ID CCOMPARE('t) = Some compare"
   shows 
     \<open>set_op S D (dataflow_op sg (G_op f ip_state bt_state cbufs)) \<approx> set_spec_op (cUn (cUn S SO) SP) D\<close>
-  using assms apply -
+  using assms(1-13) apply -
 proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D raw_s rule: weakBisimWeakUptoBisimCong)
   case SIM1
   show ?case (is "wsim ((~) OO \<U> ?R OO (\<approx>)) ?op1 ?op2")
@@ -409,7 +328,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             by (fastforce simp add:  my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
           using SIM1 apply fastforce+
           done
-                 defer
+                    defer
         subgoal for d t
           apply (intro exI conjI relcomppI)
              apply (rule rtranclp.intros(1))
@@ -458,7 +377,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               done
             done
           done
-                defer
+                   defer
         subgoal 
           (* batch_op logic  *)
           apply (intro exI conjI relcomppI)
@@ -547,21 +466,20 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                         subgoal
                           unfolding my_summ_def inj_on_def
                           apply (auto simp add: antichain_from_list_singleton is_empty_antichain_iff split: prod.splits if_splits intro!: find_Some_singleton)
-                          apply (metis dataflow_topology_from_tree.set_antichain_0 empty_antichain.rep_eq insert_not_empty)
                           done
                         done
                       subgoal
                         apply (rule path_weight_direct_0path[OF dataflow_topology.axioms(1)[OF]])
-                        defer
+                         defer
                          apply assumption
                         apply (subgoal_tac " dataflow_topology (summ sg) (-+-)")
-  using SIM1(1,2) [unfolded comp_def]
-              using  dataflow_topology_from_tree.dataflow_topology_axioms[unfolded comp_def]
-               apply simp
+                        using SIM1(1,2) [unfolded comp_def]
+                        using  dataflow_topology_from_tree.dataflow_topology_axioms[unfolded comp_def]
+                         apply simp
                         subgoal
-              using SIM1(1,2) 
-              using  dataflow_topology_from_tree.dataflow_topology_axioms
-              by metis
+                          using SIM1(1,2) 
+                          using  dataflow_topology_from_tree.dataflow_topology_axioms
+                          by metis
                         done
                       done
                     apply assumption
@@ -734,9 +652,9 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           subgoal
             by (simp add: SIM1(1,2,3,8))
           subgoal premises temp            
-            apply (rule dataplane_tracker_inv_produces_drops[where su="summ sg" and nt="nxt sg"])
-                       apply simp_all
-            defer
+            apply (rule dataplane_tracker_inv_produces_drops[])
+                        apply simp_all
+                     defer
             subgoal
               by (auto simp add: comp_def enum_num1_def)
             subgoal
@@ -748,189 +666,72 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             subgoal
               by (auto simp add: comp_def enum_num1_def)
             subgoal 
-              apply (subgoal_tac "to_zmset (map snd (input (os 1) 1)) \<subseteq>#\<^sub>z to_zmset (ocaps (os 1) 1)")
-              subgoal
-              apply (cases "input (os 1) 1")
-              subgoal
-                apply simp
-                using temp(1)[unfolded SIM1(5), simplified]
-                 temp(4)[unfolded SIM1(5), simplified] apply -
-                apply (simp add: operator_state.defs)
-
-                
-
-                find_theorems operator_state.extend 
-
-end
-
-                using SIM1(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
-                apply clarsimp
-                subgoal for caps
-                  unfolding Src_caps_inv_def
-                  apply (drule spec[of _ 1])
-                  apply (drule spec[of _ 1])
-
-
-                find_theorems input os
-
-end
-              apply (clarsimp simp add: map_replicate_const map_concat comp_def)
-              apply (auto simp add: split_beta to_zmset_filter to_zmset_map to_zmset_concat comp_def sum_list_distinct_conv_sum_set)
-              apply (auto simp add: subseteq_zmset_def)
-              subgoal for t
-                apply (simp add: zmset_concat sum_list_zmset comp_def monoid_add_class.sum_list_distinct_conv_sum_set split_beta)
-                apply (auto simp add: to_zmset_nenneg zcount_sum intro!: nonneg_zcount_image_zmset ordered_comm_monoid_add_class.sum_nonneg)
-                done
-              subgoal for t
-                apply (cases "\<exists>a. (a, t) \<in> set (input (os 1) 1) \<and> t \<in> set (ocaps (os 1) 1)")
-                subgoal
-                apply (simp add: zmset_concat sum_list_zmset comp_def monoid_add_class.sum_list_distinct_conv_sum_set split_beta)
-                apply (auto simp add: to_zmset_nenneg zcount_sum intro!: nonneg_zcount_image_zmset ordered_comm_monoid_add_class.sum_nonneg split: if_splits)
-                apply (subst comm_monoid_add_class.sum.subset_diff[where B="{t}"])
-                  apply simp_all
-                  apply (auto simp add: image_iff)
-                  apply (subst comm_monoid_add_class.sum.neutral)
-                  subgoal
-                    by auto
-                  apply auto
-
-                find_theorems "_ \<Longrightarrow> sum _ _ = 0" 
-
-                oops
-
-
-lemma "image_zmset (\<lambda> _. (x :: unit)) (M :: unit zmultiset) = (if M = {#}\<^sub>z then {#}\<^sub>z else {# x #}\<^sub>z)"
-  nitpick [eval = "image_zmset (\<lambda> _. x) M"]
-
-
-  find_consts "_ zmultiset \<Rightarrow> nat"
-
-                find_theorems image_zmset id
-
-
-                find_theorems "zcount "
-
-end
-                apply (auto simp add: zcount_image_zmset zcount_sum zcount_to_zmset )                
-
-                find_theorems "_ \<le> _ - _ \<longleftrightarrow>_"
-
-                oops
-
-  
-                     
-
-  find_theorems zcount to_zmset
-              find_theorems "_ \<Longrightarrow> 0 \<le> zcount (_) _"
-
-              oops
-
-
-
-end
-            subgoal sorry
-            subgoal sorry
-              subgoal              
+              by (auto simp add: comp_def)
+            subgoal
               apply (rule graph_summar_nt)
                  apply (rule refl)+
                 apply (rule SIM1(2)[unfolded SIM1(1)])
-                 apply (auto simp add: SIM1 comp_def)
-                done
-          subgoal              
-            by (auto simp add: SIM1 comp_def)
+               apply (auto simp add: SIM1 comp_def)
+              done
+            subgoal
+              using SIM1(3) by auto
+            subgoal
+              using SIM1(10) by auto
+            subgoal 
+              apply (simp add: SIM1(1,2) )
+              using dataflow_topology_from_tree.dataflow_topology_axioms
+              apply (metis dataflow_tree_to_graph_to_my_summ)
+              done
+            done
+          subgoal
+            using SIM1(13) by auto
           done
-
-
-       find_theorems summ sg
-
-
-
-end
-                   apply (smt (verit, best) filter_cong split_def)
-                   done
-                 subgoal for  t d
-                   apply (rule cBexI[of _ t])
-                    apply auto         
-                   apply (smt (verit, best) filter_cong split_def)
-                   done
-                 done
-               done
-
-end
-                     by force
-                   subgoal
-                     by force
-                   apply simp
-                   unfolding coll_def
-                   apply (subst (asm) lfilter_False)
-                   subgoal
-                     by (auto split: event.splits)
-                   apply auto
-                   done
-
-                   find_theorems "frontier_less_equal" "_ \<le> _" name: trans
-
-
-
-         oops
-
-
-lemma
-  "f ` g ` h = (f o g) ` h"
-
-lemma
-  "cimage f (cimage g S) = (cimage (f o g) S)"
-
-         find_theorems image comp
-
-end
-           apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
-           subgoal for t d
-             apply simp_all
-           apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq split: event.splits)
-             subgoal for a
-               apply (cases a; simp)
-               subgoal for t' d'
-                 apply hypsubst_thin
-
-
-end
-           apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
-             apply (subst filter_True)
-             subgoal
-               apply auto
-               subgoal for d' t'
-                 using SIM1(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
-                 apply safe
-                 unfolding front_inv_def imp_front_inv_def
-                 apply (drule spec[of _ 1])
-                 apply (drule spec[of _ 1])
-                 apply (drule spec[of _ "Loc 1 (Trg 1)"])
-                 unfolding chnls_imp_front_inv_def
-                 apply (drule spec[of _ 1])
-                 apply (drule spec[of _ 1])
-                 apply (drule bspec[of _ _ t'])
-                 subgoal
-                   apply (simp add: SIM1(1,2) outputs_at_target_my_summ BULK_BENQ_def)
-
-             thm cimage_eqI
-
-         find_theorems outputs_at_target antichain_from_list
-
-
-end
-         apply (subst (1) cUn_assoc)
-               apply (rule arg_cong2[where f=cUn])
-          apply simp
-         unfolding comp_def
-         apply (simp add: )
-         apply safe
-         subgoal
-
-         find_theorems cset_of_llist llist_of
-
-end
-          sorry
+                  prefer 3
+        subgoal  
+          apply (rule FalseE)
+          apply (drule propagate_all_terminates[unfolded not_def, rule_format, rotated 6])
+          subgoal 
+            apply (simp add: SIM1(1,2) )
+            using dataflow_topology_from_tree.dataflow_topology_axioms
+            apply (metis dataflow_tree_to_graph_to_my_summ)
+            done
+               apply simp_all
+          subgoal
+            using SIM1(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+            unfolding propagation_inv_def
+            apply clarsimp
+            done
+          subgoal
+            using SIM1(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+            unfolding propagation_inv_def
+            apply clarsimp
+            done
+          subgoal
+            using TIMESTAMP_COMPARE by auto
+          subgoal for loc
+            apply (subgoal_tac "graph_summar_nt (summ sg) (subgraph.nxt sg) os")
+             defer
+            subgoal
+              apply (rule graph_summar_nt)
+                 apply (rule refl)+
+                apply (rule SIM1(2)[unfolded SIM1(1)])
+               apply (auto simp add: SIM1 comp_def)
+              done
+            subgoal
+              apply (cases loc; simp)
+              subgoal for nid lp
+                apply (cases lp; simp)
+                unfolding graph_summar_nt_def
+                 apply auto
+                done
+              done
+            done
+          subgoal
+            using SIM1(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+            unfolding propagation_inv_def
+            apply clarsimp
+            done
+          done
         subgoal for st os'
           using SIM1(5) apply simp
           apply hypsubst_thin
@@ -975,11 +776,12 @@ end
           subgoal
             by (simp add: SIM1 obtain_progress_def)
           subgoal
-            apply (subst dataplane_tracker_inv_upfro[where f="\<lambda>_. True"])
-            defer
-            apply (rule dataplane_tracker_inv_progress)
+            apply (subst dataplane_tracker_inv_clean[where f="\<lambda>_. True"])
+              defer
+              defer                                 
+              apply (rule dataplane_tracker_inv_progress)
             using SIM1(10) apply assumption
-               apply simp_all
+                apply simp_all
             using SIM1(1,2) apply simp
             subgoal
               using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
@@ -987,162 +789,526 @@ end
             subgoal              
               apply (rule graph_summar_nt)
                  apply (rule refl)+
-              apply (rule SIM1(2)[unfolded SIM1(1)])
+                apply (rule SIM1(2)[unfolded SIM1(1)])
                apply (auto simp add: SIM1 comp_def)
               done
             unfolding obtain_progress_def
-            apply (auto simp add: operator_state.defs)
+             apply (auto simp add: operator_state.defs)
             done
           subgoal
             using SIM1(13)
             apply simp
             done
           done
-        subgoal
+        subgoal for st os'
+          (* report progress *)
           sorry
-        subgoal
-          sorry
-        subgoal
-          sorry
-        subgoal
-          sorry
-        subgoal for d t xs
-          (* batch_op outputs *)
-          sorry
-        subgoal
- (* input_op outputs *)
-          sorry
-        subgoal 
-          apply (intro allI impI conjI)
-          subgoal
-   apply (intro exI conjI relcomppI)
+        subgoal for c
+          (* propagate_all *)
+          using SIM1(5) apply simp
+          apply hypsubst_thin
+          apply (intro exI conjI relcomppI)
              apply (rule rtranclp.intros(1))
             apply (rule bisim_refl)
            defer
            apply (rule wbisim_refl)
           apply (rule wb_upto_b_base)
           unfolding R_def[simplified]
-          apply (rule exI[of _ "os"])
-          apply (rule exI[of _ sg])
+          apply (rule exI[of _ "os(0 := (os 0)\<lparr> front := frontier \<circ> (\<lambda>p. c_imp c (Loc 0 (Trg 1))), initia := True, nfron := True \<rparr> )"])
+          apply (rule exI[of _ "sg\<lparr>pt_tr := c, upfro := (upfro sg)(0 := False)\<rparr>"])
           apply (rule exI[of _ "cbufs"])
           apply (rule exI[of _ inps])
           apply (rule exI[of _ S])
           apply (rule exI[of _ D])
           apply (intro conjI)
+                  apply (simp_all add: SIM1)
+          subgoal premises prems
+            apply (simp add:  SIM1 dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def obtain_progress_def)
+            unfolding ooo_input_op_logic_def
+            apply (simp add: operator_state.defs comp_def notifier_op_def SIM1(3-) dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def obtain_progress_def)
+            done
+          subgoal
+            unfolding inputs_at_target_def
+            by (clarsimp simp add: BULK_BENQ_def  if_distrib[of input])
+          subgoal
+            using SIM1(6,4) apply -
+            unfolding ty1_check_def operator_state.defs
+            apply (auto simp add: SIM1 BTL_def BHD_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
+            done
+          subgoal
+            using SIM1(5,7)
+            apply (auto simp add: ty2_check_def operator_state.defs comp_def fun_upd_def BTL_def BHD_def  obtain_progress_def split: option.splits if_splits prod.splits)
+            done
+          subgoal
+            apply (subst dataplane_tracker_inv_clean[where f="(upfro sg)(0 := False)", of _ "sg\<lparr>pt_tr := c\<rparr>" _ "os(0 := (os 0)\<lparr> front := frontier \<circ> (\<lambda>p. c_imp c (Loc 0 (Trg 1))) \<rparr> )"])
+              apply simp_all
+            apply (subgoal_tac "propagate_all (antichain_from_list \<circ>\<circ> my_summ) (pt_tr sg) = Some c \<Longrightarrow> dataplane_tracker_inv (map_entry 0 (front_update (\<lambda>_. frontier \<circ> (\<lambda>p. c_imp c (Loc 0 (Trg p))))) os) cbufs (sg\<lparr>pt_tr := c\<rparr>)")
+            subgoal
+              by simp
+            subgoal
+              apply (rule dataplane_tracker_inv_front_update)
+              subgoal
+                apply (simp add: SIM1)
+                using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
+                apply metis
+                done
+              subgoal
+                using TIMESTAMP_COMPARE by auto
+              subgoal
+                apply (simp add: SIM1)
+                unfolding reachable_locations_def
+                apply (auto simp add: split_beta)
+                   apply (metis (no_types, lifting) loc_2_1_cases rangeI range_fst surjD)
+                  apply (metis (no_types, lifting) loc_2_1_cases rangeI range_fst surjD)
+                 apply (smt (verit, ccfv_threshold) is_empty_antichain_not_empty_list loc_2_1_cases my_summ_def zero_one)
+                apply (smt (verit, ccfv_threshold) is_empty_antichain_not_empty_list loc_2_1_cases my_summ_def zero_one)
+                done
+                apply (simp add: SIM1)
+              subgoal              
+                apply (rule graph_summar_nt)
+                   apply (rule refl)+
+                  apply (rule SIM1(2)[unfolded SIM1(1)])
+                 apply (auto simp add: SIM1 comp_def)
+                done
+              apply (simp add: SIM1)
+              done
+            done
+          done
+        subgoal  
+          apply (rule FalseE)
+          apply (drule propagate_all_terminates[unfolded not_def, rule_format, rotated 6])
+          subgoal 
+            apply (simp add: SIM1(1,2) )
+            using dataflow_topology_from_tree.dataflow_topology_axioms
+            apply (metis dataflow_tree_to_graph_to_my_summ)
+            done
+               apply simp_all
+          subgoal
+            using SIM1(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+            unfolding propagation_inv_def
+            apply clarsimp
+            done
+          subgoal
+            using SIM1(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+            unfolding propagation_inv_def
+            apply clarsimp
+            done
+          subgoal
+            using TIMESTAMP_COMPARE by auto
+          subgoal for loc
+            apply (subgoal_tac "graph_summar_nt (summ sg) (subgraph.nxt sg) os")
+             defer
+            subgoal
+              apply (rule graph_summar_nt)
+                 apply (rule refl)+
+                apply (rule SIM1(2)[unfolded SIM1(1)])
+               apply (auto simp add: SIM1 comp_def)
+              done
+            subgoal
+              apply (cases loc; simp)
+              subgoal for nid lp
+                apply (cases lp; simp)
+                unfolding graph_summar_nt_def
+                 apply auto
+                done
+              done
+            done
+          subgoal
+            using SIM1(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+            unfolding propagation_inv_def
+            apply clarsimp
+            done
+          done
+        subgoal for c
+          (* propagate_all *)
+          using SIM1(5) apply simp
+          apply hypsubst_thin
+          apply (intro exI conjI relcomppI)
+             apply (rule rtranclp.intros(1))
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+          unfolding R_def[simplified]
+          apply (rule exI[of _ "os(1 := (os 1)\<lparr> front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg 1))), initia := True, nfron := True \<rparr> )"])
+          apply (rule exI[of _ "sg\<lparr>pt_tr := c, upfro := (upfro sg)(1 := False)\<rparr>"])
+          apply (rule exI[of _ "cbufs"])
+          apply (rule exI[of _ inps])
+          apply (rule exI[of _ S])
+          apply (rule exI[of _ D])
+          apply (intro conjI)
+                  apply (simp_all add: SIM1)
+          subgoal premises prems
+            apply (simp add:  SIM1 dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def obtain_progress_def)
+            unfolding ooo_input_op_logic_def
+            apply (simp add: operator_state.defs comp_def notifier_op_def SIM1(3-) dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def obtain_progress_def)
+            done
+          subgoal
+            unfolding inputs_at_target_def
+            by (clarsimp simp add: BULK_BENQ_def  if_distrib[of input])
+          subgoal
+            using SIM1(6,4) apply -
+            unfolding ty1_check_def operator_state.defs
+            apply (auto simp add: SIM1 BTL_def BHD_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
+            done
+          subgoal
+            using SIM1(5,7)
+            apply (auto simp add: ty2_check_def operator_state.defs comp_def fun_upd_def BTL_def BHD_def  obtain_progress_def split: option.splits if_splits prod.splits)
+            done
+          subgoal
+            apply (subst dataplane_tracker_inv_clean[where f="(upfro sg)(1 := False)", of _ "sg\<lparr>pt_tr := c\<rparr>" _ "os(1:= (os 1)\<lparr> front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg 1))) \<rparr> )"])
+              apply simp_all
+            apply (subgoal_tac "propagate_all (antichain_from_list \<circ>\<circ> my_summ) (pt_tr sg) = Some c \<Longrightarrow> dataplane_tracker_inv (map_entry 1 (front_update (\<lambda>_. frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg p))))) os) cbufs (sg\<lparr>pt_tr := c\<rparr>)")
+            subgoal
+              by simp
+            subgoal
+              apply (rule dataplane_tracker_inv_front_update)
+              subgoal
+                apply (simp add: SIM1)
+                using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
+                apply metis
+                done
+              subgoal
+                using TIMESTAMP_COMPARE by auto
+              subgoal
+                apply (simp add: SIM1)
+                unfolding reachable_locations_def
+                apply (auto simp add: split_beta)
+                   apply (metis (no_types, lifting) loc_2_1_cases rangeI range_fst surjD)
+                  apply (metis (no_types, lifting) loc_2_1_cases rangeI range_fst surjD)
+                 apply (smt (verit, ccfv_threshold) is_empty_antichain_not_empty_list loc_2_1_cases my_summ_def zero_one)
+                apply (smt (verit, ccfv_threshold) is_empty_antichain_not_empty_list loc_2_1_cases my_summ_def zero_one)
+                done
+                apply (simp add: SIM1)
+              subgoal              
+                apply (rule graph_summar_nt)
+                   apply (rule refl)+
+                  apply (rule SIM1(2)[unfolded SIM1(1)])
+                 apply (auto simp add: SIM1 comp_def)
+                done
+              apply (simp add: SIM1)
+              done
+            done
+          done
+        subgoal  
+          apply (rule FalseE)
+          apply (drule propagate_all_terminates[unfolded not_def, rule_format, rotated 6])
+          subgoal 
+            apply (simp add: SIM1(1,2) )
+            using dataflow_topology_from_tree.dataflow_topology_axioms
+            apply (metis dataflow_tree_to_graph_to_my_summ)
+            done
+               apply simp_all
+          subgoal
+            using SIM1(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+            unfolding propagation_inv_def
+            apply clarsimp
+            done
+          subgoal
+            using SIM1(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+            unfolding propagation_inv_def
+            apply clarsimp
+            done
+          subgoal
+            using TIMESTAMP_COMPARE by auto
+          subgoal for loc
+            apply (subgoal_tac "graph_summar_nt (summ sg) (subgraph.nxt sg) os")
+             defer
+            subgoal
+              apply (rule graph_summar_nt)
+                 apply (rule refl)+
+                apply (rule SIM1(2)[unfolded SIM1(1)])
+               apply (auto simp add: SIM1 comp_def)
+              done
+            subgoal
+              apply (cases loc; simp)
+              subgoal for nid lp
+                apply (cases lp; simp)
+                unfolding graph_summar_nt_def
+                 apply auto
+                done
+              done
+            done
+          subgoal
+            using SIM1(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+            unfolding propagation_inv_def
+            apply clarsimp
+            done
+          done
+        subgoal for c
+          (* propagate_all *)
+          using SIM1(5) apply simp
+          apply hypsubst_thin
+          apply (intro exI conjI relcomppI)
+             apply (rule rtranclp.intros(1))
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+          unfolding R_def[simplified]
+          apply (rule exI[of _ "os(1 := (os 1)\<lparr> front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg 1))), initia := initia (os 1), nfron := frontier (c_imp c (Loc 1 (Trg 1))) \<noteq> front (os 1) 1 \<rparr> )"])
+          apply (rule exI[of _ "sg\<lparr>pt_tr := c, upfro := (upfro sg)(1 := False)\<rparr>"])
+          apply (rule exI[of _ "cbufs"])
+          apply (rule exI[of _ inps])
+          apply (rule exI[of _ S])
+          apply (rule exI[of _ D])
+          apply (intro conjI)
+                  apply (simp_all add: SIM1)
+          subgoal premises prems
+            apply (simp add:  SIM1 dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def obtain_progress_def)
+            unfolding ooo_input_op_logic_def
+            apply (simp add: operator_state.defs comp_def notifier_op_def SIM1(3-) dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def obtain_progress_def)
+            done
+          subgoal
+            unfolding inputs_at_target_def
+            by (clarsimp simp add: BULK_BENQ_def  if_distrib[of input])
+          subgoal
+            using SIM1(6,4) apply -
+            unfolding ty1_check_def operator_state.defs
+            apply (auto simp add: SIM1 BTL_def BHD_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
+            done
+          subgoal
+            using SIM1(5,7)
+            apply (auto simp add: ty2_check_def operator_state.defs comp_def fun_upd_def BTL_def BHD_def  obtain_progress_def split: option.splits if_splits prod.splits)
+            done
+          subgoal
+            apply (subst dataplane_tracker_inv_clean[where f="(upfro sg)(1 := False)", of _ "sg\<lparr>pt_tr := c\<rparr>" _ "os(1:= (os 1)\<lparr> front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg 1))) \<rparr> )"])
+              apply simp_all
+            apply (subgoal_tac "propagate_all (antichain_from_list \<circ>\<circ> my_summ) (pt_tr sg) = Some c \<Longrightarrow> dataplane_tracker_inv (map_entry 1 (front_update (\<lambda>_. frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg p))))) os) cbufs (sg\<lparr>pt_tr := c\<rparr>)")
+            subgoal
+              by simp
+            subgoal
+              apply (rule dataplane_tracker_inv_front_update)
+              subgoal
+                apply (simp add: SIM1)
+                using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
+                apply metis
+                done
+              subgoal
+                using TIMESTAMP_COMPARE by auto
+              subgoal
+                apply (simp add: SIM1)
+                unfolding reachable_locations_def
+                apply (auto simp add: split_beta)
+                   apply (metis (no_types, lifting) loc_2_1_cases rangeI range_fst surjD)
+                  apply (metis (no_types, lifting) loc_2_1_cases rangeI range_fst surjD)
+                 apply (smt (verit, ccfv_threshold) is_empty_antichain_not_empty_list loc_2_1_cases my_summ_def zero_one)
+                apply (smt (verit, ccfv_threshold) is_empty_antichain_not_empty_list loc_2_1_cases my_summ_def zero_one)
+                done
+                apply (simp add: SIM1)
+              subgoal              
+                apply (rule graph_summar_nt)
+                   apply (rule refl)+
+                  apply (rule SIM1(2)[unfolded SIM1(1)])
+                 apply (auto simp add: SIM1 comp_def)
+                done
+              apply (simp add: SIM1)
+              done
+            done
+          done
+        subgoal for x t xs
+          apply (intro exI conjI relcomppI)
+             apply (rule rtranclp.intros(1))
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+          unfolding R_def[simplified]
+          apply (rule exI[of _ "os(1 := (os 1)\<lparr> outpu := (\<lambda> _. xs) \<rparr> )"])
+          apply (rule exI[of _ "sg"])
+          apply (rule exI[of _ cbufs])
+          apply (rule exI[of _ inps])
+          apply (rule exI[of _ "cinsert ((1, 1), x, t) S"])
+          apply (rule exI[of _ D])
+          apply (intro conjI)
+                  apply (simp_all add: SIM1)
+          subgoal
+            unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
+            apply (simp add: map_tl SIM1(3-) comp_def split_beta comp_op_def if_distrib  enum_num1_def operator_state.defs fun_upd_def)
+            done
+          subgoal
+            apply (simp add: map_tl SIM1(2-) split_beta comp_op_def if_distrib  enum_num1_def operator_state.defs)
+            apply (rule arg_cong2[where f=set_spec_op])
+             apply simp_all
+            apply (rule arg_cong2[where f=cinsert])
+             apply simp_all
+            apply (rule arg_cong2[where f=cUn])
+             apply simp_all
+            apply (auto 0 0)
+            subgoal for X Y
+              apply (clarsimp simp add: image_iff split: event.splits)
+              apply (intro exI conjI)
+                 apply assumption
+                apply auto
+              apply (cases Y; simp)
+              apply (clarsimp simp add: BULK_BENQ_def SIM1(1) outputs_at_target_my_summ inputs_at_target_def image_iff split: event.splits)
+              done
+            subgoal for X Y Z
+              apply (clarsimp simp add: BULK_BENQ_def SIM1(1) outputs_at_target_my_summ inputs_at_target_def image_iff split: event.splits)
+              apply (metis UnCI snd_eqD)
+              done
+            subgoal for X Y
+              by (auto simp add: BULK_BENQ_def SIM1(1) outputs_at_target_my_summ inputs_at_target_def image_iff split: event.splits)
+            subgoal for X Y Z
+              apply (clarsimp simp add: BULK_BENQ_def SIM1(1) outputs_at_target_my_summ inputs_at_target_def image_iff split: event.splits)
+              apply (metis UnCI snd_eqD)
+              done
+            done
+          subgoal
+            using SIM1(6,4)
+            by (auto simp add: ty1_check_def  operator_state.defs split: sum.splits)
+          subgoal
+            using SIM1(7,5)
+            by (auto simp add: ty2_check_def  operator_state.defs split: sum.splits)
+          subgoal premises
+            using SIM1(10) apply -
+            apply (rule dataplane_tracker_inv_update_outputs_outside)
+               apply assumption
+              apply simp_all
+            subgoal
+              by (simp add: my_summ_def SIM1)
+            subgoal
+              apply (rule graph_summar_nt)
+                 apply (rule refl)+
+                apply (rule SIM1(2)[unfolded SIM1(1)])
+               apply (auto simp add: SIM1 comp_def)
+              done
+            done
+          done
+        subgoal for x t xs
+          apply (intro exI conjI relcomppI)
+             apply (rule rtranclp.intros(1))
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+          unfolding R_def[simplified]
+          apply (rule exI[of _ "os(0 := (os 0)\<lparr> outpu := (\<lambda> _. xs) \<rparr>)"])
+          apply (rule exI[of _ "sg"])
+          apply (rule exI[of _ "BENQ (1, 1) (x, t) cbufs"])
+          apply (rule exI[of _ inps])
+          apply (rule exI[of _ "S"])
+          apply (rule exI[of _ D])
+          apply (intro conjI)
+                  apply (simp_all add: SIM1)
+          subgoal
+            unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
+            by (simp add: BENQ_def map_tl SIM1(2-) comp_def split_beta comp_op_def if_distrib  enum_num1_def operator_state.defs fun_upd_def)
+          subgoal
+            apply (simp add: map_tl SIM1(2-) split_beta comp_op_def if_distrib  enum_num1_def operator_state.defs)
+            apply (rule arg_cong2[where f=set_spec_op])
+             apply simp_all
+            apply (rule arg_cong2[where f=cUn])
+             apply simp_all
+            apply (cases "{(nid', p'). antichain_from_list (if nid' = (0 :: 2) then [0 :: 't] else []) \<noteq> {}\<^sub>A} = {}")
+            subgoal 
+              apply (rule FalseE)
+              apply (clarsimp simp add: if_distrib[of antichain_from_list])
+              apply (drule spec[of _ 2])
+              apply simp               
+              apply (auto 0 0 simp add:  my_summ_def antichain_from_list_singleton split: prod.splits)
+              done
+            subgoal
+              unfolding BENQ_def BULK_BENQ_def inputs_at_target_def outputs_at_target_def
+              apply (clarsimp simp add:  my_summ_def antichain_from_list_singleton split: prod.splits)
+              done
+            done
+          subgoal
+            using SIM1(6,4)
+            by (auto simp add: ty1_check_def BENQ_def operator_state.defs split: sum.splits)
+          subgoal
+            using SIM1(6,7,5,4) apply -
+            apply (auto simp add: ty1_check_def ty2_check_def BENQ_def operator_state.defs split: sum.splits)
+            done
+          subgoal premises temp
+            using SIM1(10) apply -
+            apply (rule dataplane_tracker_inv_update_outputs[where nid=0 and xs="[(x, t)]" and ys=xs and p=1])
+                 apply assumption
+            using temp apply (simp add: operator_state.defs)
+            using temp apply simp
+            unfolding BENQ_def
+              apply simp
+             apply (simp add: SIM1 my_summ_def)
+            using mem_antichain_nonempty in_antichain_singleton apply force
+            subgoal
+              apply (rule graph_summar_nt)
+                 apply (rule refl)+
+                apply (rule SIM1(2)[unfolded SIM1(1)])
+               apply (auto simp add: SIM1 comp_def)
+              done
+            done
+          done
+        subgoal
+          (* input_op logic *)
+          apply (intro conjI impI allI)
+          subgoal
+            (* LNIl *)
+            sorry
+          subgoal
+            (* Data *)
+            sorry
+          subgoal
+            (* Drop *)
+            sorry
+          subgoal for M lxs t
+  apply (intro exI conjI relcomppI)
+             apply (rule rtranclp.intros(1))
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+          unfolding R_def[simplified]
+          apply (rule exI[of _ "os(0 := (os 0)\<lparr> ocaps := (\<lambda> _. ocaps (os 0) 1 @ [t]), inter := inter (os 0) @ [(1, t, 1)] \<rparr> )"])
+          apply (rule exI[of _ "sg"])
+          apply (rule exI[of _ cbufs])
+          apply (rule exI[of _ "\<lambda> _. lxs"])
+          apply (rule exI[of _ "S"])
+          apply (rule exI[of _ D])
+          apply (intro conjI)
+               apply (simp_all add: SIM1)
+          subgoal
+            unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def add_cap_def BTL_def BHD_def
+            by (simp add: map_tl SIM1(2-) comp_def split_beta comp_op_def if_distrib  enum_num1_def operator_state.defs fun_upd_def)
+
+          subgoal
+           unfolding inputs_at_target_def
+           apply (clarsimp simp add: BULK_BENQ_def  )
+            apply (rule arg_cong2[where f=set_spec_op])
+             apply simp_all
+            apply (rule arg_cong2[where f=cUn])
+            apply simp_all
+           unfolding operator_state.defs
+           apply simp
+           apply (subst (1 2 3 4) coll_lshift)
+           apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
+           apply simp
+           apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
+           apply simp
+           done
+          subgoal
+            using SIM1(6,4) apply -
+            unfolding ty1_check_def operator_state.defs
+            apply (auto simp add: SIM1 BTL_def BHD_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
+            done
+          subgoal
+            using SIM1(5,7)
+            apply (auto simp add: ty2_check_def operator_state.defs comp_def fun_upd_def BTL_def BHD_def  obtain_progress_def split: option.splits if_splits prod.splits)
+            done
+          subgoal premises temp
+            using SIM1(10) apply -
 
 
+           find_theorems dataplane_tracker_inv 
 
-            find_theorems ran name: f
-            oops
 
-lemma
-  "extract_progress nid nt s"
-            
-            find_theorems obtain_progress os 
 
 end
-  moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op (case_sum (\<lambda>_. None) ((case_option None (Some \<circ> Inr) \<circ>\<circ> case_prod) (\<lambda>nid p. case if nid = 0 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (1 + offset, q)))) (case_sum (\<lambda>x. []) (BENQ (1, 1) (Inr (a, b)) (\<lambda>x. map Inr (cbufs x)))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (builder_op False {||} {|1|} (ip_state\<lparr>outpu := (outpu ip_state)(1 := xs)\<rparr>) (ooo_input_op_logic {|1|}))) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (builder_op True {|1|} {|1|} (bt_state\<lparr>nfron := False\<rparr>) (\<lambda>os. if nfron os then if filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1) = [] then trace STR ''No capabilities'' {||} else let compl_batches = \<lambda>p t. map (de1 (os\<lparr>nfron := False\<rparr>) \<circ> fst) (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)); ts = \<lambda>p. rmdups {} (map snd (filter (\<lambda>(d, t). t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p))); osa = os\<lparr>nfron := False, input := \<lambda>p. filter (\<lambda>(d, t). t \<notin> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)\<rparr> in Let {|(concat (map (\<lambda>t. map (\<lambda>x. (x, Cap t 1)) (f (compl_batches 1 t))) (ts 1)), map (\<lambda>t. Cap t 1) (filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1)))|} ((|`|) (\<lambda>(outs, drops). trace (STR ''outs: '' + show_nat (length outs) + STR '' , drops: '' + show_nat (length drops)) (drop_caps (produces osa (map (\<lambda>(d, y). (en2 osa d, y)) outs)) drops))) else {||}))))))) op2'"
-    if "initia ip_state"
-      and "outpu ip_state 1 = (a, b) # xs"
-    for a :: "'d1 + 'd2"
-      and b :: 't
-      and xs :: "(('d1 + 'd2) \<times> 't) buf"
-    using that sorry
-  moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op (case_sum (\<lambda>_. None) ((case_option None (Some \<circ> Inr) \<circ>\<circ> case_prod) (\<lambda>nid p. case if nid = 0 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (1 + offset, q)))) (case_sum (\<lambda>x. []) (BTL (1, 1) (\<lambda>x. map Inr (cbufs x)))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (builder_op False {||} {|1|} ip_state (ooo_input_op_logic {|1|}))) \<oslash>)))) op2'"
-    if "Inr (1, 1) \<in> ran (case_sum ((\<lambda>_. None)::2 \<Rightarrow> (2 + 2 \<times> 1) option) ((case_option None (Some \<circ> Inr) \<circ>\<circ> case_prod) (\<lambda>nid. (\<lambda>p. case if (nid::2) = 0 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (1 + offset, q))::1 \<Rightarrow> (_ \<times> _) option)))"
-      and "cbufs (1, 1) \<noteq> []"
-      and "initia bt_state"
-      and "is_Inl (BHD (1, 1) (\<lambda>x. map Inr (cbufs x))::((1, 't) shared_state + (1 \<Rightarrow> 't antichain)) + ('d1 + 'd2) \<times> 't)"
-    using that sorry
-  moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op (case_sum (\<lambda>_. None) ((case_option None (Some \<circ> Inr) \<circ>\<circ> case_prod) (\<lambda>nid p. case if nid = 0 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (1 + offset, q)))) (case_sum (\<lambda>x. []) (BTL (1, 1) (\<lambda>x. map Inr (cbufs x)))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (builder_op False {||} {|1|} ip_state (ooo_input_op_logic {|1|}))) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (builder_op True {|1|} {|1|} (consumes (bt_state\<lparr>nfron := False\<rparr>) 1 t d) (\<lambda>os. if nfron os then if filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1) = [] then trace STR ''No capabilities'' {||} else let compl_batches = \<lambda>p t. map (de1 (os\<lparr>nfron := False\<rparr>) \<circ> fst) (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)); ts = \<lambda>p. rmdups {} (map snd (filter (\<lambda>(d, t). t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p))); osa = os\<lparr>nfron := False, input := \<lambda>p. filter (\<lambda>(d, t). t \<notin> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)\<rparr> in Let {|(concat (map (\<lambda>t. map (\<lambda>x. (x, Cap t 1)) (f (compl_batches 1 t))) (ts 1)), map (\<lambda>t. Cap t 1) (filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1)))|} ((|`|) (\<lambda>(outs, drops). trace (STR ''outs: '' + show_nat (length outs) + STR '' , drops: '' + show_nat (length drops)) (drop_caps (produces osa (map (\<lambda>(d, y). (en2 osa d, y)) outs)) drops))) else {||}))))))) op2'"
-    if "Inr (1, 1) \<in> ran (case_sum ((\<lambda>_. None)::2 \<Rightarrow> (2 + 2 \<times> 1) option) ((case_option None (Some \<circ> Inr) \<circ>\<circ> case_prod) (\<lambda>nid. (\<lambda>p. case if (nid::2) = 0 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (1 + offset, q))::1 \<Rightarrow> (_ \<times> _) option)))"
-      and "cbufs (1, 1) \<noteq> []"
-      and "initia bt_state"
-      and "(Inr (d, t)::((1, 't) shared_state + (1 \<Rightarrow> 't antichain)) + ('d1 + 'd2) \<times> 't) = BHD (1, 1) (\<lambda>x. map Inr (cbufs x))"
-    for d :: "'d1 + 'd2"
-      and t :: 't
-    using that sorry
-  moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op (case_sum (\<lambda>_. None) ((case_option None (Some \<circ> Inr) \<circ>\<circ> case_prod) (\<lambda>nid p. case if nid = 0 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (1 + offset, q)))) (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (builder_op False {||} {|1|} os' (ooo_input_op_logic {|1|}))) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (builder_op True {|1|} {|1|} (bt_state\<lparr>nfron := False\<rparr>) (\<lambda>os. if nfron os then if filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1) = [] then trace STR ''No capabilities'' {||} else let compl_batches = \<lambda>p t. map (de1 (os\<lparr>nfron := False\<rparr>) \<circ> fst) (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)); ts = \<lambda>p. rmdups {} (map snd (filter (\<lambda>(d, t). t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p))); osa = os\<lparr>nfron := False, input := \<lambda>p. filter (\<lambda>(d, t). t \<notin> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)\<rparr> in Let {|(concat (map (\<lambda>t. map (\<lambda>x. (x, Cap t 1)) (f (compl_batches 1 t))) (ts 1)), map (\<lambda>t. Cap t 1) (filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1)))|} ((|`|) (\<lambda>(outs, drops). trace (STR ''outs: '' + show_nat (length outs) + STR '' , drops: '' + show_nat (length drops)) (drop_caps (produces osa (map (\<lambda>(d, y). (en2 osa d, y)) outs)) drops))) else {||}))))))) op2'"
-    if "initia ip_state"
-      and "os' |\<in>| ooo_input_op_logic {|1|} ip_state"
-      and "ocaps ip_state 1 \<noteq> []"
-    for os' :: "(1, 'd1 + 'd2, 'd1, 't) input_state"
-    using that sorry
-  moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 1 (nxt sg) st) (pt_tr sg)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op (case_sum (\<lambda>_. None) ((case_option None (Some \<circ> Inr) \<circ>\<circ> case_prod) (\<lambda>nid p. case if nid = 0 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (1 + offset, q)))) (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (builder_op False {||} {|1|} ip_state (ooo_input_op_logic {|1|}))) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (builder_op True {|1|} {|1|} os' (\<lambda>os. if nfron os then if filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1) = [] then trace STR ''No capabilities'' {||} else let compl_batches = \<lambda>p t. map (de1 (os\<lparr>nfron := False\<rparr>) \<circ> fst) (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)); ts = \<lambda>p. rmdups {} (map snd (filter (\<lambda>(d, t). t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p))); osa = os\<lparr>nfron := False, input := \<lambda>p. filter (\<lambda>(d, t). t \<notin> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)\<rparr> in Let {|(concat (map (\<lambda>t. map (\<lambda>x. (x, Cap t 1)) (f (compl_batches 1 t))) (ts 1)), map (\<lambda>t. Cap t 1) (filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1)))|} ((|`|) (\<lambda>(outs, drops). trace (STR ''outs: '' + show_nat (length outs) + STR '' , drops: '' + show_nat (length drops)) (drop_caps (produces osa (map (\<lambda>(d, y). (en2 osa d, y)) outs)) drops))) else {||}))))))) op2'"
-    if "initia bt_state"
-      and "has_progress (bt_state\<lparr>nfron := False\<rparr>)"
-      and "(os', st) = obtain_progress (bt_state\<lparr>nfron := False\<rparr>)"
-    for st :: "(1, 't) shared_state"
-      and os' :: "(1, 'd1 + 'd2, 'd1, 'd2, 't) operator_state_ty2"
-    using that sorry
-  moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 0 (nxt sg) st) (pt_tr sg)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op (case_sum (\<lambda>_. None) ((case_option None (Some \<circ> Inr) \<circ>\<circ> case_prod) (\<lambda>nid p. case if nid = 0 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (1 + offset, q)))) (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (builder_op False {||} {|1|} os' (ooo_input_op_logic {|1|}))) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (builder_op True {|1|} {|1|} (bt_state\<lparr>nfron := False\<rparr>) (\<lambda>os. if nfron os then if filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1) = [] then trace STR ''No capabilities'' {||} else let compl_batches = \<lambda>p t. map (de1 (os\<lparr>nfron := False\<rparr>) \<circ> fst) (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)); ts = \<lambda>p. rmdups {} (map snd (filter (\<lambda>(d, t). t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p))); osa = os\<lparr>nfron := False, input := \<lambda>p. filter (\<lambda>(d, t). t \<notin> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)\<rparr> in Let {|(concat (map (\<lambda>t. map (\<lambda>x. (x, Cap t 1)) (f (compl_batches 1 t))) (ts 1)), map (\<lambda>t. Cap t 1) (filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1)))|} ((|`|) (\<lambda>(outs, drops). trace (STR ''outs: '' + show_nat (length outs) + STR '' , drops: '' + show_nat (length drops)) (drop_caps (produces osa (map (\<lambda>(d, y). (en2 osa d, y)) outs)) drops))) else {||}))))))) op2'"
-    if "initia ip_state"
-      and "has_progress ip_state"
-      and "(os', st) = obtain_progress ip_state"
-    for st :: "(1, 't) shared_state"
-      and os' :: "(1, 'd1 + 'd2, 'd1, 't) input_state"
-    using that sorry
-  moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op (sg\<lparr>pt_tr := x2, upfro := (upfro sg)(0 := False)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op (case_sum (\<lambda>_. None) ((case_option None (Some \<circ> Inr) \<circ>\<circ> case_prod) (\<lambda>nid p. case if nid = 0 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (1 + offset, q)))) (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (builder_op False {||} {|1|} (ip_state \<lparr>front := frontier \<circ> (\<lambda>p. c_imp x2 (Loc 0 (Trg 1))), initia := True, nfron := True\<rparr>) (ooo_input_op_logic {|1|}))) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (builder_op True {|1|} {|1|} (bt_state\<lparr>nfron := False\<rparr>) (\<lambda>os. if nfron os then if filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1) = [] then trace STR ''No capabilities'' {||} else let compl_batches = \<lambda>p t. map (de1 (os\<lparr>nfron := False\<rparr>) \<circ> fst) (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)); ts = \<lambda>p. rmdups {} (map snd (filter (\<lambda>(d, t). t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p))); osa = os\<lparr>nfron := False, input := \<lambda>p. filter (\<lambda>(d, t). t \<notin> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)\<rparr> in Let {|(concat (map (\<lambda>t. map (\<lambda>x. (x, Cap t 1)) (f (compl_batches 1 t))) (ts 1)), map (\<lambda>t. Cap t 1) (filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1)))|} ((|`|) (\<lambda>(outs, drops). trace (STR ''outs: '' + show_nat (length outs) + STR '' , drops: '' + show_nat (length drops)) (drop_caps (produces osa (map (\<lambda>(d, y). (en2 osa d, y)) outs)) drops))) else {||}))))))) op2'"
-    if "upfro sg 0"
-      and "\<not> initia ip_state"
-      and "propagate_all (summ sg) (pt_tr sg) = Some x2"
-    for x2 :: "((2, 1) location, 't) configuration"
-    using that sorry
-  moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op (sg\<lparr>pt_tr := x2, upfro := (upfro sg)(1 := False)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op (case_sum (\<lambda>_. None) ((case_option None (Some \<circ> Inr) \<circ>\<circ> case_prod) (\<lambda>nid p. case if nid = 0 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (1 + offset, q)))) (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (builder_op False {||} {|1|} ip_state (ooo_input_op_logic {|1|}))) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (builder_op True {|1|} {|1|} (bt_state \<lparr>front := frontier \<circ> (\<lambda>p. c_imp x2 (Loc 1 (Trg 1))), initia := True, nfron := True\<rparr>) (\<lambda>os. if nfron os then if filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1) = [] then trace STR ''No capabilities'' {||} else let compl_batches = \<lambda>p t. map (de1 (os\<lparr>nfron := False\<rparr>) \<circ> fst) (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)); ts = \<lambda>p. rmdups {} (map snd (filter (\<lambda>(d, t). t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p))); osa = os\<lparr>nfron := False, input := \<lambda>p. filter (\<lambda>(d, t). t \<notin> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)\<rparr> in Let {|(concat (map (\<lambda>t. map (\<lambda>x. (x, Cap t 1)) (f (compl_batches 1 t))) (ts 1)), map (\<lambda>t. Cap t 1) (filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1)))|} ((|`|) (\<lambda>(outs, drops). trace (STR ''outs: '' + show_nat (length outs) + STR '' , drops: '' + show_nat (length drops)) (drop_caps (produces osa (map (\<lambda>(d, y). (en2 osa d, y)) outs)) drops))) else {||}))))))) op2'"
-    if "Inl 1 \<notin> ran (case_sum ((\<lambda>_. None)::2 \<Rightarrow> (2 + 2 \<times> 1) option) ((case_option None (Some \<circ> Inr) \<circ>\<circ> case_prod) (\<lambda>nid. (\<lambda>p. case if (nid::2) = 0 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (1 + offset, q))::1 \<Rightarrow> (_ \<times> _) option)))"
-      and "\<not> initia bt_state"
-      and "upfro sg 1"
-      and "propagate_all (summ sg) (pt_tr sg) = Some x2"
-    for x2 :: "((2, 1) location, 't) configuration"
-    using that sorry
-  moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op (sg\<lparr>pt_tr := x2, upfro := (upfro sg)(1 := False)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op (case_sum (\<lambda>_. None) ((case_option None (Some \<circ> Inr) \<circ>\<circ> case_prod) (\<lambda>nid p. case if nid = 0 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (1 + offset, q)))) (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (builder_op False {||} {|1|} ip_state (ooo_input_op_logic {|1|}))) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (builder_op True {|1|} {|1|} (bt_state \<lparr>front := frontier \<circ> (\<lambda>p. c_imp x2 (Loc 1 (Trg 1))), nfron := frontier (c_imp x2 (Loc 1 (Trg 1))) \<noteq> front bt_state 1\<rparr>) (\<lambda>os. if nfron os then if filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1) = [] then trace STR ''No capabilities'' {||} else let compl_batches = \<lambda>p t. map (de1 (os\<lparr>nfron := False\<rparr>) \<circ> fst) (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)); ts = \<lambda>p. rmdups {} (map snd (filter (\<lambda>(d, t). t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p))); osa = os\<lparr>nfron := False, input := \<lambda>p. filter (\<lambda>(d, t). t \<notin> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)\<rparr> in Let {|(concat (map (\<lambda>t. map (\<lambda>x. (x, Cap t 1)) (f (compl_batches 1 t))) (ts 1)), map (\<lambda>t. Cap t 1) (filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1)))|} ((|`|) (\<lambda>(outs, drops). trace (STR ''outs: '' + show_nat (length outs) + STR '' , drops: '' + show_nat (length drops)) (drop_caps (produces osa (map (\<lambda>(d, y). (en2 osa d, y)) outs)) drops))) else {||}))))))) op2'"
-    if "Inl 1 \<notin> ran (case_sum ((\<lambda>_. None)::2 \<Rightarrow> (2 + 2 \<times> 1) option) ((case_option None (Some \<circ> Inr) \<circ>\<circ> case_prod) (\<lambda>nid. (\<lambda>p. case if (nid::2) = 0 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (1 + offset, q))::1 \<Rightarrow> (_ \<times> _) option)))"
-      and "initia bt_state"
-      and "upfro sg 1"
-      and "propagate_all (summ sg) (pt_tr sg) = Some x2"
-    for x2 :: "((2, 1) location, 't) configuration"
-    using that sorry
-  moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op (cinsert ((1, 1), ab, bb) S) D (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op (case_sum (\<lambda>_. None) ((case_option None (Some \<circ> Inr) \<circ>\<circ> case_prod) (\<lambda>nid p. case if nid = 0 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (1 + offset, q)))) (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x))) (map_op (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (case_option (Inl 0) (\<lambda>p. Inr (0, 1))) (builder_op False {||} {|1|} ip_state (ooo_input_op_logic {|1|}))) (map_op (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (case_option (Inl 1) (\<lambda>p. Inr (1, 1))) (builder_op True {|1|} {|1|} (bt_state \<lparr>nfron := False, outpu := (outpu bt_state)(1 := xs)\<rparr>) (\<lambda>os. if nfron os then if filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1) = [] then trace STR ''No capabilities'' {||} else let compl_batches = \<lambda>p t. map (de1 (os\<lparr>nfron := False\<rparr>) \<circ> fst) (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)); ts = \<lambda>p. rmdups {} (map snd (filter (\<lambda>(d, t). t \<in> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p))); osa = os\<lparr>nfron := False, input := \<lambda>p. filter (\<lambda>(d, t). t \<notin> set (filter (\<lambda>t. \<not> frontier_less_equal (front os p) t) (ocaps os p))) (input (os\<lparr>nfron := False\<rparr>) p)\<rparr> in Let {|(concat (map (\<lambda>t. map (\<lambda>x. (x, Cap t 1)) (f (compl_batches 1 t))) (ts 1)), map (\<lambda>t. Cap t 1) (filter (\<lambda>t. \<not> frontier_less_equal (front os 1) t) (ocaps os 1)))|} ((|`|) (\<lambda>(outs, drops). trace (STR ''outs: '' + show_nat (length outs) + STR '' , drops: '' + show_nat (length drops)) (drop_caps (produces osa (map (\<lambda>(d, y). (en2 osa d, y)) outs)) drops))) else {||}))))))) op2'"
-    if "initia bt_state"
-      and "outpu bt_state 1 = (ab, bb) # xs"
-    for ab :: "'d1 + 'd2"
-      and bb :: 't
-      and xs :: "(('d1 + 'd2) \<times> 't) buf"
-    using that sorry
-  ultimately show ?thesis
-    apply -
-    unfolding R_def[symmetric]
-    subgoal premises prems2
-      apply (simp add: wsim_def dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def notifier_op_def)
-      apply (intro allI conjI impI)
-      apply (elim step_builder_op_elim step_set_op_elim step_map_op_elim step_comp_op_elim step_dataflow_op_elim conjE ; 
-          clarsimp simp only: IO.simps ; hypsubst_thin ? ; clarsimp simp flip: cin.rep_eq split: option.splits sum.splits prod.splits if_splits ; hypsubst_thin?)
-      subgoal
-        using prems2(1) by assumption
-      subgoal
-        using prems2(2) by assumption
-      subgoal
-        using prems2(3) by assumption
-      subgoal
-        using prems2(4) by assumption
-      subgoal
-        using prems2(5) by assumption
-      subgoal
-        using prems2(6) by assumption
-      subgoal
-        using prems2(7) by assumption
-      subgoal
-        using prems2(8) by assumption
-      subgoal
-        using prems2(9) by assumption
-      subgoal
-        using prems2(10) by assumption
-      subgoal
-        using prems2(11) by assumption
+            (* Mint *)
+            sorry
+        done
       done
     done
-qed
-qed
+  qed
 next
   case SIM2
   then show ?case sorry

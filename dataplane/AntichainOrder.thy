@@ -942,6 +942,4 @@ lemma frontier_add_update_zmultiset_not_le:
   by transfer'
    (force simp add: zcount_update_zmultiset minimal_antichain_def)
 
-
-
 end

@@ -39,6 +39,15 @@ lemma cset_of_llist_llist_of_append[simp]:
     apply (simp_all add: countable_finite eq_onp_same_args)
   done
 
+lemma in_cset_of_llist_llist_of[simp]:
+  "x |\<in>| cset_of_llist (llist_of xs) \<longleftrightarrow> x \<in> set xs"
+  using cin_code by force
+
+lemma csubset_eq_cset_of_llist:
+  "csubset_eq (cset_of_llist lxs) S \<longleftrightarrow> (\<forall> x \<in> lset lxs. x |\<in>| S)"
+  using cin_code by fastforce
+
+
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 
@@ -895,7 +904,7 @@ lemma take_step_PR_p_preserves_inv:
 lemma propagate_all_terminates:
   assumes "dataflow_topology su (-+-)"
     and "Propagate.dataflow_topology.inv_imps_work_sum su (-+-) c"
-    and "Propagate.dataflow_topology.inv_implications_nonneg (c :: ('loc :: {finite,ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot,enum,linorder}, 't :: {compare_order,compare,ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) configuration)"
+    and "Propagate.dataflow_topology.inv_implications_nonneg (c :: ('loc :: {enum,linorder}, 't :: {compare_order,ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) configuration)"
     and "ID CCOMPARE('t) = Some compare"
     and "\<forall> loc. su loc loc = {}\<^sub>A"
     and "dataflow_topology_from_tree.inv_imp_plus_work_nonneg c"

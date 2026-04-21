@@ -214,6 +214,9 @@ lemma add_zmset_minus_to_zmset_if:
   apply (metis add_zmset_neg minus_diff_eq verit_eq_simplify(25))
   done
 
+lemma zmset_of_replicate_mset[simp]:
+  "zmset_of (replicate_mset m t) = to_zmset (replicate m t)"
+  by (induct m) auto
 
 lemma zcount_to_zmset:
   "zcount (to_zmset xs) = count_list xs"
@@ -225,6 +228,11 @@ lemma set_antichain_antichain_singleton[simp]:
   apply (subst antichain_inverse)
   apply (auto simp: incomparable_def)
   done
+
+
+lemma antichain_nonempty[simp]:
+  "antichain {A} \<noteq> {}\<^sub>A"
+  by (metis empty_antichain.rep_eq insert_not_empty set_antichain_antichain_singleton)
 
 lemma set_zmset_to_zmset[simp]:
   "set_zmset (to_zmset xs) = set xs"
