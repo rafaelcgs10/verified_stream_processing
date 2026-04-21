@@ -14,14 +14,6 @@ lemma wsteps_step_tau[intro]:
    wsteps vios op1 op3"
   by (induct vios arbitrary: op2 op3 op1 rule: wsteps.induct) auto
 
-lemma in_cset_of_llist_llist_of[simp]:
-  "x |\<in>| cset_of_llist (llist_of xs) \<longleftrightarrow> x \<in> set xs"
-  using cin_code by force
-
-lemma csubset_eq_cset_of_llist:
-  "csubset_eq (cset_of_llist lxs) S \<longleftrightarrow> (\<forall> x \<in> lset lxs. x |\<in>| S)"
-  using cin_code by fastforce
-
 lemma wfinished_step_taus[intro]:
   "wfinished op \<Longrightarrow>
    (step Tau)\<^sup>*\<^sup>* op op' \<Longrightarrow>
