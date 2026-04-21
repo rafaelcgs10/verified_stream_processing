@@ -350,13 +350,11 @@ lemma dataplane_tracker_inv_progress:
           done
         done
       subgoal for nid' p t
-        apply (drule spec2, drule spec2, drule mp, blast)
+        apply (drule spec2, drule spec, drule mp, blast)
         apply (elim exE bexE conjE disjE)
         subgoal for t''
           by (metis (mono_tags, lifting) group_cancel.rule0 zcount_union zmset_filter_extract_progress_Src_consumes_diff)
         subgoal for t''
-          by auto
-        subgoal
           by auto
         done
       done

@@ -650,19 +650,8 @@ lemma dataplane_tracker_inv_produces_drops:
         subgoal for p t m
           using prems(15)[unfolded produ_consu_inter_supported_def] apply -
           apply (clarsimp del: disjCI)
-          apply (drule spec2, drule spec2, drule mp, blast)  
+          apply (drule spec2, drule spec, drule mp, blast)  
           apply (auto del: disjCI)
-          subgoal for t' 
-            by blast
-          subgoal
-            by auto
-          subgoal for t' m'
-            apply (rule disjI2)+
-            apply (rule exI[of _ t'])
-            apply simp
-            apply (rule exI[of _ m'])
-            apply (simp add: remove1_append)
-            done
           done
         subgoal for p t
           using temp(1)[rule_format, of p] prems(6)[unfolded Src_caps_inv_def, rule_format, of nid p, symmetric]
@@ -680,7 +669,7 @@ lemma dataplane_tracker_inv_produces_drops:
               apply (clarsimp del: disjCI)
               using prems(15)[unfolded produ_consu_inter_supported_def] apply -
               apply (clarsimp del: disjCI)
-              apply (drule spec2, drule spec2, drule mp, blast)  
+              apply (drule spec2, drule spec, drule mp, blast)  
               apply auto
               done
             done
@@ -698,6 +687,7 @@ lemma dataplane_tracker_inv_produces_drops:
         subgoal for nid' p t m
           using prems(15)[unfolded produ_consu_inter_supported_def] apply -
           apply (clarsimp del: disjCI)
+          apply blast
           done
         done
       subgoal premises prems
@@ -1212,12 +1202,12 @@ lemma dataplane_tracker_inv_produces_drops:
                                               apply auto
                                               subgoal
                                                 unfolding add.commute[of t1' s1]
-                                                by(rule add_increasing; simp)
+                                                by (meson basic_trans_rules(23) graph.le_plus(2))
                                               subgoal
                                                 apply(subgoal_tac "t1' -+- s1 \<in> {t. t \<le> t1' -+- s1 \<and> (\<exists>p m nid. (p, t, m) \<in> set (consu (os nid)))}")
                                                  defer 
                                                 subgoal
-                                                  by auto
+                                                  by (metis (no_types, lifting) le_less less_le_not_le mem_Collect_eq)
                                                 apply(subgoal_tac "t1' -+- s1 \<notin> {t. t \<le> t1' \<and> (\<exists>p m nid. (p, t, m) \<in> set (consu (os nid)))}")
                                                  defer 
                                                 subgoal
@@ -1232,6 +1222,7 @@ lemma dataplane_tracker_inv_produces_drops:
                                                     apply assumption
                                                     done
                                                   apply auto
+                                                  apply force
                                                   done
                                                 by simp
                                               done
@@ -1279,7 +1270,7 @@ lemma dataplane_tracker_inv_produces_drops:
                                           apply(subgoal_tac "t \<ge> t1' -+- (n -+- s1)")
                                            defer
                                           subgoal
-                                            by (metis add.commute dataflow_topology_from_tree.followed_by_summary)
+                                            by (metis (no_types, lifting) add.commute add_mono_thms_linordered_semiring(2) basic_trans_rules(23) group_cancel.add2)
                                           apply(erule exE conjE)+
                                           using prems''(1)[of t1' nid''' p1 m1 _ "n -+- s1"]
                                           apply simp
@@ -1288,13 +1279,6 @@ lemma dataplane_tracker_inv_produces_drops:
                                           apply (simp add: map_concat comp_def)
                                           done
                                         done
-                                      subgoal for t1
-                                        apply clarsimp
-                                        subgoal for m'
-
-
-
-end
                                       done
                                     done
                                   done
@@ -1363,8 +1347,7 @@ end
                 subgoal premises prems' for p'
                   using prems'(1,3-) apply -
                   apply (drule conjunct2[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supported_def]], rule_format])
-                  apply clarsimp
-                  apply (elim disjE)
+                  apply (elim disjE exE)
                   subgoal for t'
                     apply (rule frontier_less_equal_ifrontierI[OF D, of 0 "Loc nid' (Src p')", simplified])
                     subgoal
@@ -1391,21 +1374,16 @@ end
                         done
                       done
                     done
-                  subgoal for t'
+                  subgoal for t'' p''' s m''
                     apply clarsimp
-                    subgoal for t'' p''' s m''
                       apply (drule conjunct1[OF temp(5)[unfolded graph_summar_nt_def], rule_format])
                       apply clarsimp
                       subgoal for u
-                        apply (drule sym[of t])
-                        apply simp
                         apply (rule prems'(2)[of nid' _ _ _ u s])
                              apply assumption+
-                        apply auto
                         done
                       done
                     done
-                  done
                 subgoal premises prems' for p' aa b nid'' p''
                   using prems'(1,3-) apply -
                   apply (cases l; simp)
@@ -1456,11 +1434,10 @@ end
                         apply clarsimp
                         subgoal for m''
                           apply (drule conjunct2[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supported_def]], rule_format])
-                          apply clarsimp
-                          apply (elim disjE)
+                          apply (elim disjE exE)
                           subgoal for t'
-                            apply (rule frontier_less_equal_trans[rotated])
-                             apply assumption
+                  (*           apply (rule frontier_less_equal_trans[rotated])
+                             apply assumption *)
                             apply (rule frontier_less_equal_ifrontier_trans[OF D, of 0 "Loc nid' (Src p')", simplified])
                             subgoal
                               by (meson D GS(2) dataflow_topology.axioms(1) graph_to_nxt_Some_alt path_weight_direct_0path temp(5))
@@ -1489,20 +1466,19 @@ end
                                 done
                               done
                             done
-                          subgoal for t'
+                          subgoal for t' p'' s m'
                             apply clarsimp
-                            subgoal for t'' p''' s m''
+                            subgoal 
                               apply (drule conjunct1[OF temp(5)[unfolded graph_summar_nt_def], rule_format])
                               apply clarsimp
                               subgoal for u
-                                apply (drule sym[of t])
-                                apply simp
+                          (*       apply (drule sym[of t])
+                                apply simp *)
                                 apply (rule frontier_less_equal_ifrontier_trans[OF D, of 0 "Loc nid' (Src p')", simplified])
                                 subgoal
                                   by (meson D GS(2) dataflow_topology.axioms(1) graph_to_nxt_Some_alt path_weight_direct_0path temp(5))
                                 apply (rule prems'(2)[of nid' _ _ _ u s])
                                      apply assumption+
-                                apply auto
                                 done
                               done
                             done

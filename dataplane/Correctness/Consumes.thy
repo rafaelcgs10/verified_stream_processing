@@ -1165,10 +1165,9 @@ lemma dataplane_tracker_inv_consumes:
         apply clarsimp
         apply (auto del: disjCI simp add: consumes_def)
         subgoal for p' t' m
-          apply (drule spec2, drule spec2, drule mp, blast)
+          apply (drule spec2, drule spec, drule mp, blast)
           apply (elim disjE exE)
           subgoal for t''
-            apply (rule disjI1)
             subgoal
               apply (subgoal_tac "zcount (zmset (map snd (filter (\<lambda>(p'a, _, _). p'a = p') (concat (map (\<lambda>p'. map (\<lambda>t'. (p', t -+- t', 1)) (intsum (os nid) p p')) enum_class.enum))))) t'' \<ge> 0")
               subgoal
@@ -1179,8 +1178,6 @@ lemma dataplane_tracker_inv_consumes:
             done
           subgoal
             by blast
-          subgoal for t''
-            by (auto simp add: remove1_append)
           done
         using zero_less_one apply blast
         done

@@ -10,6 +10,7 @@ imports
   "../Correctness/Produces"
   "../Correctness/Outputs"
   "../Correctness/Propagates"
+  "../Correctness/Mints"
   Dataplane.LList_Haskell_Setup
   Source_op
   Set_op
@@ -1290,12 +1291,13 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             unfolding ty1_check_def operator_state.defs
             apply (auto simp add: SIM1 BTL_def BHD_def my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
             done
-          subgoal
+          subgoal     
             using SIM1(5,7)
             apply (auto simp add: ty2_check_def operator_state.defs comp_def fun_upd_def BTL_def BHD_def  obtain_progress_def split: option.splits if_splits prod.splits)
             done
           subgoal premises temp
             using SIM1(10) apply -
+            apply (rule dataplane_tracker_inv_mints)
 
 
            find_theorems dataplane_tracker_inv 

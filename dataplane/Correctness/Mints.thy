@@ -304,27 +304,18 @@ lemma dataplane_tracker_inv_mints:
             using temp2(5-) apply -
             apply (elim disjE)
             subgoal
-              by (metis gt_0_zcount_msetD in_set_remove1 split_pairs)
+              apply (drule gt_0_zcount_msetD)
+              using temp2(3)[rule_format, of p t'' nid] apply -
+              apply (drule meta_mp)
+               apply blast
+              apply fastforce
+              done
             subgoal
               by auto
             done
           done
-        subgoal for t''
-          apply (subgoal_tac "zcount (zmset (map snd (filter ((=) p \<circ> fst) (operator_state.inter (os nid))))) t'' > 0 \<or> zcount (c_pts (pt_tr sg) (Loc nid (Src p))) t'' > 0")
-          defer
-          subgoal
-            using prems(4)[unfolded Src_caps_inv_def, rule_format, of nid p]
-              prems(6)[unfolded c_pts_inv_def, rule_format, of "Loc nid (Src p)"] apply -
-            apply (simp add: c_pts_change_multiplicities)
-            apply (metis (no_types, opaque_lifting) gt_0_plusD zcount_to_zmset_gt_0 zcount_union)
-            done
-          subgoal premises temp2
-            using temp2(5-)
-            by (meson gt_0_zcount_msetD)
-          done
         done
       subgoal for p' t' m'
-        apply (clarsimp del: disjCI simp add: remove1_append)
         apply fast
         done
       done
