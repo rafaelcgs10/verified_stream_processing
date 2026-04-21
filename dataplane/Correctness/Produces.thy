@@ -647,11 +647,22 @@ lemma dataplane_tracker_inv_produces_drops:
               done
             done
           done
-        subgoal
+        subgoal for p t m
           using prems(15)[unfolded produ_consu_inter_supported_def] apply -
-          apply clarsimp
-          apply (drule spec2, drule spec, drule mp, blast)  
-          apply auto
+          apply (clarsimp del: disjCI)
+          apply (drule spec2, drule spec2, drule mp, blast)  
+          apply (auto del: disjCI)
+          subgoal for t' 
+            by blast
+          subgoal
+            by auto
+          subgoal for t' m'
+            apply (rule disjI2)+
+            apply (rule exI[of _ t'])
+            apply simp
+            apply (rule exI[of _ m'])
+            apply (simp add: remove1_append)
+            done
           done
         subgoal for p t
           using temp(1)[rule_format, of p] prems(6)[unfolded Src_caps_inv_def, rule_format, of nid p, symmetric]
@@ -663,14 +674,13 @@ lemma dataplane_tracker_inv_produces_drops:
           subgoal
             apply (elim disjE)
             subgoal
-              apply (rule exI[of _ t])
-              by simp
+              by blast
             subgoal
               apply (drule zcount_zmset_gt_0_set_Ex)
               apply (clarsimp del: disjCI)
               using prems(15)[unfolded produ_consu_inter_supported_def] apply -
               apply (clarsimp del: disjCI)
-              apply (drule spec2, drule spec, drule mp, blast)  
+              apply (drule spec2, drule spec2, drule mp, blast)  
               apply auto
               done
             done
@@ -688,8 +698,6 @@ lemma dataplane_tracker_inv_produces_drops:
         subgoal for nid' p t m
           using prems(15)[unfolded produ_consu_inter_supported_def] apply -
           apply (clarsimp del: disjCI)
-          apply (drule spec2, drule spec, drule mp, blast)  
-          apply auto
           done
         done
       subgoal premises prems
@@ -879,7 +887,7 @@ lemma dataplane_tracker_inv_produces_drops:
               subgoal premises prems' for lp p'' t' m' nid'' n n'
                 using prems'(3-4,6-)
                 apply -
-                apply(induction "(card {t. t \<le> t' \<and> (\<exists> p m nid. (p, t, m) \<in> set (consu (os nid)))},Produces.dataflow_topology.weight' (summ sg) (-+-) t' (Loc nid'' (Trg p'')))" arbitrary: p'' t' m' nid'' n n' rule: less_induct)
+                apply(induction "(card {t. t \<le> t' \<and> (\<exists> p m nid. (p, t, m) \<in> set (consu (os nid)))}, Produces.dataflow_topology.weight' (summ sg) (-+-) t' (Loc nid'' (Trg p'')))" arbitrary: p'' t' m' nid'' n n' rule: less_induct)
                 subgoal premises prems'' for p'' t' nid'' m' n n'
                   apply(subgoal_tac "Graph.graph (summ sg)")
                    defer
@@ -1084,8 +1092,7 @@ lemma dataplane_tracker_inv_produces_drops:
                                     apply clarsimp
                                     subgoal for m''
                                       apply (drule conjunct2[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supported_def]], rule_format])
-                                      apply clarsimp
-                                      apply (elim disjE)
+                                      apply (elim disjE exE)
                                       subgoal for t'
                                         apply(subgoal_tac "\<exists> n''. n'' \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid''' (Src p''')) (Loc nid' lp) \<and> n'' \<le> 0 + n'")
                                          defer
@@ -1118,10 +1125,10 @@ lemma dataplane_tracker_inv_produces_drops:
                                           using dataflow_topology_from_tree.results_in_mono_raw
                                           by (metis (lifting) Graph.graph_def add_increasing2 le_iff_add)
                                         done
-                                      subgoal for t1
+                                      subgoal for t1' p1 s1 m1
                                         apply clarsimp
                                           (*     apply(drule sym[of t]; simp) *)
-                                        subgoal for t1' p1 s1 m1
+                                        subgoal 
                                           apply(subgoal_tac "(card {t. t \<le> t1' \<and> (\<exists>p m nid. (p, t, m) \<in> set (consu (os nid)))}, dataflow_topology.weight' (summ sg) (-+-) t1' (Loc nid''' (Trg p1)))
   < (card {t. t \<le> t' \<and> (\<exists>p m nid. (p, t, m) \<in> set (consu (os nid)))}, dataflow_topology.weight' (summ sg) (-+-) t' (Loc nid'' (Trg p'')))")
                                            defer
@@ -1281,6 +1288,13 @@ lemma dataplane_tracker_inv_produces_drops:
                                           apply (simp add: map_concat comp_def)
                                           done
                                         done
+                                      subgoal for t1
+                                        apply clarsimp
+                                        subgoal for m'
+
+
+
+end
                                       done
                                     done
                                   done

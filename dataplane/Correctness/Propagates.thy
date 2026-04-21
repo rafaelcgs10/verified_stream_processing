@@ -289,8 +289,10 @@ lemma dataplane_tracker_inv_front_update:
       using prems(12) apply -
       unfolding produ_consu_inter_supported_def
       apply (auto del: disjCI)
-      apply (metis (no_types, opaque_lifting) prems(1) propagate_all_preserves_c_pts)
-        apply (metis (no_types, lifting) prems(1) propagate_all_preserves_c_pts)+
+         apply (metis (no_types, opaque_lifting) prems(1) propagate_all_preserves_c_pts)
+      apply (metis (no_types, lifting) prems(1) propagate_all_preserves_c_pts)
+      apply (metis (lifting) ext prems(1) propagate_all_preserves_c_pts)
+      apply (metis (lifting) ext prems(1) propagate_all_preserves_c_pts)
       done
     done
   done

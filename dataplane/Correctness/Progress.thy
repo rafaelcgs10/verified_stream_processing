@@ -350,26 +350,14 @@ lemma dataplane_tracker_inv_progress:
           done
         done
       subgoal for nid' p t
-        apply clarsimp
-        apply (drule spec2, drule spec, drule mp, blast)
-        apply clarsimp
-        subgoal premises temp for m t'
-          using temp(3-) apply -
-          apply (elim disjE)
-          subgoal
-            apply (rule exI)
-            apply (rule conjI)
-             apply assumption
-            apply (rule disjI1)
-            apply (rule ordered_comm_monoid_add_class.add_pos_nonneg)
-             apply simp_all
-            unfolding obtain_progress_def extract_progress_def
-            apply (auto simp add: zcount_sum Misc.set_map_filter intro!: ordered_comm_monoid_add_class.sum_nonneg ordered_comm_monoid_add_class.add_nonneg_nonneg zcount_zmset_ge_0I dest!: zcount_zmset_gt_0_set_Ex split: option.splits)
-            done
-          apply clarsimp
-          subgoal for t'' p' s m'
-            by auto
-          done
+        apply (drule spec2, drule spec2, drule mp, blast)
+        apply (elim exE bexE conjE disjE)
+        subgoal for t''
+          by (metis (mono_tags, lifting) group_cancel.rule0 zcount_union zmset_filter_extract_progress_Src_consumes_diff)
+        subgoal for t''
+          by auto
+        subgoal
+          by auto
         done
       done
     done
