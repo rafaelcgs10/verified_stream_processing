@@ -310,4 +310,48 @@ lemma timely_input_stream_expires:
     done
   done
 
+lemma timely_input_stream_MintI[intro]:
+  "timely_input_stream (LCons (Mint t) lxs) (mset (ocaps (os 0) 1)) \<Longrightarrow> timely_input_stream lxs (add_mset t (mset (ocaps (os 0) 1)))"
+  apply (auto simp add: timely_input_stream_def intro: ev_drops.intros)
+  subgoal for t1 t2
+    apply (erule timely_productive.cases; simp)
+    subgoal
+      apply (auto simp add: timely_input_stream_def intro: ev_drops.intros)
+      subgoal
+        by (meson not_in_iff union_single_eq_member vacant_def verit_comp_simplify1(2))
+      subgoal
+        by (meson not_in_iff union_single_eq_member vacant_def verit_comp_simplify1(2))
+      subgoal
+        by (metis (no_types, lifting) count_mset_0_iff ev_drops_LConsE event.distinct(4,6) event.inject(3) lfinite_code(2) vacant_def verit_comp_simplify1(2))
+      subgoal
+        by (metis (no_types, lifting) count_mset_0_iff ev_drops_LConsE event.distinct(4,6) event.inject(3) lfinite_code(2) vacant_def verit_comp_simplify1(2))
+      done
+    subgoal
+      apply (auto simp add: timely_input_stream_def intro: ev_drops.intros)
+      subgoal
+        by (meson not_in_iff union_single_eq_member vacant_def verit_comp_simplify1(2))
+      subgoal
+        by (meson not_in_iff union_single_eq_member vacant_def verit_comp_simplify1(2))
+      subgoal
+        by (metis (no_types, lifting) count_mset_0_iff ev_drops_LConsE event.distinct(4,6) event.inject(3) lfinite_code(2) vacant_def verit_comp_simplify1(2))
+      subgoal
+        by (metis (no_types, lifting) count_mset_0_iff ev_drops_LConsE event.distinct(4,6) event.inject(3) lfinite_code(2) vacant_def verit_comp_simplify1(2))
+      done
+    subgoal
+      apply (auto simp add: timely_input_stream_def intro: ev_drops.intros)
+      subgoal
+        by (meson not_in_iff union_single_eq_member vacant_def verit_comp_simplify1(2))
+      subgoal
+        by (meson not_in_iff union_single_eq_member vacant_def verit_comp_simplify1(2))
+      subgoal
+        by (metis (no_types, lifting) count_mset_0_iff ev_drops_LConsE event.distinct(4,6) event.inject(3) lfinite_code(2) vacant_def verit_comp_simplify1(2))
+      subgoal
+        by (metis (no_types, lifting) count_mset_0_iff ev_drops_LConsE event.distinct(4,6) event.inject(3) lfinite_code(2) vacant_def verit_comp_simplify1(2))
+      done
+    done
+  subgoal for t1
+    using timely_productive.intros(1) by blast
+  done
+
+
 end

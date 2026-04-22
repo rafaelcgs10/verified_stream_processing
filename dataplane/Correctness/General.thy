@@ -1764,6 +1764,10 @@ lemma coll_lshift:
 
 definition "cset_from_list = cset_of_llist o llist_of"
 
+lemma cset_from_list_Nil[simp]:
+  "cset_from_list [] = {||}"
+  unfolding cset_of_llist_def cset_from_list_def
+  by (clarsimp simp flip: cin.rep_eq bot_cset_def)
 lemma cset_from_list_Cons[simp]:
   "cset_from_list (x # xs) = cinsert x (cset_from_list xs)"
   unfolding cset_from_list_def

@@ -1299,8 +1299,6 @@ definition \<open>mint os caps p t = (if t \<in> set (caps p) then (caps, os) el
 
 definition "produces os batch = os\<lparr> outpu := (\<lambda> p. outpu os p @ map (\<lambda> (x, cap). (x, time cap)) (filter (\<lambda> (x, cap). out cap = p) batch)), produ := produ os @ map (\<lambda> (x, cap). (out cap, time cap, 1)) batch \<rparr>"
 
-abbreviation "drop_caps_old os caps \<equiv> (os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps \<rparr>)"
-
 abbreviation "send_output op p x \<equiv> Write op (Some p) (Inr x)"
 abbreviation "send_progress op st \<equiv> Write op None (Inl (Inl st))"
 
