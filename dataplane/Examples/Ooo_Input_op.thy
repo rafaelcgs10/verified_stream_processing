@@ -48,48 +48,100 @@ fun ocaps_updates where
 | "ocaps_updates caps ((Drop t) # xs) = ocaps_updates (remove_last t caps) xs"
 | "ocaps_updates caps ((Mint t) # xs) = ocaps_updates (caps @ [t]) xs"
 
+lemma ooo_input_op_logic_iterates_DataI[intro]:
+  "ocaps os p \<noteq> [] \<Longrightarrow>
+   p |\<in>| P \<Longrightarrow>
+   es os p = LCons (Data t d) lxs \<Longrightarrow>
+   os' = os\<lparr>es := (es os)( p :=lxs ),
+      produ := produ os @ [(p, t, 1)],
+      outpu := (outpu os)( p := outpu os p @ [(en1 os d, t)] ) \<rparr> \<Longrightarrow>
+   os' |\<in>|
+   (ooo_input_op_logic P os)"
+  unfolding ooo_input_op_logic_def produce_def
+  apply (clarsimp simp add: image_iff simp flip: cin.rep_eq)
+  apply (rule exI[of _ p])
+  apply simp
+  done
+
+lemma ooo_input_op_logic_iterates_MintI[intro]:
+  "ocaps os p \<noteq> [] \<Longrightarrow>
+   p |\<in>| P \<Longrightarrow>
+   es os p = LCons (Mint t) lxs \<Longrightarrow>
+   os\<lparr>es := (es os)( p := lxs ),
+      ocaps := (ocaps os)(p := ocaps os p @ [t]),
+      inter := inter os @ [(p, t, 1)] \<rparr> |\<in>|
+   (ooo_input_op_logic P os)"
+  unfolding ooo_input_op_logic_def add_cap_def
+  apply (clarsimp simp add: image_iff simp flip: cin.rep_eq)
+  apply (rule exI[of _ p])
+  apply simp
+  done
+
+lemma ooo_input_op_logic_iterates_DropI[intro]:
+  "ocaps os p \<noteq> [] \<Longrightarrow>
+   p |\<in>| P \<Longrightarrow>
+   es os p = LCons (Drop t) lxs \<Longrightarrow>
+   os\<lparr>es := (es os)( p := lxs ),
+      ocaps := (ocaps os)(p := remove_last t (ocaps os p)),
+      inter := inter os @ [(p, t, -1)] \<rparr> |\<in>|
+   (ooo_input_op_logic P os)"
+  unfolding ooo_input_op_logic_def drop_cap_def
+  apply (clarsimp simp add: image_iff simp flip: cin.rep_eq)
+  apply (rule exI[of _ p])
+  apply simp
+  done
+
+
 lemma ooo_input_op_logic_iterates_n:
   "ocaps os p \<noteq> [] \<Longrightarrow>
    p |\<in>| P \<Longrightarrow>
+   os |\<in>| OS \<Longrightarrow>
    llength (es os p) \<ge> enat n \<Longrightarrow>
    os\<lparr>es := (es os)( p := ldropn n (es os p)),
       ocaps := (ocaps os)(p := ocaps_updates (ocaps os p) (ltaken n (es os p))),
       inter := inter os @ (map (\<lambda> ev. case ev of Drop t \<Rightarrow> (p, t, -1) | Mint t \<Rightarrow> (p, t, 1)) (filter (Not o is_Data) (ltaken n (es os p)))),
       produ := produ os @ (map (\<lambda> ev. case ev of Data t d \<Rightarrow> (p, t, 1)) (filter is_Data (ltaken n (es os p)))),
       outpu := (outpu os)( p := outpu os p @ (map (\<lambda> ev. case ev of Data t d \<Rightarrow> (en1 os d, t)) (filter is_Data (ltaken n (es os p)))) ) \<rparr> |\<in>|
-   ((\<lambda>oss. cUnion (ooo_input_op_logic P |`| oss)) ^^ n) {|os|}"
-  apply (induct n arbitrary: os rule: less_induct)
-  subgoal for n os
-    apply (cases n)
-    subgoal
-      by simp
-    subgoal for n'
-      apply (cases "es os p"; simp add: zero_enat_def flip: cin.rep_eq )
+   ((\<lambda>oss. cUnion (ooo_input_op_logic P |`| oss)) ^^ n) OS"
+  apply (induct n arbitrary: os OS)
+  subgoal
+    by simp
+  subgoal for n os OS
+      apply (simp del: Nat.funpow.simps add:  flip: cin.rep_eq)
+      apply (cases "es os p"; simp add: zero_enat_def del: Nat.funpow.simps flip: cin.rep_eq )
     subgoal for ev lxs
       apply (cases ev)
       subgoal for t d
-        apply (clarsimp simp flip: cin.rep_eq)
-        apply (cases n')
-        subgoal
-        apply (clarsimp simp flip: cin.rep_eq)
-           apply simp_all
-          unfolding ooo_input_op_logic_def produce_def
-          apply (clarsimp simp add: image_iff simp flip: cin.rep_eq)
-          apply (rule exI[of _ p])
-          apply simp
-          done
-        subgoal for n''
-          apply (clarsimp simp add: image_iff simp flip: cin.rep_eq)
-          apply hypsubst_thin
-          subgoal premises prems
-            apply (rule cBexI[rotated])
-            apply (simp add: cUNION_cimage flip: cin.rep_eq)
-            apply (rule cBexI[rotated])
+        apply (clarsimp simp del: Nat.funpow.simps simp flip: cin.rep_eq)
+        apply hypsubst_thin
+        apply (subst funpow_Suc_right)
+      apply (simp add:  flip: cin.rep_eq)
+
+end
+
+        apply (clarsimp simp add: cimage_iff simp flip: cin.rep_eq)
+
+        find_theorems  "cimage _ (cfilter _ _)"
+
+
+end
               apply (rule prems(1))
-            using prems(2-) apply simp
+    using prems(2-) apply simp
             using prems(2-) apply simp
             subgoal
-           using prems(2-) by (metis Suc_ile_eq llength_LCons nless_le)
+              using prems(2-) by (metis Suc_ile_eq llength_LCons nless_le)
+            apply (rule ooo_input_op_logic_iterates_DataI[where p=p])
+               apply simp
+            subgoal sorry
+    using prems(2-) apply simp
+    using prems(2-) apply simp
+    
+
+
+end
+
+        
+
            apply (subst ooo_input_op_logic_def)
           using prems(2-) apply -
            apply (simp add: cUNION_cimage flip: cin.rep_eq)
