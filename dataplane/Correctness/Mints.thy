@@ -307,7 +307,7 @@ lemma dataplane_tracker_inv_mints:
               apply (drule gt_0_zcount_msetD)
               using temp2(3)[rule_format, of p t'' nid] apply -
               apply (drule meta_mp)
-               apply blast
+              apply blast
               apply fastforce
               done
             subgoal

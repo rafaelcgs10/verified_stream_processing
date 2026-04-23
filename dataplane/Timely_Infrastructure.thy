@@ -1540,6 +1540,28 @@ proof -
   thus ?thesis using assms(1) by blast
 qed
 
+lemma step_builder_op_n_Silents[intro]:
+  assumes 
+    \<open>os' |\<in>| ((\<lambda> oss. (cUnion (cimage logic (cfilter (\<lambda> os. initia os \<and> ocaps os p \<noteq> []) oss)))) ^^ n) {| os |}\<close>
+    \<open>op = builder_op fb ips ops os' logic\<close>
+  shows \<open>(step Tau ^^ n) (builder_op fb ips ops os logic) op\<close>
+  using assms apply -
+  apply (induct n arbitrary: os os' op)
+  subgoal
+    by auto
+  subgoal premises prems for n os os' op
+    using prems(2-) apply -
+    apply (clarsimp simp flip: cin.rep_eq)
+    apply (intro relcomppI)
+    apply hypsubst_thin
+     apply (rule prems(1)[rotated])
+      apply (rule refl)
+    defer
+     apply (rule step_builder_op_Silent)
+    apply simp_all
+    done
+  done
+
 definition notifier_op where
   "notifier_op ips ops os logic = (builder_op True ips ops os
    (\<lambda> os.

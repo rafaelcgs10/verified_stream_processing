@@ -332,5 +332,9 @@ end
 
 
 
+lemma cfilter_cinsert:
+  "cfilter P (cinsert a A) = (if P a then cinsert a (cfilter P A) else cfilter P A)"
+  by force  
+
 
 end

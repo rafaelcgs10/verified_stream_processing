@@ -15,7 +15,7 @@ lemma propagate_all_preserves_c_pts:
   assumes "propagate_all summary c = Some c'"
   shows "c_pts c' = c_pts c"
   apply (rule while_option_rule[rotated, OF assms[unfolded propagate_all_def comp_def]])
-   apply simp
+  apply simp
   apply (simp only: take_step_PR_preserves_c_pts)
   done
 
@@ -32,10 +32,10 @@ lemma propagate_all_preserves_inv:
   unfolding propagate_all_def
   subgoal
     apply (drule while_option_rule[rotated])
-      defer
-      apply (rule take_step_PR_p_preserves_inv)
-          apply assumption+
-         apply simp_all
+    defer
+    apply (rule take_step_PR_p_preserves_inv)
+    apply assumption+
+    apply simp_all
     subgoal
       unfolding worklist_is_empty_def 
       apply clarsimp
@@ -57,14 +57,14 @@ lemma propagate_all_frontier_c_imp_correctness_aux:
    dataflow_topology_from_tree.inv_imp_plus_work_nonneg c' \<and>
    dataflow_topology.inv_imps_work_sum summary (-+-) c'"
   apply (frule propagate_all_preserves_inv)
-      apply assumption+
+  apply assumption+
   unfolding propagate_all_def worklist_is_empty_def
   apply (frule while_option_stop2)
   apply (intro conjI)
-     apply (rule Propagate.dataflow_topology.implication_frontier_iff_implied_frontier_alt_vacant)
-        apply simp_all
+  apply (rule Propagate.dataflow_topology.implication_frontier_iff_implied_frontier_alt_vacant)
+  apply simp_all
   apply (rule Propagate.dataflow_topology.empty_worklists_vacant_to)
-   apply auto
+  apply auto
   done
 
 lemma propagate_all_frontier_c_imp_correctness_aux2:
@@ -86,7 +86,7 @@ lemma propagate_all_preserves_ifrontier:
    dataflow_topology summary (-+-) \<Longrightarrow>
    ifrontier summary (-+-) c' loc = ifrontier summary (-+-) c loc"
   apply (subst (1 2) Propagate.dataflow_topology.implied_frontier_alt_def)
-   apply assumption
+  apply assumption
   using propagate_all_preserves_c_pts apply force
   done
 
@@ -108,7 +108,7 @@ lemma c_pts_change_multiplicities_cong:
   "c_pts c loc = c_pts c' loc \<Longrightarrow>
    c_pts (change_multiplicities su cbs c) loc = c_pts (change_multiplicities su cbs c') loc"
   apply (induct cbs arbitrary: c c')
-   apply simp
+  apply simp
   subgoal premises prems for a cbs c c'
     using prems(2-) apply -
     apply (cases a)
@@ -124,7 +124,7 @@ lemma extract_prog_front_update[simp]:
   apply (clarsimp simp add: sum_list_zmset if_distrib[of "filter _"] if_distrib[of "map _"] if_distrib[of operator_state.inter] monoid_add_class.sum_list_distinct_conv_sum_set zmset_concat map_concat filter_concat comp_def split_beta c_pts_change_multiplicities  split: option.splits)
   apply (rule arg_cong[where f=concat])
   apply (rule map_cong)
-   apply simp
+  apply simp
   apply (clarsimp simp add: sum_list_zmset if_distrib[of "filter _"] if_distrib[of "map _"] if_distrib[of operator_state.inter] monoid_add_class.sum_list_distinct_conv_sum_set zmset_concat map_concat filter_concat comp_def split_beta c_pts_change_multiplicities  split: option.splits)
   done
 
@@ -143,13 +143,13 @@ lemma consu_if[simp]:
 
 lemma dataplane_tracker_inv_front_update:
   assumes D: "dataflow_topology (summ sg) (-+-)"
-  and T: "ID CCOMPARE('t) = Some compare"
-  and R: "reachable_locations (summ sg) = UNIV"
+    and T: "ID CCOMPARE('t) = Some compare"
+    and R: "reachable_locations (summ sg) = UNIV"
   shows  "propagate_all ((summ sg) :: _ \<Rightarrow> _ \<Rightarrow> 't:: {ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) (pt_tr sg) = Some c \<Longrightarrow>
    graph_summar_nt (summ sg) (nxt sg) os \<Longrightarrow>
    dataplane_tracker_inv os cbufs sg \<Longrightarrow>
    dataplane_tracker_inv (map_entry nid (front_update (\<lambda>_. frontier \<circ> (\<lambda>p. c_imp c (Loc nid (Trg p))))) os) cbufs (sg\<lparr>pt_tr := c\<rparr>)"
- unfolding dataplane_tracker_inv_def
+  unfolding dataplane_tracker_inv_def
   apply (elim conjE exE)
   apply simp
   apply hypsubst_thin
@@ -189,7 +189,7 @@ lemma dataplane_tracker_inv_front_update:
           using prems(1) apply -
           apply (drule propagate_all_frontier_c_imp_correctness[OF _ D T R, where loc="Loc nid' (Trg p)"])
           using prems(10)[unfolded propagation_inv_def]
-             apply auto
+          apply auto
           done
         done
       done
@@ -205,7 +205,7 @@ lemma dataplane_tracker_inv_front_update:
           using prems(1) apply -
           apply (drule propagate_all_frontier_c_imp_correctness[OF _ D T R, where loc=l])
           using prems(10)[unfolded propagation_inv_def]
-             apply auto
+          apply auto
           done
         done
       done
@@ -228,7 +228,7 @@ lemma dataplane_tracker_inv_front_update:
             using prems(1) apply -
             apply (drule propagate_all_frontier_c_imp_correctness[OF _ D T R, where loc="Loc nid' (Trg p)"])
             using prems(10)[unfolded propagation_inv_def]
-               apply auto
+            apply auto
             done
           done
         done
@@ -289,7 +289,7 @@ lemma dataplane_tracker_inv_front_update:
       using prems(12) apply -
       unfolding produ_consu_inter_supported_def
       apply (auto del: disjCI)
-         apply (metis (no_types, opaque_lifting) prems(1) propagate_all_preserves_c_pts)
+      apply (metis (no_types, opaque_lifting) prems(1) propagate_all_preserves_c_pts)
       apply (metis (no_types, lifting) prems(1) propagate_all_preserves_c_pts)
       apply (metis (lifting) ext prems(1) propagate_all_preserves_c_pts)
       apply (metis (lifting) ext prems(1) propagate_all_preserves_c_pts)

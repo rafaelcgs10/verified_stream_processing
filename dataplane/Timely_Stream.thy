@@ -103,7 +103,7 @@ next
         apply assumption
        apply (rule allI)
        apply (auto intro: ev_drops.intros) []
-      apply (metis count_eq_zero_iff order.refl ev_drops_LConsE event.distinct(3,5) event.inject(3)
+       apply (metis count_eq_zero_iff order.refl ev_drops_LConsE event.distinct(3,5) event.inject(3)
           lfinite_code(2) vacant_def)
       apply assumption
       done
@@ -137,10 +137,10 @@ qed
 lemma vacant_monotone_not_in_lset:
   "e \<in> lset lxs \<Longrightarrow> time e \<le> t \<Longrightarrow> vacant t C \<Longrightarrow> timely_monotone lxs C \<Longrightarrow> False"
   apply (induct e lxs arbitrary: C rule: llist.set_induct)
-  apply (smt (verit, best) count_eq_zero_iff order.trans event.sel(1,2,3) lhd_LCons
+   apply (smt (verit, best) count_eq_zero_iff order.trans event.sel(1,2,3) lhd_LCons
       llist.distinct(1) timely_monotone.simps vacant_def)
   apply auto
-  apply (metis count_eq_zero_iff insert_DiffM insert_iff set_mset_add_mset_insert vacant_def)
+   apply (metis count_eq_zero_iff insert_DiffM insert_iff set_mset_add_mset_insert vacant_def)
   apply (metis count_add_mset count_eq_zero_iff order.trans vacant_def)
   done
 
@@ -176,7 +176,7 @@ qed
 lemma lset_ldropn_conv_lnth: "lset (ldropn i lxs) = lnth lxs ` {k. k \<ge> i \<and> enat k < llength lxs}"
   apply (induct i arbitrary: lxs)
    apply (auto simp: in_lset_conv_lnth ldrop_eSuc_ltl Suc_le_eq)
-  apply (metis (no_types, lifting) eSuc_enat gr_implies_not_zero imageI ldrop_enat ldrop_ltl
+   apply (metis (no_types, lifting) eSuc_enat gr_implies_not_zero imageI ldrop_enat ldrop_ltl
       ldropn_eq_LNil linorder_not_less llength_eq_0 lnth_ltl mem_Collect_eq not_less_eq_eq)
   apply (smt (verit) image_iff ldrop_eSuc_ltl ldropn_eq_LNil less_imp_Suc_add linorder_not_le llength_eq_0
       lnth_ltl mem_Collect_eq not_less_eq_eq not_less_zero)
@@ -191,8 +191,8 @@ lemma timely_input_stream_Data_expires:
   apply (simp add: in_lset_conv_lnth)
   apply (erule exE conjE)+
   subgoal for i
-  apply (frule timely_input_stream_ldrop)
-   apply assumption
+    apply (frule timely_input_stream_ldrop)
+     apply assumption
     apply (erule exE conjE)
     subgoal for C'
       apply (subst (asm) llist.collapse(2)[of "ldropn _ _", symmetric])
@@ -209,9 +209,9 @@ lemma timely_input_stream_Data_expires:
         apply (cases j; simp)
          apply blast
         subgoal for j'
-        apply (drule spec[of _ t], drule mp, rule order_refl)
-        apply (simp add: lfinite_lfilter)
-        apply (rule finite_subset[of _ "{0 ..< i + j}"])
+          apply (drule spec[of _ t], drule mp, rule order_refl)
+          apply (simp add: lfinite_lfilter)
+          apply (rule finite_subset[of _ "{0 ..< i + j}"])
            apply (auto simp: ldropn_ltl image_iff lset_ldropn_conv_lnth)
           done
         done
@@ -228,8 +228,8 @@ lemma timely_input_stream_Drop_expires:
   apply (simp add: in_lset_conv_lnth)
   apply (erule exE conjE)+
   subgoal for i
-  apply (frule timely_input_stream_ldrop)
-   apply assumption
+    apply (frule timely_input_stream_ldrop)
+     apply assumption
     apply (erule exE conjE)
     subgoal for C'
       apply (subst (asm) llist.collapse(2)[of "ldropn _ _", symmetric])
@@ -246,9 +246,9 @@ lemma timely_input_stream_Drop_expires:
         apply (cases j; simp)
          apply blast
         subgoal for j'
-        apply (drule spec[of _ t], drule mp, rule order_refl)
-        apply (simp add: lfinite_lfilter)
-        apply (rule finite_subset[of _ "{0 ..< i + j}"])
+          apply (drule spec[of _ t], drule mp, rule order_refl)
+          apply (simp add: lfinite_lfilter)
+          apply (rule finite_subset[of _ "{0 ..< i + j}"])
            apply (auto simp: ldropn_ltl image_iff lset_ldropn_conv_lnth)
           done
         done
@@ -353,5 +353,30 @@ lemma timely_input_stream_MintI[intro]:
     using timely_productive.intros(1) by blast
   done
 
+lemma timely_input_stream_expires_at_n:
+  "timely_input_stream lxs C \<Longrightarrow> 
+   \<exists> n. t \<notin> event.time ` lset (ldropn n lxs)"
+  apply (drule timely_input_stream_expires[of _ _ t])
+  apply (induct "lfilter (\<lambda>e. event.time e = t) lxs" arbitrary: lxs rule: lfinite_induct)
+  subgoal
+    by (metis (mono_tags, lifting) image_iff in_lset_ldropnD lnull_lfilter)
+  subgoal for lxs
+    apply (cases "lfilter (\<lambda>e. event.time e = t) lxs"; simp)
+    apply (drule lfilter_eq_LConsD)
+    apply clarsimp
+    apply hypsubst_thin
+    subgoal for t' us vs
+      apply (drule meta_spec)
+      apply (drule meta_mp)
+       apply (rule refl)
+      apply clarsimp
+      subgoal for n
+        apply (rule exI[of _ "the_enat (llength us) + n + 1"])
+        apply clarsimp
+        apply (smt (verit) Groups.add_ac(2) add_diff_cancel_left' enat_the_enat ldrop_eSuc_ltl ldropn_LNil ldropn_eq_LNil ldropn_lappend2 ldropn_ldropn llength_eq_infty_conv_lfinite ltl_simps(2) nle_le rev_image_eqI)
+        done
+      done
+    done
+  done
 
 end

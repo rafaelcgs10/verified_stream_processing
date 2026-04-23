@@ -24,7 +24,7 @@ lemma to_zmset_list_diff[simp]:
   "mset ys \<subseteq># mset xs \<Longrightarrow>
    to_zmset (list_diff xs ys) = to_zmset xs - to_zmset ys"
   apply (induct xs ys rule: list_diff.induct)
-   apply clarsimp+
+  apply clarsimp+
   apply (metis add_zmset_diff_bothsides insert_DiffM insert_subset_eq_iff mset_remove_last to_zmset_correct zmset_of_add_mset)
   done
 
@@ -60,17 +60,17 @@ lemma sum_zmset_filter_graph_to_nxt:
    (\<Sum>x\<in>UNIV. zmset (map snd (filter (\<lambda>(p'', ab). graph_to_nxt su (fst x, p'') = Some (nid', p') \<and> snd x = p'') (produ (os (fst x)))))) =
    zmset (map snd (filter (\<lambda> (p', _, _). p' = p) (produ (os nid))))"
   apply (rule sum_eq_singleton[where a="(nid, p)"])
-     apply simp_all
+  apply simp_all
   subgoal
     apply (rule arg_cong[where f=zmset])
     apply (rule map_cong)
-     apply (rule filter_cong)
-      apply auto
+    apply (rule filter_cong)
+    apply auto
     done
   subgoal
     apply (auto simp add: filter_empty_conv intro!: zmset_emptyI)
     using GR[unfolded graph_summar_nt_def]
-     apply (metis domI inj_on_eq_iff prod.inject)+
+    apply (metis domI inj_on_eq_iff prod.inject)+
     done
   done
 
@@ -87,7 +87,7 @@ lemma zmset_filter_graph_to_nxt:
    zmset (map snd (filter (\<lambda> (p', _, _). p' = p) xs))"
   apply (rule arg_cong[where f=zmset])
   apply (induct xs)
-   apply simp_all
+  apply simp_all
   apply (auto simp add: split: option.splits)
   using GR[unfolded graph_summar_nt_def]
   apply (metis (no_types, opaque_lifting) domI inj_onD snd_conv)
@@ -104,10 +104,10 @@ lemma sum_zmset_map_filter_graph_to_nxt:
              (map snd (filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (List.map_filter (\<lambda>(p, t, m). case graph_to_nxt su (x, p) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) (produ (os x)))))) =
     zmset (map snd (filter (\<lambda> (p', _, _). p' = p) (produ (os nid))))"
   apply (rule sum_eq_singleton[where a="nid"])
-     apply simp_all
-   apply (subst zmset_filter_graph_to_nxt[OF GR])
-    apply assumption
-   apply simp_all
+  apply simp_all
+  apply (subst zmset_filter_graph_to_nxt[OF GR])
+  apply assumption
+  apply simp_all
   apply (auto simp add: Misc.set_map_filter filter_empty_conv intro!: zmset_emptyI split: option.splits)
   using GR[unfolded graph_summar_nt_def]
   apply (metis (no_types, lifting) Pair_inject domIff graph_to_nxt_not_Ex_op_conn in_op_conn_graph_to_nxt_iff inj_onD op_conn.simps)
@@ -118,7 +118,7 @@ lemma zmset_filter_graph_to_nxt_no_connection:
    zmset (map snd (filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l') (List.map_filter (\<lambda>(p, t, m). case graph_to_nxt su (nid, p) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) xs))) =
    {#}\<^sub>z"
   apply (induct xs)
-   apply simp_all
+  apply simp_all
   apply (auto simp add: split: option.splits)
   done
 
@@ -139,10 +139,10 @@ function find_timestamp where
   by auto
 termination
   apply (relation "measure (\<lambda>(su, P, T, l, t). sum (\<lambda> l'. card (set (T l'))) UNIV)")
-   apply simp
+  apply simp
   apply (clarsimp split: if_split)
   apply (rule sum_strict_mono_ex1)
-    apply (auto simp add: card_mono intro!: psubset_card_mono)
+  apply (auto simp add: card_mono intro!: psubset_card_mono)
   done
 
 declare find_timestamp.simps[simp del]
@@ -223,13 +223,13 @@ lemma graph_induct:
         using prems(1,2) apply -
         apply (drule meta_spec[of _ "insert l V"])
         apply (drule meta_mp)
-         apply simp
+        apply simp
         apply (drule meta_mp)
         using prems(3) apply fast
         apply (drule meta_mp)
         using prems(4) apply fast
         apply (rule prems(4)[rule_format, of l])
-           apply (auto simp add: prems(5))
+        apply (auto simp add: prems(5))
         done
       done
     done
@@ -266,7 +266,7 @@ termination
   apply(relation "{(loc', loc) . \<exists> s . s \<in>\<^sub>A path_weight loc' loc \<and> loc \<noteq> loc' \<and> results_in t s = t}")
   subgoal
     apply(rule Wellfounded.finite_acyclic_wf)
-     apply simp
+    apply simp
     unfolding acyclic_def
     apply safe
     subgoal premises self_loop for loc
@@ -274,10 +274,10 @@ termination
       have "(loc', loc) \<in> {(loc', loc). \<exists>s. s \<in>\<^sub>A path_weight loc' loc \<and> loc \<noteq> loc' \<and> results_in t s = t}\<^sup>+ \<Longrightarrow>
         \<exists>xs. path loc' loc xs \<and> xs \<noteq> [] \<and> results_in t (sum_weights (map (\<lambda>(s, l, t). l) xs)) = t" for loc'
         apply (induct loc' rule: converse_trancl_induct)
-         apply auto []
-         apply (auto simp only: results_in_sum_path_weights_append elim: path)
-         apply(frule flow.path_weight_conv_path)
-         apply safe
+        apply auto []
+        apply (auto simp only: results_in_sum_path_weights_append elim: path)
+        apply(frule flow.path_weight_conv_path)
+        apply safe
         subgoal for y s xs
           apply(rule exI[where x = xs])
           by(auto elim: flow.path0E)
@@ -354,36 +354,36 @@ lemma dataplane_tracker_inv_produces_drops:
             apply (rule map_cong)
             subgoal
               apply (rule filter_cong)
-               apply (auto split: prod.splits simp add: )
+              apply (auto split: prod.splits simp add: )
               subgoal
                 apply (drule conjunct2[OF GS(7)[unfolded bi_unique_def, simplified, rule_format], rule_format])
-                 apply assumption
+                apply assumption
                 apply auto
                 apply hypsubst_thin
                 apply (subst (asm) the_elem_image_unique[where f=id, simplified])
-                  apply blast
-                 apply clarsimp
-                 apply (drule conjunct2[OF GS(7)[unfolded bi_unique_def, simplified, rule_format], rule_format])              
-                  apply auto
+                apply blast
+                apply clarsimp
+                apply (drule conjunct2[OF GS(7)[unfolded bi_unique_def, simplified, rule_format], rule_format])              
+                apply auto
                 done
               subgoal
                 apply (subst (asm) the_elem_image_unique[where f=id, simplified])
-                  apply blast
-                 apply clarsimp
-                 apply (drule conjunct2[OF GS(7)[unfolded bi_unique_def, simplified, rule_format], rule_format])
-                  apply auto
+                apply blast
+                apply clarsimp
+                apply (drule conjunct2[OF GS(7)[unfolded bi_unique_def, simplified, rule_format], rule_format])
+                apply auto
                 done
               done
             apply simp
             done
           subgoal
             apply (subst filter_False)
-             apply simp_all
+            apply simp_all
             subgoal
               apply (auto split: prod.splits simp add: )
               apply (subst (asm) the_elem_image_unique[where f=id, simplified])
-                apply blast
-               apply clarsimp
+              apply blast
+              apply clarsimp
               using conjunct2[OF GS(7)[unfolded bi_unique_def, simplified, rule_format], rule_format] apply blast+
               done
             done
@@ -400,28 +400,28 @@ lemma dataplane_tracker_inv_produces_drops:
           subgoal premises aux for nid' p'
             apply (simp add: filter_map monoid_add_class.sum_list_distinct_conv_sum_set zmset_concat filter_concat map_concat comp_def)
             apply (subst (1 2) comm_monoid_add_class.sum.subset_diff[where B="{nid}"])
-              apply simp_all
+            apply simp_all
             unfolding extract_progress_def obtain_progress_def
             apply (simp add: List.map_filter_def split_beta filter_map monoid_add_class.sum_list_distinct_conv_sum_set zmset_concat filter_concat map_concat comp_def split: option.splits)
             apply (rule arg_cong[where f=zmset])
             apply (rule map_cong)
-             apply simp_all
-             apply (rule filter_cong)
-              apply (auto simp add: in_op_conn_graph_to_nxt_iff[OF GS(7)] split: prod.splits option.splits dest: conjunct1[OF GS(7)[unfolded bi_unique_def, simplified, rule_format], rule_format])
+            apply simp_all
+            apply (rule filter_cong)
+            apply (auto simp add: in_op_conn_graph_to_nxt_iff[OF GS(7)] split: prod.splits option.splits dest: conjunct1[OF GS(7)[unfolded bi_unique_def, simplified, rule_format], rule_format])
             done
           subgoal premises aux for nid'
             apply (simp add: filter_map monoid_add_class.sum_list_distinct_conv_sum_set zmset_concat filter_concat map_concat comp_def)
             apply (subst (1 2) comm_monoid_add_class.sum.subset_diff[where B="{nid}"])
-              apply simp_all
+            apply simp_all
             unfolding extract_progress_def obtain_progress_def
             apply (simp add: to_zmset_filter List.map_filter_def split_beta filter_map monoid_add_class.sum_list_distinct_conv_sum_set zmset_concat filter_concat map_concat comp_def split: option.splits)
             apply (subst comm_monoid_add_class.sum.subset_diff[where B="{nid'}"])
-              apply auto
+            apply auto
             done
           subgoal for nid' p'
             apply (simp add: filter_map monoid_add_class.sum_list_distinct_conv_sum_set zmset_concat filter_concat map_concat comp_def)
             apply (subst (1 2) comm_monoid_add_class.sum.subset_diff[where B="{nid}"])
-              apply simp_all
+            apply simp_all
             unfolding extract_progress_def obtain_progress_def
             apply (simp add: to_zmset_filter List.map_filter_def split_beta filter_map monoid_add_class.sum_list_distinct_conv_sum_set zmset_concat filter_concat map_concat comp_def split: option.splits)
             done
@@ -438,35 +438,35 @@ lemma dataplane_tracker_inv_produces_drops:
           using prems(11) apply -
           unfolding chnls_imp_front_inv_def Let_def BULK_BENQ_def apply -
           apply (auto simp add: outputs_at_target_def split: if_splits prod.splits)
-              apply (smt (verit) Collect_cong Un_iff mem_Collect_eq snd_conv split_cong)
-             apply (smt (verit) Collect_cong Un_iff mem_Collect_eq snd_conv split_cong)
+          apply (smt (verit) Collect_cong Un_iff mem_Collect_eq snd_conv split_cong)
+          apply (smt (verit) Collect_cong Un_iff mem_Collect_eq snd_conv split_cong)
           subgoal
             apply (drule spec)+
             apply auto
-               apply force
-              defer
-              apply force+
+            apply force
+            defer
+            apply force+
             done
           subgoal
             apply (drule sym)
             apply (drule the_elem_bi_unique_op_conn)
-              apply assumption
+            apply assumption
             using GS(7) apply assumption
             apply auto
             apply (drule spec2, drule spec, drule mp, assumption)
             apply (drule bspec)
-             apply simp
+            apply simp
             apply simp
             done
           subgoal
             apply (drule sym)
             apply (drule the_elem_bi_unique_op_conn)
-              apply assumption
+            apply assumption
             using GS(7) apply assumption
             apply auto
             apply (drule spec2, drule spec, drule mp, assumption)
             apply (drule bspec)
-             apply simp
+            apply simp
             apply simp
             done
           done
@@ -481,7 +481,7 @@ lemma dataplane_tracker_inv_produces_drops:
             apply (drule spec[of _ "Loc nid (Src p)"])
             apply simp
             apply (rule frontier_less_equal_le_trans[rotated])
-             apply (rule frontier_less_equal_change_multiplicities[OF D, where A="extract_prog enum_class.enum (graph_to_nxt (summ sg)) os"])
+            apply (rule frontier_less_equal_change_multiplicities[OF D, where A="extract_prog enum_class.enum (graph_to_nxt (summ sg)) os"])
             subgoal 
               apply safe
               subgoal for l t m
@@ -510,7 +510,7 @@ lemma dataplane_tracker_inv_produces_drops:
         unfolding change_deltas_inv_def
         apply auto
         done
-       defer
+      defer
       subgoal premises prems
         unfolding produ_consu_inter_supported_def
         apply (auto del: disjCI simp add: image_iff)
@@ -520,14 +520,14 @@ lemma dataplane_tracker_inv_produces_drops:
         subgoal for p t m
           using temp(2) apply -
           apply (drule bspec)
-           apply assumption
+          apply assumption
           apply (clarsimp del: disjCI simp add: image_iff)
           apply (simp flip: zcount_to_zmset_gt_0)
           using prems(8)[unfolded c_pts_inv_def, rule_format, of "Loc nid (Src p)", symmetric]
             prems(6)[unfolded Src_caps_inv_def, rule_format, of nid p, symmetric] apply -
           apply (clarsimp del: disjCI simp add: c_pts_change_multiplicities comp_def)
           apply (subgoal_tac "0 < zcount (c_pts (pt_tr sg) (Loc nid (Src p))) t \<or> zcount (zmset (map snd (filter (\<lambda>x. p = fst x) (operator_state.inter (os nid))))) t > 0")
-           defer
+          defer
           subgoal
             by linarith
           apply (elim disjE)
@@ -565,7 +565,7 @@ lemma dataplane_tracker_inv_produces_drops:
             unfolding subseteq_zmset_def
             apply (clarsimp simp add: zcount_sum)
             apply (rule ordered_comm_monoid_add_class.sum_le_included)
-               apply auto
+            apply auto
             subgoal
               apply (rule ordered_comm_monoid_add_class.add_nonneg_nonneg)
               subgoal
@@ -585,8 +585,8 @@ lemma dataplane_tracker_inv_produces_drops:
               using prems(12)[unfolded change_deltas_inv_def] apply fastforce
               done
             apply (intro exI impI conjI)
-               apply fast
-              apply simp_all
+            apply fast
+            apply simp_all
             subgoal 
               apply (rule zcount_zmset_ge_0I)
               apply clarsimp
@@ -618,7 +618,7 @@ lemma dataplane_tracker_inv_produces_drops:
             unfolding subseteq_zmset_def
             apply (clarsimp simp add: zcount_sum)
             apply (rule ordered_comm_monoid_add_class.sum_le_included)
-               apply auto
+            apply auto
             subgoal
               apply (rule ordered_comm_monoid_add_class.add_nonneg_nonneg)
               subgoal
@@ -638,8 +638,8 @@ lemma dataplane_tracker_inv_produces_drops:
               using prems(12)[unfolded change_deltas_inv_def] apply fastforce
               done
             apply (intro exI impI conjI)
-               apply fast
-              apply simp_all
+            apply fast
+            apply simp_all
             subgoal 
               apply (rule zcount_zmset_ge_0I)
               apply clarsimp
@@ -679,7 +679,7 @@ lemma dataplane_tracker_inv_produces_drops:
               by force
             subgoal
               apply (rule zmset_elem_nonneg)
-               apply force
+              apply force
               using to_zmset_nenneg apply fast
               done
             done
@@ -708,25 +708,25 @@ lemma dataplane_tracker_inv_produces_drops:
               subgoal for p' m
                 apply (drule meta_spec)+
                 apply (drule bspec)
-                 back
+                back
                 unfolding extract_progress_def obtain_progress_def
-                 apply (clarsimp del: disjCI simp add: Misc.set_map_filter image_iff split_beta split: option.splits; hypsubst_thin?)
-                 apply fast
+                apply (clarsimp del: disjCI simp add: Misc.set_map_filter image_iff split_beta split: option.splits; hypsubst_thin?)
+                apply fast
                 apply simp
                 done
               subgoal for p' 
                 apply (drule meta_spec)+
                 apply (drule bspec)
-                 back
+                back
                 unfolding extract_progress_def obtain_progress_def
-                 apply (clarsimp simp add: Misc.set_map_filter image_iff split_beta split: option.splits; hypsubst_thin?)
-                 apply blast
+                apply (clarsimp simp add: Misc.set_map_filter image_iff split_beta split: option.splits; hypsubst_thin?)
+                apply blast
                 apply simp
                 done
               subgoal for p' 
                 apply (rule frontier_less_equal_le_trans[rotated])
-                 apply (rule frontier_less_equal_change_multiplicities[where A="extract_prog enum_class.enum (graph_to_nxt (summ sg)) os"])
-                  apply assumption
+                apply (rule frontier_less_equal_change_multiplicities[where A="extract_prog enum_class.enum (graph_to_nxt (summ sg)) os"])
+                apply assumption
                 subgoal 
                   apply safe
                   apply (subst (asm) (2) extract_prog_def)
@@ -736,7 +736,7 @@ lemma dataplane_tracker_inv_produces_drops:
                   done
                 subgoal
                   apply (rule frontier_less_equal_ifrontierI[of _ 0 "Loc nid (Src p')", simplified])
-                    apply assumption
+                  apply assumption
                   subgoal
                     apply (rule graph.path_weight_refl)
                     apply (rule dataflow_topology.axioms(1))
@@ -760,15 +760,15 @@ lemma dataplane_tracker_inv_produces_drops:
                 apply (drule meta_spec[of _ nid])
                 apply (drule spec2, drule spec2, drule mp, assumption)
                 apply (drule bspec[of _ _ "(Loc nid' (Trg p'), _, _)"])
-                 apply simp_all
+                apply simp_all
                 unfolding extract_progress_def obtain_progress_def
                 apply (clarsimp del: disjCI simp add: Misc.set_map_filter image_iff split_beta split: option.splits; hypsubst_thin?)
                 apply (rule disjI2)+
                 apply (rule exI[of _ p])
                 apply (intro conjI impI allI)
-                 apply (rule exI[of _ nid'])
-                 apply (rule exI[of _ p'])
-                 apply simp
+                apply (rule exI[of _ nid'])
+                apply (rule exI[of _ p'])
+                apply simp
                 apply auto
                 done
               subgoal for p t' b nid' p'
@@ -776,11 +776,11 @@ lemma dataplane_tracker_inv_produces_drops:
                 subgoal
                   apply (drule spec2[of _ nid' p'])
                   apply (drule mp)
-                   apply assumption
+                  apply assumption
                   apply clarsimp
                   apply hypsubst_thin
                   apply (drule bspec)
-                   apply assumption
+                  apply assumption
                   apply clarsimp
                   unfolding Src_caps_inv_def
                   apply (drule spec2[of _ nid p])
@@ -788,8 +788,8 @@ lemma dataplane_tracker_inv_produces_drops:
                   apply (drule spec[of _ "Loc nid (Src p)"])
                   apply simp
                   apply (rule frontier_less_equal_le_trans[rotated])
-                   apply (rule frontier_less_equal_change_multiplicities[where A="extract_prog enum_class.enum (graph_to_nxt (summ sg)) os"])
-                    apply assumption
+                  apply (rule frontier_less_equal_change_multiplicities[where A="extract_prog enum_class.enum (graph_to_nxt (summ sg)) os"])
+                  apply assumption
                   subgoal
                     apply safe
                     apply (subst (asm) (2) extract_prog_def)
@@ -797,10 +797,10 @@ lemma dataplane_tracker_inv_produces_drops:
                     apply fastforce
                     done
                   apply (rule frontier_less_equal_ifrontierI[of _ 0 "Loc nid (Src p)", simplified])
-                    apply assumption
+                  apply assumption
                   subgoal
                     apply (rule path_weight_direct_0path[OF dataflow_topology.axioms(1)[]])
-                     apply assumption
+                    apply assumption
                     apply auto
                     done
                   apply simp
@@ -813,7 +813,7 @@ lemma dataplane_tracker_inv_produces_drops:
                   apply (rule find_Some_singleton)
                   apply (auto simp add: is_empty_antichain_iff)
                   using temp2(8)
-                   apply (metis Pair_inject bi_uniqueDr op_conn.simps)+
+                  apply (metis Pair_inject bi_uniqueDr op_conn.simps)+
                   done
                 done
               done
@@ -834,7 +834,7 @@ lemma dataplane_tracker_inv_produces_drops:
               apply (auto simp add:  )
               apply (drule meta_spec[of _ nid''])
               apply (drule meta_mp)
-               apply simp
+              apply simp
               apply (metis (no_types, opaque_lifting) change_multiplicities_append_alt change_multiplicities_comm)
               done
             apply auto
@@ -873,14 +873,14 @@ lemma dataplane_tracker_inv_produces_drops:
          (pt_tr sg))
        (Loc nid' lp))
      t")
-               defer
+              defer
               subgoal premises prems' for lp p'' t' m' nid'' n n'
                 using prems'(3-4,6-)
                 apply -
                 apply(induction "(card {t. t \<le> t' \<and> (\<exists> p m nid. (p, t, m) \<in> set (consu (os nid)))}, Produces.dataflow_topology.weight' (summ sg) (-+-) t' (Loc nid'' (Trg p'')))" arbitrary: p'' t' m' nid'' n n' rule: less_induct)
                 subgoal premises prems'' for p'' t' nid'' m' n n'
                   apply(subgoal_tac "Graph.graph (summ sg)")
-                   defer
+                  defer
                   subgoal
                     by (rule dataflow_topology.axioms(1)[OF D])
                   using prems''(2-)
@@ -893,7 +893,7 @@ lemma dataplane_tracker_inv_produces_drops:
                       apply (cases "nid''' \<in> set xs")
                       subgoal
                         apply(rule frontier_less_equal_trans[of _ "t' -+- n'"]; simp?)
-                         apply (rule frontier_less_equal_ifrontierI[OF D, of n' "Loc nid'' (Trg p'')", simplified])
+                        apply (rule frontier_less_equal_ifrontierI[OF D, of n' "Loc nid'' (Trg p'')", simplified])
                         subgoal
                           by simp
                         subgoal
@@ -901,13 +901,13 @@ lemma dataplane_tracker_inv_produces_drops:
                           subgoal
                             apply hypsubst_thin
                             apply (subst change_multiplicities_extract_prog_obtain_progress_remove1_append[where nid=nid])
-                              apply simp_all
+                            apply simp_all
                             apply (clarsimp simp add: c_pts_change_multiplicities obtain_progress_def extract_progress_def filter_map comp_def split_beta split: option.splits)
                             apply (subst (3) filter_False)
                             subgoal
                               apply (auto simp add: obtain_progress_def Misc.set_map_filter extract_prog_def extract_progress_def split: option.splits)
                               using temp(5)[unfolded graph_summar_nt_def]
-                                apply (metis (no_types, lifting) Pair_inject domI in_op_conn_graph_to_nxt_iff inj_on_eq_iff op_conn.simps)+
+                              apply (metis (no_types, lifting) Pair_inject domI in_op_conn_graph_to_nxt_iff inj_on_eq_iff op_conn.simps)+
                               done
                             apply (clarsimp simp add: monoid_add_class.sum_list_distinct_conv_sum_set split_beta zmset_concat comp_def)
 
@@ -918,10 +918,10 @@ lemma dataplane_tracker_inv_produces_drops:
           (map snd
             (filter (\<lambda>(l', t, d). Loc nid'' (Trg p'') = l') (List.map_filter (\<lambda>(p, t, m). case graph_to_nxt (summ sg) (nid, p) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) (produ (os nid)))))")
 
-                             defer
+                            defer
                             subgoal
                               apply (subst comm_monoid_add_class.sum.subset_diff[of "{(nid, p''')}"])
-                                apply simp_all
+                              apply simp_all
                               apply (subst comm_monoid_add_class.sum.neutral)
                               subgoal
                                 apply clarsimp
@@ -930,7 +930,7 @@ lemma dataplane_tracker_inv_produces_drops:
                                 done
                               apply simp
                               apply (subst map_snd_filter_List_map_filter)
-                                apply assumption
+                              apply assumption
                               using temp(5)[unfolded graph_summar_nt_def] apply simp_all
                               done
                             subgoal
@@ -938,7 +938,7 @@ lemma dataplane_tracker_inv_produces_drops:
                               apply (rule frontier_less_equal_zcount_pos)
                               apply (simp flip: add.assoc)
                               apply (rule ordered_comm_monoid_add_class.add_pos_nonneg)
-                               apply simp_all
+                              apply simp_all
                               apply (rule zcount_zmset_ge_0I)
                               apply (auto simp add:  Misc.set_map_filter split: option.splits)
                               using temp(2) temp(5)[unfolded graph_summar_nt_def] apply (smt (verit) in_op_conn_graph_to_nxt_iff old.prod.case op_conn.simps)+
@@ -946,18 +946,18 @@ lemma dataplane_tracker_inv_produces_drops:
                             done
                           subgoal
                             apply (subst change_multiplicities_extract_prog_obtain_progress_remove1_append[where nid=nid'''])
-                              apply simp_all
+                            apply simp_all
                             apply (clarsimp simp add: c_pts_change_multiplicities obtain_progress_def extract_progress_def filter_map comp_def split_beta split: option.splits)
                             apply (subst (2) filter_False)
                             subgoal
                               apply (auto simp add: obtain_progress_def Misc.set_map_filter extract_prog_def extract_progress_def split: option.splits)
                               using temp(5)[unfolded graph_summar_nt_def]
-                                   apply (metis (no_types, lifting) domI in_op_conn_graph_to_nxt_iff inj_on_eq_iff op_conn.simps prod.simps(1))+
+                              apply (metis (no_types, lifting) domI in_op_conn_graph_to_nxt_iff inj_on_eq_iff op_conn.simps prod.simps(1))+
                               done
                             apply simp
                             apply (clarsimp simp add: monoid_add_class.sum_list_distinct_conv_sum_set split_beta zmset_concat comp_def)
                             apply (subst (asm) comm_monoid_add_class.sum.subset_diff[of "{(nid''', p''')}"])
-                              apply simp_all
+                            apply simp_all
                             apply (subst (asm) comm_monoid_add_class.sum.neutral)
                             subgoal
                               apply clarsimp
@@ -966,7 +966,7 @@ lemma dataplane_tracker_inv_produces_drops:
                               done
                             apply simp
                             apply (subst map_snd_filter_List_map_filter)
-                              apply assumption
+                            apply assumption
                             using temp(5)[unfolded graph_summar_nt_def] apply simp
                             apply (simp flip: zcount_union)
                             apply (drule zcount_gt_0_in_frontierD)
@@ -984,20 +984,20 @@ lemma dataplane_tracker_inv_produces_drops:
                           by auto
                         subgoal
                           apply (subst change_multiplicities_extract_prog_updates[where nid=nid])
-                            apply assumption+
+                          apply assumption+
                           apply (simp add: map_concat comp_def)
                           apply (subgoal_tac "0 < zcount (c_pts (pt_tr sg) (Loc nid'' (Trg p''))) t' \<or> 
         0 < zcount (zmset (concat
              (map (\<lambda>(nid', p'). map snd (filter (\<lambda>(p''a, ab). graph_to_nxt (summ sg) (nid', p''a) = Some (nid'', p'') \<and> p' = p''a) (produ (os nid'))))
                enum_class.enum))) t'")
-                           defer
+                          defer
                           subgoal
                             by auto
                           subgoal
                             apply (elim disjE)
                             subgoal
                               apply(rule frontier_less_equal_trans[of _ "t' -+- n'"]; simp?)
-                               apply (rule frontier_less_equal_ifrontierI[OF D, of n' "Loc nid'' (Trg p'')", simplified])
+                              apply (rule frontier_less_equal_ifrontierI[OF D, of n' "Loc nid'' (Trg p'')", simplified])
                               subgoal
                                 by simp
                               subgoal
@@ -1007,14 +1007,14 @@ lemma dataplane_tracker_inv_produces_drops:
                                   unfolding extract_progress_def obtain_progress_def extract_prog_def
                                   apply (auto simp add:  Misc.set_map_filter split: option.splits)
                                   using temp(5)[unfolded graph_summar_nt_def]
-                                    apply (metis (no_types, lifting) domI in_op_conn_graph_to_nxt_iff inj_on_eq_iff op_conn.simps prod.simps(1))+
+                                  apply (metis (no_types, lifting) domI in_op_conn_graph_to_nxt_iff inj_on_eq_iff op_conn.simps prod.simps(1))+
                                   done
                                 apply (subst filter_False)
                                 subgoal
                                   unfolding extract_progress_def obtain_progress_def extract_prog_def
                                   apply (auto simp add: Misc.set_map_filter split: option.splits)
                                   using temp(5)[unfolded graph_summar_nt_def]
-                                    apply (metis (no_types, lifting) domI in_op_conn_graph_to_nxt_iff inj_on_eq_iff op_conn.simps prod.simps(1))+
+                                  apply (metis (no_types, lifting) domI in_op_conn_graph_to_nxt_iff inj_on_eq_iff op_conn.simps prod.simps(1))+
                                   done
                                 subgoal
                                   apply simp
@@ -1027,7 +1027,7 @@ lemma dataplane_tracker_inv_produces_drops:
                             subgoal
                               apply (clarsimp simp add: zcount_sum monoid_add_class.sum_list_distinct_conv_sum_set  comp_def zmset_concat split_beta)
                               apply (subgoal_tac "\<exists> m. (p''', t', m) \<in> set (produ (os nid'''))")
-                               defer
+                              defer
                               subgoal
                                 apply (drule sum_pos_ex_elem_pos)
                                 apply clarsimp
@@ -1043,7 +1043,7 @@ lemma dataplane_tracker_inv_produces_drops:
                                   apply (elim disjE)
                                   subgoal
                                     apply(subgoal_tac "\<exists> n''. n'' \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid''' (Src p''')) (Loc nid' lp) \<and> n'' \<le> 0 + n'")
-                                     defer
+                                    defer
                                     subgoal
                                       using GS(2)
                                       apply -
@@ -1054,25 +1054,25 @@ lemma dataplane_tracker_inv_produces_drops:
                                       apply(erule impE, assumption)
                                       apply(drule path_weight_direct_0path[rotated], assumption)
                                       apply(rule graph.path_weight_elem_trans)
-                                        apply metis
-                                       defer
-                                       apply assumption
+                                      apply metis
+                                      defer
+                                      apply assumption
                                       apply auto
                                       done
                                     apply(erule conjE exE)+
                                     subgoal for n''
                                       apply(rule frontier_less_equal_trans[of _ "t' -+- n''"]; simp?)
-                                       apply (rule frontier_less_equal_ifrontierI[of _ n'' "Loc nid''' (Src p''')", simplified, OF D], assumption)
-                                       apply (simp add: change_multiplicities_append_alt)
-                                       apply (clarsimp simp add: c_pts_change_multiplicities)
-                                       apply (subst (2) filter_False)
+                                      apply (rule frontier_less_equal_ifrontierI[of _ n'' "Loc nid''' (Src p''')", simplified, OF D], assumption)
+                                      apply (simp add: change_multiplicities_append_alt)
+                                      apply (clarsimp simp add: c_pts_change_multiplicities)
+                                      apply (subst (2) filter_False)
                                       subgoal
                                         by (auto simp add: Misc.set_map_filter split: option.splits)
-                                       apply simp
-                                       apply (subst (1) filter_False)
+                                      apply simp
+                                      apply (subst (1) filter_False)
                                       subgoal
                                         by (auto simp add: Misc.set_map_filter map_concat extract_prog_def extract_progress_def split_beta image_iff del: disjCI split: option.splits)
-                                       apply simp
+                                      apply simp
                                       using frontier_less_equal_trans frontier_less_equal_zcount_pos apply blast
                                       subgoal
                                         using D dataflow_topology.results_in_mono(2) dual_order.trans by blast
@@ -1085,7 +1085,7 @@ lemma dataplane_tracker_inv_produces_drops:
                                       apply (elim disjE exE)
                                       subgoal for t'
                                         apply(subgoal_tac "\<exists> n''. n'' \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid''' (Src p''')) (Loc nid' lp) \<and> n'' \<le> 0 + n'")
-                                         defer
+                                        defer
                                         subgoal
                                           using GS(2)
                                           apply -
@@ -1100,17 +1100,17 @@ lemma dataplane_tracker_inv_produces_drops:
                                         apply(erule conjE exE)+
                                         subgoal for n''
                                           apply(rule frontier_less_equal_trans[of _ "t' -+- n''"]; simp?)
-                                           apply (rule frontier_less_equal_ifrontierI[of _ n'' "Loc nid''' (Src p''')", simplified, OF D], assumption)
-                                           apply (simp add: change_multiplicities_append_alt)
-                                           apply (clarsimp simp add: c_pts_change_multiplicities)
-                                           apply (subst (2) filter_False)
+                                          apply (rule frontier_less_equal_ifrontierI[of _ n'' "Loc nid''' (Src p''')", simplified, OF D], assumption)
+                                          apply (simp add: change_multiplicities_append_alt)
+                                          apply (clarsimp simp add: c_pts_change_multiplicities)
+                                          apply (subst (2) filter_False)
                                           subgoal
                                             by (auto simp add: Misc.set_map_filter split: option.splits)
-                                           apply simp
-                                           apply (subst (1) filter_False)
+                                          apply simp
+                                          apply (subst (1) filter_False)
                                           subgoal
                                             by (auto simp add: Misc.set_map_filter map_concat extract_prog_def extract_progress_def split_beta image_iff del: disjCI split: option.splits)
-                                           apply simp
+                                          apply simp
                                           using frontier_less_equal_trans frontier_less_equal_zcount_pos apply blast
                                           using dataflow_topology_from_tree.results_in_mono_raw
                                           by (metis (lifting) Graph.graph_def add_increasing2 le_iff_add)
@@ -1121,7 +1121,7 @@ lemma dataplane_tracker_inv_produces_drops:
                                         subgoal 
                                           apply(subgoal_tac "(card {t. t \<le> t1' \<and> (\<exists>p m nid. (p, t, m) \<in> set (consu (os nid)))}, dataflow_topology.weight' (summ sg) (-+-) t1' (Loc nid''' (Trg p1)))
   < (card {t. t \<le> t' \<and> (\<exists>p m nid. (p, t, m) \<in> set (consu (os nid)))}, dataflow_topology.weight' (summ sg) (-+-) t' (Loc nid'' (Trg p'')))")
-                                           defer
+                                          defer
                                           subgoal
                                             apply(cases "t' = t1'")
                                             subgoal
@@ -1131,7 +1131,7 @@ lemma dataplane_tracker_inv_produces_drops:
                                               unfolding dataflow_topology.zero_predecessors_def[OF D]
                                                 (* use graph.path_weight instead of summ*)
                                               apply(subgoal_tac "Loc nid''' (Trg p1) \<in> {loc'. \<exists>s. s \<in>\<^sub>A graph.path_weight (summ sg) loc' (Loc nid'' (Trg p'')) \<and> Loc nid'' (Trg p'') \<noteq> Loc nid''' (Trg p1) \<and> t1' -+- s = t1'}")
-                                               defer
+                                              defer
                                               subgoal
                                                 using GS(2)
                                                 apply -
@@ -1163,10 +1163,10 @@ lemma dataplane_tracker_inv_produces_drops:
                                                   subgoal for _ ys zs
                                                     using dataflow_topology.no_zero_cycle[OF D, of "Loc nid''' (Trg p1)" "ys @ zs" 0 undefined] apply -
                                                     apply (drule meta_mp)
-                                                     apply (rule graph.path_trans[OF dataflow_topology.axioms(1)[OF D]])
-                                                      apply assumption+
+                                                    apply (rule graph.path_trans[OF dataflow_topology.axioms(1)[OF D]])
+                                                    apply assumption+
                                                     apply (drule meta_mp)
-                                                     apply (metis (no_types, opaque_lifting) GS(10,2) Nil_is_append_conv empty_path_inversion not_in_empty)
+                                                    apply (metis (no_types, opaque_lifting) GS(10,2) Nil_is_append_conv empty_path_inversion not_in_empty)
                                                     apply clarsimp
                                                     done
                                                   done
@@ -1184,7 +1184,7 @@ lemma dataplane_tracker_inv_produces_drops:
                                               subgoal
                                                 by auto
                                               apply(subgoal_tac "{t. \<exists>p m nid. (p, t, m) \<in> set (consu (os nid))} = {t. \<exists>nid p m. (p, t, m) \<in> set (consu (os nid))}")
-                                               defer
+                                              defer
                                               subgoal
                                                 by auto
                                               apply simp
@@ -1193,7 +1193,7 @@ lemma dataplane_tracker_inv_produces_drops:
                                               apply safe
                                               subgoal for nid
                                                 apply(subgoal_tac "{t. \<exists>p m. (p, t, m) \<in> set (consu (os nid))} = set (map (\<lambda>(_,t,_). t) (consu (os nid)))")
-                                                 defer
+                                                defer
                                                 subgoal
                                                   by force
                                                 by simp
@@ -1205,15 +1205,15 @@ lemma dataplane_tracker_inv_produces_drops:
                                                 by (meson basic_trans_rules(23) graph.le_plus(2))
                                               subgoal
                                                 apply(subgoal_tac "t1' -+- s1 \<in> {t. t \<le> t1' -+- s1 \<and> (\<exists>p m nid. (p, t, m) \<in> set (consu (os nid)))}")
-                                                 defer 
+                                                defer 
                                                 subgoal
                                                   by (metis (no_types, lifting) le_less less_le_not_le mem_Collect_eq)
                                                 apply(subgoal_tac "t1' -+- s1 \<notin> {t. t \<le> t1' \<and> (\<exists>p m nid. (p, t, m) \<in> set (consu (os nid)))}")
-                                                 defer 
+                                                defer 
                                                 subgoal
                                                   apply(rule notI)
                                                   apply(subgoal_tac "t1' -+- s1 \<le> t1'")
-                                                   defer
+                                                  defer
                                                   subgoal
                                                     apply(erule thin_rl[of " t1' -+- s1 \<in> {t. t \<le> t1' -+- s1 \<and> (\<exists>p m nid. (p, t, m) \<in> set (consu (os nid)))} "])
                                                       (* weird stuff idk*)
@@ -1228,7 +1228,7 @@ lemma dataplane_tracker_inv_produces_drops:
                                               done
                                             done
                                           apply(subgoal_tac "\<exists>n'. n' \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid''' (Trg p1)) (Loc nid' lp) \<and> n' \<le> n -+- s1")
-                                           defer
+                                          defer
                                           subgoal
 
                                             using GS(2)
@@ -1248,10 +1248,10 @@ lemma dataplane_tracker_inv_produces_drops:
                                             apply(erule exE conjE)+
                                             subgoal for s2'
                                               apply(subgoal_tac "\<exists>t'. t' \<in>\<^sub>A graph.path_weight (summ sg) (Loc nid''' (Trg p1)) (Loc nid'' (Trg p'')) \<and> t'\<le> s2' + 0")
-                                               defer
+                                              defer
                                               subgoal
                                                 apply(rule graph.path_weight_elem_trans)
-                                                  apply blast+
+                                                apply blast+
                                                 done
                                               apply(erule exE conjE)+
                                               subgoal for s2''
@@ -1262,20 +1262,20 @@ lemma dataplane_tracker_inv_produces_drops:
                                                   apply(rule exI[where x = n3])
                                                   apply simp
                                                   apply(rule order.trans)
-                                                   apply assumption
+                                                  apply assumption
                                                   by (metis Groups.add_ac(2) add_mono basic_trans_rules(23))
                                                 done
                                               done
                                             done
                                           apply(subgoal_tac "t \<ge> t1' -+- (n -+- s1)")
-                                           defer
+                                          defer
                                           subgoal
                                             by (metis (no_types, lifting) add.commute add_mono_thms_linordered_semiring(2) basic_trans_rules(23) group_cancel.add2)
                                           apply(erule exE conjE)+
                                           using prems''(1)[of t1' nid''' p1 m1 _ "n -+- s1"]
                                           apply simp
                                           apply (subst (asm) change_multiplicities_extract_prog_updates[where nid=nid])
-                                            apply assumption+
+                                          apply assumption+
                                           apply (simp add: map_concat comp_def)
                                           done
                                         done
@@ -1295,9 +1295,9 @@ lemma dataplane_tracker_inv_produces_drops:
                       by auto
                     apply (simp add: zmset_concat comp_def )
                     apply (rule frontier_less_equal_ifrontier_trans_alt2[of _ n' "Loc nid'' (Trg p'')" _ _ t', simplified, OF D])
-                      apply assumption
-                     defer
-                     apply (meson add_left_mono dual_order.trans)
+                    apply assumption
+                    defer
+                    apply (meson add_left_mono dual_order.trans)
                     apply (rule frontier_less_equal_ifrontierI[of _ 0  "Loc nid'' (Trg p'')", simplified, OF D])
                     subgoal
                       apply (rule graph.path_weight_refl)
@@ -1305,14 +1305,14 @@ lemma dataplane_tracker_inv_produces_drops:
                       done
                     subgoal
                       apply (subst change_multiplicities_extract_prog_updates[where nid=nid])
-                        apply assumption+
+                      apply assumption+
                       apply (simp add: map_concat comp_def)
                       apply (clarsimp simp add: c_pts_change_multiplicities obtain_progress_def extract_progress_def filter_map comp_def split_beta split: option.splits)
                       apply (subst (2) filter_False)
                       subgoal
                         apply (auto simp add:  Misc.set_map_filter split: option.splits)
                         using temp(5)[unfolded graph_summar_nt_def]
-                          apply (metis (no_types, lifting) in_op_conn_graph_to_nxt_iff op_conn.simps)+
+                        apply (metis (no_types, lifting) in_op_conn_graph_to_nxt_iff op_conn.simps)+
                         done
                       apply simp
                       subgoal
@@ -1320,7 +1320,7 @@ lemma dataplane_tracker_inv_produces_drops:
                         subgoal
                           apply (auto simp add:  Misc.set_map_filter extract_prog_def extract_progress_def obtain_progress_def split: option.splits)
                           using temp(5)[unfolded graph_summar_nt_def]
-                            apply (metis (no_types, lifting) in_op_conn_graph_to_nxt_iff op_conn.simps)+
+                          apply (metis (no_types, lifting) in_op_conn_graph_to_nxt_iff op_conn.simps)+
                           done
                         apply simp
                         using frontier_less_equal_zcount_pos apply blast
@@ -1356,7 +1356,7 @@ lemma dataplane_tracker_inv_produces_drops:
                       done
                     subgoal
                       apply (subst change_multiplicities_extract_prog_updates[where nid=nid])
-                        apply assumption+
+                      apply assumption+
                       apply (simp add: map_concat comp_def)
                       apply (clarsimp simp add: c_pts_change_multiplicities obtain_progress_def extract_progress_def filter_map comp_def split_beta split: option.splits)
                       apply (subst (2) filter_False)
@@ -1376,14 +1376,14 @@ lemma dataplane_tracker_inv_produces_drops:
                     done
                   subgoal for t'' p''' s m''
                     apply clarsimp
-                      apply (drule conjunct1[OF temp(5)[unfolded graph_summar_nt_def], rule_format])
-                      apply clarsimp
-                      subgoal for u
-                        apply (rule prems'(2)[of nid' _ _ _ u s])
-                             apply assumption+
-                        done
+                    apply (drule conjunct1[OF temp(5)[unfolded graph_summar_nt_def], rule_format])
+                    apply clarsimp
+                    subgoal for u
+                      apply (rule prems'(2)[of nid' _ _ _ u s])
+                      apply assumption+
                       done
                     done
+                  done
                 subgoal premises prems' for p' aa b nid'' p''
                   using prems'(1,3-) apply -
                   apply (cases l; simp)
@@ -1411,7 +1411,7 @@ lemma dataplane_tracker_inv_produces_drops:
                             done
                           subgoal
                             apply (subst change_multiplicities_extract_prog_updates[where nid=nid])
-                              apply assumption+
+                            apply assumption+
                             apply (simp add: map_concat comp_def)
                             apply (clarsimp simp add: c_pts_change_multiplicities obtain_progress_def extract_progress_def filter_map comp_def split_beta split: option.splits)
                             apply (subst (2) filter_False)
@@ -1436,7 +1436,7 @@ lemma dataplane_tracker_inv_produces_drops:
                           apply (drule conjunct2[OF conjunct2[OF prems(15)[unfolded produ_consu_inter_supported_def]], rule_format])
                           apply (elim disjE exE)
                           subgoal for t'
-                  (*           apply (rule frontier_less_equal_trans[rotated])
+                            (*           apply (rule frontier_less_equal_trans[rotated])
                              apply assumption *)
                             apply (rule frontier_less_equal_ifrontier_trans[OF D, of 0 "Loc nid' (Src p')", simplified])
                             subgoal
@@ -1448,7 +1448,7 @@ lemma dataplane_tracker_inv_produces_drops:
                               done
                             subgoal
                               apply (subst change_multiplicities_extract_prog_updates[where nid=nid])
-                                apply assumption+
+                              apply assumption+
                               apply (simp add: map_concat comp_def)
                               apply (clarsimp simp add: c_pts_change_multiplicities obtain_progress_def extract_progress_def filter_map comp_def split_beta split: option.splits)
                               apply (subst (2) filter_False)
@@ -1472,13 +1472,13 @@ lemma dataplane_tracker_inv_produces_drops:
                               apply (drule conjunct1[OF temp(5)[unfolded graph_summar_nt_def], rule_format])
                               apply clarsimp
                               subgoal for u
-                          (*       apply (drule sym[of t])
+                                (*       apply (drule sym[of t])
                                 apply simp *)
                                 apply (rule frontier_less_equal_ifrontier_trans[OF D, of 0 "Loc nid' (Src p')", simplified])
                                 subgoal
                                   by (meson D GS(2) dataflow_topology.axioms(1) graph_to_nxt_Some_alt path_weight_direct_0path temp(5))
                                 apply (rule prems'(2)[of nid' _ _ _ u s])
-                                     apply assumption+
+                                apply assumption+
                                 done
                               done
                             done
@@ -1491,7 +1491,7 @@ lemma dataplane_tracker_inv_produces_drops:
               done
             subgoal
               apply (drule prems(14)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format])
-                apply assumption+
+              apply assumption+
               apply simp
               done
             done

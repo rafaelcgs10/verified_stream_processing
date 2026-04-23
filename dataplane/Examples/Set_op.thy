@@ -169,6 +169,15 @@ lemma step_Taus_set_op[intro]:
   apply (metis converse_rtranclp_into_rtranclp step_set_op_intro_Tau_2)
   done
 
+lemma step_n_Taus_set_op[intro]:
+  "(step Tau ^^ n) op op' \<Longrightarrow>
+   op'' = set_op S S' op' \<Longrightarrow>
+   (step Tau ^^ n) (set_op S S' op) op''"
+  apply (induct n arbitrary: op op' S S')
+   apply simp_all
+  apply (metis (no_types, opaque_lifting) relcompp.cases relpowp_Suc_I2 relpowp_Suc_left relpowp_Suc_right step_set_op_intro_Tau_2)
+  done
+
 lemma set_op_not_step_Inp[simp]:
   "\<not> step (Inp p x) (set_op S S' op) op'"
   unfolding not_def
