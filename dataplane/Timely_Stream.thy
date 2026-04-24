@@ -311,7 +311,7 @@ lemma timely_input_stream_expires:
   done
 
 lemma timely_input_stream_MintI[intro]:
-  "timely_input_stream (LCons (Mint t) lxs) (mset (ocaps (os 0) 1)) \<Longrightarrow> timely_input_stream lxs (add_mset t (mset (ocaps (os 0) 1)))"
+  "timely_input_stream (LCons (Mint t) lxs) C \<Longrightarrow> timely_input_stream lxs (add_mset t C)"
   apply (auto simp add: timely_input_stream_def intro: ev_drops.intros)
   subgoal for t1 t2
     apply (erule timely_productive.cases; simp)
@@ -322,9 +322,9 @@ lemma timely_input_stream_MintI[intro]:
       subgoal
         by (meson not_in_iff union_single_eq_member vacant_def verit_comp_simplify1(2))
       subgoal
-        by (metis (no_types, lifting) count_mset_0_iff ev_drops_LConsE event.distinct(4,6) event.inject(3) lfinite_code(2) vacant_def verit_comp_simplify1(2))
+        by (metis ev_drops_LConsE event.sel(3) event.simps(7,9) lfinite_code(2) not_in_iff vacant_def verit_comp_simplify(2))
       subgoal
-        by (metis (no_types, lifting) count_mset_0_iff ev_drops_LConsE event.distinct(4,6) event.inject(3) lfinite_code(2) vacant_def verit_comp_simplify1(2))
+        by (metis ev_drops_LConsE event.sel(3) event.simps(7,9) lfinite_code(2) not_in_iff vacant_def verit_comp_simplify(2))
       done
     subgoal
       apply (auto simp add: timely_input_stream_def intro: ev_drops.intros)
@@ -333,9 +333,9 @@ lemma timely_input_stream_MintI[intro]:
       subgoal
         by (meson not_in_iff union_single_eq_member vacant_def verit_comp_simplify1(2))
       subgoal
-        by (metis (no_types, lifting) count_mset_0_iff ev_drops_LConsE event.distinct(4,6) event.inject(3) lfinite_code(2) vacant_def verit_comp_simplify1(2))
+        by (metis ev_drops_LConsE event.sel(3) event.simps(7,9) lfinite_code(2) not_in_iff vacant_def verit_comp_simplify(2))
       subgoal
-        by (metis (no_types, lifting) count_mset_0_iff ev_drops_LConsE event.distinct(4,6) event.inject(3) lfinite_code(2) vacant_def verit_comp_simplify1(2))
+        by (metis ev_drops_LConsE event.sel(3) event.simps(7,9) lfinite_code(2) not_in_iff vacant_def verit_comp_simplify(2))
       done
     subgoal
       apply (auto simp add: timely_input_stream_def intro: ev_drops.intros)
@@ -344,9 +344,9 @@ lemma timely_input_stream_MintI[intro]:
       subgoal
         by (meson not_in_iff union_single_eq_member vacant_def verit_comp_simplify1(2))
       subgoal
-        by (metis (no_types, lifting) count_mset_0_iff ev_drops_LConsE event.distinct(4,6) event.inject(3) lfinite_code(2) vacant_def verit_comp_simplify1(2))
+        by (metis ev_drops_LConsE event.sel(3) event.simps(7,9) lfinite_code(2) not_in_iff vacant_def verit_comp_simplify(2))
       subgoal
-        by (metis (no_types, lifting) count_mset_0_iff ev_drops_LConsE event.distinct(4,6) event.inject(3) lfinite_code(2) vacant_def verit_comp_simplify1(2))
+        by (metis ev_drops_LConsE event.sel(3) event.simps(7,9) lfinite_code(2) not_in_iff vacant_def verit_comp_simplify(2))
       done
     done
   subgoal for t1
@@ -355,11 +355,11 @@ lemma timely_input_stream_MintI[intro]:
 
 lemma timely_input_stream_expires_at_n:
   "timely_input_stream lxs C \<Longrightarrow> 
-   \<exists> n. t \<notin> event.time ` lset (ldropn n lxs)"
+   \<exists> n. t \<notin> event.time ` lset (ldropn n lxs) \<and> n \<le> llength lxs"
   apply (drule timely_input_stream_expires[of _ _ t])
   apply (induct "lfilter (\<lambda>e. event.time e = t) lxs" arbitrary: lxs rule: lfinite_induct)
   subgoal
-    by (metis (mono_tags, lifting) image_iff in_lset_ldropnD lnull_lfilter)
+    by (metis (mono_tags, lifting) enat_0_iff(1) imageE ldropn_0 lfilter_empty_conv lnull_def zero_le)
   subgoal for lxs
     apply (cases "lfilter (\<lambda>e. event.time e = t) lxs"; simp)
     apply (drule lfilter_eq_LConsD)
@@ -373,10 +373,21 @@ lemma timely_input_stream_expires_at_n:
       subgoal for n
         apply (rule exI[of _ "the_enat (llength us) + n + 1"])
         apply clarsimp
-        apply (smt (verit) Groups.add_ac(2) add_diff_cancel_left' enat_the_enat ldrop_eSuc_ltl ldropn_LNil ldropn_eq_LNil ldropn_lappend2 ldropn_ldropn llength_eq_infty_conv_lfinite ltl_simps(2) nle_le rev_image_eqI)
+        apply (smt (verit) add.commute add_Suc_right add_diff_cancel_right' eSuc_enat enat_ord_simps(1) ldropn_Suc_LCons ldropn_lappend2 le_add1 lfinite_conv_llength_enat linorder_linear llength_LCons
+            llength_lappend lnull_ldropn order_class.order_eq_iff plus_enat_simps(1) the_enat.simps)
         done
       done
     done
+  done
+
+lemma timely_input_stream_DataI[intro]:
+  "timely_input_stream (LCons (Data t d) lxs) C \<Longrightarrow> timely_input_stream lxs C"
+  by (auto simp add: timely_input_stream_def intro: timely_productive.intros ev_drops.intros)
+
+lemma timely_input_stream_DropI[intro]:
+  "timely_input_stream (LCons (Drop t) lxs) C \<Longrightarrow> timely_input_stream lxs ((C - {# t #}))"
+  apply (auto simp add: timely_input_stream_def intro: timely_productive.intros ev_drops.intros)
+  using ev_drops.simps vacant_diff apply fastforce+
   done
 
 end

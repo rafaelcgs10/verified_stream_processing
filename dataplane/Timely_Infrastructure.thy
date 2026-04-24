@@ -1542,7 +1542,7 @@ qed
 
 lemma step_builder_op_n_Silents[intro]:
   assumes 
-    \<open>os' |\<in>| ((\<lambda> oss. (cUnion (cimage logic (cfilter (\<lambda> os. initia os \<and> ocaps os p \<noteq> []) oss)))) ^^ n) {| os |}\<close>
+    \<open>os' |\<in>| ((\<lambda> oss. (cUnion (cimage logic (cfilter (\<lambda> os. initia os \<and> (\<exists> p. ocaps os p \<noteq> [])) oss)))) ^^ n) {| os |}\<close>
     \<open>op = builder_op fb ips ops os' logic\<close>
   shows \<open>(step Tau ^^ n) (builder_op fb ips ops os logic) op\<close>
   using assms apply -

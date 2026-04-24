@@ -91,129 +91,168 @@ lemma ooo_input_op_logic_iterates_DropI[intro]:
   apply simp
   done
 
+lemma ooo_input_op_logic_cUn:
+  "p |\<in>| P \<Longrightarrow>
+   ((\<lambda>oss. cUnion (ooo_input_op_logic P |`| cfilter Q oss)) ^^ n) (cUn A B) =
+   cUn (((\<lambda>oss. cUnion (ooo_input_op_logic P |`| cfilter Q oss)) ^^ n) A) (((\<lambda>oss. cUnion (ooo_input_op_logic P |`| cfilter Q oss)) ^^ n) B)"
+  apply (induct n)
+   apply (auto 10 10 simp flip: cin.rep_eq)
+  done
+
+lemma remove_last_Nil:
+  "remove_last t M = [] \<Longrightarrow>
+   mset M - {# t #} = {#}"
+  apply (induct M)
+   apply simp
+  apply (metis mset_remove_last mset.simps(1))
+  done
 
 lemma ooo_input_op_logic_iterates_n:
-  "ocaps os p \<noteq> [] \<Longrightarrow>
+  "timely_input_stream (es os p) (mset (ocaps os p)) \<Longrightarrow>
    p |\<in>| P \<Longrightarrow>
    os |\<in>| OS \<Longrightarrow>
+   initia os \<Longrightarrow>
    llength (es os p) \<ge> enat n \<Longrightarrow>
-   os\<lparr>es := (es os)( p := ldropn n (es os p)),
+   os' = os\<lparr>es := (es os)( p := ldropn n (es os p)),
       ocaps := (ocaps os)(p := ocaps_updates (ocaps os p) (ltaken n (es os p))),
       inter := inter os @ (map (\<lambda> ev. case ev of Drop t \<Rightarrow> (p, t, -1) | Mint t \<Rightarrow> (p, t, 1)) (filter (Not o is_Data) (ltaken n (es os p)))),
       produ := produ os @ (map (\<lambda> ev. case ev of Data t d \<Rightarrow> (p, t, 1)) (filter is_Data (ltaken n (es os p)))),
-      outpu := (outpu os)( p := outpu os p @ (map (\<lambda> ev. case ev of Data t d \<Rightarrow> (en1 os d, t)) (filter is_Data (ltaken n (es os p)))) ) \<rparr> |\<in>|
-   ((\<lambda>oss. cUnion (ooo_input_op_logic P |`| oss)) ^^ n) OS"
-  apply (induct n arbitrary: os OS)
+      outpu := (outpu os)( p := outpu os p @ (map (\<lambda> ev. case ev of Data t d \<Rightarrow> (en1 os d, t)) (filter is_Data (ltaken n (es os p)))) )\<rparr> \<Longrightarrow>
+   os' |\<in>|
+   ((\<lambda>oss. cUnion (ooo_input_op_logic P |`| cfilter (\<lambda>os. initia os \<and> (\<exists> p. ocaps os p \<noteq> [])) oss)) ^^ n) OS"
+  apply (induct n arbitrary: os OS os')
   subgoal
     by simp
-  subgoal for n os OS
-      apply (simp del: Nat.funpow.simps add:  flip: cin.rep_eq)
-      apply (cases "es os p"; simp add: zero_enat_def del: Nat.funpow.simps flip: cin.rep_eq )
+  subgoal premises prems for n os OS os'
+    using prems(2-) apply - 
+    apply (simp del: Nat.funpow.simps add:  flip: cin.rep_eq)
+    apply (cases "es os p"; simp add: zero_enat_def del: Nat.funpow.simps flip: cin.rep_eq )
     subgoal for ev lxs
       apply (cases ev)
       subgoal for t d
         apply (clarsimp simp del: Nat.funpow.simps simp flip: cin.rep_eq)
         apply hypsubst_thin
         apply (subst funpow_Suc_right)
-      apply (simp add:  flip: cin.rep_eq)
-
-end
-
-        apply (clarsimp simp add: cimage_iff simp flip: cin.rep_eq)
-
-        find_theorems  "cimage _ (cfilter _ _)"
-
-
-end
-              apply (rule prems(1))
-    using prems(2-) apply simp
-            using prems(2-) apply simp
-            subgoal
-              using prems(2-) by (metis Suc_ile_eq llength_LCons nless_le)
-            apply (rule ooo_input_op_logic_iterates_DataI[where p=p])
-               apply simp
-            subgoal sorry
-    using prems(2-) apply simp
-    using prems(2-) apply simp
-    
-
-
-end
-
-        
-
-           apply (subst ooo_input_op_logic_def)
-          using prems(2-) apply -
-           apply (simp add: cUNION_cimage flip: cin.rep_eq)
-          apply (rule exI[of _ p])
-           apply (simp add: cUNION_cimage flip: cin.rep_eq)
-           apply (intro conjI)
-            defer
-            apply (rule refl)
-           apply (clarsimp simp add: cUNION_cimage flip: cin.rep_eq split: llist.splits)
-
-            find_theorems "cUnion ( _ |`| _) = _"
-
-
-
-            find_theorems "_ |\<in>| cfilter _ _"
-
-end
-
-
-    apply (drule meta_spec[of _ "os\<lparr> es := (es os)(p := ltl (es os p)), produ := produ os @ [(p, t, 1)], outpu := (outpu os)( p := outpu os p @ [(en1 os d, t)]) \<rparr>"])
-    apply simp
-    apply (drule meta_mp)
-    subgoal
-      apply (metis eSuc_enat eSuc_ile_mono)
-      done
-    subgoal
-      apply (clarsimp simp flip: cin.rep_eq)
-
-
-
-end
-      apply (rule exI[of _ "os\<lparr>es := (es os)(p := ldropn n lxs), ocaps := (ocaps os)(p := ocaps_updates (ocaps os p) (ltaken n lxs)),
-         inter := operator_state.inter os @ map (case_event (\<lambda>a aa. undefined) (\<lambda>t. (p, t, - 1)) (\<lambda>t. (p, t, 1))) (filter (Not \<circ> is_Data) (ltaken n lxs)),
-         produ := produ os @ (p, t, 1) # map (case_event (\<lambda>t d. (p, t, 1)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n lxs)),
-         outpu := (outpu os)(p := outpu os p @ (en1 os d, t) # map (case_event (\<lambda>t d. (en1 os d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n lxs)))\<rparr>"])
-      subgoal
-        apply (intro conjI)
-        subgoal premises temp
-          using temp(7) apply -
-          apply (cases n)
+        apply (simp add:  flip: cin.rep_eq)
+        apply (subgoal_tac "cUnion (ooo_input_op_logic P |`| (cfilter (\<lambda>os. initia os \<and> (\<exists> p. ocaps os p \<noteq> [])) OS)) = cUn (ooo_input_op_logic P os) (cUnion (ooo_input_op_logic P |`| ((cfilter (\<lambda>os. initia os \<and> (\<exists> p. ocaps os p \<noteq> [])) OS) - {| os |})))")
+         defer
+        subgoal 
+          apply (subgoal_tac "ocaps os p \<noteq> []")
           subgoal
-        unfolding ooo_input_op_logic_def drop_caps_def
-        apply (auto simp flip: cin.rep_eq split: event.splits llist.splits)
-
-
-end
-      apply (rule exI[of _ "os\<lparr>es := (es os)(p := ldropn n (ltl (es os p)))\<rparr>"])
-      apply (clarsimp simp flip: cin.rep_eq)
-      apply (intro conjI[rotated])
-      subgoal premises temp
-        using temp(1,2,3,4) apply -
-        unfolding ooo_input_op_logic_def drop_caps_def
-        apply (auto simp flip: cin.rep_eq split: event.splits llist.splits)
-        apply (intro exI conjI impI)
-             defer
+            by fastforce
+          subgoal
+            unfolding timely_input_stream_def
+            apply auto
+            done
+          done
+        subgoal
+          apply simp
+          apply (subst ooo_input_op_logic_cUn)
+           apply (clarsimp del: disjCI simp flip: cin.rep_eq)
+           apply assumption+
+          apply (clarsimp del: disjCI simp flip: cin.rep_eq)
+          apply (rule disjI1)
+          apply (rule prems(1))
+               prefer 3
+               apply (rule ooo_input_op_logic_iterates_DataI[where p=p])
+          subgoal
+            unfolding timely_input_stream_def
+            apply auto
+            done
+                 apply assumption+
+               apply (rule refl)
+              apply (clarsimp del: disjCI simp flip: cin.rep_eq)
+              apply blast
              apply assumption+
+            apply simp
            apply simp
-        subgoal
-          by simp
-        subgoal
-          apply auto
+          using Suc_ile_eq iless_Suc_eq apply blast
+          apply simp
+          done
+        done
+      subgoal for t
+        apply (clarsimp simp del: Nat.funpow.simps simp flip: cin.rep_eq)
+        apply hypsubst_thin
+        apply (subst funpow_Suc_right)
+        apply (simp add:  flip: cin.rep_eq)
+        apply (subgoal_tac "cUnion (ooo_input_op_logic P |`| (cfilter (\<lambda>os. initia os \<and> (\<exists> p. ocaps os p \<noteq> [])) OS)) = cUn (ooo_input_op_logic P os) (cUnion (ooo_input_op_logic P |`| ((cfilter (\<lambda>os. initia os \<and> (\<exists> p. ocaps os p \<noteq> [])) OS) - {| os |})))")
+         defer
+        subgoal 
+          apply (subgoal_tac "ocaps os p \<noteq> []")
           subgoal
-            
-
-
-
-end
-    apply (auto simp flip: cin.rep_eq split: event.splits llist.splits)
-    apply (rule cBexI[rotated])
-    apply (simp flip: cin.rep_eq)
-
-    find_theorems "_ |\<in>| cfilter _ _"
+            by fastforce
+          subgoal
+            unfolding timely_input_stream_def
+            apply auto
+            done
+          done
+        subgoal
+          apply simp
+          apply (subst ooo_input_op_logic_cUn)
+           apply (clarsimp del: disjCI simp flip: cin.rep_eq)
+           apply assumption
+          apply (clarsimp del: disjCI simp flip: cin.rep_eq)
+          apply (rule disjI1)
+          apply (rule prems(1))
+               prefer 3
+               apply (rule ooo_input_op_logic_iterates_DropI[where p=p])
+          subgoal
+            unfolding timely_input_stream_def
+            apply auto
+            done
+                apply assumption+
+              apply simp
+              apply blast
+             apply assumption+
+            apply simp
+           apply simp
+          using Suc_ile_eq iless_Suc_eq apply blast
+          apply simp
+          done
+        done
+      subgoal for t
+        apply (clarsimp simp del: Nat.funpow.simps simp flip: cin.rep_eq)
+        apply hypsubst_thin
+        apply (subst funpow_Suc_right)
+        apply (simp add:  flip: cin.rep_eq)
+        apply (subgoal_tac "cUnion (ooo_input_op_logic P |`| (cfilter (\<lambda>os. initia os \<and> (\<exists> p. ocaps os p \<noteq> [])) OS)) = cUn (ooo_input_op_logic P os) (cUnion (ooo_input_op_logic P |`| ((cfilter (\<lambda>os. initia os \<and> (\<exists> p. ocaps os p \<noteq> [])) OS) - {| os |})))")
+         defer
+        subgoal 
+          apply (subgoal_tac "ocaps os p \<noteq> []")
+          subgoal
+            by fastforce
+          subgoal
+            unfolding timely_input_stream_def
+            apply auto
+            done
+          done
+        subgoal
+          apply simp
+          apply (subst ooo_input_op_logic_cUn)
+           apply (clarsimp del: disjCI simp flip: cin.rep_eq)
+           apply assumption
+          apply (clarsimp del: disjCI simp flip: cin.rep_eq)
+          apply (rule disjI1)
+          apply (rule prems(1))
+               prefer 3
+               apply (rule ooo_input_op_logic_iterates_MintI[where p=p])
+          subgoal
+            unfolding timely_input_stream_def
+            apply auto
+            done
+                apply assumption+
+              apply simp
+              apply blast
+             apply assumption+
+            apply simp
+           apply simp
+          using Suc_ile_eq iless_Suc_eq apply blast
+          apply simp
+          done
+        done
+      done
+    done
+  done
 
 (* record ('p, 'd, 'd1, 'd2, 'd3, 't) input_state_ty3 = "('p, 'd, 'd1, 'd2, 't) input_state2" +  es3:: "('t, 'd3) event llist"
 
