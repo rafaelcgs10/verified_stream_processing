@@ -1053,6 +1053,14 @@ lemma steps_Tau_dataflow_op_Tau_intro[intro]:
   apply (metis (no_types, lifting) relcompp_apply relpowp_commute step_Tau_dataflow_op_Tau_intro)
   done
 
+lemma steps_Tau_dataflow_op_steps_Out_intro[intro]:
+  "steps (map (\<lambda> x. Out (Inr (nid, p)) (Inr x)) xs) op op' \<Longrightarrow>
+   (steps (map (\<lambda> x. Out (nid, p) x) xs)) (dataflow_op sg op) (dataflow_op sg op')"
+  apply (induct xs arbitrary: op op' sg rule: rev_induct)
+   apply clarsimp+
+  apply fastforce
+  done
+
 lemma step_Taus_dataflow_op_Taus_intro[intro]:
   "(step Tau)\<^sup>*\<^sup>* op op' \<Longrightarrow>
    (step Tau)\<^sup>*\<^sup>*  (dataflow_op sg op) (dataflow_op sg op')"
@@ -2086,5 +2094,60 @@ lemma ifrontier_eq_all_le:
   apply (metis dataflow_topology_from_tree.elems_eq_sum_eq member_antichain.rep_eq)
   done
 
+
+
+definition "cset_from_list = cset_of_llist o llist_of"
+
+lemma cset_from_list_Nil[simp]:
+  "cset_from_list [] = {||}"
+  unfolding cset_of_llist_def cset_from_list_def
+  by (clarsimp simp flip: cin.rep_eq bot_cset_def)
+lemma cset_from_list_Cons[simp]:
+  "cset_from_list (x # xs) = cinsert x (cset_from_list xs)"
+  unfolding cset_from_list_def
+  apply (clarsimp simp flip: cin.rep_eq)
+  apply (metis cinsert_code)
+  done
+lemma cset_from_list_append[simp]:
+  "cset_from_list (xs @ ys) = cUn (cset_from_list xs) (cset_from_list ys)"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma cset_from_list_map[simp]:
+  "cset_from_list (map f xs) = (f |`| (cset_from_list xs))"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma cset_from_list_concat[simp]:
+  "cset_from_list (concat xs) = cUnion (cset_from_list |`| (cset_from_list xs))"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  apply (meson in_cset_of_llist_llist_of rev_cBexI)
+  done
+lemma cset_from_list_rmdups[simp]:
+  "cset_from_list (rmdups {} xs) = cset_from_list xs"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma cset_from_list_filter[simp]:
+  "cset_from_list (filter p xs) = cfilter p (cset_from_list xs)"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma rcset_cset_from_list[simp]:
+  "rcset (cset_from_list xs) = set xs"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma in_cset_from_list[simp]:
+  "x |\<in>| (cset_from_list xs) \<longleftrightarrow> x \<in> set xs"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma in_cimage_cset_from_list[simp]:
+  "x |\<in>| (f |`| (cset_from_list xs)) \<longleftrightarrow> x \<in> f ` set xs"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
 
 end

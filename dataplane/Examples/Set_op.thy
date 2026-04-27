@@ -178,6 +178,18 @@ lemma step_n_Taus_set_op[intro]:
   apply (metis (no_types, opaque_lifting) relcompp.cases relpowp_Suc_I2 relpowp_Suc_left relpowp_Suc_right step_set_op_intro_Tau_2)
   done
 
+term cset_from_list
+
+lemma step_set_op_steps_Out_intro[intro]:
+  "steps (map (Out p) xs) op op'' \<Longrightarrow>
+   n = length xs \<Longrightarrow>
+   op' = set_op (cUn ((Pair p) |`| cset_from_list xs) S) S' op'' \<Longrightarrow>
+   (step Tau ^^ n) (set_op S S' op) op'"
+  apply (induct xs arbitrary: op op' op'' S S' n rule: rev_induct)
+   apply simp_all
+  apply force
+  done
+
 lemma set_op_not_step_Inp[simp]:
   "\<not> step (Inp p x) (set_op S S' op) op'"
   unfolding not_def

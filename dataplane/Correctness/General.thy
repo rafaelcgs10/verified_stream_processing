@@ -1761,60 +1761,6 @@ lemma coll_lshift:
     done
   done
 
-definition "cset_from_list = cset_of_llist o llist_of"
-
-lemma cset_from_list_Nil[simp]:
-  "cset_from_list [] = {||}"
-  unfolding cset_of_llist_def cset_from_list_def
-  by (clarsimp simp flip: cin.rep_eq bot_cset_def)
-lemma cset_from_list_Cons[simp]:
-  "cset_from_list (x # xs) = cinsert x (cset_from_list xs)"
-  unfolding cset_from_list_def
-  apply (clarsimp simp flip: cin.rep_eq)
-  apply (metis cinsert_code)
-  done
-lemma cset_from_list_append[simp]:
-  "cset_from_list (xs @ ys) = cUn (cset_from_list xs) (cset_from_list ys)"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma cset_from_list_map[simp]:
-  "cset_from_list (map f xs) = (f |`| (cset_from_list xs))"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma cset_from_list_concat[simp]:
-  "cset_from_list (concat xs) = cUnion (cset_from_list |`| (cset_from_list xs))"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  apply (meson in_cset_of_llist_llist_of rev_cBexI)
-  done
-lemma cset_from_list_rmdups[simp]:
-  "cset_from_list (rmdups {} xs) = cset_from_list xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma cset_from_list_filter[simp]:
-  "cset_from_list (filter p xs) = cfilter p (cset_from_list xs)"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma rcset_cset_from_list[simp]:
-  "rcset (cset_from_list xs) = set xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma in_cset_from_list[simp]:
-  "x |\<in>| (cset_from_list xs) \<longleftrightarrow> x \<in> set xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma in_cimage_cset_from_list[simp]:
-  "x |\<in>| (f |`| (cset_from_list xs)) \<longleftrightarrow> x \<in> f ` set xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-
 
 lemma ts_Mint[simp]:
   "ts (LCons (Mint t) inps) = ts inps"
