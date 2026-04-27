@@ -1376,14 +1376,14 @@ corec builder_op where
       let (os', st) = obtain_progress os in send_progress (builder_op fb ips ops os' logic) st
     else \<oslash>)
   else Read None (\<lambda>x. case x of
-    Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := True\<rparr>) logic
+    Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := \<exists>p. f p \<noteq> front os p\<rparr>) logic
   | _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda>_. \<oslash>)))\<close>
 
 lemma step_builder_op_elim:
   assumes \<open>step io (builder_op fb ips ops os logic) op\<close>
   obtains (read_end_None) x where \<open>io = Inp None x\<close> \<open>is_Inr x \<or> is_Inl x \<and> is_Inl (projl x)\<close> \<open>op = \<oslash>\<close>
   | (read_frontier1) f where \<open>io = Inp None (Inl (Inr f))\<close> \<open>\<not> initia os\<close>
-    \<open>op = builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := True\<rparr>) logic\<close>
+    \<open>op = builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := \<exists>p. f p \<noteq> front os p\<rparr>) logic\<close>
   | (read_frontier2) f where \<open>io = Inp None (Inl (Inr f))\<close> \<open>initia os\<close> \<open>fb\<close>
     \<open>op = builder_op fb ips ops (os\<lparr>front := f, nfron := \<exists>p. f p \<noteq> front os p\<rparr>) logic\<close>
   | (read_end_Some) p x where \<open>io = Inp (Some p) x\<close> \<open>initia os\<close> \<open>p |\<in>| ips\<close> \<open>is_Inl x\<close> \<open>op = \<oslash>\<close>
@@ -1419,7 +1419,7 @@ proof (cases io)
         thus ?thesis using read_frontier2 Inp None frontier True by blast
       next
         case False
-        hence \<open>op = builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := True\<rparr>) logic\<close>
+        hence \<open>op = builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := \<exists>p. f p \<noteq> front os p\<rparr>) logic\<close>
           using assms Inp None frontier by (subst (asm) builder_op.code) force
         thus ?thesis using read_frontier1 Inp None frontier False by blast
       qed
@@ -1479,10 +1479,10 @@ qed
 
 lemma step_builder_op_Read_None1[intro]:
   assumes \<open>io = Inp None (Inl (Inr f))\<close> \<open>\<not> initia os\<close>
-    \<open>op = builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := True\<rparr>) logic\<close>
+    \<open>op = builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := \<exists>p. f p \<noteq> front os p\<rparr>) logic\<close>
   shows \<open>step io (builder_op fb ips ops os logic) op\<close>
 proof -
-  let ?g = \<open>\<lambda>x. case x of Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := True\<rparr>) logic | _ \<Rightarrow> \<oslash>\<close>
+  let ?g = \<open>\<lambda>x. case x of Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := \<exists>p. f p \<noteq> front os p\<rparr>) logic | _ \<Rightarrow> \<oslash>\<close>
   have \<open>Read None ?g |\<in>| choices (builder_op fb ips ops os logic)\<close> using assms(2)
     by (subst (2) builder_op.code) force
   moreover have \<open>?g (Inl (Inr f)) = op\<close> using assms(3) by simp
@@ -1500,6 +1500,17 @@ proof -
   moreover have \<open>?g (Inl (Inr f)) = op\<close> using assms(4) by simp
   ultimately show ?thesis using assms(1) by blast
 qed
+
+lemma step_builder_op_Read_None3[intro]:
+  assumes \<open>io = Inp None (Inl (Inr f))\<close> \<open>fb\<close>
+    \<open>op = builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := \<exists>p. f p \<noteq> front os p\<rparr>) logic\<close>
+  shows \<open>step io (builder_op fb ips ops os logic) op\<close>
+  apply (cases "initia os")
+  subgoal
+    by (smt (verit) assms(1,2,3) operator_state.simps(18,20,21) operator_state.surjective step_builder_op_Read_None2)
+  subgoal
+    using assms by blast
+  done
 
 lemma step_builder_op_Read_Some[intro]:
   assumes \<open>io = Inp (Some p) (Inr (d, t))\<close> \<open>initia os\<close> \<open>p |\<in>| ips\<close>
@@ -2074,5 +2085,6 @@ lemma ifrontier_eq_all_le:
      apply (simp_all add: sum_nonneg zcount_sum)
   apply (metis dataflow_topology_from_tree.elems_eq_sum_eq member_antichain.rep_eq)
   done
+
 
 end

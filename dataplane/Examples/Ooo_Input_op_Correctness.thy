@@ -147,7 +147,7 @@ next
     hence \<open>?os |\<in>| ooo_input_op_logic cUNIV os\<close>
       using lhd_LCons_ltl_es lhd_es unfolding ooo_input_os_Drop_Mint_def ooo_input_op_logic_def
       by (auto split: llist.splits event.splits simp add: image_iff)
-    thus ?thesis using Cons(5) timely_input_stream_ooo_input_op_logic by fast
+    thus ?thesis using Cons(5) timely_input_stream_ooo_input_op_logic by metis
   qed
   moreover have \<open>os' = foldl (ooo_input_os_Drop_Mint p) (?os\<lparr>es := (es ?os)(p := lxs)\<rparr>)
   (list_of (ltakeWhile (Not \<circ> is_Data) (es ?os p)))\<close>
@@ -294,7 +294,7 @@ proof (coinduction arbitrary: sg os rule: wbisim_coinduct_upto'')
             produce_def drop_cap_def add_cap_def
           by (force intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] split: llist.splits event.splits)
         have \<open>timely_input_stream (es os' p') (mset (ocaps os' p'))\<close> for p'
-          using timely_input_stream_ooo_input_op_logic that unfolding invariant_def by fast
+          using timely_input_stream_ooo_input_op_logic that unfolding invariant_def by metis
         hence \<open>invariant f os'\<close> using that unfolding invariant_def ooo_input_op_logic_def drop_caps_def
             produce_def drop_cap_def add_cap_def by (force split: llist.splits event.splits)
         thus ?thesis using my_source_op_os' unfolding R_def by blast
