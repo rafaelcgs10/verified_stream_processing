@@ -1549,6 +1549,16 @@ proof -
   thus ?thesis using assms(1) by blast
 qed
 
+lemma steps_builder_op_Write_Some[intro]:
+  assumes \<open>initia os\<close> \<open>p |\<in>| ops\<close> \<open>outpu os p = xs @ ys\<close>
+    \<open>op = builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := ys)\<rparr>) logic\<close>
+  shows \<open>steps (map (\<lambda> x. Out (Some p) (Inr x)) xs) (builder_op fb ips ops os logic) op\<close>
+  using assms apply -
+  apply (induct xs arbitrary: os logic op ys rule: rev_induct)
+  apply auto[1]
+  apply fastforce
+  done
+
 lemma step_builder_op_Silent[intro]:
   assumes \<open>io = Tau\<close> \<open>initia os\<close> \<open>ocaps os p \<noteq> []\<close> \<open>os' |\<in>| logic os\<close>
     \<open>op = builder_op fb ips ops os' logic\<close>

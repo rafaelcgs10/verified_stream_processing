@@ -1750,14 +1750,31 @@ next
                     apply (rule relpowp_imp_rtranclp[where n="length (outpu (os 1) 0)"]) 
                    apply (simp only: relpowp_add)
                   apply (rule step_set_op_steps_Out_intro)
-                  apply (rule steps_map_op)
-                  apply (rule steps_Tau_dataflow_op_steps_Out_intro)
+                      apply (rule steps_Tau_dataflow_op_steps_Out_intro)
+       apply (subst dataflow_tree_to_operator_def)
+                          apply (simp add: Relation.eq_OO)
+                      apply (rule steps_map_op)
+                        apply (rule refl)+
+                  defer
+                  apply (rule steps_comp_op_R_Out)
+                      apply (rule steps_map_op)
+                        apply (rule refl)+
+                          defer
+                  apply (subst batch_op_def)
+                          apply (subst batch_op_logic_def)
+                  apply (subst notifier_op_def)
+                  apply simp
+                          apply (rule steps_builder_op_Write_Some)
+                  subgoal
+                    
+
+                  thm step_tau_Out_pow_comp_op_steps_intro
 
                   thm step_set_op_steps_Out_intro
 
                   thm step_set_op_intro_Out
 
-                  find_theorems steps dataflow_op
+                  find_theorems step Out builder_op
 
 
 end

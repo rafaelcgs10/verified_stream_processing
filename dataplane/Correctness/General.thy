@@ -1792,4 +1792,13 @@ lemma ts_LNil[simp]:
   unfolding  ts_def
   by (auto simp add: cset_of_llist.rep_eq split: event.splits)
 
+
+find_theorems step comp_op Out
+
+lemma steps_comp_op_R_Out[intro!]:
+  "steps (map (Out p) xs) op2 op2' \<Longrightarrow> buf = buf' \<Longrightarrow> op1 = op1' \<Longrightarrow> steps (map (Out (Inr p)) xs) (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
+  apply (induct xs arbitrary: op2 op2'  rule: rev_induct)
+  apply force+
+  done
+
 end
