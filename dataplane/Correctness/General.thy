@@ -1796,7 +1796,8 @@ lemma ts_LNil[simp]:
 find_theorems step comp_op Out
 
 lemma steps_comp_op_R_Out[intro!]:
-  "steps (map (Out p) xs) op2 op2' \<Longrightarrow> buf = buf' \<Longrightarrow> op1 = op1' \<Longrightarrow> steps (map (Out (Inr p)) xs) (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
+  "steps (map (Out p) xs) op2 op2' \<Longrightarrow> buf = buf' \<Longrightarrow> op1 = op1' \<Longrightarrow> ys = map (Out (Inr p)) xs \<Longrightarrow> steps ys (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
+  apply hypsubst_thin
   apply (induct xs arbitrary: op2 op2'  rule: rev_induct)
   apply force+
   done
