@@ -288,7 +288,7 @@ lemma correctness_gen:
     OP_STATE_EXTRA_INVS:
     \<open>input (os 0) = (\<lambda> _. [])\<close>
     \<open>initia (os 0)\<close>
-    \<open>\<not> upfro sg 1 \<longrightarrow> (front (os 1) 1 = ifrontier (summ sg) (-+-) (pt_tr sg) (Loc 1 (Trg 1)))\<close>
+    \<open>\<not> upfro sg 1 \<longrightarrow> (front (os 1) 1 = ifrontier (summ sg) (-+-) (pt_tr sg) (Loc 1 (Trg 1)) \<and> initia (os 1))\<close>
   shows 
     \<open>set_op S D (dataflow_op sg (G_op f ip_state bt_state cbufs)) \<approx> set_spec_op (cUn (cUn S SO) SP) D\<close>
   using assms(1-13,15,16,17) apply -
@@ -383,6 +383,10 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               apply (rule SIM1(2)[unfolded SIM1(1)])
               apply (auto simp add: SIM1 comp_def)
               done
+            done
+          subgoal
+            unfolding consumes_def add_caps_def
+            using SIM1(16) apply simp
             done
           done
         defer
@@ -1560,22 +1564,21 @@ next
                         apply (rule refl)+
                   apply (clarsimp split: sum.splits)
                        apply blast
-                  apply (rule steps_comp_op_R_Out)
-
-                  using steps_comp_op_R_Out
-
-end
-                  apply (rule steps_comp_op_R_Out)
-                      apply (rule steps_map_op)
-                        apply (rule refl)+
-                          defer
+                  apply (rule steps_comp_op_R_Out[where p="Inr (1,1)" and xs="map _ (outpu (os 1) 1)"])
+                      apply (rule steps_map_op[where xs="map (\<lambda> x. Out (Some 1) (Inr x)) (outpu (os 1) 1)" ])
+                           apply (rule refl)+
+                  apply (clarsimp simp add: comp_def split: sum.splits)
+                  apply fast
                   apply (subst batch_op_def)
                           apply (subst batch_op_logic_def)
                   apply (subst notifier_op_def)
                   apply simp
-                          apply (rule steps_builder_op_Write_Some[where xs="outpu bt_state 1" and ys=Nil and p=1])
+                         apply (rule steps_builder_op_Write_Some[where xs="outpu (os 1) 1" and ys=Nil and p=1])
                   apply simp
-                  apply simp
+                          apply simp
+                  apply (simp add: SIM2(5) operator_state.defs)
+                          apply (rule refl)+
+                       defer
                           apply (rule refl)+
                  apply (rule step_set_op_intro_Out)
                         apply (rule refl)+
@@ -1604,8 +1607,179 @@ end
               apply (clarsimp simp add: operator_state.defs inputs_at_target_def)
               using cUn_commute apply metis
               done
-            prefer 5
-            try0
+            subgoal
+              sorry
+            subgoal
+              sorry
+            subgoal
+              sorry
+            done
+          subgoal 
+            sorry
+          subgoal
+            apply (cases "upfro sg 1")
+            subgoal
+              apply (cases "propagate_all (summ sg) (pt_tr sg)")
+              subgoal
+apply (rule FalseE)
+          apply (drule propagate_all_terminates[unfolded not_def, rule_format, rotated 6])
+          subgoal 
+            apply (simp add: SIM2 flip: dataflow_tree_to_graph_to_my_summ)
+            using dataflow_topology_from_tree.dataflow_topology_axioms
+             dataflow_tree_to_graph_to_my_summ apply blast
+            done
+          apply simp_all
+          subgoal
+            using SIM2(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+            unfolding propagation_inv_def
+            apply clarsimp
+            done
+          subgoal
+            using SIM2(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+            unfolding propagation_inv_def
+            apply clarsimp
+            done
+          subgoal
+            using TIMESTAMP_COMPARE by auto
+          subgoal for loc
+            apply (subgoal_tac "graph_summar_nt (summ sg) (subgraph.nxt sg) os")
+            defer
+            subgoal
+              apply (rule graph_summar_nt)
+              apply (rule refl)+
+              apply (rule SIM2(2)[unfolded SIM2(1)])
+              apply (auto simp add: SIM2 comp_def)
+              done
+            subgoal
+              apply (cases loc; simp)
+              subgoal for nid lp
+                apply (cases lp; simp)
+                unfolding graph_summar_nt_def
+                apply auto
+                done
+              done
+            done
+          subgoal
+            using SIM2(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+            unfolding propagation_inv_def
+            apply clarsimp
+            done
+          done
+        subgoal for c
+          apply (subgoal_tac "\<exists> x. (x, t) \<in> set (input (os 1) 1)")
+          defer
+          subgoal
+            unfolding outputs_at_target_def BULK_BENQ_def inputs_at_target_def
+            apply (clarsimp simp add: SIM2(1,2) my_summ_def split: if_splits prod.splits)
+             apply force
+            apply (elim disjE)
+             apply blast
+            subgoal for nid' a b
+              apply (cases "nid' = 0")
+              subgoal
+                by simp
+              subgoal
+                apply (subgoal_tac "nid' = 1")
+                subgoal
+                apply hypsubst_thin
+                apply (subgoal_tac "{(nid' :: 2, p' :: 1). antichain_from_list (if nid' = 0 then [0 :: 't] else []) \<noteq> {}\<^sub>A} = {(0, 0)}")
+                  subgoal
+                    by auto
+                  subgoal
+                    by auto
+                  done
+                subgoal
+                  using loc_2_1_cases by blast
+                done
+              done
+            done
+          subgoal
+                  apply (intro exI conjI[rotated])
+                   apply (intro relcomppI)
+                     apply (rule bisim_refl)
+                    defer
+                    apply (rule wbisim_refl)
+               apply (rule wstep_trans(1))
+                apply (rule relpowp_imp_rtranclp[where n="1 + 1 + length (outpu (os 1) 0)"]) 
+                apply (simp only: relpowp_add)
+                apply (intro relcomppI)
+ apply (rule step_n_Taus_set_op)
+                    apply (simp only: relpowp_add relpowp_1)
+                       apply (rule step_Tau_dataflow_op_Inp_Inl_intro[where ?conf' = c])
+          apply (subst dataflow_tree_to_operator_def)
+                          apply (simp add: Relation.eq_OO)
+                      apply (rule step_map_op)
+                           apply (rule step_comp_op_R_Inp)
+                      apply (rule step_map_op)
+          apply (subst batch_op_def)
+                                  apply (subst batch_op_logic_def)
+                                  apply (subst notifier_op_def)
+                                  apply (rule step_builder_op_Read_None)
+                                  apply (rule refl)
+                                  apply simp
+                                  apply (rule refl)
+                                 apply force
+              subgoal
+                by (clarsimp simp add: ran_def image_iff comp_def split_beta split: if_splits option.splits sum.splits)
+                        apply (rule refl)+
+                       apply simp
+                     apply assumption+
+                    apply (rule refl)+
+                 apply (rule step_n_Taus_set_op)
+                  apply (simp only: relpowp_add relpowp_1)
+                  apply (rule step_Tau_dataflow_op_Tau_intro)
+              apply (rule step_map_op)
+                   apply (rule step_comp_op_R_Tau)
+                     apply (rule step_map_op[of Tau])
+              apply (simp add: SIM2(5) operator_state.defs)
+                      apply (rule step_builder_op_Silent)
+              apply simp
+                        apply simp
+                       apply simp
+              apply (intro conjI)
+
+
+
+end
+              subgoal
+                apply (simp add: SIM2(5) operator_state.defs)
+
+                subgoal premises temp
+                  using SIM2(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+                  apply (elim exE conjE)
+                  subgoal premises INV for caps
+                    using temp apply -
+                    using INV(3)[unfolded c_pts_inv_def c_pts_change_multiplicities, rule_format, of "Loc 1 (Src 1)"] apply -
+
+                    using
+INV(3)[unfolded c_pts_inv_def c_pts_change_multiplicities, rule_format, of "Loc 1 (Trg 1)"]
+ INV(2)[unfolded Trg_caps_inv_def, rule_format, of 1 1] apply -
+
+
+
+                    using INV(1)[unfolded Src_caps_inv_def, rule_format, of 1 1, symmetric] apply -
+
+              find_theorems bt_state
+
+
+end
+                    apply (simp only: relpowp_add relpowp_1)
+                  apply (rule step_set_op_intro_Tau_2)
+                    apply (rule refl)+
+              apply (rule step_Tau_dataflow_op_Tau_intro)
+              apply (rule step_map_op)
+              apply (rule step_comp_op_R_Tau)
+              apply (rule step_map_op)
+                       apply (rule step_builder_op_Silent[where p=1])
+                           apply (rule refl)+
+              apply (simp add: SIM2(5) operator_state.defs)
+              subgoal
+                apply (simp add: SIM2(5) operator_state.defs)
+
+
+              term dataflow_op
+
+            using SIM2(16)
 
               thm cUn_commute
 

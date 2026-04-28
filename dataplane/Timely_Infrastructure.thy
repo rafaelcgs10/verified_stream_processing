@@ -1367,7 +1367,7 @@ definition "has_progress os = (consu os \<noteq> [] \<or> inter os \<noteq> [] \
 corec builder_op where
   \<open>builder_op fb ips ops os logic =
   ( choice5
-    (if initia os \<and> (\<exists>p. ocaps os p \<noteq> []) then
+    (if initia os then
       Choice (cimage (\<lambda>os. Silent (builder_op fb ips ops os logic)) (logic os))
     else \<oslash>)
     (Choice (cimage (\<lambda>p. case outpu os p of
@@ -1398,7 +1398,7 @@ lemma step_builder_op_elim:
     \<open>op = builder_op fb ips ops os' logic\<close>
   | (write_data) p x xs where \<open>io = Out (Some p) (Inr x)\<close> \<open>p |\<in>| ops\<close> \<open>outpu os p = x # xs\<close>
     \<open>op = builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic\<close>
-  | (silent) os' where \<open>io = Tau\<close> \<open>initia os\<close> \<open>\<exists>p. ocaps os p \<noteq> []\<close>
+  | (silent) os' where \<open>io = Tau\<close> \<open>initia os\<close>
     \<open>os' |\<in>| logic os\<close> \<open>op = builder_op fb ips ops os' logic\<close>
 proof (cases io)
   case (Inp p x)
@@ -1478,8 +1478,6 @@ next
     apply (subst (asm) builder_op.code)
     apply (auto split: if_splits list.splits prod.splits)
     done
-  moreover from this have \<open>\<exists>p. ocaps os p \<noteq> []\<close> using Tau assms
-    by (subst (asm) builder_op.code) (auto split: if_splits list.splits simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def )
   moreover obtain os' where \<open>os' |\<in>| logic os\<close> \<open>op = builder_op fb ips ops os' logic\<close>
   proof -
     have \<open>Silent op |\<in>| choices (builder_op fb ips ops os logic)\<close> using Tau assms step_choicesE by blast
@@ -1541,7 +1539,7 @@ lemma steps_builder_op_Write_Some[intro]:
   done
 
 lemma step_builder_op_Silent[intro]:
-  assumes \<open>io = Tau\<close> \<open>initia os\<close> \<open>ocaps os p \<noteq> []\<close> \<open>os' |\<in>| logic os\<close>
+  assumes \<open>io = Tau\<close> \<open>initia os\<close> \<open>os' |\<in>| logic os\<close>
     \<open>op = builder_op fb ips ops os' logic\<close>
   shows \<open>step io (builder_op fb ips ops os logic) op\<close>
 proof -
@@ -1578,9 +1576,6 @@ definition notifier_op where
     if nfron os then
     logic (os\<lparr> nfron := False \<rparr>) (\<lambda> p. filter (\<lambda> t. \<not> frontier_less_equal (front os p) t) (ocaps os p))
     else {||}))"
-
-
-
 
 fun zmset where
   "zmset [] = {#}\<^sub>z"
@@ -2139,6 +2134,6 @@ lemma in_cimage_cset_from_list[simp]:
   "x |\<in>| (f |`| (cset_from_list xs)) \<longleftrightarrow> x \<in> f ` set xs"
   unfolding cset_from_list_def
   apply (auto simp flip: cin.rep_eq)
-  done
+  done 
 
 end
