@@ -109,6 +109,7 @@ definition "dataplane_tracker_inv os cbufs sg =
      extract_prog_changes_above_impl_inv (summ sg) (nxt sg) c os  \<and>
      (produ_consu_inter_supported (nxt sg) os c))"
 
+definition "input_ocaps_inv os = (\<forall> p p'. \<forall> t \<in> snd ` set (input os p). \<forall> s \<in> set ((intsum os) p p'). t -+- s \<in> set (ocaps os p))" 
 
 definition "graph_summar_nt su nt os = (
   (\<forall> nid p p' t. t \<in> set (intsum (os nid) p p') \<longrightarrow> (\<exists> t'\<le>t. t' \<in>\<^sub>A graph.path_weight su (Loc nid (Trg p)) (Loc nid (Src p')))) \<and>

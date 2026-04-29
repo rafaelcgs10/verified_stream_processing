@@ -285,13 +285,14 @@ lemma correctness_gen:
     TIMESTAMP_COMPARE:
     "ID CCOMPARE('t) = Some compare"
     and
-    OP_STATE_EXTRA_INVS:
+    OP_EXTRA_INVS:
     \<open>input (os 0) = (\<lambda> _. [])\<close>
     \<open>initia (os 0)\<close>
     \<open>\<not> upfro sg 1 \<longrightarrow> (front (os 1) 1 = ifrontier (summ sg) (-+-) (pt_tr sg) (Loc 1 (Trg 1)) \<and> initia (os 1))\<close>
+    \<open>input_ocaps_inv (os 1)\<close>
   shows 
     \<open>set_op S D (dataflow_op sg (G_op f ip_state bt_state cbufs)) \<approx> set_spec_op (cUn (cUn S SO) SP) D\<close>
-  using assms(1-13,15,16,17) apply -
+  using assms(1-13,15,16,17,18) apply -
 proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D raw_s rule: weakBisimWeakUptoBisimCong)
   case SIM1
   show ?case (is "wsim ((~) OO \<U> ?R OO (\<approx>)) ?op1 ?op2")
@@ -387,6 +388,12 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           subgoal
             unfolding consumes_def add_caps_def
             using SIM1(16) apply simp
+            done
+          subgoal
+            using SIM1(17) apply -
+            unfolding consumes_def add_caps_def BENQ_def input_ocaps_inv_def BHD_def
+            apply clarsimp
+            apply (metis (no_types, lifting) UNIV_I UN_iff capability.sel(1) imageI snd_conv)
             done
           done
         defer
@@ -705,7 +712,15 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             using SIM1(1,2,5,15,16) apply -
             apply (auto simp add: operator_state.defs)
             done
-          done
+         subgoal
+            using SIM1(17) apply -
+            unfolding consumes_def add_caps_def BENQ_def input_ocaps_inv_def BHD_def
+            apply clarsimp
+            apply (metis (mono_tags, lifting)
+                \<open>initia bt_state \<Longrightarrow> nfron bt_state \<Longrightarrow> filter (\<lambda>t. \<not> frontier_less_equal (front bt_state 1) t) (ocaps bt_state 1) \<noteq> [] \<Longrightarrow> \<forall>n. (n = 1 \<longrightarrow> intsum (os 1) = (\<lambda>p1 p2. my_summ (Loc 1 (Trg 1)) (Loc 1 (Src 1)))) \<and> (n \<noteq> 1 \<longrightarrow> intsum (os n) = (\<lambda>p1 p2. my_summ (Loc n (Trg 1)) (Loc n (Src 1))))\<close>
+                group_cancel.rule0 in_set_simps(2) my_summ_def prod.sel(2) zero_one)
+            done
+            done
         prefer 3
         subgoal  
           apply (rule FalseE)
@@ -825,6 +840,11 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             using SIM1(15) by auto
           subgoal
             using SIM1(16) by auto
+         subgoal
+            using SIM1(17) apply -
+            unfolding obtain_progress_def input_ocaps_inv_def
+            apply (auto simp add: operator_state.defs)
+            done
           done
         subgoal for st os'
           (* report progress *)
@@ -904,6 +924,11 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           subgoal
             unfolding obtain_progress_def
             using SIM1(15) by auto
+ subgoal
+            using SIM1(17) apply -
+            unfolding obtain_progress_def input_ocaps_inv_def
+            apply (auto simp add: operator_state.defs)
+            done
           done
 
         subgoal for c
@@ -1009,6 +1034,11 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                 done
               done
             done
+ subgoal
+            using SIM1(17) apply -
+            unfolding obtain_progress_def input_ocaps_inv_def
+            apply (auto simp add: operator_state.defs)
+            done
           done
         subgoal for x t xs
           apply (intro exI conjI relcomppI)
@@ -1077,6 +1107,11 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               apply (rule SIM1(2)[unfolded SIM1(1)])
               apply (auto simp add: SIM1 comp_def)
               done
+            done
+ subgoal
+            using SIM1(17) apply -
+            unfolding obtain_progress_def input_ocaps_inv_def
+            apply (auto simp add: operator_state.defs)
             done
           done
         subgoal for x t xs
@@ -1613,6 +1648,8 @@ next
               sorry
             subgoal
               sorry
+            subgoal
+              sorry
             done
           subgoal 
             sorry
@@ -1737,7 +1774,17 @@ apply (rule FalseE)
                         apply simp
                        apply simp
               apply (intro conjI)
+              subgoal
+                apply (subst filter_True)
+                subgoal
+                  sorry
+                subgoal
 
+
+                find_theorems "filter _ _ = _ # _"
+
+
+                using SIM2(17)[unfolded input_ocaps_inv_def]
 
 
 end
