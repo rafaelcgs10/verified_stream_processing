@@ -390,4 +390,5 @@ lemma timely_input_stream_DropI[intro]:
   using ev_drops.simps vacant_diff apply fastforce+
   done
 
+
 end
