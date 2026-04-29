@@ -29,7 +29,7 @@ lemma to_zmset_list_diff[simp]:
   done
 
 lemma outputs_at_target_updates[simp]:
-  "outputs_at_target su (os(nid := (os nid)\<lparr> inter := A, nfron := F, produ := B, ocaps := C, input := D, inter := E  \<rparr>)) = outputs_at_target su os"
+  "outputs_at_target su (os(nid := (os nid)\<lparr> inter := A, produ := B, ocaps := C, input := D, inter := E  \<rparr>)) = outputs_at_target su os"
   unfolding outputs_at_target_def
   apply (rule ext)
   apply (auto split: prod.splits if_splits)
@@ -316,7 +316,7 @@ lemma dataplane_tracker_inv_produces_drops:
    graph_summar_nt (summ sg) (nxt sg) os \<Longrightarrow>
    nxt sg = graph_to_nxt (summ sg) \<Longrightarrow>
    dataplane_tracker_inv os cbufs sg \<Longrightarrow>
-   dataplane_tracker_inv (os(nid := os nid \<lparr>outpu := noutput, ocaps := nocaps, input := ninput, produ := nprodu, inter := ninter, nfron := V\<rparr>)) cbufs sg"
+   dataplane_tracker_inv (os(nid := os nid \<lparr>outpu := noutput, ocaps := nocaps, input := ninput, produ := nprodu, inter := ninter\<rparr>)) cbufs sg"
   unfolding dataplane_tracker_inv_def
   apply (elim conjE exE)
   apply simp
@@ -556,7 +556,7 @@ lemma dataplane_tracker_inv_produces_drops:
                   then produ
                         (os nid
                          \<lparr>outpu := \<lambda>p. outpu (os nid) p @ oputs p, ocaps := \<lambda>p. list_diff (ocaps (os nid) p) (drops p), input := \<lambda>p. filter (\<lambda>(_, t). t \<notin> set (drops p)) (input (os nid) p),
-                            produ := produ (os nid) @ produs, inter := operator_state.inter (os nid) @ concat (map (\<lambda>p. map (\<lambda>os. (p, os, - 1)) (drops p)) enum_class.enum), nfron := V\<rparr>)
+                            produ := produ (os nid) @ produs, inter := operator_state.inter (os nid) @ concat (map (\<lambda>p. map (\<lambda>os. (p, os, - 1)) (drops p)) enum_class.enum)\<rparr>)
                   else produ (os (fst x))))))
           ")
           subgoal
@@ -609,7 +609,7 @@ lemma dataplane_tracker_inv_produces_drops:
                   then produ
                         (os nid
                          \<lparr>outpu := \<lambda>p. outpu (os nid) p @ oputs p, ocaps := \<lambda>p. list_diff (ocaps (os nid) p) (drops p), input := \<lambda>p. filter (\<lambda>(_, t). t \<notin> set (drops p)) (input (os nid) p),
-                            produ := produ (os nid) @ produs, inter := operator_state.inter (os nid) @ concat (map (\<lambda>p. map (\<lambda>os. (p, os, - 1)) (drops p)) enum_class.enum), nfron := V\<rparr>)
+                            produ := produ (os nid) @ produs, inter := operator_state.inter (os nid) @ concat (map (\<lambda>p. map (\<lambda>os. (p, os, - 1)) (drops p)) enum_class.enum)\<rparr>)
                   else produ (os (fst x))))))
           ")
           subgoal
@@ -869,8 +869,8 @@ lemma dataplane_tracker_inv_produces_drops:
                  os nid
                  \<lparr>outpu := \<lambda>p. outpu (os nid) p @ oputs p, ocaps := \<lambda>p. list_diff (ocaps (os nid) p) (drops p),
                     input := \<lambda>p. filter (\<lambda>(_, t). t \<notin> set (drops p)) (input (os nid) p), produ := produ (os nid) @ produs,
-                    inter := operator_state.inter (os nid) @ concat (map (\<lambda>p. map (\<lambda>os. (p, os, - 1)) (drops p)) enum_class.enum), nfron := V\<rparr>)))
-         (pt_tr sg))
+                    inter := operator_state.inter (os nid) @ concat (map (\<lambda>p. map (\<lambda>os. (p, os, - 1)) (drops p)) enum_class.enum)\<rparr>)))
+         (pt_tr sg))                                                                                                               
        (Loc nid' lp))
      t")
               defer

@@ -1025,7 +1025,7 @@ lemma change_multiplicities_extract_progress_updates:
   "change_multiplicities su (extract_progress nid nt (snd (obtain_progress
                   (os nid
                    \<lparr>outpu := OP, ocaps := OC, input := IP, produ := produ (os nid) @ produs,
-                      inter := operator_state.inter (os nid) @ interr, nfron := V\<rparr>)))) = 
+                      inter := operator_state.inter (os nid) @ interr\<rparr>)))) = 
    change_multiplicities su (extract_progress nid nt (snd (obtain_progress (os nid))) @
    (List.map_filter (\<lambda>(p, t, m). case nt (nid, p) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) produs) @
    map (\<lambda>(p, y). (Loc nid (Src p), y)) interr)"
@@ -1040,7 +1040,7 @@ lemma change_multiplicities_extract_prog_updates:
    distinct xs \<Longrightarrow>
    change_multiplicities su (extract_prog xs nt
            (os(nid := os nid \<lparr>outpu := OP, ocaps := OC, input := IP, produ := produ (os nid) @ produs,
-                      inter := operator_state.inter (os nid) @ interr, nfron := V\<rparr>))) = 
+                      inter := operator_state.inter (os nid) @ interr\<rparr>))) = 
    change_multiplicities su (extract_prog xs nt os @
    (List.map_filter (\<lambda>(p, t, m). case nt (nid, p) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) produs) @
    map (\<lambda>(p, y). (Loc nid (Src p), y)) interr)"

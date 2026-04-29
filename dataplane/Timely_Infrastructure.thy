@@ -1212,7 +1212,6 @@ record ('p, 'd, 't) operator_state =
   front :: "'p \<Rightarrow> 't antichain"
   ocaps :: "'p \<Rightarrow> 't list"
   initia :: bool
-  nfron :: bool
 
 definition "default_internal_summary = (\<lambda> p1 p2. if p1 = p2 then [0] else [])"
 
@@ -1226,8 +1225,7 @@ abbreviation init_op_state where
    outpu = (\<lambda> _. []),
    front = undefined,
    ocaps = (\<lambda> _. []),
-   initia = False,
-   nfron = False
+   initia = False
    \<rparr>"
 
 abbreviation "init_c_pts summary cgs \<equiv> change_multiplicities summary cgs \<lparr>c_work = (\<lambda> _.  {#}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
@@ -1374,7 +1372,7 @@ corec builder_op where
       x # xs \<Rightarrow> send_output (builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic) p x)
       (cfilter (\<lambda>p. outpu os p \<noteq> []) ops)))
     (if fb then Read None (\<lambda>x. case x of
-      Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := \<exists>p. f p \<noteq> front os p\<rparr>) logic
+      Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f, initia := True\<rparr>) logic
     | _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda>_. \<oslash>))
      else \<oslash>)
     (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda>x. case x of
@@ -1389,7 +1387,7 @@ lemma step_builder_op_elim:
   assumes \<open>step io (builder_op fb ips ops os logic) op\<close>
   obtains (read_end_None) x where \<open>io = Inp None x\<close> \<open>is_Inr x \<or> is_Inl x \<and> is_Inl (projl x)\<close> \<open>op = \<oslash>\<close>
   | (read_frontier) f where \<open>io = Inp None (Inl (Inr f))\<close>
-    \<open>op = builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := \<exists>p. f p \<noteq> front os p\<rparr>) logic\<close> \<open>fb\<close>
+    \<open>op = builder_op fb ips ops (os\<lparr>front := f, initia := True\<rparr>) logic\<close> \<open>fb\<close>
   | (read_end_Some) p x where \<open>io = Inp (Some p) x\<close> \<open>p |\<in>| ips\<close> \<open>is_Inl x\<close> \<open>op = \<oslash>\<close>
   | (read_data) p d t where \<open>io = Inp (Some p) (Inr (d, t))\<close> \<open>p |\<in>| ips\<close>
     \<open>op = builder_op fb ips ops (consumes os p t d) logic\<close>
@@ -1421,12 +1419,12 @@ proof (cases io)
       show ?thesis
       proof (cases \<open>initia os\<close>)
         case True
-        hence \<open>fb \<and> op = builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := \<exists>p. f p \<noteq> front os p\<rparr>) logic\<close>
+        hence \<open>fb \<and> op = builder_op fb ips ops (os\<lparr>front := f, initia := True\<rparr>) logic\<close>
           using assms Inp None frontier by (subst (asm) builder_op.code) (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def  split: if_splits list.splits)
         thus ?thesis using read_frontier Inp None frontier True by blast
       next
         case False
-        hence \<open>fb \<and> op = builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := \<exists>p. f p \<noteq> front os p\<rparr>) logic\<close>
+        hence \<open>fb \<and> op = builder_op fb ips ops (os\<lparr>front := f, initia := True\<rparr>) logic\<close>
           using assms Inp None frontier by (subst (asm) builder_op.code) (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def  split: if_splits list.splits)
         thus ?thesis using read_frontier Inp None frontier False by blast
       qed
@@ -1489,10 +1487,10 @@ qed
 
 lemma step_builder_op_Read_None[intro]:
   assumes \<open>io = Inp None (Inl (Inr f))\<close> \<open>fb\<close>
-    \<open>op = builder_op fb ips ops (os\<lparr>front := f, initia := True, nfron := \<exists>p. f p \<noteq> front os p\<rparr>) logic\<close>
+    \<open>op = builder_op fb ips ops (os\<lparr>front := f, initia := True\<rparr>) logic\<close>
   shows \<open>step io (builder_op fb ips ops os logic) op\<close>
 proof -
-  let ?g = \<open>\<lambda>x. case x of Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f,initia := True, nfron := \<exists>p. f p \<noteq> front os p\<rparr>) logic | _ \<Rightarrow> \<oslash>\<close>
+  let ?g = \<open>\<lambda>x. case x of Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f,initia := True\<rparr>) logic | _ \<Rightarrow> \<oslash>\<close>
   have \<open>Read None ?g |\<in>| choices (builder_op fb ips ops os logic)\<close> using assms
     by (subst (2) builder_op.code) force
   moreover have \<open>?g (Inl (Inr f)) = op\<close> using assms by simp
@@ -1572,10 +1570,7 @@ lemma step_builder_op_n_Silents[intro]:
 
 definition notifier_op where
   "notifier_op ips ops os logic = (builder_op True ips ops os
-   (\<lambda> os.
-    if nfron os then
-    logic (os\<lparr> nfron := False \<rparr>) (\<lambda> p. filter (\<lambda> t. \<not> frontier_less_equal (front os p) t) (ocaps os p))
-    else {||}))"
+   (\<lambda> os. logic os (\<lambda> p. filter (\<lambda> t. \<not> frontier_less_equal (front os p) t) (ocaps os p))))"
 
 fun zmset where
   "zmset [] = {#}\<^sub>z"

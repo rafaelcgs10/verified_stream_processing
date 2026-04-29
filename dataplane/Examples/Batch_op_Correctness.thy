@@ -40,7 +40,6 @@ abbreviation init_input_state where
    front = (\<lambda> _. {}\<^sub>A),
    ocaps = (\<lambda> _. [0]),
    initia = True,
-   nfron = False,
    en1 = Inl,
    de1 = projl,
    is_en1 = \<top>,
@@ -58,7 +57,6 @@ abbreviation init_operator_state_ty2 where
    front = (\<lambda> _. {}\<^sub>A),
    ocaps = (\<lambda> _. []),
    initia = False,
-   nfron = False,
    en1 = Inl,
    de1 = projl,
    is_en1 = \<top>,
@@ -419,8 +417,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                  (concat
                    (map (\<lambda>t. map (\<lambda>x. (x, Cap t 1)) (f (map (\<lambda>x. projl (fst x)) (filter (\<lambda>(d, t'). t' = t \<and> t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t) (input (os 1) 1)))))
                      (rmdups {} (map snd (filter (\<lambda>(d, t). t \<in> set (ocaps (os 1) 1) \<and> \<not> frontier_less_equal (front (os 1) 1) t) (input (os 1) 1)))))),
-             inter := operator_state.inter (os 1) @ map (\<lambda>x. (1, x, - 1)) (filter (\<lambda>t. \<not> frontier_less_equal (front (os 1) 1) t) (ocaps (os 1) 1)),
-             nfron := False \<rparr>)"])
+             inter := operator_state.inter (os 1) @ map (\<lambda>x. (1, x, - 1)) (filter (\<lambda>t. \<not> frontier_less_equal (front (os 1) 1) t) (ocaps (os 1) 1)) \<rparr>)"])
           apply (rule exI[of _ sg])
           apply (rule exI[of _ "cbufs"])
           apply (rule exI[of _ inps])
@@ -717,7 +714,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             unfolding consumes_def add_caps_def BENQ_def input_ocaps_inv_def BHD_def
             apply clarsimp
             apply (metis (mono_tags, lifting)
-                \<open>initia bt_state \<Longrightarrow> nfron bt_state \<Longrightarrow> filter (\<lambda>t. \<not> frontier_less_equal (front bt_state 1) t) (ocaps bt_state 1) \<noteq> [] \<Longrightarrow> \<forall>n. (n = 1 \<longrightarrow> intsum (os 1) = (\<lambda>p1 p2. my_summ (Loc 1 (Trg 1)) (Loc 1 (Src 1)))) \<and> (n \<noteq> 1 \<longrightarrow> intsum (os n) = (\<lambda>p1 p2. my_summ (Loc n (Trg 1)) (Loc n (Src 1))))\<close>
+                \<open>initia bt_state \<Longrightarrow> filter (\<lambda>t. \<not> frontier_less_equal (front bt_state 1) t) (ocaps bt_state 1) \<noteq> [] \<Longrightarrow> \<forall>n. (n = 1 \<longrightarrow> intsum (os 1) = (\<lambda>p1 p2. my_summ (Loc 1 (Trg 1)) (Loc 1 (Src 1)))) \<and> (n \<noteq> 1 \<longrightarrow> intsum (os n) = (\<lambda>p1 p2. my_summ (Loc n (Trg 1)) (Loc n (Src 1))))\<close>
                 group_cancel.rule0 in_set_simps(2) my_summ_def prod.sel(2) zero_one)
             done
             done
@@ -942,7 +939,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           apply (rule wbisim_refl)
           apply (rule wb_upto_b_base)
           unfolding R_def[simplified]
-          apply (rule exI[of _ "os(1 := (os 1)\<lparr> front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg 1))), initia := True, nfron := frontier (c_imp c (Loc 1 (Trg 1))) \<noteq> front (os 1) 1 \<rparr> )"])
+          apply (rule exI[of _ "os(1 := (os 1)\<lparr> front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg 1))), initia := True \<rparr> )"])
           apply (rule exI[of _ "sg\<lparr>pt_tr := c, upfro := (upfro sg)(1 := False)\<rparr>"])
           apply (rule exI[of _ "cbufs"])
           apply (rule exI[of _ inps])
@@ -1216,7 +1213,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               using SIM1(10) apply -
               apply (rule dataplane_tracker_inv_produces_drops[where os=os and cbufs=cbufs and sg=sg and
                     nid=0 and nocaps="(\<lambda> _. [])" and ninput="input (os 0)" and noutput="(outpu (os 0))(1 := outpu (os 0) 1)" and
-                    nprodu="produ (os 0)" and ninter="inter (os 0) @ map (\<lambda> t. (1, t, -1)) (ocaps (os 0) 0)" and V="nfron (os 0)" and drops ="ocaps (os 0)", simplified])
+                    nprodu="produ (os 0)" and ninter="inter (os 0) @ map (\<lambda> t. (1, t, -1)) (ocaps (os 0) 0)" and drops ="ocaps (os 0)", simplified])
               subgoal
                 apply (simp add: SIM1)
                 using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
@@ -1313,7 +1310,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               subgoal
                 apply (rule dataplane_tracker_inv_produces_drops[where os=os and cbufs=cbufs and sg=sg and
                       nid=0 and nocaps="ocaps (os 0)" and ninput="input (os 0)" and noutput="(outpu (os 0))(1 := outpu (os 0) 1 @ [(Inl d, t)])" and
-                      nprodu="produ (os 0) @ [(1, t, 1)]" and ninter="inter (os 0)" and V="nfron (os 0)" and drops ="\<lambda> _. []", simplified])
+                      nprodu="produ (os 0) @ [(1, t, 1)]" and ninter="inter (os 0)" and drops ="\<lambda> _. []", simplified])
                 subgoal
                   apply (simp add: SIM1)
                   using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
@@ -1407,7 +1404,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               using SIM1(10) apply -
               apply (rule dataplane_tracker_inv_produces_drops[where os=os and cbufs=cbufs and sg=sg and
                     nid=0 and nocaps="(\<lambda>_. remove_last t (ocaps (os 0) 1))" and ninput="input (os 0)" and noutput="(outpu (os 0))(1 := outpu (os 0) 1)" and
-                    nprodu="produ (os 0)" and ninter="operator_state.inter (os 0) @ [(1, t, - 1)]" and V="nfron (os 0)" and drops ="(\<lambda> _. [t])", unfolded enum_num1_def, simplified])
+                    nprodu="produ (os 0)" and ninter="operator_state.inter (os 0) @ [(1, t, - 1)]" and drops ="(\<lambda> _. [t])", unfolded enum_num1_def, simplified])
               subgoal
                 apply (simp add: SIM1)
                 using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
@@ -1777,14 +1774,17 @@ apply (rule FalseE)
               subgoal
                 apply (subst filter_True)
                 subgoal
-                  sorry
-                subgoal
+                  apply (subgoal_tac "frontier (c_imp c (Loc 1 (Trg 1))) = {}\<^sub>A")
+                  subgoal
+                    by auto
+                  subgoal
+                    using SIM2(10)
+
 
 
                 find_theorems "filter _ _ = _ # _"
 
 
-                using SIM2(17)[unfolded input_ocaps_inv_def]
 
 
 end

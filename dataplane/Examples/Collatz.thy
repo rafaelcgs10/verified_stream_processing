@@ -24,7 +24,6 @@ abbreviation init_input_state where
    front = Code.abort (STR ''Frontier not initialized'') (\<lambda> _ _. antichain_from_list []),
    ocaps = (\<lambda> _. [\<bottom>]),
    initia = True,
-   nfron = False,
    en1 = id,
    de1 = id,
    is_en1 = \<top>,
@@ -41,8 +40,7 @@ abbreviation init_operator_state where
    outpu = (\<lambda> _. []),
    front = Code.abort (STR ''Frontier not initialized'') (\<lambda> _ _. antichain_from_list []),
    ocaps = (\<lambda> _. []),
-   initia = True,
-   nfron = False
+   initia = True
    \<rparr>"
 
 abbreviation init_operator_state_ty2 where
@@ -56,7 +54,6 @@ abbreviation init_operator_state_ty2 where
    front = Code.abort (STR ''Frontier not initialized'') (\<lambda> _ _. antichain_from_list []),
    ocaps = (\<lambda> _. []),
    initia = True,
-   nfron = False,
    en1 = id,
    de1 = id,
    is_en1 = \<top>,
