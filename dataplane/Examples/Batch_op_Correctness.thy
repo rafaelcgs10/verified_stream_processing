@@ -4,13 +4,6 @@ imports
   Dataplane.Timely_Stream
   Ooo_Input_op
   Batch_op
-  "../Correctness/General"
-  "../Correctness/Consumes"
-  "../Correctness/Progress"
-  "../Correctness/Produces"
-  "../Correctness/Outputs"
-  "../Correctness/Propagates"
-  "../Correctness/Mints"
   Dataplane.LList_Haskell_Setup
   Source_op
   Set_op
@@ -243,6 +236,18 @@ lemma image_zmset_id[simp]:
 lemma if_same[simp]:
   "(if nid' = nid then f nid else f nid') = f nid'"
   by simp
+
+lemma antichain_from_list_pair_set_singleton[simp]:
+  "{(nid' :: 2, p' :: 1). antichain_from_list (if nid' = 0 then [0] else []) \<noteq> {}\<^sub>A} = {(0, 0)}"
+  apply (auto 10 10 simp add: if_distrib antichain_from_list_singleton)
+  apply presburger
+  done
+
+(* FIXME: move me *)
+lemma filter_not_emptyI:
+  "\<exists> x \<in> set xs. P x \<Longrightarrow>
+   filter P xs \<noteq> []"
+  by (metis List.empty_filter_conv)
 
 
 lemma correctness_gen:
@@ -1599,7 +1604,7 @@ next
         subgoal for nid d t
           apply (clarsimp simp flip: cin.rep_eq simp add: image_iff SIM2(9,11,12))
           subgoal
-            using timely_input_stream_expires_at_n[OF SIM2(13), of t] apply -
+            using timely_input_stream_advances_frontier[OF SIM2(13), of t] apply -
             apply (clarsimp simp flip: cin.rep_eq )
             subgoal for n
               apply (cases "has_progress (os 0)")
@@ -1776,27 +1781,9 @@ next
                           unfolding outputs_at_target_def BULK_BENQ_def inputs_at_target_def
                           apply (clarsimp simp add: SIM2(1,2) my_summ_def split: if_splits prod.splits)
                            apply force
-                          apply (elim disjE)
-                           apply blast
-                          subgoal for nid' a b
-                            apply (cases "nid' = 0")
-                            subgoal
-                              by simp
-                            subgoal
-                              apply (subgoal_tac "nid' = 1")
-                              subgoal
-                                apply hypsubst_thin
-                                apply (subgoal_tac "{(nid' :: 2, p' :: 1). antichain_from_list (if nid' = 0 then [0 :: 't] else []) \<noteq> {}\<^sub>A} = {(0, 0)}")
-                                subgoal
-                                  by auto
-                                subgoal
-                                  by auto
+                          
                                 done
-                              subgoal
-                                using loc_2_1_cases by blast
-                              done
-                            done
-                          done
+                          
                         subgoal
                           apply (intro exI conjI[rotated])
                            apply (intro relcomppI)
@@ -1842,7 +1829,7 @@ next
                                    apply simp
                                    apply (intro conjI)
                           subgoal
-                            apply (subst filter_True)
+                            apply (rule filter_not_emptyI)
                             subgoal
                                 apply (frule propagate_all_frontier_c_imp_correctness[where loc="Loc 1 (Trg 1)"]; (clarsimp simp add: SIM2)?)
                                 subgoal
@@ -1864,14 +1851,74 @@ next
                                   using SIM2(10)[unfolded dataplane_tracker_inv_def propagation_inv_def SIM2(1,2)] by auto
                                 subgoal
                                   using SIM2(10)[unfolded dataplane_tracker_inv_def propagation_inv_def SIM2(1,2)] by auto
-                                subgoal  for A t' C
-                                  apply (subst (asm) (2) dataflow_topology.implied_frontier_alt_def)
+                                subgoal  for d x xa
+                                  unfolding inputs_at_target_def
+                                  apply simp
+                                  apply (rule bexI[of _ t])
                                   subgoal
-                                    using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
-                                    apply metis
-                                    done
-                                  subgoal
-                                    apply (clarsimp simp add: split_beta image_iff)
+                                    apply (subgoal_tac "ifrontier (antichain_from_list \<circ>\<circ> my_summ) (-+-) (pt_tr sg) (Loc 1 (Trg 1)) = frontier (to_zmset (ocaps (os 0) 1))")
+                                    subgoal
+                                      by simp
+                                    subgoal
+                                      apply (subst dataflow_topology.implied_frontier_alt_def)
+                                      subgoal
+                                        using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
+                                        apply metis
+                                        done
+                                      apply (subst comm_monoid_add_class.sum.subset_diff[where B="{Loc 0 (Trg 1), Loc 1 (Trg 1), Loc 1 (Src 1)}"])
+                                        apply simp
+                                      subgoal
+                                        by auto
+                                       apply simp
+                                      apply (subst (2) comm_monoid_add_class.sum.neutral)
+                                      subgoal
+                                        apply simp
+                                        subgoal premises temp
+                                          using SIM2(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+                                          apply (elim exE conjE)
+                                          subgoal premises INV for caps
+                                            using temp apply -
+                                        apply (intro conjI)
+                                        subgoal
+                                        apply (rule comm_monoid_add_class.sum.neutral)
+                                        apply (clarsimp simp add: split_beta)
+                                          using INV(3)[unfolded c_pts_inv_def c_pts_change_multiplicities extract_progress_def obtain_progress_def, rule_format, of "Loc 0 (Trg 1)"] apply -
+                                          unfolding has_progress_def
+                                          apply simp
+                                          apply (subst INV(2)[unfolded Trg_caps_inv_def outputs_at_target_def, rule_format])
+                                          apply (clarsimp simp add: SIM2(1,2) my_summ_def  split: prod.splits)
+                                          using SIM2(18) apply simp
+                                          done
+                                        subgoal
+                                        apply (rule comm_monoid_add_class.sum.neutral)
+                                        apply (clarsimp simp add: split_beta)
+                                          using INV(3)[unfolded c_pts_inv_def c_pts_change_multiplicities extract_progress_def obtain_progress_def, rule_format, of "Loc 1 (Trg 1)"] apply -
+                                          unfolding has_progress_def
+                                          apply simp
+                                          apply (subst INV(2)[unfolded Trg_caps_inv_def outputs_at_target_def, rule_format])
+                                          apply (clarsimp simp add: SIM2(1,2) my_summ_def  split: prod.splits)
+                                          done
+                                        subgoal
+                                          apply (rule comm_monoid_add_class.sum.neutral)
+                                          apply (clarsimp simp add: split_beta)
+                                          apply (clarsimp simp add: SIM2(1,2) my_summ_def  split: prod.splits)
+                                          subgoal premises prems2 for s
+                                            apply (rule FalseE)
+                                            using prems2(20) apply -
+                                            unfolding comp_def
+                                            apply (simp flip: member_antichain.rep_eq)
+                                            apply (drule graph.path_weight_conv_path[rotated])
+                                            subgoal
+                                              sorry
+                                            subgoal
+                                              apply (clarsimp simp add: if_distrib[of antichain_from_list])
+
+                                            find_theorems "set_antichain" "_ \<in>\<^sub>A _"
+
+                                            find_theorems "_ \<in>\<^sub>A graph.path_weight _ _ _ \<Longrightarrow> _"
+
+                                  using SIM2(17)[unfolded input_ocaps_inv_def, rule_format, of t 1 0 1] apply -
+                                  apply simp
 
 end
                                     apply (subgoal_tac "(\<Sum>loc'\<in>UNIV. zmset_of (mset_set (set_antichain (frontier (c_pts (pt_tr sg) loc')))) -++- graph.path_weight (antichain_from_list \<circ>\<circ> my_summ) loc' (Loc 1 (Trg 1))) = {#}\<^sub>z")

@@ -647,9 +647,9 @@ definition extract_progress where
 (* Inspired by timely/src/dataflow/operators/capability.rs:62 *)
 datatype ('p, 't) capability = Cap (time: "'t :: plus") (out: 'p)
 
-abbreviation "nop sg op \<equiv> (case op of Read (Inl nid) f \<Rightarrow> upfro sg nid | _ \<Rightarrow> True)"
+definition "has_progress st = (cons st \<noteq> [] \<or> inte st \<noteq> [] \<or> prod st \<noteq> [])"
 
-term upfro
+abbreviation "nop sg op \<equiv> (case op of Read (Inl nid) f \<Rightarrow> upfro sg nid | Write _ (Inl _) (Inl (Inl st)) \<Rightarrow> has_progress st | _ \<Rightarrow> True)"
 
 (* Connects the data plane with the control plane (wraps the operators inside the propagation algorithm)  *)
 corec dataflow_op where
@@ -976,7 +976,7 @@ lemma propagate_all_terminates:
     done
   using assms apply auto
   done
-
+(* 
 (* FIXME: Update this for the new optimizations *)
 lemma step_dataflow_op_elim:
   assumes "step io (dataflow_op sg op) op'"
@@ -1068,7 +1068,7 @@ lemma step_Taus_dataflow_op_Taus_intro[intro]:
    apply force
   apply (meson rtranclp.intros(2) step_Tau_dataflow_op_Tau_intro)
   done
-
+ 
 
 lemma step_tau_pow_dataflow_op[intro]:
   "(step Tau ^^ n) op op' \<Longrightarrow>
@@ -1093,7 +1093,7 @@ lemma dataflow_op_simps[simp]:
   "\<not> is_Silent (dataflow_op sg op)"
   "is_Choice (dataflow_op sg op)"
   by (subst dataflow_op.code; simp)+
-
+*)
 (* Inspired by timely/src/dataflow/channels/pushers/counter.rs:25 and timely/src/dataflow/channels/mod.rs:49 *)
 (* writes maybe could support multiple different ports, then this one also would *)
 abbreviation "push op p batch \<equiv> 
@@ -1359,8 +1359,6 @@ lemma outpu_consumes[simp]:
   by (auto simp add: operator_state.defs)
 
 
-definition "has_progress os = (consu os \<noteq> [] \<or> inter os \<noteq> [] \<or> produ os \<noteq> [])"
-
 (* All timely operators are defined using this function. The logic is passed as argument. This is the only corec we need *)
 corec builder_op where
   \<open>builder_op fb ips ops os logic =
@@ -1378,11 +1376,10 @@ corec builder_op where
     (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda>x. case x of
       Inr (d, t) \<Rightarrow> builder_op fb ips ops (consumes os p t d) logic
     | Inl _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda> _. \<oslash>))) ips))
-    (if has_progress os then
-      let (os', st) = obtain_progress os in send_progress (builder_op fb ips ops os' logic) st
-    else \<oslash>))\<close>
+    (let (os', st) = obtain_progress os in send_progress (builder_op fb ips ops os' logic) st
+    ))\<close>
 
-
+(* 
 lemma step_builder_op_elim:
   assumes \<open>step io (builder_op fb ips ops os logic) op\<close>
   obtains (read_end_None) x where \<open>io = Inp None x\<close> \<open>is_Inr x \<or> is_Inl x \<and> is_Inl (projl x)\<close> \<open>op = \<oslash>\<close>
@@ -1567,6 +1564,7 @@ lemma step_builder_op_n_Silents[intro]:
     apply simp_all
     done
   done
+ *)
 
 definition notifier_op where
   "notifier_op ips ops os logic = (builder_op True ips ops os

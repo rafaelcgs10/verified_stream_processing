@@ -4,6 +4,8 @@ theory Timely_Stream
     "HOL-Library.BNF_Corec"
     "HOL-Library.Multiset"
     Nondeterministic_Dataflow.Coinductive_List_Auxiliary
+    Nondeterministic_Dataflow.CSet_LList_Impl
+    AntichainOrder
 begin
 
 datatype ('t :: order, 'd) event = Data (time: 't) (data: 'd) | Drop (time: 't) | Mint (time: 't)
@@ -133,6 +135,7 @@ next
       done
     done
 qed
+
 
 lemma vacant_monotone_not_in_lset:
   "e \<in> lset lxs \<Longrightarrow> time e \<le> t \<Longrightarrow> vacant t C \<Longrightarrow> timely_monotone lxs C \<Longrightarrow> False"
@@ -389,6 +392,157 @@ lemma timely_input_stream_DropI[intro]:
   apply (auto simp add: timely_input_stream_def intro: timely_productive.intros ev_drops.intros)
   using ev_drops.simps vacant_diff apply fastforce+
   done
+
+lemma timely_input_stream_ldrop_stronger_alt:
+  "enat i < llength lxs \<Longrightarrow> timely_input_stream lxs C \<Longrightarrow>
+  timely_input_stream (ldropn i lxs) (C + mset (map time (filter is_Mint (ltaken i lxs))) - mset (map time (filter is_Drop (ltaken i lxs))))"
+  oops
+
+lemma timely_input_stream_ldrop_stronger:
+  "enat i \<le> llength lxs \<Longrightarrow> timely_input_stream lxs C \<Longrightarrow>
+  timely_input_stream (ldropn i lxs) (C + mset (map time (filter is_Mint (ltaken i lxs))) - mset (map time (filter is_Drop (ltaken i lxs))))"
+  oops
+
+lemma timely_input_stream_Data_expires_le:
+  "Data t' d \<in> lset lxs \<Longrightarrow> 
+   timely_input_stream lxs C \<Longrightarrow> 
+   t' \<le> t \<Longrightarrow>
+   lfinite (lfilter (\<lambda>e. time e \<le> t) lxs)"
+  apply (cases "lfinite lxs")
+   apply simp
+  apply (simp add: in_lset_conv_lnth)
+  apply (erule exE conjE)+
+  subgoal for i
+    unfolding timely_input_stream_def
+          oops
+
+
+
+lemma timely_input_stream_expires_le:
+  "timely_input_stream lxs C \<Longrightarrow> 
+   lfinite (lfilter (\<lambda>e. time e \<le> t) lxs)"
+    apply (cases "lfilter (\<lambda>e. time e \<le> t) lxs")
+   apply simp_all
+  subgoal for e lxs'
+    apply (cases e; simp)
+    subgoal for t' d
+      apply hypsubst_thin
+      subgoal premises prems
+        oops
+
+lemma timely_input_stream_expires_at_n_le:
+  "timely_input_stream lxs C \<Longrightarrow> 
+   \<exists> n \<le> llength lxs. \<forall> t' \<le> t. t' \<notin> event.time ` lset (ldropn n lxs)"
+  oops
+
+lemma t_not_in_timely_input_stream_aux:
+  "timely_input_stream lxs C \<Longrightarrow> \<not> lfinite lxs \<Longrightarrow> t \<notin> time ` lset lxs \<Longrightarrow> count C t = 0"
+  unfolding timely_input_stream_def
+  apply (rule ccontr)
+  apply clarsimp
+  apply (drule spec[of _ t])
+  apply simp
+  subgoal premises prems
+    using prems(6,1,2,3) apply -
+    apply (induct lxs C rule: ev_drops.induct)
+        apply (simp_all add: vacant_def)
+     apply (metis not_in_iff order_refl)
+    apply (meson in_remove1_mset_neq)
+    done
+  done
+
+lemma t_not_in_timely_input_stream:
+  "timely_input_stream lxs C \<Longrightarrow>
+   \<forall> t' \<le> t. t' \<notin> event.time ` lset lxs \<Longrightarrow>
+   \<not> lfinite lxs \<Longrightarrow>
+   vacant t C"
+  unfolding vacant_def
+  apply safe
+  subgoal for u
+    unfolding not_def
+    apply (drule spec[of _ u])
+    apply simp
+    using t_not_in_timely_input_stream_aux apply blast
+    done
+  done
+
+lemma lfinite_llength_ltaken:
+  "lfinite lxs \<Longrightarrow>
+   n = llength lxs \<Longrightarrow>
+   ltaken n lxs = list_of lxs"
+  apply (induct lxs arbitrary: n rule: lfinite_induct)
+   apply (auto simp add: lnull_def)
+  subgoal for xs n
+    apply (cases xs; cases n; simp)
+    using zero_enat_def apply force
+    apply (metis enat_eSuc_iff eSuc_inject)
+    done
+  done
+
+lemma timely_input_stream_advances:
+  "timely_input_stream lxs C \<Longrightarrow>
+   \<exists> n \<le> llength lxs. vacant t (C + mset (map time (filter is_Mint (ltaken n lxs))) - mset (map time (filter is_Drop (ltaken n lxs))))"
+  apply (cases "lfinite lxs")
+  subgoal
+    apply (rule exI[of _ "the_enat (llength lxs)"])
+    apply (simp add: enat_the_enat llength_eq_infty_conv_lfinite)
+    apply (subst (1 2) lfinite_llength_ltaken)
+      apply (simp_all add: enat_the_enat llength_eq_infty_conv_lfinite)
+ (*    apply (drule timely_input_stream_ldrop_stronger[rotated, where i="the_enat (llength lxs)"])
+     apply (simp_all add: enat_the_enat llength_eq_infty_conv_lfinite)
+    unfolding timely_input_stream_def
+    apply (elim conjE)
+    apply (subst (asm) (1 2 3) ldropn_all)
+       apply (simp_all add: enat_the_enat llength_eq_infty_conv_lfinite)
+    subgoal premises prems
+      using prems(3) apply -
+      unfolding vacant_def
+      apply safe
+      subgoal for t'
+        apply (rule ccontr)
+        apply (drule spec[of _ t'])
+        apply (drule mp)
+         apply (simp add: enat_the_enat lfinite_llength_ltaken llength_eq_infty_conv_lfinite prems(1))
+        apply (metis count_empty enat_the_enat lfinite_llength_ltaken llength_eq_infty_conv_lfinite prems(1,2) timely_monotone_LNilE)
+        done
+      done
+    done
+  subgoal
+    apply (frule timely_input_stream_expires_at_n_le[where t=t])
+    apply (elim exE conjE)
+    subgoal for n
+      apply (frule timely_input_stream_ldrop_stronger[where i=n, rotated])
+       apply assumption
+      apply (drule t_not_in_timely_input_stream[where lxs="ldropn n lxs" and t=t])
+        apply simp
+       apply auto
+      done
+    done
+  done *)
+    oops
+
+
+lemma vacant_not_frontier_less_equal:
+  "vacant t M \<Longrightarrow>
+   \<not> frontier_less_equal (frontier (zmset_of M)) t"
+  unfolding vacant_def frontier_less_equal_iff2
+  apply safe
+  subgoal for t'
+    apply transfer
+    apply (simp add: count_eq_zero_iff in_minimal_antichain)
+    done
+  done
+
+definition "ev_progress lxs C =
+   (\<forall> t.
+     (\<exists> n \<le> llength lxs.
+       vacant t (C + mset (map time (filter is_Mint (ltaken n lxs))) - mset (map time (filter is_Drop (ltaken n lxs)))) \<and>
+       (\<forall> t' \<le> t. t' \<notin> event.time ` lset (ldropn n lxs) \<and> n \<le> llength lxs)))"
+
+lemma timely_input_stream_advances_frontier:
+  "timely_input_stream lxs C \<Longrightarrow>
+   \<exists> n \<le> llength lxs. \<not> frontier_less_equal (frontier (zmset_of (C + mset (map time (filter is_Mint (ltaken n lxs))) - mset (map time (filter is_Drop (ltaken n lxs)))))) t"
+  sorry
 
 
 end
