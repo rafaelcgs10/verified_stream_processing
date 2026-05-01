@@ -107,15 +107,14 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
   \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
   (my_ooo_input_op os1') (my_increment_op inc os2)))) op2'"
         if "invariant f inc os1 buf os2"
-          and "ocaps os1 1 \<noteq> []"
           and "os1' |\<in>| ooo_input_op_logic {|1|} os1"
         for os1' :: "(1, 'b, 'a, 'c, 'd) input_state_scheme"
       proof -
-        have \<open>my_source_op f inc os1 buf os2 = my_source_op f inc os1' buf os2\<close> using that(1,3)
+        have \<open>my_source_op f inc os1 buf os2 = my_source_op f inc os1' buf os2\<close> using that
           unfolding invariant_def timely_input_stream_def my_source_op_def ooo_input_op_logic_def
             produce_def drop_cap_def add_cap_def by (fastforce simp flip: snoc_shift split: llist.splits)
-        moreover have \<open>invariant f inc os1' buf os2\<close> using that(1,3)
-            timely_input_stream_ooo_input_op_logic[OF _ that(3)] unfolding invariant_def
+        moreover have \<open>invariant f inc os1' buf os2\<close> using that
+            timely_input_stream_ooo_input_op_logic[OF _ that(2)] unfolding invariant_def
             ooo_input_op_logic_def drop_caps_def produce_def drop_cap_def add_cap_def
           by (force split: llist.splits event.splits)
         ultimately show ?thesis unfolding R_def by blast
@@ -124,16 +123,15 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
   \<and> wbisim_cong R (dataflow_op sg (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
   (my_ooo_input_op os1) (my_increment_op inc os2')))) op2'"
         if "invariant f inc os1 buf os2"
-          and "ocaps os2 1 \<noteq> []"
           and "os2' |\<in>| increment_op_logic 1 1 inc os2"
         for os2' :: "(1, 'b, 'c, 'e) operator_state_scheme"
       proof -
         have outpu_os2': \<open>outpu os2' 1 = outpu os2 1 @ map (\<lambda>(d, t). (d, t + inc)) (input os2 1)\<close>
-          using that(3) unfolding increment_op_logic_def drop_caps_def produces_def by (simp split: prod.splits)
-        have input_os2': \<open>input os2' 1 = []\<close> using that(3) unfolding increment_op_logic_def by simp
+          using that(2) unfolding increment_op_logic_def drop_caps_def produces_def by (simp split: prod.splits)
+        have input_os2': \<open>input os2' 1 = []\<close> using that(2) unfolding increment_op_logic_def by simp
         have \<open>my_source_op f inc os1 buf os2 = my_source_op f inc os1 buf os2'\<close>
           using outpu_os2' input_os2' unfolding my_source_op_def by (simp add: lshift_append_lshift)
-        moreover have \<open>invariant f inc os1 buf os2'\<close> using that(1,3) unfolding invariant_def
+        moreover have \<open>invariant f inc os1 buf os2'\<close> using that unfolding invariant_def
             increment_op_logic_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def)
         ultimately show ?thesis unfolding R_def by blast
       qed
