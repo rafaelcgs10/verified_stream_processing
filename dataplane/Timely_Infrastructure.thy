@@ -976,7 +976,7 @@ lemma propagate_all_terminates:
     done
   using assms apply auto
   done
-(* 
+
 (* FIXME: Update this for the new optimizations *)
 lemma step_dataflow_op_elim:
   assumes "step io (dataflow_op sg op) op'"
@@ -984,7 +984,7 @@ lemma step_dataflow_op_elim:
     nid p op'' x where "io = Inp (nid, p) x" "op' = dataflow_op sg op''" "step (Inp (Inr (nid, p)) (Inr x)) op op''"
   | nid p op'' x where "io = Out (nid, p) x" "op' = dataflow_op sg op''" "step (Out (Inr (nid, p)) (Inr x)) op op''"
   | op'' where "io = Tau" "op' = dataflow_op sg op''" "step Tau op op''"
-  | nid op'' st where "io = Tau" "op' = dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg)) \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
+  | nid op'' st where "has_progress st" "io = Tau" "op' = dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg)) \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
   | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_all (summ sg) (pt_tr sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr>)" "upfro sg nid"
     "imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p)))" "op' = dataflow_op sg' op''" "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op''"
   using assms apply -
@@ -993,10 +993,9 @@ lemma step_dataflow_op_elim:
   apply (simp split: if_splits)
   apply (elim stepChoiceE)
   subgoal for op'
-    apply (auto del: disjCI split: op.splits sum.splits option.splits)
-        apply fastforce+
-    done
+    by (auto del: disjCI split: op.splits sum.splits option.splits simp flip: cin.rep_eq; fastforce)
   done
+
 
 lemma step_Tau_dataflow_op_Inp_Inl_intro[intro]:
   "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op' \<Longrightarrow>
@@ -1011,12 +1010,12 @@ lemma step_Tau_dataflow_op_Inp_Inl_intro[intro]:
 
 lemma step_Tau_dataflow_op_Out_Inl_intro[intro]:
   "step (Out (Inl nid) (Inl (Inl st))) op op' \<Longrightarrow>
+   has_progress st \<Longrightarrow>
    sg' = sg\<lparr> upfro := (\<lambda> _. True), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg)) \<rparr> \<Longrightarrow>
    step Tau (dataflow_op sg op) (dataflow_op sg' op')"
   apply (subst dataflow_op.code)
   apply (force elim: step_choicesE split: sum.splits option.splits)
   done
-
 
 lemma step_Tau_dataflow_op_Tau_intro[intro]:
   "step Tau op op' \<Longrightarrow>
@@ -1093,7 +1092,7 @@ lemma dataflow_op_simps[simp]:
   "\<not> is_Silent (dataflow_op sg op)"
   "is_Choice (dataflow_op sg op)"
   by (subst dataflow_op.code; simp)+
-*)
+
 (* Inspired by timely/src/dataflow/channels/pushers/counter.rs:25 and timely/src/dataflow/channels/mod.rs:49 *)
 (* writes maybe could support multiple different ports, then this one also would *)
 abbreviation "push op p batch \<equiv> 
@@ -1379,7 +1378,6 @@ corec builder_op where
     (let (os', st) = obtain_progress os in send_progress (builder_op fb ips ops os' logic) st
     ))\<close>
 
-(* 
 lemma step_builder_op_elim:
   assumes \<open>step io (builder_op fb ips ops os logic) op\<close>
   obtains (read_end_None) x where \<open>io = Inp None x\<close> \<open>is_Inr x \<or> is_Inl x \<and> is_Inl (projl x)\<close> \<open>op = \<oslash>\<close>
@@ -1388,8 +1386,7 @@ lemma step_builder_op_elim:
   | (read_end_Some) p x where \<open>io = Inp (Some p) x\<close> \<open>p |\<in>| ips\<close> \<open>is_Inl x\<close> \<open>op = \<oslash>\<close>
   | (read_data) p d t where \<open>io = Inp (Some p) (Inr (d, t))\<close> \<open>p |\<in>| ips\<close>
     \<open>op = builder_op fb ips ops (consumes os p t d) logic\<close>
-  | (write_state) os' st where \<open>io = Out None (Inl (Inl st))\<close>
-    \<open>has_progress os\<close> \<open>(os', st) = obtain_progress os\<close>
+  | (write_state) os' st where \<open>io = Out None (Inl (Inl st))\<close> \<open>(os', st) = obtain_progress os\<close>
     \<open>op = builder_op fb ips ops os' logic\<close>
   | (write_data) p x xs where \<open>io = Out (Some p) (Inr x)\<close> \<open>p |\<in>| ops\<close> \<open>outpu os p = x # xs\<close>
     \<open>op = builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic\<close>
@@ -1448,12 +1445,10 @@ next
   show ?thesis
   proof (cases p)
     case None
-    hence progress: \<open>has_progress os\<close> using assms Out
-      by (subst (asm) builder_op.code) (auto 0 0 simp add:  split: if_splits list.splits)
     obtain os' st where os'_st: \<open>(os', st) = obtain_progress os\<close> unfolding obtain_progress_def by blast
-    hence \<open>x = Inl (Inl st) \<and> op = builder_op fb ips ops os' logic\<close> using assms Out None progress
+    hence \<open>x = Inl (Inl st) \<and> op = builder_op fb ips ops os' logic\<close> using assms Out None
       by (subst (asm) builder_op.code) (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def  split: if_splits list.splits)
-    thus ?thesis using write_state Out None progress os'_st by blast
+    thus ?thesis using write_state Out None os'_st by blast
   next
     case (Some p')
     then obtain x' xs where x'_xs: \<open>x = Inr x'\<close> \<open>outpu os p' = x' # xs\<close> using assms Out
@@ -1507,7 +1502,7 @@ proof -
 qed
 
 lemma step_builder_op_Write_None[intro]:
-  \<open>io = Out None (Inl (Inl st)) \<Longrightarrow> has_progress os \<Longrightarrow>
+  \<open>io = Out None (Inl (Inl st)) \<Longrightarrow>
   (os', st) = obtain_progress os \<Longrightarrow> op = builder_op fb ips ops os' logic \<Longrightarrow>
   step io (builder_op fb ips ops os logic) op\<close>
   by (subst builder_op.code) (auto simp add: has_progress_def obtain_progress_def)
@@ -1564,7 +1559,6 @@ lemma step_builder_op_n_Silents[intro]:
     apply simp_all
     done
   done
- *)
 
 definition notifier_op where
   "notifier_op ips ops os logic = (builder_op True ips ops os

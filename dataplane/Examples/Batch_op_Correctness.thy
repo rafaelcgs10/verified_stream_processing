@@ -4,6 +4,13 @@ imports
   Dataplane.Timely_Stream
   Ooo_Input_op
   Batch_op
+  "../Correctness/General"
+  "../Correctness/Consumes"
+  "../Correctness/Progress"
+  "../Correctness/Produces"
+  "../Correctness/Outputs"
+  "../Correctness/Propagates"
+  "../Correctness/Mints"
   Dataplane.LList_Haskell_Setup
   Source_op
   Set_op
@@ -1607,13 +1614,6 @@ next
             using timely_input_stream_advances_frontier[OF SIM2(13), of t] apply -
             apply (clarsimp simp flip: cin.rep_eq )
             subgoal for n
-              apply (cases "has_progress (os 0)")
-              subgoal
-                sorry
-              apply (cases "has_progress (os 1)")
-              subgoal
-                sorry
-              subgoal
                 apply (cases "n + length (outpu (os 0) 0) + length (cbufs (1, 0))")
                 subgoal
                   apply (elim disjE conjE exE)
