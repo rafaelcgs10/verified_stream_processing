@@ -281,7 +281,7 @@ proof (coinduction arbitrary: sg os rule: wbisim_coinduct_upto'')
           using that(2,3) by force
         hence \<open>wstep (Out (1, p) (d, t)) (my_source_op f os) (my_source_op f ?os')\<close>
           using my_source_op_def by auto
-        thus ?thesis using that(1) unfolding R_def invariant_def by (force intro!: wbc_base)
+        thus ?thesis using that(1) unfolding R_def invariant_def by (force intro!: wbc_base del: timely_input_stream_DataI)
       qed
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f os) op2'
   \<and> wbisim_cong R (dataflow_op sg (my_ooo_input_op os')) op2'"
@@ -307,7 +307,7 @@ proof (coinduction arbitrary: sg os rule: wbisim_coinduct_upto'')
           and "(os', st) = obtain_progress os"
         for st :: "('c, 'd) shared_state"
           and os' :: "('c, 'b, 'a, 'd, 'e) input_state_scheme"
-        using that unfolding R_def invariant_def my_source_op_def obtain_progress_def by (force intro!: wbc_base)
+        using that unfolding R_def invariant_def my_source_op_def obtain_progress_def by (force intro!: wbc_base del: timely_input_stream_DataI)
       ultimately show ?thesis unfolding R_def[symmetric]
         by (sim_cases sim: SIM1 defs: my_ooo_input_op_def ooo_input_op_def
             elims: step_dataflow_op_elim step_map_op_elim step_builder_op_elim
@@ -396,7 +396,7 @@ next
   (source_op ((\<lambda>p. outpu os p @@- lmap (\<lambda>z. case z of Data t d \<Rightarrow> (f d, t)) (lfilter is_Data (es os p)))(p := lxs)))\<close>
           using that(2) Cons unfolding my_source_op_def
           by (auto intro!: arg_cong[where f=\<open>map_op _ _\<close>] arg_cong[where f=source_op] simp add: fun_eq_iff)
-        ultimately show ?thesis using that(1) unfolding R_def invariant_def by (force intro!: wbc_base)
+        ultimately show ?thesis using that(1) unfolding R_def invariant_def by (force intro!: wbc_base del: timely_input_stream_DataI)
       qed
       thus ?thesis unfolding R_def[symmetric]
         by (sim_cases sim: SIM2 defs: my_source_op_def elims: step_map_op_elim step_source_op_elim)
