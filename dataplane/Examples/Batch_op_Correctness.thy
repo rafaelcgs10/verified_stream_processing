@@ -4,13 +4,6 @@ imports
   Dataplane.Timely_Stream
   Ooo_Input_op
   Batch_op
-  "../Correctness/General"
-  "../Correctness/Consumes"
-  "../Correctness/Progress"
-  "../Correctness/Produces"
-  "../Correctness/Outputs"
-  "../Correctness/Propagates"
-  "../Correctness/Mints"
   Dataplane.LList_Haskell_Setup
   Source_op
   Set_op
@@ -71,13 +64,17 @@ abbreviation "G f ip_state os2 \<equiv> Comp [(0 :: 2, 1) \<mapsto> (0, 1)] (l1 
 
 abbreviation "test_op \<equiv> compile_dataflow (\<lambda> _. []) (G (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]) (init_input_state default_internal_summary (\<lambda> _. inps_test)) (init_operator_state_ty2 default_internal_summary) )"
 
+find_theorems cUn name: code
+
 value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op)"
-value [GHC] "check_prefix 100 [((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1)),((1, 1), (Inr 3, MyPair 1 0))] test_op"
-value [GHC] "check_prefix 100 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] test_op"
+value [GHC] "check_prefix 11000 [((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1)),((1, 1), (Inr 3, MyPair 1 0))] test_op"
+value [GHC] "check_prefix 5000 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] test_op"
   (* too slow, but maybe it returns  
   value [GHC] "check_prefix 100 [((1, 1), (Inr 3, MyPair 1 0)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1))] test_op" *)
 
 
+
+end
 section \<open>Generalized Correctness\<close>
 
 definition "my_summ = (\<lambda> l1 l2.
@@ -270,6 +267,7 @@ lemma correctness_gen:
     \<open>raw_s = dataflow_tree_to_graph (G f ip_state bt_state)\<close>
     \<open>summ sg = antichain_from_list oo raw_s\<close>
     \<open>nxt sg = graph_to_nxt (summ sg)\<close>
+    \<open>optm sg = False\<close>
     and
     OP_STATE_INV: 
     \<open>ip_state = operator_state.extend (os 0) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl, es = inps\<rparr>\<close>
@@ -303,7 +301,7 @@ lemma correctness_gen:
     \<open>cbufs (0, 0) = []\<close>
   shows 
     \<open>set_op S D (dataflow_op sg (G_op f ip_state bt_state cbufs)) \<approx> set_spec_op (cUn (cUn S SO) SP) D\<close>
-  using assms(1-13,15,16,17,18,19) apply -
+  using assms(1-3,5-13,14,16,17,18,19,20,5) apply -
 proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D raw_s rule: weakBisimWeakUptoBisimCong)
   case SIM1
   show ?case (is "wsim ((~) OO \<U> ?R OO (\<approx>)) ?op1 ?op2")
@@ -1017,9 +1015,13 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                 unfolding reachable_locations_def
                 apply (auto simp add: split_beta)
                    apply (metis (no_types, lifting) loc_2_1_cases rangeI range_fst surjD)
+                      apply (metis (no_types, lifting) loc_2_1_cases rangeI range_fst surjD)
+                  apply (metis (no_types, lifting) loc_2_1_cases rangeI range_fst surjD)
                   apply (metis (no_types, lifting) loc_2_1_cases rangeI range_fst surjD)
                  apply (smt (verit, ccfv_threshold) is_empty_antichain_not_empty_list loc_2_1_cases my_summ_def zero_one)
-                apply (smt (verit, ccfv_threshold) is_empty_antichain_not_empty_list loc_2_1_cases my_summ_def zero_one)
+                 apply (smt (verit, ccfv_threshold) is_empty_antichain_not_empty_list loc_2_1_cases my_summ_def zero_one)
+                 apply (smt (verit, ccfv_threshold) is_empty_antichain_not_empty_list loc_2_1_cases my_summ_def zero_one)
+                 apply (smt (verit, ccfv_threshold) is_empty_antichain_not_empty_list loc_2_1_cases my_summ_def zero_one)
                 done
                 apply (simp add: SIM1)
               subgoal              
@@ -1032,15 +1034,14 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               done
             done
           subgoal
-            using SIM1(15,16) apply -
-            apply clarsimp
+            using SIM1(16,17) apply -
             apply (frule propagate_all_frontier_c_imp_correctness[where loc="Loc 1 (Trg 1)"]; (clarsimp simp add: SIM1)?)
             subgoal
               using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
               apply metis
               done
             subgoal
-              using assms(14) by force
+              using assms(15) by force
             subgoal
               unfolding reachable_locations_def
               apply (auto simp add: image_iff split_beta )
@@ -1062,6 +1063,10 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                 using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
                 apply metis
                 done
+              subgoal
+              using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
+              apply metis
+              done
               done
             done
           subgoal

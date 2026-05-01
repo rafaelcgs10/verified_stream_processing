@@ -107,6 +107,7 @@ record ('id, 'p, 't) subgraph =
   pt_tr :: "(('id, 'p) location, 't) configuration"
   nxt :: "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option"
   summ :: "('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> 't antichain"
+  optm :: "bool"
   upfro :: "'id \<Rightarrow> bool"
 
 datatype ('id, 'p, 's, 'd, 't) dataflow_tree = 
@@ -616,72 +617,6 @@ lemma take_step_fast_code[simp]:
    apply (auto simp add: fun_eq_iff mymin_code_def)
   done
 
-lemma propagate_all_locale_eq_propagate_all:
-  "propagate_all_locale (antichain_from_list oo (dataflow_tree_to_graph df)) df c = propagate_all (antichain_from_list oo (dataflow_tree_to_graph df)) c"
-  unfolding propagate_all_locale_def Let_def propagate_all_def by (auto split: prod.splits)
-
-abbreviation "show_frontier x \<equiv> let f = Max_antichain x in if f = 42 then STR ''{}'' else STR ''{ '' + show_nat (Max_antichain x) + STR '' }''" 
-
-abbreviation "print_frontier x \<equiv> trace ((STR ''Frontier: '') + show_frontier x)" 
-
-abbreviation "show_frontiers impf \<equiv> show_list (show_prod show_loc show_frontier) (map (\<lambda> l. (l, frontier (impf l))) enum_location_inst.enum_location)"
-
-(* Inspired by timely/src/progress/subgraph.rs:453 *)
-(* First migrate all change batches to the worklist, then call propagate_all_locale *)
-definition "change_multiplicities summary xs conf = fold (\<lambda> (l, t, m) c. take_step summary (CM l t m) c) xs conf"
-
-(* Inspired by timely/src/dataflow/operators/generic/builder_rc.rs:29 and timely/src/progress/operate.rs:63 *)
-(* This is the shared that the operator exposes to the subgraph *)
-record ('p, 't) shared_state =
-  cons :: "('p \<times> 't \<times> int) change_batch"
-  inte :: "('p \<times> 't \<times> int) change_batch"
-  prod :: "('p \<times> 't \<times> int) change_batch"
-
-(* Inspired by timely/src/progress/subgraph.rs:759 *)
-definition extract_progress where
-  "extract_progress nid nt st =
-    map (\<lambda> (p, t, m). (Loc nid (Trg p), t, -m)) (cons st) @ 
-    map (\<lambda> (p, t, m). (Loc nid (Src p), t, m)) (inte st) @
-    List.map_filter (\<lambda> (p, t, m). case_option None (\<lambda> (nid', p'). Some (Loc nid' (Trg p'), t, m)) (nt (nid, p))) (prod st)"
-
-(* Inspired by timely/src/dataflow/operators/capability.rs:62 *)
-datatype ('p, 't) capability = Cap (time: "'t :: plus") (out: 'p)
-
-definition "has_progress st = (cons st \<noteq> [] \<or> inte st \<noteq> [] \<or> prod st \<noteq> [])"
-
-abbreviation "nop sg op \<equiv> (case op of Read (Inl nid) f \<Rightarrow> upfro sg nid | Write _ (Inl _) (Inl (Inl st)) \<Rightarrow> has_progress st | _ \<Rightarrow> True)"
-
-(* Connects the data plane with the control plane (wraps the operators inside the propagation algorithm)  *)
-corec dataflow_op where
-  "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
-     Read (Inl nid) f \<Rightarrow> (case propagate_all (summ sg) (pt_tr sg) of
-         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
-         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron)))))
-      | None \<Rightarrow> \<oslash>)
-   | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x)))
-   | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
-   | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
-   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op')
-   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) (let C = cfilter (nop sg) (choices op) in C))"
-
-lemma dataflow_op_code[code]:
-  "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
-     Read (Inl nid) f \<Rightarrow> trace (STR ''Reading from frontier at nid: '' + print_2 nid) (case propagate_all (summ sg) (pt_tr sg) of
-         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
-         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron)))))
-      | None \<Rightarrow> \<oslash>)
-   | Read (Inr (nid, p)) f \<Rightarrow>  (Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x))))
-   | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> trace (STR ''Writing out data at location: '' + show_loc (Loc nid (Src p))) (Write (dataflow_op sg op') (nid, p) x)     
-   | Silent op' \<Rightarrow> trace (STR ''Some silent step'') Silent (dataflow_op sg op')
-   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow>
-      trace (STR ''Reading progress at nid: '' + print_2 nid + STR '' cgs sizes: ('' + show_nat (length (cons st)) + STR '', '' + show_nat (length (inte st))  + STR '', '' + show_nat (length (prod st)) + STR '')''
-   ) (Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr :=change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op'))
-   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) 
- (let C = cfilter (nop sg) (choices op) in C))"
-  apply (simp only: trace_simp id_def)
-  apply (subst dataflow_op.code[symmetric])
-  apply auto
-  done
 
 lemma class_linorder_lt_of_comp:
   "ID ccompare = Some a \<Longrightarrow> class.linorder (\<lambda>t u. lt_of_comp a t u \<or> t = u) (lt_of_comp a)"
@@ -977,6 +912,76 @@ lemma propagate_all_terminates:
   using assms apply auto
   done
 
+lemma propagate_all_locale_eq_propagate_all:
+  "propagate_all_locale (antichain_from_list oo (dataflow_tree_to_graph df)) df c = propagate_all (antichain_from_list oo (dataflow_tree_to_graph df)) c"
+  unfolding propagate_all_locale_def Let_def propagate_all_def by (auto split: prod.splits)
+
+abbreviation "show_frontier x \<equiv> let f = Max_antichain x in if f = 42 then STR ''{}'' else STR ''{ '' + show_nat (Max_antichain x) + STR '' }''" 
+
+abbreviation "print_frontier x \<equiv> trace ((STR ''Frontier: '') + show_frontier x)" 
+
+abbreviation "show_frontiers impf \<equiv> show_list (show_prod show_loc show_frontier) (map (\<lambda> l. (l, frontier (impf l))) enum_location_inst.enum_location)"
+
+(* Inspired by timely/src/progress/subgraph.rs:453 *)
+(* First migrate all change batches to the worklist, then call propagate_all_locale *)
+definition "change_multiplicities summary xs conf = fold (\<lambda> (l, t, m) c. take_step summary (CM l t m) c) xs conf"
+
+(* Inspired by timely/src/dataflow/operators/generic/builder_rc.rs:29 and timely/src/progress/operate.rs:63 *)
+(* This is the shared that the operator exposes to the subgraph *)
+record ('p, 't) shared_state =
+  cons :: "('p \<times> 't \<times> int) change_batch"
+  inte :: "('p \<times> 't \<times> int) change_batch"
+  prod :: "('p \<times> 't \<times> int) change_batch"
+
+(* Inspired by timely/src/progress/subgraph.rs:759 *)
+definition extract_progress where
+  "extract_progress nid nt st =
+    map (\<lambda> (p, t, m). (Loc nid (Trg p), t, -m)) (cons st) @ 
+    map (\<lambda> (p, t, m). (Loc nid (Src p), t, m)) (inte st) @
+    List.map_filter (\<lambda> (p, t, m). case_option None (\<lambda> (nid', p'). Some (Loc nid' (Trg p'), t, m)) (nt (nid, p))) (prod st)"
+
+(* Inspired by timely/src/dataflow/operators/capability.rs:62 *)
+datatype ('p, 't) capability = Cap (time: "'t :: plus") (out: 'p)
+
+definition "has_progress st = (cons st \<noteq> [] \<or> inte st \<noteq> [] \<or> prod st \<noteq> [])"
+
+abbreviation "nop sg op \<equiv> ((case op of Read (Inl nid) f \<Rightarrow> upfro sg nid | Write _ (Inl _) (Inl (Inl st)) \<Rightarrow> has_progress st | _ \<Rightarrow> True))"
+
+(* Connects the data plane with the control plane (wraps the operators inside the propagation algorithm)  *)
+corec dataflow_op where
+  "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
+     Read (Inl nid) f \<Rightarrow> (case propagate_all (summ sg) (pt_tr sg) of
+         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
+         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron)))))
+      | None \<Rightarrow> \<oslash>)
+   | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x)))
+   | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
+   | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
+   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op')
+   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) (cUn (cfilter (nop sg) (choices op)) (cfilter (Not o (nop sg)) (choices op))))"
+
+lemma dataflow_op_code[code]:
+  "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
+     Read (Inl nid) f \<Rightarrow> trace (STR ''Reading from frontier at nid: '' + print_2 nid) (case propagate_all (summ sg) (pt_tr sg) of
+         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
+         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron)))))
+      | None \<Rightarrow> \<oslash>)
+   | Read (Inr (nid, p)) f \<Rightarrow>  (Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x))))
+   | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> trace (STR ''Writing out data at location: '' + show_loc (Loc nid (Src p))) (Write (dataflow_op sg op') (nid, p) x)     
+   | Silent op' \<Rightarrow> trace (STR ''Some silent step'') Silent (dataflow_op sg op')
+   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow>
+      trace (STR ''Reading progress at nid: '' + print_2 nid + STR '' cgs sizes: ('' + show_nat (length (cons st)) + STR '', '' + show_nat (length (inte st))  + STR '', '' + show_nat (length (prod st)) + STR '')''
+   ) (Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr :=change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op'))
+   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) 
+ (cUn (cfilter (nop sg) (choices op)) (cfilter (Not o (nop sg)) (choices op))))"
+  apply (simp only: trace_simp id_def)
+  apply (subst dataflow_op.code[symmetric])
+  apply auto
+  done
+
+find_theorems linterleave lmerge
+
+(* 
 (* FIXME: Update this for the new optimizations *)
 lemma step_dataflow_op_elim:
   assumes "step io (dataflow_op sg op) op'"
@@ -984,8 +989,8 @@ lemma step_dataflow_op_elim:
     nid p op'' x where "io = Inp (nid, p) x" "op' = dataflow_op sg op''" "step (Inp (Inr (nid, p)) (Inr x)) op op''"
   | nid p op'' x where "io = Out (nid, p) x" "op' = dataflow_op sg op''" "step (Out (Inr (nid, p)) (Inr x)) op op''"
   | op'' where "io = Tau" "op' = dataflow_op sg op''" "step Tau op op''"
-  | nid op'' st where "has_progress st" "io = Tau" "op' = dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg)) \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
-  | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_all (summ sg) (pt_tr sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr>)" "upfro sg nid"
+  | nid op'' st where "\<not> optm sg \<or> has_progress st" "io = Tau" "op' = dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg)) \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
+  | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_all (summ sg) (pt_tr sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr>)" "\<not> optm sg \<or> upfro sg nid"
     "imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p)))" "op' = dataflow_op sg' op''" "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op''"
   using assms apply -
   apply atomize_elim
@@ -993,14 +998,37 @@ lemma step_dataflow_op_elim:
   apply (simp split: if_splits)
   apply (elim stepChoiceE)
   subgoal for op'
-    by (auto del: disjCI split: op.splits sum.splits option.splits simp flip: cin.rep_eq; fastforce)
+    apply (auto del: disjCI split: op.splits sum.splits option.splits simp flip: cin.rep_eq)
+    subgoal by blast
+    subgoal by fastforce
+    subgoal 
+      by (metis Write_in_choices_step)
+    subgoal by fastforce
+    subgoal by blast
+    subgoal by fastforce
+    subgoal by fastforce
+    subgoal by (metis Write_in_choices_step)
+    subgoal by fastforce
+    subgoal by fastforce
+    subgoal by fastforce
+    subgoal by fastforce
+    subgoal by fastforce
+    subgoal by (metis Write_in_choices_step)
+    subgoal by fastforce
+    subgoal by fastforce
+    subgoal by fastforce
+    subgoal by fastforce
+    subgoal by (metis Write_in_choices_step)
+    subgoal by fastforce
+    subgoal by fastforce
+    done
   done
 
 
 lemma step_Tau_dataflow_op_Inp_Inl_intro[intro]:
   "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op' \<Longrightarrow>
    propagate_all(summ sg) (pt_tr sg) = Some conf' \<Longrightarrow>
-   upfro sg nid \<Longrightarrow>
+   upfro sg nid \<or> \<not> optm sg \<Longrightarrow>
    sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> \<Longrightarrow>
    imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) \<Longrightarrow>
    step Tau (dataflow_op sg op) (dataflow_op sg' op')"
@@ -1010,7 +1038,7 @@ lemma step_Tau_dataflow_op_Inp_Inl_intro[intro]:
 
 lemma step_Tau_dataflow_op_Out_Inl_intro[intro]:
   "step (Out (Inl nid) (Inl (Inl st))) op op' \<Longrightarrow>
-   has_progress st \<Longrightarrow>
+   has_progress st \<or> \<not> optm sg \<Longrightarrow>
    sg' = sg\<lparr> upfro := (\<lambda> _. True), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg)) \<rparr> \<Longrightarrow>
    step Tau (dataflow_op sg op) (dataflow_op sg' op')"
   apply (subst dataflow_op.code)
@@ -1043,6 +1071,41 @@ lemma dataflow_op_end_op:
   apply (subst dataflow_op.code)
   apply simp
   done
+
+(* coinductive is_optimal_op where
+  "(\<And>op' io. step io op op' \<Longrightarrow> (case io of Inp (Inr p) x \<Rightarrow> is_optimal_op op')) \<Longrightarrow> is_optimal_op op"
+ *)
+
+lemma wip:
+  "dataflow_op (sg\<lparr> optm := False \<rparr>) op \<approx> dataflow_op (sg\<lparr> optm := True \<rparr>) op"
+  apply (coinduction arbitrary: op sg rule: wbisim_coinduct_upto'')
+  subgoal for io op1' op sg
+    apply (elim step_dataflow_op_elim; clarsimp; hypsubst_thin?)
+    subgoal for nid p op'' x
+      apply (intro conjI exI)
+       apply fast
+      apply (rule wbc_base)
+      apply (intro conjI exI)
+      apply (rule refl)+
+      done
+    prefer 4
+    subgoal for nid op''
+      apply (cases "upfro sg nid")
+      subgoal
+      apply (intro conjI exI[of _ "(dataflow_op (sg\<lparr>optm := True, pt_tr := _, upfro := (upfro (sg\<lparr>optm := False\<rparr>))(nid := False)\<rparr>) op'')"])
+        apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+         apply (rule step_Tau_dataflow_op_Inp_Inl_intro)
+             apply assumption
+            defer
+            apply simp
+        apply simp
+          apply simp_all
+        subgoal
+          apply (rule wbc_base)
+          apply (intro conjI exI)
+          defer
+          oops
 
 lemma steps_Tau_dataflow_op_Tau_intro[intro]:
   "steps (replicate n Tau) op op' \<Longrightarrow>
@@ -1085,7 +1148,7 @@ lemma step_tau_pow_map_op[intro]:
     apply auto
     done
   done
-
+ *)
 lemma dataflow_op_simps[simp]:
   "\<not> is_Read (dataflow_op sg op)"
   "\<not> is_Write (dataflow_op sg op)"
@@ -1281,7 +1344,7 @@ lemma zero_in_graph_path_weight[simp,intro]:
 definition "init_subgraph summary cgs =
    \<lparr> pt_tr = init_conf summary cgs,
    nxt = graph_to_nxt summary,
-   summ = summary, upfro = (\<lambda> _. True) \<rparr>"
+   summ = summary, optm = True, upfro = (\<lambda> _. True) \<rparr>"
 
 definition "compile_dataflow chns dt = (let summary = antichain_from_list oo (dataflow_tree_to_graph dt) in
                                     let op = dataflow_tree_to_operator chns dt in

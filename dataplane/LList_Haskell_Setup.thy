@@ -47,10 +47,6 @@ friend_of_corec lappend where
 declare csome_elem_def[code del]
 declare cthe_elem_def[code del]
 
-
-definition "csingleton (xs :: 'm cset) = xs"
-declare csingleton_def[code del]
-
 definition "cnub (C :: (_ :: equal) cset) = C"
 declare cnub_def[code del]
 
@@ -69,14 +65,11 @@ term lrmdups
 
 code_printing code_module "Cset" \<rightharpoonup> (Haskell)
 \<open>
-module Cset (csingleton, chd, Cset (..), Nat (..), cnub, clast, ctake, safe_nth, ndrop, ntake) where
+module Cset (chd, Cset (..), Nat (..), cnub, clast, ctake, safe_nth, ndrop, ntake, lmerge) where
 import qualified Data.List;
 
 newtype Cset a = Cset [a];
 newtype Nat = Nat Integer;
-
-csingleton (Cset []) = Cset [];
-csingleton (Cset xs) = Cset [Prelude.head xs];
 
 chd (Cset xs) = Prelude.head xs;
 clast (Cset xs) = Prelude.last xs;
@@ -90,9 +83,12 @@ ctake (Nat n) (Cset xs) = Cset (Prelude.take (Prelude.fromInteger n) xs);
 ndrop (Nat n) xs = drop (Prelude.fromInteger n) xs;
 ntake (Nat n) xs = take (Prelude.fromInteger n) xs;
 
+lmerge = (concat . Data.List.transpose);
 \<close> 
 
 declare ltaken.simps[code del]
+
+term linterleave
 
 code_printing
   type_constructor cset \<rightharpoonup>
@@ -103,8 +99,6 @@ code_printing
     (Haskell) "Cset.Nat"
   | constant cset_of_llist \<rightharpoonup>
     (Haskell) "Cset.Cset"
-  | constant csingleton \<rightharpoonup>
-    (Haskell) "Cset.csingleton"
   | constant cthe_elem \<rightharpoonup>
     (Haskell) "Cset.chd"
   | constant csome_elem \<rightharpoonup>
@@ -160,8 +154,10 @@ code_printing
     (Haskell) "all"
   | constant llist_of \<rightharpoonup>
     (Haskell) "id"
-(*   | constant lmerge \<rightharpoonup>
-    (Haskell) "Prelude.concat" *)
+  | constant linterleave \<rightharpoonup>
+    (Haskell) infixr 5 "++"
+   | constant lmerge \<rightharpoonup>
+    (Haskell) "Cset.lmerge"  
 
 term lrmdups
 
@@ -243,7 +239,6 @@ fun find_output_at where
    (if ops' = {||} then None else cthe_elem ops'))"
 | "find_output_at op x _ = Code.abort (STR ''steps_of out of gas'') undefined"
 
-thm cimage_code
 
 fun check_prefix where
   "check_prefix n [] op = True"
@@ -252,5 +247,12 @@ fun check_prefix where
      None \<Rightarrow> False
    | Some op \<Rightarrow> check_prefix n ios op)"
 
+lemma choice2_simp[simp]:
+  "choice2 op1 op2 = Choice {| op1, op2 |}"
+  by simp
+
+lemma choice3_simp[simp]:
+  "choice3 op1 op2 op3 = Choice {| op1, op2, op3 |}"
+  by simp
 
 end
