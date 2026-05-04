@@ -47,7 +47,7 @@ abbreviation init_operator_state_ty2 where
    produ = [],
    input = (\<lambda> _. []),
    outpu = (\<lambda> _. []),
-   front = (\<lambda> _. {}\<^sub>A),
+   front = (\<lambda> _. frontier {#\<bottom>#}\<^sub>z),
    ocaps = (\<lambda> _. []),
    initia = False,
    en1 = Inl,
@@ -66,13 +66,18 @@ abbreviation "test_op \<equiv> compile_dataflow (\<lambda> _. []) (G (\<lambda> 
 
 find_theorems cUn name: code
 
+
+value [GHC] "check_prefix 5500 [((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1)),((1, 1), (Inr 3, MyPair 1 0))] test_op"
+value [GHC] "check_prefix 5500 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] test_op"
+value [GHC] "check_prefix 5500 [((1, 1), (Inr 3, MyPair 1 0)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1))] test_op" 
+
+
+value [GHC]  "fst (csome_elem (wsteps_exec test_op))"
+(* 
 value [GHC] "lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op)"
-value [GHC] "check_prefix 11000 [((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1)),((1, 1), (Inr 3, MyPair 1 0))] test_op"
-value [GHC] "check_prefix 5000 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] test_op"
-  (* too slow, but maybe it returns  
-  value [GHC] "check_prefix 100 [((1, 1), (Inr 3, MyPair 1 0)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1))] test_op" *)
 
-
+ *)
+term DEBUG
 
 end
 section \<open>Generalized Correctness\<close>

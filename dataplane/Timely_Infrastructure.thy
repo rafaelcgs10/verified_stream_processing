@@ -90,7 +90,7 @@ lemma rmdups_insert_NilI:
    apply auto
   done
 
-definition "DEBUG = False"
+definition "DEBUG = True"
 
 definition "trace = (if DEBUG then Debug.tracing else (\<lambda> x y. y))"
 
@@ -940,12 +940,129 @@ definition extract_progress where
     map (\<lambda> (p, t, m). (Loc nid (Src p), t, m)) (inte st) @
     List.map_filter (\<lambda> (p, t, m). case_option None (\<lambda> (nid', p'). Some (Loc nid' (Trg p'), t, m)) (nt (nid, p))) (prod st)"
 
+
+
+definition "cset_from_list = cset_of_llist o llist_of"
+
+lemma cset_from_list_Nil[simp]:
+  "cset_from_list [] = {||}"
+  unfolding cset_of_llist_def cset_from_list_def
+  by (clarsimp simp flip: cin.rep_eq bot_cset_def)
+lemma cset_from_list_Cons[simp]:
+  "cset_from_list (x # xs) = cinsert x (cset_from_list xs)"
+  unfolding cset_from_list_def
+  apply (clarsimp simp flip: cin.rep_eq)
+  apply (metis cinsert_code)
+  done
+lemma cset_from_list_append[simp]:
+  "cset_from_list (xs @ ys) = cUn (cset_from_list xs) (cset_from_list ys)"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma cset_from_list_map[simp]:
+  "cset_from_list (map f xs) = (f |`| (cset_from_list xs))"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma cset_from_list_concat[simp]:
+  "cset_from_list (concat xs) = cUnion (cset_from_list |`| (cset_from_list xs))"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  apply (meson in_cset_of_llist_llist_of rev_cBexI)
+  done
+lemma cset_from_list_rmdups[simp]:
+  "cset_from_list (rmdups {} xs) = cset_from_list xs"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma cset_from_list_filter[simp]:
+  "cset_from_list (filter p xs) = cfilter p (cset_from_list xs)"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma rcset_cset_from_list[simp]:
+  "rcset (cset_from_list xs) = set xs"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma in_cset_from_list[simp]:
+  "x |\<in>| (cset_from_list xs) \<longleftrightarrow> x \<in> set xs"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma in_cimage_cset_from_list[simp]:
+  "x |\<in>| (f |`| (cset_from_list xs)) \<longleftrightarrow> x \<in> f ` set xs"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done 
+
+lemma cset_of_llist_lshift[simp]:
+  "cset_of_llist (xs @@- lxs) = cUn (cset_of_llist lxs) (cset_from_list xs)"
+  apply (induct xs arbitrary: lxs)
+  apply simp
+  subgoal
+    apply clarsimp
+    apply (metis cinsert_code)
+    done
+  done
+
 (* Inspired by timely/src/dataflow/operators/capability.rs:62 *)
 datatype ('p, 't) capability = Cap (time: "'t :: plus") (out: 'p)
 
 definition "has_progress st = (cons st \<noteq> [] \<or> inte st \<noteq> [] \<or> prod st \<noteq> [])"
 
-abbreviation "nop sg op \<equiv> ((case op of Read (Inl nid) f \<Rightarrow> upfro sg nid | Write _ (Inl _) (Inl (Inl st)) \<Rightarrow> has_progress st | _ \<Rightarrow> True))"
+abbreviation "not_nop sg op \<equiv> (case op of Read (Inl nid) f \<Rightarrow> upfro sg nid | Write _ (Inl _) (Inl (Inl st)) \<Rightarrow> has_progress st | _ \<Rightarrow> True)"
+
+fun delay_nop where
+  "delay_nop F 0 xs lxs = xs @@- lxs"
+| "delay_nop F n xs LNil = llist_of xs"
+| "delay_nop F (Suc n) xs (LCons x lxs) = (if F x then LCons x (delay_nop F n xs lxs) else delay_nop F n (xs @ [x]) lxs)"
+declare delay_nop.simps[code del]
+declare delay_nop.simps[simp del]
+
+lemma delay_nop_code[code]:
+  "delay_nop F n xs lxs =
+  (if n = 0 then trace (STR ''Natural too small'') (xs @@- lxs) else
+  (case lxs of LNil \<Rightarrow> llist_of xs | LCons x lxs \<Rightarrow> (if F x then LCons x (delay_nop F (n - 1) xs lxs) else trace (STR ''Delay'') (delay_nop F (n - 1) (xs @ [x]) lxs))))"
+  apply (cases n)
+  apply (simp_all add: delay_nop.simps split: llist.splits)
+  done
+
+definition "delay_cset (F :: ('a, 'b, 'c) op \<Rightarrow> bool) (n :: nat) (C :: (('a, 'b, 'c) op) cset) = C"
+declare delay_cset_def[code del]
+
+lemma delay_cset_code_aux:
+  "cUn (delay_cset F n (cset_of_llist lxs)) (cset_from_list xs)  = cset_of_llist (delay_nop F n xs lxs)"
+  unfolding delay_cset_def
+  apply (induct n arbitrary: lxs xs)
+   apply (simp_all add: delay_nop.simps split: llist.splits)
+  subgoal for n lxs xs
+    apply (cases lxs)
+   apply (simp_all add: delay_nop.simps split: llist.splits)
+     apply (metis cset_of_llist_lshift shift_LNil)
+   apply (auto simp add: delay_nop.simps split: llist.splits simp flip: cin.rep_eq)
+    apply (metis cUn_cinsert_left cinsert_code)
+    apply (metis cUn_cinsert_left cinsert_code)
+    apply (metis cset_of_llist_lshift snoc_shift)
+    apply (metis cset_of_llist_lshift snoc_shift)
+    done
+  done
+
+lemma delay_cset_code[code]:
+  "delay_cset F n (cset_of_llist lxs) = cset_of_llist (delay_nop F n [] lxs)"
+  apply (simp flip: delay_cset_code_aux)
+  done
+
+definition dead_operator_aux where
+  "dead_operator_aux sg nid = (\<forall> p. frontier (c_imp (pt_tr sg) (Loc nid (Src p))) = {}\<^sub>A \<and> frontier (c_imp (pt_tr sg) (Loc nid (Trg p))) = {}\<^sub>A)"
+
+fun dead_operator where
+  "dead_operator sg (Silent _) = False"
+| "dead_operator sg (Read (Inl nid) f) = False"
+| "dead_operator sg (Read (Inr (nid, p)) f) = False"
+| "dead_operator sg (Write op' (Inr (nid, p)) (Inr x)) = False"
+| "dead_operator sg (Write op' (Inl nid) (Inl (Inl st))) = dead_operator_aux sg nid"
+| "dead_operator sg _ = True"
 
 (* Connects the data plane with the control plane (wraps the operators inside the propagation algorithm)  *)
 corec dataflow_op where
@@ -957,8 +1074,10 @@ corec dataflow_op where
    | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x)))
    | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
    | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
-   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op')
-   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) (cUn (cfilter (nop sg) (choices op)) (cfilter (Not o (nop sg)) (choices op))))"
+   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> upfro := (if has_progress st then (\<lambda> _. True) else upfro sg), pt_tr := change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op')
+   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) 
+   (choices op)
+   )"
 
 lemma dataflow_op_code[code]:
   "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
@@ -971,15 +1090,16 @@ lemma dataflow_op_code[code]:
    | Silent op' \<Rightarrow> trace (STR ''Some silent step'') Silent (dataflow_op sg op')
    | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow>
       trace (STR ''Reading progress at nid: '' + print_2 nid + STR '' cgs sizes: ('' + show_nat (length (cons st)) + STR '', '' + show_nat (length (inte st))  + STR '', '' + show_nat (length (prod st)) + STR '')''
-   ) (Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr :=change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op'))
+   ) (Silent (dataflow_op (sg\<lparr> upfro := (if has_progress st then (\<lambda> _. True) else upfro sg), pt_tr :=change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op'))
    | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) 
- (cUn (cfilter (nop sg) (choices op)) (cfilter (Not o (nop sg)) (choices op))))"
-  apply (simp only: trace_simp id_def)
-  apply (subst dataflow_op.code[symmetric])
+   (let ops = delay_cset (not_nop sg) 10000 (choices op) in
+    let ops2 = delay_cset (is_Silent) 10000 ops in
+    ops2)
+   )"
+  apply (simp only: delay_cset_def trace_simp id_def)
+  apply (subst dataflow_op.code)
   apply auto
-  done
-
-find_theorems linterleave lmerge
+  done 
 
 (* 
 (* FIXME: Update this for the new optimizations *)
@@ -1407,7 +1527,7 @@ lemma list_diff_Nil[simp]:
 
 definition "drop_cap os cap = os\<lparr> inter := inter os @ [(out cap, time cap, -1)], ocaps := (ocaps os) ((out cap) := remove_last (time cap) (ocaps os (out cap))) \<rparr>"
 
-definition "drop_caps os caps = os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps, ocaps := (\<lambda> p. list_diff (ocaps os p) (map time (filter (\<lambda> cap. out cap = p) caps))) \<rparr>"
+definition "drop_caps os caps = trace (STR ''Drop caps'')  os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps, ocaps := (\<lambda> p. list_diff (ocaps os p) (map time (filter (\<lambda> cap. out cap = p) caps))) \<rparr>"
 
 definition "add_cap os p t = os\<lparr> inter := inter os @ [(p, t, 1)], ocaps := (ocaps os) (p := ocaps os p @ [t])  \<rparr>"
 
@@ -1420,27 +1540,27 @@ lemma outpu_consumes[simp]:
   unfolding consumes_def BENQ_def add_caps_def
   by (auto simp add: operator_state.defs)
 
-
 (* All timely operators are defined using this function. The logic is passed as argument. This is the only corec we need *)
 corec builder_op where
   \<open>builder_op fb ips ops os logic =
-  ( choice5
+  (choice5
     (if initia os then
       Choice (cimage (\<lambda>os. Silent (builder_op fb ips ops os logic)) (logic os))
     else \<oslash>)
     (Choice (cimage (\<lambda>p. case outpu os p of
       x # xs \<Rightarrow> send_output (builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic) p x)
       (cfilter (\<lambda>p. outpu os p \<noteq> []) ops)))
-    (if fb then Read None (\<lambda>x. case x of
+    (if fb \<and> \<not> (\<forall> p. front os p = {}\<^sub>A) then Read None (\<lambda>x. case x of
       Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f, initia := True\<rparr>) logic
     | _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda>_. \<oslash>))
      else \<oslash>)
     (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda>x. case x of
       Inr (d, t) \<Rightarrow> builder_op fb ips ops (consumes os p t d) logic
     | Inl _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda> _. \<oslash>))) ips))
-    (let (os', st) = obtain_progress os in send_progress (builder_op fb ips ops os' logic) st
-    ))\<close>
+    (let (os', st) = obtain_progress os in send_progress (builder_op fb ips ops os' logic) st)
+   )\<close>
 
+(*
 lemma step_builder_op_elim:
   assumes \<open>step io (builder_op fb ips ops os logic) op\<close>
   obtains (read_end_None) x where \<open>io = Inp None x\<close> \<open>is_Inr x \<or> is_Inl x \<and> is_Inl (projl x)\<close> \<open>op = \<oslash>\<close>
@@ -1540,7 +1660,7 @@ next
   ultimately show ?thesis using silent Tau by blast
 qed
 
-lemma step_builder_op_Read_None[intro]:
+ lemma step_builder_op_Read_None[intro]:
   assumes \<open>io = Inp None (Inl (Inr f))\<close> \<open>fb\<close>
     \<open>op = builder_op fb ips ops (os\<lparr>front := f, initia := True\<rparr>) logic\<close>
   shows \<open>step io (builder_op fb ips ops os logic) op\<close>
@@ -1622,7 +1742,7 @@ lemma step_builder_op_n_Silents[intro]:
     apply simp_all
     done
   done
-
+*)
 definition notifier_op where
   "notifier_op ips ops os logic = (builder_op True ips ops os
    (\<lambda> os. logic os (\<lambda> p. filter (\<lambda> t. \<not> frontier_less_equal (front os p) t) (ocaps os p))))"
@@ -2130,61 +2250,6 @@ lemma ifrontier_eq_all_le:
   apply (metis dataflow_topology_from_tree.elems_eq_sum_eq member_antichain.rep_eq)
   done
 
-
-
-definition "cset_from_list = cset_of_llist o llist_of"
-
-lemma cset_from_list_Nil[simp]:
-  "cset_from_list [] = {||}"
-  unfolding cset_of_llist_def cset_from_list_def
-  by (clarsimp simp flip: cin.rep_eq bot_cset_def)
-lemma cset_from_list_Cons[simp]:
-  "cset_from_list (x # xs) = cinsert x (cset_from_list xs)"
-  unfolding cset_from_list_def
-  apply (clarsimp simp flip: cin.rep_eq)
-  apply (metis cinsert_code)
-  done
-lemma cset_from_list_append[simp]:
-  "cset_from_list (xs @ ys) = cUn (cset_from_list xs) (cset_from_list ys)"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma cset_from_list_map[simp]:
-  "cset_from_list (map f xs) = (f |`| (cset_from_list xs))"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma cset_from_list_concat[simp]:
-  "cset_from_list (concat xs) = cUnion (cset_from_list |`| (cset_from_list xs))"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  apply (meson in_cset_of_llist_llist_of rev_cBexI)
-  done
-lemma cset_from_list_rmdups[simp]:
-  "cset_from_list (rmdups {} xs) = cset_from_list xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma cset_from_list_filter[simp]:
-  "cset_from_list (filter p xs) = cfilter p (cset_from_list xs)"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma rcset_cset_from_list[simp]:
-  "rcset (cset_from_list xs) = set xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma in_cset_from_list[simp]:
-  "x |\<in>| (cset_from_list xs) \<longleftrightarrow> x \<in> set xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma in_cimage_cset_from_list[simp]:
-  "x |\<in>| (f |`| (cset_from_list xs)) \<longleftrightarrow> x \<in> f ` set xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done 
 
 
 

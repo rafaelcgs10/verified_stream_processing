@@ -14,11 +14,6 @@ lemma one_plus[code]:
   "(1 :: 1) + x = 1"
   by auto
 
-partial_function (llist) lrmdups_aux where
-  "lrmdups_aux f S lxs = 
- (case lxs of LNil \<Rightarrow> LNil |
- LCons x lxs \<Rightarrow> (if f x \<in> S then lrmdups_aux f S lxs else LCons x (lrmdups_aux f (insert (f x) S) lxs)))"
-declare lrmdups_aux.simps[code]
 
 
 lemma cminus_code[code]:
@@ -26,16 +21,6 @@ lemma cminus_code[code]:
   by (auto simp add: cset_of_llist.rep_eq)
 
 
-definition "lrmdups f = lrmdups_aux f {}"
-
-definition "crmdups (f :: 'a \<Rightarrow> ('b :: equal)) (C :: 'a cset) = C"
-declare crmdups_def[code del]
-
-lemma crmdups_code[code]:
-  "crmdups f (cset_of_llist xs) = cset_of_llist (lrmdups f xs)"
-  oops
-
-definition "compress_cfilter P xs = cfilter P xs"
 
 friend_of_corec lappend where
   "lappend xs lys = (case xs of LNil \<Rightarrow> (case lys of LNil \<Rightarrow> LNil | LCons x xs \<Rightarrow> LCons x xs)
@@ -60,6 +45,10 @@ declare ccard_def[code del]
 lemma ccard_code[code]:
   "ccard (cset_of_llist xs) = length (list_of xs)"
   oops
+
+lemma cBall_code[code]:
+  "cBall (cset_of_llist lxs) P \<longleftrightarrow> (lfilter (Not o P) lxs = LNil)"
+  sorry
 
 term lrmdups
 
@@ -154,11 +143,11 @@ code_printing
     (Haskell) "all"
   | constant llist_of \<rightharpoonup>
     (Haskell) "id"
-  | constant linterleave \<rightharpoonup>
+(*   | constant linterleave \<rightharpoonup>
     (Haskell) infixr 5 "++"
    | constant lmerge \<rightharpoonup>
-    (Haskell) "Cset.lmerge"  
-
+    (Haskell) "Prelude.concat"  
+ *)
 term lrmdups
 
 term crmdups
@@ -235,7 +224,7 @@ fun find_output_at where
 | "find_output_at (Read p f) x n = Code.abort (STR ''steps_of should not read'') undefined"
 | "find_output_at (Silent op) x (Suc n) = find_output_at op x n"
 | "find_output_at (Choice ops) x (Suc n) = (
-   let ops' = cfilter (Not o is_None) (cimage (\<lambda> op. find_output_at op x n) (flat_choices ops)) in
+   let ops' = cfilter (Not o is_None) (cimage (\<lambda> op. find_output_at op x n) (ops)) in
    (if ops' = {||} then None else cthe_elem ops'))"
 | "find_output_at op x _ = Code.abort (STR ''steps_of out of gas'') undefined"
 
