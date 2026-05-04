@@ -25,8 +25,7 @@ abbreviation \<open>initial_state_input lxs \<equiv> \<lparr>
    outpu = (\<lambda>_. []),
    front = Code.abort (STR ''Frontier not initialized'') (\<lambda>_ _. antichain_from_list []),
    ocaps = (\<lambda>_. [])(0 := [\<bottom>]),
-   initia = False,
-   nfron = False,
+   initia = True,
    en1 = Inl,
    de1 = projl,
    is_en1 = isl,
@@ -43,7 +42,6 @@ abbreviation \<open>initial_state_label_prop \<equiv> \<lparr>
    front = Code.abort (STR ''Frontier not initialized'') (\<lambda>_ _. antichain_from_list []),
    ocaps = (\<lambda>_. []),
    initia = False,
-   nfron = False,
    en1 = Inl,
    de1 = projl,
    is_en1 = isl,
@@ -67,8 +65,7 @@ abbreviation \<open>initial_state_increment inc \<equiv> \<lparr>
    outpu = (\<lambda>_. []),
    front = Code.abort (STR ''Frontier not initialized'') (\<lambda>_ _. antichain_from_list []),
    ocaps = (\<lambda>_. []),
-   initia = False,
-   nfron = False
+   initia = False
    \<rparr> :: (_, _, _) operator_state\<close>
 
 abbreviation \<open>logic_map n \<equiv> map_op (case_option (Inl n) (\<lambda>p. Inr (n, p))) (case_option (Inl n) (\<lambda>p. Inr (n, p)))\<close>
@@ -108,7 +105,81 @@ definition \<open>my_summ = (\<lambda>l1 l2.
 abbreviation \<open>test_sg \<equiv> init_subgraph my_summ [(Loc 0 (Src 0), \<bottom>, 1)]\<close>
 abbreviation \<open>test_op \<equiv> dataflow_op test_sg cc_op\<close>
 
+(* Why don't I get traces when I set initia to True for the increment operator? *)
 value [GHC] \<open>trace_exec test_op\<close>
+
+definition collection_le where
+  \<open>collection_le lxs t =
+  list_of (lmap (\<lambda>e. case e of Data _ d \<Rightarrow> d) (lfilter (\<lambda>e. case e of Data t' _ \<Rightarrow> t' \<le> t | _ \<Rightarrow> False) lxs))\<close>
+
+lemma collection_le_LNil[simp]:
+  \<open>collection_le LNil t = []\<close>
+  unfolding collection_le_def by simp
+
+lemma collection_le_LCons_Data:
+  assumes \<open>lfinite (lfilter (\<lambda>e. time e \<le> t) lxs)\<close>
+  shows \<open>collection_le (LCons (Data t' d) lxs) t =
+  (if t' \<le> t then d # collection_le lxs t else collection_le lxs t)\<close>
+proof (cases \<open>t' \<le> t\<close>)
+  case True
+  have \<open>lfilter (\<lambda>e. case e of Data t' _ \<Rightarrow> t' \<le> t | _ \<Rightarrow> False) lxs
+  = lfilter is_Data (lfilter (\<lambda>e. time e \<le> t) lxs)\<close>
+    using event.case_eq_if lfilter_cong lfilter_lfilter by (smt (verit, best))
+  thus ?thesis unfolding collection_le_def using assms by simp
+next
+  case False
+  thus ?thesis unfolding collection_le_def by simp
+qed
+
+lemma collection_le_LCons_Drop[simp]:
+  \<open>collection_le (LCons (Drop t') lxs) t = collection_le lxs t\<close>
+  unfolding collection_le_def by simp
+
+lemma collection_le_LCons_Mint[simp]:
+  \<open>collection_le (LCons (Mint t') lxs) t = collection_le lxs t\<close>
+  unfolding collection_le_def by simp
+
+lemma collection_le_append:
+  \<open>collection_le (llist_of (xs @ ys)) t
+  = collection_le (llist_of xs) t @ collection_le (llist_of ys) t\<close>
+  unfolding collection_le_def by simp
+
+lemma collection_le_lshift:
+  \<open>lfinite (lfilter (\<lambda>e. time e \<le> t) lxs) \<Longrightarrow>
+  collection_le (xs @@- lxs) t = collection_le (llist_of xs) t @ collection_le lxs t\<close>
+proof (induction xs arbitrary: lxs rule: rev_induct)
+  case (snoc x xs)
+  thus ?case by (cases x) (auto simp add: collection_le_append collection_le_LCons_Data)
+qed simp
+
+context
+  fixes edges :: \<open>('a \<times> 'a) set\<close> (\<open>E\<close>)
+begin
+
+(* Undirected reachability and connected components *)
+
+definition reachable where
+  \<open>reachable x y \<equiv> (x, y) \<in> (E \<union> E\<inverse>)\<^sup>*\<close>
+
+definition is_subcc :: \<open>'a set \<Rightarrow> bool\<close>  where
+  \<open>is_subcc S \<equiv> \<forall>x \<in> S. \<forall>y \<in> S. reachable x y\<close>
+
+definition is_cc :: \<open>'a set \<Rightarrow> bool\<close> where
+  \<open>is_cc S \<equiv> S \<noteq> {} \<and> is_subcc S \<and> (\<forall>S'. S \<subseteq> S' \<and> is_subcc S' \<longrightarrow> S' = S)\<close>
+
+abbreviation ccs :: \<open>'a set set\<close> where
+  \<open>ccs \<equiv> {S. is_cc S}\<close>
+
+definition is_ccs :: \<open>'a set set \<Rightarrow> bool\<close> where
+  \<open>is_ccs \<equiv> (=) ccs\<close>
+
+lemma is_ccs_Uniq:
+  \<open>Uniq is_ccs\<close>
+  unfolding Uniq_def is_ccs_def by blast
+
+end
+
+term \<open>ccs (set (collection_le lxs t))\<close>
 
 (*
 lemma ooo_input_op_label_propagation_op_increment_op_source_op:
