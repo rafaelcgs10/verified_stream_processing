@@ -107,7 +107,6 @@ record ('id, 'p, 't) subgraph =
   pt_tr :: "(('id, 'p) location, 't) configuration"
   nxt :: "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option"
   summ :: "('id, 'p) location \<Rightarrow> ('id, 'p) location \<Rightarrow> 't antichain"
-  optm :: "bool"
   upfro :: "'id \<Rightarrow> bool"
 
 datatype ('id, 'p, 's, 'd, 't) dataflow_tree = 
@@ -1101,16 +1100,15 @@ lemma dataflow_op_code[code]:
   apply auto
   done 
 
-(* 
-(* FIXME: Update this for the new optimizations *)
+
 lemma step_dataflow_op_elim:
   assumes "step io (dataflow_op sg op) op'"
   obtains
     nid p op'' x where "io = Inp (nid, p) x" "op' = dataflow_op sg op''" "step (Inp (Inr (nid, p)) (Inr x)) op op''"
   | nid p op'' x where "io = Out (nid, p) x" "op' = dataflow_op sg op''" "step (Out (Inr (nid, p)) (Inr x)) op op''"
   | op'' where "io = Tau" "op' = dataflow_op sg op''" "step Tau op op''"
-  | nid op'' st where "\<not> optm sg \<or> has_progress st" "io = Tau" "op' = dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg)) \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
-  | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_all (summ sg) (pt_tr sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr>)" "\<not> optm sg \<or> upfro sg nid"
+  | nid op'' st where "io = Tau" "op' = dataflow_op (sg\<lparr> upfro := (if has_progress st then (\<lambda> _. True) else upfro sg), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg)) \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
+  | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_all (summ sg) (pt_tr sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr>)"
     "imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p)))" "op' = dataflow_op sg' op''" "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op''"
   using assms apply -
   apply atomize_elim
@@ -1119,26 +1117,10 @@ lemma step_dataflow_op_elim:
   apply (elim stepChoiceE)
   subgoal for op'
     apply (auto del: disjCI split: op.splits sum.splits option.splits simp flip: cin.rep_eq)
-    subgoal by blast
-    subgoal by fastforce
-    subgoal 
-      by (metis Write_in_choices_step)
-    subgoal by fastforce
-    subgoal by blast
-    subgoal by fastforce
-    subgoal by fastforce
-    subgoal by (metis Write_in_choices_step)
     subgoal by fastforce
     subgoal by fastforce
     subgoal by fastforce
     subgoal by fastforce
-    subgoal by fastforce
-    subgoal by (metis Write_in_choices_step)
-    subgoal by fastforce
-    subgoal by fastforce
-    subgoal by fastforce
-    subgoal by fastforce
-    subgoal by (metis Write_in_choices_step)
     subgoal by fastforce
     subgoal by fastforce
     done
@@ -1148,7 +1130,6 @@ lemma step_dataflow_op_elim:
 lemma step_Tau_dataflow_op_Inp_Inl_intro[intro]:
   "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op' \<Longrightarrow>
    propagate_all(summ sg) (pt_tr sg) = Some conf' \<Longrightarrow>
-   upfro sg nid \<or> \<not> optm sg \<Longrightarrow>
    sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> \<Longrightarrow>
    imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) \<Longrightarrow>
    step Tau (dataflow_op sg op) (dataflow_op sg' op')"
@@ -1158,8 +1139,7 @@ lemma step_Tau_dataflow_op_Inp_Inl_intro[intro]:
 
 lemma step_Tau_dataflow_op_Out_Inl_intro[intro]:
   "step (Out (Inl nid) (Inl (Inl st))) op op' \<Longrightarrow>
-   has_progress st \<or> \<not> optm sg \<Longrightarrow>
-   sg' = sg\<lparr> upfro := (\<lambda> _. True), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg)) \<rparr> \<Longrightarrow>
+   sg' = sg\<lparr> upfro := (if has_progress st then (\<lambda> _. True) else upfro sg), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg)) \<rparr> \<Longrightarrow>
    step Tau (dataflow_op sg op) (dataflow_op sg' op')"
   apply (subst dataflow_op.code)
   apply (force elim: step_choicesE split: sum.splits option.splits)
@@ -1195,7 +1175,7 @@ lemma dataflow_op_end_op:
 (* coinductive is_optimal_op where
   "(\<And>op' io. step io op op' \<Longrightarrow> (case io of Inp (Inr p) x \<Rightarrow> is_optimal_op op')) \<Longrightarrow> is_optimal_op op"
  *)
-
+(* 
 lemma wip:
   "dataflow_op (sg\<lparr> optm := False \<rparr>) op \<approx> dataflow_op (sg\<lparr> optm := True \<rparr>) op"
   apply (coinduction arbitrary: op sg rule: wbisim_coinduct_upto'')
@@ -1225,7 +1205,7 @@ lemma wip:
           apply (rule wbc_base)
           apply (intro conjI exI)
           defer
-          oops
+          oops *)
 
 lemma steps_Tau_dataflow_op_Tau_intro[intro]:
   "steps (replicate n Tau) op op' \<Longrightarrow>
@@ -1268,7 +1248,7 @@ lemma step_tau_pow_map_op[intro]:
     apply auto
     done
   done
- *)
+
 lemma dataflow_op_simps[simp]:
   "\<not> is_Read (dataflow_op sg op)"
   "\<not> is_Write (dataflow_op sg op)"
@@ -1464,7 +1444,7 @@ lemma zero_in_graph_path_weight[simp,intro]:
 definition "init_subgraph summary cgs =
    \<lparr> pt_tr = init_conf summary cgs,
    nxt = graph_to_nxt summary,
-   summ = summary, optm = True, upfro = (\<lambda> _. True) \<rparr>"
+   summ = summary, upfro = (\<lambda> _. True) \<rparr>"
 
 definition "compile_dataflow chns dt = (let summary = antichain_from_list oo (dataflow_tree_to_graph dt) in
                                     let op = dataflow_tree_to_operator chns dt in
