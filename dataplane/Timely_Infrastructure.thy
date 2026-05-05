@@ -1028,7 +1028,7 @@ lemma delay_nop_code[code]:
   done
 
 definition "delay_cset (F :: ('a, 'b, 'c) op \<Rightarrow> bool) (n :: nat) (C :: (('a, 'b, 'c) op) cset) = C"
-declare delay_cset_def[code del]
+declare delay_cset_def[code drop]
 
 lemma delay_cset_code_aux:
   "cUn (delay_cset F n (cset_of_llist lxs)) (cset_from_list xs)  = cset_of_llist (delay_nop F n xs lxs)"
@@ -1073,7 +1073,7 @@ corec dataflow_op where
    | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x)))
    | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
    | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
-   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> upfro := (if has_progress st then (\<lambda> _. True) else upfro sg), pt_tr := change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op')
+   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op')
    | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) 
    (choices op)
    )"
@@ -1089,7 +1089,7 @@ lemma dataflow_op_code[code]:
    | Silent op' \<Rightarrow> trace (STR ''Some silent step'') Silent (dataflow_op sg op')
    | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow>
       trace (STR ''Reading progress at nid: '' + print_2 nid + STR '' cgs sizes: ('' + show_nat (length (cons st)) + STR '', '' + show_nat (length (inte st))  + STR '', '' + show_nat (length (prod st)) + STR '')''
-   ) (Silent (dataflow_op (sg\<lparr> upfro := (if has_progress st then (\<lambda> _. True) else upfro sg), pt_tr :=change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op'))
+   ) (Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr :=change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op'))
    | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) 
    (let ops = delay_cset (not_nop sg) 10000 (choices op) in
     let ops2 = delay_cset (is_Silent) 10000 ops in
@@ -1107,7 +1107,7 @@ lemma step_dataflow_op_elim:
     nid p op'' x where "io = Inp (nid, p) x" "op' = dataflow_op sg op''" "step (Inp (Inr (nid, p)) (Inr x)) op op''"
   | nid p op'' x where "io = Out (nid, p) x" "op' = dataflow_op sg op''" "step (Out (Inr (nid, p)) (Inr x)) op op''"
   | op'' where "io = Tau" "op' = dataflow_op sg op''" "step Tau op op''"
-  | nid op'' st where "io = Tau" "op' = dataflow_op (sg\<lparr> upfro := (if has_progress st then (\<lambda> _. True) else upfro sg), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg)) \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
+  | nid op'' st where "io = Tau" "op' = dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg)) \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
   | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_all (summ sg) (pt_tr sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr>)"
     "imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p)))" "op' = dataflow_op sg' op''" "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op''"
   using assms apply -
@@ -1117,7 +1117,6 @@ lemma step_dataflow_op_elim:
   apply (elim stepChoiceE)
   subgoal for op'
     apply (auto del: disjCI split: op.splits sum.splits option.splits simp flip: cin.rep_eq)
-    subgoal by fastforce
     subgoal by fastforce
     subgoal by fastforce
     subgoal by fastforce
@@ -1139,7 +1138,7 @@ lemma step_Tau_dataflow_op_Inp_Inl_intro[intro]:
 
 lemma step_Tau_dataflow_op_Out_Inl_intro[intro]:
   "step (Out (Inl nid) (Inl (Inl st))) op op' \<Longrightarrow>
-   sg' = sg\<lparr> upfro := (if has_progress st then (\<lambda> _. True) else upfro sg), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg)) \<rparr> \<Longrightarrow>
+   sg' = sg\<lparr> upfro := (\<lambda> _. True), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg)) \<rparr> \<Longrightarrow>
    step Tau (dataflow_op sg op) (dataflow_op sg' op')"
   apply (subst dataflow_op.code)
   apply (force elim: step_choicesE split: sum.splits option.splits)
@@ -1160,7 +1159,7 @@ lemma step_Out_dataflow_op_Out_Inr_intro[intro!]:
   done
 
 lemma step_Inp_dataflow_op_Inp_Inr_intro[intro!]:
-  "step (Inp (Inr (nid, p)) (Inr x)) op op' \<Longrightarrow>
+  "step (Inp (Inr (nid, p)) (Inr x)) op op' \<Longrightarrow>  
    step (Inp (nid, p) x) (dataflow_op sg op) (dataflow_op sg op')"
   apply (subst dataflow_op.code)
   apply (fastforce elim: step_choicesE split: sum.splits option.splits)
@@ -1530,7 +1529,7 @@ corec builder_op where
     (Choice (cimage (\<lambda>p. case outpu os p of
       x # xs \<Rightarrow> send_output (builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic) p x)
       (cfilter (\<lambda>p. outpu os p \<noteq> []) ops)))
-    (if fb \<and> \<not> (\<forall> p. front os p = {}\<^sub>A) then Read None (\<lambda>x. case x of
+    (if fb then Read None (\<lambda>x. case x of
       Inl (Inr f) \<Rightarrow> builder_op fb ips ops (os\<lparr>front := f, initia := True\<rparr>) logic
     | _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda>_. \<oslash>))
      else \<oslash>)
@@ -1540,7 +1539,7 @@ corec builder_op where
     (let (os', st) = obtain_progress os in send_progress (builder_op fb ips ops os' logic) st)
    )\<close>
 
-(*
+
 lemma step_builder_op_elim:
   assumes \<open>step io (builder_op fb ips ops os logic) op\<close>
   obtains (read_end_None) x where \<open>io = Inp None x\<close> \<open>is_Inr x \<or> is_Inl x \<and> is_Inl (projl x)\<close> \<open>op = \<oslash>\<close>
@@ -1691,6 +1690,16 @@ lemma steps_builder_op_Write_Some[intro]:
   apply fastforce
   done
 
+lemma steps_builder_op_Read_Some[intro]:
+  assumes \<open>p |\<in>| ips\<close> 
+    \<open>op = builder_op fb ips ops (fold (\<lambda> (d, t) os. consumes os p t d) xs os) logic\<close>
+  shows \<open>steps (map (\<lambda> x. Inp (Some p) (Inr x)) xs) (builder_op fb ips ops os logic) op\<close>
+  using assms apply -
+  apply (induct xs arbitrary: os op)
+   apply auto[1]
+  apply fastforce
+  done
+
 lemma step_builder_op_Silent[intro]:
   assumes \<open>io = Tau\<close> \<open>initia os\<close> \<open>os' |\<in>| logic os\<close>
     \<open>op = builder_op fb ips ops os' logic\<close>
@@ -1722,7 +1731,7 @@ lemma step_builder_op_n_Silents[intro]:
     apply simp_all
     done
   done
-*)
+
 definition notifier_op where
   "notifier_op ips ops os logic = (builder_op True ips ops os
    (\<lambda> os. logic os (\<lambda> p. filter (\<lambda> t. \<not> frontier_less_equal (front os p) t) (ocaps os p))))"

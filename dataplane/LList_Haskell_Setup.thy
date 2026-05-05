@@ -48,7 +48,7 @@ lemma ccard_code[code]:
 
 lemma cBall_code[code]:
   "cBall (cset_of_llist lxs) P \<longleftrightarrow> (lfilter (Not o P) lxs = LNil)"
-  sorry
+  oops
 
 term lrmdups
 

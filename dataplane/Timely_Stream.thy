@@ -536,8 +536,9 @@ lemma vacant_not_frontier_less_equal:
 definition "ev_progress lxs C =
    (\<forall> t.
      (\<exists> n \<le> llength lxs.
-       vacant t (C + mset (map time (filter is_Mint (ltaken n lxs))) - mset (map time (filter is_Drop (ltaken n lxs)))) \<and>
-       (\<forall> t' \<le> t. t' \<notin> event.time ` lset (ldropn n lxs) \<and> n \<le> llength lxs)))"
+       vacant t (C + mset (map time (filter is_Mint (ltaken n lxs))) - mset (map time (filter is_Drop (ltaken n lxs))))))"
+
+
 
 lemma timely_input_stream_advances_frontier:
   "timely_input_stream lxs C \<Longrightarrow>
