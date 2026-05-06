@@ -4,8 +4,12 @@ imports
   Label_Propagation_op
   Ooo_Input_op
   Increment_op
-  Dataplane.LList_Haskell_Setup
+  Set_op
+  "../Correctness/General"
 begin
+
+no_notation shiftr (infixl \<open>>>\<close> 55)
+no_syntax (ASCII) "_thenM" :: \<open>['a, 'b] \<Rightarrow> 'c\<close>  (infixl \<open>>>\<close> 54)
 
 (* TODO move *)
 lemma num2_cases:
@@ -81,36 +85,36 @@ abbreviation \<open>cc_op \<equiv> comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (
     op1
     op2))))\<close>
 
-definition \<open>my_summ = (\<lambda>l1 l2.
+definition \<open>raw_summary = (\<lambda>l1 l2.
    if l1 = Loc (0 :: 3) (Trg (0 :: 2)) \<and> l2 = Loc (0 :: 3) (Src (0 :: 2))
-   then antichain_from_list [0]
+   then [0]
    else if l1 = Loc 0 (Src 0) \<and> l2 = Loc 1 (Trg 0)
-   then antichain_from_list [0]
+   then [0]
    else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 0)
-   then antichain_from_list [0]
+   then [0]
    else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 1)
-   then antichain_from_list [0]
+   then [0]
    else if l1 = Loc 1 (Trg 1) \<and> l2 = Loc 1 (Src 0)
-   then antichain_from_list [0]
+   then [0]
    else if l1 = Loc 1 (Trg 1) \<and> l2 = Loc 1 (Src 1)
-   then antichain_from_list [0]
+   then [0]
    else if l1 = Loc 1 (Src 1) \<and> l2 = Loc 2 (Trg 0)
-   then antichain_from_list [0]
+   then [0]
    else if l1 = Loc 2 (Trg 0) \<and> l2 = Loc 2 (Src 0)
-   then antichain_from_list [MyPair (0 :: nat) (1 :: nat)]
+   then [MyPair (0 :: nat) (1 :: nat)]
    else if l1 = Loc 2 (Src 0) \<and> l2 = Loc 1 (Trg 1)
-   then antichain_from_list [0]
-   else {}\<^sub>A)\<close>
+   then [0]
+   else [])\<close>
 
-abbreviation \<open>test_sg \<equiv> init_subgraph my_summ [(Loc 0 (Src 0), \<bottom>, 1)]\<close>
+abbreviation \<open>test_sg \<equiv> init_subgraph (antichain_from_list \<circ>\<circ> raw_summary) [(Loc 0 (Src 0), \<bottom>, 1)]\<close>
 abbreviation \<open>test_op \<equiv> dataflow_op test_sg cc_op\<close>
 
 (* Why don't I get traces when I set initia to True for the increment operator? *)
 value [GHC] \<open>trace_exec test_op\<close>
 
 definition collection_le where
-  \<open>collection_le lxs t =
-  list_of (lmap (\<lambda>e. case e of Data _ d \<Rightarrow> d) (lfilter (\<lambda>e. case e of Data t' _ \<Rightarrow> t' \<le> t | _ \<Rightarrow> False) lxs))\<close>
+  \<open>collection_le lxs t = list_of (lmap (\<lambda>e. case e of Data _ d \<Rightarrow> d)
+  (lfilter (\<lambda>e. case e of Data t' _ \<Rightarrow> t' \<le> t | _ \<Rightarrow> False) lxs))\<close>
 
 lemma collection_le_LNil[simp]:
   \<open>collection_le LNil t = []\<close>
@@ -173,40 +177,76 @@ abbreviation ccs :: \<open>'a set set\<close> where
 definition is_ccs :: \<open>'a set set \<Rightarrow> bool\<close> where
   \<open>is_ccs \<equiv> (=) ccs\<close>
 
-lemma is_ccs_Uniq:
-  \<open>Uniq is_ccs\<close>
-  unfolding Uniq_def is_ccs_def by blast
+lemma Ex1_is_ccs:
+  \<open>Ex1 is_ccs\<close>
+  unfolding is_ccs_def by blast
 
 end
 
-term \<open>ccs (set (collection_le lxs t))\<close>
-
-(*
-lemma ooo_input_op_label_propagation_op_increment_op_source_op:
-  defines \<open>invariant inc os1 buf1 os2 buf2 os3 buf3 \<equiv> initia os1 \<and> timely_input_stream (es os1 0) (mset (ocaps os1 0))
-  \<and> (\<forall>x \<in> set (buf1 (Inr (1, 0))) \<union> set (buf2 (Inr (2, 0))) \<union> set (buf3 (Inr (1, 1))). is_Inr x)
-  \<and> initia os2 \<and> intsum os2 = default_internal_summary \<and> initia os3 \<and> intsum os3 0 0 = [inc] \<and> ocaps os3 0 = map (\<lambda>(_, t). t + inc) (input os2 0) \<and> inc > 0\<close>
-    and \<open>my_ooo_input_op os \<equiv> map_op
-  (case_option (Inl (0 :: 3)) (\<lambda>(p :: 2). Inr (0 :: 3, p))) (case_option (Inl (0 :: 3)) (\<lambda>(p :: 2). Inr (0 :: 3, p)))
-  (ooo_input_op {|0 :: 2|} os)\<close>
-    and \<open>my_label_propagation_op os' \<equiv> map_op
-  (case_option (Inl (1 :: 3)) (\<lambda>(p :: 2). Inr (1 :: 3, p))) (case_option (Inl (1 :: 3)) (\<lambda>(p :: 2). Inr (1 :: 3, p)))
-  (label_propagation_op os')\<close>
-    and \<open>my_increment_op inc os'' \<equiv> map_op
-  (case_option (Inl (2 :: 3)) (\<lambda>(p :: 2). Inr (2 :: 3, p))) (case_option (Inl (2 :: 3)) (\<lambda>(p :: 2). Inr (2 :: 3, p)))
-  (increment_op (0 :: 2) (0 :: 2) inc os'')\<close>
-    and \<open>my_source_op inc os1 buf1 os2 buf2 os3 buf3 \<equiv> map_op (\<lambda>(p :: 2). (1 :: 3, p)) (\<lambda>(p :: 2). (1 :: 3, p))
-    (source_op ((\<lambda>(p :: 2). undefined)))\<close>
-  assumes \<open>invariant inc os1 buf1 os2 buf2 os3 buf3\<close>
-  shows \<open>dataflow_op sg (map_op (case_sum id id) (case_sum id id)
-  (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] buf1
-    (my_ooo_input_op os1)
-    (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] buf3 (map_op (case_sum id id) (case_sum id id)
-      (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] buf2
-        (my_label_propagation_op os2)
-        (my_increment_op inc os3))))))
-  \<approx> my_source_op inc os1 buf1 os2 buf2 os3 buf3\<close>
-  using assms(6)
-*)
+lemma label_propagation_correctness:
+  fixes lxs :: \<open>((nat, nat) myprod, nat \<times> nat) event llist\<close>
+    and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
+    and os_input :: \<open>(2, nat \<times> nat + nat set set, nat \<times> nat, (nat, nat) myprod) input_state\<close>
+    and os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
+    and cbufs chns :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
+    and sg :: \<open>(3, 2, (nat, nat) myprod) subgraph\<close>
+    and T :: \<open>nat list\<close>
+    and G :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat list\<close>
+    and V :: \<open>nat \<Rightarrow> nat list\<close>
+    and L :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat\<close>
+    and S SO SP D :: \<open>((3 \<times> 2) \<times> (nat \<times> nat + nat set set) \<times> (nat, nat) myprod) cset\<close>
+  assumes
+    subgraph_inv: \<open>summ sg = antichain_from_list \<circ>\<circ> raw_summary\<close> \<open>nxt sg = graph_to_nxt (summ sg)\<close>
+    and
+    os_inv:
+    \<open>os_input = operator_state.extend (os 0) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
+      es = (\<lambda>_. LNil)(0 := lxs)\<rparr>\<close>
+    \<open>input (os 0) = (\<lambda>_. [])\<close> \<open>initia (os 0)\<close>
+    \<open>os_label_prop = operator_state.extend (os 1) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
+        en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>\<close>
+    \<open>ty1_check os_input (curry cbufs 0)\<close> \<open>ty2_check os_label_prop (curry cbufs 1)\<close>
+    \<open>input_ocaps_inv (os 1)\<close>
+    \<open>\<forall>n. intsum (os n) = (\<lambda>p1 p2. raw_summary (Loc n (Trg p1)) (Loc n (Src p2)))\<close>
+    \<open>\<not> upfro sg 1 \<longrightarrow> (initia (os 1)
+      \<and> (\<forall>p. front (os 1) p = ifrontier (summ sg) (-+-) (pt_tr sg) (Loc 1 (Trg p))))\<close>
+    and buffers_inv: \<open>chns = outputs_at_target (summ sg) os >> cbufs >> inputs_at_target os\<close>
+    and dataplane_inv: \<open>dataplane_tracker_inv os cbufs sg\<close> (*\<open>cbufs (0, 0) = []\<close>*)
+    and csets_inv:
+    \<open>SP = cimage
+      (\<lambda>t. ((1, 0), (Inr (ccs
+        (set (collection_le (map (\<lambda>(x, t'). Data t' (projl x)) (chns (1, 0)) @@- lxs) t)
+        \<union> all_edges os_label_prop (myfst t))), t)))
+      (cUn (ts lxs) (cset_from_list (map snd (chns (1, 0)))))\<close>
+    \<open>SO = cset_from_list (map (\<lambda>x. ((1, 0), x)) (outpu (os 1) 0))\<close>
+    and input_stream_inv: \<open>timely_input_stream lxs (mset (ocaps (os 0) 0))\<close>
+  shows \<open>set_op S D (dataflow_op sg
+  (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>x. case x of Inl _ \<Rightarrow> [] | Inr l \<Rightarrow> map (\<lambda>(d, t). Inr (d, t)) (cbufs l))
+    (logic_map (0 :: 3) (ooo_input_op {|0 :: 2|} os_input))
+    (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (\<lambda>x. case x of Inl _ \<Rightarrow> [] | Inr l \<Rightarrow> map (\<lambda>(d, t). Inr (d, t)) (cbufs l))
+      (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (\<lambda>x. case x of Inl _ \<Rightarrow> [] | Inr l \<Rightarrow> map (\<lambda>(d, t). Inr (d, t)) (cbufs l))
+        (logic_map (1 :: 3) (label_propagation_op os_label_prop))
+        (logic_map (2 :: 3) (increment_op (0 :: 2) 0 (MyPair 0 1) (os 2)))))))))
+  \<approx> set_spec_op (cUn (cUn S SO) SP) D\<close>
+  using assms
+proof (coinduction arbitrary: lxs os os_input os_label_prop cbufs chns sg T G V L S SO SP D
+    rule: weakBisimWeakUptoBisimCong)
+  case SIM1
+  show ?case (is \<open>wsim ((~) OO \<U> ?R OO (\<approx>)) _ _\<close>)
+  proof -
+    define R where \<open>R = ?R\<close>
+    show ?thesis
+      unfolding R_def[symmetric]
+      unfolding wsim_def ooo_input_op_def label_propagation_op_def increment_op_def
+      apply (intro allI impI)
+      apply (elim step_dataflow_op_elim step_set_op_elim step_map_op_elim step_comp_op_elim
+          step_loop_op_elim step_builder_op_elim conjE)
+      apply (simp_all only: IO.simps)
+(* ; simp only: IO.simps; hypsubst_thin?; clarsimp simp flip: cin.rep_eq split: option.splits; hypsubst_thin?) *)
+      sorry
+  qed
+next
+  case SIM2
+  then show ?case sorry
+  oops
 
 end
