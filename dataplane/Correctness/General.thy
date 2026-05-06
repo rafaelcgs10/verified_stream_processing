@@ -1718,9 +1718,11 @@ lemma outputs_at_target_outpu_if:
 
 
 definition "ts inps = cimage (\<lambda> e. case e of Data t d \<Rightarrow> t) (cfilter is_Data (cset_of_llist inps))"
-
+definition "outputs_ts f xs = rmdups {} (filter (\<lambda> t. \<not> frontier_less_equal f t) xs)"
 
 definition "coll inps t = list_of (lmap (\<lambda> e. case e of Data t d \<Rightarrow> d) (lfilter (\<lambda> e. case e of Data t' d \<Rightarrow> t = t' | _ \<Rightarrow> False) inps))"
+definition "fcoll inps t = (map (\<lambda> e. case e of Data t d \<Rightarrow> d) (filter (\<lambda> e. case e of Data t' d \<Rightarrow> t = t' | _ \<Rightarrow> False) inps))"
+
 
 lemma coll_LNil[simp]:
   "coll LNil t = []"

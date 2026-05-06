@@ -1216,7 +1216,9 @@ lemma steps_Tau_dataflow_op_Tau_intro[intro]:
 
 lemma steps_Tau_dataflow_op_steps_Out_intro[intro]:
   "steps (map (\<lambda> x. Out (Inr (nid, p)) (Inr x)) xs) op op' \<Longrightarrow>
-   (steps (map (\<lambda> x. Out (nid, p) x) xs)) (dataflow_op sg op) (dataflow_op sg op')"
+   ys = map (\<lambda> x. Out (nid, p) x) xs \<Longrightarrow>
+   (steps ys) (dataflow_op sg op) (dataflow_op sg op')"
+  apply hypsubst_thin
   apply (induct xs arbitrary: op op' sg rule: rev_induct)
    apply clarsimp+
   apply fastforce
@@ -1518,6 +1520,22 @@ lemma outpu_consumes[simp]:
   "outpu (consumes os p t d) p' = outpu os p'"
   unfolding consumes_def BENQ_def add_caps_def
   by (auto simp add: operator_state.defs)
+lemma outpu_drop_caps[simp]:
+  "outpu (drop_caps os caps) = outpu os"
+  unfolding drop_caps_def
+  by auto
+lemma outpu_drop_cap[simp]:
+  "outpu (drop_cap os cap) = outpu os"
+  unfolding drop_cap_def
+  by auto
+lemma outpu_produces[simp]:
+  "outpu (produces os batch) = (\<lambda> p. outpu os p @ map (\<lambda> (x, cap). (x, time cap)) (filter (\<lambda> (x, cap). out cap = p) batch))"
+  unfolding produces_def
+  by auto
+lemma outpu_fold_consumes[simp]:
+  "outpu (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = outpu os"
+  by (induct xs arbitrary: os)
+    auto
 
 (* All timely operators are defined using this function. The logic is passed as argument. This is the only corec we need *)
 corec builder_op where
@@ -1682,9 +1700,10 @@ qed
 
 lemma steps_builder_op_Write_Some[intro]:
   assumes \<open>p |\<in>| ops\<close> \<open>outpu os p = xs @ ys\<close>
-    \<open>op = builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := ys)\<rparr>) logic\<close>
-  shows \<open>steps (map (\<lambda> x. Out (Some p) (Inr x)) xs) (builder_op fb ips ops os logic) op\<close>
+    \<open>op = builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := ys)\<rparr>) logic\<close> \<open>zs = map (\<lambda> x. Out (Some p) (Inr x)) xs\<close>
+  shows \<open>steps zs (builder_op fb ips ops os logic) op\<close>
   using assms apply -
+  apply hypsubst_thin
   apply (induct xs arbitrary: os logic op ys rule: rev_induct)
   apply auto[1]
   apply fastforce
@@ -2029,6 +2048,84 @@ lemma intsum_consumes[simp]:
   unfolding consumes_def add_caps_def
   apply auto
   done
+
+lemma input_consumes[simp]:
+  "input (consumes os p t d) = (input os)(p := input os p @ [(d, t)])"
+  unfolding consumes_def add_caps_def BENQ_def
+  by auto
+lemma input_fold_consumes:
+  "input (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = (input os)(p := input os p @ xs)"
+  by (induct xs arbitrary: os)
+   auto
+
+lemma concat_map_map_filter:
+  "distinct xs \<Longrightarrow>
+   p' \<in> set xs \<Longrightarrow>
+   concat (map (\<lambda>x. map ((-+-) t) (filter (\<lambda>xa. x = p') (intsum os p x))) xs) = map ((-+-) t) (intsum os p p')"
+  apply (induct xs)
+  apply simp
+  apply (auto simp add: filter_empty_conv)
+  done
+
+
+lemma ocaps_consumes[simp]:
+  "ocaps (consumes os p t d) = (\<lambda> p'. ocaps os p' @ map (\<lambda> t'. t -+- t') (intsum os p p'))"
+  unfolding consumes_def add_caps_def
+  apply (clarsimp simp add: filter_map split_beta operator_state.defs comp_def map_concat)
+  apply (rule ext)+
+  apply (clarsimp simp add: enum_class.enum_UNIV enum_class.enum_distinct concat_map_map_filter filter_map split_beta operator_state.defs comp_def map_concat filter_concat)
+  done
+lemma ocaps_consumes_fold[simp]:
+  "ocaps (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = (\<lambda> p'. ocaps os p' @ concat (map (\<lambda> (d, t). map (\<lambda> t'. t -+- t') (intsum os p p')) xs))"
+  by (induct xs arbitrary: os)
+   auto
+
+
+lemma inter_consumes_fold:
+  "inter (fold (\<lambda>(t, d) os. consumes os p t d) xs os) = inter os @ concat (map (\<lambda> (t, d). concat (map (\<lambda> p'. map (\<lambda> t'. (p',  t -+- t', 1)) (intsum os p p')) enum_class.enum)) xs)"
+  by (induct xs arbitrary: os)
+    auto
+
+lemma consu_consumes_fold:
+  "consu (fold (\<lambda>(t, d) os. consumes os p t d) xs os) = consu os @ map (\<lambda> (t, d). (p, t, 1)) xs"
+  by (induct xs arbitrary: os)
+   auto
+lemma intsum_consumes_fold:
+  "intsum (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = intsum os"
+  by (induct xs arbitrary: os)
+   auto
+lemma en1_consumes[simp]:
+  "en1 (consumes os p t d) = en1 os"
+  unfolding consumes_def add_caps_def
+  by auto
+lemma en2_consumes[simp]:
+  "en2 (consumes os p t d) = en2 os"
+  unfolding consumes_def add_caps_def
+  by auto
+
+lemma de1_consumes[simp]:
+  "de1 (consumes os p t d) = de1 os"
+  unfolding consumes_def add_caps_def
+  by auto
+lemma de2_consumes[simp]:
+  "de2 (consumes os p t d) = de2 os"
+  unfolding consumes_def add_caps_def
+  by auto
+
+
+lemma en1_fold_consumes[simp]:
+  "en1 (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = en1 os"
+  by (induct xs arbitrary: os) auto
+lemma en2_fold_consumes[simp]:
+  "en2 (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = en2 os"
+  by (induct xs arbitrary: os) auto
+
+lemma de1_fold_consumes[simp]:
+  "de1 (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = de1 os"
+  by (induct xs arbitrary: os) auto
+lemma de2_fold_consumes[simp]:
+  "de2 (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = de2 os"
+  by (induct xs arbitrary: os) auto
 
 lemma frontier_less_equal_ifrontierI:
   "dataflow_topology su (-+-) \<Longrightarrow>
