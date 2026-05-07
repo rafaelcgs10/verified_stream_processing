@@ -2082,16 +2082,20 @@ lemma ocaps_consumes_fold[simp]:
 
 
 lemma inter_consumes_fold:
-  "inter (fold (\<lambda>(t, d) os. consumes os p t d) xs os) = inter os @ concat (map (\<lambda> (t, d). concat (map (\<lambda> p'. map (\<lambda> t'. (p',  t -+- t', 1)) (intsum os p p')) enum_class.enum)) xs)"
+  "inter (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = inter os @ concat (map (\<lambda> (d, t). concat (map (\<lambda> p'. map (\<lambda> t'. (p',  t -+- t', 1)) (intsum os p p')) enum_class.enum)) xs)"
   by (induct xs arbitrary: os)
     auto
 
 lemma consu_consumes_fold:
-  "consu (fold (\<lambda>(t, d) os. consumes os p t d) xs os) = consu os @ map (\<lambda> (t, d). (p, t, 1)) xs"
+  "consu (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = consu os @ map (\<lambda> (d, t). (p, t, 1)) xs"
   by (induct xs arbitrary: os)
    auto
 lemma intsum_consumes_fold:
   "intsum (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = intsum os"
+  by (induct xs arbitrary: os)
+   auto
+lemma produ_consumes_fold:
+  "produ (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = produ os"
   by (induct xs arbitrary: os)
    auto
 lemma en1_consumes[simp]:

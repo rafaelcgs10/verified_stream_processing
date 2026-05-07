@@ -286,7 +286,10 @@ lemma map_fst_filter_snd:
   "map (\<lambda>(x, y). (f x, y)) (filter (\<lambda>x. P (snd x)) xs) = filter (\<lambda>x. P (snd x)) (map (\<lambda>(x, y). (f x, y)) xs)"
   by (induct xs)
    auto
-
+lemma find_None_if:
+  "(\<forall> x\<in>set xs. \<not> P x) \<Longrightarrow>
+   find P xs = None"
+  by (metis find_None_iff2)
 
 (* FIXME: move me *)
 definition "output_batches f F batches = (let ts = outputs_ts F (map snd batches) in
@@ -300,6 +303,28 @@ lemma output_batchesI:
   unfolding output_batches_def Let_def outputs_ts_def
   apply auto
   done
+
+(* FIXME: move me *)
+thm set_extract_progress_consumesD
+lemma set_extract_progressD:
+  "(l, t, m) \<in> set (extract_progress nid ed st') \<Longrightarrow>
+   st' = st\<lparr> cons := consu os @ xs, inte := inter os @ ys, prod := produ os @ zs \<rparr> \<Longrightarrow>
+   (l, t, m) \<in> set (extract_progress nid ed (snd (obtain_progress os))) \<or>
+   (\<exists>m' p. l = Loc nid (Trg p) \<and> m = - m' \<and> (p, t, m') \<in> set xs) \<or>
+   (\<exists>m' p s. l = Loc nid (Src p) \<and> (p, t, m) \<in> set ys) \<or>
+   (\<exists> p' p nid'. l = Loc nid' (Trg p') \<and> ed (nid, p) = Some (nid', p') \<and> (p, t, m) \<in> set zs)"
+  unfolding extract_progress_def obtain_progress_def
+  apply (auto  simp add: split_beta image_iff Misc.set_map_filter split: option.splits)
+  subgoal
+    by force
+  subgoal
+    by force
+  subgoal
+    by (metis fst_conv option.distinct(1) option.simps(1) snd_conv)
+  subgoal
+    by (metis fst_conv option.distinct(1) option.simps(1) snd_conv)
+  done
+
 
 lemma correctness_gen:
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
@@ -1631,10 +1656,57 @@ next
         subgoal for nid d t
           apply (clarsimp simp flip: cin.rep_eq simp add: image_iff SIM2(9,11,12))
           subgoal
-            apply (subst (asm) disj_assoc[symmetric])
             apply (erule disjE)
             subgoal
-              sorry
+              apply (intro exI conjI)
+              apply (rule step_wstep)
+               apply (rule step_set_op_intro_Out)
+                  apply (rule refl)+
+              apply assumption+
+               apply (rule refl)+
+              apply (intro relcomppI)
+                apply (rule bisim_refl)
+              defer
+               apply (rule wbisim_refl)
+              apply (rule wb_upto_b_sym)
+              apply (rule wb_upto_b_base)
+                  unfolding R_def[simplified]
+            apply (rule exI[of _ "os"])
+            apply (rule exI[of _ "sg"])
+            apply (rule exI[of _ cbufs])
+            apply (rule exI[of _ inps])
+            apply (rule exI[of _ "S"])
+            apply (rule exI[of _ "cinsert ((nid, 1), d, t) D"])
+                  apply (intro conjI)
+                  apply (simp_all add: operator_state.defs SIM2(1,2,3,4,5))
+                  subgoal
+                    using SIM2(6)
+                    by (simp add: operator_state.defs SIM2(1,2,3,4,5))
+                  subgoal
+                    using SIM2(7)
+                    by (simp add: operator_state.defs SIM2(1,2,3,4,5))
+                  subgoal
+                    using SIM2(8)
+                    by (simp add: operator_state.defs SIM2(1,2,3,4,5))
+                  subgoal
+                    using SIM2(10)
+                    by (simp add: operator_state.defs SIM2(1,2,3,4,5))
+                  subgoal
+                    using SIM2(13)
+                    by (simp add: operator_state.defs SIM2(1,2,3,4,5))
+                  subgoal
+                    using SIM2(14)
+                    by (simp add: operator_state.defs SIM2(1,2,3,4,5))
+                  subgoal
+                    using SIM2(15)
+                    by (simp add: operator_state.defs SIM2(1,2,3,4,5))
+                  subgoal
+                    using SIM2(16)
+                    by (simp add: operator_state.defs SIM2(1,2,3,4,5))
+                  subgoal
+                    using SIM2(17)
+                    by (simp add: operator_state.defs SIM2(1,2,3,4,5))
+                  done
             subgoal
               using timely_input_stream_advances_frontier[OF SIM2(13), of t] apply -
               apply (clarsimp simp flip: cin.rep_eq )
@@ -1663,6 +1735,199 @@ next
          (pt_tr sg)))")
                 subgoal
                   apply (rule FalseE)
+      apply (subgoal_tac "dataflow_topology (summ sg) (-+-)")
+                    defer
+                  subgoal premises temp
+            apply (simp add: SIM2(1,2) )
+            using dataflow_topology_from_tree.dataflow_topology_axioms
+            apply (metis (lifting) ext dataflow_tree_to_graph_to_my_summ)        
+            done
+          subgoal
+            using SIM2(10)[unfolded dataplane_tracker_inv_def , simplified] apply -
+            apply clarsimp
+            unfolding propagation_inv_def change_deltas_inv_def
+            subgoal for caps
+            apply clarsimp
+            apply (frule change_multiplicities_preserves_inv[where xs="extract_progress 1 (subgraph.nxt sg)
+         \<lparr>cons =
+            consu
+             (fold (\<lambda>(d, t) os. consumes os 1 t d) (map (case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (inps 1))))
+               (fold (\<lambda>(d, t) os. consumes os 1 t d) (outpu (os 0) 1) (fold (\<lambda>(d, t) os. consumes os 1 t d) (cbufs (1, 1)) bt_state))),
+            inte =
+              operator_state.inter
+               (fold (\<lambda>(d, t) os. consumes os 1 t d) (map (case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (inps 1))))
+                 (fold (\<lambda>(d, t) os. consumes os 1 t d) (outpu (os 0) 1) (fold (\<lambda>(d, t) os. consumes os 1 t d) (cbufs (1, 1)) bt_state))),
+            prod =
+              produ
+               (fold (\<lambda>(d, t) os. consumes os 1 t d) (map (case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (inps 1))))
+                 (fold (\<lambda>(d, t) os. consumes os 1 t d) (outpu (os 0) 1) (fold (\<lambda>(d, t) os. consumes os 1 t d) (cbufs (1, 1)) bt_state)))\<rparr> @ extract_progress 0 (subgraph.nxt sg)
+           \<lparr>cons = consu ip_state, inte = operator_state.inter ip_state @ map (case_event (\<lambda>a aa. undefined) (\<lambda>t. (1, t, - 1)) (\<lambda>t. (1, t, 1))) (filter (Not \<circ> is_Data) (ltaken n (es ip_state 1))),
+              prod = produ ip_state @ map (case_event (\<lambda>t d. (1, t, 1)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (es ip_state 1)))\<rparr>"])
+                    apply assumption+
+              subgoal premises temp3
+                unfolding extract_progress_def
+                apply (auto simp add: set_map_filter operator_state.defs produ_consumes_fold consu_consumes_fold inter_consumes_fold SIM2(4,5) split: event.splits option.splits prod.splits)
+                  using temp3(13) apply blast+
+                  done
+                  defer
+                  apply (rule refl)+
+                subgoal
+                  apply (drule propagate_all_terminates[unfolded not_def, rule_format, rotated 6])              
+                        apply simp_all
+                  subgoal premises temp3
+                    using temp3(18) apply -
+                    by (metis (no_types, lifting) change_multiplicities_append_alt change_multiplicities_comm)
+                  subgoal premises temp3
+                    using temp3(18) apply -
+                    by (metis (no_types, lifting) change_multiplicities_append_alt change_multiplicities_comm)
+                  subgoal premises temp3
+                    using TIMESTAMP_COMPARE by simp
+                  subgoal for loc
+                    apply (subgoal_tac "graph_summar_nt (summ sg) (subgraph.nxt sg) os")
+                     defer
+                    subgoal
+                      apply (rule graph_summar_nt)
+                         apply (rule refl)+
+                        apply (rule SIM2(2)[unfolded SIM2(1)])
+                       apply (auto simp add: SIM2 comp_def)
+                      done
+                    subgoal
+                      apply (cases loc; simp)
+                      subgoal for nid lp
+                        apply (cases lp; simp)
+                        unfolding graph_summar_nt_def
+                        apply auto
+                        done
+                      done
+                    done
+                  subgoal premises temp3
+                    using temp3(18) apply -
+                    by (metis (no_types, lifting) change_multiplicities_append_alt change_multiplicities_comm)
+                  done
+                subgoal premises temp2
+                  apply (subst frontier_less_equal_iff2[symmetric])
+                apply (clarsimp simp add: SIM2(1,2,3,4,5) split_beta image_iff set_map_filter operator_state.defs intsum_consumes_fold inter_consumes_fold consu_consumes_fold produ_consumes_fold split: event.splits option.splits prod.splits)
+                  subgoal for l t' m
+                    apply (elim disjE)
+                    subgoal
+                      apply (drule set_extract_progressD[where os="os 1" and st="\<lparr> cons = [], inte = [], prod = [] \<rparr>"])
+                       apply simp
+                      apply (elim disjE)
+                      subgoal
+                  using SIM2(10)[unfolded dataplane_tracker_inv_def , simplified] apply -
+            apply (elim exE conjE)
+                  subgoal premises temp3 for caps
+                  apply (rule frontier_less_equal_le_trans[rotated])
+                   apply (rule temp3(6)[unfolded imp_front_inv_def, rule_format])
+                    apply (rule temp3(10)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=1 and x="(_, _, m)", simplified])
+                    apply (simp add: SIM2(1,2,3))
+                    using temp3(1) apply auto
+                    done
+                  done
+                subgoal
+                  apply (elim conjE exE)
+                  subgoal for m' p'
+                    apply (clarsimp simp add: image_iff split: prod.splits event.splits)
+                    subgoal
+                  apply (rule frontier_less_equal_le_trans[rotated])
+                      apply (rule temp2(11)[unfolded imp_front_inv_def, rule_format])
+                      apply (rule temp2(12)[unfolded chnls_imp_front_inv_def, rule_format])
+                      unfolding outputs_at_target_def BULK_BENQ_def
+                      apply auto
+                      done
+                    subgoal
+                  apply (rule frontier_less_equal_le_trans[rotated])
+                      apply (rule temp2(11)[unfolded imp_front_inv_def, rule_format])
+                      apply (rule temp2(12)[unfolded chnls_imp_front_inv_def, rule_format])
+                      unfolding outputs_at_target_def BULK_BENQ_def
+                      apply (auto simp add: SIM2(1,2) my_summ_def antichain_from_list_singleton)
+                      done
+                    subgoal
+                  apply (rule frontier_less_equal_le_trans[rotated])
+                       apply (rule temp2(11)[unfolded imp_front_inv_def, rule_format])
+                  apply (rule frontier_less_equal_le_trans[rotated])
+                      apply (rule frontier_less_equal_change_multiplicities)
+                      subgoal sorry
+
+                      thm frontier_less_equal_change_multiplicities
+                      apply (rule frontier_less_equal_ifrontierI[of _ 0 "Loc 0 (Src 1)", simplified])
+                      subgoal sorry
+                      subgoal sorry
+                      subgoal
+
+                        find_theorems frontier_less_equal "_ \<le> _" ifrontier
+
+                        using temp2(9)[unfolded c_pts_inv_def, rule_format, of "Loc 0 (Src 1)", symmetric]
+                        using temp2(7)[unfolded Src_caps_inv_def, rule_format, of 0 1]
+
+                        find_theorems caps
+
+end
+                       
+
+                      find_theorems caps
+
+
+                      find_theorems inps
+
+
+
+                    find_theorems "antichain_from_list [_]"
+
+end
+                  apply (rule temp3(9)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format, of Nil, simplified, where nid=1 and x="(_, _, m)", simplified])
+                  unfolding extract_progress_def obtain_progress_def
+                apply (auto 0 0 simp add: SIM2(1,2,3,4,5) split_beta image_iff set_map_filter operator_state.defs produ_consumes_fold consu_consumes_fold inter_consumes_fold split: event.splits option.splits prod.splits)
+                  subgoal
+                    unfolding graph_to_nxt_def my_summ_def
+                    apply (clarsimp simp add: image_iff split: option.splits)
+                    apply (subst (asm) find_None_if)
+                    apply (auto simp add: image_iff split: option.splits)
+                    sledgehammer
+
+                    find_theorems  find filter
+
+end
+
+                  find_theorems frontier_less_equal name: trans
+
+
+                apply (simp add: set_map_filter operator_state.defs produ_consumes_fold consu_consumes_fold inter_consumes_fold split: event.splits option.splits prod.splits)
+
+
+
+                apply (rule exI[of _ t])
+              using temp3(4)[unfolded front_inv_def]
+
+
+
+                find_theorems set List.map_filter
+
+
+end
+         apply (drule propagate_all_terminates[unfolded not_def, rule_format, rotated 6])              
+               apply simp_all
+
+
+            using change_multiplicities_preserves_inv 
+
+
+            find_theorems  dataflow_topology.inv_imps_work_sum change_multiplicities
+
+end
+            using SIM2(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+            unfolding propagation_inv_def
+            apply clarsimp
+            done
+          subgoal
+            using SIM1(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
+            unfolding propagation_inv_def
+            apply clarsimp
+            done
+          subgoal
+            using TIMESTAMP_COMPARE by auto
+
+end
                   sorry
                 subgoal for c
                   apply (subgoal_tac "frontier (c_imp c (Loc 1 (Trg 1))) = frontier (zmset_of (mset (ocaps (os 0) 1) + event.time `# filter_mset is_Mint (mset (ltaken n (inps 1))) - event.time `# filter_mset is_Drop (mset (ltaken n (inps 1)))))")
@@ -2029,6 +2294,8 @@ next
                   subgoal
                     apply simp
                     apply (elim disjE conjE exE cBexE bexE)
+                    subgoal
+                      by simp
                     subgoal for t'' d''
                       apply (clarsimp del: disjCI)
                       apply (rule disjI2)
