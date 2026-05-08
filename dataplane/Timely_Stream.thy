@@ -546,4 +546,34 @@ lemma timely_input_stream_advances_frontier:
   sorry
 
 
+lemma Data_in_Stream_le_Data_in_C:
+  "timely_monotone lxs C \<Longrightarrow>
+   Data t d \<in> lset lxs \<Longrightarrow>
+   (\<exists> t'\<le>t. t' \<in># C)"
+  by (metis event.sel(1) not_in_iff order_class.order_eq_iff vacant_def vacant_monotone_not_in_lset)
+
+lemma Mint_in_Stream_le_Mint_in_C:
+  "timely_monotone lxs C \<Longrightarrow>
+   Mint t \<in> lset lxs \<Longrightarrow>
+   (\<exists> t'\<le>t. t' \<in># C)"
+  by (metis count_eq_zero_iff event.sel(3) order_le_less vacant_def vacant_monotone_not_in_lset)
+
+
+lemma Drop_in_Stream_le_Drop_in_C:
+  "timely_monotone lxs C \<Longrightarrow>
+   Drop t \<in> lset lxs \<Longrightarrow>
+   (\<exists> t'\<le>t. t' \<in># C)"
+  by (metis Orderings.order_eq_iff count_inI event.sel(2) vacant_def vacant_monotone_not_in_lset)
+
+lemma set_latenD:
+  "x \<in> set (ltaken n lxs) \<Longrightarrow>
+   x \<in> lset lxs"
+  apply (induct n arbitrary: lxs)
+  apply simp
+  subgoal for n lxs
+    apply (cases lxs)
+     apply auto
+    done
+  done
+
 end
