@@ -151,6 +151,17 @@ lemma in_antichain_singleton[simp]:
   "x \<in>\<^sub>A antichain {x}"
   by (metis ID.set_finite in_antichain_minimal_antichain insertI1 minimal_antichain_singleton)
 
+lemma path_weight_antichain0:
+  assumes G: "Graph.graph su"
+  shows "(0 :: 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) \<in>\<^sub>A su loc1 loc2 \<Longrightarrow>
+        graph.path_weight su loc1 loc2 = antichain {0}"
+  apply (subst ac_eq_iff)
+  apply safe
+  subgoal for x
+    by (metis G dataflow_topology_from_tree.zero_le dual_order.antisym in_antichain_singleton less_eq_antichain_def path_weight_direct_0path)
+  subgoal for x
+    by (metis G member_antichain.rep_eq path_weight_direct_0path set_antichain_antichain_singleton singleton_iff)
+  done
 
 lemma find_SomeD':
   "find P xs = Some x \<Longrightarrow> P x \<and> x\<in>set xs"
