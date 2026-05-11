@@ -1738,22 +1738,51 @@ next
         subgoal for nid d t
           apply (clarsimp simp flip: cin.rep_eq simp add: image_iff SIM2(9,11,12))
           subgoal
-            apply (simp flip: disj_assoc cin.rep_eq)
+            apply (subst (asm) disj_assoc[symmetric])
             apply (erule disjE)
-            subgoal(* 
+            subgoal
               apply (intro exI conjI)
-               apply (rule step_wstep)
+               apply (rule wstep_trans(1))
+              apply simp
+      apply (rule relpowp_imp_rtranclp[
+                                    where n="length (outpu (os 1) 1)"]) 
+                apply (rule step_set_op_steps_Out_intro[where xs="outpu (os 1) 1"])
+                  apply (rule steps_Tau_dataflow_op_steps_Out_intro[where xs="outpu (os 1) 1"])
+                                           apply (subst dataflow_tree_to_operator_def)
+                   apply simp
+                   apply (rule steps_map_op[where xs="map (\<lambda> x. Out (Inr _) (_ x)) (outpu (os 1) 1)"])
+                     apply (rule refl)+
+                    apply force
+              apply (rule steps_comp_op_R_Out[where xs="map Inr (outpu (os 1) 1)"])
+                                 apply (rule steps_map_op[where xs="map (\<lambda> x. Out (Some 1) (_ x)) (outpu (os 1) 1)"])
+                     apply (rule refl)+
+                       apply force
+              apply (subst batch_op_def)
+              apply (subst batch_op_logic_def)
+              apply (subst notifier_op_def)
+                      apply simp
+                      apply (rule steps_builder_op_Write_Some[where ys=Nil and p=1])
+                         apply simp
+              apply simp
+                     apply (rule refl)+
+              apply (simp add: SIM2(5) operator_state.defs)
+                     apply (rule refl)+
+                   apply force
+                  apply force
+                 apply (rule refl)+
                apply (rule step_set_op_intro_Out)
                   apply (rule refl)+
-                 apply assumption+
-               apply (rule refl)+
+                 apply (simp add: image_iff)
+                 apply force
+              apply simp
+                  apply (rule refl)+
               apply (intro relcomppI)
                 apply (rule bisim_refl)
                defer
                apply (rule wbisim_refl)
               apply (rule wb_upto_b_sym)
               apply (rule wb_upto_b_base)
-              unfolding R_def[simplified]
+            (*  unfolding R_def[simplified]
               apply (rule exI[of _ "os"])
               apply (rule exI[of _ "sg"])
               apply (rule exI[of _ cbufs])
@@ -1857,21 +1886,21 @@ next
                                 apply (clarsimp simp add: image_iff split: prod.splits event.splits)
                                 subgoal
                                   apply (rule frontier_less_equal_le_trans[rotated])
-                                   apply (rule temp2(13)[unfolded imp_front_inv_def, rule_format])
-                                  apply (rule temp2(14)[unfolded chnls_imp_front_inv_def, rule_format])
+                                   apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
+                                  apply (rule temp2(11)[unfolded chnls_imp_front_inv_def, rule_format])
                                   unfolding outputs_at_target_def BULK_BENQ_def
                                   apply auto
                                   done
                                 subgoal
                                   apply (rule frontier_less_equal_le_trans[rotated])
-                                   apply (rule temp2(13)[unfolded imp_front_inv_def, rule_format])
-                                  apply (rule temp2(14)[unfolded chnls_imp_front_inv_def, rule_format])
+                                   apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
+                                  apply (rule temp2(11)[unfolded chnls_imp_front_inv_def, rule_format])
                                   unfolding outputs_at_target_def BULK_BENQ_def
                                   apply (auto simp add: SIM2(1,2) my_summ_def antichain_from_list_singleton)
                                   done
                                 subgoal for dd
                                   apply (rule frontier_less_equal_le_trans[rotated])
-                                   apply (rule temp2(13)[unfolded imp_front_inv_def, rule_format])
+                                   apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
                                   apply (rule frontier_less_equal_le_trans[rotated])
                                    apply (rule frontier_less_equal_change_multiplicities[where A="extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress (os 0))) @ extract_progress 1 (subgraph.nxt sg) (snd (obtain_progress (os 1)))"])
                                   subgoal 
@@ -1882,12 +1911,12 @@ next
                                       apply (elim disjE)
                                       subgoal
                                         apply hypsubst_thin
-                                        apply (drule temp2(16)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=0 and x="(_, _, m')", simplified])
+                                        apply (drule temp2(13)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=0 and x="(_, _, m')", simplified])
                                         apply auto
                                         done
                                       subgoal
                                         apply hypsubst_thin
-                                        apply (drule temp2(16)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=1 and x="(_, _, m')", simplified])
+                                        apply (drule temp2(13)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=1 and x="(_, _, m')", simplified])
                                         apply auto
                                         done
                                       done
@@ -1899,15 +1928,15 @@ next
                                     subgoal 
                                       apply (rule path_weight_direct_0path)
                                       subgoal
-                                        by (rule dataflow_topology.axioms(1)[OF temp2(8)])
+                                        by (rule dataflow_topology.axioms(1)[OF temp2(5)])
                                       subgoal
                                         apply (simp add: SIM2(1,2,3) my_summ_def)
                                         apply auto
                                         done
                                       done
                                     subgoal
-                                      apply (subst temp2(11)[unfolded c_pts_inv_def, rule_format, of "Loc 0 (Src 1)"])
-                                      apply (subst temp2(9)[unfolded Src_caps_inv_def, rule_format, of 0 1])
+                                      apply (subst temp2(8)[unfolded c_pts_inv_def, rule_format, of "Loc 0 (Src 1)"])
+                                      apply (subst temp2(6)[unfolded Src_caps_inv_def, rule_format, of 0 1])
                                       apply (drule set_latenD)
                                       using SIM2(13)[unfolded timely_input_stream_def] apply -
                                       apply (elim conjE)
@@ -1925,39 +1954,39 @@ next
                                 apply (clarsimp simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def, simplified] image_iff split: prod.splits event.splits)
                                 subgoal
                                   apply (rule frontier_less_equal_le_trans[rotated])
-                                   apply (rule temp2(13)[unfolded imp_front_inv_def, rule_format])
+                                   apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
                                   apply (rule frontier_less_equal_ifrontier_trans[of _ 0 "Loc 1 (Trg 1)", simplified])
                                   subgoal 
                                     using temp2 by simp
                                   subgoal 
                                     apply (rule path_weight_direct_0path)
                                     subgoal
-                                      by (rule dataflow_topology.axioms(1)[OF temp2(8)])
+                                      by (rule dataflow_topology.axioms(1)[OF temp2(5)])
                                     subgoal
                                       apply (simp add: SIM2(1,2,3) my_summ_def)
                                       apply auto
                                       done
                                     done
-                                  apply (rule temp2(14)[unfolded chnls_imp_front_inv_def, rule_format])
+                                  apply (rule temp2(11)[unfolded chnls_imp_front_inv_def, rule_format])
                                   unfolding outputs_at_target_def BULK_BENQ_def
                                   apply auto
                                   done
                                 subgoal
                                   apply (rule frontier_less_equal_le_trans[rotated])
-                                   apply (rule temp2(13)[unfolded imp_front_inv_def, rule_format])
+                                   apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
                                   apply (rule frontier_less_equal_ifrontier_trans[of _ 0 "Loc 1 (Trg 1)", simplified])
                                   subgoal 
                                     using temp2 by simp
                                   subgoal 
                                     apply (rule path_weight_direct_0path)
                                     subgoal
-                                      by (rule dataflow_topology.axioms(1)[OF temp2(8)])
+                                      by (rule dataflow_topology.axioms(1)[OF temp2(5)])
                                     subgoal
                                       apply (simp add: SIM2(1,2,3) my_summ_def)
                                       apply auto
                                       done
                                     done
-                                  apply (rule temp2(14)[unfolded chnls_imp_front_inv_def, rule_format])
+                                  apply (rule temp2(11)[unfolded chnls_imp_front_inv_def, rule_format])
                                   unfolding outputs_at_target_def BULK_BENQ_def
                                   apply (auto simp add: SIM2(1,2) my_summ_def antichain_from_list_singleton)
                                   done
@@ -1965,14 +1994,14 @@ next
 
                                 subgoal for dd
                                   apply (rule frontier_less_equal_le_trans[rotated])
-                                   apply (rule temp2(13)[unfolded imp_front_inv_def, rule_format])
+                                   apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
                                   apply (rule frontier_less_equal_ifrontier_trans[of _ 0 "Loc 1 (Trg 1)", simplified])
                                   subgoal 
                                     using temp2 by simp
                                   subgoal 
                                     apply (rule path_weight_direct_0path)
                                     subgoal
-                                      by (rule dataflow_topology.axioms(1)[OF temp2(8)])
+                                      by (rule dataflow_topology.axioms(1)[OF temp2(5)])
                                     subgoal
                                       apply (simp add: SIM2(1,2,3) my_summ_def)
                                       apply auto
@@ -1988,42 +2017,42 @@ next
                                       apply (elim disjE)
                                       subgoal
                                         apply hypsubst_thin
-                                        apply (drule temp2(16)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=0 and x="(_, _, m')", simplified])
+                                        apply (drule temp2(13)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=0 and x="(_, _, m')", simplified])
                                         apply auto
                                         done
                                       subgoal
                                         apply hypsubst_thin
-                                        apply (drule temp2(16)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=1 and x="(_, _, m')", simplified])
+                                        apply (drule temp2(13)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=1 and x="(_, _, m')", simplified])
                                         apply auto
                                         done
                                       subgoal
                                         apply hypsubst_thin
-                                        apply (drule temp2(16)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=0 and x="(_, _, m')", simplified])
+                                        apply (drule temp2(13)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=0 and x="(_, _, m')", simplified])
                                         apply auto
                                         done
                                       subgoal
                                         apply hypsubst_thin
-                                        apply (drule temp2(16)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=1 and x="(_, _, m')", simplified])
+                                        apply (drule temp2(13)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=1 and x="(_, _, m')", simplified])
                                         apply auto
                                         done
                                       subgoal
                                         apply hypsubst_thin
-                                        apply (drule temp2(16)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=0 and x="(_, _, m')", simplified])
+                                        apply (drule temp2(13)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=0 and x="(_, _, m')", simplified])
                                         apply auto
                                         done
                                       subgoal
                                         apply hypsubst_thin
-                                        apply (drule temp2(16)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=1 and x="(_, _, m')", simplified])
+                                        apply (drule temp2(13)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=1 and x="(_, _, m')", simplified])
                                         apply auto
                                         done
                                       subgoal
                                         apply hypsubst_thin
-                                        apply (drule temp2(16)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=0 and x="(_, _, m')", simplified])
+                                        apply (drule temp2(13)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=0 and x="(_, _, m')", simplified])
                                         apply auto
                                         done
                                       subgoal
                                         apply hypsubst_thin
-                                        apply (drule temp2(16)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=1 and x="(_, _, m')", simplified])
+                                        apply (drule temp2(13)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=1 and x="(_, _, m')", simplified])
                                         apply auto
                                         done
                                       done
@@ -2035,15 +2064,15 @@ next
                                     subgoal 
                                       apply (rule path_weight_direct_0path)
                                       subgoal
-                                        by (rule dataflow_topology.axioms(1)[OF temp2(8)])
+                                        by (rule dataflow_topology.axioms(1)[OF temp2(5)])
                                       subgoal
                                         apply (simp add: SIM2(1,2,3) my_summ_def)
                                         apply auto
                                         done
                                       done
                                     subgoal
-                                      apply (subst temp2(11)[unfolded c_pts_inv_def, rule_format, of "Loc 0 (Src 1)"])
-                                      apply (subst temp2(9)[unfolded Src_caps_inv_def, rule_format, of 0 1])
+                                      apply (subst temp2(8)[unfolded c_pts_inv_def, rule_format, of "Loc 0 (Src 1)"])
+                                      apply (subst temp2(6)[unfolded Src_caps_inv_def, rule_format, of 0 1])
                                       apply (cases dd; simp)
                                       apply (drule set_latenD)
                                       using SIM2(13)[unfolded timely_input_stream_def] apply -
@@ -2086,7 +2115,7 @@ next
                                 apply (cases x; clarsimp)
                                 subgoal
                                   apply (rule frontier_less_equal_le_trans[rotated])
-                                   apply (rule temp2(13)[unfolded imp_front_inv_def, rule_format])
+                                   apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
                                   apply (rule frontier_less_equal_le_trans[rotated])
                                    apply (rule frontier_less_equal_change_multiplicities[where A="extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress (os 0))) @ extract_progress 1 (subgraph.nxt sg) (snd (obtain_progress (os 1)))"])
                                   subgoal 
@@ -2097,12 +2126,12 @@ next
                                       apply (elim disjE)
                                       subgoal
                                         apply hypsubst_thin
-                                        apply (drule temp2(16)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=0 and x="(_, _, m')", simplified])
+                                        apply (drule temp2(13)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=0 and x="(_, _, m')", simplified])
                                         apply auto
                                         done
                                       subgoal
                                         apply hypsubst_thin
-                                        apply (drule temp2(16)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=1 and x="(_, _, m')", simplified])
+                                        apply (drule temp2(13)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=1 and x="(_, _, m')", simplified])
                                         apply auto
                                         done
                                       done
@@ -2114,11 +2143,11 @@ next
                                     subgoal 
                                       apply (rule graph.path_weight_refl)
                                       subgoal
-                                        by (rule dataflow_topology.axioms(1)[OF temp2(8)])
+                                        by (rule dataflow_topology.axioms(1)[OF temp2(5)])
                                       done
                                     subgoal
-                                      apply (subst temp2(11)[unfolded c_pts_inv_def, rule_format, of "Loc 0 (Src 1)"])
-                                      apply (subst temp2(9)[unfolded Src_caps_inv_def, rule_format, of 0 1]) 
+                                      apply (subst temp2(8)[unfolded c_pts_inv_def, rule_format, of "Loc 0 (Src 1)"])
+                                      apply (subst temp2(6)[unfolded Src_caps_inv_def, rule_format, of 0 1]) 
                                       apply (drule set_latenD)
                                       using SIM2(13)[unfolded timely_input_stream_def] apply -
                                       apply (elim conjE)
@@ -2130,7 +2159,7 @@ next
                                   done
                                 subgoal
                                   apply (rule frontier_less_equal_le_trans[rotated])
-                                   apply (rule temp2(13)[unfolded imp_front_inv_def, rule_format])
+                                   apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
                                   apply (rule frontier_less_equal_le_trans[rotated])
                                    apply (rule frontier_less_equal_change_multiplicities[where A="extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress (os 0))) @ extract_progress 1 (subgraph.nxt sg) (snd (obtain_progress (os 1)))"])
                                   subgoal 
@@ -2141,12 +2170,12 @@ next
                                       apply (elim disjE)
                                       subgoal
                                         apply hypsubst_thin
-                                        apply (drule temp2(16)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=0 and x="(_, _, m')", simplified])
+                                        apply (drule temp2(13)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=0 and x="(_, _, m')", simplified])
                                         apply auto
                                         done
                                       subgoal
                                         apply hypsubst_thin
-                                        apply (drule temp2(16)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=1 and x="(_, _, m')", simplified])
+                                        apply (drule temp2(13)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=1 and x="(_, _, m')", simplified])
                                         apply auto
                                         done
                                       done
@@ -2158,11 +2187,11 @@ next
                                     subgoal 
                                       apply (rule graph.path_weight_refl)
                                       subgoal
-                                        by (rule dataflow_topology.axioms(1)[OF temp2(8)])
+                                        by (rule dataflow_topology.axioms(1)[OF temp2(5)])
                                       done
                                     subgoal
-                                      apply (subst temp2(11)[unfolded c_pts_inv_def, rule_format, of "Loc 0 (Src 1)"])
-                                      apply (subst temp2(9)[unfolded Src_caps_inv_def, rule_format, of 0 1]) 
+                                      apply (subst temp2(8)[unfolded c_pts_inv_def, rule_format, of "Loc 0 (Src 1)"])
+                                      apply (subst temp2(6)[unfolded Src_caps_inv_def, rule_format, of 0 1]) 
                                       apply (drule set_latenD)
                                       using SIM2(13)[unfolded timely_input_stream_def] apply -
                                       apply (elim conjE)
@@ -2184,7 +2213,7 @@ next
                                 apply (clarsimp split: if_splits)
                                 apply hypsubst_thin
                                 apply (rule frontier_less_equal_le_trans[rotated])
-                                 apply (rule temp2(13)[unfolded imp_front_inv_def, rule_format])
+                                 apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
                                 apply (rule frontier_less_equal_le_trans[rotated])
                                  apply (rule frontier_less_equal_change_multiplicities[where A="extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress (os 0))) @ extract_progress 1 (subgraph.nxt sg) (snd (obtain_progress (os 1)))"])
                                 subgoal 
@@ -2194,11 +2223,11 @@ next
                                   subgoal for l' t'' m'
                                     apply (elim disjE)
                                     subgoal
-                                      apply (drule temp2(16)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=0 and x="(_, _, m')", simplified])
+                                      apply (drule temp2(13)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=0 and x="(_, _, m')", simplified])
                                       apply auto
                                       done
                                     subgoal
-                                      apply (drule temp2(16)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=1 and x="(_, _, m')", simplified])
+                                      apply (drule temp2(13)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=1 and x="(_, _, m')", simplified])
                                       apply auto
                                       done
                                     done
@@ -2210,15 +2239,15 @@ next
                                   subgoal 
                                     apply (rule path_weight_direct_0path)
                                     subgoal
-                                      by (rule dataflow_topology.axioms(1)[OF temp2(8)])
+                                      by (rule dataflow_topology.axioms(1)[OF temp2(5)])
                                     subgoal
                                       apply (simp add: SIM2(1,2,3) my_summ_def)
                                       apply auto
                                       done
                                     done
                                   subgoal
-                                    apply (subst temp2(11)[unfolded c_pts_inv_def, rule_format, of "Loc 0 (Src 1)"])
-                                    apply (subst temp2(9)[unfolded Src_caps_inv_def, rule_format, of 0 1])
+                                    apply (subst temp2(8)[unfolded c_pts_inv_def, rule_format, of "Loc 0 (Src 1)"])
+                                    apply (subst temp2(6)[unfolded Src_caps_inv_def, rule_format, of 0 1])
                                     apply (drule set_latenD)
                                     using SIM2(13)[unfolded timely_input_stream_def] apply -
                                     apply clarsimp
@@ -2318,7 +2347,7 @@ next
                               subgoal
                                 apply simp
                                 subgoal premises temp4
-                                  apply (subst dataflow_topology.implied_frontier_alt_def[OF temp4(8)])
+                                  apply (subst dataflow_topology.implied_frontier_alt_def[OF temp4(5)])
                                   apply (subst comm_monoid_add_class.sum.subset_diff[where B="{Loc 0 (Src 1)}"])
                                     apply simp
                                     apply fast
@@ -2355,9 +2384,9 @@ next
                                               subgoal
                                                 apply (simp add: split_beta enum_num1_def)
                                                 apply hypsubst_thin
-                                                using N_INV(11)[unfolded c_pts_inv_def c_pts_change_multiplicities_append, 
+                                                using N_INV(8)[unfolded c_pts_inv_def c_pts_change_multiplicities_append, 
                                                     simplified, rule_format, of "Loc 1 (Trg 1)", unfolded  extract_progress_def obtain_progress_def,
-                                                    simplified, unfolded BULK_BENQ_def  N_INV(10)[unfolded Trg_caps_inv_def, rule_format, of 1 1]] apply -
+                                                    simplified, unfolded BULK_BENQ_def  N_INV(7)[unfolded Trg_caps_inv_def, rule_format, of 1 1]] apply -
                                                 apply (simp add: c_pts_change_multiplicities comp_def List.map_filter_def split_beta split: event.splits prod.splits)
                                                 apply (subst zmset_Data_to_zmset)
                                                 subgoal
@@ -2384,9 +2413,9 @@ next
                                                   apply hypsubst_thin
                                                   apply (simp add: split_beta enum_num1_def)
                                                   apply (simp add: c_pts_change_multiplicities comp_def List.map_filter_def split_beta split: event.splits prod.splits)
-                                                  using N_INV(11)[unfolded c_pts_inv_def c_pts_change_multiplicities_append, 
+                                                  using N_INV(8)[unfolded c_pts_inv_def c_pts_change_multiplicities_append, 
                                                       simplified, rule_format, of "Loc 0 (Trg 1)", unfolded  extract_progress_def obtain_progress_def,
-                                                      simplified, unfolded BULK_BENQ_def  N_INV(10)[unfolded Trg_caps_inv_def, rule_format, of 0 1]] apply -
+                                                      simplified, unfolded BULK_BENQ_def  N_INV(7)[unfolded Trg_caps_inv_def, rule_format, of 0 1]] apply -
                                                   apply (subgoal_tac "to_zmset (map snd (outputs_at_target (summ sg) os (0, 1))) = {#}\<^sub>z")
                                                   subgoal
                                                     by (simp add:SIM2(17)[simplified]  c_pts_change_multiplicities comp_def List.map_filter_def split_beta split: event.splits prod.splits)
@@ -2412,7 +2441,7 @@ next
                                                     apply (auto simp add: SIM2(1,2) my_summ_def)
                                                   done
                                                 subgoal
-                                                  by (rule dataflow_topology.axioms(1)[OF N_INV(8)])
+                                                  by (rule dataflow_topology.axioms(1)[OF N_INV(5)])
                                                 done
                                               subgoal
                                                 using loc_2_1_cases by blast
@@ -2450,12 +2479,12 @@ next
                                         apply (subgoal_tac "c_pts (change_multiplicities (summ sg) (extract_progress 0 (subgraph.nxt sg) \<lparr>cons = consu (os 0), inte = operator_state.inter (os 0), prod = produ (os 0)\<rparr>) (pt_tr sg)) (Loc 0 (Src 1)) = caps (Loc 0 (Src 1))")
                                          defer
                                         subgoal
-                                          using N_INV(11)[unfolded c_pts_inv_def, unfolded obtain_progress_def, simplified, rule_format, of "Loc 0 (Src 1)"]
+                                          using N_INV(8)[unfolded c_pts_inv_def, unfolded obtain_progress_def, simplified, rule_format, of "Loc 0 (Src 1)"]
                                           by (smt (verit, best) c_pts_change_multiplicities_cong change_multiplicities_append change_multiplicities_comm)
                                         subgoal
                                           apply (subgoal_tac "subgraph.nxt sg (0, 1) = Some (1, 1)")
                                           subgoal
-                                            apply (simp add: N_INV(9)[unfolded Src_caps_inv_def, rule_format, of 0 1])
+                                            apply (simp add: N_INV(6)[unfolded Src_caps_inv_def, rule_format, of 0 1])
                                             apply (clarsimp simp add: frontier_zmset_of_add_minus zmset_of_plus extract_progress_def c_pts_change_multiplicities comp_def List.map_filter_def split_beta split: event.splits prod.splits)
                                             subgoal premises aux
                                               apply (subst zmset_map_Drop_Mint)
@@ -2478,7 +2507,7 @@ next
                                     subgoal
                                       apply (subst path_weight_antichain0[])
                                       subgoal
-                                        by (rule dataflow_topology.axioms(1)[OF N_INV(8)])
+                                        by (rule dataflow_topology.axioms(1)[OF N_INV(5)])
                                        apply (auto simp add: SIM2(1,2,3) my_summ_def)
                                       done
                                     done
@@ -2719,7 +2748,10 @@ next
                                 apply (rule bexI[of _ t])
                                 using tempp apply simp
                                 subgoal
-                                  using tempp(3) apply -
+                                  using tempp(2) apply -
+                                  apply (elim disjE conjE)
+                                  subgoal sorry
+                                  subgoal
                                   unfolding outputs_at_target_def BULK_BENQ_def inputs_at_target_def
                                   apply simp
                                   apply (auto simp add: SIM2(1,2,3) my_summ_def intsum_consumes_fold del: disjCI split: if_splits)
@@ -2750,6 +2782,7 @@ next
                                     done
                                   done
                                 done
+                              done
                                        apply (rule refl)+
                                      apply simp
                                     apply (rule refl)+
@@ -2870,7 +2903,47 @@ next
                                apply (rule step_set_op_intro_Out)
                                   apply (rule refl)+
                               subgoal premises tempp
-                                using N_INV(3,6) apply -
+                                using N_INV(2) apply -
+                                apply (elim conjE disjE cBexE bexE)
+                                subgoal for x dd
+                                apply (rule cUnI1)
+       unfolding Let_def
+                                apply (simp add: split_beta image_iff)
+apply (subgoal_tac "((outputs_at_target (summ sg) os >> cbufs) >> inputs_at_target os) (1, 1) = input (os 1) 1 @ cbufs (1, 1) @ (outpu (os 0) 1)")
+                                subgoal
+                                  apply (elim conjE exE)
+                                  subgoal for aa
+                                    apply (cases aa; simp)
+                                    subgoal for t'' d''
+                                  apply (rule disjI2)
+                                  apply (intro bexI[of _ "(dd, t'')"] conjI)
+                                    apply simp
+                                   apply simp
+                                  apply (rule output_batchesI)
+                                  subgoal 
+                                    apply (clarsimp simp add: image_iff split_beta split: prod.splits)
+                                    apply (rule bexI[of _ "(d'', t'')"])
+                                     apply simp_all
+                                    apply (clarsimp del: disjCI simp add: image_iff split_beta split: event.splits prod.splits)
+                                    apply (intro disjI2)
+                                    apply (rule exI[of _ "Data t'' d''"])
+                                    apply simp
+                                    sorry
+                                  subgoal 
+                                    using N_INV(4) by auto
+                                  subgoal
+                                    sorry
+                                  done
+                                done
+                              done
+   subgoal premises temp2
+                                  unfolding BULK_BENQ_def outputs_at_target_def SIM2(2,1) 
+                                  apply (clarsimp simp add: antichain_from_list_singleton my_summ_def)
+                                  unfolding inputs_at_target_def
+                                  apply simp
+                                  done
+                                done
+                                subgoal for x dd
                                 apply (rule cUnI1)
                                 unfolding Let_def
                                 apply (simp add: split_beta image_iff)
@@ -2890,7 +2963,7 @@ next
                                     apply force
                                     done
                                   subgoal 
-                                    using N_INV(5) by auto
+                                    using N_INV(4) by auto
                                   subgoal
                                     apply (clarsimp simp add: image_iff split_beta split: prod.splits)
                                     apply (subst (asm) coll_lshift)
@@ -2912,6 +2985,7 @@ next
                                   apply simp
                                   done
                                 done
+                              done
                                 apply (simp flip: cin.rep_eq)
                                apply (rule refl)+
                               subgoal premises temp2
