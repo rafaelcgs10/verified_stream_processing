@@ -1532,6 +1532,12 @@ lemma outpu_produces[simp]:
   "outpu (produces os batch) = (\<lambda> p. outpu os p @ map (\<lambda> (x, cap). (x, time cap)) (filter (\<lambda> (x, cap). out cap = p) batch))"
   unfolding produces_def
   by auto
+lemma ocaps_produces[simp]:
+  "ocaps (produces os batch) = ocaps os"
+  unfolding produces_def by auto
+lemma inter_produces[simp]:
+  "inter (produces os batch) = inter os"
+  unfolding produces_def by auto
 lemma outpu_fold_consumes[simp]:
   "outpu (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = outpu os"
   by (induct xs arbitrary: os)
@@ -2002,11 +2008,35 @@ lemma inter_consumes[simp]:
   "inter (consumes os p t d) = inter os @ concat (map (\<lambda> p'. map (\<lambda> t'. (p', t + t', 1)) (intsum os p p')) enum_class.enum)"
   unfolding consumes_def BENQ_def add_caps_def
   by (auto simp add: map_concat comp_def)
+
 lemma front_consumes[simp]:
-  "front (consumes (os nid) p t d) p' = front (os nid) p'"
+  "front (consumes os p t d) p' = front os p'"
   unfolding consumes_def add_caps_def
   apply auto
   done
+lemma initia_consumes[simp]:
+  "initia (consumes os p t d) = initia os"
+  unfolding consumes_def add_caps_def
+  apply auto
+  done
+lemma more_consumes[simp]:
+  "operator_state.more (consumes os p t d) = operator_state.more os"
+  unfolding consumes_def add_caps_def
+  apply auto
+  done
+lemma front_consumes_fold[simp]:
+  "front (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = front os"
+  by (induct xs arbitrary: os) auto
+
+lemma initia_consumes_fold[simp]:
+  "initia (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = initia os"
+  by (induct xs arbitrary: os)
+   (auto split: prod.splits)+
+lemma more_consumes_fold[simp]:
+  "operator_state.more (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = operator_state.more os"
+  by (induct xs arbitrary: os)
+   (auto split: prod.splits)+
+
 lemma consu_add_caps[simp]:
   "consu (add_caps os caps) = consu os"
   unfolding add_caps_def
@@ -2057,6 +2087,21 @@ lemma input_fold_consumes:
   "input (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = (input os)(p := input os p @ xs)"
   by (induct xs arbitrary: os)
    auto
+lemma operator_state_eqI:
+  "intsum os1 = intsum os2 \<Longrightarrow>
+   consu os1 = consu os2 \<Longrightarrow>
+   inter os1 = inter os2 \<Longrightarrow>
+   produ os1 = produ os2 \<Longrightarrow>
+   input os1 = input os2 \<Longrightarrow>
+   outpu os1 = outpu os2 \<Longrightarrow>
+   front os1 = front os2 \<Longrightarrow>
+   ocaps os1 = ocaps os2 \<Longrightarrow>
+   initia os1 = initia os2 \<Longrightarrow>
+   operator_state.more os1 = operator_state.more os2 \<Longrightarrow>
+   os1 = os2"
+  apply (cases os1; cases os2)
+  apply auto
+  done
 
 lemma concat_map_map_filter:
   "distinct xs \<Longrightarrow>
@@ -2116,6 +2161,12 @@ lemma de2_consumes[simp]:
   unfolding consumes_def add_caps_def
   by auto
 
+lemma fold_consumes:
+  "fold (\<lambda>(d, t) os. consumes os p t d) xs os =
+   os\<lparr> input := (input os)(p := input os p @ xs), consu := consu os @ map (\<lambda>(d, t). (p, t, 1)) xs , inter := inter os @ concat (map (\<lambda> (d, t). concat (map (\<lambda> p'. map (\<lambda> t'. (p',  t -+- t', 1)) (intsum os p p')) enum_class.enum)) xs), ocaps := (\<lambda> p'. ocaps os p' @ concat (map (\<lambda> (d, t). map (\<lambda> t'. t -+- t') (intsum os p p')) xs)) \<rparr>"
+  apply (rule operator_state_eqI)
+  apply (auto simp add: intsum_consumes_fold consu_consumes_fold produ_consumes_fold input_fold_consumes inter_consumes_fold)
+  done
 
 lemma en1_fold_consumes[simp]:
   "en1 (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = en1 os"

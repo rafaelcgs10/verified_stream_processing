@@ -460,7 +460,8 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
   proof -
     define R where "R = ?R"
     show ?thesis 
-      apply -
+      sorry
+      (* apply -
       unfolding R_def[symmetric]
       subgoal premises prems2
         unfolding wsim_def dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
@@ -1692,7 +1693,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             done
           done
         done
-      done
+      done *)
   qed
 next
   case SIM2
@@ -3031,14 +3032,88 @@ next
                               apply (simp flip: cin.rep_eq)
                               apply (rule refl)+
                               subgoal premises temp2
+                                apply (rule wb_upto_b_sym)
+                                apply (rule wb_upto_b_base)
+                                unfolding R_def[simplified]
+                                apply (rule exI[of _ 
+                                      "os(0 := (os 0)\<lparr> ocaps := (ocaps ip_state)(1 := ocaps_updates (ocaps ip_state 1) (ltaken n (es ip_state 1))), outpu := (outpu ip_state)(1 := []), consu := [], inter := [], produ := [] \<rparr>,
+                                          1 := (os 1)\<lparr> ocaps := _, input := _, outpu := (outpu (os 1))(1 := []), consu := [], inter := [], produ := [], front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg 1))), initia := True \<rparr>)"])
+                                apply (rule exI[of _ "sg\<lparr>pt_tr := c, upfro := (\<lambda>_. True)(1 := False)\<rparr>"])
+                                apply (rule exI[of _ "cbufs( (1, 1) := [] )"])
+                                apply (rule exI[of _ "inps( 1:= ldropn n (inps 1)) "])
+                                apply (rule exI[of _ "cUn (Pair (1, 1) |`|
+         cUn (cset_from_list (outpu (os 1) 1))
+          ((\<lambda>(d, y). (Inr d, y)) |`|
+           cset_from_list
+            (output_batches f (frontier (zmset_of (mset (ocaps (os 0) 1) + event.time `# filter_mset is_Mint (mset (ltaken n (inps 1))) - event.time `# filter_mset is_Drop (mset (ltaken n (inps 1))))))
+              (map (\<lambda>(d, y). (projl d, y)) (input (os 1) 1 @ cbufs (1, 1) @ outpu (os 0) 1) @ map (case_event (\<lambda>t d. (d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (inps 1)))))))
+     S"])
+                                apply (rule exI[of _ "cinsert ((nid, 1), d, t) D"])
+                                apply (intro conjI)
+                                  apply (simp add: SIM2(1,2,3,4,5)  operator_state.defs flip: filter_append map_append)
+                                  apply (simp add: operator_state.defs  drop_caps_def intsum_consumes_fold produ_consumes_fold consu_consumes_fold inter_consumes_fold input_fold_consumes flip: filter_append map_append)
+                                            apply (rule arg_cong3[where f=set_op])
+                                subgoal
+                                  by simp
+                                subgoal
+                                  by simp
+                                apply (subst dataflow_tree_to_operator_def)
+                                apply simp
+                                apply (rule arg_cong2[where f=dataflow_op])
+                                apply simp
+                                apply (rule arg_cong3[where f=map_op])
+                                apply simp
+                                apply simp
+                                apply (rule arg_cong4[where f=comp_op])
+                                apply simp
+                                apply (intro ext)
+                                apply (auto split: sum.splits)[1]
+                                apply (rule arg_cong3[where f=map_op])
+                                apply simp
+                                apply simp
+                                             apply (subst ooo_input_op_def)
+                                apply (rule arg_cong5[where f=builder_op])
+                                                 apply simp
+                                                apply simp
+                                apply simp
+                                using [[goals_limit = 1]]
+                                              apply auto[1]
+                                             apply simp
+                                apply (rule arg_cong3[where f=map_op])
+                                apply simp
+                                apply simp
+                                apply simp
+                                            apply (subst batch_op_def)
+                                            apply (subst batch_op_logic_def)
+                                apply (subst notifier_op_def)
+                                apply simp
+                                apply (rule arg_cong5[where f=builder_op])
+                                                 apply simp
+                                                apply simp
+                                                apply simp
+                                             apply (simp add: fold_consumes)
+                                apply (rule operator_state_eqI)
+                                subgoal
+                                  sorry
+                                subgoal
+                                  sorry
+                                subgoal
+                                  apply (simp add: SIM2(1,2,3,4,5)  operator_state.defs flip: filter_append map_append)
 
-                                thm step_Tau_dataflow_op_Inp_Inl_intro
+
+                                  find_theorems operator_state.inter produces
+
+                                oops
 
 
+  
+  find_theorems front  consumes
 
-                                using map_fst_filter_snd
+end
+                                prefer 2
+                                  apply (simp add: SIM2(1,2,3,4,5)  operator_state.defs flip: filter_append map_append)
 
-                                find_theorems coll lshift
+                                find_theorems  produces
 
                                 term "map fst (filter (\<lambda>(d, t'). t' = t) (map (case_event (\<lambda>t d. (d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (inps 1))))) = coll (inps 1) t"
 
