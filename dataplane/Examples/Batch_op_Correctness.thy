@@ -1388,8 +1388,8 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               done
             subgoal
               unfolding timely_input_stream_def
-              apply (auto simp add: operator_state.defs intro: ev_drops.intros timely_productive.intros)
-              using timely_monotone.intros(1) apply blast
+              apply (auto simp add: operator_state.defs zero_enat_def timely_progress_def vacant_def)
+              using timely_monotone.intros(1) apply blast+
               done
             subgoal
               using SIM1(17) apply -
@@ -1506,7 +1506,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               using SIM1(13) temp(4) apply -
               apply (clarsimp simp add: operator_state.defs)
               unfolding timely_input_stream_def
-              apply (auto intro: ev_drops.intros timely_productive.intros)
+              apply (auto simp add: operator_state.defs zero_enat_def)
               done
             subgoal
               using SIM1(17) apply -
@@ -1599,8 +1599,8 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               using SIM1(13) temp(4) apply -
               apply (clarsimp simp add: operator_state.defs)
               unfolding timely_input_stream_def
-              apply (auto intro: ev_drops.intros timely_productive.intros)
-               apply (metis (no_types, lifting) count_mset_0_iff count_ne_remove ev_drops.simps ev_drops_LConsE event.distinct(2) event.inject(2) event.simps(9) lfinite_code(2) vacant_def)+
+              unfolding timely_input_stream_def
+              apply (auto simp add: operator_state.defs zero_enat_def vacant_def)
               done
             subgoal
               using SIM1(17) apply -
@@ -1829,7 +1829,8 @@ next
             subgoal
               using timely_input_stream_advances_frontier[OF SIM2(13), of t] apply -
               apply (clarsimp simp flip: cin.rep_eq )
-              subgoal for n
+              subgoal premises N_inv for n
+                using N_inv(1,2,3,4) apply -
                 apply (subgoal_tac "dataflow_topology (summ sg) (-+-)")
                  defer
                 subgoal premises temp
@@ -2756,7 +2757,27 @@ next
                                 subgoal
                                   using tempp(2) apply -
                                   apply (elim disjE conjE)
-                                  subgoal sorry
+                                  subgoal 
+                                    unfolding outputs_at_target_def BULK_BENQ_def inputs_at_target_def
+                                    apply simp
+                                    apply (auto simp add: SIM2(1,2,3) my_summ_def intsum_consumes_fold del: disjCI split: if_splits)
+                                    subgoal for ddd x
+                                      apply (cases x; simp)
+                                      apply (intro disjI2)
+                                      subgoal for t2 d2
+                                        apply (rule exI[of _ x])
+                                  using N_inv(5) apply (auto simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def, simplified])
+                                  done
+                                      done
+                                    subgoal for ddd x
+                                      apply (cases x; simp)
+                                      apply (intro disjI2)
+                                      subgoal for t2 d2
+                                        apply (rule exI[of _ x])
+                                    using N_inv(5) apply (auto simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def, simplified])
+                                    done
+                                      done
+                                    done
                                   subgoal
                                     unfolding outputs_at_target_def BULK_BENQ_def inputs_at_target_def
                                     apply simp
@@ -2934,14 +2955,27 @@ next
                                           apply (intro disjI2)
                                           apply (rule exI[of _ "Data t'' d''"])
                                           apply simp
-                                          sorry
+                                          using N_inv(5) apply auto
+                                          done
                                         subgoal 
                                           using N_INV(4) by auto
                                         subgoal
-                                          sorry
+                                          apply simp
+                                          using N_inv(6) apply -
+                                          apply hypsubst_thin
+                                          apply simp
+                                          apply (subst (asm) coll_lshift)
+                                           apply simp_all
+                                          subgoal
+                                            by (metis SIM2(13) timely_input_stream_Data_expires)
+                                          subgoal
+                                            apply (simp add: filter_map comp_def split_beta)
+                                            apply (metis (lifting) cond_case_prod_eta sndI)
+                                            done
+                                          done
+                                        done
                                         done
                                       done
-                                    done
                                   subgoal premises temp2
                                     unfolding BULK_BENQ_def outputs_at_target_def SIM2(2,1) 
                                     apply (clarsimp simp add: antichain_from_list_singleton my_summ_def)
@@ -2978,8 +3012,10 @@ next
                                       apply (clarsimp simp add: filter_map split_beta comp_def )
                                       apply (subgoal_tac "map (\<lambda>x. fst (case x of Data t d \<Rightarrow> (d, t))) (filter (\<lambda>x. is_Data x \<and> snd (case x of Data t d \<Rightarrow> (d, t)) = t) (ltaken n (inps 1))) = coll (inps 1) t")
                                       defer
-                                      subgoal
-                                        sorry
+                                      subgoal premises auxx
+                                        apply (subst N_inv(6)[symmetric])
+                                        apply (simp add: filter_map comp_def split_beta)
+                                        done
                                       subgoal
                                         by (simp add: split_def)
                                       done
