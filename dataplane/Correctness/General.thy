@@ -71,6 +71,10 @@ lemma inputs_at_target_consumes[simp]:
   "inputs_at_target (os(nid := consumes (os nid) p t d)) = BENQ (nid, p) (d, t) (inputs_at_target os)"
   unfolding inputs_at_target_def consumes_def add_caps_def BENQ_def
   by (auto split: if_splits)
+lemma inputs_at_target_outpu_update[simp]:
+  "inputs_at_target (map_entry p (outpu_update A) os) = inputs_at_target os"
+  unfolding inputs_at_target_def
+  by auto
 
 definition "ty1_check os bufs = (\<forall> p. (\<forall> x \<in> fst ` set (input os p) \<union> fst ` set (bufs p) \<union> fst ` set (outpu os p). is_en1 os x))"
 definition "ty2_check os bufs = (\<forall> p. (\<forall> x \<in> fst ` set (input os p) \<union> fst ` set (bufs p). is_en1 os x) \<and> (\<forall> x \<in> fst ` set (outpu os p). is_en2 os x))"
