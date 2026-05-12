@@ -3091,14 +3091,17 @@ next
                                                  apply simp
                                                 apply simp
                                                 apply simp
-                                             apply (simp add: fold_consumes)
+                                             apply (simp add: fold_consumes SIM2(1,2,3,4,5)  operator_state.defs flip: filter_append map_append)
                                 apply (rule operator_state_eqI)
                                 subgoal
                                   sorry
                                 subgoal
+                                  apply (simp add: SIM2(1,2,3,4,5)  operator_state.defs flip: filter_append map_append)
+
                                   sorry
                                 subgoal
-                                  apply (simp add: SIM2(1,2,3,4,5)  operator_state.defs flip: filter_append map_append)
+                                  apply (simp only: produces_def  flip: filter_append map_append)
+
 
 
                                   find_theorems operator_state.inter produces

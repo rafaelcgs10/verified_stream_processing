@@ -1784,7 +1784,7 @@ lemma timely_input_stream_advances_frontier:
    \<exists> n \<le> llength lxs.
    \<not> frontier_less_equal (frontier (zmset_of (C + mset (map event.time (filter is_Mint (ltaken n lxs))) - mset (map event.time (filter is_Drop (ltaken n lxs)))))) t \<and>
    (\<forall> d. Data t d \<in> lset lxs \<longrightarrow> Data t d \<in> set (ltaken n lxs)) \<and>
-   map fst (filter (\<lambda> (d, t'). t' = t) (map (case_event (\<lambda> t d. (d, t)) undefined undefined) (filter is_Data (ltaken n lxs)))) = coll lxs t"
+   map fst (filter (\<lambda> (d, t'). t' = t) (map (case_event (\<lambda> t d. (d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n lxs)))) = coll lxs t"
   unfolding timely_input_stream_def timely_progress_def
   apply clarsimp
   apply (drule spec[of _ t])
