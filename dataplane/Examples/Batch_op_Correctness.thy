@@ -3270,184 +3270,29 @@ next
                                   apply (simp add: SIM2(15))
                                   done
                                 subgoal
-                                  apply (simp only: input_ocaps_inv_def  simp_thms diff01 fun_upd_apply fst_conv snd_conv operator_state_ty2.simps operator_state_ty.simps operator_state.simps split_beta operator_state.defs split: if_splits)
-                                  apply safe
-                                  apply simp
+                                  unfolding fun_upd_def
+                                  apply (simp add: comp_def  flip: filter_append map_append list_diff_append)
                                   subgoal
-                                    apply safe
-                                    subgoal
-                                  apply (simp only: fun_upd_apply input_ocaps_inv_def  simp_thms diff01 fun_upd_def fst_conv snd_conv operator_state_ty2.simps operator_state_ty.simps operator_state.simps split_beta operator_state.defs split: if_splits)
-                                    apply (clarsimp simp flip: list_diff_append)
-                                    subgoal
-                                        apply (simp add: if_distrib[of count_list] SIM2(1) SIM2(17) my_summ_def SIM2(8)[rule_format, of 0] SIM2(8)[rule_format, of 1] count_list_concat filter_concat set_list_diff_iff image_iff comp_def split_beta flip: list_diff_append split: if_splits)
-                                      subgoal premises auxx 
-                   
-
-                                          find_theorems count_list
-
-                                        oops
-
-                                        term count_list
-
-                                  thm fun_upd_apply
-
-                                    find_theorems "_ \<Longrightarrow> _ \<Longrightarrow>  _ + _ < _ + _"
-
-end
-                                  apply (simp add: SIM2(8)[rule_format, of 0] SIM2(8)[rule_format, of 1] split_beta operator_state.defs SIM2(1,2,4,5) split: if_splits del: list_diff_append list.simps append.simps filter.simps concat.simps filter_filter mset_filter to_zmset_correct mset.simps update_zmultiset_simps_more)
-
-                                  find_theorems "zmset_of (_ + _)"
-
-end
-                                  apply (auto 0 0 simp add: SIM2(8)[rule_format, of 0] SIM2(8)[rule_format, of 1] split_beta operator_state.defs SIM2(1,2,4,5) split: if_splits simp del: list.simps append.simps filter.simps concat.simps filter_filter mset_filter to_zmset_correct mset.simps update_zmultiset_simps_more)
-                                  subgoal
-                                    apply (rule FalseE)
-                                    apply auto
-                                    done
-                                  subgoal
-                                    apply simp
-
-                                    using SIM2(8)[rule_format, of 0]
-
-                                    find_theorems intsum os
-
-end
-  prefer 2
-  apply (simp add: SIM2(1,2,3,4,5)  operator_state.defs flip: filter_append map_append)
-
-find_theorems  produces
-
-term "map fst (filter (\<lambda>(d, t'). t' = t) (map (case_event (\<lambda>t d. (d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (inps 1))))) = coll (inps 1) t"
-
-find_theorems n
-
-
-find_theorems step Out set_op
-
-end
-  prefer 2
-  apply (rule refl)+
-  apply simp
-
-
-find_theorems "_ \<in> ran _ \<longleftrightarrow> _"
-
-end
-  apply blast
-  apply simp
-  apply simp
-  apply (rule refl)+
-
-find_theorems ip_state
-
-
-
-
-
-end
-  apply (rule step_Tau_dataflow_op_Inp_Inl_intro[where nid=1])
-  apply (subst dataflow_tree_to_operator_def)
-  apply (simp add: Relation.eq_OO)
-  apply (rule step_map_op[of "Inp _ _"])
-  apply (rule step_comp_op_R_Inp)
-  apply (rule step_map_op[of "Inp None _"])            
-  apply (subst batch_op_def)
-  apply (subst batch_op_logic_def)
-  apply (subst notifier_op_def)
-  apply (rule step_builder_op_Read_None3)
-  apply (rule refl)
-  apply simp
-  apply (rule refl)
-  apply force
-  subgoal
-    by (clarsimp simp add: ran_def image_iff comp_def split_beta split: if_splits option.splits sum.splits)
-  apply (rule refl)+
-  apply simp
-  prefer 2
-  subgoal
-
-
-
-    find_theorems  upfro
-
-
-
-end
-  apply simp
-  prefer 2
-  apply (rule refl)
-  prefer 2
-  apply (rule refl)
-  prefer 2
-  apply simp
-  apply blast
-
-thm step_tau_pow_map_op
-
-find_theorems step builder_op front
-
-find_theorems name: step_builder_op_Read_None
-  oops
-
-
-
-end
-  apply (rule step_tau_pow_map_op)
-  apply (rule step_taus_L_pow_comp_op_steps_intro)
-  apply (rule step_tau_pow_map_op)
-  apply (subst ooo_input_op_def)
-  apply (rule step_builder_op_n_Silents[where n=n])
-  apply (rule ooo_input_op_logic_iterates_n[where OS="{| ip_state |}" and os=ip_state and p=1])
-  subgoal
-    by (simp add: SIM2(4,13) operator_state.defs)
-  apply simp
-  apply simp
-  defer
-  subgoal
-    by (simp add: SIM2(4,13) operator_state.defs)
-  apply (rule refl)+
-
-
-  find_theorems n 
-
-  apply (clarsimp simp add: cimage_iff  simp flip: cin.rep_eq split: if_splits)
-
-  find_theorems ip_state
-
-end
-  apply (subst cfilter_cinsert)
-
-  oops
-
-  find_theorems  cfilter cinsert
-
-
-  term "inps 1"
-
-  find_theorems ts
-
-  term "let f_colls = (\<lambda> t'. f (coll (map (\<lambda>(x, t). Data t (projl x)) (input (os 1) 1 @ cbufs (1, 1) @ outpu (os 0) 1)@@- ltake n (inps 1)) t')) in
-                    let ts = rmdups {} (filter (\<lambda> t. t \<notin> event.time ` lset (ldropn n (inps 1))) (map snd (input (os 1) 1 @ cbufs (1, 1) @ outpu (os 0) 1)@ (map (\<lambda> ev. case ev of Data t d \<Rightarrow> t) (filter is_Data (ltaken n (inps 1)))))) in 
-                    length (concat (map f_colls ts))"
-
-  term coll
-
-  term ""
-
-  oops
-
-
-
-  find_consts "enat \<Rightarrow> nat"
-
-  find_theorems "lfilter _ _ = LCons _ _"
-
-
-end
+                                    sorry
+                                  done
+                                subgoal
+                                  by (simp add: SIM2(17)[simplified])
+                                done
+                              done
+                            done
+                          done
+                        done
+                      done
+                    done
+                  done
+                done
+              done
+            done
+          done
+        done
+      done
+  qed
 qed
-
-
-
 
 
 section \<open>Correctness\<close>
