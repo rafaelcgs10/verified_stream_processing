@@ -250,6 +250,11 @@ lemma loc_2_1_cases:
     done
   done
 
+lemma diff01[simp]:
+  "0 \<noteq> (1 :: 2)"
+  by simp
+
+
 lemma location_UNIV[simp]:
   "(UNIV :: ('nid, 'p) location set) =
    (\<lambda> (nid, p). Loc nid (Trg p)) ` (UNIV \<times> UNIV) \<union>
