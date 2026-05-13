@@ -3199,6 +3199,37 @@ next
                                   apply simp
                                   done
                                 subgoal
+                                  supply BULK_BENQ_left_empty[simp del]
+                                  apply (rule arg_cong2[where f=set_spec_op])
+                                  subgoal
+                                    apply (subgoal_tac "\<And> (os :: (2 \<Rightarrow> (1, 'd1 + 'd2, 't) operator_state)). outputs_at_target (summ sg) os (1, 1) = outpu (os 0) 1")
+                                    subgoal premises aux
+                                    unfolding BULK_BENQ_def inputs_at_target_def
+                                    apply (simp add: aux  del: filter_True filter_False list_emb_Nil2 image_eqI BULK_BENQ_right_empty flip: list_diff_append map_append filter_append)
+                                    apply (subst (3) coll_lshift)
+                                    subgoal
+                                      sorry
+                                    subgoal
+                                      find_theorems n frontier_less_equal
+
+                                      apply (simp only: filter_append)
+                                    find_theorems filter lshift
+                                    sorry
+                                  subgoal
+                                    sorry
+                                  done
+                                subgoal
+                                  by simp
+                                done
+
+                                    find_theorems SP
+
+end
+                                  apply (simp only: append.simps operator_state_ty2.simps operator_state_ty.simps operator_state.simps split_beta operator_state.defs fun_upd_apply simp_thms if_True if_False flip: list_diff_append filter_append map_append)
+
+                                  thm list_diff_append
+
+end
                                   sorry
                                 subgoal
                                   by (simp add: SIM2(1,2))
