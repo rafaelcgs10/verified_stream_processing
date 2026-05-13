@@ -123,8 +123,8 @@ lemma weights_to_graph_fun_to_next[simp]:
     using loc_2_1_cases[where l=l] apply -
     apply (elim disjE; hypsubst_thin)
     unfolding enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def
-    apply auto
-    apply code_simp+
+       apply auto
+      apply code_simp+
     done
   done
 
@@ -142,7 +142,7 @@ lemma dataflow_tree_to_graph_to_my_summ[simp]:
         apply simp
         subgoal for nid1 lp1 nid2 lp2
           apply (cases lp1; cases lp2; simp add: my_summ_def)
-          apply code_simp+
+           apply code_simp+
           done
         done
       done
@@ -150,11 +150,11 @@ lemma dataflow_tree_to_graph_to_my_summ[simp]:
   subgoal
     apply (rule FalseE)
     apply (auto; hypsubst_thin)
-    apply code_simp
+         apply code_simp
     subgoal
       unfolding no_self_loop_checker_is_graph_checker graph_checker_def
       by (clarsimp simp add: image_iff split_beta split: prod.splits if_splits port.splits)
-    apply code_simp
+       apply code_simp
     subgoal
       by eval
     subgoal for l1 l2
@@ -188,7 +188,7 @@ lemma outputs_at_target_my_summ[simp]:
   apply (auto simp add: antichain_from_list_singleton split: prod.splits if_splits)
   subgoal for nid
     apply (subgoal_tac "nid = 0")
-    apply simp
+     apply simp
     apply (subgoal_tac "{(nid' :: 2, p' :: 1). antichain_from_list (if nid' = 0 then [0] else []) \<noteq> {}\<^sub>A} = {(0, 1)}")
     subgoal
       by (smt (verit, ccfv_threshold) Batch_op_Correctness.antichain_from_list_empty Collect_cong Pair_inject Timely_Infrastructure.antichain_from_list_empty antichain_from_list_singleton split_cong
@@ -203,7 +203,7 @@ lemma outputs_at_target_my_summ[simp]:
 lemma coll_llist_of_map_Data[simp]:
   "coll (llist_of (map (\<lambda>(d, t). Data t (f d)) xs)) t = map (f o fst) (filter (\<lambda> (x, t'). t' = t) xs)"
   apply (induct xs)
-  apply simp
+   apply simp
   subgoal for x xs
     apply (cases x)
     apply (auto simp add: coll_LCons_Data)
@@ -214,7 +214,7 @@ lemma rcset_ts[simp]:
   "rcset (ts lxs) = event.time ` {x \<in> (lset lxs). is_Data x}"
   unfolding ts_def
   apply (auto simp add:  image_iff cset_of_llist.rep_eq split: event.splits)
-  apply force
+   apply force
   apply (metis event.distinct(1,3) event.sel(1) is_Data_def)
   done
 
@@ -327,7 +327,7 @@ lemma zmset_Data_to_zmset:
   "(\<forall>x\<in>set xs. is_Data x) \<Longrightarrow>
    zmset (map (\<lambda>x. snd (case x of Data t d \<Rightarrow> (p, t, 1))) xs) = to_zmset (map (\<lambda>x. snd (case x of Data t d \<Rightarrow> (Inl d, t))) xs)" 
   apply (induct xs)
-  apply (clarsimp split: event.splits prod.splits)+
+   apply (clarsimp split: event.splits prod.splits)+
   using update_zmultiset_one(2) apply fastforce
   done
 
@@ -373,11 +373,11 @@ lemma path_weight_end_of_road:
     apply (induct xs arbitrary: loc2 rule: rev_induct)
     subgoal
       apply (erule graph.path.cases[OF G])
-      apply (auto simp add: )
+       apply (auto simp add: )
       done
     subgoal
       apply (erule graph.path.cases[OF G])
-      apply (clarsimp simp add: split: if_splits)+
+       apply (clarsimp simp add: split: if_splits)+
       apply force
       done
     done
@@ -454,8 +454,8 @@ lemma zmset_map_Drop_Mint:
    zmset (map (\<lambda>x. snd (case x of Drop t \<Rightarrow> (p, t, - 1) | Mint t \<Rightarrow> (p, t, 1))) xs) =
    zmset_of (event.time `# filter_mset is_Mint (mset xs)) - zmset_of (event.time `# filter_mset is_Drop (mset xs))"
   apply (induct xs)
-  apply (auto simp add: zmset_of_plus split: event.splits)
-  apply (metis (no_types, lifting) add_zmset_add_single diff_diff_add update_zmultiset_one(1))
+   apply (auto simp add: zmset_of_plus split: event.splits)
+   apply (metis (no_types, lifting) add_zmset_add_single diff_diff_add update_zmultiset_one(1))
   using update_zmultiset_one(2) apply fastforce
   done
 
@@ -544,23 +544,23 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
         subgoal 
           apply -
           apply (intro exI conjI relcomppI)
-          apply (rule step_set_spec_op_intro_Out)
-          apply (rule refl)
-          apply simp
-          apply simp
-          apply (rule refl)
-          apply (rule bisim_refl)
-          defer
-          apply (rule wbisim_refl)
+             apply (rule step_set_spec_op_intro_Out)
+                apply (rule refl)
+               apply simp
+              apply simp
+             apply (rule refl)
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
           apply (rule wb_upto_b_base)
           unfolding R_def[simplified]
           apply (intro exI conjI)
           unfolding wsim_def dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
-          apply simp
-          apply (simp add: SIM1)
-          apply (simp add: SIM1)
-          apply (simp add: SIM1(1))
-          apply (simp add: SIM1)
+                      apply simp
+                      apply (simp add: SIM1)
+                     apply (simp add: SIM1)
+                    apply (simp add: SIM1(1))
+                    apply (simp add: SIM1)
           subgoal premises
             using SIM1
             unfolding ty1_check_def
@@ -571,13 +571,13 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             by (fastforce simp add:  my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
           using SIM1 apply fastforce+
           done
-        defer
+                defer
         subgoal for d t
           apply (intro exI conjI relcomppI)
-          apply (rule rtranclp.intros(1))
-          apply (rule bisim_refl)
-          defer
-          apply (rule wbisim_refl)
+             apply (rule rtranclp.intros(1))
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
           apply (rule wb_upto_b_base)
           unfolding R_def[simplified]
           apply (rule exI[of _ "os(1 := consumes (os 1) 1 t d)"])
@@ -592,7 +592,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             by (simp add: map_tl SIM1(3-) comp_op_def if_distrib  consumes_def add_caps_def BTL_def enum_num1_def operator_state.defs fun_upd_def)
           subgoal
             by (simp add: cUn_assoc SIM1  flip:BULK_BENQ_assoc cinsert_code)
-          apply (simp_all add: SIM1)
+                    apply (simp_all add: SIM1)
           subgoal
             using SIM1
             unfolding ty1_check_def
@@ -606,7 +606,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           subgoal premises temp
             using SIM1(10) apply -
             apply (rule dataplane_tracker_inv_consumes[where xs="tl (cbufs (1, 1))"])
-            apply assumption
+               apply assumption
             using temp(2,3) apply (simp add: BHD_def )
             subgoal
               using SIM1(1,2) 
@@ -614,9 +614,9 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               by metis
             subgoal              
               apply (rule graph_summar_nt)
-              apply (rule refl)+
-              apply (rule SIM1(2)[unfolded SIM1(1)])
-              apply (auto simp add: SIM1 comp_def)
+                 apply (rule refl)+
+                apply (rule SIM1(2)[unfolded SIM1(1)])
+               apply (auto simp add: SIM1 comp_def)
               done
             done
           subgoal
@@ -631,14 +631,14 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             apply clarsimp
             done
           done
-        defer
+               defer
         subgoal 
           (* batch_op logic  *)
           apply (intro exI conjI relcomppI)
-          apply (rule rtranclp.intros(1))
-          apply (rule bisim_refl)
-          defer
-          apply (rule wbisim_refl)
+             apply (rule rtranclp.intros(1))
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
           apply (rule wb_upto_b_base)
           unfolding R_def[simplified]
           apply (rule exI[of _ "os( 1 := (os 1)\<lparr> 
@@ -662,15 +662,15 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           apply (rule exI[of _ D])
           apply (intro conjI)
           unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
-          apply (simp add: map_tl SIM1(3-) drop_caps_def produces_def comp_def split_beta comp_op_def if_distrib  consumes_def add_caps_def BTL_def enum_num1_def operator_state.defs fun_upd_def)
-          apply (rule arg_cong2[where f=set_spec_op])
+                      apply (simp add: map_tl SIM1(3-) drop_caps_def produces_def comp_def split_beta comp_op_def if_distrib  consumes_def add_caps_def BTL_def enum_num1_def operator_state.defs fun_upd_def)
+                     apply (rule arg_cong2[where f=set_spec_op])
           subgoal premises temp
             apply (simp add: SIM1(11,12,9))
             apply (subst (1 2) cUn_assoc)
             apply (rule arg_cong2[where f=cUn])
-            apply simp
+             apply simp
             apply (subgoal_tac "\<forall>x. x \<in> lset (inps 1) \<longrightarrow> is_Data x \<longrightarrow> frontier_less_equal (front (os 1) 1) (event.time x)")
-            defer
+             defer
             subgoal
               apply safe       
               subgoal for x
@@ -684,9 +684,9 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                   apply (drule spec[of _ 1])
                   apply (drule spec[of _ "Loc 1 (Trg 1)"])
                   apply (rule frontier_less_equal_le_trans[rotated])
-                  apply (rule order.trans)
-                  apply assumption
-                  apply assumption
+                   apply (rule order.trans)
+                    apply assumption
+                   apply assumption
                   subgoal for caps
                     unfolding Src_caps_inv_def
                     apply (drule spec[of _ 0])
@@ -699,20 +699,20 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                       using SIM1(1,2) 
                       using  dataflow_topology_from_tree.dataflow_topology_axioms
                       by metis
-                    apply (drule sym[of _ "to_zmset (ocaps (os 0) 1)"])
-                    back
-                    apply (simp add: c_pts_change_multiplicities SIM1(1,2) comp_def  zmset_filter_extract_progress_Src_consumes_diff)
+                      apply (drule sym[of _ "to_zmset (ocaps (os 0) 1)"])
+                      back
+                      apply (simp add: c_pts_change_multiplicities SIM1(1,2) comp_def  zmset_filter_extract_progress_Src_consumes_diff)
                     subgoal 
                       using graph_summar_nt[unfolded graph_summar_nt_def , OF _  SIM1(2)[unfolded SIM1(1)] , simplified, OF dataflow_tree_to_graph_to_my_summ[symmetric], where os=os] apply -
                       apply (drule meta_mp)
                       using SIM1(1,2,8) dataflow_tree_to_graph_to_my_summ apply fastforce 
                       apply (drule meta_mp)
-                      apply (clarsimp simp add: SIM1(1,2,3) comp_def)
+                       apply (clarsimp simp add: SIM1(1,2,3) comp_def)
                       apply (elim conjE)
                       apply (clarsimp simp add: SIM1(1,2) comp_def)
                       apply (drule spec2[of _ 1 0], drule mp)
-                      back
-                      apply (simp_all add: bi_unique_def)
+                       back
+                       apply (simp_all add: bi_unique_def)
                       subgoal premises
                         unfolding graph_to_nxt_def
                         apply auto
@@ -723,12 +723,12 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                         done
                       subgoal
                         apply (rule path_weight_direct_0path[OF dataflow_topology.axioms(1)[OF]])
-                        defer
-                        apply assumption
+                         defer
+                         apply assumption
                         apply (subgoal_tac " dataflow_topology (summ sg) (-+-)")
                         using SIM1(1,2) [unfolded comp_def]
                         using  dataflow_topology_from_tree.dataflow_topology_axioms[unfolded comp_def]
-                        apply simp
+                         apply simp
                         subgoal
                           using SIM1(1,2) 
                           using  dataflow_topology_from_tree.dataflow_topology_axioms
@@ -741,7 +741,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                 done
               done
             apply (subgoal_tac "\<forall> t \<in> snd ` set ((outputs_at_target (summ sg) os >> cbufs) (1, 1)). frontier_less_equal (front (os 1) 1) t")
-            defer
+             defer
             subgoal
               apply safe
               subgoal for _ a t
@@ -759,14 +759,14 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                 subgoal 
                   by blast
                 apply (drule frontier_less_equal_le_trans)
-                apply (rule order.trans[rotated])
-                apply assumption+
+                 apply (rule order.trans[rotated])
+                  apply assumption+
                 done
               done
             apply (simp add: cimage_cUn if_distrib[where f=input] SIM1(1,2) outputs_at_target_my_summ inputs_at_target_def)
             apply (subst (1) cUn_assoc)
             apply (rule arg_cong2[where f=cUn])
-            apply simp
+             apply simp
             apply (subst coll_lshift)
             subgoal using timely_input_stream_expires[OF SIM1(13)] by auto
             apply (subst coll_lshift)
@@ -796,7 +796,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                     apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
                     subgoal for dd t d
                       apply (rule cBexI[of _ t])
-                      apply auto
+                       apply auto
                       apply (subst (asm) (2 3) filter_False)
                       subgoal
                         by force
@@ -811,7 +811,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                       done
                     subgoal for dd d t'
                       apply (rule cBexI[of _ "(d, t')"])
-                      apply simp_all
+                       apply simp_all
                       apply (subst (2 3) filter_False)
                       subgoal
                         by force
@@ -828,22 +828,22 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                     apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
                     subgoal for dd t d
                       apply (rule cBexI[of _ t])
-                      apply auto
+                       apply auto
                       apply (smt (verit, best) filter_cong split_def)
                       done
                     subgoal for dd t d
                       apply (rule cBexI[of _ t])
-                      apply auto                   
+                       apply auto                   
                       apply (smt (verit, best) filter_cong split_def)
                       done
                     subgoal for dd d t
                       apply (rule cBexI[of _ "(d, t)"])
-                      apply auto                   
+                       apply auto                   
                       apply (smt (verit, best) filter_cong split_def)
                       done
                     subgoal for dd d t
                       apply (rule cBexI[of _ "(d, t)"])
-                      apply auto                   
+                       apply auto                   
                       apply (smt (verit, best) filter_cong split_def)
                       done
                     done
@@ -852,12 +852,12 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                   apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
                   subgoal for  t d
                     apply (rule cBexI[of _ t])
-                    apply auto         
+                     apply auto         
                     apply (smt (verit, best) filter_cong split_def)
                     done
                   subgoal for  t d
                     apply (rule cBexI[of _ t])
-                    apply auto         
+                     apply auto         
                     apply (smt (verit, best) filter_cong split_def)
                     done
                   done
@@ -866,12 +866,12 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                 apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
                 subgoal for x  t d
                   apply (rule cBexI[of _ "(x, t)"])
-                  apply auto         
+                   apply auto         
                   using filter_cong split_def apply (smt (verit, best) Un_iff snd_conv)
                   done
                 subgoal for x  t d
                   apply (rule cBexI[of _ "(x, t)"])
-                  apply auto         
+                   apply auto         
                   using filter_cong split_def apply (smt (verit, best) Un_iff snd_conv)
                   done
                 done
@@ -880,17 +880,17 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               apply (auto 0 0 simp add: image_iff split_beta simp flip: cin.rep_eq)
               subgoal for x  t d
                 apply (rule cBexI[of _ "(x, t)"])
-                apply auto         
+                 apply auto         
                 using filter_cong split_def apply (smt (verit, best) Un_iff snd_conv)
                 done
               subgoal for x  t d
                 apply (rule cBexI[of _ "(x, t)"])
-                apply auto         
+                 apply auto         
                 using filter_cong split_def apply (smt (verit, best) Un_iff snd_conv)
                 done
               done
             done
-          apply (simp_all add: SIM1(1,2,3))
+                     apply (simp_all add: SIM1(1,2,3))
 
           subgoal
             using SIM1
@@ -900,14 +900,14 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             using SIM1(5,6,7)
             unfolding ty2_check_def
             apply (auto simp add: operator_state.defs comp_def fun_upd_def BTL_def BHD_def  consumes_def add_caps_def BENQ_def my_summ_def BULK_BENQ_def outputs_at_target_def split: option.splits if_splits prod.splits)
-            apply (meson UnCI img_fst in_set_tlD)+
+             apply (meson UnCI img_fst in_set_tlD)+
             done
           subgoal
             by (simp add: SIM1(1,2,3,8))
           subgoal premises temp            
             apply (rule dataplane_tracker_inv_produces_drops[])
-            apply simp_all
-            defer
+                        apply simp_all
+                     defer
             subgoal
               by (auto simp add: comp_def enum_num1_def)
             subgoal
@@ -922,9 +922,9 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               by (auto simp add: comp_def)
             subgoal
               apply (rule graph_summar_nt)
-              apply (rule refl)+
-              apply (rule SIM1(2)[unfolded SIM1(1)])
-              apply (auto simp add: SIM1 comp_def)
+                 apply (rule refl)+
+                apply (rule SIM1(2)[unfolded SIM1(1)])
+               apply (auto simp add: SIM1 comp_def)
               done
             subgoal
               using SIM1(3) by auto
@@ -956,7 +956,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             apply clarsimp
             done
           done
-        prefer 3
+              prefer 3
         subgoal  
           apply (rule FalseE)
           apply (drule propagate_all_terminates[unfolded not_def, rule_format, rotated 6])
@@ -965,7 +965,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             using dataflow_topology_from_tree.dataflow_topology_axioms
             apply (metis dataflow_tree_to_graph_to_my_summ)
             done
-          apply simp_all
+               apply simp_all
           subgoal
             using SIM1(10)[unfolded dataplane_tracker_inv_def, simplified] apply -
             unfolding propagation_inv_def
@@ -980,19 +980,19 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             using TIMESTAMP_COMPARE by auto
           subgoal for loc
             apply (subgoal_tac "graph_summar_nt (summ sg) (subgraph.nxt sg) os")
-            defer
+             defer
             subgoal
               apply (rule graph_summar_nt)
-              apply (rule refl)+
-              apply (rule SIM1(2)[unfolded SIM1(1)])
-              apply (auto simp add: SIM1 comp_def)
+                 apply (rule refl)+
+                apply (rule SIM1(2)[unfolded SIM1(1)])
+               apply (auto simp add: SIM1 comp_def)
               done
             subgoal
               apply (cases loc; simp)
               subgoal for nid lp
                 apply (cases lp; simp)
                 unfolding graph_summar_nt_def
-                apply auto
+                 apply auto
                 done
               done
             done
@@ -1006,10 +1006,10 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           using SIM1(5) apply simp
           apply hypsubst_thin
           apply (intro exI conjI relcomppI impI)
-          apply (rule rtranclp.intros(1))
-          apply (rule bisim_refl)
-          defer
-          apply (rule wbisim_refl)
+             apply (rule rtranclp.intros(1))
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
           apply (rule wb_upto_b_base)
           unfolding R_def[simplified]
           apply (rule exI[of _ "os(1 := fst (obtain_progress (os 1)))"])
@@ -1047,23 +1047,23 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             by (simp add: SIM1 obtain_progress_def)
           subgoal
             apply (subst dataplane_tracker_inv_clean[where f="\<lambda>_. True"])
-            defer
-            defer                                 
-            apply (rule dataplane_tracker_inv_progress)
+              defer
+              defer                                 
+              apply (rule dataplane_tracker_inv_progress)
             using SIM1(10) apply assumption
-            apply simp_all
+                apply simp_all
             using SIM1(1,2) apply simp
             subgoal
               using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
               by metis
             subgoal              
               apply (rule graph_summar_nt)
-              apply (rule refl)+
-              apply (rule SIM1(2)[unfolded SIM1(1)])
-              apply (auto simp add: SIM1 comp_def)
+                 apply (rule refl)+
+                apply (rule SIM1(2)[unfolded SIM1(1)])
+               apply (auto simp add: SIM1 comp_def)
               done
             unfolding obtain_progress_def
-            apply (auto simp add: operator_state.defs)
+             apply (auto simp add: operator_state.defs)
             done
           subgoal
             using SIM1(13)
@@ -1089,10 +1089,10 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           using SIM1(4) apply simp
           apply hypsubst_thin
           apply (intro exI conjI relcomppI)
-          apply (rule rtranclp.intros(1))
-          apply (rule bisim_refl)
-          defer
-          apply (rule wbisim_refl)
+             apply (rule rtranclp.intros(1))
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
           apply (rule wb_upto_b_base)
           unfolding R_def[simplified]
           apply (rule exI[of _ "os(0 := fst (obtain_progress (os 0)))"])
@@ -1130,23 +1130,23 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             by (simp add: SIM1 obtain_progress_def)
           subgoal
             apply (subst dataplane_tracker_inv_clean[where f="\<lambda>_. True"])
-            defer
-            defer                                 
-            apply (rule dataplane_tracker_inv_progress)
+              defer
+              defer                                 
+              apply (rule dataplane_tracker_inv_progress)
             using SIM1(10) apply assumption
-            apply simp_all
+                apply simp_all
             using SIM1(1,2) apply simp
             subgoal
               using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
               by metis
             subgoal              
               apply (rule graph_summar_nt)
-              apply (rule refl)+
-              apply (rule SIM1(2)[unfolded SIM1(1)])
-              apply (auto simp add: SIM1 comp_def)
+                 apply (rule refl)+
+                apply (rule SIM1(2)[unfolded SIM1(1)])
+               apply (auto simp add: SIM1 comp_def)
               done
             unfolding obtain_progress_def
-            apply (auto simp add: operator_state.defs)
+             apply (auto simp add: operator_state.defs)
             done
           subgoal
             using SIM1(13) apply -
@@ -1175,10 +1175,10 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           using SIM1(5) apply simp
           apply hypsubst_thin
           apply (intro exI conjI relcomppI)
-          apply (rule rtranclp.intros(1))
-          apply (rule bisim_refl)
-          defer
-          apply (rule wbisim_refl)
+             apply (rule rtranclp.intros(1))
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
           apply (rule wb_upto_b_base)
           unfolding R_def[simplified]
           apply (rule exI[of _ "os(1 := (os 1)\<lparr> front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg 1))), initia := True \<rparr> )"])
@@ -1188,7 +1188,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           apply (rule exI[of _ S])
           apply (rule exI[of _ D])
           apply (intro conjI)
-          apply (simp_all add: SIM1)
+                      apply (simp_all add: SIM1)
           subgoal premises temp
             apply (simp add: dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def obtain_progress_def)
             unfolding ooo_input_op_logic_def
@@ -1208,7 +1208,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             done
           subgoal
             apply (subst dataplane_tracker_inv_clean[where f="(upfro sg)(1 := False)", of _ "sg\<lparr>pt_tr := c\<rparr>" _ "os(1:= (os 1)\<lparr> front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg 1))) \<rparr> )"])
-            apply simp_all
+              apply simp_all
             apply (subgoal_tac "propagate_all (antichain_from_list \<circ>\<circ> my_summ) (pt_tr sg) = Some c \<Longrightarrow> dataplane_tracker_inv (map_entry 1 (front_update (\<lambda>_. frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg p))))) os) cbufs (sg\<lparr>pt_tr := c\<rparr>)")
             subgoal
               by simp
@@ -1225,17 +1225,17 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                 apply (simp add: SIM1)
                 unfolding reachable_locations_def
                 apply (auto simp add: split_beta)
-                apply (metis (no_types, lifting) loc_2_1_cases rangeI range_fst surjD)
-                apply (metis (no_types, lifting) loc_2_1_cases rangeI range_fst surjD)
-                apply (smt (verit, ccfv_threshold) is_empty_antichain_not_empty_list loc_2_1_cases my_summ_def zero_one)
+                   apply (metis (no_types, lifting) loc_2_1_cases rangeI range_fst surjD)
+                  apply (metis (no_types, lifting) loc_2_1_cases rangeI range_fst surjD)
+                 apply (smt (verit, ccfv_threshold) is_empty_antichain_not_empty_list loc_2_1_cases my_summ_def zero_one)
                 apply (smt (verit, ccfv_threshold) is_empty_antichain_not_empty_list loc_2_1_cases my_summ_def zero_one)
                 done
-              apply (simp add: SIM1)
+                apply (simp add: SIM1)
               subgoal              
                 apply (rule graph_summar_nt)
-                apply (rule refl)+
-                apply (rule SIM1(2)[unfolded SIM1(1)])
-                apply (auto simp add: SIM1 comp_def)
+                   apply (rule refl)+
+                  apply (rule SIM1(2)[unfolded SIM1(1)])
+                 apply (auto simp add: SIM1 comp_def)
                 done
               apply (simp add: SIM1)
               done
@@ -1254,7 +1254,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               apply (auto simp add: image_iff split_beta )
               using loc_2_1_cases apply blast
               using loc_2_1_cases apply blast
-              apply (smt (verit, del_insts) is_empty_antichain_not_empty_list loc_2_1_cases my_summ_def zero_one)+
+               apply (smt (verit, del_insts) is_empty_antichain_not_empty_list loc_2_1_cases my_summ_def zero_one)+
               done
             subgoal
               using SIM1(10)[unfolded dataplane_tracker_inv_def propagation_inv_def SIM1(1,2)] by auto
@@ -1276,10 +1276,10 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           done
         subgoal for x t xs
           apply (intro exI conjI relcomppI)
-          apply (rule rtranclp.intros(1))
-          apply (rule bisim_refl)
-          defer
-          apply (rule wbisim_refl)
+             apply (rule rtranclp.intros(1))
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
           apply (rule wb_upto_b_base)
           unfolding R_def[simplified]
           apply (rule exI[of _ "os(1 := (os 1)\<lparr> outpu := (\<lambda> _. xs) \<rparr> )"])
@@ -1289,7 +1289,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           apply (rule exI[of _ "cinsert ((1, 1), x, t) S"])
           apply (rule exI[of _ D])
           apply (intro conjI)
-          apply (simp_all add: SIM1)
+                      apply (simp_all add: SIM1)
           subgoal
             unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
             apply (simp add: map_tl SIM1(3-) comp_def split_beta comp_op_def if_distrib  enum_num1_def operator_state.defs fun_upd_def)
@@ -1306,15 +1306,15 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           subgoal premises
             using SIM1(10) apply -
             apply (rule dataplane_tracker_inv_update_outputs_outside)
-            apply assumption
-            apply simp_all
+               apply assumption
+              apply simp_all
             subgoal
               by (simp add: my_summ_def SIM1)
             subgoal
               apply (rule graph_summar_nt)
-              apply (rule refl)+
-              apply (rule SIM1(2)[unfolded SIM1(1)])
-              apply (auto simp add: SIM1 comp_def)
+                 apply (rule refl)+
+                apply (rule SIM1(2)[unfolded SIM1(1)])
+               apply (auto simp add: SIM1 comp_def)
               done
             done
           subgoal
@@ -1330,10 +1330,10 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           done
         subgoal for x t xs
           apply (intro exI conjI relcomppI)
-          apply (rule rtranclp.intros(1))
-          apply (rule bisim_refl)
-          defer
-          apply (rule wbisim_refl)
+             apply (rule rtranclp.intros(1))
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
           apply (rule wb_upto_b_base)
           unfolding R_def[simplified]
           apply (rule exI[of _ "os(0 := (os 0)\<lparr> outpu := (\<lambda> _. xs) \<rparr>)"])
@@ -1343,16 +1343,16 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           apply (rule exI[of _ "S"])
           apply (rule exI[of _ D])
           apply (intro conjI)
-          apply (simp_all add: SIM1)
+                      apply (simp_all add: SIM1)
           subgoal
             unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def
             by (simp add: BENQ_def map_tl SIM1(2-) comp_def split_beta comp_op_def if_distrib  enum_num1_def operator_state.defs fun_upd_def)
           subgoal
             apply (simp add: map_tl SIM1(2-) split_beta comp_op_def if_distrib  enum_num1_def operator_state.defs)
             apply (rule arg_cong2[where f=set_spec_op])
-            apply simp_all
+             apply simp_all
             apply (rule arg_cong2[where f=cUn])
-            apply simp_all
+             apply simp_all
             apply (cases "{(nid', p'). antichain_from_list (if nid' = (0 :: 2) then [0 :: 't] else []) \<noteq> {}\<^sub>A} = {}")
             subgoal 
               apply (rule FalseE)
@@ -1376,18 +1376,18 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           subgoal premises temp
             using SIM1(10) apply -
             apply (rule dataplane_tracker_inv_update_outputs[where nid=0 and xs="[(x, t)]" and ys=xs and p=1])
-            apply assumption
+                 apply assumption
             using temp apply (simp add: operator_state.defs)
             using temp apply simp
             unfolding BENQ_def
-            apply simp
-            apply (simp add: SIM1 my_summ_def)
+              apply simp
+             apply (simp add: SIM1 my_summ_def)
             using mem_antichain_nonempty in_antichain_singleton apply force
             subgoal
               apply (rule graph_summar_nt)
-              apply (rule refl)+
-              apply (rule SIM1(2)[unfolded SIM1(1)])
-              apply (auto simp add: SIM1 comp_def)
+                 apply (rule refl)+
+                apply (rule SIM1(2)[unfolded SIM1(1)])
+               apply (auto simp add: SIM1 comp_def)
               done
             done
           subgoal
@@ -1402,10 +1402,10 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           subgoal
             (* LNIl *)
             apply (intro exI conjI relcomppI)
-            apply (rule rtranclp.intros(1))
-            apply (rule bisim_refl)
-            defer
-            apply (rule wbisim_refl)
+               apply (rule rtranclp.intros(1))
+              apply (rule bisim_refl)
+             defer
+             apply (rule wbisim_refl)
             apply (rule wb_upto_b_base)
             unfolding R_def[simplified]
             apply (rule exI[of _ "os(0 := (os 0)\<lparr> ocaps := (\<lambda> _. []), inter := inter (os 0) @ map (\<lambda> t. (1, t, -1)) (ocaps (os 0) 0) \<rparr>)"])
@@ -1415,7 +1415,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             apply (rule exI[of _ "S"])
             apply (rule exI[of _ D])
             apply (intro conjI)
-            apply (simp_all add: SIM1)
+                        apply (simp_all add: SIM1)
             subgoal
               unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def drop_caps_def add_cap_def BTL_def BHD_def produce_def
               by (simp add: map_tl SIM1(2-) comp_def split_beta comp_op_def if_distrib  enum_num1_def operator_state.defs fun_upd_def )
@@ -1441,19 +1441,19 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                 using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
                 apply metis
                 done
-              apply fastforce
+                       apply fastforce
               subgoal
                 using SIM1(14) by auto
-              apply (rule refl)+
+                     apply (rule refl)+
               subgoal
                 by (auto simp add: comp_def enum_num1_def)
-              apply simp_all
+                   apply simp_all
               subgoal             
                 apply (simp flip: SIM1(3))
                 apply (rule graph_summar_nt)
-                apply (rule refl)+
-                apply (rule SIM1(2)[unfolded SIM1(1)])
-                apply (auto simp add: SIM1 comp_def)
+                   apply (rule refl)+
+                  apply (rule SIM1(2)[unfolded SIM1(1)])
+                 apply (auto simp add: SIM1 comp_def)
                 done
               subgoal
                 apply (simp add: SIM1)
@@ -1473,10 +1473,10 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           subgoal for A lxs t d
             (* Data *)
             apply (intro exI conjI relcomppI)
-            apply (rule rtranclp.intros(1))
-            apply (rule bisim_refl)
-            defer
-            apply (rule wbisim_refl)
+               apply (rule rtranclp.intros(1))
+              apply (rule bisim_refl)
+             defer
+             apply (rule wbisim_refl)
             apply (rule wb_upto_b_base)
             unfolding R_def[simplified]
             apply (rule exI[of _ "os(0 := (os 0)\<lparr> outpu := (outpu (os 0))(1 := outpu (os 0) 1 @ [(Inl d, t)]), produ := produ (os 0) @ [(1, t, 1)] \<rparr>)"])
@@ -1486,7 +1486,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             apply (rule exI[of _ "S"])
             apply (rule exI[of _ D])
             apply (intro conjI)
-            apply (simp_all add: SIM1)
+                        apply (simp_all add: SIM1)
             subgoal
               unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def add_cap_def BTL_def BHD_def produce_def
               by (simp add: map_tl SIM1(2-) comp_def split_beta comp_op_def if_distrib  enum_num1_def operator_state.defs fun_upd_def )
@@ -1494,31 +1494,31 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               unfolding inputs_at_target_def produce_def
               apply (clarsimp simp add: BULK_BENQ_def  produce_def)
               apply (rule arg_cong2[where f=set_spec_op])
-              apply simp_all
+               apply simp_all
               apply (rule arg_cong2[where f=cUn])
-              apply simp_all
+               apply simp_all
               unfolding operator_state.defs
               apply simp
               apply (subst (1 2 3 4 5 6) coll_lshift)
-              apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
-              apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
-              apply simp
-              apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
-              apply (metis SIM1(13) timely_input_stream_expires)
+                  apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
+                 apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
+                apply simp
+                apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
+               apply (metis SIM1(13) timely_input_stream_expires)
               apply simp
               apply (subst (1 2 3 4 5 6) coll_LCons_Data; simp?)
-              apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
-              apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
+                apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
+               apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
               apply (auto 0 0 simp add: image_iff split_beta cimage_cUn split_def cong: filter_cong split: if_splits)
               subgoal
                 using empty_append_eq_id
                 by (smt (verit) filter_cong split_def)
-              apply (metis snd_conv)
-              apply (metis snd_conv)
-              apply (metis snd_conv)
-              apply blast+
-              apply (metis snd_conv)
-              apply (metis snd_conv)
+                    apply (metis snd_conv)
+                   apply (metis snd_conv)
+                  apply (metis snd_conv)
+                 apply blast+
+                apply (metis snd_conv)
+               apply (metis snd_conv)
               apply (metis snd_conv)
               done
             subgoal
@@ -1543,11 +1543,11 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                   using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
                   apply metis
                   done
-                apply fastforce
-                apply fastforce
-                apply fastforce
-                apply (rule refl)
-                apply (simp add: SIM1)
+                         apply fastforce
+                        apply fastforce
+                       apply fastforce
+                      apply (rule refl)
+                     apply (simp add: SIM1)
                 subgoal
                   using SIM1(13) temp(4) apply -
                   apply (clarsimp simp add: operator_state.defs)
@@ -1565,9 +1565,9 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                 subgoal             
                   apply (simp flip: SIM1(3))
                   apply (rule graph_summar_nt)
-                  apply (rule refl)+
-                  apply (rule SIM1(2)[unfolded SIM1(1)])
-                  apply (auto simp add: SIM1 comp_def)
+                     apply (rule refl)+
+                    apply (rule SIM1(2)[unfolded SIM1(1)])
+                   apply (auto simp add: SIM1 comp_def)
                   done
                 subgoal
                   by (simp add: SIM1)
@@ -1591,10 +1591,10 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             (* Drop *)
 
             apply (intro exI conjI relcomppI)
-            apply (rule rtranclp.intros(1))
-            apply (rule bisim_refl)
-            defer
-            apply (rule wbisim_refl)
+               apply (rule rtranclp.intros(1))
+              apply (rule bisim_refl)
+             defer
+             apply (rule wbisim_refl)
             apply (rule wb_upto_b_base)
             unfolding R_def[simplified]
             apply (rule exI[of _ "os(0 := (os 0)\<lparr> ocaps := (\<lambda> _. remove_last t (ocaps (os 0) 1)) , inter := inter (os 0) @ [(1, t, -1)] \<rparr>)"])
@@ -1604,7 +1604,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             apply (rule exI[of _ "S"])
             apply (rule exI[of _ D])
             apply (intro conjI)
-            apply (simp_all add: SIM1)
+                        apply (simp_all add: SIM1)
             subgoal
               unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def drop_caps_def drop_cap_def BTL_def BHD_def produce_def
               by (simp add: map_tl SIM1(2-) comp_def split_beta comp_op_def if_distrib  enum_num1_def operator_state.defs fun_upd_def )
@@ -1612,15 +1612,15 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               unfolding inputs_at_target_def
               apply (clarsimp simp add: BULK_BENQ_def  )
               apply (rule arg_cong2[where f=set_spec_op])
-              apply simp_all
+               apply simp_all
               apply (rule arg_cong2[where f=cUn])
-              apply simp_all
+               apply simp_all
               unfolding operator_state.defs
               apply simp
               apply (subst (1 2 3 4) coll_lshift)
-              apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
-              apply simp
-              apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
+                apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
+               apply simp
+               apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
               apply simp
               done
             subgoal
@@ -1642,11 +1642,11 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                 using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
                 apply metis
                 done
-              apply fastforce
+                       apply fastforce
               subgoal
                 using SIM1(14) by auto
-              apply fastforce
-              apply (simp add: SIM1)
+                     apply fastforce
+                    apply (simp add: SIM1)
               subgoal
                 using SIM1(13) temp(4) apply -
                 apply (clarsimp simp add: operator_state.defs)
@@ -1657,13 +1657,13 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                 by auto
               subgoal
                 by (simp add: update_zmultiset_singleton(2))
-              apply simp_all
+                 apply simp_all
               subgoal             
                 apply (simp flip: SIM1(3))
                 apply (rule graph_summar_nt)
-                apply (rule refl)+
-                apply (rule SIM1(2)[unfolded SIM1(1)])
-                apply (auto simp add: SIM1 comp_def)
+                   apply (rule refl)+
+                  apply (rule SIM1(2)[unfolded SIM1(1)])
+                 apply (auto simp add: SIM1 comp_def)
                 done
               subgoal
                 by (simp add: SIM1)
@@ -1683,10 +1683,10 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             done
           subgoal for M lxs t
             apply (intro exI conjI relcomppI)
-            apply (rule rtranclp.intros(1))
-            apply (rule bisim_refl)
-            defer
-            apply (rule wbisim_refl)
+               apply (rule rtranclp.intros(1))
+              apply (rule bisim_refl)
+             defer
+             apply (rule wbisim_refl)
             apply (rule wb_upto_b_base)
             unfolding R_def[simplified]
             apply (rule exI[of _ "os(0 := (os 0)\<lparr> ocaps := (\<lambda> _. ocaps (os 0) 1 @ [t]), inter := inter (os 0) @ [(1, t, 1)] \<rparr> )"])
@@ -1696,7 +1696,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             apply (rule exI[of _ "S"])
             apply (rule exI[of _ D])
             apply (intro conjI)
-            apply (simp_all add: SIM1)
+                        apply (simp_all add: SIM1)
             subgoal
               unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def ooo_input_op_def ooo_input_op_logic_def notifier_op_def add_cap_def BTL_def BHD_def
               by (simp add: map_tl SIM1(2-) comp_def split_beta comp_op_def if_distrib  enum_num1_def operator_state.defs fun_upd_def)
@@ -1705,15 +1705,15 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
               unfolding inputs_at_target_def
               apply (clarsimp simp add: BULK_BENQ_def  )
               apply (rule arg_cong2[where f=set_spec_op])
-              apply simp_all
+               apply simp_all
               apply (rule arg_cong2[where f=cUn])
-              apply simp_all
+               apply simp_all
               unfolding operator_state.defs
               apply simp
               apply (subst (1 2 3 4) coll_lshift)
-              apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
-              apply simp
-              apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
+                apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
+               apply simp
+               apply (metis SIM1(13) lfilter_LCons_found lfilter_LCons_seek lfinite_code(2) timely_input_stream_expires)
               apply simp
               done
             subgoal
@@ -1736,12 +1736,12 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
                   using dataflow_tree_to_graph_to_my_summ dataflow_topology_from_tree.dataflow_topology_axioms
                   apply metis
                   done
-                apply assumption+
+                  apply assumption+
                 subgoal              
                   apply (rule graph_summar_nt)
-                  apply (rule refl)+
-                  apply (rule SIM1(2)[unfolded SIM1(1)])
-                  apply (auto simp add: SIM1 comp_def)
+                     apply (rule refl)+
+                    apply (rule SIM1(2)[unfolded SIM1(1)])
+                   apply (auto simp add: SIM1 comp_def)
                   done
                 subgoal
                   using SIM1(13) temp(4) apply -
@@ -1789,44 +1789,44 @@ next
             apply (erule disjE)
             subgoal
               apply (intro exI conjI)
-              apply (rule wstep_trans(1))
-              apply simp
-              apply (rule relpowp_imp_rtranclp[
+               apply (rule wstep_trans(1))
+                apply simp
+                apply (rule relpowp_imp_rtranclp[
                     where n="length (outpu (os 1) 1)"]) 
-              apply (rule step_set_op_steps_Out_intro[where xs="outpu (os 1) 1"])
-              apply (rule steps_Tau_dataflow_op_steps_Out_intro[where xs="outpu (os 1) 1"])
-              apply (subst dataflow_tree_to_operator_def)
-              apply simp
-              apply (rule steps_map_op[where xs="map (\<lambda> x. Out (Inr _) (_ x)) (outpu (os 1) 1)"])
-              apply (rule refl)+
-              apply force
-              apply (rule steps_comp_op_R_Out[where xs="map Inr (outpu (os 1) 1)"])
-              apply (rule steps_map_op[where xs="map (\<lambda> x. Out (Some 1) (_ x)) (outpu (os 1) 1)"])
-              apply (rule refl)+
-              apply force
-              apply (subst batch_op_def)
-              apply (subst batch_op_logic_def)
-              apply (subst notifier_op_def)
-              apply simp
-              apply (rule steps_builder_op_Write_Some[where ys=Nil and p=1])
-              apply simp
-              apply simp
-              apply (rule refl)+
-              apply (simp add: SIM2(5) operator_state.defs)
-              apply (rule refl)+
-              apply force
-              apply force
-              apply (rule refl)+
-              apply (rule step_set_op_intro_Out)
-              apply (rule refl)+
-              apply (simp add: image_iff)
-              apply force
-              apply simp
-              apply (rule refl)+
+                apply (rule step_set_op_steps_Out_intro[where xs="outpu (os 1) 1"])
+                  apply (rule steps_Tau_dataflow_op_steps_Out_intro[where xs="outpu (os 1) 1"])
+                   apply (subst dataflow_tree_to_operator_def)
+                   apply simp
+                   apply (rule steps_map_op[where xs="map (\<lambda> x. Out (Inr _) (_ x)) (outpu (os 1) 1)"])
+                     apply (rule refl)+
+                    apply force
+                   apply (rule steps_comp_op_R_Out[where xs="map Inr (outpu (os 1) 1)"])
+                      apply (rule steps_map_op[where xs="map (\<lambda> x. Out (Some 1) (_ x)) (outpu (os 1) 1)"])
+                        apply (rule refl)+
+                       apply force
+                      apply (subst batch_op_def)
+                      apply (subst batch_op_logic_def)
+                      apply (subst notifier_op_def)
+                      apply simp
+                      apply (rule steps_builder_op_Write_Some[where ys=Nil and p=1])
+                         apply simp
+                        apply simp
+                       apply (rule refl)+
+                      apply (simp add: SIM2(5) operator_state.defs)
+                     apply (rule refl)+
+                   apply force
+                  apply force
+                 apply (rule refl)+
+               apply (rule step_set_op_intro_Out)
+                  apply (rule refl)+
+                 apply (simp add: image_iff)
+                 apply force
+                apply simp
+               apply (rule refl)+
               apply (intro relcomppI)
-              apply (rule bisim_refl)
-              defer
-              apply (rule wbisim_refl)
+                apply (rule bisim_refl)
+               defer
+               apply (rule wbisim_refl)
               apply (rule wb_upto_b_sym)
               apply (rule wb_upto_b_base)
               unfolding R_def[simplified]
@@ -1837,7 +1837,7 @@ next
               apply (rule exI[of _ "cUn (Pair (1, 1) |`| cset_from_list (outpu (os 1) 1)) S"])
               apply (rule exI[of _ "cinsert ((nid, 1), d, t) D"])
               apply (intro conjI)
-              apply (simp_all add: operator_state.defs SIM2(1,2,3,4,5))
+                          apply (simp_all add: operator_state.defs SIM2(1,2,3,4,5))
               subgoal
                 using SIM2(6)
                 unfolding dataflow_tree_to_operator_def batch_op_def batch_op_logic_def notifier_op_def
@@ -1847,10 +1847,10 @@ next
                 apply (simp add: operator_state.defs SIM2(1,2,3,4,5))
                 subgoal premises temp
                   apply (rule arg_cong2[where f=set_spec_op])
-                  apply simp_all
+                   apply simp_all
                   apply (subst (1) cUn_commute)
                   apply (rule arg_cong2[where f=cUn])
-                  apply simp_all
+                   apply simp_all
                   done
                 done
               subgoal
@@ -1867,8 +1867,8 @@ next
               subgoal
                 using SIM2(10) apply -
                 apply (rule dataplane_tracker_inv_update_outputs_outside[where nid=1 and p=1 and os=os and xs=Nil])
-                apply assumption+
-                apply simp_all
+                   apply assumption+
+                  apply simp_all
                 subgoal
                   apply (intro ext)
                   apply (clarsimp simp add:)
@@ -1878,9 +1878,9 @@ next
                   by (simp add: operator_state.defs SIM2(1,2,3,4,5) my_summ_def)
                 subgoal
                   apply (rule graph_summar_nt)
-                  apply (rule refl)+
-                  apply (rule SIM2(2)[unfolded SIM2(1)])
-                  apply (auto simp add: SIM2 comp_def)
+                     apply (rule refl)+
+                    apply (rule SIM2(2)[unfolded SIM2(1)])
+                   apply (auto simp add: SIM2 comp_def)
                   done
                 done
               subgoal
@@ -1905,7 +1905,7 @@ next
               subgoal premises N_inv for n
                 using N_inv(1,2,3,4) apply -
                 apply (subgoal_tac "dataflow_topology (summ sg) (-+-)")
-                defer
+                 defer
                 subgoal premises temp
                   apply (simp add: SIM2(1,2) )
                   using dataflow_topology_from_tree.dataflow_topology_axioms
@@ -1934,7 +1934,7 @@ next
                  (fold (\<lambda>(d, t) os. consumes os 1 t d) (outpu (os 0) 1) (fold (\<lambda>(d, t) os. consumes os 1 t d) (cbufs (1, 1)) bt_state)))\<rparr> @ extract_progress 0 (subgraph.nxt sg)
            \<lparr>cons = consu ip_state, inte = operator_state.inter ip_state @ map (case_event (\<lambda>a aa. undefined) (\<lambda>t. (1, t, - 1)) (\<lambda>t. (1, t, 1))) (filter (Not \<circ> is_Data) (ltaken n (es ip_state 1))),
               prod = produ ip_state @ map (case_event (\<lambda>t d. (1, t, 1)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (es ip_state 1)))\<rparr>"])
-                      apply assumption+
+                            apply assumption+
                       subgoal premises temp3
                         unfolding extract_progress_def
                         apply (auto simp add: set_map_filter operator_state.defs produ_consumes_fold consu_consumes_fold inter_consumes_fold SIM2(4,5) split: event.splits option.splits prod.splits)
@@ -1947,14 +1947,14 @@ next
                           apply (elim disjE)
                           subgoal
                             apply (drule set_extract_progressD[where os="os 1" and st="\<lparr> cons = [], inte = [], prod = [] \<rparr>"])
-                            apply simp
+                             apply simp
                             apply (elim disjE)
                             subgoal
                               using SIM2(10)[unfolded dataplane_tracker_inv_def , simplified] apply -
                               apply (elim exE conjE)
                               subgoal premises temp3 for caps
                                 apply (rule frontier_less_equal_le_trans[rotated])
-                                apply (rule temp3(6)[unfolded imp_front_inv_def, rule_format])
+                                 apply (rule temp3(6)[unfolded imp_front_inv_def, rule_format])
                                 apply (rule temp3(10)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=1 and x="(_, _, m)", simplified])
                                 apply (simp add: SIM2(1,2,3))
                                 using temp3(1) apply auto
@@ -1966,23 +1966,23 @@ next
                                 apply (clarsimp simp add: image_iff split: prod.splits event.splits)
                                 subgoal
                                   apply (rule frontier_less_equal_le_trans[rotated])
-                                  apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
+                                   apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
                                   apply (rule temp2(11)[unfolded chnls_imp_front_inv_def, rule_format])
                                   unfolding outputs_at_target_def BULK_BENQ_def
                                   apply auto
                                   done
                                 subgoal
                                   apply (rule frontier_less_equal_le_trans[rotated])
-                                  apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
+                                   apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
                                   apply (rule temp2(11)[unfolded chnls_imp_front_inv_def, rule_format])
                                   unfolding outputs_at_target_def BULK_BENQ_def
                                   apply (auto simp add: SIM2(1,2) my_summ_def antichain_from_list_singleton)
                                   done
                                 subgoal for dd
                                   apply (rule frontier_less_equal_le_trans[rotated])
-                                  apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
+                                   apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
                                   apply (rule frontier_less_equal_le_trans[rotated])
-                                  apply (rule frontier_less_equal_change_multiplicities[where A="extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress (os 0))) @ extract_progress 1 (subgraph.nxt sg) (snd (obtain_progress (os 1)))"])
+                                   apply (rule frontier_less_equal_change_multiplicities[where A="extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress (os 0))) @ extract_progress 1 (subgraph.nxt sg) (snd (obtain_progress (os 1)))"])
                                   subgoal 
                                     using temp2 by simp
                                   subgoal
@@ -2021,7 +2021,7 @@ next
                                       using SIM2(13)[unfolded timely_input_stream_def] apply -
                                       apply (elim conjE)
                                       apply (drule Data_in_Stream_le_Data_in_C)
-                                      apply assumption
+                                       apply assumption
                                       apply (metis frontier_less_equal_trans frontier_less_equal_zcount_pos set_mset_mset zcount_to_zmset_gt_0)
                                       done
                                     done
@@ -2034,7 +2034,7 @@ next
                                 apply (clarsimp simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def, simplified] image_iff split: prod.splits event.splits)
                                 subgoal
                                   apply (rule frontier_less_equal_le_trans[rotated])
-                                  apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
+                                   apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
                                   apply (rule frontier_less_equal_ifrontier_trans[of _ 0 "Loc 1 (Trg 1)", simplified])
                                   subgoal 
                                     using temp2 by simp
@@ -2053,7 +2053,7 @@ next
                                   done
                                 subgoal
                                   apply (rule frontier_less_equal_le_trans[rotated])
-                                  apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
+                                   apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
                                   apply (rule frontier_less_equal_ifrontier_trans[of _ 0 "Loc 1 (Trg 1)", simplified])
                                   subgoal 
                                     using temp2 by simp
@@ -2074,7 +2074,7 @@ next
 
                                 subgoal for dd
                                   apply (rule frontier_less_equal_le_trans[rotated])
-                                  apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
+                                   apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
                                   apply (rule frontier_less_equal_ifrontier_trans[of _ 0 "Loc 1 (Trg 1)", simplified])
                                   subgoal 
                                     using temp2 by simp
@@ -2088,7 +2088,7 @@ next
                                       done
                                     done
                                   apply (rule frontier_less_equal_le_trans[rotated])
-                                  apply (rule frontier_less_equal_change_multiplicities[where A="extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress (os 0))) @ extract_progress 1 (subgraph.nxt sg) (snd (obtain_progress (os 1)))"])
+                                   apply (rule frontier_less_equal_change_multiplicities[where A="extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress (os 0))) @ extract_progress 1 (subgraph.nxt sg) (snd (obtain_progress (os 1)))"])
                                   subgoal 
                                     using temp2 by simp
                                   subgoal
@@ -2158,7 +2158,7 @@ next
                                       using SIM2(13)[unfolded timely_input_stream_def] apply -
                                       apply (elim conjE)
                                       apply (drule Data_in_Stream_le_Data_in_C)
-                                      apply assumption
+                                       apply assumption
                                       apply (metis frontier_less_equal_trans frontier_less_equal_zcount_pos set_mset_mset zcount_to_zmset_gt_0)
                                       done
                                     done
@@ -2171,14 +2171,14 @@ next
 
                           subgoal
                             apply (drule set_extract_progressD[where os="os 0" and st="\<lparr> cons = [], inte = [], prod = [] \<rparr>"])
-                            apply simp
+                             apply simp
                             apply (elim disjE)
                             subgoal
                               using SIM2(10)[unfolded dataplane_tracker_inv_def , simplified] apply -
                               apply (elim exE conjE)
                               subgoal premises temp3 for caps
                                 apply (rule frontier_less_equal_le_trans[rotated])
-                                apply (rule temp3(6)[unfolded imp_front_inv_def, rule_format])
+                                 apply (rule temp3(6)[unfolded imp_front_inv_def, rule_format])
                                 apply (rule temp3(10)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, rule_format,  simplified, where xs=Nil and nid=0 and x="(_, _, m)", simplified])
                                 apply (simp add: SIM2(1,2,3))
                                 using temp3(1) apply auto
@@ -2195,9 +2195,9 @@ next
                                 apply (cases x; clarsimp)
                                 subgoal
                                   apply (rule frontier_less_equal_le_trans[rotated])
-                                  apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
+                                   apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
                                   apply (rule frontier_less_equal_le_trans[rotated])
-                                  apply (rule frontier_less_equal_change_multiplicities[where A="extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress (os 0))) @ extract_progress 1 (subgraph.nxt sg) (snd (obtain_progress (os 1)))"])
+                                   apply (rule frontier_less_equal_change_multiplicities[where A="extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress (os 0))) @ extract_progress 1 (subgraph.nxt sg) (snd (obtain_progress (os 1)))"])
                                   subgoal 
                                     using temp2 by simp
                                   subgoal 
@@ -2232,16 +2232,16 @@ next
                                       using SIM2(13)[unfolded timely_input_stream_def] apply -
                                       apply (elim conjE)
                                       apply (drule Drop_in_Stream_le_Drop_in_C)
-                                      apply assumption
+                                       apply assumption
                                       apply (metis frontier_less_equal_trans frontier_less_equal_zcount_pos set_mset_mset zcount_to_zmset_gt_0)
                                       done
                                     done
                                   done
                                 subgoal
                                   apply (rule frontier_less_equal_le_trans[rotated])
-                                  apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
+                                   apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
                                   apply (rule frontier_less_equal_le_trans[rotated])
-                                  apply (rule frontier_less_equal_change_multiplicities[where A="extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress (os 0))) @ extract_progress 1 (subgraph.nxt sg) (snd (obtain_progress (os 1)))"])
+                                   apply (rule frontier_less_equal_change_multiplicities[where A="extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress (os 0))) @ extract_progress 1 (subgraph.nxt sg) (snd (obtain_progress (os 1)))"])
                                   subgoal 
                                     using temp2 by simp
                                   subgoal 
@@ -2276,7 +2276,7 @@ next
                                       using SIM2(13)[unfolded timely_input_stream_def] apply -
                                       apply (elim conjE)
                                       apply (drule Mint_in_Stream_le_Mint_in_C)
-                                      apply assumption
+                                       apply assumption
                                       apply (metis frontier_less_equal_trans frontier_less_equal_zcount_pos set_mset_mset zcount_to_zmset_gt_0)
                                       done
                                     done
@@ -2293,9 +2293,9 @@ next
                                 apply (clarsimp split: if_splits)
                                 apply hypsubst_thin
                                 apply (rule frontier_less_equal_le_trans[rotated])
-                                apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
+                                 apply (rule temp2(10)[unfolded imp_front_inv_def, rule_format])
                                 apply (rule frontier_less_equal_le_trans[rotated])
-                                apply (rule frontier_less_equal_change_multiplicities[where A="extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress (os 0))) @ extract_progress 1 (subgraph.nxt sg) (snd (obtain_progress (os 1)))"])
+                                 apply (rule frontier_less_equal_change_multiplicities[where A="extract_progress 0 (subgraph.nxt sg) (snd (obtain_progress (os 0))) @ extract_progress 1 (subgraph.nxt sg) (snd (obtain_progress (os 1)))"])
                                 subgoal 
                                   using temp2 by simp
                                 subgoal 
@@ -2332,7 +2332,7 @@ next
                                     using SIM2(13)[unfolded timely_input_stream_def] apply -
                                     apply clarsimp
                                     apply (drule Data_in_Stream_le_Data_in_C)
-                                    apply assumption
+                                     apply assumption
                                     apply (metis frontier_less_equal_trans frontier_less_equal_zcount_pos set_mset_mset zcount_to_zmset_gt_0)
                                     done
                                   done
@@ -2341,7 +2341,7 @@ next
                             done
                           done
                         done
-                      apply (rule refl)+
+                       apply (rule refl)+
                       apply (elim conjE)
                       subgoal premises N_INV
                         using N_INV (1-17) apply -
@@ -2371,7 +2371,7 @@ next
                             apply (rule FalseE)
                             subgoal
                               apply (drule propagate_all_terminates[unfolded not_def, rule_format, rotated 6])              
-                              apply simp_all
+                                    apply simp_all
                               subgoal premises temp3
                                 using N_INV(17-) apply -
                                 by (metis (no_types, lifting) change_multiplicities_append_alt change_multiplicities_comm)
@@ -2382,19 +2382,19 @@ next
                                 using TIMESTAMP_COMPARE by simp
                               subgoal for loc
                                 apply (subgoal_tac "graph_summar_nt (summ sg) (subgraph.nxt sg) os")
-                                defer
+                                 defer
                                 subgoal
                                   apply (rule graph_summar_nt)
-                                  apply (rule refl)+
-                                  apply (rule SIM2(2)[unfolded SIM2(1)])
-                                  apply (auto simp add: SIM2 comp_def)
+                                     apply (rule refl)+
+                                    apply (rule SIM2(2)[unfolded SIM2(1)])
+                                   apply (auto simp add: SIM2 comp_def)
                                   done
                                 subgoal
                                   apply (cases loc; simp)
                                   subgoal for nid lp
                                     apply (cases lp; simp)
                                     unfolding graph_summar_nt_def
-                                    apply auto
+                                     apply auto
                                     done
                                   done
                                 done
@@ -2405,7 +2405,7 @@ next
                             done
                           subgoal for c
                             apply (subgoal_tac "frontier (c_imp c (Loc 1 (Trg 1))) = frontier (zmset_of (mset (ocaps (os 0) 1) + event.time `# filter_mset is_Mint (mset (ltaken n (inps 1))) - event.time `# filter_mset is_Drop (mset (ltaken n (inps 1)))))")
-                            defer 
+                             defer 
                             subgoal
                               apply (drule propagate_all_frontier_c_imp_correctness[where loc="Loc 1 (Trg 1)"])
                               subgoal 
@@ -2429,16 +2429,16 @@ next
                                 subgoal premises temp4
                                   apply (subst dataflow_topology.implied_frontier_alt_def[OF temp4(5)])
                                   apply (subst comm_monoid_add_class.sum.subset_diff[where B="{Loc 0 (Src 1)}"])
-                                  apply simp
-                                  apply fast
-                                  apply simp
+                                    apply simp
+                                    apply fast
+                                   apply simp
                                   apply (subst comm_monoid_add_class.sum.neutral)
                                   subgoal
                                     apply (intro ballI)
                                     apply simp
                                     apply (subst comm_monoid_add_class.sum.neutral)
-                                    apply (intro ballI)
-                                    apply (simp_all add: )
+                                     apply (intro ballI)
+                                     apply (simp_all add: )
                                     apply (rule image_zmset_empty_if)
                                     apply (rule zmset_of_empty_if)
                                     apply (rule mset_set_empty_if)
@@ -2481,8 +2481,8 @@ next
                                                   apply (simp add: group_add_class.diff_eq_eq  flip: add.assoc)
                                                   apply (rule arg_cong[where f=to_zmset])
                                                   apply (rule map_cong)
-                                                  apply (rule filter_cong)
-                                                  apply simp_all
+                                                   apply (rule filter_cong)
+                                                    apply simp_all
                                                   apply (auto split: event.splits)
                                                   done
                                                 done
@@ -2518,7 +2518,7 @@ next
                                                   using temp3(1) apply -
                                                   apply (simp flip: member_antichain.rep_eq)
                                                   apply (drule path_weight_end_of_road[OF temp3(6)])
-                                                  apply (auto simp add: SIM2(1,2) my_summ_def)
+                                                    apply (auto simp add: SIM2(1,2) my_summ_def)
                                                   done
                                                 subgoal
                                                   by (rule dataflow_topology.axioms(1)[OF N_INV(5)])
@@ -2546,7 +2546,7 @@ next
                                       apply (subst (2) add.commute)
                                       apply (simp add: add.assoc)
                                       apply (subgoal_tac "c_pts (change_multiplicities (summ sg) (extract_progress 1 (subgraph.nxt sg) \<lparr>cons = consu (os 1), inte = operator_state.inter (os 1), prod = produ (os 1)\<rparr>) (pt_tr sg)) (Loc 0 (Src 1)) = c_pts (pt_tr sg) (Loc 0 (Src 1))")
-                                      defer
+                                       defer
                                       subgoal
                                         apply (subgoal_tac "subgraph.nxt sg (1, 1) = None")
                                         subgoal
@@ -2557,7 +2557,7 @@ next
                                       subgoal
                                         apply simp
                                         apply (subgoal_tac "c_pts (change_multiplicities (summ sg) (extract_progress 0 (subgraph.nxt sg) \<lparr>cons = consu (os 0), inte = operator_state.inter (os 0), prod = produ (os 0)\<rparr>) (pt_tr sg)) (Loc 0 (Src 1)) = caps (Loc 0 (Src 1))")
-                                        defer
+                                         defer
                                         subgoal
                                           using N_INV(8)[unfolded c_pts_inv_def, unfolded obtain_progress_def, simplified, rule_format, of "Loc 0 (Src 1)"]
                                           by (smt (verit, best) c_pts_change_multiplicities_cong change_multiplicities_append change_multiplicities_comm)
@@ -2588,7 +2588,7 @@ next
                                       apply (subst path_weight_antichain0[])
                                       subgoal
                                         by (rule dataflow_topology.axioms(1)[OF N_INV(5)])
-                                      apply (auto simp add: SIM2(1,2,3) my_summ_def)
+                                       apply (auto simp add: SIM2(1,2,3) my_summ_def)
                                       done
                                     done
                                   done
@@ -2597,12 +2597,12 @@ next
                             subgoal
 
                               apply (intro exI conjI[rotated])
-                              apply (intro relcomppI)
-                              apply (rule bisim_refl)
-                              defer
-                              apply (rule wbisim_refl)
-                              apply (rule wstep_trans(1))
-                              apply (rule relpowp_imp_rtranclp[
+                               apply (intro relcomppI)
+                                 apply (rule bisim_refl)
+                                defer
+                                apply (rule wbisim_refl)
+                               apply (rule wstep_trans(1))
+                                apply (rule relpowp_imp_rtranclp[
                                     where n="n + 
                              (length (outpu (os 0) 0)) + length (filter is_Data (ltaken n (inps 1))) + 
                              (length (cbufs (1, 0)) + length (outpu (os 0) 0) + length (filter is_Data (ltaken n (inps 1)))) +
@@ -2613,82 +2613,82 @@ next
                              (let batches = map (\<lambda> (d, t). (projl d, t)) (input (os 1) 1 @ cbufs (1, 1) @ outpu (os 0) 1)@ (map (\<lambda> ev. case ev of Data t d \<Rightarrow> (d, t)) (filter is_Data (ltaken n (inps 1)))) in
                               let F = frontier (zmset_of (mset (ocaps (os 0) 1) + event.time `# filter_mset is_Mint (mset (ltaken n (inps 1))) - event.time `# filter_mset is_Drop (mset (ltaken n (inps 1))))) in
                               length (outpu (os 1) 1) + length (output_batches f F batches))"]) 
-                              apply (simp only: relpowp_add)
-                              apply (intro relcomppI)
-                              apply (rule step_n_Taus_set_op)
-                              apply (rule step_tau_pow_dataflow_op)
-                              apply (subst dataflow_tree_to_operator_def)
-                              apply simp
-                              apply (rule step_tau_pow_map_op)
-                              apply (rule step_taus_L_pow_comp_op_steps_intro)
-                              apply (rule step_tau_pow_map_op)
-                              apply (subst ooo_input_op_def)
-                              apply (rule step_builder_op_n_Silents[where n=n])
-                              apply (rule ooo_input_op_logic_iterates_n[where OS="{| ip_state |}" and os=ip_state and p=1])
+                                apply (simp only: relpowp_add)
+                                apply (intro relcomppI)
+                                          apply (rule step_n_Taus_set_op)
+                                           apply (rule step_tau_pow_dataflow_op)
+                                           apply (subst dataflow_tree_to_operator_def)
+                                           apply simp
+                                           apply (rule step_tau_pow_map_op)
+                                           apply (rule step_taus_L_pow_comp_op_steps_intro)
+                                            apply (rule step_tau_pow_map_op)
+                                            apply (subst ooo_input_op_def)
+                                            apply (rule step_builder_op_n_Silents[where n=n])
+                                             apply (rule ooo_input_op_logic_iterates_n[where OS="{| ip_state |}" and os=ip_state and p=1])
                               subgoal
                                 by (simp add: SIM2(4,13) operator_state.defs)
-                              apply simp
-                              apply simp
+                                                 apply simp
+                                                apply simp
                               subgoal
                                 using SIM2(4,15) by (simp add: operator_state.defs)
                               subgoal
                                 using SIM2(4) by (simp add: operator_state.defs)
-                              apply (rule refl)+
+                                             apply (rule refl)+
 
-                              apply (rule step_n_Taus_set_op)
-                              apply (rule step_tau_pow_dataflow_op)
-                              apply simp
-                              apply (rule step_tau_pow_map_op)
-                              apply (rule step_tau_Out_pow_comp_op_steps_intro[where xs="map (\<lambda> (t, d). Inr (t, d)) (outpu (os 0) 1)"])
-                              apply (rule steps_map_op)
-                              apply (rule refl)+
-                              prefer 2
-                              apply (rule steps_builder_op_Write_Some[where ys="map (\<lambda> ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n (inps 1)))" and xs="outpu (os 0) 1"])
-                              apply (simp add: SIM2(4))
-                              apply (simp add: SIM2(4) operator_state.defs)
-                              apply (rule refl)+
-                              apply simp
-                              apply blast
-                              apply simp
-                              apply simp
-                              apply (rule refl)+
+                                         apply (rule step_n_Taus_set_op)
+                                          apply (rule step_tau_pow_dataflow_op)
+                                          apply simp
+                                          apply (rule step_tau_pow_map_op)
+                                          apply (rule step_tau_Out_pow_comp_op_steps_intro[where xs="map (\<lambda> (t, d). Inr (t, d)) (outpu (os 0) 1)"])
+                                             apply (rule steps_map_op)
+                                               apply (rule refl)+
+                                              prefer 2
+                                              apply (rule steps_builder_op_Write_Some[where ys="map (\<lambda> ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n (inps 1)))" and xs="outpu (os 0) 1"])
+                                                 apply (simp add: SIM2(4))
+                                                apply (simp add: SIM2(4) operator_state.defs)
+                                               apply (rule refl)+
+                                             apply simp
+                                             apply blast
+                                            apply simp
+                                           apply simp
+                                          apply (rule refl)+
 
 
-                              apply (rule step_n_Taus_set_op)
-                              apply (rule step_tau_pow_dataflow_op)
-                              apply simp
-                              apply (rule step_tau_pow_map_op)
-                              apply (rule step_tau_Out_pow_comp_op_steps_intro[where p="Inr (0, 1)" and xs="map (\<lambda> ev. case ev of Data t d \<Rightarrow> Inr (Inl d, t)) (filter is_Data (ltaken n (inps 1)))"])
-                              apply (rule steps_map_op)
-                              apply (rule refl)+
-                              prefer 2
-                              apply (rule steps_builder_op_Write_Some[where p=1 and xs="map (\<lambda> ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n (inps 1)))" and ys=Nil])
-                              apply (simp add: SIM2(4))
-                              apply (simp add: SIM2(4) operator_state.defs)
-                              apply (rule refl)+
-                              apply (simp split: event.splits)
-                              apply simp
-                              apply simp
-                              apply (rule refl)+
+                                        apply (rule step_n_Taus_set_op)
+                                         apply (rule step_tau_pow_dataflow_op)
+                                         apply simp
+                                         apply (rule step_tau_pow_map_op)
+                                         apply (rule step_tau_Out_pow_comp_op_steps_intro[where p="Inr (0, 1)" and xs="map (\<lambda> ev. case ev of Data t d \<Rightarrow> Inr (Inl d, t)) (filter is_Data (ltaken n (inps 1)))"])
+                                            apply (rule steps_map_op)
+                                              apply (rule refl)+
+                                             prefer 2
+                                             apply (rule steps_builder_op_Write_Some[where p=1 and xs="map (\<lambda> ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n (inps 1)))" and ys=Nil])
+                                                apply (simp add: SIM2(4))
+                                               apply (simp add: SIM2(4) operator_state.defs)
+                                              apply (rule refl)+
+                                            apply (simp split: event.splits)
+                                           apply simp
+                                          apply simp
+                                         apply (rule refl)+
 
-                              apply (rule step_n_Taus_set_op)
-                              apply (rule step_tau_pow_dataflow_op)
-                              apply simp
-                              apply (rule step_tau_pow_map_op)
-                              apply (rule step_tau_Inp_pow_comp_op_steps_intro[where n="length (cbufs (1, 1))" and p="Inr (1, 1)" and xs="map _ (cbufs (1, 1))"])
-                              apply (rule steps_map_op)
-                              apply (rule refl)+
-                              prefer 2
+                                       apply (rule step_n_Taus_set_op)
+                                        apply (rule step_tau_pow_dataflow_op)
+                                        apply simp
+                                        apply (rule step_tau_pow_map_op)
+                                        apply (rule step_tau_Inp_pow_comp_op_steps_intro[where n="length (cbufs (1, 1))" and p="Inr (1, 1)" and xs="map _ (cbufs (1, 1))"])
+                                             apply (rule steps_map_op)
+                                               apply (rule refl)+
+                                              prefer 2
 
-                              apply (subst batch_op_def)
-                              apply (subst batch_op_logic_def)
-                              apply (subst notifier_op_def)
-                              apply simp
-                              apply (rule steps_builder_op_Read_Some[where xs="cbufs (1, 1)" and p=1])
-                              apply simp
-                              apply (rule refl)+
-                              apply fastforce
-                              apply simp
+                                              apply (subst batch_op_def)
+                                              apply (subst batch_op_logic_def)
+                                              apply (subst notifier_op_def)
+                                              apply simp
+                                              apply (rule steps_builder_op_Read_Some[where xs="cbufs (1, 1)" and p=1])
+                                               apply simp
+                                              apply (rule refl)+
+                                             apply fastforce
+                                            apply simp
                               subgoal
                                 apply (clarsimp simp add: comp_def split: prod.splits sum.splits option.splits if_splits)
                                 apply (smt (verit, ccfv_threshold) case_prod_conv old.sum.simps(6) option.case(2) ranI verit_sum_simplify)
@@ -2699,23 +2699,23 @@ next
                               subgoal
                                 unfolding BULK_BENQ_def
                                 by simp
-                              apply (rule refl)+
+                                        apply (rule refl)+
 
 
-                              apply (rule step_n_Taus_set_op)
-                              apply (rule step_tau_pow_dataflow_op)
-                              apply simp
-                              apply (rule step_tau_pow_map_op)
-                              apply (rule step_tau_Inp_pow_comp_op_steps_intro[where n="length (outpu (os 0) 1)" and p="Inr (1, 1)" and xs="map _ (outpu (os 0) 0)"])
-                              apply (rule steps_map_op)
-                              apply (rule refl)+
-                              prefer 2
+                                      apply (rule step_n_Taus_set_op)
+                                       apply (rule step_tau_pow_dataflow_op)
+                                       apply simp
+                                       apply (rule step_tau_pow_map_op)
+                                       apply (rule step_tau_Inp_pow_comp_op_steps_intro[where n="length (outpu (os 0) 1)" and p="Inr (1, 1)" and xs="map _ (outpu (os 0) 0)"])
+                                            apply (rule steps_map_op)
+                                              apply (rule refl)+
+                                             prefer 2
 
-                              apply (rule steps_builder_op_Read_Some[where xs="outpu (os 0) 1" and p=1])
-                              apply simp
-                              apply (rule refl)+
-                              apply fastforce
-                              apply simp
+                                             apply (rule steps_builder_op_Read_Some[where xs="outpu (os 0) 1" and p=1])
+                                              apply simp
+                                             apply (rule refl)+
+                                            apply fastforce
+                                           apply simp
                               subgoal
                                 apply (clarsimp simp add: comp_def split: prod.splits sum.splits option.splits if_splits)
                                 apply (smt (verit, ccfv_threshold) case_prod_conv old.sum.simps(6) option.case(2) ranI verit_sum_simplify)
@@ -2726,22 +2726,22 @@ next
                               subgoal
                                 unfolding BULK_BENQ_def
                                 by simp
-                              apply (rule refl)+
+                                       apply (rule refl)+
 
 
-                              apply (rule step_n_Taus_set_op)
-                              apply (rule step_tau_pow_dataflow_op)
-                              apply simp
-                              apply (rule step_tau_pow_map_op)
-                              apply (rule step_tau_Inp_pow_comp_op_steps_intro[where n="length (filter is_Data (ltaken n (inps 1)))" and p="Inr (1, 1)" and xs="map _ (filter is_Data (ltaken n (inps 1)))"])
-                              apply (rule steps_map_op)
-                              apply (rule refl)+
-                              prefer 2
-                              apply (rule steps_builder_op_Read_Some[where xs="map (\<lambda> ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n (inps 1)))" and p=1])
-                              apply simp
-                              apply (rule refl)+
-                              apply fastforce
-                              apply simp
+                                     apply (rule step_n_Taus_set_op)
+                                      apply (rule step_tau_pow_dataflow_op)
+                                      apply simp
+                                      apply (rule step_tau_pow_map_op)
+                                      apply (rule step_tau_Inp_pow_comp_op_steps_intro[where n="length (filter is_Data (ltaken n (inps 1)))" and p="Inr (1, 1)" and xs="map _ (filter is_Data (ltaken n (inps 1)))"])
+                                           apply (rule steps_map_op)
+                                             apply (rule refl)+
+                                            prefer 2
+                                            apply (rule steps_builder_op_Read_Some[where xs="map (\<lambda> ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n (inps 1)))" and p=1])
+                                             apply simp
+                                            apply (rule refl)+
+                                           apply fastforce
+                                          apply simp
                               subgoal
                                 apply (clarsimp simp add: comp_def split: prod.splits sum.splits option.splits if_splits)
                                 apply (smt (verit, ccfv_threshold) case_prod_conv old.sum.simps(6) option.case(2) ranI verit_sum_simplify)
@@ -2752,76 +2752,76 @@ next
                               subgoal
                                 unfolding BULK_BENQ_def
                                 by (simp split: event.splits)
-                              apply (rule refl)+
+                                      apply (rule refl)+
 
 
-                              apply (rule step_n_Taus_set_op)
-                              apply (simp only: relpowp_1)
-                              apply (rule step_Tau_dataflow_op_Out_Inl_intro)
-                              apply (rule step_map_op)
-                              apply (rule step_comp_op_L_Out)
-                              apply (rule step_map_op)
-                              apply (rule step_builder_op_Write_None)
-                              apply (rule refl)+
-                              apply (simp add: obtain_progress_def)
-                              apply (rule refl)+
-                              apply simp
+                                    apply (rule step_n_Taus_set_op)
+                                     apply (simp only: relpowp_1)
+                                     apply (rule step_Tau_dataflow_op_Out_Inl_intro)
+                                      apply (rule step_map_op)
+                                       apply (rule step_comp_op_L_Out)
+                                          apply (rule step_map_op)
+                                           apply (rule step_builder_op_Write_None)
+                                             apply (rule refl)+
+                                            apply (simp add: obtain_progress_def)
+                                           apply (rule refl)+
+                                          apply simp
                               subgoal
                                 by auto
-                              apply (rule refl)+
-                              apply simp
-                              apply (rule refl)+
+                                        apply (rule refl)+
+                                      apply simp
+                                     apply (rule refl)+
 
-                              apply (rule step_n_Taus_set_op)
-                              apply (simp only: relpowp_1)
-                              apply (rule step_Tau_dataflow_op_Out_Inl_intro)
-                              apply (rule step_map_op)
-                              apply (rule step_comp_op_R_Out)
-                              apply (rule step_map_op)
-                              apply (rule step_builder_op_Write_None)
-                              apply (rule refl)+
-                              apply (simp add: obtain_progress_def)
-                              apply (rule refl)+
-                              apply simp
-                              apply (simp add: BULK_BENQ_def)
-                              apply (rule refl)+
-                              apply simp
-                              apply (rule refl)+
+                                   apply (rule step_n_Taus_set_op)
+                                    apply (simp only: relpowp_1)
+                                    apply (rule step_Tau_dataflow_op_Out_Inl_intro)
+                                     apply (rule step_map_op)
+                                      apply (rule step_comp_op_R_Out)
+                                        apply (rule step_map_op)
+                                         apply (rule step_builder_op_Write_None)
+                                           apply (rule refl)+
+                                          apply (simp add: obtain_progress_def)
+                                         apply (rule refl)+
+                                        apply simp
+                                       apply (simp add: BULK_BENQ_def)
+                                      apply (rule refl)+
+                                     apply simp
+                                    apply (rule refl)+
 
 
 
-                              apply (rule step_n_Taus_set_op)
-                              apply (simp only: relpowp_1)
-                              apply simp
-                              apply (rule step_Tau_dataflow_op_Inp_Inl_intro)
-                              apply (rule step_map_op)
-                              apply (rule step_comp_op_R_Inp)     
-                              apply (rule step_map_op)
-                              apply (rule step_builder_op_Read_None)
-                              apply (rule refl)+
-                              apply simp
-                              apply (rule refl)+
-                              apply simp
+                                  apply (rule step_n_Taus_set_op)
+                                   apply (simp only: relpowp_1)
+                                   apply simp
+                                   apply (rule step_Tau_dataflow_op_Inp_Inl_intro)
+                                      apply (rule step_map_op)
+                                       apply (rule step_comp_op_R_Inp)     
+                                          apply (rule step_map_op)
+                                           apply (rule step_builder_op_Read_None)
+                                             apply (rule refl)+
+                                            apply simp
+                                           apply (rule refl)+
+                                          apply simp
                               subgoal premises temp
                                 by (clarsimp simp add: ran_def comp_def split_beta split: prod.splits sum.splits option.splits if_splits)
-                              apply (rule refl)+
-                              apply simp
-                              apply simp
-                              apply simp
-                              apply (rule refl)+
+                                        apply (rule refl)+
+                                      apply simp
+                                     apply simp
+                                    apply simp
+                                   apply (rule refl)+
 
-                              apply (rule step_n_Taus_set_op)
-                              apply (simp only: relpowp_1)
-                              apply simp
-                              apply (rule step_Tau_dataflow_op_Tau_intro)
-                              apply (rule step_map_op)
-                              apply (rule step_comp_op_R_Tau)
-                              apply (rule step_map_op)
-                              apply (rule step_builder_op_Silent)
-                              apply (rule refl)+
-                              apply simp
-                              apply (simp del: ocaps_consumes_fold)
-                              apply (intro conjI)
+                                 apply (rule step_n_Taus_set_op)
+                                  apply (simp only: relpowp_1)
+                                  apply simp
+                                  apply (rule step_Tau_dataflow_op_Tau_intro)
+                                  apply (rule step_map_op)
+                                   apply (rule step_comp_op_R_Tau)
+                                     apply (rule step_map_op)
+                                      apply (rule step_builder_op_Silent)
+                                         apply (rule refl)+
+                                        apply simp
+                                       apply (simp del: ocaps_consumes_fold)
+                                       apply (intro conjI)
                               subgoal premises tempp
                                 apply (rule filter_not_emptyI)
                                 apply (clarsimp simp add: operator_state.defs image_iff SIM2(4,5))
@@ -2858,7 +2858,7 @@ next
                                     subgoal
                                       apply (rule disjI1)
                                       apply (rule SIM2(16)[unfolded input_ocaps_inv_def, rule_format, of t 1 0 1, simplified])
-                                      apply (auto simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def, simplified])
+                                       apply (auto simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def, simplified])
                                       done
                                     subgoal
                                       apply (rule disjI2)
@@ -2883,39 +2883,39 @@ next
                                     done
                                   done
                                 done
-                              apply (rule refl)+
-                              apply simp
-                              apply (rule refl)+
-                              apply simp
-                              apply (rule refl)+
+                                       apply (rule refl)+
+                                     apply simp
+                                    apply (rule refl)+
+                                  apply simp
+                                 apply (rule refl)+
 
-                              apply (rule step_set_op_steps_Out_intro[where 
+                                apply (rule step_set_op_steps_Out_intro[where 
                                     xs="let batches = map (\<lambda> (d, t). (projl d, t)) (input (os 1) 1 @ cbufs (1, 1) @ outpu (os 0) 1)@ (map (\<lambda> ev. case ev of Data t d \<Rightarrow> (d, t)) (filter is_Data (ltaken n (inps 1)))) in
                           let F = frontier (zmset_of (mset (ocaps (os 0) 1) + event.time `# filter_mset is_Mint (mset (ltaken n (inps 1))) - event.time `# filter_mset is_Drop (mset (ltaken n (inps 1))))) in
                           (outpu (os 1) 1) @ map (\<lambda> (d, t). (Inr d, t)) (output_batches f F batches)" and p="(1,1)"])
-                              apply (rule steps_Tau_dataflow_op_steps_Out_intro[where xs="let batches = map (\<lambda> (d, t). (projl d, t)) (input (os 1) 1 @ cbufs (1, 1) @ outpu (os 0) 1)@ (map (\<lambda> ev. case ev of Data t d \<Rightarrow> (d, t)) (filter is_Data (ltaken n (inps 1)))) in
+                                  apply (rule steps_Tau_dataflow_op_steps_Out_intro[where xs="let batches = map (\<lambda> (d, t). (projl d, t)) (input (os 1) 1 @ cbufs (1, 1) @ outpu (os 0) 1)@ (map (\<lambda> ev. case ev of Data t d \<Rightarrow> (d, t)) (filter is_Data (ltaken n (inps 1)))) in
                           let F = frontier (zmset_of (mset (ocaps (os 0) 1) + event.time `# filter_mset is_Mint (mset (ltaken n (inps 1))) - event.time `# filter_mset is_Drop (mset (ltaken n (inps 1))))) in
                           (outpu (os 1) 1) @ map (\<lambda> (d, t). (Inr d, t)) (output_batches f F batches)" and nid = 1 and p=1])
-                              apply (rule steps_map_op)
-                              apply (rule refl)+
-                              apply simp
-                              prefer 2
-                              apply (rule steps_comp_op_R_Out[where xs="let batches = map (\<lambda> (d, t). (projl d, t)) (input (os 1) 1 @ cbufs (1, 1) @ outpu (os 0) 1)@ (map (\<lambda> ev. case ev of Data t d \<Rightarrow> (d, t)) (filter is_Data (ltaken n (inps 1)))) in
+                                   apply (rule steps_map_op)
+                                     apply (rule refl)+
+                                    apply simp
+                                    prefer 2
+                                    apply (rule steps_comp_op_R_Out[where xs="let batches = map (\<lambda> (d, t). (projl d, t)) (input (os 1) 1 @ cbufs (1, 1) @ outpu (os 0) 1)@ (map (\<lambda> ev. case ev of Data t d \<Rightarrow> (d, t)) (filter is_Data (ltaken n (inps 1)))) in
                           let F = frontier (zmset_of (mset (ocaps (os 0) 1) + event.time `# filter_mset is_Mint (mset (ltaken n (inps 1))) - event.time `# filter_mset is_Drop (mset (ltaken n (inps 1))))) in
                           map Inr (outpu (os 1) 1) @ map (\<lambda> (d, t). Inr (Inr d, t)) (output_batches f F batches)" and p="Inr (1, 1)" ])
-                              apply (rule steps_map_op[where xs="
+                                       apply (rule steps_map_op[where xs="
                        let batches = map (\<lambda> (d, t). (projl d, t)) (input (os 1) 1 @ cbufs (1, 1) @ outpu (os 0) 1)@ (map (\<lambda> ev. case ev of Data t d \<Rightarrow> (d, t)) (filter is_Data (ltaken n (inps 1)))) in
                           let F = frontier (zmset_of (mset (ocaps (os 0) 1) + event.time `# filter_mset is_Mint (mset (ltaken n (inps 1))) - event.time `# filter_mset is_Drop (mset (ltaken n (inps 1))))) in
                           map (\<lambda> x. Out (Some 1) (Inr x)) (outpu (os 1) 1) @ map (\<lambda> (d, t). Out (Some 1) (Inr (Inr d, t))) (output_batches f F batches)"])
-                              apply (rule refl)+
+                                         apply (rule refl)+
                               subgoal premises temp
                                 by (auto simp add: comp_def)
 
-                              apply (rule steps_builder_op_Write_Some[where ys=Nil])
-                              apply simp
-                              apply (simp del: ocaps_consumes_fold)
-                              apply (rule refl)+
-                              apply simp
+                                       apply (rule steps_builder_op_Write_Some[where ys=Nil])
+                                          apply simp
+                                         apply (simp del: ocaps_consumes_fold)
+                                        apply (rule refl)+
+                                       apply simp
                               subgoal premises temp
                                 apply (clarsimp simp del: filter_append map_append simp add: SIM2(9) SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff input_fold_consumes intsum_consumes_fold  SIM2(5) operator_state.defs split_beta comp_def simp flip: filter_filter map_concat split: )
                                 apply (subst (2) filter_filter_True1_pair)
@@ -2977,7 +2977,7 @@ next
                                               apply (simp only: append_assoc flip: filter_append map_append )
                                               apply (subst map_fst_filter_snd)
                                               apply (rule filter_cong)
-                                              apply (auto split: event.splits)
+                                               apply (auto split: event.splits)
                                               done
                                             subgoal
                                               by simp
@@ -2992,16 +2992,16 @@ next
                                     done
                                   done
                                 done
-                              apply (rule refl)+
+                                      apply (rule refl)+
                               subgoal premises temp
                                 by (simp add: comp_def split_beta)
                               subgoal premises temp
                                 by (simp add: comp_def split_beta)
                               subgoal premises temp
                                 by (simp add: comp_def split_beta)
-                              apply (rule refl)+
-                              apply (rule step_set_op_intro_Out)
-                              apply (rule refl)+
+                                apply (rule refl)+
+                               apply (rule step_set_op_intro_Out)
+                                  apply (rule refl)+
                               subgoal premises tempp
                                 using N_INV(2) apply -
                                 apply (elim conjE disjE cBexE bexE)
@@ -3017,13 +3017,13 @@ next
                                       subgoal for t'' d''
                                         apply (rule disjI2)
                                         apply (intro bexI[of _ "(dd, t'')"] conjI)
-                                        apply simp
-                                        apply simp
+                                          apply simp
+                                         apply simp
                                         apply (rule output_batchesI)
                                         subgoal 
                                           apply (clarsimp simp add: image_iff split_beta split: prod.splits)
                                           apply (rule bexI[of _ "(d'', t'')"])
-                                          apply simp_all
+                                           apply simp_all
                                           apply (clarsimp del: disjCI simp add: image_iff split_beta split: event.splits prod.splits)
                                           apply (intro disjI2)
                                           apply (rule exI[of _ "Data t'' d''"])
@@ -3038,7 +3038,7 @@ next
                                           apply hypsubst_thin
                                           apply simp
                                           apply (subst (asm) coll_lshift)
-                                          apply simp_all
+                                           apply simp_all
                                           subgoal
                                             by (metis SIM2(13) timely_input_stream_Data_expires)
                                           subgoal
@@ -3065,13 +3065,13 @@ next
                                     apply simp
                                     apply (rule disjI2)
                                     apply (intro bexI[of _ "(_, _)"] conjI)
-                                    apply simp
-                                    apply simp
+                                      apply simp
+                                     apply simp
                                     apply (rule output_batchesI)
                                     subgoal 
                                       apply (clarsimp simp add: image_iff split_beta split: prod.splits)
                                       apply (rule bexI[of _ "(_, t)"])
-                                      apply simp_all
+                                       apply simp_all
                                       apply (clarsimp del: disjCI simp add: image_iff split_beta split: event.splits prod.splits)
                                       apply force
                                       done
@@ -3080,11 +3080,11 @@ next
                                     subgoal
                                       apply (clarsimp simp add: image_iff split_beta split: prod.splits)
                                       apply (subst (asm) coll_lshift)
-                                      apply (simp_all add: comp_def)
+                                       apply (simp_all add: comp_def)
                                       using SIM2(13) timely_input_stream_expires apply blast
                                       apply (clarsimp simp add: filter_map split_beta comp_def )
                                       apply (subgoal_tac "map (\<lambda>x. fst (case x of Data t d \<Rightarrow> (d, t))) (filter (\<lambda>x. is_Data x \<and> snd (case x of Data t d \<Rightarrow> (d, t)) = t) (ltaken n (inps 1))) = coll (inps 1) t")
-                                      defer
+                                       defer
                                       subgoal premises auxx
                                         apply (subst N_inv(6)[symmetric])
                                         apply (simp add: filter_map comp_def split_beta)
@@ -3101,8 +3101,8 @@ next
                                     done
                                   done
                                 done
-                              apply (simp flip: cin.rep_eq)
-                              apply (rule refl)+
+                                apply (simp flip: cin.rep_eq)
+                               apply (rule refl)+
                               subgoal premises temp2
                                 apply (rule wb_upto_b_sym)
                                 apply (rule wb_upto_b_base)
@@ -3122,60 +3122,60 @@ next
      S"])
                                 apply (rule exI[of _ "cinsert ((nid, 1), d, t) D"])
                                 apply (intro conjI)
-                                apply (simp add: SIM2(1,2,3,4,5)  operator_state.defs flip: filter_append map_append)
-                                apply (simp add: operator_state.defs  drop_caps_def intsum_consumes_fold produ_consumes_fold consu_consumes_fold inter_consumes_fold input_fold_consumes flip: filter_append map_append)
-                                apply (rule arg_cong3[where f=set_op])
+                                            apply (simp add: SIM2(1,2,3,4,5)  operator_state.defs flip: filter_append map_append)
+                                            apply (simp add: operator_state.defs  drop_caps_def intsum_consumes_fold produ_consumes_fold consu_consumes_fold inter_consumes_fold input_fold_consumes flip: filter_append map_append)
+                                            apply (rule arg_cong3[where f=set_op])
                                 subgoal
                                   by simp
                                 subgoal
                                   by simp
-                                apply (subst dataflow_tree_to_operator_def)
-                                apply simp
-                                apply (rule arg_cong2[where f=dataflow_op])
-                                apply simp
-                                apply (rule arg_cong3[where f=map_op])
-                                apply simp
-                                apply simp
-                                apply (rule arg_cong4[where f=comp_op])
-                                apply simp
-                                apply (intro ext)
-                                apply (auto split: sum.splits)[1]
-                                apply (rule arg_cong3[where f=map_op])
-                                apply simp
-                                apply simp
-                                apply (subst ooo_input_op_def)
-                                apply (rule arg_cong5[where f=builder_op])
-                                apply simp
-                                apply simp
-                                apply simp
-                                apply auto[1]
-                                apply simp
-                                apply (rule arg_cong3[where f=map_op])
-                                apply simp
-                                apply simp
-                                apply simp
-                                apply (subst batch_op_def)
-                                apply (subst batch_op_logic_def)
-                                apply (subst notifier_op_def)
-                                apply simp
-                                apply (rule arg_cong5[where f=builder_op])
-                                apply simp
-                                apply simp
-                                apply simp
-                                apply (simp add: fold_consumes SIM2(1,2,3,4,5)  operator_state.defs flip: filter_append map_append)
-                                apply (rule operator_state_eqI)
+                                            apply (subst dataflow_tree_to_operator_def)
+                                            apply simp
+                                            apply (rule arg_cong2[where f=dataflow_op])
+                                             apply simp
+                                            apply (rule arg_cong3[where f=map_op])
+                                              apply simp
+                                             apply simp
+                                            apply (rule arg_cong4[where f=comp_op])
+                                               apply simp
+                                              apply (intro ext)
+                                              apply (auto split: sum.splits)[1]
+                                             apply (rule arg_cong3[where f=map_op])
+                                               apply simp
+                                              apply simp
+                                             apply (subst ooo_input_op_def)
+                                             apply (rule arg_cong5[where f=builder_op])
+                                                 apply simp
+                                                apply simp
+                                               apply simp
+                                              apply auto[1]
+                                             apply simp
+                                            apply (rule arg_cong3[where f=map_op])
+                                              apply simp
+                                             apply simp
+                                            apply simp
+                                            apply (subst batch_op_def)
+                                            apply (subst batch_op_logic_def)
+                                            apply (subst notifier_op_def)
+                                            apply simp
+                                            apply (rule arg_cong5[where f=builder_op])
+                                                apply simp
+                                               apply simp
+                                              apply simp
+                                             apply (simp add: fold_consumes SIM2(1,2,3,4,5)  operator_state.defs flip: filter_append map_append)
+                                             apply (rule operator_state_eqI)
                                 subgoal
                                   unfolding produces_def
                                   by (simp only: operator_state.simps)
                                 subgoal
                                   unfolding produces_def
                                   by (simp only: operator_state.simps)
-                                apply (subst produces_def)
-                                apply (simp only: operator_state.simps)
-                                apply (subst produces_def)
-                                apply (simp only: operator_state.simps)
-                                apply (subst produces_def)
-                                apply (simp only: operator_state.simps)
+                                                    apply (subst produces_def)
+                                                    apply (simp only: operator_state.simps)
+                                                   apply (subst produces_def)
+                                                   apply (simp only: operator_state.simps)
+                                                  apply (subst produces_def)
+                                                  apply (simp only: operator_state.simps)
                                 subgoal
                                   unfolding produces_def
                                   apply (simp only: operator_state.simps)
@@ -3185,8 +3185,8 @@ next
                                 subgoal
                                   unfolding produces_def
                                   by (simp only: operator_state.simps)
-                                apply (subst produces_def)
-                                apply (simp only: operator_state.simps)
+                                               apply (subst produces_def)
+                                               apply (simp only: operator_state.simps)
                                 subgoal
                                   unfolding produces_def
                                   by (simp only: operator_state.simps)
@@ -3273,7 +3273,43 @@ next
                                   unfolding fun_upd_def
                                   apply (simp add: comp_def  flip: filter_append map_append list_diff_append)
                                   subgoal
-                                    sorry
+                                    unfolding input_ocaps_inv_def
+                                    apply (simp add: comp_def SIM2(8)[rule_format, of 1] SIM2(1) my_summ_def flip: filter_append map_append list_diff_append set_append)
+                                    apply (intro ballI allI impI conjI)
+                                    subgoal for a b
+                                      apply (elim conjE)
+                                      apply (subst (asm) set_append)
+                                      apply (simp only: Un_iff)
+                                      apply (elim disjE)
+                                      subgoal
+                                        using SIM2(16)[unfolded input_ocaps_inv_def SIM2(8)[rule_format, of 1] SIM2(1) my_summ_def, rule_format, of b 1 0 1, simplified, unfolded my_summ_def, simplified]
+                                        apply -
+                                        apply (drule meta_mp)
+                                        subgoal
+                                          by blast
+                                        subgoal
+                                          by auto
+                                        done
+                                      subgoal
+                                        by auto
+                                      done
+                                    subgoal for a b
+                                      apply (elim conjE)
+                                      apply (subst (asm) set_append)
+                                      apply (simp only: Un_iff)
+                                      apply (elim disjE)
+                                      subgoal
+                                        using SIM2(16)[unfolded input_ocaps_inv_def SIM2(8)[rule_format, of 1] SIM2(1) my_summ_def, rule_format, of b 1 0 1, simplified, unfolded my_summ_def, simplified]
+                                        apply -
+                                        apply (drule meta_mp)
+                                        subgoal
+                                          by blast
+                                        apply auto
+                                        done
+                                      subgoal
+                                        by auto
+                                      done
+                                    done
                                   done
                                 subgoal
                                   by (simp add: SIM2(17)[simplified])
