@@ -33,99 +33,6 @@ definition "timely_progress lxs C =
 definition "timely_input_stream lxs C =
  (timely_monotone lxs C \<and> timely_progress lxs C)"
 
-lemma timely_input_stream_ldrop:
-  "enat n \<le> llength lxs \<Longrightarrow>
-  timely_input_stream lxs C \<Longrightarrow>
-  timely_input_stream (ldropn n lxs) (C + image_mset time (filter_mset is_Mint (mset (ltaken n lxs))) - image_mset time (filter_mset is_Drop (mset (ltaken n lxs))))"
-  oops
-    (* proof (induct i arbitrary: lxs C)
-  case 0
-  then show ?case
-    by (auto simp: enat_0)
-next
-  case (Suc i)
-  from Suc(2,3) show ?case
-    apply (cases lxs)
-     apply (auto simp flip: eSuc_enat)
-    apply (subst (asm) timely_input_stream_def)
-    apply (erule conjE)+
-    apply (auto)
-    subgoal for lxs' t
-      apply (rule Suc(1))
-       apply assumption
-      apply (unfold timely_input_stream_def) []
-      apply (intro conjI)
-        apply assumption
-       apply (erule all_reg[rotated])
-       apply (rule allI)
-       apply (auto intro: ev_drops.intros) []
-      apply (erule timely_productive.intros(1))
-      done
-    subgoal for lxs' t
-      apply (rule Suc(1))
-       apply assumption
-      apply (unfold timely_input_stream_def) []
-      apply (intro conjI)
-        apply assumption
-       apply (erule all_reg[rotated])
-       apply (rule allI)
-       apply (auto simp: vacant_def intro: ev_drops.intros) []
-      apply assumption
-      done
-    subgoal for lxs' t' t
-      apply (rule Suc(1))
-       apply assumption
-      apply (unfold timely_input_stream_def) []
-      apply (intro conjI)
-        apply assumption
-       apply (rule all_reg[rotated])
-        apply assumption
-       apply (rule allI)
-       apply (auto intro: ev_drops.intros) []
-      apply (erule timely_productive.intros(1))
-      done
-    subgoal for lxs' t' t
-      apply (rule Suc(1))
-       apply assumption
-      apply (unfold timely_input_stream_def) []
-      apply (intro conjI)
-        apply assumption
-       apply (rule all_reg[rotated])
-        apply assumption
-       apply (rule allI)
-       apply (auto intro: ev_drops.intros) []
-       apply (metis count_eq_zero_iff order.refl ev_drops_LConsE event.distinct(3,5) event.inject(3)
-          lfinite_code(2) vacant_def)
-      apply assumption
-      done
-    subgoal for lxs' t' d
-      apply (rule Suc(1))
-       apply assumption
-      apply (unfold timely_input_stream_def) []
-      apply (intro conjI)
-        apply assumption
-       apply (rule all_reg[rotated])
-        apply assumption
-       apply (rule allI)
-       apply (auto intro: ev_drops.intros) []
-      apply (erule timely_productive.intros(1))
-      done
-    subgoal for lxs' t' d
-      apply (rule Suc(1))
-       apply assumption
-      apply (unfold timely_input_stream_def) []
-      apply (intro conjI)
-        apply assumption
-       apply (rule all_reg[rotated])
-        apply assumption
-       apply (rule allI)
-       apply (auto intro: ev_drops.intros) []
-      apply assumption
-      done
-    done
-qed
- *)
-
 lemma vacant_monotone_not_in_lset:
   "e \<in> lset lxs \<Longrightarrow> time e \<le> t \<Longrightarrow> vacant t C \<Longrightarrow> timely_monotone lxs C \<Longrightarrow> False"
   apply (induct e lxs arbitrary: C rule: llist.set_induct)
@@ -268,13 +175,13 @@ lemma timely_input_stream_expires:
   "timely_input_stream lxs C \<Longrightarrow> 
    lfinite (lfilter (\<lambda>e. time e = t) lxs)"
   apply (cases "lfilter (\<lambda>e. time e = t) lxs")
-  apply simp_all
+   apply simp_all
   subgoal for e lxs'
     apply (cases e; simp)
     using timely_input_stream_Data_expires
-    apply (metis (mono_tags, lifting) event.sel(1) lfinite_code(2) llist.set_intros(1) lset_lfilter mem_Collect_eq)
+      apply (metis (mono_tags, lifting) event.sel(1) lfinite_code(2) llist.set_intros(1) lset_lfilter mem_Collect_eq)
     using timely_input_stream_Drop_expires
-    apply (smt (verit, ccfv_SIG) event.sel(2) in_lset_lappend_iff lfilter_cong lfilter_eq_LConsD lfinite_code(2) llist.set_intros(1))      
+     apply (smt (verit, ccfv_SIG) event.sel(2) in_lset_lappend_iff lfilter_cong lfilter_eq_LConsD lfinite_code(2) llist.set_intros(1))      
     using timely_input_stream_Mint_expires
     apply (smt (verit, ccfv_SIG) event.sel(3) in_lset_lappend_iff lfilter_cong lfilter_eq_LConsD lfinite_code(2) llist.set_intros(1))
     done
@@ -355,7 +262,7 @@ lemma timely_input_stream_expires_at_n:
     subgoal for t' us vs
       apply (drule meta_spec)
       apply (drule meta_mp)
-      apply (rule refl)
+       apply (rule refl)
       apply clarsimp
       subgoal for n
         apply (rule exI[of _ "the_enat (llength us) + n + 1"])
@@ -438,7 +345,7 @@ lemma lfinite_llength_ltaken:
    n = llength lxs \<Longrightarrow>
    ltaken n lxs = list_of lxs"
   apply (induct lxs arbitrary: n rule: lfinite_induct)
-  apply (auto simp add: lnull_def)
+   apply (auto simp add: lnull_def)
   subgoal for xs n
     apply (cases xs; cases n; simp)
     using zero_enat_def apply force
@@ -477,14 +384,37 @@ lemma Drop_in_Stream_le_Drop_in_C:
    (\<exists> t'\<le>t. t' \<in># C)"
   by (metis Orderings.order_eq_iff count_inI event.sel(2) vacant_def vacant_monotone_not_in_lset)
 
-lemma set_latenD:
+lemma setltakenD:
   "x \<in> set (ltaken n lxs) \<Longrightarrow>
    x \<in> lset lxs"
   apply (induct n arbitrary: lxs)
-  apply simp
+   apply simp
   subgoal for n lxs
     apply (cases lxs)
-    apply auto
+     apply auto
+    done
+  done
+
+lemma timely_input_stream_ldrop:
+  "enat n \<le> llength lxs \<Longrightarrow>
+  timely_input_stream lxs C \<Longrightarrow>
+  timely_input_stream (ldropn n lxs) (C + image_mset time (filter_mset is_Mint (mset (ltaken n lxs))) - image_mset time (filter_mset is_Drop (mset (ltaken n lxs))))"
+  apply (induct n arbitrary: lxs C)
+   apply simp
+  subgoal for n lxs C
+    apply (cases lxs)
+    subgoal
+      by simp
+    subgoal for e lxs'
+      apply (cases e; simp)
+      subgoal
+        using Suc_ile_eq iless_Suc_eq by blast 
+      subgoal
+        by (smt (verit, ccfv_SIG) add.commute add_mset_add_single diff_diff_add_mset dual_order.order_iff_strict enat_eSuc_iff event.disc(8,9) event.distinct(1) event.sel(2) ldropn_Suc_LCons ldropn_eq_LNil linorder_not_less
+            llength_LCons nat.inject single_subset_iff subset_mset.add_diff_assoc2 timely_input_stream_DropI timely_input_stream_def timely_monotone_LConsE)
+      subgoal
+        by (metis Suc_ile_eq iless_Suc_eq timely_input_stream_MintI union_mset_add_mset_left)
+      done
     done
   done
 
