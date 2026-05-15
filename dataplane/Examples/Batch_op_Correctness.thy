@@ -454,6 +454,66 @@ lemma set_list_diff_iff:
     done
   done
 
+(* FIXME: move me *)
+lemma timely_input_stream_drops_subseteq_C_mints:
+  "timely_input_stream lxs C \<Longrightarrow> event.time `# filter_mset is_Drop (mset (ltaken n lxs)) \<subseteq># C + event.time `# filter_mset is_Mint (mset (ltaken n lxs))"
+  apply (induct n arbitrary: lxs C)
+  subgoal
+    by simp
+  subgoal for n lxs' C
+    apply (cases lxs')
+    subgoal
+      by auto
+    subgoal for e lxs''
+      apply (cases e)
+      subgoal for t d
+        by auto
+      subgoal for t
+        apply simp
+        apply (drule meta_spec[of _ lxs''])
+        apply (drule meta_spec[of _ "remove1_mset t C"])
+        apply (drule meta_mp)
+        using timely_input_stream_DropI apply blast
+        apply (simp add: subseteq_mset_def)
+        apply (auto split: if_splits)
+        unfolding timely_input_stream_def
+        apply clarsimp
+        apply (erule timely_monotone.cases)
+           apply simp_all
+        apply (metis Suc_to_right in_countE not_less_eq_eq plus_nat.simps(2))
+        done
+      subgoal for t
+        unfolding timely_input_stream_def
+        apply clarsimp
+        apply (erule timely_monotone.cases)
+           apply simp_all
+        apply hypsubst_thin
+        apply force
+        done
+      done
+    done
+  done
+lemma timely_input_stream_Data_in_C_in:
+  "Data t d \<in> set (ltaken n lxs) \<Longrightarrow> timely_input_stream lxs C \<Longrightarrow> t \<in># C \<or> (\<exists>x. x \<in> set (ltaken n lxs) \<and> is_Mint x \<and> t = event.time x)"
+  apply (induct n arbitrary: lxs C)
+   apply simp_all
+  subgoal for n lxs C
+    apply (cases lxs)
+     apply simp
+    subgoal for e lxs'
+      apply simp
+      unfolding timely_input_stream_def
+      apply (clarsimp del: disjCI)
+      apply (erule timely_monotone.cases; simp)
+      subgoal
+        by (meson in_diffD timely_progress_DropI)
+      subgoal
+        by force
+      subgoal
+        by auto
+      done
+    done
+  done
 
 (* FIXME: move me *)
 lemma frontier_zmset_of_add_minus:
@@ -506,6 +566,23 @@ lemma set_extract_progressD:
     by (metis fst_conv option.distinct(1) option.simps(1) snd_conv)
   done
 
+(* FIXME: move me *)
+lemma change_multiplicities_map_append_event:
+  "change_multiplicities su (map (\<lambda>x. (l, event.time x, 1)) (filter is_Mint xs) @ map (\<lambda>x. (l, event.time x, - 1)) (filter is_Drop xs)) c =
+   change_multiplicities su (map (\<lambda>x. (l, snd (case x of Drop t \<Rightarrow> (p, t, - 1) | Mint t \<Rightarrow> (p, t, 1)))) (filter (\<lambda>x. \<not> is_Data x) xs)) c"
+  apply (induct xs arbitrary: c)
+  subgoal
+    by simp
+  subgoal for e xs' c
+    apply (cases e; simp)
+    subgoal for t
+      by (smt (verit, del_insts) Cons_eq_appendI change_multiplicities_append change_multiplicities_comm empty_append_eq_id)
+    subgoal for t
+      by (smt (verit, del_insts) Cons_eq_appendI change_multiplicities_append change_multiplicities_comm empty_append_eq_id)
+    done
+  done
+
+
 
 lemma cset_from_list_f_filter:
   "\<forall> x \<in> set xs. \<forall> t. t |\<in>| C \<longrightarrow> \<not> P t x \<Longrightarrow>
@@ -521,6 +598,131 @@ lemma cset_from_list_f_filter:
       by (smt (verit, ccfv_SIG)
           \<open>\<And>t. (\<And>C. \<forall>x\<in>set xs. \<forall>t. t |\<in>| C \<longrightarrow> \<not> P t x \<Longrightarrow> ((\<lambda>t. (\<lambda>x. (p, j x, t)) |`| cset_from_list (f (map (\<lambda>x. projl (fst x)) (filter (P t) xs) @ ys t))) |`| C) = ((\<lambda>t. (\<lambda>x. (p, j x, t)) |`| cset_from_list (f (ys t))) |`| C)) \<Longrightarrow> \<forall>t. t |\<in>| C \<longrightarrow> \<not> P t a \<Longrightarrow> \<forall>x\<in>set xs. \<forall>t. t |\<in>| C \<longrightarrow> \<not> P t x \<Longrightarrow> t |\<in>| C \<Longrightarrow> ((\<lambda>x. (p, j x, t)) |`| cset_from_list (f (map (\<lambda>x. projl (fst x)) (filter (P t) xs) @ ys t))) |\<in>| ((\<lambda>t. (\<lambda>x. (p, j x, t)) |`| cset_from_list (f (ys t))) |`| C)\<close>
           cimage_cong filter_empty_conv list.map_disc_iff self_append_conv2)
+    done
+  done
+
+(* FIXME: move me *)
+lemma dataplane_tracker_inv_replace_ocaps:
+  "dataplane_tracker_inv os' cbufs sg \<Longrightarrow>
+   mset (ocaps (os nid) p) = mset C \<Longrightarrow>
+   os' = os(nid := (os nid)\<lparr> ocaps := (ocaps (os nid))(p := C) \<rparr>) \<Longrightarrow>
+   dataplane_tracker_inv os cbufs sg"
+  apply hypsubst_thin
+  unfolding dataplane_tracker_inv_def
+  apply clarsimp
+  subgoal premises prems for caps
+    apply (rule exI[of _ caps])
+    apply (intro conjI)
+    subgoal
+      using prems(1,2) apply -
+      unfolding Src_caps_inv_def
+      apply clarsimp
+      apply (metis Diff_eq_empty_iff_mset diff_left_imp_eq mset_list_diff mset_zero_iff_right subset_mset.dual_order.order_iff_strict to_zmset_list_diff)
+      done
+    subgoal
+      using prems(1,3) apply -
+      unfolding Trg_caps_inv_def 
+      apply safe
+      subgoal for nid p
+        apply (drule spec2[of _ nid p])
+        apply simp
+        subgoal premises aux
+          apply (rule arg_cong[where f=to_zmset])
+          apply (rule map_cong)
+          unfolding outputs_at_target_def BULK_BENQ_def
+           apply (auto simp: if_splits prod.splits)
+          done
+        done
+      done
+    subgoal
+      using prems(1,4) apply -
+      unfolding c_pts_inv_def  extract_prog_def extract_progress_def obtain_progress_def
+      apply (auto simp:if_distrib[of produ]  if_distrib[of inter] if_distrib[of consu] split: if_splits prod.splits)
+      apply (smt (verit, del_insts) map_eq_conv)
+      done
+    subgoal
+      using prems(1,5) apply -
+      unfolding front_inv_def 
+      apply (auto simp:if_distrib[of produ]  if_distrib[of inter] if_distrib[of consu] split: if_splits prod.splits)
+      done
+    subgoal
+      using prems(1,7) apply -
+      apply (subgoal_tac "outputs_at_target (summ sg) (map_entry nid (ocaps_update (\<lambda>_. (ocaps (os nid))(p := C))) os) = outputs_at_target (summ sg) os")
+       apply simp
+      subgoal premises
+        unfolding outputs_at_target_def BULK_BENQ_def
+        apply (auto del: disjCI simp add:split_beta if_distrib[of produ] if_distrib[of outpu]   if_distrib[of inter] if_distrib[of consu] split: if_splits prod.splits)
+        done
+      done
+    subgoal
+      using prems(1,8)
+      unfolding change_deltas_inv_def
+      by fastforce
+    subgoal
+      using prems(1,10) apply -
+      unfolding extract_prog_changes_above_impl_inv_def
+      apply safe
+      subgoal for nid' xs
+        apply (drule spec)+
+        apply (drule mp)
+         apply assumption
+        apply (drule mp)
+         apply assumption
+        apply (subgoal_tac "extract_prog xs (subgraph.nxt sg) (map_entry nid (ocaps_update (\<lambda>_. (ocaps (os nid))(p := C))) os) = extract_prog xs (subgraph.nxt sg) os")
+        subgoal
+          apply simp
+          apply (subgoal_tac "extract_progress nid' (subgraph.nxt sg) (snd (obtain_progress (if nid' = nid then os nid\<lparr>ocaps := (ocaps (os nid))(p := C)\<rparr> else os nid'))) = extract_progress nid' (subgraph.nxt sg) (snd (obtain_progress (os nid')))")
+          subgoal
+            by simp
+          subgoal premises aux
+            unfolding obtain_progress_def
+            by auto
+          done
+        subgoal premises aux
+          unfolding obtain_progress_def extract_prog_def extract_progress_def
+          apply (auto del: disjCI simp add:split_beta if_distrib[of produ] if_distrib[of outpu]   if_distrib[of inter] if_distrib[of consu] split: if_splits prod.splits)
+          apply (rule arg_cong[where f=concat])
+          apply (rule map_cong)
+           apply auto
+          done
+        done
+      done
+    subgoal
+      unfolding produ_consu_inter_supported_def
+      apply (intro allI impI conjI)
+      subgoal
+        using conjunct1[OF prems(11)[unfolded produ_consu_inter_supported_def]] apply -
+        apply (auto del: disjCI simp add:split_beta if_distrib[of produ] if_distrib[of outpu]   if_distrib[of inter] if_distrib[of consu] split: if_splits prod.splits)
+        done
+      subgoal for nid' p t m
+        apply (cases "nid' = nid")
+        subgoal
+          apply hypsubst_thin
+          using conjunct1[OF conjunct2[OF prems(11)[unfolded produ_consu_inter_supported_def]], simplified, unfolded if_distrib[of produ] if_distrib[of outpu]   if_distrib[of inter] if_distrib[of consu], simplified, rule_format, where nid=nid and p=p and t=t, simplified] apply -
+          apply (drule meta_mp)
+           apply blast
+          apply simp
+          apply (smt (verit, best) map_eq_conv split_cong)
+          done
+        subgoal
+          subgoal
+            using conjunct1[OF conjunct2[OF prems(11)[unfolded produ_consu_inter_supported_def]], simplified, unfolded if_distrib[of produ] if_distrib[of outpu]   if_distrib[of inter] if_distrib[of consu], simplified, rule_format, where nid=nid' and p=p and t=t, simplified] apply -
+            apply (drule meta_mp)
+             apply simp
+             apply blast
+            apply simp
+            apply (smt (verit, best) map_eq_conv split_cong)
+            done
+          done
+        done
+      subgoal for nid' p t m
+        using conjunct2[OF conjunct2[OF prems(11)[unfolded produ_consu_inter_supported_def]], simplified, unfolded if_distrib[of produ] if_distrib[of outpu]   if_distrib[of inter] if_distrib[of consu], simplified, rule_format, where nid=nid' and p=p and t=t, simplified] apply -
+        apply (drule meta_mp)
+         apply simp
+         apply blast
+        apply (auto del: disjCI simp add:split_beta if_distrib[of produ] if_distrib[of outpu]   if_distrib[of inter] if_distrib[of consu] split: if_splits prod.splits)
+        done
+      done
     done
   done
 
@@ -3705,9 +3907,11 @@ next
                                     done
                                   done
                                 subgoal
-                                  apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
-                                  apply (rule dataplane_tracker_inv_update_outputs_outside[where nid=1 and xs=Nil]; (rule refl)?)
-                                     apply (rule dataplane_tracker_inv_produces_drops[rotated 12, where nid=1 and oputs="\<lambda> _.
+                                  apply (rule dataplane_tracker_inv_replace_ocaps[where  nid=0 and p=1 and C="list_diff (ocaps (os 0) 1 @ map event.time (filter is_Mint (ltaken n (inps 1)))) (map event.time (filter is_Drop (ltaken n (inps 1))))", simplified]; (rule refl)?)
+                                   apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+
+                                   apply (rule dataplane_tracker_inv_update_outputs_outside[where nid=1 and xs=Nil]; (rule refl)?)
+                                      apply (rule dataplane_tracker_inv_produces_drops[rotated 12, where nid=1 and oputs="\<lambda> _.
 (let batches = map (\<lambda> (d, t). (projl d, t)) (input (os 1) 1 @ cbufs (1, 1) @ outpu (os 0) 1) @ (map (\<lambda> ev. case ev of Data t d \<Rightarrow> (d, t)) (filter is_Data (ltaken n (inps 1)))) in
                               let F = frontier (zmset_of (mset (ocaps (os 0) 1) + event.time `# filter_mset is_Mint (mset (ltaken n (inps 1))) - event.time `# filter_mset is_Drop (mset (ltaken n (inps 1))))) in
                               map (\<lambda> (d, t). (Inr d, t)) (output_batches f F batches))" and
@@ -3715,47 +3919,71 @@ next
                                         and  produs="(let batches = map (\<lambda> (d, t). (projl d, t)) (input (os 1) 1 @ cbufs (1, 1) @ outpu (os 0) 1) @ (map (\<lambda> ev. case ev of Data t d \<Rightarrow> (d, t)) (filter is_Data (ltaken n (inps 1)))) in
                               let F = frontier (zmset_of (mset (ocaps (os 0) 1) + event.time `# filter_mset is_Mint (mset (ltaken n (inps 1))) - event.time `# filter_mset is_Drop (mset (ltaken n (inps 1))))) in
                               map (\<lambda> (d, t). (1, t, 1)) (output_batches f F batches))" 
-                                        and os="os(0 := (os 0)\<lparr> ocaps := (ocaps ip_state)(1 := ocaps_updates (ocaps ip_state 1) (ltaken n (es ip_state 1))), outpu := (outpu ip_state)(1 := []), consu := [], inter := [], produ := [] \<rparr>,
+                                        and os="os(0 := (os 0)\<lparr> ocaps := (ocaps ip_state)(1 := list_diff (ocaps (os 0) 1 @ map event.time (filter is_Mint (ltaken n (inps 1)))) (map event.time (filter is_Drop (ltaken n (inps 1))))), outpu := (outpu ip_state)(1 := []), consu := [], inter := [], produ := [] \<rparr>,
                                           1 := (os 1)\<lparr> ocaps := _, input := (\<lambda> _. input (os 1) 1 @ cbufs (1, 1) @ outpu (os 0) 1 @ map (case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (inps 1)))), outpu := _, consu := [], inter := [], produ := [], front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg 1))), initia := True \<rparr>)"]; (rule refl)?)
-                                            apply (subst dataplane_tracker_inv_clean)
-                                              defer
-                                              defer
-                                              apply (rule dataplane_tracker_inv_front_update[where nid=1 and c=c, rotated 5]; (rule refl)?)
-                                                   apply (rule dataplane_tracker_inv_progress[where nid=1]; (rule refl)?)
-                                                     apply (rule dataplane_tracker_inv_progress[where nid=0]; (rule refl)?)
+                                             apply (subst dataplane_tracker_inv_clean)
+                                               defer
+                                               defer
+                                               apply (rule dataplane_tracker_inv_front_update[where nid=1 and c=c, rotated 5]; (rule refl)?)
+                                                    apply (rule dataplane_tracker_inv_progress[where nid=1]; (rule refl)?)
+                                                      apply (rule dataplane_tracker_inv_progress[where nid=0]; (rule refl)?)
                                                       apply (rule dataplane_tracker_inv_fold_consumes[where cbufs="(\<lambda> (nid, p). (if nid = 1 \<and> p =1 then cbufs (1, 0) @ outpu (os 0) 0  @ map (case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (inps 1))) else []))" and nid=1 and p=1 and n="length (cbufs (1, 0)) + length (outpu (os 0) 0) + length (filter is_Data (ltaken n (inps 1)))"]; (rule refl)?)
                                                       apply (rule dataplane_tracker_inv_update_outputs[where cbufs=cbufs and nid'=1 and p'=1 and p=1 and nid=0 and ys=Nil and xs="outpu (os 0) 0 @ map (case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (inps 1)))"]; (rule refl)?)
                                                       apply (rule dataplane_tracker_inv_produces_drops[rotated 12, where oputs="\<lambda> _. map (case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (inps 1)))" and produs="map (\<lambda> e. (1, event.time e, 1)) (filter is_Data (ltaken n (inps 1)))" and drops="(\<lambda> _. map event.time (filter is_Drop (ltaken n (inps 1))))" and nid=0 and noutput="(outpu (os 1))( 0 := outpu (os 0) 0 @ map (case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (inps 1))))"]; (rule refl)?)
                                                       apply (rule dataplane_tracker_inv_mints_many[where os=os and cbufs=cbufs and sg=sg and nid=0 and p=1 and xs="(map event.time (filter is_Mint (ltaken n (inps 1))))"])
                                   using N_INV(5) apply assumption
                                   using SIM2(10) apply assumption
-                                  subgoal sorry
-                                  subgoal sorry
-                                  subgoal sorry
+                                  subgoal 
+                                    apply (rule graph_summar_nt)
+                                       apply (rule refl)+
+                                      apply (rule SIM2(2)[unfolded SIM2(1)])
+                                     apply (auto simp add: SIM2 comp_def)
+                                    done
+                                  subgoal 
+                                    apply clarsimp
+                                    subgoal for e
+                                      apply (cases e; simp)
+                                      apply (drule setltakenD)
+                                      apply (drule Mint_in_Stream_le_Mint_in_C[rotated])
+                                      using SIM2(13)[unfolded timely_input_stream_def] apply blast
+                                      apply auto
+                                      done
+                                    done
+                                  using N_INV(5) apply assumption
                                   subgoal
                                     apply (intro ext)
                                     apply simp
                                     done
                                   subgoal
-                                    apply simp
-                                    sorry
+                                    using SIM2(13) timely_input_stream_drops_subseteq_C_mints by auto
                                   subgoal
                                     apply (clarsimp del: disjCI simp add: image_iff)
                                     subgoal for e
                                       apply (cases e; clarsimp del: disjCI simp add: image_iff)
-                                      sorry
+                                      subgoal for t d
+                                        using SIM2(13) timely_input_stream_Data_in_C_in by force
+                                      done
                                     done
                                   subgoal
                                     apply (clarsimp del: disjCI simp add: image_iff split: event.splits)
                                     subgoal for t d
-                                      sorry
+                                      using SIM2(13) timely_input_stream_Data_in_C_in by force
                                     done
                                   subgoal
                                     apply (clarsimp del: disjCI simp add: comp_def image_iff split: event.splits)
-                                    sorry
+                                    apply (subst (2) filter_True)
+                                     apply (simp_all add: comp_def)
+                                    apply (rule arg_cong[where f=to_zmset])
+                                    apply (rule map_cong)
+                                     apply (auto split: event.splits)
+                                    done
                                   subgoal
                                     apply (clarsimp del: disjCI simp add: comp_def image_iff split: event.splits)
-                                    sorry
+                                    apply (rule graph_summar_nt)
+                                       apply (rule refl)+
+                                      apply (rule SIM2(2)[unfolded SIM2(1)])
+                                     apply (auto simp add: SIM2 comp_def)
+                                    done
                                   using SIM2(3) apply assumption
                                   subgoal
                                     by (clarsimp del: disjCI simp add: comp_def image_iff split: event.splits)
@@ -3768,11 +3996,19 @@ next
                                     by (simp add: antichain_from_list_singleton SIM2(1,2) my_summ_def)
                                   subgoal
                                     apply (clarsimp del: disjCI simp add: comp_def image_iff split: event.splits)
-                                    sorry
+                                    apply (rule graph_summar_nt)
+                                       apply (rule refl)+
+                                      apply (rule SIM2(2)[unfolded SIM2(1)])
+                                     apply (auto simp add: SIM2 comp_def)
+                                    done
                                   using N_INV(5) apply assumption
                                   subgoal
                                     apply (clarsimp del: disjCI simp add: comp_def image_iff split: event.splits)
-                                    sorry
+                                    apply (rule graph_summar_nt)
+                                       apply (rule refl)+
+                                      apply (rule SIM2(2)[unfolded SIM2(1)])
+                                     apply (auto simp add: SIM2 comp_def)
+                                    done
                                   subgoal
                                     by (clarsimp del: disjCI simp add: comp_def image_iff split: event.splits)
                                   subgoal
@@ -3784,12 +4020,20 @@ next
                                   using N_INV(5) apply assumption
                                   subgoal
                                     apply (clarsimp del: disjCI simp add: comp_def image_iff split: event.splits)
-                                    sorry
+                                    apply (rule graph_summar_nt)
+                                       apply (rule refl)+
+                                      apply (rule SIM2(2)[unfolded SIM2(1)])
+                                     apply (auto simp add: obtain_progress_def fold_consumes SIM2 comp_def)
+                                    done
                                   subgoal
                                     by (clarsimp del: disjCI simp add: N_INV(5) comp_def image_iff split: event.splits)
                                   subgoal
                                     apply (clarsimp del: disjCI simp add: SIM2(17) comp_def image_iff split: if_splits event.splits)
-                                    sorry
+                                    apply (rule graph_summar_nt)
+                                       apply (rule refl)+
+                                      apply (rule SIM2(2)[unfolded SIM2(1)])
+                                     apply (auto simp add: obtain_progress_def fold_consumes SIM2 comp_def)
+                                    done
                                   subgoal
                                     by (clarsimp del: disjCI simp add: N_INV(5) comp_def image_iff split: event.splits)
                                   subgoal
@@ -3801,42 +4045,212 @@ next
                                     apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
                                     apply (subst temp2(18)[symmetric])
                                     apply (clarsimp del: disjCI simp add: enum_num1_def obtain_progress_def fold_consumes operator_state.defs SIM2(1,2,4,5) image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
-                                    sorry
+                                    apply (rule arg_cong2[where f="propagate_all"])
+                                     apply simp_all
+                                    apply (rule arg_cong3[where f="change_multiplicities"])
+                                      apply simp_all
+                                    unfolding extract_progress_def
+                                    apply (simp add: comp_def split_beta change_multiplicities_append_alt)
+                                    apply (rule arg_cong3[where f="change_multiplicities"])
+                                      apply simp_all
+                                    subgoal
+                                      unfolding List.map_filter_def
+                                      apply (simp add: comp_def split_beta)
+                                      apply (rule map_cong)
+                                       apply (rule filter_cong)
+                                        apply (rule map_cong)
+                                         apply (auto split: event.splits)
+                                      done
+                                    apply (rule arg_cong3[where f="change_multiplicities"])
+                                      apply simp_all
+                                    apply (simp flip: split_beta change_multiplicities_append_alt)
+                                    apply (subst (1 2) change_multiplicities_comm)
+                                    apply (simp add: comp_def split_beta change_multiplicities_append_alt)
+                                    apply (rule arg_cong3[where f="change_multiplicities"])
+                                      apply simp_all
+                                    apply (simp flip: split_beta change_multiplicities_append_alt)
+                                    apply (subst (1 2) change_multiplicities_comm)
+                                    apply (simp add: comp_def split_beta change_multiplicities_append_alt)
+                                    apply (rule arg_cong3[where f="change_multiplicities"])
+                                      apply simp_all
+                                    apply (simp flip: split_beta change_multiplicities_append_alt split: event.splits)
+                                    using change_multiplicities_map_append_event apply fast
+                                    done
                                   subgoal
                                     apply (clarsimp del: disjCI simp add: SIM2(17) comp_def image_iff split: if_splits event.splits)
-                                    sorry
+                                    apply (rule graph_summar_nt)
+                                       apply (rule refl)+
+                                      apply (rule SIM2(2)[unfolded SIM2(1)])
+                                     apply (auto simp add: obtain_progress_def fold_consumes SIM2 comp_def)
+                                    done
                                   subgoal
                                     by (clarsimp del: disjCI simp add: N_INV(5) comp_def image_iff split: event.splits)
-                                            prefer 7
-                                  using [[goals_limit = 1]]
-                                            apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
-                                            apply (intro ext)
-                                            apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
-                                            apply (rule operator_state_eqI)
+                                             prefer 7
+                                             apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                             apply (intro ext)
+                                             apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                             apply (rule operator_state_eqI)
+                                                      apply (clarsimp del: disjCI simp add: enum_num1_def image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
                                                      apply (clarsimp del: disjCI simp add: enum_num1_def image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                                    apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
                                                     apply (clarsimp del: disjCI simp add: enum_num1_def image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
-                                                   apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
-                                                   apply (clarsimp del: disjCI simp add: enum_num1_def image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
-                                                   apply (rule map_cong)
-                                                    apply (rule filter_cong)
-                                                     apply (simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def, simplified] comp_def map_concat)
-                                  subgoal sorry
+                                                    apply (rule map_cong)
+                                                     apply (rule filter_cong)
+                                                      apply (simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def, simplified] comp_def map_concat)
+                                  subgoal
+                                    using concat_map_singleton[where f=snd] by (metis (no_types, lifting) cond_case_prod_eta snd_eqD)
                                   subgoal for t
                                     by auto
-                                                   apply simp
-                                                  apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                                    apply simp
+                                                   apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
                                   subgoal
-                                    sorry
-                                                 apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
-                                                 apply (intro ext)
-                                                 apply (rule filter_cong)
-                                                  apply simp
+                                    unfolding output_batches_def outputs_ts_def Let_def
+                                    apply (clarsimp del: disjCI simp add: map_concat image_iff comp_def split_beta  simp del: image_eqI simp flip: rmdups_append concat_append filter_filter list_diff_append map_append filter_append)
+                                    apply (rule arg_cong[where f=concat])
+                                    apply (rule map_cong)
+                                    subgoal
+                                      apply (simp add: comp_def flip:)
+                                      apply (rule arg_cong2[where f=append])
+                                       apply (rule arg_cong2[where f=rmdups])
+                                        apply simp
+                                       apply (simp add: split_beta filter_map)
+                                       apply (rule map_cong)
+                                      subgoal
+                                        apply (rule filter_cong)
+                                         apply (auto del: disjCI)
+                                        subgoal for a b
+                                          using SIM2(16)[unfolded input_ocaps_inv_def SIM2(8)[rule_format, of 1] SIM2(1) my_summ_def, rule_format, of b 1 0 1, simplified, unfolded my_summ_def, simplified]
+                                          by auto
+                                        done
+                                       apply simp
+                                      apply (rule arg_cong2[where f=append])
+                                       apply (rule arg_cong2[where f=rmdups])
+                                        apply simp
+                                      subgoal
+                                        apply (simp add: image_iff split_beta filter_map)
+                                        apply (auto del: disjCI)
+                                        subgoal for a b
+                                          using SIM2(16)[unfolded input_ocaps_inv_def SIM2(8)[rule_format, of 1] SIM2(1) my_summ_def, rule_format, of b 1 0 1, simplified, unfolded my_summ_def, simplified]
+                                          by force
+                                        done
+                                      subgoal
+                                        apply (simp add: split_beta filter_map)
+                                        apply (rule map_cong)
+                                        subgoal
+                                          apply (rule filter_cong)
+                                           apply (auto simp add: SIM2(1,2) my_summ_def SIM2(8)[rule_format, of 1]   del: disjCI)
+                                          subgoal for a b
+                                            by blast
+                                          done
+                                        apply simp
+                                        done
+                                      apply (rule arg_cong2[where f=append])
+                                       apply (rule arg_cong2[where f=rmdups])
+                                        apply simp
+                                      subgoal
+                                        apply (simp add: image_iff split_beta filter_map)
+                                        apply (auto simp add: SIM2(1,2) my_summ_def SIM2(8)[rule_format, of 1]   del: disjCI)
+                                        subgoal for a b
+                                          using SIM2(16)[unfolded input_ocaps_inv_def SIM2(8)[rule_format, of 1] SIM2(1) my_summ_def, rule_format, of b 1 0 1, simplified, unfolded my_summ_def, simplified]
+                                          by force
+                                        subgoal
+                                          by force
+                                        done
+                                      subgoal
+                                        apply (simp add: split_beta filter_map)
+                                        apply (rule map_cong)
+                                        subgoal
+                                          apply (rule filter_cong)
+                                           apply (auto simp add: SIM2(1,2) my_summ_def SIM2(8)[rule_format, of 1]   del: disjCI)
+                                          subgoal for a b
+                                            by blast
+                                          done
+                                        apply simp
+                                        done
+                                      subgoal
+                                        apply (rule arg_cong2[where f=rmdups])
+                                         apply simp
+                                        subgoal
+                                          apply (auto simp add: SIM2(1,2) my_summ_def SIM2(8)[rule_format, of 1]   del: disjCI)
+                                          subgoal for a b
+                                            using SIM2(16)[unfolded input_ocaps_inv_def SIM2(8)[rule_format, of 1] SIM2(1) my_summ_def, rule_format, of b 1 0 1, simplified, unfolded my_summ_def, simplified]
+                                            by force
+                                          subgoal
+                                            by force
+                                          subgoal by force
+                                          subgoal by force
+                                          subgoal by force
+                                          subgoal by force
+                                          subgoal by force
+                                          subgoal by force
+                                          subgoal by force
+                                          subgoal by force
+                                          subgoal by force
+                                          subgoal by force
+                                          subgoal for a b
+                                            using SIM2(16)[unfolded input_ocaps_inv_def SIM2(8)[rule_format, of 1] SIM2(1) my_summ_def, rule_format, of b 1 0 1, simplified, unfolded my_summ_def, simplified]
+                                            by force
+                                          subgoal by force
+                                          subgoal by force
+                                          done
+                                        subgoal
+                                          apply (simp add: split_beta filter_map)
+                                          apply (rule map_cong)
+                                          subgoal
+                                            apply (rule filter_cong)
+                                             apply (auto simp add: SIM2(1,2) my_summ_def SIM2(8)[rule_format, of 1]   del: disjCI split: event.splits)
+                                            subgoal for b
+                                              by blast
+                                            done
+                                          subgoal
+                                            by (auto simp add: SIM2(1,2) my_summ_def SIM2(8)[rule_format, of 1]   del: disjCI  split: event.splits)
+                                          done
+                                        done
+                                      done
+                                    subgoal for t
+                                      apply (rule map_cong)
+                                      subgoal
+                                        apply (rule arg_cong[where f=f])
+                                        apply (simp add: filter_filter_pair_alt  comp_def split_beta  del: image_eqI flip: filter_filter  list_diff_append map_append filter_append)
+                                        apply (subst (1) filter_True)
+                                        subgoal
+                                          apply (intro ballI impI conjI)
+                                          apply (auto del: disjCI simp add: my_summ_def SIM2(8)[rule_format, of 1, unfolded SIM2(1,2), simplified] split_beta split: event.splits)
+                                          using SIM2(16)[unfolded input_ocaps_inv_def SIM2(8)[rule_format, of 1] SIM2(1) my_summ_def, rule_format, of _ 1 0 1, simplified, unfolded my_summ_def, simplified]
+                                                         apply fast+
+                                          done
+                                        subgoal
+                                          by (simp add: split_beta filter_map comp_def split: event.splits)
+                                        done
+                                      apply simp
+                                      done
+                                    done
+                                                  apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                                  apply (intro ext)
+                                                  apply (rule filter_cong)
+                                                   apply simp
                                   subgoal for p x
                                     apply (cases x)
                                     apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
                                     apply hypsubst_thin
                                     apply (intro conjI impI iffI)
-                                    subgoal sorry
+                                    subgoal for a b
+                                      apply (elim disjE)
+                                      subgoal
+                                        using SIM2(16)[unfolded input_ocaps_inv_def SIM2(8)[rule_format, of 1] SIM2(1) my_summ_def, rule_format, of b 1 0 1, simplified, unfolded my_summ_def, simplified]
+                                        by (auto del: disjCI simp add: my_summ_def SIM2(8)[rule_format, of 1, unfolded SIM2(1,2), simplified] split_beta split: event.splits)
+                                      subgoal
+                                        using SIM2(16)[unfolded input_ocaps_inv_def SIM2(8)[rule_format, of 1] SIM2(1) my_summ_def, rule_format, of b 1 0 1, simplified, unfolded my_summ_def, simplified]
+                                        by (auto del: disjCI simp add: my_summ_def SIM2(8)[rule_format, of 1, unfolded SIM2(1,2), simplified] split_beta split: event.splits)
+                                      subgoal
+                                        using SIM2(16)[unfolded input_ocaps_inv_def SIM2(8)[rule_format, of 1] SIM2(1) my_summ_def, rule_format, of b 1 0 1, simplified, unfolded my_summ_def, simplified]
+                                        by (auto del: disjCI simp add: my_summ_def SIM2(8)[rule_format, of 1, unfolded SIM2(1,2), simplified] split_beta split: event.splits)
+                                      subgoal
+                                        apply (auto 0 0 del: disjCI simp add: image_iff my_summ_def SIM2(8)[rule_format, of 1, unfolded SIM2(1,2), simplified] split_beta split: event.splits)
+                                        apply (intro disjI1)
+                                        apply auto
+                                        done
+                                      done
                                     subgoal
                                       by auto
                                     subgoal
@@ -3844,26 +4258,34 @@ next
                                       subgoal
                                         apply hypsubst_thin
                                         apply (rule FalseE)
-                                        sorry
+                                        apply (auto del: disjCI simp add: image_iff my_summ_def SIM2(8)[rule_format, of 1, unfolded SIM2(1,2), simplified] split_beta split: event.splits)
+                                        apply force
+                                        done
                                             apply auto
                                         apply force+
                                       subgoal
                                         apply (clarsimp simp add: image_iff split: event.splits)
                                         apply (rule FalseE)
-                                        sorry
+                                        apply (auto del: disjCI simp add: image_iff my_summ_def SIM2(8)[rule_format, of 1, unfolded SIM2(1,2), simplified] split_beta split: event.splits)
+                                        apply force
+                                        done
                                       done
                                     subgoal
                                       apply (elim exE conjE disjE bexE)
                                       subgoal
                                         apply hypsubst_thin
                                         apply (rule FalseE)
-                                        sorry
+                                        apply (auto del: disjCI simp add: image_iff my_summ_def SIM2(8)[rule_format, of 1, unfolded SIM2(1,2), simplified] split_beta split: event.splits)
+                                        apply force
+                                        done
                                             apply auto
                                         apply force+
                                       subgoal
                                         apply (clarsimp simp add: image_iff split: event.splits)
                                         apply (rule FalseE)
-                                        sorry
+                                        apply (auto del: disjCI simp add: image_iff my_summ_def SIM2(8)[rule_format, of 1, unfolded SIM2(1,2), simplified] split_beta split: event.splits)
+                                        apply force
+                                        done
                                       done
                                     subgoal
                                       apply (elim exE conjE disjE bexE)
@@ -3872,42 +4294,85 @@ next
 
                                         apply hypsubst_thin
                                         apply (rule FalseE)
-                                        sorry
+                                        apply (auto del: disjCI simp add: image_iff my_summ_def SIM2(8)[rule_format, of 1, unfolded SIM2(1,2), simplified] split_beta split: event.splits)
+                                        apply force
+                                        done
                                             apply auto
                                         apply force
                                        apply force
                                       subgoal
                                         apply (clarsimp simp add: image_iff split: event.splits)
                                         apply (rule FalseE)
-                                        sorry
+                                        apply (auto del: disjCI simp add: image_iff my_summ_def SIM2(8)[rule_format, of 1, unfolded SIM2(1,2), simplified] split_beta split: event.splits)
+                                        apply force
+                                        done
                                       done
                                     done
+                                                 apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                                 apply force
                                                 apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
-                                                apply force
                                                apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
-                                              apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
-                                              apply (intro ext)
-                                              apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
-                                              apply (rule arg_cong2[where f=list_diff])
+                                               apply (intro ext)
+                                               apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                               apply (rule arg_cong2[where f=list_diff])
+                                                apply simp
+                                               apply (subst filter_True)
+                                                apply simp
+                                               apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                               apply (rule filter_cong)
+                                                apply (clarsimp del: disjCI simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                  subgoal 
+                                    apply (simp flip: append_assoc)
+                                    apply (rule arg_cong2[where f=append])
+                                    using concat_map_singleton[where f=snd] apply (metis (no_types, lifting) cond_case_prod_eta snd_eqD)
+                                    using concat_map_singleton[where f=snd] apply (metis (no_types, lifting) cond_case_prod_eta snd_eqD)
+                                    done
                                                apply simp
-                                              apply (subst filter_True)
-                                               apply simp
-                                              apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
-                                              apply (rule filter_cong)
-                                               apply (clarsimp del: disjCI simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
-                                  subgoal sorry
-                                              apply simp
-                                             apply (clarsimp del: disjCI simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
-                                            apply simp
+                                              apply (clarsimp del: disjCI simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                             apply simp
                                   subgoal
                                     apply (simp add: SIM2(1,2,3,4) flip: filter_filter list_diff_append map_append filter_append)
-                                    sorry
+                                    apply (auto del: disjCI simp add: mset_concat comp_def subseteq_mset_def image_iff my_summ_def SIM2(8)[rule_format, of 1, unfolded SIM2(1,2), simplified] split_beta split: event.splits)
+                                    done
                                   subgoal
+                                    unfolding output_batches_def outputs_ts_def
                                     apply (clarsimp del: disjCI simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
-                                    sorry
+                                    apply (auto del: disjCI simp add: mset_concat comp_def subseteq_mset_def image_iff my_summ_def SIM2(8)[rule_format, of 1, unfolded SIM2(1,2), simplified] split_beta split: event.splits)
+                                    using SIM2(16)[unfolded input_ocaps_inv_def SIM2(8)[rule_format, of 1] SIM2(1) my_summ_def, rule_format, of _ 1 0 1, simplified, unfolded my_summ_def, simplified]
+                                          apply fast
+                                    using SIM2(16)[unfolded input_ocaps_inv_def SIM2(8)[rule_format, of 1] SIM2(1) my_summ_def, rule_format, of _ 1 0 1, simplified, unfolded my_summ_def, simplified]
+                                         apply fastforce
+                                    using SIM2(16)[unfolded input_ocaps_inv_def SIM2(8)[rule_format, of 1] SIM2(1) my_summ_def, rule_format, of _ 1 0 1, simplified, unfolded my_summ_def, simplified]
+                                        apply fastforce
+                                    using SIM2(16)[unfolded input_ocaps_inv_def SIM2(8)[rule_format, of 1] SIM2(1) my_summ_def, rule_format, of _ 1 0 1, simplified, unfolded my_summ_def, simplified]
+                                       apply blast
+                                      apply (metis event.simps(7) is_Data_def)
+                                     apply (metis event.disc(2))
+                                    apply (metis event.simps(5,7) is_Data_def)
+                                    done
                                   subgoal
+                                    unfolding output_batches_def outputs_ts_def
                                     apply (clarsimp del: disjCI simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
-                                    sorry
+                                    apply (auto del: disjCI simp add: mset_concat comp_def subseteq_mset_def image_iff my_summ_def SIM2(8)[rule_format, of 1, unfolded SIM2(1,2), simplified] split_beta split: event.splits)
+                                    using SIM2(16)[unfolded input_ocaps_inv_def SIM2(8)[rule_format, of 1] SIM2(1) my_summ_def, rule_format, of _ 1 0 1, simplified, unfolded my_summ_def, simplified]
+                                        apply fast
+                                    subgoal for d ab bb x
+                                      apply (cases x; simp)
+                                      apply auto
+                                      done
+                                    subgoal for d ab bb x
+                                      apply (cases x; simp)
+                                      apply auto
+                                      done
+                                    subgoal for d ab bb x
+                                      apply (cases x; simp)
+                                      apply auto
+                                      done
+                                    subgoal for d ab bb x
+                                      apply (cases x; simp)
+                                      apply auto
+                                      done
+                                    done
                                   subgoal
                                     apply (clarsimp del: disjCI simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
                                     apply (subst (2) filter_True)
@@ -3915,21 +4380,42 @@ next
                                     done
                                   subgoal
                                     apply (clarsimp del: disjCI simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
-                                    sorry
+                                    apply (rule graph_summar_nt)
+                                       apply (rule refl)+
+                                      apply (rule SIM2(2)[unfolded SIM2(1)])
+                                     apply (auto simp add: obtain_progress_def fold_consumes SIM2 comp_def)
+                                    done
                                   subgoal
                                     by (clarsimp del: disjCI simp add: SIM2(3) SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
                                   subgoal
                                     by (clarsimp del: disjCI simp add: my_summ_def SIM2(1,2,3) SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
                                   subgoal
                                     apply (clarsimp del: disjCI simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
-                                    sorry
-                                   apply (clarsimp del: disjCI simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                    apply (rule graph_summar_nt)
+                                       apply (rule refl)+
+                                      apply (rule SIM2(2)[unfolded SIM2(1)])
+                                     apply (auto simp add: obtain_progress_def fold_consumes SIM2 comp_def)
+                                    done
+                                    apply (clarsimp del: disjCI simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                  subgoal
+                                    apply (subst mset_ocaps_updates[where lxs="ldropn n (inps 1)"])
+                                     apply (simp add: SIM2(4) operator_state.defs)
+                                    using SIM2(13) apply simp
+                                    using timely_input_stream_ldrop[OF N_INV(3) SIM2(13)] apply (simp add: SIM2(4) operator_state.defs)
+                                    done
                                    apply simp
                                   apply (intro allI conjI)
                                          apply (clarsimp del: disjCI simp add: fold_consumes obtain_progress_def SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
                                   subgoal
                                     apply (auto del: disjCI simp add: operator_state.defs SIM2(4,5) fold_consumes obtain_progress_def SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)[1]
-                                    sorry
+                                    apply (intro ext)
+                                    apply simp_all
+                                    subgoal
+                                      apply (rule arg_cong2[where f=append])
+                                      using concat_map_singleton[where f=snd] apply (metis (no_types, lifting) cond_case_prod_eta snd_eqD)
+                                      using concat_map_singleton[where f=snd] apply (metis (no_types, lifting) cond_case_prod_eta snd_eqD)
+                                      done
+                                    done
                                   subgoal
                                     by (auto del: disjCI simp add: operator_state.defs SIM2(4,5) fold_consumes obtain_progress_def SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)[1]
                                   subgoal
