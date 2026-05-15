@@ -329,6 +329,17 @@ lemma dataplane_tracker_inv_mints_many:
    graph_summar_nt (summ sg) (nxt sg) os \<Longrightarrow>
    (\<forall> t\<in>set xs. \<exists> t' \<in>  set (ocaps (os nid) p). t' \<le> t) \<Longrightarrow>
    dataplane_tracker_inv (os(nid := os nid\<lparr>ocaps := (ocaps (os nid))(p := ocaps (os nid) p @ xs) , inter := operator_state.inter (os nid) @ map (\<lambda> t. (p, t, 1)) xs\<rparr>)) cbufs sg"
-  sorry
+  apply (induct xs arbitrary: os rule: rev_induct)
+  subgoal
+    by simp
+  subgoal premises prems for t xs os
+    using prems(2-) apply -
+    apply simp
+    apply (rule dataplane_tracker_inv_mints[where m=1 and nid=nid and p=p and t=t and os="os(nid := (os nid)\<lparr> ocaps := (ocaps (os nid))( p := ocaps (os nid) p @ xs), inter := inter (os nid) @ map (\<lambda>t. (p, t, 1)) xs \<rparr>)", simplified])
+    using D apply assumption
+    using prems(1) apply blast
+     apply (auto simp add: graph_summar_nt_def)
+    done
+  done
 
 end
