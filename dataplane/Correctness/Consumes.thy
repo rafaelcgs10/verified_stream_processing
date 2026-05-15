@@ -1185,4 +1185,15 @@ lemma dataplane_tracker_inv_consumes:
     done
   done
 
+lemma dataplane_tracker_inv_fold_consumes:
+  "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
+   dataflow_topology (summ sg) (-+-) \<Longrightarrow>
+   graph_summar_nt (summ sg) (nxt sg) os \<Longrightarrow>
+   n \<le> length (cbufs (nid, p)) \<Longrightarrow>
+   buf' = (\<lambda> (nid', p'). if nid' = nid \<and> p' = p then drop n (cbufs (nid, p)) else cbufs (nid', p')) \<Longrightarrow>
+   os' = (os(nid := fold (\<lambda>(d, t) os. consumes os p t d) (take n (cbufs (nid, p))) (os nid))) \<Longrightarrow>
+   dataplane_tracker_inv os' buf' sg"
+  sorry
+
+
 end

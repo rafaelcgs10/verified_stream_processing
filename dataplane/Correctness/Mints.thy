@@ -322,5 +322,13 @@ lemma dataplane_tracker_inv_mints:
     done
   done
 
+lemma dataplane_tracker_inv_mints_many:
+  assumes D: "dataflow_topology (summ sg) (-+-)"
+  shows
+    "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
+   graph_summar_nt (summ sg) (nxt sg) os \<Longrightarrow>
+   (\<forall> t\<in>set xs. \<exists> t' \<in>  set (ocaps (os nid) p). t' \<le> t) \<Longrightarrow>
+   dataplane_tracker_inv (os(nid := os nid\<lparr>ocaps := (ocaps (os nid))(p := ocaps (os nid) p @ xs) , inter := operator_state.inter (os nid) @ map (\<lambda> t. (p, t, 1)) xs\<rparr>)) cbufs sg"
+  sorry
 
 end

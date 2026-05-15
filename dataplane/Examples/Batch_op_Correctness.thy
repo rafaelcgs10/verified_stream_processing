@@ -3705,7 +3705,244 @@ next
                                     done
                                   done
                                 subgoal
-                                  sorry
+                                  apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                  apply (rule dataplane_tracker_inv_update_outputs_outside[where nid=1 and xs=Nil]; (rule refl)?)
+                                     apply (rule dataplane_tracker_inv_produces_drops[rotated 12, where nid=1 and oputs="\<lambda> _.
+(let batches = map (\<lambda> (d, t). (projl d, t)) (input (os 1) 1 @ cbufs (1, 1) @ outpu (os 0) 1) @ (map (\<lambda> ev. case ev of Data t d \<Rightarrow> (d, t)) (filter is_Data (ltaken n (inps 1)))) in
+                              let F = frontier (zmset_of (mset (ocaps (os 0) 1) + event.time `# filter_mset is_Mint (mset (ltaken n (inps 1))) - event.time `# filter_mset is_Drop (mset (ltaken n (inps 1))))) in
+                              map (\<lambda> (d, t). (Inr d, t)) (output_batches f F batches))" and
+                                        drops="(\<lambda> _. filter (\<lambda> t. \<not> frontier_less_equal (frontier (zmset_of (mset (ocaps (os 0) 1) + event.time `# filter_mset is_Mint (mset (ltaken n (inps 1))) - event.time `# filter_mset is_Drop (mset (ltaken n (inps 1)))))) t) (ocaps (os 1) 1 @ map snd (cbufs (1, 1) @ outpu (os 0) 1 @ map (case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (inps 1))))))"
+                                        and  produs="(let batches = map (\<lambda> (d, t). (projl d, t)) (input (os 1) 1 @ cbufs (1, 1) @ outpu (os 0) 1) @ (map (\<lambda> ev. case ev of Data t d \<Rightarrow> (d, t)) (filter is_Data (ltaken n (inps 1)))) in
+                              let F = frontier (zmset_of (mset (ocaps (os 0) 1) + event.time `# filter_mset is_Mint (mset (ltaken n (inps 1))) - event.time `# filter_mset is_Drop (mset (ltaken n (inps 1))))) in
+                              map (\<lambda> (d, t). (1, t, 1)) (output_batches f F batches))" 
+                                        and os="os(0 := (os 0)\<lparr> ocaps := (ocaps ip_state)(1 := ocaps_updates (ocaps ip_state 1) (ltaken n (es ip_state 1))), outpu := (outpu ip_state)(1 := []), consu := [], inter := [], produ := [] \<rparr>,
+                                          1 := (os 1)\<lparr> ocaps := _, input := (\<lambda> _. input (os 1) 1 @ cbufs (1, 1) @ outpu (os 0) 1 @ map (case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (inps 1)))), outpu := _, consu := [], inter := [], produ := [], front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg 1))), initia := True \<rparr>)"]; (rule refl)?)
+                                            apply (subst dataplane_tracker_inv_clean)
+                                              defer
+                                              defer
+                                              apply (rule dataplane_tracker_inv_front_update[where nid=1 and c=c, rotated 5]; (rule refl)?)
+                                                   apply (rule dataplane_tracker_inv_progress[where nid=1]; (rule refl)?)
+                                                     apply (rule dataplane_tracker_inv_progress[where nid=0]; (rule refl)?)
+                                                      apply (rule dataplane_tracker_inv_fold_consumes[where cbufs="(\<lambda> (nid, p). (if nid = 1 \<and> p =1 then cbufs (1, 0) @ outpu (os 0) 0  @ map (case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (inps 1))) else []))" and nid=1 and p=1 and n="length (cbufs (1, 0)) + length (outpu (os 0) 0) + length (filter is_Data (ltaken n (inps 1)))"]; (rule refl)?)
+                                                      apply (rule dataplane_tracker_inv_update_outputs[where cbufs=cbufs and nid'=1 and p'=1 and p=1 and nid=0 and ys=Nil and xs="outpu (os 0) 0 @ map (case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (inps 1)))"]; (rule refl)?)
+                                                      apply (rule dataplane_tracker_inv_produces_drops[rotated 12, where oputs="\<lambda> _. map (case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (inps 1)))" and produs="map (\<lambda> e. (1, event.time e, 1)) (filter is_Data (ltaken n (inps 1)))" and drops="(\<lambda> _. map event.time (filter is_Drop (ltaken n (inps 1))))" and nid=0 and noutput="(outpu (os 1))( 0 := outpu (os 0) 0 @ map (case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n (inps 1))))"]; (rule refl)?)
+                                                      apply (rule dataplane_tracker_inv_mints_many[where os=os and cbufs=cbufs and sg=sg and nid=0 and p=1 and xs="(map event.time (filter is_Mint (ltaken n (inps 1))))"])
+                                  using N_INV(5) apply assumption
+                                  using SIM2(10) apply assumption
+                                  subgoal sorry
+                                  subgoal sorry
+                                  subgoal sorry
+                                  subgoal
+                                    apply (intro ext)
+                                    apply simp
+                                    done
+                                  subgoal
+                                    apply simp
+                                    sorry
+                                  subgoal
+                                    apply (clarsimp del: disjCI simp add: image_iff)
+                                    subgoal for e
+                                      apply (cases e; clarsimp del: disjCI simp add: image_iff)
+                                      sorry
+                                    done
+                                  subgoal
+                                    apply (clarsimp del: disjCI simp add: image_iff split: event.splits)
+                                    subgoal for t d
+                                      sorry
+                                    done
+                                  subgoal
+                                    apply (clarsimp del: disjCI simp add: comp_def image_iff split: event.splits)
+                                    sorry
+                                  subgoal
+                                    apply (clarsimp del: disjCI simp add: comp_def image_iff split: event.splits)
+                                    sorry
+                                  using SIM2(3) apply assumption
+                                  subgoal
+                                    by (clarsimp del: disjCI simp add: comp_def image_iff split: event.splits)
+                                  subgoal
+                                    apply (intro ext)
+                                    apply (clarsimp del: disjCI simp add: SIM2(17) comp_def image_iff split: if_splits event.splits)
+                                    using SIM2(17) apply (metis not_01 zero_one)
+                                    done
+                                  subgoal
+                                    by (simp add: antichain_from_list_singleton SIM2(1,2) my_summ_def)
+                                  subgoal
+                                    apply (clarsimp del: disjCI simp add: comp_def image_iff split: event.splits)
+                                    sorry
+                                  using N_INV(5) apply assumption
+                                  subgoal
+                                    apply (clarsimp del: disjCI simp add: comp_def image_iff split: event.splits)
+                                    sorry
+                                  subgoal
+                                    by (clarsimp del: disjCI simp add: comp_def image_iff split: event.splits)
+                                  subgoal
+                                    apply (intro ext)
+                                    apply (clarsimp del: disjCI simp add: SIM2(17) comp_def image_iff split: if_splits event.splits)
+                                    apply (rule ccontr)
+                                    using SIM2(17) apply (metis not_01 zero_one)
+                                    done
+                                  using N_INV(5) apply assumption
+                                  subgoal
+                                    apply (clarsimp del: disjCI simp add: comp_def image_iff split: event.splits)
+                                    sorry
+                                  subgoal
+                                    by (clarsimp del: disjCI simp add: N_INV(5) comp_def image_iff split: event.splits)
+                                  subgoal
+                                    apply (clarsimp del: disjCI simp add: SIM2(17) comp_def image_iff split: if_splits event.splits)
+                                    sorry
+                                  subgoal
+                                    by (clarsimp del: disjCI simp add: N_INV(5) comp_def image_iff split: event.splits)
+                                  subgoal
+                                    using TIMESTAMP_COMPARE by assumption
+                                  subgoal
+                                    unfolding reachable_locations_def
+                                    using loc_2_1_cases by (auto simp add: image_iff SIM2(1,2,3) split_beta my_summ_def split: prod.splits event.splits)
+                                  subgoal
+                                    apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                    apply (subst temp2(18)[symmetric])
+                                    apply (clarsimp del: disjCI simp add: enum_num1_def obtain_progress_def fold_consumes operator_state.defs SIM2(1,2,4,5) image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                    sorry
+                                  subgoal
+                                    apply (clarsimp del: disjCI simp add: SIM2(17) comp_def image_iff split: if_splits event.splits)
+                                    sorry
+                                  subgoal
+                                    by (clarsimp del: disjCI simp add: N_INV(5) comp_def image_iff split: event.splits)
+                                            prefer 7
+                                  using [[goals_limit = 1]]
+                                            apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                            apply (intro ext)
+                                            apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                            apply (rule operator_state_eqI)
+                                                     apply (clarsimp del: disjCI simp add: enum_num1_def image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                                    apply (clarsimp del: disjCI simp add: enum_num1_def image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                                   apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                                   apply (clarsimp del: disjCI simp add: enum_num1_def image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                                   apply (rule map_cong)
+                                                    apply (rule filter_cong)
+                                                     apply (simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def, simplified] comp_def map_concat)
+                                  subgoal sorry
+                                  subgoal for t
+                                    by auto
+                                                   apply simp
+                                                  apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                  subgoal
+                                    sorry
+                                                 apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                                 apply (intro ext)
+                                                 apply (rule filter_cong)
+                                                  apply simp
+                                  subgoal for p x
+                                    apply (cases x)
+                                    apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                    apply hypsubst_thin
+                                    apply (intro conjI impI iffI)
+                                    subgoal sorry
+                                    subgoal
+                                      by auto
+                                    subgoal
+                                      apply (elim exE conjE disjE bexE)
+                                      subgoal
+                                        apply hypsubst_thin
+                                        apply (rule FalseE)
+                                        sorry
+                                            apply auto
+                                        apply force+
+                                      subgoal
+                                        apply (clarsimp simp add: image_iff split: event.splits)
+                                        apply (rule FalseE)
+                                        sorry
+                                      done
+                                    subgoal
+                                      apply (elim exE conjE disjE bexE)
+                                      subgoal
+                                        apply hypsubst_thin
+                                        apply (rule FalseE)
+                                        sorry
+                                            apply auto
+                                        apply force+
+                                      subgoal
+                                        apply (clarsimp simp add: image_iff split: event.splits)
+                                        apply (rule FalseE)
+                                        sorry
+                                      done
+                                    subgoal
+                                      apply (elim exE conjE disjE bexE)
+                                      subgoal
+                                        apply (clarsimp simp add: image_iff split: event.splits)
+
+                                        apply hypsubst_thin
+                                        apply (rule FalseE)
+                                        sorry
+                                            apply auto
+                                        apply force
+                                       apply force
+                                      subgoal
+                                        apply (clarsimp simp add: image_iff split: event.splits)
+                                        apply (rule FalseE)
+                                        sorry
+                                      done
+                                    done
+                                                apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                                apply force
+                                               apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                              apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                              apply (intro ext)
+                                              apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                              apply (rule arg_cong2[where f=list_diff])
+                                               apply simp
+                                              apply (subst filter_True)
+                                               apply simp
+                                              apply (clarsimp del: disjCI simp add: image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                              apply (rule filter_cong)
+                                               apply (clarsimp del: disjCI simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                  subgoal sorry
+                                              apply simp
+                                             apply (clarsimp del: disjCI simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                            apply simp
+                                  subgoal
+                                    apply (simp add: SIM2(1,2,3,4) flip: filter_filter list_diff_append map_append filter_append)
+                                    sorry
+                                  subgoal
+                                    apply (clarsimp del: disjCI simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                    sorry
+                                  subgoal
+                                    apply (clarsimp del: disjCI simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                    sorry
+                                  subgoal
+                                    apply (clarsimp del: disjCI simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                    apply (subst (2) filter_True)
+                                     apply (simp_all add: comp_def split_beta)
+                                    done
+                                  subgoal
+                                    apply (clarsimp del: disjCI simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                    sorry
+                                  subgoal
+                                    by (clarsimp del: disjCI simp add: SIM2(3) SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                  subgoal
+                                    by (clarsimp del: disjCI simp add: my_summ_def SIM2(1,2,3) SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                  subgoal
+                                    apply (clarsimp del: disjCI simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                    sorry
+                                   apply (clarsimp del: disjCI simp add: SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                   apply simp
+                                  apply (intro allI conjI)
+                                         apply (clarsimp del: disjCI simp add: fold_consumes obtain_progress_def SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)
+                                  subgoal
+                                    apply (auto del: disjCI simp add: operator_state.defs SIM2(4,5) fold_consumes obtain_progress_def SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)[1]
+                                    sorry
+                                  subgoal
+                                    by (auto del: disjCI simp add: operator_state.defs SIM2(4,5) fold_consumes obtain_progress_def SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)[1]
+                                  subgoal
+                                    by (auto del: disjCI simp add: operator_state.defs SIM2(4,5) fold_consumes obtain_progress_def SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)[1]
+
+                                  subgoal
+                                    by (auto del: disjCI simp add: operator_state.defs SIM2(4,5) fold_consumes obtain_progress_def SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)[1]
+                                  subgoal
+                                    by (auto del: disjCI simp add: SIM2(14) operator_state.defs SIM2(4,5) fold_consumes obtain_progress_def SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)[1]
+                                   apply (auto del: disjCI simp add: operator_state.defs SIM2(4,5) fold_consumes obtain_progress_def SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)[1]
+                                  subgoal
+                                    by (auto del: disjCI simp add: SIM2(14) operator_state.defs SIM2(4,5) fold_consumes obtain_progress_def SIM2(8)[rule_format, of 1, unfolded SIM2(1), simplified, unfolded my_summ_def] image_iff comp_def split_beta  simp del: image_eqI simp flip: filter_filter list_diff_append map_append filter_append)[1]
+                                  done
                                 subgoal
                                   apply (simp add: operator_state.defs SIM2(4) del: mset_filter to_zmset_correct mset.simps update_zmultiset_simps_more split: event.splits sum.splits)
                                   apply (subst mset_ocaps_updates[where lxs="ldropn n (inps 1)"])
