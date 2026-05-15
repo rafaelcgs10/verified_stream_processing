@@ -6,6 +6,7 @@ imports
   Increment_op
   Set_op
   "../Correctness/General"
+  "HOL-ex.Sketch_and_Explore"
 begin
 
 no_notation shiftr (infixl \<open>>>\<close> 55)
@@ -19,6 +20,11 @@ proof (cases n)
   then consider \<open>z = 0\<close> | \<open>z = 1\<close> by fastforce
   thus ?thesis using of_int(1) 0 1 by fastforce
 qed
+
+lemma num2_neq:
+  fixes n :: 2
+  shows \<open>n \<noteq> 0 \<Longrightarrow> n = 1\<close> \<open>n \<noteq> 1 \<Longrightarrow> n = 0\<close>
+  using num2_cases by meson+
 
 abbreviation \<open>initial_state_input lxs \<equiv> \<lparr>
    intsum = default_internal_summary,
@@ -200,8 +206,7 @@ lemma label_propagation_correctness:
     and
     os_inv:
     \<open>os_input = operator_state.extend (os 0) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
-      es = (\<lambda>_. LNil)(0 := lxs)\<rparr>\<close>
-    \<open>input (os 0) = (\<lambda>_. [])\<close> \<open>initia (os 0)\<close>
+      es = (\<lambda>_. LNil)(0 := lxs)\<rparr>\<close> \<open>input (os 0) = (\<lambda>_. [])\<close> \<open>initia (os 0)\<close>
     \<open>os_label_prop = operator_state.extend (os 1) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
         en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>\<close>
     \<open>ty1_check os_input (curry cbufs 0)\<close> \<open>ty2_check os_label_prop (curry cbufs 1)\<close>
@@ -234,15 +239,115 @@ proof (coinduction arbitrary: lxs os os_input os_label_prop cbufs chns sg T G V 
   show ?case (is \<open>wsim ((~) OO \<U> ?R OO (\<approx>)) _ _\<close>)
   proof -
     define R where \<open>R = ?R\<close>
+(*
     show ?thesis
       unfolding R_def[symmetric]
       unfolding wsim_def ooo_input_op_def label_propagation_op_def increment_op_def
       apply (intro allI impI)
-      apply (elim step_dataflow_op_elim step_set_op_elim step_map_op_elim step_comp_op_elim
-          step_loop_op_elim step_builder_op_elim conjE)
-      apply (simp_all only: IO.simps)
-(* ; simp only: IO.simps; hypsubst_thin?; clarsimp simp flip: cin.rep_eq split: option.splits; hypsubst_thin?) *)
-      sorry
+      apply ((elim step_dataflow_op_elim step_set_op_elim step_map_op_elim step_comp_op_elim
+          step_builder_op_elim conjE; simp only: IO.simps; hypsubst_thin?; (elim step_map_op_elim
+            step_comp_op_elim step_loop_op_elim step_builder_op_elim conjE)?), simp_all only: IO.simps;
+        clarsimp split: if_splits option.splits dest!: num2_neq; hypsubst_thin?)
+*)
+    have "\<exists>op2'. step (Out (a, b) (aa, ba)) (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S (cinsert ((a, b), aa, ba) D) (dataflow_op sg (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 0 (builder_op False {||} {|0|} os_input (ooo_input_op_logic {|0|}))) (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 1 (builder_op True cUNIV cUNIV os_label_prop label_propagation_op_logic)) (logic_map 2 (builder_op False {|0|} {|0|} (os 2) (increment_op_logic 0 0 (MyPair 0 1))))))))))) op2'"
+      if "((a, b), aa, ba) \<in> rcset S"
+        and "((a, b), aa, ba) \<notin> rcset D"
+      for a :: "3"
+        and b :: "2"
+        and aa :: "nat \<times> nat + nat set set"
+        and ba :: "(nat, nat) myprod"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op sg (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (case_sum (\<lambda>x. []) (BENQ (1, 0) (Inr (d, t)) (\<lambda>l. map Inr (cbufs l)))) (logic_map 0 (builder_op False {||} {|0|} (os_input\<lparr>outpu := (outpu os_input)(0 := xs)\<rparr>) (ooo_input_op_logic {|0|}))) (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 1 (builder_op True cUNIV cUNIV os_label_prop label_propagation_op_logic)) (logic_map 2 (builder_op False {|0|} {|0|} (os 2) (increment_op_logic 0 0 (MyPair 0 1))))))))))) op2'"
+      if "outpu os_input 0 = (d, t) # xs"
+      for d :: "nat \<times> nat + nat set set"
+        and t :: "(nat, nat) myprod"
+        and xs :: "((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op sg (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (case_sum (\<lambda>x. []) (BTL (1, 0) (\<lambda>l. map Inr (cbufs l)))) (logic_map 0 (builder_op False {||} {|0|} os_input (ooo_input_op_logic {|0|}))) (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 1 (builder_op True cUNIV cUNIV (consumes os_label_prop 0 t d) label_propagation_op_logic)) (logic_map 2 (builder_op False {|0|} {|0|} (os 2) (increment_op_logic 0 0 (MyPair 0 1))))))))))) op2'"
+      if "cbufs (1, 0) \<noteq> []"
+        and "(d, t) = BHD (1, 0) cbufs"
+      for d :: "nat \<times> nat + nat set set"
+        and t :: "(nat, nat) myprod"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op sg (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 0 (builder_op False {||} {|0|} os' (ooo_input_op_logic {|0|}))) (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 1 (builder_op True cUNIV cUNIV os_label_prop label_propagation_op_logic)) (logic_map 2 (builder_op False {|0|} {|0|} (os 2) (increment_op_logic 0 0 (MyPair 0 1))))))))))) op2'"
+      if "initia os_input"
+        and "os' |\<in>| ooo_input_op_logic {|0|} os_input"
+      for os' :: "(2, nat \<times> nat + nat set set, nat \<times> nat, (nat, nat) myprod) input_state"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op sg (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 0 (builder_op False {||} {|0|} os_input (ooo_input_op_logic {|0|}))) (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (case_sum (\<lambda>x. []) (BENQ (2, 0) (Inr (d, t)) (\<lambda>l. map Inr (cbufs l)))) (logic_map 1 (builder_op True cUNIV cUNIV (os_label_prop \<lparr>outpu := (outpu os_label_prop)(1 := xs)\<rparr>) label_propagation_op_logic)) (logic_map 2 (builder_op False {|0|} {|0|} (os 2) (increment_op_logic 0 0 (MyPair 0 1))))))))))) op2'"
+      if "outpu os_label_prop 1 = (d, t) # xs"
+      for d :: "nat \<times> nat + nat set set"
+        and t :: "(nat, nat) myprod"
+        and xs :: "((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op sg (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 0 (builder_op False {||} {|0|} os_input (ooo_input_op_logic {|0|}))) (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (case_sum (\<lambda>x. []) (BTL (2, 0) (\<lambda>l. map Inr (cbufs l)))) (logic_map 1 (builder_op True cUNIV cUNIV os_label_prop label_propagation_op_logic)) (logic_map 2 (builder_op False {|0|} {|0|} (consumes (os 2) 0 t d) (increment_op_logic 0 0 (MyPair 0 1))))))))))) op2'"
+      if "cbufs (2, 0) \<noteq> []"
+        and "(d, t) = BHD (2, 0) cbufs"
+      for d :: "nat \<times> nat + nat set set"
+        and t :: "(nat, nat) myprod"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op sg (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 0 (builder_op False {||} {|0|} os_input (ooo_input_op_logic {|0|}))) (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 1 (builder_op True cUNIV cUNIV os' label_propagation_op_logic)) (logic_map 2 (builder_op False {|0|} {|0|} (os 2) (increment_op_logic 0 0 (MyPair 0 1))))))))))) op2'"
+      if "initia os_label_prop"
+        and "os' |\<in>| label_propagation_op_logic os_label_prop"
+      for os' :: "(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op sg (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 0 (builder_op False {||} {|0|} os_input (ooo_input_op_logic {|0|}))) (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 1 (builder_op True cUNIV cUNIV os_label_prop label_propagation_op_logic)) (logic_map 2 (builder_op False {|0|} {|0|} os' (increment_op_logic 0 0 (MyPair 0 1))))))))))) op2'"
+      if "initia (os 2)"
+        and "os' |\<in>| increment_op_logic 0 0 (MyPair 0 1) (os 2)"
+      for os' :: "(2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op sg (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 0 (builder_op False {||} {|0|} os_input (ooo_input_op_logic {|0|}))) (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (case_sum (\<lambda>x. []) (BTL (1, 1) (\<lambda>l. map Inr (cbufs l)))) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 1 (builder_op True cUNIV cUNIV (consumes os_label_prop 1 t d) label_propagation_op_logic)) (logic_map 2 (builder_op False {|0|} {|0|} (os 2) (increment_op_logic 0 0 (MyPair 0 1))))))))))) op2'"
+      if "cbufs (1, 1) \<noteq> []"
+        and "(d, t) = BHD (1, 1) cbufs"
+      for d :: "nat \<times> nat + nat set set"
+        and t :: "(nat, nat) myprod"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op sg (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 0 (builder_op False {||} {|0|} os_input (ooo_input_op_logic {|0|}))) (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (case_sum (\<lambda>x. []) (BENQ (1, 1) (Inr (d, t)) (\<lambda>l. map Inr (cbufs l)))) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 1 (builder_op True cUNIV cUNIV os_label_prop label_propagation_op_logic)) (logic_map 2 (builder_op False {|0|} {|0|} (os 2\<lparr>outpu := (outpu (os 2))(0 := xs)\<rparr>) (increment_op_logic 0 0 (MyPair 0 1))))))))))) op2'"
+      if "outpu (os 2) 0 = (d, t) # xs"
+      for d :: "nat \<times> nat + nat set set"
+        and t :: "(nat, nat) myprod"
+        and xs :: "((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 2 (subgraph.nxt sg) st) (pt_tr sg)\<rparr>) (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 0 (builder_op False {||} {|0|} os_input (ooo_input_op_logic {|0|}))) (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 1 (builder_op True cUNIV cUNIV os_label_prop label_propagation_op_logic)) (logic_map 2 (builder_op False {|0|} {|0|} os' (increment_op_logic 0 0 (MyPair 0 1))))))))))) op2'"
+      if "has_progress (os 2)"
+        and "(os', st) = obtain_progress (os 2)"
+      for st :: "(2, (nat, nat) myprod) shared_state"
+        and os' :: "(2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 1 (subgraph.nxt sg) st) (pt_tr sg)\<rparr>) (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 0 (builder_op False {||} {|0|} os_input (ooo_input_op_logic {|0|}))) (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 1 (builder_op True cUNIV cUNIV os' label_propagation_op_logic)) (logic_map 2 (builder_op False {|0|} {|0|} (os 2) (increment_op_logic 0 0 (MyPair 0 1))))))))))) op2'"
+      if "has_progress os_label_prop"
+        and "(os', st) = obtain_progress os_label_prop"
+      for st :: "(2, (nat, nat) myprod) shared_state"
+        and os' :: "(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 0 (subgraph.nxt sg) st) (pt_tr sg)\<rparr>) (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 0 (builder_op False {||} {|0|} os' (ooo_input_op_logic {|0|}))) (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 1 (builder_op True cUNIV cUNIV os_label_prop label_propagation_op_logic)) (logic_map 2 (builder_op False {|0|} {|0|} (os 2) (increment_op_logic 0 0 (MyPair 0 1))))))))))) op2'"
+      if "has_progress os_input"
+        and "(os', st) = obtain_progress os_input"
+      for st :: "(2, (nat, nat) myprod) shared_state"
+        and os' :: "(2, nat \<times> nat + nat set set, nat \<times> nat, (nat, nat) myprod) input_state"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op undefined (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 0 (builder_op False {||} {|0|} os_input (ooo_input_op_logic {|0|}))) (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 1 (builder_op True cUNIV cUNIV (os_label_prop \<lparr>front := frontier \<circ> (\<lambda>p. c_imp (pt_tr undefined) (Loc 1 (Trg p))), initia := True\<rparr>) label_propagation_op_logic)) (logic_map 2 (builder_op False {|0|} {|0|} (os 2) (increment_op_logic 0 0 (MyPair 0 1))))))))))) op2'"
+      if "upfro sg 1"
+        and "propagate_all (summ sg) (pt_tr sg) = None"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op (sg\<lparr>pt_tr := c, upfro := (upfro sg)(1 := False)\<rparr>) (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 0 (builder_op False {||} {|0|} os_input (ooo_input_op_logic {|0|}))) (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 1 (builder_op True cUNIV cUNIV (os_label_prop \<lparr>front := frontier \<circ> (\<lambda>p. c_imp c (Loc 1 (Trg p))), initia := True\<rparr>) label_propagation_op_logic)) (logic_map 2 (builder_op False {|0|} {|0|} (os 2) (increment_op_logic 0 0 (MyPair 0 1))))))))))) op2'"
+      if "upfro sg 1"
+        and "propagate_all (summ sg) (pt_tr sg) = Some c"
+      for c :: "((3, 2) location, (nat, nat) myprod) configuration"
+      using that sorry
+    moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op (cinsert ((1, 0), d, t) S) D (dataflow_op sg (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 0 (builder_op False {||} {|0|} os_input (ooo_input_op_logic {|0|}))) (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (logic_map 1 (builder_op True cUNIV cUNIV (os_label_prop \<lparr>outpu := (outpu os_label_prop)(0 := xs)\<rparr>) label_propagation_op_logic)) (logic_map 2 (builder_op False {|0|} {|0|} (os 2) (increment_op_logic 0 0 (MyPair 0 1))))))))))) op2'"
+      if "outpu os_label_prop 0 = (d, t) # xs"
+      for d :: "nat \<times> nat + nat set set"
+        and t :: "(nat, nat) myprod"
+        and xs :: "((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf"
+      using that sorry
+    ultimately show ?thesis
+      (* takes around 90s *)
+      by (use nothing in \<open>((unfold R_def[symmetric], unfold wsim_def ooo_input_op_def label_propagation_op_def increment_op_def,
+          intro allI impI, elim step_dataflow_op_elim step_set_op_elim step_map_op_elim step_comp_op_elim
+          step_builder_op_elim conjE; simp only: IO.simps; hypsubst_thin?; (elim step_map_op_elim
+            step_comp_op_elim step_loop_op_elim step_builder_op_elim conjE)?), simp_all only: IO.simps;
+        clarsimp split: if_splits option.splits dest!: num2_neq; hypsubst_thin?), use method_facts in simp_all\<close>)
   qed
 next
   case SIM2
