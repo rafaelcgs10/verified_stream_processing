@@ -26,48 +26,17 @@ proof -
       thus ?thesis using assms(1) LNil(1,3) unfolding timely_input_stream_def by auto
     next
       case False
-      then show ?thesis using assms(1) LNil(2) unfolding timely_input_stream_def drop_caps_def by simp
+      then show ?thesis using assms(1) LNil(2) unfolding drop_caps_def by simp
     qed
   next
     case LCons_Data
-    thus ?thesis using assms(1) ev_drops.intros(1,2) timely_productive.intros(1)
-      unfolding timely_input_stream_def produce_def by fastforce
+    thus ?thesis using assms(1) unfolding produce_def by auto
   next
     case LCons_Drop
-    hence \<open>timely_monotone (es os' p) (mset (ocaps os' p))\<close>
-      using assms(1) unfolding timely_input_stream_def drop_cap_def by auto
-    moreover have \<open>count (mset (ocaps os' p)) t' \<noteq> 0 \<longrightarrow> ev_drops t' (es os' p) (mset (ocaps os' p))\<close> for t'
-    proof -
-      {
-        assume \<open>count (mset (ocaps os' p)) t' \<noteq> 0\<close>
-        hence \<open>count (mset (ocaps os p)) t' \<noteq> 0\<close> using LCons_Drop(2) unfolding drop_cap_def
-          by (auto split: if_splits dest: set_remove_lastD)
-        hence \<open>ev_drops t' (es os p) (mset (ocaps os p))\<close>
-          using assms(1) unfolding timely_input_stream_def by blast
-        hence \<open>ev_drops t' (es os' p) (mset (ocaps os' p))\<close>
-          using LCons_Drop vacant_diff unfolding drop_cap_def by (force intro: ev_drops.intros(1,2))
-      }
-      thus ?thesis by blast
-    qed
-    moreover have \<open>timely_productive (es os' p) (mset (ocaps os' p))\<close> using assms(1) LCons_Drop
-        timely_productive.intros(1) unfolding timely_input_stream_def drop_cap_def by fastforce
-    ultimately show ?thesis unfolding timely_input_stream_def by blast
+    thus ?thesis using assms(1) unfolding drop_cap_def by auto
   next
     case LCons_Mint
-    hence \<open>timely_monotone (es os' p) (mset (ocaps os' p))\<close>
-      using assms(1) unfolding timely_input_stream_def add_cap_def by auto
-    moreover have \<open>count (mset (ocaps os' p)) t' \<noteq> 0 \<longrightarrow> ev_drops t' (es os' p) (mset (ocaps os' p))\<close> for t'
-    proof -
-      {
-        assume \<open>count (mset (ocaps os' p)) t' \<noteq> 0\<close>
-        hence \<open>ev_drops t' (es os' p) (mset (ocaps os' p))\<close> using assms(1) LCons_Mint ev_drops.intros(1)
-          unfolding timely_input_stream_def add_cap_def by (fastforce simp add: vacant_def)
-      }
-      thus ?thesis by blast
-    qed
-    moreover have \<open>timely_productive (es os' p) (mset (ocaps os' p))\<close> using assms(1) LCons_Mint
-        timely_productive.intros(1) unfolding timely_input_stream_def add_cap_def by fastforce
-    ultimately show ?thesis unfolding timely_input_stream_def by blast
+    thus ?thesis using assms(1) unfolding add_cap_def by auto
   qed
 qed
 
@@ -123,9 +92,9 @@ proof (induction \<open>list_of (ltakeWhile (Not \<circ> is_Data) (es os p))\<cl
   hence ocaps_os': \<open>ocaps os' p = ocaps os p\<close> by simp
   moreover have es_os: \<open>es os p = LCons e lxs\<close> using Nil(1-3) ldropWhile_LCons ldropWhile_simps(1)
       llist.exhaust_sel llist_of.simps(1) llist_of_list_of ltakeWhile_eq_LNil_iff by metis
-  moreover have \<open>is_Data e\<close> using Nil(3) ldropWhile_LConsD by fastforce
-  ultimately show ?case using Nil(4) unfolding timely_input_stream_def
-    by (auto intro: ev_drops.intros(1,2) timely_productive.intros(1))
+  moreover obtain t d where \<open>e = Data t d\<close> using Nil(3) ldropWhile_LConsD
+    unfolding is_Data_def comp_def by fast
+  ultimately show ?case using Nil(4) by auto
 next
   case (Cons x xs)
   have \<open>\<not> lnull (es os p)\<close> using Cons(4) eq_LConsD ldropWhile_LNil llist.collapse(1) by metis
@@ -244,7 +213,8 @@ qed
 
 (* Experiment with Eisbach. *)
 method sim_cases uses sim defs elims intros =
-  (use nothing in \<open>insert sim, (unfold defs)?, elim conjE elims; simp only: IO.simps; hypsubst_thin?; auto intro: intros method_facts simp flip: defs\<close>)
+  (use nothing in \<open>insert sim, (unfold defs)?, elim conjE elims; simp only: IO.simps; hypsubst_thin?;
+  auto intro: intros method_facts simp flip: defs\<close>)
 
 lemma ooo_input_op_source_op:
   defines \<open>invariant f os \<equiv> initia os \<and> en1 os = f \<and> inj f \<and> (\<forall>p. timely_input_stream (es os p) (mset (ocaps os p)))\<close>
@@ -303,11 +273,11 @@ proof (coinduction arbitrary: sg os rule: wbisim_coinduct_upto'')
   \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 1 (nxt sg) st) (pt_tr sg)\<rparr>)
     (my_ooo_input_op os')) op2'"
         if "invariant f os"
-          and "has_progress os"
           and "(os', st) = obtain_progress os"
         for st :: "('c, 'd) shared_state"
           and os' :: "('c, 'b, 'a, 'd, 'e) input_state_scheme"
-        using that unfolding R_def invariant_def my_source_op_def obtain_progress_def by (force intro!: wbc_base del: timely_input_stream_DataI)
+        using that unfolding R_def invariant_def my_source_op_def obtain_progress_def
+        by (force intro!: wbc_base del: timely_input_stream_DataI)
       ultimately show ?thesis unfolding R_def[symmetric]
         by (sim_cases sim: SIM1 defs: my_ooo_input_op_def ooo_input_op_def
             elims: step_dataflow_op_elim step_map_op_elim step_builder_op_elim
