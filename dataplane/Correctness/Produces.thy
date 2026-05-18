@@ -149,43 +149,6 @@ declare find_timestamp.simps[simp del]
 
 definition "backtracks su P T = (\<forall> t l. t \<in> set (T l) \<longrightarrow> (\<exists> l' t' s. l \<noteq> l' \<and> s \<in>\<^sub>A su l' l \<and> t = t' -+- s \<and> t' \<in> set (T l')) \<or> P l t)"
 
-lemma find_timestamp:
-  "backtracks su P T \<Longrightarrow>
-   t \<in> set (T l) \<Longrightarrow>
-   \<exists> l'. l' \<in> find_timestamp su P T l t \<and> (\<exists> t' s. P l' t' \<and> t' -+- s \<le> t \<and> s \<in>\<^sub>A graph.path_weight su l' l)"
-  oops
-    (*   apply (induction su P T V l t arbitrary: rule: find_timestamp.induct)
-  subgoal for su P T V l t
-    apply (subst find_timestamp.simps)
-    apply (auto split: if_splits)
-    subgoal
-      apply (subst (asm) (2) backtracks_def)
-      apply (drule spec2, drule mp, assumption)
-      apply (auto split: if_splits)
-      apply (intro exI conjI)
-        apply assumption
-       apply (rule refl)
-      subgoal premises prems for l' t' s
-        using prems(2-) apply -
-        apply (rule prems(1))
-           apply (rule refl)
-        using prems apply blast
-          apply (rule refl)
-        subgoal
-        apply (auto 0 0 simp add: backtracks_def)
-        subgoal for t''
-          apply hypsubst_thin
-          apply (rule exI[of _ l'])
-          apply (intro conjI impI)
-           apply auto
-          apply (rule exI[of _ t'])
-          apply (rule exI[of _ s])
-          apply (intro conjI)
-            apply simp
-            apply simp
-          oops
- *)
-
 
 
 inductive srcs_to_trg for P su where
@@ -234,20 +197,6 @@ lemma graph_induct:
       done
     done
   done
-
-lemma graph_induct':
-  assumes G: "Graph.graph weights"
-    and "S \<inter> V = {}"
-  shows
-    "(\<forall> V. (\<forall> l' \<in> V. \<forall> l. weights l l' \<noteq> {}\<^sub>A \<longrightarrow> l \<in> S \<union> V) \<longrightarrow> P V) \<Longrightarrow>
-   (\<forall> V l l'. l \<notin> S \<union> V \<longrightarrow> l' \<in> V \<longrightarrow> weights l l' \<noteq> {}\<^sub>A \<longrightarrow> P (insert l V) \<longrightarrow> P V) \<Longrightarrow>
-   P V"
-  oops
-
-lemma
-  "\<not> srcs_to_trg P su nid nid' p t m \<Longrightarrow>
-  (\<forall> p' s nid'' p''. s \<in>\<^sub>A graph.path_weight su (Loc nid (Src p')) (Loc nid'' (Trg p')) \<longrightarrow> \<not> (\<exists> t' m. t = t' -+- s))"
-  oops
 
 context dataflow_topology
 begin

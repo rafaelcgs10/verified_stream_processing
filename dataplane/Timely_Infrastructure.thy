@@ -778,26 +778,6 @@ lemma take_step_PR_p_preserves_inv_implications_nonneg:
          apply assumption+
   done
 
-lemma take_step_PR_p_preserves_inv_implications_nonneg:
-  "dataflow_topology su (-+-) \<Longrightarrow>
-   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
-   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
-   ID CCOMPARE('t) = Some compare \<Longrightarrow>
-   \<exists>(t :: 't::  {compare,ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) loc. t \<in>#\<^sub>z c_work c loc \<Longrightarrow>
-   dataflow_topology_from_tree.inv_imp_plus_work_nonneg (take_step su PR c)"
-  apply (frule Executable.enum_dataflow_topology.PR_next[where less_t=cless, simplified, unfolded enum_dataflow_topology_def])
-     apply assumption
-  subgoal
-  apply (rule class_linorder_lt_of_comp)
-    apply (simp add: linorder_class.linorder_axioms)
-    done
-     apply (clarsimp simp add: compare_order_class.ord_defs )
-  apply (elim exE)
-    apply (subst take_step_enum_dataflow_topology_take_step)
-     apply (simp add: enum_dataflow_topology_def)
-  apply simp
-  oops
-
 lemma take_step_PR_p_preserves_inv:
   "dataflow_topology summary (-+-) \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>

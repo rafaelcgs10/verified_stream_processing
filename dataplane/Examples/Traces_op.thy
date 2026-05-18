@@ -96,102 +96,12 @@ lemma step_sources_step_traces_op[intro]:
   apply force
   done
 
-lemma
-  "lxs \<in> S \<Longrightarrow> wfinished (source_op lxs) \<Longrightarrow> wfinished (traces_op S)"
-  unfolding wfinished_no_wstep
-  apply auto
-  subgoal for vio x
-    apply (cases vio; simp)
-    apply hypsubst_thin
-    using step_sources_step_traces_op 
-    oops
-
-lemma 
-  "inps \<in> S \<Longrightarrow> wtraced (source_op inps) trc \<Longrightarrow> wtraced (traces_op S) trc"
-    apply (erule wtraced.cases)
-     apply simp
-     apply hypsubst_thin
-  oops
-
-lemma
-  "wtraces (traces_op S) = \<Union> ((\<lambda> inps. wtraces (source_op inps)) ` S)"
-  oops
-
-
 coinductive traces_interleave where
   "traces_interleave S' lxs \<Longrightarrow> lhd (inps p) = x \<Longrightarrow>
    inps \<in> (Set.filter (\<lambda> f. f p \<noteq> LNil) S) \<Longrightarrow> S' = (\<lambda> f. f(p := ltl (f p))) ` {f \<in> S. lhd (f p) = x} \<Longrightarrow>
    p \<notin> defaults \<Longrightarrow> traces_interleave S (LCons (VOut p x) lxs)"
 | "(\<forall> inps p. inps \<in> S \<longrightarrow> p \<notin> defaults \<longrightarrow> inps p = LNil) \<Longrightarrow> traces_interleave S LNil"
          
-lemma
-  "wtraces (traces_op S) = {lxs. traces_interleave S lxs}"
-  unfolding wtraces_def 
-  apply safe
-  subgoal for lxs
-    apply (coinduction arbitrary: S lxs)
-    subgoal for S lxs
-      apply (erule wtraced.cases)
-      subgoal for op
-        apply auto
-        apply hypsubst_thin
-     unfolding wfinished_no_wstep
-          apply simp
-          apply (rule ccontr)
-          subgoal for inps p
-            apply (cases "inps p"; simp)
-            subgoal for x lxs
-              apply (drule spec[of _ "VOut p x"])
-              apply (drule spec)+
-              unfolding not_def
-              apply (drule mp)
-               back
-               apply (rule step_sources_step_traces_op)
-                  apply simp_all
-              apply force
-              done
-            done
-          done
-        subgoal for vio op op' lxs
-          apply hypsubst_thin
-           apply auto
-          apply (elim step_traces_op_elim)
-          apply (cases vio)
-           apply auto
-          done
-        done
-      done
-    subgoal for lxs
-    apply (coinduction arbitrary: S lxs)
-    subgoal for inps S
-      apply (auto del: disjCI)
-      apply (erule traces_interleave.cases)
-      subgoal for S' lxs inpsa p x S
-        apply hypsubst_thin
-        apply (rule disjI2)
-        apply (intro exI conjI)
-          apply (rule refl)
-        apply simp
-         apply (rule step_traces_op_intro)
-              apply (rule refl)+
-        defer
-           apply assumption+
-          apply (rule refl)+
-         apply auto[1]
-        apply simp
-        done
-      subgoal for inps
-        apply auto
-        apply hypsubst_thin
-        unfolding wfinished_no_wstep
-        apply auto
-        apply (elim step_traces_op_elim)
-        apply auto
-        done
-      done
-    done
-  done
-
 thm set_spec_op_trace_eq_set_spec_op_trace_alt
 thm set_op_bisim_set_spec_op
 
@@ -200,48 +110,5 @@ lemma cinfiniteD:
   "cinfinite (f |`| A) \<Longrightarrow> cinfinite A"
   unfolding cinfinite_def
   by (auto del: disjCI simp flip: cin.rep_eq; hypsubst_thin?)
-
-lemma
-  "(\<forall> x p. (p, x) |\<in>| S \<longrightarrow> p \<notin> defaults) \<Longrightarrow>
-   set_spec_op S S' ~
-   traces_op { f. (\<forall> p. \<exists> ios. lmap (\<lambda> x. VOut p x) (f p) = ios \<and> set_spec_op_trace S S' ios) }"
-  unfolding set_spec_op_trace_eq_set_spec_op_trace_alt
-  apply (coinduction arbitrary: S S' rule: bisim_coinduct_upto'')
-  subgoal for io op1' S S'
-    apply (erule step_set_spec_op_elim)
-    apply (clarsimp simp flip: cin.rep_eq split: if_splits; hypsubst_thin?)
-    subgoal for p x
-      apply (intro exI conjI)
-      apply (rule step_traces_op_intro)
-            apply (rule refl)+
-           defer
-           apply simp
-          apply (rule refl)+
-       apply (rule bc_base)
-      subgoal
-      apply (intro exI conjI)
-          apply (rule refl)+
-      apply (rule arg_cong[where f=traces_op])
-        subgoal
-          apply (simp only: image_Collect)
-          apply (rule Collect_eqI)
-          apply (intro allI impI iffI)
-          subgoal for f' p'
-            apply (auto del: disjCI simp flip: cin.rep_eq split: if_splits; hypsubst_thin?)
-            apply (smt (verit, del_insts) VIO.inject(2) cDiff_iff cempty_not_cinsert cinsert_absorb lhd_LCons llist.expand llist.map(1) llist.map_sel(1) llist.simps(2,2) ltl_lmap ltl_simps(2) not_lnull_conv
-                not_lnull_conv set_spec_op_trace_alt.cases)
-            subgoal for f''
-              apply (cases "f'' p'")
-              subgoal
-                apply (drule spec[of _ p'])
-                by (erule set_spec_op_trace_alt.cases; auto; hypsubst_thin?)
-              subgoal for y lys
-                apply simp
-                apply (rule set_spec_op_trace_alt.intros(2))
-                subgoal
-                  oops
-
-
-
 
 end

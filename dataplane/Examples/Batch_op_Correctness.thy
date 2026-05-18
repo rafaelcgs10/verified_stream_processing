@@ -4510,11 +4510,13 @@ unused_thms
 
 section \<open>Correctness\<close>
 
+
+
 (* abbreviation "G inps f \<equiv> compile_dataflow (Comp [(0, 1) \<mapsto> (0, 1)] (l1 inps) (l2 f))"
 
 lemma
   fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
-   and f :: \<open>'d1 list \<Rightarrow> 'd2 list\<close>
+   and f :: \<open>'d1 list \<Rightarrow> 'd2 list\<close>\<^sup>
    and S :: \<open>((2 \<times> 1) \<times> ('d1 + 'd2) \<times> 't) cset\<close>
  assumes \<open>S = cUnion (cimage (\<lambda> t. (cset_of_llist o llist_of) (map (\<lambda> x. ((2, 1), (Inr x, t))) (f (coll (inps 1) t)))) (ts (inps 1)))\<close>
   shows \<open>set_op {||} {||} (G inps f) \<approx> set_spec_op S {||}\<close>

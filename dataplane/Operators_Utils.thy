@@ -296,18 +296,6 @@ lemma weakBisimWeakCoinduct[consumes 1, case_names cSim cSym]:
   apply (metis (mono_tags, lifting) conversep_wbc predicate2I rel2pD rel2p_inv(2) rev_predicate2D wbisim_cong.intros(1) wsim_conversep_mono wsim_set_wsim)+
   done
 
-lemma
-  "(\<And>R S. (R, S) \<in> Rel \<Longrightarrow> R \<leadsto>\<^sup>^<Rel> S) \<Longrightarrow>
-   (\<And>R S. (R, S) \<in> (converse Rel) \<Longrightarrow> R \<leadsto>\<^sup>^<converse Rel> S)"
-  apply (auto simp add: wsim_set_def wstep_def)
-  oops
-
-
-lemma
-  "(\<And>R S. (R, S) \<in> Rel \<Longrightarrow> R \<leadsto>\<^sup>^<Rel> S) \<Longrightarrow> wbisimulation (rel2p Rel)"
-  apply (auto simp add: wsim_def wsim_set_def rel2p_def)
-  oops
-
 lemma rel2p_converse_simp:
   "rel2p (Rel\<inverse>) = conversep (rel2p Rel)"
   unfolding rel2p_def by force
@@ -469,10 +457,6 @@ lemma wbisim_absorb_bisim_r:
   "X O p2rel (\<approx>) O p2rel (~) \<subseteq> X O p2rel (\<approx>)"
   by (smt (verit) bisim_wbisim in_p2_rel_simp relcomp.simps relcompE subset_iff wbisim_trans)
 
-lemma
-  "(P', Q') \<in> p2rel (\<approx>) O X O p2rel (~) \<Longrightarrow> Q' \<leadsto>\<^sup>^<p2rel (\<approx>)> Q \<Longrightarrow> P' \<leadsto>\<^sup>^<(p2rel (\<approx>) O X O p2rel (\<approx>))> Q"
-  oops
-
 lemma wbisim_wsim_setD:
   "Q' \<approx> Q \<Longrightarrow> Q' \<leadsto>\<^sup>^<(p2rel (\<approx>))> Q \<and> Q \<leadsto>\<^sup>^<(p2rel (\<approx>))> Q'"
   by (simp add: wbisim.simps wsim_set_wsim)
@@ -511,16 +495,6 @@ lemma wsim_set_wbisim_bisim_r_l:
 qed
 
 
-lemma wsim_set_bisim_wbisim_r_l:
-  assumes sim: "P' \<leadsto>\<^sup>^<(p2rel (~) O X O p2rel (\<approx>))> Q'"
-    and P: "P ~ P'"
-    and Q: "Q \<approx> Q'"
-  shows "P \<leadsto>\<^sup>^<(p2rel (~) O X O p2rel (\<approx>))> Q"
-  using assms apply -
-  apply (rule wsim_set_bisim_l[rotated])
-  apply assumption
-  oops
-
 lemma weakBisimWeakUpto_rSim_aux:
   assumes eq1: "P \<approx> P'" 
     and eq2: "Q' ~ Q"
@@ -548,55 +522,12 @@ lemma weakBisimWeakUpto_rSim:
   using wbisim_absorb_bisim_l apply fastforce
   done
 
-lemma weakBisimWeakUpto_rSim:
-  "(P', Q') \<in> p2rel (\<approx>) O X O p2rel (~) \<Longrightarrow>
-   P' \<leadsto>\<^sup>^<p2rel (\<approx>)> P \<Longrightarrow>
-   (\<And>P Q. (P, Q) \<in> X \<Longrightarrow> Q \<leadsto>\<^sup>^<((p2rel (\<approx>)) O X O (p2rel (~)))> P) \<Longrightarrow>
-   Q \<leadsto>\<^sup>^<(p2rel (\<approx>) O X O p2rel (\<approx>))> P'"
-  apply (subgoal_tac "(p2rel (\<approx>) O X O p2rel (~)) O p2rel (\<approx>) \<subseteq> p2rel (\<approx>) O X O p2rel (\<approx>)")
-  oops
-    (* 
-  oops
-  apply (subgoal_tac "(p2rel (\<approx>) O X O p2rel (~)) O p2rel (\<approx>) \<subseteq> p2rel (\<approx>) O X O p2rel (\<approx>)")
-   apply (rule wsimTransitive)
-      prefer 3
-      apply assumption
-     apply simp_all
-  subgoal for S T
-    apply safe
-    apply simp
-    subgoal for P'' Q'' S' T'
-      apply (rule weakBisimWeakUpto_rSym_aux)
-      apply (subst bisim_sym)
-      apply assumption+
-      apply (subst wbisim_sym)
-      apply assumption+
-      apply simp_all *)
-
-
-lemma weakBisimWeakUpto_rSym:
-  assumes rSym: "(\<And>P Q. (P, Q) \<in> X \<Longrightarrow> Q \<leadsto>\<^sup>^<(p2rel (~) O X O p2rel (\<approx>))> P)"
-  shows
-    "(P', Q') \<in> p2rel (\<approx>) O X O p2rel (~) \<Longrightarrow>
-   Q \<leadsto>\<^sup>^<p2rel (\<approx>)> Q' \<Longrightarrow>
-   Q \<leadsto>\<^sup>^<(p2rel (\<approx>) O X O p2rel (\<approx>))> P'"
-  apply safe
-  apply simp
-  apply (rule wsimTransitive[of ])
-  prefer 2
-  apply (rule wsim_set_bisim_r)
-  oops
-
 lemma wsim_set_def_converse_wbisim_cong:
   "P \<leadsto>\<^sup>^<converse X> Q \<Longrightarrow> P \<leadsto>\<^sup>^<p2rel (wbisim_cong (rel2p X))> Q"
   unfolding wsim_set_def
   apply safe
   apply (metis converse.cases in_p2_rel_simp rel2p_def wbisim_cong.wbc_base wbisim_cong.wbc_sym)
   done
-
-term symclp
-
-find_theorems symclp conversep
 
 lemma wsim_set_def_disjI:
   "P \<leadsto>\<^sup>^<Y> Q \<or> P \<leadsto>\<^sup>^<X> Q \<Longrightarrow> P \<leadsto>\<^sup>^<(Y \<union> X)> Q"
@@ -706,18 +637,6 @@ proof -
     done
 qed
 
-thm weakBisimWeakUpto[where X="p2rel R", unfolded wsim_set_wsim p2rel_relcompp, no_vars]
-
-lemma
-  "(P, Q) \<in> p2rel R \<Longrightarrow>
-(\<And>P Q. (P, Q) \<in> p2rel R \<Longrightarrow> P \<leadsto>\<^sup>^<(p2rel (\<approx>) O p2rel R O p2rel (~))> Q) \<Longrightarrow>
-(\<And>P Q. (P, Q) \<in> p2rel R \<Longrightarrow> Q \<leadsto>\<^sup>^<(p2rel (\<approx>) O (p2rel R)\<inverse> O p2rel (~))> P) \<Longrightarrow> P \<approx> Q"
-  apply (simp_all add: wsim_set_wsim flip: p2rel_relcompp)
-  apply (simp add: converse_relcompp relcompp_assoc)
-  oops
-
-  find_theorems " (_  OO _)" name: assoc
-
 lemma weakBisimWeakUptoBisim[case_names SIM1 SIM2, consumes 1]:
   assumes p: "R op1 op2"
     and rSim: "\<And>op1 op2. R op1 op2 \<Longrightarrow> wsim ((~) OO R OO (\<approx>)) op1 op2"
@@ -807,14 +726,6 @@ lemma weakBisimWeakUptoBisimCong[case_names SIM1 SIM2, consumes 1]:
     done
   done
 
-
-(* FIXME: move me *)
-lemma steps_writes:
-  "ios = map (Out p) xs \<Longrightarrow>
-   steps ios (writes op p xs) op"
-  apply (induct ios arbitrary: xs)
-  oops
-
 lemma cfilter_eq_forall_eq:
   "cfilter F C = cfilter F C' \<longleftrightarrow>
    (\<forall> c. F c \<longrightarrow> c |\<in>| C \<longleftrightarrow> c |\<in>| C')"
@@ -855,47 +766,6 @@ friend_of_corec nd_writes where
  )
  (choices op))" 
 *)
-
-lemma step_nd_writes_elim:                  
-  assumes "step io (nd_writes op p xs) op'"
-  obtains 
-    x x' xs' op'' where "io = Out p x" "xs @ [x'] = x # xs'" "op' = nd_writes op'' p xs'" "step (Out p x') op op''"
-  | p' x' op'' where "io = Out p' x'" "op' = nd_writes op'' p xs" "step (Out p' x') op op''"
-  | p' x' op'' where "io = Inp p' x'" "op' = nd_writes op'' p xs" "step (Inp p' x') op op''"
-  | op'' where "io = Tau" "op' = nd_writes op'' p xs" "step Tau op op''"
-    (*  using assms apply atomize_elim
-  apply (induct "nd_writes op p xs" op' arbitrary: op pred: step)
-  subgoal
-    apply (subst (asm) nd_writes.code)
-    apply (clarsimp simp flip: cin.rep_eq del: disjCI split: op.splits if_splits; force)
-    done
-  subgoal
-    apply (cases xs)
-    subgoal
-    apply (subst (asm) nd_writes.code)
-    apply (auto simp flip: cin.rep_eq del: disjCI split: op.splits if_splits)
-    done
-    subgoal
-    apply (subst (asm) nd_writes.code)
-    apply (auto simp flip: cin.rep_eq del: disjCI split: op.splits if_splits)
-      apply force+
-      done
-    done
-  subgoal
-    apply (subst (asm) nd_writes.code)
-    apply (clarsimp simp flip: cin.rep_eq del: disjCI split: op.splits if_splits; force)
-    done
-  subgoal for op' ops io op'' op'''
-    apply (clarsimp simp flip: cin.rep_eq del: disjCI split: if_splits)
-    apply (subst (asm) (6) nd_writes.code)
-    apply (clarsimp simp flip: cin.rep_eq del: disjCI split: op.splits if_splits; hypsubst_thin)
-    apply (drule meta_spec)
-    apply (drule meta_mp)
-     apply simp
-    apply (smt (verit, ccfv_threshold) step.intros(4))
-    done
-  done *)
-  oops
 
 lemma SR'[intro]:
   "y = (f xa) \<Longrightarrow>

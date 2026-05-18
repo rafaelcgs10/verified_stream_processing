@@ -1383,13 +1383,4 @@ lemma set_op_completeness:
     done
   done
 
-lemma set_op_completeness_ev:
-  "set_op {||} {||} op \<approx> set_spec_op S {||} \<Longrightarrow>
-   (p, x) |\<in>| S \<Longrightarrow>
-   wtraced op (trace_exec op) \<and> VOut p x \<in> lset (trace_exec op)"
-  apply (intro conjI)
-   apply (rule wtraced_trace_exec)
-  oops
-
-
 end

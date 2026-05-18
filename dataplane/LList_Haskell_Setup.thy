@@ -42,14 +42,6 @@ find_theorems ccard
 
 declare ccard_def[code del]
 
-lemma ccard_code[code]:
-  "ccard (cset_of_llist xs) = length (list_of xs)"
-  oops
-
-lemma cBall_code[code]:
-  "cBall (cset_of_llist lxs) P \<longleftrightarrow> (lfilter (Not o P) lxs = LNil)"
-  oops
-
 term lrmdups
 
 code_printing code_module "Cset" \<rightharpoonup> (Haskell)
