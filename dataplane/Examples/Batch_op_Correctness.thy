@@ -4506,6 +4506,7 @@ next
   qed
 qed
 
+unused_thms
 
 section \<open>Correctness\<close>
 
