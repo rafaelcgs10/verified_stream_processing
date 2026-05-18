@@ -1185,4 +1185,42 @@ lemma dataplane_tracker_inv_consumes:
     done
   done
 
+lemma dataplane_tracker_inv_fold_consumes:
+  "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
+   dataflow_topology (summ sg) (-+-) \<Longrightarrow>
+   graph_summar_nt (summ sg) (nxt sg) os \<Longrightarrow>
+   n \<le> length (cbufs (nid, p)) \<Longrightarrow>
+   buf' = (\<lambda> (nid', p'). if nid' = nid \<and> p' = p then drop n (cbufs (nid, p)) else cbufs (nid', p')) \<Longrightarrow>
+   os' = (os(nid := fold (\<lambda>(d, t) os. consumes os p t d) (take n (cbufs (nid, p))) (os nid))) \<Longrightarrow>
+   dataplane_tracker_inv os' buf' sg"
+  apply (induct n arbitrary: cbufs os buf' os')
+  subgoal
+    apply simp
+    apply (smt (verit, ccfv_threshold) cond_case_prod_eta drop0)
+    done
+  subgoal premises prems for n cbufs os buf' os'
+    using prems(2-) apply -
+    apply hypsubst_thin
+    apply (cases "cbufs (nid, p)")
+    subgoal
+      by simp
+    subgoal for a xs
+      apply (cases a)
+      apply simp
+      apply hypsubst_thin
+      apply (rule prems(1))
+           apply (rule dataplane_tracker_inv_consumes)
+              apply assumption+
+         apply (simp_all add: BTL_def)
+      subgoal
+        unfolding graph_summar_nt_def
+        by auto
+      subgoal
+        apply (intro ext)
+        apply (auto simp add: BTL_def)
+        done
+      done
+    done
+  done
+
 end

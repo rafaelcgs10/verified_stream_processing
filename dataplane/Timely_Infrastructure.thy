@@ -90,7 +90,7 @@ lemma rmdups_insert_NilI:
    apply auto
   done
 
-definition "DEBUG = False"
+definition "DEBUG = True"
 
 definition "trace = (if DEBUG then Debug.tracing else (\<lambda> x y. y))"
 
@@ -616,72 +616,6 @@ lemma take_step_fast_code[simp]:
    apply (auto simp add: fun_eq_iff mymin_code_def)
   done
 
-lemma propagate_all_locale_eq_propagate_all:
-  "propagate_all_locale (antichain_from_list oo (dataflow_tree_to_graph df)) df c = propagate_all (antichain_from_list oo (dataflow_tree_to_graph df)) c"
-  unfolding propagate_all_locale_def Let_def propagate_all_def by (auto split: prod.splits)
-
-abbreviation "show_frontier x \<equiv> let f = Max_antichain x in if f = 42 then STR ''{}'' else STR ''{ '' + show_nat (Max_antichain x) + STR '' }''" 
-
-abbreviation "print_frontier x \<equiv> trace ((STR ''Frontier: '') + show_frontier x)" 
-
-abbreviation "show_frontiers impf \<equiv> show_list (show_prod show_loc show_frontier) (map (\<lambda> l. (l, frontier (impf l))) enum_location_inst.enum_location)"
-
-(* Inspired by timely/src/progress/subgraph.rs:453 *)
-(* First migrate all change batches to the worklist, then call propagate_all_locale *)
-definition "change_multiplicities summary xs conf = fold (\<lambda> (l, t, m) c. take_step summary (CM l t m) c) xs conf"
-
-(* Inspired by timely/src/dataflow/operators/generic/builder_rc.rs:29 and timely/src/progress/operate.rs:63 *)
-(* This is the shared that the operator exposes to the subgraph *)
-record ('p, 't) shared_state =
-  cons :: "('p \<times> 't \<times> int) change_batch"
-  inte :: "('p \<times> 't \<times> int) change_batch"
-  prod :: "('p \<times> 't \<times> int) change_batch"
-
-(* Inspired by timely/src/progress/subgraph.rs:759 *)
-definition extract_progress where
-  "extract_progress nid nt st =
-    map (\<lambda> (p, t, m). (Loc nid (Trg p), t, -m)) (cons st) @ 
-    map (\<lambda> (p, t, m). (Loc nid (Src p), t, m)) (inte st) @
-    List.map_filter (\<lambda> (p, t, m). case_option None (\<lambda> (nid', p'). Some (Loc nid' (Trg p'), t, m)) (nt (nid, p))) (prod st)"
-
-(* Inspired by timely/src/dataflow/operators/capability.rs:62 *)
-datatype ('p, 't) capability = Cap (time: "'t :: plus") (out: 'p)
-
-abbreviation "nop sg op \<equiv> (case op of Read (Inl nid) f \<Rightarrow> upfro sg nid | _ \<Rightarrow> True)"
-
-term upfro
-
-(* Connects the data plane with the control plane (wraps the operators inside the propagation algorithm)  *)
-corec dataflow_op where
-  "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
-     Read (Inl nid) f \<Rightarrow> (case propagate_all (summ sg) (pt_tr sg) of
-         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
-         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron)))))
-      | None \<Rightarrow> \<oslash>)
-   | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x)))
-   | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
-   | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
-   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op')
-   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) (let C = cfilter (nop sg) (choices op) in C))"
-
-lemma dataflow_op_code[code]:
-  "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
-     Read (Inl nid) f \<Rightarrow> trace (STR ''Reading from frontier at nid: '' + print_2 nid) (case propagate_all (summ sg) (pt_tr sg) of
-         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
-         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron)))))
-      | None \<Rightarrow> \<oslash>)
-   | Read (Inr (nid, p)) f \<Rightarrow>  (Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x))))
-   | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> trace (STR ''Writing out data at location: '' + show_loc (Loc nid (Src p))) (Write (dataflow_op sg op') (nid, p) x)     
-   | Silent op' \<Rightarrow> trace (STR ''Some silent step'') Silent (dataflow_op sg op')
-   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow>
-      trace (STR ''Reading progress at nid: '' + print_2 nid + STR '' cgs sizes: ('' + show_nat (length (cons st)) + STR '', '' + show_nat (length (inte st))  + STR '', '' + show_nat (length (prod st)) + STR '')''
-   ) (Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr :=change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op'))
-   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) 
- (let C = cfilter (nop sg) (choices op) in C))"
-  apply (simp only: trace_simp id_def)
-  apply (subst dataflow_op.code[symmetric])
-  apply auto
-  done
 
 lemma class_linorder_lt_of_comp:
   "ID ccompare = Some a \<Longrightarrow> class.linorder (\<lambda>t u. lt_of_comp a t u \<or> t = u) (lt_of_comp a)"
@@ -977,7 +911,196 @@ lemma propagate_all_terminates:
   using assms apply auto
   done
 
-(* FIXME: Update this for the new optimizations *)
+lemma propagate_all_locale_eq_propagate_all:
+  "propagate_all_locale (antichain_from_list oo (dataflow_tree_to_graph df)) df c = propagate_all (antichain_from_list oo (dataflow_tree_to_graph df)) c"
+  unfolding propagate_all_locale_def Let_def propagate_all_def by (auto split: prod.splits)
+
+abbreviation "show_frontier x \<equiv> let f = Max_antichain x in if f = 42 then STR ''{}'' else STR ''{ '' + show_nat (Max_antichain x) + STR '' }''" 
+
+abbreviation "print_frontier x \<equiv> trace ((STR ''Frontier: '') + show_frontier x)" 
+
+abbreviation "show_frontiers impf \<equiv> show_list (show_prod show_loc show_frontier) (map (\<lambda> l. (l, frontier (impf l))) enum_location_inst.enum_location)"
+
+(* Inspired by timely/src/progress/subgraph.rs:453 *)
+(* First migrate all change batches to the worklist, then call propagate_all_locale *)
+definition "change_multiplicities summary xs conf = fold (\<lambda> (l, t, m) c. take_step summary (CM l t m) c) xs conf"
+
+(* Inspired by timely/src/dataflow/operators/generic/builder_rc.rs:29 and timely/src/progress/operate.rs:63 *)
+(* This is the shared that the operator exposes to the subgraph *)
+record ('p, 't) shared_state =
+  cons :: "('p \<times> 't \<times> int) change_batch"
+  inte :: "('p \<times> 't \<times> int) change_batch"
+  prod :: "('p \<times> 't \<times> int) change_batch"
+
+(* Inspired by timely/src/progress/subgraph.rs:759 *)
+definition extract_progress where
+  "extract_progress nid nt st =
+    map (\<lambda> (p, t, m). (Loc nid (Trg p), t, -m)) (cons st) @ 
+    map (\<lambda> (p, t, m). (Loc nid (Src p), t, m)) (inte st) @
+    List.map_filter (\<lambda> (p, t, m). case_option None (\<lambda> (nid', p'). Some (Loc nid' (Trg p'), t, m)) (nt (nid, p))) (prod st)"
+
+
+
+definition "cset_from_list = cset_of_llist o llist_of"
+
+lemma cset_from_list_Nil[simp]:
+  "cset_from_list [] = {||}"
+  unfolding cset_of_llist_def cset_from_list_def
+  by (clarsimp simp flip: cin.rep_eq bot_cset_def)
+lemma cset_from_list_Cons[simp]:
+  "cset_from_list (x # xs) = cinsert x (cset_from_list xs)"
+  unfolding cset_from_list_def
+  apply (clarsimp simp flip: cin.rep_eq)
+  apply (metis cinsert_code)
+  done
+lemma cset_from_list_append[simp]:
+  "cset_from_list (xs @ ys) = cUn (cset_from_list xs) (cset_from_list ys)"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma cset_from_list_map[simp]:
+  "cset_from_list (map f xs) = (f |`| (cset_from_list xs))"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma cset_from_list_concat[simp]:
+  "cset_from_list (concat xs) = cUnion (cset_from_list |`| (cset_from_list xs))"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  apply (meson in_cset_of_llist_llist_of rev_cBexI)
+  done
+lemma cset_from_list_rmdups[simp]:
+  "cset_from_list (rmdups {} xs) = cset_from_list xs"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma cset_from_list_filter[simp]:
+  "cset_from_list (filter p xs) = cfilter p (cset_from_list xs)"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma rcset_cset_from_list[simp]:
+  "rcset (cset_from_list xs) = set xs"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma in_cset_from_list[simp]:
+  "x |\<in>| (cset_from_list xs) \<longleftrightarrow> x \<in> set xs"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done
+lemma in_cimage_cset_from_list[simp]:
+  "x |\<in>| (f |`| (cset_from_list xs)) \<longleftrightarrow> x \<in> f ` set xs"
+  unfolding cset_from_list_def
+  apply (auto simp flip: cin.rep_eq)
+  done 
+
+lemma cset_of_llist_lshift[simp]:
+  "cset_of_llist (xs @@- lxs) = cUn (cset_of_llist lxs) (cset_from_list xs)"
+  apply (induct xs arbitrary: lxs)
+  apply simp
+  subgoal
+    apply clarsimp
+    apply (metis cinsert_code)
+    done
+  done
+
+(* Inspired by timely/src/dataflow/operators/capability.rs:62 *)
+datatype ('p, 't) capability = Cap (time: "'t :: plus") (out: 'p)
+
+definition "has_progress st = (cons st \<noteq> [] \<or> inte st \<noteq> [] \<or> prod st \<noteq> [])"
+
+abbreviation "not_nop sg op \<equiv> (case op of Read (Inl nid) f \<Rightarrow> upfro sg nid | Write _ (Inl _) (Inl (Inl st)) \<Rightarrow> has_progress st | _ \<Rightarrow> True)"
+
+fun delay_nop where
+  "delay_nop F 0 xs lxs = xs @@- lxs"
+| "delay_nop F n xs LNil = llist_of xs"
+| "delay_nop F (Suc n) xs (LCons x lxs) = (if F x then LCons x (delay_nop F n xs lxs) else delay_nop F n (xs @ [x]) lxs)"
+declare delay_nop.simps[code del]
+declare delay_nop.simps[simp del]
+
+lemma delay_nop_code[code]:
+  "delay_nop F n xs lxs =
+  (if n = 0 then trace (STR ''Natural too small'') (xs @@- lxs) else
+  (case lxs of LNil \<Rightarrow> llist_of xs | LCons x lxs \<Rightarrow> (if F x then LCons x (delay_nop F (n - 1) xs lxs) else trace (STR ''Delay'') (delay_nop F (n - 1) (xs @ [x]) lxs))))"
+  apply (cases n)
+  apply (simp_all add: delay_nop.simps split: llist.splits)
+  done
+
+definition "delay_cset (F :: ('a, 'b, 'c) op \<Rightarrow> bool) (n :: nat) (C :: (('a, 'b, 'c) op) cset) = C"
+declare delay_cset_def[code drop]
+
+lemma delay_cset_code_aux:
+  "cUn (delay_cset F n (cset_of_llist lxs)) (cset_from_list xs)  = cset_of_llist (delay_nop F n xs lxs)"
+  unfolding delay_cset_def
+  apply (induct n arbitrary: lxs xs)
+   apply (simp_all add: delay_nop.simps split: llist.splits)
+  subgoal for n lxs xs
+    apply (cases lxs)
+   apply (simp_all add: delay_nop.simps split: llist.splits)
+     apply (metis cset_of_llist_lshift shift_LNil)
+   apply (auto simp add: delay_nop.simps split: llist.splits simp flip: cin.rep_eq)
+    apply (metis cUn_cinsert_left cinsert_code)
+    apply (metis cUn_cinsert_left cinsert_code)
+    apply (metis cset_of_llist_lshift snoc_shift)
+    apply (metis cset_of_llist_lshift snoc_shift)
+    done
+  done
+
+lemma delay_cset_code[code]:
+  "delay_cset F n (cset_of_llist lxs) = cset_of_llist (delay_nop F n [] lxs)"
+  apply (simp flip: delay_cset_code_aux)
+  done
+
+definition dead_operator_aux where
+  "dead_operator_aux sg nid = (\<forall> p. frontier (c_imp (pt_tr sg) (Loc nid (Src p))) = {}\<^sub>A \<and> frontier (c_imp (pt_tr sg) (Loc nid (Trg p))) = {}\<^sub>A)"
+
+fun dead_operator where
+  "dead_operator sg (Silent _) = False"
+| "dead_operator sg (Read (Inl nid) f) = False"
+| "dead_operator sg (Read (Inr (nid, p)) f) = False"
+| "dead_operator sg (Write op' (Inr (nid, p)) (Inr x)) = False"
+| "dead_operator sg (Write op' (Inl nid) (Inl (Inl st))) = dead_operator_aux sg nid"
+| "dead_operator sg _ = True"
+
+(* Connects the data plane with the control plane (wraps the operators inside the propagation algorithm)  *)
+corec dataflow_op where
+  "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
+     Read (Inl nid) f \<Rightarrow> (case propagate_all (summ sg) (pt_tr sg) of
+         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
+         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron)))))
+      | None \<Rightarrow> \<oslash>)
+   | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x)))
+   | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (dataflow_op sg op') (nid, p) x
+   | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
+   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op')
+   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) 
+   (choices op)
+   )"
+
+lemma dataflow_op_code[code]:
+  "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
+     Read (Inl nid) f \<Rightarrow> trace (STR ''Reading from frontier at nid: '' + print_2 nid) (case propagate_all (summ sg) (pt_tr sg) of
+         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
+         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron)))))
+      | None \<Rightarrow> \<oslash>)
+   | Read (Inr (nid, p)) f \<Rightarrow>  (Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x))))
+   | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> trace (STR ''Writing out data at location: '' + show_loc (Loc nid (Src p))) (Write (dataflow_op sg op') (nid, p) x)     
+   | Silent op' \<Rightarrow> trace (STR ''Some silent step'') Silent (dataflow_op sg op')
+   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow>
+      trace (STR ''Reading progress at nid: '' + print_2 nid + STR '' cgs sizes: ('' + show_nat (length (cons st)) + STR '', '' + show_nat (length (inte st))  + STR '', '' + show_nat (length (prod st)) + STR '')''
+   ) (Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr :=change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op'))
+   | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>)) 
+   (let ops = delay_cset (not_nop sg) 10000 (choices op) in
+    let ops2 = delay_cset (is_Silent) 10000 ops in
+    ops2)
+   )"
+  apply (simp only: delay_cset_def trace_simp id_def)
+  apply (subst dataflow_op.code)
+  apply auto
+  done 
+
+
 lemma step_dataflow_op_elim:
   assumes "step io (dataflow_op sg op) op'"
   obtains
@@ -985,7 +1108,7 @@ lemma step_dataflow_op_elim:
   | nid p op'' x where "io = Out (nid, p) x" "op' = dataflow_op sg op''" "step (Out (Inr (nid, p)) (Inr x)) op op''"
   | op'' where "io = Tau" "op' = dataflow_op sg op''" "step Tau op op''"
   | nid op'' st where "io = Tau" "op' = dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := (change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg)) \<rparr>) op''" "step (Out (Inl nid) (Inl (Inl st))) op op''"
-  | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_all (summ sg) (pt_tr sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr>)" "upfro sg nid"
+  | nid op'' imp_fron sg' where "io = Tau" "sg' = (case propagate_all (summ sg) (pt_tr sg) of Some conf' \<Rightarrow> sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr>)"
     "imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p)))" "op' = dataflow_op sg' op''" "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op''"
   using assms apply -
   apply atomize_elim
@@ -993,15 +1116,19 @@ lemma step_dataflow_op_elim:
   apply (simp split: if_splits)
   apply (elim stepChoiceE)
   subgoal for op'
-    apply (auto del: disjCI split: op.splits sum.splits option.splits)
-        apply fastforce+
+    apply (auto del: disjCI split: op.splits sum.splits option.splits simp flip: cin.rep_eq)
+    subgoal by fastforce
+    subgoal by fastforce
+    subgoal by fastforce
+    subgoal by fastforce
+    subgoal by fastforce
     done
   done
+
 
 lemma step_Tau_dataflow_op_Inp_Inl_intro[intro]:
   "step (Inp (Inl nid) (Inl (Inr (frontier o imp_fron)))) op op' \<Longrightarrow>
    propagate_all(summ sg) (pt_tr sg) = Some conf' \<Longrightarrow>
-   upfro sg nid \<Longrightarrow>
    sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> \<Longrightarrow>
    imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) \<Longrightarrow>
    step Tau (dataflow_op sg op) (dataflow_op sg' op')"
@@ -1016,7 +1143,6 @@ lemma step_Tau_dataflow_op_Out_Inl_intro[intro]:
   apply (subst dataflow_op.code)
   apply (force elim: step_choicesE split: sum.splits option.splits)
   done
-
 
 lemma step_Tau_dataflow_op_Tau_intro[intro]:
   "step Tau op op' \<Longrightarrow>
@@ -1033,7 +1159,7 @@ lemma step_Out_dataflow_op_Out_Inr_intro[intro!]:
   done
 
 lemma step_Inp_dataflow_op_Inp_Inr_intro[intro!]:
-  "step (Inp (Inr (nid, p)) (Inr x)) op op' \<Longrightarrow>
+  "step (Inp (Inr (nid, p)) (Inr x)) op op' \<Longrightarrow>  
    step (Inp (nid, p) x) (dataflow_op sg op) (dataflow_op sg op')"
   apply (subst dataflow_op.code)
   apply (fastforce elim: step_choicesE split: sum.splits option.splits)
@@ -1045,6 +1171,41 @@ lemma dataflow_op_end_op:
   apply simp
   done
 
+(* coinductive is_optimal_op where
+  "(\<And>op' io. step io op op' \<Longrightarrow> (case io of Inp (Inr p) x \<Rightarrow> is_optimal_op op')) \<Longrightarrow> is_optimal_op op"
+ *)
+(* 
+lemma wip:
+  "dataflow_op (sg\<lparr> optm := False \<rparr>) op \<approx> dataflow_op (sg\<lparr> optm := True \<rparr>) op"
+  apply (coinduction arbitrary: op sg rule: wbisim_coinduct_upto'')
+  subgoal for io op1' op sg
+    apply (elim step_dataflow_op_elim; clarsimp; hypsubst_thin?)
+    subgoal for nid p op'' x
+      apply (intro conjI exI)
+       apply fast
+      apply (rule wbc_base)
+      apply (intro conjI exI)
+      apply (rule refl)+
+      done
+    prefer 4
+    subgoal for nid op''
+      apply (cases "upfro sg nid")
+      subgoal
+      apply (intro conjI exI[of _ "(dataflow_op (sg\<lparr>optm := True, pt_tr := _, upfro := (upfro (sg\<lparr>optm := False\<rparr>))(nid := False)\<rparr>) op'')"])
+        apply (rule rtranclp.intros(2))
+        apply (rule rtranclp.intros(1))
+         apply (rule step_Tau_dataflow_op_Inp_Inl_intro)
+             apply assumption
+            defer
+            apply simp
+        apply simp
+          apply simp_all
+        subgoal
+          apply (rule wbc_base)
+          apply (intro conjI exI)
+          defer
+          oops *)
+
 lemma steps_Tau_dataflow_op_Tau_intro[intro]:
   "steps (replicate n Tau) op op' \<Longrightarrow>
    (step Tau ^^ n) (dataflow_op sg op) (dataflow_op sg op')"
@@ -1055,7 +1216,9 @@ lemma steps_Tau_dataflow_op_Tau_intro[intro]:
 
 lemma steps_Tau_dataflow_op_steps_Out_intro[intro]:
   "steps (map (\<lambda> x. Out (Inr (nid, p)) (Inr x)) xs) op op' \<Longrightarrow>
-   (steps (map (\<lambda> x. Out (nid, p) x) xs)) (dataflow_op sg op) (dataflow_op sg op')"
+   ys = map (\<lambda> x. Out (nid, p) x) xs \<Longrightarrow>
+   (steps ys) (dataflow_op sg op) (dataflow_op sg op')"
+  apply hypsubst_thin
   apply (induct xs arbitrary: op op' sg rule: rev_induct)
    apply clarsimp+
   apply fastforce
@@ -1068,7 +1231,7 @@ lemma step_Taus_dataflow_op_Taus_intro[intro]:
    apply force
   apply (meson rtranclp.intros(2) step_Tau_dataflow_op_Tau_intro)
   done
-
+ 
 
 lemma step_tau_pow_dataflow_op[intro]:
   "(step Tau ^^ n) op op' \<Longrightarrow>
@@ -1345,7 +1508,7 @@ lemma list_diff_Nil[simp]:
 
 definition "drop_cap os cap = os\<lparr> inter := inter os @ [(out cap, time cap, -1)], ocaps := (ocaps os) ((out cap) := remove_last (time cap) (ocaps os (out cap))) \<rparr>"
 
-definition "drop_caps os caps = os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps, ocaps := (\<lambda> p. list_diff (ocaps os p) (map time (filter (\<lambda> cap. out cap = p) caps))) \<rparr>"
+definition "drop_caps os caps = trace (STR ''Drop caps'')  os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps, ocaps := (\<lambda> p. list_diff (ocaps os p) (map time (filter (\<lambda> cap. out cap = p) caps))) \<rparr>"
 
 definition "add_cap os p t = os\<lparr> inter := inter os @ [(p, t, 1)], ocaps := (ocaps os) (p := ocaps os p @ [t])  \<rparr>"
 
@@ -1357,14 +1520,33 @@ lemma outpu_consumes[simp]:
   "outpu (consumes os p t d) p' = outpu os p'"
   unfolding consumes_def BENQ_def add_caps_def
   by (auto simp add: operator_state.defs)
-
-
-definition "has_progress os = (consu os \<noteq> [] \<or> inter os \<noteq> [] \<or> produ os \<noteq> [])"
+lemma outpu_drop_caps[simp]:
+  "outpu (drop_caps os caps) = outpu os"
+  unfolding drop_caps_def
+  by auto
+lemma outpu_drop_cap[simp]:
+  "outpu (drop_cap os cap) = outpu os"
+  unfolding drop_cap_def
+  by auto
+lemma outpu_produces[simp]:
+  "outpu (produces os batch) = (\<lambda> p. outpu os p @ map (\<lambda> (x, cap). (x, time cap)) (filter (\<lambda> (x, cap). out cap = p) batch))"
+  unfolding produces_def
+  by auto
+lemma ocaps_produces[simp]:
+  "ocaps (produces os batch) = ocaps os"
+  unfolding produces_def by auto
+lemma inter_produces[simp]:
+  "inter (produces os batch) = inter os"
+  unfolding produces_def by auto
+lemma outpu_fold_consumes[simp]:
+  "outpu (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = outpu os"
+  by (induct xs arbitrary: os)
+    auto
 
 (* All timely operators are defined using this function. The logic is passed as argument. This is the only corec we need *)
 corec builder_op where
   \<open>builder_op fb ips ops os logic =
-  ( choice5
+  (choice5
     (if initia os then
       Choice (cimage (\<lambda>os. Silent (builder_op fb ips ops os logic)) (logic os))
     else \<oslash>)
@@ -1378,9 +1560,8 @@ corec builder_op where
     (Choice (cimage (\<lambda>p. Read (Some p) (\<lambda>x. case x of
       Inr (d, t) \<Rightarrow> builder_op fb ips ops (consumes os p t d) logic
     | Inl _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda> _. \<oslash>))) ips))
-    (if has_progress os then
-      let (os', st) = obtain_progress os in send_progress (builder_op fb ips ops os' logic) st
-    else \<oslash>))\<close>
+    (let (os', st) = obtain_progress os in send_progress (builder_op fb ips ops os' logic) st)
+   )\<close>
 
 
 lemma step_builder_op_elim:
@@ -1391,8 +1572,7 @@ lemma step_builder_op_elim:
   | (read_end_Some) p x where \<open>io = Inp (Some p) x\<close> \<open>p |\<in>| ips\<close> \<open>is_Inl x\<close> \<open>op = \<oslash>\<close>
   | (read_data) p d t where \<open>io = Inp (Some p) (Inr (d, t))\<close> \<open>p |\<in>| ips\<close>
     \<open>op = builder_op fb ips ops (consumes os p t d) logic\<close>
-  | (write_state) os' st where \<open>io = Out None (Inl (Inl st))\<close>
-    \<open>has_progress os\<close> \<open>(os', st) = obtain_progress os\<close>
+  | (write_state) os' st where \<open>io = Out None (Inl (Inl st))\<close> \<open>(os', st) = obtain_progress os\<close>
     \<open>op = builder_op fb ips ops os' logic\<close>
   | (write_data) p x xs where \<open>io = Out (Some p) (Inr x)\<close> \<open>p |\<in>| ops\<close> \<open>outpu os p = x # xs\<close>
     \<open>op = builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>) logic\<close>
@@ -1451,12 +1631,10 @@ next
   show ?thesis
   proof (cases p)
     case None
-    hence progress: \<open>has_progress os\<close> using assms Out
-      by (subst (asm) builder_op.code) (auto 0 0 simp add:  split: if_splits list.splits)
     obtain os' st where os'_st: \<open>(os', st) = obtain_progress os\<close> unfolding obtain_progress_def by blast
-    hence \<open>x = Inl (Inl st) \<and> op = builder_op fb ips ops os' logic\<close> using assms Out None progress
+    hence \<open>x = Inl (Inl st) \<and> op = builder_op fb ips ops os' logic\<close> using assms Out None
       by (subst (asm) builder_op.code) (auto 0 0 simp add: drop_cap_def drop_caps_def consumes_def obtain_progress_def produces_def produce_def delay_cap_def consume_def mint_cap_def mint_def  split: if_splits list.splits)
-    thus ?thesis using write_state Out None progress os'_st by blast
+    thus ?thesis using write_state Out None os'_st by blast
   next
     case (Some p')
     then obtain x' xs where x'_xs: \<open>x = Inr x'\<close> \<open>outpu os p' = x' # xs\<close> using assms Out
@@ -1485,7 +1663,7 @@ next
   ultimately show ?thesis using silent Tau by blast
 qed
 
-lemma step_builder_op_Read_None[intro]:
+ lemma step_builder_op_Read_None[intro]:
   assumes \<open>io = Inp None (Inl (Inr f))\<close> \<open>fb\<close>
     \<open>op = builder_op fb ips ops (os\<lparr>front := f, initia := True\<rparr>) logic\<close>
   shows \<open>step io (builder_op fb ips ops os logic) op\<close>
@@ -1510,7 +1688,7 @@ proof -
 qed
 
 lemma step_builder_op_Write_None[intro]:
-  \<open>io = Out None (Inl (Inl st)) \<Longrightarrow> has_progress os \<Longrightarrow>
+  \<open>io = Out None (Inl (Inl st)) \<Longrightarrow>
   (os', st) = obtain_progress os \<Longrightarrow> op = builder_op fb ips ops os' logic \<Longrightarrow>
   step io (builder_op fb ips ops os logic) op\<close>
   by (subst builder_op.code) (auto simp add: has_progress_def obtain_progress_def)
@@ -1528,11 +1706,22 @@ qed
 
 lemma steps_builder_op_Write_Some[intro]:
   assumes \<open>p |\<in>| ops\<close> \<open>outpu os p = xs @ ys\<close>
-    \<open>op = builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := ys)\<rparr>) logic\<close>
-  shows \<open>steps (map (\<lambda> x. Out (Some p) (Inr x)) xs) (builder_op fb ips ops os logic) op\<close>
+    \<open>op = builder_op fb ips ops (os\<lparr>outpu := (outpu os)(p := ys)\<rparr>) logic\<close> \<open>zs = map (\<lambda> x. Out (Some p) (Inr x)) xs\<close>
+  shows \<open>steps zs (builder_op fb ips ops os logic) op\<close>
   using assms apply -
+  apply hypsubst_thin
   apply (induct xs arbitrary: os logic op ys rule: rev_induct)
   apply auto[1]
+  apply fastforce
+  done
+
+lemma steps_builder_op_Read_Some[intro]:
+  assumes \<open>p |\<in>| ips\<close> 
+    \<open>op = builder_op fb ips ops (fold (\<lambda> (d, t) os. consumes os p t d) xs os) logic\<close>
+  shows \<open>steps (map (\<lambda> x. Inp (Some p) (Inr x)) xs) (builder_op fb ips ops os logic) op\<close>
+  using assms apply -
+  apply (induct xs arbitrary: os op)
+   apply auto[1]
   apply fastforce
   done
 
@@ -1819,11 +2008,35 @@ lemma inter_consumes[simp]:
   "inter (consumes os p t d) = inter os @ concat (map (\<lambda> p'. map (\<lambda> t'. (p', t + t', 1)) (intsum os p p')) enum_class.enum)"
   unfolding consumes_def BENQ_def add_caps_def
   by (auto simp add: map_concat comp_def)
+
 lemma front_consumes[simp]:
-  "front (consumes (os nid) p t d) p' = front (os nid) p'"
+  "front (consumes os p t d) p' = front os p'"
   unfolding consumes_def add_caps_def
   apply auto
   done
+lemma initia_consumes[simp]:
+  "initia (consumes os p t d) = initia os"
+  unfolding consumes_def add_caps_def
+  apply auto
+  done
+lemma more_consumes[simp]:
+  "operator_state.more (consumes os p t d) = operator_state.more os"
+  unfolding consumes_def add_caps_def
+  apply auto
+  done
+lemma front_consumes_fold[simp]:
+  "front (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = front os"
+  by (induct xs arbitrary: os) auto
+
+lemma initia_consumes_fold[simp]:
+  "initia (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = initia os"
+  by (induct xs arbitrary: os)
+   (auto split: prod.splits)+
+lemma more_consumes_fold[simp]:
+  "operator_state.more (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = operator_state.more os"
+  by (induct xs arbitrary: os)
+   (auto split: prod.splits)+
+
 lemma consu_add_caps[simp]:
   "consu (add_caps os caps) = consu os"
   unfolding add_caps_def
@@ -1865,6 +2078,109 @@ lemma intsum_consumes[simp]:
   unfolding consumes_def add_caps_def
   apply auto
   done
+
+lemma input_consumes[simp]:
+  "input (consumes os p t d) = (input os)(p := input os p @ [(d, t)])"
+  unfolding consumes_def add_caps_def BENQ_def
+  by auto
+lemma input_fold_consumes:
+  "input (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = (input os)(p := input os p @ xs)"
+  by (induct xs arbitrary: os)
+   auto
+lemma operator_state_eqI:
+  "intsum os1 = intsum os2 \<Longrightarrow>
+   consu os1 = consu os2 \<Longrightarrow>
+   inter os1 = inter os2 \<Longrightarrow>
+   produ os1 = produ os2 \<Longrightarrow>
+   input os1 = input os2 \<Longrightarrow>
+   outpu os1 = outpu os2 \<Longrightarrow>
+   front os1 = front os2 \<Longrightarrow>
+   ocaps os1 = ocaps os2 \<Longrightarrow>
+   initia os1 = initia os2 \<Longrightarrow>
+   operator_state.more os1 = operator_state.more os2 \<Longrightarrow>
+   os1 = os2"
+  apply (cases os1; cases os2)
+  apply auto
+  done
+
+lemma concat_map_map_filter:
+  "distinct xs \<Longrightarrow>
+   p' \<in> set xs \<Longrightarrow>
+   concat (map (\<lambda>x. map ((-+-) t) (filter (\<lambda>xa. x = p') (intsum os p x))) xs) = map ((-+-) t) (intsum os p p')"
+  apply (induct xs)
+  apply simp
+  apply (auto simp add: filter_empty_conv)
+  done
+
+
+lemma ocaps_consumes[simp]:
+  "ocaps (consumes os p t d) = (\<lambda> p'. ocaps os p' @ map (\<lambda> t'. t -+- t') (intsum os p p'))"
+  unfolding consumes_def add_caps_def
+  apply (clarsimp simp add: filter_map split_beta operator_state.defs comp_def map_concat)
+  apply (rule ext)+
+  apply (clarsimp simp add: enum_class.enum_UNIV enum_class.enum_distinct concat_map_map_filter filter_map split_beta operator_state.defs comp_def map_concat filter_concat)
+  done
+lemma ocaps_consumes_fold[simp]:
+  "ocaps (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = (\<lambda> p'. ocaps os p' @ concat (map (\<lambda> (d, t). map (\<lambda> t'. t -+- t') (intsum os p p')) xs))"
+  by (induct xs arbitrary: os)
+   auto
+
+
+lemma inter_consumes_fold:
+  "inter (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = inter os @ concat (map (\<lambda> (d, t). concat (map (\<lambda> p'. map (\<lambda> t'. (p',  t -+- t', 1)) (intsum os p p')) enum_class.enum)) xs)"
+  by (induct xs arbitrary: os)
+    auto
+
+lemma consu_consumes_fold:
+  "consu (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = consu os @ map (\<lambda> (d, t). (p, t, 1)) xs"
+  by (induct xs arbitrary: os)
+   auto
+lemma intsum_consumes_fold:
+  "intsum (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = intsum os"
+  by (induct xs arbitrary: os)
+   auto
+lemma produ_consumes_fold:
+  "produ (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = produ os"
+  by (induct xs arbitrary: os)
+   auto
+lemma en1_consumes[simp]:
+  "en1 (consumes os p t d) = en1 os"
+  unfolding consumes_def add_caps_def
+  by auto
+lemma en2_consumes[simp]:
+  "en2 (consumes os p t d) = en2 os"
+  unfolding consumes_def add_caps_def
+  by auto
+
+lemma de1_consumes[simp]:
+  "de1 (consumes os p t d) = de1 os"
+  unfolding consumes_def add_caps_def
+  by auto
+lemma de2_consumes[simp]:
+  "de2 (consumes os p t d) = de2 os"
+  unfolding consumes_def add_caps_def
+  by auto
+
+lemma fold_consumes:
+  "fold (\<lambda>(d, t) os. consumes os p t d) xs os =
+   os\<lparr> input := (input os)(p := input os p @ xs), consu := consu os @ map (\<lambda>(d, t). (p, t, 1)) xs , inter := inter os @ concat (map (\<lambda> (d, t). concat (map (\<lambda> p'. map (\<lambda> t'. (p',  t -+- t', 1)) (intsum os p p')) enum_class.enum)) xs), ocaps := (\<lambda> p'. ocaps os p' @ concat (map (\<lambda> (d, t). map (\<lambda> t'. t -+- t') (intsum os p p')) xs)) \<rparr>"
+  apply (rule operator_state_eqI)
+  apply (auto simp add: intsum_consumes_fold consu_consumes_fold produ_consumes_fold input_fold_consumes inter_consumes_fold)
+  done
+
+lemma en1_fold_consumes[simp]:
+  "en1 (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = en1 os"
+  by (induct xs arbitrary: os) auto
+lemma en2_fold_consumes[simp]:
+  "en2 (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = en2 os"
+  by (induct xs arbitrary: os) auto
+
+lemma de1_fold_consumes[simp]:
+  "de1 (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = de1 os"
+  by (induct xs arbitrary: os) auto
+lemma de2_fold_consumes[simp]:
+  "de2 (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = de2 os"
+  by (induct xs arbitrary: os) auto
 
 lemma frontier_less_equal_ifrontierI:
   "dataflow_topology su (-+-) \<Longrightarrow>
@@ -2075,61 +2391,6 @@ lemma ifrontier_eq_all_le:
   apply (metis dataflow_topology_from_tree.elems_eq_sum_eq member_antichain.rep_eq)
   done
 
-
-
-definition "cset_from_list = cset_of_llist o llist_of"
-
-lemma cset_from_list_Nil[simp]:
-  "cset_from_list [] = {||}"
-  unfolding cset_of_llist_def cset_from_list_def
-  by (clarsimp simp flip: cin.rep_eq bot_cset_def)
-lemma cset_from_list_Cons[simp]:
-  "cset_from_list (x # xs) = cinsert x (cset_from_list xs)"
-  unfolding cset_from_list_def
-  apply (clarsimp simp flip: cin.rep_eq)
-  apply (metis cinsert_code)
-  done
-lemma cset_from_list_append[simp]:
-  "cset_from_list (xs @ ys) = cUn (cset_from_list xs) (cset_from_list ys)"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma cset_from_list_map[simp]:
-  "cset_from_list (map f xs) = (f |`| (cset_from_list xs))"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma cset_from_list_concat[simp]:
-  "cset_from_list (concat xs) = cUnion (cset_from_list |`| (cset_from_list xs))"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  apply (meson in_cset_of_llist_llist_of rev_cBexI)
-  done
-lemma cset_from_list_rmdups[simp]:
-  "cset_from_list (rmdups {} xs) = cset_from_list xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma cset_from_list_filter[simp]:
-  "cset_from_list (filter p xs) = cfilter p (cset_from_list xs)"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma rcset_cset_from_list[simp]:
-  "rcset (cset_from_list xs) = set xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma in_cset_from_list[simp]:
-  "x |\<in>| (cset_from_list xs) \<longleftrightarrow> x \<in> set xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma in_cimage_cset_from_list[simp]:
-  "x |\<in>| (f |`| (cset_from_list xs)) \<longleftrightarrow> x \<in> f ` set xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done 
 
 
 

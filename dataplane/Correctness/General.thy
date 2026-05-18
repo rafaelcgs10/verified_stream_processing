@@ -71,6 +71,10 @@ lemma inputs_at_target_consumes[simp]:
   "inputs_at_target (os(nid := consumes (os nid) p t d)) = BENQ (nid, p) (d, t) (inputs_at_target os)"
   unfolding inputs_at_target_def consumes_def add_caps_def BENQ_def
   by (auto split: if_splits)
+lemma inputs_at_target_outpu_update[simp]:
+  "inputs_at_target (map_entry p (outpu_update A) os) = inputs_at_target os"
+  unfolding inputs_at_target_def
+  by auto
 
 definition "ty1_check os bufs = (\<forall> p. (\<forall> x \<in> fst ` set (input os p) \<union> fst ` set (bufs p) \<union> fst ` set (outpu os p). is_en1 os x))"
 definition "ty2_check os bufs = (\<forall> p. (\<forall> x \<in> fst ` set (input os p) \<union> fst ` set (bufs p). is_en1 os x) \<and> (\<forall> x \<in> fst ` set (outpu os p). is_en2 os x))"
@@ -134,8 +138,8 @@ lemma path_weight_direct_0path:
   apply (subst graph.path_weight_def[OF G])
   apply clarsimp
   apply (subst member_antichain.abs_eq)
-  apply (clarsimp simp add: eq_onp_def)
-  apply (rule graph.finite_minimal_antichain_path_weightp[OF G])
+   apply (clarsimp simp add: eq_onp_def)
+   apply (rule graph.finite_minimal_antichain_path_weightp[OF G])
   unfolding minimal_antichain_def
   apply clarsimp
   apply (subst graph.path_weightp_def[OF G])
@@ -143,14 +147,25 @@ lemma path_weight_direct_0path:
   apply (rule exI[of _ "[(l1, 0, l2)]"])
   apply clarsimp
   apply (rule graph.path.intros(2)[where xs=Nil, simplified, OF G])
-  apply (rule graph.path.intros(1)[OF G])
-  apply auto
+   apply (rule graph.path.intros(1)[OF G])
+   apply auto
   done
 
 lemma in_antichain_singleton[simp]:
   "x \<in>\<^sub>A antichain {x}"
   by (metis ID.set_finite in_antichain_minimal_antichain insertI1 minimal_antichain_singleton)
 
+lemma path_weight_antichain0:
+  assumes G: "Graph.graph su"
+  shows "(0 :: 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) \<in>\<^sub>A su loc1 loc2 \<Longrightarrow>
+        graph.path_weight su loc1 loc2 = antichain {0}"
+  apply (subst ac_eq_iff)
+  apply safe
+  subgoal for x
+    by (metis G dataflow_topology_from_tree.zero_le dual_order.antisym in_antichain_singleton less_eq_antichain_def path_weight_direct_0path)
+  subgoal for x
+    by (metis G member_antichain.rep_eq path_weight_direct_0path set_antichain_antichain_singleton singleton_iff)
+  done
 
 lemma find_SomeD':
   "find P xs = Some x \<Longrightarrow> P x \<and> x\<in>set xs"
@@ -170,7 +185,7 @@ lemma single_valued_inv_to_nxt_inj_on:
       by (auto simp add: enum_class.enum_UNIV is_empty_antichain_iff find_None_iff2 dest!: find_SomeD' split: prod.splits)
     subgoal for a
       apply (cases "find (\<lambda>(nid', p'). su (Loc x1a (Src x2a)) (Loc nid' (Trg p')) \<noteq> {}\<^sub>A) enum_class.enum")
-      apply (auto simp add: bi_unique_def enum_class.enum_UNIV is_empty_antichain_iff dest!: find_SomeD' find_SomeD'' split: prod.splits)
+       apply (auto simp add: bi_unique_def enum_class.enum_UNIV is_empty_antichain_iff dest!: find_SomeD' find_SomeD'' split: prod.splits)
       done
     done
   done
@@ -186,13 +201,13 @@ lemma graph_summar_nt:
   apply simp
   unfolding graph_summar_nt_def
   apply (intro conjI allI impI)
-  apply simp_all
+            apply simp_all
   subgoal for nid p p' t
     unfolding comp_def
     apply (rule summary_in_path_weight)
     subgoal
       by standard
-    apply assumption
+     apply assumption
     subgoal
       unfolding dataflow_tree_to_graph_def
       apply (simp split: if_splits prod.splits)
@@ -222,12 +237,12 @@ lemma graph_summar_nt:
     apply (rule single_valued_inv_to_nxt_inj_on)
     apply (auto simp add: comp_def dataflow_tree_to_graph_def  split: if_splits prod.splits)
     unfolding bi_unique_def
-    apply auto
+          apply auto
     done
   subgoal premises prems
     apply (auto simp add: comp_def dataflow_tree_to_graph_def split: if_splits prod.splits)
     unfolding bi_unique_def
-    apply auto
+          apply auto
     done
   subgoal for nid nid' p p'
     unfolding dataflow_tree_to_graph_def
@@ -261,7 +276,7 @@ lemma graph_summar_nt:
     unfolding dataflow_tree_to_graph_def
     apply (simp split: if_splits prod.splits)
     using dataflow_tree_to_graph_aux_no_out_to_inp_connection
-    apply (metis antichain_from_list_empty_antichain)+
+     apply (metis antichain_from_list_empty_antichain)+
     done
   done
 
@@ -273,7 +288,7 @@ lemma sum_eq_singleton:
 lemma zcount_zmset_gt_0_set_Ex:
   "0 < zcount (zmset xs) x \<Longrightarrow> \<exists> m. (x, m) \<in> set xs \<and> m > 0"
   apply (induct xs)
-  apply clarsimp+
+   apply clarsimp+
   apply (smt (verit, ccfv_SIG) zcount_update_zmultiset)
   done
 lemma count_list_gt_0[simp]:
@@ -292,7 +307,7 @@ lemma zcount_to_zmset_gt_0[simp]:
 lemma sum_le_0I:
   "finite A \<Longrightarrow> (\<forall> x\<in>A. f x \<le> (0 :: int)) \<Longrightarrow> (\<Sum>x\<in>A. f x)\<le> 0"
   apply (induct A rule: finite_induct)
-  apply simp_all
+   apply simp_all
   done
 lemma in_frontier_minusD:
   "x \<in>\<^sub>A frontier (A - B) \<Longrightarrow> 
@@ -322,7 +337,7 @@ lemma in_frotier_sum_le_exI:
    t' \<le> t \<Longrightarrow>
    \<exists> t'. t' \<in>\<^sub>A frontier (sum f A) \<and> t' \<le> t"
   apply (induct A rule: finite_induct)
-  apply simp_all
+   apply simp_all
   apply clarsimp
   apply (elim disjE)
   subgoal
@@ -335,7 +350,7 @@ lemma sum_subtractf_zmultiset:
   "finite A \<Longrightarrow>
    (\<Sum>x\<in>A. f x - g x) = sum (f :: 'b \<Rightarrow> 'a zmultiset) A - sum g A"
   apply (induct A rule: finite_induct)
-  apply simp_all
+   apply simp_all
   apply (metis (no_types, lifting) add_diff_eq diff_add_zmset uminus_add_add_uminus)
   done
 lemma int_sum_minus_cases:
@@ -351,10 +366,10 @@ lemma sum_gt_0I:
    (\<forall> x \<in> set xs. 0 < x) \<Longrightarrow>
    (0 :: int) < sum_list xs"
   apply (induct xs)
-  apply auto
+   apply auto
   subgoal for a xs
     apply (cases xs)
-    apply auto
+     apply auto
     done
   done      
 
@@ -365,7 +380,7 @@ lemma extract_prog_obtain_progress_remove1:
   unfolding extract_prog_def
   apply simp
   apply (induct xs)
-  apply simp
+   apply simp
   subgoal for nid' xs
     apply clarsimp
     apply hypsubst_thin
@@ -374,7 +389,7 @@ lemma extract_prog_obtain_progress_remove1:
     subgoal premises prems
       using prems(1) apply -
       apply (induct xs)
-      apply auto
+       apply auto
       done
     done
   done
@@ -387,7 +402,7 @@ lemma change_multiplicities_extract_prog_obtain_progress_remove1_append:
   apply (rule ext)
   subgoal for c
     apply (induct xs arbitrary: c)
-    apply (clarsimp simp add: extract_prog_def)+
+     apply (clarsimp simp add: extract_prog_def)+
     apply (metis (no_types, lifting) change_multiplicities_append_alt change_multiplicities_comm)
     done
   done
@@ -1718,9 +1733,11 @@ lemma outputs_at_target_outpu_if:
 
 
 definition "ts inps = cimage (\<lambda> e. case e of Data t d \<Rightarrow> t) (cfilter is_Data (cset_of_llist inps))"
-
+definition "outputs_ts f xs = rmdups {} (filter (\<lambda> t. \<not> frontier_less_equal f t) xs)"
 
 definition "coll inps t = list_of (lmap (\<lambda> e. case e of Data t d \<Rightarrow> d) (lfilter (\<lambda> e. case e of Data t' d \<Rightarrow> t = t' | _ \<Rightarrow> False) inps))"
+definition "fcoll inps t = (map (\<lambda> e. case e of Data t d \<Rightarrow> d) (filter (\<lambda> e. case e of Data t' d \<Rightarrow> t = t' | _ \<Rightarrow> False) inps))"
+
 
 lemma coll_LNil[simp]:
   "coll LNil t = []"
@@ -1762,6 +1779,264 @@ lemma coll_lshift:
     done
   done
 
+lemma timely_input_stream_advances_frontier:
+  "timely_input_stream lxs C \<Longrightarrow>
+   \<exists> n \<le> llength lxs.
+   \<not> frontier_less_equal (frontier (zmset_of (C + mset (map event.time (filter is_Mint (ltaken n lxs))) - mset (map event.time (filter is_Drop (ltaken n lxs)))))) t \<and>
+   (\<forall> d. Data t d \<in> lset lxs \<longrightarrow> Data t d \<in> set (ltaken n lxs)) \<and>
+   map fst (filter (\<lambda> (d, t'). t' = t) (map (case_event (\<lambda> t d. (d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n lxs)))) = coll lxs t"
+  unfolding timely_input_stream_def timely_progress_def
+  apply clarsimp
+  apply (drule spec[of _ t])
+  apply clarsimp
+  subgoal for n
+    apply (rule exI[of _ n])
+    apply simp
+    apply (intro conjI)
+    subgoal
+      by (metis vacant_not_frontier_less_equal)
+    subgoal
+      apply safe
+      subgoal for d'
+        apply (induct n arbitrary: lxs C)
+        subgoal
+          using vacant_monotone_not_in_lset by fastforce
+        subgoal for n lxs' C'
+          apply (cases lxs'; (clarsimp split: if_splits))
+          subgoal
+            by blast
+          subgoal
+            using Suc_ile_eq by auto
+          subgoal
+            using Suc_ile_eq by auto
+          subgoal
+            using Suc_ile_eq by auto
+          done
+        done
+      done
+    subgoal
+      unfolding coll_def
+      apply simp
+      subgoal premises temp
+        using temp(1,2,3) apply -
+        apply (induct n arbitrary: lxs C)
+        subgoal
+          apply (clarsimp split: event.splits)
+          apply (smt (verit) event.exhaust_sel lfilter_eq_LNil list_of_LNil llist.simps(12) vacant_monotone_not_in_lset verit_comp_simplify1(2))
+          done
+        subgoal for n lxs' C'
+          apply (cases lxs'; (clarsimp split: event.splits if_splits))
+          subgoal
+            by blast
+          subgoal for A lxs''
+            apply auto
+            apply hypsubst_thin
+            subgoal premises prems for t'
+              using prems(2-) apply -
+              apply (subst prems(1)[where C="remove1_mset t' C'"])
+              apply assumption
+              using Suc_ile_eq iless_Suc_eq apply blast
+              apply simp_all
+              apply (rule arg_cong[where f=list_of])
+              apply (rule arg_cong2[where f=lmap])
+              apply simp_all
+              apply (rule lfilter_cong)
+              apply (auto split: event.splits)
+              done
+            done
+          subgoal for A lxs''
+            apply auto
+            apply hypsubst_thin
+            subgoal premises prems for t' t''
+              using prems(2-) apply -
+              apply (subst prems(1))
+              apply assumption
+              using Suc_ile_eq iless_Suc_eq apply blast
+              apply simp_all
+              apply (rule arg_cong[where f=list_of])
+              apply (rule arg_cong2[where f=lmap])
+              apply simp_all
+              apply (rule lfilter_cong)
+              apply (auto split: event.splits)
+              done
+            done
+          subgoal for A lxs''
+            apply (auto del: disjCI)
+            apply hypsubst_thin
+            subgoal premises prems 
+              using prems(2-) apply -
+              apply (cases "lfinite lxs''")
+              subgoal
+                apply (subst prems(1))
+                apply assumption
+                using Suc_ile_eq iless_Suc_eq apply blast
+                apply simp_all
+                apply (auto split: event.splits)
+                done
+              subgoal
+                apply (subst prems(1))
+                apply assumption
+                using Suc_ile_eq iless_Suc_eq apply blast
+                apply simp_all
+                apply (auto split: event.splits)
+                apply (subst list_of_LCons)
+                apply simp_all
+                apply (drule vacant_monotone_not_in_lset_alt[rotated, where t=t and lxs="ldropn n lxs''"])
+                subgoal
+                  using Suc_ile_eq iless_Suc_eq timely_monotone_ldropn by blast
+                apply (simp add: lfinite_lfilter)
+                apply (rule finite_subset[of _ "{0 ..< n}"])
+                apply simp_all
+                apply (auto simp: ldropn_ltl image_iff lset_ldropn_conv_lnth del: disjCI)
+                apply (metis dual_order.order_iff_strict event.exhaust event.sel(1) not_less)
+                done
+              done
+            subgoal premises prems for t' t''
+              using prems(1,3-) apply -
+              apply (subst prems(2))
+              apply assumption
+              using Suc_ile_eq iless_Suc_eq apply blast
+              apply simp_all
+              apply (rule arg_cong[where f=list_of])
+              apply (rule arg_cong2[where f=lmap])
+              apply simp_all
+              apply (rule lfilter_cong)
+              apply (auto split: event.splits)
+              done
+            done
+          done
+        done
+      done
+    done
+  done
+
+(* FIXME: move me *)
+lemma not_frontier_less_equal_vacant:
+  "\<not> frontier_less_equal (frontier (zmset_of M)) t \<Longrightarrow>
+   vacant t M"
+  unfolding vacant_def frontier_less_equal_iff2
+  by (metis count_eq_zero_iff count_greater_zero_iff of_nat_0_less_iff order_trans_rules(23) trivial_dataflow_topology_interpretation.obtain_elem_frontier zcount_of_mset)
+lemma timely_input_stream_vacant_Data_not_in:
+  "timely_input_stream lxs C \<Longrightarrow>
+   vacant t C \<Longrightarrow>
+   Data t d \<notin> lset lxs"
+  by (metis event.sel(1) order_refl timely_input_stream_def vacant_monotone_not_in_lset)
+
+lemma timely_input_stream_vacant_coll:
+  "timely_input_stream lxs C \<Longrightarrow>
+   n \<le> llength lxs \<Longrightarrow>
+   vacant t' (C + event.time `# filter_mset is_Mint (mset (ltaken n lxs)) - event.time `# filter_mset is_Drop (mset (ltaken n lxs))) \<Longrightarrow> 
+   map fst (filter (\<lambda>(d, t'a). t'a = t') (map (case_event (\<lambda>t d. (d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n lxs)))) = coll lxs t'"
+  unfolding coll_def
+  apply (induct n arbitrary: lxs C)
+  subgoal
+    apply simp
+    apply (smt (verit, best) event.case_eq_if event.collapse(1) lfilter_False list_of_LNil llist.map(1) timely_input_stream_vacant_Data_not_in)
+    done
+  subgoal premises prems for n lxs' C'
+    using prems(2-) apply -
+    apply (cases lxs')
+    subgoal
+      by (auto simp add: filter_empty_conv split: event.splits)
+    subgoal for e lxs''
+      apply (cases e; simp)
+      subgoal for t d
+        apply (intro conjI impI)
+        subgoal
+          apply (cases "lfinite lxs''")
+          subgoal
+            apply (subst list_of_LCons)
+             apply simp
+            apply simp
+            using prems(1) 
+            apply (metis (no_types, lifting) Suc_ile_eq iless_Suc_eq lfinite_lfilterI list_of_lmap timely_input_stream_DataI)
+            done
+          subgoal
+            apply (subst list_of_LCons)
+            subgoal
+              apply simp_all
+              unfolding timely_input_stream_def
+              apply clarsimp
+              apply (erule timely_monotone.cases; simp)
+              apply hypsubst_thin
+              apply (drule vacant_monotone_not_in_lset_alt[rotated, where t=t and lxs="ldropn n lxs''"])
+              subgoal
+                apply (rule timely_monotone_ldropn)
+                 apply simp_all
+                using Suc_ile_eq iless_Suc_eq apply blast
+                done
+              apply (simp add: lfinite_lfilter)
+              apply (rule finite_subset[of _ "{0 ..< n}"])
+               apply simp_all
+              apply (auto simp: ldropn_ltl image_iff lset_ldropn_conv_lnth del: disjCI split: event.splits)
+              apply (metis dual_order.order_iff_strict event.exhaust event.sel(1) not_less)
+              done
+            using prems(1) 
+            apply (metis (no_types, lifting) Suc_ile_eq iless_Suc_eq timely_input_stream_DataI)
+            done
+          done
+        subgoal
+          using prems(1) 
+          apply (metis (no_types, lifting) Suc_ile_eq iless_Suc_eq timely_input_stream_DataI)
+          done
+        done
+      subgoal for t
+        unfolding timely_input_stream_def
+        apply clarsimp
+        apply (erule timely_monotone.cases; simp)
+        subgoal for t'' C''
+          apply hypsubst_thin
+          apply (subst prems(1)[where C="remove1_mset t'' C''"])
+             apply simp_all
+          unfolding timely_input_stream_def
+           apply blast
+          using Suc_ile_eq iless_Suc_eq apply blast
+          done
+        done
+      subgoal for t
+        unfolding timely_input_stream_def
+        apply clarsimp
+        apply (erule timely_monotone.cases; simp)
+        subgoal for t''' C'' t''
+          apply hypsubst_thin
+          apply (subst prems(1)[where C="add_mset t'' C''"])
+             apply simp_all
+          unfolding timely_input_stream_def
+           apply blast
+          using Suc_ile_eq iless_Suc_eq apply blast
+          done
+        done
+      done
+    done
+  done
+
+
+lemma ltaken_lshift_ldropn[simp]:
+  "ltaken n lxs @@- ldropn n lxs = lxs"
+  apply (induct n arbitrary: lxs)
+  apply simp_all
+  subgoal for n lxs
+    apply (cases lxs)
+    apply simp_all
+    done
+  done
+
+
+lemma map_filter_is_Data_Inl_ltaken_ldropn_coll:
+  "timely_input_stream lxs C \<Longrightarrow>
+   enat n \<le> llength lxs \<Longrightarrow>
+   map (\<lambda>x. projl (fst x)) (filter (\<lambda>(d, t). t = t') (map (case_event (\<lambda>t d. (Inl d, t)) (\<lambda>a. undefined) (\<lambda>a. undefined)) (filter is_Data (ltaken n lxs)))) @ coll (ldropn n lxs) t' =
+   coll lxs t'"
+  apply (subst coll_lshift[where xs="ltaken n lxs", of t' "ldropn n lxs", simplified])
+  subgoal 
+    using timely_input_stream_ldrop 
+    by (metis timely_input_stream_ldrop timely_input_stream_expires)
+  apply (subst (2) coll_def)
+  apply (simp add: split_beta filter_map comp_def split: event.splits)
+  apply (rule map_cong)
+  apply (rule filter_cong)
+  apply (auto split: event.splits)
+  done
 
 lemma ts_Mint[simp]:
   "ts (LCons (Mint t) inps) = ts inps"

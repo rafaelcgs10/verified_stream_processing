@@ -48,6 +48,23 @@ fun ocaps_updates where
 | "ocaps_updates caps ((Drop t) # xs) = ocaps_updates (remove_last t caps) xs"
 | "ocaps_updates caps ((Mint t) # xs) = ocaps_updates (caps @ [t]) xs"
 
+
+lemma mset_ocaps_updates:
+  "timely_input_stream (xs @@- lxs) (mset C) \<Longrightarrow>
+   mset (ocaps_updates C xs) = mset C + event.time `# filter_mset is_Mint (mset xs) - event.time `# filter_mset is_Drop (mset xs)"
+  apply (induct xs arbitrary: C)
+   apply force
+  subgoal for a xs' C'
+    apply (cases a)
+      apply (auto split: event.splits)
+    subgoal
+      by (smt (verit, ccfv_threshold) add_0 diff_diff_add_mset diff_union_single_convs(2) event.distinct(5) event.sel(2) event.simps(5) mset_remove_last timely_input_stream_DropI timely_input_stream_def
+          timely_monotone_LConsE union_commute union_mset_add_mset_right)
+    subgoal
+      by (simp add: timely_input_stream_MintI)
+    done
+  done
+
 lemma ooo_input_op_logic_iterates_DataI[intro]:
   "ocaps os p \<noteq> [] \<Longrightarrow>
    p |\<in>| P \<Longrightarrow>
