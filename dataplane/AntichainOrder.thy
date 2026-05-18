@@ -940,4 +940,10 @@ lemma frontier_add_update_zmultiset_not_le:
   by transfer'
    (force simp add: zcount_update_zmultiset minimal_antichain_def)
 
+lemma frontier_zmset_of_add_minus:
+  "frontier (zmset_of (A + B - C)) = frontier (zmset_of A + zmset_of B - zmset_of C)"
+  apply transfer
+  apply (auto simp add: minimal_antichain_def)
+  done
+
 end

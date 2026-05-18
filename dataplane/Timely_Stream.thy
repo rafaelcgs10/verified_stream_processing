@@ -413,7 +413,30 @@ lemma timely_input_stream_ldrop:
         by (smt (verit, ccfv_SIG) add.commute add_mset_add_single diff_diff_add_mset dual_order.order_iff_strict enat_eSuc_iff event.disc(8,9) event.distinct(1) event.sel(2) ldropn_Suc_LCons ldropn_eq_LNil linorder_not_less
             llength_LCons nat.inject single_subset_iff subset_mset.add_diff_assoc2 timely_input_stream_DropI timely_input_stream_def timely_monotone_LConsE)
       subgoal
-        by (metis Suc_ile_eq iless_Suc_eq timely_input_stream_MintI union_mset_add_mset_left)
+         by (metis Suc_ile_eq iless_Suc_eq timely_input_stream_MintI union_mset_add_mset_left)
+      done
+    done
+  done
+
+
+lemma timely_input_stream_Data_in_C_in:
+  "Data t d \<in> set (ltaken n lxs) \<Longrightarrow> timely_input_stream lxs C \<Longrightarrow> t \<in># C \<or> (\<exists>x. x \<in> set (ltaken n lxs) \<and> is_Mint x \<and> t = event.time x)"
+  apply (induct n arbitrary: lxs C)
+   apply simp_all
+  subgoal for n lxs C
+    apply (cases lxs)
+     apply simp
+    subgoal for e lxs'
+      apply simp
+      unfolding timely_input_stream_def
+      apply (clarsimp del: disjCI)
+      apply (erule timely_monotone.cases; simp)
+      subgoal
+        by (meson in_diffD timely_progress_DropI)
+      subgoal
+        by force
+      subgoal
+        by auto
       done
     done
   done

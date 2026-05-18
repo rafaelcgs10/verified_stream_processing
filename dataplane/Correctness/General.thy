@@ -614,6 +614,46 @@ lemma image_zmset_sum_image_zmset:
     done
   done
 
+(* FIXME: move me *)
+lemma timely_input_stream_drops_subseteq_C_mints:
+  "timely_input_stream lxs C \<Longrightarrow> event.time `# filter_mset is_Drop (mset (ltaken n lxs)) \<subseteq># C + event.time `# filter_mset is_Mint (mset (ltaken n lxs))"
+  apply (induct n arbitrary: lxs C)
+  subgoal
+    by simp
+  subgoal for n lxs' C
+    apply (cases lxs')
+    subgoal
+      by auto
+    subgoal for e lxs''
+      apply (cases e)
+      subgoal for t d
+        by auto
+      subgoal for t
+        apply simp
+        apply (drule meta_spec[of _ lxs''])
+        apply (drule meta_spec[of _ "remove1_mset t C"])
+        apply (drule meta_mp)
+        using timely_input_stream_DropI apply blast
+        apply (simp add: subseteq_mset_def)
+        apply (auto split: if_splits)
+        unfolding timely_input_stream_def
+        apply clarsimp
+        apply (erule timely_monotone.cases)
+           apply simp_all
+        apply (metis Suc_to_right in_countE not_less_eq_eq plus_nat.simps(2))
+        done
+      subgoal for t
+        unfolding timely_input_stream_def
+        apply clarsimp
+        apply (erule timely_monotone.cases)
+           apply simp_all
+        apply hypsubst_thin
+        apply force
+        done
+      done
+    done
+  done
+
 
 lemma zmset_map_filter_Trg_extract_prog:
   "zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog Enum.enum nt os))) = 
@@ -2068,6 +2108,153 @@ lemma steps_comp_op_R_Out[intro!]:
   apply hypsubst_thin
   apply (induct xs arbitrary: op2 op2'  rule: rev_induct)
   apply force+
+  done
+
+lemma in_lset_ltaken_ldropn:
+  "x \<in> lset lxs \<longleftrightarrow> x \<in> set (ltaken n lxs) \<or> x \<in> lset (ldropn n lxs)"
+  apply (induct n arbitrary: lxs)
+   apply simp
+  subgoal premises prems for n lxs
+    apply (cases lxs)
+     apply simp
+    apply simp
+    using prems apply blast
+    done
+  done
+
+
+(* FIXME: move me *)
+lemma to_zmset_list_diff[simp]:
+  "mset ys \<subseteq># mset xs \<Longrightarrow>
+   to_zmset (list_diff xs ys) = to_zmset xs - to_zmset ys"
+  apply (induct xs ys rule: list_diff.induct)
+  apply clarsimp+
+  apply (metis add_zmset_diff_bothsides insert_DiffM insert_subset_eq_iff mset_remove_last to_zmset_correct zmset_of_add_mset)
+  done
+lemma dataplane_tracker_inv_replace_ocaps:
+  "dataplane_tracker_inv os' cbufs sg \<Longrightarrow>
+   mset (ocaps (os nid) p) = mset C \<Longrightarrow>
+   os' = os(nid := (os nid)\<lparr> ocaps := (ocaps (os nid))(p := C) \<rparr>) \<Longrightarrow>
+   dataplane_tracker_inv os cbufs sg"
+  apply hypsubst_thin
+  unfolding dataplane_tracker_inv_def
+  apply clarsimp
+  subgoal premises prems for caps
+    apply (rule exI[of _ caps])
+    apply (intro conjI)
+    subgoal
+      using prems(1,2) apply -
+      unfolding Src_caps_inv_def
+      apply clarsimp
+      apply (metis Diff_eq_empty_iff_mset diff_left_imp_eq mset_list_diff mset_zero_iff_right subset_mset.dual_order.order_iff_strict to_zmset_list_diff)
+      done
+    subgoal
+      using prems(1,3) apply -
+      unfolding Trg_caps_inv_def 
+      apply safe
+      subgoal for nid p
+        apply (drule spec2[of _ nid p])
+        apply simp
+        subgoal premises aux
+          apply (rule arg_cong[where f=to_zmset])
+          apply (rule map_cong)
+          unfolding outputs_at_target_def BULK_BENQ_def
+           apply (auto simp: if_splits prod.splits)
+          done
+        done
+      done
+    subgoal
+      using prems(1,4) apply -
+      unfolding c_pts_inv_def  extract_prog_def extract_progress_def obtain_progress_def
+      apply (auto simp:if_distrib[of produ]  if_distrib[of inter] if_distrib[of consu] split: if_splits prod.splits)
+      
+end
+      apply (smt (verit, del_insts) map_eq_conv)
+      done
+    subgoal
+      using prems(1,5) apply -
+      unfolding front_inv_def 
+      apply (auto simp:if_distrib[of produ]  if_distrib[of inter] if_distrib[of consu] split: if_splits prod.splits)
+      done
+    subgoal
+      using prems(1,7) apply -
+      apply (subgoal_tac "outputs_at_target (summ sg) (map_entry nid (ocaps_update (\<lambda>_. (ocaps (os nid))(p := C))) os) = outputs_at_target (summ sg) os")
+       apply simp
+      subgoal premises
+        unfolding outputs_at_target_def BULK_BENQ_def
+        apply (auto del: disjCI simp add:split_beta if_distrib[of produ] if_distrib[of outpu]   if_distrib[of inter] if_distrib[of consu] split: if_splits prod.splits)
+        done
+      done
+    subgoal
+      using prems(1,8)
+      unfolding change_deltas_inv_def
+      by fastforce
+    subgoal
+      using prems(1,10) apply -
+      unfolding extract_prog_changes_above_impl_inv_def
+      apply safe
+      subgoal for nid' xs
+        apply (drule spec)+
+        apply (drule mp)
+         apply assumption
+        apply (drule mp)
+         apply assumption
+        apply (subgoal_tac "extract_prog xs (subgraph.nxt sg) (map_entry nid (ocaps_update (\<lambda>_. (ocaps (os nid))(p := C))) os) = extract_prog xs (subgraph.nxt sg) os")
+        subgoal
+          apply simp
+          apply (subgoal_tac "extract_progress nid' (subgraph.nxt sg) (snd (obtain_progress (if nid' = nid then os nid\<lparr>ocaps := (ocaps (os nid))(p := C)\<rparr> else os nid'))) = extract_progress nid' (subgraph.nxt sg) (snd (obtain_progress (os nid')))")
+          subgoal
+            by simp
+          subgoal premises aux
+            unfolding obtain_progress_def
+            by auto
+          done
+        subgoal premises aux
+          unfolding obtain_progress_def extract_prog_def extract_progress_def
+          apply (auto del: disjCI simp add:split_beta if_distrib[of produ] if_distrib[of outpu]   if_distrib[of inter] if_distrib[of consu] split: if_splits prod.splits)
+          apply (rule arg_cong[where f=concat])
+          apply (rule map_cong)
+           apply auto
+          done
+        done
+      done
+    subgoal
+      unfolding produ_consu_inter_supported_def
+      apply (intro allI impI conjI)
+      subgoal
+        using conjunct1[OF prems(11)[unfolded produ_consu_inter_supported_def]] apply -
+        apply (auto del: disjCI simp add:split_beta if_distrib[of produ] if_distrib[of outpu]   if_distrib[of inter] if_distrib[of consu] split: if_splits prod.splits)
+        done
+      subgoal for nid' p t m
+        apply (cases "nid' = nid")
+        subgoal
+          apply hypsubst_thin
+          using conjunct1[OF conjunct2[OF prems(11)[unfolded produ_consu_inter_supported_def]], simplified, unfolded if_distrib[of produ] if_distrib[of outpu]   if_distrib[of inter] if_distrib[of consu], simplified, rule_format, where nid=nid and p=p and t=t, simplified] apply -
+          apply (drule meta_mp)
+           apply blast
+          apply simp
+          apply (smt (verit, best) map_eq_conv split_cong)
+          done
+        subgoal
+          subgoal
+            using conjunct1[OF conjunct2[OF prems(11)[unfolded produ_consu_inter_supported_def]], simplified, unfolded if_distrib[of produ] if_distrib[of outpu]   if_distrib[of inter] if_distrib[of consu], simplified, rule_format, where nid=nid' and p=p and t=t, simplified] apply -
+            apply (drule meta_mp)
+             apply simp
+             apply blast
+            apply simp
+            apply (smt (verit, best) map_eq_conv split_cong)
+            done
+          done
+        done
+      subgoal for nid' p t m
+        using conjunct2[OF conjunct2[OF prems(11)[unfolded produ_consu_inter_supported_def]], simplified, unfolded if_distrib[of produ] if_distrib[of outpu]   if_distrib[of inter] if_distrib[of consu], simplified, rule_format, where nid=nid' and p=p and t=t, simplified] apply -
+        apply (drule meta_mp)
+         apply simp
+         apply blast
+        apply (auto del: disjCI simp add:split_beta if_distrib[of produ] if_distrib[of outpu]   if_distrib[of inter] if_distrib[of consu] split: if_splits prod.splits)
+        done
+      done
+    done
   done
 
 end

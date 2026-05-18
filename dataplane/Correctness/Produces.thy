@@ -17,14 +17,6 @@ no_notation shiftr  (infixl \<open>>>\<close> 55)
    (\<forall> p. to_zmset (drops p) \<subseteq>#\<^sub>z zmset (map snd (filter (\<lambda>x. p = fst x) produs))) \<Longrightarrow>
 *)
 
-(* FIXME: move me *)
-lemma to_zmset_list_diff[simp]:
-  "mset ys \<subseteq># mset xs \<Longrightarrow>
-   to_zmset (list_diff xs ys) = to_zmset xs - to_zmset ys"
-  apply (induct xs ys rule: list_diff.induct)
-  apply clarsimp+
-  apply (metis add_zmset_diff_bothsides insert_DiffM insert_subset_eq_iff mset_remove_last to_zmset_correct zmset_of_add_mset)
-  done
 
 lemma outputs_at_target_updates[simp]:
   "outputs_at_target su (os(nid := (os nid)\<lparr> inter := A, produ := B, ocaps := C, input := D, inter := E  \<rparr>)) = outputs_at_target su os"

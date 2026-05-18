@@ -286,4 +286,17 @@ lemma enum_not_Nil[simp]:
   apply simp
   done
 
+lemma not_01:
+  "P \<noteq> 0 \<Longrightarrow> P \<noteq> (1 :: 2) \<Longrightarrow> False"
+  apply (cases P; simp)
+  subgoal for z
+    apply (cases z)
+     apply simp_all
+    subgoal for n
+      apply (cases n)
+       apply auto
+      done
+    done
+  done
+
 end

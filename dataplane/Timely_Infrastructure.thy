@@ -2005,4 +2005,59 @@ lemma ifrontier_eq_all_le:
 
 
 
+lemma change_multiplicities_extract_progress_append:
+  "change_multiplicities su (extract_progress nid nt \<lparr>cons = C1 @ C2,  inte = I1 @ I2, prod = P1 @ P2 \<rparr>) c =
+   change_multiplicities su (extract_progress nid nt \<lparr>cons = C2,  inte = I2, prod = P2 \<rparr>) (change_multiplicities su (extract_progress nid nt \<lparr>cons = C1,  inte = I1, prod = P1 \<rparr>) c)"
+  unfolding extract_progress_def
+  apply simp
+  apply (smt (verit, del_insts) change_multiplicities_append change_multiplicities_comm)
+  done
+
+lemma c_pts_change_multiplicities_append:
+  "c_pts (change_multiplicities su (xs @ ys) c) l = (c_pts (change_multiplicities su xs c) l) + (c_pts (change_multiplicities su ys c) l) - c_pts c l"
+  by (simp add: c_pts_change_multiplicities)
+
+
+lemma path_weight_end_of_road:
+  assumes G: "Graph.graph su"
+  shows  "s \<in>\<^sub>A graph.path_weight su loc1 loc2 \<Longrightarrow> loc2 \<noteq> loc1 \<Longrightarrow>
+   (\<forall> loc2. loc2 \<noteq> loc1 \<longrightarrow> su loc1 loc2 = {}\<^sub>A) \<Longrightarrow>
+   False"
+  apply (drule graph.path_weight_conv_path[OF G])
+  apply clarsimp
+  subgoal premises prems for xs
+    using prems(3,2,1) apply -
+    apply (induct xs arbitrary: loc2 rule: rev_induct)
+    subgoal
+      apply (erule graph.path.cases[OF G])
+       apply (auto simp add: )
+      done
+    subgoal
+      apply (erule graph.path.cases[OF G])
+       apply (clarsimp simp add: split: if_splits)+
+      apply force
+      done
+    done
+  done
+
+lemma set_extract_progressD:
+  "(l, t, m) \<in> set (extract_progress nid ed st') \<Longrightarrow>
+   st' = st\<lparr> cons := consu os @ xs, inte := inter os @ ys, prod := produ os @ zs \<rparr> \<Longrightarrow>
+   (l, t, m) \<in> set (extract_progress nid ed (snd (obtain_progress os))) \<or>
+   (\<exists>m' p. l = Loc nid (Trg p) \<and> m = - m' \<and> (p, t, m') \<in> set xs) \<or>
+   (\<exists>m' p s. l = Loc nid (Src p) \<and> (p, t, m) \<in> set ys) \<or>
+   (\<exists> p' p nid'. l = Loc nid' (Trg p') \<and> ed (nid, p) = Some (nid', p') \<and> (p, t, m) \<in> set zs)"
+  unfolding extract_progress_def obtain_progress_def
+  apply (auto  simp add: split_beta image_iff Misc.set_map_filter split: option.splits)
+  subgoal
+    by force
+  subgoal
+    by force
+  subgoal
+    by (metis fst_conv option.distinct(1) option.simps(1) snd_conv)
+  subgoal
+    by (metis fst_conv option.distinct(1) option.simps(1) snd_conv)
+  done
+
+
 end
