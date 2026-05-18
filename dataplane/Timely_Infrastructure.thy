@@ -12,83 +12,17 @@ imports
   Locations
   Operators_Utils
   DataplaneUtils
+  CsetUtils
+  ZmsetUtils
+  ListUtils
   Containers.Collection_Order
   AntichainOrder
   MyProduct_Instances
 begin 
 
-context includes cset.lifting begin
-lift_definition cthe_elem :: "'m cset \<Rightarrow> 'm" is Set.the_elem .
-lift_definition csome_elem :: "'m cset \<Rightarrow> 'm" is some_elem .
-lift_definition ccard :: "'m cset \<Rightarrow> nat" is card .
-lift_definition cinfinite :: "'m cset \<Rightarrow> bool" is Finite_Set.infinite.
-end
-
-
-lemma ccard_eq_0_iff[simp]:
-  "(ccard A = 0) = (A = {||} \<or> cinfinite A)"
-  unfolding ccard_def cinfinite_def
-  by fastforce
-
-
-lemma cset_of_llist_llist_of_append[simp]:
-  "cset_of_llist (llist_of (xs @ ys)) = cUn (cset_of_llist (llist_of xs)) (cset_of_llist (llist_of ys))"
-  unfolding cset_of_llist_def
-  apply (clarsimp simp flip: cin.rep_eq)
-  apply (subst sup_cset.abs_eq)
-    apply (simp_all add: countable_finite eq_onp_same_args)
-  done
-
-lemma in_cset_of_llist_llist_of[simp]:
-  "x |\<in>| cset_of_llist (llist_of xs) \<longleftrightarrow> x \<in> set xs"
-  using cin_code by force
-
-lemma csubset_eq_cset_of_llist:
-  "csubset_eq (cset_of_llist lxs) S \<longleftrightarrow> (\<forall> x \<in> lset lxs. x |\<in>| S)"
-  using cin_code by fastforce
-
 
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
-
-(* FIXME: move me *)
-fun rmdups where
-  "rmdups S [] = []"
-| "rmdups S (x # xs) = (if x \<in> S then rmdups S xs else x # (rmdups (insert x S) xs))"
-
-lemma set_rmdups[simp]:
-  "set (rmdups S xs) = set xs - S"
-  by (induct xs arbitrary: S) auto
-
-lemma rmdups_rmdups[simp]:
-  "rmdups S1 (rmdups S2 xs) = rmdups (S1 \<union> S2) xs"
-  by (induct xs arbitrary: S1 S2) (auto simp add: insert_absorb)
-
-lemma rmdups_append[simp]:
-  "rmdups S (xs @ ys) = rmdups S xs @ rmdups (S \<union> set xs) ys"
-  by (induct xs arbitrary: S ys) (auto simp add: insert_absorb)
-
-lemma rmdups_cong:
-  "A \<inter> set xs = B \<inter> set xs \<Longrightarrow>
-   rmdups A xs = rmdups B xs"
-  apply (induct xs arbitrary: A B)
-   apply simp
-  apply (smt (verit, best) Diff_Diff_Int Diff_iff Int_insert_left_if1 insert_absorb inter_eq_subsetI list.inject list.set(2) list.set_intros(1) rmdups.simps(2) set_subset_Cons)
-  done
-
-lemma rmdups_NilI:
-  "(set xs \<subseteq> A \<and> xs \<noteq> []) \<or> xs = [] \<Longrightarrow>
-   rmdups A xs = []"
-  apply (induct xs arbitrary: A)
-   apply simp_all
-  done
-
-lemma rmdups_insert_NilI:
-  "(set xs = {a} \<and> xs \<noteq> []) \<or> xs = [] \<Longrightarrow>
-   rmdups (insert a A) xs = []"
-  apply (induct xs arbitrary: A)
-   apply auto
-  done
 
 definition "DEBUG = True"
 
@@ -921,72 +855,28 @@ definition extract_progress where
 
 
 
-definition "cset_from_list = cset_of_llist o llist_of"
-
-lemma cset_from_list_Nil[simp]:
-  "cset_from_list [] = {||}"
-  unfolding cset_of_llist_def cset_from_list_def
-  by (clarsimp simp flip: cin.rep_eq bot_cset_def)
-lemma cset_from_list_Cons[simp]:
-  "cset_from_list (x # xs) = cinsert x (cset_from_list xs)"
-  unfolding cset_from_list_def
-  apply (clarsimp simp flip: cin.rep_eq)
-  apply (metis cinsert_code)
-  done
-lemma cset_from_list_append[simp]:
-  "cset_from_list (xs @ ys) = cUn (cset_from_list xs) (cset_from_list ys)"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma cset_from_list_map[simp]:
-  "cset_from_list (map f xs) = (f |`| (cset_from_list xs))"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma cset_from_list_concat[simp]:
-  "cset_from_list (concat xs) = cUnion (cset_from_list |`| (cset_from_list xs))"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  apply (meson in_cset_of_llist_llist_of rev_cBexI)
-  done
-lemma cset_from_list_rmdups[simp]:
-  "cset_from_list (rmdups {} xs) = cset_from_list xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma cset_from_list_filter[simp]:
-  "cset_from_list (filter p xs) = cfilter p (cset_from_list xs)"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma rcset_cset_from_list[simp]:
-  "rcset (cset_from_list xs) = set xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma in_cset_from_list[simp]:
-  "x |\<in>| (cset_from_list xs) \<longleftrightarrow> x \<in> set xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done
-lemma in_cimage_cset_from_list[simp]:
-  "x |\<in>| (f |`| (cset_from_list xs)) \<longleftrightarrow> x \<in> f ` set xs"
-  unfolding cset_from_list_def
-  apply (auto simp flip: cin.rep_eq)
-  done 
-
-lemma cset_of_llist_lshift[simp]:
-  "cset_of_llist (xs @@- lxs) = cUn (cset_of_llist lxs) (cset_from_list xs)"
-  apply (induct xs arbitrary: lxs)
-  apply simp
-  subgoal
-    apply clarsimp
-    apply (metis cinsert_code)
-    done
-  done
-
 (* Inspired by timely/src/dataflow/operators/capability.rs:62 *)
 datatype ('p, 't) capability = Cap (time: "'t :: plus") (out: 'p)
+
+lemma concat_map_time_filter_out[simp]:
+  "distinct ps \<Longrightarrow> p \<in> set ps \<Longrightarrow> concat (map (\<lambda>x. map time (filter (\<lambda>x. out x = p) (map (\<lambda>t'. Cap (t -+- t') x) (xs x)))) ps) = map ((-+-) t) (xs p)"
+  apply (induct ps)
+   apply simp
+  subgoal premises prems for p' ps'
+    apply (cases "p = p'")
+    subgoal
+      apply hypsubst_thin
+      apply (clarsimp simp add: comp_def filter_empty_conv)
+      using prems(2) apply -
+      subgoal
+        by (meson distinct.simps(2))
+      done
+    subgoal
+      using prems apply -
+      apply auto
+      done
+    done
+  done
 
 definition "has_progress st = (cons st \<noteq> [] \<or> inte st \<noteq> [] \<or> prod st \<noteq> [])"
 
@@ -1307,6 +1197,17 @@ proof -
   ultimately show ?thesis by (metis change_multiplicitie_rev)
 qed
 
+lemma c_pts_change_multiplicities:
+  "c_pts (change_multiplicities su xs c) = (\<lambda> l. c_pts c l + zmset (map snd (filter (\<lambda> (l', t, d). l = l') xs)))"
+  apply (induct xs arbitrary: c)
+   apply simp
+  subgoal for x xs c
+    apply (rule ext)+
+    apply (cases x)
+    apply (auto split: if_splits prod.splits simp add: change_multiplicities_simp_alt update_zmultiset_plus_comm)
+    done
+  done
+
 lemma change_multiplicities_same_pointstamps_aux:
   "(\<forall> x \<in> set xs. \<forall> y \<in> set xs. fst x = fst y \<and> (fst o snd) x = (fst o snd) y) \<Longrightarrow>
    change_multiplicities su xs c = fold (\<lambda> m c. take_step su (CM ((fst o hd) xs) ((fst o snd o hd) xs) m) c) (map (snd o snd) xs) c"
@@ -1325,7 +1226,7 @@ lemma change_multiplicities_same_pointstamps:
   "(\<forall> x \<in> set xs. \<forall> y \<in> set xs. fst x = l \<and> (fst o snd) x = t) \<Longrightarrow>
    m = sum_list (map (snd o snd) xs) \<Longrightarrow>
    change_multiplicities su xs c = take_step su (CM l t m) c"
-  apply (induct xs arbitrary: c m)
+(*   apply (induct xs arbitrary: c m)
    apply simp
   subgoal premises prems for x xs c m
     using prems(2-) apply -
@@ -1343,7 +1244,8 @@ lemma change_multiplicities_same_pointstamps:
         by blast 
       done
     done
-  done
+  done *)
+  oops
 
 record ('p, 'd, 't) operator_state =
   intsum :: "'p \<Rightarrow> 'p \<Rightarrow> 't list"
@@ -1451,38 +1353,18 @@ abbreviation "send_progress op st \<equiv> Write op None (Inl (Inl st))"
 
 definition "obtain_progress os = (os\<lparr> consu := [], inter := [], produ := [] \<rparr>, \<lparr> cons = consu os, inte = inter os, prod = produ os\<rparr>)"
 
-fun remove_last where
-  "remove_last x [] = []"
-| "remove_last x xs = (if last xs = x then butlast xs else remove_last x (butlast xs) @ [last xs])"
-
-lemma mset_remove_last[simp]:
-  \<open>mset (remove_last x xs) = mset xs - {#x#}\<close>
-proof (induction x xs rule: remove_last.induct)
-  case 1
-  thus ?case
-    by simp
-next
-  case 2
-  thus ?case
-    using add_diff_cancel_right' append_butlast_last_id diff_union_single_conv2 list.simps(3) mset.simps(1,2)
-      mset_append mset_right_cancel_elem remove_1_mset_id_iff_notin remove_last.elims by (smt (verit))
-qed
-
-lemma set_remove_lastD:
-  \<open>y \<in> set (remove_last x xs) \<Longrightarrow> y \<in> set xs\<close>
-  using in_diffD mset_remove_last set_mset_mset by metis
-
-fun list_diff where
-  "list_diff ys [] = ys"
-| "list_diff ys (x # xs) = list_diff (remove_last x ys) xs"
-
-lemma mset_list_diff[simp]:
-  \<open>mset (list_diff ys xs) = mset ys - mset xs\<close>
-  by (induction ys xs rule: list_diff.induct) simp_all
-
-lemma list_diff_Nil[simp]:
-  \<open>list_diff xs xs = []\<close>
-  using mset_list_diff Multiset.diff_cancel mset_zero_iff by metis
+lemma outpu_obtain_progress[simp]:
+  "outpu (fst (obtain_progress os)) = outpu os"
+  unfolding obtain_progress_def by simp
+lemma inter_obtain_progress[simp]:
+  "inter (fst (obtain_progress os)) = []"
+  unfolding obtain_progress_def by simp
+lemma produ_obtain_progress[simp]:
+  "produ (fst (obtain_progress os)) = []"
+  unfolding obtain_progress_def by simp
+lemma consu_obtain_progress[simp]:
+  "consu (fst (obtain_progress os)) = []"
+  unfolding obtain_progress_def by simp
 
 definition "drop_cap os cap = os\<lparr> inter := inter os @ [(out cap, time cap, -1)], ocaps := (ocaps os) ((out cap) := remove_last (time cap) (ocaps os (out cap))) \<rparr>"
 
@@ -1498,6 +1380,16 @@ lemma outpu_consumes[simp]:
   "outpu (consumes os p t d) p' = outpu os p'"
   unfolding consumes_def BENQ_def add_caps_def
   by (auto simp add: operator_state.defs)
+
+lemma consu_add_caps[simp]:
+  "consu (add_caps os caps) = consu os"
+  unfolding add_caps_def by auto
+lemma inter_add_caps[simp]:
+  "inter (add_caps os caps) = inter os @ map (\<lambda>cap. (out cap, time cap, 1)) caps"
+  unfolding add_caps_def by auto
+lemma produ_add_caps[simp]:
+  "produ (add_caps os caps) = produ os"
+  unfolding add_caps_def by auto
 lemma outpu_drop_caps[simp]:
   "outpu (drop_caps os caps) = outpu os"
   unfolding drop_caps_def
@@ -1739,314 +1631,8 @@ definition notifier_op where
   "notifier_op ips ops os logic = (builder_op True ips ops os
    (\<lambda> os. logic os (\<lambda> p. filter (\<lambda> t. \<not> frontier_less_equal (front os p) t) (ocaps os p))))"
 
-fun zmset where
-  "zmset [] = {#}\<^sub>z"
-| "zmset ((x, d) # xs) = update_zmultiset (zmset xs) x d"
-
-lemma update_zmultiset_plus[simp]:
-  "update_zmultiset (A + B) x n = update_zmultiset A x n + B"
-  apply transfer
-  apply (auto simp: equiv_zmset_def)
-  subgoal for A B A' B'
-    apply (auto simp add: multiset_eq_iff split: if_splits)
-    done
-  done
-
-lemma zmset_append[simp]:
-  "zmset (xs @ ys) = zmset xs + zmset ys"
-  apply (induct xs arbitrary: ys)
-   apply auto
-  done
-
-lemma minus_zmset:
-  "- zmset ys = zmset (map (\<lambda>(x, m). (x, - m)) ys)"
-  apply (induct ys rule: rev_induct)
-   apply clarsimp+
-  apply (smt (verit, del_insts) Executable.update_zmultiset_plus Timely_Infrastructure.update_zmultiset_plus add.commute add.inverse_distrib_swap add_cancel_left_left minus_unique)
-  done
-
-lemma zmset_minus:
-  "zmset xs - zmset ys = zmset (xs @ map (\<lambda> (x, m). (x, -m)) ys)"
-  apply (induct xs arbitrary: ys)
-   apply (clarsimp simp add: minus_zmset)+
-  apply (metis add_uminus_conv_diff minus_zmset)
-  done
-
-lemma zmset_concat:
-  "zmset (concat xs) = sum_list (map zmset xs)"
-  by (induct xs) auto
-
-lemma update_zmultiset_plus_comm:
-  "update_zmultiset A x n + B = A + update_zmultiset B x n"
-  apply transfer
-  apply (auto simp: equiv_zmset_def)
-  subgoal for A B A' B'
-    apply (auto simp add: multiset_eq_iff split: if_splits)
-    done
-  done
-
-lemma zmset_map_neg[simp]:
-  "zmset (map (\<lambda> (t, m). (t, - m)) xs) = - zmset xs"
-  apply (induct xs)
-   apply clarsimp+
-  apply (metis Executable.update_zmultiset_plus add_eq_0_iff update_zmultiset_plus_comm update_zmultiset_simps(1))
-  done
-
-lemma zmset_map_alt[simp]:
-  "zmset (map (\<lambda>x. (fst (snd x), snd (snd x))) xs) = zmset (map snd xs)"
-  apply (induct xs)
-   apply clarsimp+
-  done
-
-lemma zmset_neg_alt[simp]:
-  "zmset (map (\<lambda>x. (fst (snd x), - snd (snd x))) xs) = - zmset (map snd xs)"
-  apply (induct xs)
-   apply clarsimp+
-  apply (metis Executable.update_zmultiset_plus add_eq_0_iff update_zmultiset_plus_comm update_zmultiset_simps(1))
-  done
-
-lemma zcount_zmset_ge_0I:
-  "(\<forall> (x, m) \<in> set xs. 0 \<le> m) \<Longrightarrow>
-   zcount (zmset xs) t \<ge> 0"
-  by (induct xs) 
-    (auto simp add: zcount_update_zmultiset)
-lemma zcount_zmset_le_0I:
-  "(\<forall> (x, m) \<in> set xs. x = t \<longrightarrow> 0 \<ge> m) \<Longrightarrow>
-   zcount (zmset xs) t \<le> 0"
-  by (induct xs) 
-    (auto simp add: zcount_update_zmultiset)
-lemma zcount_zmset_eq_0I:
-  "(\<forall> (t', m) \<in> set xs. t' \<noteq> t) \<Longrightarrow>
-   zcount (zmset xs) t = 0"
-  by (induct xs) 
-    (auto simp add: zcount_update_zmultiset)
-
-lemma gt_0_zcount_msetD:
-  "0 < zcount (zmset (map snd (filter ((=) p \<circ> fst) xs))) t \<Longrightarrow>
-   \<exists> m. (p, t, m) \<in> set xs \<and> 0 < m"
-  apply (induct xs)
-   apply (auto simp add: zcount_update_zmultiset  split: if_splits)
-  subgoal for x xs'
-    apply (cases "0 < zcount (zmset (map snd (filter ((=) p \<circ> fst) xs'))) t")
-     apply auto
-    done
-  done
-
-lemma zcount_zmset_gt_0I:
-  "(\<forall> (x, m) \<in> set xs. 0 \<le> m) \<Longrightarrow>
-   (t, m) \<in> set xs \<Longrightarrow>
-   0 < m \<Longrightarrow>
-   zcount (zmset xs) t > 0"
-  apply (induct xs) 
-   apply (clarsimp simp add: zcount_update_zmultiset split: prod.splits)+
-  apply (smt (verit, best) case_prodI2 zcount_zmset_ge_0I)
-  done
-
-lemma zmset_replicate[simp]:
-  "zmset (replicate n (x, m)) = update_zmultiset {#}\<^sub>z x (n * m)"
-  by (induct n)
-    (auto simp add: Groups.add_ac(2) distrib_right)
-
-lemma sum_sum_product:
-  "(\<Sum>x\<in>A. \<Sum>y\<in>B. f x y) = (\<Sum>x\<in>A \<times> B. f (fst x) (snd x))"
-  by (metis (mono_tags, lifting) case_prod_unfold sum.cartesian_product sum.cong)
-
-lemma filter_if_const[simp]:
-  "filter (\<lambda>x. p = fst x) (if P p then xs else []) =
-   filter (\<lambda>x. p = fst x \<and> P p) xs"
-  by auto
-
-lemma sum_if:
-  "finite S \<Longrightarrow>
-   Collect f \<subseteq> S \<Longrightarrow>
-   sum Z (Collect f) = sum (\<lambda> x. if f x then Z x else 0) S"
-  apply (subst Groups_Big.comm_monoid_add_class.sum.inter_filter[symmetric])
-   apply assumption
-  apply (metis basic_trans_rules(31) mem_Collect_eq)
-  done
-
-lemma sum_list_zmset:
-  "(\<Sum>x\<leftarrow>xs. zmset (f x)) = (zmset (concat (map f xs)))"
-  apply (induct xs)
-   apply auto
-  done
-
-lemma c_pts_change_multiplicities:
-  "c_pts (change_multiplicities su xs c) = (\<lambda> l. c_pts c l + zmset (map snd (filter (\<lambda> (l', t, d). l = l') xs)))"
-  apply (induct xs arbitrary: c)
-   apply simp
-  subgoal for x xs c
-    apply (rule ext)+
-    apply (cases x)
-    apply (auto split: if_splits prod.splits simp add: change_multiplicities_simp_alt update_zmultiset_plus_comm) 
-    done
-  done
-
-lemma zmset_emptyI:
-  "xs = [] \<Longrightarrow> zmset xs = {#}\<^sub>z"
-  by auto
 
 
-lemma concat_map_time_filter_out[simp]:
-  "distinct ps \<Longrightarrow> p \<in> set ps \<Longrightarrow> concat (map (\<lambda>x. map time (filter (\<lambda>x. out x = p) (map (\<lambda>t'. Cap (t -+- t') x) (xs x)))) ps) = map ((-+-) t) (xs p)"
-  apply (induct ps)
-   apply simp
-  subgoal premises prems for p' ps'
-    apply (cases "p = p'")
-    subgoal
-      apply hypsubst_thin
-      apply (clarsimp simp add: comp_def filter_empty_conv)
-      using prems(2) apply -
-      subgoal
-        by (meson distinct.simps(2))
-      done
-    subgoal
-      using prems apply -
-      apply auto
-      done
-    done
-  done
-
-lemma zmset_map_filter_aux[simp]:
-  "finite S \<Longrightarrow> 
-   nid \<in> S \<Longrightarrow>
-  (\<Sum>x\<in>S. zmset (map snd (filter (\<lambda>xa. nid = x) (filter (\<lambda>xa. p = fst xa) (xs x))))) = zmset (map snd (filter (\<lambda>x. p = fst x) (xs nid)))"
-  apply (induct S rule: finite_induct)
-   apply auto
-  subgoal
-    apply (rule comm_monoid_add_class.sum.neutral)
-    apply clarsimp
-    apply (rule zmset_emptyI)
-    apply (auto simp add: filter_empty_conv)
-    done
-  subgoal
-    by (metis (mono_tags, lifting) arith_extra_simps(12) diff_zero filter_False list.map(1) zmset.simps(1))
-  done
-
-lemma sum_zmset_neg[simp]:
-  "(\<Sum>x\<in>S. - zmset (xs x)) = - (\<Sum>x\<in>S. zmset (xs x))"
-  by (metis (mono_tags, lifting) add_eq_0_iff sum.distrib sum.not_neutral_contains_not_neutral)
-
-
-lemma zmset_map_filter[simp]:
-  "finite S \<Longrightarrow>
-   nid \<in> S \<Longrightarrow>
-   (\<Sum>x\<in>S. zmset (map snd ((filter (\<lambda>xa. nid = x \<and> p = fst xa) (xs x))))) = 
-   zmset (map snd (filter (\<lambda>x. p = fst x) (xs nid)))"
-  apply (subst conj.commute)
-  apply (clarsimp simp add: simp flip: filter_filter)+
-  done
-
-lemma zmset_map_one[simp]:
-  "zmset (map (\<lambda> x. (f x, 1)) xs) = to_zmset (map f xs)"
-  apply (induction xs) 
-   apply clarsimp+
-  using update_zmultiset_one(2) apply fastforce
-  done
-lemma zmset_map_minus_one[simp]:
-  "zmset (map (\<lambda> x. (f x, -1)) xs) = - to_zmset (map f xs)"
-  apply (induction xs) 
-   apply clarsimp+
-  apply (metis add_zmset_add_single neg_neg_multiset update_zmultiset_one(1))
-  done
-
-
-lemma sum_list_zmset_emptyI[intro]:
-  "(\<forall> nid \<in> set nids. xs nid = []) \<Longrightarrow>
-   (\<Sum>x\<leftarrow>nids. zmset (map snd (xs x))) = {#}\<^sub>z"
-  apply (induct nids)
-   apply auto
-  done
-
-lemma sum_list_filter[simp]:
-  "distinct nids \<Longrightarrow>
-   nid \<in> set nids \<Longrightarrow>
-   g [] = {#}\<^sub>z \<Longrightarrow>
-   (\<Sum>x\<leftarrow>nids. g (map f (filter (\<lambda>xa. nid = x) (xs x)))) = g (map f (xs nid))"
-  apply (induct nids)
-   apply clarsimp+
-  apply (elim disjE)
-  subgoal for nids' 
-    by (smt (verit, best) List.empty_filter_conv filter_id_conv group_cancel.rule0 list.simps(8) sum.not_neutral_contains_not_neutral sum_list_distinct_conv_sum_set)
-  subgoal for nid' nids'
-    by (metis (mono_tags, lifting) add_cancel_right_left filter_empty_conv list.map(1))
-  done
-
-
-lemma consu_consumes[simp]:
-  "consu (consumes os p t d) = consu os @ [(p, t, 1)]"
-  unfolding consumes_def BENQ_def add_caps_def
-  apply auto
-  done
-lemma produ_consumes[simp]:
-  "produ (consumes os p t d) = produ os"
-  unfolding consumes_def BENQ_def add_caps_def
-  by auto
-lemma inter_consumes[simp]:
-  "inter (consumes os p t d) = inter os @ concat (map (\<lambda> p'. map (\<lambda> t'. (p', t + t', 1)) (intsum os p p')) enum_class.enum)"
-  unfolding consumes_def BENQ_def add_caps_def
-  by (auto simp add: map_concat comp_def)
-
-lemma front_consumes[simp]:
-  "front (consumes os p t d) p' = front os p'"
-  unfolding consumes_def add_caps_def
-  apply auto
-  done
-lemma initia_consumes[simp]:
-  "initia (consumes os p t d) = initia os"
-  unfolding consumes_def add_caps_def
-  apply auto
-  done
-lemma more_consumes[simp]:
-  "operator_state.more (consumes os p t d) = operator_state.more os"
-  unfolding consumes_def add_caps_def
-  apply auto
-  done
-lemma front_consumes_fold[simp]:
-  "front (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = front os"
-  by (induct xs arbitrary: os) auto
-
-lemma initia_consumes_fold[simp]:
-  "initia (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = initia os"
-  by (induct xs arbitrary: os)
-   (auto split: prod.splits)+
-lemma more_consumes_fold[simp]:
-  "operator_state.more (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = operator_state.more os"
-  by (induct xs arbitrary: os)
-   (auto split: prod.splits)+
-
-lemma consu_add_caps[simp]:
-  "consu (add_caps os caps) = consu os"
-  unfolding add_caps_def
-  apply auto
-  done
-lemma inter_add_caps[simp]:
-  "inter (add_caps os caps) = inter os @ map (\<lambda>cap. (out cap, time cap, 1)) caps"
-  unfolding add_caps_def
-  apply auto
-  done
-lemma produ_add_caps[simp]:
-  "produ (add_caps os caps) = produ os"
-  unfolding add_caps_def
-  apply auto
-  done
-lemma outpu_obtain_progress[simp]:
-  "outpu (fst (obtain_progress os)) = outpu os"
-  unfolding obtain_progress_def by simp
-lemma inter_obtain_progress[simp]:
-  "inter (fst (obtain_progress os)) = []"
-  unfolding obtain_progress_def by simp
-lemma produ_obtain_progress[simp]:
-  "produ (fst (obtain_progress os)) = []"
-  unfolding obtain_progress_def by simp
-lemma consu_obtain_progress[simp]:
-  "consu (fst (obtain_progress os)) = []"
-  unfolding obtain_progress_def by simp
-lemma set_zmset_zmset_of_mset_set[simp]:
-  "finite S \<Longrightarrow>
-   set_zmset (zmset_of (mset_set S)) = S"
-  unfolding set_zmset_def
-  by clarsimp
 lemma extract_progress_obtain_progress_obtain_progress[simp]:
   "extract_progress nid su (snd (obtain_progress (fst (obtain_progress (os nid))))) = []"
   unfolding obtain_progress_def extract_progress_def
@@ -2103,6 +1689,54 @@ lemma ocaps_consumes_fold[simp]:
   by (induct xs arbitrary: os)
    auto
 
+
+lemma consu_consumes[simp]:
+  "consu (consumes os p t d) = consu os @ [(p, t, 1)]"
+  unfolding consumes_def BENQ_def add_caps_def
+  apply auto
+  done
+
+lemma produ_consumes[simp]:
+  "produ (consumes os p t d) = produ os"
+  unfolding consumes_def BENQ_def add_caps_def
+  by auto
+
+lemma inter_consumes[simp]:
+  "inter (consumes os p t d) = inter os @ concat (map (\<lambda> p'. map (\<lambda> t'. (p', t -+- t', 1)) (intsum os p p')) enum_class.enum)"
+  unfolding consumes_def BENQ_def add_caps_def
+  by (auto simp add: map_concat comp_def)
+
+lemma front_consumes[simp]:
+  "front (consumes os p t d) p' = front os p'"
+  unfolding consumes_def add_caps_def
+  apply auto
+  done
+
+lemma initia_consumes[simp]:
+  "initia (consumes os p t d) = initia os"
+  unfolding consumes_def add_caps_def
+  apply auto
+  done
+
+lemma more_consumes[simp]:
+  "operator_state.more (consumes os p t d) = operator_state.more os"
+  unfolding consumes_def add_caps_def
+  apply auto
+  done
+
+lemma front_consumes_fold[simp]:
+  "front (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = front os"
+  by (induct xs arbitrary: os) auto
+
+lemma initia_consumes_fold[simp]:
+  "initia (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = initia os"
+  by (induct xs arbitrary: os)
+   (auto split: prod.splits)+
+
+lemma more_consumes_fold[simp]:
+  "operator_state.more (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = operator_state.more os"
+  by (induct xs arbitrary: os)
+   (auto split: prod.splits)+
 
 lemma inter_consumes_fold:
   "inter (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = inter os @ concat (map (\<lambda> (d, t). concat (map (\<lambda> p'. map (\<lambda> t'. (p',  t -+- t', 1)) (intsum os p p')) enum_class.enum)) xs)"
@@ -2369,194 +2003,6 @@ lemma ifrontier_eq_all_le:
   apply (metis dataflow_topology_from_tree.elems_eq_sum_eq member_antichain.rep_eq)
   done
 
-
-
-
-
-lemma remove_last_not_Nil:
-  "x \<notin> set xs \<Longrightarrow> remove_last x xs = xs"
-  apply (induct xs rule: rev_induct)
-   apply clarsimp
-  subgoal for x' xs'
-    apply simp
-    apply (cases xs'; clarsimp)
-    done
-  done
-
-lemma remove_last_in_set_Cons:
-  "x \<in> set xs \<Longrightarrow> remove_last x (x' # xs) = x' # remove_last x xs"
-  apply (induct xs rule: rev_induct)
-   apply simp
-  subgoal for x xs'
-    apply (cases xs')
-    subgoal
-      by simp
-    subgoal
-      by fastforce
-    done
-  done
-
-lemma remove_last_not_in_set_Cons:
-  "x \<notin> set xs \<Longrightarrow> remove_last x (x # xs) = xs"
-  apply (induct xs rule: rev_induct)
-   apply simp
-  subgoal for x xs'
-    apply (cases xs')
-    subgoal
-      by simp
-    subgoal
-      by fastforce
-    done
-  done
-
-lemma remove_last_append_if:
-  "remove_last x (xs @ ys) = (if x \<in> set ys then xs @ remove_last x ys else remove_last x xs @ ys)"
-  apply (induct xs arbitrary: ys rule: rev_induct)
-   apply (clarsimp simp add: remove_last_not_Nil split: if_splits)
-  subgoal premises prems for x' xs ys
-    apply auto
-    subgoal
-      apply (subst prems(1))
-      apply (simp del: remove_last.simps)
-      apply (subst remove_last_in_set_Cons)
-       apply auto
-      done
-    subgoal
-      apply (subst prems(1))
-      apply (clarsimp simp del: remove_last.simps)
-      apply (intro conjI impI)
-      subgoal
-      apply (subst remove_last_not_in_set_Cons)
-        using prems(1) apply auto
-        done
-      subgoal
-        apply (subst prems(1))
-        apply auto
-        done
-      done
-    done
-  done
-
-
-lemma remove_last_append_singleton[simp]:
-  "remove_last x (xs @ [x]) = xs"
-  apply (induct x "xs @ [x]" rule: remove_last.induct)
-   apply simp_all
-  apply (metis append.right_neutral distinct.simps(2) distinct_singleton list.set_intros(1) remove_last_append_if remove_last_not_in_set_Cons)
-  done
-
-lemma remove_last_append_diff_singleton:
-  "x \<noteq> y \<Longrightarrow> remove_last y (xs @ [x]) = remove_last y xs @ [x]"
-  apply (induct y "xs @ [x]" rule: remove_last.induct)
-   apply simp_all
-  apply (subst remove_last_append_if)
-  apply simp
-  done
-
-lemma remove_last_Cons_if:
-  "remove_last a (a # xs) = (if a \<in> set xs then a # remove_last a xs else xs)"
-  apply (induct xs rule: rev_induct)
-  subgoal
-   apply (simp del: remove_last.simps)
-    apply (subst remove_last.simps)
-   apply (simp del: remove_last.simps)
-    done
-  subgoal for x xs'
-   apply (auto simp del: remove_last.simps split: if_splits)
-    subgoal
-    apply (subst remove_last.simps)
-   apply (clarsimp simp del: remove_last.simps split: if_splits)
-      done
-    subgoal
-    apply (subst remove_last.simps)
-   apply (clarsimp simp del: remove_last.simps simp add: remove_last_append_diff_singleton split: if_splits)
-      done
-    subgoal
-    apply (subst remove_last.simps)
-   apply (clarsimp simp del: remove_last.simps split: if_splits)
-      done
-    subgoal
-    apply (subst remove_last.simps)
-   apply (clarsimp simp del: remove_last.simps simp add: remove_last_append_diff_singleton split: if_splits)
-      done
-    done
-  done
-
-lemma remove_last_append_in_set:
-  "a \<in> set ys \<Longrightarrow>
-   remove_last a (xs @ ys) = xs @ remove_last a ys"
-  by (simp add: remove_last_append_if)
-
-lemma remove_last_append_not_in_set:
-  "a \<notin> set ys \<Longrightarrow>
-   remove_last a (xs @ ys) = remove_last a xs @  ys"
-  by (simp add: remove_last_append_if)
-
-lemma list_diff_same_sufix:
-  "mset ys = mset zs \<Longrightarrow>
-   list_diff (xs @ zs) ys = xs"
-  apply (induct "xs @ zs" ys arbitrary: xs zs rule: list_diff.induct)
-  apply auto
-  subgoal premises prems for x xs xs' zs
-    using prems(2) apply -
-    apply (drule sym)
-    using prems(1) 
-    apply (metis mset_remove_last remove1_mset_add_mset_If remove_last_append_if set_mset_mset union_single_eq_member)
-    done
-  done
-
-lemma list_diff_append[simp]:
-  "list_diff zs (xs @ ys) = list_diff (list_diff zs xs) ys"
-  apply (induct xs arbitrary: zs ys)
-   apply simp_all
-  done
-
-lemma list_diff_append_append:
-  "mset zs1 = mset zs2 \<Longrightarrow>
-   list_diff (xs @ zs1) (zs2 @ ys) = list_diff xs ys"
-  apply simp
-  apply (subst list_diff_same_sufix)
-   apply auto
-  done
-
-lemma in_set_list_diffD:
-  "x \<in> set (list_diff xs ys) \<Longrightarrow> x \<in> set xs"
-  by (induct xs ys arbitrary: xs rule: list_diff.induct)
-    (auto dest: set_remove_lastD)
-
-
-lemma not_in_set_list_diff_same_count:
-  "count (mset xs) y = count (mset ys) y \<Longrightarrow>
-   y \<in> set (list_diff xs ys) \<Longrightarrow> False"
-  apply (induct xs ys arbitrary: xs rule: list_diff.induct)
-   apply clarsimp
-  apply force
-  done
-
-lemma in_set_list_diffI[intro]:
-  "x \<in> set xs \<Longrightarrow> x \<notin> set ys \<Longrightarrow> x \<in> set (list_diff xs ys)"
-    apply (induct xs ys arbitrary: xs rule: list_diff.induct)
-  apply clarsimp+
-  subgoal premises prems for y xs ys
-    apply (rule prems(1))
-    using prems(2-) apply -
-    apply (metis (no_types, lifting) in_set_conv_decomp remove_last_append_in_set remove_last_append_not_in_set remove_last_in_set_Cons set_ConsD)
-    done
-  done
-
-
-lemma set_list_diff_filter[simp]:
-  "set (list_diff xs (filter P xs)) = {x \<in> set xs. \<not> P x}"
-  apply (induct "filter P xs" arbitrary: xs rule: rev_induct)
-   apply (simp add: List.empty_filter_conv basic_trans_rules(24) subsetI)
-  subgoal premises prems for x xs' xs''
-    apply (auto dest: in_set_list_diffD)
-    subgoal
-      apply (drule not_in_set_list_diff_same_count[rotated])
-       apply auto
-      done
-    done
-  done
 
 
 end

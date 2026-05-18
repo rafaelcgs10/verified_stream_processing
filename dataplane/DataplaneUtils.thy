@@ -1,30 +1,27 @@
 theory DataplaneUtils
 
 imports
-  Nondeterministic_Dataflow.Operator
-  Nondeterministic_Dataflow.BNA_Operators
-  Propagation_Extras.Executable
-  Zero_Cyc_Check 
-  Locations
-begin 
+  ZmsetUtils
 
-abbreviation "isr x \<equiv> \<not> (isl x)"
+begin
+
+abbreviation "isr x ≡ ¬ (isl x)"
 
 lemma ldropWhile_LConsD:
-  "ldropWhile P lxs = LCons x lxs' \<Longrightarrow>
-   \<not> P x"
+  "ldropWhile P lxs = LCons x lxs' ⟹
+   ¬ P x"
   by (metis lhd_ldropWhile llist.disc(2) llist.sel(1) lnull_ldropWhile)
 
 lemma arg_cong3:
-  "a = b \<Longrightarrow> c = d \<Longrightarrow> e = g \<Longrightarrow> f a c e = f b d g"
+  "a = b ⟹ c = d ⟹ e = g ⟹ f a c e = f b d g"
   by fast
 
 lemma arg_cong4:
-  "a = b \<Longrightarrow> c = d \<Longrightarrow> e = g \<Longrightarrow> h = i \<Longrightarrow> f a c e h  = f b d g i"
+  "a = b ⟹ c = d ⟹ e = g ⟹ h = i ⟹ f a c e h  = f b d g i"
   by fast
 
 lemma arg_cong5:
-  "a = b \<Longrightarrow> c = d \<Longrightarrow> e = g \<Longrightarrow> h = i \<Longrightarrow> j = k \<Longrightarrow> f a c e h j  = f b d g i k"
+  "a = b ⟹ c = d ⟹ e = g ⟹ h = i ⟹ j = k ⟹ f a c e h j  = f b d g i k"
   by fast
 
 lemma lmap_lshift[simp]:
@@ -36,40 +33,40 @@ lemma lfinite_lshift[simp]:
   by (metis lappend_llist_of lfinite_lappend lfinite_llist_of)
 
 lemma list_of_lshift:
-  "lfinite lxs \<Longrightarrow>
+  "lfinite lxs ⟹
    list_of (xs @@- lxs) = xs @ list_of lxs"
   apply (induct xs arbitrary: lxs)
    apply (simp_all add: list_of_LCons_conv split: if_splits)
   done
 
 lemma rel_set_image:
-  "rel_set R (f ` A) B \<longleftrightarrow> rel_set (\<lambda> x. R (f x)) A B"
-  "rel_set S A (g ` B) \<longleftrightarrow> rel_set (\<lambda> x y. S x (g y)) A B"
+  "rel_set R (f ` A) B ⟷ rel_set (λ x. R (f x)) A B"
+  "rel_set S A (g ` B) ⟷ rel_set (λ x y. S x (g y)) A B"
   unfolding rel_set_def
   apply auto
   done
 
 lemma rel_set_reflI:
-  "(\<And>x. x \<in> A \<Longrightarrow> R x x) \<Longrightarrow> rel_set R A A"
+  "(⋀x. x ∈ A ⟹ R x x) ⟹ rel_set R A A"
   unfolding rel_set_def
   apply auto
   done
 
 lemma BAPPEND_BENQ_BHD'[simp]:
-  "buf1 p \<noteq> [] \<Longrightarrow> BHD p buf1 = x \<Longrightarrow> (BTL p buf1) >> (BENQ p x buf2) = buf1 >> buf2"
+  "buf1 p ≠ [] ⟹ BHD p buf1 = x ⟹ (BTL p buf1) >> (BENQ p x buf2) = buf1 >> buf2"
   unfolding BULK_BENQ_def BTL_def BENQ_def BHD_def by force
 
 lemma BHD_map[simp]:
-  "buf p \<noteq> [] \<Longrightarrow>
-   BHD p (\<lambda>x. map f (buf x)) = f (BHD p buf)"
+  "buf p ≠ [] ⟹
+   BHD p (λx. map f (buf x)) = f (BHD p buf)"
   unfolding BHD_def
   apply (auto simp add: hd_map)
   done
-  
+
 
 lemma lhd_concat_ldropWhile:
-  "lfinite (ltakeWhile ((=) []) lxs) \<Longrightarrow>
-   \<exists> xs lxs'. ldropWhile ((=) []) lxs = LCons (x # xs) lxs' \<Longrightarrow>
+  "lfinite (ltakeWhile ((=) []) lxs) ⟹
+   ∃ xs lxs'. ldropWhile ((=) []) lxs = LCons (x # xs) lxs' ⟹
    lhd (lconcat lxs) = x"
   apply (induct "ltakeWhile ((=) []) lxs"  arbitrary: lxs rule: lfinite_induct)
   subgoal
@@ -82,8 +79,8 @@ lemma lhd_concat_ldropWhile:
   done
 
 lemma lhd_concat_ldropWhile_alt:
-  "lfinite (ltakeWhile ((=) []) lxs) \<Longrightarrow>
-   \<not> lnull (ldropWhile ((=) []) lxs) \<Longrightarrow>
+  "lfinite (ltakeWhile ((=) []) lxs) ⟹
+   ¬ lnull (ldropWhile ((=) []) lxs) ⟹
    lhd (lconcat lxs) = hd (lhd (ldropWhile ((=) []) lxs))"
   apply (induct "ltakeWhile ((=) []) lxs"  arbitrary: lxs rule: lfinite_induct)
   subgoal
@@ -97,9 +94,9 @@ lemma lhd_concat_ldropWhile_alt:
   done
 
 lemma lhd_lconcat_lmap_zip:
-  "lfinite (ltakeWhile ((=) []) inps) \<Longrightarrow>
-   ldropWhile ((=) []) inps = LCons (x # xs) inps' \<Longrightarrow>
-   lhd (lconcat (lmap (\<lambda>(xs, t). map (\<lambda>n. (n, t)) xs) (lzip inps (iterates Suc i)))) = (x, i + (the_enat (llength (ltakeWhile ((=) []) inps))))"
+  "lfinite (ltakeWhile ((=) []) inps) ⟹
+   ldropWhile ((=) []) inps = LCons (x # xs) inps' ⟹
+   lhd (lconcat (lmap (λ(xs, t). map (λn. (n, t)) xs) (lzip inps (iterates Suc i)))) = (x, i + (the_enat (llength (ltakeWhile ((=) []) inps))))"
   apply (induct "ltakeWhile ((=) []) inps"  arbitrary: inps i rule: lfinite_induct)
   subgoal
     apply (simp add: lconcat_correct lnull_def split: prod.splits)
@@ -120,10 +117,10 @@ lemma lhd_lconcat_lmap_zip:
   done
 
 lemma ltl_lconcat_lmap_zip:
-  "lfinite (ltakeWhile ((=) []) inps) \<Longrightarrow>
-   ldropWhile ((=) []) inps = LCons (x # xs) inps' \<Longrightarrow>
-   ltl (lconcat (lmap (\<lambda>z. case z of (xs, t) \<Rightarrow> map (\<lambda>n. (n, t)) xs) (lzip inps (iterates Suc i)))) =
-   Coinductive_List_Auxiliary.lconcat (lmap (\<lambda>z. case z of (xs, t) \<Rightarrow> map (\<lambda>n. (n, t)) xs) (lzip (LCons xs inps') (iterates Suc (i + (the_enat (llength (ltakeWhile ((=) []) inps)))))))"
+  "lfinite (ltakeWhile ((=) []) inps) ⟹
+   ldropWhile ((=) []) inps = LCons (x # xs) inps' ⟹
+   ltl (lconcat (lmap (λz. case z of (xs, t) ⇒ map (λn. (n, t)) xs) (lzip inps (iterates Suc i)))) =
+   Coinductive_List_Auxiliary.lconcat (lmap (λz. case z of (xs, t) ⇒ map (λn. (n, t)) xs) (lzip (LCons xs inps') (iterates Suc (i + (the_enat (llength (ltakeWhile ((=) []) inps)))))))"
   apply (induct "ltakeWhile ((=) []) inps"  arbitrary: inps i rule: lfinite_induct)
   subgoal
     apply (simp add: lconcat_correct lnull_def split: prod.splits)
@@ -150,78 +147,14 @@ lemma ltl_lconcat_lmap_zip:
     done
   done
 
-fun to_zmset where
-  "to_zmset [] = {#}\<^sub>z"
-| "to_zmset (x # xs) = to_zmset xs + {# x #}\<^sub>z"
-
-lemma to_zmset_correct[code,simp]:
-  "zmset_of (mset xs) = to_zmset xs"
-  by (induct xs) auto
-
-
-lemma to_zmset_nenneg:
-  "zcount (to_zmset xs) t \<ge> 0"
-  by (metis to_zmset_correct zcount_zmset_of_nonneg)
-
-lemma neg_neg_multiset:
-  "- (A :: _ zmultiset) - B = - (A + B)"
-  by (metis add.commute diff_minus_eq_add minus_diff_eq)
-
-lemma add_zmset_neg:
-  "add_zmset a (- M) = (add_zmset a {#}\<^sub>z) - M"
-  by simp
-
-lemma to_zmset_append[simp]:
-  "to_zmset (xs @ ys) = to_zmset xs + to_zmset ys"
-  by (induct xs arbitrary: ys rule: to_zmset.induct)
-    auto
-
-lemma add_zmset_neg_add_zmset_if:
-  "add_zmset a (- (add_zmset b M)) = (if a = b then - M else - (add_zmset b (M - {# a #}\<^sub>z)))"
-  apply (auto split: if_splits)
-   apply (metis add_zmset_diff_bothsides add_zmset_neg verit_minus_simplify(3))
-  apply (metis arith_simps(56) diff_add_zmset_swap minus_diff_eq)
-  done
-
-lemma add_zmset_to_zmset:
-  "add_zmset x (to_zmset xs) = to_zmset (x # xs)"
+lemma antichain_empty:
+  "antichain {} = {}⇩A"
+  unfolding empty_antichain_def
   by auto
 
-lemma to_zmset_tl[simp]:
-  "xs \<noteq> [] \<Longrightarrow>
-   to_zmset (tl xs) = to_zmset xs - {# hd xs #}\<^sub>z"
-  by (induct xs)
-    auto
-
-lemma to_zmset_map:
-  "to_zmset (map f xs) = {#f x. x \<in>#\<^sub>z to_zmset xs#}"
-  by (induct xs) auto
-
-lemma to_zmset_filter:
-  "to_zmset (filter P xs) = filter_zmset P (to_zmset xs)"
-  by (induct xs) auto
-
-lemma to_zmset_empty[simp]:
-  "to_zmset xs = {#}\<^sub>z \<longleftrightarrow> xs = []"
-  apply (induct xs)
-   apply (simp_all flip: to_zmset_correct)
-  by (metis add_zmset_to_zmset list.simps(2) mset_pos_empty mset_zero_iff to_zmset_correct zmset_of_inverse)
-  
-lemma add_zmset_minus_to_zmset_if:
-  "add_zmset x (- to_zmset xs) = (if x \<in> set xs then - to_zmset (remove1 x xs) else - to_zmset xs + {# x #}\<^sub>z)"
-  apply (induct xs)
-  apply (auto simp add: add_zmset_neg_add_zmset_if)
-  apply (metis add_zmset_neg minus_diff_eq verit_eq_simplify(25))
-  done
-
-lemma zmset_of_replicate_mset[simp]:
-  "zmset_of (replicate_mset m t) = to_zmset (replicate m t)"
-  by (induct m) auto
-
-lemma zcount_to_zmset:
-  "zcount (to_zmset xs) = count_list xs"
-  by (induct xs)
-   auto
+lemma antichain_from_list_empty_antichain[simp]:
+  "antichain_from_list [] = {}⇩A"
+  by (simp add: Executable.antichain_from_list_empty antichain_empty)
 
 lemma set_antichain_antichain_singleton[simp]:
   "set_antichain (antichain {a}) = {a}"
@@ -229,112 +162,29 @@ lemma set_antichain_antichain_singleton[simp]:
   apply (auto simp: incomparable_def)
   done
 
-
 lemma antichain_nonempty[simp]:
-  "antichain {A} \<noteq> {}\<^sub>A"
+  "antichain {A} ≠ {}⇩A"
   by (metis empty_antichain.rep_eq insert_not_empty set_antichain_antichain_singleton)
 
-lemma set_zmset_to_zmset[simp]:
-  "set_zmset (to_zmset xs) = set xs"
-  unfolding set_zmset_def
-  apply (induct xs)
-   apply simp_all
-  apply (smt (verit) Collect_cong insert_compr to_zmset_nenneg)
-  done
-
-instantiation zmultiset :: (equal) equal
-begin
-definition
-  "equal_zmultiset A B = zequal A B"
-instance 
-  apply standard
-  subgoal for f1 f2
-    unfolding equal_zmultiset_def zequal_equal
-    apply auto
-    done
-  done
-end
-
-definition "antichain_equal A1 A2 = (is_empty_antichain (filter_antichain (\<lambda> x. x \<notin>\<^sub>A A2) A1) \<and> is_empty_antichain (filter_antichain (\<lambda> x. x \<notin>\<^sub>A A1) A2))"
-
-lemma equal_antichain_equal:
-  "antichain_equal A1 A2 \<longleftrightarrow> A1 = A2"
-  unfolding antichain_equal_def
-  by(auto simp add: Set.is_empty_iff ac_eq_iff filter_antichain.rep_eq is_empty_antichain.rep_eq member_antichain.rep_eq filter_antichain.rep_eq member_antichain.rep_eq)
-
-
-instantiation antichain :: (order) equal
-begin
-definition
-  "equal_antichain = antichain_equal"
-instance 
-  apply standard
-  subgoal for f1 f2
-    unfolding equal_antichain_def
-    apply (subst equal_antichain_equal)
-    apply auto
-    done
-  done
-end
-
-lemma antichain_empty:
-  "antichain {} = {}\<^sub>A"
-  unfolding empty_antichain_def
-  by auto
-
-lemma antichain_from_list_empty_antichain[simp]:
-  "antichain_from_list [] = {}\<^sub>A"
-  by (simp add: Executable.antichain_from_list_empty antichain_empty)
-
 lemma frontier_negs[simp]:
-  "frontier (- {# a #}\<^sub>z ) = {}\<^sub>A"
-  "frontier (- {# a, b #}\<^sub>z ) = {}\<^sub>A"
-  "frontier (- {# a, b, c #}\<^sub>z ) = {}\<^sub>A"
-  "frontier (- {# a, b, c, d #}\<^sub>z ) = {}\<^sub>A"
-  "frontier (- {# a, b, c, d, e #}\<^sub>z ) = {}\<^sub>A"
-  "frontier (- {# a  :: _ :: {equal,order}, b, c, d, e, f #}\<^sub>z ) = {}\<^sub>A"
+  "frontier (- {# a #}⇩z ) = {}⇩A"
+  "frontier (- {# a, b #}⇩z ) = {}⇩A"
+  "frontier (- {# a, b, c #}⇩z ) = {}⇩A"
+  "frontier (- {# a, b, c, d #}⇩z ) = {}⇩A"
+  "frontier (- {# a, b, c, d, e #}⇩z ) = {}⇩A"
+  "frontier (- {# a  :: _ :: {equal,order}, b, c, d, e, f #}⇩z ) = {}⇩A"
   unfolding frontier_def minimal_antichain_def
   by (simp add: antichain_empty)+
 
-
-
-lift_definition del_zmset :: "'a \<Rightarrow> 'a zmultiset \<Rightarrow> 'a zmultiset" is
-  "\<lambda>x (Mp, Mn). (Mp, add_mset x Mn)"
-  by (auto simp: equiv_zmset_def)
-
-lemma zcount_del_zmset[simp]:
-  "zcount (del_zmset b A) a = (if b = a then zcount A a - 1 else zcount A a)"
-  by transfer auto
-
-lemma uminus_add_zmset: "- add_zmset z M = del_zmset z (- M)"
-  by (auto simp: zmultiset_eq_iff)
-
-lemma add_del_zmset: "add_zmset x (del_zmset y M) = (if x = y then M else del_zmset y (add_zmset x M))"
-  by (auto simp: zmultiset_eq_iff)
-
-lemma del_zmset_commute[simp]:
-  "del_zmset a (del_zmset b M) = del_zmset b (del_zmset a M)"
-  by (auto simp: zmultiset_eq_iff)
-
-lemma zmset_in_add_zmset[simp]:
-  "a \<in>#\<^sub>z add_zmset b M \<longleftrightarrow> a \<noteq> b \<and> a \<in>#\<^sub>z M \<or> a = b \<and> zcount M a \<noteq> -1"
-  apply transfer
-  apply auto
-  done
-
-
 instantiation prod :: (defaults, type) defaults
 begin
-definition defaults_prod where "defaults_prod = defaults \<times> defaults"
+definition defaults_prod where "defaults_prod = defaults × defaults"
 instance
 proof qed
 end
 
-
-
 lemma cfilter_cinsert:
   "cfilter P (cinsert a A) = (if P a then cinsert a (cfilter P A) else cfilter P A)"
-  by force  
-
+  by force
 
 end
