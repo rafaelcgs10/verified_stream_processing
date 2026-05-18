@@ -218,12 +218,6 @@ lemma snd_cfilter[simp]:
   "snd |`| cfilter (\<lambda>(d, t). P t) S = cfilter P (snd |`| S)"
   by (force simp add: image_iff split_beta simp flip: cin.rep_eq)
 
-lemma cset_from_list_image_filter_cfilter:
-  "cset_from_list |`| ((\<lambda>t. map (\<lambda>os. (os, Cap t 1)) (f (map (\<lambda>os. projl (fst os)) (filter (\<lambda>(d, t'). t' = t \<and> P t) xs)))) |`| cfilter P S) =
-   (cset_from_list |`| ((\<lambda>t. map (\<lambda>os. (os, Cap t 1)) (f (map (\<lambda>os. projl (fst os)) (filter (\<lambda>(d, t'). t' = t) xs)))) |`| cfilter P S))"
-  apply auto
-  done
-
 lemma cimage_cfilter_clean:
   "(\<forall> x. x |\<in>| S \<longrightarrow> Q x \<longleftrightarrow> P x) \<Longrightarrow>
    (\<lambda>t. F t (Q t)) |`| cfilter P S =
@@ -236,15 +230,6 @@ lemma cset_cfilter_split:
   by auto
 
 (* FIXME: move me*)
-lemma image_zmset_id[simp]:
-  "image_zmset id M = M"
-  apply transfer
-  apply (auto simp add: equiv_zmset_def split_beta)
-  done
-lemma if_same[simp]:
-  "(if nid' = nid then f nid else f nid') = f nid'"
-  by simp
-
 lemma antichain_from_list_pair_set_singleton[simp]:
   "{(nid' :: 2, p' :: 1). antichain_from_list (if nid' = 0 then [0] else []) \<noteq> {}\<^sub>A} = {(0, 0)}"
   apply (auto 10 10 simp add: if_distrib antichain_from_list_singleton)
@@ -265,24 +250,14 @@ lemma filter_filter_pair_alt:
   "filter (\<lambda>(x, y). Q y \<and> P y) xs = filter (\<lambda> (x, y). P y) (filter (Q o snd) xs)"
   by (simp add: split_def)
 
-lemma filter_snd:
-  "filter (\<lambda>(x, y). P y) xs = filter (P o snd) xs"
-  by (metis fn_snd_conv trimono_spec_defs(3))
+
 lemma filter_snd_alt:
   "filter (\<lambda>x. P (snd x)) xs = filter (P o snd) xs"
   by (metis trimono_spec_defs(3))
-lemma filter_snd_alt2:
-  "map snd (filter (\<lambda>x. P (snd x)) xs) = filter P (map snd xs)"
-  by (simp add: filter_map filter_snd_alt)
 lemma projl_fst:
   "(\<lambda>x. projl (fst x)) = fst o (\<lambda> (x, t). (projl x, t))"
   by auto
-lemma filter_filter_commute:
-  "filter P (filter Q xs) = filter Q (filter P xs)"
-  apply simp
-  apply (rule filter_cong)
-   apply auto
-  done
+
 lemma filter_filter_commute_pair:
   "filter (\<lambda> (d, t). P t) (filter (\<lambda> (d, t). Q t) xs) = filter (\<lambda> (d, t). Q t) (filter (\<lambda> (d, t). P t) xs)"
   apply simp
@@ -414,40 +389,6 @@ lemma count_list_remove_last_if:
   subgoal
     by (metis count_list.simps(2) remove_last_in_set_Cons remove_last_not_Nil remove_last_not_in_set_Cons set_ConsD)
   done
-lemma count_list_list_diff:
-  "count_list (list_diff xs ys) x = count_list xs x - count_list ys x"
-  apply (induct xs ys arbitrary: xs rule: list_diff.induct)
-   apply simp
-  apply (clarsimp simp add: count_list_remove_last_if split: if_splits)
-  done
-lemma set_list_diff_iff:
-  "x \<in> set (list_diff xs ys) \<longleftrightarrow> count_list xs x > count_list ys x"
-  apply (induct xs ys arbitrary: xs rule: list_diff.induct)
-  subgoal
-    by simp
-  subgoal for ys x' xs xs'
-    apply (clarsimp simp add: count_list_list_diff split: if_splits)
-    subgoal
-      apply (cases "x' = x")
-      subgoal
-        apply simp
-        apply (auto 0 0  simp add: count_list_list_diff split: if_splits)
-        subgoal
-          by (metis count_list_gt_0 count_list_remove_last_if diff_less gr_implies_not0 less_one less_trans_Suc)
-        subgoal
-          by (metis (no_types, lifting) One_nat_def Suc_less_eq Suc_pred count_list_gt_0 count_list_remove_last_if dual_order.strict_trans zero_less_Suc)
-        done
-      subgoal
-        apply simp
-        apply (auto 0 0  simp add: count_list_list_diff split: if_splits)
-        subgoal
-          by (metis count_list_remove_last_if)
-        subgoal
-          by (metis (no_types, lifting) count_list_remove_last_if)
-        done
-      done
-    done
-  done
 
 (* FIXME: move me *)
 lemma timely_input_stream_drops_subseteq_C_mints:
@@ -573,25 +514,6 @@ lemma change_multiplicities_map_append_event:
       by (smt (verit, del_insts) Cons_eq_appendI change_multiplicities_append change_multiplicities_comm empty_append_eq_id)
     subgoal for t
       by (smt (verit, del_insts) Cons_eq_appendI change_multiplicities_append change_multiplicities_comm empty_append_eq_id)
-    done
-  done
-
-
-
-lemma cset_from_list_f_filter:
-  "\<forall> x \<in> set xs. \<forall> t. t |\<in>| C \<longrightarrow> \<not> P t x \<Longrightarrow>
-   (\<lambda>t. (\<lambda>x. (p, j x, t)) |`| cset_from_list (f (map (\<lambda>x. projl (fst x)) (filter (P t) xs) @ (ys t)))) |`| C = ((\<lambda>t. (\<lambda>x. (p, j x, t)) |`| cset_from_list (f (ys t))) |`| C)"
-  apply (induct xs arbitrary: C)
-  subgoal
-    by simp
-  subgoal for a xs C
-    apply (auto simp flip: cin.rep_eq  split: if_splits)
-    subgoal for t
-      by blast
-    subgoal for t
-      by (smt (verit, ccfv_SIG)
-          \<open>\<And>t. (\<And>C. \<forall>x\<in>set xs. \<forall>t. t |\<in>| C \<longrightarrow> \<not> P t x \<Longrightarrow> ((\<lambda>t. (\<lambda>x. (p, j x, t)) |`| cset_from_list (f (map (\<lambda>x. projl (fst x)) (filter (P t) xs) @ ys t))) |`| C) = ((\<lambda>t. (\<lambda>x. (p, j x, t)) |`| cset_from_list (f (ys t))) |`| C)) \<Longrightarrow> \<forall>t. t |\<in>| C \<longrightarrow> \<not> P t a \<Longrightarrow> \<forall>x\<in>set xs. \<forall>t. t |\<in>| C \<longrightarrow> \<not> P t x \<Longrightarrow> t |\<in>| C \<Longrightarrow> ((\<lambda>x. (p, j x, t)) |`| cset_from_list (f (map (\<lambda>x. projl (fst x)) (filter (P t) xs) @ ys t))) |\<in>| ((\<lambda>t. (\<lambda>x. (p, j x, t)) |`| cset_from_list (f (ys t))) |`| C)\<close>
-          cimage_cong filter_empty_conv list.map_disc_iff self_append_conv2)
     done
   done
 
@@ -4502,6 +4424,7 @@ qed
 
 section \<open>Correctness\<close>
 
+unused_thms
 
 
 (* abbreviation "G inps f \<equiv> compile_dataflow (Comp [(0, 1) \<mapsto> (0, 1)] (l1 inps) (l2 f))"
