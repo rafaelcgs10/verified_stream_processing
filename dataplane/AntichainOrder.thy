@@ -599,8 +599,6 @@ lemma frontier_less_equal_zcount_pos:
   unfolding frontier_less_equal_iff
   by (metis dual_order.irrefl less_eq_antichain_def member_frontier_pos_zmset trivial_dataflow_topology_interpretation.obtain_elem_frontier zcount_single)
 
-term "dataflow_topology.implied_frontier_alt su (+) c l"
-
 lemma frontier_less_equal_sumI:
   "finite S \<Longrightarrow>
    (\<forall> l \<in> S. \<forall> t. zcount (f l) t \<ge> 0) \<Longrightarrow>

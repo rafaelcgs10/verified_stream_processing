@@ -132,8 +132,6 @@ abbreviation "dt \<equiv> dataflow_op sg op"
 
 definition "r = (trace_exec dt :: (_, _ \<times> _, (nat \<times> nat) \<times> nat) VIO llist)"
 
-term DEBUG
-
 value [GHC] r
 
 
@@ -141,8 +139,6 @@ value [GHC] "check_prefix 500 [((nid2, p0), ((2, 1), 0))] dt"
 definition "r2 = check_prefix 250 [((nid2, p0), ((4, 1), 1))] dt"
 
 value [GHC] r2
-
-thm cUn_code
 
 (* 
  export_code r2 in Haskell module_name Test10

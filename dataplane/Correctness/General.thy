@@ -79,10 +79,6 @@ lemma inputs_at_target_outpu_update[simp]:
 definition "ty1_check os bufs = (\<forall> p. (\<forall> x \<in> fst ` set (input os p) \<union> fst ` set (bufs p) \<union> fst ` set (outpu os p). is_en1 os x))"
 definition "ty2_check os bufs = (\<forall> p. (\<forall> x \<in> fst ` set (input os p) \<union> fst ` set (bufs p). is_en1 os x) \<and> (\<forall> x \<in> fst ` set (outpu os p). is_en2 os x))"
 
-find_consts  name: index name: find
-
-term index
-
 definition "produ_consu_inter_supported nt os c =
     ((\<forall> nid p t m. (p, t, m) \<in> set (produ (os nid)) \<longrightarrow> (zcount (c_pts c (Loc nid (Src p))) t > 0 \<or> (\<exists>m'>0. (p, t, m') \<in> set (inter (os nid))))) \<and>
      (\<forall> nid p t m. (p, t, m) \<in> set (consu (os nid)) \<longrightarrow>
@@ -1069,8 +1065,6 @@ lemma change_multiplicities_extract_prog_updates:
   apply (simp add: change_multiplicities_append_alt)
   apply (smt (verit) change_multiplicities_append_alt change_multiplicities_comm) 
   done
-
-find_theorems remove1 extract_prog
 
 lemma change_multiplicities_extract_prog_consumes:
   "nid \<in> set xs \<Longrightarrow>
@@ -2068,8 +2062,6 @@ lemma ts_LNil[simp]:
   unfolding  ts_def
   by (auto simp add: cset_of_llist.rep_eq split: event.splits)
 
-
-find_theorems step comp_op Out
 
 lemma steps_comp_op_R_Out[intro!]:
   "steps (map (Out p) xs) op2 op2' \<Longrightarrow> buf = buf' \<Longrightarrow> op1 = op1' \<Longrightarrow> ys = map (Out (Inr p)) xs \<Longrightarrow> steps ys (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"

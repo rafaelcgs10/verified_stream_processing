@@ -6,8 +6,6 @@ imports
   "../MyProduct_Instances"
 begin
 
-term "show_list show_nat"
-
 abbreviation "show_myprod \<equiv> (\<lambda> s1 s2. show_prod s1 s2 o to_prod)"
 
 definition batch_op_logic where

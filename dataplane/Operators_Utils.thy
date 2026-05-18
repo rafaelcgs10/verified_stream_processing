@@ -113,8 +113,6 @@ lemma step_refl[simp]:
   "step io OO (=) = step io"
   by auto
 
-thm step_map_op[no_vars]
-
 lemma steps_map_op[intro!]:
   "op'' = map_op f g op' \<Longrightarrow> 
    map (map_IO f g id) xs = xs' \<Longrightarrow>
@@ -281,8 +279,6 @@ lemma weakSimI[case_names Sim]:
 shows "P \<leadsto>\<^sup>^<Rel> Q"
   using assms
   by(auto simp add: wsim_set_def)
-
-term "p2rel (wbisim_cong X)"
 
 lemma weakBisimWeakCoinduct[consumes 1, case_names cSim cSym]:
   assumes "(P, Q) \<in> X"
@@ -658,8 +654,6 @@ lemma weakBisimWeakUptoBisim_alt[case_names SIM1 SIM2, consumes 1]:
   shows "op1 \<approx> op2"
   using assms weakBisimWeakUptoBisim by metis
 
-term bisim_cong
-
 inductive wbisim_upto_bisim_cong ("\<U>") for R  where
   wb_upto_b_base[intro]:  "R op1 op2 \<Longrightarrow> \<U> R op1 op2"
 | wb_upto_b_sym[intro]:  "\<U> R op2 op1 \<Longrightarrow> \<U> R op1 op2"
@@ -668,9 +662,7 @@ inductive wbisim_upto_bisim_cong ("\<U>") for R  where
   (* | wb_upto_b_writes[intro]: "\<U> R op1 op2 \<Longrightarrow> \<U> R (writes op1 p x) (writes op2 p x)"
 | wb_upto_b_Silent[intro]: "\<U> R op1 op2 \<Longrightarrow> \<U> R (Silent op1) (Silent op2)" *)
 
-term bisim_cong
-
-(* | wbc_bisim:  "wbisim x y \<Longrightarrow> wbisim_cong R x y"
+  (* | wbc_bisim:  "wbisim x y \<Longrightarrow> wbisim_cong R x y"
 | wbc_refl[intro]: "x = y \<Longrightarrow> wbisim_cong R x y"
 | wbc_sym[intro]: "wbisim_cong R x y \<Longrightarrow> wbisim_cong R y x"
 | wbc_Read:"x1 = y1 \<Longrightarrow> rel_fun (=) (wbisim_cong R) x2 y2 \<Longrightarrow> wbisim_cong R (Read x1 x2) (Read y1 y2)"

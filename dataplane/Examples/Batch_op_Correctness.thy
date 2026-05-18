@@ -71,16 +71,11 @@ abbreviation "G f ip_state os2 \<equiv> Comp [(0 :: 2, 1) \<mapsto> (0, 1)] (l1 
 
 abbreviation "test_op \<equiv> compile_dataflow (\<lambda> _. []) (G (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]) (init_input_state default_internal_summary (\<lambda> _. inps_test)) (init_operator_state_ty2 default_internal_summary) )"
 
-find_theorems cUn name: code
-
-
 value [GHC] "check_prefix 5500 [((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1)),((1, 1), (Inr 3, MyPair 1 0))] test_op"
   (* value [GHC] "check_prefix 5500 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] test_op"
 value [GHC] "check_prefix 5500 [((1, 1), (Inr 3, MyPair 1 0)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1))] test_op"  *)
 
 value [GHC] "ltaken 3 (lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op))"
-
-term DEBUG
 
 
 section \<open>Generalized Correctness\<close>
@@ -546,7 +541,6 @@ lemma in_lset_ltaken_ldropn:
   done
 
 (* FIXME: move me *)
-thm set_extract_progress_consumesD
 lemma set_extract_progressD:
   "(l, t, m) \<in> set (extract_progress nid ed st') \<Longrightarrow>
    st' = st\<lparr> cons := consu os @ xs, inte := inter os @ ys, prod := produ os @ zs \<rparr> \<Longrightarrow>
@@ -4505,8 +4499,6 @@ next
       done
   qed
 qed
-
-unused_thms
 
 section \<open>Correctness\<close>
 

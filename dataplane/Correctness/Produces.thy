@@ -13,8 +13,6 @@ declare enum_class.enum_UNIV[simp] enum_class.enum_distinct[simp]
 no_notation shiftr  (infixl \<open>>>\<close> 55)
 
 
-find_theorems filter zmset
-
 (*
    (\<forall> p. to_zmset (drops p) \<subseteq>#\<^sub>z zmset (map snd (filter (\<lambda>x. p = fst x) produs))) \<Longrightarrow>
 *)
@@ -155,9 +153,6 @@ inductive srcs_to_trg for P su where
   direct: "su (Loc snid (Src sp)) (Loc nid (Trg p)) \<noteq> {}\<^sub>A \<Longrightarrow> P nid p t m \<Longrightarrow> srcs_to_trg P su snid nid p t m"
 | step: "su (Loc snid' (Src sp)) (Loc nid (Trg p)) \<noteq> {}\<^sub>A \<Longrightarrow> snid' \<noteq> snid \<Longrightarrow>
   (\<forall> p' s. s \<in>\<^sub>A su (Loc snid' (Trg p')) (Loc snid' (Src sp)) \<longrightarrow> (\<forall> t' m'. t = t' -+- s \<longrightarrow> P snid' p' t' m' \<longrightarrow> srcs_to_trg P su snid snid' p' t' m')) \<Longrightarrow> srcs_to_trg P su snid nid p t m"
-
-thm graph.path_weight_refl
-
 
 lemma graph_induct:
   assumes G: "Graph.graph weights"

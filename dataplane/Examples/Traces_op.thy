@@ -102,10 +102,6 @@ coinductive traces_interleave where
    p \<notin> defaults \<Longrightarrow> traces_interleave S (LCons (VOut p x) lxs)"
 | "(\<forall> inps p. inps \<in> S \<longrightarrow> p \<notin> defaults \<longrightarrow> inps p = LNil) \<Longrightarrow> traces_interleave S LNil"
          
-thm set_spec_op_trace_eq_set_spec_op_trace_alt
-thm set_op_bisim_set_spec_op
-
-
 lemma cinfiniteD:
   "cinfinite (f |`| A) \<Longrightarrow> cinfinite A"
   unfolding cinfinite_def

@@ -38,11 +38,7 @@ declare cnub_def[code del]
 definition "ctake (n :: nat) (C :: (_ :: equal) cset) = C"
 declare ctake_def[code del]
 
-find_theorems ccard
-
 declare ccard_def[code del]
-
-term lrmdups
 
 code_printing code_module "Cset" \<rightharpoonup> (Haskell)
 \<open>
@@ -68,8 +64,6 @@ lmerge = (concat . Data.List.transpose);
 \<close> 
 
 declare ltaken.simps[code del]
-
-term linterleave
 
 code_printing
   type_constructor cset \<rightharpoonup>
@@ -140,14 +134,6 @@ code_printing
    | constant lmerge \<rightharpoonup>
     (Haskell) "Prelude.concat"  
  *)
-term lrmdups
-
-term crmdups
-
-find_consts name: f
-
-thm cUnion_code
-
 fun wsteps_at where
   "wsteps_at (Write op p x) n = {|(VOut p x, op)|}"
 | "wsteps_at (Read p f) n = {|(VInp p (Code.abort (STR ''wsteps_at should not read'') (\<lambda> _. undefined)), f undefined)|}"
