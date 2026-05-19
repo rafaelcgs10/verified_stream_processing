@@ -6,11 +6,6 @@ imports
   Dataplane.AntichainOrder
 begin
 
-(* FIXME: move me *)
-lemma lt_le_lt:
-  "(x :: int) < a + b \<Longrightarrow> b \<le> c \<Longrightarrow> x < a + c"
-  by simp
-
 lemma dataplane_tracker_inv_progress:
   "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
    dataflow_topology (summ sg) (-+-) \<Longrightarrow>

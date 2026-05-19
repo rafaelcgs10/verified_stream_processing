@@ -196,95 +196,6 @@ lemma outputs_at_target_my_summ[simp]:
     done
   done
 
-lemma coll_llist_of_map_Data[simp]:
-  "coll (llist_of (map (\<lambda>(d, t). Data t (f d)) xs)) t = map (f o fst) (filter (\<lambda> (x, t'). t' = t) xs)"
-  apply (induct xs)
-   apply simp
-  subgoal for x xs
-    apply (cases x)
-    apply (auto simp add: coll_LCons_Data)
-    done
-  done
-
-lemma rcset_ts[simp]:
-  "rcset (ts lxs) = event.time ` {x \<in> (lset lxs). is_Data x}"
-  unfolding ts_def
-  apply (auto simp add:  image_iff cset_of_llist.rep_eq split: event.splits)
-   apply force
-  apply (metis event.distinct(1,3) event.sel(1) is_Data_def)
-  done
-
-lemma snd_cfilter[simp]:
-  "snd |`| cfilter (\<lambda>(d, t). P t) S = cfilter P (snd |`| S)"
-  by (force simp add: image_iff split_beta simp flip: cin.rep_eq)
-
-lemma cimage_cfilter_clean:
-  "(\<forall> x. x |\<in>| S \<longrightarrow> Q x \<longleftrightarrow> P x) \<Longrightarrow>
-   (\<lambda>t. F t (Q t)) |`| cfilter P S =
-   ((\<lambda>t. F t True) |`| cfilter P S)"
-  apply auto
-  done
-
-lemma cset_cfilter_split:
-  "S = cUn (cfilter P S) (cfilter (Not o P) S)"
-  by auto
-
-
-lemma filter_filter_True1_pair:
-  "(\<forall> (x, y) \<in> set xs. Q y) \<Longrightarrow>
-   filter (\<lambda>(x, y). Q y \<and> P y) xs = filter (P o snd) xs"
-  by (smt (verit) filter_cong split_def trimono_spec_defs(3))
-lemma filter_filter_pair_alt:
-  "filter (\<lambda>(x, y). Q y \<and> P y) xs = filter (\<lambda> (x, y). P y) (filter (Q o snd) xs)"
-  by (simp add: split_def)
-
-
-lemma filter_snd_alt:
-  "filter (\<lambda>x. P (snd x)) xs = filter (P o snd) xs"
-  by (metis trimono_spec_defs(3))
-lemma projl_fst:
-  "(\<lambda>x. projl (fst x)) = fst o (\<lambda> (x, t). (projl x, t))"
-  by auto
-
-lemma filter_filter_commute_pair:
-  "filter (\<lambda> (d, t). P t) (filter (\<lambda> (d, t). Q t) xs) = filter (\<lambda> (d, t). Q t) (filter (\<lambda> (d, t). P t) xs)"
-  apply simp
-  apply (rule filter_cong)
-   apply auto
-  done
-
-lemma map_fst_filter_snd:
-  "map (\<lambda>(x, y). (f x, y)) (filter (\<lambda>x. P (snd x)) xs) = filter (\<lambda>x. P (snd x)) (map (\<lambda>(x, y). (f x, y)) xs)"
-  by (induct xs)
-    auto
-lemma find_None_if:
-  "(\<forall> x\<in>set xs. \<not> P x) \<Longrightarrow>
-   find P xs = None"
-  by (metis find_None_iff2)
-lemma image_zmset_empty_if:
-  "M = {#}\<^sub>z \<Longrightarrow>
-   image_zmset f M = {#}\<^sub>z"
-  by simp
-lemma zmset_of_empty_if:
-  "M = {#} \<Longrightarrow>
-   zmset_of M = {#}\<^sub>z"
-  by simp
-lemma mset_set_empty_if:
-  "M = {} \<Longrightarrow>
-   mset_set M = {#}"
-  by simp
-lemma set_antichain_empty_if:
-  "M = {}\<^sub>A \<Longrightarrow>
-   set_antichain M = {}"
-  by simp
-lemma frontier_empty_if:
-  "M = {#}\<^sub>z \<Longrightarrow>
-   frontier M = {}\<^sub>A"
-  by simp
-
-
-
-
 definition "output_batches f F batches = (let ts = outputs_ts F (map snd batches) in
                                           concat (map (\<lambda> t. map (\<lambda> d. (d, t)) (f (map fst (filter (\<lambda> (d, t'). t' = t) batches)))) ts))" 
 
@@ -295,41 +206,6 @@ lemma output_batchesI:
    (d, t) \<in> set (output_batches f F batches)"
   unfolding output_batches_def Let_def outputs_ts_def
   apply auto
-  done
-
-
-lemma zmset_map_Drop_Mint:
-  "(\<forall> x\<in>set xs. \<not> is_Data x) \<Longrightarrow>
-   zmset (map (\<lambda>x. snd (case x of Drop t \<Rightarrow> (p, t, - 1) | Mint t \<Rightarrow> (p, t, 1))) xs) =
-   zmset_of (event.time `# filter_mset is_Mint (mset xs)) - zmset_of (event.time `# filter_mset is_Drop (mset xs))"
-  apply (induct xs)
-   apply (auto simp add: zmset_of_plus split: event.splits)
-   apply (metis (no_types, lifting) add_zmset_add_single diff_diff_add update_zmultiset_one(1))
-  using update_zmultiset_one(2) apply fastforce
-  done
-
-
-(*FIXME: move me*)
-lemma zmset_Data_to_zmset:
-  "(\<forall>x\<in>set xs. is_Data x) \<Longrightarrow>
-   zmset (map (\<lambda>x. snd (case x of Data t d \<Rightarrow> (p, t, 1))) xs) = to_zmset (map (\<lambda>x. snd (case x of Data t d \<Rightarrow> (Inl d, t))) xs)" 
-  apply (induct xs)
-   apply (clarsimp split: event.splits prod.splits)+
-  using update_zmultiset_one(2) apply fastforce
-  done
-lemma change_multiplicities_map_append_event:
-  "change_multiplicities su (map (\<lambda>x. (l, event.time x, 1)) (filter is_Mint xs) @ map (\<lambda>x. (l, event.time x, - 1)) (filter is_Drop xs)) c =
-   change_multiplicities su (map (\<lambda>x. (l, snd (case x of Drop t \<Rightarrow> (p, t, - 1) | Mint t \<Rightarrow> (p, t, 1)))) (filter (\<lambda>x. \<not> is_Data x) xs)) c"
-  apply (induct xs arbitrary: c)
-  subgoal
-    by simp
-  subgoal for e xs' c
-    apply (cases e; simp)
-    subgoal for t
-      by (smt (verit, del_insts) Cons_eq_appendI change_multiplicities_append change_multiplicities_comm empty_append_eq_id)
-    subgoal for t
-      by (smt (verit, del_insts) Cons_eq_appendI change_multiplicities_append change_multiplicities_comm empty_append_eq_id)
-    done
   done
 
 

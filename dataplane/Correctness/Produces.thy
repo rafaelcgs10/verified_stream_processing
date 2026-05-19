@@ -18,31 +18,6 @@ no_notation shiftr  (infixl \<open>>>\<close> 55)
 *)
 
 
-lemma outputs_at_target_updates[simp]:
-  "outputs_at_target su (os(nid := (os nid)\<lparr> inter := A, produ := B, ocaps := C, input := D, inter := E  \<rparr>)) = outputs_at_target su os"
-  unfolding outputs_at_target_def
-  apply (rule ext)
-  apply (auto split: prod.splits if_splits)
-  done
-
-
-lemma to_zmset_BULK_BENQ[simp]:
-  "to_zmset ((xs >> ys) p) = to_zmset (xs p) + to_zmset (ys p)"
-  unfolding BULK_BENQ_def
-  by auto
-
-lemma eq_singletonD:
-  "{x. P x} = {x} \<Longrightarrow> P x"
-  by auto
-
-
-lemma graph_to_nxt_not_Ex_op_conn[simp]:
-  "graph_to_nxt su (nid, p) = None \<longleftrightarrow>
-   \<not> (\<exists> nid' p'. op_conn su (nid, p) (nid', p'))"
-  unfolding graph_to_nxt_def
-  apply (auto simp add: is_empty_antichain_iff find_None_iff dest!: find_SomeD' split: prod.splits)
-  done
-
 
 lemma sum_zmset_filter_graph_to_nxt:
   assumes GR: "graph_summar_nt su (graph_to_nxt su) os"
@@ -284,8 +259,8 @@ lemma dataplane_tracker_inv_produces_drops:
           back
           apply simp
           apply (auto simp add: in_op_conn_graph_to_nxt_iff[OF GS(7)] outputs_at_target_def split: prod.splits if_splits)
-          subgoal for nid'' p''' p''
-            apply (subst temp(4)[rule_format, of p''', unfolded to_zmset_map, simplified])
+          subgoal for p1 p''' p''
+            apply (subst temp(4)[rule_format, of p1, unfolded to_zmset_map, simplified])
             apply (rule arg_cong[where f=zmset])
             apply (rule map_cong)
             subgoal
@@ -478,6 +453,7 @@ lemma dataplane_tracker_inv_produces_drops:
           using prems(15)[unfolded produ_consu_inter_supported_def]
           by blast
         subgoal for p t m
+          supply if_cong[cong]
           using prems(15)[unfolded produ_consu_inter_supported_def] apply -
           apply clarsimp
           apply (drule spec2, drule spec, drule mp, blast)
@@ -496,7 +472,9 @@ lemma dataplane_tracker_inv_produces_drops:
                   else produ (os (fst x))))))
           ")
           subgoal
-            by (smt (verit, best) zmset_subset_eq_zcount)
+            apply simp
+            apply (meson lt_le_lt subseteq_zmset_def)
+            done
           subgoal premises temp
             unfolding subseteq_zmset_def
             apply (clarsimp simp add: zcount_sum)
@@ -528,6 +506,8 @@ lemma dataplane_tracker_inv_produces_drops:
               apply clarsimp
               using prems(2) apply fastforce
               done
+            subgoal
+              by auto
             done
           done
         subgoal for nid' p t m
@@ -581,6 +561,8 @@ lemma dataplane_tracker_inv_produces_drops:
               apply clarsimp
               using prems(2) apply fastforce
               done
+            subgoal
+              by auto
             done
           done
         subgoal for p t m

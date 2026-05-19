@@ -7,9 +7,6 @@ imports
   Dataplane.AntichainOrder
 begin
 
-lemma take_step_PR_preserves_c_pts[simp]:
-  "c_pts (take_step summary PR c) = c_pts c"
-  by (simp_all split: prod.splits if_splits)
 
 lemma propagate_all_preserves_c_pts:
   assumes "propagate_all summary c = Some c'"
@@ -117,29 +114,6 @@ lemma c_pts_change_multiplicities_cong:
     done
   done
 
-lemma extract_prog_front_update[simp]:
-  "extract_prog xs ne (map_entry nid (front_update f) os) =
-   extract_prog xs ne os"
-  unfolding extract_prog_def extract_progress_def obtain_progress_def
-  apply (clarsimp simp add: sum_list_zmset if_distrib[of "filter _"] if_distrib[of "map _"] if_distrib[of operator_state.inter] monoid_add_class.sum_list_distinct_conv_sum_set zmset_concat map_concat filter_concat comp_def split_beta c_pts_change_multiplicities  split: option.splits)
-  apply (rule arg_cong[where f=concat])
-  apply (rule map_cong)
-  apply simp
-  apply (clarsimp simp add: sum_list_zmset if_distrib[of "filter _"] if_distrib[of "map _"] if_distrib[of operator_state.inter] monoid_add_class.sum_list_distinct_conv_sum_set zmset_concat map_concat filter_concat comp_def split_beta c_pts_change_multiplicities  split: option.splits)
-  done
-
-lemma produ_if[simp]:
-  "produ (if nid' = nid then os nid\<lparr>front := f\<rparr> else os nid') =
-   produ (os nid')"
-  by auto
-lemma inter_if[simp]:
-  "inter (if nid' = nid then os nid\<lparr>front := f\<rparr> else os nid') =
-   inter (os nid')"
-  by auto
-lemma consu_if[simp]:
-  "consu (if nid' = nid then os nid\<lparr>front := f\<rparr> else os nid') =
-   consu (os nid')"
-  by auto
 
 lemma dataplane_tracker_inv_front_update:
   assumes D: "dataflow_topology (summ sg) (-+-)"

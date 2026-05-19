@@ -33,7 +33,7 @@ lemma dataplane_tracker_inv_update_outputs_outside:
       apply (rule arg_cong[where f=to_zmset])
       apply (rule map_cong)
       unfolding BULK_BENQ_def
-      apply (auto split: prod.splits)
+       apply (auto split: prod.splits)
       subgoal for nid' p' nid'' p''
         apply (cases "nid'' = nid \<and> p'' = p")
         subgoal
@@ -58,10 +58,10 @@ lemma dataplane_tracker_inv_update_outputs_outside:
           apply (simp add:  c_pts_change_multiplicities)
           apply (rule arg_cong[where f=zmset])
           apply (rule map_cong)
-          apply (rule filter_cong)
-          apply (rule arg_cong[where f=concat])
-          apply (rule map_cong)
-          apply auto
+           apply (rule filter_cong)
+            apply (rule arg_cong[where f=concat])
+            apply (rule map_cong)
+             apply auto
           done
         done
       done
@@ -92,23 +92,23 @@ lemma dataplane_tracker_inv_update_outputs_outside:
       subgoal for xs a b c
         apply (drule spec2)
         apply (drule mp)
-        apply assumption
+         apply assumption
         apply (drule mp)
-        apply assumption
+         apply assumption
         apply (drule bspec)
         unfolding extract_progress_def obtain_progress_def
-        apply simp
+         apply simp
         apply auto
         done
       subgoal for xs' a b c
         apply (drule spec2)
         apply (drule mp)
-        apply assumption
+         apply assumption
         apply (drule mp)
-        apply assumption
+         apply assumption
         apply (drule bspec)
         unfolding extract_progress_def obtain_progress_def
-        apply simp
+         apply simp
         apply clarsimp
         apply (subgoal_tac "extract_prog a (subgraph.nxt sg) (map_entry nid (outpu_update (\<lambda>_ p'. if p' = p then xs else outpu (os nid) p')) os) = extract_prog a (subgraph.nxt sg) os")
         subgoal
@@ -118,7 +118,7 @@ lemma dataplane_tracker_inv_update_outputs_outside:
           apply clarsimp
           apply (rule arg_cong[where f=concat])
           apply (rule map_cong)
-          apply auto
+           apply auto
           done
         done
       done
@@ -134,7 +134,7 @@ lemma dataplane_tracker_inv_update_outputs_outside:
           by auto
         subgoal premises temp
           apply (rule map_cong)
-          apply auto
+           apply auto
           done
         done
       subgoal for p'' t m
@@ -145,7 +145,7 @@ lemma dataplane_tracker_inv_update_outputs_outside:
           by auto
         subgoal premises temp
           apply (rule map_cong)
-          apply auto
+           apply auto
           done
         done
       done
@@ -190,13 +190,13 @@ lemma dataplane_tracker_inv_update_outputs:
       apply clarsimp
       apply (rule arg_cong[where f=to_zmset])
       apply (rule map_cong)
-      apply simp_all
+       apply simp_all
       unfolding BULK_BENQ_def
       apply (auto split: prod.splits)
       subgoal 
         apply (drule the_elem_graph_summar_nt_summ[OF _ prems(3)])
-        back
-        apply assumption
+         back
+         apply assumption
         apply clarsimp
         apply (rule FalseE)
         using conjunct1[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF prems(3)[unfolded graph_summar_nt_def]]]]]]]]
@@ -206,8 +206,8 @@ lemma dataplane_tracker_inv_update_outputs:
         done
       subgoal 
         apply (drule the_elem_graph_summar_nt_summ[OF _ prems(3)])
-        back
-        apply assumption
+         back
+         apply assumption
         apply clarsimp
         apply (rule FalseE)
         using conjunct1[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF prems(3)[unfolded graph_summar_nt_def]]]]]]]]
@@ -217,8 +217,8 @@ lemma dataplane_tracker_inv_update_outputs:
         done
       subgoal 
         apply (drule the_elem_graph_summar_nt_summ[OF _ prems(3)])
-        back
-        apply assumption
+         back
+         apply assumption
         apply clarsimp
         apply (rule FalseE)
         using conjunct1[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF prems(3)[unfolded graph_summar_nt_def]]]]]]]]
@@ -228,8 +228,8 @@ lemma dataplane_tracker_inv_update_outputs:
         done
       subgoal 
         apply (drule the_elem_graph_summar_nt_summ[OF _ prems(3)])
-        back
-        apply assumption
+         back
+         apply assumption
         apply clarsimp
         apply (rule FalseE)
         using conjunct1[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF prems(3)[unfolded graph_summar_nt_def]]]]]]]]
@@ -271,10 +271,10 @@ lemma dataplane_tracker_inv_update_outputs:
           apply (simp add:  c_pts_change_multiplicities)
           apply (rule arg_cong[where f=zmset])
           apply (rule map_cong)
-          apply (rule filter_cong)
-          apply (rule arg_cong[where f=concat])
-          apply (rule map_cong)
-          apply auto
+           apply (rule filter_cong)
+            apply (rule arg_cong[where f=concat])
+            apply (rule map_cong)
+             apply auto
           done
         done
       done
@@ -291,68 +291,49 @@ lemma dataplane_tracker_inv_update_outputs:
       subgoal
         using prems(1,2) apply -
         unfolding chnls_imp_front_inv_def outputs_at_target_def BULK_BENQ_def apply -
-        apply (auto simp add: image_iff split_beta split:  if_splits)
+        apply (auto del: prod_eqI simp add: image_iff split_beta split:  if_splits)
         apply (rule ext)+
-        apply (auto 0 0 simp add: image_iff split: prod.splits if_splits)
-        subgoal
-          apply (drule the_elem_graph_summar_nt_summ[OF _ prems(3)])
-          apply assumption
-          apply (drule the_elem_graph_summar_nt_summ[OF _ prems(3)])
-          apply assumption
-          apply clarsimp
-          using conjunct1[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF prems(3)[unfolded graph_summar_nt_def]]]]]]]]
-            the_elem_bi_unique_op_conn
-            prod.split_sels(2) Pair_inject bi_uniqueDr op_conn.simps
-          apply fastforce
-          done
-        subgoal
-          apply (drule the_elem_graph_summar_nt_summ[OF _ prems(3)])
-          apply assumption
-          apply (drule the_elem_graph_summar_nt_summ[OF _ prems(3)])
-          apply assumption
-          apply clarsimp
-          using conjunct1[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF prems(3)[unfolded graph_summar_nt_def]]]]]]]]
-            the_elem_bi_unique_op_conn
-            prod.split_sels(2) Pair_inject bi_uniqueDr op_conn.simps
-          apply fastforce
-          done
-        subgoal
-          apply (drule the_elem_graph_summar_nt_summ[OF _ prems(3)])
-          apply assumption
-          apply (drule the_elem_graph_summar_nt_summ[OF _ prems(3)])
-          apply assumption
-          apply clarsimp
-          done
-        subgoal
-          apply (drule the_elem_graph_summar_nt_summ[OF _ prems(3)])
-          apply assumption
-          apply (drule the_elem_graph_summar_nt_summ[OF _ prems(3)])
-          apply assumption
-          apply clarsimp
-          done
-        subgoal
-          apply (drule the_elem_graph_summar_nt_summ[OF _ prems(3)])
-          apply assumption
-          apply clarsimp
-          done
-        subgoal
-          apply (drule the_elem_graph_summar_nt_summ[OF _ prems(3)])
-          apply assumption
-          apply (drule the_elem_graph_summar_nt_summ[OF _ prems(3)])
-          apply assumption
-          apply clarsimp
-          done
-        subgoal
-          apply (drule the_elem_graph_summar_nt_summ[OF _ prems(3)])
-          apply assumption
-          apply (drule the_elem_graph_summar_nt_summ[OF _ prems(3)])
-          apply assumption
-          apply clarsimp
-          done
-        subgoal
-          apply (drule the_elem_graph_summar_nt_summ[OF _ prems(3)])
-          apply assumption
-          apply clarsimp
+        subgoal premises aux for nidp
+          using aux(2-) apply -
+          apply (subgoal_tac "the_elem {(nid'a, p'a). summ sg (Loc nid'a (Src p'a)) (Loc nid' (Trg p')) \<noteq> {}\<^sub>A} = (nid, p)")
+          subgoal
+            apply (cases "nidp = (nid', p')")
+            subgoal
+              apply (simp split: if_splits)
+              apply (auto 0 0 del: prod_eqI simp add: image_iff split: if_splits)
+              done
+            subgoal
+              apply (cases "nidp")
+              subgoal for nid'' p''
+                using aux(1)[rule_format, of nid'' p''] apply -
+                apply (simp split: if_splits prod.splits)
+                apply (auto 0 0 del: disjCI prod_eqI simp add: image_iff split: if_splits; hypsubst_thin)
+                subgoal
+                  using conjunct1[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF prems(3)[unfolded graph_summar_nt_def]]]]]]]]
+                    the_elem_bi_unique_op_conn
+                    prod.split_sels(2) Pair_inject bi_uniqueDr op_conn.simps
+                  by (smt (verit, best) Collect_cong split_def split_pairs2 the_elem_graph_summar_nt_summ)
+                subgoal
+                  using conjunct1[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF prems(3)[unfolded graph_summar_nt_def]]]]]]]]
+                    the_elem_bi_unique_op_conn
+                    prod.split_sels(2) Pair_inject bi_uniqueDr op_conn.simps
+                  by (smt (verit, best) Collect_cong split_def split_pairs2 the_elem_graph_summar_nt_summ)
+                subgoal
+                  using conjunct1[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF prems(3)[unfolded graph_summar_nt_def]]]]]]]]
+                    the_elem_bi_unique_op_conn
+                    prod.split_sels(2) Pair_inject bi_uniqueDr op_conn.simps
+                  by (smt (verit, best) Collect_cong split_def split_pairs2 the_elem_graph_summar_nt_summ)
+                subgoal
+                  using conjunct1[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF prems(3)[unfolded graph_summar_nt_def]]]]]]]]
+                    the_elem_bi_unique_op_conn
+                    prod.split_sels(2) Pair_inject bi_uniqueDr op_conn.simps
+                  by (smt (verit, best) Collect_cong split_def split_pairs2 the_elem_graph_summar_nt_summ)
+                done
+              done
+            done
+          subgoal
+            using conjunct1[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF prems(3)[unfolded graph_summar_nt_def]]]]]]]]
+            by (smt (verit, ccfv_SIG) Collect_cong op_conn.elims(1) prems(3) split_beta the_elem_graph_summar_nt_summ)
           done
         done
       done
@@ -368,23 +349,23 @@ lemma dataplane_tracker_inv_update_outputs:
       subgoal for xs 
         apply (drule spec2)
         apply (drule mp)
-        apply assumption
+         apply assumption
         apply (drule mp)
-        apply assumption
+         apply assumption
         apply (drule bspec)
         unfolding extract_progress_def obtain_progress_def
-        apply simp
+         apply simp
         apply auto
         done
       subgoal for xs' a b c
         apply (drule spec2)
         apply (drule mp)
-        apply assumption
+         apply assumption
         apply (drule mp)
-        apply assumption
+         apply assumption
         apply (drule bspec)
         unfolding extract_progress_def obtain_progress_def
-        apply simp
+         apply simp
         apply clarsimp
         apply (subgoal_tac "extract_prog a (subgraph.nxt sg) (map_entry nid (outpu_update (\<lambda>_ p'. if p' = p then ys else outpu (os nid) p')) os) = extract_prog a (subgraph.nxt sg) os")
         subgoal
@@ -394,7 +375,7 @@ lemma dataplane_tracker_inv_update_outputs:
           apply clarsimp
           apply (rule arg_cong[where f=concat])
           apply (rule map_cong)
-          apply auto
+           apply auto
           done
         done
       done
@@ -414,7 +395,7 @@ lemma dataplane_tracker_inv_update_outputs:
           by auto
         subgoal premises temp
           apply (rule map_cong)
-          apply auto
+           apply auto
           done
         done
       subgoal for nid'' p'' t'' m
@@ -428,7 +409,7 @@ lemma dataplane_tracker_inv_update_outputs:
           by auto
         subgoal premises temp
           apply (rule map_cong)
-          apply auto
+           apply auto
           done
         done
       done
