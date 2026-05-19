@@ -529,6 +529,7 @@ lemma dataplane_tracker_inv_produces_drops:
                   else produ (os (fst x))))))
           ")
           subgoal
+            apply simp
             by (smt (verit, best) zmset_subset_eq_zcount)
           subgoal premises temp
             unfolding subseteq_zmset_def
