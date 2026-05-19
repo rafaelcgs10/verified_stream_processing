@@ -139,7 +139,6 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
   \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 1 (nxt sg) st) (pt_tr sg)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
     (my_ooo_input_op os1) (my_increment_op inc os2')))) op2'"
         if "invariant f inc os1 buf os2"
-          and "has_progress os2"
           and "(os2', st) = obtain_progress os2"
         for st :: "(1, 'c) shared_state"
           and os2' :: "(1, 'b, 'c, 'e) operator_state_scheme"
@@ -148,7 +147,6 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
   \<and> wbisim_cong R (dataflow_op (sg\<lparr>upfro := \<lambda>_. True, pt_tr := change_multiplicities (summ sg) (extract_progress 0 (nxt sg) st) (pt_tr sg)\<rparr>) (map_op (case_sum id id) (case_sum id id) (comp_op [Inr (0, 1) \<mapsto> Inr (1, 1)] buf
   (my_ooo_input_op os1') (my_increment_op inc os2)))) op2'"
         if "invariant f inc os1 buf os2"
-          and "has_progress os1"
           and "(os1', st) = obtain_progress os1"
         for st :: "(1, 'c) shared_state"
           and os1' :: "(1, 'b, 'a, 'c, 'd) input_state_scheme"
