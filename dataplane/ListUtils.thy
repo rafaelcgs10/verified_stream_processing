@@ -3,10 +3,9 @@ theory ListUtils
 imports
   Main
   "HOL-Library.Multiset"
-
+  "Automatic_Refinement.Misc"
 begin
 
-(* FIXME: move me *)
 fun rmdups where
   "rmdups S [] = []"
 | "rmdups S (x # xs) = (if x \<in> S then rmdups S xs else x # (rmdups (insert x S) xs))"
@@ -40,6 +39,9 @@ lemma rmdups_insert_NilI:
    rmdups (insert a A) xs = []"
   oops
 
+lemma distinct_rmdups[simp]:
+  "distinct (rmdups A xs)"
+  by (induct xs arbitrary: A) auto
 
 fun remove_last where
   "remove_last x [] = []"
@@ -244,6 +246,63 @@ lemma set_list_diff_filter[simp]:
        apply auto
       done
     done
+  done
+
+
+lemma filter_filter_True1_pair:
+  "(\<forall> (x, y) \<in> set xs. Q y) \<Longrightarrow>
+   filter (\<lambda>(x, y). Q y \<and> P y) xs = filter (P o snd) xs"
+  by (smt (verit, ccfv_threshold) comp_apply filter_cong split_beta)
+
+lemma filter_filter_pair_alt:
+  "filter (\<lambda>(x, y). Q y \<and> P y) xs = filter (\<lambda> (x, y). P y) (filter (Q o snd) xs)"
+  by (simp add: split_def)
+
+
+lemma filter_snd_alt:
+  "filter (\<lambda>x. P (snd x)) xs = filter (P o snd) xs"
+  by (smt (verit, ccfv_threshold) comp_apply filter_cong split_beta)
+
+lemma projl_fst:
+  "(\<lambda>x. projl (fst x)) = fst o (\<lambda> (x, t). (projl x, t))"
+  by auto
+
+lemma filter_filter_commute_pair:
+  "filter (\<lambda> (d, t). P t) (filter (\<lambda> (d, t). Q t) xs) = filter (\<lambda> (d, t). Q t) (filter (\<lambda> (d, t). P t) xs)"
+  apply simp
+  apply (rule filter_cong)
+   apply auto
+  done
+
+lemma map_fst_filter_snd:
+  "map (\<lambda>(x, y). (f x, y)) (filter (\<lambda>x. P (snd x)) xs) = filter (\<lambda>x. P (snd x)) (map (\<lambda>(x, y). (f x, y)) xs)"
+  by (induct xs)
+    auto
+
+lemma find_None_if:
+  "(\<forall> x\<in>set xs. \<not> P x) \<Longrightarrow>
+   find P xs = None"
+  by (metis find_None_iff2)
+
+lemma count_list_gt_0[simp]:
+  "0 < count_list xs x \<longleftrightarrow> x \<in> set xs"
+  by (induct xs) auto
+
+lemma find_SomeD':
+  "find P xs = Some x \<Longrightarrow> P x \<and> x\<in>set xs"
+  by (auto dest: find_SomeD)
+lemma find_SomeD'':
+  "Some x = find P xs \<Longrightarrow> P x \<and> x\<in>set xs"
+  using find_SomeD' by metis
+
+lemma find_Some_singleton:
+  "{x \<in> set xs . P x} = {x} \<Longrightarrow>
+   find P xs = Some x"
+  apply (induct xs)
+   apply simp_all
+  apply (auto 0 0 simp add:)
+   apply blast
+  apply (smt (verit, best) Collect_cong)
   done
 
 end

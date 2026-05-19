@@ -140,27 +140,6 @@ instance
   done
 end
 
-definition "antichain_equal A1 A2 = (is_empty_antichain (filter_antichain (λ x. x ∉⇩A A2) A1) ∧ is_empty_antichain (filter_antichain (λ x. x ∉⇩A A1) A2))"
-
-lemma equal_antichain_equal:
-  "antichain_equal A1 A2 ⟷ A1 = A2"
-  unfolding antichain_equal_def
-  by(auto simp add: Set.is_empty_iff ac_eq_iff filter_antichain.rep_eq is_empty_antichain.rep_eq member_antichain.rep_eq filter_antichain.rep_eq member_antichain.rep_eq)
-
-instantiation antichain :: (order) equal
-begin
-definition
-  "equal_antichain = antichain_equal"
-instance
-  apply standard
-  subgoal for f1 f2
-    unfolding equal_antichain_def
-    apply (subst equal_antichain_equal)
-    apply auto
-    done
-  done
-end
-
 
 (* -------------------------------------------------------------------------- *)
 (* zmset: (location * timestamp * multiplicity) list to zmultiset             *)
@@ -385,4 +364,94 @@ lemma set_zmset_zmset_of_mset_set[simp]:
   unfolding set_zmset_def
   by clarsimp
 
+lemma image_zmset_empty_if:
+  "M = {#}⇩z ⟹
+   image_zmset f M = {#}⇩z"
+  by simp
+lemma zmset_of_empty_if:
+  "M = {#} ⟹
+   zmset_of M = {#}⇩z"
+  by simp
+lemma mset_set_empty_if:
+  "M = {} ⟹
+   mset_set M = {#}"
+  by simp
+
+
+lemma pos_zcount_image_zmset_inj: 
+  "0 < zcount M t ⟹inj f ⟹  0 < zcount (image_zmset f M) (f t)"
+  apply transfer
+  subgoal for M t f
+    apply (induct M)
+    subgoal for Mp Mn
+      apply simp
+      apply (metis basic_trans_rules(22) count_image_mset_ge_count count_image_mset_inj)
+      done
+    done
+  done
+
+lemma to_zmset_concat:
+  "to_zmset (concat xs) = sum_list (map to_zmset xs)"
+  by (induct xs) auto
+
+lemma image_zmset_comp:
+  "image_zmset f (image_zmset g M) = image_zmset (f o g) M"
+  apply transfer
+  apply (auto simp add: equiv_zmset_def)
+  done
+
+lemma zcount_image_zmset_image_zmset[simp]:
+  "zcount (Auxiliary.image_zmset f (Auxiliary.image_zmset g (M t))) t = zcount {#f (g xa). xa ∈#⇩z M t#} t"
+  apply transfer
+  apply (auto simp add: split_beta)
+  done
+
+lemma zcount_zmset:
+  "zcount (zmset xs) t = sum_list (map snd (filter (λ (t', x). t = t') xs))"
+  by (induct xs) (auto simp add: zcount_update_zmultiset)
+
+lemma to_zmset_BULK_BENQ[simp]:
+  "to_zmset ((xs >> ys) p) = to_zmset (xs p) + to_zmset (ys p)"
+  unfolding BULK_BENQ_def
+  by auto
+
+lemma zcount_zmset_gt_0_set_Ex:
+  "0 < zcount (zmset xs) x ⟹ ∃ m. (x, m) ∈ set xs ∧ m > 0"
+  apply (induct xs)
+   apply clarsimp+
+  apply (smt (verit, ccfv_SIG) zcount_update_zmultiset)
+  done
+
+lemma zcount_zimageD:
+  "zcount {#f t. t ∈#⇩z A#} t > 0 ⟹
+   (∃ t'. zcount A t' > 0 ∧ t = f t')"
+  apply transfer
+  apply clarsimp
+  apply (metis count_image_mset_lt_imp_lt)
+  done
+lemma zcount_to_zmset_gt_0[simp]:
+  "zcount (to_zmset xs) t > 0 ⟷ t ∈ set xs"
+  by (induct xs) (simp_all add: to_zmset_nenneg)
+lemma sum_le_0I:
+  "finite A ⟹ (∀ x∈A. f x ≤ (0 :: int)) ⟹ (∑x∈A. f x)≤ 0"
+  apply (induct A rule: finite_induct)
+   apply simp_all
+  done
+
+lemma in_frontier_minusI:
+  "t ∈⇩A frontier A ⟹
+   t ≠ t' ⟹
+   t ∈⇩A frontier (A - {#t'#}⇩z)"
+  apply transfer'
+  unfolding minimal_antichain_def
+  apply auto
+  done
+
+lemma sum_subtractf_zmultiset:
+  "finite A ⟹
+   (∑x∈A. f x - g x) = sum (f :: 'b ⇒ 'a zmultiset) A - sum g A"
+  apply (induct A rule: finite_induct)
+   apply simp_all
+  apply (metis (no_types, lifting) add_diff_eq diff_add_zmset uminus_add_add_uminus)
+  done
 end

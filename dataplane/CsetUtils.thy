@@ -110,4 +110,24 @@ lemma cset_of_llist_lshift[simp]:
     done
   done
 
+lemma snd_cfilter[simp]:
+  "snd |`| cfilter (λ(d, t). P t) S = cfilter P (snd |`| S)"
+  by (force simp add: image_iff split_beta simp flip: cin.rep_eq)
+
+lemma cimage_cfilter_clean:
+  "(∀ x. x |∈| S ⟶ Q x ⟷ P x) ⟹
+   (λt. F t (Q t)) |`| cfilter P S =
+   ((λt. F t True) |`| cfilter P S)"
+  by force
+
+lemma cset_cfilter_split:
+  "S = cUn (cfilter P S) (cfilter (Not o P) S)"
+  by auto
+
+lemma cUnion_cUn_distrib[simp]:
+  "cUnion (cUn A B) = cUn (cUnion A) (cUnion B)"
+  apply transfer
+  apply (auto simp add:  cin.rep_eq)
+  done
+
 end

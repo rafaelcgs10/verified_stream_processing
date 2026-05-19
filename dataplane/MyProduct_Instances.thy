@@ -4,11 +4,53 @@ imports
   Containers.Collection_Order
   "HOL-Library.Countable"
   Nondeterministic_Dataflow.CSet_LList_Impl
+  "HOL-Library.Product_Lexorder"
 begin
+
+class order_ccompare = order + ccompare +
+  assumes not_none: "ID CCOMPARE('a) \<noteq> None" 
+    and extension: "\<And> s t. s < t \<Longrightarrow> cless s t"
+begin
+lemma comparator_ccomp:
+  "comparator ccomp"
+  by (simp add: local.ID_ccompare' local.not_none)
+end
+
+instantiation nat :: order_ccompare
+begin
+instance
+  apply standard
+  apply (simp_all add: lt_of_comp_def compare_nat_def ID_code ccompare_nat_def)
+  apply (metis compare_nat_def two_comparisons_into_compare(6))
+  done
+end
+
+instantiation prod :: (order_ccompare, order_ccompare) order_ccompare
+begin
+instance
+  apply standard
+  subgoal
+    by (metis (lifting) ID_code ccompare_prod_def is_none_code(1,2) not_none option.case_eq_if)
+  subgoal for s t
+    unfolding ccompare_prod_def
+    apply (auto simp add: not_none split: option.splits)
+    subgoal for a b
+      apply (cases s; cases t)
+    unfolding ID_def
+    apply auto
+     apply (metis ID_Some extension lt_of_comp_prod option.sel)
+    apply (metis ID_Some cless_eq_conv_cless extension lt_of_comp_prod not_none option.sel order_le_less)
+    done
+  done
+  done
+end
 
 datatype ('a, 'b) myprod = MyPair (myfst: 'a) (mysnd: 'b)
 
-derive ccompare myprod
+lemma the_ID_Some[simp]:
+  "the (ID (Some x)) = x"
+  by (auto simp: ID_def)
+
 
 (* Copy of Product_Plus *)
 
@@ -420,5 +462,58 @@ instance
     done
   done
 end
+
+
+instantiation myprod :: (order_ccompare, order_ccompare) order_ccompare
+begin
+
+definition ccompare_myprod :: "(('a, 'b) myprod \<Rightarrow> ('a, 'b) myprod \<Rightarrow> order) option" where
+  "ccompare_myprod = Some (\<lambda>a b. if a < b then Lt else (if b < a then Gt else ccomp (myfst a, mysnd a) (myfst b, mysnd b)))"
+
+instance
+  apply standard
+    defer
+  subgoal
+    by (simp add: ID_code ccompare_myprod_def)
+  subgoal
+    by (simp add: ID_code ccompare_myprod_def lt_of_comp_def)
+  subgoal for comp
+    unfolding ccompare_myprod_def option.inject
+    apply hypsubst_thin
+    apply standard
+    subgoal for x y
+      apply (cases x; cases y)
+      apply (auto simp add: comparator.sym[OF comparator_ccomp]  less_eq_myprod_def less_myprod_def split: if_splits)
+      done
+    subgoal for x y
+      apply (cases x; cases y)
+      apply (auto simp add: comparator.eq[OF comparator_ccomp]  less_eq_myprod_def less_myprod_def split: if_splits)
+      done
+    subgoal for x y z
+      apply (cases x; cases y; cases z)
+      apply (clarsimp intro: simp add: not_none ccompare_prod_def less_eq_myprod_def less_myprod_def split: order.splits if_splits option.splits intro: )
+      using comparator.comp_trans[OF comparator_ccomp] apply force
+             apply (metis ID_code ccompare comparator.Lt_lt_conv comparator_def order.trans extension option.sel order.distinct(3,5) order_le_less)
+            apply (metis ID_code ccompare comparator.Lt_lt_conv comparator_def order.trans extension option.sel order.distinct(3,5) order_le_less)
+           apply (metis ID_code ccompare comparator.Lt_lt_conv comparator_def order.trans extension option.sel order.distinct(3,5) order_le_less)
+          apply (metis ID_code ccompare comparator.Lt_lt_conv comparator_def order.trans extension option.sel order.distinct(3,5) order_le_less)
+      subgoal
+        by (smt (verit)
+            \<open>\<And>y x. invert_order (if x < y then Lt else if y < x then Gt else ccomp (myfst x, mysnd x) (myfst y, mysnd y)) = (if y < x then Lt else if x < y then Gt else ccomp (myfst y, mysnd y) (myfst x, mysnd x))\<close>
+            comparator.Lt_lt_conv comparator_ccomp comparator_def extension less_eq_myprod_def less_myprod_def myprod.sel(1,2) option.sel order.distinct(3)
+            order.simps(6) order_le_less)
+        prefer 3
+      subgoal
+        by (metis (no_types, opaque_lifting) \<open>\<And>z y x. ccomp x y = Lt \<Longrightarrow> ccomp y z = Lt \<Longrightarrow> ccomp x z = Lt\<close> comparator.Gt_lt_conv comparator.Lt_lt_conv
+            comparator_ccomp extension option.sel order.distinct(1) order.simps(6) order_le_imp_less_or_eq)
+      subgoal
+        by (metis comparator.Gt_lt_conv comparator.weak_eq comparator_ccomp extension option.sel order.distinct(1) order.simps(6) order_le_less)
+      subgoal
+        by (metis comparator.Gt_lt_conv comparator.weak_eq comparator_ccomp extension option.sel order.distinct(1) order.simps(6) order_le_less)
+      done
+    done
+  done
+end
+
 
 end

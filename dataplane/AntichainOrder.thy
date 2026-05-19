@@ -75,6 +75,59 @@ lemma empty_antichain_top[simp]:
   unfolding less_eq_antichain_def
   using mem_antichain_nonempty by blast
 
+
+lemma is_empty_antichain_plus[simp]:
+  "is_empty_antichain B \<Longrightarrow>
+   antichain A + B = antichain A"
+  by (metis Set.is_empty_iff antichain_add_commute antichain_sum_empty_2 empty_antichain.abs_eq is_empty_antichain.rep_eq set_antichain_inverse)
+lemma is_empty_antichain_plus'[simp]:
+  "is_empty_antichain A \<Longrightarrow>
+   A + antichain B = antichain B"
+  by (metis Set.is_empty_iff antichain_sum_empty_2 empty_antichain.abs_eq is_empty_antichain.rep_eq set_antichain_inverse)
+lemma antichain_sum_eq[simp]:
+  "finite A \<Longrightarrow> incomparable A \<Longrightarrow>
+   antichain A + antichain A = antichain A"
+  apply (subst plus_antichain.abs_eq)
+  apply (clarsimp simp add:  eq_onp_def)+
+  apply (metis (no_types, lifting) basic_trans_rules(20) in_minimal_antichain incomparable_def order_antisym_conv subsetI)
+  done
+lemma incomparable_singleton[simp]:
+  "incomparable {a}"
+  unfolding incomparable_def by auto
+lemma is_empty_antichain_iff:
+  "is_empty_antichain A \<longleftrightarrow> A = {}\<^sub>A"
+  by (metis is_empty_antichain_plus antichain_sum_empty_2 empty_antichain.abs_eq empty_is_empty_antichain)
+
+definition "antichain_equal A1 A2 = (is_empty_antichain (filter_antichain (\<lambda> x. x \<notin>\<^sub>A A2) A1) \<and> is_empty_antichain (filter_antichain (\<lambda> x. x \<notin>\<^sub>A A1) A2))"
+
+lemma equal_antichain_equal:
+  "antichain_equal A1 A2 \<longleftrightarrow> A1 = A2"
+  unfolding antichain_equal_def
+  by(auto simp add: Set.is_empty_iff ac_eq_iff filter_antichain.rep_eq is_empty_antichain.rep_eq member_antichain.rep_eq filter_antichain.rep_eq member_antichain.rep_eq)
+instantiation antichain :: (order) equal
+begin
+definition
+  "equal_antichain = antichain_equal"
+instance
+  apply standard
+  subgoal for f1 f2
+    unfolding equal_antichain_def
+    apply (subst equal_antichain_equal)
+    apply auto
+    done
+  done
+end
+
+lemma set_antichain_empty_if:
+  "M = {}\<^sub>A \<Longrightarrow>
+   set_antichain M = {}"
+  by simp
+
+lemma in_antichain_singleton[simp]:
+  "x \<in>\<^sub>A antichain {x}"
+  by (metis ID.set_finite in_antichain_minimal_antichain insertI1 minimal_antichain_singleton)
+
+
 lemma frontier_add:
   "(frontier N) \<le> (frontier M) \<Longrightarrow>
    (\<forall> t. t \<in>#\<^sub>z M \<longrightarrow> zcount M t > 0) \<Longrightarrow>
@@ -183,6 +236,11 @@ lemma frontier_below_eq_frontier_minus[simp]:
   apply safe
   apply (smt (verit, ccfv_SIG) dataflow_topology.obtain_elem_frontier member_frontier_pos_zmset trivial_dataflow_topology_interpretation.dataflow_topology_axioms zcount_diff)
   done
+lemma in_frontier_minusD:
+  "x \<in>\<^sub>A frontier (A - B) \<Longrightarrow> 
+   (\<forall> y. zcount B y \<ge> 0) \<Longrightarrow>
+   (\<exists> y. y \<in>\<^sub>A frontier A \<and> y \<le> x)"
+  using frontier_below_eq_frontier_minus less_eq_antichain_def by blast
 
 lemma frontier_below_eq_frontier_plus_neg_alt[simp]:
   "(\<forall> t. zcount N t \<le> 0) \<Longrightarrow>
@@ -945,5 +1003,26 @@ lemma frontier_zmset_of_add_minus:
   apply transfer
   apply (auto simp add: minimal_antichain_def)
   done
+
+lemma frontier_empty_if:
+  "M = {#}\<^sub>z \<Longrightarrow>
+   frontier M = {}\<^sub>A"
+  by simp
+
+lemma frontier_zmset_of_remove1_mset[simp]:
+  "frontier (zmset_of (remove1_mset t C)) = frontier (zmset_of C - {# t #}\<^sub>z)"
+  apply transfer'
+  unfolding minimal_antichain_def
+  apply auto
+  done
+
+lemma frontier_le_subset[simp]:
+  "frontier A \<le> frontier (zmset_of (mset_set {t' \<in> set_antichain (frontier A). P t'}))"
+  unfolding less_eq_antichain_def
+  apply auto
+  apply transfer'
+  apply (auto simp add: minimal_antichain_def)
+  done
+
 
 end

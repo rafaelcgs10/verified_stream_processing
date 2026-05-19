@@ -12,7 +12,6 @@ declare cin.rep_eq[simp del]
 declare enum_class.enum_UNIV[simp] enum_class.enum_distinct[simp]
 no_notation shiftr  (infixl \<open>>>\<close> 55)
 
-
 (*
    (\<forall> p. to_zmset (drops p) \<subseteq>#\<^sub>z zmset (map snd (filter (\<lambda>x. p = fst x) produs))) \<Longrightarrow>
 *)
@@ -247,6 +246,7 @@ lemma dataplane_tracker_inv_produces_drops:
         unfolding Src_caps_inv_def
         by (auto simp add: temp(1))
       subgoal premises prems
+      supply  if_cong[cong]
         using prems(7,8) apply -
         unfolding Trg_caps_inv_def
         apply (clarsimp simp add: to_zmset_map)
@@ -529,7 +529,6 @@ lemma dataplane_tracker_inv_produces_drops:
                   else produ (os (fst x))))))
           ")
           subgoal
-            apply simp
             by (smt (verit, best) zmset_subset_eq_zcount)
           subgoal premises temp
             unfolding subseteq_zmset_def
@@ -562,8 +561,6 @@ lemma dataplane_tracker_inv_produces_drops:
               apply clarsimp
               using prems(2) apply fastforce
               done
-            subgoal
-              by auto
             done
           done
         subgoal for p t m

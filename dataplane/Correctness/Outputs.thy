@@ -7,8 +7,6 @@ imports
   Dataplane.AntichainOrder
 begin
 
-
-
 lemma dataplane_tracker_inv_update_outputs_outside:
   "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
    os' = os(nid := (os nid)\<lparr> outpu := (\<lambda> p'. if p' = p then xs else outpu (os nid) p') \<rparr>) \<Longrightarrow>
@@ -73,7 +71,7 @@ lemma dataplane_tracker_inv_update_outputs_outside:
     subgoal premises prems
       using prems(1,8) apply -
       unfolding chnls_imp_front_inv_def outputs_at_target_def BULK_BENQ_def
-      apply (auto simp add: image_iff split_beta split:  if_splits)
+      apply (auto simp add: image_iff split_beta split:  if_splits cong: if_cong)
       apply (rule FalseE)
       using conjunct1[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF prems(2)[unfolded graph_summar_nt_def]]]]]]]]
         the_elem_bi_unique_op_conn
@@ -192,7 +190,7 @@ lemma dataplane_tracker_inv_update_outputs:
       apply (rule map_cong)
        apply simp_all
       unfolding BULK_BENQ_def
-      apply (auto split: prod.splits)
+      apply (auto 0 0 split: prod.splits cong: if_cong)
       subgoal 
         apply (drule the_elem_graph_summar_nt_summ[OF _ prems(3)])
          back
@@ -235,8 +233,7 @@ lemma dataplane_tracker_inv_update_outputs:
         using conjunct1[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF prems(3)[unfolded graph_summar_nt_def]]]]]]]]
           the_elem_bi_unique_op_conn
           prod.split_sels(2) Pair_inject bi_uniqueDr op_conn.simps
-        apply fastforce
-        done
+        by fastforce
       subgoal 
         using conjunct1[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF conjunct2[OF prems(3)[unfolded graph_summar_nt_def]]]]]]]]
           the_elem_bi_unique_op_conn

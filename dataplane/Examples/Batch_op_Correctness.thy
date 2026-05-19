@@ -18,6 +18,10 @@ imports
 begin
 no_notation shiftr  (infixl \<open>>>\<close> 55)
 
+
+declare if_cong[cong]
+declare filter_True[simp del] filter_False[simp del] list_emb_Nil2[simp del] BULK_BENQ_right_empty[simp del] BULK_BENQ_left_empty[simp del]
+
 section \<open>Example\<close>
 
 abbreviation "t0 \<equiv> MyPair (0 :: nat) (0 :: nat)"
@@ -118,9 +122,7 @@ lemma weights_to_graph_fun_to_next[simp]:
     using loc_2_1_cases[where l=l] apply -
     apply (elim disjE; hypsubst_thin)
     unfolding enum_location_def enum_port_def Numeral_Type.enum_num1_def comp_def Enum.enum_prod_def
-       apply auto
-      apply code_simp+
-    done
+    by (auto; code_simp?)+
   done
 
 lemma dataflow_tree_to_graph_to_my_summ[simp]:
@@ -128,17 +130,25 @@ lemma dataflow_tree_to_graph_to_my_summ[simp]:
   unfolding dataflow_tree_to_graph_def Let_def default_internal_summary_def comp_def                                               
   apply (simp only: split: if_splits prod.splits)
   apply (intro allI impI conjI)
-  subgoal
-    apply clarsimp
-    subgoal premises prems
-      apply (rule ext)+
-      subgoal for l1 l2
-        apply (cases l1; cases l2)
+  subgoal for x su
+    apply (rule ext)+
+    apply simp
+    apply (elim conjE)
+    apply hypsubst_thin
+    subgoal premises prems for l1 l2
+      apply (cases l1; cases l2)
         apply simp
-        subgoal for nid1 lp1 nid2 lp2
-          apply (cases lp1; cases lp2; simp add: my_summ_def)
-           apply code_simp+
-          done
+      subgoal for nid1 p1 nid2 p2
+        apply (cases p1; cases p2)
+        apply (intro allI impI conjI)
+        subgoal
+          by (simp add: split: if_splits; code_simp?)
+            subgoal
+              apply (auto simp add: my_summ_def split: if_splits)
+              subgoal
+                
+
+
         done
       done
     done
@@ -173,9 +183,6 @@ abbreviation "tt_op os f \<equiv> map_op (case_option (Inl (1 :: 2)) (\<lambda> 
 abbreviation "G_op f ip_state os2 chns \<equiv>
    dataflow_tree_to_operator chns (G f (ip_state :: (1, 'd1 + 'd2, 'd1, _) input_state) (os2 :: (1, 'd1 + 'd2, 'd1, 'd2, _) operator_state_ty2))"
 
-
-declare if_cong[cong]
-declare filter_True[simp del] filter_False[simp del] list_emb_Nil2[simp del] BULK_BENQ_right_empty[simp del] BULK_BENQ_left_empty[simp del]
 
 lemma outputs_at_target_my_summ[simp]:
   "outputs_at_target (antichain_from_list oo my_summ) os = (\<lambda> p. if p = (1, 0) then outpu (os 0) 0 else [])"

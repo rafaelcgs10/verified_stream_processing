@@ -9,6 +9,7 @@ begin
 
 declare cin.rep_eq[simp del]
 declare enum_class.enum_UNIV[simp] enum_class.enum_distinct[simp]
+declare filter_True[simp del] filter_False[simp del] list_emb_Nil2[simp del] BULK_BENQ_right_empty[simp del] BULK_BENQ_left_empty[simp del]
 
 lemma extract_prog_changes_above_impl_inv_consumes:
   assumes D: "dataflow_topology su (-+-)"
@@ -566,6 +567,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
 
 
           subgoal for p' nid'' p''
+            supply filter_True[simp] filter_False[simp] list_emb_Nil2[simp] BULK_BENQ_right_empty[simp] BULK_BENQ_left_empty[simp]
             using conjunct1[OF PR[unfolded produ_consu_inter_supported_def]] apply -
             apply (drule spec2, drule spec2, drule mp, assumption)
             apply (elim disjE)
@@ -846,6 +848,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
                                     subgoal
                                       by (clarsimp simp add: zcount_sum image_iff split_beta)
                                     subgoal
+                                      supply filter_True[simp] filter_False[simp] list_emb_Nil2[simp] BULK_BENQ_right_empty[simp] BULK_BENQ_left_empty[simp]
                                       apply (rule frontier_less_equal_sumI[where l=s])
                                          apply simp_all
                                       unfolding frontier_less_equal_iff2
@@ -853,7 +856,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
                                        apply simp_all
                                       apply (subst change_multiplicities_extract_prog_consumes)
                                         apply simp_all
-                                      apply (clarsimp simp add: c_pts_change_multiplicities)
+                                      apply (simp only: c_pts_change_multiplicities)
                                       apply (cases "l' = Loc nid (Trg p)"; simp)
                                       apply (drule in_frontier_in_frontier_add[where t=ft and B="zmset (map snd (filter (\<lambda>(l'a, t, d). l' = l'a) (concat (map (\<lambda>p'. map (\<lambda>t'. (Loc nid (Src p'), t -+- t', 1)) (intsum (os nid) p p')) enum_class.enum))))"])
                                       subgoal
@@ -995,6 +998,7 @@ lemma extract_prog_changes_above_impl_inv_consumes:
         done
       done
     subgoal premises prems for nid' xs c os
+      supply filter_True[simp] filter_False[simp] list_emb_Nil2[simp] BULK_BENQ_right_empty[simp] BULK_BENQ_left_empty[simp]
       using prems(2-) apply -
       apply (auto 0 0)
       using prems(1) apply -
@@ -1225,6 +1229,8 @@ lemma dataplane_tracker_inv_fold_consumes:
       subgoal
         unfolding graph_summar_nt_def
         by auto
+      subgoal
+        by (auto simp add: BTL_def)
       done
     done
   done
