@@ -9,6 +9,10 @@ For making this plan, check where thins were defined so it has a proper dependen
 
 Show me an edit plan before doing changes.
 
+Your task is to organize the lemmas in the dataplane/Correctness/General.thy file.
+You will group the lemmas and definitions by similarity (e.g. they are related).
+Create isabelle sections with tex description of the lemmas and definitions in the section.
+
 Important:
 Move all lemmas at once, and use the MCP connection to check if the edit was successful.
 For the lemmas break, check if it used anywhere: if is not, and if the lemma is not a simp or intro rule, them just comment it.
