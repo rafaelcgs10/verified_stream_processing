@@ -15,17 +15,32 @@ no_syntax (ASCII) "_thenM" :: \<open>['a, 'b] \<Rightarrow> 'c\<close>  (infixl 
 
 (* TODO move *)
 lemma num2_cases:
-  fixes n :: 2 obtains (0) \<open>n = 0\<close> | (1) \<open>n = 1\<close>
+  fixes n :: 2
+  obtains (0) \<open>n = 0\<close> | (1) \<open>n = 1\<close>
 proof (cases n)
   case (of_int z)
   then consider \<open>z = 0\<close> | \<open>z = 1\<close> by fastforce
   thus ?thesis using of_int(1) 0 1 by fastforce
 qed
 
+lemma num3_cases:
+  fixes n :: 3
+  obtains (0) \<open>n = 0\<close> | (1) \<open>n = 1\<close> | (2) \<open>n = 2\<close>
+proof (cases n)
+  case (of_int z)
+  then consider \<open>z = 0\<close> | \<open>z = 1\<close> | \<open>z = 2\<close> by fastforce
+  then show ?thesis using of_int(1) 0 1 2 by fastforce
+qed
+
 lemma num2_neq:
   fixes n :: 2
   shows \<open>n \<noteq> 0 \<Longrightarrow> n = 1\<close> \<open>n \<noteq> 1 \<Longrightarrow> n = 0\<close>
   using num2_cases by meson+
+
+lemma num3_neq:
+  fixes n :: 3
+  shows \<open>n \<noteq> 0 \<Longrightarrow> n \<noteq> 1 \<Longrightarrow> n = 2\<close> \<open>n \<noteq> 0 \<Longrightarrow> n \<noteq> 2 \<Longrightarrow> n = 1\<close> \<open>n \<noteq> 1 \<Longrightarrow> n \<noteq> 2 \<Longrightarrow> n = 0\<close>
+  using num3_cases by meson+
 
 abbreviation \<open>initial_state_input lxs \<equiv> \<lparr>
    intsum = default_internal_summary,
@@ -190,6 +205,24 @@ lemma Ex1_is_ccs:
 
 end
 
+lemma outputs_at_target_raw_summary:
+  \<open>outputs_at_target (antichain_from_list  \<circ>\<circ> raw_summary) os = (\<lambda>l.
+  if l = (1, 0) then outpu (os 0) 0
+  else if l = (2, 0) then outpu (os 1) 1
+  else if l = (1, 1) then outpu (os 2) 0
+  else [])\<close>
+  (is \<open>?f = ?g\<close>)
+proof (rule ext)
+  fix l :: \<open>3 \<times> 2\<close>
+  consider \<open>l = (0, 0)\<close> | \<open>l = (0, 1)\<close> | \<open>l = (1, 0)\<close> | \<open>l = (1, 1)\<close> | \<open>l = (2, 0)\<close> | \<open>l = (2, 1)\<close>
+    using num3_cases num2_cases prod.exhaust by (smt (verit, ccfv_SIG))
+  thus \<open>?f l = ?g l\<close>
+    by cases (simp_all add: outputs_at_target_def raw_summary_def antichain_from_list_singleton)
+qed
+
+declare if_cong[cong]
+declare list_emb_Nil2[simp del] BULK_BENQ_right_empty[simp del] BULK_BENQ_left_empty[simp del]
+
 lemma label_propagation_correctness:
   fixes lxs :: \<open>((nat, nat) myprod, nat \<times> nat) event llist\<close>
     and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
@@ -264,6 +297,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
       have \<open>R ?op1' (set_spec_op (cUn (cUn S SO) SP) (cinsert ((n, p), d, t) D))\<close> unfolding R_def
         by (intro exI conjI) (use SIM1 in \<open>simp_all add: comp_def\<close>)
       thus ?thesis using bisim_refl wbisim_refl wb_upto_b_base step_set_spec_op_intro_Out that by blast
+    qed
     moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S D (dataflow_op sg (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (case_sum (\<lambda>x. []) (BENQ (1, 0) (Inr (d, t)) (\<lambda>l. map Inr (cbufs l)))) (my_ooo_input_op (os_input\<lparr>outpu := (outpu os_input)(0 := xs)\<rparr>)) (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (my_label_propagation_op os_label_prop) (my_increment_op (os 2))))))))) op2'"
       if "outpu os_input 0 = (d, t) # xs"
       for d :: "nat \<times> nat + nat set set"
@@ -364,26 +398,30 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
       using SIM1(6,14) that apply (simp add: operator_state.defs(3))
                     apply (simp_all add: SIM1 operator_state.defs(3))
       using SIM1(3,7) unfolding ty1_check_def apply (simp add: operator_state.defs(3), blast)
-        subgoal
-          using SIM1(6,8) that unfolding ty2_check_def apply -
-          by (simp add: operator_state.defs(3), drule spec[of _ 0], simp)
-        using SIM1(9) unfolding input_ocaps_inv_def apply simp
-        subgoal
-          apply (rule dataplane_tracker_inv_update_outputs_outside)
-             apply (rule SIM1(12))
-          unfolding fun_upd_def apply simp
-          using SIM1(1) unfolding raw_summary_def apply simp
-          sorry
-        subgoal
-          apply (subgoal_tac \<open>outputs_at_target (antichain_from_list \<circ>\<circ> raw_summary) (os(1 := (os 1)\<lparr>outpu := (outpu (os 1))(0 := xs)\<rparr>)) (1, 0)
+      subgoal
+        using SIM1(6,8) that unfolding ty2_check_def apply -
+        by (simp add: operator_state.defs(3), drule spec[of _ 0], simp)
+      using SIM1(9) unfolding input_ocaps_inv_def apply simp
+        defer
+        apply (subgoal_tac \<open>outputs_at_target (antichain_from_list \<circ>\<circ> raw_summary) (os(1 := (os 1)\<lparr>outpu := (outpu (os 1))(0 := xs)\<rparr>)) (1, 0)
   = outputs_at_target (antichain_from_list \<circ>\<circ> raw_summary) os (1, 0)\<close>)
-           defer
-          apply (simp add: outputs_at_target_def raw_summary_def)
-          sorry
-        apply (rule SIM1(15))
-        done
+      subgoal
+        apply (simp add: BULK_BENQ_def)
+        apply (rule arg_cong[where f=\<open>\<lambda>x. cimage x _\<close>])
+        apply (simp add: fun_eq_iff)
+        apply (rule allI)
+        apply (rule arg_cong[where f=ccs])
+        apply (rule arg_cong[where f=\<open>\<lambda>x. _ \<union> x\<close>])
+        by (simp add: all_edges_def neighbors_def)
+      apply (simp add: outputs_at_target_raw_summary)
+       apply (rule SIM1(15))
+      apply (rule dataplane_tracker_inv_update_outputs_outside)
+         apply (rule SIM1(12))
+      unfolding fun_upd_def apply simp
+      using SIM1(1) apply (simp add: raw_summary_def)
+      sorry
 end
-    ultimately show ?thesis
+     ultimately show ?thesis
       (* takes around 70s *)
       by (use nothing in \<open>((unfold R_def[symmetric], unfold wsim_def my_ooo_input_op_def ooo_input_op_def
           my_label_propagation_op_def label_propagation_op_def my_increment_op_def increment_op_def,
