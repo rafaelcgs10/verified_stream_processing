@@ -499,106 +499,6 @@ lemma data_in_channel_justifies_c_pts:
     done
   done
 
-lemma data_in_channel_justifies_c_pts_alt:
-  "Trg_caps_inv caps chnls \<Longrightarrow>
-   c_pts_inv (change_multiplicities su (extract_prog Enum.enum nt os) c) caps \<Longrightarrow> 
-   t \<in> snd ` set (chnls (nid, p)) \<Longrightarrow>
-   (\<forall> n. \<forall> (p, t, m) \<in> set (produ (os n)). m \<ge> 0) \<Longrightarrow>
-   (\<forall> n. \<forall> (p, t, m) \<in> set (consu (os n)). m \<ge> 0) \<Longrightarrow>
-   inj_on nt (dom nt) \<Longrightarrow>
-   zcount (c_pts c (Loc nid (Trg p)) + zmset (concat (map (\<lambda> (nid', p'). (map snd (filter (\<lambda> (p'', _, _). nt (nid', p'') = Some (nid, p) \<and> p' = p'') (produ (os nid'))))) Enum.enum))) t > 0"
-  unfolding Trg_caps_inv_def
-  apply (drule spec[of _ nid])
-  apply (drule spec[of _ p])
-  unfolding c_pts_inv_def
-  apply (drule spec[of _ "Loc nid (Trg p)"])
-  apply (simp add: c_pts_change_multiplicities)
-  subgoal premises prems3
-    using prems3(1,6) apply -
-    unfolding extract_prog_def obtain_progress_def extract_progress_def
-    apply (simp add:  BULK_BENQ_def zmset_concat map_concat filter_concat comp_def filter_map split_beta split: prod.splits)
-    apply (subst (asm) (1) monoid_add_class.sum_list_distinct_conv_sum_set)
-     apply (simp_all)
-    apply (subst (asm) Groups.ab_group_add_class.ab_diff_conv_add_uminus)
-    apply (subst (asm) comm_monoid_add_class.sum.distrib)
-    apply (subgoal_tac 
-        "((\<Sum>x\<in>UNIV. zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (List.map_filter (\<lambda>(p, t, m). case nt (x, p) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) (produ (os x))))))) =
-  (\<Sum>x\<leftarrow>enum_class.enum. zmset (map snd (filter (\<lambda>(p'', ab). nt (fst x, p'') = Some (nid, p) \<and> snd x = p'') (produ (os (fst x))))))")
-    subgoal
-      apply (simp add: zmultiset_eq_iff)
-      apply (drule spec[of _ t])+
-      apply (simp add:  comp_def split_beta monoid_add_class.sum_list_distinct_conv_sum_set zcount_sum)
-      apply (subgoal_tac "zcount (to_zmset (map snd (chnls (nid, p)))) t > 0")
-      subgoal
-        apply (drule sym)
-        apply simp
-        apply (drule plus_minus_gt)
-        subgoal
-          apply (rule zcount_zmset_ge_0I)
-          using prems3  apply auto
-          done
-        subgoal
-          by auto
-        done
-      subgoal
-        apply (auto simp add: zcount_to_zmset)
-        done
-      done
-    subgoal premises prems4
-      apply (auto simp add: comp_def filter_map zcount_sum monoid_add_class.sum_list_distinct_conv_sum_set List.map_filter_def split_beta split: option.splits)
-      apply (cases "\<exists> nid' p'. nt (nid', p') = Some (nid, p)")
-      subgoal
-        apply clarsimp
-        subgoal for nid' p'
-          apply (subst comm_monoid_add_class.sum.subset_diff[of "{nid'}"])
-            apply simp_all
-          apply (subst comm_monoid_add_class.sum.neutral)
-          subgoal
-            apply (intro ballI)
-            apply (auto simp add: filter_empty_conv split: prod.splits intro!: zmset_emptyI)
-            using prems3(4)
-            apply (metis domI inj_on_contraD not_Some_eq2 prod.simps(1))
-            done
-          apply simp
-          apply (subst comm_monoid_add_class.sum.subset_diff[of "{(nid', p')}"])
-            apply simp_all
-          apply (subst comm_monoid_add_class.sum.neutral)
-          subgoal
-            apply (intro ballI)
-            apply (auto simp add: filter_empty_conv split: prod.splits intro!: zmset_emptyI)
-            using prems3(4)
-             apply (metis domI inj_on_contraD not_Some_eq2 prod.simps(1))+
-            done
-          apply simp
-          apply (rule arg_cong[where f=zmset])
-          apply (rule map_cong)
-          subgoal
-            apply (rule filter_cong)
-             apply auto
-            using prems3(4)
-            apply (metis domI inj_on_contraD not_Some_eq2 prod.simps(1))
-            done
-          apply auto
-          done
-        done
-      subgoal
-        apply (subst comm_monoid_add_class.sum.neutral)
-        subgoal
-          apply (intro ballI)
-          apply (auto simp add: filter_empty_conv split: prod.splits intro!: zmset_emptyI)
-          apply (metis not_Some_eq2)
-          done
-        apply (subst comm_monoid_add_class.sum.neutral)
-        subgoal
-          apply (intro ballI)
-          apply (auto simp add: filter_empty_conv split: prod.splits intro!: zmset_emptyI)
-          done
-        apply auto
-        done
-      done
-    done
-  done
-
 
 lemma zmset_filter_extract_progress_Trg_consumes_alt:
   "zmset (map snd (filter (\<lambda>(l, _, _). Loc nid (Trg p) = l) (extract_progress nid nt (snd (obtain_progress (consumes (os nid) p t d)))))) = 
@@ -1107,109 +1007,12 @@ lemma frontier_less_equal_change_multiplicities:
   done
 
 
-section \<open>Invariant Preservation Under Progress take_step\<close>
-lemma take_step_CM_p_preserves_inv_imps_work_sum:
-  "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
-   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
-   d \<noteq> 0 \<Longrightarrow>
-   \<exists>t'. t' \<in>\<^sub>A frontier (c_imp c loc) \<and> t' \<le> t \<Longrightarrow>
-   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by ((take_step summary (CM loc t d)) c)"
-  apply (frule Executable.enum_dataflow_topology.CM_next[where delta=d, simplified, unfolded enum_dataflow_topology_def])
-    apply assumption+
-  apply (elim exE)
-  apply (subst take_step_enum_dataflow_topology_take_step)
-   apply (simp add: enum_dataflow_topology_def)
-  apply (rule Propagate.dataflow_topology.cm_preserves_inv_imps_work_sum)
-    apply assumption+
-  done
 
-lemma take_step_CM_p_preserves_inv:
-  "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
-   dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
-   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
-   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
-   d \<noteq> 0 \<Longrightarrow>
-   \<exists>t'. t' \<in>\<^sub>A frontier (c_imp c loc) \<and> t' \<le> t \<Longrightarrow>
-   dataflow_topology_from_tree.inv_implications_nonneg ((take_step summary (CM loc t d)) c) \<and>
-   dataflow_topology_from_tree.inv_imp_plus_work_nonneg ((take_step summary (CM loc t d)) c) \<and>
-   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by ((take_step summary (CM loc t d)) c)"
-  apply (frule Executable.enum_dataflow_topology.CM_next[where delta=d, simplified, unfolded enum_dataflow_topology_def])
-    apply assumption+
-  apply (elim exE)
-  apply (subst (1 2) take_step_enum_dataflow_topology_take_step)
-   apply (simp add: enum_dataflow_topology_def)
-  apply (intro conjI)
-    apply (rule Propagate.dataflow_topology.cm_preserves_inv_implications_nonneg)
-      apply assumption+
-   apply (rule Propagate.dataflow_topology.iiws_imp_iipwn)
-    apply assumption+
-   apply (subst take_step_enum_dataflow_topology_take_step[symmetric])
-    apply (simp add: enum_dataflow_topology_def)
-   apply (rule take_step_CM_p_preserves_inv_imps_work_sum)
-      apply assumption+
-   apply auto[1]
-  apply (rule take_step_CM_p_preserves_inv_imps_work_sum)
-     apply assumption+
-  apply auto
-  done
+section \<open>Event-Encoding Rewrites\<close>
+text \<open>Rewrites that connect event-structured lists with their multiset representations,
+used when converting operational traces into multiplicity updates.\<close>
 
-lemma change_multiplicities_preserves_inv:
-  "dataflow_topology summary dataflow_topology_from_tree.followed_by \<Longrightarrow>
-   dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
-   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
-   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c \<Longrightarrow>
-   (\<forall> d \<in> snd ` snd ` set xs. d \<noteq> 0) \<Longrightarrow>
-   (\<forall> (l, t, d) \<in> set xs. \<exists>t'. t' \<in>\<^sub>A frontier (c_imp c l) \<and> t' \<le> t) \<Longrightarrow>
-   change_multiplicities summary xs c = c' \<Longrightarrow>
-   dataflow_topology_from_tree.inv_implications_nonneg c' \<and>
-   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c' \<and>
-   dataflow_topology.inv_imps_work_sum summary dataflow_topology_from_tree.followed_by c'"
-  apply (induct xs arbitrary: c c')
-   apply simp
-  subgoal premises prems for a xs c c'
-    using prems(2-) apply -
-    apply (simp split: prod.splits)
-    subgoal for l b t' d t
-      apply (subst (asm) change_multiplicities_simps(2)[where summary=summary])
-      apply (frule take_step_CM_p_preserves_inv[where loc=l and t=t'])
-           apply assumption+
-       apply force
-      apply (elim conjE)
-      using prems(1) apply -
-      apply (drule meta_spec)+
-      apply (drule meta_mp)
-       apply assumption
-      apply (drule meta_mp)
-       apply assumption
-      back
-      apply (drule meta_mp)
-       apply assumption
-      apply (drule meta_mp)
-       apply blast
-      apply (drule meta_mp)
-       apply simp
-      apply (drule meta_mp)
-       apply fastforce
-      apply (drule meta_mp)
-       apply auto
-      done
-    done
-  done
-
-(* FIXME: mome me  *)
-lemma map_snd_filter_List_map_filter:
-  "nt (nid, p'') = Some (nid', p') \<Longrightarrow>
-   inj_on nt (dom nt) \<Longrightarrow>
-   map snd (filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l')
-       (List.map_filter (\<lambda>(p, t, m). case nt (nid, p) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) xs)) =
-   map snd (filter (\<lambda>(p''a, ab). nt (nid, p''a) = Some (nid', p') \<and> p'' = p''a) xs)"
-  apply (induct xs)
-   apply simp
-  apply (clarsimp split: prod.splits option.splits)
-  using inj_on_contraD apply fastforce
-  done
-
-
+(* FIMXE *)
 lemma steps_comp_op_R_Out[intro!]:
   "steps (map (Out p) xs) op2 op2' \<Longrightarrow> buf = buf' \<Longrightarrow> op1 = op1' \<Longrightarrow> ys = map (Out (Inr p)) xs \<Longrightarrow> steps ys (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
   apply hypsubst_thin
@@ -1217,6 +1020,7 @@ lemma steps_comp_op_R_Out[intro!]:
    apply force+
   done
 
+(* FIMXE *)
 lemma zmset_map_Drop_Mint:
   "(\<forall> x\<in>set xs. \<not> is_Data x) \<Longrightarrow>
    zmset (map (\<lambda>x. snd (case x of Drop t \<Rightarrow> (p, t, - 1) | Mint t \<Rightarrow> (p, t, 1))) xs) =
@@ -1227,11 +1031,6 @@ lemma zmset_map_Drop_Mint:
   using update_zmultiset_one(2) apply fastforce
   done
 
-
-section \<open>Event-Encoding Rewrites\<close>
-text \<open>Rewrites that connect event-structured lists with their multiset representations,
-used when converting operational traces into multiplicity updates.\<close>
-
 lemma zmset_Data_to_zmset:
   "(\<forall>x\<in>set xs. is_Data x) \<Longrightarrow>
    zmset (map (\<lambda>x. snd (case x of Data t d \<Rightarrow> (p, t, 1))) xs) = to_zmset (map (\<lambda>x. snd (case x of Data t d \<Rightarrow> (Inl d, t))) xs)" 
@@ -1239,21 +1038,6 @@ lemma zmset_Data_to_zmset:
    apply (clarsimp split: event.splits prod.splits)+
   using update_zmultiset_one(2) apply fastforce
   done
-lemma change_multiplicities_map_append_event:
-  "change_multiplicities su (map (\<lambda>x. (l, event.time x, 1)) (filter is_Mint xs) @ map (\<lambda>x. (l, event.time x, - 1)) (filter is_Drop xs)) c =
-   change_multiplicities su (map (\<lambda>x. (l, snd (case x of Drop t \<Rightarrow> (p, t, - 1) | Mint t \<Rightarrow> (p, t, 1)))) (filter (\<lambda>x. \<not> is_Data x) xs)) c"
-  apply (induct xs arbitrary: c)
-  subgoal
-    by simp
-  subgoal for e xs' c
-    apply (cases e; simp)
-    subgoal for t
-      by (smt (verit, del_insts) Cons_eq_appendI change_multiplicities_append change_multiplicities_comm empty_append_eq_id)
-    subgoal for t
-      by (smt (verit, del_insts) Cons_eq_appendI change_multiplicities_append change_multiplicities_comm empty_append_eq_id)
-    done
-  done
-
 
 lemma outputs_at_target_updates[simp]:
   "outputs_at_target su (os(nid := (os nid)\<lparr> inter := A, produ := B, ocaps := C, input := D, inter := E  \<rparr>)) = outputs_at_target su os"
@@ -1280,10 +1064,20 @@ lemma extract_prog_front_update[simp]:
   apply (clarsimp simp add: sum_list_zmset if_distrib[of "filter _"] if_distrib[of "map _"] if_distrib[of operator_state.inter] monoid_add_class.sum_list_distinct_conv_sum_set zmset_concat map_concat filter_concat comp_def split_beta c_pts_change_multiplicities  split: option.splits)
   done
 
-lemma take_step_PR_preserves_c_pts[simp]:
-  "c_pts (take_step summary PR c) = c_pts c"
-  by (simp_all split: prod.splits if_splits)
 
-
+lemma change_multiplicities_map_append_event:
+  "change_multiplicities su (map (\<lambda>x. (l, event.time x, 1)) (filter is_Mint xs) @ map (\<lambda>x. (l, event.time x, - 1)) (filter is_Drop xs)) c =
+   change_multiplicities su (map (\<lambda>x. (l, snd (case x of Drop t \<Rightarrow> (p, t, - 1) | Mint t \<Rightarrow> (p, t, 1)))) (filter (\<lambda>x. \<not> is_Data x) xs)) c"
+  apply (induct xs arbitrary: c)
+  subgoal
+    by simp
+  subgoal for e xs' c
+    apply (cases e; simp)
+    subgoal for t
+      by (smt (verit, del_insts) Cons_eq_appendI change_multiplicities_append change_multiplicities_comm empty_append_eq_id)
+    subgoal for t
+      by (smt (verit, del_insts) Cons_eq_appendI change_multiplicities_append change_multiplicities_comm empty_append_eq_id)
+    done
+  done
 
 end

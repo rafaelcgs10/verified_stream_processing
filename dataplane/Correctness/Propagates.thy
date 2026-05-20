@@ -5,6 +5,7 @@ imports
   Dataplane.Timely_Stream
   Dataplane.MyProduct_Instances
   Dataplane.AntichainOrder
+  Dataplane.Propagation_Properties
 begin
 
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
