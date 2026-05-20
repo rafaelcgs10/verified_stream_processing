@@ -305,4 +305,9 @@ lemma find_Some_singleton:
   apply (smt (verit, best) Collect_cong)
   done
 
+lemma filter_not_emptyI:
+  "\<exists> x \<in> set xs. P x \<Longrightarrow>
+   filter P xs \<noteq> []"
+  by (metis List.empty_filter_conv)
+
 end

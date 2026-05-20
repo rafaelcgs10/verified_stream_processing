@@ -18,6 +18,9 @@ lemma to_zmset_list_diff[simp]:
 
 declare cin.rep_eq[simp del]
 declare enum_class.enum_UNIV[simp] enum_class.enum_distinct[simp]
+declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
+  neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
+
 
 section \<open>Core Dataplane Invariants\<close>
 definition "c_pts_inv c caps = (\<forall> l. c_pts c l = caps l)"

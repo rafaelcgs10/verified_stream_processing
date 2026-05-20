@@ -12,6 +12,10 @@ declare cin.rep_eq[simp del]
 declare enum_class.enum_UNIV[simp] enum_class.enum_distinct[simp]
 no_notation shiftr  (infixl \<open>>>\<close> 55)
 
+declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
+  neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
+
+
 (*
    (\<forall> p. to_zmset (drops p) \<subseteq>#\<^sub>z zmset (map snd (filter (\<lambda>x. p = fst x) produs))) \<Longrightarrow>
 *)

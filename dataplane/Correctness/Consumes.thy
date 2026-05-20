@@ -10,6 +10,9 @@ begin
 declare cin.rep_eq[simp del]
 declare enum_class.enum_UNIV[simp] enum_class.enum_distinct[simp]
 declare filter_True[simp del] filter_False[simp del] list_emb_Nil2[simp del] BULK_BENQ_right_empty[simp del] BULK_BENQ_left_empty[simp del]
+declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
+  neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
+
 
 lemma extract_prog_changes_above_impl_inv_consumes:
   assumes D: "dataflow_topology su (-+-)"

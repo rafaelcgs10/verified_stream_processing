@@ -7,6 +7,10 @@ imports
   Dataplane.AntichainOrder
 begin
 
+declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
+  neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
+
+
 lemma dataplane_tracker_inv_update_outputs_outside:
   "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
    os' = os(nid := (os nid)\<lparr> outpu := (\<lambda> p'. if p' = p then xs else outpu (os nid) p') \<rparr>) \<Longrightarrow>
