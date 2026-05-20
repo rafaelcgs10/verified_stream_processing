@@ -1080,4 +1080,17 @@ lemma change_multiplicities_map_append_event:
     done
   done
 
+(* FIXME: mome me  *)
+lemma map_snd_filter_List_map_filter:
+  "nt (nid, p'') = Some (nid', p') \<Longrightarrow>
+   inj_on nt (dom nt) \<Longrightarrow>
+   map snd (filter (\<lambda>(l', t, d). Loc nid' (Trg p') = l')
+       (List.map_filter (\<lambda>(p, t, m). case nt (nid, p) of None \<Rightarrow> None | Some (nid', p') \<Rightarrow> Some (Loc nid' (Trg p'), t, m)) xs)) =
+   map snd (filter (\<lambda>(p''a, ab). nt (nid, p''a) = Some (nid', p') \<and> p'' = p''a) xs)"
+  apply (induct xs)
+   apply simp
+  apply (clarsimp split: prod.splits option.splits)
+  using inj_on_contraD apply fastforce
+  done
+
 end

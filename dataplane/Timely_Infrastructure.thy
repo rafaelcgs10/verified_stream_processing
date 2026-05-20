@@ -24,7 +24,7 @@ begin
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 
-definition "DEBUG = True"
+definition "DEBUG = False"
 
 definition "trace = (if DEBUG then Debug.tracing else (\<lambda> x y. y))"
 
@@ -1076,7 +1076,7 @@ record ('p, 'd, 't) operator_state =
 definition "default_internal_summary = (\<lambda> p1 p2. if p1 = p2 then [0] else [])"
 
 abbreviation init_op_state where
-  "init_op_state su \<equiv> \<lparr> 
+  "init_op_state su i \<equiv> \<lparr> 
    intsum = su,
    consu = [],
    inter = [],
@@ -1084,8 +1084,8 @@ abbreviation init_op_state where
    input = (\<lambda> _. []),
    outpu = (\<lambda> _. []),
    front = undefined,
-   ocaps = (\<lambda> _. []),
-   initia = False
+   ocaps = (\<lambda> _. [\<bottom>]),
+   initia = i
    \<rparr>"
 
 abbreviation "init_c_pts summary cgs \<equiv> change_multiplicities summary cgs \<lparr>c_work = (\<lambda> _.  {#}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"

@@ -46,12 +46,12 @@ abbreviation init_input_state where
    produ = [],
    input = (\<lambda> _. []),
    outpu = (\<lambda> _. []),
-   front = (\<lambda> _. {}\<^sub>A),
-   ocaps = (\<lambda> _. [0]),
+   front = undefined,
+   ocaps = (\<lambda> _. [\<bottom>]),
    initia = True,
    en1 = Inl,
    de1 = projl,
-   is_en1 = \<top>,
+   is_en1 = isl,
    es = inps
    \<rparr>"
 
@@ -63,29 +63,30 @@ abbreviation init_operator_state_ty2 where
    produ = [],
    input = (\<lambda> _. []),
    outpu = (\<lambda> _. []),
-   front = (\<lambda> _. frontier {#\<bottom>#}\<^sub>z),
-   ocaps = (\<lambda> _. []),
+   front = undefined,
+   ocaps = (\<lambda> _. [\<bottom>]),
    initia = False,
    en1 = Inl,
    de1 = projl,
-   is_en1 = \<top>,
+   is_en1 = isl,
    en2 = Inr,
    de2 = projr,
-   is_en2 = \<top>
+   is_en2 = isr
    \<rparr>"
 
 abbreviation "l1 ip_state \<equiv> ((Logic (ooo_input_op {|1 :: 1|} ip_state) default_internal_summary) :: ('a, _, (_, 't) shared_state + (1 \<Rightarrow> 't antichain), 'c \<times> 't, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) dataflow_tree)"
 abbreviation "l2 os2 f \<equiv> Logic (batch_op os2 f) default_internal_summary"
 abbreviation "G f ip_state os2 \<equiv> Comp [(0 :: 2, 1) \<mapsto> (0, 1)] (l1 (ip_state :: (1, 'd1 + 'd2, 'd1, _) input_state)) (l2 (os2 :: (1, 'd1 + 'd2, 'd1, 'd2, _) operator_state_ty2) f)"
 
-abbreviation "test_op \<equiv> compile_dataflow (\<lambda> _. []) (G (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]) (init_input_state default_internal_summary (\<lambda> _. inps_test)) (init_operator_state_ty2 default_internal_summary) )"
+abbreviation "compiled_op f \<equiv> compile_dataflow (\<lambda> _. []) (G f (init_input_state default_internal_summary (\<lambda> _. inps_test)) (init_operator_state_ty2 default_internal_summary) )"
 
-value [GHC] "check_prefix 5500 [((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1)),((1, 1), (Inr 3, MyPair 1 0))] test_op"
-  (* value [GHC] "check_prefix 5500 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] test_op"
-value [GHC] "check_prefix 5500 [((1, 1), (Inr 3, MyPair 1 0)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1))] test_op"  *)
+value [GHC] "check_prefix 5500 [((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1)),((1, 1), (Inr 3, MyPair 1 0))] (compiled_op (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
+  (* value [GHC] "check_prefix 5500 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] (compiled_op (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
+value [GHC] "check_prefix 5500 [((1, 1), (Inr 3, MyPair 1 0)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1))] (compiled_op (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"  *)
 
-value [GHC] "ltaken 3 (lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec test_op))"
+value [GHC] "ltaken 3 (lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec (compiled_op (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))))"
 
+term DEBUG
 
 section \<open>Generalized Correctness\<close>
 
@@ -3997,18 +3998,237 @@ qed
 
 section \<open>Correctness\<close>
 
-unused_thms
+
+find_consts "(_, _, _) operator_state"
+
+term compiled_op
+abbreviation "my_sg \<equiv> init_subgraph (antichain_from_list oo my_summ) (map (\<lambda> (nid, p). (Loc nid (Src p), bot, 1)) (List.product Enum.enum Enum.enum))"
 
 
-(* abbreviation "G inps f \<equiv> compile_dataflow (Comp [(0, 1) \<mapsto> (0, 1)] (l1 inps) (l2 f))"
+abbreviation "my_os \<equiv> (\<lambda> x. init_op_state default_internal_summary (x = 0))"
+
+thm correctness_gen[where S="cempty" and SO="cempty" and D="cempty" and sg=my_sg and inps=inps and cbufs="\<lambda> _. []" and ip_state="(init_input_state default_internal_summary inps)" and bt_state="init_operator_state_ty2 default_internal_summary", no_vars]
+
+term zmset
+
+find_theorems c_pts change_multiplicities
+
+lemma c_work_change_multiplicities:
+  "c_work (change_multiplicities su xs empty_conf) = (\<lambda> l. zmset (map snd (filter (\<lambda> (l', t, d). l = l') xs)))"
+  apply (induct xs arbitrary: )
+   apply simp
+  subgoal for x xs 
+    apply (rule ext)+
+    apply (cases x)
+    apply (auto split: if_splits prod.splits simp add: c_pts_change_multiplicities change_multiplicities_simp_alt update_zmultiset_plus_comm)
+    subgoal for a b c'
+      oops
+
+lemma init_config_empty_conf:
+  assumes D: "dataflow_topology su (-+-)"
+  shows "dataflow_topology_from_tree.init_config empty_conf"
+  apply (subst dataflow_topology.init_config_def[OF D])
+  apply simp
+  done
+
+lemma not_inset_antichain_in_set_antichain_zcount:
+  "t \<notin> set_antichain (frontier (update_zmultiset M b m)) \<Longrightarrow>
+   m \<ge> 0 \<Longrightarrow>
+   t \<in> set_antichain (frontier M) \<Longrightarrow> 
+   zcount M t > 0"
+  apply transfer'
+  apply (auto simp add: minimal_antichain_def split: if_splits)
+  done
+
 
 lemma
-  fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
-   and f :: \<open>'d1 list \<Rightarrow> 'd2 list\<close>\<^sup>
-   and S :: \<open>((2 \<times> 1) \<times> ('d1 + 'd2) \<times> 't) cset\<close>
- assumes \<open>S = cUnion (cimage (\<lambda> t. (cset_of_llist o llist_of) (map (\<lambda> x. ((2, 1), (Inr x, t))) (f (coll (inps 1) t)))) (ts (inps 1)))\<close>
-  shows \<open>set_op {||} {||} (G inps f) \<approx> set_spec_op S {||}\<close>
+  fixes su :: "(_, _) location \<Rightarrow> (_, _) location \<Rightarrow> ('t :: {canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,order_ccompare,bot}) antichain"
+  assumes D: "dataflow_topology su (-+-)"
+  shows "(\<forall> (l, t, m) \<in> set xs. m \<ge> 0 \<and> t = \<bottom>) \<Longrightarrow>
+  dataflow_topology_from_tree.inv_imp_plus_work_nonneg (change_multiplicities su xs empty_conf)"
+  apply (subst Propagate.dataflow_topology.inv_imp_plus_work_nonneg_def[OF D])
+  apply simp
+  apply (induct xs)
+   apply simp
+  subgoal for a xs
+    apply (cases a)
+    apply (auto simp add: c_pts_change_multiplicities dataflow_topology_from_tree.zmset_of_lemma change_multiplicities_simp_alt split: prod.splits)
+    apply (rule Groups.ordered_comm_monoid_add_class.add_nonneg_nonneg)
+     apply simp_all
+    subgoal premises prems for a c t
+      using prems(3) apply -
+      apply (auto simp add: count_mset_set_if)
+
+      find_theorems c 
+
+      find_theorems count mset_set
+
+end
+lemma propagation_inv_propagate_all_change_multiplicities_empty_conf:
+  fixes su :: "(_, _) location \<Rightarrow> (_, _) location \<Rightarrow> ('t :: {canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,order_ccompare,bot}) antichain"
+  assumes D: "dataflow_topology su (-+-)"
+  shows "(\<forall> (l, t, m) \<in> set xs. is_Src (port l) \<and> m = 1 \<and> t = \<bottom>) \<Longrightarrow>
+         distinct (map fst xs) \<Longrightarrow>
+         propagation_inv su (change_multiplicities su xs empty_conf)"
+  unfolding propagation_inv_def
+  apply (intro conjI)
+  subgoal
+    using Propagate.dataflow_topology.init_imp_inv_imps_work_sum[OF D, of empty_conf, OF init_config_empty_conf[OF D]]
+    sorry
+  subgoal
+    using Propagate.dataflow_topology.init_imp_inv_implications_nonneg[OF D, of empty_conf, OF init_config_empty_conf[OF D]]
+    sorry
+  subgoal
+    using Propagate.dataflow_topology.inv_imp_plus_work_nonneg_def
+
+  find_theorems dataflow_topology_from_tree.inv_imp_plus_work_nonneg name: def
+
+  using change_multiplicities_preserves_inv[OF D]
+
+
+  find_theorems dataflow_topology_from_tree.inv_implications_nonneg change_multiplicities
+
+
+(* FIXME: move me to ListUtils *)
+lemma filter_single:
+  "a \<in> set xs \<Longrightarrow>
+   distinct xs \<Longrightarrow>
+   P a \<Longrightarrow>
+   (\<forall> b \<in> set xs. b \<noteq> a \<longrightarrow> \<not> P b) \<Longrightarrow>
+   filter P xs = [a]"
+  apply (induct xs)
+   apply (auto simp add: filter_empty_conv)
+  done
+
+lemma
+  fixes su :: "('nid :: {enum,linorder, one,zero}, _) location \<Rightarrow> (_, _) location \<Rightarrow> ('t :: {canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,order_ccompare,bot}) antichain"
+  assumes D: "dataflow_topology su (-+-)"
+  and SU: "\<forall> loc. su loc loc = {}\<^sub>A"
+shows  "(\<forall> (l, t, m) \<in> set xs. is_Src (port l) \<and> m = 1 \<and> t = \<bottom>) \<Longrightarrow>
+      distinct (map fst xs) \<Longrightarrow>
+      fst ` (set xs) = UNIV \<Longrightarrow>
+     dataplane_tracker_inv (\<lambda> x. init_op_state isu i) (\<lambda>_. [])
+     \<lparr>pt_tr =
+        the (propagate_all su
+              (change_multiplicities su
+                xs empty_conf)),
+        nxt = graph_to_nxt su, summ = su, upfro = upf\<rparr>"
+    unfolding dataplane_tracker_inv_def
+    apply clarsimp
+    apply (rule exI[of _ "\<lambda> l. case l of Loc nid (Trg p) \<Rightarrow> {#}\<^sub>z | Loc nid (Src p) \<Rightarrow> {# \<bottom> #}\<^sub>z"])
+      apply (cases "propagate_all su
+               (change_multiplicities su xs empty_conf)")
+      subgoal
+        apply (rule FalseE)
+        using propagation_inv_propagate_all_change_multiplicities_empty_conf[OF D, unfolded propagation_inv_def, where xs=xs] apply - 
+        apply (drule meta_mp)
+        subgoal
+          by auto
+        apply (drule propagate_all_terminates[unfolded not_def, rule_format, rotated 5, OF _ D])
+        using SU apply auto
+        done
+      subgoal for c
+    apply (intro conjI)
+    subgoal
+      unfolding Src_caps_inv_def by auto
+    subgoal
+      unfolding Trg_caps_inv_def outputs_at_target_def by auto
+    subgoal
+        apply simp
+        unfolding c_pts_inv_def
+        apply (auto simp add: extract_prog_def obtain_progress_def c_pts_change_multiplicities comp_def split: location.splits port.splits)
+        subgoal
+          apply (subst filter_False)
+          subgoal
+            unfolding extract_progress_def
+            apply auto
+            done
+          subgoal
+            apply simp
+            apply (drule propagate_all_preserves_c_pts)
+            apply (auto simp add: extract_prog_def obtain_progress_def c_pts_change_multiplicities comp_def split: location.splits port.splits)
+            apply (subst filter_False)
+            subgoal
+              unfolding extract_progress_def
+              apply auto
+              done
+            apply auto
+            done
+          done
+       subgoal for nid p
+          apply (subst filter_False)
+          subgoal
+            unfolding extract_progress_def
+            apply auto
+            done
+          subgoal
+    apply simp
+            apply (drule propagate_all_preserves_c_pts)
+            apply (auto simp add: extract_prog_def obtain_progress_def c_pts_change_multiplicities comp_def split: location.splits port.splits)
+            apply (subst filter_single[where a="(Loc nid (Src p), \<bottom>, 1)"])
+                apply simp_all
+               apply fastforce
+            subgoal
+              by (auto intro: distinct_mapI simp add: extract_prog_def obtain_progress_def c_pts_change_multiplicities comp_def split: prod.splits location.splits port.splits)
+          apply (auto simp add: c_pts_change_multiplicities comp_def)
+            apply (metis update_zmultiset_singleton(2))
+            done
+          done
+        done
+
+            find_theorems filter name: sing
+
+end
+
+          unfolding dataflow_topology.inv_imps_work_sum_def[OF D]
+          apply (auto simp add: c_pts_change_multiplicities comp_def)
+          subgoal for loc
+            apply (subst change_multiplicities_append)
   oops
- *)
+
+lemma correctness_aux:
+  fixes inps :: \<open>1 \<Rightarrow> ('t :: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
+  assumes T: "timely_input_stream (inps 1) {#\<bottom>#}"
+  shows  "set_op {||} {||}
+     (dataflow_op my_sg
+       (dataflow_tree_to_operator (\<lambda>_. []) (Comp [(0, 1) \<mapsto> (0, 1)] (l1 (init_input_state default_internal_summary inps)) (l2 (init_operator_state_ty2 default_internal_summary) f)))) \<approx>
+    set_spec_op
+     (cUn (cUn {||} {||})
+       (cUnion
+         ((\<lambda>t. cset_from_list
+                 (map (\<lambda>x. ((1, 1), Inr x, t)) (f (coll (map (\<lambda>(x, t). Data t (projl x)) ((outputs_at_target (summ my_sg) my_os >> (\<lambda>_. []) >> inputs_at_target my_os) (1, 1)) @@- inps 1) t)))) |`|
+          cUn (ts (inps 1)) (cset_from_list (map snd ((outputs_at_target (summ my_sg) my_os >> (\<lambda>_. []) >> inputs_at_target my_os) (1, 1)))))))
+     {||}"
+  apply (rule correctness_gen[where S="cempty" and os=my_os and SO="cempty" and D="cempty" and sg=my_sg and inps=inps and cbufs="\<lambda> _. []" and ip_state="(init_input_state default_internal_summary inps)" and bt_state="init_operator_state_ty2 default_internal_summary"])
+                 apply (simp_all add: input_ocaps_inv_def operator_state.defs ty2_check_def ty1_check_def init_subgraph_def)
+  subgoal
+    using loc_2_1_cases  by (auto del: ext intro!: ext simp add: default_internal_summary_def my_summ_def)
+  subgoal
+    unfolding dataplane_tracker_inv_def Src_caps_inv_def Trg_caps_inv_def
+    apply clarsimp
+    sorry
+  subgoal
+    by (simp add: inputs_at_target_def)
+  subgoal
+    using T by auto
+  done
+
+lemma correctness:
+  fixes inps :: \<open>1 \<Rightarrow> ('t :: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
+  assumes T: "timely_input_stream (inps 1) {#\<bottom>#}"
+  shows "set_op {||} {||}
+    (compile_dataflow (\<lambda> _. []) (G f (init_input_state default_internal_summary inps) (init_operator_state_ty2 default_internal_summary) )) \<approx>
+    set_spec_op ((cUnion ((\<lambda>t. cset_from_list (map (\<lambda>x. ((1, 1), Inr x, t)) (f (coll (inps 1) t)))) |`| (ts (inps 1))))) {||}"
+  using T apply -
+  apply (drule correctness_aux[unfolded BULK_BENQ_def outputs_at_target_def inputs_at_target_def, simplified, where f=f])
+  unfolding compile_dataflow_def
+  apply simp
+  apply (subgoal_tac "(\<lambda>a. inps 1) = inps")
+  subgoal
+    by simp
+  subgoal
+    by auto
+  done
+
 
 end
