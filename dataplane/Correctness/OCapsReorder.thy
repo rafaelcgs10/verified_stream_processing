@@ -8,6 +8,10 @@ imports
 begin
 
 
+declare cin.rep_eq[simp del]
+declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
+  neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
+
 lemma dataplane_tracker_inv_replace_ocaps:
   "dataplane_tracker_inv os' cbufs sg \<Longrightarrow>
    mset (ocaps (os nid) p) = mset C \<Longrightarrow>
@@ -36,8 +40,7 @@ lemma dataplane_tracker_inv_replace_ocaps:
           apply (rule arg_cong[where f=to_zmset])
           apply (rule map_cong)
           unfolding outputs_at_target_def BULK_BENQ_def
-           apply (auto simp: if_splits prod.splits)
-          done
+          by (auto simp: if_splits prod.splits cong: if_cong)
         done
       done
     subgoal
@@ -107,6 +110,7 @@ lemma dataplane_tracker_inv_replace_ocaps:
         done
       done
     subgoal
+      supply  if_cong[cong]
       unfolding produ_consu_inter_supported_def
       apply (intro allI impI conjI)
       subgoal
@@ -121,8 +125,7 @@ lemma dataplane_tracker_inv_replace_ocaps:
           apply (drule meta_mp)
            apply blast
           apply simp
-          apply (smt (verit, best) map_eq_conv split_cong)
-          done
+          by (smt (verit, best) map_eq_conv split_cong)
         subgoal
           subgoal
             using conjunct1[OF conjunct2[OF prems(11)[unfolded produ_consu_inter_supported_def]], simplified, unfolded if_distrib[of produ] if_distrib[of outpu]   if_distrib[of inter] if_distrib[of consu], simplified, rule_format, where nid=nid' and p=p and t=t, simplified] apply -

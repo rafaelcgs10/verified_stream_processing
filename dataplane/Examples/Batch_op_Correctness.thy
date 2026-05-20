@@ -11,6 +11,8 @@ imports
   "../Correctness/Outputs"
   "../Correctness/Propagates"
   "../Correctness/Mints"
+  "../Correctness/Timely_Collections"
+  "../Correctness/OCapsReorder"
   Dataplane.LList_Haskell_Setup
   Source_op
   Set_op
