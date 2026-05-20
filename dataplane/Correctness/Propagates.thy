@@ -17,9 +17,8 @@ lemma propagate_all_preserves_c_pts:
   done
 
 lemma propagate_all_preserves_inv:
-  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> 't:: {ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) c = Some c' \<Longrightarrow>
+  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> 't:: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) c = Some c' \<Longrightarrow>
    dataflow_topology summary (-+-) \<Longrightarrow>
-   ID CCOMPARE('t) = Some compare \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
    dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum summary (-+-) c \<Longrightarrow>
@@ -42,9 +41,8 @@ lemma propagate_all_preserves_inv:
   done
 
 lemma propagate_all_frontier_c_imp_correctness_aux:
-  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> 't:: {ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) c = Some c' \<Longrightarrow>
+  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> 't:: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) c = Some c' \<Longrightarrow>
    dataflow_topology summary (-+-) \<Longrightarrow>
-   ID CCOMPARE('t) = Some compare \<Longrightarrow>
    reachable_locations summary = UNIV \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum summary (-+-) c \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
@@ -65,9 +63,8 @@ lemma propagate_all_frontier_c_imp_correctness_aux:
   done
 
 lemma propagate_all_frontier_c_imp_correctness_aux2:
-  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> 't:: {ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) c = Some c' \<Longrightarrow>
+  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> 't:: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) c = Some c' \<Longrightarrow>
    dataflow_topology summary (-+-) \<Longrightarrow>
-   ID CCOMPARE('t) = Some compare \<Longrightarrow>
    reachable_locations summary = UNIV \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum summary (-+-) c \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
@@ -79,7 +76,7 @@ lemma propagate_all_frontier_c_imp_correctness_aux2:
   using propagate_all_frontier_c_imp_correctness_aux by (metis dataflow_topology.antichain_eqI)
 
 lemma propagate_all_preserves_ifrontier:
-  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> 't:: {ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) c = Some c' \<Longrightarrow>
+  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> 't:: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) c = Some c' \<Longrightarrow>
    dataflow_topology summary (-+-) \<Longrightarrow>
    ifrontier summary (-+-) c' loc = ifrontier summary (-+-) c loc"
   apply (subst (1 2) Propagate.dataflow_topology.implied_frontier_alt_def)
@@ -88,9 +85,8 @@ lemma propagate_all_preserves_ifrontier:
   done
 
 lemma propagate_all_frontier_c_imp_correctness:
-  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> 't:: {ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) c = Some c' \<Longrightarrow>
+  "propagate_all (summary :: _ \<Rightarrow> _ \<Rightarrow> 't:: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) c = Some c' \<Longrightarrow>
    dataflow_topology summary (-+-) \<Longrightarrow>
-   ID CCOMPARE('t) = Some compare \<Longrightarrow>
    reachable_locations summary = UNIV \<Longrightarrow>
    dataflow_topology.inv_imps_work_sum summary (-+-) c \<Longrightarrow>
    dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
@@ -117,9 +113,8 @@ lemma c_pts_change_multiplicities_cong:
 
 lemma dataplane_tracker_inv_front_update:
   assumes D: "dataflow_topology (summ sg) (-+-)"
-    and T: "ID CCOMPARE('t) = Some compare"
     and R: "reachable_locations (summ sg) = UNIV"
-  shows  "propagate_all ((summ sg) :: _ \<Rightarrow> _ \<Rightarrow> 't:: {ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) (pt_tr sg) = Some c \<Longrightarrow>
+  shows  "propagate_all ((summ sg) :: _ \<Rightarrow> _ \<Rightarrow> 't:: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) (pt_tr sg) = Some c \<Longrightarrow>
    graph_summar_nt (summ sg) (nxt sg) os \<Longrightarrow>
    dataplane_tracker_inv os cbufs sg \<Longrightarrow>
    dataplane_tracker_inv (map_entry nid (front_update (\<lambda>_. frontier \<circ> (\<lambda>p. c_imp c (Loc nid (Trg p))))) os) cbufs (sg\<lparr>pt_tr := c\<rparr>)"
@@ -161,7 +156,7 @@ lemma dataplane_tracker_inv_front_update:
           by (metis imp_front_inv_def order_trans_rules(23) prems(7) temp(1))
         subgoal
           using prems(1) apply -
-          apply (drule propagate_all_frontier_c_imp_correctness[OF _ D T R, where loc="Loc nid' (Trg p)"])
+          apply (drule propagate_all_frontier_c_imp_correctness[OF _ D R, where loc="Loc nid' (Trg p)"])
           using prems(10)[unfolded propagation_inv_def]
           apply auto
           done
@@ -177,7 +172,7 @@ lemma dataplane_tracker_inv_front_update:
           by (metis Orderings.order_eq_iff assms(1) prems(1) propagate_all_preserves_ifrontier)
         subgoal
           using prems(1) apply -
-          apply (drule propagate_all_frontier_c_imp_correctness[OF _ D T R, where loc=l])
+          apply (drule propagate_all_frontier_c_imp_correctness[OF _ D R, where loc=l])
           using prems(10)[unfolded propagation_inv_def]
           apply auto
           done
@@ -200,7 +195,7 @@ lemma dataplane_tracker_inv_front_update:
             by (metis assms(1) prems(1) prod.sel(2) propagate_all_preserves_ifrontier)
           subgoal
             using prems(1) apply -
-            apply (drule propagate_all_frontier_c_imp_correctness[OF _ D T R, where loc="Loc nid' (Trg p)"])
+            apply (drule propagate_all_frontier_c_imp_correctness[OF _ D R, where loc="Loc nid' (Trg p)"])
             using prems(10)[unfolded propagation_inv_def]
             apply auto
             done
@@ -214,7 +209,7 @@ lemma dataplane_tracker_inv_front_update:
     subgoal premises prems
       using prems(10)
       unfolding propagation_inv_def
-      using T assms(1) prems(1) propagate_all_preserves_inv by blast
+      using assms(1) prems(1) propagate_all_preserves_inv by blast
     subgoal premises prems
       using prems(11) apply -
       unfolding extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def
@@ -265,8 +260,8 @@ lemma dataplane_tracker_inv_front_update:
       apply (auto del: disjCI)
       apply (metis (no_types, opaque_lifting) prems(1) propagate_all_preserves_c_pts)
       apply (metis (no_types, lifting) prems(1) propagate_all_preserves_c_pts)
-      apply (metis (lifting) ext prems(1) propagate_all_preserves_c_pts)
-      apply (metis (lifting) ext prems(1) propagate_all_preserves_c_pts)
+      apply (metis (lifting) prems(1) propagate_all_preserves_c_pts)
+      apply (metis (lifting) prems(1) propagate_all_preserves_c_pts)
       done
     done
   done

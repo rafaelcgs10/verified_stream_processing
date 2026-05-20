@@ -673,7 +673,7 @@ lemma take_step_PR_p_preserves_inv_implications_nonneg:
      apply assumption
   subgoal
     using linorder_order_ccompare by auto
-   apply (clarsimp simp add: compare_order_class.ord_defs )
+   apply clarsimp
   apply (erule extension)
   apply (elim exE)
     apply (subst take_step_enum_dataflow_topology_take_step)
@@ -696,7 +696,7 @@ lemma take_step_PR_p_preserves_inv:
    subgoal
      using linorder_order_ccompare by auto
   apply (erule extension)
-   apply (clarsimp simp add: compare_order_class.ord_defs )
+   apply clarsimp
   subgoal for t loc loc' t'
     apply (intro conjI)
     subgoal

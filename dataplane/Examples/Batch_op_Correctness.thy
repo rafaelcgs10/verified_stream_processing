@@ -219,7 +219,7 @@ lemma output_batchesI:
 
 
 lemma correctness_gen:
-  fixes inps :: \<open>1 \<Rightarrow> ('t :: {ccompare,compare_order,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
+  fixes inps :: \<open>1 \<Rightarrow> ('t :: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
     and f :: \<open>'d1 buf \<Rightarrow> 'd2 buf\<close>
     and ip_state :: \<open>(1, 'd1 + 'd2, 'd1, 't) input_state\<close>
     and bt_state :: \<open>(1, 'd1 + 'd2, 'd1, 'd2, 't) operator_state_ty2\<close>
@@ -252,9 +252,6 @@ lemma correctness_gen:
     and
     INP_STREAM_INV:
     \<open>timely_input_stream (inps 1) (mset (ocaps (os 0) 1))\<close>
-    and
-    TIMESTAMP_COMPARE:
-    "ID CCOMPARE('t) = Some compare"
     and
     OP_EXTRA_INVS:
     \<open>input (os 0) = (\<lambda> _. [])\<close>
