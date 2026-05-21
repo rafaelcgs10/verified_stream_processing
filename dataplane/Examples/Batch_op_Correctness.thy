@@ -78,13 +78,13 @@ abbreviation "l1 ip_state \<equiv> ((Logic (ooo_input_op {|1 :: 1|} ip_state) de
 abbreviation "l2 os2 f \<equiv> Logic (batch_op os2 f) default_internal_summary"
 abbreviation "G f ip_state os2 \<equiv> Comp [(0 :: 2, 1) \<mapsto> (0, 1)] (l1 (ip_state :: (1, 'd1 + 'd2, 'd1, _) input_state)) (l2 (os2 :: (1, 'd1 + 'd2, 'd1, 'd2, _) operator_state_ty2) f)"
 
-abbreviation "compiled_op f \<equiv> compile_dataflow (\<lambda> _. []) (G f (init_input_state default_internal_summary (\<lambda> _. inps_test)) (init_operator_state_ty2 default_internal_summary) )"
+abbreviation "compiled_batch_op inps f \<equiv> compile_dataflow (\<lambda> _. []) (G f (init_input_state default_internal_summary inps) (init_operator_state_ty2 default_internal_summary) )"
 
-value [GHC] "check_prefix 5500 [((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1)),((1, 1), (Inr 3, MyPair 1 0))] (compiled_op (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
-  (* value [GHC] "check_prefix 5500 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] (compiled_op (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
-value [GHC] "check_prefix 5500 [((1, 1), (Inr 3, MyPair 1 0)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1))] (compiled_op (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"  *)
+value [GHC] "check_prefix 5500 [((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1)),((1, 1), (Inr 3, MyPair 1 0))] (compiled_batch_op (\<lambda> _. inps_test) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
+  (* value [GHC] "check_prefix 5500 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] (compiled_batch_op (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
+value [GHC] "check_prefix 5500 [((1, 1), (Inr 3, MyPair 1 0)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1))] (compiled_batch_op (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"  *)
 
-value [GHC] "ltaken 3 (lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec (compiled_op (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))))"
+value [GHC] "ltaken 3 (lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec (compiled_batch_op (\<lambda> _. inps_test) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))))"
 
 term DEBUG
 
@@ -4158,21 +4158,42 @@ lemma correctness_aux:
   done
 
 lemma correctness:
-  fixes inps :: \<open>1 \<Rightarrow> ('t :: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bots}, 'd1) event llist\<close>
-  assumes T: "timely_input_stream (inps 1) (mset bots)"
-  shows "set_op {||} {||}
-    (compile_dataflow (\<lambda> _. []) (G f (init_input_state default_internal_summary inps) (init_operator_state_ty2 default_internal_summary) )) \<approx>
-    set_spec_op ((cUnion ((\<lambda>t. cset_from_list (map (\<lambda>x. ((1, 1), Inr x, t)) (f (coll (inps 1) t)))) |`| (ts (inps 1))))) {||}"
+  fixes inps :: \<open>('t :: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bots}, 'd1) event llist\<close>
+  assumes T: "timely_input_stream inps (mset bots)"
+  shows "set_op {||} {||} (compiled_batch_op (\<lambda> _. inps) f) \<approx>
+         set_spec_op ((cUnion ((\<lambda>t. cset_from_list (map (\<lambda>x. ((1, 1), Inr x, t)) (f (coll inps t)))) |`| (ts inps)))) {||}"
   using T apply -
   apply (drule correctness_aux[unfolded BULK_BENQ_def outputs_at_target_def inputs_at_target_def, simplified, where f=f])
   unfolding compile_dataflow_def
   apply simp
-  apply (subgoal_tac "(\<lambda>a. inps 1) = inps")
-  subgoal
-    by simp
-  subgoal
-    by auto
   done
 
+lemma soundness:
+  fixes inps :: \<open>('t :: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bots}, 'd1) event llist\<close>
+    and ios :: "(2 \<times> 1, 2 \<times> 1, ('d1 + 'b) \<times> 't) VIO llist"
+  assumes T: "timely_input_stream inps (mset bots)"
+  shows 
+  "wtraced (compiled_batch_op (\<lambda> _. inps) f) ios \<Longrightarrow>
+   \<forall>vio\<in>lset ios. \<not> is_VInp vio \<Longrightarrow>
+   VOut p (Inr r, t) \<in> lset ios \<Longrightarrow> 
+   r \<in> set (f (coll inps t))"
+  apply (drule set_op_soundness[OF correctness, of inps f ios p "(Inr r, t)", OF T])
+    apply assumption+
+  apply (clarsimp simp add: image_iff)
+  done
+
+lemma completeness:
+  fixes inps :: \<open>('t :: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bots}, 'd1) event llist\<close>
+    and ios :: "(2 \<times> 1, 2 \<times> 1, ('d1 + 'b) \<times> 't) VIO llist"
+  assumes T: "timely_input_stream inps (mset bots)"
+  shows 
+  "Data t d \<in> lset inps \<Longrightarrow> r \<in> set (f (coll inps t)) \<Longrightarrow>
+   \<exists>ios. wtraced (compiled_batch_op (\<lambda> _. inps) f) ios \<and> VOut (1, 1) (Inr r, t) \<in> lset ios"
+  using set_op_completeness[OF correctness, of inps "(1, 1)" _ f, simplified, unfolded image_iff, simplified, OF T] apply -
+  apply (drule meta_spec)+
+  apply (drule meta_mp)
+   apply force
+  apply auto
+  done
 
 end
