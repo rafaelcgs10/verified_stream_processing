@@ -18,6 +18,7 @@ imports
   Containers.Collection_Order
   AntichainOrder
   MyProduct_Instances
+  Bots
 begin 
 
 
@@ -518,9 +519,6 @@ fun take_step where
 
 definition "propagate_all_locale summary df c0 = (while_option (Not o (worklist_is_empty summary))
                                            (take_step_locale df PR) c0)"
-
-abbreviation empty_conf where
-  "empty_conf \<equiv> \<lparr>c_work = (\<lambda> _.  {#}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
 
 definition "propagate_all summary c0 = (while_option (Not o (worklist_is_empty summary))
                                         (take_step summary PR) c0)"
@@ -1073,7 +1071,7 @@ record ('p, 'd, 't) operator_state =
   ocaps :: "'p \<Rightarrow> 't list"
   initia :: bool
 
-definition "default_internal_summary = (\<lambda> p1 p2. if p1 = p2 then [0] else [])"
+section \<open>Initial states\<close>
 
 abbreviation init_op_state where
   "init_op_state su i \<equiv> \<lparr> 
@@ -1081,17 +1079,21 @@ abbreviation init_op_state where
    consu = [],
    inter = [],
    produ = [],
-   input = (\<lambda> _. []),
-   outpu = (\<lambda> _. []),
-   front = undefined,
-   ocaps = (\<lambda> _. [\<bottom>]),
+   input = \<lambda> _. [],
+   outpu = \<lambda> _. [],
+   front = \<lambda> _. antichain_from_list bots,
+   ocaps = \<lambda> _. bots,
    initia = i
    \<rparr>"
+definition "default_internal_summary = (\<lambda> p1 p2. if p1 = p2 then [0] else [])"
 
-abbreviation "init_c_pts summary cgs \<equiv> change_multiplicities summary cgs \<lparr>c_work = (\<lambda> _.  {#}\<^sub>z), c_pts = (\<lambda> _.  {#}\<^sub>z), c_imp = (\<lambda> _. {#}\<^sub>z)\<rparr>"
+abbreviation "init_op_states \<equiv> (\<lambda> x. init_op_state default_internal_summary (x = 0))"
+
+abbreviation initial_conf where
+  "initial_conf \<equiv> \<lparr>c_work = \<lambda> l. if is_Src (port l) then zmset_of (mset_set (set bots)) else {#}\<^sub>z, c_pts = \<lambda> l. if is_Src (port l) then to_zmset bots else {#}\<^sub>z, c_imp = \<lambda> _. {#}\<^sub>z\<rparr>"
 
 abbreviation init_conf where
-  "init_conf summary cgs \<equiv> the (propagate_all summary (init_c_pts summary cgs))"
+  "init_conf summary \<equiv> the (propagate_all summary initial_conf)"
 
 record ('p, 'd, 'd1, 't) operator_state_ty = "('p, 'd, 't) operator_state" +
   en1 :: "'d1 \<Rightarrow> 'd" de1 :: "'d \<Rightarrow> 'd1" is_en1 :: "'d \<Rightarrow> bool"
@@ -1137,14 +1139,14 @@ lemma zero_in_graph_path_weight[simp,intro]:
     done
   done
 
-definition "init_subgraph summary cgs =
-   \<lparr> pt_tr = init_conf summary cgs,
+definition "init_subgraph summary =
+   \<lparr> pt_tr = init_conf summary,
    nxt = graph_to_nxt summary,
    summ = summary, upfro = (\<lambda> _. True) \<rparr>"
 
 definition "compile_dataflow chns dt = (let summary = antichain_from_list oo (dataflow_tree_to_graph dt) in
                                     let op = dataflow_tree_to_operator chns dt in
-                                    let sg = init_subgraph summary (map (\<lambda> (nid, p). (Loc nid (Src p), bot, 1)) (List.product Enum.enum Enum.enum)) in
+                                    let sg = init_subgraph summary in
                                     dataflow_op sg op)"
 
 definition "delay_cap os cap incr = (os\<lparr> inter := inter os @ [(out cap, time cap, -1), (out cap, time cap + incr, 1)] \<rparr>)"
@@ -1888,6 +1890,5 @@ lemma set_extract_progressD:
     by (metis fst_conv option.distinct(1) option.simps(1) snd_conv)
   done
 
-thm find_SomeD
 
 end

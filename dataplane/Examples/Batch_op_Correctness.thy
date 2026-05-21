@@ -44,10 +44,10 @@ abbreviation init_input_state where
    consu = [],
    inter = [],
    produ = [],
-   input = (\<lambda> _. []),
-   outpu = (\<lambda> _. []),
-   front = undefined,
-   ocaps = (\<lambda> _. [\<bottom>]),
+   input = \<lambda> _. [],
+   outpu = \<lambda> _. [],
+   front = \<lambda> _. antichain_from_list bots,
+   ocaps = \<lambda> _. bots,
    initia = True,
    en1 = Inl,
    de1 = projl,
@@ -61,10 +61,10 @@ abbreviation init_operator_state_ty2 where
    consu = [],
    inter = [],
    produ = [],
-   input = (\<lambda> _. []),
-   outpu = (\<lambda> _. []),
-   front = undefined,
-   ocaps = (\<lambda> _. [\<bottom>]),
+   input = \<lambda> _. [],
+   outpu = \<lambda> _. [],
+   front = \<lambda> _. antichain_from_list bots,
+   ocaps = \<lambda> _. bots,
    initia = False,
    en1 = Inl,
    de1 = projl,
@@ -3999,196 +3999,127 @@ qed
 section \<open>Correctness\<close>
 
 
-find_consts "(_, _, _) operator_state"
-
-term compiled_op
-abbreviation "my_sg \<equiv> init_subgraph (antichain_from_list oo my_summ) (map (\<lambda> (nid, p). (Loc nid (Src p), bot, 1)) (List.product Enum.enum Enum.enum))"
+abbreviation "my_sg \<equiv> init_subgraph (antichain_from_list oo my_summ)"
 
 
-abbreviation "my_os \<equiv> (\<lambda> x. init_op_state default_internal_summary (x = 0))"
-
-thm correctness_gen[where S="cempty" and SO="cempty" and D="cempty" and sg=my_sg and inps=inps and cbufs="\<lambda> _. []" and ip_state="(init_input_state default_internal_summary inps)" and bt_state="init_operator_state_ty2 default_internal_summary", no_vars]
-
-term zmset
-
-find_theorems c_pts change_multiplicities
-
-lemma c_work_change_multiplicities:
-  "c_work (change_multiplicities su xs empty_conf) = (\<lambda> l. zmset (map snd (filter (\<lambda> (l', t, d). l = l') xs)))"
-  apply (induct xs arbitrary: )
-   apply simp
-  subgoal for x xs 
-    apply (rule ext)+
-    apply (cases x)
-    apply (auto split: if_splits prod.splits simp add: c_pts_change_multiplicities change_multiplicities_simp_alt update_zmultiset_plus_comm)
-    subgoal for a b c'
-      oops
-
+(*FIXME: move me*)
 lemma init_config_empty_conf:
   assumes D: "dataflow_topology su (-+-)"
-  shows "dataflow_topology_from_tree.init_config empty_conf"
+  shows "dataflow_topology_from_tree.init_config initial_conf"
   apply (subst dataflow_topology.init_config_def[OF D])
-  apply simp
+  apply (auto simp add: frontier_singleton split: port.splits)
   done
 
-lemma not_inset_antichain_in_set_antichain_zcount:
-  "t \<notin> set_antichain (frontier (update_zmultiset M b m)) \<Longrightarrow>
-   m \<ge> 0 \<Longrightarrow>
-   t \<in> set_antichain (frontier M) \<Longrightarrow> 
-   zcount M t > 0"
-  apply transfer'
-  apply (auto simp add: minimal_antichain_def split: if_splits)
-  done
-
-
-lemma
-  fixes su :: "(_, _) location \<Rightarrow> (_, _) location \<Rightarrow> ('t :: {canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,order_ccompare,bot}) antichain"
+lemma propagation_inv_initial_conf:
+  fixes su :: "(_, _) location \<Rightarrow> (_, _) location \<Rightarrow> ('t :: {canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,order_ccompare,bots}) antichain"
   assumes D: "dataflow_topology su (-+-)"
-  shows "(\<forall> (l, t, m) \<in> set xs. m \<ge> 0 \<and> t = \<bottom>) \<Longrightarrow>
-  dataflow_topology_from_tree.inv_imp_plus_work_nonneg (change_multiplicities su xs empty_conf)"
-  apply (subst Propagate.dataflow_topology.inv_imp_plus_work_nonneg_def[OF D])
-  apply simp
-  apply (induct xs)
-   apply simp
-  subgoal for a xs
-    apply (cases a)
-    apply (auto simp add: c_pts_change_multiplicities dataflow_topology_from_tree.zmset_of_lemma change_multiplicities_simp_alt split: prod.splits)
-    apply (rule Groups.ordered_comm_monoid_add_class.add_nonneg_nonneg)
-     apply simp_all
-    subgoal premises prems for a c t
-      using prems(3) apply -
-      apply (auto simp add: count_mset_set_if)
-
-      find_theorems c 
-
-      find_theorems count mset_set
-
-end
-lemma propagation_inv_propagate_all_change_multiplicities_empty_conf:
-  fixes su :: "(_, _) location \<Rightarrow> (_, _) location \<Rightarrow> ('t :: {canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,order_ccompare,bot}) antichain"
-  assumes D: "dataflow_topology su (-+-)"
-  shows "(\<forall> (l, t, m) \<in> set xs. is_Src (port l) \<and> m = 1 \<and> t = \<bottom>) \<Longrightarrow>
-         distinct (map fst xs) \<Longrightarrow>
-         propagation_inv su (change_multiplicities su xs empty_conf)"
+  shows "propagation_inv su initial_conf"
   unfolding propagation_inv_def
   apply (intro conjI)
   subgoal
-    using Propagate.dataflow_topology.init_imp_inv_imps_work_sum[OF D, of empty_conf, OF init_config_empty_conf[OF D]]
-    sorry
+    by (auto simp add: Propagate.dataflow_topology.init_imp_inv_imps_work_sum[OF D, of initial_conf, OF init_config_empty_conf[OF D]])
   subgoal
-    using Propagate.dataflow_topology.init_imp_inv_implications_nonneg[OF D, of empty_conf, OF init_config_empty_conf[OF D]]
-    sorry
+    using Propagate.dataflow_topology.init_imp_inv_implications_nonneg[OF D, of initial_conf, OF init_config_empty_conf[OF D]] by auto
   subgoal
-    using Propagate.dataflow_topology.inv_imp_plus_work_nonneg_def
-
-  find_theorems dataflow_topology_from_tree.inv_imp_plus_work_nonneg name: def
-
-  using change_multiplicities_preserves_inv[OF D]
-
-
-  find_theorems dataflow_topology_from_tree.inv_implications_nonneg change_multiplicities
-
-
-(* FIXME: move me to ListUtils *)
-lemma filter_single:
-  "a \<in> set xs \<Longrightarrow>
-   distinct xs \<Longrightarrow>
-   P a \<Longrightarrow>
-   (\<forall> b \<in> set xs. b \<noteq> a \<longrightarrow> \<not> P b) \<Longrightarrow>
-   filter P xs = [a]"
-  apply (induct xs)
-   apply (auto simp add: filter_empty_conv)
+  apply (subst Propagate.dataflow_topology.inv_imp_plus_work_nonneg_def[OF D])
+    apply simp
+    done
   done
 
-lemma
-  fixes su :: "('nid :: {enum,linorder, one,zero}, _) location \<Rightarrow> (_, _) location \<Rightarrow> ('t :: {canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,order_ccompare,bot}) antichain"
+lemma dataplane_tracker_inv_init_op_state:
+  fixes su :: "('nid :: {enum,linorder, one,zero}, _) location \<Rightarrow> (_, _) location \<Rightarrow> ('t :: {canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,order_ccompare,bots}) antichain"
   assumes D: "dataflow_topology su (-+-)"
-  and SU: "\<forall> loc. su loc loc = {}\<^sub>A"
-shows  "(\<forall> (l, t, m) \<in> set xs. is_Src (port l) \<and> m = 1 \<and> t = \<bottom>) \<Longrightarrow>
-      distinct (map fst xs) \<Longrightarrow>
-      fst ` (set xs) = UNIV \<Longrightarrow>
-     dataplane_tracker_inv (\<lambda> x. init_op_state isu i) (\<lambda>_. [])
-     \<lparr>pt_tr =
-        the (propagate_all su
-              (change_multiplicities su
-                xs empty_conf)),
-        nxt = graph_to_nxt su, summ = su, upfro = upf\<rparr>"
-    unfolding dataplane_tracker_inv_def
-    apply clarsimp
-    apply (rule exI[of _ "\<lambda> l. case l of Loc nid (Trg p) \<Rightarrow> {#}\<^sub>z | Loc nid (Src p) \<Rightarrow> {# \<bottom> #}\<^sub>z"])
-      apply (cases "propagate_all su
-               (change_multiplicities su xs empty_conf)")
-      subgoal
-        apply (rule FalseE)
-        using propagation_inv_propagate_all_change_multiplicities_empty_conf[OF D, unfolded propagation_inv_def, where xs=xs] apply - 
-        apply (drule meta_mp)
-        subgoal
-          by auto
-        apply (drule propagate_all_terminates[unfolded not_def, rule_format, rotated 5, OF _ D])
-        using SU apply auto
-        done
-      subgoal for c
+    and SU: "\<forall> loc. su loc loc = {}\<^sub>A"
+    and R: "reachable_locations su = UNIV"
+  shows  "dataplane_tracker_inv (\<lambda> x. init_op_state isu (i x)) (\<lambda>_. []) \<lparr>pt_tr =the (propagate_all su initial_conf), nxt = graph_to_nxt su, summ = su, upfro = upf\<rparr>"
+  unfolding dataplane_tracker_inv_def
+  apply clarsimp
+  apply (rule exI[of _ "\<lambda> l. case l of Loc nid (Trg p) \<Rightarrow> {#}\<^sub>z | Loc nid (Src p) \<Rightarrow> to_zmset bots"])
+  apply (cases "propagate_all su initial_conf")
+  subgoal
+    apply (rule FalseE)
+    using propagate_all_terminates propagation_inv_initial_conf[OF D, unfolded propagation_inv_def] assms(1,2,3) by fastforce
+  subgoal for c
     apply (intro conjI)
     subgoal
       unfolding Src_caps_inv_def by auto
     subgoal
       unfolding Trg_caps_inv_def outputs_at_target_def by auto
     subgoal
-        apply simp
-        unfolding c_pts_inv_def
-        apply (auto simp add: extract_prog_def obtain_progress_def c_pts_change_multiplicities comp_def split: location.splits port.splits)
+      apply simp
+      unfolding c_pts_inv_def
+      apply (auto simp add: extract_prog_def obtain_progress_def c_pts_change_multiplicities comp_def split: location.splits port.splits)
+      subgoal
+        apply (subst filter_False)
         subgoal
-          apply (subst filter_False)
-          subgoal
-            unfolding extract_progress_def
-            apply auto
-            done
-          subgoal
-            apply simp
-            apply (drule propagate_all_preserves_c_pts)
-            apply (auto simp add: extract_prog_def obtain_progress_def c_pts_change_multiplicities comp_def split: location.splits port.splits)
-            apply (subst filter_False)
-            subgoal
-              unfolding extract_progress_def
-              apply auto
-              done
-            apply auto
-            done
+          unfolding extract_progress_def
+          apply auto
           done
-       subgoal for nid p
-          apply (subst filter_False)
-          subgoal
-            unfolding extract_progress_def
-            apply auto
-            done
-          subgoal
-    apply simp
-            apply (drule propagate_all_preserves_c_pts)
-            apply (auto simp add: extract_prog_def obtain_progress_def c_pts_change_multiplicities comp_def split: location.splits port.splits)
-            apply (subst filter_single[where a="(Loc nid (Src p), \<bottom>, 1)"])
-                apply simp_all
-               apply fastforce
-            subgoal
-              by (auto intro: distinct_mapI simp add: extract_prog_def obtain_progress_def c_pts_change_multiplicities comp_def split: prod.splits location.splits port.splits)
-          apply (auto simp add: c_pts_change_multiplicities comp_def)
-            apply (metis update_zmultiset_singleton(2))
-            done
+        subgoal
+          apply simp
+          apply (drule propagate_all_preserves_c_pts)
+          apply (auto simp add: extract_prog_def obtain_progress_def c_pts_change_multiplicities comp_def split: location.splits port.splits)
           done
         done
-
-            find_theorems filter name: sing
-
-end
-
-          unfolding dataflow_topology.inv_imps_work_sum_def[OF D]
-          apply (auto simp add: c_pts_change_multiplicities comp_def)
-          subgoal for loc
-            apply (subst change_multiplicities_append)
-  oops
+      subgoal for nid p
+        apply (subst filter_False)
+        subgoal
+          unfolding extract_progress_def
+          apply auto
+          done
+        subgoal
+          apply simp
+          apply (drule propagate_all_preserves_c_pts)
+          apply (auto simp add: extract_prog_def obtain_progress_def c_pts_change_multiplicities comp_def split: location.splits port.splits)
+          done
+        done
+      done
+    subgoal
+      unfolding front_inv_def
+      apply safe
+      subgoal for nid p
+      apply (drule propagate_all_frontier_c_imp_correctness[OF _ D R, where loc="Loc nid (Trg p)"])
+      using propagation_inv_initial_conf[OF D, unfolded propagation_inv_def] apply simp
+      using propagation_inv_initial_conf[OF D, unfolded propagation_inv_def] apply simp
+      using propagation_inv_initial_conf[OF D, unfolded propagation_inv_def] apply simp
+      apply simp
+      done
+    done
+  subgoal
+    unfolding imp_front_inv_def
+    apply safe
+    subgoal for l
+      apply (subgoal_tac \<open>dataflow_topology.inv_imps_work_sum su (-+-) (initial_conf :: (('nid, 'd) location, 't) configuration) \<and> dataflow_topology_from_tree.inv_implications_nonneg (initial_conf :: (('nid, 'd) location, 't) configuration) \<and> dataflow_topology_from_tree.inv_imp_plus_work_nonneg (initial_conf :: (('nid, 'd) location, 't) configuration)\<close>)
+      subgoal
+        apply clarsimp
+        apply (frule propagate_all_frontier_c_imp_correctness[OF _ D R, where loc=l])
+           apply (simp_all add: assms(1) propagate_all_preserves_ifrontier)
+        done
+      subgoal
+      using propagation_inv_initial_conf[OF D, unfolded propagation_inv_def] by simp
+    done
+  done
+  subgoal
+    unfolding chnls_imp_front_inv_def outputs_at_target_def
+    by clarsimp
+  subgoal
+    unfolding change_deltas_inv_def
+    by clarsimp
+  subgoal
+    using propagation_inv_initial_conf[OF D]
+    by (simp add: D propagate_all_preserves_inv propagation_inv_def)
+  subgoal
+    unfolding extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def obtain_progress_def extract_prog_def extract_progress_def
+    by auto
+  subgoal
+    unfolding produ_consu_inter_supported_def
+    by auto
+  done
+  done
 
 lemma correctness_aux:
-  fixes inps :: \<open>1 \<Rightarrow> ('t :: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
-  assumes T: "timely_input_stream (inps 1) {#\<bottom>#}"
+  fixes inps :: \<open>1 \<Rightarrow> ('t :: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bots}, 'd1) event llist\<close>
+  assumes T: "timely_input_stream (inps 1) (mset bots)"
   shows  "set_op {||} {||}
      (dataflow_op my_sg
        (dataflow_tree_to_operator (\<lambda>_. []) (Comp [(0, 1) \<mapsto> (0, 1)] (l1 (init_input_state default_internal_summary inps)) (l2 (init_operator_state_ty2 default_internal_summary) f)))) \<approx>
@@ -4196,17 +4127,30 @@ lemma correctness_aux:
      (cUn (cUn {||} {||})
        (cUnion
          ((\<lambda>t. cset_from_list
-                 (map (\<lambda>x. ((1, 1), Inr x, t)) (f (coll (map (\<lambda>(x, t). Data t (projl x)) ((outputs_at_target (summ my_sg) my_os >> (\<lambda>_. []) >> inputs_at_target my_os) (1, 1)) @@- inps 1) t)))) |`|
-          cUn (ts (inps 1)) (cset_from_list (map snd ((outputs_at_target (summ my_sg) my_os >> (\<lambda>_. []) >> inputs_at_target my_os) (1, 1)))))))
+                 (map (\<lambda>x. ((1, 1), Inr x, t)) (f (coll (map (\<lambda>(x, t). Data t (projl x)) ((outputs_at_target (summ my_sg) init_op_states >> (\<lambda>_. []) >> inputs_at_target init_op_states) (1, 1)) @@- inps 1) t)))) |`|
+          cUn (ts (inps 1)) (cset_from_list (map snd ((outputs_at_target (summ my_sg) init_op_states >> (\<lambda>_. []) >> inputs_at_target init_op_states) (1, 1)))))))
      {||}"
-  apply (rule correctness_gen[where S="cempty" and os=my_os and SO="cempty" and D="cempty" and sg=my_sg and inps=inps and cbufs="\<lambda> _. []" and ip_state="(init_input_state default_internal_summary inps)" and bt_state="init_operator_state_ty2 default_internal_summary"])
-                 apply (simp_all add: input_ocaps_inv_def operator_state.defs ty2_check_def ty1_check_def init_subgraph_def)
+  apply (rule correctness_gen[where S="cempty" and os=init_op_states and SO="cempty" and D="cempty" and sg=my_sg and inps=inps and cbufs="\<lambda> _. []" and ip_state="(init_input_state default_internal_summary inps)" and bt_state="init_operator_state_ty2 default_internal_summary"])
+  apply (simp_all add: input_ocaps_inv_def operator_state.defs ty2_check_def ty1_check_def init_subgraph_def)
   subgoal
     using loc_2_1_cases  by (auto del: ext intro!: ext simp add: default_internal_summary_def my_summ_def)
   subgoal
-    unfolding dataplane_tracker_inv_def Src_caps_inv_def Trg_caps_inv_def
-    apply clarsimp
-    sorry
+    apply (rule dataplane_tracker_inv_init_op_state[where isu=default_internal_summary and su="antichain_from_list \<circ>\<circ> my_summ" and i="\<lambda> (nid :: 2). nid = 0", simplified])
+    subgoal  
+    unfolding comp_def
+    using dataflow_topology_from_tree.dataflow_topology_axioms[unfolded comp_def, of "(Comp [((0 :: 2), (1 :: 1)) \<mapsto> (0, 1)] (Logic _ default_internal_summary) (Logic _ default_internal_summary))", simplified]
+    by auto
+  subgoal
+    unfolding my_summ_def
+    by auto
+  subgoal
+    unfolding reachable_locations_def
+    apply (auto simp add: image_iff split_beta )
+    using loc_2_1_cases apply blast
+    using loc_2_1_cases apply blast
+     apply (smt (verit, del_insts) is_empty_antichain_not_empty_list loc_2_1_cases my_summ_def zero_one)+
+    done
+  done
   subgoal
     by (simp add: inputs_at_target_def)
   subgoal
@@ -4214,8 +4158,8 @@ lemma correctness_aux:
   done
 
 lemma correctness:
-  fixes inps :: \<open>1 \<Rightarrow> ('t :: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}, 'd1) event llist\<close>
-  assumes T: "timely_input_stream (inps 1) {#\<bottom>#}"
+  fixes inps :: \<open>1 \<Rightarrow> ('t :: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bots}, 'd1) event llist\<close>
+  assumes T: "timely_input_stream (inps 1) (mset bots)"
   shows "set_op {||} {||}
     (compile_dataflow (\<lambda> _. []) (G f (init_input_state default_internal_summary inps) (init_operator_state_ty2 default_internal_summary) )) \<approx>
     set_spec_op ((cUnion ((\<lambda>t. cset_from_list (map (\<lambda>x. ((1, 1), Inr x, t)) (f (coll (inps 1) t)))) |`| (ts (inps 1))))) {||}"

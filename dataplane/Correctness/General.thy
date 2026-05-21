@@ -1093,4 +1093,36 @@ lemma map_snd_filter_List_map_filter:
   using inj_on_contraD apply fastforce
   done
 
+
+section \<open>Extra things (FIXME: move them)\<close>
+lemma frontier_to_zmset_bots[simp]:
+  "frontier (to_zmset bots) = antichain (set bots)"  
+  unfolding frontier.abs_eq minimal_antichain_def ac_eq_iff less_eq_antichain_def member_antichain.rep_eq 
+  apply clarsimp
+  done
+
+lemma set_bots_bot_antichain[simp]:
+  "antichain (set bots) \<le> F"  
+  unfolding  less_eq_antichain_def member_antichain.rep_eq 
+  apply clarsimp
+  unfolding bots_class.minimal
+  apply clarsimp
+  subgoal for t2
+    apply (cases "(\<forall>y. \<not> y < t2)")
+    subgoal
+      by auto
+    subgoal
+      apply clarsimp
+      using bots_class.complete[unfolded bots_class.minimal]
+      apply auto
+      done
+    done
+  done
+
+lemma antichain_from_list_bots_antichain_set[simp]:
+  "antichain_from_list bots = antichain (set bots)"
+  by (metis set_antichain2 dual_order.eq_iff in_antichain_from_list_alt incomparable_bots less_eq_antichain_def set_antichain_antichain_set_bots
+      set_bots_bot_antichain)
+
+
 end
