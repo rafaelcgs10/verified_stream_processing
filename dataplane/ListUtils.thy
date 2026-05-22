@@ -22,13 +22,6 @@ lemma rmdups_append[simp]:
   "rmdups S (xs @ ys) = rmdups S xs @ rmdups (S \<union> set xs) ys"
   by (induct xs arbitrary: S ys) (auto simp add: insert_absorb)
 
-lemma rmdups_NilI:
-  "(set xs \<subseteq> A \<and> xs \<noteq> []) \<or> xs = [] \<Longrightarrow>
-   rmdups A xs = []"
-  apply (induct xs arbitrary: A)
-   apply simp_all
-  done
-
 lemma distinct_rmdups[simp]:
   "distinct (rmdups A xs)"
   by (induct xs arbitrary: A) auto
@@ -289,5 +282,10 @@ lemma filter_not_emptyI:
   "\<exists> x \<in> set xs. P x \<Longrightarrow>
    filter P xs \<noteq> []"
   by (metis List.empty_filter_conv)
+
+lemma filter_if_const[simp]:
+  "filter (\<lambda>x. p = fst x) (if P p then xs else []) =
+   filter (\<lambda>x. p = fst x \<and> P p) xs"
+  by auto
 
 end

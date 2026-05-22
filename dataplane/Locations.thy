@@ -263,17 +263,6 @@ lemma location_UNIV[simp]:
   apply (smt (verit, del_insts) UNIV_eq_I UnCI location.exhaust old.prod.case port.exhaust_sel rangeI)
   done
 
-lemma UNIV_simps:
-  "(UNIV :: 1 set) = {0}"
-  "(UNIV :: 2 set) = {0, 1}"
-  "(UNIV :: 3 set) = {0, 1, 2}"
-  by code_simp+
-(* UNIV_simps has unexpected consequences if declared a simp rules. For every number m such that
-3 * 2^n \<le> m < 2^(n+2) (where n is a natural), the simplifier gets stuck (i.e., does not seem to
-terminate) on proving \<open>(2 :: m) \<noteq> 0\<close> (similar issues for numbers greater than 2, and the comparison
-does not have to be against 0). Using [[simp_trace_new]] does not show any trace but [[simp_trace]]
-is helpful. *)
-
 lemma enum_class2[simp]:
   "enum_class.enum = [0 :: 2, 1]"
   by code_simp

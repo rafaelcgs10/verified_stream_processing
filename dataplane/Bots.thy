@@ -39,10 +39,6 @@ fun myproduct :: "'a list \<Rightarrow> 'b list \<Rightarrow> ('a, 'b) myprod li
 "myproduct [] _ = []" |
 "myproduct (x#xs) ys = map (MyPair x) ys @ myproduct xs ys"
 
-lemma to_prod_myproduct:
-  "map to_prod (myproduct xs ys) = List.product xs ys"
-  by (induct xs ys rule: myproduct.induct)
-   (simp_all add: to_prod_def)
 lemma from_prod_product:
   "map from_prod (List.product xs ys) = myproduct xs ys"
   by (induct xs arbitrary: ys)

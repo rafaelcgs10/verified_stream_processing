@@ -269,24 +269,6 @@ lemma zmset_emptyI:
 (* Aggregation lemmas over zmset                                              *)
 (* -------------------------------------------------------------------------- *)
 
-lemma sum_sum_product:
-  "(∑x∈A. ∑y∈B. f x y) = (∑x∈A × B. f (fst x) (snd x))"
-  by (metis (mono_tags, lifting) case_prod_unfold sum.cartesian_product sum.cong)
-
-lemma filter_if_const[simp]:
-  "filter (λx. p = fst x) (if P p then xs else []) =
-   filter (λx. p = fst x ∧ P p) xs"
-  by auto
-
-lemma sum_if:
-  "finite S ⟹
-   Collect f ⊆ S ⟹
-   sum Z (Collect f) = sum (λ x. if f x then Z x else 0) S"
-  apply (subst Groups_Big.comm_monoid_add_class.sum.inter_filter[symmetric])
-   apply assumption
-  apply (metis basic_trans_rules(31) mem_Collect_eq)
-  done
-
 lemma sum_list_zmset:
   "(∑x←xs. zmset (f x)) = (zmset (concat (map f xs)))"
   apply (induct xs)
@@ -394,21 +376,11 @@ lemma to_zmset_concat:
   "to_zmset (concat xs) = sum_list (map to_zmset xs)"
   by (induct xs) auto
 
-lemma image_zmset_comp:
-  "image_zmset f (image_zmset g M) = image_zmset (f o g) M"
-  apply transfer
-  apply (auto simp add: equiv_zmset_def)
-  done
-
 lemma zcount_image_zmset_image_zmset[simp]:
   "zcount (Auxiliary.image_zmset f (Auxiliary.image_zmset g (M t))) t = zcount {#f (g xa). xa ∈#⇩z M t#} t"
   apply transfer
   apply (auto simp add: split_beta)
   done
-
-lemma zcount_zmset:
-  "zcount (zmset xs) t = sum_list (map snd (filter (λ (t', x). t = t') xs))"
-  by (induct xs) (auto simp add: zcount_update_zmultiset)
 
 lemma to_zmset_BULK_BENQ[simp]:
   "to_zmset ((xs >> ys) p) = to_zmset (xs p) + to_zmset (ys p)"

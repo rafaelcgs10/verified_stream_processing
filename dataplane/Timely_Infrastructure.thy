@@ -418,10 +418,6 @@ lemma take_step_enum_dataflow_topology_take_step:
     done
   done
 
-lemma propagate_all_locale_eq_propagate_all:
-  "propagate_all_locale (antichain_from_list oo (dataflow_tree_to_graph df)) df c = propagate_all (antichain_from_list oo (dataflow_tree_to_graph df)) c"
-  unfolding propagate_all_locale_def Let_def propagate_all_def by (auto split: prod.splits)
-
 abbreviation "show_frontier x \<equiv> let f = Max_antichain x in if f = 42 then STR ''{}'' else STR ''{ '' + show_nat (Max_antichain x) + STR '' }''" 
 
 abbreviation "print_frontier x \<equiv> trace ((STR ''Frontier: '') + show_frontier x)" 
@@ -499,20 +495,6 @@ lemma c_pts_change_multiplicities:
     apply (rule ext)+
     apply (cases x)
     apply (auto split: if_splits prod.splits simp add: change_multiplicities_simp_alt update_zmultiset_plus_comm)
-    done
-  done
-
-lemma change_multiplicities_same_pointstamps_aux:
-  "(\<forall> x \<in> set xs. \<forall> y \<in> set xs. fst x = fst y \<and> (fst o snd) x = (fst o snd) y) \<Longrightarrow>
-   change_multiplicities su xs c = fold (\<lambda> m c. take_step su (CM ((fst o hd) xs) ((fst o snd o hd) xs) m) c) (map (snd o snd) xs) c"
-  unfolding change_multiplicities_def
-  apply (induct xs arbitrary: c)
-   apply simp
-  subgoal premises prems for a xs c
-    using prems(2-) apply -
-    apply (cases a; clarsimp)
-    subgoal using prems(1)
-      by (smt (verit) List.fold_cong List.fold_simps(1) fun_comp_eq_conv hd_in_set list.simps(8))
     done
   done
 
@@ -721,12 +703,6 @@ lemma step_Inp_dataflow_op_Inp_Inr_intro[intro!]:
   apply (fastforce elim: step_choicesE split: sum.splits option.splits)
   done
 
-lemma dataflow_op_end_op:
-  "dataflow_op sg \<oslash> = \<oslash>"
-  apply (subst dataflow_op.code)
-  apply simp
-  done
-
 (* coinductive is_optimal_op where
   "(\<And>op' io. step io op op' \<Longrightarrow> (case io of Inp (Inr p) x \<Rightarrow> is_optimal_op op')) \<Longrightarrow> is_optimal_op op"
  *)
@@ -822,9 +798,6 @@ text \<open>
 
 (* Inspired by timely/src/dataflow/channels/pushers/counter.rs:25 and timely/src/dataflow/channels/mod.rs:49 *)
 (* writes maybe could support multiple different ports, then this one also would *)
-abbreviation "push op p batch \<equiv> 
-  writes op (trace (STR ''Pushing data!'') Some p) (map (\<lambda> (x, c). Inr (x, time c)) batch)"
-
 abbreviation "delayed_cap c t \<equiv>
   (Cap (time c + abs t) (out c),
   \<lambda> op. Write op None 
@@ -1421,23 +1394,6 @@ lemma frontier_less_equal_ifrontierI:
     done
   done
 
-lemma frontier_less_equal_ifrontierI_alt:
-  "dataflow_topology su (-+-) \<Longrightarrow>
-   (\<exists> t'\<le>t''. t' \<in>\<^sub>A graph.path_weight su l l') \<Longrightarrow>
-   frontier_less_equal (frontier (c_pts c l)) t \<Longrightarrow>
-   frontier_less_equal (ifrontier su (-+-) c l') (t + t'')"
-  by (meson add_left_mono frontier_less_equal_ifrontierI frontier_less_equal_trans)
-
-
-lemma frontier_less_equal_le_frontier:
-  "(\<forall> (l, t, m) \<in> set A. frontier_less_equal (f l) t) \<Longrightarrow>
-   f l \<le> frontier (zmset (map snd (filter (\<lambda>(l', t, d). l = l') A)))"
-  apply (induct A rule: rev_induct)
-   apply simp
-  apply (clarsimp split: prod.splits)
-  apply (smt (verit, del_insts) frontier_le_add frontier_less_equal_iff2 less_eq_antichain_def member_frontier_pos_zmset zcount_empty zcount_update_zmultiset)
-  done
-
 lemma in_frontier_zmset_image:
   "(\<forall> t. zcount M t \<ge> 0) \<Longrightarrow>
    t \<in>\<^sub>A frontier {#t -+- s. t \<in>#\<^sub>z M#} \<longleftrightarrow> (\<exists> t'. t = t' -+- s \<and> t' \<in>\<^sub>A frontier M)"
@@ -1472,17 +1428,6 @@ lemma frontier_less_equal_ifrontierE:
     done
   done
 
-
-lemma frontier_add_le_l:
-  "frontier A \<le> X \<Longrightarrow>
-   (\<forall> t. zcount B t \<ge> 0) \<Longrightarrow>
-   frontier (A + B) \<le> X"
-  using frontier_below_eq_frontier_plus_pos order_trans_rules(23) by blast
-lemma frontier_add_le_r:
-  "frontier B \<le> X \<Longrightarrow>
-   (\<forall> t. zcount A t \<ge> 0) \<Longrightarrow>
-   frontier (A + B) \<le> X"
-  using frontier_below_eq_frontier_plus_pos order_trans_rules(23) by (metis Groups.add_ac(2))
 
 lemma frontier_le_image_gen:
   "frontier M \<le> frontier M' \<Longrightarrow>
@@ -1533,14 +1478,6 @@ lemma frontier_less_equal_ifrontier_trans:
     done
   done
 
-lemma frontier_less_equal_ifrontier_trans_alt:
-  "dataflow_topology su (-+-) \<Longrightarrow>
-   (\<exists>t'\<le>t''. t' \<in>\<^sub>A graph.path_weight su l l') \<Longrightarrow>
-   frontier_less_equal (ifrontier su (-+-) c l) t \<Longrightarrow>
-   frontier_less_equal (ifrontier su (-+-) c l') (t -+- t'')"
-  by (meson add_le_cancel_left frontier_less_equal_ifrontier_trans frontier_less_equal_trans)
-
-
 lemma frontier_less_equal_ifrontier_trans_alt2:
   "dataflow_topology su (-+-) \<Longrightarrow>
    s \<in>\<^sub>A graph.path_weight su l l' \<Longrightarrow>
@@ -1559,13 +1496,6 @@ lemma frontier_le_image:
   apply clarsimp
   apply (metis add.commute add_left_mono in_frontier_zmset_image)
   done
-
-lemma frontier_eq_image:
-  "frontier M = frontier M' \<Longrightarrow>
-   (\<forall> t. zcount M' t \<ge> 0) \<Longrightarrow>
-   (\<forall> t. zcount M t \<ge> 0) \<Longrightarrow>
-   frontier {#t -+- s. t \<in>#\<^sub>z M#} = frontier {#t -+- s. t \<in>#\<^sub>z M'#}"
-  by (auto simp add: ac_eq_iff in_frontier_zmset_image)
 
 lemma ifrontier_le_all_le:
   "dataflow_topology su (-+-) \<Longrightarrow>
