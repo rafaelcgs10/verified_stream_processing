@@ -7,11 +7,11 @@ It may  be a good idea to create new files for some lemmas as the need to be org
 The main lemma in this file is the correctness_gen, which should stay there.
 For making this plan, check where thins were defined so it has a proper dependencies are satisfied.
 
-Show me an edit plan before doing changes.
 
-Your task is to organize the lemmas in the dataplane/Correctness/General.thy file.
+Your task is to organize the lemmas in the dataplane/Timely_Infrastructure.thy file.
 You will group the lemmas and definitions by similarity (e.g. they are related).
 Create isabelle sections with tex description of the lemmas and definitions in the section.
+Try to check the dependencies of the lemmas before moving them.
 
 Important:
 Move all lemmas at once, and use the MCP connection to check if the edit was successful.

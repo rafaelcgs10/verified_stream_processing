@@ -21,6 +21,13 @@ imports
   MyMisc
 begin 
 
+section \<open>Compilation From Dataflow Trees\<close>
+
+text \<open>
+  This section connects a compositional dataflow-tree syntax with executable operator and
+  graph-level representations used by the progress-tracking control plane.
+\<close>
+
 
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
@@ -225,7 +232,10 @@ global_interpretation dataflow_topology_from_tree: enum_dataflow_topology "antic
     and after_summary = "dataflow_topology.after_summary (+) :: 't zmultiset \<Rightarrow> 't antichain \<Rightarrow> 't zmultiset"
   by simp
 
-(* FIXME: move me *)
+text \<open>
+  Path-weight decomposition for compiled tree graphs: any non-trivial path starting from
+  a target port must first pass through a source port of the same node.
+\<close>
 lemma dataflow_tree_to_graph_Trg_decompose:
   "(s :: _ :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) \<in>\<^sub>A graph.path_weight (\<lambda>x xa. antichain_from_list (su x xa)) (Loc nid (Trg p)) l \<Longrightarrow>
    l \<noteq> Loc (nid :: _ :: {enum,minus,one,plus,zero,hashable,linorder}) (Trg (p :: _ :: {enum,hashable,linorder})) \<Longrightarrow>
@@ -256,6 +266,13 @@ abbreviation AF where
 notation "AF" (infixl \<open>-++-\<close> 65)
 
 abbreviation "ifrontier \<equiv> dataflow_topology.implied_frontier_alt"
+
+section \<open>Executable Propagation Primitives\<close>
+
+text \<open>
+  These definitions and lemmas connect the executable stepper with the abstract
+  dataflow-topology locale and establish basic algebraic properties used later.
+\<close>
 
 lemma AF_empty[simp]:
   "A -++- {}\<^sub>A = {#}\<^sub>z"
@@ -411,9 +428,93 @@ abbreviation "print_frontier x \<equiv> trace ((STR ''Frontier: '') + show_front
 
 abbreviation "show_frontiers impf \<equiv> show_list (show_prod show_loc show_frontier) (map (\<lambda> l. (l, frontier (impf l))) enum_location_inst.enum_location)"
 
+section \<open>Progress Extraction and Dataflow Wrapper\<close>
+
+text \<open>
+  This section defines progress extraction from operator-local buffers and the core
+  wrapper that couples the data-plane operator dynamics with control-plane updates.
+\<close>
+
 (* Inspired by timely/src/progress/subgraph.rs:453 *)
 (* First migrate all change batches to the worklist, then call propagate_all_locale *)
 definition "change_multiplicities summary xs conf = fold (\<lambda> (l, t, m) c. take_step summary (CM l t m) c) xs conf"
+
+lemma change_multiplicities_append:
+  "change_multiplicities su (xs @ ys) = (\<lambda> c. change_multiplicities su ys (change_multiplicities su xs c))"
+  unfolding change_multiplicities_def
+  apply (rule ext)
+  apply simp
+  done
+
+lemma change_multiplicities_append_alt:
+  "change_multiplicities su (xs @ ys) c = change_multiplicities su ys (change_multiplicities su xs c)"
+  using change_multiplicities_append by metis
+
+lemma change_multiplicities_append_comp:
+  "change_multiplicities su (xs @ ys) = change_multiplicities su ys o change_multiplicities su xs"
+  unfolding change_multiplicities_def
+  apply simp
+  done
+
+lemma take_step_comm:
+  "(take_step su (CM l2 t2 m2) \<circ>\<circ>\<circ> take_step) su (CM l1 t1 m1) = (take_step su (CM l1 t1 m1) \<circ>\<circ>\<circ> take_step) su (CM l2 t2 m2)"
+  apply (rule ext)
+  apply (auto simp add: fun_upd_twist update_zmultiset_comm)
+  done
+
+lemma take_step_plus[simp]:
+  "take_step su (CM l t m) (take_step su (CM l t n) c) = take_step su (CM l t (m + n)) c"
+  by (cases c; auto simp add: add.commute)
+
+lemma change_multiplicitie_rev[simp]:
+  "change_multiplicities su (rev xs) c = change_multiplicities su xs c"
+  unfolding change_multiplicities_def
+  apply (subst fold_rev)
+   apply (clarsimp simp add: take_step_comm)+
+  done
+
+lemma change_multiplicities_comm:
+  "change_multiplicities su (xs @ ys) c = change_multiplicities su (ys @ xs) c"
+  unfolding change_multiplicities_def
+  by (metis (mono_tags, lifting) change_multiplicitie_rev change_multiplicities_append change_multiplicities_def rev_append)
+
+lemma change_multiplicities_simps[simp]:
+  "change_multiplicities su [] c = c"
+  "change_multiplicities su ((l, t, m) # xs) c = change_multiplicities su xs (take_step summary (CM l t m) c)"
+  unfolding change_multiplicities_def by simp+
+
+lemma change_multiplicities_simp_alt:
+  "change_multiplicities su ((l, t, m) # xs) c = take_step su (CM l t m) (change_multiplicities su xs c)"
+proof -
+  have "change_multiplicities su ((l, t, m) # xs) c = change_multiplicities su (rev ((l, t, m) # xs)) c" using change_multiplicitie_rev by metis
+  also have "\<dots> = take_step su (CM l t m) (change_multiplicities su (rev xs) c)" by (simp add: change_multiplicities_def foldr_conv_fold)
+  ultimately show ?thesis by (metis change_multiplicitie_rev)
+qed
+
+lemma c_pts_change_multiplicities:
+  "c_pts (change_multiplicities su xs c) = (\<lambda> l. c_pts c l + zmset (map snd (filter (\<lambda> (l', t, d). l = l') xs)))"
+  apply (induct xs arbitrary: c)
+   apply simp
+  subgoal for x xs c
+    apply (rule ext)+
+    apply (cases x)
+    apply (auto split: if_splits prod.splits simp add: change_multiplicities_simp_alt update_zmultiset_plus_comm)
+    done
+  done
+
+lemma change_multiplicities_same_pointstamps_aux:
+  "(\<forall> x \<in> set xs. \<forall> y \<in> set xs. fst x = fst y \<and> (fst o snd) x = (fst o snd) y) \<Longrightarrow>
+   change_multiplicities su xs c = fold (\<lambda> m c. take_step su (CM ((fst o hd) xs) ((fst o snd o hd) xs) m) c) (map (snd o snd) xs) c"
+  unfolding change_multiplicities_def
+  apply (induct xs arbitrary: c)
+   apply simp
+  subgoal premises prems for a xs c
+    using prems(2-) apply -
+    apply (cases a; clarsimp)
+    subgoal using prems(1)
+      by (smt (verit) List.fold_cong List.fold_simps(1) fun_comp_eq_conv hd_in_set list.simps(8))
+    done
+  done
 
 (* Inspired by timely/src/dataflow/operators/generic/builder_rc.rs:29 and timely/src/progress/operate.rs:63 *)
 (* This is the shared that the operator exposes to the subgraph *)
@@ -509,6 +610,13 @@ fun dead_operator where
 | "dead_operator sg (Write op' (Inl nid) (Inl (Inl st))) = dead_operator_aux sg nid"
 | "dead_operator sg _ = True"
 
+section \<open>Dataflow Wrapper Operator\<close>
+
+text \<open>
+  The corecursive wrapper couples operator transitions with control-plane propagation.
+  The following lemmas characterize the induced transition system and lifting rules.
+\<close>
+
 (* Connects the data plane with the control plane (wraps the operators inside the propagation algorithm)  *)
 corec dataflow_op where
   "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of 
@@ -545,6 +653,8 @@ lemma dataflow_op_code[code]:
   apply (subst dataflow_op.code)
   apply auto
   done 
+
+subsection \<open>Transition Rules for @{const dataflow_op}\<close>
 
 
 lemma step_dataflow_op_elim:
@@ -703,6 +813,13 @@ lemma dataflow_op_simps[simp]:
   "is_Choice (dataflow_op sg op)"
   by (subst dataflow_op.code; simp)+
 
+section \<open>Operator Utilities and Change-Batch Algebra\<close>
+
+text \<open>
+  Generic utilities for capabilities, pulling/pushing, and algebraic facts about
+  multiplicity updates used throughout operator-level correctness arguments.
+\<close>
+
 (* Inspired by timely/src/dataflow/channels/pushers/counter.rs:25 and timely/src/dataflow/channels/mod.rs:49 *)
 (* writes maybe could support multiple different ports, then this one also would *)
 abbreviation "push op p batch \<equiv> 
@@ -721,83 +838,6 @@ abbreviation "pull i f \<equiv> (Read ((trace (STR ''Reading data'') Some) i)
     (Inr (d, t)) \<Rightarrow> Write (f (d, Cap t 0)) None (Inl (Inl \<lparr>  cons = [(i, t, 1)], inte = [(i, t, 1)], prod = [] \<rparr>))
    | _ \<Rightarrow> \<oslash>))"
 
-lemma change_multiplicities_append:
-  "change_multiplicities su (xs @ ys) = (\<lambda> c. change_multiplicities su ys (change_multiplicities su xs c))"
-  unfolding change_multiplicities_def 
-  apply (rule ext)
-  apply simp
-  done
-
-lemma change_multiplicities_append_alt:
-  "change_multiplicities su (xs @ ys) c = change_multiplicities su ys (change_multiplicities su xs c)"
-  using change_multiplicities_append by metis
-
-lemma change_multiplicities_append_comp:
-  "change_multiplicities su (xs @ ys) = change_multiplicities su ys o change_multiplicities su xs"
-  unfolding change_multiplicities_def
-  apply simp
-  done
-
-lemma take_step_comm:
-  "(take_step su (CM l2 t2 m2) \<circ>\<circ>\<circ> take_step) su (CM l1 t1 m1) = (take_step su (CM l1 t1 m1) \<circ>\<circ>\<circ> take_step) su (CM l2 t2 m2)"
-  apply (rule ext)
-  apply (auto simp add: fun_upd_twist update_zmultiset_comm)
-  done
-
-lemma take_step_plus[simp]:
-  "take_step su (CM l t m) (take_step su (CM l t n) c) = take_step su (CM l t (m + n)) c"
-  by (cases c; auto simp add: add.commute)
-
-lemma change_multiplicitie_rev[simp]:
-  "change_multiplicities su (rev xs) c = change_multiplicities su xs c"
-  unfolding change_multiplicities_def
-  apply (subst fold_rev)
-   apply (clarsimp simp add: take_step_comm)+
-  done
-
-lemma change_multiplicities_comm:
-  "change_multiplicities su (xs @ ys) c = change_multiplicities su (ys @ xs) c"
-  unfolding change_multiplicities_def
-  by (metis (mono_tags, lifting) change_multiplicitie_rev change_multiplicities_append change_multiplicities_def rev_append)
-
-lemma change_multiplicities_simps[simp]:
-  "change_multiplicities su [] c = c"
-  "change_multiplicities su ((l, t, m) # xs) c = change_multiplicities su xs (take_step summary (CM l t m) c)"
-  unfolding change_multiplicities_def by simp+
-
-lemma change_multiplicities_simp_alt:
-  "change_multiplicities su ((l, t, m) # xs) c = take_step su (CM l t m) (change_multiplicities su xs c)"
-proof -
-  have "change_multiplicities su ((l, t, m) # xs) c = change_multiplicities su (rev ((l, t, m) # xs)) c" using change_multiplicitie_rev by metis
-  also have "\<dots> = take_step su (CM l t m) (change_multiplicities su (rev xs) c)" by (simp add: change_multiplicities_def foldr_conv_fold)
-  ultimately show ?thesis by (metis change_multiplicitie_rev)
-qed
-
-lemma c_pts_change_multiplicities:
-  "c_pts (change_multiplicities su xs c) = (\<lambda> l. c_pts c l + zmset (map snd (filter (\<lambda> (l', t, d). l = l') xs)))"
-  apply (induct xs arbitrary: c)
-   apply simp
-  subgoal for x xs c
-    apply (rule ext)+
-    apply (cases x)
-    apply (auto split: if_splits prod.splits simp add: change_multiplicities_simp_alt update_zmultiset_plus_comm)
-    done
-  done
-
-lemma change_multiplicities_same_pointstamps_aux:
-  "(\<forall> x \<in> set xs. \<forall> y \<in> set xs. fst x = fst y \<and> (fst o snd) x = (fst o snd) y) \<Longrightarrow>
-   change_multiplicities su xs c = fold (\<lambda> m c. take_step su (CM ((fst o hd) xs) ((fst o snd o hd) xs) m) c) (map (snd o snd) xs) c"
-  unfolding change_multiplicities_def
-  apply (induct xs arbitrary: c)
-   apply simp
-  subgoal premises prems for a xs c
-    using prems(2-) apply -
-    apply (cases a; clarsimp)
-    subgoal using prems(1)
-      by (smt (verit) List.fold_cong List.fold_simps(1) fun_comp_eq_conv hd_in_set list.simps(8))
-    done
-  done
-
 record ('p, 'd, 't) operator_state =
   intsum :: "'p \<Rightarrow> 'p \<Rightarrow> 't list"
   consu :: "('p \<times> 't \<times> int) list"
@@ -809,7 +849,12 @@ record ('p, 'd, 't) operator_state =
   ocaps :: "'p \<Rightarrow> 't list"
   initia :: bool
 
-section \<open>Initial states\<close>
+section \<open>Initial States and Compilation Entry Points\<close>
+
+text \<open>
+  Initial control-plane and operator states, graph-to-next-edge extraction, and
+  top-level compilation into a wrapped dataflow operator.
+\<close>
 
 abbreviation init_op_state where
   "init_op_state su i \<equiv> \<lparr> 
@@ -842,40 +887,6 @@ record ('p, 'd, 'd1, 'd2, 'd3, 't) operator_state_ty3 = "('p, 'd, 'd1, 'd2, 't) 
 
 definition "graph_to_nxt summary = 
   (\<lambda> (nid, p). find (\<lambda> (nid', p'). \<not> is_empty_antichain (summary (Loc nid (Src p)) (Loc nid' (Trg p')))) Enum.enum)"
-
-lemma zero_in_graph_path_weight[simp,intro]:
-  "nt = graph_to_nxt su \<Longrightarrow>
-   Graph.graph su \<Longrightarrow>
-   (\<forall> nid nid' p p'. \<not> is_empty_antichain (su (Loc nid (Src p)) (Loc nid' (Trg p'))) \<longrightarrow> su (Loc nid (Src p)) (Loc nid' (Trg p')) = antichain {0}) \<Longrightarrow>
-   nt (nid', p') = Some (nid, p) \<Longrightarrow>
-   0 \<in>\<^sub>A graph.path_weight su (Loc nid' (Src p')) (Loc nid (Trg p))"
-  unfolding graph_to_nxt_def Let_def
-  apply (subst graph.in_path_weight)
-   apply (clarsimp simp add: split: if_splits prod.splits)
-  apply hypsubst_thin
-  apply (drule spec2[of _ nid' nid])
-  apply (drule spec2[of _ p' p])
-  apply (subgoal_tac "su (Loc nid' (Src p')) (Loc nid (Trg p)) = antichain {0}")
-  subgoal
-    apply (auto simp add: minimal_antichain_def Graph.graph.path_weightp_def)
-    subgoal
-      apply (intro conjI exI)
-       apply (rule graph.path.intros(2))
-         apply assumption
-        apply (rule graph.path.intros(1))
-         apply assumption
-        apply (rule refl)
-       apply (simp add: member_antichain.rep_eq)
-      apply auto
-      done
-    subgoal for xs
-      using graph.sum_not_less_zero by blast
-    done
-  subgoal
-    apply (clarsimp simp add: member_antichain.rep_eq find_Some_iff split: if_splits prod.splits)
-    apply (metis surj_pair)
-    done
-  done
 
 definition "init_subgraph summary =
    \<lparr> pt_tr = init_conf summary,
@@ -981,6 +992,13 @@ lemma consu_if[simp]:
   by auto
 
 (* All timely operators are defined using this function. The logic is passed as argument. This is the only corec we need *)
+section \<open>Builder Operator\<close>
+
+text \<open>
+  The builder operator is the main constructor for timely operators. It orchestrates
+  logic steps, input consumption, output draining, frontier reads, and progress reports.
+\<close>
+
 corec builder_op where
   \<open>builder_op fb ips ops os logic =
   (choice5
@@ -999,6 +1017,9 @@ corec builder_op where
     | Inl _ \<Rightarrow> Code.abort (STR ''Builder_op breaks contract'') (\<lambda> _. \<oslash>))) ips))
     (let (os', st) = obtain_progress os in send_progress (builder_op fb ips ops os' logic) st)
    )\<close>
+
+
+subsection \<open>Transition Rules for @{const builder_op}\<close>
 
 
 lemma step_builder_op_elim:
@@ -1198,6 +1219,13 @@ definition notifier_op where
   "notifier_op ips ops os logic = (builder_op True ips ops os
    (\<lambda> os. logic os (\<lambda> p. filter (\<lambda> t. \<not> frontier_less_equal (front os p) t) (ocaps os p))))"
 
+section \<open>State-Update Laws for Operator Buffers\<close>
+
+text \<open>
+  Canonical simplification lemmas for how primitive state updates (consume, produce,
+  mint, drop, and progress extraction) affect each field of operator state.
+\<close>
+
 
 
 lemma extract_progress_obtain_progress_obtain_progress[simp]:
@@ -1360,6 +1388,13 @@ lemma de1_fold_consumes[simp]:
 lemma de2_fold_consumes[simp]:
   "de2 (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = de2 os"
   by (induct xs arbitrary: os) auto
+
+section \<open>Implied-Frontier Reasoning\<close>
+
+text \<open>
+  Introduction/elimination and transport lemmas for relating local frontiers and
+  implied frontiers across graph paths.
+\<close>
 
 lemma frontier_less_equal_ifrontierI:
   "dataflow_topology su (-+-) \<Longrightarrow>
@@ -1570,6 +1605,13 @@ lemma ifrontier_eq_all_le:
   apply (metis dataflow_topology_from_tree.elems_eq_sum_eq member_antichain.rep_eq)
   done
 
+section \<open>Auxiliary Progress and Path Decomposition Lemmas\<close>
+
+text \<open>
+  Supporting lemmas for append-splitting of extracted progress, pointstamp arithmetic,
+  and decomposition of membership in extracted change batches.
+\<close>
+
 
 
 lemma change_multiplicities_extract_progress_append:
@@ -1606,8 +1648,6 @@ lemma path_weight_end_of_road:
       done
     done
   done
-
-thm dataflow_topology_from_tree.sum_singleton[no_vars]
 
 lemma set_extract_progressD:
   "(l, t, m) \<in> set (extract_progress nid ed st') \<Longrightarrow>

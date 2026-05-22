@@ -19,7 +19,39 @@ declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
    (\<forall> p. to_zmset (drops p) \<subseteq>#\<^sub>z zmset (map snd (filter (\<lambda>x. p = fst x) produs))) \<Longrightarrow>
 *)
 
-
+lemma zero_in_graph_path_weight[simp,intro]:
+  "nt = graph_to_nxt su \<Longrightarrow>
+   Graph.graph su \<Longrightarrow>
+   (\<forall> nid nid' p p'. \<not> is_empty_antichain (su (Loc nid (Src p)) (Loc nid' (Trg p'))) \<longrightarrow> su (Loc nid (Src p)) (Loc nid' (Trg p')) = antichain {0}) \<Longrightarrow>
+   nt (nid', p') = Some (nid, p) \<Longrightarrow>
+   0 \<in>\<^sub>A graph.path_weight su (Loc nid' (Src p')) (Loc nid (Trg p))"
+  unfolding graph_to_nxt_def Let_def
+  apply (subst graph.in_path_weight)
+   apply (clarsimp simp add: split: if_splits prod.splits)
+  apply hypsubst_thin
+  apply (drule spec2[of _ nid' nid])
+  apply (drule spec2[of _ p' p])
+  apply (subgoal_tac "su (Loc nid' (Src p')) (Loc nid (Trg p)) = antichain {0}")
+  subgoal
+    apply (auto simp add: minimal_antichain_def Graph.graph.path_weightp_def)
+    subgoal
+      apply (intro conjI exI)
+       apply (rule graph.path.intros(2))
+         apply assumption
+        apply (rule graph.path.intros(1))
+         apply assumption
+        apply (rule refl)
+       apply (simp add: member_antichain.rep_eq)
+      apply auto
+      done
+    subgoal for xs
+      using graph.sum_not_less_zero by blast
+    done
+  subgoal
+    apply (clarsimp simp add: member_antichain.rep_eq find_Some_iff split: if_splits prod.splits)
+    apply (metis surj_pair)
+    done
+  done
 
 lemma sum_zmset_filter_graph_to_nxt:
   assumes GR: "graph_summar_nt su (graph_to_nxt su) os"
