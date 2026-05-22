@@ -1,7 +1,7 @@
 theory Propagation_Properties
 
 imports
-  Timely_Infrastructure
+  Timely_Progress
 begin 
 
 

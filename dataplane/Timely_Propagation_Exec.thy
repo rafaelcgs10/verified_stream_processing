@@ -2,6 +2,7 @@ theory Timely_Propagation_Exec
 
 imports
   Timely_Tree_Compile
+  Containers.Collection_Order
 begin           
 
 section \<open>Executable Propagation Primitives\<close>
@@ -148,8 +149,6 @@ lemma take_step_plus[simp]:
   by (cases c; auto simp add: add.commute)
 
 abbreviation "show_frontier x \<equiv> let f = Max_antichain x in if f = 42 then STR ''{}'' else STR ''{ '' + show_nat (Max_antichain x) + STR '' }''"
-
-abbreviation "print_frontier x \<equiv> trace ((STR ''Frontier: '') + show_frontier x)"
 
 abbreviation "show_frontiers impf \<equiv> show_list (show_prod show_loc show_frontier) (map (\<lambda> l. (l, frontier (impf l))) enum_location_inst.enum_location)"
 

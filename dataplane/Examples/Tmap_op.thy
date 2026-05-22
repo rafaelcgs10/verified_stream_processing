@@ -1,7 +1,7 @@
 theory Tmap_op
 
 imports
-  Dataplane.Timely_Infrastructure
+  Dataplane.Timely_Builder_Op
 begin
 
 definition \<open>tmap_op ip op os f = builder_op False {|ip|} {|op|} os (\<lambda> os. {|

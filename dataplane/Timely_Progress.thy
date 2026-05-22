@@ -2,6 +2,7 @@ theory Timely_Progress
 
 imports
   Timely_Propagation_Exec
+  Timely_Operator_State
 begin
 
 section \<open>Progress Extraction and Dataflow Wrapper\<close>
@@ -129,15 +130,24 @@ lemma delay_cset_code[code]:
   "delay_cset F n (cset_of_llist lxs) = cset_of_llist (delay_nop F n [] lxs)"
   by (simp flip: delay_cset_code_aux)
 
-definition dead_operator_aux where
-  "dead_operator_aux sg nid = (\<forall> p. frontier (c_imp (pt_tr sg) (Loc nid (Src p))) = {}\<^sub>A \<and> frontier (c_imp (pt_tr sg) (Loc nid (Trg p))) = {}\<^sub>A)"
+lemma c_pts_change_multiplicities_append:
+  "c_pts (change_multiplicities su (xs @ ys) c) l = (c_pts (change_multiplicities su xs c) l) + (c_pts (change_multiplicities su ys c) l) - c_pts c l"
+  by (simp add: c_pts_change_multiplicities)
 
-fun dead_operator where
-  "dead_operator sg (Silent _) = False"
-| "dead_operator sg (Read (Inl nid) f) = False"
-| "dead_operator sg (Read (Inr (nid, p)) f) = False"
-| "dead_operator sg (Write op' (Inr (nid, p)) (Inr x)) = False"
-| "dead_operator sg (Write op' (Inl nid) (Inl (Inl st))) = dead_operator_aux sg nid"
-| "dead_operator sg _ = True"
+
+lemma change_multiplicities_extract_progress_append:
+  "change_multiplicities su (extract_progress nid nt \<lparr>cons = C1 @ C2,  inte = I1 @ I2, prod = P1 @ P2 \<rparr>) c =
+   change_multiplicities su (extract_progress nid nt \<lparr>cons = C2,  inte = I2, prod = P2 \<rparr>) (change_multiplicities su (extract_progress nid nt \<lparr>cons = C1,  inte = I1, prod = P1 \<rparr>) c)"
+  unfolding extract_progress_def
+  apply simp
+  apply (smt (verit, del_insts) change_multiplicities_append change_multiplicities_comm)
+  done
+
+lemma c_imp_change_multiplicities[simp]:
+  "c_imp (change_multiplicities su xs c) = c_imp c"
+  apply (induct xs arbitrary: c)
+   apply simp
+  apply (auto split: if_splits prod.splits simp add: change_multiplicities_simp_alt update_zmultiset_plus_comm) 
+  done
 
 end

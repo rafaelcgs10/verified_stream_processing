@@ -1,7 +1,8 @@
 theory Timely_Dataflow_Op
 
 imports
-  Timely_Operator_State
+  Timely_Progress
+  Operators_Utils
 begin
 
 section \<open>Dataflow Wrapper Operator\<close>

@@ -1,7 +1,7 @@
 theory Concat_op
 
 imports
-  Dataplane.Timely_Infrastructure
+  Dataplane.Timely_Builder_Op
 begin
 
 definition \<open>concat_op ips p os = builder_op False ips {|p|} os (\<lambda> os. {|

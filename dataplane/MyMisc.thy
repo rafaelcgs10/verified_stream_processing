@@ -243,5 +243,26 @@ lemma path_weight_Trg_decompose:
     done
   done
 
+lemma path_weight_end_of_road:
+  assumes G: "Graph.graph su"
+  shows  "s \<in>\<^sub>A graph.path_weight su loc1 loc2 \<Longrightarrow> loc2 \<noteq> loc1 \<Longrightarrow>
+   (\<forall> loc2. loc2 \<noteq> loc1 \<longrightarrow> su loc1 loc2 = {}\<^sub>A) \<Longrightarrow>
+   False"
+  apply (drule graph.path_weight_conv_path[OF G])
+  apply clarsimp
+  subgoal premises prems for xs
+    using prems(3,2,1) apply -
+    apply (induct xs arbitrary: loc2 rule: rev_induct)
+    subgoal
+      apply (erule graph.path.cases[OF G])
+       apply (auto simp add: )
+      done
+    subgoal
+      apply (erule graph.path.cases[OF G])
+       apply (clarsimp simp add: split: if_splits)+
+      apply force
+      done
+    done
+  done
 
 end

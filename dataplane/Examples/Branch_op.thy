@@ -1,7 +1,7 @@
 theory Branch_op
 
 imports
-  Dataplane.Timely_Infrastructure
+  Dataplane.Timely_Builder_Op
 begin
 
 definition \<open>branch_op ip p0 p1 c os = builder_op False {|ip|} {|p0, p1|} os (\<lambda> os. {|

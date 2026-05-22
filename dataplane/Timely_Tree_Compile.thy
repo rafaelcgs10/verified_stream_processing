@@ -224,8 +224,6 @@ abbreviation AF where
 
 notation "AF" (infixl \<open>-++-\<close> 65)
 
-abbreviation "ifrontier \<equiv> dataflow_topology.implied_frontier_alt"
-
 
 
 end

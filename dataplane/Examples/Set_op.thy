@@ -5,6 +5,7 @@ imports
   Nondeterministic_Dataflow.CSet_LList_Impl
   "../Timely_Infrastructure"
   "../LList_Haskell_Setup"
+  "../Operators_Utils"
 begin
 
 (* FIXME: move me *)
