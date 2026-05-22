@@ -650,7 +650,7 @@ lemma wip:
           apply (rule wbc_base)
           apply (intro conjI exI)
           defer
-          oops *)
+          *)
 
 lemma steps_Tau_dataflow_op_Tau_intro[intro]:
   "steps (replicate n Tau) op op' \<Longrightarrow>
@@ -797,31 +797,6 @@ lemma change_multiplicities_same_pointstamps_aux:
       by (smt (verit) List.fold_cong List.fold_simps(1) fun_comp_eq_conv hd_in_set list.simps(8))
     done
   done
-
-lemma change_multiplicities_same_pointstamps:
-  "(\<forall> x \<in> set xs. \<forall> y \<in> set xs. fst x = l \<and> (fst o snd) x = t) \<Longrightarrow>
-   m = sum_list (map (snd o snd) xs) \<Longrightarrow>
-   change_multiplicities su xs c = take_step su (CM l t m) c"
-(*   apply (induct xs arbitrary: c m)
-   apply simp
-  subgoal premises prems for x xs c m
-    using prems(2-) apply -
-    apply hypsubst_thin
-    apply (cases x)
-    subgoal for l t m
-      apply (simp only: change_multiplicities_simp_alt)
-      apply (subst prems(1))
-        apply force
-       apply (rule refl)
-      apply clarsimp
-      apply (intro conjI impI)
-      subgoal by (metis (no_types) group_cancel.sub1 uminus_add_add_uminus update_zmultiset_comm update_zmultiset_plus)
-      subgoal
-        by blast 
-      done
-    done
-  done *)
-  oops
 
 record ('p, 'd, 't) operator_state =
   intsum :: "'p \<Rightarrow> 'p \<Rightarrow> 't list"

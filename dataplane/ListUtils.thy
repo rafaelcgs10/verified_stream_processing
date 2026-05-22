@@ -22,22 +22,12 @@ lemma rmdups_append[simp]:
   "rmdups S (xs @ ys) = rmdups S xs @ rmdups (S \<union> set xs) ys"
   by (induct xs arbitrary: S ys) (auto simp add: insert_absorb)
 
-lemma rmdups_cong:
-  "A \<inter> set xs = B \<inter> set xs \<Longrightarrow>
-   rmdups A xs = rmdups B xs"
-  oops
-
 lemma rmdups_NilI:
   "(set xs \<subseteq> A \<and> xs \<noteq> []) \<or> xs = [] \<Longrightarrow>
    rmdups A xs = []"
   apply (induct xs arbitrary: A)
    apply simp_all
   done
-
-lemma rmdups_insert_NilI:
-  "(set xs = {a} \<and> xs \<noteq> []) \<or> xs = [] \<Longrightarrow>
-   rmdups (insert a A) xs = []"
-  oops
 
 lemma distinct_rmdups[simp]:
   "distinct (rmdups A xs)"
@@ -195,21 +185,11 @@ lemma remove_last_append_not_in_set:
    remove_last a (xs @ ys) = remove_last a xs @  ys"
   by (simp add: remove_last_append_if)
 
-lemma list_diff_same_sufix:
-  "mset ys = mset zs \<Longrightarrow>
-   list_diff (xs @ zs) ys = xs"
-  oops
-
 lemma list_diff_append[simp]:
   "list_diff zs (xs @ ys) = list_diff (list_diff zs xs) ys"
   apply (induct xs arbitrary: zs ys)
   apply simp_all
   done
-
-lemma list_diff_append_append:
-  "mset zs1 = mset zs2 \<Longrightarrow>
-   list_diff (xs @ zs1) (zs2 @ ys) = list_diff xs ys"
-  oops
 
 lemma in_set_list_diffD:
   "x \<in> set (list_diff xs ys) \<Longrightarrow> x \<in> set xs"
