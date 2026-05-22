@@ -319,7 +319,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             by (fastforce simp add:  my_summ_def BULK_BENQ_def outputs_at_target_def split: prod.splits)
           using SIM1 apply fastforce+
           done
-        defer
+                 defer
         subgoal for d t
           apply (intro exI conjI relcomppI)
           apply (rule rtranclp.intros(1))
@@ -339,7 +339,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           subgoal
             by (simp add: map_tl SIM1(3-) comp_op_def if_distrib  consumes_def add_caps_def BTL_def enum_num1_def operator_state.defs fun_upd_def)
           subgoal
-            by (simp add: cUn_assoc SIM1  flip:BULK_BENQ_assoc cinsert_code)
+            by (simp add: BHD_map cUn_assoc SIM1  flip:BULK_BENQ_assoc cinsert_code)
           apply (simp_all add: SIM1)
           subgoal
             using SIM1
@@ -348,14 +348,14 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
           subgoal
             using SIM1(5,6,7)
             unfolding ty2_check_def
-            apply (auto simp add: operator_state.defs comp_def fun_upd_def BTL_def BHD_def consumes_def add_caps_def BENQ_def my_summ_def BULK_BENQ_def outputs_at_target_def split: option.splits if_splits prod.splits)
-            apply (meson UnCI img_fst in_set_tlD)
+            apply (auto simp add:  operator_state.defs comp_def fun_upd_def BTL_def BHD_def consumes_def add_caps_def BENQ_def my_summ_def BULK_BENQ_def outputs_at_target_def split: option.splits if_splits prod.splits)
+             apply (meson UnCI img_fst in_set_tlD)
             done
           subgoal premises temp
             using SIM1(10) apply -
             apply (rule dataplane_tracker_inv_consumes[where xs="tl (cbufs (1, 1))"])
             apply assumption
-            using temp(2,3) apply (simp add: BHD_def )
+            using temp(2,3) apply (simp add: BHD_def list.map_sel(1))
             subgoal
               using SIM1(1,2) 
               using  dataflow_topology_from_tree.dataflow_topology_axioms
@@ -1138,6 +1138,7 @@ proof (coinduction arbitrary: os sg ip_state bt_state chns cbufs inps SP SO S D 
             apply clarsimp
             done
           done
+        defer
         subgoal
           (* input_op logic *)
           apply (intro conjI impI allI)

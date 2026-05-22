@@ -358,6 +358,7 @@ lemma extract_prog_skip_update[simp]:
   apply (induct xs)
    apply auto
   done
+
 lemma extract_prog_empty[simp]:
   "extract_prog [] nt os = []"
   unfolding extract_prog_def by auto
@@ -375,7 +376,6 @@ lemma zmset_map_filter_Trg_extract_prog:
   apply (subst sum_subtractf_zmultiset)
    apply simp_all
   apply (rule arg_cong2[where f="(-)"])
-   apply simp_all
   apply (rule sum.cong)
    apply simp_all
   subgoal for pp
@@ -616,7 +616,7 @@ lemma change_multiplicities_extract_prog_updates:
     apply assumption+
   apply (subst change_multiplicities_extract_progress_updates)
   apply (simp add: change_multiplicities_append_alt)
-  apply (smt (verit) change_multiplicities_append_alt change_multiplicities_comm) 
+  apply (smt (verit) change_multiplicities_append_alt change_multiplicities_comm)
   done
 
 lemma change_multiplicities_extract_prog_consumes:
@@ -874,7 +874,11 @@ lemma frontier_less_equal_change_multiplicities_lt_0:
           apply (simp_all add: zcount_sum sum_nonneg)
         apply clarsimp
         apply (rule frontier_le_image)
-          apply (simp_all add: zcount_update_zmultiset frontier_add_update_zmultiset_not_le zcount_sum sum_nonneg)
+         subgoal for s
+           apply simp
+           apply (rule frontier_below_eq_frontier_plus_neg)
+           using prems2(1) by (auto simp add: zcount_update_zmultiset)
+        apply simp_all
         done
       done
     done

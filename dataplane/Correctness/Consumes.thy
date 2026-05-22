@@ -166,11 +166,10 @@ lemma extract_prog_changes_above_impl_inv_consumes:
                     using frontier_less_equal_zcount_pos 
                     by force
                   subgoal
-                    apply simp
-                    apply (simp_all flip: add.assoc)
                     apply (subgoal_tac "zcount (zmset (map snd (filter ((=) p'' \<circ> fst) (concat (map (\<lambda>p'. map (\<lambda>t'. (p', t -+- t', 1)) (intsum (os nid) p p')) enum_class.enum))))) (t -+- t'') > 0")
                     subgoal
-                      by (meson add_strict_increasing2 to_zmset_nenneg)
+                      apply (simp add: zmset_map_filter_Src_extract_prog)
+                      using to_zmset_nenneg[of "ocaps (os nid) p''" "t -+- t''"] by linarith
                     subgoal
                       apply (rule zcount_zmset_gt_0I)
                       apply (auto simp add: image_iff)
@@ -1183,7 +1182,7 @@ lemma dataplane_tracker_inv_consumes:
       apply (auto 0 0 simp add: filter_empty_conv)
       apply (auto 0 0 simp add:  comp_def  simp flip:  to_zmset_correct)
       subgoal premises prems2 for p''
-        apply (simp flip: Multiset.mset_filter mset_map add: map_concat filter_concat comp_def)        
+        apply (simp flip: Multiset.mset_filter mset_map add: map_concat filter_concat comp_def)
         done
       done
     subgoal premises prems
@@ -1194,7 +1193,7 @@ lemma dataplane_tracker_inv_consumes:
     subgoal premises prems
       using prems(6) apply -       
       unfolding c_pts_inv_def
-      apply (auto 0 0 split: location.splits port.splits simp add: c_pts_change_multiplicities)
+      apply (auto 0 0 split: location.splits port.splits simp add:  filter_loc_extract_prof_consumes_diff_ports   change_multiplicities_extract_prog_extract_progress    zmset_concat map_concat filter_concat comp_def filter_map split_beta  c_pts_change_multiplicities)
       subgoal
         apply (subgoal_tac
             "zmset (map snd (filter (\<lambda>(l', t, d). Loc nid (Trg p) = l') (extract_prog Enum.enum (subgraph.nxt sg) (os(nid := consumes (os nid) p t d))))) =
@@ -1213,11 +1212,10 @@ lemma dataplane_tracker_inv_consumes:
         apply (drule sym)
         apply simp
         subgoal premises
-          apply (simp add: zmset_concat map_concat filter_concat comp_def filter_map split_beta split: prod.splits)
+          apply (simp add: is_empty_antichain_plus dataflow_tree_to_graph_Src_Trg_zero  BHD_map BAPPEND_BENQ_BHD' change_multiplicities_extract_prog_extract_progress filter_loc_extract_prof_consumes_diff_ports is_empty_antichain_plus dataflow_tree_to_graph_Src_Trg_zero   filter_loc_Trg_extract_prof_consumes_diff_nids filter_loc_extract_prof_consumes_diff_ports   change_multiplicities_extract_prog_extract_progress    zmset_concat map_concat filter_concat comp_def filter_map split_beta split: prod.splits)
           done
         done
       subgoal for nid' p'
-        apply (clarsimp cong: if_cong simp add: if_distrib comp_def)
         apply (drule spec[of _ "Loc nid' (Src p')"])
         apply (simp add: comp_def)
         done

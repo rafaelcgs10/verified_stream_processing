@@ -76,15 +76,15 @@ lemma empty_antichain_top[simp]:
   using mem_antichain_nonempty by blast
 
 
-lemma is_empty_antichain_plus[simp]:
+lemma is_empty_antichain_plus:
   "is_empty_antichain B \<Longrightarrow>
    antichain A + B = antichain A"
   by (metis Set.is_empty_iff antichain_add_commute antichain_sum_empty_2 empty_antichain.abs_eq is_empty_antichain.rep_eq set_antichain_inverse)
-lemma is_empty_antichain_plus'[simp]:
+lemma is_empty_antichain_plus':
   "is_empty_antichain A \<Longrightarrow>
    A + antichain B = antichain B"
   by (metis Set.is_empty_iff antichain_sum_empty_2 empty_antichain.abs_eq is_empty_antichain.rep_eq set_antichain_inverse)
-lemma antichain_sum_eq[simp]:
+lemma antichain_sum_eq:
   "finite A \<Longrightarrow> incomparable A \<Longrightarrow>
    antichain A + antichain A = antichain A"
   apply (subst plus_antichain.abs_eq)
@@ -173,7 +173,7 @@ lemma frontier_below_eq_frontier_plus[simp]:
     done
   done
 
-lemma frontier_below_eq_frontier_plus_neg[simp]:
+lemma frontier_below_eq_frontier_plus_neg:
   "(\<forall> t. zcount M t \<le> 0) \<Longrightarrow>
    (frontier N) \<le> (frontier (N + M))"
   unfolding less_eq_antichain_def
@@ -181,7 +181,7 @@ lemma frontier_below_eq_frontier_plus_neg[simp]:
   apply (meson trivial_dataflow_topology_interpretation.frontier_unionD trivial_dataflow_topology_interpretation.obtain_frontier_elem order.strict_iff_not)
   done
 
-lemma frontier_below_eq_frontier_minus[simp]:
+lemma frontier_below_eq_frontier_minus:
   "(\<forall> t. zcount M t \<ge> 0) \<Longrightarrow>
    (frontier N) \<le> (frontier (N - M))"
   unfolding less_eq_antichain_def
@@ -194,12 +194,12 @@ lemma in_frontier_minusD:
    (\<exists> y. y \<in>\<^sub>A frontier A \<and> y \<le> x)"
   using frontier_below_eq_frontier_minus less_eq_antichain_def by blast
 
-lemma frontier_below_eq_frontier_plus_neg_alt[simp]:
+lemma frontier_below_eq_frontier_plus_neg_alt:
   "(\<forall> t. zcount N t \<le> 0) \<Longrightarrow>
    (frontier M) \<le> (frontier (N + M))"
-  by (simp add: add.commute)
+  by (simp add: add.commute frontier_below_eq_frontier_plus_neg)
 
-lemma frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus[simp]:
+lemma frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus:
   "(frontier N) \<le> (frontier M) \<Longrightarrow>
    (frontier N) \<le> (frontier (N + M))"
   unfolding less_eq_antichain_def
@@ -207,7 +207,7 @@ lemma frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus[simp]:
   apply (metis trivial_dataflow_topology_interpretation.frontier_unionD trivial_dataflow_topology_interpretation.obtain_elem_frontier dual_order.trans)
   done
 
-lemma frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus_gen[simp]:
+lemma frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus_gen:
   "(frontier N) \<le> (frontier M) \<Longrightarrow>
    (frontier C) \<le> (frontier N) \<Longrightarrow>
    frontier C \<le> frontier (N + M)"
@@ -217,7 +217,7 @@ lemma frontier_below_eq_frontier_plus_frontier_below_eq_frontier_plus_gen[simp]:
   done
 
 
-lemma frontier_below_eq_frontier_plus_pos[simp]:
+lemma frontier_below_eq_frontier_plus_pos:
   "(\<forall> t. zcount M t \<ge> 0) \<Longrightarrow>
    frontier (N + M) \<le> frontier N"
   unfolding less_eq_antichain_def

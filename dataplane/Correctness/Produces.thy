@@ -279,7 +279,7 @@ lemma dataplane_tracker_inv_produces_drops:
       subgoal premises prems
         using prems(6)
         unfolding Src_caps_inv_def
-        by (auto simp add: temp(1))
+        by (auto simp add: temp(1) to_zmset_list_diff)
       subgoal premises prems
       supply  if_cong[cong]
         using prems(7,8) apply -
@@ -1453,6 +1453,3 @@ lemma dataplane_tracker_inv_produces_drops:
   done
 
 end
-
-
-

@@ -21,7 +21,7 @@ lemma to_zmset_correct[code,simp]:
   "zmset_of (mset xs) = to_zmset xs"
   by (induct xs) auto
 
-lemma to_zmset_nenneg:
+lemma to_zmset_nenneg[simp]:
   "zcount (to_zmset xs) t ≥ 0"
   by (metis to_zmset_correct zcount_zmset_of_nonneg)
 
@@ -301,9 +301,7 @@ lemma zmset_map_filter[simp]:
    nid ∈ S ⟹
    (∑x∈S. zmset (map snd ((filter (λxa. nid = x ∧ p = fst xa) (xs x))))) =
    zmset (map snd (filter (λx. p = fst x) (xs nid)))"
-  apply (subst conj.commute)
-  apply (clarsimp simp add: simp flip: filter_filter)+
-  done
+  by (subst conj.commute) (auto simp flip: filter_filter)
 
 lemma zmset_map_one[simp]:
   "zmset (map (λ x. (f x, 1)) xs) = to_zmset (map f xs)"

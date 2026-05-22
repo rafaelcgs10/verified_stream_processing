@@ -52,7 +52,7 @@ lemma rel_set_reflI:
   apply auto
   done
 
-lemma BAPPEND_BENQ_BHD'[simp]:
+lemma BAPPEND_BENQ_BHD':
   "buf1 p ≠ [] ⟹ BHD p buf1 = x ⟹ (BTL p buf1) >> (BENQ p x buf2) = buf1 >> buf2"
   unfolding BULK_BENQ_def BTL_def BENQ_def BHD_def by force
 

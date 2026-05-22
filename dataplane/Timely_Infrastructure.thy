@@ -167,7 +167,7 @@ lemma dataflow_tree_to_graph_aux_Src_Trg_zero:
   apply (fastforce simp add: if_distrib  antichain_from_list_singleton split: prod.splits if_splits option.splits)
   done
 
-lemma dataflow_tree_to_graph_Src_Trg_zero[simp]:
+lemma dataflow_tree_to_graph_Src_Trg_zero:
   "antichain_from_list oo dataflow_tree_to_graph dt = su \<Longrightarrow>
    \<not> is_empty_antichain (su (Loc nid (Src p)) (Loc nid' (Trg p'))) \<Longrightarrow>
    su (Loc nid (Src p)) (Loc nid' (Trg p')) = antichain {0}"
