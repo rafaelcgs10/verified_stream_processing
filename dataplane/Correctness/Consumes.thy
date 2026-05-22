@@ -2,7 +2,6 @@ theory Consumes
 
 imports
   General
-  Dataplane.Timely_Stream
   Dataplane.AntichainOrder
 begin
 

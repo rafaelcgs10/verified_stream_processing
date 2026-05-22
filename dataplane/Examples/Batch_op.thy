@@ -2,7 +2,7 @@ theory Batch_op
 
 imports
   Dataplane.Timely_Stream
-  Dataplane.Timely_Infrastructure
+  Dataplane.Timely_Builder_Op
   "../MyProduct_Instances"
 begin
 

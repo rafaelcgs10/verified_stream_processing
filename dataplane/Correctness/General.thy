@@ -2,7 +2,7 @@ theory General
 
 imports
   Dataplane.Timely_Stream
-  Dataplane.Timely_Infrastructure
+  Dataplane.Timely_Operator_State
   Dataplane.MyMisc
 begin
 

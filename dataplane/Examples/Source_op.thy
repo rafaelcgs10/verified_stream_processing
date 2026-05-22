@@ -1,7 +1,6 @@
 theory Source_op
 
 imports
-  "../Timely_Infrastructure"
   "../DataplaneUtils"
 begin 
 

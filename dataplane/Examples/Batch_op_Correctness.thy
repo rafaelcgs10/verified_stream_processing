@@ -16,7 +16,7 @@ imports
   "../Correctness/Init"
   Dataplane.LList_Haskell_Setup
   Dataplane.Propagation_Properties
-  Source_op
+  Dataplane.Timely_Dataflow_Op
   Set_op
   "HOL-ex.Sketch_and_Explore"
 begin

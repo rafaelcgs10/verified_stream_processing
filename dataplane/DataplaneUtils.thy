@@ -2,7 +2,6 @@ theory DataplaneUtils
 
 imports
   ZmsetUtils
-
 begin
 
 abbreviation "isr x ≡ ¬ (isl x)"

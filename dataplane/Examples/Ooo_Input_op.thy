@@ -2,7 +2,7 @@ theory Ooo_Input_op
 
 imports
   Dataplane.Timely_Stream
-  Source_op
+  Dataplane.Timely_Builder_Op
 begin
 
 record ('p, 'd, 'd1, 't) input_state = "('p, 'd, 'd1, 't) operator_state_ty" + es:: "'p \<Rightarrow> ('t, 'd1) event llist"
