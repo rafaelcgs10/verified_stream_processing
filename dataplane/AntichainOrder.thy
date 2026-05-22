@@ -1025,4 +1025,68 @@ lemma frontier_le_subset[simp]:
   done
 
 
+lemma in_antichain_from_list[intro]:
+  "\<forall>t'\<in>set xs. \<not> t' < t \<and> \<not> t < t' \<Longrightarrow>
+   t \<in> set xs \<Longrightarrow>
+   t \<in>\<^sub>A antichain_from_list xs"
+  apply (induct xs)
+  unfolding antichain_from_list_def
+   apply clarsimp+
+    apply (subst member_antichain.abs_eq)
+    apply (auto simp add: eq_onp_def incomparable_def)
+  done
+lemma in_antichain_from_list_alt[intro]:
+  "incomparable (set xs) \<Longrightarrow>
+   t \<in> set xs \<Longrightarrow>
+   t \<in>\<^sub>A antichain_from_list xs"
+  apply (induct xs)
+  unfolding antichain_from_list_def
+   apply clarsimp+
+    apply (subst member_antichain.abs_eq)
+    apply (auto simp add: eq_onp_def incomparable_def)
+  done
+
+lemma antichain_from_list_empty[simp]:
+  "antichain_from_list [] \<noteq> antichain {a}"
+  by (metis antichain_from_list_singleton is_empty_antichain_empty_list is_empty_antichain_not_empty_list)
+
+lemma antichain_from_list_all_eq:
+  "(\<forall> x \<in> set xs. x = a) \<Longrightarrow>
+   xs \<noteq> [] \<Longrightarrow>
+   antichain_from_list xs = antichain {a}"
+  apply (induct xs)
+   apply auto
+  unfolding antichain_from_list_def
+  apply auto
+  apply (smt (verit, best) Collect_cong insert_compr mem_Collect_eq set_diff_eq singleton_iff)
+  done
+lemma antichain_empty:
+  "antichain {} = {}\<^sub>A"
+  unfolding empty_antichain_def
+  by auto
+
+lemma antichain_from_list_empty_antichain[simp]:
+  "antichain_from_list [] = {}\<^sub>A"
+  by (simp add: Executable.antichain_from_list_empty antichain_empty)
+
+lemma set_antichain_antichain_singleton[simp]:
+  "set_antichain (antichain {a}) = {a}"
+  apply (subst antichain_inverse)
+  apply (auto simp: incomparable_def)
+  done
+
+lemma antichain_nonempty[simp]:
+  "antichain {A} \<noteq> {}\<^sub>A"
+  by (metis empty_antichain.rep_eq insert_not_empty set_antichain_antichain_singleton)
+
+lemma frontier_negs[simp]:
+  "frontier (- {# a #}\<^sub>z ) = {}\<^sub>A"
+  "frontier (- {# a, b #}\<^sub>z ) = {}\<^sub>A"
+  "frontier (- {# a, b, c #}\<^sub>z ) = {}\<^sub>A"
+  "frontier (- {# a, b, c, d #}\<^sub>z ) = {}\<^sub>A"
+  "frontier (- {# a, b, c, d, e #}\<^sub>z ) = {}\<^sub>A"
+  "frontier (- {# a  :: _ :: {equal,order}, b, c, d, e, f #}\<^sub>z ) = {}\<^sub>A"
+  unfolding frontier_def minimal_antichain_def
+  by (simp add: antichain_empty)+
+
 end

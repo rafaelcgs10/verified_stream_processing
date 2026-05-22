@@ -3,14 +3,12 @@ theory Init
 imports
   General
   Dataplane.Timely_Stream
-  Dataplane.MyProduct_Instances
   Dataplane.AntichainOrder
   Dataplane.Propagation_Properties
   Propagates
 begin
 
 
-(*FIXME: move me*)
 lemma init_config_empty_conf:
   assumes D: "dataflow_topology su (-+-)"
   shows "dataflow_topology_from_tree.init_config initial_conf"

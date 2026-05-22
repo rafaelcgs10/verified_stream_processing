@@ -1,8 +1,8 @@
 theory Termination
 
 imports Complex_Main
-    Progress_Tracking.Propagate
-    "HOL-Library.Product_Lexorder"
+  Progress_Tracking.Propagate
+  "HOL-Library.Product_Lexorder"
 begin
 
 context dataflow_topology
@@ -62,7 +62,7 @@ lemma alw_exists_t_in_some_worklist:
   assumes H1: "alw (relates (\<lambda> c1 c2 . \<exists> loc . next_propagate' c1 c2 loc t)) s"
   shows "alw (holds (\<lambda>c1. (\<exists> loc . t \<in>#\<^sub>z c_work c1 loc))) s"
   by (smt (verit, best) H1 alw_mono holds.elims(3) next_propagate'_removes_from_loc relatesD)
-  
+
 lemma alw_no_exists_t_in_some_worklist:
   assumes H1: "alw (relates (\<lambda> c1 c2 . \<exists> loc . next_propagate' c1 c2 loc t)) s"
   shows "alw (holds (\<lambda>c1. (\<exists> loc . t \<notin>#\<^sub>z c_work c1 loc))) (stl s)"
@@ -129,16 +129,16 @@ definition c_work_neg :: "('loc, 't) configuration \<Rightarrow> 'loc \<Rightarr
   "c_work_neg c loc = mset_neg (c_work c loc)"
 
 definition work_repro :: "('loc, 't :: order) configuration \<Rightarrow> 'loc \<Rightarrow> 't \<Rightarrow> bool" where
-"work_repro c loc t = (\<forall>i. i \<in>#\<^sub>z c_imp c loc \<longrightarrow> \<not> i \<le> t)"
+  "work_repro c loc t = (\<forall>i. i \<in>#\<^sub>z c_imp c loc \<longrightarrow> \<not> i \<le> t)"
 
 definition work_n_repro :: "('loc, 't) configuration \<Rightarrow> 't \<Rightarrow> nat" where
-"work_n_repro c t = (\<Sum> loc \<in> UNIV . if (work_repro c loc t) then 1 else 0)"
+  "work_n_repro c t = (\<Sum> loc \<in> UNIV . if (work_repro c loc t) then 1 else 0)"
 
 definition nr_work_repro :: "('loc, 't) configuration \<Rightarrow> nat \<Rightarrow> nat" where
-"nr_work_repro c n = (\<Sum> loc \<in> UNIV . (\<Sum> work \<in> {work . work \<in># (c_work_pos c loc) \<and> work_n_repro c work \<ge> n} . count (c_work_pos c loc) work))"
+  "nr_work_repro c n = (\<Sum> loc \<in> UNIV . (\<Sum> work \<in> {work . work \<in># (c_work_pos c loc) \<and> work_n_repro c work \<ge> n} . count (c_work_pos c loc) work))"
 
 lemma fin_nr_work_repro :
- "finite {t. 0 < nr_work_repro c t}"
+  "finite {t. 0 < nr_work_repro c t}"
 proof -
   have G : "\<exists>n. \<forall>m>n. nr_work_repro c m = 0"
   proof (intro exI [where x = "card (UNIV :: 'loc set)"] allI impI)
@@ -164,7 +164,7 @@ proof -
         assume G2: "m \<le> ?Sum t'"
         have H: "?Sum t' \<le> card (UNIV ::'loc set)"
           by(rule ord_le_eq_trans[where b = "(\<Sum>loc\<in>(UNIV ::'loc set). 1)"])
-          (fastforce intro: sum_le_included)+
+            (fastforce intro: sum_le_included)+
         from H and G2 and G1 show "count (mset_pos (c_work c loc')) t' = 0"
           by auto
       qed
@@ -175,13 +175,13 @@ proof -
 qed
 
 lemma fin_nr_work_repro' :
- "finite {x. n < nr_work_repro c x}"
+  "finite {x. n < nr_work_repro c x}"
   using fin_nr_work_repro
   by (metis finite_nat_set_iff_bounded less_nat_zero_code mem_Collect_eq neq0_conv)
 
 context includes multiset.lifting begin
 lift_definition total_work_repro :: "('loc, 't) configuration \<Rightarrow> nat multiset" is
-"nr_work_repro"
+  "nr_work_repro"
   by (rule fin_nr_work_repro)
 end
 
@@ -199,7 +199,7 @@ lemma pos_or_neg:
   by auto
 
 lemma count_Abs_work_repro_le:
- "(count (Abs_multiset (nr_work_repro c1)) n < count (Abs_multiset (nr_work_repro c2)) n) = 
+  "(count (Abs_multiset (nr_work_repro c1)) n < count (Abs_multiset (nr_work_repro c2)) n) = 
   (nr_work_repro c1 n < nr_work_repro c2 n)"
   using total_work_repro.abs_eq total_work_repro.rep_eq by auto
 
@@ -214,7 +214,7 @@ lemma Max_less_iff'': "(Max A < x) \<Longrightarrow> finite A \<Longrightarrow> 
   using Max_less_iff by auto
 
 lemma count_Abs_work_repro:
- "(count (Abs_multiset (nr_work_repro c1)) n = count (Abs_multiset (nr_work_repro c2)) n) = 
+  "(count (Abs_multiset (nr_work_repro c1)) n = count (Abs_multiset (nr_work_repro c2)) n) = 
   (nr_work_repro c1 n = nr_work_repro c2 n)"
   using total_work_repro.abs_eq total_work_repro.rep_eq by auto
 
@@ -228,10 +228,10 @@ lemma Abs_work_repro:
   (nr_work_repro c1 = nr_work_repro c2)"
 proof (rule Abs_multiset_inject)
   show "nr_work_repro c1 \<in> {f. finite {x. 0 < f x}}"
-  by(simp only: mem_Collect_eq, rule fin_nr_work_repro')
+    by(simp only: mem_Collect_eq, rule fin_nr_work_repro')
 next
   show "nr_work_repro c2 \<in> {f. finite {x. 0 < f x}}"
-  by(simp only: mem_Collect_eq, rule fin_nr_work_repro')
+    by(simp only: mem_Collect_eq, rule fin_nr_work_repro')
 qed
 
 (*End of helper theorems*)
@@ -259,7 +259,7 @@ proof -
     then show "\<exists>x>m. count N x < count M x"
       using H'
       unfolding diff_order_def
-     by (metis nat_neq_iff order_less_imp_not_less)
+      by (metis nat_neq_iff order_less_imp_not_less)
   qed
 qed
 
@@ -274,7 +274,7 @@ proof -
 qed
 
 lemma work_n_repro_eq:
- "c_imp c = c_imp c' \<Longrightarrow> work_n_repro c t = work_n_repro c' t"
+  "c_imp c = c_imp c' \<Longrightarrow> work_n_repro c t = work_n_repro c' t"
   by(simp add: work_n_repro_def work_repro_def)
 
 lemma work_repro_to_n:
@@ -500,8 +500,8 @@ lemma elems_eq_sum_eq: "(\<And>x. x\<in>M \<longrightarrow> f x = g x) \<Longrig
 
 lemma total_work_repro_from_work_n_repro:
   assumes W: "c_work_pos c = c_work_pos c'" 
-  and "(\<forall> t. work_n_repro c t \<ge> work_n_repro c' t)"
-shows  "total_work_repro c \<ge> total_work_repro c'"
+    and "(\<forall> t. work_n_repro c t \<ge> work_n_repro c' t)"
+  shows  "total_work_repro c \<ge> total_work_repro c'"
 proof -
   from assms have Disj_aux : "(\<forall> t. (\<exists>loc. t \<in># c_work_pos c loc) \<longrightarrow> work_n_repro c t = work_n_repro c' t) \<or> 
   (\<exists> t. (\<exists>loc. t \<in># c_work_pos c loc \<and> work_n_repro c' t < work_n_repro c t))"
@@ -550,7 +550,7 @@ lemma total_work_repro_from_nr_work_repro:
   "\<forall> n. nr_work_repro c1 n \<ge> nr_work_repro c2 n \<Longrightarrow>
   total_work_repro c1 \<ge> total_work_repro c2"
   unfolding le_less less_multiset_less_multiset\<^sub>H\<^sub>O disj_imp less_multiset\<^sub>H\<^sub>O_def total_work_repro_def
-      map_fun_def o_def id_apply not_not de_Morgan_conj not_imp not_all not_ex
+    map_fun_def o_def id_apply not_not de_Morgan_conj not_imp not_all not_ex
   apply safe
   subgoal for n
     apply(erule allE[where x = n])
@@ -666,8 +666,8 @@ lemma c_worklist_eq_count:
   by (meson multiset_eqI c_worklist_eq)
 
 lemma sum_eq_elem:
-    assumes A2 : "sum (f :: 'a \<Rightarrow> nat) A = sum g B"
-  and "finite B"
+  assumes A2 : "sum (f :: 'a \<Rightarrow> nat) A = sum g B"
+    and "finite B"
     and A3 : "\<forall> n. f n \<le> g n"
     and "A \<subseteq> B"
   shows "\<forall> n \<in> B. f n = g n"
@@ -697,52 +697,52 @@ proof (rule c_worklist_eq_count , safe)
     by (auto simp add: total_work_repro_def Abs_work_repro)
   let ?Sum = "\<lambda> loc c. sum (count (c_work_pos c loc)) (set_mset (c_work_pos c loc))"
   have H2'': "?Sum loc c' = ?Sum loc c"
-    proof (rule sum_mono_inv [where I = "UNIV :: 'loc set"])
-      show "(\<Sum>loc\<in>UNIV. ?Sum loc c') = (\<Sum>loc\<in>UNIV. ?Sum loc c)"
-        using H2'
-        unfolding nr_work_repro_def
+  proof (rule sum_mono_inv [where I = "UNIV :: 'loc set"])
+    show "(\<Sum>loc\<in>UNIV. ?Sum loc c') = (\<Sum>loc\<in>UNIV. ?Sum loc c)"
+      using H2'
+      unfolding nr_work_repro_def
+      by auto
+  next
+    fix loc :: 'loc
+    assume "loc \<in> (UNIV :: 'loc set)"
+    show "?Sum loc c' \<le> ?Sum loc c"
+      unfolding greater_workers_pos_def c_work_pos_def
+    proof (rule sum_le_included [where i = id])
+      show "finite (set_mset (mset_pos (c_work c' loc)))"
         by auto
     next
-      fix loc :: 'loc
-      assume "loc \<in> (UNIV :: 'loc set)"
-      show "?Sum loc c' \<le> ?Sum loc c"
+      show "finite (set_mset (mset_pos (c_work c loc)))"
+        by auto
+    next
+      show "\<forall>t\<in>#mset_pos (c_work c loc). 0 \<le> count (mset_pos (c_work c loc)) t"
+        by auto
+    next
+      from H1 show "\<forall>t\<in>#mset_pos (c_work c' loc). \<exists>t'\<in>#mset_pos (c_work c loc). id t' = t \<and> count (mset_pos (c_work c' loc)) t \<le> count (mset_pos (c_work c loc)) t'"
         unfolding greater_workers_pos_def c_work_pos_def
-      proof (rule sum_le_included [where i = id])
-        show "finite (set_mset (mset_pos (c_work c' loc)))"
-          by auto
-      next
-        show "finite (set_mset (mset_pos (c_work c loc)))"
-          by auto
-      next
-        show "\<forall>t\<in>#mset_pos (c_work c loc). 0 \<le> count (mset_pos (c_work c loc)) t"
-          by auto
-      next
-        from H1 show "\<forall>t\<in>#mset_pos (c_work c' loc). \<exists>t'\<in>#mset_pos (c_work c loc). id t' = t \<and> count (mset_pos (c_work c' loc)) t \<le> count (mset_pos (c_work c loc)) t'"
-          unfolding greater_workers_pos_def c_work_pos_def
-          by (meson count_greater_eq_Suc_zero_iff dual_order.trans id_apply)
-      qed
-    next
-      show "loc \<in> UNIV"
-        by auto
-    next
-      show "finite (UNIV :: 'loc set)"
-        by auto
+        by (meson count_greater_eq_Suc_zero_iff dual_order.trans id_apply)
+    qed
+  next
+    show "loc \<in> UNIV"
+      by auto
+  next
+    show "finite (UNIV :: 'loc set)"
+      by auto
   qed
   have H2''' : "\<forall>t\<in>(set_mset (c_work_pos c loc)). (count (c_work_pos c' loc)) t = (count (c_work_pos c loc)) t"
-    proof (rule sum_eq_elem[where A = "(set_mset (c_work_pos c' loc))"])
-      show "?Sum loc c' = ?Sum loc c"
-        using H2'' by auto
-    next
-      show "finite (set_mset (c_work_pos c loc))"
-        by auto
-    next
-      show "\<forall>t. count (c_work_pos c' loc) t \<le> count (c_work_pos c loc) t"
-        using H1 unfolding greater_workers_pos_def
-        by auto
-    next
-      show "(set_mset (c_work_pos c' loc)) \<subseteq> set_mset (c_work_pos c loc)"
-        using H1 unfolding greater_workers_pos_def
-        by (simp add: mset_subset_eqI set_mset_mono)
+  proof (rule sum_eq_elem[where A = "(set_mset (c_work_pos c' loc))"])
+    show "?Sum loc c' = ?Sum loc c"
+      using H2'' by auto
+  next
+    show "finite (set_mset (c_work_pos c loc))"
+      by auto
+  next
+    show "\<forall>t. count (c_work_pos c' loc) t \<le> count (c_work_pos c loc) t"
+      using H1 unfolding greater_workers_pos_def
+      by auto
+  next
+    show "(set_mset (c_work_pos c' loc)) \<subseteq> set_mset (c_work_pos c loc)"
+      using H1 unfolding greater_workers_pos_def
+      by (simp add: mset_subset_eqI set_mset_mono)
   qed
   show "count (c_work_pos c loc) t = count (c_work_pos c' loc) t"
     using H1 H2''' H3
@@ -757,14 +757,14 @@ lemma greater_works_termination_2:
   shows "total_work_repro c \<noteq> total_work_repro c'"
 proof -
   show ?thesis
-  using greater_works_termination_2_aux assms
-  by auto
+    using greater_works_termination_2_aux assms
+    by auto
 qed
 
 lemma greater_works_termination:
-assumes "greater_workers_pos c c'"
+  assumes "greater_workers_pos c c'"
     and "c_work_pos c \<noteq> c_work_pos c'"
-  and "c_imp c = c_imp c'"
+    and "c_imp c = c_imp c'"
   shows "total_work_repro c > total_work_repro c'"
 proof -
   from assms have H : "total_work_repro c \<ge> total_work_repro c'"
@@ -827,7 +827,7 @@ lemma no_frontier_change_termination:
     and C2 : "t \<in># c_work_pos c loc" 
     and C3: "inv_implications_nonneg  c"
     and C4: "same_frontier (c_imp c loc + {#t' \<in>#\<^sub>z c_work c loc. t' = t#}) (c_imp c loc)"
-shows "total_work_repro c > total_work_repro c'"
+  shows "total_work_repro c > total_work_repro c'"
 proof (rule order.strict_trans2 [where b = "total_work_repro 
     \<lparr>c_work = c_work c, c_pts = c_pts c, c_imp = c_imp c'\<rparr>"])
   let ?c1 = "\<lparr>c_work = c_work c, c_pts = c_pts c, c_imp = c_imp c'\<rparr>"
@@ -837,9 +837,9 @@ proof (rule order.strict_trans2 [where b = "total_work_repro
       using term_no_frontier_change assms
       by auto
     then show "greater_workers_pos ?c1 c'"
-        using c_worklist_eq greater_workers_pos_eq [where c = c and c' = c']
-        unfolding c_work_pos_def
-        by auto
+      using c_worklist_eq greater_workers_pos_eq [where c = c and c' = c']
+      unfolding c_work_pos_def
+      by auto
   next
     from C1 and C2 have "c_work_pos c \<noteq> c_work_pos c'"
       using term_no_frontier_change_eq
@@ -871,11 +871,11 @@ qed
 
 (*frontier change case*)
 lemma in_zmset_sum :
- "a \<in>#\<^sub>z (M + N) \<Longrightarrow> a \<in>#\<^sub>z M \<or> a \<in>#\<^sub>z N"
+  "a \<in>#\<^sub>z (M + N) \<Longrightarrow> a \<in>#\<^sub>z M \<or> a \<in>#\<^sub>z N"
   by (smt (z3) zcount_ne_zero_iff zcount_union)
 
 lemma result_in_geq:
-"results_in t s \<ge> t"
+  "results_in t s \<ge> t"
   by (metis flow.zero_le results_in_mono(2) results_in_zero)
 
 lemma after_summary_order:
@@ -895,7 +895,7 @@ next
 qed
 
 lemma frontier_change_order_aux:
-"ta \<in>\<^sub>A antichain (minimal_antichain {ta.
+  "ta \<in>\<^sub>A antichain (minimal_antichain {ta.
        0 < zcount (c_imp c loc + {#t' \<in>#\<^sub>z c_work c loc. t' = t#}) ta}) = 
 (ta \<in> (minimal_antichain {ta.
       0 < zcount (c_imp c loc + {#t' \<in>#\<^sub>z c_work c loc. t' = t#}) ta}))"
@@ -906,7 +906,7 @@ proof (rule in_antichain_minimal_antichain)
 qed
 
 lemma frontier_change_order_aux':
-"ta \<in>\<^sub>A antichain (minimal_antichain {t. 0 < zcount (c_imp c loc) t}) = 
+  "ta \<in>\<^sub>A antichain (minimal_antichain {t. 0 < zcount (c_imp c loc) t}) = 
 (ta \<in> (minimal_antichain {t. 0 < zcount (c_imp c loc) t}))"
 proof (rule in_antichain_minimal_antichain)
   show "finite {t. 0 < zcount (c_imp c loc) t}"
@@ -1190,10 +1190,10 @@ and therefor the count will fall*)
 
 lemma diff_frontier_change_termination_1:
   assumes H1: "next_propagate' c c' loc t"
-  and H2 : "t \<in># c_work_pos c loc" 
-  and H3: "inv_implications_nonneg c"
-  and H4: "\<not> same_frontier (c_imp c loc + {#t' \<in>#\<^sub>z c_work c loc. t' = t#}) (c_imp c loc)"
-shows "\<exists> m \<ge> work_n_repro c t. diff_order (total_work_repro c) (total_work_repro (| c_work = c_work c, c_pts = c_pts c, c_imp = c_imp c'|)) m"
+    and H2 : "t \<in># c_work_pos c loc" 
+    and H3: "inv_implications_nonneg c"
+    and H4: "\<not> same_frontier (c_imp c loc + {#t' \<in>#\<^sub>z c_work c loc. t' = t#}) (c_imp c loc)"
+  shows "\<exists> m \<ge> work_n_repro c t. diff_order (total_work_repro c) (total_work_repro (| c_work = c_work c, c_pts = c_pts c, c_imp = c_imp c'|)) m"
 proof -
   let ?c1 = "(| c_work = c_work c, c_pts = c_pts c, c_imp = c_imp c'|)"
   from assms have Imps : "lesser_imps c c'"
@@ -1234,8 +1234,8 @@ qed
 lemma sum_gt_sum_same_area:
   fixes f g :: "'i \<Rightarrow> nat"
   assumes "sum f A < sum g A"
-   and "finite A"
-shows "\<exists>a\<in>A. f a < g a"
+    and "finite A"
+  shows "\<exists>a\<in>A. f a < g a"
 proof-
   from assms show ?thesis
     apply -
@@ -1250,9 +1250,9 @@ qed
 lemma sum_gt_sum:
   fixes f g :: "'i \<Rightarrow> nat"
   assumes "sum f A < sum g B"
-   and "finite A"
-   and "finite B"
-shows "\<exists>b\<in>B. f b < g b \<or> b \<notin> A"
+    and "finite A"
+    and "finite B"
+  shows "\<exists>b\<in>B. f b < g b \<or> b \<notin> A"
 proof-
   from assms show ?thesis
     apply -
@@ -1266,11 +1266,11 @@ qed
 
 lemma diff_frontier_change_termination_2:
   assumes H1: "next_propagate' c c' loc (t :: 't :: order)"
-  and H2: "t \<in># c_work_pos c loc" 
-  and H3: "inv_implications_nonneg c"
-  and H4: "\<not> same_frontier (c_imp c loc + {#t' \<in>#\<^sub>z c_work c loc. t' = t#}) (c_imp c loc)"
-  and H5: "total_work_repro c' > total_work_repro (| c_work = c_work c, c_pts = c_pts c, c_imp = c_imp c'|)"
-shows "(\<exists> m < work_n_repro c t. diff_order (total_work_repro c') (total_work_repro (| c_work = c_work c, c_pts = c_pts c, c_imp = c_imp c'|)) m)"
+    and H2: "t \<in># c_work_pos c loc" 
+    and H3: "inv_implications_nonneg c"
+    and H4: "\<not> same_frontier (c_imp c loc + {#t' \<in>#\<^sub>z c_work c loc. t' = t#}) (c_imp c loc)"
+    and H5: "total_work_repro c' > total_work_repro (| c_work = c_work c, c_pts = c_pts c, c_imp = c_imp c'|)"
+  shows "(\<exists> m < work_n_repro c t. diff_order (total_work_repro c') (total_work_repro (| c_work = c_work c, c_pts = c_pts c, c_imp = c_imp c'|)) m)"
 proof -
   let ?c1 = "\<lparr>c_work = c_work c, c_pts = c_pts c, c_imp = c_imp c'\<rparr>"
   have D1 : "{n. nr_work_repro ?c1 n < nr_work_repro c' n} \<noteq> {}"
@@ -1314,7 +1314,7 @@ proof -
           apply(rule sum_gt_sum)
           by auto
         then obtain t' :: 't where G1: "t' \<in># mset_pos (c_work c' loc')" and G2: "n \<le> work_n_repro c' t'" and
-         G3: "nat (zcount (c_work c loc') t') < nat (zcount (c_work c' loc') t') \<or>
+          G3: "nat (zcount (c_work c loc') t') < nat (zcount (c_work c' loc') t') \<or>
          t' \<notin> {t''. t'' \<in># mset_pos (c_work c loc') \<and> n \<le> work_n_repro ?c1 t''}"
           by auto
         consider "zcount (c_work c loc') t' < zcount (c_work c' loc') t'" |
@@ -1377,9 +1377,9 @@ qed
 
 lemma diff_frontier_change_termination:
   assumes "next_propagate' c c' loc t"
-  and "t \<in># c_work_pos c loc" and "inv_implications_nonneg c"
-  and "\<not> same_frontier (c_imp c loc + {#t' \<in>#\<^sub>z c_work c loc. t' = t#}) (c_imp c loc)"
-shows "total_work_repro c > total_work_repro c'"
+    and "t \<in># c_work_pos c loc" and "inv_implications_nonneg c"
+    and "\<not> same_frontier (c_imp c loc + {#t' \<in>#\<^sub>z c_work c loc. t' = t#}) (c_imp c loc)"
+  shows "total_work_repro c > total_work_repro c'"
 proof -
   let ?c1 = "\<lparr>c_work = c_work c, c_pts = c_pts c, c_imp = c_imp c'\<rparr>"
   from assms have H1: "\<exists> m \<ge> work_n_repro c t. diff_order (total_work_repro c) (total_work_repro ?c1) m"
@@ -1387,7 +1387,7 @@ proof -
   from H1 have H1': "\<exists> m. diff_order (total_work_repro c) (total_work_repro ?c1) m"
     by auto
   consider "\<not> total_work_repro c' > total_work_repro ?c1" |
-  "(\<exists> m < work_n_repro c t. diff_order (total_work_repro c') (total_work_repro ?c1) m)"
+    "(\<exists> m < work_n_repro c t. diff_order (total_work_repro c') (total_work_repro ?c1) m)"
     using assms diff_frontier_change_termination_2[where loc = loc]
     by blast
   then show ?thesis
@@ -1414,8 +1414,8 @@ qed
 
 lemma terminating_total_work_repro:
   assumes "next_propagate' c c' loc t" 
-  and "t \<in># c_work_pos c loc" and "inv_implications_nonneg c"
-shows "total_work_repro c > total_work_repro c'"
+    and "t \<in># c_work_pos c loc" and "inv_implications_nonneg c"
+  shows "total_work_repro c > total_work_repro c'"
 proof -
   consider "\<not> same_frontier (c_imp c loc + {#t' \<in>#\<^sub>z c_work c loc. t' = t#}) (c_imp c loc)" |
     "same_frontier (c_imp c loc + {#t' \<in>#\<^sub>z c_work c loc. t' = t#}) (c_imp c loc)" by auto
@@ -1436,14 +1436,14 @@ qed
 subsection\<open>Measure\<close>
 
 definition zero_successors where
-"zero_successors t loc  = {loc'. (\<exists> s . s \<in>\<^sub>A summary loc loc' \<and> results_in t s = t)}"
+  "zero_successors t loc  = {loc'. (\<exists> s . s \<in>\<^sub>A summary loc loc' \<and> results_in t s = t)}"
 
 context 
   fixes t :: "'t"
 begin 
 
 function weight where
-"weight loc = (1 :: nat) + (\<Sum> loc' \<in> zero_successors t loc . weight loc')"
+  "weight loc = (1 :: nat) + (\<Sum> loc' \<in> zero_successors t loc . weight loc')"
   by auto
 termination
   apply(relation "{(loc', loc) . \<exists> s . s \<in>\<^sub>A summary loc loc' \<and> results_in t s = t}")
@@ -1457,8 +1457,8 @@ termination
       have "(loc', loc) \<in> {(loc', loc). \<exists>s. s \<in>\<^sub>A summary loc loc' \<and> results_in t s = t}\<^sup>+ \<Longrightarrow>
         \<exists>xs. path loc loc' xs \<and> xs \<noteq> [] \<and> results_in t (sum_weights (map (\<lambda>(s, l, t). l) xs)) = t" for loc'
         apply (induct loc' rule: converse_trancl_induct)
-        apply auto []
-         apply (auto simp only: results_in_sum_path_weights_append elim: path)
+         apply auto []
+        apply (auto simp only: results_in_sum_path_weights_append elim: path)
         done
       from this[OF self_loop] show False using no_zero_cycle[OF _ _ refl, of loc _ t]
         by force
@@ -1473,13 +1473,13 @@ definition active_work :: "('loc, 't) configuration \<Rightarrow> 't set" where
   "active_work c = {t. \<exists> loc. t \<in>#\<^sub>z c_work c loc \<and> (\<forall>t' loc'. t' \<in>#\<^sub>z c_work c loc' \<longrightarrow> \<not> t' < t)}"
 
 definition measure :: "('loc, 't) configuration \<Rightarrow> 't \<Rightarrow>  nat" where
-"measure c t = (\<Sum> loc \<in> {loc . t \<in># c_work_neg c loc} . weight t loc)"
+  "measure c t = (\<Sum> loc \<in> {loc . t \<in># c_work_neg c loc} . weight t loc)"
 
 lemma propagate_eq_or_zero_succesor':
   assumes C1: "next_propagate' c c' loc t"
     and   C2: "inv_implications_nonneg c"
     and  C3: "zcount (c_work c loc') t \<noteq> zcount (c_work c' loc') t" 
-shows "loc' \<in> {loc'. loc' \<in> zero_successors t loc \<or> loc' = loc}"
+  shows "loc' \<in> {loc'. loc' \<in> zero_successors t loc \<or> loc' = loc}"
 proof (cases "loc = loc'")
   case True
   then show ?thesis
@@ -1526,8 +1526,8 @@ next
     using False
     unfolding next_propagate'_def zero_successors_def
     apply simp
-      apply(rule exI[where x = s])
-      apply(rule conjI)
+    apply(rule exI[where x = s])
+    apply(rule conjI)
     subgoal
       using C3''
       by auto
@@ -1560,9 +1560,9 @@ lemma sum_singleton : "sum f {t} = f t"
 
 lemma measure_prop_le:
   assumes C1: "next_propagate' c c' loc t"
-   and   C2: "inv_implications_nonneg c"
-  and C3: "t \<in># c_work_neg c loc"
- shows "measure c' t < measure c t"
+    and   C2: "inv_implications_nonneg c"
+    and C3: "t \<in># c_work_neg c loc"
+  shows "measure c' t < measure c t"
 proof -
   have "{loc. t \<in># c_work_neg c loc} \<supseteq> ({loc. t \<in># c_work_neg c loc} - {loc'. loc' \<in> zero_successors t loc \<or> loc' = loc}) \<union> {loc}"
     using assms
@@ -1580,18 +1580,18 @@ proof -
       by(rule le0)
     done
   have "{loc. t \<in># c_work_neg c' loc} \<subseteq> ({loc. t \<in># c_work_neg c loc} - {loc'. loc' \<in> zero_successors t loc \<or> loc' = loc}) \<union> {loc'. loc' \<in> zero_successors t loc}"
-      using assms
-      apply -
-      apply(simp add: subset_eq)
-      apply(safe)
-      subgoal for loc'
-        using propagate_eq_or_zero_succesor[where loc' = loc'] C3
-        by (metis (mono_tags, lifting) count_eq_zero_iff mem_Collect_eq)
-      subgoal for loc'
-        unfolding next_propagate'_def c_work_neg_def
-        apply(simp add: set_mset_def)
-        done
+    using assms
+    apply -
+    apply(simp add: subset_eq)
+    apply(safe)
+    subgoal for loc'
+      using propagate_eq_or_zero_succesor[where loc' = loc'] C3
+      by (metis (mono_tags, lifting) count_eq_zero_iff mem_Collect_eq)
+    subgoal for loc'
+      unfolding next_propagate'_def c_work_neg_def
+      apply(simp add: set_mset_def)
       done
+    done
   then have G2:  "sum (weight t) {loc. t \<in># c_work_neg c' loc} \<le> sum (weight t) (({loc. t \<in># c_work_neg c loc} - {loc'. loc' \<in> zero_successors t loc \<or> loc' = loc}) \<union> {loc'. loc' \<in> zero_successors t loc})"
     apply -
     apply(rule sum_mono2)
@@ -1702,9 +1702,9 @@ zcount (c_work c loc') t \<le> zcount (c_work c' loc') t"
 
 lemma measure_prop_leq:
   assumes C1: "next_propagate' c c' loc t"
- and   C2: "inv_implications_nonneg c"
- and    C3: "t' \<in> active_work c"
-shows "measure c' t' \<le> measure c t'"
+    and   C2: "inv_implications_nonneg c"
+    and    C3: "t' \<in> active_work c"
+  shows "measure c' t' \<le> measure c t'"
 proof -
   consider "t' \<noteq> t" | "t' = t" by auto
   then show ?thesis
@@ -1721,10 +1721,10 @@ proof -
         unfolding active_work_def next_propagate'_def
         by auto
       then show "{loc. t' \<in># c_work_neg c' loc} \<subseteq> {loc. t' \<in># c_work_neg c loc}"
-          unfolding c_work_neg_def set_mset_def
-          apply(simp only: Collect_mono_iff configuration.simps(1) count_mset_neg zero_less_nat_eq neg_0_less_iff_less mem_Collect_eq)
-          using assms not_eq new_workers_are_greater
-          by metis
+        unfolding c_work_neg_def set_mset_def
+        apply(simp only: Collect_mono_iff configuration.simps(1) count_mset_neg zero_less_nat_eq neg_0_less_iff_less mem_Collect_eq)
+        using assms not_eq new_workers_are_greater
+        by metis
     next
       fix b :: 'loc
       show "0 \<le> weight t' b"
@@ -1771,10 +1771,10 @@ qed
 subsection\<open>Future fuel\<close>
 
 definition future_fuel :: "('loc, 't) configuration \<Rightarrow>  nat" where
-"future_fuel c = (\<Sum> loc \<in> UNIV. (\<Sum> imps \<in> {imps . imps \<in>#\<^sub>z (c_imp c loc) \<and> (\<exists> t \<in> active_work c. t < imps)} . nat (zcount (c_imp c loc) imps)))"
+  "future_fuel c = (\<Sum> loc \<in> UNIV. (\<Sum> imps \<in> {imps . imps \<in>#\<^sub>z (c_imp c loc) \<and> (\<exists> t \<in> active_work c. t < imps)} . nat (zcount (c_imp c loc) imps)))"
 
 lemma f_f_leq_aux_1:  
- "next_propagate' c c' loc t  \<Longrightarrow> inv_implications_nonneg c \<Longrightarrow>
+  "next_propagate' c c' loc t  \<Longrightarrow> inv_implications_nonneg c \<Longrightarrow>
   x \<notin> active_work c \<Longrightarrow>
  zcount (c_imp c loc') x = zcount (c_imp c' loc') x"
   by (auto simp add: next_propagate'_def active_work_def)
@@ -1826,38 +1826,38 @@ proof -
     case in_active_work
     then show ?case
       by auto
+  next
+    case not_in_active_work
+    have G1: "t \<in> active_work c" using C1
+      using active_work_def next_propagate'_def
+      by auto
+    from C2 obtain loc where C2_1 : "t' \<in>#\<^sub>z c_work c' loc" and C2_2 :
+      "\<forall>t'a. (\<exists>loc'. t'a \<in>#\<^sub>z c_work c' loc') \<longrightarrow> \<not> t'a < t'" unfolding active_work_def by auto
+    consider "(t' \<notin>#\<^sub>z c_work c loc)" | "(\<exists>t'a. (\<exists>loc'. t'a \<in>#\<^sub>z c_work c loc') \<and> t'a < t')"
+      using not_in_active_work unfolding active_work_def by auto
+    then have G2: "t \<le> t'"
+    proof (cases)
+      case 1
+      then show ?thesis
+        using C2_1 new_workers_are_greater_1 C1 C3 by auto
     next
-      case not_in_active_work
-      have G1: "t \<in> active_work c" using C1
-        using active_work_def next_propagate'_def
+      case 2
+      from 2 obtain t'' loc' where C4_1: "t'' \<in>#\<^sub>z c_work c loc'" and C4_2: "t'' < t'" by auto
+      have C2_2' : "t'' \<notin>#\<^sub>z c_work c' loc'" using C2_2 and C4_2 by auto
+      have G: "t \<le> t''" using C4_1 C2_2' C1 C3
+        by(rule new_workers_are_greater_2)
+      show ?thesis using C4_2 and G
         by auto
-      from C2 obtain loc where C2_1 : "t' \<in>#\<^sub>z c_work c' loc" and C2_2 :
-          "\<forall>t'a. (\<exists>loc'. t'a \<in>#\<^sub>z c_work c' loc') \<longrightarrow> \<not> t'a < t'" unfolding active_work_def by auto
-      consider "(t' \<notin>#\<^sub>z c_work c loc)" | "(\<exists>t'a. (\<exists>loc'. t'a \<in>#\<^sub>z c_work c loc') \<and> t'a < t')"
-        using not_in_active_work unfolding active_work_def by auto
-      then have G2: "t \<le> t'"
-      proof (cases)
-        case 1
-        then show ?thesis
-          using C2_1 new_workers_are_greater_1 C1 C3 by auto
-      next
-        case 2
-        from 2 obtain t'' loc' where C4_1: "t'' \<in>#\<^sub>z c_work c loc'" and C4_2: "t'' < t'" by auto
-        have C2_2' : "t'' \<notin>#\<^sub>z c_work c' loc'" using C2_2 and C4_2 by auto
-        have G: "t \<le> t''" using C4_1 C2_2' C1 C3
-          by(rule new_workers_are_greater_2)
-        show ?thesis using C4_2 and G
-          by auto
-      qed
-      then show ?case using G1 and G2 by auto
     qed
+    then show ?case using G1 and G2 by auto
   qed
+qed
 
 lemma active_prop' :
   assumes "\<exists>t\<in>active_work c'. t < x"
-and "next_propagate' c c' loc t"
+    and "next_propagate' c c' loc t"
     and "inv_implications_nonneg c"
-shows "\<exists>t\<in>active_work c. t < x"
+  shows "\<exists>t\<in>active_work c. t < x"
 proof -
   from assms show ?thesis
     unfolding Bex_def
@@ -1865,7 +1865,7 @@ proof -
 qed
 
 lemma not_active :
-"\<exists>t\<in>active_work c. t < x \<Longrightarrow> x \<notin> active_work c"
+  "\<exists>t\<in>active_work c. t < x \<Longrightarrow> x \<notin> active_work c"
   by (auto simp add: active_work_def)
 
 lemma c_implicate_eq_prop: 
@@ -1921,8 +1921,8 @@ qed
 
 lemma f_f_leq:
   assumes H: "next_propagate' c c' loc t" 
-  and "inv_implications_nonneg c"
-shows "future_fuel c \<ge> future_fuel c'"
+    and "inv_implications_nonneg c"
+  shows "future_fuel c \<ge> future_fuel c'"
 proof -
   from assms show ?thesis
     unfolding future_fuel_def
@@ -1944,8 +1944,8 @@ proof -
   show ?thesis
   proof
     from H1 show "t \<in># c_work_neg c loc"
-    unfolding c_work_neg_def set_mset_def
-    by (smt (verit) count_filter_zmset select_convs(1) zcount_ne_zero_iff zero_less_nat_eq mem_Collect_eq set_mset_def count_mset_neg)
+      unfolding c_work_neg_def set_mset_def
+      by (smt (verit) count_filter_zmset select_convs(1) zcount_ne_zero_iff zero_less_nat_eq mem_Collect_eq set_mset_def count_mset_neg)
   qed
 qed
 
@@ -1973,8 +1973,8 @@ proof -
     unfolding c_work_neg_def set_mset_def
     by simp
   then have C4'': "0 < (zcount (c_imp c loc') t')"
-      using  c_implicate_eq_prop C1 not_eq zero_less_nat_eq
-      by presburger
+    using  c_implicate_eq_prop C1 not_eq zero_less_nat_eq
+    by presburger
   show ?thesis
     unfolding future_fuel_def
   proof (rule sum_strict_mono_ex1)
@@ -2071,13 +2071,13 @@ proof -
 qed
 
 definition measure_sum :: "('loc, 't) configuration \<Rightarrow>  nat" where
-"measure_sum c = (\<Sum> t \<in> active_work c. measure c t)"
+  "measure_sum c = (\<Sum> t \<in> active_work c. measure c t)"
 
 lemma measure_sum_prop:
   assumes "next_propagate' c c' loc t" 
-  and "\<forall> t'. \<not> (t'\<in>active_work c' \<and> t' \<notin> active_work c \<and> measure c' t' > 0)"
-  and "inv_implications_nonneg c"
-shows "measure_sum c \<ge> measure_sum c'"
+    and "\<forall> t'. \<not> (t'\<in>active_work c' \<and> t' \<notin> active_work c \<and> measure c' t' > 0)"
+    and "inv_implications_nonneg c"
+  shows "measure_sum c \<ge> measure_sum c'"
 proof -
   have G1: "sum (measure c') (active_work c') = sum (measure c') {t. t \<in> active_work c' \<and> measure c' t > 0}"
     apply(rule Groups_Big.comm_monoid_add_class.sum.mono_neutral_right)
@@ -2108,10 +2108,10 @@ qed
 
 lemma measure_sum_prop_neg:
   assumes "next_propagate' c c' loc t" 
-  and "t \<in># c_work_neg c loc"
-  and C: "\<forall> t'. \<not> (t'\<in>active_work c' \<and> t' \<notin> active_work c \<and> measure c' t' > 0)"
-  and "inv_implications_nonneg c"
-shows "measure_sum c > measure_sum c'"
+    and "t \<in># c_work_neg c loc"
+    and C: "\<forall> t'. \<not> (t'\<in>active_work c' \<and> t' \<notin> active_work c \<and> measure c' t' > 0)"
+    and "inv_implications_nonneg c"
+  shows "measure_sum c > measure_sum c'"
 proof -
   show ?thesis
     unfolding measure_sum_def
@@ -2143,15 +2143,15 @@ proof -
 qed
 
 definition neg_order :: "('loc, 't) configuration \<Rightarrow> (nat \<times> nat \<times> nat multiset)" where
-"neg_order c = (future_fuel c, measure_sum c, total_work_repro c)"
+  "neg_order c = (future_fuel c, measure_sum c, total_work_repro c)"
 
 lemma propagation_termination':
   assumes C1: "next_propagate' c c' loc t" 
-  and C2: "inv_implications_nonneg c"
-  and "inv_implications_nonneg c'"
-  and "inv_imp_plus_work_nonneg c"
-  and "inv_imp_plus_work_nonneg c'"
-shows "neg_order c > neg_order c'"
+    and C2: "inv_implications_nonneg c"
+    and "inv_implications_nonneg c'"
+    and "inv_imp_plus_work_nonneg c"
+    and "inv_imp_plus_work_nonneg c'"
+  shows "neg_order c > neg_order c'"
 proof -
   consider "\<exists> t'. (t'\<in>active_work c' \<and> t' \<notin> active_work c \<and> measure c' t' > 0)" |
     "\<not>(\<exists> t'. (t'\<in>active_work c' \<and> t' \<notin> active_work c \<and> measure c' t' > 0))" by auto
@@ -2196,9 +2196,9 @@ qed
 
 lemma propagation_termination:
   assumes "next_propagate c c'" 
-  and "inv_imps_work_sum c"
-  and "inv_implications_nonneg c"
-shows "neg_order c > neg_order c'"
+    and "inv_imps_work_sum c"
+    and "inv_implications_nonneg c"
+  shows "neg_order c > neg_order c'"
 proof -
   from assms show ?thesis
     using propagation_termination' iiws_imp_iipwn p_preserves_inv_implications_nonneg p_preserves_inv_imps_work_sum

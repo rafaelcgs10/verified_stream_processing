@@ -3,7 +3,6 @@ theory Produces
 imports
   General
   Dataplane.Timely_Stream
-  Dataplane.MyProduct_Instances
   Dataplane.AntichainOrder
   "HOL-Library.Product_Lexorder"
 begin

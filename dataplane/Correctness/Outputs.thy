@@ -2,9 +2,6 @@ theory Outputs
 
 imports
   General
-  Dataplane.Timely_Stream
-  Dataplane.MyProduct_Instances
-  Dataplane.AntichainOrder
 begin
 
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]

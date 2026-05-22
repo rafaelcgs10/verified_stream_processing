@@ -147,35 +147,6 @@ lemma ltl_lconcat_lmap_zip:
     done
   done
 
-lemma antichain_empty:
-  "antichain {} = {}⇩A"
-  unfolding empty_antichain_def
-  by auto
-
-lemma antichain_from_list_empty_antichain[simp]:
-  "antichain_from_list [] = {}⇩A"
-  by (simp add: Executable.antichain_from_list_empty antichain_empty)
-
-lemma set_antichain_antichain_singleton[simp]:
-  "set_antichain (antichain {a}) = {a}"
-  apply (subst antichain_inverse)
-  apply (auto simp: incomparable_def)
-  done
-
-lemma antichain_nonempty[simp]:
-  "antichain {A} ≠ {}⇩A"
-  by (metis empty_antichain.rep_eq insert_not_empty set_antichain_antichain_singleton)
-
-lemma frontier_negs[simp]:
-  "frontier (- {# a #}⇩z ) = {}⇩A"
-  "frontier (- {# a, b #}⇩z ) = {}⇩A"
-  "frontier (- {# a, b, c #}⇩z ) = {}⇩A"
-  "frontier (- {# a, b, c, d #}⇩z ) = {}⇩A"
-  "frontier (- {# a, b, c, d, e #}⇩z ) = {}⇩A"
-  "frontier (- {# a  :: _ :: {equal,order}, b, c, d, e, f #}⇩z ) = {}⇩A"
-  unfolding frontier_def minimal_antichain_def
-  by (simp add: antichain_empty)+
-
 instantiation prod :: (defaults, type) defaults
 begin
 definition defaults_prod where "defaults_prod = defaults × defaults"

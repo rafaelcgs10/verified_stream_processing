@@ -1080,7 +1080,16 @@ lemma change_multiplicities_map_append_event:
     done
   done
 
-(* FIXME: mome me  *)
+
+
+section \<open>Extra things (FIXME: move them)\<close>
+lemma frontier_to_zmset_bots[simp]:
+  "frontier (to_zmset bots) = antichain (set bots)"  
+  unfolding frontier.abs_eq minimal_antichain_def ac_eq_iff less_eq_antichain_def member_antichain.rep_eq 
+  apply clarsimp
+  done
+
+(* FIXME: move me  *)
 lemma map_snd_filter_List_map_filter:
   "nt (nid, p'') = Some (nid', p') \<Longrightarrow>
    inj_on nt (dom nt) \<Longrightarrow>
@@ -1091,14 +1100,6 @@ lemma map_snd_filter_List_map_filter:
    apply simp
   apply (clarsimp split: prod.splits option.splits)
   using inj_on_contraD apply fastforce
-  done
-
-
-section \<open>Extra things (FIXME: move them)\<close>
-lemma frontier_to_zmset_bots[simp]:
-  "frontier (to_zmset bots) = antichain (set bots)"  
-  unfolding frontier.abs_eq minimal_antichain_def ac_eq_iff less_eq_antichain_def member_antichain.rep_eq 
-  apply clarsimp
   done
 
 lemma set_bots_bot_antichain[simp]:

@@ -2,9 +2,6 @@ theory OCapsReorder
 
 imports
   General
-  Dataplane.Timely_Stream
-  Dataplane.MyProduct_Instances
-  Dataplane.AntichainOrder
 begin
 
 

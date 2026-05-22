@@ -2,9 +2,6 @@ theory Mints
 
 imports
   General
-  Dataplane.Timely_Stream
-  Dataplane.MyProduct_Instances
-  Dataplane.AntichainOrder
 begin
 
 lemma dataplane_tracker_inv_mints:
