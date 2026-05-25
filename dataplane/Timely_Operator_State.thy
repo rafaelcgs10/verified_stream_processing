@@ -23,14 +23,6 @@ begin
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 
-definition "DEBUG = False"
-
-definition "trace = (if DEBUG then Debug.tracing else (\<lambda> x y. y))"
-
-lemma trace_simp[simp]:
-  "trace x r = r"
-  by (auto simp add: trace_def)
-
 type_synonym 'a change_batch = "'a list"
 
 record ('id, 'p, 't) subgraph =

@@ -28,66 +28,6 @@ declare filter_True[simp del] filter_False[simp del] list_emb_Nil2[simp del]
   BULK_BENQ_right_empty[simp del] BULK_BENQ_left_empty[simp del] in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 
-section \<open>Example\<close>
-
-abbreviation "t0 \<equiv> MyPair (0 :: nat) (0 :: nat)"
-abbreviation "t_1_0 \<equiv> MyPair (Suc 0) (0 :: nat)"
-abbreviation "t_0_1 \<equiv> MyPair (0 :: nat) (Suc 0)"
-abbreviation "t_1_1 \<equiv> MyPair (Suc 0) (Suc 0)"
-
-abbreviation "list_inps_test \<equiv> 
- [Mint t_1_0, Mint t_0_1, Mint t_1_1, Drop t0, Data t_1_1 10, Drop t_1_1, Data t_0_1 7, Data t_1_0 (3 :: nat), Drop t_1_0, Drop t_0_1]"
-abbreviation "inps_test \<equiv> llist_of list_inps_test"
-
-abbreviation init_input_state where
-  "init_input_state su inps \<equiv> \<lparr> 
-   intsum = su,
-   consu = [],
-   inter = [],
-   produ = [],
-   input = \<lambda> _. [],
-   outpu = \<lambda> _. [],
-   front = \<lambda> _. antichain_from_list bots,
-   ocaps = \<lambda> _. bots,
-   initia = True,
-   en1 = Inl,
-   de1 = projl,
-   is_en1 = isl,
-   es = inps
-   \<rparr>"
-
-abbreviation init_operator_state_ty2 where
-  "init_operator_state_ty2 su \<equiv> \<lparr> 
-   intsum = su,
-   consu = [],
-   inter = [],
-   produ = [],
-   input = \<lambda> _. [],
-   outpu = \<lambda> _. [],
-   front = \<lambda> _. antichain_from_list bots,
-   ocaps = \<lambda> _. bots,
-   initia = False,
-   en1 = Inl,
-   de1 = projl,
-   is_en1 = isl,
-   en2 = Inr,
-   de2 = projr,
-   is_en2 = isr
-   \<rparr>"
-
-abbreviation "l1 ip_state \<equiv> ((Logic (ooo_input_op {|1 :: 1|} ip_state) default_internal_summary) :: ('a, _, (_, 't) shared_state + (1 \<Rightarrow> 't antichain), 'c \<times> 't, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) dataflow_tree)"
-abbreviation "l2 os2 f \<equiv> Logic (batch_op os2 f) default_internal_summary"
-abbreviation "G f ip_state os2 \<equiv> Comp [(0 :: 2, 1) \<mapsto> (0, 1)] (l1 (ip_state :: (1, 'd1 + 'd2, 'd1, _) input_state)) (l2 (os2 :: (1, 'd1 + 'd2, 'd1, 'd2, _) operator_state_ty2) f)"
-
-abbreviation "compiled_batch_op inps f \<equiv> compile_dataflow (\<lambda> _. []) (G f (init_input_state default_internal_summary inps) (init_operator_state_ty2 default_internal_summary) )"
-
-value [GHC] "check_prefix 5500 [((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1)),((1, 1), (Inr 3, MyPair 1 0))] (compiled_batch_op (\<lambda> _. inps_test) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
-  (* value [GHC] "check_prefix 5500 [((1, 1), (Inr 7, MyPair 0 1)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 3, MyPair 1 0))] (compiled_batch_op (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"
-value [GHC] "check_prefix 5500 [((1, 1), (Inr 3, MyPair 1 0)), ((1, 1), (Inr 10, MyPair 1 1)), ((1, 1), (Inr 7, MyPair 0 1))] (compiled_batch_op (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))"  *)
-
-value [GHC] "ltaken 3 (lmap (\<lambda> io. case io of VOut p (x, t) \<Rightarrow> (projr x, t)) (trace_exec (compiled_batch_op (\<lambda> _. inps_test) (\<lambda> b. if b = [] then trace (STR ''Empty batch! ! !'') [] else [Max (set b)]))))"
-
-term DEBUG
 
 section \<open>Generalized Correctness\<close>
 

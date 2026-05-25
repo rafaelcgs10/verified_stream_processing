@@ -9,6 +9,14 @@ imports
   "Automatic_Refinement.Misc"
 begin
 
+definition "DEBUG = False"
+
+definition "trace = (if DEBUG then Debug.tracing else (\<lambda> x y. y))"
+
+lemma trace_simp[simp]:
+  "trace x r = r"
+  by (auto simp add: trace_def)
+
 lemma plus_minus_gt:
   "A + (B - C) > X \<Longrightarrow> C \<ge> (0 :: int) \<Longrightarrow>  A + B > X"
   by force

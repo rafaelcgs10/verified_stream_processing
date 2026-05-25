@@ -231,14 +231,19 @@ lemma mymin_code[code]: "mymin_code (set ((x :: 't :: ccompare \<times> 'loc :: 
   apply (simp add: ID_code ccompare comparator.comp_same)
   done
 
-fun print_2 where
-  "print_2 n = (if n = 0 then STR ''0'' else STR ''1'')"
+fun print_numeral where
+  "print_numeral n = (if n = 0 then STR ''0'' 
+   else (if n = 1 then STR ''1'' 
+   else (if n = 2 then STR ''2''   
+   else (if n = 3 then STR ''3''
+   else (if n = 4 then STR ''4'' else STR ''5''))))
+  )"
 
 definition show_port where
-  "show_port p = (case p of Src x \<Rightarrow> STR ''SRC '' + (print_2 x) | Trg x \<Rightarrow> STR ''TRG '' + (print_2 x))"
+  "show_port p = (case p of Src x \<Rightarrow> STR ''SRC '' + (print_numeral x) | Trg x \<Rightarrow> STR ''TRG '' + (print_numeral x))"
 
 definition show_loc where
-  "show_loc x = STR ''node: '' + print_2 (node x) + STR '', port: '' + show_port (port x)"
+  "show_loc x = STR ''node: '' + print_numeral (node x) + STR '', port: '' + show_port (port x)"
 
 
 lemma loc_2_1_cases:

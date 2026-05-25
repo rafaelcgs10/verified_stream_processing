@@ -14,22 +14,33 @@ text \<open>
 datatype ('id, 'p, 's, 'd, 't) dataflow_tree =
   "apply": Logic "('p option, 'p option, 's + 'd) op" "'p \<Rightarrow> 'p \<Rightarrow> 't list"
   | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "('id, 'p, 's, 'd, 't) dataflow_tree" "('id, 'p, 's, 'd, 't) dataflow_tree"
+  | Loop "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "('id, 'p, 's, 'd, 't) dataflow_tree"
 
 fun dataflow_tree_to_operator_aux where
   "dataflow_tree_to_operator_aux n chns (Logic op su) = (
-
     n + 1,
     map_op (case_option (Inl n) (\<lambda> p. Inr (n, p))) (case_option (Inl n) (\<lambda> p. Inr (n, p))) op)"
 | "dataflow_tree_to_operator_aux n chns (Comp wire dt1 dt2) = (
     let (n', op1) = dataflow_tree_to_operator_aux n chns dt1 in
     let (n'', op2) = dataflow_tree_to_operator_aux n' chns dt2 in
-    (n'', map_op (case_sum id id)
+    (n'', map_op 
+     (case_sum id id)
      (case_sum id id)
      (comp_op
       (case_sum (\<lambda> _. None) ((case_option None (Some o Inr)) o (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (n' + offset, q))))
       ((\<lambda> p. case p of Inl x \<Rightarrow> [] | Inr x \<Rightarrow> map (\<lambda> (d, t). Inr (d, t)) (chns x)))
        op1 op2))
    )"
+| "dataflow_tree_to_operator_aux n chns (Loop wire dt) = (
+   let (n', op) = dataflow_tree_to_operator_aux n chns dt in
+   (n', 
+   (map_op 
+     (case_sum id id)
+     (case_sum id id)
+    (loop_op 
+    (case_sum (\<lambda> _. None) ((case_option None (Some o Inr)) o (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (n' + offset, q)))) 
+    ((\<lambda> p. case p of Inl x \<Rightarrow> [] | Inr x \<Rightarrow> map (\<lambda> (d, t). Inr (d, t)) (chns x)))
+    op))))"
 
 definition "dataflow_tree_to_operator chns df = snd (dataflow_tree_to_operator_aux 0 chns df)"
 
@@ -51,15 +62,29 @@ fun dataflow_tree_to_graph_aux where
                    else []))
          )
    )"
+| "dataflow_tree_to_graph_aux n (Loop wire dt) = (
+   let (n', summary) = dataflow_tree_to_graph_aux n dt in
+   (n', \<lambda> l1 l2. if is_Src (port l1) \<and> is_Trg (port l2) then
+                 (case wire (node l1 - n, idp (port l1)) of
+                    None \<Rightarrow> summary l1 l2
+                  | Some (offset, q) \<Rightarrow>
+                     trace (STR ''Checking loop conn: '' + show_loc l1 + STR '', '' + show_loc l2 + STR '' Offset: '' + print_numeral offset + STR '' n: '' + print_numeral n + STR '', n': '' + print_numeral n')
+                           (if node l2 = n + offset \<and> q = idp (port l2) then trace (STR ''Found loop!'') [0] else []))
+                 else summary l1 l2))"
+
+term "trace (STR ''outs: '')"
+
+(* (if node l2 = n' + offset \<and> q = idp (port l2) then trace (STR ''Found loop!'') [0] else [])) *)
 
 fun nodes_count where
-  "nodes_count (Logic op su) = 1"
+  "nodes_count (Logic op su) = (1 :: nat)"
 | "nodes_count (Comp wire dt1 dt2) = nodes_count dt1 + nodes_count dt2"
+| "nodes_count (Loop wire dt) = nodes_count dt"
 
 fun op_conn where
   "op_conn su (nid, p) (nid', p') = (su (Loc nid (Src p)) (Loc nid' (Trg p')) \<noteq> {}\<^sub>A)"
 
-definition "dataflow_tree_to_graph (df :: ('id :: {minus,one,plus,zero,ord,enum,hashable}, _, _, _, _) dataflow_tree) = (
+definition "dataflow_tree_to_graph (df :: ('id :: {enum,minus,zero,hashable,numeral,ord}, _, _, _, _) dataflow_tree) = (
   let (_, raw_s) = dataflow_tree_to_graph_aux 0 df in
   let s = antichain_from_list oo raw_s in
   let ints = (\<lambda> n p1 p2. raw_s (Loc n (Trg p1)) (Loc n (Src p2))) in
@@ -82,6 +107,10 @@ lemma compile_dataflow_tree_aux_same_loc:
   subgoal for x1 df1 df2 n n'' intsum
     apply (clarsimp simp add: port.case_eq_if split: list.splits if_splits option.splits prod.splits; hypsubst_thin?)
     apply (metis list.simps(2))
+    done
+  subgoal for x1 df n n'' intsum
+    apply (clarsimp simp add: port.case_eq_if split: list.splits if_splits option.splits prod.splits; hypsubst_thin?)
+    apply metis
     done
   done
 
@@ -123,8 +152,8 @@ lemma dataflow_tree_to_graph_aux_Src_Trg_zero:
   apply (induct dt arbitrary: n m su)
    apply (clarsimp simp add:  antichain_from_list_singleton split: list.splits prod.splits if_splits option.splits)
   apply simp
-  apply (fastforce simp add: if_distrib  antichain_from_list_singleton split: prod.splits if_splits option.splits)
-  done
+   apply (fastforce simp add: if_distrib  antichain_from_list_singleton split: prod.splits if_splits option.splits)
+  by (fastforce simp add: if_distrib  antichain_from_list_singleton split: prod.splits if_splits option.splits)
 
 lemma dataflow_tree_to_graph_Src_Trg_zero:
   "antichain_from_list oo dataflow_tree_to_graph dt = su \<Longrightarrow>

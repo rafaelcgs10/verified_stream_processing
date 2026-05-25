@@ -15,6 +15,43 @@ imports
   Dataplane.Timely_Dataflow_Op
 begin
 
+definition zero_to_nat where
+  "zero_to_nat (n :: 0) = (0 :: nat)"
+definition one_to_nat where
+  "one_to_nat (n :: 1) = (0 :: nat)"
+definition two_to_nat where
+  "two_to_nat (n :: 2) = 
+   (if n = 0 
+   then (0 :: nat) 
+   else 1)"
+definition three_to_nat where
+  "three_to_nat (n :: 3) = 
+   (if n = 0 
+   then (0 :: nat) 
+   else (if n = 1 
+   then 1
+   else 2))"
+definition four_to_nat where
+  "four_to_nat (n :: 4) = 
+   (if n = 0 
+   then (0 :: nat) 
+   else (if n = 1 
+   then 1
+   else (if n = 2
+   then (2 :: nat) 
+   else 3)))"
+definition five_to_nat where
+  "five_to_nat (n :: 5) = 
+   (if n = 0 
+   then (0 :: nat) 
+   else (if n = 1 
+   then 1
+   else (if n = 2
+   then (2 :: nat) 
+   else (if n = 3
+   then (3 :: nat) 
+   else 4))))"
+
 abbreviation init_input_state where
 "init_input_state inps \<equiv> \<lparr> 
    intsum = default_internal_summary,
@@ -87,6 +124,60 @@ abbreviation "incr_op nid \<equiv> logic_map nid (increment_op p1 p1 1 init_oper
 
 abbreviation "comp_op_map \<equiv> map_op (case_sum id id) (case_sum id id)"
 
+abbreviation "inps0 \<equiv> (\<lambda> p. llist_of []) :: 'a \<Rightarrow> (nat, nat \<times> nat) event llist"
+abbreviation "inps1 \<equiv> \<lambda> p. llist_of [Data (0 :: nat) (12 :: nat, 12 :: nat), Data 0 (2, 2)]"
+
+
+abbreviation "l1 \<equiv> Logic (ooo_input_op {|0 :: 2|} (init_input_state inps1)) default_internal_summary"
+abbreviation "l2 \<equiv> Logic (concat_op {|p0, p1|} p0 init_operator_state) default_internal_summary"
+abbreviation "l3 \<equiv> Logic (collatz_op init_operator_state_ty2) default_internal_summary"
+abbreviation "l4 \<equiv> Logic (branch_op p0 p0 p1 (\<lambda> (x, t). snd x \<le> 1 \<or> t > 100) init_operator_state) default_internal_summary"
+abbreviation "l5 \<equiv> Logic (increment_op p1 p1 1 init_operator_state) (\<lambda> p1 p2. if p1 = p2 then [1] else [])"
+
+
+abbreviation G :: "(5, 2, (2, nat) shared_state + (2 \<Rightarrow> nat antichain), (nat \<times> nat) \<times> nat, nat) dataflow_tree" where
+  "G \<equiv> Comp [(0, 0) \<mapsto> (0, 0)] l1 (Loop [(3, 1) \<mapsto> (0, 1)] (Comp [(2, 1) \<mapsto> (0, 1)] (Comp [(1, 0) \<mapsto> (0, 0)] (Comp [(0, 0) \<mapsto> (0, 0)] l2 l3) l4) l5))"
+
+value "dataflow_tree_to_graph G (Loc 0 (Src 1)) (Loc 1 (Trg 1))"
+value "dataflow_tree_to_graph G (Loc 1 (Src 1)) (Loc 2 (Trg 1))"
+value "dataflow_tree_to_graph G (Loc 2 (Src 1)) (Loc 3 (Trg 1))"
+value "dataflow_tree_to_graph G (Loc 3 (Src 1)) (Loc 1 (Trg 1))"
+value "dataflow_tree_to_graph G (Loc 3 (Src 1)) (Loc 2 (Trg 1))"
+value "dataflow_tree_to_graph G (Loc 3 (Src 1)) (Loc 3 (Trg 1))"
+value "dataflow_tree_to_graph G (Loc 3 (Src 1)) (Loc 4 (Trg 1))"
+value "dataflow_tree_to_graph G (Loc 4 (Src 1)) (Loc 0 (Trg 1))"
+value "dataflow_tree_to_graph G (Loc 4 (Src 1)) (Loc 1 (Trg 1))"
+value "dataflow_tree_to_graph G (Loc 4 (Src 1)) (Loc 2 (Trg 1))"
+value "dataflow_tree_to_graph G (Loc 4 (Src 1)) (Loc 3 (Trg 1))"
+value "dataflow_tree_to_graph G (Loc 4 (Src 1)) (Loc 3 (Trg 1))"
+
+
+
+value "dataflow_tree_to_graph G (Loc 0 (Src 0)) (Loc 1 (Trg 1))"
+value "dataflow_tree_to_graph G (Loc 1 (Src 0)) (Loc 2 (Trg 1))"
+value "dataflow_tree_to_graph G (Loc 2 (Src 0)) (Loc 3 (Trg 1))"
+value "dataflow_tree_to_graph G (Loc 3 (Src 0)) (Loc 4 (Trg 1))"
+value "dataflow_tree_to_graph G (Loc 4 (Src 0)) (Loc 1 (Trg 1))"
+value "dataflow_tree_to_graph G (Loc 4 (Src 0)) (Loc 2 (Trg 1))"
+
+abbreviation "compiled \<equiv> compile_dataflow (\<lambda> _. []) G"
+
+
+definition "list_connections pnid pt su = 
+ map (\<lambda> ((nid, p), (nid', p')). ((pnid nid, pt p),(pnid nid', pt p')))
+ (filter (\<lambda> ((nid, p), (nid', p')). su (Loc nid (Src p)) (Loc nid' (Trg p')) \<noteq> []) (List.product(List.product Enum.enum Enum.enum) (List.product Enum.enum Enum.enum)))"
+
+value "list_connections five_to_nat two_to_nat (dataflow_tree_to_graph G)"
+
+value [GHC] "ltaken 1 (lmap (\<lambda> io. case io of VOut (nid, p) (x, t) \<Rightarrow> ((five_to_nat nid,  p), (x, t))) (trace_exec compiled))"
+
+
+find_consts "('a :: enum) \<Rightarrow> nat"
+
+term to_nat
+
+term "Abs_bit0 2"
+
 abbreviation "g0 \<equiv>
    comp_op_map (comp_op [Inr (nid0, p0) \<mapsto> Inr (nid1, p0)] (\<lambda> _. []) (conc_op nid0) (coll_op nid1))"
 
@@ -101,9 +192,6 @@ abbreviation "g3 \<equiv>
 
 abbreviation "g4 inps \<equiv>
    comp_op_map (comp_op [Inr (nid4, p0) \<mapsto> Inr (nid0, p0)] (\<lambda> _. []) (inp_op nid4 inps) g3)"
-
-abbreviation "inps0 \<equiv> (\<lambda> p. llist_of []) :: 'a \<Rightarrow> (nat, nat \<times> nat) event llist"
-abbreviation "inps1 \<equiv> \<lambda> p. llist_of [Data (0 :: nat) (12 :: nat, 12 :: nat), Data 0 (2, 2)]"
 
 abbreviation "my_op \<equiv> g4 inps1"
 
@@ -134,11 +222,13 @@ abbreviation "dt \<equiv> dataflow_op my_sg my_op"
 
 definition "r = (trace_exec dt :: (_, _ \<times> _, (nat \<times> nat) \<times> nat) VIO llist)"
  
-value [GHC] "ltaken 2 r"
+value [GHC] "ltaken 2 (lmap (\<lambda> io. case io of VOut (nid, p) (x, t) \<Rightarrow> ((five_to_nat nid, two_to_nat p), (x, t))) r)"
 
 
 value [GHC] "check_prefix 100000000 [((nid2, p0), ((2, 1), 0))] dt"
-value [GHC] "check_prefix 100000000 [((nid2, p0), ((4, 1), 1))] dt"
+
+
+(* value [GHC] "check_prefix 100000000 [((nid2, p0), ((4, 1), 1))] dt" *)
 
 (* 
 fun get_nid where

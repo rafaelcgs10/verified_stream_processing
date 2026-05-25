@@ -28,7 +28,7 @@ corec dataflow_op where
 
 lemma dataflow_op_code[code]:
   "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of
-     Read (Inl nid) f \<Rightarrow> trace (STR ''Reading from frontier at nid: '' + print_2 nid) (case propagate_all (summ sg) (pt_tr sg) of
+     Read (Inl nid) f \<Rightarrow> trace (STR ''Reading from frontier at nid: '' + print_numeral nid) (case propagate_all (summ sg) (pt_tr sg) of
          Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
          let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron)))))
       | None \<Rightarrow> \<oslash>)
@@ -36,7 +36,7 @@ lemma dataflow_op_code[code]:
    | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> trace (STR ''Writing out data at location: '' + show_loc (Loc nid (Src p))) (Write (dataflow_op sg op') (nid, p) x)
    | Silent op' \<Rightarrow> trace (STR ''Some silent step'') Silent (dataflow_op sg op')
    | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow>
-      trace (STR ''Reading progress at nid: '' + print_2 nid + STR '' cgs sizes: ('' + show_nat (length (cons st)) + STR '', '' + show_nat (length (inte st))  + STR '', '' + show_nat (length (prod st)) + STR '')''
+      trace (STR ''Reading progress at nid: '' + print_numeral nid + STR '' cgs sizes: ('' + show_nat (length (cons st)) + STR '', '' + show_nat (length (inte st))  + STR '', '' + show_nat (length (prod st)) + STR '')''
    ) (Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr :=change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op'))
    | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>))
    (let ops = delay_cset (not_nop sg) 10000 (choices op) in
