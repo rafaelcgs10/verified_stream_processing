@@ -27,20 +27,18 @@ fun dataflow_tree_to_operator_aux where
      (case_sum id id)
      (case_sum id id)
      (comp_op
-      (case_sum (\<lambda> _. None) ((case_option None (Some o Inr)) o (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (n' + offset, q))))
+      (case_sum (\<lambda> _. None) ((\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (Inr (n' + offset, q)))))
       ((\<lambda> p. case p of Inl x \<Rightarrow> [] | Inr x \<Rightarrow> map (\<lambda> (d, t). Inr (d, t)) (chns x)))
        op1 op2))
    )"
 | "dataflow_tree_to_operator_aux n chns (Loop wire dt) = (
    let (n', op) = dataflow_tree_to_operator_aux n chns dt in
    (n', 
-   (map_op 
-     (case_sum id id)
-     (case_sum id id)
-    (loop_op 
+   (
+    loop_op 
     (case_sum (\<lambda> _. None) ((case_option None (Some o Inr)) o (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (n' + offset, q)))) 
     ((\<lambda> p. case p of Inl x \<Rightarrow> [] | Inr x \<Rightarrow> map (\<lambda> (d, t). Inr (d, t)) (chns x)))
-    op))))"
+    op)))"
 
 definition "dataflow_tree_to_operator chns df = snd (dataflow_tree_to_operator_aux 0 chns df)"
 

@@ -169,9 +169,9 @@ definition "list_connections pnid pt su =
 
 value "list_connections five_to_nat two_to_nat (dataflow_tree_to_graph G)"
 
-value [GHC] "ltaken 1 (lmap (\<lambda> io. case io of VOut (nid, p) (x, t) \<Rightarrow> ((five_to_nat nid,  p), (x, t))) (trace_exec compiled))"
+value [GHC] "ltaken 2 (lmap (\<lambda> io. case io of VOut (nid, p) (x, t) \<Rightarrow> ((five_to_nat nid,  p), (x, t))) (trace_exec compiled))"
 
-
+term DEBUG
 find_consts "('a :: enum) \<Rightarrow> nat"
 
 term to_nat

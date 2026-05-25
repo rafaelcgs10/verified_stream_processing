@@ -189,7 +189,7 @@ lemma single_valued_inv_to_nxt_inj_on:
 
 lemma graph_summar_nt:
   assumes
-    \<open>raw_s = dataflow_tree_to_graph (dt :: ('a :: {enum,minus,one,plus,zero,hashable,linorder}, 'b :: {enum,hashable,linorder}, 'c, 'd, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) dataflow_tree)\<close>
+    \<open>raw_s = dataflow_tree_to_graph (dt :: ('a :: {enum,minus,zero,hashable,numeral,ord}, 'b :: {enum,zero,hashable,numeral}, 'c, 'd, 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot}) dataflow_tree)\<close>
     \<open>summ sg = antichain_from_list oo raw_s\<close>
     \<open>\<forall> n. intsum (os n) = (\<lambda> p1 p2. raw_s (Loc n (Trg p1)) (Loc n (Src p2)))\<close>
     \<open>nxt sg = graph_to_nxt (summ sg)\<close>
