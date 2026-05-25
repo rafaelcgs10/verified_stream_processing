@@ -12,6 +12,7 @@ imports
   Branch_op
   Increment_op
   Dataplane.Timely_Builder_Op
+  Dataplane.Timely_Dataflow_Op
 begin
 
 abbreviation init_input_state where
@@ -22,8 +23,8 @@ abbreviation init_input_state where
    produ = [],
    input = (\<lambda> _. []),
    outpu = (\<lambda> _. []),
-   front = Code.abort (STR ''Frontier not initialized'') (\<lambda> _ _. antichain_from_list []),
-   ocaps = (\<lambda> _. [\<bottom>]),
+   front = \<lambda> _. antichain_from_list bots,
+   ocaps = \<lambda> _. bots,
    initia = True,
    en1 = id,
    de1 = id,
@@ -39,8 +40,8 @@ abbreviation init_operator_state where
    produ = [],
    input = (\<lambda> _. []),
    outpu = (\<lambda> _. []),
-   front = Code.abort (STR ''Frontier not initialized'') (\<lambda> _ _. antichain_from_list []),
-   ocaps = (\<lambda> _. []),
+   front = \<lambda> _. antichain_from_list bots,
+   ocaps = \<lambda> _. bots,
    initia = True
    \<rparr>"
 
@@ -52,8 +53,8 @@ abbreviation init_operator_state_ty2 where
    produ = [],
    input = (\<lambda> _. []),
    outpu = (\<lambda> _. []),
-   front = Code.abort (STR ''Frontier not initialized'') (\<lambda> _ _. antichain_from_list []),
-   ocaps = (\<lambda> _. []),
+   front = \<lambda> _. antichain_from_list bots,
+   ocaps = \<lambda> _. bots,
    initia = True,
    en1 = id,
    de1 = id,
@@ -104,7 +105,7 @@ abbreviation "g4 inps \<equiv>
 abbreviation "inps0 \<equiv> (\<lambda> p. llist_of []) :: 'a \<Rightarrow> (nat, nat \<times> nat) event llist"
 abbreviation "inps1 \<equiv> \<lambda> p. llist_of [Data (0 :: nat) (12 :: nat, 12 :: nat), Data 0 (2, 2)]"
 
-abbreviation "op \<equiv> g4 inps1"
+abbreviation "my_op \<equiv> g4 inps1"
 
 definition "my_summ = (\<lambda> l1 l2.
    if l1 = Loc nid4 (Src p0) \<and> l2 = Loc nid0 (Trg p0) 
@@ -128,22 +129,57 @@ definition "my_summ = (\<lambda> l1 l2.
    else {}\<^sub>A)"
 
 
-abbreviation \<open>sg \<equiv> init_subgraph my_summ (map (\<lambda> (nid, p). (Loc nid (Src p), bot, 1)) (List.product Enum.enum Enum.enum))\<close>
-abbreviation "dt \<equiv> dataflow_op sg op"
+abbreviation \<open>my_sg \<equiv> init_subgraph my_summ\<close>
+abbreviation "dt \<equiv> dataflow_op my_sg my_op"
 
 definition "r = (trace_exec dt :: (_, _ \<times> _, (nat \<times> nat) \<times> nat) VIO llist)"
+ 
+value [GHC] "ltaken 2 r"
 
-value [GHC] r
+
+value [GHC] "check_prefix 100000000 [((nid2, p0), ((2, 1), 0))] dt"
+value [GHC] "check_prefix 100000000 [((nid2, p0), ((4, 1), 1))] dt"
+
+(* 
+fun get_nid where
+  "get_nid (Read (Inl nid) f) = Some nid"
+| "get_nid (Read (Inr (nid, p)) f) = Some nid"
+| "get_nid (Write op (Inr (nid, p)) (Inr x)) = Some nid"
+| "get_nid (Write op (Inl nid) (Inl (Inl st))) = Some nid"
+| "get_nid _ = None"
+
+definition "is_busy sg op = (case get_nid op of None \<Rightarrow> True 
+ | Some nid \<Rightarrow> 
+    (\<forall> p. frontier (c_imp (pt_tr sg) (Loc nid (Trg p))) \<noteq> {}\<^sub>A \<or>
+          frontier (c_imp (pt_tr sg) (Loc nid (Src p))) \<noteq> {}\<^sub>A))"
+
+corec opt_dataflow_op where
+  "opt_dataflow_op sg op = Choice (cimage (\<lambda> op. case op of
+     Read (Inl nid) f \<Rightarrow> (case propagate_all (summ sg) (pt_tr sg) of
+         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
+         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (opt_dataflow_op sg' (f (Inl (Inr (frontier o imp_fron)))))
+      | None \<Rightarrow> \<oslash>)
+   | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda> x. opt_dataflow_op sg (f (Inr x)))
+   | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (opt_dataflow_op sg op') (nid, p) x
+   | Silent op' \<Rightarrow> Silent (opt_dataflow_op sg op')
+   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (opt_dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op')
+   | _ \<Rightarrow> Code.abort (STR ''Operator in opt_dataflow_op breaks contract'') (\<lambda> _. \<oslash>))
+   (cfilter (\<lambda> op. not_nop sg op)
+   (choices op))
+   )"
+
+abbreviation "opt_dt \<equiv> opt_dataflow_op my_sg my_op"
+definition "opt_r = (trace_exec opt_dt :: (_, _ \<times> _, (nat \<times> nat) \<times> nat) VIO llist)"
+value [GHC] "opt_r"
 
 
-value [GHC] "check_prefix 500 [((nid2, p0), ((2, 1), 0))] dt"
-definition "r2 = check_prefix 250 [((nid2, p0), ((4, 1), 1))] dt"
 
-value [GHC] r2
-
+value [GHC] "check_prefix 100000000 [((nid2, p0), ((2, 1), 0))] opt_dt"
+ *)
 (* 
  export_code r2 in Haskell module_name Test10
  *)
 
+term not_nop
 
 end

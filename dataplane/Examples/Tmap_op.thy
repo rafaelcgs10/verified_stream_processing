@@ -4,7 +4,9 @@ imports
   Dataplane.Timely_Builder_Op
 begin
 
-definition \<open>tmap_op ip op os f = builder_op False {|ip|} {|op|} os (\<lambda> os. {|
+definition \<open>tmap_op ip op os f = builder_op False {|ip|} {|op|} os (\<lambda> os.
+    if \<forall> p. ocaps os p = [] then {||} else
+    {|
       let result = map (\<lambda> (d, t). (f (de1 os d), t)) (input os ip) in
       let os =  trace (STR ''producing from tmap op'') (produces os (map (\<lambda> (d, t). (en2 os d, Cap t op)) result)) in
       let os = drop_caps os (concat (map (\<lambda> p. map (\<lambda> t. Cap t p) (ocaps os p)) Enum.enum)) in

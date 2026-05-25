@@ -389,5 +389,49 @@ definition "graph_to_nxt summary =
 abbreviation initial_conf where
   "initial_conf \<equiv> \<lparr>c_work = \<lambda> l. if is_Src (port l) then zmset_of (mset_set (set bots)) else {#}\<^sub>z, c_pts = \<lambda> l. if is_Src (port l) then to_zmset bots else {#}\<^sub>z, c_imp = \<lambda> _. {#}\<^sub>z\<rparr>"
 
+definition "has_progress st = (cons st \<noteq> [] \<or> inte st \<noteq> [] \<or> prod st \<noteq> [])"
+
+
+abbreviation "not_nop sg op \<equiv> (case op of Read (Inl nid) f \<Rightarrow> upfro sg nid | Write _ (Inl _) (Inl (Inl st)) \<Rightarrow> has_progress st | _ \<Rightarrow> True)"
+
+fun delay_nop where
+  "delay_nop F 0 xs lxs = xs @@- lxs"
+| "delay_nop F n xs LNil = llist_of xs"
+| "delay_nop F (Suc n) xs (LCons x lxs) = (if F x then LCons x (delay_nop F n xs lxs) else delay_nop F n (xs @ [x]) lxs)"
+declare delay_nop.simps[code del]
+declare delay_nop.simps[simp del]
+
+lemma delay_nop_code[code]:
+  "delay_nop F n xs lxs =
+  (if n = 0 then trace (STR ''Natural too small'') (xs @@- lxs) else
+  (case lxs of LNil \<Rightarrow> llist_of xs | LCons x lxs \<Rightarrow> (if F x then LCons x (delay_nop F (n - 1) xs lxs) else trace (STR ''Delay'') (delay_nop F (n - 1) (xs @ [x]) lxs))))"
+  apply (cases n)
+  apply (simp_all add: delay_nop.simps split: llist.splits)
+  done
+
+definition "delay_cset (F :: ('a, 'b, 'c) op \<Rightarrow> bool) (n :: nat) (C :: (('a, 'b, 'c) op) cset) = C"
+declare delay_cset_def[code drop]
+
+lemma delay_cset_code_aux:
+  "cUn (delay_cset F n (cset_of_llist lxs)) (cset_from_list xs)  = cset_of_llist (delay_nop F n xs lxs)"
+  unfolding delay_cset_def
+  apply (induct n arbitrary: lxs xs)
+   apply (simp_all add: delay_nop.simps split: llist.splits)
+  subgoal for n lxs xs
+    apply (cases lxs)
+   apply (simp_all add: delay_nop.simps split: llist.splits)
+     apply (metis cset_of_llist_lshift shift_LNil)
+   apply (auto simp add: delay_nop.simps split: llist.splits simp flip: cin.rep_eq)
+    apply (metis cUn_cinsert_left cinsert_code)
+    apply (metis cUn_cinsert_left cinsert_code)
+    apply (metis cset_of_llist_lshift snoc_shift)
+    apply (metis cset_of_llist_lshift snoc_shift)
+    done
+  done
+
+lemma delay_cset_code[code]:
+  "delay_cset F n (cset_of_llist lxs) = cset_of_llist (delay_nop F n [] lxs)"
+  by (simp flip: delay_cset_code_aux)
+
 
 end

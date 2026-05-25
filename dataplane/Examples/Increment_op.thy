@@ -4,7 +4,9 @@ imports
   Dataplane.Timely_Builder_Op
 begin
 
-definition \<open>increment_op_logic ip op inc = (\<lambda>os. {|
+definition \<open>increment_op_logic ip op inc = (\<lambda>os. 
+    if \<forall> p. ocaps os p = [] then {||} else
+    {|
       let result = map (\<lambda>(d, t). (d, t + inc)) (input os ip);
           os' = trace (STR ''producing from incr op'') (produces os (map (\<lambda>(d, t). (d, Cap t op)) result));
           os'' = drop_caps os' (concat (map (\<lambda>p. map (\<lambda>t. Cap t p) (ocaps os' p)) Enum.enum))
