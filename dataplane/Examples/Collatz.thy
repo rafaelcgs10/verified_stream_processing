@@ -67,20 +67,31 @@ abbreviation init_operator_state_ty2 where
 
 
 abbreviation "collatz_op os \<equiv> tmap_op 0 0 os (\<lambda> (n, x). if even x then (n, x div 2) else (n, 3 * x + 1))"
-abbreviation "inps0 \<equiv> (\<lambda> p. llist_of []) :: 'a \<Rightarrow> (nat, nat \<times> nat) event llist"
-abbreviation "inps1 \<equiv> \<lambda> p. llist_of [Data (0 :: nat) (12 :: nat, 12 :: nat), Data 0 (2, 2)]"
-abbreviation "l1 \<equiv> Logic (ooo_input_op {|0 :: 2|} (init_input_state inps1)) default_internal_summary"
-abbreviation "l2 \<equiv> Logic (concat_op {|0, 1|} 0 init_operator_state) default_internal_summary"
-abbreviation "l3 \<equiv> Logic (collatz_op init_operator_state_ty2) default_internal_summary"
-abbreviation "l4 \<equiv> Logic (branch_op 0 0 1 (\<lambda> (x, t). snd x \<le> 1 \<or> t > 100) init_operator_state) default_internal_summary"
-abbreviation "l5 \<equiv> Logic (increment_op 1 1 1 init_operator_state) (\<lambda> p1 p2. if 1 = p2 then [1] else [])"
+abbreviation "inps \<equiv> \<lambda> p. llist_of [Data (0 :: nat) (12 :: nat, 12 :: nat), Data 0 (2, 2)]"
+abbreviation "n1 \<equiv> Logic (ooo_input_op {|0 :: 2|} (init_input_state inps)) default_internal_summary"
+abbreviation "n2 \<equiv> Logic (concat_op {|0, 1|} 0 init_operator_state) default_internal_summary"
+abbreviation "n3 \<equiv> Logic (collatz_op init_operator_state_ty2) default_internal_summary"
+abbreviation "n4 \<equiv> Logic (branch_op 0 0 1 (\<lambda> (x, t). snd x \<le> 1 \<or> t > 100) init_operator_state) default_internal_summary"
+abbreviation "n5 \<equiv> Logic (increment_op 1 1 1 init_operator_state) (\<lambda> p1 p2. if 1 = p2 then [1] else [])"
+
+definition tscomp_op (infixl "\<sqdot>" 65) where
+  "tscomp_op op1 op2 = Comp (\<lambda> (nid, p). if nid = 0 then Some (0, p) else None) op1 op2"
 
 abbreviation G :: "(5, 2, (2, nat) shared_state + (2 \<Rightarrow> nat antichain), (nat \<times> nat) \<times> nat, nat) dataflow_tree" where
-  "G \<equiv> Comp [(0, 0) \<mapsto> (0, 0)] l1 (Loop [(3, 1) \<mapsto> (0, 1)] (Comp [(2, 1) \<mapsto> (0, 1)] (Comp [(1, 0) \<mapsto> (0, 0)] (Comp [(0, 0) \<mapsto> (0, 0)] l2 l3) l4) l5))"
+  "G \<equiv> Comp [(0, 0) \<mapsto> (0, 0)] n1 (Loop [(3, 1) \<mapsto> (0, 1)] ((Comp [(0, 0) \<mapsto> (0, 0)] n2 (Comp [(0, 0) \<mapsto> (0, 0)] n3 (Comp [(0, 1) \<mapsto> (0, 1)] n4 n5)))))"
+
+value "list_connections (dataflow_tree_to_graph G)"
 
 abbreviation "compiled \<equiv> compile_dataflow (\<lambda> _. []) G"
-
 value [GHC] "ltaken 2 (lmap show_Outs (trace_exec compiled))"
+
+
+abbreviation G' :: "(5, 2, (2, nat) shared_state + (2 \<Rightarrow> nat antichain), (nat \<times> nat) \<times> nat, nat) dataflow_tree" where
+  "G' \<equiv> Comp [(0, 0) \<mapsto> (0, 0)] n1 (Loop [(3, 1) \<mapsto> (0, 1)] (Comp [(2, 1) \<mapsto> (0, 1)] (Comp [(1, 0) \<mapsto> (0, 0)] (Comp [(0, 0) \<mapsto> (0, 0)] n2 n3) n4) n5))"
+
+abbreviation "compiled' \<equiv> compile_dataflow (\<lambda> _. []) G"
+value [GHC] "ltaken 2 (lmap show_Outs (trace_exec compiled'))"
+
 
 (* value [GHC] "check_prefix 100000000 [((nid2, 0), ((4, 1), 1))] dt" *)
 

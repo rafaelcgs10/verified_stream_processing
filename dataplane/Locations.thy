@@ -305,5 +305,33 @@ definition "list_connections su =
 
 definition "show_Outs io = (case io of VOut (nid, p) (x, t) \<Rightarrow> (Loc (to_nat_numeral nid) (Src (to_nat_numeral p)), (x, t)))"
 
+lemma num2_cases:
+  fixes n :: 2
+  obtains (0) \<open>n = 0\<close> | (1) \<open>n = 1\<close>
+proof (cases n)
+  case (of_int z)
+  then consider \<open>z = 0\<close> | \<open>z = 1\<close> by fastforce
+  thus ?thesis using of_int(1) 0 1 by fastforce
+qed
+
+lemma num3_cases:
+  fixes n :: 3
+  obtains (0) \<open>n = 0\<close> | (1) \<open>n = 1\<close> | (2) \<open>n = 2\<close>
+proof (cases n)
+  case (of_int z)
+  then consider \<open>z = 0\<close> | \<open>z = 1\<close> | \<open>z = 2\<close> by fastforce
+  then show ?thesis using of_int(1) 0 1 2 by fastforce
+qed
+
+lemma num2_neq:
+  fixes n :: 2
+  shows \<open>n \<noteq> 0 \<Longrightarrow> n = 1\<close> \<open>n \<noteq> 1 \<Longrightarrow> n = 0\<close>
+  using num2_cases by meson+
+
+lemma num3_neq:
+  fixes n :: 3
+  shows \<open>n \<noteq> 0 \<Longrightarrow> n \<noteq> 1 \<Longrightarrow> n = 2\<close> \<open>n \<noteq> 0 \<Longrightarrow> n \<noteq> 2 \<Longrightarrow> n = 1\<close> \<open>n \<noteq> 1 \<Longrightarrow> n \<noteq> 2 \<Longrightarrow> n = 0\<close>
+  using num3_cases by meson+
+
 
 end
