@@ -45,7 +45,7 @@ abbreviation "delayed_cap c t \<equiv>
             inte = [(out c, time c, -1), (out c, time c + abs t, 1)],
             prod = [] \<rparr>)))"
 
-abbreviation "pull i f \<equiv> (Read ((trace (STR ''Reading data'') Some) i)
+abbreviation "pull i f \<equiv> (Read (Some i)
   (\<lambda> x. case x of
     (Inr (d, t)) \<Rightarrow> Write (f (d, Cap t 0)) None (Inl (Inl \<lparr>  cons = [(i, t, 1)], inte = [(i, t, 1)], prod = [] \<rparr>))
    | _ \<Rightarrow> \<oslash>))"
@@ -115,7 +115,7 @@ definition "obtain_progress os = (os\<lparr> consu := [], inter := [], produ := 
 
 definition "drop_cap os cap = os\<lparr> inter := inter os @ [(out cap, time cap, -1)], ocaps := (ocaps os) ((out cap) := remove_last (time cap) (ocaps os (out cap))) \<rparr>"
 
-definition "drop_caps os caps = trace (STR ''Drop caps'')  os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps, ocaps := (\<lambda> p. list_diff (ocaps os p) (map time (filter (\<lambda> cap. out cap = p) caps))) \<rparr>"
+definition "drop_caps os caps = os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps, ocaps := (\<lambda> p. list_diff (ocaps os p) (map time (filter (\<lambda> cap. out cap = p) caps))) \<rparr>"
 
 definition "add_cap os p t = os\<lparr> inter := inter os @ [(p, t, 1)], ocaps := (ocaps os) (p := ocaps os p @ [t])  \<rparr>"
 
@@ -395,8 +395,8 @@ declare delay_nop.simps[simp del]
 
 lemma delay_nop_code[code]:
   "delay_nop F n xs lxs =
-  (if n = 0 then trace (STR ''Natural too small'') (xs @@- lxs) else
-  (case lxs of LNil \<Rightarrow> llist_of xs | LCons x lxs \<Rightarrow> (if F x then LCons x (delay_nop F (n - 1) xs lxs) else trace (STR ''Delay'') (delay_nop F (n - 1) (xs @ [x]) lxs))))"
+  (if n = 0 then (xs @@- lxs) else
+  (case lxs of LNil \<Rightarrow> llist_of xs | LCons x lxs \<Rightarrow> (if F x then LCons x (delay_nop F (n - 1) xs lxs) else (delay_nop F (n - 1) (xs @ [x]) lxs))))"
   apply (cases n)
   apply (simp_all add: delay_nop.simps split: llist.splits)
   done

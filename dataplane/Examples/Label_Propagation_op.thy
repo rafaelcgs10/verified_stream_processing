@@ -100,16 +100,19 @@ definition label_propagation_op_logic where
     in {|drop_cap (produces os' batch) (Cap t 1)|}))
   (let P = \<lambda>t. \<forall>n < length (all_vertices os (myfst t)).
          \<not> frontier_less_equal (front os 0 + front os 1) (MyPair (myfst t) n);
-       below_times = filter P (ocaps os 0);
+       below_times = trace (STR ''ocaps1: '' + show_list (show_prod show_nat show_nat) (map to_prod (ocaps os 1))) (filter P (ocaps os 0));
        output_times = mergesort_remdups (map myfst below_times);
        batch = map (\<lambda>t. let cap = Cap (MyPair t 0) 0 in (en2 os (set (map set
           (group_by (\<lambda>v1 v2. min_label os t v1 = min_label os t v2) (all_vertices os t)))), cap))
-        output_times
-   in if batch = []
+        (trace (STR ''below_times: '' + show_list show_nat (map myfst below_times) + STR '', ocaps: '' + show_list show_nat (map myfst (ocaps os 0)) + STR '', outpu_times: '' + show_list show_nat output_times)
+         output_times)
+   in if trace (STR ''batch: '' + show_list show_nat (map (myfst o time o snd) batch)) batch = []
         then {||}
-        else {|drop_caps (produces os batch) (map (\<lambda>t. Cap t 0) below_times
-          @ map (\<lambda>t. Cap t 1) (filter P (ocaps os 1)))|})\<close>
+        else {|(drop_caps ((produces os batch)) (map (\<lambda>t. Cap t 0) below_times))|})\<close>
 
+find_consts "(_, _) myprod \<Rightarrow> _ \<times> _"
+
+(* @ map (\<lambda>t. Cap t 1) (filter P (ocaps os 1)) *)
 definition label_propagation_op where
   \<open>label_propagation_op os = builder_op True cUNIV cUNIV os label_propagation_op_logic\<close>
 

@@ -28,16 +28,15 @@ corec dataflow_op where
 
 lemma dataflow_op_code[code]:
   "dataflow_op sg op = Choice (cimage (\<lambda> op. case op of
-     Read (Inl nid) f \<Rightarrow> trace (STR ''Reading from frontier at nid: '' + print_numeral nid) (case propagate_all (summ sg) (pt_tr sg) of
+     Read (Inl nid) f \<Rightarrow> (case propagate_all (summ sg) (pt_tr sg) of
          Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
          let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (dataflow_op sg' (f (Inl (Inr (frontier o imp_fron)))))
       | None \<Rightarrow> \<oslash>)
    | Read (Inr (nid, p)) f \<Rightarrow>  (Read (nid, p) (\<lambda> x. dataflow_op sg (f (Inr x))))
-   | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> trace (STR ''Writing out data at location: '' + show_loc (Loc nid (Src p))) (Write (dataflow_op sg op') (nid, p) x)
-   | Silent op' \<Rightarrow> trace (STR ''Some silent step'') Silent (dataflow_op sg op')
+   | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> (Write (dataflow_op sg op') (nid, p) x)
+   | Silent op' \<Rightarrow> Silent (dataflow_op sg op')
    | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow>
-      trace (STR ''Reading progress at nid: '' + print_numeral nid + STR '' cgs sizes: ('' + show_nat (length (cons st)) + STR '', '' + show_nat (length (inte st))  + STR '', '' + show_nat (length (prod st)) + STR '')''
-   ) (Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr :=change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op'))
+      (Silent (dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr :=change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op'))
    | _ \<Rightarrow> Code.abort (STR ''Operator in dataflow_op breaks contract'') (\<lambda> _. \<oslash>))
    (let ops = delay_cset (not_nop sg) 10000 (choices op) in
     let ops2 = delay_cset (is_Silent) 10000 ops in
@@ -176,6 +175,35 @@ definition "compile_dataflow chns dt = (let summary = antichain_from_list oo (da
                                     let op = dataflow_tree_to_operator chns dt in
                                     let sg = init_subgraph summary in
                                     dataflow_op sg op)"
+
+
+
+fun get_nid where
+  "get_nid (Read (Inl nid) f) = Some nid"
+| "get_nid (Read (Inr (nid, p)) f) = Some nid"
+| "get_nid (Write op (Inr (nid, p)) (Inr x)) = Some nid"
+| "get_nid (Write op (Inl nid) (Inl (Inl st))) = Some nid"
+| "get_nid _ = None"
+
+definition "is_busy sg op = (case get_nid op of None \<Rightarrow> True 
+ | Some nid \<Rightarrow> 
+    (\<forall> p. frontier (c_imp (pt_tr sg) (Loc nid (Trg p))) \<noteq> {}\<^sub>A \<or>
+          frontier (c_imp (pt_tr sg) (Loc nid (Src p))) \<noteq> {}\<^sub>A))"
+
+corec opt_dataflow_op where
+  "opt_dataflow_op sg op = Choice (cimage (\<lambda> op. case op of
+     Read (Inl nid) f \<Rightarrow> (case propagate_all (summ sg) (pt_tr sg) of
+         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
+         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (opt_dataflow_op sg' (f (Inl (Inr (frontier o imp_fron)))))
+      | None \<Rightarrow> \<oslash>)
+   | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda> x. opt_dataflow_op sg (f (Inr x)))
+   | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (opt_dataflow_op sg op') (nid, p) x
+   | Silent op' \<Rightarrow> Silent (opt_dataflow_op sg op')
+   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (opt_dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op')
+   | _ \<Rightarrow> Code.abort (STR ''Operator in opt_dataflow_op breaks contract'') (\<lambda> _. \<oslash>))
+   (cfilter (\<lambda> op. is_busy sg op \<and> not_nop sg op)
+   (choices op))
+   )"
 
 
 end

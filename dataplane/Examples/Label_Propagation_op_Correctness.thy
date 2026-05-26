@@ -32,14 +32,14 @@ abbreviation \<open>initial_state_input lxs \<equiv> \<lparr>
    \<rparr> :: (_, _, _, _) input_state\<close>
 
 abbreviation \<open>initial_state_label_prop \<equiv> \<lparr>
-   intsum = (\<lambda>_ _. [0]),
+   intsum = (\<lambda>p1 p2. if p1 = 0 then [0] else if p2 = 1 then [0] else []),
    consu = [],
    inter = [],
    produ = [],
    input = (\<lambda>_. []),
    outpu = (\<lambda>_. []),
    front = \<lambda> _. antichain_from_list bots,
-   ocaps = (\<lambda>_. bots),
+   ocaps = (\<lambda>_. []),
    initia = False,
    en1 = Inl,
    de1 = projl,
@@ -90,7 +90,7 @@ definition \<open>raw_summary = (\<lambda>l1 l2.
    else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 1)
    then [0]
    else if l1 = Loc 1 (Trg 1) \<and> l2 = Loc 1 (Src 0)
-   then [0]
+   then []
    else if l1 = Loc 1 (Trg 1) \<and> l2 = Loc 1 (Src 1)
    then [0]
    else if l1 = Loc 1 (Src 1) \<and> l2 = Loc 2 (Trg 0)
@@ -103,10 +103,21 @@ definition \<open>raw_summary = (\<lambda>l1 l2.
 
 abbreviation \<open>test_sg \<equiv> init_subgraph (antichain_from_list \<circ>\<circ> raw_summary)\<close>
 abbreviation \<open>test_op \<equiv> dataflow_op test_sg cc_op\<close>
+abbreviation \<open>opt_test_op \<equiv> opt_dataflow_op test_sg cc_op\<close>
 
 (* Why don't I get traces when I set initia to True for the increment operator? *)
-value [GHC] \<open>ltaken 1 (trace_exec test_op)\<close>
+(* value [GHC] \<open>ltaken 1 (lmap show_Outs  (trace_exec opt_test_op))\<close>
+ *)
+term DEBUG
 
+definition "r = (ltaken 1 (lmap show_Outs  (trace_exec opt_test_op)) = [])"
+
+
+ export_code r in Haskell module_name Test6
+
+(* 
+value [GHC] \<open>ltaken 1 (trace_exec test_op)\<close>
+ *)
 definition collection_le where
   \<open>collection_le lxs t = list_of (lmap (\<lambda>e. case e of Data _ d \<Rightarrow> d)
   (lfilter (\<lambda>e. case e of Data t' _ \<Rightarrow> t' \<le> t | _ \<Rightarrow> False) lxs))\<close>

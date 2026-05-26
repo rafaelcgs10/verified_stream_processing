@@ -95,42 +95,7 @@ value [GHC] "ltaken 2 (lmap show_Outs (trace_exec compiled'))"
 
 (* value [GHC] "check_prefix 100000000 [((nid2, 0), ((4, 1), 1))] dt" *)
 
-(* 
-fun get_nid where
-  "get_nid (Read (Inl nid) f) = Some nid"
-| "get_nid (Read (Inr (nid, p)) f) = Some nid"
-| "get_nid (Write op (Inr (nid, p)) (Inr x)) = Some nid"
-| "get_nid (Write op (Inl nid) (Inl (Inl st))) = Some nid"
-| "get_nid _ = None"
 
-definition "is_busy sg op = (case get_nid op of None \<Rightarrow> True 
- | Some nid \<Rightarrow> 
-    (\<forall> p. frontier (c_imp (pt_tr sg) (Loc nid (Trg p))) \<noteq> {}\<^sub>A \<or>
-          frontier (c_imp (pt_tr sg) (Loc nid (Src p))) \<noteq> {}\<^sub>A))"
-
-corec opt_dataflow_op where
-  "opt_dataflow_op sg op = Choice (cimage (\<lambda> op. case op of
-     Read (Inl nid) f \<Rightarrow> (case propagate_all (summ sg) (pt_tr sg) of
-         Some conf' \<Rightarrow> let sg' = sg\<lparr> pt_tr := conf', upfro := (upfro sg)(nid := False) \<rparr> in
-         let imp_fron = (\<lambda> p. c_imp (pt_tr sg') (Loc nid (Trg p))) in Silent (opt_dataflow_op sg' (f (Inl (Inr (frontier o imp_fron)))))
-      | None \<Rightarrow> \<oslash>)
-   | Read (Inr (nid, p)) f \<Rightarrow> Read (nid, p) (\<lambda> x. opt_dataflow_op sg (f (Inr x)))
-   | Write op' (Inr (nid, p)) (Inr x) \<Rightarrow> Write (opt_dataflow_op sg op') (nid, p) x
-   | Silent op' \<Rightarrow> Silent (opt_dataflow_op sg op')
-   | Write op' (Inl nid) (Inl (Inl st)) \<Rightarrow> Silent (opt_dataflow_op (sg\<lparr> upfro := (\<lambda> _. True), pt_tr := change_multiplicities (summ sg) (extract_progress nid (nxt sg) st) (pt_tr sg) \<rparr>) op')
-   | _ \<Rightarrow> Code.abort (STR ''Operator in opt_dataflow_op breaks contract'') (\<lambda> _. \<oslash>))
-   (cfilter (\<lambda> op. not_nop sg op)
-   (choices op))
-   )"
-
-abbreviation "opt_dt \<equiv> opt_dataflow_op my_sg my_op"
-definition "opt_r = (trace_exec opt_dt :: (_, _ \<times> _, (nat \<times> nat) \<times> nat) VIO llist)"
-value [GHC] "opt_r"
-
-
-
-value [GHC] "check_prefix 100000000 [((nid2, 0), ((2, 1), 0))] opt_dt"
- *)
 (* 
  export_code r2 in Haskell module_name Test10
  *)

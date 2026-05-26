@@ -9,7 +9,7 @@ imports
   "Automatic_Refinement.Misc"
 begin
 
-definition "DEBUG = False"
+definition "DEBUG = True"
 
 definition "trace = (if DEBUG then Debug.tracing else (\<lambda> x y. y))"
 
