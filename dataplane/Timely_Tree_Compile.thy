@@ -64,9 +64,7 @@ fun dataflow_tree_to_graph_aux where
                  then (if is_Src (port l1) \<and> is_Trg (port l2) then
                  (case wire (node l1 - n, idp (port l1)) of
                     None \<Rightarrow> summary l1 l2
-                  | Some (offset, q) \<Rightarrow>
-                     trace (STR ''Checking loop conn: '' + show_loc l1 + STR '', '' + show_loc l2 + STR '' Offset: '' + print_numeral offset + STR '' n: '' + print_numeral n + STR '', n': '' + print_numeral n')
-                           (if node l2 = n + offset \<and> q = idp (port l2) then trace (STR ''Found loop!'') [0] else []))
+                  | Some (offset, q) \<Rightarrow> (if node l2 = n + offset \<and> q = idp (port l2) then trace (STR ''Found loop!'') [0] else []))
                  else summary l1 l2)
                  else Code.abort (STR ''Summary out of bounds'') (\<lambda> _. [])))"
 
@@ -79,10 +77,12 @@ fun nodes_count where
 | "nodes_count (Comp wire dt1 dt2) = nodes_count dt1 + nodes_count dt2"
 | "nodes_count (Loop wire dt) = nodes_count dt"
 
+
+
 fun op_conn where
   "op_conn su (nid, p) (nid', p') = (su (Loc nid (Src p)) (Loc nid' (Trg p')) \<noteq> {}\<^sub>A)"
 
-definition "dataflow_tree_to_graph (df :: ('id :: {enum,minus,zero,hashable,numeral,ord}, _, _, _, _) dataflow_tree) = (
+definition "dataflow_tree_to_graph (df :: ('id :: {minus,one,plus,zero,ord,enum,hashable}, _, _, _, _) dataflow_tree) = (
   let (_, raw_s) = dataflow_tree_to_graph_aux 0 df in
   let s = antichain_from_list oo raw_s in
   let ints = (\<lambda> n p1 p2. raw_s (Loc n (Trg p1)) (Loc n (Src p2))) in
