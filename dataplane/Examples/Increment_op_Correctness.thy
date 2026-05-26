@@ -3,6 +3,8 @@ theory Increment_op_Correctness
 imports
   Ooo_Input_op_Correctness
   Increment_op
+  Source_op
+  Dataplane.Timely_Dataflow_Op
 begin
 
 (* TODO Move. *)
@@ -127,12 +129,12 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
         for os2' :: "(1, 'b, 'c, 'e) operator_state_scheme"
       proof -
         have outpu_os2': \<open>outpu os2' 1 = outpu os2 1 @ map (\<lambda>(d, t). (d, t + inc)) (input os2 1)\<close>
-          using that(2) unfolding increment_op_logic_def drop_caps_def produces_def by (simp split: prod.splits)
-        have input_os2': \<open>input os2' 1 = []\<close> using that(2) unfolding increment_op_logic_def by simp
+          using that(2) unfolding trace_simp increment_op_logic_def drop_caps_def produces_def by (simp split: prod.splits if_splits)
+        have input_os2': \<open>input os2' 1 = []\<close> using that(2) unfolding increment_op_logic_def by (simp split: prod.splits if_splits)
         have \<open>my_source_op f inc os1 buf os2 = my_source_op f inc os1 buf os2'\<close>
           using outpu_os2' input_os2' unfolding my_source_op_def by (simp add: lshift_append_lshift)
         moreover have \<open>invariant f inc os1 buf os2'\<close> using that unfolding invariant_def
-            increment_op_logic_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def)
+            increment_op_logic_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def split: prod.splits if_splits)
         ultimately show ?thesis unfolding R_def by blast
       qed
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2'
@@ -244,17 +246,18 @@ next
               unfolding invariant_def my_increment_op_def increment_op_def
               by (auto intro!: step_Tau_dataflow_op_Tau_intro)
             obtain os2_2 where os2_2: \<open>os2_2 |\<in>| increment_op_logic 1 1 inc ?os2_1\<close>
-              unfolding increment_op_logic_def by blast
+              unfolding increment_op_logic_def trace_simp Let_def 
+              using inv invariant_def by force
             hence initia_os2_2: \<open>initia os2_2\<close> using that(1) unfolding invariant_def increment_op_logic_def
                 consumes_def add_caps_def drop_caps_def produces_def by simp
-            have input_os2_2: \<open>input os2_2 1 = []\<close> using os2_2 unfolding increment_op_logic_def by simp
+            have input_os2_2: \<open>input os2_2 1 = []\<close> using os2_2 unfolding increment_op_logic_def by (simp split: prod.splits if_splits)
             have outpu_os2_2: \<open>outpu os2_2 1 = [(d, t)]\<close> using outpu_os2_Nil input_os2_Nil os2_2 t'_d'(2)
               unfolding increment_op_logic_def consumes_def add_caps_def drop_caps_def produces_def
-              by (simp split: prod.splits)
+              by (simp split: prod.splits if_splits)
             have summar_os2_2: \<open>intsum os2_2 1 1 = [inc]\<close> using that(1) os2_2 unfolding invariant_def
                 increment_op_logic_def consumes_def add_caps_def drop_caps_def produces_def by simp
             have ocaps_os2_2: \<open>ocaps os2_2 1 = []\<close> using os2_2 unfolding increment_op_logic_def
-                consumes_def add_caps_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def)
+                consumes_def add_caps_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def split: prod.splits if_splits)
             have \<open>step Tau (my_increment_op inc ?os2_1) (my_increment_op inc os2_2)\<close> using that(1)
                 Cons os2_2 unfolding invariant_def my_increment_op_def increment_op_def consumes_def
                 add_caps_def by (auto intro!: step_builder_op_Silent)
@@ -307,17 +310,18 @@ next
               unfolding invariant_def my_increment_op_def increment_op_def
               by (auto intro!: step_Tau_dataflow_op_Tau_intro)
             obtain os2_2 where os2_2: \<open>os2_2 |\<in>| increment_op_logic 1 1 inc ?os2_1\<close>
-              unfolding increment_op_logic_def by blast
+              unfolding increment_op_logic_def invariant_def trace_simp
+              using SIM2(1) invariant_def by auto
             hence initia_os2_2: \<open>initia os2_2\<close> using that(1) unfolding invariant_def increment_op_logic_def
                 consumes_def add_caps_def drop_caps_def produces_def by simp
-            have input_os2_2: \<open>input os2_2 1 = []\<close> using os2_2 unfolding increment_op_logic_def by simp
+            have input_os2_2: \<open>input os2_2 1 = []\<close> using os2_2 unfolding increment_op_logic_def by (simp split: prod.splits if_splits)
             have outpu_os2_2: \<open>outpu os2_2 1 = [(d, t)]\<close> using outpu_os2_Nil input_os2_Nil os2_2 t'(1)
               unfolding increment_op_logic_def consumes_def add_caps_def drop_caps_def produces_def
-              by (simp split: prod.splits)
+              by (simp split: prod.splits if_splits)
             have summar_os2_2: \<open>intsum os2_2 1 1 = [inc]\<close> using that(1) os2_2 unfolding invariant_def
                 increment_op_logic_def consumes_def add_caps_def drop_caps_def produces_def by simp
             have ocaps_os2_2: \<open>ocaps os2_2 1 = []\<close> using os2_2 unfolding increment_op_logic_def
-                consumes_def add_caps_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def)
+                consumes_def add_caps_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def split: prod.splits if_splits)
             have \<open>step Tau (my_increment_op inc ?os2_1) (my_increment_op inc os2_2)\<close> using that(1)
                 Cons os2_2 unfolding invariant_def my_increment_op_def increment_op_def consumes_def
                 add_caps_def by (auto intro!: step_builder_op_Silent)
@@ -364,17 +368,18 @@ next
             unfolding invariant_def my_increment_op_def increment_op_def
             by (auto intro!: step_Tau_dataflow_op_Tau_intro)
           obtain os2_2 where os2_2: \<open>os2_2 |\<in>| increment_op_logic 1 1 inc ?os2_1\<close>
-            unfolding increment_op_logic_def by blast
+            unfolding increment_op_logic_def invariant_def trace_simp
+            using SIM2(1) invariant_def by auto
           hence initia_os2_2: \<open>initia os2_2\<close> using that(1) unfolding invariant_def increment_op_logic_def
               consumes_def add_caps_def drop_caps_def produces_def by simp
-          have input_os2_2: \<open>input os2_2 1 = []\<close> using os2_2 unfolding increment_op_logic_def by simp
+          have input_os2_2: \<open>input os2_2 1 = []\<close> using os2_2 unfolding increment_op_logic_def by (simp add: comp_def split: prod.splits if_splits)
           have outpu_os2_2: \<open>outpu os2_2 1 = [(d, t)]\<close> using outpu_os2_Nil input_os2_Nil os2_2 t'(1)
             unfolding increment_op_logic_def consumes_def add_caps_def drop_caps_def produces_def
-            by (simp split: prod.splits)
+            by (simp add: comp_def split: prod.splits if_splits)
           have summar_os2_2: \<open>intsum os2_2 1 1 = [inc]\<close> using that(1) os2_2 unfolding invariant_def
               increment_op_logic_def consumes_def add_caps_def drop_caps_def produces_def by simp
           have ocaps_os2_2: \<open>ocaps os2_2 1 = []\<close> using os2_2 unfolding increment_op_logic_def
-              consumes_def add_caps_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def)
+              consumes_def add_caps_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def split: prod.splits if_splits)
           have \<open>step Tau (my_increment_op inc ?os2_1) (my_increment_op inc os2_2)\<close> using that(1)
               Cons os2_2 unfolding invariant_def my_increment_op_def increment_op_def consumes_def
               add_caps_def by (auto intro!: step_builder_op_Silent)
@@ -409,17 +414,18 @@ next
       next
         case (Cons _ xs)
         obtain os2' where os2': \<open>os2' |\<in>| increment_op_logic 1 1 inc os2\<close>
-          unfolding increment_op_logic_def by blast
+          unfolding increment_op_logic_def invariant_def trace_simp Let_def
+          using inv invariant_def local.Cons by force
         hence initia_os2': \<open>initia os2'\<close> using that(1) unfolding invariant_def increment_op_logic_def
-            drop_caps_def produces_def by simp
-        have input_os2': \<open>input os2' 1 = []\<close> using os2' unfolding increment_op_logic_def by simp
+            drop_caps_def produces_def by (simp add: comp_def split: prod.splits if_splits)
+        have input_os2': \<open>input os2' 1 = []\<close> using os2' unfolding increment_op_logic_def by (simp add: comp_def split: prod.splits if_splits)
         have outpu_os2': \<open>outpu os2' 1 = map (\<lambda>(d, t). (d, t + inc)) (input os2 1)\<close>
           using outpu_os2_Nil os2' unfolding increment_op_logic_def drop_caps_def produces_def
-          by (simp split: prod.splits)
+          by (simp add: comp_def split: prod.splits if_splits)
         have summar_os2': \<open>intsum os2' 1 1 = [inc]\<close> using that(1) os2' unfolding invariant_def
-            increment_op_logic_def consumes_def add_caps_def drop_caps_def produces_def by simp
+            increment_op_logic_def consumes_def add_caps_def drop_caps_def produces_def by (simp add: comp_def split: prod.splits if_splits)
         have ocaps_os2': \<open>ocaps os2' 1 = []\<close> using os2' unfolding increment_op_logic_def
-            consumes_def add_caps_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def)
+            consumes_def add_caps_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def split: prod.splits if_splits)
         have \<open>step Tau (my_increment_op inc os2) (my_increment_op inc os2')\<close> using that(1) Cons os2'
           unfolding invariant_def my_increment_op_def increment_op_def
           by (auto intro!: step_builder_op_Silent)
