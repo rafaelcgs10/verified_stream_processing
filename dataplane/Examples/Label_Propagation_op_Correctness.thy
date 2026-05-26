@@ -8,6 +8,7 @@ imports
   "../Correctness/General"
   "../Correctness/Outputs"
   "HOL-ex.Sketch_and_Explore"
+  Dataplane.Timely_Dataflow_Op
 begin
 
 no_notation shiftr (infixl \<open>>>\<close> 55)

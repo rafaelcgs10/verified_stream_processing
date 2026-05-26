@@ -2,6 +2,8 @@ theory Ooo_Input_op_Correctness
 
 imports
   Ooo_Input_op
+  Dataplane.Timely_Dataflow_Op
+  Source_op
 begin
 
 lemma timely_input_stream_ooo_input_op_logic:
