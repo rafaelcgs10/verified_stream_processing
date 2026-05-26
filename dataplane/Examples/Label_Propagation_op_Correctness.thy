@@ -22,8 +22,8 @@ abbreviation \<open>initial_state_input lxs \<equiv> \<lparr>
    produ = [],
    input = (\<lambda>_. []),
    outpu = (\<lambda>_. []),
-   front = Code.abort (STR ''Frontier not initialized'') (\<lambda>_ _. antichain_from_list []),
-   ocaps = (\<lambda>_. [])(0 := [\<bottom>]),
+   front = \<lambda> _. antichain_from_list bots,
+   ocaps = (\<lambda>_. bots),
    initia = True,
    en1 = Inl,
    de1 = projl,
@@ -38,8 +38,8 @@ abbreviation \<open>initial_state_label_prop \<equiv> \<lparr>
    produ = [],
    input = (\<lambda>_. []),
    outpu = (\<lambda>_. []),
-   front = Code.abort (STR ''Frontier not initialized'') (\<lambda>_ _. antichain_from_list []),
-   ocaps = (\<lambda>_. []),
+   front = \<lambda> _. antichain_from_list bots,
+   ocaps = (\<lambda>_. bots),
    initia = False,
    en1 = Inl,
    de1 = projl,
@@ -62,8 +62,8 @@ abbreviation \<open>initial_state_increment inc \<equiv> \<lparr>
    produ = [],
    input = (\<lambda>_. []),
    outpu = (\<lambda>_. []),
-   front = Code.abort (STR ''Frontier not initialized'') (\<lambda>_ _. antichain_from_list []),
-   ocaps = (\<lambda>_. []),
+   front = \<lambda> _. antichain_from_list bots,
+   ocaps = (\<lambda>_. bots),
    initia = False
    \<rparr> :: (_, _, _) operator_state\<close>
 
@@ -101,11 +101,11 @@ definition \<open>raw_summary = (\<lambda>l1 l2.
    then [0]
    else [])\<close>
 
-abbreviation \<open>test_sg \<equiv> init_subgraph (antichain_from_list \<circ>\<circ> raw_summary) [(Loc 0 (Src 0), \<bottom>, 1)]\<close>
+abbreviation \<open>test_sg \<equiv> init_subgraph (antichain_from_list \<circ>\<circ> raw_summary)\<close>
 abbreviation \<open>test_op \<equiv> dataflow_op test_sg cc_op\<close>
 
 (* Why don't I get traces when I set initia to True for the increment operator? *)
-value [GHC] \<open>ltaken 3 (trace_exec test_op)\<close>
+value [GHC] \<open>ltaken 1 (trace_exec test_op)\<close>
 
 definition collection_le where
   \<open>collection_le lxs t = list_of (lmap (\<lambda>e. case e of Data _ d \<Rightarrow> d)
