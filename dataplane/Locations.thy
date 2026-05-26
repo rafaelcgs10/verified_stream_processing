@@ -5,6 +5,8 @@ imports
   Nondeterministic_Dataflow.Numeral_Auxiliary
   "Collections.HashCode"
   Containers.Collection_Order
+  Numeral_Conversion
+  Nondeterministic_Dataflow.Operator
 begin 
 
 (* Inspired by timely/src/progress/mod.rs:61 *)
@@ -292,5 +294,16 @@ lemma not_01:
       done
     done
   done
+
+
+fun location_to_nat where
+  "location_to_nat (Loc nid (Trg p)) = (Loc (to_nat_numeral nid) (Trg (to_nat_numeral p)))"
+| "location_to_nat (Loc nid (Src p)) = (Loc (to_nat_numeral nid) (Src (to_nat_numeral p)))"
+
+definition "list_connections su = 
+ map (\<lambda> (l, l'). (location_to_nat l, location_to_nat l')) (filter (\<lambda> (l, l'). su l l' \<noteq> []) (List.product Enum.enum Enum.enum))"
+
+definition "show_Outs io = (case io of VOut (nid, p) (x, t) \<Rightarrow> (Loc (to_nat_numeral nid) (Src (to_nat_numeral p)), (x, t)))"
+
 
 end
