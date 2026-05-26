@@ -11,6 +11,7 @@ text \<open>
   graph-level representations used by the progress-tracking control plane.
 \<close>
 
+
 datatype ('id, 'p, 's, 'd, 't) dataflow_tree =
   "apply": Logic "('p option, 'p option, 's + 'd) op" "'p \<Rightarrow> 'p \<Rightarrow> 't list"
   | Comp "'id \<times> 'p \<Rightarrow> ('id \<times> 'p) option" "('id, 'p, 's, 'd, 't) dataflow_tree" "('id, 'p, 's, 'd, 't) dataflow_tree"
@@ -27,16 +28,15 @@ fun dataflow_tree_to_operator_aux where
      (case_sum id id)
      (case_sum id id)
      (comp_op
-      (case_sum (\<lambda> _. None) ((\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (Inr (n' + offset, q)))))
+      (case_sum (\<lambda> _. None) (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (Inr (n' + offset, q))))
       ((\<lambda> p. case p of Inl x \<Rightarrow> [] | Inr x \<Rightarrow> map (\<lambda> (d, t). Inr (d, t)) (chns x)))
        op1 op2))
    )"
 | "dataflow_tree_to_operator_aux n chns (Loop wire dt) = (
    let (n', op) = dataflow_tree_to_operator_aux n chns dt in
    (n', 
-   (
-    loop_op 
-    (case_sum (\<lambda> _. None) ((case_option None (Some o Inr)) o (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (n' + offset, q)))) 
+   (loop_op 
+    (case_sum (\<lambda> _. None) (\<lambda> (nid, p). case wire (nid - n, p) of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (Inr (n + offset, q)))) 
     ((\<lambda> p. case p of Inl x \<Rightarrow> [] | Inr x \<Rightarrow> map (\<lambda> (d, t). Inr (d, t)) (chns x)))
     op)))"
 
@@ -50,25 +50,25 @@ fun dataflow_tree_to_graph_aux where
     let (n'', summary2) = dataflow_tree_to_graph_aux n' dt2 in
         (n'', \<lambda> l1 l2.
          if node l1 \<ge> n \<and> node l1 < n' \<and> node l2 \<ge> n \<and> node l2 < n' then summary1 l1 l2
-         else
-           (if node l1 \<ge> n' \<and> node l2 \<ge> n' then summary2 l1 l2
-            else
-            (if node l1 \<ge> n \<and> node l1 < n' \<and> node l2 \<ge> n' \<and> is_Src (port l1) \<and> is_Trg (port l2)
-                   then (case wire (node l1 - n, idp (port l1)) of
-                           None \<Rightarrow> []
-                         | Some (offset, q) \<Rightarrow> (if node l2 = n' + offset \<and> q = idp (port l2) then [0] else []))
-                   else []))
+         else (if node l1 \<ge> n' \<and> node l2 \<ge> n' then summary2 l1 l2
+         else (if node l1 \<ge> n \<and> node l1 < n' \<and> node l2 \<ge> n' \<and> is_Src (port l1) \<and> is_Trg (port l2)
+               then (case wire (node l1 - n, idp (port l1)) of
+                       None \<Rightarrow> []
+                     | Some (offset, q) \<Rightarrow> (if node l2 = n' + offset \<and> q = idp (port l2) then [0] else []))
+               else []))
          )
    )"
 | "dataflow_tree_to_graph_aux n (Loop wire dt) = (
    let (n', summary) = dataflow_tree_to_graph_aux n dt in
-   (n', \<lambda> l1 l2. if is_Src (port l1) \<and> is_Trg (port l2) then
+   (n', \<lambda> l1 l2. if node l1 \<ge> n \<and> node l2 \<ge> n
+                 then (if is_Src (port l1) \<and> is_Trg (port l2) then
                  (case wire (node l1 - n, idp (port l1)) of
                     None \<Rightarrow> summary l1 l2
                   | Some (offset, q) \<Rightarrow>
                      trace (STR ''Checking loop conn: '' + show_loc l1 + STR '', '' + show_loc l2 + STR '' Offset: '' + print_numeral offset + STR '' n: '' + print_numeral n + STR '', n': '' + print_numeral n')
                            (if node l2 = n + offset \<and> q = idp (port l2) then trace (STR ''Found loop!'') [0] else []))
-                 else summary l1 l2))"
+                 else summary l1 l2)
+                 else Code.abort (STR ''Summary out of bounds'') (\<lambda> _. [])))"
 
 term "trace (STR ''outs: '')"
 
@@ -151,7 +151,11 @@ lemma dataflow_tree_to_graph_aux_Src_Trg_zero:
    apply (clarsimp simp add:  antichain_from_list_singleton split: list.splits prod.splits if_splits option.splits)
   apply simp
    apply (fastforce simp add: if_distrib  antichain_from_list_singleton split: prod.splits if_splits option.splits)
-  by (fastforce simp add: if_distrib  antichain_from_list_singleton split: prod.splits if_splits option.splits)
+  apply (simp add: if_distrib  antichain_from_list_singleton split: prod.splits if_splits option.splits)
+  unfolding trace_simp
+   apply (fastforce simp add: if_distrib  antichain_from_list_singleton split: prod.splits if_splits option.splits)
+  done
+
 
 lemma dataflow_tree_to_graph_Src_Trg_zero:
   "antichain_from_list oo dataflow_tree_to_graph dt = su \<Longrightarrow>

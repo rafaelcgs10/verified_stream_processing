@@ -169,7 +169,7 @@ definition "list_connections pnid pt su =
 
 value "list_connections five_to_nat two_to_nat (dataflow_tree_to_graph G)"
 
-value [GHC] "ltaken 2 (lmap (\<lambda> io. case io of VOut (nid, p) (x, t) \<Rightarrow> ((five_to_nat nid,  p), (x, t))) (trace_exec compiled))"
+value [GHC] "ltaken 2 (lmap (\<lambda> io. case io of VOut (nid, p) (x, t) \<Rightarrow> (Loc (five_to_nat nid) (Src (two_to_nat p)), (x, t))) (trace_exec compiled))"
 
 term DEBUG
 find_consts "('a :: enum) \<Rightarrow> nat"
@@ -222,7 +222,8 @@ abbreviation "dt \<equiv> dataflow_op my_sg my_op"
 
 definition "r = (trace_exec dt :: (_, _ \<times> _, (nat \<times> nat) \<times> nat) VIO llist)"
  
-value [GHC] "ltaken 2 (lmap (\<lambda> io. case io of VOut (nid, p) (x, t) \<Rightarrow> ((five_to_nat nid, two_to_nat p), (x, t))) r)"
+value [GHC] "ltaken 2 (lmap (\<lambda> io. case io of VOut (nid, p) (x, t) \<Rightarrow> (Loc (five_to_nat nid) (Src (two_to_nat p)), (x, t))) r)"
+value [GHC] "ltaken 2 (lmap (\<lambda> io. case io of VOut (nid, p) (x, t) \<Rightarrow> (Loc (five_to_nat nid) (Src (two_to_nat p)), (x, t))) (trace_exec compiled))"
 
 
 value [GHC] "check_prefix 100000000 [((nid2, p0), ((2, 1), 0))] dt"
