@@ -117,6 +117,10 @@ definition "drop_cap os cap = os\<lparr> inter := inter os @ [(out cap, time cap
 
 definition "drop_caps os caps = os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, -1)) caps, ocaps := (\<lambda> p. list_diff (ocaps os p) (map time (filter (\<lambda> cap. out cap = p) caps))) \<rparr>"
 
+definition "release_caps os p = (
+  let ts = list_diff (ocaps os p) (map snd (input os p)) in
+  drop_caps os (map (\<lambda> t. Cap t p) ts))"
+
 definition "add_cap os p t = os\<lparr> inter := inter os @ [(p, t, 1)], ocaps := (ocaps os) (p := ocaps os p @ [t])  \<rparr>"
 
 definition "add_caps os caps = os\<lparr> inter := inter os @ map (\<lambda> cap. (out cap, time cap, 1)) caps, ocaps := (\<lambda> p. ocaps os p @ map time (filter (\<lambda> cap. out cap = p) caps))  \<rparr>"

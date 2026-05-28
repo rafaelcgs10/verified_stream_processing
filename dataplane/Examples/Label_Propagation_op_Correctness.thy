@@ -5,13 +5,15 @@ imports
   Ooo_Input_op
   Increment_op
   Set_op
-  "../Correctness/General"
-  "../Correctness/Outputs"
+
   "HOL-ex.Sketch_and_Explore"
   Dataplane.Timely_Dataflow_Op
   Dataplane.Bots
 begin
 
+(*   "../Correctness/General"
+  "../Correctness/Outputs"
+ *)
 no_notation shiftr (infixl \<open>>>\<close> 55)
 no_syntax (ASCII) "_thenM" :: \<open>['a, 'b] \<Rightarrow> 'c\<close>  (infixl \<open>>>\<close> 54)
 
@@ -39,7 +41,7 @@ abbreviation \<open>initial_state_label_prop \<equiv> \<lparr>
    input = (\<lambda>_. []),
    outpu = (\<lambda>_. []),
    front = \<lambda> _. antichain_from_list bots,
-   ocaps = (\<lambda>_. []),
+   ocaps = (\<lambda>_. bots),
    initia = False,
    en1 = Inl,
    de1 = projl,
@@ -106,18 +108,21 @@ abbreviation \<open>test_op \<equiv> dataflow_op test_sg cc_op\<close>
 abbreviation \<open>opt_test_op \<equiv> opt_dataflow_op test_sg cc_op\<close>
 
 (* Why don't I get traces when I set initia to True for the increment operator? *)
-(* value [GHC] \<open>ltaken 1 (lmap show_Outs  (trace_exec opt_test_op))\<close>
+(*  value [GHC] \<open>ltaken 1 (lmap show_Outs  (trace_exec opt_test_op))\<close>
  *)
 term DEBUG
 
-definition "r = (ltaken 1 (lmap show_Outs  (trace_exec opt_test_op)) = [])"
+definition "r = (ltaken 2 (lmap show_Outs  (trace_exec opt_test_op)) = [])"
 
 
- export_code r in Haskell module_name Test6
+export_code r in Haskell module_name Test
 
 (* 
 value [GHC] \<open>ltaken 1 (trace_exec test_op)\<close>
  *)
+
+
+end
 definition collection_le where
   \<open>collection_le lxs t = list_of (lmap (\<lambda>e. case e of Data _ d \<Rightarrow> d)
   (lfilter (\<lambda>e. case e of Data t' _ \<Rightarrow> t' \<le> t | _ \<Rightarrow> False) lxs))\<close>

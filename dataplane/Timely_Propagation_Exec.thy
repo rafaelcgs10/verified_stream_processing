@@ -150,6 +150,15 @@ lemma take_step_plus[simp]:
 
 abbreviation "show_frontier x \<equiv> let f = Max_antichain x in if f = 42 then STR ''{}'' else STR ''{ '' + show_nat (Max_antichain x) + STR '' }''"
 
+definition show_myprod where
+  "show_myprod show1 show2 x = enclose (show1 (myfst x) + STR '','' + show2 (mysnd x))"
+
+definition "show_myprod_frontier F \<equiv> (
+  let S = to_prod ` antichain.set_antichain F in
+  let m1 = Min S in 
+  let S' = (S - {m1}) in 
+  if F = {}\<^sub>A then STR ''{}'' else STR ''{'' + show_prod show_nat show_nat m1 + (if S' \<noteq> {} then STR '', '' +  show_prod show_nat show_nat (Min S')  else STR '''') + STR ''}'')"
+
 abbreviation "show_frontiers impf \<equiv> show_list (show_prod show_loc show_frontier) (map (\<lambda> l. (l, frontier (impf l))) enum_location_inst.enum_location)"
 
 end
