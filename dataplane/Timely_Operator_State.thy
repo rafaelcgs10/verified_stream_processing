@@ -119,7 +119,7 @@ definition "drop_caps os caps = os\<lparr> inter := inter os @ map (\<lambda> ca
 
 definition "release_caps os p = (
   let ts = list_diff (ocaps os p) (map snd (input os p)) in
-  drop_caps os (map (\<lambda> t. Cap t p) ts))"
+  trace (STR ''Droping: '' + show_nat (length ts)) (drop_caps os (map (\<lambda> t. Cap t p) ts)))"
 
 definition "add_cap os p t = os\<lparr> inter := inter os @ [(p, t, 1)], ocaps := (ocaps os) (p := ocaps os p @ [t])  \<rparr>"
 

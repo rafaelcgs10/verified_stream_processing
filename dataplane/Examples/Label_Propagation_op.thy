@@ -104,12 +104,8 @@ definition label_propagation_op_logic where
           then map (\<lambda>v'. (en1 os (v', l), Cap t 1)) (filter (\<lambda>v'. min_label os t1 v' > l) vs)
           else []
     in trace (STR ''input1: looping back batch: '' + show_list show_nat (map (myfst o time o snd) batch)) {|release_caps (produces os' batch) 1|}))
-  (let os = trace (STR ''Main logic-------'') (release_caps os 1) in
-   let os = trace (STR ''Main logic-------'') (release_caps os 0) in
-   let os = trace (STR ''front0:'' + show_myprod_frontier (front os 0) + STR '', front1: '' + show_myprod_frontier (front os 1)) (release_caps os 0) in
-   let P = \<lambda>t. let len = length (all_vertices os (myfst t)) in \<forall>n < trace (STR ''vertices len: '' + show_nat len) len.
-         let pp = MyPair (myfst t) n in \<not> frontier_less_equal (front os 0 + front os 1) (trace (STR ''pp: '' + show_myprod show_nat show_nat pp) pp);
-       below_times = trace (STR ''ocaps1: '' + show_list (show_prod show_nat show_nat) (map to_prod (ocaps os 1))) (filter P (ocaps os 0));
+  (let os = trace (STR ''front0:'' + show_myprod_frontier (front os 0) + STR '', front1: '' + show_myprod_frontier (front os 1)) (release_caps os 1) ;
+       below_times = trace (STR ''ocaps1: '' + show_list (show_prod show_nat show_nat) (map to_prod (ocaps os 1))) (filter (\<lambda> t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t)) (ocaps os 0));
        output_times = mergesort_remdups (map myfst below_times);
        batch = map (\<lambda>t. let cap = Cap (MyPair t 0) 0 in (en2 os (set (map set
           (group_by (\<lambda>v1 v2. min_label os t v1 = min_label os t v2) (all_vertices os t)))), cap))
@@ -117,7 +113,7 @@ definition label_propagation_op_logic where
          output_times)
    in if trace (STR ''main logic batch: '' + show_list show_nat (map (myfst o time o snd) batch)) batch = []
         then {||}
-        else {|(drop_caps ((produces os batch)) (map (\<lambda>t. Cap t 0) below_times))|})\<close>
+        else {|(drop_caps ((produces os batch)) (map (\<lambda>t. Cap t 0) below_times @ map (\<lambda>t. Cap t 1) (filter (\<lambda> t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t)) (ocaps os 1)) ))|})\<close>
 
 find_consts name: sho name: front
 

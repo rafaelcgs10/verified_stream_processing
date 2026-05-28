@@ -82,7 +82,7 @@ abbreviation G :: "(5, 2, (2, nat) shared_state + (2 \<Rightarrow> nat antichain
 
 value "list_connections (dataflow_tree_to_graph G)"
 
-abbreviation "compiled \<equiv> compile_dataflow (\<lambda> _. []) G"
+abbreviation "compiled \<equiv> opt_compile_dataflow (\<lambda> _. []) G"
 value [GHC] "ltaken 2 (lmap show_Outs (trace_exec compiled))"
 
 

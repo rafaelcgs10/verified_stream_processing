@@ -64,7 +64,7 @@ fun dataflow_tree_to_graph_aux where
                  then (if is_Src (port l1) \<and> is_Trg (port l2) then
                  (case wire (node l1 - n, idp (port l1)) of
                     None \<Rightarrow> summary l1 l2
-                  | Some (offset, q) \<Rightarrow> (if node l2 = n + offset \<and> q = idp (port l2) then trace (STR ''Found loop!'') [0] else []))
+                  | Some (offset, q) \<Rightarrow> (if node l2 = n + offset \<and> q = idp (port l2) then [0] else []))
                  else summary l1 l2)
                  else Code.abort (STR ''Summary out of bounds'') (\<lambda> _. [])))"
 

@@ -66,56 +66,41 @@ abbreviation \<open>initial_state_increment inc \<equiv> \<lparr>
    outpu = (\<lambda>_. []),
    front = \<lambda> _. antichain_from_list bots,
    ocaps = (\<lambda>_. bots),
-   initia = False
+   initia = True
    \<rparr> :: (_, _, _) operator_state\<close>
 
 abbreviation \<open>logic_map n \<equiv> map_op (case_option (Inl n) (\<lambda>p. Inr (n, p))) (case_option (Inl n) (\<lambda>p. Inr (n, p)))\<close>
 abbreviation \<open>comp_map \<equiv> map_op (case_sum id id) (case_sum id id)\<close>
 
-abbreviation \<open>test_input \<equiv> llist_of [Data \<bottom> (0, 1), Data (MyPair 1 0) (3, 4), Data \<bottom> (1, 2), Data (MyPair 2 0) (4, 5)]\<close>
-abbreviation \<open>op0 \<equiv> logic_map (0 :: 3) (ooo_input_op {|0 :: 2|} (initial_state_input test_input))\<close>
-abbreviation \<open>op1 \<equiv> logic_map (1 :: 3) (label_propagation_op initial_state_label_prop)\<close>
-abbreviation \<open>op2 \<equiv> logic_map (2 :: 3) (increment_op (0 :: 2) 0 (MyPair 0 1) (initial_state_increment (MyPair 0 1)))\<close>
-abbreviation \<open>cc_op \<equiv> comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
+abbreviation \<open>test_input_old \<equiv> llist_of [Data \<bottom> (0, 1), Data (MyPair 1 0) (3, 4), Data \<bottom> (1, 2), Data (MyPair 2 0) (4, 5)]\<close>
+abbreviation \<open>test_input \<equiv> llist_of [Data \<bottom> (0 :: nat, 1 :: nat)]\<close>
+abbreviation \<open>op0 \<equiv> Logic (ooo_input_op {|0 :: 2|} (initial_state_input test_input)) default_internal_summary\<close>
+abbreviation \<open>op1 \<equiv> Logic (label_propagation_op initial_state_label_prop) (\<lambda>p1 p2. if p1 = 0 then [0] else if p2 = 1 then [0] else [])\<close>
+abbreviation \<open>op2 \<equiv> Logic (increment_op (1 :: 2) 1 (MyPair 0 1) (initial_state_increment (MyPair 0 1))) (increment_summary (MyPair 0 1))\<close>
+(* abbreviation \<open>cc_op \<equiv> comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
   op0
   (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (\<lambda>_. []) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (\<lambda>_. [])
     op1
     op2))))\<close>
+ *)
+abbreviation G :: "(3, 2, (2, (nat, nat) myprod) shared_state + (2 \<Rightarrow> (nat, nat) myprod antichain), (nat \<times> nat + nat set set) \<times> (nat, nat) myprod, (nat, nat) myprod) dataflow_tree" where
+  "G \<equiv> (Comp [(0, 0) \<mapsto> (0, 0)] op0 (Loop [(1, 1) \<mapsto> (0, 1)] (Comp [(0, 1) \<mapsto> (0, 1)] op1 op2)))"
+abbreviation "compiled \<equiv> opt_compile_dataflow (\<lambda> _. []) G"
 
-definition \<open>raw_summary = (\<lambda>l1 l2.
-   if l1 = Loc (0 :: 3) (Trg (0 :: 2)) \<and> l2 = Loc (0 :: 3) (Src (0 :: 2))
-   then [0]
-   else if l1 = Loc 0 (Src 0) \<and> l2 = Loc 1 (Trg 0)
-   then [0]
-   else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 0)
-   then [0]
-   else if l1 = Loc 1 (Trg 0) \<and> l2 = Loc 1 (Src 1)
-   then [0]
-   else if l1 = Loc 1 (Trg 1) \<and> l2 = Loc 1 (Src 0)
-   then []
-   else if l1 = Loc 1 (Trg 1) \<and> l2 = Loc 1 (Src 1)
-   then [0]
-   else if l1 = Loc 1 (Src 1) \<and> l2 = Loc 2 (Trg 0)
-   then [0]
-   else if l1 = Loc 2 (Trg 0) \<and> l2 = Loc 2 (Src 0)
-   then [MyPair (0 :: nat) (1 :: nat)]
-   else if l1 = Loc 2 (Src 0) \<and> l2 = Loc 1 (Trg 1)
-   then [0]
-   else [])\<close>
+value "list_connections (dataflow_tree_to_graph G)"
 
-abbreviation \<open>test_sg \<equiv> init_subgraph (antichain_from_list \<circ>\<circ> raw_summary)\<close>
-abbreviation \<open>test_op \<equiv> dataflow_op test_sg cc_op\<close>
-abbreviation \<open>opt_test_op \<equiv> opt_dataflow_op test_sg cc_op\<close>
+term "dataflow_tree_to_graph G"
 
 (* Why don't I get traces when I set initia to True for the increment operator? *)
-(*  value [GHC] \<open>ltaken 1 (lmap show_Outs  (trace_exec opt_test_op))\<close>
- *)
+value [GHC] \<open>ltaken 1 (lmap show_Outs (trace_exec compiled))\<close>
+
 term DEBUG
 
-definition "r = (ltaken 2 (lmap show_Outs  (trace_exec opt_test_op)) = [])"
-
-
-export_code r in Haskell module_name Test
+definition "r = (ltaken 1 (lmap show_Outs (trace_exec compiled)) = [])"
+(* 
+value [GHC] "check_prefix 500 [((1, 0), (Inr {}, MyPair 0 0))] compiled"
+ *)
+export_code r in Haskell module_name Test21
 
 (* 
 value [GHC] \<open>ltaken 1 (trace_exec test_op)\<close>

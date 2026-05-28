@@ -301,7 +301,7 @@ fun location_to_nat where
 | "location_to_nat (Loc nid (Src p)) = (Loc (to_nat_numeral nid) (Src (to_nat_numeral p)))"
 
 definition "list_connections su = 
- map (\<lambda> (l, l'). (location_to_nat l, location_to_nat l')) (filter (\<lambda> (l, l'). su l l' \<noteq> []) (List.product Enum.enum Enum.enum))"
+ map (\<lambda> (l, l'). (location_to_nat l, su l l', location_to_nat l')) (filter (\<lambda> (l, l'). su l l' \<noteq> []) (List.product Enum.enum Enum.enum))"
 
 definition "show_Outs io = (case io of VOut (nid, p) (x, t) \<Rightarrow> (Loc (to_nat_numeral nid) (Src (to_nat_numeral p)), (x, t)))"
 
