@@ -72,31 +72,37 @@ abbreviation \<open>initial_state_increment inc \<equiv> \<lparr>
 abbreviation \<open>logic_map n \<equiv> map_op (case_option (Inl n) (\<lambda>p. Inr (n, p))) (case_option (Inl n) (\<lambda>p. Inr (n, p)))\<close>
 abbreviation \<open>comp_map \<equiv> map_op (case_sum id id) (case_sum id id)\<close>
 
-abbreviation \<open>test_input_old \<equiv> llist_of [Data \<bottom> (0, 1), Data (MyPair 1 0) (3, 4), Data \<bottom> (1, 2), Data (MyPair 2 0) (4, 5)]\<close>
-abbreviation \<open>test_input \<equiv> llist_of [Data \<bottom> (0 :: nat, 1 :: nat)]\<close>
-abbreviation \<open>op0 \<equiv> Logic (ooo_input_op {|0 :: 2|} (initial_state_input test_input)) default_internal_summary\<close>
+abbreviation \<open>op0 inp \<equiv> Logic (ooo_input_op {|0 :: 2|} (initial_state_input inp)) default_internal_summary\<close>
 abbreviation \<open>op1 \<equiv> Logic (label_propagation_op initial_state_label_prop) (\<lambda>p1 p2. if p1 = 0 then [0] else if p2 = 1 then [0] else [])\<close>
 abbreviation \<open>op2 \<equiv> Logic (increment_op (1 :: 2) 1 (MyPair 0 1) (initial_state_increment (MyPair 0 1))) (increment_summary (MyPair 0 1))\<close>
-(* abbreviation \<open>cc_op \<equiv> comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (\<lambda>_. [])
-  op0
-  (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (\<lambda>_. []) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (\<lambda>_. [])
-    op1
-    op2))))\<close>
- *)
-abbreviation G :: "(3, 2, (2, (nat, nat) myprod) shared_state + (2 \<Rightarrow> (nat, nat) myprod antichain), (nat \<times> nat + nat set set) \<times> (nat, nat) myprod, (nat, nat) myprod) dataflow_tree" where
-  "G \<equiv> (Comp [(0, 0) \<mapsto> (0, 0)] op0 (Loop [(1, 1) \<mapsto> (0, 1)] (Comp [(0, 1) \<mapsto> (0, 1)] op1 op2)))"
-abbreviation "compiled \<equiv> opt_compile_dataflow (\<lambda> _. []) G"
 
-value "list_connections (dataflow_tree_to_graph G)"
+abbreviation G :: "_ \<Rightarrow> (3, 2, (2, (nat, nat) myprod) shared_state + (2 \<Rightarrow> (nat, nat) myprod antichain), (nat \<times> nat + nat set set) \<times> (nat, nat) myprod, (nat, nat) myprod) dataflow_tree" where
+  "G inp \<equiv> (Comp [(0, 0) \<mapsto> (0, 0)] (op0 inp) (Loop [(1, 1) \<mapsto> (0, 1)] (Comp [(0, 1) \<mapsto> (0, 1)] op1 op2)))"
+abbreviation "compiled inp \<equiv> opt_compile_dataflow (\<lambda> _. []) (G inp)"
 
-term "dataflow_tree_to_graph G"
+abbreviation \<open>test_input1 \<equiv> llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0), Data \<bottom> (0, 1), Data (MyPair 1 0) (3, 4), Data \<bottom> (1, 2), Data (MyPair 2 0) (4, 5)]\<close>
 
-(* Why don't I get traces when I set initia to True for the increment operator? *)
-value [GHC] \<open>ltaken 1 (lmap show_Outs (trace_exec compiled))\<close>
+
+value "list_connections (dataflow_tree_to_graph (G test_input1))"
+
+
+value [GHC] \<open>ltaken 3 (lmap show_Outs (trace_exec (compiled test_input1)))\<close>
+
+abbreviation \<open>test_input2 \<equiv> llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0), Data \<bottom> (1, 2), Data \<bottom> (0, 1), Data (MyPair 1 0) (3, 4), Data (MyPair 2 0) (4, 5), Mint (MyPair 3 0), Data (MyPair 3 0) (2, 3)]\<close>
+
+value [GHC] \<open>ltaken 4 (lmap show_Outs (trace_exec (compiled test_input2)))\<close>
+
+abbreviation \<open>test_input3 \<equiv>
+  llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0), Data \<bottom> (0, 1), Data (MyPair 1 0) (2, 3),
+  Mint (MyPair 3 0), Data (MyPair 3 0) (1, 2), Mint (MyPair 4 0), Data (MyPair 4 0) (4, 5), Mint (MyPair 5 0), Data (MyPair 5 0) (3, 5)]\<close>
+
+value [GHC] \<open>ltaken 5 (lmap show_Outs (trace_exec (compiled test_input3)))\<close>
+
+
 
 term DEBUG
-
-definition "r = (ltaken 1 (lmap show_Outs (trace_exec compiled)) = [])"
+(* 
+definition "r = (ltaken 1 (lmap show_Outs (trace_exec compiled)) = [])" *)
 (* 
 value [GHC] "check_prefix 500 [((1, 0), (Inr {}, MyPair 0 0))] compiled"
  *)
