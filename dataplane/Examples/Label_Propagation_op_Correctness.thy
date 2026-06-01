@@ -98,22 +98,53 @@ abbreviation \<open>test_input3 \<equiv>
 
 value [GHC] \<open>ltaken 5 (lmap show_Outs (trace_exec (compiled test_input3)))\<close>
 
+abbreviation \<open>test_input4 \<equiv>
+  llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0),Mint (MyPair 3 0),Mint (MyPair 4 0), Mint (MyPair 5 0),
+   Data (MyPair 5 0) (3, 5), Data (MyPair 4 0) (4, 5), Data (MyPair 3 0) (1, 2), Data (MyPair 1 0) (2, 3), Data \<bottom> (0, 1)]\<close>
+
+value [GHC] \<open>ltaken 5 (lmap show_Outs (trace_exec (compiled test_input4)))\<close>
+
+abbreviation \<open>test_input5 \<equiv>
+  llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0), Data \<bottom> (0, 1), Drop \<bottom>, Data (MyPair 1 0) (2, 3), Drop (MyPair 1 0),
+  Mint (MyPair 3 0), Drop (MyPair 2 0), Data (MyPair 3 0) (1, 2), Mint (MyPair 4 0), Drop (MyPair 3 0), Data (MyPair 4 0) (4, 5), Mint (MyPair 5 0),  Drop (MyPair 4 0), Data (MyPair 5 0) (3, 5)]\<close>
+
+value [GHC] \<open>ltaken 5 (lmap show_Outs (trace_exec (compiled test_input5)))\<close>
+
+abbreviation \<open>test_input6 \<equiv>
+  llist_of [Mint (MyPair 1 0), Mint (MyPair 4 0), Mint (MyPair 3 0),
+   Data (MyPair 3 0) (1, 2), Data (MyPair 4 0) (4, 5), Mint (MyPair 2 0),
+   Data \<bottom> (0, 1), Data (MyPair 1 0) (2, 3), Mint (MyPair 5 0), Data (MyPair 5 0) (3, 5)]\<close>
+
+value [GHC] \<open>ltaken 5 (lmap show_Outs (trace_exec (compiled test_input6)))\<close>
+
+abbreviation \<open>test_input7 \<equiv>
+  llist_of [ Data \<bottom> (0, 6), Mint (MyPair 1 0), Mint (MyPair 4 0), Mint (MyPair 3 0),
+   Data (MyPair 3 0) (1, 2), Data (MyPair 4 0) (4, 5), Mint (MyPair 2 0),
+   Data \<bottom> (0, 1), Data (MyPair 1 0) (2, 3), Mint (MyPair 5 0), Data (MyPair 5 0) (3, 5), Data (MyPair 5 0) (6, 5)]\<close>
+
+value [GHC] \<open>ltaken 5 (lmap show_Outs (trace_exec (compiled test_input7)))\<close>
 
 
-term DEBUG
-(* 
-definition "r = (ltaken 1 (lmap show_Outs (trace_exec compiled)) = [])" *)
-(* 
-value [GHC] "check_prefix 500 [((1, 0), (Inr {}, MyPair 0 0))] compiled"
- *)
-export_code r in Haskell module_name Test21
+abbreviation \<open>test_input8 \<equiv>
+  llist_of [Data \<bottom> (0, 6), Mint (MyPair 3 0), Data (MyPair 3 0) (1, 2), Data \<bottom> (0, 1)]\<close>
 
-(* 
-value [GHC] \<open>ltaken 1 (trace_exec test_op)\<close>
- *)
+value [GHC] \<open>ltaken 2 (lmap show_Outs (trace_exec (compiled test_input8)))\<close>
+
+abbreviation \<open>test_input9 \<equiv>
+  llist_of [ Data \<bottom> (0, 6), Data \<bottom> (0, 1), Data (MyPair 1 0) (2, 3)]\<close>
+
+value [GHC] \<open>ltaken 2 (lmap show_Outs (trace_exec (compiled test_input9)))\<close>
 
 
-end
+abbreviation "os \<equiv> initial_state_label_prop\<lparr>
+   timestamps := [0, 1],
+   label := (label initial_state_label_prop)( 0 := (label initial_state_label_prop 0)(6 := 0, 1 := 0),
+            1 := (label initial_state_label_prop 0)(3 := 2)),
+   vertices := (vertices initial_state_label_prop)( 0 := [1,0,6], 1 := [2,3,1,0,6] )  \<rparr>"
+
+value "min_label os 1 6"
+
+
 definition collection_le where
   \<open>collection_le lxs t = list_of (lmap (\<lambda>e. case e of Data _ d \<Rightarrow> d)
   (lfilter (\<lambda>e. case e of Data t' _ \<Rightarrow> t' \<le> t | _ \<Rightarrow> False) lxs))\<close>

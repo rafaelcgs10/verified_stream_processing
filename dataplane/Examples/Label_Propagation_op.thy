@@ -55,7 +55,7 @@ definition neighbors where
 
 definition all_vertices where
   \<open>all_vertices os t = (let ts = filter ((\<ge>) t) (timestamps os) in
-  if is_Nil ts then vertices os t else mergesort_remdups (concat (map (vertices os) ts)))\<close>
+  if is_Nil ts then set (vertices os t) else set (concat (map (vertices os) ts)))\<close>
 
 definition all_edges where
   \<open>all_edges os t = {(v, w). w \<in> set (neighbors os t v)}\<close>
@@ -75,10 +75,10 @@ the second component is assumed to be always 0. *)
 (* Should the logic return a set of sets for the connected components or a list of lists? *)
 definition label_propagation_op_logic where
   \<open>label_propagation_op_logic os = cUn (cUn
-  (case trace (STR ''input0-------'') (input os 0) of
+  (case (input os 0) of
     [] \<Rightarrow> {||}
   | (d, t) # xs \<Rightarrow>
-    let (v1, v2) = de1 os d;
+    let (v1, v2) = trace (STR ''input0-------'') (de1 os d);
         t1 = trace (STR ''input0 edge: ('' +  show_nat v1 + STR '', '' + show_nat v2 + STR '')'') (myfst t);
         (l1, l2) = pairself (min_label os t1) (v1, v2);
         (v, l) = if (trace (STR ''labels:: l1:'' +  show_nat l1 + STR '', l2: '' + show_nat l2) l1) > l2 then (v1, l2) else (v2, l1);
@@ -87,35 +87,40 @@ definition label_propagation_op_logic where
     v2 := List.insert v1 (graph os t1 v2))),
   vertices := (vertices os)(t1 := List.union [v1, v2] (vertices os t1)),
   label := (label os)(t1 := (label os t1)(v := l))\<rparr>;
-        vs = neighbors os' t1 (trace (STR ''input0 label upd: '' +  show_nat v + STR '': '' + show_nat l + STR '' @ '' + show_nat t1) v);
-        batch =  if min_label os t1 v > trace (STR ''neighbors: '' +  show_list show_nat vs) l
-          then map (\<lambda>v'. (en1 os (v', l), Cap t 1)) (filter (\<lambda>v'. min_label os t1 v' > l) vs)
-          else []
+        ts = trace (STR ''input0 label upd: '' +  show_nat v + STR '': '' + show_nat l + STR '' @ '' + show_nat t1) (filter ((\<le>) t1) (timestamps os')) ;
+        batch = concat (map (\<lambda> t1. let vs = neighbors os' t1 v in
+          if min_label os t1 v > trace (STR ''neighbors: '' +  show_list show_nat vs) l
+          then map (\<lambda>v'. (en1 os (v', l), Cap (MyPair t1 (mysnd t)) 1)) (filter (\<lambda>v'. min_label os t1 v' > l) vs)
+          else []) ts)
      in trace (STR ''input0: looping back batch: '' + show_list (show_prod (show_prod show_nat show_nat) (show_myprod show_nat show_nat)) (map (\<lambda> (x, p). (de1 os x, time p)) batch)) {|release_caps (produces os' batch) 1|})
-  (case trace (STR ''input1-------'') (input os 1) of
+  (case input os 1 of
     [] \<Rightarrow> {||}
   | (d, t) # xs \<Rightarrow>
-    let (v, l) = de1 os d;
+    let (v, l) = trace (STR ''input1-------'') (de1 os d);
         t1 = myfst t;
         os' = os\<lparr>input := (input os)(1 := xs),
           label := (label os)(t1 := (label os t1)(v := min (min_label os t1 v) l))\<rparr>;
-        vs = neighbors os t1 (trace (STR ''input1 label upd: '' +  show_nat v + STR '': '' + show_nat l + STR '' @ '' + show_nat t1) v);
-        batch = if min_label os t1 v > trace (STR ''neighbors: '' +  show_list show_nat vs) l
-          then map (\<lambda>v'. (en1 os (v', l), Cap t 1)) (filter (\<lambda>v'. let minl = min_label os' t1 v' in trace (STR ''minl: '' + show_nat minl) minl > l) vs)
-          else []
-    in trace (STR ''input1: looping back batch: '' + show_list (show_prod (show_prod show_nat show_nat) (show_myprod show_nat show_nat)) (map (\<lambda> (x, p). (de1 os x, time p)) batch)) {|release_caps (produces os' batch) 1|}))
+        ts = trace (STR ''input1 label upd: '' +  show_nat v + STR '': '' + show_nat l + STR '' @ '' + show_nat t1) (filter ((\<le>) t1) (timestamps os)) ;
+        batch = concat (map (\<lambda> t1. 
+          let vs = neighbors os t1 v in 
+          if min_label os t1 v > l
+          then map (\<lambda>v'. (en1 os (v', l), Cap (MyPair t1 (mysnd t)) 1)) (filter (\<lambda>v'. min_label os' t1 v' > l) vs)
+          else []) ts)
+    in {|release_caps (produces os' batch) 1|}))
   (let os = trace (STR ''front0:'' + show_myprod_frontier (front os 0) + STR '', front1: '' + show_myprod_frontier (front os 1)) (release_caps os 1) ;
        below_times = trace (STR ''ocaps1: '' + show_list (show_prod show_nat show_nat) (map to_prod (ocaps os 1))) (filter (\<lambda> t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t)) (ocaps os 0));
        output_times = mergesort_remdups (map myfst below_times);
-       batch = map (\<lambda>t. let cap = Cap (MyPair t 0) 0 in (en2 os (set (map set
-          (group_by (\<lambda>v1 v2. min_label os t v1 = min_label os t v2) (all_vertices os t)))), cap))
+       batch = map (\<lambda>t. let cap = Cap (MyPair t 0) 0 in (en2 os (
+          ((all_vertices os t) // ({(v1, v2) \<in> (all_vertices os t) \<times> (all_vertices os t). min_label os t v1 = min_label os t v2} ))), cap))
         (trace (STR ''below_times: '' + show_list show_nat (map myfst below_times) + STR '', ocaps: '' + show_list show_nat (map myfst (ocaps os 0)) + STR '', outpu_times: '' + show_list show_nat output_times)
          output_times)
    in if trace (STR ''main logic batch: '' + show_list show_nat (map (myfst o time o snd) batch)) batch = []
         then {||}
         else {|(drop_caps ((produces os batch)) (map (\<lambda>t. Cap t 0) below_times @ map (\<lambda>t. Cap t 1) (filter (\<lambda> t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t)) (ocaps os 1)) ))|})\<close>
 
-find_consts name: sho name: front
+
+
+term "Image "
 
 (* @ map (\<lambda>t. Cap t 1) (filter P (ocaps os 1)) *)
 definition label_propagation_op where
