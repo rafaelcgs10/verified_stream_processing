@@ -5,15 +5,20 @@ imports
   Ooo_Input_op
   Increment_op
   Set_op
-
+  "../Correctness/General"
+  "../Correctness/Outputs"
   "HOL-ex.Sketch_and_Explore"
   Dataplane.Timely_Dataflow_Op
   Dataplane.Bots
 begin
 
-(*   "../Correctness/General"
-  "../Correctness/Outputs"
- *)
+
+declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
+  neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
+declare if_cong[cong]
+declare list_emb_Nil2[simp del] BULK_BENQ_right_empty[simp del] BULK_BENQ_left_empty[simp del]
+  filter_True[simp del] filter_False[simp del]
+
 no_notation shiftr (infixl \<open>>>\<close> 55)
 no_syntax (ASCII) "_thenM" :: \<open>['a, 'b] \<Rightarrow> 'c\<close>  (infixl \<open>>>\<close> 54)
 
@@ -80,48 +85,38 @@ abbreviation G :: "_ \<Rightarrow> (3, 2, (2, (nat, nat) myprod) shared_state + 
   "G inp \<equiv> (Comp [(0, 0) \<mapsto> (0, 0)] (op0 inp) (Loop [(1, 1) \<mapsto> (0, 1)] (Comp [(0, 1) \<mapsto> (0, 1)] op1 op2)))"
 abbreviation "compiled inp \<equiv> opt_compile_dataflow (\<lambda> _. []) (G inp)"
 
-abbreviation \<open>test_input1 \<equiv> llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0), Data \<bottom> (0, 1), Data (MyPair 1 0) (3, 4), Data \<bottom> (1, 2), Data (MyPair 2 0) (4, 5)]\<close>
-
-
+(* abbreviation \<open>test_input1 \<equiv> llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0), Data \<bottom> (0, 1), Data (MyPair 1 0) (3, 4), Data \<bottom> (1, 2), Data (MyPair 2 0) (4, 5)]\<close>
 value "list_connections (dataflow_tree_to_graph (G test_input1))"
-
-
 value [GHC] \<open>ltaken 3 (lmap show_Outs (trace_exec (compiled test_input1)))\<close>
 
 abbreviation \<open>test_input2 \<equiv> llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0), Data \<bottom> (1, 2), Data \<bottom> (0, 1), Data (MyPair 1 0) (3, 4), Data (MyPair 2 0) (4, 5), Mint (MyPair 3 0), Data (MyPair 3 0) (2, 3)]\<close>
-
 value [GHC] \<open>ltaken 4 (lmap show_Outs (trace_exec (compiled test_input2)))\<close>
 
 abbreviation \<open>test_input3 \<equiv>
   llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0), Data \<bottom> (0, 1), Data (MyPair 1 0) (2, 3),
   Mint (MyPair 3 0), Data (MyPair 3 0) (1, 2), Mint (MyPair 4 0), Data (MyPair 4 0) (4, 5), Mint (MyPair 5 0), Data (MyPair 5 0) (3, 5)]\<close>
-
 value [GHC] \<open>ltaken 5 (lmap show_Outs (trace_exec (compiled test_input3)))\<close>
 
 abbreviation \<open>test_input4 \<equiv>
   llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0),Mint (MyPair 3 0),Mint (MyPair 4 0), Mint (MyPair 5 0),
    Data (MyPair 5 0) (3, 5), Data (MyPair 4 0) (4, 5), Data (MyPair 3 0) (1, 2), Data (MyPair 1 0) (2, 3), Data \<bottom> (0, 1)]\<close>
-
 value [GHC] \<open>ltaken 5 (lmap show_Outs (trace_exec (compiled test_input4)))\<close>
 
 abbreviation \<open>test_input5 \<equiv>
   llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0), Data \<bottom> (0, 1), Drop \<bottom>, Data (MyPair 1 0) (2, 3), Drop (MyPair 1 0),
   Mint (MyPair 3 0), Drop (MyPair 2 0), Data (MyPair 3 0) (1, 2), Mint (MyPair 4 0), Drop (MyPair 3 0), Data (MyPair 4 0) (4, 5), Mint (MyPair 5 0),  Drop (MyPair 4 0), Data (MyPair 5 0) (3, 5)]\<close>
-
 value [GHC] \<open>ltaken 5 (lmap show_Outs (trace_exec (compiled test_input5)))\<close>
 
 abbreviation \<open>test_input6 \<equiv>
   llist_of [Mint (MyPair 1 0), Mint (MyPair 4 0), Mint (MyPair 3 0),
    Data (MyPair 3 0) (1, 2), Data (MyPair 4 0) (4, 5), Mint (MyPair 2 0),
    Data \<bottom> (0, 1), Data (MyPair 1 0) (2, 3), Mint (MyPair 5 0), Data (MyPair 5 0) (3, 5)]\<close>
-
 value [GHC] \<open>ltaken 5 (lmap show_Outs (trace_exec (compiled test_input6)))\<close>
 
 abbreviation \<open>test_input7 \<equiv>
   llist_of [ Data \<bottom> (0, 6), Mint (MyPair 1 0), Mint (MyPair 4 0), Mint (MyPair 3 0),
    Data (MyPair 3 0) (1, 2), Data (MyPair 4 0) (4, 5), Mint (MyPair 2 0),
    Data \<bottom> (0, 1), Data (MyPair 1 0) (2, 3), Mint (MyPair 5 0), Data (MyPair 5 0) (3, 5), Data (MyPair 5 0) (6, 5)]\<close>
-
 value [GHC] \<open>ltaken 5 (lmap show_Outs (trace_exec (compiled test_input7)))\<close>
 
 
@@ -132,17 +127,8 @@ value [GHC] \<open>ltaken 2 (lmap show_Outs (trace_exec (compiled test_input8)))
 
 abbreviation \<open>test_input9 \<equiv>
   llist_of [ Data \<bottom> (0, 6), Data \<bottom> (0, 1), Data (MyPair 1 0) (2, 3)]\<close>
-
 value [GHC] \<open>ltaken 2 (lmap show_Outs (trace_exec (compiled test_input9)))\<close>
-
-
-abbreviation "os \<equiv> initial_state_label_prop\<lparr>
-   timestamps := [0, 1],
-   label := (label initial_state_label_prop)( 0 := (label initial_state_label_prop 0)(6 := 0, 1 := 0),
-            1 := (label initial_state_label_prop 0)(3 := 2)),
-   vertices := (vertices initial_state_label_prop)( 0 := [1,0,6], 1 := [2,3,1,0,6] )  \<rparr>"
-
-value "min_label os 1 6"
+ *)
 
 
 definition collection_le where
@@ -216,11 +202,90 @@ lemma Ex1_is_ccs:
 
 end
 
+definition \<open>raw_summary = (\<lambda>l1 l2. case (find (\<lambda> (l1', s, l2'). l1' = l1 \<and> l2 = l2')
+  [(Loc 0 (Trg 0), [MyPair 0 0], Loc 0 (Src 0)), (Loc 0 (Trg 1), [MyPair 0 0], Loc 0 (Src 1)), (Loc 0 (Src 0), [MyPair 0 0], Loc 1 (Trg 0)), (Loc 1 (Trg 0), [MyPair 0 0], Loc 1 (Src 0)),
+  (Loc 1 (Trg 0), [MyPair 0 0], Loc 1 (Src 1)), (Loc 1 (Trg 1), [MyPair 0 0], Loc 1 (Src 1)), (Loc 1 (Src 1), [MyPair 0 0], Loc 2 (Trg 1)), (Loc 2 (Trg 0), [MyPair 0 1], Loc 2 (Src 0)),
+  (Loc 2 (Trg 1), [MyPair 0 1], Loc 2 (Src 1)), (Loc 2 (Src 1), [MyPair 0 0], Loc 1 (Trg 1))]) of
+    Some (l1', s, l2') \<Rightarrow> s :: (nat, nat) myprod list | None \<Rightarrow> [])\<close>
+
+lemma
+  "dataflow_tree_to_graph (G inp) = raw_summary"
+  unfolding dataflow_tree_to_graph_def Let_def default_internal_summary_def  comp_def                                               
+  apply (simp only: split: if_splits prod.splits)
+  apply (intro allI impI conjI)
+  subgoal for nid su
+    apply (rule ext)+
+    apply simp
+    apply (elim conjE)
+    apply (drule sym[of _ su])
+    apply hypsubst_thin
+    subgoal premises prems for l1 l2
+      unfolding raw_summary_def
+      using loc_3_2_cases[of l1] loc_3_2_cases[of l2] apply -
+      by (elim disjE; simp?; code_simp)
+    done
+  subgoal for nid su
+    apply (rule ext)+
+    subgoal for l1 l2
+      apply (rule FalseE)
+      apply safe
+      subgoal
+        apply simp
+        apply (elim conjE)
+        apply hypsubst_thin
+        unfolding weights_to_graph_fun_def
+        apply code_simp
+        by eval
+      subgoal
+        apply simp
+        apply (elim conjE)
+        apply hypsubst_thin
+        apply code_simp
+        done
+      subgoal
+        apply simp
+        apply (elim conjE)
+        apply hypsubst_thin
+        apply code_simp
+        done
+      subgoal
+        by simp
+      subgoal for l1 l2
+        apply simp
+        apply (elim conjE)
+        apply hypsubst_thin
+        using loc_3_2_cases[of l1] loc_3_2_cases[of l2] apply -
+        by (elim disjE; hypsubst_thin?; eval?)
+      subgoal for nid' p1 p2
+        apply simp
+        apply (elim conjE)
+        apply hypsubst_thin
+        using loc_3_2_cases[of l1] loc_3_2_cases[of l2] apply -
+        by (elim disjE; (simp only: incomparable_def location.sel)?; simp?)
+      subgoal
+        apply simp
+        apply (elim conjE)
+        apply hypsubst_thin
+        unfolding bi_unique_def
+        apply safe
+        subgoal
+          by (clarsimp simp only: incomparable_def location.sel op_conn.simps port.simps split: option.split if_splits; (simp split: option.split if_splits)?)
+        subgoal
+          by (clarsimp simp only: incomparable_def location.sel op_conn.simps port.simps split: option.split if_splits; (simp split: option.split if_splits)?)
+        subgoal
+          by (clarsimp simp only: incomparable_def location.sel op_conn.simps port.simps split: option.split if_splits; (simp split: option.split if_splits)?)
+        subgoal
+          by (clarsimp simp only: incomparable_def location.sel op_conn.simps port.simps split: option.split if_splits; (simp split: option.split if_splits)?)
+        done
+      done
+    done
+  done
+
 lemma outputs_at_target_raw_summary:
-  \<open>outputs_at_target (antichain_from_list  \<circ>\<circ> raw_summary) os = (\<lambda>l.
+  \<open>outputs_at_target (antichain_from_list \<circ>\<circ> raw_summary) os = (\<lambda>l.
   if l = (1, 0) then outpu (os 0) 0
-  else if l = (2, 0) then outpu (os 1) 1
-  else if l = (1, 1) then outpu (os 2) 0
+  else if l = (2 :: 3, 1 :: 2) then outpu (os 1) 1
+  else if l = (1, 1) then outpu (os 2) 1
   else [])\<close>
   (is \<open>?f = ?g\<close>)
 proof (rule ext)
@@ -228,11 +293,9 @@ proof (rule ext)
   consider \<open>l = (0, 0)\<close> | \<open>l = (0, 1)\<close> | \<open>l = (1, 0)\<close> | \<open>l = (1, 1)\<close> | \<open>l = (2, 0)\<close> | \<open>l = (2, 1)\<close>
     using num3_cases num2_cases prod.exhaust by (smt (verit, ccfv_SIG))
   thus \<open>?f l = ?g l\<close>
-    by cases (simp_all add: outputs_at_target_def raw_summary_def antichain_from_list_singleton)
+    by cases
+      (simp_all add: outputs_at_target_def raw_summary_def antichain_from_list_singleton )
 qed
-
-declare if_cong[cong]
-declare list_emb_Nil2[simp del] BULK_BENQ_right_empty[simp del] BULK_BENQ_left_empty[simp del]
 
 lemma label_propagation_correctness:
   fixes lxs :: \<open>((nat, nat) myprod, nat \<times> nat) event llist\<close>

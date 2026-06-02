@@ -257,6 +257,7 @@ lemma loc_2_1_cases:
     done
   done
 
+
 lemma diff01[simp]:
   "0 \<noteq> (1 :: 2)"
   by simp
@@ -333,5 +334,16 @@ lemma num3_neq:
   shows \<open>n \<noteq> 0 \<Longrightarrow> n \<noteq> 1 \<Longrightarrow> n = 2\<close> \<open>n \<noteq> 0 \<Longrightarrow> n \<noteq> 2 \<Longrightarrow> n = 1\<close> \<open>n \<noteq> 1 \<Longrightarrow> n \<noteq> 2 \<Longrightarrow> n = 0\<close>
   using num3_cases by meson+
 
+
+lemma loc_3_2_cases:
+  "l = Loc (0 :: 3) (Trg (0 :: 2)) \<or> l = Loc (0 :: 3) (Trg 1) \<or> l = Loc 0 (Src 0) \<or> l = Loc 0 (Src 1) \<or>
+   l = Loc (1 :: 3) (Trg (0 :: 2)) \<or> l = Loc (1 :: 3) (Trg 1) \<or> l = Loc 1 (Src 0) \<or> l = Loc 1 (Src 1) \<or> 
+   l = Loc (2 :: 3) (Trg (0 :: 2)) \<or> l = Loc (2 :: 3) (Trg 1) \<or> l = Loc 2 (Src 0) \<or> l = Loc 2 (Src 1)"
+  apply (cases l; simp)
+  subgoal for nid p
+    apply (cases nid; cases p; simp)
+     apply (metis not_01 num3_neq(3))+
+    done
+  done
 
 end
