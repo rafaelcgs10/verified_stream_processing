@@ -55,7 +55,7 @@ definition neighbors where
 
 definition all_vertices where
   \<open>all_vertices os t = (let ts = filter ((\<ge>) t) (timestamps os) in
-  if is_Nil ts then set (vertices os t) else set (concat (map (vertices os) ts)))\<close>
+  if is_Nil ts then set (remdups (vertices os t)) else set (remdups (concat (map (vertices os) ts))))\<close>
 
 definition all_edges where
   \<open>all_edges os t = {(v, w). w \<in> set (neighbors os t v)}\<close>

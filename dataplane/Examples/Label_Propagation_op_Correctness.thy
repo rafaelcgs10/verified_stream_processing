@@ -77,16 +77,22 @@ abbreviation \<open>initial_state_increment inc \<equiv> \<lparr>
 abbreviation \<open>logic_map n \<equiv> map_op (case_option (Inl n) (\<lambda>p. Inr (n, p))) (case_option (Inl n) (\<lambda>p. Inr (n, p)))\<close>
 abbreviation \<open>comp_map \<equiv> map_op (case_sum id id) (case_sum id id)\<close>
 
-abbreviation \<open>op0 inp \<equiv> Logic (ooo_input_op {|0 :: 2|} (initial_state_input inp)) default_internal_summary\<close>
-abbreviation \<open>op1 \<equiv> Logic (label_propagation_op initial_state_label_prop) (\<lambda>p1 p2. if p1 = 0 then [0] else if p2 = 1 then [0] else [])\<close>
-abbreviation \<open>op2 \<equiv> Logic (increment_op (1 :: 2) 1 (MyPair 0 1) (initial_state_increment (MyPair 0 1))) (increment_summary (MyPair 0 1))\<close>
+abbreviation \<open>op0 state inp \<equiv> Logic (ooo_input_op {|0 :: 2|} (state inp)) default_internal_summary\<close>
+abbreviation \<open>op1 state \<equiv> Logic (label_propagation_op state) (\<lambda>p1 p2. if p1 = 0 then [0] else if p2 = 1 then [0] else [])\<close>
+abbreviation \<open>op2 state \<equiv> Logic (increment_op (1 :: 2) 1 (MyPair 0 1) (state (MyPair 0 1))) (increment_summary (MyPair 0 1))\<close>
 
-abbreviation G :: "_ \<Rightarrow> (3, 2, (2, (nat, nat) myprod) shared_state + (2 \<Rightarrow> (nat, nat) myprod antichain), (nat \<times> nat + nat set set) \<times> (nat, nat) myprod, (nat, nat) myprod) dataflow_tree" where
-  "G inp \<equiv> (Comp [(0, 0) \<mapsto> (0, 0)] (op0 inp) (Loop [(1, 1) \<mapsto> (0, 1)] (Comp [(0, 1) \<mapsto> (0, 1)] op1 op2)))"
-abbreviation "compiled inp \<equiv> opt_compile_dataflow (\<lambda> _. []) (G inp)"
+abbreviation G :: "_ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> _ \<Rightarrow> (3, 2, (2, (nat, nat) myprod) shared_state + (2 \<Rightarrow> (nat, nat) myprod antichain), (nat \<times> nat + nat set set) \<times> (nat, nat) myprod, (nat, nat) myprod) dataflow_tree" where
+  "G inp_state inp label_state incr_state \<equiv> (Comp [(0, 0) \<mapsto> (0, 0)] (op0 inp_state inp) (Loop [(1, 1) \<mapsto> (0, 1)] (Comp [(0, 1) \<mapsto> (0, 1)] (op1 label_state) (op2 incr_state))))"
 
-(* abbreviation \<open>test_input1 \<equiv> llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0), Data \<bottom> (0, 1), Data (MyPair 1 0) (3, 4), Data \<bottom> (1, 2), Data (MyPair 2 0) (4, 5)]\<close>
-value "list_connections (dataflow_tree_to_graph (G test_input1))"
+abbreviation "compiled inp \<equiv> compile_dataflow (\<lambda> _. []) (G initial_state_input inp initial_state_label_prop initial_state_increment)"
+
+abbreviation "G_op inp_state inp label_state incr_state chns \<equiv>
+   dataflow_tree_to_operator chns (G inp_state inp label_state incr_state)"
+
+(* 
+
+abbreviation \<open>test_input1 \<equiv> llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0), Data \<bottom> (0, 1), Data (MyPair 1 0) (3, 4), Data \<bottom> (1, 2), Data (MyPair 2 0) (4, 5)]\<close>
+value "list_connections (dataflow_tree_to_graph (G initial_state_input test_input1 initial_state_label_prop initial_state_increment))"
 value [GHC] \<open>ltaken 3 (lmap show_Outs (trace_exec (compiled test_input1)))\<close>
 
 abbreviation \<open>test_input2 \<equiv> llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0), Data \<bottom> (1, 2), Data \<bottom> (0, 1), Data (MyPair 1 0) (3, 4), Data (MyPair 2 0) (4, 5), Mint (MyPair 3 0), Data (MyPair 3 0) (2, 3)]\<close>
@@ -128,8 +134,8 @@ value [GHC] \<open>ltaken 2 (lmap show_Outs (trace_exec (compiled test_input8)))
 abbreviation \<open>test_input9 \<equiv>
   llist_of [ Data \<bottom> (0, 6), Data \<bottom> (0, 1), Data (MyPair 1 0) (2, 3)]\<close>
 value [GHC] \<open>ltaken 2 (lmap show_Outs (trace_exec (compiled test_input9)))\<close>
- *)
 
+ *)
 
 definition collection_le where
   \<open>collection_le lxs t = list_of (lmap (\<lambda>e. case e of Data _ d \<Rightarrow> d)
@@ -208,8 +214,8 @@ definition \<open>raw_summary = (\<lambda>l1 l2. case (find (\<lambda> (l1', s, 
   (Loc 2 (Trg 1), [MyPair 0 1], Loc 2 (Src 1)), (Loc 2 (Src 1), [MyPair 0 0], Loc 1 (Trg 1))]) of
     Some (l1', s, l2') \<Rightarrow> s :: (nat, nat) myprod list | None \<Rightarrow> [])\<close>
 
-lemma
-  "dataflow_tree_to_graph (G inp) = raw_summary"
+lemma dataflow_tree_to_graph_raw_summary[simp]:
+  "dataflow_tree_to_graph (G inp_state inp label_state incr_state) = raw_summary"
   unfolding dataflow_tree_to_graph_def Let_def default_internal_summary_def  comp_def                                               
   apply (simp only: split: if_splits prod.splits)
   apply (intro allI impI conjI)
@@ -348,7 +354,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
   show ?case (is \<open>wsim ((~) OO \<U> ?R OO (\<approx>)) _ _\<close>)
   proof -
     define R where \<open>R = ?R\<close>
-(*
+
     show ?thesis
       using [[goals_limit=16]]
       unfolding R_def[symmetric]
@@ -358,7 +364,10 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           step_builder_op_elim conjE; simp only: IO.simps; hypsubst_thin?; (elim step_map_op_elim
             step_comp_op_elim step_loop_op_elim step_builder_op_elim conjE)?), simp_all only: IO.simps;
         clarsimp split: if_splits option.splits dest!: num2_neq simp flip: my_ooo_input_op_def ooo_input_op_def my_label_propagation_op_def label_propagation_op_def my_increment_op_def increment_op_def; hypsubst_thin?)
-*)
+
+
+
+end
     have "\<exists>op2'. step (Out (n, p) (d, t)) (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S (cinsert ((n, p), d, t) D) (dataflow_op sg (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (my_ooo_input_op os_input) (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (my_label_propagation_op os_label_prop) (my_increment_op (os 2))))))))) op2'"
       (is \<open>\<exists>_. step _ ?op2 _ \<and> ((~) OO \<U> R OO (\<approx>)) ?op1' _\<close>)
       if "((n, p), d, t) |\<in>| S"
