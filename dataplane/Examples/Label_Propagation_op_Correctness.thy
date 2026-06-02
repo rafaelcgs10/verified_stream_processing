@@ -349,8 +349,10 @@ lemma label_propagation_correctness:
 proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns sg T G V L
     rule: weakBisimWeakUptoBisimCong)
   case SIM1
+  note subgraph_inv = SIM1(1,2)
   show ?case (is \<open>wsim ((~) OO \<U> ?R OO (\<approx>)) _ _\<close>)
   proof -
+    thm SIM1
     define R where \<open>R = ?R\<close>
 
     show ?thesis
@@ -469,9 +471,11 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
               apply simp
               done
             done
+          subgoal premises aux
+            apply (rule arg_cong2[where f=set_spec_op])
+            apply (simp_all add: SIM1(13,14))
 
-
-          find_theorems chns
+          find_theorems SP
 
 end
   have "\<exists>op2'. step (Out (n, p) (d, t)) (set_spec_op (cUn (cUn S SO) SP) D) op2' \<and> ((~) OO \<U> R OO (\<approx>)) (set_op S (cinsert ((n, p), d, t) D) (dataflow_op sg (comp_map (comp_op [Inr (0, 0) \<mapsto> Inr (1, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (my_ooo_input_op os_input) (loop_op [Inr (2, 0) \<mapsto> Inr (1, 1)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (comp_map (comp_op [Inr (1, 1) \<mapsto> Inr (2, 0)] (case_sum (\<lambda>x. []) (\<lambda>l. map Inr (cbufs l))) (my_label_propagation_op os_label_prop) (my_increment_op (os 2))))))))) op2'"
