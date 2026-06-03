@@ -20,6 +20,14 @@ locale finite_symmetric_graph =
     and E_sym: "sym E"
 begin
 
+subsection \<open>Component Specification\<close>
+
+text \<open>
+  The abstract result is a set of connected components over the finite vertex
+  set @{term V}.  Since @{term E} is assumed symmetric, weak reachability is
+  just reflexive-transitive reachability along @{term E}.
+\<close>
+
 definition reachable :: "'v \<Rightarrow> 'v \<Rightarrow> bool" where
   "reachable x y \<longleftrightarrow> (x, y) \<in> E\<^sup>*"
 
@@ -28,6 +36,19 @@ definition cc_of :: "'v \<Rightarrow> 'v set" where
 
 definition wccs :: "'v set set" where
   "wccs = cc_of ` V"
+
+subsection \<open>Labels and Local Updates\<close>
+
+text \<open>
+  A label @{term "l v"} is the current representative candidate for vertex
+  @{term v}.  The invariant \<open>labels_inv\<close> keeps every label inside the
+  connected component of the vertex it labels.  Stability means that no edge can
+  witness a strictly smaller neighbor label; by symmetry this later implies
+  equal labels along every edge.
+
+  A local update replaces @{term "l v"} by the minimum of its current label and
+  the labels currently seen on its neighbors.
+\<close>
 
 definition labels_inv :: "'v labels \<Rightarrow> bool" where
   "labels_inv l \<longleftrightarrow> (\<forall>v \<in> V. l v \<in> cc_of v)"
@@ -44,11 +65,32 @@ definition min_neighbor_label :: "'v labels \<Rightarrow> 'v \<Rightarrow> 'v" w
 definition update_label :: "'v labels \<Rightarrow> 'v \<Rightarrow> 'v labels" where
   "update_label l v = l(v := min_neighbor_label l v)"
 
+subsection \<open>Termination Measure\<close>
+
+text \<open>
+  The algorithm only ever decreases labels.  To prove termination, labels are
+  embedded into natural numbers by their rank in the finite ordered vertex set,
+  and the global measure sums these ranks over all vertices.
+\<close>
+
 definition rank :: "'v \<Rightarrow> nat" where
   "rank x = card {y \<in> V. y < x}"
 
 definition labels_measure :: "'v labels \<Rightarrow> nat" where
   "labels_measure l = (\<Sum>v \<in> V. rank (l v))"
+
+subsection \<open>One Propagation Round\<close>
+
+text \<open>
+  One round visits every vertex once, in nondeterministic order.
+
+  The round state @{term "(todo, l, changed)"} has the following meaning:
+  @{term todo} is the set of vertices not yet visited in this round;
+  @{term l} is the current label function; and @{term changed} records whether
+  some visited vertex strictly decreased its label.  If no change has happened,
+  all already visited vertices must already be locally stable with respect to
+  the current labels.
+\<close>
 
 definition round_inv :: "'v labels \<Rightarrow> 'v set \<times> 'v labels \<times> bool \<Rightarrow> bool" where
   "round_inv l0 s \<longleftrightarrow> (case s of (todo, l, changed) \<Rightarrow>
@@ -67,8 +109,17 @@ definition wcc_round :: "'v labels \<Rightarrow> ('v labels \<times> bool) nres"
             RETURN (todo - {v}, l(v := m), changed \<or> m < l v)
          })
          (V, l, False);
-     RETURN (l', changed)
-   }"
+      RETURN (l', changed)
+    }"
+
+subsection \<open>Outer Fixed-Point Loop\<close>
+
+text \<open>
+  The outer loop repeats rounds until a whole round makes no strict label
+  decrease.  Its state @{term "(l, changed)"} stores the current labels and the
+  result of the previous round.  The initial @{term True} forces at least one
+  round, which is needed even when the initial labels are already stable.
+\<close>
 
 definition init_labels :: "'v labels" where
   "init_labels v = v"
@@ -84,8 +135,16 @@ definition wcc_labels :: "'v labels nres" where
          (\<lambda>(l, changed). changed)
          (\<lambda>(l, changed). wcc_round l)
          (init_labels, True);
-     RETURN l
-   }"
+      RETURN l
+    }"
+
+subsection \<open>Extracting Components\<close>
+
+text \<open>
+  Once labels are stable, each label class inside @{term V} is exactly one
+  weakly connected component.  The final program first computes stable labels
+  and then returns their label classes as the abstract component set.
+\<close>
 
 definition components_from_labels :: "'v labels \<Rightarrow> 'v set set" where
   "components_from_labels l = ((\<lambda>a. {v \<in> V. l v = a}) ` (l ` V))"
@@ -95,6 +154,8 @@ definition weak_components :: "'v set set nres" where
      l \<leftarrow> wcc_labels;
      RETURN (components_from_labels l)
    }"
+
+subsection \<open>Basic Component Facts\<close>
 
 lemma reachable_refl [simp]:
   "reachable v v"
@@ -197,6 +258,8 @@ lemma Union_wccs:
 lemma wccs_finite:
   "finite wccs"
   unfolding wccs_def using finite_V by simp
+
+subsection \<open>Label and Neighborhood Facts\<close>
 
 lemma labels_invI:
   assumes "\<And>v. v \<in> V \<Longrightarrow> l v \<in> cc_of v"
@@ -354,6 +417,8 @@ proof (rule labels_invI)
   qed
 qed
 
+subsection \<open>Round Invariant Setup\<close>
+
 lemma round_inv_initial:
   assumes "labels_inv l"
   shows "round_inv l (V, l, False)"
@@ -401,6 +466,8 @@ lemma outer_inv_stableD:
   assumes "outer_inv (l, False)"
   shows "labels_stable l"
   using assms unfolding outer_inv_def by simp
+
+subsection \<open>Measure Facts\<close>
 
 lemma finite_rank_set [simp]:
   "finite {y \<in> V. y < x}"
@@ -514,6 +581,8 @@ proof -
   show ?thesis
     using labels_measure_update_decreases[OF \<open>labels_inv l\<close> \<open>v \<in> V\<close> assms(3)] .
 qed
+
+subsection \<open>Round Correctness\<close>
 
 lemma round_step_preserves_round_inv:
   assumes "round_inv l0 (todo, l, changed)" and "v \<in> todo"
@@ -701,6 +770,8 @@ lemma wcc_round_preserves_labels_inv:
   using wcc_round_correct[OF assms]
   by (rule order_trans) (auto intro: SPEC_rule)
 
+subsection \<open>Outer Loop Correctness\<close>
+
 lemma wcc_labels_correct:
   "wcc_labels \<le> SPEC (\<lambda>l. labels_inv l \<and> labels_stable l)"
   unfolding wcc_labels_def
@@ -721,6 +792,8 @@ lemma wcc_labels_correct:
   subgoal for s l changed
     by (cases s) (simp add: outer_inv_def)
   done
+
+subsection \<open>Components Induced by Stable Labels\<close>
 
 lemma labels_stable_reachable_eq:
   assumes "labels_stable l" and "reachable u v"
