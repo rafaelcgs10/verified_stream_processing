@@ -776,7 +776,7 @@ lemma wcc_labels_correct:
   "wcc_labels \<le> SPEC (\<lambda>l. labels_inv l \<and> labels_stable l)"
   unfolding wcc_labels_def
   apply (refine_vcg WHILEIT_rule[where R=
-    "measure (\<lambda>(l, changed). labels_measure l + (if changed then 1 else 0))"])
+        "measure (\<lambda>(l, changed). labels_measure l + (if changed then 1 else 0))"])
   subgoal by simp
   subgoal by (rule outer_inv_initial)
   subgoal for s l changed
