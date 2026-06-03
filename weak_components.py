@@ -6,6 +6,9 @@ def weak_components(graph):
     for node in graph:
         labels[node] = node
 
+    for node in graph:
+        assert labels[node] in reachable(graph, node)
+
     changed = True
     while changed:
         changed = False
@@ -20,6 +23,9 @@ def weak_components(graph):
             if smallest < labels[node]:
                 labels[node] = smallest
                 changed = True
+
+        for node in graph:
+            assert labels[node] in reachable(graph, node)
 
     return components_from_labels(labels)
 
@@ -36,6 +42,15 @@ def components_from_labels(labels):
 
     return components
 
+def reachable(graph, node):
+    nodes = [node]
+
+    for node in nodes:
+        new_nodes = [n for n in graph[node] if n not in nodes]
+        nodes.extend(new_nodes)
+
+    return nodes
+    
 
 def main():
     graph = {
@@ -54,7 +69,6 @@ def main():
 
     for label in sorted(components):
         print("component", label, ":", sorted(components[label]))
-
 
 if __name__ == "__main__":
     main()
