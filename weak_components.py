@@ -21,6 +21,10 @@ def weak_components(graph):
                 labels[node] = smallest
                 changed = True
 
+    return components_from_labels(labels)
+
+
+def components_from_labels(labels):
     components = {}
     for node in labels:
         label = labels[node]
