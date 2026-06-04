@@ -159,6 +159,10 @@ lemma outpu_drop_caps[simp]:
   "outpu (drop_caps os caps) = outpu os"
   unfolding drop_caps_def
   by auto
+lemma front_drop_caps[simp]:
+  "front (drop_caps os caps) = front os"
+  unfolding drop_caps_def
+  by auto
 lemma outpu_drop_cap[simp]:
   "outpu (drop_cap os cap) = outpu os"
   unfolding drop_cap_def
@@ -209,6 +213,16 @@ lemma intsum_consumes[simp]:
   apply auto
   done
 
+
+lemma input_drop_caps[simp]:
+  "input (drop_caps os caps) = input os"
+  unfolding drop_caps_def
+  by auto
+
+lemma input_produces[simp]:
+  "input (produces os batch) = input os"
+  unfolding produces_def
+  by auto
 lemma input_consumes[simp]:
   "input (consumes os p t d) = (input os)(p := input os p @ [(d, t)])"
   unfolding consumes_def add_caps_def BENQ_def

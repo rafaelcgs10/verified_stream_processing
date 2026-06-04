@@ -109,7 +109,7 @@ definition label_propagation_op_logic where
     in {|release_caps (produces os' batch) 1|}))
   (let os = trace (STR ''front0:'' + show_myprod_frontier (front os 0) + STR '', front1: '' + show_myprod_frontier (front os 1)) (release_caps os 1) ;
        below_times = trace (STR ''ocaps1: '' + show_list (show_prod show_nat show_nat) (map to_prod (ocaps os 1))) (filter (\<lambda> t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t)) (ocaps os 0));
-       output_times = mergesort_remdups (map myfst below_times);
+       output_times = rmdups {} (map myfst below_times);
        batch = map (\<lambda>t. let cap = Cap (MyPair t 0) 0 in (en2 os (
           ((all_vertices os t) // ({(v1, v2) \<in> (all_vertices os t) \<times> (all_vertices os t). min_label os t v1 = min_label os t v2} ))), cap))
         (trace (STR ''below_times: '' + show_list show_nat (map myfst below_times) + STR '', ocaps: '' + show_list show_nat (map myfst (ocaps os 0)) + STR '', outpu_times: '' + show_list show_nat output_times)
@@ -125,5 +125,106 @@ term "Image "
 (* @ map (\<lambda>t. Cap t 1) (filter P (ocaps os 1)) *)
 definition label_propagation_op where
   \<open>label_propagation_op os = builder_op True cUNIV cUNIV os label_propagation_op_logic\<close>
+
+
+
+(* FIXME: move me closer to dependencies *)
+
+lemma vertices_drop_caps[simp]:
+  "vertices (drop_caps os caps) = vertices os"
+  unfolding drop_caps_def
+  by auto
+
+lemma timestamps_drop_caps[simp]:
+  "timestamps (drop_caps os caps) = timestamps os"
+  unfolding drop_caps_def
+  by auto
+
+lemma vertices_release_caps[simp]:
+  "vertices (release_caps os p) = vertices os"
+  unfolding release_caps_def
+  by auto
+
+lemma timestamps_release_caps[simp]:
+  "timestamps (release_caps os p) = timestamps os"
+  unfolding release_caps_def trace_simp Let_def
+  by auto
+
+lemma timestamps_produces[simp]:
+  "timestamps (produces os batch) = timestamps os"
+  unfolding produces_def trace_simp Let_def
+  by auto
+
+lemma all_vertices_release_caps[simp]:
+  "all_vertices (release_caps os p) = all_vertices os"
+  unfolding all_vertices_def
+  by (auto split: list.splits cong: if_cong)
+
+lemma min_label_drop_caps[simp]:
+  "min_label (drop_caps os p) = min_label os"
+  unfolding drop_caps_def  Let_def trace_simp min_label_def
+  by (auto cong: if_cong)
+
+lemma min_label_release_caps[simp]:
+  "min_label (release_caps os p) = min_label os"
+  unfolding release_caps_def Let_def trace_simp
+  by (auto split: list.splits)
+
+
+lemma outpu_release_caps[simp]:
+  "outpu (release_caps os p) = outpu os"
+  unfolding release_caps_def Let_def trace_simp
+  by (auto split: list.splits)
+
+lemma front_release_caps[simp]:
+  "front (release_caps os p) = front os"
+  unfolding release_caps_def Let_def trace_simp
+  by (auto split: list.splits)
+
+
+lemma neighbors_drop_caps[simp]:
+  "neighbors (drop_caps os caps) = neighbors os"
+  unfolding drop_caps_def neighbors_def
+  by auto
+
+lemma neighbors_produces[simp]:
+  "neighbors (produces os batch) = neighbors os"
+  unfolding produces_def neighbors_def
+  by auto
+
+lemma graph_drop_caps[simp]:
+  "label_propagation_state.graph (drop_caps os caps) = label_propagation_state.graph os"
+  unfolding drop_caps_def 
+  by auto
+
+lemma graph_release_caps[simp]:
+  "label_propagation_state.graph (release_caps os p) = label_propagation_state.graph os"
+  unfolding release_caps_def
+  by auto
+
+lemma neighbors_release_caps[simp]:
+  "neighbors (release_caps os p) = neighbors os"
+  unfolding release_caps_def neighbors_def
+  by auto
+
+lemma all_edges_drop_caps[simp]:
+  "all_edges (drop_caps os caps) = all_edges os"
+  unfolding all_edges_def
+  by auto
+
+lemma all_edges_produces[simp]:
+  "all_edges (produces os batch) = all_edges os"
+  unfolding all_edges_def
+  by auto
+
+lemma all_edges_release_caps[simp]:
+  "all_edges (release_caps os p) = all_edges os"
+  unfolding release_caps_def all_edges_def
+  by auto
+
+lemma input_release_caps[simp]:
+  "input (release_caps os p) = input os"
+  unfolding release_caps_def
+  by auto
 
 end

@@ -10,8 +10,6 @@ imports
   Dataplane.LList_Haskell_Setup
 begin
 
-abbreviation "show_myprod \<equiv> (\<lambda> s1 s2. show_prod s1 s2 o to_prod)"
-
 definition batch_op_logic where
   "batch_op_logic ips ops comb os logic = notifier_op ips ops os 
    (\<lambda> os compl_caps.
