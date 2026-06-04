@@ -439,4 +439,51 @@ lemma timely_input_stream_drops_subseteq_C_mints:
   done
 
 
+
+definition icoll where
+  \<open>icoll lxs t = list_of (lmap (\<lambda>e. case e of Data _ d \<Rightarrow> d)
+  (lfilter (\<lambda>e. case e of Data t' _ \<Rightarrow> t' \<le> t | _ \<Rightarrow> False) lxs))\<close>
+
+lemma icoll_LNil[simp]:
+  \<open>icoll LNil t = []\<close>
+  unfolding icoll_def by simp
+
+lemma icoll_LCons_Data:
+  assumes \<open>lfinite (lfilter (\<lambda>e. event.time e \<le> t) lxs)\<close>
+  shows \<open>icoll (LCons (Data t' d) lxs) t =
+  (if t' \<le> t then d # icoll lxs t else icoll lxs t)\<close>
+proof (cases \<open>t' \<le> t\<close>)
+  case True
+  have \<open>lfilter (\<lambda>e. case e of Data t' _ \<Rightarrow> t' \<le> t | _ \<Rightarrow> False) lxs
+  = lfilter is_Data (lfilter (\<lambda>e. event.time e \<le> t) lxs)\<close>
+    using event.case_eq_if lfilter_cong lfilter_lfilter by (smt (verit, best))
+  thus ?thesis unfolding icoll_def using assms by simp
+next
+  case False
+  thus ?thesis unfolding icoll_def by simp
+qed
+
+lemma icoll_LCons_Drop[simp]:
+  \<open>icoll (LCons (Drop t') lxs) t = icoll lxs t\<close>
+  unfolding icoll_def by simp
+
+lemma icoll_LCons_Mint[simp]:
+  \<open>icoll (LCons (Mint t') lxs) t = icoll lxs t\<close>
+  unfolding icoll_def by simp
+
+lemma icoll_append:
+  \<open>icoll (llist_of (xs @ ys)) t
+  = icoll (llist_of xs) t @ icoll (llist_of ys) t\<close>
+  unfolding icoll_def by simp
+
+lemma icoll_lshift:
+  \<open>lfinite (lfilter (\<lambda>e. event.time e \<le> t) lxs) \<Longrightarrow>
+  icoll (xs @@- lxs) t = icoll (llist_of xs) t @ icoll lxs t\<close>
+proof (induction xs arbitrary: lxs rule: rev_induct)
+  case (snoc x xs)
+  thus ?case by (cases x) (auto simp add: icoll_append icoll_LCons_Data)
+qed simp
+
+
+
 end

@@ -10,6 +10,7 @@ imports
   "HOL-ex.Sketch_and_Explore"
   Dataplane.Timely_Dataflow_Op
   Dataplane.Bots
+  "../Correctness/Timely_Collections"
 begin
 
 
@@ -138,50 +139,6 @@ abbreviation \<open>test_input9 \<equiv>
 value [GHC] \<open>ltaken 2 (lmap show_Outs (trace_exec (compiled test_input9)))\<close>
 
  *)
-
-definition collection_le where
-  \<open>collection_le lxs t = list_of (lmap (\<lambda>e. case e of Data _ d \<Rightarrow> d)
-  (lfilter (\<lambda>e. case e of Data t' _ \<Rightarrow> t' \<le> t | _ \<Rightarrow> False) lxs))\<close>
-
-lemma collection_le_LNil[simp]:
-  \<open>collection_le LNil t = []\<close>
-  unfolding collection_le_def by simp
-
-lemma collection_le_LCons_Data:
-  assumes \<open>lfinite (lfilter (\<lambda>e. time e \<le> t) lxs)\<close>
-  shows \<open>collection_le (LCons (Data t' d) lxs) t =
-  (if t' \<le> t then d # collection_le lxs t else collection_le lxs t)\<close>
-proof (cases \<open>t' \<le> t\<close>)
-  case True
-  have \<open>lfilter (\<lambda>e. case e of Data t' _ \<Rightarrow> t' \<le> t | _ \<Rightarrow> False) lxs
-  = lfilter is_Data (lfilter (\<lambda>e. time e \<le> t) lxs)\<close>
-    using event.case_eq_if lfilter_cong lfilter_lfilter by (smt (verit, best))
-  thus ?thesis unfolding collection_le_def using assms by simp
-next
-  case False
-  thus ?thesis unfolding collection_le_def by simp
-qed
-
-lemma collection_le_LCons_Drop[simp]:
-  \<open>collection_le (LCons (Drop t') lxs) t = collection_le lxs t\<close>
-  unfolding collection_le_def by simp
-
-lemma collection_le_LCons_Mint[simp]:
-  \<open>collection_le (LCons (Mint t') lxs) t = collection_le lxs t\<close>
-  unfolding collection_le_def by simp
-
-lemma collection_le_append:
-  \<open>collection_le (llist_of (xs @ ys)) t
-  = collection_le (llist_of xs) t @ collection_le (llist_of ys) t\<close>
-  unfolding collection_le_def by simp
-
-lemma collection_le_lshift:
-  \<open>lfinite (lfilter (\<lambda>e. time e \<le> t) lxs) \<Longrightarrow>
-  collection_le (xs @@- lxs) t = collection_le (llist_of xs) t @ collection_le lxs t\<close>
-proof (induction xs arbitrary: lxs rule: rev_induct)
-  case (snoc x xs)
-  thus ?case by (cases x) (auto simp add: collection_le_append collection_le_LCons_Data)
-qed simp
 
 context
   fixes edges :: \<open>('a \<times> 'a) set\<close> (\<open>E\<close>)
@@ -338,7 +295,7 @@ lemma label_propagation_correctness:
     and csets_inv:
     \<open>SP = cimage
       (\<lambda>t. ((1, 0), (Inr (ccs
-        (set (collection_le (map (\<lambda>(x, t'). Data t' (projl x)) (chns (1, 0)) @@- lxs) t)
+        (set (icoll (map (\<lambda>(x, t'). Data t' (projl x)) (chns (1, 0)) @@- lxs) t)
         \<union> all_edges os_label_prop (myfst t))), t)))
       (cUn (ts lxs) (cset_from_list (map snd (chns (1, 0)))))\<close>
     \<open>SO = cset_from_list (map (\<lambda>x. ((1, 0), x)) (outpu (os 1) 0))\<close>
