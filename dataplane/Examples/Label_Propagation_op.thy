@@ -119,9 +119,10 @@ definition label_propagation_op_logic where
         then {||}
         else {|(drop_caps ((produces os batch)) (map (\<lambda>t. Cap t 0) below_times @ map (\<lambda>t. Cap t 1) (filter (\<lambda> t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t)) (ocaps os 1)) ))|})\<close>
 
+term components_from_labels
+term "all_vertices os t "
 
-
-term "Image "
+term "components_from_labels (all_edges os t) (\<lambda> v. min_label os t v)"
 
 (* @ map (\<lambda>t. Cap t 1) (filter P (ocaps os 1)) *)
 definition label_propagation_op where

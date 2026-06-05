@@ -13,8 +13,11 @@ subsection \<open>Undirected Reachability and Components\<close>
 definition reachable where
   \<open>reachable x y \<equiv> (x, y) \<in> (E \<union> E\<inverse>)\<^sup>*\<close>
 
+definition edge_vertices where
+  \<open>edge_vertices = Field E\<close>
+
 definition is_subcc :: \<open>'a set \<Rightarrow> bool\<close>  where
-  \<open>is_subcc S \<equiv> \<forall>x \<in> S. \<forall>y \<in> S. reachable x y\<close>
+  \<open>is_subcc S \<equiv> S \<subseteq> edge_vertices \<and> (\<forall>x \<in> S. \<forall>y \<in> S. reachable x y)\<close>
 
 definition is_cc :: \<open>'a set \<Rightarrow> bool\<close> where
   \<open>is_cc S \<equiv> S \<noteq> {} \<and> is_subcc S \<and> (\<forall>S'. S \<subseteq> S' \<and> is_subcc S' \<longrightarrow> S' = S)\<close>
@@ -30,16 +33,16 @@ lemma Ex1_is_ccs:
   unfolding is_ccs_def by blast
 
 definition cc_of where
-  \<open>cc_of v = {u. reachable v u}\<close>
+  \<open>cc_of v = {u \<in> edge_vertices. reachable v u}\<close>
 
 definition labels_inv  where
-  "labels_inv l \<longleftrightarrow> (\<forall>v. l v \<in> cc_of v)"
+  "labels_inv l \<longleftrightarrow> (\<forall>v \<in> edge_vertices. l v \<in> cc_of v)"
 
 definition labels_stable where
   "labels_stable l \<longleftrightarrow> (\<forall>v u. (v, u) \<in> E \<union> E\<inverse> \<longrightarrow> l v \<le> l u)"
 
 definition components_from_labels where
-  "components_from_labels l = ((\<lambda>a. {v. l v = a}) ` range l)"
+  "components_from_labels l = ((\<lambda>a. {v \<in> edge_vertices. l v = a}) ` (l ` edge_vertices))"
 
 subsection \<open>Basic Reachability Facts\<close>
 
@@ -73,7 +76,7 @@ qed
 subsection \<open>Connected Components\<close>
 
 lemma cc_ofI:
-  assumes "reachable v u"
+  assumes "u \<in> edge_vertices" and "reachable v u"
   shows "u \<in> cc_of v"
   using assms unfolding cc_of_def by simp
 
@@ -83,12 +86,14 @@ lemma cc_ofD:
   using assms unfolding cc_of_def by simp
 
 lemma cc_of_self:
-  "v \<in> cc_of v"
-  using reachable_refl by (rule cc_ofI)
+  assumes "v \<in> edge_vertices"
+  shows "v \<in> cc_of v"
+  using assms reachable_refl by (rule cc_ofI)
 
 lemma cc_of_nonempty:
-  "cc_of v \<noteq> {}"
-  using cc_of_self by blast
+  assumes "v \<in> edge_vertices"
+  shows "cc_of v \<noteq> {}"
+  using assms cc_of_self by blast
 
 lemma cc_of_eq_if_reachable:
   assumes "reachable u v"
@@ -103,7 +108,7 @@ proof (intro set_eqI iffI)
   ultimately have "reachable v w"
     by (meson reachable_trans)
   then show "w \<in> cc_of v"
-    by (rule cc_ofI)
+    using \<open>w \<in> cc_of u\<close> unfolding cc_of_def by simp
 next
   fix w
   assume "w \<in> cc_of v"
@@ -112,7 +117,7 @@ next
   then have "reachable u w"
     using assms by (meson reachable_trans)
   then show "w \<in> cc_of u"
-    by (rule cc_ofI)
+    using \<open>w \<in> cc_of v\<close> unfolding cc_of_def by simp
 qed
 
 lemma cc_of_eq_if_member:
@@ -122,24 +127,15 @@ lemma cc_of_eq_if_member:
 
 lemma cc_of_is_subcc:
   "is_subcc (cc_of v)"
-  unfolding is_subcc_def
-proof (intro ballI)
-  fix x y
-  assume "x \<in> cc_of v" and "y \<in> cc_of v"
-  then have "reachable v x" and "reachable v y"
-    by (auto dest: cc_ofD)
-  then have "reachable x v" and "reachable v y"
-    using reachable_sym by blast+
-  then show "reachable x y"
-    by (rule reachable_trans)
-qed
+  unfolding is_subcc_def cc_of_def by (auto intro: reachable_sym reachable_trans)
 
 lemma cc_of_is_cc:
-  "is_cc (cc_of v)"
+  assumes "v \<in> edge_vertices"
+  shows "is_cc (cc_of v)"
   unfolding is_cc_def
 proof (intro conjI allI impI)
   show "cc_of v \<noteq> {}"
-    by (rule cc_of_nonempty)
+    using assms by (rule cc_of_nonempty)
   show "is_subcc (cc_of v)"
     by (rule cc_of_is_subcc)
 next
@@ -152,11 +148,11 @@ next
     fix x
     assume "x \<in> S'"
     have "v \<in> S'"
-      using subset cc_of_self by blast
+      using assms subset cc_of_self by blast
     then have "reachable v x"
       using subcc \<open>x \<in> S'\<close> unfolding is_subcc_def by blast
     then show "x \<in> cc_of v"
-      by (rule cc_ofI)
+      using subcc \<open>x \<in> S'\<close> unfolding cc_of_def is_subcc_def by blast
   next
     fix x
     assume "x \<in> cc_of v"
@@ -166,8 +162,9 @@ next
 qed
 
 lemma cc_of_in_ccs:
-  "cc_of v \<in> ccs"
-  using cc_of_is_cc by simp
+  assumes "v \<in> edge_vertices"
+  shows "cc_of v \<in> ccs"
+  using assms cc_of_is_cc by simp
 
 lemma cc_of_disjoint_or_eq:
   "cc_of u \<inter> cc_of v = {} \<or> cc_of u = cc_of v"
@@ -182,8 +179,23 @@ proof (cases "cc_of u \<inter> cc_of v = {}")
 qed simp
 
 lemma Union_ccs:
-  "\<Union>ccs = (UNIV :: 'a set)"
-  using cc_of_self cc_of_in_ccs by blast
+  "\<Union>ccs = edge_vertices"
+proof (intro set_eqI iffI)
+  fix x
+  assume "x \<in> \<Union>ccs"
+  then obtain C where "C \<in> ccs" and "x \<in> C"
+    by auto
+  then show "x \<in> edge_vertices"
+    unfolding is_cc_def is_subcc_def by auto
+next
+  fix x
+  assume "x \<in> edge_vertices"
+  then have "cc_of x \<in> ccs" and "x \<in> cc_of x"
+    using cc_of_in_ccs cc_of_self by auto
+  then show "x \<in> \<Union>ccs"
+    by auto
+qed
+
 
 lemma is_cc_eq_cc_of:
   assumes "is_cc S" and "x \<in> S"
@@ -197,8 +209,8 @@ proof -
     assume "y \<in> S"
     then have "reachable x y"
       using subcc assms(2) unfolding is_subcc_def by blast
-    then show "y \<in> cc_of x"
-      by (rule cc_ofI)
+    show "y \<in> cc_of x"
+      using subcc assms(2) \<open>y \<in> S\<close> unfolding cc_of_def is_subcc_def by blast
   qed
   moreover have "is_subcc (cc_of x)"
     by (rule cc_of_is_subcc)
@@ -211,46 +223,38 @@ qed
 subsection \<open>Label Invariants\<close>
 
 lemma labels_invI:
-  assumes "\<And>v. l v \<in> cc_of v"
+  assumes "\<And>v. v \<in> edge_vertices \<Longrightarrow> l v \<in> cc_of v"
   shows "labels_inv l"
   using assms unfolding labels_inv_def by simp
 
 lemma labels_invD:
-  assumes "labels_inv l"
+  assumes "labels_inv l" and "v \<in> edge_vertices"
   shows "l v \<in> cc_of v"
   using assms unfolding labels_inv_def by simp
 
 lemma labels_inv_reachable:
-  assumes "labels_inv l"
+  assumes "labels_inv l" and "v \<in> edge_vertices"
   shows "reachable v (l v)"
   using labels_invD[OF assms] by (rule cc_ofD)
 
 lemma labels_inv_same_label_reachable:
-  assumes "labels_inv l" and "l x = l y"
+  assumes "labels_inv l" and "x \<in> edge_vertices" and "y \<in> edge_vertices" and "l x = l y"
   shows "reachable x y"
 proof -
   have "reachable x (l x)"
-    using assms(1) by (rule labels_inv_reachable)
+    using assms(1,2) by (rule labels_inv_reachable)
   then have "reachable x (l y)"
-    using assms(2) by simp
+    using assms(4) by simp
   moreover have "reachable (l y) y"
-    using labels_inv_reachable[OF assms(1), of y] by (rule reachable_sym)
+    using labels_inv_reachable[OF assms(1,3)] by (rule reachable_sym)
   ultimately show ?thesis
     by (rule reachable_trans)
 qed
 
 lemma labels_inv_label_class_is_subcc:
   assumes "labels_inv l"
-  shows "is_subcc {v. l v = a}"
-  unfolding is_subcc_def
-proof (intro ballI)
-  fix x y
-  assume "x \<in> {v. l v = a}" and "y \<in> {v. l v = a}"
-  then have "l x = l y"
-    by simp
-  show "reachable x y"
-    using assms \<open>l x = l y\<close> by (rule labels_inv_same_label_reachable)
-qed
+  shows "is_subcc {v \<in> edge_vertices. l v = a}"
+  unfolding is_subcc_def by (auto intro: labels_inv_same_label_reachable[OF assms])
 
 subsection \<open>Stable Labels\<close>
 
@@ -296,17 +300,19 @@ qed
 subsection \<open>Components Induced by Stable Labels\<close>
 
 lemma label_class_eq_cc_of:
-  assumes "labels_inv l" and "labels_stable (l :: 'a \<Rightarrow> 'a)"
-  shows "{v. l v = l x} = cc_of x"
+  assumes "labels_inv l" and "labels_stable (l :: 'a \<Rightarrow> 'a)" and "x \<in> edge_vertices"
+  shows "{v \<in> edge_vertices. l v = l x} = cc_of x"
 proof (intro set_eqI iffI)
   fix v
-  assume "v \<in> {v. l v = l x}"
-  then have eq: "l v = l x"
+  assume v_class: "v \<in> {v \<in> edge_vertices. l v = l x}"
+  then have v_edge: "v \<in> edge_vertices"
+    by simp
+  from v_class have eq: "l v = l x"
     by simp
   have lv_v: "l v \<in> cc_of v"
-    using assms(1) by (rule labels_invD)
+    using labels_invD[OF assms(1) v_edge] .
   have lx_x: "l x \<in> cc_of x"
-    using assms(1) by (rule labels_invD)
+    using assms(1,3) by (rule labels_invD)
   have "cc_of v = cc_of (l v)"
     using cc_of_eq_if_member[OF lv_v] by simp
   also have "... = cc_of (l x)"
@@ -315,7 +321,7 @@ proof (intro set_eqI iffI)
     using cc_of_eq_if_member[OF lx_x] by simp
   finally have "cc_of v = cc_of x" .
   moreover have "v \<in> cc_of v"
-    by (rule cc_of_self)
+    using v_class by (auto intro: cc_of_self)
   ultimately show "v \<in> cc_of x"
     by simp
 next
@@ -325,8 +331,8 @@ next
     by (rule cc_ofD)
   have "l x = l v"
     using assms(2) \<open>reachable x v\<close> by (rule labels_stable_reachable_eq)
-  then show "v \<in> {v. l v = l x}"
-    by simp
+  then show "v \<in> {v \<in> edge_vertices. l v = l x}"
+    using \<open>v \<in> cc_of x\<close> unfolding cc_of_def by simp
 qed
 
 lemma components_from_labels_correct:
@@ -335,12 +341,12 @@ lemma components_from_labels_correct:
 proof (intro set_eqI iffI)
   fix C
   assume "C \<in> components_from_labels l"
-  then obtain x where C: "C = {v. l v = l x}"
+  then obtain x where "x \<in> edge_vertices" and C: "C = {v \<in> edge_vertices. l v = l x}"
     unfolding components_from_labels_def by auto
   then have "C = cc_of x"
     using label_class_eq_cc_of[OF assms, of x] by simp
   then show "C \<in> ccs"
-    using cc_of_in_ccs by simp
+    using \<open>x \<in> edge_vertices\<close> cc_of_in_ccs by simp
 next
   fix C
   assume "C \<in> ccs"
@@ -350,12 +356,14 @@ next
     unfolding is_cc_def by simp
   then obtain x where "x \<in> C"
     by blast
+  then have "x \<in> edge_vertices"
+    using is_cc_C unfolding is_cc_def is_subcc_def by blast
   have C_eq: "C = cc_of x"
     using is_cc_eq_cc_of[OF is_cc_C \<open>x \<in> C\<close>] .
-  have "C = {v. l v = l x}"
-    using C_eq label_class_eq_cc_of[OF assms, of x] by simp
+  have "C = {v \<in> edge_vertices. l v = l x}"
+    using C_eq label_class_eq_cc_of[OF assms \<open>x \<in> edge_vertices\<close>] by simp
   then show "C \<in> components_from_labels l"
-    unfolding components_from_labels_def by auto
+    unfolding components_from_labels_def using \<open>x \<in> edge_vertices\<close> by auto
 qed
 
 end
