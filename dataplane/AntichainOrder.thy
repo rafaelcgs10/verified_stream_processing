@@ -982,4 +982,29 @@ lemma frontier_negs[simp]:
   unfolding frontier_def minimal_antichain_def
   by (simp add: antichain_empty)+
 
+lemma in_sum_antichainD:
+  "t \<in>\<^sub>A A + B \<Longrightarrow> t \<in>\<^sub>A A \<or> t \<in>\<^sub>A B"
+  apply transfer
+  unfolding minimal_antichain_def incomparable_def
+  apply auto
+  done
+
+lemma not_frontier_less_equal_sum:
+  "\<not> frontier_less_equal (A + B) t \<Longrightarrow> \<not> frontier_less_equal A t \<and> \<not> frontier_less_equal B t"
+  unfolding frontier_less_equal_iff2
+  apply clarsimp
+  apply safe
+  subgoal for t'
+    apply transfer
+    unfolding minimal_antichain_def incomparable_def
+    apply clarsimp
+    by (smt (verit) Un_iff dual_order.strict_iff_order order_less_le_trans)
+  subgoal for t'
+    apply transfer
+    unfolding minimal_antichain_def incomparable_def
+    apply clarsimp
+    by (smt (verit) Un_iff dual_order.strict_iff_order order_less_le_trans)
+  done
+
+
 end

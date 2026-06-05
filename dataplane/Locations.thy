@@ -275,6 +275,10 @@ lemma enum_class2[simp]:
   "enum_class.enum = [0 :: 2, 1]"
   by code_simp
 
+lemma enum_class3[simp]:
+  "enum_class.enum = [0 :: 3, 1, 2]"
+  by code_simp
+
 lemma enum_not_Nil[simp]:
   "enum_class.enum \<noteq> []"
   apply safe

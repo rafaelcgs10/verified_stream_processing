@@ -293,9 +293,16 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
   case SIM1
   note subgraph_inv = SIM1(1,2) 
     and label_prop_inv = SIM1(16,17)
+    and input_stream_inv = SIM1(15)
+    and dataplane_inv = SIM1(12)
+  have D: \<open>dataflow_topology (summ sg) (-+-)\<close> 
+    unfolding SIM1(1) comp_def
+    apply (subst dataflow_tree_to_graph_raw_summary[symmetric])
+    using dataflow_topology_from_tree.dataflow_topology_axioms[unfolded comp_def]
+    apply auto
+    done
   show ?case (is \<open>wsim ((~) OO \<U> ?R OO (\<approx>)) _ _\<close>)
   proof -
-    thm SIM1
     define R where \<open>R = ?R\<close>
 
     show ?thesis
@@ -358,12 +365,12 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                 apply hypsubst_thin
                 apply (subst (asm) icoll_lshift)
                 subgoal
-                  using SIM1(15) timely_input_stream_expires_le 
+                  using input_stream_inv timely_input_stream_expires_le 
                   by auto
                 subgoal
                   apply (subst icoll_lshift)
                   subgoal
-                    using SIM1(15) timely_input_stream_expires_le 
+                    using input_stream_inv timely_input_stream_expires_le 
                     by auto
                   subgoal
                     subgoal
@@ -380,12 +387,12 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                 apply hypsubst_thin
                 apply (subst (asm) icoll_lshift)
                 subgoal
-                  using SIM1(15) timely_input_stream_expires_le 
+                  using input_stream_inv timely_input_stream_expires_le 
                   by auto
                 subgoal
                   apply (subst icoll_lshift)
                   subgoal
-                    using SIM1(15) timely_input_stream_expires_le 
+                    using input_stream_inv timely_input_stream_expires_le 
                     by auto
                   subgoal
                     apply (clarsimp del: disjCI simp add: cimage_iff SIM1(6) operator_state.defs inputs_at_target_def cUn_assoc cimage_cUn)
@@ -422,12 +429,57 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                               apply (subgoal_tac "\<forall>x. x \<in> lset lxs \<longrightarrow> is_Data x \<longrightarrow> frontier_less_equal (front (os 1) 0) (event.time x)")
                               subgoal
                                 apply (drule frontier_less_equal_exit_scope)
-
-                                oops
-
-end
-
-                              sorry
+                                apply (drule not_frontier_less_equal_sum)
+                                apply clarsimp
+                                unfolding icoll_def
+                                apply simp
+                                apply (subst lfilter_False)
+                                 apply simp_all
+                                apply (clarsimp split: event.splits)
+                                apply (metis (no_types, opaque_lifting) MyPair_mono dataflow_topology_from_tree.zero_le dual_order.eq_iff event.discI(1) event.sel(1) frontier_less_equal_trans myprod.exhaust myprod.sel(1))
+                                done
+                              subgoal
+                                apply safe
+                                subgoal for x
+                                  apply (drule timely_input_stream_frontier_less_equal[OF input_stream_inv, rule_format, of x])
+                                   apply assumption
+                                  using dataplane_inv[unfolded dataplane_tracker_inv_def, simplified, rule_format] apply -
+                                  apply clarsimp
+                                  unfolding front_inv_def imp_front_inv_def
+                                  apply (drule spec[of _ 1])
+                                  apply (drule spec[of _ 0])
+                                  apply (drule spec[of _ "Loc 1 (Trg 0)"])
+                                  apply (rule frontier_less_equal_le_trans[rotated])
+                                   apply (rule order.trans)
+                                    apply assumption
+                                   apply assumption
+                                  subgoal for caps
+                                    unfolding Src_caps_inv_def
+                                    apply (drule spec[of _ 0])
+                                    apply (drule spec[of _ 0])
+                                    unfolding c_pts_inv_def
+                                    apply (drule spec[of _ "Loc 0 (Src 0)"])
+                                    apply simp
+                                    apply (rule frontier_less_equal_ifrontier_from_Src[where p=0 and s=0 and nid=0 and os=os and nt="subgraph.nxt sg", simplified, OF D])
+                                    subgoal
+                                      apply (drule sym[of _ "to_zmset (ocaps (os 0) 0)"])
+                                      unfolding extract_prog_def
+                                      apply simp
+                                      apply (simp add:  c_pts_change_multiplicities SIM1(1,2) comp_def  zmset_filter_extract_progress_Src_consumes_diff)
+                                      done
+                                    subgoal premises aux
+                                      apply (simp add: SIM1(1))
+                                      apply (rule path_weight_direct_0path[OF dataflow_topology.axioms(1)[OF]])
+                                      using D[unfolded SIM1(1)] apply assumption
+                                      apply (subst raw_summary_def)
+                                      apply simp
+                                      apply code_simp
+                                      done
+                                    apply assumption
+                                    done
+                                  done
+                                done
+                              done
                             done
                           subgoal
                             sorry
@@ -604,7 +656,7 @@ end
       apply (rule arg_cong[where f=\<open>\<lambda>x. _ \<union> x\<close>])
       by (simp add: all_edges_def neighbors_def)
     apply (simp add: outputs_at_target_raw_summary)
-    apply (rule SIM1(15))
+    apply (rule input_stream_inv)
     apply (rule dataplane_tracker_inv_update_outputs_outside)
     apply (rule SIM1(12))
     unfolding fun_upd_def apply simp
