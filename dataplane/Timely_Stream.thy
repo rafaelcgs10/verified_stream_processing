@@ -187,6 +187,7 @@ lemma timely_input_stream_expires:
     done
   done
 
+
 lemma vacant_add_mset[simp]:
   "vacant t' (add_mset t C) \<longleftrightarrow> vacant t' C \<and> \<not> t \<le> t'"
   unfolding vacant_def
@@ -413,7 +414,7 @@ lemma timely_input_stream_ldrop:
         by (smt (verit, ccfv_SIG) add.commute add_mset_add_single diff_diff_add_mset dual_order.order_iff_strict enat_eSuc_iff event.disc(8,9) event.distinct(1) event.sel(2) ldropn_Suc_LCons ldropn_eq_LNil linorder_not_less
             llength_LCons nat.inject single_subset_iff subset_mset.add_diff_assoc2 timely_input_stream_DropI timely_input_stream_def timely_monotone_LConsE)
       subgoal
-         by (metis Suc_ile_eq iless_Suc_eq timely_input_stream_MintI union_mset_add_mset_left)
+        by (metis Suc_ile_eq iless_Suc_eq timely_input_stream_MintI union_mset_add_mset_left)
       done
     done
   done
@@ -439,6 +440,113 @@ lemma timely_input_stream_Data_in_C_in:
         by auto
       done
     done
+  done
+
+
+lemma timely_input_stream_Data_expires_le:
+  "Data t' d \<in> lset lxs \<Longrightarrow> 
+   timely_input_stream lxs C \<Longrightarrow> 
+   lfinite (lfilter (\<lambda>e. time e \<le> t) lxs)"
+  apply (cases "lfinite lxs")
+   apply simp
+  apply (simp add: in_lset_conv_lnth)
+  apply (erule exE conjE)+
+  subgoal for i
+    unfolding timely_progress_def timely_input_stream_def
+    apply clarsimp
+    apply (drule spec[of _ t])
+    apply clarsimp
+    subgoal for n
+      apply (drule vacant_monotone_not_in_lset_alt[rotated, where t=t and lxs="ldropn n lxs"])
+      subgoal
+        using timely_monotone_ldropn by auto
+      subgoal
+        apply (simp add: lfinite_lfilter)
+        apply (rule finite_subset[of _ "{0 ..< i + n}"])
+         apply simp_all
+        apply (auto simp: ldropn_ltl image_iff lset_ldropn_conv_lnth)
+        apply fastforce
+        done
+      done
+    done
+  done
+
+lemma timely_input_stream_Drop_expires_le:
+  "Drop t' \<in> lset lxs \<Longrightarrow> 
+   timely_input_stream lxs C \<Longrightarrow> 
+   lfinite (lfilter (\<lambda>e. time e \<le> t) lxs)"
+  apply (cases "lfinite lxs")
+   apply simp
+  apply (simp add: in_lset_conv_lnth)
+  apply (erule exE conjE)+
+  subgoal for i
+    unfolding timely_progress_def timely_input_stream_def
+    apply clarsimp
+    apply (drule spec[of _ t])
+    apply clarsimp
+    subgoal for n
+      apply (drule vacant_monotone_not_in_lset_alt[rotated, where t=t and lxs="ldropn n lxs"])
+      subgoal
+        using timely_monotone_ldropn by auto
+      subgoal
+        apply (simp add: lfinite_lfilter)
+        apply (rule finite_subset[of _ "{0 ..< i + n}"])
+         apply simp_all
+        apply (auto simp: ldropn_ltl image_iff lset_ldropn_conv_lnth)
+        apply fastforce
+        done
+      done
+    done
+  done
+
+
+lemma timely_input_stream_Mint_expires_le:
+  "Mint t' \<in> lset lxs \<Longrightarrow> 
+   timely_input_stream lxs C \<Longrightarrow> 
+   lfinite (lfilter (\<lambda>e. time e \<le> t) lxs)"
+  apply (cases "lfinite lxs")
+   apply simp
+  apply (simp add: in_lset_conv_lnth)
+  apply (erule exE conjE)+
+  subgoal for i
+    unfolding timely_progress_def timely_input_stream_def
+    apply clarsimp
+    apply (drule spec[of _ t])
+    apply clarsimp
+    subgoal for n
+      apply (drule vacant_monotone_not_in_lset_alt[rotated, where t=t and lxs="ldropn n lxs"])
+      subgoal
+        using timely_monotone_ldropn by auto
+      subgoal
+        apply (simp add: lfinite_lfilter)
+        apply (rule finite_subset[of _ "{0 ..< i + n}"])
+         apply simp_all
+        apply (auto simp: ldropn_ltl image_iff lset_ldropn_conv_lnth)
+        apply fastforce
+        done
+      done
+    done
+  done
+
+
+lemma timely_input_stream_expires_le:
+  "timely_input_stream lxs C \<Longrightarrow> 
+   lfinite (lfilter (\<lambda>e. time e \<le> t) lxs)"
+  apply (cases "\<exists> x. x \<in> lset lxs")
+  subgoal
+    apply clarsimp
+    subgoal for e
+      apply (cases e)
+      subgoal 
+        using timely_input_stream_Data_expires_le by auto
+      subgoal 
+        using timely_input_stream_Drop_expires_le by auto
+      subgoal 
+        using timely_input_stream_Mint_expires_le by auto
+      done
+    done
+  subgoal
+    by auto
   done
 
 end

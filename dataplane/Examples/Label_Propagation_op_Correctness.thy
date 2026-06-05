@@ -14,6 +14,7 @@ imports
 begin
 
 
+
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 declare if_cong[cong]
@@ -357,11 +358,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                 apply hypsubst_thin
                 apply (subst (asm) icoll_lshift)
                 subgoal
-                  using SIM1(15) sorry
+                  using SIM1(15) timely_input_stream_expires_le 
+                  by auto
                 subgoal
                   apply (subst icoll_lshift)
                   subgoal
-                    using SIM1(15) sorry
+                    using SIM1(15) timely_input_stream_expires_le 
+                    by auto
                   subgoal
                     subgoal
                       apply (clarsimp del: disjCI simp add: inputs_at_target_def cUn_assoc cimage_cUn)
@@ -377,11 +380,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                 apply hypsubst_thin
                 apply (subst (asm) icoll_lshift)
                 subgoal
-                  using SIM1(15) sorry
+                  using SIM1(15) timely_input_stream_expires_le 
+                  by auto
                 subgoal
                   apply (subst icoll_lshift)
                   subgoal
-                    using SIM1(15) sorry
+                    using SIM1(15) timely_input_stream_expires_le 
+                    by auto
                   subgoal
                     apply (clarsimp del: disjCI simp add: cimage_iff SIM1(6) operator_state.defs inputs_at_target_def cUn_assoc cimage_cUn)
                     apply (elim disjE; (clarsimp del: disjCI simp add: cimage_iff)?; hypsubst_thin?)
@@ -414,6 +419,14 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                 by auto
                               done
                             subgoal
+                              apply (subgoal_tac "\<forall>x. x \<in> lset lxs \<longrightarrow> is_Data x \<longrightarrow> frontier_less_equal (front (os 1) 0) (event.time x)")
+                              subgoal
+                                apply (drule frontier_less_equal_exit_scope)
+
+                                oops
+
+end
+
                               sorry
                             done
                           subgoal
