@@ -368,4 +368,9 @@ qed
 
 end
 
+
+term components_from_labels
+
+value "components_from_labels {(0 :: nat, 1), (1, 2)} (\<lambda> _. 0 :: nat)"
+
 end

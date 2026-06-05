@@ -1,9 +1,9 @@
 theory Label_Propagation_op
 
 imports
-  Wcc
   Dataplane.Timely_Builder_Op
   Dataplane.MyProduct_Instances
+  Wcc
 begin
 
 definition union_with where
@@ -59,7 +59,7 @@ definition all_vertices where
   if is_Nil ts then set (remdups (vertices os t)) else set (remdups (concat (map (vertices os) ts))))\<close>
 
 definition all_edges where
-  \<open>all_edges os t = {(v, w). w \<in> set (neighbors os t v)}\<close>
+  \<open>all_edges os t = {(v, w) \<in> (all_vertices os t) \<times> (all_vertices os t). w \<in> set (neighbors os t v)}\<close>
 
 definition min_label where
   \<open>min_label os t v = (let ts = filter ((\<ge>) t) (timestamps os) in
@@ -112,7 +112,7 @@ definition label_propagation_op_logic where
        below_times = trace (STR ''ocaps1: '' + show_list (show_prod show_nat show_nat) (map to_prod (ocaps os 1))) (filter (\<lambda> t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t)) (ocaps os 0));
        output_times = rmdups {} (map myfst below_times);
        batch = map (\<lambda>t. let cap = Cap (MyPair t 0) 0 in (en2 os (
-          ((all_vertices os t) // ({(v1, v2) \<in> (all_vertices os t) \<times> (all_vertices os t). min_label os t v1 = min_label os t v2} ))), cap))
+          (components_from_labels (all_edges os t) (min_label os t))), cap))
         (trace (STR ''below_times: '' + show_list show_nat (map myfst below_times) + STR '', ocaps: '' + show_list show_nat (map myfst (ocaps os 0)) + STR '', outpu_times: '' + show_list show_nat output_times)
          output_times)
    in if trace (STR ''main logic batch: '' + show_list show_nat (map (myfst o time o snd) batch)) batch = []
@@ -209,15 +209,34 @@ lemma neighbors_release_caps[simp]:
   unfolding release_caps_def neighbors_def
   by auto
 
+lemma all_vertices_drop_caps[simp]:
+  "all_vertices (drop_caps os caps) = all_vertices os"
+  unfolding all_vertices_def drop_caps_def
+  apply clarsimp
+  apply fastforce
+  done
+
+lemma all_vertices_produces[simp]:
+  "all_vertices (produces os batch) = all_vertices os"
+  unfolding all_vertices_def produces_def
+  apply clarsimp
+  apply fastforce
+  done
+
 lemma all_edges_drop_caps[simp]:
   "all_edges (drop_caps os caps) = all_edges os"
   unfolding all_edges_def
   by auto
 
+lemma vertices_produces[simp]:
+  "vertices (produces os batch) = vertices os"
+  unfolding produces_def
+  by auto
+
 lemma all_edges_produces[simp]:
   "all_edges (produces os batch) = all_edges os"
   unfolding all_edges_def
-  by auto
+  by (auto cong: if_cong)
 
 lemma all_edges_release_caps[simp]:
   "all_edges (release_caps os p) = all_edges os"
