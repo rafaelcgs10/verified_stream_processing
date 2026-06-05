@@ -1,6 +1,7 @@
 theory Label_Propagation_op
 
 imports
+  Wcc
   Dataplane.Timely_Builder_Op
   Dataplane.MyProduct_Instances
 begin

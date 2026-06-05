@@ -217,7 +217,7 @@ lemma dataflow_tree_to_graph_raw_summary[simp]:
         done
       done
     done
-  done
+  done 
 
 lemma outputs_at_target_raw_summary:
   \<open>outputs_at_target (antichain_from_list \<circ>\<circ> raw_summary) os = (\<lambda>l.
@@ -242,39 +242,6 @@ lemma Inr_2_1_in_ran[simp]:
 
 find_consts "_ list \<Rightarrow> _ cset"
 
-
-context
-  fixes edges :: \<open>('a \<times> 'a) set\<close> (\<open>E\<close>)
-begin
-
-(* Undirected reachability and connected components *)
-
-definition reachable where
-  \<open>reachable x y \<equiv> (x, y) \<in> (E \<union> E\<inverse>)\<^sup>*\<close>
-
-definition is_subcc :: \<open>'a set \<Rightarrow> bool\<close>  where
-  \<open>is_subcc S \<equiv> \<forall>x \<in> S. \<forall>y \<in> S. reachable x y\<close>
-
-definition is_cc :: \<open>'a set \<Rightarrow> bool\<close> where
-  \<open>is_cc S \<equiv> S \<noteq> {} \<and> is_subcc S \<and> (\<forall>S'. S \<subseteq> S' \<and> is_subcc S' \<longrightarrow> S' = S)\<close>
-
-abbreviation ccs :: \<open>'a set set\<close> where
-  \<open>ccs \<equiv> {S. is_cc S}\<close>
-
-definition is_ccs :: \<open>'a set set \<Rightarrow> bool\<close> where
-  \<open>is_ccs \<equiv> (=) ccs\<close>
-
-lemma Ex1_is_ccs:
-  \<open>Ex1 is_ccs\<close>
-  unfolding is_ccs_def by blast
-
-definition cc_of where
-  "cc_of v = {u. reachable v u}"
-
-definition labels_inv  where
-  "labels_inv l \<longleftrightarrow> (\<forall>v. l v \<in> cc_of v)"
-
-end
 
 term labels_inv
 term "label os_label_prop"
