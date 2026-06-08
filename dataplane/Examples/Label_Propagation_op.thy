@@ -264,16 +264,12 @@ definition label_propagation_op_logic where
           then map (\<lambda>v'. (en1 os (v', l), Cap (MyPair t1 (mysnd t)) 1)) (filter (\<lambda>v'. min_label os' t1 v' > l) vs)
           else []) ts)
     in {|release_caps (produces os' batch) 1|}))
-  (let os = trace (STR ''front0:'' + show_myprod_frontier (front os 0) + STR '', front1: '' + show_myprod_frontier (front os 1)) (release_caps os 1) ;
-       below_times = trace (STR ''ocaps1: '' + show_list (show_prod show_nat show_nat) (map to_prod (ocaps os 1))) (filter (\<lambda> t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t)) (ocaps os 0));
+  (let below_times = filter (\<lambda> t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t)) (ocaps os 0);
        output_times = rmdups {} (map myfst below_times);
-       batch = map (\<lambda>t. let cap = Cap (MyPair t 0) 0 in (en2 os (
-          (components_from_labels (all_edges os t) (min_label os t))), cap))
-        (trace (STR ''below_times: '' + show_list show_nat (map myfst below_times) + STR '', ocaps: '' + show_list show_nat (map myfst (ocaps os 0)) + STR '', outpu_times: '' + show_list show_nat output_times)
-         output_times)
-   in if trace (STR ''main logic batch: '' + show_list show_nat (map (myfst o time o snd) batch)) batch = []
+       batch = map (\<lambda>t. let cap = Cap (MyPair t 0) 0 in (en2 os ((components_from_labels (all_edges os t) (min_label os t))), cap)) output_times
+   in if batch = []
         then {||}
-        else {|(drop_caps ((produces os batch)) (map (\<lambda>t. Cap t 0) below_times @ map (\<lambda>t. Cap t 1) (filter (\<lambda> t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t)) (ocaps os 1)) ))|})\<close>
+        else {|(drop_caps ((produces os batch)) (map (\<lambda>t. Cap t 0) below_times ))|})\<close>
 
 term components_from_labels
 term "all_vertices os t "
@@ -403,5 +399,12 @@ lemma input_release_caps[simp]:
   "input (release_caps os p) = input os"
   unfolding release_caps_def
   by auto
+
+lemma min_label_produces[simp]:
+  "min_label (produces os batch) = min_label os"
+  unfolding produces_def min_label_def
+  by (auto cong: if_cong)
+
+
 
 end
