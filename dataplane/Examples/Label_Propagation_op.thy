@@ -87,6 +87,143 @@ proof
 qed
 
 
+lemma frontier_less_equal_antichain_plusI1:
+  assumes "frontier_less_equal A t"
+  shows "frontier_less_equal (A + B) t"
+proof -
+  obtain a where a_in: "a \<in>\<^sub>A A" and a_le: "a \<le> t"
+    using assms unfolding frontier_less_equal_iff2 by blast
+  have fin: "finite (set_antichain A \<union> set_antichain B)"
+    by simp
+  have "a \<in> set_antichain A \<union> set_antichain B"
+    using a_in unfolding member_antichain.rep_eq by simp
+  then obtain a' where a'_in: "a' \<in> minimal_antichain (set_antichain A \<union> set_antichain B)" and a'_le: "a' \<le> a"
+    using minimal_antichain_member[OF fin] by blast
+  then have "a' \<in>\<^sub>A A + B"
+    unfolding member_antichain.rep_eq plus_antichain.rep_eq by simp
+  moreover have "a' \<le> t"
+    using a'_le a_le by order
+  ultimately show ?thesis
+    unfolding frontier_less_equal_iff2 by blast
+qed
+
+lemma frontier_less_equal_antichain_plusI2:
+  assumes "frontier_less_equal B t"
+  shows "frontier_less_equal (A + B) t"
+  using frontier_less_equal_antichain_plusI1[OF assms, of A]
+  by (simp add: antichain_add_commute)
+
+lemma exit_scope_memberE:
+  assumes "y \<in>\<^sub>A exit_scope myfst A"
+  obtains x where "x \<in>\<^sub>A A" and "myfst x = y"
+proof -
+  have y_front: "y \<in>\<^sub>A frontier (zmset_of (mset_set (myfst ` set_antichain A)))"
+    using assms unfolding exit_scope_def o_def by simp
+  have "0 < zcount (zmset_of (mset_set (myfst ` set_antichain A))) y"
+    using y_front by (simp add: in_frontier_iff)
+  then obtain x where "x \<in> set_antichain A" and "myfst x = y"
+    by auto
+  then show ?thesis
+    using that unfolding member_antichain.rep_eq by blast
+qed
+
+lemma frontier_less_equal_exit_scopeI:
+  assumes "x \<in>\<^sub>A A"
+  shows "frontier_less_equal (exit_scope myfst A) (myfst x)"
+proof -
+  have "0 < zcount (zmset_of (mset_set (myfst ` set_antichain A))) (myfst x)"
+    using assms by (simp add: member_antichain.rep_eq)
+  then show ?thesis
+    unfolding exit_scope_def o_def by (rule frontier_less_equal_zcount_pos)
+qed
+
+lemma frontier_less_equal_exit_scope_plusI1:
+  assumes "x \<in>\<^sub>A A"
+  shows "frontier_less_equal (exit_scope myfst (A + B)) (myfst x)"
+proof -
+  have fin: "finite (set_antichain A \<union> set_antichain B)"
+    by simp
+  have "x \<in> set_antichain A \<union> set_antichain B"
+    using assms unfolding member_antichain.rep_eq by simp
+  then obtain x' where x'_in: "x' \<in> minimal_antichain (set_antichain A \<union> set_antichain B)" and x'_le: "x' \<le> x"
+    using minimal_antichain_member[OF fin] by blast
+  then have "x' \<in>\<^sub>A A + B"
+    unfolding member_antichain.rep_eq plus_antichain.rep_eq by simp
+  then have "frontier_less_equal (exit_scope myfst (A + B)) (myfst x')"
+    by (rule frontier_less_equal_exit_scopeI)
+  then show ?thesis
+    using myfst_mono[OF x'_le] by (rule frontier_less_equal_trans)
+qed
+
+lemma frontier_less_equal_exit_scope_plusI2:
+  assumes "x \<in>\<^sub>A B"
+  shows "frontier_less_equal (exit_scope myfst (A + B)) (myfst x)"
+  using frontier_less_equal_exit_scope_plusI1[OF assms, of A]
+  by (simp add: antichain_add_commute)
+
+lemma exit_scope_plus_distrib:
+  "exit_scope myfst (A + B) = exit_scope myfst A + exit_scope myfst B"
+proof (rule antisym)
+  show "exit_scope myfst (A + B) \<le> exit_scope myfst A + exit_scope myfst B"
+    unfolding less_eq_antichain_def
+  proof safe
+    fix y
+    assume y_in: "y \<in>\<^sub>A exit_scope myfst A + exit_scope myfst B"
+    have "y \<in> set_antichain (exit_scope myfst A) \<union> set_antichain (exit_scope myfst B)"
+      using y_in minimal_antichain_subset
+      unfolding member_antichain.rep_eq plus_antichain.rep_eq by blast
+    then show "\<exists>x. x \<in>\<^sub>A exit_scope myfst (A + B) \<and> x \<le> y"
+    proof
+      assume "y \<in> set_antichain (exit_scope myfst A)"
+      then obtain x where x_in: "x \<in>\<^sub>A A" and y_eq: "myfst x = y"
+        using exit_scope_memberE unfolding member_antichain.rep_eq by blast
+      show ?thesis
+        using frontier_less_equal_exit_scope_plusI1[OF x_in, of B]
+        unfolding frontier_less_equal_iff2 y_eq by blast
+    next
+      assume "y \<in> set_antichain (exit_scope myfst B)"
+      then obtain x where x_in: "x \<in>\<^sub>A B" and y_eq: "myfst x = y"
+        using exit_scope_memberE unfolding member_antichain.rep_eq by blast
+      show ?thesis
+        using frontier_less_equal_exit_scope_plusI2[OF x_in, of A]
+        unfolding frontier_less_equal_iff2 y_eq by blast
+    qed
+  qed
+next
+  show "exit_scope myfst A + exit_scope myfst B \<le> exit_scope myfst (A + B)"
+    unfolding less_eq_antichain_def
+  proof safe
+    fix y
+    assume y_in: "y \<in>\<^sub>A exit_scope myfst (A + B)"
+    then obtain x where x_in: "x \<in>\<^sub>A A + B" and y_eq: "myfst x = y"
+      using exit_scope_memberE by blast
+    have "x \<in> set_antichain A \<union> set_antichain B"
+      using x_in minimal_antichain_subset
+      unfolding member_antichain.rep_eq plus_antichain.rep_eq by blast
+    then show "\<exists>x. x \<in>\<^sub>A exit_scope myfst A + exit_scope myfst B \<and> x \<le> y"
+    proof
+      assume "x \<in> set_antichain A"
+      then have "x \<in>\<^sub>A A"
+        unfolding member_antichain.rep_eq by simp
+      then have "frontier_less_equal (exit_scope myfst A) y"
+        using frontier_less_equal_exit_scopeI[of x A] y_eq by simp
+      then show ?thesis
+        using frontier_less_equal_antichain_plusI1[of "exit_scope myfst A" y "exit_scope myfst B"]
+        unfolding frontier_less_equal_iff2 by blast
+    next
+      assume "x \<in> set_antichain B"
+      then have "x \<in>\<^sub>A B"
+        unfolding member_antichain.rep_eq by simp
+      then have "frontier_less_equal (exit_scope myfst B) y"
+        using frontier_less_equal_exit_scopeI[of x B] y_eq by simp
+      then show ?thesis
+        using frontier_less_equal_antichain_plusI2[of "exit_scope myfst B" y "exit_scope myfst A"]
+        unfolding frontier_less_equal_iff2 by blast
+    qed
+  qed
+qed
+
+
 
 value "exit_scope myfst (frontier {#MyPair (1 :: nat) (0 :: nat), MyPair (0 :: nat) (1 :: nat)#}\<^sub>z)"
 
