@@ -285,18 +285,23 @@ lemma label_propagation_correctness:
     and label_prop_inv:
     \<open>(\<forall> t \<in> set (timestamps os_label_prop). labels_inv (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
     \<open>(\<forall> t \<in> set (timestamps os_label_prop). labels_stable (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
+    \<open>\<forall> t \<in> myfst ` snd ` set (input (os 1) 0). frontier_less_equal (exit_scope myfst (front (os 1) 1)) t\<close>
+    \<open>\<forall> t. t \<in> set (ocaps (os 1) 0) \<longrightarrow> myfst t |\<in>| cset_from_list T\<close>
   shows \<open>set_op S D (dataflow_op sg (G_op os_input os_label_prop (os 2) cbufs))
          \<approx> set_spec_op (cUn (cUn S SO) SP) D\<close>
   using assms
 proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns sg T G V L
     rule: weakBisimWeakUptoBisimCong)
   case SIM1
-  note subgraph_inv = SIM1(1,2) 
-    and label_prop_inv = SIM1(16,17)
-    and input_stream_inv = SIM1(15)
+  note subgraph_inv = SIM1(1,2)
+    and os_inv = SIM1(3,4,5,6,7,8,9,10)
+    and buffers_inv = SIM1(11)
     and dataplane_inv = SIM1(12)
+    and csets_inv = SIM1(13,14)
+    and input_stream_inv = SIM1(15)
+    and label_prop_inv = SIM1(16,17,18,19)
   have D: \<open>dataflow_topology (summ sg) (-+-)\<close> 
-    unfolding SIM1(1) comp_def
+    unfolding subgraph_inv comp_def
     apply (subst dataflow_tree_to_graph_raw_summary[symmetric])
     using dataflow_topology_from_tree.dataflow_topology_axioms[unfolded comp_def]
     apply auto
@@ -332,6 +337,113 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           apply (rule wb_upto_b_base)
           unfolding R_def[simplified]
           apply (rule exI[of _ S])
+          apply (rule exI[of _ "Pair (1, 0) |`|
+             cset_from_list
+              (outpu
+                ((os(1 := drop_caps
+                           (produces (release_caps (os 1) 1)
+                             (map (\<lambda>t. (en2 (release_caps os_label_prop 1) (components_from_labels (all_edges os_label_prop t) (min_label os_label_prop t)), Cap (MyPair t 0) 0))
+                               (rmdups {}
+                                 (map myfst
+                                   (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t))
+                                     (ocaps (release_caps os_label_prop 1) 0))))))
+                           (map (\<lambda>t. Cap t 0)
+                             (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t)) (ocaps (release_caps os_label_prop 1) 0)) @
+                            map (\<lambda>t. Cap t 1)
+                             (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t)) (ocaps (release_caps os_label_prop 1) 1)))))
+                  1)
+                0)"])
+          apply (rule exI[of _ "((\<lambda>t. ((1, 0),
+               Inr (ccs (set (icoll
+                               (map (\<lambda>(x, t'). Data t' (projl x))
+                                 (((outputs_at_target (summ sg)
+                                     (os(1 := drop_caps
+                                               (produces (release_caps (os 1) 1)
+                                                 (map (\<lambda>t. (en2 (release_caps os_label_prop 1) (components_from_labels (all_edges os_label_prop t) (min_label os_label_prop t)),
+                                                             Cap (MyPair t 0) 0))
+                                                   (rmdups {}
+                                                     (map myfst
+                                                       (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t))
+                                                         (ocaps (release_caps os_label_prop 1) 0))))))
+                                               (map (\<lambda>t. Cap t 0)
+                                                 (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t))
+                                                   (ocaps (release_caps os_label_prop 1) 0)) @
+                                                map (\<lambda>t. Cap t 1)
+                                                 (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t))
+                                                   (ocaps (release_caps os_label_prop 1) 1))))) >>
+                                    cbufs) >>
+                                   inputs_at_target
+                                    (os(1 := drop_caps
+                                              (produces (release_caps (os 1) 1)
+                                                (map (\<lambda>t. (en2 (release_caps os_label_prop 1) (components_from_labels (all_edges os_label_prop t) (min_label os_label_prop t)),
+                                                            Cap (MyPair t 0) 0))
+                                                  (rmdups {}
+                                                    (map myfst
+                                                      (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t))
+                                                        (ocaps (release_caps os_label_prop 1) 0))))))
+                                              (map (\<lambda>t. Cap t 0)
+                                                (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t))
+                                                  (ocaps (release_caps os_label_prop 1) 0)) @
+                                               map (\<lambda>t. Cap t 1)
+                                                (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t))
+                                                  (ocaps (release_caps os_label_prop 1) 1))))))
+                                   (1, 0)) @@-
+                                lxs)
+                               t) \<union>
+                         all_edges
+                          (drop_caps
+                            (produces (release_caps os_label_prop 1)
+                              (map (\<lambda>t. (en2 (release_caps os_label_prop 1) (components_from_labels (all_edges os_label_prop t) (min_label os_label_prop t)), Cap (MyPair t 0) 0))
+                                (rmdups {}
+                                  (map myfst
+                                    (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t))
+                                      (ocaps (release_caps os_label_prop 1) 0))))))
+                            (map (\<lambda>t. Cap t 0)
+                              (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t)) (ocaps (release_caps os_label_prop 1) 0)) @
+                             map (\<lambda>t. Cap t 1)
+                              (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t)) (ocaps (release_caps os_label_prop 1) 1))))
+                          (myfst t))),
+               t)) |`|
+        cUn (cUn (ts lxs)
+              (snd |`|
+               cset_from_list
+                (((outputs_at_target (summ sg)
+                    (os(1 := drop_caps
+                              (produces (release_caps (os 1) 1)
+                                (map (\<lambda>t. (en2 (release_caps os_label_prop 1) (components_from_labels (all_edges os_label_prop t) (min_label os_label_prop t)), Cap (MyPair t 0) 0))
+                                  (rmdups {}
+                                    (map myfst
+                                      (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t))
+                                        (ocaps (release_caps os_label_prop 1) 0))))))
+                              (map (\<lambda>t. Cap t 0)
+                                (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t)) (ocaps (release_caps os_label_prop 1) 0)) @
+                               map (\<lambda>t. Cap t 1)
+                                (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t)) (ocaps (release_caps os_label_prop 1) 1))))) >>
+                   cbufs) >>
+                  inputs_at_target
+                   (os(1 := drop_caps
+                             (produces (release_caps (os 1) 1)
+                               (map (\<lambda>t. (en2 (release_caps os_label_prop 1) (components_from_labels (all_edges os_label_prop t) (min_label os_label_prop t)), Cap (MyPair t 0) 0))
+                                 (rmdups {}
+                                   (map myfst
+                                     (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t))
+                                       (ocaps (release_caps os_label_prop 1) 0))))))
+                             (map (\<lambda>t. Cap t 0)
+                               (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t)) (ocaps (release_caps os_label_prop 1) 0)) @
+                              map (\<lambda>t. Cap t 1)
+                               (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t)) (ocaps (release_caps os_label_prop 1) 1))))))
+                  (1, 0))))
+         ((\<lambda>t. MyPair t 0) |`|
+          cset_from_list
+           (timestamps
+             (drop_caps
+               (produces (release_caps os_label_prop 1)
+                 (map (\<lambda>t. (en2 (release_caps os_label_prop 1) (components_from_labels (all_edges os_label_prop t) (min_label os_label_prop t)), Cap (MyPair t 0) 0))
+                   (rmdups {}
+                     (map myfst (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t)) (ocaps (release_caps os_label_prop 1) 0))))))
+               (map (\<lambda>t. Cap t 0) (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t)) (ocaps (release_caps os_label_prop 1) 0)) @
+                map (\<lambda>t. Cap t 1)
+                 (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t)) (ocaps (release_caps os_label_prop 1) 1)))))))"])
           apply (rule exI[of _ D])
           apply (rule exI[of _ lxs])
           apply (rule exI[of _ "os(1 := drop_caps
@@ -347,6 +459,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                        (map (\<lambda>t. Cap t 0) (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t)) (ocaps (release_caps os_label_prop 1) 0)) @
                         map (\<lambda>t. Cap t 1) (filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os_label_prop 0 + front os_label_prop 1)) (myfst t)) (ocaps (release_caps os_label_prop 1) 1)))"])
           apply (rule exI[of _ cbufs])
+          apply (rule exI[of _ chns])
           apply (rule exI[of _ sg])
           apply (intro conjI)
           subgoal
@@ -468,9 +581,9 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                       apply (simp add:  c_pts_change_multiplicities SIM1(1,2) comp_def  zmset_filter_extract_progress_Src_consumes_diff)
                                       done
                                     subgoal premises aux
-                                      apply (simp add: SIM1(1))
+                                      apply (simp add: subgraph_inv)
                                       apply (rule path_weight_direct_0path[OF dataflow_topology.axioms(1)[OF]])
-                                      using D[unfolded SIM1(1)] apply assumption
+                                      using D[unfolded subgraph_inv] apply assumption
                                       apply (subst raw_summary_def)
                                       apply simp
                                       apply code_simp
@@ -482,19 +595,148 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                               done
                             done
                           subgoal
-                            sorry
+                            apply (subgoal_tac "\<forall> t \<in> snd ` set ((outputs_at_target (summ sg) os >> cbufs) (1, 0)). frontier_less_equal (front (os 1) 0) t")
+                             defer
+                            subgoal
+                              apply safe
+                              subgoal for _ a t
+                                apply simp
+                                using dataplane_inv[unfolded dataplane_tracker_inv_def, simplified] apply -
+                                apply safe
+                                unfolding front_inv_def imp_front_inv_def
+                                apply (drule spec[of _ 1])
+                                apply (drule spec[of _ 0])
+                                apply (drule spec[of _ "Loc 1 (Trg 0)"])
+                                unfolding chnls_imp_front_inv_def
+                                apply (drule spec[of _ 1])
+                                apply (drule spec[of _ 0])
+                                apply (drule bspec[of _ _ t])
+                                subgoal 
+                                  by blast
+                                apply (drule frontier_less_equal_le_trans)
+                                 apply (rule order.trans[rotated])
+                                  apply assumption+
+                                done
+                              done
+                            subgoal
+                              apply (simp add: icoll_append)
+                              apply (intro conjI)
+                              subgoal
+                                (* issue: things can still be in the input buffer, but not yet processed, so the frontier advances without processing the new edge?
+                                   maybe not because the loop capabilities are still on hold *)
+                                using label_prop_inv(3) apply -
+                                subgoal
+                                  unfolding icoll_def
+                                  apply (subst lfilter_False)
+                                  subgoal
+                                    apply clarsimp
+                                    apply (drule bspec, assumption)
+                                    apply simp
+                                    subgoal for a b
+                                      apply (cases b; cases t'; simp; hypsubst_thin?)
+                                      subgoal for t1 t2 t3
+                                        apply (subgoal_tac "\<not> frontier_less_equal (exit_scope myfst (front (os 1) 1)) t2")
+                                        subgoal
+                                          using frontier_less_equal_trans by blast
+                                        subgoal
+                                          using exit_scope_plus_distrib
+                                          by (metis not_frontier_less_equal_sum)
+                                        done
+                                      done
+                                    done
+                                  subgoal
+                                    by simp
+                                  done
+                                done
+                              subgoal
+                                apply (drule frontier_less_equal_exit_scope)
+                                apply (drule not_frontier_less_equal_sum)
+                                apply clarsimp
+                                unfolding icoll_def
+                                apply (subst lfilter_False)
+                                subgoal
+                                  apply clarsimp
+                                  unfolding BULK_BENQ_def subgraph_inv outputs_at_target_raw_summary
+                                  apply simp
+                                  apply (metis (no_types, opaque_lifting) MyPair_le Un_iff bot_nat_0.extremum frontier_less_equal_trans myprod.exhaust myprod.sel(1) snd_eqD trivial_dataflow_topology_interpretation.sum_le_zeroD)
+                                  done
+                                subgoal
+                                  by simp
+                                done
+                              subgoal
+                                apply (drule frontier_less_equal_exit_scope)
+                                apply (drule not_frontier_less_equal_sum)
+                                apply clarsimp
+                                unfolding icoll_def
+                                apply (subst lfilter_False)
+                                subgoal
+                                  apply clarsimp
+                                  unfolding BULK_BENQ_def subgraph_inv outputs_at_target_raw_summary
+                                  apply simp
+                                  apply (metis (no_types, opaque_lifting) MyPair_le Un_iff bot_nat_0.extremum frontier_less_equal_trans myprod.exhaust myprod.sel(1) snd_eqD trivial_dataflow_topology_interpretation.sum_le_zeroD)
+                                  done
+                                subgoal
+                                  by simp
+                                done
+                              done
+                            done
                           done
                         subgoal
                           by (metis List.empty_filter_conv order_class.order_eq_iff)
                         done
                       subgoal
-                        sorry
+                        using label_prop_inv(4) by fast
                       done
                     done
                   done
                 done
               done
             done
+          subgoal
+            using subgraph_inv by auto
+          subgoal
+            using subgraph_inv by auto
+          subgoal
+            using os_inv(2) by force
+          subgoal
+            using os_inv(3) by force
+          subgoal
+            apply (rule exI[of _ T])
+            apply (simp add: operator_state.defs)
+            apply safe
+            subgoal
+              apply (rule exI[of _ G])
+              apply (rule exI[of _ V])
+              apply (rule exI[of _ L])
+              unfolding drop_caps_def produces_def release_caps_def
+              apply (simp add: os_inv(4) operator_state.defs)
+              done
+            subgoal
+              using os_inv(5) apply -
+              unfolding ty1_check_def os_inv(1)
+              apply (auto simp add: operator_state.defs)
+              done
+            subgoal
+              using os_inv(6) 
+              unfolding ty2_check_def os_inv(4)  
+               drop_caps_def produces_def release_caps_def
+              by (auto simp add: operator_state.defs)
+            subgoal
+              using os_inv(7) apply -
+              unfolding input_ocaps_inv_def  os_inv(4)  
+               drop_caps_def produces_def release_caps_def
+              apply (auto simp add: os_inv(8)[rule_format, of 1] raw_summary_def operator_state.defs dest!: in_set_list_diffD del: in_set_list_diffI intro!: in_set_list_diffI)
+              subgoal
+                by fastforce
+              subgoal
+                apply (drule spec[of _ 1])
+                apply (drule spec[of _ 1])
+                apply (drule bspec, assumption)
+                apply simp
+
+              thm os_inv(8)[rule_format, of 1]
+
+            find_theorems rmdups
 
 end
 
@@ -660,7 +902,7 @@ end
     apply (rule dataplane_tracker_inv_update_outputs_outside)
     apply (rule SIM1(12))
     unfolding fun_upd_def apply simp
-    using SIM1(1) apply (simp add: raw_summary_def)
+    using subgraph_inv apply (simp add: raw_summary_def)
     sorry
 end
   ultimately show ?thesis

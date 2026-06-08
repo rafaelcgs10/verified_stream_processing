@@ -194,6 +194,18 @@ lemma consu_if[simp]:
    consu (os nid')"
   by auto
 
+lemma intsum_produces[simp]:
+  "intsum (produces os batch) = intsum os"
+  unfolding produces_def 
+  by auto
+lemma intsum_release_caps[simp]:
+  "intsum (release_caps os p) = intsum os"
+  unfolding release_caps_def drop_caps_def
+  by (auto cong: if_cong)
+lemma consu_produces[simp]:
+  "consu (produces os batch) = consu os"
+  unfolding produces_def 
+  by auto
 
 definition extract_progress where
   "extract_progress nid nt st =
@@ -303,6 +315,29 @@ lemma more_consumes[simp]:
   unfolding consumes_def add_caps_def
   apply auto
   done
+
+lemma intsum_drop_caps[simp]:
+  "intsum (drop_caps os caps) = intsum os"
+  unfolding drop_caps_def
+  by auto
+lemma produ_drop_caps[simp]:
+  "produ (drop_caps os caps) = produ os"
+  unfolding drop_caps_def
+  by auto
+lemma consu_drop_caps[simp]:
+  "consu (drop_caps os caps) = consu os"
+  unfolding drop_caps_def
+  by auto
+lemma initia_drop_caps[simp]:
+  "initia (drop_caps os caps) = initia os"
+  unfolding drop_caps_def
+  by auto
+
+lemma front_produces[simp]:
+  "front (produces os batch) = front os"
+  unfolding produces_def
+  by auto
+
 
 lemma front_consumes_fold[simp]:
   "front (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = front os"
