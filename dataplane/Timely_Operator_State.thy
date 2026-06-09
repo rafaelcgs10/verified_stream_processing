@@ -387,6 +387,11 @@ lemma de2_consumes[simp]:
   "de2 (consumes os p t d) = de2 os"
   unfolding consumes_def add_caps_def
   by auto
+lemma consu_release_caps[simp]:
+  "consu (release_caps os p) = consu os"
+  unfolding release_caps_def
+  by (auto cong: if_cong)
+
 
 lemma fold_consumes:
   "fold (\<lambda>(d, t) os. consumes os p t d) xs os =
