@@ -2,8 +2,9 @@ theory Ooo_Input_op_Correctness
 
 imports
   Ooo_Input_op
-  Dataplane.Timely_Dataflow_Op
   Source_op
+  Dataplane.Timely_Dataflow_Op
+  Dataplane.SimulationProofMethods
 begin
 
 lemma timely_input_stream_ooo_input_op_logic:
@@ -212,11 +213,6 @@ next
   qed
   ultimately show ?case by (rule transitive_closurep_trans'(6))
 qed
-
-(* Experiment with Eisbach. *)
-method sim_cases uses sim defs elims intros =
-  (use nothing in \<open>insert sim, (unfold defs)?, elim conjE elims; simp only: IO.simps; hypsubst_thin?;
-  auto intro: intros method_facts simp flip: defs\<close>)
 
 lemma ooo_input_op_source_op:
   defines \<open>invariant f os \<equiv> initia os \<and> en1 os = f \<and> inj f \<and> (\<forall>p. timely_input_stream (es os p) (mset (ocaps os p)))\<close>
