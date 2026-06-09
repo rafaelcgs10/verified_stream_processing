@@ -65,6 +65,21 @@ definition min_label where
   \<open>min_label os t v = (let ts = filter ((\<ge>) t) (timestamps os) in
   if is_Nil ts then label os t v else Min (set (map (\<lambda>t. label os t v) ts)))\<close>
 
+
+lemma all_edges_update_insert:
+  assumes "timestamps os' = timestamps os"
+    and "vertices os' = vertices os"
+    and "v1 \<in> all_vertices os t"
+    and "v2 \<in> all_vertices os t"
+    and "v1 \<noteq> v2"
+    and "filter ((\<ge>) t) (timestamps os) = [t]"
+    and "graph os' = (graph os)(t := (map_entry v1 (List.insert v2) ((graph os) t))(v2 := List.insert v1 ((graph os) t v2)))"
+  shows "all_edges os' t = insert (v1, v2) (insert (v2, v1) (all_edges os t))"
+  using assms
+  unfolding all_edges_def all_vertices_def neighbors_def
+  by (auto split: if_splits)
+
+
 definition exit_scope where
   "exit_scope f A = frontier ((zmset_of o mset_set) (f ` set_antichain A))"
 

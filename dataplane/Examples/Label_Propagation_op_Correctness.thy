@@ -250,6 +250,17 @@ lemma produ_release_caps[simp]:
   unfolding release_caps_def
   by auto
 
+(* FIXME: move me *)
+lemma cset_from_list_List_insert[simp]:
+  "cset_from_list (List.insert x xs) = cinsert x (cset_from_list xs)"
+  by auto
+
+
+(* FIXME: move me? *)
+definition "label_prob_ty2_check os bufs \<equiv>
+   (\<forall> p. (\<forall> x \<in> fst ` set (input os p) \<union> fst ` set (bufs p). is_en1 os x)) \<and>
+   (\<forall> x \<in> fst ` set (outpu os 0). is_en2 os x) \<and> (\<forall> x \<in> fst ` set (outpu os 1). is_en1 os x)"
+
 
 lemma label_propagation_correctness:
   fixes lxs :: \<open>((nat, nat) myprod, nat \<times> nat) event llist\<close>
@@ -272,7 +283,7 @@ lemma label_propagation_correctness:
       es = (\<lambda>_. LNil)(0 := lxs)\<rparr>\<close> \<open>input (os 0) = (\<lambda>_. [])\<close> \<open>initia (os 0)\<close>
     \<open>os_label_prop = operator_state.extend (os 1) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
         en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>\<close>
-    \<open>ty1_check os_input (curry cbufs 0)\<close> \<open>ty2_check os_label_prop (curry cbufs 1)\<close>
+    \<open>ty1_check os_input (curry cbufs 0)\<close> \<open>label_prob_ty2_check os_label_prop (curry cbufs 1)\<close>
     (* \<open>input_ocaps_inv (os 1)\<close>*)
     \<open>\<forall>n. intsum (os n) = (\<lambda>p1 p2. raw_summary (Loc n (Trg p1)) (Loc n (Src p2)))\<close>
     and buffers_inv:
@@ -302,7 +313,6 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
   case SIM1
   thm SIM1(3,4,5,6,7,8,9)
   note subgraph_inv = SIM1(1,2)
-    and subgraph_inv = SIM1(1,2)
     and os_inv = SIM1(3,4,5,6,7,8,9)
     and buffers_inv = SIM1(10)
     and dataplane_inv = SIM1(11)
@@ -337,7 +347,12 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
             step_builder_op_elim conjE; simp only: IO.simps; hypsubst_thin?; (elim step_map_op_elim
               step_comp_op_elim step_loop_op_elim step_builder_op_elim conjE)?), simp_all only: IO.simps;
           clarsimp split: if_splits option.splits dest!: num2_neq simp flip:  ooo_input_op_def label_propagation_op_def increment_op_def; hypsubst_thin?)
-                     prefer 7
+      subgoal sorry
+      subgoal sorry
+      subgoal sorry
+      subgoal sorry
+      subgoal sorry
+      subgoal sorry
       subgoal for os'
         unfolding label_propagation_op_logic_def trace_simp
         apply clarsimp
@@ -530,7 +545,6 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                               apply simp
                               apply (rule components_from_labels_correct)
                               subgoal
-                                find_theorems os_label_prop
                                 using label_prop_inv(1)[unfolded os_inv(4) operator_state.defs, simplified, rule_format, of "myfst t'"] 
                                 by auto
                               subgoal
@@ -717,7 +731,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
               done
             subgoal
               using os_inv(6) 
-              unfolding ty2_check_def os_inv(4)  
+              unfolding label_prob_ty2_check_def os_inv(4)  
                 drop_caps_def produces_def release_caps_def
               by (auto simp add: operator_state.defs)
             subgoal
@@ -957,20 +971,119 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
             subgoal for d t
               apply (simp split: prod.splits)
               subgoal for v1 v2 l1 l2
-            apply hypsubst_thin
-          apply (intro exI conjI relcomppI)
-             apply (rule rtranclp.intros(1))
-            apply (rule bisim_refl)
-           defer
-           apply (rule wbisim_refl)
-          apply (rule wb_upto_b_base)
-          unfolding R_def[simplified]
-          apply (rule exI[of _ S])
-          apply (rule exI[of _ SO])
-          apply (rule exI[of _ SP])
-          apply (rule exI[of _ D])
-          apply (rule exI[of _ lxs])
-          apply (rule exI[of _ "os(1 := release_caps
+                apply hypsubst_thin
+                apply (intro exI conjI relcomppI)
+                   apply (rule rtranclp.intros(1))
+                  apply (rule bisim_refl)
+                 defer
+                 apply (rule wbisim_refl)
+                apply (rule wb_upto_b_base)
+                unfolding R_def[simplified]
+                apply (rule exI[of _ S])
+                apply (rule exI[of _ SO])
+                apply (rule exI[of _ "cimage
+      (\<lambda>t. ((1, 0), (Inr (ccs
+        (set (icoll (map (\<lambda>(x, t'). Data t' (projl x)) (((outputs_at_target (summ sg) (os(1 := release_caps
+                       (produces
+                         ((os 1)
+                          \<lparr>input := (input os_label_prop)(0 := xs)\<rparr>)
+                         (concat
+                           (map (\<lambda>t1. if l2 < min_label os_label_prop t1 l1
+                                      then map (\<lambda>v'. (en1 os_label_prop (v', l2), Cap (MyPair t1 (mysnd t)) 1))
+                                            (filter (\<lambda>v'. l2 < min_label os_label_prop t1 v')
+                                              (neighbors
+                                                (os_label_prop
+                                                 \<lparr>input := (input os_label_prop)(0 := xs), timestamps := List.insert (myfst t) (timestamps os_label_prop),
+                                                    graph :=
+                                                      (label_propagation_state.graph os_label_prop)
+                                                      (myfst t :=
+                                                         (map_entry v1 (List.insert v2) (label_propagation_state.graph os_label_prop (myfst t)))
+                                                         (v2 := List.insert v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
+                                                    vertices := map_entry (myfst t) (List.union [v1, v2]) (vertices os_label_prop),
+                                                    label := (label os_label_prop)(myfst t := (label os_label_prop (myfst t))(l1 := l2))\<rparr>)
+                                                t1 l1))
+                                      else [])
+                             (filter ((\<le>) (myfst t)) (List.insert (myfst t) (timestamps os_label_prop))))))
+                       1)) >> cbufs) >> inputs_at_target (os(1 := release_caps
+               (produces (os 1\<lparr>input := (input (os 1))(0 := xs)\<rparr>)
+                 (concat
+                   (map (\<lambda>t1. if l2 < min_label
+                                       \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1),
+                                          front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T,
+                                          graph = G, vertices = V, label = L\<rparr>
+                                       t1 l1
+                              then map (\<lambda>v'. (Inl (v', l2), Cap (MyPair t1 (mysnd t)) 1))
+                                    (filter
+                                      (\<lambda>v'. l2 < min_label
+                                                  \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1),
+                                                     outpu = outpu (os 1), front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr,
+                                                     de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>
+                                                  t1 v')
+                                      (neighbors
+                                        \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = (input (os 1))(0 := xs),
+                                           outpu = outpu (os 1), front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr,
+                                           is_en2 = isr, timestamps = List.insert (myfst t) T,
+                                           graph = G(myfst t := (map_entry v1 (List.insert v2) (G (myfst t)))(v2 := List.insert v1 (G (myfst t) v2))),
+                                           vertices = map_entry (myfst t) (List.union [v1, v2]) V, label = L(myfst t := (L (myfst t))(l1 := l2))\<rparr>
+                                        t1 l1))
+                              else [])
+                     (filter ((\<le>) (myfst t)) (List.insert (myfst t) T)))))
+               1))) (1, 0)) @@- lxs) t)
+        \<union> all_edges (release_caps
+                       (produces
+                         (os_label_prop
+                          \<lparr>input := (input os_label_prop)(0 := xs), timestamps := List.insert (myfst t) (timestamps os_label_prop),
+                             graph :=
+                               (label_propagation_state.graph os_label_prop)
+                               (myfst t := (map_entry v1 (List.insert v2) (label_propagation_state.graph os_label_prop (myfst t)))(v2 := List.insert v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
+                             vertices := map_entry (myfst t) (List.union [v1, v2]) (vertices os_label_prop), label := (label os_label_prop)(myfst t := (label os_label_prop (myfst t))(l1 := l2))\<rparr>)
+                         (concat
+                           (map (\<lambda>t1. if l2 < min_label os_label_prop t1 l1
+                                      then map (\<lambda>v'. (en1 os_label_prop (v', l2), Cap (MyPair t1 (mysnd t)) 1))
+                                            (filter (\<lambda>v'. l2 < min_label os_label_prop t1 v')
+                                              (neighbors
+                                                (os_label_prop
+                                                 \<lparr>input := (input os_label_prop)(0 := xs), timestamps := List.insert (myfst t) (timestamps os_label_prop),
+                                                    graph :=
+                                                      (label_propagation_state.graph os_label_prop)
+                                                      (myfst t :=
+                                                         (map_entry v1 (List.insert v2) (label_propagation_state.graph os_label_prop (myfst t)))
+                                                         (v2 := List.insert v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
+                                                    vertices := map_entry (myfst t) (List.union [v1, v2]) (vertices os_label_prop),
+                                                    label := (label os_label_prop)(myfst t := (label os_label_prop (myfst t))(l1 := l2))\<rparr>)
+                                                t1 l1))
+                                      else [])
+                             (filter ((\<le>) (myfst t)) (List.insert (myfst t) (timestamps os_label_prop))))))
+                       1) (myfst t))), t)))
+      (cUn (cUn (ts lxs) (cset_from_list (map snd (chns (1, 0))))) ((\<lambda> t. MyPair t 0) |`| (cset_from_list (timestamps (release_caps
+                       (produces
+                         (os_label_prop
+                          \<lparr>input := (input os_label_prop)(0 := xs), timestamps := List.insert (myfst t) (timestamps os_label_prop),
+                             graph :=
+                               (label_propagation_state.graph os_label_prop)
+                               (myfst t := (map_entry v1 (List.insert v2) (label_propagation_state.graph os_label_prop (myfst t)))(v2 := List.insert v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
+                             vertices := map_entry (myfst t) (List.union [v1, v2]) (vertices os_label_prop), label := (label os_label_prop)(myfst t := (label os_label_prop (myfst t))(l1 := l2))\<rparr>)
+                         (concat
+                           (map (\<lambda>t1. if l2 < min_label os_label_prop t1 l1
+                                      then map (\<lambda>v'. (en1 os_label_prop (v', l2), Cap (MyPair t1 (mysnd t)) 1))
+                                            (filter (\<lambda>v'. l2 < min_label os_label_prop t1 v')
+                                              (neighbors
+                                                (os_label_prop
+                                                 \<lparr>input := (input os_label_prop)(0 := xs), timestamps := List.insert (myfst t) (timestamps os_label_prop),
+                                                    graph :=
+                                                      (label_propagation_state.graph os_label_prop)
+                                                      (myfst t :=
+                                                         (map_entry v1 (List.insert v2) (label_propagation_state.graph os_label_prop (myfst t)))
+                                                         (v2 := List.insert v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
+                                                    vertices := map_entry (myfst t) (List.union [v1, v2]) (vertices os_label_prop),
+                                                    label := (label os_label_prop)(myfst t := (label os_label_prop (myfst t))(l1 := l2))\<rparr>)
+                                                t1 l1))
+                                      else [])
+                             (filter ((\<le>) (myfst t)) (List.insert (myfst t) (timestamps os_label_prop))))))
+                       1)))))"])
+                apply (rule exI[of _ D])
+                apply (rule exI[of _ lxs])
+                apply (rule exI[of _ "os(1 := release_caps
                        (produces
                          ((os 1)
                           \<lparr>input := (input os_label_prop)(0 := xs)\<rparr>)
@@ -992,7 +1105,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                       else [])
                              (filter ((\<le>) (myfst t)) (List.insert (myfst t) (timestamps os_label_prop))))))
                        1)"])
-          apply (rule exI[of _ "release_caps
+                apply (rule exI[of _ "release_caps
                        (produces
                          (os_label_prop
                           \<lparr>input := (input os_label_prop)(0 := xs), timestamps := List.insert (myfst t) (timestamps os_label_prop),
@@ -1018,8 +1131,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                       else [])
                              (filter ((\<le>) (myfst t)) (List.insert (myfst t) (timestamps os_label_prop))))))
                        1"])
-          apply (rule exI[of _ cbufs])
-          apply (rule exI[of _ "(outputs_at_target (summ sg) (os(1 := release_caps
+                apply (rule exI[of _ cbufs])
+                apply (rule exI[of _ "(outputs_at_target (summ sg) (os(1 := release_caps
                        (produces
                          ((os 1)
                           \<lparr>input := (input os_label_prop)(0 := xs)\<rparr>)
@@ -1040,58 +1153,145 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                                 t1 l1))
                                       else [])
                              (filter ((\<le>) (myfst t)) (List.insert (myfst t) (timestamps os_label_prop))))))
-                       1)) >> cbufs) >> inputs_at_target os"])
-          apply (rule exI[of _ sg])
-          apply (intro conjI)
-          subgoal
-            by (simp add: operator_state.defs dataflow_tree_to_operator_def os_inv(1))
-          subgoal by simp
-          subgoal
-          using subgraph_inv(1) by assumption
-          subgoal
-          using subgraph_inv(2) by assumption
-        subgoal
-          using os_inv(2)
-          by auto
-        subgoal
-          using os_inv(3)
-          by auto
-        subgoal 
-          apply (simp add:  operator_state.defs os_inv(4))
-          apply (rule exI[of _ "List.insert (myfst t) T"])
-          apply simp
-          apply (intro conjI)
-          subgoal 
-            apply (rule exI[of _ "G(myfst t := (map_entry v1 (List.insert v2) (G (myfst t)))(v2 := List.insert v1 (G (myfst t) v2)))"])
-            apply (rule exI[of _ "map_entry (myfst t) (List.union [v1, v2]) V"])
-            apply (rule exI[of _ "L(myfst t := (L (myfst t))(l1 := l2))"])
-            apply (simp add: produces_def release_caps_def drop_caps_def)
+                       1)) >> cbufs) >> inputs_at_target (os(1 := release_caps
+               (produces (os 1\<lparr>input := (input (os 1))(0 := xs)\<rparr>)
+                 (concat
+                   (map (\<lambda>t1. if l2 < min_label
+                                       \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1),
+                                          front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T,
+                                          graph = G, vertices = V, label = L\<rparr>
+                                       t1 l1
+                              then map (\<lambda>v'. (Inl (v', l2), Cap (MyPair t1 (mysnd t)) 1))
+                                    (filter
+                                      (\<lambda>v'. l2 < min_label
+                                                  \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1),
+                                                     outpu = outpu (os 1), front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr,
+                                                     de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>
+                                                  t1 v')
+                                      (neighbors
+                                        \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = (input (os 1))(0 := xs),
+                                           outpu = outpu (os 1), front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr,
+                                           is_en2 = isr, timestamps = List.insert (myfst t) T,
+                                           graph = G(myfst t := (map_entry v1 (List.insert v2) (G (myfst t)))(v2 := List.insert v1 (G (myfst t) v2))),
+                                           vertices = map_entry (myfst t) (List.union [v1, v2]) V, label = L(myfst t := (L (myfst t))(l1 := l2))\<rparr>
+                                        t1 l1))
+                              else [])
+                     (filter ((\<le>) (myfst t)) (List.insert (myfst t) T)))))
+               1))"])
+                apply (rule exI[of _ sg])
+                apply (intro conjI)
+                subgoal
+                  by (simp add: operator_state.defs dataflow_tree_to_operator_def os_inv(1))
+                subgoal premises aux
+                  using aux(2,3) apply -
+                  apply (simp add: buffers_inv operator_state.defs os_inv(4) csets_inv(1))
+                  apply (rule arg_cong2[where f=set_spec_op])
+                   apply simp_all
+                  apply (clarsimp del: disjCI simp add: inputs_at_target_def BULK_BENQ_def operator_state.defs outputs_at_target_raw_summary subgraph_inv buffers_inv csets_inv(1) os_inv(4))
+                  subgoal
+                    apply (subst (1) icoll_LCons_Data)
+                    subgoal
+                      using input_stream_inv timely_input_stream_expires_le 
+                      by auto
+                    subgoal
+                      apply simp
+                      sorry
+                    done
+                  done
+                subgoal
+                  using subgraph_inv(1) by assumption
+                subgoal
+                  using subgraph_inv(2) by assumption
+                subgoal
+                  using os_inv(2)
+                  by auto
+                subgoal
+                  using os_inv(3)
+                  by auto
+                subgoal 
+                  apply (simp add:  operator_state.defs os_inv(4))
+                  apply (rule exI[of _ "List.insert (myfst t) T"])
+                  apply simp
+                  apply (intro conjI)
+                  subgoal 
+                    apply (rule exI[of _ "G(myfst t := (map_entry v1 (List.insert v2) (G (myfst t)))(v2 := List.insert v1 (G (myfst t) v2)))"])
+                    apply (rule exI[of _ "map_entry (myfst t) (List.union [v1, v2]) V"])
+                    apply (rule exI[of _ "L(myfst t := (L (myfst t))(l1 := l2))"])
+                    apply (simp add: produces_def release_caps_def drop_caps_def)
+                    done
+                  subgoal 
+                    using os_inv(1,5)
+                    unfolding ty1_check_def
+                    by (auto simp add: operator_state.defs produces_def release_caps_def drop_caps_def)
+                  subgoal premises aux
+                    using os_inv(4,6) aux(1,2,3) apply -
+                    unfolding label_prob_ty2_check_def 
+                    apply (auto 0 0 simp add: os_inv(1,4) image_iff operator_state.defs produces_def release_caps_def drop_caps_def)
+                    subgoal
+                      by (metis UnI1 img_fst list.set_intros(2))
+                    subgoal
+                      by auto
+                    subgoal
+                      by force
+                    subgoal
+                      by force
+                    done
+                  subgoal premises aux
+                    using os_inv(7) by auto
+                  subgoal premises aux
+                    sorry
+                  subgoal premises aux
+                    sorry
+                  subgoal premises aux
+                    sorry
+                  subgoal premises aux
+                    sorry
+                  subgoal premises aux
+                    sorry
+                  subgoal premises aux
+                    sorry
+                  subgoal premises aux
+                    sorry
+                  subgoal premises aux
+                    sorry
+                  subgoal premises aux
+                    sorry
+                  subgoal premises aux
+                    sorry
+                  subgoal premises aux
+                    sorry
+                  done
+                done
+              done
             done
-          subgoal 
-            using os_inv(1,5)
-            unfolding ty1_check_def
-            by (auto simp add: operator_state.defs produces_def release_caps_def drop_caps_def)
-          subgoal premises aux
-            using os_inv(1,4,6,5) aux(1,2,3) apply -
-            unfolding ty2_check_def ty1_check_def
-            apply (auto 0 0 simp add: os_inv(1,4) image_iff operator_state.defs produces_def release_caps_def drop_caps_def)
-            subgoal
-              by (metis UnI1 img_fst list.set_intros(2))
-            subgoal
-              by auto
-            subgoal
-              by force
-            subgoal
-              by force
-            subgoal
-              using aux(4) apply -
-              unfolding min_label_def
-              apply (auto simp add: filter_empty_conv split: list.splits if_splits)
-              apply hypsubst_thin
+          done
+        subgoal premises aux
+          sorry
+        done
+      subgoal 
+        sorry
+      subgoal 
+        sorry
+      subgoal 
+        sorry
+      subgoal 
+        sorry
+      subgoal 
+        sorry
+      subgoal 
+        sorry
+      subgoal 
+        sorry
+      subgoal 
+        sorry
+      subgoal 
+        sorry
+      done
 
-        find_theorems L
 
-            oops
+    find_theorems outputs_at_target
+
+    oops
 
 
 
@@ -1210,7 +1410,7 @@ end
     apply (simp_all add: SIM1 operator_state.defs(3))
     using SIM1(3,7) unfolding ty1_check_def apply (simp add: operator_state.defs(3), blast)
     subgoal
-      using SIM1(6,8) that unfolding ty2_check_def apply -
+      using SIM1(6,8) that unfolding label_prob_ty2_check_def apply -
       by (simp add: operator_state.defs(3), drule spec[of _ 0], simp)
     using SIM1(9) unfolding input_ocaps_inv_def apply simp
     defer
