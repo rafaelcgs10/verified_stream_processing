@@ -345,14 +345,20 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
       apply (repeat_new \<open>erule conjE step_dataflow_op_elim step_set_op_elim step_map_op_elim
   step_comp_op_elim step_loop_op_elim step_builder_op_elim; simp?; hypsubst_thin?\<close>;
           auto 0 0 split: if_splits option.splits dest!: num2_neq simp flip: ooo_input_op_def label_propagation_op_def increment_op_def; hypsubst_thin?)
-      subgoal for n p d t (* Laouen *)
-        apply (intro exI[of _ \<open>set_spec_op (cUn (cUn S SO) SP) (cinsert ((n, p), d, t) D)\<close>] conjI relcomppI)
-        using step_set_spec_op_intro_Out apply blast
+      subgoal
+        apply (intro exI conjI relcomppI)
+           apply (rule step_set_spec_op_intro_Out)
+              apply (rule refl)
+             apply simp
+            apply assumption
+           apply (rule refl)
           apply (rule bisim_refl)
          defer
          apply (rule wbisim_refl)
         apply (rule wb_upto_b_base)
-        sorry
+        apply (unfold R_def)
+        apply (intro exI conjI)
+        using SIM1 by (simp_all add: dataflow_tree_to_operator_def)
       subgoal sorry
       subgoal sorry
       subgoal sorry
