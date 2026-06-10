@@ -65,6 +65,30 @@ definition min_label where
   \<open>min_label os t v = (let ts = filter ((\<ge>) t) (timestamps os) in
   if is_Nil ts then label os t v else Min (set (map (\<lambda>t. label os t v) ts)))\<close>
 
+lemma set_foldl_union_with:
+  "set (foldl (union_with List.union) g gs y) = (\<Union>f\<in>set (g # gs). set (f y))"
+proof (induction gs arbitrary: g)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons h hs)
+  then show ?case
+    by (auto simp: union_with_def)
+qed
+
+lemma set_unions_with_List_union:
+  assumes "fs \<noteq> []"
+  shows "set (unions_with List.union fs y) = (\<Union>f\<in>set fs. set (f y))"
+proof (cases fs)
+  case Nil
+  then show ?thesis
+    using assms by simp
+next
+  case (Cons g gs)
+  then show ?thesis
+    using set_foldl_union_with[of g gs y] by simp
+qed
+
 
 lemma all_edges_update_insert:
   assumes "timestamps os' = timestamps os"
@@ -72,12 +96,27 @@ lemma all_edges_update_insert:
     and "v1 \<in> all_vertices os t"
     and "v2 \<in> all_vertices os t"
     and "v1 \<noteq> v2"
-    and "filter ((\<ge>) t) (timestamps os) = [t]"
+    and "t \<in> set (filter ((\<ge>) t) (timestamps os))"
     and "graph os' = (graph os)(t := (map_entry v1 (List.insert v2) ((graph os) t))(v2 := List.insert v1 ((graph os) t v2)))"
   shows "all_edges os' t = insert (v1, v2) (insert (v2, v1) (all_edges os t))"
-  using assms
-  unfolding all_edges_def all_vertices_def neighbors_def
-  by (auto split: if_splits)
+proof -
+  let ?ts = "filter ((\<ge>) t) (timestamps os)"
+  have ts_ne: "?ts \<noteq> []"
+    using assms(6) by fastforce
+  have vertices_eq: "all_vertices os' t = all_vertices os t"
+    using assms(1,2) unfolding all_vertices_def by simp
+  have neighbors_eq:
+    "set (neighbors os' t v) =
+      (if v = v1 then insert v2 (set (neighbors os t v))
+       else if v = v2 then insert v1 (set (neighbors os t v))
+       else set (neighbors os t v))" for v
+    using assms(1,5,6,7) ts_ne
+    unfolding neighbors_def by (auto simp: set_unions_with_List_union)
+  show ?thesis
+    using assms(3,4,5) vertices_eq neighbors_eq
+    unfolding all_edges_def by (auto split: if_splits)
+qed
+
 
 
 definition exit_scope where

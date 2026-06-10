@@ -1206,6 +1206,23 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                       by auto
                     subgoal
                       apply simp
+                      apply (subst (1) all_edges_update_insert[rotated 6, where ?os'="
+                   \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1),
+                      input = (input (os 1))(0 := xs), outpu = outpu (os 1), front = front (os 1), ocaps = ocaps (os 1),
+                      initia = initia (os 1), en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr,
+                      timestamps = List.insert (myfst t) T,
+                      graph =
+                        G(myfst t := (map_entry v1 (List.insert v2) (G (myfst t)))(v2 := List.insert v1 (G (myfst t) v2))),
+                      vertices = map_entry (myfst t) (List.union [v1, v2]) V, label = L(myfst t := (L (myfst t))(l1 := l2))\<rparr>
+                   " and os="os_label_prop", of _ v1 v2])
+                      apply (simp add: operator_state.defs os_inv(4))
+                      apply (simp add: operator_state.defs os_inv(4))
+                      subgoal sorry
+                      apply (simp add: operator_state.defs os_inv(4))
+
+                      find_theorems os_label_prop
+
+end
                       sorry
                     done
                   done
