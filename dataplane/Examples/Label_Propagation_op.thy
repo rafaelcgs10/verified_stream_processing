@@ -51,12 +51,11 @@ record ('d, 'v :: linorder, 't1, 't2) label_propagation_state =
   label :: \<open>'t1 \<Rightarrow> 'v \<Rightarrow> 'v\<close>
 
 definition neighbors where
-  \<open>neighbors os t = (let ts = filter ((\<ge>) t) (timestamps os) in
-  if is_Nil ts then graph os t else unions_with List.union (map (graph os) ts))\<close>
+  \<open>neighbors os t v = (let ts = filter ((\<ge>) t) (timestamps os) in
+  rmdups {} (concat ((map (\<lambda> t. graph os t v) ts))))\<close>
 
 definition all_vertices where
-  \<open>all_vertices os t = (let ts = filter ((\<ge>) t) (timestamps os) in
-  if is_Nil ts then set (remdups (vertices os t)) else set (remdups (concat (map (vertices os) ts))))\<close>
+  \<open>all_vertices os t = ((\<Union>t'\<in>{t' \<in> set (timestamps os). t' \<le> t}. set (vertices os t')))\<close>
 
 definition all_edges where
   \<open>all_edges os t = {(v, w) \<in> (all_vertices os t) \<times> (all_vertices os t). w \<in> set (neighbors os t v)}\<close>
@@ -89,34 +88,378 @@ next
     using set_foldl_union_with[of g gs y] by simp
 qed
 
+lemma set_neighbors:
+  "set (neighbors os t v) = (\<Union>t'\<in>{t' \<in> set (timestamps os). t' \<le> t}. set (graph os t' v))"
+  unfolding neighbors_def
+  by simp
 
-lemma all_edges_update_insert:
-  assumes "timestamps os' = timestamps os"
-    and "vertices os' = vertices os"
-    and "v1 \<in> all_vertices os t"
-    and "v2 \<in> all_vertices os t"
-    and "v1 \<noteq> v2"
-    and "t \<in> set (filter ((\<ge>) t) (timestamps os))"
-    and "graph os' = (graph os)(t := (map_entry v1 (List.insert v2) ((graph os) t))(v2 := List.insert v1 ((graph os) t v2)))"
-  shows "all_edges os' t = insert (v1, v2) (insert (v2, v1) (all_edges os t))"
+
+
+(* lemma all_edges_set:
+  "all_edges os t =
+    (if \<exists>t'\<in>set (timestamps os). t' \<le> t
+     then {(v, w) \<in> all_vertices os t \<times> all_vertices os t.
+       \<exists>t'\<in>set (timestamps os). t' \<le> t \<and> w \<in> set (graph os t' v)}
+     else {(v, w) \<in> all_vertices os t \<times> all_vertices os t.
+       w \<in> set (graph os t v)})"
+  by (auto simp: all_edges_def set_neighbors)
+ *)
+(* 
+lemma all_edges_set':
+  "all_edges os t =
+    (if \<exists>t'\<in>set (timestamps os). t' \<le> t
+     then {(v, w). (\<exists>t'\<in>set (timestamps os). t' \<le> t \<and> v \<in> set (vertices os t')) \<and>
+       (\<exists>t'\<in>set (timestamps os). t' \<le> t \<and> w \<in> set (vertices os t')) \<and>
+       (\<exists>t'\<in>set (timestamps os). t' \<le> t \<and> w \<in> set (graph os t' v))}
+     else {(v, w). v \<in> set (vertices os t) \<and> w \<in> set (vertices os t) \<and>
+       w \<in> set (graph os t v)})"
+  by (auto simp: all_edges_set all_vertices_set)
+ *)
+
+
+definition all_vertices_inv where
+  "all_vertices_inv os t \<longleftrightarrow> (\<forall>v w. w \<in> set (neighbors os t v) \<longrightarrow>
+    v \<in> all_vertices os t \<and> w \<in> all_vertices os t)"
+
+definition timestamps_data_sync where
+  "timestamps_data_sync os \<longleftrightarrow>
+    (\<forall>t. t \<notin> set (timestamps os) \<longrightarrow> vertices os t = [] \<and> (\<forall>v. graph os t v = []))"
+
+
+lemma all_edges_eq:
+  fixes t :: "'t::order"
+  assumes inv: "all_vertices_inv
+    \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+     input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+     initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+     en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+     timestamps = t # T, graph = G, vertices = V, label = label_state\<rparr> t"
+    and V'_def: "V' = map_entry t ((Cons v1) o (Cons v2)) V"
+    and sync: "timestamps_data_sync
+    \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+     input = input_sync, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+     initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+     en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+     timestamps = T, graph = G, vertices = V, label = label_sync\<rparr>"
+
+
+  shows "all_edges
+   \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+    input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+    initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+    en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+    timestamps = t # T, graph = G(t := (map_entry v1 (Cons v2) (G t))(v2 := v1 # (G t v2))),
+    vertices = V', label = label_state\<rparr> t =
+   insert (v1, v2) (insert (v2, v1) (all_edges
+   \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+    input = input_sync, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+    initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+    en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+    timestamps = T, graph = G, vertices = V, label = label_sync\<rparr> t))"
 proof -
-  let ?ts = "filter ((\<ge>) t) (timestamps os)"
-  have ts_ne: "?ts \<noteq> []"
-    using assms(6) by fastforce
-  have vertices_eq: "all_vertices os' t = all_vertices os t"
-    using assms(1,2) unfolding all_vertices_def by simp
-  have neighbors_eq:
-    "set (neighbors os' t v) =
-      (if v = v1 then insert v2 (set (neighbors os t v))
-       else if v = v2 then insert v1 (set (neighbors os t v))
-       else set (neighbors os t v))" for v
-    using assms(1,5,6,7) ts_ne
-    unfolding neighbors_def by (auto simp: set_unions_with_List_union)
+  let ?mod = "\<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+    input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+    initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+    en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+    timestamps = t # T, graph = G(t := (map_entry v1 (Cons v2) (G t))(v2 := v1 # (G t v2))),
+    vertices = V', label = label_state\<rparr>"
+
+
+  let ?base = "\<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+    input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+    initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+    en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+    timestamps = t # T, graph = G, vertices = V, label = label_state\<rparr>"
+  let ?base_tail = "\<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+    input = input_sync, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+    initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+    en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+    timestamps = T, graph = G, vertices = V, label = label_sync\<rparr>"
+
+
+  have vertices_mod:
+    "all_vertices ?mod t = insert v1 (insert v2 (all_vertices ?base t))"
+    using V'_def by (auto simp: all_vertices_def split: if_splits)
+  have neighbors_mod:
+    "\<And>v. set (neighbors ?mod t v) =
+      (if v = v1 then insert v2 (set (neighbors ?base t v))
+       else if v = v2 then insert v1 (set (neighbors ?base t v))
+       else set (neighbors ?base t v))"
+    by (auto simp: neighbors_def split: if_splits)
+
+  have invD: "\<And>v w. w \<in> set (neighbors ?base t v) \<Longrightarrow>
+    v \<in> all_vertices ?base t \<and> w \<in> all_vertices ?base t"
+    using inv by (auto simp: all_vertices_inv_def)
+  have mod_eq_base:
+    "all_edges ?mod t = insert (v1, v2) (insert (v2, v1) (all_edges ?base t))"
+
+  proof (intro equalityI subsetI)
+    fix e
+    assume e: "e \<in> all_edges ?mod t"
+    then obtain a b where e_pair: "e = (a, b)" and a_mod: "a \<in> all_vertices ?mod t"
+      and b_mod: "b \<in> all_vertices ?mod t" and b_neigh: "b \<in> set (neighbors ?mod t a)"
+      by (auto simp: all_edges_def)
+    show "e \<in> insert (v1, v2) (insert (v2, v1) (all_edges ?base t))"
+    proof (cases "a = v1")
+      case True
+      then have "b = v2 \<or> b \<in> set (neighbors ?base t v1)"
+        using b_neigh neighbors_mod[of a] by auto
+      then show ?thesis
+      proof
+        assume "b = v2"
+        then show ?thesis
+          using True e_pair by simp
+      next
+        assume b_base: "b \<in> set (neighbors ?base t v1)"
+        then have "(v1, b) \<in> all_edges ?base t"
+          using invD[OF b_base] by (auto simp: all_edges_def)
+        then show ?thesis
+          using True e_pair by simp
+      qed
+    next
+      case a_not_v1: False
+      show ?thesis
+      proof (cases "a = v2")
+        case True
+        then have "b = v1 \<or> b \<in> set (neighbors ?base t v2)"
+          using a_not_v1 b_neigh neighbors_mod[of a] by auto
+        then show ?thesis
+        proof
+          assume "b = v1"
+          then show ?thesis
+            using True e_pair by simp
+        next
+          assume b_base: "b \<in> set (neighbors ?base t v2)"
+          then have "(v2, b) \<in> all_edges ?base t"
+            using invD[OF b_base] by (auto simp: all_edges_def)
+          then show ?thesis
+            using True e_pair by simp
+        qed
+      next
+        case a_not_v2: False
+        then have b_base: "b \<in> set (neighbors ?base t a)"
+          using a_not_v1 b_neigh neighbors_mod[of a] by auto
+        then have "(a, b) \<in> all_edges ?base t"
+          using invD[OF b_base] by (auto simp: all_edges_def)
+        then show ?thesis
+          using e_pair by simp
+      qed
+    qed
+  next
+    fix e
+    assume e: "e \<in> insert (v1, v2) (insert (v2, v1) (all_edges ?base t))"
+    then show "e \<in> all_edges ?mod t"
+    proof (elim insertE)
+      assume "e = (v1, v2)"
+      then show ?thesis
+        using vertices_mod neighbors_mod[of v1] by (auto simp: all_edges_def)
+    next
+      assume "e = (v2, v1)"
+      then show ?thesis
+        using vertices_mod neighbors_mod[of v2] by (auto simp: all_edges_def)
+    next
+      assume e_base: "e \<in> all_edges ?base t"
+      then obtain a b where e_pair: "e = (a, b)" and a_base: "a \<in> all_vertices ?base t"
+        and b_base: "b \<in> all_vertices ?base t" and b_neigh: "b \<in> set (neighbors ?base t a)"
+        by (auto simp: all_edges_def)
+      have "b \<in> set (neighbors ?mod t a)"
+        using b_neigh neighbors_mod[of a] by auto
+      then show ?thesis
+        using e_pair a_base b_base vertices_mod by (auto simp: all_edges_def)
+    qed
+  qed
+  have base_eq_tail: "all_edges ?base t = all_edges ?base_tail t"
+    using sync by (auto simp: all_edges_def all_vertices_def neighbors_def timestamps_data_sync_def)
+
   show ?thesis
-    using assms(3,4,5) vertices_eq neighbors_eq
-    unfolding all_edges_def by (auto split: if_splits)
+    using mod_eq_base base_eq_tail by simp
 qed
 
+
+
+lemma all_edges_eq_le:
+  fixes t :: "'t::order"
+  assumes inv: "all_vertices_inv
+    \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+     input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+     initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+     en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+     timestamps = t # T, graph = G, vertices = V, label = label_state\<rparr> t'"
+    and V'_def: "V' = map_entry t ((Cons v1) o (Cons v2)) V"
+    and sync: "timestamps_data_sync
+    \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+     input = input_sync, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+     initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+     en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+     timestamps = T, graph = G, vertices = V, label = label_sync\<rparr>"
+   and time_le: "t \<le> t'"
+
+  shows "all_edges
+   \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+    input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+    initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+    en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+    timestamps = t # T, graph = G(t := (map_entry v1 (Cons v2) (G t))(v2 := v1 # (G t v2))),
+    vertices = V', label = label_state\<rparr> t' =
+   insert (v1, v2) (insert (v2, v1) (all_edges
+   \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+    input = input_sync, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+    initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+    en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+    timestamps = T, graph = G, vertices = V, label = label_sync\<rparr> t'))"
+proof -
+  let ?mod = "\<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+    input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+    initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+    en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+    timestamps = t # T, graph = G(t := (map_entry v1 (Cons v2) (G t))(v2 := v1 # (G t v2))),
+    vertices = V', label = label_state\<rparr>"
+  let ?base = "\<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+    input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+    initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+    en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+    timestamps = t # T, graph = G, vertices = V, label = label_state\<rparr>"
+  let ?base_tail = "\<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+    input = input_sync, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+    initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+    en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+    timestamps = T, graph = G, vertices = V, label = label_sync\<rparr>"
+
+  have vertices_mod:
+    "all_vertices ?mod t' = insert v1 (insert v2 (all_vertices ?base t'))"
+    using V'_def time_le by (auto simp: all_vertices_def split: if_splits)
+  have neighbors_mod:
+    "\<And>v. set (neighbors ?mod t' v) =
+      (if v = v1 then insert v2 (set (neighbors ?base t' v))
+       else if v = v2 then insert v1 (set (neighbors ?base t' v))
+       else set (neighbors ?base t' v))"
+    using time_le by (auto simp: neighbors_def split: if_splits)
+
+  have invD: "\<And>v w. w \<in> set (neighbors ?base t' v) \<Longrightarrow>
+    v \<in> all_vertices ?base t' \<and> w \<in> all_vertices ?base t'"
+    using inv by (auto simp: all_vertices_inv_def)
+  have mod_eq_base:
+    "all_edges ?mod t' = insert (v1, v2) (insert (v2, v1) (all_edges ?base t'))"
+  proof (intro equalityI subsetI)
+    fix e
+    assume e: "e \<in> all_edges ?mod t'"
+    then obtain a b where e_pair: "e = (a, b)" and a_mod: "a \<in> all_vertices ?mod t'"
+      and b_mod: "b \<in> all_vertices ?mod t'" and b_neigh: "b \<in> set (neighbors ?mod t' a)"
+      by (auto simp: all_edges_def)
+    show "e \<in> insert (v1, v2) (insert (v2, v1) (all_edges ?base t'))"
+    proof (cases "a = v1")
+      case True
+      then have "b = v2 \<or> b \<in> set (neighbors ?base t' v1)"
+        using b_neigh neighbors_mod[of a] by auto
+      then show ?thesis
+      proof
+        assume "b = v2"
+        then show ?thesis
+          using True e_pair by simp
+      next
+        assume b_base: "b \<in> set (neighbors ?base t' v1)"
+        then have "(v1, b) \<in> all_edges ?base t'"
+          using invD[OF b_base] by (auto simp: all_edges_def)
+        then show ?thesis
+          using True e_pair by simp
+      qed
+    next
+      case a_not_v1: False
+      show ?thesis
+      proof (cases "a = v2")
+        case True
+        then have "b = v1 \<or> b \<in> set (neighbors ?base t' v2)"
+          using a_not_v1 b_neigh neighbors_mod[of a] by auto
+        then show ?thesis
+        proof
+          assume "b = v1"
+          then show ?thesis
+            using True e_pair by simp
+        next
+          assume b_base: "b \<in> set (neighbors ?base t' v2)"
+          then have "(v2, b) \<in> all_edges ?base t'"
+            using invD[OF b_base] by (auto simp: all_edges_def)
+          then show ?thesis
+            using True e_pair by simp
+        qed
+      next
+        case a_not_v2: False
+        then have b_base: "b \<in> set (neighbors ?base t' a)"
+          using a_not_v1 b_neigh neighbors_mod[of a] by auto
+        then have "(a, b) \<in> all_edges ?base t'"
+          using invD[OF b_base] by (auto simp: all_edges_def)
+        then show ?thesis
+          using e_pair by simp
+      qed
+    qed
+  next
+    fix e
+    assume e: "e \<in> insert (v1, v2) (insert (v2, v1) (all_edges ?base t'))"
+    then show "e \<in> all_edges ?mod t'"
+    proof (elim insertE)
+      assume "e = (v1, v2)"
+      then show ?thesis
+        using vertices_mod neighbors_mod[of v1] by (auto simp: all_edges_def)
+    next
+      assume "e = (v2, v1)"
+      then show ?thesis
+        using vertices_mod neighbors_mod[of v2] by (auto simp: all_edges_def)
+    next
+      assume e_base: "e \<in> all_edges ?base t'"
+      then obtain a b where e_pair: "e = (a, b)" and a_base: "a \<in> all_vertices ?base t'"
+        and b_base: "b \<in> all_vertices ?base t'" and b_neigh: "b \<in> set (neighbors ?base t' a)"
+        by (auto simp: all_edges_def)
+      have "b \<in> set (neighbors ?mod t' a)"
+        using b_neigh neighbors_mod[of a] by auto
+      then show ?thesis
+        using e_pair a_base b_base vertices_mod by (auto simp: all_edges_def)
+    qed
+  qed
+  have base_eq_tail: "all_edges ?base t' = all_edges ?base_tail t'"
+    using sync by (auto simp: all_edges_def all_vertices_def neighbors_def timestamps_data_sync_def)
+
+  show ?thesis
+    using mod_eq_base base_eq_tail by simp
+qed
+
+
+lemma all_edges_eq_not_le:
+  fixes t :: "'t::order"
+  assumes V'_def: "V' = map_entry t ((Cons v1) o (Cons v2)) V"
+    and time_not_le: "\<not> t \<le> t'"
+
+  shows "all_edges
+   \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+    input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+    initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+    en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+    timestamps = t # T, graph = G(t := (map_entry v1 (Cons v2) (G t))(v2 := v1 # (G t v2))),
+    vertices = V', label = label_state\<rparr> t' =
+   (all_edges
+   \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+    input = input_sync, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+    initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+    en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+    timestamps = T, graph = G, vertices = V, label = label_sync\<rparr> t')"
+proof -
+  let ?mod = "\<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+    input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+    initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+    en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+    timestamps = t # T, graph = G(t := (map_entry v1 (Cons v2) (G t))(v2 := v1 # (G t v2))),
+    vertices = V', label = label_state\<rparr>"
+  let ?base_tail = "\<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+    input = input_sync, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+    initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+    en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+    timestamps = T, graph = G, vertices = V, label = label_sync\<rparr>"
+  have vertices_eq: "all_vertices ?mod t' = all_vertices ?base_tail t'"
+    using V'_def time_not_le by (auto simp: all_vertices_def split: if_splits)
+  have neighbors_eq: "\<And>v. set (neighbors ?mod t' v) = set (neighbors ?base_tail t' v)"
+    using time_not_le by (auto simp: neighbors_def split: if_splits)
+  show ?thesis
+    using vertices_eq neighbors_eq by (auto simp: all_edges_def)
+qed
 
 
 definition exit_scope where
@@ -281,9 +624,6 @@ qed
 
 value "exit_scope myfst (frontier {#MyPair (1 :: nat) (0 :: nat), MyPair (0 :: nat) (1 :: nat)#}\<^sub>z)"
 
-(* Note: I assume that the timestamps of data read on port 0 are of the form "MyPair t1 0", i.e.,
-the second component is assumed to be always 0. *)
-(* Should the logic return a set of sets for the connected components or a list of lists? *)
 definition label_propagation_op_logic where
   \<open>label_propagation_op_logic os = cUn (cUn
   (case (input os 0) of
@@ -292,11 +632,11 @@ definition label_propagation_op_logic where
     let (v1, v2) = trace (STR ''input0-------'') (de1 os d);
         t1 = trace (STR ''input0 edge: ('' +  show_nat v1 + STR '', '' + show_nat v2 + STR '')'') (myfst t);
         (l1, l2) = pairself (min_label os t1) (v1, v2);
-        (v, l) = if (trace (STR ''labels:: l1:'' +  show_nat l1 + STR '', l2: '' + show_nat l2) l1) > l2 then (v1, l2) else (v2, l1);
-        os' = os\<lparr>input := (input os)(0 := xs), timestamps := List.insert t1 (timestamps os),
-  graph := (graph os)(t1 := (graph os t1)(v1 := List.insert v2 (graph os t1 v1),
-    v2 := List.insert v1 (graph os t1 v2))),
-  vertices := (vertices os)(t1 := List.union [v1, v2] (vertices os t1)),
+        (v, l) = if l1 > l2 then (v1, l2) else (v2, l1);
+        os' = os\<lparr>input := (input os)(0 := xs), timestamps := t1 # (timestamps os),
+  graph := (graph os)(t1 := (graph os t1)(v1 := v2 # (graph os t1 v1),
+    v2 := v1 # (graph os t1 v2))),
+  vertices := (vertices os)(t1 := [v1, v2] @ (vertices os t1)),
   label := (label os)(t1 := (label os t1)(v := l))\<rparr>;
         ts = trace (STR ''input0 label upd: '' +  show_nat v + STR '': '' + show_nat l + STR '' @ '' + show_nat t1) (filter ((\<le>) t1) (timestamps os')) ;
         batch = concat (map (\<lambda> t1. let vs = neighbors os' t1 v in
@@ -419,14 +759,12 @@ lemma all_vertices_drop_caps[simp]:
   "all_vertices (drop_caps os caps) = all_vertices os"
   unfolding all_vertices_def drop_caps_def
   apply clarsimp
-  apply fastforce
   done
 
 lemma all_vertices_produces[simp]:
   "all_vertices (produces os batch) = all_vertices os"
   unfolding all_vertices_def produces_def
   apply clarsimp
-  apply fastforce
   done
 
 lemma all_edges_drop_caps[simp]:

@@ -369,8 +369,25 @@ qed
 end
 
 
-term components_from_labels
 
-value "components_from_labels {(0 :: nat, 1), (1, 2)} (\<lambda> _. 0 :: nat)"
+lemma ccs_insert_symmetric:
+  "ccs (insert (v1, v2) (insert (v2, v1) A)) = ccs (insert (v2, v1) A)"
+proof -
+  have rel_eq:
+    "insert (v1, v2) (insert (v2, v1) (A \<union> (insert (v1, v2) (insert (v2, v1) A))\<inverse>)) =
+     insert (v2, v1) (A \<union> (insert (v2, v1) A)\<inverse>)"
+    by auto
+  have field_eq:
+    "insert v2 (insert v1 (insert v2 (Field A))) = insert v2 (insert v1 (Field A))"
+    by auto
+  show ?thesis
+    by (simp add: is_cc_def is_subcc_def edge_vertices_def reachable_def rel_eq field_eq)
+qed
+
+
+
+
+
+
 
 end

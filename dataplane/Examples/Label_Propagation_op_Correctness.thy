@@ -94,53 +94,107 @@ abbreviation "compiled inp \<equiv> compile_dataflow (\<lambda> _. []) (G (initi
 abbreviation "G_op inp_state label_state incr_state chns \<equiv>
    dataflow_tree_to_operator chns (G inp_state label_state incr_state)"
 
+definition "unit_test v r = (if set v = set r then v else Code.abort (STR ''Failed unit test'') (\<lambda> _. v))"
+
 (*
 abbreviation \<open>test_input1 \<equiv> llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0), Data \<bottom> (0, 1), Data (MyPair 1 0) (3, 4), Data \<bottom> (1, 2), Data (MyPair 2 0) (4, 5)]\<close>
 value "list_connections (dataflow_tree_to_graph (G (initial_state_input test_input1) initial_state_label_prop (initial_state_increment (MyPair 0 1))))"
-value [GHC] \<open>ltaken 3 (lmap show_Outs (trace_exec (compiled test_input1)))\<close>
+
+value [GHC] "unit_test (ltaken 3 (lmap show_Outs (trace_exec (compiled test_input1))))
+ [(Loc 1 (Src 0), Inr {{1, 2, 0, 1}}, MyPair 0 0),
+  (Loc 1 (Src 0), Inr {{3, 4}, {1, 2, 0, 1}}, MyPair 1 0),
+  (Loc 1 (Src 0), Inr {{4, 5, 3, 4}, {1, 2, 0, 1}}, MyPair 2 0)]"
 
 abbreviation \<open>test_input2 \<equiv> llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0), Data \<bottom> (1, 2), Data \<bottom> (0, 1), Data (MyPair 1 0) (3, 4), Data (MyPair 2 0) (4, 5), Mint (MyPair 3 0), Data (MyPair 3 0) (2, 3)]\<close>
-value [GHC] \<open>ltaken 4 (lmap show_Outs (trace_exec (compiled test_input2)))\<close>
+value [GHC] \<open>unit_test (ltaken 4 (lmap show_Outs (trace_exec (compiled test_input2))))
+[(Loc 1 (Src 0), Inr {{1, 1, 0, 2}}, MyPair 0 0),
+  (Loc 1 (Src 0), Inr {{3, 4}, {1, 1, 0, 2}}, MyPair 1 0),
+  (Loc 1 (Src 0), Inr {{4, 5, 3, 4}, {1, 1, 0, 2}}, MyPair 2 0),
+  (Loc 1 (Src 0),
+   Inr {{4, 5, 3, 4, 2, 1, 3, 1, 0, 2}},
+   MyPair 3 0)]\<close>
 
 abbreviation \<open>test_input3 \<equiv>
   llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0), Data \<bottom> (0, 1), Data (MyPair 1 0) (2, 3),
   Mint (MyPair 3 0), Data (MyPair 3 0) (1, 2), Mint (MyPair 4 0), Data (MyPair 4 0) (4, 5), Mint (MyPair 5 0), Data (MyPair 5 0) (3, 5)]\<close>
-value [GHC] \<open>ltaken 5 (lmap show_Outs (trace_exec (compiled test_input3)))\<close>
+value [GHC] \<open>unit_test (ltaken 5 (lmap show_Outs (trace_exec (compiled test_input3))))
+[(Loc 1 (Src 0), Inr {{0, 1}, {0, 1}}, MyPair 0 0),
+  (Loc 1 (Src 0), Inr { {2, 1, 3, 1, 0, 2}}, MyPair 3 0),
+  (Loc 1 (Src 0), Inr {{2, 1, 3, 1, 0, 2}, {4, 5}}, MyPair 4 0),
+  (Loc 1 (Src 0), Inr {{2, 3}, {2, 3}, {0, 1}}, MyPair 1 0),
+  (Loc 1 (Src 0),
+   Inr {{5, 2, 1, 3, 4, 0}},
+   MyPair 5 0)]\<close>
 
 abbreviation \<open>test_input4 \<equiv>
   llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0),Mint (MyPair 3 0),Mint (MyPair 4 0), Mint (MyPair 5 0),
    Data (MyPair 5 0) (3, 5), Data (MyPair 4 0) (4, 5), Data (MyPair 3 0) (1, 2), Data (MyPair 1 0) (2, 3), Data \<bottom> (0, 1)]\<close>
-value [GHC] \<open>ltaken 5 (lmap show_Outs (trace_exec (compiled test_input4)))\<close>
+value [GHC] \<open>unit_test (ltaken 5 (lmap show_Outs (trace_exec (compiled test_input4))))
+[(Loc 1 (Src 0), Inr {{0, 1}, {0, 1}}, MyPair 0 0),
+  (Loc 1 (Src 0), Inr { {2, 1, 3, 1, 0, 2}}, MyPair 3 0),
+  (Loc 1 (Src 0), Inr {{2, 1, 3, 1, 0, 2}, {4, 5}}, MyPair 4 0),
+  (Loc 1 (Src 0), Inr {{2, 3}, {2, 3}, {0, 1}}, MyPair 1 0),
+  (Loc 1 (Src 0),
+   Inr {{5, 2, 1, 3, 4, 0}},
+   MyPair 5 0)]\<close>
 
 abbreviation \<open>test_input5 \<equiv>
   llist_of [Mint (MyPair 1 0), Mint (MyPair 2 0), Data \<bottom> (0, 1), Drop \<bottom>, Data (MyPair 1 0) (2, 3), Drop (MyPair 1 0),
   Mint (MyPair 3 0), Drop (MyPair 2 0), Data (MyPair 3 0) (1, 2), Mint (MyPair 4 0), Drop (MyPair 3 0), Data (MyPair 4 0) (4, 5), Mint (MyPair 5 0),  Drop (MyPair 4 0), Data (MyPair 5 0) (3, 5)]\<close>
-value [GHC] \<open>ltaken 5 (lmap show_Outs (trace_exec (compiled test_input5)))\<close>
+value [GHC] \<open>unit_test (ltaken 5 (lmap show_Outs (trace_exec (compiled test_input5))))
+[(Loc 1 (Src 0), Inr {{0, 1}, {0, 1}}, MyPair 0 0),
+  (Loc 1 (Src 0), Inr { {2, 1, 3, 1, 0, 2}}, MyPair 3 0),
+  (Loc 1 (Src 0), Inr {{2, 1, 3, 1, 0, 2}, {4, 5}}, MyPair 4 0),
+  (Loc 1 (Src 0), Inr {{2, 3}, {2, 3}, {0, 1}}, MyPair 1 0),
+  (Loc 1 (Src 0),
+   Inr {{5, 2, 1, 3, 4, 0}},
+   MyPair 5 0)]\<close>
 
 abbreviation \<open>test_input6 \<equiv>
   llist_of [Mint (MyPair 1 0), Mint (MyPair 4 0), Mint (MyPair 3 0),
    Data (MyPair 3 0) (1, 2), Data (MyPair 4 0) (4, 5), Mint (MyPair 2 0),
    Data \<bottom> (0, 1), Data (MyPair 1 0) (2, 3), Mint (MyPair 5 0), Data (MyPair 5 0) (3, 5)]\<close>
-value [GHC] \<open>ltaken 5 (lmap show_Outs (trace_exec (compiled test_input6)))\<close>
+value [GHC] \<open>unit_test (ltaken 5 (lmap show_Outs (trace_exec (compiled test_input6))))
+[(Loc 1 (Src 0), Inr {{0, 1}, {0, 1}}, MyPair 0 0),
+  (Loc 1 (Src 0), Inr { {2, 1, 3, 1, 0, 2}}, MyPair 3 0),
+  (Loc 1 (Src 0), Inr {{2, 1, 3, 1, 0, 2}, {4, 5}}, MyPair 4 0),
+  (Loc 1 (Src 0), Inr {{2, 3}, {2, 3}, {0, 1}}, MyPair 1 0),
+  (Loc 1 (Src 0),
+   Inr {{5, 2, 1, 3, 4, 0}},
+   MyPair 5 0)]\<close>
+
+
 
 abbreviation \<open>test_input7 \<equiv>
   llist_of [ Data \<bottom> (0, 6), Mint (MyPair 1 0), Mint (MyPair 4 0), Mint (MyPair 3 0),
    Data (MyPair 3 0) (1, 2), Data (MyPair 4 0) (4, 5), Mint (MyPair 2 0),
    Data \<bottom> (0, 1), Data (MyPair 1 0) (2, 3), Mint (MyPair 5 0), Data (MyPair 5 0) (3, 5), Data (MyPair 5 0) (6, 5)]\<close>
-value [GHC] \<open>ltaken 5 (lmap show_Outs (trace_exec (compiled test_input7)))\<close>
+value [GHC] \<open>unit_test (ltaken 5 (lmap show_Outs (trace_exec (compiled test_input7))))
+[(Loc 1 (Src 0), Inr {{0, 0, 1, 6}}, MyPair 0 0),
+  (Loc 1 (Src 0),
+   Inr {{2, 3, 1, 2, 0, 0, 1, 6}},
+   MyPair 3 0),
+  (Loc 1 (Src 0),
+   Inr {{4, 5}, {2, 3, 1, 2, 0, 0, 1, 6}},
+   MyPair 4 0),
+  (Loc 1 (Src 0), Inr {{2, 3}, {0, 0, 1, 6}}, MyPair 1 0),
+  (Loc 1 (Src 0),
+   Inr {{5, 2, 3, 4, 6, 1, 0}},
+   MyPair 5 0)]\<close>
 
 
 abbreviation \<open>test_input8 \<equiv>
   llist_of [Data \<bottom> (0, 6), Mint (MyPair 3 0), Data (MyPair 3 0) (1, 2), Data \<bottom> (0, 1)]\<close>
-
-value [GHC] \<open>ltaken 2 (lmap show_Outs (trace_exec (compiled test_input8)))\<close>
+value [GHC] \<open>unit_test (ltaken 2 (lmap show_Outs (trace_exec (compiled test_input8))))
+      [(Loc 1 (Src 0), Inr {{0, 1, 6}}, MyPair 0 0),
+  (Loc 1 (Src 0), Inr {{1, 2, 0, 6}}, MyPair 3 0)]\<close>
 
 abbreviation \<open>test_input9 \<equiv>
   llist_of [ Data \<bottom> (0, 6), Data \<bottom> (0, 1), Data (MyPair 1 0) (2, 3)]\<close>
-value [GHC] \<open>ltaken 2 (lmap show_Outs (trace_exec (compiled test_input9)))\<close>
+value [GHC] "unit_test (ltaken 2 (lmap show_Outs (trace_exec (compiled test_input9))))
+      [(Loc 1 (Src 0), Inr {{0, 1, 6}}, MyPair 0 0), (Loc 1 (Src 0), Inr {{2, 3}, {0, 1, 6}}, MyPair 1 0)]"
+
 *)
-
-
 
 definition \<open>raw_summary = (\<lambda>l1 l2. case (find (\<lambda> (l1', s, l2'). l1' = l1 \<and> l2 = l2')
   [(Loc 0 (Trg 0), [MyPair 0 0], Loc 0 (Src 0)), (Loc 0 (Trg 1), [MyPair 0 0], Loc 0 (Src 1)), (Loc 0 (Src 0), [MyPair 0 0], Loc 1 (Trg 0)), (Loc 1 (Trg 0), [MyPair 0 0], Loc 1 (Src 0)),
@@ -248,11 +302,6 @@ find_consts "_ list \<Rightarrow> _ cset"
 lemma produ_release_caps[simp]:
   "produ (release_caps os p) = produ os"
   unfolding release_caps_def
-  by auto
-
-(* FIXME: move me *)
-lemma cset_from_list_List_insert[simp]:
-  "cset_from_list (List.insert x xs) = cinsert x (cset_from_list xs)"
   by auto
 
 
@@ -975,19 +1024,19 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
             done
           done
         subgoal
-          apply (simp split: list.splits)
+          apply (simp  del: filter.simps split: list.splits)
           subgoal for x xs
-            apply (cases x; simp)
+            apply (cases x; simp del: filter.simps)
             apply hypsubst_thin
             subgoal for d t
-              apply (simp split: prod.splits)
+              apply (simp del: filter.simps split: prod.splits)
               subgoal for v1 v2 l1 l2
                 apply hypsubst_thin
                 apply (intro exI conjI relcomppI)
                    apply (rule rtranclp.intros(1))
                   apply (rule bisim_refl)
                  defer
-                 apply (rule wbisim_refl)
+                     apply (rule wbisim_refl)
                 apply (rule wb_upto_b_base)
                 unfolding R_def[simplified]
                 apply (rule exI[of _ S])
@@ -1004,17 +1053,17 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                             (filter (\<lambda>v'. l2 < min_label os_label_prop t1 v')
                                               (neighbors
                                                 (os_label_prop
-                                                 \<lparr>input := (input os_label_prop)(0 := xs), timestamps := List.insert (myfst t) (timestamps os_label_prop),
+                                                 \<lparr>input := (input os_label_prop)(0 := xs), timestamps := Cons (myfst t) (timestamps os_label_prop),
                                                     graph :=
                                                       (label_propagation_state.graph os_label_prop)
                                                       (myfst t :=
-                                                         (map_entry v1 (List.insert v2) (label_propagation_state.graph os_label_prop (myfst t)))
-                                                         (v2 := List.insert v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
-                                                    vertices := map_entry (myfst t) (List.union [v1, v2]) (vertices os_label_prop),
+                                                         (map_entry v1 (Cons v2) (label_propagation_state.graph os_label_prop (myfst t)))
+                                                         (v2 := Cons v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
+                                                    vertices := map_entry (myfst t) (append [v1, v2]) (vertices os_label_prop),
                                                     label := (label os_label_prop)(myfst t := (label os_label_prop (myfst t))(l1 := l2))\<rparr>)
                                                 t1 l1))
                                       else [])
-                             (filter ((\<le>) (myfst t)) (List.insert (myfst t) (timestamps os_label_prop))))))
+                             (filter ((\<le>) (myfst t)) (Cons (myfst t) (timestamps os_label_prop))))))
                        1)) >> cbufs) >> inputs_at_target (os(1 := release_caps
                (produces (os 1\<lparr>input := (input (os 1))(0 := xs)\<rparr>)
                  (concat
@@ -1033,64 +1082,64 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                       (neighbors
                                         \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = (input (os 1))(0 := xs),
                                            outpu = outpu (os 1), front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr,
-                                           is_en2 = isr, timestamps = List.insert (myfst t) T,
-                                           graph = G(myfst t := (map_entry v1 (List.insert v2) (G (myfst t)))(v2 := List.insert v1 (G (myfst t) v2))),
-                                           vertices = map_entry (myfst t) (List.union [v1, v2]) V, label = L(myfst t := (L (myfst t))(l1 := l2))\<rparr>
+                                           is_en2 = isr, timestamps = Cons (myfst t) T,
+                                           graph = G(myfst t := (map_entry v1 (Cons v2) (G (myfst t)))(v2 := Cons v1 (G (myfst t) v2))),
+                                           vertices = map_entry (myfst t) (append [v1, v2]) V, label = L(myfst t := (L (myfst t))(l1 := l2))\<rparr>
                                         t1 l1))
                               else [])
-                     (filter ((\<le>) (myfst t)) (List.insert (myfst t) T)))))
+                     (filter ((\<le>) (myfst t)) (Cons (myfst t) T)))))
                1))) (1, 0)) @@- lxs) t)
         \<union> all_edges (release_caps
                        (produces
                          (os_label_prop
-                          \<lparr>input := (input os_label_prop)(0 := xs), timestamps := List.insert (myfst t) (timestamps os_label_prop),
+                          \<lparr>input := (input os_label_prop)(0 := xs), timestamps := Cons (myfst t) (timestamps os_label_prop),
                              graph :=
                                (label_propagation_state.graph os_label_prop)
-                               (myfst t := (map_entry v1 (List.insert v2) (label_propagation_state.graph os_label_prop (myfst t)))(v2 := List.insert v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
-                             vertices := map_entry (myfst t) (List.union [v1, v2]) (vertices os_label_prop), label := (label os_label_prop)(myfst t := (label os_label_prop (myfst t))(l1 := l2))\<rparr>)
+                               (myfst t := (map_entry v1 (Cons v2) (label_propagation_state.graph os_label_prop (myfst t)))(v2 := Cons v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
+                             vertices := map_entry (myfst t) (append [v1, v2]) (vertices os_label_prop), label := (label os_label_prop)(myfst t := (label os_label_prop (myfst t))(l1 := l2))\<rparr>)
                          (concat
                            (map (\<lambda>t1. if l2 < min_label os_label_prop t1 l1
                                       then map (\<lambda>v'. (en1 os_label_prop (v', l2), Cap (MyPair t1 (mysnd t)) 1))
                                             (filter (\<lambda>v'. l2 < min_label os_label_prop t1 v')
                                               (neighbors
                                                 (os_label_prop
-                                                 \<lparr>input := (input os_label_prop)(0 := xs), timestamps := List.insert (myfst t) (timestamps os_label_prop),
+                                                 \<lparr>input := (input os_label_prop)(0 := xs), timestamps := Cons (myfst t) (timestamps os_label_prop),
                                                     graph :=
                                                       (label_propagation_state.graph os_label_prop)
                                                       (myfst t :=
-                                                         (map_entry v1 (List.insert v2) (label_propagation_state.graph os_label_prop (myfst t)))
-                                                         (v2 := List.insert v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
-                                                    vertices := map_entry (myfst t) (List.union [v1, v2]) (vertices os_label_prop),
+                                                         (map_entry v1 (Cons v2) (label_propagation_state.graph os_label_prop (myfst t)))
+                                                         (v2 := Cons v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
+                                                    vertices := map_entry (myfst t) (append [v1, v2]) (vertices os_label_prop),
                                                     label := (label os_label_prop)(myfst t := (label os_label_prop (myfst t))(l1 := l2))\<rparr>)
                                                 t1 l1))
                                       else [])
-                             (filter ((\<le>) (myfst t)) (List.insert (myfst t) (timestamps os_label_prop))))))
+                             (filter ((\<le>) (myfst t)) (Cons (myfst t) (timestamps os_label_prop))))))
                        1) (myfst t))), t)))
       (cUn (cUn (ts lxs) (cset_from_list (map snd (chns (1, 0))))) ((\<lambda> t. MyPair t 0) |`| (cset_from_list (timestamps (release_caps
                        (produces
                          (os_label_prop
-                          \<lparr>input := (input os_label_prop)(0 := xs), timestamps := List.insert (myfst t) (timestamps os_label_prop),
+                          \<lparr>input := (input os_label_prop)(0 := xs), timestamps := Cons (myfst t) (timestamps os_label_prop),
                              graph :=
                                (label_propagation_state.graph os_label_prop)
-                               (myfst t := (map_entry v1 (List.insert v2) (label_propagation_state.graph os_label_prop (myfst t)))(v2 := List.insert v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
-                             vertices := map_entry (myfst t) (List.union [v1, v2]) (vertices os_label_prop), label := (label os_label_prop)(myfst t := (label os_label_prop (myfst t))(l1 := l2))\<rparr>)
+                               (myfst t := (map_entry v1 (Cons v2) (label_propagation_state.graph os_label_prop (myfst t)))(v2 := Cons v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
+                             vertices := map_entry (myfst t) (append [v1, v2]) (vertices os_label_prop), label := (label os_label_prop)(myfst t := (label os_label_prop (myfst t))(l1 := l2))\<rparr>)
                          (concat
                            (map (\<lambda>t1. if l2 < min_label os_label_prop t1 l1
                                       then map (\<lambda>v'. (en1 os_label_prop (v', l2), Cap (MyPair t1 (mysnd t)) 1))
                                             (filter (\<lambda>v'. l2 < min_label os_label_prop t1 v')
                                               (neighbors
                                                 (os_label_prop
-                                                 \<lparr>input := (input os_label_prop)(0 := xs), timestamps := List.insert (myfst t) (timestamps os_label_prop),
+                                                 \<lparr>input := (input os_label_prop)(0 := xs), timestamps := Cons (myfst t) (timestamps os_label_prop),
                                                     graph :=
                                                       (label_propagation_state.graph os_label_prop)
                                                       (myfst t :=
-                                                         (map_entry v1 (List.insert v2) (label_propagation_state.graph os_label_prop (myfst t)))
-                                                         (v2 := List.insert v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
-                                                    vertices := map_entry (myfst t) (List.union [v1, v2]) (vertices os_label_prop),
+                                                         (map_entry v1 (Cons v2) (label_propagation_state.graph os_label_prop (myfst t)))
+                                                         (v2 := Cons v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
+                                                    vertices := map_entry (myfst t) (append [v1, v2]) (vertices os_label_prop),
                                                     label := (label os_label_prop)(myfst t := (label os_label_prop (myfst t))(l1 := l2))\<rparr>)
                                                 t1 l1))
                                       else [])
-                             (filter ((\<le>) (myfst t)) (List.insert (myfst t) (timestamps os_label_prop))))))
+                             (filter ((\<le>) (myfst t)) (Cons (myfst t) (timestamps os_label_prop))))))
                        1)))))"])
                 apply (rule exI[of _ D])
                 apply (rule exI[of _ lxs])
@@ -1104,43 +1153,43 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                             (filter (\<lambda>v'. l2 < min_label os_label_prop t1 v')
                                               (neighbors
                                                 (os_label_prop
-                                                 \<lparr>input := (input os_label_prop)(0 := xs), timestamps := List.insert (myfst t) (timestamps os_label_prop),
+                                                 \<lparr>input := (input os_label_prop)(0 := xs), timestamps := Cons (myfst t) (timestamps os_label_prop),
                                                     graph :=
                                                       (label_propagation_state.graph os_label_prop)
                                                       (myfst t :=
-                                                         (map_entry v1 (List.insert v2) (label_propagation_state.graph os_label_prop (myfst t)))
-                                                         (v2 := List.insert v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
-                                                    vertices := map_entry (myfst t) (List.union [v1, v2]) (vertices os_label_prop),
+                                                         (map_entry v1 (Cons v2) (label_propagation_state.graph os_label_prop (myfst t)))
+                                                         (v2 := Cons v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
+                                                    vertices := map_entry (myfst t) (append [v1, v2]) (vertices os_label_prop),
                                                     label := (label os_label_prop)(myfst t := (label os_label_prop (myfst t))(l1 := l2))\<rparr>)
                                                 t1 l1))
                                       else [])
-                             (filter ((\<le>) (myfst t)) (List.insert (myfst t) (timestamps os_label_prop))))))
+                             (filter ((\<le>) (myfst t)) (Cons (myfst t) (timestamps os_label_prop))))))
                        1)"])
                 apply (rule exI[of _ "release_caps
                        (produces
                          (os_label_prop
-                          \<lparr>input := (input os_label_prop)(0 := xs), timestamps := List.insert (myfst t) (timestamps os_label_prop),
+                          \<lparr>input := (input os_label_prop)(0 := xs), timestamps := Cons (myfst t) (timestamps os_label_prop),
                              graph :=
                                (label_propagation_state.graph os_label_prop)
-                               (myfst t := (map_entry v1 (List.insert v2) (label_propagation_state.graph os_label_prop (myfst t)))(v2 := List.insert v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
-                             vertices := map_entry (myfst t) (List.union [v1, v2]) (vertices os_label_prop), label := (label os_label_prop)(myfst t := (label os_label_prop (myfst t))(l1 := l2))\<rparr>)
+                               (myfst t := (map_entry v1 (Cons v2) (label_propagation_state.graph os_label_prop (myfst t)))(v2 := Cons v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
+                             vertices := map_entry (myfst t) (append [v1, v2]) (vertices os_label_prop), label := (label os_label_prop)(myfst t := (label os_label_prop (myfst t))(l1 := l2))\<rparr>)
                          (concat
                            (map (\<lambda>t1. if l2 < min_label os_label_prop t1 l1
                                       then map (\<lambda>v'. (en1 os_label_prop (v', l2), Cap (MyPair t1 (mysnd t)) 1))
                                             (filter (\<lambda>v'. l2 < min_label os_label_prop t1 v')
                                               (neighbors
                                                 (os_label_prop
-                                                 \<lparr>input := (input os_label_prop)(0 := xs), timestamps := List.insert (myfst t) (timestamps os_label_prop),
+                                                 \<lparr>input := (input os_label_prop)(0 := xs), timestamps := Cons (myfst t) (timestamps os_label_prop),
                                                     graph :=
                                                       (label_propagation_state.graph os_label_prop)
                                                       (myfst t :=
-                                                         (map_entry v1 (List.insert v2) (label_propagation_state.graph os_label_prop (myfst t)))
-                                                         (v2 := List.insert v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
-                                                    vertices := map_entry (myfst t) (List.union [v1, v2]) (vertices os_label_prop),
+                                                         (map_entry v1 (Cons v2) (label_propagation_state.graph os_label_prop (myfst t)))
+                                                         (v2 := Cons v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
+                                                    vertices := map_entry (myfst t) (append [v1, v2]) (vertices os_label_prop),
                                                     label := (label os_label_prop)(myfst t := (label os_label_prop (myfst t))(l1 := l2))\<rparr>)
                                                 t1 l1))
                                       else [])
-                             (filter ((\<le>) (myfst t)) (List.insert (myfst t) (timestamps os_label_prop))))))
+                             (filter ((\<le>) (myfst t)) (Cons (myfst t) (timestamps os_label_prop))))))
                        1"])
                 apply (rule exI[of _ cbufs])
                 apply (rule exI[of _ "(outputs_at_target (summ sg) (os(1 := release_caps
@@ -1153,17 +1202,17 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                             (filter (\<lambda>v'. l2 < min_label os_label_prop t1 v')
                                               (neighbors
                                                 (os_label_prop
-                                                 \<lparr>input := (input os_label_prop)(0 := xs), timestamps := List.insert (myfst t) (timestamps os_label_prop),
+                                                 \<lparr>input := (input os_label_prop)(0 := xs), timestamps := Cons (myfst t) (timestamps os_label_prop),
                                                     graph :=
                                                       (label_propagation_state.graph os_label_prop)
                                                       (myfst t :=
-                                                         (map_entry v1 (List.insert v2) (label_propagation_state.graph os_label_prop (myfst t)))
-                                                         (v2 := List.insert v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
-                                                    vertices := map_entry (myfst t) (List.union [v1, v2]) (vertices os_label_prop),
+                                                         (map_entry v1 (Cons v2) (label_propagation_state.graph os_label_prop (myfst t)))
+                                                         (v2 := Cons v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
+                                                    vertices := map_entry (myfst t) (append [v1, v2]) (vertices os_label_prop),
                                                     label := (label os_label_prop)(myfst t := (label os_label_prop (myfst t))(l1 := l2))\<rparr>)
                                                 t1 l1))
                                       else [])
-                             (filter ((\<le>) (myfst t)) (List.insert (myfst t) (timestamps os_label_prop))))))
+                             (filter ((\<le>) (myfst t)) (Cons (myfst t) (timestamps os_label_prop))))))
                        1)) >> cbufs) >> inputs_at_target (os(1 := release_caps
                (produces (os 1\<lparr>input := (input (os 1))(0 := xs)\<rparr>)
                  (concat
@@ -1182,23 +1231,23 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                       (neighbors
                                         \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = (input (os 1))(0 := xs),
                                            outpu = outpu (os 1), front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr,
-                                           is_en2 = isr, timestamps = List.insert (myfst t) T,
-                                           graph = G(myfst t := (map_entry v1 (List.insert v2) (G (myfst t)))(v2 := List.insert v1 (G (myfst t) v2))),
-                                           vertices = map_entry (myfst t) (List.union [v1, v2]) V, label = L(myfst t := (L (myfst t))(l1 := l2))\<rparr>
+                                           is_en2 = isr, timestamps = Cons (myfst t) T,
+                                           graph = G(myfst t := (map_entry v1 (Cons v2) (G (myfst t)))(v2 := Cons v1 (G (myfst t) v2))),
+                                           vertices = map_entry (myfst t) (append [v1, v2]) V, label = L(myfst t := (L (myfst t))(l1 := l2))\<rparr>
                                         t1 l1))
                               else [])
-                     (filter ((\<le>) (myfst t)) (List.insert (myfst t) T)))))
+                     (filter ((\<le>) (myfst t)) (Cons (myfst t) T)))))
                1))"])
                 apply (rule exI[of _ sg])
                 apply (intro conjI)
                 subgoal
                   by (simp add: operator_state.defs dataflow_tree_to_operator_def os_inv(1))
                 subgoal premises aux
-                  using aux(2,3) apply -
-                  apply (simp add: buffers_inv operator_state.defs os_inv(4) csets_inv(1))
+                  using aux(1,2,3) apply -
+                  apply (simp  del: filter.simps add: buffers_inv operator_state.defs os_inv(4) csets_inv(1))
                   apply (rule arg_cong2[where f=set_spec_op])
-                   apply simp_all
-                  apply (clarsimp del: disjCI simp add: inputs_at_target_def BULK_BENQ_def operator_state.defs outputs_at_target_raw_summary subgraph_inv buffers_inv csets_inv(1) os_inv(4))
+                   apply (simp_all del: filter.simps)
+                  apply (clarsimp simp del: filter.simps del: disjCI simp add: inputs_at_target_def BULK_BENQ_def operator_state.defs outputs_at_target_raw_summary subgraph_inv buffers_inv csets_inv(1) os_inv(4))
                   subgoal
                     apply (subst (1) icoll_LCons_Data)
                     subgoal
@@ -1206,25 +1255,84 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                       by auto
                     subgoal
                       apply simp
-                      apply (subst (1) all_edges_update_insert[rotated 6, where ?os'="
-                   \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1),
-                      input = (input (os 1))(0 := xs), outpu = outpu (os 1), front = front (os 1), ocaps = ocaps (os 1),
-                      initia = initia (os 1), en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr,
-                      timestamps = List.insert (myfst t) T,
-                      graph =
-                        G(myfst t := (map_entry v1 (List.insert v2) (G (myfst t)))(v2 := List.insert v1 (G (myfst t) v2))),
-                      vertices = map_entry (myfst t) (List.union [v1, v2]) V, label = L(myfst t := (L (myfst t))(l1 := l2))\<rparr>
-                   " and os="os_label_prop", of _ v1 v2])
-                      apply (simp add: operator_state.defs os_inv(4))
-                      apply (simp add: operator_state.defs os_inv(4))
-                      subgoal sorry
-                      apply (simp add: operator_state.defs os_inv(4))
+                      apply (subgoal_tac "t = MyPair (myfst t) 0")
+                      subgoal
+                        apply (subst (1 2) all_edges_eq[rotated, where V=V and label_sync=L and input_sync="outpu (os 1)"])
+                        subgoal by simp
+                        subgoal sorry
+                        subgoal sorry
+                        subgoal
+                          apply simp
+                          apply (rule arg_cong2[where f=cinsert])
+                          subgoal
+                            sorry
+                          subgoal
+                          apply (rule arg_cong2[where f=cUn])
+                            subgoal
+                              by simp
+                            subgoal
+                              apply (rule cimage_cong)
+                              subgoal
+                                by simp
+                              subgoal for t''
+                                apply (cases "t \<le> t''")
+                                subgoal
+                                  apply simp
+                                  apply (subst (1) icoll_LCons_Data)
+                                  subgoal
+                                    using input_stream_inv timely_input_stream_expires_le 
+                                    by auto
+                                  subgoal
+                                    apply simp                                
+                                    apply (subst all_edges_eq_le[rotated, where V=V and label_sync=L and input_sync="outpu (os 1)"])
+                                    subgoal by simp
+                                    subgoal sorry
+                                    subgoal by simp
+                                    subgoal sorry
+                                    subgoal
+                                      apply (subst insert_commute)
+                                      apply (simp add: ccs_insert_symmetric)
+                                      subgoal premises
+                                      apply (clarsimp simp add: split_beta cong: map_cong)
+                                        apply (rule arg_cong[where f=ccs])
+                                        find_theorems "insert (_ \<union> _) = _"
 
-                      find_theorems os_label_prop
+
+                          apply (rule arg_cong2[where f=cinsert])
+
+
+                                      find_theorems "insert ?x (insert ?y _) = insert _ (insert _ _)"
+
+                                      oops
+
+
+
 
 end
-                      sorry
-                    done
+
+                                    by simp
+                                  done
+                                subgoal
+                                  apply (subst (1) icoll_LCons_Data)
+                                  subgoal
+                                    using input_stream_inv timely_input_stream_expires_le 
+                                    by auto
+                                  subgoal
+                                    apply simp
+
+
+
+                              thm cimage_eqI
+
+                          find_theorems "_  |`| _ = (_  |`| _)"
+
+
+
+                      find_theorems "(_ :: _ cset) = _ \<longleftrightarrow> _"
+
+
+end
+                      done
                   done
                 subgoal
                   using subgraph_inv(1) by assumption
@@ -1238,12 +1346,12 @@ end
                   by auto
                 subgoal 
                   apply (simp add:  operator_state.defs os_inv(4))
-                  apply (rule exI[of _ "List.insert (myfst t) T"])
+                  apply (rule exI[of _ "Cons (myfst t) T"])
                   apply simp
                   apply (intro conjI)
                   subgoal 
-                    apply (rule exI[of _ "G(myfst t := (map_entry v1 (List.insert v2) (G (myfst t)))(v2 := List.insert v1 (G (myfst t) v2)))"])
-                    apply (rule exI[of _ "map_entry (myfst t) (List.union [v1, v2]) V"])
+                    apply (rule exI[of _ "G(myfst t := (map_entry v1 (Cons v2) (G (myfst t)))(v2 := Cons v1 (G (myfst t) v2)))"])
+                    apply (rule exI[of _ "map_entry (myfst t) (append [v1, v2]) V"])
                     apply (rule exI[of _ "L(myfst t := (L (myfst t))(l1 := l2))"])
                     apply (simp add: produces_def release_caps_def drop_caps_def)
                     done
