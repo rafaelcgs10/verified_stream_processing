@@ -385,9 +385,179 @@ proof -
 qed
 
 
+lemma edge_vertices_insert[simp]:
+  "edge_vertices (insert (v1, v2) E) = insert v1 (insert v2 (edge_vertices E))"
+  unfolding edge_vertices_def
+  by auto
 
+lemma edge_vertices_empty[simp]:
+  "edge_vertices {} = {}"
+  unfolding edge_vertices_def
+  by simp
 
+lemma edge_vertices_Un[simp]:
+  "edge_vertices (A \<union> B) = edge_vertices A \<union> edge_vertices B"
+  unfolding edge_vertices_def
+  by auto
 
+lemma edge_vertices_insert_loop[simp]:
+  "edge_vertices (insert (v, v) E) = insert v (edge_vertices E)"
+  by simp
+
+lemma reachable_empty[simp]:
+  "reachable {} x y \<longleftrightarrow> x = y"
+  unfolding reachable_def
+  by simp
+
+lemma reachable_Un_mono_left:
+  "reachable A x y \<Longrightarrow> reachable (A \<union> B) x y"
+proof -
+  have "A \<union> A\<inverse> \<subseteq> (A \<union> B) \<union> (A \<union> B)\<inverse>"
+    by auto
+  then show "reachable A x y \<Longrightarrow> reachable (A \<union> B) x y"
+    unfolding reachable_def using rtrancl_mono by blast
+qed
+
+lemma reachable_Un_mono_right:
+  "reachable B x y \<Longrightarrow> reachable (A \<union> B) x y"
+proof -
+  have "B \<union> B\<inverse> \<subseteq> (A \<union> B) \<union> (A \<union> B)\<inverse>"
+    by auto
+  then show "reachable B x y \<Longrightarrow> reachable (A \<union> B) x y"
+    unfolding reachable_def using rtrancl_mono by blast
+qed
+
+lemma reachable_insert_edge[simp]:
+  "reachable (insert (x, y) E) x y"
+  unfolding reachable_def
+  by (rule r_into_rtrancl) simp
+
+lemma reachable_insert_edge_sym[simp]:
+  "reachable (insert (x, y) E) y x"
+  unfolding reachable_def
+  by (rule r_into_rtrancl) simp
+
+lemma cc_of_empty[simp]:
+  "cc_of {} v = {}"
+  unfolding cc_of_def
+  by simp
+
+lemma cc_of_insert[simp]:
+  "cc_of (insert (v1, v2) A) v1 = insert v1 (insert v2 ((cc_of A v1) \<union> (cc_of A v2)))"
+proof (intro set_eqI iffI)
+  have old_step: "\<And>a y z. y \<in> cc_of A a \<Longrightarrow> (y, z) \<in> A \<union> A\<inverse> \<Longrightarrow> z \<in> cc_of A a"
+    unfolding cc_of_def reachable_def edge_vertices_def Field_def
+    by (auto intro: rtrancl_into_rtrancl)
+  have old_step_from: "\<And>a z. (a, z) \<in> A \<union> A\<inverse> \<Longrightarrow> z \<in> cc_of A a"
+    unfolding cc_of_def reachable_def edge_vertices_def Field_def
+    by auto
+  fix u
+  assume "u \<in> cc_of (insert (v1, v2) A) v1"
+  then have "reachable (insert (v1, v2) A) v1 u"
+    unfolding cc_of_def by simp
+  then have "u = v1 \<or> u = v2 \<or> u \<in> cc_of A v1 \<or> u \<in> cc_of A v2"
+    unfolding reachable_def
+  proof (induction rule: rtrancl_induct)
+    case base
+    then show ?case
+      by simp
+  next
+    case (step y z)
+    then have "(y, z) \<in> A \<union> A\<inverse> \<or> z = v1 \<or> z = v2"
+      by auto
+    then show ?case
+      using step.IH old_step old_step_from by blast
+  qed
+  then show "u \<in> insert v1 (insert v2 (cc_of A v1 \<union> cc_of A v2))"
+    by simp
+next
+  have rel_mono: "A \<union> A\<inverse> \<subseteq> insert (v1, v2) A \<union> (insert (v1, v2) A)\<inverse>"
+    by auto
+  have mono_reachable:
+    "\<And>x y. reachable A x y \<Longrightarrow> reachable (insert (v1, v2) A) x y"
+    unfolding reachable_def using rtrancl_mono[OF rel_mono] by blast
+  have new_edge: "reachable (insert (v1, v2) A) v1 v2"
+    unfolding reachable_def by (rule r_into_rtrancl) simp
+  fix u
+  assume "u \<in> insert v1 (insert v2 (cc_of A v1 \<union> cc_of A v2))"
+  then consider
+      "u = v1"
+    | "u = v2"
+    | "u \<in> cc_of A v1"
+    | "u \<in> cc_of A v2"
+    by blast
+  then show "u \<in> cc_of (insert (v1, v2) A) v1"
+  proof cases
+    case 1
+    then show ?thesis
+      unfolding cc_of_def edge_vertices_def reachable_def Field_def by auto
+  next
+    case 2
+    then show ?thesis
+      using new_edge unfolding cc_of_def edge_vertices_def Field_def by auto
+  next
+    case 3
+    then have "reachable (insert (v1, v2) A) v1 u"
+      unfolding cc_of_def by (auto intro: mono_reachable)
+    then show ?thesis
+      using 3 unfolding cc_of_def edge_vertices_def Field_def by auto
+  next
+    case 4
+    then have "reachable (insert (v1, v2) A) v2 u"
+      unfolding cc_of_def by (auto intro: mono_reachable)
+    with new_edge have "reachable (insert (v1, v2) A) v1 u"
+      by (rule reachable_trans)
+    then show ?thesis
+      using 4 unfolding cc_of_def edge_vertices_def Field_def by auto
+  qed
+qed
+
+lemma cc_of_insert_commute:
+  "cc_of (insert (v1, v2) A) v = cc_of (insert (v2, v1) A) v"
+proof -
+  have rel_eq:
+    "insert (v1, v2) A \<union> (insert (v1, v2) A)\<inverse> =
+     insert (v2, v1) A \<union> (insert (v2, v1) A)\<inverse>"
+    by auto
+  have field_eq:
+    "Field (insert (v1, v2) A) = Field (insert (v2, v1) A)"
+    by auto
+  show ?thesis
+    unfolding cc_of_def reachable_def edge_vertices_def using rel_eq field_eq by simp
+qed
+
+lemma cc_of_insert_other_endpoint[simp]:
+  "cc_of (insert (v1, v2) A) v2 = insert v1 (insert v2 ((cc_of A v1) \<union> (cc_of A v2)))"
+  by (subst cc_of_insert_commute) (simp add: insert_commute sup_commute)
+
+lemma cc_of_insert_loop[simp]:
+  "cc_of (insert (v, v) A) v = insert v (cc_of A v)"
+  by simp
+
+lemma cc_of_Un_mono_left:
+  "cc_of A v \<subseteq> cc_of (A \<union> B) v"
+  unfolding cc_of_def
+  by (auto intro: reachable_Un_mono_left)
+
+lemma cc_of_Un_mono_right:
+  "cc_of B v \<subseteq> cc_of (A \<union> B) v"
+  unfolding cc_of_def
+  by (auto intro: reachable_Un_mono_right)
+
+lemma is_subcc_empty[simp]:
+  "is_subcc E {}"
+  unfolding is_subcc_def
+  by simp
+
+lemma ccs_empty[simp]:
+  "ccs {} = {}"
+  unfolding is_cc_def is_subcc_def
+  by auto
+
+lemma components_from_labels_empty[simp]:
+  "components_from_labels {} l = {}"
+  unfolding components_from_labels_def
+  by simp
 
 
 end
