@@ -310,6 +310,15 @@ definition "label_prob_ty2_check os bufs \<equiv>
    (\<forall> p. (\<forall> x \<in> fst ` set (input os p) \<union> fst ` set (bufs p). is_en1 os x)) \<and>
    (\<forall> x \<in> fst ` set (outpu os 0). is_en2 os x) \<and> (\<forall> x \<in> fst ` set (outpu os 1). is_en1 os x)"
 
+(* FIXME: move me to cset things *)
+lemma cfilter_False:
+  "\<forall> x. x |\<in>| A \<longrightarrow> \<not> P x \<Longrightarrow>
+   cfilter P A = {||}"
+  by auto
+lemma cfilter_True:
+  "\<forall> x. x |\<in>| A \<longrightarrow> P x \<Longrightarrow>
+   cfilter P A = A"
+  by auto
 
 lemma label_propagation_correctness:
   fixes lxs :: \<open>((nat, nat) myprod, nat \<times> nat) event llist\<close>
@@ -1042,7 +1051,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                 apply (rule exI[of _ S])
                 apply (rule exI[of _ SO])
                 apply (rule exI[of _ "cimage
-      (\<lambda>t. ((1, 0), (Inr (ccs
+      (\<lambda>t''. ((1, 0), (Inr (ccs
         (set (icoll (map (\<lambda>(x, t'). Data t' (projl x)) (((outputs_at_target (summ sg) (os(1 := release_caps
                        (produces
                          ((os 1)
@@ -1088,7 +1097,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                         t1 l1))
                               else [])
                      (filter ((\<le>) (myfst t)) (Cons (myfst t) T)))))
-               1))) (1, 0)) @@- lxs) t)
+               1))) (1, 0)) @@- lxs) t'')
         \<union> all_edges (release_caps
                        (produces
                          (os_label_prop
@@ -1114,8 +1123,53 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                                 t1 l1))
                                       else [])
                              (filter ((\<le>) (myfst t)) (Cons (myfst t) (timestamps os_label_prop))))))
-                       1) (myfst t))), t)))
-      (cUn (cUn (ts lxs) (cset_from_list (map snd (chns (1, 0))))) ((\<lambda> t. MyPair t 0) |`| (cset_from_list (timestamps (release_caps
+                       1) (myfst t''))), t'')))
+      (cUn (cUn (ts lxs) (cset_from_list (map snd (((outputs_at_target (summ sg) (os(1 := release_caps
+                       (produces
+                         ((os 1)
+                          \<lparr>input := (input os_label_prop)(0 := xs)\<rparr>)
+                         (concat
+                           (map (\<lambda>t1. if l2 < min_label os_label_prop t1 l1
+                                      then map (\<lambda>v'. (en1 os_label_prop (v', l2), Cap (MyPair t1 (mysnd t)) 1))
+                                            (filter (\<lambda>v'. l2 < min_label os_label_prop t1 v')
+                                              (neighbors
+                                                (os_label_prop
+                                                 \<lparr>input := (input os_label_prop)(0 := xs), timestamps := Cons (myfst t) (timestamps os_label_prop),
+                                                    graph :=
+                                                      (label_propagation_state.graph os_label_prop)
+                                                      (myfst t :=
+                                                         (map_entry v1 (Cons v2) (label_propagation_state.graph os_label_prop (myfst t)))
+                                                         (v2 := Cons v1 (label_propagation_state.graph os_label_prop (myfst t) v2))),
+                                                    vertices := map_entry (myfst t) (append [v1, v2]) (vertices os_label_prop),
+                                                    label := (label os_label_prop)(myfst t := (label os_label_prop (myfst t))(l1 := l2))\<rparr>)
+                                                t1 l1))
+                                      else [])
+                             (filter ((\<le>) (myfst t)) (Cons (myfst t) (timestamps os_label_prop))))))
+                       1)) >> cbufs) >> inputs_at_target (os(1 := release_caps
+               (produces (os 1\<lparr>input := (input (os 1))(0 := xs)\<rparr>)
+                 (concat
+                   (map (\<lambda>t1. if l2 < min_label
+                                       \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1),
+                                          front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T,
+                                          graph = G, vertices = V, label = L\<rparr>
+                                       t1 l1
+                              then map (\<lambda>v'. (Inl (v', l2), Cap (MyPair t1 (mysnd t)) 1))
+                                    (filter
+                                      (\<lambda>v'. l2 < min_label
+                                                  \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1),
+                                                     outpu = outpu (os 1), front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr,
+                                                     de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>
+                                                  t1 v')
+                                      (neighbors
+                                        \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = (input (os 1))(0 := xs),
+                                           outpu = outpu (os 1), front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr,
+                                           is_en2 = isr, timestamps = Cons (myfst t) T,
+                                           graph = G(myfst t := (map_entry v1 (Cons v2) (G (myfst t)))(v2 := Cons v1 (G (myfst t) v2))),
+                                           vertices = map_entry (myfst t) (append [v1, v2]) V, label = L(myfst t := (L (myfst t))(l1 := l2))\<rparr>
+                                        t1 l1))
+                              else [])
+                     (filter ((\<le>) (myfst t)) (Cons (myfst t) T)))))
+               1))) (1, 0))))) ((\<lambda> t. MyPair t 0) |`| (cset_from_list (timestamps (release_caps
                        (produces
                          (os_label_prop
                           \<lparr>input := (input os_label_prop)(0 := xs), timestamps := Cons (myfst t) (timestamps os_label_prop),
@@ -1257,7 +1311,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                       apply simp
                       apply (subgoal_tac "t = MyPair (myfst t) 0")
                       subgoal
-                        apply (subst (1 2) all_edges_eq[rotated, where V=V and label_sync=L and input_sync="outpu (os 1)"])
+                        apply (subst (1) all_edges_eq[rotated, where V=V and label_sync=L and input_sync="input (os 1)"])
                         subgoal by simp
                         subgoal sorry
                         subgoal sorry
@@ -1265,74 +1319,55 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                           apply simp
                           apply (rule arg_cong2[where f=cinsert])
                           subgoal
-                            sorry
+                            apply (subst insert_commute)
+                            apply (simp add: ccs_insert_symmetric)
+                            done
                           subgoal
-                          apply (rule arg_cong2[where f=cUn])
+                            apply (rule arg_cong2[where f=cUn])
                             subgoal
                               by simp
                             subgoal
-                              apply (rule cimage_cong)
+                              apply (subst (1) icoll_LCons_Data)
                               subgoal
-                                by simp
-                              subgoal for t''
-                                apply (cases "t \<le> t''")
+                                using input_stream_inv timely_input_stream_expires_le 
+                                by auto
+                              subgoal 
+                                apply (rule cimage_cong)
                                 subgoal
-                                  apply simp
-                                  apply (subst (1) icoll_LCons_Data)
+                                  by simp
+                                subgoal for t''
+                                  apply (cases "t \<le> t''")
                                   subgoal
-                                    using input_stream_inv timely_input_stream_expires_le 
-                                    by auto
-                                  subgoal
-                                    apply simp                                
-                                    apply (subst all_edges_eq_le[rotated, where V=V and label_sync=L and input_sync="outpu (os 1)"])
+                                    apply (subst all_edges_eq_le[rotated, where V=V and label_sync=L and input_sync="input (os 1)"])
                                     subgoal by simp
                                     subgoal sorry
-                                    subgoal by simp
+                                    subgoal 
+                                      using myfst_mono by blast
                                     subgoal sorry
                                     subgoal
                                       apply (subst insert_commute)
                                       apply (simp add: ccs_insert_symmetric)
-                                      subgoal premises
-                                      apply (clarsimp simp add: split_beta cong: map_cong)
-                                        apply (rule arg_cong[where f=ccs])
-                                        find_theorems "insert (_ \<union> _) = _"
-
-
-                          apply (rule arg_cong2[where f=cinsert])
-
-
-                                      find_theorems "insert ?x (insert ?y _) = insert _ (insert _ _)"
-
-                                      oops
-
-
-
-
-end
-
-                                    by simp
+                                      done
+                                    done
+                                  subgoal
+                                    apply (subst all_edges_eq_not_le[rotated, where V=V and label_sync=L and input_sync="input (os 1)"])
+                                    subgoal
+                                      by (metis MyPair_mono bot_nat_0.extremum myprod.exhaust_sel)
+                                    subgoal
+                                      by simp
+                                    subgoal
+                                      by simp
+                                    done
                                   done
-                                subgoal
-                                  apply (subst (1) icoll_LCons_Data)
-                                  subgoal
-                                    using input_stream_inv timely_input_stream_expires_le 
-                                    by auto
-                                  subgoal
-                                    apply simp
-
-
-
-                              thm cimage_eqI
-
-                          find_theorems "_  |`| _ = (_  |`| _)"
-
-
-
-                      find_theorems "(_ :: _ cset) = _ \<longleftrightarrow> _"
-
-
-end
+                                done
+                              done
+                            done
+                          done
+                        done
+                      subgoal
+                        sorry
                       done
+                    done
                   done
                 subgoal
                   using subgraph_inv(1) by assumption
@@ -1345,9 +1380,9 @@ end
                   using os_inv(3)
                   by auto
                 subgoal 
-                  apply (simp add:  operator_state.defs os_inv(4))
+                  apply (simp del: filter.simps add:  operator_state.defs os_inv(4))
                   apply (rule exI[of _ "Cons (myfst t) T"])
-                  apply simp
+                  apply (simp del: filter.simps)
                   apply (intro conjI)
                   subgoal 
                     apply (rule exI[of _ "G(myfst t := (map_entry v1 (Cons v2) (G (myfst t)))(v2 := Cons v1 (G (myfst t) v2)))"])
@@ -1377,12 +1412,67 @@ end
                   subgoal premises aux
                     sorry
                   subgoal premises aux
-                    sorry
+                    by (auto simp add: csets_inv(2))
+                  subgoal
+                    using input_stream_inv by assumption
                   subgoal premises aux
-                    sorry
-                  subgoal premises aux
-                    sorry
-                  subgoal premises aux
+                    using aux(2,3,4) apply -
+                    apply (subst all_edges_eq_le[rotated, where V=V and label_sync=L and input_sync="input (os 1)"])
+                    subgoal by simp
+                    subgoal sorry
+                    subgoal by simp
+                    subgoal sorry
+                    subgoal
+                      apply (clarsimp split: if_splits)
+                      subgoal
+                        apply hypsubst_thin
+                        using label_prop_inv(1) apply -
+                        apply (simp add: operator_state.defs os_inv(4))
+            
+
+                          find_theorems edge_vertices all_edges
+
+end
+                          sorry
+                        subgoal
+                          sorry
+                        subgoal
+                          sorry
+
+                        thm labels_inv_insert_symmetric_min_label_updateI
+
+                        find_theorems labels_inv
+
+                        find_theorems t
+
+end
+                      unfolding labels_inv_def
+                      apply (auto simp add: operator_state.defs os_inv(4) del: disjCI split: if_splits; hypsubst_thin?)
+                      subgoal
+                        apply (subst (asm) edge_vertices_all_edges)
+                        subgoal sorry
+                        subgoal
+                          apply simp
+
+                        thm edge_vertices_all_edges
+
+                        oops
+                        term "edge_vertices (all_edges os t)"
+
+end
+                        unfolding min_label_def
+                      apply (auto simp add: image_iff del: disjCI split: list.splits)
+                        subgoal
+
+                          find_theorems os_label_prop
+
+                      oops
+
+
+
+                    find_theorems all_edges name: eq
+
+end
                     sorry
                   subgoal premises aux
                     sorry
