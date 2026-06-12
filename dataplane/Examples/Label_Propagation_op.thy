@@ -61,8 +61,10 @@ definition all_edges where
   \<open>all_edges os t = {(v, w) \<in> (all_vertices os t) \<times> (all_vertices os t). w \<in> set (neighbors os t v)}\<close>
 
 definition min_label where
-  \<open>min_label os t v = (let ts = filter ((\<ge>) t) (timestamps os) in
-  if is_Nil ts then label os t v else Min (set (map (\<lambda>t. label os t v) ts)))\<close>
+  \<open>min_label os t v =
+    Min (insert (label os t v)
+      ((\<lambda>t'. label os t' v) ` {t' \<in> set (timestamps os). t' \<le> t}))\<close>
+
 
 lemma set_foldl_union_with:
   "set (foldl (union_with List.union) g gs y) = (\<Union>f\<in>set (g # gs). set (f y))"
@@ -126,6 +128,8 @@ definition all_vertices_incident_inv where
     (\<forall>v \<in> all_vertices os t.
       (\<exists>w \<in> all_vertices os t. w \<in> set (neighbors os t v)) \<or>
       (\<exists>w \<in> all_vertices os t. v \<in> set (neighbors os t w)))"
+
+
 
 lemma edge_vertices_all_edges:
   assumes "all_vertices_incident_inv os t"
@@ -199,25 +203,25 @@ qed
 
 lemma labels_inv_insert_symmetric_update_neighborI:
   assumes inv: "labels_inv A l"
-    and v2_label: "v2 ∈ edge_vertices A ∨ l v2 = v2"
+    and v2_label: "v2 \<in> edge_vertices A \<or> l v2 = v2"
   shows "labels_inv (insert (l1, v2) (insert (v2, l1) A)) (l(l1 := l v2))"
 proof -
   let ?B = "insert (l1, v2) (insert (v2, l1) A)"
-  have cc_of_mono: "⋀v x. x ∈ cc_of A v ⟹ x ∈ cc_of ?B v"
+  have cc_of_mono: "\<And>v x. x \<in> cc_of A v \<Longrightarrow> x \<in> cc_of ?B v"
   proof -
     fix v x
-    assume x: "x ∈ cc_of A v"
-    have rel_mono: "A ∪ A¯ ⊆ ?B ∪ ?B¯"
+    assume x: "x \<in> cc_of A v"
+    have rel_mono: "A \<union> A\<inverse> \<subseteq> ?B \<union> ?B\<inverse>"
       by auto
     have "reachable ?B v x"
       using x rtrancl_mono[OF rel_mono] unfolding cc_of_def reachable_def by blast
-    then show "x ∈ cc_of ?B v"
+    then show "x \<in> cc_of ?B v"
       using x unfolding cc_of_def edge_vertices_def Field_def by auto
   qed
-  have lv2_in_v2: "l v2 ∈ cc_of ?B v2"
-  proof (cases "v2 ∈ edge_vertices A")
+  have lv2_in_v2: "l v2 \<in> cc_of ?B v2"
+  proof (cases "v2 \<in> edge_vertices A")
     case True
-    then have "l v2 ∈ cc_of A v2"
+    then have "l v2 \<in> cc_of A v2"
       using inv unfolding labels_inv_def by simp
     then show ?thesis
       by (rule cc_of_mono)
@@ -229,7 +233,7 @@ proof -
       unfolding cc_of_def edge_vertices_def reachable_def Field_def by auto
   qed
 
-  have lv2_in_l1: "l v2 ∈ cc_of ?B l1"
+  have lv2_in_l1: "l v2 \<in> cc_of ?B l1"
   proof -
     have "reachable ?B l1 v2"
       by simp
@@ -244,8 +248,8 @@ proof -
     unfolding labels_inv_def
   proof safe
     fix v
-    assume v_edge: "v ∈ edge_vertices ?B"
-    show "(l(l1 := l v2)) v ∈ cc_of ?B v"
+    assume v_edge: "v \<in> edge_vertices ?B"
+    show "(l(l1 := l v2)) v \<in> cc_of ?B v"
     proof (cases "v = l1")
       case True
       then show ?thesis
@@ -259,9 +263,9 @@ proof -
           using v_not_l1 lv2_in_v2 by simp
       next
         case False
-        then have v_old: "v ∈ edge_vertices A"
+        then have v_old: "v \<in> edge_vertices A"
           using v_edge v_not_l1 by simp
-        have "l v ∈ cc_of A v"
+        have "l v \<in> cc_of A v"
           using inv v_old unfolding labels_inv_def by simp
         then show ?thesis
           using v_not_l1 by (auto intro: cc_of_mono)
@@ -272,10 +276,230 @@ qed
 
 lemma labels_inv_insert_symmetric_min_label_updateI:
   assumes inv: "labels_inv (all_edges os t) (min_label os t)"
-    and v2_label: "v2 ∈ edge_vertices (all_edges os t) ∨ min_label os t v2 = v2"
+    and v2_label: "v2 \<in> edge_vertices (all_edges os t) \<or> min_label os t v2 = v2"
     and update_eq: "min_label os' t = (min_label os t)(l1 := min_label os t v2)"
   shows "labels_inv (insert (l1, v2) (insert (v2, l1) (all_edges os t))) (min_label os' t)"
   using labels_inv_insert_symmetric_update_neighborI[OF inv v2_label] update_eq by simp
+
+lemma min_label_Cons_timestamp_label_update_eq:
+  fixes t :: "'t::order"
+  assumes new_le: "l \<le> min_label (os\<lparr>timestamps := T\<rparr>) t v"
+  shows "min_label (os\<lparr>timestamps := t # T, label := (label os)(t := (label os t)(v := l))\<rparr>) t =
+    (min_label (os\<lparr>timestamps := T\<rparr>) t)(v := l)"
+proof (rule ext)
+  fix v'
+  let ?old = "os\<lparr>timestamps := T\<rparr>"
+  let ?new = "os\<lparr>timestamps := t # T, label := (label os)(t := (label os t)(v := l))\<rparr>"
+  show "min_label ?new t v' = ((min_label ?old t)(v := l)) v'"
+  proof (cases "v' = v")
+    case True
+    let ?old_set = "insert (label os t v) ((\<lambda>t'. label os t' v) ` {t' \<in> set T. t' \<le> t})"
+    let ?new_set = "insert l ((\<lambda>t'. label ?new t' v) ` {t' \<in> set (t # T). t' \<le> t})"
+    have le_Min: "l \<le> Min ?old_set"
+      using new_le unfolding min_label_def by simp
+    have le_old: "\<And>x. x \<in> ?old_set \<Longrightarrow> l \<le> x"
+      using le_Min by (auto intro: order_trans[OF le_Min Min_le])
+    have le_new: "\<And>x. x \<in> ?new_set \<Longrightarrow> l \<le> x"
+      using le_old by auto
+    show ?thesis
+      using True le_new unfolding min_label_def
+      by (auto intro!: Min_insert2)
+  next
+    case False
+    have set_eq:
+      "insert (label ?new t v') ((\<lambda>t'. label ?new t' v') ` {t' \<in> set (t # T). t' \<le> t}) =
+       insert (label os t v') ((\<lambda>t'. label os t' v') ` {t' \<in> set T. t' \<le> t})"
+      using False by auto
+    show ?thesis
+      using False set_eq unfolding min_label_def by simp
+  qed
+qed
+
+lemma min_label_Cons_timestamp_label_update_eq_no_t_in:
+  fixes t :: "'t::order"
+  assumes new_le: "l \<le> min_label (os\<lparr>timestamps := T\<rparr>) t v"
+  shows "min_label (os\<lparr>timestamps := t # T, label := (label os)(t := (label os t)(v := l))\<rparr>) t =
+    (min_label (os\<lparr>timestamps := T\<rparr>) t)(v := l)"
+  using new_le by (rule min_label_Cons_timestamp_label_update_eq)
+
+lemma min_label_le_current_labelI:
+  fixes t :: "'t::order"
+  shows "min_label os t v \<le> label os t v"
+  unfolding min_label_def by (auto intro: Min_le)
+
+lemma min_label_eq_self_if_not_all_vertices:
+  fixes t :: "'t::order"
+  assumes absent_label_self:
+    "\<And>t' v. t' \<in> set (timestamps os) \<Longrightarrow> t' \<le> t \<Longrightarrow>
+      v \<notin> set (vertices os t') \<Longrightarrow> label os t' v = v"
+    and current_default: "t \<notin> set (timestamps os) \<Longrightarrow> label os t v = v"
+    and not_vertex: "v \<notin> all_vertices os t"
+  shows "min_label os t v = v"
+proof -
+  have current_self: "label os t v = v"
+  proof (cases "t \<in> set (timestamps os)")
+    case True
+    then show ?thesis
+      using absent_label_self[of t v] not_vertex unfolding all_vertices_def by auto
+  next
+    case False
+    then show ?thesis
+      by (rule current_default)
+  qed
+  have stored_self:
+    "\<And>t'. t' \<in> set (timestamps os) \<Longrightarrow> t' \<le> t \<Longrightarrow> label os t' v = v"
+    using absent_label_self not_vertex unfolding all_vertices_def by auto
+  have set_eq:
+    "insert (label os t v) ((\<lambda>t'. label os t' v) ` {t' \<in> set (timestamps os). t' \<le> t}) = {v}"
+    using current_self stored_self by force
+
+  show ?thesis
+    unfolding min_label_def
+    by (simp only: set_eq Min_singleton)
+
+qed
+
+lemma min_label_eq_self_if_not_edge_vertices:
+  fixes t :: "'t::order"
+  assumes incident: "all_vertices_incident_inv os t"
+    and absent_label_self:
+      "\<And>t' v. t' \<in> set (timestamps os) \<Longrightarrow> t' \<le> t \<Longrightarrow>
+        v \<notin> set (vertices os t') \<Longrightarrow> label os t' v = v"
+    and current_default: "t \<notin> set (timestamps os) \<Longrightarrow> label os t v = v"
+    and not_edge: "v \<notin> edge_vertices (all_edges os t)"
+  shows "min_label os t v = v"
+proof (rule min_label_eq_self_if_not_all_vertices)
+  show "\<And>t' v. t' \<in> set (timestamps os) \<Longrightarrow> t' \<le> t \<Longrightarrow>
+    v \<notin> set (vertices os t') \<Longrightarrow> label os t' v = v"
+    by (rule absent_label_self)
+  show "t \<notin> set (timestamps os) \<Longrightarrow> label os t v = v"
+    by (rule current_default)
+  show "v \<notin> all_vertices os t"
+    using not_edge edge_vertices_all_edges[OF incident] by simp
+qed
+
+lemma edge_vertices_all_edges_subset_all_vertices:
+  "edge_vertices (all_edges os t) \<subseteq> all_vertices os t"
+  unfolding edge_vertices_def all_edges_def Field_def by auto
+
+lemma labels_inv_min_label_any_queryI:
+  fixes q :: "'t::order"
+  assumes stored_valid:
+    "\<And>t' v. t' \<in> set (timestamps os) \<Longrightarrow> t' \<le> q \<Longrightarrow>
+      v \<in> edge_vertices (all_edges os q) \<Longrightarrow>
+      label os t' v \<in> cc_of (all_edges os q) v"
+    and current_valid:
+      "\<And>v. v \<in> edge_vertices (all_edges os q) \<Longrightarrow>
+        label os q v \<in> cc_of (all_edges os q) v"
+  shows "labels_inv (all_edges os q) (min_label os q)"
+  unfolding labels_inv_def
+proof safe
+  fix v
+  assume v_edge: "v \<in> edge_vertices (all_edges os q)"
+  let ?S = "insert (label os q v) ((\<lambda>t'. label os t' v) ` {t' \<in> set (timestamps os). t' \<le> q})"
+  have "Min ?S \<in> ?S"
+    by (intro Min_in) auto
+  then show "min_label os q v \<in> cc_of (all_edges os q) v"
+    using stored_valid[OF _ _ v_edge] current_valid[OF v_edge]
+    unfolding min_label_def by auto
+qed
+
+definition labels_cc_inv where
+  "labels_cc_inv os t =
+    (\<forall>v\<in>all_vertices os t.
+        min_label os t v \<in> cc_of (all_edges os t) v)"
+
+lemma labels_cc_inv_imp_labels_inv:
+  assumes  current_valid: "labels_cc_inv os t"
+  shows "labels_inv (all_edges os t) (min_label os t)"
+  unfolding labels_inv_def
+proof safe
+  fix v
+  assume "v \<in> edge_vertices (all_edges os t)"
+  then have "v \<in> all_vertices os t"
+    using edge_vertices_all_edges_subset_all_vertices by auto
+  then show "min_label os t v \<in> cc_of (all_edges os t) v"
+    using current_valid unfolding labels_cc_inv_def by auto
+qed
+
+lemma labels_cc_inv_iff_labels_inv:
+  assumes "all_vertices_incident_inv os t"
+  shows "labels_cc_inv os t \<longleftrightarrow> labels_inv (all_edges os t) (min_label os t)"
+proof
+  assume "labels_cc_inv os t"
+  then show "labels_inv (all_edges os t) (min_label os t)"
+    by (rule labels_cc_inv_imp_labels_inv)
+next
+  assume inv: "labels_inv (all_edges os t) (min_label os t)"
+  show "labels_cc_inv os t"
+    unfolding labels_cc_inv_def
+  proof safe
+    fix v
+    assume "v \<in> all_vertices os t"
+    then have "v \<in> edge_vertices (all_edges os t)"
+      using edge_vertices_all_edges[OF assms, symmetric] by simp
+    then show "min_label os t v \<in> cc_of (all_edges os t) v"
+      using inv unfolding labels_inv_def by simp
+  qed
+qed
+
+
+lemma all_vertices_insert:
+  assumes "vertices os' = (vertices os)(t := [v1, v2] @ vertices os t)"
+  and "timestamps os' = (t :: _ :: order) # timestamps os"
+  and "\<forall> t. t \<notin> set (timestamps os) \<longleftrightarrow> vertices os t = []"
+shows "all_vertices os' t = insert v1 (insert v2 (all_vertices os t))"
+  using assms apply -
+  unfolding all_vertices_def
+  by (force split: if_splits)
+
+
+
+lemma
+  assumes "all_vertices_incident_inv os t"
+    and "label os' = (label os)(t := (label os t)(l1 := min_label os t v2))"
+    and "graph os' = (graph os)((t :: _ :: order) := (map_entry l1 ((#) v2) ((graph os) t))(v2 := l1 # (graph os)( t) v2))"
+    and "vertices os' = (vertices os)(t := [v1, v2] @ vertices os t)"
+    and "\<forall> t. t \<notin> set (timestamps os) \<longleftrightarrow> vertices os t = []"
+  and "timestamps os' = t # timestamps os"
+  shows "all_vertices_incident_inv os' t"
+  unfolding all_vertices_incident_inv_def
+  apply (subst all_vertices_insert)
+  using assms(4) apply assumption 
+  using assms(6) apply assumption 
+  using assms(5) apply assumption 
+
+end
+
+lemma labels_cc_inv_updateI:
+  assumes  "Ball (set (timestamps os)) (labels_cc_inv os)"
+    and "label os' = (label os)(t := (label os t)(l1 := min_label os t v2))"
+    and "graph os' = (graph os)(t := (map_entry l1 ((#) v2) ((graph os) t))(v2 := l1 # (graph os)( t) v2))"
+    and "vertices os' = (vertices os)(t := [v1, v2] @ vertices os t)"
+    and "all_vertices_incident_inv os t"
+  shows "labels_cc_inv os' t"
+  using assms(2-) apply -
+  unfolding labels_cc_inv_def
+  apply clarsimp
+  subgoal for v
+    unfolding all_vertices_def
+    apply (clarsimp split: if_splits)
+    subgoal for t'
+    apply (elim conjE disjE)
+    subgoal
+      apply (clarsimp split: if_splits)
+      apply hypsubst_thin
+    apply (elim conjE disjE)
+      subgoal
+        apply hypsubst_thin
+        apply (rule cc_ofI)
+         apply (subst edge_vertices_all_edges)
+
+
+        find_theorems edge_vertices all_edges
+
+    oops
+
 
 
 
@@ -993,6 +1217,77 @@ lemma min_label_produces[simp]:
   "min_label (produces os batch) = min_label os"
   unfolding produces_def min_label_def
   by (auto cong: if_cong)
+
+lemma labels_cc_inv_drop_cap[simp]:
+  "labels_cc_inv (drop_cap os cap) t = labels_cc_inv os t"
+  unfolding labels_cc_inv_def all_vertices_def all_edges_def neighbors_def min_label_def drop_cap_def
+  by auto
+
+lemma labels_cc_inv_drop_caps[simp]:
+  "labels_cc_inv (drop_caps os caps) t = labels_cc_inv os t"
+  unfolding labels_cc_inv_def
+  by simp
+
+lemma labels_cc_inv_release_caps[simp]:
+  "labels_cc_inv (release_caps os p) t = labels_cc_inv os t"
+  unfolding release_caps_def Let_def trace_simp
+  by simp
+
+lemma labels_cc_inv_produces[simp]:
+  "labels_cc_inv (produces os batch) t = labels_cc_inv os t"
+  unfolding labels_cc_inv_def
+  by simp
+
+lemma labels_cc_inv_delay_cap[simp]:
+  "labels_cc_inv (delay_cap os cap incr) t = labels_cc_inv os t"
+  unfolding labels_cc_inv_def all_vertices_def all_edges_def neighbors_def min_label_def delay_cap_def
+  by auto
+
+lemma labels_cc_inv_produce[simp]:
+  "labels_cc_inv (produce os cap batch) t = labels_cc_inv os t"
+  unfolding labels_cc_inv_def all_vertices_def all_edges_def neighbors_def min_label_def produce_def
+  by auto
+
+lemma labels_cc_inv_consume[simp]:
+  "labels_cc_inv (consume os p t' len) t = labels_cc_inv os t"
+  unfolding labels_cc_inv_def all_vertices_def all_edges_def neighbors_def min_label_def consume_def
+  by auto
+
+lemma labels_cc_inv_mint_cap[simp]:
+  "labels_cc_inv (mint_cap os p t') t = labels_cc_inv os t"
+  unfolding labels_cc_inv_def all_vertices_def all_edges_def neighbors_def min_label_def mint_cap_def
+  by auto
+
+lemma labels_cc_inv_add_cap[simp]:
+  "labels_cc_inv (add_cap os p t') t = labels_cc_inv os t"
+  unfolding labels_cc_inv_def all_vertices_def all_edges_def neighbors_def min_label_def add_cap_def
+  by auto
+
+lemma labels_cc_inv_add_caps[simp]:
+  "labels_cc_inv (add_caps os caps) t = labels_cc_inv os t"
+  unfolding labels_cc_inv_def all_vertices_def all_edges_def neighbors_def min_label_def add_caps_def
+  by auto
+
+lemma labels_cc_inv_consumes[simp]:
+  "labels_cc_inv (consumes os p t' d) t = labels_cc_inv os t"
+  unfolding labels_cc_inv_def all_vertices_def all_edges_def neighbors_def min_label_def consumes_def add_caps_def BENQ_def
+  by auto
+
+lemma labels_cc_inv_fold_consumes[simp]:
+  "labels_cc_inv (fold (\<lambda>(d, t') os'. consumes os' p t' d) xs os) t = labels_cc_inv os t"
+  unfolding labels_cc_inv_def all_vertices_def all_edges_def neighbors_def min_label_def fold_consumes
+  by auto
+
+
+lemma labels_cc_inv_obtain_progress[simp]:
+  "labels_cc_inv (fst (obtain_progress os)) t = labels_cc_inv os t"
+  unfolding labels_cc_inv_def all_vertices_def all_edges_def neighbors_def min_label_def obtain_progress_def
+  by auto
+
+lemma labels_cc_inv_mint[simp]:
+  "labels_cc_inv (snd (mint os caps p t')) t = labels_cc_inv os t"
+  unfolding mint_def
+  by auto
 
 
 

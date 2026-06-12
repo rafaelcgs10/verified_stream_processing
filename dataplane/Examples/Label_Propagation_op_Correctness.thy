@@ -358,7 +358,7 @@ lemma label_propagation_correctness:
     and input_stream_inv:
     \<open>timely_input_stream lxs (mset (ocaps (os 0) 0))\<close>
     and label_prop_inv:
-    \<open>(\<forall> t \<in> set (timestamps os_label_prop). labels_inv (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
+    \<open>(\<forall> t \<in> set (timestamps os_label_prop). labels_cc_inv os_label_prop t)\<close>
     \<open>(\<forall> t \<in> set (timestamps os_label_prop). labels_stable (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
     \<open>\<forall> t \<in> myfst ` snd ` set (input (os 1) 0). frontier_less_equal (exit_scope myfst (front (os 1) 1)) t\<close>
     \<open>\<forall> t. t \<in> set (ocaps (os 1) 0) \<longrightarrow> myfst t |\<in>| cset_from_list T\<close>
@@ -615,6 +615,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                               apply (rule components_from_labels_correct)
                               subgoal
                                 using label_prop_inv(1)[unfolded os_inv(4) operator_state.defs, simplified, rule_format, of "myfst t'"] 
+                                  labels_cc_inv_imp_labels_inv
                                 by auto
                               subgoal
                                 using label_prop_inv(2)[unfolded os_inv(4) operator_state.defs, simplified, rule_format, of "myfst t'"] 
@@ -1017,7 +1018,9 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
             subgoal
               using input_stream_inv by auto
             subgoal
-              using label_prop_inv(1) by auto
+              using label_prop_inv(1)
+              unfolding labels_cc_inv_def
+              by auto
             subgoal
               using label_prop_inv(2) by auto
             subgoal
@@ -1417,6 +1420,20 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                     using input_stream_inv by assumption
                   subgoal premises aux
                     using aux(2,3,4) apply -
+                      apply (clarsimp split: if_splits)
+                    subgoal
+                      apply hypsubst_thin
+
+                      find_theorems labels_cc_inv
+
+
+                      unfolding labels_cc_inv_def
+                      oops
+
+
+                      find_theorems min_label cc_of
+
+end
                     apply (subst all_edges_eq_le[rotated, where V=V and label_sync=L and input_sync="input (os 1)"])
                     subgoal by simp
                     subgoal sorry
@@ -1428,9 +1445,19 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                         apply hypsubst_thin
                         using label_prop_inv(1) apply -
                         apply (simp add: operator_state.defs os_inv(4))
-            
+                        apply (rule labels_inv_insert_symmetric_min_label_updateI)
+                        subgoal premises auxxx
+                          unfolding labels_inv_def
+                          apply clarsimp
+                          subgoal for v
+                            apply (subst (asm) edge_vertices_all_edges)
+                            subgoal sorry
+                            subgoal
+                              oops
 
-                          find_theorems edge_vertices all_edges
+
+
+                          find_theorems cc_of all_edges
 
 end
                           sorry
