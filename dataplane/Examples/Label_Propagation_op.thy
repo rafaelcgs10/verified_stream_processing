@@ -121,6 +121,165 @@ definition all_vertices_inv where
   "all_vertices_inv os t \<longleftrightarrow> (\<forall>v w. w \<in> set (neighbors os t v) \<longrightarrow>
     v \<in> all_vertices os t \<and> w \<in> all_vertices os t)"
 
+definition all_vertices_incident_inv where
+  "all_vertices_incident_inv os t \<longleftrightarrow>
+    (\<forall>v \<in> all_vertices os t.
+      (\<exists>w \<in> all_vertices os t. w \<in> set (neighbors os t v)) \<or>
+      (\<exists>w \<in> all_vertices os t. v \<in> set (neighbors os t w)))"
+
+lemma edge_vertices_all_edges:
+  assumes "all_vertices_incident_inv os t"
+  shows "edge_vertices (all_edges os t) = all_vertices os t"
+  using assms
+  unfolding all_vertices_incident_inv_def edge_vertices_def all_edges_def Field_def
+  by auto
+
+lemma labels_inv_insert_updateI:
+  assumes inv: "labels_inv A l"
+    and v1_label: "l' \<in> cc_of (insert (v1, v2) A) v1"
+    and v2_label: "v2 \<notin> edge_vertices A \<Longrightarrow> l v2 \<in> cc_of (insert (v1, v2) A) v2"
+  shows "labels_inv (insert (v1, v2) A) (l(v1 := l'))"
+proof -
+  have cc_of_mono: "\<And>v x. x \<in> cc_of A v \<Longrightarrow> x \<in> cc_of (insert (v1, v2) A) v"
+  proof -
+    fix v x
+    assume x: "x \<in> cc_of A v"
+    have rel_mono: "A \<union> A\<inverse> \<subseteq> insert (v1, v2) A \<union> (insert (v1, v2) A)\<inverse>"
+      by auto
+    have "reachable (insert (v1, v2) A) v x"
+      using x rtrancl_mono[OF rel_mono] unfolding cc_of_def reachable_def by blast
+    then show "x \<in> cc_of (insert (v1, v2) A) v"
+      using x unfolding cc_of_def edge_vertices_def Field_def by auto
+  qed
+  show ?thesis
+    unfolding labels_inv_def
+  proof safe
+    fix v
+    assume v_edge: "v \<in> edge_vertices (insert (v1, v2) A)"
+    show "(l(v1 := l')) v \<in> cc_of (insert (v1, v2) A) v"
+    proof (cases "v = v1")
+      case True
+      then show ?thesis
+        using v1_label by simp
+    next
+      case v_not_v1: False
+      show ?thesis
+      proof (cases "v = v2")
+        case True
+        then show ?thesis
+        using inv v2_label v_not_v1 by (cases "v2 \<in> edge_vertices A")
+          (auto simp: labels_inv_def intro: cc_of_mono)
+
+      next
+        case False
+        then have v_old: "v \<in> edge_vertices A"
+          using v_edge v_not_v1 by simp
+        have "l v \<in> cc_of A v"
+          using inv v_old by (auto simp: labels_inv_def)
+        then show ?thesis
+          using v_not_v1 by (auto intro: cc_of_mono)
+      qed
+    qed
+  qed
+qed
+
+lemma labels_inv_insert_update_neighborI:
+  assumes inv: "labels_inv A l"
+    and v2_label: "v2 \<in> edge_vertices A \<or> l v2 = v2"
+  shows "labels_inv (insert (v1, v2) A) (l(v1 := l v2))"
+proof (rule labels_inv_insert_updateI)
+  show "labels_inv A l"
+    by (rule inv)
+  show "l v2 \<in> cc_of (insert (v1, v2) A) v1"
+    using inv v2_label
+    by (auto simp: labels_inv_def)
+  show "v2 \<notin> edge_vertices A \<Longrightarrow> l v2 \<in> cc_of (insert (v1, v2) A) v2"
+    using v2_label by (auto simp: cc_of_def reachable_def edge_vertices_def Field_def)
+qed
+
+lemma labels_inv_insert_symmetric_update_neighborI:
+  assumes inv: "labels_inv A l"
+    and v2_label: "v2 ∈ edge_vertices A ∨ l v2 = v2"
+  shows "labels_inv (insert (l1, v2) (insert (v2, l1) A)) (l(l1 := l v2))"
+proof -
+  let ?B = "insert (l1, v2) (insert (v2, l1) A)"
+  have cc_of_mono: "⋀v x. x ∈ cc_of A v ⟹ x ∈ cc_of ?B v"
+  proof -
+    fix v x
+    assume x: "x ∈ cc_of A v"
+    have rel_mono: "A ∪ A¯ ⊆ ?B ∪ ?B¯"
+      by auto
+    have "reachable ?B v x"
+      using x rtrancl_mono[OF rel_mono] unfolding cc_of_def reachable_def by blast
+    then show "x ∈ cc_of ?B v"
+      using x unfolding cc_of_def edge_vertices_def Field_def by auto
+  qed
+  have lv2_in_v2: "l v2 ∈ cc_of ?B v2"
+  proof (cases "v2 ∈ edge_vertices A")
+    case True
+    then have "l v2 ∈ cc_of A v2"
+      using inv unfolding labels_inv_def by simp
+    then show ?thesis
+      by (rule cc_of_mono)
+  next
+    case False
+    then have "l v2 = v2"
+      using v2_label by simp
+    then show ?thesis
+      unfolding cc_of_def edge_vertices_def reachable_def Field_def by auto
+  qed
+
+  have lv2_in_l1: "l v2 ∈ cc_of ?B l1"
+  proof -
+    have "reachable ?B l1 v2"
+      by simp
+    moreover have "reachable ?B v2 (l v2)"
+      using lv2_in_v2 unfolding cc_of_def by simp
+    ultimately have "reachable ?B l1 (l v2)"
+      by (rule reachable_trans)
+    then show ?thesis
+      using lv2_in_v2 unfolding cc_of_def by simp
+  qed
+  show ?thesis
+    unfolding labels_inv_def
+  proof safe
+    fix v
+    assume v_edge: "v ∈ edge_vertices ?B"
+    show "(l(l1 := l v2)) v ∈ cc_of ?B v"
+    proof (cases "v = l1")
+      case True
+      then show ?thesis
+        using lv2_in_l1 by simp
+    next
+      case v_not_l1: False
+      show ?thesis
+      proof (cases "v = v2")
+        case True
+        then show ?thesis
+          using v_not_l1 lv2_in_v2 by simp
+      next
+        case False
+        then have v_old: "v ∈ edge_vertices A"
+          using v_edge v_not_l1 by simp
+        have "l v ∈ cc_of A v"
+          using inv v_old unfolding labels_inv_def by simp
+        then show ?thesis
+          using v_not_l1 by (auto intro: cc_of_mono)
+      qed
+    qed
+  qed
+qed
+
+lemma labels_inv_insert_symmetric_min_label_updateI:
+  assumes inv: "labels_inv (all_edges os t) (min_label os t)"
+    and v2_label: "v2 ∈ edge_vertices (all_edges os t) ∨ min_label os t v2 = v2"
+    and update_eq: "min_label os' t = (min_label os t)(l1 := min_label os t v2)"
+  shows "labels_inv (insert (l1, v2) (insert (v2, l1) (all_edges os t))) (min_label os' t)"
+  using labels_inv_insert_symmetric_update_neighborI[OF inv v2_label] update_eq by simp
+
+
+
+
 definition timestamps_data_sync where
   "timestamps_data_sync os \<longleftrightarrow>
     (\<forall>t. t \<notin> set (timestamps os) \<longrightarrow> vertices os t = [] \<and> (\<forall>v. graph os t v = []))"
@@ -460,6 +619,44 @@ proof -
   show ?thesis
     using vertices_eq neighbors_eq by (auto simp: all_edges_def)
 qed
+
+
+lemma all_edges_eq_if:
+  fixes t :: "'t::order"
+  assumes inv: "all_vertices_inv
+    \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+     input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+     initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+     en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+     timestamps = t # T, graph = G, vertices = V, label = label_state\<rparr> t'"
+    and V'_def: "V' = map_entry t ((Cons v1) o (Cons v2)) V"
+    and sync: "timestamps_data_sync
+    \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+     input = input_sync, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+     initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+     en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+     timestamps = T, graph = G, vertices = V, label = label_sync\<rparr>"
+  shows "all_edges
+   \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+    input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+    initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+    en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+    timestamps = t # T, graph = G(t := (map_entry v1 (Cons v2) (G t))(v2 := v1 # (G t v2))),
+    vertices = V', label = label_state\<rparr> t' =
+   (if t \<le> t'
+    then insert (v1, v2) (insert (v2, v1) (all_edges
+   \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+    input = input_sync, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+    initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+    en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+    timestamps = T, graph = G, vertices = V, label = label_sync\<rparr> t'))
+    else all_edges
+   \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
+    input = input_sync, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
+    initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
+    en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
+    timestamps = T, graph = G, vertices = V, label = label_sync\<rparr> t')"
+  by (simp add: all_edges_eq_le all_edges_eq_not_le assms(1,2,3))
 
 
 definition exit_scope where
