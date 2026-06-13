@@ -95,48 +95,190 @@ lemma set_neighbors:
   unfolding neighbors_def
   by simp
 
+definition label_prop_upd_inv where
+  "label_prop_upd_inv os \<longleftrightarrow>
+    (\<forall>t. t \<in> set (timestamps os) \<longleftrightarrow>
+      edge_vertices {(v, w). w \<in> set (graph os t v)} \<noteq> {}) \<and>
+    (\<forall>t. set (vertices os t) = edge_vertices {(v, w). w \<in> set (graph os t v)}) \<and>
+    (\<forall>t. sym {(v, w). w \<in> set (graph os t v)}) \<and>
+    (\<forall>t v. v \<notin> all_vertices os t \<longrightarrow> label os t v = v) \<and>
+    (\<forall>d t. (d, t) \<in> set (input os 1) \<longrightarrow>
+      myfst t \<in> set (timestamps os) \<and> fst (de1 os d) \<in> all_vertices os (myfst t))"
+
+definition labels_cc_inv where
+  "labels_cc_inv os t =
+    (\<forall>v\<in>all_vertices os t.
+        min_label os t v \<in> cc_of (all_edges os t) v)"
+
+lemma label_prop_upd_inv_vertices_timestamps_iff:
+  assumes "label_prop_upd_inv os"
+  shows "t \<notin> set (timestamps os) \<longleftrightarrow> vertices os t = []"
+proof -
+  let ?E = "{(v, w). w \<in> set (graph os t v)}"
+  have ts_eq: "t \<in> set (timestamps os) \<longleftrightarrow> edge_vertices ?E \<noteq> {}"
+    using assms unfolding label_prop_upd_inv_def by blast
+  have vertices_eq: "set (vertices os t) = edge_vertices ?E"
+    using assms unfolding label_prop_upd_inv_def by blast
+  show ?thesis
+  proof
+    assume "t \<notin> set (timestamps os)"
+    then have "edge_vertices ?E = {}"
+      using ts_eq by blast
+    then have "set (vertices os t) = {}"
+      using vertices_eq by simp
+    then show "vertices os t = []"
+      by (simp only: List.set_empty)
+  next
+    assume "vertices os t = []"
+    then have "edge_vertices ?E = {}"
+      using vertices_eq by simp
+    then show "t \<notin> set (timestamps os)"
+      using ts_eq by blast
+  qed
+qed
+
+lemma label_prop_upd_inv_graph_edgeD:
+  assumes "label_prop_upd_inv os"
+    and "w \<in> set (graph os t v)"
+  shows "v \<in> set (vertices os t) \<and> w \<in> set (vertices os t)"
+  using assms unfolding label_prop_upd_inv_def edge_vertices_def Field_def by auto
+
+lemma label_prop_upd_inv_graph_empty_if_not_timestamp:
+  assumes inv: "label_prop_upd_inv os"
+    and t_notin: "t \<notin> set (timestamps os)"
+  shows "graph os t v = []"
+proof (rule ccontr)
+  assume "graph os t v \<noteq> []"
+  then obtain w where "w \<in> set (graph os t v)"
+    by (cases "graph os t v") auto
+  then have "v \<in> set (vertices os t)"
+    using label_prop_upd_inv_graph_edgeD[OF inv] by simp
+  moreover have "vertices os t = []"
+    using label_prop_upd_inv_vertices_timestamps_iff[OF inv] t_notin by simp
+  ultimately show False
+    by simp
+qed
+
+lemma label_prop_upd_inv_neighbors_ConsD:
+  assumes inv: "label_prop_upd_inv (os\<lparr>timestamps := T\<rparr>)"
+    and neigh: "w \<in> set (neighbors (os\<lparr>timestamps := t # T\<rparr>) q v)"
+  shows "v \<in> all_vertices (os\<lparr>timestamps := t # T\<rparr>) q \<and>
+    w \<in> all_vertices (os\<lparr>timestamps := t # T\<rparr>) q"
+proof -
+  obtain t' where t'_in: "t' \<in> set (t # T)" and t'_le: "t' \<le> q"
+    and w_graph: "w \<in> set (graph os t' v)"
+    using neigh unfolding set_neighbors by auto
+  show ?thesis
+  proof (cases "t' \<in> set T")
+    case True
+    then have "v \<in> set (vertices os t')" and "w \<in> set (vertices os t')"
+      using label_prop_upd_inv_graph_edgeD[OF inv, of w t' v] w_graph by simp_all
+    then show ?thesis
+      using True t'_le unfolding all_vertices_def by auto
+  next
+    case False
+    then have "t' = t"
+      using t'_in by simp
+    moreover have "graph os t' v = []"
+      using label_prop_upd_inv_graph_empty_if_not_timestamp[OF inv, of t' v] False by simp
+    ultimately show ?thesis
+      using w_graph by simp
+  qed
+qed
+
+lemma all_edges_Cons_timestamp_eq:
+  assumes inv: "label_prop_upd_inv os"
+  shows "all_edges (os\<lparr>timestamps := t # timestamps os\<rparr>) q = all_edges os q"
+proof -
+  have vertices_eq: "all_vertices (os\<lparr>timestamps := t # timestamps os\<rparr>) q = all_vertices os q"
+    using label_prop_upd_inv_vertices_timestamps_iff[OF inv, of t]
+    unfolding all_vertices_def by auto
+  have neighbors_eq:
+    "\<And>v. set (neighbors (os\<lparr>timestamps := t # timestamps os\<rparr>) q v) = set (neighbors os q v)"
+  proof -
+    fix v
+    show "set (neighbors (os\<lparr>timestamps := t # timestamps os\<rparr>) q v) = set (neighbors os q v)"
+    proof (cases "t \<in> set (timestamps os)")
+      case True
+      then show ?thesis
+        unfolding set_neighbors by auto
+    next
+      case False
+      then have "graph os t v = []"
+        using label_prop_upd_inv_graph_empty_if_not_timestamp[OF inv] by simp
+      then show ?thesis
+        using False unfolding set_neighbors by auto
+    qed
+  qed
+  show ?thesis
+    using vertices_eq neighbors_eq unfolding all_edges_def by auto
+qed
 
 
-(* lemma all_edges_set:
-  "all_edges os t =
-    (if \<exists>t'\<in>set (timestamps os). t' \<le> t
-     then {(v, w) \<in> all_vertices os t \<times> all_vertices os t.
-       \<exists>t'\<in>set (timestamps os). t' \<le> t \<and> w \<in> set (graph os t' v)}
-     else {(v, w) \<in> all_vertices os t \<times> all_vertices os t.
-       w \<in> set (graph os t v)})"
-  by (auto simp: all_edges_def set_neighbors)
- *)
-(* 
-lemma all_edges_set':
-  "all_edges os t =
-    (if \<exists>t'\<in>set (timestamps os). t' \<le> t
-     then {(v, w). (\<exists>t'\<in>set (timestamps os). t' \<le> t \<and> v \<in> set (vertices os t')) \<and>
-       (\<exists>t'\<in>set (timestamps os). t' \<le> t \<and> w \<in> set (vertices os t')) \<and>
-       (\<exists>t'\<in>set (timestamps os). t' \<le> t \<and> w \<in> set (graph os t' v))}
-     else {(v, w). v \<in> set (vertices os t) \<and> w \<in> set (vertices os t) \<and>
-       w \<in> set (graph os t v)})"
-  by (auto simp: all_edges_set all_vertices_set)
- *)
 
-
-definition all_vertices_inv where
-  "all_vertices_inv os t \<longleftrightarrow> (\<forall>v w. w \<in> set (neighbors os t v) \<longrightarrow>
-    v \<in> all_vertices os t \<and> w \<in> all_vertices os t)"
-
-definition all_vertices_incident_inv where
-  "all_vertices_incident_inv os t \<longleftrightarrow>
-    (\<forall>v \<in> all_vertices os t.
-      (\<exists>w \<in> all_vertices os t. w \<in> set (neighbors os t v)) \<or>
-      (\<exists>w \<in> all_vertices os t. v \<in> set (neighbors os t w)))"
-
-
+lemma label_prop_upd_inv_neighborsD:
+  assumes inv: "label_prop_upd_inv os"
+    and neigh: "w \<in> set (neighbors os t v)"
+  shows "v \<in> all_vertices os t \<and> w \<in> all_vertices os t"
+proof -
+  obtain t' where t'_in: "t' \<in> set (timestamps os)" and t'_le: "t' \<le> t"
+    and w_graph: "w \<in> set (graph os t' v)"
+    using neigh unfolding set_neighbors by auto
+  have vertices_eq:
+    "set (vertices os t') = edge_vertices {(v, w). w \<in> set (graph os t' v)}"
+    using inv unfolding label_prop_upd_inv_def by blast
+  then have "v \<in> set (vertices os t')" and "w \<in> set (vertices os t')"
+    using w_graph unfolding edge_vertices_def Field_def by auto
+  then show ?thesis
+    using t'_in t'_le unfolding all_vertices_def by auto
+qed
 
 lemma edge_vertices_all_edges:
-  assumes "all_vertices_incident_inv os t"
+  assumes inv: "label_prop_upd_inv os"
   shows "edge_vertices (all_edges os t) = all_vertices os t"
-  using assms
-  unfolding all_vertices_incident_inv_def edge_vertices_def all_edges_def Field_def
-  by auto
+proof (intro equalityI subsetI)
+  fix v
+  assume "v \<in> edge_vertices (all_edges os t)"
+  then show "v \<in> all_vertices os t"
+    unfolding edge_vertices_def all_edges_def Field_def by auto
+next
+  fix v
+  assume v_all: "v \<in> all_vertices os t"
+  then obtain t' where t'_in: "t' \<in> set (timestamps os)" and t'_le: "t' \<le> t"
+    and v_vertices: "v \<in> set (vertices os t')"
+    unfolding all_vertices_def by auto
+  have vertices_eq:
+    "set (vertices os t') = edge_vertices {(v, w). w \<in> set (graph os t' v)}"
+    using inv unfolding label_prop_upd_inv_def by blast
+  then have "v \<in> edge_vertices {(v, w). w \<in> set (graph os t' v)}"
+    using v_vertices by simp
+  then obtain u where edge: "u \<in> set (graph os t' v) \<or> v \<in> set (graph os t' u)"
+    unfolding edge_vertices_def Field_def by auto
+  then show "v \<in> edge_vertices (all_edges os t)"
+  proof
+    assume u_graph: "u \<in> set (graph os t' v)"
+    then have u_all: "u \<in> all_vertices os t"
+      using label_prop_upd_inv_neighborsD[OF inv] t'_in t'_le
+      unfolding set_neighbors by auto
+    have "(v, u) \<in> all_edges os t"
+      using v_all u_all u_graph t'_in t'_le
+      unfolding all_edges_def set_neighbors by auto
+    then show ?thesis
+      unfolding edge_vertices_def Field_def by auto
+  next
+    assume v_graph: "v \<in> set (graph os t' u)"
+    then have u_all: "u \<in> all_vertices os t"
+      using label_prop_upd_inv_neighborsD[OF inv] t'_in t'_le
+      unfolding set_neighbors by auto
+    have "(u, v) \<in> all_edges os t"
+      using v_all u_all v_graph t'_in t'_le
+      unfolding all_edges_def set_neighbors by auto
+    then show ?thesis
+      unfolding edge_vertices_def Field_def by auto
+  qed
+qed
+
+
 
 lemma labels_inv_insert_updateI:
   assumes inv: "labels_inv A l"
@@ -361,7 +503,7 @@ qed
 
 lemma min_label_eq_self_if_not_edge_vertices:
   fixes t :: "'t::order"
-  assumes incident: "all_vertices_incident_inv os t"
+  assumes inv: "label_prop_upd_inv os"
     and absent_label_self:
       "\<And>t' v. t' \<in> set (timestamps os) \<Longrightarrow> t' \<le> t \<Longrightarrow>
         v \<notin> set (vertices os t') \<Longrightarrow> label os t' v = v"
@@ -375,7 +517,7 @@ proof (rule min_label_eq_self_if_not_all_vertices)
   show "t \<notin> set (timestamps os) \<Longrightarrow> label os t v = v"
     by (rule current_default)
   show "v \<notin> all_vertices os t"
-    using not_edge edge_vertices_all_edges[OF incident] by simp
+    using not_edge edge_vertices_all_edges[OF inv] by simp
 qed
 
 lemma edge_vertices_all_edges_subset_all_vertices:
@@ -404,11 +546,6 @@ proof safe
     unfolding min_label_def by auto
 qed
 
-definition labels_cc_inv where
-  "labels_cc_inv os t =
-    (\<forall>v\<in>all_vertices os t.
-        min_label os t v \<in> cc_of (all_edges os t) v)"
-
 lemma labels_cc_inv_imp_labels_inv:
   assumes  current_valid: "labels_cc_inv os t"
   shows "labels_inv (all_edges os t) (min_label os t)"
@@ -423,7 +560,7 @@ proof safe
 qed
 
 lemma labels_cc_inv_iff_labels_inv:
-  assumes "all_vertices_incident_inv os t"
+  assumes "label_prop_upd_inv os"
   shows "labels_cc_inv os t \<longleftrightarrow> labels_inv (all_edges os t) (min_label os t)"
 proof
   assume "labels_cc_inv os t"
@@ -447,83 +584,23 @@ qed
 lemma all_vertices_insert:
   assumes "vertices os' = (vertices os)(t := [v1, v2] @ vertices os t)"
   and "timestamps os' = (t :: _ :: order) # timestamps os"
-  and "\<forall> t. t \<notin> set (timestamps os) \<longleftrightarrow> vertices os t = []"
+  and "label_prop_upd_inv os"
 shows "all_vertices os' t = insert v1 (insert v2 (all_vertices os t))"
   using assms apply -
+  using label_prop_upd_inv_vertices_timestamps_iff[OF assms(3)]
   unfolding all_vertices_def
   by (force split: if_splits)
 
-
-
-lemma
-  assumes "all_vertices_incident_inv os t"
-    and "label os' = (label os)(t := (label os t)(l1 := min_label os t v2))"
-    and "graph os' = (graph os)((t :: _ :: order) := (map_entry l1 ((#) v2) ((graph os) t))(v2 := l1 # (graph os)( t) v2))"
-    and "vertices os' = (vertices os)(t := [v1, v2] @ vertices os t)"
-    and "\<forall> t. t \<notin> set (timestamps os) \<longleftrightarrow> vertices os t = []"
-  and "timestamps os' = t # timestamps os"
-  shows "all_vertices_incident_inv os' t"
-  unfolding all_vertices_incident_inv_def
-  apply (subst all_vertices_insert)
-  using assms(4) apply assumption 
-  using assms(6) apply assumption 
-  using assms(5) apply assumption 
-
-end
-
-lemma labels_cc_inv_updateI:
-  assumes  "Ball (set (timestamps os)) (labels_cc_inv os)"
-    and "label os' = (label os)(t := (label os t)(l1 := min_label os t v2))"
-    and "graph os' = (graph os)(t := (map_entry l1 ((#) v2) ((graph os) t))(v2 := l1 # (graph os)( t) v2))"
-    and "vertices os' = (vertices os)(t := [v1, v2] @ vertices os t)"
-    and "all_vertices_incident_inv os t"
-  shows "labels_cc_inv os' t"
-  using assms(2-) apply -
-  unfolding labels_cc_inv_def
-  apply clarsimp
-  subgoal for v
-    unfolding all_vertices_def
-    apply (clarsimp split: if_splits)
-    subgoal for t'
-    apply (elim conjE disjE)
-    subgoal
-      apply (clarsimp split: if_splits)
-      apply hypsubst_thin
-    apply (elim conjE disjE)
-      subgoal
-        apply hypsubst_thin
-        apply (rule cc_ofI)
-         apply (subst edge_vertices_all_edges)
-
-
-        find_theorems edge_vertices all_edges
-
-    oops
-
-
-
-
-
-definition timestamps_data_sync where
-  "timestamps_data_sync os \<longleftrightarrow>
-    (\<forall>t. t \<notin> set (timestamps os) \<longrightarrow> vertices os t = [] \<and> (\<forall>v. graph os t v = []))"
-
-
 lemma all_edges_eq:
   fixes t :: "'t::order"
-  assumes inv: "all_vertices_inv
-    \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
-     input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
-     initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
-     en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
-     timestamps = t # T, graph = G, vertices = V, label = label_state\<rparr> t"
-    and V'_def: "V' = map_entry t ((Cons v1) o (Cons v2)) V"
-    and sync: "timestamps_data_sync
+  assumes V'_def: "V' = map_entry t ((Cons v1) o (Cons v2)) V"
+    and sync: "label_prop_upd_inv
     \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
      input = input_sync, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
      initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
      en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
      timestamps = T, graph = G, vertices = V, label = label_sync\<rparr>"
+
 
 
   shows "all_edges
@@ -572,7 +649,21 @@ proof -
 
   have invD: "\<And>v w. w \<in> set (neighbors ?base t v) \<Longrightarrow>
     v \<in> all_vertices ?base t \<and> w \<in> all_vertices ?base t"
-    using inv by (auto simp: all_vertices_inv_def)
+  proof -
+    fix v w
+    assume neigh: "w \<in> set (neighbors ?base t v)"
+    have sync': "label_prop_upd_inv (?base_tail\<lparr>timestamps := T\<rparr>)"
+      using sync by simp
+    have neigh': "w \<in> set (neighbors (?base_tail\<lparr>timestamps := t # T\<rparr>) t v)"
+      using neigh by (simp add: neighbors_def)
+    have "v \<in> all_vertices (?base_tail\<lparr>timestamps := t # T\<rparr>) t \<and>
+      w \<in> all_vertices (?base_tail\<lparr>timestamps := t # T\<rparr>) t"
+      using label_prop_upd_inv_neighbors_ConsD[OF sync' neigh'] .
+
+    then show "v \<in> all_vertices ?base t \<and> w \<in> all_vertices ?base t"
+      by (simp add: all_vertices_def)
+  qed
+
   have mod_eq_base:
     "all_edges ?mod t = insert (v1, v2) (insert (v2, v1) (all_edges ?base t))"
 
@@ -651,8 +742,13 @@ proof -
         using e_pair a_base b_base vertices_mod by (auto simp: all_edges_def)
     qed
   qed
+  have base_eq_tail': "all_edges (?base_tail\<lparr>timestamps := t # T\<rparr>) t = all_edges ?base_tail t"
+    using all_edges_Cons_timestamp_eq[OF sync, of t] by simp
+
   have base_eq_tail: "all_edges ?base t = all_edges ?base_tail t"
-    using sync by (auto simp: all_edges_def all_vertices_def neighbors_def timestamps_data_sync_def)
+    using base_eq_tail' by (simp add: all_edges_def all_vertices_def neighbors_def)
+
+
 
   show ?thesis
     using mod_eq_base base_eq_tail by simp
@@ -662,19 +758,14 @@ qed
 
 lemma all_edges_eq_le:
   fixes t :: "'t::order"
-  assumes inv: "all_vertices_inv
-    \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
-     input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
-     initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
-     en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
-     timestamps = t # T, graph = G, vertices = V, label = label_state\<rparr> t'"
-    and V'_def: "V' = map_entry t ((Cons v1) o (Cons v2)) V"
-    and sync: "timestamps_data_sync
+  assumes V'_def: "V' = map_entry t ((Cons v1) o (Cons v2)) V"
+    and sync: "label_prop_upd_inv
     \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
      input = input_sync, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
      initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
      en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
      timestamps = T, graph = G, vertices = V, label = label_sync\<rparr>"
+
    and time_le: "t \<le> t'"
 
   shows "all_edges
@@ -720,7 +811,20 @@ proof -
 
   have invD: "\<And>v w. w \<in> set (neighbors ?base t' v) \<Longrightarrow>
     v \<in> all_vertices ?base t' \<and> w \<in> all_vertices ?base t'"
-    using inv by (auto simp: all_vertices_inv_def)
+  proof -
+    fix v w
+    assume neigh: "w \<in> set (neighbors ?base t' v)"
+    have sync': "label_prop_upd_inv (?base_tail\<lparr>timestamps := T\<rparr>)"
+      using sync by simp
+    have neigh': "w \<in> set (neighbors (?base_tail\<lparr>timestamps := t # T\<rparr>) t' v)"
+      using neigh by (simp add: neighbors_def)
+    have "v \<in> all_vertices (?base_tail\<lparr>timestamps := t # T\<rparr>) t' \<and>
+      w \<in> all_vertices (?base_tail\<lparr>timestamps := t # T\<rparr>) t'"
+      using label_prop_upd_inv_neighbors_ConsD[OF sync' neigh'] .
+    then show "v \<in> all_vertices ?base t' \<and> w \<in> all_vertices ?base t'"
+      by (simp add: all_vertices_def)
+  qed
+
   have mod_eq_base:
     "all_edges ?mod t' = insert (v1, v2) (insert (v2, v1) (all_edges ?base t'))"
   proof (intro equalityI subsetI)
@@ -799,7 +903,9 @@ proof -
     qed
   qed
   have base_eq_tail: "all_edges ?base t' = all_edges ?base_tail t'"
-    using sync by (auto simp: all_edges_def all_vertices_def neighbors_def timestamps_data_sync_def)
+    using all_edges_Cons_timestamp_eq[OF sync, of t t']
+    by (simp add: all_edges_def all_vertices_def neighbors_def)
+
 
   show ?thesis
     using mod_eq_base base_eq_tail by simp
@@ -847,19 +953,14 @@ qed
 
 lemma all_edges_eq_if:
   fixes t :: "'t::order"
-  assumes inv: "all_vertices_inv
-    \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
-     input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
-     initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
-     en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
-     timestamps = t # T, graph = G, vertices = V, label = label_state\<rparr> t'"
-    and V'_def: "V' = map_entry t ((Cons v1) o (Cons v2)) V"
-    and sync: "timestamps_data_sync
+  assumes V'_def: "V' = map_entry t ((Cons v1) o (Cons v2)) V"
+    and sync: "label_prop_upd_inv
     \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
      input = input_sync, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
      initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
      en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
      timestamps = T, graph = G, vertices = V, label = label_sync\<rparr>"
+
   shows "all_edges
    \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
     input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
@@ -879,8 +980,8 @@ lemma all_edges_eq_if:
     input = input_sync, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
     initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
     en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
-    timestamps = T, graph = G, vertices = V, label = label_sync\<rparr> t')"
-  by (simp add: all_edges_eq_le all_edges_eq_not_le assms(1,2,3))
+     timestamps = T, graph = G, vertices = V, label = label_sync\<rparr> t')"
+  by (simp add: all_edges_eq_le all_edges_eq_not_le assms(1,2))
 
 
 definition exit_scope where
@@ -1288,6 +1389,154 @@ lemma labels_cc_inv_mint[simp]:
   "labels_cc_inv (snd (mint os caps p t')) t = labels_cc_inv os t"
   unfolding mint_def
   by auto
+
+
+(* Proposed preservation lemmas for the three branches of label_propagation_op_logic. *)
+
+lemma label_prop_upd_inv_input0_preserved:
+  fixes t1 :: "'t::order"
+  assumes inv: "label_prop_upd_inv os"
+    and update:
+      "os' = os\<lparr>input := (input os)(0 := xs),
+        timestamps := t1 # timestamps os,
+        graph := (graph os)(t1 := (graph os t1)(v1 := v2 # graph os t1 v1,
+          v2 := v1 # graph os t1 v2)),
+        vertices := (vertices os)(t1 := [v1, v2] @ vertices os t1),
+        label := (label os)(t1 := (label os t1)(v := l))\<rparr>"
+    and label_update:
+      "(v, l) = (if min_label os t1 v1 > min_label os t1 v2
+        then (v1, min_label os t1 v2)
+        else (v2, min_label os t1 v1))"
+  shows "label_prop_upd_inv os'"
+proof -
+  have ts_old: "\<And>q. q \<in> set (timestamps os) \<longleftrightarrow>
+      edge_vertices {(a, b). b \<in> set (graph os q a)} \<noteq> {}"
+    and vertices_old: "\<And>q. set (vertices os q) = edge_vertices {(a, b). b \<in> set (graph os q a)}"
+    and sym_old: "\<And>q. sym {(a, b). b \<in> set (graph os q a)}"
+    and label_old: "\<And>q x. x \<notin> all_vertices os q \<Longrightarrow> label os q x = x"
+    and pending_old: "\<And>d t. (d, t) \<in> set (input os 1) \<Longrightarrow>
+      myfst t \<in> set (timestamps os) \<and> fst (de1 os d) \<in> all_vertices os (myfst t)"
+    using inv unfolding label_prop_upd_inv_def by blast+
+
+  have v_new: "v = v1 \<or> v = v2"
+    using label_update by (auto split: if_splits)
+  have edge_vertices_new:
+    "\<And>q. edge_vertices {(a, b). b \<in> set (graph os' q a)} =
+      (if q = t1
+       then insert v1 (insert v2 (edge_vertices {(a, b). b \<in> set (graph os q a)}))
+       else edge_vertices {(a, b). b \<in> set (graph os q a)})"
+    using update unfolding edge_vertices_def Field_def by (auto split: if_splits)
+  have vertices_new:
+    "\<And>q. set (vertices os' q) =
+      (if q = t1 then insert v1 (insert v2 (set (vertices os q))) else set (vertices os q))"
+    using update by (auto split: if_splits)
+  have all_vertices_mono: "\<And>q x. x \<in> all_vertices os q \<Longrightarrow> x \<in> all_vertices os' q"
+    using update unfolding all_vertices_def by (auto split: if_splits)
+
+  have ts_new: "\<And>q. q \<in> set (timestamps os') \<longleftrightarrow>
+      edge_vertices {(a, b). b \<in> set (graph os' q a)} \<noteq> {}"
+    using ts_old edge_vertices_new update by auto
+  have vertices_eq_new: "\<And>q. set (vertices os' q) =
+      edge_vertices {(a, b). b \<in> set (graph os' q a)}"
+    using vertices_old vertices_new edge_vertices_new by auto
+  have sym_new: "\<And>q. sym {(a, b). b \<in> set (graph os' q a)}"
+    using sym_old update unfolding sym_def by (auto split: if_splits)
+  have label_new: "\<And>q x. x \<notin> all_vertices os' q \<Longrightarrow> label os' q x = x"
+  proof -
+    fix q x
+    assume not_new: "x \<notin> all_vertices os' q"
+    show "label os' q x = x"
+    proof (cases "q = t1 \<and> x = v")
+      case True
+      then have "x \<in> all_vertices os' q"
+        using update v_new unfolding all_vertices_def by auto
+      then show ?thesis
+        using not_new by contradiction
+    next
+      case False
+      have not_old: "x \<notin> all_vertices os q"
+        using all_vertices_mono not_new by blast
+      then show ?thesis
+        using label_old[OF not_old] update False by auto
+    qed
+  qed
+  have pending_new: "\<And>d t. (d, t) \<in> set (input os' 1) \<Longrightarrow>
+      myfst t \<in> set (timestamps os') \<and> fst (de1 os' d) \<in> all_vertices os' (myfst t)"
+  proof -
+    fix d t
+    assume in_new: "(d, t) \<in> set (input os' 1)"
+    then have in_old: "(d, t) \<in> set (input os 1)"
+      using update by auto
+    then have old: "myfst t \<in> set (timestamps os) \<and> fst (de1 os d) \<in> all_vertices os (myfst t)"
+      by (rule pending_old)
+    have "myfst t \<in> set (timestamps os')"
+      using old update by auto
+    moreover have "fst (de1 os' d) \<in> all_vertices os' (myfst t)"
+      using old update all_vertices_mono by auto
+    ultimately show "myfst t \<in> set (timestamps os') \<and> fst (de1 os' d) \<in> all_vertices os' (myfst t)"
+      by simp
+
+  qed
+
+  show ?thesis
+    unfolding label_prop_upd_inv_def
+    using ts_new vertices_eq_new sym_new label_new pending_new by blast
+qed
+
+
+
+lemma label_prop_upd_inv_input1_preserved:
+  fixes t1 :: "'t::order"
+  assumes inv: "label_prop_upd_inv os"
+    and input1: "input os 1 = (d, t) # xs"
+    and msg: "de1 os d = (v, l)"
+    and t1_def: "t1 = myfst t"
+    and update:
+      "os' = os\<lparr>input := (input os)(1 := xs),
+        label := (label os)(t1 := (label os t1)(v := min (min_label os t1 v) l))\<rparr>"
+  shows "label_prop_upd_inv os'"
+oops
+
+lemma label_prop_upd_inv_output_preserved:
+  assumes inv: "label_prop_upd_inv os"
+  shows "label_prop_upd_inv (drop_caps (produces os batch) caps)"
+oops
+
+lemma labels_cc_inv_input0_preserved:
+  fixes q t1 :: "'t::order"
+  assumes labels: "\<And>q. labels_cc_inv os q"
+    and inv: "label_prop_upd_inv os"
+    and update:
+      "os' = os\<lparr>input := (input os)(0 := xs),
+        timestamps := t1 # timestamps os,
+        graph := (graph os)(t1 := (graph os t1)(v1 := v2 # graph os t1 v1,
+          v2 := v1 # graph os t1 v2)),
+        vertices := (vertices os)(t1 := [v1, v2] @ vertices os t1),
+        label := (label os)(t1 := (label os t1)(v := l))\<rparr>"
+    and label_update:
+      "(v, l) = (if min_label os t1 v1 > min_label os t1 v2
+        then (v1, min_label os t1 v2)
+        else (v2, min_label os t1 v1))"
+  shows "labels_cc_inv os' q"
+oops
+
+lemma labels_cc_inv_input1_preserved:
+  fixes q t1 :: "'t::order"
+  assumes labels: "\<And>q. labels_cc_inv os q"
+    and inv: "label_prop_upd_inv os"
+    and msg_valid: "\<And>q. t1 \<le> q \<Longrightarrow> l \<in> cc_of (all_edges os q) v"
+    and update:
+      "os' = os\<lparr>input := (input os)(1 := xs),
+        label := (label os)(t1 := (label os t1)(v := min (min_label os t1 v) l))\<rparr>"
+  shows "labels_cc_inv os' q"
+oops
+
+lemma labels_cc_inv_output_preserved:
+  fixes q :: "'t::order"
+  assumes labels: "labels_cc_inv os q"
+    and inv: "label_prop_upd_inv os"
+  shows "labels_cc_inv os q"
+oops
 
 
 
