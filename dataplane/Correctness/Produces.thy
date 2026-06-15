@@ -1468,6 +1468,132 @@ lemma dataplane_tracker_inv_clean_input:
     produ_consu_inter_supported_def
   by (auto split: prod.splits cong: if_cong)
 
+lemma change_multiplicities_cons_to_middle:
+  "change_multiplicities su (x # ys1 @ ys2) c = change_multiplicities su (ys1 @ x # ys2) c"
+proof -
+  have eq1: "change_multiplicities su (x # ys1 @ ys2) c =
+             change_multiplicities su (ys1 @ ys2) (change_multiplicities su [x] c)"
+    by (metis append_Cons append_Nil change_multiplicities_append_alt)
+  also have "\<dots> = change_multiplicities su ys2 (change_multiplicities su ys1 (change_multiplicities su [x] c))"
+    by (metis change_multiplicities_append_alt)
+  also have "\<dots> = change_multiplicities su ys2 (change_multiplicities su [x] (change_multiplicities su ys1 c))"
+    by (metis change_multiplicities_append_alt change_multiplicities_comm)
+  also have "\<dots> = change_multiplicities su (ys1 @ x # ys2) c"
+    by (metis append_Cons append_Nil change_multiplicities_append_alt)
+  finally show ?thesis .
+qed
+
+lemma change_multiplicities_mset_eq:
+  "mset xs = mset ys \<Longrightarrow> change_multiplicities su xs c = change_multiplicities su ys c"
+proof (induct xs arbitrary: ys c)
+  case Nil
+  thus ?case by simp
+next
+  case (Cons x xs)
+  have "x \<in> set ys"
+    using Cons.prems by (metis list.set_intros(1) set_mset_mset)
+  then obtain ys1 ys2 where ys: "ys = ys1 @ x # ys2"
+    by (auto dest: split_list)
+  with Cons.prems have ms: "mset xs = mset (ys1 @ ys2)" by simp
+  have ih: "change_multiplicities su xs c' = change_multiplicities su (ys1 @ ys2) c'" for c'
+    using Cons.hyps[OF ms] .
+  have "change_multiplicities su (x # xs) c =
+        change_multiplicities su xs (change_multiplicities su [x] c)"
+    by (metis append_Cons append_Nil change_multiplicities_append_alt)
+  also have "\<dots> = change_multiplicities su (ys1 @ ys2) (change_multiplicities su [x] c)"
+    using ih by simp
+  also have "\<dots> = change_multiplicities su (x # ys1 @ ys2) c"
+    by (metis append_Cons append_Nil change_multiplicities_append_alt)
+  also have "\<dots> = change_multiplicities su (ys1 @ x # ys2) c"
+    using change_multiplicities_cons_to_middle .
+  finally show ?case using ys by simp
+qed
+
+lemma dataplane_tracker_inv_clean_reorder_inter:
+  assumes E: "\<forall>nid. intsum (os nid) = intsum (os' nid) \<and>
+     ocaps (os nid) = ocaps (os' nid) \<and>
+     consu (os nid) = consu (os' nid) \<and>
+     mset (operator_state.inter (os nid)) = mset (operator_state.inter (os' nid)) \<and>
+     produ (os nid) = produ (os' nid) \<and>
+     outpu (os nid) = outpu (os' nid) \<and>
+     front (os nid) = front (os' nid)"
+  shows "dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv os' cbufs sg"
+proof -
+  let ?os0 = "\<lambda>nid. (os' nid)\<lparr>inter := operator_state.inter (os nid)\<rparr>"
+  have clean_eqs:
+    "\<forall>nid. intsum (os nid) = intsum (?os0 nid) \<and>
+           ocaps (os nid) = ocaps (?os0 nid) \<and>
+           consu (os nid) = consu (?os0 nid) \<and>
+           operator_state.inter (os nid) = operator_state.inter (?os0 nid) \<and>
+           produ (os nid) = produ (?os0 nid) \<and>
+           outpu (os nid) = outpu (?os0 nid) \<and>
+           front (os nid) = front (?os0 nid)"
+    using E by auto
+  have step1: "dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv ?os0 cbufs sg"
+    using dataplane_tracker_inv_clean_input[OF clean_eqs] .
+  have ms_eq:
+    "\<And>nid. mset (operator_state.inter (?os0 nid)) = mset (operator_state.inter (os' nid))"
+    using E by auto
+  have set_eq:
+    "\<And>nid. set (operator_state.inter (?os0 nid)) = set (operator_state.inter (os' nid))"
+    using ms_eq by (metis set_mset_mset)
+  have nonInter_eq:
+    "\<And>nid. intsum (?os0 nid) = intsum (os' nid) \<and>
+           ocaps (?os0 nid) = ocaps (os' nid) \<and>
+           consu (?os0 nid) = consu (os' nid) \<and>
+           produ (?os0 nid) = produ (os' nid) \<and>
+           outpu (?os0 nid) = outpu (os' nid) \<and>
+           front (?os0 nid) = front (os' nid) \<and>
+           input (?os0 nid) = input (os' nid)"
+    by auto
+  have progress_mset_eq:
+    "\<And>nid'. mset (extract_progress nid' nt (snd (obtain_progress (?os0 nid')))) =
+            mset (extract_progress nid' nt (snd (obtain_progress (os' nid'))))"
+    for nt
+    unfolding extract_progress_def obtain_progress_def
+    using ms_eq nonInter_eq
+    by (simp add: mset_map)
+  have extract_prog_mset_eq:
+    "\<And>xs. mset (extract_prog xs nt ?os0) = mset (extract_prog xs nt os')" for nt
+    unfolding extract_prog_def
+    using progress_mset_eq
+    by (induct_tac xs) (auto simp: mset_concat)
+  have cm_eq:
+    "\<And>xs c. change_multiplicities (summ sg) (extract_prog xs (nxt sg) ?os0) c =
+            change_multiplicities (summ sg) (extract_prog xs (nxt sg) os') c"
+    using change_multiplicities_mset_eq[OF extract_prog_mset_eq] .
+  have ext_progress_set_eq:
+    "\<And>nid' nt. set (extract_progress nid' nt (snd (obtain_progress (?os0 nid')))) =
+               set (extract_progress nid' nt (snd (obtain_progress (os' nid'))))"
+    using progress_mset_eq by (metis mset_eq_setD)
+  have outputs_eq:
+    "outputs_at_target (summ sg) ?os0 = outputs_at_target (summ sg) os'"
+    unfolding outputs_at_target_def
+    by (auto simp: fun_eq_iff Let_def split: prod.splits)
+  have step2: "dataplane_tracker_inv ?os0 cbufs sg \<longleftrightarrow> dataplane_tracker_inv os' cbufs sg"
+    unfolding dataplane_tracker_inv_def Src_caps_inv_def
+      front_inv_def change_deltas_inv_def extract_prog_changes_above_impl_inv_def
+      changes_above_impl_inv_def
+      produ_consu_inter_supported_def
+    apply (rule iffI)
+    subgoal
+      apply clarsimp
+      subgoal for caps
+        apply (rule exI[of _ caps])
+        using nonInter_eq set_eq cm_eq ext_progress_set_eq outputs_eq
+        by (clarsimp split: prod.splits cong: if_cong)
+      done
+    subgoal
+      apply clarsimp
+      subgoal for caps
+        apply (rule exI[of _ caps])
+        using nonInter_eq set_eq cm_eq ext_progress_set_eq outputs_eq
+        by (clarsimp split: prod.splits cong: if_cong)
+      done
+    done
+  show ?thesis using step1 step2 by simp
+qed
+
 lemma dataplane_tracker_inv_produces_drops_alt:
   fixes drops :: "'p :: {enum,linorder} \<Rightarrow> 't :: {ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} list"
   assumes D: "dataflow_topology (summ sg) (-+-)"
@@ -1476,9 +1602,9 @@ lemma dataplane_tracker_inv_produces_drops_alt:
    nocaps = (\<lambda> p . list_diff (ocaps (os nid) p) (drops p)) \<Longrightarrow>
    ninput = (\<lambda> p'. if p = p' then drop n (input (os nid) p) else input (os nid) p') \<Longrightarrow> 
    nprodu = produ (os nid) @ produs \<Longrightarrow>
-   ninter = operator_state.inter (os nid) @
+   mset ninter = mset (operator_state.inter (os nid) @
       concat (map (\<lambda>p. map (\<lambda>t. (p, t, 1)) (map (\<lambda>(_, t, _). t) (filter (\<lambda>x. p = fst x) produs))) Enum.enum) @
-      concat (map (\<lambda>p. map (\<lambda>os. (p, os, - 1)) (drops p @ map (\<lambda>(_, t, _). t) (filter (\<lambda>x. p = fst x) produs))) Enum.enum) \<Longrightarrow>
+      concat (map (\<lambda>p. map (\<lambda>os. (p, os, - 1)) (drops p @ map (\<lambda>(_, t, _). t) (filter (\<lambda>x. p = fst x) produs))) Enum.enum)) \<Longrightarrow>
    (\<forall> p. mset (drops p) \<subseteq># mset (ocaps (os nid) p)) \<Longrightarrow>
    (\<forall> (p, t, m) \<in> set produs. m > 0 \<and> (\<exists> t' \<in> set (ocaps (os nid) p). t' \<le> t)) \<Longrightarrow>
    (\<forall> p. \<forall> t \<in> snd ` set (oputs p). (\<exists> t' \<in> set (ocaps (os nid) p). t' \<le> t)) \<Longrightarrow>
@@ -1492,9 +1618,9 @@ proof -
   assume NOcaps: "nocaps = (\<lambda> p . list_diff (ocaps (os nid) p) (drops p))"
   assume NInput: "ninput = (\<lambda> p'. if p = p' then drop n (input (os nid) p) else input (os nid) p')"
   assume NProdu: "nprodu = produ (os nid) @ produs"
-  assume NInter: "ninter = operator_state.inter (os nid) @
+  assume NInter: "mset ninter = mset (operator_state.inter (os nid) @
       concat (map (\<lambda>p. map (\<lambda>t. (p, t, 1)) (map (\<lambda>(_, t, _). t) (filter (\<lambda>x. p = fst x) produs))) Enum.enum) @
-      concat (map (\<lambda>p. map (\<lambda>os. (p, os, - 1)) (drops p @ map (\<lambda>(_, t, _). t) (filter (\<lambda>x. p = fst x) produs))) Enum.enum)"
+      concat (map (\<lambda>p. map (\<lambda>os. (p, os, - 1)) (drops p @ map (\<lambda>(_, t, _). t) (filter (\<lambda>x. p = fst x) produs))) Enum.enum))"
   assume Drops: "\<forall> p. mset (drops p) \<subseteq># mset (ocaps (os nid) p)"
   assume Produs: "\<forall> (p, t, m) \<in> set produs. m > 0 \<and> (\<exists> t' \<in> set (ocaps (os nid) p). t' \<le> t)"
   assume Oputs: "\<forall> p. \<forall> t \<in> snd ` set (oputs p). (\<exists> t' \<in> set (ocaps (os nid) p). t' \<le> t)"
@@ -1538,7 +1664,10 @@ proof -
     using Drops by auto
   let ?finput = "\<lambda>p. filter (\<lambda>(_, t). t \<notin> set (drops p @ ?ts p)) (input (os nid) p)"
   let ?fcaps = "\<lambda>p. list_diff (ocaps (os nid) p @ ?ts p) (drops p @ ?ts p)"
-  let ?osPD = "os(nid := os nid\<lparr>outpu := noutput, ocaps := ?fcaps, input := ?finput, produ := nprodu, inter := ninter\<rparr>)"
+  let ?ninter_can = "operator_state.inter (os nid) @
+      concat (map (\<lambda>p. map (\<lambda>t. (p, t, 1)) (?ts p)) Enum.enum) @
+      concat (map (\<lambda>p. map (\<lambda>os. (p, os, - 1)) (drops p @ ?ts p)) Enum.enum)"
+  let ?osPD_can = "os(nid := os nid\<lparr>outpu := noutput, ocaps := ?fcaps, input := ?finput, produ := nprodu, inter := ?ninter_can\<rparr>)"
   have inv_pd_raw:
     "dataplane_tracker_inv
       (?osM(nid := ?osM nid\<lparr>
@@ -1546,13 +1675,13 @@ proof -
         ocaps := (\<lambda>p. list_diff (ocaps (?osM nid) p) (drops p @ ?ts p)),
         input := (\<lambda>p. filter (\<lambda>(_, t). t \<notin> set (drops p @ ?ts p)) (input (?osM nid) p)),
         produ := nprodu,
-        inter := ninter\<rparr>)) cbufs sg"
+        inter := ?ninter_can\<rparr>)) cbufs sg"
     apply (rule dataplane_tracker_inv_produces_drops[OF D, where oputs=oputs and produs=produs and drops="\<lambda>p. drops p @ ?ts p"])
                using NOut apply simp
               apply (rule refl)
              apply (rule refl)
             using NProdu apply simp
-           using NInter apply simp
+           apply simp
           using Drops_minted apply simp
          using Produs_exact apply simp
         using Oputs_exact apply simp
@@ -1561,43 +1690,57 @@ proof -
      apply (rule Nxt)
     apply (rule minted)
     done
-  have inv_pd: "dataplane_tracker_inv ?osPD cbufs sg"
+  have inv_pd: "dataplane_tracker_inv ?osPD_can cbufs sg"
     using inv_pd_raw by simp
-  let ?osTargetCaps = "os(nid := os nid\<lparr>outpu := noutput, ocaps := ?fcaps, input := ninput, produ := nprodu, inter := ninter\<rparr>)"
+  let ?osTargetCaps_can = "os(nid := os nid\<lparr>outpu := noutput, ocaps := ?fcaps, input := ninput, produ := nprodu, inter := ?ninter_can\<rparr>)"
   have same_input:
-    "\<forall>nid. intsum (?osPD nid) = intsum (?osTargetCaps nid) \<and>
-      ocaps (?osPD nid) = ocaps (?osTargetCaps nid) \<and>
-      consu (?osPD nid) = consu (?osTargetCaps nid) \<and>
-      inter (?osPD nid) = inter (?osTargetCaps nid) \<and>
-      produ (?osPD nid) = produ (?osTargetCaps nid) \<and>
-      outpu (?osPD nid) = outpu (?osTargetCaps nid) \<and>
-      front (?osPD nid) = front (?osTargetCaps nid)"
+    "\<forall>nid. intsum (?osPD_can nid) = intsum (?osTargetCaps_can nid) \<and>
+      ocaps (?osPD_can nid) = ocaps (?osTargetCaps_can nid) \<and>
+      consu (?osPD_can nid) = consu (?osTargetCaps_can nid) \<and>
+      inter (?osPD_can nid) = inter (?osTargetCaps_can nid) \<and>
+      produ (?osPD_can nid) = produ (?osTargetCaps_can nid) \<and>
+      outpu (?osPD_can nid) = outpu (?osTargetCaps_can nid) \<and>
+      front (?osPD_can nid) = front (?osTargetCaps_can nid)"
     by auto
-  have inv_target_caps: "dataplane_tracker_inv ?osTargetCaps cbufs sg"
+  have inv_target_caps: "dataplane_tracker_inv ?osTargetCaps_can cbufs sg"
     using iffD1[OF dataplane_tracker_inv_clean_input[OF same_input, of cbufs sg]] inv_pd
     by (metis fun_upd_apply)
   have caps_mset:
     "\<forall>p. mset (?fcaps p) = mset (nocaps p)"
     using Drops NOcaps by (auto simp add: multiset_eq_iff)
-  let ?osTarget = "os(nid := os nid\<lparr>outpu := noutput, ocaps := nocaps, input := ninput, produ := nprodu, inter := ninter\<rparr>)"
+  let ?osTarget_can = "os(nid := os nid\<lparr>outpu := noutput, ocaps := nocaps, input := ninput, produ := nprodu, inter := ?ninter_can\<rparr>)"
   have same_ocaps:
-    "\<forall>nid. intsum (?osTargetCaps nid) = intsum (?osTarget nid) \<and>
-      (\<forall>p. mset (ocaps (?osTargetCaps nid) p) = mset (ocaps (?osTarget nid) p)) \<and>
-      consu (?osTargetCaps nid) = consu (?osTarget nid) \<and>
-      inter (?osTargetCaps nid) = inter (?osTarget nid) \<and>
-      produ (?osTargetCaps nid) = produ (?osTarget nid) \<and>
-      input (?osTargetCaps nid) = input (?osTarget nid) \<and>
-      outpu (?osTargetCaps nid) = outpu (?osTarget nid) \<and>
-      front (?osTargetCaps nid) = front (?osTarget nid)"
+    "\<forall>nid. intsum (?osTargetCaps_can nid) = intsum (?osTarget_can nid) \<and>
+      (\<forall>p. mset (ocaps (?osTargetCaps_can nid) p) = mset (ocaps (?osTarget_can nid) p)) \<and>
+      consu (?osTargetCaps_can nid) = consu (?osTarget_can nid) \<and>
+      inter (?osTargetCaps_can nid) = inter (?osTarget_can nid) \<and>
+      produ (?osTargetCaps_can nid) = produ (?osTarget_can nid) \<and>
+      input (?osTargetCaps_can nid) = input (?osTarget_can nid) \<and>
+      outpu (?osTargetCaps_can nid) = outpu (?osTarget_can nid) \<and>
+      front (?osTargetCaps_can nid) = front (?osTarget_can nid)"
     using caps_mset by auto
   have clean_ocaps:
-    "dataplane_tracker_inv ?osTargetCaps cbufs sg \<longleftrightarrow> dataplane_tracker_inv ?osTarget cbufs sg"
+    "dataplane_tracker_inv ?osTargetCaps_can cbufs sg \<longleftrightarrow> dataplane_tracker_inv ?osTarget_can cbufs sg"
     apply (rule dataplane_tracker_inv_clean_reorder_ocaps[where f="upfro sg"])
      apply simp
     using same_ocaps by blast
+  have inv_target_can:
+    "dataplane_tracker_inv ?osTarget_can cbufs sg"
+    using clean_ocaps inv_target_caps by simp
+  let ?osTarget = "os(nid := os nid\<lparr>outpu := noutput, ocaps := nocaps, input := ninput, produ := nprodu, inter := ninter\<rparr>)"
+  have inter_bridge:
+    "\<forall>nid'. intsum (?osTarget_can nid') = intsum (?osTarget nid') \<and>
+      ocaps (?osTarget_can nid') = ocaps (?osTarget nid') \<and>
+      consu (?osTarget_can nid') = consu (?osTarget nid') \<and>
+      mset (operator_state.inter (?osTarget_can nid')) = mset (operator_state.inter (?osTarget nid')) \<and>
+      produ (?osTarget_can nid') = produ (?osTarget nid') \<and>
+      outpu (?osTarget_can nid') = outpu (?osTarget nid') \<and>
+      front (?osTarget_can nid') = front (?osTarget nid')"
+    using NInter by auto
   have inv_target:
     "dataplane_tracker_inv ?osTarget cbufs sg"
-    using clean_ocaps inv_target_caps by simp
+    using iffD1[OF dataplane_tracker_inv_clean_reorder_inter[OF inter_bridge, of cbufs sg]] inv_target_can
+    by blast
   show "dataplane_tracker_inv (os(nid := os nid \<lparr>outpu := noutput, ocaps := nocaps, input := ninput, produ := nprodu, inter := ninter\<rparr>)) cbufs sg"
     using inv_target .
 qed

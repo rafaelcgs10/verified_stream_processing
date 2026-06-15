@@ -1488,7 +1488,12 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                             label = L(myfst t := (L (myfst t))(l1 := l2))\<rparr>
                                          t1 l1))
                                else [])
-                     (filter ((\<le>) (myfst t)) (myfst t # T))) else [])"])
+                     (filter ((\<le>) (myfst t)) (myfst t # T))) else [])" and ninter=undefined])
+                                 prefer 5
+                               apply (clarsimp simp del: filter.simps simp add: split_beta zmset_concat to_zmset_concat map_concat image_iff comp_def del: disjCI split: if_splits)
+
+
+end
                            apply (rule refl)+
                             apply (simp_all del: filter.simps)
                          prefer 6
