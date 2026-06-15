@@ -524,8 +524,242 @@ lemma edge_vertices_all_edges_subset_all_vertices:
   "edge_vertices (all_edges os t) \<subseteq> all_vertices os t"
   unfolding edge_vertices_def all_edges_def Field_def by auto
 
+
+lemma cc_of_mono:
+  assumes subset: "A \<subseteq> B"
+    and x_cc: "x \<in> cc_of A v"
+  shows "x \<in> cc_of B v"
+proof -
+  have rel_subset: "A \<union> A\<inverse> \<subseteq> B \<union> B\<inverse>"
+    using subset by auto
+  have "reachable B v x"
+  proof -
+    have "(v, x) \<in> (A \<union> A\<inverse>)\<^sup>*"
+      using x_cc unfolding cc_of_def reachable_def by simp
+    then have "(v, x) \<in> (B \<union> B\<inverse>)\<^sup>*"
+      using rtrancl_mono[OF rel_subset] by blast
+    then show ?thesis
+      unfolding reachable_def by simp
+  qed
+
+  moreover have "x \<in> edge_vertices B"
+    using subset x_cc unfolding cc_of_def edge_vertices_def Field_def by auto
+  ultimately show ?thesis
+    unfolding cc_of_def by simp
+qed
+
+lemma all_edges_mono:
+  fixes t q :: "'t::order"
+  assumes "t \<le> q"
+  shows "all_edges os t \<subseteq> all_edges os q"
+  using assms unfolding all_edges_def all_vertices_def set_neighbors by auto
+
+
+lemma min_label_eq_self_if_not_all_vertices':
+  fixes t :: "'t::order"
+  assumes inv: "label_prop_upd_inv os"
+    and not_vertex: "v \<notin> all_vertices os t"
+  shows "min_label os t v = v"
+proof -
+  have label_self: "\<And>q. q \<le> t \<Longrightarrow> label os q v = v"
+  proof -
+    fix q
+    assume q_le: "q \<le> t"
+    have "v \<notin> all_vertices os q"
+      using not_vertex q_le unfolding all_vertices_def by auto
+    then show "label os q v = v"
+      using inv unfolding label_prop_upd_inv_def by blast
+  qed
+  have stored_self:
+    "\<And>q. q \<in> set (timestamps os) \<Longrightarrow> q \<le> t \<Longrightarrow> label os q v = v"
+    by (rule label_self)
+  have set_eq:
+    "insert (label os t v) ((\<lambda>q. label os q v) ` {q \<in> set (timestamps os). q \<le> t}) = {v}"
+    using label_self[of t] stored_self by auto
+  show ?thesis
+    unfolding min_label_def by (simp only: set_eq Min_singleton)
+qed
+
+lemma labels_cc_inv_min_label_le:
+  fixes t q :: "'t::order"
+  assumes labels: "\<And>r. labels_cc_inv os r"
+    and inv: "label_prop_upd_inv os"
+    and t_le_q: "t \<le> q"
+    and v_in: "v \<in> all_vertices os q"
+  shows "min_label os t v \<in> cc_of (all_edges os q) v"
+proof (cases "v \<in> all_vertices os t")
+  case True
+  then have "min_label os t v \<in> cc_of (all_edges os t) v"
+    using labels[of t] unfolding labels_cc_inv_def by blast
+  moreover have "all_edges os t \<subseteq> all_edges os q"
+    using t_le_q by (rule all_edges_mono)
+  ultimately show ?thesis
+    using cc_of_mono by blast
+next
+  case False
+  then have min_self: "min_label os t v = v"
+    using min_label_eq_self_if_not_all_vertices'[OF inv] by simp
+  have "v \<in> edge_vertices (all_edges os q)"
+    using edge_vertices_all_edges[OF inv, of q] v_in by simp
+  then show ?thesis
+    using min_self unfolding cc_of_def reachable_def by auto
+qed
+
+
+lemma min_label_input0_update_mem:
+  fixes q t1 :: "'t::order"
+  assumes timestamps_eq: "timestamps os' = t1 # timestamps os"
+    and label_eq: "label os' = (label os)(t1 := (label os t1)(v := l))"
+  shows "min_label os' q x \<in>
+    (if t1 \<le> q
+     then insert (if x = v then l else label os t1 x)
+       (insert (label os q x) ((\<lambda>r. label os r x) ` {r \<in> set (timestamps os). r \<le> q}))
+     else insert (label os q x) ((\<lambda>r. label os r x) ` {r \<in> set (timestamps os). r \<le> q}))"
+proof -
+  let ?New = "insert (label os' q x) ((\<lambda>r. label os' r x) ` {r \<in> set (timestamps os'). r \<le> q})"
+  let ?Old = "insert (label os q x) ((\<lambda>r. label os r x) ` {r \<in> set (timestamps os). r \<le> q})"
+  have min_in: "min_label os' q x \<in> ?New"
+    unfolding min_label_def by (intro Min_in) auto
+  show ?thesis
+  proof (cases "t1 \<le> q")
+    case True
+    have "?New \<subseteq> insert (if x = v then l else label os t1 x) ?Old"
+      using True timestamps_eq label_eq by auto
+    then show ?thesis
+      using True min_in by auto
+  next
+    case False
+    have "?New \<subseteq> ?Old"
+      using False timestamps_eq label_eq by auto
+    then show ?thesis
+      using False min_in by auto
+  qed
+qed
+
+
+lemma min_label_input0_update_cases:
+  fixes q t1 :: "'t::order"
+  assumes t1_le_q: "t1 \<le> q"
+    and timestamps_eq: "timestamps os' = t1 # timestamps os"
+    and label_eq: "label os' = (label os)(t1 := (label os t1)(v := l))"
+    and new_le: "l \<le> min_label os t1 v"
+  shows "min_label os' q x = min_label os q x \<or>
+    min_label os' q x = min_label os t1 x \<or>
+    (x = v \<and> min_label os' q x = l)"
+proof (cases "x = v")
+  case True
+  let ?New = "insert (label os' q x) ((\<lambda>r. label os' r x) ` {r \<in> set (timestamps os'). r \<le> q})"
+  let ?Oldq = "insert (label os q x) ((\<lambda>r. label os r x) ` {r \<in> set (timestamps os). r \<le> q})"
+  let ?Oldt = "insert (label os t1 x) ((\<lambda>r. label os r x) ` {r \<in> set (timestamps os). r \<le> t1})"
+  have l_in_new: "l \<in> ?New"
+    using True t1_le_q timestamps_eq label_eq by auto
+  have min_in_new: "Min ?New \<in> ?New"
+    by (intro Min_in) auto
+  have min_le_new: "\<And>y. y \<in> ?New \<Longrightarrow> Min ?New \<le> y"
+    by (intro Min_le) auto
+  have new_subset: "?New \<subseteq> insert l ?Oldq"
+    using True t1_le_q timestamps_eq label_eq by auto
+  show ?thesis
+  proof (cases "Min ?New = l")
+    case True
+    then show ?thesis
+      using \<open>x = v\<close> unfolding min_label_def by simp
+  next
+    case False
+    then have min_oldq_mem: "Min ?New \<in> ?Oldq"
+      using min_in_new new_subset by auto
+    have oldq_lower: "\<And>y. y \<in> ?Oldq \<Longrightarrow> Min ?New \<le> y"
+    proof -
+      fix y
+      assume y_oldq: "y \<in> ?Oldq"
+      have "y \<in> ?New \<or> y \<in> ?Oldt"
+        using y_oldq True t1_le_q timestamps_eq label_eq by auto
+      then show "Min ?New \<le> y"
+      proof
+        assume "y \<in> ?New"
+        then show ?thesis
+          by (rule min_le_new)
+      next
+        assume y_oldt: "y \<in> ?Oldt"
+        have "Min ?Oldt \<le> y"
+          using y_oldt by (intro Min_le) auto
+        moreover have "l \<le> Min ?Oldt"
+          using new_le True unfolding min_label_def by simp
+        ultimately have "l \<le> y"
+          by order
+
+        moreover have "Min ?New \<le> l"
+          using min_le_new[OF l_in_new] .
+        ultimately show ?thesis
+          by order
+      qed
+    qed
+    have "Min ?Oldq = Min ?New"
+    proof (rule Min_eqI)
+      show "finite ?Oldq"
+        by auto
+      show "\<And>y. y \<in> ?Oldq \<Longrightarrow> Min ?New \<le> y"
+        by (rule oldq_lower)
+      show "Min ?New \<in> ?Oldq"
+        by (rule min_oldq_mem)
+    qed
+    then have "Min ?New = Min ?Oldq"
+      by simp
+    then show ?thesis
+      unfolding min_label_def by simp
+
+  qed
+next
+  case False
+  let ?New = "insert (label os' q x) ((\<lambda>r. label os' r x) ` {r \<in> set (timestamps os'). r \<le> q})"
+  let ?Oldq = "insert (label os q x) ((\<lambda>r. label os r x) ` {r \<in> set (timestamps os). r \<le> q})"
+  let ?Oldt = "insert (label os t1 x) ((\<lambda>r. label os r x) ` {r \<in> set (timestamps os). r \<le> t1})"
+  have set_eq: "?New = insert (label os t1 x) ?Oldq"
+    using False t1_le_q timestamps_eq label_eq by auto
+  have min_new: "Min ?New = min (label os t1 x) (Min ?Oldq)"
+    using set_eq by (simp add: Min_insert)
+  show ?thesis
+  proof (cases "label os t1 x < Min ?Oldq")
+    case True
+    have label_t1_lower: "\<And>y. y \<in> ?Oldt \<Longrightarrow> label os t1 x \<le> y"
+    proof -
+      fix y
+      assume y_oldt: "y \<in> ?Oldt"
+      then show "label os t1 x \<le> y"
+      proof
+        assume "y = label os t1 x"
+        then show ?thesis by simp
+      next
+        assume "y \<in> (\<lambda>r. label os r x) ` {r \<in> set (timestamps os). r \<le> t1}"
+        then have "y \<in> ?Oldq"
+          using t1_le_q by auto
+        then have "Min ?Oldq \<le> y"
+          by (intro Min_le) auto
+        then show ?thesis
+          using True by order
+
+      qed
+    qed
+    have "Min ?Oldt = label os t1 x"
+      by (rule Min_eqI) (auto intro: label_t1_lower)
+    then show ?thesis
+      using True min_new False unfolding min_label_def by simp
+  next
+    case False
+    have "Min ?Oldq \<le> label os t1 x"
+      using False by order
+    then have "Min ?New = Min ?Oldq"
+      using min_new by simp
+    then show ?thesis
+      unfolding min_label_def by simp
+
+  qed
+qed
+
+
 lemma labels_inv_min_label_any_queryI:
   fixes q :: "'t::order"
+
   assumes stored_valid:
     "\<And>t' v. t' \<in> set (timestamps os) \<Longrightarrow> t' \<le> q \<Longrightarrow>
       v \<in> edge_vertices (all_edges os q) \<Longrightarrow>
@@ -534,6 +768,7 @@ lemma labels_inv_min_label_any_queryI:
       "\<And>v. v \<in> edge_vertices (all_edges os q) \<Longrightarrow>
         label os q v \<in> cc_of (all_edges os q) v"
   shows "labels_inv (all_edges os q) (min_label os q)"
+
   unfolding labels_inv_def
 proof safe
   fix v
@@ -553,6 +788,8 @@ lemma labels_cc_inv_imp_labels_inv:
 proof safe
   fix v
   assume "v \<in> edge_vertices (all_edges os t)"
+
+
   then have "v \<in> all_vertices os t"
     using edge_vertices_all_edges_subset_all_vertices by auto
   then show "min_label os t v \<in> cc_of (all_edges os t) v"
@@ -1391,18 +1628,16 @@ lemma labels_cc_inv_mint[simp]:
   by auto
 
 
-(* Proposed preservation lemmas for the three branches of label_propagation_op_logic. *)
-
 lemma label_prop_upd_inv_input0_preserved:
   fixes t1 :: "'t::order"
   assumes inv: "label_prop_upd_inv os"
-    and update:
-      "os' = os\<lparr>input := (input os)(0 := xs),
-        timestamps := t1 # timestamps os,
-        graph := (graph os)(t1 := (graph os t1)(v1 := v2 # graph os t1 v1,
-          v2 := v1 # graph os t1 v2)),
-        vertices := (vertices os)(t1 := [v1, v2] @ vertices os t1),
-        label := (label os)(t1 := (label os t1)(v := l))\<rparr>"
+    and timestamps_eq: "timestamps os' = t1 # timestamps os"
+    and graph_eq: "graph os' = (graph os)(t1 := (graph os t1)(v1 := v2 # graph os t1 v1,
+          v2 := v1 # graph os t1 v2))"
+    and vertices_eq: "vertices os' = (vertices os)(t1 := [v1, v2] @ vertices os t1)"
+    and label_eq: "label os' = (label os)(t1 := (label os t1)(v := l))"
+    and input1_eq: "input os' 1 = input os 1"
+    and de1_eq: "de1 os' = de1 os"
     and label_update:
       "(v, l) = (if min_label os t1 v1 > min_label os t1 v2
         then (v1, min_label os t1 v2)
@@ -1425,22 +1660,22 @@ proof -
       (if q = t1
        then insert v1 (insert v2 (edge_vertices {(a, b). b \<in> set (graph os q a)}))
        else edge_vertices {(a, b). b \<in> set (graph os q a)})"
-    using update unfolding edge_vertices_def Field_def by (auto split: if_splits)
+    using graph_eq unfolding edge_vertices_def Field_def by (auto split: if_splits)
   have vertices_new:
     "\<And>q. set (vertices os' q) =
       (if q = t1 then insert v1 (insert v2 (set (vertices os q))) else set (vertices os q))"
-    using update by (auto split: if_splits)
+    using vertices_eq by (auto split: if_splits)
   have all_vertices_mono: "\<And>q x. x \<in> all_vertices os q \<Longrightarrow> x \<in> all_vertices os' q"
-    using update unfolding all_vertices_def by (auto split: if_splits)
+    using timestamps_eq vertices_eq unfolding all_vertices_def by (auto split: if_splits)
 
   have ts_new: "\<And>q. q \<in> set (timestamps os') \<longleftrightarrow>
       edge_vertices {(a, b). b \<in> set (graph os' q a)} \<noteq> {}"
-    using ts_old edge_vertices_new update by auto
+    using ts_old edge_vertices_new timestamps_eq by auto
   have vertices_eq_new: "\<And>q. set (vertices os' q) =
       edge_vertices {(a, b). b \<in> set (graph os' q a)}"
     using vertices_old vertices_new edge_vertices_new by auto
   have sym_new: "\<And>q. sym {(a, b). b \<in> set (graph os' q a)}"
-    using sym_old update unfolding sym_def by (auto split: if_splits)
+    using sym_old graph_eq unfolding sym_def by (auto split: if_splits)
   have label_new: "\<And>q x. x \<notin> all_vertices os' q \<Longrightarrow> label os' q x = x"
   proof -
     fix q x
@@ -1449,7 +1684,7 @@ proof -
     proof (cases "q = t1 \<and> x = v")
       case True
       then have "x \<in> all_vertices os' q"
-        using update v_new unfolding all_vertices_def by auto
+        using timestamps_eq vertices_eq v_new unfolding all_vertices_def by auto
       then show ?thesis
         using not_new by contradiction
     next
@@ -1457,7 +1692,7 @@ proof -
       have not_old: "x \<notin> all_vertices os q"
         using all_vertices_mono not_new by blast
       then show ?thesis
-        using label_old[OF not_old] update False by auto
+        using label_old[OF not_old] label_eq False by auto
     qed
   qed
   have pending_new: "\<And>d t. (d, t) \<in> set (input os' 1) \<Longrightarrow>
@@ -1466,13 +1701,13 @@ proof -
     fix d t
     assume in_new: "(d, t) \<in> set (input os' 1)"
     then have in_old: "(d, t) \<in> set (input os 1)"
-      using update by auto
+      using input1_eq by auto
     then have old: "myfst t \<in> set (timestamps os) \<and> fst (de1 os d) \<in> all_vertices os (myfst t)"
       by (rule pending_old)
     have "myfst t \<in> set (timestamps os')"
-      using old update by auto
+      using old timestamps_eq by auto
     moreover have "fst (de1 os' d) \<in> all_vertices os' (myfst t)"
-      using old update all_vertices_mono by auto
+      using old de1_eq all_vertices_mono by auto
     ultimately show "myfst t \<in> set (timestamps os') \<and> fst (de1 os' d) \<in> all_vertices os' (myfst t)"
       by simp
 
@@ -1489,13 +1724,83 @@ lemma label_prop_upd_inv_input1_preserved:
   fixes t1 :: "'t::order"
   assumes inv: "label_prop_upd_inv os"
     and input1: "input os 1 = (d, t) # xs"
+    and input1_eq: "input os' 1 = xs"
     and msg: "de1 os d = (v, l)"
     and t1_def: "t1 = myfst t"
-    and update:
-      "os' = os\<lparr>input := (input os)(1 := xs),
-        label := (label os)(t1 := (label os t1)(v := min (min_label os t1 v) l))\<rparr>"
+    and timestamps_eq: "timestamps os' = timestamps os"
+    and graph_eq: "graph os' = graph os"
+    and vertices_eq: "vertices os' = vertices os"
+    and de1_eq: "de1 os' = de1 os"
+    and label_eq: "label os' = (label os)(t1 := (label os t1)(v := min (min_label os t1 v) l))"
   shows "label_prop_upd_inv os'"
-oops
+proof -
+  have ts_old: "\<And>q. q \<in> set (timestamps os) \<longleftrightarrow>
+      edge_vertices {(a, b). b \<in> set (graph os q a)} \<noteq> {}"
+    and vertices_old: "\<And>q. set (vertices os q) = edge_vertices {(a, b). b \<in> set (graph os q a)}"
+    and sym_old: "\<And>q. sym {(a, b). b \<in> set (graph os q a)}"
+    and label_old: "\<And>q x. x \<notin> all_vertices os q \<Longrightarrow> label os q x = x"
+    and pending_old: "\<And>d' t'. (d', t') \<in> set (input os 1) \<Longrightarrow>
+      myfst t' \<in> set (timestamps os) \<and> fst (de1 os d') \<in> all_vertices os (myfst t')"
+    using inv unfolding label_prop_upd_inv_def by blast+
+
+  have v_in: "v \<in> all_vertices os t1"
+  proof -
+    have in_set: "(d, t) \<in> set (input os 1)" using input1 by simp
+    then have "fst (de1 os d) \<in> all_vertices os (myfst t)"
+      using pending_old by blast
+    then show ?thesis using msg t1_def by auto
+  qed
+
+  have ts_new: "\<And>q. q \<in> set (timestamps os') \<longleftrightarrow>
+      edge_vertices {(a, b). b \<in> set (graph os' q a)} \<noteq> {}"
+    using ts_old timestamps_eq graph_eq by simp
+  have vertices_new: "\<And>q. set (vertices os' q) =
+      edge_vertices {(a, b). b \<in> set (graph os' q a)}"
+    using vertices_old vertices_eq graph_eq by simp
+  have sym_new: "\<And>q. sym {(a, b). b \<in> set (graph os' q a)}"
+    using sym_old graph_eq by simp
+
+  have label_new: "\<And>q x. x \<notin> all_vertices os' q \<Longrightarrow> label os' q x = x"
+  proof -
+    fix q x
+    assume not_in: "x \<notin> all_vertices os' q"
+    have all_vertices_eq: "all_vertices os' q = all_vertices os q"
+      using timestamps_eq vertices_eq unfolding all_vertices_def by auto
+    have not_in_old: "x \<notin> all_vertices os q"
+      using not_in all_vertices_eq by simp
+    show "label os' q x = x"
+    proof (cases "q = t1 \<and> x = v")
+      case True
+      then have "x \<in> all_vertices os q"
+        using v_in by simp
+      then show ?thesis
+        using not_in_old by contradiction
+    next
+      case False
+      then show ?thesis
+        using label_old[OF not_in_old] label_eq by auto
+    qed
+  qed
+
+  have pending_new: "\<And>d' t'. (d', t') \<in> set (input os' 1) \<Longrightarrow>
+      myfst t' \<in> set (timestamps os') \<and> fst (de1 os' d') \<in> all_vertices os' (myfst t')"
+  proof -
+    fix d' t'
+    assume in_new: "(d', t') \<in> set (input os' 1)"
+    then have in_old: "(d', t') \<in> set (input os 1)"
+      using input1_eq input1 by auto
+    have old: "myfst t' \<in> set (timestamps os) \<and> fst (de1 os d') \<in> all_vertices os (myfst t')"
+      by (rule pending_old[OF in_old])
+    then show "myfst t' \<in> set (timestamps os') \<and> fst (de1 os' d') \<in> all_vertices os' (myfst t')"
+      using timestamps_eq vertices_eq de1_eq unfolding all_vertices_def by auto
+  qed
+
+  show ?thesis
+    unfolding label_prop_upd_inv_def
+    using ts_new vertices_new sym_new label_new pending_new by blast
+qed
+
+
 
 lemma label_prop_upd_inv_output_preserved:
   assumes inv: "label_prop_upd_inv os"
@@ -1506,19 +1811,246 @@ lemma labels_cc_inv_input0_preserved:
   fixes q t1 :: "'t::order"
   assumes labels: "\<And>q. labels_cc_inv os q"
     and inv: "label_prop_upd_inv os"
-    and update:
-      "os' = os\<lparr>input := (input os)(0 := xs),
-        timestamps := t1 # timestamps os,
-        graph := (graph os)(t1 := (graph os t1)(v1 := v2 # graph os t1 v1,
-          v2 := v1 # graph os t1 v2)),
-        vertices := (vertices os)(t1 := [v1, v2] @ vertices os t1),
-        label := (label os)(t1 := (label os t1)(v := l))\<rparr>"
+    and input_eq: "input os' = (input os)(0 := xs)"
+    and timestamps_eq: "timestamps os' = t1 # timestamps os"
+    and graph_eq: "graph os' = (graph os)(t1 := (graph os t1)(v1 := v2 # graph os t1 v1,
+          v2 := v1 # graph os t1 v2))"
+    and vertices_eq: "vertices os' = (vertices os)(t1 := [v1, v2] @ vertices os t1)"
+    and label_eq: "label os' = (label os)(t1 := (label os t1)(v := l))"
     and label_update:
       "(v, l) = (if min_label os t1 v1 > min_label os t1 v2
         then (v1, min_label os t1 v2)
         else (v2, min_label os t1 v1))"
   shows "labels_cc_inv os' q"
-oops
+proof -
+  have old_edges_subset: "all_edges os q \<subseteq> all_edges os' q"
+    using timestamps_eq graph_eq vertices_eq
+    unfolding all_edges_def all_vertices_def set_neighbors
+    by auto
+
+  have v2_cc_v1: "t1 \<le> q \<Longrightarrow> v2 \<in> cc_of (all_edges os' q) v1"
+    using timestamps_eq graph_eq vertices_eq
+    unfolding cc_of_def reachable_def all_edges_def all_vertices_def set_neighbors edge_vertices_def Field_def
+    by auto
+  have v1_cc_v2: "t1 \<le> q \<Longrightarrow> v1 \<in> cc_of (all_edges os' q) v2"
+    using timestamps_eq graph_eq vertices_eq
+    unfolding cc_of_def reachable_def all_edges_def all_vertices_def set_neighbors edge_vertices_def Field_def
+    by auto
+  have updated_label_valid: "t1 \<le> q \<Longrightarrow> l \<in> cc_of (all_edges os' q) v"
+  proof -
+    assume t1_le_q: "t1 \<le> q"
+    show "l \<in> cc_of (all_edges os' q) v"
+    proof (cases "min_label os t1 v1 > min_label os t1 v2")
+      case True
+      then have v_def: "v = v1" and l_def: "l = min_label os t1 v2"
+        using label_update by auto
+      show ?thesis
+      proof (cases "v2 \<in> all_vertices os q")
+        case True
+        have old_valid: "min_label os t1 v2 \<in> cc_of (all_edges os q) v2"
+          using labels_cc_inv_min_label_le[OF labels inv t1_le_q True] .
+        then have new_valid: "min_label os t1 v2 \<in> cc_of (all_edges os' q) v2"
+          using old_edges_subset cc_of_mono by blast
+
+        have "cc_of (all_edges os' q) v2 = cc_of (all_edges os' q) v1"
+          using v2_cc_v1[OF t1_le_q] by (rule cc_of_eq_if_member)
+        then show ?thesis
+          using new_valid v_def l_def by simp
+      next
+        case False
+        then have "v2 \<notin> all_vertices os t1"
+          using t1_le_q unfolding all_vertices_def by auto
+        then have "min_label os t1 v2 = v2"
+          using min_label_eq_self_if_not_all_vertices'[OF inv] by simp
+        then show ?thesis
+          using v2_cc_v1[OF t1_le_q] v_def l_def by simp
+      qed
+    next
+      case False
+      then have v_def: "v = v2" and l_def: "l = min_label os t1 v1"
+        using label_update by auto
+      show ?thesis
+      proof (cases "v1 \<in> all_vertices os q")
+        case True
+        have old_valid: "min_label os t1 v1 \<in> cc_of (all_edges os q) v1"
+          using labels_cc_inv_min_label_le[OF labels inv t1_le_q True] .
+        then have new_valid: "min_label os t1 v1 \<in> cc_of (all_edges os' q) v1"
+          using old_edges_subset cc_of_mono by blast
+
+        have "cc_of (all_edges os' q) v1 = cc_of (all_edges os' q) v2"
+          using v1_cc_v2[OF t1_le_q] by (rule cc_of_eq_if_member)
+        then show ?thesis
+          using new_valid v_def l_def by simp
+      next
+        case False
+        then have "v1 \<notin> all_vertices os t1"
+          using t1_le_q unfolding all_vertices_def by auto
+        then have "min_label os t1 v1 = v1"
+          using min_label_eq_self_if_not_all_vertices'[OF inv] by simp
+        then show ?thesis
+          using v1_cc_v2[OF t1_le_q] v_def l_def by simp
+      qed
+    qed
+  qed
+
+  show ?thesis
+    unfolding labels_cc_inv_def
+  proof safe
+    fix x
+    assume x_new: "x \<in> all_vertices os' q"
+    show "min_label os' q x \<in> cc_of (all_edges os' q) x"
+    proof (cases "t1 \<le> q")
+      case False
+      have times_eq: "{r \<in> set (timestamps os'). r \<le> q} = {r \<in> set (timestamps os). r \<le> q}"
+        using False timestamps_eq by auto
+      have vertices_eq_q: "\<And>r. r \<le> q \<Longrightarrow> vertices os' r = vertices os r"
+        using False vertices_eq by auto
+      have x_old: "x \<in> all_vertices os q"
+        using x_new times_eq vertices_eq_q unfolding all_vertices_def by auto
+      have label_eq_q: "\<And>r. r \<le> q \<Longrightarrow> label os' r x = label os r x"
+        using False label_eq by auto
+      have min_eq: "min_label os' q x = min_label os q x"
+        using times_eq label_eq_q unfolding min_label_def by auto
+
+
+      have edges_eq: "all_edges os' q = all_edges os q"
+        using False timestamps_eq graph_eq vertices_eq
+        unfolding all_edges_def all_vertices_def set_neighbors by auto
+      show ?thesis
+        using labels[of q] x_old min_eq edges_eq unfolding labels_cc_inv_def by simp
+    next
+      case True
+      have updated_label_le: "l \<le> min_label os t1 v"
+        using label_update by (auto split: if_splits)
+      have new_self_valid:
+        "\<And>y. y \<in> all_vertices os' q \<Longrightarrow> y \<notin> all_vertices os q \<Longrightarrow> y \<in> cc_of (all_edges os' q) y"
+      proof -
+        fix y
+        assume y_new: "y \<in> all_vertices os' q"
+          and y_not_old: "y \<notin> all_vertices os q"
+        have vertices_t1_old: "set (vertices os t1) \<subseteq> all_vertices os q"
+        proof (cases "t1 \<in> set (timestamps os)")
+          case True
+          then show ?thesis
+            using \<open>t1 \<le> q\<close> unfolding all_vertices_def by auto
+        next
+          case False
+          then show ?thesis
+            using label_prop_upd_inv_vertices_timestamps_iff[OF inv, of t1] by auto
+        qed
+        have vertices_subset:
+          "all_vertices os' q \<subseteq> insert v1 (insert v2 (all_vertices os q))"
+        proof
+          fix z
+          assume "z \<in> all_vertices os' q"
+          then obtain r where r_ts: "r \<in> set (timestamps os')" and r_le: "r \<le> q"
+            and z_in: "z \<in> set (vertices os' r)"
+            unfolding all_vertices_def by auto
+          show "z \<in> insert v1 (insert v2 (all_vertices os q))"
+          proof (cases "r = t1")
+            case True
+            then have "z = v1 \<or> z = v2 \<or> z \<in> set (vertices os t1)"
+              using z_in vertices_eq by auto
+            then show ?thesis
+              using vertices_t1_old by auto
+          next
+            case False
+            then have "r \<in> set (timestamps os)"
+              using r_ts timestamps_eq by auto
+            moreover have "z \<in> set (vertices os r)"
+              using False z_in vertices_eq by auto
+            ultimately show ?thesis
+              using r_le unfolding all_vertices_def by auto
+          qed
+        qed
+
+
+        have "y \<in> insert v1 (insert v2 (all_vertices os q))"
+          using vertices_subset y_new by blast
+        then have "y = v1 \<or> y = v2"
+          using y_not_old by auto
+
+
+        then show "y \<in> cc_of (all_edges os' q) y"
+        proof
+          assume "y = v1"
+          then show ?thesis
+            using v1_cc_v2[OF True] unfolding cc_of_def reachable_def by auto
+        next
+          assume "y = v2"
+          then show ?thesis
+            using v2_cc_v1[OF True] unfolding cc_of_def reachable_def by auto
+        qed
+      qed
+      have old_q_valid: "min_label os q x \<in> cc_of (all_edges os' q) x"
+      proof (cases "x \<in> all_vertices os q")
+        case True
+        have "min_label os q x \<in> cc_of (all_edges os q) x"
+          using labels[of q] True unfolding labels_cc_inv_def by blast
+        then show ?thesis
+          using old_edges_subset cc_of_mono by blast
+      next
+        case False
+        then have "min_label os q x = x"
+          using min_label_eq_self_if_not_all_vertices'[OF inv] by simp
+        then show ?thesis
+          using new_self_valid[OF x_new False] by simp
+      qed
+      have old_t1_valid: "min_label os t1 x \<in> cc_of (all_edges os' q) x"
+      proof (cases "x \<in> all_vertices os q")
+        case True
+        have "min_label os t1 x \<in> cc_of (all_edges os q) x"
+          using labels_cc_inv_min_label_le[OF labels inv \<open>t1 \<le> q\<close> True] .
+        then show ?thesis
+          using old_edges_subset cc_of_mono by blast
+      next
+        case False
+        then have "x \<notin> all_vertices os t1"
+          using \<open>t1 \<le> q\<close> unfolding all_vertices_def by auto
+        then have "min_label os t1 x = x"
+          using min_label_eq_self_if_not_all_vertices'[OF inv] by simp
+        then show ?thesis
+          using new_self_valid[OF x_new False] by simp
+      qed
+      have min_cases:
+        "min_label os' q x = min_label os q x \<or>
+         min_label os' q x = min_label os t1 x \<or>
+         (x = v \<and> min_label os' q x = l)"
+        using min_label_input0_update_cases[OF \<open>t1 \<le> q\<close> timestamps_eq label_eq updated_label_le, of x] .
+      then show ?thesis
+      proof (elim disjE conjE)
+        assume "min_label os' q x = min_label os q x"
+        then show ?thesis
+          using old_q_valid by simp
+      next
+        assume "min_label os' q x = min_label os t1 x"
+        then show ?thesis
+          using old_t1_valid by simp
+      next
+        assume "x = v" and "min_label os' q x = l"
+        then show ?thesis
+          using updated_label_valid[OF \<open>t1 \<le> q\<close>] by simp
+      qed
+
+
+
+
+    qed
+  qed
+
+
+
+qed
+
+
+
+
+
+
+
+
+
+
 
 lemma labels_cc_inv_input1_preserved:
   fixes q t1 :: "'t::order"

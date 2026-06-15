@@ -358,11 +358,12 @@ lemma label_propagation_correctness:
     and input_stream_inv:
     \<open>timely_input_stream lxs (mset (ocaps (os 0) 0))\<close>
     and label_prop_inv:
-    \<open>(\<forall> t \<in> set (timestamps os_label_prop). labels_cc_inv os_label_prop t)\<close>
+    \<open>(\<forall> t. labels_cc_inv os_label_prop t)\<close>
     \<open>(\<forall> t \<in> set (timestamps os_label_prop). labels_stable (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
     \<open>\<forall> t \<in> myfst ` snd ` set (input (os 1) 0). frontier_less_equal (exit_scope myfst (front (os 1) 1)) t\<close>
     \<open>\<forall> t. t \<in> set (ocaps (os 1) 0) \<longrightarrow> myfst t |\<in>| cset_from_list T\<close>
     \<open>\<forall> t \<in> set (ocaps (os 1) 0). mysnd t = 0\<close>
+    \<open>label_prop_upd_inv os_label_prop\<close>
   shows \<open>set_op S D (dataflow_op sg (G_op os_input os_label_prop (os 2) cbufs))
          \<approx> set_spec_op (cUn (cUn S SO) SP) D\<close>
   using assms
@@ -376,7 +377,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
     and dataplane_inv = SIM1(11)
     and csets_inv = SIM1(12,13)
     and input_stream_inv = SIM1(14)
-    and label_prop_inv = SIM1(15,16,17,18,19)
+    and label_prop_inv = SIM1(15,16,17,18,19,20)
   have D: \<open>dataflow_topology (summ sg) (-+-)\<close> 
     unfolding subgraph_inv comp_def
     apply (subst dataflow_tree_to_graph_raw_summary[symmetric])
@@ -1315,9 +1316,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                       apply (subgoal_tac "t = MyPair (myfst t) 0")
                       subgoal
                         apply (subst (1) all_edges_eq[rotated, where V=V and label_sync=L and input_sync="input (os 1)"])
+                        subgoal sorry
                         subgoal by simp
-                        subgoal sorry
-                        subgoal sorry
                         subgoal
                           apply simp
                           apply (rule arg_cong2[where f=cinsert])
@@ -1342,11 +1342,10 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                   apply (cases "t \<le> t''")
                                   subgoal
                                     apply (subst all_edges_eq_le[rotated, where V=V and label_sync=L and input_sync="input (os 1)"])
-                                    subgoal by simp
                                     subgoal sorry
                                     subgoal 
                                       using myfst_mono by blast
-                                    subgoal sorry
+                                    subgoal by simp
                                     subgoal
                                       apply (subst insert_commute)
                                       apply (simp add: ccs_insert_symmetric)
@@ -1418,8 +1417,38 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                     by (auto simp add: csets_inv(2))
                   subgoal
                     using input_stream_inv by assumption
-                  subgoal premises aux
-                    using aux(2,3,4) apply -
+                  subgoal
+                    apply safe
+                    subgoal for t''
+                    apply (rule labels_cc_inv_input0_preserved[where xs=xs])
+                      using label_prop_inv(1) apply blast
+                      subgoal sorry
+                      subgoal
+                        by (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                        apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                      apply simp
+                        apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                         apply simp
+                        apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                        apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                       apply simp
+                        apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                      done
+                    done
+
+end
+
+
+                      defer
+                      apply force
+                        apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                      apply (intro conjI impI)
+                      prefer 6
+                      apply (rule refl)+
+
+                       find_theorems os_label_prop
+
+end
                       apply (clarsimp split: if_splits)
                     subgoal
                       apply hypsubst_thin

@@ -12,11 +12,13 @@ Note: At the start of any session, first confirm the MCP connection to Isabelle/
 ## Editing
 
 - The AI always saves the file after editing it.
+- The AI checks the region before writing the file to avoinding writing in the middle of another lemma or definition.
 - The AI alawys checks the MCP connection on the start of a session. The token  MY_TOKEN (use this).
 - Don't start working without a MCP connection, just report the issue if there is no MCP connection.
 ## Exploration
 
 - The assistant **proactively** uses MCP tools to explore the codebase: reading definitions, looking up types, finding theorems, and running sledgehammer.
+- The AI does not try to use the REPL because it does not work at the moment.
 - The AI never tries to build the entire project, only uses the MCP to check the proof progress.
 - However, MCP results are **hints only** -- the connection is not fully reliable. The assistant should never treat MCP output as ground truth.
 - You should not look at the AFP, as there is nothing relevant there about our work.
