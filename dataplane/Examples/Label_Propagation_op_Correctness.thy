@@ -9,6 +9,7 @@ imports
   "../Correctness/Outputs"
   "../Correctness/Produces"
   "../Correctness/Mints"
+  "../Correctness/OCapsReorder"
   "HOL-ex.Sketch_and_Explore"
   Dataplane.Timely_Dataflow_Op
   Dataplane.Bots
@@ -194,7 +195,6 @@ abbreviation \<open>test_input9 \<equiv>
   llist_of [ Data \<bottom> (0, 6), Data \<bottom> (0, 1), Data (MyPair 1 0) (2, 3)]\<close>
 value [GHC] "unit_test (ltaken 2 (lmap show_Outs (trace_exec (compiled test_input9))))
       [(Loc 1 (Src 0), Inr {{0, 1, 6}}, MyPair 0 0), (Loc 1 (Src 0), Inr {{2, 3}, {0, 1, 6}}, MyPair 1 0)]"
-
 *)
 
 definition \<open>raw_summary = (\<lambda>l1 l2. case (find (\<lambda> (l1', s, l2'). l1' = l1 \<and> l2 = l2')
@@ -320,6 +320,11 @@ lemma cfilter_True:
   "\<forall> x. x |\<in>| A \<longrightarrow> P x \<Longrightarrow>
    cfilter P A = A"
   by auto
+
+(* FIXME: move me *)
+lemma MyPair_zero_zero_sum[simp]:
+  "MyPair (0 :: nat) (0 :: nat) + a = a"
+  by (simp add: zero_myprod_def)
 
 lemma label_propagation_correctness:
   fixes lxs :: \<open>((nat, nat) myprod, nat \<times> nat) event llist\<close>
@@ -1436,13 +1441,15 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                   subgoal premises aux
                     using os_inv(7) by auto
                   subgoal premises aux
+                    apply (subgoal_tac "t \<in> set (ocaps (os 1) 1)")
+                    subgoal
                     unfolding release_caps_def
                     apply (simp del: filter.simps)
-
-              apply (rule iffD1[OF dataplane_tracker_inv_clean, rotated 2, of _ _ sg "upfro sg"])
-                apply (rule dataplane_tracker_inv_produces_drops[OF D, where nid=1 and os=os 
+                    apply (rule iffD1[OF dataplane_tracker_inv_clean_reorder_ocaps, rotated 2, of _ _ sg "upfro sg"])
+                        apply (rule dataplane_tracker_inv_produces_drops_alt[OF D, where nid=1 and p=0 and n=1 and
+                        os="let ts =  (map (\<lambda> t1. MyPair t1 (mysnd t)) ((filter ((\<le>) (myfst t)) (myfst t # T)))) in (os(1 := os 1\<lparr> ocaps := (ocaps (os 1))(1 := ocaps (os 1) 1 @ ts) , inter := operator_state.inter (os 1) @ map (\<lambda> t. (1, t, 1)) ts\<rparr>))" 
                     and drops = "\<lambda> p. if p = 1
-                         then (list_diff (ocaps (os 1) 1) (map snd (input (os 1) 1)))
+                         then  (map (\<lambda> t1. MyPair t1 (mysnd t)) ((filter ((\<le>) (myfst t)) (myfst t # T))) @ list_diff (ocaps (os 1) 1) (map snd (xs @ input (os 1) 1)))
                          else []"
                     and produs="concat
                    (map (\<lambda>t1. if l2 < min_label
@@ -1452,13 +1459,12 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                then map (\<lambda>v'. ((1, MyPair t1 (mysnd t), 1)))
                                      (filter
                                        (\<lambda>v'. l2 < min_label
-                                                    \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1),
-                                                       front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T,
-                                                       graph = G, vertices = V, label = L\<rparr>
+                                                    \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1), front = front (os 1),
+                                                       ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>
                                                     t1 v')
                                        (neighbors
-                                         \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = (input (os 1))(0 := xs), outpu = outpu (os 1),
-                                            front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = myfst t # T,
+                                         \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = (input (os 1))(0 := xs), outpu = outpu (os 1), front = front (os 1),
+                                            ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = myfst t # T,
                                             graph = G(myfst t := (map_entry v1 ((#) v2) (G (myfst t)))(v2 := v1 # G (myfst t) v2)), vertices = V(myfst t := v1 # v2 # V (myfst t)),
                                             label = L(myfst t := (L (myfst t))(l1 := l2))\<rparr>
                                          t1 l1))
@@ -1469,16 +1475,15 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                         \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1), front = front (os 1),
                                            ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>
                                         t1 l1
-                               then map (\<lambda>v'. (Inl (v', l2), MyPair t1 (mysnd t)))
+                               then map (\<lambda>v'. (Inl (v', l2), (MyPair t1 (mysnd t))))
                                      (filter
                                        (\<lambda>v'. l2 < min_label
-                                                    \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1),
-                                                       front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T,
-                                                       graph = G, vertices = V, label = L\<rparr>
+                                                    \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1), front = front (os 1),
+                                                       ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>
                                                     t1 v')
                                        (neighbors
-                                         \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = (input (os 1))(0 := xs), outpu = outpu (os 1),
-                                            front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = myfst t # T,
+                                         \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = (input (os 1))(0 := xs), outpu = outpu (os 1), front = front (os 1),
+                                            ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = myfst t # T,
                                             graph = G(myfst t := (map_entry v1 ((#) v2) (G (myfst t)))(v2 := v1 # G (myfst t) v2)), vertices = V(myfst t := v1 # v2 # V (myfst t)),
                                             label = L(myfst t := (L (myfst t))(l1 := l2))\<rparr>
                                          t1 l1))
@@ -1486,17 +1491,127 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                      (filter ((\<le>) (myfst t)) (myfst t # T))) else [])"])
                            apply (rule refl)+
                             apply (simp_all del: filter.simps)
-                    subgoal premises aux
-                      apply (clarsimp simp add: min_label_def)
-                      subgoal premises aux2 for t1 t2
-
-                        thm dataplane_tracker_inv_mints_many[]
-
-
-                    find_theorems dataplane_tracker_inv name: Min
-
+                         prefer 6
+                    subgoal
+                      apply (rule iffD1[OF dataplane_tracker_inv_clean, rotated 2, of _ _ sg "upfro sg"])           
+                        apply (rule dataplane_tracker_inv_mints_many[OF D,of _ _ " (map (\<lambda> t1. MyPair t1 (mysnd t)) ((filter ((\<le>) (myfst t)) (myfst t # T))))" 1 1, simplified, OF dataplane_inv G])
+                        apply (simp_all del: filter.simps)
+                      subgoal
+                        apply (auto simp del: filter.simps simp add: set_neighbors image_iff del: disjCI split: if_splits)
+                        apply (metis MyPair_mono myprod.collapse verit_comp_simplify1(2))
+                        done
+                      subgoal
+                        by (clarsimp simp add:  aux(2) comp_def set_neighbors image_iff del: disjCI split: if_splits)
+                      done
+                    subgoal
+                      by (auto simp del: filter.simps simp add: image_iff del: disjCI)
+                    subgoal sorry
+                    subgoal
+                      using aux(4) apply -
+                      apply (clarsimp simp del: simp add: image_iff comp_def del: disjCI split: if_splits)
+                      subgoal for p
+                        apply hypsubst_thin
+                        subgoal premises aux2
+                          apply (subst (4) filter_True)
+                          subgoal
+                            by auto
+                          subgoal
+                            apply (clarsimp simp del: simp add: image_iff comp_def del: disjCI split: if_splits)
+                            apply (subst (3) filter_True)
+                            subgoal
+                              by auto
+                            subgoal
+                              apply (auto simp del: simp add: zmset_concat to_zmset_concat map_concat image_iff comp_def del: disjCI split: if_splits)
+                               apply (rule arg_cong[where f=sum_list])
+                               apply (rule map_cong)
+                                apply simp_all
+                               apply (clarsimp simp del: simp add: zmset_concat to_zmset_concat map_concat image_iff comp_def del: disjCI split: if_splits)
+                              apply (subgoal_tac "p = 0")
+                              subgoal
+                                apply hypsubst_thin
+                                apply (subst group_add_class.add_eq_0_iff)
+                                apply (subst minus_zmset)
+                                apply (rule arg_cong[where f=zmset])
+                                apply (clarsimp simp del: simp add:  filter_map filter_concat split_beta zmset_concat to_zmset_concat map_concat image_iff comp_def del: disjCI split: if_splits)
+                                apply (subst (1 4) filter_False)
+                                subgoal
+                                  by auto
+                                subgoal
+                                  by auto
+                                subgoal
+                                  by simp
+                                done
+                              subgoal
+                                using aux2
+                                  num2_neq(2) by presburger
+                              done
+                            done
+                          done
+                        done 
+                      subgoal premises aux2
+                        apply (intro conjI impI allI)
+                        subgoal for p
+                          by (auto intro!: arg_cong[where f=sum_list] map_cong simp del: simp add: filter_True  filter_map filter_concat split_beta zmset_concat to_zmset_concat map_concat image_iff comp_def del: disjCI split: if_splits)
+                          apply (subgoal_tac "p = 0")
+                        subgoal
+                          apply hypsubst_thin
+                          apply (subst group_add_class.add_eq_0_iff)
+                          apply (subst minus_zmset)
+                          apply (rule arg_cong[where f=zmset])
+                          apply (clarsimp simp del: simp add:  filter_map filter_concat split_beta zmset_concat to_zmset_concat map_concat image_iff comp_def del: disjCI split: if_splits)
+                          apply (subst (1 4) filter_False)
+                          subgoal
+                            by auto
+                          subgoal
+                            by auto
+                          subgoal
+                            by simp
+                          done
+                        subgoal
+                          using aux2
+                            num2_neq(2) by presburger
+                        subgoal for p
+                          by (auto intro!: arg_cong[where f=sum_list] map_cong simp del: simp add: filter_True  filter_map filter_concat split_beta zmset_concat to_zmset_concat map_concat image_iff comp_def del: disjCI split: if_splits)
+                        subgoal for p
+                          apply (subgoal_tac "p = 0")
+                          subgoal
+                            by (auto  simp del: simp add: filter_empty_conv filter_map filter_concat split_beta zmset_concat to_zmset_concat map_concat image_iff comp_def del: disjCI split: if_splits)
+                          subgoal
+                            using aux2
+                              num2_neq(2) by presburger
+                          done
+                        done
+                      done
+                    subgoal
+                      apply (simp add: comp_def)
+                      using G
+                      sorry
+                    subgoal
+                      using subgraph_inv(2) by assumption
+                    subgoal premises aux2
+                      using aux(2) apply -
+                      apply (intro allI conjI impI)
+                      subgoal
+                        by (clarsimp simp del: filter.simps simp add: filter_mset_image_mset os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] drop_caps_def zmset_concat to_zmset_concat map_concat image_iff comp_def del: disjCI split: if_splits)
+                      subgoal  
+                        by (clarsimp simp del: filter.simps simp add: filter_mset_image_mset os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] drop_caps_def zmset_concat to_zmset_concat map_concat image_iff comp_def del: disjCI split: if_splits)
+                      subgoal
+                        apply (clarsimp simp del: filter.simps simp add: filter_concat filter_empty_conv filter_True  split_beta filter_mset_image_mset os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] drop_caps_def zmset_concat to_zmset_concat map_concat image_iff comp_def del: disjCI split: if_splits)
+                       
+                        
 end
+                        sorry
+                      subgoal
+                        by (auto intro!: arg_cong[where f=concat] simp del: filter.simps simp add: produces_def filter_mset_image_mset os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] drop_caps_def zmset_concat to_zmset_concat map_concat image_iff comp_def del: disjCI split: if_splits)
+                      subgoal
+                        by auto
+                      subgoal
+                        by (fastforce intro!: arg_cong[where f=concat] simp del: filter.simps simp add: filter_empty_conv filter_True filter_concat filter_mset_image_mset os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] drop_caps_def zmset_concat to_zmset_concat map_concat image_iff comp_def del: disjCI split: if_splits)
+                        done
+                    done
+                  subgoal
                     sorry
+                  done
                   subgoal premises aux
                     by (auto simp add: csets_inv(2))
                   subgoal

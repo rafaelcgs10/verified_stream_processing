@@ -313,8 +313,8 @@ proof -
       proof (cases "v = v2")
         case True
         then show ?thesis
-        using inv v2_label v_not_v1 by (cases "v2 \<in> edge_vertices A")
-          (auto simp: labels_inv_def intro: cc_of_mono)
+          using inv v2_label v_not_v1 by (cases "v2 \<in> edge_vertices A")
+            (auto simp: labels_inv_def intro: cc_of_mono)
 
       next
         case False
@@ -505,7 +505,7 @@ lemma min_label_eq_self_if_not_edge_vertices:
   fixes t :: "'t::order"
   assumes inv: "label_prop_upd_inv os"
     and absent_label_self:
-      "\<And>t' v. t' \<in> set (timestamps os) \<Longrightarrow> t' \<le> t \<Longrightarrow>
+    "\<And>t' v. t' \<in> set (timestamps os) \<Longrightarrow> t' \<le> t \<Longrightarrow>
         v \<notin> set (vertices os t') \<Longrightarrow> label os t' v = v"
     and current_default: "t \<notin> set (timestamps os) \<Longrightarrow> label os t v = v"
     and not_edge: "v \<notin> edge_vertices (all_edges os t)"
@@ -760,14 +760,14 @@ qed
 lemma labels_inv_min_label_any_queryI:
   fixes q :: "'t::order"
 
-  assumes stored_valid:
-    "\<And>t' v. t' \<in> set (timestamps os) \<Longrightarrow> t' \<le> q \<Longrightarrow>
+assumes stored_valid:
+  "\<And>t' v. t' \<in> set (timestamps os) \<Longrightarrow> t' \<le> q \<Longrightarrow>
       v \<in> edge_vertices (all_edges os q) \<Longrightarrow>
       label os t' v \<in> cc_of (all_edges os q) v"
-    and current_valid:
-      "\<And>v. v \<in> edge_vertices (all_edges os q) \<Longrightarrow>
+  and current_valid:
+  "\<And>v. v \<in> edge_vertices (all_edges os q) \<Longrightarrow>
         label os q v \<in> cc_of (all_edges os q) v"
-  shows "labels_inv (all_edges os q) (min_label os q)"
+shows "labels_inv (all_edges os q) (min_label os q)"
 
   unfolding labels_inv_def
 proof safe
@@ -820,9 +820,9 @@ qed
 
 lemma all_vertices_insert:
   assumes "vertices os' = (vertices os)(t := [v1, v2] @ vertices os t)"
-  and "timestamps os' = (t :: _ :: order) # timestamps os"
-  and "label_prop_upd_inv os"
-shows "all_vertices os' t = insert v1 (insert v2 (all_vertices os t))"
+    and "timestamps os' = (t :: _ :: order) # timestamps os"
+    and "label_prop_upd_inv os"
+  shows "all_vertices os' t = insert v1 (insert v2 (all_vertices os t))"
   using assms apply -
   using label_prop_upd_inv_vertices_timestamps_iff[OF assms(3)]
   unfolding all_vertices_def
@@ -840,7 +840,7 @@ lemma all_edges_eq:
 
 
 
-  shows "all_edges
+shows "all_edges
    \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
     input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
     initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
@@ -1003,9 +1003,9 @@ lemma all_edges_eq_le:
      en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
      timestamps = T, graph = G, vertices = V, label = label_sync\<rparr>"
 
-   and time_le: "t \<le> t'"
+and time_le: "t \<le> t'"
 
-  shows "all_edges
+shows "all_edges
    \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
     input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
     initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
@@ -1154,7 +1154,7 @@ lemma all_edges_eq_not_le:
   assumes V'_def: "V' = map_entry t ((Cons v1) o (Cons v2)) V"
     and time_not_le: "\<not> t \<le> t'"
 
-  shows "all_edges
+shows "all_edges
    \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
     input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
     initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
@@ -1198,7 +1198,7 @@ lemma all_edges_eq_if:
      en2 = en2_state, de2 = de2_state, is_en2 = is_en2_state,
      timestamps = T, graph = G, vertices = V, label = label_sync\<rparr>"
 
-  shows "all_edges
+shows "all_edges
    \<lparr>intsum = intsum_state, consu = consu_state, inter = inter_state, produ = produ_state,
     input = input_state, outpu = outpu_state, front = front_state, ocaps = ocaps_state,
     initia = initia_state, en1 = en1_state, de1 = de1_state, is_en1 = is_en1_state,
@@ -1385,44 +1385,58 @@ value "exit_scope myfst (frontier {#MyPair (1 :: nat) (0 :: nat), MyPair (0 :: n
 
 definition label_propagation_op_logic where
   \<open>label_propagation_op_logic os = cUn (cUn
-  (case (input os 0) of
-    [] \<Rightarrow> {||}
-  | (d, t) # xs \<Rightarrow>
-    let (v1, v2) = de1 os d;
+    (case input os 0 of
+      [] \<Rightarrow> {||}
+    | (d, t) # xs \<Rightarrow>
+      let
+        (v1, v2) = de1 os d;
         t1 = myfst t;
         (l1, l2) = pairself (min_label os t1) (v1, v2);
         (v, l) = if l1 > l2 then (v1, l2) else (v2, l1);
-        os' = os\<lparr>input := (input os)(0 := xs), timestamps := t1 # (timestamps os),
-  graph := (graph os)(t1 := (graph os t1)(v1 := v2 # (graph os t1 v1),
-    v2 := v1 # (graph os t1 v2))),
-  vertices := (vertices os)(t1 := [v1, v2] @ (vertices os t1)),
-  label := (label os)(t1 := (label os t1)(v := l))\<rparr>;
-        ts = filter ((\<le>) t1) (timestamps os') ;
+        os' = os\<lparr>input := (input os)(0 := xs),
+                  timestamps := t1 # timestamps os,
+                  graph := (graph os)(t1 :=
+                    (graph os t1)(v1 := v2 # graph os t1 v1,
+                                  v2 := v1 # graph os t1 v2)),
+                  vertices := (vertices os)(t1 := [v1, v2] @ vertices os t1),
+                  label := (label os)(t1 := (label os t1)(v := l))\<rparr>;
+        ts = filter ((\<le>) t1) (timestamps os');
         batch = concat (map (\<lambda> t1. let vs = neighbors os' t1 v in
           if min_label os t1 v > l
-          then map (\<lambda>v'. (en1 os (v', l), Cap (MyPair t1 (mysnd t)) 1)) (filter (\<lambda>v'. min_label os t1 v' > l) vs)
+          then map (\<lambda>v'. (en1 os (v', l), Cap (MyPair t1 (mysnd t)) 1))
+                    (filter (\<lambda>v'. min_label os t1 v' > l) vs)
           else []) ts)
-     in {|release_caps (produces os' batch) 1|})
-  (case input os 1 of
-    [] \<Rightarrow> {||}
-  | (d, t) # xs \<Rightarrow>
-    let (v, l) = trace (STR ''input1-------'') (de1 os d);
+      in {|release_caps (produces os' batch) 1|})
+    (case input os 1 of
+      [] \<Rightarrow> {||}
+    | (d, t) # xs \<Rightarrow>
+      let
+        (v, l) = de1 os d;
         t1 = myfst t;
         os' = os\<lparr>input := (input os)(1 := xs),
-          label := (label os)(t1 := (label os t1)(v := min (min_label os t1 v) l))\<rparr>;
-        ts = trace (STR ''input1 label upd: '' +  show_nat v + STR '': '' + show_nat l + STR '' @ '' + show_nat t1) (filter ((\<le>) t1) (timestamps os)) ;
+                  label := (label os)(t1 :=
+                    (label os t1)(v := min (min_label os t1 v) l))\<rparr>;
+        ts = filter ((\<le>) t1) (timestamps os);
         batch = concat (map (\<lambda> t1. 
           let vs = neighbors os t1 v in 
           if min_label os t1 v > l
-          then map (\<lambda>v'. (en1 os (v', l), Cap (MyPair t1 (mysnd t)) 1)) (filter (\<lambda>v'. min_label os' t1 v' > l) vs)
+          then map (\<lambda>v'. (en1 os (v', l), Cap (MyPair t1 (mysnd t)) 1))
+                    (filter (\<lambda>v'. min_label os' t1 v' > l) vs)
           else []) ts)
-    in {|release_caps (produces os' batch) 1|}))
-  (let below_times = filter (\<lambda> t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t)) (ocaps os 0);
-       output_times = rmdups {} (map myfst below_times);
-       batch = map (\<lambda>t. let cap = Cap (MyPair t 0) 0 in (en2 os ((components_from_labels (all_edges os t) (min_label os t))), cap)) output_times
-   in if batch = []
-        then {||}
-        else {|(drop_caps ((produces os batch)) (map (\<lambda>t. Cap t 0) below_times ))|})\<close>
+      in
+        {|release_caps (produces os' batch) 1|}))
+  (let
+      below_times = filter
+        (\<lambda> t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t))
+        (ocaps os 0);
+      output_times = rmdups {} (map myfst below_times);
+      batch = map
+        (\<lambda>t. let cap = Cap (MyPair t 0) 0 in
+          (en2 os (components_from_labels (all_edges os t) (min_label os t)), cap))
+        output_times
+    in
+      if batch = [] then {||}
+      else {|drop_caps (produces os batch) (map (\<lambda>t. Cap t 0) below_times)|})\<close>
 
 term components_from_labels
 term "all_vertices os t "
@@ -1691,7 +1705,7 @@ lemma label_prop_upd_inv_input0_preserved:
     and input1_eq: "input os' 1 = input os 1"
     and de1_eq: "de1 os' = de1 os"
     and label_update:
-      "(v, l) = (if min_label os t1 v1 > min_label os t1 v2
+    "(v, l) = (if min_label os t1 v1 > min_label os t1 v2
         then (v1, min_label os t1 v2)
         else (v2, min_label os t1 v1))"
   shows "label_prop_upd_inv os'"
@@ -1857,7 +1871,7 @@ qed
 lemma label_prop_upd_inv_output_preserved:
   assumes inv: "label_prop_upd_inv os"
   shows "label_prop_upd_inv (drop_caps (produces os batch) caps)"
-oops
+  oops
 
 lemma labels_cc_inv_input0_preserved:
   fixes q t1 :: "'t::order"
@@ -1870,7 +1884,7 @@ lemma labels_cc_inv_input0_preserved:
     and vertices_eq: "vertices os' = (vertices os)(t1 := [v1, v2] @ vertices os t1)"
     and label_eq: "label os' = (label os)(t1 := (label os t1)(v := l))"
     and label_update:
-      "(v, l) = (if min_label os t1 v1 > min_label os t1 v2
+    "(v, l) = (if min_label os t1 v1 > min_label os t1 v2
         then (v1, min_label os t1 v2)
         else (v2, min_label os t1 v1))"
   shows "labels_cc_inv os' q"
@@ -2110,17 +2124,17 @@ lemma labels_cc_inv_input1_preserved:
     and inv: "label_prop_upd_inv os"
     and msg_valid: "\<And>q. t1 \<le> q \<Longrightarrow> l \<in> cc_of (all_edges os q) v"
     and update:
-      "os' = os\<lparr>input := (input os)(1 := xs),
+    "os' = os\<lparr>input := (input os)(1 := xs),
         label := (label os)(t1 := (label os t1)(v := min (min_label os t1 v) l))\<rparr>"
   shows "labels_cc_inv os' q"
-oops
+  oops
 
 lemma labels_cc_inv_output_preserved:
   fixes q :: "'t::order"
   assumes labels: "labels_cc_inv os q"
     and inv: "label_prop_upd_inv os"
   shows "labels_cc_inv os q"
-oops
+  oops
 
 
 

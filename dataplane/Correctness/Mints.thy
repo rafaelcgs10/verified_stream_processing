@@ -339,4 +339,87 @@ lemma dataplane_tracker_inv_mints_many:
     done
   done
 
+lemma dataplane_tracker_inv_mints_many_list:
+  assumes D: "dataflow_topology (summ sg) (-+-)"
+  shows
+    "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
+     graph_summar_nt (summ sg) (nxt sg) os \<Longrightarrow>
+     distinct ps \<Longrightarrow>
+     (\<forall> p \<in> set ps. \<forall> t \<in> set (xs p). \<exists> t' \<in> set (ocaps (os nid) p). t' \<le> t) \<Longrightarrow>
+     dataplane_tracker_inv
+       (os(nid := os nid\<lparr>
+          ocaps := (\<lambda>p. ocaps (os nid) p @ (if p \<in> set ps then xs p else [])),
+          inter := operator_state.inter (os nid) @ concat (map (\<lambda>p. map (\<lambda>t. (p, t, 1)) (xs p)) ps)\<rparr>))
+       cbufs sg"
+proof (induct ps arbitrary: os)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons p ps)
+  let ?os1 = "os(nid := os nid\<lparr>
+    ocaps := (ocaps (os nid))(p := ocaps (os nid) p @ xs p),
+    inter := operator_state.inter (os nid) @ map (\<lambda>t. (p, t, 1)) (xs p)\<rparr>)"
+  have inv1: "dataplane_tracker_inv ?os1 cbufs sg"
+    apply (rule dataplane_tracker_inv_mints_many[OF D])
+       apply (rule Cons.prems(1))
+      apply (rule Cons.prems(2))
+     using Cons.prems(4) apply simp
+    done
+  have gs1: "graph_summar_nt (summ sg) (nxt sg) ?os1"
+    using Cons.prems(2) by (auto simp add: graph_summar_nt_def)
+  have supp1:
+    "\<forall>p\<in>set ps. \<forall>t\<in>set (xs p). \<exists>t'\<in>set (ocaps (?os1 nid) p). t' \<le> t"
+    using Cons.prems by auto
+  have distinct_ps: "distinct ps"
+    using Cons.prems by simp
+  have inv2:
+    "dataplane_tracker_inv
+       (?os1(nid := ?os1 nid\<lparr>
+          ocaps := (\<lambda>p. ocaps (?os1 nid) p @ (if p \<in> set ps then xs p else [])),
+          inter := operator_state.inter (?os1 nid) @ concat (map (\<lambda>p. map (\<lambda>t. (p, t, 1)) (xs p)) ps)\<rparr>))
+       cbufs sg"
+    using Cons.hyps[OF inv1 gs1 distinct_ps supp1] .
+  have eq:
+    "(?os1(nid := ?os1 nid\<lparr>
+       ocaps := (\<lambda>pa. ocaps (?os1 nid) pa @ (if pa \<in> set ps then xs pa else [])),
+       inter := operator_state.inter (?os1 nid) @ concat (map (\<lambda>p. map (\<lambda>t. (p, t, 1)) (xs p)) ps)\<rparr>)) =
+     (os(nid := os nid\<lparr>
+       ocaps := (\<lambda>pa. ocaps (os nid) pa @ (if pa \<in> set (p # ps) then xs pa else [])),
+       inter := operator_state.inter (os nid) @ concat (map (\<lambda>p. map (\<lambda>t. (p, t, 1)) (xs p)) (p # ps))\<rparr>))"
+    using Cons.prems by (auto simp add: fun_eq_iff)
+  show ?case
+    using inv2 eq by metis
+qed
+
+lemma dataplane_tracker_inv_mints_many_ports:
+  assumes D: "dataflow_topology (summ sg) (-+-)"
+  shows
+    "dataplane_tracker_inv os cbufs sg \<Longrightarrow>
+     graph_summar_nt (summ sg) (nxt sg) os \<Longrightarrow>
+     (\<forall> p. \<forall> t \<in> set (xs p). \<exists> t' \<in> set (ocaps (os nid) p). t' \<le> t) \<Longrightarrow>
+     dataplane_tracker_inv
+       (os(nid := os nid\<lparr>
+          ocaps := (\<lambda>p. ocaps (os nid) p @ xs p),
+          inter := operator_state.inter (os nid) @ concat (map (\<lambda>p. map (\<lambda>t. (p, t, 1)) (xs p)) Enum.enum)\<rparr>))
+       cbufs sg"
+proof -
+  assume inv: "dataplane_tracker_inv os cbufs sg"
+  assume gs: "graph_summar_nt (summ sg) (nxt sg) os"
+  assume supp: "\<forall>p. \<forall>t\<in>set (xs p). \<exists>t'\<in>set (ocaps (os nid) p). t' \<le> t"
+  have inv_enum:
+    "dataplane_tracker_inv
+       (os(nid := os nid\<lparr>
+          ocaps := (\<lambda>p. ocaps (os nid) p @ (if p \<in> set Enum.enum then xs p else [])),
+          inter := operator_state.inter (os nid) @ concat (map (\<lambda>p. map (\<lambda>t. (p, t, 1)) (xs p)) Enum.enum)\<rparr>))
+       cbufs sg"
+    apply (rule dataplane_tracker_inv_mints_many_list[OF D])
+       apply (rule inv)
+      apply (rule gs)
+     apply simp
+    using supp apply simp
+    done
+  then show ?thesis
+    by simp
+qed
+
 end

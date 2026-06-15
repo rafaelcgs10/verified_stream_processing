@@ -16,6 +16,10 @@ lemma to_zmset_list_diff[simp]:
   apply (metis add_zmset_diff_bothsides insert_DiffM insert_subset_eq_iff mset_remove_last to_zmset_correct zmset_of_add_mset)
   done
 
+lemma to_zmset_eq_if_mset_eq:
+  "mset xs = mset ys \<Longrightarrow> to_zmset xs = to_zmset ys"
+  by (metis to_zmset_correct)
+
 declare cin.rep_eq[simp del]
 declare enum_class.enum_UNIV[simp] enum_class.enum_distinct[simp]
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
@@ -150,6 +154,55 @@ lemma dataplane_tracker_inv_clean:
     done
   done
 
+lemma dataplane_tracker_inv_clean_reorder_ocaps:
+  "sg = sg'\<lparr> upfro := f \<rparr> \<Longrightarrow>
+   (\<forall> nid. intsum (os nid) = intsum (os' nid) \<and>
+     (\<forall> p. mset (ocaps (os nid) p) = mset (ocaps (os' nid) p)) \<and>
+     consu (os nid) = consu (os' nid) \<and> inter (os nid) = inter (os' nid) \<and>
+     produ (os nid) = produ (os' nid) \<and> input (os nid) = input (os' nid) \<and>
+     outpu (os nid) = outpu (os' nid) \<and> front (os nid) = front (os' nid)) \<Longrightarrow>
+   dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv os' cbufs sg'"
+proof -
+  assume sg: "sg = sg'\<lparr> upfro := f \<rparr>"
+  assume eqs: "\<forall> nid. intsum (os nid) = intsum (os' nid) \<and>
+     (\<forall> p. mset (ocaps (os nid) p) = mset (ocaps (os' nid) p)) \<and>
+     consu (os nid) = consu (os' nid) \<and> inter (os nid) = inter (os' nid) \<and>
+     produ (os nid) = produ (os' nid) \<and> input (os nid) = input (os' nid) \<and>
+     outpu (os nid) = outpu (os' nid) \<and> front (os nid) = front (os' nid)"
+  let ?os0 = "\<lambda>nid. (os' nid)\<lparr>ocaps := ocaps (os nid)\<rparr>"
+  have clean_eqs:
+    "\<forall>nid. intsum (os nid) = intsum (?os0 nid) \<and> ocaps (os nid) = ocaps (?os0 nid) \<and>
+      consu (os nid) = consu (?os0 nid) \<and> inter (os nid) = inter (?os0 nid) \<and>
+      produ (os nid) = produ (?os0 nid) \<and> input (os nid) = input (?os0 nid) \<and>
+      outpu (os nid) = outpu (?os0 nid) \<and> front (os nid) = front (?os0 nid)"
+    using eqs by auto
+  have clean:
+    "dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv ?os0 cbufs sg'"
+    using dataplane_tracker_inv_clean[OF sg clean_eqs] .
+  have ocaps_reordered:
+    "dataplane_tracker_inv ?os0 cbufs sg' \<longleftrightarrow> dataplane_tracker_inv os' cbufs sg'"
+  proof -
+    have zm_eq: "\<And>nid p. to_zmset (ocaps (?os0 nid) p) = to_zmset (ocaps (os' nid) p)"
+    proof -
+      fix nid p
+      have "mset (ocaps (os nid) p) = mset (ocaps (os' nid) p)"
+        using eqs by blast
+      then have "to_zmset (ocaps (os nid) p) = to_zmset (ocaps (os' nid) p)"
+        by (rule to_zmset_eq_if_mset_eq)
+      then show "to_zmset (ocaps (?os0 nid) p) = to_zmset (ocaps (os' nid) p)"
+        by simp
+    qed
+    show ?thesis
+      using eqs zm_eq
+      unfolding dataplane_tracker_inv_def Src_caps_inv_def
+        outputs_at_target_def extract_prog_def extract_progress_def obtain_progress_def
+        front_inv_def change_deltas_inv_def extract_prog_changes_above_impl_inv_def
+        produ_consu_inter_supported_def
+      by (auto split: prod.splits cong: if_cong)
+  qed
+  show "dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv os' cbufs sg'"
+    using clean ocaps_reordered by simp
+qed
 section \<open>Invariant connection timestamps in the input buffer and ocaps - not all operators do that!\<close>
 definition "input_ocaps_inv os = (\<forall> p p'. \<forall> t \<in> snd ` set (input os p). \<forall> s \<in> set ((intsum os) p p'). t -+- s \<in> set (ocaps os p))" 
 
