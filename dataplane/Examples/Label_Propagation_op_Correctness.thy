@@ -1489,7 +1489,9 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                     subgoal premises aux
                       apply (clarsimp simp add: min_label_def)
                       subgoal premises aux2 for t1 t2
-                        
+
+                        thm dataplane_tracker_inv_mints_many[]
+
 
                     find_theorems dataplane_tracker_inv name: Min
 
