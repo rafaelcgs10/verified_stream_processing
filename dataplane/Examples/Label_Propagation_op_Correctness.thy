@@ -8,6 +8,7 @@ imports
   "../Correctness/General"
   "../Correctness/Outputs"
   "../Correctness/Produces"
+  "../Correctness/Mints"
   "HOL-ex.Sketch_and_Explore"
   Dataplane.Timely_Dataflow_Op
   Dataplane.Bots
@@ -362,7 +363,7 @@ lemma label_propagation_correctness:
     \<open>(\<forall> t \<in> set (timestamps os_label_prop). labels_stable (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
     \<open>\<forall> t \<in> myfst ` snd ` set (input (os 1) 0). frontier_less_equal (exit_scope myfst (front (os 1) 1)) t\<close>
     \<open>\<forall> t. t \<in> set (ocaps (os 1) 0) \<longrightarrow> myfst t |\<in>| cset_from_list T\<close>
-    \<open>\<forall> t \<in> set (ocaps (os 1) 0). mysnd t = 0\<close>
+    \<open>\<forall> t \<in> set (ocaps (os 1) 0) \<union> snd ` set (input (os 1) 0) \<union> snd ` set (outpu (os 0) 0) \<union> time ` lset lxs. mysnd t = 0\<close>
     \<open>label_prop_upd_inv os_label_prop\<close>
   shows \<open>set_op S D (dataflow_op sg (G_op os_input os_label_prop (os 2) cbufs))
          \<approx> set_spec_op (cUn (cUn S SO) SP) D\<close>
@@ -901,13 +902,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                 apply (clarsimp simp add: operator_state.defs os_inv(4))
                 subgoal for x
                   using label_prop_inv(5)[unfolded buffers_inv, simplified]
-                  by (metis myprod.exhaust_sel)
+                  by (metis UnI1 myprod.collapse)               
                 done
               subgoal 
                 apply (clarsimp simp add: operator_state.defs os_inv(4))
                 subgoal for p x
                   using label_prop_inv(5)[unfolded buffers_inv, simplified]
-                  by (metis myprod.exhaust_sel num2_neq(2))
+                  by (metis (full_types) UnCI myprod.exhaust_sel num2_neq(2))
                 done
               subgoal 
                 apply (auto simp add: filter_False comp_def operator_state.defs os_inv(4))
@@ -1034,6 +1035,20 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
               using label_prop_inv(5)
               unfolding drop_caps_def release_caps_def
               by (auto dest!: in_set_list_diffD)
+            subgoal
+              using label_prop_inv(5)
+              unfolding drop_caps_def release_caps_def
+              by (auto dest!: in_set_list_diffD)
+            subgoal
+              using label_prop_inv(5)
+              unfolding drop_caps_def release_caps_def
+              by (auto dest!: in_set_list_diffD)
+            subgoal
+              using label_prop_inv(5)
+              unfolding drop_caps_def release_caps_def
+              by (auto dest!: in_set_list_diffD)
+            subgoal
+              using label_prop_inv(6) by assumption
             done
           done
         subgoal
@@ -1049,7 +1064,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                    apply (rule rtranclp.intros(1))
                   apply (rule bisim_refl)
                  defer
-                     apply (rule wbisim_refl)
+                 apply (rule wbisim_refl)
                 apply (rule wb_upto_b_base)
                 unfolding R_def[simplified]
                 apply (rule exI[of _ S])
@@ -1316,7 +1331,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                       apply (subgoal_tac "t = MyPair (myfst t) 0")
                       subgoal
                         apply (subst (1) all_edges_eq[rotated, where V=V and label_sync=L and input_sync="input (os 1)"])
-                        subgoal sorry
+                        subgoal 
+                          using label_prop_inv(6)[unfolded os_inv(4) operator_state.defs] by simp
                         subgoal by simp
                         subgoal
                           apply simp
@@ -1342,7 +1358,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                   apply (cases "t \<le> t''")
                                   subgoal
                                     apply (subst all_edges_eq_le[rotated, where V=V and label_sync=L and input_sync="input (os 1)"])
-                                    subgoal sorry
+                                    subgoal using label_prop_inv(6)[unfolded os_inv(4) operator_state.defs] by simp
                                     subgoal 
                                       using myfst_mono by blast
                                     subgoal by simp
@@ -1367,7 +1383,15 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                           done
                         done
                       subgoal
-                        sorry
+                        using label_prop_inv(5)[rule_format, of t] apply -
+                        apply (drule meta_mp)
+                        subgoal
+                          by auto
+                        subgoal
+                          apply (cases t)
+                          apply auto
+                          done
+                        done
                       done
                     done
                   done
@@ -1412,6 +1436,64 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                   subgoal premises aux
                     using os_inv(7) by auto
                   subgoal premises aux
+                    unfolding release_caps_def
+                    apply (simp del: filter.simps)
+
+              apply (rule iffD1[OF dataplane_tracker_inv_clean, rotated 2, of _ _ sg "upfro sg"])
+                apply (rule dataplane_tracker_inv_produces_drops[OF D, where nid=1 and os=os 
+                    and drops = "\<lambda> p. if p = 1
+                         then (list_diff (ocaps (os 1) 1) (map snd (input (os 1) 1)))
+                         else []"
+                    and produs="concat
+                   (map (\<lambda>t1. if l2 < min_label
+                                        \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1), front = front (os 1),
+                                           ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>
+                                        t1 l1
+                               then map (\<lambda>v'. ((1, MyPair t1 (mysnd t), 1)))
+                                     (filter
+                                       (\<lambda>v'. l2 < min_label
+                                                    \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1),
+                                                       front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T,
+                                                       graph = G, vertices = V, label = L\<rparr>
+                                                    t1 v')
+                                       (neighbors
+                                         \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = (input (os 1))(0 := xs), outpu = outpu (os 1),
+                                            front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = myfst t # T,
+                                            graph = G(myfst t := (map_entry v1 ((#) v2) (G (myfst t)))(v2 := v1 # G (myfst t) v2)), vertices = V(myfst t := v1 # v2 # V (myfst t)),
+                                            label = L(myfst t := (L (myfst t))(l1 := l2))\<rparr>
+                                         t1 l1))
+                               else [])
+                     (filter ((\<le>) (myfst t)) (myfst t # T)))"
+                    and oputs="(\<lambda> p. if p = 1 then concat
+                   (map (\<lambda>t1. if l2 < min_label
+                                        \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1), front = front (os 1),
+                                           ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>
+                                        t1 l1
+                               then map (\<lambda>v'. (Inl (v', l2), MyPair t1 (mysnd t)))
+                                     (filter
+                                       (\<lambda>v'. l2 < min_label
+                                                    \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1),
+                                                       front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T,
+                                                       graph = G, vertices = V, label = L\<rparr>
+                                                    t1 v')
+                                       (neighbors
+                                         \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = (input (os 1))(0 := xs), outpu = outpu (os 1),
+                                            front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = myfst t # T,
+                                            graph = G(myfst t := (map_entry v1 ((#) v2) (G (myfst t)))(v2 := v1 # G (myfst t) v2)), vertices = V(myfst t := v1 # v2 # V (myfst t)),
+                                            label = L(myfst t := (L (myfst t))(l1 := l2))\<rparr>
+                                         t1 l1))
+                               else [])
+                     (filter ((\<le>) (myfst t)) (myfst t # T))) else [])"])
+                           apply (rule refl)+
+                            apply (simp_all del: filter.simps)
+                    subgoal premises aux
+                      apply (clarsimp simp add: min_label_def)
+                      subgoal premises aux2 for t1 t2
+                        
+
+                    find_theorems dataplane_tracker_inv name: Min
+
+end
                     sorry
                   subgoal premises aux
                     by (auto simp add: csets_inv(2))
@@ -1420,134 +1502,45 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                   subgoal
                     apply safe
                     subgoal for t''
-                    apply (rule labels_cc_inv_input0_preserved[where xs=xs])
+                      apply (rule labels_cc_inv_input0_preserved[where xs=xs])
                       using label_prop_inv(1) apply blast
-                      subgoal sorry
+                      subgoal
+                        using label_prop_inv(6) by assumption
                       subgoal
                         by (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                        apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                      apply simp
-                        apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                          apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                          apply simp
+                         apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
                          apply simp
                         apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                        apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                       apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
                        apply simp
-                        apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                      apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
                       done
                     done
-
-end
-
-
-                      defer
-                      apply force
-                        apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                      apply (intro conjI impI)
-                      prefer 6
-                      apply (rule refl)+
-
-                       find_theorems os_label_prop
-
-end
-                      apply (clarsimp split: if_splits)
-                    subgoal
-                      apply hypsubst_thin
-
-                      find_theorems labels_cc_inv
-
-
-                      unfolding labels_cc_inv_def
-                      oops
-
-
-                      find_theorems min_label cc_of
-
-end
-                    apply (subst all_edges_eq_le[rotated, where V=V and label_sync=L and input_sync="input (os 1)"])
-                    subgoal by simp
-                    subgoal sorry
-                    subgoal by simp
-                    subgoal sorry
-                    subgoal
-                      apply (clarsimp split: if_splits)
-                      subgoal
-                        apply hypsubst_thin
-                        using label_prop_inv(1) apply -
-                        apply (simp add: operator_state.defs os_inv(4))
-                        apply (rule labels_inv_insert_symmetric_min_label_updateI)
-                        subgoal premises auxxx
-                          unfolding labels_inv_def
-                          apply clarsimp
-                          subgoal for v
-                            apply (subst (asm) edge_vertices_all_edges)
-                            subgoal sorry
-                            subgoal
-                              oops
-
-
-
-                          find_theorems cc_of all_edges
-
-end
-                          sorry
-                        subgoal
-                          sorry
-                        subgoal
-                          sorry
-
-                        thm labels_inv_insert_symmetric_min_label_updateI
-
-                        find_theorems labels_inv
-
-                        find_theorems t
-
-end
-                      unfolding labels_inv_def
-                      apply (auto simp add: operator_state.defs os_inv(4) del: disjCI split: if_splits; hypsubst_thin?)
-                      subgoal
-                        apply (subst (asm) edge_vertices_all_edges)
-                        subgoal sorry
-                        subgoal
-                          apply simp
-
-                        thm edge_vertices_all_edges
-
-                        oops
-                        term "edge_vertices (all_edges os t)"
-
-end
-                        unfolding min_label_def
-                      apply (auto simp add: image_iff del: disjCI split: list.splits)
-                        subgoal
-
-                          find_theorems os_label_prop
-
-                      oops
-
-
-
-                    find_theorems all_edges name: eq
-
-end
+                  subgoal
                     sorry
+                  subgoal
+                    sorry
+                  subgoal
+                    using label_prop_inv(3) by simp
                   subgoal premises aux
-                    sorry
-                  subgoal premises aux
-                    sorry
-                  subgoal premises aux
-                    sorry
-                  subgoal premises aux
-                    sorry
-                  subgoal premises aux
-                    sorry
-                  subgoal premises aux
-                    sorry
+                    using aux(2) label_prop_inv(4) 
+                    by (auto dest: in_set_list_diffD  simp add: release_caps_def drop_caps_def)
+                  subgoal
+                    using label_prop_inv(5) 
+                    by (auto dest: in_set_list_diffD  simp add: release_caps_def drop_caps_def)
+                  subgoal
+                    apply (rule label_prop_upd_inv_input0_preserved)
+                           apply (rule label_prop_inv(6))
+                          apply (auto simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                    done
                   done
                 done
               done
             done
           done
-        subgoal premises aux
+        subgoal
           sorry
         done
       subgoal 
@@ -1567,7 +1560,7 @@ end
       subgoal 
         sorry
       subgoal for d t xs (* Laouen *)
-(* old proof, might be salvaged --
+        (* old proof, might be salvaged --
         apply (intro exI conjI)
          apply (rule rtranclp.rtrancl_refl)
         apply (intro relcomppI)

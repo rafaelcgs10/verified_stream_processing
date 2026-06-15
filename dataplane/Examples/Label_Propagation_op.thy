@@ -1388,8 +1388,8 @@ definition label_propagation_op_logic where
   (case (input os 0) of
     [] \<Rightarrow> {||}
   | (d, t) # xs \<Rightarrow>
-    let (v1, v2) = trace (STR ''input0-------'') (de1 os d);
-        t1 = trace (STR ''input0 edge: ('' +  show_nat v1 + STR '', '' + show_nat v2 + STR '')'') (myfst t);
+    let (v1, v2) = de1 os d;
+        t1 = myfst t;
         (l1, l2) = pairself (min_label os t1) (v1, v2);
         (v, l) = if l1 > l2 then (v1, l2) else (v2, l1);
         os' = os\<lparr>input := (input os)(0 := xs), timestamps := t1 # (timestamps os),
@@ -1397,12 +1397,12 @@ definition label_propagation_op_logic where
     v2 := v1 # (graph os t1 v2))),
   vertices := (vertices os)(t1 := [v1, v2] @ (vertices os t1)),
   label := (label os)(t1 := (label os t1)(v := l))\<rparr>;
-        ts = trace (STR ''input0 label upd: '' +  show_nat v + STR '': '' + show_nat l + STR '' @ '' + show_nat t1) (filter ((\<le>) t1) (timestamps os')) ;
+        ts = filter ((\<le>) t1) (timestamps os') ;
         batch = concat (map (\<lambda> t1. let vs = neighbors os' t1 v in
-          if min_label os t1 v > trace (STR ''neighbors: '' +  show_list show_nat vs) l
+          if min_label os t1 v > l
           then map (\<lambda>v'. (en1 os (v', l), Cap (MyPair t1 (mysnd t)) 1)) (filter (\<lambda>v'. min_label os t1 v' > l) vs)
           else []) ts)
-     in trace (STR ''input0: looping back batch: '' + show_list (show_prod (show_prod show_nat show_nat) (show_myprod show_nat show_nat)) (map (\<lambda> (x, p). (de1 os x, time p)) batch)) {|release_caps (produces os' batch) 1|})
+     in {|release_caps (produces os' batch) 1|})
   (case input os 1 of
     [] \<Rightarrow> {||}
   | (d, t) # xs \<Rightarrow>
@@ -1627,6 +1627,58 @@ lemma labels_cc_inv_mint[simp]:
   unfolding mint_def
   by auto
 
+
+lemma label_prop_upd_inv_produces[simp]:
+  "label_prop_upd_inv (produces os batch) \<longleftrightarrow> label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def produces_def by simp
+
+
+lemma label_prop_upd_inv_drop_caps[simp]:
+  "label_prop_upd_inv (drop_caps os caps) \<longleftrightarrow> label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def drop_caps_def by simp
+
+lemma label_prop_upd_inv_produce[simp]:
+  "label_prop_upd_inv (produce os cap batch) \<longleftrightarrow> label_prop_upd_inv os"
+  by (cases "batch = []") (simp_all add: produce_def label_prop_upd_inv_def all_vertices_def)
+
+lemma label_prop_upd_inv_consume[simp]:
+  "label_prop_upd_inv (consume os p t len) \<longleftrightarrow> label_prop_upd_inv os"
+  by (cases "len = 0") (simp_all add: consume_def label_prop_upd_inv_def all_vertices_def)
+
+lemma label_prop_upd_inv_delay_cap[simp]:
+  "label_prop_upd_inv (delay_cap os cap incr) \<longleftrightarrow> label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def delay_cap_def by simp
+
+lemma label_prop_upd_inv_mint_cap[simp]:
+  "label_prop_upd_inv (mint_cap os p t) \<longleftrightarrow> label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def mint_cap_def by simp
+
+lemma label_prop_upd_inv_add_cap[simp]:
+  "label_prop_upd_inv (add_cap os p t) \<longleftrightarrow> label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def add_cap_def by simp
+
+lemma label_prop_upd_inv_add_caps[simp]:
+  "label_prop_upd_inv (add_caps os caps) \<longleftrightarrow> label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def add_caps_def by simp
+
+lemma label_prop_upd_inv_drop_cap[simp]:
+  "label_prop_upd_inv (drop_cap os cap) \<longleftrightarrow> label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def drop_cap_def by simp
+
+lemma label_prop_upd_inv_obtain_progress[simp]:
+  "label_prop_upd_inv (fst (obtain_progress os)) \<longleftrightarrow> label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def obtain_progress_def by simp
+
+lemma label_prop_upd_inv_mint[simp]:
+  "label_prop_upd_inv (snd (mint os caps p t)) \<longleftrightarrow> label_prop_upd_inv os"
+  by (cases "t \<in> set (caps p)") (simp_all add: mint_def mint_cap_def label_prop_upd_inv_def all_vertices_def)
+
+
+lemma label_prop_upd_inv_release_caps[simp]:
+  "label_prop_upd_inv (release_caps os p) \<longleftrightarrow> label_prop_upd_inv os"
+  unfolding release_caps_def
+  using label_prop_upd_inv_drop_caps
+  by simp
 
 lemma label_prop_upd_inv_input0_preserved:
   fixes t1 :: "'t::order"
