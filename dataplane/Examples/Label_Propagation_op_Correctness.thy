@@ -368,7 +368,6 @@ lemma label_propagation_correctness:
     \<open>os_label_prop = operator_state.extend (os 1) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
         en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>\<close>
     \<open>ty1_check os_input (curry cbufs 0)\<close> \<open>label_prob_ty2_check os_label_prop (curry cbufs 1)\<close>
-    (* \<open>input_ocaps_inv (os 1)\<close>*)
     \<open>\<forall>n. intsum (os n) = (\<lambda>p1 p2. raw_summary (Loc n (Trg p1)) (Loc n (Src p2)))\<close>
     and buffers_inv:
     \<open>chns = outputs_at_target (summ sg) os >> cbufs >> inputs_at_target os\<close>
@@ -390,6 +389,7 @@ lemma label_propagation_correctness:
     \<open>\<forall> t. t \<in> set (ocaps (os 1) 0) \<longrightarrow> myfst t |\<in>| cset_from_list T\<close>
     \<open>\<forall> t \<in> set (ocaps (os 1) 0) \<union> snd ` set (input (os 1) 0) \<union> snd ` set (outpu (os 0) 0) \<union> time ` lset lxs. mysnd t = 0\<close>
     \<open>label_prop_upd_inv os_label_prop\<close>
+    \<open>input_ocaps_inv (os 1)\<close>
   shows \<open>set_op S D (dataflow_op sg (G_op os_input os_label_prop (os 2) cbufs))
          \<approx> set_spec_op (cUn (cUn S SO) SP) D\<close>
   using assms
@@ -403,7 +403,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
     and dataplane_inv = SIM1(11)
     and csets_inv = SIM1(12,13)
     and input_stream_inv = SIM1(14)
-    and label_prop_inv = SIM1(15,16,17,18,19,20)
+    and label_prop_inv = SIM1(15,16,17,18,19,20,21)
   have D: \<open>dataflow_topology (summ sg) (-+-)\<close> 
     unfolding subgraph_inv comp_def
     apply (subst dataflow_tree_to_graph_raw_summary[symmetric])
@@ -952,6 +952,30 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
               by (auto dest!: in_set_list_diffD)
             subgoal
               using label_prop_inv(6) by assumption
+            subgoal premises aux
+              using label_prop_inv(7) apply -
+              unfolding input_ocaps_inv_def drop_caps_def
+              apply (auto simp add: filter_False os_inv(7)[rule_format, unfolded raw_summary_def, simplified])
+              subgoal for a b
+                apply (drule spec2[of _  0])
+                apply simp
+                apply (drule bspec[of _ ])
+                 apply assumption
+                apply (simp add: filter_True comp_def )
+                apply (rule in_set_list_diffI)
+                 apply fastforce
+                apply simp
+                using label_prop_inv(3)[rule_format, of "myfst b"] apply -
+                apply (drule meta_mp)
+                subgoal
+                  by force
+                subgoal
+                  apply (simp add: operator_state.defs os_inv(4) exit_scope_plus_distrib)
+                  apply (rule frontier_less_equal_antichain_plusI2)
+                  apply auto
+                  done
+                done
+              done
             done
           done
         subgoal
@@ -1379,12 +1403,46 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                     subgoal
                       using num2_cases by force
                     subgoal
-                      unfolding label_prop_edge_batch_def label_prop_neighbor_batch_def label_prop_edge_record_update_def
-                      apply (clarsimp del: disjCI simp add: image_iff split_beta)
-                      sorry
+                      apply (subgoal_tac "t \<in> set (ocaps (os 1) 1)")
+                      subgoal
+                        unfolding label_prop_edge_batch_def label_prop_neighbor_batch_def label_prop_edge_record_update_def
+                        apply (auto del: disjCI simp add: image_iff split_beta)
+                        apply (rule bexI[rotated])
+                         apply assumption
+                        apply (simp add: less_eq_myprod_def)
+                        done
+                      subgoal
+                        apply (rule  label_prop_inv(7)[unfolded input_ocaps_inv_def, rule_format, of _ 0 0, simplified])
+                        subgoal
+                          using aux(2,3) by simp
+                        subgoal
+                          by (simp add: zero_myprod_def os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified])
+                        done
+                      done
                     subgoal
-                      apply (clarsimp del: disjCI simp add: image_iff split_beta)
-                      sorry
+                      apply (subgoal_tac "t \<in> set (ocaps (os 1) 1)")
+                      subgoal
+                        apply (intro conjI allI)
+                        subgoal for p
+                          apply (cases "p = 1")
+                          subgoal
+                            unfolding label_prop_edge_batch_def label_prop_neighbor_batch_def label_prop_edge_record_update_def
+                            apply (auto del: disjCI simp add: image_iff split_beta)
+                            apply (metis MyPair_mono myprod.exhaust_sel verit_comp_simplify1(2))
+                            done
+                          subgoal
+                            unfolding label_prop_edge_batch_def label_prop_neighbor_batch_def label_prop_edge_record_update_def
+                            using num2_neq(2) by (auto del: disjCI simp add: image_iff split_beta)
+                          done
+                        done
+                      subgoal
+                        apply (rule  label_prop_inv(7)[unfolded input_ocaps_inv_def, rule_format, of _ 0 0, simplified])
+                        subgoal
+                          using aux(2,3) by simp
+                        subgoal
+                          by (simp add: zero_myprod_def os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified])
+                        done
+                      done
                     subgoal
                       apply (clarsimp simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
                       subgoal for p
@@ -1415,19 +1473,19 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                       by auto
                     subgoal
                       apply (subgoal_tac "t = MyPair (myfst t) 0")
-                       apply (clarsimp simp add: icoll_append)
-                       apply (rule arg_cong2[where f=cinsert])
+                      apply (clarsimp simp add: icoll_append)
+                      apply (rule arg_cong2[where f=cinsert])
                       subgoal
                         apply (subst (1 2) all_edges_eq[rotated, where V=V and label_sync=" L"])
-                           prefer 4
-                           apply (simp add: insert_commute ccs_insert_symmetric)
-                          prefer 2
-                          apply simp
+                        prefer 4
+                        apply (simp add: insert_commute ccs_insert_symmetric)
+                        prefer 2
+                        apply simp
                         using label_prop_inv(6)[unfolded os_inv(4) operator_state.defs, simplified] apply simp_all
                         done
                       subgoal
                         apply (rule cimage_cong)
-                         apply simp
+                        apply simp
                         subgoal for t'
                           apply (subst (1) icoll_LCons_Data)
                           subgoal
@@ -1469,13 +1527,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                         using label_prop_inv(6) by assumption
                       subgoal
                         by (clarsimp simp add: input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                          apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                          apply simp
-                         apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                         apply simp
-                        apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                       apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                       apply simp
+                      apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                      apply simp
+                      apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                      apply simp
+                      apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                      apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                      apply simp
                       apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
                       done
                     done
@@ -1495,9 +1553,9 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                     by (auto dest!: in_set_list_diffD  simp add: release_caps_def drop_caps_def)
                   subgoal
                     apply (rule label_prop_upd_inv_input0_preserved)
-                           apply (rule label_prop_inv(6))
+                    apply (rule label_prop_inv(6))
                     unfolding label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def release_caps_def drop_caps_def add_caps_def
-                          apply (auto simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                    apply (auto simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
                     done
                   done
                 done
