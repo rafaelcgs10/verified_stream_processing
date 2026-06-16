@@ -12,6 +12,7 @@ imports
   Dataplane.Timely_Dataflow_Op
   Dataplane.Bots
   "../Correctness/Timely_Collections"
+  Dataplane.Propagation_Properties
 begin
 
 
@@ -1291,8 +1292,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         sorry
       subgoal 
         sorry
-      subgoal 
-        sorry
+      subgoal
+        apply (insert dataplane_inv subgraph_inv(1))
+        apply (unfold dataplane_tracker_inv_def propagation_inv_def)
+        apply (elim exE conjE; hypsubst_thin)
+        apply (rule FalseE)
+        apply (rule propagate_all_terminates[OF D, unfolded not_def, rule_format])
+        by (auto simp add: raw_summary_def)
       subgoal 
         sorry
       subgoal for d t xs
