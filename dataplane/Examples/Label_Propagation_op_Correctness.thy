@@ -1108,13 +1108,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                     subgoal
                                       apply (subst insert_commute)
                                       apply (simp add: ccs_insert_symmetric)
-         apply (subst (1) icoll_LCons_Data)
-                              subgoal
-                                using input_stream_inv timely_input_stream_expires_le 
-                                by auto
-                              subgoal
-                                apply simp
-                                done
+                                      apply (subst (1) icoll_LCons_Data)
+                                      subgoal
+                                        using input_stream_inv timely_input_stream_expires_le 
+                                        by auto
+                                      subgoal
+                                        apply simp
+                                        done
                                       done
                                     done
                                   subgoal
@@ -1192,13 +1192,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                     unfolding add_caps_def
                     using os_inv(7) by auto
                   subgoal premises aux
-    
+
                     unfolding release_caps_def
                     apply (simp del: filter.simps)
                     apply (rule iffD1[OF dataplane_tracker_inv_clean_reorder_ocaps, rotated 2, of _ _ sg "upfro sg"])
                       apply (rule dataplane_tracker_inv_produces_drops_alt
-                [OF D, where nid=1 and p=0 and n=1 and os=os and
-                   produs="map (\<lambda> (_, cap :: (2, (nat, nat) myprod) capability). (1, capability.time cap, 1)) (label_prop_edge_batch
+                        [OF D, where nid=1 and p=0 and n=1 and os=os and
+                          produs="map (\<lambda> (_, cap :: (2, (nat, nat) myprod) capability). (1, capability.time cap, 1)) (label_prop_edge_batch
                          \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1),
                             front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G,
                             vertices = V, label = L\<rparr>
@@ -1210,7 +1210,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                              0)
                            (myfst t) v1 v2 l1 l2)
                          (myfst t) l1 l2 t)" and
-                         oputs="(\<lambda> p. if p = 0 then [] else (map (\<lambda> (d, cap :: (2, (nat, nat) myprod) capability). (d, capability.time cap)) (label_prop_edge_batch
+                          oputs="(\<lambda> p. if p = 0 then [] else (map (\<lambda> (d, cap :: (2, (nat, nat) myprod) capability). (d, capability.time cap)) (label_prop_edge_batch
                          \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1),
                             front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G,
                             vertices = V, label = L\<rparr>
@@ -1222,8 +1222,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                              0)
                            (myfst t) v1 v2 l1 l2)
                          (myfst t) l1 l2 t)))" and
-                       drops="(\<lambda> p. if p = 0 then [] else list_diff (ocaps (os 1) 1) (map snd (xs @ input (os 1) 1)))"
-                       and ninter="operator_state.inter (os 1) @
+                          drops="(\<lambda> p. if p = 0 then [] else list_diff (ocaps (os 1) 1) (map snd (xs @ input (os 1) 1)))"
+                          and ninter="operator_state.inter (os 1) @
                          map (\<lambda>x. (out (snd x), capability.time (snd x), 1))
                          (label_prop_edge_batch
                            \<lparr>intsum =
@@ -1323,9 +1323,9 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
        (map snd xs))
      (map snd (input (os 1) 1)))"])
                                  apply (rule refl)+
-                    prefer 10
-                            apply (intro allI impI conjI)
-                                   prefer 4
+                             prefer 10
+                             apply (intro allI impI conjI)
+                                    prefer 4
                     subgoal
                       by (clarsimp simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
                     subgoal
@@ -1340,7 +1340,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                           using num2_neq(2) by blast
                         done
                       done
-                      subgoal
+                    subgoal
                       by (clarsimp simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
                     subgoal
                       unfolding produces_def label_prop_edge_batch_def label_prop_neighbor_batch_def 
@@ -1351,66 +1351,113 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                       by (auto simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
                     subgoal for nid
                       apply (rule ext)+
-                         apply (auto 0 0 simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
+                      apply (auto 0 0 simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
                       subgoal
-                      unfolding produces_def label_prop_edge_batch_def label_prop_neighbor_batch_def 
-                      by (clarsimp simp add: filter_mset_image_mset os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
-                    subgoal for p
-                      apply (subgoal_tac " p = 1")
-                      subgoal
-                      unfolding produces_def label_prop_edge_batch_def label_prop_neighbor_batch_def 
-                      by (clarsimp simp add: filter_mset_image_mset os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
+                        unfolding produces_def label_prop_edge_batch_def label_prop_neighbor_batch_def 
+                        by (clarsimp simp add: filter_mset_image_mset os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
+                      subgoal for p
+                        apply (subgoal_tac " p = 1")
+                        subgoal
+                          unfolding produces_def label_prop_edge_batch_def label_prop_neighbor_batch_def 
+                          by (clarsimp simp add: filter_mset_image_mset os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
+                        subgoal
+                          using num2_neq(2) by blast
+                        done
+                      done
                     subgoal
-                      using num2_neq(2) by blast
-                    done
-                  done
-                subgoal
-                  by (clarsimp simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
-                subgoal
-                  apply (clarsimp simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
-                  apply (rule arg_cong2[where f="(+)"])
-                  subgoal
-                    unfolding label_prop_edge_batch_def label_prop_neighbor_batch_def
-                    by (auto intro!: multiset.map_cong0)
-                  subgoal
-                    unfolding label_prop_edge_batch_def label_prop_neighbor_batch_def
-                    by (auto intro!: multiset.map_cong0)
-                  done
-                subgoal
-                  using num2_cases by force
-                subgoal
-                    unfolding label_prop_edge_batch_def label_prop_neighbor_batch_def label_prop_edge_record_update_def
-                  apply (clarsimp del: disjCI simp add: image_iff split_beta)
-                    sorry
-                  subgoal
-                  apply (clarsimp del: disjCI simp add: image_iff split_beta)
-                    sorry
-                  subgoal
-                  apply (clarsimp simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
-                    subgoal for p
-                      apply (subgoal_tac "p = 1")
+                      by (clarsimp simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
+                    subgoal
+                      apply (clarsimp simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
+                      apply (rule arg_cong2[where f="(+)"])
                       subgoal
-                        by (clarsimp simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
-        subgoal
-          using num2_cases by force
-        done
-      done
-    subgoal
-      using G by assumption
-    subgoal
-      using subgraph_inv(2) by assumption
-    subgoal
-      using dataplane_inv by assumption
-    subgoal
-      by simp
-    done
-  subgoal
-    sorry
-  subgoal premises aux
-    apply (auto simp add: csets_inv(2))
-
-end
-                    by (auto simp add: csets_inv(2))
+                        unfolding label_prop_edge_batch_def label_prop_neighbor_batch_def
+                        by (auto intro!: multiset.map_cong0)
+                      subgoal
+                        unfolding label_prop_edge_batch_def label_prop_neighbor_batch_def
+                        by (auto intro!: multiset.map_cong0)
+                      done
+                    subgoal
+                      using num2_cases by force
+                    subgoal
+                      unfolding label_prop_edge_batch_def label_prop_neighbor_batch_def label_prop_edge_record_update_def
+                      apply (clarsimp del: disjCI simp add: image_iff split_beta)
+                      sorry
+                    subgoal
+                      apply (clarsimp del: disjCI simp add: image_iff split_beta)
+                      sorry
+                    subgoal
+                      apply (clarsimp simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
+                      subgoal for p
+                        apply (subgoal_tac "p = 1")
+                        subgoal
+                          by (clarsimp simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
+                        subgoal
+                          using num2_cases by force
+                        done
+                      done
+                    subgoal
+                      using G by assumption
+                    subgoal
+                      using subgraph_inv(2) by assumption
+                    subgoal
+                      using dataplane_inv by assumption
+                    subgoal
+                      by simp
+                    done
+                  subgoal premises aux
+                    using aux(1,2,3) apply -
+                    apply (simp add: buffers_inv image_iff)
+                    unfolding BULK_BENQ_def inputs_at_target_def subgraph_inv(1) outputs_at_target_raw_summary label_prop_edge_record_update_def input_tl_def
+                    apply (clarsimp del: disjCI)
+                    apply (subst (1) icoll_LCons_Data)
+                    subgoal
+                      using input_stream_inv timely_input_stream_expires_le
+                      by auto
+                    subgoal
+                      apply (subgoal_tac "t = MyPair (myfst t) 0")
+                       apply (clarsimp simp add: icoll_append)
+                       apply (rule arg_cong2[where f=cinsert])
+                      subgoal
+                        apply (subst (1 2) all_edges_eq[rotated, where V=V and label_sync=" L"])
+                           prefer 4
+                           apply (simp add: insert_commute ccs_insert_symmetric)
+                          prefer 2
+                          apply simp
+                        using label_prop_inv(6)[unfolded os_inv(4) operator_state.defs, simplified] apply simp_all
+                        done
+                      subgoal
+                        apply (rule cimage_cong)
+                         apply simp
+                        subgoal for t'
+                          apply (subst (1) icoll_LCons_Data)
+                          subgoal
+                            using input_stream_inv timely_input_stream_expires_le
+                            by auto
+                          apply (cases "t \<le> t'")
+                          subgoal
+                            apply simp
+                            apply (subst (1 2) all_edges_eq_le[rotated, where V=V and label_sync=" L"])
+                            using label_prop_inv(6)[unfolded os_inv(4) operator_state.defs, simplified] apply simp_all
+                            using myfst_mono apply blast
+                            done
+                          subgoal
+                            by simp
+                          done
+                        done
+                      subgoal
+                        using label_prop_inv(5)[rule_format, of t] apply -
+                        apply (drule meta_mp)
+                        subgoal
+                          by auto
+                        subgoal
+                          apply (cases t)
+                          apply auto
+                          done
+                        done
+                      done
+                    done
+                  subgoal premises aux
+                    by (auto simp add: label_prop_edge_batch_def label_prop_neighbor_batch_def image_iff csets_inv(2))
                   subgoal
                     using input_stream_inv by assumption
                   subgoal
@@ -1421,32 +1468,35 @@ end
                       subgoal
                         using label_prop_inv(6) by assumption
                       subgoal
-                        by (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                          apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                        by (clarsimp simp add: input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                          apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
                           apply simp
-                         apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                         apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
                          apply simp
-                        apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                       apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                        apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                       apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
                        apply simp
-                      apply (clarsimp simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                      apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
                       done
                     done
-                  subgoal
-                    sorry
-                  subgoal
-                    sorry
-                  subgoal
-                    using label_prop_inv(3) by simp
                   subgoal premises aux
-                    using aux(2) label_prop_inv(4) 
-                    by (auto dest: in_set_list_diffD  simp add: release_caps_def drop_caps_def)
+                    apply safe
+                    sorry
+                  subgoal premises aux
+                    using aux(2) label_prop_inv(3)
+                    by auto
+                  subgoal
+                    using label_prop_inv(4) 
+                    unfolding label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def release_caps_def drop_caps_def add_caps_def
+                    by (auto dest!: in_set_list_diffD  simp add:  comp_def release_caps_def drop_caps_def)
                   subgoal
                     using label_prop_inv(5) 
-                    by (auto dest: in_set_list_diffD  simp add: release_caps_def drop_caps_def)
+                    unfolding label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def release_caps_def drop_caps_def add_caps_def
+                    by (auto dest!: in_set_list_diffD  simp add: release_caps_def drop_caps_def)
                   subgoal
                     apply (rule label_prop_upd_inv_input0_preserved)
                            apply (rule label_prop_inv(6))
+                    unfolding label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def release_caps_def drop_caps_def add_caps_def
                           apply (auto simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
                     done
                   done

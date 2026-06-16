@@ -1716,6 +1716,271 @@ lemma label_prop_upd_inv_release_caps[simp]:
   using label_prop_upd_inv_drop_caps
   by simp
 
+lemma intsum_add_caps[simp]:
+  "intsum (add_caps os caps) = intsum os"
+  unfolding add_caps_def by auto
+
+lemma input_add_caps[simp]:
+  "input (add_caps os caps) = input os"
+  unfolding add_caps_def by auto
+
+lemma outpu_add_caps[simp]:
+  "outpu (add_caps os caps) = outpu os"
+  unfolding add_caps_def by auto
+
+lemma front_add_caps[simp]:
+  "front (add_caps os caps) = front os"
+  unfolding add_caps_def by auto
+
+lemma initia_add_caps[simp]:
+  "initia (add_caps os caps) = initia os"
+  unfolding add_caps_def by auto
+
+lemma en1_add_caps[simp]:
+  "en1 (add_caps os caps) = en1 os"
+  unfolding add_caps_def by auto
+
+lemma de1_add_caps[simp]:
+  "de1 (add_caps os caps) = de1 os"
+  unfolding add_caps_def by auto
+
+lemma is_en1_add_caps[simp]:
+  "is_en1 (add_caps os caps) = is_en1 os"
+  unfolding add_caps_def by auto
+
+lemma en2_add_caps[simp]:
+  "en2 (add_caps os caps) = en2 os"
+  unfolding add_caps_def by auto
+
+lemma de2_add_caps[simp]:
+  "de2 (add_caps os caps) = de2 os"
+  unfolding add_caps_def by auto
+
+lemma is_en2_add_caps[simp]:
+  "is_en2 (add_caps os caps) = is_en2 os"
+  unfolding add_caps_def by auto
+
+lemma timestamps_add_caps[simp]:
+  "timestamps (add_caps os caps) = timestamps os"
+  unfolding add_caps_def by auto
+
+lemma graph_add_caps[simp]:
+  "label_propagation_state.graph (add_caps os caps) = label_propagation_state.graph os"
+  unfolding add_caps_def by auto
+
+lemma vertices_add_caps[simp]:
+  "vertices (add_caps os caps) = vertices os"
+  unfolding add_caps_def by auto
+
+lemma label_add_caps[simp]:
+  "label (add_caps os caps) = label os"
+  unfolding add_caps_def by auto
+
+lemma intsum_input_tl[simp]:
+  "intsum (input_tl os p) = intsum os"
+  unfolding input_tl_def by auto
+
+lemma consu_input_tl[simp]:
+  "consu (input_tl os p) = consu os"
+  unfolding input_tl_def by auto
+
+lemma inter_input_tl[simp]:
+  "inter (input_tl os p) = inter os"
+  unfolding input_tl_def by auto
+
+lemma produ_input_tl[simp]:
+  "produ (input_tl os p) = produ os"
+  unfolding input_tl_def by auto
+
+lemma outpu_input_tl[simp]:
+  "outpu (input_tl os p) = outpu os"
+  unfolding input_tl_def by auto
+
+lemma front_input_tl[simp]:
+  "front (input_tl os p) = front os"
+  unfolding input_tl_def by auto
+
+lemma ocaps_input_tl[simp]:
+  "ocaps (input_tl os p) = ocaps os"
+  unfolding input_tl_def by auto
+
+lemma initia_input_tl[simp]:
+  "initia (input_tl os p) = initia os"
+  unfolding input_tl_def by auto
+
+lemma en1_input_tl[simp]:
+  "en1 (input_tl os p) = en1 os"
+  unfolding input_tl_def by auto
+
+lemma de1_input_tl[simp]:
+  "de1 (input_tl os p) = de1 os"
+  unfolding input_tl_def by auto
+
+lemma is_en1_input_tl[simp]:
+  "is_en1 (input_tl os p) = is_en1 os"
+  unfolding input_tl_def by auto
+
+lemma en2_input_tl[simp]:
+  "en2 (input_tl os p) = en2 os"
+  unfolding input_tl_def by auto
+
+lemma de2_input_tl[simp]:
+  "de2 (input_tl os p) = de2 os"
+  unfolding input_tl_def by auto
+
+lemma is_en2_input_tl[simp]:
+  "is_en2 (input_tl os p) = is_en2 os"
+  unfolding input_tl_def by auto
+
+lemma timestamps_input_tl[simp]:
+  "timestamps (input_tl os p) = timestamps os"
+  unfolding input_tl_def by auto
+
+lemma graph_input_tl[simp]:
+  "label_propagation_state.graph (input_tl os p) = label_propagation_state.graph os"
+  unfolding input_tl_def by auto
+
+lemma vertices_input_tl[simp]:
+  "vertices (input_tl os p) = vertices os"
+  unfolding input_tl_def by auto
+
+lemma label_input_tl[simp]:
+  "label (input_tl os p) = label os"
+  unfolding input_tl_def by auto
+
+lemma intsum_label_prop_edge_record_update[simp]:
+  "intsum (label_prop_edge_record_update os event_t src_v dst_v updated_v updated_label) = intsum os"
+  unfolding label_prop_edge_record_update_def by auto
+
+lemma consu_label_prop_edge_record_update[simp]:
+  "consu (label_prop_edge_record_update os event_t src_v dst_v updated_v updated_label) = consu os"
+  unfolding label_prop_edge_record_update_def by auto
+
+lemma inter_label_prop_edge_record_update[simp]:
+  "inter (label_prop_edge_record_update os event_t src_v dst_v updated_v updated_label) = inter os"
+  unfolding label_prop_edge_record_update_def by auto
+
+lemma produ_label_prop_edge_record_update[simp]:
+  "produ (label_prop_edge_record_update os event_t src_v dst_v updated_v updated_label) = produ os"
+  unfolding label_prop_edge_record_update_def by auto
+
+lemma input_label_prop_edge_record_update[simp]:
+  "input (label_prop_edge_record_update os event_t src_v dst_v updated_v updated_label) = input os"
+  unfolding label_prop_edge_record_update_def by auto
+
+lemma outpu_label_prop_edge_record_update[simp]:
+  "outpu (label_prop_edge_record_update os event_t src_v dst_v updated_v updated_label) = outpu os"
+  unfolding label_prop_edge_record_update_def by auto
+
+lemma front_label_prop_edge_record_update[simp]:
+  "front (label_prop_edge_record_update os event_t src_v dst_v updated_v updated_label) = front os"
+  unfolding label_prop_edge_record_update_def by auto
+
+lemma ocaps_label_prop_edge_record_update[simp]:
+  "ocaps (label_prop_edge_record_update os event_t src_v dst_v updated_v updated_label) = ocaps os"
+  unfolding label_prop_edge_record_update_def by auto
+
+lemma initia_label_prop_edge_record_update[simp]:
+  "initia (label_prop_edge_record_update os event_t src_v dst_v updated_v updated_label) = initia os"
+  unfolding label_prop_edge_record_update_def by auto
+
+lemma en1_label_prop_edge_record_update[simp]:
+  "en1 (label_prop_edge_record_update os event_t src_v dst_v updated_v updated_label) = en1 os"
+  unfolding label_prop_edge_record_update_def by auto
+
+lemma de1_label_prop_edge_record_update[simp]:
+  "de1 (label_prop_edge_record_update os event_t src_v dst_v updated_v updated_label) = de1 os"
+  unfolding label_prop_edge_record_update_def by auto
+
+lemma is_en1_label_prop_edge_record_update[simp]:
+  "is_en1 (label_prop_edge_record_update os event_t src_v dst_v updated_v updated_label) = is_en1 os"
+  unfolding label_prop_edge_record_update_def by auto
+
+lemma en2_label_prop_edge_record_update[simp]:
+  "en2 (label_prop_edge_record_update os event_t src_v dst_v updated_v updated_label) = en2 os"
+  unfolding label_prop_edge_record_update_def by auto
+
+lemma de2_label_prop_edge_record_update[simp]:
+  "de2 (label_prop_edge_record_update os event_t src_v dst_v updated_v updated_label) = de2 os"
+  unfolding label_prop_edge_record_update_def by auto
+
+lemma is_en2_label_prop_edge_record_update[simp]:
+  "is_en2 (label_prop_edge_record_update os event_t src_v dst_v updated_v updated_label) = is_en2 os"
+  unfolding label_prop_edge_record_update_def by auto
+
+lemma intsum_label_prop_label_record_update[simp]:
+  "intsum (label_prop_label_record_update os event_t vertex assigned_label) = intsum os"
+  unfolding label_prop_label_record_update_def by auto
+
+lemma consu_label_prop_label_record_update[simp]:
+  "consu (label_prop_label_record_update os event_t vertex assigned_label) = consu os"
+  unfolding label_prop_label_record_update_def by auto
+
+lemma inter_label_prop_label_record_update[simp]:
+  "inter (label_prop_label_record_update os event_t vertex assigned_label) = inter os"
+  unfolding label_prop_label_record_update_def by auto
+
+lemma produ_label_prop_label_record_update[simp]:
+  "produ (label_prop_label_record_update os event_t vertex assigned_label) = produ os"
+  unfolding label_prop_label_record_update_def by auto
+
+lemma input_label_prop_label_record_update[simp]:
+  "input (label_prop_label_record_update os event_t vertex assigned_label) = input os"
+  unfolding label_prop_label_record_update_def by auto
+
+lemma outpu_label_prop_label_record_update[simp]:
+  "outpu (label_prop_label_record_update os event_t vertex assigned_label) = outpu os"
+  unfolding label_prop_label_record_update_def by auto
+
+lemma front_label_prop_label_record_update[simp]:
+  "front (label_prop_label_record_update os event_t vertex assigned_label) = front os"
+  unfolding label_prop_label_record_update_def by auto
+
+lemma ocaps_label_prop_label_record_update[simp]:
+  "ocaps (label_prop_label_record_update os event_t vertex assigned_label) = ocaps os"
+  unfolding label_prop_label_record_update_def by auto
+
+lemma initia_label_prop_label_record_update[simp]:
+  "initia (label_prop_label_record_update os event_t vertex assigned_label) = initia os"
+  unfolding label_prop_label_record_update_def by auto
+
+lemma en1_label_prop_label_record_update[simp]:
+  "en1 (label_prop_label_record_update os event_t vertex assigned_label) = en1 os"
+  unfolding label_prop_label_record_update_def by auto
+
+lemma de1_label_prop_label_record_update[simp]:
+  "de1 (label_prop_label_record_update os event_t vertex assigned_label) = de1 os"
+  unfolding label_prop_label_record_update_def by auto
+
+lemma is_en1_label_prop_label_record_update[simp]:
+  "is_en1 (label_prop_label_record_update os event_t vertex assigned_label) = is_en1 os"
+  unfolding label_prop_label_record_update_def by auto
+
+lemma en2_label_prop_label_record_update[simp]:
+  "en2 (label_prop_label_record_update os event_t vertex assigned_label) = en2 os"
+  unfolding label_prop_label_record_update_def by auto
+
+lemma de2_label_prop_label_record_update[simp]:
+  "de2 (label_prop_label_record_update os event_t vertex assigned_label) = de2 os"
+  unfolding label_prop_label_record_update_def by auto
+
+lemma is_en2_label_prop_label_record_update[simp]:
+  "is_en2 (label_prop_label_record_update os event_t vertex assigned_label) = is_en2 os"
+  unfolding label_prop_label_record_update_def by auto
+
+lemma timestamps_label_prop_label_record_update[simp]:
+  "timestamps (label_prop_label_record_update os event_t vertex assigned_label) = timestamps os"
+  unfolding label_prop_label_record_update_def by auto
+
+lemma graph_label_prop_label_record_update[simp]:
+  "label_propagation_state.graph (label_prop_label_record_update os event_t vertex assigned_label) = label_propagation_state.graph os"
+  unfolding label_prop_label_record_update_def by auto
+
+lemma vertices_label_prop_label_record_update[simp]:
+  "vertices (label_prop_label_record_update os event_t vertex assigned_label) = vertices os"
+  unfolding label_prop_label_record_update_def by auto
+
+
 lemma label_prop_upd_inv_input0_preserved:
   fixes t1 :: "'t::order"
   assumes inv: "label_prop_upd_inv os"
