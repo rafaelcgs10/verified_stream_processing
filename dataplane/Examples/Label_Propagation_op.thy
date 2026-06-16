@@ -1400,6 +1400,32 @@ definition label_prop_label_record_update where
   \<open>label_prop_label_record_update old_os event_t vertex assigned_label =
     old_os\<lparr>label := (label old_os)(event_t := (label old_os event_t)(vertex := assigned_label))\<rparr>\<close>
 
+definition label_prop_neighbor_batch where
+  \<open>label_prop_neighbor_batch old_os neighbor_os label_os relevant_times vertex new_label event_time =
+    concat (map (\<lambda>cur_t.
+      let vs = neighbors neighbor_os cur_t vertex in
+      if min_label old_os cur_t vertex > new_label
+      then map (\<lambda>v'. (en1 old_os (v', new_label), Cap (MyPair cur_t (mysnd event_time)) 1))
+        (filter (\<lambda>v'. min_label label_os cur_t v' > new_label) vs)
+      else []) relevant_times)\<close>
+
+definition label_prop_edge_batch where
+  \<open>label_prop_edge_batch old_os updated_os event_t vertex new_label event_time =
+    label_prop_neighbor_batch old_os updated_os old_os
+      (filter ((\<le>) event_t) (timestamps updated_os)) vertex new_label event_time\<close>
+
+definition label_prop_label_batch where
+  \<open>label_prop_label_batch old_os updated_os event_t vertex new_label event_time =
+    label_prop_neighbor_batch old_os old_os updated_os
+      (filter ((\<le>) event_t) (timestamps old_os)) vertex new_label event_time\<close>
+
+definition label_prop_output_batch where
+  \<open>label_prop_output_batch old_os below_times =
+    map
+      (\<lambda>t. let cap = Cap (MyPair t 0) 0 in
+        (en2 old_os (components_from_labels (all_edges old_os t) (min_label old_os t)), cap))
+      (rmdups {} (map myfst below_times))\<close>
+
 definition label_propagation_op_logic where
   \<open>label_propagation_op_logic os = cUn (cUn
     (case input os 0 of
@@ -1412,12 +1438,7 @@ definition label_propagation_op_logic where
         (v, l) = if l1 > l2 then (v1, l2) else (v2, l1);
         os' = input_tl os 0;
         os'' = label_prop_edge_record_update os' t1 v1 v2 v l;
-        ts = filter ((\<le>) t1) (timestamps os'');
-        batch = concat (map (\<lambda> t1. let vs = neighbors os'' t1 v in
-          if min_label os t1 v > l
-          then map (\<lambda>v'. (en1 os (v', l), Cap (MyPair t1 (mysnd t)) 1))
-                    (filter (\<lambda>v'. min_label os t1 v' > l) vs)
-          else []) ts)
+        batch = label_prop_edge_batch os os'' t1 v l t
       in {|release_caps (produces (drop_caps (add_caps os'' (map snd batch)) (map snd batch)) batch) 1|})
     (case input os 1 of
       [] \<Rightarrow> {||}
@@ -1427,24 +1448,14 @@ definition label_propagation_op_logic where
         t1 = myfst t;
         os' = input_tl os 1;
         os'' = label_prop_label_record_update os' t1 v (min (min_label os t1 v) l);
-        ts = filter ((\<le>) t1) (timestamps os);
-        batch = concat (map (\<lambda> t1.
-          let vs = neighbors os t1 v in
-          if min_label os t1 v > l
-          then map (\<lambda>v'. (en1 os (v', l), Cap (MyPair t1 (mysnd t)) 1))
-                    (filter (\<lambda>v'. min_label os'' t1 v' > l) vs)
-          else []) ts)
+        batch = label_prop_label_batch os os'' t1 v l t
       in
         {|release_caps (produces os'' batch) 1|}))
   (let
       below_times = filter
         (\<lambda> t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t))
         (ocaps os 0);
-      output_times = rmdups {} (map myfst below_times);
-      batch = map
-        (\<lambda>t. let cap = Cap (MyPair t 0) 0 in
-          (en2 os (components_from_labels (all_edges os t) (min_label os t)), cap))
-        output_times
+      batch = label_prop_output_batch os below_times
     in
       if batch = [] then {||}
       else {|drop_caps (produces os batch) (map (\<lambda>t. Cap t 0) below_times)|})\<close>

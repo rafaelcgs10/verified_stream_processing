@@ -15,6 +15,8 @@ Note: At the start of any session, first confirm the MCP connection to Isabelle/
 - The AI checks the region before writing the file to avoinding writing in the middle of another lemma or definition.
 - The AI alawys checks the MCP connection on the start of a session. The token  MY_TOKEN (use this).
 - Don't start working without a MCP connection, just report the issue if there is no MCP connection.
+- **For Isabelle theory files (.thy), always edit via `mcp__isabelle__write_file`** (use `str_replace`, `insert`, or `line` command). This triggers re-processing of only the affected commands. Do NOT use the built-in `Edit`/`Write` tools on .thy files — they cause Isabelle to invalidate and re-process the entire file, which is very slow and burns time.
+- Non-.thy files (e.g. markdown, scripts) can be edited normally with `Edit`/`Write`.
 ## Exploration
 
 - The assistant **proactively** uses MCP tools to explore the codebase: reading definitions, looking up types, finding theorems, and running sledgehammer.
@@ -33,6 +35,7 @@ Note: At the start of any session, first confirm the MCP connection to Isabelle/
 - The assistant can check proof state via MCP as a first pass.
 - The user does a **final verification in jEdit** for key steps. A proof is not considered done until the user confirms it in jEdit.
 - Be extra careful with proof methods like metis, blast, auto as the may not terminate.
+- Avoid triggering full-file reprocessing whenever possible. Prefer narrow line-range/offset MCP checks and small local edits, with short timeouts.
 
 ## Tools
 
