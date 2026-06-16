@@ -16,7 +16,135 @@ imports
   "../Correctness/Timely_Collections"
 begin
 
+(* release_caps os p only removes from ocaps p those timestamps that have no matching
+   (input, intsum) witness, so input_ocaps_inv is preserved. *)
+lemma input_ocaps_inv_release_capsI:
+  assumes inv: "input_ocaps_inv os"
+  shows "input_ocaps_inv (release_caps os p)"
+proof -
+  let ?M = "concat (map (\<lambda>(p', s). map (((+) s) \<circ> snd) (input os p'))
+              (concat (map (\<lambda>p'. map (\<lambda>s. (p', s)) (intsum os p' p)) enum_class.enum)))"
+  let ?ts = "list_diff (ocaps os p) ?M"
+  have release_eq:
+    "release_caps os p = drop_caps os (map (\<lambda>t. Cap t p) ?ts)"
+    unfolding release_caps_def Let_def trace_simp by simp
+  have ocaps_other:
+    "\<And>p'. p' \<noteq> p \<Longrightarrow> ocaps (release_caps os p) p' = ocaps os p'"
+    unfolding release_eq drop_caps_def by auto
+  have ocaps_p_mset:
+    "mset (ocaps (release_caps os p) p) =
+       mset (ocaps os p) - mset (list_diff (ocaps os p) ?M)"
+    unfolding release_eq drop_caps_def by simp
+  show ?thesis
+    unfolding input_ocaps_inv_def
+  proof (intro allI ballI)
+    fix p1 p2 t s
+    assume t_in: "t \<in> snd ` set (input (release_caps os p) p1)"
+      and s_in: "s \<in> set (intsum (release_caps os p) p1 p2)"
+    have t_in': "t \<in> snd ` set (input os p1)"
+      using t_in by simp
+    have s_in': "s \<in> set (intsum os p1 p2)"
+      using s_in by simp
+    have orig: "t -+- s \<in> set (ocaps os p2)"
+      using inv t_in' s_in' unfolding input_ocaps_inv_def by blast
+    show "t -+- s \<in> set (ocaps (release_caps os p) p2)"
+    proof (cases "p2 = p")
+      case False
+      then show ?thesis using orig ocaps_other by simp
+    next
+      case True
+      have plus_eq: "t -+- s = s + t"
+        by (simp add: add.commute)
+      have in_M: "t -+- s \<in> set ?M"
+      proof -
+        from t_in' obtain d where d_in: "(d, t) \<in> set (input os p1)"
+          by auto
+        have p1_enum: "p1 \<in> set enum_class.enum"
+          by (simp add: enum_UNIV)
+        have pair_in:
+          "(p1, s) \<in> set (concat (map (\<lambda>p'. map (\<lambda>s. (p', s)) (intsum os p' p)) enum_class.enum))"
+          using p1_enum s_in' True by auto
+        have apply_eq: "((+) s \<circ> snd) (d, t) = s + t"
+          by simp
+        from pair_in apply_eq d_in have "s + t \<in> set ?M"
+          by (force simp: image_iff)
+        then show ?thesis using plus_eq by simp
+      qed
+      have count_pos:
+        "count (mset (ocaps (release_caps os p) p)) (t -+- s) > 0"
+      proof -
+        let ?O = "mset (ocaps os p)"
+        let ?Mm = "mset ?M"
+        have step1: "mset (list_diff (ocaps os p) ?M) = ?O - ?Mm"
+          by simp
+        have countM: "count ?Mm (t -+- s) > 0"
+          using in_M by (simp add: count_greater_zero_iff)
+        have countO: "count ?O (t -+- s) > 0"
+          using orig True by (simp add: count_greater_zero_iff)
+        have "count (?O - (?O - ?Mm)) (t -+- s) > 0"
+          using countM countO by simp
+        then show ?thesis
+          using ocaps_p_mset True step1 by simp
+      qed
+      then have "t -+- s \<in> set_mset (mset (ocaps (release_caps os p) p))"
+        by (simp add: count_greater_zero_iff)
+      then show ?thesis
+        using True by simp
+    qed
+  qed
+qed
 
+lemma input_ocaps_inv_produces[simp]:
+  "input_ocaps_inv (produces os batch) = input_ocaps_inv os"
+  unfolding produces_def input_ocaps_inv_def
+  by auto
+
+(* add_caps only enlarges ocaps (and leaves input/intsum untouched),
+   so any required witness remains present. *)
+lemma input_ocaps_inv_add_capsI:
+  assumes inv: "input_ocaps_inv os"
+  shows "input_ocaps_inv (add_caps os caps)"
+  unfolding input_ocaps_inv_def
+proof (intro allI ballI)
+  fix p1 p2 t s
+  assume t_in: "t \<in> snd ` set (input (add_caps os caps) p1)"
+    and s_in: "s \<in> set (intsum (add_caps os caps) p1 p2)"
+  have t_in': "t \<in> snd ` set (input os p1)"
+    using t_in unfolding add_caps_def by simp
+  have s_in': "s \<in> set (intsum os p1 p2)"
+    using s_in unfolding add_caps_def by simp
+  have "t -+- s \<in> set (ocaps os p2)"
+    using inv t_in' s_in' unfolding input_ocaps_inv_def by blast
+  then show "t -+- s \<in> set (ocaps (add_caps os caps) p2)"
+    unfolding add_caps_def by auto
+qed
+
+(* Adding and then dropping the same caps leaves ocaps unchanged (as multisets,
+   hence as sets); input and intsum are untouched throughout, so input_ocaps_inv
+   transfers directly. *)
+lemma input_ocaps_inv_drop_add_capsI:
+  assumes inv: "input_ocaps_inv os"
+  shows "input_ocaps_inv (drop_caps (add_caps os caps) caps)"
+  unfolding input_ocaps_inv_def
+proof (intro allI ballI)
+  fix p1 p2 t s
+  assume t_in: "t \<in> snd ` set (input (drop_caps (add_caps os caps) caps) p1)"
+    and s_in: "s \<in> set (intsum (drop_caps (add_caps os caps) caps) p1 p2)"
+  have t_in': "t \<in> snd ` set (input os p1)"
+    using t_in unfolding drop_caps_def add_caps_def by simp
+  have s_in': "s \<in> set (intsum os p1 p2)"
+    using s_in unfolding drop_caps_def add_caps_def by simp
+  have orig: "t -+- s \<in> set (ocaps os p2)"
+    using inv t_in' s_in' unfolding input_ocaps_inv_def by blast
+  have ocaps_mset:
+    "mset (ocaps (drop_caps (add_caps os caps) caps) p2) = mset (ocaps os p2)"
+    unfolding drop_caps_def add_caps_def by simp
+  then have set_eq:
+    "set (ocaps (drop_caps (add_caps os caps) caps) p2) = set (ocaps os p2)"
+    by (metis set_mset_mset)
+  show "t -+- s \<in> set (ocaps (drop_caps (add_caps os caps) caps) p2)"
+    using orig set_eq by simp
+qed
 
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
@@ -324,6 +452,10 @@ lemma cfilter_True:
 (* FIXME: move me *)
 lemma MyPair_zero_zero_sum[simp]:
   "MyPair (0 :: nat) (0 :: nat) + a = a"
+  by (simp add: zero_myprod_def)
+
+lemma MyPair_zero_zero_sum2[simp]:
+  "a -+- MyPair 0 0 = a"
   by (simp add: zero_myprod_def)
 
 lemma all_edges_add_caps[simp]:
@@ -956,8 +1088,36 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
               using label_prop_inv(7) apply -
               unfolding input_ocaps_inv_def drop_caps_def
               apply (auto simp add: filter_False os_inv(7)[rule_format, unfolded raw_summary_def, simplified])
+              subgoal 
+                by fastforce
+              subgoal
+                apply (drule spec2[of _  0 1])
+                apply simp
+                apply (drule bspec[of _ ])
+                 apply assumption
+                apply (simp add: filter_True comp_def )
+                done
               subgoal for a b
-                apply (drule spec2[of _  0])
+                apply (drule spec2[of _  0 0])
+                apply simp
+                apply (drule bspec[of _ ])
+                 apply assumption
+                apply (simp add: filter_True comp_def )
+                apply (rule in_set_list_diffI)
+                 apply fastforce
+                apply simp
+                using label_prop_inv(3)[rule_format, of "myfst b"] apply -
+                apply (drule meta_mp)
+                subgoal
+                  by force
+                subgoal
+                  apply (simp add: operator_state.defs os_inv(4) exit_scope_plus_distrib)
+                  apply (rule frontier_less_equal_antichain_plusI2)
+                  apply auto
+                  done
+                done
+              subgoal for a b
+                apply (drule spec2[of _  0 0])
                 apply simp
                 apply (drule bspec[of _ ])
                  apply assumption
@@ -1473,19 +1633,19 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                       by auto
                     subgoal
                       apply (subgoal_tac "t = MyPair (myfst t) 0")
-                      apply (clarsimp simp add: icoll_append)
-                      apply (rule arg_cong2[where f=cinsert])
+                       apply (clarsimp simp add: icoll_append)
+                       apply (rule arg_cong2[where f=cinsert])
                       subgoal
                         apply (subst (1 2) all_edges_eq[rotated, where V=V and label_sync=" L"])
-                        prefer 4
-                        apply (simp add: insert_commute ccs_insert_symmetric)
-                        prefer 2
-                        apply simp
+                           prefer 4
+                           apply (simp add: insert_commute ccs_insert_symmetric)
+                          prefer 2
+                          apply simp
                         using label_prop_inv(6)[unfolded os_inv(4) operator_state.defs, simplified] apply simp_all
                         done
                       subgoal
                         apply (rule cimage_cong)
-                        apply simp
+                         apply simp
                         subgoal for t'
                           apply (subst (1) icoll_LCons_Data)
                           subgoal
@@ -1527,13 +1687,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                         using label_prop_inv(6) by assumption
                       subgoal
                         by (clarsimp simp add: input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                      apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                      apply simp
-                      apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                      apply simp
-                      apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                      apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
-                      apply simp
+                          apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                          apply simp
+                         apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                         apply simp
+                        apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                       apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                       apply simp
                       apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
                       done
                     done
@@ -1544,34 +1704,35 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                       apply simp      
                       apply (elim disjE)
                       subgoal
-                      apply (subgoal_tac "frontier_less_equal (exit_scope myfst (front (os 1) 1)) t'")
+                        apply (subgoal_tac "frontier_less_equal (exit_scope myfst (front (os 1) 1)) t'")
                         subgoal
                           by (simp add: exit_scope_plus_distrib frontier_less_equal_antichain_plusI2)
+                        subgoal
+                          using aux(2) label_prop_inv(3)[rule_format] by auto
+                        done
                       subgoal
-                        using aux(2) label_prop_inv(3)[rule_format] by auto
+                        apply (subgoal_tac "\<not> myfst t \<le> t'")
+                        subgoal
+                          apply (rule labels_stable_input0_preserved)
+                                 apply (rule label_prop_inv(2)[unfolded os_inv(4) operator_state.defs, simplified, rule_format, of t'])
+                                  apply assumption+
+                          using label_prop_inv(6)[unfolded os_inv(4) operator_state.defs, simplified] apply assumption
+                               apply assumption+
+                              apply simp_all
+                          using aux apply force
+                          done
+                        subgoal
+                          using aux(2) apply -
+                          using label_prop_inv(3)[rule_format, of "myfst t"] apply -
+                          apply (drule meta_mp)
+                          subgoal
+                            by simp
+                          subgoal
+                            by (metis exit_scope_plus_distrib frontier_less_equal_antichain_plusI2 frontier_less_equal_trans)
+                          done
+                        done
                       done
-                    subgoal
-                      apply (rule labels_stable_input0_preserved[of _ "myfst t"])
-                      using label_prop_inv(2)[unfolded os_inv(4) operator_state.defs, simplified, rule_format, of t']
-
-
-                    using label_prop_inv
-
-end
-
-
-
-                      find_theorems t
-
-          
-
-                      find_theorems labels_stable name: preser
-
-
-                      find_theorems os_label_prop
-
-end
-                    sorry
+                    done
                   subgoal premises aux
                     using aux(2) label_prop_inv(3)
                     by auto
@@ -1585,9 +1746,18 @@ end
                     by (auto dest!: in_set_list_diffD  simp add: release_caps_def drop_caps_def)
                   subgoal
                     apply (rule label_prop_upd_inv_input0_preserved)
-                    apply (rule label_prop_inv(6))
+                           apply (rule label_prop_inv(6))
                     unfolding label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def release_caps_def drop_caps_def add_caps_def
-                    apply (auto simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                          apply (auto simp add: operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
+                    done
+                  subgoal premises aux
+                    apply (rule input_ocaps_inv_release_capsI)
+                    apply simp
+                    apply (rule input_ocaps_inv_drop_add_capsI)
+                    using label_prop_inv(7) aux(2) apply -
+                    unfolding input_ocaps_inv_def 
+                    apply simp
+                    apply force
                     done
                   done
                 done
