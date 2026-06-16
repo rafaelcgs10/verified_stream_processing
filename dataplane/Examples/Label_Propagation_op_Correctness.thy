@@ -15,7 +15,14 @@ imports
   Dataplane.Bots
   "../Correctness/Timely_Collections"
   Dataplane.Propagation_Properties
+  Dataplane.SimulationProofMethods
 begin
+
+(* Note: this is basically lemma comp_op_chns_invar from dataplane_dis:dataplane/Comp_Reasoning.thy *)
+lemma comp_op_buf_cong:
+  assumes \<open>wire' = wire\<close> \<open>op1' = op1\<close> \<open>op2' = op2\<close> \<open>\<forall>p \<in> inputs op2 \<inter> ran wire. buf' p = buf p\<close>
+  shows \<open>comp_op wire buf op1 op2 = comp_op wire buf' op1 op2\<close>
+  sorry
 
 (* release_caps os p only removes from ocaps p those timestamps that have no matching
    (input, intsum) witness, so input_ocaps_inv is preserved. *)
@@ -532,6 +539,116 @@ proof -
     by (simp only: rel_eq field_eq)
 qed
 
+(* TODO: Move. *)
+lemma un_Choice_loop_op_buf_cong:
+  fixes wire
+  defines \<open>R \<equiv> (\<lambda>op1 op2. \<exists>buf buf' op. op1 = loop_op wire buf op \<and> op2 = loop_op wire buf' op
+  \<and> (\<forall>p. p \<in> inputs (op :: ('i, 'o, 'd) op) \<and> p \<in> ran wire \<longrightarrow> buf' p = buf p))\<close>
+  assumes bufs_eq: \<open>\<forall>p \<in> inputs (op :: ('i, 'o, 'd) op) \<inter> ran wire. buf' p = buf p\<close>
+    and op': \<open>op' |\<in>| un_Choice (loop_op wire buf op)\<close>
+  obtains op'' where \<open>op'' |\<in>| un_Choice (loop_op wire buf' op)\<close> \<open>op.congclp R op' op''\<close>
+proof atomize_elim
+  consider (read_outside) p f where \<open>op' = Read p (\<lambda>x. loop_op wire buf (f x))\<close>
+    \<open>Read p f |\<in>| choices op\<close> \<open>p \<notin> ran wire\<close>
+  | (read_inside) p f where \<open>op' = Silent (loop_op wire (BTL p buf) (f (BHD p buf)))\<close>
+    \<open>Read p f |\<in>| choices op\<close> \<open>p \<in> ran wire\<close> \<open>buf p \<noteq> []\<close>
+  | (write_outside) op'' p x where \<open>op' = Write (loop_op wire buf op'') p x\<close>
+    \<open>Write op'' p x |\<in>| choices op\<close> \<open>wire p = None\<close>
+  | (write_inside) op'' p x q where \<open>op' = Silent (loop_op wire (BENQ q x buf) op'')\<close>
+    \<open>Write op'' p x |\<in>| choices op\<close> \<open>wire p = Some q\<close>
+  | (silent) op'' where \<open>op' = Silent (loop_op wire buf op'')\<close>
+    \<open>Silent op'' |\<in>| choices op\<close>
+    using op' by (subst (asm) (6) loop_op.code)
+      (auto split: op.splits option.splits if_splits dest: no_Choice_in_choices[simplified])
+  thus \<open>\<exists>op''. op'' |\<in>| un_Choice (loop_op wire buf' op) \<and> op.congclp R op' op''\<close>
+  proof cases
+    case read_outside
+    let ?op'' = \<open>Read p (\<lambda>x. loop_op wire buf' (f x))\<close>
+    have \<open>R (loop_op wire buf (f x)) (loop_op wire buf' (f x))\<close> for x unfolding R_def
+      using bufs_eq read_outside inputs_after_choices inputs_sub_op_Read mem_simps(4)
+        sub_op.intros(2) sub_op_Read_inputs by metis
+    hence \<open>op.congclp R op' ?op''\<close>
+      using op.cong_base op.cong_Read[OF refl] unfolding rel_fun_def read_outside(1) by metis
+    moreover have \<open>?op'' |\<in>| un_Choice (loop_op wire buf' op)\<close>
+      using read_outside(2-) by (subst (2) loop_op.code) force
+    ultimately show ?thesis by blast
+  next
+    case read_inside
+    let ?x = \<open>BHD p buf\<close>
+    let ?y = \<open>BHD p buf'\<close>
+    let ?op'' = \<open>Silent (loop_op wire (BTL p buf') (f ?y))\<close>
+    have \<open>?x = ?y\<close>
+      using bufs_eq read_inside(2,3) Read_choices_inputs mem_simps(4) BHD_def by metis
+    moreover have \<open>\<forall>p' \<in> inputs (f ?x) \<inter> ran wire. BTL p buf' p' = BTL p buf p'\<close>
+      using bufs_eq read_inside(2) inputs_after_choices inputs_sub_op_Read mem_simps(4)
+        sub_op.intros(2) sub_op_Read_inputs BTL_access BTL_diff_access by metis
+    ultimately have \<open>R (loop_op wire (BTL p buf) (f ?x)) (loop_op wire (BTL p buf') (f ?y))\<close>
+      unfolding R_def by auto
+    hence \<open>op.congclp R op' ?op''\<close> using op.cong_Silent[OF op.cong_base]
+      unfolding read_inside(1) by metis
+    moreover have \<open>?op'' |\<in>| un_Choice (loop_op wire buf' op)\<close>
+      using read_inside(2-) bufs_eq Read_choices_inputs by (subst (2) loop_op.code) force
+    ultimately show ?thesis by blast
+  next
+    case write_outside
+    let ?op'' = \<open>Write (loop_op wire buf' op'') p x\<close>
+    have \<open>R (loop_op wire buf op'') (loop_op wire buf' op'')\<close> unfolding R_def
+      using bufs_eq write_outside(2) inputs_after_choices mem_simps(4) op.set(2) by metis
+    hence \<open>op.congclp R op' ?op''\<close> using op.cong_Write[OF op.cong_base refl refl]
+      unfolding write_outside(1) by metis
+    moreover have \<open>?op'' |\<in>| un_Choice (loop_op wire buf' op)\<close>
+      using write_outside(2-) by (subst (2) loop_op.code) force
+    ultimately show ?thesis by blast
+  next
+    case write_inside
+    let ?op'' = \<open>Silent (loop_op wire (BENQ q x buf') op'')\<close>
+    have \<open>R (loop_op wire (BENQ q x buf) op'') (loop_op wire (BENQ q x buf') op'')\<close>
+      using bufs_eq write_inside(2) inputs_after_choices mem_simps(4) op.set(2)
+      unfolding R_def BENQ_def by force
+    hence \<open>op.congclp R op' ?op''\<close> using op.cong_Silent[OF op.cong_base]
+      unfolding write_inside(1) by metis
+    moreover have \<open>?op'' |\<in>| un_Choice (loop_op wire buf' op)\<close>
+      using write_inside(2-) by (subst (2) loop_op.code) force
+    ultimately show ?thesis by blast
+  next
+    case silent
+    let ?op'' = \<open>Silent (loop_op wire buf' op'')\<close>
+    have \<open>R (loop_op wire buf op'') (loop_op wire buf' op'')\<close>
+      using bufs_eq silent inputs_after_choices mem_simps(4) op.set(4) unfolding R_def by metis
+    hence \<open>op.congclp R op' ?op''\<close> using op.cong_Silent[OF op.cong_base]
+      unfolding silent(1) by metis
+    moreover have \<open>?op'' |\<in>| un_Choice (loop_op wire buf' op)\<close>
+      using silent(2-) by (subst (2) loop_op.code) force
+    ultimately show ?thesis by blast
+  qed
+qed
+
+(* TODO: Move. *)
+lemma loop_op_buf_cong:
+  assumes \<open>wire' = wire\<close> \<open>(op' :: ('i, 'o, 'd) op) = op\<close> \<open>\<forall>p \<in> inputs op \<inter> ran wire. buf' p = buf p\<close>
+  shows \<open>loop_op wire buf op = loop_op wire' buf' op'\<close>
+proof (insert assms, hypsubst_thin, coinduction arbitrary: buf buf' op rule: op.coinduct_upto)
+  case (Eq_op buf buf' op)
+  define R :: \<open>('i, 'o, 'd) op \<Rightarrow> ('i, 'o, 'd) op \<Rightarrow> bool\<close> where
+    \<open>R = (\<lambda>op1 op2. \<exists>buf buf' op. op1 = loop_op wire buf op \<and> op2 = loop_op wire buf' op
+  \<and> (\<forall>p. p \<in> inputs op \<and> p \<in> ran wire \<longrightarrow> buf' p = buf p))\<close>
+  have \<open>\<forall>op'. op' |\<in>| un_Choice (loop_op wire buf op) \<longrightarrow> (\<exists>op''.
+  op'' |\<in>| un_Choice (loop_op wire buf' op) \<and> op.congclp R op' op'')\<close>
+    using un_Choice_loop_op_buf_cong[where op=op] Eq_op unfolding R_def by (metis (lifting))
+  moreover have \<open>\<forall>op'. op' |\<in>| un_Choice (loop_op wire buf' op) \<longrightarrow> (\<exists>op''.
+  op'' |\<in>| un_Choice (loop_op wire buf op) \<and> op.congclp R op'' op')\<close>
+  proof (intro allI impI)
+    fix op'
+    assume op': \<open>op' |\<in>| un_Choice (loop_op wire buf' op)\<close>
+    obtain op'' where op'': \<open>op'' |\<in>| un_Choice (loop_op wire buf op)\<close> \<open>op.congclp R op' op''\<close>
+      using un_Choice_loop_op_buf_cong[OF _ op', where buf'=buf] Eq_op unfolding R_def by auto
+    moreover have \<open>op.congclp R op'' op'\<close> by (rule op.cong_sym[OF op''(2)])
+    ultimately show \<open>\<exists>op''. op'' |\<in>| un_Choice (loop_op wire buf op) \<and> op.congclp R op'' op'\<close>
+      by blast
+  qed
+  ultimately show ?case by (fastforce simp add: rel_set_def R_def)
+qed
+
 lemma label_propagation_correctness:
   fixes lxs :: \<open>((nat, nat) myprod, nat \<times> nat) event llist\<close>
     and os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
@@ -631,7 +748,66 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply (unfold R_def)
         apply (intro exI conjI)
         using SIM1 by (simp_all add: dataflow_tree_to_operator_def)
-      subgoal sorry
+      subgoal for d t xs
+        apply (intro exI conjI relcomppI)
+           apply (rule rtranclp.rtrancl_refl)
+          apply (rule bisim_refl)
+         defer
+         apply (rule wbisim_refl)
+        apply (rule wb_upto_b_base)
+        apply (unfold R_def)
+        apply (rule exI[of _ S])
+        apply (rule exI[of _ SO])
+        apply (rule exI[of _ SP])
+        apply (rule exI[of _ D])
+        apply (rule exI[of _ lxs])
+        apply (rule exI[of _ \<open>os(0 := (os 0)\<lparr>outpu := (outpu (os 0))(0 := xs)\<rparr>)\<close>])
+        apply (rule exI[of _ \<open>os_input\<lparr>outpu := (outpu os_input)(0 := xs)\<rparr>\<close>])
+        apply (rule exI[of _ os_label_prop])
+        apply (rule exI[of _ \<open>BENQ (1, 0) (d, t) cbufs\<close>])
+        apply (intro exI conjI)
+                            apply (simp add: dataflow_tree_to_operator_def)
+                            defer
+                            apply (rule refl)
+        using subgraph_inv(1) apply simp
+                            apply (simp_all add: operator_state.defs(3) subgraph_inv(2) os_inv)
+        using os_inv(1,5)
+                     apply (simp add: ty1_check_def operator_state.defs(3) BENQ_def)
+                     apply (frule spec[of _ 0])
+                     apply fastforce
+        using os_inv(1,4-6)
+                    apply (simp add: ty1_check_def label_prob_ty2_check_def operator_state.defs(3) BENQ_def)
+                    apply (drule spec[of _ 0])
+                    apply simp
+                   apply (rule dataplane_tracker_inv_update_outputs[OF dataplane_inv _ _ _ _ G, where nid=0 and xs=\<open>[(d, t)]\<close> and ys=xs and p=0])
+                      apply simp
+                     apply (simp add: fun_upd_def)
+                    apply (simp add: BENQ_def)
+                   apply (simp add: subgraph_inv(1) raw_summary_def antichain_from_list_singleton)
+                  apply (subgoal_tac \<open>outputs_at_target (summ sg) (os(0 := (os 0)\<lparr>outpu := (outpu (os 0))(0 := xs)\<rparr>)) >> BENQ (1, 0) (d, t) cbufs
+  = outputs_at_target (summ sg) os >> cbufs\<close>)
+                   apply (simp add: csets_inv(1) buffers_inv os_inv(4,7) operator_state.defs(3))
+                  apply (simp add: outputs_at_target_raw_summary subgraph_inv(1) BENQ_def BULK_BENQ_def fun_eq_iff)
+                 apply (simp add: csets_inv(2))
+                apply (rule input_stream_inv)
+        using label_prop_inv(1) apply (simp add: os_inv(4,7) operator_state.defs(3))
+        using label_prop_inv(2) apply (simp add: os_inv(4,7) operator_state.defs(3))
+             apply (simp add: label_prop_inv(3))
+        using label_prop_inv(4) apply simp
+        using label_prop_inv(5) apply simp
+        using label_prop_inv(6) apply (simp add: os_inv(4,7) operator_state.defs(3))
+         apply (rule label_prop_inv(7))
+        apply (clarsimp intro!: arg_cong[where f=\<open>set_op _ _\<close>] arg_cong[where f=\<open>dataflow_op _\<close>] arg_cong[where f=\<open>map_op _ _\<close>])
+        apply (rule arg_cong2[where f=\<open>\<lambda>buf op. comp_op _ buf _ op\<close>])
+         apply (fastforce simp add: BENQ_def)
+        apply (rule loop_op_buf_cong[OF refl])
+         apply (rule arg_cong[where f=\<open>map_op _ _\<close>])
+         apply (rule comp_op_buf_cong[OF refl refl refl])
+         apply (clarsimp simp add: BENQ_def ran_def split: sum.splits if_splits)
+         apply (metis prod.exhaust sumE)
+        apply (clarsimp simp add: BENQ_def ran_def split: sum.splits if_splits)
+        apply (metis prod.exhaust sumE)
+        done
       subgoal sorry
       subgoal sorry
       subgoal sorry

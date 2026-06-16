@@ -6,7 +6,7 @@ begin
 
 text \<open>The following method is an experiment with Eisbach.  It is designed to work for a simulation
 goal as we have them in correctness proofs, i.e., goals of the form
-\<open>step io op1 op1' \<Longrightarrow> \<exists>op2'. wstep io op2 op2' \<and> R op1' op2'\<close>.\<close>
+\<open>step io op1 op1' \<Longrightarrow> \<exists>op2'. (w)step io op2 op2' \<and> R op1' op2'\<close>.\<close>
 
 method sim_cases uses sim defs elims intros =
   (use nothing in \<open>insert sim, (unfold defs)?, repeat_new \<open>erule conjE elims; simp?; hypsubst_thin?\<close>;
