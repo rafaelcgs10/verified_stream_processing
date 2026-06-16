@@ -384,7 +384,7 @@ lemma label_propagation_correctness:
     \<open>timely_input_stream lxs (mset (ocaps (os 0) 0))\<close>
     and label_prop_inv:
     \<open>(\<forall> t. labels_cc_inv os_label_prop t)\<close>
-    \<open>(\<forall> t \<in> set (timestamps os_label_prop). labels_stable (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
+    \<open>(\<forall> t \<in> set (timestamps os_label_prop). \<not> frontier_less_equal (exit_scope myfst (front (os 1) 0 + front (os 1) 1)) t \<longrightarrow> labels_stable (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
     \<open>\<forall> t \<in> myfst ` snd ` set (input (os 1) 0). frontier_less_equal (exit_scope myfst (front (os 1) 1)) t\<close>
     \<open>\<forall> t. t \<in> set (ocaps (os 1) 0) \<longrightarrow> myfst t |\<in>| cset_from_list T\<close>
     \<open>\<forall> t \<in> set (ocaps (os 1) 0) \<union> snd ` set (input (os 1) 0) \<union> snd ` set (outpu (os 0) 0) \<union> time ` lset lxs. mysnd t = 0\<close>
@@ -1539,6 +1539,38 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                     done
                   subgoal premises aux
                     apply safe
+                    subgoal for t'
+                      unfolding label_prop_edge_record_update_def
+                      apply simp      
+                      apply (elim disjE)
+                      subgoal
+                      apply (subgoal_tac "frontier_less_equal (exit_scope myfst (front (os 1) 1)) t'")
+                        subgoal
+                          by (simp add: exit_scope_plus_distrib frontier_less_equal_antichain_plusI2)
+                      subgoal
+                        using aux(2) label_prop_inv(3)[rule_format] by auto
+                      done
+                    subgoal
+                      apply (rule labels_stable_input0_preserved[of _ "myfst t"])
+                      using label_prop_inv(2)[unfolded os_inv(4) operator_state.defs, simplified, rule_format, of t']
+
+
+                    using label_prop_inv
+
+end
+
+
+
+                      find_theorems t
+
+          
+
+                      find_theorems labels_stable name: preser
+
+
+                      find_theorems os_label_prop
+
+end
                     sorry
                   subgoal premises aux
                     using aux(2) label_prop_inv(3)

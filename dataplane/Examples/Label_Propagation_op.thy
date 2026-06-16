@@ -1582,6 +1582,22 @@ lemma all_edges_release_caps[simp]:
   unfolding release_caps_def all_edges_def
   by auto
 
+lemma all_edges_input_update[simp]:
+  "all_edges (os\<lparr>input := input'\<rparr>) = all_edges os"
+  unfolding all_edges_def all_vertices_def neighbors_def
+  by auto
+
+lemma all_edges_input_tl[simp]:
+  "all_edges (input_tl os p) = all_edges os"
+  unfolding input_tl_def all_edges_def all_vertices_def neighbors_def
+  by auto
+
+lemma all_edges_input_tl_label_state_update[simp]:
+  "all_edges ((input_tl os p)\<lparr>timestamps := ts, graph := G, vertices := V, label := L\<rparr>) =
+   all_edges (os\<lparr>timestamps := ts, graph := G, vertices := V, label := L\<rparr>)"
+  unfolding input_tl_def all_edges_def all_vertices_def neighbors_def
+  by auto
+
 lemma input_release_caps[simp]:
   "input (release_caps os p) = input os"
   unfolding release_caps_def
@@ -1591,6 +1607,72 @@ lemma min_label_produces[simp]:
   "min_label (produces os batch) = min_label os"
   unfolding produces_def min_label_def
   by (auto cong: if_cong)
+
+lemma min_label_drop_cap[simp]:
+  "min_label (drop_cap os cap) = min_label os"
+  unfolding drop_cap_def min_label_def
+  by (auto cong: if_cong)
+
+lemma min_label_add_cap[simp]:
+  "min_label (add_cap os p t') = min_label os"
+  unfolding add_cap_def min_label_def
+  by (auto cong: if_cong)
+
+lemma min_label_add_caps[simp]:
+  "min_label (add_caps os caps) = min_label os"
+  unfolding add_caps_def min_label_def
+  by (auto cong: if_cong)
+
+lemma min_label_delay_cap[simp]:
+  "min_label (delay_cap os cap incr) = min_label os"
+  unfolding delay_cap_def min_label_def
+  by (auto cong: if_cong)
+
+lemma min_label_mint_cap[simp]:
+  "min_label (mint_cap os p t') = min_label os"
+  unfolding mint_cap_def min_label_def
+  by (auto cong: if_cong)
+
+lemma min_label_mint[simp]:
+  "min_label (snd (mint os caps p t')) = min_label os"
+  by (cases "t' \<in> set (caps p)")
+    (simp_all add: mint_def)
+
+lemma min_label_produce[simp]:
+  "min_label (produce os cap batch) = min_label os"
+  unfolding produce_def min_label_def
+  by (auto split: if_splits cong: if_cong)
+
+lemma min_label_consume[simp]:
+  "min_label (consume os p t' len) = min_label os"
+  unfolding consume_def min_label_def
+  by (auto split: if_splits cong: if_cong)
+
+lemma min_label_consumes[simp]:
+  "min_label (consumes os p t' d) = min_label os"
+  unfolding consumes_def add_caps_def BENQ_def min_label_def
+  by (auto cong: if_cong)
+
+lemma min_label_obtain_progress[simp]:
+  "min_label (fst (obtain_progress os)) = min_label os"
+  unfolding obtain_progress_def min_label_def
+  by (auto cong: if_cong)
+
+lemma min_label_input_tl[simp]:
+  "min_label (input_tl os p) = min_label os"
+  unfolding input_tl_def min_label_def
+  by (auto cong: if_cong)
+
+lemma min_label_input_update[simp]:
+  "min_label (os\<lparr>input := input'\<rparr>) = min_label os"
+  unfolding min_label_def
+  by auto
+
+lemma min_label_input_tl_label_state_update[simp]:
+  "min_label ((input_tl os p)\<lparr>timestamps := ts, graph := G, vertices := V, label := L\<rparr>) =
+   min_label (os\<lparr>timestamps := ts, graph := G, vertices := V, label := L\<rparr>)"
+  unfolding input_tl_def min_label_def
+  by auto
 
 lemma labels_cc_inv_drop_cap[simp]:
   "labels_cc_inv (drop_cap os cap) t = labels_cc_inv os t"
@@ -2422,6 +2504,74 @@ lemma labels_cc_inv_output_preserved:
     and inv: "label_prop_upd_inv os"
   shows "labels_cc_inv os q"
   oops
+
+(* Preservation of labels_stable across the first branch of label_propagation_op_logic
+   (input0: insertion of edge (v1, v2) at timestamp t1).
+
+   The update can break labels_stable when t1 \<le> t': the new edge would force
+   min_label os' t' v1 and min_label os' t' v2 to coincide, but min_label is the min
+   over labels at all timestamps t'' \<le> t', so a t'' with t1 < t'' \<le> t' carrying a
+   strictly smaller label at one endpoint can leave the other endpoint above it.
+
+   We therefore restrict the query timestamp t' so that the inserted edge is not yet
+   visible, i.e. \<not> t1 \<le> t'. Under this assumption all_edges and min_label at t'
+   are unchanged, and stability transfers from os to os'. *)
+lemma labels_stable_input0_preserved:
+  fixes q t1 t' :: "'t::order"
+  assumes stable: "labels_stable (all_edges os t') (min_label os t')"
+    and inv: "label_prop_upd_inv os"
+    and time_not_le: "\<not> t1 \<le> t'"
+    and ts_eq: "timestamps os' = t1 # timestamps os"
+    and graph_eq:
+      "graph os' = (graph os)(t1 := (graph os t1)(v1 := v2 # graph os t1 v1,
+        v2 := v1 # graph os t1 v2))"
+    and vertices_eq:
+      "vertices os' = (vertices os)(t1 := [v1, v2] @ vertices os t1)"
+    and label_eq:
+      "label os' = (label os)(t1 := (label os t1)(v := l))"
+    and label_update:
+      "(v, l) = (if min_label os t1 v1 > min_label os t1 v2
+        then (v1, min_label os t1 v2)
+        else (v2, min_label os t1 v1))"
+  shows "labels_stable (all_edges os' t') (min_label os' t')"
+proof -
+  have t'_ne_t1: "t' \<noteq> t1"
+    using time_not_le by auto
+  have filter_ts_eq:
+    "{t'' \<in> set (timestamps os'). t'' \<le> t'} = {t'' \<in> set (timestamps os). t'' \<le> t'}"
+    using ts_eq time_not_le by auto
+  have label_on_filter:
+    "\<And>v t''. t'' \<le> t' \<Longrightarrow> label os' t'' v = label os t'' v"
+    using label_eq time_not_le by auto
+  have vertices_on_filter:
+    "\<And>t''. t'' \<le> t' \<Longrightarrow> vertices os' t'' = vertices os t''"
+    using vertices_eq time_not_le by auto
+  have graph_on_filter:
+    "\<And>v t''. t'' \<le> t' \<Longrightarrow> graph os' t'' v = graph os t'' v"
+    using graph_eq time_not_le by auto
+  have all_vertices_eq: "all_vertices os' t' = all_vertices os t'"
+    using filter_ts_eq vertices_on_filter
+    unfolding all_vertices_def by auto
+  have neighbors_eq: "\<And>v. set (neighbors os' t' v) = set (neighbors os t' v)"
+    using filter_ts_eq graph_on_filter
+    unfolding set_neighbors by auto
+  have all_edges_eq: "all_edges os' t' = all_edges os t'"
+    using all_vertices_eq neighbors_eq unfolding all_edges_def by auto
+  have min_label_eq: "min_label os' t' = min_label os t'"
+  proof (rule ext)
+    fix v
+    have lab_t': "label os' t' v = label os t' v"
+      using label_eq t'_ne_t1 by auto
+    have img_eq:
+      "(\<lambda>t''. label os' t'' v) ` {t'' \<in> set (timestamps os'). t'' \<le> t'} =
+       (\<lambda>t''. label os t'' v) ` {t'' \<in> set (timestamps os). t'' \<le> t'}"
+      using filter_ts_eq label_on_filter by (auto intro!: image_cong)
+    show "min_label os' t' v = min_label os t' v"
+      unfolding min_label_def using lab_t' img_eq by simp
+  qed
+  show ?thesis
+    using stable all_edges_eq min_label_eq by simp
+qed
 
 
 

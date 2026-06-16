@@ -204,7 +204,7 @@ proof -
     using clean ocaps_reordered by simp
 qed
 section \<open>Invariant connection timestamps in the input buffer and ocaps - not all operators do that!\<close>
-definition "input_ocaps_inv os = (\<forall> p p'. \<forall> t \<in> snd ` set (input os p). \<forall> s \<in> set ((intsum os) p p'). t -+- s \<in> set (ocaps os p))" 
+definition "input_ocaps_inv os = (\<forall> p p'. \<forall> t \<in> snd ` set (input os p). \<forall> s \<in> set ((intsum os) p p'). t -+- s \<in> set (ocaps os p'))" 
 
 section \<open>Graph Summary and Next-Edge Consistency\<close>
 text \<open>This section relates graph summaries, extracted next-edge maps, and operator-local
