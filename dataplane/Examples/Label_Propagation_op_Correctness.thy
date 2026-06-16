@@ -1319,7 +1319,10 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                 apply (rule exI[of _ sg])
                 apply (intro conjI)
                 subgoal
-                  by (simp add: operator_state.defs dataflow_tree_to_operator_def os_inv(1))
+  apply (simp add: operator_state.defs dataflow_tree_to_operator_def os_inv(1))
+
+
+end
                 subgoal premises aux
                   using aux(1,2,3) apply -
                   apply (simp  del: filter.simps add: buffers_inv operator_state.defs os_inv(4) csets_inv(1))

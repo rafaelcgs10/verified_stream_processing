@@ -1383,48 +1383,59 @@ qed
 
 value "exit_scope myfst (frontier {#MyPair (1 :: nat) (0 :: nat), MyPair (0 :: nat) (1 :: nat)#}\<^sub>z)"
 
+definition input_tl where
+  \<open>input_tl old_os p = old_os\<lparr>input := (input old_os)(p := tl (input old_os p))\<rparr>\<close>
+
+definition label_prop_edge_record_update where
+  \<open>label_prop_edge_record_update old_os event_t src_v dst_v updated_v updated_label =
+    old_os\<lparr>
+      timestamps := event_t # timestamps old_os,
+      graph := (graph old_os)(event_t :=
+        (graph old_os event_t)(src_v := dst_v # graph old_os event_t src_v,
+                              dst_v := src_v # graph old_os event_t dst_v)),
+      vertices := (vertices old_os)(event_t := [src_v, dst_v] @ vertices old_os event_t),
+      label := (label old_os)(event_t := (label old_os event_t)(updated_v := updated_label))\<rparr>\<close>
+
+definition label_prop_label_record_update where
+  \<open>label_prop_label_record_update old_os event_t vertex assigned_label =
+    old_os\<lparr>label := (label old_os)(event_t := (label old_os event_t)(vertex := assigned_label))\<rparr>\<close>
+
 definition label_propagation_op_logic where
   \<open>label_propagation_op_logic os = cUn (cUn
     (case input os 0 of
       [] \<Rightarrow> {||}
-    | (d, t) # xs \<Rightarrow>
+    | (d, t) # _ \<Rightarrow>
       let
         (v1, v2) = de1 os d;
         t1 = myfst t;
         (l1, l2) = pairself (min_label os t1) (v1, v2);
         (v, l) = if l1 > l2 then (v1, l2) else (v2, l1);
-        os' = os\<lparr>input := (input os)(0 := xs),
-                  timestamps := t1 # timestamps os,
-                  graph := (graph os)(t1 :=
-                    (graph os t1)(v1 := v2 # graph os t1 v1,
-                                  v2 := v1 # graph os t1 v2)),
-                  vertices := (vertices os)(t1 := [v1, v2] @ vertices os t1),
-                  label := (label os)(t1 := (label os t1)(v := l))\<rparr>;
-        ts = filter ((\<le>) t1) (timestamps os');
-        batch = concat (map (\<lambda> t1. let vs = neighbors os' t1 v in
+        os' = input_tl os 0;
+        os'' = label_prop_edge_record_update os' t1 v1 v2 v l;
+        ts = filter ((\<le>) t1) (timestamps os'');
+        batch = concat (map (\<lambda> t1. let vs = neighbors os'' t1 v in
           if min_label os t1 v > l
           then map (\<lambda>v'. (en1 os (v', l), Cap (MyPair t1 (mysnd t)) 1))
                     (filter (\<lambda>v'. min_label os t1 v' > l) vs)
           else []) ts)
-      in {|release_caps (produces os' batch) 1|})
+      in {|release_caps (produces (drop_caps (add_caps os'' (map snd batch)) (map snd batch)) batch) 1|})
     (case input os 1 of
       [] \<Rightarrow> {||}
-    | (d, t) # xs \<Rightarrow>
+    | (d, t) # _ \<Rightarrow>
       let
         (v, l) = de1 os d;
         t1 = myfst t;
-        os' = os\<lparr>input := (input os)(1 := xs),
-                  label := (label os)(t1 :=
-                    (label os t1)(v := min (min_label os t1 v) l))\<rparr>;
+        os' = input_tl os 1;
+        os'' = label_prop_label_record_update os' t1 v (min (min_label os t1 v) l);
         ts = filter ((\<le>) t1) (timestamps os);
-        batch = concat (map (\<lambda> t1. 
-          let vs = neighbors os t1 v in 
+        batch = concat (map (\<lambda> t1.
+          let vs = neighbors os t1 v in
           if min_label os t1 v > l
           then map (\<lambda>v'. (en1 os (v', l), Cap (MyPair t1 (mysnd t)) 1))
-                    (filter (\<lambda>v'. min_label os' t1 v' > l) vs)
+                    (filter (\<lambda>v'. min_label os'' t1 v' > l) vs)
           else []) ts)
       in
-        {|release_caps (produces os' batch) 1|}))
+        {|release_caps (produces os'' batch) 1|}))
   (let
       below_times = filter
         (\<lambda> t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t))
