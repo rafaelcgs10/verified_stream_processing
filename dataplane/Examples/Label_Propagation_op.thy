@@ -2063,6 +2063,11 @@ lemma vertices_label_prop_label_record_update[simp]:
   unfolding label_prop_label_record_update_def by auto
 
 
+lemma all_vertices_outpu_upd[simp]:
+  "all_vertices (os_label_prop\<lparr>outpu := A\<rparr>) = all_vertices os_label_prop"
+  unfolding all_vertices_def
+  by auto
+
 lemma label_prop_upd_inv_input0_preserved:
   fixes t1 :: "'t::order"
   assumes inv: "label_prop_upd_inv os"

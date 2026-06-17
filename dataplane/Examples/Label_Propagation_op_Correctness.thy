@@ -14,6 +14,7 @@ imports
   Dataplane.Timely_Dataflow_Op
   Dataplane.Bots
   "../Correctness/Timely_Collections"
+  Dataplane.Propagation_Properties
 begin
 
 (* release_caps os p only removes from ocaps p those timestamps that have no matching
@@ -1779,12 +1780,16 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         sorry
       subgoal 
         sorry
+      subgoal
+        apply (insert dataplane_inv subgraph_inv(1))
+        apply (unfold dataplane_tracker_inv_def propagation_inv_def)
+        apply (elim exE conjE; hypsubst_thin)
+        apply (rule FalseE)
+        apply (rule propagate_all_terminates[OF D, unfolded not_def, rule_format])
+        by (auto simp add: raw_summary_def)
       subgoal 
         sorry
-      subgoal 
-        sorry
-      subgoal for d t xs (* Laouen *)
-        (* old proof, might be salvaged --
+      subgoal for d t xs
         apply (intro exI conjI)
          apply (rule rtranclp.rtrancl_refl)
         apply (intro relcomppI)
@@ -1792,45 +1797,67 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
          defer
          apply (rule wbisim_refl)
         apply (rule wb_upto_b_base)
-        apply (unfold R_def)
+        apply (unfold R_def[simplified])
         apply (rule exI[of _ \<open>cinsert ((1, 0), d, t) S\<close>])
         apply (rule exI[of _ \<open>cset_from_list (map (\<lambda>x. ((1, 0), x)) xs)\<close>])
-        apply (rule exI[of _ SP])
+        apply (rule exI)
         apply (rule exI)
         apply (rule exI)
         apply (rule exI[of _ \<open>os(1 := (os 1)\<lparr>outpu := (outpu (os 1))(0 := xs)\<rparr>)\<close>])
-        apply (rule exI)
         apply (rule exI[of _ \<open>os_label_prop\<lparr>outpu := (outpu os_label_prop)(0 := xs)\<rparr>\<close>])
         apply (intro exI conjI)
-                            apply (simp add: dataflow_tree_to_operator_def)
-                           apply (rule arg_cong[where f=\<open>\<lambda>X. set_spec_op (cUn X SP) D\<close>])
-        using SIM1(6,14) apply (simp add: operator_state.defs(3))
-                            apply (simp_all add: SIM1 operator_state.defs(3))
-        using SIM1(3,7) unfolding ty1_check_def apply (simp add: operator_state.defs(3), blast)
+                            apply (simp add: dataflow_tree_to_operator_def os_inv(1))
+                            apply (rule arg_cong[where f=\<open>\<lambda>X. set_spec_op (cUn X SP) D\<close>])
+                            apply (simp add: csets_inv(2) os_inv(4) operator_state.defs(3))
+                           apply (rule subgraph_inv(1))
+                          apply (rule subgraph_inv(2))
+                         apply (simp add: os_inv(2))
+                        apply (simp add: os_inv(3))
+                       apply (simp add: os_inv(4) operator_state.defs(3))
+        using os_inv(1,5) apply simp
+        using os_inv(6) unfolding label_prob_ty2_check_def apply simp
+        using os_inv(7) apply simp
+                   apply (rule refl)
+                  apply (rule dataplane_tracker_inv_update_outputs_outside[OF dataplane_inv _ _ G])
+                   apply (simp add: fun_upd_def)
+                  apply (simp add: subgraph_inv(1) raw_summary_def)
+                 apply (subgoal_tac \<open>outputs_at_target (summ sg) (os(1 := (os 1)\<lparr>outpu := (outpu (os 1))(0 := xs)\<rparr>)) (1, 0)
+  = outputs_at_target (summ sg) os (1, 0)\<close>)
+                  apply (simp add: csets_inv(1) buffers_inv BULK_BENQ_def all_edges_def all_vertices_def neighbors_def)
+                  apply blast
+                 apply (simp add: subgraph_inv(1) outputs_at_target_raw_summary)
+                apply simp
+               apply (simp add: input_stream_inv)
         subgoal
-          using SIM1(6,8) that unfolding label_prob_ty2_check_def apply -
-          by (simp add: operator_state.defs(3), drule spec[of _ 0], simp)
-        using SIM1(9) unfolding input_ocaps_inv_def apply simp
-                  defer
-                  apply (subgoal_tac \<open>outputs_at_target (antichain_from_list \<circ>\<circ> raw_summary) (os(1 := (os 1)\<lparr>outpu := (outpu (os 1))(0 := xs)\<rparr>)) (1, 0)
-  = outputs_at_target (antichain_from_list \<circ>\<circ> raw_summary) os (1, 0)\<close>)
-        subgoal
-          apply (simp add: BULK_BENQ_def)
-          apply (rule arg_cong[where f=\<open>\<lambda>x. cimage x _\<close>])
-          apply (simp add: fun_eq_iff)
-          apply (rule allI)
-          apply (rule arg_cong[where f=ccs])
-          apply (rule arg_cong[where f=\<open>\<lambda>x. _ \<union> x\<close>])
-          by (simp add: all_edges_def neighbors_def)
-                  apply (simp add: outputs_at_target_raw_summary)
-                  apply (rule input_stream_inv)
-                  apply (rule dataplane_tracker_inv_update_outputs_outside)
-                  apply (rule SIM1(12))
-        unfolding fun_upd_def apply simp
-        using subgraph_inv apply (simp add: raw_summary_def)
-        sorry
-*)
-        sorry
+          unfolding  all_edges_def all_vertices_def min_label_def neighbors_def labels_cc_inv_def labels_inv_def labels_stable_def
+          using label_prop_inv apply -
+          apply (simp_all add: all_edges_def all_vertices_def min_label_def neighbors_def labels_cc_inv_def labels_inv_def labels_stable_def)
+          using label_prop_inv apply -
+          unfolding  all_edges_def all_vertices_def min_label_def neighbors_def labels_cc_inv_def labels_inv_def labels_stable_def
+          apply (auto simp add: all_edges_def all_vertices_def min_label_def neighbors_def labels_cc_inv_def labels_inv_def labels_stable_def)
+          done
+        subgoal premises aux
+          apply safe
+          using label_prop_inv(2)
+          by (simp add: all_edges_def all_vertices_def min_label_def neighbors_def labels_cc_inv_def labels_inv_def labels_stable_def)
+        subgoal premises aux
+          using label_prop_inv(3)
+          by auto
+        subgoal premises aux
+          using label_prop_inv(4)
+          by auto
+        subgoal premises aux
+          using label_prop_inv(5)
+          by auto
+        subgoal premises aux
+          using label_prop_inv(6) 
+          unfolding label_prop_upd_inv_def 
+          by (auto del: disjCI simp add: )
+        subgoal premises aux
+          using label_prop_inv(7) 
+          unfolding input_ocaps_inv_def
+          by auto
+        done
       done
   qed
 next
