@@ -111,6 +111,96 @@ lemma step_taus_R_pow_comp_op_steps_intro[intro]:
   apply force
   done
 
+lemma step_taus_loop_op_steps_intro[intro]:
+  "(step Tau ^^ n) op op' \<Longrightarrow>
+   op'' = loop_op wire buf op' \<Longrightarrow>
+   (step Tau ^^ n) (loop_op wire buf op) op''"
+  apply hypsubst_thin
+  apply (induct n arbitrary: op op')
+   apply simp_all
+  apply force
+  done
+
+lemma steps_Out_loop_op_intro[intro!]:
+  "steps (map (\<lambda> x. Out p x) xs) op op' \<Longrightarrow>
+   wire p = None \<Longrightarrow>
+   buf = buf' \<Longrightarrow>
+   ys = map (\<lambda> x. Out p x) xs \<Longrightarrow>
+   steps ys (loop_op wire buf op) (loop_op wire buf' op')"
+  apply hypsubst_thin
+  apply (induct xs arbitrary: op op' rule: rev_induct)
+   apply force+
+  done
+
+lemma steps_Inp_loop_op_intro[intro!]:
+  "steps (map (\<lambda> x. Inp p x) xs) op op' \<Longrightarrow>
+   p \<notin> ran wire \<Longrightarrow>
+   buf = buf' \<Longrightarrow>
+   ys = map (\<lambda> x. Inp p x) xs \<Longrightarrow>
+   steps ys (loop_op wire buf op) (loop_op wire buf' op')"
+  apply hypsubst_thin
+  apply (induct xs arbitrary: op op' rule: rev_induct)
+   apply force+
+  done
+
+lemma step_tau_Out_pow_loop_op_steps_intro[intro]:
+  "steps (map (\<lambda> x. Out p x) xs) op op' \<Longrightarrow>
+   n = length xs \<Longrightarrow>
+   wire p = Some q \<Longrightarrow>
+   op'' = loop_op wire ((\<lambda> p'. (if q = p' then xs else [])) >> buf) op' \<Longrightarrow>
+   (step Tau ^^ n) (loop_op wire buf op) op''"
+  apply hypsubst_thin
+  apply (induct xs arbitrary: op op' rule: rev_induct)
+   apply simp_all
+  subgoal for a as op op'
+    apply (elim relcomppE)
+    subgoal premises prems for op0
+      apply (intro relcomppI)
+       apply (rule prems(1))
+      using prems(3) apply assumption
+      using prems(2,4) apply -
+      apply (rule step_Out_Tau_loop_op)
+        apply simp_all
+      apply (rule ext)
+      apply (auto simp add: BENQ_def)
+      done
+    done
+  done
+
+lemma step_tau_Inp_pow_loop_op_steps_intro[intro]:
+  "steps (map (\<lambda> x. Inp p x) xs) op op' \<Longrightarrow>
+   n = length xs \<Longrightarrow>
+   p \<in> ran wire \<Longrightarrow>
+   length (buf p) \<ge> n \<Longrightarrow>
+   xs = take n (buf p) \<Longrightarrow>
+   op'' = loop_op wire ((\<lambda> p'. (if p = p' then drop n (buf p) else buf p'))) op' \<Longrightarrow>
+   (step Tau ^^ n) (loop_op wire buf op) op''"
+  apply hypsubst_thin
+  apply (induct xs arbitrary: op op' rule: rev_induct)
+   apply simp_all
+  subgoal for op
+    apply (rule arg_cong[where f="\<lambda>b. loop_op wire b op"])
+    apply (rule ext)
+    apply auto
+    done
+  subgoal for x xs op op'
+    apply (elim relcomppE)
+    subgoal premises prems for op0
+      apply (intro relcomppI)
+       apply (rule prems(1))
+      using prems(5) apply assumption
+      using prems(2,3,4,6-) apply -
+       apply (metis Suc_to_right butlast_snoc take_minus_one_conv_butlast)
+      apply (rule step_Inp_Tau_loop_op)
+          apply assumption+
+        apply (simp_all add: BTL_def BHD_def hd_drop_conv_nth take_Suc_conv_app_nth)
+      apply (rule ext)
+      apply clarsimp
+      apply (metis drop_Suc drop_tl)
+      done
+    done
+  done
+
 definition sim_set (\<open>_ \<leadsto>[_] _\<close> [80, 80, 80] 80)
   where
     "P \<leadsto>[Rel] Q \<equiv> \<forall>io Q'. step io Q Q' \<longrightarrow> (\<exists>P'. step io P P' \<and> (P', Q') \<in> Rel)"
@@ -631,6 +721,41 @@ lemma steps_comp_op_R_Out[intro!]:
   "steps (map (Out p) xs) op2 op2' \<Longrightarrow> buf = buf' \<Longrightarrow> op1 = op1' \<Longrightarrow> ys = map (Out (Inr p)) xs \<Longrightarrow> steps ys (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
   apply hypsubst_thin
   apply (induct xs arbitrary: op2 op2'  rule: rev_induct)
+   apply force+
+  done
+
+lemma steps_comp_op_L_Out:
+  "steps (map (Out p) xs) op1 op1' \<Longrightarrow>
+   p \<notin> dom wire \<Longrightarrow>
+   buf = buf' \<Longrightarrow>
+   op2 = op2' \<Longrightarrow>
+   ys = map (Out (Inl p)) xs \<Longrightarrow>
+   steps ys (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
+  apply hypsubst_thin
+  apply (induct xs arbitrary: op1 op1' rule: rev_induct)
+   apply force+
+  done
+
+lemma steps_comp_op_L_Inp:
+  "steps (map (Inp p) xs) op1 op1' \<Longrightarrow>
+   buf = buf' \<Longrightarrow>
+   op2 = op2' \<Longrightarrow>
+   ys = map (Inp (Inl p)) xs \<Longrightarrow>
+   steps ys (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
+  apply hypsubst_thin
+  apply (induct xs arbitrary: op1 op1' rule: rev_induct)
+   apply force+
+  done
+
+lemma steps_comp_op_R_Inp:
+  "steps (map (Inp p) xs) op2 op2' \<Longrightarrow>
+   p \<notin> ran wire \<Longrightarrow>
+   buf = buf' \<Longrightarrow>
+   op1 = op1' \<Longrightarrow>
+   ys = map (Inp (Inr p)) xs \<Longrightarrow>
+   steps ys (comp_op wire buf op1 op2) (comp_op wire buf' op1' op2')"
+  apply hypsubst_thin
+  apply (induct xs arbitrary: op2 op2' rule: rev_induct)
    apply force+
   done
 

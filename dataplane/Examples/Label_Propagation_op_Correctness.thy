@@ -1862,6 +1862,73 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
   qed
 next
   case SIM2
-  then show ?case sorry
-  oops
+  thm SIM2(3,4,5,6,7,8,9)
+  note subgraph_inv = SIM2(1,2)
+    and os_inv = SIM2(3,4,5,6,7,8,9)
+    and buffers_inv = SIM2(10)
+    and dataplane_inv = SIM2(11)
+    and csets_inv = SIM2(12,13)
+    and input_stream_inv = SIM2(14)
+    and label_prop_inv = SIM2(15,16,17,18,19,20,21)
+  have D: \<open>dataflow_topology (summ sg) (-+-)\<close> 
+    unfolding subgraph_inv comp_def
+    apply (subst dataflow_tree_to_graph_raw_summary[symmetric])
+    using dataflow_topology_from_tree.dataflow_topology_axioms[unfolded comp_def]
+    apply auto
+    done
+  also have G: "graph_summar_nt (summ sg) (subgraph.nxt sg) os"
+    apply -
+    apply (rule graph_summar_nt[simplified, OF _ subgraph_inv(1)])
+      apply (rule sym)
+      apply (rule dataflow_tree_to_graph_raw_summary)
+    using os_inv(7) apply assumption
+    using subgraph_inv(2) apply assumption
+    done
+  show ?case (is \<open>wsim ((~) OO \<U> ?R OO (\<approx>)) _ _\<close>)
+ proof -
+    define R where "R = ?R"
+    show ?thesis 
+      apply -
+      unfolding R_def[symmetric]
+      unfolding wsim_def
+      apply simp
+      apply (intro allI impI)
+      apply (repeat_new \<open>erule conjE step_set_spec_op_elim; simp?; hypsubst_thin?\<close>;
+          clarsimp split: if_splits option.splits dest!: num2_neq simp flip: ooo_input_op_def label_propagation_op_def increment_op_def; hypsubst_thin?)
+      subgoal for nid p WCC t
+        apply (clarsimp simp flip: cin.rep_eq simp add: image_iff buffers_inv csets_inv(1,2))
+        apply (subst (asm) disj_assoc[symmetric])
+        apply (erule disjE)
+        subgoal
+          apply (intro exI conjI)
+           apply (rule wstep_trans(1))
+            apply (rule relpowp_imp_rtranclp[
+                where n="length (outpu (os 1) 0)"]) 
+            apply (rule step_set_op_steps_Out_intro[where xs="outpu (os 1) 0"])
+              apply (rule steps_Tau_dataflow_op_steps_Out_intro[where xs="outpu (os 1) 0"])
+               apply (subst dataflow_tree_to_operator_def)
+               apply simp
+               apply (rule steps_map_op[where xs="map (\<lambda> x. Out _ (_ x)) (outpu (os 1) 0)", rotated 2])
+                 apply (rule steps_comp_op_R_Out[where xs="map _ (outpu (os 1) 0)"])
+                    apply (rule steps_Out_loop_op_intro[where xs="map _ (outpu (os 1) 0)"])
+                       apply (rule steps_map_op[where xs="map (\<lambda> x. Out _ (_ x)) (outpu (os 1) 0)", rotated 2])
+                         apply (rule steps_comp_op_L_Out[where xs="map _ (outpu (os 1) 0)"])
+          sorry
+            (* 
+              apply (subst batch_op_def)
+              apply (subst batch_op_logic_def)
+              apply (subst notifier_op_def)
+              apply simp
+              apply (rule steps_builder_op_Write_Some[where ys=Nil and p=1])
+              apply simp
+              apply simp
+              apply (rule refl)+
+ *)
+        subgoal 
+          sorry
+        done
+      done
+  qed
+qed
+
 end
