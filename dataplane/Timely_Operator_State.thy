@@ -108,6 +108,26 @@ definition \<open>mint os caps p t = (if t \<in> set (caps p) then (caps, os) el
 
 definition "produces os batch = os\<lparr> outpu := (\<lambda> p. outpu os p @ map (\<lambda> (x, cap). (x, time cap)) (filter (\<lambda> (x, cap). out cap = p) batch)), produ := produ os @ map (\<lambda> (x, cap). (out cap, time cap, 1)) batch \<rparr>"
 
+definition input_tl where
+  \<open>input_tl old_os p = old_os\<lparr>input := (input old_os)(p := tl (input old_os p))\<rparr>\<close>
+
+lemma intsum_input_tl[simp]: "intsum (input_tl os p) = intsum os"
+  unfolding input_tl_def by simp
+lemma consu_input_tl[simp]: "consu (input_tl os p) = consu os"
+  unfolding input_tl_def by simp
+lemma inter_input_tl[simp]: "inter (input_tl os p) = inter os"
+  unfolding input_tl_def by simp
+lemma produ_input_tl[simp]: "produ (input_tl os p) = produ os"
+  unfolding input_tl_def by simp
+lemma outpu_input_tl[simp]: "outpu (input_tl os p) = outpu os"
+  unfolding input_tl_def by simp
+lemma front_input_tl[simp]: "front (input_tl os p) = front os"
+  unfolding input_tl_def by simp
+lemma ocaps_input_tl[simp]: "ocaps (input_tl os p) = ocaps os"
+  unfolding input_tl_def by simp
+lemma initia_input_tl[simp]: "initia (input_tl os p) = initia os"
+  unfolding input_tl_def by simp
+
 abbreviation "send_output op p x \<equiv> Write op (Some p) (Inr x)"
 abbreviation "send_progress op st \<equiv> Write op None (Inl (Inl st))"
 
@@ -198,6 +218,9 @@ lemma intsum_produces[simp]:
   "intsum (produces os batch) = intsum os"
   unfolding produces_def 
   by auto
+lemma intsum_add_caps[simp]:
+  "intsum (add_caps os caps) = intsum os"
+  unfolding add_caps_def by auto
 lemma intsum_release_caps[simp]:
   "intsum (release_caps os p) = intsum os"
   unfolding release_caps_def drop_caps_def

@@ -203,6 +203,42 @@ proof -
   show "dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv os' cbufs sg'"
     using clean ocaps_reordered by simp
 qed
+(* Like dataplane_tracker_inv_clean but the `input` field is allowed to differ:
+   the invariant does not depend on input directly, only through outputs_at_target
+   (which is itself input-invariant). *)
+lemma dataplane_tracker_inv_clean_no_input:
+  "sg = sg'\<lparr> upfro := f \<rparr> \<Longrightarrow>
+   (\<forall> nid. intsum (os nid) = intsum (os' nid) \<and> ocaps (os nid) = ocaps (os' nid) \<and>
+     consu (os nid) = consu (os' nid) \<and> inter (os nid) = inter (os' nid) \<and>
+     produ (os nid) = produ (os' nid) \<and>
+     outpu (os nid) = outpu (os' nid) \<and> front (os nid) = front (os' nid)) \<Longrightarrow>
+   dataplane_tracker_inv os cbufs sg \<longleftrightarrow> dataplane_tracker_inv os' cbufs sg'"
+  unfolding dataplane_tracker_inv_def
+  apply clarsimp
+  apply (rule iffI)
+  subgoal
+    apply clarsimp
+    subgoal for caps
+      apply (rule exI[of _ caps])
+      apply hypsubst_thin
+      unfolding propagation_inv_def BULK_BENQ_def  Src_caps_inv_def Trg_caps_inv_def produ_consu_inter_supported_def extract_prog_changes_above_impl_inv_def change_deltas_inv_def front_inv_def c_pts_inv_def chnls_imp_front_inv_def
+      by (auto simp add: obtain_progress_def outputs_at_target_def extract_prog_def extract_progress_def split: prod.splits cong: if_cong)
+    done
+  subgoal
+    apply clarsimp
+    subgoal for caps
+      apply (rule exI[of _ caps])
+      apply hypsubst_thin
+      unfolding propagation_inv_def BULK_BENQ_def  Src_caps_inv_def Trg_caps_inv_def produ_consu_inter_supported_def extract_prog_changes_above_impl_inv_def change_deltas_inv_def front_inv_def c_pts_inv_def chnls_imp_front_inv_def
+      by (auto simp add: obtain_progress_def outputs_at_target_def extract_prog_def extract_progress_def split: prod.splits cong: if_cong)
+    done
+  done
+
+lemma dataplane_tracker_inv_input_tl[simp]:
+  "dataplane_tracker_inv (os(nid := input_tl (os nid) p)) cbufs sg \<longleftrightarrow>
+   dataplane_tracker_inv os cbufs sg"
+  by (rule dataplane_tracker_inv_clean_no_input[where sg' = sg and f = "upfro sg", symmetric]) auto
+
 section \<open>Invariant connection timestamps in the input buffer and ocaps - not all operators do that!\<close>
 definition "input_ocaps_inv os = (\<forall> p p'. \<forall> t \<in> snd ` set (input os p). \<forall> s \<in> set ((intsum os) p p'). t -+- s \<in> set (ocaps os p'))" 
 
@@ -224,6 +260,29 @@ definition "graph_summar_nt su nt os = (
    (\<forall> nid nid' p p' t. t \<in>\<^sub>A su (Loc nid (Trg p)) (Loc nid' (Src p')) \<longrightarrow> nid' = nid \<and> t \<in> set (intsum (os nid) p p')) \<and>
    (\<forall> nid nid' p p'. su (Loc nid (Src p)) (Loc nid' (Src p')) = {}\<^sub>A)
   )"
+
+(* graph_summar_nt only inspects os through intsum. input_tl, drop_caps, produces and
+   add_caps all leave intsum unchanged, so the invariant transfers as a simp rewrite. *)
+lemma graph_summar_nt_intsum_cong:
+  assumes "\<And>nid. intsum (os' nid) = intsum (os nid)"
+  shows "graph_summar_nt su nt os' = graph_summar_nt su nt os"
+  unfolding graph_summar_nt_def by (simp add: assms)
+
+lemma graph_summar_nt_input_tl[simp]:
+  "graph_summar_nt su nt (os(nid := input_tl (os nid) p)) = graph_summar_nt su nt os"
+  by (rule graph_summar_nt_intsum_cong) simp
+
+lemma graph_summar_nt_drop_caps[simp]:
+  "graph_summar_nt su nt (os(nid := drop_caps (os nid) caps)) = graph_summar_nt su nt os"
+  by (rule graph_summar_nt_intsum_cong) simp
+
+lemma graph_summar_nt_produces[simp]:
+  "graph_summar_nt su nt (os(nid := produces (os nid) batch)) = graph_summar_nt su nt os"
+  by (rule graph_summar_nt_intsum_cong) simp
+
+lemma graph_summar_nt_add_caps[simp]:
+  "graph_summar_nt su nt (os(nid := add_caps (os nid) caps)) = graph_summar_nt su nt os"
+  by (rule graph_summar_nt_intsum_cong) simp
 
 lemma single_valued_inv_to_nxt_inj_on:
   "bi_unique (op_conn su) \<Longrightarrow>

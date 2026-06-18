@@ -1384,9 +1384,6 @@ qed
 
 value "exit_scope myfst (frontier {#MyPair (1 :: nat) (0 :: nat), MyPair (0 :: nat) (1 :: nat)#}\<^sub>z)"
 
-definition input_tl where
-  \<open>input_tl old_os p = old_os\<lparr>input := (input old_os)(p := tl (input old_os p))\<rparr>\<close>
-
 definition label_prop_edge_record_update where
   \<open>label_prop_edge_record_update old_os event_t src_v dst_v updated_v updated_label =
     old_os\<lparr>
@@ -2140,38 +2137,6 @@ lemma vertices_add_caps[simp]:
 lemma label_add_caps[simp]:
   "label (add_caps os caps) = label os"
   unfolding add_caps_def by auto
-
-lemma intsum_input_tl[simp]:
-  "intsum (input_tl os p) = intsum os"
-  unfolding input_tl_def by auto
-
-lemma consu_input_tl[simp]:
-  "consu (input_tl os p) = consu os"
-  unfolding input_tl_def by auto
-
-lemma inter_input_tl[simp]:
-  "inter (input_tl os p) = inter os"
-  unfolding input_tl_def by auto
-
-lemma produ_input_tl[simp]:
-  "produ (input_tl os p) = produ os"
-  unfolding input_tl_def by auto
-
-lemma outpu_input_tl[simp]:
-  "outpu (input_tl os p) = outpu os"
-  unfolding input_tl_def by auto
-
-lemma front_input_tl[simp]:
-  "front (input_tl os p) = front os"
-  unfolding input_tl_def by auto
-
-lemma ocaps_input_tl[simp]:
-  "ocaps (input_tl os p) = ocaps os"
-  unfolding input_tl_def by auto
-
-lemma initia_input_tl[simp]:
-  "initia (input_tl os p) = initia os"
-  unfolding input_tl_def by auto
 
 lemma en1_input_tl[simp]:
   "en1 (input_tl os p) = en1 os"
