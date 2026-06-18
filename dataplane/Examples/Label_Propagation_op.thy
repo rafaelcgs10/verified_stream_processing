@@ -1589,6 +1589,11 @@ lemma all_edges_input_update[simp]:
   unfolding all_edges_def all_vertices_def neighbors_def
   by auto
 
+lemma all_edges_outpu_update[simp]:
+  "all_edges (os\<lparr>outpu := outp\<rparr>) = all_edges os"
+  unfolding all_edges_def all_vertices_def neighbors_def
+  by auto
+
 lemma all_edges_input_tl[simp]:
   "all_edges (input_tl os p) = all_edges os"
   unfolding input_tl_def all_edges_def all_vertices_def neighbors_def

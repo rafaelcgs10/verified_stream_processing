@@ -2137,8 +2137,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           apply (simp_all add: all_edges_def all_vertices_def min_label_def neighbors_def labels_cc_inv_def labels_inv_def labels_stable_def)
           using label_prop_inv apply -
           unfolding  all_edges_def all_vertices_def min_label_def neighbors_def labels_cc_inv_def labels_inv_def labels_stable_def
-          apply (auto simp add: all_edges_def all_vertices_def min_label_def neighbors_def labels_cc_inv_def labels_inv_def labels_stable_def)
-          done
+          by (auto simp add: all_edges_def all_vertices_def min_label_def neighbors_def labels_cc_inv_def labels_inv_def labels_stable_def)
         subgoal premises aux
           apply safe
           using label_prop_inv(2)
