@@ -569,7 +569,8 @@ lemma label_propagation_correctness:
     and input_stream_inv:
     \<open>timely_input_stream lxs (mset (ocaps (os 0) 0))\<close>
     and label_prop_inv:
-    \<open>(\<forall> t. labels_cc_inv os_label_prop t)\<close>
+    \<open>(\<forall> t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
+
     \<open>(\<forall> t \<in> set (timestamps os_label_prop). \<not> frontier_less_equal (exit_scope myfst (front (os 1) 0 + front (os 1) 1)) t \<longrightarrow> labels_stable (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
     \<open>\<forall> t \<in> myfst ` snd ` set (input (os 1) 0) \<union> myfst ` snd ` set (input (os 1) 1). frontier_less_equal (exit_scope myfst (front (os 1) 1)) t\<close>
     \<open>\<forall> t. t \<in> set (ocaps (os 1) 0) \<longrightarrow> myfst t |\<in>| cset_from_list T\<close>
@@ -749,9 +750,9 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                               apply simp
                               apply (rule components_from_labels_correct)
                               subgoal
-                                using label_prop_inv(1)[unfolded os_inv(4) operator_state.defs, simplified, rule_format, of "myfst t'"] 
-                                  labels_cc_inv_imp_labels_inv
+                                using label_prop_inv(1)[unfolded os_inv(4) operator_state.defs, simplified, rule_format, of "myfst t'"]
                                 by auto
+
                               subgoal
                                 using label_prop_inv(2)[unfolded os_inv(4) operator_state.defs, simplified, rule_format, of "myfst t'"] 
                                 by auto
@@ -1123,8 +1124,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
               using input_stream_inv by auto
             subgoal
               using label_prop_inv(1)
-              unfolding labels_cc_inv_def
               by auto
+
             subgoal
               using label_prop_inv(2) by auto
             subgoal
@@ -1750,7 +1751,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                   subgoal
                     apply safe
                     subgoal for t''
-                      apply (rule labels_cc_inv_input0_preserved[where xs=xs])
+                      apply (rule labels_inv_input0_preserved[where xs=xs])
                       using label_prop_inv(1) apply blast
                       subgoal
                         using label_prop_inv(6) by assumption
@@ -2022,12 +2023,18 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                     using input_stream_inv by assumption
                   subgoal
                     apply safe
-                    apply simp
-                    apply (rule labels_cc_inv_input1_preserved_record_update_tl[of "os_label_prop" d t v l])
-                         apply (rule label_prop_inv(1)[rule_format])
-                        apply (rule label_prop_inv(6))
-                       apply simp_all
+                    subgoal for ta
+                      apply (rule labels_inv_input1_preserved_record_update_tl[
+                        of os_label_prop d t v l "myfst t"
+                          "label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)" ta,
+                        simplified])
+                           apply (rule label_prop_inv(1)[rule_format])
+                          apply (rule label_prop_inv(6))
+                         apply simp_all
+                      done
                     done
+
+
                   subgoal
                     apply safe
                     subgoal for t'
@@ -2132,16 +2139,14 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply simp
         apply (simp add: input_stream_inv)
         subgoal
-          unfolding  all_edges_def all_vertices_def min_label_def neighbors_def labels_cc_inv_def labels_inv_def labels_stable_def
-          using label_prop_inv apply -
-          apply (simp_all add: all_edges_def all_vertices_def min_label_def neighbors_def labels_cc_inv_def labels_inv_def labels_stable_def)
-          using label_prop_inv apply -
-          unfolding  all_edges_def all_vertices_def min_label_def neighbors_def labels_cc_inv_def labels_inv_def labels_stable_def
-          by (auto simp add: all_edges_def all_vertices_def min_label_def neighbors_def labels_cc_inv_def labels_inv_def labels_stable_def)
+          using label_prop_inv
+          by (simp_all add: all_edges_def all_vertices_def min_label_def neighbors_def labels_inv_def labels_stable_def)
+
         subgoal premises aux
           apply safe
           using label_prop_inv(2)
-          by (simp add: all_edges_def all_vertices_def min_label_def neighbors_def labels_cc_inv_def labels_inv_def labels_stable_def)
+          by (simp add: all_edges_def all_vertices_def min_label_def neighbors_def labels_inv_def labels_stable_def)
+
         subgoal premises aux
           using label_prop_inv(3)
           by auto
