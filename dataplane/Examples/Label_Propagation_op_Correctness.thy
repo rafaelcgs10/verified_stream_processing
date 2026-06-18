@@ -435,10 +435,7 @@ lemma produ_release_caps[simp]:
   by auto
 
 
-(* FIXME: move me? *)
-definition "label_prob_ty2_check os bufs \<equiv>
-   (\<forall> p. (\<forall> x \<in> fst ` set (input os p) \<union> fst ` set (bufs p). is_en1 os x)) \<and>
-   (\<forall> x \<in> fst ` set (outpu os 0). is_en2 os x) \<and> (\<forall> x \<in> fst ` set (outpu os 1). is_en1 os x)"
+
 
 (* FIXME: move me to cset things *)
 lemma cfilter_False:
@@ -1698,10 +1695,11 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                       apply (clarsimp simp add: label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def operator_state.defs os_inv(4) release_caps_def drop_caps_def produces_def)
                       done
                     done
+                 
                   subgoal premises aux
                     apply safe
                     subgoal for t'
-                      unfolding label_prop_edge_record_update_def
+                      apply (subst (asm) label_prop_edge_record_update_def)
                       apply simp      
                       apply (elim disjE)
                       subgoal
@@ -1719,7 +1717,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                   apply assumption+
                           using label_prop_inv(6)[unfolded os_inv(4) operator_state.defs, simplified] apply assumption
                                apply assumption+
-                              apply simp_all
+                              apply (simp_all add: label_prop_edge_record_update_def)
                           using aux apply force
                           done
                         subgoal
@@ -1766,6 +1764,326 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
             done
           done
         subgoal
+          apply (simp  del: filter.simps split: list.splits)
+          subgoal for x xs
+            apply (cases x; simp del: filter.simps)
+            apply hypsubst_thin
+            subgoal for d t
+              apply (simp del: filter.simps split: prod.splits)
+              subgoal for v l
+                apply hypsubst_thin
+                apply (intro exI conjI relcomppI)
+                   apply (rule rtranclp.intros(1))
+                  apply (rule bisim_refl)
+                 defer
+                 apply (rule wbisim_refl)
+                apply (rule wb_upto_b_base)
+                unfolding R_def[simplified]
+                apply (rule exI[of _ S])
+                apply (rule exI[of _ SO])
+                apply (rule exI[of _ "((\<lambda>t1. ((1, 0), Inr (ccs (set (icoll (map (\<lambda>(x, t'). Data t' (projl x)) ((outputs_at_target (summ sg) (os(1 := release_caps
+                       (drop_caps
+                         (produces
+                           (add_caps (input_tl (os 1) 1)
+                             (map snd
+                               (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                           (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t))
+                         (map snd (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                       1)) >> cbufs >> inputs_at_target (os(1 := release_caps
+                       (drop_caps
+                         (produces
+                           (add_caps (input_tl (os 1) 1)
+                             (map snd
+                               (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                           (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t))
+                         (map snd (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                       1))) (1, 0)) @@- lxs) t1) \<union> all_edges (release_caps
+                       (drop_caps
+                         (produces
+                           (add_caps (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l))
+                             (map snd
+                               (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                           (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t))
+                         (map snd (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                       1) (myfst t1))), t1)) |`|
+   cUn (cUn (ts lxs) (cset_from_list (map snd ((outputs_at_target (summ sg) (os(1 := release_caps
+                       (drop_caps
+                         (produces
+                           (add_caps (input_tl (os 1) 1)
+                             (map snd
+                               (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                           (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t))
+                         (map snd (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                       1)) >> cbufs >> inputs_at_target (os(1 := release_caps
+                       (drop_caps
+                         (produces
+                           (add_caps (input_tl (os 1) 1)
+                             (map snd
+                               (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                           (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t))
+                         (map snd (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                       1))) (1, 0))))) ((\<lambda>t. MyPair t 0) |`| cset_from_list (timestamps (release_caps
+                       (drop_caps
+                         (produces
+                           (add_caps (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l))
+                             (map snd
+                               (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                           (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t))
+                         (map snd (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                       1))))"])
+                apply (rule exI[of _ D])
+                apply (rule exI[of _ lxs])
+                apply (rule exI[of _ "os(1 := release_caps
+                       (drop_caps
+                         (produces
+                           (add_caps (input_tl (os 1) 1)
+                             (map snd
+                               (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                           (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t))
+                         (map snd (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                       1)"])
+                apply (rule exI[of _ "release_caps
+                       (drop_caps
+                         (produces
+                           (add_caps (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l))
+                             (map snd
+                               (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                           (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t))
+                         (map snd (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                       1"])
+                apply (rule exI[of _ cbufs])
+                apply (rule exI[of _ "outputs_at_target (summ sg) (os(1 := release_caps
+                       (drop_caps
+                         (produces
+                           (add_caps (input_tl (os 1) 1)
+                             (map snd
+                               (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                           (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t))
+                         (map snd (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                       1)) >> cbufs >> inputs_at_target (os(1 := release_caps
+                       (drop_caps
+                         (produces
+                           (add_caps (input_tl (os 1) 1)
+                             (map snd
+                               (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                           (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t))
+                         (map snd (label_prop_label_batch os_label_prop (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)) (myfst t) v l t)))
+                       1))"])
+                apply (rule exI[of _ sg])
+                apply (intro conjI)
+                subgoal
+                  by (simp add: operator_state.defs dataflow_tree_to_operator_def os_inv(1))
+                subgoal premises aux
+                  using aux(2,3) apply -
+                  apply (simp  del: filter.simps add: label_prop_edge_batch_def label_prop_edge_record_update_def buffers_inv operator_state.defs os_inv(4) csets_inv(1))
+                  apply (rule arg_cong2[where f=set_spec_op])
+                  apply (clarsimp simp del: filter.simps del: disjCI simp add: inputs_at_target_def BULK_BENQ_def operator_state.defs outputs_at_target_raw_summary subgraph_inv buffers_inv csets_inv(1) os_inv(4))
+                  subgoal
+                    apply (rule arg_cong2[where f=cUn])
+                    subgoal
+                      by simp
+                    subgoal
+                      apply (rule cimage_cong)
+                      subgoal
+                        unfolding input_tl_def
+                        by simp
+                      subgoal for tt
+                        unfolding input_tl_def
+                        by simp
+                      done
+                    done
+                  subgoal
+                    by simp
+                  done
+                subgoal
+                  using subgraph_inv(1) by assumption
+                subgoal
+                  using subgraph_inv(2) by assumption
+                subgoal
+                  using os_inv(2) by simp
+                subgoal
+                  by (simp add: os_inv(3,4) operator_state.defs)
+                subgoal
+                  apply (rule exI[of _ T])
+                    apply simp
+                  apply (intro conjI)
+                  subgoal
+                    apply (simp add: operator_state.defs)
+                    apply (rule exI[of _ G])
+                    apply (rule exI[of _ V])
+                    apply (rule exI[of _ "label (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l))"])
+                    unfolding release_caps_def drop_caps_def produces_def add_caps_def input_tl_def label_prop_label_record_update_def
+                    by (simp add: operator_state.defs os_inv(4))
+                  subgoal
+                    using os_inv(1,5)
+                    by (simp add:  operator_state.defs)
+                  subgoal
+                    using os_inv(2,4,6) apply -
+                    apply (rule label_prob_ty2_check_producesI)
+                    apply simp
+                    apply (rule label_prob_ty2_check_input_tlI)
+                      apply (auto simp add: operator_state.defs label_prop_label_batch_def label_prop_neighbor_batch_def)
+                    done
+                  subgoal
+                    using os_inv(7) by simp
+                  subgoal
+                    apply (rule dataplane_tracker_inv_release_caps_update[OF D])
+                      apply (rule dataplane_tracker_inv_add_caps_produces_drop_caps_update[OF D])
+                    subgoal 
+                      sorry
+                    subgoal
+                      sorry
+                    subgoal
+                      using subgraph_inv(2) by assumption
+                    subgoal
+                      unfolding label_prop_label_batch_def label_prop_neighbor_batch_def
+                      apply (clarsimp simp add: os_inv(4) operator_state.defs)
+                      using label_prop_inv(7)[unfolded input_ocaps_inv_def os_inv(7)[rule_format] raw_summary_def, simplified, rule_format, of "(d, t)" 1 1 0, simplified]
+                      apply (metis (no_types, lifting) dual_order.eq_iff less_eq_myprod_def list.set_intros(1) myprod.sel(1,2) zero_myprod_def)
+                      done
+                    subgoal
+                      sorry
+                    subgoal
+                      using subgraph_inv(2) by assumption
+                    done
+                  subgoal
+                    by (auto simp add: csets_inv(2) cfilter_False label_prop_label_batch_def label_prop_neighbor_batch_def split: if_splits)
+                  subgoal
+                    using input_stream_inv by assumption
+                  subgoal
+                    apply safe
+                    apply simp
+                    apply (rule labels_cc_inv_input1_preserved_record_update[of os_label_prop "myfst t" l v])
+                       apply (rule label_prop_inv(1)[rule_format])
+                      apply (rule label_prop_inv(6))
+                     apply simp
+                    
+                    
+
+                    find_theorems cc_of all_edges
+
+                    sorry
+                  subgoal
+                    apply safe
+                    sorry
+                  subgoal
+                    unfolding input_tl_def
+                    using label_prop_inv(3) by simp
+                  subgoal
+                    using label_prop_inv(4)
+                    unfolding release_caps_def drop_caps_def add_caps_def
+                    by (auto simp add: label_prop_neighbor_batch_def label_prop_label_batch_def os_inv(4) operator_state.defs image_iff dest!: in_set_list_diffD)
+                  subgoal
+                    apply simp
+
+                    thm labels_cc_inv_input1_preserved_record_update
+
+                    find_theorems set list_diff
+             
+
+                      find_theorems    intsum os
+
+
+end
+
+                    apply (subst (1) icoll_LCons_Data)
+                    subgoal
+                      using input_stream_inv timely_input_stream_expires_le 
+                      by auto
+                    subgoal
+                      apply (simp add: input_tl_def)
+                      apply (subgoal_tac "t = MyPair (myfst t) 0")
+                      subgoal
+                        apply (subst (1) all_edges_eq[rotated, where V=V and label_sync=L and input_sync="input (os 1)"])
+                        subgoal 
+                          using label_prop_inv(6)[unfolded os_inv(4) operator_state.defs] by simp
+                        subgoal by simp
+                        subgoal
+                          apply simp
+                          apply (rule arg_cong2[where f=cinsert])
+                          subgoal
+                            apply (subst (1) icoll_LCons_Data)
+                            subgoal
+                              using input_stream_inv timely_input_stream_expires_le
+                              by auto
+                            apply (simp add: insert_commute ccs_insert_symmetric)
+                            apply (subst ccs_insert_swap)
+                            apply (rule refl)
+                            done
+                          subgoal
+                            apply (rule arg_cong2[where f=cUn])
+                            subgoal
+                              by simp
+                            subgoal
+                              apply (subst (1) icoll_LCons_Data)
+                              subgoal
+                                using input_stream_inv timely_input_stream_expires_le 
+                                by auto
+                              subgoal 
+                                apply (rule cimage_cong)
+                                subgoal
+                                  by simp
+                                subgoal for t''
+                                  apply (cases "t \<le> t''")
+                                  subgoal
+                                    apply (subst all_edges_eq_le[rotated, where V=V and label_sync=L and input_sync="input (os 1)"])
+                                    subgoal using label_prop_inv(6)[unfolded os_inv(4) operator_state.defs] by simp
+                                    subgoal 
+                                      using myfst_mono by blast
+                                    subgoal by simp
+                                    subgoal
+                                      apply (subst insert_commute)
+                                      apply (simp add: ccs_insert_symmetric)
+                                      apply (subst (1) icoll_LCons_Data)
+                                      subgoal
+                                        using input_stream_inv timely_input_stream_expires_le 
+                                        by auto
+                                      subgoal
+                                        apply simp
+                                        done
+                                      done
+                                    done
+                                  subgoal
+                                    apply (subst all_edges_eq_not_le[rotated, where V=V and label_sync=L and input_sync="input (os 1)"])
+                                    subgoal
+                                      by (metis MyPair_mono bot_nat_0.extremum myprod.exhaust_sel)
+                                    subgoal
+                                      by simp
+                                    subgoal
+                                      apply (subst (1) icoll_LCons_Data)
+                                      subgoal
+                                        using input_stream_inv timely_input_stream_expires_le
+                                        by auto
+                                      apply simp
+                                      done
+                                    done
+                                  done
+                                done
+                              done
+                            done
+                          done
+                        done
+                      subgoal
+                        using label_prop_inv(5)[rule_format, of t] apply -
+                        apply (drule meta_mp)
+                        subgoal
+                          by auto
+                        subgoal
+                          apply (cases t)
+                          apply auto
+                          done
+                        done
+                      done
+                    done
+                  done
+
+
+
+                thm csets_inv(1)[unfolded buffers_inv]
+
+                find_theorems chns
+
+end
           sorry
         done
       subgoal 

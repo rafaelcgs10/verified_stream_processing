@@ -1426,6 +1426,10 @@ definition label_prop_output_batch where
         (en2 old_os (components_from_labels (all_edges old_os t) (min_label old_os t)), cap))
       (rmdups {} (map myfst below_times))\<close>
 
+definition "label_prob_ty2_check os bufs \<equiv>
+   (\<forall> p. (\<forall> x \<in> fst ` set (input os p) \<union> fst ` set (bufs p). is_en1 os x)) \<and>
+   (\<forall> x \<in> fst ` set (outpu os 0). is_en2 os x) \<and> (\<forall> x \<in> fst ` set (outpu os 1). is_en1 os x)"
+
 definition label_propagation_op_logic where
   \<open>label_propagation_op_logic os = cUn (cUn
     (case input os 0 of
@@ -1450,7 +1454,7 @@ definition label_propagation_op_logic where
         os'' = label_prop_label_record_update os' t1 v (min (min_label os t1 v) l);
         batch = label_prop_label_batch os os'' t1 v l t
       in
-        {|release_caps (produces os'' batch) 1|}))
+        {|release_caps (drop_caps (produces (add_caps os'' (map snd batch)) batch) (map snd batch)) 1|}))
   (let
       below_times = filter
         (\<lambda> t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t))
@@ -1597,6 +1601,169 @@ lemma all_edges_input_tl_label_state_update[simp]:
    all_edges (os\<lparr>timestamps := ts, graph := G, vertices := V, label := L\<rparr>)"
   unfolding input_tl_def all_edges_def all_vertices_def neighbors_def
   by auto
+
+lemma all_edges_label_update[simp]:
+  "all_edges (os\<lparr>label := L\<rparr>) = all_edges os"
+  unfolding all_edges_def all_vertices_def neighbors_def
+  by auto
+
+lemma all_edges_add_cap[simp]:
+  "all_edges (add_cap os p t') = all_edges os"
+  unfolding add_cap_def all_edges_def all_vertices_def neighbors_def
+  by auto
+
+lemma all_edges_add_caps[simp]:
+  "all_edges (add_caps os caps) = all_edges os"
+  unfolding add_caps_def all_edges_def all_vertices_def neighbors_def
+  by auto
+
+lemma all_edges_delay_cap[simp]:
+  "all_edges (delay_cap os cap incr) = all_edges os"
+  unfolding delay_cap_def all_edges_def all_vertices_def neighbors_def
+  by auto
+
+lemma all_edges_mint_cap[simp]:
+  "all_edges (mint_cap os p t') = all_edges os"
+  unfolding mint_cap_def all_edges_def all_vertices_def neighbors_def
+  by auto
+
+lemma all_edges_mint[simp]:
+  "all_edges (snd (mint os caps p t')) = all_edges os"
+  by (cases "t' \<in> set (caps p)")
+    (simp_all add: mint_def)
+
+lemma all_edges_produce[simp]:
+  "all_edges (produce os cap batch) = all_edges os"
+  unfolding produce_def all_edges_def all_vertices_def neighbors_def
+  by (auto split: if_splits)
+
+lemma all_edges_consume[simp]:
+  "all_edges (consume os p t' len) = all_edges os"
+  unfolding consume_def all_edges_def all_vertices_def neighbors_def
+  by (auto split: if_splits)
+
+lemma all_edges_consumes[simp]:
+  "all_edges (consumes os p t' d) = all_edges os"
+  unfolding consumes_def add_caps_def BENQ_def all_edges_def all_vertices_def neighbors_def
+  by auto
+
+lemma all_edges_obtain_progress[simp]:
+  "all_edges (fst (obtain_progress os)) = all_edges os"
+  unfolding obtain_progress_def all_edges_def all_vertices_def neighbors_def
+  by auto
+
+lemma all_edges_label_prop_label_record_update[simp]:
+  "all_edges (label_prop_label_record_update os event_t vertex assigned_label) = all_edges os"
+  unfolding label_prop_label_record_update_def all_edges_def all_vertices_def neighbors_def
+  by auto
+
+lemma label_prob_ty2_check_timestamps_update[simp]:
+  "label_prob_ty2_check (os\<lparr>timestamps := T\<rparr>) bufs = label_prob_ty2_check os bufs"
+  unfolding label_prob_ty2_check_def by auto
+
+lemma label_prob_ty2_check_graph_update[simp]:
+  "label_prob_ty2_check (os\<lparr>graph := G\<rparr>) bufs = label_prob_ty2_check os bufs"
+  unfolding label_prob_ty2_check_def by auto
+
+lemma label_prob_ty2_check_vertices_update[simp]:
+  "label_prob_ty2_check (os\<lparr>vertices := V\<rparr>) bufs = label_prob_ty2_check os bufs"
+  unfolding label_prob_ty2_check_def by auto
+
+lemma label_prob_ty2_check_label_update[simp]:
+  "label_prob_ty2_check (os\<lparr>label := L\<rparr>) bufs = label_prob_ty2_check os bufs"
+  unfolding label_prob_ty2_check_def by auto
+
+lemma label_prob_ty2_check_drop_cap[simp]:
+  "label_prob_ty2_check (drop_cap os cap) bufs = label_prob_ty2_check os bufs"
+  unfolding label_prob_ty2_check_def drop_cap_def by auto
+
+lemma label_prob_ty2_check_drop_caps[simp]:
+  "label_prob_ty2_check (drop_caps os caps) bufs = label_prob_ty2_check os bufs"
+  unfolding label_prob_ty2_check_def drop_caps_def by auto
+
+lemma label_prob_ty2_check_release_caps[simp]:
+  "label_prob_ty2_check (release_caps os p) bufs = label_prob_ty2_check os bufs"
+  unfolding release_caps_def label_prob_ty2_check_def drop_caps_def trace_simp Let_def
+  by auto
+
+lemma label_prob_ty2_check_add_cap[simp]:
+  "label_prob_ty2_check (add_cap os p t') bufs = label_prob_ty2_check os bufs"
+  unfolding label_prob_ty2_check_def add_cap_def by auto
+
+lemma label_prob_ty2_check_add_caps[simp]:
+  "label_prob_ty2_check (add_caps os caps) bufs = label_prob_ty2_check os bufs"
+  unfolding label_prob_ty2_check_def add_caps_def by auto
+
+lemma label_prob_ty2_check_delay_cap[simp]:
+  "label_prob_ty2_check (delay_cap os cap incr) bufs = label_prob_ty2_check os bufs"
+  unfolding label_prob_ty2_check_def delay_cap_def by auto
+
+lemma label_prob_ty2_check_mint_cap[simp]:
+  "label_prob_ty2_check (mint_cap os p t') bufs = label_prob_ty2_check os bufs"
+  unfolding label_prob_ty2_check_def mint_cap_def by auto
+
+lemma label_prob_ty2_check_mint[simp]:
+  "label_prob_ty2_check (snd (mint os caps p t')) bufs = label_prob_ty2_check os bufs"
+  by (cases "t' \<in> set (caps p)")
+    (simp_all add: mint_def)
+
+lemma label_prob_ty2_check_consume[simp]:
+  "label_prob_ty2_check (consume os p t' len) bufs = label_prob_ty2_check os bufs"
+  unfolding label_prob_ty2_check_def consume_def
+  by (auto split: if_splits)
+
+lemma label_prob_ty2_check_obtain_progress[simp]:
+  "label_prob_ty2_check (fst (obtain_progress os)) bufs = label_prob_ty2_check os bufs"
+  unfolding label_prob_ty2_check_def obtain_progress_def by auto
+
+lemma label_prob_ty2_check_label_prop_edge_record_update[simp]:
+  "label_prob_ty2_check (label_prop_edge_record_update os event_t src_v dst_v updated_v updated_label) bufs = label_prob_ty2_check os bufs"
+  unfolding label_prob_ty2_check_def label_prop_edge_record_update_def by auto
+
+lemma label_prob_ty2_check_label_prop_label_record_update[simp]:
+  "label_prob_ty2_check (label_prop_label_record_update os event_t vertex assigned_label) bufs = label_prob_ty2_check os bufs"
+  unfolding label_prob_ty2_check_def label_prop_label_record_update_def by auto
+
+lemma label_prob_ty2_check_producesI[intro]:
+  assumes check: "label_prob_ty2_check os bufs"
+    and out0: "\<And>x cap. (x, cap) \<in> set batch \<Longrightarrow> out cap = 0 \<Longrightarrow> is_en2 os x"
+    and out1: "\<And>x cap. (x, cap) \<in> set batch \<Longrightarrow> out cap = 1 \<Longrightarrow> is_en1 os x"
+  shows "label_prob_ty2_check (produces os batch) bufs"
+  using check out0 out1
+  unfolding label_prob_ty2_check_def produces_def
+  by auto
+
+lemma label_prob_ty2_check_input_tlI[intro]:
+  assumes check: "label_prob_ty2_check os bufs"
+  shows "label_prob_ty2_check (input_tl os p) bufs"
+proof -
+  have input_subset: "fst ` set (input (input_tl os p) q) \<subseteq> fst ` set (input os q)" for q
+  proof (cases "q = p")
+    case True
+    then show ?thesis
+      unfolding input_tl_def by (auto dest: in_set_tlD)
+  next
+    case False
+    then show ?thesis
+      unfolding input_tl_def by auto
+  qed
+  show ?thesis
+    using check input_subset
+    unfolding label_prob_ty2_check_def input_tl_def
+    apply (intro conjI allI ballI)
+    apply safe
+    subgoal premises aux for pa x a b
+      using aux(1)[of pa] aux(2) aux(5)
+      by auto
+    subgoal premises aux for pa x a b
+      using aux(2) aux(5)
+      by auto
+    subgoal
+      by auto
+    subgoal
+      by auto
+    done
+qed
 
 lemma input_release_caps[simp]:
   "input (release_caps os p) = input os"
@@ -1797,6 +1964,110 @@ lemma label_prop_upd_inv_release_caps[simp]:
   unfolding release_caps_def
   using label_prop_upd_inv_drop_caps
   by simp
+
+lemma is_en1_delay_cap[simp]:
+  "is_en1 (delay_cap os cap incr) = is_en1 os"
+  unfolding delay_cap_def by auto
+
+lemma is_en2_delay_cap[simp]:
+  "is_en2 (delay_cap os cap incr) = is_en2 os"
+  unfolding delay_cap_def by auto
+
+lemma is_en1_produce[simp]:
+  "is_en1 (produce os cap batch) = is_en1 os"
+  unfolding produce_def by auto
+
+lemma is_en2_produce[simp]:
+  "is_en2 (produce os cap batch) = is_en2 os"
+  unfolding produce_def by auto
+
+lemma is_en1_consume[simp]:
+  "is_en1 (consume os p t len) = is_en1 os"
+  unfolding consume_def by auto
+
+lemma is_en2_consume[simp]:
+  "is_en2 (consume os p t len) = is_en2 os"
+  unfolding consume_def by auto
+
+lemma is_en1_mint_cap[simp]:
+  "is_en1 (mint_cap os p t) = is_en1 os"
+  unfolding mint_cap_def by auto
+
+lemma is_en2_mint_cap[simp]:
+  "is_en2 (mint_cap os p t) = is_en2 os"
+  unfolding mint_cap_def by auto
+
+lemma is_en1_mint[simp]:
+  "is_en1 (snd (mint os caps p t)) = is_en1 os"
+  unfolding mint_def mint_cap_def by auto
+
+lemma is_en2_mint[simp]:
+  "is_en2 (snd (mint os caps p t)) = is_en2 os"
+  unfolding mint_def mint_cap_def by auto
+
+lemma is_en1_produces[simp]:
+  "is_en1 (produces os batch) = is_en1 os"
+  unfolding produces_def by auto
+
+lemma is_en2_produces[simp]:
+  "is_en2 (produces os batch) = is_en2 os"
+  unfolding produces_def by auto
+
+lemma is_en1_drop_cap[simp]:
+  "is_en1 (drop_cap os cap) = is_en1 os"
+  unfolding drop_cap_def by auto
+
+lemma is_en2_drop_cap[simp]:
+  "is_en2 (drop_cap os cap) = is_en2 os"
+  unfolding drop_cap_def by auto
+
+lemma is_en1_drop_caps[simp]:
+  "is_en1 (drop_caps os caps) = is_en1 os"
+  unfolding drop_caps_def by auto
+
+lemma is_en2_drop_caps[simp]:
+  "is_en2 (drop_caps os caps) = is_en2 os"
+  unfolding drop_caps_def by auto
+
+lemma is_en1_release_caps[simp]:
+  "is_en1 (release_caps os p) = is_en1 os"
+  unfolding release_caps_def drop_caps_def trace_simp Let_def by auto
+
+lemma is_en2_release_caps[simp]:
+  "is_en2 (release_caps os p) = is_en2 os"
+  unfolding release_caps_def drop_caps_def trace_simp Let_def by auto
+
+lemma is_en1_add_cap[simp]:
+  "is_en1 (add_cap os p t) = is_en1 os"
+  unfolding add_cap_def by auto
+
+lemma is_en2_add_cap[simp]:
+  "is_en2 (add_cap os p t) = is_en2 os"
+  unfolding add_cap_def by auto
+
+lemma is_en1_consumes[simp]:
+  "is_en1 (consumes os p t d) = is_en1 os"
+  unfolding consumes_def add_caps_def BENQ_def by auto
+
+lemma is_en2_consumes[simp]:
+  "is_en2 (consumes os p t d) = is_en2 os"
+  unfolding consumes_def add_caps_def BENQ_def by auto
+
+lemma is_en1_fold_consumes[simp]:
+  "is_en1 (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = is_en1 os"
+  by (induct xs arbitrary: os) auto
+
+lemma is_en2_fold_consumes[simp]:
+  "is_en2 (fold (\<lambda>(d, t) os. consumes os p t d) xs os) = is_en2 os"
+  by (induct xs arbitrary: os) auto
+
+lemma is_en1_obtain_progress[simp]:
+  "is_en1 (fst (obtain_progress os)) = is_en1 os"
+  unfolding obtain_progress_def by auto
+
+lemma is_en2_obtain_progress[simp]:
+  "is_en2 (fst (obtain_progress os)) = is_en2 os"
+  unfolding obtain_progress_def by auto
 
 lemma intsum_add_caps[simp]:
   "intsum (add_caps os caps) = intsum os"
@@ -2492,16 +2763,228 @@ qed
 
 
 
+lemma min_label_label_update_v_cases:
+  fixes q t1 :: "'t::order"
+  assumes timestamps_eq: "timestamps os' = timestamps os"
+    and label_eq: "label os' = (label os)(t1 := (label os t1)(v := l_new))"
+    and new_le: "l_new \<le> min_label os t1 v"
+  shows "min_label os' q x = min_label os q x \<or> (x = v \<and> min_label os' q x = l_new)"
+proof (cases "x = v")
+  case False
+  have label_x_eq: "\<And>t'. label os' t' x = label os t' x"
+    using label_eq False by (auto simp: fun_upd_def)
+  show ?thesis
+    unfolding min_label_def using label_x_eq timestamps_eq by simp
+next
+  case True
+  let ?ts = "{t' \<in> set (timestamps os). t' \<le> q}"
+  let ?img = "(\<lambda>t'. label os t' v) ` ?ts"
+  let ?img' = "(\<lambda>t'. label os' t' v) ` ?ts"
+  let ?S = "insert (label os q v) ?img"
+  let ?S' = "insert (label os' q v) ?img'"
+  have ts_eq': "{t' \<in> set (timestamps os'). t' \<le> q} = ?ts"
+    using timestamps_eq by simp
+  have min_S': "min_label os' q v = Min ?S'"
+    unfolding min_label_def using ts_eq' by simp
+  have min_S: "min_label os q v = Min ?S"
+    unfolding min_label_def by simp
+
+  have S'_sub_ins_S: "?S' \<subseteq> insert l_new ?S"
+  proof
+    fix y assume "y \<in> ?S'"
+    then consider "y = label os' q v" | t' where "t' \<in> ?ts" "y = label os' t' v" by blast
+    then show "y \<in> insert l_new ?S"
+    proof cases
+      case 1
+      then show ?thesis
+        by (cases "q = t1") (auto simp: label_eq)
+    next
+      case (2 t')
+      then show ?thesis
+        by (cases "t' = t1") (auto simp: label_eq)
+    qed
+  qed
+
+  have lnew_le_label_t1: "l_new \<le> label os t1 v"
+  proof -
+    have "min_label os t1 v \<le> label os t1 v"
+      unfolding min_label_def by (intro Min_le) auto
+    then show ?thesis using new_le by simp
+  qed
+
+  have fin_S': "finite ?S'" by auto
+  have fin_S: "finite ?S" by auto
+  have ne_S: "?S \<noteq> {}" by auto
+  have ne_S': "?S' \<noteq> {}" by auto
+
+  show ?thesis
+  proof (cases "Min ?S' = l_new")
+    case True
+    then show ?thesis using \<open>x = v\<close> min_S' by simp
+  next
+    case False
+    have min_in_S': "Min ?S' \<in> ?S'"
+      using fin_S' ne_S' by (intro Min_in) auto
+    then have min_in_S: "Min ?S' \<in> ?S"
+      using S'_sub_ins_S False by auto
+    then have lower: "Min ?S \<le> Min ?S'"
+      using Min_le[OF fin_S min_in_S] by simp
+
+    have upper: "Min ?S' \<le> Min ?S"
+    proof (rule Min.boundedI[OF fin_S ne_S])
+      fix y assume y_in: "y \<in> ?S"
+      then consider "y = label os q v" | t' where "t' \<in> ?ts" "y = label os t' v" by blast
+      then show "Min ?S' \<le> y"
+      proof cases
+        case 1
+        show ?thesis
+        proof (cases "q = t1")
+          case True
+          then have y_eq: "y = label os t1 v" using 1 by simp
+          have "label os' q v = l_new"
+            using True label_eq by simp
+          then have "l_new \<in> ?S'" by auto
+          then have "Min ?S' \<le> l_new"
+            using fin_S' Min_le by auto
+          also have "l_new \<le> y" using lnew_le_label_t1 y_eq by simp
+          finally show ?thesis .
+        next
+          case False
+          then have "label os' q v = label os q v"
+            using label_eq by simp
+          then have "y \<in> ?S'" using 1 by auto
+          then show ?thesis
+            using fin_S' Min_le by auto
+        qed
+      next
+        case (2 t')
+        show ?thesis
+        proof (cases "t' = t1")
+          case True
+          then have y_eq: "y = label os t1 v" using 2 by simp
+          have "label os' t1 v = l_new"
+            using label_eq by simp
+          moreover have "t1 \<in> ?ts"
+            using True 2 by simp
+          ultimately have "l_new \<in> ?img'"
+            by (metis (mono_tags, lifting) image_eqI)
+          then have "l_new \<in> ?S'" by simp
+          then have "Min ?S' \<le> l_new"
+            using fin_S' Min_le by auto
+          also have "l_new \<le> y" using lnew_le_label_t1 y_eq by simp
+          finally show ?thesis .
+        next
+          case False
+          then have "label os' t' v = label os t' v"
+            using label_eq by simp
+          then have "y \<in> ?img'" using 2 by force
+          then have "y \<in> ?S'" by simp
+          then show ?thesis
+            using fin_S' Min_le by auto
+        qed
+      qed
+    qed
+
+    from upper lower have "Min ?S' = Min ?S" by (rule antisym)
+    then show ?thesis using \<open>x = v\<close> min_S' min_S by simp
+  qed
+qed
+
 lemma labels_cc_inv_input1_preserved:
   fixes q t1 :: "'t::order"
   assumes labels: "\<And>q. labels_cc_inv os q"
     and inv: "label_prop_upd_inv os"
     and msg_valid: "\<And>q. t1 \<le> q \<Longrightarrow> l \<in> cc_of (all_edges os q) v"
-    and update:
-    "os' = os\<lparr>input := (input os)(1 := xs),
-        label := (label os)(t1 := (label os t1)(v := min (min_label os t1 v) l))\<rparr>"
+    and timestamps_eq: "timestamps os' = timestamps os"
+    and graph_eq: "graph os' = graph os"
+    and vertices_eq: "vertices os' = vertices os"
+    and label_eq:
+      "label os' = (label os)(t1 := (label os t1)(v := min (min_label os t1 v) l))"
   shows "labels_cc_inv os' q"
-  oops
+proof -
+  define l_new where "l_new = min (min_label os t1 v) l"
+  have label_eq': "label os' = (label os)(t1 := (label os t1)(v := l_new))"
+    using label_eq unfolding l_new_def by simp
+  have new_le: "l_new \<le> min_label os t1 v"
+    unfolding l_new_def by simp
+
+  have all_vertices_eq: "all_vertices os' = all_vertices os"
+    unfolding all_vertices_def using timestamps_eq vertices_eq by simp
+  have all_edges_eq: "\<And>r. all_edges os' r = all_edges os r"
+    unfolding all_edges_def all_vertices_def set_neighbors
+    using timestamps_eq vertices_eq graph_eq by auto
+
+  show ?thesis
+    unfolding labels_cc_inv_def
+  proof safe
+    fix x
+    assume x_new: "x \<in> all_vertices os' q"
+    then have x_old: "x \<in> all_vertices os q"
+      using all_vertices_eq by simp
+    have min_cases:
+      "min_label os' q x = min_label os q x \<or> (x = v \<and> min_label os' q x = l_new)"
+      using min_label_label_update_v_cases[OF timestamps_eq label_eq' new_le] .
+    show "min_label os' q x \<in> cc_of (all_edges os' q) x"
+    proof (cases "min_label os' q x = min_label os q x")
+      case True
+      have "min_label os q x \<in> cc_of (all_edges os q) x"
+        using labels[of q] x_old unfolding labels_cc_inv_def by blast
+      then show ?thesis using True all_edges_eq by simp
+    next
+      case False
+      with min_cases have x_v: "x = v" and min_eq: "min_label os' q x = l_new" by auto
+      show ?thesis
+      proof (cases "t1 \<le> q")
+        case True
+        have v_in: "v \<in> all_vertices os q"
+          using x_old x_v by simp
+        have a: "min_label os t1 v \<in> cc_of (all_edges os q) v"
+          using labels_cc_inv_min_label_le[OF labels inv True v_in] .
+        have b: "l \<in> cc_of (all_edges os q) v"
+          using msg_valid[OF True] .
+        have "l_new \<in> {min_label os t1 v, l}"
+          unfolding l_new_def by (simp add: min_def)
+        then have "l_new \<in> cc_of (all_edges os q) v"
+          using a b by auto
+        then show ?thesis using min_eq x_v all_edges_eq by simp
+      next
+        case False
+        (* When \<not> t1 \<le> q, the label at (t1, v) is invisible at q, so min_label os' q v = min_label os q v.
+           This contradicts the case assumption. *)
+        have label_eq_q: "\<And>t'. t' \<le> q \<Longrightarrow> label os' t' = label os t'"
+          using label_eq' False by auto
+        have label_at_q: "label os' q v = label os q v"
+          using label_eq_q[of q] by simp
+        have img_eq:
+          "(\<lambda>t'. label os' t' v) ` {t' \<in> set (timestamps os'). t' \<le> q} =
+           (\<lambda>t'. label os t' v) ` {t' \<in> set (timestamps os). t' \<le> q}"
+          using timestamps_eq label_eq_q by auto
+        have "min_label os' q v = min_label os q v"
+          unfolding min_label_def using img_eq label_at_q by simp
+        then show ?thesis using False min_eq x_v \<open>min_label os' q x \<noteq> min_label os q x\<close> by simp
+      qed
+    qed
+  qed
+qed
+
+lemma labels_cc_inv_input1_preserved_record_update:
+  fixes q t1 :: "'t::order"
+  assumes labels: "\<And>q. labels_cc_inv os q"
+    and inv: "label_prop_upd_inv os"
+    and msg_valid: "\<And>q. t1 \<le> q \<Longrightarrow> l \<in> cc_of (all_edges os q) v"
+    and update:
+      "os' = label_prop_label_record_update os t1 v (min (min_label os t1 v) l)"
+  shows "labels_cc_inv os' q"
+proof (rule labels_cc_inv_input1_preserved[OF labels inv msg_valid])
+  show "timestamps os' = timestamps os"
+    using update by simp
+  show "graph os' = graph os"
+    using update by simp
+  show "vertices os' = vertices os"
+    using update by simp
+  show "label os' = (label os)(t1 := (label os t1)(v := min (min_label os t1 v) l))"
+    using update unfolding label_prop_label_record_update_def by simp
+qed
 
 lemma labels_cc_inv_output_preserved:
   fixes q :: "'t::order"

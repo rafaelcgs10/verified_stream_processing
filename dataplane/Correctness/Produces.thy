@@ -1746,4 +1746,284 @@ proof -
 qed
 
 
+lemma dataplane_tracker_inv_release_caps:
+  assumes D: "dataflow_topology (summ sg) (-+-)"
+    and Inv: "dataplane_tracker_inv os cbufs sg"
+    and G: "graph_summar_nt (summ sg) (nxt sg) os"
+    and Nxt: "nxt sg = graph_to_nxt (summ sg)"
+  shows "dataplane_tracker_inv (os(nid := release_caps (os nid) p)) cbufs sg"
+proof -
+  let ?used = "concat (map (\<lambda>(p', s). map (((+) s) \<circ> snd) (input (os nid) p'))
+    (concat (map (\<lambda>p'. map (\<lambda>s. (p', s)) (intsum (os nid) p' p)) Enum.enum)))"
+  let ?drops = "\<lambda>p'. if p' = p then list_diff (ocaps (os nid) p) ?used else []"
+  let ?osD = "os(nid := os nid\<lparr>
+    outpu := outpu (os nid),
+    ocaps := (\<lambda>p'. list_diff (ocaps (os nid) p') (?drops p')),
+    input := (\<lambda>p'. filter (\<lambda>(_, t). t \<notin> set (?drops p')) (input (os nid) p')),
+    produ := produ (os nid),
+    inter := operator_state.inter (os nid) @ concat (map (\<lambda>p'. map (\<lambda>t. (p', t, - 1)) (?drops p')) Enum.enum)\<rparr>)"
+  have invD: "dataplane_tracker_inv ?osD cbufs sg"
+    apply (rule dataplane_tracker_inv_produces_drops[OF D, where oputs="\<lambda>_. []" and produs="[]" and drops="?drops"])
+               apply simp
+              apply simp
+             apply simp
+            apply simp
+           apply simp
+          apply (auto simp add: mset_list_diff split: if_splits)[1]
+         apply simp
+        apply simp
+       apply simp
+      apply (rule G)
+     apply (rule Nxt)
+    apply (rule Inv)
+    done
+  have inter_mset:
+    "mset (concat (map (\<lambda>p'. map (\<lambda>t. (p', t, - 1)) (?drops p')) Enum.enum)) =
+     mset (map (\<lambda>t. (p, t, - 1)) (?drops p))"
+  proof -
+    have aux:
+      "distinct xs \<Longrightarrow> p \<in> set xs \<Longrightarrow>
+        mset (concat (map (\<lambda>p'. map (\<lambda>t. (p', t, - 1)) (?drops p')) xs)) =
+        mset (map (\<lambda>t. (p, t, - 1)) (?drops p))" for xs
+    proof (induct xs)
+      case Nil
+      then show ?case by simp
+    next
+      case (Cons x xs)
+      then show ?case
+      proof (cases "x = p")
+        case True
+        then show ?thesis
+          using Cons.prems by auto
+      next
+        case False
+        then show ?thesis
+          using Cons by auto
+      qed
+    qed
+
+    show ?thesis
+      using aux[of Enum.enum] by simp
+  qed
+  have same:
+    "\<forall>nid'. intsum (?osD nid') = intsum ((os(nid := release_caps (os nid) p)) nid') \<and>
+      ocaps (?osD nid') = ocaps ((os(nid := release_caps (os nid) p)) nid') \<and>
+      consu (?osD nid') = consu ((os(nid := release_caps (os nid) p)) nid') \<and>
+      mset (operator_state.inter (?osD nid')) = mset (operator_state.inter ((os(nid := release_caps (os nid) p)) nid')) \<and>
+      produ (?osD nid') = produ ((os(nid := release_caps (os nid) p)) nid') \<and>
+      outpu (?osD nid') = outpu ((os(nid := release_caps (os nid) p)) nid') \<and>
+      front (?osD nid') = front ((os(nid := release_caps (os nid) p)) nid')"
+    using inter_mset
+    unfolding release_caps_def drop_caps_def trace_simp Let_def
+    by (auto simp add: mset_list_diff multiset_eq_iff filter_map comp_def split: if_splits)
+
+  show ?thesis
+    using iffD1[OF dataplane_tracker_inv_clean_reorder_inter[OF same, of cbufs sg]] invD
+    by blast
+qed
+
+lemma dataplane_tracker_inv_release_caps_update:
+  assumes D: "dataflow_topology (summ sg) (-+-)"
+    and Inv: "dataplane_tracker_inv (os(nid := os')) cbufs sg"
+    and G: "graph_summar_nt (summ sg) (nxt sg) (os(nid := os'))"
+    and Nxt: "nxt sg = graph_to_nxt (summ sg)"
+  shows "dataplane_tracker_inv (os(nid := release_caps os' p)) cbufs sg"
+  using dataplane_tracker_inv_release_caps[OF D Inv G Nxt, where nid=nid and p=p]
+  by simp
+
+lemma dataplane_tracker_inv_add_caps_produces_drop_caps_update:
+  assumes D: "dataflow_topology (summ sg) (-+-)"
+    and Inv: "dataplane_tracker_inv (os(nid := os')) cbufs sg"
+    and G: "graph_summar_nt (summ sg) (nxt sg) (os(nid := os'))"
+    and Nxt: "nxt sg = graph_to_nxt (summ sg)"
+    and batch_caps:
+      "\<And>x cap. (x, cap) \<in> set batch \<Longrightarrow>
+        \<exists>t'\<in>set (ocaps os' (out cap)). t' \<le> time cap"
+  shows "dataplane_tracker_inv
+    (os(nid := drop_caps (produces (add_caps os' (map snd batch)) batch) (map snd batch)))
+    cbufs sg"
+proof -
+  let ?produs = "map (\<lambda>(x, cap). (out cap, time cap, 1)) batch"
+  let ?oputs = "\<lambda>p. map (\<lambda>(x, cap). (x, time cap)) (filter (\<lambda>(x, cap). out cap = p) batch)"
+  let ?target = "drop_caps (produces (add_caps os' (map snd batch)) batch) (map snd batch)"
+  have enum_no_insert:
+    "p0 \<notin> set ps \<Longrightarrow>
+      mset (concat (map (\<lambda>p. if p0 = p then x # f p else f p) ps)) =
+      mset (concat (map f ps))" for p0 ps x f
+    by (induct ps) auto
+  have enum_insert:
+    "p0 \<in> set ps \<Longrightarrow> distinct ps \<Longrightarrow>
+      mset (concat (map (\<lambda>p. if p0 = p then x # f p else f p) ps)) =
+      add_mset x (mset (concat (map f ps)))" for p0 ps x f
+  proof (induct ps)
+    case Nil
+    then show ?case by simp
+  next
+    case (Cons p ps)
+    show ?case
+    proof (cases "p0 = p")
+      case True
+      then show ?thesis
+        using Cons.prems enum_no_insert[of p ps x f] by simp
+    next
+      case False
+      then show ?thesis
+        using Cons by auto
+    qed
+  qed
+
+
+  have group_caps:
+    "mset (concat (map (\<lambda>p. map (\<lambda>t. (p, t, m)) (map time (filter (\<lambda>cap. out cap = p) caps))) Enum.enum)) =
+     mset (map (\<lambda>cap. (out cap, time cap, m)) caps)" for caps m
+  proof (induct caps)
+    case Nil
+    then show ?case by simp
+  next
+    case (Cons cap caps)
+    let ?f = "\<lambda>p. map (\<lambda>t. (p, t, m)) (map time (filter (\<lambda>cap. out cap = p) caps))"
+    have "mset (concat (map (\<lambda>p. map (\<lambda>t. (p, t, m)) (map time (filter (\<lambda>cap. out cap = p) (cap # caps)))) Enum.enum)) =
+      mset (concat (map (\<lambda>p. if out cap = p then (p, time cap, m) # ?f p else ?f p) Enum.enum))"
+      by (rule arg_cong[where f=mset], rule arg_cong[where f=concat], rule map_cong[OF refl], simp)
+    also have "\<dots> = mset (concat (map (\<lambda>p. if out cap = p then (out cap, time cap, m) # ?f p else ?f p) Enum.enum))"
+      by (rule arg_cong[where f=mset], rule arg_cong[where f=concat], rule map_cong[OF refl], simp)
+
+    also have "\<dots> = add_mset (out cap, time cap, m) (mset (concat (map ?f Enum.enum)))"
+      using enum_insert[of "out cap" Enum.enum "(out cap, time cap, m)" ?f]
+      by (auto simp add: Enum.enum_class.in_enum Enum.enum_class.enum_distinct)
+    also have "\<dots> = mset (map (\<lambda>cap. (out cap, time cap, m)) (cap # caps))"
+      using Cons.hyps by simp
+    finally show ?case .
+  qed
+  have group_produs:
+    "mset (concat (map (\<lambda>p. map (\<lambda>x. (p, fst (snd x), m))
+      (filter (\<lambda>x. p = fst x) (map (\<lambda>(x, cap). (out cap, time cap, 1)) batch))) Enum.enum)) =
+     mset (map (\<lambda>x. (out (snd x), time (snd x), m)) batch)" for m
+    using group_caps[of m "map snd batch"]
+    by (simp add: filter_map comp_def split_beta eq_commute)
+
+  have inv_abs0:
+    "dataplane_tracker_inv
+      ((os(nid := os'))(nid := ((os(nid := os')) nid)\<lparr>
+        outpu := (\<lambda>p. outpu ((os(nid := os')) nid) p @ ?oputs p),
+        ocaps := (\<lambda>p. list_diff (ocaps ((os(nid := os')) nid) p) ((\<lambda>_. []) p)),
+        input := (\<lambda>p'. if out (snd (hd batch)) = p'
+          then drop 0 (input ((os(nid := os')) nid) (out (snd (hd batch))))
+          else input ((os(nid := os')) nid) p'),
+        produ := produ ((os(nid := os')) nid) @ ?produs,
+        inter := operator_state.inter ?target\<rparr>)) cbufs sg"
+    apply (rule dataplane_tracker_inv_produces_drops_alt[OF D,
+          where os="os(nid := os')" and nid=nid and oputs="?oputs" and produs="?produs"
+            and drops="\<lambda>_. []" and n=0 and p="out (snd (hd batch))"])
+               apply simp
+              apply simp
+             apply simp
+            apply simp
+           apply (simp add: drop_caps_def produces_def add_caps_def group_caps comp_def split_beta)
+          apply (simp add: group_produs)
+
+         using batch_caps apply (auto split: prod.splits)[1]
+        using batch_caps apply (auto split: prod.splits)[1]
+       using batch_caps apply (auto split: prod.splits)[1]
+
+      apply (simp add: zmset_map_one filter_map comp_def split_beta eq_commute)
+      apply (rule allI)
+      apply (rule arg_cong[where f=to_zmset])
+      apply (rule arg_cong[where f="map (\<lambda>x. time (snd x))"])
+      apply (rule filter_cong[OF refl])
+      apply (simp split: prod.splits)
+
+
+      apply (rule G)
+     apply (rule Nxt)
+    apply (rule Inv)
+    done
+  have input_abs_eq:
+    "(\<lambda>p'. if out (snd (hd batch)) = p'
+          then drop 0 (input ((os(nid := os')) nid) (out (snd (hd batch))))
+          else input ((os(nid := os')) nid) p') = input os'"
+    by (rule ext) simp
+
+
+  have inv_abs:
+    "dataplane_tracker_inv
+      (os(nid := os'\<lparr>
+        outpu := (\<lambda>p. outpu os' p @ ?oputs p),
+        ocaps := ocaps os',
+        input := input os',
+        produ := produ os' @ ?produs,
+        inter := operator_state.inter ?target\<rparr>)) cbufs sg"
+    using inv_abs0 input_abs_eq by simp
+
+
+
+  have same:
+    "\<forall>nid'. intsum ((os(nid := os'\<lparr>
+        outpu := (\<lambda>p. outpu os' p @ ?oputs p),
+        ocaps := ocaps os',
+        input := input os',
+        produ := produ os' @ ?produs,
+        inter := operator_state.inter ?target\<rparr>)) nid') = intsum ((os(nid := ?target)) nid') \<and>
+      (\<forall>p. mset (ocaps ((os(nid := os'\<lparr>
+        outpu := (\<lambda>p. outpu os' p @ ?oputs p),
+        ocaps := ocaps os',
+        input := input os',
+        produ := produ os' @ ?produs,
+        inter := operator_state.inter ?target\<rparr>)) nid') p) = mset (ocaps ((os(nid := ?target)) nid') p)) \<and>
+      consu ((os(nid := os'\<lparr>
+        outpu := (\<lambda>p. outpu os' p @ ?oputs p),
+        ocaps := ocaps os',
+        input := input os',
+        produ := produ os' @ ?produs,
+        inter := operator_state.inter ?target\<rparr>)) nid') = consu ((os(nid := ?target)) nid') \<and>
+      inter ((os(nid := os'\<lparr>
+        outpu := (\<lambda>p. outpu os' p @ ?oputs p),
+        ocaps := ocaps os',
+        input := input os',
+        produ := produ os' @ ?produs,
+        inter := operator_state.inter ?target\<rparr>)) nid') = inter ((os(nid := ?target)) nid') \<and>
+      produ ((os(nid := os'\<lparr>
+        outpu := (\<lambda>p. outpu os' p @ ?oputs p),
+        ocaps := ocaps os',
+        input := input os',
+        produ := produ os' @ ?produs,
+        inter := operator_state.inter ?target\<rparr>)) nid') = produ ((os(nid := ?target)) nid') \<and>
+      input ((os(nid := os'\<lparr>
+        outpu := (\<lambda>p. outpu os' p @ ?oputs p),
+        ocaps := ocaps os',
+        input := input os',
+        produ := produ os' @ ?produs,
+        inter := operator_state.inter ?target\<rparr>)) nid') = input ((os(nid := ?target)) nid') \<and>
+      outpu ((os(nid := os'\<lparr>
+        outpu := (\<lambda>p. outpu os' p @ ?oputs p),
+        ocaps := ocaps os',
+        input := input os',
+        produ := produ os' @ ?produs,
+        inter := operator_state.inter ?target\<rparr>)) nid') = outpu ((os(nid := ?target)) nid') \<and>
+      front ((os(nid := os'\<lparr>
+        outpu := (\<lambda>p. outpu os' p @ ?oputs p),
+        ocaps := ocaps os',
+        input := input os',
+        produ := produ os' @ ?produs,
+        inter := operator_state.inter ?target\<rparr>)) nid') = front ((os(nid := ?target)) nid')"
+    unfolding drop_caps_def produces_def add_caps_def
+    by (auto simp add: mset_list_diff group_caps comp_def split_beta multiset_eq_iff split: prod.splits)
+  have clean:
+    "dataplane_tracker_inv
+      (os(nid := os'\<lparr>
+        outpu := (\<lambda>p. outpu os' p @ ?oputs p),
+        ocaps := ocaps os',
+        input := input os',
+        produ := produ os' @ ?produs,
+        inter := operator_state.inter ?target\<rparr>)) cbufs sg \<longleftrightarrow>
+     dataplane_tracker_inv (os(nid := ?target)) cbufs sg"
+    apply (rule dataplane_tracker_inv_clean_reorder_ocaps[where f="upfro sg"])
+     apply simp
+    using same by blast
+  show ?thesis
+    using clean inv_abs by simp
+
+qed
+
+
 end
