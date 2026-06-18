@@ -103,7 +103,8 @@ definition label_prop_upd_inv where
     (\<forall>t. sym {(v, w). w \<in> set (graph os t v)}) \<and>
     (\<forall>t v. v \<notin> all_vertices os t \<longrightarrow> label os t v = v) \<and>
     (\<forall>d t. (d, t) \<in> set (input os 1) \<longrightarrow>
-      myfst t \<in> set (timestamps os) \<and> fst (de1 os d) \<in> all_vertices os (myfst t))"
+      myfst t \<in> set (timestamps os) \<and> fst (de1 os d) \<in> all_vertices os (myfst t) \<and>
+      (\<forall>q. myfst t \<le> q \<longrightarrow> snd (de1 os d) \<in> cc_of (all_edges os q) (fst (de1 os d))))"
 
 definition labels_cc_inv where
   "labels_cc_inv os t =
@@ -116,9 +117,9 @@ lemma label_prop_upd_inv_vertices_timestamps_iff:
 proof -
   let ?E = "{(v, w). w \<in> set (graph os t v)}"
   have ts_eq: "t \<in> set (timestamps os) \<longleftrightarrow> edge_vertices ?E \<noteq> {}"
-    using assms unfolding label_prop_upd_inv_def by blast
+    using assms unfolding label_prop_upd_inv_def by metis
   have vertices_eq: "set (vertices os t) = edge_vertices ?E"
-    using assms unfolding label_prop_upd_inv_def by blast
+    using assms unfolding label_prop_upd_inv_def by metis
   show ?thesis
   proof
     assume "t \<notin> set (timestamps os)"
@@ -226,7 +227,7 @@ proof -
     using neigh unfolding set_neighbors by auto
   have vertices_eq:
     "set (vertices os t') = edge_vertices {(v, w). w \<in> set (graph os t' v)}"
-    using inv unfolding label_prop_upd_inv_def by blast
+    using inv unfolding label_prop_upd_inv_def by metis
   then have "v \<in> set (vertices os t')" and "w \<in> set (vertices os t')"
     using w_graph unfolding edge_vertices_def Field_def by auto
   then show ?thesis
@@ -249,7 +250,7 @@ next
     unfolding all_vertices_def by auto
   have vertices_eq:
     "set (vertices os t') = edge_vertices {(v, w). w \<in> set (graph os t' v)}"
-    using inv unfolding label_prop_upd_inv_def by blast
+    using inv unfolding label_prop_upd_inv_def by metis
   then have "v \<in> edge_vertices {(v, w). w \<in> set (graph os t' v)}"
     using v_vertices by simp
   then obtain u where edge: "u \<in> set (graph os t' v) \<or> v \<in> set (graph os t' u)"
@@ -1915,48 +1916,59 @@ lemma labels_cc_inv_mint[simp]:
 
 lemma label_prop_upd_inv_produces[simp]:
   "label_prop_upd_inv (produces os batch) \<longleftrightarrow> label_prop_upd_inv os"
-  unfolding label_prop_upd_inv_def all_vertices_def produces_def by simp
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def produces_def
+  by (simp add: set_neighbors)
 
 
 lemma label_prop_upd_inv_drop_caps[simp]:
   "label_prop_upd_inv (drop_caps os caps) \<longleftrightarrow> label_prop_upd_inv os"
-  unfolding label_prop_upd_inv_def all_vertices_def drop_caps_def by simp
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def drop_caps_def
+  by (simp add: set_neighbors)
 
 lemma label_prop_upd_inv_produce[simp]:
   "label_prop_upd_inv (produce os cap batch) \<longleftrightarrow> label_prop_upd_inv os"
-  by (cases "batch = []") (simp_all add: produce_def label_prop_upd_inv_def all_vertices_def)
+  by (cases "batch = []")
+    (simp_all add: produce_def label_prop_upd_inv_def all_vertices_def all_edges_def set_neighbors)
 
 lemma label_prop_upd_inv_consume[simp]:
   "label_prop_upd_inv (consume os p t len) \<longleftrightarrow> label_prop_upd_inv os"
-  by (cases "len = 0") (simp_all add: consume_def label_prop_upd_inv_def all_vertices_def)
+  by (cases "len = 0")
+    (simp_all add: consume_def label_prop_upd_inv_def all_vertices_def all_edges_def set_neighbors)
 
 lemma label_prop_upd_inv_delay_cap[simp]:
   "label_prop_upd_inv (delay_cap os cap incr) \<longleftrightarrow> label_prop_upd_inv os"
-  unfolding label_prop_upd_inv_def all_vertices_def delay_cap_def by simp
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def delay_cap_def
+  by (simp add: set_neighbors)
 
 lemma label_prop_upd_inv_mint_cap[simp]:
   "label_prop_upd_inv (mint_cap os p t) \<longleftrightarrow> label_prop_upd_inv os"
-  unfolding label_prop_upd_inv_def all_vertices_def mint_cap_def by simp
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def mint_cap_def
+  by (simp add: set_neighbors)
 
 lemma label_prop_upd_inv_add_cap[simp]:
   "label_prop_upd_inv (add_cap os p t) \<longleftrightarrow> label_prop_upd_inv os"
-  unfolding label_prop_upd_inv_def all_vertices_def add_cap_def by simp
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def add_cap_def
+  by (simp add: set_neighbors)
 
 lemma label_prop_upd_inv_add_caps[simp]:
   "label_prop_upd_inv (add_caps os caps) \<longleftrightarrow> label_prop_upd_inv os"
-  unfolding label_prop_upd_inv_def all_vertices_def add_caps_def by simp
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def add_caps_def
+  by (simp add: set_neighbors)
 
 lemma label_prop_upd_inv_drop_cap[simp]:
   "label_prop_upd_inv (drop_cap os cap) \<longleftrightarrow> label_prop_upd_inv os"
-  unfolding label_prop_upd_inv_def all_vertices_def drop_cap_def by simp
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def drop_cap_def
+  by (simp add: set_neighbors)
 
 lemma label_prop_upd_inv_obtain_progress[simp]:
   "label_prop_upd_inv (fst (obtain_progress os)) \<longleftrightarrow> label_prop_upd_inv os"
-  unfolding label_prop_upd_inv_def all_vertices_def obtain_progress_def by simp
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def obtain_progress_def
+  by (simp add: set_neighbors)
 
 lemma label_prop_upd_inv_mint[simp]:
   "label_prop_upd_inv (snd (mint os caps p t)) \<longleftrightarrow> label_prop_upd_inv os"
-  by (cases "t \<in> set (caps p)") (simp_all add: mint_def mint_cap_def label_prop_upd_inv_def all_vertices_def)
+  by (cases "t \<in> set (caps p)")
+    (simp_all add: mint_def mint_cap_def label_prop_upd_inv_def all_vertices_def all_edges_def set_neighbors)
 
 
 lemma label_prop_upd_inv_release_caps[simp]:
@@ -2361,8 +2373,14 @@ proof -
     and sym_old: "\<And>q. sym {(a, b). b \<in> set (graph os q a)}"
     and label_old: "\<And>q x. x \<notin> all_vertices os q \<Longrightarrow> label os q x = x"
     and pending_old: "\<And>d t. (d, t) \<in> set (input os 1) \<Longrightarrow>
-      myfst t \<in> set (timestamps os) \<and> fst (de1 os d) \<in> all_vertices os (myfst t)"
-    using inv unfolding label_prop_upd_inv_def by blast+
+      myfst t \<in> set (timestamps os) \<and> fst (de1 os d) \<in> all_vertices os (myfst t) \<and>
+      (\<forall>q. myfst t \<le> q \<longrightarrow> snd (de1 os d) \<in> cc_of (all_edges os q) (fst (de1 os d)))"
+    using inv unfolding label_prop_upd_inv_def by metis+
+
+  have old_edges_subset: "\<And>q. all_edges os q \<subseteq> all_edges os' q"
+    using timestamps_eq graph_eq vertices_eq
+    unfolding all_edges_def all_vertices_def set_neighbors
+    by auto
 
   have v_new: "v = v1 \<or> v = v2"
     using label_update by (auto split: if_splits)
@@ -2407,21 +2425,35 @@ proof -
     qed
   qed
   have pending_new: "\<And>d t. (d, t) \<in> set (input os' 1) \<Longrightarrow>
-      myfst t \<in> set (timestamps os') \<and> fst (de1 os' d) \<in> all_vertices os' (myfst t)"
+      myfst t \<in> set (timestamps os') \<and> fst (de1 os' d) \<in> all_vertices os' (myfst t) \<and>
+      (\<forall>q. myfst t \<le> q \<longrightarrow> snd (de1 os' d) \<in> cc_of (all_edges os' q) (fst (de1 os' d)))"
   proof -
     fix d t
     assume in_new: "(d, t) \<in> set (input os' 1)"
     then have in_old: "(d, t) \<in> set (input os 1)"
       using input1_eq by auto
-    then have old: "myfst t \<in> set (timestamps os) \<and> fst (de1 os d) \<in> all_vertices os (myfst t)"
+    then have old:
+      "myfst t \<in> set (timestamps os) \<and> fst (de1 os d) \<in> all_vertices os (myfst t) \<and>
+        (\<forall>q. myfst t \<le> q \<longrightarrow> snd (de1 os d) \<in> cc_of (all_edges os q) (fst (de1 os d)))"
       by (rule pending_old)
-    have "myfst t \<in> set (timestamps os')"
+    have ts_new': "myfst t \<in> set (timestamps os')"
       using old timestamps_eq by auto
-    moreover have "fst (de1 os' d) \<in> all_vertices os' (myfst t)"
+    have vertex_new: "fst (de1 os' d) \<in> all_vertices os' (myfst t)"
       using old de1_eq all_vertices_mono by auto
-    ultimately show "myfst t \<in> set (timestamps os') \<and> fst (de1 os' d) \<in> all_vertices os' (myfst t)"
-      by simp
-
+    have msg_new: "\<And>q. myfst t \<le> q \<Longrightarrow>
+        snd (de1 os' d) \<in> cc_of (all_edges os' q) (fst (de1 os' d))"
+    proof -
+      fix q
+      assume q_ge: "myfst t \<le> q"
+      have "snd (de1 os d) \<in> cc_of (all_edges os q) (fst (de1 os d))"
+        using old q_ge by blast
+      then show "snd (de1 os' d) \<in> cc_of (all_edges os' q) (fst (de1 os' d))"
+        using old_edges_subset de1_eq cc_of_mono by metis
+    qed
+    from ts_new' vertex_new msg_new
+    show "myfst t \<in> set (timestamps os') \<and> fst (de1 os' d) \<in> all_vertices os' (myfst t) \<and>
+        (\<forall>q. myfst t \<le> q \<longrightarrow> snd (de1 os' d) \<in> cc_of (all_edges os' q) (fst (de1 os' d)))"
+      by blast
   qed
 
   show ?thesis
@@ -2451,8 +2483,13 @@ proof -
     and sym_old: "\<And>q. sym {(a, b). b \<in> set (graph os q a)}"
     and label_old: "\<And>q x. x \<notin> all_vertices os q \<Longrightarrow> label os q x = x"
     and pending_old: "\<And>d' t'. (d', t') \<in> set (input os 1) \<Longrightarrow>
-      myfst t' \<in> set (timestamps os) \<and> fst (de1 os d') \<in> all_vertices os (myfst t')"
-    using inv unfolding label_prop_upd_inv_def by blast+
+      myfst t' \<in> set (timestamps os) \<and> fst (de1 os d') \<in> all_vertices os (myfst t') \<and>
+      (\<forall>q. myfst t' \<le> q \<longrightarrow> snd (de1 os d') \<in> cc_of (all_edges os q) (fst (de1 os d')))"
+    using inv unfolding label_prop_upd_inv_def by metis+
+
+  have all_edges_eq: "\<And>q. all_edges os' q = all_edges os q"
+    unfolding all_edges_def all_vertices_def set_neighbors
+    using timestamps_eq graph_eq vertices_eq by simp
 
   have v_in: "v \<in> all_vertices os t1"
   proof -
@@ -2494,16 +2531,21 @@ proof -
   qed
 
   have pending_new: "\<And>d' t'. (d', t') \<in> set (input os' 1) \<Longrightarrow>
-      myfst t' \<in> set (timestamps os') \<and> fst (de1 os' d') \<in> all_vertices os' (myfst t')"
+      myfst t' \<in> set (timestamps os') \<and> fst (de1 os' d') \<in> all_vertices os' (myfst t') \<and>
+      (\<forall>q. myfst t' \<le> q \<longrightarrow> snd (de1 os' d') \<in> cc_of (all_edges os' q) (fst (de1 os' d')))"
   proof -
     fix d' t'
     assume in_new: "(d', t') \<in> set (input os' 1)"
     then have in_old: "(d', t') \<in> set (input os 1)"
       using input1_eq input1 by auto
-    have old: "myfst t' \<in> set (timestamps os) \<and> fst (de1 os d') \<in> all_vertices os (myfst t')"
+    have old:
+      "myfst t' \<in> set (timestamps os) \<and> fst (de1 os d') \<in> all_vertices os (myfst t') \<and>
+        (\<forall>q. myfst t' \<le> q \<longrightarrow> snd (de1 os d') \<in> cc_of (all_edges os q) (fst (de1 os d')))"
       by (rule pending_old[OF in_old])
-    then show "myfst t' \<in> set (timestamps os') \<and> fst (de1 os' d') \<in> all_vertices os' (myfst t')"
-      using timestamps_eq vertices_eq de1_eq unfolding all_vertices_def by auto
+    then show "myfst t' \<in> set (timestamps os') \<and> fst (de1 os' d') \<in> all_vertices os' (myfst t') \<and>
+        (\<forall>q. myfst t' \<le> q \<longrightarrow> snd (de1 os' d') \<in> cc_of (all_edges os' q) (fst (de1 os' d')))"
+      using timestamps_eq vertices_eq de1_eq all_edges_eq
+      unfolding all_vertices_def by auto
   qed
 
   show ?thesis
@@ -2894,7 +2936,9 @@ lemma labels_cc_inv_input1_preserved:
   fixes q t1 :: "'t::order"
   assumes labels: "\<And>q. labels_cc_inv os q"
     and inv: "label_prop_upd_inv os"
-    and msg_valid: "\<And>q. t1 \<le> q \<Longrightarrow> l \<in> cc_of (all_edges os q) v"
+    and pending: "(d, t) \<in> set (input os 1)"
+    and msg: "de1 os d = (v, l)"
+    and t1_def: "t1 = myfst t"
     and timestamps_eq: "timestamps os' = timestamps os"
     and graph_eq: "graph os' = graph os"
     and vertices_eq: "vertices os' = vertices os"
@@ -2902,6 +2946,15 @@ lemma labels_cc_inv_input1_preserved:
       "label os' = (label os)(t1 := (label os t1)(v := min (min_label os t1 v) l))"
   shows "labels_cc_inv os' q"
 proof -
+  have msg_valid: "\<And>q. t1 \<le> q \<Longrightarrow> l \<in> cc_of (all_edges os q) v"
+  proof -
+    fix q assume "t1 \<le> q"
+    then have "myfst t \<le> q" using t1_def by simp
+    then have "snd (de1 os d) \<in> cc_of (all_edges os q) (fst (de1 os d))"
+      using inv pending unfolding label_prop_upd_inv_def by blast
+    then show "l \<in> cc_of (all_edges os q) v"
+      using msg by simp
+  qed
   define l_new where "l_new = min (min_label os t1 v) l"
   have label_eq': "label os' = (label os)(t1 := (label os t1)(v := l_new))"
     using label_eq unfolding l_new_def by simp
@@ -2971,11 +3024,34 @@ lemma labels_cc_inv_input1_preserved_record_update:
   fixes q t1 :: "'t::order"
   assumes labels: "\<And>q. labels_cc_inv os q"
     and inv: "label_prop_upd_inv os"
-    and msg_valid: "\<And>q. t1 \<le> q \<Longrightarrow> l \<in> cc_of (all_edges os q) v"
+    and pending: "(d, t) \<in> set (input os 1)"
+    and msg: "de1 os d = (v, l)"
+    and t1_def: "t1 = myfst t"
     and update:
       "os' = label_prop_label_record_update os t1 v (min (min_label os t1 v) l)"
   shows "labels_cc_inv os' q"
-proof (rule labels_cc_inv_input1_preserved[OF labels inv msg_valid])
+proof (rule labels_cc_inv_input1_preserved[OF labels inv pending msg t1_def])
+  show "timestamps os' = timestamps os"
+    using update by simp
+  show "graph os' = graph os"
+    using update by simp
+  show "vertices os' = vertices os"
+    using update by simp
+  show "label os' = (label os)(t1 := (label os t1)(v := min (min_label os t1 v) l))"
+    using update unfolding label_prop_label_record_update_def by simp
+qed
+
+lemma labels_cc_inv_input1_preserved_record_update_tl:
+  fixes q t1 :: "'t::order"
+  assumes labels: "\<And>q. labels_cc_inv os q"
+    and inv: "label_prop_upd_inv os"
+    and pending: "(d, t) \<in> set (input os 1)"
+    and msg: "de1 os d = (v, l)"
+    and t1_def: "t1 = myfst t"
+    and update:
+      "os' = label_prop_label_record_update (input_tl os 1) t1 v (min (min_label os t1 v) l)"
+  shows "labels_cc_inv os' q"
+proof (rule labels_cc_inv_input1_preserved[OF labels inv pending msg t1_def])
   show "timestamps os' = timestamps os"
     using update by simp
   show "graph os' = graph os"

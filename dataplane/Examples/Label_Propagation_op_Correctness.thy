@@ -1953,16 +1953,11 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                   subgoal
                     apply safe
                     apply simp
-                    apply (rule labels_cc_inv_input1_preserved_record_update[of os_label_prop "myfst t" l v])
+                    apply (rule labels_cc_inv_input1_preserved_record_update_tl[of "os_label_prop" d t v l])
                        apply (rule label_prop_inv(1)[rule_format])
                       apply (rule label_prop_inv(6))
-                     apply simp
-                    
-                    
-
-                    find_theorems cc_of all_edges
-
-                    sorry
+                       apply simp_all
+                    done
                   subgoal
                     apply safe
                     sorry
