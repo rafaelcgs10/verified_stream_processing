@@ -147,6 +147,62 @@ proof (intro allI ballI)
     using orig set_eq by simp
 qed
 
+(* Same as input_ocaps_inv_drop_add_capsI, but with produces interposed between
+   add_caps and drop_caps. produces only modifies outpu and produ, so input,
+   intsum, and ocaps remain untouched. *)
+lemma input_ocaps_inv_drop_produces_add_capsI:
+  assumes inv: "input_ocaps_inv os"
+  shows "input_ocaps_inv (drop_caps (produces (add_caps os caps) batch) caps)"
+  unfolding input_ocaps_inv_def
+proof (intro allI ballI)
+  fix p1 p2 t s
+  assume t_in: "t \<in> snd ` set (input (drop_caps (produces (add_caps os caps) batch) caps) p1)"
+    and s_in: "s \<in> set (intsum (drop_caps (produces (add_caps os caps) batch) caps) p1 p2)"
+  have t_in': "t \<in> snd ` set (input os p1)"
+    using t_in unfolding drop_caps_def produces_def add_caps_def by simp
+  have s_in': "s \<in> set (intsum os p1 p2)"
+    using s_in unfolding drop_caps_def produces_def add_caps_def by simp
+  have orig: "t -+- s \<in> set (ocaps os p2)"
+    using inv t_in' s_in' unfolding input_ocaps_inv_def by blast
+  have ocaps_mset:
+    "mset (ocaps (drop_caps (produces (add_caps os caps) batch) caps) p2) = mset (ocaps os p2)"
+    unfolding drop_caps_def produces_def add_caps_def by simp
+  then have set_eq:
+    "set (ocaps (drop_caps (produces (add_caps os caps) batch) caps) p2) = set (ocaps os p2)"
+    by (metis set_mset_mset)
+  show "t -+- s \<in> set (ocaps (drop_caps (produces (add_caps os caps) batch) caps) p2)"
+    using orig set_eq by simp
+qed
+
+(* label_prop_label_record_update only modifies the label field; input, intsum,
+   and ocaps are untouched, so input_ocaps_inv transfers trivially. *)
+lemma input_ocaps_inv_label_prop_label_record_updateI:
+  assumes inv: "input_ocaps_inv os"
+  shows "input_ocaps_inv (label_prop_label_record_update os event_t vertex assigned_label)"
+  using inv unfolding input_ocaps_inv_def label_prop_label_record_update_def by simp
+
+(* input_tl only drops the head of input os p; the remaining input is a subset of
+   the original. intsum and ocaps are untouched, so any witness for an element
+   still present transfers. *)
+lemma input_ocaps_inv_input_tlI:
+  assumes inv: "input_ocaps_inv os"
+  shows "input_ocaps_inv (input_tl os p)"
+  unfolding input_ocaps_inv_def
+proof (intro allI ballI)
+  fix p1 p2 t s
+  assume t_in: "t \<in> snd ` set (input (input_tl os p) p1)"
+    and s_in: "s \<in> set (intsum (input_tl os p) p1 p2)"
+  have t_in': "t \<in> snd ` set (input os p1)"
+    using t_in unfolding input_tl_def
+    by (auto split: if_splits dest: in_set_tlD)
+  have s_in': "s \<in> set (intsum os p1 p2)"
+    using s_in unfolding input_tl_def by simp
+  have orig: "t -+- s \<in> set (ocaps os p2)"
+    using inv t_in' s_in' unfolding input_ocaps_inv_def by blast
+  show "t -+- s \<in> set (ocaps (input_tl os p) p2)"
+    using orig unfolding input_tl_def by simp
+qed
+
 declare in_filter_zmset_in_zmset[simp del]  pos_filter_zmset_pos_zmset[simp del]
   neg_filter_zmset_neg_zmset[simp del] set_antichain1[simp del] set_antichain2[simp del] mset_set.infinite[simp del]
 declare if_cong[cong]
@@ -515,7 +571,7 @@ lemma label_propagation_correctness:
     and label_prop_inv:
     \<open>(\<forall> t. labels_cc_inv os_label_prop t)\<close>
     \<open>(\<forall> t \<in> set (timestamps os_label_prop). \<not> frontier_less_equal (exit_scope myfst (front (os 1) 0 + front (os 1) 1)) t \<longrightarrow> labels_stable (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
-    \<open>\<forall> t \<in> myfst ` snd ` set (input (os 1) 0). frontier_less_equal (exit_scope myfst (front (os 1) 1)) t\<close>
+    \<open>\<forall> t \<in> myfst ` snd ` set (input (os 1) 0) \<union> myfst ` snd ` set (input (os 1) 1). frontier_less_equal (exit_scope myfst (front (os 1) 1)) t\<close>
     \<open>\<forall> t. t \<in> set (ocaps (os 1) 0) \<longrightarrow> myfst t |\<in>| cset_from_list T\<close>
     \<open>\<forall> t \<in> set (ocaps (os 1) 0) \<union> snd ` set (input (os 1) 0) \<union> snd ` set (outpu (os 0) 0) \<union> time ` lset lxs. mysnd t = 0\<close>
     \<open>label_prop_upd_inv os_label_prop\<close>
@@ -792,14 +848,27 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                   apply (subst lfilter_False)
                                   subgoal
                                     apply clarsimp
-                                    apply (drule bspec, assumption)
+                                    apply (drule bspec, simp)
                                     apply simp
                                     subgoal for a b
                                       apply (cases b; cases t'; simp; hypsubst_thin?)
                                       subgoal for t1 t2 t3
                                         apply (subgoal_tac "\<not> frontier_less_equal (exit_scope myfst (front (os 1) 1)) t2")
                                         subgoal
-                                          using frontier_less_equal_trans by blast
+                                          using frontier_less_equal_trans 
+                                          by (metis (no_types, lifting) label_prop_inv(3)  Un_iff image_eqI img_snd myprod.sel(1))
+                                        subgoal
+                                          using exit_scope_plus_distrib
+                                          by (metis not_frontier_less_equal_sum)
+                                        done
+                                      done
+                                    subgoal for a b
+                                      apply (cases b; cases t'; simp; hypsubst_thin?)
+                                      subgoal for t1 t2 t3
+                                        apply (subgoal_tac "\<not> frontier_less_equal (exit_scope myfst (front (os 1) 1)) t2")
+                                        subgoal
+                                          using frontier_less_equal_trans 
+                                          by (metis (no_types, lifting) label_prop_inv(3)  Un_iff image_eqI img_snd myprod.sel(1))
                                         subgoal
                                           using exit_scope_plus_distrib
                                           by (metis not_frontier_less_equal_sum)
@@ -1060,6 +1129,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
               using label_prop_inv(2) by auto
             subgoal
               using label_prop_inv(3) by auto
+            subgoal
+              using label_prop_inv(3) by blast
             subgoal
               using label_prop_inv(4)
               unfolding drop_caps_def release_caps_def
@@ -1715,8 +1786,6 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                           apply (rule labels_stable_input0_preserved)
                                  apply (rule label_prop_inv(2)[unfolded os_inv(4) operator_state.defs, simplified, rule_format, of t'])
                                   apply assumption+
-                          using label_prop_inv(6)[unfolded os_inv(4) operator_state.defs, simplified] apply assumption
-                               apply assumption+
                               apply (simp_all add: label_prop_edge_record_update_def)
                           using aux apply force
                           done
@@ -1960,126 +2029,46 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                     done
                   subgoal
                     apply safe
-                    sorry
+                    subgoal for t'
+                      apply (rule labels_stable_input1_preserved_record_update_tl)
+                      using label_prop_inv(2) apply fast
+                      using label_prop_inv(3)[rule_format, of "myfst t"] apply -
+                      apply (drule meta_mp)
+                      subgoal
+                        by (simp add: os_inv(4) operator_state.defs)
+                      subgoal
+                        by (metis (no_types, lifting) exit_scope_plus_distrib frontier_less_equal_antichain_plusI2 frontier_less_equal_trans)
+                      done
+                    done
                   subgoal
                     unfolding input_tl_def
-                    using label_prop_inv(3) by simp
+                    using label_prop_inv(3)
+                    by (simp add: image_iff os_inv(4) operator_state.defs)
                   subgoal
                     using label_prop_inv(4)
                     unfolding release_caps_def drop_caps_def add_caps_def
                     by (auto simp add: label_prop_neighbor_batch_def label_prop_label_batch_def os_inv(4) operator_state.defs image_iff dest!: in_set_list_diffD)
                   subgoal
-                    apply simp
-
-                    thm labels_cc_inv_input1_preserved_record_update
-
-                    find_theorems set list_diff
-             
-
-                      find_theorems    intsum os
-
-
-end
-
-                    apply (subst (1) icoll_LCons_Data)
-                    subgoal
-                      using input_stream_inv timely_input_stream_expires_le 
-                      by auto
-                    subgoal
-                      apply (simp add: input_tl_def)
-                      apply (subgoal_tac "t = MyPair (myfst t) 0")
-                      subgoal
-                        apply (subst (1) all_edges_eq[rotated, where V=V and label_sync=L and input_sync="input (os 1)"])
-                        subgoal 
-                          using label_prop_inv(6)[unfolded os_inv(4) operator_state.defs] by simp
-                        subgoal by simp
-                        subgoal
-                          apply simp
-                          apply (rule arg_cong2[where f=cinsert])
-                          subgoal
-                            apply (subst (1) icoll_LCons_Data)
-                            subgoal
-                              using input_stream_inv timely_input_stream_expires_le
-                              by auto
-                            apply (simp add: insert_commute ccs_insert_symmetric)
-                            apply (subst ccs_insert_swap)
-                            apply (rule refl)
-                            done
-                          subgoal
-                            apply (rule arg_cong2[where f=cUn])
-                            subgoal
-                              by simp
-                            subgoal
-                              apply (subst (1) icoll_LCons_Data)
-                              subgoal
-                                using input_stream_inv timely_input_stream_expires_le 
-                                by auto
-                              subgoal 
-                                apply (rule cimage_cong)
-                                subgoal
-                                  by simp
-                                subgoal for t''
-                                  apply (cases "t \<le> t''")
-                                  subgoal
-                                    apply (subst all_edges_eq_le[rotated, where V=V and label_sync=L and input_sync="input (os 1)"])
-                                    subgoal using label_prop_inv(6)[unfolded os_inv(4) operator_state.defs] by simp
-                                    subgoal 
-                                      using myfst_mono by blast
-                                    subgoal by simp
-                                    subgoal
-                                      apply (subst insert_commute)
-                                      apply (simp add: ccs_insert_symmetric)
-                                      apply (subst (1) icoll_LCons_Data)
-                                      subgoal
-                                        using input_stream_inv timely_input_stream_expires_le 
-                                        by auto
-                                      subgoal
-                                        apply simp
-                                        done
-                                      done
-                                    done
-                                  subgoal
-                                    apply (subst all_edges_eq_not_le[rotated, where V=V and label_sync=L and input_sync="input (os 1)"])
-                                    subgoal
-                                      by (metis MyPair_mono bot_nat_0.extremum myprod.exhaust_sel)
-                                    subgoal
-                                      by simp
-                                    subgoal
-                                      apply (subst (1) icoll_LCons_Data)
-                                      subgoal
-                                        using input_stream_inv timely_input_stream_expires_le
-                                        by auto
-                                      apply simp
-                                      done
-                                    done
-                                  done
-                                done
-                              done
-                            done
-                          done
-                        done
-                      subgoal
-                        using label_prop_inv(5)[rule_format, of t] apply -
-                        apply (drule meta_mp)
-                        subgoal
-                          by auto
-                        subgoal
-                          apply (cases t)
-                          apply auto
-                          done
-                        done
-                      done
+                    using label_prop_inv(5)
+                    unfolding release_caps_def drop_caps_def add_caps_def input_tl_def
+                    by (auto dest!: in_set_list_diffD simp add: label_prop_label_batch_def label_prop_neighbor_batch_def image_iff os_inv(4) operator_state.defs)
+                  subgoal
+                    apply (rule label_prop_upd_inv_input1_preserved[])
+                    apply (rule label_prop_inv(6))
+                            apply (simp_all add: label_prop_label_record_update_def input_tl_def image_iff os_inv(4) operator_state.defs)
+                    done
+                  subgoal
+                    apply (rule input_ocaps_inv_release_capsI)
+                    apply (rule input_ocaps_inv_drop_produces_add_capsI)
+                    apply (rule input_ocaps_inv_input_tlI)
+                    using label_prop_inv(7) apply -
+                    apply (simp add: os_inv(4) operator_state.defs)
                     done
                   done
-
-
-
-                thm csets_inv(1)[unfolded buffers_inv]
-
-                find_theorems chns
-
-end
-          sorry
+                done
+              done
+            done
+          done
         done
       subgoal 
         sorry

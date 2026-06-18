@@ -3083,7 +3083,6 @@ lemma labels_cc_inv_output_preserved:
 lemma labels_stable_input0_preserved:
   fixes q t1 t' :: "'t::order"
   assumes stable: "labels_stable (all_edges os t') (min_label os t')"
-    and inv: "label_prop_upd_inv os"
     and time_not_le: "\<not> t1 \<le> t'"
     and ts_eq: "timestamps os' = t1 # timestamps os"
     and graph_eq:
@@ -3135,6 +3134,88 @@ proof -
   qed
   show ?thesis
     using stable all_edges_eq min_label_eq by simp
+qed
+
+(* Preservation of labels_stable across the second branch of label_propagation_op_logic
+   (input1: in-place label update at (t1, v) via label_prop_label_record_update).
+
+   The update only rewrites label os t1 v to min (min_label os t1 v) l;
+   timestamps, graph, and vertices are unchanged. Hence all_edges os' t' = all_edges os t'
+   unconditionally.
+
+   For min_label os' t' = min_label os t' to hold we still need t1 to be invisible at t'
+   (otherwise the rewritten label at (t1, v) would enter the min). The condition
+   \<not> t1 \<le> t' is exactly what guarantees this, so it is required here too.
+
+   No invariant assumption (label_prop_upd_inv) is needed: the proof never inspects
+   the structural part of os; only the field-equality assumptions matter. *)
+lemma labels_stable_input1_preserved:
+  fixes t1 t' :: "'t::order"
+  assumes stable: "labels_stable (all_edges os t') (min_label os t')"
+    and time_not_le: "\<not> t1 \<le> t'"
+    and ts_eq: "timestamps os' = timestamps os"
+    and graph_eq: "graph os' = graph os"
+    and vertices_eq: "vertices os' = vertices os"
+    and label_eq:
+      "label os' = (label os)(t1 := (label os t1)(v := min (min_label os t1 v) l))"
+  shows "labels_stable (all_edges os' t') (min_label os' t')"
+proof -
+  have t'_ne_t1: "t' \<noteq> t1"
+    using time_not_le by auto
+  have filter_ts_eq:
+    "{t'' \<in> set (timestamps os'). t'' \<le> t'} = {t'' \<in> set (timestamps os). t'' \<le> t'}"
+    using ts_eq by simp
+  have label_on_filter:
+    "\<And>x t''. t'' \<le> t' \<Longrightarrow> label os' t'' x = label os t'' x"
+    using label_eq time_not_le by auto
+  have all_vertices_eq: "all_vertices os' t' = all_vertices os t'"
+    unfolding all_vertices_def using ts_eq vertices_eq by simp
+  have neighbors_eq: "\<And>v. set (neighbors os' t' v) = set (neighbors os t' v)"
+    unfolding set_neighbors using ts_eq graph_eq by simp
+  have all_edges_eq: "all_edges os' t' = all_edges os t'"
+    using all_vertices_eq neighbors_eq unfolding all_edges_def by auto
+  have min_label_eq: "min_label os' t' = min_label os t'"
+  proof (rule ext)
+    fix x
+    have lab_t': "label os' t' x = label os t' x"
+      using label_eq t'_ne_t1 by auto
+    have img_eq:
+      "(\<lambda>t''. label os' t'' x) ` {t'' \<in> set (timestamps os'). t'' \<le> t'} =
+       (\<lambda>t''. label os t'' x) ` {t'' \<in> set (timestamps os). t'' \<le> t'}"
+      using filter_ts_eq label_on_filter by (auto intro!: image_cong)
+    show "min_label os' t' x = min_label os t' x"
+      unfolding min_label_def using lab_t' img_eq by simp
+  qed
+  show ?thesis
+    using stable all_edges_eq min_label_eq by simp
+qed
+
+lemma labels_stable_input1_preserved_record_update_tl:
+  fixes t' :: "'t::order"
+  assumes stable: "labels_stable (all_edges os_label_prop t') (min_label os_label_prop t')"
+    and time_not_le: "\<not> myfst t \<le> t'"
+  shows "labels_stable (all_edges os_label_prop t')
+          (min_label (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v
+              (min (min_label os_label_prop (myfst t) v) l)) t')"
+proof -
+  let ?os' = "label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v
+                (min (min_label os_label_prop (myfst t) v) l)"
+  have stable':
+    "labels_stable (all_edges ?os' t') (min_label ?os' t')"
+  proof (rule labels_stable_input1_preserved[OF stable time_not_le])
+    show "timestamps ?os' = timestamps os_label_prop" by simp
+    show "graph ?os' = graph os_label_prop" by simp
+    show "vertices ?os' = vertices os_label_prop" by simp
+    show "label ?os' =
+            (label os_label_prop)
+              (myfst t :=
+                 (label os_label_prop (myfst t))
+                   (v := min (min_label os_label_prop (myfst t) v) l))"
+      unfolding label_prop_label_record_update_def by simp
+  qed
+  have all_edges_eq: "all_edges ?os' t' = all_edges os_label_prop t'" by simp
+  from stable' show ?thesis
+    using all_edges_eq by simp
 qed
 
 
