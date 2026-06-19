@@ -1407,7 +1407,7 @@ definition label_propagation_op_logic where
         os' = input_tl os 0;
         os'' = label_prop_edge_record_update os' t1 v1 v2 v l;
         batch = label_prop_edge_batch os os'' t1 v l t
-      in {|release_caps (produces (drop_caps (add_caps os'' (map snd batch)) (map snd batch)) batch) 1|})
+      in {|release_caps (drop_caps (produces ((add_caps os'' (map snd batch))) batch)  (map snd batch)) 1|})
     (case input os 1 of
       [] \<Rightarrow> {||}
     | (d, t) # _ \<Rightarrow>

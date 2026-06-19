@@ -1226,82 +1226,139 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                 unfolding R_def[simplified]
                 apply (rule exI[of _ S])
                 apply (rule exI[of _ SO])
-                apply (rule exI[of _ "((\<lambda>ta. ((1, 0), Inr (ccs (set (icoll (map (\<lambda>(x, t'). Data t' (projl x)) (chns (1, 0)) @@- lxs) ta) \<union>
-                  all_edges (release_caps
-                       (produces
-                         (drop_caps
-                           (add_caps (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
-                             (map snd (label_prop_edge_batch os_label_prop
-                               (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
-                               (myfst t) l1 l2 t)))
-                           (map snd (label_prop_edge_batch os_label_prop
-                             (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                apply (rule exI[of _ "((\<lambda>t1. ((1, 0),
+       Inr (ccs (set (icoll (map (\<lambda>(x, t'). Data t' (projl x)) ((outputs_at_target (summ sg) (os(1 := release_caps
+                       (drop_caps
+                         (produces
+                           (add_caps (input_tl (os 1) 0)
+                             (map snd
+                               (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                                 (myfst t) l1 l2 t)))
+                           (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                             (myfst t) l1 l2 t))
+                         (map snd
+                           (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
                              (myfst t) l1 l2 t)))
-                         (label_prop_edge_batch os_label_prop
-                           (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
-                           (myfst t) l1 l2 t))
-                       1) (myfst ta))), ta)) |`|
-                  cUn (cUn (ts lxs) (snd |`| cset_from_list (chns (1, 0))))
-                    ((\<lambda>t0. MyPair t0 0) |`| cset_from_list (timestamps os_label_prop)))"])
-
+                       1)) >> cbufs >> inputs_at_target (os(1 := release_caps
+                       (drop_caps
+                         (produces
+                           (add_caps (input_tl (os 1) 0)
+                             (map snd
+                               (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                                 (myfst t) l1 l2 t)))
+                           (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                             (myfst t) l1 l2 t))
+                         (map snd
+                           (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                             (myfst t) l1 l2 t)))
+                       1))) (1, 0)) @@- lxs)
+                       t1) \<union>
+                 all_edges (release_caps
+                       (drop_caps
+                         (produces
+                           (add_caps (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                             (map snd
+                               (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                                 (myfst t) l1 l2 t)))
+                           (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                             (myfst t) l1 l2 t))
+                         (map snd
+                           (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                             (myfst t) l1 l2 t)))
+                       1) (myfst t1))),
+       t1)) |`|
+ cUn (cUn (ts lxs) (cset_from_list (map snd ((outputs_at_target (summ sg) (os(1 := release_caps
+                       (drop_caps
+                         (produces
+                           (add_caps (input_tl (os 1) 0)
+                             (map snd
+                               (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                                 (myfst t) l1 l2 t)))
+                           (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                             (myfst t) l1 l2 t))
+                         (map snd
+                           (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                             (myfst t) l1 l2 t)))
+                       1)) >> cbufs >> inputs_at_target (os(1 := release_caps
+                       (drop_caps
+                         (produces
+                           (add_caps (input_tl (os 1) 0)
+                             (map snd
+                               (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                                 (myfst t) l1 l2 t)))
+                           (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                             (myfst t) l1 l2 t))
+                         (map snd
+                           (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                             (myfst t) l1 l2 t)))
+                       1))) (1, 0)))))
+  ((\<lambda>t1. MyPair t1 0) |`| cset_from_list (timestamps (release_caps
+                       (drop_caps
+                         (produces
+                           (add_caps (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                             (map snd
+                               (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                                 (myfst t) l1 l2 t)))
+                           (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                             (myfst t) l1 l2 t))
+                         (map snd
+                           (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                             (myfst t) l1 l2 t)))
+                       1))))"])
                 apply (rule exI[of _ D])
                 apply (rule exI[of _ lxs])
                 apply (rule exI[of _ "os(1 := release_caps
-                       (produces
-                         (drop_caps
-                           (add_caps ((os 1)\<lparr>input := (input os_label_prop)(0 := xs)\<rparr>)
-                             (map snd (label_prop_edge_batch os_label_prop
-                               (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
-                               (myfst t) l1 l2 t)))
-                           (map snd (label_prop_edge_batch os_label_prop
-                             (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                       (drop_caps
+                         (produces
+                           (add_caps (input_tl (os 1) 0)
+                             (map snd
+                               (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                                 (myfst t) l1 l2 t)))
+                           (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                             (myfst t) l1 l2 t))
+                         (map snd
+                           (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
                              (myfst t) l1 l2 t)))
-                         (label_prop_edge_batch os_label_prop
-                           (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
-                           (myfst t) l1 l2 t))
                        1)"])
                 apply (rule exI[of _ "release_caps
-                       (produces
-                         (drop_caps
+                       (drop_caps
+                         (produces
                            (add_caps (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
-                             (map snd (label_prop_edge_batch os_label_prop
-                               (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
-                               (myfst t) l1 l2 t)))
-                           (map snd (label_prop_edge_batch os_label_prop
-                             (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                             (map snd
+                               (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                                 (myfst t) l1 l2 t)))
+                           (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                             (myfst t) l1 l2 t))
+                         (map snd
+                           (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
                              (myfst t) l1 l2 t)))
-                         (label_prop_edge_batch os_label_prop
-                           (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
-                           (myfst t) l1 l2 t))
                        1"])
 
                 apply (rule exI[of _ cbufs])
-                apply (rule exI[of _ "(outputs_at_target (summ sg) (os(1 := release_caps
-                       (produces
-                         (drop_caps
-                           (add_caps ((os 1)\<lparr>input := (input os_label_prop)(0 := xs)\<rparr>)
-                             (map snd (label_prop_edge_batch os_label_prop
-                               (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
-                               (myfst t) l1 l2 t)))
-                           (map snd (label_prop_edge_batch os_label_prop
-                             (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                apply (rule exI[of _ "outputs_at_target (summ sg) (os(1 := release_caps
+                       (drop_caps
+                         (produces
+                           (add_caps (input_tl (os 1) 0)
+                             (map snd
+                               (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                                 (myfst t) l1 l2 t)))
+                           (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                             (myfst t) l1 l2 t))
+                         (map snd
+                           (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
                              (myfst t) l1 l2 t)))
-                         (label_prop_edge_batch os_label_prop
-                           (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
-                           (myfst t) l1 l2 t))
-                       1)) >> cbufs) >> inputs_at_target (os(1 := release_caps
-                       (produces
-                         (drop_caps
-                           (add_caps (os 1\<lparr>input := (input (os 1))(0 := xs)\<rparr>)
-                             (map snd (label_prop_edge_batch os_label_prop
-                               (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
-                               (myfst t) l1 l2 t)))
-                           (map snd (label_prop_edge_batch os_label_prop
-                             (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                       1)) >> cbufs >> inputs_at_target (os(1 := release_caps
+                       (drop_caps
+                         (produces
+                           (add_caps (input_tl (os 1) 0)
+                             (map snd
+                               (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                                 (myfst t) l1 l2 t)))
+                           (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
+                             (myfst t) l1 l2 t))
+                         (map snd
+                           (label_prop_edge_batch os_label_prop (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
                              (myfst t) l1 l2 t)))
-                         (label_prop_edge_batch os_label_prop
-                           (label_prop_edge_record_update (input_tl os_label_prop 0) (myfst t) v1 v2 l1 l2)
-                           (myfst t) l1 l2 t))
                        1))"])
                 apply (rule exI[of _ sg])
                 apply (intro conjI)
@@ -1330,13 +1387,9 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                           apply simp
                           apply (rule arg_cong2[where f=cinsert])
                           subgoal
-                            apply (subst (1) icoll_LCons_Data)
-                            subgoal
-                              using input_stream_inv timely_input_stream_expires_le
-                              by auto
-                            apply (simp add: insert_commute ccs_insert_symmetric)
+   apply (simp add: insert_commute ccs_insert_symmetric)
                             apply (subst ccs_insert_swap)
-                            apply (rule refl)
+                            apply auto
                             done
                           subgoal
                             apply (rule arg_cong2[where f=cUn])
@@ -1362,13 +1415,6 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                     subgoal
                                       apply (subst insert_commute)
                                       apply (simp add: ccs_insert_symmetric)
-                                      apply (subst (1) icoll_LCons_Data)
-                                      subgoal
-                                        using input_stream_inv timely_input_stream_expires_le 
-                                        by auto
-                                      subgoal
-                                        apply simp
-                                        done
                                       done
                                     done
                                   subgoal
@@ -1378,10 +1424,6 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                                     subgoal
                                       by simp
                                     subgoal
-                                      apply (subst (1) icoll_LCons_Data)
-                                      subgoal
-                                        using input_stream_inv timely_input_stream_expires_le
-                                        by auto
                                       apply simp
                                       done
                                     done
@@ -1446,192 +1488,11 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                     unfolding add_caps_def
                     using os_inv(7) by auto
                   subgoal premises aux
-
-                    unfolding release_caps_def
-                    apply (simp del: filter.simps)
-                    apply (rule iffD1[OF dataplane_tracker_inv_clean_reorder_ocaps, rotated 2, of _ _ sg "upfro sg"])
-                      apply (rule dataplane_tracker_inv_produces_drops_alt
-                        [OF D, where nid=1 and p=0 and n=1 and os=os and
-                          produs="map (\<lambda> (_, cap :: (2, (nat, nat) myprod) capability). (1, capability.time cap, 1)) (label_prop_edge_batch
-                         \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1),
-                            front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G,
-                            vertices = V, label = L\<rparr>
-                         (label_prop_edge_record_update
-                           (input_tl
-                             \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1),
-                                front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G,
-                                vertices = V, label = L\<rparr>
-                             0)
-                           (myfst t) v1 v2 l1 l2)
-                         (myfst t) l1 l2 t)" and
-                          oputs="(\<lambda> p. if p = 0 then [] else (map (\<lambda> (d, cap :: (2, (nat, nat) myprod) capability). (d, capability.time cap)) (label_prop_edge_batch
-                         \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1),
-                            front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G,
-                            vertices = V, label = L\<rparr>
-                         (label_prop_edge_record_update
-                           (input_tl
-                             \<lparr>intsum = intsum (os 1), consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1),
-                                front = front (os 1), ocaps = ocaps (os 1), initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G,
-                                vertices = V, label = L\<rparr>
-                             0)
-                           (myfst t) v1 v2 l1 l2)
-                         (myfst t) l1 l2 t)))" and
-                          drops="(\<lambda> p. if p = 0 then [] else list_diff (ocaps (os 1) 1) (map snd (xs @ input (os 1) 1)))"
-                          and ninter="operator_state.inter (os 1) @
-                         map (\<lambda>x. (out (snd x), capability.time (snd x), 1))
-                         (label_prop_edge_batch
-                           \<lparr>intsum =
-                              \<lambda>p1 p2.
-                                 case if p1 = 0 \<and> p2 = 0 then Some (Loc 1 (Trg 0), [MyPair 0 0], Loc 1 (Src 0))
-                                      else if p1 = 0 \<and> p2 = 1 then Some (Loc 1 (Trg 0), [MyPair 0 0], Loc 1 (Src 1)) else if p1 = 1 \<and> p2 = 1 then Some (Loc 1 (Trg 1), [MyPair 0 0], Loc 1 (Src 1)) else None of
-                                 None \<Rightarrow> [] | Some (l1' :: (3, 2) location, s, l2' :: (3, 2) location) \<Rightarrow> s,
-                              consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1), front = front (os 1), ocaps = ocaps (os 1), initia = True,
-                              en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>
-                           (label_prop_edge_record_update
-                             (input_tl
-                               \<lparr>intsum =
-                                  \<lambda>p1 p2.
-                                     case if p1 = 0 \<and> p2 = 0 then Some (Loc 1 (Trg 0), [MyPair 0 0], Loc 1 (Src 0))
-                                          else if p1 = 0 \<and> p2 = 1 then Some (Loc 1 (Trg 0), [MyPair 0 0], Loc 1 (Src 1)) else if p1 = 1 \<and> p2 = 1 then Some (Loc 1 (Trg 1), [MyPair 0 0], Loc 1 (Src 1)) else None of
-                                     None \<Rightarrow> [] | Some (l1' :: (3, 2) location, s, l2' :: (3, 2) location) \<Rightarrow> s,
-                                  consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1), front = front (os 1), ocaps = ocaps (os 1),
-                                  initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>
-                               0)
-                             (myfst t) v1 v2 l1 l2)
-                           (myfst t) l1 l2 t) @
-                         map (\<lambda>x. (out (snd x), capability.time (snd x), - 1))
-                         (label_prop_edge_batch
-                           \<lparr>intsum =
-                              \<lambda>p1 p2.
-                                 case if p1 = 0 \<and> p2 = 0 then Some (Loc 1 (Trg 0), [MyPair 0 0], Loc 1 (Src 0))
-                                      else if p1 = 0 \<and> p2 = 1 then Some (Loc 1 (Trg 0), [MyPair 0 0], Loc 1 (Src 1)) else if p1 = 1 \<and> p2 = 1 then Some (Loc 1 (Trg 1), [MyPair 0 0], Loc 1 (Src 1)) else None of
-                                 None \<Rightarrow> [] | Some (l1' :: (3, 2) location, s, l2' :: (3, 2) location) \<Rightarrow> s,
-                              consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1), front = front (os 1), ocaps = ocaps (os 1), initia = True,
-                              en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>
-                           (label_prop_edge_record_update
-                             (input_tl
-                               \<lparr>intsum =
-                                  \<lambda>p1 p2.
-                                     case if p1 = 0 \<and> p2 = 0 then Some (Loc 1 (Trg 0), [MyPair 0 0], Loc 1 (Src 0))
-                                          else if p1 = 0 \<and> p2 = 1 then Some (Loc 1 (Trg 0), [MyPair 0 0], Loc 1 (Src 1)) else if p1 = 1 \<and> p2 = 1 then Some (Loc 1 (Trg 1), [MyPair 0 0], Loc 1 (Src 1)) else None of
-                                     None \<Rightarrow> [] | Some (l1' :: (3, 2) location, s, l2' :: (3, 2) location) \<Rightarrow> s,
-                                  consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1), front = front (os 1), ocaps = ocaps (os 1),
-                                  initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>
-                               0)
-                             (myfst t) v1 v2 l1 l2)
-                           (myfst t) l1 l2 t) @
-                                             map (\<lambda> c. (1, c, -1)) (list_diff
-     (list_diff
-       (list_diff
-         (ocaps (os 1) 1 @
-          map capability.time
-           (filter (\<lambda>cap::(2, (nat, nat) myprod) capability. out cap = 1)
-             (map snd
-               (label_prop_edge_batch
-                 \<lparr>intsum =
-                    \<lambda>p1 p2.
-                       case if p1 = 0 \<and> p2 = 0 then Some (Loc 1 (Trg 0), [MyPair 0 0], Loc 1 (Src 0))
-                            else if p1 = 0 \<and> p2 = 1 then Some (Loc 1 (Trg 0), [MyPair 0 0], Loc 1 (Src 1))
-                                 else if p1 = 1 \<and> p2 = 1 then Some (Loc 1 (Trg 1), [MyPair 0 0], Loc 1 (Src 1)) else None of
-                       None \<Rightarrow> [] | Some (l1' :: (3, 2) location, s, l2' :: (3, 2) location) \<Rightarrow> s,
-                    consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1), front = front (os 1), ocaps = ocaps (os 1),
-                    initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>
-                 (label_prop_edge_record_update
-                   (input_tl
-                     \<lparr>intsum =
-                        \<lambda>p1 p2.
-                           case if p1 = 0 \<and> p2 = 0 then Some (Loc 1 (Trg 0), [MyPair 0 0], Loc 1 (Src 0))
-                                else if p1 = 0 \<and> p2 = 1 then Some (Loc 1 (Trg 0), [MyPair 0 0], Loc 1 (Src 1))
-                                     else if p1 = 1 \<and> p2 = 1 then Some (Loc 1 (Trg 1), [MyPair 0 0], Loc 1 (Src 1)) else None of
-                           None \<Rightarrow> [] | Some (l1' :: (3, 2) location, s, l2' :: (3, 2) location) \<Rightarrow> s,
-                        consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1), front = front (os 1), ocaps = ocaps (os 1),
-                        initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>
-                     0)
-                   (myfst t) v1 v2 l1 l2)
-                 (myfst t) l1 l2 t))))
-         (map capability.time
-           (filter (\<lambda>cap::(2, (nat, nat) myprod) capability. out cap = 1)
-             (map snd
-               (label_prop_edge_batch
-                 \<lparr>intsum =
-                    \<lambda>p1 p2.
-                       case if p1 = 0 \<and> p2 = 0 then Some (Loc 1 (Trg 0), [MyPair 0 0], Loc 1 (Src 0))
-                            else if p1 = 0 \<and> p2 = 1 then Some (Loc 1 (Trg 0), [MyPair 0 0], Loc 1 (Src 1))
-                                 else if p1 = 1 \<and> p2 = 1 then Some (Loc 1 (Trg 1), [MyPair 0 0], Loc 1 (Src 1)) else None of
-                       None \<Rightarrow> [] | Some (l1' :: (3, 2) location, s, l2' :: (3, 2) location) \<Rightarrow> s,
-                    consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1), front = front (os 1), ocaps = ocaps (os 1),
-                    initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>
-                 (label_prop_edge_record_update
-                   (input_tl
-                     \<lparr>intsum =
-                        \<lambda>p1 p2.
-                           case if p1 = 0 \<and> p2 = 0 then Some (Loc 1 (Trg 0), [MyPair 0 0], Loc 1 (Src 0))
-                                else if p1 = 0 \<and> p2 = 1 then Some (Loc 1 (Trg 0), [MyPair 0 0], Loc 1 (Src 1))
-                                     else if p1 = 1 \<and> p2 = 1 then Some (Loc 1 (Trg 1), [MyPair 0 0], Loc 1 (Src 1)) else None of
-                           None \<Rightarrow> [] | Some (l1' :: (3, 2) location, s, l2' :: (3, 2) location) \<Rightarrow> s,
-                        consu = consu (os 1), inter = operator_state.inter (os 1), produ = produ (os 1), input = input (os 1), outpu = outpu (os 1), front = front (os 1), ocaps = ocaps (os 1),
-                        initia = True, en1 = Inl, de1 = projl, is_en1 = isl, en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr>
-                     0)
-                   (myfst t) v1 v2 l1 l2)
-                 (myfst t) l1 l2 t)))))
-       (map snd xs))
-     (map snd (input (os 1) 1)))"])
-                                 apply (rule refl)+
-                             prefer 10
-                             apply (intro allI impI conjI)
-                                    prefer 4
-                    subgoal
-                      by (clarsimp simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
-                    subgoal
-                      by (clarsimp simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
-                    subgoal for ni p
-                      apply (clarsimp simp add: filter_mset_image_mset os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
-                      subgoal
-                        apply (subgoal_tac " p = 1")
-                        subgoal
-                          by simp
-                        subgoal
-                          using num2_neq(2) by blast
-                        done
-                      done
-                    subgoal
-                      by (clarsimp simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
-                    subgoal
-                      unfolding produces_def label_prop_edge_batch_def label_prop_neighbor_batch_def 
-                        (* show but finishes *)
-                      by (clarsimp simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
-                    subgoal
-                      using aux(2)
-                      by (auto simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
-                    subgoal for nid
-                      apply (rule ext)+
-                      apply (auto 0 0 simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
-                      subgoal
-                        unfolding produces_def label_prop_edge_batch_def label_prop_neighbor_batch_def 
-                        by (clarsimp simp add: filter_mset_image_mset os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
-                      subgoal for p
-                        apply (subgoal_tac " p = 1")
-                        subgoal
-                          unfolding produces_def label_prop_edge_batch_def label_prop_neighbor_batch_def 
-                          by (clarsimp simp add: filter_mset_image_mset os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
-                        subgoal
-                          using num2_neq(2) by blast
-                        done
-                      done
-                    subgoal
-                      by (clarsimp simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
-                    subgoal
-                      apply (clarsimp simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
-                      apply (rule arg_cong2[where f="(+)"])
-                      subgoal
-                        unfolding label_prop_edge_batch_def label_prop_neighbor_batch_def
-                        by (auto intro!: multiset.map_cong0)
-                      subgoal
-                        unfolding label_prop_edge_batch_def label_prop_neighbor_batch_def
-                        by (auto intro!: multiset.map_cong0)
-                      done
-                    subgoal
-                      using num2_cases by force
+                    apply (rule dataplane_tracker_inv_release_caps_update[OF D])
+                      apply (rule dataplane_tracker_inv_add_caps_produces_drop_caps_update[OF D])
+                    using dataplane_inv apply simp
+                    using G apply simp
+                    using subgraph_inv(2) apply assumption 
                     subgoal
                       apply (subgoal_tac "t \<in> set (ocaps (os 1) 1)")
                       subgoal
@@ -1649,100 +1510,11 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                           by (simp add: zero_myprod_def os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified])
                         done
                       done
-                    subgoal
-                      apply (subgoal_tac "t \<in> set (ocaps (os 1) 1)")
-                      subgoal
-                        apply (intro conjI allI)
-                        subgoal for p
-                          apply (cases "p = 1")
-                          subgoal
-                            unfolding label_prop_edge_batch_def label_prop_neighbor_batch_def label_prop_edge_record_update_def
-                            apply (auto del: disjCI simp add: image_iff split_beta)
-                            apply (metis MyPair_mono myprod.exhaust_sel verit_comp_simplify1(2))
-                            done
-                          subgoal
-                            unfolding label_prop_edge_batch_def label_prop_neighbor_batch_def label_prop_edge_record_update_def
-                            using num2_neq(2) by (auto del: disjCI simp add: image_iff split_beta)
-                          done
-                        done
-                      subgoal
-                        apply (rule  label_prop_inv(7)[unfolded input_ocaps_inv_def, rule_format, of _ 0 0, simplified])
-                        subgoal
-                          using aux(2,3) by simp
-                        subgoal
-                          by (simp add: zero_myprod_def os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified])
-                        done
-                      done
-                    subgoal
-                      apply (clarsimp simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
-                      subgoal for p
-                        apply (subgoal_tac "p = 1")
-                        subgoal
-                          by (clarsimp simp add: os_inv(7)[rule_format, of 1, unfolded raw_summary_def, simplified] comp_def split_beta filter_False filter_True drop_caps_def add_caps_def)
-                        subgoal
-                          using num2_cases by force
-                        done
-                      done
-                    subgoal
-                      using G by assumption
-                    subgoal
-                      using subgraph_inv(2) by assumption
-                    subgoal
-                      using dataplane_inv by assumption
-                    subgoal
-                      by simp
-                    done
-                  subgoal premises aux
-                    using aux(1,2,3) apply -
-                    apply (simp add: buffers_inv image_iff)
-                    unfolding BULK_BENQ_def inputs_at_target_def subgraph_inv(1) outputs_at_target_raw_summary label_prop_edge_record_update_def input_tl_def
-                    apply (clarsimp del: disjCI)
-                    apply (subst (1) icoll_LCons_Data)
-                    subgoal
-                      using input_stream_inv timely_input_stream_expires_le
-                      by auto
-                    subgoal
-                      apply (subgoal_tac "t = MyPair (myfst t) 0")
-                       apply (clarsimp simp add: icoll_append)
-                       apply (rule arg_cong2[where f=cinsert])
-                      subgoal
-                        apply (subst (1 2) all_edges_eq[rotated, where V=V and label_sync=" L"])
-                           prefer 4
-                           apply (simp add: insert_commute ccs_insert_symmetric)
-                          prefer 2
-                          apply simp
-                        using label_prop_inv(6)[unfolded os_inv(4) operator_state.defs, simplified] apply simp_all
-                        done
-                      subgoal
-                        apply (rule cimage_cong)
-                         apply simp
-                        subgoal for t'
-                          apply (subst (1) icoll_LCons_Data)
-                          subgoal
-                            using input_stream_inv timely_input_stream_expires_le
-                            by auto
-                          apply (cases "t \<le> t'")
-                          subgoal
-                            apply simp
-                            apply (subst (1 2) all_edges_eq_le[rotated, where V=V and label_sync=" L"])
-                            using label_prop_inv(6)[unfolded os_inv(4) operator_state.defs, simplified] apply simp_all
-                            using myfst_mono apply blast
-                            done
-                          subgoal
-                            by simp
-                          done
-                        done
-                      subgoal
-                        using label_prop_inv(5)[rule_format, of t] apply -
-                        apply (drule meta_mp)
-                        subgoal
-                          by auto
-                        subgoal
-                          apply (cases t)
-                          apply auto
-                          done
-                        done
-                      done
+                    subgoal 
+                      using G
+                      by (smt (verit) Label_Propagation_op.intsum_add_caps array_rules(3,4) graph_summar_nt_intsum_cong intsum_drop_caps intsum_input_tl
+                          intsum_produces)
+                    using subgraph_inv(2) apply assumption 
                     done
                   subgoal premises aux
                     by (auto simp add: label_prop_edge_batch_def label_prop_neighbor_batch_def image_iff csets_inv(2))
@@ -1804,7 +1576,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                     done
                   subgoal premises aux
                     using aux(2) label_prop_inv(3)
-                    by auto
+                    by (clarsimp simp add: input_tl_def)
                   subgoal
                     using label_prop_inv(4) 
                     unfolding label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def release_caps_def drop_caps_def add_caps_def
@@ -1821,12 +1593,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                     done
                   subgoal premises aux
                     apply (rule input_ocaps_inv_release_capsI)
-                    apply simp
-                    apply (rule input_ocaps_inv_drop_add_capsI)
-                    using label_prop_inv(7) aux(2) apply -
-                    unfolding input_ocaps_inv_def 
-                    apply simp
-                    apply force
+                    apply (rule input_ocaps_inv_drop_produces_add_capsI)
+                    using label_prop_inv(7) input_ocaps_inv_input_tlI apply fast
                     done
                   done
                 done
@@ -1984,6 +1752,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                     apply (rule exI[of _ "label (label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l))"])
                     unfolding release_caps_def drop_caps_def produces_def add_caps_def input_tl_def label_prop_label_record_update_def
                     by (simp add: operator_state.defs os_inv(4))
+                      (* show but finishes *)
                   subgoal
                     using os_inv(1,5)
                     by (simp add:  operator_state.defs)
