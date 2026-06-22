@@ -1949,6 +1949,12 @@ lemma label_prop_upd_inv_obtain_progress[simp]:
   unfolding label_prop_upd_inv_def all_vertices_def all_edges_def obtain_progress_def
   by (simp add: set_neighbors)
 
+lemma label_prop_upd_inv_upd_outpu[simp]:
+  "label_prop_upd_inv (os\<lparr>outpu := xs\<rparr>) = label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def obtain_progress_def
+  by (simp add: set_neighbors)
+
+
 lemma label_prop_upd_inv_mint[simp]:
   "label_prop_upd_inv (snd (mint os caps p t)) \<longleftrightarrow> label_prop_upd_inv os"
   by (cases "t \<in> set (caps p)")
@@ -3031,11 +3037,10 @@ proof (rule labels_inv_input1_preserved[OF labels inv pending msg t1_def])
     using update unfolding label_prop_label_record_update_def by simp
 qed
 
-lemma labels_inv_output_preserved:
-  fixes q :: "'t::order"
-  assumes labels: "labels_inv (all_edges os q) (min_label os q)"
-  shows "labels_inv (all_edges os q) (min_label os q)"
-  using labels .
+lemma min_label_outpu_upd[simp]:
+  "min_label (os\<lparr>outpu := xs\<rparr>) = min_label os"
+  unfolding min_label_def
+  by auto
 
 
 (* Preservation of labels_stable across the first branch of label_propagation_op_logic

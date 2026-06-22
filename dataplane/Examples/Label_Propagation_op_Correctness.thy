@@ -571,13 +571,13 @@ lemma label_propagation_correctness:
     and label_prop_inv:
     \<open>(\<forall> t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
 
-    \<open>(\<forall> t \<in> set (timestamps os_label_prop). \<not> frontier_less_equal (exit_scope myfst (front (os 1) 0 + front (os 1) 1)) t \<longrightarrow> labels_stable (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
-    \<open>\<forall> t \<in> myfst ` snd ` set (input (os 1) 0) \<union> myfst ` snd ` set (input (os 1) 1). frontier_less_equal (exit_scope myfst (front (os 1) 1)) t\<close>
-    \<open>\<forall> t. t \<in> set (ocaps (os 1) 0) \<longrightarrow> myfst t |\<in>| cset_from_list T\<close>
-    \<open>\<forall> t \<in> set (ocaps (os 1) 0) \<union> snd ` set (input (os 1) 0) \<union> snd ` set (outpu (os 0) 0) \<union> time ` lset lxs. mysnd t = 0\<close>
-    \<open>label_prop_upd_inv os_label_prop\<close>
-    \<open>input_ocaps_inv (os 1)\<close>
-  shows \<open>set_op S D (dataflow_op sg (G_op os_input os_label_prop (os 2) cbufs))
+\<open>(\<forall> t \<in> set (timestamps os_label_prop). \<not> frontier_less_equal (exit_scope myfst (front (os 1) 0 + front (os 1) 1)) t \<longrightarrow> labels_stable (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
+\<open>\<forall> t \<in> myfst ` snd ` set (input (os 1) 0) \<union> myfst ` snd ` set (input (os 1) 1). frontier_less_equal (exit_scope myfst (front (os 1) 1)) t\<close>
+\<open>\<forall> t. t \<in> set (ocaps (os 1) 0) \<longrightarrow> myfst t |\<in>| cset_from_list T\<close>
+\<open>\<forall> t \<in> set (ocaps (os 1) 0) \<union> snd ` set (input (os 1) 0) \<union> snd ` set (outpu (os 0) 0) \<union> time ` lset lxs. mysnd t = 0\<close>
+\<open>label_prop_upd_inv os_label_prop\<close>
+\<open>input_ocaps_inv (os 1)\<close>
+shows \<open>set_op S D (dataflow_op sg (G_op os_input os_label_prop (os 2) cbufs))
          \<approx> set_spec_op (cUn (cUn S SO) SP) D\<close>
   using assms
 proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns sg T G V L
@@ -1387,7 +1387,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                           apply simp
                           apply (rule arg_cong2[where f=cinsert])
                           subgoal
-   apply (simp add: insert_commute ccs_insert_symmetric)
+                            apply (simp add: insert_commute ccs_insert_symmetric)
                             apply (subst ccs_insert_swap)
                             apply auto
                             done
@@ -1794,12 +1794,12 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                     apply safe
                     subgoal for ta
                       apply (rule labels_inv_input1_preserved_record_update_tl[
-                        of os_label_prop d t v l "myfst t"
-                          "label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)" ta,
-                        simplified])
-                           apply (rule label_prop_inv(1)[rule_format])
-                          apply (rule label_prop_inv(6))
-                         apply simp_all
+                            of os_label_prop d t v l "myfst t"
+                            "label_prop_label_record_update (input_tl os_label_prop 1) (myfst t) v (min (min_label os_label_prop (myfst t) v) l)" ta,
+                            simplified])
+                         apply (rule label_prop_inv(1)[rule_format])
+                        apply (rule label_prop_inv(6))
+                       apply simp_all
                       done
                     done
 
@@ -1870,11 +1870,11 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         sorry
       subgoal for d t xs
         apply (intro exI conjI)
-        apply (rule rtranclp.rtrancl_refl)
+         apply (rule rtranclp.rtrancl_refl)
         apply (intro relcomppI)
-        apply (rule bisim_refl)
-        defer
-        apply (rule wbisim_refl)
+          apply (rule bisim_refl)
+         defer
+         apply (rule wbisim_refl)
         apply (rule wb_upto_b_base)
         apply (unfold R_def[simplified])
         apply (rule exI[of _ \<open>cinsert ((1, 0), d, t) S\<close>])
@@ -1885,28 +1885,28 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply (rule exI[of _ \<open>os(1 := (os 1)\<lparr>outpu := (outpu (os 1))(0 := xs)\<rparr>)\<close>])
         apply (rule exI[of _ \<open>os_label_prop\<lparr>outpu := (outpu os_label_prop)(0 := xs)\<rparr>\<close>])
         apply (intro exI conjI)
-        apply (simp add: dataflow_tree_to_operator_def os_inv(1))
-        apply (rule arg_cong[where f=\<open>\<lambda>X. set_spec_op (cUn X SP) D\<close>])
-        apply (simp add: csets_inv(2) os_inv(4) operator_state.defs(3))
-        apply (rule subgraph_inv(1))
-        apply (rule subgraph_inv(2))
-        apply (simp add: os_inv(2))
-        apply (simp add: os_inv(3))
-        apply (simp add: os_inv(4) operator_state.defs(3))
+                            apply (simp add: dataflow_tree_to_operator_def os_inv(1))
+                            apply (rule arg_cong[where f=\<open>\<lambda>X. set_spec_op (cUn X SP) D\<close>])
+                            apply (simp add: csets_inv(2) os_inv(4) operator_state.defs(3))
+                           apply (rule subgraph_inv(1))
+                          apply (rule subgraph_inv(2))
+                         apply (simp add: os_inv(2))
+                        apply (simp add: os_inv(3))
+                       apply (simp add: os_inv(4) operator_state.defs(3))
         using os_inv(1,5) apply simp
         using os_inv(6) unfolding label_prob_ty2_check_def apply simp
         using os_inv(7) apply simp
-        apply (rule refl)
-        apply (rule dataplane_tracker_inv_update_outputs_outside[OF dataplane_inv _ _ G])
-        apply (simp add: fun_upd_def)
-        apply (simp add: subgraph_inv(1) raw_summary_def)
-        apply (subgoal_tac \<open>outputs_at_target (summ sg) (os(1 := (os 1)\<lparr>outpu := (outpu (os 1))(0 := xs)\<rparr>)) (1, 0)
+                   apply (rule refl)
+                  apply (rule dataplane_tracker_inv_update_outputs_outside[OF dataplane_inv _ _ G])
+                   apply (simp add: fun_upd_def)
+                  apply (simp add: subgraph_inv(1) raw_summary_def)
+                 apply (subgoal_tac \<open>outputs_at_target (summ sg) (os(1 := (os 1)\<lparr>outpu := (outpu (os 1))(0 := xs)\<rparr>)) (1, 0)
   = outputs_at_target (summ sg) os (1, 0)\<close>)
-        apply (simp add: csets_inv(1) buffers_inv BULK_BENQ_def all_edges_def all_vertices_def neighbors_def)
-        apply blast
-        apply (simp add: subgraph_inv(1) outputs_at_target_raw_summary)
-        apply simp
-        apply (simp add: input_stream_inv)
+                  apply (simp add: csets_inv(1) buffers_inv BULK_BENQ_def all_edges_def all_vertices_def neighbors_def)
+                  apply blast
+                 apply (simp add: subgraph_inv(1) outputs_at_target_raw_summary)
+                apply simp
+               apply (simp add: input_stream_inv)
         subgoal
           using label_prop_inv
           by (simp_all add: all_edges_def all_vertices_def min_label_def neighbors_def labels_inv_def labels_stable_def)
@@ -1955,8 +1955,8 @@ next
   also have G: "graph_summar_nt (summ sg) (subgraph.nxt sg) os"
     apply -
     apply (rule graph_summar_nt[simplified, OF _ subgraph_inv(1)])
-    apply (rule sym)
-    apply (rule dataflow_tree_to_graph_raw_summary)
+      apply (rule sym)
+      apply (rule dataflow_tree_to_graph_raw_summary)
     using os_inv(7) apply assumption
     using subgraph_inv(2) apply assumption
     done
@@ -1977,30 +1977,140 @@ next
         apply (erule disjE)
         subgoal
           apply (intro exI conjI)
-          apply (rule wstep_trans(1))
-          apply (rule relpowp_imp_rtranclp[
+           apply (rule wstep_trans(1))
+            apply (rule relpowp_imp_rtranclp[
                 where n="length (outpu (os 1) 0)"]) 
-          apply (rule step_set_op_steps_Out_intro[where xs="outpu (os 1) 0"])
-          apply (rule steps_Tau_dataflow_op_steps_Out_intro[where xs="outpu (os 1) 0"])
-          apply (subst dataflow_tree_to_operator_def)
-          apply simp
-          apply (rule steps_map_op[where xs="map (\<lambda> x. Out _ (_ x)) (outpu (os 1) 0)", rotated 2])
-          apply (rule steps_comp_op_R_Out[where xs="map _ (outpu (os 1) 0)"])
-          apply (rule steps_Out_loop_op_intro[where xs="map _ (outpu (os 1) 0)"])
-          apply (rule steps_map_op[where xs="map (\<lambda> x. Out _ (_ x)) (outpu (os 1) 0)", rotated 2])
-          apply (rule steps_comp_op_L_Out[where xs="map _ (outpu (os 1) 0)"])
-          sorry
-            (* 
-              apply (subst batch_op_def)
-              apply (subst batch_op_logic_def)
-              apply (subst notifier_op_def)
-              apply simp
-              apply (rule steps_builder_op_Write_Some[where ys=Nil and p=1])
-              apply simp
-              apply simp
+            apply (rule step_set_op_steps_Out_intro[where xs="outpu (os 1) 0"  and p="(1, 0)"])
+              apply (rule steps_Tau_dataflow_op_steps_Out_intro[where xs="outpu (os 1) 0" and nid = 1 and p = 0])
+               apply (subst dataflow_tree_to_operator_def)
+               apply simp
+               apply (rule steps_map_op[where xs="map _ (outpu (os 1) 0)", rotated 2])
+                 apply (rule steps_comp_op_R_Out[where xs="map _ (outpu (os 1) 0)" and p="Inr (1, 0)"])
+                    apply (rule steps_Out_loop_op_intro[where xs="map _ (outpu (os 1) 0)" and p="Inr (1, 0)"])
+                       apply (rule steps_map_op[where xs="map _ (outpu (os 1) 0)" , rotated 2])
+                         apply (rule steps_comp_op_L_Out[where xs="map _ (outpu (os 1) 0)"])
+                             apply (subst label_propagation_op_def)
+                             apply (rule steps_map_op[where xs="map _ (outpu (os 1) 0)", rotated 2])
+                              apply (rule steps_builder_op_Write_Some[where p=0 and ys=Nil])
+                              apply (subst cin.rep_eq)
+                              apply (simp add: cUNIV_def )
+                              apply simp
+                              apply (rule refl)+
+                              apply (simp add: os_inv(4) operator_state.defs)
+                              apply force
+                              apply (rule refl)+
+                             apply force
+                            apply force
+                           apply (rule refl)+
+                         apply force
+                        apply (rule refl)+
+                       apply force
+                      apply force
+                     apply (rule refl)+
+                 apply force
+                apply (rule refl)+
+               apply force
+              apply force
+             apply (rule refl)+
+           apply (rule step_set_op_intro_Out)
               apply (rule refl)+
- *)
-        subgoal 
+             apply force
+            apply simp
+           apply (rule refl)+
+          apply (intro relcomppI)
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_sym)
+          apply (rule wb_upto_b_base)
+          apply (unfold R_def[simplified])
+          apply (rule exI[of _ "cUn (Pair (1, 0) |`| cset_from_list (outpu (os 1) 0)) S"])
+          apply (rule exI[of _ "{||}"])
+          apply (rule exI[of _ SP])
+          apply (rule exI[of _ "cinsert ((nid, p), WCC, t) D"])
+          apply (rule exI[of _ lxs])
+          apply (rule exI[of _ "os(1 := (os 1)\<lparr>outpu := (outpu os_label_prop)(0 := [])\<rparr>)"])
+          apply (rule exI[of _ "os_label_prop\<lparr>outpu := (outpu os_label_prop)(0 := [])\<rparr>"])
+          apply (rule exI[of _ cbufs])
+          apply (rule exI[of _ chns])
+          apply (rule exI[of _ sg])
+          apply (intro conjI)
+          subgoal
+            by (simp add: label_propagation_op_def operator_state.defs dataflow_tree_to_operator_def os_inv(1))
+          subgoal premises
+            apply (subst cUn_commute)
+            apply (simp  del: filter.simps add: csets_inv(2) label_prop_edge_batch_def label_prop_edge_record_update_def buffers_inv operator_state.defs os_inv(4) csets_inv(1))
+            done
+          subgoal
+            using subgraph_inv(1) by assumption
+          subgoal
+            using subgraph_inv(2) by assumption
+          subgoal
+            using os_inv by simp
+          subgoal
+            using os_inv by simp
+          subgoal
+            apply (rule exI[of _ T])
+            apply (intro conjI)
+            subgoal
+              apply (rule exI[of _ G])
+              apply (rule exI[of _ V])
+              apply (rule exI[of _ L])
+              apply (simp add: os_inv(4) operator_state.defs os_inv(1))
+              done
+            subgoal
+              using os_inv(5)
+              by (simp add:  os_inv(4) operator_state.defs os_inv(1))
+            subgoal
+              using os_inv(6) 
+              by (simp add: label_prob_ty2_check_def os_inv(4) operator_state.defs os_inv(1))
+            subgoal
+              using os_inv(7) 
+              by simp
+            subgoal
+              using buffers_inv 
+              by (auto simp add: operator_state.defs os_inv(4) outputs_at_target_raw_summary subgraph_inv(1) BULK_BENQ_def)
+            subgoal
+              apply (rule dataplane_tracker_inv_update_outputs_outside[OF dataplane_inv, where nid=1 and p=0 and xs=Nil])
+              subgoal
+                apply (clarsimp simp add: os_inv(4) operator_state.defs os_inv(1))
+                apply (metis (no_types, lifting) array_rules(3,4))
+                done
+              subgoal
+                by (simp add: subgraph_inv raw_summary_def)
+              subgoal
+                using G by assumption
+              done
+            subgoal
+              by (simp add: csets_inv(1))
+            subgoal
+              by simp
+            subgoal
+              by (simp add: input_stream_inv)
+            subgoal
+              using label_prop_inv(1)
+              by auto
+            subgoal
+              using label_prop_inv(2)
+              by simp
+            subgoal
+              using label_prop_inv(3)
+              by simp
+            subgoal
+              using label_prop_inv(4)
+              by simp          
+            subgoal
+              using label_prop_inv(5)
+              by simp          
+            subgoal
+              using label_prop_inv(6)
+              by simp
+            subgoal
+              using label_prop_inv(7) unfolding input_ocaps_inv_def
+              by simp
+            done
+          done
+        subgoal
           sorry
         done
       done
