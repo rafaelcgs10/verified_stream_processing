@@ -1421,7 +1421,7 @@ definition label_propagation_op_logic where
         {|release_caps (drop_caps (produces (add_caps os'' (map snd batch)) batch) (map snd batch)) 1|}))
   (let
       below_times = filter
-        (\<lambda> t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t))
+        (\<lambda> t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t) \<and> myfst t \<in> set (timestamps os))
         (ocaps os 0);
       batch = label_prop_output_batch os below_times
     in
@@ -3334,7 +3334,7 @@ lemma step_compower_label_propagation_op_input1[intro]:
   using assms by auto
 
 lemma label_propagation_op_logic_outputI[intro]:
-  assumes \<open>below_times = filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t)) (ocaps os 0)\<close>
+  assumes \<open>below_times = filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t) \<and> myfst t \<in> set (timestamps os)) (ocaps os 0)\<close>
     and \<open>batch = label_prop_output_batch os below_times\<close>
     and \<open>batch \<noteq> []\<close>
     and \<open>os_next = drop_caps (produces os batch) (map (\<lambda>t. Cap t 0) below_times)\<close>
@@ -3342,7 +3342,7 @@ lemma label_propagation_op_logic_outputI[intro]:
   using assms unfolding label_propagation_op_logic_def by auto
 
 lemma step_label_propagation_op_output[intro]:
-  assumes \<open>below_times = filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t)) (ocaps os 0)\<close>
+  assumes \<open>below_times = filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t) \<and> myfst t \<in> set (timestamps os)) (ocaps os 0)\<close>
     and \<open>batch = label_prop_output_batch os below_times\<close>
     and \<open>batch \<noteq> []\<close>
     and \<open>os_next = drop_caps (produces os batch) (map (\<lambda>t. Cap t 0) below_times)\<close>
