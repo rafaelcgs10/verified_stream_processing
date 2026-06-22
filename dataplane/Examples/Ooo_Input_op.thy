@@ -295,4 +295,162 @@ definition ooo_input_ty3_op where
   | LCons (Mint t) lxs \<Rightarrow> mint_cap (os\<lparr> es3 := lxs \<rparr>) p t) )))
     (cfilter (\<lambda>p. ocaps os p \<noteq> []) {| 1, 2, 3|})))" *)
 
+section \<open>Introduction rules for ooo_input_op steps\<close>
+
+lemma step_ooo_input_op_Write_None[intro]:
+  assumes \<open>io = Out None (Inl (Inl st))\<close>
+    and \<open>(os', st) = obtain_progress os\<close>
+    and \<open>op = ooo_input_op ops os'\<close>
+  shows \<open>step io (ooo_input_op ops os) op\<close>
+  using assms unfolding ooo_input_op_def by auto
+
+lemma step_ooo_input_op_Write_Some[intro]:
+  assumes \<open>io = Out (Some p) (Inr x)\<close>
+    and \<open>p |\<in>| ops\<close>
+    and \<open>outpu os p = x # xs\<close>
+    and \<open>op = ooo_input_op ops (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>)\<close>
+  shows \<open>step io (ooo_input_op ops os) op\<close>
+  using assms unfolding ooo_input_op_def by auto
+
+lemma steps_ooo_input_op_Write_Some[intro]:
+  assumes \<open>p |\<in>| ops\<close>
+    and \<open>outpu os p = xs @ ys\<close>
+    and \<open>op = ooo_input_op ops (os\<lparr>outpu := (outpu os)(p := ys)\<rparr>)\<close>
+    and \<open>zs = map (\<lambda>x. Out (Some p) (Inr x)) xs\<close>
+  shows \<open>steps zs (ooo_input_op ops os) op\<close>
+  using assms unfolding ooo_input_op_def by auto
+
+lemma step_ooo_input_op_Silent[intro]:
+  assumes \<open>io = Tau\<close>
+    and \<open>initia os\<close>
+    and \<open>os' |\<in>| ooo_input_op_logic ops os\<close>
+    and \<open>op = ooo_input_op ops os'\<close>
+  shows \<open>step io (ooo_input_op ops os) op\<close>
+  using assms unfolding ooo_input_op_def by auto
+
+lemma step_ooo_input_op_n_Silents[intro]:
+  assumes \<open>os' |\<in>| ((\<lambda>oss. cUnion (cimage (ooo_input_op_logic ops)
+      (cfilter (\<lambda>os. initia os \<and> (\<exists>p. ocaps os p \<noteq> [])) oss))) ^^ n) {|os|}\<close>
+    and \<open>op = ooo_input_op ops os'\<close>
+  shows \<open>(step Tau ^^ n) (ooo_input_op ops os) op\<close>
+  using assms unfolding ooo_input_op_def by auto
+
+lemma steps_ooo_input_op_n_Silents[intro]:
+  assumes \<open>os' |\<in>| ((\<lambda>oss. cUnion (cimage (ooo_input_op_logic ops)
+      (cfilter (\<lambda>os. initia os \<and> (\<exists>p. ocaps os p \<noteq> [])) oss))) ^^ n) {|os|}\<close>
+    and \<open>op = ooo_input_op ops os'\<close>
+  shows \<open>(step Tau ^^ n) (ooo_input_op ops os) op\<close>
+  using assms by (rule step_ooo_input_op_n_Silents)
+
+
+lemma ooo_input_op_logic_LNilI[intro]:
+  assumes \<open>ocaps os p \<noteq> []\<close>
+    and \<open>p |\<in>| ops\<close>
+    and \<open>es os p = LNil\<close>
+    and \<open>os_next = drop_caps os (map (\<lambda>t. Cap t p) (ocaps os p))\<close>
+  shows \<open>os_next |\<in>| ooo_input_op_logic ops os\<close>
+  using assms unfolding ooo_input_op_logic_def
+  apply (clarsimp simp add: image_iff simp flip: cin.rep_eq)
+  apply (rule exI[of _ p])
+  apply simp
+  done
+
+lemma step_ooo_input_op_LNil[intro]:
+  assumes \<open>ocaps os p \<noteq> []\<close>
+    and \<open>p |\<in>| ops\<close>
+    and \<open>es os p = LNil\<close>
+    and \<open>os_next = drop_caps os (map (\<lambda>t. Cap t p) (ocaps os p))\<close>
+    and \<open>initia os\<close>
+    and \<open>op = ooo_input_op ops os_next\<close>
+  shows \<open>step Tau (ooo_input_op ops os) op\<close>
+  using assms by (metis ooo_input_op_logic_LNilI step_ooo_input_op_Silent)
+
+lemma ooo_input_op_logic_DataI[intro]:
+  assumes \<open>ocaps os p \<noteq> []\<close>
+    and \<open>p |\<in>| ops\<close>
+    and \<open>es os p = LCons (Data t d) lxs\<close>
+    and \<open>os_next = produce (os\<lparr>es := (es os)(p := lxs)\<rparr>) (Cap t p) [en1 os d]\<close>
+  shows \<open>os_next |\<in>| ooo_input_op_logic ops os\<close>
+  using assms unfolding ooo_input_op_logic_def
+  apply (clarsimp simp add: image_iff simp flip: cin.rep_eq)
+  apply (rule exI[of _ p])
+  apply simp
+  done
+
+lemma step_ooo_input_op_Data[intro]:
+  assumes \<open>ocaps os p \<noteq> []\<close>
+    and \<open>p |\<in>| ops\<close>
+    and \<open>es os p = LCons (Data t d) lxs\<close>
+    and \<open>os_next = produce (os\<lparr>es := (es os)(p := lxs)\<rparr>) (Cap t p) [en1 os d]\<close>
+    and \<open>initia os\<close>
+    and \<open>op = ooo_input_op ops os_next\<close>
+  shows \<open>step Tau (ooo_input_op ops os) op\<close>
+  using assms by (metis ooo_input_op_logic_DataI step_ooo_input_op_Silent)
+
+lemma ooo_input_op_logic_DropI[intro]:
+  assumes \<open>ocaps os p \<noteq> []\<close>
+    and \<open>p |\<in>| ops\<close>
+    and \<open>es os p = LCons (Drop t) lxs\<close>
+    and \<open>os_next = drop_cap (os\<lparr>es := (es os)(p := lxs)\<rparr>) (Cap t p)\<close>
+  shows \<open>os_next |\<in>| ooo_input_op_logic ops os\<close>
+  using assms unfolding ooo_input_op_logic_def
+  apply (clarsimp simp add: image_iff simp flip: cin.rep_eq)
+  apply (rule exI[of _ p])
+  apply simp
+  done
+
+lemma step_ooo_input_op_Drop[intro]:
+  assumes \<open>ocaps os p \<noteq> []\<close>
+    and \<open>p |\<in>| ops\<close>
+    and \<open>es os p = LCons (Drop t) lxs\<close>
+    and \<open>os_next = drop_cap (os\<lparr>es := (es os)(p := lxs)\<rparr>) (Cap t p)\<close>
+    and \<open>initia os\<close>
+    and \<open>op = ooo_input_op ops os_next\<close>
+  shows \<open>step Tau (ooo_input_op ops os) op\<close>
+  using assms by (metis ooo_input_op_logic_DropI step_ooo_input_op_Silent)
+
+lemma ooo_input_op_logic_MintI[intro]:
+  assumes \<open>ocaps os p \<noteq> []\<close>
+    and \<open>p |\<in>| ops\<close>
+    and \<open>es os p = LCons (Mint t) lxs\<close>
+    and \<open>os_next = add_cap (os\<lparr>es := (es os)(p := lxs)\<rparr>) p t\<close>
+  shows \<open>os_next |\<in>| ooo_input_op_logic ops os\<close>
+  using assms unfolding ooo_input_op_logic_def
+  apply (clarsimp simp add: image_iff simp flip: cin.rep_eq)
+  apply (rule exI[of _ p])
+  apply simp
+  done
+
+lemma step_ooo_input_op_Mint[intro]:
+  assumes \<open>ocaps os p \<noteq> []\<close>
+    and \<open>p |\<in>| ops\<close>
+    and \<open>es os p = LCons (Mint t) lxs\<close>
+    and \<open>os_next = add_cap (os\<lparr>es := (es os)(p := lxs)\<rparr>) p t\<close>
+    and \<open>initia os\<close>
+    and \<open>op = ooo_input_op ops os_next\<close>
+  shows \<open>step Tau (ooo_input_op ops os) op\<close>
+  using assms by (metis ooo_input_op_logic_MintI step_ooo_input_op_Silent)
+
+
+
+
+lemma step_compower_ooo_input_op_iterates_n[intro]:
+  assumes \<open>timely_input_stream (es os p) (mset (ocaps os p))\<close>
+    and \<open>p |\<in>| ops\<close>
+    and \<open>initia os\<close>
+    and \<open>llength (es os p) \<ge> enat n\<close>
+    and \<open>os_next = os\<lparr>es := (es os)(p := ldropn n (es os p)),
+      ocaps := (ocaps os)(p := ocaps_updates (ocaps os p) (ltaken n (es os p))),
+      inter := inter os @ (map (\<lambda>ev. case ev of Drop t \<Rightarrow> (p, t, -1) | Mint t \<Rightarrow> (p, t, 1))
+        (filter (Not \<circ> is_Data) (ltaken n (es os p)))),
+      produ := produ os @ (map (\<lambda>ev. case ev of Data t d \<Rightarrow> (p, t, 1))
+        (filter is_Data (ltaken n (es os p)))),
+      outpu := (outpu os)(p := outpu os p @ (map (\<lambda>ev. case ev of Data t d \<Rightarrow> (en1 os d, t))
+        (filter is_Data (ltaken n (es os p)))))\<rparr>\<close>
+    and \<open>op = ooo_input_op ops os_next\<close>
+  shows \<open>(step Tau ^^ n) (ooo_input_op ops os) op\<close>
+  using assms ooo_input_op_logic_iterates_n[where OS = \<open>{|os|}\<close> and os = os and p = p and P = ops and n = n and os' = os_next]
+  by auto
+
+
 end

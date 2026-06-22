@@ -3193,4 +3193,165 @@ proof -
 qed
 
 
+
+section \<open>Introduction rules for label_propagation_op steps\<close>
+
+lemma step_label_propagation_op_Read_None[intro]:
+  assumes \<open>io = Inp None (Inl (Inr f))\<close>
+    and \<open>op = label_propagation_op (os\<lparr>front := f, initia := True\<rparr>)\<close>
+  shows \<open>step io (label_propagation_op os) op\<close>
+  using assms unfolding label_propagation_op_def by auto
+
+lemma step_label_propagation_op_Read_Some[intro]:
+  assumes \<open>io = Inp (Some p) (Inr (d, t))\<close>
+    and \<open>op = label_propagation_op (consumes os p t d)\<close>
+  shows \<open>step io (label_propagation_op os) op\<close>
+  using assms unfolding label_propagation_op_def by auto
+
+lemma step_label_propagation_op_Write_None[intro]:
+  assumes \<open>io = Out None (Inl (Inl st))\<close>
+    and \<open>(os', st) = obtain_progress os\<close>
+    and \<open>op = label_propagation_op os'\<close>
+  shows \<open>step io (label_propagation_op os) op\<close>
+  using assms unfolding label_propagation_op_def by auto
+
+lemma step_label_propagation_op_Write_Some[intro]:
+  assumes \<open>io = Out (Some p) (Inr x)\<close>
+    and \<open>outpu os p = x # xs\<close>
+    and \<open>op = label_propagation_op (os\<lparr>outpu := (outpu os)(p := xs)\<rparr>)\<close>
+  shows \<open>step io (label_propagation_op os) op\<close>
+  using assms unfolding label_propagation_op_def by auto
+
+lemma steps_label_propagation_op_Write_Some[intro]:
+  assumes \<open>outpu os p = xs @ ys\<close>
+    and \<open>op = label_propagation_op (os\<lparr>outpu := (outpu os)(p := ys)\<rparr>)\<close>
+    and \<open>zs = map (\<lambda>x. Out (Some p) (Inr x)) xs\<close>
+  shows \<open>steps zs (label_propagation_op os) op\<close>
+  using assms unfolding label_propagation_op_def by auto
+
+lemma steps_label_propagation_op_Read_Some[intro]:
+  assumes \<open>op = label_propagation_op (fold (\<lambda>(d, t) os. consumes os p t d) xs os)\<close>
+  shows \<open>steps (map (\<lambda>x. Inp (Some p) (Inr x)) xs) (label_propagation_op os) op\<close>
+  using assms unfolding label_propagation_op_def by auto
+
+lemma step_label_propagation_op_Silent[intro]:
+  assumes \<open>io = Tau\<close>
+    and \<open>initia os\<close>
+    and \<open>os' |\<in>| label_propagation_op_logic os\<close>
+    and \<open>op = label_propagation_op os'\<close>
+  shows \<open>step io (label_propagation_op os) op\<close>
+  using assms unfolding label_propagation_op_def by auto
+
+lemma step_label_propagation_op_n_Silents[intro]:
+  assumes \<open>os' |\<in>| ((\<lambda>oss. cUnion (cimage label_propagation_op_logic
+      (cfilter (\<lambda>os. initia os \<and> (\<exists>p. ocaps os p \<noteq> [])) oss))) ^^ n) {|os|}\<close>
+    and \<open>op = label_propagation_op os'\<close>
+  shows \<open>(step Tau ^^ n) (label_propagation_op os) op\<close>
+  using assms unfolding label_propagation_op_def by auto
+
+lemma steps_label_propagation_op_n_Silents[intro]:
+  assumes \<open>os' |\<in>| ((\<lambda>oss. cUnion (cimage label_propagation_op_logic
+      (cfilter (\<lambda>os. initia os \<and> (\<exists>p. ocaps os p \<noteq> [])) oss))) ^^ n) {|os|}\<close>
+    and \<open>op = label_propagation_op os'\<close>
+  shows \<open>(step Tau ^^ n) (label_propagation_op os) op\<close>
+  using assms by (rule step_label_propagation_op_n_Silents)
+
+
+
+lemma label_propagation_op_logic_input0I[intro]:
+  assumes \<open>input os 0 = (d, t) # xs\<close>
+    and \<open>de1 os d = (v1, v2)\<close>
+    and \<open>t1 = myfst t\<close>
+    and \<open>l1 = min_label os t1 v1\<close>
+    and \<open>l2 = min_label os t1 v2\<close>
+    and \<open>(v, l) = (if l1 > l2 then (v1, l2) else (v2, l1))\<close>
+    and \<open>os' = input_tl os 0\<close>
+    and \<open>os'' = label_prop_edge_record_update os' t1 v1 v2 v l\<close>
+    and \<open>batch = label_prop_edge_batch os os'' t1 v l t\<close>
+    and \<open>os_next = release_caps (drop_caps (produces (add_caps os'' (map snd batch)) batch) (map snd batch)) 1\<close>
+  shows \<open>os_next |\<in>| label_propagation_op_logic os\<close>
+  using assms unfolding label_propagation_op_logic_def by auto
+
+lemma step_label_propagation_op_input0[intro]:
+  assumes \<open>input os 0 = (d, t) # xs\<close>
+    and \<open>de1 os d = (v1, v2)\<close>
+    and \<open>t1 = myfst t\<close>
+    and \<open>l1 = min_label os t1 v1\<close>
+    and \<open>l2 = min_label os t1 v2\<close>
+    and \<open>(v, l) = (if l1 > l2 then (v1, l2) else (v2, l1))\<close>
+    and \<open>os' = input_tl os 0\<close>
+    and \<open>os'' = label_prop_edge_record_update os' t1 v1 v2 v l\<close>
+    and \<open>batch = label_prop_edge_batch os os'' t1 v l t\<close>
+    and \<open>os_next = release_caps (drop_caps (produces (add_caps os'' (map snd batch)) batch) (map snd batch)) 1\<close>
+    and \<open>initia os\<close>
+    and \<open>op = label_propagation_op os_next\<close>
+  shows \<open>step Tau (label_propagation_op os) op\<close>
+  using assms by auto
+
+lemma step_compower_label_propagation_op_input0[intro]:
+  assumes \<open>input os 0 = msgs @ ys\<close>
+    and \<open>n = length msgs\<close>
+    and \<open>os_next |\<in>| ((\<lambda>oss. cUnion (cimage label_propagation_op_logic
+      (cfilter (\<lambda>os. initia os \<and> (\<exists>p. ocaps os p \<noteq> [])) oss))) ^^ n) {|os|}\<close>
+    and \<open>op = label_propagation_op os_next\<close>
+  shows \<open>(step Tau ^^ n) (label_propagation_op os) op\<close>
+  using assms by auto
+
+
+
+
+lemma label_propagation_op_logic_input1I[intro]:
+  assumes \<open>input os 1 = (d, t) # xs\<close>
+    and \<open>de1 os d = (v, l)\<close>
+    and \<open>t1 = myfst t\<close>
+    and \<open>os' = input_tl os 1\<close>
+    and \<open>os'' = label_prop_label_record_update os' t1 v (min (min_label os t1 v) l)\<close>
+    and \<open>batch = label_prop_label_batch os os'' t1 v l t\<close>
+    and \<open>os_next = release_caps (drop_caps (produces (add_caps os'' (map snd batch)) batch) (map snd batch)) 1\<close>
+  shows \<open>os_next |\<in>| label_propagation_op_logic os\<close>
+  using assms unfolding label_propagation_op_logic_def by auto
+
+lemma step_label_propagation_op_input1[intro]:
+  assumes \<open>input os 1 = (d, t) # xs\<close>
+    and \<open>de1 os d = (v, l)\<close>
+    and \<open>t1 = myfst t\<close>
+    and \<open>os' = input_tl os 1\<close>
+    and \<open>os'' = label_prop_label_record_update os' t1 v (min (min_label os t1 v) l)\<close>
+    and \<open>batch = label_prop_label_batch os os'' t1 v l t\<close>
+    and \<open>os_next = release_caps (drop_caps (produces (add_caps os'' (map snd batch)) batch) (map snd batch)) 1\<close>
+    and \<open>initia os\<close>
+    and \<open>op = label_propagation_op os_next\<close>
+  shows \<open>step Tau (label_propagation_op os) op\<close>
+  using assms by auto
+
+lemma step_compower_label_propagation_op_input1[intro]:
+  assumes \<open>input os 1 = msgs @ ys\<close>
+    and \<open>n = length msgs\<close>
+    and \<open>os_next |\<in>| ((\<lambda>oss. cUnion (cimage label_propagation_op_logic
+      (cfilter (\<lambda>os. initia os \<and> (\<exists>p. ocaps os p \<noteq> [])) oss))) ^^ n) {|os|}\<close>
+    and \<open>op = label_propagation_op os_next\<close>
+  shows \<open>(step Tau ^^ n) (label_propagation_op os) op\<close>
+  using assms by auto
+
+lemma label_propagation_op_logic_outputI[intro]:
+  assumes \<open>below_times = filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t)) (ocaps os 0)\<close>
+    and \<open>batch = label_prop_output_batch os below_times\<close>
+    and \<open>batch \<noteq> []\<close>
+    and \<open>os_next = drop_caps (produces os batch) (map (\<lambda>t. Cap t 0) below_times)\<close>
+  shows \<open>os_next |\<in>| label_propagation_op_logic os\<close>
+  using assms unfolding label_propagation_op_logic_def by auto
+
+lemma step_label_propagation_op_output[intro]:
+  assumes \<open>below_times = filter (\<lambda>t. \<not> frontier_less_equal (exit_scope myfst (front os 0 + front os 1)) (myfst t)) (ocaps os 0)\<close>
+    and \<open>batch = label_prop_output_batch os below_times\<close>
+    and \<open>batch \<noteq> []\<close>
+    and \<open>os_next = drop_caps (produces os batch) (map (\<lambda>t. Cap t 0) below_times)\<close>
+    and \<open>initia os\<close>
+    and \<open>op = label_propagation_op os_next\<close>
+  shows \<open>step Tau (label_propagation_op os) op\<close>
+  using assms by auto
+
+
+
+
 end
