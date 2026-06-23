@@ -816,7 +816,7 @@ lemma label_propagation_correctness:
     and buffers_inv:
     \<open>chns = outputs_at_target (summ sg) os >> cbufs >> inputs_at_target os\<close>
     and dataplane_inv:
-    \<open>dataplane_tracker_inv os cbufs sg\<close> (*\<open>cbufs (0, 0) = []\<close>*)
+    \<open>dataplane_tracker_inv os cbufs sg\<close>
     and csets_inv:
     \<open>SP = cimage
       (\<lambda>t. ((1, 0), (Inr (ccs
@@ -828,13 +828,12 @@ lemma label_propagation_correctness:
     \<open>timely_input_stream lxs (mset (ocaps (os 0) 0))\<close>
     and label_prop_inv:
     \<open>(\<forall> t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
-
-\<open>(\<forall> t \<in> set (timestamps os_label_prop). \<not> frontier_less_equal (exit_scope myfst (front (os 1) 0 + front (os 1) 1)) t \<longrightarrow> labels_stable (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
-\<open>\<forall> t \<in> myfst ` snd ` set (input (os 1) 0) \<union> myfst ` snd ` set (input (os 1) 1). frontier_less_equal (exit_scope myfst (front (os 1) 1)) t\<close>
-\<open>\<forall> t \<in> set (ocaps (os 1) 0) \<union> snd ` set (input (os 1) 0) \<union> snd ` set (outpu (os 0) 0) \<union> time ` lset lxs. mysnd t = 0\<close>
-\<open>label_prop_upd_inv os_label_prop\<close>
-\<open>input_ocaps_inv (os 1)\<close>
-shows \<open>set_op S D (dataflow_op sg (G_op os_input os_label_prop (os 2) cbufs))
+    \<open>(\<forall> t \<in> set (timestamps os_label_prop). \<not> frontier_less_equal (exit_scope myfst (front (os 1) 0 + front (os 1) 1)) t \<longrightarrow> labels_stable (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
+    \<open>\<forall> t \<in> myfst ` snd ` set (input (os 1) 0) \<union> myfst ` snd ` set (input (os 1) 1). frontier_less_equal (exit_scope myfst (front (os 1) 1)) t\<close>
+    \<open>\<forall>t \<in> time ` lset lxs \<union> snd ` set (chns (1, 0)) \<union> set (ocaps (os 1) 0). mysnd t = 0\<close>
+    \<open>label_prop_upd_inv os_label_prop\<close>
+    \<open>input_ocaps_inv (os 1)\<close>
+  shows \<open>set_op S D (dataflow_op sg (G_op os_input os_label_prop (os 2) cbufs))
          \<approx> set_spec_op (cUn (cUn S SO) SP) D\<close>
   using assms
 proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns sg T G V L
@@ -887,7 +886,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply (rule wb_upto_b_base)
         apply (unfold R_def)
         apply (intro exI conjI)
-        using SIM1 by (simp_all add: dataflow_tree_to_operator_def)
+        using SIM1 by (simp_all add: dataflow_tree_to_operator_def comp_def)
       subgoal for d t xs
         apply (intro exI conjI relcomppI)
            apply (rule rtranclp.rtrancl_refl)
@@ -906,7 +905,6 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply (rule exI[of _ os_label_prop])
         apply (rule exI[of _ \<open>BENQ (1, 0) (d, t) cbufs\<close>])
         apply (intro exI conjI)
-                            apply (simp add: dataflow_tree_to_operator_def)
                             defer
                             apply (rule refl)
         using subgraph_inv(1) apply simp
@@ -933,10 +931,10 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using label_prop_inv(1) apply (simp add: os_inv(4,7) operator_state.defs(3))
         using label_prop_inv(2) apply (simp add: os_inv(4,7) operator_state.defs(3))
             apply (simp add: label_prop_inv(3))
-        using label_prop_inv(4) apply simp
+        using buffers_inv label_prop_inv(4) apply (simp add: BULK_BENQ_def subgraph_inv(1) outputs_at_target_raw_summary)
         using label_prop_inv(5) apply (simp add: os_inv(4,7) operator_state.defs(3))
          apply (rule label_prop_inv(6))
-        apply (clarsimp intro!: arg_cong[where f=\<open>set_op _ _\<close>] arg_cong[where f=\<open>dataflow_op _\<close>] arg_cong[where f=\<open>map_op _ _\<close>])
+        apply (clarsimp simp add: dataflow_tree_to_operator_def intro!: arg_cong[where f=\<open>set_op _ _\<close>] arg_cong[where f=\<open>dataflow_op _\<close>] arg_cong[where f=\<open>map_op _ _\<close>])
         apply (rule arg_cong2[where f=\<open>\<lambda>buf op. comp_op _ buf _ op\<close>])
          apply (fastforce simp add: BENQ_def)
         apply (rule loop_op_buf_cong[OF refl])
@@ -1341,7 +1339,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
               apply (clarsimp simp add: operator_state.defs os_inv(4))
               subgoal for x
                 using label_prop_inv(4)[unfolded buffers_inv, simplified]
-                by (metis UnI1 myprod.collapse)               
+                by (metis UnCI myprod.collapse)
               done
             subgoal 
               apply (clarsimp simp add: operator_state.defs os_inv(4))
@@ -1374,15 +1372,14 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           subgoal
             using label_prop_inv(1)
             by auto
-
           subgoal
             using label_prop_inv(2) by auto
           subgoal
             using label_prop_inv(3) by auto
           subgoal
-            using label_prop_inv(4)
-            unfolding drop_caps_def release_caps_def
-            by (auto dest!: in_set_list_diffD)
+            using label_prop_inv(4) buffers_inv
+            unfolding drop_caps_def release_caps_def produces_def
+            by (auto simp add: BULK_BENQ_def outputs_at_target_raw_summary inputs_at_target_def subgraph_inv(1) dest!: in_set_list_diffD)
           subgoal
             using label_prop_inv(5) by simp
           subgoal premises aux
@@ -1570,8 +1567,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                       subgoal
                         using label_prop_inv(4)[rule_format, of t] apply -
                         apply (drule meta_mp)
-                        subgoal
-                          by auto
+                         apply (simp add: buffers_inv BULK_BENQ_def inputs_at_target_def)
                         subgoal
                           apply (cases t)
                           apply auto
@@ -1708,11 +1704,9 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                 subgoal premises aux
                   using aux(2) label_prop_inv(3) 
                   by (auto simp add:  os_inv(4) operator_state.defs input_tl_def)
-                subgoal
-                  using label_prop_inv(4) apply -
-                  apply simp
-                  unfolding label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def release_caps_def drop_caps_def add_caps_def
-                  by (fastforce dest!: in_set_list_diffD  simp add: os_inv(4)  operator_state.defs input_tl_def release_caps_def drop_caps_def split: if_splits)
+                subgoal premises
+                  using label_prop_inv(4)
+                  by (auto simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def input_tl_def release_caps_def drop_caps_def add_caps_def label_prop_edge_record_update_def label_prop_edge_batch_def label_prop_neighbor_batch_def dest!: in_set_list_diffD in_set_tlD)
                 subgoal
                   apply (rule label_prop_upd_inv_input0_preserved)
                          apply (rule label_prop_inv(5))
@@ -1895,8 +1889,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                   by (simp add: image_iff os_inv(4) operator_state.defs)
                 subgoal
                   using label_prop_inv(4)
-                  unfolding release_caps_def drop_caps_def add_caps_def input_tl_def
-                  by (auto dest!: in_set_list_diffD simp add: label_prop_label_batch_def label_prop_neighbor_batch_def image_iff os_inv(4) operator_state.defs)
+                  by (auto simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def input_tl_def release_caps_def drop_caps_def add_caps_def label_prop_label_batch_def label_prop_neighbor_batch_def dest!: in_set_list_diffD)
                 subgoal
                   apply simp
                   apply (rule label_prop_upd_inv_input1_preserved[])
@@ -2000,9 +1993,9 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           by auto
         subgoal premises aux
           using label_prop_inv(4)
-          by auto
+          by (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1))
         subgoal premises aux
-          using label_prop_inv(5) 
+          using label_prop_inv(5)
           unfolding label_prop_upd_inv_def 
           by (auto del: disjCI simp add: )
         subgoal premises aux
@@ -2165,7 +2158,7 @@ next
             by simp
           subgoal
             using label_prop_inv(4)
-            by simp          
+            by (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1))
           subgoal
             using label_prop_inv(5)
             by simp
