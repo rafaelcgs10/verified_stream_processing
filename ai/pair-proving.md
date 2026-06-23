@@ -36,6 +36,11 @@ Note: At the start of any session, first confirm the MCP connection to Isabelle/
 - The user does a **final verification in jEdit** for key steps. A proof is not considered done until the user confirms it in jEdit.
 - Be extra careful with proof methods like metis, blast, auto as the may not terminate.
 - Avoid triggering full-file reprocessing whenever possible. Prefer narrow line-range/offset MCP checks and small local edits, with short timeouts.
+- **Timeouts**: never wait more than 30 seconds for a single command via MCP (`timeout_per_command ≤ 30000`). If a `by auto`/`by metis`/etc. doesn't return in that window, treat it as divergent — cancel and try a more targeted tactic instead of waiting longer.
+- **Type annotations**: when a goal should be provable from the current context but tactics like `auto`, `blast`, `metis`, or `simp` fail with no apparent reason — the cause is often fresh type variables introduced by `obtain`, `proof (cases X)`, or polymorphic functions. Inspect the error: messages like "Type unification failed" with `'g` vs `'f` are the signal. Fix by adding explicit type annotations. Specifically:
+  - **In lemma statements**, use a `fixes` clause (`fixes x :: "'a list" and y :: "('b :: linorder) set"`) to pin both the type variables AND their sort/class constraints. This is preferable to letting Isabelle infer fresh polymorphic types that won't unify with the proof context.
+  - **In Isar `have` statements**, when introducing a fact whose body mentions a free variable whose type matters (e.g., `have foo: "P x"`), give the variable an explicit type with `for x :: "'a list"` or annotate inline (`have foo: "P (x :: 'a list)"`), so the IH or hypotheses unify cleanly.
+  - **In `obtain` and `proof (cases …)`**, type-annotate the introduced variables (`obtain x :: "'a list" where …`) if the inferred type is a fresh variable that won't match anything else.
 
 ## Tools
 

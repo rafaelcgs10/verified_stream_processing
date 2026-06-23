@@ -18,6 +18,10 @@ imports
   Dataplane.SimulationProofMethods
 begin
 
+abbreviation "loop_wire \<equiv> (case_sum (\<lambda>_. None) (\<lambda>(nid, p). case if nid = 2 \<and> p = 1 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (Inr (1 + offset, q))))"
+abbreviation "comp_wire \<equiv> (case_sum (\<lambda>_. None) (\<lambda>(nid, p). case if nid = 1 \<and> p = 1 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (Inr (1 + 1 + offset, q))))"
+
+
 (* Note: this is basically lemma comp_op_chns_invar from dataplane_dis:dataplane/Comp_Reasoning.thy *)
 lemma comp_op_buf_cong:
   assumes \<open>wire' = wire\<close> \<open>op1' = op1\<close> \<open>op2' = op2\<close> \<open>\<forall>p \<in> inputs op2 \<inter> ran wire. buf' p = buf p\<close>
@@ -789,6 +793,56 @@ proof (insert assms, hypsubst_thin, coinduction arbitrary: buf buf' op rule: op.
   qed
   ultimately show ?case by (fastforce simp add: rel_set_def R_def)
 qed
+
+
+
+
+lemma
+  fixes  os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
+    and os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
+    and sg :: \<open>(3, 2, (nat, nat) myprod) subgraph\<close>
+    and T :: \<open>nat list\<close>
+    and G :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat list\<close>
+    and V :: \<open>nat \<Rightarrow> nat list\<close>
+    and L :: \<open>nat \<Rightarrow> nat \<Rightarrow> nat\<close> 
+  defines
+    \<open>INV \<equiv> \<lambda> os_label_prop os L.  
+    os_label_prop = operator_state.extend (os 1) \<lparr>en1 = Inl, de1 = projl, is_en1 = isl,
+        en2 = Inr, de2 = projr, is_en2 = isr, timestamps = T, graph = G, vertices = V, label = L\<rparr> \<and>
+    label_prob_ty2_check os_label_prop (curry cbufs 1) \<and>
+    (\<forall>n. intsum (os n) = (\<lambda>p1 p2. raw_summary (Loc n (Trg p1)) (Loc n (Src p2)))) \<and> 
+    dataplane_tracker_inv os cbufs sg \<and>
+    (\<forall> t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+    (\<forall> t \<in> set (timestamps os_label_prop). \<not> frontier_less_equal (exit_scope myfst (front (os 1) 0 + front (os 1) 1)) t \<longrightarrow> labels_stable (all_edges os_label_prop t) (min_label os_label_prop t)) \<and>
+    (\<forall> t \<in> myfst ` snd ` set (input (os 1) 0) \<union> myfst ` snd ` set (input (os 1) 1). frontier_less_equal (exit_scope myfst (front (os 1) 1)) t) \<and>
+    label_prop_upd_inv os_label_prop \<and> input_ocaps_inv (os 1)\<close>
+  assumes \<open>summ sg = antichain_from_list \<circ>\<circ> raw_summary \<and> nxt sg = graph_to_nxt (summ sg)\<close>
+    \<open>INV os_label_prop os L\<close>
+    \<open>T \<noteq> []\<close>
+  shows  "\<exists> os_label_prop' os' L'. (step Tau)\<^sup>*\<^sup>*
+     (loop_op loop_wire (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))
+       (comp_map
+         (comp_op
+           comp_wire
+           (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))
+           (logic_map (1 :: 3) (label_propagation_op (os_label_prop :: (nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state)))
+           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) ((os 2) :: (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state))))))
+       (loop_op loop_wire ((case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))(Inr (2,1) := [], Inr (1,1) := []))
+       (comp_map
+         (comp_op
+           comp_wire
+           ((case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))(Inr (2,1) := [], Inr (1,1) := []))
+           (logic_map (1 :: 3) (label_propagation_op (os_label_prop')))
+           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) ((os' 2))))))) \<and>
+       INV os_label_prop' os' L'"
+  using assms(3) apply -
+  apply (induct "labels_measure (all_edges os_label_prop (Max (set T))) (min_label os_label_prop (Max (set T)))" arbitrary: os_label_prop os L rule: less_induct)
+  subgoal premises prems for os_label_prop os L
+    apply (intro exI conjI)
+     apply (rule rtranclp_trans)
+    using prems
+    oops
 
 lemma label_propagation_correctness:
   fixes lxs :: \<open>((nat, nat) myprod, nat \<times> nat) event llist\<close>
@@ -2351,13 +2405,111 @@ next
                      apply (rule step_tau_pow_map_op)
                      apply (rule step_taus_L_pow_comp_op_steps_intro)
                       apply (rule step_tau_pow_map_op)
-                      apply (rule step_compower_label_propagation_op_input0[where msgs="input (os 1) 0" and ys="cbufs (1, 0) @ outpu (os 0) 0 @ map (\<lambda>ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n lxs))"])
+                      apply (rule step_compower_label_propagation_op_input0_eq_alt[where msgs="input (os 1) 0" and ys="cbufs (1, 0) @ outpu (os 0) 0 @ map (\<lambda>ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n lxs))"])
             subgoal
               unfolding input_fold_consumes 
               by (simp add: os_inv(4) operator_state.defs)
                         apply simp
-                       prefer 2
-                       apply (rule refl)
+                       apply (simp add: os_inv(3,4) operator_state.defs)
+            subgoal sorry
+                      apply (rule refl)+
+
+
+      apply (rule step_n_Taus_set_op)
+                   apply (rule step_tau_pow_dataflow_op)
+                   apply (rule step_tau_pow_map_op)
+                   apply (rule step_taus_R_pow_comp_op_steps_intro)
+                    apply (rule step_taus_loop_op_steps_intro)
+                     apply (rule step_tau_pow_map_op)
+                     apply (rule step_taus_L_pow_comp_op_steps_intro)
+                      apply (rule step_tau_pow_map_op)
+                      apply (rule step_compower_label_propagation_op_input0_eq_alt[where msgs="cbufs (1, 0)" and ys="outpu (os 0) 0 @ map (\<lambda>ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n lxs))"])
+            subgoal
+              unfolding input_fold_consumes 
+              by (simp add: os_inv(4) operator_state.defs input_fold_consumes)
+                        apply simp
+                       apply (simp add: os_inv(3,4) operator_state.defs)
+            subgoal sorry
+                      apply (rule refl)+
+
+
+      apply (rule step_n_Taus_set_op)
+                   apply (rule step_tau_pow_dataflow_op)
+                   apply (rule step_tau_pow_map_op)
+                   apply (rule step_taus_R_pow_comp_op_steps_intro)
+                    apply (rule step_taus_loop_op_steps_intro)
+                     apply (rule step_tau_pow_map_op)
+                     apply (rule step_taus_L_pow_comp_op_steps_intro)
+                      apply (rule step_tau_pow_map_op)
+                      apply (rule step_compower_label_propagation_op_input0_eq_alt[where msgs="outpu (os 0) 0" and ys="map (\<lambda>ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n lxs))"])
+            subgoal
+              unfolding input_fold_consumes 
+              by (simp add: os_inv(4) operator_state.defs input_fold_consumes)
+                        apply simp
+                       apply (simp add: os_inv(3,4) operator_state.defs)
+            subgoal sorry
+                      apply (rule refl)+
+
+      apply (rule step_n_Taus_set_op)
+                   apply (rule step_tau_pow_dataflow_op)
+                   apply (rule step_tau_pow_map_op)
+                   apply (rule step_taus_R_pow_comp_op_steps_intro)
+                    apply (rule step_taus_loop_op_steps_intro)
+                     apply (rule step_tau_pow_map_op)
+                     apply (rule step_taus_L_pow_comp_op_steps_intro)
+                      apply (rule step_tau_pow_map_op)
+                      apply (rule step_compower_label_propagation_op_input0_eq_alt[where msgs="map (\<lambda>ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n lxs))" and ys="Nil"])
+            subgoal
+              unfolding input_fold_consumes 
+              by (simp add: os_inv(4) operator_state.defs input_fold_consumes)
+                        apply simp
+                       apply (simp add: os_inv(3,4) operator_state.defs)
+            subgoal sorry
+                   apply (rule refl)+
+
+              apply (rule step_Taus_set_op)
+               apply (rule step_Taus_dataflow_op_Taus_intro)
+               apply (rule step_star_map_op)
+               apply (rule step_comp_op_R_Tau_start)
+
+            find_theorems raw_summary
+
+            term "antichain_from_list \<circ>\<circ> raw_summary"
+
+            term "intsum (os 1)"
+
+            oops
+
+
+end
+            apply (rule step_taus_loop_)
+            apply (rule step_star_map_op)
+            apply (rule step_comp_op_L_Tau_start)
+            apply (rule step_star_map_op)
+
+            find_theorems step Tau loop_op rtranclp
+
+end
+
+
+            find_theorems initia os
+ 
+                        prefer 3
+                        apply simp
+                       prefer 3
+            apply simp
+
+                     
+            thm step_compower_label_propagation_op_input0[unfolded cimage_cUn, simplified]
+
+            find_theorems cUn cimage
+
+            thm step_compower_label_propagation_op_input0_eq
+
+            oops
+
+
+end
             sorry
           done
         done

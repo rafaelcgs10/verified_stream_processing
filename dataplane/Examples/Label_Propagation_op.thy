@@ -3298,7 +3298,331 @@ lemma step_compower_label_propagation_op_input0[intro]:
   using assms by auto
 
 
+lemma initia_produces[simp]:
+  \<open>initia (produces os batch) = initia os\<close>
+  unfolding produces_def by auto
 
+lemma initia_release_caps[simp]:
+  \<open>initia (release_caps os p) = initia os\<close>
+  unfolding release_caps_def Let_def trace_simp by simp
+
+definition label_prop_input0_step_state where
+  \<open>label_prop_input0_step_state os d t = (
+     let v1 = fst (de1 os d);
+         v2 = snd (de1 os d);
+         t1 = myfst t;
+         l1 = min_label os t1 v1;
+         l2 = min_label os t1 v2;
+         v  = (if l1 > l2 then v1 else v2);
+         l  = (if l1 > l2 then l2 else l1);
+         os' = input_tl os 0;
+         os'' = label_prop_edge_record_update os' t1 v1 v2 v l;
+         batch = label_prop_edge_batch os os'' t1 v l t
+     in release_caps (drop_caps (produces (add_caps os'' (map snd batch)) batch) (map snd batch)) 1)\<close>
+
+definition label_prop_input0_step_batch ::
+    "('d, nat, nat, nat) label_propagation_state \<Rightarrow> 'd \<Rightarrow> (nat, nat) myprod \<Rightarrow> ('d \<times> (2, (nat, nat) myprod) capability) buf" where
+  \<open>label_prop_input0_step_batch os d t = (
+     let v1 = fst (de1 os d);
+         v2 = snd (de1 os d);
+         t1 = myfst t;
+         l1 = min_label os t1 v1;
+         l2 = min_label os t1 v2;
+         v  = (if l1 > l2 then v1 else v2);
+         l  = (if l1 > l2 then l2 else l1);
+         os' = input_tl os 0;
+         os'' = label_prop_edge_record_update os' t1 v1 v2 v l
+     in label_prop_edge_batch os os'' t1 v l t)\<close>
+
+fun label_prop_input0_batched where
+  \<open>label_prop_input0_batched os [] = (os, [])\<close>
+| \<open>label_prop_input0_batched os ((d, t) # ms) =
+     (case label_prop_input0_batched (label_prop_input0_step_state os d t) ms of
+        (os_final, batches) \<Rightarrow> (os_final, label_prop_input0_step_batch os d t @ batches))\<close>
+
+lemma en1_drop_caps[simp]:
+  \<open>en1 (drop_caps os caps) = en1 os\<close>
+  unfolding drop_caps_def by auto
+
+lemma de1_drop_caps[simp]:
+  \<open>de1 (drop_caps os caps) = de1 os\<close>
+  unfolding drop_caps_def by auto
+
+lemma en2_drop_caps[simp]:
+  \<open>en2 (drop_caps os caps) = en2 os\<close>
+  unfolding drop_caps_def by auto
+
+lemma de2_drop_caps[simp]:
+  \<open>de2 (drop_caps os caps) = de2 os\<close>
+  unfolding drop_caps_def by auto
+
+lemma en1_produces[simp]:
+  \<open>en1 (produces os batch) = en1 os\<close>
+  unfolding produces_def by auto
+
+lemma de1_produces[simp]:
+  \<open>de1 (produces os batch) = de1 os\<close>
+  unfolding produces_def by auto
+
+lemma en2_produces[simp]:
+  \<open>en2 (produces os batch) = en2 os\<close>
+  unfolding produces_def by auto
+
+lemma de2_produces[simp]:
+  \<open>de2 (produces os batch) = de2 os\<close>
+  unfolding produces_def by auto
+
+lemma en1_release_caps[simp]:
+  \<open>en1 (release_caps os p) = en1 os\<close>
+  unfolding release_caps_def trace_simp Let_def
+  by auto
+
+lemma de1_release_caps[simp]:
+  \<open>de1 (release_caps os p) = de1 os\<close>
+  unfolding release_caps_def trace_simp Let_def
+  by auto
+
+lemma en2_release_caps[simp]:
+  \<open>en2 (release_caps os p) = en2 os\<close>
+  unfolding release_caps_def trace_simp Let_def
+  by auto
+
+lemma de2_release_caps[simp]:
+  \<open>de2 (release_caps os p) = de2 os\<close>
+  unfolding release_caps_def trace_simp Let_def
+  by auto
+
+lemma produ_release_caps[simp]:
+  \<open>produ (release_caps os p) = produ os\<close>
+  unfolding release_caps_def trace_simp Let_def
+  by auto
+
+lemma input_label_prop_input0_step_state[simp]:
+  \<open>input (label_prop_input0_step_state os d t) = (input os)(0 := tl (input os 0))\<close>
+  unfolding label_prop_input0_step_state_def
+  by (simp add: Let_def input_tl_def)
+
+lemma intsum_label_prop_input0_step_state[simp]:
+  \<open>intsum (label_prop_input0_step_state os d t) = intsum os\<close>
+  unfolding label_prop_input0_step_state_def
+  by (simp add: Let_def)
+
+lemma consu_label_prop_input0_step_state[simp]:
+  \<open>consu (label_prop_input0_step_state os d t) = consu os\<close>
+  unfolding label_prop_input0_step_state_def
+  by (simp add: Let_def)
+
+lemma front_label_prop_input0_step_state[simp]:
+  \<open>front (label_prop_input0_step_state os d t) = front os\<close>
+  unfolding label_prop_input0_step_state_def
+  by (simp add: Let_def)
+
+lemma initia_label_prop_input0_step_state[simp]:
+  \<open>initia (label_prop_input0_step_state os d t) = initia os\<close>
+  unfolding label_prop_input0_step_state_def
+  by (simp add: Let_def)
+
+lemma en1_label_prop_input0_step_state[simp]:
+  \<open>en1 (label_prop_input0_step_state os d t) = en1 os\<close>
+  unfolding label_prop_input0_step_state_def
+  by (simp add: Let_def)
+
+lemma de1_label_prop_input0_step_state[simp]:
+  \<open>de1 (label_prop_input0_step_state os d t) = de1 os\<close>
+  unfolding label_prop_input0_step_state_def
+  by (simp add: Let_def)
+
+lemma is_en1_label_prop_input0_step_state[simp]:
+  \<open>is_en1 (label_prop_input0_step_state os d t) = is_en1 os\<close>
+  unfolding label_prop_input0_step_state_def
+  by (simp add: Let_def)
+
+lemma en2_label_prop_input0_step_state[simp]:
+  \<open>en2 (label_prop_input0_step_state os d t) = en2 os\<close>
+  unfolding label_prop_input0_step_state_def
+  by (simp add: Let_def)
+
+lemma de2_label_prop_input0_step_state[simp]:
+  \<open>de2 (label_prop_input0_step_state os d t) = de2 os\<close>
+  unfolding label_prop_input0_step_state_def
+  by (simp add: Let_def)
+
+lemma is_en2_label_prop_input0_step_state[simp]:
+  \<open>is_en2 (label_prop_input0_step_state os d t) = is_en2 os\<close>
+  unfolding label_prop_input0_step_state_def
+  by (simp add: Let_def)
+
+lemma outpu_label_prop_input0_step_state[simp]:
+  \<open>outpu (label_prop_input0_step_state os d t) =
+    (\<lambda>p. outpu os p @ map (\<lambda>(x, cap). (x, time cap))
+      (filter (\<lambda>(x, cap). out cap = p) (label_prop_input0_step_batch os d t)))\<close>
+  unfolding label_prop_input0_step_state_def label_prop_input0_step_batch_def
+  by (simp add: Let_def fun_eq_iff)
+
+lemma produ_label_prop_input0_step_state[simp]:
+  \<open>produ (label_prop_input0_step_state os d t) =
+    produ os @ map (\<lambda>(x, cap). (out cap, time cap, 1))
+      (label_prop_input0_step_batch os d t)\<close>
+  unfolding label_prop_input0_step_state_def label_prop_input0_step_batch_def produces_def
+  by (simp add: Let_def)
+
+lemma all_edges_label_prop_input0_step_state[simp]:
+  \<open>all_edges (label_prop_input0_step_state os d t) =
+    all_edges (label_prop_edge_record_update (input_tl os 0) (myfst t)
+      (fst (de1 os d)) (snd (de1 os d))
+      (if min_label os (myfst t) (fst (de1 os d)) > min_label os (myfst t) (snd (de1 os d))
+       then fst (de1 os d) else snd (de1 os d))
+      (if min_label os (myfst t) (fst (de1 os d)) > min_label os (myfst t) (snd (de1 os d))
+       then min_label os (myfst t) (snd (de1 os d)) else min_label os (myfst t) (fst (de1 os d))))\<close>
+  unfolding label_prop_input0_step_state_def
+  by (simp add: Let_def)
+
+lemma input_fst_label_prop_input0_batched[simp]:
+  \<open>input (fst (label_prop_input0_batched os msgs)) =
+    (input os)(0 := drop (length msgs) (input os 0))\<close>
+  by (induct msgs arbitrary: os) (auto simp: case_prod_beta fun_eq_iff drop_Suc)
+
+
+lemma intsum_fst_label_prop_input0_batched[simp]:
+  \<open>intsum (fst (label_prop_input0_batched os msgs)) = intsum os\<close>
+  by (induct msgs arbitrary: os) (auto simp: case_prod_beta)
+
+lemma consu_fst_label_prop_input0_batched[simp]:
+  \<open>consu (fst (label_prop_input0_batched os msgs)) = consu os\<close>
+  by (induct msgs arbitrary: os) (auto simp: case_prod_beta)
+
+lemma front_fst_label_prop_input0_batched[simp]:
+  \<open>front (fst (label_prop_input0_batched os msgs)) = front os\<close>
+  by (induct msgs arbitrary: os) (auto simp: case_prod_beta)
+
+lemma initia_fst_label_prop_input0_batched[simp]:
+  \<open>initia (fst (label_prop_input0_batched os msgs)) = initia os\<close>
+  sorry
+
+lemma en1_fst_label_prop_input0_batched[simp]:
+  \<open>en1 (fst (label_prop_input0_batched os msgs)) = en1 os\<close>
+  by (induct msgs arbitrary: os) (auto simp: case_prod_beta)
+
+lemma de1_fst_label_prop_input0_batched[simp]:
+  \<open>de1 (fst (label_prop_input0_batched os msgs)) = de1 os\<close>
+  by (induct msgs arbitrary: os) (auto simp: case_prod_beta)
+
+lemma is_en1_fst_label_prop_input0_batched[simp]:
+  \<open>is_en1 (fst (label_prop_input0_batched os msgs)) = is_en1 os\<close>
+  by (induct msgs arbitrary: os) (auto simp: case_prod_beta)
+
+lemma en2_fst_label_prop_input0_batched[simp]:
+  \<open>en2 (fst (label_prop_input0_batched os msgs)) = en2 os\<close>
+  by (induct msgs arbitrary: os) (auto simp: case_prod_beta)
+
+lemma de2_fst_label_prop_input0_batched[simp]:
+  \<open>de2 (fst (label_prop_input0_batched os msgs)) = de2 os\<close>
+  by (induct msgs arbitrary: os) (auto simp: case_prod_beta)
+
+lemma is_en2_fst_label_prop_input0_batched[simp]:
+  \<open>is_en2 (fst (label_prop_input0_batched os msgs)) = is_en2 os\<close>
+  by (induct msgs arbitrary: os) (auto simp: case_prod_beta)
+
+lemma outpu_fst_label_prop_input0_batched[simp]:
+  \<open>outpu (fst (label_prop_input0_batched os msgs)) =
+    (\<lambda>p. outpu os p @ map (\<lambda>(x, cap). (x, time cap))
+      (filter (\<lambda>(x, cap). out cap = p) (snd (label_prop_input0_batched os msgs))))\<close>
+  by (induct msgs arbitrary: os) (auto simp: case_prod_beta append_assoc fun_eq_iff)
+
+lemma produ_fst_label_prop_input0_batched[simp]:
+  \<open>produ (fst (label_prop_input0_batched os msgs)) =
+    produ os @ map (\<lambda>(x, cap). (out cap, time cap, 1))
+      (snd (label_prop_input0_batched os msgs))\<close>
+  by (induct msgs arbitrary: os) (auto simp: case_prod_beta append_assoc)
+
+
+
+
+
+
+
+
+
+
+lemma step_label_propagation_op_input0_step_state[intro]:
+  assumes inp: \<open>input os 0 = (d, t) # xs\<close>
+    and ini: \<open>initia os\<close>
+    and op_eq: \<open>op = label_propagation_op (label_prop_input0_step_state os d t)\<close>
+  shows \<open>step Tau (label_propagation_op os) op\<close>
+proof -
+  let ?v1 = \<open>fst (de1 os d)\<close>
+  let ?v2 = \<open>snd (de1 os d)\<close>
+  let ?t1 = \<open>myfst t\<close>
+  let ?l1 = \<open>min_label os ?t1 ?v1\<close>
+  let ?l2 = \<open>min_label os ?t1 ?v2\<close>
+  let ?v = \<open>if ?l1 > ?l2 then ?v1 else ?v2\<close>
+  let ?l = \<open>if ?l1 > ?l2 then ?l2 else ?l1\<close>
+  let ?os'' = \<open>label_prop_edge_record_update (input_tl os 0) ?t1 ?v1 ?v2 ?v ?l\<close>
+  let ?batch = \<open>label_prop_edge_batch os ?os'' ?t1 ?v ?l t\<close>
+  have v_eq: \<open>de1 os d = (?v1, ?v2)\<close> by simp
+  have vl_eq: \<open>(?v, ?l) = (if ?l1 > ?l2 then (?v1, ?l2) else (?v2, ?l1))\<close> by simp
+  have state_eq:
+    \<open>label_prop_input0_step_state os d t =
+       release_caps (drop_caps (produces (add_caps ?os'' (map snd ?batch)) ?batch)
+                                (map snd ?batch)) 1\<close>
+    unfolding label_prop_input0_step_state_def Let_def by simp
+  show ?thesis
+    using op_eq[unfolded state_eq]
+    by (rule step_label_propagation_op_input0
+            [OF inp v_eq refl refl refl vl_eq refl refl refl refl ini])
+qed
+
+lemma step_compower_label_propagation_op_input0_eq[intro]:
+  assumes \<open>input os 0 = msgs @ ys\<close>
+    and   \<open>n = length msgs\<close>
+    and   \<open>(os_next, batch) = label_prop_input0_batched os msgs\<close>
+    and   \<open>initia os\<close>
+    and   \<open>op = label_propagation_op os_next\<close>
+  shows \<open>(step Tau ^^ n) (label_propagation_op os) op\<close>
+proof -
+  have \<open>(step Tau ^^ length msgs) (label_propagation_op os) (label_propagation_op os_next)\<close>
+    using assms(1,3,4)
+  proof (induct msgs arbitrary: os ys os_next batch)
+    case Nil
+    then show ?case by auto
+  next
+    case (Cons m msgs')
+    obtain d t where m_def: \<open>m = (d, t)\<close> by (cases m)
+    let ?os_step = \<open>label_prop_input0_step_state os d t\<close>
+    from Cons.prems(1) m_def have inp: \<open>input os 0 = (d, t) # msgs' @ ys\<close> by simp
+    have step1: \<open>step Tau (label_propagation_op os) (label_propagation_op ?os_step)\<close>
+      by (rule step_label_propagation_op_input0_step_state[OF inp Cons.prems(3) refl])
+    have inp_step: \<open>input ?os_step 0 = msgs' @ ys\<close>
+      using inp by simp
+    have initia_step: \<open>initia ?os_step\<close>
+      using Cons.prems(3) by simp
+    show ?case
+    proof (cases \<open>label_prop_input0_batched ?os_step msgs'\<close>)
+      case (Pair os_final batches)
+      from Cons.prems(2) m_def Pair have os_next_eq: \<open>os_next = os_final\<close>
+        by (auto split: prod.splits)
+      have ih: \<open>(step Tau ^^ length msgs') (label_propagation_op ?os_step) (label_propagation_op os_final)\<close>
+        using Cons.hyps[of ?os_step ys os_final batches] inp_step Pair[symmetric] initia_step
+        by simp
+
+
+      from relpowp_Suc_I2[OF step1 ih]
+      have \<open>(step Tau ^^ Suc (length msgs')) (label_propagation_op os) (label_propagation_op os_final)\<close> .
+      then show ?thesis using os_next_eq m_def by simp
+    qed
+  qed
+  with assms(2,5) show ?thesis by simp
+qed
+
+lemma step_compower_label_propagation_op_input0_eq_alt[intro]:
+  assumes \<open>input os 0 = msgs @ ys\<close>
+    and   \<open>n = length msgs\<close>
+    and   \<open>initia os\<close>
+    and   \<open>op = label_propagation_op (fst (label_prop_input0_batched os msgs))\<close>
+  shows \<open>(step Tau ^^ n) (label_propagation_op os) op\<close>
+  apply (rule  step_compower_label_propagation_op_input0_eq[OF assms(1) assms(2) _ assms(3) assms(4)])
+  apply (rule prod.collapse)
+  done
 
 lemma label_propagation_op_logic_input1I[intro]:
   assumes \<open>input os 1 = (d, t) # xs\<close>

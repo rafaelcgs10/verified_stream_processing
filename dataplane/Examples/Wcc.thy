@@ -220,6 +220,12 @@ proof -
     by simp
 qed
 
+definition rank :: "_ \<Rightarrow> nat" where
+  "rank x = card {y \<in> edge_vertices. y < x}"
+
+definition labels_measure :: "_ \<Rightarrow> nat" where
+  "labels_measure l = (\<Sum>v \<in> edge_vertices. rank (l v))"
+
 subsection \<open>Label Invariants\<close>
 
 lemma labels_invI:
