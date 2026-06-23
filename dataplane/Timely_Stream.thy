@@ -33,6 +33,11 @@ definition "timely_progress lxs C =
 definition "timely_input_stream lxs C =
  (timely_monotone lxs C \<and> timely_progress lxs C)"
 
+lemma timely_input_stream_LNil[simp]:
+  \<open>timely_input_stream LNil {#}\<close>
+  unfolding timely_input_stream_def timely_progress_def vacant_def
+  by (auto intro: timely_monotone.LNil enat_0)
+
 lemma vacant_monotone_not_in_lset:
   "e \<in> lset lxs \<Longrightarrow> time e \<le> t \<Longrightarrow> vacant t C \<Longrightarrow> timely_monotone lxs C \<Longrightarrow> False"
   apply (induct e lxs arbitrary: C rule: llist.set_induct)

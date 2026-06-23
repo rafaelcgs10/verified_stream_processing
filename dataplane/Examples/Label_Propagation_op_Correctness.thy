@@ -1057,7 +1057,186 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
          apply (metis prod.exhaust sumE)
         apply (clarsimp simp add: BTL_def ran_def split: sum.splits if_splits)
         done
-      subgoal sorry
+      subgoal for os_input'
+        apply (clarsimp simp add: ooo_input_op_logic_def split: llist.splits event.splits)
+        subgoal
+          apply (intro exI conjI relcomppI)
+             apply (rule rtranclp.rtrancl_refl)
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+          apply (unfold R_def)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI[of _ \<open>os(0 := drop_caps (os 0) (map (\<lambda>t. Cap t 0) (ocaps (os 0) 0)))\<close>])
+          apply (rule exI[of _ os_input'])
+          apply (intro exI conjI)
+                              defer
+                              apply (rule refl)
+                              apply (rule subgraph_inv(1))
+                             apply (rule subgraph_inv(2))
+          using os_inv(1) apply (simp add: operator_state.defs(3) drop_caps_def)
+          using os_inv(2) apply simp
+          using os_inv(3) apply simp
+          using os_inv(4) apply simp
+          using os_inv(5) apply (simp add: ty1_check_def)
+          using os_inv(4,6) apply fast
+          using os_inv(7) apply simp
+          using buffers_inv apply fast
+          using dataplane_tracker_inv_drop_caps_all[OF D G subgraph_inv(2) dataplane_inv] apply blast
+                   apply (simp add: csets_inv(1) buffers_inv os_inv(1,4) operator_state.defs(3))
+                  apply (simp add: csets_inv(2))
+                 apply (simp add: ocaps_drop_caps_all(1))
+          using label_prop_inv(1) os_inv(4) apply fast
+          using label_prop_inv(2) os_inv(4) apply simp
+          using label_prop_inv(3) apply simp
+          using label_prop_inv(4) apply (simp add: os_inv(1) operator_state.defs(3) buffers_inv)
+          using label_prop_inv(5) os_inv(4) apply fast
+          using label_prop_inv(6) apply fastforce
+          apply (simp add: dataflow_tree_to_operator_def os_inv(4))
+          done
+        subgoal for lxs' t v w
+          apply (intro exI conjI relcomppI)
+             apply (rule rtranclp.rtrancl_refl)
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+          apply (unfold R_def)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI[of _ lxs'])
+          apply (rule exI[of _ \<open>os(0 := produce (os 0) (Cap t 0) [en1 os_input (v, w)])\<close>])
+          apply (rule exI[of _ os_input'])
+          apply (rule exI)
+          apply (rule exI[of _ cbufs])
+          apply (rule exI[of _ \<open>BENQ (1, 0) (en1 os_input (v, w), t) chns\<close>])
+          apply (intro exI conjI)
+                              defer
+                              apply (rule refl)
+                              apply (rule subgraph_inv(1))
+                             apply (rule subgraph_inv(2))
+          using os_inv(1) apply (simp add: produce_def operator_state.defs(3))
+          using os_inv(2) apply (simp add: produce_def)
+          using os_inv(3) apply (simp add: produce_def)
+          using os_inv(4) apply simp
+          using os_inv(1,5) apply (simp add: produce_def ty1_check_def operator_state.defs(3))
+          using os_inv(4,6) apply simp
+          using os_inv(7) apply (simp add: produce_def)
+                     apply (simp add: buffers_inv BENQ_def BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def fun_eq_iff produce_def)
+                    apply (rule dataplane_tracker_inv_produce_singleton[OF D G subgraph_inv(2) dataplane_inv, where t=t and nid=0 and p=0])
+          using input_stream_inv apply (fastforce simp add: timely_input_stream_def os_inv(1) operator_state.defs(3))
+                    apply (rule refl)
+                   apply (simp add: csets_inv(1) os_inv(1,4) operator_state.defs(3))
+                  apply (simp add: csets_inv(2))
+          using input_stream_inv apply (fastforce simp add: os_inv(1) operator_state.defs(3) produce_def)
+          using label_prop_inv(1) os_inv(4) apply fast
+          using label_prop_inv(2) os_inv(4) apply simp
+          using label_prop_inv(3) apply simp
+          using label_prop_inv(4) apply (simp add: os_inv(1) operator_state.defs(3) buffers_inv BENQ_def)
+          using label_prop_inv(5) os_inv(4) apply fast
+          using label_prop_inv(6) apply fastforce
+          apply (simp add: dataflow_tree_to_operator_def os_inv(4))
+          done
+        subgoal for lxs' t
+          apply (intro exI conjI relcomppI)
+             apply (rule rtranclp.rtrancl_refl)
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+          apply (unfold R_def)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI[of _ lxs'])
+          apply (rule exI[of _ \<open>os(0 := drop_cap (os 0) (Cap t 0))\<close>])
+          apply (rule exI[of _ os_input'])
+          apply (intro exI conjI)
+                              defer
+                              apply (rule refl)
+                              apply (rule subgraph_inv(1))
+                             apply (rule subgraph_inv(2))
+          using os_inv(1) apply (simp add: drop_cap_def operator_state.defs(3))
+          using os_inv(2) apply (simp add: drop_cap_def)
+          using os_inv(3) apply (simp add: drop_cap_def)
+          using os_inv(4) apply simp
+          using os_inv(5) apply (simp add: drop_cap_def ty1_check_def)
+          using os_inv(4,6) apply simp
+          using os_inv(7) apply (simp add: drop_cap_def)
+                     apply (simp add: buffers_inv)
+                    apply (rule dataplane_tracker_inv_drop_cap[OF D G subgraph_inv(2) dataplane_inv, where t=t and nid=0 and p=0])
+          using input_stream_inv apply (fastforce simp add: timely_input_stream_def os_inv(1) operator_state.defs(3))
+                    apply (rule refl)
+                   apply (simp add: csets_inv(1) os_inv(1,4) operator_state.defs(3) buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def)
+                   apply (subst (1 2) icoll_lshift)
+          using timely_input_stream_expires_le input_stream_inv apply blast
+          using timely_input_stream_expires_le input_stream_inv apply blast
+                   apply simp
+                  apply (simp add: csets_inv(2))
+          using input_stream_inv apply (fastforce simp add: os_inv(1) operator_state.defs(3) drop_cap_def)
+          using label_prop_inv(1) os_inv(4) apply fast
+          using label_prop_inv(2) os_inv(4) apply simp
+          using label_prop_inv(3) apply simp
+          using label_prop_inv(4) apply (simp add: os_inv(1) operator_state.defs(3) buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def)
+          using label_prop_inv(5) os_inv(4) apply fast
+          using label_prop_inv(6) apply fastforce
+          apply (simp add: dataflow_tree_to_operator_def os_inv(4))
+          done
+        subgoal for lxs' t
+          apply (intro exI conjI relcomppI)
+             apply (rule rtranclp.rtrancl_refl)
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+          apply (unfold R_def)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI[of _ lxs'])
+          apply (rule exI[of _ \<open>os(0 := add_cap (os 0) 0 t)\<close>])
+          apply (rule exI[of _ os_input'])
+          apply (intro exI conjI)
+                              defer
+                              apply (rule refl)
+                              apply (rule subgraph_inv(1))
+                             apply (rule subgraph_inv(2))
+          using os_inv(1) apply (simp add: add_cap_def operator_state.defs(3))
+          using os_inv(2) apply (simp add: add_cap_def)
+          using os_inv(3) apply (simp add: add_cap_def)
+          using os_inv(4) apply simp
+          using os_inv(5) apply (simp add: add_cap_def ty1_check_def)
+          using os_inv(4,6) apply simp
+          using os_inv(7) apply (simp add: add_cap_def)
+                     apply (simp add: buffers_inv)
+                    apply (rule dataplane_tracker_inv_add_cap[OF D dataplane_inv G, where t=t and nid=0 and p=0])
+          using input_stream_inv apply (fastforce simp add: os_inv(1) operator_state.defs(3) timely_input_stream_def)
+                    apply (rule refl)
+                   apply (simp add: csets_inv(1) os_inv(1,4) operator_state.defs(3) buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def)
+                   apply (subst (1 2) icoll_lshift)
+          using timely_input_stream_expires_le input_stream_inv apply blast
+          using timely_input_stream_expires_le input_stream_inv apply blast
+                   apply (simp add: add_cap_def)
+                  apply (simp add: csets_inv(2))
+          using input_stream_inv apply (force simp add: os_inv(1) operator_state.defs(3) add_cap_def)
+          using label_prop_inv(1) os_inv(4) apply fast
+          using label_prop_inv(2) os_inv(4) apply simp
+          using label_prop_inv(3) apply simp
+          using label_prop_inv(4) apply (simp add: os_inv(1) operator_state.defs(3) buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def add_cap_def)
+          using label_prop_inv(5) os_inv(4) apply fast
+          using label_prop_inv(6) apply fastforce
+          apply (simp add: dataflow_tree_to_operator_def os_inv(4))
+          done
+        done
       subgoal sorry
       subgoal sorry
       subgoal for os'

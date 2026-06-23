@@ -273,4 +273,16 @@ lemma path_weight_end_of_road:
     done
   done
 
+lemma concat_map_empty_except_1:
+  assumes \<open>distinct xs\<close> \<open>x \<in> set xs\<close> \<open>\<forall>y \<in> set xs - {x}. f y = []\<close>
+  shows \<open>concat (map f xs) = f x\<close>
+proof -
+  obtain ys zs where ys_zs: \<open>xs = ys @ [x] @ zs\<close>
+    using assms(1,2) Cons_eq_appendI append_Nil in_set_list_format by metis
+  have \<open>x \<notin> set ys\<close> \<open>x \<notin> set zs\<close> using assms(1) ys_zs by simp_all
+  hence \<open>concat (map f ys) = []\<close> \<open>concat (map f zs) = []\<close> \<open>concat (map f [x]) = f x\<close>
+    using assms(3) ys_zs by simp_all
+  thus ?thesis using ys_zs append.right_neutral append.simps(1) concat_append map_append by metis
+qed
+
 end

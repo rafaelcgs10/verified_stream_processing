@@ -75,6 +75,11 @@ lemma outputs_at_target_obtain_progress[simp]:
   apply (auto split: if_splits prod.splits)
   done
 
+lemma outputs_at_target_drop_caps[simp]:
+  \<open>outputs_at_target su (os(nid := drop_caps (os nid) caps)) = outputs_at_target su os\<close>
+  unfolding outputs_at_target_def drop_caps_def
+  by (simp add: fun_eq_iff split: if_splits prod.splits)
+
 lemma inputs_at_target_obtain_progress[simp]:
   "inputs_at_target (os(nid := fst (obtain_progress (os nid)))) = inputs_at_target os"
   unfolding inputs_at_target_def obtain_progress_def
@@ -89,6 +94,10 @@ lemma inputs_at_target_outpu_update[simp]:
   "inputs_at_target (map_entry p (outpu_update A) os) = inputs_at_target os"
   unfolding inputs_at_target_def
   by auto
+
+lemma inputs_at_target_drop_caps[simp]:
+  \<open>inputs_at_target (os(nid := drop_caps (os nid) caps)) = inputs_at_target os\<close>
+  unfolding inputs_at_target_def by (simp add: fun_eq_iff)
 
 section \<open>Typing and Support Side Conditions\<close>
 definition "ty1_check os bufs = (\<forall> p. (\<forall> x \<in> fst ` set (input os p) \<union> fst ` set (bufs p) \<union> fst ` set (outpu os p). is_en1 os x))"
