@@ -10,6 +10,7 @@ imports
   "../Correctness/Produces"
   "../Correctness/Mints"
   "../Correctness/OCapsReorder"
+  "../Correctness/Consumes"
   "HOL-ex.Sketch_and_Explore"
   Dataplane.Timely_Dataflow_Op
   Dataplane.Bots
@@ -125,6 +126,27 @@ proof (intro allI ballI)
     using inv t_in' s_in' unfolding input_ocaps_inv_def by blast
   then show "t -+- s \<in> set (ocaps (add_caps os caps) p2)"
     unfolding add_caps_def by auto
+qed
+
+lemma inputs_ocaps_inv_consumes:
+  assumes \<open>input_ocaps_inv os\<close>
+  shows \<open>input_ocaps_inv (consumes os p t d)\<close>
+  unfolding input_ocaps_inv_def
+proof (intro allI ballI)
+  fix p1 p2 t1 s
+  assume t1: \<open>t1 \<in> snd ` set (input (consumes os p t d) p1)\<close>
+    and \<open>s \<in> set (intsum (consumes os p t d) p1 p2)\<close>
+  hence s: \<open>s \<in> set (intsum os p1 p2)\<close> unfolding consumes_def add_caps_def by simp
+  consider (input) \<open>t1 \<in> snd ` set (input os p1)\<close> | (consumed) \<open>p1 = p\<close> \<open>t1 = t\<close>
+    using t1 unfolding consumes_def add_caps_def BENQ_def by (auto split: if_splits)
+  thus \<open>t1 -+- s \<in> set (ocaps (consumes os p t d) p2)\<close>
+  proof cases
+    case input
+    thus ?thesis using assms s unfolding input_ocaps_inv_def consumes_def add_caps_def by auto
+  next
+    case consumed
+    thus ?thesis using s unfolding consumes_def add_caps_def by force
+  qed
 qed
 
 (* Adding and then dropping the same caps leaves ocaps unchanged (as multisets,
@@ -862,7 +884,96 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply (clarsimp simp add: BENQ_def ran_def split: sum.splits if_splits)
         apply (metis prod.exhaust sumE)
         done
-      subgoal sorry
+      subgoal for p d t
+        apply (subgoal_tac \<open>p = 0\<close>)
+         defer
+         apply (clarsimp simp add: ran_def split: sum.splits if_splits dest!: num2_neq(2))
+        apply (intro exI conjI relcomppI)
+           apply (rule rtranclp.rtrancl_refl)
+          apply (rule bisim_refl)
+         defer
+         apply (rule wbisim_refl)
+        apply (rule wb_upto_b_base)
+        apply (unfold R_def)
+        apply (rule exI[of _ S])
+        apply (rule exI[of _ SO])
+        apply (rule exI[of _ SP])
+        apply (rule exI[of _ D])
+        apply (rule exI[of _ lxs])
+        apply (rule exI[of _ \<open>os(1 := consumes (os 1) p t d)\<close>])
+        apply (rule exI[of _ os_input])
+        apply (rule exI[of _ \<open>consumes os_label_prop p t d\<close>])
+        apply (rule exI[of _ \<open>BTL (1, p) cbufs\<close>])
+        apply (intro exI conjI)
+                            defer
+                            apply (rule refl)
+        using subgraph_inv(1) apply simp
+                            apply (simp_all add: operator_state.defs(3) subgraph_inv(2) os_inv)
+                      apply (simp add: consumes_def add_caps_def BENQ_def)
+                      apply (intro conjI)
+                          apply (simp add: raw_summary_def fun_eq_iff)
+                         apply (rule refl)
+                        apply (rule refl)
+                       apply (rule refl)
+                      apply (rule refl)
+        using os_inv(1,5)
+                     apply (simp add: ty1_check_def operator_state.defs(3) BTL_def)
+                     apply blast
+        using os_inv(1,4-6)
+                    apply (simp add: ty1_check_def label_prob_ty2_check_def operator_state.defs(3) BTL_def BHD_def)
+                    apply (erule conjE)
+                    apply (rotate_tac 9)
+                    apply (drule spec[of _ 0])
+                    apply (simp add: Ball_def)
+                    apply (meson img_fst in_fst_imageE in_set_tlD)
+                   apply (rule dataplane_tracker_inv_consumes[OF dataplane_inv _ D G, where xs=\<open>tl (cbufs (1, p))\<close>])
+                   apply (simp add: BHD_def)
+                  apply (simp add: csets_inv(1) buffers_inv os_inv(4,7) operator_state.defs(3) consumes_def)
+                 apply (simp add: csets_inv(2))
+                apply (rule input_stream_inv)
+        using label_prop_inv(1) apply (simp add: os_inv(4,7) operator_state.defs(3))
+        using label_prop_inv(2) apply (simp add: os_inv(4,7) operator_state.defs(3) consumes_def)
+        subgoal
+          using dataplane_inv unfolding dataplane_tracker_inv_def
+          apply (simp add: label_prop_inv(3))
+          apply (elim exE conjE)
+          subgoal premises prems for caps
+            using prems(2,10-12) prems(4)[symmetric] unfolding front_inv_def imp_front_inv_def chnls_imp_front_inv_def
+            apply simp
+            apply (rule contrapos_pp[OF _ frontier_less_equal_exit_scope, rotated, where t1=\<open>t -+- MyPair 0 1\<close>])
+             apply simp
+            apply (drule spec2[of _ 1 1])
+            apply (drule spec[of _ \<open>Loc 1 (Trg 1)\<close>])
+            apply (drule spec2[of _ 1 0])
+            apply (drule bspec[of _ _ \<open>(d, t)\<close>])
+             apply (simp add: BULK_BENQ_def BHD_def)
+             apply (rule disjI1)
+             apply (metis list.set_sel(1))
+            apply (rule frontier_less_equal_le_trans[rotated])
+             apply (rule order.trans)
+              apply assumption
+             apply assumption
+            apply (rule frontier_less_equal_ifrontier_trans[OF D, where l=\<open>Loc 1 (Trg 0)\<close>])
+            using path_weight_loop_increment apply (simp add: subgraph_inv(1))
+            apply simp
+            done
+          done
+        subgoal premises prems
+          using prems(2) prems(4)[symmetric] buffers_inv label_prop_inv(4) hd_in_set
+          by (fastforce simp add: raw_summary_def BULK_BENQ_def BHD_def)
+        using label_prop_inv(5) apply (simp add: os_inv(4,7) operator_state.defs(3) consumes_def)
+          apply (subst label_prop_upd_inv_cong; simp add: BENQ_def)
+         apply (rule inputs_ocaps_inv_consumes[OF label_prop_inv(6)])
+        apply (clarsimp simp add: dataflow_tree_to_operator_def intro!: arg_cong[where f=\<open>set_op _ _\<close>] arg_cong[where f=\<open>dataflow_op _\<close>] arg_cong[where f=\<open>map_op _ _\<close>])
+        apply (rule arg_cong2[where f=\<open>\<lambda>buf op. comp_op _ buf _ op\<close>])
+         apply (simp add: BTL_def fun_eq_iff map_tl split: sum.splits)
+        apply (rule loop_op_buf_cong[OF refl])
+         apply (rule arg_cong[where f=\<open>map_op _ _\<close>])
+         apply (rule comp_op_buf_cong[OF refl refl refl])
+         apply (clarsimp simp add: BTL_def ran_def split: sum.splits if_splits)
+         apply (metis prod.exhaust sumE)
+        apply (clarsimp simp add: BTL_def ran_def split: sum.splits if_splits)
+        done
       subgoal sorry
       subgoal sorry
       subgoal sorry
