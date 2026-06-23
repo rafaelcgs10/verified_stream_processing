@@ -468,6 +468,64 @@ lemma dataflow_tree_to_graph_raw_summary[simp]:
     done
   done
 
+lemma path_weight_loop_increment:
+  \<open>MyPair 0 1 \<in>\<^sub>A graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary)
+  (Loc (1 :: 3) (Trg (0 :: 2))) (Loc 1 (Trg 1))\<close> (is \<open>?s \<in>\<^sub>A graph.path_weight ?su ?l1 ?l2\<close>)
+proof -
+  have G: \<open>Graph.graph ?su\<close>
+    using dataflow_topology.axioms(1)[OF dataflow_topology_from_tree.dataflow_topology_axioms]
+      dataflow_tree_to_graph_raw_summary by metis
+  let ?xs = \<open>[(?l1, 0, Loc 1 (Src 1)), (Loc 1 (Src 1), 0, Loc 2 (Trg 1)),
+  (Loc 2 (Trg 1), ?s, Loc 2 (Src 1)), (Loc 2 (Src 1), 0, ?l2)]\<close>
+  have s: \<open>graph.sum_path_weights ?xs = ?s\<close> by simp
+  have \<open>graph.path ?su ?l1 (Loc 1 (Src 1)) [(?l1, 0, Loc 1 (Src 1))]\<close>
+    using graph.path_singleton[OF G]
+    by (simp add: raw_summary_def antichain_from_list_singleton zero_myprod_def)
+  moreover have \<open>graph.path ?su (Loc 1 (Src 1)) (Loc 2 (Trg 1)) [(Loc 1 (Src 1), 0, Loc 2 (Trg 1))]\<close>
+    using graph.path_singleton[OF G]
+    by (simp add: raw_summary_def antichain_from_list_singleton zero_myprod_def)
+  moreover have \<open>graph.path ?su (Loc 2 (Trg 1)) (Loc 2 (Src 1)) [(Loc 2 (Trg 1), ?s, Loc 2 (Src 1))]\<close>
+    using graph.path_singleton[OF G]
+    by (simp add: raw_summary_def antichain_from_list_singleton)
+  moreover have \<open>graph.path ?su (Loc 2 (Src 1)) ?l2 [(Loc 2 (Src 1), 0, ?l2)]\<close>
+    using graph.path_singleton[OF G]
+    by (simp add: raw_summary_def antichain_from_list_singleton zero_myprod_def)
+  ultimately have path_xs: \<open>graph.path ?su ?l1 ?l2 ?xs\<close> using G path_ConsE path_ConsI by metis
+  moreover have \<open>\<not> graph.sum_path_weights ys < ?s\<close> if path_ys: \<open>graph.path ?su ?l1 ?l2 ys\<close> for ys
+  proof
+    assume path_weights_ys: \<open>graph.sum_path_weights ys < ?s\<close>
+    obtain ys' where ys': \<open>ys = ys' @ [(Loc 2 (Trg 1), ?s, Loc 2 (Src 1)), (Loc 2 (Src 1), 0, ?l2)]\<close>
+    proof -
+      have \<open>ys \<noteq> []\<close> using empty_path_inversion[OF _ G] path_ys by fastforce
+      then obtain ys' l1 s l2 where l1_s_l2: \<open>ys = ys' @ [(l1, s, l2)]\<close>
+        using rev_cases surj_pair by metis
+      hence l1_s_l2_alt: \<open>l2 = ?l2 \<and> graph.path ?su ?l1 l1 ys' \<and> s \<in>\<^sub>A ?su l1 l2\<close>
+        using path_ys graph.path_AppendE[OF G] by blast
+      hence l1_s: \<open>l1 = Loc 2 (Src 1) \<and> s = 0\<close>
+        by (simp add: raw_summary_def antichain_from_list_singleton zero_myprod_def split: if_splits)
+          (insert set_antichain2 set_antichain_antichain_singleton, blast)
+      have \<open>ys' \<noteq> []\<close> using empty_path_inversion[OF _ G] l1_s_l2_alt l1_s by fastforce
+      then obtain ys'' l1' s' l2' where l1'_s'_l2': \<open>ys' = ys'' @ [(l1', s', l2')]\<close>
+        using rev_cases surj_pair by metis
+      hence l1'_s'_l2'_alt: \<open>l2' = l1 \<and> graph.path ?su ?l1 l1' ys'' \<and> s' \<in>\<^sub>A ?su l1' l2'\<close>
+        using l1_s_l2_alt graph.path_AppendE[OF G] by blast
+      hence l1'_s': \<open>l1' = Loc 2 (Trg 1) \<and> s' = MyPair 0 1\<close> using l1_s
+        by (simp add: raw_summary_def antichain_from_list_singleton zero_myprod_def split: if_splits)
+          (insert set_antichain2 set_antichain_antichain_singleton, blast)
+      show ?thesis using that l1_s_l2 l1'_s'_l2' l1_s l1'_s' l1_s_l2_alt l1'_s'_l2'_alt by simp
+    qed
+    hence \<open>[(Loc 2 (Trg 1), MyPair 0 1, Loc 2 (Src 1)), (Loc 2 (Src 1), 0, Loc 1 (Trg 1))] \<preceq> ys\<close>
+      by blast
+    hence \<open>?s \<le> graph.sum_path_weights ys\<close>
+      using graph.subseq_sum_path_weights_le[OF G] subseq_map by fastforce
+    thus False using path_weights_ys by order
+  qed
+  hence \<open>?s \<in> minimal_antichain {x. graph.path_weightp ?su ?l1 ?l2 x}\<close>
+    using path_xs graph.in_path_weight[OF G]
+    unfolding minimal_antichain_def graph.path_weightp_def[OF G] by auto
+  thus ?thesis using s graph.in_path_weight[OF G] by fastforce
+qed
+
 lemma outputs_at_target_raw_summary:
   \<open>outputs_at_target (antichain_from_list \<circ>\<circ> raw_summary) os = (\<lambda>l.
   if l = (1, 0) then outpu (os 0) 0
@@ -538,147 +596,6 @@ proof -
     unfolding Wcc.is_cc_def Wcc.is_subcc_def Wcc.reachable_def Wcc.edge_vertices_def
     by (simp only: rel_eq field_eq)
 qed
-
-lemma path_weight_introI:
-  assumes G: "Graph.graph weights"
-    and P: "graph.path weights l1 l2 xs"
-    and S: "s = graph.sum_path_weights xs"
-    and M: "\<And>(ys :: ('a :: finite \<times> 'b :: {monoid_add,order} \<times> 'a) list). graph.path weights l1 l2 ys \<Longrightarrow> \<not> graph.sum_path_weights ys < s"
-  shows "s \<in>\<^sub>A graph.path_weight weights l1 l2"
-proof -
-  have ms: "s \<in> minimal_antichain {x. graph.path_weightp weights l1 l2 x}"
-    unfolding minimal_antichain_def
-    using P S M by (auto simp: graph.path_weightp_def[OF G])
-  show ?thesis
-    using ms graph.in_path_weight[OF G] by blast
-qed
-
-lemma loop_path_weight_non_zero:
-  "MyPair 0 1 \<in>\<^sub>A graph.path_weight (antichain_from_list \<circ>\<circ> (raw_summary :: (3, 2) location \<Rightarrow> (3, 2) location \<Rightarrow> (nat, nat) myprod list)) (Loc 1 (Trg 0)) (Loc 1 (Trg 1))"
-proof -
-  let ?rs = \<open>raw_summary :: (3, 2) location \<Rightarrow> (3, 2) location \<Rightarrow> (nat, nat) myprod list\<close>
-  let ?df = \<open>G (initial_state_input (LNil :: ((nat, nat) myprod, nat \<times> nat) event llist))
-    initial_state_label_prop (initial_state_increment (MyPair 0 1))\<close>
-  have D0: \<open>dataflow_topology (antichain_from_list \<circ>\<circ> dataflow_tree_to_graph ?df) (-+-)\<close>
-    using dataflow_topology_from_tree.dataflow_topology_axioms[of ?df]
-    by (simp add: comp_def)
-  have raw: \<open>dataflow_tree_to_graph ?df = raw_summary\<close>
-    by (rule dataflow_tree_to_graph_raw_summary)
-  have G0: \<open>Graph.graph (antichain_from_list \<circ>\<circ> dataflow_tree_to_graph ?df)\<close>
-    using dataflow_topology.axioms(1)[OF D0] .
-  have graph_eq: \<open>(antichain_from_list \<circ>\<circ> dataflow_tree_to_graph ?df) = (antichain_from_list \<circ>\<circ> raw_summary)\<close>
-    using raw by (simp add: comp_def)
-  note G = G0[unfolded graph_eq]
-  have edge_10_s1: \<open>0 \<in>\<^sub>A (antichain_from_list \<circ>\<circ> raw_summary) (Loc 1 (Trg 0)) (Loc 1 (Src 1))\<close>
-    unfolding raw_summary_def comp_def
-    by (simp add: antichain_from_list_singleton enum_num1_def zero_myprod_def)
-  have edge_s1_21: \<open>0 \<in>\<^sub>A (antichain_from_list \<circ>\<circ> ?rs) (Loc 1 (Src 1)) (Loc 2 (Trg 1))\<close>
-    unfolding raw_summary_def comp_def
-    by (simp add: antichain_from_list_singleton enum_num1_def zero_myprod_def)
-  have diff3_01[simp]: \<open>(0 :: 3) \<noteq> 1\<close> \<open>(1 :: 3) \<noteq> 0\<close>
-    by (simp_all add: Numeral_Type.bit1.of_int_eq)
-  have diff3_12[simp]: \<open>(1 :: 3) \<noteq> 2\<close> \<open>(2 :: 3) \<noteq> 1\<close>
-    by (simp_all add: Numeral_Type.bit1.of_int_eq)
-  have diff3_02[simp]: \<open>(0 :: 3) \<noteq> 2\<close> \<open>(2 :: 3) \<noteq> 0\<close>
-    by (simp_all add: Numeral_Type.bit1.of_int_eq)
-  have edge_21_2s1: \<open>MyPair 0 1 \<in>\<^sub>A (antichain_from_list \<circ>\<circ> ?rs) (Loc 2 (Trg 1)) (Loc 2 (Src 1))\<close>
-    by (simp add: raw_summary_def antichain_from_list_singleton enum_num1_def zero_myprod_def)
-  have edge_2s1_11: \<open>0 \<in>\<^sub>A (antichain_from_list \<circ>\<circ> ?rs) (Loc 2 (Src 1)) (Loc 1 (Trg 1))\<close>
-    unfolding raw_summary_def comp_def
-    by (simp add: antichain_from_list_singleton enum_num1_def zero_myprod_def)
-  have edge_2s1_11: \<open>0 \<in>\<^sub>A (antichain_from_list \<circ>\<circ> ?rs) (Loc 2 (Src 1)) (Loc 1 (Trg 1))\<close>
-    unfolding raw_summary_def comp_def
-    by (simp add: antichain_from_list_singleton enum_num1_def zero_myprod_def)
-  define xs :: "((3, 2) location \<times> (nat, nat) myprod \<times> (3, 2) location) list" where
-    "xs = [(Loc 1 (Trg 0), MyPair 0 0, Loc 1 (Src 1)),
-           (Loc 1 (Src 1), MyPair 0 0, Loc 2 (Trg 1)),
-           (Loc 2 (Trg 1), MyPair 0 1, Loc 2 (Src 1)),
-           (Loc 2 (Src 1), MyPair 0 0, Loc 1 (Trg 1))]"
-  have path_ex: "graph.path (antichain_from_list \<circ>\<circ> raw_summary) (Loc 1 (Trg 0)) (Loc 1 (Trg 1)) xs"
-    unfolding xs_def
-    apply (rule path_ConsI[OF G])
-     apply (rule path_ConsI[OF G])
-      apply (rule path_ConsI[OF G])
-       apply (rule path_ConsI[OF G])
-        apply (rule graph.path.intros(1)[OF G])
-        apply (rule refl)
-       apply (rule edge_2s1_11[unfolded zero_myprod_def])
-      apply (rule edge_21_2s1)
-     apply (rule edge_s1_21[unfolded zero_myprod_def])
-    apply (rule edge_10_s1[unfolded zero_myprod_def])
-    done
-  have sum_eq: "graph.sum_path_weights xs = MyPair 0 1"
-    unfolding xs_def by simp
-  have lt_imp_mysnd_zero: "\<And>s. s < (MyPair 0 1 :: (nat, nat) myprod) \<Longrightarrow> mysnd s = 0"
-    by (case_tac s) (auto simp: less_myprod_def less_eq_myprod_def)
-  define S where "S = {Loc 1 (Trg 0) :: (3, 2) location, Loc 1 (Src 0), Loc 1 (Src 1), Loc 2 (Trg 1)}"
-  have S_in: "Loc 1 (Trg 0) \<in> S"
-    unfolding S_def by simp
-  have S_not_T1: "Loc 1 (Trg 1) \<notin> S"
-    unfolding S_def by simp
-  have diff2_01[simp]: "(0 :: 2) \<noteq> 1" "(1 :: 2) \<noteq> 0"
-    by (simp_all add: Numeral_Type.bit0.of_int_eq)
-  note rs_simps = raw_summary_def comp_def antichain_from_list_singleton zero_myprod_def enum_num1_def
-  have rs_1T0: "\<And>l3 lbl. lbl \<in>\<^sub>A (antichain_from_list \<circ>\<circ> ?rs) (Loc 1 (Trg 0)) l3 \<Longrightarrow>
-       l3 = Loc 1 (Src 0) \<or> l3 = Loc 1 (Src 1)"
-    subgoal for l3 lbl using loc_3_2_cases[of l3]
-      by (elim disjE; hypsubst_thin; simp add: rs_simps) done
-  have rs_1S0: "\<And>l3 lbl. \<not> lbl \<in>\<^sub>A (antichain_from_list \<circ>\<circ> ?rs) (Loc 1 (Src 0)) l3"
-    subgoal for l3 lbl using loc_3_2_cases[of l3]
-      by (elim disjE; hypsubst_thin; simp add: rs_simps) done
-  have rs_1S1: "\<And>l3 lbl. lbl \<in>\<^sub>A (antichain_from_list \<circ>\<circ> ?rs) (Loc 1 (Src 1)) l3 \<Longrightarrow>
-       l3 = Loc 2 (Trg 1)"
-    subgoal for l3 lbl using loc_3_2_cases[of l3]
-      by (elim disjE; hypsubst_thin; simp add: rs_simps) done
-  have in_antichain_sg: "\<And>x y :: (nat, nat) myprod. x \<in>\<^sub>A antichain {y} \<Longrightarrow> x = y"
-    by (metis empty_iff finite.emptyI finite_insert in_antichain_minimal_antichain
-        minimal_antichain_singleton singletonD)
-  have rs_2T1: "\<And>l3 lbl. lbl \<in>\<^sub>A (antichain_from_list \<circ>\<circ> ?rs) (Loc 2 (Trg 1)) l3 \<Longrightarrow>
-       mysnd lbl = 1"
-    subgoal for l3 lbl using loc_3_2_cases[of l3]
-      apply (elim disjE; hypsubst_thin; simp add: rs_simps)
-      apply (drule in_antichain_sg; simp)
-      done
-    done
-  have edges_S_step:
-    "l2 \<in> S \<Longrightarrow>
-         lbl \<in>\<^sub>A (antichain_from_list \<circ>\<circ> ?rs) l2 l3 \<Longrightarrow>
-         mysnd lbl = 0 \<Longrightarrow> l3 \<in> S" for l2 lbl l3
-    unfolding S_def
-    using rs_1T0 rs_1S0 rs_1S1 rs_2T1 by fastforce
-  have invariant:
-    "graph.path (antichain_from_list \<circ>\<circ> ?rs) (Loc 1 (Trg 0)) l ys \<Longrightarrow>
-     mysnd (graph.sum_path_weights ys) = 0 \<Longrightarrow> l \<in> S" for l ys
-  proof (induct "Loc 1 (Trg 0) :: (3,2) location" l ys rule: graph.path.induct[OF G, consumes 1])
-    case (1 l2)
-    show ?case using S_in 1 by simp
-  next
-    case (2 l2 xs lbl l3)
-    have split: "graph.sum_path_weights (xs @ [(l2, lbl, l3)]) = graph.sum_path_weights xs + lbl"
-      by (rule graph.sum_path_weights_append_singleton[OF G])
-    from 2(4) split have m1: "mysnd (graph.sum_path_weights xs) = 0" and m2: "mysnd lbl = 0"
-      by (simp_all add: mysnd_add)
-    from 2(2)[OF m1] have l2_in: "l2 \<in> S" .
-    show ?case
-      by (rule edges_S_step[OF l2_in 2(3) m2])
-  qed
-  have min_lem: "\<And>ys. graph.path (antichain_from_list \<circ>\<circ> ?rs) (Loc 1 (Trg 0)) (Loc 1 (Trg 1)) ys \<Longrightarrow>
-                  \<not> graph.sum_path_weights ys < MyPair 0 1"
-  proof
-    fix ys assume p: "graph.path (antichain_from_list \<circ>\<circ> ?rs) (Loc 1 (Trg 0)) (Loc 1 (Trg 1)) ys"
-    assume lt: "graph.sum_path_weights ys < MyPair 0 1"
-    from lt_imp_mysnd_zero[OF lt] have m: "mysnd (graph.sum_path_weights ys) = 0" .
-    from invariant[OF p m] have "Loc 1 (Trg 1) \<in> S" .
-    with S_not_T1 show False by contradiction
-  qed
-  have step: "graph.sum_path_weights xs \<in>\<^sub>A graph.path_weight (antichain_from_list \<circ>\<circ> ?rs) (Loc 1 (Trg 0)) (Loc 1 (Trg 1))"
-    using path_weight_introI[OF G path_ex HOL.refl] min_lem[unfolded sum_eq[symmetric]]
-    by blast
-  show ?thesis
-    using step sum_eq by simp
-qed
-
-
 
 (* TODO: Move. *)
 lemma un_Choice_loop_op_buf_cong:
