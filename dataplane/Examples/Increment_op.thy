@@ -3,14 +3,15 @@ theory Increment_op
 imports
   Dataplane.Timely_Builder_Op
 begin
+term release_caps
 
 definition \<open>increment_op_logic ip op inc = (\<lambda>os. 
-    if ocaps os op = [] then {||} else
+    if input os ip = [] then {||} else
     {|
       let result = map (\<lambda>(d, t). (d, t + inc)) (input os ip);
-          os' = trace (STR ''producing from incr op'') (produces os (map (\<lambda>(d, t). (d, Cap t op)) result));
-          os'' = drop_caps os' (map (\<lambda>t. Cap t op) (ocaps os' op))
-      in os''\<lparr>input := (input os)(op := [])\<rparr>|})\<close>
+          os' = produces os (map (\<lambda>(d, t). (d, Cap t op)) result);
+          os'' = release_caps (os'\<lparr>input := (input os)(op := [])\<rparr>) op
+      in os''|})\<close>
 
 definition \<open>increment_op ip op inc os = builder_op False {|ip|} {|op|} os (increment_op_logic ip op inc)\<close>
 
@@ -97,15 +98,14 @@ lemma steps_increment_op_Read_Some[intro]:
   using assms unfolding increment_op_def by auto
 
 lemma step_increment_op_Silent[intro]:
-  assumes \<open>ocaps os op \<noteq> []\<close>
+  assumes \<open>input os ip \<noteq> []\<close>
     and \<open>result = map (\<lambda>(d, t). (d, t + inc)) (input os ip)\<close>
     and \<open>os_produced = produces os (map (\<lambda>(d, t). (d, Cap t op)) result)\<close>
-    and \<open>caps = map (\<lambda>t. Cap t op) (ocaps os_produced op)\<close>
-    and \<open>os_dropped = drop_caps os_produced caps\<close>
-    and \<open>os_next = os_dropped\<lparr>input := (input os_dropped)(op := [])\<rparr>\<close>
+    and \<open>os_next = release_caps (os_produced\<lparr>input := (input os)(op := [])\<rparr>) op\<close>
     and \<open>initia os\<close>
     and \<open>op' = increment_op ip op inc os_next\<close>
   shows \<open>step Tau (increment_op ip op inc os) op'\<close>
   using assms unfolding increment_op_def increment_op_logic_def by auto
 
+  
 end

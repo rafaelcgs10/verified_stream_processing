@@ -7,6 +7,8 @@ imports
   Dataplane.Timely_Dataflow_Op
 begin
 
+(* FIXME: BROKEN because I modified it to use release_caps *)
+
 (* TODO Move. *)
 lemma lshift_append_lshift:
   \<open>xs @@- (ys @ zs) @@- lxs = (xs @ ys) @@- zs @@- lxs\<close>
@@ -129,12 +131,12 @@ proof (coinduction arbitrary: sg os1 buf os2 rule: wbisim_coinduct_upto'')
         for os2' :: "(1, 'b, 'c, 'e) operator_state_scheme"
       proof -
         have outpu_os2': \<open>outpu os2' 1 = outpu os2 1 @ map (\<lambda>(d, t). (d, t + inc)) (input os2 1)\<close>
-          using that(2) unfolding trace_simp increment_op_logic_def drop_caps_def produces_def by (simp split: prod.splits if_splits)
+          using that(2) unfolding trace_simp increment_op_logic_def drop_caps_def release_caps_def produces_def by (simp split: prod.splits if_splits)
         have input_os2': \<open>input os2' 1 = []\<close> using that(2) unfolding increment_op_logic_def by (simp split: prod.splits if_splits)
         have \<open>my_source_op f inc os1 buf os2 = my_source_op f inc os1 buf os2'\<close>
           using outpu_os2' input_os2' unfolding my_source_op_def by (simp add: lshift_append_lshift)
         moreover have \<open>invariant f inc os1 buf os2'\<close> using that unfolding invariant_def
-            increment_op_logic_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def split: prod.splits if_splits)
+            increment_op_logic_def release_caps_def drop_caps_def produces_def enum_num1_def by (simp add: comp_def split: prod.splits if_splits)
         ultimately show ?thesis unfolding R_def by blast
       qed
       moreover have "\<exists>op2'. (step Tau)\<^sup>*\<^sup>* (my_source_op f inc os1 buf os2) op2'

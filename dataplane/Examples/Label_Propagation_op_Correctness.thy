@@ -787,7 +787,7 @@ lemma step_Tau_pow_eqI:
 lemma loop_move_all_data:
   assumes I: "intsum (os 2) = increment_summary (MyPair 0 1)"
     and N: "initia (os 2)"
-    and C1: "ocaps (os 2) 1 = map (\<lambda> (d, t). t + MyPair 0 1) (input (os 2) 1)"
+    and C1: "set (map (\<lambda> (d, t). t + MyPair 0 1) (input (os 2) 1)) \<subseteq> set (ocaps (os 2) 1)"
   shows  "(step Tau)\<^sup>*\<^sup>*
      (loop_op loop_wire (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))
        (comp_map
@@ -803,16 +803,16 @@ lemma loop_move_all_data:
            ((case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))(Inr (2,1) := [], Inr (1,1) := []))
            (logic_map (1 :: 3) (label_propagation_op (fold (\<lambda>(d, t) os. consumes os 1 t d) (map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0))) (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1))
                  (fold (\<lambda>(d, t) os. consumes os 1 t d) (outpu (os 2) 1) (fold (\<lambda>(d, t) os. consumes os 1 t d) (cbufs (1, 1)) (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>))))))
-           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) (((drop_caps
-                 (produces (fold (\<lambda>(d, t) os. consumes os 1 t d) (outpu os_label_prop 1) (fold (\<lambda>(d, t) os. consumes os 1 t d) (cbufs (2, 1)) (os 2)))
-                   (map (\<lambda>x. (fst x, Cap (snd x -+- MyPair 0 (Suc 0)) 1)) (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))
-                 (map (\<lambda>t. Cap t 1) (ocaps (os 2) 1 @ concat (map (\<lambda>(d, t). [t -+- MyPair 0 (Suc 0)]) (cbufs (2, 1) @ outpu os_label_prop 1)))))\<lparr>outpu := (outpu (os 2))(1 := []), input := (input (os 2))(1 := [])\<rparr>)))))))"
+           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) (((release_caps
+                 ((produces (fold (\<lambda>(d, t) os. consumes os 1 t d) (outpu os_label_prop 1) (fold (\<lambda>(d, t) os. consumes os 1 t d) (cbufs (2, 1)) (os 2)))
+                   (map (\<lambda>x. (fst x, Cap (snd x -+- MyPair 0 (Suc 0)) 1)) (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))\<lparr> input := (input (os 2))(1 := [])\<rparr> )
+                 1)\<lparr>outpu := (outpu (os 2))(1 := [])\<rparr>)))))))"
   apply (cases "input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1")
   subgoal premises prems
     apply (cases "cbufs (1, 1) @ outpu (os 2) 1")
     subgoal
       using prems apply -
-      apply (clarsimp simp add: produces_def C1 drop_caps_def)
+      apply (clarsimp simp add: produces_def drop_caps_def)
       apply (subst comp_op_buf_cong[where buf'="case_sum (\<lambda>x. []) ((\<lambda>x. map Inr (cbufs x))((2, 1) := [], (1, 1) := []))"])
           apply (rule refl)+
       subgoal
@@ -838,7 +838,11 @@ lemma loop_move_all_data:
       apply (rule arg_cong[where f="logic_map 2"])
       apply (rule arg_cong[where f="increment_op 1 1 (MyPair 0 (Suc 0))"])
       using prems apply -
-      apply (auto simp add: produces_def drop_caps_def C1 intro!: operator_state_eqI)
+      apply (auto simp add: prems I comp_def produces_def release_caps_def drop_caps_def map_concat C1 intro!: operator_state_eqI simp flip: list_diff_append)
+
+      find_theorems list_diff append
+
+end
       done
     subgoal premises prems2
       apply (rule rtranclp_trans)
@@ -963,7 +967,6 @@ lemma loop_move_all_data:
      apply (rule refl)+
     apply (simp flip: map_append)
 
-    apply (rule rtranclp_trans)
      apply (rule rtranclp_trans)
       apply (rule relpowp_imp_rtranclp[where n="length (input (os 2) 1) + length (outpu (os 2) 1) + length (cbufs (2, 1)) + length (outpu (os_label_prop) 1)"]) 
       apply (rule step_tau_Out_pow_loop_op_steps_intro[where xs="map Inr (outpu (os 2) 1) @ map (\<lambda>(d, t). Inr (d, t -+- MyPair 0 (Suc 0))) (input (os 2) 1 @ cbufs (2, 1) @ outpu (os_label_prop) 1)"])
@@ -984,8 +987,9 @@ lemma loop_move_all_data:
         apply simp
        apply simp
       apply (rule refl)+
-     apply (simp flip: map_append)
+    apply (simp flip: map_append)
 
+    apply (rule rtranclp_trans)
      apply (rule relpowp_imp_rtranclp[where n="length (cbufs (1, 1)) + length (outpu (os 2) 1) + length (input (os 2) 1) + length (cbufs (2, 1)) + length (outpu (os_label_prop) 1)"]) 
      apply (rule step_tau_Inp_pow_loop_op_steps_intro[where p="Inr (1, 1)" and xs="map Inr (cbufs (1, 1) @ outpu (os 2) 1 @ map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0))) (input (os 2) 1 @ cbufs (2, 1) @ outpu (os_label_prop) 1))"])
           apply (rule steps_map_op[where xs="map (\<lambda> x. Inp (Inl _) (Inr x)) (cbufs (1, 1) @ outpu (os 2) 1) @ map (\<lambda>(d, t). Inp (Inl _) (Inr (d, t -+- MyPair 0 (Suc 0)))) (input (os 2) 1 @ cbufs (2, 1) @ outpu (os_label_prop) 1)"])
@@ -1032,10 +1036,142 @@ lemma loop_move_all_data:
     apply (rule arg_cong[where f="increment_op 1 1 (MyPair 0 (Suc 0))"])
     using prems apply -
     apply (auto simp add: prems  produces_def drop_caps_def C1 intro!: operator_state_eqI split: if_splits)
-    apply (rule ext)+
-    apply (auto simp add: filter_empty_conv)
+    apply (auto simp add: comp_def split_beta map_concat filter_empty_conv)
     done
   done
+
+lemma loop_label_prop_input1:
+  assumes N: "initia os_label_prop"
+  shows  "(step Tau)\<^sup>*\<^sup>*
+         (loop_op loop_wire cbufs
+           (comp_map
+             (comp_op
+               comp_wire
+               cbufs
+               (logic_map (1 :: 3) (label_propagation_op (os_label_prop :: (nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state)))
+               (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) ((os 2) :: (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state))))))
+         (loop_op loop_wire cbufs
+           (comp_map
+             (comp_op
+               comp_wire
+               cbufs
+               (logic_map (1 :: 3) (label_propagation_op (fst (label_prop_input1_batched os_label_prop (input os_label_prop 1)))))
+               (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) (os 2))))))"
+      apply (rule relpowp_imp_rtranclp[where n="length (input os_label_prop 1)"]) 
+  apply (rule step_taus_loop_op_steps_intro)
+  apply (rule step_tau_pow_map_op)
+    apply (rule step_taus_L_pow_comp_op_steps_intro)
+  apply (rule step_tau_pow_map_op)
+     apply (rule step_compower_label_propagation_op_input1_eq_alt[where ys=Nil])
+        apply simp
+       apply simp
+  using N apply assumption
+    apply (rule refl)+
+  done
+
+abbreviation "CONSUMES p \<equiv> fold (\<lambda>(d, t) os. consumes os p t d)"
+
+lemma CONSUMES_CONSUMES:
+  "CONSUMES p xs (CONSUMES p ys os) =
+   CONSUMES p (ys @ xs) os"
+  unfolding fold_consumes
+  by simp
+
+definition label_prop_input1_loop_updates where
+  \<open>label_prop_input1_loop_updates cbufs os_label_prop os =
+    (let
+      cbufs' = ((case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))(Inr (2, 1) := [], Inr (1, 1) := []));
+      os_label_prop_consumed =
+        CONSUMES 1
+          (cbufs (1, 1) @ outpu (os 2) 1 @
+            map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0)))
+              (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1))
+          (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>);
+      os_label_prop' =
+        fst (label_prop_input1_batched os_label_prop_consumed (input os_label_prop_consumed 1));
+      os2' =
+        drop_caps
+          (produces (CONSUMES 1 (cbufs (2, 1) @ outpu os_label_prop 1) (os 2))
+            (map (\<lambda>x. (fst x, Cap (snd x -+- MyPair 0 (Suc 0)) 1))
+              (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))
+          (map (\<lambda>t. Cap t 1)
+            (ocaps (os 2) 1 @
+              map (\<lambda>a. case a of (d, t) \<Rightarrow> t -+- MyPair 0 (Suc 0))
+                (cbufs (2, 1) @ outpu os_label_prop 1)))
+          \<lparr>outpu := (outpu (os 2))(1 := []), input := (input (os 2))(1 := [])\<rparr>
+     in (cbufs', os_label_prop', os2'))\<close>
+
+
+lemma loop_move_all_data_label_prop_input1:
+  assumes NO: "initia os_label_prop"
+    and I: "intsum (os 2) = increment_summary (MyPair 0 1)"
+    and N: "initia (os 2)"
+    and C1: "ocaps (os 2) 1 = map (\<lambda> (d, t). t + MyPair 0 1) (input (os 2) 1)"
+  shows  "(step Tau)\<^sup>*\<^sup>*
+     (loop_op loop_wire (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))
+       (comp_map
+         (comp_op
+           comp_wire
+           (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))
+           (logic_map (1 :: 3) (label_propagation_op (os_label_prop :: (nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state)))
+           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) ((os 2) :: (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state))))))
+     (loop_op loop_wire ((case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))(Inr (2, 1) := [], Inr (1, 1) := []))
+       (comp_map
+         (comp_op
+           comp_wire
+           ((case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))(Inr (2, 1) := [], Inr (1, 1) := []))
+           (logic_map (1 :: 3) (label_propagation_op (fst (label_prop_input1_batched
+                      (CONSUMES 1 (cbufs (1, 1) @ outpu (os 2) 1 @ map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0))) (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1))
+                        (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>))
+                      (input
+                        (CONSUMES 1 (cbufs (1, 1) @ outpu (os 2) 1 @ map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0))) (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1))
+                          (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>))
+                        1)))))
+           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) (drop_caps (produces (CONSUMES 1 (cbufs (2, 1) @ outpu os_label_prop 1) (os 2)) (map (\<lambda>x. (fst x, Cap (snd x -+- MyPair 0 (Suc 0)) 1)) (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))
+                 (map (\<lambda>t. Cap t 1) (ocaps (os 2) 1 @ map (\<lambda>a. case a of (d, t) \<Rightarrow> t -+- MyPair 0 (Suc 0)) (cbufs (2, 1) @ outpu os_label_prop 1)))
+                \<lparr>outpu := (outpu (os 2))(1 := []), input := (input (os 2))(1 := [])\<rparr>))))))"
+  apply (rule rtranclp_trans)
+   apply (rule loop_move_all_data)
+  using I apply assumption
+  using N apply assumption
+  using C1 apply assumption
+  apply (rule rtranclp_trans)
+   apply (rule loop_label_prop_input1)
+   apply (simp add: NO)
+  apply (simp flip: map_append fold_append only: CONSUMES_CONSUMES)
+  apply (rule step_Tau_pow_eqI)
+  apply (simp only: append_assoc)
+  done
+
+lemma loop_move_all_data_label_prop_input1_updates:
+  fixes os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
+    and os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
+  defines \<open>updates \<equiv> label_prop_input1_loop_updates cbufs os_label_prop os\<close>
+  assumes NO: \<open>initia os_label_prop\<close>
+    and I: \<open>intsum (os 2) = increment_summary (MyPair 0 1)\<close>
+    and N: \<open>initia (os 2)\<close>
+    and C1: \<open>ocaps (os 2) 1 = map (\<lambda> (d, t). t + MyPair 0 1) (input (os 2) 1)\<close>
+  shows  \<open>(step Tau)\<^sup>*\<^sup>*
+     (loop_op loop_wire (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))
+       (comp_map
+         (comp_op
+           comp_wire
+           (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))
+           (logic_map (1 :: 3) (label_propagation_op os_label_prop))
+           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) (os 2))))))
+     (loop_op loop_wire (fst updates)
+       (comp_map
+         (comp_op
+           comp_wire
+           (fst updates)
+           (logic_map (1 :: 3) (label_propagation_op (fst (snd updates))))
+           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) (snd (snd updates)))))))\<close>
+  using loop_move_all_data_label_prop_input1[where os=os and os_label_prop=os_label_prop and cbufs=cbufs, OF NO I N C1]
+  unfolding updates_def label_prop_input1_loop_updates_def Let_def
+  by simp
+
+
 
 
 lemma loop_op_label_propagation_op_increment_op:
