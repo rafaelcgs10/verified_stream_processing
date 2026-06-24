@@ -2309,6 +2309,11 @@ lemma all_vertices_outpu_upd[simp]:
   unfolding all_vertices_def
   by auto
 
+lemma all_vertices_input_upd[simp]:
+  \<open>all_vertices (os_label_prop\<lparr>input := xs\<rparr>) = all_vertices os_label_prop\<close>
+  unfolding all_vertices_def
+  by auto
+
 lemma label_prop_upd_inv_input0_preserved:
   fixes t1 :: "'t::order"
   assumes inv: "label_prop_upd_inv os"
@@ -2419,7 +2424,11 @@ proof -
     using ts_new vertices_eq_new sym_new label_new pending_new by blast
 qed
 
-
+lemma label_prop_upd_inv_cong:
+  \<open>input os' 1 = input os 1 \<Longrightarrow> de1 os' = de1 os \<Longrightarrow> timestamps os' = timestamps os \<Longrightarrow>
+  graph os' = graph os \<Longrightarrow> vertices os' = vertices os \<Longrightarrow> label os' = label os \<Longrightarrow>
+  label_prop_upd_inv os \<longleftrightarrow> label_prop_upd_inv os'\<close>
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
 
 lemma label_prop_upd_inv_input1_preserved:
   fixes t1 :: "'t::order"

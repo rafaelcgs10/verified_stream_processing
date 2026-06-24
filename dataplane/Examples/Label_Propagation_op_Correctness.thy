@@ -11,6 +11,7 @@ imports
   "../Correctness/Mints"
   "../Correctness/Propagates"
   "../Correctness/OCapsReorder"
+  "../Correctness/Consumes"
   "HOL-ex.Sketch_and_Explore"
   Dataplane.Timely_Dataflow_Op
   Dataplane.Bots
@@ -130,6 +131,27 @@ proof (intro allI ballI)
     using inv t_in' s_in' unfolding input_ocaps_inv_def by blast
   then show "t -+- s \<in> set (ocaps (add_caps os caps) p2)"
     unfolding add_caps_def by auto
+qed
+
+lemma inputs_ocaps_inv_consumes:
+  assumes \<open>input_ocaps_inv os\<close>
+  shows \<open>input_ocaps_inv (consumes os p t d)\<close>
+  unfolding input_ocaps_inv_def
+proof (intro allI ballI)
+  fix p1 p2 t1 s
+  assume t1: \<open>t1 \<in> snd ` set (input (consumes os p t d) p1)\<close>
+    and \<open>s \<in> set (intsum (consumes os p t d) p1 p2)\<close>
+  hence s: \<open>s \<in> set (intsum os p1 p2)\<close> unfolding consumes_def add_caps_def by simp
+  consider (input) \<open>t1 \<in> snd ` set (input os p1)\<close> | (consumed) \<open>p1 = p\<close> \<open>t1 = t\<close>
+    using t1 unfolding consumes_def add_caps_def BENQ_def by (auto split: if_splits)
+  thus \<open>t1 -+- s \<in> set (ocaps (consumes os p t d) p2)\<close>
+  proof cases
+    case input
+    thus ?thesis using assms s unfolding input_ocaps_inv_def consumes_def add_caps_def by auto
+  next
+    case consumed
+    thus ?thesis using s unfolding consumes_def add_caps_def by force
+  qed
 qed
 
 (* Adding and then dropping the same caps leaves ocaps unchanged (as multisets,
@@ -473,6 +495,64 @@ lemma dataflow_tree_to_graph_raw_summary[simp]:
     done
   done
 
+lemma path_weight_loop_increment:
+  \<open>MyPair 0 1 \<in>\<^sub>A graph.path_weight (antichain_from_list \<circ>\<circ> raw_summary)
+  (Loc (1 :: 3) (Trg (0 :: 2))) (Loc 1 (Trg 1))\<close> (is \<open>?s \<in>\<^sub>A graph.path_weight ?su ?l1 ?l2\<close>)
+proof -
+  have G: \<open>Graph.graph ?su\<close>
+    using dataflow_topology.axioms(1)[OF dataflow_topology_from_tree.dataflow_topology_axioms]
+      dataflow_tree_to_graph_raw_summary by metis
+  let ?xs = \<open>[(?l1, 0, Loc 1 (Src 1)), (Loc 1 (Src 1), 0, Loc 2 (Trg 1)),
+  (Loc 2 (Trg 1), ?s, Loc 2 (Src 1)), (Loc 2 (Src 1), 0, ?l2)]\<close>
+  have s: \<open>graph.sum_path_weights ?xs = ?s\<close> by simp
+  have \<open>graph.path ?su ?l1 (Loc 1 (Src 1)) [(?l1, 0, Loc 1 (Src 1))]\<close>
+    using graph.path_singleton[OF G]
+    by (simp add: raw_summary_def antichain_from_list_singleton zero_myprod_def)
+  moreover have \<open>graph.path ?su (Loc 1 (Src 1)) (Loc 2 (Trg 1)) [(Loc 1 (Src 1), 0, Loc 2 (Trg 1))]\<close>
+    using graph.path_singleton[OF G]
+    by (simp add: raw_summary_def antichain_from_list_singleton zero_myprod_def)
+  moreover have \<open>graph.path ?su (Loc 2 (Trg 1)) (Loc 2 (Src 1)) [(Loc 2 (Trg 1), ?s, Loc 2 (Src 1))]\<close>
+    using graph.path_singleton[OF G]
+    by (simp add: raw_summary_def antichain_from_list_singleton)
+  moreover have \<open>graph.path ?su (Loc 2 (Src 1)) ?l2 [(Loc 2 (Src 1), 0, ?l2)]\<close>
+    using graph.path_singleton[OF G]
+    by (simp add: raw_summary_def antichain_from_list_singleton zero_myprod_def)
+  ultimately have path_xs: \<open>graph.path ?su ?l1 ?l2 ?xs\<close> using G path_ConsE path_ConsI by metis
+  moreover have \<open>\<not> graph.sum_path_weights ys < ?s\<close> if path_ys: \<open>graph.path ?su ?l1 ?l2 ys\<close> for ys
+  proof
+    assume path_weights_ys: \<open>graph.sum_path_weights ys < ?s\<close>
+    obtain ys' where ys': \<open>ys = ys' @ [(Loc 2 (Trg 1), ?s, Loc 2 (Src 1)), (Loc 2 (Src 1), 0, ?l2)]\<close>
+    proof -
+      have \<open>ys \<noteq> []\<close> using empty_path_inversion[OF _ G] path_ys by fastforce
+      then obtain ys' l1 s l2 where l1_s_l2: \<open>ys = ys' @ [(l1, s, l2)]\<close>
+        using rev_cases surj_pair by metis
+      hence l1_s_l2_alt: \<open>l2 = ?l2 \<and> graph.path ?su ?l1 l1 ys' \<and> s \<in>\<^sub>A ?su l1 l2\<close>
+        using path_ys graph.path_AppendE[OF G] by blast
+      hence l1_s: \<open>l1 = Loc 2 (Src 1) \<and> s = 0\<close>
+        by (simp add: raw_summary_def antichain_from_list_singleton zero_myprod_def split: if_splits)
+          (insert set_antichain2 set_antichain_antichain_singleton, blast)
+      have \<open>ys' \<noteq> []\<close> using empty_path_inversion[OF _ G] l1_s_l2_alt l1_s by fastforce
+      then obtain ys'' l1' s' l2' where l1'_s'_l2': \<open>ys' = ys'' @ [(l1', s', l2')]\<close>
+        using rev_cases surj_pair by metis
+      hence l1'_s'_l2'_alt: \<open>l2' = l1 \<and> graph.path ?su ?l1 l1' ys'' \<and> s' \<in>\<^sub>A ?su l1' l2'\<close>
+        using l1_s_l2_alt graph.path_AppendE[OF G] by blast
+      hence l1'_s': \<open>l1' = Loc 2 (Trg 1) \<and> s' = MyPair 0 1\<close> using l1_s
+        by (simp add: raw_summary_def antichain_from_list_singleton zero_myprod_def split: if_splits)
+          (insert set_antichain2 set_antichain_antichain_singleton, blast)
+      show ?thesis using that l1_s_l2 l1'_s'_l2' l1_s l1'_s' l1_s_l2_alt l1'_s'_l2'_alt by simp
+    qed
+    hence \<open>[(Loc 2 (Trg 1), MyPair 0 1, Loc 2 (Src 1)), (Loc 2 (Src 1), 0, Loc 1 (Trg 1))] \<preceq> ys\<close>
+      by blast
+    hence \<open>?s \<le> graph.sum_path_weights ys\<close>
+      using graph.subseq_sum_path_weights_le[OF G] subseq_map by fastforce
+    thus False using path_weights_ys by order
+  qed
+  hence \<open>?s \<in> minimal_antichain {x. graph.path_weightp ?su ?l1 ?l2 x}\<close>
+    using path_xs graph.in_path_weight[OF G]
+    unfolding minimal_antichain_def graph.path_weightp_def[OF G] by auto
+  thus ?thesis using s graph.in_path_weight[OF G] by fastforce
+qed
+
 lemma outputs_at_target_raw_summary:
   \<open>outputs_at_target (antichain_from_list \<circ>\<circ> raw_summary) os = (\<lambda>l.
   if l = (1, 0) then outpu (os 0) 0
@@ -571,147 +651,6 @@ proof -
     unfolding Wcc.is_cc_def Wcc.is_subcc_def Wcc.reachable_def Wcc.edge_vertices_def
     by (simp only: rel_eq field_eq)
 qed
-
-lemma path_weight_introI:
-  assumes G: "Graph.graph weights"
-    and P: "graph.path weights l1 l2 xs"
-    and S: "s = graph.sum_path_weights xs"
-    and M: "\<And>(ys :: ('a :: finite \<times> 'b :: {monoid_add,order} \<times> 'a) list). graph.path weights l1 l2 ys \<Longrightarrow> \<not> graph.sum_path_weights ys < s"
-  shows "s \<in>\<^sub>A graph.path_weight weights l1 l2"
-proof -
-  have ms: "s \<in> minimal_antichain {x. graph.path_weightp weights l1 l2 x}"
-    unfolding minimal_antichain_def
-    using P S M by (auto simp: graph.path_weightp_def[OF G])
-  show ?thesis
-    using ms graph.in_path_weight[OF G] by blast
-qed
-
-lemma loop_path_weight_non_zero:
-  "MyPair 0 1 \<in>\<^sub>A graph.path_weight (antichain_from_list \<circ>\<circ> (raw_summary :: (3, 2) location \<Rightarrow> (3, 2) location \<Rightarrow> (nat, nat) myprod list)) (Loc 1 (Trg 0)) (Loc 1 (Trg 1))"
-proof -
-  let ?rs = \<open>raw_summary :: (3, 2) location \<Rightarrow> (3, 2) location \<Rightarrow> (nat, nat) myprod list\<close>
-  let ?df = \<open>G (initial_state_input (LNil :: ((nat, nat) myprod, nat \<times> nat) event llist))
-    initial_state_label_prop (initial_state_increment (MyPair 0 1))\<close>
-  have D0: \<open>dataflow_topology (antichain_from_list \<circ>\<circ> dataflow_tree_to_graph ?df) (-+-)\<close>
-    using dataflow_topology_from_tree.dataflow_topology_axioms[of ?df]
-    by (simp add: comp_def)
-  have raw: \<open>dataflow_tree_to_graph ?df = raw_summary\<close>
-    by (rule dataflow_tree_to_graph_raw_summary)
-  have G0: \<open>Graph.graph (antichain_from_list \<circ>\<circ> dataflow_tree_to_graph ?df)\<close>
-    using dataflow_topology.axioms(1)[OF D0] .
-  have graph_eq: \<open>(antichain_from_list \<circ>\<circ> dataflow_tree_to_graph ?df) = (antichain_from_list \<circ>\<circ> raw_summary)\<close>
-    using raw by (simp add: comp_def)
-  note G = G0[unfolded graph_eq]
-  have edge_10_s1: \<open>0 \<in>\<^sub>A (antichain_from_list \<circ>\<circ> raw_summary) (Loc 1 (Trg 0)) (Loc 1 (Src 1))\<close>
-    unfolding raw_summary_def comp_def
-    by (simp add: antichain_from_list_singleton enum_num1_def zero_myprod_def)
-  have edge_s1_21: \<open>0 \<in>\<^sub>A (antichain_from_list \<circ>\<circ> ?rs) (Loc 1 (Src 1)) (Loc 2 (Trg 1))\<close>
-    unfolding raw_summary_def comp_def
-    by (simp add: antichain_from_list_singleton enum_num1_def zero_myprod_def)
-  have diff3_01[simp]: \<open>(0 :: 3) \<noteq> 1\<close> \<open>(1 :: 3) \<noteq> 0\<close>
-    by (simp_all add: Numeral_Type.bit1.of_int_eq)
-  have diff3_12[simp]: \<open>(1 :: 3) \<noteq> 2\<close> \<open>(2 :: 3) \<noteq> 1\<close>
-    by (simp_all add: Numeral_Type.bit1.of_int_eq)
-  have diff3_02[simp]: \<open>(0 :: 3) \<noteq> 2\<close> \<open>(2 :: 3) \<noteq> 0\<close>
-    by (simp_all add: Numeral_Type.bit1.of_int_eq)
-  have edge_21_2s1: \<open>MyPair 0 1 \<in>\<^sub>A (antichain_from_list \<circ>\<circ> ?rs) (Loc 2 (Trg 1)) (Loc 2 (Src 1))\<close>
-    by (simp add: raw_summary_def antichain_from_list_singleton enum_num1_def zero_myprod_def)
-  have edge_2s1_11: \<open>0 \<in>\<^sub>A (antichain_from_list \<circ>\<circ> ?rs) (Loc 2 (Src 1)) (Loc 1 (Trg 1))\<close>
-    unfolding raw_summary_def comp_def
-    by (simp add: antichain_from_list_singleton enum_num1_def zero_myprod_def)
-  have edge_2s1_11: \<open>0 \<in>\<^sub>A (antichain_from_list \<circ>\<circ> ?rs) (Loc 2 (Src 1)) (Loc 1 (Trg 1))\<close>
-    unfolding raw_summary_def comp_def
-    by (simp add: antichain_from_list_singleton enum_num1_def zero_myprod_def)
-  define xs :: "((3, 2) location \<times> (nat, nat) myprod \<times> (3, 2) location) list" where
-    "xs = [(Loc 1 (Trg 0), MyPair 0 0, Loc 1 (Src 1)),
-           (Loc 1 (Src 1), MyPair 0 0, Loc 2 (Trg 1)),
-           (Loc 2 (Trg 1), MyPair 0 1, Loc 2 (Src 1)),
-           (Loc 2 (Src 1), MyPair 0 0, Loc 1 (Trg 1))]"
-  have path_ex: "graph.path (antichain_from_list \<circ>\<circ> raw_summary) (Loc 1 (Trg 0)) (Loc 1 (Trg 1)) xs"
-    unfolding xs_def
-    apply (rule path_ConsI[OF G])
-     apply (rule path_ConsI[OF G])
-      apply (rule path_ConsI[OF G])
-       apply (rule path_ConsI[OF G])
-        apply (rule graph.path.intros(1)[OF G])
-        apply (rule refl)
-       apply (rule edge_2s1_11[unfolded zero_myprod_def])
-      apply (rule edge_21_2s1)
-     apply (rule edge_s1_21[unfolded zero_myprod_def])
-    apply (rule edge_10_s1[unfolded zero_myprod_def])
-    done
-  have sum_eq: "graph.sum_path_weights xs = MyPair 0 1"
-    unfolding xs_def by simp
-  have lt_imp_mysnd_zero: "\<And>s. s < (MyPair 0 1 :: (nat, nat) myprod) \<Longrightarrow> mysnd s = 0"
-    by (case_tac s) (auto simp: less_myprod_def less_eq_myprod_def)
-  define S where "S = {Loc 1 (Trg 0) :: (3, 2) location, Loc 1 (Src 0), Loc 1 (Src 1), Loc 2 (Trg 1)}"
-  have S_in: "Loc 1 (Trg 0) \<in> S"
-    unfolding S_def by simp
-  have S_not_T1: "Loc 1 (Trg 1) \<notin> S"
-    unfolding S_def by simp
-  have diff2_01[simp]: "(0 :: 2) \<noteq> 1" "(1 :: 2) \<noteq> 0"
-    by (simp_all add: Numeral_Type.bit0.of_int_eq)
-  note rs_simps = raw_summary_def comp_def antichain_from_list_singleton zero_myprod_def enum_num1_def
-  have rs_1T0: "\<And>l3 lbl. lbl \<in>\<^sub>A (antichain_from_list \<circ>\<circ> ?rs) (Loc 1 (Trg 0)) l3 \<Longrightarrow>
-       l3 = Loc 1 (Src 0) \<or> l3 = Loc 1 (Src 1)"
-    subgoal for l3 lbl using loc_3_2_cases[of l3]
-      by (elim disjE; hypsubst_thin; simp add: rs_simps) done
-  have rs_1S0: "\<And>l3 lbl. \<not> lbl \<in>\<^sub>A (antichain_from_list \<circ>\<circ> ?rs) (Loc 1 (Src 0)) l3"
-    subgoal for l3 lbl using loc_3_2_cases[of l3]
-      by (elim disjE; hypsubst_thin; simp add: rs_simps) done
-  have rs_1S1: "\<And>l3 lbl. lbl \<in>\<^sub>A (antichain_from_list \<circ>\<circ> ?rs) (Loc 1 (Src 1)) l3 \<Longrightarrow>
-       l3 = Loc 2 (Trg 1)"
-    subgoal for l3 lbl using loc_3_2_cases[of l3]
-      by (elim disjE; hypsubst_thin; simp add: rs_simps) done
-  have in_antichain_sg: "\<And>x y :: (nat, nat) myprod. x \<in>\<^sub>A antichain {y} \<Longrightarrow> x = y"
-    by (metis empty_iff finite.emptyI finite_insert in_antichain_minimal_antichain
-        minimal_antichain_singleton singletonD)
-  have rs_2T1: "\<And>l3 lbl. lbl \<in>\<^sub>A (antichain_from_list \<circ>\<circ> ?rs) (Loc 2 (Trg 1)) l3 \<Longrightarrow>
-       mysnd lbl = 1"
-    subgoal for l3 lbl using loc_3_2_cases[of l3]
-      apply (elim disjE; hypsubst_thin; simp add: rs_simps)
-      apply (drule in_antichain_sg; simp)
-      done
-    done
-  have edges_S_step:
-    "l2 \<in> S \<Longrightarrow>
-         lbl \<in>\<^sub>A (antichain_from_list \<circ>\<circ> ?rs) l2 l3 \<Longrightarrow>
-         mysnd lbl = 0 \<Longrightarrow> l3 \<in> S" for l2 lbl l3
-    unfolding S_def
-    using rs_1T0 rs_1S0 rs_1S1 rs_2T1 by fastforce
-  have invariant:
-    "graph.path (antichain_from_list \<circ>\<circ> ?rs) (Loc 1 (Trg 0)) l ys \<Longrightarrow>
-     mysnd (graph.sum_path_weights ys) = 0 \<Longrightarrow> l \<in> S" for l ys
-  proof (induct "Loc 1 (Trg 0) :: (3,2) location" l ys rule: graph.path.induct[OF G, consumes 1])
-    case (1 l2)
-    show ?case using S_in 1 by simp
-  next
-    case (2 l2 xs lbl l3)
-    have split: "graph.sum_path_weights (xs @ [(l2, lbl, l3)]) = graph.sum_path_weights xs + lbl"
-      by (rule graph.sum_path_weights_append_singleton[OF G])
-    from 2(4) split have m1: "mysnd (graph.sum_path_weights xs) = 0" and m2: "mysnd lbl = 0"
-      by (simp_all add: mysnd_add)
-    from 2(2)[OF m1] have l2_in: "l2 \<in> S" .
-    show ?case
-      by (rule edges_S_step[OF l2_in 2(3) m2])
-  qed
-  have min_lem: "\<And>ys. graph.path (antichain_from_list \<circ>\<circ> ?rs) (Loc 1 (Trg 0)) (Loc 1 (Trg 1)) ys \<Longrightarrow>
-                  \<not> graph.sum_path_weights ys < MyPair 0 1"
-  proof
-    fix ys assume p: "graph.path (antichain_from_list \<circ>\<circ> ?rs) (Loc 1 (Trg 0)) (Loc 1 (Trg 1)) ys"
-    assume lt: "graph.sum_path_weights ys < MyPair 0 1"
-    from lt_imp_mysnd_zero[OF lt] have m: "mysnd (graph.sum_path_weights ys) = 0" .
-    from invariant[OF p m] have "Loc 1 (Trg 1) \<in> S" .
-    with S_not_T1 show False by contradiction
-  qed
-  have step: "graph.sum_path_weights xs \<in>\<^sub>A graph.path_weight (antichain_from_list \<circ>\<circ> ?rs) (Loc 1 (Trg 0)) (Loc 1 (Trg 1))"
-    using path_weight_introI[OF G path_ex HOL.refl] min_lem[unfolded sum_eq[symmetric]]
-    by blast
-  show ?thesis
-    using step sum_eq by simp
-qed
-
-
 
 (* TODO: Move. *)
 lemma un_Choice_loop_op_buf_cong:
@@ -899,7 +838,7 @@ lemma label_propagation_correctness:
     and buffers_inv:
     \<open>chns = outputs_at_target (summ sg) os >> cbufs >> inputs_at_target os\<close>
     and dataplane_inv:
-    \<open>dataplane_tracker_inv os cbufs sg\<close> (*\<open>cbufs (0, 0) = []\<close>*)
+    \<open>dataplane_tracker_inv os cbufs sg\<close>
     and csets_inv:
     \<open>SP = cimage
       (\<lambda>t. ((1, 0), (Inr (ccs
@@ -911,13 +850,12 @@ lemma label_propagation_correctness:
     \<open>timely_input_stream lxs (mset (ocaps (os 0) 0))\<close>
     and label_prop_inv:
     \<open>(\<forall> t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
-
-\<open>(\<forall> t \<in> set (timestamps os_label_prop). \<not> frontier_less_equal (exit_scope myfst (front (os 1) 0 + front (os 1) 1)) t \<longrightarrow> labels_stable (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
-\<open>\<forall> t \<in> myfst ` snd ` set (input (os 1) 0) \<union> myfst ` snd ` set (input (os 1) 1). frontier_less_equal (exit_scope myfst (front (os 1) 1)) t\<close>
-\<open>\<forall> t \<in> set (ocaps (os 1) 0) \<union> snd ` set (input (os 1) 0) \<union> snd ` set (outpu (os 0) 0) \<union> time ` lset lxs. mysnd t = 0\<close>
-\<open>label_prop_upd_inv os_label_prop\<close>
-\<open>input_ocaps_inv (os 1)\<close>
-shows \<open>set_op S D (dataflow_op sg (G_op os_input os_label_prop (os 2) cbufs))
+    \<open>(\<forall> t \<in> set (timestamps os_label_prop). \<not> frontier_less_equal (exit_scope myfst (front (os 1) 0 + front (os 1) 1)) t \<longrightarrow> labels_stable (all_edges os_label_prop t) (min_label os_label_prop t))\<close>
+    \<open>\<forall> t \<in> myfst ` snd ` set (input (os 1) 0) \<union> myfst ` snd ` set (input (os 1) 1). frontier_less_equal (exit_scope myfst (front (os 1) 1)) t\<close>
+    \<open>\<forall>t \<in> time ` lset lxs \<union> snd ` set (chns (1, 0)) \<union> set (ocaps (os 1) 0). mysnd t = 0\<close>
+    \<open>label_prop_upd_inv os_label_prop\<close>
+    \<open>input_ocaps_inv (os 1)\<close>
+  shows \<open>set_op S D (dataflow_op sg (G_op os_input os_label_prop (os 2) cbufs))
          \<approx> set_spec_op (cUn (cUn S SO) SP) D\<close>
   using assms
 proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns sg T G V L
@@ -970,7 +908,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply (rule wb_upto_b_base)
         apply (unfold R_def)
         apply (intro exI conjI)
-        using SIM1 by (simp_all add: dataflow_tree_to_operator_def)
+        using SIM1 by (simp_all add: dataflow_tree_to_operator_def comp_def)
       subgoal for d t xs
         apply (intro exI conjI relcomppI)
            apply (rule rtranclp.rtrancl_refl)
@@ -989,7 +927,6 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply (rule exI[of _ os_label_prop])
         apply (rule exI[of _ \<open>BENQ (1, 0) (d, t) cbufs\<close>])
         apply (intro exI conjI)
-                            apply (simp add: dataflow_tree_to_operator_def)
                             defer
                             apply (rule refl)
         using subgraph_inv(1) apply simp
@@ -1016,10 +953,10 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         using label_prop_inv(1) apply (simp add: os_inv(4,7) operator_state.defs(3))
         using label_prop_inv(2) apply (simp add: os_inv(4,7) operator_state.defs(3))
             apply (simp add: label_prop_inv(3))
-        using label_prop_inv(4) apply simp
+        using buffers_inv label_prop_inv(4) apply (simp add: BULK_BENQ_def subgraph_inv(1) outputs_at_target_raw_summary)
         using label_prop_inv(5) apply (simp add: os_inv(4,7) operator_state.defs(3))
          apply (rule label_prop_inv(6))
-        apply (clarsimp intro!: arg_cong[where f=\<open>set_op _ _\<close>] arg_cong[where f=\<open>dataflow_op _\<close>] arg_cong[where f=\<open>map_op _ _\<close>])
+        apply (clarsimp simp add: dataflow_tree_to_operator_def intro!: arg_cong[where f=\<open>set_op _ _\<close>] arg_cong[where f=\<open>dataflow_op _\<close>] arg_cong[where f=\<open>map_op _ _\<close>])
         apply (rule arg_cong2[where f=\<open>\<lambda>buf op. comp_op _ buf _ op\<close>])
          apply (fastforce simp add: BENQ_def)
         apply (rule loop_op_buf_cong[OF refl])
@@ -1030,7 +967,96 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply (clarsimp simp add: BENQ_def ran_def split: sum.splits if_splits)
         apply (metis prod.exhaust sumE)
         done
-      subgoal sorry
+      subgoal for p d t
+        apply (subgoal_tac \<open>p = 0\<close>)
+         defer
+         apply (clarsimp simp add: ran_def split: sum.splits if_splits dest!: num2_neq(2))
+        apply (intro exI conjI relcomppI)
+           apply (rule rtranclp.rtrancl_refl)
+          apply (rule bisim_refl)
+         defer
+         apply (rule wbisim_refl)
+        apply (rule wb_upto_b_base)
+        apply (unfold R_def)
+        apply (rule exI[of _ S])
+        apply (rule exI[of _ SO])
+        apply (rule exI[of _ SP])
+        apply (rule exI[of _ D])
+        apply (rule exI[of _ lxs])
+        apply (rule exI[of _ \<open>os(1 := consumes (os 1) p t d)\<close>])
+        apply (rule exI[of _ os_input])
+        apply (rule exI[of _ \<open>consumes os_label_prop p t d\<close>])
+        apply (rule exI[of _ \<open>BTL (1, p) cbufs\<close>])
+        apply (intro exI conjI)
+                            defer
+                            apply (rule refl)
+        using subgraph_inv(1) apply simp
+                            apply (simp_all add: operator_state.defs(3) subgraph_inv(2) os_inv)
+                      apply (simp add: consumes_def add_caps_def BENQ_def)
+                      apply (intro conjI)
+                          apply (simp add: raw_summary_def fun_eq_iff)
+                         apply (rule refl)
+                        apply (rule refl)
+                       apply (rule refl)
+                      apply (rule refl)
+        using os_inv(1,5)
+                     apply (simp add: ty1_check_def operator_state.defs(3) BTL_def)
+                     apply blast
+        using os_inv(1,4-6)
+                    apply (simp add: ty1_check_def label_prob_ty2_check_def operator_state.defs(3) BTL_def BHD_def)
+                    apply (erule conjE)
+                    apply (rotate_tac 9)
+                    apply (drule spec[of _ 0])
+                    apply (simp add: Ball_def)
+                    apply (meson img_fst in_fst_imageE in_set_tlD)
+                   apply (rule dataplane_tracker_inv_consumes[OF dataplane_inv _ D G, where xs=\<open>tl (cbufs (1, p))\<close>])
+                   apply (simp add: BHD_def)
+                  apply (simp add: csets_inv(1) buffers_inv os_inv(4,7) operator_state.defs(3) consumes_def)
+                 apply (simp add: csets_inv(2))
+                apply (rule input_stream_inv)
+        using label_prop_inv(1) apply (simp add: os_inv(4,7) operator_state.defs(3))
+        using label_prop_inv(2) apply (simp add: os_inv(4,7) operator_state.defs(3) consumes_def)
+        subgoal
+          using dataplane_inv unfolding dataplane_tracker_inv_def
+          apply (simp add: label_prop_inv(3))
+          apply (elim exE conjE)
+          subgoal premises prems for caps
+            using prems(2,10-12) prems(4)[symmetric] unfolding front_inv_def imp_front_inv_def chnls_imp_front_inv_def
+            apply simp
+            apply (rule contrapos_pp[OF _ frontier_less_equal_exit_scope, rotated, where t1=\<open>t -+- MyPair 0 1\<close>])
+             apply simp
+            apply (drule spec2[of _ 1 1])
+            apply (drule spec[of _ \<open>Loc 1 (Trg 1)\<close>])
+            apply (drule spec2[of _ 1 0])
+            apply (drule bspec[of _ _ \<open>(d, t)\<close>])
+             apply (simp add: BULK_BENQ_def BHD_def)
+             apply (rule disjI1)
+             apply (metis list.set_sel(1))
+            apply (rule frontier_less_equal_le_trans[rotated])
+             apply (rule order.trans)
+              apply assumption
+             apply assumption
+            apply (rule frontier_less_equal_ifrontier_trans[OF D, where l=\<open>Loc 1 (Trg 0)\<close>])
+            using path_weight_loop_increment apply (simp add: subgraph_inv(1))
+            apply simp
+            done
+          done
+        subgoal premises prems
+          using prems(2) prems(4)[symmetric] buffers_inv label_prop_inv(4) hd_in_set
+          by (fastforce simp add: raw_summary_def BULK_BENQ_def BHD_def)
+        using label_prop_inv(5) apply (simp add: os_inv(4,7) operator_state.defs(3) consumes_def)
+          apply (subst label_prop_upd_inv_cong; simp add: BENQ_def)
+         apply (rule inputs_ocaps_inv_consumes[OF label_prop_inv(6)])
+        apply (clarsimp simp add: dataflow_tree_to_operator_def intro!: arg_cong[where f=\<open>set_op _ _\<close>] arg_cong[where f=\<open>dataflow_op _\<close>] arg_cong[where f=\<open>map_op _ _\<close>])
+        apply (rule arg_cong2[where f=\<open>\<lambda>buf op. comp_op _ buf _ op\<close>])
+         apply (simp add: BTL_def fun_eq_iff map_tl split: sum.splits)
+        apply (rule loop_op_buf_cong[OF refl])
+         apply (rule arg_cong[where f=\<open>map_op _ _\<close>])
+         apply (rule comp_op_buf_cong[OF refl refl refl])
+         apply (clarsimp simp add: BTL_def ran_def split: sum.splits if_splits)
+         apply (metis prod.exhaust sumE)
+        apply (clarsimp simp add: BTL_def ran_def split: sum.splits if_splits)
+        done
       subgoal sorry
       subgoal sorry
       subgoal sorry
@@ -1424,7 +1450,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
               apply (clarsimp simp add: operator_state.defs os_inv(4))
               subgoal for x
                 using label_prop_inv(4)[unfolded buffers_inv, simplified]
-                by (metis UnI1 myprod.collapse)               
+                by (metis UnCI myprod.collapse)
               done
             subgoal 
               apply (clarsimp simp add: operator_state.defs os_inv(4))
@@ -1457,15 +1483,14 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           subgoal
             using label_prop_inv(1)
             by auto
-
           subgoal
             using label_prop_inv(2) by auto
           subgoal
             using label_prop_inv(3) by auto
           subgoal
-            using label_prop_inv(4)
-            unfolding drop_caps_def release_caps_def
-            by (auto dest!: in_set_list_diffD)
+            using label_prop_inv(4) buffers_inv
+            unfolding drop_caps_def release_caps_def produces_def
+            by (auto simp add: BULK_BENQ_def outputs_at_target_raw_summary inputs_at_target_def subgraph_inv(1) dest!: in_set_list_diffD)
           subgoal
             using label_prop_inv(5) by simp
           subgoal premises aux
@@ -1653,8 +1678,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                       subgoal
                         using label_prop_inv(4)[rule_format, of t] apply -
                         apply (drule meta_mp)
-                        subgoal
-                          by auto
+                         apply (simp add: buffers_inv BULK_BENQ_def inputs_at_target_def)
                         subgoal
                           apply (cases t)
                           apply auto
@@ -1791,11 +1815,9 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                 subgoal premises aux
                   using aux(2) label_prop_inv(3) 
                   by (auto simp add:  os_inv(4) operator_state.defs input_tl_def)
-                subgoal
-                  using label_prop_inv(4) apply -
-                  apply simp
-                  unfolding label_prop_edge_record_update_def input_tl_def label_prop_edge_batch_def label_prop_neighbor_batch_def release_caps_def drop_caps_def add_caps_def
-                  by (fastforce dest!: in_set_list_diffD  simp add: os_inv(4)  operator_state.defs input_tl_def release_caps_def drop_caps_def split: if_splits)
+                subgoal premises
+                  using label_prop_inv(4)
+                  by (auto simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def input_tl_def release_caps_def drop_caps_def add_caps_def label_prop_edge_record_update_def label_prop_edge_batch_def label_prop_neighbor_batch_def dest!: in_set_list_diffD in_set_tlD)
                 subgoal
                   apply (rule label_prop_upd_inv_input0_preserved)
                          apply (rule label_prop_inv(5))
@@ -1978,8 +2000,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                   by (simp add: image_iff os_inv(4) operator_state.defs)
                 subgoal
                   using label_prop_inv(4)
-                  unfolding release_caps_def drop_caps_def add_caps_def input_tl_def
-                  by (auto dest!: in_set_list_diffD simp add: label_prop_label_batch_def label_prop_neighbor_batch_def image_iff os_inv(4) operator_state.defs)
+                  by (auto simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def input_tl_def release_caps_def drop_caps_def add_caps_def label_prop_label_batch_def label_prop_neighbor_batch_def dest!: in_set_list_diffD)
                 subgoal
                   apply simp
                   apply (rule label_prop_upd_inv_input1_preserved[])
@@ -2083,9 +2104,9 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           by auto
         subgoal premises aux
           using label_prop_inv(4)
-          by auto
+          by (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1))
         subgoal premises aux
-          using label_prop_inv(5) 
+          using label_prop_inv(5)
           unfolding label_prop_upd_inv_def 
           by (auto del: disjCI simp add: )
         subgoal premises aux
@@ -2248,7 +2269,7 @@ next
             by simp
           subgoal
             using label_prop_inv(4)
-            by simp          
+            by (simp add: buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1))
           subgoal
             using label_prop_inv(5)
             by simp
