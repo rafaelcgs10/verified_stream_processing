@@ -985,7 +985,7 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
       subgoal for p d t
         apply (subgoal_tac \<open>p = 0\<close>)
          defer
-         apply (clarsimp simp add: ran_def split: sum.splits if_splits dest!: num2_neq(2))
+         apply (clarsimp simp add: ran_loop_wire dest!: num2_neq(2))
         apply (intro exI conjI relcomppI)
            apply (rule rtranclp.rtrancl_refl)
           apply (rule bisim_refl)
@@ -1316,7 +1316,52 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           unfolding input_ocaps_inv_def
           by auto
         done
-      subgoal sorry
+      subgoal for d t
+        apply (intro exI conjI relcomppI)
+           apply (rule rtranclp.rtrancl_refl)
+          apply (rule bisim_refl)
+         defer
+         apply (rule wbisim_refl)
+        apply (rule wb_upto_b_base)
+        apply (unfold R_def[simplified])
+        apply (rule exI[of _ S])
+        apply (rule exI[of _ D])
+        apply (rule exI[of _ lxs])
+        apply (rule exI[of _ \<open>os(2 := consumes (os 2) 1 t d)\<close>])
+        apply (rule exI[of _ os_label_prop])
+        apply (rule exI[of _ \<open>BTL (2, 1) cbufs\<close>])
+        apply (rule exI[of _ sg])
+        apply (intro conjI)
+                         apply (clarsimp simp add: dataflow_tree_to_operator_def os_inv(1)
+            intro!: arg_cong[where f=\<open>set_op _ _\<close>] arg_cong[where f=\<open>dataflow_op _\<close>]
+            arg_cong[where f=\<open>map_op _ _\<close>])
+                         apply (rule comp_op_buf_cong[OF refl refl])
+                          apply (rule loop_op_buf_cong[OF refl])
+                           apply (rule arg_cong[where f=\<open>map_op _ _\<close>])
+                           apply (rule comp_op_buf_cong[OF refl refl refl])
+                           apply (simp add: ran_comp_wire BTL_def map_tl)
+                          apply (simp add: ran_loop_wire BTL_def)
+                         apply (simp add: BTL_def ran_def split: sum.splits)
+                         apply (metis prod.exhaust sum.exhaust)
+                        apply (simp add: csets_inv buffers_inv BULK_BENQ_def BENQ_def BTL_def cimage_cUn)
+                       apply (rule subgraph_inv(1))
+                      apply (rule subgraph_inv(2))
+        using os_inv(2) apply simp
+        using os_inv(3) apply simp
+        using os_inv(4) apply force
+        using os_inv(1,5) apply (simp add: ty1_check_def operator_state.defs(3) BTL_def)
+        using os_inv(4,6) apply (simp add:  label_prob_ty2_check_def operator_state.defs(3) BTL_def)
+        using os_inv(7) apply force
+               apply (rule dataplane_tracker_inv_consumes[OF dataplane_inv _ D G, where xs=\<open>tl (cbufs (2, 1))\<close>])
+               apply (simp add: BHD_def)
+        using input_stream_inv apply simp
+        using label_prop_inv(1) apply (simp add: os_inv(4,7) operator_state.defs(3))
+        using label_prop_inv(2) apply (simp add: os_inv(4,7) operator_state.defs(3) consumes_def)
+        using label_prop_inv(3) apply simp
+        using label_prop_inv(4) apply (simp add: buffers_inv BULK_BENQ_def BTL_def BENQ_def)
+         apply (rule label_prop_inv(5))
+        using label_prop_inv(6) apply simp
+        done
       subgoal for os'
         unfolding label_propagation_op_logic_def trace_simp
         apply clarsimp
