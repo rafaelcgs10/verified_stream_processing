@@ -20,14 +20,31 @@ imports
   Dataplane.SimulationProofMethods
 begin
 
-abbreviation "loop_wire \<equiv> (case_sum (\<lambda>_. None) (\<lambda>(nid, p). case if nid = 2 \<and> p = 1 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (Inr (1 + offset, q))))"
-abbreviation "comp_wire \<equiv> (case_sum (\<lambda>_. None) (\<lambda>(nid, p). case if nid = 1 \<and> p = 1 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (Inr (1 + 1 + offset, q))))"
+abbreviation "(loop_wire :: 3 + 3 \<times> 2 \<Rightarrow> (3 + 3 \<times> 2) option) \<equiv> (case_sum (\<lambda>_. None) (\<lambda>(nid, p). case if nid = 2 \<and> p = 1 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (Inr (1 + offset, q))))"
+abbreviation "(comp_wire :: 3 + 3 \<times> 2 \<Rightarrow> (3 + 3 \<times> 2) option) \<equiv> (case_sum (\<lambda>_. None) (\<lambda>(nid, p). case if nid = 1 \<and> p = 1 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (Inr (1 + 1 + offset, q))))"
 
+lemma ran_loop_wire:
+  \<open>ran loop_wire = {Inr (1, 1)}\<close>
+proof -
+  have \<open>loop_wire (Inr (2, 1)) = Some (Inr (1, 1))\<close> by simp
+  moreover have \<open>loop_wire x = None\<close> if \<open>x \<noteq> Inr (2, 1)\<close> for x by (cases x; clarsimp simp add: that)
+  ultimately show ?thesis unfolding ran_def
+    using Collect_cong Set.empty_def insert_Collect option.simps(1,2) by (smt (verit, del_insts))
+qed
+
+lemma ran_comp_wire:
+  \<open>ran comp_wire = {Inr (2, 1)}\<close>
+proof -
+  have \<open>comp_wire (Inr (1, 1)) = Some (Inr (2, 1))\<close> by simp
+  moreover have \<open>comp_wire x = None\<close> if \<open>x \<noteq> Inr (1, 1)\<close> for x by (cases x; clarsimp simp add: that)
+  ultimately show ?thesis unfolding ran_def
+    using Collect_cong Set.empty_def insert_Collect option.simps(1,2) by (smt (verit, del_insts))
+qed
 
 (* Note: this is basically lemma comp_op_chns_invar from dataplane_dis:dataplane/Comp_Reasoning.thy *)
 lemma comp_op_buf_cong:
   assumes \<open>wire' = wire\<close> \<open>op1' = op1\<close> \<open>op2' = op2\<close> \<open>\<forall>p \<in> inputs op2 \<inter> ran wire. buf' p = buf p\<close>
-  shows \<open>comp_op wire buf op1 op2 = comp_op wire buf' op1 op2\<close>
+  shows \<open>comp_op wire buf op1 op2 = comp_op wire' buf' op1' op2'\<close>
   sorry
 
 (* release_caps os p only removes from ocaps p those timestamps that have no matching
@@ -962,10 +979,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply (rule loop_op_buf_cong[OF refl])
          apply (rule arg_cong[where f=\<open>map_op _ _\<close>])
          apply (rule comp_op_buf_cong[OF refl refl refl])
-         apply (clarsimp simp add: BENQ_def ran_def split: sum.splits if_splits)
-         apply (metis prod.exhaust sumE)
-        apply (clarsimp simp add: BENQ_def ran_def split: sum.splits if_splits)
-        apply (metis prod.exhaust sumE)
+         apply (simp add: ran_comp_wire BENQ_def)
+        apply (simp add: ran_loop_wire BENQ_def)
         done
       subgoal for p d t
         apply (subgoal_tac \<open>p = 0\<close>)
@@ -1053,9 +1068,8 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply (rule loop_op_buf_cong[OF refl])
          apply (rule arg_cong[where f=\<open>map_op _ _\<close>])
          apply (rule comp_op_buf_cong[OF refl refl refl])
-         apply (clarsimp simp add: BTL_def ran_def split: sum.splits if_splits)
-         apply (metis prod.exhaust sumE)
-        apply (clarsimp simp add: BTL_def ran_def split: sum.splits if_splits)
+         apply (simp add: ran_comp_wire BTL_def)
+        apply (simp add: ran_loop_wire BTL_def)
         done
       subgoal for os_input'
         apply (clarsimp simp add: ooo_input_op_logic_def split: llist.splits event.splits)
@@ -1237,7 +1251,71 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
           apply (simp add: dataflow_tree_to_operator_def os_inv(4))
           done
         done
-      subgoal sorry
+      subgoal for d t xs
+        apply (intro exI conjI)
+         apply (rule rtranclp.rtrancl_refl)
+        apply (intro relcomppI)
+          apply (rule bisim_refl)
+         defer
+         apply (rule wbisim_refl)
+        apply (rule wb_upto_b_base)
+        apply (unfold R_def[simplified])
+        apply (rule exI[of _ S])
+        apply (rule exI[of _ D])
+        apply (rule exI[of _ lxs])
+        apply (rule exI[of _ \<open>os(1 := (os 1)\<lparr>outpu := (outpu (os 1))(1 := xs)\<rparr>)\<close>])
+        apply (rule exI[of _ \<open>os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := xs)\<rparr>\<close>])
+        apply (rule exI[of _ \<open>BENQ (2, 1) (d, t) cbufs\<close>])
+        apply (rule exI[of _ sg])
+        apply (intro conjI)
+                         apply (clarsimp simp add: dataflow_tree_to_operator_def os_inv(1)
+            intro!: arg_cong[where f=\<open>set_op _ _\<close>] arg_cong[where f=\<open>dataflow_op _\<close>]
+            arg_cong[where f=\<open>map_op _ _\<close>])
+                         apply (rule comp_op_buf_cong[OF refl refl])
+                          apply (rule loop_op_buf_cong[OF refl])
+                           apply (rule arg_cong[where f=\<open>map_op _ _\<close>])
+                           apply (rule comp_op_buf_cong[OF refl refl refl])
+                           apply (simp add: ran_comp_wire)
+                          apply (simp add: ran_loop_wire BENQ_def)
+                         apply (clarsimp simp add: BENQ_def ran_def split: sum.splits)
+                         apply (metis obj_sumE prod.exhaust)
+                        apply (simp add: cimage_cUn csets_inv buffers_inv outputs_at_target_raw_summary subgraph_inv(1) os_inv(1,4) operator_state.defs(3) BENQ_def BULK_BENQ_def all_edges_def all_vertices_def neighbors_def)
+                       apply (rule subgraph_inv(1))
+                      apply (rule subgraph_inv(2))
+                     apply (simp add: os_inv(2))
+                    apply (simp add: os_inv(3))
+                   apply (simp add: os_inv(4) operator_state.defs(3))
+        using os_inv(1,5) apply (simp add: BENQ_def ty1_check_def)
+        using os_inv(6) apply (simp add: BENQ_def label_prob_ty2_check_def)
+        using os_inv(7) apply simp
+               apply (rule dataplane_tracker_inv_update_outputs[OF dataplane_inv _ _ _ _ G, where nid=1 and p=1 and xs=\<open>[(d, t)]\<close>])
+                  apply (simp add: os_inv(4) operator_state.defs(3))
+                 apply (simp add: fun_upd_def)
+                apply (simp add: BENQ_def)
+               apply (simp add: subgraph_inv(1) raw_summary_def antichain_from_list_singleton)
+              apply (simp add: input_stream_inv)
+        subgoal
+          using label_prop_inv
+          by (simp add: all_edges_def all_vertices_def min_label_def neighbors_def labels_inv_def labels_stable_def)
+        subgoal premises aux
+          apply safe
+          using label_prop_inv(2)
+          by (simp add: all_edges_def all_vertices_def min_label_def neighbors_def labels_inv_def labels_stable_def)
+        subgoal premises aux
+          using label_prop_inv(3)
+          by auto
+        subgoal premises aux
+          using label_prop_inv(4)
+          by (simp add: buffers_inv BENQ_def BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1))
+        subgoal premises aux
+          using label_prop_inv(5)
+          unfolding label_prop_upd_inv_def
+          by (auto del: disjCI)
+        subgoal premises aux
+          using label_prop_inv(6)
+          unfolding input_ocaps_inv_def
+          by auto
+        done
       subgoal sorry
       subgoal for os'
         unfolding label_propagation_op_logic_def trace_simp
