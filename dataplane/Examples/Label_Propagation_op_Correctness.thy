@@ -762,10 +762,266 @@ proof (insert assms, hypsubst_thin, coinduction arbitrary: buf buf' op rule: op.
   ultimately show ?case by (fastforce simp add: rel_set_def R_def)
 qed
 
+(* FIXME: move me *)
+lemma step_Tau_pow_eqI:
+  "op = op' \<Longrightarrow> (step Tau)\<^sup>*\<^sup>* op op'"
+  by auto
+
+lemma loop_move_all_data:
+  assumes I: "intsum (os 2) = increment_summary (MyPair 0 1)"
+    and N: "initia (os 2)"
+    and C1: "ocaps (os 2) 1 = map (\<lambda> (d, t). t + MyPair 0 1) (input (os 2) 1)"
+  shows  "(step Tau)\<^sup>*\<^sup>*
+     (loop_op loop_wire (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))
+       (comp_map
+         (comp_op
+           comp_wire
+           (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))
+           (logic_map (1 :: 3) (label_propagation_op (os_label_prop :: (nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state)))
+           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) ((os 2) :: (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state))))))
+       (loop_op loop_wire ((case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))(Inr (2,1) := [], Inr (1,1) := []))
+       (comp_map
+         (comp_op
+           comp_wire
+           ((case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))(Inr (2,1) := [], Inr (1,1) := []))
+           (logic_map (1 :: 3) (label_propagation_op (fold (\<lambda>(d, t) os. consumes os 1 t d) (map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0))) (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1))
+                 (fold (\<lambda>(d, t) os. consumes os 1 t d) (outpu (os 2) 1) (fold (\<lambda>(d, t) os. consumes os 1 t d) (cbufs (1, 1)) (os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := [])\<rparr>))))))
+           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) (((drop_caps
+                 (produces (fold (\<lambda>(d, t) os. consumes os 1 t d) (outpu os_label_prop 1) (fold (\<lambda>(d, t) os. consumes os 1 t d) (cbufs (2, 1)) (os 2)))
+                   (map (\<lambda>x. (fst x, Cap (snd x -+- MyPair 0 (Suc 0)) 1)) (input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1)))
+                 (map (\<lambda>t. Cap t 1) (ocaps (os 2) 1 @ concat (map (\<lambda>(d, t). [t -+- MyPair 0 (Suc 0)]) (cbufs (2, 1) @ outpu os_label_prop 1)))))\<lparr>outpu := (outpu (os 2))(1 := []), input := (input (os 2))(1 := [])\<rparr>)))))))"
+  apply (cases "input (os 2) 1 @ cbufs (2, 1) @ outpu os_label_prop 1")
+  subgoal premises prems
+    apply (cases "cbufs (1, 1) @ outpu (os 2) 1")
+    subgoal
+      using prems apply -
+      apply (clarsimp simp add: produces_def C1 drop_caps_def)
+      apply (subst comp_op_buf_cong[where buf'="case_sum (\<lambda>x. []) ((\<lambda>x. map Inr (cbufs x))((2, 1) := [], (1, 1) := []))"])
+          apply (rule refl)+
+      subgoal
+        apply (clarsimp simp add: prems increment_op_def op.set_map(1) ran_def split: sum.splits option.splits if_splits)
+        done
+      apply (subst loop_op_buf_cong[where buf'="(case_sum (\<lambda>x. []) ((\<lambda>x. map Inr (cbufs x))((2, 1) := [], (1, 1) := [])))"])
+         apply (rule refl)+
+      subgoal
+        by (auto simp add: op.set_map(1) ran_def split: sum.splits option.splits if_splits)
+      apply (rule step_Tau_pow_eqI)
+      apply (rule arg_cong2[where f="loop_op loop_wire"])
+       apply simp
+      apply (rule arg_cong[where f=comp_map])
+      apply (rule arg_cong3[where f="comp_op comp_wire"])
+        apply simp
+      subgoal
+        using prems apply -
+        apply clarsimp
+        apply (rule arg_cong[where f="logic_map 1"])
+        apply (rule arg_cong[where f="label_propagation_op"])
+        apply (auto simp add: fold_consumes produ_consumes_fold inter_consumes_fold consu_consumes_fold intsum_consumes_fold intro!: operator_state_eqI )
+        done
+      apply (rule arg_cong[where f="logic_map 2"])
+      apply (rule arg_cong[where f="increment_op 1 1 (MyPair 0 (Suc 0))"])
+      using prems apply -
+      apply (auto simp add: produces_def drop_caps_def C1 intro!: operator_state_eqI)
+      done
+    subgoal premises prems2
+      apply (rule rtranclp_trans)
+       apply (rule relpowp_imp_rtranclp[where n="length (outpu (os 2) 1)"]) 
+       apply (rule step_tau_Out_pow_loop_op_steps_intro[where xs="map Inr (outpu (os 2) 1)"])
+          apply (rule steps_map_op[where xs="map (\<lambda> x. Out (Inr _) (Inr x)) ( outpu (os 2) 1)"])
+            apply (rule refl)+
+           apply force
+          apply (rule steps_comp_op_R_Out[where xs="map Inr ( outpu (os 2) 1)"])
+             apply (rule steps_map_op[where xs="map (\<lambda> x. Out _ (_ x)) ( outpu (os 2) 1)"])
+               apply (rule refl)+
+              apply force
+             apply (rule steps_increment_op_Write_Some[where ys=Nil])
+               apply simp
+              apply (rule refl)+
+          apply simp
+          apply blast
+         apply simp
+        apply simp
+       apply (rule refl)+
+
+      apply (rule rtranclp_trans)
+       apply (rule relpowp_imp_rtranclp[where n="length (cbufs (1, 1)) + length (outpu (os 2) 1)"]) 
+       apply (rule step_tau_Inp_pow_loop_op_steps_intro[where p="Inr (1, 1)" and xs="map Inr (cbufs (1, 1) @ outpu (os 2) 1)"])
+            apply (rule steps_map_op[where xs="map (\<lambda> x. Inp (Inl _) (Inr x)) (cbufs (1, 1) @ outpu (os 2) 1)"])
+              apply (rule refl)+
+             apply force
+            apply (rule steps_comp_op_L_Inp[where p="Inr (1, 1)" and xs="map Inr (cbufs (1, 1) @ outpu (os 2) 1)"])
+               apply (rule steps_map_op[where xs="map (\<lambda> x. Inp (Some 1) (Inr x)) (cbufs (1, 1) @ outpu (os 2) 1)"])
+                 apply (rule refl)+
+                apply simp
+               apply blast
+              apply (rule refl)+
+            apply (simp add: prems2)
+           apply simp
+      subgoal
+        by (auto simp add: ran_def split: sum.splits)
+         apply (simp add: BULK_BENQ_def)
+        apply (simp add: BULK_BENQ_def)
+       apply (rule refl)+
+
+      apply (simp add: BULK_BENQ_def)
+      apply (subst loop_op_buf_cong[where buf'="(case_sum (\<lambda>x. []) ((\<lambda>x. map Inr (cbufs x))((2, 1) := [], (1, 1) := [])))"])
+         apply (rule refl)+
+      subgoal
+        by (auto simp add: op.set_map(1) ran_def split: sum.splits option.splits if_splits)
+      apply (rule step_Tau_pow_eqI)
+      apply (rule arg_cong2[where f="loop_op loop_wire"])
+       apply simp
+      apply (rule arg_cong[where f=comp_map])
+      apply (subst comp_op_buf_cong[where buf'="case_sum (\<lambda>x. []) ((\<lambda>x. map Inr (cbufs x))((2, 1) := [], (1, 1) := []))"])
+          apply (rule refl)+
+      subgoal
+        apply (clarsimp simp add: prems2 prems increment_op_def op.set_map(1) ran_def split: sum.splits option.splits if_splits)
+        using prems apply blast
+        done
+      apply (rule arg_cong3[where f="comp_op comp_wire"])
+        apply simp
+      subgoal
+        using prems apply -
+        apply clarsimp
+        apply (rule arg_cong[where f="logic_map 1"])
+        apply (rule arg_cong[where f="label_propagation_op"])
+        apply (auto simp add: fold_consumes produ_consumes_fold inter_consumes_fold consu_consumes_fold intsum_consumes_fold intro!: operator_state_eqI )
+        done
+      subgoal
+        apply (rule arg_cong[where f="logic_map 2"])
+        apply (rule arg_cong[where f="increment_op 1 1 (MyPair 0 (Suc 0))"])
+        using prems apply -
+        apply (auto simp add: produces_def drop_caps_def C1 intro!: operator_state_eqI)
+        done
+      done
+    done
+  subgoal premises prems for x xs
+    apply (rule rtranclp_trans)
+     apply (rule relpowp_imp_rtranclp[where n="length (outpu (os_label_prop) 1)"]) 
+     apply (rule step_taus_loop_op_steps_intro)
+      apply (rule step_tau_pow_map_op)
+      apply (rule step_tau_Out_pow_comp_op_steps_intro[where xs="map Inr (outpu (os_label_prop) 1)" and p="Inr (1, 1)"])
+         apply (rule steps_map_op[where xs="map (\<lambda> x. Out (Some 1) (Inr x)) (outpu (os_label_prop) 1)"])
+           apply (rule refl)+
+          apply simp
+         apply (rule steps_label_propagation_op_Write_Some[where ys=Nil])
+           apply simp
+          apply (rule refl)+
+        apply simp
+       apply simp
+      apply (rule refl)+
+
+    apply (rule rtranclp_trans)
+     apply (rule relpowp_imp_rtranclp[where n="length (cbufs (2, 1)) + length (outpu (os_label_prop) 1)"]) 
+     apply (rule step_taus_loop_op_steps_intro)
+      apply (rule step_tau_pow_map_op)
+      apply (rule step_tau_Inp_pow_comp_op_steps_intro[where xs="map Inr (cbufs (2, 1) @ outpu (os_label_prop) 1)" and p="Inr (2, 1)"])
+           apply (rule steps_map_op[where xs="map (\<lambda> x. Inp (Some 1) (Inr x)) (cbufs (2, 1) @ outpu (os_label_prop) 1)"])
+             apply (rule refl)+
+            apply simp
+           apply (rule steps_increment_op_Read_Some)
+            apply (rule refl)+
+          apply simp
+         apply simp
+        apply (simp add: BULK_BENQ_def)
+       apply (simp add: BULK_BENQ_def)
+      apply (rule refl)+
+
+    apply (rule converse_rtranclp_into_rtranclp) 
+     apply (rule step_Tau_loop_op)
+      apply (rule step_map_op)
+       apply (rule step_comp_op_R_Tau)
+         apply (rule step_map_op)
+          apply (rule step_increment_op_Silent)
+    subgoal
+      apply (clarsimp simp add: C1 I prems intsum_consumes_fold split: prod.splits)
+      apply (metis eq_Nil_appendI list.set_intros(1) neq_Nil_conv prems prod.exhaust)
+      done
+                apply (rule refl)+
+           apply (simp add: N)
+          apply (rule refl)+
+         apply simp
+        apply (rule refl)+
+      apply simp
+     apply (rule refl)+
+    apply (simp flip: map_append)
+
+    apply (rule rtranclp_trans)
+     apply (rule rtranclp_trans)
+      apply (rule relpowp_imp_rtranclp[where n="length (input (os 2) 1) + length (outpu (os 2) 1) + length (cbufs (2, 1)) + length (outpu (os_label_prop) 1)"]) 
+      apply (rule step_tau_Out_pow_loop_op_steps_intro[where xs="map Inr (outpu (os 2) 1) @ map (\<lambda>(d, t). Inr (d, t -+- MyPair 0 (Suc 0))) (input (os 2) 1 @ cbufs (2, 1) @ outpu (os_label_prop) 1)"])
+         apply (rule steps_map_op[where xs="map (\<lambda> x. Out (Inr _) (Inr x)) (outpu (os 2) 1) @ map (\<lambda>(d, t). Out (Inr _) (Inr (d, t -+- MyPair 0 (Suc 0)))) (input (os 2) 1 @ cbufs (2, 1) @ outpu (os_label_prop) 1) "])
+           apply (rule refl)+
+          apply force
+         apply (rule steps_comp_op_R_Out[where xs="map Inr (outpu (os 2) 1) @ map (\<lambda>(d, t). Inr (d, t -+- MyPair 0 (Suc 0))) (input (os 2) 1 @ cbufs (2, 1) @ outpu (os_label_prop) 1)"])
+            apply (rule steps_map_op[where xs="map (\<lambda> x. Out (Some 1) (Inr x)) ( outpu (os 2) 1) @ map (\<lambda>(d, t). Out (Some 1) (Inr (d, t -+- MyPair 0 (Suc 0)))) (input (os 2) 1 @ cbufs (2, 1) @ outpu (os_label_prop) 1)"])
+              apply (rule refl)+
+             apply force
+            apply (rule steps_increment_op_Write_Some[where ys=Nil])
+              apply simp
+             apply (rule refl)+
+            apply simp
+            apply (simp add: comp_def split_beta filter_True input_fold_consumes)
+           apply (rule refl)+
+         apply force
+        apply simp
+       apply simp
+      apply (rule refl)+
+     apply (simp flip: map_append)
+
+     apply (rule relpowp_imp_rtranclp[where n="length (cbufs (1, 1)) + length (outpu (os 2) 1) + length (input (os 2) 1) + length (cbufs (2, 1)) + length (outpu (os_label_prop) 1)"]) 
+     apply (rule step_tau_Inp_pow_loop_op_steps_intro[where p="Inr (1, 1)" and xs="map Inr (cbufs (1, 1) @ outpu (os 2) 1 @ map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0))) (input (os 2) 1 @ cbufs (2, 1) @ outpu (os_label_prop) 1))"])
+          apply (rule steps_map_op[where xs="map (\<lambda> x. Inp (Inl _) (Inr x)) (cbufs (1, 1) @ outpu (os 2) 1) @ map (\<lambda>(d, t). Inp (Inl _) (Inr (d, t -+- MyPair 0 (Suc 0)))) (input (os 2) 1 @ cbufs (2, 1) @ outpu (os_label_prop) 1)"])
+            apply (rule refl)+
+           apply force
+          apply (rule steps_comp_op_L_Inp[where p="Inr (1, 1)" and xs="map Inr (cbufs (1, 1) @ outpu (os 2) 1 @ map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0))) (input (os 2) 1 @ cbufs (2, 1) @ outpu (os_label_prop) 1))"])
+             apply (rule steps_map_op[where xs="map (\<lambda> x. Inp (Some 1) (Inr x)) (cbufs (1, 1) @ outpu (os 2) 1 @ map (\<lambda>(d, t). (d, t -+- MyPair 0 (Suc 0))) (input (os 2) 1 @ cbufs (2, 1) @ outpu (os_label_prop) 1))"])
+               apply (rule refl)+
+              apply simp
+             apply blast
+            apply (rule refl)+
+          apply simp
+    subgoal
+      by (simp add: prems split: prod.splits)
+         apply simp
+    subgoal
+      by (auto simp add: ran_def split: sum.splits)
+    subgoal
+      by (simp add: BULK_BENQ_def)
+    subgoal
+      by (auto simp add: ran_def BULK_BENQ_def)
+     apply (rule refl)+
+    apply (simp flip: map_append concat_append filter_append add: I intsum_consumes_fold comp_def split_beta filter_True filter_False input_fold_consumes)
+    apply (rule step_Tau_pow_eqI)
+    apply (subst loop_op_buf_cong[where buf'="(case_sum (\<lambda>x. []) ((\<lambda>x. map Inr (cbufs x))((2, 1) := [], (1, 1) := [])))"])
+       apply (rule refl)+
+    subgoal
+      apply (clarsimp simp add: op.set_map(1) ran_def split: sum.splits option.splits if_splits)
+      using prems apply (force simp add: prems BULK_BENQ_def op.set_map(1) ran_def split: sum.splits option.splits if_splits)+
+      done
+    apply (subst comp_op_buf_cong[where buf'="case_sum (\<lambda>x. []) ((\<lambda>x. map Inr (cbufs x))((2, 1) := [], (1, 1) := []))"])
+        apply (rule refl)+
+    subgoal
+      apply (clarsimp simp add: op.set_map(1) ran_def split: sum.splits option.splits if_splits)
+      using prems apply (force simp add: prems BULK_BENQ_def op.set_map(1) ran_def split: sum.splits option.splits if_splits)+
+      done
+    apply (rule arg_cong2[where f="loop_op loop_wire"])
+     apply simp
+    apply (rule arg_cong[where f=comp_map])
+    apply (rule arg_cong3[where f="comp_op comp_wire"])
+      apply simp
+     apply simp
+    apply (rule arg_cong[where f="logic_map 2"])
+    apply (rule arg_cong[where f="increment_op 1 1 (MyPair 0 (Suc 0))"])
+    using prems apply -
+    apply (auto simp add: prems  produces_def drop_caps_def C1 intro!: operator_state_eqI split: if_splits)
+    apply (rule ext)+
+    apply (auto simp add: filter_empty_conv)
+    done
+  done
 
 
-
-lemma
+lemma loop_op_label_propagation_op_increment_op:
   fixes  os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
     and os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
     and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
@@ -811,6 +1067,7 @@ lemma
      apply (rule rtranclp_trans)
     using prems
     oops
+
 
 lemma label_propagation_correctness:
   fixes lxs :: \<open>((nat, nat) myprod, nat \<times> nat) event llist\<close>
@@ -991,29 +1248,29 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
                             defer
                             apply (rule refl)
         using subgraph_inv(1) apply simp
-                            apply (simp_all add: operator_state.defs(3) subgraph_inv(2) os_inv)
-                      apply (simp add: consumes_def add_caps_def BENQ_def)
-                      apply (intro conjI)
-                          apply (simp add: raw_summary_def fun_eq_iff)
-                         apply (rule refl)
+                           apply (simp_all add: operator_state.defs(3) subgraph_inv(2) os_inv)
+                     apply (simp add: consumes_def add_caps_def BENQ_def)
+                     apply (intro conjI)
+                         apply (simp add: raw_summary_def fun_eq_iff)
                         apply (rule refl)
                        apply (rule refl)
                       apply (rule refl)
+                     apply (rule refl)
         using os_inv(1,5)
-                     apply (simp add: ty1_check_def operator_state.defs(3) BTL_def)
-                     apply blast
+                    apply (simp add: ty1_check_def operator_state.defs(3) BTL_def)
+                    apply blast
         using os_inv(1,4-6)
-                    apply (simp add: ty1_check_def label_prob_ty2_check_def operator_state.defs(3) BTL_def BHD_def)
-                    apply (erule conjE)
-                    apply (rotate_tac 9)
-                    apply (drule spec[of _ 0])
-                    apply (simp add: Ball_def)
-                    apply (meson img_fst in_fst_imageE in_set_tlD)
-                   apply (rule dataplane_tracker_inv_consumes[OF dataplane_inv _ D G, where xs=\<open>tl (cbufs (1, p))\<close>])
-                   apply (simp add: BHD_def)
-                  apply (simp add: csets_inv(1) buffers_inv os_inv(4,7) operator_state.defs(3) consumes_def)
-                 apply (simp add: csets_inv(2))
-                apply (rule input_stream_inv)
+                   apply (simp add: ty1_check_def label_prob_ty2_check_def operator_state.defs(3) BTL_def BHD_def)
+                   apply (erule conjE)
+                   apply (rotate_tac 9)
+                   apply (drule spec[of _ 0])
+                   apply (simp add: Ball_def)
+                   apply (meson img_fst in_fst_imageE in_set_tlD)
+                  apply (rule dataplane_tracker_inv_consumes[OF dataplane_inv _ D G, where xs=\<open>tl (cbufs (1, p))\<close>])
+                  apply (simp add: BHD_def)
+                 apply (simp add: csets_inv(1) buffers_inv os_inv(4,7) operator_state.defs(3) consumes_def)
+                apply (simp add: csets_inv(2))
+               apply (rule input_stream_inv)
         using label_prop_inv(1) apply (simp add: os_inv(4,7) operator_state.defs(3))
         using label_prop_inv(2) apply (simp add: os_inv(4,7) operator_state.defs(3) consumes_def)
         subgoal

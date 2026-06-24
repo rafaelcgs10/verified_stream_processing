@@ -256,6 +256,51 @@ lemma step_builder_op_n_Silents[intro]:
     done
   done
 
+
+subsection \<open>Inputs of builder_op\<close>
+
+
+
+lemma inputs_builder_op:
+  assumes \<open>sub_op (Read p f) (builder_op fb ips ops os logic) n\<close>
+  shows \<open>p = None \<or> (\<exists>ip. p = Some ip \<and> ip |\<in>| ips)\<close>
+  using assms
+proof (induct p \<open>builder_op fb ips ops os logic\<close> arbitrary: fb ips ops os logic rule: sub_op_Read_induct)
+  case (Read1 f p)
+  then show ?case
+    by (subst (asm) builder_op.code) (auto split: if_splits option.splits list.splits sum.splits)
+next
+  case (Read2 p p' f x d g)
+  then show ?case
+    by (subst (asm) builder_op.code) (auto split: if_splits option.splits list.splits sum.splits)
+next
+  case (Write p p' op' x d g)
+  then show ?case
+    by (subst (asm) builder_op.code) (auto split: if_splits option.splits list.splits sum.splits)
+next
+  case (Silent p op' d)
+  then show ?case
+    by (subst (asm) builder_op.code) (auto split: if_splits option.splits list.splits sum.splits)
+next
+  case (Choice p choices d g)
+  then show ?case
+  apply -
+    apply (subst (asm) (2) builder_op.code)
+    apply (auto 0 0 simp add: obtain_progress_def split: if_splits list.splits sum.splits prod.splits)
+    apply (meson Suc_lessD lessI)+
+    done
+qed
+
+lemma inputs_builder_op_le:
+  \<open>inputs (builder_op fb ips ops os logic) \<subseteq> {p. p = None \<or> (\<exists>ip. p = Some ip \<and> ip |\<in>| ips)}\<close>
+  using inputs_builder_op inputs_sub_op_Read subsetI
+  by (metis (mono_tags, lifting) mem_Collect_eq)
+
+lemma inputs_builder_op_le_alt[dest!]:
+  \<open>p \<in> inputs (builder_op fb ips ops os logic) \<Longrightarrow> p = None \<or> (\<exists>ip. p = Some ip \<and> ip |\<in>| ips)\<close>
+  using set_mp[OF inputs_builder_op_le, simplified] by fastforce
+
+
 definition notifier_op where
   "notifier_op ips ops os logic = (builder_op True ips ops os
    (\<lambda> os. logic os (\<lambda> p. filter (\<lambda> t. \<not> frontier_less_equal (front os p) t) (ocaps os p))))"
