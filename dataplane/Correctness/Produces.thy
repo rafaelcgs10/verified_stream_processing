@@ -1468,6 +1468,81 @@ lemma dataplane_tracker_inv_clean_input:
     produ_consu_inter_supported_def
   by (auto split: prod.splits cong: if_cong)
 
+lemma dataplane_tracker_inv_produce_singleton:
+  fixes p :: \<open>'p :: {enum, linorder}\<close>
+  assumes \<open>dataflow_topology (summ sg) (-+-)\<close> \<open>graph_summar_nt (summ sg) (subgraph.nxt sg) os\<close>
+    \<open>subgraph.nxt sg = graph_to_nxt (summ sg)\<close> \<open>dataplane_tracker_inv os cbufs sg\<close>
+    \<open>t \<in> set (ocaps (os nid) p)\<close> \<open>os' = os(nid := produce (os nid) (Cap t p) [x])\<close>
+  shows \<open>dataplane_tracker_inv os' cbufs sg\<close>
+proof -
+  let ?produs = \<open>[(p, t, 1)]\<close>
+  let ?oputs = \<open>(\<lambda>_. [])(p := [(x, t)])\<close>
+  have \<open>\<forall>p. snd ` set (?oputs p) \<subseteq> set (ocaps (os nid) p)\<close> using assms(5) by fastforce
+  moreover have \<open>\<forall>p. to_zmset (map snd (?oputs p))
+  = zmset (map snd (filter (\<lambda>x. p = fst x) ?produs))\<close> by (simp add: update_zmultiset_singleton(2))
+  ultimately have \<open>dataplane_tracker_inv (os(nid := (os nid)\<lparr>
+  outpu := \<lambda>p. outpu (os nid) p @ ?oputs p,
+  produ := produ (os nid) @ ?produs,
+  inter := inter (os nid) @ concat (map (\<lambda>(_ :: 'p). []) enum_class.enum)\<rparr>))
+  cbufs sg\<close> (is \<open>dataplane_tracker_inv ?os' _ _\<close>)
+    using dataplane_tracker_inv_produces_drops[OF assms(1) refl refl refl refl refl _ _ _ _ assms(2-4),
+        where nid=nid and drops=\<open>\<lambda>_. []\<close> and produs=\<open>?produs\<close> and oputs=\<open>?oputs\<close>]
+    by (simp add: assms(5))
+  moreover have \<open>?os' = os'\<close> by (simp add: assms(6) produce_def fun_eq_iff split: if_splits)
+  ultimately show ?thesis by blast
+qed
+
+lemma dataplane_tracker_inv_drop_caps_all:
+  assumes \<open>dataflow_topology (summ sg) (-+-)\<close> \<open>graph_summar_nt (summ sg) (subgraph.nxt sg) os\<close>
+    \<open>subgraph.nxt sg = graph_to_nxt (summ sg)\<close> \<open>dataplane_tracker_inv os cbufs sg\<close>
+    \<open>os' = os(nid := drop_caps (os nid) (map (\<lambda>t. Cap t p) (ocaps (os nid) p)))\<close>
+  shows \<open>dataplane_tracker_inv os' cbufs sg\<close>
+proof -
+  let ?drops = \<open>(\<lambda>_. [])(p := ocaps (os nid) p)\<close>
+  let ?f = \<open>\<lambda>p'. map (\<lambda>os. (p', os, - 1)) (?drops p')\<close>
+  have \<open>dataplane_tracker_inv (os(nid := (os nid)\<lparr>
+  ocaps := \<lambda>p'. list_diff (ocaps (os nid) p') (?drops p'),
+  input := \<lambda>p'. filter (\<lambda>(_, t). t \<notin> set (?drops p')) (input (os nid) p'),
+  inter := inter (os nid) @ concat (map ?f Enum.enum)\<rparr>))
+  cbufs sg\<close> (is \<open>dataplane_tracker_inv ?os' _ _\<close>)
+    using dataplane_tracker_inv_produces_drops[OF assms(1) refl refl refl refl refl _ _ _ _ assms(2-4),
+        where nid=nid and drops=\<open>?drops\<close> and produs=Nil and oputs=\<open>\<lambda>_. []\<close>] by force
+  moreover have \<open>ocaps (?os' nid) = ocaps (os' nid)\<close>
+    by (simp add: assms(5) fun_eq_iff ocaps_drop_caps_all)
+  moreover have \<open>inter (?os' nid) = inter (os' nid)\<close>
+    using concat_map_empty_except_1[OF Enum.enum_distinct, where f=\<open>?f\<close> and x=p]
+    by (simp add: assms(5) drop_caps_def comp_def)
+  ultimately show ?thesis
+    using dataplane_tracker_inv_clean_input[where os=\<open>?os'\<close> and os'=os'] assms(5) by fastforce
+qed
+
+lemma dataplane_tracker_inv_drop_cap:
+  fixes p :: \<open>'p :: {enum, linorder}\<close>
+  assumes \<open>dataflow_topology (summ sg) (-+-)\<close> \<open>graph_summar_nt (summ sg) (subgraph.nxt sg) os\<close>
+    \<open>subgraph.nxt sg = graph_to_nxt (summ sg)\<close> \<open>dataplane_tracker_inv os cbufs sg\<close>
+    \<open>t \<in> set (ocaps (os nid) p)\<close> \<open>os' = os(nid := drop_cap (os nid) (Cap t p))\<close>
+  shows \<open>dataplane_tracker_inv os' cbufs sg\<close>
+proof -
+  let ?drops = \<open>(\<lambda>_. [])(p := [t])\<close>
+  let ?f = \<open>\<lambda>p'. map (\<lambda>os. (p', os, - 1)) (?drops p')\<close>
+  have \<open>dataplane_tracker_inv (os(nid := (os nid)\<lparr>
+  ocaps := \<lambda>p'. list_diff (ocaps (os nid) p') (?drops p'),
+  input := \<lambda>p'. filter (\<lambda>(_, t). t \<notin> set (?drops p')) (input (os nid) p'),
+  inter := inter (os nid) @ concat (map ?f Enum.enum)\<rparr>))
+  cbufs sg\<close> (is \<open>dataplane_tracker_inv ?os' _ _\<close>)
+    using dataplane_tracker_inv_produces_drops[OF assms(1) refl refl refl refl refl _ _ _ _ assms(2-4),
+        where nid=nid and drops=\<open>?drops\<close> and produs=Nil and oputs=\<open>\<lambda>_. []\<close>]
+    by (simp add: assms(5))
+  moreover have \<open>ocaps (?os' nid) = ocaps (os' nid)\<close>
+    by (simp add: assms(6) fun_eq_iff drop_cap_def)
+  moreover have \<open>inter (?os' nid) = inter (os' nid)\<close>
+    using concat_map_empty_except_1[OF Enum.enum_distinct, where f=\<open>?f\<close> and x=p]
+    by (simp add: assms(6) drop_cap_def)
+  ultimately show ?thesis
+    using dataplane_tracker_inv_clean_input[where os=\<open>?os'\<close> and os'=os' and sg=sg]
+    by (simp add: assms(6) drop_cap_def)
+qed
+
 lemma change_multiplicities_cons_to_middle:
   "change_multiplicities su (x # ys1 @ ys2) c = change_multiplicities su (ys1 @ x # ys2) c"
 proof -

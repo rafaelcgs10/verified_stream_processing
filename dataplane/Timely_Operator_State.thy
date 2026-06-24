@@ -356,6 +356,11 @@ lemma initia_drop_caps[simp]:
   unfolding drop_caps_def
   by auto
 
+lemma ocaps_drop_caps_all:
+  \<open>ocaps (drop_caps os (map (\<lambda>t. Cap t p) (ocaps os p))) p = []\<close>
+  \<open>p' \<noteq> p \<Longrightarrow> ocaps (drop_caps os (map (\<lambda>t. Cap t p) (ocaps os p))) p' = ocaps os p'\<close>
+  unfolding drop_caps_def filter_map by (simp_all add: comp_def filter_True filter_False)
+
 lemma front_produces[simp]:
   "front (produces os batch) = front os"
   unfolding produces_def

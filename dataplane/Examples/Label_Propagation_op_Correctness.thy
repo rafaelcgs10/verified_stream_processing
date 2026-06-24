@@ -20,14 +20,31 @@ imports
   Dataplane.SimulationProofMethods
 begin
 
-abbreviation "loop_wire \<equiv> (case_sum (\<lambda>_. None) (\<lambda>(nid, p). case if nid = 2 \<and> p = 1 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (Inr (1 + offset, q))))"
-abbreviation "comp_wire \<equiv> (case_sum (\<lambda>_. None) (\<lambda>(nid, p). case if nid = 1 \<and> p = 1 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (Inr (1 + 1 + offset, q))))"
+abbreviation "(loop_wire :: 3 + 3 \<times> 2 \<Rightarrow> (3 + 3 \<times> 2) option) \<equiv> (case_sum (\<lambda>_. None) (\<lambda>(nid, p). case if nid = 2 \<and> p = 1 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (Inr (1 + offset, q))))"
+abbreviation "(comp_wire :: 3 + 3 \<times> 2 \<Rightarrow> (3 + 3 \<times> 2) option) \<equiv> (case_sum (\<lambda>_. None) (\<lambda>(nid, p). case if nid = 1 \<and> p = 1 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (Inr (1 + 1 + offset, q))))"
 
+lemma ran_loop_wire:
+  \<open>ran loop_wire = {Inr (1, 1)}\<close>
+proof -
+  have \<open>loop_wire (Inr (2, 1)) = Some (Inr (1, 1))\<close> by simp
+  moreover have \<open>loop_wire x = None\<close> if \<open>x \<noteq> Inr (2, 1)\<close> for x by (cases x; clarsimp simp add: that)
+  ultimately show ?thesis unfolding ran_def
+    using Collect_cong Set.empty_def insert_Collect option.simps(1,2) by (smt (verit, del_insts))
+qed
+
+lemma ran_comp_wire:
+  \<open>ran comp_wire = {Inr (2, 1)}\<close>
+proof -
+  have \<open>comp_wire (Inr (1, 1)) = Some (Inr (2, 1))\<close> by simp
+  moreover have \<open>comp_wire x = None\<close> if \<open>x \<noteq> Inr (1, 1)\<close> for x by (cases x; clarsimp simp add: that)
+  ultimately show ?thesis unfolding ran_def
+    using Collect_cong Set.empty_def insert_Collect option.simps(1,2) by (smt (verit, del_insts))
+qed
 
 (* Note: this is basically lemma comp_op_chns_invar from dataplane_dis:dataplane/Comp_Reasoning.thy *)
 lemma comp_op_buf_cong:
   assumes \<open>wire' = wire\<close> \<open>op1' = op1\<close> \<open>op2' = op2\<close> \<open>\<forall>p \<in> inputs op2 \<inter> ran wire. buf' p = buf p\<close>
-  shows \<open>comp_op wire buf op1 op2 = comp_op wire buf' op1 op2\<close>
+  shows \<open>comp_op wire buf op1 op2 = comp_op wire' buf' op1' op2'\<close>
   sorry
 
 (* release_caps os p only removes from ocaps p those timestamps that have no matching
@@ -1219,15 +1236,13 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply (rule loop_op_buf_cong[OF refl])
          apply (rule arg_cong[where f=\<open>map_op _ _\<close>])
          apply (rule comp_op_buf_cong[OF refl refl refl])
-         apply (clarsimp simp add: BENQ_def ran_def split: sum.splits if_splits)
-         apply (metis prod.exhaust sumE)
-        apply (clarsimp simp add: BENQ_def ran_def split: sum.splits if_splits)
-        apply (metis prod.exhaust sumE)
+         apply (simp add: ran_comp_wire BENQ_def)
+        apply (simp add: ran_loop_wire BENQ_def)
         done
       subgoal for p d t
         apply (subgoal_tac \<open>p = 0\<close>)
          defer
-         apply (clarsimp simp add: ran_def split: sum.splits if_splits dest!: num2_neq(2))
+         apply (clarsimp simp add: ran_loop_wire dest!: num2_neq(2))
         apply (intro exI conjI relcomppI)
            apply (rule rtranclp.rtrancl_refl)
           apply (rule bisim_refl)
@@ -1310,13 +1325,300 @@ proof (coinduction arbitrary: S SO SP D lxs os os_input os_label_prop cbufs chns
         apply (rule loop_op_buf_cong[OF refl])
          apply (rule arg_cong[where f=\<open>map_op _ _\<close>])
          apply (rule comp_op_buf_cong[OF refl refl refl])
-         apply (clarsimp simp add: BTL_def ran_def split: sum.splits if_splits)
-         apply (metis prod.exhaust sumE)
-        apply (clarsimp simp add: BTL_def ran_def split: sum.splits if_splits)
+         apply (simp add: ran_comp_wire BTL_def)
+        apply (simp add: ran_loop_wire BTL_def)
         done
-      subgoal sorry
-      subgoal sorry
-      subgoal sorry
+      subgoal for os_input'
+        apply (clarsimp simp add: ooo_input_op_logic_def split: llist.splits event.splits)
+        subgoal
+          apply (intro exI conjI relcomppI)
+             apply (rule rtranclp.rtrancl_refl)
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+          apply (unfold R_def)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI[of _ \<open>os(0 := drop_caps (os 0) (map (\<lambda>t. Cap t 0) (ocaps (os 0) 0)))\<close>])
+          apply (rule exI[of _ os_input'])
+          apply (intro exI conjI)
+                              defer
+                              apply (rule refl)
+                              apply (rule subgraph_inv(1))
+                             apply (rule subgraph_inv(2))
+          using os_inv(1) apply (simp add: operator_state.defs(3) drop_caps_def)
+          using os_inv(2) apply simp
+          using os_inv(3) apply simp
+          using os_inv(4) apply simp
+          using os_inv(5) apply (simp add: ty1_check_def)
+          using os_inv(4,6) apply fast
+          using os_inv(7) apply simp
+          using buffers_inv apply fast
+          using dataplane_tracker_inv_drop_caps_all[OF D G subgraph_inv(2) dataplane_inv] apply blast
+                   apply (simp add: csets_inv(1) buffers_inv os_inv(1,4) operator_state.defs(3))
+                  apply (simp add: csets_inv(2))
+                 apply (simp add: ocaps_drop_caps_all(1))
+          using label_prop_inv(1) os_inv(4) apply fast
+          using label_prop_inv(2) os_inv(4) apply simp
+          using label_prop_inv(3) apply simp
+          using label_prop_inv(4) apply (simp add: os_inv(1) operator_state.defs(3) buffers_inv)
+          using label_prop_inv(5) os_inv(4) apply fast
+          using label_prop_inv(6) apply fastforce
+          apply (simp add: dataflow_tree_to_operator_def os_inv(4))
+          done
+        subgoal for lxs' t v w
+          apply (intro exI conjI relcomppI)
+             apply (rule rtranclp.rtrancl_refl)
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+          apply (unfold R_def)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI[of _ lxs'])
+          apply (rule exI[of _ \<open>os(0 := produce (os 0) (Cap t 0) [en1 os_input (v, w)])\<close>])
+          apply (rule exI[of _ os_input'])
+          apply (rule exI)
+          apply (rule exI[of _ cbufs])
+          apply (rule exI[of _ \<open>BENQ (1, 0) (en1 os_input (v, w), t) chns\<close>])
+          apply (intro exI conjI)
+                              defer
+                              apply (rule refl)
+                              apply (rule subgraph_inv(1))
+                             apply (rule subgraph_inv(2))
+          using os_inv(1) apply (simp add: produce_def operator_state.defs(3))
+          using os_inv(2) apply (simp add: produce_def)
+          using os_inv(3) apply (simp add: produce_def)
+          using os_inv(4) apply simp
+          using os_inv(1,5) apply (simp add: produce_def ty1_check_def operator_state.defs(3))
+          using os_inv(4,6) apply simp
+          using os_inv(7) apply (simp add: produce_def)
+                     apply (simp add: buffers_inv BENQ_def BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def fun_eq_iff produce_def)
+                    apply (rule dataplane_tracker_inv_produce_singleton[OF D G subgraph_inv(2) dataplane_inv, where t=t and nid=0 and p=0])
+          using input_stream_inv apply (fastforce simp add: timely_input_stream_def os_inv(1) operator_state.defs(3))
+                    apply (rule refl)
+                   apply (simp add: csets_inv(1) os_inv(1,4) operator_state.defs(3))
+                  apply (simp add: csets_inv(2))
+          using input_stream_inv apply (fastforce simp add: os_inv(1) operator_state.defs(3) produce_def)
+          using label_prop_inv(1) os_inv(4) apply fast
+          using label_prop_inv(2) os_inv(4) apply simp
+          using label_prop_inv(3) apply simp
+          using label_prop_inv(4) apply (simp add: os_inv(1) operator_state.defs(3) buffers_inv BENQ_def)
+          using label_prop_inv(5) os_inv(4) apply fast
+          using label_prop_inv(6) apply fastforce
+          apply (simp add: dataflow_tree_to_operator_def os_inv(4))
+          done
+        subgoal for lxs' t
+          apply (intro exI conjI relcomppI)
+             apply (rule rtranclp.rtrancl_refl)
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+          apply (unfold R_def)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI[of _ lxs'])
+          apply (rule exI[of _ \<open>os(0 := drop_cap (os 0) (Cap t 0))\<close>])
+          apply (rule exI[of _ os_input'])
+          apply (intro exI conjI)
+                              defer
+                              apply (rule refl)
+                              apply (rule subgraph_inv(1))
+                             apply (rule subgraph_inv(2))
+          using os_inv(1) apply (simp add: drop_cap_def operator_state.defs(3))
+          using os_inv(2) apply (simp add: drop_cap_def)
+          using os_inv(3) apply (simp add: drop_cap_def)
+          using os_inv(4) apply simp
+          using os_inv(5) apply (simp add: drop_cap_def ty1_check_def)
+          using os_inv(4,6) apply simp
+          using os_inv(7) apply (simp add: drop_cap_def)
+                     apply (simp add: buffers_inv)
+                    apply (rule dataplane_tracker_inv_drop_cap[OF D G subgraph_inv(2) dataplane_inv, where t=t and nid=0 and p=0])
+          using input_stream_inv apply (fastforce simp add: timely_input_stream_def os_inv(1) operator_state.defs(3))
+                    apply (rule refl)
+                   apply (simp add: csets_inv(1) os_inv(1,4) operator_state.defs(3) buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def)
+                   apply (subst (1 2) icoll_lshift)
+          using timely_input_stream_expires_le input_stream_inv apply blast
+          using timely_input_stream_expires_le input_stream_inv apply blast
+                   apply simp
+                  apply (simp add: csets_inv(2))
+          using input_stream_inv apply (fastforce simp add: os_inv(1) operator_state.defs(3) drop_cap_def)
+          using label_prop_inv(1) os_inv(4) apply fast
+          using label_prop_inv(2) os_inv(4) apply simp
+          using label_prop_inv(3) apply simp
+          using label_prop_inv(4) apply (simp add: os_inv(1) operator_state.defs(3) buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def)
+          using label_prop_inv(5) os_inv(4) apply fast
+          using label_prop_inv(6) apply fastforce
+          apply (simp add: dataflow_tree_to_operator_def os_inv(4))
+          done
+        subgoal for lxs' t
+          apply (intro exI conjI relcomppI)
+             apply (rule rtranclp.rtrancl_refl)
+            apply (rule bisim_refl)
+           defer
+           apply (rule wbisim_refl)
+          apply (rule wb_upto_b_base)
+          apply (unfold R_def)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI)
+          apply (rule exI[of _ lxs'])
+          apply (rule exI[of _ \<open>os(0 := add_cap (os 0) 0 t)\<close>])
+          apply (rule exI[of _ os_input'])
+          apply (intro exI conjI)
+                              defer
+                              apply (rule refl)
+                              apply (rule subgraph_inv(1))
+                             apply (rule subgraph_inv(2))
+          using os_inv(1) apply (simp add: add_cap_def operator_state.defs(3))
+          using os_inv(2) apply (simp add: add_cap_def)
+          using os_inv(3) apply (simp add: add_cap_def)
+          using os_inv(4) apply simp
+          using os_inv(5) apply (simp add: add_cap_def ty1_check_def)
+          using os_inv(4,6) apply simp
+          using os_inv(7) apply (simp add: add_cap_def)
+                     apply (simp add: buffers_inv)
+                    apply (rule dataplane_tracker_inv_add_cap[OF D dataplane_inv G, where t=t and nid=0 and p=0])
+          using input_stream_inv apply (fastforce simp add: os_inv(1) operator_state.defs(3) timely_input_stream_def)
+                    apply (rule refl)
+                   apply (simp add: csets_inv(1) os_inv(1,4) operator_state.defs(3) buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def)
+                   apply (subst (1 2) icoll_lshift)
+          using timely_input_stream_expires_le input_stream_inv apply blast
+          using timely_input_stream_expires_le input_stream_inv apply blast
+                   apply (simp add: add_cap_def)
+                  apply (simp add: csets_inv(2))
+          using input_stream_inv apply (force simp add: os_inv(1) operator_state.defs(3) add_cap_def)
+          using label_prop_inv(1) os_inv(4) apply fast
+          using label_prop_inv(2) os_inv(4) apply simp
+          using label_prop_inv(3) apply simp
+          using label_prop_inv(4) apply (simp add: os_inv(1) operator_state.defs(3) buffers_inv BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1) inputs_at_target_def add_cap_def)
+          using label_prop_inv(5) os_inv(4) apply fast
+          using label_prop_inv(6) apply fastforce
+          apply (simp add: dataflow_tree_to_operator_def os_inv(4))
+          done
+        done
+      subgoal for d t xs
+        apply (intro exI conjI)
+         apply (rule rtranclp.rtrancl_refl)
+        apply (intro relcomppI)
+          apply (rule bisim_refl)
+         defer
+         apply (rule wbisim_refl)
+        apply (rule wb_upto_b_base)
+        apply (unfold R_def[simplified])
+        apply (rule exI[of _ S])
+        apply (rule exI[of _ D])
+        apply (rule exI[of _ lxs])
+        apply (rule exI[of _ \<open>os(1 := (os 1)\<lparr>outpu := (outpu (os 1))(1 := xs)\<rparr>)\<close>])
+        apply (rule exI[of _ \<open>os_label_prop\<lparr>outpu := (outpu os_label_prop)(1 := xs)\<rparr>\<close>])
+        apply (rule exI[of _ \<open>BENQ (2, 1) (d, t) cbufs\<close>])
+        apply (rule exI[of _ sg])
+        apply (intro conjI)
+                         apply (clarsimp simp add: dataflow_tree_to_operator_def os_inv(1)
+            intro!: arg_cong[where f=\<open>set_op _ _\<close>] arg_cong[where f=\<open>dataflow_op _\<close>]
+            arg_cong[where f=\<open>map_op _ _\<close>])
+                         apply (rule comp_op_buf_cong[OF refl refl])
+                          apply (rule loop_op_buf_cong[OF refl])
+                           apply (rule arg_cong[where f=\<open>map_op _ _\<close>])
+                           apply (rule comp_op_buf_cong[OF refl refl refl])
+                           apply (simp add: ran_comp_wire)
+                          apply (simp add: ran_loop_wire BENQ_def)
+                         apply (clarsimp simp add: BENQ_def ran_def split: sum.splits)
+                         apply (metis obj_sumE prod.exhaust)
+                        apply (simp add: cimage_cUn csets_inv buffers_inv outputs_at_target_raw_summary subgraph_inv(1) os_inv(1,4) operator_state.defs(3) BENQ_def BULK_BENQ_def all_edges_def all_vertices_def neighbors_def)
+                       apply (rule subgraph_inv(1))
+                      apply (rule subgraph_inv(2))
+                     apply (simp add: os_inv(2))
+                    apply (simp add: os_inv(3))
+                   apply (simp add: os_inv(4) operator_state.defs(3))
+        using os_inv(1,5) apply (simp add: BENQ_def ty1_check_def)
+        using os_inv(6) apply (simp add: BENQ_def label_prob_ty2_check_def)
+        using os_inv(7) apply simp
+               apply (rule dataplane_tracker_inv_update_outputs[OF dataplane_inv _ _ _ _ G, where nid=1 and p=1 and xs=\<open>[(d, t)]\<close>])
+                  apply (simp add: os_inv(4) operator_state.defs(3))
+                 apply (simp add: fun_upd_def)
+                apply (simp add: BENQ_def)
+               apply (simp add: subgraph_inv(1) raw_summary_def antichain_from_list_singleton)
+              apply (simp add: input_stream_inv)
+        subgoal
+          using label_prop_inv
+          by (simp add: all_edges_def all_vertices_def min_label_def neighbors_def labels_inv_def labels_stable_def)
+        subgoal premises aux
+          apply safe
+          using label_prop_inv(2)
+          by (simp add: all_edges_def all_vertices_def min_label_def neighbors_def labels_inv_def labels_stable_def)
+        subgoal premises aux
+          using label_prop_inv(3)
+          by auto
+        subgoal premises aux
+          using label_prop_inv(4)
+          by (simp add: buffers_inv BENQ_def BULK_BENQ_def outputs_at_target_raw_summary subgraph_inv(1))
+        subgoal premises aux
+          using label_prop_inv(5)
+          unfolding label_prop_upd_inv_def
+          by (auto del: disjCI)
+        subgoal premises aux
+          using label_prop_inv(6)
+          unfolding input_ocaps_inv_def
+          by auto
+        done
+      subgoal for d t
+        apply (intro exI conjI relcomppI)
+           apply (rule rtranclp.rtrancl_refl)
+          apply (rule bisim_refl)
+         defer
+         apply (rule wbisim_refl)
+        apply (rule wb_upto_b_base)
+        apply (unfold R_def[simplified])
+        apply (rule exI[of _ S])
+        apply (rule exI[of _ D])
+        apply (rule exI[of _ lxs])
+        apply (rule exI[of _ \<open>os(2 := consumes (os 2) 1 t d)\<close>])
+        apply (rule exI[of _ os_label_prop])
+        apply (rule exI[of _ \<open>BTL (2, 1) cbufs\<close>])
+        apply (rule exI[of _ sg])
+        apply (intro conjI)
+                         apply (clarsimp simp add: dataflow_tree_to_operator_def os_inv(1)
+            intro!: arg_cong[where f=\<open>set_op _ _\<close>] arg_cong[where f=\<open>dataflow_op _\<close>]
+            arg_cong[where f=\<open>map_op _ _\<close>])
+                         apply (rule comp_op_buf_cong[OF refl refl])
+                          apply (rule loop_op_buf_cong[OF refl])
+                           apply (rule arg_cong[where f=\<open>map_op _ _\<close>])
+                           apply (rule comp_op_buf_cong[OF refl refl refl])
+                           apply (simp add: ran_comp_wire BTL_def map_tl)
+                          apply (simp add: ran_loop_wire BTL_def)
+                         apply (simp add: BTL_def ran_def split: sum.splits)
+                         apply (metis prod.exhaust sum.exhaust)
+                        apply (simp add: csets_inv buffers_inv BULK_BENQ_def BENQ_def BTL_def cimage_cUn)
+                       apply (rule subgraph_inv(1))
+                      apply (rule subgraph_inv(2))
+        using os_inv(2) apply simp
+        using os_inv(3) apply simp
+        using os_inv(4) apply force
+        using os_inv(1,5) apply (simp add: ty1_check_def operator_state.defs(3) BTL_def)
+        using os_inv(4,6) apply (simp add:  label_prob_ty2_check_def operator_state.defs(3) BTL_def)
+        using os_inv(7) apply force
+               apply (rule dataplane_tracker_inv_consumes[OF dataplane_inv _ D G, where xs=\<open>tl (cbufs (2, 1))\<close>])
+               apply (simp add: BHD_def)
+        using input_stream_inv apply simp
+        using label_prop_inv(1) apply (simp add: os_inv(4,7) operator_state.defs(3))
+        using label_prop_inv(2) apply (simp add: os_inv(4,7) operator_state.defs(3) consumes_def)
+        using label_prop_inv(3) apply simp
+        using label_prop_inv(4) apply (simp add: buffers_inv BULK_BENQ_def BTL_def BENQ_def)
+         apply (rule label_prop_inv(5))
+        using label_prop_inv(6) apply simp
+        done
       subgoal for os'
         unfolding label_propagation_op_logic_def trace_simp
         apply clarsimp
