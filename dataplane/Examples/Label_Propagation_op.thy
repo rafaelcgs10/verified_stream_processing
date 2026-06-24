@@ -3231,7 +3231,8 @@ lemma steps_label_propagation_op_Write_Some[intro]:
 
 lemma steps_label_propagation_op_Read_Some[intro]:
   assumes \<open>op = label_propagation_op (fold (\<lambda>(d, t) os. consumes os p t d) xs os)\<close>
-  shows \<open>steps (map (\<lambda>x. Inp (Some p) (Inr x)) xs) (label_propagation_op os) op\<close>
+  and \<open>ys = (map (\<lambda>x. Inp (Some p) (Inr x)) xs)\<close>
+  shows \<open>steps ys (label_propagation_op os) op\<close>
   using assms unfolding label_propagation_op_def by auto
 
 lemma step_label_propagation_op_Silent[intro]:

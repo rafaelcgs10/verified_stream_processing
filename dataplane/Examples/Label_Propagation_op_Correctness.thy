@@ -9,6 +9,7 @@ imports
   "../Correctness/Outputs"
   "../Correctness/Produces"
   "../Correctness/Mints"
+  "../Correctness/Propagates"
   "../Correctness/OCapsReorder"
   "HOL-ex.Sketch_and_Explore"
   Dataplane.Timely_Dataflow_Op
@@ -487,6 +488,34 @@ proof (rule ext)
     by cases
       (simp_all add: outputs_at_target_def raw_summary_def antichain_from_list_singleton )
 qed
+
+
+lemma reachable_locations_raw_summary[simp]:
+  "reachable_locations (antichain_from_list \<circ>\<circ> raw_summary) = (UNIV :: (3, 2) location set)"
+  unfolding reachable_locations_def UNIV_3_2
+  apply (clarsimp del: disjCI simp add: UNIV_3_2 split: prod.splits)
+  apply (intro subsetI equalityI)  
+  subgoal for l
+    using loc_3_2_cases[of l]
+    by simp
+  subgoal for l
+    using loc_3_2_cases[of l] apply -
+    apply (simp add: raw_summary_def)
+    apply fastforce
+    done
+  done
+
+lemma raw_summary_no_self_loop[simp]:
+  "\<forall>loc. (antichain_from_list \<circ>\<circ> raw_summary) (loc :: (3, 2) location) loc = {}\<^sub>A"
+  apply (intro allI)
+  subgoal for l
+    using loc_3_2_cases[of l] apply -
+    unfolding raw_summary_def
+    apply simp
+    apply blast
+    done
+  done
+
 
 lemma Inr_2_1_in_ran[simp]:
   "Inr (2 :: 3, 1 :: 2) \<in> ran (case_sum (\<lambda>_. None) (\<lambda>(nid, p). case if nid = 1 \<and> p = 1 then Some (0, 1) else None of None \<Rightarrow> None | Some (offset, q) \<Rightarrow> Some (Inr (1 + 1 + offset, q))))"
@@ -2231,286 +2260,199 @@ next
           using timely_input_stream_advances_frontier[OF input_stream_inv, of t] apply -
           apply clarsimp
           subgoal premises stream_move for n
+            using dataplane_inv[unfolded dataplane_tracker_inv_def, simplified] apply -
+            apply clarsimp
+            subgoal premises dt_inv for cap
+              using propagate_all_frontier_change_multiplicities_c_imp_correctnessE[OF D, of "pt_tr sg" "extract_progress 0 (subgraph.nxt sg) \<lparr>cons = consu os_input, inte = operator_state.inter os_input, prod = produ os_input\<rparr>", unfolded subgraph_inv(1), simplified]
+              apply -
+              apply (drule meta_mp)
+              subgoal
+                using dt_inv(8)[unfolded propagation_inv_def subgraph_inv(1)] by auto
+              apply (drule meta_mp)
+              subgoal
+                using dt_inv(8)[unfolded propagation_inv_def subgraph_inv(1)] by auto
+              apply (drule meta_mp)
+              subgoal
+                using dt_inv(8)[unfolded propagation_inv_def subgraph_inv(1)] by auto
+              apply (drule meta_mp)
+              subgoal 
+                unfolding extract_progress_def
+                apply (clarsimp simp add: subgraph_inv(1,2) set_map_filter split_beta operator_state.defs os_inv(1) image_iff split: option.splits)
+                subgoal for l t
+                  using loc_3_2_cases[of l]
+                  using dt_inv(7)[unfolded change_deltas_inv_def]
+                  by (fastforce del: disjCI split: option.splits)
+                done
+              apply (drule meta_mp)
+              subgoal 
+                apply clarsimp
+                subgoal for l t m
+                  apply (subst frontier_less_equal_iff2[symmetric])
+                  apply (rule frontier_less_equal_le_trans[rotated])
+                   apply (rule dt_inv(5)[unfolded imp_front_inv_def, rule_format, of l])
+                  apply (rule dt_inv(9)[unfolded extract_prog_changes_above_impl_inv_def changes_above_impl_inv_def, simplified, rule_format, where xs=Nil and x="(l, t, m)" and nid=0, simplified])
+                  apply (clarsimp simp add: obtain_progress_def subgraph_inv(1,2) set_map_filter split_beta operator_state.defs os_inv(1) image_iff split: option.splits)
+                  done
+                done
+              apply (drule meta_mp)
+              subgoal
+                using raw_summary_no_self_loop by auto
+              apply clarsimp
+              subgoal premises first_propa for c'
+                apply (intro exI conjI[rotated])
+                 apply (intro relcomppI)
+                   apply (rule bisim_refl)
+                  defer
+                  apply (rule wbisim_refl)
+                 apply (rule wstep_trans(1))
+                  apply (rule transitive_closurep_trans'(2))
 
-            apply (intro exI conjI[rotated])
-             apply (intro relcomppI)
-               apply (rule bisim_refl)
-              defer
-              apply (rule wbisim_refl)
-             apply (rule wstep_trans(1))
-              apply (rule transitive_closurep_trans'(2))
-               apply (rule relpowp_imp_rtranclp[
-                  where n="n + 
-                           (length (outpu (os 0) 0)) + length (filter is_Data (ltaken n lxs)) + 
-                           (length (cbufs (1, 0)) + length (outpu (os 0) 0) + length (filter is_Data (ltaken n lxs))) +
-                           (length (input (os 1) 0)) + length (cbufs (1, 0)) + length (outpu (os 0) 0) + length (filter is_Data (ltaken n lxs))"]) 
-               apply (simp only: relpowp_add)
-               apply (intro relcomppI)
-                        apply (rule step_n_Taus_set_op)
-                         apply (rule step_tau_pow_dataflow_op)
-                         apply (subst dataflow_tree_to_operator_def)
-                         apply simp
-                         apply (rule step_tau_pow_map_op)
-                         apply (rule step_taus_L_pow_comp_op_steps_intro)
-                          apply (rule step_tau_pow_map_op)
-                          apply (rule step_compower_ooo_input_op_iterates_n[where p=0])
-            subgoal
-              using input_stream_inv 
-              by (simp add: os_inv(1) operator_state.defs)
-            subgoal
-              by simp
-            subgoal
-              using os_inv(3)
-              by (simp add: os_inv(1) operator_state.defs)
-            subgoal
-              using stream_move
-              by (simp add: os_inv(1) operator_state.defs)
-                           apply (rule refl)+
 
-                       apply (rule step_n_Taus_set_op)
-                        apply (rule step_tau_pow_dataflow_op)
-                        apply (rule step_tau_pow_map_op)
-                        apply (rule step_tau_Out_pow_comp_op_steps_intro[where xs="map (\<lambda> (t, d). Inr (t, d)) (outpu (os 0) 0)" and p="Inr (0, 0)"])
-                           apply (rule steps_map_op[where xs="map (\<lambda> x. Out (Some 0) (Inr x)) (outpu (os 0) 0)"])
-                             apply (rule refl)+
-                            apply simp
-                           apply (rule steps_ooo_input_op_Write_Some[where ys="map (\<lambda> ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n lxs))" and xs="outpu (os 0) 0" and p=0])
-                              apply simp
-                             apply (simp add: operator_state.defs os_inv(1))
-                            apply (rule refl)+
-                          apply simp
-                         apply simp
-                        apply (rule refl)+
-
-                      apply (rule step_n_Taus_set_op)
-                       apply (rule step_tau_pow_dataflow_op)
-                       apply simp
-                       apply (rule step_tau_pow_map_op)
-                       apply (rule step_tau_Out_pow_comp_op_steps_intro[where p="Inr (0, 0)" and xs="map (\<lambda> ev. case ev of Data t d \<Rightarrow> Inr (Inl d, t)) (filter is_Data (ltaken n lxs))"])
-                          apply (rule steps_map_op[where xs="map (\<lambda> e. case e of Data t d \<Rightarrow> Out (Some 0) (Inr (Inl d, t))) (filter is_Data (ltaken n lxs))"])
-                            apply (rule refl)+
-            subgoal
-              by (auto simp add: comp_def split: IO.splits event.splits)
-
-                          apply (rule steps_ooo_input_op_Write_Some[where xs="map (\<lambda> ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n lxs))" and ys=Nil and p=0])
-                             apply simp
-                            apply (simp add: operator_state.defs os_inv(1))
-                           apply (rule refl)+
-            subgoal
-              by (auto simp add: comp_def split: IO.splits event.splits)
-            subgoal
-              by simp
-                        apply simp
-                       apply (rule refl)+
-
-                     apply (rule step_n_Taus_set_op)
-                      apply (rule step_tau_pow_dataflow_op)
+                   apply (rule converse_rtranclp_into_rtranclp) 
+                    apply (rule step_set_op_intro_Tau_2)
                       apply simp
-                      apply (rule step_tau_pow_map_op)
-                      apply (rule step_tau_Inp_pow_comp_op_steps_intro[where n="length (cbufs (1, 0))" and p="Inr (1, 0)" and xs="map (\<lambda> x. Inr x) (cbufs (1, 0))"])
-                           apply (rule steps_Inp_loop_op_intro[where p="Inr (1, 0)" and xs="map Inr (cbufs (1, 0))"])
-                              apply (rule steps_map_op[where xs="map (\<lambda> x. Inp (Inl (Inr (1, 0))) (_ x)) (cbufs (1, 0))"])
-                                apply (rule refl)+
-                               apply fastforce
-                              apply (rule steps_comp_op_L_Inp[where xs="map Inr (cbufs (1, 0))"and p="Inr (1, 0)"])
-                                apply (rule steps_map_op[where xs="map (\<lambda> x. Inp (Some 0) (_ x)) (cbufs (1, 0))" ])
-                                apply (rule refl)+
-                                apply force
-                                apply (rule steps_label_propagation_op_Read_Some)
-                                apply (rule refl)+
-                              apply simp
-            subgoal
-              by (auto simp add: ran_def split: sum.splits)
-                            apply (rule refl)+
+                     apply (rule step_Tau_dataflow_op_Out_Inl_intro[where nid=0])
+                      apply (subst dataflow_tree_to_operator_def)
+                      apply simp
+                      apply (rule step_map_op)
+                       apply (rule step_comp_op_L_Out)
+                          apply (rule step_map_op)
+                           apply (rule step_ooo_input_op_Write_None)
+                             apply (rule refl)+
+                            apply (subst obtain_progress_def)
+                            apply simp
+                           apply (rule refl)+
                           apply simp
-            subgoal
-              by (auto simp add: ran_def split: sum.splits)
-            subgoal
-              unfolding BULK_BENQ_def
-              by simp
-            subgoal
-              unfolding BULK_BENQ_def
-              by simp
+                         apply fastforce
+                        apply (rule refl)+
+                      apply simp
+                     apply (rule refl)+
+
+                   apply (rule converse_rtranclp_into_rtranclp) 
+                    apply (rule step_set_op_intro_Tau_2)
+                      apply simp
+                     apply (rule step_Tau_dataflow_op_Inp_Inl_intro)
+                        apply (rule step_map_op)
+                         apply (rule step_comp_op_R_Inp)
+                            apply (rule step_Inp_loop_op)
+                             apply (rule step_map_op)
+                              apply (rule step_comp_op_L_Inp)
+                                apply (rule step_map_op)
+                                 apply (rule step_label_propagation_op_Read_None)
+                                  apply (rule refl)+
+                                apply simp
+                               apply (rule refl)+
+                             apply simp
+                            apply (auto simp add: ran_def split: sum.splits option.splits prod.splits)[1]
+                           apply (auto simp add: ran_def split: sum.splits option.splits prod.splits)[1]
+                          apply (rule refl)+
+                        apply simp
+                       apply (simp add:  operator_state.defs subgraph_inv os_inv(1,2))
+                using first_propa(1)[unfolded operator_state.defs subgraph_inv os_inv(1,2), simplified] apply assumption
                       apply (rule refl)+
 
+                   apply (rule transitive_closurep_trans'(2))
+                    apply (rule relpowp_imp_rtranclp[where n="n"]) 
                     apply (rule step_n_Taus_set_op)
                      apply (rule step_tau_pow_dataflow_op)
                      apply simp
                      apply (rule step_tau_pow_map_op)
-                     apply (rule step_tau_Inp_pow_comp_op_steps_intro[where n="length (outpu (os 0) 0)" and p="Inr (1, 0)" and xs="map (\<lambda> x. Inr x) (outpu (os 0) 0)"])
-                          apply (rule steps_Inp_loop_op_intro[where p="Inr (1, 0)" and xs="map Inr (outpu (os 0) 0)"])
-                             apply (rule steps_map_op[where xs="map (\<lambda> x. Inp (Inl (Inr (1, 0))) (_ x)) (outpu (os 0) 0)"])
-                               apply (rule refl)+
-                              apply fastforce
-                             apply (rule steps_comp_op_L_Inp[where xs="map Inr (outpu (os 0) 0)"and p="Inr (1, 0)"])
-                                apply (rule steps_map_op[where xs="map (\<lambda> x. Inp (Some 0) (_ x)) (outpu (os 0) 0)" ])
-                                apply (rule refl)+
-                                apply fastforce
-                                apply (rule steps_label_propagation_op_Read_Some)
-                                apply (rule refl)+
-                             apply simp
-            subgoal
-              by (auto simp add: ran_def split: sum.splits)
-                           apply (rule refl)+
-                         apply simp
-            subgoal
-              by (auto simp add: ran_def split: sum.splits)
-            subgoal
-              unfolding BULK_BENQ_def
-              by simp
-            subgoal
-              unfolding BULK_BENQ_def
-              by simp
-                     apply (rule refl)+
+                     apply (rule step_taus_L_pow_comp_op_steps_intro)
+                      apply (rule step_tau_pow_map_op)
+                      apply (rule step_compower_ooo_input_op_iterates_n[where p=0])
+                subgoal
+                  using input_stream_inv 
+                  by (simp add: os_inv(1) operator_state.defs)
+                subgoal
+                  by simp
+                subgoal
+                  using os_inv(3)
+                  by (simp add: os_inv(1) operator_state.defs)
+                subgoal
+                  using stream_move
+                  by (simp add: os_inv(1) operator_state.defs)
+                       apply (rule refl)+
 
-                   apply (rule step_n_Taus_set_op)
-                    apply (rule step_tau_pow_dataflow_op)
-                    apply simp
-                    apply (rule step_tau_pow_map_op)
-                    apply (rule step_tau_Inp_pow_comp_op_steps_intro[where p="Inr (1, 0)" and xs="map (\<lambda> ev. case ev of Data t d \<Rightarrow> Inr (Inl d, t)) (filter is_Data (ltaken n lxs))"])
-                         apply (rule steps_Inp_loop_op_intro[where p="Inr (1, 0)" and xs="map _ (filter is_Data (ltaken n lxs))"])
-                            apply (rule steps_map_op[where xs="map (\<lambda> x. Inp (Inl (Inr (1, 0))) (_ x)) (filter is_Data (ltaken n lxs))"])
-                              apply (rule refl)+
-                             apply fastforce
-                            apply (rule steps_comp_op_L_Inp[where xs="map Inr (map (\<lambda> ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n lxs)))"and p="Inr (1, 0)"])
-                               apply (rule steps_map_op[where xs="map (\<lambda> x. Inp (Some 0) (Inr x)) (map (\<lambda> ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n lxs)))" ])
-                                apply (rule refl)+
-                                apply fastforce
-                               apply (rule steps_label_propagation_op_Read_Some)
-                               apply (rule refl)+
-                            apply simp
-                            apply fastforce
-            subgoal
-              by (auto simp add: ran_def split: sum.splits)
+                   apply (rule transitive_closurep_trans'(2))
+                    apply (rule relpowp_imp_rtranclp[where n="(length (outpu (os 0) 0)) + length (filter is_Data (ltaken n lxs))"]) 
+                    apply (rule step_n_Taus_set_op)
+                     apply (rule step_tau_pow_dataflow_op)
+                     apply (rule step_tau_pow_map_op)
+                     apply (rule step_tau_Out_pow_comp_op_steps_intro[where xs="map (\<lambda> (t, d). Inr (t, d)) (outpu (os 0) 0) @ map (\<lambda> ev. case ev of Data t d \<Rightarrow> Inr (Inl d, t)) (filter is_Data (ltaken n lxs))" and p="Inr (0, 0)"])
+                        apply (rule steps_map_op[where xs="map (\<lambda> x. Out (Some 0) (Inr x)) (outpu (os 0) 0) @ map (\<lambda> e. case e of Data t d \<Rightarrow> Out (Some 0) (Inr (Inl d, t))) (filter is_Data (ltaken n lxs))"])
                           apply (rule refl)+
                          apply simp
-                         apply (simp split: event.splits)
+                subgoal
+                  by (auto simp add: comp_def split: IO.splits event.splits)
+                        apply (rule steps_ooo_input_op_Write_Some[where ys="Nil" and xs="outpu (os 0) 0 @ map (\<lambda> ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n lxs))" and p=0])
+                           apply simp
+                          apply (simp add: operator_state.defs os_inv(1))
+                         apply (rule refl)+
                         apply simp
-            subgoal
-              by (auto simp add: ran_def split: sum.splits)
-            subgoal
-              unfolding BULK_BENQ_def
-              by simp
-            subgoal
-              unfolding BULK_BENQ_def
-              by simp
-                    apply (rule refl)+
+                subgoal
+                  by (auto simp add: comp_def split: IO.splits event.splits)
+                       apply simp
+                      apply fastforce
+                     apply (rule refl)+
 
-                  apply (rule step_n_Taus_set_op)
-                   apply (rule step_tau_pow_dataflow_op)
-                   apply simp
-                   apply (rule step_tau_pow_map_op)
-                   apply (rule step_taus_R_pow_comp_op_steps_intro)
-                    apply (rule step_taus_loop_op_steps_intro)
+                   apply (rule transitive_closurep_trans'(2))
+                    apply (rule relpowp_imp_rtranclp[where n="(length (cbufs (1, 0)) + length (outpu (os 0) 0) + length (filter is_Data (ltaken n lxs)))"]) 
+                    apply (rule step_n_Taus_set_op)
+                     apply (rule step_tau_pow_dataflow_op)
+                     apply simp
                      apply (rule step_tau_pow_map_op)
-                     apply (rule step_taus_L_pow_comp_op_steps_intro)
-                      apply (rule step_tau_pow_map_op)
-                      apply (rule step_compower_label_propagation_op_input0_eq_alt[where msgs="input (os 1) 0" and ys="cbufs (1, 0) @ outpu (os 0) 0 @ map (\<lambda>ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n lxs))"])
-            subgoal
-              unfolding input_fold_consumes 
-              by (simp add: os_inv(4) operator_state.defs)
-                        apply simp
-                       apply (simp add: os_inv(3,4) operator_state.defs)
-            subgoal sorry
-                      apply (rule refl)+
+                     apply (rule step_tau_Inp_pow_comp_op_steps_intro
+                    [where n="(length (cbufs (1, 0)) + length (outpu (os 0) 0) + length (filter is_Data (ltaken n lxs)))" and p="Inr (1, 0)" and xs="map Inr (cbufs (1, 0)) @ map Inr (outpu (os 0) 0) @ map (\<lambda> ev. case ev of Data t d \<Rightarrow> Inr (Inl d, t)) (filter is_Data (ltaken n lxs))"])
+                          apply (rule steps_Inp_loop_op_intro[where p="Inr (1, 0)" and xs="map Inr (cbufs (1, 0)) @ map Inr (outpu (os 0) 0) @ map (\<lambda> ev. case ev of Data t d \<Rightarrow> Inr (Inl d, t)) (filter is_Data (ltaken n lxs))"])
+                             apply (rule steps_map_op[where xs="map (\<lambda> x. Inp (Inl (Inr (1, 0))) (_ x)) (cbufs (1, 0)) @ map (\<lambda> x. Inp (Inl (Inr (1, 0))) (_ x)) (outpu (os 0) 0)  @ map (\<lambda> x. Inp (Inl (Inr (1, 0))) (_ x)) (filter is_Data (ltaken n lxs))"])
+                               apply (rule refl)+
+                              apply fastforce
+                             apply (rule steps_comp_op_L_Inp[where xs="map Inr (cbufs (1, 0)) @ map Inr (outpu (os 0) 0) @ map (\<lambda> ev. case ev of Data t d \<Rightarrow> Inr (Inl d, t)) (filter is_Data (ltaken n lxs))"and p="Inr (1, 0)"])
+                                apply (rule steps_map_op[where xs="map (\<lambda> x. Inp (Some 0) (Inr x)) (cbufs (1, 0)) @ map (\<lambda> x. Inp (Some 0) (Inr x)) (outpu (os 0) 0) @ map (\<lambda> x. Inp (Some 0) (Inr x)) (map (\<lambda> ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n lxs)))" ])
+                                  apply (rule refl)+
+                subgoal
+                  by (auto simp add: comp_def split: IO.splits event.splits)
+                                apply (rule steps_label_propagation_op_Read_Some[where p=0 and xs="cbufs (1, 0) @ outpu (os 0) 0 @ map (\<lambda> ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n lxs))"])
+                                 apply (rule refl)+
+                                apply simp
+                               apply (rule refl)+
+                             apply simp
+                subgoal
+                  by (auto simp add: comp_def ran_def split: sum.splits IO.splits event.splits)                
+                           apply (rule refl)+
+                         apply simp
+                subgoal
+                  by (auto simp add: ran_def split: sum.splits)
+                subgoal
+                  unfolding BULK_BENQ_def
+                  by simp
+                subgoal
+                  unfolding BULK_BENQ_def
+                  by simp
+                     apply (rule refl)+
 
-
-      apply (rule step_n_Taus_set_op)
-                   apply (rule step_tau_pow_dataflow_op)
-                   apply (rule step_tau_pow_map_op)
-                   apply (rule step_taus_R_pow_comp_op_steps_intro)
-                    apply (rule step_taus_loop_op_steps_intro)
+                   apply (rule transitive_closurep_trans'(2))
+                    apply (rule relpowp_imp_rtranclp[where n="(length (input (os 1) 0)) + length (cbufs (1, 0)) + length (outpu (os 0) 0) + length (filter is_Data (ltaken n lxs))"]) 
+                    apply (rule step_n_Taus_set_op)
+                     apply (rule step_tau_pow_dataflow_op)
+                     apply simp
                      apply (rule step_tau_pow_map_op)
-                     apply (rule step_taus_L_pow_comp_op_steps_intro)
-                      apply (rule step_tau_pow_map_op)
-                      apply (rule step_compower_label_propagation_op_input0_eq_alt[where msgs="cbufs (1, 0)" and ys="outpu (os 0) 0 @ map (\<lambda>ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n lxs))"])
-            subgoal
-              unfolding input_fold_consumes 
-              by (simp add: os_inv(4) operator_state.defs input_fold_consumes)
-                        apply simp
-                       apply (simp add: os_inv(3,4) operator_state.defs)
-            subgoal sorry
-                      apply (rule refl)+
+                     apply (rule step_taus_R_pow_comp_op_steps_intro)
+                      apply (rule step_taus_loop_op_steps_intro)
+                       apply (rule step_tau_pow_map_op)
+                       apply (rule step_taus_L_pow_comp_op_steps_intro)
+                        apply (rule step_tau_pow_map_op)
+                        apply (rule step_compower_label_propagation_op_input0_eq_alt[where msgs="input (os 1) 0 @ cbufs (1, 0) @ outpu (os 0) 0 @ map (\<lambda>ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n lxs))" and ys="[]"])
+                subgoal
+                  unfolding input_fold_consumes 
+                  by (simp add: os_inv(4) operator_state.defs)
+                          apply simp
+                         apply (simp add: os_inv(3,4) operator_state.defs)
+                        apply (rule refl)+
 
-
-      apply (rule step_n_Taus_set_op)
-                   apply (rule step_tau_pow_dataflow_op)
-                   apply (rule step_tau_pow_map_op)
-                   apply (rule step_taus_R_pow_comp_op_steps_intro)
-                    apply (rule step_taus_loop_op_steps_intro)
-                     apply (rule step_tau_pow_map_op)
-                     apply (rule step_taus_L_pow_comp_op_steps_intro)
-                      apply (rule step_tau_pow_map_op)
-                      apply (rule step_compower_label_propagation_op_input0_eq_alt[where msgs="outpu (os 0) 0" and ys="map (\<lambda>ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n lxs))"])
-            subgoal
-              unfolding input_fold_consumes 
-              by (simp add: os_inv(4) operator_state.defs input_fold_consumes)
-                        apply simp
-                       apply (simp add: os_inv(3,4) operator_state.defs)
-            subgoal sorry
-                      apply (rule refl)+
-
-      apply (rule step_n_Taus_set_op)
-                   apply (rule step_tau_pow_dataflow_op)
-                   apply (rule step_tau_pow_map_op)
-                   apply (rule step_taus_R_pow_comp_op_steps_intro)
-                    apply (rule step_taus_loop_op_steps_intro)
-                     apply (rule step_tau_pow_map_op)
-                     apply (rule step_taus_L_pow_comp_op_steps_intro)
-                      apply (rule step_tau_pow_map_op)
-                      apply (rule step_compower_label_propagation_op_input0_eq_alt[where msgs="map (\<lambda>ev. case ev of Data t d \<Rightarrow> (Inl d, t)) (filter is_Data (ltaken n lxs))" and ys="Nil"])
-            subgoal
-              unfolding input_fold_consumes 
-              by (simp add: os_inv(4) operator_state.defs input_fold_consumes)
-                        apply simp
-                       apply (simp add: os_inv(3,4) operator_state.defs)
-            subgoal sorry
-                   apply (rule refl)+
-
-              apply (rule step_Taus_set_op)
-               apply (rule step_Taus_dataflow_op_Taus_intro)
-               apply (rule step_star_map_op)
-               apply (rule step_comp_op_R_Tau_start)
-
-            find_theorems raw_summary
-
-            term "antichain_from_list \<circ>\<circ> raw_summary"
-
-            term "intsum (os 1)"
-
-            oops
-
-
-end
-            apply (rule step_taus_loop_)
-            apply (rule step_star_map_op)
-            apply (rule step_comp_op_L_Tau_start)
-            apply (rule step_star_map_op)
-
-            find_theorems step Tau loop_op rtranclp
-
-end
-
-
-            find_theorems initia os
- 
-                        prefer 3
-                        apply simp
-                       prefer 3
-            apply simp
-
-                     
-            thm step_compower_label_propagation_op_input0[unfolded cimage_cUn, simplified]
-
-            find_theorems cUn cimage
-
-            thm step_compower_label_propagation_op_input0_eq
-
-            oops
-
-
-end
-            sorry
+                sorry
+              done
+            done
           done
         done
       done

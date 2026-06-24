@@ -110,6 +110,30 @@ lemma c_pts_change_multiplicities_cong:
     done
   done
 
+lemma propagate_all_frontier_change_multiplicities_c_imp_correctnessE:
+  "dataflow_topology (summary :: _ \<Rightarrow> _ \<Rightarrow> 't:: {order_ccompare,canonically_ordered_monoid_add,ordered_ab_semigroup_monoid_add_imp_le,bot} antichain) (-+-) \<Longrightarrow>
+   reachable_locations summary = UNIV \<Longrightarrow>
+   dataflow_topology.inv_imps_work_sum summary (-+-) c \<Longrightarrow>
+   dataflow_topology_from_tree.inv_implications_nonneg c \<Longrightarrow>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c \<Longrightarrow>
+   \<forall>d\<in>snd ` snd ` set xs. d \<noteq> 0 \<Longrightarrow>
+   \<forall>(l, t, d)\<in>set xs. \<exists>t'. t' \<in>\<^sub>A frontier (c_imp c l) \<and> t' \<le> t \<Longrightarrow>
+   \<forall>loc. summary loc loc = {}\<^sub>A \<Longrightarrow>
+   \<exists> c'. propagate_all summary (change_multiplicities summary xs c) = Some c' \<and>
+   (\<forall> loc. frontier (c_imp c' loc) = ifrontier summary (-+-) (change_multiplicities summary xs c) loc) \<and>
+   dataflow_topology_from_tree.inv_implications_nonneg c' \<and>
+   dataflow_topology_from_tree.inv_imp_plus_work_nonneg c' \<and>
+   dataflow_topology.inv_imps_work_sum summary (-+-) c'"
+  apply (frule change_multiplicities_preserves_inv)
+        apply assumption+
+   apply (rule refl)
+  apply (cases "propagate_all summary (change_multiplicities summary xs c)")
+  subgoal
+    using propagate_all_terminates by meson
+  subgoal for c'
+    using propagate_all_frontier_c_imp_correctness
+    by meson
+  done
 
 lemma dataplane_tracker_inv_front_update:
   assumes D: "dataflow_topology (summ sg) (-+-)"

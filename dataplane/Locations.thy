@@ -350,4 +350,31 @@ lemma loc_3_2_cases:
     done
   done
 
+
+lemma UNIV_3_2:
+  "(UNIV :: (3, 2) location set) = 
+   {
+    Loc 0 (Trg 0),
+    Loc 0 (Trg 1),
+    Loc 0 (Src 0),
+    Loc 0 (Src 1),
+    Loc 1 (Trg 0),
+    Loc 1 (Trg 1),
+    Loc 1 (Src 0),
+    Loc 1 (Src 1),
+    Loc 2 (Trg 0),
+    Loc 2 (Trg 1),
+    Loc 2 (Src 0),
+    Loc 2 (Src 1)
+   }"
+  apply clarsimp
+  apply (intro subsetI equalityI)  
+  subgoal for l
+    using loc_3_2_cases[of l]
+    by auto
+  subgoal for l
+    using loc_3_2_cases[of l]
+    by auto
+  done
+
 end
