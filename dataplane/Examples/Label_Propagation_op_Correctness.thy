@@ -1633,7 +1633,7 @@ proof -
   obtain v l where de1_eq: \<open>de1 os_pre d = (v, l)\<close>
     and strict: \<open>l < min_label os_pre (myfst t) v\<close>
     and update_strict:
-      \<open>min_label (label_prop_label_record_update (input_tl os_pre 1) (myfst t) v l)
+    \<open>min_label (label_prop_label_record_update (input_tl os_pre 1) (myfst t) v l)
         (myfst t) v < min_label os_pre (myfst t) v\<close>
     using step_batch_nonempty ts_t_pre
     by (elim label_prop_input1_step_batch_nonempty_strict_updateD)
@@ -1832,7 +1832,7 @@ proof -
     and de1_pre_eq: \<open>de1 os_pre d = (v, l)\<close>
     and strict_pre: \<open>l < min_label os_pre (myfst t) v\<close>
     and update_strict:
-      \<open>min_label (label_prop_label_record_update (input_tl os_pre 1) (myfst t) v l) (myfst t) v
+    \<open>min_label (label_prop_label_record_update (input_tl os_pre 1) (myfst t) v l) (myfst t) v
         < min_label os_pre (myfst t) v\<close>
     apply (rule label_prop_input1_batched_outpu_nonempty_strict_updateD[OF out_empty out_nonempty, OF INV msgs_input])
     apply simp
@@ -1992,7 +1992,7 @@ lemma labels_measure_strict_decrease_if_pointwise_le_and_less_same_edges:
   shows \<open>labels_measure A' l' < labels_measure A l\<close>
   using labels_measure_strict_decrease_if_pointwise_le_and_less
     [OF finite_edges labels labels' le strict]
-  edges_eq by simp
+    edges_eq by simp
 
 
 lemma finite_all_vertices:
@@ -2341,12 +2341,12 @@ termination
   apply (relation "measure (\<lambda>(cbufs, os_label_prop, os). labels_measure (all_edges os_label_prop (Max (set (timestamps os_label_prop)))) (min_label os_label_prop (Max (set (timestamps os_label_prop)))))")
    apply simp
   subgoal for cbufs os_label_prop os x cbufs' y os_label_prop' os'
-(*     apply (cases "label_prop_upd_inv os_label_prop \<and> timestamps os_label_prop \<noteq> [] \<and> (\<forall> t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t))")
+    (*     apply (cases "label_prop_upd_inv os_label_prop \<and> timestamps os_label_prop \<noteq> [] \<and> (\<forall> t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t))")
     subgoal *)
     apply (clarsimp del: disjCI split: prod.splits)
     apply (rule label_prop_input1_loop_updates_measure_decrease_if_label_output_nonempty[rotated, where cbufs'=cbufs' and cbufs=cbufs and os=os])
           defer
-     apply (metis label_prop_input1_loop_updates_clears(3))
+          apply (metis label_prop_input1_loop_updates_clears(3))
          apply simp_all
     subgoal sorry
     subgoal
@@ -2359,6 +2359,63 @@ termination
     done
   done
 
+declare loop_updates.simps[simp del]
+
+lemma step_tau_pow_loop_updates:
+  fixes os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
+    and os_label_prop :: \<open>(nat \<times> nat + nat set set, nat, nat, nat) label_propagation_state\<close>
+    and cbufs :: \<open>3 \<times> 2 \<Rightarrow> ((nat \<times> nat + nat set set) \<times> (nat, nat) myprod) buf\<close>
+  assumes UPDATES:
+    \<open>(cbufs', os_label_prop', os') = loop_updates cbufs os_label_prop os\<close>
+    and NO: \<open>initia os_label_prop\<close>
+    and I: \<open>intsum (os 2) = increment_summary (MyPair 0 1)\<close>
+    and N: \<open>initia (os 2)\<close>
+    and C1: "input_ocaps_inv (os 2)"
+    and L: \<open>label_prop_upd_inv os_label_prop\<close>
+    and M: \<open>\<forall> t. labels_inv (all_edges os_label_prop t) (min_label os_label_prop t)\<close>
+    and T: \<open>(myfst ` snd ` set (input os_label_prop 1 @ outpu os_label_prop 1 @ input (os 2) 1 @ outpu (os 2) 1 @ cbufs (1, 1) @ cbufs (2, 1)) \<subseteq> set (timestamps os_label_prop))\<close>
+  shows  \<open>(step Tau)\<^sup>*\<^sup>*
+     (loop_op loop_wire (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))
+       (comp_map
+         (comp_op
+           comp_wire
+           (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs x)))
+           (logic_map (1 :: 3) (label_propagation_op os_label_prop))
+           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) (os 2))))))
+     (loop_op loop_wire (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs' x)))
+       (comp_map
+         (comp_op
+           comp_wire
+           (case_sum (\<lambda>x. []) (\<lambda>x. map Inr (cbufs' x)))
+           (logic_map (1 :: 3) (label_propagation_op os_label_prop'))
+           (logic_map (2 :: 3) (increment_op 1 1 (MyPair 0 (Suc 0)) (os' 2))))))\<close>
+  using assms apply -
+  apply (induct cbufs os_label_prop os rule: loop_updates.induct)
+  apply simp
+  subgoal premises prems for cbufs os_label_prop os
+    using prems(2-) apply -
+    apply (subst (asm) loop_updates.simps)
+    apply (clarsimp split: prod.splits if_splits)
+    subgoal
+      apply (rule loop_move_all_data_label_prop_input1_updates)
+          apply (rule sym)
+          apply assumption+
+        apply simp_all
+      done
+    subgoal for cbufs' os_label_prop' os'
+      apply (rule rtranclp_trans)
+       apply (rule loop_move_all_data_label_prop_input1_updates)
+           apply (rule sym)
+           apply assumption+
+         apply simp_all
+      apply (rule prems(1)[simplified, OF refl])
+                apply simp_all
+             apply (subst loop_updates.simps)
+             apply simp
+            apply (metis (no_types, lifting) label_prop_input1_loop_updates_clears(3))+
+      done
+    done
+  done
 
 lemma loop_op_label_propagation_op_increment_op:
   fixes  os :: \<open>3 \<Rightarrow> (2, nat \<times> nat + nat set set, (nat, nat) myprod) operator_state\<close>
