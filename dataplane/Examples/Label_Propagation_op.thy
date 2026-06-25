@@ -106,6 +106,70 @@ definition label_prop_upd_inv where
       myfst t \<in> set (timestamps os) \<and> fst (de1 os d) \<in> all_vertices os (myfst t) \<and>
       (\<forall>q. myfst t \<le> q \<longrightarrow> snd (de1 os d) \<in> cc_of (all_edges os q) (fst (de1 os d))))"
 
+lemma label_prop_upd_inv_intsum_update[simp]:
+  "label_prop_upd_inv (os\<lparr>intsum := xs\<rparr>) = label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
+
+lemma label_prop_upd_inv_consu_update[simp]:
+  "label_prop_upd_inv (os\<lparr>consu := xs\<rparr>) = label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
+
+lemma label_prop_upd_inv_inter_update[simp]:
+  "label_prop_upd_inv (os\<lparr>inter := xs\<rparr>) = label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
+
+lemma label_prop_upd_inv_produ_update[simp]:
+  "label_prop_upd_inv (os\<lparr>produ := xs\<rparr>) = label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
+
+lemma label_prop_upd_inv_outpu_update[simp]:
+  "label_prop_upd_inv (os\<lparr>outpu := xs\<rparr>) = label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
+
+lemma label_prop_upd_inv_front_update[simp]:
+  "label_prop_upd_inv (os\<lparr>front := xs\<rparr>) = label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
+
+lemma label_prop_upd_inv_ocaps_update[simp]:
+  "label_prop_upd_inv (os\<lparr>ocaps := xs\<rparr>) = label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
+
+lemma label_prop_upd_inv_initia_update[simp]:
+  "label_prop_upd_inv (os\<lparr>initia := b\<rparr>) = label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
+
+lemma label_prop_upd_inv_en1_update[simp]:
+  "label_prop_upd_inv (os\<lparr>en1 := f\<rparr>) = label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
+
+lemma label_prop_upd_inv_is_en1_update[simp]:
+  "label_prop_upd_inv (os\<lparr>is_en1 := f\<rparr>) = label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
+
+lemma label_prop_upd_inv_en2_update[simp]:
+  "label_prop_upd_inv (os\<lparr>en2 := f\<rparr>) = label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
+
+lemma label_prop_upd_inv_de2_update[simp]:
+  "label_prop_upd_inv (os\<lparr>de2 := f\<rparr>) = label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
+
+lemma label_prop_upd_inv_is_en2_update[simp]:
+  "label_prop_upd_inv (os\<lparr>is_en2 := f\<rparr>) = label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
+
+lemma label_prop_upd_inv_input_update_port0[simp]:
+  "label_prop_upd_inv (os\<lparr>input := (input os)(0 := xs)\<rparr>) = label_prop_upd_inv os"
+  unfolding label_prop_upd_inv_def all_vertices_def all_edges_def neighbors_def by simp
+
+lemma label_prop_upd_inv_fold_consumes_port0[simp]:
+  "label_prop_upd_inv (fold (\<lambda>(d, t) os. consumes os 0 t d) xs os) = label_prop_upd_inv os"
+  unfolding fold_consumes by simp
+
+lemma label_prop_upd_inv_fold_consumes_port0I:
+  assumes inv: \<open>label_prop_upd_inv os\<close>
+  shows \<open>label_prop_upd_inv (fold (\<lambda>(d, t) os. consumes os 0 t d) xs os)\<close>
+  using inv by simp
 
 
 lemma label_prop_upd_inv_vertices_timestamps_iff:
@@ -1575,6 +1639,110 @@ lemma all_edges_label_update[simp]:
   "all_edges (os\<lparr>label := L\<rparr>) = all_edges os"
   unfolding all_edges_def all_vertices_def neighbors_def
   by auto
+
+lemma all_edges_intsum_update[simp]:
+  "all_edges (os\<lparr>intsum := xs\<rparr>) = all_edges os"
+  unfolding all_edges_def all_vertices_def neighbors_def by auto
+
+lemma all_edges_consu_update[simp]:
+  "all_edges (os\<lparr>consu := xs\<rparr>) = all_edges os"
+  unfolding all_edges_def all_vertices_def neighbors_def by auto
+
+lemma all_edges_inter_update[simp]:
+  "all_edges (os\<lparr>inter := xs\<rparr>) = all_edges os"
+  unfolding all_edges_def all_vertices_def neighbors_def by auto
+
+lemma all_edges_produ_update[simp]:
+  "all_edges (os\<lparr>produ := xs\<rparr>) = all_edges os"
+  unfolding all_edges_def all_vertices_def neighbors_def by auto
+
+lemma all_edges_front_update[simp]:
+  "all_edges (os\<lparr>front := xs\<rparr>) = all_edges os"
+  unfolding all_edges_def all_vertices_def neighbors_def by auto
+
+lemma all_edges_ocaps_update[simp]:
+  "all_edges (os\<lparr>ocaps := xs\<rparr>) = all_edges os"
+  unfolding all_edges_def all_vertices_def neighbors_def by auto
+
+lemma all_edges_initia_update[simp]:
+  "all_edges (os\<lparr>initia := b\<rparr>) = all_edges os"
+  unfolding all_edges_def all_vertices_def neighbors_def by auto
+
+lemma all_edges_en1_update[simp]:
+  "all_edges (os\<lparr>en1 := f\<rparr>) = all_edges os"
+  unfolding all_edges_def all_vertices_def neighbors_def by auto
+
+lemma all_edges_de1_update[simp]:
+  "all_edges (os\<lparr>de1 := f\<rparr>) = all_edges os"
+  unfolding all_edges_def all_vertices_def neighbors_def by auto
+
+lemma all_edges_is_en1_update[simp]:
+  "all_edges (os\<lparr>is_en1 := f\<rparr>) = all_edges os"
+  unfolding all_edges_def all_vertices_def neighbors_def by auto
+
+lemma all_edges_en2_update[simp]:
+  "all_edges (os\<lparr>en2 := f\<rparr>) = all_edges os"
+  unfolding all_edges_def all_vertices_def neighbors_def by auto
+
+lemma all_edges_de2_update[simp]:
+  "all_edges (os\<lparr>de2 := f\<rparr>) = all_edges os"
+  unfolding all_edges_def all_vertices_def neighbors_def by auto
+
+lemma all_edges_is_en2_update[simp]:
+  "all_edges (os\<lparr>is_en2 := f\<rparr>) = all_edges os"
+  unfolding all_edges_def all_vertices_def neighbors_def by auto
+
+lemma min_label_intsum_update[simp]:
+  "min_label (os\<lparr>intsum := xs\<rparr>) = min_label os"
+  unfolding min_label_def by auto
+
+lemma min_label_consu_update[simp]:
+  "min_label (os\<lparr>consu := xs\<rparr>) = min_label os"
+  unfolding min_label_def by auto
+
+lemma min_label_inter_update[simp]:
+  "min_label (os\<lparr>inter := xs\<rparr>) = min_label os"
+  unfolding min_label_def by auto
+
+lemma min_label_produ_update[simp]:
+  "min_label (os\<lparr>produ := xs\<rparr>) = min_label os"
+  unfolding min_label_def by auto
+
+lemma min_label_front_update[simp]:
+  "min_label (os\<lparr>front := xs\<rparr>) = min_label os"
+  unfolding min_label_def by auto
+
+lemma min_label_ocaps_update[simp]:
+  "min_label (os\<lparr>ocaps := xs\<rparr>) = min_label os"
+  unfolding min_label_def by auto
+
+lemma min_label_initia_update[simp]:
+  "min_label (os\<lparr>initia := b\<rparr>) = min_label os"
+  unfolding min_label_def by auto
+
+lemma min_label_en1_update[simp]:
+  "min_label (os\<lparr>en1 := f\<rparr>) = min_label os"
+  unfolding min_label_def by auto
+
+lemma min_label_de1_update[simp]:
+  "min_label (os\<lparr>de1 := f\<rparr>) = min_label os"
+  unfolding min_label_def by auto
+
+lemma min_label_is_en1_update[simp]:
+  "min_label (os\<lparr>is_en1 := f\<rparr>) = min_label os"
+  unfolding min_label_def by auto
+
+lemma min_label_en2_update[simp]:
+  "min_label (os\<lparr>en2 := f\<rparr>) = min_label os"
+  unfolding min_label_def by auto
+
+lemma min_label_de2_update[simp]:
+  "min_label (os\<lparr>de2 := f\<rparr>) = min_label os"
+  unfolding min_label_def by auto
+
+lemma min_label_is_en2_update[simp]:
+  "min_label (os\<lparr>is_en2 := f\<rparr>) = min_label os"
+  unfolding min_label_def by auto
 
 lemma all_edges_add_cap[simp]:
   "all_edges (add_cap os p t') = all_edges os"
@@ -3433,6 +3601,16 @@ lemma input_label_prop_input0_step_state[simp]:
   unfolding label_prop_input0_step_state_def
   by (simp add: Let_def input_tl_def)
 
+lemma timestamps_label_prop_edge_record_update[simp]:
+  "timestamps (label_prop_edge_record_update os event_t src_v dst_v updated_v updated_label)
+   = event_t # timestamps os"
+  unfolding label_prop_edge_record_update_def by simp
+
+lemma timestamps_label_prop_input0_step_state[simp]:
+  \<open>timestamps (label_prop_input0_step_state os d t) = myfst t # timestamps os\<close>
+  unfolding label_prop_input0_step_state_def
+  by (simp add: Let_def)
+
 lemma intsum_label_prop_input0_step_state[simp]:
   \<open>intsum (label_prop_input0_step_state os d t) = intsum os\<close>
   unfolding label_prop_input0_step_state_def
@@ -3584,6 +3762,174 @@ lemma produ_fst_label_prop_input0_batched[simp]:
     produ os @ map (\<lambda>(x, cap). (out cap, time cap, 1))
       (snd (label_prop_input0_batched os msgs))\<close>
   by (induct msgs arbitrary: os) (auto simp: case_prod_beta append_assoc)
+
+lemma timestamps_fst_label_prop_input0_batched[simp]:
+  \<open>timestamps (fst (label_prop_input0_batched os msgs)) =
+    rev (map (\<lambda>(d, t). myfst t) msgs) @ timestamps os\<close>
+  by (induct msgs arbitrary: os) (auto simp: case_prod_beta)
+
+lemma labels_inv_label_prop_input0_step_stateI:
+  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+  assumes labels: \<open>\<And>q. labels_inv (all_edges os q) (min_label os q)\<close>
+    and inv: \<open>label_prop_upd_inv os\<close>
+    and input0: \<open>input os 0 = (d, t) # xs\<close>
+  shows \<open>labels_inv (all_edges (label_prop_input0_step_state os d t) q)
+    (min_label (label_prop_input0_step_state os d t) q)\<close>
+proof -
+  let ?v1 = \<open>fst (de1 os d)\<close>
+  let ?v2 = \<open>snd (de1 os d)\<close>
+  let ?t1 = \<open>myfst t\<close>
+  let ?l1 = \<open>min_label os ?t1 ?v1\<close>
+  let ?l2 = \<open>min_label os ?t1 ?v2\<close>
+  let ?v = \<open>if ?l1 > ?l2 then ?v1 else ?v2\<close>
+  let ?l = \<open>if ?l1 > ?l2 then ?l2 else ?l1\<close>
+  let ?os'' = \<open>label_prop_edge_record_update (input_tl os 0) ?t1 ?v1 ?v2 ?v ?l\<close>
+  let ?batch = \<open>label_prop_edge_batch os ?os'' ?t1 ?v ?l t\<close>
+  have step_eq: \<open>label_prop_input0_step_state os d t =
+    release_caps (drop_caps (produces (add_caps ?os'' (map snd ?batch)) ?batch)
+                            (map snd ?batch)) 1\<close>
+    unfolding label_prop_input0_step_state_def Let_def by simp
+  have os''_labels: \<open>labels_inv (all_edges ?os'' q) (min_label ?os'' q)\<close>
+  proof (rule labels_inv_input0_preserved[OF labels inv])
+    show \<open>input ?os'' = (input os)(0 := tl (input os 0))\<close>
+      by (simp add: label_prop_edge_record_update_def input_tl_def)
+    show \<open>timestamps ?os'' = ?t1 # timestamps os\<close>
+      by (simp add: label_prop_edge_record_update_def input_tl_def)
+    show \<open>graph ?os'' = (graph os)(?t1 := (graph os ?t1)
+            (?v1 := ?v2 # graph os ?t1 ?v1, ?v2 := ?v1 # graph os ?t1 ?v2))\<close>
+      by (simp add: label_prop_edge_record_update_def input_tl_def)
+    show \<open>vertices ?os'' = (vertices os)(?t1 := [?v1, ?v2] @ vertices os ?t1)\<close>
+      by (simp add: label_prop_edge_record_update_def input_tl_def)
+    show \<open>label ?os'' = (label os)(?t1 := (label os ?t1)(?v := ?l))\<close>
+      by (simp add: label_prop_edge_record_update_def input_tl_def)
+    show \<open>(?v, ?l) = (if min_label os ?t1 ?v1 > min_label os ?t1 ?v2
+        then (?v1, min_label os ?t1 ?v2)
+        else (?v2, min_label os ?t1 ?v1))\<close>
+      by simp
+  qed
+  then show ?thesis
+    unfolding step_eq by simp
+qed
+
+lemma label_prop_upd_inv_label_prop_input0_step_stateI:
+  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+  assumes inv: \<open>label_prop_upd_inv os\<close>
+    and input0: \<open>input os 0 = (d, t) # xs\<close>
+  shows \<open>label_prop_upd_inv (label_prop_input0_step_state os d t)\<close>
+proof -
+  let ?v1 = \<open>fst (de1 os d)\<close>
+  let ?v2 = \<open>snd (de1 os d)\<close>
+  let ?t1 = \<open>myfst t\<close>
+  let ?l1 = \<open>min_label os ?t1 ?v1\<close>
+  let ?l2 = \<open>min_label os ?t1 ?v2\<close>
+  let ?v = \<open>if ?l1 > ?l2 then ?v1 else ?v2\<close>
+  let ?l = \<open>if ?l1 > ?l2 then ?l2 else ?l1\<close>
+  let ?os'' = \<open>label_prop_edge_record_update (input_tl os 0) ?t1 ?v1 ?v2 ?v ?l\<close>
+  let ?batch = \<open>label_prop_edge_batch os ?os'' ?t1 ?v ?l t\<close>
+  have step_eq: \<open>label_prop_input0_step_state os d t =
+    release_caps (drop_caps (produces (add_caps ?os'' (map snd ?batch)) ?batch)
+                            (map snd ?batch)) 1\<close>
+    unfolding label_prop_input0_step_state_def Let_def by simp
+  have os''_inv: \<open>label_prop_upd_inv ?os''\<close>
+  proof (rule label_prop_upd_inv_input0_preserved[OF inv])
+    show \<open>timestamps ?os'' = ?t1 # timestamps os\<close>
+      by (simp add: label_prop_edge_record_update_def input_tl_def)
+    show \<open>graph ?os'' = (graph os)(?t1 := (graph os ?t1)
+            (?v1 := ?v2 # graph os ?t1 ?v1, ?v2 := ?v1 # graph os ?t1 ?v2))\<close>
+      by (simp add: label_prop_edge_record_update_def input_tl_def)
+    show \<open>vertices ?os'' = (vertices os)(?t1 := [?v1, ?v2] @ vertices os ?t1)\<close>
+      by (simp add: label_prop_edge_record_update_def input_tl_def)
+    show \<open>label ?os'' = (label os)(?t1 := (label os ?t1)(?v := ?l))\<close>
+      by (simp add: label_prop_edge_record_update_def input_tl_def)
+    show \<open>input ?os'' 1 = input os 1\<close>
+      by (simp add: label_prop_edge_record_update_def input_tl_def)
+    show \<open>de1 ?os'' = de1 os\<close>
+      by (simp add: label_prop_edge_record_update_def input_tl_def)
+    show \<open>(?v, ?l) = (if min_label os ?t1 ?v1 > min_label os ?t1 ?v2
+        then (?v1, min_label os ?t1 ?v2)
+        else (?v2, min_label os ?t1 ?v1))\<close>
+      by simp
+  qed
+  then show ?thesis
+    unfolding step_eq by simp
+qed
+
+lemma labels_inv_fst_label_prop_input0_batched_prefixI:
+  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+  assumes input_eq: \<open>input os 0 = msgs @ rest\<close>
+    and labels: \<open>\<And>q. labels_inv (all_edges os q) (min_label os q)\<close>
+    and inv: \<open>label_prop_upd_inv os\<close>
+  shows \<open>labels_inv (all_edges (fst (label_prop_input0_batched os msgs)) q)
+    (min_label (fst (label_prop_input0_batched os msgs)) q)\<close>
+  using input_eq labels inv
+proof (induct msgs arbitrary: os)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons msg msgs)
+  obtain d t where msg_eq: \<open>msg = (d, t)\<close>
+    by (cases msg)
+  have input0: \<open>input os 0 = (d, t) # (msgs @ rest)\<close>
+    using Cons.prems(1) msg_eq by simp
+  let ?step = \<open>label_prop_input0_step_state os d t\<close>
+  have labels_step: \<open>\<And>q. labels_inv (all_edges ?step q) (min_label ?step q)\<close>
+    by (rule labels_inv_label_prop_input0_step_stateI[OF Cons.prems(2) Cons.prems(3) input0])
+  have inv_step: \<open>label_prop_upd_inv ?step\<close>
+    by (rule label_prop_upd_inv_label_prop_input0_step_stateI[OF Cons.prems(3) input0])
+  have input_step: \<open>input ?step 0 = msgs @ rest\<close>
+    using input0 by simp
+  have ih: \<open>labels_inv (all_edges (fst (label_prop_input0_batched ?step msgs)) q)
+    (min_label (fst (label_prop_input0_batched ?step msgs)) q)\<close>
+    by (rule Cons.hyps[OF input_step labels_step inv_step])
+  then show ?case
+    using msg_eq
+    by (cases \<open>label_prop_input0_batched ?step msgs\<close>) simp
+qed
+
+lemma labels_inv_fst_label_prop_input0_batched_inputI:
+  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+  assumes input_eq: \<open>input os 0 = msgs\<close>
+    and labels: \<open>\<And>q. labels_inv (all_edges os q) (min_label os q)\<close>
+    and inv: \<open>label_prop_upd_inv os\<close>
+  shows \<open>labels_inv (all_edges (fst (label_prop_input0_batched os msgs)) q)
+    (min_label (fst (label_prop_input0_batched os msgs)) q)\<close>
+  by (rule labels_inv_fst_label_prop_input0_batched_prefixI[where rest=Nil])
+    (use assms in simp_all)
+
+lemma label_prop_upd_inv_fst_label_prop_input0_batched_prefixI:
+  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+  assumes input_eq: \<open>input os 0 = msgs @ rest\<close>
+    and inv: \<open>label_prop_upd_inv os\<close>
+  shows \<open>label_prop_upd_inv (fst (label_prop_input0_batched os msgs))\<close>
+  using input_eq inv
+proof (induct msgs arbitrary: os)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons msg msgs)
+  obtain d t where msg_eq: \<open>msg = (d, t)\<close>
+    by (cases msg)
+  have input0: \<open>input os 0 = (d, t) # (msgs @ rest)\<close>
+    using Cons.prems(1) msg_eq by simp
+  let ?step = \<open>label_prop_input0_step_state os d t\<close>
+  have inv_step: \<open>label_prop_upd_inv ?step\<close>
+    by (rule label_prop_upd_inv_label_prop_input0_step_stateI[OF Cons.prems(2) input0])
+  have input_step: \<open>input ?step 0 = msgs @ rest\<close>
+    using input0 by simp
+  have ih: \<open>label_prop_upd_inv (fst (label_prop_input0_batched ?step msgs))\<close>
+    by (rule Cons.hyps[OF input_step inv_step])
+  then show ?case
+    using msg_eq
+    by (cases \<open>label_prop_input0_batched ?step msgs\<close>) simp
+qed
+
+lemma label_prop_upd_inv_fst_label_prop_input0_batched_inputI:
+  fixes os :: \<open>('d, nat, nat, nat) label_propagation_state\<close>
+  assumes input_eq: \<open>input os 0 = msgs\<close>
+    and inv: \<open>label_prop_upd_inv os\<close>
+  shows \<open>label_prop_upd_inv (fst (label_prop_input0_batched os msgs))\<close>
+  by (rule label_prop_upd_inv_fst_label_prop_input0_batched_prefixI[where rest=Nil])
+    (use assms in simp_all)
 
 
 lemma step_label_propagation_op_input0_step_state[intro]:
